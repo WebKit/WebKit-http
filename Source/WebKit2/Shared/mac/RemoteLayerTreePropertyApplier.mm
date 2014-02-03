@@ -61,6 +61,7 @@ static NSString *toCAFilterType(PlatformCALayer::FilterType type)
 
 static void updateCustomAppearance(CALayer *layer, GraphicsLayer::CustomAppearance customAppearance)
 {
+#if ENABLE(RUBBER_BANDING)
     switch (customAppearance) {
     case GraphicsLayer::NoCustomAppearance:
         ScrollbarThemeMac::removeOverhangAreaBackground(layer);
@@ -73,6 +74,9 @@ static void updateCustomAppearance(CALayer *layer, GraphicsLayer::CustomAppearan
         ScrollbarThemeMac::setUpOverhangAreaShadow(layer);
         break;
     }
+#else
+    UNUSED_PARAM(customAppearance);
+#endif
 }
 
 void RemoteLayerTreePropertyApplier::applyPropertiesToLayer(CALayer *layer, RemoteLayerTreeTransaction::LayerProperties properties, RelatedLayerMap relatedLayers)
@@ -181,32 +185,6 @@ void RemoteLayerTreePropertyApplier::applyPropertiesToLayer(CALayer *layer, Remo
 
     if (properties.changedProperties & RemoteLayerTreeTransaction::CustomAppearanceChanged)
         updateCustomAppearance(layer, properties.customAppearance);
-}
-
-void RemoteLayerTreePropertyApplier::disableActionsForLayer(CALayer *layer)
-{
-    NSNull *nullValue = [NSNull null];
-    layer.style = @{
-        @"actions" : @{
-            @"anchorPoint" : nullValue,
-            @"anchorPointZ" : nullValue,
-            @"backgroundColor" : nullValue,
-            @"borderColor" : nullValue,
-            @"borderWidth" : nullValue,
-            @"bounds" : nullValue,
-            @"contents" : nullValue,
-            @"contentsRect" : nullValue,
-            @"contentsScale" : nullValue,
-            @"cornerRadius" : nullValue,
-            @"opacity" : nullValue,
-            @"position" : nullValue,
-            @"shadowColor" : nullValue,
-            @"sublayerTransform" : nullValue,
-            @"sublayers" : nullValue,
-            @"transform" : nullValue,
-            @"zPosition" : nullValue
-        }
-    };
 }
 
 } // namespace WebKit

@@ -39,9 +39,9 @@ public:
         return adoptRef(new WebFrameNetworkingContext(frame));
     }
 
-    static void setPrivateBrowsingStorageSessionIdentifierBase(const String&);
-    static void ensurePrivateBrowsingSession();
-    static void destroyPrivateBrowsingSession();
+    // FIXME: remove platform-specific code and use SessionTracker
+    static void ensurePrivateBrowsingSession(uint64_t sessionID);
+
     static void setCookieAcceptPolicyForAllContexts(HTTPCookieAcceptPolicy);
 
     WebFrameLoaderClient* webFrameLoaderClient() const;
@@ -52,15 +52,12 @@ private:
     {
     }
 
-    virtual bool needsSiteSpecificQuirks() const OVERRIDE;
-    virtual bool localFileContentSniffingEnabled() const OVERRIDE;
-    virtual SchedulePairHashSet* scheduledRunLoopPairs() const OVERRIDE;
-    virtual RetainPtr<CFDataRef> sourceApplicationAuditData() const OVERRIDE;
-    virtual WebCore::ResourceError blockedError(const WebCore::ResourceRequest&) const OVERRIDE;
-    virtual WebCore::NetworkStorageSession& storageSession() const OVERRIDE;
-#if PLATFORM(IOS)
-    virtual void reportNetworkDataUsage(uint64_t rawBytesSent, uint64_t rawBytesReceived, uint64_t cellularBytesSent, uint64_t cellularBytesReceived) OVERRIDE { }
-#endif // PLATFORM(IOS)
+    virtual bool needsSiteSpecificQuirks() const override;
+    virtual bool localFileContentSniffingEnabled() const override;
+    virtual SchedulePairHashSet* scheduledRunLoopPairs() const override;
+    virtual RetainPtr<CFDataRef> sourceApplicationAuditData() const override;
+    virtual WebCore::ResourceError blockedError(const WebCore::ResourceRequest&) const override;
+    virtual WebCore::NetworkStorageSession& storageSession() const override;
 };
 
 }

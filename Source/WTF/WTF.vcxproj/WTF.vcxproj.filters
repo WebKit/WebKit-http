@@ -300,6 +300,9 @@
     <ClInclude Include="..\wtf\text\IntegerToStringConversion.h">
       <Filter>text</Filter>
     </ClInclude>
+    <ClInclude Include="..\wtf\text\LChar.h">
+      <Filter>text</Filter>
+    </ClInclude>
     <ClInclude Include="..\wtf\text\StringBuffer.h">
       <Filter>text</Filter>
     </ClInclude>
@@ -317,6 +320,9 @@
     </ClInclude>
     <ClInclude Include="..\wtf\text\StringOperators.h">
       <Filter>text</Filter>
+    </ClInclude>
+    <ClInclude Include="..\wtf\text\StringView.h">
+      <Filter>wtf</Filter>
     </ClInclude>
     <ClInclude Include="..\wtf\text\WTFString.h">
       <Filter>text</Filter>
@@ -466,6 +472,12 @@
       <Filter>wtf</Filter>
     </ClInclude>
     <ClInclude Include="..\wtf\HexNumber.h">
+      <Filter>wtf</Filter>
+    </ClInclude>
+    <ClInclude Include="..\wtf\IteratorAdaptors.h">
+      <Filter>wtf</Filter>
+    </ClInclude>
+    <ClInclude Include="..\wtf\IteratorRange.h">
       <Filter>wtf</Filter>
     </ClInclude>
     <ClInclude Include="..\wtf\ListHashSet.h">
@@ -640,9 +652,6 @@
       <Filter>wtf</Filter>
     </ClInclude>
     <ClInclude Include="..\wtf\ThreadingPrimitives.h">
-      <Filter>wtf</Filter>
-    </ClInclude>
-    <ClInclude Include="..\wtf\ThreadRestrictionVerifier.h">
       <Filter>wtf</Filter>
     </ClInclude>
     <ClInclude Include="..\wtf\ValueCheck.h">

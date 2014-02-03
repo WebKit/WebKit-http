@@ -189,7 +189,7 @@ class JSONResultsGenerator(object):
     URL_FOR_TEST_LIST_JSON = "http://%s/testfile?builder=%s&name=%s&testlistjson=1&testtype=%s&master=%s"
 
     def __init__(self, port, builder_name, build_name, build_number,
-        results_file_base_path, builder_base_url,
+        results_file_base_path,
         test_results_map, svn_repositories=None,
         test_results_server=None,
         test_type="",
@@ -204,8 +204,6 @@ class JSONResultsGenerator(object):
           build_number: the build number.
           results_file_base_path: Absolute path to the directory containing the
               results json file.
-          builder_base_url: the URL where we have the archived test results.
-              If this is None no archived results will be retrieved.
           test_results_map: A dictionary that maps test_name to TestResult.
           svn_repositories: A (json_field_name, svn_path) pair for SVN
               repositories that tests rely on.  The SVN revision will be
@@ -220,7 +218,6 @@ class JSONResultsGenerator(object):
         self._builder_name = builder_name
         self._build_name = build_name
         self._build_number = build_number
-        self._builder_base_url = builder_base_url
         self._results_directory = results_file_base_path
 
         self._test_results_map = test_results_map
@@ -238,9 +235,11 @@ class JSONResultsGenerator(object):
 
     def generate_json_output(self):
         json_object = self.get_json()
-        if json_object:
-            file_path = self._filesystem.join(self._results_directory, self.INCREMENTAL_RESULTS_FILENAME)
-            write_json(self._filesystem, json_object, file_path)
+        if not json_object:
+            return False
+        file_path = self._filesystem.join(self._results_directory, self.INCREMENTAL_RESULTS_FILENAME)
+        write_json(self._filesystem, json_object, file_path)
+        return True
 
     def generate_times_ms_file(self):
         # FIXME: rename to generate_times_ms_file. This needs to be coordinated with

@@ -43,7 +43,7 @@
 
 namespace WebCore {
 
-void AXObjectCache::detachWrapper(AccessibilityObject* obj)
+void AXObjectCache::detachWrapper(AccessibilityObject* obj, AccessibilityDetachmentType)
 {
     [obj->wrapper() detach];
     obj->setWrapper(0);
@@ -121,6 +121,12 @@ void AXObjectCache::postPlatformNotification(AccessibilityObject* obj, AXNotific
         case AXMenuClosed:
             macNotification = (id)kAXMenuClosedNotification;
             break;
+        case AXMenuListItemSelected:
+            macNotification = (id)kAXMenuItemSelectedNotification;
+            break;
+        case AXMenuOpened:
+            macNotification = (id)kAXMenuOpenedNotification;
+            break;
         case AXCheckedStateChanged:
             // Does not exist on Mac.
         default:
@@ -129,7 +135,10 @@ void AXObjectCache::postPlatformNotification(AccessibilityObject* obj, AXNotific
     
     // NSAccessibilityPostNotification will call this method, (but not when running DRT), so ASSERT here to make sure it does not crash.
     // https://bugs.webkit.org/show_bug.cgi?id=46662
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
     ASSERT([obj->wrapper() accessibilityIsIgnored] || true);
+#pragma clang diagnostic pop
     
     NSAccessibilityPostNotification(obj->wrapper(), macNotification);
     
@@ -145,7 +154,7 @@ void AXObjectCache::frameLoadingEventPlatformNotification(AccessibilityObject*, 
 {
 }
 
-void AXObjectCache::handleFocusedUIElementChanged(Node*, Node*)
+void AXObjectCache::platformHandleFocusedUIElementChanged(Node*, Node*)
 {
     wkAccessibilityHandleFocusChanged();
 }

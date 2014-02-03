@@ -154,7 +154,7 @@ void AnimationControllerPrivate::updateAnimationTimer(SetChanged callSetChanged/
     m_animationTimer.startOneShot(timeToNextService);
 }
 
-void AnimationControllerPrivate::updateStyleIfNeededDispatcherFired(Timer<AnimationControllerPrivate>*)
+void AnimationControllerPrivate::updateStyleIfNeededDispatcherFired(Timer<AnimationControllerPrivate>&)
 {
     fireEventsAndUpdateStyle();
 }
@@ -221,7 +221,7 @@ void AnimationControllerPrivate::animationFrameCallbackFired()
 }
 #endif
 
-void AnimationControllerPrivate::animationTimerFired(Timer<AnimationControllerPrivate>*)
+void AnimationControllerPrivate::animationTimerFired(Timer<AnimationControllerPrivate>&)
 {
     // Make sure animationUpdateTime is updated, so that it is current even if no
     // styleChange has happened (e.g. accelerated animations)
@@ -405,10 +405,8 @@ void AnimationControllerPrivate::removeFromAnimationsWaitingForStyle(AnimationBa
 void AnimationControllerPrivate::styleAvailable()
 {
     // Go through list of waiters and send them on their way
-    WaitingAnimationsSet::const_iterator it = m_animationsWaitingForStyle.begin();
-    WaitingAnimationsSet::const_iterator end = m_animationsWaitingForStyle.end();
-    for (; it != end; ++it)
-        (*it)->styleAvailable();
+    for (const auto& waitingAnimation : m_animationsWaitingForStyle)
+        waitingAnimation->styleAvailable();
 
     m_animationsWaitingForStyle.clear();
 }
@@ -451,10 +449,8 @@ void AnimationControllerPrivate::startTimeResponse(double time)
 {
     // Go through list of waiters and send them on their way
 
-    WaitingAnimationsSet::const_iterator it = m_animationsWaitingForStartTimeResponse.begin();
-    WaitingAnimationsSet::const_iterator end = m_animationsWaitingForStartTimeResponse.end();
-    for (; it != end; ++it)
-        (*it)->onAnimationStartResponse(time);
+    for (const auto& animation : m_animationsWaitingForStartTimeResponse)
+        animation->onAnimationStartResponse(time);
     
     m_animationsWaitingForStartTimeResponse.clear();
     m_waitingForAsyncStartNotification = false;
@@ -638,12 +634,7 @@ void AnimationController::endAnimationUpdate()
 
 bool AnimationController::supportsAcceleratedAnimationOfProperty(CSSPropertyID property)
 {
-#if USE(ACCELERATED_COMPOSITING)
     return CSSPropertyAnimation::animationOfPropertyIsAccelerated(property);
-#else
-    UNUSED_PARAM(property);
-    return false;
-#endif
 }
 
 } // namespace WebCore

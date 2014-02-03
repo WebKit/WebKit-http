@@ -26,27 +26,44 @@
 #include "config.h"
 #include "ScrollingStateTree.h"
 
-#if ENABLE(THREADED_SCROLLING) || USE(COORDINATED_GRAPHICS)
+#if ENABLE(ASYNC_SCROLLING) || USE(COORDINATED_GRAPHICS)
 
+#include "AsyncScrollingCoordinator.h"
 #include "ScrollingStateFixedNode.h"
 #include "ScrollingStateScrollingNode.h"
 #include "ScrollingStateStickyNode.h"
 
 namespace WebCore {
 
-PassOwnPtr<ScrollingStateTree> ScrollingStateTree::create()
+PassOwnPtr<ScrollingStateTree> ScrollingStateTree::create(AsyncScrollingCoordinator* scrollingCoordinator)
 {
-    return adoptPtr(new ScrollingStateTree);
+    return adoptPtr(new ScrollingStateTree(scrollingCoordinator));
 }
 
-ScrollingStateTree::ScrollingStateTree()
-    : m_hasChangedProperties(false)
+ScrollingStateTree::ScrollingStateTree(AsyncScrollingCoordinator* scrollingCoordinator)
+    : m_scrollingCoordinator(scrollingCoordinator)
+    , m_hasChangedProperties(false)
     , m_hasNewRootStateNode(false)
+    , m_preferredLayerRepresentation(LayerRepresentation::GraphicsLayerRepresentation)
 {
 }
 
 ScrollingStateTree::~ScrollingStateTree()
 {
+}
+
+void ScrollingStateTree::setHasChangedProperties(bool changedProperties)
+{
+#if ENABLE(ASYNC_SCROLLING)
+    bool gainedChangedProperties = !m_hasChangedProperties && changedProperties;
+#endif
+
+    m_hasChangedProperties = changedProperties;
+
+#if ENABLE(ASYNC_SCROLLING)
+    if (gainedChangedProperties && m_scrollingCoordinator)
+        m_scrollingCoordinator->scrollingStateTreePropertiesChanged();
+#endif
 }
 
 ScrollingNodeID ScrollingStateTree::attachNode(ScrollingNodeType nodeType, ScrollingNodeID newNodeID, ScrollingNodeID parentID)
@@ -69,7 +86,7 @@ ScrollingNodeID ScrollingStateTree::attachNode(ScrollingNodeType nodeType, Scrol
         // If we're resetting the root node, we should clear the HashMap and destroy the current children.
         clear();
 
-        setRootStateNode(ScrollingStateScrollingNode::create(this, newNodeID));
+        setRootStateNode(ScrollingStateScrollingNode::create(*this, newNodeID));
         newNode = rootStateNode();
         m_hasNewRootStateNode = true;
     } else {
@@ -79,13 +96,13 @@ ScrollingNodeID ScrollingStateTree::attachNode(ScrollingNodeType nodeType, Scrol
 
         switch (nodeType) {
         case FixedNode: {
-            OwnPtr<ScrollingStateFixedNode> fixedNode = ScrollingStateFixedNode::create(this, newNodeID);
+            OwnPtr<ScrollingStateFixedNode> fixedNode = ScrollingStateFixedNode::create(*this, newNodeID);
             newNode = fixedNode.get();
             parent->appendChild(fixedNode.release());
             break;
         }
         case StickyNode: {
-            OwnPtr<ScrollingStateStickyNode> stickyNode = ScrollingStateStickyNode::create(this, newNodeID);
+            OwnPtr<ScrollingStateStickyNode> stickyNode = ScrollingStateStickyNode::create(*this, newNodeID);
             newNode = stickyNode.get();
             parent->appendChild(stickyNode.release());
             break;
@@ -93,7 +110,7 @@ ScrollingNodeID ScrollingStateTree::attachNode(ScrollingNodeType nodeType, Scrol
         case ScrollingNode: {
             // FIXME: We currently only support child nodes that are fixed.
             ASSERT_NOT_REACHED();
-            OwnPtr<ScrollingStateScrollingNode> scrollingNode = ScrollingStateScrollingNode::create(this, newNodeID);
+            OwnPtr<ScrollingStateScrollingNode> scrollingNode = ScrollingStateScrollingNode::create(*this, newNodeID);
             newNode = scrollingNode.get();
             parent->appendChild(scrollingNode.release());
             break;
@@ -124,12 +141,14 @@ void ScrollingStateTree::clear()
     m_stateNodeMap.clear();
 }
 
-PassOwnPtr<ScrollingStateTree> ScrollingStateTree::commit()
+PassOwnPtr<ScrollingStateTree> ScrollingStateTree::commit(LayerRepresentation::Type preferredLayerRepresentation)
 {
     // This function clones and resets the current state tree, but leaves the tree structure intact.
     OwnPtr<ScrollingStateTree> treeStateClone = ScrollingStateTree::create();
+    treeStateClone->setPreferredLayerRepresentation(preferredLayerRepresentation);
+
     if (m_rootStateNode)
-        treeStateClone->setRootStateNode(static_pointer_cast<ScrollingStateScrollingNode>(m_rootStateNode->cloneAndReset()));
+        treeStateClone->setRootStateNode(static_pointer_cast<ScrollingStateScrollingNode>(m_rootStateNode->cloneAndReset(*treeStateClone)));
 
     // Copy the IDs of the nodes that have been removed since the last commit into the clone.
     treeStateClone->m_nodesRemovedSinceLastCommit.swap(m_nodesRemovedSinceLastCommit);
@@ -142,6 +161,11 @@ PassOwnPtr<ScrollingStateTree> ScrollingStateTree::commit()
     m_hasNewRootStateNode = false;
 
     return treeStateClone.release();
+}
+
+void ScrollingStateTree::addNode(ScrollingStateNode* node)
+{
+    m_stateNodeMap.add(node->scrollingNodeID(), node);
 }
 
 void ScrollingStateTree::removeNode(ScrollingStateNode* node)
@@ -168,7 +192,12 @@ void ScrollingStateTree::removeNode(ScrollingStateNode* node)
 void ScrollingStateTree::didRemoveNode(ScrollingNodeID nodeID)
 {
     m_nodesRemovedSinceLastCommit.append(nodeID);
-    m_hasChangedProperties = true;
+    setHasChangedProperties();
+}
+
+void ScrollingStateTree::setRemovedNodes(Vector<ScrollingNodeID> nodes)
+{
+    m_nodesRemovedSinceLastCommit = std::move(nodes);
 }
 
 ScrollingStateNode* ScrollingStateTree::stateNodeForID(ScrollingNodeID scrollLayerID)
@@ -176,7 +205,7 @@ ScrollingStateNode* ScrollingStateTree::stateNodeForID(ScrollingNodeID scrollLay
     if (!scrollLayerID)
         return 0;
 
-    HashMap<ScrollingNodeID, ScrollingStateNode*>::const_iterator it = m_stateNodeMap.find(scrollLayerID);
+    auto it = m_stateNodeMap.find(scrollLayerID);
     if (it == m_stateNodeMap.end())
         return 0;
 
@@ -186,4 +215,4 @@ ScrollingStateNode* ScrollingStateTree::stateNodeForID(ScrollingNodeID scrollLay
 
 } // namespace WebCore
 
-#endif // ENABLE(THREADED_SCROLLING) || USE(COORDINATED_GRAPHICS)
+#endif // ENABLE(ASYNC_SCROLLING) || USE(COORDINATED_GRAPHICS)

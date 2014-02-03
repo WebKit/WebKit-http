@@ -145,6 +145,7 @@ namespace WebCore {
     String contextMenuItemTagInspectElement();
 #endif // ENABLE(CONTEXT_MENUS)
 
+#if !PLATFORM(IOS)
     String searchMenuNoRecentSearchesText();
     String searchMenuRecentSearchesText();
     String searchMenuClearRecentSearchesText();
@@ -171,6 +172,7 @@ namespace WebCore {
     String AXMenuListPopupActionVerb();
     String AXLinkActionVerb();
     String AXListItemActionVerb();
+#endif
 
 #if ENABLE(INPUT_TYPE_WEEK)
     // weekFormatInLDML() returns week and year format in LDML, Unicode
@@ -206,6 +208,10 @@ namespace WebCore {
 
 #if PLATFORM(IOS)
     String htmlSelectMultipleItems(size_t num);
+    String fileButtonChooseMediaFileLabel();
+    String fileButtonChooseMultipleMediaFilesLabel();
+    String fileButtonNoMediaFileSelectedLabel();
+    String fileButtonNoMediaFilesSelectedLabel();
 #endif
 
     String imageTitle(const String& filename, const IntSize& size);
@@ -254,6 +260,8 @@ namespace WebCore {
 
     String snapshottedPlugInLabelTitle();
     String snapshottedPlugInLabelSubtitle();
+
+    String useBlockedPlugInContextMenuTitle();
 
 #define WEB_UI_STRING(string, description) WebCore::localizedString(string)
 #define WEB_UI_STRING_KEY(string, key, description) WebCore::localizedString(key)

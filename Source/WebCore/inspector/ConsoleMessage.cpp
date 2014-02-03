@@ -29,20 +29,19 @@
  */
 
 #include "config.h"
+#include "ConsoleMessage.h"
 
 #if ENABLE(INSPECTOR)
 
-#include "ConsoleMessage.h"
-
 #include "Console.h"
 #include "IdentifiersFactory.h"
-#include "InjectedScript.h"
-#include "InjectedScriptManager.h"
 #include "ScriptArguments.h"
 #include "ScriptCallFrame.h"
 #include "ScriptCallStack.h"
 #include "ScriptCallStackFactory.h"
 #include <bindings/ScriptValue.h>
+#include <inspector/InjectedScript.h>
+#include <inspector/InjectedScriptManager.h>
 #include <inspector/InspectorValues.h>
 #include <wtf/MainThread.h>
 
@@ -83,7 +82,7 @@ ConsoleMessage::ConsoleMessage(bool, MessageSource source, MessageType type, Mes
     , m_type(type)
     , m_level(level)
     , m_message(message)
-    , m_arguments(0)
+    , m_arguments(nullptr)
     , m_line(0)
     , m_column(0)
     , m_repeatCount(1)
@@ -189,7 +188,7 @@ static Inspector::TypeBuilder::Console::ConsoleMessage::Level::Enum messageLevel
     return Inspector::TypeBuilder::Console::ConsoleMessage::Level::Log;
 }
 
-void ConsoleMessage::addToFrontend(InspectorConsoleFrontendDispatcher* consoleFrontendDispatcher, InjectedScriptManager* injectedScriptManager, bool generatePreview)
+void ConsoleMessage::addToFrontend(InspectorConsoleFrontendDispatcher* consoleFrontendDispatcher, Inspector::InjectedScriptManager* injectedScriptManager, bool generatePreview)
 {
     RefPtr<Inspector::TypeBuilder::Console::ConsoleMessage> jsonObj = Inspector::TypeBuilder::Console::ConsoleMessage::create()
         .setSource(messageSourceValue(m_source))

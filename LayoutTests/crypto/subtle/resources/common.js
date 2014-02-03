@@ -101,23 +101,5 @@ var Base64URL = {
     }
 };
 
-if (!Promise.all) {
-    // A very simple temporary implementation only for WebCrypto tests.
-    Promise.all = function(promises) {
-        var results = [];
-        var resultCount = 0;
-        var resolver;
-        function next(result) {
-            results[resultCount++] = result;
-            if (resultCount < promises.length)
-                promises[resultCount].then(next);
-            else
-                resolver.fulfill(results);
-        }
-        promises[0].then(next, function() { resolver.reject(null) });
-        return new Promise(function(r) { resolver = r; });
-    }
-}
-
 if (!crypto.subtle)
     crypto.subtle = crypto.webkitSubtle;

@@ -183,7 +183,7 @@ void Scrollbar::paint(GraphicsContext* context, const IntRect& damageRect)
         Widget::paint(context, damageRect);
 }
 
-void Scrollbar::autoscrollTimerFired(Timer<Scrollbar>*)
+void Scrollbar::autoscrollTimerFired(Timer<Scrollbar>&)
 {
     autoscrollPressedPart(theme()->autoscrollTimerDelay());
 }
@@ -334,6 +334,7 @@ void Scrollbar::setPressedPart(ScrollbarPart part)
         theme()->invalidatePart(this, m_hoveredPart);
 }
 
+#if !PLATFORM(IOS)
 bool Scrollbar::mouseMoved(const PlatformMouseEvent& evt)
 {
     if (m_pressedPart == ThumbPart) {
@@ -372,6 +373,7 @@ bool Scrollbar::mouseMoved(const PlatformMouseEvent& evt)
 
     return true;
 }
+#endif
 
 void Scrollbar::mouseEntered()
 {
@@ -545,9 +547,9 @@ IntPoint Scrollbar::convertFromContainingView(const IntPoint& parentPoint) const
 
 bool Scrollbar::supportsUpdateOnSecondaryThread() const
 {
-    // It's unfortunate that this needs to be done with an ifdef. Ideally there would be able to feature-detect
+    // It's unfortunate that this needs to be done with an ifdef. Ideally there would be a way to feature-detect
     // the necessary support within AppKit.
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000 && ENABLE(THREADED_SCROLLING)
+#if ENABLE(ASYNC_SCROLLING) && !PLATFORM(IOS) && PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
     return m_scrollableArea ? !m_scrollableArea->updatesScrollLayerPositionOnMainThread() : false;
 #else
     return false;

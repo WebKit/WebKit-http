@@ -26,8 +26,6 @@
 #ifndef WKCACFViewLayerTreeHost_h
 #define WKCACFViewLayerTreeHost_h
 
-#if USE(ACCELERATED_COMPOSITING)
-
 #include "CACFLayerTreeHost.h"
 
 typedef struct _WKCACFView* WKCACFViewRef;
@@ -56,7 +54,7 @@ private:
     virtual CFTimeInterval lastCommitTime() const;
     virtual void setShouldInvertColors(bool);
 #if USE(AVFOUNDATION)
-    virtual GraphicsDeviceAdapter* graphicsDeviceAdapter() const OVERRIDE;
+    virtual GraphicsDeviceAdapter* graphicsDeviceAdapter() const override;
 #endif
 
     RetainPtr<WKCACFViewRef> m_view;
@@ -64,7 +62,5 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // USE(ACCELERATED_COMPOSITING)
 
 #endif // WKCACFViewLayerTreeHost_h

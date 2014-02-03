@@ -29,14 +29,13 @@
 #include "FloatRect.h"
 #include "RenderSVGModelObject.h"
 #include "SVGPreserveAspectRatio.h"
-#include "SVGRenderSupport.h"
 
 namespace WebCore {
 
 class RenderImageResource;
 class SVGImageElement;
 
-class RenderSVGImage FINAL : public RenderSVGModelObject {
+class RenderSVGImage final : public RenderSVGModelObject {
 public:
     RenderSVGImage(SVGImageElement&, PassRef<RenderStyle>);
     virtual ~RenderSVGImage();
@@ -45,30 +44,30 @@ public:
 
     bool updateImageViewport();
     virtual void setNeedsBoundariesUpdate() { m_needsBoundariesUpdate = true; }
-    virtual bool needsBoundariesUpdate() OVERRIDE { return m_needsBoundariesUpdate; }
+    virtual bool needsBoundariesUpdate() override { return m_needsBoundariesUpdate; }
     virtual void setNeedsTransformUpdate() { m_needsTransformUpdate = true; }
 
-    RenderImageResource* imageResource() { return m_imageResource.get(); }
-    const RenderImageResource* imageResource() const { return m_imageResource.get(); }
+    RenderImageResource& imageResource() { return *m_imageResource; }
+    const RenderImageResource& imageResource() const { return *m_imageResource; }
 
     // Note: Assumes the PaintInfo context has had all local transforms applied.
     void paintForeground(PaintInfo&);
 
 private:
-    void element() const WTF_DELETED_FUNCTION;
+    void element() const = delete;
 
     virtual const char* renderName() const { return "RenderSVGImage"; }
-    virtual bool isSVGImage() const OVERRIDE { return true; }
-    virtual bool canHaveChildren() const OVERRIDE { return false; }
+    virtual bool isSVGImage() const override { return true; }
+    virtual bool canHaveChildren() const override { return false; }
 
     virtual const AffineTransform& localToParentTransform() const { return m_localTransform; }
 
     virtual FloatRect objectBoundingBox() const { return m_objectBoundingBox; }
     virtual FloatRect strokeBoundingBox() const { return m_objectBoundingBox; }
     virtual FloatRect repaintRectInLocalCoordinates() const { return m_repaintBoundingBox; }
-    virtual FloatRect repaintRectInLocalCoordinatesExcludingSVGShadow() const OVERRIDE { return m_repaintBoundingBoxExcludingShadow; }
+    virtual FloatRect repaintRectInLocalCoordinatesExcludingSVGShadow() const override { return m_repaintBoundingBoxExcludingShadow; }
 
-    virtual void addFocusRingRects(Vector<IntRect>&, const LayoutPoint& additionalOffset, const RenderLayerModelObject* paintContainer = 0) OVERRIDE;
+    virtual void addFocusRingRects(Vector<IntRect>&, const LayoutPoint& additionalOffset, const RenderLayerModelObject* paintContainer = 0) override;
 
     virtual void imageChanged(WrappedImagePtr, const IntRect* = 0);
 
@@ -88,8 +87,7 @@ private:
     FloatRect m_objectBoundingBox;
     FloatRect m_repaintBoundingBox;
     FloatRect m_repaintBoundingBoxExcludingShadow;
-    OwnPtr<RenderImageResource> m_imageResource;
-
+    std::unique_ptr<RenderImageResource> m_imageResource;
     std::unique_ptr<ImageBuffer> m_bufferedForeground;
 };
 

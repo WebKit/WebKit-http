@@ -28,6 +28,9 @@
 #if USE(3D_GRAPHICS)
 
 #include "GraphicsContext3D.h"
+#if PLATFORM(IOS)
+#include "GraphicsContext3DIOS.h"
+#endif
 
 #import "BlockExceptions.h"
 
@@ -39,8 +42,15 @@
 #include "HTMLCanvasElement.h"
 #include "ImageBuffer.h"
 #include "NotImplemented.h"
+#if PLATFORM(IOS)
+#import <OpenGLES/ES2/glext.h>
+#import <OpenGLES/EAGL.h>
+#import <OpenGLES/EAGLDrawable.h>
+#import <QuartzCore/QuartzCore.h>
+#else
 #include <OpenGL/CGLRenderers.h>
 #include <OpenGL/gl.h>
+#endif
 #include "WebGLLayer.h"
 #include "WebGLObject.h"
 #include <runtime/ArrayBuffer.h>
@@ -61,7 +71,8 @@ public:
     ~GraphicsContext3DPrivate() { }
 };
 
-static void setPixelFormat(Vector<CGLPixelFormatAttribute>& attribs, int colorBits, int depthBits, bool accelerated, bool supersample, bool closest)
+#if !PLATFORM(IOS)
+static void setPixelFormat(Vector<CGLPixelFormatAttribute>& attribs, int colorBits, int depthBits, bool accelerated, bool supersample, bool closest, bool antialias)
 {
     attribs.clear();
     
@@ -77,14 +88,23 @@ static void setPixelFormat(Vector<CGLPixelFormatAttribute>& attribs, int colorBi
         attribs.append(static_cast<CGLPixelFormatAttribute>(kCGLRendererGenericFloatID));
     }
         
-    if (supersample)
+    if (supersample && !antialias)
         attribs.append(kCGLPFASupersample);
         
     if (closest)
         attribs.append(kCGLPFAClosestPolicy);
+
+    if (antialias) {
+        attribs.append(kCGLPFAMultisample);
+        attribs.append(kCGLPFASampleBuffers);
+        attribs.append(static_cast<CGLPixelFormatAttribute>(1));
+        attribs.append(kCGLPFASamples);
+        attribs.append(static_cast<CGLPixelFormatAttribute>(4));
+    }
         
     attribs.append(static_cast<CGLPixelFormatAttribute>(0));
 }
+#endif // !PLATFORM(IOS)
 
 PassRefPtr<GraphicsContext3D> GraphicsContext3D::create(GraphicsContext3D::Attributes attrs, HostWindow* hostWindow, GraphicsContext3D::RenderStyle renderStyle)
 {
@@ -99,6 +119,9 @@ GraphicsContext3D::GraphicsContext3D(GraphicsContext3D::Attributes attrs, HostWi
     : m_currentWidth(0)
     , m_currentHeight(0)
     , m_contextObj(0)
+#if PLATFORM(IOS)
+    , m_compiler(SH_ESSL_OUTPUT)
+#endif
     , m_attrs(attrs)
     , m_texture(0)
     , m_compositorTexture(0)
@@ -114,6 +137,10 @@ GraphicsContext3D::GraphicsContext3D(GraphicsContext3D::Attributes attrs, HostWi
     UNUSED_PARAM(hostWindow);
     UNUSED_PARAM(renderStyle);
 
+#if PLATFORM(IOS)
+    m_contextObj = [[EAGLContext alloc] initWithAPI:kEAGLRenderingAPIOpenGLES2];
+    makeContextCurrent();
+#else
     Vector<CGLPixelFormatAttribute> attribs;
     CGLPixelFormatObj pixelFormatObj = 0;
     GLint numPixelFormats = 0;
@@ -132,20 +159,23 @@ GraphicsContext3D::GraphicsContext3D(GraphicsContext3D::Attributes attrs, HostWi
     //
     // If none of that works, we simply fail and set m_contextObj to 0.
 
-    setPixelFormat(attribs, 32, 32, !attrs.forceSoftwareRenderer, true, false);
+    bool useMultisampling = m_attrs.antialias;
+    
+    setPixelFormat(attribs, 32, 32, !attrs.forceSoftwareRenderer, true, false, useMultisampling);
     CGLChoosePixelFormat(attribs.data(), &pixelFormatObj, &numPixelFormats);
 
     if (numPixelFormats == 0) {
-        setPixelFormat(attribs, 32, 32, !attrs.forceSoftwareRenderer, false, false);
+        setPixelFormat(attribs, 32, 32, !attrs.forceSoftwareRenderer, false, false, useMultisampling);
         CGLChoosePixelFormat(attribs.data(), &pixelFormatObj, &numPixelFormats);
 
         if (numPixelFormats == 0) {
-            setPixelFormat(attribs, 32, 16, !attrs.forceSoftwareRenderer, false, false);
+            setPixelFormat(attribs, 32, 16, !attrs.forceSoftwareRenderer, false, false, useMultisampling);
             CGLChoosePixelFormat(attribs.data(), &pixelFormatObj, &numPixelFormats);
 
              if (!attrs.forceSoftwareRenderer && numPixelFormats == 0) {
-                 setPixelFormat(attribs, 32, 16, false, false, true);
+                 setPixelFormat(attribs, 32, 16, false, false, true, false);
                  CGLChoosePixelFormat(attribs.data(), &pixelFormatObj, &numPixelFormats);
+                 useMultisampling = false;
             }
         }
     }
@@ -173,17 +203,29 @@ GraphicsContext3D::GraphicsContext3D(GraphicsContext3D::Attributes attrs, HostWi
             return;
         }
     }
+#endif // !PLATFORM(IOS)
     
     validateAttributes();
 
     // Create the WebGLLayer
     BEGIN_BLOCK_OBJC_EXCEPTIONS
         m_webGLLayer = adoptNS([[WebGLLayer alloc] initWithGraphicsContext3D:this]);
+#if PLATFORM(IOS)
+        [m_webGLLayer.get() setOpaque:0];
+#endif
 #ifndef NDEBUG
         [m_webGLLayer.get() setName:@"WebGL Layer"];
 #endif    
     END_BLOCK_OBJC_EXCEPTIONS
-    
+
+#if !PLATFORM(IOS)
+    if (useMultisampling)
+        ::glEnable(GL_MULTISAMPLE);
+#endif
+
+#if PLATFORM(IOS)
+    ::glGenRenderbuffers(1, &m_texture);
+#else
     // create a texture to render into
     ::glGenTextures(1, &m_texture);
     ::glBindTexture(GL_TEXTURE_2D, m_texture);
@@ -198,11 +240,12 @@ GraphicsContext3D::GraphicsContext3D(GraphicsContext3D::Attributes attrs, HostWi
     ::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
     ::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
     ::glBindTexture(GL_TEXTURE_2D, 0);
-    
+#endif
+
     // create an FBO
     ::glGenFramebuffersEXT(1, &m_fbo);
     ::glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, m_fbo);
-    
+
     m_state.boundFBO = m_fbo;
     if (!m_attrs.antialias && (m_attrs.stencil || m_attrs.depth))
         ::glGenRenderbuffersEXT(1, &m_depthStencilBuffer);
@@ -239,8 +282,10 @@ GraphicsContext3D::GraphicsContext3D(GraphicsContext3D::Attributes attrs, HostWi
 
     m_compiler.setResources(ANGLEResources);
     
+#if !PLATFORM(IOS)
     ::glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
     ::glEnable(GL_POINT_SPRITE);
+#endif
 
     ::glClearColor(0, 0, 0, 0);
 }
@@ -248,9 +293,15 @@ GraphicsContext3D::GraphicsContext3D(GraphicsContext3D::Attributes attrs, HostWi
 GraphicsContext3D::~GraphicsContext3D()
 {
     if (m_contextObj) {
+#if PLATFORM(IOS)
+        makeContextCurrent();
+        ::glDeleteRenderbuffers(1, &m_texture);
+        ::glDeleteRenderbuffers(1, &m_compositorTexture);
+#else
         CGLSetCurrentContext(m_contextObj);
         ::glDeleteTextures(1, &m_texture);
         ::glDeleteTextures(1, &m_compositorTexture);
+#endif
         if (m_attrs.antialias) {
             ::glDeleteRenderbuffersEXT(1, &m_multisampleColorBuffer);
             if (m_attrs.stencil || m_attrs.depth)
@@ -261,21 +312,50 @@ GraphicsContext3D::~GraphicsContext3D()
                 ::glDeleteRenderbuffersEXT(1, &m_depthStencilBuffer);
         }
         ::glDeleteFramebuffersEXT(1, &m_fbo);
+#if PLATFORM(IOS)
+        [EAGLContext setCurrentContext:0];
+        [static_cast<EAGLContext*>(m_contextObj) release];
+#else
         CGLSetCurrentContext(0);
         CGLDestroyContext(m_contextObj);
+#endif
     }
 }
+
+#if PLATFORM(IOS)
+bool GraphicsContext3D::setRenderbufferStorageFromDrawable(GC3Dsizei width, GC3Dsizei height)
+{
+    [m_webGLLayer.get() setBounds:CGRectMake(0, 0, width, height)];
+    return [m_contextObj renderbufferStorage:GL_RENDERBUFFER fromDrawable:static_cast<NSObject<EAGLDrawable>*>(m_webGLLayer.get())];
+}
+#endif
 
 bool GraphicsContext3D::makeContextCurrent()
 {
     if (!m_contextObj)
         return false;
 
+#if PLATFORM(IOS)
+    if ([EAGLContext currentContext] != m_contextObj)
+        return [EAGLContext setCurrentContext:static_cast<EAGLContext*>(m_contextObj)];
+#else
     CGLContextObj currentContext = CGLGetCurrentContext();
     if (currentContext != m_contextObj)
         return CGLSetCurrentContext(m_contextObj) == kCGLNoError;
+#endif
     return true;
 }
+
+#if PLATFORM(IOS)
+void GraphicsContext3D::endPaint()
+{
+    makeContextCurrent();
+    ::glFlush();
+    ::glBindRenderbuffer(GL_RENDERBUFFER, m_texture);
+    [static_cast<EAGLContext*>(m_contextObj) presentRenderbuffer:GL_RENDERBUFFER];
+    [EAGLContext setCurrentContext:nil];
+}
+#endif
 
 bool GraphicsContext3D::isGLES2Compliant() const
 {
@@ -288,6 +368,44 @@ void GraphicsContext3D::setContextLostCallback(PassOwnPtr<ContextLostCallback>)
 
 void GraphicsContext3D::setErrorMessageCallback(PassOwnPtr<ErrorMessageCallback>)
 {
+}
+
+void GraphicsContext3D::drawArraysInstanced(GC3Denum mode, GC3Dint first, GC3Dsizei count, GC3Dsizei primcount)
+{
+#if PLATFORM(IOS) || PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
+    makeContextCurrent();
+    ::glDrawArraysInstancedARB(mode, first, count, primcount);
+#else
+    UNUSED_PARAM(mode);
+    UNUSED_PARAM(first);
+    UNUSED_PARAM(count);
+    UNUSED_PARAM(primcount);
+#endif
+}
+
+void GraphicsContext3D::drawElementsInstanced(GC3Denum mode, GC3Dsizei count, GC3Denum type, GC3Dintptr offset, GC3Dsizei primcount)
+{
+#if PLATFORM(IOS) || PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
+    makeContextCurrent();
+    ::glDrawElementsInstancedARB(mode, count, type, reinterpret_cast<GLvoid*>(static_cast<intptr_t>(offset)), primcount);
+#else
+    UNUSED_PARAM(mode);
+    UNUSED_PARAM(count);
+    UNUSED_PARAM(type);
+    UNUSED_PARAM(offset);
+    UNUSED_PARAM(primcount);
+#endif
+}
+
+void GraphicsContext3D::vertexAttribDivisor(GC3Duint index, GC3Duint divisor)
+{
+#if PLATFORM(IOS) || PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
+    makeContextCurrent();
+    ::glVertexAttribDivisorARB(index, divisor);
+#else
+    UNUSED_PARAM(index);
+    UNUSED_PARAM(divisor);
+#endif
 }
 
 }

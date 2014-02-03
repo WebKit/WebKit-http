@@ -35,9 +35,6 @@
 #include "Extensions3DOpenGLES.h"
 #include "IntRect.h"
 #include "IntSize.h"
-#if PLATFORM(BLACKBERRY)
-#include "LayerWebKitThread.h"
-#endif
 #include "NotImplemented.h"
 
 namespace WebCore {
@@ -54,15 +51,6 @@ void GraphicsContext3D::readPixels(GC3Dint x, GC3Dint y, GC3Dsizei width, GC3Dsi
     // FIXME: remove the two glFlush calls when the driver bug is fixed, i.e.,
     // all previous rendering calls should be done before reading pixels.
     ::glFlush();
-#if PLATFORM(BLACKBERRY)
-    if (m_isImaginationHardware && m_fbo == m_state.boundFBO) {
-        // FIXME: This workaround should always be used until the
-        // driver alignment bug is fixed, even when we aren't
-        // drawing to the canvas.
-        readPixelsIMG(x, y, width, height, format, type, data);
-    } else
-        ::glReadPixels(x, y, width, height, format, type, data);
-#else
     if (m_attrs.antialias && m_state.boundFBO == m_multisampleFBO) {
          resolveMultisamplingIfNecessary(IntRect(x, y, width, height));
         ::glBindFramebuffer(GL_FRAMEBUFFER, m_fbo);
@@ -73,22 +61,11 @@ void GraphicsContext3D::readPixels(GC3Dint x, GC3Dint y, GC3Dsizei width, GC3Dsi
 
     if (m_attrs.antialias && m_state.boundFBO == m_multisampleFBO)
         ::glBindFramebuffer(GL_FRAMEBUFFER, m_multisampleFBO);
-#endif
 }
 
 void GraphicsContext3D::readPixelsAndConvertToBGRAIfNecessary(int x, int y, int width, int height, unsigned char* pixels)
 {
-#if PLATFORM(BLACKBERRY)
-    if (m_isImaginationHardware && m_fbo == m_state.boundFBO) {
-        // FIXME: This workaround should always be used until the
-        // driver alignment bug is fixed, even when we aren't
-        // drawing to the canvas.
-        readPixelsIMG(x, y, width, height, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
-    } else
-        ::glReadPixels(x, y, width, height, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
-#else
     ::glReadPixels(x, y, width, height, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
-#endif
     int totalBytes = width * height * 4;
     if (isGLES2Compliant()) {
         for (int i = 0; i < totalBytes; i += 4)
@@ -96,8 +73,6 @@ void GraphicsContext3D::readPixelsAndConvertToBGRAIfNecessary(int x, int y, int 
     }
 }
 
-#if !PLATFORM(BLACKBERRY)
-// The BlackBerry port uses a special implementation of reshapeFBOs. See GraphicsContext3DBlackBerry.cpp
 bool GraphicsContext3D::reshapeFBOs(const IntSize& size)
 {
     const int width = size.width();
@@ -124,15 +99,16 @@ bool GraphicsContext3D::reshapeFBOs(const IntSize& size)
         ::glBindFramebuffer(GL_FRAMEBUFFER, m_fbo);
     }
 
-    ::glGenTextures(1, &m_texture);
+    ASSERT(m_texture);
     ::glBindTexture(GL_TEXTURE_2D, m_texture);
     ::glTexImage2D(GL_TEXTURE_2D, 0, m_internalColorFormat, width, height, 0, colorFormat, pixelDataType, 0);
     ::glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_texture, 0);
 
-    ::glGenTextures(1, &m_compositorTexture);
-    ::glBindTexture(GL_TEXTURE_2D, m_compositorTexture);
-    ::glTexImage2D(GL_TEXTURE_2D, 0, m_internalColorFormat, width, height, 0, colorFormat, GL_UNSIGNED_BYTE, 0);
-    ::glBindTexture(GL_TEXTURE_2D, 0);
+    if (m_compositorTexture) {
+        ::glBindTexture(GL_TEXTURE_2D, m_compositorTexture);
+        ::glTexImage2D(GL_TEXTURE_2D, 0, m_internalColorFormat, width, height, 0, colorFormat, GL_UNSIGNED_BYTE, 0);
+        ::glBindTexture(GL_TEXTURE_2D, 0);
+    }
 
     // We don't support antialiasing yet. See GraphicsContext3D::validateAttributes.
     ASSERT(!m_attrs.antialias);
@@ -168,7 +144,6 @@ bool GraphicsContext3D::reshapeFBOs(const IntSize& size)
 
     return mustRestoreFBO;
 }
-#endif
 
 void GraphicsContext3D::resolveMultisamplingIfNecessary(const IntRect& rect)
 {
@@ -231,6 +206,28 @@ void GraphicsContext3D::clearDepth(GC3Dclampf depth)
     ::glClearDepthf(depth);
 }
 
+void GraphicsContext3D::drawArraysInstanced(GC3Denum mode, GC3Dint first, GC3Dsizei count, GC3Dsizei primcount)
+{
+    UNUSED_PARAM(mode);
+    UNUSED_PARAM(first);
+    UNUSED_PARAM(count);
+    UNUSED_PARAM(primcount);
+}
+
+void GraphicsContext3D::drawElementsInstanced(GC3Denum mode, GC3Dsizei count, GC3Denum type, GC3Dintptr offset, GC3Dsizei primcount)
+{
+    UNUSED_PARAM(mode);
+    UNUSED_PARAM(count);
+    UNUSED_PARAM(type);
+    UNUSED_PARAM(offset);
+    UNUSED_PARAM(primcount);
+}
+
+void GraphicsContext3D::vertexAttribDivisor(GC3Duint index, GC3Duint divisor)
+{
+    UNUSED_PARAM(index);
+    UNUSED_PARAM(divisor);
+}
 
 Extensions3D* GraphicsContext3D::getExtensions()
 {

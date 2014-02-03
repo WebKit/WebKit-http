@@ -36,13 +36,13 @@ namespace WebCore {
 
 static const HashTableValue JSTestEventConstructorTableValues[] =
 {
-    { "attr1", DontDelete | ReadOnly, NoIntrinsic, (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestEventConstructorAttr1), (intptr_t)0 },
-    { "attr2", DontDelete | ReadOnly, NoIntrinsic, (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestEventConstructorAttr2), (intptr_t)0 },
-    { "constructor", DontEnum | ReadOnly, NoIntrinsic, (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestEventConstructorConstructor), (intptr_t)0 },
+    { "attr1", DontDelete | ReadOnly | CustomAccessor, NoIntrinsic, (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestEventConstructorAttr1), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) },
+    { "attr2", DontDelete | ReadOnly | CustomAccessor, NoIntrinsic, (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestEventConstructorAttr2), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) },
+    { "constructor", DontEnum | ReadOnly, NoIntrinsic, (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestEventConstructorConstructor), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) },
     { 0, 0, NoIntrinsic, 0, 0 }
 };
 
-static const HashTable JSTestEventConstructorTable = { 9, 7, JSTestEventConstructorTableValues, 0 };
+static const HashTable JSTestEventConstructorTable = { 9, 7, true, JSTestEventConstructorTableValues, 0 };
 /* Hash table for constructor */
 
 static const HashTableValue JSTestEventConstructorConstructorTableValues[] =
@@ -50,7 +50,7 @@ static const HashTableValue JSTestEventConstructorConstructorTableValues[] =
     { 0, 0, NoIntrinsic, 0, 0 }
 };
 
-static const HashTable JSTestEventConstructorConstructorTable = { 1, 0, JSTestEventConstructorConstructorTableValues, 0 };
+static const HashTable JSTestEventConstructorConstructorTable = { 1, 0, false, JSTestEventConstructorConstructorTableValues, 0 };
 EncodedJSValue JSC_HOST_CALL JSTestEventConstructorConstructor::constructJSTestEventConstructor(ExecState* exec)
 {
     JSTestEventConstructorConstructor* jsConstructor = jsCast<JSTestEventConstructorConstructor*>(exec->callee());
@@ -122,7 +122,7 @@ static const HashTableValue JSTestEventConstructorPrototypeTableValues[] =
     { 0, 0, NoIntrinsic, 0, 0 }
 };
 
-static const HashTable JSTestEventConstructorPrototypeTable = { 1, 0, JSTestEventConstructorPrototypeTableValues, 0 };
+static const HashTable JSTestEventConstructorPrototypeTable = { 1, 0, false, JSTestEventConstructorPrototypeTableValues, 0 };
 const ClassInfo JSTestEventConstructorPrototype::s_info = { "TestEventConstructorPrototype", &Base::s_info, &JSTestEventConstructorPrototypeTable, 0, CREATE_METHOD_TABLE(JSTestEventConstructorPrototype) };
 
 JSObject* JSTestEventConstructorPrototype::self(VM& vm, JSGlobalObject* globalObject)
@@ -193,9 +193,9 @@ EncodedJSValue jsTestEventConstructorAttr2(ExecState* exec, EncodedJSValue slotB
 }
 
 
-EncodedJSValue jsTestEventConstructorConstructor(ExecState* exec, EncodedJSValue slotBase, EncodedJSValue, PropertyName)
+EncodedJSValue jsTestEventConstructorConstructor(ExecState* exec, EncodedJSValue, EncodedJSValue thisValue, PropertyName)
 {
-    JSTestEventConstructor* domObject = jsDynamicCast<JSTestEventConstructor*>(JSValue::decode(slotBase));
+    JSTestEventConstructor* domObject = jsDynamicCast<JSTestEventConstructor*>(JSValue::decode(thisValue));
     if (!domObject)
         return throwVMTypeError(exec);
     return JSValue::encode(JSTestEventConstructor::getConstructor(exec->vm(), domObject->globalObject()));

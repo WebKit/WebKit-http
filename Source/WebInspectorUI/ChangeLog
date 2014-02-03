@@ -1,3 +1,2156 @@
+2014-01-30  Timothy Hatcher  <timothy@apple.com>
+
+        Show profile data in the discrete Scripts timeline view.
+
+        https://bugs.webkit.org/show_bug.cgi?id=127900
+
+        Reviewed by Joseph Pecoraro.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/DataGrid.js:
+        (WebInspector.DataGridNode.prototype.refreshIfNeeded):
+        (WebInspector.DataGridNode.prototype.needsRefresh):
+        (WebInspector.DataGridNode.prototype.set data):
+        (WebInspector.DataGridNode.prototype.set revealed):
+        (WebInspector.DataGridNode.prototype.refresh):
+        * UserInterface/LayoutTimelineDataGrid.js:
+        (WebInspector.LayoutTimelineDataGrid):
+        * UserInterface/LayoutTimelineDataGridNode.js:
+        (WebInspector.LayoutTimelineDataGridNode.prototype.createCellContent):
+        * UserInterface/Main.html:
+        * UserInterface/NavigationSidebarPanel.js:
+        (WebInspector.NavigationSidebarPanel.prototype._updateFilter):
+        (WebInspector.NavigationSidebarPanel.prototype._treeElementAddedOrChanged):
+        (WebInspector.NavigationSidebarPanel.prototype._generateStyleRulesIfNeeded):
+        * UserInterface/ProfileNodeDataGridNode.js: Added.
+        (WebInspector.ProfileNodeDataGridNode):
+        (WebInspector.ProfileNodeDataGridNode.prototype.get profileNode):
+        (WebInspector.ProfileNodeDataGridNode.prototype.get records):
+        (WebInspector.ProfileNodeDataGridNode.prototype.get baseStartTime):
+        (WebInspector.ProfileNodeDataGridNode.prototype.get rangeStartTime):
+        (WebInspector.ProfileNodeDataGridNode.prototype.set rangeStartTime):
+        (WebInspector.ProfileNodeDataGridNode.prototype.get rangeEndTime):
+        (WebInspector.ProfileNodeDataGridNode.prototype.set rangeEndTime):
+        (WebInspector.ProfileNodeDataGridNode.prototype.get data):
+        (WebInspector.ProfileNodeDataGridNode.prototype.refresh):
+        (WebInspector.ProfileNodeDataGridNode.prototype.createCellContent):
+        * UserInterface/ProfileNodeTreeElement.js: Added.
+        (WebInspector.ProfileNodeTreeElement):
+        (WebInspector.ProfileNodeTreeElement.prototype.get profileNode):
+        (WebInspector.ProfileNodeTreeElement.prototype.get filterableData):
+        (WebInspector.ProfileNodeTreeElement.prototype.onattach):
+        (WebInspector.ProfileNodeTreeElement.prototype.onpopulate):
+        * UserInterface/ResourceTimelineDataGridNode.js:
+        (WebInspector.ResourceTimelineDataGridNode.prototype.createCellContent):
+        * UserInterface/ScriptTimelineDataGrid.js:
+        (WebInspector.ScriptTimelineDataGrid):
+        * UserInterface/ScriptTimelineDataGridNode.js:
+        (WebInspector.ScriptTimelineDataGridNode):
+        (WebInspector.ScriptTimelineDataGridNode.prototype.get baseStartTime):
+        (WebInspector.ScriptTimelineDataGridNode.prototype.get rangeStartTime):
+        (WebInspector.ScriptTimelineDataGridNode.prototype.set rangeStartTime):
+        (WebInspector.ScriptTimelineDataGridNode.prototype.get rangeEndTime):
+        (WebInspector.ScriptTimelineDataGridNode.prototype.set rangeEndTime):
+        (WebInspector.ScriptTimelineDataGridNode.prototype.get data):
+        (WebInspector.ScriptTimelineDataGridNode.prototype.createCellContent):
+        * UserInterface/ScriptTimelineRecord.js:
+        (WebInspector.ScriptTimelineRecord):
+        (WebInspector.ScriptTimelineRecord.prototype.get profile):
+        * UserInterface/ScriptTimelineView.js:
+        (WebInspector.ScriptTimelineView.prototype.updateLayout):
+        (WebInspector.ScriptTimelineView.prototype.get selectionPathComponents):
+        (WebInspector.ScriptTimelineView.prototype.dataGridNodeForTreeElement):
+        (WebInspector.ScriptTimelineView.prototype.populateProfileNodeTreeElement):
+        (WebInspector.ScriptTimelineView.prototype._processPendingRecords):
+        (WebInspector.ScriptTimelineView.prototype._treeElementSelected):
+        * UserInterface/TimelineContentView.js:
+        (WebInspector.TimelineContentView.prototype.matchTreeElementAgainstCustomFilters):
+        * UserInterface/TimelineDataGrid.js:
+        (WebInspector.TimelineDataGrid):
+        (WebInspector.TimelineDataGrid.prototype.addRowInSortOrder):
+        (WebInspector.TimelineDataGrid.prototype._sort):
+        * UserInterface/TimelineDataGridNode.js:
+        (WebInspector.TimelineDataGridNode):
+        (WebInspector.TimelineDataGridNode.prototype.collapse):
+        (WebInspector.TimelineDataGridNode.prototype.expand):
+        * UserInterface/TimelineRecord.js:
+        * UserInterface/TreeOutlineDataGridSynchronizer.js:
+        (WebInspector.TreeOutlineDataGridSynchronizer.prototype.get delegate):
+        (WebInspector.TreeOutlineDataGridSynchronizer.prototype.dataGridNodeForTreeElement):
+        (WebInspector.TreeOutlineDataGridSynchronizer.prototype._treeElementAdded):
+
+2014-01-30  Timothy Hatcher  <timothy@apple.com>
+
+        Add the model objects for the new Web Inspector profile data.
+
+        https://bugs.webkit.org/show_bug.cgi?id=127899
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Main.html:
+        * UserInterface/Profile.js: Added.
+        (WebInspector.Profile):
+        (WebInspector.Profile.prototype.get idleTime):
+        (WebInspector.Profile.prototype.get topDownRootNodes):
+        (WebInspector.Profile.prototype.get bottomUpRootNodes):
+        * UserInterface/ProfileNode.js: Added.
+        (WebInspector.ProfileNode):
+        (WebInspector.ProfileNode.prototype.get id):
+        (WebInspector.ProfileNode.prototype.get type):
+        (WebInspector.ProfileNode.prototype.get functionName):
+        (WebInspector.ProfileNode.prototype.get sourceCodeLocation):
+        (WebInspector.ProfileNode.prototype.get startTime):
+        (WebInspector.ProfileNode.prototype.get endTime):
+        (WebInspector.ProfileNode.prototype.get selfTime):
+        (WebInspector.ProfileNode.prototype.get totalTime):
+        (WebInspector.ProfileNode.prototype.get calls):
+        (WebInspector.ProfileNode.prototype.get previousSibling):
+        (WebInspector.ProfileNode.prototype.get nextSibling):
+        (WebInspector.ProfileNode.prototype.get parentNode):
+        (WebInspector.ProfileNode.prototype.get childNodes):
+        (WebInspector.ProfileNode.prototype.totalTimeInRange):
+        (WebInspector.ProfileNode.prototype.computeCallInfoForTimeRange):
+        (WebInspector.ProfileNode.prototype.traverseNextProfileNode):
+        (WebInspector.ProfileNode.prototype.saveIdentityToCookie):
+        (WebInspector.ProfileNode.prototype.establishRelationships):
+        * UserInterface/ProfileNodeCall.js: Added.
+        (WebInspector.ProfileNodeCall):
+        (WebInspector.ProfileNodeCall.prototype.get startTime):
+        (WebInspector.ProfileNodeCall.prototype.get totalTime):
+        (WebInspector.ProfileNodeCall.prototype.get endTime):
+        (WebInspector.ProfileNodeCall.prototype.establishRelationships):
+        * UserInterface/TimelineManager.js:
+        (WebInspector.TimelineManager.prototype.eventRecorded.processRecord):
+        (WebInspector.TimelineManager.prototype.eventRecorded):
+        (WebInspector.TimelineManager.prototype._profileFromPayload.profileNodeFromPayload):
+        (WebInspector.TimelineManager.prototype._profileFromPayload.profileNodeCallFromPayload):
+        (WebInspector.TimelineManager.prototype._profileFromPayload):
+
+2014-01-26  Timothy Hatcher  <timothy@apple.com>
+
+        Prefix existing Web Inspector profiler classes with "Legacy".
+
+        Remove a dependency on ProfileView for showTimeAsPercent and selection as a drive-by.
+        Also remove the unfinished Canvas profiler classes, they will need redone for the Timeline view.
+
+        https://bugs.webkit.org/show_bug.cgi?id=127655
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/CanvasDataGridNode.js: Removed.
+        * UserInterface/CanvasObserver.js: Removed.
+        * UserInterface/CanvasProfileObject.js: Removed.
+        * UserInterface/CanvasProfileType.js: Removed.
+        * UserInterface/CanvasProfileView.js: Removed.
+        * UserInterface/ConsoleObserver.js:
+        (WebInspector.ConsoleObserver.prototype.messageAdded):
+        * UserInterface/ContentView.js:
+        (WebInspector.ContentView):
+        (WebInspector.ContentView.isViewable):
+        * UserInterface/InspectorFrontendAPI.js:
+        (InspectorFrontendAPI.isProfilingJavaScript):
+        (InspectorFrontendAPI.startProfilingJavaScript):
+        (InspectorFrontendAPI.stopProfilingJavaScript):
+        * UserInterface/LegacyBottomUpProfileDataGridTree.js: Renamed from Source/WebInspectorUI/UserInterface/BottomUpProfileDataGridTree.js.
+        * UserInterface/LegacyJavaScriptProfileObject.js: Renamed from Source/WebInspectorUI/UserInterface/JavaScriptProfileObject.js.
+        * UserInterface/LegacyJavaScriptProfileType.js: Renamed from Source/WebInspectorUI/UserInterface/JavaScriptProfileType.js.
+        * UserInterface/LegacyJavaScriptProfileView.css: Renamed from Source/WebInspectorUI/UserInterface/JavaScriptProfileView.css.
+        * UserInterface/LegacyJavaScriptProfileView.js: Renamed from Source/WebInspectorUI/UserInterface/JavaScriptProfileView.js.
+        * UserInterface/LegacyProfileDataGridTree.js: Renamed from Source/WebInspectorUI/UserInterface/ProfileDataGridTree.js.
+        * UserInterface/LegacyProfileManager.js: Renamed from Source/WebInspectorUI/UserInterface/ProfileManager.js.
+        * UserInterface/LegacyProfileObject.js: Renamed from Source/WebInspectorUI/UserInterface/ProfileObject.js.
+        * UserInterface/LegacyProfileType.js: Renamed from Source/WebInspectorUI/UserInterface/ProfileType.js.
+        * UserInterface/LegacyProfileView.css: Renamed from Source/WebInspectorUI/UserInterface/ProfileView.css.
+        * UserInterface/LegacyProfileView.js: Renamed from Source/WebInspectorUI/UserInterface/ProfileView.js.
+        * UserInterface/LegacyProfilerObserver.js: Renamed from Source/WebInspectorUI/UserInterface/ProfilerObserver.js.
+        * UserInterface/LegacyTopDownProfileDataGridTree.js: Renamed from Source/WebInspectorUI/UserInterface/TopDownProfileDataGridTree.js.
+        * UserInterface/Main.html:
+        * UserInterface/Main.js:
+        (WebInspector.loaded):
+        (WebInspector.openURL):
+
+2014-01-30  Diego Pino Garcia  <dpino@igalia.com>
+
+        Web Inspector: [REGRESSION(r163086)] Missing localized string 'Hide console (%s)'
+        https://bugs.webkit.org/show_bug.cgi?id=127951
+
+        Reviewed by Timothy Hatcher.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        Add 'Hide console (%s)'.
+
+2014-01-30  Diego Pino Garcia  <dpino@igalia.com>
+
+        Web Inspector: Implement open/close Console window shortcut
+        https://bugs.webkit.org/show_bug.cgi?id=127896
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/KeyboardShortcut.js:
+        (WebInspector.KeyboardShortcut.prototype.get displayName):
+        Bug: Option symbol should be displayed as Alternative symbol (\u2387)
+        in non Mac platforms.
+        * UserInterface/Main.js:
+        (WebInspector.contentLoaded):
+        Create keyboard shortcut for toggling console window.
+
+2014-01-29  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Play Breakpoint Sound in Frontend
+        https://bugs.webkit.org/show_bug.cgi?id=127885
+
+        Reviewed by Timothy Hatcher.
+
+        Beep in the frontend when a "sound" breakpoint action is triggered.
+
+        * UserInterface/DebuggerManager.js:
+        (WebInspector.DebuggerManager.prototype.playBreakpointActionSound):
+        * UserInterface/DebuggerObserver.js:
+        (WebInspector.DebuggerObserver.prototype.resumed):
+        (WebInspector.DebuggerObserver.prototype.playBreakpointActionSound):
+        * UserInterface/InspectorJSBackendCommands.js:
+
+2014-01-29  Diego Pino Garcia  <dpino@igalia.com>
+
+        Web Inspector: [REGRESSION(r162931)] Tab navigation broken in DataGrid
+        https://bugs.webkit.org/show_bug.cgi?id=127816
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/DataGrid.js:
+        (WebInspector.DataGrid.prototype.moveToNextIfNeeded):
+        (WebInspector.DataGrid.prototype._editingCommitted):
+        Change columnIdentifier values 0 and 1 to strings "0" and "1".
+
+2014-01-28  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Unreviewed follow-up to r162965. Better coding style.
+
+        Timothy Hatcher pointed out a clearer style for classes
+        on the <body> is to specify body.class. I agree.
+
+        * UserInterface/DashboardView.css:
+        (body.javascript .toolbar .dashboard):
+        (body.web .toolbar.collapsed .dashboard > .logs):
+        (body.javascript .toolbar .dashboard > .resourcesCount):
+
+2014-01-28  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Tweak UI when debugging a JSContext
+        https://bugs.webkit.org/show_bug.cgi?id=127799
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/DashboardView.css:
+        (.toolbar.javascript .dashboard):
+        (.toolbar.web.collapsed .dashboard > .logs):
+        (.toolbar.javascript .dashboard > .resourcesCount):
+        Adjust collapsed dashboard in web and javascript debugging modes.
+        JavaScript debugging mode is always treated as collapsed.
+
+        * UserInterface/Main.js:
+        (WebInspector.contentLoaded):
+        Adjust what is created and shown when in javascript debugging mode.
+
+        * UserInterface/NavigationSidebarPanel.css:
+        (.navigation-sidebar-panel-content-tree-outline.hide-disclosure-buttons .item.small):
+        * UserInterface/ResourceSidebarPanel.js:
+        (WebInspector.ResourceSidebarPanel):
+        (WebInspector.ResourceSidebarPanel.prototype._scriptWasAdded):
+        * UserInterface/TimelineSidebarPanel.css:
+        (.sidebar > .panel.timeline > .status-bar):
+        (.sidebar > .panel.timeline > .title-bar):
+        When javascript debugging expect to put things at the root level, so hide
+        disclosure buttons and adjust the style so resources look nice here.
+
+2014-01-28  Diego Pino Garcia  <dpino@igalia.com>
+
+        Web Inspector: In a DataGrid, store value of columnIdentifier to DOM node representing a cell
+        https://bugs.webkit.org/show_bug.cgi?id=127613
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/DOMStorageContentView.js:
+        (WebInspector.DOMStorageContentView.prototype._editingCallback):
+        * UserInterface/DataGrid.js:
+        (WebInspector.DataGrid):
+        (WebInspector.DataGrid.prototype._keyDown):
+        (WebInspector.DataGrid.prototype._contextMenuInDataTable):
+        (WebInspector.DataGridNode.prototype.createCell):
+
+2014-01-27  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Feature Check all Protocol Generated Interfaces to get JSContext Inspection working
+        https://bugs.webkit.org/show_bug.cgi?id=127712
+
+        Reviewed by Timothy Hatcher.
+
+        Feature check protocol generated interfaces (e.g. FooAgent and registerFooObserver).
+        Also drive by handle a possible exception if a SourceCode's URL is null, which is possible.
+
+        * UserInterface/ApplicationCacheManager.js:
+        (WebInspector.ApplicationCacheManager):
+        (WebInspector.ApplicationCacheManager.prototype.initialize):
+        * UserInterface/CSSCompletions.js:
+        (WebInspector.CSSCompletions.requestCSSNameCompletions):
+        * UserInterface/CSSStyleManager.js:
+        (WebInspector.CSSStyleManager):
+        (WebInspector.CSSStyleManager.prototype.canForcePseudoClasses):
+        * UserInterface/DebuggerManager.js:
+        * UserInterface/FrameResourceManager.js:
+        (WebInspector.FrameResourceManager):
+        (WebInspector.FrameResourceManager.prototype.initialize):
+        * UserInterface/Main.js:
+        (WebInspector.loaded):
+        * UserInterface/ProfileManager.js:
+        (WebInspector.ProfileManager):
+        * UserInterface/StorageManager.js:
+        (WebInspector.StorageManager):
+        Type check generated interfaces.
+
+        (WebInspector.DebuggerManager):
+        (WebInspector.DebuggerManager.prototype.debuggerDidPause):
+        Null check a SourceCode URL, which can be null for a Script with no URL.
+
+2014-01-25  Timothy Hatcher  <timothy@apple.com>
+
+        Remove dead code from the JSC profiler.
+
+        https://bugs.webkit.org/show_bug.cgi?id=127643
+
+        Reviewed by Mark Lam.
+
+        * Versions/Inspector-iOS-7.0.json: Remove visible from CPUProfileNode.
+
+2014-01-25  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Remove FIXME in CSSKeywordCompletions.js about "inherit" keyword
+        https://bugs.webkit.org/show_bug.cgi?id=127638
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/CSSKeywordCompletions.js:
+        (WebInspector.CSSKeywordCompletions.forProperty):
+        Replace FIXME with a descriptive comment about why the code is what it is.
+
+2014-01-25  Diego Pino Garcia  <dpino@igalia.com>
+
+        Web Inspector: Position the completion suggestions popup below if there is room
+        https://bugs.webkit.org/show_bug.cgi?id=127615
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/CompletionSuggestionsView.js:
+        (WebInspector.CompletionSuggestionsView.prototype.show):
+
+2014-01-23  Timothy Hatcher  <timothy@apple.com>
+
+        Refactor TimelineRecordBar combining logic into a helper function.
+
+        https://bugs.webkit.org/show_bug.cgi?id=127530
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/LayoutTimelineOverviewGraph.js:
+        (WebInspector.LayoutTimelineOverviewGraph.prototype.updateLayout.createBar):
+        (WebInspector.LayoutTimelineOverviewGraph.prototype.updateLayout):
+        Use TimelineRecordBar.createCombinedBars.
+
+        * UserInterface/NetworkTimelineOverviewGraph.css:
+        (.timeline-overview-graph.network):
+        (.timeline-overview-graph.network > .graph-row > .timeline-record-bar):
+        Cleaned up since we are using TimelineRecordBar.
+
+        * UserInterface/NetworkTimelineOverviewGraph.js:
+        (WebInspector.NetworkTimelineOverviewGraph.prototype.reset):
+        (WebInspector.NetworkTimelineOverviewGraph.prototype.updateLayout.createBar):
+        (WebInspector.NetworkTimelineOverviewGraph.prototype.updateLayout):
+        Use TimelineRecordBar.createCombinedBars.
+
+        * UserInterface/ScriptTimelineOverviewGraph.js:
+        (WebInspector.ScriptTimelineOverviewGraph.prototype.updateLayout.createBar):
+        (WebInspector.ScriptTimelineOverviewGraph.prototype.updateLayout):
+        Use TimelineRecordBar.createCombinedBars.
+
+        * UserInterface/TimelineDataGridNode.js:
+        (WebInspector.TimelineDataGridNode.prototype.refreshGraph.createBar):
+        (WebInspector.TimelineDataGridNode.prototype.refreshGraph):
+        Use TimelineRecordBar.createCombinedBars.
+
+        * UserInterface/TimelineRecordBar.css:
+        (.timeline-record-bar.unfinished > .segment):
+        (.timeline-record-bar.has-inactive-segment > .segment:not(.inactive)):
+        (:focus .selected .timeline-record-bar > .segment.inactive):
+        Improved selected appearance and don't assume .segment.inactive exists.
+
+        * UserInterface/TimelineRecordBar.js:
+        (WebInspector.TimelineRecordBar):
+        (WebInspector.TimelineRecordBar.createCombinedBars.compareByActiveStartTime): Added.
+        (WebInspector.TimelineRecordBar.createCombinedBars): Added.
+        (WebInspector.TimelineRecordBar.prototype.get renderMode): Added.
+        (WebInspector.TimelineRecordBar.prototype.set renderMode): Added.
+        (WebInspector.TimelineRecordBar.prototype.set records):
+        (WebInspector.TimelineRecordBar.prototype.refresh):
+        Lazily create DOM elements. Support rendering one or both segments. Doing this lets
+        combined inactive segments sit behind multiple active segments.
+
+2014-01-22  Timothy Hatcher  <timothy@apple.com>
+
+        Improve collapsing of TimelineDataGridNode graphs up to ancestors.
+
+        https://bugs.webkit.org/show_bug.cgi?id=127440
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/TimelineDataGridNode.js:
+        (WebInspector.TimelineDataGridNode.prototype.collapse):
+        (WebInspector.TimelineDataGridNode.prototype.createCellContent):
+        (WebInspector.TimelineDataGridNode.prototype.refresh):
+        (WebInspector.TimelineDataGridNode.prototype.needsGraphRefresh):
+        Notify the next visible ancestor it needs to refresh. Use needsGraphRefresh so ancestors
+        are notified instead of directly calling refreshGraph in some places.
+
+2014-01-22  Timothy Hatcher  <timothy@apple.com>
+
+        Don't include a hidden Timeline selection in the navigation path components.
+
+        https://bugs.webkit.org/show_bug.cgi?id=127443
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/GeneralTreeElementPathComponent.js:
+        (WebInspector.GeneralTreeElementPathComponent.prototype.get previousSibling):
+        (WebInspector.GeneralTreeElementPathComponent.prototype.get nextSibling):
+        Skip hidden siblings.
+
+        * UserInterface/OverviewTimelineView.js:
+        (WebInspector.OverviewTimelineView.prototype.updateLayout):
+        (WebInspector.OverviewTimelineView.prototype.get selectionPathComponents):
+        Don't include hidden selection and dispatch SelectionPathComponentsDidChange event if hidden changes.
+
+        * UserInterface/TimelineContentView.js:
+        (WebInspector.TimelineContentView.prototype._timeRangeSelectionChanged):
+        Dispatch SelectionPathComponentsDidChange event if hidden changes on the selected tree element.
+
+        * UserInterface/TimelineView.js:
+        (WebInspector.TimelineView.prototype.get selectionPathComponents):
+        Don't include hidden selection.
+
+2014-01-22  Timothy Hatcher  <timothy@apple.com>
+
+        Support collapsing call site records into the resource timeline.
+
+        Also fix some filtering and graph issues.
+
+        https://bugs.webkit.org/show_bug.cgi?id=127440
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/NavigationSidebarPanel.js:
+        (WebInspector.NavigationSidebarPanel.prototype.updateFilter):
+        (WebInspector.NavigationSidebarPanel.prototype.applyFiltersToTreeElement.matchTextFilter):
+        (WebInspector.NavigationSidebarPanel.prototype.applyFiltersToTreeElement.makeVisible):
+        (WebInspector.NavigationSidebarPanel.prototype.applyFiltersToTreeElement):
+        (WebInspector.NavigationSidebarPanel.prototype._updateFilter):
+        Tweak how filtering happens so custom filters never expand to reveal and auto expanded
+        tree elements will auto-collapse again later even with custom filters.
+
+        * UserInterface/OverviewTimelineView.css:
+        (.timeline-view.overview > .data-grid tr.parent:not(.expanded) td.graph-column .timeline-record-bar:not(.timeline-record-type-network) > .segment):
+        (.timeline-view.overview > .data-grid tr.parent:not(.expanded).selected td.graph-column .timeline-record-bar:not(.timeline-record-type-network) > .segment):
+        (.timeline-view.overview > .data-grid:focus tr.parent:not(.expanded).selected td.graph-column .timeline-record-bar:not(.timeline-record-type-network) > .segment):
+        Add a shadow to provide some negative space between juxtaposed records. Only needed when not expanded.
+
+        * UserInterface/OverviewTimelineView.js:
+        (WebInspector.OverviewTimelineView.prototype.updateLayout):
+        (WebInspector.OverviewTimelineView.prototype._addResourceToTreeIfNeeded):
+        Update the filter when current time changes and only auto expand the main resource.
+
+        * UserInterface/ResourceTimelineDataGridNode.js:
+        (WebInspector.ResourceTimelineDataGridNode):
+        (WebInspector.ResourceTimelineDataGridNode.prototype._timelineRecordUpdated):
+        Don't schedule a refresh of the graph if the record isn't visible.
+
+        * UserInterface/SourceCodeTimelineTimelineDataGridNode.js:
+        (WebInspector.SourceCodeTimelineTimelineDataGridNode):
+        (WebInspector.SourceCodeTimelineTimelineDataGridNode.prototype._timelineRecordAdded):
+        Don't schedule a refresh of the graph if the record isn't visible.
+
+        * UserInterface/TimelineContentView.js:
+        (WebInspector.TimelineContentView.prototype._timeRangeSelectionChanged):
+        Remove the boolean for updateFilter.
+
+        * UserInterface/TimelineDataGrid.js:
+        (WebInspector.TimelineDataGrid.prototype._refreshDirtyDataGridNodes):
+        (WebInspector.TimelineDataGrid.prototype._sort):
+        Keep the hidden state in-sync between node and element.
+
+        * UserInterface/TimelineDataGridNode.js:
+        (WebInspector.TimelineDataGridNode.prototype.collapse):
+        (WebInspector.TimelineDataGridNode.prototype.expand):
+        (WebInspector.TimelineDataGridNode.prototype.appendChild):
+        (WebInspector.TimelineDataGridNode.prototype.insertChild):
+        (WebInspector.TimelineDataGridNode.prototype.removeChild):
+        (WebInspector.TimelineDataGridNode.prototype.removeChildren):
+        (WebInspector.TimelineDataGridNode.prototype.removeChildrenRecursive):
+        (WebInspector.TimelineDataGridNode.prototype.refreshGraph.createBarsForRecords):
+        (WebInspector.TimelineDataGridNode.prototype.refreshGraph.else.collectRecordsByType.get if):
+        (WebInspector.TimelineDataGridNode.prototype.needsGraphRefresh):
+        (WebInspector.TimelineDataGridNode.prototype.isRecordVisible):
+        Support drawing the children records on the parent graph.
+
+        * UserInterface/TimelineRecordBar.css:
+        (.timeline-record-bar.unfinished > .segment):
+        (:focus .selected .timeline-record-bar > .segment):
+        (:focus .selected .timeline-record-bar > .segment.inactive):
+        (:focus .selected .timeline-record-bar.has-inactive-segment > .segment:not(.inactive)):
+        Tweaked styles to look better when selected.
+
+        * UserInterface/TimelineRecordBar.js:
+        (WebInspector.TimelineRecordBar.recordsCannotBeCombined):
+        (WebInspector.TimelineRecordBar.prototype.set records):
+        (WebInspector.TimelineRecordBar.prototype.refresh):
+        Drive-by fixes for some bug with bars being reused.
+
+2014-01-21  Timothy Hatcher  <timothy@apple.com>
+
+        Remember the Timeline Overview zoom and selection between sessions.
+
+        https://bugs.webkit.org/show_bug.cgi?id=127369
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/TimelineOverview.js:
+        (WebInspector.TimelineOverview):
+        (WebInspector.TimelineOverview.prototype.set secondsPerPixel):
+        (WebInspector.TimelineOverview.prototype._timeRangeSelectionChanged):
+
+2014-01-21  Timothy Hatcher  <timothy@apple.com>
+
+        Show the Resource and Record selection path in the navigation bar for Timeline views.
+
+        https://bugs.webkit.org/show_bug.cgi?id=127367
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/LayoutTimelineView.js:
+        (WebInspector.LayoutTimelineView.prototype.treeElementPathComponentSelected):
+        (WebInspector.LayoutTimelineView.prototype._dataGridNodeSelected):
+        * UserInterface/NetworkTimelineView.js:
+        (WebInspector.NetworkTimelineView.prototype.treeElementPathComponentSelected):
+        (WebInspector.NetworkTimelineView.prototype._dataGridNodeSelected):
+        * UserInterface/OverviewTimelineView.js:
+        (WebInspector.OverviewTimelineView.prototype.get selectionPathComponents):
+        (WebInspector.OverviewTimelineView.prototype.treeElementPathComponentSelected):
+        (WebInspector.OverviewTimelineView.prototype._dataGridNodeSelected):
+        * UserInterface/ScriptTimelineView.js:
+        (WebInspector.ScriptTimelineView.prototype.treeElementPathComponentSelected):
+        (WebInspector.ScriptTimelineView.prototype._dataGridNodeSelected):
+        * UserInterface/TimelineContentView.js:
+        (WebInspector.TimelineContentView.prototype._timelineViewSelectionPathComponentsDidChange):
+        (WebInspector.TimelineContentView.prototype._showTimelineView):
+        * UserInterface/TimelineDataGrid.js:
+        (WebInspector.TimelineDataGrid.prototype.treeElementForDataGridNode):
+        (WebInspector.TimelineDataGrid.prototype.dataGridNodeForTreeElement):
+        * UserInterface/TimelineView.js:
+        (WebInspector.TimelineView.prototype.get selectionPathComponents):
+        (WebInspector.TimelineView.prototype.treeElementPathComponentSelected):
+
+2014-01-20  Timothy Hatcher  <timothy@apple.com>
+
+        Add the recording button back to the Timelines sidebar.
+
+        https://bugs.webkit.org/show_bug.cgi?id=127314
+
+        Reviewed by Joseph Pecoraro.
+
+        * Localizations/en.lproj/localizedStrings.js: Updated.
+
+        * UserInterface/TimelineContentView.js:
+        (WebInspector.TimelineContentView.prototype.get navigationItems):
+        (WebInspector.TimelineContentView.prototype._update):
+        (WebInspector.TimelineContentView.prototype._updateTimes):
+        (WebInspector.TimelineContentView.prototype._startUpdatingCurrentTime):
+        (WebInspector.TimelineContentView.prototype._recordingTimesUpdated):
+        (WebInspector.TimelineContentView.prototype._clearTimeline):
+        (WebInspector.TimelineContentView.prototype._recordingReset):
+        Add a clear button and reset the time ruler and views when the recording resets.
+
+        * UserInterface/TimelineSidebarPanel.css:
+        (.sidebar > .panel.timeline > .status-bar):
+        (.sidebar > .panel.timeline > .status-bar > .record-glyph):
+        (.sidebar > .panel.timeline > .status-bar > .record-glyph.recording):
+        (.sidebar > .panel.timeline > .status-bar > .record-glyph:hover):
+        (.sidebar > .panel.timeline > .status-bar > .record-glyph.recording:hover):
+        (.sidebar > .panel.timeline > .status-bar > .record-glyph.forced):
+        (.sidebar > .panel.timeline > .status-bar > .record-glyph.recording.forced):
+        (.sidebar > .panel.timeline > .status-bar > .record-status):
+        Add styles for the recording button and status message.
+
+        * UserInterface/TimelineSidebarPanel.js:
+        (WebInspector.TimelineSidebarPanel.prototype._contentBrowserCurrentContentViewDidChange):
+        (WebInspector.TimelineSidebarPanel.prototype._recordingStarted):
+        (WebInspector.TimelineSidebarPanel.prototype._recordingStopped):
+        (WebInspector.TimelineSidebarPanel.prototype._recordGlyphMousedOver):
+        (WebInspector.TimelineSidebarPanel.prototype._recordGlyphMousedOut):
+        (WebInspector.TimelineSidebarPanel.prototype._recordGlyphClicked):
+        Add support for the recording button and status message.
+
+2014-01-20  Timothy Hatcher  <timothy@apple.com>
+
+        Make the TimelineRecordTreeElement location subtitle live.
+
+        https://bugs.webkit.org/show_bug.cgi?id=127270
+
+        Reviewed by Joseph Pecoraro.
+
+        * Localizations/en.lproj/localizedStrings.js: Updated.
+
+        * UserInterface/SourceCodeLocation.js:
+        (WebInspector.SourceCodeLocation.prototype.originalLocationString):
+        (WebInspector.SourceCodeLocation.prototype.formattedLocationString):
+        (WebInspector.SourceCodeLocation.prototype.displayLocationString):
+        (WebInspector.SourceCodeLocation.prototype.updateDisplayString):
+        (WebInspector.SourceCodeLocation.prototype._locationString):
+        Support for a new nameStyle enum and a prefix for the location string.
+        Passing the prefix here lets it be italicized with the line number.
+        Support column number for SourceCode's without a URL too.
+
+        * UserInterface/TimelineRecordTreeElement.js:
+        (WebInspector.TimelineRecordTreeElement):
+        (WebInspector.TimelineRecordTreeElement.prototype.onattach):
+        Create a subtitle span to update the location inside. Update the tooltip on attach.
+
+2014-01-19  Timothy Hatcher  <timothy@apple.com>
+
+        Generate better display names for timer and event Timeline records.
+
+        Also support AnimationFrameRequested and AnimationFrameCanceled.
+
+        https://bugs.webkit.org/show_bug.cgi?id=127258
+
+        Reviewed by Joseph Pecoraro.
+
+        * Localizations/en.lproj/localizedStrings.js: Updated.
+
+        * UserInterface/LayoutTimelineRecord.js:
+        (WebInspector.LayoutTimelineRecord.EventType.displayName):
+        Generate past tense names that better match other names.
+
+        * UserInterface/ScriptTimelineDataGridNode.js:
+        (WebInspector.ScriptTimelineDataGridNode.prototype.createCellContent):
+        Pass the details to displayName.
+
+        * UserInterface/ScriptTimelineRecord.js:
+        (WebInspector.ScriptTimelineRecord.EventType.displayName):
+        Generate better names for timer and event records. Also add missing animation frame types.
+
+        * UserInterface/ScriptTimelineView.js:
+        (WebInspector.ScriptTimelineView.prototype._processPendingRecords):
+        Pass true to WebInspector.TimelineRecordTreeElement to include timer identifiers in the title.
+
+        * UserInterface/SourceCodeTimelineTreeElement.js:
+        (WebInspector.SourceCodeTimelineTreeElement):
+        Pass includeTimerIdentifierInMainTitle through to TimelineRecordTreeElement.
+
+        * UserInterface/TimelineManager.js:
+        (WebInspector.TimelineManager.prototype.eventRecorded.processRecord):
+        Include AnimationFrameRequested and AnimationFrameCanceled.
+
+        * UserInterface/TimelineRecordTreeElement.js:
+        (WebInspector.TimelineRecordTreeElement):
+        Use displayName functions instead and support includeTimerIdentifierInMainTitle.
+
+2014-01-19  Timothy Hatcher  <timothy@apple.com>
+
+        Implement basic versions of the TimelineOverview graphs.
+
+        https://bugs.webkit.org/show_bug.cgi?id=127184
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/LayoutTimelineOverviewGraph.css: Added.
+        (.timeline-overview-graph.layout > .timeline-record-bar):
+        (.timeline-overview-graph.layout > .timeline-record-bar > .segment):
+
+        * UserInterface/LayoutTimelineOverviewGraph.js: Added.
+        (WebInspector.LayoutTimelineOverviewGraph.prototype.reset):
+        (WebInspector.LayoutTimelineOverviewGraph.prototype.updateLayout):
+        (WebInspector.LayoutTimelineOverviewGraph.prototype._layoutTimelineRecordAdded):
+
+        * UserInterface/Main.html: Added new files.
+
+        * UserInterface/NetworkTimelineOverviewGraph.css: Added.
+        (.timeline-overview-graph.network):
+        (.timeline-overview-graph.network > .graph-row):
+        (.timeline-overview-graph.network > .graph-row > .bar):
+        (.timeline-overview-graph.network > .graph-row > .bar.inactive):
+        (.timeline-overview-graph.network > .graph-row > .bar.unfinished):
+        (.timeline-overview-graph.network > .graph-row > .bar:not(.inactive)):
+        (.timeline-overview-graph.network:nth-child(even) > .graph-row > .bar:not(.inactive)):
+
+        * UserInterface/NetworkTimelineOverviewGraph.js: Added.
+        (WebInspector.NetworkTimelineOverviewGraph.prototype.reset):
+        (WebInspector.NetworkTimelineOverviewGraph.prototype.updateLayout.updateElementPosition):
+        (WebInspector.NetworkTimelineOverviewGraph.prototype.updateLayout.createBar):
+        (WebInspector.NetworkTimelineOverviewGraph.prototype.updateLayout):
+        (WebInspector.NetworkTimelineOverviewGraph.prototype._networkTimelineRecordAdded.compareByStartTime):
+        (WebInspector.NetworkTimelineOverviewGraph.prototype._networkTimelineRecordAdded.insertObjectIntoSortedArray):
+        (WebInspector.NetworkTimelineOverviewGraph.prototype._networkTimelineRecordAdded):
+
+        * UserInterface/ScriptTimelineOverviewGraph.css: Added.
+        (.timeline-overview-graph.script > .timeline-record-bar):
+        (.timeline-overview-graph.script > .timeline-record-bar > .segment):
+
+        * UserInterface/ScriptTimelineOverviewGraph.js: Added.
+        (WebInspector.ScriptTimelineOverviewGraph.prototype.reset):
+        (WebInspector.ScriptTimelineOverviewGraph.prototype.updateLayout):
+        (WebInspector.ScriptTimelineOverviewGraph.prototype._scriptTimelineRecordAdded):
+
+        * UserInterface/TimelineContentView.js:
+        (WebInspector.TimelineContentView.prototype._showTimelineView):
+        (WebInspector.TimelineContentView.prototype._update):
+        (WebInspector.TimelineContentView.prototype._recordingReset):
+        Create and keep the graphs informed.
+
+        * UserInterface/TimelineDataGridNode.js:
+        (WebInspector.TimelineDataGridNode):
+        (WebInspector.TimelineDataGridNode.prototype.refreshGraph):
+        Combine records that might overlap.
+
+        * UserInterface/TimelineOverview.css:
+        (.timeline-overview > .graphs-container):
+        (.timeline-overview > .graphs-container > .timeline-overview-graph):
+        (.timeline-overview > .graphs-container > .timeline-overview-graph:nth-child(even)):
+        (.timeline-overview > .graphs-container > .timeline-overview-graph:not(:first-child)):
+        Add the graph rows with alternating stripe.
+
+        * UserInterface/TimelineOverview.js:
+        (WebInspector.TimelineOverview):
+        (WebInspector.TimelineOverview.prototype.set startTime):
+        (WebInspector.TimelineOverview.prototype.get currentTime):
+        (WebInspector.TimelineOverview.prototype.set currentTime):
+        (WebInspector.TimelineOverview.prototype.updateLayout):
+        (WebInspector.TimelineOverview.prototype.updateLayoutIfNeeded):
+        Track currentTime in a member variable and let TimelineOverview manage the current time marker.
+
+        * UserInterface/TimelineOverviewGraph.js: Added.
+        (WebInspector.TimelineOverviewGraph):
+        (WebInspector.TimelineOverviewGraph.prototype.get zeroTime):
+        (WebInspector.TimelineOverviewGraph.prototype.set zeroTime):
+        (WebInspector.TimelineOverviewGraph.prototype.get startTime):
+        (WebInspector.TimelineOverviewGraph.prototype.set startTime):
+        (WebInspector.TimelineOverviewGraph.prototype.get endTime):
+        (WebInspector.TimelineOverviewGraph.prototype.set endTime):
+        (WebInspector.TimelineOverviewGraph.prototype.get currentTime):
+        (WebInspector.TimelineOverviewGraph.prototype.set currentTime):
+        (WebInspector.TimelineOverviewGraph.prototype.reset):
+        (WebInspector.TimelineOverviewGraph.prototype.updateLayout):
+        (WebInspector.TimelineOverviewGraph.prototype.updateLayoutIfNeeded):
+        (WebInspector.TimelineOverviewGraph.prototype.needsLayout):
+
+        * UserInterface/TimelineRecordBar.css:
+        (.timeline-record-bar > .segment):
+        (.timeline-record-bar.unfinished > .segment):
+        (.timeline-record-bar > .segment.inactive + .segment):
+        (.timeline-record-bar.timeline-record-type-network > .segment.inactive):
+
+        * UserInterface/TimelineRecordBar.js:
+        (WebInspector.TimelineRecordBar):
+        (WebInspector.TimelineRecordBar.recordsCannotBeCombined):
+        (WebInspector.TimelineRecordBar.prototype.get records):
+        (WebInspector.TimelineRecordBar.prototype.set records):
+        (WebInspector.TimelineRecordBar.prototype.refresh):
+        Make TimelineRecordBar support multiple records.
+
+        * UserInterface/TimelineRuler.css:
+        (.timeline-ruler > .markers):
+        (.timeline-ruler > .selection-handle):
+        (.timeline-ruler > .shaded-area):
+        Add some z-index values to stay above graph elements.
+
+2014-01-16  Timothy Hatcher  <timothy@apple.com>
+
+        Clean up Timelines code by using ES6 features and less global access of TimelineRecording.
+        Also don't recreate Timeline objects when TimelineRecording is reset, reset them instead.
+
+        https://bugs.webkit.org/show_bug.cgi?id=127157
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/LayoutTimelineView.js:
+        (WebInspector.LayoutTimelineView.prototype.reset):
+        * UserInterface/NetworkTimeline.js:
+        (WebInspector.NetworkTimeline):
+        (WebInspector.NetworkTimeline.prototype.reset):
+        * UserInterface/NetworkTimelineView.js:
+        (WebInspector.NetworkTimelineView.prototype.reset):
+        * UserInterface/OverviewTimelineView.js:
+        (WebInspector.OverviewTimelineView.prototype._networkTimelineRecordAdded):
+        * UserInterface/ScriptTimelineView.js:
+        (WebInspector.ScriptTimelineView.prototype.reset):
+        * UserInterface/Timeline.js:
+        (WebInspector.Timeline):
+        (WebInspector.Timeline.prototype.reset):
+        * UserInterface/TimelineContentView.js:
+        (WebInspector.TimelineContentView.set createPathComponent):
+        (WebInspector.TimelineContentView.set var):
+        (WebInspector.TimelineContentView.prototype.showOverviewTimelineView):
+        (WebInspector.TimelineContentView.prototype.showTimelineView):
+        (WebInspector.TimelineContentView.prototype._showTimelineView):
+        (WebInspector.TimelineContentView.prototype._update):
+        (WebInspector.TimelineContentView.prototype._recordingReset):
+        * UserInterface/TimelineRecording.js:
+        (WebInspector.TimelineRecording.prototype.reset):
+
+2014-01-16  Timothy Hatcher  <timothy@apple.com>
+
+        Improve WebInspector.TimelineOverview by not putting WebInspector.TimelineRuler in a scroll area.
+
+        https://bugs.webkit.org/show_bug.cgi?id=127145
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/TimelineOverview.css:
+        (.timeline-overview > .scroll-container):
+        (.timeline-overview > .timeline-ruler):
+        (.timeline-overview > .scroll-container > .scroll-width-sizer):
+        * UserInterface/TimelineOverview.js:
+        (WebInspector.TimelineOverview):
+        (WebInspector.TimelineOverview.prototype.get startTime):
+        (WebInspector.TimelineOverview.prototype.set startTime):
+        (WebInspector.TimelineOverview.prototype.get secondsPerPixel):
+        (WebInspector.TimelineOverview.prototype.set secondsPerPixel):
+        (WebInspector.TimelineOverview.prototype.get scrollStartTime):
+        (WebInspector.TimelineOverview.prototype.set scrollStartTime):
+        (WebInspector.TimelineOverview.prototype.get visibleDuration):
+        (WebInspector.TimelineOverview.prototype.revealMarker):
+        (WebInspector.TimelineOverview.prototype.updateLayout):
+        (WebInspector.TimelineOverview.prototype._handleScrollEvent):
+        (WebInspector.TimelineOverview.prototype._handleWheelEvent):
+        * UserInterface/TimelineRuler.js:
+        (WebInspector.TimelineRuler.MinimumSelectionTimeRange): Reduce to 10ms now that super zoom has no performance impact.
+
+2014-01-15  Timothy Hatcher  <timothy@apple.com>
+
+        Implement the discrete Script and Layout timeline views.
+
+        https://bugs.webkit.org/show_bug.cgi?id=127063
+
+        Reviewed by Joseph Pecoraro.
+
+        * Localizations/en.lproj/localizedStrings.js: Updated.
+
+        * UserInterface/DataGrid.js:
+        (WebInspector.DataGrid): Support hidden columns by default.
+        (WebInspector.DataGrid.prototype.updateLayout): Set the column width to zero for hidden columns.
+
+        * UserInterface/LayoutTimelineDataGrid.js:
+        (WebInspector.LayoutTimelineDataGrid): Pass the right parameters to the superclass.
+
+        * UserInterface/LayoutTimelineRecord.js:
+        (WebInspector.LayoutTimelineRecord.prototype.saveIdentityToCookie): Added.
+
+        * UserInterface/LayoutTimelineView.css: Copied from Source/WebInspectorUI/UserInterface/ScriptTimelineDataGrid.js.
+        (.timeline-view.layout > .data-grid):
+        (.timeline-view.layout > .data-grid .eventType-column):
+        (.sidebar > .panel.timeline.timeline-content-view-showing .navigation-sidebar-panel-content-tree-outline.layout .item .subtitle):
+
+        * UserInterface/LayoutTimelineView.js: Added.
+        (WebInspector.LayoutTimelineView):
+        (WebInspector.LayoutTimelineView.prototype.get navigationSidebarTreeOutlineLabel):
+        (WebInspector.LayoutTimelineView.prototype.shown):
+        (WebInspector.LayoutTimelineView.prototype.hidden):
+        (WebInspector.LayoutTimelineView.prototype.updateLayout):
+        (WebInspector.LayoutTimelineView.prototype.matchTreeElementAgainstCustomFilters):
+        (WebInspector.LayoutTimelineView.prototype._layoutTimelineRecordAdded):
+        (WebInspector.LayoutTimelineView.prototype._dataGridFiltersDidChange):
+        (WebInspector.LayoutTimelineView.prototype._treeElementSelected):
+
+        * UserInterface/Main.html: Added new files.
+
+        * UserInterface/ScriptTimelineDataGrid.js:
+        (WebInspector.ScriptTimelineDataGrid): Pass the right parameters to the superclass.
+
+        * UserInterface/ScriptTimelineDataGridNode.js:
+        (WebInspector.ScriptTimelineDataGridNode.prototype.createCellContent): Fix up how we create the link.
+
+        * UserInterface/ScriptTimelineRecord.js:
+        (WebInspector.ScriptTimelineRecord.prototype.saveIdentityToCookie): Added.
+
+        * UserInterface/ScriptTimelineView.css: Copied from Source/WebInspectorUI/UserInterface/ScriptTimelineDataGrid.js.
+        (.timeline-view.script > .data-grid):
+        (.timeline-view.script > .data-grid .eventType-column):
+        (.sidebar > .panel.timeline.timeline-content-view-showing .navigation-sidebar-panel-content-tree-outline.script .item .subtitle):
+
+        * UserInterface/ScriptTimelineView.js: Added.
+        (WebInspector.ScriptTimelineView):
+        (WebInspector.ScriptTimelineView.prototype.get navigationSidebarTreeOutlineLabel):
+        (WebInspector.ScriptTimelineView.prototype.shown):
+        (WebInspector.ScriptTimelineView.prototype.hidden):
+        (WebInspector.ScriptTimelineView.prototype.updateLayout):
+        (WebInspector.ScriptTimelineView.prototype.matchTreeElementAgainstCustomFilters):
+        (WebInspector.ScriptTimelineView.prototype._scriptTimelineRecordAdded):
+        (WebInspector.ScriptTimelineView.prototype._dataGridFiltersDidChange):
+        (WebInspector.ScriptTimelineView.prototype._treeElementSelected):
+
+        * UserInterface/SourceCodeTimelineTreeElement.js:
+        (WebInspector.SourceCodeTimelineTreeElement):
+        Moved code to TimelineRecordTreeElement. Subclass from it.
+
+        * UserInterface/TimelineContentView.js:
+        (WebInspector.TimelineContentView.prototype.matchTreeElementAgainstCustomFilters): Support TimelineRecordTreeElement.
+        (WebInspector.TimelineContentView.prototype._timeRangeSelectionChanged): Update zeroTime for all views.
+
+        * UserInterface/TimelineDataGrid.css:
+        (.data-grid.timeline td .icon):
+        (.data-grid.timeline td .go-to-arrow):
+        (.data-grid.timeline tr:hover .go-to-arrow):
+        (.data-grid.timeline td .subtitle):
+        (.data-grid.timeline td .subtitle::before):
+        (.data-grid.timeline:focus tr.selected td .subtitle):
+
+        * UserInterface/TimelineRecord.js:
+        (WebInspector.TimelineRecord.prototype.saveIdentityToCookie): Added.
+
+        * UserInterface/TimelineRecordTreeElement.js: Added.
+        (WebInspector.TimelineRecordTreeElement):
+        (WebInspector.TimelineRecordTreeElement.prototype.get record):
+        (WebInspector.TimelineRecordTreeElement.prototype.get filterableData):
+        Factored out from SourceCodeTimelineTreeElement.
+
+        * UserInterface/TimelineSidebarPanel.js:
+        (WebInspector.TimelineSidebarPanel.prototype.treeElementForRepresentedObject.looslyCompareRepresentedObjects):
+        (WebInspector.TimelineSidebarPanel.prototype.treeElementForRepresentedObject):
+        Find TreeElements via a loose lookup based on represented objects that might contain the represented object we are
+        really looking for.
+
+2014-01-14  Timothy Hatcher  <timothy@apple.com>
+
+        Implement the discrete Network timeline view.
+
+        https://bugs.webkit.org/show_bug.cgi?id=127022
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/DataGrid.js:
+        (WebInspector.DataGrid): Align the labels of the column headers to match the data.
+        (WebInspector.DataGridNode.prototype.get selectable): Prevent selection when hidden.
+
+        * UserInterface/DetailsSection.css:
+        (.details-section > .header): Bump the font size to match data grid header sizes.
+
+        * UserInterface/Main.html: Add new files.
+
+        * UserInterface/NetworkTimelineView.css: Added.
+        (.timeline-view.network > .data-grid):
+        (.sidebar > .panel.timeline.timeline-content-view-showing > .content .item.resource .subtitle):
+        Hide the domain subtitle when the content view is showing which also has the domain.
+
+        * UserInterface/NetworkTimelineView.js: Added.
+        (WebInspector.NetworkTimelineView):
+        (WebInspector.NetworkTimelineView.prototype.get navigationSidebarTreeOutlineLabel):
+        (WebInspector.NetworkTimelineView.prototype.shown):
+        (WebInspector.NetworkTimelineView.prototype.hidden):
+        (WebInspector.NetworkTimelineView.prototype.updateLayout):
+        (WebInspector.NetworkTimelineView.prototype.matchTreeElementAgainstCustomFilters):
+        (WebInspector.NetworkTimelineView.prototype._networkTimelineRecordAdded):
+        (WebInspector.NetworkTimelineView.prototype._dataGridFiltersDidChange):
+        (WebInspector.NetworkTimelineView.prototype._treeElementSelected):
+
+        * UserInterface/ResourceTimelineDataGridNode.js:
+        (WebInspector.ResourceTimelineDataGridNode.prototype._needsRefresh):
+        Call dataGridNodeNeedsRefresh on the TimelineDataGrid so things can be batched with
+        one request animation frame.
+
+        * UserInterface/TimelineContentView.js:
+        (WebInspector.TimelineContentView): Create a NetworkTimelineView.
+        (WebInspector.TimelineContentView.prototype.matchTreeElementAgainstCustomFilters):
+
+        * UserInterface/TimelineDataGrid.css:
+        (.data-grid.timeline table):
+        (.data-grid.timeline th):
+        (.data-grid.timeline th:not(:last-child)):
+        (.data-grid.timeline th.sortable:active):
+        (.data-grid.timeline th.sort-descending):
+        (.data-grid.timeline .data-container):
+        (.data-grid.timeline td):
+        (.data-grid.timeline td:last-child):
+        (.data-grid.timeline td:not(:last-child)):
+        (.data-grid.timeline:focus tr.selected td:not(:last-child)):
+        (.data-grid.timeline th.sort-descending > div:first-child):
+        (.data-grid.timeline th.sort-descending > div:first-child::after):
+        (.data-grid.timeline td.error):
+        (.data-grid.timeline tr.selected td.error):
+        (.data-grid.timeline > .navigation-bar-container):
+        (.data-grid.timeline:hover > .navigation-bar-container):
+        (.data-grid.timeline > .navigation-bar-container > .navigation-bar):
+
+        * UserInterface/TimelineDataGrid.js:
+        (WebInspector.TimelineDataGrid):
+        (WebInspector.TimelineDataGrid.createColumnScopeBar):
+        (WebInspector.TimelineDataGrid.prototype.reset):
+        (WebInspector.TimelineDataGrid.prototype.shown):
+        (WebInspector.TimelineDataGrid.prototype.hidden):
+        (WebInspector.TimelineDataGrid.prototype.callFramePopoverAnchorElement):
+        (WebInspector.TimelineDataGrid.prototype.updateLayout):
+        (WebInspector.TimelineDataGrid.prototype.treeElementMatchesActiveScopeFilters):
+        (WebInspector.TimelineDataGrid.prototype.addRowInSortOrder):
+        (WebInspector.TimelineDataGrid.prototype.shouldIgnoreSelectionEvent):
+        (WebInspector.TimelineDataGrid.prototype.dataGridNodeNeedsRefresh):
+        (WebInspector.TimelineDataGrid.prototype._refreshDirtyDataGridNodes):
+        (WebInspector.TimelineDataGrid.prototype._sort):
+        (WebInspector.TimelineDataGrid.prototype._sortComparator):
+        Add support for sorting, batch refresh and managing of a TreeOutlineDataGridSynchronizer.
+
+        * UserInterface/TimelineSidebarPanel.css:
+        (.sidebar > .panel.timeline > .title-bar): Bump the font size to match data grid header sizes.
+
+        * UserInterface/TimelineView.js:
+        (WebInspector.TimelineView.prototype.matchTreeElementAgainstCustomFilters): Added stub.
+
+        * UserInterface/TreeOutlineDataGridSynchronizer.js:
+        (WebInspector.TreeOutlineDataGridSynchronizer.prototype.get treeOutline):
+        (WebInspector.TreeOutlineDataGridSynchronizer.prototype.get dataGrid):
+        (WebInspector.TreeOutlineDataGridSynchronizer.prototype.get enabled):
+        (WebInspector.TreeOutlineDataGridSynchronizer.prototype.set enabled):
+        (WebInspector.TreeOutlineDataGridSynchronizer.prototype.treeElementForDataGridNode):
+        (WebInspector.TreeOutlineDataGridSynchronizer.prototype.dataGridNodeForTreeElement):
+        (WebInspector.TreeOutlineDataGridSynchronizer.prototype._treeOutlineScrolled):
+        (WebInspector.TreeOutlineDataGridSynchronizer.prototype._dataGridScrolled):
+        (WebInspector.TreeOutlineDataGridSynchronizer.prototype._dataGridNodeSelected):
+        (WebInspector.TreeOutlineDataGridSynchronizer.prototype._dataGridNodeExpanded):
+        (WebInspector.TreeOutlineDataGridSynchronizer.prototype._dataGridNodeCollapsed):
+        (WebInspector.TreeOutlineDataGridSynchronizer.prototype._treeElementSelected):
+        (WebInspector.TreeOutlineDataGridSynchronizer.prototype._treeElementAdded):
+        (WebInspector.TreeOutlineDataGridSynchronizer.prototype._treeElementRemoved):
+        (WebInspector.TreeOutlineDataGridSynchronizer.prototype._treeElementExpanded):
+        (WebInspector.TreeOutlineDataGridSynchronizer.prototype._treeElementCollapsed):
+        (WebInspector.TreeOutlineDataGridSynchronizer.prototype._treeElementHiddenChanged):
+        Added support for disabling the synchronizer when the client can do a better job.
+
+2014-01-13  Timothy Hatcher  <timothy@apple.com>
+
+        Filter the Timeline overview graph and sidebar based on the current time selection.
+
+        https://bugs.webkit.org/show_bug.cgi?id=126955
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/NavigationSidebarPanel.js:
+        (WebInspector.NavigationSidebarPanel.prototype.updateFilter):
+        (WebInspector.NavigationSidebarPanel.prototype.hasCustomFilters):
+        (WebInspector.NavigationSidebarPanel.prototype.matchTreeElementAgainstCustomFilters):
+        (WebInspector.NavigationSidebarPanel.prototype.applyFiltersToTreeElement.matchTextFilter):
+        (WebInspector.NavigationSidebarPanel.prototype.applyFiltersToTreeElement):
+        Add support for custom filters implemented by subclasses.
+
+        * UserInterface/TimelineContentView.js:
+        (WebInspector.TimelineContentView.prototype.matchTreeElementAgainstCustomFilters.checkTimeBounds):
+        (WebInspector.TimelineContentView.prototype.matchTreeElementAgainstCustomFilters):
+        (WebInspector.TimelineContentView.prototype._timeRangeSelectionChanged):
+        Filter known tree element types by time.
+
+        * UserInterface/TimelineSidebarPanel.css:
+        (.sidebar > .panel.timeline > .empty-content-placeholder):
+        Position the empty placeholder with the content.
+
+        * UserInterface/TimelineSidebarPanel.js:
+        (WebInspector.TimelineSidebarPanel.prototype.hasCustomFilters):
+        (WebInspector.TimelineSidebarPanel.prototype.matchTreeElementAgainstCustomFilters):
+        Defer filtering to the TimelineContentView.
+
+2014-01-13  Timothy Hatcher  <timothy@apple.com>
+
+        Implement state cookie support for WebInspector.TimelineSidebarPanel.
+
+        https://bugs.webkit.org/show_bug.cgi?id=126921
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/DebuggerSidebarPanel.js:
+        (WebInspector.DebuggerSidebarPanel.prototype.restoreStateFromCookie):
+        Drive-by fix to pass along relaxedMatchDelay to the superclass. 
+
+        * UserInterface/Main.js:
+        (WebInspector.loaded):
+        (WebInspector._provisionalLoadStarted):
+        Listen for ProvisionalLoadStarted instead of ProvisionalLoadCommitted to save the cookie
+        before the TimelineRecording is reset and clears the UI.
+
+        * UserInterface/NavigationSidebarPanel.js:
+        (WebInspector.NavigationSidebarPanel.prototype.get restoringState): Added.
+        (WebInspector.NavigationSidebarPanel.prototype.restoreStateFromCookie.finalAttemptToRestoreViewStateFromCookie):
+        Delete _pendingViewStateCookie since this was the final attempt.
+        (WebInspector.NavigationSidebarPanel.prototype.restoreStateFromCookie):
+        (WebInspector.NavigationSidebarPanel.prototype._isTreeElementWithoutRepresentedObject): Block string represented objects.
+        (WebInspector.NavigationSidebarPanel.prototype._checkElementsForPendingViewStateCookie):
+
+        * UserInterface/OverviewTimelineView.js:
+        (WebInspector.OverviewTimelineView.prototype._treeElementSelected):
+
+        * UserInterface/ResourceSidebarPanel.js:
+        (WebInspector.ResourceSidebarPanel.prototype.treeElementForRepresentedObject):
+        Drive-by fix to null check parentFrame since it can be null. Was causing an exception while working on this.
+
+        * UserInterface/SourceCodeTimeline.js:
+        (WebInspector.SourceCodeTimeline):
+        (WebInspector.SourceCodeTimeline.prototype.saveIdentityToCookie):
+
+        * UserInterface/TimelineSidebarPanel.js:
+        (WebInspector.TimelineSidebarPanel.prototype.canShowDifferentContentView):
+        (WebInspector.TimelineSidebarPanel.prototype.saveStateToCookie):
+        (WebInspector.TimelineSidebarPanel.prototype.restoreStateFromCookie):
+
+        * UserInterface/TreeOutline.js:
+        (TreeOutline.prototype._forgetTreeElement):
+        Drive-by fix to clear selectedTreeElement if it is removed from the tree. Was causing removed TreeElements to be
+        saved as a cookie since it was still the selected item.
+
+2014-01-11  Timothy Hatcher  <timothy@apple.com>
+
+        Implement bar graph rendering for WebInspector.OverviewTimelineView.
+
+        https://bugs.webkit.org/show_bug.cgi?id=126831
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Main.html: Added new files.
+
+        * UserInterface/OverviewTimelineView.css:
+        (.timeline-view.overview > .data-grid td.graph-column):
+        (.timeline-view.overview > .data-grid td.graph-column > div):
+        (.timeline-view.overview > .data-grid td.graph-column .timeline-record-bar):
+        Position the bars in the DataGrid cells.
+
+        * UserInterface/OverviewTimelineView.js:
+        (WebInspector.OverviewTimelineView.prototype.updateLayout):
+        (WebInspector.OverviewTimelineView.prototype._addResourceToTreeIfNeeded):
+        (WebInspector.OverviewTimelineView.prototype._sourceCodeTimelineAdded):
+        Create the proper DataGridNodes for resources and source code timelines.
+
+        * UserInterface/ResourceTimelineDataGridNode.js:
+        (WebInspector.ResourceTimelineDataGridNode):
+        (WebInspector.ResourceTimelineDataGridNode.prototype.get records):
+        (WebInspector.ResourceTimelineDataGridNode.prototype.get resource):
+        (WebInspector.ResourceTimelineDataGridNode.prototype.get data):
+        (WebInspector.ResourceTimelineDataGridNode.prototype.createCellContent):
+        (WebInspector.ResourceTimelineDataGridNode.prototype.refresh):
+        (WebInspector.ResourceTimelineDataGridNode.prototype._needsRefresh):
+        (WebInspector.ResourceTimelineDataGridNode.prototype._goToResource):
+        Simplify by deferring the graph logic to the new TimelineDataGridNode base class.
+
+        * UserInterface/SourceCodeTimelineTimelineDataGridNode.js: Added.
+        (WebInspector.SourceCodeTimelineTimelineDataGridNode):
+        (WebInspector.SourceCodeTimelineTimelineDataGridNode.prototype.get records):
+        (WebInspector.SourceCodeTimelineTimelineDataGridNode.prototype.get sourceCodeTimeline):
+        (WebInspector.SourceCodeTimelineTimelineDataGridNode.prototype.get data):
+
+        * UserInterface/TimelineDataGridNode.js: Added.
+        (WebInspector.TimelineDataGridNode):
+        (WebInspector.TimelineDataGridNode.prototype.get records):
+        (WebInspector.TimelineDataGridNode.prototype.get data):
+        (WebInspector.TimelineDataGridNode.prototype.createCellContent):
+        (WebInspector.TimelineDataGridNode.prototype.refresh):
+        (WebInspector.TimelineDataGridNode.prototype.refreshGraph):
+        (WebInspector.TimelineDataGridNode.prototype.needsGraphRefresh):
+        Handles the graph column and manages the records and their bars.
+
+        * UserInterface/TimelineRecordBar.css: Added.
+        (.timeline-record-bar):
+        (.timeline-record-bar > .segment):
+        (.timeline-record-bar:not(.has-inactive-segment) > .segment):
+        (.timeline-record-bar.unfinished > .segment):
+        (.timeline-record-bar > .segment.inactive + .segment):
+        (:focus .selected .timeline-record-bar > .segment):
+        (.timeline-record-bar > .segment.inactive):
+        (.timeline-record-bar.timeline-record-type-network > .segment):
+        (.timeline-record-bar.timeline-record-type-layout > .segment):
+        (.timeline-record-bar.timeline-record-type-script > .segment):
+
+        * UserInterface/TimelineRecordBar.js: Added.
+        (WebInspector.TimelineRecordBar):
+        (WebInspector.TimelineRecordBar.prototype.get element):
+        (WebInspector.TimelineRecordBar.prototype.refresh):
+        (WebInspector.TimelineRecordBar.prototype._updateElementPosition):
+
+2014-01-08  Timothy Hatcher  <timothy@apple.com>
+
+        Update the current WebInspector.TimelineView when time range changes.
+
+        https://bugs.webkit.org/show_bug.cgi?id=126667
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/TimelineContentView.js:
+        (WebInspector.TimelineContentView.prototype._showTimelineView):
+        (WebInspector.TimelineContentView.prototype._update):
+        (WebInspector.TimelineContentView.prototype._startUpdatingCurrentTime):
+        (WebInspector.TimelineContentView.prototype._stopUpdatingCurrentTime):
+        (WebInspector.TimelineContentView.prototype._recordingStarted):
+        (WebInspector.TimelineContentView.prototype._recordingStopped):
+        (WebInspector.TimelineContentView.prototype._recordingReset):
+        (WebInspector.TimelineContentView.prototype._timeRangeSelectionChanged):
+        * UserInterface/TimelineOverview.js:
+        (WebInspector.TimelineOverview):
+        (WebInspector.TimelineOverview.prototype.updateLayout):
+        (WebInspector.TimelineOverview.prototype.updateLayoutIfNeeded):
+        (WebInspector.TimelineOverview.prototype._updateElementWidth):
+        (WebInspector.TimelineOverview.prototype._handleWheelEvent):
+        (WebInspector.TimelineOverview.prototype._timeRangeSelectionChanged):
+        * UserInterface/TimelineRuler.js:
+        (WebInspector.TimelineRuler.prototype.updateLayoutIfNeeded):
+        * UserInterface/TimelineView.js:
+        (WebInspector.TimelineView):
+        (WebInspector.TimelineView.prototype.get zeroTime):
+        (WebInspector.TimelineView.prototype.set zeroTime):
+        (WebInspector.TimelineView.prototype.get startTime):
+        (WebInspector.TimelineView.prototype.set startTime):
+        (WebInspector.TimelineView.prototype.get endTime):
+        (WebInspector.TimelineView.prototype.set endTime):
+        (WebInspector.TimelineView.prototype.get currentTime):
+        (WebInspector.TimelineView.prototype.set currentTime.checkIfLayoutIsNeeded):
+        (WebInspector.TimelineView.prototype.set currentTime):
+        (WebInspector.TimelineView.prototype.updateLayout):
+        (WebInspector.TimelineView.prototype.updateLayoutIfNeeded):
+        (WebInspector.TimelineView.prototype.needsLayout):
+
+2013-12-19  Timothy Hatcher  <timothy@apple.com>
+
+        Implement time range selection for TimelineOverview and TimelineRuler.
+
+        https://bugs.webkit.org/show_bug.cgi?id=126035
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/TimelineContentView.js:
+        (WebInspector.TimelineContentView.prototype._update):
+        (WebInspector.TimelineContentView.prototype._recordingReset):
+        Properly update start time and the selection start time on reset.
+
+        * UserInterface/TimelineOverview.js:
+        (WebInspector.TimelineOverview):
+        (WebInspector.TimelineOverview.prototype.get selectionStartTime):
+        (WebInspector.TimelineOverview.prototype.set selectionStartTime):
+        (WebInspector.TimelineOverview.prototype.get selectionDuration):
+        (WebInspector.TimelineOverview.prototype.set selectionDuration):
+        Added selection getters and setters.
+
+        * UserInterface/TimelineRuler.css:
+        (.timeline-ruler.allows-time-range-selection):
+        (.timeline-ruler > *):
+        (.timeline-ruler > .header):
+        (.timeline-ruler > .selection-drag):
+        (.timeline-ruler > .selection-drag:active):
+        (.timeline-ruler > .selection-handle):
+        (.timeline-ruler > .selection-handle.left):
+        (.timeline-ruler > .selection-handle.right):
+        (.timeline-ruler > .shaded-area):
+        (.timeline-ruler > .shaded-area.left):
+        (.timeline-ruler > .shaded-area.right):
+        Added styles for the selection elements and tweaked pointer-events to allow
+        events on elements we expect.
+
+        * UserInterface/TimelineRuler.js:
+        (WebInspector.TimelineRuler):
+        (WebInspector.TimelineRuler.prototype.get allowsTimeRangeSelection): Added.
+        (WebInspector.TimelineRuler.prototype.set allowsTimeRangeSelection): Added.
+        (WebInspector.TimelineRuler.prototype.get selectionStartTime): Added.
+        (WebInspector.TimelineRuler.prototype.set selectionStartTime): Added.
+        (WebInspector.TimelineRuler.prototype.get selectionEndTime): Added.
+        (WebInspector.TimelineRuler.prototype.set selectionEndTime): Added.
+        (WebInspector.TimelineRuler.prototype.updateLayout):
+        (WebInspector.TimelineRuler.prototype._needsMarkerLayout.update):
+        (WebInspector.TimelineRuler.prototype._needsMarkerLayout):
+        (WebInspector.TimelineRuler.prototype._needsSelectionLayout.update):
+        (WebInspector.TimelineRuler.prototype._needsSelectionLayout):
+        (WebInspector.TimelineRuler.prototype._recalculate):
+        (WebInspector.TimelineRuler.prototype._updatePositionOfElement):
+        (WebInspector.TimelineRuler.prototype._updateMarkers):
+        (WebInspector.TimelineRuler.prototype._updateSelection): Added.
+        (WebInspector.TimelineRuler.prototype._dispatchTimeRangeSelectionChangedEvent):
+        (WebInspector.TimelineRuler.prototype._timelineMarkerTimeChanged):
+        (WebInspector.TimelineRuler.prototype._handleMouseDown): Added.
+        (WebInspector.TimelineRuler.prototype._handleMouseMove): Added.
+        (WebInspector.TimelineRuler.prototype._handleMouseUp): Added.
+        (WebInspector.TimelineRuler.prototype._handleSelectionHandleMouseDown): Added.
+        (WebInspector.TimelineRuler.prototype._handleSelectionHandleMouseMove): Added.
+        (WebInspector.TimelineRuler.prototype._handleSelectionHandleMouseUp): Added.
+        Create selection elements and handle mouse events for drag and move.
+
+2013-12-17  Timothy Hatcher  <timothy@apple.com>
+
+        Support scroll to zoom in TimelineOverview.
+
+        https://bugs.webkit.org/show_bug.cgi?id=125909
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/TimelineOverview.js:
+        (WebInspector.TimelineOverview):
+        (WebInspector.TimelineOverview.prototype._handleWheelEvent):
+
+2013-12-17  Timothy Hatcher  <timothy@apple.com>
+
+        Add the start of the TimelineOverview class.
+
+        TimelineOverview currently has a time ruler and tracks the current recording time.
+
+        https://bugs.webkit.org/show_bug.cgi?id=125878
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Main.html:
+        * UserInterface/TimelineContentView.css:
+        (.content-view.timeline > .timeline-overview):
+        * UserInterface/TimelineContentView.js:
+        (WebInspector.TimelineContentView):
+        (WebInspector.TimelineContentView.prototype.updateLayout):
+        (WebInspector.TimelineContentView.prototype._update):
+        (WebInspector.TimelineContentView.prototype._recordingStarted):
+        (WebInspector.TimelineContentView.prototype._recordingStopped):
+        (WebInspector.TimelineContentView.prototype._recordingReset):
+        * UserInterface/TimelineManager.js:
+        (WebInspector.TimelineManager.prototype.eventRecorded.processRecord):
+        (WebInspector.TimelineManager.prototype.eventRecorded):
+        * UserInterface/TimelineMarker.js: Renamed from Source/WebInspectorUI/UserInterface/TimelineEventMarker.js.
+        (WebInspector.TimelineMarker):
+        (WebInspector.TimelineMarker.prototype.get time):
+        (WebInspector.TimelineMarker.prototype.set time):
+        (WebInspector.TimelineMarker.prototype.get type):
+        * UserInterface/TimelineOverview.css: Added.
+        (.timeline-overview > .scroll-container):
+        (.timeline-overview > .scroll-container > .timeline-ruler):
+        * UserInterface/TimelineOverview.js: Added.
+        (WebInspector.TimelineOverview):
+        (WebInspector.TimelineOverview.prototype.get element):
+        (WebInspector.TimelineOverview.prototype.get startTime):
+        (WebInspector.TimelineOverview.prototype.set startTime):
+        (WebInspector.TimelineOverview.prototype.get secondsPerPixel):
+        (WebInspector.TimelineOverview.prototype.set secondsPerPixel):
+        (WebInspector.TimelineOverview.prototype.get endTime):
+        (WebInspector.TimelineOverview.prototype.set endTime):
+        (WebInspector.TimelineOverview.prototype.addMarker):
+        (WebInspector.TimelineOverview.prototype.revealMarker):
+        (WebInspector.TimelineOverview.prototype.updateLayout):
+        (WebInspector.TimelineOverview.prototype._updateElementWidth):
+        (WebInspector.TimelineOverview.prototype._needsLayout):
+        * UserInterface/TimelineRecording.js:
+        (WebInspector.TimelineRecording.prototype.get startTime):
+        (WebInspector.TimelineRecording.prototype.get endTime):
+        (WebInspector.TimelineRecording.prototype.reset):
+        * UserInterface/TimelineRuler.css:
+        (.timeline-ruler > .markers):
+        (.timeline-ruler > .markers > .marker):
+        (.timeline-ruler > .markers > .marker.current-time):
+        (.timeline-ruler > .markers > .marker.current-time::before):
+        (.timeline-ruler > .markers > .marker.load-event):
+        (.timeline-ruler > .markers > .marker.dom-content-event):
+        (.timeline-ruler > .markers > .marker.timestamp):
+        * UserInterface/TimelineRuler.js:
+        (WebInspector.TimelineRuler):
+        (WebInspector.TimelineRuler.prototype.updateLayout):
+        (WebInspector.TimelineRuler.prototype._needsLayout):
+        (WebInspector.TimelineRuler.prototype._needsMarkerLayout.update):
+        (WebInspector.TimelineRuler.prototype._needsMarkerLayout):
+        (WebInspector.TimelineRuler.prototype._recalculate):
+        (WebInspector.TimelineRuler.prototype._updateLeftPositionOfElement):
+        (WebInspector.TimelineRuler.prototype._updateMarkers):
+        (WebInspector.TimelineRuler.prototype._timelineMarkerTimeChanged):
+
+2013-12-13  Timothy Hatcher  <timothy@apple.com>
+
+        Clean up and refactor TimelineDecorations into TimelineRuler.
+
+        https://bugs.webkit.org/show_bug.cgi?id=125709
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Main.html:
+        * UserInterface/OverviewTimelineView.css:
+        (.timeline-view.overview > .timeline-ruler):
+        (.timeline-view.overview > .timeline-ruler > .header):
+        (.timeline-view.overview > .timeline-ruler > .event-markers):
+        Updated class names and border sides.
+
+        * UserInterface/OverviewTimelineView.js:
+        (WebInspector.OverviewTimelineView):
+        (WebInspector.OverviewTimelineView.prototype.updateLayout):
+        Call updateLayout on the TimelineRuler.
+
+        * UserInterface/TimelineRuler.css: Renamed from Source/WebInspectorUI/UserInterface/TimelineDecorations.css.
+        (.timeline-ruler):
+        (.timeline-ruler > .header):
+        (.timeline-ruler > .header > .divider):
+        (.timeline-ruler > .header > .divider > .label):
+        (.timeline-ruler > .event-markers):
+        (.timeline-ruler > .event-markers > .event-marker-tooltip):
+        (.timeline-ruler > .event-markers > .event-marker):
+        (.timeline-ruler > .event-markers > .event-marker.load-event):
+        (.timeline-ruler > .event-markers > .event-marker.dom-content-event):
+        (.timeline-ruler > .event-markers > .event-marker.timestamp):
+        Updated class names and border sides.
+
+        * UserInterface/TimelineRuler.js: Renamed from Source/WebInspectorUI/UserInterface/TimelineDecorations.js.
+        (WebInspector.TimelineRuler):
+        (WebInspector.TimelineRuler.prototype.get element):
+        (WebInspector.TimelineRuler.prototype.get headerElement):
+        (WebInspector.TimelineRuler.prototype.get allowsClippedLabels):
+        (WebInspector.TimelineRuler.prototype.set allowsClippedLabels):
+        (WebInspector.TimelineRuler.prototype.get zeroTime):
+        (WebInspector.TimelineRuler.prototype.set zeroTime):
+        (WebInspector.TimelineRuler.prototype.get startTime):
+        (WebInspector.TimelineRuler.prototype.set startTime):
+        (WebInspector.TimelineRuler.prototype.get duration):
+        (WebInspector.TimelineRuler.prototype.set duration):
+        (WebInspector.TimelineRuler.prototype.get endTime):
+        (WebInspector.TimelineRuler.prototype.set endTime):
+        (WebInspector.TimelineRuler.prototype.get secondsPerPixel):
+        (WebInspector.TimelineRuler.prototype.set secondsPerPixel):
+        (WebInspector.TimelineRuler.prototype.updateLayout.removeDividerAndSelectNext):
+        (WebInspector.TimelineRuler.prototype.updateLayout):
+        (WebInspector.TimelineRuler.prototype._needsLayout):
+        (WebInspector.TimelineRuler.prototype._recalculate):
+        Refactor so the times are stored on TimelineRuler and not passed in each time an update is needed.
+        Support dividers that don't always start at the zero position, allowing a sliding time ruler.
+        Support for a non-pinned ruler where the end time is not fixed and the scale is specified in
+        seconds-per-pixel.
+
+2014-01-08  Timothy Hatcher  <timothy@apple.com>
+
+        Improve scroll performance of WebInspector.TreeOutlineDataGridSynchronizer.
+
+        https://bugs.webkit.org/show_bug.cgi?id=126660
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/TreeOutlineDataGridSynchronizer.js:
+        (WebInspector.TreeOutlineDataGridSynchronizer.prototype._treeOutlineScrolled):
+        (WebInspector.TreeOutlineDataGridSynchronizer.prototype._dataGridScrolled):
+        Ignore scroll events triggered by our internal use of setting scrollTop.
+
+2013-11-15  Timothy Hatcher  <timothy@apple.com>
+
+        Add a synchronized DataGrid to the OverviewTimelineView.
+
+        The DataGrid is synchronized with the sidebar TreeOutline to appear as one when the view
+        and sidebar are both showing. The two scroll, expand and collapse in sync when the view
+        is showing. When the view is not showing the sidebar can scroll independently.
+
+        https://bugs.webkit.org/show_bug.cgi?id=124429
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/DataGrid.js:
+        (WebInspector.DataGrid):
+        (WebInspector.DataGrid.createSortableDataGrid):
+        (WebInspector.DataGrid.prototype._copyTextForDataGridNode):
+        (WebInspector.DataGridNode.prototype.createCellContent):
+        Handle undefined/null cells better by substituting empty strings.
+
+        (WebInspector.DataGridNode.prototype.collapse):
+        (WebInspector.DataGridNode.prototype.expand):
+        Fire events on the DataGrid for expand and collapse.
+
+        * UserInterface/Main.html: Include TreeOutlineDataGridSynchronizer.js.
+
+        * UserInterface/NavigationSidebarPanel.css:
+        (.sidebar > .panel.navigation > .content): Shorten by 1px to match the content view height.
+        Needed to keep scrolling in sync. The clipping looks better too.
+
+        * UserInterface/OverviewTimelineView.css:
+        (.timeline-view.overview > .data-grid):
+        (.timeline-view.overview > .data-grid table.header):
+        (.timeline-view.overview > .data-grid .data-container):
+        Style the DataGrid to to not have a header.
+
+        * UserInterface/OverviewTimelineView.js:
+        (WebInspector.OverviewTimelineView):
+        (WebInspector.OverviewTimelineView.prototype.shown):
+        (WebInspector.OverviewTimelineView.prototype._addResourceToTreeIfNeeded):
+        (WebInspector.OverviewTimelineView.prototype._sourceCodeTimelineAdded):
+        Create the DataGrid and some placeholder nodes. Hook up TreeOutlineDataGridSynchronizer.
+
+        * UserInterface/TimelineContentView.css:
+        (.content-view.timeline > .view-container > .timeline-view > .data-grid td):
+        (.content-view.timeline > .view-container > .timeline-view > .data-grid table.data):
+        Style the DataGrid to match the height of TreeElements in the sidebar.
+
+        * UserInterface/TimelineSidebarPanel.css:
+        (.sidebar > .panel.timeline.timeline-content-view-showing > .content):
+        Hide the scrollbar off the right when the view is showing. The view will show the scrollbar.
+
+        * UserInterface/TimelineSidebarPanel.js:
+        (WebInspector.TimelineSidebarPanel):
+        (WebInspector.TimelineSidebarPanel.prototype._timelinesTreeElementSelected):
+        (WebInspector.TimelineSidebarPanel.prototype._contentBrowserCurrentContentViewDidChange):
+
+        * UserInterface/TreeOutline.js:
+        (TreeOutline.prototype.removeChildAtIndex):
+        (TreeOutline.prototype.removeChildren):
+        (TreeOutline.prototype.removeChildrenRecursive):
+        (TreeElement.prototype.set hidden):
+        Add event callbacks for onhidden and onremove.
+
+        * UserInterface/TreeOutlineDataGridSynchronizer.js: Added.
+        (WebInspector.TreeOutlineDataGridSynchronizer):
+        (WebInspector.TreeOutlineDataGridSynchronizer.prototype.associate):
+        (WebInspector.TreeOutlineDataGridSynchronizer.prototype.synchronize):
+        (WebInspector.TreeOutlineDataGridSynchronizer.prototype._treeOutlineScrolled):
+        (WebInspector.TreeOutlineDataGridSynchronizer.prototype._dataGridScrolled):
+        (WebInspector.TreeOutlineDataGridSynchronizer.prototype._dataGridNodeSelected):
+        (WebInspector.TreeOutlineDataGridSynchronizer.prototype._dataGridNodeExpanded):
+        (WebInspector.TreeOutlineDataGridSynchronizer.prototype._dataGridNodeCollapsed):
+        (WebInspector.TreeOutlineDataGridSynchronizer.prototype._treeElementSelected):
+        (WebInspector.TreeOutlineDataGridSynchronizer.prototype._treeElementAdded):
+        (WebInspector.TreeOutlineDataGridSynchronizer.prototype._treeElementRemoved):
+        (WebInspector.TreeOutlineDataGridSynchronizer.prototype._treeElementExpanded):
+        (WebInspector.TreeOutlineDataGridSynchronizer.prototype._treeElementCollapsed):
+        (WebInspector.TreeOutlineDataGridSynchronizer.prototype._treeElementHiddenChanged):
+
+2013-11-07  Timothy Hatcher  <timothy@apple.com>
+
+        Start fleshing out the Overview Timeline view.
+
+        This gets the overview populating in the Timeline sidebar. The graph side is still empty.
+
+        https://bugs.webkit.org/show_bug.cgi?id=124005
+
+        Reviewed by Joseph Pecoraro.
+
+        * Localizations/en.lproj/localizedStrings.js: Updated.
+        * UserInterface/Frame.js:
+        (WebInspector.Frame.prototype.addResource):
+        * UserInterface/Images/TimelineRecordAnimation.svg: Added.
+        * UserInterface/Images/TimelineRecordEvent.svg: Added.
+        * UserInterface/Images/TimelineRecordLayout.svg: Added.
+        * UserInterface/Images/TimelineRecordPaint.svg: Added.
+        * UserInterface/Images/TimelineRecordScriptEvaluated.svg: Added.
+        * UserInterface/Images/TimelineRecordStyle.svg: Added.
+        * UserInterface/Images/TimelineRecordTimer.svg: Added.
+        * UserInterface/Main.html:
+        * UserInterface/OverviewTimelineView.js: Added.
+        (WebInspector.OverviewTimelineView):
+        (WebInspector.OverviewTimelineView.prototype.get navigationSidebarTreeOutlineLabel):
+        (WebInspector.OverviewTimelineView.prototype._childFrameWasAdded):
+        (WebInspector.OverviewTimelineView.prototype._mainResourceDidChange):
+        (WebInspector.OverviewTimelineView.prototype._provisionalResourceWasAdded):
+        (WebInspector.OverviewTimelineView.prototype._resourceWasAdded):
+        (WebInspector.OverviewTimelineView.prototype._compareTreeElementsByDetails):
+        (WebInspector.OverviewTimelineView.prototype._compareTreeElementsByStartTime):
+        (WebInspector.OverviewTimelineView.prototype._insertTreeElement):
+        (WebInspector.OverviewTimelineView.prototype._addResourceToTreeIfNeeded):
+        (WebInspector.OverviewTimelineView.prototype._sourceCodeTimelineAdded):
+        (WebInspector.OverviewTimelineView.prototype._treeElementSelected):
+        * UserInterface/SourceCodeTimelineTreeElement.js: Added.
+        (WebInspector.SourceCodeTimelineTreeElement):
+        (WebInspector.SourceCodeTimelineTreeElement.prototype.get sourceCodeTimeline):
+        * UserInterface/TimelineContentView.js:
+        (WebInspector.TimelineContentView.createPathComponent):
+        (WebInspector.TimelineContentView):
+        (WebInspector.TimelineContentView.prototype.showOverviewTimelineView):
+        (WebInspector.TimelineContentView.prototype.showTimelineView):
+        (WebInspector.TimelineContentView.prototype.get supportsSplitContentBrowser):
+        (WebInspector.TimelineContentView.prototype.get selectionPathComponents):
+        (WebInspector.TimelineContentView.prototype._pathComponentSelected):
+        (WebInspector.TimelineContentView.prototype._showTimelineView):
+        (WebInspector.TimelineContentView.prototype._recordingReset):
+        * UserInterface/TimelineIcons.css:
+        (.style-record .icon): Added.
+        (.layout-record .icon): Added.
+        (.paint-record .icon): Added.
+        (.evaluated-record .icon): Added.
+        (.event-record .icon): Added.
+        (.timer-record .icon): Added.
+        (.animation-record .icon): Added.
+        * UserInterface/TimelineView.css: Added.
+        (.timeline-view):
+        * UserInterface/TimelineView.js: Added.
+        (WebInspector.TimelineView):
+        (WebInspector.TimelineView.prototype.get navigationSidebarTreeOutline):
+        (WebInspector.TimelineView.prototype.get navigationSidebarTreeOutlineLabel):
+        (WebInspector.TimelineView.prototype.reset):
+        (WebInspector.TimelineView.prototype.shown):
+        (WebInspector.TimelineView.prototype.hidden):
+
+2013-11-07  Timothy Hatcher  <timothy@apple.com>
+
+        Start fleshing out the new TimelineSidebarPanel and TimelineContentView.
+
+        https://bugs.webkit.org/show_bug.cgi?id=124003
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/ContentView.js:
+        (WebInspector.ContentView):
+        (WebInspector.ContentView.isViewable):
+        * UserInterface/FrameContentView.js:
+        * UserInterface/Images/CloseTimeline.png: Added.
+        * UserInterface/Images/CloseTimeline@2x.png: Added.
+        * UserInterface/Images/ColorsLarge.png: Added.
+        * UserInterface/Images/ColorsLarge@2x.png: Added.
+        * UserInterface/Images/NetworkLarge.png: Added.
+        * UserInterface/Images/NetworkLarge@2x.png: Added.
+        * UserInterface/Images/ScriptLarge.png: Added.
+        * UserInterface/Images/ScriptLarge@2x.png: Added.
+        * UserInterface/Main.html:
+        * UserInterface/Main.js:
+        (WebInspector.sidebarPanelForRepresentedObject):
+        (WebInspector._revealAndSelectRepresentedObjectInNavigationSidebar):
+        * UserInterface/NavigationSidebarPanel.js:
+        (WebInspector.NavigationSidebarPanel.prototype.showDefaultContentView):
+        * UserInterface/ResourceClusterContentView.js:
+        * UserInterface/TimelineContentView.css: Added.
+        (.content-view.timeline > .view-container):
+        * UserInterface/TimelineContentView.js: Added.
+        (WebInspector.TimelineContentView):
+        * UserInterface/TimelineIcons.css: Renamed from Source/WebInspectorUI/UserInterface/InstrumentIcons.css.
+        (.network-icon.large .icon): Added.
+        (.colors-icon.large .icon): Added.
+        (.script-icon.large .icon): Added.
+        * UserInterface/TimelineSidebarPanel.css:
+        (.sidebar > .panel.timeline > .navigation-bar):
+        (.sidebar > .panel.timeline > .title-bar):
+        (.sidebar > .panel.timeline > .title-bar.timelines):
+        (.sidebar > .panel.timeline > .title-bar.timeline-events):
+        (.sidebar > .panel.timeline > .timelines-content):
+        (.sidebar > .panel.timeline > .timelines-content .close-button):
+        (.sidebar > .panel.timeline > .timelines-content li.item.selected .close-button):
+        (.sidebar > .panel.timeline > .timelines-content .close-button:active):
+        (.sidebar > .panel.timeline > .content):
+        * UserInterface/TimelineSidebarPanel.js:
+        (WebInspector.TimelineSidebarPanel.createTimelineTreeElement):
+        (WebInspector.TimelineSidebarPanel):
+        (WebInspector.TimelineSidebarPanel.prototype.showDefaultContentView):
+        (WebInspector.TimelineSidebarPanel.prototype.treeElementForRepresentedObject):
+        (WebInspector.TimelineSidebarPanel.prototype.get contentTreeOutlineLabel):
+        (WebInspector.TimelineSidebarPanel.prototype.set contentTreeOutlineLabel):
+        (WebInspector.TimelineSidebarPanel.prototype.showTimelineOverview):
+        (WebInspector.TimelineSidebarPanel.prototype.showTimelineView):
+        (WebInspector.TimelineSidebarPanel.prototype._timelinesTreeElementSelected):
+
+2014-01-08  Timothy Hatcher  <timothy@apple.com>
+
+        Correctly track time bounds of WebInspector.Timeline and WebInspector.TimelineRecording.
+
+        The startTime and endTime were not correct when Network timeline needed to be taken into
+        account (due to its dynamic loading nature.) This creates a network Timeline for the purposes
+        of tracking the ResourceTimelineRecords and getting accurate start and end times.
+
+        Also changes the way TimelineRecord tracks the inactive portion of time, needed for later
+        work on the timeline graphs.
+
+        https://bugs.webkit.org/show_bug.cgi?id=126676
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/ResourceTimelineRecord.js:
+        (WebInspector.ResourceTimelineRecord.prototype.get updatesDynamically):
+        (WebInspector.ResourceTimelineRecord.prototype.get usesActiveStartTime):
+        (WebInspector.ResourceTimelineRecord.prototype.get startTime):
+        (WebInspector.ResourceTimelineRecord.prototype.get activeStartTime):
+        (WebInspector.ResourceTimelineRecord.prototype.get endTime):
+        * UserInterface/Timeline.js:
+        (WebInspector.Timeline):
+        (WebInspector.Timeline.prototype.get startTime):
+        (WebInspector.Timeline.prototype.get endTime):
+        (WebInspector.Timeline.prototype.addRecord):
+        (WebInspector.Timeline.prototype._updateTimesIfNeeded):
+        (WebInspector.Timeline.prototype._recordUpdated):
+        * UserInterface/TimelineRecord.js:
+        (WebInspector.TimelineRecord.prototype.get startTime):
+        (WebInspector.TimelineRecord.prototype.get activeStartTime):
+        (WebInspector.TimelineRecord.prototype.get endTime):
+        (WebInspector.TimelineRecord.prototype.get inactiveDuration):
+        (WebInspector.TimelineRecord.prototype.get activeDuration):
+        (WebInspector.TimelineRecord.prototype.get updatesDynamically):
+        (WebInspector.TimelineRecord.prototype.get usesActiveStartTime):
+        * UserInterface/TimelineRecording.js:
+        (WebInspector.TimelineRecording.prototype._timelineTimesUpdated):
+
+2013-10-25  Timothy Hatcher  <timothy@apple.com>
+
+        Implement TimelineRecording and per-call-site timelines.
+
+        Keep track of timeline records per global timeline and per source code location.
+        This will be used to display them in the UI in later patches.
+
+        https://bugs.webkit.org/show_bug.cgi?id=123367
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Main.html:
+        * UserInterface/SourceCodeTimeline.js: Added.
+        (WebInspector.SourceCodeTimeline):
+        (WebInspector.SourceCodeTimeline.prototype.get sourceCode):
+        (WebInspector.SourceCodeTimeline.prototype.get sourceCodeLocation):
+        (WebInspector.SourceCodeTimeline.prototype.get recordType):
+        (WebInspector.SourceCodeTimeline.prototype.get recordEventType):
+        * UserInterface/Timeline.js: Added.
+        (WebInspector.Timeline):
+        (WebInspector.Timeline.prototype.get records):
+        (WebInspector.Timeline.prototype.addRecord):
+        * UserInterface/TimelineRecording.js:
+        (WebInspector.TimelineRecording):
+        (WebInspector.TimelineRecording.prototype.get timelines): Added.
+        (WebInspector.TimelineRecording.prototype.sourceCodeTimelinesForSourceCode): Added.
+        (WebInspector.TimelineRecording.prototype.addEventMarker): Implemented.
+        (WebInspector.TimelineRecording.prototype.addRecord): Implemented.
+        (WebInspector.TimelineRecording.prototype._keyForRecord): Added.
+
+2013-10-25  Timothy Hatcher  <timothy@apple.com>
+
+        Add support for multiple Timeline recordings.
+
+        We also don't explicitly add ResourceTimelineRecords anymore. These will be tracked automatically in a later patch.
+
+        https://bugs.webkit.org/show_bug.cgi?id=123366
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/DashboardManager.js:
+        (WebInspector.DashboardManager.prototype._mainResourceDidChange): Check for currentRecording.
+        * UserInterface/InspectorFrontendAPI.js:
+        (InspectorFrontendAPI.isTimelineProfilingEnabled): Check for currentRecording.
+        * UserInterface/Main.html:
+        * UserInterface/TimelineManager.js:
+        (WebInspector.TimelineManager):
+        (WebInspector.TimelineManager.prototype.get currentRecording): Added.
+        (WebInspector.TimelineManager.prototype.startRecording): Make a new recording and push it onto the recording array.
+        Add the current recording to the event.
+        (WebInspector.TimelineManager.prototype.stopRecording): Add the current recording to the event.
+        (WebInspector.TimelineManager.prototype.eventRecorded.processRecord): Check for currentRecording. Add the markers
+        to the current recording.
+        (WebInspector.TimelineManager.prototype._addRecord): Add the record to the current recording.
+        (WebInspector.TimelineManager.prototype._startAutoRecording): Clean up. Don't add ResourceTimelineRecord. Clear recordings.
+        (WebInspector.TimelineManager.prototype._stopAutoRecordingSoon): Check for _currentRecording.
+        (WebInspector.TimelineManager.prototype._resetAutoRecordingDeadTimeTimeout): Ditto.
+        (WebInspector.TimelineManager.prototype._mainResourceDidChange): Don't add ResourceTimelineRecord anymore.
+        (WebInspector.TimelineManager.prototype._resourceWasAdded): Removed.
+        * UserInterface/TimelineRecording.js: Added.
+        (WebInspector.TimelineRecording): Added.
+        (WebInspector.TimelineRecording.prototype.addEventMarker): Added.
+        (WebInspector.TimelineRecording.prototype.addRecord): Added.
+
+2013-10-25  Timothy Hatcher  <timothy@apple.com>
+
+        Track callFrames and sourceCodeLocation per TimelineRecord.
+
+        https://bugs.webkit.org/show_bug.cgi?id=123359
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/LayoutTimelineRecord.js:
+        (WebInspector.LayoutTimelineRecord): Pass callFrames and sourceCodeLocation to superclass.
+        * UserInterface/ScriptTimelineRecord.js:
+        (WebInspector.ScriptTimelineRecord): Pass callFrames and sourceCodeLocation to superclass.
+        * UserInterface/TimelineManager.js:
+        (WebInspector.TimelineManager.prototype.eventRecorded.processRecord): Add "Payload" suffix to better track what is a protocol object.
+        Pass the callFrames and sourceCodeLocation to all the new TimelineRecords.
+        (WebInspector.TimelineManager.prototype.eventRecorded): Add "Payload" suffix.
+        * UserInterface/TimelineRecord.js:
+        (WebInspector.TimelineRecord):
+        (WebInspector.TimelineRecord.prototype.get callFrames): Added.
+        (WebInspector.TimelineRecord.prototype.get initiatorCallFrame): Added.
+        (WebInspector.TimelineRecord.prototype.get sourceCodeLocation): Added.
+
+2013-10-25  Timothy Hatcher  <timothy@apple.com>
+
+        Change how the load and content ready event timestamps are tracked.
+
+        https://bugs.webkit.org/show_bug.cgi?id=123356
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/DashboardManager.js:
+        (WebInspector.DashboardManager.prototype._updateTime): Use the timestamps on the main frame.
+        * UserInterface/Frame.js:
+        (WebInspector.Frame):
+        (WebInspector.Frame.prototype.get domContentReadyEventTimestamp): Added.
+        (WebInspector.Frame.prototype.get loadEventTimestamp): Added.
+        (WebInspector.Frame.prototype.markDOMContentReadyEvent): Added.
+        (WebInspector.Frame.prototype.markLoadEvent): Added.
+        * UserInterface/TimelineManager.js:
+        (WebInspector.TimelineManager.prototype.eventRecorded.processRecord): Use markLoadEvent and markDOMContentReadyEvent.
+        Do it for all frames, not just the main frame.
+        (WebInspector.TimelineManager.prototype.pageDidLoad): Call markLoadEvent on the Frame.
+
+2013-10-25  Timothy Hatcher  <timothy@apple.com>
+
+        Remove a lot of the current Timelines code to make room for a new implementation.
+
+        https://bugs.webkit.org/show_bug.cgi?id=123368
+
+        Reviewed by Joseph Pecoraro.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/ContentView.js:
+        (WebInspector.ContentView):
+        (WebInspector.ContentView.isViewable):
+        * UserInterface/DashboardView.js:
+        (WebInspector.DashboardView.prototype._networkItemWasClicked):
+        * UserInterface/InspectorFrontendAPI.js:
+        (InspectorFrontendAPI.setTimelineProfilingEnabled):
+        (InspectorFrontendAPI.stopProfilingJavaScript):
+        * UserInterface/InstrumentSidebarPanel.js: Removed.
+        * UserInterface/Main.html:
+        * UserInterface/Main.js:
+        (WebInspector.contentLoaded):
+        (WebInspector.sidebarPanelForRepresentedObject):
+        (WebInspector.openURL):
+        * UserInterface/Object.js:
+        (WebInspector.Object.addEventListener):
+        * UserInterface/TimelineManager.js:
+        (WebInspector.TimelineManager):
+        (WebInspector.TimelineManager.prototype.startRecording):
+        (WebInspector.TimelineManager.prototype.eventRecorded.processRecord):
+        (WebInspector.TimelineManager.prototype.eventRecorded):
+        (WebInspector.TimelineManager.prototype.objectForCookie):
+        (WebInspector.TimelineManager.prototype._addRecord):
+        * UserInterface/TimelinesObject.js: Removed.
+        * UserInterface/TimelineOverview.css: Removed.
+        * UserInterface/TimelineOverview.js: Removed.
+        * UserInterface/TimelineSidebarPanel.css: Added.
+        * UserInterface/TimelineSidebarPanel.js: Added.
+        (WebInspector.TimelineSidebarPanel):
+        * UserInterface/TimelinesContentView.css: Removed.
+        * UserInterface/TimelinesContentView.js: Removed.
+
+2014-01-20  Timothy Hatcher  <timothy@apple.com>
+
+        Fix jumping to a text position when showing a resource.
+
+        https://bugs.webkit.org/show_bug.cgi?id=127271
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/FrameContentView.js:
+        (WebInspector.FrameContentView.prototype.showSourceCode): Just use showResponse's arguments
+        which already does the same logic to call revealPosition.
+        * UserInterface/ResourceClusterContentView.js:
+        (WebInspector.ResourceClusterContentView.prototype.restoreFromCookie): This was the bug.
+        lineNumber and columnNumber need honored here. They were only honored by FrameContentView.
+        * UserInterface/ResourceSidebarPanel.js:
+        (WebInspector.ResourceSidebarPanel.prototype.showSourceCode): Use showContentViewForRepresentedObject
+        which also accepts a cookie and handles creating the content view for us.
+
+2014-01-16  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: add more context to Object.addEventListener assertions
+        https://bugs.webkit.org/show_bug.cgi?id=127125
+
+        Reviewed by Joseph Pecoraro.
+
+        Log invalid event type and listener parameters, and log the other
+        parameters so the callsite is easier to figure out.
+
+        * UserInterface/Object.js:
+        (WebInspector.Object.addEventListener):
+
+2014-01-16  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: CallFrame is missing saveIdentityToCookie, or should be excluded
+        https://bugs.webkit.org/show_bug.cgi?id=126791
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/CallFrame.js: Add a dummy saveIdentityToCookie() implementation.
+
+2014-01-16  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: add probe breakpoint action to popup breakpoint editor
+        https://bugs.webkit.org/show_bug.cgi?id=126931
+
+        Reviewed by Timothy Hatcher.
+
+        Add probes to the breakpoint action dropdown.
+        Reuse the "evaluate JavaScript" input UI.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/BreakpointAction.js:
+        * UserInterface/BreakpointActionView.js:
+        (WebInspector.BreakpointActionView.displayStringForType):
+        (WebInspector.BreakpointActionView.prototype._updateBody.switch.break):
+
+2014-01-15  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: capture probe samples on the backend
+        https://bugs.webkit.org/show_bug.cgi?id=126668
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/InspectorJSBackendCommands.js: Add probe enumeration value.
+
+2014-01-15  Andreas Kling  <akling@apple.com>
+
+        Remove the CSS selector profiler.
+        <https://webkit.org/b/127039>
+
+        Purge selector profiler code from the new Web Inspector UI.
+
+        Reviewed by Sam Weinig.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/CSSSelectorProfileObject.js: Removed.
+        * UserInterface/CSSSelectorProfileType.js: Removed.
+        * UserInterface/CSSSelectorProfileView.js: Removed.
+        * UserInterface/ContentView.js:
+        (WebInspector.ContentView):
+        (WebInspector.ContentView.isViewable):
+        * UserInterface/InspectorWebBackendCommands.js:
+        * UserInterface/InstrumentSidebarPanel.js:
+        (WebInspector.InstrumentSidebarPanel):
+        (WebInspector.InstrumentSidebarPanel.prototype._recordProfileGlyphMousedOver):
+        (WebInspector.InstrumentSidebarPanel.prototype._recordProfileGlyphMousedDown):
+        (WebInspector.InstrumentSidebarPanel.prototype._recordProfileGlyphClicked):
+        (WebInspector.InstrumentSidebarPanel.prototype._profileTypeWasSelected):
+        (WebInspector.InstrumentSidebarPanel.prototype._profilesCleared):
+        * UserInterface/Main.html:
+        * UserInterface/ProfileManager.js:
+        (WebInspector.ProfileManager):
+        (WebInspector.ProfileManager.prototype.initialize):
+        (WebInspector.ProfileManager.prototype._checkForInterruptions):
+        (WebInspector.ProfileManager.prototype._attemptToResumeProfiling):
+        * WebInspectorUI.vcxproj/WebInspectorUI.vcxproj:
+        * WebInspectorUI.vcxproj/WebInspectorUI.vcxproj.filters:
+
+2014-01-13  Timothy Hatcher  <timothy@apple.com>
+
+        Snap time dividers to nearest numbers instead of just dividing the time span into max density slices.
+
+        https://bugs.webkit.org/show_bug.cgi?id=125081
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/TimelineDecorations.js:
+        (WebInspector.TimelineDecorations.prototype.updateHeaderTimes): Snap the time slice to a nearest number.
+        (WebInspector.TimelineDecorations.prototype.updateEventMarkers): Rename boundarySpan to timeSpan.
+
+2014-01-10  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Remove unimplemented or static ScriptDebugServer features
+        https://bugs.webkit.org/show_bug.cgi?id=126784
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/InspectorJSBackendCommands.js:
+        * UserInterface/InspectorWebBackendCommands.js:
+        * UserInterface/Legacy/6.0/InspectorWebBackendCommands.js:
+        * UserInterface/Legacy/7.0/InspectorWebBackendCommands.js:
+        * Versions/Inspector-iOS-6.0.json:
+        * Versions/Inspector-iOS-7.0.json:
+
+2014-01-10  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: support negative numbers in secondsToString and bytesToString.
+
+        https://bugs.webkit.org/show_bug.cgi?id=125708
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Utilities.js:
+        (Number.secondsToString): Use Math.abs in the size checks.
+        (Number.bytesToString): Ditto.
+
+2014-01-10  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: cycle clicked breakpoints between enabled, auto-continue, and disabled
+        https://bugs.webkit.org/show_bug.cgi?id=126669
+
+        Reviewed by Joseph Pecoraro.
+
+        It's time-consuming to change a breakpoint's auto-continue setting through the
+        breakpoint editor popup. This patch enables the user to toggle between enabled,
+        auto-continue, and disabled by clicking on the breakpoint wedge in the sidebar
+        tree and in the source text editor gutter. The auto-continue option is only
+        cycled when the breakpoint has associated actions.
+
+        Clean up the breakpoint editor dialog so it hides irrelevant options when
+        no breakpoint actions have been added.
+
+        Automatically unset auto-continue when the last breakpoint action is removed.
+
+        Rename the delegate textEditorBreakpointToggled to textEditorBreakpointClicked, since
+        the behavior of the click depends on breakpoint state not available in the text editor.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Breakpoint.js:
+        (WebInspector.Breakpoint.prototype.cycleToNextMode): Added.
+        (WebInspector.Breakpoint.prototype.toggleAutoContinue): Added.
+        (WebInspector.Breakpoint.prototype.appendContextMenuItems): Add auto-continue options.
+        (WebInspector.Breakpoint.prototype.removeAction):
+
+        (WebInspector.Breakpoint.prototype._editBreakpointPopoverContentElement):
+        (WebInspector.Breakpoint.prototype._popoverActionsAddActionButtonClicked):
+        (WebInspector.Breakpoint.prototype.breakpointActionViewAppendActionView):
+        (WebInspector.Breakpoint.prototype.breakpointActionViewRemoveActionView):
+        (WebInspector.Breakpoint.prototype.willDismissPopover):
+        * UserInterface/BreakpointTreeElement.css:
+        (.item.breakpoint .status > .status-image.auto-continue):
+        (.item.breakpoint .status > .status-image.disabled):
+        * UserInterface/BreakpointTreeElement.js:
+        (WebInspector.BreakpointTreeElement):
+        (WebInspector.BreakpointTreeElement.prototype.onenter):
+        (WebInspector.BreakpointTreeElement.prototype.onspace):
+        (WebInspector.BreakpointTreeElement.prototype._updateStatus):
+        (WebInspector.BreakpointTreeElement.prototype._breakpointLocationDidChange):
+        (WebInspector.BreakpointTreeElement.prototype._statusImageElementClicked):
+        * UserInterface/SourceCodeTextEditor.js:
+        (WebInspector.SourceCodeTextEditor):
+        (WebInspector.SourceCodeTextEditor.prototype.close):
+        (WebInspector.SourceCodeTextEditor.prototype._breakpointInfoForBreakpoint):
+        (WebInspector.SourceCodeTextEditor.prototype.textEditorBreakpointClicked):
+        * UserInterface/TextEditor.css:
+        (.text-editor > .CodeMirror .breakpoint-auto-continue:not(.breakpoint-disabled) .CodeMirror-linenumber::before):
+        * UserInterface/TextEditor.js:
+        (WebInspector.TextEditor.prototype._setBreakpointStylesOnLine.updateStyles):
+        (WebInspector.TextEditor.prototype._setBreakpointStylesOnLine):
+        (WebInspector.TextEditor.prototype.updateStyles):
+        (WebInspector.TextEditor.prototype._removeBreakpointFromLineAndColumn):
+        (WebInspector.TextEditor.prototype._documentMouseUp):
+
+2014-01-10  Timothy Hatcher  <timothy@apple.com>
+
+        Clean up some areas of TreeOutline.
+
+        https://bugs.webkit.org/show_bug.cgi?id=123924
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/TreeOutline.js:
+        (TreeOutline.prototype.appendChild): Don't force create _childrenListNode, it will be created
+        when the tree element is expanded. Only attach if _childrenListNode already exists.
+        (TreeOutline.prototype.insertChild): Ditto.
+        (TreeOutline.prototype.getCachedTreeElement): Check the value of __treeElementIdentifier
+        not just the existence of the property. It should never be null/undefined/0, but be safe.
+        (TreeOutline.prototype.findTreeElement): Null check isAncestor, it isn't required.
+
+2014-01-10  Timothy Hatcher  <timothy@apple.com>
+
+        Fix an exception in WebInspector.Color.
+
+        https://bugs.webkit.org/show_bug.cgi?id=126765
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Color.js:
+        (WebInspector.Color.fromString): Check hasOwnPrperty before using the nickname color array.
+        (WebInspector.Color.prototype._toNicknameString): Ditto.
+
+2014-01-10  Joseph Pecoraro  <pecoraro@apple.com>
+
+        [CSS Blending] Log blending as a layer creation reason in the WI
+        https://bugs.webkit.org/show_bug.cgi?id=126159
+
+        Reviewed by Timothy Hatcher.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/LayerTreeSidebarPanel.js:
+        (WebInspector.LayerTreeSidebarPanel.prototype._populateListOfCompositingReasons):
+
+2014-01-10  Peter Molnar  <pmolnar.u-szeged@partner.samsung.com>
+
+        Add missing function stub in InspectorFrontendHostStub.js
+        https://bugs.webkit.org/show_bug.cgi?id=126745
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/InspectorFrontendHostStub.js:
+        (.WebInspector.InspectorFrontendHostStub.prototype.debuggableType):
+        The function debuggableType() was added to InspectorFrontendHost.idl and InspectorFrontendHost.cpp
+        in r160887, but not to InspectorFrontendHostStub.js.
+
+2014-01-09  Seokju Kwon  <seokju@webkit.org>
+
+        Web Inspector: Remove unused overriding protocols.
+        https://bugs.webkit.org/show_bug.cgi?id=126630
+
+        Reviewed by Timothy Hatcher.
+
+        Update InspectorWebBackendCommands.js after removing unused overriding protocols.
+
+        * UserInterface/InspectorWebBackendCommands.js:
+        * UserInterface/Legacy/6.0/InspectorWebBackendCommands.js:
+        * UserInterface/Legacy/7.0/InspectorWebBackendCommands.js:
+        * Versions/Inspector-iOS-6.0.json:
+        * Versions/Inspector-iOS-7.0.json:
+
+2014-01-07  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Typo "clipboarPrefixString"
+        https://bugs.webkit.org/show_bug.cgi?id=126595
+
+        Reviewed by Sam Weinig.
+
+        * UserInterface/ConsoleCommandResult.js:
+        (WebInspector.ConsoleCommandResult.prototype.toMessageElement):
+        (WebInspector.ConsoleCommandResult.prototype.get clipboardPrefixString):
+        * UserInterface/ConsoleMessageImpl.js:
+        (WebInspector.ConsoleMessageImpl.prototype.get clipboardPrefixString):
+        (WebInspector.ConsoleMessageImpl.prototype.toClipboardString):
+
+2014-01-06  Seokju Kwon  <seokju@webkit.org>
+
+        Web Inspector: Remove canOverrideDeviceMetrics and setDeviceMetricsOverride from protocol
+        https://bugs.webkit.org/show_bug.cgi?id=126149
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/InspectorWebBackendCommands.js: Remove unused codes.
+        * UserInterface/Legacy/6.0/InspectorWebBackendCommands.js: Ditto.
+        * UserInterface/Legacy/7.0/InspectorWebBackendCommands.js: Ditto.
+        * Versions/Inspector-iOS-6.0.json: Ditto.
+        * Versions/Inspector-iOS-7.0.json: Ditto.
+
+2014-01-06  Seokju Kwon  <seokju@webkit.org>
+
+        Web Inspector: Remove support for FileSystem in Frontend.
+        https://bugs.webkit.org/show_bug.cgi?id=126369
+
+        Reviewed by Joseph Pecoraro.
+
+        Update InspectorWebBackendCommands after removing 'FileSystem' domain.
+
+        * UserInterface/InspectorWebBackendCommands.js:
+        * UserInterface/Legacy/6.0/InspectorWebBackendCommands.js:
+        * UserInterface/Legacy/7.0/InspectorWebBackendCommands.js:
+        * Versions/Inspector-iOS-6.0.json:
+        * Versions/Inspector-iOS-7.0.json:
+
+2014-01-06  Seokju Kwon  <seokju@webkit.org>
+
+        Web Inspector: Get rid of DOM.setFileInputFiles from Protocol
+        https://bugs.webkit.org/show_bug.cgi?id=126312
+
+        Reviewed by Joseph Pecoraro.
+
+        Update InspectorWebBackendCommands.js after removing DOM.setFileInputFiles.
+
+        * UserInterface/InspectorWebBackendCommands.js:
+
+2013-12-22  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK][CMake] Integrate GResource for inspector files (and others?)
+        https://bugs.webkit.org/show_bug.cgi?id=125569
+
+        Reviewed by Gustavo Noronha Silva.
+
+        * GNUmakefile.am: Use the new generation script instead of generating with
+        shell scripting in the makefile.
+
+2013-12-19  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Frontend Error when selecting Database folder in Resources Sidebar
+        https://bugs.webkit.org/show_bug.cgi?id=126029
+
+        Reviewed by Timothy Hatcher.
+
+        Treat the DatabaseHostTreeElement tree element like a folder. It pretty much
+        is a folder, but inherits from StorageTreeElement to share some code there.
+
+        * UserInterface/ResourceSidebarPanel.js:
+        (WebInspector.ResourceSidebarPanel.prototype._treeElementSelected):
+
 2013-12-19  Joseph Pecoraro  <pecoraro@apple.com>
 
         Web Inspector: Uncaught Exception: NavigationSidebarPanel.js: TypeError: undefined is not a function

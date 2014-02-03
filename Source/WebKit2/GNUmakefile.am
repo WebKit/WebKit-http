@@ -19,24 +19,12 @@ libexec_PROGRAMS += \
 	Programs/WebKitPluginProcess
 endif
 
-${GENSOURCES_WEBINSPECTOR_UI}/WebKit2GResourceBundle.xml: GNUmakefile \
-	$(WebKit2)/UIProcess/InspectorServer/front-end/inspectorPageIndex.html
-	$(AM_V_GEN)
-	$(AM_V_at)mkdir -p ${GENSOURCES_WEBINSPECTOR_UI}
-	$(AM_V_at)echo '<?xml version="1.0" encoding="UTF-8"?>' > ${GENSOURCES_WEBINSPECTOR_UI}/WebKit2GResourceBundle.xml
-	$(AM_V_at)echo '<gresources>' >> ${GENSOURCES_WEBINSPECTOR_UI}/WebKit2GResourceBundle.xml
-	$(AM_V_at)echo '  <gresource prefix="/org/webkitgtk/inspector/UserInterface">' >> ${GENSOURCES_WEBINSPECTOR_UI}/WebKit2GResourceBundle.xml
-	$(AM_V_at)echo "    <file>inspectorPageIndex.html</file>" >> ${GENSOURCES_WEBINSPECTOR_UI}/WebKit2GResourceBundle.xml
-	$(AM_V_at)echo '  </gresource>' >> ${GENSOURCES_WEBINSPECTOR_UI}/WebKit2GResourceBundle.xml
-	$(AM_V_at)echo '</gresources>' >> ${GENSOURCES_WEBINSPECTOR_UI}/WebKit2GResourceBundle.xml
-
-${GENSOURCES_WEBINSPECTOR_UI}/WebKit2GResourceBundle.c: DerivedSources/WebInspectorUI/WebKit2GResourceBundle.xml
+${GENSOURCES_WEBINSPECTOR_UI}/WebKit2GResourceBundle.c: \
+		$(WebKit2)/UIProcess/InspectorServer/front-end/inspectorPageIndex.html \
+		$(WebKit2)/UIProcess/API/gtk/WebKit2InspectorGResourceBundle.xml
 	$(AM_V_GEN)
 	$(AM_V_at)glib-compile-resources --generate --sourcedir=$(WebKit2)/UIProcess/InspectorServer/front-end \
-		--target=${GENSOURCES_WEBINSPECTOR_UI}/WebKit2GResourceBundle.c ${GENSOURCES_WEBINSPECTOR_UI}/WebKit2GResourceBundle.xml
-
-BUILT_SOURCES += \
-	DerivedSources/WebInspectorUI/WebKit2GResourceBundle.xml
+		--target=${GENSOURCES_WEBINSPECTOR_UI}/WebKit2GResourceBundle.c $(WebKit2)/UIProcess/API/gtk/WebKit2InspectorGResourceBundle.xml
 
 webkit2gtk_built_sources += \
 	DerivedSources/WebInspectorUI/WebKit2GResourceBundle.c
@@ -57,12 +45,12 @@ libWebKit2Platform_la_CPPFLAGS = \
 	-DBUILDING_WEBKIT \
 	$(global_cppflags) \
 	-fno-strict-aliasing \
+	-include $(srcdir)/Source/WebKit2/WebKit2Prefix.h \
 	-I$(srcdir)/Source/WebKit2 \
 	-I$(srcdir)/Source \
 	-I$(srcdir)/Source/WTF \
 	-I$(srcdir)/Source/WebKit2/Platform \
-	-I$(srcdir)/Source/WebKit2/Platform/CoreIPC \
-	-I$(srcdir)/Source/WebKit2/Platform/CoreIPC/gtk \
+	-I$(srcdir)/Source/WebKit2/Platform/IPC/gtk \
 	-I$(srcdir)/Source/WebKit2/Platform/IPC \
 	-I$(srcdir)/Source/WebKit2/Platform/gtk \
 	-I$(top_builddir)/DerivedSources/WebKit2/include \
@@ -72,16 +60,12 @@ libWebKit2Platform_la_CPPFLAGS = \
 
 
 libwebkit2gtk_@WEBKITGTK_API_MAJOR_VERSION@_@WEBKITGTK_API_MINOR_VERSION@_la_HEADERS = \
-	$(webkit2_h_api)
+	$(webkit2gtk_ui_h_api) \
+	$(webkit2gtk_web_extension_h_api)
 
-libwebkit2gtkincludedir = $(libwebkitgtkincludedir)/webkit2
-nodist_libwebkit2gtkinclude_HEADERS = \
+nodist_libwebkit2gtk_@WEBKITGTK_API_MAJOR_VERSION@_@WEBKITGTK_API_MINOR_VERSION@_la_HEADERS = \
 	DerivedSources/WebKit2/webkit2gtk/webkit2/WebKitEnumTypes.h \
 	DerivedSources/WebKit2/webkit2gtk/webkit2/WebKitVersion.h
-
-libwebkit2gtkinclude_HEADERS = \
-	$(webkit2gtk_h_api) \
-	$(webkit2_web_extension_h_api)
 
 nodist_libwebkit2gtk_@WEBKITGTK_API_MAJOR_VERSION@_@WEBKITGTK_API_MINOR_VERSION@_la_SOURCES = \
 	$(webkit2_built_sources) \
@@ -101,8 +85,7 @@ libwebkit2gtk_@WEBKITGTK_API_MAJOR_VERSION@_@WEBKITGTK_API_MINOR_VERSION@_la_CPP
 	-I$(srcdir)/Source/WebKit2/NetworkProcess \
 	-I$(srcdir)/Source/WebKit2/NetworkProcess/FileAPI \
 	-I$(srcdir)/Source/WebKit2/Platform \
-	-I$(srcdir)/Source/WebKit2/Platform/CoreIPC \
-	-I$(srcdir)/Source/WebKit2/Platform/CoreIPC/gtk \
+	-I$(srcdir)/Source/WebKit2/Platform/IPC/gtk \
 	-I$(srcdir)/Source/WebKit2/Platform/IPC \
 	-I$(srcdir)/Source/WebKit2/Platform/gtk \
 	-I$(srcdir)/Source/WebKit2/PluginProcess \
@@ -121,6 +104,7 @@ libwebkit2gtk_@WEBKITGTK_API_MAJOR_VERSION@_@WEBKITGTK_API_MINOR_VERSION@_la_CPP
 	-I$(srcdir)/Source/WebKit2/Shared/gtk \
 	-I$(srcdir)/Source/WebKit2/Shared/Network \
 	-I$(srcdir)/Source/WebKit2/Shared/Network/CustomProtocols \
+	-I$(srcdir)/Source/WebKit2/Shared/Network/CustomProtocols/soup \
 	-I$(srcdir)/Source/WebKit2/Shared/Plugins \
 	-I$(srcdir)/Source/WebKit2/Shared/Plugins/Netscape \
 	-I$(srcdir)/Source/WebKit2/Shared/Plugins/Netscape/x11 \
@@ -138,6 +122,8 @@ libwebkit2gtk_@WEBKITGTK_API_MAJOR_VERSION@_@WEBKITGTK_API_MINOR_VERSION@_la_CPP
 	-I$(srcdir)/Source/WebKit2/UIProcess/Launcher \
 	-I$(srcdir)/Source/WebKit2/UIProcess/Launcher/gtk \
 	-I$(srcdir)/Source/WebKit2/UIProcess/Network \
+	-I$(srcdir)/Source/WebKit2/UIProcess/Network/CustomProtocols \
+	-I$(srcdir)/Source/WebKit2/UIProcess/Network/CustomProtocols/soup \
 	-I$(srcdir)/Source/WebKit2/UIProcess/Notifications \
 	-I$(srcdir)/Source/WebKit2/UIProcess/Plugins \
 	-I$(srcdir)/Source/WebKit2/UIProcess/Plugins/unix \
@@ -228,7 +214,7 @@ $(webkit2gtk_lib_for_dep): libwebkitgtk-@WEBKITGTK_API_MAJOR_VERSION@.@WEBKITGTK
 endif
 
 libwebkit2gtk_@WEBKITGTK_API_MAJOR_VERSION@_@WEBKITGTK_API_MINOR_VERSION@_ladir = \
-	$(libwebkit2gtkincludedir)/WebKit2
+	$(libwebkitgtkincludedir)/webkit2
 
 libwebkit2gtk_@WEBKITGTK_API_MAJOR_VERSION@_@WEBKITGTK_API_MINOR_VERSION@_la_LDFLAGS := \
 	-version-info @LIBWEBKIT2GTK_VERSION@ \
@@ -295,6 +281,10 @@ libwebkit2gtk_@WEBKITGTK_API_MAJOR_VERSION@_@WEBKITGTK_API_MINOR_VERSION@_la_LIB
 	$(XT_LIBS) \
 	$(ZLIB_LIBS)
 
+webkit2gtk_h_api += \
+	$(webkit2gtk_ui_h_api) \
+	$(webkit2gtk_web_extension_h_api)
+
 if ENABLE_WEBKIT2
 pkgconfig_DATA += Source/WebKit2/webkit2gtk-@WEBKITGTK_API_VERSION@.pc
 
@@ -329,7 +319,6 @@ WebKit2-@WEBKITGTK_API_VERSION@.gir: $(G_IR_SCANNER) libwebkit2gtk-@WEBKITGTK_AP
 	     -I$(srcdir)/Source \
 	     -I$(WebKit2) \
 	     -I$(GENSOURCES) \
-	     -I$(GENSOURCES_WEBKITDOM) \
 	     -I$(GENSOURCES_WEBKIT2) \
 	     -I$(top_builddir)/Source/WebKit2/UIProcess/API/gtk \
 	     -I$(top_srcdir)/Source/JavaScriptCore/ForwardingHeaders \
@@ -339,8 +328,7 @@ WebKit2-@WEBKITGTK_API_VERSION@.gir: $(G_IR_SCANNER) libwebkit2gtk-@WEBKITGTK_AP
 	     -DBUILDING_WEBKIT \
 	     -DWEBKIT2_COMPILATION \
 	     $(GENSOURCES_WEBKIT2)/webkit2gtk/webkit2/WebKitEnumTypes.h \
-	     $(webkit2gtk_h_api) \
-	     $(webkitgtk_gdom_built_h_api) \
+	     $(webkit2gtk_ui_h_api) \
 	     $(WebKit2)/UIProcess/API/gtk/*.cpp
 
 WebKit2-@WEBKITGTK_API_VERSION@.typelib: WebKit2-@WEBKITGTK_API_VERSION@.gir $(G_IR_COMPILER)
@@ -348,8 +336,57 @@ WebKit2-@WEBKITGTK_API_VERSION@.typelib: WebKit2-@WEBKITGTK_API_VERSION@.gir $(G
 
 gir_DATA += WebKit2-@WEBKITGTK_API_VERSION@.gir
 typelibs_DATA += WebKit2-@WEBKITGTK_API_VERSION@.typelib
-
 CLEANFILES += WebKit2-@WEBKITGTK_API_VERSION@.gir WebKit2-@WEBKITGTK_API_VERSION@.typelib
+
+WebKit2WebExtension-@WEBKITGTK_API_VERSION@.gir: $(G_IR_SCANNER) WebKit2-@WEBKITGTK_API_VERSION@.gir
+	$(AM_V_GEN) \
+	     CC="$(CC)" \
+	     CFLAGS="$(CFLAGS) -Wno-deprecated-declarations" \
+	     $(G_IR_SCANNER) \
+	     --quiet \
+	     --warn-all \
+	     --symbol-prefix=webkit \
+	     --identifier-prefix=WebKit \
+	     --namespace=WebKit2WebExtension \
+	     --nsversion=@WEBKITGTK_API_VERSION@ \
+	     --include=GObject-2.0 \
+	     --include=Gtk-3.0 \
+	     --include-uninstalled=JavaScriptCore-@WEBKITGTK_API_VERSION@.gir \
+	     --include-uninstalled=WebKit2-@WEBKITGTK_API_VERSION@.gir \
+	     --library=webkit2gtk-@WEBKITGTK_API_VERSION@ \
+	     --library=javascriptcoregtk-@WEBKITGTK_API_VERSION@ \
+	     --libtool="$(LIBTOOL)" \
+	     --pkg=gobject-2.0 \
+	     --pkg=gtk+-@GTK_API_VERSION@ \
+	     --pkg=libsoup-2.4 \
+	     --pkg-export=webkit2gtk-@WEBKITGTK_API_VERSION@ \
+	     --output=$@ \
+	     --add-include-path=$(WebKit2) \
+	     --add-include-path=$(top_builddir) \
+	     --c-include="webkit2/webkit-web-extension.h" \
+	     -I$(srcdir)/Source \
+	     -I$(WebKit2) \
+	     -I$(GENSOURCES) \
+	     -I$(GENSOURCES_WEBKITDOM) \
+	     -I$(GENSOURCES_WEBKIT2) \
+	     -I$(top_builddir)/Source/WebKit2/WebProcess/InjectedBundle/API/gtk \
+	     -I$(top_srcdir)/Source/JavaScriptCore/ForwardingHeaders \
+	     -I$(top_srcdir) \
+	     -I$(GENSOURCES_WEBKIT2)/webkit2gtk/include \
+	     -I$(GENSOURCES_WEBKIT2)/webkit2extension/include \
+	     -I$(GENSOURCES_WEBKIT2)/webkit2gtk \
+	     -DBUILDING_WEBKIT \
+	     -DWEBKIT2_COMPILATION \
+	     $(webkit2gtk_web_extension_h_api) \
+	     $(webkitgtk_gdom_built_h_api) \
+	     $(WebKit2)/WebProcess/InjectedBundle/API/gtk/*.cpp
+
+WebKit2WebExtension-@WEBKITGTK_API_VERSION@.typelib: WebKit2WebExtension-@WEBKITGTK_API_VERSION@.gir $(G_IR_COMPILER)
+	$(AM_V_GEN)$(G_IR_COMPILER) --includedir $(WebKit2) --includedir $(top_builddir) $< -o $@
+
+gir_DATA += WebKit2WebExtension-@WEBKITGTK_API_VERSION@.gir
+typelibs_DATA += WebKit2WebExtension-@WEBKITGTK_API_VERSION@.typelib
+CLEANFILES += WebKit2WebExtension-@WEBKITGTK_API_VERSION@.gir WebKit2WebExtension-@WEBKITGTK_API_VERSION@.typelib
 
 endif
 endif
@@ -361,12 +398,14 @@ stamp-webkit2-forwarding-headers: $(WebKit2)/Scripts/generate-forwarding-headers
 
 BUILT_SOURCES += $(top_builddir)/stamp-webkit2-forwarding-headers
 
-$(GENSOURCES_WEBKIT2)/webkit2gtk/include/webkit2: $(libwebkit2gtkinclude_HEADERS)
+$(GENSOURCES_WEBKIT2)/webkit2gtk/include/webkit2: $(webkit2gtk_h_api)
 	$(AM_V_GEN)mkdir -p $(GENSOURCES_WEBKIT2)/webkit2gtk/include \
+	&& rm -f $@ \
 	&& ln -n -s -f ${shell pwd}/$(WebKit2)/UIProcess/API/gtk $@
 
-$(GENSOURCES_WEBKIT2)/webkit2extension/include/webkit2: $(libwebkit2gtkinclude_HEADERS)
+$(GENSOURCES_WEBKIT2)/webkit2extension/include/webkit2: $(webkit2gtk_h_api)
 	$(AM_V_GEN)mkdir -p $(GENSOURCES_WEBKIT2)/webkit2extension/include \
+	&& rm -f $@ \
 	&& ln -n -s -f ${shell pwd}/$(WebKit2)/WebProcess/InjectedBundle/API/gtk $@
 
 BUILT_SOURCES += \
@@ -378,6 +417,7 @@ vpath %.messages.in = \
 	$(WebKit2)/PluginProcess \
 	$(WebKit2)/Shared \
 	$(WebKit2)/Shared/Authentication \
+	$(WebKit2)/Shared/Network/CustomProtocols \
 	$(WebKit2)/Shared/Plugins \
 	$(WebKit2)/UIProcess \
 	$(WebKit2)/UIProcess/ApplicationCache \
@@ -388,7 +428,6 @@ vpath %.messages.in = \
 	$(WebKit2)/UIProcess/Plugins \
 	$(WebKit2)/UIProcess/ResourceCache \
 	$(WebKit2)/UIProcess/Storage \
-	$(WebKit2)/UIProcess/soup \
 	$(WebKit2)/WebProcess \
 	$(WebKit2)/WebProcess/ApplicationCache \
 	$(WebKit2)/WebProcess/Battery \
@@ -427,9 +466,9 @@ webkit2gtk_built_headers_dir := $(GENSOURCES_WEBKIT2)/webkit2gtk/webkit2
 $(GENSOURCES_WEBKIT2)/webkit2gtk/webkit2/WebKitEnumTypes.h: stamp-webkit2enumtypes
 	@true
 
-stamp-webkit2enumtypes: $(libwebkit2gtkinclude_HEADERS) $(WebKit2)/GNUmakefile.am
+stamp-webkit2enumtypes: $(webkit2gtk_h_api) $(WebKit2)/GNUmakefile.am
 	$(AM_V_GEN)mkdir -p $(GENSOURCES_WEBKIT2)/webkit2gtk/webkit2 \
-	&& glib-mkenums --template $(WebKit2)/UIProcess/API/gtk/WebKitEnumTypes.h.template $(libwebkit2gtkinclude_HEADERS) | \
+	&& glib-mkenums --template $(WebKit2)/UIProcess/API/gtk/WebKitEnumTypes.h.template $(webkit2gtk_h_api) | \
 		sed 's,web_kit,webkit,' | \
 		sed 's,WEBKIT_TYPE_KIT,WEBKIT_TYPE,' \
 		> wk2-xgen-gth \
@@ -437,9 +476,9 @@ stamp-webkit2enumtypes: $(libwebkit2gtkinclude_HEADERS) $(WebKit2)/GNUmakefile.a
 	&& rm -f wk2-xgen-gth \
 	&& echo timestamp > $(@F)
 
-$(GENSOURCES_WEBKIT2)/webkit2gtk/webkit2/WebKitEnumTypes.cpp: $(libwebkit2gtkinclude_HEADERS) $(WebKit2)/GNUmakefile.am
+$(GENSOURCES_WEBKIT2)/webkit2gtk/webkit2/WebKitEnumTypes.cpp: $(webkit2gtk_h_api) $(WebKit2)/GNUmakefile.am
 	$(AM_V_GEN)mkdir -p $(GENSOURCES_WEBKIT2)/webkit2gtk/webkit2 \
-	&& glib-mkenums --template $(WebKit2)/UIProcess/API/gtk/WebKitEnumTypes.cpp.template $(libwebkit2gtkinclude_HEADERS) | \
+	&& glib-mkenums --template $(WebKit2)/UIProcess/API/gtk/WebKitEnumTypes.cpp.template $(webkit2gtk_h_api) | \
 		sed 's,web_kit,webkit,' \
 		> wk2-xgen-gtc \
 	&& cp wk2-xgen-gtc $@ \
@@ -473,12 +512,13 @@ CLEANFILES += \
 DISTCLEANFILES += \
 	$(top_builddir)/WebKit2/webkit2gtk-@WEBKITGTK_API_VERSION@.pc
 
-if ENABLE_NETWORK_PROCESS
+if ENABLE_WEBKIT2
 libexec_PROGRAMS += \
 	Programs/WebKitNetworkProcess
 endif
 
 Programs_WebKitNetworkProcess_CPPFLAGS = \
+	-include $(srcdir)/Source/WebKit2/WebKit2Prefix.h \
 	-I$(srcdir)/Source/WebKit2 \
 	-I$(srcdir)/Source/WebKit2/UIProcess/API/C \
 	-I$(srcdir)/Source/WebKit2/NetworkProcess/unix \
@@ -511,6 +551,7 @@ libexec_PROGRAMS += \
 endif
 
 Programs_WebKitWebProcess_CPPFLAGS = \
+	-include $(srcdir)/Source/WebKit2/WebKit2Prefix.h \
 	-I$(srcdir)/Source/WebKit2 \
 	-I$(srcdir)/Source/WebKit2/UIProcess/API/C \
 	-I$(srcdir)/Source/WebKit2/WebProcess/gtk \
@@ -541,9 +582,6 @@ Programs_WebKitWebProcess_LDADD = \
 	$(GTK_LIBS) \
 	$(GTK_UNIX_PRINTING_LIBS) \
 	$(LIBSOUP_LIBS)
-
-Programs_WebKitWebProcess_LDFLAGS = \
-	-no-fast-install
 
 libWebCoreGtk2_la_SOURCES = \
 	$(webcoregtk_sources)
@@ -680,7 +718,6 @@ Programs_WebKitPluginProcess_CPPFLAGS = \
 	-include $(srcdir)/Source/WebKit2/WebKit2Prefix.h \
 	-I$(srcdir)/Source/WebKit2 \
 	-I$(srcdir)/Source/WebKit2/Platform \
-	-I$(srcdir)/Source/WebKit2/Platform/CoreIPC/ \
 	-I$(srcdir)/Source/WebKit2/Platform/IPC \
 	-I$(srcdir)/Source/WebKit2/PluginProcess/ \
 	-I$(srcdir)/Source/WebKit2/PluginProcess/unix \
@@ -764,9 +801,6 @@ Programs_WebKitPluginProcess_LDADD = \
 	$(WINMM_LIBS) \
 	$(ZLIB_LIBS)
 
-Programs_WebKitPluginProcess_LDFLAGS = \
-	-no-fast-install
-
 Programs_WebKitPluginProcess_CXXFLAGS = \
 	-fvisibility-inlines-hidden \
 	$(global_cxxflags)
@@ -784,6 +818,7 @@ EXTRA_DIST += \
 	$(WebKit2)/UIProcess/API/gtk/webkit2marshal.list \
 	$(WebKit2)/UIProcess/API/gtk/WebKitEnumTypes.h.template \
 	$(WebKit2)/UIProcess/API/gtk/WebKitEnumTypes.cpp.template \
+	$(WebKit2)/UIProcess/API/gtk/WebKit2InspectorGResourceBundle.xml \
 	$(WebKit2)/UIProcess/InspectorServer/front-end/inspectorPageIndex.html \
 	$(WebKit2)/Scripts/generate-forwarding-headers.pl \
 	$(shell ls $(WebKit2)/NetworkProcess/*.in) \

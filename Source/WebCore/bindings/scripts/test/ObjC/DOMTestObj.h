@@ -26,8 +26,6 @@
 
 #import <WebCore/DOMObject.h>
 
-#if WEBKIT_VERSION_MAX_ALLOWED >= WEBKIT_VERSION_LATEST
-
 @class DOMDictionary;
 @class DOMDocument;
 @class DOMNode;
@@ -46,9 +44,6 @@
 @protocol DOMEventListener;
 
 enum {
-#if ENABLE(Condition1)
-    DOM_CONDITIONAL_CONST = 0,
-#endif
     DOM_CONST_VALUE_0 = 0,
     DOM_CONST_VALUE_1 = 1,
     DOM_CONST_VALUE_2 = 2,
@@ -62,8 +57,9 @@ enum {
     DOM_CONST_VALUE_14 = 0x1abc,
     DOM_CONST_JAVASCRIPT = 15,
     DOM_readonly = 0
-};
+} WEBKIT_ENUM_AVAILABLE_MAC(TBD);
 
+WEBKIT_CLASS_AVAILABLE_MAC(TBD)
 @interface DOMTestObj : DOMObject
 @property (readonly) int readOnlyLongAttr;
 @property (readonly, copy) NSString *readOnlyStringAttr;
@@ -160,24 +156,9 @@ enum {
 - (void)methodWithOptionalString:(NSString *)str;
 - (void)methodWithOptionalStringIsUndefined:(NSString *)str;
 - (void)methodWithOptionalStringIsNullString:(NSString *)str;
-#if ENABLE(Condition1)
-- (NSString *)conditionalMethod1;
-#endif
-#if ENABLE(Condition1) && ENABLE(Condition2)
-- (void)conditionalMethod2;
-#endif
-#if ENABLE(Condition1) || ENABLE(Condition2)
-- (void)conditionalMethod3;
-#endif
 - (void)classMethod;
 - (int)classMethodWithOptional:(int)arg;
 - (void)classMethod2:(int)arg;
-#if ENABLE(Condition1)
-- (void)overloadedMethod1:(int)arg;
-#endif
-#if ENABLE(Condition1)
-- (void)overloadedMethod1:(NSString *)type;
-#endif
 - (DOMSVGDocument *)getSVGDocument;
 - (void)convert1:(DOMTestNode *)value;
 - (void)convert2:(DOMTestNode *)value;
@@ -192,5 +173,3 @@ enum {
 - (void)variadicNodeMethod:(DOMNode *)head tail:(DOMNode *)tail;
 - (void)any:(float)a b:(int)b;
 @end
-
-#endif

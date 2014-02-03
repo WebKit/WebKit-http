@@ -52,7 +52,7 @@ class JSONLayoutResultsGenerator(json_results_generator.JSONResultsGenerator):
                        test_expectations.IMAGE_PLUS_TEXT: "Z"}
 
     def __init__(self, port, builder_name, build_name, build_number,
-        results_file_base_path, builder_base_url,
+        results_file_base_path,
         expectations, run_results,
         test_results_server=None, test_type="", master_name=""):
         """Modifies the results.json file. Grabs it off the archive directory
@@ -63,7 +63,7 @@ class JSONLayoutResultsGenerator(json_results_generator.JSONResultsGenerator):
         """
         super(JSONLayoutResultsGenerator, self).__init__(
             port, builder_name, build_name, build_number, results_file_base_path,
-            builder_base_url, {}, port.repository_paths(),
+            {}, port.repository_paths(),
             test_results_server, test_type, master_name)
 
         self._expectations = expectations
@@ -71,8 +71,6 @@ class JSONLayoutResultsGenerator(json_results_generator.JSONResultsGenerator):
         self._run_results = run_results
         self._failures = dict((test_name, run_results.results_by_name[test_name].type) for test_name in run_results.failures_by_name)
         self._test_timings = run_results.results_by_name
-
-        self.generate_json_output()
 
     def _get_path_relative_to_layout_test_root(self, test):
         """Returns the path of the test relative to the layout test root.

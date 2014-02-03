@@ -38,7 +38,7 @@ namespace WebCore {
 class AVTrackPrivateAVFObjCImpl;
 class SourceBufferPrivateAVFObjC;
 
-class AudioTrackPrivateMediaSourceAVFObjC FINAL : public AudioTrackPrivateAVF {
+class AudioTrackPrivateMediaSourceAVFObjC final : public AudioTrackPrivateAVF {
     WTF_MAKE_NONCOPYABLE(AudioTrackPrivateMediaSourceAVFObjC)
 public:
     static RefPtr<AudioTrackPrivateMediaSourceAVFObjC> create(AVAssetTrack* track, SourceBufferPrivateAVFObjC* parent)
@@ -46,8 +46,8 @@ public:
         return adoptRef(new AudioTrackPrivateMediaSourceAVFObjC(track, parent));
     }
 
-    virtual bool enabled() const OVERRIDE;
-    virtual void setEnabled(bool) OVERRIDE;
+    virtual bool enabled() const override;
+    virtual void setEnabled(bool) override;
 
     void setAssetTrack(AVAssetTrack*);
     AVAssetTrack* assetTrack();

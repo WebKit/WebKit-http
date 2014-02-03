@@ -30,6 +30,10 @@
 #include "WKMutableDictionary.h"
 #include "WKSharedAPICast.h"
 
+#if PLATFORM(MAC)
+#include "WKContextPrivateMac.h"
+#endif
+
 // Deprecated functions that should be removed from the framework once nobody uses them.
 
 using namespace WebKit;
@@ -71,5 +75,14 @@ void WKDictionaryRemoveItem(WKMutableDictionaryRef dictionaryRef, WKStringRef ke
 CGContextRef WKGraphicsContextGetCGContext(WKGraphicsContextRef graphicsContext)
 {
     return nullptr;
+}
+
+bool WKContextGetProcessSuppressionEnabled(WKContextRef)
+{
+    return true;
+}
+
+void WKContextSetProcessSuppressionEnabled(WKContextRef, bool)
+{
 }
 #endif

@@ -24,7 +24,7 @@
  */
 
 #ifdef __OBJC__
-#include <Cocoa/Cocoa.h>
+#import <Foundation/Foundation.h>
 #endif
 
 #if defined(BUILDING_GTK__)

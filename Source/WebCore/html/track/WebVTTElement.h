@@ -41,12 +41,12 @@ enum WebVTTNodeType {
     WebVTTNodeTypeVoice
 };
 
-class WebVTTElement FINAL : public Element {
+class WebVTTElement final : public Element {
 public:
     static PassRefPtr<WebVTTElement> create(const WebVTTNodeType, Document&);
     PassRefPtr<HTMLElement> createEquivalentHTMLElement(Document&);
 
-    virtual PassRefPtr<Element> cloneElementWithoutAttributesAndChildren() OVERRIDE;
+    virtual PassRefPtr<Element> cloneElementWithoutAttributesAndChildren() override;
 
     void setWebVTTNodeType(WebVTTNodeType type) { m_webVTTNodeType = static_cast<unsigned>(type); }
     WebVTTNodeType webVTTNodeType() const { return static_cast<WebVTTNodeType>(m_webVTTNodeType); }
@@ -72,7 +72,7 @@ public:
 private:
     WebVTTElement(WebVTTNodeType, Document&);
 
-    virtual bool isWebVTTElement() const OVERRIDE { return true; }
+    virtual bool isWebVTTElement() const override { return true; }
 
     unsigned m_isPastNode : 1;
     unsigned m_webVTTNodeType : 4;

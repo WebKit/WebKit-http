@@ -33,6 +33,9 @@ webkit.org/b/100984 media/progress-events-generated-correctly.html [ Failure ]
 fast/dom/Window/slow-unload-handler.html
 fast/dom/Window/slow-unload-handler-only-frame-is-stopped.html
 
+# This test fails on release and crashes on debug because of trying to use isEqual() with undefined objects
+webkit.org/b/126066 accessibility/loading-iframe-updates-axtree.html [ Failure Crash ]
+
 webkit.org/b/116636 accessibility/document-attributes.html [ Failure ]
 
 # Accessibility tests with missing AccessibilityController functionality.
@@ -40,8 +43,12 @@ webkit.org/b/116637 accessibility/selection-states.html [ Failure ]
 
 # Accessibility tests for notifications that don't exist or aren't needed on Mac OS X.
 accessibility/aria-checkbox-sends-notification.html
+accessibility/children-changed-sends-notification.html
 accessibility/menu-list-sends-change-notification.html
 accessibility/multiselect-list-reports-active-option.html
+
+# isIndeterminate is not implemented in mac
+webkit.org/b/125855 accessibility/aria-checked-mixed-value.html [ Skip ]
 
 # Need to add functionality to DumpRenderTree to handle error pages
 fast/history/back-forward-reset-after-error-handling.html
@@ -395,9 +402,6 @@ fast/events/constructors/media-key-event-constructor.html
 # Font feature settings is not implemented.
 css3/font-feature-settings-rendering.html
 
-# This test verifies that a mismatch reftest will fail as intended if both results are same.
-fast/harness/sample-fail-mismatch-reftest.html [ WontFix ImageOnlyFailure ]
-
 webkit.org/b/67716 media/media-controls-invalid-url.html [ Failure ]
 
 webkit.org/b/68278 http/tests/history/back-with-fragment-change.php [ Failure ]
@@ -512,9 +516,6 @@ webkit.org/b/82982 fast/dom/jsDevicePixelRatio.html [ Pass Failure ]
 
 webkit.org/b/83618 fast/dom/inline-event-attributes-release.html [ Pass Failure ]
 
-webkit.org/b/84102 fast/profiler/stop-profiling-after-setTimeout.html [ Pass Failure ]
-webkit.org/b/84102 fast/profiler/dead-time.html [ Pass Failure ]
-
 # Failing subpixel reference tests
 webkit.org/b/85532 fast/sub-pixel/file-upload-control-at-fractional-offset.html [ ImageOnlyFailure ]
 webkit.org/b/85532 fast/sub-pixel/zoomed-image-tiles.html [ ImageOnlyFailure ]
@@ -557,6 +558,9 @@ webkit.org/b/92352 css3/flexbox/flex-rounding.html
 # <rdar://problem/11224160> Focus not transferring properly in DumpRenderTree in Mountain Lion
 fast/events/show-modal-dialog-onblur-onfocus.html
 platform/mac/fast/forms/listbox-scrollbar-hit-test.html
+
+# Multiple non contiguous selection with keyboard not enabled on mac
+webkit.org/b/15816 fast/forms/listbox-non-contiguous-keyboard-selection.html [ Skip ]
 
 # <rdar://problem/11224894> Several Japanese vertical text tests failing on Mountain Lion
 fast/dynamic/text-combine.html
@@ -605,6 +609,11 @@ compositing/overflow/textarea-scroll-touch.html
 compositing/overflow/updating-scrolling-content.html
 compositing/overflow/scrolling-without-painting.html
 
+# Blend mode result is slightly different than the applied formula.
+css3/compositing/background-blend-mode-data-uri-svg-image.html [ ImageOnlyFailure Pass ]
+css3/compositing/background-blend-mode-tiled-layers.html [ ImageOnlyFailure Pass ]
+css3/compositing/background-blend-mode-crossfade-image.html [ ImageOnlyFailure Pass ]
+
 # https://bugs.webkit.org/show_bug.cgi?id=110871
 compositing/overlap-blending/reflection-opacity-huge.html
 
@@ -648,15 +657,6 @@ fast/canvas/canvas-quadratic-same-endpoint.html
 css3/filters/composited-during-transition-layertree.html
 webkit.org/b/95622 css3/filters/composited-during-animation-layertree.html [ Pass Failure ]
 
-# --- Custom Filters ---
-# The following 5 tests are currently skipped on Mac for slight color differences,
-# please see the relevant bug: http://webkit.org/b/107487
-webkit.org/b/107487 css3/filters/custom/custom-filter-blend-fractional-destination-alpha.html [ Skip ]
-webkit.org/b/107487 css3/filters/custom/custom-filter-nonseparable-blend-mode-color.html [ Skip ]
-webkit.org/b/107487 css3/filters/custom/custom-filter-nonseparable-blend-mode-luminosity.html [ Skip ]
-webkit.org/b/107487 css3/filters/custom/custom-filter-nonseparable-blend-mode-hue.html [ Skip ]
-webkit.org/b/107487 css3/filters/custom/custom-filter-nonseparable-blend-mode-saturation.html [ Skip ]
-
 # --- Text ---
 fast/forms/text-control-intrinsic-widths.html
 platform/mac/fast/text/combining-character-sequence-fallback.html
@@ -683,15 +683,7 @@ webgl/1.0.2/conformance/textures/texture-size.html [ Pass Failure ]
 webgl/1.0.2/conformance/limits/gl-max-texture-dimensions.html [ Pass Failure ]
 
 # Currently working on 1.0.2 conformance, skip currently known failing tests, <rdar://problem/12099869>
-webgl/1.0.2/conformance/glsl/misc/shader-with-too-many-uniforms.html [ Failure ]
-webgl/1.0.2/conformance/glsl/misc/shader-uniform-packing-restrictions.html [ Timeout ]
 webgl/1.0.2/conformance/glsl/misc/shaders-with-varyings.html [ Failure ]
-webgl/1.0.2/conformance/ogles/GL/biuDepthRange/biuDepthRange_001_to_002.html [ Failure ]
-webgl/1.0.2/conformance/ogles/GL/gl_FragCoord/gl_FragCoord_001_to_003.html [ Failure ]
-webgl/1.0.2/conformance/renderbuffers/framebuffer-object-attachment.html [ Failure ]
-webgl/1.0.2/conformance/rendering/gl-scissor-test.html [ Failure ]
-webgl/1.0.2/conformance/typedarrays/array-unit-tests.html [ Failure ]
-webgl/1.0.2/conformance/typedarrays/data-view-test.html [ Failure ]
 
 # Test is faulty, skipping for now
 webgl/1.0.2/conformance/ogles/GL/build/build_009_to_016.html [ Failure ]
@@ -915,6 +907,8 @@ webkit.org/b/93560 fast/canvas/webgl/tex-image-and-sub-image-2d-with-image-data.
 webkit.org/b/87541 fast/canvas/webgl/tex-image-and-sub-image-2d-with-video-rgb565.html [ Failure Pass ]
 webkit.org/b/87541 fast/canvas/webgl/tex-image-and-sub-image-2d-with-video-rgba4444.html [ Failure Pass ]
 webkit.org/b/87541 fast/canvas/webgl/tex-image-and-sub-image-2d-with-video-rgba5551.html [ Failure Pass ]
+
+webkit.org/b/126624 [ MountainLion ] webgl/1.0.2/conformance/textures/tex-image-and-sub-image-2d-with-video-rgb565.html [ Pass Failure Timeout ]
 
 webkit.org/b/92464 [ Debug ] fast/events/tabindex-focus-blur-all.html [ Crash Pass ]
 
@@ -1143,8 +1137,6 @@ webkit.org/b/115292 fast/writing-mode/vertical-font-fallback.html
 # Fails with WebKit1 only.
 editing/secure-input/reset-state-on-navigation.html [ Failure ]
 
-webkit.org/b/116238 css3/filters/custom/filter-fallback-to-software.html [ Pass ImageOnlyFailure ]
-
 webkit.org/b/116244 fast/events/mouse-cursor-image-set.html [ Failure Pass ]
 
 webkit.org/b/116245 canvas/philip/tests/2d.text.draw.fontface.notinpage.html [ Pass Failure ]
@@ -1252,12 +1244,6 @@ webkit.org/b/123282 compositing/regions/propagate-region-box-shadow-border-paddi
 
 webkit.org/b/123250 plugins/destroy-during-npp-new-object-with-fallback-content.html [ Pass Failure ]
 
-webkit.org/b/123370 [ Mavericks ] css3/filters/custom/composited/custom-filter-blend-modes.html [ Pass ImageOnlyFailure ]
-webkit.org/b/123370 [ Mavericks ] css3/filters/custom/custom-filter-blend-modes.html [ Pass ImageOnlyFailure ]
-webkit.org/b/123370 [ Mavericks ] css3/filters/custom/custom-filter-clamp-css-color-matrix.html [ Pass ImageOnlyFailure ]
-webkit.org/b/123370 [ Mavericks ] css3/filters/custom/custom-filter-composite-fractional-source-alpha.html [ Pass ImageOnlyFailure ]
-webkit.org/b/123370 [ Mavericks ] css3/filters/custom/effect-custom-transform-parameters.html [ Pass ImageOnlyFailure ]
-
 webkit.org/b/123369 svg/css/parent-shadow-offscreen.svg [ ImageOnlyFailure ]
 webkit.org/b/123369 [ MountainLion ] svg/css/parent-shadow-offscreen.svg [ Pass ]
 webkit.org/b/123369 svg/css/root-shadow-offscreen.svg [ ImageOnlyFailure ]
@@ -1305,3 +1291,35 @@ webkit.org/b/113220 fast/forms/select/popup-closes-on-blur.html [ Skip ]
 webkit.org/b/74384 fast/forms/select/menulist-onchange-fired-with-key-up-down.html [ WontFix ] # Additionally, this is not an expected behavior on Mac.
 
 webkit.org/b/123029 [ Debug ] platform/mac/editing/attributed-string [ Pass Crash ]
+
+webkit.org/b/124933 svg/animations/getCurrentTime-pause-unpause.html [ Pass Failure ]
+
+# GL Scissors don't work properly in Mountain Lion.
+webkit.org/b/126455 [ MountainLion ] webgl/1.0.2/conformance/rendering/gl-scissor-test.html [ Failure ]
+webkit.org/b/126586 [ Mavericks Debug ] webgl/1.0.2/conformance/rendering/gl-scissor-test.html [ Pass Failure ]
+
+# HTTP Auth in Media is not supported in Mavericks and Mountain Lion
+webkit.org/b/40382 http/tests/media/video-auth.html [ Skip ]
+
+webkit.org/b/52016 http/tests/xmlhttprequest/xmlhttprequest-50ms-download-dispatch.html [ Pass Failure Timeout ]
+
+# Crashes in garbage collection code.
+webkit.org/b/117756 media/track/media-element-enqueue-event-crash.html [ Skip ]
+
+# Subpixel failures
+# Subpixel: position dependent size: snapSizeToPixel()
+webkit.org/b/126889 fast/forms/input-widths.html [ Failure ]
+webkit.org/b/126889 fast/forms/number/number-size.html [ Failure ]
+
+# Subpixel: off-by-1 pixel rendering on mathml
+webkit.org/b/126897 mathml/presentation/bug95015.html [ ImageOnlyFailure ]
+
+# Subpixel: -webkit-flex off-by-one px
+webkit.org/b/126898 css3/flexbox/image-percent-max-height.html [ ImageOnlyFailure ]
+
+# Subpixel: misplaced zoomed svg content.
+webkit.org/b/126900 svg/zoom/page/zoom-zoom-coords.xhtml [ Failure ]
+
+webkit.org/b/35297 media/video-display-aspect-ratio.html [ Pass Failure ]
+
+webkit.org/b/127310 svg/filters/feComponentTransfer-style-crash.xhtml [ Pass Failure Timeout ]

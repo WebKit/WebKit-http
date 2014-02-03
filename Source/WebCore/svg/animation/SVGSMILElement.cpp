@@ -66,7 +66,7 @@ public:
             : 0;
     }
 
-    virtual bool operator==(const EventListener& other);
+    virtual bool operator==(const EventListener& other) override;
     
     void disconnectAnimation()
     {
@@ -81,7 +81,7 @@ private:
     {
     }
 
-    virtual void handleEvent(ScriptExecutionContext*, Event*);
+    virtual void handleEvent(ScriptExecutionContext*, Event*) override;
 
     SVGSMILElement* m_animation;
     SVGSMILElement::Condition* m_condition;
@@ -175,7 +175,7 @@ void SVGSMILElement::buildPendingResource()
 
     if (!svgTarget) {
         // Do not register as pending if we are already pending this resource.
-        if (document().accessSVGExtensions()->isElementPendingResource(this, id))
+        if (document().accessSVGExtensions()->isPendingResource(this, id))
             return;
 
         if (!id.isEmpty()) {
@@ -1146,7 +1146,8 @@ void SVGSMILElement::createInstanceTimesFromSyncbase(SVGSMILElement* syncbase, N
                 time = syncbase->m_intervalBegin + condition.m_offset;
             else
                 time = syncbase->m_intervalEnd + condition.m_offset;
-            ASSERT(time.isFinite());
+            if (!time.isFinite())
+                continue;
             if (condition.m_beginOrEnd == Begin)
                 addBeginTime(elapsed(), time);
             else

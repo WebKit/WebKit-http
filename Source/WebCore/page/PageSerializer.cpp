@@ -74,8 +74,7 @@ static bool isCharsetSpecifyingNode(const Node& node)
         return false;
     HTMLMetaCharsetParser::AttributeList attributes;
     if (element.hasAttributes()) {
-        for (unsigned i = 0; i < element.attributeCount(); ++i) {
-            const Attribute& attribute = element.attributeAt(i);
+        for (const Attribute& attribute : element.attributesIterator()) {
             // FIXME: We should deal appropriately with the attribute if they have a namespace.
             attributes.append(std::make_pair(attribute.name().toString(), attribute.value().string()));
         }
@@ -95,7 +94,7 @@ static const QualifiedName& frameOwnerURLAttributeName(const HTMLFrameOwnerEleme
     return isHTMLObjectElement(frameOwner) ? HTMLNames::dataAttr : HTMLNames::srcAttr;
 }
 
-class SerializerMarkupAccumulator FINAL : public WebCore::MarkupAccumulator {
+class SerializerMarkupAccumulator final : public WebCore::MarkupAccumulator {
 public:
     SerializerMarkupAccumulator(PageSerializer&, Document&, Vector<Node*>*);
     virtual ~SerializerMarkupAccumulator();
@@ -104,10 +103,10 @@ private:
     PageSerializer& m_serializer;
     Document& m_document;
 
-    virtual void appendText(StringBuilder&, const Text&) OVERRIDE;
-    virtual void appendElement(StringBuilder&, const Element&, Namespaces*) OVERRIDE;
-    virtual void appendCustomAttributes(StringBuilder&, const Element&, Namespaces*) OVERRIDE;
-    virtual void appendEndTag(const Node&) OVERRIDE;
+    virtual void appendText(StringBuilder&, const Text&) override;
+    virtual void appendElement(StringBuilder&, const Element&, Namespaces*) override;
+    virtual void appendCustomAttributes(StringBuilder&, const Element&, Namespaces*) override;
+    virtual void appendEndTag(const Node&) override;
 };
 
 SerializerMarkupAccumulator::SerializerMarkupAccumulator(PageSerializer& serializer, Document& document, Vector<Node*>* nodes)
@@ -217,7 +216,7 @@ void PageSerializer::serializeFrame(Frame* frame)
         return;
     }
     String text = accumulator.serializeNodes(*document->documentElement(), 0, IncludeNode);
-    CString frameHTML = textEncoding.encode(text.characters(), text.length(), EntitiesForUnencodables);
+    CString frameHTML = textEncoding.encode(text.deprecatedCharacters(), text.length(), EntitiesForUnencodables);
     m_resources->append(Resource(url, document->suggestedMIMEType(), SharedBuffer::create(frameHTML.data(), frameHTML.length())));
     m_resourceURLs.add(url);
 
@@ -284,7 +283,7 @@ void PageSerializer::serializeCSSStyleSheet(CSSStyleSheet* styleSheet, const URL
         TextEncoding textEncoding(styleSheet->contents().charset());
         ASSERT(textEncoding.isValid());
         String textString = cssText.toString();
-        CString text = textEncoding.encode(textString.characters(), textString.length(), EntitiesForUnencodables);
+        CString text = textEncoding.encode(textString.deprecatedCharacters(), textString.length(), EntitiesForUnencodables);
         m_resources->append(Resource(url, String("text/css"), SharedBuffer::create(text.data(), text.length())));
         m_resourceURLs.add(url);
     }

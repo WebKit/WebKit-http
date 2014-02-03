@@ -109,9 +109,6 @@ cursor [Inherited]
 empty-cells [Inherited]
 float
 font-stretch
-#if defined(ENABLE_CSS_SHADERS) && ENABLE_CSS_SHADERS
-geometry
-#endif
 height
 #if defined(ENABLE_CSS_IMAGE_ORIENTATION) && ENABLE_CSS_IMAGE_ORIENTATION
 image-orientation [Inherited]
@@ -135,10 +132,6 @@ max-height
 max-width
 min-height
 min-width
-#if defined(ENABLE_CSS_SHADERS) && ENABLE_CSS_SHADERS
-mix
-parameters
-#endif
 object-fit
 opacity
 // Honor -webkit-opacity as a synonym for opacity. This was the only syntax that worked in Safari 1.1,
@@ -391,22 +384,24 @@ z-index
 -webkit-text-align-last [Inherited]
 -webkit-text-justify [Inherited]
 #endif
-#if defined(ENABLE_CSS3_TEXT_DECORATION) && ENABLE_CSS3_TEXT_DECORATION
 -webkit-text-decoration
 -webkit-text-decoration-line
 -webkit-text-decoration-style
 -webkit-text-decoration-color
 -webkit-text-decoration-skip [Inherited]
 -webkit-text-underline-position [Inherited]
-#endif
 -webkit-text-decorations-in-effect [Inherited]
 -webkit-text-emphasis [Inherited]
 -epub-text-emphasis = -webkit-text-emphasis
+text-emphasis = -webkit-text-emphasis
 -webkit-text-emphasis-color [Inherited]
 -epub-text-emphasis-color = -webkit-text-emphasis-color
+text-emphasis-color = -webkit-text-emphasis-color
 -webkit-text-emphasis-position [Inherited]
+text-emphasis-position = -webkit-text-emphasis-position
 -webkit-text-emphasis-style [Inherited]
 -epub-text-emphasis-style = -webkit-text-emphasis-style
+text-emphasis-style = -webkit-text-emphasis-style
 -webkit-text-fill-color [Inherited]
 -webkit-text-security [Inherited]
 -webkit-text-stroke [Inherited]
@@ -457,12 +452,13 @@ user-zoom
 #if defined(ENABLE_DASHBOARD_SUPPORT) && ENABLE_DASHBOARD_SUPPORT
 -webkit-dashboard-region
 #endif
-#if defined(ENABLE_DRAGGABLE_REGION) && ENABLE_DRAGGABLE_REGION
--webkit-app-region
-#endif
 #if defined(ENABLE_ACCELERATED_OVERFLOW_SCROLLING) && ENABLE_ACCELERATED_OVERFLOW_SCROLLING
 -webkit-overflow-scrolling [Inherited]
 #endif
 #if defined(WTF_PLATFORM_IOS) && WTF_PLATFORM_IOS
 -webkit-touch-callout [Inherited]
+
+// FIXME: This property shouldn't be iOS-specific. Once we fix up its usage in InlineTextBox::paintCompositionBackground()
+// we should move it outside the WTF_PLATFORM_IOS-guard.
+-webkit-composition-fill-color [Inherited]
 #endif

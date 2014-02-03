@@ -63,7 +63,7 @@ class SpecialRegister
     end
 end
 
-ARM_EXTRA_GPRS = [SpecialRegister.new("r10"), SpecialRegister.new("r12")]
+ARM_EXTRA_GPRS = [SpecialRegister.new("r6"), SpecialRegister.new("r10"), SpecialRegister.new("r12")]
 ARM_EXTRA_FPRS = [SpecialRegister.new("d7")]
 ARM_SCRATCH_FPR = SpecialRegister.new("d6")
 
@@ -223,11 +223,7 @@ class Sequence
         result = riscLowerMalformedImmediates(result, 0..0xff)
         result = riscLowerMisplacedAddresses(result)
         result = riscLowerRegisterReuse(result)
-        if isARMv7
-            result = assignRegistersToTemporaries(result, :gpr, ARM_EXTRA_GPRS.concat([SpecialRegister.new("r11")]))
-        else
-            result = assignRegistersToTemporaries(result, :gpr, ARM_EXTRA_GPRS.concat([SpecialRegister.new("r7")]))
-        end
+        result = assignRegistersToTemporaries(result, :gpr, ARM_EXTRA_GPRS)
         result = assignRegistersToTemporaries(result, :fpr, ARM_EXTRA_FPRS)
         return result
     end
@@ -457,9 +453,15 @@ class Instruction
             # FIXME: either support this or remove it.
             raise "ARM does not support this opcode yet, #{codeOrigin}"
         when "pop"
-            $asm.puts "pop { #{operands[0].armOperand} }"
+            operands.each {
+                | op |
+                $asm.puts "pop { #{op.armOperand} }"
+            }
         when "push"
-            $asm.puts "push { #{operands[0].armOperand} }"
+            operands.each {
+                | op |
+                $asm.puts "push { #{op.armOperand} }"
+            }
         when "popCalleeSaves"
             if isARMv7
                 $asm.puts "pop {r4-r6, r8-r11}"                
@@ -599,6 +601,8 @@ class Instruction
             $asm.puts "smull #{operands[2].armOperand}, #{operands[3].armOperand}, #{operands[0].armOperand}, #{operands[1].armOperand}"
         when "memfence"
             $asm.puts "dmb sy"
+        when "clrbp"
+            $asm.puts "bic #{operands[2].armOperand}, #{operands[0].armOperand}, #{operands[1].armOperand}"
         else
             lowerDefault
         end

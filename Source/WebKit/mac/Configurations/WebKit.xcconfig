@@ -25,17 +25,22 @@
 #include "Version.xcconfig"
 
 EXCLUDED_SOURCE_FILE_NAMES = $(EXCLUDED_SOURCE_FILE_NAMES_$(PLATFORM_NAME));
-EXCLUDED_SOURCE_FILE_NAMES_iphoneos = *.nib *.pdf *.tiff WebIconDatabase.h WebIconDatabasePrivate.h WebNSEventExtras.h WebNSPasteboardExtras.h WebNSWindowExtras.h WebPanelAuthenticationHandler.h WebPluginsPrivate.h WebJavaScriptTextInputPanel.h WebKeyGenerator.h WebDashboardRegion.h WebDynamicScrollBarsView.h;
+EXCLUDED_SOURCE_FILE_NAMES_iphoneos = *.nib *.pdf *.tiff CarbonUtils.m CarbonWindowAdapter.mm CarbonWindowContentView.m CarbonWindowFrame.m HIViewAdapter.m HIWebView.mm MailQuirksUserScript.js OutlookQuirksUserScript.js PopupMenuMac.mm SearchPopupMenuMac.mm WebClipView.* WebDashboardRegion.* WebDynamicScrollBarsView.* WebIconDatabase.* WebIconDatabasePrivate.* WebInspectorClient.mm WebJavaScriptTextInputPanel.* WebKeyGenerator.* WebNetscapeContainerCheckContextInfo.* WebNetscapeContainerCheckPrivate.* WebNSEventExtras.* WebNSPasteboardExtras.* WebNSWindowExtras.* WebPanelAuthenticationHandler.* WebPluginsPrivate.* WebRenderNode.mm WebStringTruncator.* WebTextCompletionController.*;
 EXCLUDED_SOURCE_FILE_NAMES_iphonesimulator = $(EXCLUDED_SOURCE_FILE_NAMES_iphoneos);
-EXCLUDED_SOURCE_FILE_NAMES_macosx = *IOS.mm MemoryMeasure.h WebGeolocationCoreLocationProvider.h WebGeolocationProviderIOS.h WebNSStringDrawing.h WebNSStringExtrasIOS.h WebNSStringExtrasIPhone.h WebUIKitSupport.h WebCaretChangeListener.h WebFixedPositionContent.h WebFrameIOS.h WebFrameIPhone.h WebGeolocationPrivate.h WebMIMETypeRegistry.h WebSelectionRect.h WebVisiblePosition.h WebUIKitDelegate.h WebPDFViewIOS.h WebPDFViewIPhone.h WebPDFViewPlaceholder.h;
+EXCLUDED_SOURCE_FILE_NAMES_macosx = *IOS.mm MemoryMeasure.h WebCaretChangeListener.h WebFixedPositionContent.h WebFrameIOS.h WebFrameIPhone.h WebGeolocationCoreLocationProvider.h WebGeolocationPrivate.h WebGeolocationProviderIOS.h WebMIMETypeRegistry.h WebNSStringDrawing.h WebNSStringExtrasIOS.h WebNSStringExtrasIPhone.h WebPDFViewIOS.h WebPDFViewIPhone.h WebPDFViewPlaceholder.h WebSelectionRect.h WebUIKitDelegate.h WebUIKitSupport.h WebVisiblePosition.h;
 
 EXPORTED_SYMBOLS_FILE = $(EXPORTED_SYMBOLS_FILE_$(CURRENT_ARCH));
-EXPORTED_SYMBOLS_FILE_ = mac/WebKit.exp;
-EXPORTED_SYMBOLS_FILE_armv6 = $(BUILT_PRODUCTS_DIR)/DerivedSources/WebKit/WebKit.generated.exp;
+EXPORTED_SYMBOLS_FILE_ = $(BUILT_PRODUCTS_DIR)/DerivedSources/WebKit/WebKit.generated.exp;
 EXPORTED_SYMBOLS_FILE_armv7 = $(BUILT_PRODUCTS_DIR)/DerivedSources/WebKit/WebKit.generated.exp;
-EXPORTED_SYMBOLS_FILE_i386 = mac/WebKit.exp;
-EXPORTED_SYMBOLS_FILE_ppc = mac/WebKit.exp;
-EXPORTED_SYMBOLS_FILE_x86_64 = $(BUILT_PRODUCTS_DIR)/DerivedSources/WebKit/WebKit.LP64.exp;
+EXPORTED_SYMBOLS_FILE_armv7k = $(BUILT_PRODUCTS_DIR)/DerivedSources/WebKit/WebKit.generated.exp;
+EXPORTED_SYMBOLS_FILE_armv7s = $(BUILT_PRODUCTS_DIR)/DerivedSources/WebKit/WebKit.generated.exp;
+EXPORTED_SYMBOLS_FILE_arm64 = $(BUILT_PRODUCTS_DIR)/DerivedSources/WebKit/WebKit.generated.exp;
+EXPORTED_SYMBOLS_FILE_i386 = $(EXPORTED_SYMBOLS_FILE_i386_$(PLATFORM_NAME));
+EXPORTED_SYMBOLS_FILE_i386_iphonesimulator = $(BUILT_PRODUCTS_DIR)/DerivedSources/WebKit/WebKit.generated.exp;
+EXPORTED_SYMBOLS_FILE_i386_macosx = $(BUILT_PRODUCTS_DIR)/DerivedSources/WebKit/WebKit.generated.exp;
+EXPORTED_SYMBOLS_FILE_x86_64 = $(EXPORTED_SYMBOLS_FILE_x86_64_$(PLATFORM_NAME));
+EXPORTED_SYMBOLS_FILE_x86_64_iphonesimulator = $(BUILT_PRODUCTS_DIR)/DerivedSources/WebKit/WebKit.generated.exp;
+EXPORTED_SYMBOLS_FILE_x86_64_macosx = $(BUILT_PRODUCTS_DIR)/DerivedSources/WebKit/WebKit.LP64.exp;
 
 FRAMEWORK_SEARCH_PATHS = $(FRAMEWORK_SEARCH_PATHS_$(PLATFORM_NAME));
 FRAMEWORK_SEARCH_PATHS_iphoneos = $(FRAMEWORK_SEARCH_PATHS_iphoneos_$(CONFIGURATION));
@@ -54,7 +59,7 @@ OTHER_CPLUSPLUSFLAGS = $(OTHER_CFLAGS);
 
 GCC_PREFIX_HEADER = mac/WebKitPrefix.h;
 GCC_PREPROCESSOR_DEFINITIONS = $(DEBUG_DEFINES) $(FEATURE_DEFINES) FRAMEWORK_NAME=WebKit WEBKIT_VERSION_MIN_REQUIRED=WEBKIT_VERSION_LATEST $(GCC_PREPROCESSOR_DEFINITIONS);
-HEADER_SEARCH_PATHS = $(WEBKITSYSTEMINTERFACE_STATIC_LIBRARY_HEADERS_FOLDER_PATH) $(WEBCORE_PRIVATE_HEADERS_DIR)/ForwardingHeaders $(WEBCORE_PRIVATE_HEADERS_DIR)/icu "${BUILT_PRODUCTS_DIR}/DerivedSources/WebKit" $(HEADER_SEARCH_PATHS);
+HEADER_SEARCH_PATHS = $(WEBKITSYSTEMINTERFACE_STATIC_LIBRARY_HEADERS_FOLDER_PATH) $(WEBCORE_PRIVATE_HEADERS_DIR)/ForwardingHeaders $(WEBCORE_PRIVATE_HEADERS_DIR)/icu "$(BUILT_PRODUCTS_DIR)/DerivedSources/WebKit" "$(BUILT_PRODUCTS_DIR)/usr/local/include" $(HEADER_SEARCH_PATHS);
 INFOPLIST_FILE = mac/Info.plist;
 INSTALL_PATH = $(INSTALL_PATH_$(PLATFORM_NAME));
 INSTALL_PATH_iphoneos = $(SYSTEM_LIBRARY_DIR)/PrivateFrameworks;
@@ -71,11 +76,10 @@ INSTALLHDRS_SCRIPT_PHASE = YES;
 PRODUCT_NAME = WebKit;
 UMBRELLA_FRAMEWORKS_DIR = $(PRODUCTION_FRAMEWORKS_DIR)/WebKit.framework/Versions/A/Frameworks;
 
-OTHER_LDFLAGS_BASE = -licucore -framework JavaScriptCore -framework QuartzCore -framework WebCore;
-OTHER_LDFLAGS = $(inherited) $(OTHER_LDFLAGS_BASE) $(OTHER_LDFLAGS_$(PLATFORM_NAME));
-OTHER_LDFLAGS_iphoneos = -lobjc -framework CFNetwork -framework CoreFoundation -framework CoreGraphics -framework CoreText -framework Foundation -framework GraphicsServices -framework ImageIO;
+OTHER_LDFLAGS = $(inherited) $(OTHER_LDFLAGS_$(PLATFORM_NAME));
+OTHER_LDFLAGS_iphoneos = -lobjc -framework CFNetwork -framework CoreFoundation -framework CoreGraphics -framework CoreText -framework Foundation -framework GraphicsServices -framework ImageIO -lMobileGestalt;
 OTHER_LDFLAGS_iphonesimulator = $(OTHER_LDFLAGS_iphoneos);
-OTHER_LDFLAGS_macosx = -sub_umbrella WebCore -framework Carbon -framework Cocoa -framework DiskArbitration -framework IOKit -framework OpenGL -framework Security;
+OTHER_LDFLAGS_macosx = -sub_umbrella WebCore -framework Carbon -framework Cocoa -framework DiskArbitration -framework IOKit -framework OpenGL;
 
 NORMAL_WEBKIT_FRAMEWORKS_DIR = $(NORMAL_WEBKIT_FRAMEWORKS_DIR_$(PLATFORM_NAME));
 NORMAL_WEBKIT_FRAMEWORKS_DIR_iphoneos = $(PRODUCTION_FRAMEWORKS_DIR);

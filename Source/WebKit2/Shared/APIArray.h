@@ -27,33 +27,41 @@
 #define APIArray_h
 
 #include "APIObject.h"
-#include "FilterIterator.h"
-#include "IteratorPair.h"
 #include <wtf/Forward.h>
+#include <wtf/IteratorAdaptors.h>
+#include <wtf/IteratorRange.h>
 #include <wtf/PassRefPtr.h>
 #include <wtf/Vector.h>
 
 namespace API {
 
-class Array FINAL : public ObjectImpl<Object::Type::Array> {
+class Array final : public ObjectImpl<Object::Type::Array> {
 private:
-    template<typename T>
-    static inline const T* getObject(const RefPtr<Object>& object) { return static_cast<const T*>(object.get()); }
+    template <class T>
+    struct IsTypePredicate {
+        bool operator()(const RefPtr<Object>& object) const { return object->type() == T::APIType; }
+    };
 
-    template<typename T>
-    static inline bool isType(const RefPtr<Object>& object) { return object->type() == T::APIType; }
+    template <class T>
+    struct GetObjectTransform {
+        const T* operator()(const RefPtr<Object>& object) const { return static_cast<const T*>(object.get()); }
+    };
+
+    template <typename T>
+    using ElementsOfTypeRange = WTF::IteratorRange<WTF::TransformIterator<GetObjectTransform<T>, WTF::FilterIterator<IsTypePredicate<T>, Vector<RefPtr<Object>>::const_iterator>>>;
 
 public:
     static PassRefPtr<Array> create();
     static PassRefPtr<Array> create(Vector<RefPtr<Object>> elements);
     static PassRefPtr<Array> createStringArray(const Vector<WTF::String>&);
+    Vector<WTF::String> toStringVector();
 
     virtual ~Array();
 
     template<typename T>
     T* at(size_t i) const
     {
-        if (!isType<T>(m_elements[i]))
+        if (m_elements[i]->type() != T::APIType)
             return nullptr;
 
         return static_cast<T*>(m_elements[i].get());
@@ -66,9 +74,12 @@ public:
     Vector<RefPtr<Object>>& elements() { return m_elements; }
 
     template<typename T>
-    IteratorPair<FilterIterator<decltype(&isType<T>), decltype(&getObject<T>), Vector<RefPtr<Object>>::const_iterator>> elementsOfType()
+    ElementsOfTypeRange<T> elementsOfType() const
     {
-        return IteratorPair<FilterIterator<decltype(&isType<T>), decltype(&getObject<T>), Vector<RefPtr<Object>>::const_iterator>>(FilterIterator<decltype(&isType<T>), decltype(&getObject<T>), Vector<RefPtr<Object>>::const_iterator>(isType<T>, getObject<T>, m_elements.begin(), m_elements.end()), FilterIterator<decltype(&isType<T>), decltype(&getObject<T>), Vector<RefPtr<Object>>::const_iterator>(isType<T>, getObject<T>, m_elements.end(), m_elements.end()));
+        return WTF::makeIteratorRange(
+            WTF::makeTransformIterator(GetObjectTransform<T>(), WTF::makeFilterIterator(IsTypePredicate<T>(), m_elements.begin(), m_elements.end())),
+            WTF::makeTransformIterator(GetObjectTransform<T>(), WTF::makeFilterIterator(IsTypePredicate<T>(), m_elements.end(), m_elements.end()))
+        );
     }
 
 private:

@@ -25,8 +25,6 @@
 
 #include "config.h"
 
-#if USE(ACCELERATED_COMPOSITING)
-
 #include "PlatformCAAnimation.h"
 
 #include "FloatConversion.h"
@@ -360,7 +358,7 @@ void PlatformCAAnimation::setFromValue(const FloatPoint3D& value)
     if (animationType() != Basic)
         return;
 
-    float a[3] = { value.x(), value.y(), value.z() };
+    CGFloat a[3] = { value.x(), value.y(), value.z() };
     RetainPtr<CACFVectorRef> v = adoptCF(CACFVectorCreate(3, a));
     CACFAnimationSetFromValue(m_animation.get(), v.get());
 }
@@ -370,7 +368,7 @@ void PlatformCAAnimation::setFromValue(const WebCore::Color& value)
     if (animationType() != Basic)
         return;
 
-    float a[4] = { value.red(), value.green(), value.blue(), value.alpha() };
+    CGFloat a[4] = { value.red(), value.green(), value.blue(), value.alpha() };
     RetainPtr<CACFVectorRef> v = adoptCF(CACFVectorCreate(4, a));
     CACFAnimationSetFromValue(m_animation.get(), v.get());
 }
@@ -413,7 +411,7 @@ void PlatformCAAnimation::setToValue(const FloatPoint3D& value)
     if (animationType() != Basic)
         return;
 
-    float a[3] = { value.x(), value.y(), value.z() };
+    CGFloat a[3] = { value.x(), value.y(), value.z() };
     RetainPtr<CACFVectorRef> v = adoptCF(CACFVectorCreate(3, a));
     CACFAnimationSetToValue(m_animation.get(), v.get());
 }
@@ -423,7 +421,7 @@ void PlatformCAAnimation::setToValue(const WebCore::Color& value)
     if (animationType() != Basic)
         return;
 
-    float a[4] = { value.red(), value.green(), value.blue(), value.alpha() };
+    CGFloat a[4] = { value.red(), value.green(), value.blue(), value.alpha() };
     RetainPtr<CACFVectorRef> v = adoptCF(CACFVectorCreate(4, a));
     CACFAnimationSetToValue(m_animation.get(), v.get());
 }
@@ -480,7 +478,7 @@ void PlatformCAAnimation::setValues(const Vector<FloatPoint3D>& value)
         
     RetainPtr<CFMutableArrayRef> array = adoptCF(CFArrayCreateMutable(0, value.size(), &kCFTypeArrayCallBacks));
     for (size_t i = 0; i < value.size(); ++i) {
-        float a[3] = { value[i].x(), value[i].y(), value[i].z() };
+        CGFloat a[3] = { value[i].x(), value[i].y(), value[i].z() };
         RetainPtr<CACFVectorRef> v = adoptCF(CACFVectorCreate(3, a));
         CFArrayAppendValue(array.get(), v.get());
     }
@@ -495,7 +493,7 @@ void PlatformCAAnimation::setValues(const Vector<WebCore::Color>& value)
         
     RetainPtr<CFMutableArrayRef> array = adoptCF(CFArrayCreateMutable(0, value.size(), &kCFTypeArrayCallBacks));
     for (size_t i = 0; i < value.size(); ++i) {
-        float a[4] = { value[i].red(), value[i].green(), value[i].blue(), value[i].alpha() };
+        CGFloat a[4] = { value[i].red(), value[i].green(), value[i].blue(), value[i].alpha() };
         RetainPtr<CACFVectorRef> v = adoptCF(CACFVectorCreate(4, a));
         CFArrayAppendValue(array.get(), v.get());
     }
@@ -559,5 +557,3 @@ void PlatformCAAnimation::copyTimingFunctionsFrom(const PlatformCAAnimation* val
 {
     CACFAnimationSetTimingFunctions(m_animation.get(), CACFAnimationGetTimingFunctions(value->platformAnimation()));
 }
-
-#endif // USE(ACCELERATED_COMPOSITING)

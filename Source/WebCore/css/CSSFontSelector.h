@@ -30,6 +30,7 @@
 #include "FontSelector.h"
 #include "SimpleFontData.h"
 #include "Timer.h"
+#include <memory>
 #include <wtf/Forward.h>
 #include <wtf/HashMap.h>
 #include <wtf/HashSet.h>
@@ -46,7 +47,7 @@ class Document;
 class FontDescription;
 class StyleRuleFontFace;
 
-class CSSFontSelector FINAL : public FontSelector {
+class CSSFontSelector final : public FontSelector {
 public:
     static PassRefPtr<CSSFontSelector> create(Document* document)
     {
@@ -54,27 +55,27 @@ public:
     }
     virtual ~CSSFontSelector();
     
-    virtual unsigned version() const OVERRIDE { return m_version; }
-    virtual unsigned uniqueId() const OVERRIDE { return m_uniqueId; }
+    virtual unsigned version() const override { return m_version; }
+    virtual unsigned uniqueId() const override { return m_uniqueId; }
 
-    virtual PassRefPtr<FontData> getFontData(const FontDescription&, const AtomicString&) OVERRIDE;
-    virtual size_t fallbackFontDataCount() OVERRIDE;
-    virtual PassRefPtr<FontData> getFallbackFontData(const FontDescription&, size_t) OVERRIDE;
+    virtual PassRefPtr<FontData> getFontData(const FontDescription&, const AtomicString&) override;
+    virtual size_t fallbackFontDataCount() override;
+    virtual PassRefPtr<FontData> getFallbackFontData(const FontDescription&, size_t) override;
     CSSSegmentedFontFace* getFontFace(const FontDescription&, const AtomicString& family);
 
-    virtual bool resolvesFamilyFor(const FontDescription&) const OVERRIDE;
+    virtual bool resolvesFamilyFor(const FontDescription&) const override;
 
     void clearDocument();
 
     void addFontFaceRule(const StyleRuleFontFace*);
 
     void fontLoaded();
-    virtual void fontCacheInvalidated() OVERRIDE;
+    virtual void fontCacheInvalidated() override;
 
     bool isEmpty() const;
 
-    virtual void registerForInvalidationCallbacks(FontSelectorClient*) OVERRIDE;
-    virtual void unregisterForInvalidationCallbacks(FontSelectorClient*) OVERRIDE;
+    virtual void registerForInvalidationCallbacks(FontSelectorClient*) override;
+    virtual void unregisterForInvalidationCallbacks(FontSelectorClient*) override;
 
     Document* document() const { return m_document; }
 
@@ -85,12 +86,12 @@ private:
 
     void dispatchInvalidationCallbacks();
 
-    void beginLoadTimerFired(Timer<CSSFontSelector>*);
+    void beginLoadTimerFired(Timer<CSSFontSelector>&);
 
     Document* m_document;
-    HashMap<String, OwnPtr<Vector<RefPtr<CSSFontFace>>>, CaseFoldingHash> m_fontFaces;
-    HashMap<String, OwnPtr<Vector<RefPtr<CSSFontFace>>>, CaseFoldingHash> m_locallyInstalledFontFaces;
-    HashMap<String, OwnPtr<HashMap<unsigned, RefPtr<CSSSegmentedFontFace>>>, CaseFoldingHash> m_fonts;
+    HashMap<String, std::unique_ptr<Vector<RefPtr<CSSFontFace>>>, CaseFoldingHash> m_fontFaces;
+    HashMap<String, std::unique_ptr<Vector<RefPtr<CSSFontFace>>>, CaseFoldingHash> m_locallyInstalledFontFaces;
+    HashMap<String, std::unique_ptr<HashMap<unsigned, RefPtr<CSSSegmentedFontFace>>>, CaseFoldingHash> m_fonts;
     HashSet<FontSelectorClient*> m_clients;
 
     Vector<CachedResourceHandle<CachedFont>> m_fontsToBeginLoading;

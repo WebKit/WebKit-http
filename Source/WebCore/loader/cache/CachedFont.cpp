@@ -33,7 +33,6 @@
 #include "FontCustomPlatformData.h"
 #include "FontPlatformData.h"
 #include "MemoryCache.h"
-#include "OpenTypeSanitizer.h"
 #include "ResourceBuffer.h"
 #include "SharedBuffer.h"
 #include "TextResourceDecoder.h"
@@ -54,7 +53,7 @@ namespace WebCore {
 CachedFont::CachedFont(const ResourceRequest& resourceRequest)
     : CachedResource(resourceRequest, FontResource)
     , m_loadInitiated(false)
-    , m_hasCreatedFontData(false)
+    , m_hasCreatedFontDataWrappingResource(false)
 {
 }
 
@@ -98,13 +97,10 @@ bool CachedFont::ensureCustomFontData()
         SharedBuffer* buffer = m_data.get()->sharedBuffer();
         ASSERT(buffer);
 
-#if USE(OPENTYPE_SANITIZER)
-        OpenTypeSanitizer sanitizer(buffer);
-        RefPtr<SharedBuffer> transcodeBuffer = sanitizer.sanitize();
-        buffer = transcodeBuffer.get();
-#else
         RefPtr<SharedBuffer> sfntBuffer;
-        if (isWOFF(buffer)) {
+
+        bool fontIsWOFF = isWOFF(buffer);
+        if (fontIsWOFF) {
             Vector<char> sfnt;
             if (convertWOFFToSfnt(buffer, sfnt)) {
                 sfntBuffer = SharedBuffer::adoptVector(sfnt);
@@ -112,11 +108,10 @@ bool CachedFont::ensureCustomFontData()
             } else
                 buffer = nullptr;
         }
-#endif
 
         m_fontData = buffer ? createFontCustomPlatformData(*buffer) : nullptr;
         if (m_fontData)
-            m_hasCreatedFontData = true;
+            m_hasCreatedFontDataWrappingResource = !fontIsWOFF;
         else
             setStatus(DecodeError);
     }
@@ -199,11 +194,11 @@ void CachedFont::checkNotify()
 
 bool CachedFont::mayTryReplaceEncodedData() const
 {
-    // If the FontCustomPlatformData has ever been constructed then it still might be in use somewhere.
+    // If a FontCustomPlatformData has ever been constructed to wrap the internal resource buffer then it still might be in use somewhere.
     // That platform font object might directly reference the encoded data buffer behind this CachedFont,
     // so replacing it is unsafe.
 
-    return !m_hasCreatedFontData;
+    return !m_hasCreatedFontDataWrappingResource;
 }
 
 }

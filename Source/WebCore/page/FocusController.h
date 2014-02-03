@@ -79,8 +79,11 @@ public:
     void setFocused(bool);
     bool isFocused() const { return m_isFocused; }
 
-    void setContainingWindowIsVisible(bool);
-    bool containingWindowIsVisible() const { return m_containingWindowIsVisible; }
+    void setContentIsVisible(bool);
+
+    // These methods are used in WebCore/bindings/objc/DOM.mm.
+    Element* nextFocusableElement(FocusNavigationScope, Node* start, KeyboardEvent*);
+    Element* previousFocusableElement(FocusNavigationScope, Node* start, KeyboardEvent*);
 
 private:
     bool advanceFocusDirectionally(FocusDirection, KeyboardEvent*);
@@ -101,9 +104,6 @@ private:
     // See http://www.w3.org/TR/html4/interact/forms.html#h-17.11.1
     Element* findFocusableElement(FocusDirection, FocusNavigationScope, Node* start, KeyboardEvent*);
 
-    Element* nextFocusableElement(FocusNavigationScope, Node* start, KeyboardEvent*);
-    Element* previousFocusableElement(FocusNavigationScope, Node* start, KeyboardEvent*);
-
     Element* findElementWithExactTabIndex(Node* start, int tabIndex, KeyboardEvent*, FocusDirection);
 
     bool advanceFocusDirectionallyInContainer(Node* container, const LayoutRect& startingRect, FocusDirection, KeyboardEvent*);
@@ -114,7 +114,7 @@ private:
     bool m_isActive;
     bool m_isFocused;
     bool m_isChangingFocusedFrame;
-    bool m_containingWindowIsVisible;
+    bool m_contentIsVisible;
 
 };
 

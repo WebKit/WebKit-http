@@ -64,7 +64,7 @@ struct SVGPropertyTraits<EdgeModeType> {
     }
 };
 
-class SVGFEConvolveMatrixElement FINAL : public SVGFilterPrimitiveStandardAttributes {
+class SVGFEConvolveMatrixElement final : public SVGFilterPrimitiveStandardAttributes {
 public:
     static PassRefPtr<SVGFEConvolveMatrixElement> create(const QualifiedName&, Document&);
 
@@ -75,10 +75,10 @@ private:
     SVGFEConvolveMatrixElement(const QualifiedName&, Document&);
 
     bool isSupportedAttribute(const QualifiedName&);
-    virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
-    virtual bool setFilterEffectAttribute(FilterEffect*, const QualifiedName&);
-    virtual void svgAttributeChanged(const QualifiedName&);
-    virtual PassRefPtr<FilterEffect> build(SVGFilterBuilder*, Filter*);
+    virtual void parseAttribute(const QualifiedName&, const AtomicString&) override;
+    virtual bool setFilterEffectAttribute(FilterEffect*, const QualifiedName&) override;
+    virtual void svgAttributeChanged(const QualifiedName&) override;
+    virtual PassRefPtr<FilterEffect> build(SVGFilterBuilder*, Filter*) override;
 
     static const AtomicString& orderXIdentifier();
     static const AtomicString& orderYIdentifier();

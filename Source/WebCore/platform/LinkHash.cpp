@@ -217,7 +217,7 @@ LinkHash visitedLinkHash(const String& url)
 
     if (length && url.is8Bit())
         return visitedLinkHashInline(url.characters8(), length);
-    return visitedLinkHashInline(url.characters(), length);
+    return visitedLinkHashInline(url.deprecatedCharacters(), length);
 }
 
 LinkHash visitedLinkHash(const UChar* url, unsigned length)
@@ -286,7 +286,7 @@ static ALWAYS_INLINE void visitedURLInline(const URL& base, const CharacterType*
 
 void visitedURL(const URL& base, const AtomicString& attributeURL, Vector<UChar, 512>& buffer)
 {
-    return visitedURLInline(base, attributeURL.characters(), attributeURL.length(), buffer);
+    return visitedURLInline(base, attributeURL.string().deprecatedCharacters(), attributeURL.length(), buffer);
 }
 
 LinkHash visitedLinkHash(const URL& base, const AtomicString& attributeURL)
@@ -304,7 +304,7 @@ LinkHash visitedLinkHash(const URL& base, const AtomicString& attributeURL)
     }
 
     Vector<UChar, 512> url;
-    visitedURLInline(base, attributeURL.characters(), attributeURL.length(), url);
+    visitedURLInline(base, attributeURL.string().deprecatedCharacters(), attributeURL.length(), url);
     if (url.isEmpty())
         return 0;
 

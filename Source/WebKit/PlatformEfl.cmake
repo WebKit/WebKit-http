@@ -101,7 +101,6 @@ endif ()
 
 list(APPEND WebKit_SOURCES
     efl/WebCoreSupport/AcceleratedCompositingContextEfl.cpp
-    efl/WebCoreSupport/AssertMatchingEnums.cpp
     efl/WebCoreSupport/BatteryClientEfl.cpp
     efl/WebCoreSupport/ChromeClientEfl.cpp
     efl/WebCoreSupport/ColorChooserEfl.cpp
@@ -120,6 +119,7 @@ list(APPEND WebKit_SOURCES
     efl/WebCoreSupport/NotificationPresenterClientEfl.cpp
     efl/WebCoreSupport/PageClientEfl.cpp
     efl/WebCoreSupport/PlatformStrategiesEfl.cpp
+    efl/WebCoreSupport/ProgressTrackerClientEfl.cpp
     efl/WebCoreSupport/PopupMenuEfl.cpp
     efl/WebCoreSupport/SearchPopupMenuEfl.cpp
     efl/WebCoreSupport/StorageTrackerClientEfl.cpp
@@ -140,13 +140,8 @@ list(APPEND WebKit_SOURCES
     efl/ewk/ewk_security_origin.cpp
     efl/ewk/ewk_security_policy.cpp
     efl/ewk/ewk_settings.cpp
-    efl/ewk/ewk_tiled_backing_store.cpp
-    efl/ewk/ewk_tiled_matrix.cpp
-    efl/ewk/ewk_tiled_model.cpp
     efl/ewk/ewk_touch_event.cpp
     efl/ewk/ewk_view.cpp
-    efl/ewk/ewk_view_single.cpp
-    efl/ewk/ewk_view_tiled.cpp
     efl/ewk/ewk_web_database.cpp
     efl/ewk/ewk_window_features.cpp
 )
@@ -266,6 +261,7 @@ add_library(ewkTestUtils
 target_link_libraries(ewkTestUtils ${EWKUnitTests_LIBRARIES})
 
 set(WEBKIT_EFL_TEST_DIR "${WEBKIT_DIR}/efl/tests/")
+set(WEBKIT_EFL_TEST_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/TestWebKitAPI/EWebKit)
 
 set(EWKUnitTests_BINARIES
     test_ewk_contextmenu
@@ -277,10 +273,10 @@ set(EWKUnitTests_BINARIES
 if (ENABLE_API_TESTS)
     foreach (testName ${EWKUnitTests_BINARIES})
         add_executable(${testName} ${WEBKIT_EFL_TEST_DIR}/${testName}.cpp ${WEBKIT_EFL_TEST_DIR}/test_runner.cpp)
-        add_test(${testName} ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${testName})
+        add_test(${testName} ${WEBKIT_EFL_TEST_RUNTIME_OUTPUT_DIRECTORY}/${testName})
         set_tests_properties(${testName} PROPERTIES TIMEOUT 60)
+        set_target_properties(${testName} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${WEBKIT_EFL_TEST_RUNTIME_OUTPUT_DIRECTORY})
         target_link_libraries(${testName} ${EWKUnitTests_LIBRARIES} ewkTestUtils)
-        set_target_properties(${testName} PROPERTIES FOLDER "WebKit")
     endforeach ()
 endif ()
 

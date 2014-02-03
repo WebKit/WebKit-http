@@ -32,13 +32,13 @@
 
 namespace WebCore {
     
-class RenderMathMLMath FINAL : public RenderMathMLRow {
+class RenderMathMLMath final : public RenderMathMLRow {
 public:
     RenderMathMLMath(Element&, PassRef<RenderStyle>);
 
 private:
-    virtual bool isRenderMathMLMath() const OVERRIDE { return true; }
-    virtual const char* renderName() const OVERRIDE { return "RenderMathMLMath"; }
+    virtual bool isRenderMathMLMath() const override { return true; }
+    virtual const char* renderName() const override { return "RenderMathMLMath"; }
 };
     
 }

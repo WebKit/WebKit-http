@@ -59,9 +59,7 @@ PluginControllerProxy::PluginControllerProxy(WebProcessConnection* connection, c
     , m_pluginInstanceID(creationParameters.pluginInstanceID)
     , m_userAgent(creationParameters.userAgent)
     , m_isPrivateBrowsingEnabled(creationParameters.isPrivateBrowsingEnabled)
-#if USE(ACCELERATED_COMPOSITING)
     , m_isAcceleratedCompositingEnabled(creationParameters.isAcceleratedCompositingEnabled)
-#endif
     , m_isInitializing(false)
     , m_paintTimer(RunLoop::main(), this, &PluginControllerProxy::paint)
     , m_pluginDestructionProtectCount(0)
@@ -437,7 +435,7 @@ void PluginControllerProxy::streamDidReceiveResponse(uint64_t streamID, const St
     m_plugin->streamDidReceiveResponse(streamID, URL(ParsedURLString, responseURLString), streamLength, lastModifiedTime, mimeType, headers, String());
 }
 
-void PluginControllerProxy::streamDidReceiveData(uint64_t streamID, const CoreIPC::DataReference& data)
+void PluginControllerProxy::streamDidReceiveData(uint64_t streamID, const IPC::DataReference& data)
 {
     m_plugin->streamDidReceiveData(streamID, reinterpret_cast<const char*>(data.data()), data.size());
 }
@@ -460,7 +458,7 @@ void PluginControllerProxy::manualStreamDidReceiveResponse(const String& respons
     m_plugin->manualStreamDidReceiveResponse(URL(ParsedURLString, responseURLString), streamLength, lastModifiedTime, mimeType, headers, String());
 }
 
-void PluginControllerProxy::manualStreamDidReceiveData(const CoreIPC::DataReference& data)
+void PluginControllerProxy::manualStreamDidReceiveData(const IPC::DataReference& data)
 {
     if (m_pluginCanceledManualStreamLoad)
         return;

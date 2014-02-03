@@ -31,12 +31,13 @@
 #import "InitializeThreading.h"
 #import "RemoteInspectorConstants.h"
 #import "RemoteInspectorDebuggable.h"
-#import <notify.h>
-#import <xpc/xpc.h>
+#import "RemoteInspectorDebuggableConnection.h"
 #import <Foundation/Foundation.h>
+#import <notify.h>
 #import <wtf/Assertions.h>
 #import <wtf/MainThread.h>
 #import <wtf/text/WTFString.h>
+#import <xpc/xpc.h>
 
 #if PLATFORM(IOS)
 #import <wtf/ios/WebCoreThread.h>
@@ -56,6 +57,13 @@ static void dispatchAsyncOnQueueSafeForAnyDebuggable(void (^block)())
     dispatch_async(dispatch_get_main_queue(), block);
 }
 
+bool RemoteInspector::startEnabled = true;
+
+void RemoteInspector::startDisabled()
+{
+    RemoteInspector::startEnabled = false;
+}
+
 RemoteInspector& RemoteInspector::shared()
 {
     static NeverDestroyed<RemoteInspector> shared;
@@ -64,7 +72,8 @@ RemoteInspector& RemoteInspector::shared()
     dispatch_once(&once, ^{
         JSC::initializeThreading();
         WTF::initializeMainThread();
-        shared.get().start();
+        if (RemoteInspector::startEnabled)
+            shared.get().start();
     });
 
     return shared;
@@ -131,8 +140,7 @@ void RemoteInspector::updateDebuggable(RemoteInspectorDebuggable* debuggable)
     auto result = m_debuggableMap.set(identifier, std::make_pair(debuggable, debuggable->info()));
     ASSERT_UNUSED(result, !result.isNewEntry);
 
-    if (debuggable->remoteDebuggingAllowed())
-        pushListingSoon();
+    pushListingSoon();
 }
 
 void RemoteInspector::sendMessageToRemoteFrontend(unsigned identifier, const String& message)
@@ -207,7 +215,7 @@ void RemoteInspector::setupXPCConnectionIfNeeded()
     if (!connection)
         return;
 
-    m_xpcConnection = std::make_unique<RemoteInspectorXPCConnection>(connection, this);
+    m_xpcConnection = adoptRef(new RemoteInspectorXPCConnection(connection, this));
     m_xpcConnection->sendMessage(@"syn", nil); // Send a simple message to initialize the XPC connection.
     xpc_release(connection);
 
@@ -241,9 +249,11 @@ void RemoteInspector::xpcConnectionReceivedMessage(RemoteInspectorXPCConnection*
         NSLog(@"Unrecognized RemoteInspector XPC Message: %@", messageName);
 }
 
-void RemoteInspector::xpcConnectionFailed(RemoteInspectorXPCConnection*)
+void RemoteInspector::xpcConnectionFailed(RemoteInspectorXPCConnection* connection)
 {
     MutexLocker locker(m_lock);
+    if (connection != m_xpcConnection)
+        return;
 
     m_pushScheduled = false;
 
@@ -297,6 +307,11 @@ NSDictionary *RemoteInspector::listingForDebuggable(const RemoteInspectorDebugga
 
     if (debuggableInfo.hasLocalDebugger)
         [debuggableDetails setObject:@YES forKey:WIRHasLocalDebuggerKey];
+
+    if (debuggableInfo.hasParentProcess()) {
+        NSString *parentApplicationIdentifier = [NSString stringWithFormat:@"PID:%lu", (unsigned long)debuggableInfo.parentProcessIdentifier];
+        [debuggableDetails setObject:parentApplicationIdentifier forKey:WIRHostApplicationIdentifierKey];
+    }
 
     return debuggableDetails;
 }

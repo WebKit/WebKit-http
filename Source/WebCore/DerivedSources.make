@@ -28,6 +28,7 @@
 
 VPATH = \
     $(WebCore) \
+    $(WebCore)/Modules/airplay \
     $(WebCore)/Modules/encryptedmedia \
     $(WebCore)/Modules/geolocation \
     $(WebCore)/Modules/indexeddb \
@@ -67,6 +68,7 @@ VPATH = \
 #
 
 BINDING_IDLS = \
+    $(WebCore)/Modules/airplay/WebKitPlaybackTargetAvailabilityEvent.idl \
     $(WebCore)/Modules/encryptedmedia/MediaKeyMessageEvent.idl \
     $(WebCore)/Modules/encryptedmedia/MediaKeyNeededEvent.idl \
     $(WebCore)/Modules/encryptedmedia/MediaKeySession.idl \
@@ -234,11 +236,9 @@ BINDING_IDLS = \
     $(WebCore)/css/StyleSheet.idl \
     $(WebCore)/css/StyleSheetList.idl \
     $(WebCore)/css/WebKitCSSFilterValue.idl \
-    $(WebCore)/css/WebKitCSSFilterRule.idl \
     $(WebCore)/css/WebKitCSSKeyframeRule.idl \
     $(WebCore)/css/WebKitCSSKeyframesRule.idl \
     $(WebCore)/css/WebKitCSSMatrix.idl \
-    $(WebCore)/css/WebKitCSSMixFunctionValue.idl \
     $(WebCore)/css/WebKitCSSRegionRule.idl \
     $(WebCore)/css/WebKitCSSTransformValue.idl \
     $(WebCore)/css/WebKitCSSViewportRule.idl \
@@ -304,9 +304,6 @@ BINDING_IDLS = \
     $(WebCore)/dom/StringCallback.idl \
     $(WebCore)/dom/Text.idl \
     $(WebCore)/dom/TextEvent.idl \
-    $(WebCore)/dom/Touch.idl \
-    $(WebCore)/dom/TouchEvent.idl \
-    $(WebCore)/dom/TouchList.idl \
     $(WebCore)/dom/TransitionEvent.idl \
     $(WebCore)/dom/TreeWalker.idl \
     $(WebCore)/dom/UIEvent.idl \
@@ -409,6 +406,7 @@ BINDING_IDLS = \
     $(WebCore)/html/TimeRanges.idl \
     $(WebCore)/html/ValidityState.idl \
     $(WebCore)/html/VoidCallback.idl \
+    $(WebCore)/html/canvas/ANGLEInstancedArrays.idl \
     $(WebCore)/html/canvas/CanvasGradient.idl \
     $(WebCore)/html/canvas/CanvasPattern.idl \
     $(WebCore)/html/canvas/CanvasProxy.idl \
@@ -422,6 +420,7 @@ BINDING_IDLS = \
     $(WebCore)/html/canvas/OESTextureFloat.idl \
     $(WebCore)/html/canvas/OESTextureFloatLinear.idl \
     $(WebCore)/html/canvas/OESTextureHalfFloat.idl \
+    $(WebCore)/html/canvas/OESTextureHalfFloatLinear.idl \
     $(WebCore)/html/canvas/OESVertexArrayObject.idl \
     $(WebCore)/html/canvas/WebGLActiveInfo.idl \
     $(WebCore)/html/canvas/WebGLBuffer.idl \
@@ -452,7 +451,7 @@ BINDING_IDLS = \
     $(WebCore)/html/track/TrackEvent.idl \
     $(WebCore)/html/track/VideoTrack.idl \
     $(WebCore)/html/track/VideoTrackList.idl \
-    $(WebCore)/inspector/InjectedScriptHost.idl \
+    $(WebCore)/inspector/CommandLineAPIHost.idl \
     $(WebCore)/inspector/InspectorFrontendHost.idl \
     $(WebCore)/inspector/ScriptProfile.idl \
     $(WebCore)/inspector/ScriptProfileNode.idl \
@@ -661,6 +660,58 @@ BINDING_IDLS = \
     InternalSettingsGenerated.idl
 #
 
+ifeq ($(OS),MACOS)
+
+FRAMEWORK_FLAGS = $(shell echo $(BUILT_PRODUCTS_DIR) $(FRAMEWORK_SEARCH_PATHS) | perl -e 'print "-F " . join(" -F ", split(" ", <>));')
+HEADER_FLAGS = $(shell echo $(BUILT_PRODUCTS_DIR) $(HEADER_SEARCH_PATHS) | perl -e 'print "-I" . join(" -I", split(" ", <>));')
+TEXT_PREPROCESSOR_FLAGS=-E -P -x c -traditional
+
+ifneq ($(SDKROOT),)
+	SDK_FLAGS=-isysroot $(SDKROOT)
+endif
+
+ifeq ($(shell $(CC) -isysroot $(SDKROOT) -std=gnu++11 -x c++ -E -P -dM -F $(BUILT_PRODUCTS_DIR) $(FRAMEWORK_FLAGS) $(HEADER_FLAGS) -include "wtf/Platform.h" /dev/null | grep ' WTF_PLATFORM_IOS ' | cut -d' ' -f3), 1)
+    WTF_PLATFORM_IOS = 1
+else
+    WTF_PLATFORM_IOS = 0
+endif
+
+ifeq ($(shell $(CC) -std=gnu++11 -x c++ -E -P -dM $(SDK_FLAGS) $(FRAMEWORK_FLAGS) $(HEADER_FLAGS) -include "wtf/Platform.h" /dev/null | grep ENABLE_ORIENTATION_EVENTS | cut -d' ' -f3), 1)
+    ENABLE_ORIENTATION_EVENTS = 1
+endif
+
+ifeq ($(PLATFORM_FEATURE_DEFINES),)
+PLATFORM_FEATURE_DEFINES = Configurations/FeatureDefines.xcconfig
+endif
+
+ifeq ($(WTF_PLATFORM_IOS), 1)
+
+ADDITIONAL_BINDING_IDLS = \
+    GestureEvent.idl \
+    Touch.idl \
+    TouchEvent.idl \
+    TouchList.idl
+
+BINDING_IDLS += $(ADDITIONAL_BINDING_IDLS)
+
+all : $(ADDITIONAL_BINDING_IDLS:%.idl=JS%.h)
+
+vpath %.idl $(BUILT_PRODUCTS_DIR)/usr/local/include $(SDKROOT)/usr/local/include
+
+$(ADDITIONAL_BINDING_IDLS) : % : WebKitAdditions/%
+	cp $< .
+
+endif
+
+endif # MACOS
+
+ifneq ($(WTF_PLATFORM_IOS), 1)
+BINDING_IDLS += \
+    $(WebCore)/dom/Touch.idl \
+    $(WebCore)/dom/TouchEvent.idl \
+    $(WebCore)/dom/TouchList.idl
+endif
+
 .PHONY : all
 
 DOM_CLASSES=$(basename $(notdir $(BINDING_IDLS)))
@@ -675,8 +726,6 @@ all : \
     $(WORKERGLOBALSCOPE_CONSTRUCTORS_FILE) \
     $(JS_DOM_HEADERS) \
     $(WEB_DOM_HEADERS) \
-    \
-    JSJavaScriptCallFrame.h \
     \
     CSSGrammar.cpp \
     CSSPropertyNames.h \
@@ -709,40 +758,12 @@ all : \
 
 ADDITIONAL_IDL_DEFINES :=
 
-ifeq ($(OS),MACOS)
-
-FRAMEWORK_FLAGS = $(shell echo $(BUILT_PRODUCTS_DIR) $(FRAMEWORK_SEARCH_PATHS) | perl -e 'print "-F " . join(" -F ", split(" ", <>));')
-HEADER_FLAGS = $(shell echo $(BUILT_PRODUCTS_DIR) $(HEADER_SEARCH_PATHS) | perl -e 'print "-I" . join(" -I", split(" ", <>));')
-TEXT_PREPROCESSOR_FLAGS=-E -P -x c -traditional
-
-ifneq ($(SDKROOT),)
-	SDK_FLAGS=-isysroot $(SDKROOT)
-endif
-
-ifeq ($(shell $(CC) -std=gnu++11 -x c++ -E -P -dM $(SDK_FLAGS) $(FRAMEWORK_FLAGS) $(HEADER_FLAGS) -include "wtf/Platform.h" /dev/null | grep ENABLE_ORIENTATION_EVENTS | cut -d' ' -f3), 1)
-    ENABLE_ORIENTATION_EVENTS = 1
-endif
-
-ifeq ($(PLATFORM_FEATURE_DEFINES),)
-PLATFORM_FEATURE_DEFINES = Configurations/FeatureDefines.xcconfig
-endif
-
-endif # MACOS
-
 ifndef ENABLE_ORIENTATION_EVENTS
     ENABLE_ORIENTATION_EVENTS = 0
 endif
 
-ifndef ENABLE_DRAGGABLE_REGION
-    ENABLE_DRAGGABLE_REGION = 0
-endif
-
 ifeq ($(ENABLE_ORIENTATION_EVENTS), 1)
     ADDITIONAL_IDL_DEFINES := $(ADDITIONAL_IDL_DEFINES) ENABLE_ORIENTATION_EVENTS
-endif
-
-ifeq ($(ENABLE_DRAGGABLE_REGION), 1)
-    ADDITIONAL_IDL_DEFINES := $(ADDITIONAL_IDL_DEFINES) ENABLE_DRAGGABLE_REGION
 endif
 
 # --------
@@ -757,11 +778,11 @@ ifeq ($(findstring ENABLE_SVG,$(FEATURE_DEFINES)), ENABLE_SVG)
     WEBCORE_CSS_VALUE_KEYWORDS := $(WEBCORE_CSS_VALUE_KEYWORDS) $(WebCore)/css/SVGCSSValueKeywords.in
 endif
 
-CSSPropertyNames.h : $(WEBCORE_CSS_PROPERTY_NAMES) css/makeprop.pl $(PLATFORM_FEATURE_DEFINES)
+CSSPropertyNames.h : $(WEBCORE_CSS_PROPERTY_NAMES) css/makeprop.pl bindings/scripts/preprocessor.pm $(PLATFORM_FEATURE_DEFINES)
 	cat $(WEBCORE_CSS_PROPERTY_NAMES) > CSSPropertyNames.in
 	perl -I$(WebCore)/bindings/scripts "$(WebCore)/css/makeprop.pl" --defines "$(FEATURE_DEFINES)"
 
-CSSValueKeywords.h : $(WEBCORE_CSS_VALUE_KEYWORDS) css/makevalues.pl $(PLATFORM_FEATURE_DEFINES)
+CSSValueKeywords.h : $(WEBCORE_CSS_VALUE_KEYWORDS) css/makevalues.pl bindings/scripts/preprocessor.pm $(PLATFORM_FEATURE_DEFINES)
 	cat $(WEBCORE_CSS_VALUE_KEYWORDS) > CSSValueKeywords.in
 	perl -I$(WebCore)/bindings/scripts "$(WebCore)/css/makevalues.pl" --defines "$(FEATURE_DEFINES)"
 
@@ -772,8 +793,8 @@ CSSValueKeywords.h : $(WEBCORE_CSS_VALUE_KEYWORDS) css/makevalues.pl $(PLATFORM_
 all : XMLViewerCSS.h
 
 XMLViewerCSS.h : xml/XMLViewer.css
-	python "$(WebCore)/inspector/Scripts/cssmin.py" <"$(WebCore)/xml/XMLViewer.css" > ./XMLViewer.min.css
-	perl $(WebCore)/inspector/xxd.pl XMLViewer_css ./XMLViewer.min.css XMLViewerCSS.h
+	python $(InspectorScripts)/cssmin.py <"$(WebCore)/xml/XMLViewer.css" > ./XMLViewer.min.css
+	perl $(InspectorScripts)/xxd.pl XMLViewer_css ./XMLViewer.min.css XMLViewerCSS.h
 	rm -f ./XMLViewer.min.css
 
 # --------
@@ -783,8 +804,8 @@ XMLViewerCSS.h : xml/XMLViewer.css
 all : XMLViewerJS.h
 
 XMLViewerJS.h : xml/XMLViewer.js
-	python "$(WebCore)/inspector/Scripts/jsmin.py" <"$(WebCore)/xml/XMLViewer.js" > ./XMLViewer.min.js
-	perl $(WebCore)/inspector/xxd.pl XMLViewer_js ./XMLViewer.min.js XMLViewerJS.h
+	python $(InspectorScripts)/jsmin.py <"$(WebCore)/xml/XMLViewer.js" > ./XMLViewer.min.js
+	perl $(InspectorScripts)/xxd.pl XMLViewer_js ./XMLViewer.min.js XMLViewerJS.h
 	rm -f ./XMLViewer.min.js
 
 # --------
@@ -847,6 +868,9 @@ endif
 
 ifeq ($(findstring ENABLE_MEDIA_CONTROLS_SCRIPT,$(FEATURE_DEFINES)), ENABLE_MEDIA_CONTROLS_SCRIPT)
 	USER_AGENT_STYLE_SHEETS := $(USER_AGENT_STYLE_SHEETS) $(WebCore)/Modules/mediacontrols/mediaControlsApple.css
+ifeq ($(WTF_PLATFORM_IOS), 1)
+    USER_AGENT_STYLE_SHEETS := $(USER_AGENT_STYLE_SHEETS) $(WebCore)/Modules/mediacontrols/mediaControlsiOS.css
+endif
 endif
 
 ifeq ($(OS),MACOS)
@@ -864,6 +888,9 @@ USER_AGENT_SCRIPTS =
 
 ifeq ($(findstring ENABLE_MEDIA_CONTROLS_SCRIPT,$(FEATURE_DEFINES)), ENABLE_MEDIA_CONTROLS_SCRIPT)
 	USER_AGENT_SCRIPTS := $(USER_AGENT_SCRIPTS) $(WebCore)/Modules/mediacontrols/mediaControlsApple.js
+ifeq ($(WTF_PLATFORM_IOS), 1)
+	USER_AGENT_SCRIPTS := $(USER_AGENT_SCRIPTS) $(WebCore)/Modules/mediacontrols/mediaControlsiOS.js
+endif
 endif
 
 ifeq ($(OS),MACOS)
@@ -1048,7 +1075,6 @@ WORKERGLOBALSCOPE_CONSTRUCTORS_FILE = ./WorkerGlobalScopeConstructors.idl
 SHAREDWORKERGLOBALSCOPE_CONSTRUCTORS_FILE = ./SharedWorkerGlobalScopeConstructors.idl
 DEDICATEDWORKERGLOBALSCOPE_CONSTRUCTORS_FILE = ./DedicatedWorkerGlobalScopeConstructors.idl
 IDL_FILES_TMP = ./idl_files.tmp
-ADDITIONAL_IDLS = $(WebCore)/inspector/JavaScriptCallFrame.idl
 IDL_ATTRIBUTES_FILE = $(WebCore)/bindings/scripts/IDLAttributes.txt
 
 # The following two lines get a space character stored in a variable.
@@ -1056,8 +1082,8 @@ IDL_ATTRIBUTES_FILE = $(WebCore)/bindings/scripts/IDLAttributes.txt
 space :=
 space +=
 
-$(SUPPLEMENTAL_MAKEFILE_DEPS) : $(PREPROCESS_IDLS_SCRIPTS) $(BINDING_IDLS) $(ADDITIONAL_IDLS) $(PLATFORM_FEATURE_DEFINES)
-	printf "$(subst $(space),,$(patsubst %,%\n,$(BINDING_IDLS) $(ADDITIONAL_IDLS)))" > $(IDL_FILES_TMP)
+$(SUPPLEMENTAL_MAKEFILE_DEPS) : $(PREPROCESS_IDLS_SCRIPTS) $(BINDING_IDLS) $(PLATFORM_FEATURE_DEFINES)
+	printf "$(subst $(space),,$(patsubst %,%\n,$(BINDING_IDLS)))" > $(IDL_FILES_TMP)
 	$(call preprocess_idls_script, $(PREPROCESS_IDLS_SCRIPTS)) --defines "$(FEATURE_DEFINES) $(ADDITIONAL_IDL_DEFINES) LANGUAGE_JAVASCRIPT" --idlFilesList $(IDL_FILES_TMP) --supplementalDependencyFile $(SUPPLEMENTAL_DEPENDENCY_FILE) --windowConstructorsFile $(WINDOW_CONSTRUCTORS_FILE) --workerGlobalScopeConstructorsFile $(WORKERGLOBALSCOPE_CONSTRUCTORS_FILE) --sharedWorkerGlobalScopeConstructorsFile $(SHAREDWORKERGLOBALSCOPE_CONSTRUCTORS_FILE) --dedicatedWorkerGlobalScopeConstructorsFile $(DEDICATEDWORKERGLOBALSCOPE_CONSTRUCTORS_FILE) --supplementalMakefileDeps $@
 	rm -f $(IDL_FILES_TMP)
 
@@ -1077,7 +1103,6 @@ INSPECTOR_DOMAINS = \
     $(WebCore)/inspector/protocol/DOMDebugger.json \
     $(WebCore)/inspector/protocol/DOMStorage.json \
     $(WebCore)/inspector/protocol/Database.json \
-    $(WebCore)/inspector/protocol/FileSystem.json \
     $(WebCore)/inspector/protocol/HeapProfiler.json \
     $(WebCore)/inspector/protocol/IndexedDB.json \
     $(WebCore)/inspector/protocol/Input.json \
@@ -1108,22 +1133,22 @@ InspectorWebFrontendDispatchers.h : InspectorWeb.json $(InspectorScripts)/Inspec
 all : InspectorOverlayPage.h
 
 InspectorOverlayPage.h : InspectorOverlayPage.html InspectorOverlayPage.css InspectorOverlayPage.js
-	python "$(WebCore)/inspector/Scripts/inline-and-minify-stylesheets-and-scripts.py" "$(WebCore)/inspector/InspectorOverlayPage.html" ./InspectorOverlayPage.combined.html
-	perl "$(WebCore)/inspector/xxd.pl" InspectorOverlayPage_html ./InspectorOverlayPage.combined.html InspectorOverlayPage.h
+	python $(InspectorScripts)/inline-and-minify-stylesheets-and-scripts.py $(WebCore)/inspector/InspectorOverlayPage.html ./InspectorOverlayPage.combined.html
+	perl $(InspectorScripts)/xxd.pl InspectorOverlayPage_html ./InspectorOverlayPage.combined.html InspectorOverlayPage.h
 	rm -f ./InspectorOverlayPage.combined.html
 
-all : InjectedScriptSource.h
+all : CommandLineAPIModuleSource.h
 
-InjectedScriptSource.h : InjectedScriptSource.js
-	python "$(WebCore)/inspector/Scripts/jsmin.py" <"$(WebCore)/inspector/InjectedScriptSource.js" > ./InjectedScriptSource.min.js
-	perl "$(WebCore)/inspector/xxd.pl" InjectedScriptSource_js ./InjectedScriptSource.min.js InjectedScriptSource.h
-	rm -f ./InjectedScriptSource.min.js
+CommandLineAPIModuleSource.h : CommandLineAPIModuleSource.js
+	python $(InspectorScripts)/jsmin.py <$(WebCore)/inspector/CommandLineAPIModuleSource.js > ./CommandLineAPIModuleSource.min.js
+	perl $(InspectorScripts)/xxd.pl CommandLineAPIModuleSource_js ./CommandLineAPIModuleSource.min.js CommandLineAPIModuleSource.h
+	rm -f ./CommandLineAPIModuleSource.min.js
 
 all : InjectedScriptCanvasModuleSource.h
 
 InjectedScriptCanvasModuleSource.h : InjectedScriptCanvasModuleSource.js
-	python "$(WebCore)/inspector/Scripts/jsmin.py" <"$(WebCore)/inspector/InjectedScriptCanvasModuleSource.js" > ./InjectedScriptCanvasModuleSource.min.js
-	perl "$(WebCore)/inspector/xxd.pl" InjectedScriptCanvasModuleSource_js ./InjectedScriptCanvasModuleSource.min.js InjectedScriptCanvasModuleSource.h
+	python $(InspectorScripts)/jsmin.py <$(WebCore)/inspector/InjectedScriptCanvasModuleSource.js > ./InjectedScriptCanvasModuleSource.min.js
+	perl $(InspectorScripts)/xxd.pl InjectedScriptCanvasModuleSource_js ./InjectedScriptCanvasModuleSource.min.js InjectedScriptCanvasModuleSource.h
 	rm -f ./InjectedScriptCanvasModuleSource.min.js
 
 -include $(JS_DOM_HEADERS:.h=.dep)
@@ -1144,21 +1169,61 @@ all : CharsetData.cpp
 
 # character set name table
 
-CharsetData.cpp : platform/text/mac/make-charset-table.pl platform/text/mac/character-sets.txt platform/text/mac/mac-encodings.txt
+ifeq ($(WTF_PLATFORM_IOS),1)
+ENCODINGS_FILENAME := ios-encodings.txt
+else
+ENCODINGS_FILENAME := mac-encodings.txt
+endif # WTF_PLATFORM_IOS
+
+CharsetData.cpp : platform/text/mac/make-charset-table.pl platform/text/mac/character-sets.txt platform/text/mac/$(ENCODINGS_FILENAME)
 	perl $^ kTextEncoding > $@
 
 # --------
 
 ifneq ($(ACTION),installhdrs)
 
+ifeq ($(WTF_PLATFORM_IOS),1)
+
+ifeq ($(findstring armv7,$(ARCHS)), armv7)
+    WEBCORE_EXPORT_FILES := $(WEBCORE_EXPORT_FILES) WebCore.LP64.armv7.exp
+endif
+ifeq ($(findstring armv7k,$(ARCHS)), armv7k)
+    WEBCORE_EXPORT_FILES := $(WEBCORE_EXPORT_FILES) WebCore.LP64.armv7k.exp
+endif
+ifeq ($(findstring armv7s,$(ARCHS)), armv7s)
+    WEBCORE_EXPORT_FILES := $(WEBCORE_EXPORT_FILES) WebCore.LP64.armv7s.exp
+endif
+ifeq ($(findstring arm64,$(ARCHS)), arm64)
+    WEBCORE_EXPORT_FILES := $(WEBCORE_EXPORT_FILES) WebCore.LP64.arm64.exp
+endif
+ifeq ($(findstring i386,$(ARCHS)), i386)
+    WEBCORE_EXPORT_FILES := $(WEBCORE_EXPORT_FILES) WebCore.LP64.i386.exp
+endif
+ifeq ($(findstring x86_64,$(ARCHS)), x86_64)
+    WEBCORE_EXPORT_FILES := $(WEBCORE_EXPORT_FILES) WebCore.LP64.x86_64.exp
+endif
+
+all : $(WEBCORE_EXPORT_FILES)
+
+WebCore.%.exp : generate-export-file WebCore.exp.in
+	$^ $@
+
+# Switch NSRect, NSSize and NSPoint with their CG counterparts for the 64-bit exports file.
+WebCore.LP64.%.exp : WebCore.%.exp
+	cat $^ | sed -e s/7_NSRect/6CGRect/ -e s/7_NSSize/6CGSize/ -e s/8_NSPoint/7CGPoint/ > $@
+
+else
+
 all : WebCore.exp WebCore.LP64.exp
 
 WebCore.exp : $(BUILT_PRODUCTS_DIR)/WebCoreExportFileGenerator
-	$^ > $@
+	$^ | grep -v '^# ' | sed -e 's/^#//' > $@
 
 # Switch NSRect, NSSize and NSPoint with their CG counterparts for the 64-bit exports file.
 WebCore.LP64.exp : WebCore.exp
 	cat $^ | sed -e s/7_NSRect/6CGRect/ -e s/7_NSSize/6CGSize/ -e s/8_NSPoint/7CGPoint/ > $@
+
+endif # WTF_PLATFORM_IOS
 
 endif # installhdrs
 

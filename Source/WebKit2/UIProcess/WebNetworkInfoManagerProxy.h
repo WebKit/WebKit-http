@@ -39,7 +39,7 @@ namespace WebKit {
 class WebContext;
 class WebNetworkInfo;
 
-class WebNetworkInfoManagerProxy : public API::ObjectImpl<API::Object::Type::NetworkInfoManager>, public WebContextSupplement, private CoreIPC::MessageReceiver {
+class WebNetworkInfoManagerProxy : public API::ObjectImpl<API::Object::Type::NetworkInfoManager>, public WebContextSupplement, private IPC::MessageReceiver {
 public:
     static const char* supplementName();
 
@@ -57,14 +57,14 @@ private:
     explicit WebNetworkInfoManagerProxy(WebContext*);
 
     // WebContextSupplement
-    virtual void contextDestroyed() OVERRIDE;
-    virtual void processDidClose(WebProcessProxy*) OVERRIDE;
-    virtual void refWebContextSupplement() OVERRIDE;
-    virtual void derefWebContextSupplement() OVERRIDE;
+    virtual void contextDestroyed() override;
+    virtual void processDidClose(WebProcessProxy*) override;
+    virtual void refWebContextSupplement() override;
+    virtual void derefWebContextSupplement() override;
 
-    // CoreIPC::MessageReceiver
-    virtual void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&) OVERRIDE;
-    virtual void didReceiveSyncMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&, std::unique_ptr<CoreIPC::MessageEncoder>&) OVERRIDE;
+    // IPC::MessageReceiver
+    virtual void didReceiveMessage(IPC::Connection*, IPC::MessageDecoder&) override;
+    virtual void didReceiveSyncMessage(IPC::Connection*, IPC::MessageDecoder&, std::unique_ptr<IPC::MessageEncoder>&) override;
 
     void startUpdating();
     void stopUpdating();

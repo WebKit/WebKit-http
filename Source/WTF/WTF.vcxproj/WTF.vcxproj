@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="DebugSuffix|Win32">
       <Configuration>DebugSuffix</Configuration>
@@ -216,6 +216,8 @@
     <ClInclude Include="..\wtf\HashTable.h" />
     <ClInclude Include="..\wtf\HashTraits.h" />
     <ClInclude Include="..\wtf\HexNumber.h" />
+    <ClInclude Include="..\wtf\IteratorAdaptors.h" />
+    <ClInclude Include="..\wtf\IteratorRange.h" />
     <ClInclude Include="..\wtf\ListHashSet.h" />
     <ClInclude Include="..\wtf\Locker.h" />
     <ClInclude Include="..\wtf\MainThread.h" />
@@ -283,16 +285,17 @@
     <ClInclude Include="..\wtf\text\Base64.h" />
     <ClInclude Include="..\wtf\text\CString.h" />
     <ClInclude Include="..\wtf\text\IntegerToStringConversion.h" />
+    <ClInclude Include="..\wtf\text\LChar.h" />
     <ClInclude Include="..\wtf\text\StringBuffer.h" />
     <ClInclude Include="..\wtf\text\StringBuilder.h" />
     <ClInclude Include="..\wtf\text\StringConcatenate.h" />
     <ClInclude Include="..\wtf\text\StringHash.h" />
     <ClInclude Include="..\wtf\text\StringImpl.h" />
     <ClInclude Include="..\wtf\text\StringOperators.h" />
+    <ClInclude Include="..\wtf\text\StringView.h" />
     <ClInclude Include="..\wtf\text\WTFString.h" />
     <ClInclude Include="..\wtf\Threading.h" />
     <ClInclude Include="..\wtf\ThreadingPrimitives.h" />
-    <ClInclude Include="..\wtf\ThreadRestrictionVerifier.h" />
     <ClInclude Include="..\wtf\threadsafeRefCounted.h" />
     <ClInclude Include="..\wtf\threadspecific.h" />
     <ClInclude Include="..\wtf\threads\BinarySemaphore.h" />

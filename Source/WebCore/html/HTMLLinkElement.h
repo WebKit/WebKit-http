@@ -42,7 +42,7 @@ class URL;
 template<typename T> class EventSender;
 typedef EventSender<HTMLLinkElement> LinkEventSender;
 
-class HTMLLinkElement FINAL : public HTMLElement, public CachedStyleSheetClient, public LinkLoaderClient {
+class HTMLLinkElement final : public HTMLElement, public CachedStyleSheetClient, public LinkLoaderClient {
 public:
     static PassRefPtr<HTMLLinkElement> create(const QualifiedName&, Document&, bool createdByParser);
     virtual ~HTMLLinkElement();
@@ -50,7 +50,7 @@ public:
     URL href() const;
     String rel() const;
 
-    virtual String target() const;
+    virtual String target() const override;
 
     String type() const;
 
@@ -72,37 +72,37 @@ public:
     static void dispatchPendingLoadEvents();
 
 private:
-    virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
+    virtual void parseAttribute(const QualifiedName&, const AtomicString&) override;
 
-    virtual bool shouldLoadLink();
+    virtual bool shouldLoadLink() override;
     void process();
     static void processCallback(Node*);
     void clearSheet();
 
-    virtual InsertionNotificationRequest insertedInto(ContainerNode&) OVERRIDE;
-    virtual void removedFrom(ContainerNode&) OVERRIDE;
+    virtual InsertionNotificationRequest insertedInto(ContainerNode&) override;
+    virtual void removedFrom(ContainerNode&) override;
 
     // from CachedResourceClient
-    virtual void setCSSStyleSheet(const String& href, const URL& baseURL, const String& charset, const CachedCSSStyleSheet* sheet);
-    virtual bool sheetLoaded();
-    virtual void notifyLoadedSheetAndAllCriticalSubresources(bool errorOccurred);
-    virtual void startLoadingDynamicSheet();
+    virtual void setCSSStyleSheet(const String& href, const URL& baseURL, const String& charset, const CachedCSSStyleSheet* sheet) override;
+    virtual bool sheetLoaded() override;
+    virtual void notifyLoadedSheetAndAllCriticalSubresources(bool errorOccurred) override;
+    virtual void startLoadingDynamicSheet() override;
 
-    virtual void linkLoaded() OVERRIDE;
-    virtual void linkLoadingErrored() OVERRIDE;
+    virtual void linkLoaded() override;
+    virtual void linkLoadingErrored() override;
 
     bool isAlternate() const { return m_disabledState == Unset && m_relAttribute.m_isAlternate; }
     
     void setDisabledState(bool);
 
-    virtual bool isURLAttribute(const Attribute&) const OVERRIDE;
+    virtual bool isURLAttribute(const Attribute&) const override;
 
 private:
     HTMLLinkElement(const QualifiedName&, Document&, bool createdByParser);
 
-    virtual void addSubresourceAttributeURLs(ListHashSet<URL>&) const;
+    virtual void addSubresourceAttributeURLs(ListHashSet<URL>&) const override;
 
-    virtual void finishParsingChildren();
+    virtual void finishParsingChildren() override;
 
     enum PendingSheetType { Unknown, ActiveSheet, InactiveSheet };
     void addPendingSheet(PendingSheetType);

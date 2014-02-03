@@ -26,7 +26,7 @@
 #ifndef ScrollingTreeNode_h
 #define ScrollingTreeNode_h
 
-#if ENABLE(THREADED_SCROLLING)
+#if ENABLE(ASYNC_SCROLLING)
 
 #include "IntRect.h"
 #include "ScrollTypes.h"
@@ -43,12 +43,13 @@ class ScrollingTreeNode {
 public:
     virtual ~ScrollingTreeNode();
 
-    virtual void updateBeforeChildren(ScrollingStateNode*) = 0;
-    virtual void updateAfterChildren(ScrollingStateNode*) { }
+    ScrollingNodeType nodeType() const { return m_nodeType; }
+    ScrollingNodeID scrollingNodeID() const { return m_nodeID; }
+
+    virtual void updateBeforeChildren(const ScrollingStateNode&) = 0;
+    virtual void updateAfterChildren(const ScrollingStateNode&) { }
 
     virtual void parentScrollPositionDidChange(const IntRect& viewportRect, const FloatSize& cumulativeDelta) = 0;
-
-    ScrollingNodeID scrollingNodeID() const { return m_nodeID; }
 
     ScrollingTreeNode* parent() const { return m_parent; }
     void setParent(ScrollingTreeNode* parent) { m_parent = parent; }
@@ -57,7 +58,7 @@ public:
     void removeChild(ScrollingTreeNode*);
 
 protected:
-    ScrollingTreeNode(ScrollingTree&, ScrollingNodeID);
+    ScrollingTreeNode(ScrollingTree&, ScrollingNodeType, ScrollingNodeID);
     ScrollingTree& scrollingTree() const { return m_scrollingTree; }
 
     typedef Vector<OwnPtr<ScrollingTreeNode>> ScrollingTreeChildrenVector;
@@ -66,13 +67,17 @@ protected:
 private:
     ScrollingTree& m_scrollingTree;
 
-    ScrollingNodeID m_nodeID;
+    const ScrollingNodeType m_nodeType;
+    const ScrollingNodeID m_nodeID;
 
     ScrollingTreeNode* m_parent;
 };
 
+#define SCROLLING_NODE_TYPE_CASTS(ToValueTypeName, predicate) \
+    TYPE_CASTS_BASE(ToValueTypeName, ScrollingTreeNode, value, value->predicate, value.predicate)
+
 } // namespace WebCore
 
-#endif // ENABLE(THREADED_SCROLLING)
+#endif // ENABLE(ASYNC_SCROLLING)
 
 #endif // ScrollingTreeNode_h

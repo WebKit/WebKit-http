@@ -36,7 +36,7 @@
 #include <wtf/HashMap.h>
 #include <wtf/text/WTFString.h>
 
-namespace CoreIPC {
+namespace IPC {
 class ArgumentDecoder;
 class ArgumentEncoder;
 }
@@ -47,8 +47,6 @@ class PlatformCALayerRemote;
 
 class RemoteLayerTreeTransaction {
 public:
-    typedef uint64_t LayerID;
-
     enum LayerChange {
         NoChange = 0,
         NameChanged = 1 << 1,
@@ -83,10 +81,10 @@ public:
     struct LayerCreationProperties {
         LayerCreationProperties();
 
-        void encode(CoreIPC::ArgumentEncoder&) const;
-        static bool decode(CoreIPC::ArgumentDecoder&, LayerCreationProperties&);
+        void encode(IPC::ArgumentEncoder&) const;
+        static bool decode(IPC::ArgumentDecoder&, LayerCreationProperties&);
 
-        LayerID layerID;
+        WebCore::GraphicsLayer::PlatformLayerID layerID;
         WebCore::PlatformCALayer::LayerType type;
 
         uint32_t hostingContextID;
@@ -95,8 +93,8 @@ public:
     struct LayerProperties {
         LayerProperties();
 
-        void encode(CoreIPC::ArgumentEncoder&) const;
-        static bool decode(CoreIPC::ArgumentDecoder&, LayerProperties&);
+        void encode(IPC::ArgumentEncoder&) const;
+        static bool decode(IPC::ArgumentDecoder&, LayerProperties&);
 
         void notePropertiesChanged(LayerChange layerChanges)
         {
@@ -108,7 +106,7 @@ public:
         LayerChange everChangedProperties;
 
         String name;
-        Vector<LayerID> children;
+        Vector<WebCore::GraphicsLayer::PlatformLayerID> children;
         WebCore::FloatPoint3D position;
         WebCore::FloatSize size;
         WebCore::Color backgroundColor;
@@ -123,7 +121,7 @@ public:
         bool doubleSided;
         bool masksToBounds;
         bool opaque;
-        LayerID maskLayerID;
+        WebCore::GraphicsLayer::PlatformLayerID maskLayerID;
         WebCore::FloatRect contentsRect;
         float contentsScale;
         WebCore::PlatformCALayer::FilterType minificationFilter;
@@ -139,14 +137,14 @@ public:
     explicit RemoteLayerTreeTransaction();
     ~RemoteLayerTreeTransaction();
 
-    void encode(CoreIPC::ArgumentEncoder&) const;
-    static bool decode(CoreIPC::ArgumentDecoder&, RemoteLayerTreeTransaction&);
+    void encode(IPC::ArgumentEncoder&) const;
+    static bool decode(IPC::ArgumentDecoder&, RemoteLayerTreeTransaction&);
 
-    LayerID rootLayerID() const { return m_rootLayerID; }
-    void setRootLayerID(LayerID rootLayerID);
+    WebCore::GraphicsLayer::PlatformLayerID rootLayerID() const { return m_rootLayerID; }
+    void setRootLayerID(WebCore::GraphicsLayer::PlatformLayerID);
     void layerPropertiesChanged(PlatformCALayerRemote*, LayerProperties&);
     void setCreatedLayers(Vector<LayerCreationProperties>);
-    void setDestroyedLayerIDs(Vector<LayerID>);
+    void setDestroyedLayerIDs(Vector<WebCore::GraphicsLayer::PlatformLayerID>);
 
 #if !defined(NDEBUG) || !LOG_DISABLED
     WTF::CString description() const;
@@ -154,14 +152,14 @@ public:
 #endif
 
     Vector<LayerCreationProperties> createdLayers() const { return m_createdLayers; }
-    HashMap<LayerID, LayerProperties> changedLayers() const { return m_changedLayerProperties; }
-    Vector<LayerID> destroyedLayers() const { return m_destroyedLayerIDs; }
+    HashMap<WebCore::GraphicsLayer::PlatformLayerID, LayerProperties> changedLayers() const { return m_changedLayerProperties; }
+    Vector<WebCore::GraphicsLayer::PlatformLayerID> destroyedLayers() const { return m_destroyedLayerIDs; }
 
 private:
-    LayerID m_rootLayerID;
-    HashMap<LayerID, LayerProperties> m_changedLayerProperties;
+    WebCore::GraphicsLayer::PlatformLayerID m_rootLayerID;
+    HashMap<WebCore::GraphicsLayer::PlatformLayerID, LayerProperties> m_changedLayerProperties;
     Vector<LayerCreationProperties> m_createdLayers;
-    Vector<LayerID> m_destroyedLayerIDs;
+    Vector<WebCore::GraphicsLayer::PlatformLayerID> m_destroyedLayerIDs;
 };
 
 } // namespace WebKit

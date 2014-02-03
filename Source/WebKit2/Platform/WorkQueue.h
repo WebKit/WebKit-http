@@ -31,6 +31,8 @@
 #include <dispatch/dispatch.h>
 #endif
 
+#include <chrono>
+#include <functional>
 #include <wtf/Forward.h>
 #include <wtf/Functional.h>
 #include <wtf/HashMap.h>
@@ -55,19 +57,16 @@ public:
     static PassRefPtr<WorkQueue> create(const char* name);
     ~WorkQueue();
 
-    // Will dispatch the given function to run as soon as possible.
-    void dispatch(const Function<void()>&);
-
-    // Will dispatch the given function after the given delay (in seconds).
-    void dispatchAfterDelay(const Function<void()>&, double delay);
+    void dispatch(std::function<void ()>);
+    void dispatchAfter(std::chrono::nanoseconds, std::function<void ()>);
 
 #if OS(DARWIN)
     dispatch_queue_t dispatchQueue() const { return m_dispatchQueue; }
 #elif PLATFORM(GTK)
-    void registerSocketEventHandler(int, const Function<void()>&, const Function<void()>&);
+    void registerSocketEventHandler(int, std::function<void ()>, std::function<void ()>);
     void unregisterSocketEventHandler(int);
 #elif PLATFORM(EFL)
-    void registerSocketEventHandler(int, const Function<void()>&);
+    void registerSocketEventHandler(int, std::function<void ()>);
     void unregisterSocketEventHandler(int);
 #endif
 
@@ -86,7 +85,7 @@ private:
 
     static void startWorkQueueThread(WorkQueue*);
     void workQueueThreadBody();
-    void dispatchOnSource(GSource*, const Function<void()>&, GSourceFunc);
+    void dispatchOnSource(GSource*, std::function<void ()>, GSourceFunc);
 
     ThreadIdentifier m_workQueueThread;
     GRefPtr<GMainContext> m_eventContext;

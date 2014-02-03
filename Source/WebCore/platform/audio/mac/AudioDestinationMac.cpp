@@ -30,12 +30,15 @@
 
 #if ENABLE(WEB_AUDIO)
 
+#if PLATFORM(MAC) && !PLATFORM(IOS)
+
 #include "AudioDestinationMac.h"
 
 #include "AudioIOCallback.h"
-#include "AudioSessionManager.h"
+#include "AudioSession.h"
 #include "FloatConversion.h"
 #include "Logging.h"
+#include "MediaSessionManager.h"
 #include "VectorMath.h"
 #include <CoreAudio/AudioHardware.h>
 
@@ -46,7 +49,7 @@ const float kLowThreshold = -1;
 const float kHighThreshold = 1;
 
 // Factory method: Mac-implementation
-PassOwnPtr<AudioDestination> AudioDestination::create(AudioIOCallback& callback, const String&, unsigned numberOfInputChannels, unsigned numberOfOutputChannels, float sampleRate)
+std::unique_ptr<AudioDestination> AudioDestination::create(AudioIOCallback& callback, const String&, unsigned numberOfInputChannels, unsigned numberOfOutputChannels, float sampleRate)
 {
     // FIXME: make use of inputDeviceId as appropriate.
 
@@ -58,7 +61,7 @@ PassOwnPtr<AudioDestination> AudioDestination::create(AudioIOCallback& callback,
     if (numberOfOutputChannels != 2)
         LOG(Media, "AudioDestination::create(%u, %u, %f) - unhandled output channels", numberOfInputChannels, numberOfOutputChannels, sampleRate);
 
-    return adoptPtr(new AudioDestinationMac(callback, sampleRate));
+    return std::make_unique<AudioDestinationMac>(callback, sampleRate);
 }
 
 float AudioDestination::hardwareSampleRate()
@@ -82,7 +85,7 @@ AudioDestinationMac::AudioDestinationMac(AudioIOCallback& callback, float sample
     , m_renderBus(AudioBus::create(2, kBufferSize, false))
     , m_sampleRate(sampleRate)
     , m_isPlaying(false)
-    , m_audioSessionManagerToken(AudioSessionManagerToken::create(AudioSessionManager::WebAudio))
+    , m_mediaSession(MediaSession::create(*this))
 {
     // Open and initialize DefaultOutputUnit
     AudioComponent comp;
@@ -125,12 +128,12 @@ void AudioDestinationMac::configure()
     AudioStreamBasicDescription streamFormat;
     streamFormat.mSampleRate = m_sampleRate;
     streamFormat.mFormatID = kAudioFormatLinearPCM;
-    streamFormat.mFormatFlags = kAudioFormatFlagsCanonical | kAudioFormatFlagIsNonInterleaved;
-    streamFormat.mBitsPerChannel = 8 * sizeof(AudioSampleType);
+    streamFormat.mFormatFlags = kAudioFormatFlagsNativeFloatPacked | kAudioFormatFlagIsNonInterleaved;
+    streamFormat.mBitsPerChannel = 8 * sizeof(Float32);
     streamFormat.mChannelsPerFrame = 2;
     streamFormat.mFramesPerPacket = 1;
-    streamFormat.mBytesPerPacket = sizeof(AudioSampleType);
-    streamFormat.mBytesPerFrame = sizeof(AudioSampleType);
+    streamFormat.mBytesPerPacket = sizeof(Float32);
+    streamFormat.mBytesPerFrame = sizeof(Float32);
 
     result = AudioUnitSetProperty(m_outputUnit, kAudioUnitProperty_StreamFormat, kAudioUnitScope_Input, 0, (void*)&streamFormat, sizeof(AudioStreamBasicDescription));
     ASSERT(!result);
@@ -179,5 +182,7 @@ OSStatus AudioDestinationMac::inputProc(void* userData, AudioUnitRenderActionFla
 }
 
 } // namespace WebCore
+
+#endif // PLATFORM(MAC) && !PLATFORM(IOS)
 
 #endif // ENABLE(WEB_AUDIO)

@@ -81,9 +81,6 @@ public:
 #if ENABLE(VIDEO_TRACK)
         , TextTrackResource
 #endif
-#if ENABLE(CSS_SHADERS)
-        , ShaderResource
-#endif
     };
 
     enum Status {
@@ -149,8 +146,6 @@ public:
     unsigned encodedSize() const { return m_encodedSize; }
     unsigned decodedSize() const { return m_decodedSize; }
     unsigned overheadSize() const;
-
-    virtual bool decodedDataIsPurgeable() const { return false; }
     
     bool isLoaded() const { return !m_loading; } // FIXME. Method name is inaccurate. Loading might not have started yet.
 
@@ -160,7 +155,7 @@ public:
 
     SubresourceLoader* loader() { return m_loader.get(); }
 
-    virtual bool isImage() const { return false; }
+    bool isImage() const { return type() == ImageResource; }
     bool ignoreForRequestCount() const
     {
         return type() == MainResource
@@ -286,7 +281,7 @@ protected:
         void cancel();
     private:
         CachedResourceCallback(CachedResource*, CachedResourceClient*);
-        void timerFired(Timer<CachedResourceCallback>*);
+        void timerFired(Timer<CachedResourceCallback>&);
 
         CachedResource* m_resource;
         CachedResourceClient* m_client;
@@ -310,7 +305,7 @@ protected:
 private:
     bool addClientToSet(CachedResourceClient*);
 
-    void decodedDataDeletionTimerFired(DeferrableOneShotTimer<CachedResource>*);
+    void decodedDataDeletionTimerFired(DeferrableOneShotTimer<CachedResource>&);
 
     virtual PurgePriority purgePriority() const { return PurgeDefault; }
     virtual bool mayTryReplaceEncodedData() const { return false; }
@@ -372,6 +367,9 @@ private:
     // These handles will need to be updated to point to the m_resourceToRevalidate in case we get 304 response.
     HashSet<CachedResourceHandleBase*> m_handlesToRevalidate;
 };
+
+#define CACHED_RESOURCE_TYPE_CASTS(ToClassName, FromClassName, CachedResourceType) \
+    TYPE_CASTS_BASE(ToClassName, FromClassName, resource, resource->type() == CachedResourceType, resource.type() == CachedResourceType)
 
 }
 

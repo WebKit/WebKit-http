@@ -31,6 +31,7 @@
 #import "MessageEncoder.h"
 #import "PlatformCALayerRemote.h"
 #import "WebCoreArgumentCoders.h"
+#import <QuartzCore/QuartzCore.h>
 #import <WebCore/TextStream.h>
 #import <wtf/text/CString.h>
 #import <wtf/text/StringBuilder.h>
@@ -43,7 +44,7 @@ RemoteLayerTreeTransaction::LayerCreationProperties::LayerCreationProperties()
 {
 }
 
-void RemoteLayerTreeTransaction::LayerCreationProperties::encode(CoreIPC::ArgumentEncoder& encoder) const
+void RemoteLayerTreeTransaction::LayerCreationProperties::encode(IPC::ArgumentEncoder& encoder) const
 {
     encoder << layerID;
     encoder.encodeEnum(type);
@@ -52,7 +53,7 @@ void RemoteLayerTreeTransaction::LayerCreationProperties::encode(CoreIPC::Argume
         encoder << hostingContextID;
 }
 
-bool RemoteLayerTreeTransaction::LayerCreationProperties::decode(CoreIPC::ArgumentDecoder& decoder, LayerCreationProperties& result)
+bool RemoteLayerTreeTransaction::LayerCreationProperties::decode(IPC::ArgumentDecoder& decoder, LayerCreationProperties& result)
 {
     if (!decoder.decode(result.layerID))
         return false;
@@ -71,10 +72,29 @@ bool RemoteLayerTreeTransaction::LayerCreationProperties::decode(CoreIPC::Argume
 RemoteLayerTreeTransaction::LayerProperties::LayerProperties()
     : changedProperties(NoChange)
     , everChangedProperties(NoChange)
+    , backgroundColor(Color::transparent)
+    , anchorPoint(0.5, 0.5, 0)
+    , borderWidth(0)
+    , borderColor(Color::black)
+    , opacity(1)
+    , hidden(false)
+    , geometryFlipped(false)
+    , doubleSided(true)
+    , masksToBounds(false)
+    , opaque(false)
+    , maskLayerID(0)
+    , contentsRect(FloatPoint(), FloatSize(1, 1))
+    , contentsScale(1)
+    , minificationFilter(PlatformCALayer::FilterType::Linear)
+    , magnificationFilter(PlatformCALayer::FilterType::Linear)
+    , speed(1)
+    , timeOffset(0)
+    , edgeAntialiasingMask(kCALayerLeftEdge | kCALayerRightEdge | kCALayerBottomEdge | kCALayerTopEdge)
+    , customAppearance(GraphicsLayer::NoCustomAppearance)
 {
 }
 
-void RemoteLayerTreeTransaction::LayerProperties::encode(CoreIPC::ArgumentEncoder& encoder) const
+void RemoteLayerTreeTransaction::LayerProperties::encode(IPC::ArgumentEncoder& encoder) const
 {
     encoder.encodeEnum(changedProperties);
 
@@ -147,8 +167,11 @@ void RemoteLayerTreeTransaction::LayerProperties::encode(CoreIPC::ArgumentEncode
     if (changedProperties & TimeOffsetChanged)
         encoder << timeOffset;
 
-    if (changedProperties & BackingStoreChanged)
-        encoder << backingStore;
+    if (changedProperties & BackingStoreChanged) {
+        encoder << backingStore.hasFrontBuffer();
+        if (backingStore.hasFrontBuffer())
+            encoder << backingStore;
+    }
 
     if (changedProperties & FiltersChanged)
         encoder << filters;
@@ -160,7 +183,7 @@ void RemoteLayerTreeTransaction::LayerProperties::encode(CoreIPC::ArgumentEncode
         encoder.encodeEnum(customAppearance);
 }
 
-bool RemoteLayerTreeTransaction::LayerProperties::decode(CoreIPC::ArgumentDecoder& decoder, LayerProperties& result)
+bool RemoteLayerTreeTransaction::LayerProperties::decode(IPC::ArgumentDecoder& decoder, LayerProperties& result)
 {
     if (!decoder.decodeEnum(result.changedProperties))
         return false;
@@ -286,7 +309,10 @@ bool RemoteLayerTreeTransaction::LayerProperties::decode(CoreIPC::ArgumentDecode
     }
 
     if (result.changedProperties & BackingStoreChanged) {
-        if (!decoder.decode(result.backingStore))
+        bool hasFrontBuffer = false;
+        if (!decoder.decode(hasFrontBuffer))
+            return false;
+        if (hasFrontBuffer && !decoder.decode(result.backingStore))
             return false;
     }
 
@@ -316,7 +342,7 @@ RemoteLayerTreeTransaction::~RemoteLayerTreeTransaction()
 {
 }
 
-void RemoteLayerTreeTransaction::encode(CoreIPC::ArgumentEncoder& encoder) const
+void RemoteLayerTreeTransaction::encode(IPC::ArgumentEncoder& encoder) const
 {
     encoder << m_rootLayerID;
     encoder << m_createdLayers;
@@ -324,7 +350,7 @@ void RemoteLayerTreeTransaction::encode(CoreIPC::ArgumentEncoder& encoder) const
     encoder << m_destroyedLayerIDs;
 }
 
-bool RemoteLayerTreeTransaction::decode(CoreIPC::ArgumentDecoder& decoder, RemoteLayerTreeTransaction& result)
+bool RemoteLayerTreeTransaction::decode(IPC::ArgumentDecoder& decoder, RemoteLayerTreeTransaction& result)
 {
     if (!decoder.decode(result.m_rootLayerID))
         return false;
@@ -339,7 +365,8 @@ bool RemoteLayerTreeTransaction::decode(CoreIPC::ArgumentDecoder& decoder, Remot
 
     if (!decoder.decode(result.m_destroyedLayerIDs))
         return false;
-    for (LayerID layerID : result.m_destroyedLayerIDs) {
+
+    for (auto layerID : result.m_destroyedLayerIDs) {
         if (!layerID)
             return false;
     }
@@ -347,7 +374,7 @@ bool RemoteLayerTreeTransaction::decode(CoreIPC::ArgumentDecoder& decoder, Remot
     return true;
 }
 
-void RemoteLayerTreeTransaction::setRootLayerID(LayerID rootLayerID)
+void RemoteLayerTreeTransaction::setRootLayerID(GraphicsLayer::PlatformLayerID rootLayerID)
 {
     ASSERT_ARG(rootLayerID, rootLayerID);
 
@@ -364,7 +391,7 @@ void RemoteLayerTreeTransaction::setCreatedLayers(Vector<LayerCreationProperties
     m_createdLayers = std::move(createdLayers);
 }
 
-void RemoteLayerTreeTransaction::setDestroyedLayerIDs(Vector<LayerID> destroyedLayerIDs)
+void RemoteLayerTreeTransaction::setDestroyedLayerIDs(Vector<GraphicsLayer::PlatformLayerID> destroyedLayerIDs)
 {
     m_destroyedLayerIDs = std::move(destroyedLayerIDs);
 }
@@ -386,7 +413,7 @@ public:
     RemoteLayerTreeTextStream& operator<<(FloatPoint3D);
     RemoteLayerTreeTextStream& operator<<(Color);
     RemoteLayerTreeTextStream& operator<<(FloatRect);
-    RemoteLayerTreeTextStream& operator<<(const Vector<RemoteLayerTreeTransaction::LayerID>& layers);
+    RemoteLayerTreeTextStream& operator<<(const Vector<WebCore::GraphicsLayer::PlatformLayerID>& layers);
     RemoteLayerTreeTextStream& operator<<(const FilterOperations&);
 
     void increaseIndent() { ++m_indent; }
@@ -474,14 +501,6 @@ RemoteLayerTreeTextStream& RemoteLayerTreeTextStream::operator<<(const FilterOpe
         case FilterOperation::DROP_SHADOW:
             ts << "drop shadow";
             break;
-#if ENABLE(CSS_SHADERS)
-        case FilterOperation::CUSTOM:
-            ts << "custom";
-            break;
-        case FilterOperation::VALIDATED_CUSTOM:
-            ts << "custom (validated)";
-            break;
-#endif
         case FilterOperation::PASSTHROUGH:
             ts << "passthrough";
             break;
@@ -517,7 +536,7 @@ RemoteLayerTreeTextStream& RemoteLayerTreeTextStream::operator<<(FloatRect rect)
     return ts;
 }
 
-RemoteLayerTreeTextStream& RemoteLayerTreeTextStream::operator<<(const Vector<RemoteLayerTreeTransaction::LayerID>& layers)
+RemoteLayerTreeTextStream& RemoteLayerTreeTextStream::operator<<(const Vector<GraphicsLayer::PlatformLayerID>& layers)
 {
     RemoteLayerTreeTextStream& ts = *this;
 
@@ -547,7 +566,7 @@ static void dumpProperty(RemoteLayerTreeTextStream& ts, String name, T value)
     ts.decreaseIndent();
 }
 
-static void dumpChangedLayers(RemoteLayerTreeTextStream& ts, const HashMap<RemoteLayerTreeTransaction::LayerID, RemoteLayerTreeTransaction::LayerProperties>& changedLayerProperties)
+static void dumpChangedLayers(RemoteLayerTreeTextStream& ts, const HashMap<GraphicsLayer::PlatformLayerID, RemoteLayerTreeTransaction::LayerProperties>& changedLayerProperties)
 {
     if (changedLayerProperties.isEmpty())
         return;
@@ -557,7 +576,7 @@ static void dumpChangedLayers(RemoteLayerTreeTextStream& ts, const HashMap<Remot
     ts << "(changed-layers";
 
     // Dump the layer properties sorted by layer ID.
-    Vector<RemoteLayerTreeTransaction::LayerID> layerIDs;
+    Vector<GraphicsLayer::PlatformLayerID> layerIDs;
     copyKeysToVector(changedLayerProperties, layerIDs);
     std::sort(layerIDs.begin(), layerIDs.end());
 
@@ -573,7 +592,7 @@ static void dumpChangedLayers(RemoteLayerTreeTextStream& ts, const HashMap<Remot
             dumpProperty<String>(ts, "name", layerProperties.name);
 
         if (layerProperties.changedProperties & RemoteLayerTreeTransaction::ChildrenChanged)
-            dumpProperty<Vector<RemoteLayerTreeTransaction::LayerID>>(ts, "children", layerProperties.children);
+            dumpProperty<Vector<GraphicsLayer::PlatformLayerID>>(ts, "children", layerProperties.children);
 
         if (layerProperties.changedProperties & RemoteLayerTreeTransaction::PositionChanged)
             dumpProperty<FloatPoint3D>(ts, "position", layerProperties.position);
@@ -618,7 +637,7 @@ static void dumpChangedLayers(RemoteLayerTreeTextStream& ts, const HashMap<Remot
             dumpProperty<bool>(ts, "opaque", layerProperties.opaque);
 
         if (layerProperties.changedProperties & RemoteLayerTreeTransaction::MaskLayerChanged)
-            dumpProperty<RemoteLayerTreeTransaction::LayerID>(ts, "maskLayer", layerProperties.maskLayerID);
+            dumpProperty<GraphicsLayer::PlatformLayerID>(ts, "maskLayer", layerProperties.maskLayerID);
 
         if (layerProperties.changedProperties & RemoteLayerTreeTransaction::ContentsRectChanged)
             dumpProperty<FloatRect>(ts, "contentsRect", layerProperties.contentsRect);
@@ -721,7 +740,7 @@ CString RemoteLayerTreeTransaction::description() const
     dumpChangedLayers(ts, m_changedLayerProperties);
 
     if (!m_destroyedLayerIDs.isEmpty())
-        dumpProperty<Vector<RemoteLayerTreeTransaction::LayerID>>(ts, "destroyed-layers", m_destroyedLayerIDs);
+        dumpProperty<Vector<GraphicsLayer::PlatformLayerID>>(ts, "destroyed-layers", m_destroyedLayerIDs);
 
     ts << ")\n";
 

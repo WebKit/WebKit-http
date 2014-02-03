@@ -26,6 +26,8 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#if !PLATFORM(IOS)
+
 #import "WebNSPasteboardExtras.h"
 
 #import "DOMElementInternal.h"
@@ -270,7 +272,7 @@ static CachedImage* imageFromElement(DOMElement *domElement)
 
     NSString *extension = @"";
     if (RenderObject* renderer = core(element)->renderer()) {
-        if (renderer->isImage()) {
+        if (renderer->isRenderImage()) {
             if (CachedImage* image = toRenderImage(renderer)->cachedImage()) {
                 extension = image->image()->filenameExtension();
                 if (![extension length])
@@ -293,3 +295,5 @@ static CachedImage* imageFromElement(DOMElement *domElement)
 }
 
 @end
+
+#endif // !PLATFORM(IOS)

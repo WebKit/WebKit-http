@@ -48,7 +48,6 @@
 #include "ScriptSourceCode.h"
 #include "TextResourceDecoder.h"
 #include "TreeDepthLimit.h"
-#include "XMLErrors.h"
 #include <wtf/Ref.h>
 #include <wtf/StringExtras.h>
 #include <wtf/Threading.h>
@@ -165,9 +164,6 @@ void XMLDocumentParser::exitText()
     m_leafTextNode->appendData(toString(m_bufferedText.data(), m_bufferedText.size()), IGNORE_EXCEPTION);
     Vector<xmlChar> empty;
     m_bufferedText.swap(empty);
-
-    if (m_view && m_leafTextNode->parentNode() && m_leafTextNode->parentNode()->attached() && !m_leafTextNode->attached())
-        Style::attachTextRenderer(*m_leafTextNode);
 
     m_leafTextNode = 0;
 }

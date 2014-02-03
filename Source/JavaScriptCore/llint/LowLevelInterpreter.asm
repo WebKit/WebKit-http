@@ -1,4 +1,4 @@
-# Copyright (C) 2011, 2012, 2013 Apple Inc. All rights reserved.
+# Copyright (C) 2011, 2012, 2013, 2014 Apple Inc. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -38,8 +38,11 @@ const CallFrameHeaderSlots = 6
 else
 const PtrSize = 4
 const CallFrameHeaderSlots = 5
+const CallFrameAlignSlots = 1
 end
 const SlotSize = 8
+
+const CallerFrameAndPCSize = 2 * PtrSize
 
 const CallerFrame = 0
 const ReturnPC = CallerFrame + PtrSize
@@ -71,6 +74,16 @@ const DeletedValueTag = -7
 const LowestTag = DeletedValueTag
 end
 
+if X86_64 or ARM64 or C_LOOP
+const maxFrameExtentForSlowPathCall = 0
+elsif ARM or ARMv7_TRADITIONAL or ARMv7 or SH4
+const maxFrameExtentForSlowPathCall = 24
+elsif X86
+const maxFrameExtentForSlowPathCall = 40
+elsif MIPS
+const maxFrameExtentForSlowPathCall = 40
+end
+
 # Watchpoint states
 const ClearWatchpoint = 0
 const IsWatched = 1
@@ -85,7 +98,7 @@ if JSVALUE64
     #   to C functions.
     # - C calls are still given the Instruction* rather than the PC index.
     #   This requires an add before the call, and a sub after.
-    const PC = t4
+    const PC = t5
     const PB = t6
     const tagTypeNumber = csr1
     const tagMask = csr2
@@ -103,7 +116,7 @@ if JSVALUE64
     end
 
 else
-    const PC = t4
+    const PC = t5
     macro loadisFromInstruction(offset, dest)
         loadis offset * 4[PC], dest
     end
@@ -170,7 +183,11 @@ const Dynamic = 6
 
 const ResolveModeMask = 0xffff
 
-const MarkedBlockMask = ~0xffff
+const MarkedBlockSize = 64 * 1024
+const MarkedBlockMask = ~(MarkedBlockSize - 1)
+# Constants for checking mark bits.
+const AtomNumberShift = 3
+const BitMapWordShift = 4
 
 # Allocation constants
 if JSVALUE64
@@ -206,6 +223,52 @@ macro assert(assertion)
     end
 end
 
+macro checkStackPointerAlignment(tempReg, location)
+    if ARM64 or C_LOOP
+        # ARM64 will check for us!
+        # C_LOOP does not need the alignment, and can use a little perf
+        # improvement from avoiding useless work.
+    else
+        if ARM or ARMv7 or ARMv7_TRADITIONAL
+            # ARM can't do logical ops with the sp as a source
+            move sp, tempReg
+            andp 0xf, tempReg
+        else
+            andp sp, 0xf, tempReg
+        end
+        btpz tempReg, .stackPointerOkay
+        move location, tempReg
+        break
+    .stackPointerOkay:
+    end
+end
+
+macro preserveCallerPCAndCFR()
+    if C_LOOP or ARM or ARMv7 or ARMv7_TRADITIONAL or MIPS or SH4
+        push lr
+        push cfr
+    elsif X86 or X86_64
+        push cfr
+    elsif ARM64
+        pushLRAndFP
+    else
+        error
+    end
+    move sp, cfr
+end
+
+macro restoreCallerPCAndCFR()
+    move cfr, sp
+    if C_LOOP or ARM or ARMv7 or ARMv7_TRADITIONAL or MIPS or SH4
+        pop cfr
+        pop lr
+    elsif X86 or X86_64
+        pop cfr
+    elsif ARM64
+        popLRAndFP
+    end
+end
+
 macro preserveReturnAddressAfterCall(destinationRegister)
     if C_LOOP or ARM or ARMv7 or ARMv7_TRADITIONAL or ARM64 or MIPS or SH4
         # In C_LOOP case, we're only preserving the bytecode vPC.
@@ -228,50 +291,149 @@ macro restoreReturnAddressBeforeReturn(sourceRegister)
     end
 end
 
+macro functionPrologue()
+    if X86 or X86_64
+        push cfr
+    elsif ARM64
+        pushLRAndFP
+    elsif C_LOOP or ARM or ARMv7 or ARMv7_TRADITIONAL or MIPS
+        push lr
+        push cfr
+    end
+    move sp, cfr
+end
+
+macro functionEpilogue()
+    if X86 or X86_64
+        pop cfr
+    elsif ARM64
+        popLRAndFP
+    elsif C_LOOP or ARM or ARMv7 or ARMv7_TRADITIONAL or MIPS
+        pop cfr
+        pop lr
+    end
+end
+
+macro callToJavaScriptPrologue()
+    if X86_64
+        push cfr
+        push t0
+    elsif X86
+        push cfr
+    elsif ARM64
+        pushLRAndFP
+    elsif C_LOOP or ARM or ARMv7 or ARMv7_TRADITIONAL or MIPS
+        push lr
+        push cfr
+    end
+    pushCalleeSaves
+    if X86
+        subp 12, sp
+    elsif ARM or ARMv7 or ARMv7_TRADITIONAL
+        subp 4, sp
+        move sp, t4
+        clrbp t4, 0xf, t5
+        move t5, sp
+        storep t4, [sp]
+    end
+end
+
+macro callToJavaScriptEpilogue()
+    addp CallFrameHeaderSlots * 8, cfr, sp
+    loadp CallerFrame[cfr], cfr
+
+    if X86
+        addp 12, sp
+    elsif ARM or ARMv7 or ARMv7_TRADITIONAL
+        pop t4
+        move t4, sp
+        addp 4, sp
+    end
+
+    popCalleeSaves
+    if X86_64
+        pop t2
+        pop cfr
+    elsif X86
+        pop cfr
+    elsif ARM64
+        popLRAndFP
+    elsif C_LOOP or ARM or ARMv7 or ARMv7_TRADITIONAL or MIPS
+        pop cfr
+        pop lr
+    end
+end
+
+macro moveStackPointerForCodeBlock(codeBlock, scratch)
+    loadi CodeBlock::m_numCalleeRegisters[codeBlock], scratch
+    lshiftp 3, scratch
+    addp maxFrameExtentForSlowPathCall, scratch
+    subp cfr, scratch, sp
+end
+
+macro restoreStackPointerAfterCall()
+    loadp CodeBlock[cfr], t2
+    moveStackPointerForCodeBlock(t2, t4)
+end
+
 macro traceExecution()
     if EXECUTION_TRACING
         callSlowPath(_llint_trace)
     end
 end
 
-macro callTargetFunction(callLinkInfo)
+macro callTargetFunction(callLinkInfo, calleeFramePtr)
+    move calleeFramePtr, sp
     if C_LOOP
         cloopCallJSFunction LLIntCallLinkInfo::machineCodeTarget[callLinkInfo]
     else
         call LLIntCallLinkInfo::machineCodeTarget[callLinkInfo]
-        dispatchAfterCall()
     end
+    restoreStackPointerAfterCall()
+    dispatchAfterCall()
 end
 
 macro slowPathForCall(slowPath)
     callCallSlowPath(
         slowPath,
         macro (callee)
+            btpz t1, .dontUpdateSP
+            addp CallerFrameAndPCSize, t1, sp
+        .dontUpdateSP:
             if C_LOOP
                 cloopCallJSFunction callee
             else
                 call callee
-                dispatchAfterCall()
             end
+            restoreStackPointerAfterCall()
+            dispatchAfterCall()
         end)
 end
 
 macro arrayProfile(structureAndIndexingType, profile, scratch)
     const structure = structureAndIndexingType
     const indexingType = structureAndIndexingType
-    if VALUE_PROFILER
-        storep structure, ArrayProfile::m_lastSeenStructure[profile]
-    end
+    storep structure, ArrayProfile::m_lastSeenStructure[profile]
     loadb Structure::m_indexingType[structure], indexingType
 end
 
+macro checkMarkByte(cell, scratch1, scratch2, continuation)
+    move cell, scratch1
+    move cell, scratch2
+
+    andp MarkedBlockMask, scratch1
+    andp ~MarkedBlockMask, scratch2
+
+    rshiftp AtomNumberShift + BitMapWordShift, scratch2
+    loadb MarkedBlock::m_marks[scratch1, scratch2, 1], scratch1
+    continuation(scratch1)
+end
+
 macro checkSwitchToJIT(increment, action)
-    if JIT_ENABLED
-        loadp CodeBlock[cfr], t0
-        baddis increment, CodeBlock::m_llintExecuteCounter + ExecutionCounter::m_counter[t0], .continue
-        action()
+    loadp CodeBlock[cfr], t0
+    baddis increment, CodeBlock::m_llintExecuteCounter + ExecutionCounter::m_counter[t0], .continue
+    action()
     .continue:
-    end
 end
 
 macro checkSwitchToJITForEpilogue()
@@ -313,28 +475,48 @@ end
 # Do the bare minimum required to execute code. Sets up the PC, leave the CodeBlock*
 # in t1. May also trigger prologue entry OSR.
 macro prologue(codeBlockGetter, codeBlockSetter, osrSlowPath, traceSlowPath)
-    preserveReturnAddressAfterCall(t2)
-    
     # Set up the call frame and check if we should OSR.
-    storep t2, ReturnPC[cfr]
+    preserveCallerPCAndCFR()
+
     if EXECUTION_TRACING
+        subp maxFrameExtentForSlowPathCall, sp
         callSlowPath(traceSlowPath)
+        addp maxFrameExtentForSlowPathCall, sp
     end
     codeBlockGetter(t1)
-    if JIT_ENABLED
-        baddis 5, CodeBlock::m_llintExecuteCounter + ExecutionCounter::m_counter[t1], .continue
+if C_LOOP
+else
+    baddis 5, CodeBlock::m_llintExecuteCounter + ExecutionCounter::m_counter[t1], .continue
+    if JSVALUE64
         cCall2(osrSlowPath, cfr, PC)
-        move t1, cfr
-        btpz t0, .recover
-        loadp ReturnPC[cfr], t2
-        restoreReturnAddressBeforeReturn(t2)
-        jmp t0
-    .recover:
-        codeBlockGetter(t1)
-    .continue:
+    else
+        # We are after the function prologue, but before we have set up sp from the CodeBlock.
+        # Temporarily align stack pointer for this call.
+        subp 8, sp
+        cCall2(osrSlowPath, cfr, PC)
+        addp 8, sp
     end
+    btpz t0, .recover
+    move cfr, sp # restore the previous sp
+    # pop the callerFrame since we will jump to a function that wants to save it
+    if ARM64
+        popLRAndFP
+    elsif ARM or ARMv7 or ARMv7_TRADITIONAL or MIPS or SH4
+        pop cfr
+        pop lr
+    else
+        pop cfr
+    end
+    jmp t0
+.recover:
+    codeBlockGetter(t1)
+.continue:
+end
+
     codeBlockSetter(t1)
     
+    moveStackPointerForCodeBlock(t1, t2)
+
     # Set up the PC.
     if JSVALUE64
         loadp CodeBlock::m_instructions[t1], PB
@@ -347,48 +529,48 @@ end
 # Expects that CodeBlock is in t1, which is what prologue() leaves behind.
 # Must call dispatch(0) after calling this.
 macro functionInitialization(profileArgSkip)
-    if VALUE_PROFILER
-        # Profile the arguments. Unfortunately, we have no choice but to do this. This
-        # code is pretty horrendous because of the difference in ordering between
-        # arguments and value profiles, the desire to have a simple loop-down-to-zero
-        # loop, and the desire to use only three registers so as to preserve the PC and
-        # the code block. It is likely that this code should be rewritten in a more
-        # optimal way for architectures that have more than five registers available
-        # for arbitrary use in the interpreter.
-        loadi CodeBlock::m_numParameters[t1], t0
-        addp -profileArgSkip, t0 # Use addi because that's what has the peephole
-        assert(macro (ok) bpgteq t0, 0, ok end)
-        btpz t0, .argumentProfileDone
-        loadp CodeBlock::m_argumentValueProfiles + VectorBufferOffset[t1], t3
-        mulp sizeof ValueProfile, t0, t2 # Aaaaahhhh! Need strength reduction!
-        lshiftp 3, t0
-        addp t2, t3
-    .argumentProfileLoop:
-        if JSVALUE64
-            loadq ThisArgumentOffset - 8 + profileArgSkip * 8[cfr, t0], t2
-            subp sizeof ValueProfile, t3
-            storeq t2, profileArgSkip * sizeof ValueProfile + ValueProfile::m_buckets[t3]
-        else
-            loadi ThisArgumentOffset + TagOffset - 8 + profileArgSkip * 8[cfr, t0], t2
-            subp sizeof ValueProfile, t3
-            storei t2, profileArgSkip * sizeof ValueProfile + ValueProfile::m_buckets + TagOffset[t3]
-            loadi ThisArgumentOffset + PayloadOffset - 8 + profileArgSkip * 8[cfr, t0], t2
-            storei t2, profileArgSkip * sizeof ValueProfile + ValueProfile::m_buckets + PayloadOffset[t3]
-        end
-        baddpnz -8, t0, .argumentProfileLoop
-    .argumentProfileDone:
+    # Profile the arguments. Unfortunately, we have no choice but to do this. This
+    # code is pretty horrendous because of the difference in ordering between
+    # arguments and value profiles, the desire to have a simple loop-down-to-zero
+    # loop, and the desire to use only three registers so as to preserve the PC and
+    # the code block. It is likely that this code should be rewritten in a more
+    # optimal way for architectures that have more than five registers available
+    # for arbitrary use in the interpreter.
+    loadi CodeBlock::m_numParameters[t1], t0
+    addp -profileArgSkip, t0 # Use addi because that's what has the peephole
+    assert(macro (ok) bpgteq t0, 0, ok end)
+    btpz t0, .argumentProfileDone
+    loadp CodeBlock::m_argumentValueProfiles + VectorBufferOffset[t1], t3
+    mulp sizeof ValueProfile, t0, t2 # Aaaaahhhh! Need strength reduction!
+    lshiftp 3, t0
+    addp t2, t3
+.argumentProfileLoop:
+    if JSVALUE64
+        loadq ThisArgumentOffset - 8 + profileArgSkip * 8[cfr, t0], t2
+        subp sizeof ValueProfile, t3
+        storeq t2, profileArgSkip * sizeof ValueProfile + ValueProfile::m_buckets[t3]
+    else
+        loadi ThisArgumentOffset + TagOffset - 8 + profileArgSkip * 8[cfr, t0], t2
+        subp sizeof ValueProfile, t3
+        storei t2, profileArgSkip * sizeof ValueProfile + ValueProfile::m_buckets + TagOffset[t3]
+        loadi ThisArgumentOffset + PayloadOffset - 8 + profileArgSkip * 8[cfr, t0], t2
+        storei t2, profileArgSkip * sizeof ValueProfile + ValueProfile::m_buckets + PayloadOffset[t3]
     end
+    baddpnz -8, t0, .argumentProfileLoop
+.argumentProfileDone:
         
     # Check stack height.
     loadi CodeBlock::m_numCalleeRegisters[t1], t0
-    addi 1, t0 # Account that local0 goes at slot -1
     loadp CodeBlock::m_vm[t1], t2
     lshiftp 3, t0
+    addi maxFrameExtentForSlowPathCall, t0
     subp cfr, t0, t0
     bpbeq VM::m_jsStackLimit[t2], t0, .stackHeightOK
 
     # Stack height check failed - need to call a slow_path.
     callSlowPath(_llint_stack_check)
+    bpeq t1, 0, .stackHeightOK
+    move t1, cfr
 .stackHeightOK:
 end
 
@@ -415,25 +597,69 @@ macro allocateJSObject(allocator, structure, result, scratch1, slowCase)
 end
 
 macro doReturn()
-    loadp ReturnPC[cfr], t2
-    loadp CallerFrame[cfr], cfr
-    restoreReturnAddressBeforeReturn(t2)
+    restoreCallerPCAndCFR()
     ret
 end
 
-if C_LOOP
-else
 # stub to call into JavaScript or Native functions
-# EncodedJSValue callToJavaScript(void* code, ExecState** vm, ProtoCallFrame* protoFrame, Register* topOfStack)
-# EncodedJSValue callToNativeFunction(void* code, ExecState** vm, ProtoCallFrame* protoFrame, Register* topOfStack)
+# EncodedJSValue callToJavaScript(void* code, ExecState** vmTopCallFrame, ProtoCallFrame* protoFrame)
+# EncodedJSValue callToNativeFunction(void* code, ExecState** vmTopCallFrame, ProtoCallFrame* protoFrame)
 # Note, if these stubs or one of their related macros are changed, make the
 # equivalent changes in jit/JITStubsX86.h and/or jit/JITStubsMSVC64.asm
-_callToJavaScript:
-    doCallToJavaScript(makeJavaScriptCall, doReturnFromJavaScript)
 
-_callToNativeFunction:
-    doCallToJavaScript(makeHostFunctionCall, doReturnFromHostFunction)
+if C_LOOP
+_llint_call_to_javascript:
+else
+_callToJavaScript:
 end
+    doCallToJavaScript(makeJavaScriptCall)
+
+
+if C_LOOP
+_llint_call_to_native_function:
+else
+_callToNativeFunction:
+end
+    doCallToJavaScript(makeHostFunctionCall)
+
+
+if C_LOOP
+else
+# void sanitizeStackForVMImpl(VM* vm)
+_sanitizeStackForVMImpl:
+    if X86_64
+        const vm = t4
+        const address = t1
+        const zeroValue = t0
+    elsif X86
+        const vm = t2
+        const address = t1
+        const zeroValue = t0
+    else
+        const vm = a0
+        const address = t1
+        const zeroValue = t2
+    end
+
+    if X86
+        loadp 4[sp], vm
+    end
+
+    loadp VM::m_lastStackTop[vm], address
+    bpbeq sp, address, .zeroFillDone
+
+    move 0, zeroValue
+.zeroFillLoop:
+    storep zeroValue, [address]
+    addp PtrSize, address
+    bpa sp, address, .zeroFillLoop
+
+.zeroFillDone:
+    move sp, address
+    storep address, VM::m_lastStackTop[vm]
+    ret
+end
+
 
 # Indicate the beginning of LLInt.
 _llint_begin:
@@ -723,8 +949,15 @@ _llint_op_construct:
 
 _llint_op_call_varargs:
     traceExecution()
-    callSlowPath(_llint_slow_path_size_and_alloc_frame_for_varargs)
+    callSlowPath(_llint_slow_path_size_frame_for_varargs)
     branchIfException(_llint_throw_from_slow_path_trampoline)
+    # calleeFrame in t1
+    if JSVALUE64
+        move t1, sp
+    else
+        # The calleeFrame is not stack aligned, move down by CallerFrameAndPCSize to align
+        subp t1, CallerFrameAndPCSize, sp
+    end
     slowPathForCall(_llint_slow_path_call_varargs)
 
 
@@ -815,30 +1048,34 @@ _llint_op_throw_static_error:
 
 _llint_op_profile_will_call:
     traceExecution()
+    loadp CodeBlock[cfr], t0
+    loadp CodeBlock::m_vm[t0], t0
+    loadi VM::m_enabledProfiler[t0], t0
+    btpz t0, .opProfilerWillCallDone
     callSlowPath(_llint_slow_path_profile_will_call)
+.opProfilerWillCallDone:
     dispatch(2)
 
 
 _llint_op_profile_did_call:
     traceExecution()
+    loadp CodeBlock[cfr], t0
+    loadp CodeBlock::m_vm[t0], t0
+    loadi VM::m_enabledProfiler[t0], t0
+    btpz t0, .opProfilerDidCallDone
     callSlowPath(_llint_slow_path_profile_did_call)
+.opProfilerDidCallDone:
     dispatch(2)
 
 
 _llint_op_debug:
-if JAVASCRIPT_DEBUGGER
     traceExecution()
     loadp CodeBlock[cfr], t0
-    loadp CodeBlock::m_globalObject[t0], t0
-    loadp JSGlobalObject::m_debugger[t0], t0
+    loadi CodeBlock::m_debuggerRequests[t0], t0
     btiz t0, .opDebugDone
-    loadb Debugger::m_needsOpDebugCallbacks[t0], t0
-    btbz t0, .opDebugDone
-
     callSlowPath(_llint_slow_path_debug)
 .opDebugDone:                    
-end
-    dispatch(2)
+    dispatch(3)
 
 
 _llint_native_call_trampoline:

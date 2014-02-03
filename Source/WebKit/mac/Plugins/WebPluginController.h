@@ -34,6 +34,9 @@
 @class WebPluginPackage;
 @class WebView;
 @class WebDataSource;
+#if PLATFORM(IOS)
+@class CALayer;
+#endif
 
 @interface WebPluginController : NSObject <WebPluginManualLoader, WebPluginContainerCheckController>
 {
@@ -47,7 +50,7 @@
 #endif
 }
 
-+ (NSView *)plugInViewWithArguments:(NSDictionary *)arguments fromPluginPackage:(WebPluginPackage *)plugin;
+- (NSView *)plugInViewWithArguments:(NSDictionary *)arguments fromPluginPackage:(WebPluginPackage *)plugin;
 + (BOOL)isPlugInView:(NSView *)view;
 
 - (id)initWithDocumentView:(NSView *)view;
@@ -57,13 +60,22 @@
 - (void)addPlugin:(NSView *)view;
 - (void)destroyPlugin:(NSView *)view;
 #if ENABLE(PLUGIN_PROXY_FOR_VIDEO)
-- (void)pluginViewCreated:(NSView *)view;
+- (void)mediaPlugInProxyViewCreated:(NSView *)view;
 + (void)pluginViewHidden:(NSView *)view;
 #endif
 
+#if PLATFORM(IOS)
++ (void)addPlugInView:(NSView *)view;
+- (BOOL)plugInsAreRunning;
+- (CALayer *)superlayerForPluginView:(NSView *)view;
+#endif
 - (void)startAllPlugins;
 - (void)stopAllPlugins;
 - (void)destroyAllPlugins;
+#if PLATFORM(IOS)
+- (void)stopPluginsForPageCache;
+- (void)restorePluginsFromCache;
+#endif
 
 - (WebFrame *)webFrame;
 - (WebView *)webView;

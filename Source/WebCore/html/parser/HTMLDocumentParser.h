@@ -26,9 +26,7 @@
 #ifndef HTMLDocumentParser_h
 #define HTMLDocumentParser_h
 
-#include "BackgroundHTMLInputStream.h"
 #include "CachedResourceClient.h"
-#include "CompactHTMLToken.h"
 #include "FragmentScriptingPermission.h"
 #include "HTMLInputStream.h"
 #include "HTMLParserOptions.h"
@@ -37,13 +35,11 @@
 #include "HTMLSourceTracker.h"
 #include "HTMLToken.h"
 #include "HTMLTokenizer.h"
-#include "HTMLTreeBuilderSimulator.h"
 #include "ScriptableDocumentParser.h"
 #include "SegmentedString.h"
 #include "XSSAuditor.h"
 #include "XSSAuditorDelegate.h"
 #include <wtf/Deque.h>
-#include <wtf/OwnPtr.h>
 #include <wtf/WeakPtr.h>
 #include <wtf/text/TextPosition.h>
 
@@ -79,28 +75,15 @@ public:
 
     HTMLTokenizer* tokenizer() const { return m_tokenizer.get(); }
 
-    virtual TextPosition textPosition() const;
+    virtual TextPosition textPosition() const override;
 
-    virtual void suspendScheduledTasks();
-    virtual void resumeScheduledTasks();
-
-#if ENABLE(THREADED_HTML_PARSER)
-    struct ParsedChunk {
-        OwnPtr<CompactHTMLTokenStream> tokens;
-        PreloadRequestStream preloads;
-        XSSInfoStream xssInfos;
-        HTMLTokenizer::State tokenizerState;
-        HTMLTreeBuilderSimulator::State treeBuilderState;
-        HTMLInputCheckpoint inputCheckpoint;
-        TokenPreloadScannerCheckpoint preloadScannerCheckpoint;
-    };
-    void didReceiveParsedChunkFromBackgroundParser(OwnPtr<ParsedChunk>);
-#endif
+    virtual void suspendScheduledTasks() override;
+    virtual void resumeScheduledTasks() override;
 
 protected:
-    virtual void insert(const SegmentedString&) OVERRIDE;
-    virtual void append(PassRefPtr<StringImpl>) OVERRIDE;
-    virtual void finish() OVERRIDE;
+    virtual void insert(const SegmentedString&) override;
+    virtual void append(PassRefPtr<StringImpl>) override;
+    virtual void finish() override;
 
     explicit HTMLDocumentParser(HTMLDocument&);
     HTMLDocumentParser(DocumentFragment&, Element* contextElement, ParserContentPolicy);
@@ -116,36 +99,24 @@ private:
     }
 
     // DocumentParser
-#if ENABLE(THREADED_HTML_PARSER)
-    virtual void pinToMainThread() OVERRIDE;
-#endif
-    virtual void detach() OVERRIDE;
-    virtual bool hasInsertionPoint() OVERRIDE;
-    virtual bool processingData() const OVERRIDE;
-    virtual void prepareToStopParsing() OVERRIDE;
-    virtual void stopParsing() OVERRIDE;
-    virtual bool isWaitingForScripts() const OVERRIDE;
-    virtual bool isExecutingScript() const OVERRIDE;
-    virtual void executeScriptsWaitingForStylesheets() OVERRIDE;
+    virtual void detach() override;
+    virtual bool hasInsertionPoint() override;
+    virtual bool processingData() const override;
+    virtual void prepareToStopParsing() override;
+    virtual void stopParsing() override;
+    virtual bool isWaitingForScripts() const override;
+    virtual bool isExecutingScript() const override;
+    virtual void executeScriptsWaitingForStylesheets() override;
 
     // HTMLScriptRunnerHost
-    virtual void watchForLoad(CachedResource*) OVERRIDE;
-    virtual void stopWatchingForLoad(CachedResource*) OVERRIDE;
-    virtual HTMLInputStream& inputStream() { return m_input; }
-    virtual bool hasPreloadScanner() const { return m_preloadScanner.get() && !shouldUseThreading(); }
-    virtual void appendCurrentInputStreamToPreloadScannerAndScan() OVERRIDE;
+    virtual void watchForLoad(CachedResource*) override;
+    virtual void stopWatchingForLoad(CachedResource*) override;
+    virtual HTMLInputStream& inputStream() override { return m_input; }
+    virtual bool hasPreloadScanner() const override { return m_preloadScanner.get(); }
+    virtual void appendCurrentInputStreamToPreloadScannerAndScan() override;
 
     // CachedResourceClient
-    virtual void notifyFinished(CachedResource*);
-
-#if ENABLE(THREADED_HTML_PARSER)
-    void startBackgroundParser();
-    void stopBackgroundParser();
-    void validateSpeculations(OwnPtr<ParsedChunk> lastChunk);
-    void discardSpeculationsAndResumeFrom(OwnPtr<ParsedChunk> lastChunk, OwnPtr<HTMLToken>, OwnPtr<HTMLTokenizer>);
-    void processParsedChunkFromBackgroundParser(OwnPtr<ParsedChunk>);
-    void pumpPendingSpeculations();
-#endif
+    virtual void notifyFinished(CachedResource*) override;
 
     Document* contextForParsingSession();
 
@@ -157,9 +128,6 @@ private:
     void pumpTokenizer(SynchronousMode);
     void pumpTokenizerIfPossible(SynchronousMode);
     void constructTreeFromHTMLToken(HTMLToken&);
-#if ENABLE(THREADED_HTML_PARSER)
-    void constructTreeFromCompactHTMLToken(const CompactHTMLToken&);
-#endif
 
     void runScriptsForPausedTreeBuilder();
     void resumeParsingAfterScriptExecution();
@@ -168,8 +136,6 @@ private:
     void endIfDelayed();
     void attemptToRunDeferredScriptsAndEnd();
     void end();
-
-    bool shouldUseThreading() const { return m_options.useThreading && !m_isPinnedToMainThread; }
 
     bool isParsingFragment() const;
     bool isScheduledForResume() const;
@@ -181,29 +147,20 @@ private:
     HTMLParserOptions m_options;
     HTMLInputStream m_input;
 
-    OwnPtr<HTMLToken> m_token;
-    OwnPtr<HTMLTokenizer> m_tokenizer;
-    OwnPtr<HTMLScriptRunner> m_scriptRunner;
-    OwnPtr<HTMLTreeBuilder> m_treeBuilder;
-    OwnPtr<HTMLPreloadScanner> m_preloadScanner;
-    OwnPtr<HTMLPreloadScanner> m_insertionPreloadScanner;
-    OwnPtr<HTMLParserScheduler> m_parserScheduler;
+    std::unique_ptr<HTMLToken> m_token;
+    std::unique_ptr<HTMLTokenizer> m_tokenizer;
+    std::unique_ptr<HTMLScriptRunner> m_scriptRunner;
+    std::unique_ptr<HTMLTreeBuilder> m_treeBuilder;
+    std::unique_ptr<HTMLPreloadScanner> m_preloadScanner;
+    std::unique_ptr<HTMLPreloadScanner> m_insertionPreloadScanner;
+    std::unique_ptr<HTMLParserScheduler> m_parserScheduler;
     HTMLSourceTracker m_sourceTracker;
     TextPosition m_textPosition;
     XSSAuditor m_xssAuditor;
     XSSAuditorDelegate m_xssAuditorDelegate;
 
-#if ENABLE(THREADED_HTML_PARSER)
-    // FIXME: m_lastChunkBeforeScript, m_tokenizer, m_token, and m_input should be combined into a single state object
-    // so they can be set and cleared together and passed between threads together.
-    OwnPtr<ParsedChunk> m_lastChunkBeforeScript;
-    Deque<OwnPtr<ParsedChunk>> m_speculations;
-    WeakPtrFactory<HTMLDocumentParser> m_weakFactory;
-    WeakPtr<BackgroundHTMLParser> m_backgroundParser;
-#endif
-    OwnPtr<HTMLResourcePreloader> m_preloader;
+    std::unique_ptr<HTMLResourcePreloader> m_preloader;
 
-    bool m_isPinnedToMainThread;
     bool m_endWasDelayed;
     bool m_haveBackgroundParser;
     unsigned m_pumpSessionNestingLevel;

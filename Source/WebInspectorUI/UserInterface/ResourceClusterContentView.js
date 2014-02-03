@@ -64,11 +64,6 @@ WebInspector.ResourceClusterContentView.prototype = {
         return this._resource;
     },
 
-    get allowedNavigationSidebarPanels()
-    {
-        return ["resource", "debugger"];
-    },
-
     get responseContentView()
     {
         if (this._responseContentView)
@@ -149,8 +144,9 @@ WebInspector.ResourceClusterContentView.prototype = {
 
     restoreFromCookie: function(cookie)
     {
-        var viewIdentifier = cookie[WebInspector.ResourceClusterContentView.ContentViewIdentifierCookieKey];
-        this._showContentViewForIdentifier(viewIdentifier);
+        var contentView = this._showContentViewForIdentifier(cookie[WebInspector.ResourceClusterContentView.ContentViewIdentifierCookieKey]);
+        if (typeof contentView.revealPosition === "function" && "lineNumber" in cookie && "columnNumber" in cookie)
+            contentView.revealPosition(new WebInspector.SourceCodePosition(cookie.lineNumber, cookie.columnNumber));
     },
 
     showRequest: function()

@@ -26,28 +26,15 @@
 
 #import <WebCore/DOMObject.h>
 
-#if WEBKIT_VERSION_MAX_ALLOWED >= WEBKIT_VERSION_LATEST
-
 @class DOMNode;
 @class DOMTestObj;
 @class NSString;
 
 enum {
-#if ENABLE(Condition22) || ENABLE(Condition23)
-    DOM_IMPLEMENTSCONSTANT1 = 1,
-#endif
-#if ENABLE(Condition22) || ENABLE(Condition23)
-    DOM_IMPLEMENTSCONSTANT2 = 2,
-#endif
-#if ENABLE(Condition11) || ENABLE(Condition12)
-    DOM_SUPPLEMENTALCONSTANT1 = 1,
-#endif
-#if ENABLE(Condition11) || ENABLE(Condition12)
-    DOM_SUPPLEMENTALCONSTANT2 = 2
-#endif
 
-};
+} WEBKIT_ENUM_AVAILABLE_MAC(TBD);
 
+WEBKIT_CLASS_AVAILABLE_MAC(TBD)
 @interface DOMTestInterface : DOMObject
 @property (readonly, copy) NSString *implementsStr1;
 @property (copy) NSString *implementsStr2;
@@ -57,31 +44,4 @@ enum {
 @property (copy) NSString *supplementalStr2;
 @property (copy) NSString *supplementalStr3;
 @property (strong) DOMNode *supplementalNode;
-
-#if ENABLE(Condition22) || ENABLE(Condition23)
-- (void)implementsMethod1;
-#endif
-#if ENABLE(Condition22) || ENABLE(Condition23)
-- (DOMTestObj *)implementsMethod2:(NSString *)strArg objArg:(DOMTestObj *)objArg;
-#endif
-#if ENABLE(Condition22) || ENABLE(Condition23)
-- (void)implementsMethod3;
-#endif
-#if ENABLE(Condition22) || ENABLE(Condition23)
-- (void)implementsMethod4;
-#endif
-#if ENABLE(Condition11) || ENABLE(Condition12)
-- (void)supplementalMethod1;
-#endif
-#if ENABLE(Condition11) || ENABLE(Condition12)
-- (DOMTestObj *)supplementalMethod2:(NSString *)strArg objArg:(DOMTestObj *)objArg;
-#endif
-#if ENABLE(Condition11) || ENABLE(Condition12)
-- (void)supplementalMethod3;
-#endif
-#if ENABLE(Condition11) || ENABLE(Condition12)
-- (void)supplementalMethod4;
-#endif
 @end
-
-#endif

@@ -35,17 +35,17 @@ class NullTextTrackRepresentation : public TextTrackRepresentation {
 public:
     virtual ~NullTextTrackRepresentation() { }
     virtual void update() { }
-#if USE(ACCELERATED_COMPOSITING)
     virtual PlatformLayer* platformLayer() { return 0; }
-#endif
     virtual void setContentScale(float) { }
     virtual IntRect bounds() const { return IntRect(); }
 };
 
+#if !PLATFORM(IOS)
 PassOwnPtr<TextTrackRepresentation> TextTrackRepresentation::create(TextTrackRepresentationClient*)
 {
     return WTF::adoptPtr(new NullTextTrackRepresentation());
 }
+#endif
 
 }
 

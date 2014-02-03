@@ -28,6 +28,7 @@
 #include "MainFrame.h"
 #include "NotImplemented.h"
 #include "ewk_view_private.h"
+#include <inspector/InspectorAgentBase.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/WTFString.h>
 
@@ -99,11 +100,11 @@ InspectorFrontendChannel* InspectorClientEfl::openInspectorFrontend(InspectorCon
     String inspectorUri = inspectorFilesPath() + "/Main.html";
     ewk_view_uri_set(m_inspectorView, inspectorUri.utf8().data());
 
-    OwnPtr<InspectorFrontendClientEfl> frontendClient = adoptPtr(new InspectorFrontendClientEfl(m_inspectedView, m_inspectorView, this));
+    auto frontendClient = std::make_unique<InspectorFrontendClientEfl>(m_inspectedView, m_inspectorView, this);
     m_frontendClient = frontendClient.get();
 
-    InspectorController* controller = EWKPrivate::corePage(m_inspectorView)->inspectorController();
-    controller->setInspectorFrontendClient(frontendClient.release());
+    InspectorController& controller = EWKPrivate::corePage(m_inspectorView)->inspectorController();
+    controller.setInspectorFrontendClient(std::move(frontendClient));
     
     return this;
 }
@@ -147,7 +148,7 @@ String InspectorClientEfl::inspectorFilesPath()
 }
 
 InspectorFrontendClientEfl::InspectorFrontendClientEfl(Evas_Object* inspectedView, Evas_Object* inspectorView, InspectorClientEfl* inspectorClient)
-    : InspectorFrontendClientLocal(EWKPrivate::corePage(inspectedView)->inspectorController(), EWKPrivate::corePage(inspectorView), adoptPtr(new InspectorFrontendSettingsEfl()))
+    : InspectorFrontendClientLocal(&EWKPrivate::corePage(inspectedView)->inspectorController(), EWKPrivate::corePage(inspectorView), adoptPtr(new InspectorFrontendSettingsEfl()))
     , m_inspectedView(inspectedView)
     , m_inspectorView(inspectorView)
     , m_inspectorClient(inspectorClient)
@@ -213,7 +214,7 @@ void InspectorFrontendClientEfl::setToolbarHeight(unsigned)
 void InspectorFrontendClientEfl::destroyInspectorWindow(bool notifyInspectorController)
 {
     if (notifyInspectorController)
-        EWKPrivate::corePage(m_inspectedView)->inspectorController()->disconnectFrontend();
+        EWKPrivate::corePage(m_inspectedView)->inspectorController().disconnectFrontend(Inspector::InspectorDisconnectReason::InspectorDestroyed);
 
     if (m_inspectorClient)
         m_inspectorClient->releaseFrontendPage();

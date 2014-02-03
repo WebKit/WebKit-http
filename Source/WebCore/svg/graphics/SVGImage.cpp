@@ -182,7 +182,7 @@ PassNativeImagePtr SVGImage::nativeImageForCurrentFrame()
 #endif
 
 void SVGImage::drawPatternForContainer(GraphicsContext* context, const FloatSize containerSize, float zoom, const FloatRect& srcRect,
-    const AffineTransform& patternTransform, const FloatPoint& phase, ColorSpace colorSpace, CompositeOperator compositeOp, const FloatRect& dstRect)
+    const AffineTransform& patternTransform, const FloatPoint& phase, ColorSpace colorSpace, CompositeOperator compositeOp, const FloatRect& dstRect, BlendMode blendMode)
 {
     FloatRect zoomedContainerRect = FloatRect(FloatPoint(), containerSize);
     zoomedContainerRect.scale(zoom);
@@ -213,7 +213,7 @@ void SVGImage::drawPatternForContainer(GraphicsContext* context, const FloatSize
     unscaledPatternTransform.scale(1 / imageBufferScale.width(), 1 / imageBufferScale.height());
 
     context->setDrawLuminanceMask(false);
-    image->drawPattern(context, scaledSrcRect, unscaledPatternTransform, phase, colorSpace, compositeOp, dstRect);
+    image->drawPattern(context, scaledSrcRect, unscaledPatternTransform, phase, colorSpace, compositeOp, dstRect, blendMode);
 }
 
 void SVGImage::draw(GraphicsContext* context, const FloatRect& dstRect, const FloatRect& srcRect, ColorSpace, CompositeOperator compositeOp, BlendMode blendMode, ImageOrientationDescription)
@@ -226,8 +226,11 @@ void SVGImage::draw(GraphicsContext* context, const FloatRect& dstRect, const Fl
     GraphicsContextStateSaver stateSaver(*context);
     context->setCompositeOperation(compositeOp, blendMode);
     context->clip(enclosingIntRect(dstRect));
-    if (compositeOp != CompositeSourceOver)
+    bool compositingRequiresTransparencyLayer = compositeOp != CompositeSourceOver || blendMode != BlendModeNormal;
+    if (compositingRequiresTransparencyLayer) {
         context->beginTransparencyLayer(1);
+        context->setCompositeOperation(CompositeSourceOver, BlendModeNormal);
+    }
 
     FloatSize scale(dstRect.width() / srcRect.width(), dstRect.height() / srcRect.height());
     
@@ -246,7 +249,7 @@ void SVGImage::draw(GraphicsContext* context, const FloatRect& dstRect, const Fl
 
     view->paint(context, enclosingIntRect(srcRect));
 
-    if (compositeOp != CompositeSourceOver)
+    if (compositingRequiresTransparencyLayer)
         context->endTransparencyLayer();
 
     stateSaver.restore();

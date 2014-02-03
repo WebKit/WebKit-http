@@ -97,7 +97,8 @@ enum StyleChangeType {
     NoStyleChange = 0, 
     InlineStyleChange = 1 << nodeStyleChangeShift, 
     FullStyleChange = 2 << nodeStyleChangeShift, 
-    SyntheticStyleChange = 3 << nodeStyleChangeShift
+    SyntheticStyleChange = 3 << nodeStyleChangeShift,
+    ReconstructRenderTree = 4 << nodeStyleChangeShift,
 };
 
 class NodeRareDataBase {
@@ -112,11 +113,6 @@ protected:
 
 private:
     RenderObject* m_renderer;
-};
-
-enum AttachBehavior {
-    AttachNow,
-    AttachLazily,
 };
 
 class Node : public EventTarget, public ScriptWrappable, public TreeShared<Node> {
@@ -169,8 +165,10 @@ public:
     virtual void setNodeValue(const String&, ExceptionCode&);
     virtual NodeType nodeType() const = 0;
     ContainerNode* parentNode() const;
+    static ptrdiff_t parentNodeMemoryOffset() { return OBJECT_OFFSETOF(Node, m_parentNode); }
     Element* parentElement() const;
     Node* previousSibling() const { return m_previous; }
+    static ptrdiff_t previousSiblingMemoryOffset() { return OBJECT_OFFSETOF(Node, m_previous); }
     Node* nextSibling() const { return m_next; }
     PassRefPtr<NodeList> childNodes();
     Node* firstChild() const;
@@ -189,10 +187,10 @@ public:
     // These should all actually return a node, but this is only important for language bindings,
     // which will already know and hold a ref on the right node to return. Returning bool allows
     // these methods to be more efficient since they don't need to return a ref
-    bool insertBefore(PassRefPtr<Node> newChild, Node* refChild, ExceptionCode&, AttachBehavior = AttachNow);
-    bool replaceChild(PassRefPtr<Node> newChild, Node* oldChild, ExceptionCode&, AttachBehavior = AttachNow);
+    bool insertBefore(PassRefPtr<Node> newChild, Node* refChild, ExceptionCode&);
+    bool replaceChild(PassRefPtr<Node> newChild, Node* oldChild, ExceptionCode&);
     bool removeChild(Node* child, ExceptionCode&);
-    bool appendChild(PassRefPtr<Node> newChild, ExceptionCode&, AttachBehavior = AttachNow);
+    bool appendChild(PassRefPtr<Node> newChild, ExceptionCode&);
 
     void remove(ExceptionCode&);
     bool hasChildNodes() const { return firstChild(); }
@@ -313,8 +311,7 @@ public:
     bool isUserActionElement() const { return getFlag(IsUserActionElement); }
     void setUserActionElement(bool flag) { setFlag(flag, IsUserActionElement); }
 
-    bool attached() const { return getFlag(IsAttachedFlag); }
-    void setAttached(bool flag) { setFlag(flag, IsAttachedFlag); }
+    bool inRenderedDocument() const;
     bool needsStyleRecalc() const { return styleChangeType() != NoStyleChange; }
     StyleChangeType styleChangeType() const { return static_cast<StyleChangeType>(m_nodeFlags & StyleChangeMask); }
     bool childNeedsStyleRecalc() const { return getFlag(ChildNeedsStyleRecalcFlag); }
@@ -326,7 +323,6 @@ public:
 
     void setNeedsStyleRecalc(StyleChangeType changeType = FullStyleChange);
     void clearNeedsStyleRecalc() { m_nodeFlags &= ~StyleChangeMask; }
-    virtual void scheduleSetNeedsStyleRecalc(StyleChangeType changeType = FullStyleChange) { setNeedsStyleRecalc(changeType); }
 
     void setIsLink(bool f) { setFlag(f, IsLinkFlag); }
     void setIsLink() { setFlag(IsLinkFlag); }
@@ -347,11 +343,11 @@ public:
 
     void inspect();
 
-    bool rendererIsEditable(EditableType editableType = ContentIsEditable, UserSelectAllTreatment treatment = UserSelectAllIsAlwaysNonEditable) const
+    bool hasEditableStyle(EditableType editableType = ContentIsEditable, UserSelectAllTreatment treatment = UserSelectAllIsAlwaysNonEditable) const
     {
         switch (editableType) {
         case ContentIsEditable:
-            return rendererIsEditable(Editable, treatment);
+            return hasEditableStyle(Editable, treatment);
         case HasEditableAXRole:
             return isEditableToAccessibility(Editable);
         }
@@ -359,11 +355,11 @@ public:
         return false;
     }
 
-    bool rendererIsRichlyEditable(EditableType editableType = ContentIsEditable) const
+    bool hasRichlyEditableStyle(EditableType editableType = ContentIsEditable) const
     {
         switch (editableType) {
         case ContentIsEditable:
-            return rendererIsEditable(RichlyEditable, UserSelectAllIsAlwaysNonEditable);
+            return hasEditableStyle(RichlyEditable, UserSelectAllIsAlwaysNonEditable);
         case HasEditableAXRole:
             return isEditableToAccessibility(RichlyEditable);
         }
@@ -504,21 +500,20 @@ public:
     virtual bool willRespondToMouseMoveEvents();
     virtual bool willRespondToMouseClickEvents();
     virtual bool willRespondToMouseWheelEvents();
-    virtual bool willRespondToTouchEvents();
 
     unsigned short compareDocumentPosition(Node*);
 
-    virtual Node* toNode() OVERRIDE;
+    virtual Node* toNode() override;
     virtual HTMLInputElement* toInputElement();
 
-    virtual EventTargetInterface eventTargetInterface() const OVERRIDE;
-    virtual ScriptExecutionContext* scriptExecutionContext() const OVERRIDE FINAL; // Implemented in Document.h
+    virtual EventTargetInterface eventTargetInterface() const override;
+    virtual ScriptExecutionContext* scriptExecutionContext() const override final; // Implemented in Document.h
 
-    virtual bool addEventListener(const AtomicString& eventType, PassRefPtr<EventListener>, bool useCapture) OVERRIDE;
-    virtual bool removeEventListener(const AtomicString& eventType, EventListener*, bool useCapture) OVERRIDE;
+    virtual bool addEventListener(const AtomicString& eventType, PassRefPtr<EventListener>, bool useCapture) override;
+    virtual bool removeEventListener(const AtomicString& eventType, EventListener*, bool useCapture) override;
 
     using EventTarget::dispatchEvent;
-    virtual bool dispatchEvent(PassRefPtr<Event>) OVERRIDE;
+    virtual bool dispatchEvent(PassRefPtr<Event>) override;
 
     void dispatchScopedEvent(PassRefPtr<Event>);
 
@@ -544,8 +539,8 @@ public:
     using TreeShared<Node>::ref;
     using TreeShared<Node>::deref;
 
-    virtual EventTargetData* eventTargetData() OVERRIDE FINAL;
-    virtual EventTargetData& ensureEventTargetData() OVERRIDE FINAL;
+    virtual EventTargetData* eventTargetData() override final;
+    virtual EventTargetData& ensureEventTargetData() override final;
 
     void getRegisteredMutationObserversOfType(HashMap<MutationObserver*, MutationRecordDeliveryOptions>&, MutationObserver::MutationType, const QualifiedName* attributeName);
     void registerMutationObserver(MutationObserver*, MutationObserverOptions, const HashSet<AtomicString>& attributeFilter);
@@ -564,6 +559,12 @@ public:
 
     void markAncestorsWithChildNeedsStyleRecalc();
 
+#if ENABLE(CSS_SELECTOR_JIT)
+    static ptrdiff_t nodeFlagsMemoryOffset() { return OBJECT_OFFSETOF(Node, m_nodeFlags); }
+    static int32_t flagIsElement() { return IsElementFlag; }
+    static int32_t flagIsLink() { return IsLinkFlag; }
+#endif // ENABLE(CSS_SELECTOR_JIT)
+
 protected:
     enum NodeFlags {
         IsTextFlag = 1,
@@ -572,7 +573,6 @@ protected:
         IsStyledElementFlag = 1 << 3,
         IsHTMLFlag = 1 << 4,
         IsSVGFlag = 1 << 5,
-        IsAttachedFlag = 1 << 6,
         ChildNeedsStyleRecalcFlag = 1 << 7,
         InDocumentFlag = 1 << 8,
         IsLinkFlag = 1 << 9,
@@ -584,8 +584,7 @@ protected:
         // be stored in the same memory word as the Node bits above.
         IsParsingChildrenFinishedFlag = 1 << 13, // Element
 
-        StyleChangeMask = 1 << nodeStyleChangeShift | 1 << (nodeStyleChangeShift + 1),
-        SelfOrAncestorHasDirAutoFlag = 1 << 16,
+        StyleChangeMask = 1 << nodeStyleChangeShift | 1 << (nodeStyleChangeShift + 1) | 1 << (nodeStyleChangeShift + 2),
         IsEditingTextFlag = 1 << 17,
         InNamedFlowFlag = 1 << 18,
         HasSyntheticAttrChildNodesFlag = 1 << 19,
@@ -599,6 +598,8 @@ protected:
         ChildrenAffectedByLastChildRulesFlag = 1 << 26,
         ChildrenAffectedByDirectAdjacentRulesFlag = 1 << 27,
         ChildrenAffectedByHoverRulesFlag = 1 << 28,
+
+        SelfOrAncestorHasDirAutoFlag = 1 << 29,
 
         DefaultNodeFlags = IsParsingChildrenFinishedFlag
     };
@@ -660,11 +661,11 @@ private:
     bool hasTreeSharedParent() const { return !!parentNode(); }
 
     enum EditableLevel { Editable, RichlyEditable };
-    bool rendererIsEditable(EditableLevel, UserSelectAllTreatment = UserSelectAllIsAlwaysNonEditable) const;
+    bool hasEditableStyle(EditableLevel, UserSelectAllTreatment = UserSelectAllIsAlwaysNonEditable) const;
     bool isEditableToAccessibility(EditableLevel) const;
 
-    virtual void refEventTarget() OVERRIDE;
-    virtual void derefEventTarget() OVERRIDE;
+    virtual void refEventTarget() override;
+    virtual void derefEventTarget() override;
 
     virtual RenderStyle* nonRendererStyle() const { return 0; }
 

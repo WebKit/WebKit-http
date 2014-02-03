@@ -27,6 +27,7 @@
 
 #include "CounterContent.h"
 #include "StyleImage.h"
+#include "RenderPtr.h"
 #include <wtf/OwnPtr.h>
 
 namespace WebCore {
@@ -45,7 +46,7 @@ public:
     virtual bool isQuote() const { return false; }
     virtual bool isText() const { return false; }
 
-    virtual RenderObject* createRenderer(Document&, RenderStyle&) const = 0;
+    virtual RenderPtr<RenderObject> createContentRenderer(Document&, const RenderStyle&) const = 0;
 
     std::unique_ptr<ContentData> clone() const;
 
@@ -64,7 +65,7 @@ private:
     String m_altText;
 };
 
-class ImageContentData FINAL : public ContentData {
+class ImageContentData final : public ContentData {
 public:
     explicit ImageContentData(PassRefPtr<StyleImage> image)
         : m_image(image)
@@ -75,10 +76,10 @@ public:
     StyleImage* image() { return m_image.get(); }
     void setImage(PassRefPtr<StyleImage> image) { m_image = image; }
 
-    virtual bool isImage() const OVERRIDE { return true; }
-    virtual RenderObject* createRenderer(Document&, RenderStyle&) const OVERRIDE;
+    virtual bool isImage() const override { return true; }
+    virtual RenderPtr<RenderObject> createContentRenderer(Document&, const RenderStyle&) const override;
 
-    virtual bool equals(const ContentData& data) const OVERRIDE
+    virtual bool equals(const ContentData& data) const override
     {
         if (!data.isImage())
             return false;
@@ -86,7 +87,7 @@ public:
     }
 
 private:
-    virtual std::unique_ptr<ContentData> cloneInternal() const OVERRIDE
+    virtual std::unique_ptr<ContentData> cloneInternal() const override
     {
         RefPtr<StyleImage> image = const_cast<StyleImage*>(this->image());
 
@@ -96,7 +97,7 @@ private:
     RefPtr<StyleImage> m_image;
 };
 
-class TextContentData FINAL : public ContentData {
+class TextContentData final : public ContentData {
 public:
     explicit TextContentData(const String& text)
         : m_text(text)
@@ -106,10 +107,10 @@ public:
     const String& text() const { return m_text; }
     void setText(const String& text) { m_text = text; }
 
-    virtual bool isText() const OVERRIDE { return true; }
-    virtual RenderObject* createRenderer(Document&, RenderStyle&) const OVERRIDE;
+    virtual bool isText() const override { return true; }
+    virtual RenderPtr<RenderObject> createContentRenderer(Document&, const RenderStyle&) const override;
 
-    virtual bool equals(const ContentData& data) const OVERRIDE
+    virtual bool equals(const ContentData& data) const override
     {
         if (!data.isText())
             return false;
@@ -117,12 +118,12 @@ public:
     }
 
 private:
-    virtual std::unique_ptr<ContentData> cloneInternal() const OVERRIDE { return std::make_unique<TextContentData>(text()); }
+    virtual std::unique_ptr<ContentData> cloneInternal() const override { return std::make_unique<TextContentData>(text()); }
 
     String m_text;
 };
 
-class CounterContentData FINAL : public ContentData {
+class CounterContentData final : public ContentData {
 public:
     explicit CounterContentData(std::unique_ptr<CounterContent> counter)
         : m_counter(std::move(counter))
@@ -132,17 +133,17 @@ public:
     const CounterContent* counter() const { return m_counter.get(); }
     void setCounter(std::unique_ptr<CounterContent> counter) { m_counter = std::move(counter); }
 
-    virtual bool isCounter() const OVERRIDE { return true; }
-    virtual RenderObject* createRenderer(Document&, RenderStyle&) const OVERRIDE;
+    virtual bool isCounter() const override { return true; }
+    virtual RenderPtr<RenderObject> createContentRenderer(Document&, const RenderStyle&) const override;
 
 private:
-    virtual std::unique_ptr<ContentData> cloneInternal() const OVERRIDE
+    virtual std::unique_ptr<ContentData> cloneInternal() const override
     {
         auto counterData = std::make_unique<CounterContent>(*counter());
         return std::make_unique<CounterContentData>(std::move(counterData));
     }
 
-    virtual bool equals(const ContentData& data) const OVERRIDE
+    virtual bool equals(const ContentData& data) const override
     {
         if (!data.isCounter())
             return false;
@@ -152,7 +153,7 @@ private:
     std::unique_ptr<CounterContent> m_counter;
 };
 
-class QuoteContentData FINAL : public ContentData {
+class QuoteContentData final : public ContentData {
 public:
     explicit QuoteContentData(QuoteType quote)
         : m_quote(quote)
@@ -162,10 +163,10 @@ public:
     QuoteType quote() const { return m_quote; }
     void setQuote(QuoteType quote) { m_quote = quote; }
 
-    virtual bool isQuote() const OVERRIDE { return true; }
-    virtual RenderObject* createRenderer(Document&, RenderStyle&) const OVERRIDE;
+    virtual bool isQuote() const override { return true; }
+    virtual RenderPtr<RenderObject> createContentRenderer(Document&, const RenderStyle&) const override;
 
-    virtual bool equals(const ContentData& data) const OVERRIDE
+    virtual bool equals(const ContentData& data) const override
     {
         if (!data.isQuote())
             return false;
@@ -173,7 +174,7 @@ public:
     }
 
 private:
-    virtual std::unique_ptr<ContentData> cloneInternal() const OVERRIDE { return std::make_unique<QuoteContentData>(quote()); }
+    virtual std::unique_ptr<ContentData> cloneInternal() const override { return std::make_unique<QuoteContentData>(quote()); }
 
     QuoteType m_quote;
 };

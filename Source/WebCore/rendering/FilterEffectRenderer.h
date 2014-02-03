@@ -44,8 +44,6 @@
 
 namespace WebCore {
 
-class CachedShader;
-class CustomFilterProgram;
 class Document;
 class GraphicsContext;
 class RenderElement;
@@ -86,7 +84,7 @@ private:
     bool m_startedFilterEffect;
 };
 
-class FilterEffectRenderer FINAL : public Filter {
+class FilterEffectRenderer final : public Filter {
     WTF_MAKE_FAST_ALLOCATED;
 public:
     static RefPtr<FilterEffectRenderer> create()
@@ -101,10 +99,10 @@ public:
         setFilterRegion(sourceImageRect);
         m_graphicsBufferAttached = false;
     }
-    virtual FloatRect sourceImageRect() const OVERRIDE { return m_sourceDrawingRegion; }
+    virtual FloatRect sourceImageRect() const override { return m_sourceDrawingRegion; }
 
     void setFilterRegion(const FloatRect& filterRegion) { m_filterRegion = filterRegion; }
-    virtual FloatRect filterRegion() const OVERRIDE { return m_filterRegion; }
+    virtual FloatRect filterRegion() const override { return m_filterRegion; }
 
     GraphicsContext* inputContext();
     ImageBuffer* output() const { return lastEffect()->asImageBuffer(); }
@@ -120,10 +118,6 @@ public:
 
     bool hasFilterThatMovesPixels() const { return m_hasFilterThatMovesPixels; }
     LayoutRect computeSourceImageRectForDirtyRect(const LayoutRect& filterBoxRect, const LayoutRect& dirtyRect);
-
-#if ENABLE(CSS_SHADERS)
-    bool hasCustomShaderFilter() const { return m_hasCustomShaderFilter; }
-#endif
 
 private:
     void setMaxEffectRects(const FloatRect& effectRect)
@@ -154,9 +148,6 @@ private:
 
     bool m_graphicsBufferAttached;
     bool m_hasFilterThatMovesPixels;
-#if ENABLE(CSS_SHADERS)
-    bool m_hasCustomShaderFilter;
-#endif
 };
 
 } // namespace WebCore

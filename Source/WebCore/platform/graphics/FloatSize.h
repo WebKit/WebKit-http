@@ -31,12 +31,8 @@
 #include "IntPoint.h"
 #include <wtf/MathExtras.h>
 
-#if PLATFORM(BLACKBERRY)
-namespace BlackBerry {
-namespace Platform {
-class FloatSize;
-}
-}
+#if PLATFORM(IOS)
+#include <CoreGraphics/CoreGraphics.h>
 #endif
 
 #if PLATFORM(HAIKU)
@@ -47,13 +43,13 @@ class BSize;
 typedef struct CGSize CGSize;
 #endif
 
-#if PLATFORM(MAC)
+#if PLATFORM(MAC) && !PLATFORM(IOS)
 #ifdef NSGEOMETRY_TYPES_SAME_AS_CGGEOMETRY_TYPES
 typedef struct CGSize NSSize;
 #else
 typedef struct _NSSize NSSize;
 #endif
-#endif
+#endif // PLATFORM(MAC) && !PLATFORM(IOS)
 
 namespace WebCore {
 
@@ -116,11 +112,6 @@ public:
         return FloatSize(m_height, m_width);
     }
 
-#if PLATFORM(BLACKBERRY)
-    FloatSize(const BlackBerry::Platform::FloatSize&);
-    operator BlackBerry::Platform::FloatSize() const;
-#endif
-
 #if PLATFORM(HAIKU)
     FloatSize(const BSize&);
     operator BSize() const;
@@ -131,10 +122,12 @@ public:
     operator CGSize() const;
 #endif
 
+#if !PLATFORM(IOS)
 #if (PLATFORM(MAC) && !defined(NSGEOMETRY_TYPES_SAME_AS_CGGEOMETRY_TYPES))
     explicit FloatSize(const NSSize &); // don't do this implicitly since it's lossy
     operator NSSize() const;
 #endif
+#endif // !PLATFORM(IOS)
 
     void dump(PrintStream& out) const;
 

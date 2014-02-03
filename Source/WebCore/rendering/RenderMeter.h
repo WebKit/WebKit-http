@@ -30,21 +30,21 @@ namespace WebCore {
 
 class HTMLMeterElement;
 
-class RenderMeter FINAL : public RenderBlockFlow {
+class RenderMeter final : public RenderBlockFlow {
 public:
     RenderMeter(HTMLElement&, PassRef<RenderStyle>);
     virtual ~RenderMeter();
 
     HTMLMeterElement* meterElement() const;
-    virtual void updateFromElement() OVERRIDE;
+    virtual void updateFromElement() override;
 
 private:
-    virtual void updateLogicalWidth() OVERRIDE;
-    virtual void computeLogicalHeight(LayoutUnit logicalHeight, LayoutUnit logicalTop, LogicalExtentComputedValues&) const OVERRIDE;
+    virtual void updateLogicalWidth() override;
+    virtual void computeLogicalHeight(LayoutUnit logicalHeight, LayoutUnit logicalTop, LogicalExtentComputedValues&) const override;
 
-    virtual const char* renderName() const OVERRIDE { return "RenderMeter"; }
-    virtual bool isMeter() const OVERRIDE { return true; }
-    virtual bool requiresForcedStyleRecalcPropagation() const OVERRIDE { return true; }
+    virtual const char* renderName() const override { return "RenderMeter"; }
+    virtual bool isMeter() const override { return true; }
+    virtual bool requiresForcedStyleRecalcPropagation() const override { return true; }
 };
 
 RENDER_OBJECT_TYPE_CASTS(RenderMeter, isMeter())

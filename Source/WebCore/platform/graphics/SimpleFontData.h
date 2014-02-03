@@ -65,7 +65,7 @@ struct WidthIterator;
 enum FontDataVariant { AutoVariant, NormalVariant, SmallCapsVariant, EmphasisMarkVariant, BrokenIdeographVariant };
 enum Pitch { UnknownPitch, FixedPitch, VariablePitch };
 
-class SimpleFontData FINAL : public FontData {
+class SimpleFontData final : public FontData {
 public:
     class AdditionalFontData {
         WTF_MAKE_FAST_ALLOCATED;
@@ -158,8 +158,8 @@ public:
     Glyph zeroGlyph() const { return m_zeroGlyph; }
     void setZeroGlyph(Glyph zeroGlyph) { m_zeroGlyph = zeroGlyph; }
 
-    virtual const SimpleFontData* fontDataForCharacter(UChar32) const OVERRIDE;
-    virtual bool containsCharacters(const UChar*, int length) const OVERRIDE;
+    virtual const SimpleFontData* fontDataForCharacter(UChar32) const override;
+    virtual bool containsCharacters(const UChar*, int length) const override;
 
     Glyph glyphForCharacter(UChar32) const;
 
@@ -169,22 +169,26 @@ public:
     AdditionalFontData* fontData() const { return m_fontData.get(); }
     bool isSVGFont() const { return m_fontData != nullptr; }
 
-    virtual bool isCustomFont() const OVERRIDE { return m_isCustomFont; }
-    virtual bool isLoading() const OVERRIDE { return m_isLoading; }
-    virtual bool isSegmented() const OVERRIDE;
+    virtual bool isCustomFont() const override { return m_isCustomFont; }
+    virtual bool isLoading() const override { return m_isLoading; }
+    virtual bool isSegmented() const override;
 
     const GlyphData& missingGlyphData() const { return m_missingGlyphData; }
     void setMissingGlyphData(const GlyphData& glyphData) { m_missingGlyphData = glyphData; }
 
 #ifndef NDEBUG
-    virtual String description() const OVERRIDE;
+    virtual String description() const override;
 #endif
 
-#if PLATFORM(MAC)
+#if USE(APPKIT)
     const SimpleFontData* getCompositeFontReferenceFontData(NSFont *key) const;
     NSFont* getNSFont() const { return m_platformData.font(); }
 #endif
 
+#if PLATFORM(IOS)
+    CTFontRef getCTFont() const { return m_platformData.font(); }
+    bool shouldNotBeUsedForArabic() const { return m_shouldNotBeUsedForArabic; };
+#endif
 #if PLATFORM(MAC)
     CFDictionaryRef getCFStringAttributes(TypesettingFeatures, FontOrientation) const;
 #endif
@@ -197,7 +201,7 @@ public:
     {
         if (isSVGFont())
             return false;
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED > 1080
+#if PLATFORM(IOS) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED > 1080)
         wkCTFontTransformOptions options = (typesettingFeatures & Kerning ? wkCTFontTransformApplyPositioning : 0) | (typesettingFeatures & Ligatures ? wkCTFontTransformApplyShaping : 0);
         return wkCTFontTransformGlyphs(m_platformData.ctFont(), glyphs, reinterpret_cast<CGSize*>(advances), glyphCount, options);
 #else
@@ -314,6 +318,9 @@ private:
     mutable SCRIPT_CACHE m_scriptCache;
     mutable SCRIPT_FONTPROPERTIES* m_scriptFontProperties;
 #endif
+#endif
+#if PLATFORM(IOS)
+    bool m_shouldNotBeUsedForArabic;
 #endif
 };
 

@@ -43,42 +43,10 @@ InsertionPoint::InsertionPoint(const QualifiedName& tagName, Document& document)
     : HTMLElement(tagName, document, CreateInsertionPoint)
     , m_hasDistribution(false)
 {
-    setHasCustomStyleResolveCallbacks();
 }
 
 InsertionPoint::~InsertionPoint()
 {
-}
-
-void InsertionPoint::willAttachRenderers()
-{
-    if (ShadowRoot* shadowRoot = containingShadowRoot())
-        ContentDistributor::ensureDistribution(shadowRoot);
-    for (Node* current = firstDistributed(); current; current = nextDistributedTo(current)) {
-        if (current->attached())
-            continue;
-        if (current->isTextNode()) {
-            Style::attachTextRenderer(*toText(current));
-            continue;
-        }
-        if (current->isElementNode())
-            Style::attachRenderTree(*toElement(current));
-    }
-}
-
-void InsertionPoint::willDetachRenderers()
-{
-    if (ShadowRoot* shadowRoot = containingShadowRoot())
-        ContentDistributor::ensureDistribution(shadowRoot);
-
-    for (Node* current = firstDistributed(); current; current = nextDistributedTo(current)) {
-        if (current->isTextNode()) {
-            Style::detachTextRenderer(*toText(current));
-            continue;
-        }
-        if (current->isElementNode())
-            Style::detachRenderTree(*toElement(current));
-    }
 }
 
 bool InsertionPoint::shouldUseFallbackElements() const

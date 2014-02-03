@@ -28,7 +28,6 @@
 #include "Frame.h"
 #include "FrameView.h"
 #include "RenderSVGResourceClipper.h"
-#include "RenderSVGResourceContainer.h"
 #include "RenderSVGResourceFilter.h"
 #include "RenderSVGResourceMasker.h"
 #include "RenderSVGResourceSolidColor.h"
@@ -86,6 +85,7 @@ static inline RenderSVGResource* requestPaintingResource(RenderSVGResourceMode m
     case SVGPaint::SVG_PAINTTYPE_URI_RGBCOLOR:
     case SVGPaint::SVG_PAINTTYPE_URI_RGBCOLOR_ICCCOLOR:
         color = applyToFill ? svgStyle.fillPaintColor() : svgStyle.strokePaintColor();
+        break;
     default:
         break;
     }

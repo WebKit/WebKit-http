@@ -37,6 +37,7 @@
 #include "DFGSlowPathGenerator.h"
 #include "JSCJSValueInlines.h"
 #include "LinkBuffer.h"
+#include "ScratchRegisterAllocator.h"
 #include "WriteBarrierBuffer.h"
 #include <wtf/MathExtras.h>
 
@@ -105,7 +106,7 @@ void SpeculativeJIT::emitAllocateJSArray(GPRReg resultGPR, Structure* structure,
             structure, numElements)));
 }
 
-void SpeculativeJIT::backwardSpeculationCheck(ExitKind kind, JSValueSource jsValueSource, Node* node, MacroAssembler::Jump jumpToFail)
+void SpeculativeJIT::speculationCheck(ExitKind kind, JSValueSource jsValueSource, Node* node, MacroAssembler::Jump jumpToFail)
 {
     if (!m_compileOkay)
         return;
@@ -114,7 +115,7 @@ void SpeculativeJIT::backwardSpeculationCheck(ExitKind kind, JSValueSource jsVal
     m_jit.jitCode()->appendOSRExit(OSRExit(kind, jsValueSource, m_jit.graph().methodOfGettingAValueProfileFor(node), this, m_stream->size()));
 }
 
-void SpeculativeJIT::backwardSpeculationCheck(ExitKind kind, JSValueSource jsValueSource, Node* node, const MacroAssembler::JumpList& jumpsToFail)
+void SpeculativeJIT::speculationCheck(ExitKind kind, JSValueSource jsValueSource, Node* node, const MacroAssembler::JumpList& jumpsToFail)
 {
     if (!m_compileOkay)
         return;
@@ -123,22 +124,7 @@ void SpeculativeJIT::backwardSpeculationCheck(ExitKind kind, JSValueSource jsVal
     m_jit.jitCode()->appendOSRExit(OSRExit(kind, jsValueSource, m_jit.graph().methodOfGettingAValueProfileFor(node), this, m_stream->size()));
 }
 
-void SpeculativeJIT::speculationCheck(ExitKind kind, JSValueSource jsValueSource, Node* node, MacroAssembler::Jump jumpToFail)
-{
-    if (!m_compileOkay)
-        return;
-    backwardSpeculationCheck(kind, jsValueSource, node, jumpToFail);
-    if (m_speculationDirection == ForwardSpeculation)
-        convertLastOSRExitToForward();
-}
-
-void SpeculativeJIT::speculationCheck(ExitKind kind, JSValueSource jsValueSource, Edge nodeUse, MacroAssembler::Jump jumpToFail)
-{
-    ASSERT(m_isCheckingArgumentTypes || m_canExit);
-    speculationCheck(kind, jsValueSource, nodeUse.node(), jumpToFail);
-}
-
-OSRExitJumpPlaceholder SpeculativeJIT::backwardSpeculationCheck(ExitKind kind, JSValueSource jsValueSource, Node* node)
+OSRExitJumpPlaceholder SpeculativeJIT::speculationCheck(ExitKind kind, JSValueSource jsValueSource, Node* node)
 {
     if (!m_compileOkay)
         return OSRExitJumpPlaceholder();
@@ -149,19 +135,16 @@ OSRExitJumpPlaceholder SpeculativeJIT::backwardSpeculationCheck(ExitKind kind, J
     return OSRExitJumpPlaceholder(index);
 }
 
-OSRExitJumpPlaceholder SpeculativeJIT::backwardSpeculationCheck(ExitKind kind, JSValueSource jsValueSource, Edge nodeUse)
+OSRExitJumpPlaceholder SpeculativeJIT::speculationCheck(ExitKind kind, JSValueSource jsValueSource, Edge nodeUse)
 {
     ASSERT(m_isCheckingArgumentTypes || m_canExit);
-    return backwardSpeculationCheck(kind, jsValueSource, nodeUse.node());
+    return speculationCheck(kind, jsValueSource, nodeUse.node());
 }
 
-void SpeculativeJIT::speculationCheck(ExitKind kind, JSValueSource jsValueSource, Node* node, const MacroAssembler::JumpList& jumpsToFail)
+void SpeculativeJIT::speculationCheck(ExitKind kind, JSValueSource jsValueSource, Edge nodeUse, MacroAssembler::Jump jumpToFail)
 {
-    if (!m_compileOkay)
-        return;
-    backwardSpeculationCheck(kind, jsValueSource, node, jumpsToFail);
-    if (m_speculationDirection == ForwardSpeculation)
-        convertLastOSRExitToForward();
+    ASSERT(m_isCheckingArgumentTypes || m_canExit);
+    speculationCheck(kind, jsValueSource, nodeUse.node(), jumpToFail);
 }
 
 void SpeculativeJIT::speculationCheck(ExitKind kind, JSValueSource jsValueSource, Edge nodeUse, const MacroAssembler::JumpList& jumpsToFail)
@@ -170,7 +153,7 @@ void SpeculativeJIT::speculationCheck(ExitKind kind, JSValueSource jsValueSource
     speculationCheck(kind, jsValueSource, nodeUse.node(), jumpsToFail);
 }
 
-void SpeculativeJIT::backwardSpeculationCheck(ExitKind kind, JSValueSource jsValueSource, Node* node, MacroAssembler::Jump jumpToFail, const SpeculationRecovery& recovery)
+void SpeculativeJIT::speculationCheck(ExitKind kind, JSValueSource jsValueSource, Node* node, MacroAssembler::Jump jumpToFail, const SpeculationRecovery& recovery)
 {
     if (!m_compileOkay)
         return;
@@ -180,24 +163,10 @@ void SpeculativeJIT::backwardSpeculationCheck(ExitKind kind, JSValueSource jsVal
     m_jit.jitCode()->appendOSRExit(OSRExit(kind, jsValueSource, m_jit.graph().methodOfGettingAValueProfileFor(node), this, m_stream->size(), recoveryIndex));
 }
 
-void SpeculativeJIT::backwardSpeculationCheck(ExitKind kind, JSValueSource jsValueSource, Edge nodeUse, MacroAssembler::Jump jumpToFail, const SpeculationRecovery& recovery)
+void SpeculativeJIT::speculationCheck(ExitKind kind, JSValueSource jsValueSource, Edge nodeUse, MacroAssembler::Jump jumpToFail, const SpeculationRecovery& recovery)
 {
     ASSERT(m_isCheckingArgumentTypes || m_canExit);
-    backwardSpeculationCheck(kind, jsValueSource, nodeUse.node(), jumpToFail, recovery);
-}
-
-void SpeculativeJIT::speculationCheck(ExitKind kind, JSValueSource jsValueSource, Node* node, MacroAssembler::Jump jumpToFail, const SpeculationRecovery& recovery)
-{
-    if (!m_compileOkay)
-        return;
-    backwardSpeculationCheck(kind, jsValueSource, node, jumpToFail, recovery);
-    if (m_speculationDirection == ForwardSpeculation)
-        convertLastOSRExitToForward();
-}
-
-void SpeculativeJIT::speculationCheck(ExitKind kind, JSValueSource jsValueSource, Edge edge, MacroAssembler::Jump jumpToFail, const SpeculationRecovery& recovery)
-{
-    speculationCheck(kind, jsValueSource, edge.node(), jumpToFail, recovery);
+    speculationCheck(kind, jsValueSource, nodeUse.node(), jumpToFail, recovery);
 }
 
 void SpeculativeJIT::emitInvalidationPoint(Node* node)
@@ -205,7 +174,6 @@ void SpeculativeJIT::emitInvalidationPoint(Node* node)
     if (!m_compileOkay)
         return;
     ASSERT(m_canExit);
-    ASSERT(m_speculationDirection == BackwardSpeculation);
     OSRExitCompilationInfo& info = m_jit.appendExitInfo(JITCompiler::JumpList());
     m_jit.jitCode()->appendOSRExit(OSRExit(
         UncountableInvalidation, JSValueSource(),
@@ -214,26 +182,6 @@ void SpeculativeJIT::emitInvalidationPoint(Node* node)
     info.m_replacementSource = m_jit.watchpointLabel();
     ASSERT(info.m_replacementSource.isSet());
     noResult(node);
-}
-
-void SpeculativeJIT::convertLastOSRExitToForward(const ValueRecovery& valueRecovery)
-{
-    m_jit.jitCode()->lastOSRExit().convertToForward(
-        m_block, m_currentNode, m_indexInBlock, valueRecovery);
-}
-
-void SpeculativeJIT::forwardSpeculationCheck(ExitKind kind, JSValueSource jsValueSource, Node* node, MacroAssembler::Jump jumpToFail, const ValueRecovery& valueRecovery)
-{
-    ASSERT(m_isCheckingArgumentTypes || m_canExit);
-    backwardSpeculationCheck(kind, jsValueSource, node, jumpToFail);
-    convertLastOSRExitToForward(valueRecovery);
-}
-
-void SpeculativeJIT::forwardSpeculationCheck(ExitKind kind, JSValueSource jsValueSource, Node* node, const MacroAssembler::JumpList& jumpsToFail, const ValueRecovery& valueRecovery)
-{
-    ASSERT(m_isCheckingArgumentTypes || m_canExit);
-    backwardSpeculationCheck(kind, jsValueSource, node, jumpsToFail);
-    convertLastOSRExitToForward(valueRecovery);
 }
 
 void SpeculativeJIT::terminateSpeculativeExecution(ExitKind kind, JSValueRegs jsValueRegs, Node* node)
@@ -251,24 +199,11 @@ void SpeculativeJIT::terminateSpeculativeExecution(ExitKind kind, JSValueRegs js
     terminateSpeculativeExecution(kind, jsValueRegs, nodeUse.node());
 }
 
-void SpeculativeJIT::backwardTypeCheck(JSValueSource source, Edge edge, SpeculatedType typesPassedThrough, MacroAssembler::Jump jumpToFail)
+void SpeculativeJIT::typeCheck(JSValueSource source, Edge edge, SpeculatedType typesPassedThrough, MacroAssembler::Jump jumpToFail)
 {
     ASSERT(needsTypeCheck(edge, typesPassedThrough));
     m_interpreter.filter(edge, typesPassedThrough);
-    backwardSpeculationCheck(BadType, source, edge.node(), jumpToFail);
-}
-
-void SpeculativeJIT::typeCheck(JSValueSource source, Edge edge, SpeculatedType typesPassedThrough, MacroAssembler::Jump jumpToFail)
-{
-    backwardTypeCheck(source, edge, typesPassedThrough, jumpToFail);
-    if (m_speculationDirection == ForwardSpeculation)
-        convertLastOSRExitToForward();
-}
-
-void SpeculativeJIT::forwardTypeCheck(JSValueSource source, Edge edge, SpeculatedType typesPassedThrough, MacroAssembler::Jump jumpToFail, const ValueRecovery& valueRecovery)
-{
-    backwardTypeCheck(source, edge, typesPassedThrough, jumpToFail);
-    convertLastOSRExitToForward(valueRecovery);
+    speculationCheck(BadType, source, edge.node(), jumpToFail);
 }
 
 RegisterSet SpeculativeJIT::usedRegisters()
@@ -1379,14 +1314,7 @@ void SpeculativeJIT::compileMovHint(Node* node)
     Node* child = node->child1().node();
     noticeOSRBirth(child);
     
-    m_stream->appendAndLog(VariableEvent::movHint(MinifiedID(child), node->local()));
-}
-
-void SpeculativeJIT::compileMovHintAndCheck(Node* node)
-{
-    compileMovHint(node);
-    speculate(node, node->child1());
-    noResult(node);
+    m_stream->appendAndLog(VariableEvent::movHint(MinifiedID(child), node->unlinkedLocal()));
 }
 
 void SpeculativeJIT::bail()
@@ -1418,6 +1346,8 @@ void SpeculativeJIT::compileCurrentBlock()
     m_stream->appendAndLog(VariableEvent::reset());
     
     m_jit.jitAssertHasValidCallFrame();
+    m_jit.jitAssertTagsInPlace();
+    m_jit.jitAssertArgumentCountSane();
 
     for (size_t i = 0; i < m_block->variablesAtHead.numberOfArguments(); ++i) {
         m_stream->appendAndLog(
@@ -1435,9 +1365,7 @@ void SpeculativeJIT::compileCurrentBlock()
         
         VariableAccessData* variable = node->variableAccessData();
         DataFormat format;
-        if (variable->isArgumentsAlias())
-            format = DataFormatArguments;
-        else if (!node->refCount())
+        if (!node->refCount())
             continue; // No need to record dead SetLocal's.
         else
             format = dataFormatFor(variable->flushFormat());
@@ -1483,7 +1411,7 @@ void SpeculativeJIT::compileCurrentBlock()
                 break;
                 
             case ZombieHint: {
-                recordSetLocal(DataFormatDead);
+                recordSetLocal(m_currentNode->unlinkedLocal(), VirtualRegister(), DataFormatDead);
                 break;
             }
 
@@ -1501,8 +1429,6 @@ void SpeculativeJIT::compileCurrentBlock()
                     m_currentNode->codeOrigin.bytecodeIndex, m_jit.debugOffset());
                 dataLog("\n");
             }
-            
-            m_speculationDirection = (m_currentNode->flags() & NodeExitsForward) ? ForwardSpeculation : BackwardSpeculation;
             
             compile(m_currentNode);
 
@@ -1541,18 +1467,19 @@ void SpeculativeJIT::checkArgumentTypes()
 {
     ASSERT(!m_currentNode);
     m_isCheckingArgumentTypes = true;
-    m_speculationDirection = BackwardSpeculation;
     m_codeOriginForExitTarget = CodeOrigin(0);
     m_codeOriginForExitProfile = CodeOrigin(0);
 
     for (int i = 0; i < m_jit.codeBlock()->numParameters(); ++i) {
         Node* node = m_jit.graph().m_arguments[i];
-        ASSERT(node->op() == SetArgument);
-        if (!node->shouldGenerate()) {
+        if (!node) {
             // The argument is dead. We don't do any checks for such arguments.
             continue;
         }
         
+        ASSERT(node->op() == SetArgument);
+        ASSERT(node->shouldGenerate());
+
         VariableAccessData* variableAccessData = node->variableAccessData();
         FlushFormat format = variableAccessData->flushFormat();
         
@@ -1607,10 +1534,40 @@ void SpeculativeJIT::checkArgumentTypes()
     m_isCheckingArgumentTypes = false;
 }
 
+void SpeculativeJIT::prepareJITCodeForTierUp()
+{
+    unsigned numberOfCalls = 0;
+    
+    for (BlockIndex blockIndex = m_jit.graph().numBlocks(); blockIndex--;) {
+        BasicBlock* block = m_jit.graph().block(blockIndex);
+        if (!block)
+            continue;
+        
+        for (unsigned nodeIndex = block->size(); nodeIndex--;) {
+            Node* node = block->at(nodeIndex);
+            
+            switch (node->op()) {
+            case Call:
+            case Construct:
+                numberOfCalls++;
+                break;
+                
+            default:
+                break;
+            }
+        }
+    }
+    
+    m_jit.jitCode()->slowPathCalls.fill(0, numberOfCalls);
+}
+
 bool SpeculativeJIT::compile()
 {
     checkArgumentTypes();
-
+    
+    if (m_jit.graph().m_plan.willTryToTierUp)
+        prepareJITCodeForTierUp();
+    
     ASSERT(!m_currentNode);
     for (BlockIndex blockIndex = 0; blockIndex < m_jit.graph().numBlocks(); ++blockIndex) {
         m_jit.setForBlockIndex(blockIndex);
@@ -2092,7 +2049,7 @@ void SpeculativeJIT::compileValueToInt32(Node* node)
 
 void SpeculativeJIT::compileUInt32ToNumber(Node* node)
 {
-    if (!nodeCanSpeculateInt32(node->arithNodeFlags())) {
+    if (doesOverflow(node->arithMode())) {
         // We know that this sometimes produces doubles. So produce a double every
         // time. This at least allows subsequent code to not have weird conditionals.
             
@@ -2112,7 +2069,7 @@ void SpeculativeJIT::compileUInt32ToNumber(Node* node)
         return;
     }
     
-    RELEASE_ASSERT(!bytecodeCanTruncateInteger(node->arithNodeFlags()));
+    RELEASE_ASSERT(node->arithMode() == Arith::CheckOverflow);
 
     SpeculateInt32Operand op1(this, node->child1());
     GPRTemporary result(this);
@@ -2135,8 +2092,10 @@ void SpeculativeJIT::compileDoubleAsInt32(Node* node)
     GPRReg resultGPR = result.gpr();
 
     JITCompiler::JumpList failureCases;
-    bool negZeroCheck = !bytecodeCanIgnoreNegativeZero(node->arithNodeFlags());
-    m_jit.branchConvertDoubleToInt32(valueFPR, resultGPR, failureCases, scratchFPR, negZeroCheck);
+    RELEASE_ASSERT(shouldCheckOverflow(node->arithMode()));
+    m_jit.branchConvertDoubleToInt32(
+        valueFPR, resultGPR, failureCases, scratchFPR,
+        shouldCheckNegativeZero(node->arithMode()));
     speculationCheck(Overflow, JSValueRegs(), 0, failureCases);
 
     int32Result(resultGPR, node);
@@ -2168,16 +2127,9 @@ void SpeculativeJIT::compileInt32ToDouble(Node* node)
         MacroAssembler::AboveOrEqual, op1GPR, GPRInfo::tagTypeNumberRegister);
     
     if (needsTypeCheck(node->child1(), SpecFullNumber)) {
-        if (node->flags() & NodeExitsForward) {
-            forwardTypeCheck(
-                JSValueRegs(op1GPR), node->child1(), SpecFullNumber,
-                m_jit.branchTest64(MacroAssembler::Zero, op1GPR, GPRInfo::tagTypeNumberRegister),
-                ValueRecovery::inGPR(op1GPR, DataFormatJS));
-        } else {
-            backwardTypeCheck(
-                JSValueRegs(op1GPR), node->child1(), SpecFullNumber,
-                m_jit.branchTest64(MacroAssembler::Zero, op1GPR, GPRInfo::tagTypeNumberRegister));
-        }
+        typeCheck(
+            JSValueRegs(op1GPR), node->child1(), SpecFullNumber,
+            m_jit.branchTest64(MacroAssembler::Zero, op1GPR, GPRInfo::tagTypeNumberRegister));
     }
     
     m_jit.move(op1GPR, tempGPR);
@@ -2199,16 +2151,9 @@ void SpeculativeJIT::compileInt32ToDouble(Node* node)
         MacroAssembler::Equal, op1TagGPR, TrustedImm32(JSValue::Int32Tag));
     
     if (needsTypeCheck(node->child1(), SpecFullNumber)) {
-        if (node->flags() & NodeExitsForward) {
-            forwardTypeCheck(
-                JSValueRegs(op1TagGPR, op1PayloadGPR), node->child1(), SpecFullNumber,
-                m_jit.branch32(MacroAssembler::AboveOrEqual, op1TagGPR, TrustedImm32(JSValue::LowestTag)),
-                ValueRecovery::inPair(op1TagGPR, op1PayloadGPR));
-        } else {
-            backwardTypeCheck(
-                JSValueRegs(op1TagGPR, op1PayloadGPR), node->child1(), SpecFullNumber,
-                m_jit.branch32(MacroAssembler::AboveOrEqual, op1TagGPR, TrustedImm32(JSValue::LowestTag)));
-        }
+        typeCheck(
+            JSValueRegs(op1TagGPR, op1PayloadGPR), node->child1(), SpecFullNumber,
+            m_jit.branch32(MacroAssembler::AboveOrEqual, op1TagGPR, TrustedImm32(JSValue::LowestTag)));
     }
     
     unboxDouble(op1TagGPR, op1PayloadGPR, resultFPR, tempFPR);
@@ -2477,6 +2422,10 @@ void SpeculativeJIT::compilePutByValForIntTypedArray(GPRReg base, GPRReg propert
     ASSERT(valueGPR != base);
     ASSERT(valueGPR != storageReg);
     MacroAssembler::Jump outOfBounds = jumpForTypedArrayOutOfBounds(node, base, property);
+    if (node->arrayMode().isInBounds() && outOfBounds.isSet()) {
+        speculationCheck(OutOfBounds, JSValueSource(), 0, outOfBounds);
+        outOfBounds = MacroAssembler::Jump();
+    }
 
     switch (elementSize(type)) {
     case 1:
@@ -2552,6 +2501,10 @@ void SpeculativeJIT::compilePutByValForFloatTypedArray(GPRReg base, GPRReg prope
     ASSERT_UNUSED(baseUse, node->arrayMode().alreadyChecked(m_jit.graph(), node, m_state.forNode(baseUse)));
     
     MacroAssembler::Jump outOfBounds = jumpForTypedArrayOutOfBounds(node, base, property);
+    if (node->arrayMode().isInBounds() && outOfBounds.isSet()) {
+        speculationCheck(OutOfBounds, JSValueSource(), 0, outOfBounds);
+        outOfBounds = MacroAssembler::Jump();
+    }
     
     switch (elementSize(type)) {
     case 4: {
@@ -2674,12 +2627,14 @@ void SpeculativeJIT::compileAdd(Node* node)
 {
     switch (node->binaryUseKind()) {
     case Int32Use: {
+        ASSERT(!shouldCheckNegativeZero(node->arithMode()));
+        
         if (isNumberConstant(node->child1().node())) {
             int32_t imm1 = valueOfInt32Constant(node->child1().node());
             SpeculateInt32Operand op2(this, node->child2());
             GPRTemporary result(this);
 
-            if (bytecodeCanTruncateInteger(node->arithNodeFlags())) {
+            if (!shouldCheckOverflow(node->arithMode())) {
                 m_jit.move(op2.gpr(), result.gpr());
                 m_jit.add32(Imm32(imm1), result.gpr());
             } else
@@ -2694,7 +2649,7 @@ void SpeculativeJIT::compileAdd(Node* node)
             int32_t imm2 = valueOfInt32Constant(node->child2().node());
             GPRTemporary result(this);
                 
-            if (bytecodeCanTruncateInteger(node->arithNodeFlags())) {
+            if (!shouldCheckOverflow(node->arithMode())) {
                 m_jit.move(op1.gpr(), result.gpr());
                 m_jit.add32(Imm32(imm2), result.gpr());
             } else
@@ -2712,7 +2667,7 @@ void SpeculativeJIT::compileAdd(Node* node)
         GPRReg gpr2 = op2.gpr();
         GPRReg gprResult = result.gpr();
 
-        if (bytecodeCanTruncateInteger(node->arithNodeFlags())) {
+        if (!shouldCheckOverflow(node->arithMode())) {
             if (gpr1 == gprResult)
                 m_jit.add32(gpr2, gprResult);
             else {
@@ -2736,6 +2691,9 @@ void SpeculativeJIT::compileAdd(Node* node)
         
 #if USE(JSVALUE64)
     case MachineIntUse: {
+        ASSERT(shouldCheckOverflow(node->arithMode()));
+        ASSERT(!shouldCheckNegativeZero(node->arithMode()));
+
         // Will we need an overflow check? If we can prove that neither input can be
         // Int52 then the overflow check will not be necessary.
         if (!m_state.forNode(node->child1()).couldBeType(SpecInt52)
@@ -2771,12 +2729,6 @@ void SpeculativeJIT::compileAdd(Node* node)
         m_jit.addDouble(reg1, reg2, result.fpr());
 
         doubleResult(result.fpr(), node);
-        return;
-    }
-        
-    case UntypedUse: {
-        RELEASE_ASSERT(node->op() == ValueAdd);
-        compileValueAdd(node);
         return;
     }
         
@@ -2855,12 +2807,14 @@ void SpeculativeJIT::compileArithSub(Node* node)
 {
     switch (node->binaryUseKind()) {
     case Int32Use: {
+        ASSERT(!shouldCheckNegativeZero(node->arithMode()));
+        
         if (isNumberConstant(node->child2().node())) {
             SpeculateInt32Operand op1(this, node->child1());
             int32_t imm2 = valueOfInt32Constant(node->child2().node());
             GPRTemporary result(this);
 
-            if (bytecodeCanTruncateInteger(node->arithNodeFlags())) {
+            if (!shouldCheckOverflow(node->arithMode())) {
                 m_jit.move(op1.gpr(), result.gpr());
                 m_jit.sub32(Imm32(imm2), result.gpr());
             } else {
@@ -2878,7 +2832,7 @@ void SpeculativeJIT::compileArithSub(Node* node)
             GPRTemporary result(this);
                 
             m_jit.move(Imm32(imm1), result.gpr());
-            if (bytecodeCanTruncateInteger(node->arithNodeFlags()))
+            if (!shouldCheckOverflow(node->arithMode()))
                 m_jit.sub32(op2.gpr(), result.gpr());
             else
                 speculationCheck(Overflow, JSValueRegs(), 0, m_jit.branchSub32(MacroAssembler::Overflow, op2.gpr(), result.gpr()));
@@ -2891,7 +2845,7 @@ void SpeculativeJIT::compileArithSub(Node* node)
         SpeculateInt32Operand op2(this, node->child2());
         GPRTemporary result(this);
 
-        if (bytecodeCanTruncateInteger(node->arithNodeFlags())) {
+        if (!shouldCheckOverflow(node->arithMode())) {
             m_jit.move(op1.gpr(), result.gpr());
             m_jit.sub32(op2.gpr(), result.gpr());
         } else
@@ -2903,6 +2857,9 @@ void SpeculativeJIT::compileArithSub(Node* node)
         
 #if USE(JSVALUE64)
     case MachineIntUse: {
+        ASSERT(shouldCheckOverflow(node->arithMode()));
+        ASSERT(!shouldCheckNegativeZero(node->arithMode()));
+
         // Will we need an overflow check? If we can prove that neither input can be
         // Int52 then the overflow check will not be necessary.
         if (!m_state.forNode(node->child1()).couldBeType(SpecInt52)
@@ -2959,9 +2916,9 @@ void SpeculativeJIT::compileArithNegate(Node* node)
         // Note: there is no notion of being not used as a number, but someone
         // caring about negative zero.
         
-        if (bytecodeCanTruncateInteger(node->arithNodeFlags()))
+        if (!shouldCheckOverflow(node->arithMode()))
             m_jit.neg32(result.gpr());
-        else if (bytecodeCanIgnoreNegativeZero(node->arithNodeFlags()))
+        else if (!shouldCheckNegativeZero(node->arithMode()))
             speculationCheck(Overflow, JSValueRegs(), 0, m_jit.branchNeg32(MacroAssembler::Overflow, result.gpr()));
         else {
             speculationCheck(Overflow, JSValueRegs(), 0, m_jit.branchTest32(MacroAssembler::Zero, result.gpr(), TrustedImm32(0x7fffffff)));
@@ -2974,6 +2931,8 @@ void SpeculativeJIT::compileArithNegate(Node* node)
 
 #if USE(JSVALUE64)
     case MachineIntUse: {
+        ASSERT(shouldCheckOverflow(node->arithMode()));
+        
         if (!m_state.forNode(node->child1()).couldBeType(SpecInt52)) {
             SpeculateWhicheverInt52Operand op1(this, node->child1());
             GPRTemporary result(this);
@@ -2981,7 +2940,7 @@ void SpeculativeJIT::compileArithNegate(Node* node)
             GPRReg resultGPR = result.gpr();
             m_jit.move(op1GPR, resultGPR);
             m_jit.neg64(resultGPR);
-            if (!bytecodeCanIgnoreNegativeZero(node->arithNodeFlags())) {
+            if (shouldCheckNegativeZero(node->arithMode())) {
                 speculationCheck(
                     NegativeZero, JSValueRegs(), 0,
                     m_jit.branchTest64(MacroAssembler::Zero, resultGPR));
@@ -2998,7 +2957,7 @@ void SpeculativeJIT::compileArithNegate(Node* node)
         speculationCheck(
             Int52Overflow, JSValueRegs(), 0,
             m_jit.branchNeg64(MacroAssembler::Overflow, resultGPR));
-        if (!bytecodeCanIgnoreNegativeZero(node->arithNodeFlags())) {
+        if (shouldCheckNegativeZero(node->arithMode())) {
             speculationCheck(
                 NegativeZero, JSValueRegs(), 0,
                 m_jit.branchTest64(MacroAssembler::Zero, resultGPR));
@@ -3023,21 +2982,6 @@ void SpeculativeJIT::compileArithNegate(Node* node)
         return;
     }
 }
-void SpeculativeJIT::compileArithIMul(Node* node)
-{
-    SpeculateInt32Operand op1(this, node->child1());
-    SpeculateInt32Operand op2(this, node->child2());
-    GPRTemporary result(this);
-
-    GPRReg reg1 = op1.gpr();
-    GPRReg reg2 = op2.gpr();
-
-    m_jit.move(reg1, result.gpr());
-    m_jit.mul32(reg2, result.gpr());
-    int32Result(result.gpr(), node);
-    return;
-}
-
 void SpeculativeJIT::compileArithMul(Node* node)
 {
     switch (node->binaryUseKind()) {
@@ -3052,7 +2996,7 @@ void SpeculativeJIT::compileArithMul(Node* node)
         // We can perform truncated multiplications if we get to this point, because if the
         // fixup phase could not prove that it would be safe, it would have turned us into
         // a double multiplication.
-        if (bytecodeCanTruncateInteger(node->arithNodeFlags())) {
+        if (!shouldCheckOverflow(node->arithMode())) {
             m_jit.move(reg1, result.gpr());
             m_jit.mul32(reg2, result.gpr());
         } else {
@@ -3062,7 +3006,7 @@ void SpeculativeJIT::compileArithMul(Node* node)
         }
             
         // Check for negative zero, if the users of this node care about such things.
-        if (!bytecodeCanIgnoreNegativeZero(node->arithNodeFlags())) {
+        if (shouldCheckNegativeZero(node->arithMode())) {
             MacroAssembler::Jump resultNonZero = m_jit.branchTest32(MacroAssembler::NonZero, result.gpr());
             speculationCheck(NegativeZero, JSValueRegs(), 0, m_jit.branch32(MacroAssembler::LessThan, reg1, TrustedImm32(0)));
             speculationCheck(NegativeZero, JSValueRegs(), 0, m_jit.branch32(MacroAssembler::LessThan, reg2, TrustedImm32(0)));
@@ -3075,6 +3019,8 @@ void SpeculativeJIT::compileArithMul(Node* node)
     
 #if USE(JSVALUE64)   
     case MachineIntUse: {
+        ASSERT(shouldCheckOverflow(node->arithMode()));
+        
         // This is super clever. We want to do an int52 multiplication and check the
         // int52 overflow bit. There is no direct hardware support for this, but we do
         // have the ability to do an int64 multiplication and check the int64 overflow
@@ -3112,7 +3058,7 @@ void SpeculativeJIT::compileArithMul(Node* node)
             Int52Overflow, JSValueRegs(), 0,
             m_jit.branchMul64(MacroAssembler::Overflow, op2GPR, resultGPR));
         
-        if (!bytecodeCanIgnoreNegativeZero(node->arithNodeFlags())) {
+        if (shouldCheckNegativeZero(node->arithMode())) {
             MacroAssembler::Jump resultNonZero = m_jit.branchTest64(
                 MacroAssembler::NonZero, resultGPR);
             speculationCheck(
@@ -3182,7 +3128,7 @@ void SpeculativeJIT::compileArithDiv(Node* node)
         JITCompiler::Jump safeDenominator = m_jit.branch32(JITCompiler::Above, temp, JITCompiler::TrustedImm32(1));
     
         JITCompiler::JumpList done;
-        if (bytecodeUsesAsNumber(node->arithNodeFlags())) {
+        if (shouldCheckOverflow(node->arithMode())) {
             speculationCheck(Overflow, JSValueRegs(), 0, m_jit.branchTest32(JITCompiler::Zero, op2GPR));
             speculationCheck(Overflow, JSValueRegs(), 0, m_jit.branch32(JITCompiler::Equal, op1GPR, TrustedImm32(-2147483647-1)));
         } else {
@@ -3210,7 +3156,7 @@ void SpeculativeJIT::compileArithDiv(Node* node)
     
         // If the user cares about negative zero, then speculate that we're not about
         // to produce negative zero.
-        if (!bytecodeCanIgnoreNegativeZero(node->arithNodeFlags())) {
+        if (shouldCheckNegativeZero(node->arithMode())) {
             MacroAssembler::Jump numeratorNonZero = m_jit.branchTest32(MacroAssembler::NonZero, op1GPR);
             speculationCheck(NegativeZero, JSValueRegs(), 0, m_jit.branch32(MacroAssembler::LessThan, op2GPR, TrustedImm32(0)));
             numeratorNonZero.link(&m_jit);
@@ -3230,7 +3176,7 @@ void SpeculativeJIT::compileArithDiv(Node* node)
 
         // Check that there was no remainder. If there had been, then we'd be obligated to
         // produce a double result instead.
-        if (bytecodeUsesAsNumber(node->arithNodeFlags()))
+        if (shouldCheckOverflow(node->arithMode()))
             speculationCheck(Overflow, JSValueRegs(), 0, m_jit.branchTest32(JITCompiler::NonZero, edx.gpr()));
         
         done.link(&m_jit);
@@ -3245,7 +3191,7 @@ void SpeculativeJIT::compileArithDiv(Node* node)
 
         // If the user cares about negative zero, then speculate that we're not about
         // to produce negative zero.
-        if (!bytecodeCanIgnoreNegativeZero(node->arithNodeFlags())) {
+        if (shouldCheckNegativeZero(node->arithMode())) {
             MacroAssembler::Jump numeratorNonZero = m_jit.branchTest32(MacroAssembler::NonZero, op1GPR);
             speculationCheck(NegativeZero, JSValueRegs(), 0, m_jit.branch32(MacroAssembler::LessThan, op2GPR, TrustedImm32(0)));
             numeratorNonZero.link(&m_jit);
@@ -3255,7 +3201,7 @@ void SpeculativeJIT::compileArithDiv(Node* node)
 
         // Check that there was no remainder. If there had been, then we'd be obligated to
         // produce a double result instead.
-        if (bytecodeUsesAsNumber(node->arithNodeFlags())) {
+        if (shouldCheckOverflow(node->arithMode())) {
             speculationCheck(Overflow, JSValueRegs(), 0, m_jit.branchMul32(JITCompiler::Overflow, quotient.gpr(), op2GPR, multiplyAnswer.gpr()));
             speculationCheck(Overflow, JSValueRegs(), 0, m_jit.branch32(JITCompiler::NotEqual, multiplyAnswer.gpr(), op1GPR));
         }
@@ -3271,7 +3217,7 @@ void SpeculativeJIT::compileArithDiv(Node* node)
 
         // If the user cares about negative zero, then speculate that we're not about
         // to produce negative zero.
-        if (!bytecodeCanIgnoreNegativeZero(node->arithNodeFlags())) {
+        if (shouldCheckNegativeZero(node->arithMode())) {
             MacroAssembler::Jump numeratorNonZero = m_jit.branchTest32(MacroAssembler::NonZero, op1GPR);
             speculationCheck(NegativeZero, JSValueRegs(), 0, m_jit.branch32(MacroAssembler::LessThan, op2GPR, TrustedImm32(0)));
             numeratorNonZero.link(&m_jit);
@@ -3281,7 +3227,7 @@ void SpeculativeJIT::compileArithDiv(Node* node)
 
         // Check that there was no remainder. If there had been, then we'd be obligated to
         // produce a double result instead.
-        if (bytecodeUsesAsNumber(node->arithNodeFlags())) {
+        if (shouldCheckOverflow(node->arithMode())) {
             speculationCheck(Overflow, JSValueRegs(), 0, m_jit.branchMul32(JITCompiler::Overflow, quotient.gpr(), op2GPR, multiplyAnswer.gpr()));
             speculationCheck(Overflow, JSValueRegs(), 0, m_jit.branch32(JITCompiler::NotEqual, multiplyAnswer.gpr(), op1GPR));
         }
@@ -3369,7 +3315,7 @@ void SpeculativeJIT::compileArithMod(Node* node)
                 m_jit.neg32(resultGPR);
                 m_jit.add32(dividendGPR, resultGPR);
                 
-                if (!bytecodeCanIgnoreNegativeZero(node->arithNodeFlags())) {
+                if (shouldCheckNegativeZero(node->arithMode())) {
                     // Check that we're not about to create negative zero.
                     JITCompiler::Jump numeratorPositive = m_jit.branch32(JITCompiler::GreaterThanOrEqual, dividendGPR, TrustedImm32(0));
                     speculationCheck(NegativeZero, JSValueRegs(), 0, m_jit.branchTest32(JITCompiler::Zero, resultGPR));
@@ -3406,7 +3352,7 @@ void SpeculativeJIT::compileArithMod(Node* node)
                 m_jit.move(TrustedImm32(divisor), scratchGPR);
                 m_jit.assembler().cdq();
                 m_jit.assembler().idivl_r(scratchGPR);
-                if (!bytecodeCanIgnoreNegativeZero(node->arithNodeFlags())) {
+                if (shouldCheckNegativeZero(node->arithMode())) {
                     JITCompiler::Jump numeratorPositive = m_jit.branch32(JITCompiler::GreaterThanOrEqual, op1SaveGPR, TrustedImm32(0));
                     speculationCheck(Overflow, JSValueRegs(), 0, m_jit.branchTest32(JITCompiler::Zero, edx.gpr()));
                     numeratorPositive.link(&m_jit);
@@ -3463,7 +3409,7 @@ void SpeculativeJIT::compileArithMod(Node* node)
         
         // FIXME: -2^31 / -1 will actually yield negative zero, so we could have a
         // separate case for that. But it probably doesn't matter so much.
-        if (bytecodeUsesAsNumber(node->arithNodeFlags())) {
+        if (shouldCheckOverflow(node->arithMode())) {
             speculationCheck(Overflow, JSValueRegs(), 0, m_jit.branchTest32(JITCompiler::Zero, op2GPR));
             speculationCheck(Overflow, JSValueRegs(), 0, m_jit.branch32(JITCompiler::Equal, op1GPR, TrustedImm32(-2147483647-1)));
         } else {
@@ -3502,7 +3448,7 @@ void SpeculativeJIT::compileArithMod(Node* node)
             unlock(op2TempGPR);
 
         // Check that we're not about to create negative zero.
-        if (!bytecodeCanIgnoreNegativeZero(node->arithNodeFlags())) {
+        if (shouldCheckNegativeZero(node->arithMode())) {
             JITCompiler::Jump numeratorPositive = m_jit.branch32(JITCompiler::GreaterThanOrEqual, op1SaveGPR, TrustedImm32(0));
             speculationCheck(Overflow, JSValueRegs(), 0, m_jit.branchTest32(JITCompiler::Zero, edx.gpr()));
             numeratorPositive.link(&m_jit);
@@ -3523,19 +3469,35 @@ void SpeculativeJIT::compileArithMod(Node* node)
         GPRReg quotientThenRemainderGPR = quotientThenRemainder.gpr();
         GPRReg multiplyAnswerGPR = multiplyAnswer.gpr();
 
+        JITCompiler::JumpList done;
+        
+        if (shouldCheckOverflow(node->arithMode()))
+            speculationCheck(Overflow, JSValueRegs(), 0, m_jit.branchTest32(JITCompiler::Zero, divisorGPR));
+        else {
+            JITCompiler::Jump denominatorNotZero = m_jit.branchTest32(JITCompiler::NonZero, divisorGPR);
+            m_jit.move(divisorGPR, quotientThenRemainderGPR);
+            done.append(m_jit.jump());
+            denominatorNotZero.link(&m_jit);
+        }
+
         m_jit.assembler().sdiv(quotientThenRemainderGPR, dividendGPR, divisorGPR);
+        // FIXME: It seems like there are cases where we don't need this? What if we have
+        // arithMode() == Arith::Unchecked?
+        // https://bugs.webkit.org/show_bug.cgi?id=126444
         speculationCheck(Overflow, JSValueRegs(), 0, m_jit.branchMul32(JITCompiler::Overflow, quotientThenRemainderGPR, divisorGPR, multiplyAnswerGPR));
         m_jit.assembler().sub(quotientThenRemainderGPR, dividendGPR, multiplyAnswerGPR);
 
         // If the user cares about negative zero, then speculate that we're not about
         // to produce negative zero.
-        if (!bytecodeCanIgnoreNegativeZero(node->arithNodeFlags())) {
+        if (shouldCheckNegativeZero(node->arithMode())) {
             // Check that we're not about to create negative zero.
             JITCompiler::Jump numeratorPositive = m_jit.branch32(JITCompiler::GreaterThanOrEqual, dividendGPR, TrustedImm32(0));
             speculationCheck(Overflow, JSValueRegs(), 0, m_jit.branchTest32(JITCompiler::Zero, quotientThenRemainderGPR));
             numeratorPositive.link(&m_jit);
         }
 
+        done.link(&m_jit);
+        
         int32Result(quotientThenRemainderGPR, node);
 #elif CPU(ARM64)
         GPRTemporary temp(this);
@@ -3546,18 +3508,34 @@ void SpeculativeJIT::compileArithMod(Node* node)
         GPRReg quotientThenRemainderGPR = quotientThenRemainder.gpr();
         GPRReg multiplyAnswerGPR = multiplyAnswer.gpr();
 
+        JITCompiler::JumpList done;
+    
+        if (shouldCheckOverflow(node->arithMode()))
+            speculationCheck(Overflow, JSValueRegs(), 0, m_jit.branchTest32(JITCompiler::Zero, divisorGPR));
+        else {
+            JITCompiler::Jump denominatorNotZero = m_jit.branchTest32(JITCompiler::NonZero, divisorGPR);
+            m_jit.move(divisorGPR, quotientThenRemainderGPR);
+            done.append(m_jit.jump());
+            denominatorNotZero.link(&m_jit);
+        }
+
         m_jit.assembler().sdiv<32>(quotientThenRemainderGPR, dividendGPR, divisorGPR);
+        // FIXME: It seems like there are cases where we don't need this? What if we have
+        // arithMode() == Arith::Unchecked?
+        // https://bugs.webkit.org/show_bug.cgi?id=126444
         speculationCheck(Overflow, JSValueRegs(), 0, m_jit.branchMul32(JITCompiler::Overflow, quotientThenRemainderGPR, divisorGPR, multiplyAnswerGPR));
         m_jit.assembler().sub<32>(quotientThenRemainderGPR, dividendGPR, multiplyAnswerGPR);
 
         // If the user cares about negative zero, then speculate that we're not about
         // to produce negative zero.
-        if (!bytecodeCanIgnoreNegativeZero(node->arithNodeFlags())) {
+        if (shouldCheckNegativeZero(node->arithMode())) {
             // Check that we're not about to create negative zero.
             JITCompiler::Jump numeratorPositive = m_jit.branch32(JITCompiler::GreaterThanOrEqual, dividendGPR, TrustedImm32(0));
             speculationCheck(Overflow, JSValueRegs(), 0, m_jit.branchTest32(JITCompiler::Zero, quotientThenRemainderGPR));
             numeratorPositive.link(&m_jit);
         }
+
+        done.link(&m_jit);
 
         int32Result(quotientThenRemainderGPR, node);
 #else // not architecture that can do integer division
@@ -5479,57 +5457,6 @@ JITCompiler::Jump SpeculativeJIT::genericWriteBarrier(CCallHelpers& jit, JSCell*
     return jit.branchTest8(MacroAssembler::Zero, MacroAssembler::AbsoluteAddress(address));
 }
 
-MacroAssembler::Call SpeculativeJIT::storeToWriteBarrierBuffer(CCallHelpers& jit, GPRReg cell, GPRReg scratch1, GPRReg scratch2)
-{
-    ASSERT(scratch1 != scratch2);
-    // Load WriteBarrierBuffer from Heap
-    WriteBarrierBuffer* writeBarrierBuffer = &jit.vm()->heap.m_writeBarrierBuffer;
-    jit.move(TrustedImmPtr(writeBarrierBuffer), scratch1);
-    // Load currentIndex
-    jit.load32(MacroAssembler::Address(scratch1, WriteBarrierBuffer::currentIndexOffset()), scratch2);
-    // Branch if currentIndex >= capacity
-    JITCompiler::Jump needToFlush = jit.branch32(MacroAssembler::AboveOrEqual, scratch2, MacroAssembler::Address(scratch1, WriteBarrierBuffer::capacityOffset()));
-
-    // Store new currentIndex
-    jit.add32(TrustedImm32(1), scratch2);
-    jit.store32(scratch2, MacroAssembler::Address(scratch1, WriteBarrierBuffer::currentIndexOffset()));
-
-    // Load buffer
-    jit.loadPtr(MacroAssembler::Address(scratch1, WriteBarrierBuffer::bufferOffset()), scratch1);
-    // Store cell into buffer. We use an offset of -sizeof(void*) because we already added 1 to scratch2.
-    jit.storePtr(cell, MacroAssembler::BaseIndex(scratch1, scratch2, MacroAssembler::ScalePtr, static_cast<int32_t>(-sizeof(void*))));
-
-    // Jump to done
-    JITCompiler::Jump done = jit.jump();
-    // Link from branch
-    needToFlush.link(&jit);
-
-    // Call C slow path.
-    for (unsigned i = 0; i < GPRInfo::numberOfRegisters; ++i)
-        jit.storePtr(GPRInfo::toRegister(i), &jit.vm()->writeBarrierRegisterBuffer[i]);
-
-#if CPU(X86)
-    jit.push(scratch1);
-    jit.push(scratch1);
-#endif
-
-    jit.setupArgumentsWithExecState(cell);
-    MacroAssembler::Call call = jit.call();
-
-#if CPU(X86)
-    jit.pop(scratch1);
-    jit.pop(scratch1);
-#endif
-
-    for (unsigned i = GPRInfo::numberOfRegisters; i--;)
-        jit.loadPtr(&jit.vm()->writeBarrierRegisterBuffer[i], GPRInfo::toRegister(i));
-
-    // Link Done
-    done.link(&jit);
-
-    return call;
-}
-
 void SpeculativeJIT::storeToWriteBarrierBuffer(GPRReg cell, GPRReg scratch1, GPRReg scratch2)
 {
     ASSERT(scratch1 != scratch2);
@@ -5593,23 +5520,11 @@ void SpeculativeJIT::writeBarrier(GPRReg ownerGPR, JSCell* value, GPRReg scratch
 
 void SpeculativeJIT::osrWriteBarrier(CCallHelpers& jit, GPRReg owner, GPRReg scratch1, GPRReg scratch2)
 {
-    UNUSED_PARAM(jit);
-    UNUSED_PARAM(owner);
-    UNUSED_PARAM(scratch1);
-    UNUSED_PARAM(scratch2);
-    ASSERT(owner != scratch1);
-    ASSERT(owner != scratch2);
-
     JITCompiler::Jump definitelyNotMarked = genericWriteBarrier(jit, owner, scratch1, scratch2);
-
-    for (unsigned i = 0; i < GPRInfo::numberOfRegisters; ++i)
-        jit.storePtr(GPRInfo::toRegister(i), &jit.vm()->writeBarrierRegisterBuffer[i]);
 
     // We need these extra slots because setupArgumentsWithExecState will use poke on x86.
 #if CPU(X86)
-    jit.push(scratch1);
-    jit.push(scratch1);
-    jit.push(scratch1);
+    jit.subPtr(TrustedImm32(sizeof(void*) * 3), MacroAssembler::stackPointerRegister);
 #endif
 
     jit.setupArgumentsWithExecState(owner);
@@ -5617,25 +5532,10 @@ void SpeculativeJIT::osrWriteBarrier(CCallHelpers& jit, GPRReg owner, GPRReg scr
     jit.call(scratch1);
 
 #if CPU(X86)
-    jit.pop(scratch1);
-    jit.pop(scratch1);
-    jit.pop(scratch1);
+    jit.addPtr(TrustedImm32(sizeof(void*) * 3), MacroAssembler::stackPointerRegister);
 #endif
-    for (unsigned i = GPRInfo::numberOfRegisters; i--;)
-        jit.loadPtr(&jit.vm()->writeBarrierRegisterBuffer[i], GPRInfo::toRegister(i)); 
 
     definitelyNotMarked.link(&jit);
-}
-
-MacroAssembler::Call SpeculativeJIT::writeBarrier(CCallHelpers& jit, GPRReg owner, GPRReg scratch1, GPRReg scratch2)
-{
-    ASSERT(owner != scratch1);
-    ASSERT(owner != scratch2);
-
-    JITCompiler::Jump definitelyNotMarked = genericWriteBarrier(jit, owner, scratch1, scratch2);
-    MacroAssembler::Call call = storeToWriteBarrierBuffer(jit, owner, scratch1, scratch2);
-    definitelyNotMarked.link(&jit);
-    return call;
 }
 
 void SpeculativeJIT::writeBarrier(GPRReg ownerGPR, GPRReg scratch1, GPRReg scratch2)

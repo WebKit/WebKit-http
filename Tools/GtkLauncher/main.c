@@ -239,7 +239,7 @@ static GtkWidget* createBrowser(GtkWidget* window, GtkWidget* uriEntry, GtkWidge
 
     gtk_container_add(GTK_CONTAINER(scrolledWindow), GTK_WIDGET(webView));
 
-    iconDatabasePath = g_build_filename(g_get_user_data_dir(), "webkit", "icondatabase", NULL);
+    iconDatabasePath = g_build_filename(g_get_user_cache_dir(), "GtkLauncher", "icondatabase", NULL);
     webkit_favicon_database_set_path(webkit_get_favicon_database(), iconDatabasePath);
     g_free(iconDatabasePath);
 
@@ -335,7 +335,7 @@ static GtkWidget* createWindow(WebKitWebView** outWebView)
 #else
     vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
 #endif
-    statusbar = createStatusbar(webView);
+    statusbar = createStatusbar();
     gtk_box_pack_start(GTK_BOX(vbox), createToolbar(window, uriEntry, webView), FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(vbox), createBrowser(window, uriEntry, statusbar, webView, vbox), TRUE, TRUE, 0);
     gtk_box_pack_start(GTK_BOX(vbox), statusbar, FALSE, FALSE, 0);

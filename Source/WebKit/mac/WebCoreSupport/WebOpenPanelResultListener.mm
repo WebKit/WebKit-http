@@ -28,6 +28,10 @@
 #import <WebCore/FileChooser.h>
 #import <wtf/PassRefPtr.h>
 
+#if PLATFORM(IOS)
+#import <WebCore/Icon.h>
+#endif
+
 using namespace WebCore;
 
 @implementation WebOpenPanelResultListener
@@ -87,5 +91,31 @@ using namespace WebCore;
     _chooser->deref();
     _chooser = 0;
 }
+
+#if PLATFORM(IOS)
+- (void)chooseFilename:(NSString *)filename displayString:(NSString *)displayString iconImage:(CGImageRef)imageRef
+{
+    [self chooseFilenames:[NSArray arrayWithObject:filename] displayString:displayString iconImage:imageRef];
+}
+
+- (void)chooseFilenames:(NSArray *)filenames displayString:(NSString *)displayString iconImage:(CGImageRef)imageRef
+{
+    ASSERT(_chooser);
+    if (!_chooser)
+        return;
+
+    RefPtr<Icon> icon = Icon::createIconForImage(imageRef);
+
+    NSUInteger count = [filenames count];
+    Vector<String> names(count);
+    for (NSUInteger i = 0; i < count; ++i)
+        names[i] = [filenames objectAtIndex:i];
+    _chooser->chooseMediaFiles(names, displayString, icon.get());
+    
+    // FIXME: we shouldn't be manually deref()'ing here.
+    _chooser->deref();
+    _chooser = nullptr;
+}
+#endif
 
 @end

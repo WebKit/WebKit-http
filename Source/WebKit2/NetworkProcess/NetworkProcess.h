@@ -34,6 +34,7 @@
 #include "MessageReceiverMap.h"
 #include "NetworkResourceLoadScheduler.h"
 #include <wtf/Forward.h>
+#include <wtf/NeverDestroyed.h>
 
 namespace WebCore {
 class CertificateInfo;
@@ -47,6 +48,8 @@ struct NetworkProcessCreationParameters;
 
 class NetworkProcess : public ChildProcess, private DownloadManager::Client {
     WTF_MAKE_NONCOPYABLE(NetworkProcess);
+    friend class NeverDestroyed<NetworkProcess>;
+    friend class NeverDestroyed<DownloadManager>;
 public:
     static NetworkProcess& shared();
 
@@ -75,34 +78,34 @@ private:
 
     void platformInitializeNetworkProcess(const NetworkProcessCreationParameters&);
 
-    virtual void terminate() OVERRIDE;
+    virtual void terminate() override;
     void platformTerminate();
 
     // ChildProcess
-    virtual void initializeProcess(const ChildProcessInitializationParameters&) OVERRIDE;
-    virtual void initializeProcessName(const ChildProcessInitializationParameters&) OVERRIDE;
-    virtual void initializeSandbox(const ChildProcessInitializationParameters&, SandboxInitializationParameters&) OVERRIDE;
-    virtual void initializeConnection(CoreIPC::Connection*) OVERRIDE;
-    virtual bool shouldTerminate() OVERRIDE;
+    virtual void initializeProcess(const ChildProcessInitializationParameters&) override;
+    virtual void initializeProcessName(const ChildProcessInitializationParameters&) override;
+    virtual void initializeSandbox(const ChildProcessInitializationParameters&, SandboxInitializationParameters&) override;
+    virtual void initializeConnection(IPC::Connection*) override;
+    virtual bool shouldTerminate() override;
 
-    // CoreIPC::Connection::Client
-    virtual void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&) OVERRIDE;
-    virtual void didReceiveSyncMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&, std::unique_ptr<CoreIPC::MessageEncoder>&);
-    virtual void didClose(CoreIPC::Connection*) OVERRIDE;
-    virtual void didReceiveInvalidMessage(CoreIPC::Connection*, CoreIPC::StringReference messageReceiverName, CoreIPC::StringReference messageName) OVERRIDE;
+    // IPC::Connection::Client
+    virtual void didReceiveMessage(IPC::Connection*, IPC::MessageDecoder&) override;
+    virtual void didReceiveSyncMessage(IPC::Connection*, IPC::MessageDecoder&, std::unique_ptr<IPC::MessageEncoder>&);
+    virtual void didClose(IPC::Connection*) override;
+    virtual void didReceiveInvalidMessage(IPC::Connection*, IPC::StringReference messageReceiverName, IPC::StringReference messageName) override;
 
     // DownloadManager::Client
-    virtual void didCreateDownload() OVERRIDE;
-    virtual void didDestroyDownload() OVERRIDE;
-    virtual CoreIPC::Connection* downloadProxyConnection() OVERRIDE;
-    virtual AuthenticationManager& downloadsAuthenticationManager() OVERRIDE;
+    virtual void didCreateDownload() override;
+    virtual void didDestroyDownload() override;
+    virtual IPC::Connection* downloadProxyConnection() override;
+    virtual AuthenticationManager& downloadsAuthenticationManager() override;
 
     // Message Handlers
-    void didReceiveNetworkProcessMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&);
+    void didReceiveNetworkProcessMessage(IPC::Connection*, IPC::MessageDecoder&);
     void initializeNetworkProcess(const NetworkProcessCreationParameters&);
     void createNetworkConnectionToWebProcess();
-    void ensurePrivateBrowsingSession();
-    void destroyPrivateBrowsingSession();
+    void ensurePrivateBrowsingSession(uint64_t sessionID);
+    void destroyPrivateBrowsingSession(uint64_t sessionID);
     void downloadRequest(uint64_t downloadID, const WebCore::ResourceRequest&);
     void cancelDownload(uint64_t downloadID);
     void setCacheModel(uint32_t);
@@ -112,6 +115,7 @@ private:
 
 #if USE(SOUP)
     void setIgnoreTLSErrors(bool);
+    void userPreferredLanguagesChanged(const Vector<String>&);
 #endif
 
     // Platform Helpers

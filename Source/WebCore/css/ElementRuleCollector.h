@@ -25,6 +25,7 @@
 #include "MediaQueryEvaluator.h"
 #include "SelectorChecker.h"
 #include "StyleResolver.h"
+#include <memory>
 #include <wtf/RefPtr.h>
 #include <wtf/Vector.h>
 
@@ -44,7 +45,6 @@ public:
         : m_state(state)
         , m_ruleSets(styleResolver->ruleSets())
         , m_selectorFilter(styleResolver->selectorFilter())
-        , m_inspectorCSSOMWrappers(styleResolver->inspectorCSSOMWrappers())
         , m_scopeResolver(styleResolver->scopeResolver())
         , m_isPrintStyle(false)
         , m_regionForStyling(0)
@@ -88,13 +88,9 @@ private:
     void addMatchedRule(const RuleData*);
     void clearMatchedRules();
 
-    template<bool hasInspectorFrontends>
-    void doCollectMatchingRulesForList(const Vector<RuleData>*, const MatchRequest&, StyleResolver::RuleRange&);
-
     const StyleResolver::State& m_state;
     DocumentRuleSets& m_ruleSets;
     SelectorFilter& m_selectorFilter;
-    InspectorCSSOMWrappers& m_inspectorCSSOMWrappers;
     StyleScopeResolver* m_scopeResolver;
 
     bool m_isPrintStyle;
@@ -104,7 +100,7 @@ private:
     SelectorChecker::Mode m_mode;
     bool m_canUseFastReject;
 
-    OwnPtr<Vector<const RuleData*, 32>> m_matchedRules;
+    std::unique_ptr<Vector<const RuleData*, 32>> m_matchedRules;
 
     // Output.
     Vector<RefPtr<StyleRuleBase>> m_matchedRuleList;

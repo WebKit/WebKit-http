@@ -3,6 +3,7 @@ set(WebKit_INCLUDE_DIRECTORIES
     "${JAVASCRIPTCORE_DIR}/ForwardingHeaders"
     "${WEBKIT_DIR}"
     "${WEBCORE_DIR}"
+    "${WEBCORE_DIR}/ForwardingHeaders"
     "${WEBCORE_DIR}/Modules/geolocation"
     "${WEBCORE_DIR}/Modules/mediastream"
     "${WEBCORE_DIR}/Modules/navigatorcontentutils"
@@ -30,7 +31,9 @@ set(WebKit_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/loader/cache"
     "${WEBCORE_DIR}/page"
     "${WEBCORE_DIR}/page/animation"
+    "${WEBCORE_DIR}/page/scrolling"
     "${WEBCORE_DIR}/platform/animation"
+    "${WEBCORE_DIR}/platform/audio"
     "${WEBCORE_DIR}/platform/graphics/filters"
     "${WEBCORE_DIR}/platform/graphics/harfbuzz"
     "${WEBCORE_DIR}/platform/graphics/harfbuzz/ng"
@@ -54,7 +57,6 @@ set(WebKit_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/svg/properties"
     "${WEBCORE_DIR}/workers"
     "${JAVASCRIPTCORE_DIR}"
-    "${JAVASCRIPTCORE_DIR}/ForwardingHeaders"
     "${JAVASCRIPTCORE_DIR}/API"
     "${JAVASCRIPTCORE_DIR}/assembler"
     "${JAVASCRIPTCORE_DIR}/bytecode"
@@ -69,6 +71,7 @@ set(WebKit_INCLUDE_DIRECTORIES
     "${JAVASCRIPTCORE_DIR}/runtime"
     "${WTF_DIR}"
     "${DERIVED_SOURCES_WEBCORE_DIR}"
+    "${DERIVED_SOURCES_DIR}/ForwardingHeaders"
     "${CMAKE_BINARY_DIR}"
 )
 
@@ -127,7 +130,8 @@ if (WebKit_OUTPUT_NAME)
     set_target_properties(WebKit PROPERTIES OUTPUT_NAME ${WebKit_OUTPUT_NAME})
 endif ()
 
-set_target_properties(WebKit PROPERTIES VERSION ${PROJECT_VERSION} SOVERSION ${PROJECT_VERSION_MAJOR})
+POPULATE_LIBRARY_VERSION(WEBKIT)
+set_target_properties(WebKit PROPERTIES VERSION ${WEBKIT_VERSION} SOVERSION ${WEBKIT_VERSION_MAJOR})
 install(TARGETS WebKit DESTINATION "${LIB_INSTALL_DIR}")
 
 IF(HAIKU)

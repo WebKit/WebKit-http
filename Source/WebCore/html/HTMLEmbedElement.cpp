@@ -105,6 +105,7 @@ void HTMLEmbedElement::parseAttribute(const QualifiedName& name, const AtomicStr
         m_url = stripLeadingAndTrailingHTMLSpaces(value);
     else if (name == srcAttr) {
         m_url = stripLeadingAndTrailingHTMLSpaces(value);
+        document().updateStyleIfNeeded();
         if (renderer() && isImageType()) {
             if (!m_imageLoader)
                 m_imageLoader = adoptPtr(new HTMLImageLoader(this));
@@ -119,8 +120,7 @@ void HTMLEmbedElement::parametersForPlugin(Vector<String>& paramNames, Vector<St
     if (!hasAttributes())
         return;
 
-    for (unsigned i = 0; i < attributeCount(); ++i) {
-        const Attribute& attribute = attributeAt(i);
+    for (const Attribute& attribute : attributesIterator()) {
         paramNames.append(attribute.localName().string());
         paramValues.append(attribute.value().string());
     }

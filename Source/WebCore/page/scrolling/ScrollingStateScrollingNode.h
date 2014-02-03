@@ -26,8 +26,9 @@
 #ifndef ScrollingStateScrollingNode_h
 #define ScrollingStateScrollingNode_h
 
-#if ENABLE(THREADED_SCROLLING) || USE(COORDINATED_GRAPHICS)
+#if ENABLE(ASYNC_SCROLLING) || USE(COORDINATED_GRAPHICS)
 
+#include "GraphicsLayer.h"
 #include "IntRect.h"
 #include "Region.h"
 #include "ScrollTypes.h"
@@ -40,11 +41,11 @@ namespace WebCore {
 
 class Scrollbar;
 
-class ScrollingStateScrollingNode FINAL : public ScrollingStateNode {
+class ScrollingStateScrollingNode final : public ScrollingStateNode {
 public:
-    static PassOwnPtr<ScrollingStateScrollingNode> create(ScrollingStateTree*, ScrollingNodeID);
+    static PassOwnPtr<ScrollingStateScrollingNode> create(ScrollingStateTree&, ScrollingNodeID);
 
-    virtual PassOwnPtr<ScrollingStateNode> clone();
+    virtual PassOwnPtr<ScrollingStateNode> clone(ScrollingStateTree&);
 
     virtual ~ScrollingStateScrollingNode();
 
@@ -56,7 +57,7 @@ public:
         FrameScaleFactor,
         NonFastScrollableRegion,
         WheelEventHandlerCount,
-        ShouldUpdateScrollLayerPositionOnMainThread,
+        ReasonsForSynchronousScrolling,
         RequestedScrollPosition,
         CounterScrollingLayer,
         HeaderHeight,
@@ -85,8 +86,8 @@ public:
     unsigned wheelEventHandlerCount() const { return m_wheelEventHandlerCount; }
     void setWheelEventHandlerCount(unsigned);
 
-    MainThreadScrollingReasons shouldUpdateScrollLayerPositionOnMainThread() const { return m_shouldUpdateScrollLayerPositionOnMainThread; }
-    void setShouldUpdateScrollLayerPositionOnMainThread(MainThreadScrollingReasons);
+    SynchronousScrollingReasons synchronousScrollingReasons() const { return m_synchronousScrollingReasons; }
+    void setSynchronousScrollingReasons(SynchronousScrollingReasons);
 
     const ScrollableAreaParameters& scrollableAreaParameters() const { return m_scrollableAreaParameters; }
     void setScrollableAreaParameters(const ScrollableAreaParameters& params);
@@ -104,45 +105,38 @@ public:
     void setFooterHeight(int);
 
     // This is a layer moved in the opposite direction to scrolling, for example for background-attachment:fixed
-    GraphicsLayer* counterScrollingLayer() const { return m_counterScrollingLayer; }
-    void setCounterScrollingLayer(GraphicsLayer*);
-    PlatformLayer* counterScrollingPlatformLayer() const;
+    const LayerRepresentation& counterScrollingLayer() const { return m_counterScrollingLayer; }
+    void setCounterScrollingLayer(const LayerRepresentation&);
 
     // The header and footer layers scroll vertically with the page, they should remain fixed when scrolling horizontally.
-    GraphicsLayer* headerLayer() const { return m_headerLayer; }
-    void setHeaderLayer(GraphicsLayer*);
-    PlatformLayer* headerPlatformLayer() const;
+    const LayerRepresentation& headerLayer() const { return m_headerLayer; }
+    void setHeaderLayer(const LayerRepresentation&);
 
     // The header and footer layers scroll vertically with the page, they should remain fixed when scrolling horizontally.
-    GraphicsLayer* footerLayer() const { return m_footerLayer; }
-    void setFooterLayer(GraphicsLayer*);
-    PlatformLayer* footerPlatformLayer() const;
+    const LayerRepresentation& footerLayer() const { return m_footerLayer; }
+    void setFooterLayer(const LayerRepresentation&);
 
-#if PLATFORM(MAC)
-    ScrollbarPainter verticalScrollbarPainter() const { return m_verticalScrollbarPainter; }
-    ScrollbarPainter horizontalScrollbarPainter() const { return m_horizontalScrollbarPainter; }
+#if PLATFORM(MAC) && !PLATFORM(IOS)
+    ScrollbarPainter verticalScrollbarPainter() const { return m_verticalScrollbarPainter.get(); }
+    ScrollbarPainter horizontalScrollbarPainter() const { return m_horizontalScrollbarPainter.get(); }
 #endif
     void setScrollbarPaintersFromScrollbars(Scrollbar* verticalScrollbar, Scrollbar* horizontalScrollbar);
 
     bool requestedScrollPositionRepresentsProgrammaticScroll() const { return m_requestedScrollPositionRepresentsProgrammaticScroll; }
 
-    virtual void dumpProperties(TextStream&, int indent) const OVERRIDE;
+    virtual void dumpProperties(TextStream&, int indent) const override;
 
 private:
-    ScrollingStateScrollingNode(ScrollingStateTree*, ScrollingNodeID);
-    ScrollingStateScrollingNode(const ScrollingStateScrollingNode&);
+    ScrollingStateScrollingNode(ScrollingStateTree&, ScrollingNodeID);
+    ScrollingStateScrollingNode(const ScrollingStateScrollingNode&, ScrollingStateTree&);
 
-    virtual bool isScrollingNode() const OVERRIDE { return true; }
+    LayerRepresentation m_counterScrollingLayer;
+    LayerRepresentation m_headerLayer;
+    LayerRepresentation m_footerLayer;
 
-    GraphicsLayer* m_counterScrollingLayer;
-    GraphicsLayer* m_headerLayer;
-    GraphicsLayer* m_footerLayer;
-#if PLATFORM(MAC)
-    RetainPtr<PlatformLayer> m_counterScrollingPlatformLayer;
-    RetainPtr<PlatformLayer> m_headerPlatformLayer;
-    RetainPtr<PlatformLayer> m_footerPlatformLayer;
-    ScrollbarPainter m_verticalScrollbarPainter;
-    ScrollbarPainter m_horizontalScrollbarPainter;
+#if PLATFORM(MAC) && !PLATFORM(IOS)
+    RetainPtr<ScrollbarPainter> m_verticalScrollbarPainter;
+    RetainPtr<ScrollbarPainter> m_horizontalScrollbarPainter;
 #endif
 
     IntRect m_viewportRect;
@@ -153,7 +147,7 @@ private:
     Region m_nonFastScrollableRegion;
     float m_frameScaleFactor;
     unsigned m_wheelEventHandlerCount;
-    MainThreadScrollingReasons m_shouldUpdateScrollLayerPositionOnMainThread;
+    SynchronousScrollingReasons m_synchronousScrollingReasons;
     ScrollBehaviorForFixedElements m_behaviorForFixed;
     int m_headerHeight;
     int m_footerHeight;
@@ -161,10 +155,10 @@ private:
     bool m_requestedScrollPositionRepresentsProgrammaticScroll;
 };
 
-SCROLLING_STATE_NODE_TYPE_CASTS(ScrollingStateScrollingNode, isScrollingNode());
+SCROLLING_STATE_NODE_TYPE_CASTS(ScrollingStateScrollingNode, nodeType() == ScrollingNode);
 
 } // namespace WebCore
 
-#endif // ENABLE(THREADED_SCROLLING) || USE(COORDINATED_GRAPHICS)
+#endif // ENABLE(ASYNC_SCROLLING) || USE(COORDINATED_GRAPHICS)
 
 #endif // ScrollingStateScrollingNode_h

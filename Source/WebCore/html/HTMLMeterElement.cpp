@@ -23,7 +23,7 @@
 #include "HTMLMeterElement.h"
 
 #include "Attribute.h"
-#include "ElementTraversal.h"
+#include "ElementIterator.h"
 #include "EventNames.h"
 #include "ExceptionCode.h"
 #include "FormDataList.h"
@@ -57,12 +57,12 @@ PassRefPtr<HTMLMeterElement> HTMLMeterElement::create(const QualifiedName& tagNa
     return meter;
 }
 
-RenderElement* HTMLMeterElement::createRenderer(PassRef<RenderStyle> style)
+RenderPtr<RenderElement> HTMLMeterElement::createElementRenderer(PassRef<RenderStyle> style)
 {
     if (hasAuthorShadowRoot() || !document().page()->theme().supportsMeter(style.get().appearance()))
         return RenderElement::createFor(*this, std::move(style));
 
-    return new RenderMeter(*this, std::move(style));
+    return createRenderer<RenderMeter>(*this, std::move(style));
 }
 
 bool HTMLMeterElement::childShouldCreateRenderer(const Node& child) const
@@ -222,7 +222,7 @@ RenderMeter* HTMLMeterElement::renderMeter() const
 {
     if (renderer() && renderer()->isMeter())
         return toRenderMeter(renderer());
-    return toRenderMeter(ElementTraversal::firstWithin(userAgentShadowRoot())->renderer());
+    return toRenderMeter(descendantsOfType<Element>(*userAgentShadowRoot()).first()->renderer());
 }
 
 void HTMLMeterElement::didAddUserAgentShadowRoot(ShadowRoot* root)

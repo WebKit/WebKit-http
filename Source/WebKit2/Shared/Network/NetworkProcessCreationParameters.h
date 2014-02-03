@@ -33,7 +33,11 @@
 #include <wtf/Vector.h>
 #include <wtf/text/WTFString.h>
 
-namespace CoreIPC {
+#if USE(SOUP)
+#include "HTTPCookieAcceptPolicy.h"
+#endif
+
+namespace IPC {
     class ArgumentDecoder;
     class ArgumentEncoder;
 }
@@ -43,8 +47,8 @@ namespace WebKit {
 struct NetworkProcessCreationParameters {
     NetworkProcessCreationParameters();
 
-    void encode(CoreIPC::ArgumentEncoder&) const;
-    static bool decode(CoreIPC::ArgumentDecoder&, NetworkProcessCreationParameters&);
+    void encode(IPC::ArgumentEncoder&) const;
+    static bool decode(IPC::ArgumentDecoder&, NetworkProcessCreationParameters&);
 
     bool privateBrowsingEnabled;
     CacheModel cacheModel;
@@ -54,22 +58,26 @@ struct NetworkProcessCreationParameters {
 
     bool shouldUseTestingNetworkSession;
 
+#if ENABLE(CUSTOM_PROTOCOLS)
+    Vector<String> urlSchemesRegisteredForCustomProtocols;
+#endif
+
 #if PLATFORM(MAC)
     String parentProcessName;
     String uiProcessBundleIdentifier;
     uint64_t nsURLCacheMemoryCapacity;
     uint64_t nsURLCacheDiskCapacity;
 
-#if ENABLE(CUSTOM_PROTOCOLS)
-    Vector<String> urlSchemesRegisteredForCustomProtocols;
-#endif
-
     String httpProxy;
     String httpsProxy;
 #endif
 
 #if USE(SOUP)
+    String cookiePersistentStoragePath;
+    uint32_t cookiePersistentStorageType;
+    HTTPCookieAcceptPolicy cookieAcceptPolicy;
     bool ignoreTLSErrors;
+    Vector<String> languages;
 #endif
 };
 

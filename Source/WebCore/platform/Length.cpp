@@ -88,7 +88,7 @@ static int countCharacter(const UChar* data, unsigned length, UChar character)
 std::unique_ptr<Length[]> newCoordsArray(const String& string, int& len)
 {
     unsigned length = string.length();
-    const UChar* data = string.characters();
+    const UChar* data = string.deprecatedCharacters();
     StringBuffer<UChar> spacified(length);
     for (unsigned i = 0; i < length; i++) {
         UChar cc = data[i];
@@ -101,7 +101,7 @@ std::unique_ptr<Length[]> newCoordsArray(const String& string, int& len)
 
     str = str->simplifyWhiteSpace();
 
-    len = countCharacter(str->characters(), str->length(), ' ') + 1;
+    len = countCharacter(str->deprecatedCharacters(), str->length(), ' ') + 1;
     auto r = std::make_unique<Length[]>(len);
 
     int i = 0;
@@ -109,10 +109,10 @@ std::unique_ptr<Length[]> newCoordsArray(const String& string, int& len)
     size_t pos2;
 
     while ((pos2 = str->find(' ', pos)) != notFound) {
-        r[i++] = parseLength(str->characters() + pos, pos2 - pos);
+        r[i++] = parseLength(str->deprecatedCharacters() + pos, pos2 - pos);
         pos = pos2+1;
     }
-    r[i] = parseLength(str->characters() + pos, str->length() - pos);
+    r[i] = parseLength(str->deprecatedCharacters() + pos, str->length() - pos);
 
     ASSERT(i == len - 1);
 
@@ -127,7 +127,7 @@ std::unique_ptr<Length[]> newLengthArray(const String& string, int& len)
         return nullptr;
     }
 
-    len = countCharacter(str->characters(), str->length(), ',') + 1;
+    len = countCharacter(str->deprecatedCharacters(), str->length(), ',') + 1;
     auto r = std::make_unique<Length[]>(len);
 
     int i = 0;
@@ -135,7 +135,7 @@ std::unique_ptr<Length[]> newLengthArray(const String& string, int& len)
     size_t pos2;
 
     while ((pos2 = str->find(',', pos)) != notFound) {
-        r[i++] = parseLength(str->characters() + pos, pos2 - pos);
+        r[i++] = parseLength(str->deprecatedCharacters() + pos, pos2 - pos);
         pos = pos2+1;
     }
 
@@ -143,7 +143,7 @@ std::unique_ptr<Length[]> newLengthArray(const String& string, int& len)
 
     // IE Quirk: If the last comma is the last char skip it and reduce len by one.
     if (str->length()-pos > 0)
-        r[i] = parseLength(str->characters() + pos, str->length() - pos);
+        r[i] = parseLength(str->deprecatedCharacters() + pos, str->length() - pos);
     else
         len--;
 

@@ -132,7 +132,7 @@ CustomProtocolManager::CustomProtocolManager(ChildProcess* childProcess)
     sharedCustomProtocolManager = this;
 }
 
-void CustomProtocolManager::initializeConnection(CoreIPC::Connection* connection)
+void CustomProtocolManager::initializeConnection(IPC::Connection* connection)
 {
     connection->addWorkQueueMessageReceiver(Messages::CustomProtocolManager::messageReceiverName(), m_messageQueue.get(), this);
 }
@@ -216,13 +216,13 @@ void CustomProtocolManager::didFailWithError(uint64_t customProtocolID, const We
     RetainPtr<NSError> nsError = error.nsError();
 
     dispatchOnResourceLoaderRunLoop(^ {
-        [[protocol.get() client] URLProtocol:protocol.get() didFailWithError:nsError.get()];
+        [[protocol client] URLProtocol:protocol.get() didFailWithError:nsError.get()];
     });
 
     removeCustomProtocol(protocol.get());
 }
 
-void CustomProtocolManager::didLoadData(uint64_t customProtocolID, const CoreIPC::DataReference& data)
+void CustomProtocolManager::didLoadData(uint64_t customProtocolID, const IPC::DataReference& data)
 {
     RetainPtr<WKCustomProtocol> protocol = protocolForID(customProtocolID);
     if (!protocol)
@@ -231,7 +231,7 @@ void CustomProtocolManager::didLoadData(uint64_t customProtocolID, const CoreIPC
     RetainPtr<NSData> nsData = adoptNS([[NSData alloc] initWithBytes:data.data() length:data.size()]);
 
     dispatchOnResourceLoaderRunLoop(^ {
-        [[protocol.get() client] URLProtocol:protocol.get() didLoadData:nsData.get()];
+        [[protocol client] URLProtocol:protocol.get() didLoadData:nsData.get()];
     });
 }
 
@@ -244,7 +244,7 @@ void CustomProtocolManager::didReceiveResponse(uint64_t customProtocolID, const 
     RetainPtr<NSURLResponse> nsResponse = response.nsURLResponse();
 
     dispatchOnResourceLoaderRunLoop(^ {
-        [[protocol.get() client] URLProtocol:protocol.get() didReceiveResponse:nsResponse.get() cacheStoragePolicy:static_cast<NSURLCacheStoragePolicy>(cacheStoragePolicy)];
+        [[protocol client] URLProtocol:protocol.get() didReceiveResponse:nsResponse.get() cacheStoragePolicy:static_cast<NSURLCacheStoragePolicy>(cacheStoragePolicy)];
     });
 }
 
@@ -255,7 +255,7 @@ void CustomProtocolManager::didFinishLoading(uint64_t customProtocolID)
         return;
 
     dispatchOnResourceLoaderRunLoop(^ {
-        [[protocol.get() client] URLProtocolDidFinishLoading:protocol.get()];
+        [[protocol client] URLProtocolDidFinishLoading:protocol.get()];
     });
 
     removeCustomProtocol(protocol.get());

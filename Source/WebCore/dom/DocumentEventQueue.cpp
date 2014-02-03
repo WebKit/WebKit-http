@@ -36,7 +36,7 @@
 
 namespace WebCore {
     
-class DocumentEventQueue::Timer FINAL : public SuspendableTimer {
+class DocumentEventQueue::Timer final : public SuspendableTimer {
 public:
     static PassOwnPtr<Timer> create(DocumentEventQueue& eventQueue)
     {
@@ -50,7 +50,7 @@ private:
     {
     }
 
-    virtual void fired() OVERRIDE
+    virtual void fired() override
     {
         ASSERT(!isSuspended());
         m_eventQueue.pendingEventTimerFired();

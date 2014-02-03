@@ -26,16 +26,16 @@
 
 namespace WebCore {
 
-class EntityReference FINAL : public ContainerNode {
+class EntityReference final : public ContainerNode {
 public:
     static PassRefPtr<EntityReference> create(Document&, const String& entityName);
 
 private:
     EntityReference(Document&, const String& entityName);
 
-    virtual String nodeName() const;
-    virtual NodeType nodeType() const;
-    virtual PassRefPtr<Node> cloneNode(bool deep);
+    virtual String nodeName() const override;
+    virtual NodeType nodeType() const override;
+    virtual PassRefPtr<Node> cloneNode(bool deep) override;
 
     String m_entityName;
 };

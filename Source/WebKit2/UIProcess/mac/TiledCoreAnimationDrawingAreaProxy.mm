@@ -54,11 +54,6 @@ void TiledCoreAnimationDrawingAreaProxy::deviceScaleFactorDidChange()
     m_webPageProxy->process().send(Messages::DrawingArea::SetDeviceScaleFactor(m_webPageProxy->deviceScaleFactor()), m_webPageProxy->pageID());
 }
 
-void TiledCoreAnimationDrawingAreaProxy::layerHostingModeDidChange()
-{
-    m_webPageProxy->process().send(Messages::DrawingArea::SetLayerHostingMode(m_webPageProxy->layerHostingMode()), m_webPageProxy->pageID());
-}
-
 void TiledCoreAnimationDrawingAreaProxy::sizeDidChange()
 {
     if (!m_webPageProxy->isValid())
@@ -72,7 +67,7 @@ void TiledCoreAnimationDrawingAreaProxy::sizeDidChange()
     sendUpdateGeometry();
 }
 
-void TiledCoreAnimationDrawingAreaProxy::waitForPossibleGeometryUpdate(double timeout)
+void TiledCoreAnimationDrawingAreaProxy::waitForPossibleGeometryUpdate(std::chrono::milliseconds timeout)
 {
     if (!m_isWaitingForDidUpdateGeometry)
         return;

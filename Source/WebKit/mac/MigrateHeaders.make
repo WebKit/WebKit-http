@@ -182,6 +182,7 @@ all : \
     $(PUBLIC_HEADERS_DIR)/DOMXPathExpression.h \
     $(PUBLIC_HEADERS_DIR)/DOMXPathNSResolver.h \
     $(PUBLIC_HEADERS_DIR)/DOMXPathResult.h \
+    $(PUBLIC_HEADERS_DIR)/WebKitAvailability.h \
     $(PUBLIC_HEADERS_DIR)/WebScriptObject.h \
     $(PUBLIC_HEADERS_DIR)/npapi.h \
     $(PUBLIC_HEADERS_DIR)/npfunctions.h \
@@ -189,16 +190,64 @@ all : \
     $(PUBLIC_HEADERS_DIR)/nptypes.h \
 #
 
+ifneq ($(filter iphoneos iphonesimulator, $(PLATFORM_NAME)), )
+all : \
+    $(PUBLIC_HEADERS_DIR)/DOMGestureEvent.h \
+    $(PRIVATE_HEADERS_DIR)/DOMHTMLTextAreaElementPrivate.h \
+    $(PUBLIC_HEADERS_DIR)/DOMTouch.h \
+    $(PUBLIC_HEADERS_DIR)/DOMTouchEvent.h \
+    $(PUBLIC_HEADERS_DIR)/DOMTouchList.h \
+    $(PRIVATE_HEADERS_DIR)/DOMUIKitExtensions.h \
+    $(PRIVATE_HEADERS_DIR)/KeyEventCodesIOS.h \
+    $(PRIVATE_HEADERS_DIR)/MediaPlayerProxy.h \
+    $(PRIVATE_HEADERS_DIR)/PluginData.h \
+    $(PRIVATE_HEADERS_DIR)/ScrollTypes.h \
+    $(PRIVATE_HEADERS_DIR)/SystemMemory.h \
+    $(PRIVATE_HEADERS_DIR)/WAKAppKitStubs.h \
+    $(PRIVATE_HEADERS_DIR)/WAKResponder.h \
+    $(PRIVATE_HEADERS_DIR)/WAKScrollView.h \
+    $(PRIVATE_HEADERS_DIR)/WAKView.h \
+    $(PRIVATE_HEADERS_DIR)/WAKViewPrivate.h \
+    $(PRIVATE_HEADERS_DIR)/WAKWindow.h \
+    $(PRIVATE_HEADERS_DIR)/WKContentObservation.h \
+    $(PRIVATE_HEADERS_DIR)/WKGraphics.h \
+    $(PRIVATE_HEADERS_DIR)/WKTypes.h \
+    $(PRIVATE_HEADERS_DIR)/WKUtilities.h \
+    $(PRIVATE_HEADERS_DIR)/WKView.h \
+    $(PRIVATE_HEADERS_DIR)/WebAutocapitalize.h \
+    $(PRIVATE_HEADERS_DIR)/WebCoreFrameView.h \
+    $(PRIVATE_HEADERS_DIR)/WebCoreThread.h \
+    $(PRIVATE_HEADERS_DIR)/WebCoreThreadMessage.h \
+    $(PRIVATE_HEADERS_DIR)/WebCoreThreadRun.h \
+    $(PRIVATE_HEADERS_DIR)/WebEvent.h \
+    $(PRIVATE_HEADERS_DIR)/WebEventRegion.h
+
+
+# Special case WAKScrollView.h, which contains the protocol named
+# <WebCoreFrameScrollView> and shouldn't be changed by the default rule.
+$(PRIVATE_HEADERS_DIR)/WAKScrollView.h : WAKScrollView.h MigrateHeaders.make
+	cat $< > $@
+
+endif
+
 REPLACE_RULES = -e s/\<WebCore/\<WebKit/ -e s/DOMDOMImplementation/DOMImplementation/
 HEADER_MIGRATE_CMD = sed $(REPLACE_RULES) $< > $@
 
+ifeq ($(filter iphoneos iphonesimulator, $(PLATFORM_NAME)), )
+PUBLIC_HEADER_CHECK_CMD = @if grep -q "AVAILABLE.*TBD" "$<"; then line=$$(awk "/AVAILABLE.*TBD/ { print FNR; exit }" "$<" ); echo "$<:$$line: error: A class within a public header has unspecified availability."; false; fi
+else
+PUBLIC_HEADER_CHECK_CMD =
+endif
+
 $(PUBLIC_HEADERS_DIR)/DOM% : DOMDOM% MigrateHeaders.make
+	$(PUBLIC_HEADER_CHECK_CMD)
 	$(HEADER_MIGRATE_CMD)
 
 $(PRIVATE_HEADERS_DIR)/DOM% : DOMDOM% MigrateHeaders.make
 	$(HEADER_MIGRATE_CMD)
 
 $(PUBLIC_HEADERS_DIR)/% : % MigrateHeaders.make
+	$(PUBLIC_HEADER_CHECK_CMD)
 	$(HEADER_MIGRATE_CMD)
 
 $(PRIVATE_HEADERS_DIR)/% : % MigrateHeaders.make

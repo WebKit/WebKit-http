@@ -27,13 +27,13 @@
 #import "RemoteLayerTreeHost.h"
 
 #import "Logging.h"
-#import "RemoteLayerTreeHostMessages.h"
 #import "RemoteLayerTreePropertyApplier.h"
 #import "RemoteLayerTreeTransaction.h"
 #import "ShareableBitmap.h"
 #import "WebPageProxy.h"
 #import "WebProcessProxy.h"
 #import <WebCore/PlatformLayer.h>
+#import <WebCore/WebCoreCALayerExtras.h>
 #import <WebKitSystemInterface.h>
 
 #import <QuartzCore/QuartzCore.h>
@@ -46,15 +46,13 @@ RemoteLayerTreeHost::RemoteLayerTreeHost(WebPageProxy* webPageProxy)
     : m_webPageProxy(webPageProxy)
     , m_rootLayer(nullptr)
 {
-    m_webPageProxy->process().addMessageReceiver(Messages::RemoteLayerTreeHost::messageReceiverName(), m_webPageProxy->pageID(), *this);
 }
 
 RemoteLayerTreeHost::~RemoteLayerTreeHost()
 {
-    m_webPageProxy->process().removeMessageReceiver(Messages::RemoteLayerTreeHost::messageReceiverName(), m_webPageProxy->pageID());
 }
 
-void RemoteLayerTreeHost::commit(const RemoteLayerTreeTransaction& transaction)
+void RemoteLayerTreeHost::updateLayerTree(const RemoteLayerTreeTransaction& transaction)
 {
     LOG(RemoteLayerTree, "%s", transaction.description().data());
 
@@ -68,7 +66,7 @@ void RemoteLayerTreeHost::commit(const RemoteLayerTreeTransaction& transaction)
     }
 
     for (auto changedLayer : transaction.changedLayers()) {
-        RemoteLayerTreeTransaction::LayerID layerID = changedLayer.key;
+        auto layerID = changedLayer.key;
         const auto& properties = changedLayer.value;
 
         CALayer *layer = getLayer(layerID);
@@ -90,8 +88,11 @@ void RemoteLayerTreeHost::commit(const RemoteLayerTreeTransaction& transaction)
         m_layers.remove(destroyedLayer);
 }
 
-CALayer *RemoteLayerTreeHost::getLayer(RemoteLayerTreeTransaction::LayerID layerID)
+CALayer *RemoteLayerTreeHost::getLayer(GraphicsLayer::PlatformLayerID layerID) const
 {
+    if (!layerID)
+        return nil;
+
     return m_layers.get(layerID).get();
 }
 
@@ -121,7 +122,7 @@ CALayer *RemoteLayerTreeHost::createLayer(RemoteLayerTreeTransaction::LayerCreat
         ASSERT_NOT_REACHED();
     }
 
-    RemoteLayerTreePropertyApplier::disableActionsForLayer(layer.get());
+    [layer web_disableAllActions];
 
     return layer.get();
 }

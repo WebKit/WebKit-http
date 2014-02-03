@@ -181,6 +181,22 @@ Eina_Bool ewk_settings_encoding_detector_enabled_get(const Ewk_Settings* setting
     return settings->preferences()->usesEncodingDetector();
 }
 
+Eina_Bool ewk_settings_default_text_encoding_name_set(Ewk_Settings* settings, const char* encoding)
+{
+    EINA_SAFETY_ON_NULL_RETURN_VAL(settings, false);
+
+    settings->setDefaultTextEncodingName(encoding);
+
+    return true;
+}
+
+const char* ewk_settings_default_text_encoding_name_get(const Ewk_Settings* settings)
+{
+    EINA_SAFETY_ON_NULL_RETURN_VAL(settings, nullptr);
+
+    return settings->defaultTextEncodingName();
+}
+
 Eina_Bool ewk_settings_preferred_minimum_contents_width_set(Ewk_Settings *settings, unsigned width)
 {
     EINA_SAFETY_ON_NULL_RETURN_VAL(settings, false);
@@ -332,4 +348,18 @@ Eina_Bool ewk_settings_spatial_navigation_enabled_get(const Ewk_Settings* settin
     EINA_SAFETY_ON_NULL_RETURN_VAL(settings, false);
 
     return settings->preferences()->spatialNavigationEnabled();
+}
+
+void EwkSettings::setDefaultTextEncodingName(const char* name)
+{
+    if (m_defaultTextEncodingName == name)
+        return;
+
+    preferences()->setDefaultTextEncodingName(String::fromUTF8(name));
+    m_defaultTextEncodingName = name;
+}
+
+const char* EwkSettings::defaultTextEncodingName() const
+{
+    return m_defaultTextEncodingName;
 }

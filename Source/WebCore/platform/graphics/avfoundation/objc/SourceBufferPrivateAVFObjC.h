@@ -56,7 +56,7 @@ class VideoTrackPrivate;
 class AudioTrackPrivateMediaSourceAVFObjC;
 class VideoTrackPrivateMediaSourceAVFObjC;
 
-class SourceBufferPrivateAVFObjC FINAL : public SourceBufferPrivate {
+class SourceBufferPrivateAVFObjC final : public SourceBufferPrivate {
 public:
     static RefPtr<SourceBufferPrivateAVFObjC> create(MediaSourcePrivateAVFObjC*);
     virtual ~SourceBufferPrivateAVFObjC();
@@ -79,24 +79,25 @@ public:
 
     void seekToTime(MediaTime);
     MediaTime fastSeekTimeForMediaTime(MediaTime, MediaTime negativeThreshold, MediaTime positiveThreshold);
+    IntSize naturalSize();
 
 private:
     explicit SourceBufferPrivateAVFObjC(MediaSourcePrivateAVFObjC*);
 
     // SourceBufferPrivate overrides
-    virtual void setClient(SourceBufferPrivateClient*) OVERRIDE;
-    virtual AppendResult append(const unsigned char* data, unsigned length) OVERRIDE;
-    virtual void abort() OVERRIDE;
-    virtual void removedFromMediaSource() OVERRIDE;
-    virtual MediaPlayer::ReadyState readyState() const OVERRIDE;
-    virtual void setReadyState(MediaPlayer::ReadyState) OVERRIDE;
-    virtual void evictCodedFrames() OVERRIDE;
-    virtual bool isFull() OVERRIDE;
-    virtual void flushAndEnqueueNonDisplayingSamples(Vector<RefPtr<MediaSample>>, AtomicString trackID) OVERRIDE;
-    virtual void enqueueSample(PassRefPtr<MediaSample>, AtomicString trackID) OVERRIDE;
-    virtual bool isReadyForMoreSamples(AtomicString trackID) OVERRIDE;
-    virtual void setActive(bool) OVERRIDE;
-    virtual void notifyClientWhenReadyForMoreSamples(AtomicString trackID) OVERRIDE;
+    virtual void setClient(SourceBufferPrivateClient*) override;
+    virtual AppendResult append(const unsigned char* data, unsigned length) override;
+    virtual void abort() override;
+    virtual void removedFromMediaSource() override;
+    virtual MediaPlayer::ReadyState readyState() const override;
+    virtual void setReadyState(MediaPlayer::ReadyState) override;
+    virtual void evictCodedFrames() override;
+    virtual bool isFull() override;
+    virtual void flushAndEnqueueNonDisplayingSamples(Vector<RefPtr<MediaSample>>, AtomicString trackID) override;
+    virtual void enqueueSample(PassRefPtr<MediaSample>, AtomicString trackID) override;
+    virtual bool isReadyForMoreSamples(AtomicString trackID) override;
+    virtual void setActive(bool) override;
+    virtual void notifyClientWhenReadyForMoreSamples(AtomicString trackID) override;
 
     void flushAndEnqueueNonDisplayingSamples(Vector<RefPtr<MediaSample>>, AVSampleBufferAudioRenderer*);
     void flushAndEnqueueNonDisplayingSamples(Vector<RefPtr<MediaSample>>, AVSampleBufferDisplayLayer*);
@@ -104,8 +105,8 @@ private:
     void didBecomeReadyForMoreSamples(int trackID);
     void destroyRenderers();
 
-    Vector<RefPtr<VideoTrackPrivate>> m_videoTracks;
-    Vector<RefPtr<AudioTrackPrivate>> m_audioTracks;
+    Vector<RefPtr<VideoTrackPrivateMediaSourceAVFObjC>> m_videoTracks;
+    Vector<RefPtr<AudioTrackPrivateMediaSourceAVFObjC>> m_audioTracks;
 
     RetainPtr<AVStreamDataParser> m_parser;
     RetainPtr<AVAsset> m_asset;

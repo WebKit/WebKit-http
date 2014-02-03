@@ -57,6 +57,7 @@
 #include <WebCore/JSCSSStyleDeclaration.h>
 #include <WebCore/JSElement.h>
 #include <WebCore/JSRange.h>
+#include <WebCore/MainFrame.h>
 #include <WebCore/NetworkingContext.h>
 #include <WebCore/NodeTraversal.h>
 #include <WebCore/Page.h>
@@ -234,8 +235,7 @@ void WebFrame::startDownload(const WebCore::ResourceRequest& request)
 
 #if ENABLE(NETWORK_PROCESS)
     if (WebProcess::shared().usesNetworkProcess()) {
-        bool privateBrowsingEnabled = m_coreFrame->loader().networkingContext()->storageSession().isPrivateBrowsingSession();
-        WebProcess::shared().networkConnection()->connection()->send(Messages::NetworkConnectionToWebProcess::StartDownload(privateBrowsingEnabled, policyDownloadID, request), 0);
+        WebProcess::shared().networkConnection()->connection()->send(Messages::NetworkConnectionToWebProcess::StartDownload(page()->sessionID(), policyDownloadID, request), 0);
         return;
     }
 #endif
@@ -367,10 +367,10 @@ bool WebFrame::isFrameSet() const
 
 bool WebFrame::isMainFrame() const
 {
-    if (WebPage* p = page())
-        return p->mainWebFrame() == this;
+    if (!m_coreFrame)
+        return false;
 
-    return false;
+    return m_coreFrame->isMainFrame();
 }
 
 String WebFrame::name() const
@@ -500,7 +500,7 @@ IntRect WebFrame::visibleContentBounds() const
     if (!view)
         return IntRect();
     
-    IntRect contentRect = view->visibleContentRect(ScrollableArea::IncludeScrollbars);
+    IntRect contentRect = view->visibleContentRectIncludingScrollbars();
     return IntRect(0, 0, contentRect.width(), contentRect.height());
 }
 

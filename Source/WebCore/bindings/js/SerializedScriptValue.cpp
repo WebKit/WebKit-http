@@ -354,7 +354,7 @@ static const unsigned NonIndexPropertiesTag = 0xFFFFFFFD;
  *    <factorSize:uint32_t> <factor:byte{factorSize}> <crtExponentSize:uint32_t> <crtExponent:byte{crtExponentSize}> <crtCoefficientSize:uint32_t> <crtCoefficient:byte{crtCoefficientSize}>
  */
 
-typedef pair<JSC::JSValue, SerializationReturnCode> DeserializationResult;
+typedef std::pair<JSC::JSValue, SerializationReturnCode> DeserializationResult;
 
 class CloneBase {
 protected:
@@ -425,6 +425,12 @@ template <typename T> static bool writeLittleEndian(Vector<uint8_t>& buffer, con
     return true;
 }
 
+template <> bool writeLittleEndian<uint8_t>(Vector<uint8_t>& buffer, const uint8_t* values, uint32_t length)
+{
+    buffer.append(values, length);
+    return true;
+}
+
 class CloneSerializer : CloneBase {
 public:
     static SerializationReturnCode serialize(ExecState* exec, JSValue value,
@@ -444,7 +450,7 @@ public:
         }
         writeLittleEndian<uint8_t>(out, StringTag);
         writeLittleEndian(out, s.length());
-        return writeLittleEndian(out, s.impl()->characters(), s.length());
+        return writeLittleEndian(out, s.impl()->deprecatedCharacters(), s.length());
     }
 
     static void serializeUndefined(Vector<uint8_t>& out)
@@ -948,7 +954,7 @@ private:
         }
 
         writeLittleEndian<uint32_t>(m_buffer, str.length());
-        if (!writeLittleEndian<uint16_t>(m_buffer, reinterpret_cast<const uint16_t*>(str.characters()), str.length()))
+        if (!writeLittleEndian<uint16_t>(m_buffer, reinterpret_cast<const uint16_t*>(str.deprecatedCharacters()), str.length()))
             fail();
     }
 
@@ -1176,9 +1182,9 @@ SerializationReturnCode CloneSerializer::serialize(JSValue in)
                 inputObjectStack.append(inArray);
                 indexStack.append(0);
                 lengthStack.append(length);
-                // fallthrough
             }
             arrayStartVisitMember:
+            FALLTHROUGH;
             case ArrayStartVisitMember: {
                 JSObject* array = inputObjectStack.last();
                 uint32_t index = indexStack.last();
@@ -1238,9 +1244,9 @@ SerializationReturnCode CloneSerializer::serialize(JSValue in)
                 indexStack.append(0);
                 propertyStack.append(PropertyNameArray(m_exec));
                 inObject->methodTable()->getOwnPropertyNames(inObject, m_exec, propertyStack.last(), ExcludeDontEnumProperties);
-                // fallthrough
             }
             objectStartVisitMember:
+            FALLTHROUGH;
             case ObjectStartVisitMember: {
                 JSObject* object = inputObjectStack.last();
                 uint32_t index = indexStack.last();
@@ -1273,7 +1279,7 @@ SerializationReturnCode CloneSerializer::serialize(JSValue in)
                 }
                 if (terminalCode != SuccessfullyCompleted)
                     return terminalCode;
-                // fallthrough
+                FALLTHROUGH;
             }
             case ObjectEndVisitMember: {
                 if (shouldTerminate())
@@ -2311,9 +2317,9 @@ DeserializationResult CloneDeserializer::deserialize()
             JSArray* outArray = constructEmptyArray(m_exec, 0, m_globalObject, length);
             m_gcBuffer.append(outArray);
             outputObjectStack.append(outArray);
-            // fallthrough
         }
         arrayStartVisitMember:
+        FALLTHROUGH;
         case ArrayStartVisitMember: {
             uint32_t index;
             if (!read(index)) {
@@ -2352,9 +2358,9 @@ DeserializationResult CloneDeserializer::deserialize()
             JSObject* outObject = constructEmptyObject(m_exec, m_globalObject->objectPrototype());
             m_gcBuffer.append(outObject);
             outputObjectStack.append(outObject);
-            // fallthrough
         }
         objectStartVisitMember:
+        FALLTHROUGH;
         case ObjectStartVisitMember: {
             CachedStringRef cachedString;
             bool wasTerminator = false;

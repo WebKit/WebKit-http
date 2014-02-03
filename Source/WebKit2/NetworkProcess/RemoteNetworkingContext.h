@@ -31,25 +31,22 @@
 
 namespace WebKit {
 
-class RemoteNetworkingContext FINAL : public WebCore::NetworkingContext {
+class RemoteNetworkingContext final : public WebCore::NetworkingContext {
 public:
-    static PassRefPtr<RemoteNetworkingContext> create(bool privateBrowsingEnabled, bool shouldClearReferrerOnHTTPSToHTTPRedirect)
+    static PassRefPtr<RemoteNetworkingContext> create(uint64_t sessionID, bool shouldClearReferrerOnHTTPSToHTTPRedirect)
     {
-        return adoptRef(new RemoteNetworkingContext(privateBrowsingEnabled, shouldClearReferrerOnHTTPSToHTTPRedirect));
+        return adoptRef(new RemoteNetworkingContext(sessionID, shouldClearReferrerOnHTTPSToHTTPRedirect));
     }
     virtual ~RemoteNetworkingContext();
 
-    static void setPrivateBrowsingStorageSessionIdentifierBase(const String&);
-    static void ensurePrivateBrowsingSession();
-    static void destroyPrivateBrowsingSession();
+    // FIXME: Remove platform-specific code and use SessionTracker.
+    static void ensurePrivateBrowsingSession(uint64_t sessionID);
 
-    static WebCore::NetworkStorageSession* privateBrowsingSession();
-
-    virtual bool shouldClearReferrerOnHTTPSToHTTPRedirect() const OVERRIDE { return m_shouldClearReferrerOnHTTPSToHTTPRedirect; }
+    virtual bool shouldClearReferrerOnHTTPSToHTTPRedirect() const override { return m_shouldClearReferrerOnHTTPSToHTTPRedirect; }
 
 private:
-    RemoteNetworkingContext(bool privateBrowsingEnabled, bool shouldClearReferrerOnHTTPSToHTTPRedirect)
-        : m_privateBrowsingEnabled(privateBrowsingEnabled)
+    RemoteNetworkingContext(uint64_t sessionID, bool shouldClearReferrerOnHTTPSToHTTPRedirect)
+        : m_sessionID(sessionID)
         , m_shouldClearReferrerOnHTTPSToHTTPRedirect(shouldClearReferrerOnHTTPSToHTTPRedirect)
 #if PLATFORM(MAC)
         , m_needsSiteSpecificQuirks(false)
@@ -57,26 +54,19 @@ private:
 #endif
     { }
 
-    virtual bool isValid() const OVERRIDE;
-    virtual WebCore::NetworkStorageSession& storageSession() const OVERRIDE;
+    virtual bool isValid() const override;
+    virtual WebCore::NetworkStorageSession& storageSession() const override;
 
 #if PLATFORM(MAC)
     void setNeedsSiteSpecificQuirks(bool value) { m_needsSiteSpecificQuirks = value; }
-    virtual bool needsSiteSpecificQuirks() const OVERRIDE;
+    virtual bool needsSiteSpecificQuirks() const override;
     void setLocalFileContentSniffingEnabled(bool value) { m_localFileContentSniffingEnabled = value; }
-    virtual bool localFileContentSniffingEnabled() const OVERRIDE;
-    virtual RetainPtr<CFDataRef> sourceApplicationAuditData() const OVERRIDE;
-    virtual WebCore::ResourceError blockedError(const WebCore::ResourceRequest&) const OVERRIDE;
-#if PLATFORM(IOS)
-    virtual void reportNetworkDataUsage(uint64_t rawBytesSent, uint64_t rawBytesReceived, uint64_t cellularBytesSent, uint64_t cellularBytesReceived) OVERRIDE { }
-#endif // PLATFORM(IOS)
+    virtual bool localFileContentSniffingEnabled() const override;
+    virtual RetainPtr<CFDataRef> sourceApplicationAuditData() const override;
+    virtual WebCore::ResourceError blockedError(const WebCore::ResourceRequest&) const override;
 #endif
 
-#if USE(SOUP)
-    virtual uint64_t initiatingPageID() const;
-#endif
-
-    bool m_privateBrowsingEnabled;
+    uint64_t m_sessionID;
     bool m_shouldClearReferrerOnHTTPSToHTTPRedirect;
 
 #if PLATFORM(MAC)

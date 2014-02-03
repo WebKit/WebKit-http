@@ -1,3 +1,356 @@
+2014-01-30  Andrei Bucur  <abucur@adobe.com>
+
+        Remove the ACCELERATED_COMPOSITING flag
+        https://bugs.webkit.org/show_bug.cgi?id=127833
+
+        Reviewed by Antti Koivisto.
+
+        Remove the USE(ACCELERATED_COMPOSITING) conditionals from the code base and make AC
+        mandatory.
+
+        Another patch will be required to remove the flag support from the Win build system.
+
+        * FullscreenVideoController.cpp:
+        (FullscreenVideoController::LayerClient::platformCALayerLayoutSublayersOfLayer):
+        (FullscreenVideoController::FullscreenVideoController):
+        (FullscreenVideoController::~FullscreenVideoController):
+        (FullscreenVideoController::enterFullscreen):
+        * FullscreenVideoController.h:
+        * WebCoreSupport/WebChromeClient.cpp:
+        (WebChromeClient::scheduleCompositingLayerFlush):
+        * WebCoreSupport/WebChromeClient.h:
+        (WebChromeClient::setNeedsOneShotDrawingSynchronization):
+        * WebPreferences.cpp:
+        (WebPreferences::acceleratedCompositingEnabled):
+        * WebView.cpp:
+        (WebView::WebView):
+        (WebView::~WebView):
+        (WebView::close):
+        (WebView::repaint):
+        (WebView::addToDirtyRegion):
+        (WebView::scrollBackingStore):
+        (WebView::sizeChanged):
+        (WebView::updateBackingStore):
+        (WebView::paint):
+        (WebView::setShouldInvertColors):
+        (WebView::WebViewWndProc):
+        (WebView::notifyPreferencesChanged):
+        (WebView::setAcceleratedCompositing):
+        * WebView.h:
+
+2014-01-29  Alex Christensen  <achristensen@webkit.org>
+
+        Prepare for accelerated compositing on WinCairo.
+        https://bugs.webkit.org/show_bug.cgi?id=127843
+
+        Reviewed by Anders Carlsson.
+
+        * WebPreferences.cpp:
+        Moved CACFLayerTreeHost.h inclusion to Apple-specific includes
+        to avoid compile errors in WinCairo when using accelerated compositing.
+
+2014-01-26  Anders Carlsson  <andersca@apple.com>
+
+        Follow-up build fix.
+
+        * WebHistoryItem.cpp:
+        (WebHistoryItem::visitedWithTitle):
+
+2014-01-26  Anders Carlsson  <andersca@apple.com>
+
+        Remove even more Windows history code.
+
+        * WebHistory.cpp:
+        (WebHistory::removeItemForURLString):
+        * WebHistoryItem.cpp:
+        (WebHistoryItem::initFromDictionaryRepresentation):
+        (WebHistoryItem::dictionaryRepresentation):
+        (WebHistoryItem::getDailyVisitCounts):
+        (WebHistoryItem::getWeeklyVisitCounts):
+        (WebHistoryItem::recordInitialVisit):
+        (WebHistoryItem::initWithURLString):
+
+2014-01-26  Anders Carlsson  <andersca@apple.com>
+
+        Another follow-up build fix.
+
+        * WebHistory.cpp:
+        (WebHistory::removeAllItems):
+        (WebHistory::orderedItemsLastVisitedOnDay):
+        * WebHistoryItem.cpp:
+        (WebHistoryItem::initFromDictionaryRepresentation):
+        (WebHistoryItem::dictionaryRepresentation):
+        (WebHistoryItem::visitCount):
+        (WebHistoryItem::setVisitCount):
+
+2014-01-26  Anders Carlsson  <andersca@apple.com>
+
+        Remove more history gunk.
+
+        * WebHistory.cpp:
+        (WebHistory::orderedLastVisitedDays):
+        (WebHistory::addItem):
+        (WebHistory::visitedURL):
+        (WebHistory::removeItemForURLString):
+        * WebHistory.h:
+        * WebHistoryItem.cpp:
+        (WebHistoryItem::initFromDictionaryRepresentation):
+        (WebHistoryItem::dictionaryRepresentation):
+        (WebHistoryItem::mergeAutoCompleteHints):
+        (WebHistoryItem::setLastVisitedTimeInterval):
+        (WebHistoryItem::initWithURLString):
+        (WebHistoryItem::lastVisitedTimeInterval):
+
+2014-01-26  Anders Carlsson  <andersca@apple.com>
+
+        Build fix.
+
+        * WebHistoryItem.cpp:
+        (WebHistoryItem::initFromDictionaryRepresentation):
+        (WebHistoryItem::dictionaryRepresentation):
+
+2014-01-26  Anders Carlsson  <andersca@apple.com>
+
+        Move lastVisitWasHTTPNonGet out to WebHistoryItem
+        https://bugs.webkit.org/show_bug.cgi?id=127657
+
+        Reviewed by Dan Bernstein.
+
+        Remove uses of lastVisitWasHTTPNonGet.
+
+        * WebHistory.cpp:
+        (WebHistory::visitedURL):
+        * WebHistoryItem.cpp:
+        (WebHistoryItem::initFromDictionaryRepresentation):
+        (WebHistoryItem::lastVisitWasHTTPNonGet):
+        (WebHistoryItem::setLastVisitWasHTTPNonGet):
+
+2014-01-25  Anders Carlsson  <andersca@apple.com>
+
+        Remove an unused FrameLoaderClient function
+        https://bugs.webkit.org/show_bug.cgi?id=127628
+
+        Reviewed by Andreas Kling.
+
+        * WebCoreSupport/WebFrameLoaderClient.cpp:
+        * WebCoreSupport/WebFrameLoaderClient.h:
+
+2014-01-25  Anders Carlsson  <andersca@apple.com>
+
+        Modernize HashTable threading code
+        https://bugs.webkit.org/show_bug.cgi?id=127621
+
+        Reviewed by Darin Adler.
+
+        Explicitly include headers that used to be brought in by HashTable.h
+
+        * WebLocalizableStrings.cpp:
+
+2014-01-24  Anders Carlsson  <andersca@apple.com>
+
+        Remove back/forward list related functions from Page
+        https://bugs.webkit.org/show_bug.cgi?id=127596
+
+        Reviewed by Andreas Kling.
+
+        * WebView.cpp:
+        (WebView::keyDown):
+        (WebView::goBack):
+        (WebView::goForward):
+
+2014-01-24  Zan Dobersek  <zdobersek@igalia.com>
+
+        Move HistoryItem to std::unique_ptr
+        https://bugs.webkit.org/show_bug.cgi?id=127275
+
+        Reviewed by Darin Adler.
+
+        * WebHistoryItem.cpp: The Vector object that's passed to HistoryItem::setRedirectURLs
+        should now be handled by std::unique_ptr and passed on through move semantics.
+        (WebHistoryItem::initFromDictionaryRepresentation):
+
+2014-01-23  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Remove recompileAllJSFunctions timer in ScriptDebugServer
+        https://bugs.webkit.org/show_bug.cgi?id=127409
+
+        Reviewed by Geoffrey Garen.
+
+        * WebCoreSupport/WebInspectorClient.cpp:
+        (WebInspectorFrontendClient::destroyInspectorView):
+        Include InspectorDisconnectReason.
+
+2014-01-23  Simon Fraser  <simon.fraser@apple.com>
+
+        Another Windows fix.
+
+        * WebFrame.cpp:
+        (WebFrame::frameBounds):
+
+2014-01-23  peavo@outlook.com  <peavo@outlook.com>
+
+        [WinCairo] Compile error.
+        https://bugs.webkit.org/show_bug.cgi?id=127500
+
+        Reviewed by Brent Fulgham.
+
+        * WebCache.cpp:
+        (WebCache::cacheFolder): CurlCacheManager::getCacheDirectory() has changed name to cacheDirectory().
+
+2014-01-23  peavo@outlook.com  <peavo@outlook.com>
+
+        [Curl] There is no way to specify cache folder.
+        https://bugs.webkit.org/show_bug.cgi?id=125028
+
+        Reviewed by Brent Fulgham.
+
+        Added interface methods to set and get cache folder location.
+
+        * Interfaces/IWebCache.idl:
+        * WebCache.cpp:
+        (WebCache::disabled):
+        (WebCache::cacheFolder):
+        (WebCache::setCacheFolder):
+        * WebCache.h:
+
+2014-01-21  peavo@outlook.com  <peavo@outlook.com>
+
+        [WinCairo][Curl] Download request has incorrect user agent string.
+        https://bugs.webkit.org/show_bug.cgi?id=127110
+
+        Reviewed by Brent Fulgham.
+
+        * WebDownloadCurl.cpp:
+        (WebDownload::init): Set user agent string in download request.
+        * WebView.cpp:
+        (WebView::downloadURL): Avoid early return if no ResourceHandle is provided.
+
+2014-01-18  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: Page should use std::unique_ptr for InspectorController
+        https://bugs.webkit.org/show_bug.cgi?id=127068
+
+        Reviewed by Joseph Pecoraro.
+
+        Convert call sites to use a InspectorController reference.
+
+        * WebCoreSupport/WebInspectorClient.cpp:
+        (WebInspectorClient::openInspectorFrontend):
+        (WebInspectorFrontendClient::destroyInspectorView):
+        (WebInspectorFrontendClient::onClose):
+        * WebInspector.cpp:
+        (WebInspector::show):
+        (WebInspector::close):
+        (WebInspector::isJavaScriptProfilingEnabled):
+        (WebInspector::setJavaScriptProfilingEnabled):
+        (WebInspector::evaluateInFrontend):
+        * WebNodeHighlight.cpp:
+        (WebNodeHighlight::update):
+
+2014-01-17  Anders Carlsson  <andersca@apple.com>
+
+        Clean up PageCache classes
+        https://bugs.webkit.org/show_bug.cgi?id=127202
+
+        Reviewed by Andreas Kling.
+
+        * WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebFrameLoaderClient::savePlatformDataToCachedFrame):
+
+2014-01-17  Anders Carlsson  <andersca@apple.com>
+
+        Remove another unused FrameLoaderClient callback
+        https://bugs.webkit.org/show_bug.cgi?id=127192
+
+        Reviewed by Dan Bernstein.
+
+        * WebCoreSupport/WebFrameLoaderClient.cpp:
+        * WebCoreSupport/WebFrameLoaderClient.h:
+
+2014-01-17  Anders Carlsson  <andersca@apple.com>
+
+        Remove didPerformFirstNavigation from all FrameLoaderClient subclasses
+        https://bugs.webkit.org/show_bug.cgi?id=127190
+
+        Reviewed by Dan Bernstein.
+
+        * WebCoreSupport/WebFrameLoaderClient.cpp:
+        * WebCoreSupport/WebFrameLoaderClient.h:
+
+2014-01-16  Peter Molnar  <pmolnar.u-szeged@partner.samsung.com>
+
+        Remove workaround for compilers not supporting explicit override control
+        https://bugs.webkit.org/show_bug.cgi?id=127111
+
+        Reviewed by Anders Carlsson.
+
+        Now all compilers support explicit override control, this workaround can be removed.
+
+        * AccessibleDocument.h:
+        * FullscreenVideoController.cpp:
+        * WebCoreSupport/WebChromeClient.h:
+        * WebCoreSupport/WebFrameLoaderClient.h:
+        * WebCoreSupport/WebFrameNetworkingContext.h:
+        * WebCoreSupport/WebInspectorClient.h:
+        * WebHistory.h:
+
+2014-01-10  Anders Carlsson  <andersca@apple.com>
+
+        Tweak ProgressTrackerClient functions
+        https://bugs.webkit.org/show_bug.cgi?id=126808
+
+        Reviewed by Sam Weinig.
+
+        * WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebFrameLoaderClient::progressStarted):
+        (WebFrameLoaderClient::progressEstimateChanged):
+        (WebFrameLoaderClient::progressFinished):
+        * WebCoreSupport/WebFrameLoaderClient.h:
+
+2014-01-10  Anders Carlsson  <andersca@apple.com>
+
+        Move progress tracking functions from FrameLoaderClient to a new ProgressTrackerClient
+        https://bugs.webkit.org/show_bug.cgi?id=126801
+
+        Reviewed by Sam Weinig.
+
+        * WebCoreSupport/WebFrameLoaderClient.h:
+        * WebView.cpp:
+        (WebView::initWithFrame):
+
+2014-01-08  peavo@outlook.com  <peavo@outlook.com>
+
+        [WinCairo] Compile error.
+        https://bugs.webkit.org/show_bug.cgi?id=126534
+
+        Reviewed by Brent Fulgham.
+
+        * WebKitPrefix.h: Define __STDC_LIMIT_MACROS, so INTMAX_MAX will be defined (needed by std C++ library).
+
+2014-01-06  László Langó  <lango@inf.u-szeged.hu>
+
+        Use unsigned consistently, and check for invalid casts when calling into SharedBuffer from other code.
+        https://bugs.webkit.org/show_bug.cgi?id=124579
+
+        Reviewed by Anders Carlsson.
+
+        * WebKitDLL.cpp:
+        (loadResourceIntoBuffer):
+
+2013-12-30  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Cleanup static_cast<HTMLFormElement*> by using toHTMLFormElement()
+        https://bugs.webkit.org/show_bug.cgi?id=126309
+
+        Reviewed by Andreas Kling.
+
+        To detect bad type casts, it would be good to use toHTMLFormElement() instead of
+        using manual type cast. Additionally FORM_ASSOCIATED_ELEMENT_TYPE_CASTS is introduced newly
+        to do it.
+
+        * WebFrame.cpp:
+        (WebFrame::elementWithName):
+
 2013-12-17  Alex Christensen  <achristensen@webkit.org>
 
         [WinCairo] Compile fixes for GStreamer on Windows.

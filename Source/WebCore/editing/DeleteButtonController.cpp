@@ -61,7 +61,7 @@ DeleteButtonController::DeleteButtonController(Frame& frame)
 
 static bool isDeletableElement(const Node* node)
 {
-    if (!node || !node->isHTMLElement() || !node->inDocument() || !node->rendererIsEditable())
+    if (!node || !node->isHTMLElement() || !node->inDocument() || !node->hasEditableStyle())
         return false;
 
     // In general we want to only draw the UI around object of a certain area, but we still keep the min width/height to
@@ -152,7 +152,7 @@ static HTMLElement* enclosingDeletableElement(const VisibleSelection& selection)
 
     // The enclosingNodeOfType function only works on nodes that are editable
     // (which is strange, given its name).
-    if (!container->rendererIsEditable())
+    if (!container->hasEditableStyle())
         return 0;
 
     Node* element = enclosingNodeOfType(firstPositionInNode(container), &isDeletableElement);
@@ -331,6 +331,7 @@ void DeleteButtonController::hide()
 
 void DeleteButtonController::enable()
 {
+#if !PLATFORM(IOS)
     ASSERT(m_disableStack > 0);
     if (m_disableStack > 0)
         m_disableStack--;
@@ -341,13 +342,16 @@ void DeleteButtonController::enable()
         m_frame.document()->updateStyleIfNeeded();
         show(enclosingDeletableElement(m_frame.selection().selection()));
     }
+#endif
 }
 
 void DeleteButtonController::disable()
 {
+#if !PLATFORM(IOS)
     if (enabled())
         hide();
     m_disableStack++;
+#endif
 }
 
 class RemoveTargetCommand : public CompositeEditCommand {

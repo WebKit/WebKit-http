@@ -32,8 +32,12 @@
 #if ENABLE(INDEXED_DATABASE)
 
 namespace WebKit {
-class IDBTransactionIdentifier;
+class IDBIdentifier;
 class UniqueIDBDatabaseIdentifier;
+}
+
+namespace WTF {
+class ASCIILiteral;
 }
 
 namespace WebCore {
@@ -42,12 +46,28 @@ template<> struct CrossThreadCopierBase<false, false, WebKit::UniqueIDBDatabaseI
     static WebKit::UniqueIDBDatabaseIdentifier copy(const WebKit::UniqueIDBDatabaseIdentifier&);
 };
 
-template<> struct CrossThreadCopierBase<false, false, WebKit::IDBTransactionIdentifier> {
-    static WebKit::IDBTransactionIdentifier copy(const WebKit::IDBTransactionIdentifier&);
+template<> struct CrossThreadCopierBase<false, false, WebKit::IDBIdentifier> {
+    static WebKit::IDBIdentifier copy(const WebKit::IDBIdentifier&);
+};
+
+template<> struct CrossThreadCopierBase<false, false, Vector<char>> {
+    static Vector<char> copy(const Vector<char>&);
 };
 
 template<> struct CrossThreadCopierBase<false, false, Vector<int64_t>> {
     static Vector<int64_t> copy(const Vector<int64_t>&);
+};
+
+template<> struct CrossThreadCopierBase<false, false, Vector<uint8_t>> {
+    static Vector<uint8_t> copy(const Vector<uint8_t>&);
+};
+
+template<> struct CrossThreadCopierBase<false, false, Vector<Vector<IDBKeyData>>> {
+    static Vector<Vector<IDBKeyData>> copy(const Vector<Vector<IDBKeyData>>&);
+};
+
+template<> struct CrossThreadCopierBase<false, false, WTF::ASCIILiteral> {
+    static WTF::ASCIILiteral copy(const WTF::ASCIILiteral&);
 };
 
 } // namespace WebCore

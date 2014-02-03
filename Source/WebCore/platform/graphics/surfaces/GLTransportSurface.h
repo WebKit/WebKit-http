@@ -26,8 +26,6 @@
 #ifndef GLTransportSurface_h
 #define GLTransportSurface_h
 
-#if USE(ACCELERATED_COMPOSITING)
-
 #include "GLPlatformSurface.h"
 #include <wtf/PassOwnPtr.h>
 
@@ -41,9 +39,9 @@ public:
     // Creates a GL surface whose results can be transported to the UI process for display.
     static PassOwnPtr<GLTransportSurface> createTransportSurface(const IntSize&, SurfaceAttributes = GLPlatformSurface::Default);
     virtual ~GLTransportSurface();
-    virtual void updateContents(const uint32_t) OVERRIDE;
-    virtual void setGeometry(const IntRect&) OVERRIDE;
-    virtual void destroy() OVERRIDE;
+    virtual void updateContents(const uint32_t) override;
+    virtual void setGeometry(const IntRect&) override;
+    virtual void destroy() override;
 
 protected:
     GLTransportSurface(const IntSize&, SurfaceAttributes);
@@ -75,7 +73,5 @@ protected:
 };
 
 }
-
-#endif
 
 #endif

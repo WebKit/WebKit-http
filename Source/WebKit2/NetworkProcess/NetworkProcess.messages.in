@@ -31,16 +31,18 @@ messages -> NetworkProcess LegacyReceiver {
 
 #if USE(SOUP)
     SetIgnoreTLSErrors(bool ignoreTLSErrors)
+    UserPreferredLanguagesChanged(Vector<String> languages)
 #endif
 
-    EnsurePrivateBrowsingSession()
-    DestroyPrivateBrowsingSession()
+    EnsurePrivateBrowsingSession(uint64_t sessionID)
+    DestroyPrivateBrowsingSession(uint64_t sessionID)
 
     DownloadRequest(uint64_t downloadID, WebCore::ResourceRequest request)
     CancelDownload(uint64_t downloadID)
 
 #if PLATFORM(MAC)
     SetProcessSuppressionEnabled(bool flag)
+    SetQOS(int latencyQOS, int throughputQOS)
 #endif
 
     AllowSpecificHTTPSCertificateForHost(WebCore::CertificateInfo certificate, String host)

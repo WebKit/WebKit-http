@@ -35,11 +35,8 @@
 #import <WebCore/TextGranularity.h>
 #import <WebKit/WebFrame.h>
 #import <WebKit/WebHTMLView.h>
-#import <WebKit/WebTypesInternal.h>
 #import <wtf/RetainPtr.h>
 #import <wtf/Vector.h>
-
-#if PLATFORM(IOS)
 
 #import <UIKit/UIKit.h>
 
@@ -558,6 +555,12 @@ bool AccessibilityUIElement::isChecked() const
     return false;
 }
 
+bool AccessibilityUIElement::isIndeterminate() const
+{
+    // FIXME: implement
+    return false;
+}
+
 int AccessibilityUIElement::hierarchicalLevel() const
 {
     return 0;
@@ -645,6 +648,11 @@ JSStringRef AccessibilityUIElement::columnIndexRange()
 AccessibilityUIElement AccessibilityUIElement::cellForColumnAndRow(unsigned col, unsigned row)
 {
     return AccessibilityUIElement([m_element accessibilityElementForRow:row andColumn:col]);
+}
+
+void AccessibilityUIElement::scrollToMakeVisible()
+{
+    // FIXME: implement
 }
 
 JSStringRef AccessibilityUIElement::selectedTextRange()
@@ -814,4 +822,14 @@ double AccessibilityUIElement::numberAttributeValue(JSStringRef attribute)
     // FIXME: implement
     return 0;
 }
-#endif // PLATFORM(IOS)
+
+JSStringRef AccessibilityUIElement::classList() const
+{
+    // FIXME: implement
+    return nullptr;
+}
+
+void AccessibilityUIElement::uiElementArrayAttributeValue(JSStringRef, Vector<AccessibilityUIElement>&) const
+{
+    // FIXME: implement
+}

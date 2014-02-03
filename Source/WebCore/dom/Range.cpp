@@ -104,6 +104,11 @@ PassRefPtr<Range> Range::create(Document& ownerDocument, const Position& start, 
     return adoptRef(new Range(ownerDocument, start.containerNode(), start.computeOffsetInContainerNode(), end.containerNode(), end.computeOffsetInContainerNode()));
 }
 
+PassRefPtr<Range> Range::create(ScriptExecutionContext& context)
+{
+    return adoptRef(new Range(toDocument(context)));
+}
+
 #if PLATFORM(IOS)
 PassRefPtr<Range> Range::create(Document& ownerDocument, const VisiblePosition& visibleStart, const VisiblePosition& visibleEnd)
 {
@@ -311,7 +316,7 @@ bool Range::isPointInRange(Node* refNode, int offset, ExceptionCode& ec)
         return false;
     }
 
-    if (!refNode->attached() || &refNode->document() != &ownerDocument()) {
+    if (!refNode->inDocument() || &refNode->document() != &ownerDocument()) {
         return false;
     }
 
@@ -340,7 +345,7 @@ short Range::comparePoint(Node* refNode, int offset, ExceptionCode& ec) const
         return 0;
     }
 
-    if (!refNode->attached() || &refNode->document() != &ownerDocument()) {
+    if (!refNode->inDocument() || &refNode->document() != &ownerDocument()) {
         ec = WRONG_DOCUMENT_ERR;
         return 0;
     }
@@ -376,12 +381,12 @@ Range::CompareResults Range::compareNode(Node* refNode, ExceptionCode& ec) const
         return NODE_BEFORE;
     }
     
-    if (!m_start.container() && refNode->attached()) {
+    if (!m_start.container() && refNode->inDocument()) {
         ec = INVALID_STATE_ERR;
         return NODE_BEFORE;
     }
 
-    if (m_start.container() && !refNode->attached()) {
+    if (m_start.container() && !refNode->inDocument()) {
         // Firefox doesn't throw an exception for this case; it returns 0.
         return NODE_BEFORE;
     }
@@ -591,7 +596,7 @@ bool Range::intersectsNode(Node* refNode, ExceptionCode& ec)
         return false;
     }
 
-    if (!refNode->attached() || &refNode->document() != &ownerDocument()) {
+    if (!refNode->inDocument() || &refNode->document() != &ownerDocument()) {
         // Firefox doesn't throw an exception for these cases; it returns false.
         return false;
     }

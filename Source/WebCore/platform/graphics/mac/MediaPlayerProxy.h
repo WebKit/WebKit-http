@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Apple Inc. All rights reserved.
+ * Copyright (C) 2009, 2010 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -20,11 +20,33 @@
  * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
  * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 #ifndef MediaPlayerProxy_h
 #define MediaPlayerProxy_h
+
+#if TARGET_OS_IPHONE
+#if defined(__OBJC__)
+#import <Foundation/NSGeometry.h>
+#endif
+
+// Needed since this is a WebKit private header on iOS.
+#ifndef OBJC_CLASS
+#ifdef __OBJC__
+#define OBJC_CLASS @class
+#else
+#define OBJC_CLASS class
+#endif
+#endif // !defined(OBJC_CLASS)
+
+OBJC_CLASS CALayer;
+
+#endif // TARGET_OS_IPHONE
+
+#if !defined(ENABLE_IOS_AIRPLAY)
+#define ENABLE_IOS_AIRPLAY TARGET_OS_IPHONE
+#endif
 
 OBJC_CLASS WebMediaPlayerProxy;
 
@@ -57,6 +79,16 @@ enum MediaPlayerProxyNotificationType {
     MediaPlayerNotificationTimeJumped,
     
     MediaPlayerNotificationPlayPauseButtonPressed,
+    MediaPlayerNotificationRateDidChange,
+    MediaPlayerNotificationGainFocus,
+    MediaPlayerNotificationLoseFocus,
+    MediaPlayerRequestBeginPlayback,
+    MediaPlayerRequestPausePlayback,
+
+#if ENABLE_IOS_AIRPLAY
+    MediaPlayerNotificationCurrentPlaybackTargetIsWirelessChanged,
+    MediaPlayerNotificationPlaybackTargetAvailabilityChanged,
+#endif
 };
 
 #ifdef __OBJC__
@@ -71,6 +103,25 @@ enum MediaPlayerProxyNotificationType {
 
 - (void)_setPoster:(NSURL *)url;
 
+- (void)_setControls:(BOOL)controls;
+- (void)_setAutobuffer:(BOOL)autobuffer;
+
+- (void)_enterFullScreen;
+- (void)_exitFullScreen;
+
+#if ENABLE_IOS_AIRPLAY
+- (BOOL)_isCurrentPlaybackTargetWireless;
+- (void)_showPlaybackTargetPicker;
+
+- (BOOL)_hasWirelessPlaybackTargets;
+
+- (BOOL)_wirelessVideoPlaybackDisabled;
+- (void)_setWirelessVideoPlaybackDisabled:(BOOL)disabled;
+
+- (void)_setHasPlaybackTargetAvailabilityListeners:(BOOL)hasListeners;
+#endif
+
+- (void)_prepareForPlayback;
 - (void)_play;
 - (void)_pause;
 
@@ -78,6 +129,9 @@ enum MediaPlayerProxyNotificationType {
 
 - (BOOL)_hasVideo;
 - (BOOL)_hasAudio;
+
+- (BOOL)_hasClosedCaptions;
+- (void)_setClosedCaptionsVisible:(BOOL)visible;
 
 - (NSTimeInterval)_duration;
 
@@ -107,6 +161,13 @@ enum MediaPlayerProxyNotificationType {
 - (unsigned)_bytesLoaded;
 
 - (NSArray *)_mimeTypes;
+
+#if TARGET_OS_IPHONE
+- (void)_setDelegate:(id)delegate;
+- (void)_setOutOfBandTextTracks:(NSArray *)textTracks;
+- (void)_setSelectedTextTrack:(NSNumber *)textTrack;
+- (void)_setTextTrackRepresentation:(CALayer*)representation;
+#endif
 
 @end
 #endif

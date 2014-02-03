@@ -26,6 +26,8 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#if !PLATFORM(IOS)
+
 #import "WebPDFView.h"
 
 #import "DOMNodeInternal.h"
@@ -131,8 +133,11 @@ extern "C" NSString *_NSPathForSystemFramework(NSString *framework);
 static void _applicationInfoForMIMEType(NSString *type, NSString **name, NSImage **image)
 {
     NSURL *appURL = nil;
-    
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
     OSStatus error = LSCopyApplicationForMIMEType((CFStringRef)type, kLSRolesAll, (CFURLRef *)&appURL);
+#pragma clang diagnostic pop
     if (error != noErr)
         return;
     
@@ -1035,6 +1040,7 @@ static BOOL isFrameInRange(WebFrame *frame, DOMRange *range)
             PlatformKeyboardEvent pe = PlatformEventFactory::createPlatformKeyboardEvent(nsEvent);
             pe.disambiguateKeyDownEvent(PlatformEvent::RawKeyDown);
             event = KeyboardEvent::create(pe, 0);
+            break;
         }
         default:
             break;
@@ -1581,3 +1587,5 @@ static BOOL isFrameInRange(WebFrame *frame, DOMRange *range)
 }
 
 @end
+
+#endif // !PLATFORM(IOS)

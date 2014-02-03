@@ -29,9 +29,7 @@
 
 #include "config.h"
 
-#if ENABLE(WEB_AUDIO)
-
-#if PLATFORM(IOS)
+#if ENABLE(WEB_AUDIO) && PLATFORM(IOS)
 
 #include "AudioDestinationIOS.h"
 
@@ -69,7 +67,7 @@ static AudioDestinationSet& audioDestinations()
 }
 
 // Factory method: iOS-implementation
-PassOwnPtr<AudioDestination> AudioDestination::create(AudioIOCallback& callback, const String&, unsigned numberOfInputChannels, unsigned numberOfOutputChannels, float sampleRate)
+std::unique_ptr<AudioDestination> AudioDestination::create(AudioIOCallback& callback, const String&, unsigned numberOfInputChannels, unsigned numberOfOutputChannels, float sampleRate)
 {
     // FIXME: make use of inputDeviceId as appropriate.
 
@@ -81,7 +79,7 @@ PassOwnPtr<AudioDestination> AudioDestination::create(AudioIOCallback& callback,
     if (numberOfOutputChannels != 2)
         LOG(Media, "AudioDestination::create(%u, %u, %f) - unhandled output channels", numberOfInputChannels, numberOfOutputChannels, sampleRate);
 
-    return adoptPtr(new AudioDestinationIOS(callback, sampleRate));
+    return std::make_unique<AudioDestinationIOS>(callback, sampleRate);
 }
 
 float AudioDestination::hardwareSampleRate()
@@ -262,6 +260,5 @@ void AudioDestinationIOS::frameSizeChangedProc(void *inRefCon, AudioUnit, AudioU
 
 } // namespace WebCore
 
-#endif // PLATFORM(IOS)
+#endif // ENABLE(WEB_AUDIO) && PLATFORM(IOS)
 
-#endif // ENABLE(WEB_AUDIO)

@@ -19,11 +19,11 @@ layer at (0,0) size 800x600
           RenderBlock (anonymous) at (8,2) size 29x13
             RenderText at (0,0) size 29x13
               text run at (0,0) width 29: "Move"
-layer at (47,47) size 140x13
+layer at (47,47) size 139x13
   RenderBlock {DIV} at (3,3) size 140x13
     RenderText {#text} at (0,0) size 35x13
       text run at (0,0) width 35: "120px"
-layer at (47,86) size 140x13
+layer at (47,86) size 139x13
   RenderBlock {DIV} at (3,3) size 140x13
     RenderText {#text} at (0,0) size 35x13
       text run at (0,0) width 35: "120px"

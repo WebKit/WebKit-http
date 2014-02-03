@@ -32,7 +32,7 @@
 
 namespace WebCore {
 
-class HTMLSourceElement FINAL : public HTMLElement {
+class HTMLSourceElement final : public HTMLElement {
 public:
     static PassRefPtr<HTMLSourceElement> create(const QualifiedName&, Document&);
 
@@ -48,11 +48,11 @@ public:
 private:
     HTMLSourceElement(const QualifiedName&, Document&);
     
-    virtual InsertionNotificationRequest insertedInto(ContainerNode&) OVERRIDE;
-    virtual void removedFrom(ContainerNode&) OVERRIDE;
-    virtual bool isURLAttribute(const Attribute&) const OVERRIDE;
+    virtual InsertionNotificationRequest insertedInto(ContainerNode&) override;
+    virtual void removedFrom(ContainerNode&) override;
+    virtual bool isURLAttribute(const Attribute&) const override;
 
-    void errorEventTimerFired(Timer<HTMLSourceElement>*);
+    void errorEventTimerFired(Timer<HTMLSourceElement>&);
 
     Timer<HTMLSourceElement> m_errorEventTimer;
 };

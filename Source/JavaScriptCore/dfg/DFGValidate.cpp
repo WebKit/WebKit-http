@@ -182,6 +182,18 @@ public:
                 else
                     V_EQUAL((node), node->refCount(), 1);
             }
+            
+            for (size_t i = 0 ; i < block->size() - 1; ++i) {
+                Node* node = block->at(i);
+                VALIDATE((node), !node->isTerminal());
+            }
+            
+            for (size_t i = 0; i < block->size(); ++i) {
+                Node* node = block->at(i);
+                
+                if (node->hasStructure())
+                    VALIDATE((node), !!node->structure());
+            }
         }
         
         switch (m_graph.m_form) {
@@ -245,10 +257,7 @@ private:
                         edge->op() == SetLocal
                         || edge->op() == SetArgument
                         || edge->op() == Flush
-                        || edge->op() == Phi
-                        || edge->op() == ZombieHint
-                        || edge->op() == MovHint
-                        || edge->op() == MovHintAndCheck);
+                        || edge->op() == Phi);
                     
                     if (phisInThisBlock.contains(edge.node()))
                         continue;
@@ -257,9 +266,6 @@ private:
                         VALIDATE(
                             (node, edge),
                             edge->op() == SetLocal
-                            || edge->op() == ZombieHint
-                            || edge->op() == MovHint
-                            || edge->op() == MovHintAndCheck
                             || edge->op() == SetArgument
                             || edge->op() == Flush);
                         
@@ -292,9 +298,6 @@ private:
                         VALIDATE(
                             (local, block->predecessors[k], prevNode),
                             prevNode->op() == SetLocal
-                            || prevNode->op() == MovHint
-                            || prevNode->op() == MovHintAndCheck
-                            || prevNode->op() == ZombieHint
                             || prevNode->op() == SetArgument
                             || prevNode->op() == Phi);
                         if (prevNode == edge.node()) {
@@ -350,6 +353,7 @@ private:
                     case Phantom:
                         if (m_graph.m_form == LoadStore && !j)
                             break;
+                        FALLTHROUGH;
                     default:
                         VALIDATE((node, edge), !phisInThisBlock.contains(edge.node()));
                         break;

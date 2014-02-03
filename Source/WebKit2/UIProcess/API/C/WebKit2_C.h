@@ -52,7 +52,7 @@
 #include <WebKit2/WKOpenPanelResultListener.h>
 #include <WebKit2/WKPage.h>
 #include <WebKit2/WKPageGroup.h>
-#include <WebKit2/WKPreferences.h>
+#include <WebKit2/WKPreferencesRef.h>
 #include <WebKit2/WKString.h>
 #include <WebKit2/WKURL.h>
 #include <WebKit2/WKURLRequest.h>

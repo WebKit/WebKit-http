@@ -32,6 +32,7 @@
 #import "DictionaryPopupInfo.h"
 #import "FindIndicator.h"
 #import "NativeWebKeyboardEvent.h"
+#import "NativeWebWheelEvent.h"
 #import "StringUtilities.h"
 #import "WKAPICast.h"
 #import "WKFullScreenWindowController.h"
@@ -41,6 +42,7 @@
 #import "WebContextMenuProxyMac.h"
 #import "WebEditCommandProxy.h"
 #import "WebPopupMenuProxyMac.h"
+#import "WindowServerConnection.h"
 #import <WebCore/AlternativeTextUIController.h>
 #import <WebCore/BitmapImage.h>
 #import <WebCore/Cursor.h>
@@ -205,7 +207,7 @@ bool PageClientImpl::isViewVisible()
     return true;
 }
 
-bool PageClientImpl::isWindowVisible()
+bool PageClientImpl::isViewVisibleOrOccluded()
 {
     return [[m_wkView window] isVisible];
 }
@@ -215,21 +217,23 @@ bool PageClientImpl::isViewInWindow()
     return [m_wkView window];
 }
 
-void PageClientImpl::viewWillMoveToAnotherWindow()
+bool PageClientImpl::isVisuallyIdle()
 {
-    clearAllEditCommands();
+    return WindowServerConnection::shared().applicationWindowModificationsHaveStopped() || !isViewVisible();
 }
 
 LayerHostingMode PageClientImpl::viewLayerHostingMode()
 {
 #if HAVE(LAYER_HOSTING_IN_WINDOW_SERVER)
-    if (![m_wkView window])
-        return LayerHostingModeDefault;
-
-    return [[m_wkView window] _hostsLayersInWindowServer] ? LayerHostingModeInWindowServer : LayerHostingModeDefault;
-#else
-    return LayerHostingModeDefault;
+    if ([m_wkView window] && [[m_wkView window] _hostsLayersInWindowServer])
+        return LayerHostingModeInWindowServer;
 #endif
+    return LayerHostingModeDefault;
+}
+
+void PageClientImpl::viewWillMoveToAnotherWindow()
+{
+    clearAllEditCommands();
 }
 
 ColorSpaceData PageClientImpl::colorSpace()
@@ -237,9 +241,9 @@ ColorSpaceData PageClientImpl::colorSpace()
     return [m_wkView _colorSpace];
 }
 
-void PageClientImpl::processDidCrash()
+void PageClientImpl::processDidExit()
 {
-    [m_wkView _processDidCrash];
+    [m_wkView _processDidExit];
 }
 
 void PageClientImpl::pageClosed()
@@ -404,7 +408,7 @@ void PageClientImpl::setFindIndicator(PassRefPtr<FindIndicator> findIndicator, b
     [m_wkView _setFindIndicator:findIndicator fadeOut:fadeOut animate:animate];
 }
 
-void PageClientImpl::accessibilityWebProcessTokenReceived(const CoreIPC::DataReference& data)
+void PageClientImpl::accessibilityWebProcessTokenReceived(const IPC::DataReference& data)
 {
     NSData* remoteToken = [NSData dataWithBytes:data.data() length:data.size()];
     [m_wkView _setAccessibilityWebProcessToken:remoteToken];
@@ -434,6 +438,21 @@ void PageClientImpl::updateAcceleratedCompositingMode(const LayerTreeContext& la
 void PageClientImpl::setAcceleratedCompositingRootLayer(CALayer *rootLayer)
 {
     [m_wkView _setAcceleratedCompositingModeRootLayer:rootLayer];
+}
+
+CALayer *PageClientImpl::acceleratedCompositingRootLayer() const
+{
+    return m_wkView._acceleratedCompositingModeRootLayer;
+}
+
+RetainPtr<CGImageRef> PageClientImpl::takeViewSnapshot()
+{
+    return [m_wkView _takeViewSnapshot];
+}
+
+void PageClientImpl::wheelEventWasNotHandledByWebCore(const NativeWebWheelEvent& event)
+{
+    [m_wkView _wheelEventWasNotHandledByWebCore:event.nativeEvent()];
 }
 
 void PageClientImpl::pluginFocusOrWindowFocusChanged(uint64_t pluginComplexTextInputIdentifier, bool pluginHasFocusAndWindowHasFocus)
@@ -527,6 +546,11 @@ void PageClientImpl::intrinsicContentSizeDidChange(const IntSize& intrinsicConte
 bool PageClientImpl::executeSavedCommandBySelector(const String& selectorString)
 {
     return [m_wkView _executeSavedCommandBySelector:NSSelectorFromString(selectorString)];
+}
+
+void PageClientImpl::clearCustomSwipeViews()
+{
+    return [m_wkView _setCustomSwipeViews:@[]];
 }
 
 #if USE(DICTATION_ALTERNATIVES)

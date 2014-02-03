@@ -59,7 +59,6 @@ noinst_HEADERS :=
 noinst_LTLIBRARIES :=
 lib_LTLIBRARIES :=
 IDL_BINDINGS :=
-TEST_PROGS :=
 POFILES :=
 PO_LINGUAS :=
 USER_LINGUAS :=
@@ -102,13 +101,13 @@ webkitgtk_gdom_built_h_api :=
 webkitgtk_gdom_built_sources :=
 webkitgtk_built_sources :=
 webkitgtk_built_nosources :=
-webkit2_h_api :=
 webkit2_sources :=
 webkit2_built_sources :=
 webkit2platform_sources :=
+webkit2gtk_ui_h_api :=
+webkit2gtk_web_extension_h_api :=
 webkit2gtk_h_api :=
 webkit2gtk_built_sources :=
-webkit2_web_extension_h_api :=
 webkit2_plugin_process_sources :=
 webkit2_plugin_process_built_sources :=
 webkittestrunner_built_sources :=
@@ -214,8 +213,6 @@ include Source/ThirdParty/ANGLE/GNUmakefile.am
 include Source/ThirdParty/leveldb/GNUmakefile.am
 
 if ENABLE_DEVELOPER_MODE
-include Source/WebKit2/UIProcess/API/gtk/tests/GNUmakefile.am
-include Source/WebKit/gtk/tests/GNUmakefile.am
 include Source/ThirdParty/gtest/GNUmakefile.am
 include Tools/GNUmakefile.am
 include Tools/TestWebKitAPI/GNUmakefile.am

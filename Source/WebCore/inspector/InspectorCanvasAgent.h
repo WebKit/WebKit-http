@@ -47,11 +47,14 @@ namespace Deprecated {
 class ScriptObject;
 }
 
+namespace Inspector {
+class InjectedScriptManager;
+}
+
 namespace WebCore {
 
 class Frame;
 class InjectedScriptCanvasModule;
-class InjectedScriptManager;
 class InspectorPageAgent;
 class InstrumentingAgents;
 
@@ -59,14 +62,11 @@ typedef String ErrorString;
 
 class InspectorCanvasAgent : public InspectorAgentBase, public Inspector::InspectorCanvasBackendDispatcherHandler {
 public:
-    static PassOwnPtr<InspectorCanvasAgent> create(InstrumentingAgents* instrumentingAgents, InspectorPageAgent* pageAgent, InjectedScriptManager* injectedScriptManager)
-    {
-        return adoptPtr(new InspectorCanvasAgent(instrumentingAgents, pageAgent, injectedScriptManager));
-    }
+    InspectorCanvasAgent(InstrumentingAgents*, InspectorPageAgent*, Inspector::InjectedScriptManager*);
     ~InspectorCanvasAgent();
 
-    virtual void didCreateFrontendAndBackend(Inspector::InspectorFrontendChannel*, Inspector::InspectorBackendDispatcher*) OVERRIDE;
-    virtual void willDestroyFrontendAndBackend() OVERRIDE;
+    virtual void didCreateFrontendAndBackend(Inspector::InspectorFrontendChannel*, Inspector::InspectorBackendDispatcher*) override;
+    virtual void willDestroyFrontendAndBackend(Inspector::InspectorDisconnectReason) override;
 
     void frameNavigated(Frame*);
     void frameDetached(Frame*);
@@ -79,21 +79,19 @@ public:
 #endif
 
     // Called from the front-end.
-    virtual void enable(ErrorString*);
-    virtual void disable(ErrorString*);
-    virtual void dropTraceLog(ErrorString*, const Inspector::TypeBuilder::Canvas::TraceLogId&);
-    virtual void hasUninstrumentedCanvases(ErrorString*, bool*);
-    virtual void captureFrame(ErrorString*, const Inspector::TypeBuilder::Network::FrameId*, Inspector::TypeBuilder::Canvas::TraceLogId*);
-    virtual void startCapturing(ErrorString*, const Inspector::TypeBuilder::Network::FrameId*, Inspector::TypeBuilder::Canvas::TraceLogId*);
-    virtual void stopCapturing(ErrorString*, const Inspector::TypeBuilder::Canvas::TraceLogId&);
-    virtual void getTraceLog(ErrorString*, const Inspector::TypeBuilder::Canvas::TraceLogId&, const int*, const int*, RefPtr<Inspector::TypeBuilder::Canvas::TraceLog>&);
-    virtual void replayTraceLog(ErrorString*, const Inspector::TypeBuilder::Canvas::TraceLogId&, int, RefPtr<Inspector::TypeBuilder::Canvas::ResourceState>&);
-    virtual void getResourceInfo(ErrorString*, const Inspector::TypeBuilder::Canvas::ResourceId&, RefPtr<Inspector::TypeBuilder::Canvas::ResourceInfo>&);
-    virtual void getResourceState(ErrorString*, const Inspector::TypeBuilder::Canvas::TraceLogId&, const Inspector::TypeBuilder::Canvas::ResourceId&, RefPtr<Inspector::TypeBuilder::Canvas::ResourceState>&);
+    virtual void enable(ErrorString*) override;
+    virtual void disable(ErrorString*) override;
+    virtual void dropTraceLog(ErrorString*, const Inspector::TypeBuilder::Canvas::TraceLogId&) override;
+    virtual void hasUninstrumentedCanvases(ErrorString*, bool*) override;
+    virtual void captureFrame(ErrorString*, const Inspector::TypeBuilder::Network::FrameId*, Inspector::TypeBuilder::Canvas::TraceLogId*) override;
+    virtual void startCapturing(ErrorString*, const Inspector::TypeBuilder::Network::FrameId*, Inspector::TypeBuilder::Canvas::TraceLogId*) override;
+    virtual void stopCapturing(ErrorString*, const Inspector::TypeBuilder::Canvas::TraceLogId&) override;
+    virtual void getTraceLog(ErrorString*, const Inspector::TypeBuilder::Canvas::TraceLogId&, const int*, const int*, RefPtr<Inspector::TypeBuilder::Canvas::TraceLog>&) override;
+    virtual void replayTraceLog(ErrorString*, const Inspector::TypeBuilder::Canvas::TraceLogId&, int, RefPtr<Inspector::TypeBuilder::Canvas::ResourceState>&) override;
+    virtual void getResourceInfo(ErrorString*, const Inspector::TypeBuilder::Canvas::ResourceId&, RefPtr<Inspector::TypeBuilder::Canvas::ResourceInfo>&) override;
+    virtual void getResourceState(ErrorString*, const Inspector::TypeBuilder::Canvas::TraceLogId&, const Inspector::TypeBuilder::Canvas::ResourceId&, RefPtr<Inspector::TypeBuilder::Canvas::ResourceState>&) override;
 
 private:
-    InspectorCanvasAgent(InstrumentingAgents*, InspectorPageAgent*, InjectedScriptManager*);
-
     InjectedScriptCanvasModule injectedScriptCanvasModule(ErrorString*, JSC::ExecState*);
     InjectedScriptCanvasModule injectedScriptCanvasModule(ErrorString*, const Deprecated::ScriptObject&);
     InjectedScriptCanvasModule injectedScriptCanvasModule(ErrorString*, const String&);
@@ -103,7 +101,7 @@ private:
     Deprecated::ScriptObject notifyRenderingContextWasWrapped(const Deprecated::ScriptObject&);
 
     InspectorPageAgent* m_pageAgent;
-    InjectedScriptManager* m_injectedScriptManager;
+    Inspector::InjectedScriptManager* m_injectedScriptManager;
     std::unique_ptr<Inspector::InspectorCanvasFrontendDispatcher> m_frontendDispatcher;
     RefPtr<Inspector::InspectorCanvasBackendDispatcher> m_backendDispatcher;
     bool m_enabled;

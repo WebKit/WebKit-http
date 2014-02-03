@@ -57,7 +57,7 @@ public:
 
     void synchronizeStyleAttributeInternal() const;
     
-    virtual CSSStyleDeclaration* style() OVERRIDE FINAL;
+    virtual CSSStyleDeclaration* style() override final;
 
     const StyleProperties* presentationAttributeStyle();
     virtual void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStyleProperties&) { }
@@ -68,7 +68,7 @@ protected:
     {
     }
 
-    virtual void attributeChanged(const QualifiedName&, const AtomicString&, AttributeModificationReason = ModifiedDirectly) OVERRIDE;
+    virtual void attributeChanged(const QualifiedName&, const AtomicString&, AttributeModificationReason = ModifiedDirectly) override;
 
     virtual bool isPresentationAttribute(const QualifiedName&) const { return false; }
 
@@ -76,7 +76,7 @@ protected:
     void addPropertyToPresentationAttributeStyle(MutableStyleProperties&, CSSPropertyID, double value, CSSPrimitiveValue::UnitTypes);
     void addPropertyToPresentationAttributeStyle(MutableStyleProperties&, CSSPropertyID, const String& value);
 
-    virtual void addSubresourceAttributeURLs(ListHashSet<URL>&) const OVERRIDE;
+    virtual void addSubresourceAttributeURLs(ListHashSet<URL>&) const override;
 
 private:
     void styleAttributeChanged(const AtomicString& newStyleString, AttributeModificationReason);
@@ -93,14 +93,14 @@ private:
 inline void StyledElement::invalidateStyleAttribute()
 {
     ASSERT(elementData());
-    elementData()->m_styleAttributeIsDirty = true;
+    elementData()->setStyleAttributeIsDirty(true);
 }
 
 inline const StyleProperties* StyledElement::presentationAttributeStyle()
 {
     if (!elementData())
         return 0;
-    if (elementData()->m_presentationAttributeStyleIsDirty)
+    if (elementData()->presentationAttributeStyleIsDirty())
         rebuildPresentationAttributeStyle();
     return elementData()->presentationAttributeStyle();
 }

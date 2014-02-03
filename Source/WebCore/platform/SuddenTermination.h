@@ -26,6 +26,8 @@
 #ifndef SuddenTermination_h
 #define SuddenTermination_h
 
+#include <wtf/Noncopyable.h>
+
 namespace WebCore {
 
     // Once disabled via one or more more calls to disableSuddenTermination(), fast shutdown
@@ -34,10 +36,24 @@ namespace WebCore {
     void disableSuddenTermination();
     void enableSuddenTermination();
 
-#if !PLATFORM(MAC)
+#if PLATFORM(IOS) || !PLATFORM(MAC)
     inline void disableSuddenTermination() { }
     inline void enableSuddenTermination() { }
 #endif
+
+    class SuddenTerminationDisabler {
+        WTF_MAKE_NONCOPYABLE(SuddenTerminationDisabler);
+    public:
+        SuddenTerminationDisabler()
+        {
+            disableSuddenTermination();
+        }
+
+        ~SuddenTerminationDisabler()
+        {
+            enableSuddenTermination();
+        }
+    };
 
 } // namespace WebCore
 

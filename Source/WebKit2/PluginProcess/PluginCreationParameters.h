@@ -30,7 +30,7 @@
 
 #include "Plugin.h"
 
-namespace CoreIPC {
+namespace IPC {
     class ArgumentDecoder;
     class ArgumentEncoder;
 }
@@ -40,8 +40,8 @@ namespace WebKit {
 struct PluginCreationParameters {
     PluginCreationParameters();
 
-    void encode(CoreIPC::ArgumentEncoder&) const;
-    static bool decode(CoreIPC::ArgumentDecoder&, PluginCreationParameters&);
+    void encode(IPC::ArgumentEncoder&) const;
+    static bool decode(IPC::ArgumentDecoder&, PluginCreationParameters&);
 
     // The unique ID of this plug-in instance.
     uint64_t pluginInstanceID;
@@ -67,10 +67,8 @@ struct PluginCreationParameters {
     // Simulated initialization delay test asynchronous plugin initialization
     bool artificialPluginInitializationDelayEnabled;
 
-#if USE(ACCELERATED_COMPOSITING)
     // Whether accelerated compositing is enabled.
     bool isAcceleratedCompositingEnabled;
-#endif
 };
 
 } // namespace WebKit

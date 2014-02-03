@@ -26,6 +26,7 @@
 #include "config.h"
 #include "Settings.h"
 
+#include "AudioSession.h"
 #include "BackForwardController.h"
 #include "CachedResourceLoader.h"
 #include "CookieStorage.h"
@@ -45,6 +46,8 @@
 #include "StorageMap.h"
 #include "TextAutosizer.h"
 #include <limits>
+#include <wtf/NeverDestroyed.h>
+#include <wtf/StdLibExtras.h>
 
 namespace WebCore {
 
@@ -93,6 +96,11 @@ bool Settings::gShouldUseHighResolutionTimers = true;
 bool Settings::gShouldRespectPriorityInCSSAttributeSetters = false;
 bool Settings::gLowPowerVideoAudioBufferSizeEnabled = false;
 
+#if PLATFORM(IOS)
+bool Settings::gNetworkDataUsageTrackingEnabled = false;
+bool Settings::gAVKitEnabled = false;
+#endif
+
 // NOTEs
 //  1) EditingMacBehavior comprises Tiger, Leopard, SnowLeopard and iOS builds, as well as QtWebKit when built on Mac;
 //  2) EditingWindowsBehavior comprises Win32 and WinCE builds, as well as QtWebKit and Chromium when built on Windows;
@@ -116,11 +124,13 @@ static EditingBehaviorType editingBehaviorTypeForPlatform()
 
 #if PLATFORM(IOS)
 static const bool defaultFixedPositionCreatesStackingContext = true;
+static const bool defaultAcceleratedCompositingForFixedPositionEnabled = true;
 static const bool defaultMediaPlaybackAllowsInline = false;
 static const bool defaultMediaPlaybackRequiresUserGesture = true;
 static const bool defaultShouldRespectImageOrientation = true;
 #else
 static const bool defaultFixedPositionCreatesStackingContext = false;
+static const bool defaultAcceleratedCompositingForFixedPositionEnabled = false;
 static const bool defaultMediaPlaybackAllowsInline = true;
 static const bool defaultMediaPlaybackRequiresUserGesture = false;
 static const bool defaultShouldRespectImageOrientation = false;
@@ -138,7 +148,7 @@ static const bool defaultSelectTrailingWhitespaceEnabled = false;
 // This amount of time must have elapsed before we will even consider scheduling a layout without a delay.
 // FIXME: For faster machines this value can really be lowered to 200. 250 is adequate, but a little high
 // for dual G5s. :)
-static const int layoutScheduleThreshold = 250;
+static const auto layoutScheduleThreshold = std::chrono::milliseconds(250);
 
 Settings::Settings(Page* page)
     : m_page(0)
@@ -146,6 +156,9 @@ Settings::Settings(Page* page)
     , m_fontGenericFamilies(std::make_unique<FontGenericFamilies>())
     , m_storageBlockingPolicy(SecurityOrigin::AllowAllStorage)
     , m_layoutInterval(layoutScheduleThreshold)
+#if PLATFORM(IOS)
+    , m_maxParseDuration(-1)
+#endif
 #if ENABLE(TEXT_AUTOSIZING)
     , m_textAutosizingFontScaleFactor(1)
 #if HACK_FORCE_TEXT_AUTOSIZING_ON_DESKTOP
@@ -167,12 +180,21 @@ Settings::Settings(Page* page)
     , m_needsAdobeFrameReloadingQuirk(false)
     , m_usesPageCache(false)
     , m_fontRenderingMode(0)
-    , m_isCSSCustomFilterEnabled(false)
+#if PLATFORM(IOS)
+    , m_standalone(false)
+    , m_telephoneNumberParsingEnabled(false)
+    , m_mediaDataLoadsAutomatically(false)
+    , m_shouldTransformsAffectOverflow(true)
+    , m_shouldDispatchJavaScriptWindowOnErrorEvents(false)
+    , m_alwaysUseBaselineOfPrimaryFont(false)
+    , m_alwaysUseAcceleratedOverflowScroll(false)
+#endif
 #if ENABLE(CSS_STICKY_POSITION)
     , m_cssStickyPositionEnabled(true)
 #endif
     , m_showTiledScrollingIndicator(false)
     , m_tiledBackingStoreEnabled(false)
+    , m_backgroundShouldExtendBeyondPage(false)
     , m_dnsPrefetchingEnabled(false)
 #if ENABLE(TOUCH_EVENTS)
     , m_touchEventEmulationEnabled(false)
@@ -224,7 +246,7 @@ bool Settings::shouldEnableScreenFontSubstitutionByDefault()
 }
 #endif
 
-#if !PLATFORM(MAC) && !PLATFORM(BLACKBERRY)
+#if !PLATFORM(MAC)
 void Settings::initializeDefaultFontFamilies()
 {
     // Other platforms can set up fonts from a client, but on Mac, we want it in WebCore to share code between WebKit1 and WebKit2.
@@ -382,7 +404,15 @@ void Settings::imageLoadingSettingsTimerFired(Timer<Settings>*)
 
 void Settings::setScriptEnabled(bool isScriptEnabled)
 {
+#if PLATFORM(IOS)
+    if (m_isScriptEnabled == isScriptEnabled)
+        return;
+#endif
+
     m_isScriptEnabled = isScriptEnabled;
+#if PLATFORM(IOS)
+    m_page->setNeedsRecalcStyleInAllFrames();
+#endif
     InspectorInstrumentation::scriptsEnabled(m_page, m_isScriptEnabled);
 }
 
@@ -479,7 +509,7 @@ double Settings::domTimerAlignmentInterval() const
     return m_page->timerAlignmentInterval();
 }
 
-void Settings::setLayoutInterval(int layoutInterval)
+void Settings::setLayoutInterval(std::chrono::milliseconds layoutInterval)
 {
     // FIXME: It seems weird that this function may disregard the specified layout interval.
     // We should either expose layoutScheduleThreshold or better communicate this invariant.
@@ -567,6 +597,16 @@ void Settings::setTiledBackingStoreEnabled(bool enabled)
 #if USE(TILED_BACKING_STORE)
     m_page->mainFrame().setTiledBackingStoreEnabled(enabled);
 #endif
+}
+
+void Settings::setBackgroundShouldExtendBeyondPage(bool shouldExtend)
+{
+    if (m_backgroundShouldExtendBeyondPage == shouldExtend)
+        return;
+
+    m_backgroundShouldExtendBeyondPage = shouldExtend;
+
+    m_page->mainFrame().view()->setBackgroundExtendsBeyondPage(shouldExtend);
 }
 
 #if USE(AVFOUNDATION)
@@ -680,5 +720,48 @@ void Settings::setLowPowerVideoAudioBufferSizeEnabled(bool flag)
 {
     gLowPowerVideoAudioBufferSizeEnabled = flag;
 }
+
+#if PLATFORM(IOS)
+void Settings::setStandalone(bool standalone)
+{
+    m_standalone = standalone;
+}
+
+void Settings::setAudioSessionCategoryOverride(unsigned sessionCategory)
+{
+    AudioSession::sharedSession().setCategoryOverride(static_cast<AudioSession::CategoryType>(sessionCategory));
+}
+
+unsigned Settings::audioSessionCategoryOverride()
+{
+    return AudioSession::sharedSession().categoryOverride();
+}
+
+void Settings::setNetworkDataUsageTrackingEnabled(bool trackingEnabled)
+{
+    gNetworkDataUsageTrackingEnabled = trackingEnabled;
+}
+
+bool Settings::networkDataUsageTrackingEnabled()
+{
+    return gNetworkDataUsageTrackingEnabled;
+}
+
+static String& sharedNetworkInterfaceNameGlobal()
+{
+    static NeverDestroyed<String> networkInterfaceName;
+    return networkInterfaceName;
+}
+
+void Settings::setNetworkInterfaceName(const String& networkInterfaceName)
+{
+    sharedNetworkInterfaceNameGlobal() = networkInterfaceName;
+}
+
+const String& Settings::networkInterfaceName()
+{
+    return sharedNetworkInterfaceNameGlobal();
+}
+#endif
 
 } // namespace WebCore

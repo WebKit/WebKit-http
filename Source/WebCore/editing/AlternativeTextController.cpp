@@ -323,7 +323,7 @@ void AlternativeTextController::respondToUnappliedSpellCorrection(const VisibleS
     markers.addMarker(range.get(), DocumentMarker::SpellCheckingExemption);
 }
 
-void AlternativeTextController::timerFired(Timer<AlternativeTextController>*)
+void AlternativeTextController::timerFired(Timer<AlternativeTextController>&)
 {
     m_isDismissedByEditing = false;
     switch (m_alternativeTextInfo.type) {
@@ -689,7 +689,7 @@ bool AlternativeTextController::insertDictatedText(const String& text, const Vec
         return false;
 
     if (FrameView* view = m_frame.view())
-        view->resetDeferredRepaintDelay();
+        view->disableLayerFlushThrottlingTemporarilyForInteraction();
 
     RefPtr<TextEvent> event = TextEvent::createForDictation(m_frame.document()->domWindow(), text, dictationAlternatives);
     event->setUnderlyingEvent(triggeringEvent);

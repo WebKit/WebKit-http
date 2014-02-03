@@ -31,14 +31,19 @@
 #ifndef InstrumentingAgents_h
 #define InstrumentingAgents_h
 
+#include <inspector/InspectorEnvironment.h>
 #include <wtf/FastMalloc.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
 
+namespace Inspector {
+class InspectorAgent;
+class InspectorDebuggerAgent;
+}
+
 namespace WebCore {
 
-class InspectorAgent;
 class InspectorApplicationCacheAgent;
 class InspectorCSSAgent;
 class InspectorCanvasAgent;
@@ -47,7 +52,6 @@ class InspectorDOMAgent;
 class InspectorDOMDebuggerAgent;
 class InspectorDOMStorageAgent;
 class InspectorDatabaseAgent;
-class InspectorDebuggerAgent;
 class InspectorHeapProfilerAgent;
 class InspectorLayerTreeAgent;
 class InspectorPageAgent;
@@ -65,15 +69,17 @@ class InstrumentingAgents : public RefCounted<InstrumentingAgents> {
     WTF_MAKE_NONCOPYABLE(InstrumentingAgents);
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    static PassRefPtr<InstrumentingAgents> create()
+    static PassRefPtr<InstrumentingAgents> create(Inspector::InspectorEnvironment& environment)
     {
-        return adoptRef(new InstrumentingAgents());
+        return adoptRef(new InstrumentingAgents(environment));
     }
     ~InstrumentingAgents() { }
     void reset();
 
-    InspectorAgent* inspectorAgent() const { return m_inspectorAgent; }
-    void setInspectorAgent(InspectorAgent* agent) { m_inspectorAgent = agent; }
+    Inspector::InspectorEnvironment& inspectorEnvironment() const { return m_environment; }
+
+    Inspector::InspectorAgent* inspectorAgent() const { return m_inspectorAgent; }
+    void setInspectorAgent(Inspector::InspectorAgent* agent) { m_inspectorAgent = agent; }
 
     InspectorPageAgent* inspectorPageAgent() const { return m_inspectorPageAgent; }
     void setInspectorPageAgent(InspectorPageAgent* agent) { m_inspectorPageAgent = agent; }
@@ -110,9 +116,8 @@ public:
     InspectorApplicationCacheAgent* inspectorApplicationCacheAgent() const { return m_inspectorApplicationCacheAgent; }
     void setInspectorApplicationCacheAgent(InspectorApplicationCacheAgent* agent) { m_inspectorApplicationCacheAgent = agent; }
 
-#if ENABLE(JAVASCRIPT_DEBUGGER)
-    InspectorDebuggerAgent* inspectorDebuggerAgent() const { return m_inspectorDebuggerAgent; }
-    void setInspectorDebuggerAgent(InspectorDebuggerAgent* agent) { m_inspectorDebuggerAgent = agent; }
+    Inspector::InspectorDebuggerAgent* inspectorDebuggerAgent() const { return m_inspectorDebuggerAgent; }
+    void setInspectorDebuggerAgent(Inspector::InspectorDebuggerAgent* agent) { m_inspectorDebuggerAgent = agent; }
 
     PageDebuggerAgent* pageDebuggerAgent() const { return m_pageDebuggerAgent; }
     void setPageDebuggerAgent(PageDebuggerAgent* agent) { m_pageDebuggerAgent = agent; }
@@ -125,7 +130,6 @@ public:
 
     InspectorHeapProfilerAgent* inspectorHeapProfilerAgent() const { return m_inspectorHeapProfilerAgent; }
     void setInspectorHeapProfilerAgent(InspectorHeapProfilerAgent* agent) { m_inspectorHeapProfilerAgent = agent; }
-#endif
 
     InspectorWorkerAgent* inspectorWorkerAgent() const { return m_inspectorWorkerAgent; }
     void setInspectorWorkerAgent(InspectorWorkerAgent* agent) { m_inspectorWorkerAgent = agent; }
@@ -133,20 +137,18 @@ public:
     InspectorCanvasAgent* inspectorCanvasAgent() const { return m_inspectorCanvasAgent; }
     void setInspectorCanvasAgent(InspectorCanvasAgent* agent) { m_inspectorCanvasAgent = agent; }
 
-#if USE(ACCELERATED_COMPOSITING)
     InspectorLayerTreeAgent* inspectorLayerTreeAgent() const { return m_inspectorLayerTreeAgent; }
     void setInspectorLayerTreeAgent(InspectorLayerTreeAgent* agent) { m_inspectorLayerTreeAgent = agent; }
-#endif
 
 private:
-    InstrumentingAgents();
+    InstrumentingAgents(Inspector::InspectorEnvironment&);
 
-    InspectorAgent* m_inspectorAgent;
+    Inspector::InspectorEnvironment& m_environment;
+
+    Inspector::InspectorAgent* m_inspectorAgent;
     InspectorPageAgent* m_inspectorPageAgent;
     InspectorCSSAgent* m_inspectorCSSAgent;
-#if USE(ACCELERATED_COMPOSITING)
     InspectorLayerTreeAgent* m_inspectorLayerTreeAgent;
-#endif
     InspectorConsoleAgent* m_inspectorConsoleAgent;
     InspectorDOMAgent* m_inspectorDOMAgent;
     InspectorResourceAgent* m_inspectorResourceAgent;
@@ -158,13 +160,11 @@ private:
     InspectorDatabaseAgent* m_inspectorDatabaseAgent;
 #endif
     InspectorApplicationCacheAgent* m_inspectorApplicationCacheAgent;
-#if ENABLE(JAVASCRIPT_DEBUGGER)
-    InspectorDebuggerAgent* m_inspectorDebuggerAgent;
+    Inspector::InspectorDebuggerAgent* m_inspectorDebuggerAgent;
     PageDebuggerAgent* m_pageDebuggerAgent;
     InspectorDOMDebuggerAgent* m_inspectorDOMDebuggerAgent;
     InspectorProfilerAgent* m_inspectorProfilerAgent;
     InspectorHeapProfilerAgent* m_inspectorHeapProfilerAgent;
-#endif
     InspectorWorkerAgent* m_inspectorWorkerAgent;
     InspectorCanvasAgent* m_inspectorCanvasAgent;
 };

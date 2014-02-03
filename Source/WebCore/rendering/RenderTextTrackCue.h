@@ -37,12 +37,12 @@ namespace WebCore {
 class RenderBox;
 class TextTrackCueBox;
 
-class RenderTextTrackCue FINAL : public RenderBlockFlow {
+class RenderTextTrackCue final : public RenderBlockFlow {
 public:
     RenderTextTrackCue(TextTrackCueBox&, PassRef<RenderStyle>);
 
 private:
-    virtual void layout() OVERRIDE;
+    virtual void layout() override;
 
     bool isOutside() const;
     bool rectIsWithinContainer(const IntRect&) const;

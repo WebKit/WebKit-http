@@ -183,7 +183,7 @@ void RenderMenuList::addChild(RenderObject* newChild, RenderObject* beforeChild)
     ASSERT(m_innerBlock == firstChild());
 
     if (AXObjectCache* cache = document().existingAXObjectCache())
-        cache->childrenChanged(this);
+        cache->childrenChanged(this, newChild);
 }
 
 void RenderMenuList::removeChild(RenderObject& oldChild)
@@ -436,7 +436,7 @@ void RenderMenuList::didUpdateActiveOption(int optionIndex)
 
     HTMLElement* listItem = selectElement().listItems()[listIndex];
     ASSERT(listItem);
-    if (listItem->attached()) {
+    if (listItem->renderer()) {
         if (AccessibilityMenuList* menuList = toAccessibilityMenuList(document().axObjectCache()->get(this)))
             menuList->didUpdateActiveOption(optionIndex);
     }

@@ -44,10 +44,7 @@ import CodeGeneratorInspectorStrings
 
 DOMAIN_DEFINE_NAME_MAP = {
     "Database": "SQL_DATABASE",
-    "Debugger": "JAVASCRIPT_DEBUGGER",
-    "DOMDebugger": "JAVASCRIPT_DEBUGGER",
     "IndexedDB": "INDEXED_DATABASE",
-    "Profiler": "JAVASCRIPT_DEBUGGER",
 }
 
 
@@ -1112,6 +1109,106 @@ class TypeBindings:
 
                     return TypedefString
 
+        elif json_typable["type"] == "integer":
+                if helper.is_ad_hoc:
+
+                    class PlainInteger:
+                        @classmethod
+                        def resolve_inner(cls, resolve_context):
+                            pass
+
+                        @staticmethod
+                        def request_user_runtime_cast(request):
+                            raise Exception("Unsupported")
+
+                        @staticmethod
+                        def request_internal_runtime_cast():
+                            pass
+
+                        @staticmethod
+                        def get_code_generator():
+                            return None
+
+                        @classmethod
+                        def get_validator_call_text(cls):
+                            return RawTypes.Int.get_raw_validator_call_text()
+
+                        @staticmethod
+                        def reduce_to_raw_type():
+                            return RawTypes.Int
+
+                        @staticmethod
+                        def get_type_model():
+                            return TypeModel.Int
+
+                        @staticmethod
+                        def get_setter_value_expression_pattern():
+                            return None
+
+                        @classmethod
+                        def get_array_item_c_type_text(cls):
+                            return cls.reduce_to_raw_type().get_array_item_raw_c_type_text()
+
+                    return PlainInteger
+
+                else:
+
+                    class TypedefInteger:
+                        @classmethod
+                        def resolve_inner(cls, resolve_context):
+                            pass
+
+                        @staticmethod
+                        def request_user_runtime_cast(request):
+                            raise Exception("Unsupported")
+
+                        @staticmethod
+                        def request_internal_runtime_cast():
+                            RawTypes.Int.request_raw_internal_runtime_cast()
+
+                        @staticmethod
+                        def get_code_generator():
+                            class CodeGenerator:
+                                @staticmethod
+                                def generate_type_builder(writer, generate_context):
+                                    helper.write_doc(writer)
+                                    fixed_type_name.output_comment(writer)
+                                    writer.newline("typedef int ")
+                                    writer.append(fixed_type_name.class_name)
+                                    writer.append(";\n\n")
+
+                                @staticmethod
+                                def register_use(forward_listener):
+                                    pass
+
+                                @staticmethod
+                                def get_generate_pass_id():
+                                    return TypeBuilderPass.TYPEDEF
+
+                            return CodeGenerator
+
+                        @classmethod
+                        def get_validator_call_text(cls):
+                            return RawTypes.Int.get_raw_validator_call_text()
+
+                        @staticmethod
+                        def reduce_to_raw_type():
+                            return RawTypes.Int
+
+                        @staticmethod
+                        def get_type_model():
+                            return TypeModel.Int
+
+                        @staticmethod
+                        def get_setter_value_expression_pattern():
+                            return None
+
+                        @classmethod
+                        def get_array_item_c_type_text(cls):
+                            return helper.full_name_prefix_for_use + fixed_type_name.class_name
+
+                    return TypedefInteger
+
         elif json_typable["type"] == "object":
             if "properties" in json_typable:
 
@@ -1876,6 +1973,7 @@ class Generator:
     backend_js_domain_initializer_list = []
 
     backend_handler_interface_list = []
+    backend_handler_implementation_list = []
     backend_dispatcher_interface_list = []
     type_builder_fragments = []
     type_builder_forwards = []
@@ -1890,6 +1988,7 @@ class Generator:
         first_cycle_guardable_list_list = [
             Generator.backend_method_implementation_list,
             Generator.backend_handler_interface_list,
+            Generator.backend_handler_implementation_list,
             Generator.backend_dispatcher_interface_list]
 
         for json_domain in json_api["domains"]:
@@ -1944,10 +2043,10 @@ class Generator:
             agent_interface_name = dispatcher_name + "Handler"
 
             if "commands" in json_domain:
-                Generator.backend_dispatcher_interface_list.append("class %s %s FINAL : public Inspector::InspectorSupplementalBackendDispatcher {\n" % (INSPECTOR_TYPES_GENERATOR_CONFIG_MAP[output_type]["export_macro"], dispatcher_name))
+                Generator.backend_dispatcher_interface_list.append("class %s %s final : public Inspector::InspectorSupplementalBackendDispatcher {\n" % (INSPECTOR_TYPES_GENERATOR_CONFIG_MAP[output_type]["export_macro"], dispatcher_name))
                 Generator.backend_dispatcher_interface_list.append("public:\n")
                 Generator.backend_dispatcher_interface_list.append("    static PassRefPtr<%s> create(Inspector::InspectorBackendDispatcher*, %s*);\n" % (dispatcher_name, agent_interface_name))
-                Generator.backend_dispatcher_interface_list.append("    virtual void dispatch(long callId, const String& method, PassRefPtr<Inspector::InspectorObject> message) OVERRIDE;\n")
+                Generator.backend_dispatcher_interface_list.append("    virtual void dispatch(long callId, const String& method, PassRefPtr<Inspector::InspectorObject> message) override;\n")
                 Generator.backend_dispatcher_interface_list.append("private:\n")
 
                 Generator.backend_handler_interface_list.append("class %s %s {\n" % (INSPECTOR_TYPES_GENERATOR_CONFIG_MAP[output_type]["export_macro"], agent_interface_name))
@@ -1961,8 +2060,10 @@ class Generator:
                     Generator.process_command(json_command, domain_name, agent_interface_name, dispatcher_name, dispatcher_if_chain, dispatcher_commands_list)
 
                 Generator.backend_handler_interface_list.append("protected:\n")
-                Generator.backend_handler_interface_list.append("    virtual ~%s() { }\n" % agent_interface_name)
+                Generator.backend_handler_interface_list.append("    virtual ~%s();\n" % agent_interface_name)
                 Generator.backend_handler_interface_list.append("};\n\n")
+
+                Generator.backend_handler_implementation_list.append("%s::~%s() { }\n" % (agent_interface_name, agent_interface_name))
 
                 Generator.backend_dispatcher_interface_list.append("private:\n")
                 Generator.backend_dispatcher_interface_list.append("    %s(Inspector::InspectorBackendDispatcher*, %s*);\n" % (dispatcher_name, agent_interface_name))
@@ -2471,6 +2572,7 @@ backend_h_file.write(Templates.backend_h.substitute(None,
 
 backend_cpp_file.write(Templates.backend_cpp.substitute(None,
     outputFileNamePrefix=output_file_name_prefix,
+    handlerImplementations="".join(flatten_list(Generator.backend_handler_implementation_list)),
     methods="\n".join(Generator.backend_method_implementation_list)))
 
 frontend_h_file.write(Templates.frontend_h.substitute(None,

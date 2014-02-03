@@ -37,7 +37,7 @@ namespace WebCore {
 
 class AVTrackPrivateAVFObjCImpl;
 
-class VideoTrackPrivateAVFObjC FINAL : public VideoTrackPrivateAVF {
+class VideoTrackPrivateAVFObjC final : public VideoTrackPrivateAVF {
     WTF_MAKE_NONCOPYABLE(VideoTrackPrivateAVFObjC)
 public:
     static RefPtr<VideoTrackPrivateAVFObjC> create(AVPlayerItemTrack* track)
@@ -50,7 +50,7 @@ public:
         return adoptRef(new VideoTrackPrivateAVFObjC(track));
     }
 
-    virtual void setSelected(bool) OVERRIDE;
+    virtual void setSelected(bool) override;
 
     void setPlayerItemTrack(AVPlayerItemTrack*);
     AVPlayerItemTrack* playerItemTrack();

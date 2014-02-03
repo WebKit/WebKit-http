@@ -32,7 +32,7 @@ namespace WebCore {
 
 class RenderObject;
 
-class SVGClipPathElement FINAL : public SVGGraphicsElement,
+class SVGClipPathElement final : public SVGGraphicsElement,
                                  public SVGExternalResourcesRequired {
 public:
     static PassRefPtr<SVGClipPathElement> create(const QualifiedName&, Document&);
@@ -40,15 +40,15 @@ public:
 private:
     SVGClipPathElement(const QualifiedName&, Document&);
 
-    virtual bool isValid() const { return SVGTests::isValid(); }
-    virtual bool needsPendingResourceHandling() const { return false; }
+    virtual bool isValid() const override { return SVGTests::isValid(); }
+    virtual bool needsPendingResourceHandling() const override { return false; }
 
     bool isSupportedAttribute(const QualifiedName&);
-    virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
-    virtual void svgAttributeChanged(const QualifiedName&);
-    virtual void childrenChanged(const ChildChange&) OVERRIDE;
+    virtual void parseAttribute(const QualifiedName&, const AtomicString&) override;
+    virtual void svgAttributeChanged(const QualifiedName&) override;
+    virtual void childrenChanged(const ChildChange&) override;
 
-    virtual RenderElement* createRenderer(PassRef<RenderStyle>) OVERRIDE;
+    virtual RenderPtr<RenderElement> createElementRenderer(PassRef<RenderStyle>) override;
 
     BEGIN_DECLARE_ANIMATED_PROPERTIES(SVGClipPathElement)
         DECLARE_ANIMATED_ENUMERATION(ClipPathUnits, clipPathUnits, SVGUnitTypes::SVGUnitType)

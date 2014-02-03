@@ -33,7 +33,7 @@ namespace WebCore {
 class RenderSVGText;
 class SVGInlineTextBox;
 
-class SVGRootInlineBox FINAL : public RootInlineBox {
+class SVGRootInlineBox final : public RootInlineBox {
 public:
     SVGRootInlineBox(RenderSVGText&);
 
@@ -52,7 +52,7 @@ public:
     InlineBox* closestLeafChildForPosition(const LayoutPoint&);
 
 private:
-    virtual bool isSVGRootInlineBox() const OVERRIDE { return true; }
+    virtual bool isSVGRootInlineBox() const override { return true; }
     void reorderValueLists(Vector<SVGTextLayoutAttributes*>&);
     void layoutCharactersInTextBoxes(InlineFlowBox*, SVGTextLayoutEngine&);
     void layoutChildBoxes(InlineFlowBox*, FloatRect* = 0);

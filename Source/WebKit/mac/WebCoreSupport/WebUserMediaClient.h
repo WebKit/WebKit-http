@@ -38,15 +38,15 @@ class UserMediaRequest;
 
 @class WebView;
 
-class WebUserMediaClient FINAL : public WebCore::UserMediaClient {
+class WebUserMediaClient final : public WebCore::UserMediaClient {
 public:
     WebUserMediaClient(WebView*);
     ~WebUserMediaClient();
 
     // UserMediaClient
-    virtual void requestPermission(PassRefPtr<WebCore::UserMediaRequest>) OVERRIDE;
-    virtual void cancelRequest(WebCore::UserMediaRequest*) OVERRIDE;
-    virtual void pageDestroyed() OVERRIDE;
+    virtual void requestPermission(PassRefPtr<WebCore::UserMediaRequest>) override;
+    virtual void cancelRequest(WebCore::UserMediaRequest*) override;
+    virtual void pageDestroyed() override;
 
 private:
     WebView* m_webView;

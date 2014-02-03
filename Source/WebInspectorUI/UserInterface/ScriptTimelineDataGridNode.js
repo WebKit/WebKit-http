@@ -23,12 +23,14 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.ScriptTimelineDataGridNode = function(scriptTimelineRecord, baseStartTime)
+WebInspector.ScriptTimelineDataGridNode = function(scriptTimelineRecord, baseStartTime, rangeStartTime, rangeEndTime)
 {
-    WebInspector.DataGridNode.call(this, {});
+    WebInspector.TimelineDataGridNode.call(this, false, null);
 
     this._record = scriptTimelineRecord;
     this._baseStartTime = baseStartTime || 0;
+    this._rangeStartTime = rangeStartTime || 0;
+    this._rangeEndTime = typeof rangeEndTime === "number" ? rangeEndTime : Infinity;
 };
 
 WebInspector.Object.addConstructorFunctions(WebInspector.ScriptTimelineDataGridNode);
@@ -37,6 +39,7 @@ WebInspector.ScriptTimelineDataGridNode.IconStyleClassName = "icon";
 
 WebInspector.ScriptTimelineDataGridNode.prototype = {
     constructor: WebInspector.ScriptTimelineDataGridNode,
+    __proto__: WebInspector.TimelineDataGridNode.prototype,
 
     // Public
 
@@ -45,9 +48,52 @@ WebInspector.ScriptTimelineDataGridNode.prototype = {
         return this._record;
     },
 
+    get records()
+    {
+        return [this._record];
+    },
+
+    get baseStartTime()
+    {
+        return this._baseStartTime;
+    },
+
+    get rangeStartTime()
+    {
+        return this._rangeStartTime;
+    },
+
+    set rangeStartTime(x)
+    {
+        if (this._rangeStartTime === x)
+            return;
+
+        this._rangeStartTime = x;
+        this.needsRefresh();
+    },
+
+    get rangeEndTime()
+    {
+        return this._rangeEndTime;
+    },
+
+    set rangeEndTime(x)
+    {
+        if (this._rangeEndTime === x)
+            return;
+
+        this._rangeEndTime = x;
+        this.needsRefresh();
+    },
+
     get data()
     {
-        return this._record;
+        var startTime = Math.max(this._rangeStartTime, this._record.startTime);
+        var duration = Math.min(this._record.startTime + this._record.duration, this._rangeEndTime) - startTime;
+        var callFrameOrSourceCodeLocation = this._record.initiatorCallFrame || this._record.sourceCodeLocation;
+
+        return {eventType: this._record.eventType, startTime: startTime, selfTime: duration, totalTime: duration,
+            averageTime: duration, callCount: 1, location: callFrameOrSourceCodeLocation};
     },
 
     createCellContent: function(columnIdentifier, cell)
@@ -57,48 +103,17 @@ WebInspector.ScriptTimelineDataGridNode.prototype = {
 
         switch (columnIdentifier) {
         case "eventType":
-            return WebInspector.ScriptTimelineRecord.EventType.displayName(value);
-
-        case "details":
-            return value ? value : emptyValuePlaceholderString;
-
-        case "resource":
-            if (!value)
-                return emptyValuePlaceholderString;
-
-            console.assert(this.data.sourceCodeLocation);
-
-            cell.classList.add(WebInspector.ResourceTreeElement.ResourceIconStyleClassName);
-            cell.classList.add(value.type);
-
-            // Give the whole cell a tooltip and keep it up to date.
-            var sourceCodeLocation = this.data.sourceCodeLocation;
-            sourceCodeLocation.populateLiveDisplayLocationTooltip(cell);
-
-            var fragment = document.createDocumentFragment();
-
-            var goToArrowButtonLink = WebInspector.createSourceCodeLocationLink(sourceCodeLocation, false, true);
-            fragment.appendChild(goToArrowButtonLink);
-
-            var icon = document.createElement("div");
-            icon.className = WebInspector.ScriptTimelineDataGridNode.IconStyleClassName;
-            fragment.appendChild(icon);
-
-            var titleElement = document.createElement("span");
-            sourceCodeLocation.populateLiveDisplayLocationString(titleElement, "textContent");
-            fragment.appendChild(titleElement);
-
-            return fragment;
+            return WebInspector.ScriptTimelineRecord.EventType.displayName(value, this._record.details);
 
         case "startTime":
-            return isNaN(value) ? emptyValuePlaceholderString : Number.secondsToString(value - this._baseStartTime);
+            return isNaN(value) ? emptyValuePlaceholderString : Number.secondsToString(value - this._baseStartTime, true);
 
-        case "duration":
-            return isNaN(value) ? emptyValuePlaceholderString : Number.secondsToString(value);
+        case "selfTime":
+        case "totalTime":
+        case "averageTime":
+            return isNaN(value) ? emptyValuePlaceholderString : Number.secondsToString(value, true);
         }
 
-        return WebInspector.DataGridNode.prototype.createCellContent.call(this, columnIdentifier);
+        return WebInspector.TimelineDataGridNode.prototype.createCellContent.call(this, columnIdentifier, cell);
     }
-}
-
-WebInspector.ScriptTimelineDataGridNode.prototype.__proto__ = WebInspector.DataGridNode.prototype;
+};

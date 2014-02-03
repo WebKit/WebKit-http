@@ -28,7 +28,7 @@ namespace WebCore {
 
 class HTMLTextAreaElement;
 
-class RenderTextControlMultiLine FINAL : public RenderTextControl {
+class RenderTextControlMultiLine final : public RenderTextControl {
 public:
     RenderTextControlMultiLine(HTMLTextAreaElement&, PassRef<RenderStyle>);
     virtual ~RenderTextControlMultiLine();
@@ -36,15 +36,15 @@ public:
     HTMLTextAreaElement& textAreaElement() const;
 
 private:
-    void element() const WTF_DELETED_FUNCTION;
+    void element() const = delete;
 
     virtual bool isTextArea() const { return true; }
 
-    virtual bool nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction) OVERRIDE;
+    virtual bool nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction) override;
 
     virtual float getAvgCharWidth(AtomicString family);
     virtual LayoutUnit preferredContentLogicalWidth(float charWidth) const;
-    virtual LayoutUnit computeControlLogicalHeight(LayoutUnit lineHeight, LayoutUnit nonContentHeight) const OVERRIDE;
+    virtual LayoutUnit computeControlLogicalHeight(LayoutUnit lineHeight, LayoutUnit nonContentHeight) const override;
     virtual int baselinePosition(FontBaseline, bool firstLine, LineDirectionMode, LinePositionMode = PositionOnContainingLine) const;
 
     virtual PassRef<RenderStyle> createInnerTextStyle(const RenderStyle* startStyle) const;

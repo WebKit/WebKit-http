@@ -43,6 +43,9 @@ WebInspector.Frame = function(id, name, securityOrigin, loaderIdentifier, mainRe
     this._parentFrame = null;
     this._isMainFrame = false;
 
+    this._domContentReadyEventTimestamp = NaN;
+    this._loadEventTimestamp = NaN;
+
     this._executionContextList = new WebInspector.ExecutionContextList;
 
     this.initialize(name, securityOrigin, loaderIdentifier, mainResource);
@@ -57,6 +60,7 @@ WebInspector.Frame.Event = {
     ProvisionalLoadStarted: "frame-provisional-load-started",
     ProvisionalLoadCommitted: "frame-provisional-load-committed",
     ProvisionalLoadCleared: "frame-provisional-load-cleared",
+    ProvisionalResourceWasAdded: "frame-provisional-resource-was-added",
     ResourceWasAdded: "frame-resource-was-added",
     ResourceWasRemoved: "frame-resource-was-removed",
     AllResourcesRemoved: "frame-all-resources-removed",
@@ -136,6 +140,9 @@ WebInspector.Frame.prototype = {
         this._securityOrigin = securityOrigin || null;
         this._loaderIdentifier = this._provisionalLoaderIdentifier;
         this._mainResource = this._provisionalMainResource;
+
+        this._domContentReadyEventTimestamp = NaN;
+        this._loadEventTimestamp = NaN;
 
         if (oldMainResource && this._mainResource !== oldMainResource)
             this._disassociateWithResource(oldMainResource);
@@ -254,6 +261,16 @@ WebInspector.Frame.prototype = {
         return this._childFrames;
     },
 
+    get domContentReadyEventTimestamp()
+    {
+        return this._domContentReadyEventTimestamp;
+    },
+
+    get loadEventTimestamp()
+    {
+        return this._loadEventTimestamp;
+    },
+
     isMainFrame: function()
     {
         return this._isMainFrame;
@@ -267,6 +284,16 @@ WebInspector.Frame.prototype = {
     unmarkAsMainFrame: function()
     {
         this._isMainFrame = false;
+    },
+
+    markDOMContentReadyEvent: function(timestamp)
+    {
+        this._domContentReadyEventTimestamp = timestamp || NaN;
+    },
+
+    markLoadEvent: function(timestamp)
+    {
+        this._loadEventTimestamp = timestamp || NaN;
     },
 
     isDetached: function()
@@ -399,7 +426,7 @@ WebInspector.Frame.prototype = {
 
         if (this._isProvisionalResource(resource)) {
             this._provisionalResourceCollection.addResource(resource);
-            // Provisional resources don't fire the ResourceWasAdded event.
+            this.dispatchEventToListeners(WebInspector.Frame.Event.ProvisionalResourceWasAdded, {resource: resource});
         } else {
             this._resourceCollection.addResource(resource);
             this.dispatchEventToListeners(WebInspector.Frame.Event.ResourceWasAdded, {resource: resource});

@@ -26,7 +26,7 @@
 #ifndef ScrollingStateStickyNode_h
 #define ScrollingStateStickyNode_h
 
-#if ENABLE(THREADED_SCROLLING) || USE(COORDINATED_GRAPHICS)
+#if ENABLE(ASYNC_SCROLLING) || USE(COORDINATED_GRAPHICS)
 
 #include "ScrollingConstraints.h"
 #include "ScrollingStateNode.h"
@@ -37,11 +37,11 @@ namespace WebCore {
 
 class StickyPositionViewportConstraints;
 
-class ScrollingStateStickyNode FINAL : public ScrollingStateNode {
+class ScrollingStateStickyNode final : public ScrollingStateNode {
 public:
-    static PassOwnPtr<ScrollingStateStickyNode> create(ScrollingStateTree*, ScrollingNodeID);
+    static PassOwnPtr<ScrollingStateStickyNode> create(ScrollingStateTree&, ScrollingNodeID);
 
-    virtual PassOwnPtr<ScrollingStateNode> clone();
+    virtual PassOwnPtr<ScrollingStateNode> clone(ScrollingStateTree&);
 
     virtual ~ScrollingStateStickyNode();
 
@@ -53,22 +53,20 @@ public:
     const StickyPositionViewportConstraints& viewportConstraints() const { return m_constraints; }
 
 private:
-    ScrollingStateStickyNode(ScrollingStateTree*, ScrollingNodeID);
-    ScrollingStateStickyNode(const ScrollingStateStickyNode&);
+    ScrollingStateStickyNode(ScrollingStateTree&, ScrollingNodeID);
+    ScrollingStateStickyNode(const ScrollingStateStickyNode&, ScrollingStateTree&);
 
-    virtual bool isStickyNode() const OVERRIDE { return true; }
+    virtual void syncLayerPositionForViewportRect(const LayoutRect& viewportRect) override;
 
-    virtual void syncLayerPositionForViewportRect(const LayoutRect& viewportRect) OVERRIDE;
-
-    virtual void dumpProperties(TextStream&, int indent) const OVERRIDE;
+    virtual void dumpProperties(TextStream&, int indent) const override;
 
     StickyPositionViewportConstraints m_constraints;
 };
 
-SCROLLING_STATE_NODE_TYPE_CASTS(ScrollingStateStickyNode, isStickyNode());
+SCROLLING_STATE_NODE_TYPE_CASTS(ScrollingStateStickyNode, nodeType() == StickyNode);
 
 } // namespace WebCore
 
-#endif // ENABLE(THREADED_SCROLLING) || USE(COORDINATED_GRAPHICS)
+#endif // ENABLE(ASYNC_SCROLLING) || USE(COORDINATED_GRAPHICS)
 
 #endif // ScrollingStateStickyNode_h

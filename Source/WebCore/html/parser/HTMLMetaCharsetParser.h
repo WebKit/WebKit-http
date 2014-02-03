@@ -39,8 +39,7 @@ class TextCodec;
 class HTMLMetaCharsetParser {
     WTF_MAKE_NONCOPYABLE(HTMLMetaCharsetParser); WTF_MAKE_FAST_ALLOCATED;
 public:
-    static OwnPtr<HTMLMetaCharsetParser> create() { return adoptPtr(new HTMLMetaCharsetParser()); }
-
+    HTMLMetaCharsetParser();
     ~HTMLMetaCharsetParser();
 
     // Returns true if done checking, regardless whether an encoding is found.
@@ -48,14 +47,12 @@ public:
 
     const TextEncoding& encoding() { return m_encoding; }
 
-    typedef Vector<pair<String, String>> AttributeList;
+    typedef Vector<std::pair<String, String>> AttributeList;
     // The returned encoding might not be valid.
     static TextEncoding encodingFromMetaAttributes(const AttributeList&
 );
 
 private:
-    HTMLMetaCharsetParser();
-
     bool processMeta();
     static String extractCharset(const String&);
 
@@ -65,7 +62,7 @@ private:
         Pragma,
     };
 
-    OwnPtr<HTMLTokenizer> m_tokenizer;
+    std::unique_ptr<HTMLTokenizer> m_tokenizer;
     OwnPtr<TextCodec> m_assumedCodec;
     SegmentedString m_input;
     HTMLToken m_token;

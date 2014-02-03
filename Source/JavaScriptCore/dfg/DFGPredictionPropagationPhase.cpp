@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2012, 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2011, 2012, 2013, 2014 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -164,11 +164,6 @@ private:
         case BitLShift:
         case BitURShift:
         case ArithIMul: {
-            changed |= setPrediction(SpecInt32);
-            break;
-        }
-            
-        case ValueToInt32: {
             changed |= setPrediction(SpecInt32);
             break;
         }
@@ -504,16 +499,14 @@ private:
         case CheckArray:
         case Arrayify:
         case ArrayifyToStructure:
-        case MovHint:
-        case MovHintAndCheck:
-        case ZombieHint:
         case CheckTierUpInLoop:
         case CheckTierUpAtReturn:
         case CheckTierUpAndOSREnter:
         case InvalidationPoint:
         case Int52ToValue:
         case Int52ToDouble:
-        case CheckInBounds: {
+        case CheckInBounds:
+        case ValueToInt32: {
             // This node should never be visible at this stage of compilation. It is
             // inserted by fixup(), which follows this phase.
             RELEASE_ASSERT_NOT_REACHED();
@@ -561,6 +554,8 @@ private:
         case Branch:
         case Switch:
         case Breakpoint:
+        case ProfileWillCall:
+        case ProfileDidCall:
         case CheckHasInstance:
         case ThrowReferenceError:
         case ForceOSRExit:
@@ -577,6 +572,7 @@ private:
         case VarInjectionWatchpoint:
         case AllocationProfileWatchpoint:
         case Phantom:
+        case Check:
         case PutGlobalVar:
         case CheckWatchdogTimer:
         case Unreachable:
@@ -585,6 +581,8 @@ private:
         case FunctionReentryWatchpoint:
         case TypedArrayWatchpoint:
         case ConstantStoragePointer:
+        case MovHint:
+        case ZombieHint:
             break;
             
         // This gets ignored because it already has a prediction.
@@ -743,6 +741,10 @@ private:
             }
             break;
         }
+            
+        case MovHint:
+            // Ignore these since they have no effect on in-DFG execution.
+            break;
             
         default:
             m_graph.voteChildren(node, VoteValue);

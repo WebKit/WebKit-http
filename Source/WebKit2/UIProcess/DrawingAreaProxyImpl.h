@@ -45,9 +45,7 @@ public:
 
     void paint(BackingStore::PlatformGraphicsContext, const WebCore::IntRect&, WebCore::Region& unpaintedRegion);
 
-#if USE(ACCELERATED_COMPOSITING)
     bool isInAcceleratedCompositingMode() const { return !m_layerTreeContext.isEmpty(); }
-#endif
 
     bool hasReceivedFirstUpdate() const { return m_hasReceivedFirstUpdate; }
 
@@ -55,12 +53,11 @@ private:
     // DrawingAreaProxy
     virtual void sizeDidChange();
     virtual void deviceScaleFactorDidChange();
-    virtual void layerHostingModeDidChange() OVERRIDE;
 
     virtual void setBackingStoreIsDiscardable(bool);
     virtual void waitForBackingStoreUpdateOnNextPaint();
 
-    // CoreIPC message handlers
+    // IPC message handlers
     virtual void update(uint64_t backingStoreStateID, const UpdateInfo&);
     virtual void didUpdateBackingStoreState(uint64_t backingStoreStateID, const UpdateInfo&, const LayerTreeContext&);
     virtual void enterAcceleratedCompositingMode(uint64_t backingStoreStateID, const LayerTreeContext&);
@@ -74,13 +71,9 @@ private:
     void sendUpdateBackingStoreState(RespondImmediatelyOrNot);
     void waitForAndDispatchDidUpdateBackingStoreState();
 
-#if USE(ACCELERATED_COMPOSITING)
     void enterAcceleratedCompositingMode(const LayerTreeContext&);
     void exitAcceleratedCompositingMode();
     void updateAcceleratedCompositingMode(const LayerTreeContext&);
-#else
-    bool isInAcceleratedCompositingMode() const { return false; }
-#endif
 
     void discardBackingStoreSoon();
     void discardBackingStore();
@@ -94,10 +87,8 @@ private:
     // whenever our state changes in a way that will require a new backing store to be allocated.
     uint64_t m_nextBackingStoreStateID;
 
-#if USE(ACCELERATED_COMPOSITING)
     // The current layer tree context.
     LayerTreeContext m_layerTreeContext;
-#endif
 
     // Whether we've sent a UpdateBackingStoreState message and are now waiting for a DidUpdateBackingStoreState message.
     // Used to throttle UpdateBackingStoreState messages so we don't send them faster than the Web process can handle.

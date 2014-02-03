@@ -62,10 +62,6 @@
 #include "CachedTextTrack.h"
 #endif
 
-#if ENABLE(CSS_SHADERS)
-#include "CachedShader.h"
-#endif
-
 #if ENABLE(RESOURCE_TIMING)
 #include "Performance.h"
 #endif
@@ -105,10 +101,6 @@ static CachedResource* createResource(CachedResource::Type type, ResourceRequest
 #if ENABLE(VIDEO_TRACK)
     case CachedResource::TextTrackResource:
         return new CachedTextTrack(request);
-#endif
-#if ENABLE(CSS_SHADERS)
-    case CachedResource::ShaderResource:
-        return new CachedShader(request);
 #endif
     }
     ASSERT_NOT_REACHED();
@@ -168,7 +160,7 @@ CachedResourceHandle<CachedImage> CachedResourceLoader::requestImage(CachedResou
         }
     }
     request.setDefer(clientDefersImage(request.resourceRequest().url()) ? CachedResourceRequest::DeferredByClient : CachedResourceRequest::NoDefer);
-    return static_cast<CachedImage*>(requestResource(CachedResource::ImageResource, request).get());
+    return toCachedImage(requestResource(CachedResource::ImageResource, request).get());
 }
 
 CachedResourceHandle<CachedFont> CachedResourceLoader::requestFont(CachedResourceRequest& request)
@@ -180,13 +172,6 @@ CachedResourceHandle<CachedFont> CachedResourceLoader::requestFont(CachedResourc
 CachedResourceHandle<CachedTextTrack> CachedResourceLoader::requestTextTrack(CachedResourceRequest& request)
 {
     return static_cast<CachedTextTrack*>(requestResource(CachedResource::TextTrackResource, request).get());
-}
-#endif
-
-#if ENABLE(CSS_SHADERS)
-CachedResourceHandle<CachedShader> CachedResourceLoader::requestShader(CachedResourceRequest& request)
-{
-    return static_cast<CachedShader*>(requestResource(CachedResource::ShaderResource, request).get());
 }
 #endif
 
@@ -279,9 +264,6 @@ bool CachedResourceLoader::checkInsecureContent(CachedResource::Type type, const
 #if ENABLE(VIDEO_TRACK)
     case CachedResource::TextTrackResource:
 #endif
-#if ENABLE(CSS_SHADERS)
-    case CachedResource::ShaderResource:
-#endif
     case CachedResource::RawResource:
     case CachedResource::ImageResource:
     case CachedResource::FontResource: {
@@ -333,9 +315,6 @@ bool CachedResourceLoader::canRequest(CachedResource::Type type, const URL& url,
 #if ENABLE(VIDEO_TRACK)
     case CachedResource::TextTrackResource:
 #endif
-#if ENABLE(CSS_SHADERS)
-    case CachedResource::ShaderResource:
-#endif
         if (options.requestOriginPolicy == RestrictToSameOrigin && !m_document->securityOrigin()->canRequest(url)) {
             printAccessDeniedMessage(url);
             return false;
@@ -370,10 +349,6 @@ bool CachedResourceLoader::canRequest(CachedResource::Type type, const URL& url,
                 return false;
         }
         break;
-#if ENABLE(CSS_SHADERS)
-    case CachedResource::ShaderResource:
-        // Since shaders are referenced from CSS Styles use the same rules here.
-#endif
     case CachedResource::CSSStyleSheet:
         if (!shouldBypassMainWorldContentSecurityPolicy && !m_document->contentSecurityPolicy()->allowStyleFromSource(url))
             return false;
@@ -399,8 +374,6 @@ bool CachedResourceLoader::canRequest(CachedResource::Type type, const URL& url,
         break;
 #if ENABLE(VIDEO_TRACK)
     case CachedResource::TextTrackResource:
-        // Cues aren't called out in the CPS spec yet, but they only work with a media element
-        // so use the media policy.
         if (!shouldBypassMainWorldContentSecurityPolicy && !m_document->contentSecurityPolicy()->allowMediaFromSource(url))
             return false;
         break;
@@ -470,7 +443,7 @@ CachedResourceHandle<CachedResource> CachedResourceLoader::requestResource(Cache
     switch (policy) {
     case Reload:
         memoryCache()->remove(resource.get());
-        // Fall through
+        FALLTHROUGH;
     case Load:
         resource = loadResource(type, request, request.charset());
         break;
@@ -713,7 +686,7 @@ void CachedResourceLoader::reloadImagesIfNotDeferred()
     DocumentResourceMap::iterator end = m_documentResources.end();
     for (DocumentResourceMap::iterator it = m_documentResources.begin(); it != end; ++it) {
         CachedResource* resource = it->value.get();
-        if (resource->type() == CachedResource::ImageResource && resource->stillNeedsLoad() && !clientDefersImage(resource->url()))
+        if (resource->isImage() && resource->stillNeedsLoad() && !clientDefersImage(resource->url()))
             const_cast<CachedResource*>(resource)->load(this, defaultCachedResourceOptions());
     }
 }
@@ -780,9 +753,9 @@ void CachedResourceLoader::loadDone(CachedResource* resource, bool shouldPerform
 // bookkeeping on CachedResources, so instead pseudo-GC them -- when the
 // reference count reaches 1, m_documentResources is the only reference, so
 // remove it from the map.
-void CachedResourceLoader::garbageCollectDocumentResourcesTimerFired(Timer<CachedResourceLoader>* timer)
+void CachedResourceLoader::garbageCollectDocumentResourcesTimerFired(Timer<CachedResourceLoader>& timer)
 {
-    ASSERT_UNUSED(timer, timer == &m_garbageCollectDocumentResourcesTimer);
+    ASSERT_UNUSED(timer, &timer == &m_garbageCollectDocumentResourcesTimer);
     garbageCollectDocumentResources();
 }
 
@@ -832,7 +805,7 @@ void CachedResourceLoader::preload(CachedResource::Type type, CachedResourceRequ
     // FIXME: We should consider adding a setting to toggle aggressive preloading behavior as opposed
     // to making this behavior specific to iOS.
 #if !PLATFORM(IOS)
-    bool hasRendering = m_document->body() && m_document->body()->renderer();
+    bool hasRendering = m_document->body() && m_document->renderView();
     bool canBlockParser = type == CachedResource::Script || type == CachedResource::CSSStyleSheet;
     if (!hasRendering && !canBlockParser) {
         // Don't preload subresources that can't block the parser before we have something to draw.

@@ -85,6 +85,14 @@ void BoxShape::getExcludedIntervals(LayoutUnit logicalTop, LayoutUnit logicalHei
         return;
     }
 
+    float topCornerMaxY = std::max<float>(marginBounds.topLeftCorner().maxY(), marginBounds.topRightCorner().maxY());
+    float bottomCornerMinY = std::min<float>(marginBounds.bottomLeftCorner().y(), marginBounds.bottomRightCorner().y());
+
+    if (y1 <= topCornerMaxY && y2 >= bottomCornerMinY) {
+        result.append(LineSegment(rect.x(), rect.maxX()));
+        return;
+    }
+
     float x1 = rect.maxX();
     float x2 = rect.x();
     float minXIntercept;
@@ -140,7 +148,7 @@ void BoxShape::getIncludedIntervals(LayoutUnit logicalTop, LayoutUnit logicalHei
     result.append(LineSegment(x1, x2));
 }
 
-bool BoxShape::firstIncludedIntervalLogicalTop(LayoutUnit minLogicalIntervalTop, const LayoutSize&, LayoutUnit& result) const
+bool BoxShape::firstIncludedIntervalLogicalTop(LayoutUnit minLogicalIntervalTop, const FloatSize&, LayoutUnit& result) const
 {
     // FIXME: this method is only a stub, https://bugs.webkit.org/show_bug.cgi?id=124606.
 

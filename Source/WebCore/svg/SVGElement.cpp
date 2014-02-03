@@ -733,13 +733,13 @@ void SVGElement::attributeChanged(const QualifiedName& name, const AtomicString&
 
 void SVGElement::synchronizeAnimatedSVGAttribute(const QualifiedName& name) const
 {
-    if (!elementData() || !elementData()->m_animatedSVGAttributesAreDirty)
+    if (!elementData() || !elementData()->animatedSVGAttributesAreDirty())
         return;
 
     SVGElement* nonConstThis = const_cast<SVGElement*>(this);
     if (name == anyQName()) {
         nonConstThis->localAttributeToPropertyMap().synchronizeProperties(nonConstThis);
-        elementData()->m_animatedSVGAttributesAreDirty = false;
+        elementData()->setAnimatedSVGAttributesAreDirty(false);
     } else
         nonConstThis->localAttributeToPropertyMap().synchronizeProperty(nonConstThis, name);
 }
@@ -1036,14 +1036,14 @@ void SVGElement::buildPendingResourcesIfNeeded()
 
     SVGDocumentExtensions* extensions = document().accessSVGExtensions();
     String resourceId = getIdAttribute();
-    if (!extensions->hasPendingResource(resourceId))
+    if (!extensions->isIdOfPendingResource(resourceId))
         return;
 
     // Mark pending resources as pending for removal.
     extensions->markPendingResourcesForRemoval(resourceId);
 
     // Rebuild pending resources for each client of a pending resource that is being removed.
-    while (Element* clientElement = extensions->removeElementFromPendingResourcesForRemoval(resourceId)) {
+    while (Element* clientElement = extensions->removeElementFromPendingResourcesForRemovalMap(resourceId)) {
         ASSERT(clientElement->hasPendingResources());
         if (clientElement->hasPendingResources()) {
             clientElement->buildPendingResource();

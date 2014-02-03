@@ -28,6 +28,7 @@
 
 #include "ExceptionCodePlaceholder.h"
 #include "Node.h"
+#include "RenderElement.h"
 #include <wtf/Assertions.h>
 
 namespace WebCore {
@@ -45,9 +46,9 @@ void RemoveNodeCommand::doApply()
 {
     ContainerNode* parent = m_node->parentNode();
     if (!parent || (m_shouldAssumeContentIsAlwaysEditable == DoNotAssumeContentIsAlwaysEditable
-        && !parent->isContentEditable(Node::UserSelectAllIsAlwaysNonEditable) && parent->attached()))
+        && !parent->isContentEditable(Node::UserSelectAllIsAlwaysNonEditable) && parent->renderer()))
         return;
-    ASSERT(parent->isContentEditable(Node::UserSelectAllIsAlwaysNonEditable) || !parent->attached());
+    ASSERT(parent->isContentEditable(Node::UserSelectAllIsAlwaysNonEditable) || !parent->renderer());
 
     m_parent = parent;
     m_refChild = m_node->nextSibling();
@@ -59,7 +60,7 @@ void RemoveNodeCommand::doUnapply()
 {
     RefPtr<ContainerNode> parent = m_parent.release();
     RefPtr<Node> refChild = m_refChild.release();
-    if (!parent || !parent->rendererIsEditable())
+    if (!parent || !parent->hasEditableStyle())
         return;
 
     parent->insertBefore(m_node.get(), refChild.get(), IGNORE_EXCEPTION);

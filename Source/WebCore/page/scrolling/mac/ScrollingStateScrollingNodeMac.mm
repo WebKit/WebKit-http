@@ -31,67 +31,9 @@
 #include "ScrollbarThemeMac.h"
 #include "ScrollingStateTree.h"
 
-#if ENABLE(THREADED_SCROLLING)
+#if ENABLE(ASYNC_SCROLLING)
 
 namespace WebCore {
-
-PlatformLayer* ScrollingStateScrollingNode::counterScrollingPlatformLayer() const
-{
-    return m_counterScrollingPlatformLayer.get();
-}
-
-void ScrollingStateScrollingNode::setCounterScrollingLayer(GraphicsLayer* graphicsLayer)
-{
-    PlatformLayer* platformScrollLayer = graphicsLayer ? graphicsLayer->platformLayer() : nil;
-    if (m_counterScrollingPlatformLayer == platformScrollLayer)
-        return;
-
-    m_counterScrollingPlatformLayer = platformScrollLayer;
-    m_counterScrollingLayer = graphicsLayer;
-
-    setPropertyChanged(CounterScrollingLayer);
-    if (m_scrollingStateTree)
-        m_scrollingStateTree->setHasChangedProperties(true);
-}
-
-PlatformLayer* ScrollingStateScrollingNode::headerPlatformLayer() const
-{
-    return m_headerPlatformLayer.get();
-}
-
-void ScrollingStateScrollingNode::setHeaderLayer(GraphicsLayer* graphicsLayer)
-{
-    PlatformLayer* platformHeaderLayer = graphicsLayer ? graphicsLayer->platformLayer() : nil;
-    if (m_headerPlatformLayer == platformHeaderLayer)
-        return;
-
-    m_headerPlatformLayer = platformHeaderLayer;
-    m_headerLayer = graphicsLayer;
-
-    setPropertyChanged(HeaderLayer);
-    if (m_scrollingStateTree)
-        m_scrollingStateTree->setHasChangedProperties(true);
-}
-
-PlatformLayer* ScrollingStateScrollingNode::footerPlatformLayer() const
-{
-    return m_footerPlatformLayer.get();
-}
-
-void ScrollingStateScrollingNode::setFooterLayer(GraphicsLayer* graphicsLayer)
-{
-    PlatformLayer* platformFooterLayer = graphicsLayer ? graphicsLayer->platformLayer() : nil;
-    if (m_footerPlatformLayer == platformFooterLayer)
-        return;
-
-    m_footerPlatformLayer = platformFooterLayer;
-    m_footerLayer = graphicsLayer;
-
-    setPropertyChanged(FooterLayer);
-    if (m_scrollingStateTree)
-        m_scrollingStateTree->setHasChangedProperties(true);
-}
-
 void ScrollingStateScrollingNode::setScrollbarPaintersFromScrollbars(Scrollbar* verticalScrollbar, Scrollbar* horizontalScrollbar)
 {
     ScrollbarTheme* scrollbarTheme = ScrollbarTheme::theme();
@@ -111,10 +53,8 @@ void ScrollingStateScrollingNode::setScrollbarPaintersFromScrollbars(Scrollbar* 
     m_horizontalScrollbarPainter = horizontalPainter;
 
     setPropertyChanged(PainterForScrollbar);
-    if (m_scrollingStateTree)
-        m_scrollingStateTree->setHasChangedProperties(true);
 }
 
 } // namespace WebCore
 
-#endif // ENABLE(THREADED_SCROLLING)
+#endif // ENABLE(ASYNC_SCROLLING)

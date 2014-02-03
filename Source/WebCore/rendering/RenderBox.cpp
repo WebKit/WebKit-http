@@ -28,6 +28,7 @@
 #include "Chrome.h"
 #include "ChromeClient.h"
 #include "Document.h"
+#include "EventHandler.h"
 #include "FloatQuad.h"
 #include "Frame.h"
 #include "FrameView.h"
@@ -48,6 +49,7 @@
 #include "RenderInline.h"
 #include "RenderIterator.h"
 #include "RenderLayer.h"
+#include "RenderLayerCompositor.h"
 #include "RenderRegion.h"
 #include "RenderTableCell.h"
 #include "RenderTheme.h"
@@ -57,10 +59,6 @@
 #include <algorithm>
 #include <math.h>
 #include <wtf/StackStats.h>
-
-#if USE(ACCELERATED_COMPOSITING)
-#include "RenderLayerCompositor.h"
-#endif
 
 #if PLATFORM(IOS)
 #include "Settings.h"
@@ -218,6 +216,9 @@ void RenderBox::clearRenderBoxRegionInfo()
 
 void RenderBox::willBeDestroyed()
 {
+    if (frame().eventHandler().autoscrollRenderer() == this)
+        frame().eventHandler().stopAutoscrollTimer(true);
+
     clearOverrideSize();
     clearContainingBlockOverrideSize();
 
@@ -271,10 +272,8 @@ void RenderBox::styleWillChange(StyleDifference diff, const RenderStyle& newStyl
         // the canvas. Issue full repaint, when our style changes substantially.
         if (diff >= StyleDifferenceRepaint && (isRoot() || isBody())) {
             view().repaintRootContents();
-#if USE(ACCELERATED_COMPOSITING)
             if (oldStyle->hasEntirelyFixedBackground() != newStyle.hasEntirelyFixedBackground())
                 view().compositor().rootFixedBackgroundsChanged();
-#endif
         }
         
         // When a layout hint happens and an object's position style changes, we have to do a layout
@@ -376,8 +375,8 @@ void RenderBox::styleDidChange(StyleDifference diff, const RenderStyle* oldStyle
         const Pagination& pagination = view().frameView().pagination();
         if (viewChangedWritingMode && pagination.mode != Pagination::Unpaginated) {
             viewStyle.setColumnStylesFromPaginationMode(pagination.mode);
-            if (view().hasColumns())
-                view().updateColumnInfoFromStyle(&viewStyle);
+            if (view().hasColumns() || view().multiColumnFlowThread())
+                view().updateColumnProgressionFromStyle(&viewStyle);
         }
     }
 
@@ -756,14 +755,23 @@ int RenderBox::instrinsicScrollbarLogicalWidth() const
     return 0;
 }
 
-bool RenderBox::scroll(ScrollDirection direction, ScrollGranularity granularity, float multiplier, Element** stopElement)
+bool RenderBox::scrollLayer(ScrollDirection direction, ScrollGranularity granularity, float multiplier, Element** stopElement)
 {
-    RenderLayer* l = layer();
-    if (l && l->scroll(direction, granularity, multiplier)) {
+    RenderLayer* boxLayer = layer();
+    if (boxLayer && boxLayer->scroll(direction, granularity, multiplier)) {
         if (stopElement)
             *stopElement = element();
+
         return true;
     }
+
+    return false;
+}
+
+bool RenderBox::scroll(ScrollDirection direction, ScrollGranularity granularity, float multiplier, Element** stopElement)
+{
+    if (scrollLayer(direction, granularity, multiplier, stopElement))
+        return true;
 
     if (stopElement && *stopElement && *stopElement == element())
         return true;
@@ -771,6 +779,27 @@ bool RenderBox::scroll(ScrollDirection direction, ScrollGranularity granularity,
     RenderBlock* b = containingBlock();
     if (b && !b->isRenderView())
         return b->scroll(direction, granularity, multiplier, stopElement);
+
+    return false;
+}
+
+bool RenderBox::scrollWithWheelEventLocation(ScrollDirection direction, ScrollGranularity granularity, float multiplier, RenderBox* startBox, Element** stopElement, IntPoint absolutePoint)
+{
+    if (scrollLayer(direction, granularity, multiplier, stopElement))
+        return true;
+
+    if (stopElement && *stopElement && *stopElement == element())
+        return true;
+
+    RenderBlock* nextScrollBlock = containingBlock();
+    if (nextScrollBlock && nextScrollBlock->isRenderNamedFlowThread()) {
+        ASSERT(startBox);
+        nextScrollBlock = toRenderFlowThread(nextScrollBlock)->regionFromAbsolutePointAndBox(absolutePoint, *startBox);
+    }
+
+    if (nextScrollBlock && !nextScrollBlock->isRenderView())
+        return nextScrollBlock->scrollWithWheelEventLocation(direction, granularity, multiplier, startBox, stopElement, absolutePoint);
+
     return false;
 }
 
@@ -821,7 +850,7 @@ bool RenderBox::canBeProgramaticallyScrolled() const
     if (scrollsOverflow() && hasScrollableOverflow)
         return true;
 
-    return element() && element()->rendererIsEditable();
+    return element() && element()->hasEditableStyle();
 }
 
 bool RenderBox::usesCompositedScrolling() const
@@ -1312,10 +1341,8 @@ static bool isCandidateForOpaquenessTest(const RenderBox& childBox)
     if (!childBox.width() || !childBox.height())
         return false;
     if (RenderLayer* childLayer = childBox.layer()) {
-#if USE(ACCELERATED_COMPOSITING)
         if (childLayer->isComposited())
             return false;
-#endif
         // FIXME: Deal with z-index.
         if (!childStyle.hasAutoZIndex())
             return false;
@@ -1506,7 +1533,6 @@ void RenderBox::paintFillLayer(const PaintInfo& paintInfo, const Color& c, const
     paintFillLayerExtended(paintInfo, c, fillLayer, rect, bleedAvoidance, 0, LayoutSize(), op, backgroundObject);
 }
 
-#if USE(ACCELERATED_COMPOSITING)
 static bool layersUseImage(WrappedImagePtr image, const FillLayer* layers)
 {
     for (const FillLayer* curLayer = layers; curLayer; curLayer = curLayer->next()) {
@@ -1516,7 +1542,6 @@ static bool layersUseImage(WrappedImagePtr image, const FillLayer* layers)
 
     return false;
 }
-#endif
 
 void RenderBox::imageChanged(WrappedImagePtr image, const IntRect*)
 {
@@ -1533,8 +1558,6 @@ void RenderBox::imageChanged(WrappedImagePtr image, const IntRect*)
     if (!didFullRepaint)
         repaintLayerRectsForImage(image, style().maskLayers(), false);
 
-
-#if USE(ACCELERATED_COMPOSITING)
     if (!isComposited())
         return;
 
@@ -1542,7 +1565,6 @@ void RenderBox::imageChanged(WrappedImagePtr image, const IntRect*)
         layer()->contentChanged(MaskImageChanged);
     if (layersUseImage(image, style().backgroundLayers()))
         layer()->contentChanged(BackgroundImageChanged);
-#endif
 }
 
 bool RenderBox::repaintLayerRectsForImage(WrappedImagePtr image, const FillLayer* layers, bool drawingBackground)
@@ -1553,8 +1575,8 @@ bool RenderBox::repaintLayerRectsForImage(WrappedImagePtr image, const FillLayer
     for (const FillLayer* curLayer = layers; curLayer; curLayer = curLayer->next()) {
         if (curLayer->image() && image == curLayer->image()->data() && curLayer->image()->canRender(this, style().effectiveZoom())) {
             // Now that we know this image is being used, compute the renderer and the rect if we haven't already.
+            bool drawingRootBackground = drawingBackground && (isRoot() || (isBody() && !document().documentElement()->renderer()->hasBackground()));
             if (!layerRenderer) {
-                bool drawingRootBackground = drawingBackground && (isRoot() || (isBody() && !document().documentElement()->renderer()->hasBackground()));
                 if (drawingRootBackground) {
                     layerRenderer = &view();
 
@@ -1580,7 +1602,26 @@ bool RenderBox::repaintLayerRectsForImage(WrappedImagePtr image, const FillLayer
                 return true;
             }
             
-            layerRenderer->repaintRectangle(geometry.destRect());
+            IntRect rectToRepaint = geometry.destRect();
+            bool shouldClipToLayer = true;
+
+            // If this is the root background layer, we may need to extend the repaintRect if the FrameView has an
+            // extendedBackground. We should only extend the rect if it is already extending the full width or height
+            // of the rendererRect.
+            if (drawingRootBackground && view().frameView().hasExtendedBackground()) {
+                shouldClipToLayer = false;
+                IntRect extendedBackgroundRect = view().frameView().extendedBackgroundRect();
+                if (rectToRepaint.width() == rendererRect.width()) {
+                    rectToRepaint.move(extendedBackgroundRect.x(), 0);
+                    rectToRepaint.setWidth(extendedBackgroundRect.width());
+                }
+                if (rectToRepaint.height() == rendererRect.height()) {
+                    rectToRepaint.move(0, extendedBackgroundRect.y());
+                    rectToRepaint.setHeight(extendedBackgroundRect.height());
+                }
+            }
+
+            layerRenderer->repaintRectangle(rectToRepaint, false, shouldClipToLayer);
             if (geometry.destRect() == rendererRect)
                 return true;
         }
@@ -2837,7 +2878,7 @@ LayoutUnit RenderBox::computeReplacedLogicalWidthUsing(Length logicalWidth) cons
             if (cw > 0 || (!cw && (containerLogicalWidth.isFixed() || containerLogicalWidth.isPercent())))
                 return adjustContentBoxLogicalWidthForBoxSizing(minimumValueForLength(logicalWidth, cw));
         }
-        // fall through
+        FALLTHROUGH;
         case Intrinsic:
         case MinIntrinsic:
         case Auto:
@@ -2929,33 +2970,6 @@ LayoutUnit RenderBox::availableLogicalHeight(AvailableLogicalHeightType heightTy
     return constrainLogicalHeightByMinMax(availableLogicalHeightUsing(style().logicalHeight(), heightType));
 }
 
-#if PLATFORM(IOS)
-static inline int customContainingBlockWidth(const RenderView& view, const RenderBox& containingBlockBox)
-{
-    return view.frameView().customFixedPositionLayoutRect().width() - containingBlockBox.borderLeft() - containingBlockBox.borderRight() - containingBlockBox.verticalScrollbarWidth();
-}
-
-static inline int customContainingBlockHeight(const RenderView& view, const RenderBox& containingBlockBox)
-{
-    return view.frameView().customFixedPositionLayoutRect().height() - containingBlockBox.borderTop() - containingBlockBox.borderBottom() - containingBlockBox.horizontalScrollbarHeight();
-}
-
-static int customContainingBlockLogicalWidth(const RenderStyle& style, const RenderView& view, const RenderBox& containingBlockBox)
-{
-    return style.isHorizontalWritingMode() ? customContainingBlockWidth(view, containingBlockBox) : customContainingBlockHeight(view, containingBlockBox);
-}
-
-static int customContainingBlockLogicalHeight(const RenderStyle& style, const RenderView& view, const RenderBox& containingBlockBox)
-{
-    return style.isHorizontalWritingMode() ? customContainingBlockHeight(view, containingBlockBox) : customContainingBlockWidth(view, containingBlockBox);
-}
-
-static inline int customContainingBlockAvailableLogicalHeight(const RenderStyle& style, const RenderView& view)
-{
-    return style.isHorizontalWritingMode() ? view.frameView().customFixedPositionLayoutRect().height() : view.frameView().customFixedPositionLayoutRect().width();
-}
-#endif
-
 LayoutUnit RenderBox::availableLogicalHeightUsing(const Length& h, AvailableLogicalHeightType heightType) const
 {
     // We need to stop here, since we don't want to increase the height of the table
@@ -2968,21 +2982,9 @@ LayoutUnit RenderBox::availableLogicalHeightUsing(const Length& h, AvailableLogi
     }
 
     if (h.isPercent() && isOutOfFlowPositioned() && !isRenderFlowThread()) {
-#if PLATFORM(IOS)
-        RenderBlock* containingBlock = this->containingBlock();
-        // If we're fixed, and our container is the RenderView, use the custom fixed position rect for sizing.
-        if (containingBlock->isRenderView()) {
-            RenderView& view = toRenderView(*containingBlock);
-            if (view.hasCustomFixedPosition(*this))
-                return adjustContentBoxLogicalHeightForBoxSizing(valueForLength(h, customContainingBlockAvailableLogicalHeight(containingBlock->style(), view)));
-        }
-
-        return adjustContentBoxLogicalHeightForBoxSizing(valueForLength(h, containingBlock->availableLogicalHeight(heightType)));
-#else
         // FIXME: This is wrong if the containingBlock has a perpendicular writing mode.
         LayoutUnit availableHeight = containingBlockLogicalHeightForPositioned(containingBlock());
         return adjustContentBoxLogicalHeightForBoxSizing(valueForLength(h, availableHeight));
-#endif
     }
 
     LayoutUnit heightIncludingScrollbar = computeContentAndScrollbarLogicalHeightUsing(h);
@@ -3037,27 +3039,21 @@ void RenderBox::computeAndSetBlockDirectionMargins(const RenderBlock* containing
 
 LayoutUnit RenderBox::containingBlockLogicalWidthForPositioned(const RenderBoxModelObject* containingBlock, RenderRegion* region, bool checkForPerpendicularWritingMode) const
 {
-    // Container for position:fixed is the frame.
-    const FrameView& frameView = view().frameView();
-    if (fixedElementLaysOutRelativeToFrame(frameView))
-        return (view().isHorizontalWritingMode() ? frameView.visibleWidth() : frameView.visibleHeight()) / frameView.frame().frameScaleFactor();
-
     if (checkForPerpendicularWritingMode && containingBlock->isHorizontalWritingMode() != isHorizontalWritingMode())
         return containingBlockLogicalHeightForPositioned(containingBlock, false);
 
     if (containingBlock->isBox()) {
+        bool isFixedPosition = style().position() == FixedPosition;
+
         RenderFlowThread* flowThread = flowThreadContainingBlock();
         if (!flowThread) {
-#if PLATFORM(IOS)
-            if (view().hasCustomFixedPosition(*this)) {
-                const RenderBox& containingBlockBox = toRenderBox(*containingBlock);
-                return customContainingBlockLogicalWidth(containingBlockBox.style(), &view(), containingBlockBox);
-            }
-#endif
+            if (isFixedPosition && containingBlock->isRenderView())
+                return toRenderView(containingBlock)->clientLogicalWidthForFixedPosition();
+
             return toRenderBox(containingBlock)->clientLogicalWidth();
         }
 
-        if (containingBlock->isRenderNamedFlowThread() && style().position() == FixedPosition)
+        if (isFixedPosition && containingBlock->isRenderNamedFlowThread())
             return containingBlock->view().clientLogicalWidth();
 
         const RenderBlock* cb = toRenderBlock(containingBlock);
@@ -3103,23 +3099,20 @@ LayoutUnit RenderBox::containingBlockLogicalWidthForPositioned(const RenderBoxMo
 
 LayoutUnit RenderBox::containingBlockLogicalHeightForPositioned(const RenderBoxModelObject* containingBlock, bool checkForPerpendicularWritingMode) const
 {
-    const FrameView& frameView = view().frameView();
-    if (fixedElementLaysOutRelativeToFrame(frameView))
-        return (view().isHorizontalWritingMode() ? frameView.visibleHeight() : frameView.visibleWidth()) / frameView.frame().frameScaleFactor();
-
     if (checkForPerpendicularWritingMode && containingBlock->isHorizontalWritingMode() != isHorizontalWritingMode())
         return containingBlockLogicalWidthForPositioned(containingBlock, 0, false);
 
     if (containingBlock->isBox()) {
-#if PLATFORM(IOS)
-        if (view().hasCustomFixedPosition(*this))
-            return customContainingBlockLogicalHeight(style(), view(), toRenderBox(*containingBlock));
-#endif
-        const RenderBlock* cb = toRenderBlock(containingBlock);
+        bool isFixedPosition = style().position() == FixedPosition;
+
+        if (isFixedPosition && containingBlock->isRenderView())
+            return toRenderView(containingBlock)->clientLogicalHeightForFixedPosition();
+
+        const RenderBlock* cb = containingBlock->isRenderBlock() ? toRenderBlock(containingBlock) : containingBlock->containingBlock();
         LayoutUnit result = cb->clientLogicalHeight();
         RenderFlowThread* flowThread = flowThreadContainingBlock();
         if (flowThread && containingBlock->isRenderFlowThread() && flowThread->isHorizontalWritingMode() == containingBlock->isHorizontalWritingMode()) {
-            if (containingBlock->isRenderNamedFlowThread() && style().position() == FixedPosition)
+            if (containingBlock->isRenderNamedFlowThread() && isFixedPosition)
                 return containingBlock->view().clientLogicalHeight();
             return toRenderFlowThread(containingBlock)->contentLogicalHeightOfFirstRegion();
         }
@@ -3823,7 +3816,7 @@ void RenderBox::computePositionedLogicalWidthReplaced(LogicalExtentComputedValue
      * 1. The used value of 'width' is determined as for inline replaced
      *    elements.
     \*-----------------------------------------------------------------------*/
-    // NOTE: This value of width is FINAL in that the min/max width calculations
+    // NOTE: This value of width is final in that the min/max width calculations
     // are dealt with in computeReplacedWidth().  This means that the steps to produce
     // correct max/min in the non-replaced version, are not necessary.
     computedValues.m_extent = computeReplacedLogicalWidth() + borderAndPaddingLogicalWidth();
@@ -3987,7 +3980,7 @@ void RenderBox::computePositionedLogicalHeightReplaced(LogicalExtentComputedValu
      * 1. The used value of 'height' is determined as for inline replaced
      *    elements.
     \*-----------------------------------------------------------------------*/
-    // NOTE: This value of height is FINAL in that the min/max height calculations
+    // NOTE: This value of height is final in that the min/max height calculations
     // are dealt with in computeReplacedHeight().  This means that the steps to produce
     // correct max/min in the non-replaced version, are not necessary.
     computedValues.m_extent = computeReplacedLogicalHeight() + borderAndPaddingLogicalHeight();
@@ -4332,22 +4325,8 @@ void RenderBox::addLayoutOverflow(const LayoutRect& rect)
         // Overflow is in the block's coordinate space and thus is flipped for horizontal-bt and vertical-rl 
         // writing modes.  At this stage that is actually a simplification, since we can treat horizontal-tb/bt as the same
         // and vertical-lr/rl as the same.
-        bool hasTopOverflow = !style().isLeftToRightDirection() && !isHorizontalWritingMode();
-        bool hasLeftOverflow = !style().isLeftToRightDirection() && isHorizontalWritingMode();
-        if (isFlexibleBox() && style().isReverseFlexDirection()) {
-            RenderFlexibleBox* flexibleBox = toRenderFlexibleBox(this);
-            if (flexibleBox->isHorizontalFlow())
-                hasLeftOverflow = true;
-            else
-                hasTopOverflow = true;
-        }
-
-        if (hasColumns() && style().columnProgression() == ReverseColumnProgression) {
-            if (isHorizontalWritingMode() ^ !style().hasInlineColumnAxis())
-                hasLeftOverflow = !hasLeftOverflow;
-            else
-                hasTopOverflow = !hasTopOverflow;
-        }
+        bool hasTopOverflow = isTopLayoutOverflowAllowed();
+        bool hasLeftOverflow = isLeftLayoutOverflowAllowed();
 
         if (!hasTopOverflow)
             overflowRect.shiftYEdgeTo(std::max(overflowRect.y(), clientBox.y()));
@@ -4461,7 +4440,7 @@ bool RenderBox::isUnsplittableForPagination() const
     return isReplaced() || hasUnsplittableScrollingOverflow() || (parent() && isWritingModeRoot())
         // FIXME: Treat multi-column elements as unsplittable for now. Remove once we implement the correct
         // fragmentation model for multicolumn.
-        || isRenderMultiColumnBlock();
+        || isMultiColumnBlockFlow();
 }
 
 LayoutUnit RenderBox::lineHeight(bool /*firstLine*/, LineDirectionMode direction, LinePositionMode /*linePositionMode*/) const
@@ -4485,14 +4464,11 @@ int RenderBox::baselinePosition(FontBaseline baselineType, bool /*firstLine*/, L
 
 RenderLayer* RenderBox::enclosingFloatPaintingLayer() const
 {
-    const RenderElement* curr = this;
-    while (curr) {
-        RenderLayer* layer = curr->hasLayer() && curr->isBox() ? toRenderBox(curr)->layer() : 0;
-        if (layer && layer->isSelfPaintingLayer())
-            return layer;
-        curr = curr->parent();
+    for (auto& box : lineageOfType<RenderBox>(*this)) {
+        if (box.layer() && box.layer()->isSelfPaintingLayer())
+            return box.layer();
     }
-    return 0;
+    return nullptr;
 }
 
 LayoutRect RenderBox::logicalVisualOverflowRectForPropagation(RenderStyle* parentStyle) const

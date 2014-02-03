@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Adobe Systems Incorporated. All rights reserved.
+ * Copyright (C) 2012, 2013 Adobe Systems Incorporated. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,6 +32,7 @@
 
 #include "BasicShapes.h"
 #include "Path.h"
+#include "RenderStyleConstants.h"
 #include <wtf/OwnPtr.h>
 #include <wtf/PassOwnPtr.h>
 #include <wtf/RefCounted.h>
@@ -42,8 +43,9 @@ namespace WebCore {
 class ClipPathOperation : public RefCounted<ClipPathOperation> {
 public:
     enum OperationType {
-        REFERENCE,
-        SHAPE
+        Reference,
+        Shape,
+        Box
     };
 
     virtual ~ClipPathOperation() { }
@@ -74,7 +76,7 @@ public:
     const String& fragment() const { return m_fragment; }
 
 private:
-    virtual bool operator==(const ClipPathOperation& o) const OVERRIDE
+    virtual bool operator==(const ClipPathOperation& o) const override
     {
         if (!isSameType(o))
             return false;
@@ -83,7 +85,7 @@ private:
     }
 
     ReferenceClipPathOperation(const String& url, const String& fragment)
-        : ClipPathOperation(REFERENCE)
+        : ClipPathOperation(Reference)
         , m_url(url)
         , m_fragment(fragment)
     {
@@ -102,17 +104,19 @@ public:
 
     const BasicShape* basicShape() const { return m_shape.get(); }
     WindRule windRule() const { return m_shape->windRule(); }
-    const Path& path(const FloatRect& boundingRect)
+    const Path pathForReferenceRect(const FloatRect& boundingRect) const
     {
         ASSERT(m_shape);
-        m_path.clear();
-        m_path = adoptPtr(new Path);
-        m_shape->path(*m_path, boundingRect);
-        return *m_path;
+        Path path;
+        m_shape->path(path, boundingRect);
+        return path;
     }
 
+    void setReferenceBox(LayoutBox referenceBox) { m_referenceBox = referenceBox; }
+    LayoutBox referenceBox() const { return m_referenceBox; }
+
 private:
-    virtual bool operator==(const ClipPathOperation& o) const OVERRIDE
+    virtual bool operator==(const ClipPathOperation& o) const override
     {
         if (!isSameType(o))
             return false;
@@ -121,14 +125,57 @@ private:
     }
 
     explicit ShapeClipPathOperation(PassRefPtr<BasicShape> shape)
-        : ClipPathOperation(SHAPE)
+        : ClipPathOperation(Shape)
         , m_shape(shape)
+        , m_referenceBox(BoxMissing)
     {
     }
 
     RefPtr<BasicShape> m_shape;
-    OwnPtr<Path> m_path;
+    LayoutBox m_referenceBox;
 };
-}
+
+class BoxClipPathOperation : public ClipPathOperation {
+public:
+    static PassRefPtr<BoxClipPathOperation> create(LayoutBox referenceBox)
+    {
+        return adoptRef(new BoxClipPathOperation(referenceBox));
+    }
+
+    const Path pathForReferenceRect(const FloatRect&) const
+    {
+        Path path;
+        // FIXME: Create clipping path from <box>.
+        // https://bugs.webkit.org/show_bug.cgi?id=126205
+        return path;
+    }
+    LayoutBox referenceBox() const { return m_referenceBox; }
+
+private:
+    virtual bool operator==(const ClipPathOperation& o) const override
+    {
+        if (!isSameType(o))
+            return false;
+        const BoxClipPathOperation* other = static_cast<const BoxClipPathOperation*>(&o);
+        return m_referenceBox == other->m_referenceBox;
+    }
+
+    explicit BoxClipPathOperation(LayoutBox referenceBox)
+        : ClipPathOperation(Box)
+        , m_referenceBox(referenceBox)
+    {
+    }
+
+    LayoutBox m_referenceBox;
+};
+
+#define CLIP_PATH_OPERATION_CASTS(ToValueTypeName, predicate) \
+    TYPE_CASTS_BASE(ToValueTypeName, ClipPathOperation, operation, operation->type() == ClipPathOperation::predicate, operation.type() == ClipPathOperation::predicate)
+
+CLIP_PATH_OPERATION_CASTS(ReferenceClipPathOperation, Reference)
+CLIP_PATH_OPERATION_CASTS(ShapeClipPathOperation, Shape)
+CLIP_PATH_OPERATION_CASTS(BoxClipPathOperation, Box)
+
+} // namespace WebCore
 
 #endif // ClipPathOperation_h

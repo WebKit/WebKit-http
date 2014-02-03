@@ -49,15 +49,10 @@ namespace WebCore {
 
 DEFINE_DEBUG_ONLY_GLOBAL(WTF::RefCountedLeakCounter, cachedPageCounter, ("CachedPage"));
 
-PassOwnPtr<CachedPage> CachedPage::create(Page& page)
-{
-    return adoptPtr(new CachedPage(page));
-}
-
 CachedPage::CachedPage(Page& page)
     : m_timeStamp(monotonicallyIncreasingTime())
     , m_expirationTime(m_timeStamp + page.settings().backForwardCacheExpirationInterval())
-    , m_cachedMainFrame(CachedFrame::create(page.mainFrame()))
+    , m_cachedMainFrame(std::make_unique<CachedFrame>(page.mainFrame()))
     , m_needStyleRecalcForVisitedLinks(false)
     , m_needsFullStyleRecalc(false)
     , m_needsCaptionPreferencesChanged(false)
@@ -106,11 +101,9 @@ void CachedPage::restore(Page& page)
             frame->document()->visitedLinkState().invalidateStyleForAllLinks();
     }
 
-#if USE(ACCELERATED_COMPOSITING)
     if (m_needsDeviceScaleChanged) {
         page.mainFrame().deviceOrPageScaleFactorChanged();
     }
-#endif
 
     if (m_needsFullStyleRecalc)
         page.setNeedsRecalcStyleInAllFrames();

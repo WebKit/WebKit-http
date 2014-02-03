@@ -50,7 +50,7 @@ namespace WebCore {
 using namespace HTMLNames;
 
 // FIXME: Share more code with PluginDocumentParser.
-class MediaDocumentParser FINAL : public RawDataDocumentParser {
+class MediaDocumentParser final : public RawDataDocumentParser {
 public:
     static PassRefPtr<MediaDocumentParser> create(MediaDocument& document)
     {
@@ -64,7 +64,7 @@ private:
     {
     }
 
-    virtual void appendBytes(DocumentWriter&, const char*, size_t);
+    virtual void appendBytes(DocumentWriter&, const char*, size_t) override;
 
     void createDocumentStructure();
 
@@ -79,8 +79,8 @@ void MediaDocumentParser::createDocumentStructure()
     toHTMLHtmlElement(rootElement.get())->insertedByParser();
 
     if (document()->frame())
-        document()->frame()->loader().dispatchDocumentElementAvailable();
-        
+        document()->frame()->injectUserScripts(InjectAtDocumentStart);
+
     RefPtr<Element> body = document()->createElement(bodyTag, false);
     rootElement->appendChild(body, IGNORE_EXCEPTION);
 
@@ -209,7 +209,7 @@ void MediaDocument::mediaElementSawUnsupportedTracks()
     m_replaceMediaElementTimer.startOneShot(0);
 }
 
-void MediaDocument::replaceMediaElementTimerFired(Timer<MediaDocument>*)
+void MediaDocument::replaceMediaElementTimerFired(Timer<MediaDocument>&)
 {
     HTMLElement* htmlBody = body();
     if (!htmlBody)

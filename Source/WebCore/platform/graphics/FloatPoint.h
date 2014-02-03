@@ -31,25 +31,17 @@
 #include "IntPoint.h"
 #include <wtf/MathExtras.h>
 
-#if PLATFORM(BLACKBERRY)
-namespace BlackBerry {
-namespace Platform {
-class FloatPoint;
-}
-}
-#endif
-
 #if USE(CG)
 typedef struct CGPoint CGPoint;
 #endif
 
-#if PLATFORM(MAC)
+#if PLATFORM(MAC) && !PLATFORM(IOS)
 #ifdef NSGEOMETRY_TYPES_SAME_AS_CGGEOMETRY_TYPES
 typedef struct CGPoint NSPoint;
 #else
 typedef struct _NSPoint NSPoint;
 #endif
-#endif
+#endif // PLATFORM(MAC) && !PLATFORM(IOS)
 
 #if PLATFORM(HAIKU)
 class BPoint;
@@ -143,15 +135,12 @@ public:
     operator CGPoint() const;
 #endif
 
+#if !PLATFORM(IOS)
 #if PLATFORM(MAC) && !defined(NSGEOMETRY_TYPES_SAME_AS_CGGEOMETRY_TYPES)
     FloatPoint(const NSPoint&);
     operator NSPoint() const;
 #endif
-
-#if PLATFORM(BLACKBERRY)
-    FloatPoint(const BlackBerry::Platform::FloatPoint&);
-    operator BlackBerry::Platform::FloatPoint() const;
-#endif
+#endif // !PLATFORM(IOS)
 
 #if PLATFORM(HAIKU)
     FloatPoint(const BPoint&);

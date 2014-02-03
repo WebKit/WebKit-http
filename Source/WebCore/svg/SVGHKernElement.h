@@ -27,7 +27,7 @@
 
 namespace WebCore {
 
-class SVGHKernElement FINAL : public SVGElement {
+class SVGHKernElement final : public SVGElement {
 public:
     static PassRefPtr<SVGHKernElement> create(const QualifiedName&, Document&);
 
@@ -36,10 +36,10 @@ public:
 private:
     SVGHKernElement(const QualifiedName&, Document&);
 
-    virtual InsertionNotificationRequest insertedInto(ContainerNode&) OVERRIDE;
-    virtual void removedFrom(ContainerNode&) OVERRIDE;
+    virtual InsertionNotificationRequest insertedInto(ContainerNode&) override;
+    virtual void removedFrom(ContainerNode&) override;
 
-    virtual bool rendererIsNeeded(const RenderStyle&) { return false; }
+    virtual bool rendererIsNeeded(const RenderStyle&) override { return false; }
 };
 
 NODE_TYPE_CASTS(SVGHKernElement)

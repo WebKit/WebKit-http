@@ -33,6 +33,10 @@
 #include <WebCore/InspectorController.h>
 #include <WebCore/Page.h>
 
+#if ENABLE(REMOTE_INSPECTOR)
+#include "WebProcess.h"
+#endif
+
 using namespace WebCore;
 
 namespace WebKit {
@@ -66,6 +70,13 @@ void WebInspectorClient::didResizeMainFrame(Frame*)
     if (m_page->inspector())
         m_page->inspector()->updateDockingAvailability();
 }
+
+#if ENABLE(REMOTE_INSPECTOR)
+pid_t WebInspectorClient::parentProcessIdentifier() const
+{
+    return WebProcess::shared().presenterApplicationPid();
+}
+#endif
 
 void WebInspectorClient::highlight()
 {
@@ -134,7 +145,7 @@ void WebInspectorClient::didMoveToWebPage(PageOverlay*, WebPage*)
 
 void WebInspectorClient::drawRect(PageOverlay*, WebCore::GraphicsContext& context, const WebCore::IntRect& /*dirtyRect*/)
 {
-    m_page->corePage()->inspectorController()->drawHighlight(context);
+    m_page->corePage()->inspectorController().drawHighlight(context);
 }
 
 bool WebInspectorClient::mouseEvent(PageOverlay*, const WebMouseEvent&)

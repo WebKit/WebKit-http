@@ -29,10 +29,6 @@
 #include <WebCore/GraphicsLayerFactory.h>
 #include <wtf/HashSet.h>
 
-#if ENABLE(CSS_SHADERS)
-#include "WebCustomFilterProgramProxy.h"
-#endif
-
 namespace WebCore {
 class CoordinatedSurface;
 }
@@ -42,9 +38,6 @@ namespace WebKit {
 class WebPage;
 
 class CoordinatedLayerTreeHost : public LayerTreeHost, public WebCore::CompositingCoordinator::Client
-#if ENABLE(CSS_SHADERS)
-    , WebCustomFilterProgramProxyClient
-#endif
 {
 public:
     static PassRefPtr<CoordinatedLayerTreeHost> create(WebPage*);
@@ -57,9 +50,9 @@ public:
     virtual void setRootCompositingLayer(WebCore::GraphicsLayer*);
     virtual void invalidate();
 
-    virtual void setNonCompositedContentsNeedDisplay() OVERRIDE { }
-    virtual void setNonCompositedContentsNeedDisplayInRect(const WebCore::IntRect&) OVERRIDE { }
-    virtual void scrollNonCompositedContents(const WebCore::IntRect&) OVERRIDE { }
+    virtual void setNonCompositedContentsNeedDisplay() override { }
+    virtual void setNonCompositedContentsNeedDisplayInRect(const WebCore::IntRect&) override { }
+    virtual void scrollNonCompositedContents(const WebCore::IntRect&) override { }
     virtual void forceRepaint();
     virtual bool forceRepaintAsync(uint64_t callbackID);
     virtual void sizeDidChange(const WebCore::IntSize& newSize);
@@ -71,17 +64,17 @@ public:
 
     virtual void pauseRendering() { m_isSuspended = true; }
     virtual void resumeRendering() { m_isSuspended = false; scheduleLayerFlush(); }
-    virtual void deviceOrPageScaleFactorChanged() OVERRIDE;
-    virtual void pageBackgroundTransparencyChanged() OVERRIDE;
+    virtual void deviceOrPageScaleFactorChanged() override;
+    virtual void pageBackgroundTransparencyChanged() override;
 
-    virtual void didReceiveCoordinatedLayerTreeHostMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&);
-    virtual WebCore::GraphicsLayerFactory* graphicsLayerFactory() OVERRIDE;
+    virtual void didReceiveCoordinatedLayerTreeHostMessage(IPC::Connection*, IPC::MessageDecoder&);
+    virtual WebCore::GraphicsLayerFactory* graphicsLayerFactory() override;
     WebCore::CoordinatedGraphicsLayer* mainContentsLayer();
 
 #if ENABLE(REQUEST_ANIMATION_FRAME)
-    virtual void scheduleAnimation() OVERRIDE;
+    virtual void scheduleAnimation() override;
 #endif
-    virtual void setBackgroundColor(const WebCore::Color&) OVERRIDE;
+    virtual void setBackgroundColor(const WebCore::Color&) override;
 
     static PassRefPtr<WebCore::CoordinatedSurface> createCoordinatedSurface(const WebCore::IntSize&, WebCore::CoordinatedSurface::Flags);
 
@@ -102,31 +95,16 @@ private:
     void layerFlushTimerFired(WebCore::Timer<CoordinatedLayerTreeHost>*);
 
     // CompositingCoordinator::Client
-    virtual void didFlushRootLayer() OVERRIDE;
-    virtual void willSyncLayerState(WebCore::CoordinatedGraphicsLayerState&) OVERRIDE;
-    virtual void notifyFlushRequired() OVERRIDE { scheduleLayerFlush(); };
-    virtual void commitSceneState(const WebCore::CoordinatedGraphicsState&) OVERRIDE;
-    virtual void paintLayerContents(const WebCore::GraphicsLayer*, WebCore::GraphicsContext&, const WebCore::IntRect& clipRect) OVERRIDE;
-
-#if ENABLE(CSS_SHADERS)
-    void prepareCustomFilterProxiesForAnimations(WebCore::GraphicsLayerAnimations&);
-
-    // WebCustomFilterProgramProxyClient
-    void removeCustomFilterProgramProxy(WebCustomFilterProgramProxy*);
-
-    void checkCustomFilterProgramProxies(const WebCore::FilterOperations&);
-    void disconnectCustomFilterPrograms();
-#endif
+    virtual void didFlushRootLayer() override;
+    virtual void notifyFlushRequired() override { scheduleLayerFlush(); };
+    virtual void commitSceneState(const WebCore::CoordinatedGraphicsState&) override;
+    virtual void paintLayerContents(const WebCore::GraphicsLayer*, WebCore::GraphicsContext&, const WebCore::IntRect& clipRect) override;
 
     std::unique_ptr<WebCore::CompositingCoordinator> m_coordinator;
 
     // The page overlay layer. Will be null if there's no page overlay.
     std::unique_ptr<WebCore::GraphicsLayer> m_pageOverlayLayer;
     RefPtr<PageOverlay> m_pageOverlay;
-
-#if ENABLE(CSS_SHADERS)
-    HashSet<WebCustomFilterProgramProxy*> m_customFilterPrograms;
-#endif
 
     bool m_notifyAfterScheduledLayerFlush;
     bool m_isValid;

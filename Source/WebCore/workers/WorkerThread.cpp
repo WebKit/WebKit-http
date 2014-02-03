@@ -35,6 +35,7 @@
 #include "ThreadGlobalData.h"
 #include "URL.h"
 #include <utility>
+#include <wtf/NeverDestroyed.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/text/WTFString.h>
 
@@ -43,23 +44,35 @@
 #include "DatabaseTask.h"
 #endif
 
+#if PLATFORM(IOS)
+#include "WebCoreThread.h"
+#endif
+
 namespace WebCore {
 
-static Mutex& threadSetMutex()
+static std::mutex& threadSetMutex()
 {
-    AtomicallyInitializedStatic(Mutex&, mutex = *new Mutex);
-    return mutex;
+    static std::once_flag onceFlag;
+    static std::mutex* mutex;
+
+    std::call_once(onceFlag, []{
+        mutex = std::make_unique<std::mutex>().release();
+    });
+
+    return *mutex;
 }
 
 static HashSet<WorkerThread*>& workerThreads()
 {
-    DEFINE_STATIC_LOCAL(HashSet<WorkerThread*>, threads, ());
-    return threads;
+    static NeverDestroyed<HashSet<WorkerThread*>> workerThreads;
+
+    return workerThreads;
 }
 
 unsigned WorkerThread::workerThreadCount()
 {
-    MutexLocker lock(threadSetMutex());
+    std::lock_guard<std::mutex> lock(threadSetMutex());
+
     return workerThreads().size();
 }
 
@@ -110,13 +123,15 @@ WorkerThread::WorkerThread(const URL& scriptURL, const String& userAgent, const 
     , m_notificationClient(0)
 #endif
 {
-    MutexLocker lock(threadSetMutex());
+    std::lock_guard<std::mutex> lock(threadSetMutex());
+
     workerThreads().add(this);
 }
 
 WorkerThread::~WorkerThread()
 {
-    MutexLocker lock(threadSetMutex());
+    std::lock_guard<std::mutex> lock(threadSetMutex());
+
     ASSERT(workerThreads().contains(this));
     workerThreads().remove(this);
 }
@@ -141,6 +156,11 @@ void WorkerThread::workerThreadStart(void* thread)
 
 void WorkerThread::workerThread()
 {
+    // Propagate the mainThread's fenv to workers.
+#if PLATFORM(IOS)
+    fesetenv(&mainThreadFEnv);
+#endif
+
     {
         MutexLocker lock(m_threadCreationMutex);
         m_workerGlobalScope = createWorkerGlobalScope(m_startupData->m_scriptURL, m_startupData->m_userAgent, std::move(m_startupData->m_groupSettings), m_startupData->m_contentSecurityPolicy, m_startupData->m_contentSecurityPolicyType, m_startupData->m_topOrigin.release());
@@ -196,9 +216,6 @@ public:
     {
         ASSERT_WITH_SECURITY_IMPLICATION(context->isWorkerGlobalScope());
         WorkerGlobalScope* workerGlobalScope = static_cast<WorkerGlobalScope*>(context);
-#if ENABLE(INSPECTOR)
-        workerGlobalScope->clearInspector();
-#endif
         // It's not safe to call clearScript until all the cleanup tasks posted by functions initiated by WorkerThreadShutdownStartTask have completed.
         workerGlobalScope->clearScript();
     }
@@ -265,16 +282,15 @@ void WorkerThread::stop()
 }
 
 class ReleaseFastMallocFreeMemoryTask : public ScriptExecutionContext::Task {
-    virtual void performTask(ScriptExecutionContext*) OVERRIDE { WTF::releaseFastMallocFreeMemory(); }
+    virtual void performTask(ScriptExecutionContext*) override { WTF::releaseFastMallocFreeMemory(); }
 };
 
 void WorkerThread::releaseFastMallocFreeMemoryInAllThreads()
 {
-    MutexLocker lock(threadSetMutex());
-    HashSet<WorkerThread*>& threads = workerThreads();
-    HashSet<WorkerThread*>::iterator end = threads.end();
-    for (HashSet<WorkerThread*>::iterator it = threads.begin(); it != end; ++it)
-        (*it)->runLoop().postTask(adoptPtr(new ReleaseFastMallocFreeMemoryTask));
+    std::lock_guard<std::mutex> lock(threadSetMutex());
+
+    for (auto* workerThread : workerThreads())
+        workerThread->runLoop().postTask(adoptPtr(new ReleaseFastMallocFreeMemoryTask));
 }
 
 } // namespace WebCore

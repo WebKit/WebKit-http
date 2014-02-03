@@ -33,7 +33,7 @@
 
 namespace WebCore {
 
-class TemplateContentDocumentFragment FINAL : public DocumentFragment {
+class TemplateContentDocumentFragment final : public DocumentFragment {
 public:
     static PassRefPtr<TemplateContentDocumentFragment> create(Document& document, const Element* host)
     {
@@ -50,7 +50,7 @@ private:
     {
     }
 
-    virtual bool isTemplateContent() const OVERRIDE { return true; }
+    virtual bool isTemplateContent() const override { return true; }
 
     const Element* m_host;
 };

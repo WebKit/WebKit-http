@@ -26,8 +26,6 @@
 #ifndef GraphicsLayer_h
 #define GraphicsLayer_h
 
-#if USE(ACCELERATED_COMPOSITING)
-
 #include "Animation.h"
 #include "Color.h"
 #include "FloatPoint.h"
@@ -42,6 +40,10 @@
 
 #if ENABLE(CSS_FILTERS)
 #include "FilterOperations.h"
+#endif
+
+#if ENABLE(CSS_COMPOSITING)
+#include "GraphicsTypes.h"
 #endif
 
 enum LayerTreeAsTextBehaviorFlags {
@@ -100,7 +102,7 @@ public:
         return adoptPtr(new FloatAnimationValue(keyTime, value, timingFunction));
     }
 
-    virtual PassOwnPtr<AnimationValue> clone() const OVERRIDE
+    virtual PassOwnPtr<AnimationValue> clone() const override
     {
         return adoptPtr(new FloatAnimationValue(*this));
     }
@@ -126,7 +128,7 @@ public:
         return adoptPtr(new TransformAnimationValue(keyTime, value, timingFunction));
     }
 
-    virtual PassOwnPtr<AnimationValue> clone() const OVERRIDE
+    virtual PassOwnPtr<AnimationValue> clone() const override
     {
         return adoptPtr(new TransformAnimationValue(*this));
     }
@@ -153,7 +155,7 @@ public:
         return adoptPtr(new FilterAnimationValue(keyTime, value, timingFunction));
     }
 
-    virtual PassOwnPtr<AnimationValue> clone() const OVERRIDE
+    virtual PassOwnPtr<AnimationValue> clone() const override
     {
         return adoptPtr(new FilterAnimationValue(*this));
     }
@@ -229,6 +231,9 @@ public:
     virtual ~GraphicsLayer();
 
     virtual void initialize() { }
+
+    typedef uint64_t PlatformLayerID;
+    virtual PlatformLayerID primaryLayerID() const { return 0; }
 
     GraphicsLayerClient* client() const { return m_client; }
 
@@ -342,13 +347,23 @@ public:
     virtual bool setFilters(const FilterOperations& filters) { m_filters = filters; return true; }
 #endif
 
+#if ENABLE(CSS_COMPOSITING)
+    BlendMode blendMode() const { return m_blendMode; }
+    virtual void setBlendMode(BlendMode blendMode) { m_blendMode = blendMode; }
+#endif
+
     // Some GraphicsLayers paint only the foreground or the background content
     GraphicsLayerPaintingPhase paintingPhase() const { return m_paintingPhase; }
     void setPaintingPhase(GraphicsLayerPaintingPhase phase) { m_paintingPhase = phase; }
 
+    enum ShouldClipToLayer {
+        DoNotClipToLayer,
+        ClipToLayer
+    };
+
     virtual void setNeedsDisplay() = 0;
     // mark the given rect (in layer coords) as needing dispay. Never goes deep.
-    virtual void setNeedsDisplayInRect(const FloatRect&) = 0;
+    virtual void setNeedsDisplayInRect(const FloatRect&, ShouldClipToLayer = ClipToLayer) = 0;
 
     virtual void setContentsNeedsDisplay() { };
 
@@ -384,6 +399,9 @@ public:
     virtual void setContentsToImage(Image*) { }
     virtual bool shouldDirectlyCompositeImage(Image*) const { return true; }
     virtual void setContentsToMedia(PlatformLayer*) { } // video or plug-in
+#if PLATFORM(IOS)
+    virtual PlatformLayer* contentsLayerForMedia() const { return 0; }
+#endif
     // Pass an invalid color to remove the contents layer.
     virtual void setContentsToSolidColor(const Color&) { }
     virtual void setContentsToCanvas(PlatformLayer*) { }
@@ -434,6 +452,10 @@ public:
 
     virtual void setMaintainsPixelAlignment(bool maintainsAlignment) { m_maintainsPixelAlignment = maintainsAlignment; }
     virtual bool maintainsPixelAlignment() const { return m_maintainsPixelAlignment; }
+#if PLATFORM(IOS)
+    virtual FloatSize pixelAlignmentOffset() const { return FloatSize(); }
+    bool hasFlattenedPerspectiveTransform() const { return !preserves3D() && m_childrenTransform.hasPerspective(); }
+#endif
     
     virtual void setAppliesPageScale(bool appliesScale = true) { m_appliesPageScale = appliesScale; }
     virtual bool appliesPageScale() const { return m_appliesPageScale; }
@@ -489,6 +511,9 @@ public:
     void updateDebugIndicators();
 
     virtual bool canThrottleLayerFlush() const { return false; }
+
+    virtual bool isGraphicsLayerCA() const { return false; }
+    virtual bool isGraphicsLayerCARemote() const { return false; }
 
 protected:
     // Should be called from derived class destructors. Should call willBeDestroyed() on super.
@@ -549,6 +574,10 @@ protected:
     FilterOperations m_filters;
 #endif
 
+#if ENABLE(CSS_COMPOSITING)
+    BlendMode m_blendMode;
+#endif
+
     bool m_contentsOpaque : 1;
     bool m_preserves3D: 1;
     bool m_backfaceVisibility : 1;
@@ -584,6 +613,8 @@ protected:
     CustomAppearance m_customAppearance;
 };
 
+#define GRAPHICSLAYER_TYPE_CASTS(ToValueTypeName, predicate) \
+    TYPE_CASTS_BASE(ToValueTypeName, WebCore::GraphicsLayer, value, value->predicate, value.predicate)
 
 } // namespace WebCore
 
@@ -591,7 +622,5 @@ protected:
 // Outside the WebCore namespace for ease of invocation from gdb.
 void showGraphicsLayerTree(const WebCore::GraphicsLayer* layer);
 #endif
-
-#endif // USE(ACCELERATED_COMPOSITING)
 
 #endif // GraphicsLayer_h

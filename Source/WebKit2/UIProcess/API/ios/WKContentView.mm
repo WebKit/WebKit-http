@@ -26,14 +26,18 @@
 #import "config.h"
 #import "WKContentViewInternal.h"
 
+#import "InteractionInformationAtPosition.h"
 #import "PageClientImplIOS.h"
 #import "RemoteLayerTreeDrawingAreaProxy.h"
+#import "RemoteScrollingCoordinatorProxy.h"
 #import "WebKit2Initialize.h"
 #import "WKBrowsingContextControllerInternal.h"
 #import "WKBrowsingContextGroupPrivate.h"
 #import "WKGeolocationProviderIOS.h"
 #import "WKInteractionView.h"
-#import "WKProcessGroupInternal.h"
+#import "WKProcessGroupPrivate.h"
+#import "WKProcessClassInternal.h"
+#import "WKWebViewConfiguration.h"
 #import "WebContext.h"
 #import "WebFrameProxy.h"
 #import "WebPageGroup.h"
@@ -42,22 +46,25 @@
 #import <WebCore/ViewportArguments.h>
 #import <wtf/RetainPtr.h>
 
+#if __has_include(<QuartzCore/QuartzCorePrivate.h>)
+#import <QuartzCore/QuartzCorePrivate.h>
+#endif
+
+@interface CALayer (Details)
+@property BOOL hitTestsAsOpaque;
+@end
+
 using namespace WebCore;
 using namespace WebKit;
 
 @implementation WKContentView {
     std::unique_ptr<PageClientImpl> _pageClient;
-    RefPtr<WebPageProxy> _page;
+    RetainPtr<WKBrowsingContextController> _browsingContextController;
 
     RetainPtr<UIView> _rootContentView;
     RetainPtr<WKInteractionView> _interactionView;
-}
 
-- (id)initWithCoder:(NSCoder *)coder
-{
-    // FIXME: Implement.
-    [self release];
-    return nil;
+    WebCore::FloatPoint _currentExposedRectPosition;
 }
 
 - (id)initWithFrame:(CGRect)frame contextRef:(WKContextRef)contextRef pageGroupRef:(WKPageGroupRef)pageGroupRef
@@ -80,6 +87,38 @@ using namespace WebKit;
         return nil;
 
     [self _commonInitializationWithContextRef:processGroup._contextRef pageGroupRef:browsingContextGroup._pageGroupRef relatedToPage:nullptr];
+    return self;
+}
+
+- (instancetype)initWithFrame:(CGRect)frame configuration:(WKWebViewConfiguration *)configuration
+{
+    if (!(self = [super initWithFrame:frame]))
+        return nil;
+
+    InitializeWebKit2();
+    RunLoop::initializeMainRunLoop();
+
+    _pageClient = std::make_unique<PageClientImpl>(self);
+
+    _page = configuration.processClass->_context->createWebPage(*_pageClient, nullptr);
+    _page->initializeWebPage();
+    _page->setIntrinsicDeviceScaleFactor([UIScreen mainScreen].scale);
+    _page->setUseFixedLayout(true);
+
+    WebContext::statistics().wkViewCount++;
+
+    _rootContentView = adoptNS([[UIView alloc] init]);
+    [_rootContentView layer].masksToBounds = NO;
+    [_rootContentView setUserInteractionEnabled:NO];
+
+    [self addSubview:_rootContentView.get()];
+
+    _interactionView = adoptNS([[WKInteractionView alloc] init]);
+    [_interactionView setPage:_page];
+    [self addSubview:_interactionView.get()];
+
+    self.layer.hitTestsAsOpaque = YES;
+
     return self;
 }
 
@@ -113,7 +152,10 @@ using namespace WebKit;
 
 - (WKBrowsingContextController *)browsingContextController
 {
-    return wrapper(*_page);
+    if (!_browsingContextController)
+        _browsingContextController = [[WKBrowsingContextController alloc] _initWithPageRef:toAPI(_page.get())];
+
+    return _browsingContextController.get();
 }
 
 - (WKContentType)contentType
@@ -135,29 +177,65 @@ using namespace WebKit;
     _page->drawingArea()->setSize(IntSize(size), IntSize(), IntSize());
 }
 
+- (FloatRect)fixedPositionRectFromExposedRect:(FloatRect)exposedRect scale:(float)scale
+{
+    // FIXME: This should modify the rect based on the scale.
+    UNUSED_PARAM(scale);
+    return exposedRect;
+}
+
+- (void)_updateViewExposedRect
+{
+    FloatPoint exposedRectPosition = _currentExposedRectPosition;
+    exposedRectPosition.scale(_page->pageScaleFactor(), _page->pageScaleFactor());
+
+    if (auto drawingArea = _page->drawingArea())
+        drawingArea->setExposedRect(FloatRect(exposedRectPosition, _page->drawingArea()->size()));
+}
+
+- (void)_updateFixedPositionRect
+{
+    auto drawingArea = _page->drawingArea();
+    if (!drawingArea)
+        return;
+    FloatRect exposedRect(_currentExposedRectPosition, drawingArea->size());
+    FloatRect fixedPosRect = [self fixedPositionRectFromExposedRect:exposedRect scale:_page->pageScaleFactor()];
+    drawingArea->setCustomFixedPositionRect(fixedPosRect);
+}
+
 - (void)setViewportSize:(CGSize)size
 {
     _page->setFixedLayoutSize(IntSize(size));
+    [self _updateViewExposedRect];
+}
+
+- (void)didFinishScrollTo:(CGPoint)contentOffset
+{
+    _currentExposedRectPosition = contentOffset;
+    _page->didFinishScrolling(contentOffset);
+    [self _updateViewExposedRect];
+    [self _updateFixedPositionRect];
 }
 
 - (void)didScrollTo:(CGPoint)contentOffset
 {
-    _page->didFinishScrolling(contentOffset);
+    _currentExposedRectPosition = contentOffset;
+    [self _updateViewExposedRect];
+
+    _page->scrollingCoordinatorProxy()->scrollPositionChangedViaDelegatedScrolling(_page->scrollingCoordinatorProxy()->rootScrollingNodeID(), roundedIntPoint(contentOffset));
 }
 
 - (void)didZoomToScale:(CGFloat)scale
 {
     _page->didFinishZooming(scale);
+    [self _updateViewExposedRect];
+    [self _updateFixedPositionRect];
 }
 
 #pragma mark Internal
 
 - (void)_commonInitializationWithContextRef:(WKContextRef)contextRef pageGroupRef:(WKPageGroupRef)pageGroupRef relatedToPage:(WKPageRef)relatedPage
 {
-    // FIXME: This should not be necessary, find why hit testing does not work otherwise.
-    // <rdar://problem/12287363>
-    self.backgroundColor = [UIColor blackColor];
-
     InitializeWebKit2();
     RunLoop::initializeMainRunLoop();
 
@@ -178,6 +256,8 @@ using namespace WebKit;
     _interactionView = adoptNS([[WKInteractionView alloc] init]);
     [_interactionView setPage:_page];
     [self addSubview:_interactionView.get()];
+
+    self.layer.hitTestsAsOpaque = YES;
 }
 
 - (void)_windowDidMoveToScreenNotification:(NSNotification *)notification
@@ -201,7 +281,7 @@ using namespace WebKit;
     return std::make_unique<RemoteLayerTreeDrawingAreaProxy>(_page.get());
 }
 
-- (void)_processDidCrash
+- (void)_processDidExit
 {
     // FIXME: Implement.
 }
@@ -270,9 +350,16 @@ using namespace WebKit;
     return [_interactionView _interpretKeyEvent:theEvent isCharEvent:isCharEvent];
 }
 
+- (void)_positionInformationDidChange:(const InteractionInformationAtPosition&)info
+{
+    [_interactionView _positionInformationDidChange:info];
+}
+
 - (void)_decidePolicyForGeolocationRequestFromOrigin:(WebSecurityOrigin&)origin frame:(WebFrameProxy&)frame request:(GeolocationPermissionRequestProxy&)permissionRequest
 {
-    [[wrapper(_page->process().context()) _geolocationProvider] decidePolicyForGeolocationRequestFromOrigin:toAPI(&origin) frame:toAPI(&frame) request:toAPI(&permissionRequest) window:[self window]];
+    // FIXME: The line below is commented out since wrapper(WebContext&) now returns a WKProcessClass.
+    // As part of the new API we should figure out where geolocation fits in, see <rdar://problem/15885544>.
+    // [[wrapper(_page->process().context()) _geolocationProvider] decidePolicyForGeolocationRequestFromOrigin:toAPI(&origin) frame:toAPI(&frame) request:toAPI(&permissionRequest) window:[self window]];
 }
 
 @end

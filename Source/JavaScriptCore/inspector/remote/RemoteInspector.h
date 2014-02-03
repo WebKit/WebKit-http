@@ -28,23 +28,24 @@
 #ifndef RemoteInspector_h
 #define RemoteInspector_h
 
-#import "RemoteInspectorDebuggableConnection.h"
 #import "RemoteInspectorXPCConnection.h"
 #import <wtf/Forward.h>
 #import <wtf/HashMap.h>
 #import <wtf/NeverDestroyed.h>
 #import <wtf/Threading.h>
 
-OBJC_CLASS NSString;
 OBJC_CLASS NSDictionary;
+OBJC_CLASS NSString;
 
 namespace Inspector {
 
 class RemoteInspectorDebuggable;
+class RemoteInspectorDebuggableConnection;
 struct RemoteInspectorDebuggableInfo;
 
-class JS_EXPORT_PRIVATE RemoteInspector FINAL : public RemoteInspectorXPCConnection::Client {
+class JS_EXPORT_PRIVATE RemoteInspector final : public RemoteInspectorXPCConnection::Client {
 public:
+    static void startDisabled();
     static RemoteInspector& shared();
     friend class NeverDestroyed<RemoteInspector>;
 
@@ -72,9 +73,9 @@ private:
 
     void updateHasActiveDebugSession();
 
-    virtual void xpcConnectionReceivedMessage(RemoteInspectorXPCConnection*, NSString *messageName, NSDictionary *userInfo) OVERRIDE;
-    virtual void xpcConnectionFailed(RemoteInspectorXPCConnection*) OVERRIDE;
-    virtual void xpcConnectionUnhandledMessage(RemoteInspectorXPCConnection*, xpc_object_t) OVERRIDE;
+    virtual void xpcConnectionReceivedMessage(RemoteInspectorXPCConnection*, NSString *messageName, NSDictionary *userInfo) override;
+    virtual void xpcConnectionFailed(RemoteInspectorXPCConnection*) override;
+    virtual void xpcConnectionUnhandledMessage(RemoteInspectorXPCConnection*, xpc_object_t) override;
 
     void receivedSetupMessage(NSDictionary *userInfo);
     void receivedDataMessage(NSDictionary *userInfo);
@@ -82,6 +83,8 @@ private:
     void receivedGetListingMessage(NSDictionary *userInfo);
     void receivedIndicateMessage(NSDictionary *userInfo);
     void receivedConnectionDiedMessage(NSDictionary *userInfo);
+
+    static bool startEnabled;
 
     // Debuggables can be registered from any thread at any time.
     // Any debuggable can send messages over the XPC connection.
@@ -91,7 +94,7 @@ private:
 
     HashMap<unsigned, std::pair<RemoteInspectorDebuggable*, RemoteInspectorDebuggableInfo>> m_debuggableMap;
     HashMap<unsigned, RefPtr<RemoteInspectorDebuggableConnection>> m_connectionMap;
-    std::unique_ptr<RemoteInspectorXPCConnection> m_xpcConnection;
+    RefPtr<RemoteInspectorXPCConnection> m_xpcConnection;
     unsigned m_nextAvailableIdentifier;
     int m_notifyToken;
     bool m_enabled;
@@ -101,6 +104,6 @@ private:
 
 } // namespace Inspector
 
-#endif // ENABLE(REMOTE_INSPECTOR)
+#endif // RemoteInspector_h
 
-#endif // WebInspectorServer_h
+#endif // ENABLE(REMOTE_INSPECTOR)

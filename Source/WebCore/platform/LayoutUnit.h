@@ -118,6 +118,11 @@ public:
     LayoutUnit(double value) { REPORT_OVERFLOW(isInBounds(value)); m_value = clampTo<int>(value); }
 #endif
 
+    static LayoutUnit fromPixel(int value)
+    {
+        return LayoutUnit(value);
+    }
+
     static LayoutUnit fromFloatCeil(float value)
     {
         LayoutUnit v;
@@ -951,11 +956,6 @@ inline LayoutUnit ceiledLayoutUnit(float value)
 inline LayoutUnit absoluteValue(const LayoutUnit& value)
 {
     return value.abs();
-}
-
-inline LayoutUnit layoutMod(const LayoutUnit& numerator, const LayoutUnit& denominator)
-{
-    return numerator % denominator;
 }
 
 inline bool isIntegerValue(const LayoutUnit value)

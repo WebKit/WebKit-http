@@ -28,7 +28,10 @@
 #import "WebTypesInternal.h"
 #import <wtf/Vector.h>
 #import <wtf/RetainPtr.h>
+
+#if !PLATFORM(IOS)
 #import <PDFKit/PDFDocument.h>
+#endif
 
 static void appendValuesInPDFNameSubtreeToVector(CGPDFDictionaryRef subtree, Vector<CGPDFObjectRef>& values)
 {
@@ -61,10 +64,9 @@ static void getAllValuesInPDFNameTree(CGPDFDictionaryRef tree, Vector<CGPDFObjec
     appendValuesInPDFNameSubtreeToVector(tree, allValues);
 }
 
-NSArray *allScriptsInPDFDocument(PDFDocument *document)
+NSArray *allScriptsInPDFDocument(CGPDFDocumentRef pdfDocument)
 {
     NSMutableArray *scripts = [NSMutableArray array];
-    CGPDFDocumentRef pdfDocument = [document documentRef];
     if (!pdfDocument)
         return scripts;
 
@@ -127,3 +129,10 @@ NSArray *allScriptsInPDFDocument(PDFDocument *document)
 
     return scripts;
 }
+
+#if !PLATFORM(IOS)
+NSArray *allScriptsInPDFDocument(PDFDocument *document)
+{
+    return allScriptsInPDFDocument([document documentRef]);
+}
+#endif

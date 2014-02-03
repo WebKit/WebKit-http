@@ -26,10 +26,13 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#import <Foundation/Foundation.h>
+
 #if !TARGET_OS_IPHONE
-#import <Cocoa/Cocoa.h>
+#import <AppKit/AppKit.h>
 #else
 #import <WebKit/WAKAppKitStubs.h>
+#import <WebKit/WAKView.h>
 #if !defined(IBAction)
 #define IBAction void
 #endif
@@ -532,7 +535,14 @@ extern NSString *WebViewProgressFinishedNotification;
 */
 @property (nonatomic, readonly, copy) NSString *mainFrameTitle;
 
-#if !TARGET_OS_IPHONE
+#if TARGET_OS_IPHONE
+/*!
+    @method mainFrameIconURL
+    @discussion The methods returns the URL of the site icon for the current page loaded in the mainFrame.
+    @result Returns the URL of the main frame's icon if any, otherwise nil.
+*/
+- (NSURL *)mainFrameIconURL;
+#else
 /*!
     @property mainFrameIcon
     @abstract The site icon for the current page loaded in the mainFrame, or nil.

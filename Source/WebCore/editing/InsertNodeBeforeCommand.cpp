@@ -45,7 +45,7 @@ InsertNodeBeforeCommand::InsertNodeBeforeCommand(PassRefPtr<Node> insertChild, P
     ASSERT(m_refChild);
     ASSERT(m_refChild->parentNode());
 
-    ASSERT(m_refChild->parentNode()->rendererIsEditable() || !m_refChild->parentNode()->attached());
+    ASSERT(m_refChild->parentNode()->hasEditableStyle() || !m_refChild->parentNode()->renderer());
 }
 
 void InsertNodeBeforeCommand::doApply()
@@ -55,7 +55,7 @@ void InsertNodeBeforeCommand::doApply()
         return;
     ASSERT(parent->isContentEditable(Node::UserSelectAllIsAlwaysNonEditable));
 
-    parent->insertBefore(m_insertChild.get(), m_refChild.get(), IGNORE_EXCEPTION, AttachLazily);
+    parent->insertBefore(m_insertChild.get(), m_refChild.get(), IGNORE_EXCEPTION);
 
     if (AXObjectCache* cache = document().existingAXObjectCache())
         cache->nodeTextChangeNotification(m_insertChild.get(), AXObjectCache::AXTextInserted, 0, m_insertChild->nodeValue());

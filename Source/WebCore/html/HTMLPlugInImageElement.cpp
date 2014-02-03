@@ -196,10 +196,12 @@ bool HTMLPlugInImageElement::wouldLoadAsNetscapePlugin(const String& url, const 
     return false;
 }
 
-RenderElement* HTMLPlugInImageElement::createRenderer(PassRef<RenderStyle> style)
+RenderPtr<RenderElement> HTMLPlugInImageElement::createElementRenderer(PassRef<RenderStyle> style)
 {
+    ASSERT(!document().inPageCache());
+
     if (displayState() >= PreparingPluginReplacement)
-        return HTMLPlugInElement::createRenderer(std::move(style));
+        return HTMLPlugInElement::createElementRenderer(std::move(style));
 
     // Once a PlugIn Element creates its renderer, it needs to be told when the Document goes
     // inactive or reactivates so it can clear the renderer before going into the page cache.
@@ -209,9 +211,9 @@ RenderElement* HTMLPlugInImageElement::createRenderer(PassRef<RenderStyle> style
     }
 
     if (displayState() == DisplayingSnapshot) {
-        RenderSnapshottedPlugIn* renderSnapshottedPlugIn = new RenderSnapshottedPlugIn(*this, std::move(style));
+        auto renderSnapshottedPlugIn = createRenderer<RenderSnapshottedPlugIn>(*this, std::move(style));
         renderSnapshottedPlugIn->updateSnapshot(m_snapshotImage);
-        return renderSnapshottedPlugIn;
+        return std::move(renderSnapshottedPlugIn);
     }
 
     // Fallback content breaks the DOM->Renderer class relationship of this
@@ -220,41 +222,39 @@ RenderElement* HTMLPlugInImageElement::createRenderer(PassRef<RenderStyle> style
     if (useFallbackContent())
         return RenderElement::createFor(*this, std::move(style));
 
-    if (isImageType()) {
-        RenderImage* image = new RenderImage(*this, std::move(style));
-        image->setImageResource(RenderImageResource::create());
-        return image;
-    }
+    if (isImageType())
+        return createRenderer<RenderImage>(*this, std::move(style));
 
 #if PLATFORM(IOS)
     if (ShadowRoot* shadowRoot = this->shadowRoot()) {
         Element* shadowElement = toElement(shadowRoot->firstChild());
         if (shadowElement && shadowElement->shadowPseudoId() == "-apple-youtube-shadow-iframe")
-            return new RenderBlockFlow(*this, std::move(style));
+            return createRenderer<RenderBlockFlow>(*this, std::move(style));
     }
 #endif
-    return HTMLPlugInElement::createRenderer(std::move(style));
+    return HTMLPlugInElement::createElementRenderer(std::move(style));
 }
 
 bool HTMLPlugInImageElement::willRecalcStyle(Style::Change)
 {
-    // FIXME: Why is this necessary?  Manual re-attach is almost always wrong.
+    // FIXME: There shoudn't be need to force render tree reconstruction here.
+    // It is only done because loading and load event dispatching is tied to render tree construction.
     if (!useFallbackContent() && needsWidgetUpdate() && renderer() && !isImageType() && (displayState() != DisplayingSnapshot))
-        Style::reattachRenderTree(*this);
+        setNeedsStyleRecalc(ReconstructRenderTree);
     return true;
 }
 
 void HTMLPlugInImageElement::didAttachRenderers()
 {
     if (!isImageType()) {
-        queuePostAttachCallback(&HTMLPlugInImageElement::updateWidgetCallback, this);
+        queuePostAttachCallback(&HTMLPlugInImageElement::updateWidgetCallback, *this);
         return;
     }
     if (!renderer() || useFallbackContent())
         return;
-    if (!m_imageLoader)
-        m_imageLoader = adoptPtr(new HTMLImageLoader(this));
-    m_imageLoader->updateFromElement();
+
+    // Image load might complete synchronously and cause us to re-enter attach.
+    queuePostAttachCallback(&HTMLPlugInImageElement::startLoadingImageCallback, *this);
 }
 
 void HTMLPlugInImageElement::willDetachRenderers()
@@ -262,7 +262,7 @@ void HTMLPlugInImageElement::willDetachRenderers()
     // FIXME: Because of the insanity that is HTMLPlugInImageElement::willRecalcStyle,
     // we can end up detaching during an attach() call, before we even have a
     // renderer.  In that case, don't mark the widget for update.
-    if (attached() && renderer() && !useFallbackContent()) {
+    if (renderer() && !useFallbackContent()) {
         // Update the widget the next time we attach (detaching destroys the plugin).
         setNeedsWidgetUpdate(true);
     }
@@ -308,35 +308,34 @@ void HTMLPlugInImageElement::didMoveToNewDocument(Document* oldDocument)
 
 void HTMLPlugInImageElement::documentWillSuspendForPageCache()
 {
-    if (RenderStyle* renderStyle = this->renderStyle()) {
-        m_customStyleForPageCache = RenderStyle::clone(renderStyle);
-        m_customStyleForPageCache->setDisplay(NONE);
-        Style::resolveTree(*this, Style::Force);
-    }
+    if (renderer())
+        Style::detachRenderTree(*this);
 
     HTMLPlugInElement::documentWillSuspendForPageCache();
 }
 
 void HTMLPlugInImageElement::documentDidResumeFromPageCache()
 {
-    if (m_customStyleForPageCache) {
-        m_customStyleForPageCache = 0;
-        Style::resolveTree(*this, Style::Force);
-    }
+    setNeedsStyleRecalc(ReconstructRenderTree);
 
     HTMLPlugInElement::documentDidResumeFromPageCache();
 }
 
-PassRefPtr<RenderStyle> HTMLPlugInImageElement::customStyleForRenderer()
+void HTMLPlugInImageElement::updateWidgetCallback(Node& node, unsigned)
 {
-    if (!m_customStyleForPageCache)
-        return document().ensureStyleResolver().styleForElement(this);
-    return m_customStyleForPageCache;
+    toHTMLPlugInImageElement(node).updateWidgetIfNecessary();
 }
 
-void HTMLPlugInImageElement::updateWidgetCallback(Node* n, unsigned)
+void HTMLPlugInImageElement::startLoadingImage()
 {
-    toHTMLPlugInImageElement(n)->updateWidgetIfNecessary();
+    if (!m_imageLoader)
+        m_imageLoader = adoptPtr(new HTMLImageLoader(this));
+    m_imageLoader->updateFromElement();
+}
+
+void HTMLPlugInImageElement::startLoadingImageCallback(Node& node, unsigned)
+{
+    toHTMLPlugInImageElement(node).startLoadingImage();
 }
 
 void HTMLPlugInImageElement::updateSnapshot(PassRefPtr<Image> image)
@@ -451,13 +450,10 @@ void HTMLPlugInImageElement::createShadowIFrameSubtree(const String& src)
     // Disable frame flattening for this iframe.
     iframeElement->setAttribute(HTMLNames::scrollingAttr, AtomicString("no", AtomicString::ConstructFromLiteral));
     shadowElement->appendChild(iframeElement, ASSERT_NO_EXCEPTION);
-
-    if (renderer())
-        Style::reattachRenderTree(*this);
 }
 #endif
 
-void HTMLPlugInImageElement::removeSnapshotTimerFired(Timer<HTMLPlugInImageElement>*)
+void HTMLPlugInImageElement::removeSnapshotTimerFired(Timer<HTMLPlugInImageElement>&)
 {
     m_snapshotImage = nullptr;
     m_isRestartedPlugin = false;
@@ -560,7 +556,7 @@ void HTMLPlugInImageElement::restartSnapshottedPlugIn()
         return;
 
     setDisplayState(Restarting);
-    Style::reattachRenderTree(*this);
+    setNeedsStyleRecalc(ReconstructRenderTree);
 }
 
 void HTMLPlugInImageElement::dispatchPendingMouseClick()
@@ -569,7 +565,7 @@ void HTMLPlugInImageElement::dispatchPendingMouseClick()
     m_simulatedMouseClickTimer.restart();
 }
 
-void HTMLPlugInImageElement::simulatedMouseClickTimerFired(DeferrableOneShotTimer<HTMLPlugInImageElement>*)
+void HTMLPlugInImageElement::simulatedMouseClickTimerFired(DeferrableOneShotTimer<HTMLPlugInImageElement>&)
 {
     ASSERT(displayState() == RestartingWithPendingMouseClick);
     ASSERT(m_pendingClickEventFromSnapshot);

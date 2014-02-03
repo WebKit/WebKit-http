@@ -48,17 +48,15 @@ typedef String ErrorString;
 class InspectorMemoryAgent : public InspectorAgentBase, public Inspector::InspectorMemoryBackendDispatcherHandler {
     WTF_MAKE_NONCOPYABLE(InspectorMemoryAgent);
 public:
-    static PassOwnPtr<InspectorMemoryAgent> create(InstrumentingAgents* instrumentingAgents);
+    explicit InspectorMemoryAgent(InstrumentingAgents*);
     virtual ~InspectorMemoryAgent();
 
-    virtual void didCreateFrontendAndBackend(Inspector::InspectorFrontendChannel*, Inspector::InspectorBackendDispatcher*) OVERRIDE;
-    virtual void willDestroyFrontendAndBackend() OVERRIDE;
+    virtual void didCreateFrontendAndBackend(Inspector::InspectorFrontendChannel*, Inspector::InspectorBackendDispatcher*) override;
+    virtual void willDestroyFrontendAndBackend(Inspector::InspectorDisconnectReason) override;
 
-    virtual void getDOMCounters(ErrorString*, int* documents, int* nodes, int* jsEventListeners);
+    virtual void getDOMCounters(ErrorString*, int* documents, int* nodes, int* jsEventListeners) override;
 
 private:
-    InspectorMemoryAgent(InstrumentingAgents*);
-
     RefPtr<Inspector::InspectorMemoryBackendDispatcher> m_backendDispatcher;
 };
 

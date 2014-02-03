@@ -152,7 +152,7 @@ void MediaControlPanelElement::stopTimer()
         m_transitionTimer.stop();
 }
 
-void MediaControlPanelElement::transitionTimerFired(Timer<MediaControlPanelElement>*)
+void MediaControlPanelElement::transitionTimerFired(Timer<MediaControlPanelElement>&)
 {
     if (!m_opaque)
         hide();
@@ -332,9 +332,9 @@ void MediaControlTimelineContainerElement::setTimeDisplaysHidden(bool hidden)
     }
 }
 
-RenderElement* MediaControlTimelineContainerElement::createRenderer(PassRef<RenderStyle> style)
+RenderPtr<RenderElement> MediaControlTimelineContainerElement::createElementRenderer(PassRef<RenderStyle> style)
 {
-    return new RenderMediaControlTimelineContainer(*this, std::move(style));
+    return createRenderer<RenderMediaControlTimelineContainer>(*this, std::move(style));
 }
 
 // ----------------------------
@@ -351,9 +351,9 @@ PassRefPtr<MediaControlVolumeSliderContainerElement> MediaControlVolumeSliderCon
     return element.release();
 }
 
-RenderElement* MediaControlVolumeSliderContainerElement::createRenderer(PassRef<RenderStyle> style)
+RenderPtr<RenderElement> MediaControlVolumeSliderContainerElement::createElementRenderer(PassRef<RenderStyle> style)
 {
-    return new RenderMediaVolumeSliderContainer(*this, std::move(style));
+    return createRenderer<RenderMediaVolumeSliderContainer>(*this, std::move(style));
 }
 
 void MediaControlVolumeSliderContainerElement::defaultEventHandler(Event* event)
@@ -942,7 +942,7 @@ void MediaControlTimelineElement::defaultEventHandler(Event* event)
     if (event->isMouseEvent() && static_cast<MouseEvent*>(event)->button())
         return;
 
-    if (!attached())
+    if (!renderer())
         return;
 
     if (event->type() == eventNames().mousedownEvent)
@@ -968,7 +968,7 @@ void MediaControlTimelineElement::defaultEventHandler(Event* event)
 #if !PLATFORM(IOS)
 bool MediaControlTimelineElement::willRespondToMouseClickEvents()
 {
-    if (!attached())
+    if (!renderer())
         return false;
 
     return true;
@@ -1214,9 +1214,9 @@ PassRefPtr<MediaControlTextTrackContainerElement> MediaControlTextTrackContainer
     return element.release();
 }
 
-RenderElement* MediaControlTextTrackContainerElement::createRenderer(PassRef<RenderStyle> style)
+RenderPtr<RenderElement> MediaControlTextTrackContainerElement::createElementRenderer(PassRef<RenderStyle> style)
 {
-    return new RenderTextTrackContainerElement(*this, std::move(style));
+    return createRenderer<RenderTextTrackContainerElement>(*this, std::move(style));
 }
 
 const AtomicString& MediaControlTextTrackContainerElement::textTrackContainerElementShadowPseudoId()
@@ -1290,7 +1290,7 @@ void MediaControlTextTrackContainerElement::updateDisplay()
         RefPtr<TextTrackCueBox> displayBox = cue->getDisplayTree(m_videoDisplaySize.size());
         if (displayBox->hasChildNodes() && !contains(displayBox.get())) {
             // Note: the display tree of a cue is removed when the active flag of the cue is unset.
-            appendChild(displayBox, ASSERT_NO_EXCEPTION, AttachNow);
+            appendChild(displayBox, ASSERT_NO_EXCEPTION);
             cue->setFontSize(m_fontSize, m_videoDisplaySize.size(), m_fontSizeIsImportant);
         }
     }
@@ -1316,7 +1316,7 @@ void MediaControlTextTrackContainerElement::updateDisplay()
     }
 }
 
-void MediaControlTextTrackContainerElement::updateTimerFired(Timer<MediaControlTextTrackContainerElement>*)
+void MediaControlTextTrackContainerElement::updateTimerFired(Timer<MediaControlTextTrackContainerElement>&)
 {
     if (!document().page())
         return;

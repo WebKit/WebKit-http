@@ -81,8 +81,8 @@ namespace WebCore {
 
 using namespace HTMLNames;
 
-HTMLDocument::HTMLDocument(Frame* frame, const URL& url, DocumentClassFlags documentClasses, bool isSynthesized)
-    : Document(frame, url, documentClasses | HTMLDocumentClass, isSynthesized)
+HTMLDocument::HTMLDocument(Frame* frame, const URL& url, DocumentClassFlags documentClasses, unsigned constructionFlags)
+    : Document(frame, url, documentClasses | HTMLDocumentClass, constructionFlags)
 {
     clearXMLVersion();
 }
@@ -139,6 +139,7 @@ void HTMLDocument::setDesignMode(const String& value)
 
 Element* HTMLDocument::activeElement()
 {
+    document().updateStyleIfNeeded();
     if (Element* element = treeScope().focusedElement())
         return element;
     return body();

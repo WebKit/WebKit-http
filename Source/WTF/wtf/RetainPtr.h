@@ -117,10 +117,8 @@ namespace WTF {
 
         PtrType get() const { return fromStorageType(m_ptr); }
         PtrType operator->() const { return fromStorageType(m_ptr); }
-#if COMPILER_SUPPORTS(CXX_EXPLICIT_CONVERSIONS)
         explicit operator PtrType() const { return fromStorageType(m_ptr); }
         explicit operator bool() const { return m_ptr; }
-#endif
 
         bool operator!() const { return !m_ptr; }
     
@@ -135,10 +133,6 @@ namespace WTF {
 
         RetainPtr& operator=(RetainPtr&&);
         template<typename U> RetainPtr& operator=(RetainPtr<U>&&);
-
-#if !COMPILER_SUPPORTS(CXX_NULLPTR)
-        RetainPtr& operator=(std::nullptr_t) { clear(); return *this; }
-#endif
 
         void swap(RetainPtr&);
 

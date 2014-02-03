@@ -27,14 +27,14 @@
 
 namespace WebCore {
 
-class SVGFEMergeElement FINAL : public SVGFilterPrimitiveStandardAttributes {
+class SVGFEMergeElement final : public SVGFilterPrimitiveStandardAttributes {
 public:
     static PassRefPtr<SVGFEMergeElement> create(const QualifiedName&, Document&);
 
 private:
     SVGFEMergeElement(const QualifiedName&, Document&);
 
-    virtual PassRefPtr<FilterEffect> build(SVGFilterBuilder*, Filter*);
+    virtual PassRefPtr<FilterEffect> build(SVGFilterBuilder*, Filter*) override;
 };
 
 } // namespace WebCore

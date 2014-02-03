@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2010, 2014 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,29 +26,34 @@
 #ifndef DatasetDOMStringMap_h
 #define DatasetDOMStringMap_h
 
-#include "DOMStringMap.h"
+#include "ScriptWrappable.h"
+#include <wtf/Noncopyable.h>
+#include <wtf/Vector.h>
+#include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
 class Element;
+typedef int ExceptionCode;
 
-class DatasetDOMStringMap FINAL : public DOMStringMap {
+class DatasetDOMStringMap final : public ScriptWrappable {
+    WTF_MAKE_NONCOPYABLE(DatasetDOMStringMap); WTF_MAKE_FAST_ALLOCATED;
 public:
     explicit DatasetDOMStringMap(Element& element)
         : m_element(element)
     {
     }
 
-    virtual void ref() OVERRIDE;
-    virtual void deref() OVERRIDE;
+    void ref();
+    void deref();
 
-    virtual void getNames(Vector<String>&) OVERRIDE;
-    virtual String item(const String& name) OVERRIDE;
-    virtual bool contains(const String& name) OVERRIDE;
-    virtual void setItem(const String& name, const String& value, ExceptionCode&) OVERRIDE;
-    virtual void deleteItem(const String& name, ExceptionCode&) OVERRIDE;
+    void getNames(Vector<String>&);
+    String item(const String& name);
+    bool contains(const String& name);
+    void setItem(const String& name, const String& value, ExceptionCode&);
+    void deleteItem(const String& name, ExceptionCode&);
 
-    virtual Element* element() OVERRIDE { return &m_element; }
+    Element* element() { return &m_element; }
 
 private:
     Element& m_element;

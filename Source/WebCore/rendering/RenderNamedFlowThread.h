@@ -43,7 +43,7 @@ typedef ListHashSet<RenderNamedFlowThread*> RenderNamedFlowThreadList;
 typedef HashCountedSet<RenderNamedFlowThread*> RenderNamedFlowThreadCountedSet;
 typedef ListHashSet<Element*> NamedFlowContentElements;
 
-class RenderNamedFlowThread FINAL : public RenderFlowThread {
+class RenderNamedFlowThread final : public RenderFlowThread {
 public:
     RenderNamedFlowThread(Document&, PassRef<RenderStyle>, PassRefPtr<WebKitNamedFlow>);
     virtual ~RenderNamedFlowThread();
@@ -64,10 +64,10 @@ public:
 
     void pushDependencies(RenderNamedFlowThreadList&);
 
-    virtual void addRegionToThread(RenderRegion*) OVERRIDE;
-    virtual void removeRegionFromThread(RenderRegion*) OVERRIDE;
+    virtual void addRegionToThread(RenderRegion*) override;
+    virtual void removeRegionFromThread(RenderRegion*) override;
 
-    virtual void regionChangedWritingMode(RenderRegion*) OVERRIDE;
+    virtual void regionChangedWritingMode(RenderRegion*) override;
 
     bool overset() const { return m_overset; }
     void computeOversetStateForRegions(LayoutUnit oldClientAfterEdge);
@@ -80,9 +80,7 @@ public:
     bool isMarkedForDestruction() const;
     void getRanges(Vector<RefPtr<Range>>&, const RenderRegion*) const;
 
-#if USE(ACCELERATED_COMPOSITING)
-    virtual bool collectsGraphicsLayersUnderRegions() const OVERRIDE;
-#endif
+    virtual bool collectsGraphicsLayersUnderRegions() const override;
 
     // Check if the content is flown into at least a region with region styling rules.
     bool hasRegionsWithStyling() const { return m_hasRegionsWithStyling; }
@@ -90,19 +88,19 @@ public:
 
     void clearRenderObjectCustomStyle(const RenderObject*);
 
-    virtual void removeFlowChildInfo(RenderObject*) OVERRIDE FINAL;
+    virtual void removeFlowChildInfo(RenderObject*) override final;
 
 protected:
     void setMarkForDestruction();
     void resetMarkForDestruction();
 
 private:
-    virtual const char* renderName() const OVERRIDE;
-    virtual bool isRenderNamedFlowThread() const OVERRIDE { return true; }
-    virtual bool isChildAllowed(const RenderObject&, const RenderStyle&) const OVERRIDE;
+    virtual const char* renderName() const override;
+    virtual bool isRenderNamedFlowThread() const override { return true; }
+    virtual bool isChildAllowed(const RenderObject&, const RenderStyle&) const override;
 
-    virtual void dispatchRegionLayoutUpdateEvent() OVERRIDE;
-    virtual void dispatchRegionOversetChangeEvent() OVERRIDE;
+    virtual void dispatchRegionLayoutUpdateEvent() override;
+    virtual void dispatchRegionOversetChangeEvent() override;
 
     bool dependsOn(RenderNamedFlowThread* otherRenderFlowThread) const;
     void addDependencyOnFlowThread(RenderNamedFlowThread*);
@@ -113,8 +111,8 @@ private:
     void checkInvalidRegions();
 
     bool canBeDestroyed() const { return m_invalidRegionList.isEmpty() && m_regionList.isEmpty() && m_contentElements.isEmpty(); }
-    void regionLayoutUpdateEventTimerFired(Timer<RenderNamedFlowThread>*);
-    void regionOversetChangeEventTimerFired(Timer<RenderNamedFlowThread>*);
+    void regionLayoutUpdateEventTimerFired(Timer<RenderNamedFlowThread>&);
+    void regionOversetChangeEventTimerFired(Timer<RenderNamedFlowThread>&);
     void clearContentElements();
     void updateWritingMode();
 
@@ -153,4 +151,3 @@ RENDER_OBJECT_TYPE_CASTS(RenderNamedFlowThread, isRenderNamedFlowThread())
 } // namespace WebCore
 
 #endif // RenderNamedFlowThread_h
-

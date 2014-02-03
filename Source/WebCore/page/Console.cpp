@@ -93,7 +93,10 @@ static void internalAddMessage(Page* page, MessageType type, MessageLevel level,
         return;
 
     PageConsole::printSourceURLAndPosition(lastCaller.sourceURL(), lastCaller.lineNumber());
-    PageConsole::printMessageSourceAndLevelPrefix(ConsoleAPIMessageSource, level);
+
+    printf(": ");
+
+    PageConsole::printMessageSourceAndLevelPrefix(ConsoleAPIMessageSource, level, printTrace);
 
     for (size_t i = 0; i < arguments->argumentCount(); ++i) {
         String argAsString = arguments->argumentAt(i).toString(arguments->globalState());
@@ -102,12 +105,21 @@ static void internalAddMessage(Page* page, MessageType type, MessageLevel level,
 
     printf("\n");
 
-    if (printTrace) {
-        printf("Stack Trace\n");
-        for (size_t i = 0; i < callStack->size(); ++i) {
-            String functionName = String(callStack->at(i).functionName());
-            printf("\t%s\n", functionName.utf8().data());
-        }
+    if (!printTrace)
+        return;
+
+    for (size_t i = 0; i < callStack->size(); ++i) {
+        const ScriptCallFrame& callFrame = callStack->at(i);
+
+        String functionName = String(callFrame.functionName());
+        if (functionName.isEmpty())
+            functionName = ASCIILiteral("(unknown)");
+
+        printf("%lu: %s (", static_cast<unsigned long>(i), functionName.utf8().data());
+
+        PageConsole::printSourceURLAndPosition(callFrame.sourceURL(), callFrame.lineNumber());
+
+        printf(")\n");
     }
 }
 
@@ -174,8 +186,6 @@ void Console::count(JSC::ExecState* state, PassRefPtr<ScriptArguments> arguments
     InspectorInstrumentation::consoleCount(page(), state, arguments);
 }
 
-#if ENABLE(JAVASCRIPT_DEBUGGER)
-
 void Console::profile(JSC::ExecState* state, const String& title)
 {
     Page* page = this->page();
@@ -214,8 +224,6 @@ void Console::profileEnd(JSC::ExecState* state, const String& title)
     RefPtr<ScriptCallStack> callStack(createScriptCallStack(state, 1));
     InspectorInstrumentation::addProfile(page, profile, callStack);
 }
-
-#endif
 
 void Console::time(const String& title)
 {

@@ -35,14 +35,14 @@ namespace WebCore {
 
 class ScriptExecutionContext;
 
-class WorkerEventQueue FINAL : public EventQueue {
+class WorkerEventQueue final : public EventQueue {
 public:
     explicit WorkerEventQueue(ScriptExecutionContext&);
     virtual ~WorkerEventQueue();
 
-    virtual bool enqueueEvent(PassRefPtr<Event>) OVERRIDE;
-    virtual bool cancelEvent(Event&) OVERRIDE;
-    virtual void close() OVERRIDE;
+    virtual bool enqueueEvent(PassRefPtr<Event>) override;
+    virtual bool cancelEvent(Event&) override;
+    virtual void close() override;
 
 private:
     ScriptExecutionContext& m_scriptExecutionContext;

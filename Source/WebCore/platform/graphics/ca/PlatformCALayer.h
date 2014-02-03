@@ -26,9 +26,8 @@
 #ifndef PlatformCALayer_h
 #define PlatformCALayer_h
 
-#if USE(ACCELERATED_COMPOSITING)
-
 #include "GraphicsContext.h"
+#include "GraphicsLayer.h"
 #include "PlatformCAAnimation.h"
 #include "PlatformCALayerClient.h"
 #include <QuartzCore/CABase.h>
@@ -80,6 +79,11 @@ public:
 
     virtual ~PlatformCALayer();
 
+    GraphicsLayer::PlatformLayerID layerID() const { return m_layerID; }
+
+    virtual bool isPlatformCALayerMac() const { return false; }
+    virtual bool isPlatformCALayerRemote() const { return false; }
+
     // This function passes the layer as a void* rather than a PlatformLayer because PlatformLayer
     // is defined differently for Obj C and C++. This allows callers from both languages.
     static PlatformCALayer* platformCALayer(void* platformLayer);
@@ -98,7 +102,6 @@ public:
     virtual void setContentsChanged() = 0;
 
     LayerType layerType() const { return m_layerType; }
-    virtual bool isRemote() const { return false; }
 
     virtual PlatformCALayer* superlayer() const = 0;
     virtual void removeFromSuperlayer() = 0;
@@ -176,6 +179,10 @@ public:
     virtual void copyFiltersFrom(const PlatformCALayer*) = 0;
 #endif
 
+#if ENABLE(CSS_COMPOSITING)
+    void setBlendMode(BlendMode);
+#endif
+
     virtual void setName(const String&) = 0;
 
     virtual void setSpeed(float) = 0;
@@ -201,6 +208,14 @@ public:
 #endif // NDEBUG
 #endif // PLATFORM(WIN)
 
+#if PLATFORM(IOS)
+    bool isWebLayer();
+    void setBoundsOnMainThread(CGRect);
+    void setPositionOnMainThread(CGPoint);
+    void setAnchorPointOnMainThread(FloatPoint3D);
+    void setTileSize(const IntSize&);
+#endif
+
     virtual PassRefPtr<PlatformCALayer> createCompatibleLayer(LayerType, PlatformCALayerClient*) const = 0;
 
 #if PLATFORM(MAC)
@@ -208,20 +223,17 @@ public:
 #endif
 
 protected:
-    PlatformCALayer(LayerType layerType, PlatformCALayerClient* owner)
-        : m_layerType(layerType)
-        , m_owner(owner)
-    {
+    PlatformCALayer(LayerType, PlatformCALayerClient* owner);
 
-    }
-
-    LayerType m_layerType;
+    const LayerType m_layerType;
+    const GraphicsLayer::PlatformLayerID m_layerID;
     RetainPtr<PlatformLayer> m_layer;
     PlatformCALayerClient* m_owner;
 };
 
-}
+#define PLATFORM_CALAYER_TYPE_CASTS(ToValueTypeName, predicate) \
+    TYPE_CASTS_BASE(ToValueTypeName, WebCore::PlatformCALayer, object, object->predicate, object.predicate)
 
-#endif // USE(ACCELERATED_COMPOSITING)
+} // namespace WebCore
 
 #endif // PlatformCALayer_h

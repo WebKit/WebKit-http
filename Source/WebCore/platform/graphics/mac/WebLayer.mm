@@ -24,22 +24,34 @@
  */
 
 #include "config.h"
-
-#if USE(ACCELERATED_COMPOSITING)
-
 #import "WebLayer.h"
 
 #import "GraphicsContext.h"
 #import "GraphicsLayerCA.h"
 #import "PlatformCALayer.h"
-#import "ThemeMac.h"
 #import <QuartzCore/QuartzCore.h>
+
+#if PLATFORM(IOS)
+#import "WKGraphics.h"
+#import "WAKWindow.h"
+#import "WebCoreThread.h"
+#endif
+
+#if !PLATFORM(IOS)
+#import "ThemeMac.h"
+#endif
 
 @interface CALayer(WebCoreCALayerPrivate)
 - (void)reloadValueForKeyPath:(NSString *)keyPath;
 @end
 
 using namespace WebCore;
+
+#if PLATFORM(IOS)
+@interface WebLayer(Private)
+- (void)drawScaledContentsInContext:(CGContextRef)context;
+@end
+#endif
 
 namespace WebCore {
 
@@ -74,17 +86,26 @@ void drawLayerContents(CGContextRef context, WebCore::PlatformCALayer* platformC
     if (!layerContents)
         return;
 
+#if PLATFORM(IOS)
+    WKSetCurrentGraphicsContext(context);
+#endif
+
     CGContextSaveGState(context);
 
     // We never use CompositingCoordinatesBottomUp on Mac.
     ASSERT(layerContents->platformCALayerContentsOrientation() == GraphicsLayer::CompositingCoordinatesTopDown);
 
+#if PLATFORM(IOS)
+    WKFontAntialiasingStateSaver fontAntialiasingState(context, [platformCALayer->platformLayer() isOpaque]);
+    fontAntialiasingState.setup([WAKWindow hasLandscapeOrientation]);
+#else
     [NSGraphicsContext saveGraphicsState];
 
     // Set up an NSGraphicsContext for the context, so that parts of AppKit that rely on
     // the current NSGraphicsContext (e.g. NSCell drawing) get the right one.
     NSGraphicsContext* layerContext = [NSGraphicsContext graphicsContextWithGraphicsPort:context flipped:YES];
     [NSGraphicsContext setCurrentContext:layerContext];
+#endif
 
     GraphicsContext graphicsContext(context);
     graphicsContext.setIsCALayerContext(true);
@@ -94,7 +115,8 @@ void drawLayerContents(CGContextRef context, WebCore::PlatformCALayer* platformC
         // Turn off font smoothing to improve the appearance of text rendered onto a transparent background.
         graphicsContext.setShouldSmoothFonts(false);
     }
-    
+
+#if !PLATFORM(IOS)
     // It's important to get the clip from the context, because it may be significantly
     // smaller than the layer bounds (e.g. tiled layers)
     FloatRect clipBounds = CGContextGetClipBoundingBox(context);
@@ -106,6 +128,7 @@ void drawLayerContents(CGContextRef context, WebCore::PlatformCALayer* platformC
     focusRingClipRect = transform.mapRect(clipBounds);
 #endif
     ThemeMac::setFocusRingClipRect(focusRingClipRect);
+#endif // !PLATFORM(IOS)
 
     for (auto rect : dirtyRects) {
         GraphicsContextStateSaver stateSaver(graphicsContext);
@@ -114,9 +137,13 @@ void drawLayerContents(CGContextRef context, WebCore::PlatformCALayer* platformC
         layerContents->platformCALayerPaintContents(platformCALayer, graphicsContext, enclosingIntRect(rect));
     }
 
+#if PLATFORM(IOS)
+    fontAntialiasingState.restore();
+#else
     ThemeMac::setFocusRingClipRect(FloatRect());
 
     [NSGraphicsContext restoreGraphicsState];
+#endif
 
     // Re-fetch the layer owner, since <rdar://problem/9125151> indicates that it might have been destroyed during painting.
     layerContents = platformCALayer->owner();
@@ -224,6 +251,10 @@ void drawRepaintIndicator(CGContextRef context, PlatformCALayer* platformCALayer
 
 - (void)display
 {
+#if PLATFORM(IOS)
+    if (pthread_main_np())
+        WebThreadLock();
+#endif
     [super display];
     PlatformCALayer* layer = PlatformCALayer::platformCALayer(self);
     if (layer && layer->owner())
@@ -232,6 +263,10 @@ void drawRepaintIndicator(CGContextRef context, PlatformCALayer* platformCALayer
 
 - (void)drawInContext:(CGContextRef)context
 {
+#if PLATFORM(IOS)
+    if (pthread_main_np())
+        WebThreadLock();
+#endif
     PlatformCALayer* layer = PlatformCALayer::platformCALayer(self);
     if (layer && layer->owner()) {
         GraphicsContext graphicsContext(context);
@@ -292,5 +327,3 @@ void drawRepaintIndicator(CGContextRef context, PlatformCALayer* platformCALayer
 @end  // implementation WebLayer(ExtendedDescription)
 
 #endif // NDEBUG
-
-#endif // USE(ACCELERATED_COMPOSITING)

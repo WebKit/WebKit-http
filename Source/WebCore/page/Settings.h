@@ -34,6 +34,7 @@
 #include "SecurityOrigin.h"
 #include "SettingsMacros.h"
 #include "Timer.h"
+#include <chrono>
 #include <wtf/HashMap.h>
 #include <wtf/RefCounted.h>
 #include <wtf/text/AtomicString.h>
@@ -171,13 +172,39 @@ public:
     void setDOMTimerAlignmentInterval(double);
     double domTimerAlignmentInterval() const;
 
-    // FIXME: Change these methods to take/return an unsigned integer after we upstream the iOS port.
-    void setLayoutInterval(int);
-    int layoutInterval() const { return m_layoutInterval; }
+    void setLayoutInterval(std::chrono::milliseconds);
+    std::chrono::milliseconds layoutInterval() const { return m_layoutInterval; }
 
 #if ENABLE(HIDDEN_PAGE_DOM_TIMER_THROTTLING)
     bool hiddenPageDOMTimerThrottlingEnabled() const { return m_hiddenPageDOMTimerThrottlingEnabled; }
     void setHiddenPageDOMTimerThrottlingEnabled(bool);
+#endif
+
+#if PLATFORM(IOS)
+    // FIXME: This setting isn't specific to iOS.
+    void setMaxParseDuration(double maxParseDuration) { m_maxParseDuration = maxParseDuration; }
+    double maxParseDuration() const { return m_maxParseDuration; }
+
+    void setStandalone(bool);
+    bool standalone() const { return m_standalone; }
+
+    void setTelephoneNumberParsingEnabled(bool flag) { m_telephoneNumberParsingEnabled = flag; }
+    bool telephoneNumberParsingEnabled() const { return m_telephoneNumberParsingEnabled; }
+
+    void setMediaDataLoadsAutomatically(bool flag) { m_mediaDataLoadsAutomatically = flag; }
+    bool mediaDataLoadsAutomatically() const { return m_mediaDataLoadsAutomatically; }
+
+    void setShouldTransformsAffectOverflow(bool flag) { m_shouldTransformsAffectOverflow = flag; }
+    bool shouldTransformsAffectOverflow() const { return m_shouldTransformsAffectOverflow; }
+
+    void setShouldDispatchJavaScriptWindowOnErrorEvents(bool flag) { m_shouldDispatchJavaScriptWindowOnErrorEvents = flag; }
+    bool shouldDispatchJavaScriptWindowOnErrorEvents() const { return m_shouldDispatchJavaScriptWindowOnErrorEvents; }
+
+    void setAlwaysUseBaselineOfPrimaryFont(bool flag) { m_alwaysUseBaselineOfPrimaryFont = flag; }
+    bool alwaysUseBaselineOfPrimaryFont() const { return m_alwaysUseBaselineOfPrimaryFont; }
+
+    void setAlwaysUseAcceleratedOverflowScroll(bool flag) { m_alwaysUseAcceleratedOverflowScroll = flag; }
+    bool alwaysUseAcceleratedOverflowScroll() const { return m_alwaysUseAcceleratedOverflowScroll; }
 #endif
 
     void setUsesPageCache(bool);
@@ -185,9 +212,6 @@ public:
         
     void setFontRenderingMode(FontRenderingMode mode);
     FontRenderingMode fontRenderingMode() const;
-
-    void setCSSCustomFilterEnabled(bool enabled) { m_isCSSCustomFilterEnabled = enabled; }
-    bool isCSSCustomFilterEnabled() const { return m_isCSSCustomFilterEnabled; }
 
 #if ENABLE(CSS_STICKY_POSITION)
     void setCSSStickyPositionEnabled(bool enabled) { m_cssStickyPositionEnabled = enabled; }
@@ -207,6 +231,9 @@ public:
 
     void setTiledBackingStoreEnabled(bool);
     bool tiledBackingStoreEnabled() const { return m_tiledBackingStoreEnabled; }
+
+    void setBackgroundShouldExtendBeyondPage(bool);
+    bool backgroundShouldExtendBeyondPage() const { return m_backgroundShouldExtendBeyondPage; }
 
 #if USE(AVFOUNDATION)
     static void setAVFoundationEnabled(bool flag);
@@ -268,6 +295,20 @@ public:
     static bool isVideoPluginProxyEnabled() { return gVideoPluginProxyEnabled; }
 #endif
 
+#if PLATFORM(IOS)
+    static void setAudioSessionCategoryOverride(unsigned);
+    static unsigned audioSessionCategoryOverride();
+
+    static void setNetworkDataUsageTrackingEnabled(bool);
+    static bool networkDataUsageTrackingEnabled();
+
+    static void setNetworkInterfaceName(const String&);
+    static const String& networkInterfaceName();
+
+    static void setAVKitEnabled(bool flag) { gAVKitEnabled = flag; }
+    static bool avKitEnabled() { return gAVKitEnabled; }
+#endif
+
 private:
     explicit Settings(Page*);
 
@@ -280,7 +321,10 @@ private:
     URL m_userStyleSheetLocation;
     const std::unique_ptr<FontGenericFamilies> m_fontGenericFamilies;
     SecurityOrigin::StorageBlockingPolicy m_storageBlockingPolicy;
-    int m_layoutInterval;
+    std::chrono::milliseconds m_layoutInterval;
+#if PLATFORM(IOS)
+    double m_maxParseDuration;
+#endif
 #if ENABLE(TEXT_AUTOSIZING)
     float m_textAutosizingFontScaleFactor;
     IntSize m_textAutosizingWindowSizeOverride;
@@ -300,12 +344,22 @@ private:
     bool m_needsAdobeFrameReloadingQuirk : 1;
     bool m_usesPageCache : 1;
     unsigned m_fontRenderingMode : 1;
-    bool m_isCSSCustomFilterEnabled : 1;
+#if PLATFORM(IOS)
+    bool m_standalone : 1;
+    bool m_telephoneNumberParsingEnabled : 1;
+    bool m_mediaDataLoadsAutomatically : 1;
+    bool m_shouldTransformsAffectOverflow : 1;
+    bool m_shouldDispatchJavaScriptWindowOnErrorEvents : 1;
+    bool m_alwaysUseBaselineOfPrimaryFont : 1;
+    bool m_allowMultiElementImplicitFormSubmission : 1;
+    bool m_alwaysUseAcceleratedOverflowScroll : 1;
+#endif
 #if ENABLE(CSS_STICKY_POSITION)
     bool m_cssStickyPositionEnabled : 1;
 #endif
     bool m_showTiledScrollingIndicator : 1;
     bool m_tiledBackingStoreEnabled : 1;
+    bool m_backgroundShouldExtendBeyondPage : 1;
     bool m_dnsPrefetchingEnabled : 1;
 
 #if ENABLE(TOUCH_EVENTS)
@@ -348,6 +402,10 @@ private:
     static bool gShouldUseHighResolutionTimers;
 #endif
     static bool gShouldRespectPriorityInCSSAttributeSetters;
+#if PLATFORM(IOS)
+    static bool gNetworkDataUsageTrackingEnabled;
+    static bool gAVKitEnabled;
+#endif
 
     static double gHiddenPageDOMTimerAlignmentInterval;
 

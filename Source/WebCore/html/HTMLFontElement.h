@@ -28,7 +28,7 @@
 
 namespace WebCore {
 
-class HTMLFontElement FINAL : public HTMLElement {
+class HTMLFontElement final : public HTMLElement {
 public:
     static PassRefPtr<HTMLFontElement> create(const QualifiedName&, Document&);
     
@@ -37,8 +37,8 @@ public:
 private:
     HTMLFontElement(const QualifiedName&, Document&);
 
-    virtual bool isPresentationAttribute(const QualifiedName&) const OVERRIDE;
-    virtual void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStyleProperties&) OVERRIDE;
+    virtual bool isPresentationAttribute(const QualifiedName&) const override;
+    virtual void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStyleProperties&) override;
 };
 
 } // namespace

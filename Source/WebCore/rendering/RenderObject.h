@@ -117,15 +117,11 @@ const int caretWidth = 2; // This value should be kept in sync with UIKit. See <
 const int caretWidth = 1;
 #endif
 
-#if ENABLE(DASHBOARD_SUPPORT) || ENABLE(DRAGGABLE_REGION)
+#if ENABLE(DASHBOARD_SUPPORT)
 struct AnnotatedRegionValue {
     bool operator==(const AnnotatedRegionValue& o) const
     {
-#if ENABLE(DASHBOARD_SUPPORT)
         return type == o.type && bounds == o.bounds && clip == o.clip && label == o.label;
-#else // ENABLE(DRAGGABLE_REGION)
-        return draggable == o.draggable && bounds == o.bounds;
-#endif
     }
     bool operator!=(const AnnotatedRegionValue& o) const
     {
@@ -133,13 +129,9 @@ struct AnnotatedRegionValue {
     }
 
     LayoutRect bounds;
-#if ENABLE(DASHBOARD_SUPPORT)
     String label;
     LayoutRect clip;
     int type;
-#else // ENABLE(DRAGGABLE_REGION)
-    bool draggable;
-#endif
 };
 #endif
 
@@ -369,7 +361,7 @@ public:
     bool isInFlowRenderFlowThread() const { return isRenderFlowThread() && !isOutOfFlowPositioned(); }
     bool isOutOfFlowRenderFlowThread() const { return isRenderFlowThread() && isOutOfFlowPositioned(); }
 
-    virtual bool isRenderMultiColumnBlock() const { return false; }
+    virtual bool isMultiColumnBlockFlow() const { return false; }
     virtual bool isRenderMultiColumnSet() const { return false; }
 
     virtual bool isRenderScrollbarPart() const { return false; }
@@ -565,9 +557,7 @@ public:
 
     bool isSelectionBorder() const;
 
-    bool hasClip() const { return isOutOfFlowPositioned() && style().hasClip(); }
     bool hasOverflowClip() const { return m_bitfields.hasOverflowClip(); }
-    bool hasClipOrOverflowClip() const { return hasClip() || hasOverflowClip(); }
 
     bool hasTransform() const { return m_bitfields.hasTransform(); }
 
@@ -651,7 +641,7 @@ public:
     // repaint and do not need a relayout
     virtual void updateFromElement() { }
 
-#if ENABLE(DASHBOARD_SUPPORT) || ENABLE(DRAGGABLE_REGION)
+#if ENABLE(DASHBOARD_SUPPORT)
     virtual void addAnnotatedRegions(Vector<AnnotatedRegionValue>&);
     void collectAnnotatedRegions(Vector<AnnotatedRegionValue>&);
 #endif
@@ -742,14 +732,14 @@ public:
     RenderLayerModelObject* containerForRepaint() const;
     // Actually do the repaint of rect r for this object which has been computed in the coordinate space
     // of repaintContainer. If repaintContainer is 0, repaint via the view.
-    void repaintUsingContainer(const RenderLayerModelObject* repaintContainer, const IntRect&, bool immediate = false) const;
+    void repaintUsingContainer(const RenderLayerModelObject* repaintContainer, const IntRect&, bool immediate = false, bool shouldClipToLayer = true) const;
     
     // Repaint the entire object.  Called when, e.g., the color of a border changes, or when a border
     // style changes.
     void repaint(bool immediate = false) const;
 
     // Repaint a specific subrectangle within a given object.  The rect |r| is in the object's coordinate space.
-    void repaintRectangle(const LayoutRect&, bool immediate = false) const;
+    void repaintRectangle(const LayoutRect&, bool immediate = false, bool shouldClipToLayer = true) const;
 
     bool checkForRepaintDuringLayout() const;
 
@@ -861,17 +851,15 @@ public:
     virtual int previousOffsetForBackwardDeletion(int current) const;
     virtual int nextOffset(int current) const;
 
-    virtual void imageChanged(CachedImage*, const IntRect* = 0) OVERRIDE;
+    virtual void imageChanged(CachedImage*, const IntRect* = 0) override;
     virtual void imageChanged(WrappedImagePtr, const IntRect* = 0) { }
-    virtual bool willRenderImage(CachedImage*) OVERRIDE;
+    virtual bool willRenderImage(CachedImage*) override;
 
     void selectionStartEnd(int& spos, int& epos) const;
     
     void removeFromParent();
 
     AnimationController& animation() const;
-
-    bool visibleToHitTesting() const { return style().visibility() == VISIBLE && style().pointerEvents() != PE_NONE; }
 
     // Map points and quads through elements, potentially via 3d transforms. You should never need to call these directly; use
     // localToAbsolute/absoluteToLocal methods instead.

@@ -32,6 +32,7 @@
 #include "SQLiteFileSystem.h"
 #include "SQLiteStatement.h"
 #include <sqlite3.h>
+#include <thread>
 #include <wtf/Threading.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/WTFString.h>
@@ -140,7 +141,7 @@ void SQLiteDatabase::interrupt()
         if (!m_db)
             return;
         sqlite3_interrupt(m_db);
-        yield();
+        std::this_thread::yield();
     }
 
     m_lockingMutex.unlock();
@@ -503,6 +504,29 @@ bool SQLiteDatabase::turnOnIncrementalAutoVacuum()
         error = lastError();
         return (error == SQLITE_OK);
     }
+}
+
+static void destroyCollationFunction(void* arg)
+{
+    auto f = static_cast<std::function<int(int, const void*, int, const void*)>*>(arg);
+    delete f;
+}
+
+static int callCollationFunction(void* arg, int aLength, const void* a, int bLength, const void* b)
+{
+    auto f = static_cast<std::function<int(int, const void*, int, const void*)>*>(arg);
+    return (*f)(aLength, a, bLength, b);
+}
+
+void SQLiteDatabase::setCollationFunction(const String& collationName, std::function<int(int, const void*, int, const void*)> collationFunction)
+{
+    auto functionObject = new std::function<int(int, const void*, int, const void*)>(collationFunction);
+    sqlite3_create_collation_v2(m_db, collationName.utf8().data(), SQLITE_UTF8, functionObject, callCollationFunction, destroyCollationFunction);
+}
+
+void SQLiteDatabase::removeCollationFunction(const String& collationName)
+{
+    sqlite3_create_collation_v2(m_db, collationName.utf8().data(), SQLITE_UTF8, nullptr, nullptr, nullptr);
 }
 
 } // namespace WebCore

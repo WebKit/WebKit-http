@@ -117,6 +117,13 @@
 #include "RequestAnimationFrameCallback.h"
 #endif
 
+#if PLATFORM(IOS)
+#if ENABLE(GEOLOCATION)
+#include "NavigatorGeolocation.h"
+#endif
+#include "WKContentObservation.h"
+#endif
+
 namespace WebCore {
 
 class PostMessageTimer : public TimerBase {
@@ -371,6 +378,13 @@ DOMWindow::DOMWindow(Document* document)
     , FrameDestructionObserver(document->frame())
     , m_shouldPrintWhenFinishedLoading(false)
     , m_suspendedForPageCache(false)
+    , m_lastPageStatus(PageStatusNone)
+#if PLATFORM(IOS)
+    , m_scrollEventListenerCount(0)
+#endif
+#if ENABLE(IOS_TOUCH_EVENTS) || ENABLE(IOS_GESTURE_EVENTS)
+    , m_touchEventListenerCount(0)
+#endif
 {
     ASSERT(frame());
     ASSERT(DOMWindow::document());
@@ -1139,9 +1153,7 @@ int DOMWindow::innerHeight() const
     if (!view)
         return 0;
 
-    // If the device height is overridden, do not include the horizontal scrollbar into the innerHeight (since it is absent on the real device).
-    bool includeScrollbars = !InspectorInstrumentation::shouldApplyScreenHeightOverride(m_frame);
-    return view->mapFromLayoutToCSSUnits(static_cast<int>(view->visibleContentRect(includeScrollbars ? ScrollableArea::IncludeScrollbars : ScrollableArea::ExcludeScrollbars).height()));
+    return view->mapFromLayoutToCSSUnits(static_cast<int>(view->visibleContentRectIncludingScrollbars().height()));
 }
 
 int DOMWindow::innerWidth() const
@@ -1153,9 +1165,7 @@ int DOMWindow::innerWidth() const
     if (!view)
         return 0;
 
-    // If the device width is overridden, do not include the vertical scrollbar into the innerWidth (since it is absent on the real device).
-    bool includeScrollbars = !InspectorInstrumentation::shouldApplyScreenWidthOverride(m_frame);
-    return view->mapFromLayoutToCSSUnits(static_cast<int>(view->visibleContentRect(includeScrollbars ? ScrollableArea::IncludeScrollbars : ScrollableArea::ExcludeScrollbars).width()));
+    return view->mapFromLayoutToCSSUnits(static_cast<int>(view->visibleContentRectIncludingScrollbars().width()));
 }
 
 int DOMWindow::screenX() const
@@ -1196,7 +1206,11 @@ int DOMWindow::scrollX() const
 
     m_frame->document()->updateLayoutIgnorePendingStylesheets();
 
+#if PLATFORM(IOS)
+    return static_cast<int>(view->actualScrollX() / (m_frame->pageZoomFactor() * m_frame->frameScaleFactor()));
+#else
     return view->mapFromLayoutToCSSUnits(view->scrollX());
+#endif
 }
 
 int DOMWindow::scrollY() const
@@ -1213,7 +1227,11 @@ int DOMWindow::scrollY() const
 
     m_frame->document()->updateLayoutIgnorePendingStylesheets();
 
+#if PLATFORM(IOS)
+    return static_cast<int>(view->actualScrollY() / (m_frame->pageZoomFactor() * m_frame->frameScaleFactor()));
+#else
     return view->mapFromLayoutToCSSUnits(view->scrollY());
+#endif
 }
 
 bool DOMWindow::closed() const
@@ -1425,7 +1443,11 @@ void DOMWindow::scrollBy(int x, int y) const
         return;
 
     IntSize scaledOffset(view->mapFromCSSToLayoutUnits(x), view->mapFromCSSToLayoutUnits(y));
+#if PLATFORM(IOS)
+    view->setActualScrollPosition(view->actualScrollPosition() + scaledOffset);
+#else
     view->scrollBy(scaledOffset);
+#endif
 }
 
 void DOMWindow::scrollTo(int x, int y) const
@@ -1439,8 +1461,15 @@ void DOMWindow::scrollTo(int x, int y) const
     if (!view)
         return;
 
+
+#if PLATFORM(IOS)
+    int zoomedX = static_cast<int>(x * m_frame->pageZoomFactor() * m_frame->frameScaleFactor());
+    int zoomedY = static_cast<int>(y * m_frame->pageZoomFactor() * m_frame->frameScaleFactor());
+    view->setActualScrollPosition(IntPoint(zoomedX, zoomedY));
+#else
     IntPoint layoutPos(view->mapFromCSSToLayoutUnits(x), view->mapFromCSSToLayoutUnits(y));
     view->setScrollPosition(layoutPos);
+#endif
 }
 
 bool DOMWindow::allowedToChangeWindowGeometry() const
@@ -1521,6 +1550,22 @@ int DOMWindow::setTimeout(PassOwnPtr<ScheduledAction> action, int timeout, Excep
 
 void DOMWindow::clearTimeout(int timeoutId)
 {
+#if PLATFORM(IOS)
+    if (m_frame) {
+        Document* document = m_frame->document();
+        if (timeoutId > 0 && document) {
+            DOMTimer* timer = document->findTimeout(timeoutId);
+            if (timer && WebThreadContainsObservedContentModifier(timer)) {
+                WebThreadRemoveObservedContentModifier(timer);
+
+                if (!WebThreadCountOfObservedContentModifiers()) {
+                    if (Page* page = m_frame->page())
+                        page->chrome().client().observedContentChange(m_frame);
+                }
+            }
+        }
+    }
+#endif
     ScriptExecutionContext* context = scriptExecutionContext();
     if (!context)
         return;
@@ -1608,6 +1653,12 @@ bool DOMWindow::addEventListener(const AtomicString& eventType, PassRefPtr<Event
     else if (eventType == eventNames().beforeunloadEvent && allowsBeforeUnloadListeners(this))
         addBeforeUnloadEventListener(this);
 #if ENABLE(DEVICE_ORIENTATION)
+#if PLATFORM(IOS)
+    else if (eventType == eventNames().devicemotionEvent && document())
+        document()->deviceMotionController()->addDeviceEventListener(this);
+    else if (eventType == eventNames().deviceorientationEvent && document())
+        document()->deviceOrientationController()->addDeviceEventListener(this);
+#else
     else if (eventType == eventNames().devicemotionEvent && RuntimeEnabledFeatures::sharedFeatures().deviceMotionEnabled()) {
         if (DeviceMotionController* controller = DeviceMotionController::from(page()))
             controller->addDeviceEventListener(this);
@@ -1615,6 +1666,19 @@ bool DOMWindow::addEventListener(const AtomicString& eventType, PassRefPtr<Event
         if (DeviceOrientationController* controller = DeviceOrientationController::from(page()))
             controller->addDeviceEventListener(this);
     }
+#endif // PLATFORM(IOS)
+#endif // ENABLE(DEVICE_ORIENTATION)
+#if PLATFORM(IOS)
+    else if (eventType == eventNames().scrollEvent)
+        incrementScrollEventListenersCount();
+#endif
+#if ENABLE(IOS_TOUCH_EVENTS)
+    else if (eventNames().isTouchEventType(eventType))
+        ++m_touchEventListenerCount;
+#endif
+#if ENABLE(IOS_GESTURE_EVENTS)
+    else if (eventNames().isGestureEventType(eventType))
+        ++m_touchEventListenerCount;
 #endif
 
 #if ENABLE(PROXIMITY_EVENTS)
@@ -1625,6 +1689,37 @@ bool DOMWindow::addEventListener(const AtomicString& eventType, PassRefPtr<Event
 #endif
 
     return true;
+}
+
+#if PLATFORM(IOS)
+void DOMWindow::incrementScrollEventListenersCount()
+{
+    Document* document = this->document();
+    if (++m_scrollEventListenerCount == 1 && document == &document->topDocument()) {
+        Frame* frame = this->frame();
+        if (frame && frame->page())
+            frame->page()->chrome().client().setNeedsScrollNotifications(frame, true);
+    }
+}
+
+void DOMWindow::decrementScrollEventListenersCount()
+{
+    Document* document = this->document();
+    if (!--m_scrollEventListenerCount && document == &document->topDocument()) {
+        Frame* frame = this->frame();
+        if (frame && frame->page() && !document->inPageCache())
+            frame->page()->chrome().client().setNeedsScrollNotifications(frame, false);
+    }
+}
+#endif
+
+void DOMWindow::resetAllGeolocationPermission()
+{
+    // FIXME: Remove PLATFORM(IOS)-guard once we upstream the iOS changes to Geolocation.cpp.
+#if ENABLE(GEOLOCATION) && PLATFORM(IOS)
+    if (m_navigator)
+        NavigatorGeolocation::from(m_navigator.get())->resetAllGeolocationPermission();
+#endif
 }
 
 bool DOMWindow::removeEventListener(const AtomicString& eventType, EventListener* listener, bool useCapture)
@@ -1644,12 +1739,35 @@ bool DOMWindow::removeEventListener(const AtomicString& eventType, EventListener
     else if (eventType == eventNames().beforeunloadEvent && allowsBeforeUnloadListeners(this))
         removeBeforeUnloadEventListener(this);
 #if ENABLE(DEVICE_ORIENTATION)
+#if PLATFORM(IOS)
+    else if (eventType == eventNames().devicemotionEvent && document())
+        document()->deviceMotionController()->removeDeviceEventListener(this);
+    else if (eventType == eventNames().deviceorientationEvent && document())
+        document()->deviceOrientationController()->removeDeviceEventListener(this);
+#else
     else if (eventType == eventNames().devicemotionEvent) {
         if (DeviceMotionController* controller = DeviceMotionController::from(page()))
             controller->removeDeviceEventListener(this);
     } else if (eventType == eventNames().deviceorientationEvent) {
         if (DeviceOrientationController* controller = DeviceOrientationController::from(page()))
             controller->removeDeviceEventListener(this);
+    }
+#endif // PLATFORM(IOS)
+#endif // ENABLE(DEVICE_ORIENTATION)
+#if PLATFORM(IOS)
+    else if (eventType == eventNames().scrollEvent)
+        decrementScrollEventListenersCount();
+#endif
+#if ENABLE(IOS_TOUCH_EVENTS)
+    else if (eventNames().isTouchEventType(eventType)) {
+        ASSERT(m_touchEventListenerCount > 0);
+        --m_touchEventListenerCount;
+    }
+#endif
+#if ENABLE(IOS_GESTURE_EVENTS)
+    else if (eventNames().isGestureEventType(eventType)) {
+        ASSERT(m_touchEventListenerCount > 0);
+        --m_touchEventListenerCount;
     }
 #endif
 
@@ -1692,6 +1810,22 @@ bool DOMWindow::dispatchEvent(PassRefPtr<Event> prpEvent, PassRefPtr<EventTarget
     Ref<EventTarget> protect(*this);
     RefPtr<Event> event = prpEvent;
 
+    // Pausing a page may trigger pagehide and pageshow events. WebCore also implicitly fires these
+    // events when closing a WebView. Here we keep track of the state of the page to prevent duplicate,
+    // unbalanced events per the definition of the pageshow event:
+    // <http://www.whatwg.org/specs/web-apps/current-work/multipage/history.html#event-pageshow>.
+    if (event->eventInterface() == PageTransitionEventInterfaceType) {
+        if (event->type() == eventNames().pageshowEvent) {
+            if (m_lastPageStatus == PageStatusShown)
+                return true; // Event was previously dispatched; do not fire a duplicate event.
+            m_lastPageStatus = PageStatusShown;
+        } else if (event->type() == eventNames().pagehideEvent) {
+            if (m_lastPageStatus == PageStatusHidden)
+                return true; // Event was previously dispatched; do not fire a duplicate event.
+            m_lastPageStatus = PageStatusHidden;
+        }
+    }
+
     event->setTarget(prpTarget ? prpTarget : this);
     event->setCurrentTarget(this);
     event->setEventPhase(Event::AT_TARGET);
@@ -1710,11 +1844,30 @@ void DOMWindow::removeAllEventListeners()
     EventTarget::removeAllEventListeners();
 
 #if ENABLE(DEVICE_ORIENTATION)
+#if PLATFORM(IOS)
+    if (Document* document = this->document()) {
+        document->deviceMotionController()->removeAllDeviceEventListeners(this);
+        document->deviceOrientationController()->removeAllDeviceEventListeners(this);
+    }
+#else
     if (DeviceMotionController* controller = DeviceMotionController::from(page()))
         controller->removeAllDeviceEventListeners(this);
     if (DeviceOrientationController* controller = DeviceOrientationController::from(page()))
         controller->removeAllDeviceEventListeners(this);
+#endif // PLATFORM(IOS)
+#endif // ENABLE(DEVICE_ORIENTATION)
+
+#if PLATFORM(IOS)
+    if (m_scrollEventListenerCount) {
+        m_scrollEventListenerCount = 1;
+        decrementScrollEventListenersCount();
+    }
 #endif
+
+#if ENABLE(IOS_TOUCH_EVENTS) || ENABLE(IOS_GESTURE_EVENTS)
+    m_touchEventListenerCount = 0;
+#endif
+
 #if ENABLE(TOUCH_EVENTS)
     if (Document* document = this->document())
         document->didRemoveEventTargetNode(document);
@@ -1851,8 +2004,7 @@ bool DOMWindow::isInsecureScriptAccess(DOMWindow& activeWindow, const String& ur
     return true;
 }
 
-PassRefPtr<Frame> DOMWindow::createWindow(const String& urlString, const AtomicString& frameName, const WindowFeatures& windowFeatures,
-    DOMWindow& activeWindow, Frame* firstFrame, Frame* openerFrame, PrepareDialogFunction function, void* functionContext)
+PassRefPtr<Frame> DOMWindow::createWindow(const String& urlString, const AtomicString& frameName, const WindowFeatures& windowFeatures, DOMWindow& activeWindow, Frame* firstFrame, Frame* openerFrame, std::function<void (DOMWindow&)> prepareDialogFunction)
 {
     Frame* activeFrame = activeWindow.frame();
 
@@ -1883,8 +2035,8 @@ PassRefPtr<Frame> DOMWindow::createWindow(const String& urlString, const AtomicS
     if (newFrame->document()->domWindow()->isInsecureScriptAccess(activeWindow, completedURL))
         return newFrame.release();
 
-    if (function)
-        function(newFrame->document()->domWindow(), functionContext);
+    if (prepareDialogFunction)
+        prepareDialogFunction(*newFrame->document()->domWindow());
 
     if (created)
         newFrame->loader().changeLocation(activeWindow.document()->securityOrigin(), completedURL, referrer, false, false);
@@ -1959,8 +2111,7 @@ PassRefPtr<DOMWindow> DOMWindow::open(const String& urlString, const AtomicStrin
     return result ? result->document()->domWindow() : 0;
 }
 
-void DOMWindow::showModalDialog(const String& urlString, const String& dialogFeaturesString,
-    DOMWindow& activeWindow, DOMWindow& firstWindow, PrepareDialogFunction function, void* functionContext)
+void DOMWindow::showModalDialog(const String& urlString, const String& dialogFeaturesString, DOMWindow& activeWindow, DOMWindow& firstWindow, std::function<void (DOMWindow&)> prepareDialogFunction)
 {
     if (!isCurrentlyDisplayedInFrame())
         return;
@@ -1981,8 +2132,7 @@ void DOMWindow::showModalDialog(const String& urlString, const String& dialogFea
         return;
 
     WindowFeatures windowFeatures(dialogFeaturesString, screenAvailableRect(m_frame->view()));
-    RefPtr<Frame> dialogFrame = createWindow(urlString, emptyAtom, windowFeatures,
-        activeWindow, firstFrame, m_frame, function, functionContext);
+    RefPtr<Frame> dialogFrame = createWindow(urlString, emptyAtom, windowFeatures, activeWindow, firstFrame, m_frame, std::move(prepareDialogFunction));
     if (!dialogFrame)
         return;
     dialogFrame->page()->chrome().runModal();

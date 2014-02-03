@@ -5,7 +5,9 @@
 //  examples.
 //  This file is based on the Xcode Configuration files in:
 //  http://code.google.com/p/google-toolbox-for-mac/
-// 
+//
+
+#include "iOS.xcconfig"
 
 GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
 
@@ -70,3 +72,5 @@ SDKROOT_iphonesimulator = $(SDKROOT);
 SDKROOT_macosx = $(SDKROOT_macosx_$(USE_INTERNAL_SDK));
 SDKROOT_macosx_ = macosx;
 SDKROOT_macosx_YES = macosx.internal;
+
+SUPPORTED_PLATFORMS = macosx iphoneos iphonesimulator;

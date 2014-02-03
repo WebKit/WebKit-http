@@ -601,7 +601,7 @@ const ClassInfo JSONObject::s_info = { "JSON", &JSNonFinalObject::s_info, 0, Exe
 
 bool JSONObject::getOwnPropertySlot(JSObject* object, ExecState* exec, PropertyName propertyName, PropertySlot& slot)
 {
-    return getStaticFunctionSlot<JSObject>(exec, ExecState::jsonTable(exec), jsCast<JSONObject*>(object), propertyName, slot);
+    return getStaticFunctionSlot<JSObject>(exec, ExecState::jsonTable(exec->vm()), jsCast<JSONObject*>(object), propertyName, slot);
 }
 
 class Walker {
@@ -654,14 +654,14 @@ NEVER_INLINE JSValue Walker::walk(JSValue unfiltered)
                 ASSERT(inValue.isObject());
                 ASSERT(isJSArray(asObject(inValue)) || asObject(inValue)->inherits(JSArray::info()));
                 if (objectStack.size() + arrayStack.size() > maximumFilterRecursion)
-                    return m_exec->vm().throwException(m_exec, createStackOverflowError(m_exec));
+                    return throwStackOverflowError(m_exec);
 
                 JSArray* array = asArray(inValue);
                 arrayStack.push(array);
                 indexStack.append(0);
-                // fallthrough
             }
             arrayStartVisitMember:
+            FALLTHROUGH;
             case ArrayStartVisitMember: {
                 JSArray* array = arrayStack.peek();
                 uint32_t index = indexStack.last();
@@ -686,7 +686,7 @@ NEVER_INLINE JSValue Walker::walk(JSValue unfiltered)
                     goto stateUnknown;
                 } else
                     outValue = inValue;
-                // fallthrough
+                FALLTHROUGH;
             }
             case ArrayEndVisitMember: {
                 JSArray* array = arrayStack.peek();
@@ -705,16 +705,16 @@ NEVER_INLINE JSValue Walker::walk(JSValue unfiltered)
                 ASSERT(inValue.isObject());
                 ASSERT(!isJSArray(asObject(inValue)) && !asObject(inValue)->inherits(JSArray::info()));
                 if (objectStack.size() + arrayStack.size() > maximumFilterRecursion)
-                    return m_exec->vm().throwException(m_exec, createStackOverflowError(m_exec));
+                    return throwStackOverflowError(m_exec);
 
                 JSObject* object = asObject(inValue);
                 objectStack.push(object);
                 indexStack.append(0);
                 propertyStack.append(PropertyNameArray(m_exec));
                 object->methodTable()->getOwnPropertyNames(object, m_exec, propertyStack.last(), ExcludeDontEnumProperties);
-                // fallthrough
             }
             objectStartVisitMember:
+            FALLTHROUGH;
             case ObjectStartVisitMember: {
                 JSObject* object = objectStack.peek();
                 uint32_t index = indexStack.last();
@@ -741,12 +741,12 @@ NEVER_INLINE JSValue Walker::walk(JSValue unfiltered)
                     goto stateUnknown;
                 } else
                     outValue = inValue;
-                // fallthrough
+                FALLTHROUGH;
             }
             case ObjectEndVisitMember: {
                 JSObject* object = objectStack.peek();
                 Identifier prop = propertyStack.last()[indexStack.last()];
-                PutPropertySlot slot;
+                PutPropertySlot slot(object);
                 JSValue filteredValue = callReviver(object, jsString(m_exec, prop.string()), outValue);
                 if (filteredValue.isUndefined())
                     object->methodTable()->deleteProperty(object, m_exec, prop);
@@ -775,7 +775,7 @@ NEVER_INLINE JSValue Walker::walk(JSValue unfiltered)
         stateStack.removeLast();
     }
     JSObject* finalHolder = constructEmptyObject(m_exec);
-    PutPropertySlot slot;
+    PutPropertySlot slot(finalHolder);
     finalHolder->methodTable()->put(finalHolder, m_exec, m_exec->vm().propertyNames->emptyIdentifier, outValue, slot);
     return callReviver(finalHolder, jsEmptyString(m_exec), outValue);
 }

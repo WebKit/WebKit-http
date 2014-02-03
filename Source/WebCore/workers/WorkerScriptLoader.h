@@ -65,15 +65,11 @@ namespace WebCore {
         bool failed() const { return m_failed; }
         unsigned long identifier() const { return m_identifier; }
 
-        virtual void didReceiveResponse(unsigned long /*identifier*/, const ResourceResponse&) OVERRIDE;
-        virtual void didReceiveData(const char* data, int dataLength) OVERRIDE;
-        virtual void didFinishLoading(unsigned long identifier, double) OVERRIDE;
-        virtual void didFail(const ResourceError&) OVERRIDE;
-        virtual void didFailRedirectCheck() OVERRIDE;
-
-#if PLATFORM(BLACKBERRY)
-        void setTargetType(ResourceRequest::TargetType targetType) { m_targetType = targetType; }
-#endif
+        virtual void didReceiveResponse(unsigned long /*identifier*/, const ResourceResponse&) override;
+        virtual void didReceiveData(const char* data, int dataLength) override;
+        virtual void didFinishLoading(unsigned long identifier, double) override;
+        virtual void didFail(const ResourceError&) override;
+        virtual void didFailRedirectCheck() override;
 
     private:
         friend class WTF::RefCounted<WorkerScriptLoader>;
@@ -94,9 +90,6 @@ namespace WebCore {
         bool m_failed;
         unsigned long m_identifier;
         bool m_finishing;
-#if PLATFORM(BLACKBERRY)
-        ResourceRequest::TargetType m_targetType;
-#endif
     };
 
 } // namespace WebCore

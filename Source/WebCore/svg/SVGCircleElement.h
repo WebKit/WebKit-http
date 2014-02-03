@@ -29,7 +29,7 @@
 
 namespace WebCore {
 
-class SVGCircleElement FINAL : public SVGGraphicsElement,
+class SVGCircleElement final : public SVGGraphicsElement,
                                public SVGExternalResourcesRequired {
 public:
     static PassRefPtr<SVGCircleElement> create(const QualifiedName&, Document&);
@@ -37,16 +37,16 @@ public:
 private:
     SVGCircleElement(const QualifiedName&, Document&);
 
-    virtual bool isValid() const { return SVGTests::isValid(); }
-    virtual bool supportsFocus() const OVERRIDE { return true; }
+    virtual bool isValid() const override { return SVGTests::isValid(); }
+    virtual bool supportsFocus() const override { return true; }
 
     bool isSupportedAttribute(const QualifiedName&);
-    virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
-    virtual void svgAttributeChanged(const QualifiedName&);
+    virtual void parseAttribute(const QualifiedName&, const AtomicString&) override;
+    virtual void svgAttributeChanged(const QualifiedName&) override;
 
-    virtual bool selfHasRelativeLengths() const;
+    virtual bool selfHasRelativeLengths() const override;
 
-    virtual RenderElement* createRenderer(PassRef<RenderStyle>) OVERRIDE;
+    virtual RenderPtr<RenderElement> createElementRenderer(PassRef<RenderStyle>) override;
 
     BEGIN_DECLARE_ANIMATED_PROPERTIES(SVGCircleElement)
         DECLARE_ANIMATED_LENGTH(Cx, cx)

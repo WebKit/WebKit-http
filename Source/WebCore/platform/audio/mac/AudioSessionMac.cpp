@@ -26,13 +26,12 @@
 #include "config.h"
 #include "AudioSession.h"
 
-#if USE(AUDIO_SESSION) && PLATFORM(MAC)
+#if USE(AUDIO_SESSION) && PLATFORM(MAC) && !PLATFORM(IOS)
 
 #include "FloatConversion.h"
 #include "Logging.h"
 #include "NotImplemented.h"
 #include <CoreAudio/AudioHardware.h>
-#include <wtf/PassOwnPtr.h>
 
 namespace WebCore {
 
@@ -56,7 +55,7 @@ public:
 };
 
 AudioSession::AudioSession()
-    : m_private(adoptPtr(new AudioSessionPrivate()))
+    : m_private(std::make_unique<AudioSessionPrivate>())
 {
 }
 

@@ -102,18 +102,6 @@ webkit.org/b/102006 fast/repaint/block-selection-gap-stale-cache-2.html [ ImageO
  
 webkit.org/b/99180 svg/as-image/img-preserveAspectRatio-support-1.html [ ImageOnlyFailure ]
  
-webkit.org/b/99181 svg/dynamic-updates/SVGFEConvolveMatrixElement-dom-kernelUnitLength-attr.html [ ImageOnlyFailure ]
-webkit.org/b/99181 svg/dynamic-updates/SVGFEConvolveMatrixElement-svgdom-kernelUnitLength-prop.html [ ImageOnlyFailure ]
- 
-webkit.org/b/99182 svg/dynamic-updates/SVGFEDropShadowElement-dom-shadow-color-attr.html [ ImageOnlyFailure ]
-webkit.org/b/99182 svg/dynamic-updates/SVGFEDropShadowElement-dom-shadow-opacity-attr.html [ ImageOnlyFailure ]
-webkit.org/b/99182 svg/dynamic-updates/SVGFEDropShadowElement-svgdom-shadow-color-prop.html [ ImageOnlyFailure ]
-webkit.org/b/99182 svg/dynamic-updates/SVGFEDropShadowElement-svgdom-shadow-opacity-prop.html [ ImageOnlyFailure ]
- 
-webkit.org/b/99183 svg/dynamic-updates/SVGFETurbulenceElement-dom-baseFrequency-attr.html [ ImageOnlyFailure ]
-webkit.org/b/99183 svg/dynamic-updates/SVGFETurbulenceElement-dom-stitchTiles-attr.html [ ImageOnlyFailure ]
-webkit.org/b/99183 svg/dynamic-updates/SVGFETurbulenceElement-svgdom-stitchTiles-prop.html [ ImageOnlyFailure ]
-
 webkit.org/b/111984 accessibility/aria-hidden-updates-alldescendants.html [ Failure ]
 webkit.org/b/111988 accessibility/aria-readonly.html [ Failure ]
 webkit.org/b/111991 accessibility/aria-text-role.html [ Failure ]
@@ -287,9 +275,6 @@ webkit.org/b/102517 css3/device-adapt/opera [ Skip ]
 webkit.org/b/87972 fast/loader/policy-delegate-action-hit-test-zoomed.html [ Failure ]
 webkit.org/b/87972 fast/encoding/mailto-always-utf-8.html [ Failure ]
 
-# Fails after r133322
-webkit.org/b/98523 fast/images/repaint-subrect-grid.html [ Failure ]
-
 # DRT needs a setting for setShouldRespectImageOrientation
 webkit.org/b/101210 fast/images/exif-orientation.html [ Failure ]
 webkit.org/b/101210 fast/images/exif-orientation-composited.html [ Failure ]
@@ -320,14 +305,14 @@ http/tests/multipart/multipart-wait-before-boundary.html [ Timeout ]
 
 # Remaining websocket failures.
 Bug(EFL) http/tests/websocket/tests/hybi/close-on-unload-and-force-gc.html [ Timeout Pass ]
-Bug(EFL) http/tests/websocket/tests/hybi/close.html [ Failure Pass ]
-Bug(EFL) http/tests/websocket/tests/hybi/compressed-control-frame.html [ Timeout ]
-Bug(EFL) http/tests/websocket/tests/hybi/multiple-subprotocols.html [ Timeout Pass ]
 Bug(EFL) http/tests/websocket/tests/hybi/reload-crash.html [ Timeout ]
 Bug(EFL) http/tests/websocket/tests/hybi/zero-length-text.html [ Failure Pass ]
 Bug(EFL) http/tests/websocket/tests/hybi/workers/close-code-and-reason.html [ Failure ]
 Bug(EFL) http/tests/websocket/tests/hybi/workers/close-in-onmessage-crash.html [ Timeout ]
 Bug(EFL) http/tests/websocket/tests/hybi/workers/multiple-subprotocols.html [ Timeout Pass ]
+
+# EFL specific error : (_ecore_main_fd_handlers_bads_rem() No bad fd found)
+webkit.org/b/116587 http/tests/websocket/tests/hybi/compressed-control-frame.html [ Skip ]
 
 # DRT does not implement setAudioResult
 webkit.org/b/105881 webaudio/audiobuffersource-loop-points.html [ Skip ]
@@ -462,16 +447,9 @@ webkit.org/b/105031 fast/canvas/webgl/drawingbuffer-test.html [ Failure ]
 webkit.org/b/123696 accessibility/fieldset-element.html [ Missing ]
 webkit.org/b/123696 accessibility/negative-tabindex-does-not-expose-label.html [ Missing ]
 webkit.org/b/123696 editing/input/caret-at-the-edge-of-contenteditable.html [ Missing ]
-webkit.org/b/123696 editing/selection/5825350-1.html [ Missing ]
-webkit.org/b/123696 editing/selection/5825350-2.html [ Missing ]
 webkit.org/b/123696 editing/selection/caret-and-focus-ring.html [ Missing ]
-webkit.org/b/123696 editing/selection/mixed-editability-10.html [ Missing ]
 webkit.org/b/123696 fast/table/overflowHidden.html [ Missing ]
 webkit.org/b/123696 http/tests/misc/slow-loading-mask.html [ Missing ]
-webkit.org/b/123696 printing/media-queries-print.html [ Missing ]
-webkit.org/b/123696 printing/setPrinting.html [ Missing ]
-webkit.org/b/123696 printing/simultaneous-position-float-change.html [ Missing ]
-webkit.org/b/123696 printing/width-overflow.html [ Missing ]
 
 # Known WebGL conformance test failures, fails on Intel and AMD hardware
 webgl/1.0.2/conformance/extensions/webgl-compressed-texture-s3tc.html [ Failure ]

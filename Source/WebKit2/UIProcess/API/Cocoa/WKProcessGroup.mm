@@ -24,7 +24,7 @@
  */
 
 #import "config.h"
-#import "WKProcessGroupInternal.h"
+#import "WKProcessGroupPrivate.h"
 
 #if WK_API_ENABLED
 
@@ -34,7 +34,6 @@
 #import "WKBrowsingContextControllerInternal.h"
 #import "WKBrowsingContextHistoryDelegate.h"
 #import "WKConnectionInternal.h"
-#import "WKContext.h"
 #import "WKNSString.h"
 #import "WKNSURL.h"
 #import "WKNavigationDataInternal.h"
@@ -42,6 +41,7 @@
 #import "WKStringCF.h"
 #import "WeakObjCPtr.h"
 #import "WebCertificateInfo.h"
+#import "WebContext.h"
 #import "WebFrameProxy.h"
 #import <wtf/RetainPtr.h>
 
@@ -54,20 +54,13 @@
 using namespace WebKit;
 
 @implementation WKProcessGroup {
-    API::ObjectStorage<WebContext> _context;
+    RefPtr<WebContext> _context;
 
     WeakObjCPtr<id <WKProcessGroupDelegate>> _delegate;
 
 #if PLATFORM(IOS)
     RetainPtr<WKGeolocationProviderIOS> _geolocationProvider;
 #endif // PLATFORM(IOS)
-}
-
-- (void)dealloc
-{
-    _context->~WebContext();
-
-    [super dealloc];
 }
 
 static void didCreateConnection(WKContextRef, WKConnectionRef connectionRef, const void* clientInfo)
@@ -122,7 +115,7 @@ static void didNavigateWithNavigationData(WKContextRef, WKPageRef pageRef, WKNav
     if (!toImpl(frameRef)->isMainFrame())
         return;
 
-    WKBrowsingContextController *controller = wrapper(*toImpl(pageRef));
+    WKBrowsingContextController *controller = [WKBrowsingContextController _browsingContextControllerForPageRef:pageRef];
     auto historyDelegate = controller->_historyDelegate.get();
 
     if ([historyDelegate respondsToSelector:@selector(browsingContextController:didNavigateWithNavigationData:)])
@@ -134,7 +127,7 @@ static void didPerformClientRedirect(WKContextRef, WKPageRef pageRef, WKURLRef s
     if (!toImpl(frameRef)->isMainFrame())
         return;
 
-    WKBrowsingContextController *controller = wrapper(*toImpl(pageRef));
+    WKBrowsingContextController *controller = [WKBrowsingContextController _browsingContextControllerForPageRef:pageRef];
     auto historyDelegate = controller->_historyDelegate.get();
 
     if ([historyDelegate respondsToSelector:@selector(browsingContextController:didPerformClientRedirectFromURL:toURL:)])
@@ -146,7 +139,7 @@ static void didPerformServerRedirect(WKContextRef, WKPageRef pageRef, WKURLRef s
     if (!toImpl(frameRef)->isMainFrame())
         return;
 
-    WKBrowsingContextController *controller = wrapper(*toImpl(pageRef));
+    WKBrowsingContextController *controller = [WKBrowsingContextController _browsingContextControllerForPageRef:pageRef];
     auto historyDelegate = controller->_historyDelegate.get();
 
     if ([historyDelegate respondsToSelector:@selector(browsingContextController:didPerformServerRedirectFromURL:toURL:)])
@@ -158,7 +151,7 @@ static void didUpdateHistoryTitle(WKContextRef, WKPageRef pageRef, WKStringRef t
     if (!toImpl(frameRef)->isMainFrame())
         return;
 
-    WKBrowsingContextController *controller = wrapper(*toImpl(pageRef));
+    WKBrowsingContextController *controller = [WKBrowsingContextController _browsingContextControllerForPageRef:pageRef];
     auto historyDelegate = controller->_historyDelegate.get();
 
     if ([historyDelegate respondsToSelector:@selector(browsingContextController:didUpdateHistoryTitle:forURL:)])
@@ -196,7 +189,7 @@ static void setUpHistoryClient(WKProcessGroup *processGroup, WKContextRef contex
     InitWebCoreThreadSystemInterface();
 #endif
 
-    API::Object::constructInWrapper<WebContext>(self, bundleURL ? String([bundleURL path]) : String());
+    _context = WebContext::create(bundleURL ? String([bundleURL path]) : String());
 
     setUpConnectionClient(self, toAPI(_context.get()));
     setUpInectedBundleClient(self, toAPI(_context.get()));
@@ -217,13 +210,6 @@ static void setUpHistoryClient(WKProcessGroup *processGroup, WKContextRef contex
 - (void)setDelegate:(id <WKProcessGroupDelegate>)delegate
 {
     _delegate = delegate;
-}
-
-#pragma mark WKObject protocol implementation
-
-- (API::Object&)_apiObject
-{
-    return *_context;
 }
 
 @end

@@ -39,7 +39,7 @@ OBJC_CLASS NSString;
 
 namespace Inspector {
 
-class RemoteInspectorDebuggableConnection FINAL : public ThreadSafeRefCounted<RemoteInspectorDebuggableConnection>, public InspectorFrontendChannel {
+class RemoteInspectorDebuggableConnection final : public ThreadSafeRefCounted<RemoteInspectorDebuggableConnection>, public InspectorFrontendChannel {
 public:
     RemoteInspectorDebuggableConnection(RemoteInspectorDebuggable*, NSString *connectionIdentifier, NSString *destination, RemoteInspectorDebuggable::DebuggableType);
     virtual ~RemoteInspectorDebuggableConnection();
@@ -54,7 +54,7 @@ public:
     void closeFromDebuggable();
 
     void sendMessageToBackend(NSString *);
-    virtual bool sendMessageToFrontend(const String&) OVERRIDE;
+    virtual bool sendMessageToFrontend(const String&) override;
 
 private:
     void dispatchSyncOnDebuggable(void (^block)());

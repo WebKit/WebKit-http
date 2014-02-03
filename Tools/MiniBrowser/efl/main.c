@@ -52,6 +52,7 @@ static Eina_Bool frame_flattening_enabled = EINA_FALSE;
 static Eina_Bool local_storage_enabled = EINA_TRUE;
 static Eina_Bool fullscreen_enabled = EINA_FALSE;
 static Eina_Bool spell_checking_enabled = EINA_FALSE;
+static Eina_Bool touch_events_enabled = EINA_FALSE;
 static int window_width = 800;
 static int window_height = 600;
 /* Default value of device_pixel_ratio is '0' so that we don't set custom device
@@ -167,6 +168,8 @@ static const Ecore_Getopt options = {
             ('F', "full-screen", "start in full-screen.", EINA_FALSE),
         ECORE_GETOPT_STORE_DEF_BOOL
             ('t', "text-checking", "text spell checking enabled", EINA_TRUE),
+        ECORE_GETOPT_STORE_DEF_BOOL
+            ('T', "touch-events", "touch events enabled", EINA_FALSE),
         ECORE_GETOPT_STORE_DEF_STR
             ('p', "policy-cookies", "Cookies policy:\n  always - always accept,\n  never - never accept,\n  no-third-party - don't accept third-party cookies.", "no-third-party"),
         ECORE_GETOPT_VERSION
@@ -403,6 +406,9 @@ on_key_down(void *user_data, Evas *e, Evas_Object *ewk_view, void *event_info)
         info("Forward (Alt+Right) was pressed");
         if (!ewk_view_forward(ewk_view))
             info("Forward ignored: No forward history");
+    } else if (!strcmp(ev->key, "Home") && altPressed) {
+        info("Home (Alt+Home) was pressed");
+        ewk_view_url_set(window->ewk_view, DEFAULT_URL);
     } else if (!strcmp(ev->key, "F3")) {
         currentEncoding = (currentEncoding + 1) % (sizeof(encodings) / sizeof(encodings[0]));
         info("Set encoding (F3) pressed. New encoding to %s", encodings[currentEncoding]);
@@ -1828,6 +1834,11 @@ static Browser_Window *window_create(Evas_Object *opener, int width, int height,
     ewk_view_source_mode_set(window->ewk_view, view_mode);
     ewk_view_user_agent_set(window->ewk_view, user_agent_string);
 
+    if (touch_events_enabled) {
+        ewk_view_touch_events_enabled_set(window->ewk_view, EINA_TRUE);
+        ewk_view_mouse_events_enabled_set(window->ewk_view, EINA_FALSE);
+    }
+
     /* Set the zoom level to default */
     window->current_zoom_level = DEFAULT_ZOOM_LEVEL;
 
@@ -1937,6 +1948,7 @@ elm_main(int argc, char *argv[])
         ECORE_GETOPT_VALUE_BOOL(local_storage_enabled),
         ECORE_GETOPT_VALUE_BOOL(fullscreen_enabled),
         ECORE_GETOPT_VALUE_BOOL(spell_checking_enabled),
+        ECORE_GETOPT_VALUE_BOOL(touch_events_enabled),
         ECORE_GETOPT_VALUE_STR(cookies_policy_string),
         ECORE_GETOPT_VALUE_BOOL(quitOption),
         ECORE_GETOPT_VALUE_BOOL(quitOption),
@@ -1960,7 +1972,7 @@ elm_main(int argc, char *argv[])
 
     if (evas_engine_name)
         elm_config_preferred_engine_set(evas_engine_name);
-#if defined(WTF_USE_ACCELERATED_COMPOSITING) && defined(HAVE_ECORE_X)
+#if defined(HAVE_ECORE_X)
     else {
         evas_engine_name = "opengl_x11";
         elm_config_preferred_engine_set(evas_engine_name);

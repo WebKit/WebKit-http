@@ -31,7 +31,7 @@ class RenderElement : public RenderObject {
 public:
     virtual ~RenderElement();
 
-    static RenderElement* createFor(Element&, PassRef<RenderStyle>);
+    static RenderPtr<RenderElement> createFor(Element&, PassRef<RenderStyle>);
 
     bool hasInitializedStyle() const { return m_hasInitializedStyle; }
 
@@ -40,7 +40,7 @@ public:
 
     void initializeStyle();
 
-    virtual void setStyle(PassRef<RenderStyle>);
+    void setStyle(PassRef<RenderStyle>);
     // Called to update a style that is allowed to trigger animations.
     void setAnimatableStyle(PassRef<RenderStyle>);
 
@@ -120,8 +120,12 @@ public:
     bool isTransparent() const { return style().opacity() < 1.0f; }
     float opacity() const { return style().opacity(); }
 
+    bool visibleToHitTesting() const { return style().visibility() == VISIBLE && style().pointerEvents() != PE_NONE; }
+
     bool hasBackground() const { return style().hasBackground(); }
     bool hasMask() const { return style().hasMask(); }
+    bool hasClip() const { return isOutOfFlowPositioned() && style().hasClip(); }
+    bool hasClipOrOverflowClip() const { return hasClip() || hasOverflowClip(); }
     bool hasClipPath() const { return style().clipPath(); }
     bool hasHiddenBackface() const { return style().backfaceVisibility() == BackfaceVisibilityHidden; }
 
@@ -165,22 +169,22 @@ protected:
     virtual void styleWillChange(StyleDifference, const RenderStyle& newStyle);
     virtual void styleDidChange(StyleDifference, const RenderStyle* oldStyle);
 
-    virtual void insertedIntoTree() OVERRIDE;
-    virtual void willBeRemovedFromTree() OVERRIDE;
-    virtual void willBeDestroyed() OVERRIDE;
+    virtual void insertedIntoTree() override;
+    virtual void willBeRemovedFromTree() override;
+    virtual void willBeDestroyed() override;
 
     void setRenderInlineAlwaysCreatesLineBoxes(bool b) { m_renderInlineAlwaysCreatesLineBoxes = b; }
     bool renderInlineAlwaysCreatesLineBoxes() const { return m_renderInlineAlwaysCreatesLineBoxes; }
 
 private:
-    void node() const WTF_DELETED_FUNCTION;
-    void nonPseudoNode() const WTF_DELETED_FUNCTION;
-    void generatingNode() const WTF_DELETED_FUNCTION;
-    void isText() const WTF_DELETED_FUNCTION;
-    void isRenderElement() const WTF_DELETED_FUNCTION;
+    void node() const = delete;
+    void nonPseudoNode() const = delete;
+    void generatingNode() const = delete;
+    void isText() const = delete;
+    void isRenderElement() const = delete;
 
-    virtual RenderObject* firstChildSlow() const OVERRIDE FINAL { return firstChild(); }
-    virtual RenderObject* lastChildSlow() const OVERRIDE FINAL { return lastChild(); }
+    virtual RenderObject* firstChildSlow() const override final { return firstChild(); }
+    virtual RenderObject* lastChildSlow() const override final { return lastChild(); }
 
     bool shouldRepaintForStyleDifference(StyleDifference) const;
     bool hasImmediateNonWhitespaceTextChildOrBorderOrOutline() const;

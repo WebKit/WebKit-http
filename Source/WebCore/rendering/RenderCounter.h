@@ -29,7 +29,7 @@ namespace WebCore {
 
 class CounterNode;
 
-class RenderCounter FINAL : public RenderText {
+class RenderCounter final : public RenderText {
 public:
     RenderCounter(Document&, const CounterContent&);
     virtual ~RenderCounter();
@@ -50,7 +50,7 @@ private:
     virtual bool isCounter() const;
     virtual String originalText() const;
     
-    virtual void computePreferredLogicalWidths(float leadWidth) OVERRIDE;
+    virtual void computePreferredLogicalWidths(float leadWidth) override;
 
     // Removes the reference to the CounterNode associated with this renderer.
     // This is used to cause a counter display update when the CounterNode tree changes.

@@ -27,17 +27,24 @@
 #define IntRect_h
 
 #include "IntPoint.h"
+#include "LayoutUnit.h"
 #include <wtf/Vector.h>
 
 #if USE(CG)
 typedef struct CGRect CGRect;
 #endif
 
-#if PLATFORM(MAC)
+#if PLATFORM(MAC) && !PLATFORM(IOS)
 #ifdef NSGEOMETRY_TYPES_SAME_AS_CGGEOMETRY_TYPES
 typedef struct CGRect NSRect;
 #else
 typedef struct _NSRect NSRect;
+#endif
+#endif
+
+#if PLATFORM(IOS)
+#ifndef NSRect
+#define NSRect CGRect
 #endif
 #endif
 
@@ -51,12 +58,6 @@ typedef struct _GdkRectangle GdkRectangle;
 class BRect;
 #elif PLATFORM(EFL)
 typedef struct _Eina_Rectangle Eina_Rectangle;
-#elif PLATFORM(BLACKBERRY)
-namespace BlackBerry {
-namespace Platform {
-class IntRect;
-}
-}
 #endif
 
 #if USE(CAIRO)
@@ -197,16 +198,16 @@ public:
     operator CGRect() const;
 #endif
 
+#if !PLATFORM(IOS)
 #if (PLATFORM(MAC) && !defined(NSGEOMETRY_TYPES_SAME_AS_CGGEOMETRY_TYPES))
     operator NSRect() const;
 #endif
-
-#if PLATFORM(BLACKBERRY)
-    IntRect(const BlackBerry::Platform::IntRect&);
-    operator BlackBerry::Platform::IntRect() const;
-#endif
+#endif // !PLATFORM(IOS)
 
     void dump(PrintStream& out) const;
+
+    static IntRect infiniteRect();
+    bool isInfinite() const;
 
 private:
     IntPoint m_location;
@@ -239,13 +240,26 @@ inline bool operator!=(const IntRect& a, const IntRect& b)
     return a.location() != b.location() || a.size() != b.size();
 }
 
+inline IntRect IntRect::infiniteRect()
+{
+    static IntRect infiniteRect(-LayoutUnit::max() / 2, -LayoutUnit::max() / 2, LayoutUnit::max(), LayoutUnit::max());
+    return infiniteRect;
+}
+
+inline bool IntRect::isInfinite() const
+{
+    return *this == infiniteRect();
+}
+
 #if USE(CG)
 IntRect enclosingIntRect(const CGRect&);
 #endif
 
+#if !PLATFORM(IOS)
 #if (PLATFORM(MAC) && !defined(NSGEOMETRY_TYPES_SAME_AS_CGGEOMETRY_TYPES))
 IntRect enclosingIntRect(const NSRect&);
 #endif
+#endif // !PLATFORM(IOS)
 
 } // namespace WebCore
 

@@ -66,6 +66,7 @@ static inline void freeSegment(char* p)
 
 SharedBuffer::SharedBuffer()
     : m_size(0)
+    , m_shouldUsePurgeableMemory(false)
 #if ENABLE(DISK_IMAGE_CACHE)
     , m_isMemoryMapped(false)
     , m_diskImageCacheId(DiskImageCache::invalidDiskCacheId)
@@ -75,9 +76,10 @@ SharedBuffer::SharedBuffer()
 {
 }
 
-SharedBuffer::SharedBuffer(size_t size)
+SharedBuffer::SharedBuffer(unsigned size)
     : m_size(size)
     , m_buffer(size)
+    , m_shouldUsePurgeableMemory(false)
 #if ENABLE(DISK_IMAGE_CACHE)
     , m_isMemoryMapped(false)
     , m_diskImageCacheId(DiskImageCache::invalidDiskCacheId)
@@ -87,8 +89,9 @@ SharedBuffer::SharedBuffer(size_t size)
 {
 }
 
-SharedBuffer::SharedBuffer(const char* data, int size)
+SharedBuffer::SharedBuffer(const char* data, unsigned size)
     : m_size(0)
+    , m_shouldUsePurgeableMemory(false)
 #if ENABLE(DISK_IMAGE_CACHE)
     , m_isMemoryMapped(false)
     , m_diskImageCacheId(DiskImageCache::invalidDiskCacheId)
@@ -96,15 +99,12 @@ SharedBuffer::SharedBuffer(const char* data, int size)
     , m_notifyMemoryMappedCallbackData(nullptr)
 #endif
 {
-    // FIXME: Use unsigned consistently, and check for invalid casts when calling into SharedBuffer from other code.
-    if (size < 0)
-        CRASH();
-
     append(data, size);
 }
 
-SharedBuffer::SharedBuffer(const unsigned char* data, int size)
+SharedBuffer::SharedBuffer(const unsigned char* data, unsigned size)
     : m_size(0)
+    , m_shouldUsePurgeableMemory(false)
 #if ENABLE(DISK_IMAGE_CACHE)
     , m_isMemoryMapped(false)
     , m_diskImageCacheId(DiskImageCache::invalidDiskCacheId)
@@ -112,10 +112,6 @@ SharedBuffer::SharedBuffer(const unsigned char* data, int size)
     , m_notifyMemoryMappedCallbackData(nullptr)
 #endif
 {
-    // FIXME: Use unsigned consistently, and check for invalid casts when calling into SharedBuffer from other code.
-    if (size < 0)
-        CRASH();
-
     append(reinterpret_cast<const char*>(data), size);
 }
     
@@ -218,6 +214,12 @@ void SharedBuffer::setMemoryMappedNotificationCallback(MemoryMappedNotifyCallbac
 }
 #endif
 
+// Try to create a PurgeableBuffer. We can fail to create one for any of the
+// following reasons:
+//   - shouldUsePurgeableMemory is set to false.
+//   - the size of the buffer is less than the minimum size required by
+//     PurgeableBuffer (currently 16k).
+//   - PurgeableBuffer::createUninitialized() call fails.
 void SharedBuffer::createPurgeableBuffer() const
 {
     if (m_purgeableBuffer)
@@ -232,6 +234,9 @@ void SharedBuffer::createPurgeableBuffer() const
 #endif
 
     if (!hasOneRef())
+        return;
+
+    if (!m_shouldUsePurgeableMemory)
         return;
 
     char* destination = 0;
@@ -261,7 +266,9 @@ const char* SharedBuffer::data() const
     if (const char* buffer = singleDataArrayBuffer())
         return buffer;
 #endif
-    
+
+    createPurgeableBuffer();
+
     if (m_purgeableBuffer)
         return m_purgeableBuffer->data();
     
@@ -496,7 +503,7 @@ PassRefPtr<SharedBuffer> utf8Buffer(const String& string)
 
     // Convert to runs of 8-bit characters.
     char* p = buffer.data();
-    const UChar* d = string.characters();
+    const UChar* d = string.deprecatedCharacters();
     WTF::Unicode::ConversionResult result = WTF::Unicode::convertUTF16ToUTF8(&d, d + length, &p, p + buffer.size(), true);
     if (result != WTF::Unicode::conversionOK)
         return 0;

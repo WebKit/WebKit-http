@@ -27,8 +27,8 @@
 #include <WebCore/GtkUtilities.h>
 #include <WebCore/NotImplemented.h>
 #include <glib/gi18n-lib.h>
-#include <wtf/gobject/GOwnPtr.h>
 #include <wtf/gobject/GRefPtr.h>
+#include <wtf/gobject/GUniquePtr.h>
 #include <wtf/text/CString.h>
 
 #ifdef HAVE_GTK_UNIX_PRINTING
@@ -67,11 +67,11 @@ enum {
 struct _WebKitPrintOperationPrivate {
     ~_WebKitPrintOperationPrivate()
     {
-        g_signal_handler_disconnect(webView, webViewDestroyedId);
+        if (webView)
+            g_object_remove_weak_pointer(G_OBJECT(webView), reinterpret_cast<void**>(&webView));
     }
 
     WebKitWebView* webView;
-    gulong webViewDestroyedId;
     PrintInfo::PrintMode printMode;
 
     GRefPtr<GtkPrintSettings> printSettings;
@@ -82,20 +82,12 @@ static guint signals[LAST_SIGNAL] = { 0, };
 
 WEBKIT_DEFINE_TYPE(WebKitPrintOperation, webkit_print_operation, G_TYPE_OBJECT)
 
-static void webViewDestroyed(GtkWidget* webView, GObject* printOperation)
-{
-    g_object_unref(printOperation);
-}
-
 static void webkitPrintOperationConstructed(GObject* object)
 {
-    WebKitPrintOperation* printOperation = WEBKIT_PRINT_OPERATION(object);
-    WebKitPrintOperationPrivate* priv = printOperation->priv;
+    G_OBJECT_CLASS(webkit_print_operation_parent_class)->constructed(object);
 
-    if (G_OBJECT_CLASS(webkit_print_operation_parent_class)->constructed)
-        G_OBJECT_CLASS(webkit_print_operation_parent_class)->constructed(object);
-
-    priv->webViewDestroyedId = g_signal_connect(priv->webView, "destroy", G_CALLBACK(webViewDestroyed), printOperation);
+    WebKitPrintOperationPrivate* priv = WEBKIT_PRINT_OPERATION(object)->priv;
+    g_object_add_weak_pointer(G_OBJECT(priv->webView), reinterpret_cast<void**>(&priv->webView));
 }
 
 static void webkitPrintOperationGetProperty(GObject* object, guint propId, GValue* value, GParamSpec* paramSpec)
@@ -263,17 +255,17 @@ static WebKitPrintOperationResponse webkitPrintOperationRunDialog(WebKitPrintOpe
 static void drawPagesForPrintingCompleted(WKErrorRef wkPrintError, WKErrorRef, void* context)
 {
     GRefPtr<WebKitPrintOperation> printOperation = adoptGRef(WEBKIT_PRINT_OPERATION(context));
-    WebPageProxy* page = webkitWebViewBaseGetPage(WEBKIT_WEB_VIEW_BASE(printOperation->priv->webView));
 
     // When running synchronously WebPageProxy::printFrame() calls endPrinting().
-    if (printOperation->priv->printMode == PrintInfo::PrintModeAsync)
+    if (printOperation->priv->printMode == PrintInfo::PrintModeAsync && printOperation->priv->webView) {
+        WebPageProxy* page = webkitWebViewBaseGetPage(WEBKIT_WEB_VIEW_BASE(printOperation->priv->webView));
         page->endPrinting();
+    }
 
-    const WebCore::ResourceError& resourceError = toImpl(wkPrintError)->platformError();
+    const WebCore::ResourceError& resourceError = wkPrintError ? toImpl(wkPrintError)->platformError() : WebCore::ResourceError();
     if (!resourceError.isNull()) {
-        GOwnPtr<GError> printError(g_error_new_literal(g_quark_from_string(resourceError.domain().utf8().data()),
-                                                     resourceError.errorCode(),
-                                                     resourceError.localizedDescription().utf8().data()));
+        GUniquePtr<GError> printError(g_error_new_literal(g_quark_from_string(resourceError.domain().utf8().data()),
+            resourceError.errorCode(), resourceError.localizedDescription().utf8().data()));
         g_signal_emit(printOperation.get(), signals[FAILED], 0, printError.get());
     }
     g_signal_emit(printOperation.get(), signals[FINISHED], 0, NULL);

@@ -39,8 +39,8 @@ public:
     bool hasSelfPaintingLayer() const;
     RenderLayer* layer() const { return m_layer.get(); }
 
-    virtual void styleWillChange(StyleDifference, const RenderStyle& newStyle) OVERRIDE;
-    virtual void styleDidChange(StyleDifference, const RenderStyle* oldStyle) OVERRIDE;
+    virtual void styleWillChange(StyleDifference, const RenderStyle& newStyle) override;
+    virtual void styleDidChange(StyleDifference, const RenderStyle* oldStyle) override;
     virtual void updateFromStyle() { }
 
     virtual bool requiresLayer() const = 0;
@@ -55,7 +55,7 @@ protected:
 
     void createLayer();
 
-    virtual void willBeDestroyed() OVERRIDE;
+    virtual void willBeDestroyed() override;
 
 private:
     std::unique_ptr<RenderLayer> m_layer;
@@ -66,6 +66,8 @@ private:
     static bool s_hadTransform;
     static bool s_layerWasSelfPainting;
 };
+
+template <> inline bool isRendererOfType<const RenderLayerModelObject>(const RenderObject& renderer) { return renderer.isRenderLayerModelObject(); }
 
 RENDER_OBJECT_TYPE_CASTS(RenderLayerModelObject, isRenderLayerModelObject())
 

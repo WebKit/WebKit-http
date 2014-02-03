@@ -364,6 +364,21 @@ void PluginView::recreateAndInitialize(PassRefPtr<Plugin> plugin)
     initializePlugin();
 }
 
+void PluginView::setLayerHostingMode(LayerHostingMode layerHostingMode)
+{
+#if HAVE(LAYER_HOSTING_IN_WINDOW_SERVER)
+    if (!m_plugin)
+        return;
+
+    if (m_isInitialized)
+        m_plugin->setLayerHostingMode(layerHostingMode);
+    else
+        m_parameters.layerHostingMode = layerHostingMode;
+#else
+    UNUSED_PARAM(layerHostingMode);
+#endif
+}
+
 Frame* PluginView::frame() const
 {
     return m_pluginElement->document().frame();
@@ -481,21 +496,23 @@ void PluginView::webPageDestroyed()
     m_webPage = 0;
 }
 
-#if PLATFORM(MAC)    
-void PluginView::setWindowIsVisible(bool windowIsVisible)
+void PluginView::viewStateDidChange(ViewState::Flags changed)
 {
-    if (!m_isInitialized || !m_plugin)
-        return;
-
-    m_plugin->windowVisibilityChanged(windowIsVisible);
+#if PLATFORM(MAC)
+    platformViewStateDidChange(changed);
+#endif
 }
 
-void PluginView::setWindowIsFocused(bool windowIsFocused)
+#if PLATFORM(MAC)
+void PluginView::platformViewStateDidChange(ViewState::Flags changed)
 {
-    if (!m_isInitialized || !m_plugin)
+    if (!m_plugin || !m_isInitialized)
         return;
 
-    m_plugin->windowFocusChanged(windowIsFocused);    
+    if (changed & ViewState::IsVisibleOrOccluded)
+        m_plugin->windowVisibilityChanged(m_webPage->isVisibleOrOccluded());
+    if (changed & ViewState::WindowIsActive)
+        m_plugin->windowFocusChanged(m_webPage->windowIsFocused());
 }
 
 void PluginView::setDeviceScaleFactor(float scaleFactor)
@@ -526,19 +543,6 @@ bool PluginView::sendComplexTextInput(uint64_t pluginComplexTextInputIdentifier,
     return true;
 }
 
-void PluginView::setLayerHostingMode(LayerHostingMode layerHostingMode)
-{
-    if (!m_plugin)
-        return;
-
-    if (!m_isInitialized) {
-        m_parameters.layerHostingMode = layerHostingMode;
-        return;
-    }
-
-    m_plugin->setLayerHostingMode(layerHostingMode);
-}
-    
 NSObject *PluginView::accessibilityObject() const
 {
     if (!m_isInitialized || !m_plugin)
@@ -624,8 +628,8 @@ void PluginView::didInitializePlugin()
             m_pluginElement->dispatchPendingMouseClick();
     }
 
-    setWindowIsVisible(m_webPage->windowIsVisible());
-    setWindowIsFocused(m_webPage->windowIsFocused());
+    m_plugin->windowVisibilityChanged(m_webPage->isVisible());
+    m_plugin->windowFocusChanged(m_webPage->windowIsFocused());
 #endif
 
     if (wantsWheelEvents()) {
@@ -1669,7 +1673,7 @@ static bool isAlmostSolidColor(BitmapImage* bitmap)
 }
 #endif
 
-void PluginView::pluginSnapshotTimerFired(DeferrableOneShotTimer<PluginView>*)
+void PluginView::pluginSnapshotTimerFired(DeferrableOneShotTimer<PluginView>&)
 {
     ASSERT(m_plugin);
 

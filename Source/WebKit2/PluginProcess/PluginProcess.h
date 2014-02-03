@@ -30,6 +30,7 @@
 
 #include "ChildProcess.h"
 #include <wtf/Forward.h>
+#include <wtf/NeverDestroyed.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebKit {
@@ -40,6 +41,7 @@ struct PluginProcessCreationParameters;
         
 class PluginProcess : public ChildProcess {
     WTF_MAKE_NONCOPYABLE(PluginProcess);
+    friend class NeverDestroyed<PluginProcess>;
 public:
     static PluginProcess& shared();
 
@@ -53,9 +55,7 @@ public:
     void setModalWindowIsShowing(bool);
     void setFullscreenWindowIsShowing(bool);
 
-#if USE(ACCELERATED_COMPOSITING)
     mach_port_t compositingRenderServerPort() const { return m_compositingRenderServerPort; }
-#endif
 
     bool launchProcess(const String& launchPath, const Vector<String>& arguments);
     bool launchApplicationAtURL(const String& urlString, const Vector<String>& arguments);
@@ -68,23 +68,23 @@ private:
     ~PluginProcess();
 
     // ChildProcess
-    virtual void initializeProcess(const ChildProcessInitializationParameters&) OVERRIDE;
-    virtual void initializeProcessName(const ChildProcessInitializationParameters&) OVERRIDE;
-    virtual void initializeSandbox(const ChildProcessInitializationParameters&, SandboxInitializationParameters&) OVERRIDE;
-    virtual bool shouldTerminate() OVERRIDE;
+    virtual void initializeProcess(const ChildProcessInitializationParameters&) override;
+    virtual void initializeProcessName(const ChildProcessInitializationParameters&) override;
+    virtual void initializeSandbox(const ChildProcessInitializationParameters&, SandboxInitializationParameters&) override;
+    virtual bool shouldTerminate() override;
     void platformInitializeProcess(const ChildProcessInitializationParameters&);
 
 #if PLATFORM(MAC)
-    virtual void stopRunLoop() OVERRIDE;
+    virtual void stopRunLoop() override;
 #endif
 
-    // CoreIPC::Connection::Client
-    virtual void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&) OVERRIDE;
-    virtual void didClose(CoreIPC::Connection*) OVERRIDE;
-    virtual void didReceiveInvalidMessage(CoreIPC::Connection*, CoreIPC::StringReference messageReceiverName, CoreIPC::StringReference messageName) OVERRIDE;
+    // IPC::Connection::Client
+    virtual void didReceiveMessage(IPC::Connection*, IPC::MessageDecoder&) override;
+    virtual void didClose(IPC::Connection*) override;
+    virtual void didReceiveInvalidMessage(IPC::Connection*, IPC::StringReference messageReceiverName, IPC::StringReference messageName) override;
 
     // Message handlers.
-    void didReceivePluginProcessMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&);
+    void didReceivePluginProcessMessage(IPC::Connection*, IPC::MessageDecoder&);
     void initializePluginProcess(const PluginProcessCreationParameters&);
     void createWebProcessConnection();
     void getSitesWithData(uint64_t callbackID);
@@ -111,7 +111,7 @@ private:
 
     RunLoop::Timer<PluginProcess> m_minimumLifetimeTimer;
 
-#if USE(ACCELERATED_COMPOSITING) && PLATFORM(MAC)
+#if PLATFORM(MAC)
     // The Mach port used for accelerated compositing.
     mach_port_t m_compositingRenderServerPort;
 #endif

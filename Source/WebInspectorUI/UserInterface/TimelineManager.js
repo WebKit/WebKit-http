@@ -31,20 +31,13 @@ WebInspector.TimelineManager = function()
     WebInspector.Frame.addEventListener(WebInspector.Frame.Event.MainResourceDidChange, this._mainResourceDidChange, this);
     WebInspector.Frame.addEventListener(WebInspector.Frame.Event.ResourceWasAdded, this._resourceWasAdded, this);
 
-    this._recording = false;
-    this._records = [];
-    this._typeRecords = {};
-    this._loadEventTime = NaN;
-    this._eventMarkers = [];
-    this._timelinesObject = new WebInspector.TimelinesObject;
+    this._recording = new WebInspector.TimelineRecording;
+    this._recordingEnabled = false;
 };
 
 WebInspector.TimelineManager.Event = {
-    RecordsCleared: "timeline-manager-records-cleared",
     RecordingStarted: "timeline-manager-recording-started",
-    RecordingStopped: "timeline-manager-recording-stopped",
-    RecordAdded: "timeline-manager-record-added",
-    RecordedEventMarker: "timeline-manager-recorded-event-marker",
+    RecordingStopped: "timeline-manager-recording-stopped"
 };
 
 WebInspector.TimelineManager.MaximumAutoRecordDuration = 90000; // 90 seconds
@@ -61,39 +54,17 @@ WebInspector.TimelineManager.prototype = {
         return this._recording;
     },
 
-    get mainFrameLoadEventTime()
+    get recordingEnabled()
     {
-        return this._loadEventTime;
-    },
-
-    get timelineEventMarkers()
-    {
-        return this._eventMarkers;
-    },
-
-    get records()
-    {
-        return this._records;
-    },
-
-    get timelines()
-    {
-        return this._timelinesObject;
-    },
-
-    recordsWithType: function(type)
-    {
-        return this._typeRecords[type] || [];
+        return this._recordingEnabled;
     },
 
     startRecording: function()
     {
-        if (this._recording)
+        if (this._recordingEnabled)
             return;
 
-        this._clear();
-
-        this._recording = true;
+        this._recordingEnabled = true;
 
         TimelineAgent.start();
 
@@ -102,7 +73,7 @@ WebInspector.TimelineManager.prototype = {
 
     stopRecording: function()
     {
-        if (!this._recording)
+        if (!this._recordingEnabled)
             return;
 
         if (this._stopRecordingTimeout) {
@@ -117,176 +88,232 @@ WebInspector.TimelineManager.prototype = {
 
         TimelineAgent.stop();
 
-        this._recording = false;
+        this._recordingEnabled = false;
         this._autoRecordingMainResource = null;
 
         this.dispatchEventToListeners(WebInspector.TimelineManager.Event.RecordingStopped);
     },
 
-    eventRecorded: function(originalRecord)
+    eventRecorded: function(originalRecordPayload)
     {
         // Called from WebInspector.TimelineObserver.
 
-        if (!this._recording)
+        if (!this._recordingEnabled)
             return;
 
-        function processRecord(record, parentRecord)
+        function processRecord(recordPayload, parentRecordPayload)
         {
             // Convert the timestamps to seconds to match the resource timestamps.
-            var startTime = record.startTime / 1000;
-            var endTime = record.endTime / 1000;
+            var startTime = recordPayload.startTime / 1000;
+            var endTime = recordPayload.endTime / 1000;
 
-            var callFrames = this._callFramesFromPayload(record.stackTrace);
+            var callFrames = this._callFramesFromPayload(recordPayload.stackTrace);
 
-            switch (record.type) {
+            var significantCallFrame = null;
+            if (callFrames) {
+                for (var i = 0; i < callFrames.length; ++i) {
+                    if (callFrames[i].nativeCode)
+                        continue;
+                    significantCallFrame = callFrames[i];
+                    break;
+                }
+            }
+
+            var sourceCodeLocation = significantCallFrame && significantCallFrame.sourceCodeLocation;
+
+            switch (recordPayload.type) {
             case TimelineAgent.EventType.MarkLoad:
-                var mainFrame = WebInspector.frameResourceManager.mainFrame;
-                console.assert(mainFrame);
+                console.assert(isNaN(endTime));
 
-                if (!mainFrame || record.frameId !== mainFrame.id)
+                var frame = WebInspector.frameResourceManager.frameForIdentifier(recordPayload.frameId);
+                console.assert(frame);
+                if (!frame)
                     break;
 
-                this._loadEventTime = startTime;
+                frame.markLoadEvent(startTime);
 
-                var eventMarker = new WebInspector.TimelineEventMarker(startTime, WebInspector.TimelineEventMarker.Type.LoadEvent);
-                this._eventMarkers.push(eventMarker);
-                this.dispatchEventToListeners(WebInspector.TimelineManager.Event.RecordedEventMarker, {eventMarker: eventMarker});
+                if (!frame.isMainFrame())
+                    break;
+
+                var eventMarker = new WebInspector.TimelineMarker(startTime, WebInspector.TimelineMarker.Type.LoadEvent);
+                this._recording.addEventMarker(eventMarker);
+
                 this._stopAutoRecordingSoon();
                 break;
-            case TimelineAgent.EventType.MarkDOMContent:
-                var mainFrame = WebInspector.frameResourceManager.mainFrame;
-                console.assert(mainFrame);
 
-                if (!mainFrame || record.frameId !== mainFrame.id)
+            case TimelineAgent.EventType.MarkDOMContent:
+                console.assert(isNaN(endTime));
+
+                var frame = WebInspector.frameResourceManager.frameForIdentifier(recordPayload.frameId);
+                console.assert(frame);
+                if (!frame)
                     break;
 
-                var eventMarker = new WebInspector.TimelineEventMarker(startTime, WebInspector.TimelineEventMarker.Type.DOMContentEvent);
-                this._eventMarkers.push(eventMarker);
-                this.dispatchEventToListeners(WebInspector.TimelineManager.Event.RecordedEventMarker, {eventMarker: eventMarker});
+                frame.markDOMContentReadyEvent(startTime);
+
+                if (!frame.isMainFrame())
+                    break;
+
+                var eventMarker = new WebInspector.TimelineMarker(startTime, WebInspector.TimelineMarker.Type.DOMContentEvent);
+                this._recording.addEventMarker(eventMarker);
                 break;
+
             case TimelineAgent.EventType.ScheduleStyleRecalculation:
                 console.assert(isNaN(endTime));
+
                 // Pass the startTime as the endTime since this record type has no duration.
-                this._addRecord(new WebInspector.LayoutTimelineRecord(WebInspector.LayoutTimelineRecord.EventType.InvalidateStyles, startTime, startTime, callFrames));
+                this._addRecord(new WebInspector.LayoutTimelineRecord(WebInspector.LayoutTimelineRecord.EventType.InvalidateStyles, startTime, startTime, callFrames, sourceCodeLocation));
                 break;
+
             case TimelineAgent.EventType.RecalculateStyles:
-                this._addRecord(new WebInspector.LayoutTimelineRecord(WebInspector.LayoutTimelineRecord.EventType.RecalculateStyles, startTime, endTime, callFrames));
+                this._addRecord(new WebInspector.LayoutTimelineRecord(WebInspector.LayoutTimelineRecord.EventType.RecalculateStyles, startTime, endTime, callFrames, sourceCodeLocation));
                 break;
+
             case TimelineAgent.EventType.InvalidateLayout:
                 console.assert(isNaN(endTime));
+
                 // Pass the startTime as the endTime since this record type has no duration.
-                this._addRecord(new WebInspector.LayoutTimelineRecord(WebInspector.LayoutTimelineRecord.EventType.InvalidateLayout, startTime, startTime, callFrames));
+                this._addRecord(new WebInspector.LayoutTimelineRecord(WebInspector.LayoutTimelineRecord.EventType.InvalidateLayout, startTime, startTime, callFrames, sourceCodeLocation));
                 break;
+
             case TimelineAgent.EventType.Layout:
                 // COMPATIBILITY (iOS 6): Layout records did not contain area properties. This is not exposed via a quad "root".
-                var quad = record.data.root ? new WebInspector.Quad(record.data.root) : null;
+                var quad = recordPayload.data.root ? new WebInspector.Quad(recordPayload.data.root) : null;
                 if (quad)
-                    this._addRecord(new WebInspector.LayoutTimelineRecord(WebInspector.LayoutTimelineRecord.EventType.Layout, startTime, endTime, callFrames, quad.points[0].x, quad.points[0].y, quad.width, quad.height, quad));
+                    this._addRecord(new WebInspector.LayoutTimelineRecord(WebInspector.LayoutTimelineRecord.EventType.Layout, startTime, endTime, callFrames, sourceCodeLocation, quad.points[0].x, quad.points[0].y, quad.width, quad.height, quad));
                 else
-                    this._addRecord(new WebInspector.LayoutTimelineRecord(WebInspector.LayoutTimelineRecord.EventType.Layout, startTime, endTime, callFrames));
+                    this._addRecord(new WebInspector.LayoutTimelineRecord(WebInspector.LayoutTimelineRecord.EventType.Layout, startTime, endTime, callFrames, sourceCodeLocation));
                 break;
+
             case TimelineAgent.EventType.Paint:
                 // COMPATIBILITY (iOS 6): Paint records data contained x, y, width, height properties. This became a quad "clip".
-                var quad = record.data.clip ? new WebInspector.Quad(record.data.clip) : null;
+                var quad = recordPayload.data.clip ? new WebInspector.Quad(recordPayload.data.clip) : null;
                 if (quad)
-                    this._addRecord(new WebInspector.LayoutTimelineRecord(WebInspector.LayoutTimelineRecord.EventType.Paint, startTime, endTime, callFrames, null, null, quad.width, quad.height, quad));
+                    this._addRecord(new WebInspector.LayoutTimelineRecord(WebInspector.LayoutTimelineRecord.EventType.Paint, startTime, endTime, callFrames, sourceCodeLocation, null, null, quad.width, quad.height, quad));
                 else
-                    this._addRecord(new WebInspector.LayoutTimelineRecord(WebInspector.LayoutTimelineRecord.EventType.Paint, startTime, endTime, callFrames, record.data.x, record.data.y, record.data.width, record.data.height));
+                    this._addRecord(new WebInspector.LayoutTimelineRecord(WebInspector.LayoutTimelineRecord.EventType.Paint, startTime, endTime, callFrames, sourceCodeLocation, recordPayload.data.x, recordPayload.data.y, recordPayload.data.width, recordPayload.data.height));
                 break;
+
             case TimelineAgent.EventType.EvaluateScript:
-                var resource = WebInspector.frameResourceManager.resourceForURL(record.data.url);
+                if (!sourceCodeLocation) {
+                    var mainFrame = WebInspector.frameResourceManager.mainFrame;
+                    var scriptResource = mainFrame.url === recordPayload.data.url ? mainFrame.mainResource : mainFrame.resourceForURL(recordPayload.data.url, true);
+                    if (scriptResource) {
+                        // The lineNumber is 1-based, but we expect 0-based.
+                        var lineNumber = recordPayload.data.lineNumber - 1;
 
-                // The lineNumber is 1-based, but we expect 0-based.
-                var lineNumber = record.data.lineNumber - 1;
-
-                switch (parent ? parent.type : null) {
-                case TimelineAgent.EventType.TimerFire:
-                    this._addRecord(new WebInspector.ScriptTimelineRecord(WebInspector.ScriptTimelineRecord.EventType.TimerFired, startTime, endTime, parent.data.timerId, resource, lineNumber, callFrames));
-                    break;
-                default:
-                    this._addRecord(new WebInspector.ScriptTimelineRecord(WebInspector.ScriptTimelineRecord.EventType.ScriptEvaluated, startTime, endTime, null, resource, lineNumber, callFrames));
-                    break;
-                }
-
-                break;
-            case TimelineAgent.EventType.TimeStamp:
-                var eventMarker = new WebInspector.TimelineEventMarker(startTime, WebInspector.TimelineEventMarker.Type.TimeStamp);
-                this._eventMarkers.push(eventMarker);
-                this.dispatchEventToListeners(WebInspector.TimelineManager.Event.RecordedEventMarker, {eventMarker: eventMarker});
-                break;
-            case TimelineAgent.EventType.FunctionCall:
-                // FunctionCall always happens as a child of another record, and since the FunctionCall record
-                // has useful info we just make the timeline record here (combining the data from both records).
-                if (!parent)
-                    break;
-
-                var resource = WebInspector.frameResourceManager.resourceForURL(record.data.scriptName);
-
-                // The scriptLine is 1-based, but we expect 0-based.
-                var lineNumber = record.data.scriptLine - 1;
-
-                switch (parent.type) {
-                case TimelineAgent.EventType.TimerFire:
-                    this._addRecord(new WebInspector.ScriptTimelineRecord(WebInspector.ScriptTimelineRecord.EventType.TimerFired, startTime, endTime, parent.data.timerId, resource, lineNumber, callFrames));
-                    break;
-                case TimelineAgent.EventType.EventDispatch:
-                    this._addRecord(new WebInspector.ScriptTimelineRecord(WebInspector.ScriptTimelineRecord.EventType.EventDispatched, startTime, endTime, parent.data.type, resource, lineNumber, callFrames));
-                    break;
-                case TimelineAgent.EventType.XHRLoad:
-                    this._addRecord(new WebInspector.ScriptTimelineRecord(WebInspector.ScriptTimelineRecord.EventType.EventDispatched, startTime, endTime, "load", resource, lineNumber, callFrames));
-                    break;
-                case TimelineAgent.EventType.XHRReadyStateChange:
-                    this._addRecord(new WebInspector.ScriptTimelineRecord(WebInspector.ScriptTimelineRecord.EventType.EventDispatched, startTime, endTime, "readystatechange", resource, lineNumber, callFrames));
-                    break;
-                case TimelineAgent.EventType.FireAnimationFrame:
-                    this._addRecord(new WebInspector.ScriptTimelineRecord(WebInspector.ScriptTimelineRecord.EventType.AnimationFrameFired, startTime, endTime, parent.data.id, resource, lineNumber, callFrames));
-                    break;
-                }
-
-                break;
-            case TimelineAgent.EventType.TimerInstall:
-            case TimelineAgent.EventType.TimerRemove:
-                // COMPATIBILITY (iOS 6): TimerInstall and TimerRemove did not have a stack trace.
-                var callFrame = null;
-                if (callFrames) {
-                    for (var i = 0; i < callFrames.length; ++i) {
-                        if (callFrames[i].nativeCode)
-                            continue;
-                        callFrame = callFrames[i];
-                        break;
+                        // FIXME: No column number is provided.
+                        sourceCodeLocation = scriptResource.createSourceCodeLocation(lineNumber, 0);
                     }
                 }
 
-                var sourceCodeLocation = callFrame && callFrame.sourceCodeLocation;
-                var resource = sourceCodeLocation ? sourceCodeLocation.sourceCode : null;
-                var lineNumber = sourceCodeLocation ? sourceCodeLocation.lineNumber : null;
+                var profile = null;
+                if (recordPayload.data.profile)
+                    profile = this._profileFromPayload(recordPayload.data.profile);
 
-                if (record.type === TimelineAgent.EventType.TimerInstall)
-                    this._addRecord(new WebInspector.ScriptTimelineRecord(WebInspector.ScriptTimelineRecord.EventType.TimerInstalled, startTime, endTime, record.data.timerId, resource, lineNumber, callFrames));
-                else
-                    this._addRecord(new WebInspector.ScriptTimelineRecord(WebInspector.ScriptTimelineRecord.EventType.TimerRemoved, startTime, endTime, record.data.timerId, resource, lineNumber, callFrames));
+                switch (parentRecordPayload && parentRecordPayload.type) {
+                case TimelineAgent.EventType.TimerFire:
+                    this._addRecord(new WebInspector.ScriptTimelineRecord(WebInspector.ScriptTimelineRecord.EventType.TimerFired, startTime, endTime, callFrames, sourceCodeLocation, parentRecordPayload.data.timerId, profile));
+                    break;
+                default:
+                    this._addRecord(new WebInspector.ScriptTimelineRecord(WebInspector.ScriptTimelineRecord.EventType.ScriptEvaluated, startTime, endTime, callFrames, sourceCodeLocation, null, profile));
+                    break;
+                }
 
                 break;
-            }
 
-            return null;
+            case TimelineAgent.EventType.TimeStamp:
+                var eventMarker = new WebInspector.TimelineMarker(startTime, WebInspector.TimelineMarker.Type.TimeStamp);
+                this._recording.addEventMarker(eventMarker);
+                break;
+
+            case TimelineAgent.EventType.FunctionCall:
+                // FunctionCall always happens as a child of another record, and since the FunctionCall record
+                // has useful info we just make the timeline record here (combining the data from both records).
+                if (!parentRecordPayload)
+                    break;
+
+                var profile = null;
+                if (recordPayload.data.profile)
+                    profile = this._profileFromPayload(recordPayload.data.profile);
+
+                if (!sourceCodeLocation) {
+                    var mainFrame = WebInspector.frameResourceManager.mainFrame;
+                    var scriptResource = mainFrame.url === recordPayload.data.scriptName ? mainFrame.mainResource : mainFrame.resourceForURL(recordPayload.data.scriptName, true);
+                    if (scriptResource) {
+                        // The lineNumber is 1-based, but we expect 0-based.
+                        var lineNumber = recordPayload.data.scriptLine - 1;
+
+                        // FIXME: No column number is provided.
+                        sourceCodeLocation = scriptResource.createSourceCodeLocation(lineNumber, 0);
+                    }
+                }
+
+                switch (parentRecordPayload.type) {
+                case TimelineAgent.EventType.TimerFire:
+                    this._addRecord(new WebInspector.ScriptTimelineRecord(WebInspector.ScriptTimelineRecord.EventType.TimerFired, startTime, endTime, callFrames, sourceCodeLocation, parentRecordPayload.data.timerId, profile));
+                    break;
+                case TimelineAgent.EventType.EventDispatch:
+                    this._addRecord(new WebInspector.ScriptTimelineRecord(WebInspector.ScriptTimelineRecord.EventType.EventDispatched, startTime, endTime, callFrames, sourceCodeLocation, parentRecordPayload.data.type, profile));
+                    break;
+                case TimelineAgent.EventType.XHRLoad:
+                    this._addRecord(new WebInspector.ScriptTimelineRecord(WebInspector.ScriptTimelineRecord.EventType.EventDispatched, startTime, endTime, callFrames, sourceCodeLocation, "load", profile));
+                    break;
+                case TimelineAgent.EventType.XHRReadyStateChange:
+                    this._addRecord(new WebInspector.ScriptTimelineRecord(WebInspector.ScriptTimelineRecord.EventType.EventDispatched, startTime, endTime, callFrames, sourceCodeLocation, "readystatechange", profile));
+                    break;
+                case TimelineAgent.EventType.FireAnimationFrame:
+                    this._addRecord(new WebInspector.ScriptTimelineRecord(WebInspector.ScriptTimelineRecord.EventType.AnimationFrameFired, startTime, endTime, callFrames, sourceCodeLocation, parentRecordPayload.data.id, profile));
+                    break;
+                }
+
+                break;
+
+            case TimelineAgent.EventType.TimerInstall:
+                console.assert(isNaN(endTime));
+
+                // Pass the startTime as the endTime since this record type has no duration.
+                this._addRecord(new WebInspector.ScriptTimelineRecord(WebInspector.ScriptTimelineRecord.EventType.TimerInstalled, startTime, startTime, callFrames, sourceCodeLocation, recordPayload.data.timerId));
+                break;
+
+            case TimelineAgent.EventType.TimerRemove:
+                console.assert(isNaN(endTime));
+
+                // Pass the startTime as the endTime since this record type has no duration.
+                this._addRecord(new WebInspector.ScriptTimelineRecord(WebInspector.ScriptTimelineRecord.EventType.TimerRemoved, startTime, startTime, callFrames, sourceCodeLocation, recordPayload.data.timerId));
+                break;
+
+            case TimelineAgent.EventType.RequestAnimationFrame:
+                console.assert(isNaN(endTime));
+
+                // Pass the startTime as the endTime since this record type has no duration.
+                this._addRecord(new WebInspector.ScriptTimelineRecord(WebInspector.ScriptTimelineRecord.EventType.AnimationFrameRequested, startTime, startTime, callFrames, sourceCodeLocation, recordPayload.data.timerId));
+                break;
+
+            case TimelineAgent.EventType.CancelAnimationFrame:
+                console.assert(isNaN(endTime));
+
+                // Pass the startTime as the endTime since this record type has no duration.
+                this._addRecord(new WebInspector.ScriptTimelineRecord(WebInspector.ScriptTimelineRecord.EventType.AnimationFrameCanceled, startTime, startTime, callFrames, sourceCodeLocation, recordPayload.data.timerId));
+                break;
+            }
         }
 
         // Iterate over the records tree using a stack. Doing this recursively has
         // been known to cause a call stack overflow. https://webkit.org/b/79106
-        var stack = [{array: [originalRecord], parent: null, index: 0}];
+        var stack = [{array: [originalRecordPayload], parent: null, index: 0}];
         while (stack.length) {
             var entry = stack.lastValue;
-            var records = entry.array;
-            var parent = entry.parent;
+            var recordPayloads = entry.array;
+            var parentRecordPayload = entry.parent;
 
-            if (entry.index < records.length) {
-                var record = records[entry.index];
+            if (entry.index < recordPayloads.length) {
+                var recordPayload = recordPayloads[entry.index];
 
-                processRecord.call(this, record, parent);
+                processRecord.call(this, recordPayload, parentRecordPayload);
 
-                if (record.children)
-                    stack.push({array: record.children, parent: record, index: 0});
+                if (recordPayload.children)
+                    stack.push({array: recordPayload.children, parent: recordPayload, index: 0});
                 ++entry.index;
             } else
                 stack.pop();
@@ -295,20 +322,78 @@ WebInspector.TimelineManager.prototype = {
 
     pageDidLoad: function(timestamp)
     {
-        if (isNaN(this._loadEventTime))
-            this._loadEventTime = timestamp;
+        if (isNaN(WebInspector.frameResourceManager.mainFrame.loadEventTimestamp))
+            WebInspector.frameResourceManager.mainFrame.markLoadEvent(timestamp);
     },
 
     // Private
 
-    _clear: function()
+    _profileFromPayload: function(payload)
     {
-        this._records = [];
-        this._typeRecords = {};
-        this._loadEventTime = NaN;
-        this._eventMarkers = [];
+        if (!payload)
+            return null;
 
-        this.dispatchEventToListeners(WebInspector.TimelineManager.Event.RecordsCleared);
+        console.assert(payload.rootNodes instanceof Array);
+
+        function profileNodeFromPayload(nodePayload)
+        {
+            console.assert("id" in nodePayload);
+            console.assert(nodePayload.calls instanceof Array);
+
+            if (nodePayload.url) {
+                var sourceCode = WebInspector.frameResourceManager.resourceForURL(nodePayload.url);
+                if (!sourceCode)
+                    sourceCode = WebInspector.debuggerManager.scriptsForURL(nodePayload.url)[0];
+
+                // The lineNumber is 1-based, but we expect 0-based.
+                var lineNumber = nodePayload.lineNumber - 1;
+
+                var sourceCodeLocation = sourceCode ? sourceCode.createSourceCodeLocation(lineNumber, nodePayload.columnNumber) : null;
+            }
+
+            var isProgramCode = nodePayload.functionName === "(program)";
+            var isAnonymousFunction = nodePayload.functionName === "(anonymous function)";
+
+            var type = isProgramCode ? WebInspector.ProfileNode.Type.Program : WebInspector.ProfileNode.Type.Function;
+            var functionName = !isProgramCode && !isAnonymousFunction && nodePayload.functionName !== "(unknown)" ? nodePayload.functionName : null;
+            var calls = nodePayload.calls.map(profileNodeCallFromPayload);
+
+            return new WebInspector.ProfileNode(nodePayload.id, type, functionName, sourceCodeLocation, calls, nodePayload.children);
+        }
+
+        function profileNodeCallFromPayload(nodeCallPayload)
+        {
+            console.assert("startTime" in nodeCallPayload);
+            console.assert("totalTime" in nodeCallPayload);
+
+            return new WebInspector.ProfileNodeCall(nodeCallPayload.startTime, nodeCallPayload.totalTime);
+        }
+
+        var rootNodes = payload.rootNodes;
+
+        // Iterate over the node tree using a stack. Doing this recursively can easily cause a stack overflow.
+        // We traverse the profile in post-order and convert the payloads in place until we get back to the root.
+        var stack = [{parent: {children: rootNodes}, index: 0, root: true}];
+        while (stack.length) {
+            var entry = stack.lastValue;
+
+            if (entry.index < entry.parent.children.length) {
+                var childNodePayload = entry.parent.children[entry.index];
+                if (childNodePayload.children && childNodePayload.children.length)
+                    stack.push({parent: childNodePayload, index: 0});
+
+                ++entry.index;
+            } else {
+                if (!entry.root)
+                    entry.parent.children = entry.parent.children.map(profileNodeFromPayload);
+                else
+                    rootNodes = rootNodes.map(profileNodeFromPayload);
+
+                stack.pop();
+            }
+        }
+
+        return new WebInspector.Profile(rootNodes, payload.idleTime);
     },
 
     _callFramesFromPayload: function(payload)
@@ -344,22 +429,16 @@ WebInspector.TimelineManager.prototype = {
 
     _addRecord: function(record)
     {
-        this._records.push(record);
-
-        if (!this._typeRecords[record.type])
-            this._typeRecords[record.type] = [];
-        this._typeRecords[record.type].push(record);
-
-        this.dispatchEventToListeners(WebInspector.TimelineManager.Event.RecordAdded, {record: record});
+        this._recording.addRecord(record);
 
         // Only worry about dead time after the load event.
-        if (!isNaN(this._loadEventTime))
+        if (!isNaN(WebInspector.frameResourceManager.mainFrame.loadEventTimestamp))
             this._resetAutoRecordingDeadTimeTimeout();
     },
 
     _startAutoRecording: function(event)
     {
-        if (!event.target.isMainFrame() || (this._recording && !this._autoRecordingMainResource))
+        if (!event.target.isMainFrame() || (this._recordingEnabled && !this._autoRecordingMainResource))
             return false;
 
         var mainResource = event.target.provisionalMainResource || event.target.mainResource;
@@ -369,6 +448,8 @@ WebInspector.TimelineManager.prototype = {
         this.stopRecording();
 
         this._autoRecordingMainResource = mainResource;
+
+        this._recording.reset();
 
         this.startRecording();
 
@@ -384,7 +465,7 @@ WebInspector.TimelineManager.prototype = {
     _stopAutoRecordingSoon: function()
     {
         // Only auto stop when auto recording.
-        if (!this._recording || !this._autoRecordingMainResource)
+        if (!this._recordingEnabled || !this._autoRecordingMainResource)
             return;
 
         if (this._stopRecordingTimeout)
@@ -395,7 +476,7 @@ WebInspector.TimelineManager.prototype = {
     _resetAutoRecordingDeadTimeTimeout: function()
     {
         // Only monitor dead time when auto recording.
-        if (!this._recording || !this._autoRecordingMainResource)
+        if (!this._recordingEnabled || !this._autoRecordingMainResource)
             return;
 
         if (this._deadTimeTimeout)
@@ -413,7 +494,7 @@ WebInspector.TimelineManager.prototype = {
         if (this._startAutoRecording(event))
             return;
 
-        if (!this._recording)
+        if (!this._recordingEnabled)
             return;
 
         var mainResource = event.target.mainResource;
@@ -430,7 +511,7 @@ WebInspector.TimelineManager.prototype = {
         if (!WebInspector.frameResourceManager.mainFrame)
             return;
 
-        if (!this._recording)
+        if (!this._recordingEnabled)
             return;
 
         this._addRecord(new WebInspector.ResourceTimelineRecord(event.data.resource));

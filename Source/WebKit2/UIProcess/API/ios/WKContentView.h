@@ -30,6 +30,7 @@
 #import <WebKit2/WKProcessGroup.h>
 
 @class WKContentView;
+@class WKWebViewConfiguration;
 
 typedef NS_ENUM(unsigned, WKContentType)
 {
@@ -57,6 +58,8 @@ WK_API_CLASS
 
 @property (readonly) WKPageRef _pageRef;
 
+- (instancetype)initWithFrame:(CGRect)frame configuration:(WKWebViewConfiguration *)configuration;
+
 - (id)initWithFrame:(CGRect)frame contextRef:(WKContextRef)contextRef pageGroupRef:(WKPageGroupRef)pageGroupRef;
 - (id)initWithFrame:(CGRect)frame contextRef:(WKContextRef)contextRef pageGroupRef:(WKPageGroupRef)pageGroupRef relatedToPage:(WKPageRef)relatedPage;
 - (id)initWithFrame:(CGRect)frame processGroup:(WKProcessGroup *)processGroup browsingContextGroup:(WKBrowsingContextGroup *)browsingContextGroup;
@@ -64,6 +67,7 @@ WK_API_CLASS
 - (void)setMinimumSize:(CGSize)size;
 - (void)setViewportSize:(CGSize)size;
 
+- (void)didFinishScrollTo:(CGPoint)contentOffset;
 - (void)didScrollTo:(CGPoint)contentOffset;
 - (void)didZoomToScale:(CGFloat)scale;
 

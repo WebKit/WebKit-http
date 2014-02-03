@@ -24,9 +24,6 @@
  */
 
 #include "config.h"
-
-#if USE(ACCELERATED_COMPOSITING)
-
 #import "PlatformCALayerRemote.h"
 
 #import "PlatformCALayerRemoteCustom.h"
@@ -46,18 +43,6 @@
 
 using namespace WebCore;
 using namespace WebKit;
-
-static RemoteLayerTreeTransaction::LayerID generateLayerID()
-{
-    static RemoteLayerTreeTransaction::LayerID layerID;
-    return ++layerID;
-}
-
-static PlatformCALayerRemote* toPlatformCALayerRemote(PlatformCALayer* layer)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!layer || layer->isRemote());
-    return static_cast<PlatformCALayerRemote*>(layer);
-}
 
 PassRefPtr<PlatformCALayerRemote> PlatformCALayerRemote::create(LayerType layerType, PlatformCALayerClient* owner, RemoteLayerTreeContext* context)
 {
@@ -84,14 +69,11 @@ PassRefPtr<PlatformCALayerRemote> PlatformCALayerRemote::create(PlatformLayer *p
 
 PlatformCALayerRemote::PlatformCALayerRemote(LayerType layerType, PlatformCALayerClient* owner, RemoteLayerTreeContext* context)
     : PlatformCALayer(layerType, owner)
-    , m_layerID(generateLayerID())
     , m_superlayer(nullptr)
     , m_maskLayer(nullptr)
     , m_acceleratesDrawing(false)
     , m_context(context)
 {
-    // FIXME: match all default values from CA.
-    setContentsScale(1);
 }
 
 PassRefPtr<PlatformCALayer> PlatformCALayerRemote::clone(PlatformCALayerClient* client) const
@@ -120,7 +102,7 @@ void PlatformCALayerRemote::recursiveBuildTransaction(RemoteLayerTreeTransaction
         if (m_properties.changedProperties & RemoteLayerTreeTransaction::ChildrenChanged) {
             m_properties.children.clear();
             for (auto layer : m_children)
-                m_properties.children.append(toPlatformCALayerRemote(layer.get())->layerID());
+                m_properties.children.append(layer->layerID());
         }
 
         if (m_layerType == LayerTypeCustom) {
@@ -547,5 +529,3 @@ uint32_t PlatformCALayerRemote::hostingContextID()
     ASSERT_NOT_REACHED();
     return 0;
 }
-
-#endif // USE(ACCELERATED_COMPOSITING)

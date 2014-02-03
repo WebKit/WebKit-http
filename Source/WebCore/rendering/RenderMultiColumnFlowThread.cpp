@@ -26,13 +26,19 @@
 #include "config.h"
 #include "RenderMultiColumnFlowThread.h"
 
-#include "RenderMultiColumnBlock.h"
 #include "RenderMultiColumnSet.h"
 
 namespace WebCore {
 
 RenderMultiColumnFlowThread::RenderMultiColumnFlowThread(Document& document, PassRef<RenderStyle> style)
     : RenderFlowThread(document, std::move(style))
+    , m_columnCount(1)
+    , m_columnWidth(0)
+    , m_columnHeightAvailable(0)
+    , m_inBalancingPass(false)
+    , m_needsRebalancing(false)
+    , m_progressionIsInline(false)
+    , m_progressionIsReversed(false)
 {
     setFlowThreadState(InsideInFlowThread);
 }
@@ -55,8 +61,7 @@ void RenderMultiColumnFlowThread::computeLogicalHeight(LayoutUnit logicalHeight,
 
 LayoutUnit RenderMultiColumnFlowThread::initialLogicalWidth() const
 {
-    RenderMultiColumnBlock* parentBlock = toRenderMultiColumnBlock(parent());
-    return parentBlock->columnWidth();
+    return columnWidth();
 }
 
 void RenderMultiColumnFlowThread::autoGenerateRegionsToBlockOffset(LayoutUnit /*offset*/)
@@ -85,7 +90,7 @@ void RenderMultiColumnFlowThread::autoGenerateRegionsToBlockOffset(LayoutUnit /*
     
     invalidateRegions();
 
-    RenderMultiColumnBlock* parentBlock = toRenderMultiColumnBlock(parent());
+    RenderBlockFlow* parentBlock = toRenderBlockFlow(parent());
     firstSet = new RenderMultiColumnSet(*this, RenderStyle::createAnonymousStyleWithDisplay(&parentBlock->style(), BLOCK));
     firstSet->initializeStyle();
     parentBlock->RenderBlock::addChild(firstSet);
@@ -108,6 +113,17 @@ void RenderMultiColumnFlowThread::updateMinimumPageHeight(const RenderBlock* blo
 {
     if (RenderMultiColumnSet* multicolSet = toRenderMultiColumnSet(regionAtBlockOffset(block, offset)))
         multicolSet->updateMinimumColumnHeight(minHeight);
+}
+
+bool RenderMultiColumnFlowThread::addForcedRegionBreak(const RenderBlock* block, LayoutUnit offset, RenderBox* /*breakChild*/, bool /*isBefore*/, LayoutUnit* offsetBreakAdjustment)
+{
+    if (RenderMultiColumnSet* multicolSet = toRenderMultiColumnSet(regionAtBlockOffset(block, offset))) {
+        multicolSet->addForcedBreak(offset);
+        if (offsetBreakAdjustment)
+            *offsetBreakAdjustment = pageLogicalHeightForOffset(offset) ? pageRemainingLogicalHeightForOffset(offset, IncludePageBoundary) : LayoutUnit::fromPixel(0);
+        return true;
+    }
+    return false;
 }
 
 }

@@ -34,8 +34,25 @@ public:
     virtual ~WebDatabaseManagerClient();
     virtual void dispatchDidModifyOrigin(WebCore::SecurityOrigin*);
     virtual void dispatchDidModifyDatabase(WebCore::SecurityOrigin*, const WTF::String& databaseIdentifier);
+#if PLATFORM(IOS)
+    virtual void dispatchDidAddNewOrigin(WebCore::SecurityOrigin*) override;
+    virtual void dispatchDidDeleteDatabase() override;
+    virtual void dispatchDidDeleteDatabaseOrigin() override;
+    void newDatabaseOriginWasAdded();
+    void databaseWasDeleted();
+    void databaseOriginWasDeleted();
+#endif
+
 private:
     WebDatabaseManagerClient();
+
+#if PLATFORM(IOS)
+    void databaseOriginsDidChange();
+
+    bool m_isHandlingNewDatabaseOriginNotification;
+    bool m_isHandlingDeleteDatabaseNotification;
+    bool m_isHandlingDeleteDatabaseOriginNotification;
+#endif
 };
 
 #endif

@@ -50,7 +50,6 @@ localStorageEnabled initial=false
 allowUniversalAccessFromFileURLs initial=true
 allowFileAccessFromFileURLs initial=true
 javaScriptCanOpenWindowsAutomatically initial=false
-supportsMultipleWindows initial=true
 javaScriptCanAccessClipboard initial=false
 shouldPrintBackgrounds initial=false
 usesDashboardBackwardCompatibilityMode initial=false, conditional=DASHBOARD_SUPPORT
@@ -96,11 +95,10 @@ downloadableBinaryFontsEnabled initial=true
 
 xssAuditorEnabled initial=false
 unsafePluginPastingEnabled initial=true
-acceleratedCompositingForFixedPositionEnabled initial=false
+acceleratedCompositingForFixedPositionEnabled initial=defaultAcceleratedCompositingForFixedPositionEnabled
 acceleratedCompositingForOverflowScrollEnabled initial=false
 
 # Works only in conjunction with forceCompositingMode.
-acceleratedCompositingForScrollableFramesEnabled initial=false
 compositedScrollingForFramesEnabled initial=false
 
 experimentalNotificationsEnabled initial=false
@@ -152,20 +150,12 @@ requestAnimationFrameEnabled initial=true
 deviceSupportsTouch initial=false
 deviceSupportsMouse initial=true
 
-# For touch adjustment to apply, the compile option TOUCH_ADJUSTMENT must also be enabled.
-# This setting adds a means to dynamically disable the feature at runtime on systems with
-# support for touch adjustment.
-touchAdjustmentEnabled initial=true
-
 fixedPositionCreatesStackingContext initial=defaultFixedPositionCreatesStackingContext
 syncXHRInDocumentsEnabled initial=true
 cookieEnabled initial=true
 mediaEnabled initial=true
 applicationChromeMode initial=false
 DOMPasteAllowed initial=false
-
-threadedHTMLParser initial=false, conditional=THREADED_HTML_PARSER
-useThreadedHTMLParserForDataURLs initial=false, conditional=THREADED_HTML_PARSER
 
 # When enabled, window.blur() does not change focus, and
 # window.focus() only changes focus when invoked from the context that
@@ -185,10 +175,6 @@ frameFlatteningEnabled initial=false
 allowCustomScrollbarInMainFrame initial=true
 webSecurityEnabled initial=true
 spatialNavigationEnabled initial=false
-
-# This setting adds a means to enable/disable touch initiated drag & drop. If
-# enabled, the user can initiate drag using long press.
-touchDragDropEnabled initial=false
 
 autoscrollForDragAndDropEnabled initial=false
 
@@ -212,8 +198,9 @@ minimumZoomFontSize type=float, initial=15, conditional=IOS_TEXT_AUTOSIZING
 simpleLineLayoutEnabled initial=true, setNeedsStyleRecalcInAllFrames=1
 simpleLineLayoutDebugBordersEnabled initial=false, setNeedsStyleRecalcInAllFrames=1
 
-backgroundShouldExtendBeyondPage initial=false
 mediaSourceEnabled initial=false
 
 # FIXME: Rename to allowMultiElementImplicitFormSubmission once we upstream the iOS changes to WebView.mm.
 allowMultiElementImplicitSubmission initial=false
+
+mediaPlaybackAllowsAirPlay initial=true, conditional=IOS_AIRPLAY

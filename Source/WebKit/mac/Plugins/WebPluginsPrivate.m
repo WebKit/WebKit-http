@@ -26,6 +26,10 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#if !PLATFORM(IOS)
+
 #include "WebPluginsPrivate.h"
 
 NSString *WebPluginWillPresentNativeUserInterfaceNotification = @"WebPluginWillPresentNativeUserInterface";
+
+#endif

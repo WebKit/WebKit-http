@@ -29,7 +29,6 @@
 #if ENABLE(SVG)
 #include "RenderSVGText.h"
 
-#include "FloatConversion.h"
 #include "FloatQuad.h"
 #include "FontCache.h"
 #include "GraphicsContext.h"
@@ -41,11 +40,9 @@
 #include "RenderSVGResource.h"
 #include "RenderSVGRoot.h"
 #include "SVGLengthList.h"
-#include "SVGRenderSupport.h"
 #include "SVGResourcesCache.h"
 #include "SVGRootInlineBox.h"
 #include "SVGTextElement.h"
-#include "SVGTextLayoutAttributesBuilder.h"
 #include "SVGTextRunRenderingContext.h"
 #include "SVGTransformList.h"
 #include "SVGURIReference.h"
@@ -322,6 +319,11 @@ void RenderSVGText::subtreeTextDidChange(RenderSVGInlineText* text)
     if (!everHadLayout()) {
         ASSERT(m_layoutAttributes.isEmpty());
         ASSERT(!m_layoutAttributesBuilder.numberOfTextPositioningElements());
+        return;
+    }
+    // Text transforms can cause text change to be signaled during addChild before m_layoutAttributes has been updated.
+    if (!m_layoutAttributes.contains(text->layoutAttributes())) {
+        ASSERT(!text->everHadLayout());
         return;
     }
 

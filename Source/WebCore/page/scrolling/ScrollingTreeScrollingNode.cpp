@@ -26,7 +26,7 @@
 #include "config.h"
 #include "ScrollingTreeScrollingNode.h"
 
-#if ENABLE(THREADED_SCROLLING)
+#if ENABLE(ASYNC_SCROLLING)
 
 #include "ScrollingStateTree.h"
 #include "ScrollingTree.h"
@@ -34,11 +34,11 @@
 namespace WebCore {
 
 ScrollingTreeScrollingNode::ScrollingTreeScrollingNode(ScrollingTree& scrollingTree, ScrollingNodeID nodeID)
-    : ScrollingTreeNode(scrollingTree, nodeID)
+    : ScrollingTreeNode(scrollingTree, ScrollingNode, nodeID)
     , m_frameScaleFactor(1)
     , m_headerHeight(0)
     , m_footerHeight(0)
-    , m_shouldUpdateScrollLayerPositionOnMainThread(0)
+    , m_synchronousScrollingReasons(0)
     , m_behaviorForFixed(StickToDocumentBounds)
 {
 }
@@ -47,43 +47,43 @@ ScrollingTreeScrollingNode::~ScrollingTreeScrollingNode()
 {
 }
 
-void ScrollingTreeScrollingNode::updateBeforeChildren(ScrollingStateNode* stateNode)
+void ScrollingTreeScrollingNode::updateBeforeChildren(const ScrollingStateNode& stateNode)
 {
-    ScrollingStateScrollingNode* state = toScrollingStateScrollingNode(stateNode);
+    const ScrollingStateScrollingNode& state = toScrollingStateScrollingNode(stateNode);
 
-    if (state->hasChangedProperty(ScrollingStateScrollingNode::ViewportRect))
-        m_viewportRect = state->viewportRect();
+    if (state.hasChangedProperty(ScrollingStateScrollingNode::ViewportRect))
+        m_viewportRect = state.viewportRect();
 
-    if (state->hasChangedProperty(ScrollingStateScrollingNode::TotalContentsSize)) {
+    if (state.hasChangedProperty(ScrollingStateScrollingNode::TotalContentsSize)) {
         if (scrollingTree().isRubberBandInProgress())
             m_totalContentsSizeForRubberBand = m_totalContentsSize;
         else
-            m_totalContentsSizeForRubberBand = state->totalContentsSize();
-        m_totalContentsSize = state->totalContentsSize();
+            m_totalContentsSizeForRubberBand = state.totalContentsSize();
+        m_totalContentsSize = state.totalContentsSize();
     }
 
-    if (state->hasChangedProperty(ScrollingStateScrollingNode::ScrollOrigin))
-        m_scrollOrigin = state->scrollOrigin();
+    if (state.hasChangedProperty(ScrollingStateScrollingNode::ScrollOrigin))
+        m_scrollOrigin = state.scrollOrigin();
 
-    if (state->hasChangedProperty(ScrollingStateScrollingNode::ScrollableAreaParams))
-        m_scrollableAreaParameters = state->scrollableAreaParameters();
+    if (state.hasChangedProperty(ScrollingStateScrollingNode::ScrollableAreaParams))
+        m_scrollableAreaParameters = state.scrollableAreaParameters();
 
-    if (state->hasChangedProperty(ScrollingStateScrollingNode::FrameScaleFactor))
-        m_frameScaleFactor = state->frameScaleFactor();
+    if (state.hasChangedProperty(ScrollingStateScrollingNode::FrameScaleFactor))
+        m_frameScaleFactor = state.frameScaleFactor();
 
-    if (state->hasChangedProperty(ScrollingStateScrollingNode::ShouldUpdateScrollLayerPositionOnMainThread))
-        m_shouldUpdateScrollLayerPositionOnMainThread = state->shouldUpdateScrollLayerPositionOnMainThread();
+    if (state.hasChangedProperty(ScrollingStateScrollingNode::ReasonsForSynchronousScrolling))
+        m_synchronousScrollingReasons = state.synchronousScrollingReasons();
 
-    if (state->hasChangedProperty(ScrollingStateScrollingNode::HeaderHeight))
-        m_headerHeight = state->headerHeight();
+    if (state.hasChangedProperty(ScrollingStateScrollingNode::HeaderHeight))
+        m_headerHeight = state.headerHeight();
 
-    if (state->hasChangedProperty(ScrollingStateScrollingNode::FooterHeight))
-        m_footerHeight = state->footerHeight();
+    if (state.hasChangedProperty(ScrollingStateScrollingNode::FooterHeight))
+        m_footerHeight = state.footerHeight();
 
-    if (state->hasChangedProperty(ScrollingStateScrollingNode::BehaviorForFixedElements))
-        m_behaviorForFixed = state->scrollBehaviorForFixedElements();
+    if (state.hasChangedProperty(ScrollingStateScrollingNode::BehaviorForFixedElements))
+        m_behaviorForFixed = state.scrollBehaviorForFixedElements();
 }
 
 } // namespace WebCore
 
-#endif // ENABLE(THREADED_SCROLLING)
+#endif // ENABLE(ASYNC_SCROLLING)

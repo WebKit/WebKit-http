@@ -14,9 +14,8 @@ function Controller(root, video, host)
     this.addVideoListeners();
     this.createBase();
     this.createControls();
-    this.setControlsType(this.isFullScreen() ? Controller.FullScreenControls : Controller.InlineControls);
-
     this.updateBase();
+    this.updateControls();
     this.updateDuration();
     this.updateTime();
     this.updateReadyState();
@@ -26,6 +25,7 @@ function Controller(root, video, host)
     this.updateCaptionContainer();
     this.updateVolume();
     this.updateHasAudio();
+    this.updateHasVideo();
 };
 
 /* Enums */
@@ -57,7 +57,7 @@ Controller.prototype = {
         volumechange: 'handleVolumeChange',
         webkitfullscreenchange: 'handleFullscreenChange',
     },
-    HideContrtolsDelay: 4 * 1000,
+    HideControlsDelay: 4 * 1000,
     RewindAmount: 30,
     MaximumSeekRate: 8,
     SeekDelay: 1500,
@@ -75,6 +75,7 @@ Controller.prototype = {
         thumbnailImage: 'thumbnail-image',
         thumbnailTrack: 'thumbnail-track',
         volumeBox: 'volume-box',
+        noVideo: 'no-video',
     },
     KeyCodes: {
         enter: 13,
@@ -167,6 +168,11 @@ Controller.prototype = {
         this.listenFor(this.video.audioTracks, 'addtrack', this.updateHasAudio);
         this.listenFor(this.video.audioTracks, 'removetrack', this.updateHasAudio);
 
+        /* video tracks */
+        this.listenFor(this.video.videoTracks, 'change', this.updateHasVideo);
+        this.listenFor(this.video.videoTracks, 'addtrack', this.updateHasVideo);
+        this.listenFor(this.video.videoTracks, 'removetrack', this.updateHasVideo);
+
         /* controls attribute */
         this.controlsObserver = new MutationObserver(this.handleControlsChange.bind(this));
         this.controlsObserver.observe(this.video, { attributes: true, attributeFilter: ['controls'] });
@@ -187,6 +193,11 @@ Controller.prototype = {
         this.stopListeningFor(this.video.audioTracks, 'change', this.updateHasAudio);
         this.stopListeningFor(this.video.audioTracks, 'addtrack', this.updateHasAudio);
         this.stopListeningFor(this.video.audioTracks, 'removetrack', this.updateHasAudio);
+
+        /* video tracks */
+        this.stopListeningFor(this.video.videoTracks, 'change', this.updateHasVideo);
+        this.stopListeningFor(this.video.videoTracks, 'addtrack', this.updateHasVideo);
+        this.stopListeningFor(this.video.videoTracks, 'removetrack', this.updateHasVideo);
 
         /* controls attribute */
         this.controlsObserver.disconnect();
@@ -226,6 +237,11 @@ Controller.prototype = {
             base.appendChild(this.host.textTrackContainer);
     },
 
+    shouldHaveAnyUI: function()
+    {
+        return this.shouldHaveControls() || (this.video.textTracks && this.video.textTracks.length);
+    },
+
     shouldHaveControls: function()
     {
         return this.video.controls || this.isFullScreen();
@@ -233,12 +249,14 @@ Controller.prototype = {
 
     updateBase: function()
     {
-        if (this.shouldHaveControls() || (this.video.textTracks && this.video.textTracks.length)) {
-            if (!this.base.parentNode)
+        if (this.shouldHaveAnyUI()) {
+            if (!this.base.parentNode) {
                 this.root.appendChild(this.base);
+            }
         } else {
-            if (this.base.parentNode)
+            if (this.base.parentNode) {
                 this.base.parentNode.removeChild(this.base);
+            }
         }
     },
 
@@ -359,12 +377,13 @@ Controller.prototype = {
     {
         if (type === this.controlsType)
             return;
+        this.controlsType = type;
 
         this.disconnectControls();
 
         if (type === Controller.InlineControls)
             this.configureInlineControls();
-        else
+        else if (type == Controller.FullScreenControls)
             this.configureFullScreenControls();
 
         if (this.shouldHaveControls())
@@ -424,6 +443,15 @@ Controller.prototype = {
         this.controls.thumbnailTrack.appendChild(this.controls.thumbnail);
         this.controls.thumbnail.appendChild(this.controls.thumbnailImage);
         this.controls.timelineBox.appendChild(this.controls.remainingTime);
+    },
+
+    updateControls: function()
+    {
+        if (this.isFullScreen())
+            this.setControlsType(Controller.FullScreenControls);
+        else
+            this.setControlsType(Controller.InlineControls);
+
     },
 
     handleLoadStart: function(event)
@@ -530,15 +558,14 @@ Controller.prototype = {
     handleFullscreenChange: function(event)
     {
         this.updateBase();
+        this.updateControls();
 
         if (this.isFullScreen()) {
             this.controls.fullscreenButton.classList.add(this.ClassNames.exit);
             this.controls.fullscreenButton.setAttribute('aria-label', this.UIString('Exit Full Screen'));
-            this.setControlsType(Controller.FullScreenControls);
         } else {
             this.controls.fullscreenButton.classList.remove(this.ClassNames.exit);
             this.controls.fullscreenButton.setAttribute('aria-label', this.UIString('Display Full Screen'));
-            this.setControlsType(Controller.InlineControls);
         }
     },
 
@@ -547,7 +574,7 @@ Controller.prototype = {
         this.showControls();
         if (this.hideTimer)
             clearTimeout(this.hideTimer);
-        this.hideTimer = setTimeout(this.hideControls.bind(this), this.HideContrtolsDelay);
+        this.hideTimer = setTimeout(this.hideControls.bind(this), this.HideControlsDelay);
 
         if (!this.isDragging)
             return;
@@ -559,7 +586,7 @@ Controller.prototype = {
 
     handleWrapperMouseOut: function(event)
     {
-        this.controls.panel.classList.remove(this.ClassNames.show);
+        this.hideControls();
         if (this.hideTimer)
             clearTimeout(this.hideTimer);
     },
@@ -822,7 +849,7 @@ Controller.prototype = {
         var absTime = Math.abs(time);
         var intSeconds = Math.floor(absTime % 60).toFixed(0);
         var intMinutes = Math.floor(absTime / 60).toFixed(0);
-        return (time < 0 ? '-' : '' ) + String('00' + intMinutes).slice(-2) + ":" + String('00' + intSeconds).slice(-2)
+        return (time < 0 ? '-' : String()) + String('00' + intMinutes).slice(-2) + ":" + String('00' + intSeconds).slice(-2)
     },
 
     updatePlaying: function()
@@ -836,10 +863,10 @@ Controller.prototype = {
             this.controls.playButton.classList.remove(this.ClassNames.paused);
             this.controls.playButton.setAttribute('aria-label', this.UIString('Pause'));
 
-            this.controls.panel.classList.remove(this.ClassNames.show);
+            this.hideControls();
             if (this.hideTimer)
                 clearTimeout(this.hideTimer);
-            this.hideTimer = setTimeout(this.hideControls.bind(this), this.HideContrtolsDelay);
+            this.hideTimer = setTimeout(this.hideControls.bind(this), this.HideControlsDelay);
         }
     },
 
@@ -852,6 +879,11 @@ Controller.prototype = {
     hideControls: function()
     {
         this.controls.panel.classList.remove(this.ClassNames.show);
+    },
+
+    controlsAreHidden: function()
+    {
+        return !this.controls.panel.classList.contains(this.ClassNames.show) || this.controls.panel.classList.contains(this.ClassNames.hidden);
     },
 
     removeControls: function()
@@ -1094,6 +1126,14 @@ Controller.prototype = {
             this.controls.muteBox.classList.remove(this.ClassNames.hidden);
         else
             this.controls.muteBox.classList.add(this.ClassNames.hidden);
+    },
+
+    updateHasVideo: function()
+    {
+        if (this.video.videoTracks.length)
+            this.controls.panel.classList.remove(this.ClassNames.noVideo);
+        else
+            this.controls.panel.classList.add(this.ClassNames.noVideo);
     },
 
     updateVolume: function()

@@ -61,8 +61,10 @@ namespace WebCore {
 
 void ScriptController::initializeThreading()
 {
+#if !PLATFORM(IOS)
     JSC::initializeThreading();
     WTF::initializeMainThread();
+#endif
 }
 
 ScriptController::ScriptController(Frame& frame)
@@ -144,7 +146,7 @@ Deprecated::ScriptValue ScriptController::evaluateInWorld(const ScriptSourceCode
 
     JSValue returnValue = JSMainThreadExecState::evaluate(exec, jsSourceCode, shell, &evaluationException);
 
-    InspectorInstrumentation::didEvaluateScript(cookie);
+    InspectorInstrumentation::didEvaluateScript(cookie, &m_frame);
 
     if (evaluationException) {
         reportException(exec, evaluationException, sourceCode.cachedScript());
@@ -284,7 +286,7 @@ void ScriptController::attachDebugger(JSDOMWindowShell* shell, JSC::Debugger* de
     if (debugger)
         debugger->attach(globalObject);
     else if (JSC::Debugger* currentDebugger = globalObject->debugger())
-        currentDebugger->detach(globalObject);
+        currentDebugger->detach(globalObject, JSC::Debugger::TerminatingDebuggingSession);
 }
 
 void ScriptController::updateDocument()
@@ -332,10 +334,6 @@ PassRefPtr<Bindings::RootObject> ScriptController::createRootObject(void* native
 }
 
 #if ENABLE(INSPECTOR)
-void ScriptController::setCaptureCallStackForUncaughtExceptions(bool)
-{
-}
-
 void ScriptController::collectIsolatedContexts(Vector<std::pair<JSC::ExecState*, SecurityOrigin*>>& result)
 {
     for (ShellMap::iterator iter = m_windowShells.begin(); iter != m_windowShells.end(); ++iter) {
@@ -344,7 +342,6 @@ void ScriptController::collectIsolatedContexts(Vector<std::pair<JSC::ExecState*,
         result.append(std::pair<JSC::ExecState*, SecurityOrigin*>(exec, origin));
     }
 }
-
 #endif
 
 #if ENABLE(NETSCAPE_PLUGIN_API)

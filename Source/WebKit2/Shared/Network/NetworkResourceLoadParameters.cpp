@@ -41,21 +41,22 @@ NetworkResourceLoadParameters::NetworkResourceLoadParameters()
     : identifier(0)
     , webPageID(0)
     , webFrameID(0)
+    , sessionID(0)
     , priority(ResourceLoadPriorityVeryLow)
     , contentSniffingPolicy(SniffContent)
     , allowStoredCredentials(DoNotAllowStoredCredentials)
     , clientCredentialPolicy(DoNotAskClientForAnyCredentials)
-    , inPrivateBrowsingMode(false)
     , shouldClearReferrerOnHTTPSToHTTPRedirect(true)
     , isMainResource(false)
 {
 }
 
-void NetworkResourceLoadParameters::encode(CoreIPC::ArgumentEncoder& encoder) const
+void NetworkResourceLoadParameters::encode(IPC::ArgumentEncoder& encoder) const
 {
     encoder << identifier;
     encoder << webPageID;
     encoder << webFrameID;
+    encoder << sessionID;
     encoder << request;
 
     encoder << static_cast<bool>(request.httpBody());
@@ -94,12 +95,11 @@ void NetworkResourceLoadParameters::encode(CoreIPC::ArgumentEncoder& encoder) co
     encoder.encodeEnum(contentSniffingPolicy);
     encoder.encodeEnum(allowStoredCredentials);
     encoder.encodeEnum(clientCredentialPolicy);
-    encoder << inPrivateBrowsingMode;
     encoder << shouldClearReferrerOnHTTPSToHTTPRedirect;
     encoder << isMainResource;
 }
 
-bool NetworkResourceLoadParameters::decode(CoreIPC::ArgumentDecoder& decoder, NetworkResourceLoadParameters& result)
+bool NetworkResourceLoadParameters::decode(IPC::ArgumentDecoder& decoder, NetworkResourceLoadParameters& result)
 {
     if (!decoder.decode(result.identifier))
         return false;
@@ -110,6 +110,9 @@ bool NetworkResourceLoadParameters::decode(CoreIPC::ArgumentDecoder& decoder, Ne
     if (!decoder.decode(result.webFrameID))
         return false;
 
+    if (!decoder.decode(result.sessionID))
+        return false;
+
     if (!decoder.decode(result.request))
         return false;
 
@@ -118,7 +121,7 @@ bool NetworkResourceLoadParameters::decode(CoreIPC::ArgumentDecoder& decoder, Ne
         return false;
 
     if (hasHTTPBody) {
-        CoreIPC::DataReference formData;
+        IPC::DataReference formData;
         if (!decoder.decode(formData))
             return false;
         DecoderAdapter httpBodyDecoderAdapter(formData.data(), formData.size());
@@ -140,8 +143,6 @@ bool NetworkResourceLoadParameters::decode(CoreIPC::ArgumentDecoder& decoder, Ne
     if (!decoder.decodeEnum(result.allowStoredCredentials))
         return false;
     if (!decoder.decodeEnum(result.clientCredentialPolicy))
-        return false;
-    if (!decoder.decode(result.inPrivateBrowsingMode))
         return false;
     if (!decoder.decode(result.shouldClearReferrerOnHTTPSToHTTPRedirect))
         return false;

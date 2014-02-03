@@ -20,9 +20,9 @@
 #ifndef TextureMapper_h
 #define TextureMapper_h
 
-#if USE(ACCELERATED_COMPOSITING) && USE(TEXTURE_MAPPER)
+#if USE(TEXTURE_MAPPER)
 
-#if (PLATFORM(GTK) || PLATFORM(EFL) || PLATFORM(NIX)) && USE(OPENGL_ES_2)
+#if (PLATFORM(GTK) || PLATFORM(EFL)) && USE(OPENGL_ES_2)
 #define TEXMAP_OPENGL_ES_2
 #endif
 
@@ -39,7 +39,6 @@
 namespace WebCore {
 
 class BitmapTexturePool;
-class CustomFilterProgram;
 class GraphicsLayer;
 class TextureMapper;
 class FilterOperations;
@@ -158,10 +157,6 @@ public:
     virtual IntSize maxTextureSize() const = 0;
 
     virtual PassRefPtr<BitmapTexture> acquireTextureFromPool(const IntSize&);
-
-#if ENABLE(CSS_SHADERS)
-    virtual void removeCachedCustomFilterProgram(CustomFilterProgram*) { }
-#endif
 
     void setPatternTransform(const TransformationMatrix& p) { m_patternTransform = p; }
     void setWrapMode(WrapMode m) { m_wrapMode = m; }

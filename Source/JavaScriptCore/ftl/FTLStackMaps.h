@@ -61,7 +61,7 @@ struct StackMaps {
         uint16_t dwarfRegNum; // Represented as a 12-bit int in the section.
         int8_t size;
         Kind kind;
-        int16_t offset;
+        int32_t offset;
         
         void parse(DataView*, unsigned& offset);
         void dump(PrintStream& out) const;
@@ -88,7 +88,7 @@ struct StackMaps {
     void dump(PrintStream&) const;
     void dumpMultiline(PrintStream&, const char* prefix) const;
     
-    typedef HashMap<uint32_t, Record, WTF::IntHash<uint32_t>, WTF::UnsignedWithZeroKeyHashTraits<uint32_t>> RecordMap;
+    typedef HashMap<uint32_t, Vector<Record>, WTF::IntHash<uint32_t>, WTF::UnsignedWithZeroKeyHashTraits<uint32_t>> RecordMap;
     
     RecordMap getRecordMap() const;
 };

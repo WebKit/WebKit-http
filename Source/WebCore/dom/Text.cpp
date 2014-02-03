@@ -46,6 +46,11 @@ PassRefPtr<Text> Text::create(Document& document, const String& data)
     return adoptRef(new Text(document, data, CreateText));
 }
 
+PassRefPtr<Text> Text::create(ScriptExecutionContext& context, const String& data)
+{
+    return adoptRef(new Text(toDocument(context), data, CreateText));
+}
+
 PassRefPtr<Text> Text::createEditingText(Document& document, const String& data)
 {
     return adoptRef(new Text(document, data, CreateEditingText));
@@ -187,16 +192,16 @@ static bool isSVGText(Text* text)
 }
 #endif
 
-RenderText* Text::createTextRenderer(RenderStyle& style)
+RenderPtr<RenderText> Text::createTextRenderer(const RenderStyle& style)
 {
 #if ENABLE(SVG)
     if (isSVGText(this) || isSVGShadowText(this))
-        return new RenderSVGInlineText(*this, dataImpl());
+        return createRenderer<RenderSVGInlineText>(*this, dataImpl());
 #endif
     if (style.hasTextCombine())
-        return new RenderCombineText(*this, dataImpl());
+        return createRenderer<RenderCombineText>(*this, dataImpl());
 
-    return new RenderText(*this, dataImpl());
+    return createRenderer<RenderText>(*this, dataImpl());
 }
 
 bool Text::childTypeAllowed(NodeType) const

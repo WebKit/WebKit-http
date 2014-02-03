@@ -34,9 +34,6 @@
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
 #include <wtf/Threading.h>
-#if PLATFORM(BLACKBERRY)
-#include <BlackBerryPlatformAnimationFrameRateController.h>
-#endif
 
 #if PLATFORM(MAC)
 typedef struct __CVDisplayLink *CVDisplayLinkRef;
@@ -122,20 +119,18 @@ private:
     HashSet<DisplayRefreshMonitorClient*> m_clients;
     HashSet<DisplayRefreshMonitorClient*>* m_clientsToBeNotified;
 
-#if PLATFORM(BLACKBERRY)
-public:
-    void displayLinkFired();
-private:
-    DisplayAnimationClient *m_animationClient;
-    void startAnimationClient();
-    void stopAnimationClient();
-#endif
-
-#if PLATFORM(MAC)
+#if PLATFORM(MAC) && !PLATFORM(IOS)
 public:
     void displayLinkFired(double nowSeconds, double outputTimeSeconds);
 private:
     CVDisplayLinkRef m_displayLink;
+#endif
+
+#if PLATFORM(IOS)
+public:
+    void displayLinkFired(double nowSeconds);
+private:
+    void* m_displayLink;
 #endif
 };
 

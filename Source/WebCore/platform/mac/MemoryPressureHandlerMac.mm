@@ -67,7 +67,7 @@ void MemoryPressureHandler::install()
         return;
 
     dispatch_async(dispatch_get_main_queue(), ^{
-#if MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
+#if !PLATFORM(IOS) && MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
         _cache_event_source = wkCreateMemoryStatusPressureCriticalDispatchOnMainQueue();
 #else
         _cache_event_source = wkCreateVMPressureDispatchOnMainQueue();
@@ -79,8 +79,13 @@ void MemoryPressureHandler::install()
         }
     });
 
-    notify_register_dispatch("org.WebKit.lowMemory", &_notifyToken,
-         dispatch_get_main_queue(), ^(int) { memoryPressureHandler().respondToMemoryPressure();});
+    // Allow simulation of memory pressure with "notifyutil -p org.WebKit.lowMemory"
+    // Note that we also ask JSC to garbage collect some time soon, unlike the real memory pressure path.
+    // This is to get more stable numbers in memory benchmarks using this mechanism.
+    notify_register_dispatch("org.WebKit.lowMemory", &_notifyToken, dispatch_get_main_queue(), ^(int) {
+        memoryPressureHandler().respondToMemoryPressure();
+        gcController().garbageCollectSoon();
+    });
 
     m_installed = true;
 }
@@ -158,7 +163,9 @@ void MemoryPressureHandler::releaseMemory(bool)
 
     memoryCache()->pruneToPercentage(0);
 
+#if !PLATFORM(IOS)
     LayerPool::sharedPool()->drain();
+#endif
 
     cssValuePool().drain();
 
@@ -171,7 +178,7 @@ void MemoryPressureHandler::releaseMemory(bool)
     // FastMalloc has lock-free thread specific caches that can only be cleared from the thread itself.
     StorageThread::releaseFastMallocFreeMemoryInAllThreads();
     WorkerThread::releaseFastMallocFreeMemoryInAllThreads();
-#if ENABLE(THREADED_SCROLLING)
+#if ENABLE(ASYNC_SCROLLING)
     ScrollingThread::dispatch(bind(WTF::releaseFastMallocFreeMemory));
 #endif
     WTF::releaseFastMallocFreeMemory();

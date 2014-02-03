@@ -27,8 +27,6 @@
 #ifndef ScriptProfiler_h
 #define ScriptProfiler_h
 
-#if ENABLE(JAVASCRIPT_DEBUGGER)
-
 #include "ScriptHeapSnapshot.h"
 #include "ScriptProfile.h"
 #include "ScriptState.h"
@@ -42,9 +40,6 @@ class ScriptValue;
 
 namespace WebCore {
 
-class ExternalArrayVisitor;
-class ExternalStringVisitor;
-class WrappedNodeVisitor;
 class Page;
 class WorkerGlobalScope;
 
@@ -70,18 +65,11 @@ public:
     static PassRefPtr<ScriptProfile> stopForPage(Page*, const String& title);
     static PassRefPtr<ScriptProfile> stopForWorkerGlobalScope(WorkerGlobalScope*, const String& title);
     static PassRefPtr<ScriptHeapSnapshot> takeHeapSnapshot(const String&, HeapSnapshotProgress*) { return 0; }
-    static bool causesRecompilation() { return true; }
     static bool isSampling() { return false; }
     static bool hasHeapProfiler() { return false; }
-    // FIXME: Support these methods for JSC. See bug 90358.
-    static void visitExternalStrings(ExternalStringVisitor*) { }
-    static void visitExternalArrays(ExternalArrayVisitor*) { }
-    static size_t profilerSnapshotsSize() { return 0; }
     static HashMap<String, double>* currentProfileNameIdleTimeMap() { return 0; }
 };
 
 } // namespace WebCore
-
-#endif // ENABLE(JAVASCRIPT_DEBUGGER)
 
 #endif // ScriptProfiler_h

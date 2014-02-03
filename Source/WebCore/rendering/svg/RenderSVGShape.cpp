@@ -36,10 +36,8 @@
 #include "HitTestRequest.h"
 #include "LayoutRepainter.h"
 #include "PointerEventsHitRules.h"
-#include "RenderSVGContainer.h"
 #include "RenderSVGResourceMarker.h"
 #include "RenderSVGResourceSolidColor.h"
-#include "SVGGraphicsElement.h"
 #include "SVGPathData.h"
 #include "SVGRenderingContext.h"
 #include "SVGResources.h"
@@ -47,19 +45,18 @@
 #include "SVGTransformList.h"
 #include "SVGURIReference.h"
 #include "StrokeStyleApplier.h"
-#include <wtf/MathExtras.h>
 #include <wtf/StackStats.h>
 
 namespace WebCore {
 
-class BoundingRectStrokeStyleApplier FINAL : public StrokeStyleApplier {
+class BoundingRectStrokeStyleApplier final : public StrokeStyleApplier {
 public:
     BoundingRectStrokeStyleApplier(const RenderSVGShape& renderer)
         : m_renderer(renderer)
     {
     }
 
-    virtual void strokeStyle(GraphicsContext* context) OVERRIDE
+    virtual void strokeStyle(GraphicsContext* context) override
     {
         SVGRenderSupport::applyStrokeStyleToContext(context, m_renderer.style(), m_renderer);
     }

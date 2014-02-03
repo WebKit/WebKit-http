@@ -70,35 +70,31 @@ public:
     void updateWidgetPosition();
     IntRect windowClipRect() const;
 
-#if USE(ACCELERATED_COMPOSITING)
     bool requiresAcceleratedCompositing() const;
-#endif
 
     WeakPtr<RenderWidget> createWeakPtr() { return m_weakPtrFactory.createWeakPtr(); }
 
 protected:
     RenderWidget(HTMLFrameOwnerElement&, PassRef<RenderStyle>);
 
-    virtual void styleDidChange(StyleDifference, const RenderStyle* oldStyle) OVERRIDE FINAL;
-    virtual void layout() OVERRIDE;
-    virtual void paint(PaintInfo&, const LayoutPoint&) OVERRIDE;
-    virtual bool nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction) OVERRIDE;
+    virtual void styleDidChange(StyleDifference, const RenderStyle* oldStyle) override final;
+    virtual void layout() override;
+    virtual void paint(PaintInfo&, const LayoutPoint&) override;
+    virtual bool nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction) override;
     virtual void paintContents(PaintInfo&, const LayoutPoint&);
-#if USE(ACCELERATED_COMPOSITING)
-    virtual bool requiresLayer() const OVERRIDE;
-#endif
+    virtual bool requiresLayer() const override;
 
 private:
-    void element() const WTF_DELETED_FUNCTION;
+    void element() const = delete;
 
-    virtual bool isWidget() const OVERRIDE FINAL { return true; }
+    virtual bool isWidget() const override final { return true; }
 
-    virtual bool needsPreferredWidthsRecalculation() const OVERRIDE FINAL;
-    virtual RenderBox* embeddedContentBox() const OVERRIDE FINAL;
+    virtual bool needsPreferredWidthsRecalculation() const override final;
+    virtual RenderBox* embeddedContentBox() const override final;
 
-    virtual void willBeDestroyed() OVERRIDE FINAL;
-    virtual void setSelectionState(SelectionState) OVERRIDE FINAL;
-    virtual void setOverlapTestResult(bool) OVERRIDE FINAL;
+    virtual void willBeDestroyed() override final;
+    virtual void setSelectionState(SelectionState) override final;
+    virtual void setOverlapTestResult(bool) override final;
 
     bool setWidgetGeometry(const LayoutRect&);
     bool updateWidgetGeometry();

@@ -32,9 +32,9 @@
 #include "ExceptionCode.h"
 #include "PannerNode.h"
 #include <memory>
+#include <mutex>
 #include <wtf/PassRefPtr.h>
 #include <wtf/RefPtr.h>
-#include <wtf/Threading.h>
 
 namespace WebCore {
 
@@ -50,8 +50,8 @@ public:
     virtual ~AudioBufferSourceNode();
 
     // AudioNode
-    virtual void process(size_t framesToProcess) OVERRIDE;
-    virtual void reset() OVERRIDE;
+    virtual void process(size_t framesToProcess) override;
+    virtual void reset() override;
 
     // setBuffer() is called on the main thread.  This is the buffer we use for playback.
     // returns true on success.
@@ -94,16 +94,16 @@ public:
     void clearPannerNode();
 
     // If we are no longer playing, propogate silence ahead to downstream nodes.
-    virtual bool propagatesSilence() const OVERRIDE;
+    virtual bool propagatesSilence() const override;
 
     // AudioScheduledSourceNode
-    virtual void finish() OVERRIDE;
+    virtual void finish() override;
 
 private:
     AudioBufferSourceNode(AudioContext*, float sampleRate);
 
-    virtual double tailTime() const OVERRIDE { return 0; }
-    virtual double latencyTime() const OVERRIDE { return 0; }
+    virtual double tailTime() const override { return 0; }
+    virtual double latencyTime() const override { return 0; }
 
     // Returns true on success.
     bool renderFromBuffer(AudioBus*, unsigned destinationFrameOffset, size_t numberOfFrames);
@@ -150,7 +150,7 @@ private:
     PannerNode* m_pannerNode;
 
     // This synchronizes process() with setBuffer() which can cause dynamic channel count changes.
-    mutable Mutex m_processLock;
+    mutable std::mutex m_processMutex;
 };
 
 } // namespace WebCore

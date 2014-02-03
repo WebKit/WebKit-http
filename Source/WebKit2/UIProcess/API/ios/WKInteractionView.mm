@@ -26,6 +26,7 @@
 #import "config.h"
 #import "WKInteractionView.h"
 
+#import "InteractionInformationAtPosition.h"
 #import "NativeWebKeyboardEvent.h"
 #import "NativeWebTouchEvent.h"
 #import "WKBase.h"
@@ -35,15 +36,18 @@
 #import "WebPageMessages.h"
 #import "WebProcessProxy.h"
 #import <UIKit/UIFont_Private.h>
+#import <UIKit/UIGestureRecognizer_Private.h>
 #import <UIKit/UIKeyboardImpl.h>
 #import <UIKit/UILongPressGestureRecognizer_Private.h>
 #import <UIKit/UITapGestureRecognizer_Private.h>
 #import <UIKit/UITextInteractionAssistant_Private.h>
+#import <UIKit/UIWebDocumentView.h>
 #import <UIKit/UIWebScrollView.h>
 #import <UIKit/_UIHighlightView.h>
 #import <UIKit/_UIWebHighlightLongPressGestureRecognizer.h>
 #import <WebCore/Color.h>
 #import <WebCore/FloatQuad.h>
+#import <WebCore/NotImplemented.h>
 #import <WebCore/WebEvent.h>
 #import <WebKit/WebSelectionRect.h>
 #import <wtf/RetainPtr.h>
@@ -52,6 +56,7 @@ using namespace WebCore;
 using namespace WebKit;
 
 static const float highlightDelay = 0.12;
+static const float tapAndHoldDelay  = 0.75;
 
 @interface WKTextRange : UITextRange {
     CGRect _startRect;
@@ -100,6 +105,17 @@ static const float highlightDelay = 0.12;
 
 @end
 
+@interface WKAutocorrectionContext : UIWKAutocorrectionContext {
+    NSString *_contextBeforeSelection;
+    NSString *_selectedText;
+    NSString *_markedText;
+    NSString *_contextAfterSelection;
+    NSRange _rangeInMarkedText;
+}
+
++ (WKAutocorrectionContext *)autocorrectionContextWithData:(NSString *)beforeText markedText:(NSString *)markedText selectedText:(NSString *)selectedText afterText:(NSString *)afterText selectedRangeInMarkedText:(NSRange)range;
+@end
+
 @interface UITextInteractionAssistant (UITextInteractionAssistant_Internal)
 // FIXME: this needs to be moved from the internal header to the private.
 - (id)initWithView:(UIResponder <UITextInput> *)view;
@@ -107,6 +123,7 @@ static const float highlightDelay = 0.12;
 @end
 
 typedef void (^UIWKAutocorrectionCompletionHandler)(UIWKAutocorrectionRects *rectsForInput);
+typedef void (^UIWKAutocorrectionContextHandler)(UIWKAutocorrectionContext *autocorrectionContext);
 
 struct WKAutoCorrectionData{
     String fontName;
@@ -114,7 +131,8 @@ struct WKAutoCorrectionData{
     uint64_t fontTraits;
     CGRect textFirstRect;
     CGRect textLastRect;
-    UIWKAutocorrectionCompletionHandler completionHandler;
+    UIWKAutocorrectionCompletionHandler autocorrectionHandler;
+    UIWKAutocorrectionContextHandler autocorrectionContextHandler;
 };
 
 @interface WKInteractionView (Private)
@@ -125,10 +143,16 @@ struct WKAutoCorrectionData{
     RetainPtr<UIWebTouchEventsGestureRecognizer> _touchEventGestureRecognizer;
     RetainPtr<UITapGestureRecognizer> _singleTapGestureRecognizer;
     RetainPtr<_UIWebHighlightLongPressGestureRecognizer> _highlightLongPressGestureRecognizer;
+    RetainPtr<UILongPressGestureRecognizer> _longPressGestureRecognizer;
+    RetainPtr<UITapGestureRecognizer> _doubleTapGestureRecognizer;
+    RetainPtr<UITapGestureRecognizer> _twoFingerDoubleTapGestureRecognizer;
+    RetainPtr<UIPanGestureRecognizer> _twoFingerPanGestureRecognizer;
 
-    UIWKTextInteractionAssistant *_textSelectionAssistant;
+    RetainPtr<UIWKTextInteractionAssistant> _textSelectionAssistant;
+    RetainPtr<UIWKSelectionAssistant> _webSelectionAssistant;
+
     UITextInputTraits *_traits;
-    BOOL _canBeFirstResponder;
+    BOOL _isEditable;
     UIWebFormAccessory *_accessory;
     id <UITextInputDelegate> _inputDelegate;
     BOOL _showingTextStyleOptions;
@@ -141,6 +165,8 @@ struct WKAutoCorrectionData{
     BOOL _isTapHighlightIDValid;
     WKAutoCorrectionData _autocorrectionData;
     RetainPtr<NSString> _markedText;
+    InteractionInformationAtPosition _positionInformation;
+    BOOL _hasValidPositionInformation;
 }
 
 @synthesize inputDelegate = _inputDelegate;
@@ -150,32 +176,57 @@ struct WKAutoCorrectionData{
     self = [super initWithFrame:frame];
     if (self) {
         _touchEventGestureRecognizer = adoptNS([[UIWebTouchEventsGestureRecognizer alloc] initWithTarget:self action:@selector(_webTouchEventsRecognized:) touchDelegate:self]);
-        [_touchEventGestureRecognizer.get() setDelegate:self];
+        [_touchEventGestureRecognizer setDelegate:self];
         [self addGestureRecognizer:_touchEventGestureRecognizer.get()];
 
         _singleTapGestureRecognizer = adoptNS([[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(_singleTapRecognized:)]);
-        [_singleTapGestureRecognizer.get() setDelegate:self];
+        [_singleTapGestureRecognizer setDelegate:self];
         [self addGestureRecognizer:_singleTapGestureRecognizer.get()];
 
+        _doubleTapGestureRecognizer = adoptNS([[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(_doubleTapRecognized:)]);
+        [_doubleTapGestureRecognizer setNumberOfTapsRequired:2];
+        [_doubleTapGestureRecognizer setDelegate:self];
+        [self addGestureRecognizer:_doubleTapGestureRecognizer.get()];
+        [_singleTapGestureRecognizer requireOtherGestureToFail:_doubleTapGestureRecognizer.get()];
+
         _highlightLongPressGestureRecognizer = adoptNS([[_UIWebHighlightLongPressGestureRecognizer alloc] initWithTarget:self action:@selector(_highlightLongPressRecognized:)]);
-        [_highlightLongPressGestureRecognizer.get() setDelay:highlightDelay];
-        [_highlightLongPressGestureRecognizer.get() setDelegate:self];
+        [_highlightLongPressGestureRecognizer setDelay:highlightDelay];
+        [_highlightLongPressGestureRecognizer setDelegate:self];
         [self addGestureRecognizer:_highlightLongPressGestureRecognizer.get()];
-        
+
+        _longPressGestureRecognizer = adoptNS([[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(_longPressRecognized:)]);
+        [_longPressGestureRecognizer setDelay:tapAndHoldDelay];
+        [_longPressGestureRecognizer setDelegate:self];
+        [self addGestureRecognizer:_longPressGestureRecognizer.get()];
+
+        _twoFingerPanGestureRecognizer = adoptNS([[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(_twoFingerPanRecognized:)]);
+        [_twoFingerPanGestureRecognizer setMinimumNumberOfTouches:2];
+        [_twoFingerPanGestureRecognizer setMaximumNumberOfTouches:2];
+        [_twoFingerPanGestureRecognizer setDelegate:self];
+        [self addGestureRecognizer:_twoFingerPanGestureRecognizer.get()];
+
         [self setUserInteractionEnabled:YES];
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_resetShowingTextStyle:) name:UIMenuControllerDidHideMenuNotification object:nil];
         _showingTextStyleOptions = NO;
     }
+
+    // FIXME: This should be called when we get notified that loading has completed.
+    [self useSelectionAssistantWithMode:UIWebSelectionModeWeb];
 
     return self;
 }
 
 - (void)dealloc
 {
-    [_touchEventGestureRecognizer.get() setDelegate:nil];
-    [_singleTapGestureRecognizer.get() setDelegate:nil];
-    [_highlightLongPressGestureRecognizer.get() setDelegate:nil];
-    [_textSelectionAssistant release];
+    _webSelectionAssistant = nil;
+    _textSelectionAssistant = nil;
+    [_touchEventGestureRecognizer setDelegate:nil];
+    [_singleTapGestureRecognizer setDelegate:nil];
+    [_doubleTapGestureRecognizer setDelegate:nil];
+    [_highlightLongPressGestureRecognizer setDelegate:nil];
+    [_longPressGestureRecognizer setDelegate:nil];
+    [_twoFingerPanGestureRecognizer setDelegate:nil];
+
     [_accessory release];
     [super dealloc];
 }
@@ -190,9 +241,16 @@ struct WKAutoCorrectionData{
     _page = page;
 }
 
+- (BOOL)isEditable
+{
+    return _isEditable;
+}
+
 - (BOOL)canBecomeFirstResponder
 {
-    return _canBeFirstResponder;
+    // We might want to return something else
+    // if we decide to enable/disable interaction programmatically.
+    return YES;
 }
 
 - (BOOL)resignFirstResponder
@@ -256,13 +314,13 @@ static FloatQuad inflateQuad(const FloatQuad& quad, float inflateSize)
     const CGFloat UIWebViewMinimumHighlightRadius = 2.0;
     if (!_highlightView) {
         _highlightView = adoptNS([[_UIHighlightView alloc] initWithFrame:CGRectZero]);
-        [_highlightView.get() setOpaque:NO];
-        [_highlightView.get() setCornerRadius:UIWebViewMinimumHighlightRadius];
+        [_highlightView setOpaque:NO];
+        [_highlightView setCornerRadius:UIWebViewMinimumHighlightRadius];
     }
     [self addSubview:_highlightView.get()];
 
     RetainPtr<UIColor> highlightUIKitColor = adoptNS([[UIColor alloc] initWithRed:(color.red() / 255.0) green:(color.green() / 255.0) blue:(color.blue() / 255.0) alpha:(color.alpha() / 255.0)]);
-    [_highlightView.get() setColor:highlightUIKitColor.get()];
+    [_highlightView setColor:highlightUIKitColor.get()];
 
     bool allHighlightRectsAreRectilinear = true;
     const size_t quadCount = highlightedQuads.size();
@@ -282,31 +340,31 @@ static FloatQuad inflateQuad(const FloatQuad& quad, float inflateSize)
     // FIXME: WebKit1 uses the visibleRect. Using the whole frame from the page seems overkill.
     CGRect boundaryRect = [self frame];
     if (allHighlightRectsAreRectilinear)
-        [_highlightView.get() setFrames:rects.get() boundaryRect:boundaryRect];
+        [_highlightView setFrames:rects.get() boundaryRect:boundaryRect];
     else {
         RetainPtr<NSMutableArray> quads = adoptNS([[NSMutableArray alloc] initWithCapacity:static_cast<const NSUInteger>(quadCount)]);
         for (size_t i = 0; i < quadCount; ++i) {
             const FloatQuad& quad = highlightedQuads[i];
             FloatQuad extendedQuad = inflateQuad(quad, UIWebViewMinimumHighlightRadius);
-            [quads.get() addObject:[NSValue valueWithCGPoint:extendedQuad.p1()]];
-            [quads.get() addObject:[NSValue valueWithCGPoint:extendedQuad.p2()]];
-            [quads.get() addObject:[NSValue valueWithCGPoint:extendedQuad.p3()]];
-            [quads.get() addObject:[NSValue valueWithCGPoint:extendedQuad.p4()]];
+            [quads addObject:[NSValue valueWithCGPoint:extendedQuad.p1()]];
+            [quads addObject:[NSValue valueWithCGPoint:extendedQuad.p2()]];
+            [quads addObject:[NSValue valueWithCGPoint:extendedQuad.p3()]];
+            [quads addObject:[NSValue valueWithCGPoint:extendedQuad.p4()]];
         }
-        [_highlightView.get() setQuads:quads.get() boundaryRect:boundaryRect];
+        [_highlightView setQuads:quads.get() boundaryRect:boundaryRect];
     }
 
     RetainPtr<NSMutableArray> borderRadii = adoptNS([[NSMutableArray alloc] initWithCapacity:4]);
-    [borderRadii.get() addObject:[NSValue valueWithCGSize:CGSizeMake(topLeftRadius.width() + UIWebViewMinimumHighlightRadius, topLeftRadius.height() + UIWebViewMinimumHighlightRadius)]];
-    [borderRadii.get() addObject:[NSValue valueWithCGSize:CGSizeMake(topRightRadius.width() + UIWebViewMinimumHighlightRadius, topRightRadius.height() + UIWebViewMinimumHighlightRadius)]];
-    [borderRadii.get() addObject:[NSValue valueWithCGSize:CGSizeMake(bottomLeftRadius.width() + UIWebViewMinimumHighlightRadius, bottomLeftRadius.height() + UIWebViewMinimumHighlightRadius)]];
-    [borderRadii.get() addObject:[NSValue valueWithCGSize:CGSizeMake(bottomRightRadius.width() + UIWebViewMinimumHighlightRadius, bottomRightRadius.height() + UIWebViewMinimumHighlightRadius)]];
-    [_highlightView.get() setCornerRadii:borderRadii.get()];
+    [borderRadii addObject:[NSValue valueWithCGSize:CGSizeMake(topLeftRadius.width() + UIWebViewMinimumHighlightRadius, topLeftRadius.height() + UIWebViewMinimumHighlightRadius)]];
+    [borderRadii addObject:[NSValue valueWithCGSize:CGSizeMake(topRightRadius.width() + UIWebViewMinimumHighlightRadius, topRightRadius.height() + UIWebViewMinimumHighlightRadius)]];
+    [borderRadii addObject:[NSValue valueWithCGSize:CGSizeMake(bottomLeftRadius.width() + UIWebViewMinimumHighlightRadius, bottomLeftRadius.height() + UIWebViewMinimumHighlightRadius)]];
+    [borderRadii addObject:[NSValue valueWithCGSize:CGSizeMake(bottomRightRadius.width() + UIWebViewMinimumHighlightRadius, bottomRightRadius.height() + UIWebViewMinimumHighlightRadius)]];
+    [_highlightView setCornerRadii:borderRadii.get()];
 }
 
 - (void)_cancelLongPressGestureRecognizer
 {
-    [_highlightLongPressGestureRecognizer.get() cancel];
+    [_highlightLongPressGestureRecognizer cancel];
 }
 
 - (void)_didScroll
@@ -320,19 +378,173 @@ static FloatQuad inflateQuad(const FloatQuad& quad, float inflateSize)
     return YES;
 }
 
+- (BOOL)gestureRecognizer:(UIGestureRecognizer *)preventingGestureRecognizer canPreventGestureRecognizer:(UIGestureRecognizer *)preventedGestureRecognizer
+{
+    // A long-press gesture can not be recognized while panning, but a pan can be recognized
+    // during a long-press gesture.
+    BOOL shouldNotPreventPanGesture = preventingGestureRecognizer == _highlightLongPressGestureRecognizer || preventingGestureRecognizer == _longPressGestureRecognizer;
+    return !(shouldNotPreventPanGesture && [preventedGestureRecognizer isKindOfClass:NSClassFromString(@"UIScrollViewPanGestureRecognizer")]);
+}
+
+- (BOOL)gestureRecognizer:(UIGestureRecognizer *)preventedGestureRecognizer canBePreventedByGestureRecognizer:(UIGestureRecognizer *)preventingGestureRecognizer {
+    // Don't allow the highlight to be prevented by a selection gesture. Press-and-hold on a link should highlight the link, not select it.
+    if ((preventingGestureRecognizer == _textSelectionAssistant.get().loupeGesture || [_webSelectionAssistant isSelectionGestureRecognizer:preventingGestureRecognizer])
+        && (preventedGestureRecognizer == _highlightLongPressGestureRecognizer || preventedGestureRecognizer == _longPressGestureRecognizer)) {
+        return NO;
+    }
+
+    return YES;
+}
+
+static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UIGestureRecognizer *x, UIGestureRecognizer *y)
+{
+    return (a == x && b == y) || (b == x && a == y);
+}
+
+- (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldRecognizeSimultaneouslyWithGestureRecognizer:(UIGestureRecognizer*)otherGestureRecognizer
+{
+    if (isSamePair(gestureRecognizer, otherGestureRecognizer, _highlightLongPressGestureRecognizer.get(), _longPressGestureRecognizer.get()))
+        return YES;
+
+    if (isSamePair(gestureRecognizer, otherGestureRecognizer, _highlightLongPressGestureRecognizer.get(), _webSelectionAssistant.get().selectionLongPressRecognizer))
+        return YES;
+
+    if (isSamePair(gestureRecognizer, otherGestureRecognizer, _singleTapGestureRecognizer.get(), _textSelectionAssistant.get().singleTapGesture))
+        return YES;
+
+    return NO;
+}
+
+- (void)_showImageSheet
+{
+
+}
+
+- (void)_showLinkSheet
+{
+
+}
+
+- (SEL)_actionForLongPress
+{
+    if (_positionInformation.clickableElementName == "IMG")
+        return @selector(_showImageSheet);
+    else if (_positionInformation.clickableElementName == "A")
+        return @selector(_showLinkSheet);
+    // FIXME: Add check for links and datadetectors.
+
+    return nil;
+}
+
+- (void)ensurePositionInformationIsUpToDate:(CGPoint)point
+{
+    if (!_hasValidPositionInformation || roundedIntPoint(point) != _positionInformation.point) {
+        _page->getPositionInformation(roundedIntPoint(point), _positionInformation);
+        _hasValidPositionInformation = YES;
+    }
+}
+
 - (BOOL)gestureRecognizerShouldBegin:(UIGestureRecognizer *)gestureRecognizer
 {
-    if (_textSelectionAssistant) {
-        if (gestureRecognizer == _highlightLongPressGestureRecognizer || gestureRecognizer == _singleTapGestureRecognizer)
-            return NO;
+    CGPoint point = [gestureRecognizer locationInView:self];
+
+    if (gestureRecognizer == _highlightLongPressGestureRecognizer
+        || gestureRecognizer == _doubleTapGestureRecognizer
+        || gestureRecognizer == _twoFingerDoubleTapGestureRecognizer
+        || gestureRecognizer == _singleTapGestureRecognizer) {
+
+        if (_textSelectionAssistant) {
+            // Request information about the position with sync message.
+            // If the assisted node is the same, prevent the gesture.
+            _page->getPositionInformation(roundedIntPoint(point), _positionInformation);
+            _hasValidPositionInformation = YES;
+            if (_positionInformation.nodeAtPositionIsAssistedNode)
+                return NO;
+        }
     }
+
+    if (gestureRecognizer == _highlightLongPressGestureRecognizer) {
+        if (_textSelectionAssistant) {
+            // This is a different node than the assisted one.
+            // Prevent the gesture if there is no node.
+            // Allow the gesture if it is a node that wants highlight or if there is an action for it.
+            if (_positionInformation.clickableElementName.isNull())
+                return NO;
+            return [self _actionForLongPress] != nil;
+        } else {
+            // We still have no idea about what is at the location.
+            // Send and async message to find out.
+            _hasValidPositionInformation = NO;
+            _page->requestPositionInformation(roundedIntPoint(point));
+            return YES;
+        }
+    }
+
+    if (gestureRecognizer == _longPressGestureRecognizer) {
+        // Use the information retrieved with one of the previous calls
+        // to gestureRecognizerShouldBegin.
+        // Force a sync call if not ready yet.
+        [self ensurePositionInformationIsUpToDate:point];
+
+        if (_textSelectionAssistant) {
+            // Prevent the gesture if it is the same node.
+            if (_positionInformation.nodeAtPositionIsAssistedNode)
+                return NO;
+        } else {
+            // Prevent the gesture if there is no action for the node.
+            return [self _actionForLongPress] != nil;
+        }
+    }
+
+    if (gestureRecognizer == _twoFingerPanGestureRecognizer) {
+        notImplemented();
+    }
+
     return YES;
 }
 
 - (void)_cancelInteraction
 {
     _isTapHighlightIDValid = NO;
-    [_highlightView.get() removeFromSuperview];
+    [_highlightView removeFromSuperview];
+}
+
+- (BOOL)hasSelectablePositionAtPoint:(CGPoint)point
+{
+    [self ensurePositionInformationIsUpToDate:point];
+    // FIXME: This check needs to be extended to include other elements.
+    return _positionInformation.clickableElementName != "IMG" && _positionInformation.clickableElementName != "A" && !_positionInformation.selectionRects.isEmpty();
+}
+
+- (BOOL)pointIsInAssistedNode:(CGPoint)point
+{
+    [self ensurePositionInformationIsUpToDate:point];
+    return _positionInformation.nodeAtPositionIsAssistedNode;
+}
+
+- (NSArray *)webSelectionRects
+{
+    unsigned size = _page->editorState().selectionRects.size();
+    if (!size)
+        return nil;
+
+    NSMutableArray *webRects = [NSMutableArray arrayWithCapacity:size];
+    for (unsigned i = 0; i < size; i++) {
+        const WebCore::SelectionRect& coreRect = _page->editorState().selectionRects[i];
+        WebSelectionRect *webRect = [WebSelectionRect selectionRect];
+        webRect.rect = coreRect.rect();
+        webRect.writingDirection = coreRect.direction() == LTR ? WKWritingDirectionLeftToRight : WKWritingDirectionRightToLeft;
+        webRect.isLineBreak = coreRect.isLineBreak();
+        webRect.isFirstOnLine = coreRect.isFirstOnLine();
+        webRect.isLastOnLine = coreRect.isLastOnLine();
+        webRect.containsStart = coreRect.containsStart();
+        webRect.containsEnd = coreRect.containsEnd();
+        webRect.isInFixedPosition = coreRect.isInFixedPosition();
+        webRect.isHorizontal = coreRect.isHorizontal();
+        [webRects addObject:webRect];
+    }
+
+    return webRects;
 }
 
 - (void)_highlightLongPressRecognized:(UILongPressGestureRecognizer *)gestureRecognizer
@@ -345,7 +557,8 @@ static FloatQuad inflateQuad(const FloatQuad& quad, float inflateSize)
         _isTapHighlightIDValid = YES;
         break;
     case UIGestureRecognizerStateEnded:
-        [self _attemptClickAtLocation:[gestureRecognizer startPoint]];
+        if (!_positionInformation.clickableElementName.isEmpty())
+            [self _attemptClickAtLocation:[gestureRecognizer startPoint]];
         break;
     case UIGestureRecognizerStateCancelled:
         [self _cancelInteraction];
@@ -355,15 +568,50 @@ static FloatQuad inflateQuad(const FloatQuad& quad, float inflateSize)
     }
 }
 
+- (void)_longPressRecognized:(UILongPressGestureRecognizer *)gestureRecognizer
+{
+    ASSERT(gestureRecognizer == _longPressGestureRecognizer);
+
+    switch ([gestureRecognizer state]) {
+    case UIGestureRecognizerStateBegan:
+        // FIXME: add implementation
+        break;
+    case UIGestureRecognizerStateEnded:
+        // FIXME: add implementation
+        break;
+    case UIGestureRecognizerStateCancelled:
+        // FIXME: add implementation
+        break;
+    default:
+        break;
+    }
+}
+
 - (void)_singleTapRecognized:(UITapGestureRecognizer *)gestureRecognizer
 {
+    ASSERT(gestureRecognizer == _singleTapGestureRecognizer);
+
+    if (![_webSelectionAssistant shouldHandleSingleTapAtPoint:gestureRecognizer.location])
+        return;
+
+    [_webSelectionAssistant clearSelection];
+
     [self _attemptClickAtLocation:[gestureRecognizer location]];
 }
 
-- (BOOL)gestureRecognizer:(UIGestureRecognizer *)preventingGestureRecognizer canPreventGestureRecognizer:(UIGestureRecognizer *)preventedGestureRecognizer
+- (void)_doubleTapRecognized:(UITapGestureRecognizer *)gestureRecognizer
 {
-    BOOL shouldNotPreventPanGesture = preventingGestureRecognizer == _highlightLongPressGestureRecognizer;
-    return !(shouldNotPreventPanGesture && [preventedGestureRecognizer isKindOfClass:NSClassFromString(@"UIScrollViewPanGestureRecognizer")]);
+    // FIXME: Add implementation.
+}
+
+- (void)_twoFingerDoubleTapRecognized:(UITapGestureRecognizer *)gestureRecognizer
+{
+    // FIXME: Add implementation.
+}
+
+- (void)_twoFingerPanRecognized:(UIPanGestureRecognizer *)gestureRecognizer
+{
+    // FIXME: Add implementation.
 }
 
 - (void)_attemptClickAtLocation:(CGPoint)location
@@ -378,9 +626,39 @@ static FloatQuad inflateQuad(const FloatQuad& quad, float inflateSize)
     _page->process().send(Messages::WebPage::HandleTap(IntPoint(location)), _page->pageID());
 }
 
+- (void)useSelectionAssistantWithMode:(UIWebSelectionMode)selectionMode
+{
+    if (selectionMode == UIWebSelectionModeWeb) {
+        if (_textSelectionAssistant) {
+            [_textSelectionAssistant deactivateSelection];
+            _textSelectionAssistant = nil;
+        }
+        if (!_webSelectionAssistant)
+            _webSelectionAssistant = adoptNS([[UIWKSelectionAssistant alloc] initWithView:self]);
+    } else if (selectionMode == UIWebSelectionModeTextOnly) {
+        if (_webSelectionAssistant)
+            _webSelectionAssistant = nil;
+
+        if (!_textSelectionAssistant)
+            _textSelectionAssistant = adoptNS([[UIWKTextInteractionAssistant alloc] initWithView:self]);
+        else {
+            // Reset the gesture recognizers in case editibility has changed.
+            [_textSelectionAssistant setGestureRecognizers];
+        }
+
+        [_textSelectionAssistant activateSelection];
+    }
+}
+
+- (void)_positionInformationDidChange:(const InteractionInformationAtPosition&)info
+{
+    _positionInformation = info;
+    _hasValidPositionInformation = YES;
+}
+
 - (UIView *)inputAccessoryView
 {
-    if (!_canBeFirstResponder)
+    if (!_isEditable)
         return nil;
     
     if (!_accessory) {
@@ -431,8 +709,7 @@ static FloatQuad inflateQuad(const FloatQuad& quad, float inflateSize)
 
 - (BOOL)canPerformAction:(SEL)action withSender:(id)sender
 {
-    // FIXME: need to handle hasWebSelection
-    BOOL hasWebSelection = NO;
+    BOOL hasWebSelection = _webSelectionAssistant && !CGRectIsEmpty(_webSelectionAssistant.get().selectionFrame);
 
     if (action == @selector(_showTextStyleOptions:))
         return _page->editorState().isContentRichlyEditable && _page->editorState().selectionIsRange && !_showingTextStyleOptions;
@@ -584,7 +861,10 @@ static FloatQuad inflateQuad(const FloatQuad& quad, float inflateSize)
 - (void)_showDictionary:(NSString *)text
 {
     CGRect presentationRect = _page->editorState().selectionRects[0].rect();
-    [(UIWKTextInteractionAssistant *)self.interactionAssistant showDictionaryFor:text fromRect:presentationRect];
+    if (_textSelectionAssistant)
+        [_textSelectionAssistant showDictionaryFor:text fromRect:presentationRect];
+    else
+        [_webSelectionAssistant showDictionaryFor:text fromRect:presentationRect];
 }
 
 static void selectedString(WKStringRef string, WKErrorRef error, void* context)
@@ -636,6 +916,8 @@ static inline WKGestureType toWKGestureType(UIWKGestureType gestureType)
         return WKGestureTwoFingerRangedSelectGesture;
     case UIWKGestureTapOnLinkWithGesture:
         return WKGestureTapOnLinkWithGesture;
+    case UIWKGestureMakeWebSelection:
+        return WKGestureMakeWebSelection;
     }
     ASSERT_NOT_REACHED();
     return WKGestureLoupe;
@@ -670,6 +952,8 @@ static inline UIWKGestureType toUIWKGestureType(WKGestureType gestureType)
         return UIWKGestureTwoFingerRangedSelectGesture;
     case WKGestureTapOnLinkWithGesture:
         return UIWKGestureTapOnLinkWithGesture;
+    case WKGestureMakeWebSelection:
+        return UIWKGestureMakeWebSelection;
     }
 }
 
@@ -756,7 +1040,10 @@ static void selectionChangedWithGesture(const WebCore::IntPoint& point, uint32_t
     WKInteractionView *view = static_cast<WKInteractionView*>(context);
     ASSERT(view);
     // FIXME: need to pass flags to selectionChangedWithGestureAt.
-    [(UIWKTextInteractionAssistant *)[view interactionAssistant] selectionChangedWithGestureAt:(CGPoint)point withGesture:toUIWKGestureType((WKGestureType)gestureType) withState:toUIGestureRecognizerState(static_cast<WKGestureRecognizerState>(gestureState))];
+    if ([view webSelectionAssistant])
+        [(UIWKSelectionAssistant *)[view webSelectionAssistant] selectionChangedWithGestureAt:(CGPoint)point withGesture:toUIWKGestureType((WKGestureType)gestureType) withState:toUIGestureRecognizerState(static_cast<WKGestureRecognizerState>(gestureState))];
+    else
+        [(UIWKTextInteractionAssistant *)[view interactionAssistant] selectionChangedWithGestureAt:(CGPoint)point withGesture:toUIWKGestureType((WKGestureType)gestureType) withState:toUIGestureRecognizerState(static_cast<WKGestureRecognizerState>(gestureState))];
 }
 
 static void selectionChangedWithTouch(const WebCore::IntPoint& point, uint32_t touch, WKErrorRef error, void* context)
@@ -767,7 +1054,10 @@ static void selectionChangedWithTouch(const WebCore::IntPoint& point, uint32_t t
     }
     WKInteractionView *view = static_cast<WKInteractionView*>(context);
     ASSERT(view);
-    [(UIWKTextInteractionAssistant *)[view interactionAssistant] selectionChangedWithTouchAt:(CGPoint)point withSelectionTouch:toUIWKSelectionTouch((WKSelectionTouch)touch)];
+    if ([view webSelectionAssistant])
+        [(UIWKSelectionAssistant *)[view webSelectionAssistant] selectionChangedWithTouchAt:(CGPoint)point withSelectionTouch:toUIWKSelectionTouch((WKSelectionTouch)touch)];
+    else
+        [(UIWKTextInteractionAssistant *)[view interactionAssistant] selectionChangedWithTouchAt:(CGPoint)point withSelectionTouch:toUIWKSelectionTouch((WKSelectionTouch)touch)];
 }
 
 - (void)changeSelectionWithGestureAt:(CGPoint)point withGesture:(UIWKGestureType)gestureType withState:(UIGestureRecognizerState)state
@@ -808,9 +1098,9 @@ static void autocorrectionData(const Vector<FloatRect>& rects, const String& fon
     autocorrectionData->textFirstRect = firstRect;
     autocorrectionData->textLastRect = lastRect;
 
-    autocorrectionData->completionHandler(rects.size() ? [WKAutocorrectionRects autocorrectionRectsWithRects:firstRect lastRect:lastRect] : nil);
-    [autocorrectionData->completionHandler release];
-    autocorrectionData->completionHandler = nil;
+    autocorrectionData->autocorrectionHandler(rects.size() ? [WKAutocorrectionRects autocorrectionRectsWithRects:firstRect lastRect:lastRect] : nil);
+    [autocorrectionData->autocorrectionHandler release];
+    autocorrectionData->autocorrectionHandler = nil;
 }
 
 // The completion handler can pass nil if input does not match the actual text preceding the insertion point.
@@ -820,7 +1110,7 @@ static void autocorrectionData(const Vector<FloatRect>& rects, const String& fon
         completionHandler(nil);
         return;
     }
-    _autocorrectionData.completionHandler = [completionHandler copy];
+    _autocorrectionData.autocorrectionHandler = [completionHandler copy];
     _page->requestAutocorrectionData(input, AutocorrectionDataCallback::create(self, autocorrectionData));
 }
 
@@ -840,22 +1130,44 @@ static void autocorrectionResult(WKStringRef correction, WKErrorRef error, void*
     ASSERT(view);
     WKAutoCorrectionData *autocorrectionData = view.autocorrectionData;
 
-    autocorrectionData->completionHandler(correction ? [WKAutocorrectionRects autocorrectionRectsWithRects:autocorrectionData->textFirstRect lastRect:autocorrectionData->textLastRect] : nil);
-    [autocorrectionData->completionHandler release];
-    autocorrectionData->completionHandler = nil;
+    autocorrectionData->autocorrectionHandler(correction ? [WKAutocorrectionRects autocorrectionRectsWithRects:autocorrectionData->textFirstRect lastRect:autocorrectionData->textLastRect] : nil);
+    [autocorrectionData->autocorrectionHandler release];
+    autocorrectionData->autocorrectionHandler = nil;
 }
 
 // The completion handler should pass the rect of the correction text after replacing the input text, or nil if the replacement could not be performed.
 - (void)applyAutocorrection:(NSString *)correction toString:(NSString *)input withCompletionHandler:(void (^)(UIWKAutocorrectionRects *rectsForCorrection))completionHandler
 {
-    _autocorrectionData.completionHandler = [completionHandler copy];
+    _autocorrectionData.autocorrectionHandler = [completionHandler copy];
     _page->applyAutocorrection(correction, input, StringCallback::create(self, autocorrectionResult));
+}
+
+static void autocorrectionContext(const String& beforeText, const String& markedText, const String& selectedText, const String& afterText, uint64_t location, uint64_t length, WKErrorRef error, void* context)
+{
+    WKInteractionView* view = static_cast<WKInteractionView*>(context);
+    ASSERT(view);
+    WKAutoCorrectionData *autocorrectionData = view.autocorrectionData;
+    autocorrectionData->autocorrectionContextHandler([WKAutocorrectionContext autocorrectionContextWithData:beforeText markedText:markedText selectedText:selectedText afterText:afterText selectedRangeInMarkedText:NSMakeRange(location, length)]);
 }
 
 - (void)requestAutocorrectionContextWithCompletionHandler:(void (^)(UIWKAutocorrectionContext *autocorrectionContext))completionHandler
 {
-    // FIXME: Need to retrieve the information from the WebProcess.
-    completionHandler(nil);
+    // FIXME: Remove the synchronous call as soon as Keyboard removes locking of the main thread.
+    const bool useSyncRequest = true;
+
+    if (useSyncRequest) {
+        String beforeText;
+        String markedText;
+        String selectedText;
+        String afterText;
+        uint64_t location;
+        uint64_t length;
+        _page->getAutocorrectionContext(beforeText, markedText, selectedText, afterText, location, length);
+        completionHandler([WKAutocorrectionContext autocorrectionContextWithData:beforeText markedText:markedText selectedText:selectedText afterText:afterText selectedRangeInMarkedText:NSMakeRange(location, length)]);
+    } else {
+        _autocorrectionData.autocorrectionContextHandler = [completionHandler copy];
+        _page->requestAutocorrectionContext(AutocorrectionContextCallback::create(self, autocorrectionContext));
+    }
 }
 
 // UIWebFormAccessoryDelegate
@@ -902,29 +1214,12 @@ static void autocorrectionResult(WKStringRef correction, WKErrorRef error, void*
 
 - (UITextRange *)selectedTextRange
 {
-    unsigned size = _page->editorState().selectionRects.size();
-    NSMutableArray *webRects = [NSMutableArray arrayWithCapacity:size];
-    for (unsigned i = 0; i < size; i++) {
-        const WebCore::SelectionRect& coreRect = _page->editorState().selectionRects[i];
-        WebSelectionRect *webRect = [WebSelectionRect selectionRect];
-        webRect.rect = coreRect.rect();
-        webRect.writingDirection = coreRect.direction() == LTR ? WKWritingDirectionLeftToRight : WKWritingDirectionRightToLeft;
-        webRect.isLineBreak = coreRect.isLineBreak();
-        webRect.isFirstOnLine = coreRect.isFirstOnLine();
-        webRect.isLastOnLine = coreRect.isLastOnLine();
-        webRect.containsStart = coreRect.containsStart();
-        webRect.containsEnd = coreRect.containsEnd();
-        webRect.isInFixedPosition = coreRect.isInFixedPosition();
-        webRect.isHorizontal = coreRect.isHorizontal();
-        [webRects addObject:webRect];
-    }
-
     return [WKTextRange textRangeWithState:_page->editorState().selectionIsNone
                                    isRange:_page->editorState().selectionIsRange
                                 isEditable:_page->editorState().isContentEditable
                                  startRect:_page->editorState().caretRectAtStart
                                    endRect:_page->editorState().caretRectAtEnd
-                            selectionRects:webRects
+                            selectionRects:[self webSelectionRects]
                         selectedTextLength:_page->editorState().selectedTextLength];
 }
 
@@ -944,7 +1239,7 @@ static void autocorrectionResult(WKStringRef correction, WKErrorRef error, void*
 
 - (BOOL)hasMarkedText
 {
-    return _page->editorState().hasComposition || [_markedText length];
+    return [_markedText length];
 }
 
 - (NSString *)markedText
@@ -1094,7 +1389,12 @@ static void autocorrectionResult(WKStringRef correction, WKErrorRef error, void*
     if (!_textSelectionAssistant)
         _textSelectionAssistant = [[UIWKTextInteractionAssistant alloc] initWithView:self];
 
-    return _textSelectionAssistant;
+    return _textSelectionAssistant.get();
+}
+
+- (UIWebSelectionAssistant *)webSelectionAssistant
+{
+    return _webSelectionAssistant.get();
 }
 
 
@@ -1360,38 +1660,28 @@ static void autocorrectionResult(WKStringRef correction, WKErrorRef error, void*
 
 - (void)_startAssistingKeyboard
 {
-    if (!_textSelectionAssistant)
-        _textSelectionAssistant = [[UIWKTextInteractionAssistant alloc] initWithView:self];
-    else {
-        // Reset the gesture recognizers in case editibility has changed.
-        [_textSelectionAssistant setGestureRecognizers];
-    }
-    [_textSelectionAssistant activateSelection];
+    [self useSelectionAssistantWithMode:UIWebSelectionModeTextOnly];
 }
 
 - (void)_stopAssistingKeyboard
 {
-    if (_textSelectionAssistant) {
-        [_textSelectionAssistant deactivateSelection];
-        [_textSelectionAssistant release];
-        _textSelectionAssistant = nil;
-    }
+    [self useSelectionAssistantWithMode:UIWebSelectionModeWeb];
 }
 
 - (void)_startAssistingNode
 {
-    _canBeFirstResponder = YES;
+    _isEditable = YES;
     if (![self isFirstResponder])
         [self becomeFirstResponder];
 
     [self _startAssistingKeyboard];
-    [self _updateAccessory];
     [self reloadInputViews];
+    [self _updateAccessory];
 }
 
 - (void)_stopAssistingNode
 {
-    _canBeFirstResponder = NO;
+    _isEditable = NO;
     if ([self isFirstResponder])
         [self resignFirstResponder];
     
@@ -1402,10 +1692,13 @@ static void autocorrectionResult(WKStringRef correction, WKErrorRef error, void*
 
 - (void)_selectionChanged
 {
-    _markedText = (_page->editorState().hasComposition) ? _page->editorState().markedText : String();
     // FIXME: We need to figure out what to do if the selection is changed by Javascript.
-    if (!_showingTextStyleOptions)
-        [_textSelectionAssistant selectionChanged];
+    if (_textSelectionAssistant) {
+        _markedText = (_page->editorState().hasComposition) ? _page->editorState().markedText : String();
+        if (!_showingTextStyleOptions)
+            [_textSelectionAssistant selectionChanged];
+    } else
+        [_webSelectionAssistant selectionChanged];
 }
 
 #pragma mark - Implementation of UIWebTouchEventsGestureRecognizerDelegate.
@@ -1481,24 +1774,31 @@ static void autocorrectionResult(WKStringRef correction, WKErrorRef error, void*
     return !self.isRange;
 }
 
+// FIXME: Overriding isEqual: without overriding hash will cause trouble if this ever goes into an NSSet or is the key in an NSDictionary,
+// since two equal items could have different hashes.
 - (BOOL)isEqual:(id)other
 {
-    assert([other isKindOfClass:[WKTextRange class]]);
+    if (![other isKindOfClass:[WKTextRange class]])
+        return NO;
+
     WKTextRange *otherRange = (WKTextRange *)other;
-    
+
     if (self == other)
         return YES;
-    
+
+    // FIXME: Probably incorrect for equality to ignore so much of the object state.
+    // It ignores isNone, isEditable, selectedTextLength, and selectionRects.
+
     if (self.isRange) {
         if (!otherRange.isRange)
             return NO;
         return CGRectEqualToRect(self.startRect, otherRange.startRect) && CGRectEqualToRect(self.endRect, otherRange.endRect);
-    } else if (!self.isRange) {
+    } else {
         if (otherRange.isRange)
             return NO;
+        // FIXME: Do we need to check isNone here?
         return CGRectEqualToRect(self.startRect, otherRange.startRect);
     }
-    return otherRange.isNone;
 }
 
 @end
@@ -1514,9 +1814,13 @@ static void autocorrectionResult(WKStringRef correction, WKErrorRef error, void*
     return [pos autorelease];
 }
 
+// FIXME: Overriding isEqual: without overriding hash will cause trouble if this ever goes into a NSSet or is the key in an NSDictionary,
+// since two equal items could have different hashes.
 - (BOOL)isEqual:(id)other
 {
-    assert([other isKindOfClass:[self class]]);
+    if (![other isKindOfClass:[WKTextPosition class]])
+        return NO;
+
     return CGRectEqualToRect(self.positionRect, ((WKTextPosition *)other).positionRect);
 }
 
@@ -1598,6 +1902,36 @@ static void autocorrectionResult(WKStringRef correction, WKErrorRef error, void*
     rects.firstRect = firstRect;
     rects.lastRect = lastRect;
     return [rects autorelease];
+}
+
+@end
+
+@implementation WKAutocorrectionContext
+
++ (WKAutocorrectionContext *)autocorrectionContextWithData:(NSString *)beforeText markedText:(NSString *)markedText selectedText:(NSString *)selectedText afterText:(NSString *)afterText selectedRangeInMarkedText:(NSRange)range
+{
+    WKAutocorrectionContext *context = [[WKAutocorrectionContext alloc] init];
+
+    if ([beforeText length])
+        context.contextBeforeSelection = [beforeText copy];
+    if ([selectedText length])
+        context.selectedText = [selectedText copy];
+    if ([markedText length])
+        context.markedText = [markedText copy];
+    if ([afterText length])
+        context.contextAfterSelection = [afterText copy];
+    context.rangeInMarkedText = range;
+    return [context autorelease];
+}
+
+- (void)dealloc
+{
+    [self.contextBeforeSelection release];
+    [self.markedText release];
+    [self.selectedText release];
+    [self.contextAfterSelection release];
+
+    [super dealloc];
 }
 
 @end

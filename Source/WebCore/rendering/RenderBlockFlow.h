@@ -35,14 +35,21 @@ class LayoutStateMaintainer;
 class LineBreaker;
 class LineInfo;
 class LineWidth;
+class RenderMultiColumnFlowThread;
 class RenderNamedFlowFragment;
 class RenderRubyRun;
-class WordMeasurement;
 
 struct FloatWithRect;
+struct WordMeasurement;
 
 template <class Run> class BidiRunList;
 typedef Vector<WordMeasurement, 64> WordMeasurements;
+
+#if ENABLE(IOS_TEXT_AUTOSIZING)
+enum LineCount {
+    NOT_SET = 0, NO_LINE = 1, ONE_LINE = 2, MULTI_LINE = 3
+};
+#endif
 
 class RenderBlockFlow : public RenderBlock {
 public:
@@ -50,11 +57,11 @@ public:
     RenderBlockFlow(Document&, PassRef<RenderStyle>);
     virtual ~RenderBlockFlow();
         
-    virtual void layoutBlock(bool relayoutChildren, LayoutUnit pageLogicalHeight = 0) OVERRIDE;
+    virtual void layoutBlock(bool relayoutChildren, LayoutUnit pageLogicalHeight = 0) override;
 
 protected:
-    virtual void insertedIntoTree() OVERRIDE;
-    virtual void willBeDestroyed() OVERRIDE;
+    virtual void insertedIntoTree() override;
+    virtual void willBeDestroyed() override;
     
     // This method is called at the start of layout to wipe away all of the floats in our floating objects list. It also
     // repopulates the list with any floats that intrude from previous siblings or parents. Floats that were added by
@@ -68,11 +75,11 @@ protected:
     void layoutInlineChildren(bool relayoutChildren, LayoutUnit& repaintLogicalTop, LayoutUnit& repaintLogicalBottom);
 
     // RenderBlockFlows override these methods, since they are the only class that supports margin collapsing.
-    virtual LayoutUnit collapsedMarginBefore() const OVERRIDE FINAL { return maxPositiveMarginBefore() - maxNegativeMarginBefore(); }
-    virtual LayoutUnit collapsedMarginAfter() const OVERRIDE FINAL { return maxPositiveMarginAfter() - maxNegativeMarginAfter(); }
+    virtual LayoutUnit collapsedMarginBefore() const override final { return maxPositiveMarginBefore() - maxNegativeMarginBefore(); }
+    virtual LayoutUnit collapsedMarginAfter() const override final { return maxPositiveMarginAfter() - maxNegativeMarginAfter(); }
 
-    virtual void dirtyLinesFromChangedChild(RenderObject* child) OVERRIDE FINAL { lineBoxes().dirtyLinesFromChangedChild(this, child); }
-    virtual void updateLogicalHeight() OVERRIDE;
+    virtual void dirtyLinesFromChangedChild(RenderObject* child) override final { lineBoxes().dirtyLinesFromChangedChild(this, child); }
+    virtual void updateLogicalHeight() override;
 
 public:
     class MarginValues {
@@ -111,6 +118,7 @@ public:
             : m_margins(positiveMarginBeforeDefault(block), negativeMarginBeforeDefault(block), positiveMarginAfterDefault(block), negativeMarginAfterDefault(block))
             , m_lineBreakToAvoidWidow(-1)
             , m_renderNamedFlowFragment(nullptr)
+            , m_multiColumnFlowThread(nullptr)
             , m_discardMarginBefore(false)
             , m_discardMarginAfter(false)
             , m_didBreakAtLineToAvoidWidow(false)
@@ -143,6 +151,8 @@ public:
         std::unique_ptr<RootInlineBox> m_lineGridBox;
         RenderNamedFlowFragment* m_renderNamedFlowFragment;
 
+        RenderMultiColumnFlowThread* m_multiColumnFlowThread;
+        
         bool m_discardMarginBefore : 1;
         bool m_discardMarginAfter : 1;
         bool m_didBreakAtLineToAvoidWidow : 1;
@@ -251,7 +261,7 @@ public:
     bool didBreakAtLineToAvoidWidow() const { return hasRareBlockFlowData() && rareBlockFlowData()->m_didBreakAtLineToAvoidWidow; }
     bool relayoutToAvoidWidows(LayoutStateMaintainer&);
 
-    virtual bool canHaveGeneratedChildren() const OVERRIDE;
+    virtual bool canHaveGeneratedChildren() const override;
 
     RootInlineBox* lineGridBox() const { return hasRareBlockFlowData() ? rareBlockFlowData()->m_lineGridBox.get() : nullptr; }
     void setLineGridBox(std::unique_ptr<RootInlineBox> box)
@@ -260,15 +270,19 @@ public:
     }
     void layoutLineGridBox();
 
+    virtual bool canCollapseAnonymousBlockChild() const override { return !renderNamedFlowFragment(); }
     RenderNamedFlowFragment* renderNamedFlowFragment() const { return hasRareBlockFlowData() ? rareBlockFlowData()->m_renderNamedFlowFragment : nullptr; }
     void setRenderNamedFlowFragment(RenderNamedFlowFragment*);
 
-    bool containsFloats() const OVERRIDE { return m_floatingObjects && !m_floatingObjects->set().isEmpty(); }
+    RenderMultiColumnFlowThread* multiColumnFlowThread() const { return hasRareBlockFlowData() ? rareBlockFlowData()->m_multiColumnFlowThread : nullptr; }
+    void setMultiColumnFlowThread(RenderMultiColumnFlowThread*);
+    
+    bool containsFloats() const override { return m_floatingObjects && !m_floatingObjects->set().isEmpty(); }
     bool containsFloat(RenderBox&) const;
 
-    virtual void deleteLines() OVERRIDE;
-    virtual void computeOverflow(LayoutUnit oldClientAfterEdge, bool recomputeFloats = false) OVERRIDE;
-    virtual VisiblePosition positionForPoint(const LayoutPoint&) OVERRIDE;
+    virtual void deleteLines() override;
+    virtual void computeOverflow(LayoutUnit oldClientAfterEdge, bool recomputeFloats = false) override;
+    virtual VisiblePosition positionForPoint(const LayoutPoint&) override;
 
     void removeFloatingObjects();
     void markAllDescendantsWithFloatsForLayout(RenderBox* floatToRemove = nullptr, bool inLayout = true);
@@ -327,7 +341,7 @@ public:
     RootInlineBox* firstRootBox() const { return toRootInlineBox(m_lineBoxes.firstLineBox()); }
     RootInlineBox* lastRootBox() const { return toRootInlineBox(m_lineBoxes.lastLineBox()); }
 
-    virtual bool hasLines() const OVERRIDE FINAL;
+    virtual bool hasLines() const override final;
 
     // Helper methods for computing line counts and heights for line counts.
     RootInlineBox* lineAtIndex(int) const;
@@ -345,7 +359,7 @@ public:
     void ensureLineBoxes();
 
 #ifndef NDEBUG
-    virtual void showLineTreeAndMark(const InlineBox* = nullptr, const char* = nullptr, const InlineBox* = nullptr, const char* = nullptr, const RenderObject* = nullptr) const OVERRIDE;
+    virtual void showLineTreeAndMark(const InlineBox* = nullptr, const char* = nullptr, const InlineBox* = nullptr, const char* = nullptr, const RenderObject* = nullptr) const override;
 #endif
 
     // Returns the logicalOffset at the top of the next page. If the offset passed in is already at the top of the current page,
@@ -359,6 +373,13 @@ public:
     LayoutUnit pageLogicalHeightForOffset(LayoutUnit offset) const;
     LayoutUnit pageRemainingLogicalHeightForOffset(LayoutUnit offset, PageBoundaryRule = IncludePageBoundary) const;
     bool hasNextPage(LayoutUnit logicalOffset, PageBoundaryRule = ExcludePageBoundary) const;
+
+    void addChild(RenderObject* newChild, RenderObject* beforeChild = 0) override;
+    
+    void createMultiColumnFlowThread();
+    void destroyMultiColumnFlowThread();
+    
+    virtual void updateColumnProgressionFromStyle(RenderStyle*) override;
 
 protected:
     // A page break is required at some offset due to space shortage in the current fragmentainer.
@@ -406,21 +427,37 @@ protected:
     bool mustSeparateMarginBeforeForChild(const RenderBox&) const;
     bool mustSeparateMarginAfterForChild(const RenderBox&) const;
 
-    virtual void styleWillChange(StyleDifference, const RenderStyle& newStyle) OVERRIDE;
-    virtual void styleDidChange(StyleDifference, const RenderStyle* oldStyle) OVERRIDE;
+    virtual void styleWillChange(StyleDifference, const RenderStyle& newStyle) override;
+    virtual void styleDidChange(StyleDifference, const RenderStyle* oldStyle) override;
 
     void createFloatingObjects();
 
-    virtual int firstLineBaseline() const OVERRIDE;
-    virtual int inlineBlockBaseline(LineDirectionMode) const OVERRIDE;
+    virtual int firstLineBaseline() const override;
+    virtual int inlineBlockBaseline(LineDirectionMode) const override;
+
+    virtual bool isMultiColumnBlockFlow() const override { return multiColumnFlowThread(); }
+    
+    virtual void setComputedColumnCountAndWidth(int, LayoutUnit) override;
+
+    virtual LayoutUnit computedColumnWidth() const override;
+    virtual unsigned computedColumnCount() const override;
+    
+    bool isTopLayoutOverflowAllowed() const override;
+    bool isLeftLayoutOverflowAllowed() const override;
 
 private:
-    virtual void paintInlineChildren(PaintInfo&, const LayoutPoint&) OVERRIDE;
-    virtual void paintFloats(PaintInfo&, const LayoutPoint&, bool preservePhase = false) OVERRIDE;
+    // Called to lay out the legend for a fieldset or the ruby text of a ruby run. Also used by multi-column layout to handle
+    // the flow thread child.
+    virtual RenderObject* layoutSpecialExcludedChild(bool /*relayoutChildren*/);
 
-    virtual void moveAllChildrenIncludingFloatsTo(RenderBlock* toBlock, bool fullRemoveInsert) OVERRIDE;
-    virtual void repaintOverhangingFloats(bool paintAllDescendants) OVERRIDE FINAL;
-    virtual void clipOutFloatingObjects(RenderBlock&, const PaintInfo*, const LayoutPoint&, const LayoutSize&) OVERRIDE;
+    void checkForPaginationLogicalHeightChange(LayoutUnit& pageLogicalHeight, bool& pageLogicalHeightChanged, bool& hasSpecifiedPageLogicalHeight);
+    
+    virtual void paintInlineChildren(PaintInfo&, const LayoutPoint&) override;
+    virtual void paintFloats(PaintInfo&, const LayoutPoint&, bool preservePhase = false) override;
+
+    virtual void moveAllChildrenIncludingFloatsTo(RenderBlock* toBlock, bool fullRemoveInsert) override;
+    virtual void repaintOverhangingFloats(bool paintAllDescendants) override final;
+    virtual void clipOutFloatingObjects(RenderBlock&, const PaintInfo*, const LayoutPoint&, const LayoutSize&) override;
 
     FloatingObject* insertFloatingObject(RenderBox&);
     void removeFloatingObject(RenderBox&);
@@ -433,8 +470,8 @@ private:
 
     void newLine(EClear);
 
-    virtual LayoutUnit logicalRightFloatOffsetForLine(LayoutUnit logicalTop, LayoutUnit fixedOffset, LayoutUnit logicalHeight) const OVERRIDE;
-    virtual LayoutUnit logicalLeftFloatOffsetForLine(LayoutUnit logicalTop, LayoutUnit fixedOffset, LayoutUnit logicalHeight) const OVERRIDE;
+    virtual LayoutUnit logicalRightFloatOffsetForLine(LayoutUnit logicalTop, LayoutUnit fixedOffset, LayoutUnit logicalHeight) const override;
+    virtual LayoutUnit logicalLeftFloatOffsetForLine(LayoutUnit logicalTop, LayoutUnit fixedOffset, LayoutUnit logicalHeight) const override;
 
     LayoutUnit logicalRightOffsetForPositioningFloat(LayoutUnit logicalTop, LayoutUnit fixedOffset, bool applyTextIndent, LayoutUnit* heightRemaining) const;
     LayoutUnit logicalLeftOffsetForPositioningFloat(LayoutUnit logicalTop, LayoutUnit fixedOffset, bool applyTextIndent, LayoutUnit* heightRemaining) const;
@@ -449,8 +486,10 @@ private:
     bool hasOverhangingFloats() { return parent() && !hasColumns() && containsFloats() && lowestFloatLogicalBottom() > logicalHeight(); }
     LayoutUnit getClearDelta(RenderBox& child, LayoutUnit yPos);
 
-    virtual bool hitTestFloats(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset) OVERRIDE;
-    virtual bool hitTestInlineChildren(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction) OVERRIDE;
+    void determineLogicalLeftPositionForChild(RenderBox& child, ApplyLayoutDeltaMode = DoNotApplyLayoutDelta);
+    
+    virtual bool hitTestFloats(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset) override;
+    virtual bool hitTestInlineChildren(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction) override;
 
     void addOverflowFromFloats();
     virtual void addOverflowFromInlineChildren();
@@ -461,11 +500,11 @@ private:
     void markLinesDirtyInBlockRange(LayoutUnit logicalTop, LayoutUnit logicalBottom, RootInlineBox* highest = 0);
 
     virtual GapRects inlineSelectionGaps(RenderBlock& rootBlock, const LayoutPoint& rootBlockPhysicalPosition, const LayoutSize& offsetFromRootBlock,
-        LayoutUnit& lastLogicalTop, LayoutUnit& lastLogicalLeft, LayoutUnit& lastLogicalRight, const LogicalSelectionOffsetCaches&, const PaintInfo*) OVERRIDE;
+        LayoutUnit& lastLogicalTop, LayoutUnit& lastLogicalLeft, LayoutUnit& lastLogicalRight, const LogicalSelectionOffsetCaches&, const PaintInfo*) override;
     
     Position positionForBox(InlineBox*, bool start = true) const;
-    virtual VisiblePosition positionForPointWithInlineChildren(const LayoutPoint& pointInLogicalContents) OVERRIDE;
-    virtual void addFocusRingRectsForInlineChildren(Vector<IntRect>& rects, const LayoutPoint& additionalOffset, const RenderLayerModelObject*) OVERRIDE;
+    virtual VisiblePosition positionForPointWithInlineChildren(const LayoutPoint& pointInLogicalContents) override;
+    virtual void addFocusRingRectsForInlineChildren(Vector<IntRect>& rects, const LayoutPoint& additionalOffset, const RenderLayerModelObject*) override;
 
 // FIXME-BLOCKFLOW: These methods have implementations in
 // RenderBlockLineLayout. They should be moved to the proper header once the
@@ -474,6 +513,10 @@ private:
 public:
     static void appendRunsForObject(BidiRunList<BidiRun>&, int start, int end, RenderObject*, InlineBidiResolver&);
     RootInlineBox* createAndAppendRootInlineBox();
+
+    LayoutUnit startAlignedOffsetForLine(LayoutUnit position, bool shouldIndentText);
+    virtual ETextAlign textAlignmentForLine(bool endsWithSoftBreak) const;
+    virtual void adjustInlineDirectionLineBounds(int /* expansionOpportunityCount */, float& /* logicalLeft */, float& /* logicalWidth */) const { }
 
 private:
     void layoutLineBoxes(bool relayoutChildren, LayoutUnit& repaintLogicalTop, LayoutUnit& repaintLogicalBottom);
@@ -515,11 +558,17 @@ private:
     // region/page/column that has a different available line width than the old one. Used to know when you have to dirty a
     // line, i.e., that it can't be re-used.
     bool lineWidthForPaginatedLineChanged(RootInlineBox*, LayoutUnit lineDelta, RenderFlowThread*) const;
+    void updateLogicalWidthForAlignment(const ETextAlign&, BidiRun* trailingSpaceRun, float& logicalLeft, float& totalLogicalWidth, float& availableLogicalWidth, int expansionOpportunityCount);
 
 // END METHODS DEFINED IN RenderBlockLineLayout
 
     bool namedFlowFragmentNeedsUpdate() const;
-    virtual bool canHaveChildren() const OVERRIDE;
+    virtual bool canHaveChildren() const override;
+
+#if ENABLE(IOS_TEXT_AUTOSIZING)
+    int m_widthForTextAutosizing;
+    unsigned m_lineCountForTextAutosizing : 2;
+#endif
 
 public:
     // FIXME-BLOCKFLOW: These can be made protected again once all callers have been moved here.
@@ -534,6 +583,16 @@ public:
     RenderBlockFlowRareData* rareBlockFlowData() const { ASSERT_WITH_SECURITY_IMPLICATION(hasRareBlockFlowData()); return m_rareBlockFlowData.get(); }
     RenderBlockFlowRareData& ensureRareBlockFlowData();
     void materializeRareBlockFlowData();
+
+#if ENABLE(IOS_TEXT_AUTOSIZING)
+    int immediateLineCount();
+    void adjustComputedFontSizes(float size, float visibleWidth);
+    void resetComputedFontSize()
+    {
+        m_widthForTextAutosizing = -1;
+        m_lineCountForTextAutosizing = NOT_SET;
+    }
+#endif
 
 protected:
     OwnPtr<FloatingObjects> m_floatingObjects;

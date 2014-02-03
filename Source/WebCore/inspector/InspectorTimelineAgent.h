@@ -128,20 +128,16 @@ class InspectorTimelineAgent
 public:
     enum InspectorType { PageInspector, WorkerInspector };
 
-    static PassOwnPtr<InspectorTimelineAgent> create(InstrumentingAgents* instrumentingAgents, InspectorPageAgent* pageAgent, InspectorMemoryAgent* memoryAgent, InspectorType type, InspectorClient* client)
-    {
-        return adoptPtr(new InspectorTimelineAgent(instrumentingAgents, pageAgent, memoryAgent, type, client));
-    }
-
+    InspectorTimelineAgent(InstrumentingAgents*, InspectorPageAgent*, InspectorMemoryAgent*, InspectorType, InspectorClient*);
     ~InspectorTimelineAgent();
 
-    virtual void didCreateFrontendAndBackend(Inspector::InspectorFrontendChannel*, Inspector::InspectorBackendDispatcher*) OVERRIDE;
-    virtual void willDestroyFrontendAndBackend() OVERRIDE;
+    virtual void didCreateFrontendAndBackend(Inspector::InspectorFrontendChannel*, Inspector::InspectorBackendDispatcher*) override;
+    virtual void willDestroyFrontendAndBackend(Inspector::InspectorDisconnectReason) override;
 
-    virtual void start(ErrorString*, const int* maxCallStackDepth, const bool* includeDomCounters);
-    virtual void stop(ErrorString*);
-    virtual void canMonitorMainThread(ErrorString*, bool*);
-    virtual void supportsFrameInstrumentation(ErrorString*, bool*);
+    virtual void start(ErrorString*, const int* maxCallStackDepth, const bool* includeDomCounters) override;
+    virtual void stop(ErrorString*) override;
+    virtual void canMonitorMainThread(ErrorString*, bool*) override;
+    virtual void supportsFrameInstrumentation(ErrorString*, bool*) override;
 
     int id() const { return m_id; }
 
@@ -149,7 +145,7 @@ public:
 
     // Methods called from WebCore.
     void willCallFunction(const String& scriptName, int scriptLine, Frame*);
-    void didCallFunction();
+    void didCallFunction(Frame*);
 
     void willDispatchEvent(const Event&, Frame*);
     void didDispatchEvent();
@@ -188,7 +184,7 @@ public:
     void didDispatchXHRLoadEvent();
 
     void willEvaluateScript(const String&, int, Frame*);
-    void didEvaluateScript();
+    void didEvaluateScript(Frame*);
 
     void didTimeStamp(Frame*, const String&);
     void didMarkDOMContentEvent(Frame*);
@@ -232,8 +228,6 @@ private:
         size_t usedHeapSizeAtStart;
     };
 
-    InspectorTimelineAgent(InstrumentingAgents*, InspectorPageAgent*, InspectorMemoryAgent*, InspectorType, InspectorClient*);
-
     void sendEvent(PassRefPtr<Inspector::InspectorObject>);
     void appendRecord(PassRefPtr<Inspector::InspectorObject> data, TimelineRecordType, bool captureCallStack, Frame*);
     void pushCurrentRecord(PassRefPtr<Inspector::InspectorObject>, TimelineRecordType, bool captureCallStack, Frame*);
@@ -274,6 +268,7 @@ private:
 
     bool m_enabled;
     bool m_includeDOMCounters;
+    bool m_recordingProfile;
 };
 
 } // namespace WebCore

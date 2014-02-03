@@ -25,14 +25,14 @@
 
 namespace WebCore {
 
-class SVGFEPointLightElement FINAL : public SVGFELightElement {
+class SVGFEPointLightElement final : public SVGFELightElement {
 public:
     static PassRefPtr<SVGFEPointLightElement> create(const QualifiedName&, Document&);
 
 private:
     SVGFEPointLightElement(const QualifiedName&, Document&);
 
-    virtual PassRefPtr<LightSource> lightSource() const;
+    virtual PassRefPtr<LightSource> lightSource() const override;
 };
 
 NODE_TYPE_CASTS(SVGFEPointLightElement)

@@ -212,8 +212,8 @@ unsigned MemoryCache::liveCapacity() const
     return m_capacity - deadCapacity();
 }
 
-#if USE(CF)
-// FIXME: Remove the USE(CF) once we either make NativeImagePtr a smart pointer on all platforms or
+#if USE(CG)
+// FIXME: Remove the USE(CG) once we either make NativeImagePtr a smart pointer on all platforms or
 // remove the usage of CFRetain() in MemoryCache::addImageToCache() so as to make the code platform-independent.
 bool MemoryCache::addImageToCache(NativeImagePtr image, const URL& url, const String& cachePartition)
 {
@@ -255,7 +255,7 @@ void MemoryCache::removeImageFromCache(const URL& url, const String& cachePartit
         return;
 
     // A resource exists and is not a manually cached image, so just remove it.
-    if (!resource->isImage() || !static_cast<CachedImage*>(resource)->isManual()) {
+    if (!resource->isImage() || !toCachedImage(resource)->isManual()) {
         evict(resource);
         return;
     }
@@ -265,7 +265,7 @@ void MemoryCache::removeImageFromCache(const URL& url, const String& cachePartit
     // dead resources are pruned. That might be immediately since
     // removing the last client triggers a MemoryCache::prune, so the
     // resource may be deleted after this call.
-    static_cast<CachedImageManual*>(resource)->removeFakeClient();
+    toCachedImageManual(toCachedImage(resource))->removeFakeClient();
 }
 #endif
 
@@ -324,11 +324,6 @@ void MemoryCache::pruneLiveResourcesToSize(unsigned targetSize, bool shouldDestr
             double elapsedTime = currentTime - current->m_lastDecodedAccessTime;
             if (!shouldDestroyDecodedDataForAllLiveResources && elapsedTime < cMinDelayBeforeLiveDecodedPrune)
                 return;
-
-            if (current->decodedDataIsPurgeable()) {
-                current = prev;
-                continue;
-            }
 
             // Destroy our decoded data. This will remove us from 
             // m_liveDecodedResources, and possibly move us to a different LRU 

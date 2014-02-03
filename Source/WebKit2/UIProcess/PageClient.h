@@ -105,16 +105,19 @@ public:
     // Return whether the view is visible.
     virtual bool isViewVisible() = 0;
 
-    // Return whether the window is visible.
-    virtual bool isWindowVisible() = 0;
+    // Return whether the view is visible, or occluded by another window.
+    virtual bool isViewVisibleOrOccluded() { return isViewVisible(); }
 
     // Return whether the view is in a window.
     virtual bool isViewInWindow() = 0;
 
+    // Return whether the view is visually idle.
+    virtual bool isVisuallyIdle() { return !isViewVisible(); }
+
     // Return the layer hosting mode for the view.
     virtual LayerHostingMode viewLayerHostingMode() { return LayerHostingModeDefault; }
 
-    virtual void processDidCrash() = 0;
+    virtual void processDidExit() = 0;
     virtual void didRelaunchProcess() = 0;
     virtual void pageClosed() = 0;
 
@@ -163,7 +166,7 @@ public:
     virtual bool canUndoRedo(WebPageProxy::UndoOrRedo) = 0;
     virtual void executeUndoRedo(WebPageProxy::UndoOrRedo) = 0;
 #if PLATFORM(MAC)
-    virtual void accessibilityWebProcessTokenReceived(const CoreIPC::DataReference&) = 0;
+    virtual void accessibilityWebProcessTokenReceived(const IPC::DataReference&) = 0;
     virtual bool interpretKeyEvent(const NativeWebKeyboardEvent&, Vector<WebCore::KeypressCommand>&) = 0;
     virtual bool executeSavedCommandBySelector(const String& selector) = 0;
     virtual void setDragImage(const WebCore::IntPoint& clientPosition, PassRefPtr<ShareableBitmap> dragImage, bool isLinkDrag) = 0;
@@ -172,6 +175,10 @@ public:
     virtual void notifyInputContextAboutDiscardedComposition() = 0;
     virtual void makeFirstResponder() = 0;
     virtual void setAcceleratedCompositingRootLayer(CALayer *) = 0;
+    virtual CALayer *acceleratedCompositingRootLayer() const = 0;
+    virtual RetainPtr<CGImageRef> takeViewSnapshot() = 0;
+    virtual void wheelEventWasNotHandledByWebCore(const NativeWebWheelEvent&) = 0;
+    virtual void clearCustomSwipeViews() = 0;
 #endif
 
 #if USE(APPKIT)
@@ -201,11 +208,9 @@ public:
 
     virtual void setFindIndicator(PassRefPtr<FindIndicator>, bool fadeOut, bool animate) = 0;
 
-#if USE(ACCELERATED_COMPOSITING)
     virtual void enterAcceleratedCompositingMode(const LayerTreeContext&) = 0;
     virtual void exitAcceleratedCompositingMode() = 0;
     virtual void updateAcceleratedCompositingMode(const LayerTreeContext&) = 0;
-#endif
 
 #if !PLATFORM(IOS) && PLATFORM(MAC)
     virtual void pluginFocusOrWindowFocusChanged(uint64_t pluginComplexTextInputIdentifier, bool pluginHasFocusAndWindowHasFocus) = 0;
@@ -243,6 +248,7 @@ public:
     virtual void stopAssistingNode() = 0;
     virtual void selectionDidChange() = 0;
     virtual bool interpretKeyEvent(const NativeWebKeyboardEvent&, bool isCharEvent) = 0;
+    virtual void positionInformationDidChange(const InteractionInformationAtPosition&) = 0;
 #endif
 
     // Auxiliary Client Creation

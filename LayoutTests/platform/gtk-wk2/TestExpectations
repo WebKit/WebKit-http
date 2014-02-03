@@ -198,12 +198,6 @@ Bug(GTK) plugins/document-open.html [ Crash Timeout ]
 
 webkit.org/b/82020 plugins/netscape-dom-access-and-reload.html [ Crash Pass ]
 
-Bug(GTK) fast/parser/document-write-basic.html [ Crash ]
-
-Bug(GTK) fast/forms/select-live-pseudo-selectors.html [ Crash ]
-
-webkit.org/b/124556 http/tests/xmlhttprequest/access-control-repeated-failed-preflight-crash.html [ Crash Timeout ]
-
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Crashing tests
 #////////////////////////////////////////////////////////////////////////////////////////
@@ -218,7 +212,7 @@ webkit.org/b/58337 fast/dom/StyleSheet/detached-stylesheet-without-wrapper.html 
 
 # media/audio-garbage-collect.html is flaky
 # https://bugs.webkit.org/show_bug.cgi?id=72698
-webkit.org/b/72698 media/audio-garbage-collect.html [ Failure Pass ]
+webkit.org/b/72698 media/audio-garbage-collect.html [ Failure Timeout Pass ]
 
 # Tests showing flakiness in the bot
 Bug(GTK) editing/pasteboard/smart-paste-004.html [ Failure Pass ]
@@ -251,7 +245,7 @@ Bug(GTK) fast/forms/incremental-dom-property.html [ Pass Timeout ]
 Bug(GTK) fast/forms/select/menulist-type-ahead-find.html [ Pass Timeout ]
 Bug(GTK) fast/forms/select/optgroup-disabled.html [ Pass Timeout ]
 Bug(GTK) fast/forms/select-selected.html [ Pass Timeout ]
-Bug(GTK) js/exceptions-thrown-in-callbacks.html [ Failure Pass ]
+Bug(GTK) js/dom/exceptions-thrown-in-callbacks.html [ Failure Pass ]
 Bug(GTK) fast/loader/fragment-after-redirect-gets-back-entry.html [ Failure Pass ]
 Bug(GTK) fast/writing-mode/japanese-ruby-horizontal-bt.html [ Failure Pass ]
 Bug(GTK) fast/writing-mode/japanese-ruby-vertical-lr.html [ Failure Pass ]
@@ -325,15 +319,12 @@ Bug(GTK) fast/media/media-query-list-04.html [ Timeout ]
 # accessibility/ failures
 webkit.org/b/106338 accessibility/aria-hidden-updates-alldescendants.html [ Failure ]
 webkit.org/b/106340 accessibility/img-fallsback-to-title.html [ Failure ]
-webkit.org/b/116970 accessibility/multiselect-list-reports-active-option.html [ Failure ]
 
 # svg/ failures
 webkit.org/b/42457 svg/custom/embedded-svg-allowed-in-dashboard.xml [ Failure ]
 webkit.org/b/42457 svg/custom/manually-parsed-embedded-svg-allowed-in-dashboard.html [ Failure ]
 webkit.org/b/42457 svg/custom/manually-parsed-svg-allowed-in-dashboard.html [ Failure ]
 webkit.org/b/42457 svg/custom/svg-allowed-in-dashboard-object.html [ Failure ]
-webkit.org/b/63706 svg/custom/mouse-move-on-svg-container.xhtml [ Failure ]
-webkit.org/b/63706 svg/custom/mouse-move-on-svg-root.xhtml [ Failure ]
 Bug(GTK) svg/custom/gradient-attr-update.svg [ Failure Pass ]
 Bug(GTK) svg/custom/pointer-events-on-svg-with-pointer.xhtml [ Failure Pass ]
 Bug(GTK) svg/custom/pointer-events-on-svg-without-pointer.xhtml [ Failure Pass ]
@@ -361,6 +352,7 @@ webkit.org/b/95935 http/tests/security/cross-origin-plugin.html [ Failure ]
 webkit.org/b/39160 security/block-test-no-port.html [ Failure ]
 
 webkit.org/b/97655 fast/css/style-scoped [ Failure ]
+webkit.org/b/97655 fast/css/style-scoped/style-scoped-with-dom-operation.html [ Pass ]
 webkit.org/b/97655 fast/regions/style-scoped/style-scoped-in-flow-override-container-style.html [ ImageOnlyFailure ]
 webkit.org/b/97655 fast/regions/style-scoped/style-scoped-in-flow-override-region-styling.html [ ImageOnlyFailure ]
 webkit.org/b/97655 fast/regions/style-scoped/style-scoped-in-flow.html [ ImageOnlyFailure ]

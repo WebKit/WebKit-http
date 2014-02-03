@@ -38,7 +38,7 @@ using namespace Inspector;
 
 namespace WebCore {
 
-WorkerConsoleAgent::WorkerConsoleAgent(InstrumentingAgents* instrumentingAgents, InjectedScriptManager* injectedScriptManager)
+WorkerConsoleAgent::WorkerConsoleAgent(InstrumentingAgents* instrumentingAgents, PageInjectedScriptManager* injectedScriptManager)
     : InspectorConsoleAgent(instrumentingAgents, injectedScriptManager)
 {
 }
@@ -50,11 +50,6 @@ WorkerConsoleAgent::~WorkerConsoleAgent()
 void WorkerConsoleAgent::addInspectedNode(ErrorString* error, int)
 {
     *error = "addInspectedNode is not supported for workers";
-}
-
-bool WorkerConsoleAgent::developerExtrasEnabled()
-{
-    return true;
 }
 
 } // namespace WebCore

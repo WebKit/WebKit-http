@@ -38,6 +38,7 @@
 #include "URL.h"
 #include "Logging.h"
 #include "PlatformLayer.h"
+#include "Settings.h"
 #include "SoftLinking.h"
 #include "TimeRanges.h"
 #include <CoreMedia/CoreMedia.h>
@@ -47,6 +48,7 @@ namespace WebCore {
 
 MediaPlayerPrivateAVFoundation::MediaPlayerPrivateAVFoundation(MediaPlayer* player)
     : m_player(player)
+    , m_weakPtrFactory(this)
     , m_queuedNotifications()
     , m_queueMutex()
     , m_networkState(MediaPlayer::Empty)
@@ -58,7 +60,6 @@ MediaPlayerPrivateAVFoundation::MediaPlayerPrivateAVFoundation(MediaPlayer* play
     , m_cachedDuration(MediaPlayer::invalidTime())
     , m_reportedDuration(MediaPlayer::invalidTime())
     , m_maxTimeLoadedAtLastDidLoadingProgress(MediaPlayer::invalidTime())
-    , m_seekTo(MediaPlayer::invalidTime())
     , m_requestedRate(1)
     , m_delayCallbacks(0)
     , m_delayCharacteristicsChangedNotification(0)
@@ -76,7 +77,7 @@ MediaPlayerPrivateAVFoundation::MediaPlayerPrivateAVFoundation(MediaPlayer* play
     , m_inbandTrackConfigurationPending(false)
     , m_characteristicsChanged(false)
     , m_shouldMaintainAspectRatio(true)
-    , m_seekCount(0)
+    , m_seeking(false)
 {
     LOG(Media, "MediaPlayerPrivateAVFoundation::MediaPlayerPrivateAVFoundation(%p)", this);
 }
@@ -90,10 +91,8 @@ MediaPlayerPrivateAVFoundation::~MediaPlayerPrivateAVFoundation()
 
 MediaPlayerPrivateAVFoundation::MediaRenderingMode MediaPlayerPrivateAVFoundation::currentRenderingMode() const
 {
-#if USE(ACCELERATED_COMPOSITING)
     if (platformLayer())
         return MediaRenderingToLayer;
-#endif
 
     if (hasContextRenderer())
         return MediaRenderingToContext;
@@ -106,10 +105,8 @@ MediaPlayerPrivateAVFoundation::MediaRenderingMode MediaPlayerPrivateAVFoundatio
     if (!m_player->visible() || !m_player->frameView() || assetStatus() == MediaPlayerAVAssetStatusUnknown)
         return MediaRenderingNone;
 
-#if USE(ACCELERATED_COMPOSITING)
     if (supportsAcceleratedRendering() && m_player->mediaPlayerClient()->mediaPlayerRenderingCanBeAccelerated(m_player))
         return MediaRenderingToLayer;
-#endif
 
     return MediaRenderingToContext;
 }
@@ -139,21 +136,17 @@ void MediaPlayerPrivateAVFoundation::setUpVideoRendering()
     case MediaRenderingToContext:
         createContextVideoRenderer();
         break;
-        
-#if USE(ACCELERATED_COMPOSITING)
+
     case MediaRenderingToLayer:
         createVideoLayer();
         break;
-#endif
     }
 
-#if USE(ACCELERATED_COMPOSITING)
     // If using a movie layer, inform the client so the compositing tree is updated.
     if (currentMode == MediaRenderingToLayer || preferredMode == MediaRenderingToLayer) {
         LOG(Media, "MediaPlayerPrivateAVFoundation::setUpVideoRendering(%p) - calling mediaPlayerRenderingModeChanged()", this);
         m_player->mediaPlayerClient()->mediaPlayerRenderingModeChanged(m_player);
     }
-#endif
 }
 
 void MediaPlayerPrivateAVFoundation::tearDownVideoRendering()
@@ -162,10 +155,8 @@ void MediaPlayerPrivateAVFoundation::tearDownVideoRendering()
 
     destroyContextVideoRenderer();
 
-#if USE(ACCELERATED_COMPOSITING)
     if (platformLayer())
         destroyVideoLayer();
-#endif
 }
 
 bool MediaPlayerPrivateAVFoundation::hasSetUpVideoRendering() const
@@ -271,6 +262,15 @@ void MediaPlayerPrivateAVFoundation::seek(float time)
 
 void MediaPlayerPrivateAVFoundation::seekWithTolerance(double time, double negativeTolerance, double positiveTolerance)
 {
+    if (m_seeking) {
+        LOG(Media, "MediaPlayerPrivateAVFoundation::seekWithTolerance(%p) - save pending seek", this);
+        m_pendingSeek = [this, time, negativeTolerance, positiveTolerance]() {
+            seekWithTolerance(time, negativeTolerance, positiveTolerance);
+        };
+        return;
+    }
+    m_seeking = true;
+
     if (!metaDataAvailable())
         return;
 
@@ -284,9 +284,7 @@ void MediaPlayerPrivateAVFoundation::seekWithTolerance(double time, double negat
         currentTrack()->beginSeeking();
     
     LOG(Media, "MediaPlayerPrivateAVFoundation::seek(%p) - seeking to %f", this, time);
-    m_seekTo = time;
 
-    ++m_seekCount;
     seekToTime(time, negativeTolerance, positiveTolerance);
 }
 
@@ -311,7 +309,7 @@ bool MediaPlayerPrivateAVFoundation::seeking() const
     if (!metaDataAvailable())
         return false;
 
-    return m_seekTo != MediaPlayer::invalidTime();
+    return m_seeking;
 }
 
 IntSize MediaPlayerPrivateAVFoundation::naturalSize() const
@@ -467,6 +465,10 @@ bool MediaPlayerPrivateAVFoundation::supportsFullscreen() const
     return true;
 #else
     // FIXME: WebVideoFullscreenController assumes a QTKit/QuickTime media engine
+#if PLATFORM(IOS)
+    if (Settings::avKitEnabled())
+        return true;
+#endif
     return false;
 #endif
 }
@@ -526,6 +528,7 @@ void MediaPlayerPrivateAVFoundation::updateStates()
                 // If the readyState is already HaveEnoughData, don't go lower because of this state change.
                 if (m_readyState == MediaPlayer::HaveEnoughData)
                     break;
+                FALLTHROUGH;
 
             case MediaPlayerAVPlayerItemStatusPlaybackBufferEmpty:
                 if (maxTimeLoaded() > currentTime())
@@ -639,14 +642,20 @@ void MediaPlayerPrivateAVFoundation::seekCompleted(bool finished)
     LOG(Media, "MediaPlayerPrivateAVFoundation::seekCompleted(%p) - finished = %d", this, finished);
     UNUSED_PARAM(finished);
 
-    ASSERT(m_seekCount);
-    if (--m_seekCount)
+    m_seeking = false;
+
+    std::function<void()> pendingSeek;
+    std::swap(pendingSeek, m_pendingSeek);
+
+    if (pendingSeek) {
+        LOG(Media, "MediaPlayerPrivateAVFoundation::seekCompleted(%p) - issuing pending seek", this);
+        pendingSeek();
         return;
+    }
 
     if (currentTrack())
         currentTrack()->endSeeking();
 
-    m_seekTo = MediaPlayer::invalidTime();
     updateStates();
     m_player->timeChanged();
 }

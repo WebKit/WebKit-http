@@ -35,7 +35,6 @@
 #include "Operations.h"
 #include "Parser.h"
 #include "StackVisitor.h"
-#include "VMEntryScope.h"
 
 namespace JSC {
 
@@ -154,6 +153,7 @@ JSValue DebuggerCallFrame::evaluateWithCallFrame(CallFrame* callFrame, const Str
     if (vm.exception()) {
         exception = vm.exception();
         vm.clearException();
+        return jsUndefined();
     }
 
     JSValue thisValue = thisValueForCallFrame(callFrame);

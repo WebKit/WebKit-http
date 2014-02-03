@@ -33,6 +33,8 @@
 
 namespace WebCore {
     
+class AccessibilityTable;
+
 class AccessibilityTableRow : public AccessibilityRenderObject {
     
 protected:
@@ -41,11 +43,11 @@ public:
     static PassRefPtr<AccessibilityTableRow> create(RenderObject*);
     virtual ~AccessibilityTableRow();
     
-    virtual bool isTableRow() const OVERRIDE;
+    virtual bool isTableRow() const override;
 
     // retrieves the "row" header (a th tag in the rightmost column)
     virtual AccessibilityObject* headerObject();
-    virtual AccessibilityObject* parentTable() const;
+    virtual AccessibilityTable* parentTable() const;
     
     void setRowIndex(int rowIndex) { m_rowIndex = rowIndex; }
     int rowIndex() const { return m_rowIndex; }
@@ -55,13 +57,13 @@ public:
     void appendChild(AccessibilityObject*);
     
 protected:
-    virtual AccessibilityRole determineAccessibilityRole() OVERRIDE;
+    virtual AccessibilityRole determineAccessibilityRole() override;
 
 private:
     int m_rowIndex;
     
-    virtual AccessibilityObject* observableObject() const OVERRIDE;
-    virtual bool computeAccessibilityIsIgnored() const OVERRIDE;
+    virtual AccessibilityObject* observableObject() const override;
+    virtual bool computeAccessibilityIsIgnored() const override;
 }; 
 
 ACCESSIBILITY_OBJECT_TYPE_CASTS(AccessibilityTableRow, isTableRow())

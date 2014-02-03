@@ -35,7 +35,6 @@
 
 #include "CachedResourceHandle.h"
 #include "CachedSVGDocumentClient.h"
-#include "CustomFilterProgramClient.h"
 #include "RenderLayer.h"
 
 namespace WebCore {
@@ -43,12 +42,8 @@ namespace WebCore {
 class Element;
 
 class RenderLayer::FilterInfo
-#if ENABLE(CSS_SHADERS) && ENABLE(SVG)
-    FINAL : public CustomFilterProgramClient, public CachedSVGDocumentClient
-#elif ENABLE(CSS_SHADERS)
-    FINAL : public CustomFilterProgramClient
-#elif ENABLE(SVG)
-    FINAL : public CachedSVGDocumentClient
+#if ENABLE(SVG)
+    final : public CachedSVGDocumentClient
 #endif
 {
 public:
@@ -63,11 +58,6 @@ public:
     FilterEffectRenderer* renderer() const { return m_renderer.get(); }
     void setRenderer(PassRefPtr<FilterEffectRenderer>);
     
-#if ENABLE(CSS_SHADERS)
-    void updateCustomFilterClients(const FilterOperations&);
-    void removeCustomFilterClients();
-#endif
-
 #if ENABLE(SVG)
     void updateReferenceFilterClients(const FilterOperations&);
     void removeReferenceFilterClients();
@@ -79,12 +69,8 @@ private:
 
     friend void WTF::deleteOwnedPtr<FilterInfo>(FilterInfo*);
 
-#if ENABLE(CSS_SHADERS)
-    virtual void notifyCustomFilterProgramLoaded(CustomFilterProgram*) OVERRIDE;
-#endif
-
 #if ENABLE(SVG)
-    virtual void notifyFinished(CachedResource*) OVERRIDE;
+    virtual void notifyFinished(CachedResource*) override;
 #endif
 
     static HashMap<const RenderLayer*, OwnPtr<FilterInfo>>& map();
@@ -102,10 +88,6 @@ private:
 
     RefPtr<FilterEffectRenderer> m_renderer;
     LayoutRect m_dirtySourceRect;
-
-#if ENABLE(CSS_SHADERS)
-    Vector<RefPtr<CustomFilterProgram>> m_cachedCustomFilterPrograms;
-#endif
 
 #if ENABLE(SVG)
     Vector<RefPtr<Element>> m_internalSVGReferences;

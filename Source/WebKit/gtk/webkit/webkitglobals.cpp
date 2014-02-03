@@ -39,6 +39,7 @@
 #include "ResourceHandleInternal.h"
 #include "ResourceResponse.h"
 #include "SchemeRegistry.h"
+#include "SoupNetworkSession.h"
 #include "TextEncodingRegistry.h"
 #include "webkitapplicationcache.h"
 #include "webkitfavicondatabase.h"
@@ -52,8 +53,8 @@
 #include <runtime/InitializeThreading.h>
 #include <stdlib.h>
 #include <wtf/MainThread.h>
-#include <wtf/gobject/GOwnPtr.h>
 #include <wtf/gobject/GRefPtr.h>
+#include <wtf/gobject/GUniquePtr.h>
 
 static WebKitCacheModel cacheModel = WEBKIT_CACHE_MODEL_DEFAULT;
 
@@ -83,7 +84,7 @@ using namespace WebCore;
 SoupSession* webkit_get_default_session ()
 {
     webkitInit();
-    return ResourceHandle::defaultSession();
+    return SoupNetworkSession::defaultSession().soupSession();
 }
 
 /**
@@ -549,15 +550,15 @@ void webkitInit()
     // that may only be done by the main thread.
     atomicCanonicalTextEncodingName("UTF-8");
 
-    GOwnPtr<gchar> databaseDirectory(g_build_filename(g_get_user_data_dir(), "webkit", "databases", NULL));
+    GUniquePtr<gchar> databaseDirectory(g_build_filename(g_get_user_data_dir(), "webkit", "databases", NULL));
     webkit_set_web_database_directory_path(databaseDirectory.get());
 
-    GOwnPtr<gchar> cacheDirectory(g_build_filename(g_get_user_cache_dir(), "webkitgtk", "applications", NULL));
+    GUniquePtr<gchar> cacheDirectory(g_build_filename(g_get_user_cache_dir(), "webkitgtk", "applications", NULL));
     WebCore::cacheStorage().setCacheDirectory(cacheDirectory.get());
 
     PageGroup::setShouldTrackVisitedLinks(true);
 
-    GOwnPtr<gchar> iconDatabasePath(g_build_filename(g_get_user_data_dir(), "webkit", "icondatabase", NULL));
+    GUniquePtr<gchar> iconDatabasePath(g_build_filename(g_get_user_cache_dir(), "webkit", "icondatabase", NULL));
     webkit_icon_database_set_path(webkit_get_icon_database(), iconDatabasePath.get());
 
     WebCore::ResourceHandle::setIgnoreSSLErrors(true);

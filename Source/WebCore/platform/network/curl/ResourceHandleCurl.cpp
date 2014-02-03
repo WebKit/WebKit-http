@@ -30,6 +30,8 @@
 
 #include "CachedResourceLoader.h"
 #include "CredentialStorage.h"
+#include "FileSystem.h"
+#include "Logging.h"
 #include "NetworkingContext.h"
 #include "NotImplemented.h"
 #include "ResourceHandleInternal.h"
@@ -48,7 +50,7 @@ public:
     WebCoreSynchronousLoader();
 
     virtual void didReceiveResponse(ResourceHandle*, const ResourceResponse&);
-    virtual void didReceiveData(ResourceHandle*, const char*, int, int encodedDataLength);
+    virtual void didReceiveData(ResourceHandle*, const char*, unsigned, int encodedDataLength);
     virtual void didFinishLoading(ResourceHandle*, double /*finishTime*/);
     virtual void didFail(ResourceHandle*, const ResourceError&);
 
@@ -71,7 +73,7 @@ void WebCoreSynchronousLoader::didReceiveResponse(ResourceHandle*, const Resourc
     m_response = response;
 }
 
-void WebCoreSynchronousLoader::didReceiveData(ResourceHandle*, const char* data, int length, int)
+void WebCoreSynchronousLoader::didReceiveData(ResourceHandle*, const char* data, unsigned length, int)
 {
     m_data.append(data, length);
 }
@@ -119,6 +121,14 @@ void ResourceHandle::cancel()
 void ResourceHandle::setHostAllowsAnyHTTPSCertificate(const String& host)
 {
     allowsAnyHTTPSCertificateHosts(host.lower());
+}
+
+void ResourceHandle::setClientCertificateInfo(const String& host, const String& certificate, const String& key)
+{
+    if (fileExists(certificate))
+        addAllowedClientCertificate(host, certificate, key);
+    else
+        LOG(Network, "Invalid client certificate file: %s!\n", certificate.latin1().data());
 }
 
 #if PLATFORM(WIN) && USE(CF)

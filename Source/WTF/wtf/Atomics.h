@@ -68,46 +68,9 @@ extern "C" void _ReadWriteBarrier(void);
 #pragma intrinsic(_ReadWriteBarrier)
 #endif
 #include <windows.h>
-#elif OS(QNX)
-#include <atomic.h>
 #endif
 
 namespace WTF {
-
-#if OS(WINDOWS)
-
-#if OS(WINCE)
-inline int atomicIncrement(int* addend) { return InterlockedIncrement(reinterpret_cast<long*>(addend)); }
-inline int atomicDecrement(int* addend) { return InterlockedDecrement(reinterpret_cast<long*>(addend)); }
-#elif COMPILER(MINGW)
-inline int atomicIncrement(int* addend) { return InterlockedIncrement(reinterpret_cast<long*>(addend)); }
-inline int atomicDecrement(int* addend) { return InterlockedDecrement(reinterpret_cast<long*>(addend)); }
-
-inline int64_t atomicIncrement(int64_t* addend) { return InterlockedIncrement64(reinterpret_cast<long long*>(addend)); }
-inline int64_t atomicDecrement(int64_t* addend) { return InterlockedDecrement64(reinterpret_cast<long long*>(addend)); }
-#else
-inline int atomicIncrement(int volatile* addend) { return InterlockedIncrement(reinterpret_cast<long volatile*>(addend)); }
-inline int atomicDecrement(int volatile* addend) { return InterlockedDecrement(reinterpret_cast<long volatile*>(addend)); }
-
-inline int64_t atomicIncrement(int64_t volatile* addend) { return InterlockedIncrement64(reinterpret_cast<long long volatile*>(addend)); }
-inline int64_t atomicDecrement(int64_t volatile* addend) { return InterlockedDecrement64(reinterpret_cast<long long volatile*>(addend)); }
-#endif
-
-#elif OS(QNX)
-
-// Note, atomic_{add, sub}_value() return the previous value of addend's content.
-inline int atomicIncrement(int volatile* addend) { return static_cast<int>(atomic_add_value(reinterpret_cast<unsigned volatile*>(addend), 1)) + 1; }
-inline int atomicDecrement(int volatile* addend) { return static_cast<int>(atomic_sub_value(reinterpret_cast<unsigned volatile*>(addend), 1)) - 1; }
-
-#elif COMPILER(GCC)
-
-inline int atomicIncrement(int volatile* addend) { return __sync_add_and_fetch(addend, 1); }
-inline int atomicDecrement(int volatile* addend) { return __sync_sub_and_fetch(addend, 1); }
-
-inline int64_t atomicIncrement(int64_t volatile* addend) { return __sync_add_and_fetch(addend, 1); }
-inline int64_t atomicDecrement(int64_t volatile* addend) { return __sync_sub_and_fetch(addend, 1); }
-
-#endif
 
 #if OS(WINDOWS)
 inline bool weakCompareAndSwap(volatile unsigned* location, unsigned expected, unsigned newValue)
@@ -303,7 +266,7 @@ inline bool weakCompareAndSwap(uint8_t* location, uint8_t expected, uint8_t newV
         "lock; cmpxchgb %3, %2\n\t"
         "sete %1"
         : "+a"(expected), "=q"(result), "+m"(*location)
-        : "r"(newValue)
+        : "q"(newValue)
         : "memory"
         );
     return result;
@@ -350,8 +313,5 @@ inline bool weakCompareAndSwap(uint8_t* location, uint8_t expected, uint8_t newV
 }
 
 } // namespace WTF
-
-using WTF::atomicDecrement;
-using WTF::atomicIncrement;
 
 #endif // Atomics_h

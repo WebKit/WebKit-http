@@ -54,7 +54,11 @@
 #endif
 
 #if PLATFORM(MAC)
+#if PLATFORM(IOS)
+#include "MediaPlayerPrivateIOS.h"
+#else
 #include "MediaPlayerPrivateQTKit.h"
+#endif
 #if USE(AVFOUNDATION)
 #include "MediaPlayerPrivateAVFoundationObjC.h"
 #if ENABLE(MEDIA_SOURCE)
@@ -67,10 +71,7 @@
 #elif PLATFORM(WIN) && !USE(GSTREAMER)
 #if USE(AVFOUNDATION)
 #include "MediaPlayerPrivateAVFoundationCF.h"
-#endif
-#elif PLATFORM(BLACKBERRY)
-#include "MediaPlayerPrivateBlackBerry.h"
-#define PlatformMediaEngineClassName MediaPlayerPrivate
+#endif // USE(AVFOUNDATION)
 #endif
 
 namespace WebCore {
@@ -94,9 +95,7 @@ public:
     virtual void pause() { }    
 
     virtual PlatformMedia platformMedia() const { return NoPlatformMedia; }
-#if USE(ACCELERATED_COMPOSITING)
     virtual PlatformLayer* platformLayer() const { return 0; }
-#endif
 
     virtual IntSize naturalSize() const { return IntSize(0, 0); }
 
@@ -149,9 +148,9 @@ public:
     virtual bool hasSingleSecurityOrigin() const { return true; }
 
 #if ENABLE(ENCRYPTED_MEDIA)
-    virtual MediaPlayer::MediaKeyException generateKeyRequest(const String&, const unsigned char*, unsigned) OVERRIDE { return MediaPlayer::InvalidPlayerState; }
-    virtual MediaPlayer::MediaKeyException addKey(const String&, const unsigned char*, unsigned, const unsigned char*, unsigned, const String&) OVERRIDE { return MediaPlayer::InvalidPlayerState; }
-    virtual MediaPlayer::MediaKeyException cancelKeyRequest(const String&, const String&) OVERRIDE { return MediaPlayer::InvalidPlayerState; }
+    virtual MediaPlayer::MediaKeyException generateKeyRequest(const String&, const unsigned char*, unsigned) override { return MediaPlayer::InvalidPlayerState; }
+    virtual MediaPlayer::MediaKeyException addKey(const String&, const unsigned char*, unsigned, const unsigned char*, unsigned, const String&) override { return MediaPlayer::InvalidPlayerState; }
+    virtual MediaPlayer::MediaKeyException cancelKeyRequest(const String&, const String&) override { return MediaPlayer::InvalidPlayerState; }
 #endif
 };
 
@@ -202,8 +201,10 @@ static Vector<MediaPlayerFactory*>& installedMediaEngines(RequeryEngineOptions r
         return installedEngines;
     }
 
-    if (!enginesQueried) {
-        enginesQueried = true;
+    if (enginesQueried)
+        return installedEngines;
+
+    enginesQueried = true;
 
 #if ENABLE(PLUGIN_PROXY_FOR_VIDEO)
     if (Settings::isVideoPluginProxyEnabled())
@@ -211,27 +212,26 @@ static Vector<MediaPlayerFactory*>& installedMediaEngines(RequeryEngineOptions r
 #endif
 
 #if USE(AVFOUNDATION)
-        if (Settings::isAVFoundationEnabled()) {
-#if PLATFORM(MAC) || PLATFORM(IOS)
-            MediaPlayerPrivateAVFoundationObjC::registerMediaEngine(addMediaEngine);
+    if (Settings::isAVFoundationEnabled()) {
+#if PLATFORM(MAC)
+        MediaPlayerPrivateAVFoundationObjC::registerMediaEngine(addMediaEngine);
 #if ENABLE(MEDIA_SOURCE)
-            MediaPlayerPrivateMediaSourceAVFObjC::registerMediaEngine(addMediaEngine);
+        MediaPlayerPrivateMediaSourceAVFObjC::registerMediaEngine(addMediaEngine);
 #endif
 #elif PLATFORM(WIN)
-            MediaPlayerPrivateAVFoundationCF::registerMediaEngine(addMediaEngine);
+        MediaPlayerPrivateAVFoundationCF::registerMediaEngine(addMediaEngine);
 #endif
-        }
+    }
 #endif
 
-#if PLATFORM(MAC)
-        if (Settings::isQTKitEnabled())
-            MediaPlayerPrivateQTKit::registerMediaEngine(addMediaEngine);
+#if PLATFORM(MAC) && !PLATFORM(IOS)
+    if (Settings::isQTKitEnabled())
+        MediaPlayerPrivateQTKit::registerMediaEngine(addMediaEngine);
 #endif
 
 #if defined(PlatformMediaEngineClassName)
-        PlatformMediaEngineClassName::registerMediaEngine(addMediaEngine);
+    PlatformMediaEngineClassName::registerMediaEngine(addMediaEngine);
 #endif
-    }
 
     return installedEngines;
 }
@@ -339,7 +339,7 @@ MediaPlayer::MediaPlayer(MediaPlayerClient* client)
 {
 #if ENABLE(PLUGIN_PROXY_FOR_VIDEO)
     Vector<MediaPlayerFactory*>& engines = installedMediaEngines();
-    if (!engines.isEmpty()) {
+    if (Settings::isVideoPluginProxyEnabled() && !engines.isEmpty()) {
         m_currentMediaEngine = engines[0];
         m_private = engines[0]->constructor(this);
         if (m_mediaPlayerClient)
@@ -610,12 +610,10 @@ PlatformMedia MediaPlayer::platformMedia() const
     return m_private->platformMedia();
 }
 
-#if USE(ACCELERATED_COMPOSITING)
 PlatformLayer* MediaPlayer::platformLayer() const
 {
     return m_private->platformLayer();
 }
-#endif
 
 MediaPlayer::NetworkState MediaPlayer::networkState()
 {
@@ -837,6 +835,50 @@ void MediaPlayer::exitFullscreen()
 }
 #endif
 
+#if ENABLE(IOS_AIRPLAY)
+bool MediaPlayer::isCurrentPlaybackTargetWireless() const
+{
+    return m_private->isCurrentPlaybackTargetWireless();
+}
+
+void MediaPlayer::showPlaybackTargetPicker()
+{
+    m_private->showPlaybackTargetPicker();
+}
+
+bool MediaPlayer::hasWirelessPlaybackTargets() const
+{
+    return m_private->hasWirelessPlaybackTargets();
+}
+
+bool MediaPlayer::wirelessVideoPlaybackDisabled() const
+{
+    return m_private->wirelessVideoPlaybackDisabled();
+}
+
+void MediaPlayer::setWirelessVideoPlaybackDisabled(bool disabled)
+{
+    m_private->setWirelessVideoPlaybackDisabled(disabled);
+}
+
+void MediaPlayer::setHasPlaybackTargetAvailabilityListeners(bool hasListeners)
+{
+    m_private->setHasPlaybackTargetAvailabilityListeners(hasListeners);
+}
+
+void MediaPlayer::currentPlaybackTargetIsWirelessChanged()
+{
+    if (m_mediaPlayerClient)
+        m_mediaPlayerClient->mediaPlayerCurrentPlaybackTargetIsWirelessChanged(this);
+}
+
+void MediaPlayer::playbackTargetAvailabilityChanged()
+{
+    if (m_mediaPlayerClient)
+        m_mediaPlayerClient->mediaPlayerPlaybackTargetAvailabilityChanged(this);
+}
+#endif
+
 #if USE(NATIVE_FULLSCREEN_VIDEO)
 bool MediaPlayer::canEnterFullscreen() const
 {
@@ -844,7 +886,6 @@ bool MediaPlayer::canEnterFullscreen() const
 }
 #endif
 
-#if USE(ACCELERATED_COMPOSITING)
 void MediaPlayer::acceleratedRenderingStateChanged()
 {
     m_private->acceleratedRenderingStateChanged();
@@ -854,7 +895,6 @@ bool MediaPlayer::supportsAcceleratedRendering() const
 {
     return m_private->supportsAcceleratedRendering();
 }
-#endif // USE(ACCELERATED_COMPOSITING)
 
 bool MediaPlayer::shouldMaintainAspectRatio() const
 {
@@ -911,7 +951,7 @@ unsigned MediaPlayer::videoDecodedByteCount() const
     return m_private->videoDecodedByteCount();
 }
 
-void MediaPlayer::reloadTimerFired(Timer<MediaPlayer>*)
+void MediaPlayer::reloadTimerFired(Timer<MediaPlayer>&)
 {
     m_private->cancelLoad();
     loadWithNextMediaEngine(m_currentMediaEngine);
@@ -956,6 +996,18 @@ void MediaPlayer::setPrivateBrowsingMode(bool privateBrowsingMode)
     m_private->setPrivateBrowsingMode(m_privateBrowsing);
 }
 
+#if PLATFORM(IOS)
+void MediaPlayer::attributeChanged(const String& name, const String& value) 
+{
+    m_private->attributeChanged(name, value);
+}
+
+bool MediaPlayer::readyForPlayback() const
+{
+    return m_private->readyForPlayback();
+}
+#endif
+
 // Client callbacks.
 void MediaPlayer::networkStateChanged()
 {
@@ -981,7 +1033,12 @@ void MediaPlayer::readyStateChanged()
 
 void MediaPlayer::volumeChanged(double newVolume)
 {
+#if PLATFORM(IOS)
+    UNUSED_PARAM(newVolume);
+    m_volume = m_private->volume();
+#else
     m_volume = newVolume;
+#endif
     if (m_mediaPlayerClient)
         m_mediaPlayerClient->mediaPlayerVolumeChanged(this);
 }
@@ -1270,6 +1327,14 @@ double MediaPlayer::totalFrameDelay()
     return m_private->totalFrameDelay();
 }
 #endif
+
+bool MediaPlayer::shouldWaitForResponseToAuthenticationChallenge(const AuthenticationChallenge& challenge)
+{
+    if (!m_mediaPlayerClient)
+        return false;
+
+    return m_mediaPlayerClient->mediaPlayerShouldWaitForResponseToAuthenticationChallenge(challenge);
+}
 
 void MediaPlayerFactorySupport::callRegisterMediaEngine(MediaEngineRegister registerMediaEngine)
 {

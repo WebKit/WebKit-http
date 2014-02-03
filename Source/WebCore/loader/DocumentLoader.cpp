@@ -357,13 +357,12 @@ void DocumentLoader::commitIfReady()
 
 bool DocumentLoader::isLoading() const
 {
-    // FIXME: This should always be enabled, but it seems to cause
+    // if (document() && document()->hasActiveParser())
+    //     return true;
+    // FIXME: The above code should be enabled, but it seems to cause
     // http/tests/security/feed-urls-from-remote.html to timeout on Mac WK1
     // see http://webkit.org/b/110554 and http://webkit.org/b/110401
-#if ENABLE(THREADED_HTML_PARSER)
-    if (document() && document()->hasActiveParser())
-        return true;
-#endif
+
     return isLoadingMainResource() || !m_subresourceLoaders.isEmpty() || !m_plugInStreamLoaders.isEmpty();
 }
 
@@ -606,7 +605,8 @@ void DocumentLoader::responseReceived(CachedResource* resource, const ResourceRe
         return;
 
     DEFINE_STATIC_LOCAL(AtomicString, xFrameOptionHeader, ("x-frame-options", AtomicString::ConstructFromLiteral));
-    HTTPHeaderMap::const_iterator it = response.httpHeaderFields().find(xFrameOptionHeader);
+
+    auto it = response.httpHeaderFields().find(xFrameOptionHeader);
     if (it != response.httpHeaderFields().end()) {
         String content = it->value;
         ASSERT(m_mainResource);
@@ -920,11 +920,8 @@ void DocumentLoader::checkLoadComplete()
 {
     if (!m_frame || isLoading())
         return;
-#if !ENABLE(THREADED_HTML_PARSER)
-    // This ASSERT triggers with the threaded HTML parser.
-    // See https://bugs.webkit.org/show_bug.cgi?id=110937
+
     ASSERT(this == frameLoader()->activeDocumentLoader());
-#endif
     m_frame->document()->domWindow()->finishedLoading();
 }
 
@@ -1140,7 +1137,7 @@ void DocumentLoader::deliverSubstituteResourcesAfterDelay()
         m_substituteResourceDeliveryTimer.startOneShot(0);
 }
 
-void DocumentLoader::substituteResourceDeliveryTimerFired(Timer<DocumentLoader>*)
+void DocumentLoader::substituteResourceDeliveryTimerFired(Timer<DocumentLoader>&)
 {
     if (m_pendingSubstituteResources.isEmpty())
         return;

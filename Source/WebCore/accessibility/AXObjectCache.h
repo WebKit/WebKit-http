@@ -102,10 +102,10 @@ public:
     void remove(Widget*);
     void remove(AXID);
 
-    void detachWrapper(AccessibilityObject*);
+    void detachWrapper(AccessibilityObject*, AccessibilityDetachmentType);
     void attachWrapper(AccessibilityObject*);
     void childrenChanged(Node*);
-    void childrenChanged(RenderObject*);
+    void childrenChanged(RenderObject*, RenderObject* newChild = nullptr);
     void childrenChanged(AccessibilityObject*);
     void checkedStateChanged(Node*);
     void selectedChildrenChanged(Node*);
@@ -127,7 +127,9 @@ public:
     void recomputeIsIgnored(RenderObject* renderer);
 
 #if HAVE(ACCESSIBILITY)
-    static void enableAccessibility() { gAccessibilityEnabled = true; }
+    static void enableAccessibility();
+    static void disableAccessibility();
+
     // Enhanced user interface accessibility can be toggled by the assistive technology.
     static void setEnhancedUserInterfaceAccessibility(bool flag) { gAccessibilityEnhancedUserInterfaceEnabled = flag; }
     
@@ -135,6 +137,7 @@ public:
     static bool accessibilityEnhancedUserInterfaceEnabled() { return gAccessibilityEnhancedUserInterfaceEnabled; }
 #else
     static void enableAccessibility() { }
+    static void disableAccessibility() { }
     static void setEnhancedUserInterfaceAccessibility(bool) { }
     static bool accessibilityEnabled() { return false; }
     static bool accessibilityEnhancedUserInterfaceEnabled() { return false; }
@@ -170,6 +173,7 @@ public:
         AXMenuListItemSelected,
         AXMenuListValueChanged,
         AXMenuClosed,
+        AXMenuOpened,
         AXRowCountChanged,
         AXRowCollapsed,
         AXRowExpanded,
@@ -199,7 +203,6 @@ public:
 
     void frameLoadingEventNotification(Frame*, AXLoadingEvent);
 
-    bool nodeHasRole(Node*, const AtomicString& role);
     void clearTextMarkerNodesInUse(Document*);
 
     void startCachingComputedObjectAttributesUntilTreeMutates();
@@ -211,6 +214,8 @@ public:
     
 protected:
     void postPlatformNotification(AccessibilityObject*, AXNotification);
+    void platformHandleFocusedUIElementChanged(Node* oldFocusedNode, Node* newFocusedNode);
+
     void nodeTextChangePlatformNotification(AccessibilityObject*, AXTextChange, unsigned offset, const String&);
     void frameLoadingEventPlatformNotification(AccessibilityObject*, AXLoadingEvent);
     void textChanged(AccessibilityObject*);
@@ -235,8 +240,10 @@ private:
     HashSet<AXID> m_idsInUse;
     
     Timer<AXObjectCache> m_notificationPostTimer;
-    Vector<pair<RefPtr<AccessibilityObject>, AXNotification>> m_notificationsToPost;
-    void notificationPostTimerFired(Timer<AXObjectCache>*);
+    Vector<std::pair<RefPtr<AccessibilityObject>, AXNotification>> m_notificationsToPost;
+    void notificationPostTimerFired(Timer<AXObjectCache>&);
+    void handleMenuOpened(Node*);
+    void handleMenuItemSelected(Node*);
     
     static AccessibilityObject* focusedImageMapUIElement(HTMLAreaElement*);
     
@@ -260,7 +267,7 @@ bool isNodeAriaVisible(Node*);
 #if !HAVE(ACCESSIBILITY)
 inline AccessibilityObjectInclusion AXComputedObjectAttributeCache::getIgnored(AXID) const { return DefaultBehavior; }
 inline void AXComputedObjectAttributeCache::setIgnored(AXID, AccessibilityObjectInclusion) { }
-inline AXObjectCache::AXObjectCache(Document& document) : m_document(document), m_notificationPostTimer(this, 0) { }
+inline AXObjectCache::AXObjectCache(Document& document) : m_document(document), m_notificationPostTimer(this, (Timer<AXObjectCache>::TimerFiredFunction) nullptr) { }
 inline AXObjectCache::~AXObjectCache() { }
 inline AccessibilityObject* AXObjectCache::focusedUIElementForPage(const Page*) { return 0; }
 inline AccessibilityObject* AXObjectCache::get(RenderObject*) { return 0; }
@@ -280,14 +287,14 @@ inline bool isNodeAriaVisible(Node*) { return true; }
 inline const Element* AXObjectCache::rootAXEditableElement(const Node*) { return 0; }
 inline void AXObjectCache::attachWrapper(AccessibilityObject*) { }
 inline void AXObjectCache::checkedStateChanged(Node*) { }
-inline void AXObjectCache::childrenChanged(RenderObject*) { }
+inline void AXObjectCache::childrenChanged(RenderObject*, RenderObject*) { }
 inline void AXObjectCache::childrenChanged(Node*) { }
 inline void AXObjectCache::childrenChanged(AccessibilityObject*) { }
 inline void AXObjectCache::textChanged(RenderObject*) { }
 inline void AXObjectCache::textChanged(Node*) { }
 inline void AXObjectCache::textChanged(AccessibilityObject*) { }
 inline void AXObjectCache::updateCacheAfterNodeIsAttached(Node*) { }
-inline void AXObjectCache::detachWrapper(AccessibilityObject*) { }
+inline void AXObjectCache::detachWrapper(AccessibilityObject*, AccessibilityDetachmentType) { }
 inline void AXObjectCache::frameLoadingEventNotification(Frame*, AXLoadingEvent) { }
 inline void AXObjectCache::frameLoadingEventPlatformNotification(AccessibilityObject*, AXLoadingEvent) { }
 inline void AXObjectCache::handleActiveDescendantChanged(Node*) { }

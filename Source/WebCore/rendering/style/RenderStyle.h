@@ -352,6 +352,9 @@ public:
     static PassRef<RenderStyle> createAnonymousStyleWithDisplay(const RenderStyle* parentStyle, EDisplay);
     static PassRef<RenderStyle> clone(const RenderStyle*);
 
+    // Create a RenderStyle for generated content by inheriting from a pseudo style.
+    static PassRef<RenderStyle> createStyleInheritingFromPseudoStyle(const RenderStyle& pseudoStyle);
+
     enum IsAtShadowBoundary {
         AtShadowBoundary,
         NotAtShadowBoundary,
@@ -500,23 +503,23 @@ public:
     const LengthSize& borderBottomRightRadius() const { return surround->border.bottomRight(); }
     bool hasBorderRadius() const { return surround->border.hasBorderRadius(); }
 
-    unsigned borderLeftWidth() const { return surround->border.borderLeftWidth(); }
+    float borderLeftWidth() const { return surround->border.borderLeftWidth(); }
     EBorderStyle borderLeftStyle() const { return surround->border.left().style(); }
     bool borderLeftIsTransparent() const { return surround->border.left().isTransparent(); }
-    unsigned borderRightWidth() const { return surround->border.borderRightWidth(); }
+    float borderRightWidth() const { return surround->border.borderRightWidth(); }
     EBorderStyle borderRightStyle() const { return surround->border.right().style(); }
     bool borderRightIsTransparent() const { return surround->border.right().isTransparent(); }
-    unsigned borderTopWidth() const { return surround->border.borderTopWidth(); }
+    float borderTopWidth() const { return surround->border.borderTopWidth(); }
     EBorderStyle borderTopStyle() const { return surround->border.top().style(); }
     bool borderTopIsTransparent() const { return surround->border.top().isTransparent(); }
-    unsigned borderBottomWidth() const { return surround->border.borderBottomWidth(); }
+    float borderBottomWidth() const { return surround->border.borderBottomWidth(); }
     EBorderStyle borderBottomStyle() const { return surround->border.bottom().style(); }
     bool borderBottomIsTransparent() const { return surround->border.bottom().isTransparent(); }
     
-    unsigned short borderBeforeWidth() const;
-    unsigned short borderAfterWidth() const;
-    unsigned short borderStartWidth() const;
-    unsigned short borderEndWidth() const;
+    float borderBeforeWidth() const;
+    float borderAfterWidth() const;
+    float borderStartWidth() const;
+    float borderEndWidth() const;
 
     unsigned short outlineSize() const { return std::max(0, outlineWidth() + outlineOffset()); }
     unsigned short outlineWidth() const
@@ -573,15 +576,12 @@ public:
     TextAlignLast textAlignLast() const { return static_cast<TextAlignLast>(rareInheritedData->m_textAlignLast); }
     TextJustify textJustify() const { return static_cast<TextJustify>(rareInheritedData->m_textJustify); }
 #endif // CSS3_TEXT
-#if ENABLE(CSS3_TEXT_DECORATION)
     TextDecorationStyle textDecorationStyle() const { return static_cast<TextDecorationStyle>(rareNonInheritedData->m_textDecorationStyle); }
     TextDecorationSkip textDecorationSkip() const { return static_cast<TextDecorationSkip>(rareInheritedData->m_textDecorationSkip); }
     TextUnderlinePosition textUnderlinePosition() const { return static_cast<TextUnderlinePosition>(rareInheritedData->m_textUnderlinePosition); }
-#else
-    TextDecorationStyle textDecorationStyle() const { return TextDecorationStyleSolid; }
-#endif
-    int wordSpacing() const;
-    int letterSpacing() const;
+
+    const Length& wordSpacing() const;
+    float letterSpacing() const;
 
     float zoom() const { return visual->m_zoom; }
     float effectiveZoom() const { return rareInheritedData->m_effectiveZoom; }
@@ -925,10 +925,8 @@ public:
     const LengthSize& pageSize() const { return rareNonInheritedData->m_pageSize; }
     PageSizeType pageSizeType() const { return static_cast<PageSizeType>(rareNonInheritedData->m_pageSizeType); }
     
-#if USE(ACCELERATED_COMPOSITING)
     // When set, this ensures that styles compare as different. Used during accelerated animations.
     bool isRunningAcceleratedAnimation() const { return rareNonInheritedData->m_runningAcceleratedAnimation; }
-#endif
 
     LineBoxContain lineBoxContain() const { return rareInheritedData->m_lineBoxContain; }
     const LineClampValue& lineClamp() const { return rareNonInheritedData->lineClamp; }
@@ -937,6 +935,7 @@ public:
 #endif
 #if PLATFORM(IOS)
     bool touchCalloutEnabled() const { return rareInheritedData->touchCalloutEnabled; }
+    Color compositionFillColor() const { return rareInheritedData->compositionFillColor; }
 #endif
 #if ENABLE(ACCELERATED_OVERFLOW_SCROLLING)
     bool useTouchOverflowScrolling() const { return rareInheritedData->useTouchOverflowScrolling; }
@@ -1044,11 +1043,6 @@ public:
     }
 #endif
 
-#if ENABLE(DRAGGABLE_REGION)
-    DraggableRegionMode getDraggableRegionMode() const { return rareNonInheritedData->m_draggableRegionMode; }
-    void setDraggableRegionMode(DraggableRegionMode v) { SET_VAR(rareNonInheritedData, m_draggableRegionMode, v); }
-#endif
-
     void resetBorder() { resetBorderImage(); resetBorderTop(); resetBorderRight(); resetBorderBottom(); resetBorderLeft(); resetBorderRadius(); }
     void resetBorderTop() { SET_VAR(surround, border.m_top, BorderValue()); }
     void resetBorderRight() { SET_VAR(surround, border.m_right, BorderValue()); }
@@ -1097,16 +1091,16 @@ public:
     RoundedRect getRoundedInnerBorderFor(const LayoutRect& borderRect,
         int topWidth, int bottomWidth, int leftWidth, int rightWidth, bool includeLogicalLeftEdge, bool includeLogicalRightEdge) const;
 
-    void setBorderLeftWidth(unsigned v) { SET_VAR(surround, border.m_left.m_width, v); }
+    void setBorderLeftWidth(float v) { SET_VAR(surround, border.m_left.m_width, v); }
     void setBorderLeftStyle(EBorderStyle v) { SET_VAR(surround, border.m_left.m_style, v); }
     void setBorderLeftColor(const Color& v) { SET_BORDERVALUE_COLOR(surround, border.m_left, v); }
-    void setBorderRightWidth(unsigned v) { SET_VAR(surround, border.m_right.m_width, v); }
+    void setBorderRightWidth(float v) { SET_VAR(surround, border.m_right.m_width, v); }
     void setBorderRightStyle(EBorderStyle v) { SET_VAR(surround, border.m_right.m_style, v); }
     void setBorderRightColor(const Color& v) { SET_BORDERVALUE_COLOR(surround, border.m_right, v); }
-    void setBorderTopWidth(unsigned v) { SET_VAR(surround, border.m_top.m_width, v); }
+    void setBorderTopWidth(float v) { SET_VAR(surround, border.m_top.m_width, v); }
     void setBorderTopStyle(EBorderStyle v) { SET_VAR(surround, border.m_top.m_style, v); }
     void setBorderTopColor(const Color& v) { SET_BORDERVALUE_COLOR(surround, border.m_top, v); }
-    void setBorderBottomWidth(unsigned v) { SET_VAR(surround, border.m_bottom.m_width, v); }
+    void setBorderBottomWidth(float v) { SET_VAR(surround, border.m_bottom.m_width, v); }
     void setBorderBottomStyle(EBorderStyle v) { SET_VAR(surround, border.m_bottom.m_style, v); }
     void setBorderBottomColor(const Color& v) { SET_BORDERVALUE_COLOR(surround, border.m_bottom, v); }
 
@@ -1161,11 +1155,9 @@ public:
     void setTextAlignLast(TextAlignLast v) { SET_VAR(rareInheritedData, m_textAlignLast, v); }
     void setTextJustify(TextJustify v) { SET_VAR(rareInheritedData, m_textJustify, v); }
 #endif // CSS3_TEXT
-#if ENABLE(CSS3_TEXT_DECORATION)
     void setTextDecorationStyle(TextDecorationStyle v) { SET_VAR(rareNonInheritedData, m_textDecorationStyle, v); }
     void setTextDecorationSkip(TextDecorationSkip skip) { SET_VAR(rareInheritedData, m_textDecorationSkip, skip); }
     void setTextUnderlinePosition(TextUnderlinePosition v) { SET_VAR(rareInheritedData, m_textUnderlinePosition, v); }
-#endif
     void setDirection(TextDirection v) { inherited_flags._direction = v; }
 #if ENABLE(IOS_TEXT_AUTOSIZING)
     void setSpecifiedLineHeight(Length v);
@@ -1189,8 +1181,8 @@ public:
 
     void setWhiteSpace(EWhiteSpace v) { inherited_flags._white_space = v; }
 
-    void setWordSpacing(int);
-    void setLetterSpacing(int);
+    void setWordSpacing(Length);
+    void setLetterSpacing(float);
 
     void clearBackgroundLayers() { m_background.access()->m_background = FillLayer(BackgroundFillLayer); }
     void inheritBackgroundLayers(const FillLayer& parent) { m_background.access()->m_background = parent; }
@@ -1383,9 +1375,7 @@ public:
     void setTransformOriginZ(float f) { SET_VAR(rareNonInheritedData.access()->m_transform, m_z, f); }
     void setSpeak(ESpeak s) { SET_VAR(rareInheritedData, speak, s); }
     void setTextCombine(TextCombine v) { SET_VAR(rareNonInheritedData, m_textCombine, v); }
-#if ENABLE(CSS3_TEXT_DECORATION)
     void setTextDecorationColor(const Color& c) { SET_VAR(rareNonInheritedData, m_textDecorationColor, c); }
-#endif // CSS3_TEXT_DECORATION
     void setTextEmphasisColor(const Color& c) { SET_VAR(rareInheritedData, textEmphasisColor, c); }
     void setTextEmphasisFill(TextEmphasisFill fill) { SET_VAR(rareInheritedData, textEmphasisFill, fill); }
     void setTextEmphasisMark(TextEmphasisMark mark) { SET_VAR(rareInheritedData, textEmphasisMark, mark); }
@@ -1443,9 +1433,7 @@ public:
     void setPageSizeType(PageSizeType t) { SET_VAR(rareNonInheritedData, m_pageSizeType, t); }
     void resetPageSizeType() { SET_VAR(rareNonInheritedData, m_pageSizeType, PAGE_SIZE_AUTO); }
 
-#if USE(ACCELERATED_COMPOSITING)
     void setIsRunningAcceleratedAnimation(bool b = true) { SET_VAR(rareNonInheritedData, m_runningAcceleratedAnimation, b); }
-#endif
 
     void setLineBoxContain(LineBoxContain c) { SET_VAR(rareInheritedData, m_lineBoxContain, c); }
     void setLineClamp(LineClampValue c) { SET_VAR(rareNonInheritedData, lineClamp, c); }
@@ -1454,6 +1442,7 @@ public:
 #endif
 #if PLATFORM(IOS)
     void setTouchCalloutEnabled(bool v) { SET_VAR(rareInheritedData, touchCalloutEnabled, v); }
+    void setCompositionFillColor(const Color &c) { SET_VAR(rareInheritedData, compositionFillColor, c); }
 #endif
 #if ENABLE(ACCELERATED_OVERFLOW_SCROLLING)
     void setUseTouchOverflowScrolling(bool v) { SET_VAR(rareInheritedData, useTouchOverflowScrolling, v); }
@@ -1660,10 +1649,11 @@ public:
 #endif
     static Color initialColor() { return Color::black; }
     static StyleImage* initialListStyleImage() { return 0; }
-    static unsigned initialBorderWidth() { return 3; }
+    static float initialBorderWidth() { return 3; }
     static unsigned short initialColumnRuleWidth() { return 3; }
     static unsigned short initialOutlineWidth() { return 3; }
-    static int initialLetterWordSpacing() { return 0; }
+    static float initialLetterSpacing() { return 0; }
+    static Length initialWordSpacing() { return Length(Fixed); }
     static Length initialSize() { return Length(); }
     static Length initialMinSize() { return Length(Fixed); }
     static Length initialMaxSize() { return Length(Undefined); }
@@ -1688,11 +1678,9 @@ public:
     static TextAlignLast initialTextAlignLast() { return TextAlignLastAuto; }
     static TextJustify initialTextJustify() { return TextJustifyAuto; }
 #endif // CSS3_TEXT
-#if ENABLE(CSS3_TEXT_DECORATION)
     static TextDecorationStyle initialTextDecorationStyle() { return TextDecorationStyleSolid; }
-    static TextDecorationSkip initialTextDecorationSkip() { return TextDecorationSkipNone; }
+    static TextDecorationSkip initialTextDecorationSkip() { return TextDecorationSkipInk; }
     static TextUnderlinePosition initialTextUnderlinePosition() { return TextUnderlinePositionAuto; }
-#endif
     static float initialZoom() { return 1.0f; }
     static int initialOutlineOffset() { return 0; }
     static float initialOpacity() { return 1.0f; }
@@ -1766,7 +1754,7 @@ public:
     static TextEmphasisFill initialTextEmphasisFill() { return TextEmphasisFillFilled; }
     static TextEmphasisMark initialTextEmphasisMark() { return TextEmphasisMarkNone; }
     static const AtomicString& initialTextEmphasisCustomMark() { return nullAtom; }
-    static TextEmphasisPosition initialTextEmphasisPosition() { return TextEmphasisPositionOver; }
+    static TextEmphasisPosition initialTextEmphasisPosition() { return TextEmphasisPositionOver | TextEmphasisPositionRight; }
     static RubyPosition initialRubyPosition() { return RubyPositionBefore; }
     static LineBoxContain initialLineBoxContain() { return LineBoxContainBlock | LineBoxContainInline | LineBoxContainReplaced; }
     static ImageOrientationEnum initialImageOrientation() { return OriginTopLeft; }
@@ -1820,6 +1808,7 @@ public:
 #endif
 #if PLATFORM(IOS)
     static bool initialTouchCalloutEnabled() { return true; }
+    static Color initialCompositionFillColor() { return Color::compositionFill; }
 #endif
 #if ENABLE(TOUCH_EVENTS)
     static Color initialTapHighlightColor();
@@ -1854,9 +1843,7 @@ private:
     void setVisitedLinkBorderTopColor(const Color& v) { SET_VAR(rareNonInheritedData, m_visitedLinkBorderTopColor, v); }
     void setVisitedLinkOutlineColor(const Color& v) { SET_VAR(rareNonInheritedData, m_visitedLinkOutlineColor, v); }
     void setVisitedLinkColumnRuleColor(const Color& v) { SET_VAR(rareNonInheritedData.access()->m_multiCol, m_visitedLinkColumnRuleColor, v); }
-#if ENABLE(CSS3_TEXT_DECORATION)
     void setVisitedLinkTextDecorationColor(const Color& v) { SET_VAR(rareNonInheritedData, m_visitedLinkTextDecorationColor, v); }
-#endif // CSS3_TEXT_DECORATION
     void setVisitedLinkTextEmphasisColor(const Color& v) { SET_VAR(rareInheritedData, visitedLinkTextEmphasisColor, v); }
     void setVisitedLinkTextFillColor(const Color& v) { SET_VAR(rareInheritedData, visitedLinkTextFillColor, v); }
     void setVisitedLinkTextStrokeColor(const Color& v) { SET_VAR(rareInheritedData, visitedLinkTextStrokeColor, v); }
@@ -1907,10 +1894,8 @@ private:
     Color visitedLinkBorderTopColor() const { return rareNonInheritedData->m_visitedLinkBorderTopColor; }
     Color visitedLinkOutlineColor() const { return rareNonInheritedData->m_visitedLinkOutlineColor; }
     Color visitedLinkColumnRuleColor() const { return rareNonInheritedData->m_multiCol->m_visitedLinkColumnRuleColor; }
-#if ENABLE(CSS3_TEXT_DECORATION)
     Color textDecorationColor() const { return rareNonInheritedData->m_textDecorationColor; }
     Color visitedLinkTextDecorationColor() const { return rareNonInheritedData->m_visitedLinkTextDecorationColor; }
-#endif
     Color visitedLinkTextEmphasisColor() const { return rareInheritedData->visitedLinkTextEmphasisColor; }
     Color visitedLinkTextFillColor() const { return rareInheritedData->visitedLinkTextFillColor; }
     Color visitedLinkTextStrokeColor() const { return rareInheritedData->visitedLinkTextStrokeColor; }

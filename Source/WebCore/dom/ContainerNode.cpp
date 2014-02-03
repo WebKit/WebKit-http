@@ -63,8 +63,8 @@ namespace WebCore {
 static void dispatchChildInsertionEvents(Node&);
 static void dispatchChildRemovalEvents(Node&);
 
-typedef pair<RefPtr<Node>, unsigned> CallbackParameters;
-typedef pair<NodeCallback, CallbackParameters> CallbackInfo;
+typedef std::pair<RefPtr<Node>, unsigned> CallbackParameters;
+typedef std::pair<NodeCallback, CallbackParameters> CallbackInfo;
 typedef Vector<CallbackInfo> NodeCallbackQueue;
 
 static NodeCallbackQueue* s_postAttachCallbackQueue;
@@ -80,7 +80,7 @@ unsigned NoEventDispatchAssertion::s_count = 0;
 
 static void collectChildrenAndRemoveFromOldParent(Node& node, NodeVector& nodes, ExceptionCode& ec)
 {
-    if (node.nodeType() != Node::DOCUMENT_FRAGMENT_NODE) {
+    if (!node.isDocumentFragment()) {
         nodes.append(node);
         if (ContainerNode* oldParent = node.parentNode())
             oldParent->removeChild(&node, ec);
@@ -104,16 +104,11 @@ void ContainerNode::removeDetachedChildren()
     removeDetachedChildrenInContainer<Node, ContainerNode>(*this);
 }
 
-static inline void attachChild(Node& child)
+static inline void destroyRenderTreeIfNeeded(Node& child)
 {
-    if (child.isElementNode())
-        Style::attachRenderTree(toElement(child));
-    else if (child.isTextNode())
-        Style::attachTextRenderer(toText(child));
-}
-
-static inline void detachChild(Node& child)
-{
+    // FIXME: Get rid of the named flow test.
+    if (!child.renderer() && !child.inNamedFlow())
+        return;
     if (child.isElementNode())
         Style::detachRenderTree(toElement(child));
     else if (child.isTextNode())
@@ -140,8 +135,8 @@ void ContainerNode::takeAllChildrenFrom(ContainerNode* oldParent)
 
     for (unsigned i = 0; i < children.size(); ++i) {
         Node& child = children[i].get();
-        if (child.attached())
-            detachChild(child);
+
+        destroyRenderTreeIfNeeded(child);
 
         // FIXME: We need a no mutation event version of adoptNode.
         RefPtr<Node> adoptedChild = document().adoptNode(&children[i].get(), ASSERT_NO_EXCEPTION);
@@ -150,8 +145,6 @@ void ContainerNode::takeAllChildrenFrom(ContainerNode* oldParent)
         // (if the document changed or oldParent was in a shadow tree, AND *this is in a shadow tree).
         // Can we do better?
         treeScope().adoptIfNeeded(adoptedChild.get());
-        if (attached() && !adoptedChild->attached())
-            attachChild(*adoptedChild.get());
     }
 }
 
@@ -258,7 +251,7 @@ static inline bool checkReplaceChild(ContainerNode* newParent, Node* newChild, N
     return true;
 }
 
-bool ContainerNode::insertBefore(PassRefPtr<Node> newChild, Node* refChild, ExceptionCode& ec, AttachBehavior attachBehavior)
+bool ContainerNode::insertBefore(PassRefPtr<Node> newChild, Node* refChild, ExceptionCode& ec)
 {
     // Check that this node is not "floating".
     // If it is, it can be deleted as a side effect of sending mutation events.
@@ -270,7 +263,7 @@ bool ContainerNode::insertBefore(PassRefPtr<Node> newChild, Node* refChild, Exce
 
     // insertBefore(node, 0) is equivalent to appendChild(node)
     if (!refChild)
-        return appendChild(newChild, ec, attachBehavior);
+        return appendChild(newChild, ec);
 
     // Make sure adding the new child is OK.
     if (!checkAddChild(this, newChild.get(), ec))
@@ -317,7 +310,7 @@ bool ContainerNode::insertBefore(PassRefPtr<Node> newChild, Node* refChild, Exce
 
         insertBeforeCommon(next.get(), child);
 
-        updateTreeAfterInsertion(child, attachBehavior);
+        updateTreeAfterInsertion(child);
     }
 
     dispatchSubtreeModifiedEvent();
@@ -396,9 +389,11 @@ void ContainerNode::parserInsertBefore(PassRefPtr<Node> newChild, Node* nextChil
     notifyChildInserted(*newChild, ChildChangeSourceParser);
 
     ChildNodeInsertionNotifier(*this).notify(*newChild);
+
+    newChild->setNeedsStyleRecalc(ReconstructRenderTree);
 }
 
-bool ContainerNode::replaceChild(PassRefPtr<Node> newChild, Node* oldChild, ExceptionCode& ec, AttachBehavior attachBehavior)
+bool ContainerNode::replaceChild(PassRefPtr<Node> newChild, Node* oldChild, ExceptionCode& ec)
 {
     // Check that this node is not "floating".
     // If it is, it can be deleted as a side effect of sending mutation events.
@@ -478,23 +473,27 @@ bool ContainerNode::replaceChild(PassRefPtr<Node> newChild, Node* oldChild, Exce
                 appendChildToContainer(&child, *this);
         }
 
-        updateTreeAfterInsertion(child, attachBehavior);
+        updateTreeAfterInsertion(child);
     }
 
     dispatchSubtreeModifiedEvent();
     return true;
 }
 
-static void willRemoveChild(Node& child)
+void ContainerNode::willRemoveChild(Node& child)
 {
     ASSERT(child.parentNode());
 
     ChildListMutationScope(*child.parentNode()).willRemoveChild(child);
     child.notifyMutationObserversNodeWillDetach();
     dispatchChildRemovalEvents(child);
+
+    if (child.parentNode() != this)
+        return;
+
     child.document().nodeWillBeRemoved(&child); // e.g. mutation event listener can create a new range.
     if (child.isContainerNode())
-        ChildFrameDisconnector(toContainerNode(child)).disconnect();
+        disconnectSubframesIfNeeded(toContainerNode(child), RootAndDescendants);
 }
 
 static void willRemoveChildren(ContainerNode& container)
@@ -514,12 +513,12 @@ static void willRemoveChildren(ContainerNode& container)
 
     container.document().nodeChildrenWillBeRemoved(container);
 
-    ChildFrameDisconnector(container).disconnect(ChildFrameDisconnector::DescendantsOnly);
+    disconnectSubframesIfNeeded(container, DescendantsOnly);
 }
 
 void ContainerNode::disconnectDescendantFrames()
 {
-    ChildFrameDisconnector(*this).disconnect();
+    disconnectSubframesIfNeeded(*this, RootAndDescendants);
 }
 
 bool ContainerNode::removeChild(Node* oldChild, ExceptionCode& ec)
@@ -591,9 +590,7 @@ void ContainerNode::removeBetween(Node* previousChild, Node* nextChild, Node& ol
 
     ASSERT(oldChild.parentNode() == this);
 
-    // Remove from rendering tree
-    if (oldChild.attached())
-        detachChild(oldChild);
+    destroyRenderTreeIfNeeded(oldChild);
 
     if (nextChild)
         nextChild->setPreviousSibling(previousChild);
@@ -674,7 +671,7 @@ void ContainerNode::removeChildren()
     dispatchSubtreeModifiedEvent();
 }
 
-bool ContainerNode::appendChild(PassRefPtr<Node> newChild, ExceptionCode& ec, AttachBehavior attachBehavior)
+bool ContainerNode::appendChild(PassRefPtr<Node> newChild, ExceptionCode& ec)
 {
     Ref<ContainerNode> protect(*this);
 
@@ -724,7 +721,7 @@ bool ContainerNode::appendChild(PassRefPtr<Node> newChild, ExceptionCode& ec, At
             appendChildToContainer(&child, *this);
         }
 
-        updateTreeAfterInsertion(child, attachBehavior);
+        updateTreeAfterInsertion(child);
     }
 
     dispatchSubtreeModifiedEvent();
@@ -757,13 +754,15 @@ void ContainerNode::parserAppendChild(PassRefPtr<Node> newChild)
     notifyChildInserted(*newChild, ChildChangeSourceParser);
 
     ChildNodeInsertionNotifier(*this).notify(*newChild);
+
+    newChild->setNeedsStyleRecalc(ReconstructRenderTree);
 }
 
-void ContainerNode::suspendPostAttachCallbacks()
+void ContainerNode::suspendPostAttachCallbacks(Document& document)
 {
     if (!s_attachDepth) {
         ASSERT(!s_shouldReEnableMemoryCacheCallsAfterAttach);
-        if (Page* page = document().page()) {
+        if (Page* page = document.page()) {
             // FIXME: How can this call be specific to one Page, while the
             // s_attachDepth is a global? Doesn't make sense.
             if (page->areMemoryCacheClientCallsEnabled()) {
@@ -776,16 +775,16 @@ void ContainerNode::suspendPostAttachCallbacks()
     ++s_attachDepth;
 }
 
-void ContainerNode::resumePostAttachCallbacks()
+void ContainerNode::resumePostAttachCallbacks(Document& document)
 {
     if (s_attachDepth == 1) {
-        Ref<ContainerNode> protect(*this);
+        Ref<Document> protect(document);
 
         if (s_postAttachCallbackQueue)
             dispatchPostAttachCallbacks();
         if (s_shouldReEnableMemoryCacheCallsAfterAttach) {
             s_shouldReEnableMemoryCacheCallsAfterAttach = false;
-            if (Page* page = document().page())
+            if (Page* page = document.page())
                 page->setMemoryCacheClientCallsEnabled(true);
         }
         platformStrategies()->loaderStrategy()->resourceLoadScheduler()->resumePendingRequests();
@@ -793,12 +792,12 @@ void ContainerNode::resumePostAttachCallbacks()
     --s_attachDepth;
 }
 
-void ContainerNode::queuePostAttachCallback(NodeCallback callback, Node* node, unsigned callbackData)
+void ContainerNode::queuePostAttachCallback(NodeCallback callback, Node& node, unsigned callbackData)
 {
     if (!s_postAttachCallbackQueue)
         s_postAttachCallbackQueue = new NodeCallbackQueue;
     
-    s_postAttachCallbackQueue->append(CallbackInfo(callback, CallbackParameters(node, callbackData)));
+    s_postAttachCallbackQueue->append(CallbackInfo(callback, CallbackParameters(&node, callbackData)));
 }
 
 bool ContainerNode::postAttachCallbacksAreSuspended()
@@ -815,22 +814,9 @@ void ContainerNode::dispatchPostAttachCallbacks()
         NodeCallback callback = info.first;
         CallbackParameters params = info.second;
 
-        callback(params.first.get(), params.second);
+        callback(*params.first, params.second);
     }
     s_postAttachCallbackQueue->clear();
-}
-
-static void needsStyleRecalcCallback(Node* node, unsigned data)
-{
-    node->setNeedsStyleRecalc(static_cast<StyleChangeType>(data));
-}
-
-void ContainerNode::scheduleSetNeedsStyleRecalc(StyleChangeType changeType)
-{
-    if (postAttachCallbacksAreSuspended())
-        queuePostAttachCallback(needsStyleRecalcCallback, this, static_cast<unsigned>(changeType));
-    else
-        setNeedsStyleRecalc(changeType);
 }
 
 void ContainerNode::childrenChanged(const ChildChange& change)
@@ -1065,7 +1051,7 @@ static void dispatchChildRemovalEvents(Node& child)
     }
 }
 
-void ContainerNode::updateTreeAfterInsertion(Node& child, AttachBehavior attachBehavior)
+void ContainerNode::updateTreeAfterInsertion(Node& child)
 {
     ASSERT(child.refCount());
 
@@ -1075,19 +1061,7 @@ void ContainerNode::updateTreeAfterInsertion(Node& child, AttachBehavior attachB
 
     ChildNodeInsertionNotifier(*this).notify(child);
 
-    // FIXME: Attachment should be the first operation in this function, but some code
-    // (for example, HTMLFormControlElement's autofocus support) requires this ordering.
-    if (attached() && !child.attached() && child.parentNode() == this) {
-        if (attachBehavior == AttachLazily) {
-            if (child.isElementNode())
-                toElement(child).lazyAttach();
-            else if (child.isTextNode()) {
-                child.setAttached(true);
-                child.setNeedsStyleRecalc();
-            }
-        } else
-            attachChild(child);
-    }
+    child.setNeedsStyleRecalc(ReconstructRenderTree);
 
     dispatchChildInsertionEvents(child);
 }

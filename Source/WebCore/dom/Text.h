@@ -24,17 +24,19 @@
 #define Text_h
 
 #include "CharacterData.h"
-#include "StyleResolveTree.h"
+#include "RenderPtr.h"
 
 namespace WebCore {
 
 class RenderText;
+class ScriptExecutionContext;
 
 class Text : public CharacterData {
 public:
     static const unsigned defaultLengthLimit = 1 << 16;
 
     static PassRefPtr<Text> create(Document&, const String&);
+    static PassRefPtr<Text> create(ScriptExecutionContext&, const String&);
     static PassRefPtr<Text> createWithLengthLimit(Document&, const String&, unsigned positionInString, unsigned lengthLimit = defaultLengthLimit);
     static PassRefPtr<Text> createEditingText(Document&, const String&);
 
@@ -47,9 +49,9 @@ public:
     String wholeText() const;
     PassRefPtr<Text> replaceWholeText(const String&, ExceptionCode&);
     
-    RenderText* createTextRenderer(RenderStyle&);
+    RenderPtr<RenderText> createTextRenderer(const RenderStyle&);
     
-    virtual bool canContainRangeEndPoint() const OVERRIDE FINAL { return true; }
+    virtual bool canContainRangeEndPoint() const override final { return true; }
 
     RenderText* renderer() const;
 
@@ -60,15 +62,15 @@ protected:
     }
 
 private:
-    virtual String nodeName() const OVERRIDE;
-    virtual NodeType nodeType() const OVERRIDE;
-    virtual PassRefPtr<Node> cloneNode(bool deep) OVERRIDE;
-    virtual bool childTypeAllowed(NodeType) const OVERRIDE;
+    virtual String nodeName() const override;
+    virtual NodeType nodeType() const override;
+    virtual PassRefPtr<Node> cloneNode(bool deep) override;
+    virtual bool childTypeAllowed(NodeType) const override;
 
     virtual PassRefPtr<Text> virtualCreate(const String&);
 
 #ifndef NDEBUG
-    virtual void formatForDebugger(char* buffer, unsigned length) const OVERRIDE;
+    virtual void formatForDebugger(char* buffer, unsigned length) const override;
 #endif
 };
 

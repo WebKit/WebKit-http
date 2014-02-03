@@ -203,16 +203,6 @@ void FrameLoaderClientWinCE::dispatchDidClearWindowObjectInWorld(DOMWrapperWorld
     notImplemented();
 }
 
-void FrameLoaderClientWinCE::documentElementAvailable()
-{
-    notImplemented();
-}
-
-void FrameLoaderClientWinCE::didPerformFirstNavigation() const
-{
-    notImplemented();
-}
-
 void FrameLoaderClientWinCE::registerForIconNotification(bool)
 {
     notImplemented();
@@ -251,11 +241,6 @@ void FrameLoaderClientWinCE::restoreViewState()
 bool FrameLoaderClientWinCE::shouldGoToHistoryItem(HistoryItem* item) const
 {
     return item;
-}
-
-bool FrameLoaderClientWinCE::shouldStopLoadingForHistoryItem(HistoryItem* item) const
-{
-    return true;
 }
 
 void FrameLoaderClientWinCE::didDisplayInsecureContent()

@@ -110,7 +110,7 @@ ALWAYS_INLINE static void JIT_OPERATION operationPutByValInternal(ExecState* exe
     }
 
     if (isName(property)) {
-        PutPropertySlot slot(strict);
+        PutPropertySlot slot(baseValue, strict);
         if (direct) {
             RELEASE_ASSERT(baseValue.isObject());
             asObject(baseValue)->putDirect(*vm, jsCast<NameInstance*>(property.asCell())->privateName(), value, slot);
@@ -122,7 +122,7 @@ ALWAYS_INLINE static void JIT_OPERATION operationPutByValInternal(ExecState* exe
     // Don't put to an object if toString throws an exception.
     Identifier ident(exec, property.toString(exec)->value(exec));
     if (!vm->exception()) {
-        PutPropertySlot slot(strict);
+        PutPropertySlot slot(baseValue, strict);
         if (direct) {
             RELEASE_ASSERT(baseValue.isObject());
             asObject(baseValue)->putDirect(*vm, jsCast<NameInstance*>(property.asCell())->privateName(), value, slot);
@@ -399,7 +399,7 @@ void JIT_OPERATION operationPutByValBeyondArrayBoundsStrict(ExecState* exec, JSO
         return;
     }
     
-    PutPropertySlot slot(true);
+    PutPropertySlot slot(array, true);
     array->methodTable()->put(
         array, exec, Identifier::from(exec, index), JSValue::decode(encodedValue), slot);
 }
@@ -414,7 +414,7 @@ void JIT_OPERATION operationPutByValBeyondArrayBoundsNonStrict(ExecState* exec, 
         return;
     }
     
-    PutPropertySlot slot(false);
+    PutPropertySlot slot(array, false);
     array->methodTable()->put(
         array, exec, Identifier::from(exec, index), JSValue::decode(encodedValue), slot);
 }
@@ -431,7 +431,7 @@ void JIT_OPERATION operationPutDoubleByValBeyondArrayBoundsStrict(ExecState* exe
         return;
     }
     
-    PutPropertySlot slot(true);
+    PutPropertySlot slot(array, true);
     array->methodTable()->put(
         array, exec, Identifier::from(exec, index), jsValue, slot);
 }
@@ -448,7 +448,7 @@ void JIT_OPERATION operationPutDoubleByValBeyondArrayBoundsNonStrict(ExecState* 
         return;
     }
     
-    PutPropertySlot slot(false);
+    PutPropertySlot slot(array, false);
     array->methodTable()->put(
         array, exec, Identifier::from(exec, index), jsValue, slot);
 }
@@ -494,7 +494,7 @@ void JIT_OPERATION operationPutByValDirectBeyondArrayBoundsStrict(ExecState* exe
         return;
     }
     
-    PutPropertySlot slot(true);
+    PutPropertySlot slot(array, true);
     array->putDirect(exec->vm(), Identifier::from(exec, index), JSValue::decode(encodedValue), slot);
 }
 
@@ -508,7 +508,7 @@ void JIT_OPERATION operationPutByValDirectBeyondArrayBoundsNonStrict(ExecState* 
         return;
     }
     
-    PutPropertySlot slot(false);
+    PutPropertySlot slot(array, false);
     array->putDirect(exec->vm(), Identifier::from(exec, index), JSValue::decode(encodedValue), slot);
 }
 
@@ -850,8 +850,9 @@ char* JIT_OPERATION operationReallocateButterflyToHavePropertyStorageWithInitial
     NativeCallFrameTracer tracer(&vm, exec);
 
     ASSERT(!object->structure()->outOfLineCapacity());
+    DeferGC deferGC(vm.heap);
     Butterfly* result = object->growOutOfLineStorage(vm, 0, initialOutOfLineCapacity);
-    object->setButterflyWithoutChangingStructure(result);
+    object->setButterflyWithoutChangingStructure(vm, result);
     return reinterpret_cast<char*>(result);
 }
 
@@ -860,8 +861,9 @@ char* JIT_OPERATION operationReallocateButterflyToGrowPropertyStorage(ExecState*
     VM& vm = exec->vm();
     NativeCallFrameTracer tracer(&vm, exec);
 
+    DeferGC deferGC(vm.heap);
     Butterfly* result = object->growOutOfLineStorage(vm, object->structure()->outOfLineCapacity(), newSize);
-    object->setButterflyWithoutChangingStructure(result);
+    object->setButterflyWithoutChangingStructure(vm, result);
     return reinterpret_cast<char*>(result);
 }
 
@@ -1138,7 +1140,7 @@ void JIT_OPERATION triggerTierUpNow(ExecState* exec)
     }
     
     Worklist::State worklistState;
-    if (Worklist* worklist = vm->worklist.get()) {
+    if (Worklist* worklist = existingGlobalFTLWorklistOrNull()) {
         worklistState = worklist->completeAllReadyPlansForVM(
             *vm, CompilationKey(codeBlock->baselineVersion(), FTLMode));
     } else
@@ -1167,8 +1169,8 @@ void JIT_OPERATION triggerTierUpNow(ExecState* exec)
 
     // We need to compile the code.
     compile(
-        *vm, codeBlock->newReplacement().get(), FTLMode, UINT_MAX, Operands<JSValue>(),
-        ToFTLDeferredCompilationCallback::create(codeBlock), vm->ensureWorklist());
+        *vm, codeBlock->newReplacement().get(), codeBlock, FTLMode, UINT_MAX,
+        Operands<JSValue>(), ToFTLDeferredCompilationCallback::create(codeBlock));
 }
 
 char* JIT_OPERATION triggerOSREntryNow(
@@ -1200,8 +1202,10 @@ char* JIT_OPERATION triggerOSREntryNow(
         return 0;
     }
     
+    Worklist* worklist = existingGlobalFTLWorklistOrNull();
+
     Worklist::State worklistState;
-    if (Worklist* worklist = vm->worklist.get()) {
+    if (worklist) {
         worklistState = worklist->completeAllReadyPlansForVM(
             *vm, CompilationKey(codeBlock->baselineVersion(), FTLForOSREntryMode));
     } else
@@ -1250,10 +1254,9 @@ char* JIT_OPERATION triggerOSREntryNow(
     Operands<JSValue> mustHandleValues;
     jitCode->reconstruct(
         exec, codeBlock, CodeOrigin(bytecodeIndex), streamIndex, mustHandleValues);
-    CompilationResult forEntryResult = DFG::compile(
-        *vm, codeBlock->newReplacement().get(), FTLForOSREntryMode, bytecodeIndex,
-        mustHandleValues, ToFTLForOSREntryDeferredCompilationCallback::create(codeBlock),
-        vm->ensureWorklist());
+    CompilationResult forEntryResult = compile(
+        *vm, codeBlock->newReplacement().get(), codeBlock, FTLForOSREntryMode, bytecodeIndex,
+        mustHandleValues, ToFTLForOSREntryDeferredCompilationCallback::create(codeBlock));
     
     // But we also want to trigger a replacement compile. Of course, we don't want to
     // trigger it if we don't need to. Note that this is kind of weird because we might
@@ -1266,11 +1269,11 @@ char* JIT_OPERATION triggerOSREntryNow(
     CompilationKey keyForReplacement(codeBlock->baselineVersion(), FTLMode);
     if (codeBlock->codeType() != GlobalCode
         && !codeBlock->hasOptimizedReplacement()
-        && (!vm->worklist.get()
-            || vm->worklist->compilationState(keyForReplacement) == Worklist::NotKnown)) {
+        && (!worklist
+            || worklist->compilationState(keyForReplacement) == Worklist::NotKnown)) {
         compile(
-            *vm, codeBlock->newReplacement().get(), FTLMode, UINT_MAX, Operands<JSValue>(),
-            ToFTLDeferredCompilationCallback::create(codeBlock), vm->ensureWorklist());
+            *vm, codeBlock->newReplacement().get(), codeBlock, FTLMode, UINT_MAX,
+            Operands<JSValue>(), ToFTLDeferredCompilationCallback::create(codeBlock));
     }
     
     if (forEntryResult != CompilationSuccessful)

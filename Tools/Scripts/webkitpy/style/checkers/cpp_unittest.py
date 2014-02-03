@@ -1587,10 +1587,10 @@ class CppStyleTest(CppStyleTestBase):
             'int foo() const {',
             'Place brace on its own line for function definitions.  [whitespace/braces] [4]')
         self.assert_multi_line_lint(
-            'int foo() const OVERRIDE {',
+            'int foo() const override {',
             'Place brace on its own line for function definitions.  [whitespace/braces] [4]')
         self.assert_multi_line_lint(
-            'int foo() OVERRIDE {',
+            'int foo() override {',
             'Place brace on its own line for function definitions.  [whitespace/braces] [4]')
         self.assert_multi_line_lint(
             'int foo() const\n'
@@ -1598,7 +1598,7 @@ class CppStyleTest(CppStyleTestBase):
             '}\n',
             '')
         self.assert_multi_line_lint(
-            'int foo() OVERRIDE\n'
+            'int foo() override\n'
             '{\n'
             '}\n',
             '')
@@ -2087,6 +2087,7 @@ class CppStyleTest(CppStyleTestBase):
                          'Declaration has space between type name and & in int &b  [whitespace/declaration] [3]',
                          'foo.cpp')
         self.assert_lint('return &b;', '', 'foo.cpp')
+        self.assert_lint('*foo = bar;', '', 'foo.cpp')
 
     def test_indent(self):
         self.assert_lint('static int noindent;', '')
@@ -2622,7 +2623,7 @@ class OrderOfIncludesTest(CppStyleTestBase):
         self.assert_language_rules_check('foo.h',
                                          '#include <assert.h>\n'
                                          '#include "bar.h"\n',
-                                         'Alphabetical sorting problem.  [build/include_order] [4]')
+                                         'Bad include order. Mixing system and custom headers.  [build/include_order] [4]')
 
         self.assert_language_rules_check('foo.h',
                                          '#include "bar.h"\n'
@@ -2774,7 +2775,7 @@ class OrderOfIncludesTest(CppStyleTestBase):
                                          '#include <other/foo.h>\n'
                                          '\n'
                                          '#include "a.h"\n',
-                                         'Alphabetical sorting problem.  [build/include_order] [4]')
+                                         'Bad include order. Mixing system and custom headers.  [build/include_order] [4]')
 
         # ...except that it starts with public/.
         self.assert_language_rules_check('foo.cpp',
@@ -2790,7 +2791,7 @@ class OrderOfIncludesTest(CppStyleTestBase):
                                          '#include <public/foop.h>\n'
                                          '\n'
                                          '#include "a.h"\n',
-                                         'Alphabetical sorting problem.  [build/include_order] [4]')
+                                         'Bad include order. Mixing system and custom headers.  [build/include_order] [4]')
 
     def test_check_wtf_includes(self):
         self.assert_language_rules_check('foo.cpp',

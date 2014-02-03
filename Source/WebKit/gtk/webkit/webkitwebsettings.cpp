@@ -35,7 +35,7 @@
 #include "webkitglobalsprivate.h"
 #include "webkitversion.h"
 #include "webkitwebsettingsprivate.h"
-#include <wtf/gobject/GOwnPtr.h>
+#include <wtf/gobject/GUniquePtr.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/StringConcatenate.h>
 #include <glib/gi18n-lib.h>
@@ -121,7 +121,6 @@ enum {
     PROP_ENABLE_SMOOTH_SCROLLING,
     PROP_MEDIA_PLAYBACK_REQUIRES_USER_GESTURE,
     PROP_MEDIA_PLAYBACK_ALLOWS_INLINE,
-    PROP_ENABLE_CSS_SHADERS,
     PROP_ENABLE_RUNNING_OF_INSECURE_CONTENT,
     PROP_ENABLE_DISPLAY_OF_INSECURE_CONTENT,
     PROP_ENABLE_MEDIA_SOURCE
@@ -484,7 +483,7 @@ static void webkit_web_settings_class_init(WebKitWebSettingsClass* klass)
     *
     * Since: 1.5.2
     */
-    GOwnPtr<gchar> localStoragePath(g_build_filename(g_get_user_data_dir(), "webkit", "databases", NULL));
+    GUniquePtr<gchar> localStoragePath(g_build_filename(g_get_user_data_dir(), "webkit", "databases", NULL));
     g_object_class_install_property(gobject_class,
                                     PROP_HTML5_LOCAL_STORAGE_DATABASE_PATH,
                                     g_param_spec_string("html5-local-storage-database-path",
@@ -826,14 +825,25 @@ static void webkit_web_settings_class_init(WebKitWebSettingsClass* klass)
                                                          FALSE,
                                                          flags));
 
-    /* Undocumented for now */
+    /**
+    * WebKitWebSettings:enable-fullscreen:
+    *
+    *
+    * Whether to enable the Javascript Fullscreen API. The API
+    * allows any HTML element to request fullscreen display. See also
+    * the current draft of the spec:
+    * http://www.w3.org/TR/fullscreen/
+    *
+    * Since: 2.4
+    */
     g_object_class_install_property(gobject_class,
-                                    PROP_ENABLE_FULLSCREEN,
-                                    g_param_spec_boolean("enable-fullscreen",
-                                                         _("Enable Fullscreen"),
-                                                         _("Whether the Mozilla style API should be enabled."),
-                                                         FALSE,
-                                                         flags));
+        PROP_ENABLE_FULLSCREEN,
+        g_param_spec_boolean("enable-fullscreen",
+            _("Enable Fullscreen"),
+            _("Whether to enable the Javascript Fullscreen API"),
+            TRUE,
+            flags));
+
     /**
     * WebKitWebSettings:enable-webgl:
     *
@@ -973,25 +983,6 @@ static void webkit_web_settings_class_init(WebKitWebSettingsClass* klass)
                                                          _("Media playback allows inline"),
                                                          _("Whether media playback allows inline"),
                                                          TRUE,
-                                                         flags));
-
-    /**
-    * WebKitWebSettings:enable-css-shaders:
-    *
-    * Enable or disable support for css shaders (css custom filters).
-    * Accelerated compositing needs to be enabled at compile time, but needs
-    * not be enabled at runtime.
-    *
-    * See also https://dvcs.w3.org/hg/FXTF/raw-file/tip/custom/index.html
-    *
-    * Since: 2.0
-    */
-    g_object_class_install_property(gobject_class,
-                                    PROP_ENABLE_CSS_SHADERS,
-                                    g_param_spec_boolean("enable-css-shaders",
-                                                         _("Enable CSS shaders"),
-                                                         _("Whether to enable css shaders"),
-                                                         FALSE,
                                                          flags));
 
     /**
@@ -1229,9 +1220,6 @@ static void webkit_web_settings_set_property(GObject* object, guint prop_id, con
     case PROP_ENABLE_SMOOTH_SCROLLING:
         priv->enableSmoothScrolling = g_value_get_boolean(value);
         break;
-    case PROP_ENABLE_CSS_SHADERS:
-        priv->enableCSSShaders = g_value_get_boolean(value);
-        break;
     case PROP_MEDIA_PLAYBACK_REQUIRES_USER_GESTURE:
         priv->mediaPlaybackRequiresUserGesture = g_value_get_boolean(value);
         break;
@@ -1421,9 +1409,6 @@ static void webkit_web_settings_get_property(GObject* object, guint prop_id, GVa
     case PROP_ENABLE_SMOOTH_SCROLLING:
         g_value_set_boolean(value, priv->enableSmoothScrolling);
         break;
-    case PROP_ENABLE_CSS_SHADERS:
-        g_value_set_boolean(value, priv->enableCSSShaders);
-        break;
     case PROP_MEDIA_PLAYBACK_REQUIRES_USER_GESTURE:
         g_value_set_boolean(value, priv->mediaPlaybackRequiresUserGesture);
         break;
@@ -1469,9 +1454,9 @@ WebKitWebSettings* webkit_web_settings_new()
 WebKitWebSettings* webkit_web_settings_copy(WebKitWebSettings* original)
 {
     unsigned numberOfProperties = 0;
-    GOwnPtr<GParamSpec*> properties(g_object_class_list_properties(
+    GUniquePtr<GParamSpec*> properties(g_object_class_list_properties(
         G_OBJECT_CLASS(WEBKIT_WEB_SETTINGS_GET_CLASS(original)), &numberOfProperties));
-    GOwnPtr<GParameter> parameters(g_new0(GParameter, numberOfProperties));
+    GUniquePtr<GParameter> parameters(g_new0(GParameter, numberOfProperties));
 
     for (size_t i = 0; i < numberOfProperties; i++) {
         GParamSpec* property = properties.get()[i];

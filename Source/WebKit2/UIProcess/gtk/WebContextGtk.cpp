@@ -33,11 +33,11 @@
 #include "WebInspectorServer.h"
 #include "WebProcessCreationParameters.h"
 #include "WebProcessMessages.h"
-#include "WebSoupRequestManagerProxy.h"
+#include "WebSoupCustomProtocolRequestManager.h"
 #include <WebCore/FileSystem.h>
 #include <WebCore/NotImplemented.h>
 #include <WebCore/SchemeRegistry.h>
-#include <wtf/gobject/GOwnPtr.h>
+#include <wtf/gobject/GUniquePtr.h>
 #include <wtf/text/CString.h>
 
 #if ENABLE(NETWORK_PROCESS)
@@ -85,7 +85,7 @@ static void initInspectorServer()
 
 WTF::String WebContext::platformDefaultApplicationCacheDirectory() const
 {
-    GOwnPtr<gchar> cacheDirectory(g_build_filename(g_get_user_cache_dir(), "webkitgtk", "applications", NULL));
+    GUniquePtr<gchar> cacheDirectory(g_build_filename(g_get_user_cache_dir(), "webkitgtk", "applications", nullptr));
     return WebCore::filenameToString(cacheDirectory.get());
 }
 
@@ -98,13 +98,16 @@ void WebContext::platformInitializeWebProcess(WebProcessCreationParameters& para
         parameters.urlSchemesRegisteredAsLocal.append("resource");
     }
 
-    parameters.urlSchemesRegistered = supplement<WebSoupRequestManagerProxy>()->registeredURISchemes();
-    supplement<WebCookieManagerProxy>()->getCookiePersistentStorage(parameters.cookiePersistentStoragePath, parameters.cookiePersistentStorageType);
-    parameters.cookieAcceptPolicy = m_initialHTTPCookieAcceptPolicy;
+    if (!usesNetworkProcess()) {
+        parameters.urlSchemesRegisteredForCustomProtocols = supplement<WebSoupCustomProtocolRequestManager>()->registeredSchemesForCustomProtocols();
+
+        supplement<WebCookieManagerProxy>()->getCookiePersistentStorage(parameters.cookiePersistentStoragePath, parameters.cookiePersistentStorageType);
+        parameters.cookieAcceptPolicy = m_initialHTTPCookieAcceptPolicy;
+
+        parameters.ignoreTLSErrors = m_ignoreTLSErrors;
+    }
+
     parameters.shouldTrackVisitedLinks = true;
-#if !ENABLE(NETWORK_PROCESS)
-    parameters.ignoreTLSErrors = m_ignoreTLSErrors;
-#endif
 }
 
 void WebContext::platformInvalidateContext()
@@ -113,25 +116,25 @@ void WebContext::platformInvalidateContext()
 
 String WebContext::platformDefaultDatabaseDirectory() const
 {
-    GOwnPtr<gchar> databaseDirectory(g_build_filename(g_get_user_data_dir(), "webkitgtk", "databases", NULL));
+    GUniquePtr<gchar> databaseDirectory(g_build_filename(g_get_user_data_dir(), "webkitgtk", "databases", nullptr));
     return WebCore::filenameToString(databaseDirectory.get());
 }
 
 String WebContext::platformDefaultIconDatabasePath() const
 {
-    GOwnPtr<gchar> databaseDirectory(g_build_filename(g_get_user_data_dir(), "webkitgtk", "icondatabase", NULL));
+    GUniquePtr<gchar> databaseDirectory(g_build_filename(g_get_user_cache_dir(), "webkitgtk", "icondatabase", nullptr));
     return WebCore::filenameToString(databaseDirectory.get());
 }
 
 String WebContext::platformDefaultLocalStorageDirectory() const
 {
-    GOwnPtr<gchar> storageDirectory(g_build_filename(g_get_user_data_dir(), "webkitgtk", "localstorage", NULL));
+    GUniquePtr<gchar> storageDirectory(g_build_filename(g_get_user_data_dir(), "webkitgtk", "localstorage", nullptr));
     return WebCore::filenameToString(storageDirectory.get());
 }
 
 String WebContext::platformDefaultDiskCacheDirectory() const
 {
-    GOwnPtr<char> diskCacheDirectory(g_build_filename(g_get_user_cache_dir(), g_get_prgname(), NULL));
+    GUniquePtr<char> diskCacheDirectory(g_build_filename(g_get_user_cache_dir(), g_get_prgname(), nullptr));
     return WebCore::filenameToString(diskCacheDirectory.get());
 }
 

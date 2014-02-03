@@ -26,7 +26,9 @@
 #import "config.h"
 #import "RemoteLayerTreeDrawingAreaProxy.h"
 
+#import "RemoteLayerTreeDrawingAreaProxyMessages.h"
 #import "DrawingAreaMessages.h"
+#import "RemoteScrollingCoordinatorProxy.h"
 #import "WebPageProxy.h"
 #import "WebProcessProxy.h"
 
@@ -37,10 +39,12 @@ RemoteLayerTreeDrawingAreaProxy::RemoteLayerTreeDrawingAreaProxy(WebPageProxy* w
     , m_remoteLayerTreeHost(webPageProxy)
     , m_isWaitingForDidUpdateGeometry(false)
 {
+    m_webPageProxy->process().addMessageReceiver(Messages::RemoteLayerTreeDrawingAreaProxy::messageReceiverName(), m_webPageProxy->pageID(), *this);
 }
 
 RemoteLayerTreeDrawingAreaProxy::~RemoteLayerTreeDrawingAreaProxy()
 {
+    m_webPageProxy->process().removeMessageReceiver(Messages::RemoteLayerTreeDrawingAreaProxy::messageReceiverName(), m_webPageProxy->pageID());
 }
 
 void RemoteLayerTreeDrawingAreaProxy::sizeDidChange()
@@ -77,6 +81,14 @@ void RemoteLayerTreeDrawingAreaProxy::sendUpdateGeometry()
     m_lastSentLayerPosition = m_layerPosition;
     m_webPageProxy->process().send(Messages::DrawingArea::UpdateGeometry(m_size, m_layerPosition), m_webPageProxy->pageID());
     m_isWaitingForDidUpdateGeometry = true;
+}
+
+void RemoteLayerTreeDrawingAreaProxy::commitLayerTree(const RemoteLayerTreeTransaction& layerTreeTransaction, const RemoteScrollingCoordinatorTransaction& scrollingTreeTransaction)
+{
+    m_remoteLayerTreeHost.updateLayerTree(layerTreeTransaction);
+#if ENABLE(ASYNC_SCROLLING)
+    m_webPageProxy->scrollingCoordinatorProxy()->updateScrollingTree(scrollingTreeTransaction);
+#endif
 }
 
 } // namespace WebKit

@@ -8,6 +8,11 @@
             "description": "Breakpoint identifier."
         },
         {
+            "id": "BreakpointActionIdentifier",
+            "type": "integer",
+            "description": "Breakpoint action identifier."
+        },
+        {
             "id": "ScriptId",
             "type": "string",
             "description": "Unique script identifier."
@@ -31,7 +36,7 @@
             "id": "BreakpointAction",
             "type": "object",
             "properties": [
-                { "name": "type", "type": "string", "enum": ["log", "evaluate", "sound"], "description": "Different kinds of breakpoint actions." },
+                { "name": "type", "type": "string", "enum": ["log", "evaluate", "sound", "probe"], "description": "Different kinds of breakpoint actions." },
                 { "name": "data", "type": "string", "optional": true, "description": "Data associated with this breakpoint type (e.g. for type \"eval\" this is the JavaScript string to evalulate)." }
             ],
             "description": "Action to perform when a breakpoint is triggered."
@@ -78,23 +83,21 @@
                 { "name": "object", "$ref": "Runtime.RemoteObject", "description": "Object representing the scope. For <code>global</code> and <code>with</code> scopes it represents the actual object; for the rest of the scopes, it is artificial transient object enumerating scope variables as its properties." }
             ],
             "description": "Scope description."
+        },
+        {
+            "id": "ProbeSample",
+            "description": "A sample collected by evaluating a probe breakpoint action.",
+            "type": "object",
+            "properties": [
+                { "name": "probeId", "$ref": "BreakpointActionIdentifier", "description": "Identifier of the probe breakpoint action that created the sample." },
+                { "name": "sampleId", "type": "integer", "description": "Unique identifier for this sample." },
+                { "name": "batchId", "type": "integer", "description": "A batch identifier which is the same for all samples taken at the same breakpoint hit." },
+                { "name": "timestamp", "type": "number", "description": "Timestamp of when the sample was taken." },
+                { "name": "payload", "$ref": "Runtime.RemoteObject", "description": "Contents of the sample." }
+            ]
         }
     ],
     "commands": [
-        {
-            "name": "causesRecompilation",
-            "returns": [
-                { "name": "result", "type": "boolean", "description": "True if enabling debugger causes scripts recompilation." }
-            ],
-            "description": "Tells whether enabling debugger causes scripts recompilation."
-        },
-        {
-            "name": "supportsSeparateScriptCompilationAndExecution",
-            "returns": [
-                { "name": "result", "type": "boolean", "description": "True if debugger supports separate script compilation and execution." }
-            ],
-            "description": "Tells whether debugger supports separate script compilation and execution."
-        },
         {
             "name": "enable",
             "description": "Enables debugger for the given page. Clients should not assume that the debugging has been enabled until the result for this command is received."
@@ -121,7 +124,8 @@
             ],
             "returns": [
                 { "name": "breakpointId", "$ref": "BreakpointId", "description": "Id of the created breakpoint for further reference." },
-                { "name": "locations", "type": "array", "items": { "$ref": "Location"}, "description": "List of the locations this breakpoint resolved into upon addition." }
+                { "name": "locations", "type": "array", "items": { "$ref": "Location"}, "description": "List of the locations this breakpoint resolved into upon addition." },
+                { "name": "breakpointActionIdentifiers", "type": "array", "items": { "$ref": "BreakpointActionIdentifier" }, "description": "Assigned breakpoint action identifiers." }
             ],
             "description": "Sets JavaScript breakpoint at given location specified either by URL or URL regex. Once this command is issued, all existing parsed scripts will have breakpoints resolved and returned in <code>locations</code> property. Further matching script parsing will result in subsequent <code>breakpointResolved</code> events issued. This logical breakpoint will survive page reloads."
         },
@@ -133,7 +137,8 @@
             ],
             "returns": [
                 { "name": "breakpointId", "$ref": "BreakpointId", "description": "Id of the created breakpoint for further reference." },
-                { "name": "actualLocation", "$ref": "Location", "description": "Location this breakpoint resolved into." }
+                { "name": "actualLocation", "$ref": "Location", "description": "Location this breakpoint resolved into." },
+                { "name": "breakpointActionIdentifiers", "type": "array", "items": { "$ref": "BreakpointActionIdentifier" }, "description": "Assigned breakpoint action identifiers." }
             ],
             "description": "Sets JavaScript breakpoint at a given location."
         },
@@ -185,26 +190,6 @@
             "description": "Searches for given string in script content."
         },
         {
-            "name": "canSetScriptSource",
-            "returns": [
-                { "name": "result", "type": "boolean", "description": "True if <code>setScriptSource</code> is supported." }
-            ],
-            "description": "Tells whether <code>setScriptSource</code> is supported."
-        },
-        {
-            "name": "setScriptSource",
-            "parameters": [
-                { "name": "scriptId", "$ref": "ScriptId", "description": "Id of the script to edit." },
-                { "name": "scriptSource", "type": "string", "description": "New content of the script." },
-                { "name": "preview", "type": "boolean", "optional": true, "description": " If true the change will not actually be applied. Preview mode may be used to get result description without actually modifying the code." }
-            ],
-            "returns": [
-                { "name": "callFrames", "type": "array", "optional": true, "items": { "$ref": "CallFrame"}, "description": "New stack trace in case editing has happened while VM was stopped." },
-                { "name": "result", "type": "object", "optional": true, "description": "VM-specific description of the changes applied." }
-            ],
-            "description": "Edits JavaScript source live."
-        },
-        {
             "name": "getScriptSource",
             "parameters": [
                 { "name": "scriptId", "$ref": "ScriptId", "description": "Id of the script to get source for." }
@@ -247,32 +232,6 @@
                 { "name": "wasThrown", "type": "boolean", "optional": true, "description": "True if the result was thrown during the evaluation." }
             ],
             "description": "Evaluates expression on a given call frame."
-        },
-        {
-            "name": "compileScript",
-            "parameters": [
-                { "name": "expression", "type": "string", "description": "Expression to compile." },
-                { "name": "sourceURL", "type": "string", "description": "Source url to be set for the script." }
-            ],
-            "returns": [
-                { "name": "scriptId", "$ref": "ScriptId", "optional": true, "description": "Id of the script." },
-                { "name": "syntaxErrorMessage", "type": "string", "optional": true, "description": "Syntax error message if compilation failed." }
-            ],
-            "description": "Compiles expression."
-        },
-        {
-            "name": "runScript",
-            "parameters": [
-                { "name": "scriptId", "$ref": "ScriptId", "description": "Id of the script to run." },
-                { "name": "contextId", "$ref": "Runtime.ExecutionContextId", "optional": true, "description": "Specifies in which isolated context to perform script run. Each content script lives in an isolated context and this parameter may be used to specify one of those contexts. If the parameter is omitted or 0 the evaluation will be performed in the context of the inspected page." },
-                { "name": "objectGroup", "type": "string", "optional": true, "description": "Symbolic group name that can be used to release multiple objects." },
-                { "name": "doNotPauseOnExceptionsAndMuteConsole", "type": "boolean", "optional": true, "description": "Specifies whether script run should stop on exceptions and mute console. Overrides setPauseOnException state." }
-            ],
-            "returns": [
-                { "name": "result", "$ref": "Runtime.RemoteObject", "description": "Run result." },
-                { "name": "wasThrown", "type": "boolean", "optional": true, "description": "True if the result was thrown during the script run." }
-            ],
-            "description": "Runs script with given id in a given context."
         },
         {
             "name": "setOverlayMessage",
@@ -333,6 +292,20 @@
         {
             "name": "resumed",
             "description": "Fired when the virtual machine resumed execution."
+        },
+        {
+            "name": "didSampleProbe",
+            "description": "Fires when a new proben sample is collected.",
+            "parameters": [
+                { "name": "sample", "$ref": "ProbeSample", "description": "A collected probe sample." }
+            ]
+        },
+        {
+            "name": "playBreakpointActionSound",
+            "description": "Fired when a \"sound\" breakpoint action is triggered on a breakpoint.",
+            "parameters": [
+                { "name": "breakpointActionId", "$ref": "BreakpointActionIdentifier", "description": "Breakpoint action identifier." }
+            ]
         }
     ]
 }

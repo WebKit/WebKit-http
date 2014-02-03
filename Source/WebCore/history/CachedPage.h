@@ -36,7 +36,7 @@ class Page;
 
 class CachedPage {
 public:
-    static PassOwnPtr<CachedPage> create(Page&);
+    explicit CachedPage(Page&);
     ~CachedPage();
 
     void restore(Page&);
@@ -56,17 +56,14 @@ public:
     void markForCaptionPreferencesChanged() { m_needsCaptionPreferencesChanged = true; }
 #endif
 
-#if USE(ACCELERATED_COMPOSITING)
     void markForDeviceScaleChanged() { m_needsDeviceScaleChanged = true; }
-#endif
 
 private:
-    explicit CachedPage(Page&);
     void destroy();
 
     double m_timeStamp;
     double m_expirationTime;
-    OwnPtr<CachedFrame> m_cachedMainFrame;
+    std::unique_ptr<CachedFrame> m_cachedMainFrame;
     bool m_needStyleRecalcForVisitedLinks;
     bool m_needsFullStyleRecalc;
     bool m_needsCaptionPreferencesChanged;

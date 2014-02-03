@@ -49,14 +49,11 @@ typedef String ErrorString;
 
 class InspectorLayerTreeAgent : public InspectorAgentBase, public Inspector::InspectorLayerTreeBackendDispatcherHandler {
 public:
-    static PassOwnPtr<InspectorLayerTreeAgent> create(InstrumentingAgents* instrumentingAgents)
-    {
-        return adoptPtr(new InspectorLayerTreeAgent(instrumentingAgents));
-    }
+    explicit InspectorLayerTreeAgent(InstrumentingAgents*);
     ~InspectorLayerTreeAgent();
 
-    virtual void didCreateFrontendAndBackend(Inspector::InspectorFrontendChannel*, Inspector::InspectorBackendDispatcher*) OVERRIDE;
-    virtual void willDestroyFrontendAndBackend() OVERRIDE;
+    virtual void didCreateFrontendAndBackend(Inspector::InspectorFrontendChannel*, Inspector::InspectorBackendDispatcher*) override;
+    virtual void willDestroyFrontendAndBackend(Inspector::InspectorDisconnectReason) override;
     void reset();
 
     void layerTreeDidChange();
@@ -64,14 +61,12 @@ public:
     void pseudoElementDestroyed(PseudoElement*);
 
     // Called from the front-end.
-    virtual void enable(ErrorString*);
-    virtual void disable(ErrorString*);
-    virtual void layersForNode(ErrorString*, int nodeId, RefPtr<Inspector::TypeBuilder::Array<Inspector::TypeBuilder::LayerTree::Layer>>&);
-    virtual void reasonsForCompositingLayer(ErrorString*, const String& layerId, RefPtr<Inspector::TypeBuilder::LayerTree::CompositingReasons>&);
+    virtual void enable(ErrorString*) override;
+    virtual void disable(ErrorString*) override;
+    virtual void layersForNode(ErrorString*, int nodeId, RefPtr<Inspector::TypeBuilder::Array<Inspector::TypeBuilder::LayerTree::Layer>>&) override;
+    virtual void reasonsForCompositingLayer(ErrorString*, const String& layerId, RefPtr<Inspector::TypeBuilder::LayerTree::CompositingReasons>&) override;
 
 private:
-    InspectorLayerTreeAgent(InstrumentingAgents*);
-
     // RenderLayer-related methods.
     String bind(const RenderLayer*);
     void unbind(const RenderLayer*);

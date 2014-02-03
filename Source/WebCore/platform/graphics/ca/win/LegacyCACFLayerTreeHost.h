@@ -26,8 +26,6 @@
 #ifndef LegacyCACFLayerTreeHost_h
 #define LegacyCACFLayerTreeHost_h
 
-#if USE(ACCELERATED_COMPOSITING)
-
 #include "CACFLayerTreeHost.h"
 
 namespace WebCore {
@@ -65,7 +63,7 @@ private:
     virtual void render(const Vector<CGRect>& dirtyRects = Vector<CGRect>());
 
 #if USE(AVFOUNDATION)
-    virtual GraphicsDeviceAdapter* graphicsDeviceAdapter() const OVERRIDE { return 0; }
+    virtual GraphicsDeviceAdapter* graphicsDeviceAdapter() const override { return 0; }
 #endif
 
     Timer<LegacyCACFLayerTreeHost> m_renderTimer;
@@ -80,7 +78,5 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // USE(ACCELERATED_COMPOSITING)
 
 #endif // LegacyCACFLayerTreeHost_h

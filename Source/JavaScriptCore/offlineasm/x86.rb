@@ -100,7 +100,7 @@ class RegisterID
             when :quad
                 isX64 ? "%rax" : raise
             else
-                raise
+                raise "Invalid kind #{kind} for name #{name}"
             end
         when "t1", "a1", "r1"
             case kind
@@ -150,15 +150,15 @@ class RegisterID
         when "t4"
             case kind
             when :byte
-                "%sil"
+                "%dil"
             when :half
-                "%si"
+                "%di"
             when :int
-                "%esi"
+                "%edi"
             when :ptr
-                isX64 ? "%rsi" : "%esi"
+                isX64 ? "%rdi" : "%edi"
             when :quad
-                isX64 ? "%rsi" : raise
+                isX64 ? "%rdi" : raise
             else
                 raise
             end
@@ -206,15 +206,15 @@ class RegisterID
         when "t5"
             case kind
             when :byte
-                "%dil"
+                "%sil"
             when :half
-                "%di"
+                "%si"
             when :int
-                "%edi"
+                "%esi"
             when :ptr
-                isX64 ? "%rdi" : "%edi"
+                isX64 ? "%rsi" : "%esi"
             when :quad
-                isX64 ? "%rdi" : raise
+                isX64 ? "%rsi" : raise
             end
         when "t6"
             raise "Cannot use #{name} in 32-bit X86 at #{codeOriginString}" unless isX64
@@ -978,9 +978,15 @@ class Instruction
                 $asm.puts "xorpd #{operands[0].x86Operand(:double)}, #{operands[0].x86Operand(:double)}"
             end
         when "pop"
-            $asm.puts "pop #{operands[0].x86Operand(:ptr)}"
+            operands.each {
+                | op |
+                $asm.puts "pop #{op.x86Operand(:ptr)}"
+            }
         when "push"
-            $asm.puts "push #{operands[0].x86Operand(:ptr)}"
+            operands.each {
+                | op |
+                $asm.puts "push #{op.x86Operand(:ptr)}"
+            }
         when "popCalleeSaves"
             if isX64
                 $asm.puts "pop %rbx"

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013, 2014 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -63,7 +63,10 @@ public:
             BasicBlock* block = m_graph.block(blockIndex);
             if (!block)
                 continue;
+            unsigned nodeIndex = 0;
             Node* firstNode = block->at(0);
+            while (firstNode->isSemanticallySkippable())
+                firstNode = block->at(++nodeIndex);
             if (firstNode->op() == LoopHint
                 && firstNode->codeOrigin == CodeOrigin(bytecodeIndex)) {
                 target = block;
@@ -83,6 +86,21 @@ public:
         BasicBlock* newRoot = insertionSet.insert(0);
         CodeOrigin codeOrigin = target->at(0)->codeOrigin;
         
+        Vector<Node*> locals(baseline->m_numCalleeRegisters);
+        for (int local = 0; local < baseline->m_numCalleeRegisters; ++local) {
+            Node* previousHead = target->variablesAtHead.local(local);
+            if (!previousHead)
+                continue;
+            VariableAccessData* variable = previousHead->variableAccessData();
+            locals[local] = newRoot->appendNode(
+                m_graph, variable->prediction(), ExtractOSREntryLocal, codeOrigin,
+                OpInfo(variable->local().offset()));
+            
+            newRoot->appendNode(
+                m_graph, SpecNone, MovHint, codeOrigin, OpInfo(variable->local().offset()),
+                Edge(locals[local]));
+        }
+
         for (int argument = 0; argument < baseline->numParameters(); ++argument) {
             Node* oldNode = target->variablesAtHead.argument(argument);
             if (!oldNode) {
@@ -94,37 +112,15 @@ public:
                 OpInfo(oldNode->variableAccessData()));
             m_graph.m_arguments[argument] = node;
         }
-        Vector<Node*> locals(baseline->m_numCalleeRegisters);
-        for (int local = 0; local < baseline->m_numCalleeRegisters; ++local) {
-            Node* previousHead = target->variablesAtHead.local(local);
-            if (!previousHead)
-                continue;
-            VariableAccessData* variable = previousHead->variableAccessData();
-            locals[local] = newRoot->appendNode(
-                m_graph, variable->prediction(), ExtractOSREntryLocal, codeOrigin,
-                OpInfo(variable->local().offset()));
-            
-            // Create a MovHint. We can't use MovHint's directly at this stage of
-            // compilation, so we cook one up by creating a new VariableAccessData
-            // that isn't unified with any of the others. This ensures that this
-            // SetLocal will turn into a MovHint and will not have any type checks.
-            m_graph.m_variableAccessData.append(
-                VariableAccessData(variable->local(), variable->isCaptured()));
-            VariableAccessData* newVariable = &m_graph.m_variableAccessData.last();
-            Node* setLocal = newRoot->appendNode(
-                m_graph, SpecNone, SetLocal, codeOrigin, OpInfo(newVariable),
-                Edge(locals[local]));
-            setLocal->setSpeculationDirection(BackwardSpeculation);
-        }
+        
         for (int local = 0; local < baseline->m_numCalleeRegisters; ++local) {
             Node* previousHead = target->variablesAtHead.local(local);
             if (!previousHead)
                 continue;
             VariableAccessData* variable = previousHead->variableAccessData();
             Node* node = locals[local];
-            Node* setLocal = newRoot->appendNode(
+            newRoot->appendNode(
                 m_graph, SpecNone, SetLocal, codeOrigin, OpInfo(variable), Edge(node));
-            setLocal->setSpeculationDirection(BackwardSpeculation);
         }
         
         newRoot->appendNode(

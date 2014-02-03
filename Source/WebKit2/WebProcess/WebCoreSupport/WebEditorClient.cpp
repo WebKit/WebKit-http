@@ -50,6 +50,8 @@
 #include <WebCore/TextIterator.h>
 #include <WebCore/UndoStep.h>
 #include <WebCore/UserTypingGestureIndicator.h>
+#include <wtf/NeverDestroyed.h>
+#include <wtf/text/StringView.h>
 
 using namespace WebCore;
 using namespace HTMLNames;
@@ -170,22 +172,22 @@ bool WebEditorClient::shouldMoveRangeAfterDelete(Range*, Range*)
 void WebEditorClient::didBeginEditing()
 {
     // FIXME: What good is a notification name, if it's always the same?
-    DEFINE_STATIC_LOCAL(String, WebViewDidBeginEditingNotification, (ASCIILiteral("WebViewDidBeginEditingNotification")));
-    m_page->injectedBundleEditorClient().didBeginEditing(m_page, WebViewDidBeginEditingNotification.impl());
+    static NeverDestroyed<String> WebViewDidBeginEditingNotification(ASCIILiteral("WebViewDidBeginEditingNotification"));
+    m_page->injectedBundleEditorClient().didBeginEditing(m_page, WebViewDidBeginEditingNotification.get().impl());
     notImplemented();
 }
 
 void WebEditorClient::respondToChangedContents()
 {
-    DEFINE_STATIC_LOCAL(String, WebViewDidChangeNotification, (ASCIILiteral("WebViewDidChangeNotification")));
-    m_page->injectedBundleEditorClient().didChange(m_page, WebViewDidChangeNotification.impl());
+    static NeverDestroyed<String> WebViewDidChangeNotification(ASCIILiteral("WebViewDidChangeNotification"));
+    m_page->injectedBundleEditorClient().didChange(m_page, WebViewDidChangeNotification.get().impl());
     notImplemented();
 }
 
 void WebEditorClient::respondToChangedSelection(Frame* frame)
 {
-    DEFINE_STATIC_LOCAL(String, WebViewDidChangeSelectionNotification, (ASCIILiteral("WebViewDidChangeSelectionNotification")));
-    m_page->injectedBundleEditorClient().didChangeSelection(m_page, WebViewDidChangeSelectionNotification.impl());
+    static NeverDestroyed<String> WebViewDidChangeSelectionNotification(ASCIILiteral("WebViewDidChangeSelectionNotification"));
+    m_page->injectedBundleEditorClient().didChangeSelection(m_page, WebViewDidChangeSelectionNotification.get().impl());
     if (!frame)
         return;
 
@@ -198,8 +200,8 @@ void WebEditorClient::respondToChangedSelection(Frame* frame)
 
 void WebEditorClient::didEndEditing()
 {
-    DEFINE_STATIC_LOCAL(String, WebViewDidEndEditingNotification, (ASCIILiteral("WebViewDidEndEditingNotification")));
-    m_page->injectedBundleEditorClient().didEndEditing(m_page, WebViewDidEndEditingNotification.impl());
+    static NeverDestroyed<String> WebViewDidEndEditingNotification(ASCIILiteral("WebViewDidEndEditingNotification"));
+    m_page->injectedBundleEditorClient().didEndEditing(m_page, WebViewDidEndEditingNotification.get().impl());
     notImplemented();
 }
 
@@ -441,10 +443,13 @@ void WebEditorClient::checkGrammarOfString(const UChar* text, int length, Vector
 }
 
 #if USE(UNIFIED_TEXT_CHECKING)
-void WebEditorClient::checkTextOfParagraph(const UChar* text, int length, WebCore::TextCheckingTypeMask checkingTypes, Vector<TextCheckingResult>& results)
+Vector<TextCheckingResult> WebEditorClient::checkTextOfParagraph(StringView stringView, WebCore::TextCheckingTypeMask checkingTypes)
 {
-    // FIXME: It would be nice if we wouldn't have to copy the text here.
-    m_page->sendSync(Messages::WebPageProxy::CheckTextOfParagraph(String(text, length), checkingTypes), Messages::WebPageProxy::CheckTextOfParagraph::Reply(results));
+    Vector<TextCheckingResult> results;
+
+    m_page->sendSync(Messages::WebPageProxy::CheckTextOfParagraph(stringView.toStringWithoutCopying(), checkingTypes), Messages::WebPageProxy::CheckTextOfParagraph::Reply(results));
+
+    return results;
 }
 #endif
 

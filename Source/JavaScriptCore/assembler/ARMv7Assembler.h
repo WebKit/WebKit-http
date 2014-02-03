@@ -654,6 +654,8 @@ private:
     typedef enum {
         OP_B_T1         = 0xD000,
         OP_B_T2         = 0xE000,
+        OP_POP_T2       = 0xE8BD,
+        OP_PUSH_T2      = 0xE92D,
         OP_AND_reg_T2   = 0xEA00,
         OP_TST_reg_T2   = 0xEA10,
         OP_ORR_reg_T2   = 0xEA40,
@@ -894,6 +896,11 @@ public:
     // NOTE: In an IT block, add doesn't modify the flags register.
     ALWAYS_INLINE void add(RegisterID rd, RegisterID rn, RegisterID rm)
     {
+        if (rd == ARMRegisters::sp) {
+            mov(rd, rn);
+            rn = rd;
+        }
+
         if (rd == rn)
             m_formatter.oneWordOp8RegReg143(OP_ADD_reg_T2, rm, rd);
         else if (rd == rm)
@@ -1347,7 +1354,7 @@ public:
         m_formatter.twoWordOp5i6Imm4Reg4EncodedImm(OP_MOV_imm_T3, imm.m_value.imm4, rd, imm);
     }
     
-#if OS(LINUX) || OS(QNX)
+#if OS(LINUX)
     static void revertJumpTo_movT3movtcmpT2(void* instructionStart, RegisterID left, RegisterID right, uintptr_t imm)
     {
         uint16_t* address = static_cast<uint16_t*>(instructionStart);
@@ -1486,6 +1493,22 @@ public:
         ASSERT(!BadReg(rn));
         ASSERT(!BadReg(rm));
         m_formatter.twoWordOp12Reg4FourFours(OP_ROR_reg_T2, rn, FourFours(0xf, rd, 0, rm));
+    }
+
+    ALWAYS_INLINE void pop(uint32_t registerList)
+    {
+        ASSERT(WTF::bitCount(registerList) > 1);
+        ASSERT(!((1 << ARMRegisters::pc) & registerList) || !((1 << ARMRegisters::lr) & registerList));
+        ASSERT(!((1 << ARMRegisters::sp) & registerList));
+        m_formatter.twoWordOp16Imm16(OP_POP_T2, registerList);
+    }
+
+    ALWAYS_INLINE void push(uint32_t registerList)
+    {
+        ASSERT(WTF::bitCount(registerList) > 1);
+        ASSERT(!((1 << ARMRegisters::pc) & registerList));
+        ASSERT(!((1 << ARMRegisters::sp) & registerList));
+        m_formatter.twoWordOp16Imm16(OP_PUSH_T2, registerList);
     }
 
 #if CPU(APPLE_ARMV7S)
@@ -2268,7 +2291,7 @@ public:
         ASSERT(!(bitwise_cast<uintptr_t>(instructionStart) & 1));
         ASSERT(!(bitwise_cast<uintptr_t>(to) & 1));
 
-#if OS(LINUX) || OS(QNX)
+#if OS(LINUX)
         if (canBeJumpT4(reinterpret_cast<uint16_t*>(instructionStart), to)) {
             uint16_t* ptr = reinterpret_cast<uint16_t*>(instructionStart) + 2;
             linkJumpT4(ptr, to);
@@ -2287,7 +2310,7 @@ public:
     
     static ptrdiff_t maxJumpReplacementSize()
     {
-#if OS(LINUX) || OS(QNX)
+#if OS(LINUX)
         return 10;
 #else
         return 4;
@@ -2377,13 +2400,6 @@ public:
         linuxPageFlush(current, end);
 #elif OS(WINCE)
         CacheRangeFlush(code, size, CACHE_SYNC_ALL);
-#elif OS(QNX)
-#if !ENABLE(ASSEMBLER_WX_EXCLUSIVE)
-        msync(code, size, MS_INVALIDATE_ICACHE);
-#else
-        UNUSED_PARAM(code);
-        UNUSED_PARAM(size);
-#endif
 #else
 #error "The cacheFlush support is missing on this platform."
 #endif
@@ -2798,6 +2814,12 @@ private:
             m_buffer.putShort(op2);
         }
 
+        ALWAYS_INLINE void twoWordOp16Imm16(OpcodeID1 op1, uint16_t imm)
+        {
+            m_buffer.putShort(op1);
+            m_buffer.putShort(imm);
+        }
+        
         ALWAYS_INLINE void twoWordOp5i6Imm4Reg4EncodedImm(OpcodeID1 op, int imm4, RegisterID rd, ARMThumbImmediate imm)
         {
             ARMThumbImmediate newImm = imm;

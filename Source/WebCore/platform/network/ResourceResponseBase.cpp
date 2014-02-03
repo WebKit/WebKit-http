@@ -35,7 +35,7 @@
 
 namespace WebCore {
 
-static void parseCacheHeader(const String& header, Vector<pair<String, String>>& result);
+static void parseCacheHeader(const String& header, Vector<std::pair<String, String>>& result);
 
 inline const ResourceResponse& ResourceResponseBase::asResourceResponse() const
 {
@@ -45,8 +45,13 @@ inline const ResourceResponse& ResourceResponseBase::asResourceResponse() const
 ResourceResponseBase::ResourceResponseBase()  
     : m_expectedContentLength(0)
     , m_httpStatusCode(0)
-    , m_wasCached(false)
     , m_connectionID(0)
+    , m_cacheControlMaxAge(0)
+    , m_age(0)
+    , m_date(0)
+    , m_expires(0)
+    , m_lastModified(0)
+    , m_wasCached(false)
     , m_connectionReused(false)
     , m_isNull(true)
     , m_haveParsedCacheControlHeader(false)
@@ -57,11 +62,6 @@ ResourceResponseBase::ResourceResponseBase()
     , m_cacheControlContainsNoCache(false)
     , m_cacheControlContainsNoStore(false)
     , m_cacheControlContainsMustRevalidate(false)
-    , m_cacheControlMaxAge(0.0)
-    , m_age(0.0)
-    , m_date(0.0)
-    , m_expires(0.0)
-    , m_lastModified(0.0)
 {
 }
 
@@ -72,8 +72,13 @@ ResourceResponseBase::ResourceResponseBase(const URL& url, const String& mimeTyp
     , m_textEncodingName(textEncodingName)
     , m_suggestedFilename(filename)
     , m_httpStatusCode(0)
-    , m_wasCached(false)
     , m_connectionID(0)
+    , m_cacheControlMaxAge(0)
+    , m_age(0)
+    , m_date(0)
+    , m_expires(0)
+    , m_lastModified(0)
+    , m_wasCached(false)
     , m_connectionReused(false)
     , m_isNull(false)
     , m_haveParsedCacheControlHeader(false)
@@ -84,11 +89,6 @@ ResourceResponseBase::ResourceResponseBase(const URL& url, const String& mimeTyp
     , m_cacheControlContainsNoCache(false)
     , m_cacheControlContainsNoStore(false)
     , m_cacheControlContainsMustRevalidate(false)
-    , m_cacheControlMaxAge(0.0)
-    , m_age(0.0)
-    , m_date(0.0)
-    , m_expires(0.0)
-    , m_lastModified(0.0)
 {
 }
 
@@ -356,7 +356,7 @@ void ResourceResponseBase::parseCacheControlDirectives() const
 
     String cacheControlValue = m_httpHeaderFields.get(cacheControlString);
     if (!cacheControlValue.isEmpty()) {
-        Vector<pair<String, String>> directives;
+        Vector<std::pair<String, String>> directives;
         parseCacheHeader(cacheControlValue, directives);
 
         size_t directivesSize = directives.size();
@@ -636,7 +636,7 @@ static inline String trimToNextSeparator(const String& str)
     return str.substring(0, str.find(isCacheHeaderSeparator));
 }
 
-static void parseCacheHeader(const String& header, Vector<pair<String, String>>& result)
+static void parseCacheHeader(const String& header, Vector<std::pair<String, String>>& result)
 {
     const String safeHeader = header.removeCharacters(isControlCharacter);
     unsigned max = safeHeader.length();
@@ -654,7 +654,7 @@ static void parseCacheHeader(const String& header, Vector<pair<String, String>>&
                 size_t nextDoubleQuotePosition = value.find('"', 1);
                 if (nextDoubleQuotePosition != notFound) {
                     // Store the value as a quoted string without quotes
-                    result.append(pair<String, String>(directive, value.substring(1, nextDoubleQuotePosition - 1).stripWhiteSpace()));
+                    result.append(std::pair<String, String>(directive, value.substring(1, nextDoubleQuotePosition - 1).stripWhiteSpace()));
                     pos += (safeHeader.find('"', pos) - pos) + nextDoubleQuotePosition + 1;
                     // Move past next comma, if there is one
                     size_t nextCommaPosition2 = safeHeader.find(',', pos);
@@ -664,7 +664,7 @@ static void parseCacheHeader(const String& header, Vector<pair<String, String>>&
                         return; // Parse error if there is anything left with no comma
                 } else {
                     // Parse error; just use the rest as the value
-                    result.append(pair<String, String>(directive, trimToNextSeparator(value.substring(1, value.length() - 1).stripWhiteSpace())));
+                    result.append(std::pair<String, String>(directive, trimToNextSeparator(value.substring(1, value.length() - 1).stripWhiteSpace())));
                     return;
                 }
             } else {
@@ -672,21 +672,21 @@ static void parseCacheHeader(const String& header, Vector<pair<String, String>>&
                 size_t nextCommaPosition2 = value.find(',');
                 if (nextCommaPosition2 != notFound) {
                     // The value is delimited by the next comma
-                    result.append(pair<String, String>(directive, trimToNextSeparator(value.substring(0, nextCommaPosition2).stripWhiteSpace())));
+                    result.append(std::pair<String, String>(directive, trimToNextSeparator(value.substring(0, nextCommaPosition2).stripWhiteSpace())));
                     pos += (safeHeader.find(',', pos) - pos) + 1;
                 } else {
                     // The rest is the value; no change to value needed
-                    result.append(pair<String, String>(directive, trimToNextSeparator(value)));
+                    result.append(std::pair<String, String>(directive, trimToNextSeparator(value)));
                     return;
                 }
             }
         } else if (nextCommaPosition != notFound && (nextCommaPosition < nextEqualSignPosition || nextEqualSignPosition == notFound)) {
             // Add directive to map with empty string as value
-            result.append(pair<String, String>(trimToNextSeparator(safeHeader.substring(pos, nextCommaPosition - pos).stripWhiteSpace()), ""));
+            result.append(std::pair<String, String>(trimToNextSeparator(safeHeader.substring(pos, nextCommaPosition - pos).stripWhiteSpace()), ""));
             pos += nextCommaPosition - pos + 1;
         } else {
             // Add last directive to map with empty string as value
-            result.append(pair<String, String>(trimToNextSeparator(safeHeader.substring(pos, max - pos).stripWhiteSpace()), ""));
+            result.append(std::pair<String, String>(trimToNextSeparator(safeHeader.substring(pos, max - pos).stripWhiteSpace()), ""));
             return;
         }
     }

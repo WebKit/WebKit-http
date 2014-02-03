@@ -20,13 +20,13 @@
  * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
  * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 #ifndef GCController_h
 #define GCController_h
 
-#if USE(CF) || PLATFORM(BLACKBERRY)
+#if USE(CF)
 #include <wtf/FastMalloc.h>
 #include <wtf/Noncopyable.h>
 #else
@@ -44,13 +44,14 @@ namespace WebCore {
         void garbageCollectNow(); // It's better to call garbageCollectSoon, unless you have a specific reason not to.
 
         void garbageCollectOnAlternateThreadForDebugging(bool waitUntilDone); // Used for stress testing.
+        void releaseExecutableMemory();
         void setJavaScriptGarbageCollectorTimerEnabled(bool);
         void discardAllCompiledCode();
 
     private:
         GCController(); // Use gcController() instead
 
-#if !USE(CF) && !PLATFORM(BLACKBERRY)
+#if !USE(CF)
         void gcTimerFired(Timer<GCController>*);
         Timer<GCController> m_GCTimer;
 #endif

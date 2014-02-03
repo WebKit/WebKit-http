@@ -342,9 +342,7 @@ static bool attributeValueMatches(const Attribute& attribute, CSSSelector::Match
 static bool anyAttributeMatches(Element* element, const CSSSelector* selector, const QualifiedName& selectorAttr, bool caseSensitive)
 {
     ASSERT(element->hasAttributesWithoutUpdate());
-    for (size_t i = 0, count = element->attributeCount(); i < count; ++i) {
-        const Attribute& attribute = element->attributeAt(i);
-
+    for (const Attribute& attribute : element->attributesIterator()) {
         if (!attribute.matches(selectorAttr.prefix(), element->isHTMLElement() ? selector->attributeCanonicalLocalName() : selectorAttr.localName(), selectorAttr.namespaceURI()))
             continue;
 
@@ -605,7 +603,7 @@ bool SelectorChecker::checkOne(const SelectorCheckingContext& context) const
                 if (context.elementStyle)
                     context.elementStyle->setAffectedByDrag();
                 else
-                    element->setChildrenAffectedByDrag(true);
+                    element->setChildrenAffectedByDrag();
             }
             if (element->renderer() && element->renderer()->isDragging())
                 return true;
@@ -620,7 +618,7 @@ bool SelectorChecker::checkOne(const SelectorCheckingContext& context) const
                     if (context.elementStyle)
                         context.elementStyle->setAffectedByHover();
                     else
-                        element->setChildrenAffectedByHover(true);
+                        element->setChildrenAffectedByHover();
                 }
                 if (element->hovered() || InspectorInstrumentation::forcePseudoState(element, CSSSelector::PseudoHover))
                     return true;
@@ -634,7 +632,7 @@ bool SelectorChecker::checkOne(const SelectorCheckingContext& context) const
                     if (context.elementStyle)
                         context.elementStyle->setAffectedByActive();
                     else
-                        element->setChildrenAffectedByActive(true);
+                        element->setChildrenAffectedByActive();
                 }
                 if (element->active() || InspectorInstrumentation::forcePseudoState(element, CSSSelector::PseudoActive))
                     return true;

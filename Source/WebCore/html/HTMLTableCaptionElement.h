@@ -30,15 +30,15 @@
 
 namespace WebCore {
 
-class HTMLTableCaptionElement FINAL : public HTMLElement {
+class HTMLTableCaptionElement final : public HTMLElement {
 public:
     static PassRefPtr<HTMLTableCaptionElement> create(const QualifiedName&, Document&);
 
 private:
     HTMLTableCaptionElement(const QualifiedName&, Document&);
 
-    virtual bool isPresentationAttribute(const QualifiedName&) const OVERRIDE;
-    virtual void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStyleProperties&) OVERRIDE;
+    virtual bool isPresentationAttribute(const QualifiedName&) const override;
+    virtual void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStyleProperties&) override;
 };
 
 NODE_TYPE_CASTS(HTMLTableCaptionElement)

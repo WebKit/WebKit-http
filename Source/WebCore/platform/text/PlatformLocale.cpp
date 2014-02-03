@@ -51,8 +51,8 @@ public:
 
 private:
     // DateTimeFormat::TokenHandler functions.
-    virtual void visitField(DateTimeFormat::FieldType, int) OVERRIDE FINAL;
-    virtual void visitLiteral(const String&) OVERRIDE FINAL;
+    virtual void visitField(DateTimeFormat::FieldType, int) override final;
+    virtual void visitLiteral(const String&) override final;
 
     String zeroPadString(const String&, size_t width);
     void appendNumber(int number, size_t width);
@@ -328,6 +328,7 @@ String Locale::convertFromLocalizedNumber(const String& localized)
 
 #if ENABLE(DATE_AND_TIME_INPUT_TYPES)
 
+#if !PLATFORM(IOS)
 String Locale::formatDateTime(const DateComponents& date, FormatType formatType)
 {
     if (date.type() == DateComponents::Invalid)
@@ -363,6 +364,8 @@ String Locale::formatDateTime(const DateComponents& date, FormatType formatType)
     }
     return builder.toString();
 }
+#endif // !PLATFORM(IOS)
+
 #endif
 
 }

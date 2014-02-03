@@ -48,15 +48,6 @@ typedef cairo_pattern_t* PlatformGradient;
 #elif PLATFORM(HAIKU)
 class BGradient;
 typedef BGradient* PlatformGradient;
-#elif PLATFORM(BLACKBERRY)
-namespace BlackBerry {
-namespace Platform {
-namespace Graphics {
-class Gradient;
-}
-}
-}
-typedef BlackBerry::Platform::Graphics::Gradient* PlatformGradient;
 #else
 typedef void* PlatformGradient;
 #endif

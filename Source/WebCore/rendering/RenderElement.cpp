@@ -41,9 +41,9 @@
 #include "RenderImageResourceStyleImage.h"
 #include "RenderIterator.h"
 #include "RenderLayer.h"
+#include "RenderLayerCompositor.h"
 #include "RenderLineBreak.h"
 #include "RenderListItem.h"
-#include "RenderMultiColumnBlock.h"
 #include "RenderRegion.h"
 #include "RenderRuby.h"
 #include "RenderRubyText.h"
@@ -56,10 +56,6 @@
 #include "SVGRenderSupport.h"
 #include "StyleResolver.h"
 #include <wtf/StackStats.h>
-
-#if USE(ACCELERATED_COMPOSITING)
-#include "RenderLayerCompositor.h"
-#endif
 
 namespace WebCore {
 
@@ -122,73 +118,67 @@ RenderElement::~RenderElement()
     }
 }
 
-RenderElement* RenderElement::createFor(Element& element, PassRef<RenderStyle> style)
+RenderPtr<RenderElement> RenderElement::createFor(Element& element, PassRef<RenderStyle> style)
 {
-    Document& document = element.document();
-
     // Minimal support for content properties replacing an entire element.
     // Works only if we have exactly one piece of content and it's a URL.
     // Otherwise acts as if we didn't support this feature.
     const ContentData* contentData = style.get().contentData();
     if (contentData && !contentData->next() && contentData->isImage() && !element.isPseudoElement()) {
-        RenderImage* image = new RenderImage(element, std::move(style));
-        if (const StyleImage* styleImage = static_cast<const ImageContentData*>(contentData)->image()) {
-            image->setImageResource(RenderImageResourceStyleImage::create(const_cast<StyleImage&>(*styleImage)));
+        auto styleImage = const_cast<StyleImage*>(static_cast<const ImageContentData*>(contentData)->image());
+        auto image = createRenderer<RenderImage>(element, std::move(style), styleImage);
+        if (styleImage)
             image->setIsGeneratedContent();
-        } else
-            image->setImageResource(RenderImageResource::create());
-        return image;
+        return std::move(image);
     }
 
     if (element.hasTagName(HTMLNames::rubyTag)) {
         if (style.get().display() == INLINE)
-            return new RenderRubyAsInline(element, std::move(style));
+            return createRenderer<RenderRubyAsInline>(element, std::move(style));
         if (style.get().display() == BLOCK)
-            return new RenderRubyAsBlock(element, std::move(style));
+            return createRenderer<RenderRubyAsBlock>(element, std::move(style));
     }
     // treat <rt> as ruby text ONLY if it still has its default treatment of block
     if (element.hasTagName(HTMLNames::rtTag) && style.get().display() == BLOCK)
-        return new RenderRubyText(element, std::move(style));
+        return createRenderer<RenderRubyText>(element, std::move(style));
     switch (style.get().display()) {
     case NONE:
         style.dropRef();
         return nullptr;
     case INLINE:
-        return new RenderInline(element, std::move(style));
+        return createRenderer<RenderInline>(element, std::move(style));
     case BLOCK:
     case INLINE_BLOCK:
     case RUN_IN:
     case COMPACT:
-        if ((!style.get().hasAutoColumnCount() || !style.get().hasAutoColumnWidth()) && document.regionBasedColumnsEnabled())
-            return new RenderMultiColumnBlock(element, std::move(style));
-        return new RenderBlockFlow(element, std::move(style));
+        return createRenderer<RenderBlockFlow>(element, std::move(style));
     case LIST_ITEM:
-        return new RenderListItem(element, std::move(style));
+        return createRenderer<RenderListItem>(element, std::move(style));
     case TABLE:
     case INLINE_TABLE:
-        return new RenderTable(element, std::move(style));
+        return createRenderer<RenderTable>(element, std::move(style));
     case TABLE_ROW_GROUP:
     case TABLE_HEADER_GROUP:
     case TABLE_FOOTER_GROUP:
-        return new RenderTableSection(element, std::move(style));
+        return createRenderer<RenderTableSection>(element, std::move(style));
     case TABLE_ROW:
-        return new RenderTableRow(element, std::move(style));
+        return createRenderer<RenderTableRow>(element, std::move(style));
     case TABLE_COLUMN_GROUP:
     case TABLE_COLUMN:
-        return new RenderTableCol(element, std::move(style));
+        return createRenderer<RenderTableCol>(element, std::move(style));
     case TABLE_CELL:
-        return new RenderTableCell(element, std::move(style));
+        return createRenderer<RenderTableCell>(element, std::move(style));
     case TABLE_CAPTION:
-        return new RenderTableCaption(element, std::move(style));
+        return createRenderer<RenderTableCaption>(element, std::move(style));
     case BOX:
     case INLINE_BOX:
-        return new RenderDeprecatedFlexibleBox(element, std::move(style));
+        return createRenderer<RenderDeprecatedFlexibleBox>(element, std::move(style));
     case FLEX:
     case INLINE_FLEX:
-        return new RenderFlexibleBox(element, std::move(style));
+        return createRenderer<RenderFlexibleBox>(element, std::move(style));
     case GRID:
     case INLINE_GRID:
-        return new RenderGrid(element, std::move(style));
+        return createRenderer<RenderGrid>(element, std::move(style));
     }
     ASSERT_NOT_REACHED();
     return nullptr;
@@ -244,7 +234,6 @@ RenderStyle* RenderElement::cachedFirstLineStyle() const
 
 StyleDifference RenderElement::adjustStyleDifference(StyleDifference diff, unsigned contextSensitiveProperties) const
 {
-#if USE(ACCELERATED_COMPOSITING)
     // If transform changed, and we are not composited, need to do a layout.
     if (contextSensitiveProperties & ContextSensitivePropertyTransform) {
         // Text nodes share style with their parents but transforms don't apply to them,
@@ -289,9 +278,6 @@ StyleDifference RenderElement::adjustStyleDifference(StyleDifference diff, unsig
         if (hasLayer() != toRenderLayerModelObject(this)->requiresLayer())
             diff = StyleDifferenceLayout;
     }
-#else
-    UNUSED_PARAM(contextSensitiveProperties);
-#endif
 
     // If we have no layer(), just treat a RepaintLayer hint as a normal Repaint.
     if (diff == StyleDifferenceRepaintLayer && !hasLayer())
@@ -354,14 +340,6 @@ void RenderElement::updateShapeImage(const ShapeValue* oldShapeValue, const Shap
 
 void RenderElement::initializeStyle()
 {
-#if ENABLE(SVG)
-    // FIXME: This logic should be in a less ridiculous place. (This is mirrored from RenderSVGBlock::setStyle().)
-    if (isRenderSVGBlock() && m_style->isDisplayInlineType()) {
-        // SVG text layout code expects us to be a block-level style element.
-        m_style->setDisplay(BLOCK);
-    }
-#endif
-
     styleWillChange(StyleDifferenceEqual, style());
 
     m_hasInitializedStyle = true;
@@ -400,13 +378,11 @@ void RenderElement::setStyle(PassRef<RenderStyle> style)
 
     if (&m_style.get() == &style.get()) {
         // FIXME: Can we change things so we never hit this code path?
-#if USE(ACCELERATED_COMPOSITING)
         // We need to run through adjustStyleDifference() for iframes, plugins, and canvas so
         // style sharing is disabled for them. That should ensure that we never hit this code path.
         ASSERT(!isRenderIFrame());
         ASSERT(!isEmbeddedObject());
         ASSERT(!isCanvas());
-#endif
         style.dropRef();
         return;
     }
@@ -601,7 +577,7 @@ void RenderElement::insertChildInternal(RenderObject* newChild, RenderObject* be
         setChildNeedsLayout(); // We may supply the static position for an absolute positioned child.
 
     if (AXObjectCache* cache = document().axObjectCache())
-        cache->childrenChanged(this);
+        cache->childrenChanged(this, newChild);
 }
 
 void RenderElement::removeChildInternal(RenderObject& oldChild, NotifyChildrenType notifyChildren)
@@ -840,7 +816,7 @@ void RenderElement::styleWillChange(StyleDifference diff, const RenderStyle& new
         bool visibilityChanged = m_style->visibility() != newStyle.visibility()
             || m_style->zIndex() != newStyle.zIndex()
             || m_style->hasAutoZIndex() != newStyle.hasAutoZIndex();
-#if ENABLE(DASHBOARD_SUPPORT) || ENABLE(DRAGGABLE_REGION)
+#if ENABLE(DASHBOARD_SUPPORT)
         if (visibilityChanged)
             document().setAnnotatedRegionsDirty(true);
 #endif
@@ -850,7 +826,7 @@ void RenderElement::styleWillChange(StyleDifference diff, const RenderStyle& new
 #endif
         if (visibilityChanged) {
             if (AXObjectCache* cache = document().existingAXObjectCache())
-                cache->childrenChanged(parent());
+                cache->childrenChanged(parent(), this);
         }
 
         // Keep layer hierarchy visibility bits up to date if visibility changes.
@@ -903,8 +879,6 @@ void RenderElement::styleWillChange(StyleDifference diff, const RenderStyle& new
 
     bool newStyleSlowScroll = repaintFixedBackgroundsOnScroll && newStyle.hasFixedBackgroundImage();
     bool oldStyleSlowScroll = oldStyle && repaintFixedBackgroundsOnScroll && m_style->hasFixedBackgroundImage();
-
-#if USE(ACCELERATED_COMPOSITING)
     bool drawsRootBackground = isRoot() || (isBody() && !rendererHasBackground(document().documentElement()->renderer()));
     if (drawsRootBackground && repaintFixedBackgroundsOnScroll) {
         if (view().compositor().supportsFixedRootBackgroundCompositing()) {
@@ -915,7 +889,7 @@ void RenderElement::styleWillChange(StyleDifference diff, const RenderStyle& new
                 oldStyleSlowScroll = false;
         }
     }
-#endif
+
     if (oldStyleSlowScroll != newStyleSlowScroll) {
         if (oldStyleSlowScroll)
             view().frameView().removeSlowRepaintObject(this);

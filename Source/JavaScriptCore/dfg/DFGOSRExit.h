@@ -101,12 +101,15 @@ struct OSRExit : public OSRExitBase {
     MacroAssembler::Jump getPatchableCodeOffsetAsJump() const;
     CodeLocationJump codeLocationForRepatch(CodeBlock*) const;
     void correctJump(LinkBuffer&);
-    
-    void convertToForward(BasicBlock*, Node*, unsigned nodeIndex, const ValueRecovery&);
 
     unsigned m_streamIndex;
     
     RefPtr<ValueRecoveryOverride> m_valueRecoveryOverride;
+    
+    bool considerAddingAsFrequentExitSite(CodeBlock* profiledCodeBlock)
+    {
+        return OSRExitBase::considerAddingAsFrequentExitSite(profiledCodeBlock, ExitFromDFG);
+    }
 };
 
 struct SpeculationFailureDebugInfo {

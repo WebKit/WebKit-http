@@ -1,3 +1,494 @@
+2014-01-30  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK] [CMake] Add support for building against GTK+ 2
+        https://bugs.webkit.org/show_bug.cgi?id=127959
+
+        Reviewed by Anders Carlsson.
+
+        * PlatformGTK.cmake: Use the new API version variable and don't use GTK3 directly.
+
+2014-01-30  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r163052.
+        http://trac.webkit.org/changeset/163052
+        https://bugs.webkit.org/show_bug.cgi?id=127895
+
+        It was the buildfix after the rolled out r163048 (Requested by
+        Ossy on #webkit).
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+
+2014-01-29  Dan Bernstein  <mitz@apple.com>
+
+        Moved linking against common frameworks and a library from the .xcconfig file into the target.
+
+        Reviewed by Tim Horton.
+
+        * WebKit.xcodeproj/project.pbxproj:
+
+2014-01-29  Sam Weinig  <sam@webkit.org>
+
+        Fix windows.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+
+2014-01-29  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        EFL port should stop using COMPILE_ASSERT_MATCHING_ENUM macros
+        https://bugs.webkit.org/show_bug.cgi?id=127801
+
+        Reviewed by Anders Carlsson.
+
+        * PlatformEfl.cmake: Removed AssertMatchingEnums.cpp
+
+2014-01-27  Roger Fong  <roger_fong@apple.com>
+
+        [Windows] Tests crashing on Windows after r162816.
+        https://bugs.webkit.org/show_bug.cgi?id=127703.
+
+        Reviewed by Alexey Proskuryakov.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in: Remove variable export in favor of function export.
+
+2014-01-26  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: Disable accessibility after every test run
+        https://bugs.webkit.org/show_bug.cgi?id=127439
+
+        Reviewed by Alexey Proskuryakov.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+
+2014-01-26  Anders Carlsson  <andersca@apple.com>
+
+        Fix build.
+        
+        Make HistoryPropertyList an Objective-C++ class.
+
+        * WebKit.xcodeproj/project.pbxproj:
+
+2014-01-25  Alex Christensen  <achristensen@webkit.org>
+
+        Unreviewed build fix for Win64.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+        Corrected 64-bit linker symbol.
+
+2014-01-23  Simon Fraser  <simon.fraser@apple.com>
+
+        Attempt to fix Windows DRT link issue.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+
+2014-01-23  Simon Fraser  <simon.fraser@apple.com>
+
+        Make visibleContentRect() return actualVisibleContentRect() on iOS most of the time
+        https://bugs.webkit.org/show_bug.cgi?id=127456
+        
+        Reviewed by Antti Koivisto.
+        
+        On iOS, visibleContentRect() returns the entire document rect for historical
+        reasons, and actualVisibleContentRect() returns what visibleContentRect()
+        returns on other platforms.
+        
+        In addition, actualVisibleContentRect() was returning an empty rect in WK2.
+        
+        Reduce the confusion of #ifdefs by making visibleContentRect() behave like
+        actualVisibleContentRect() by default on iOS. Where it needs the old behavior,
+        an optional parameter, LegacyIOSDocumentVisibleRect, provides this.
+        
+        Achieve this by having the virtual ScrollableArea::visibleContentRectInternal(),
+        which is called by non-virtual visibleContentRect() and visibleContentRectIncludingScrollbars().
+        
+        Similarly clean up visibleHeight/visibleWidth functions by having visibleSize() be virtual,
+        with non-virtual visibleHeight() and visibleWidth().
+        
+        ScrollableArea subclasses override visibleContentRectInternal() and visibleSize() where necessary.
+        
+        Mechanically change all the call sites of actualVisibleContentRect() to
+        use visibleContentRect(), and the call sites of visibleContentRect()
+        to visibleContentRect(..., LegacyIOSDocumentVisibleRect), adding comments
+        where this may not be appropriate.
+        
+        Change callers of visibleContentRect(IncludeScrollbars...) to visibleContentRectIncludingScrollbars().
+        
+        Also add actualScrollPosition(), and clean up some actualScroll* call sites.
+        
+        No behavior change.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+
+2014-01-22  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Update project and solution files for 64-bit builds
+        https://bugs.webkit.org/show_bug.cgi?id=127457
+
+        Reviewed by Eric Carlson.
+
+        * WebKit.vcxproj/Interfaces/Interfaces.vcxproj: Update for VS2013.
+        * WebKit.vcxproj/WebKit.submit.sln: Add 64-bit target.
+        * WebKit.vcxproj/WebKit/WebKit.vcxproj: Update for VS2013
+        * WebKit.vcxproj/WebKit/WebKitApple.props: Remove unused QTMovieWin
+        library dependency.
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExportGenerator.vcxproj:
+        Update for VS2013.
+        * WebKit.vcxproj/WebKitGUID/WebKitGUID.vcxproj: Ditto
+
+2014-01-22  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK] Avoid a circular dependency when building webkitenumtypes.h
+        https://bugs.webkit.org/show_bug.cgi?id=127199
+
+        Reviewed by Daniel Bates.
+
+        * PlatformGTK.cmake: Create a new list of headers consisting of all installed headers
+        except webkitenumtypes.h. Use this list when generating webkitenumtypes.h.
+
+2014-01-21  Alex Christensen  <achristensen@webkit.org>
+
+        Unreviewed build fix for Win64.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+        Corrected 64-bit linker symbols.
+
+2014-01-18  Brian Burg  <bburg@apple.com>
+
+        Another build fix attempt for Windows and EFL WebKit1.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+
+2014-01-18  Brian Burg  <bburg@apple.com>
+
+        Unreviewed build fix attempt for Windows.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+
+2014-01-17  Martin Robinson  <mrobinson@igalia.com>
+
+        Build fix for the CMake GTK+ build
+
+        * PlatformGTK.cmake: We need to include ProgressTrackerClientGtk in the source list.
+
+2014-01-17  Beth Dakin  <bdakin@apple.com>
+
+        Need a way to test the tile cache with margins enabled
+        https://bugs.webkit.org/show_bug.cgi?id=127194
+        -and corresponding-
+        <rdar://problem/15571327>
+
+        Reviewed by Tim Horton.
+
+        Attempt to keep Windows building.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+
+2014-01-16  Andy Estes  <aestes@apple.com>
+
+        [iOS] Fix build issues with exported headers
+
+        * WebKit.xcodeproj/project.pbxproj: Removed WebPluginPrivate.h from
+        the project.
+
+2014-01-15  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [EFL][WK1] Implement ProgressTrackerClientEfl to fix the crash
+        https://bugs.webkit.org/show_bug.cgi?id=127031
+
+        Reviewed by Gyuyoung Kim.
+
+        * PlatformEfl.cmake: Added ProgressTrackerClientEfl.cpp into source lists.
+
+2014-01-14  Anders Carlsson  <andersca@apple.com>
+
+        Create separate progress tracker clients
+        https://bugs.webkit.org/show_bug.cgi?id=127025
+
+        Reviewed by Sam Weinig.
+
+        * WebKit.xcodeproj/project.pbxproj:
+
+2014-01-14  Dean Jackson  <dino@apple.com>
+
+        Correct grave mistake in updating the pbxproj file rather than xcconfig.
+
+        * WebKit.xcodeproj/project.pbxproj:
+
+2014-01-14  Dean Jackson  <dino@apple.com>
+
+        Attempt to fix 32-bit Mac build.
+
+        * WebKit.xcodeproj/project.pbxproj:
+
+2014-01-14  Dean Jackson  <dino@apple.com>
+
+        [WK1] Allow generated export files on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=127008
+
+        Reviewed by Simon Fraser.
+
+        Modify the export file generation rule to read from
+        a shared and platform-specific input file.
+
+        * WebKit.xcodeproj/project.pbxproj:
+
+2014-01-13  Alex Christensen  <achristensen@webkit.org>
+
+        Unreviewed build fix for Win64.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+        Corrected 64-bit linker symbols.
+
+2014-01-13  Daniel Bates  <dabates@apple.com>
+
+        [iOS] More build fixes for WebKit
+
+        Add iOS-specific logic to build phases: "Symlink WebKitPluginHost in to place" and "Migrate Headers".
+
+        * WebKit.xcodeproj/project.pbxproj:
+
+2014-01-13  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Fix up WebKit build phases
+
+        Add iOS-specific logic to build phrases "Generate 64-bit Export File" and "Migrate Headers".
+
+        * WebKit.xcodeproj/project.pbxproj:
+
+2014-01-13  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Don't link to Mac-only frameworks when building WebKit
+
+        Currently the Xcode project always links against various Mac-only frameworks (e.g. Carbon.framework).
+        Instead the Xcode project should only link against {JavaScriptCore, WebCore}.framework and
+        libicucore.dylib, which are the frameworks/libraries that are shared by both the Mac and iOS port. We'll
+        use Configuration/WebCore.xcconfig to specify additional port-specific frameworks to link against.
+
+        * WebKit.xcodeproj/project.pbxproj:
+
+2014-01-13  Eric Carlson  <eric.carlson@apple.com>
+
+        Unreviewed build fix.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in: Add missing
+            exports needed for Windows build after r161899.
+
+2014-01-13  Andy Estes  <aestes@apple.com>
+
+        [iOS] Build Fix: switch back to calling postprocess-headers.sh
+
+        * WebKit.xcodeproj/project.pbxproj:
+
+2014-01-12  Dan Bernstein  <mitz@apple.com>
+
+        Try to fix the Windows build after r161852.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+
+2014-01-10  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Upstream WebCore and Tools miscellaneous changes
+        https://bugs.webkit.org/show_bug.cgi?id=126698
+
+        Reviewed by David Kilzer.
+
+        * WebKit.xcodeproj/project.pbxproj:
+
+2014-01-09  Benjamin Poulain  <bpoulain@apple.com>
+
+        Remove the WebKit layer of the Blackberry port
+        https://bugs.webkit.org/show_bug.cgi?id=126715
+
+        Reviewed by Anders Carlsson.
+
+        * PlatformBlackBerry.cmake: Removed.
+        * blackberry: Removed.
+
+2014-01-08  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [EFL] Merge ewk_view_single into ewk_view
+        https://bugs.webkit.org/show_bug.cgi?id=126508
+
+        Reviewed by Gyuyoung Kim.
+
+        * PlatformEfl.cmake: Removed ewk_view_single.cpp.
+
+2014-01-08  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        [EFL] Move efl API test binaries to TestWebKitAPI/EWebKit|EWebKit2
+        https://bugs.webkit.org/show_bug.cgi?id=126615
+
+        Reviewed by Martin Robinson.
+
+        Now EFL API test binaries created in *bin* directory with other executables.
+        It would be good to move them to their folder. This patch moves them to
+        *TestWebKitAPI/EWebKit|EWebKit2* directories.
+
+        * PlatformEfl.cmake:
+
+2014-01-08  Brent Fulgham  <bfulgham@apple.com>
+
+        Unreviewed build fix.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in: Add missing
+        exports needed for Windows build.
+
+2014-01-07  Eric Carlson  <eric.carlson@apple.com>
+
+        Teach MediaSessionManager to manage interruptions
+        https://bugs.webkit.org/show_bug.cgi?id=126530
+
+        Reviewed by Sam Weinig.
+
+        * CMakeLists.txt: Add ${WEBCORE_DIR}/platform/animation to WebCore include directories.
+
+2014-01-06  Martin Robinson  <mrobinson@igalia.com>
+
+        Small build fix for the GTK+ CMake port
+
+        * PlatformGTK.cmake: Include a missing GeoClue include directory.
+
+2014-01-06  Martin Robinson  <mrobinson@igalia.com>
+
+        [CMake] [GTK] Fix the build for the WebKitGTK+ developer configuration
+        https://bugs.webkit.org/show_bug.cgi?id=126505
+
+        Reviewed by Gustavo Noronha Silva.
+
+        * PlatformGTK.cmake: Add the geoclue platform directory to the include directory list.
+
+2014-01-06  Mark Rowe  <mrowe@apple.com>
+
+        <https://webkit.org/b/126499> Move WebKit off the legacy WebKit availability macros
+
+        The legacy WebKit availability macros are verbose, confusing, and provide no benefit
+        over using the system availability macros directly. The original vision was that
+        they'd serve a cross-platform purpose but that never came to be.
+
+        Since WebKit1 is API on OS X but SPI on iOS, some indirection is still needed in the
+        availability macros to allow the headers to advertise the API as unavailable on OS X
+        without interfering with the ability to build on iOS. This is achieved by defining
+        WEBKIT-prefixed versions of the Foundation availability macros that are defined to
+        their NS-prefixed equivalents. The installed headers are post-processed to map these
+        macros back to their Foundation equivalents.
+
+        Part of <rdar://problem/15512304>.
+
+        Reviewed by Sam Weinig.
+
+        * WebKit.xcodeproj/project.pbxproj: Change the Postprocess Headers build phase to
+        invoke mac/postprocess-headers.sh.
+
+2014-01-05  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK] [CMake] Ensure that the autotools build and the CMake install the same files
+        https://bugs.webkit.org/show_bug.cgi?id=116379
+
+        Reviewed by Gustavo Noronha Silva.
+
+        * PlatformGTK.cmake: Install API headers, gir files, and the pkg-config file. Move
+        a couple installed and generated headers to the installed headers list.
+
+2014-01-04  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK] [CMake] Improve the way we locate gobject-introspection
+        https://bugs.webkit.org/show_bug.cgi?id=126452
+
+        Reviewed by Philippe Normand.
+
+        * PlatformGTK.cmake: Use the new introspection variables.
+
+2014-01-03  Simon Fraser  <simon.fraser@apple.com>
+
+        Attempt to fix EFL build.
+
+        * CMakeLists.txt:
+
+2013-12-31  Andy Estes  <aestes@apple.com>
+
+        [iOS] Upstream PLATFORM(IOS) changes to Source/WebKit/
+        https://bugs.webkit.org/show_bug.cgi?id=125746
+
+        Reviewed by David Kilzer.
+
+        * WebKit.xcodeproj/project.pbxproj: Added WebDatabaseManagerInternal.h
+        and iOS.xcconfig.
+
+2013-12-30  Martin Robinson  <mrobinson@igalia.com>
+
+        [CMake] [GTK] Add support for GObject introspection
+        https://bugs.webkit.org/show_bug.cgi?id=126162
+
+        Reviewed by Daniel Bates.
+
+        * PlatformGTK.cmake: Add the GIR targets.
+
+2013-12-29  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [EFL] Remove ewk_view_tiled
+        https://bugs.webkit.org/show_bug.cgi?id=125961
+
+        Reviewed by Gyuyoung Kim.
+
+        * PlatformEfl.cmake: Removed ewk_view_tiled related files.
+
+2013-12-29  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK] [CMake] Convenience libraries that export API should be compiled with --whole-archive on Unix
+        https://bugs.webkit.org/show_bug.cgi?id=126232
+
+        Reviewed by Gustavo Noronha Silva.
+
+        * PlatformGTK.cmake: Prefix libGObjectDOMBindings with --whole-archive so that
+        symbols are not omitted during final linking.
+
+2013-12-25  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK] [CMake] Clean up generated sources directories
+        https://bugs.webkit.org/show_bug.cgi?id=126216
+
+        Reviewed by Gustavo Noronha Silva.
+
+        * PlatformGTK.cmake: Use the new derived source variables.
+
+2013-12-22  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK][CMake] libtool-compatible soversion calculation
+        https://bugs.webkit.org/show_bug.cgi?id=125511
+
+        Reviewed by Gustavo Noronha Silva.
+
+        * CMakeLists.txt: Use the POPULATE_LIBRARY_VERSION macro and the
+        library-specific version information.
+
+2013-12-23  Gustavo Noronha Silva  <gns@gnome.org>
+
+        [GTK] [CMake] Generate pkg-config files
+        https://bugs.webkit.org/show_bug.cgi?id=125685
+
+        Reviewed by Martin Robinson.
+
+        * PlatformGTK.cmake: generate webkitgtk-3.0.pc.
+
+2013-12-22  Martin Robinson  <mrobinson@igalia.com>
+
+        Small build fix for GTK+ with the CMake build
+
+        * CMakeLists.txt: Remove duplicate include directory and add missing directories
+        necessary for GTK+.
+
+2013-12-20  Simon Fraser  <simon.fraser@apple.com>
+
+        Try to fix the Windows build.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+
+2013-12-20  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed build fix after r160908.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in: Add
+        missing export.
+
 2013-12-18  Gustavo Noronha Silva  <gns@gnome.org>
 
         Unreviewed cmake build fix for GTK+.

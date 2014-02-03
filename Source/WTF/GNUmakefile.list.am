@@ -72,6 +72,8 @@ wtf_sources += \
     Source/WTF/wtf/HexNumber.h \
     Source/WTF/wtf/InlineASM.h \
     Source/WTF/wtf/Insertion.h \
+    Source/WTF/wtf/IteratorAdaptors.h \
+    Source/WTF/wtf/IteratorRange.h \
     Source/WTF/wtf/ListDump.h \
     Source/WTF/wtf/ListHashSet.h \
     Source/WTF/wtf/Locker.h \
@@ -155,9 +157,9 @@ wtf_sources += \
     Source/WTF/wtf/StreamBuffer.h \
     Source/WTF/wtf/StringExtras.h \
     Source/WTF/wtf/StringHashDumpContext.h \
+    Source/WTF/wtf/StringHasher.h \
     Source/WTF/wtf/StringPrintStream.cpp \
     Source/WTF/wtf/StringPrintStream.h \
-    Source/WTF/wtf/StringHasher.h \
     Source/WTF/wtf/TCPackedCache.h \
     Source/WTF/wtf/TCPageMap.h \
     Source/WTF/wtf/TCSpinLock.h \
@@ -167,13 +169,11 @@ wtf_sources += \
     Source/WTF/wtf/ThreadFunctionInvocation.h \
     Source/WTF/wtf/ThreadIdentifierDataPthreads.cpp \
     Source/WTF/wtf/ThreadIdentifierDataPthreads.h \
-    Source/WTF/wtf/ThreadRestrictionVerifier.h \
     Source/WTF/wtf/ThreadSafeRefCounted.h \
     Source/WTF/wtf/ThreadSpecific.h \
     Source/WTF/wtf/ThreadSpecificWin.cpp \
     Source/WTF/wtf/Threading.cpp \
     Source/WTF/wtf/Threading.h \
-    Source/WTF/wtf/ThreadingOnce.h \
     Source/WTF/wtf/ThreadingPrimitives.h \
     Source/WTF/wtf/ThreadingPthreads.cpp \
     Source/WTF/wtf/ThreadingWin.cpp \
@@ -214,6 +214,7 @@ wtf_sources += \
     Source/WTF/wtf/gobject/GRefPtr.cpp \
     Source/WTF/wtf/gobject/GRefPtr.h \
     Source/WTF/wtf/gobject/GTypedefs.h \
+    Source/WTF/wtf/gobject/GUniquePtr.h \
     Source/WTF/wtf/gobject/GlibUtilities.cpp \
     Source/WTF/wtf/gobject/GlibUtilities.h \
     Source/WTF/wtf/gtk/MainThreadGtk.cpp \
@@ -231,6 +232,7 @@ wtf_sources += \
     Source/WTF/wtf/text/CString.cpp \
     Source/WTF/wtf/text/CString.h \
     Source/WTF/wtf/text/IntegerToStringConversion.h \
+    Source/WTF/wtf/text/LChar.h \
     Source/WTF/wtf/text/StringBuffer.h \
     Source/WTF/wtf/text/StringBuilder.cpp \
     Source/WTF/wtf/text/StringBuilder.h \
@@ -240,6 +242,7 @@ wtf_sources += \
     Source/WTF/wtf/text/StringImpl.h \
     Source/WTF/wtf/text/StringOperators.h \
     Source/WTF/wtf/text/StringStatics.cpp \
+    Source/WTF/wtf/text/StringView.h \
     Source/WTF/wtf/text/TextPosition.h \
     Source/WTF/wtf/text/WTFString.cpp \
     Source/WTF/wtf/text/WTFString.h \

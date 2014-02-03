@@ -127,9 +127,9 @@ void SVGTextPathElement::svgAttributeChanged(const QualifiedName& attrName)
         RenderSVGResource::markForLayoutAndParentResourceInvalidation(*renderer);
 }
 
-RenderElement* SVGTextPathElement::createRenderer(PassRef<RenderStyle> style)
+RenderPtr<RenderElement> SVGTextPathElement::createElementRenderer(PassRef<RenderStyle> style)
 {
-    return new RenderSVGTextPath(*this, std::move(style));
+    return createRenderer<RenderSVGTextPath>(*this, std::move(style));
 }
 
 bool SVGTextPathElement::childShouldCreateRenderer(const Node& child) const
@@ -163,7 +163,7 @@ void SVGTextPathElement::buildPendingResource()
     Element* target = SVGURIReference::targetElementFromIRIString(href(), document(), &id);
     if (!target) {
         // Do not register as pending if we are already pending this resource.
-        if (document().accessSVGExtensions()->isElementPendingResource(this, id))
+        if (document().accessSVGExtensions()->isPendingResource(this, id))
             return;
 
         if (!id.isEmpty()) {

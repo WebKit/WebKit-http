@@ -38,7 +38,7 @@ namespace WebKit {
 
 class WebProcess;
 
-class WebDatabaseManager : public WebCore::DatabaseManagerClient, public WebProcessSupplement, public CoreIPC::MessageReceiver {
+class WebDatabaseManager : public WebCore::DatabaseManagerClient, public WebProcessSupplement, public IPC::MessageReceiver {
     WTF_MAKE_NONCOPYABLE(WebDatabaseManager);
 public:
     explicit WebDatabaseManager(WebProcess*);
@@ -50,10 +50,10 @@ public:
 
 private:
     // WebProcessSupplement
-    virtual void initialize(const WebProcessCreationParameters&) OVERRIDE;
+    virtual void initialize(const WebProcessCreationParameters&) override;
 
-    // CoreIPC::MessageReceiver
-    virtual void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&) OVERRIDE;
+    // IPC::MessageReceiver
+    virtual void didReceiveMessage(IPC::Connection*, IPC::MessageDecoder&) override;
 
     void getDatabasesByOrigin(uint64_t callbackID) const;
     void getDatabaseOrigins(uint64_t callbackID) const;
@@ -61,13 +61,13 @@ private:
     void deleteDatabasesForOrigin(const String& originIdentifier) const;
 
     // WebCore::DatabaseManagerClient
-    virtual void dispatchDidModifyOrigin(WebCore::SecurityOrigin*) OVERRIDE;
-    virtual void dispatchDidModifyDatabase(WebCore::SecurityOrigin*, const String& databaseIdentifier) OVERRIDE;
+    virtual void dispatchDidModifyOrigin(WebCore::SecurityOrigin*) override;
+    virtual void dispatchDidModifyDatabase(WebCore::SecurityOrigin*, const String& databaseIdentifier) override;
 
 #if PLATFORM(IOS)
-    virtual void dispatchDidAddNewOrigin(WebCore::SecurityOrigin*) OVERRIDE;
-    virtual void dispatchDidDeleteDatabase() OVERRIDE;
-    virtual void dispatchDidDeleteDatabaseOrigin() OVERRIDE;
+    virtual void dispatchDidAddNewOrigin(WebCore::SecurityOrigin*) override;
+    virtual void dispatchDidDeleteDatabase() override;
+    virtual void dispatchDidDeleteDatabaseOrigin() override;
 #endif
 
     WebProcess* m_process;

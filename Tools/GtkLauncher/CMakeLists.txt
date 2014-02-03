@@ -6,9 +6,10 @@ include_directories(
     ${CMAKE_SOURCE_DIR}/Source/JavaScriptCore/ForwardingHeaders
     ${CMAKE_SOURCE_DIR}/Source/WebKit/gtk
     ${DERIVED_SOURCES_DIR}
-    ${DERIVED_SOURCES_DIR}/webkit
+    ${DERIVED_SOURCES_WEBKITGTK_DIR}
     ${GLIB_INCLUDE_DIRS}
-    ${GTK3_INCLUDE_DIRS}
+    ${GSTREAMER_INCLUDE_DIRS}
+    ${GTK_INCLUDE_DIRS}
     ${LIBSOUP_INCLUDE_DIRS}
 )
 
@@ -22,7 +23,8 @@ target_link_libraries(GtkLauncher
     ${JavaScriptCore_LIBRARY_NAME}
     WebKit
     ${GLIB_LIBRARIES}
-    ${GTK3_LIBRARIES}
+    ${GSTREAMER_LIBRARIES}
+    ${GTK_LIBRARIES}
     ${LIBSOUP_LIBRARIES}
 )
 

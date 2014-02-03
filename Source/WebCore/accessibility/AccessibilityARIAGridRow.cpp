@@ -73,7 +73,7 @@ void AccessibilityARIAGridRow::disclosedRows(AccessibilityChildrenVector& disclo
         return;
     
     unsigned level = hierarchicalLevel();
-    AccessibilityChildrenVector& allRows = toAccessibilityTable(parent)->rows();
+    auto& allRows = toAccessibilityTable(parent)->rows();
     int rowCount = allRows.size();
     for (int k = index + 1; k < rowCount; ++k) {
         AccessibilityObject* row = allRows[k].get();
@@ -100,7 +100,7 @@ AccessibilityObject* AccessibilityARIAGridRow::disclosedByRow() const
     
     // Search for the previous row that matches the correct level.
     int index = rowIndex();
-    AccessibilityChildrenVector& allRows = toAccessibilityTable(parent)->rows();
+    auto& allRows = toAccessibilityTable(parent)->rows();
     int rowCount = allRows.size();
     if (index >= rowCount)
         return 0;
@@ -111,33 +111,30 @@ AccessibilityObject* AccessibilityARIAGridRow::disclosedByRow() const
             return row;
     }
     
-    return 0;
+    return nullptr;
 }
     
-AccessibilityObject* AccessibilityARIAGridRow::parentTable() const
+AccessibilityTable* AccessibilityARIAGridRow::parentTable() const
 {
     // The parent table might not be the direct ancestor of the row unfortunately. ARIA states that role="grid" should
     // only have "row" elements, but if not, we still should handle it gracefully by finding the right table.
     for (AccessibilityObject* parent = parentObject(); parent; parent = parent->parentObject()) {
         // The parent table for an ARIA grid row should be an ARIA table.
         if (parent->isTable() && parent->isAccessibilityTable() && toAccessibilityTable(parent)->isAriaTable())
-            return parent;
+            return toAccessibilityTable(parent);
     }
     
-    return 0;
+    return nullptr;
 }
 
 AccessibilityObject* AccessibilityARIAGridRow::headerObject()
 {
-    AccessibilityChildrenVector rowChildren = children();
-    unsigned childrenCount = rowChildren.size();
-    for (unsigned i = 0; i < childrenCount; ++i) {
-        AccessibilityObject* cell = rowChildren[i].get();
-        if (cell->ariaRoleAttribute() == RowHeaderRole)
-            return cell;
+    for (const auto& child : children()) {
+        if (child->ariaRoleAttribute() == RowHeaderRole)
+            return child.get();
     }
     
-    return 0;
+    return nullptr;
 }
 
 } // namespace WebCore

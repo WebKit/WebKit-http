@@ -30,14 +30,11 @@
 
 #include "RenderBlockFlow.h"
 #include "RenderLayer.h"
-
-#if USE(ACCELERATED_COMPOSITING)
 #include "RenderLayerCompositor.h"
-#endif
 
 namespace WebCore {
 
-class RenderFullScreenPlaceholder FINAL : public RenderBlockFlow {
+class RenderFullScreenPlaceholder final : public RenderBlockFlow {
 public:
     RenderFullScreenPlaceholder(RenderFullScreen& owner, PassRef<RenderStyle> style)
         : RenderBlockFlow(owner.document(), std::move(style))

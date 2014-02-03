@@ -36,7 +36,7 @@
 #include <WebKit2/WKBundlePagePrivate.h>
 #include <atk/atk.h>
 #include <cstdio>
-#include <wtf/gobject/GOwnPtr.h>
+#include <wtf/gobject/GUniquePtr.h>
 #include <wtf/text/StringBuilder.h>
 
 namespace WTR {
@@ -104,7 +104,7 @@ PassRefPtr<AccessibilityUIElement> AccessibilityController::accessibleElementByI
         return nullptr;
 
     size_t bufferSize = JSStringGetMaximumUTF8CStringSize(id);
-    GOwnPtr<gchar> idBuffer(static_cast<gchar*>(g_malloc(bufferSize)));
+    GUniquePtr<gchar> idBuffer(static_cast<gchar*>(g_malloc(bufferSize)));
     JSStringGetUTF8CString(id, idBuffer.get(), bufferSize);
 
     AtkObject* result = childElementById(root, idBuffer.get());
@@ -112,6 +112,12 @@ PassRefPtr<AccessibilityUIElement> AccessibilityController::accessibleElementByI
         return AccessibilityUIElement::create(result);
 
     return nullptr;
+}
+
+JSRetainPtr<JSStringRef> AccessibilityController::platformName()
+{
+    JSRetainPtr<JSStringRef> platformName(Adopt, JSStringCreateWithUTF8CString("atk"));
+    return platformName;
 }
 
 PassRefPtr<AccessibilityUIElement> AccessibilityController::rootElement()

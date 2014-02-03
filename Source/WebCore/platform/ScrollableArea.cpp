@@ -45,8 +45,8 @@ namespace WebCore {
 struct SameSizeAsScrollableArea {
     virtual ~SameSizeAsScrollableArea();
     void* pointer;
-    unsigned bitfields : 16;
     IntPoint origin;
+    unsigned bitfields : 16;
 };
 
 COMPILE_ASSERT(sizeof(ScrollableArea) == sizeof(SameSizeAsScrollableArea), ScrollableArea_should_stay_small);
@@ -175,6 +175,13 @@ bool ScrollableArea::handleWheelEvent(const PlatformWheelEvent& wheelEvent)
 {
     return scrollAnimator()->handleWheelEvent(wheelEvent);
 }
+
+#if ENABLE(TOUCH_EVENTS)
+bool ScrollableArea::handleTouchEvent(const PlatformTouchEvent& touchEvent)
+{
+    return scrollAnimator()->handleTouchEvent(touchEvent);
+}
+#endif
 
 // NOTE: Only called from Internals for testing.
 void ScrollableArea::setScrollOffsetFromInternals(const IntPoint& offset)
@@ -315,7 +322,6 @@ void ScrollableArea::setScrollbarOverlayStyle(ScrollbarOverlayStyle overlayStyle
 
 void ScrollableArea::invalidateScrollbar(Scrollbar* scrollbar, const IntRect& rect)
 {
-#if USE(ACCELERATED_COMPOSITING)
     if (scrollbar == horizontalScrollbar()) {
         if (GraphicsLayer* graphicsLayer = layerForHorizontalScrollbar()) {
             graphicsLayer->setNeedsDisplay();
@@ -329,22 +335,20 @@ void ScrollableArea::invalidateScrollbar(Scrollbar* scrollbar, const IntRect& re
             return;
         }
     }
-#endif
+
     invalidateScrollbarRect(scrollbar, rect);
 }
 
 void ScrollableArea::invalidateScrollCorner(const IntRect& rect)
 {
-#if USE(ACCELERATED_COMPOSITING)
     if (GraphicsLayer* graphicsLayer = layerForScrollCorner()) {
         graphicsLayer->setNeedsDisplay();
         return;
     }
-#endif
+
     invalidateScrollCornerRect(rect);
 }
 
-#if USE(ACCELERATED_COMPOSITING)
 void ScrollableArea::verticalScrollbarLayerDidChange()
 {
     scrollAnimator()->verticalScrollbarLayerDidChange();
@@ -354,33 +358,20 @@ void ScrollableArea::horizontalScrollbarLayerDidChange()
 {
     scrollAnimator()->horizontalScrollbarLayerDidChange();
 }
-#endif
 
 bool ScrollableArea::hasLayerForHorizontalScrollbar() const
 {
-#if USE(ACCELERATED_COMPOSITING)
     return layerForHorizontalScrollbar();
-#else
-    return false;
-#endif
 }
 
 bool ScrollableArea::hasLayerForVerticalScrollbar() const
 {
-#if USE(ACCELERATED_COMPOSITING)
     return layerForVerticalScrollbar();
-#else
-    return false;
-#endif
 }
 
 bool ScrollableArea::hasLayerForScrollCorner() const
 {
-#if USE(ACCELERATED_COMPOSITING)
     return layerForScrollCorner();
-#else
-    return false;
-#endif
 }
 
 void ScrollableArea::serviceScrollAnimations()
@@ -388,6 +379,31 @@ void ScrollableArea::serviceScrollAnimations()
     if (ScrollAnimator* scrollAnimator = existingScrollAnimator())
         scrollAnimator->serviceScrollAnimations();
 }
+
+#if PLATFORM(IOS)
+bool ScrollableArea::isPinnedInBothDirections(const IntSize& scrollDelta) const
+{
+    return isPinnedHorizontallyInDirection(scrollDelta.width()) && isPinnedVerticallyInDirection(scrollDelta.height());
+}
+
+bool ScrollableArea::isPinnedHorizontallyInDirection(int horizontalScrollDelta) const
+{
+    if (horizontalScrollDelta < 0 && isHorizontalScrollerPinnedToMinimumPosition())
+        return true;
+    if (horizontalScrollDelta > 0 && isHorizontalScrollerPinnedToMaximumPosition())
+        return true;
+    return false;
+}
+
+bool ScrollableArea::isPinnedVerticallyInDirection(int verticalScrollDelta) const
+{
+    if (verticalScrollDelta < 0 && isVerticalScrollerPinnedToMinimumPosition())
+        return true;
+    if (verticalScrollDelta > 0 && isVerticalScrollerPinnedToMaximumPosition())
+        return true;
+    return false;
+}
+#endif // PLATFORM(IOS)
 
 IntPoint ScrollableArea::scrollPosition() const
 {
@@ -413,7 +429,17 @@ IntSize ScrollableArea::totalContentsSize() const
     return totalContentsSize;
 }
 
-IntRect ScrollableArea::visibleContentRect(VisibleContentRectIncludesScrollbars scrollbarInclusion) const
+IntRect ScrollableArea::visibleContentRect(VisibleContentRectBehavior visibleContentRectBehavior) const
+{
+    return visibleContentRectInternal(ExcludeScrollbars, visibleContentRectBehavior);
+}
+
+IntRect ScrollableArea::visibleContentRectIncludingScrollbars(VisibleContentRectBehavior visibleContentRectBehavior) const
+{
+    return visibleContentRectInternal(IncludeScrollbars, visibleContentRectBehavior);
+}
+
+IntRect ScrollableArea::visibleContentRectInternal(VisibleContentRectIncludesScrollbars scrollbarInclusion, VisibleContentRectBehavior) const
 {
     int verticalScrollbarWidth = 0;
     int horizontalScrollbarHeight = 0;

@@ -39,7 +39,7 @@ namespace WebKit {
 class WebContext;
 class WebBatteryStatus;
 
-class WebBatteryManagerProxy : public API::ObjectImpl<API::Object::Type::BatteryManager>, public WebContextSupplement, private CoreIPC::MessageReceiver {
+class WebBatteryManagerProxy : public API::ObjectImpl<API::Object::Type::BatteryManager>, public WebContextSupplement, private IPC::MessageReceiver {
 public:
     static const char* supplementName();
 
@@ -58,13 +58,13 @@ private:
     explicit WebBatteryManagerProxy(WebContext*);
 
     // WebContextSupplement
-    virtual void contextDestroyed() OVERRIDE;
-    virtual void processDidClose(WebProcessProxy*) OVERRIDE;
-    virtual void refWebContextSupplement() OVERRIDE;
-    virtual void derefWebContextSupplement() OVERRIDE;
+    virtual void contextDestroyed() override;
+    virtual void processDidClose(WebProcessProxy*) override;
+    virtual void refWebContextSupplement() override;
+    virtual void derefWebContextSupplement() override;
 
-    // CoreIPC::MessageReceiver
-    virtual void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&) OVERRIDE;
+    // IPC::MessageReceiver
+    virtual void didReceiveMessage(IPC::Connection*, IPC::MessageDecoder&) override;
 
     void startUpdating();
     void stopUpdating();

@@ -35,7 +35,9 @@
 #import "WKBundlePage.h"
 #import "WKBundlePagePrivate.h"
 #import "WKDOMInternals.h"
+#import "WKNSError.h"
 #import "WKRemoteObjectRegistryInternal.h"
+#import "WKRenderingProgressEventsInternal.h"
 #import "WKRetainPtr.h"
 #import "WKURLRequestNS.h"
 #import "WKWebProcessPluginFrameInternal.h"
@@ -86,6 +88,60 @@ static void globalObjectIsAvailableForFrame(WKBundlePageRef page, WKBundleFrameR
         [loadDelegate webProcessPlugInBrowserContextController:pluginContextController globalObjectIsAvailableForFrame:wrapper(*toImpl(frame)) inScriptWorld:wrapper(*toImpl(scriptWorld))];
 }
 
+static void didCommitLoadForFrame(WKBundlePageRef page, WKBundleFrameRef frame, WKTypeRef* userData, const void *clientInfo)
+{
+    WKWebProcessPlugInBrowserContextController *pluginContextController = (WKWebProcessPlugInBrowserContextController *)clientInfo;
+    auto loadDelegate = pluginContextController->_loadDelegate.get();
+
+    if ([loadDelegate respondsToSelector:@selector(webProcessPlugInBrowserContextController:didCommitLoadForFrame:)])
+        [loadDelegate webProcessPlugInBrowserContextController:pluginContextController didCommitLoadForFrame:wrapper(*toImpl(frame))];
+}
+
+static void didFinishDocumentLoadForFrame(WKBundlePageRef page, WKBundleFrameRef frame, WKTypeRef* userData, const void *clientInfo)
+{
+    WKWebProcessPlugInBrowserContextController *pluginContextController = (WKWebProcessPlugInBrowserContextController *)clientInfo;
+    auto loadDelegate = pluginContextController->_loadDelegate.get();
+
+    if ([loadDelegate respondsToSelector:@selector(webProcessPlugInBrowserContextController:didFinishDocumentLoadForFrame:)])
+        [loadDelegate webProcessPlugInBrowserContextController:pluginContextController didFinishDocumentLoadForFrame:wrapper(*toImpl(frame))];
+}
+
+static void didFailLoadWithErrorForFrame(WKBundlePageRef page, WKBundleFrameRef frame, WKErrorRef wkError, WKTypeRef* userData, const void *clientInfo)
+{
+    WKWebProcessPlugInBrowserContextController *pluginContextController = (WKWebProcessPlugInBrowserContextController *)clientInfo;
+    auto loadDelegate = pluginContextController->_loadDelegate.get();
+
+    if ([loadDelegate respondsToSelector:@selector(webProcessPlugInBrowserContextController:didFailLoadWithErrorForFrame:error:)])
+        [loadDelegate webProcessPlugInBrowserContextController:pluginContextController didFailLoadWithErrorForFrame:wrapper(*toImpl(frame)) error:wrapper(*toImpl(wkError))];
+}
+
+static void didSameDocumentNavigationForFrame(WKBundlePageRef page, WKBundleFrameRef frame, WKSameDocumentNavigationType type, WKTypeRef* userData, const void *clientInfo)
+{
+    WKWebProcessPlugInBrowserContextController *pluginContextController = (WKWebProcessPlugInBrowserContextController *)clientInfo;
+    auto loadDelegate = pluginContextController->_loadDelegate.get();
+
+    if ([loadDelegate respondsToSelector:@selector(webProcessPlugInBrowserContextController:didSameDocumentNavigationForFrame:)])
+        [loadDelegate webProcessPlugInBrowserContextController:pluginContextController didSameDocumentNavigationForFrame:wrapper(*toImpl(frame))];
+}
+
+static void didLayoutForFrame(WKBundlePageRef page, WKBundleFrameRef frame, const void* clientInfo)
+{
+    WKWebProcessPlugInBrowserContextController *pluginContextController = (WKWebProcessPlugInBrowserContextController *)clientInfo;
+    auto loadDelegate = pluginContextController->_loadDelegate.get();
+
+    if ([loadDelegate respondsToSelector:@selector(webProcessPlugInBrowserContextController:didLayoutForFrame:)])
+        [loadDelegate webProcessPlugInBrowserContextController:pluginContextController didLayoutForFrame:wrapper(*toImpl(frame))];
+}
+
+static void didLayout(WKBundlePageRef page, WKLayoutMilestones milestones, WKTypeRef* userData, const void *clientInfo)
+{
+    WKWebProcessPlugInBrowserContextController *pluginContextController = (WKWebProcessPlugInBrowserContextController *)clientInfo;
+    auto loadDelegate = pluginContextController->_loadDelegate.get();
+
+    if ([loadDelegate respondsToSelector:@selector(webProcessPlugInBrowserContextController:renderingProgressDidChange:)])
+        [loadDelegate webProcessPlugInBrowserContextController:pluginContextController renderingProgressDidChange:renderingProgressEvents(milestones)];
+}
+
 static void setUpPageLoaderClient(WKWebProcessPlugInBrowserContextController *contextController, WebPage& page)
 {
     WKBundlePageLoaderClientV7 client;
@@ -94,8 +150,15 @@ static void setUpPageLoaderClient(WKWebProcessPlugInBrowserContextController *co
     client.base.version = 7;
     client.base.clientInfo = contextController;
     client.didStartProvisionalLoadForFrame = didStartProvisionalLoadForFrame;
+    client.didCommitLoadForFrame = didCommitLoadForFrame;
+    client.didFinishDocumentLoadForFrame = didFinishDocumentLoadForFrame;
+    client.didFailLoadWithErrorForFrame = didFailLoadWithErrorForFrame;
+    client.didSameDocumentNavigationForFrame = didSameDocumentNavigationForFrame;
     client.didFinishLoadForFrame = didFinishLoadForFrame;
     client.globalObjectIsAvailableForFrame = globalObjectIsAvailableForFrame;
+
+    client.didLayoutForFrame = didLayoutForFrame;
+    client.didLayout = didLayout;
 
     page.initializeInjectedBundleLoaderClient(&client.base);
 }

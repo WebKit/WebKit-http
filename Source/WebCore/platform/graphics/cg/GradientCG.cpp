@@ -28,7 +28,7 @@
 #include "Gradient.h"
 
 #include "GraphicsContextCG.h"
-#include <ApplicationServices/ApplicationServices.h>
+#include <CoreGraphics/CoreGraphics.h>
 #include <wtf/RetainPtr.h>
 
 namespace WebCore {

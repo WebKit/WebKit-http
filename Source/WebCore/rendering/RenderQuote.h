@@ -23,13 +23,13 @@
 #ifndef RenderQuote_h
 #define RenderQuote_h
 
-#include "RenderText.h"
+#include "RenderInline.h"
 
 namespace WebCore {
 
-class RenderQuote FINAL : public RenderText {
+class RenderQuote final : public RenderInline {
 public:
-    RenderQuote(Document&, QuoteType);
+    RenderQuote(Document&, PassRef<RenderStyle>, QuoteType);
     virtual ~RenderQuote();
 
     void attachQuote();
@@ -37,13 +37,14 @@ public:
 private:
     void detachQuote();
 
-    virtual void willBeDestroyed() OVERRIDE;
-    virtual const char* renderName() const OVERRIDE { return "RenderQuote"; }
-    virtual bool isQuote() const OVERRIDE { return true; };
-    virtual String originalText() const OVERRIDE;
-    virtual void styleDidChange(StyleDifference, const RenderStyle*) OVERRIDE;
-    virtual void willBeRemovedFromTree() OVERRIDE;
+    virtual void willBeDestroyed() override;
+    virtual const char* renderName() const override { return "RenderQuote"; }
+    virtual bool isQuote() const override { return true; };
+    virtual void styleDidChange(StyleDifference, const RenderStyle*) override;
+    virtual void willBeRemovedFromTree() override;
 
+    String computeText() const;
+    void updateText();
     void updateDepth();
 
     QuoteType m_type;
@@ -51,6 +52,7 @@ private:
     RenderQuote* m_next;
     RenderQuote* m_previous;
     bool m_isAttached;
+    String m_text;
 };
 
 RENDER_OBJECT_TYPE_CASTS(RenderQuote, isQuote())

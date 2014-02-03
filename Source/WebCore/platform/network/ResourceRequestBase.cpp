@@ -38,6 +38,10 @@ double ResourceRequestBase::s_defaultTimeoutInterval = INT_MAX;
 double ResourceRequestBase::s_defaultTimeoutInterval = 0;
 #endif
 
+#if PLATFORM(IOS)
+bool ResourceRequestBase::s_defaultAllowCookies = true;
+#endif
+
 inline const ResourceRequest& ResourceRequestBase::asResourceRequest() const
 {
     return *static_cast<const ResourceRequest*>(this);
@@ -408,9 +412,8 @@ void ResourceRequestBase::addHTTPHeaderField(const AtomicString& name, const Str
 
 void ResourceRequestBase::addHTTPHeaderFields(const HTTPHeaderMap& headerFields)
 {
-    HTTPHeaderMap::const_iterator end = headerFields.end();
-    for (HTTPHeaderMap::const_iterator it = headerFields.begin(); it != end; ++it)
-        addHTTPHeaderField(it->key, it->value);
+    for (const auto& header : headerFields)
+        addHTTPHeaderField(header.key, header.value);
 }
 
 bool equalIgnoringHeaderFields(const ResourceRequestBase& a, const ResourceRequestBase& b)
@@ -519,12 +522,24 @@ void ResourceRequestBase::updateResourceRequest(HTTPBodyUpdatePolicy bodyPolicy)
     }
 }
 
-#if !PLATFORM(MAC) && !USE(CFNETWORK) && !USE(SOUP) && !PLATFORM(BLACKBERRY)
+#if !PLATFORM(MAC) && !USE(CFNETWORK) && !USE(SOUP)
 unsigned initializeMaximumHTTPConnectionCountPerHost()
 {
     // This is used by the loader to control the number of issued parallel load requests. 
     // Four seems to be a common default in HTTP frameworks.
     return 4;
+}
+#endif
+
+#if PLATFORM(IOS)
+void ResourceRequestBase::setDefaultAllowCookies(bool allowCookies)
+{
+    s_defaultAllowCookies = allowCookies;
+}
+
+bool ResourceRequestBase::defaultAllowCookies()
+{
+    return s_defaultAllowCookies;
 }
 #endif
 

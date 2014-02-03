@@ -34,7 +34,7 @@ list(APPEND WebCore_SOURCES
     accessibility/atk/WebKitAccessibleUtil.cpp
     accessibility/atk/WebKitAccessibleWrapperAtk.cpp
 
-    editing/SmartReplaceICU.cpp
+    editing/SmartReplace.cpp
 
     editing/atk/FrameSelectionAtk.cpp
 
@@ -166,13 +166,14 @@ list(APPEND WebCore_SOURCES
     platform/network/soup/ResourceRequestSoup.cpp
     platform/network/soup/ResourceResponseSoup.cpp
     platform/network/soup/SocketStreamHandleSoup.cpp
-    platform/network/soup/SoupURIUtils.cpp
+    platform/network/soup/SoupNetworkSession.cpp
     platform/network/soup/SynchronousLoaderClientSoup.cpp
 
     platform/posix/FileSystemPOSIX.cpp
     platform/posix/SharedBufferPOSIX.cpp
 
     platform/soup/SharedBufferSoup.cpp
+    platform/soup/URLSoup.cpp
 
     platform/text/LocaleICU.cpp
 
@@ -310,6 +311,7 @@ if (WTF_USE_3D_GRAPHICS)
         platform/graphics/opengl/GLPlatformContext.cpp
         platform/graphics/opengl/GLPlatformSurface.cpp
         platform/graphics/opengl/GraphicsContext3DOpenGLCommon.cpp
+        platform/graphics/opengl/TemporaryOpenGLSetting.cpp
 
         platform/graphics/surfaces/GLTransportSurface.cpp
         platform/graphics/surfaces/GraphicsSurface.cpp

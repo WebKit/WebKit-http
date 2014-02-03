@@ -311,7 +311,7 @@ void TestController::initialize(int argc, const char* argv[])
     m_context.adopt(WKContextCreateWithInjectedBundlePath(injectedBundlePath()));
     m_geolocationProvider = adoptPtr(new GeolocationProviderMock(m_context.get()));
 
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED > 1080
+#if PLATFORM(IOS) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED > 1080)
     WKContextSetUsesNetworkProcess(m_context.get(), true);
     WKContextSetProcessModel(m_context.get(), kWKProcessModelMultipleSecondaryProcesses);
 #endif
@@ -422,8 +422,8 @@ void TestController::createWebViewWithOptions(WKDictionaryRef options)
     };
     WKPageSetPageUIClient(m_mainWebView->page(), &pageUIClient.base);
 
-    WKPageLoaderClientV3 pageLoaderClient = {
-        { 3, this },
+    WKPageLoaderClientV4 pageLoaderClient = {
+        { 4, this },
         0, // didStartProvisionalLoadForFrame
         0, // didReceiveServerRedirectForProvisionalLoadForFrame
         0, // didFailProvisionalLoadWithErrorForFrame
@@ -460,6 +460,7 @@ void TestController::createWebViewWithOptions(WKDictionaryRef options)
         0, // pluginLoadPolicy_deprecatedForUseWithV2
         0, // pluginDidFail
         pluginLoadPolicy, // pluginLoadPolicy
+        0, // webGLLoadPolicy
     };
     WKPageSetPageLoaderClient(m_mainWebView->page(), &pageLoaderClient.base);
 
@@ -1167,6 +1168,7 @@ void TestController::setCustomPolicyDelegate(bool enabled, bool permissive)
 
 void TestController::setVisibilityState(WKPageVisibilityState visibilityState, bool isInitialState)
 {
+    setHidden(visibilityState != kWKPageVisibilityStateVisible);
     WKPageSetVisibilityState(m_mainWebView->page(), visibilityState, isInitialState);
 }
 

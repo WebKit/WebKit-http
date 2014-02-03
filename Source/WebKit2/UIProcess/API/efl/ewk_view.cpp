@@ -40,6 +40,7 @@
 #include "ewk_private.h"
 #include "ewk_settings_private.h"
 #include <Ecore_Evas.h>
+#include <JavaScriptCore/JSRetainPtr.h>
 #include <WebKit2/WKAPICast.h>
 #include <WebKit2/WKData.h>
 #include <WebKit2/WKEinaSharedString.h>
@@ -47,6 +48,7 @@
 #include <WebKit2/WKInspector.h>
 #include <WebKit2/WKPageGroup.h>
 #include <WebKit2/WKRetainPtr.h>
+#include <WebKit2/WKSerializedScriptValue.h>
 #include <WebKit2/WKString.h>
 #include <WebKit2/WKURL.h>
 #include <WebKit2/WKView.h>
@@ -60,12 +62,12 @@ using namespace WebKit;
 
 static inline EwkView* toEwkViewChecked(const Evas_Object* evasObject)
 {
-    EINA_SAFETY_ON_NULL_RETURN_VAL(evasObject, 0);
-    if (!isEwkViewEvasObject(evasObject))
+    EINA_SAFETY_ON_NULL_RETURN_VAL(evasObject, nullptr);
+    if (EINA_UNLIKELY(!isEwkViewEvasObject(evasObject)))
         return 0;
 
     Ewk_View_Smart_Data* smartData = static_cast<Ewk_View_Smart_Data*>(evas_object_smart_data_get(evasObject));
-    EINA_SAFETY_ON_NULL_RETURN_VAL(smartData, 0);
+    EINA_SAFETY_ON_NULL_RETURN_VAL(smartData, nullptr);
 
     return smartData->priv;
 }
@@ -73,7 +75,7 @@ static inline EwkView* toEwkViewChecked(const Evas_Object* evasObject)
 #define EWK_VIEW_IMPL_GET_OR_RETURN(ewkView, impl, ...)                        \
     EwkView* impl = toEwkViewChecked(ewkView);                                 \
     do {                                                                       \
-        if (!impl) {                                                           \
+        if (EINA_UNLIKELY(!impl)) {                                            \
             EINA_LOG_CRIT("no private data for object %p", ewkView);           \
             return __VA_ARGS__;                                                \
         }                                                                      \
@@ -99,7 +101,7 @@ Evas_Object* EWKViewCreate(WKContextRef context, WKPageGroupRef pageGroup, Evas*
 
 WKViewRef EWKViewGetWKView(Evas_Object* ewkView)
 {
-    EWK_VIEW_IMPL_GET_OR_RETURN(ewkView, impl, 0);
+    EWK_VIEW_IMPL_GET_OR_RETURN(ewkView, impl, nullptr);
 
     return impl->wkView();
 }
@@ -109,10 +111,10 @@ Evas_Object* ewk_view_smart_add(Evas* canvas, Evas_Smart* smart, Ewk_Context* co
     EwkContext* ewkContext = ewk_object_cast<EwkContext*>(context);
     EwkPageGroup* ewkPageGroup = ewk_object_cast<EwkPageGroup*>(pageGroup);
 
-    EINA_SAFETY_ON_NULL_RETURN_VAL(ewkContext, 0);
-    EINA_SAFETY_ON_NULL_RETURN_VAL(ewkContext->wkContext(), 0);
-    EINA_SAFETY_ON_NULL_RETURN_VAL(ewkPageGroup, 0);
-    EINA_SAFETY_ON_NULL_RETURN_VAL(ewkPageGroup->wkPageGroup(), 0);
+    EINA_SAFETY_ON_NULL_RETURN_VAL(ewkContext, nullptr);
+    EINA_SAFETY_ON_NULL_RETURN_VAL(ewkContext->wkContext(), nullptr);
+    EINA_SAFETY_ON_NULL_RETURN_VAL(ewkPageGroup, nullptr);
+    EINA_SAFETY_ON_NULL_RETURN_VAL(ewkPageGroup->wkPageGroup(), nullptr);
 
     return EWKViewCreate(ewkContext->wkContext(), ewkPageGroup->wkPageGroup(), canvas, smart);
 }
@@ -125,22 +127,22 @@ Evas_Object* ewk_view_add(Evas* canvas)
 Evas_Object* ewk_view_add_with_context(Evas* canvas, Ewk_Context* context)
 {
     EwkContext* ewkContext = ewk_object_cast<EwkContext*>(context);
-    EINA_SAFETY_ON_NULL_RETURN_VAL(ewkContext, 0);
-    EINA_SAFETY_ON_NULL_RETURN_VAL(ewkContext->wkContext(), 0);
+    EINA_SAFETY_ON_NULL_RETURN_VAL(ewkContext, nullptr);
+    EINA_SAFETY_ON_NULL_RETURN_VAL(ewkContext->wkContext(), nullptr);
 
     return EWKViewCreate(ewkContext->wkContext(), 0, canvas, 0);
 }
 
 Ewk_Context* ewk_view_context_get(const Evas_Object* ewkView)
 {
-    EWK_VIEW_IMPL_GET_OR_RETURN(ewkView, impl, 0);
+    EWK_VIEW_IMPL_GET_OR_RETURN(ewkView, impl, nullptr);
 
     return impl->ewkContext();
 }
 
 Ewk_Page_Group* ewk_view_page_group_get(const Evas_Object* ewkView)
 {
-    EWK_VIEW_IMPL_GET_OR_RETURN(ewkView, impl, 0);
+    EWK_VIEW_IMPL_GET_OR_RETURN(ewkView, impl, nullptr);
 
     return impl->ewkPageGroup();
 }
@@ -159,14 +161,14 @@ Eina_Bool ewk_view_url_set(Evas_Object* ewkView, const char* url)
 
 const char* ewk_view_url_get(const Evas_Object* ewkView)
 {
-    EWK_VIEW_IMPL_GET_OR_RETURN(ewkView, impl, 0);
+    EWK_VIEW_IMPL_GET_OR_RETURN(ewkView, impl, nullptr);
 
     return impl->url();
 }
 
 Evas_Object* ewk_view_favicon_get(const Evas_Object* ewkView)
 {
-    EWK_VIEW_IMPL_GET_OR_RETURN(ewkView, impl, 0);
+    EWK_VIEW_IMPL_GET_OR_RETURN(ewkView, impl, nullptr);
 
     return impl->createFavicon();
 }
@@ -202,14 +204,14 @@ Eina_Bool ewk_view_stop(Evas_Object* ewkView)
 
 Ewk_Settings* ewk_view_settings_get(const Evas_Object* ewkView)
 {
-    EWK_VIEW_IMPL_GET_OR_RETURN(ewkView, impl, 0);
+    EWK_VIEW_IMPL_GET_OR_RETURN(ewkView, impl, nullptr);
 
     return impl->settings();
 }
 
 const char* ewk_view_title_get(const Evas_Object* ewkView)
 {
-    EWK_VIEW_IMPL_GET_OR_RETURN(ewkView, impl, 0);
+    EWK_VIEW_IMPL_GET_OR_RETURN(ewkView, impl, nullptr);
 
     return impl->title();
 }
@@ -261,7 +263,7 @@ void ewk_view_theme_set(Evas_Object* ewkView, const char* path)
 
 const char* ewk_view_theme_get(const Evas_Object* ewkView)
 {
-    EWK_VIEW_IMPL_GET_OR_RETURN(ewkView, impl, 0);
+    EWK_VIEW_IMPL_GET_OR_RETURN(ewkView, impl, nullptr);
 
     return impl->themePath();
 }
@@ -306,7 +308,7 @@ Eina_Bool ewk_view_forward_possible(Evas_Object* ewkView)
 
 Ewk_Back_Forward_List* ewk_view_back_forward_list_get(const Evas_Object* ewkView)
 {
-    EWK_VIEW_IMPL_GET_OR_RETURN(ewkView, impl, 0);
+    EWK_VIEW_IMPL_GET_OR_RETURN(ewkView, impl, nullptr);
 
     return impl->backForwardList();
 }
@@ -342,7 +344,7 @@ Eina_Bool ewk_view_html_string_load(Evas_Object* ewkView, const char* html, cons
 
 const char* ewk_view_custom_encoding_get(const Evas_Object* ewkView)
 {
-    EWK_VIEW_IMPL_GET_OR_RETURN(ewkView, impl, 0);
+    EWK_VIEW_IMPL_GET_OR_RETURN(ewkView, impl, nullptr);
 
     return impl->customTextEncodingName();
 }
@@ -358,7 +360,7 @@ Eina_Bool ewk_view_custom_encoding_set(Evas_Object* ewkView, const char* encodin
 
 const char* ewk_view_user_agent_get(const Evas_Object* ewkView)
 {
-    EWK_VIEW_IMPL_GET_OR_RETURN(ewkView, impl, 0);
+    EWK_VIEW_IMPL_GET_OR_RETURN(ewkView, impl, nullptr);
 
     return impl->userAgent();
 }
@@ -624,4 +626,52 @@ Eina_Bool ewk_view_source_mode_get(const Evas_Object* ewkView)
     EWK_VIEW_IMPL_GET_OR_RETURN(ewkView, impl, false);
 
     return WKViewGetShowsAsSource(impl->wkView());
+}
+
+struct Ewk_View_Script_Execute_Callback_Context {
+    Ewk_View_Script_Execute_Callback_Context(Ewk_View_Script_Execute_Cb callback, Evas_Object* ewkView, void* userData)
+        : m_callback(callback)
+        , m_view(ewkView)
+        , m_userData(userData)
+    {
+    }
+
+    Ewk_View_Script_Execute_Cb m_callback;
+    Evas_Object* m_view;
+    void* m_userData;
+};
+
+static void runJavaScriptCallback(WKSerializedScriptValueRef scriptValue, WKErrorRef, void* context)
+{
+    ASSERT(context);
+
+    auto callbackContext = std::unique_ptr<Ewk_View_Script_Execute_Callback_Context>(static_cast<Ewk_View_Script_Execute_Callback_Context*>(context));
+    ASSERT(callbackContext->m_view);
+
+    if (!callbackContext->m_callback)
+        return;
+
+    if (scriptValue) {
+        EWK_VIEW_IMPL_GET_OR_RETURN(callbackContext->m_view, impl);
+        JSGlobalContextRef jsGlobalContext = impl->ewkContext()->jsGlobalContext();
+
+        JSValueRef value = WKSerializedScriptValueDeserialize(scriptValue, jsGlobalContext, 0);
+        JSRetainPtr<JSStringRef> jsStringValue(Adopt, JSValueToStringCopy(jsGlobalContext, value, 0));
+        size_t length = JSStringGetMaximumUTF8CStringSize(jsStringValue.get());
+        auto buffer = std::make_unique<char[]>(length);
+        JSStringGetUTF8CString(jsStringValue.get(), buffer.get(), length);
+        callbackContext->m_callback(callbackContext->m_view, buffer.get(), callbackContext->m_userData);
+    } else
+        callbackContext->m_callback(callbackContext->m_view, 0, callbackContext->m_userData);
+}
+
+Eina_Bool ewk_view_script_execute(Evas_Object* ewkView, const char* script, Ewk_View_Script_Execute_Cb callback, void* userData)
+{
+    EWK_VIEW_IMPL_GET_OR_RETURN(ewkView, impl, false);
+    EINA_SAFETY_ON_NULL_RETURN_VAL(script, false);
+
+    Ewk_View_Script_Execute_Callback_Context* context = new Ewk_View_Script_Execute_Callback_Context(callback, ewkView, userData);
+    WKRetainPtr<WKStringRef> scriptString(AdoptWK, WKStringCreateWithUTF8CString(script));
+    WKPageRunJavaScriptInMainFrame(impl->wkPage(), scriptString.get(), context, runJavaScriptCallback);
+    return true;
 }

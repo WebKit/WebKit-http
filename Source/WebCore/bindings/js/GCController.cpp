@@ -20,7 +20,7 @@
  * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
  * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 #include "config.h"
@@ -49,7 +49,7 @@ GCController& gcController()
 }
 
 GCController::GCController()
-#if !USE(CF) && !PLATFORM(BLACKBERRY)
+#if !USE(CF)
     : m_GCTimer(this, &GCController::gcTimerFired)
 #endif
 {
@@ -62,7 +62,7 @@ void GCController::garbageCollectSoon()
     // systems with CoreFoundation. If and when the notion of a run loop is pushed 
     // down into WTF so that more platforms can take advantage of it, we will be 
     // able to use reportAbandonedObjectGraph on more platforms.
-#if USE(CF) || PLATFORM(BLACKBERRY)
+#if USE(CF)
     JSLockHolder lock(JSDOMWindow::commonVM());
     JSDOMWindow::commonVM()->heap.reportAbandonedObjectGraph();
 #else
@@ -71,7 +71,7 @@ void GCController::garbageCollectSoon()
 #endif
 }
 
-#if !USE(CF) && !PLATFORM(BLACKBERRY)
+#if !USE(CF)
 void GCController::gcTimerFired(Timer<GCController>*)
 {
     collect(0);
@@ -81,6 +81,12 @@ void GCController::gcTimerFired(Timer<GCController>*)
 void GCController::garbageCollectNow()
 {
     JSLockHolder lock(JSDOMWindow::commonVM());
+#if PLATFORM(IOS)
+    // If JavaScript was never run in this process, there's no need to call GC which will
+    // end up creating a VM unnecessarily.
+    if (!JSDOMWindow::commonVMExists())
+        return;
+#endif
     if (!JSDOMWindow::commonVM()->heap.isBusy())
         JSDOMWindow::commonVM()->heap.collectAllGarbage();
 }
@@ -95,6 +101,28 @@ void GCController::garbageCollectOnAlternateThreadForDebugging(bool waitUntilDon
     }
 
     detachThread(threadID);
+}
+
+void GCController::releaseExecutableMemory()
+{
+    JSLockHolder lock(JSDOMWindow::commonVM());
+
+#if PLATFORM(IOS)
+    // If JavaScript was never run in this process, there's no need to call GC which will
+    // end up creating a VM unnecessarily.
+    if (!JSDOMWindow::commonVMExists())
+        return;
+#endif
+
+    // We shouldn't have any javascript running on our stack when this function is called. The
+    // following line asserts that.
+    ASSERT(!JSDOMWindow::commonVM()->entryScope);
+
+    // But be safe in release builds just in case...
+    if (JSDOMWindow::commonVM()->entryScope)
+        return;
+
+    JSDOMWindow::commonVM()->releaseExecutableMemory();
 }
 
 void GCController::setJavaScriptGarbageCollectorTimerEnabled(bool enable)

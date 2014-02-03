@@ -75,13 +75,13 @@ private:
     NotificationCenter(ScriptExecutionContext*, NotificationClient*);
 
     // ActiveDOMObject
-    virtual void stop() OVERRIDE;
+    virtual void stop() override;
 
     class NotificationRequestCallback : public RefCounted<NotificationRequestCallback> {
     public:
         static PassRefPtr<NotificationRequestCallback> createAndStartTimer(NotificationCenter*, PassRefPtr<VoidCallback>);
         void startTimer();
-        void timerFired(Timer<NotificationRequestCallback>*);
+        void timerFired(Timer<NotificationRequestCallback>&);
     private:
         NotificationRequestCallback(NotificationCenter*, PassRefPtr<VoidCallback>);
 

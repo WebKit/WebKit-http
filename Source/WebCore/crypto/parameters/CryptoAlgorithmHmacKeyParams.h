@@ -33,7 +33,7 @@
 
 namespace WebCore {
 
-class CryptoAlgorithmHmacKeyParams FINAL : public CryptoAlgorithmParameters {
+class CryptoAlgorithmHmacKeyParams final : public CryptoAlgorithmParameters {
 public:
     CryptoAlgorithmHmacKeyParams()
         : hasLength(false)
@@ -48,7 +48,7 @@ public:
     bool hasLength;
     unsigned length;
 
-    virtual Class parametersClass() const OVERRIDE { return Class::HmacKeyParams; }
+    virtual Class parametersClass() const override { return Class::HmacKeyParams; }
 };
 
 CRYPTO_ALGORITHM_PARAMETERS_CASTS(HmacKeyParams)

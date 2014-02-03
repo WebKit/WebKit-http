@@ -19,7 +19,9 @@
 // PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
 // OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+#include "iOS.xcconfig"
 
 CLANG_CXX_LANGUAGE_STANDARD = gnu++0x;
 CLANG_CXX_LIBRARY = libc++;
@@ -37,7 +39,10 @@ GCC_DYNAMIC_NO_PIC = NO;
 GCC_ENABLE_CPP_EXCEPTIONS = NO;
 GCC_ENABLE_CPP_RTTI = NO;
 GCC_ENABLE_OBJC_EXCEPTIONS = YES;
-GCC_ENABLE_OBJC_GC = supported;
+GCC_ENABLE_OBJC_GC = $(GCC_ENABLE_OBJC_GC_$(PLATFORM_NAME));
+GCC_ENABLE_OBJC_GC_macosx = supported;
+GCC_ENABLE_OBJC_GC_iphoneos = unsupported;
+GCC_ENABLE_OBJC_GC_iphonesimulator = $(GCC_ENABLE_OBJC_GC_iphoneos);
 GCC_ENABLE_SYMBOL_SEPARATION = NO;
 GCC_FAST_OBJC_DISPATCH = YES;
 GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
@@ -63,7 +68,7 @@ GCC_WARN_UNUSED_VARIABLE = YES;
 LINKER_DISPLAYS_MANGLED_NAMES = YES;
 OTHER_MIGFLAGS = -F$(BUILT_PRODUCTS_DIR);
 PREBINDING = NO;
-WARNING_CFLAGS = -Wall -Wextra -Wchar-subscripts -Wextra-tokens -Wformat-security -Winit-self -Wmissing-format-attribute -Wmissing-noreturn -Wno-unused-parameter -Wpacked -Wpointer-arith -Wredundant-decls -Wundef -Wwrite-strings -Wexit-time-destructors -Wglobal-constructors -Wtautological-compare;
+WARNING_CFLAGS = -Wall -Wextra -Wchar-subscripts -Wextra-tokens -Wformat-security -Winit-self -Wmissing-format-attribute -Wmissing-noreturn -Wno-unused-parameter -Wpacked -Wpointer-arith -Wredundant-decls -Wundef -Wwrite-strings -Wexit-time-destructors -Wglobal-constructors -Wtautological-compare -Wimplicit-fallthrough;
 
 TARGET_MAC_OS_X_VERSION_MAJOR = $(MAC_OS_X_VERSION_MAJOR);
 
@@ -100,3 +105,5 @@ TOOLCHAINS_macosx = $(TOOLCHAINS_macosx_$(MAC_OS_X_VERSION_MAJOR));
 TOOLCHAINS_macosx_1080 = default;
 TOOLCHAINS_macosx_1090 = $(TOOLCHAINS);
 TOOLCHAINS_macosx_101000 = $(TOOLCHAINS_macosx_1090);
+
+SUPPORTED_PLATFORMS = macosx iphoneos iphonesimulator;

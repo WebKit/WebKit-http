@@ -47,23 +47,17 @@ typedef String ErrorString;
 class InspectorInputAgent : public InspectorAgentBase, public Inspector::InspectorInputBackendDispatcherHandler {
     WTF_MAKE_NONCOPYABLE(InspectorInputAgent);
 public:
-    static PassOwnPtr<InspectorInputAgent> create(InstrumentingAgents* instrumentingAgents, Page* page)
-    {
-        return adoptPtr(new InspectorInputAgent(instrumentingAgents, page));
-    }
-
+    InspectorInputAgent(InstrumentingAgents*, Page*);
     ~InspectorInputAgent();
 
-    virtual void didCreateFrontendAndBackend(Inspector::InspectorFrontendChannel*, Inspector::InspectorBackendDispatcher*) OVERRIDE;
-    virtual void willDestroyFrontendAndBackend() OVERRIDE;
+    virtual void didCreateFrontendAndBackend(Inspector::InspectorFrontendChannel*, Inspector::InspectorBackendDispatcher*) override;
+    virtual void willDestroyFrontendAndBackend(Inspector::InspectorDisconnectReason) override;
 
     // Methods called from the frontend for simulating input.
-    virtual void dispatchKeyEvent(ErrorString*, const String& type, const int* modifiers, const double* timestamp, const String* text, const String* unmodifiedText, const String* keyIdentifier, const int* windowsVirtualKeyCode, const int* nativeVirtualKeyCode, const int* macCharCode, const bool* autoRepeat, const bool* isKeypad, const bool* isSystemKey);
-    virtual void dispatchMouseEvent(ErrorString*, const String& type, int x, int y, const int* modifiers, const double* timestamp, const String* button, const int* clickCount);
+    virtual void dispatchKeyEvent(ErrorString*, const String& type, const int* modifiers, const double* timestamp, const String* text, const String* unmodifiedText, const String* keyIdentifier, const int* windowsVirtualKeyCode, const int* nativeVirtualKeyCode, const int* macCharCode, const bool* autoRepeat, const bool* isKeypad, const bool* isSystemKey) override;
+    virtual void dispatchMouseEvent(ErrorString*, const String& type, int x, int y, const int* modifiers, const double* timestamp, const String* button, const int* clickCount) override;
 
 private:
-    InspectorInputAgent(InstrumentingAgents*, Page*);
-
     Page* m_page;
     RefPtr<Inspector::InspectorInputBackendDispatcher> m_backendDispatcher;
 };

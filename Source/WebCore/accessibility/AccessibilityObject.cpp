@@ -330,7 +330,7 @@ bool AccessibilityObject::hasMisspelling() const
     if (!textChecker)
         return false;
     
-    const UChar* chars = stringValue().characters();
+    const UChar* chars = stringValue().deprecatedCharacters();
     int charsLength = stringValue().length();
     bool isMisspelled = false;
 
@@ -415,13 +415,9 @@ static void appendAccessibilityObject(AccessibilityObject* object, Accessibility
     
 static void appendChildrenToArray(AccessibilityObject* object, bool isForward, AccessibilityObject* startObject, AccessibilityObject::AccessibilityChildrenVector& results)
 {
-    AccessibilityObject::AccessibilityChildrenVector searchChildren;
     // A table's children includes elements whose own children are also the table's children (due to the way the Mac exposes tables).
     // The rows from the table should be queried, since those are direct descendants of the table, and they contain content.
-    if (object->isAccessibilityTable())
-        searchChildren = toAccessibilityTable(object)->rows();
-    else
-        searchChildren = object->children();
+    const auto& searchChildren = object->isAccessibilityTable() ? toAccessibilityTable(object)->rows() : object->children();
 
     size_t childrenSize = searchChildren.size();
 
@@ -613,11 +609,11 @@ MainFrame* AccessibilityObject::mainFrame() const
 {
     Document* document = topDocument();
     if (!document)
-        return 0;
+        return nullptr;
     
     Frame* frame = document->frame();
     if (!frame)
-        return 0;
+        return nullptr;
     
     return &frame->mainFrame();
 }
@@ -625,8 +621,8 @@ MainFrame* AccessibilityObject::mainFrame() const
 Document* AccessibilityObject::topDocument() const
 {
     if (!document())
-        return 0;
-    return document()->topDocument();
+        return nullptr;
+    return &document()->topDocument();
 }
 
 String AccessibilityObject::language() const
@@ -1263,9 +1259,10 @@ FrameView* AccessibilityObject::documentFrameView() const
 }
 
 #if HAVE(ACCESSIBILITY)
-const AccessibilityObject::AccessibilityChildrenVector& AccessibilityObject::children()
+const AccessibilityObject::AccessibilityChildrenVector& AccessibilityObject::children(bool updateChildrenIfNeeded)
 {
-    updateChildrenIfNecessary();
+    if (updateChildrenIfNeeded)
+        updateChildrenIfNecessary();
 
     return m_children;
 }
@@ -1280,9 +1277,8 @@ void AccessibilityObject::updateChildrenIfNecessary()
 void AccessibilityObject::clearChildren()
 {
     // Some objects have weak pointers to their parents and those associations need to be detached.
-    size_t length = m_children.size();
-    for (size_t i = 0; i < length; i++)
-        m_children[i]->detachFromParent();
+    for (const auto& child : m_children)
+        child->detachFromParent();
     
     m_children.clear();
     m_haveChildren = false;
@@ -1323,42 +1319,31 @@ AccessibilityObject* AccessibilityObject::headingElementForNode(Node* node)
 
 void AccessibilityObject::ariaTreeRows(AccessibilityChildrenVector& result)
 {
-    AccessibilityChildrenVector axChildren = children();
-    unsigned count = axChildren.size();
-    for (unsigned k = 0; k < count; ++k) {
-        AccessibilityObject* obj = axChildren[k].get();
-        
+    for (const auto& child : children()) {
         // Add tree items as the rows.
-        if (obj->roleValue() == TreeItemRole) 
-            result.append(obj);
+        if (child->roleValue() == TreeItemRole)
+            result.append(child);
 
         // Now see if this item also has rows hiding inside of it.
-        obj->ariaTreeRows(result);
+        child->ariaTreeRows(result);
     }
 }
     
 void AccessibilityObject::ariaTreeItemContent(AccessibilityChildrenVector& result)
 {
     // The ARIA tree item content are the item that are not other tree items or their containing groups.
-    AccessibilityChildrenVector axChildren = children();
-    unsigned count = axChildren.size();
-    for (unsigned k = 0; k < count; ++k) {
-        AccessibilityObject* obj = axChildren[k].get();
-        AccessibilityRole role = obj->roleValue();
+    for (const auto& child : children()) {
+        AccessibilityRole role = child->roleValue();
         if (role == TreeItemRole || role == GroupRole)
             continue;
         
-        result.append(obj);
+        result.append(child);
     }
 }
 
 void AccessibilityObject::ariaTreeItemDisclosedRows(AccessibilityChildrenVector& result)
 {
-    AccessibilityChildrenVector axChildren = children();
-    unsigned count = axChildren.size();
-    for (unsigned k = 0; k < count; ++k) {
-        AccessibilityObject* obj = axChildren[k].get();
-        
+    for (const auto& obj : children()) {
         // Add tree items as the rows.
         if (obj->roleValue() == TreeItemRole)
             result.append(obj);
@@ -1680,10 +1665,9 @@ AccessibilityObject* AccessibilityObject::elementAccessibilityHitTest(const IntP
     }
     
     // Check if there are any mock elements that need to be handled.
-    size_t count = m_children.size();
-    for (size_t k = 0; k < count; k++) {
-        if (m_children[k]->isMockObject() && m_children[k]->elementRect().contains(point))
-            return m_children[k]->elementAccessibilityHitTest(point);
+    for (const auto& child : m_children) {
+        if (child->isMockObject() && child->elementRect().contains(point))
+            return child->elementAccessibilityHitTest(point);
     }
 
     return const_cast<AccessibilityObject*>(this); 
@@ -1899,7 +1883,8 @@ bool AccessibilityObject::isOnscreen() const
     for (size_t i = levels; i >= 1; i--) {
         const AccessibilityObject* outer = objects[i];
         const AccessibilityObject* inner = objects[i - 1];
-        const IntRect outerRect = i < levels ? pixelSnappedIntRect(outer->boundingBoxRect()) : outer->getScrollableAreaIfScrollable()->visibleContentRect();
+        // FIXME: unclear if we need LegacyIOSDocumentVisibleRect.
+        const IntRect outerRect = i < levels ? pixelSnappedIntRect(outer->boundingBoxRect()) : outer->getScrollableAreaIfScrollable()->visibleContentRect(ScrollableArea::LegacyIOSDocumentVisibleRect);
         const IntRect innerRect = pixelSnappedIntRect(inner->isAccessibilityScrollView() ? inner->parentObject()->boundingBoxRect() : inner->boundingBoxRect());
         
         if (!outerRect.intersects(innerRect)) {
@@ -1931,7 +1916,8 @@ void AccessibilityObject::scrollToMakeVisibleWithSubFocus(const IntRect& subfocu
 
     LayoutRect objectRect = boundingBoxRect();
     IntPoint scrollPosition = scrollableArea->scrollPosition();
-    IntRect scrollVisibleRect = scrollableArea->visibleContentRect();
+    // FIXME: unclear if we need LegacyIOSDocumentVisibleRect.
+    IntRect scrollVisibleRect = scrollableArea->visibleContentRect(ScrollableArea::LegacyIOSDocumentVisibleRect);
 
     int desiredX = computeBestScrollOffset(
         scrollPosition.x(),
@@ -2135,6 +2121,28 @@ bool AccessibilityObject::accessibilityIsIgnored() const
         attributeCache->setIgnored(axObjectID(), result ? IgnoreObject : IncludeObject);
 
     return result;
+}
+
+void AccessibilityObject::elementsFromAttribute(Vector<Element*>& elements, const QualifiedName& attribute) const
+{
+    Node* node = this->node();
+    if (!node || !node->isElementNode())
+        return;
+
+    TreeScope& treeScope = node->treeScope();
+
+    String idList = getAttribute(attribute).string();
+    if (idList.isEmpty())
+        return;
+
+    idList.replace('\n', ' ');
+    Vector<String> idVector;
+    idList.split(' ', idVector);
+
+    for (auto idName : idVector) {
+        if (Element* idElement = treeScope.getElementById(idName))
+            elements.append(idElement);
+    }
 }
 
 } // namespace WebCore

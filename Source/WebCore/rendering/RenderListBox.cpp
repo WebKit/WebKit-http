@@ -319,7 +319,7 @@ void RenderListBox::paintObject(PaintInfo& paintInfo, const LayoutPoint& paintOf
 
 void RenderListBox::addFocusRingRects(Vector<IntRect>& rects, const LayoutPoint& additionalOffset, const RenderLayerModelObject* paintContainer)
 {
-    if (!isSpatialNavigationEnabled(&frame()))
+    if (!selectElement().allowsNonContiguousSelection())
         return RenderBlockFlow::addFocusRingRects(rects, additionalOffset, paintContainer);
 
     // Focus the last selected item.
@@ -350,7 +350,7 @@ void RenderListBox::paintScrollbar(PaintInfo& paintInfo, const LayoutPoint& pain
             m_vBar->width(),
             height() - (borderTop() + borderBottom()));
         m_vBar->setFrameRect(scrollRect);
-        m_vBar->paint(paintInfo.context, paintInfo.rect);
+        m_vBar->paint(paintInfo.context, pixelSnappedIntRect(paintInfo.rect));
     }
 }
 
@@ -764,16 +764,6 @@ IntSize RenderListBox::contentsSize() const
     return IntSize(scrollWidth(), scrollHeight());
 }
 
-int RenderListBox::visibleHeight() const
-{
-    return height();
-}
-
-int RenderListBox::visibleWidth() const
-{
-    return width();
-}
-
 IntPoint RenderListBox::lastKnownMousePosition() const
 {
     return view().frameView().lastKnownMousePosition();
@@ -840,7 +830,7 @@ void RenderListBox::setHasVerticalScrollbar(bool hasScrollbar)
         m_vBar->styleChanged();
 
     // Force an update since we know the scrollbars have changed things.
-#if ENABLE(DASHBOARD_SUPPORT) || ENABLE(DRAGGABLE_REGION)
+#if ENABLE(DASHBOARD_SUPPORT)
     if (document().hasAnnotatedRegions())
         document().setAnnotatedRegionsDirty(true);
 #endif

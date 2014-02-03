@@ -41,13 +41,13 @@ static AtkHyperlink* webkitAccessibleHypertextGetLink(AtkHypertext* hypertext, g
     g_return_val_if_fail(ATK_HYPERTEXT(hypertext), 0);
     returnValIfWebKitAccessibleIsInvalid(WEBKIT_ACCESSIBLE(hypertext), 0);
 
-    AccessibilityObject::AccessibilityChildrenVector children = core(hypertext)->children();
+    const AccessibilityObject::AccessibilityChildrenVector& children = core(hypertext)->children();
     if (index < 0 || static_cast<unsigned>(index) >= children.size())
         return 0;
 
     gint currentLink = -1;
-    for (unsigned i = 0; i < children.size(); i++) {
-        AccessibilityObject* coreChild = children.at(i).get();
+    for (const auto& child : children) {
+        AccessibilityObject* coreChild = child.get();
         if (!coreChild->accessibilityIsIgnored()) {
             AtkObject* axObject = coreChild->wrapper();
             if (!axObject || !ATK_IS_HYPERLINK_IMPL(axObject))
@@ -69,7 +69,7 @@ static gint webkitAccessibleHypertextGetNLinks(AtkHypertext* hypertext)
     g_return_val_if_fail(ATK_HYPERTEXT(hypertext), 0);
     returnValIfWebKitAccessibleIsInvalid(WEBKIT_ACCESSIBLE(hypertext), 0);
 
-    AccessibilityObject::AccessibilityChildrenVector children = core(hypertext)->children();
+    const AccessibilityObject::AccessibilityChildrenVector& children = core(hypertext)->children();
     if (!children.size())
         return 0;
 

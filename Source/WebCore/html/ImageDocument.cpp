@@ -60,7 +60,7 @@ public:
             : 0;
     }
 
-    virtual bool operator==(const EventListener& other);
+    virtual bool operator==(const EventListener& other) override;
 
 private:
     ImageEventListener(ImageDocument* document)
@@ -69,12 +69,12 @@ private:
     {
     }
 
-    virtual void handleEvent(ScriptExecutionContext*, Event*);
+    virtual void handleEvent(ScriptExecutionContext*, Event*) override;
 
     ImageDocument* m_doc;
 };
     
-class ImageDocumentParser FINAL : public RawDataDocumentParser {
+class ImageDocumentParser final : public RawDataDocumentParser {
 public:
     static PassRefPtr<ImageDocumentParser> create(ImageDocument& document)
     {
@@ -92,11 +92,11 @@ private:
     {
     }
 
-    virtual void appendBytes(DocumentWriter&, const char*, size_t);
-    virtual void finish();
+    virtual void appendBytes(DocumentWriter&, const char*, size_t) override;
+    virtual void finish() override;
 };
 
-class ImageDocumentElement FINAL : public HTMLImageElement {
+class ImageDocumentElement final : public HTMLImageElement {
 public:
     static PassRefPtr<ImageDocumentElement> create(ImageDocument&);
 
@@ -108,7 +108,7 @@ private:
     }
 
     virtual ~ImageDocumentElement();
-    virtual void didMoveToNewDocument(Document* oldDocument) OVERRIDE;
+    virtual void didMoveToNewDocument(Document* oldDocument) override;
 
     ImageDocument* m_imageDocument;
 };
@@ -198,8 +198,8 @@ void ImageDocument::createDocumentStructure()
     toHTMLHtmlElement(rootElement.get())->insertedByParser();
 
     if (frame())
-        frame()->loader().dispatchDocumentElementAvailable();
-    
+        frame()->injectUserScripts(InjectAtDocumentStart);
+
     RefPtr<Element> body = Document::createElement(bodyTag, false);
     body->setAttribute(styleAttr, "margin: 0px;");
     
@@ -344,7 +344,7 @@ bool ImageDocument::imageFitsInWindow() const
 
     LayoutSize imageSize = m_imageElement->cachedImage()->imageSizeForRenderer(m_imageElement->renderer(), pageZoomFactor(this));
 #if PLATFORM(IOS)
-    LayoutSize windowSize = view->contentsToScreen(view->actualVisibleContentRect()).size();
+    LayoutSize windowSize = view->contentsToScreen(view->visibleContentRect()).size();
 #else
     LayoutSize windowSize = LayoutSize(view->width(), view->height());
 #endif
@@ -363,7 +363,7 @@ void ImageDocument::windowSizeChanged()
         return;
 
     LayoutSize imageSize = m_imageElement->cachedImage()->imageSizeForRenderer(m_imageElement->renderer(), pageZoomFactor(this));
-    LayoutRect visibleScreenSize = frame()->view()->contentsToScreen(frame()->view()->actualVisibleContentRect());
+    LayoutRect visibleScreenSize = frame()->view()->contentsToScreen(frame()->view()->visibleContentRect());
 
     float widthScale = static_cast<float>(visibleScreenSize.width()) / imageSize.width();
     float heightScale = static_cast<float>(visibleScreenSize.height()) / imageSize.height();

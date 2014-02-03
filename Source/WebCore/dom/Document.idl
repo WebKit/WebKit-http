@@ -317,13 +317,17 @@
     [NotEnumerable, Conditional=POINTER_LOCK] attribute EventListener onwebkitpointerlockchange;
     [NotEnumerable, Conditional=POINTER_LOCK] attribute EventListener onwebkitpointerlockerror;
     [NotEnumerable, Conditional=CSP_NEXT] attribute EventListener onsecuritypolicyviolation;
+    [NotEnumerable, Conditional=WILL_REVEAL_EDGE_EVENTS] attribute EventListener onwebkitwillrevealbottom;
+    [NotEnumerable, Conditional=WILL_REVEAL_EDGE_EVENTS] attribute EventListener onwebkitwillrevealleft;
+    [NotEnumerable, Conditional=WILL_REVEAL_EDGE_EVENTS] attribute EventListener onwebkitwillrevealright;
+    [NotEnumerable, Conditional=WILL_REVEAL_EDGE_EVENTS] attribute EventListener onwebkitwillrevealtop;
 #endif
 
 #if defined(ENABLE_TOUCH_EVENTS) && ENABLE_TOUCH_EVENTS
     // FIXME: Consider defining an ENABLE macro for iOS touch event code, say IOS_TOUCH_EVENTS,
     // and/or modifying the bindings scripts to support generating more complicated conditional code.
 #if defined(WTF_PLATFORM_IOS) && WTF_PLATFORM_IOS
-#include "DocumentIOS.idl"
+#include <WebKitAdditions/DocumentIOS.idl>
 #else
     [ReturnNewObject, RaisesException] Touch createTouch([Default=Undefined] optional DOMWindow window,
                                                      [Default=Undefined] optional EventTarget target,

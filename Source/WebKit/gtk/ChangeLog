@@ -1,3 +1,497 @@
+2014-01-30  Andrei Bucur  <abucur@adobe.com>
+
+        Remove the ACCELERATED_COMPOSITING flag
+        https://bugs.webkit.org/show_bug.cgi?id=127833
+
+        Reviewed by Antti Koivisto.
+
+        Remove the USE(ACCELERATED_COMPOSITING) conditionals from the code base and make AC
+        mandatory.
+
+        Another patch will be required to remove the flag support from the GTK build system.
+
+        * WebCoreSupport/AcceleratedCompositingContext.h:
+        * WebCoreSupport/AcceleratedCompositingContextGL.cpp:
+        * WebCoreSupport/ChromeClientGtk.cpp:
+        (WebKit::ChromeClient::widgetSizeChanged):
+        (WebKit::ChromeClient::forcePaint):
+        (WebKit::ChromeClient::invalidateContentsAndRootView):
+        (WebKit::ChromeClient::invalidateContentsForSlowScroll):
+        (WebKit::ChromeClient::scroll):
+        (WebKit::ChromeClient::allowedCompositingTriggers):
+        * WebCoreSupport/ChromeClientGtk.h:
+        * webkit/webkitwebview.cpp:
+        (webkit_web_view_update_settings):
+        (webkit_web_view_settings_notify):
+        (webkit_web_view_init):
+        * webkit/webkitwebviewprivate.h:
+
+2014-01-29  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Remove ENABLE(JAVASCRIPT_DEBUGGER) guards
+        https://bugs.webkit.org/show_bug.cgi?id=127840
+
+        Reviewed by Mark Lam.
+
+        * webkit/webkitwebinspector.cpp:
+        (webkit_web_inspector_set_property):
+        (webkit_web_inspector_get_property):
+
+2014-01-27  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Make webkit_uri_scheme_request_get_web_view() work with CustomProtocols
+        https://bugs.webkit.org/show_bug.cgi?id=127614
+
+        Reviewed by Gustavo Noronha Silva.
+
+        Remove initiatingPageID() method from FrameNetworkingContext.
+
+        * WebCoreSupport/FrameNetworkingContextGtk.cpp:
+        * WebCoreSupport/FrameNetworkingContextGtk.h:
+
+2014-01-27  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Fix GTK+ build after r162808.
+
+        * webkit/webkitwebhistoryitem.cpp:
+        (webkit_web_history_item_new_with_data):
+        (webkit_web_history_item_get_last_visited_time):
+
+2014-01-25  Anders Carlsson  <andersca@apple.com>
+
+        Remove an unused FrameLoaderClient function
+        https://bugs.webkit.org/show_bug.cgi?id=127628
+
+        Reviewed by Andreas Kling.
+
+        * WebCoreSupport/FrameLoaderClientGtk.cpp:
+        * WebCoreSupport/FrameLoaderClientGtk.h:
+
+2014-01-24  Anders Carlsson  <andersca@apple.com>
+
+        GTK+ build fix.
+
+        * webkit/webkitwebview.cpp:
+        (webkit_web_view_can_go_back):
+
+2014-01-24  Anders Carlsson  <andersca@apple.com>
+
+        Remove back/forward list related functions from Page
+        https://bugs.webkit.org/show_bug.cgi?id=127596
+
+        Reviewed by Andreas Kling.
+
+        * webkit/webkitwebview.cpp:
+        (webkit_web_view_set_maintains_back_forward_list):
+        (webkit_web_view_get_back_forward_list):
+        (webkit_web_view_go_back):
+        (webkit_web_view_go_back_or_forward):
+        (webkit_web_view_go_forward):
+        (webkit_web_view_can_go_back_or_forward):
+        (webkit_web_view_can_go_forward):
+
+2014-01-24  Enrique Ocaña González  <eocanha@igalia.com>
+
+        [GTK] Put cache files in XDG_CACHE_HOME
+        https://bugs.webkit.org/show_bug.cgi?id=123458
+
+        Reviewed by Martin Robinson.
+
+        * webkit/webkitglobals.cpp:
+        (webkitInit):
+        * webkit/webkiticondatabase.cpp:
+
+2014-01-23  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Remove recompileAllJSFunctions timer in ScriptDebugServer
+        https://bugs.webkit.org/show_bug.cgi?id=127409
+
+        Reviewed by Geoffrey Garen.
+
+        * WebCoreSupport/InspectorClientGtk.cpp:
+        (WebKit::InspectorFrontendClient::destroyInspectorWindow):
+        Include InspectorDisconnectReason.
+
+2014-01-23  Max Vujovic  <mvujovic@adobe.com>
+
+        Remove CSS Custom Filters code and tests
+        https://bugs.webkit.org/show_bug.cgi?id=127382
+
+        Reviewed by Simon Fraser.
+
+        * WebCoreSupport/DumpRenderTreeSupportGtk.cpp:
+        * WebCoreSupport/DumpRenderTreeSupportGtk.h:
+        * webkit/webkitwebsettings.cpp:
+        (webkit_web_settings_class_init):
+        (webkit_web_settings_set_property):
+        (webkit_web_settings_get_property):
+        * webkit/webkitwebsettingsprivate.h:
+        * webkit/webkitwebview.cpp:
+        (webkit_web_view_update_settings):
+        (webkit_web_view_settings_notify):
+
+2014-01-22  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GLIB] Use GUniquePtr instead of GOwnPtr
+        https://bugs.webkit.org/show_bug.cgi?id=127431
+
+        Reviewed by Martin Robinson.
+
+        GUniquePtr is a template alias of std::unique_ptr with a custom
+        deleter that replaces GOwnPtr. GOwnPtr is still used for the cases
+        where the output pointer is needed, but it will also be replaced soon.
+
+        * WebCoreSupport/ContextMenuClientGtk.cpp:
+        (WebKit::getUnicodeMenuItemPosition):
+        * WebCoreSupport/DragClientGtk.cpp:
+        (WebKit::DragClient::startDrag):
+        * WebCoreSupport/DumpRenderTreeSupportGtk.cpp:
+        (DumpRenderTreeSupportGtk::setValueForUser):
+        * WebCoreSupport/EditorClientGtk.h:
+        * WebCoreSupport/FrameLoaderClientGtk.cpp:
+        (WebKit::FrameLoaderClient::userAgent):
+        (WebKit::FrameLoaderClient::dispatchDidReceiveAuthenticationChallenge):
+        (WebKit::FrameLoaderClient::dispatchWillSendRequest):
+        (WebKit::FrameLoaderClient::assignIdentifierToInitialRequest):
+        (WebKit::FrameLoaderClient::dispatchDidReceiveResponse):
+        (WebKit::FrameLoaderClient::dispatchDidReceiveContentLength):
+        (WebKit::FrameLoaderClient::dispatchDidFinishLoading):
+        (WebKit::FrameLoaderClient::dispatchDidFailLoading):
+        (WebKit::FrameLoaderClient::dispatchDidFailLoad):
+        * WebCoreSupport/InspectorClientGtk.h:
+        * webkit/webkitfavicondatabase.cpp:
+        (webkit_favicon_database_set_path):
+        * webkit/webkitfilechooserrequest.cpp:
+        * webkit/webkitglobals.cpp:
+        (webkitInit):
+        * webkit/webkithittestresult.cpp:
+        (WebKit::kit):
+        * webkit/webkiticondatabase.cpp:
+        (webkit_icon_database_set_path):
+        * webkit/webkitspellcheckerenchant.cpp:
+        * webkit/webkitwebplugin.cpp:
+        (webkit_web_plugin_get_path):
+        * webkit/webkitwebpluginprivate.h:
+        * webkit/webkitwebsettings.cpp:
+        (webkit_web_settings_class_init):
+        (webkit_web_settings_copy):
+        * webkit/webkitwebview.cpp:
+        (webkit_web_view_forward_context_menu_event):
+        (fileChooserDialogResponseCallback):
+        (webkit_web_view_drag_end):
+        * webkit/webkitwebviewprivate.h:
+
+2014-01-22  Thiago de Barros Lacerda  <thiago.lacerda@openbossa.org>
+
+        [EFL][GTK] Get EFL and GTK compiling with ACCESSIBILITY disabled
+        https://bugs.webkit.org/show_bug.cgi?id=127119
+
+        Reviewed by Mario Sanchez Prada.
+
+        Guarding ACCESSIBILITY code with HAVE(ACCESSIBILITY).
+
+        * webkit/webkitwebview.cpp:
+        (webkit_web_view_class_init):
+
+2014-01-18  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: Page should use std::unique_ptr for InspectorController
+        https://bugs.webkit.org/show_bug.cgi?id=127068
+
+        Reviewed by Joseph Pecoraro.
+
+        Convert call sites to use a InspectorController reference.
+        Convert instantiations of InspectorFrontendClient to use std::unique_ptr.
+
+        * WebCoreSupport/ChromeClientGtk.cpp:
+        (WebKit::paintWebView):
+        * WebCoreSupport/InspectorClientGtk.cpp:
+        (WebKit::InspectorClient::openInspectorFrontend):
+        * webkit/webkitwebinspector.cpp:
+        (webkit_web_inspector_set_property):
+        (webkit_web_inspector_get_property):
+        (webkit_web_inspector_show):
+        (webkit_web_inspector_inspect_node):
+        (webkit_web_inspector_inspect_coordinates):
+        (webkit_web_inspector_close):
+        (webkit_web_inspector_execute_script):
+
+2014-01-17  Anders Carlsson  <andersca@apple.com>
+
+        Remove another unused FrameLoaderClient callback
+        https://bugs.webkit.org/show_bug.cgi?id=127192
+
+        Reviewed by Dan Bernstein.
+
+        * WebCoreSupport/FrameLoaderClientGtk.cpp:
+        * WebCoreSupport/FrameLoaderClientGtk.h:
+
+2014-01-17  Anders Carlsson  <andersca@apple.com>
+
+        Remove didPerformFirstNavigation from all FrameLoaderClient subclasses
+        https://bugs.webkit.org/show_bug.cgi?id=127190
+
+        Reviewed by Dan Bernstein.
+
+        Removing this shouldn't have any bad effects, but if that is the case it's possible to
+        set the cache model in didCommitLoadForFrame, similar to what is done in r162224.
+
+        * WebCoreSupport/FrameLoaderClientGtk.cpp:
+        * WebCoreSupport/FrameLoaderClientGtk.h:
+
+2014-01-16  Jaehun Lim  <ljaehun.lim@samsung.com>
+
+        Use final instead of FINAL
+
+        Unreviewed build fix.
+
+        * WebCoreSupport/ProgressTrackerClientGtk.h:
+
+2014-01-16  Peter Molnar  <pmolnar.u-szeged@partner.samsung.com>
+
+        Remove workaround for compilers not supporting explicit override control
+        https://bugs.webkit.org/show_bug.cgi?id=127111
+
+        Reviewed by Anders Carlsson.
+
+        Now all compilers support explicit override control, this workaround can be removed.
+
+        * WebCoreSupport/EditorClientGtk.h:
+        * WebCoreSupport/InspectorClientGtk.h:
+        * WebCoreSupport/ProgressTrackerClientGtk.h:
+
+2014-01-15  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GTK][WK1] Add ProgressTrackerClient implementation
+        https://bugs.webkit.org/show_bug.cgi?id=127048
+
+        Reviewed by Anders Carlsson.
+
+        In r162034, the progress tracker client was separated from FrameLoaderClient into the
+        ProgressTrackerClient class. This patch adds the WebKit layer implementation of that
+        class for GTK-WK1 that's practically identical to the client implementation that was
+        in use under WebKit::FrameLoaderClient.
+
+        * GNUmakefile.am:
+        * WebCoreSupport/FrameLoaderClientGtk.cpp:
+        * WebCoreSupport/FrameLoaderClientGtk.h:
+        * WebCoreSupport/ProgressTrackerClientGtk.cpp: Added.
+        (WebKit::ProgressTrackerClient::ProgressTrackerClient):
+        (WebKit::ProgressTrackerClient::progressTrackerDestroyed):
+        (WebKit::ProgressTrackerClient::progressStarted):
+        (WebKit::ProgressTrackerClient::progressEstimateChanged):
+        (WebKit::ProgressTrackerClient::progressFinished):
+        * WebCoreSupport/ProgressTrackerClientGtk.h: Added.
+        * webkit/webkitwebview.cpp:
+        (webkit_web_view_init):
+
+2014-01-13  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [SOUP] Add SoupNetworkSession class to wrap a SoupSession
+        https://bugs.webkit.org/show_bug.cgi?id=126813
+
+        Reviewed by Gustavo Noronha Silva.
+
+        * webkit/webkitglobals.cpp:
+        (webkit_get_default_session): Use the new SoupNetworkSession API
+        to get the default SoupSession
+
+2014-01-13  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update NEWS and Versions.m4 for 2.3.4 release.
+
+        * NEWS: Added release notes for 2.3.4.
+
+2014-01-13  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r161808.
+        http://trac.webkit.org/changeset/161808
+        https://bugs.webkit.org/show_bug.cgi?id=126874
+
+        This patch make several files to be always regenerated on
+        every make (Requested by KaL on #webkit).
+
+        * GNUmakefile.am:
+
+2014-01-12  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Fix make distcheck.
+
+        * GNUmakefile.am: Add enum types template files to EXTRA_DIST.
+
+2014-01-12  Tobias Mueller  <tobiasmue@gnome.org>
+
+        --disable-dependency-tracking causes build failure due to missing directories
+        https://bugs.webkit.org/show_bug.cgi?id=94488
+
+        Reviewed by Gustavo Noronha Silva.
+
+        Autotools build fix: Ensure output directory existing
+        before generating DerivedSources. This allows for
+        --disable-dependency-tracking to be run.
+
+        * GNUmakefile.am: Added a new target of the directory in which files are meant to be stored ($(GENSOURCES_WEBKIT)).
+
+2014-01-10  Anders Carlsson  <andersca@apple.com>
+
+        Tweak ProgressTrackerClient functions
+        https://bugs.webkit.org/show_bug.cgi?id=126808
+
+        Reviewed by Sam Weinig.
+
+        * WebCoreSupport/FrameLoaderClientGtk.cpp:
+        (WebKit::FrameLoaderClient::progressStarted):
+        (WebKit::FrameLoaderClient::progressEstimateChanged):
+        (WebKit::FrameLoaderClient::progressFinished):
+        * WebCoreSupport/FrameLoaderClientGtk.h:
+
+2014-01-10  Anders Carlsson  <andersca@apple.com>
+
+        Move progress tracking functions from FrameLoaderClient to a new ProgressTrackerClient
+        https://bugs.webkit.org/show_bug.cgi?id=126801
+
+        Reviewed by Sam Weinig.
+
+        * WebCoreSupport/FrameLoaderClientGtk.h:
+        * webkit/webkitwebview.cpp:
+        (webkit_web_view_init):
+
+2014-01-08  Claudio Saavedra  <csaavedra@igalia.com>
+
+        [GTK] Add xdg.origin.url extended attribute to downloads
+        https://bugs.webkit.org/show_bug.cgi?id=126638
+
+        Reviewed by Carlos Garcia Campos.
+
+        This is proposed by fdo in
+        http://www.freedesktop.org/wiki/CommonExtendedAttributes/
+
+        * webkit/webkitdownload.cpp:
+        (webkit_download_open_stream_for_uri):
+
+2014-01-04  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Move all GTK/GObject unit tests to Tools/TestWebKitAPI
+        https://bugs.webkit.org/show_bug.cgi?id=126342
+
+        Reviewed by Gustavo Noronha Silva.
+
+        * tests/CMakeLists.txt: Removed.
+        * tests/GNUmakefile.am: Removed.
+
+2014-01-06  László Langó  <lango@inf.u-szeged.hu>
+
+        Use unsigned consistently, and check for invalid casts when calling into SharedBuffer from other code.
+        https://bugs.webkit.org/show_bug.cgi?id=124579
+
+        Reviewed by Anders Carlsson.
+
+        * webkit/webkitdownload.cpp:
+        (DownloadClient::didReceiveData):
+
+2014-01-02  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        REGRESSION(r160304): [GTK] Disable libtool fast install
+        https://bugs.webkit.org/show_bug.cgi?id=126381
+
+        Reviewed by Martin Robinson.
+
+        * tests/GNUmakefile.am:
+
+2014-01-02  Gavin Barraclough  <barraclough@apple.com>
+
+        Merge didMoveOnscreen / page visibility to isVisible
+        https://bugs.webkit.org/show_bug.cgi?id=126268
+
+        Reviewed by Tim Horton.
+
+        The onscreen state most closely tracks view visibility (though currently
+        also tracks a mix of in-window state). Make more consistent, simplify,
+        and move all animation suspension logic to Page, so it can be controlled
+        by the PageThrottler.
+
+        * WebCoreSupport/DumpRenderTreeSupportGtk.cpp:
+        (DumpRenderTreeSupportGtk::setPageVisibility):
+            - setVisibilityState -> setIsVisible/setIsPrerender.
+
+2014-01-02  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GTK] Fix mismatched header guards in private WK1 header files
+        https://bugs.webkit.org/show_bug.cgi?id=126390
+
+        Reviewed by Martin Robinson.
+
+        Fix three mismatched header guards that are producing warnings when building with Clang.
+
+        * webkit/webkitsecurityoriginprivate.h:
+        * webkit/webkitviewportattributesprivate.h:
+        * webkit/webkitwebnavigationactionprivate.h:
+
+2013-12-30  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK] Make the output directory of GObject unit tests binaries consistent with the CMake build
+        https://bugs.webkit.org/show_bug.cgi?id=126297
+
+        Reviewed by Philippe Normand.
+
+        * tests/GNUmakefile.am: Build the tests in the new directory.
+
+2013-12-26  Martin Robinson  <mrobinson@igalia.com>
+
+        Small build fix for the GTK+ CMake port
+
+        * tests/CMakeLists.txt: Output the WebKit1 GObject API unit tests to the proper directory
+        and fix the path to the generated API source.
+
+2013-12-23  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK] [CMake] Build the WebKit1 GObject API tests
+        https://bugs.webkit.org/show_bug.cgi?id=125684
+
+        Reviewed by Daniel Bates.
+
+        * tests/CMakeLists.txt: Added.
+        * tests/testapplicationcache.c: Use the WTF config.h instead of including the autotools configuration directly.
+        * tests/testatk.c: Ditto.
+        * tests/testatkroles.c: Ditto.
+        * tests/testcontextmenu.c: Ditto.
+        * tests/testcopyandpaste.c: Ditto.
+        * tests/testdomdocument.c: Ditto.
+        * tests/testdomdomwindow.c: Ditto.
+        * tests/testdomnode.c: Ditto.
+        * tests/testdownload.c: Ditto.
+        * tests/testfavicondatabase.c: Ditto.
+        * tests/testglobals.c: Ditto.
+        * tests/testhittestresult.c: Ditto.
+        * tests/testhttpbackend.c: Ditto.
+        * tests/testkeyevents.c: Ditto.
+        * tests/testloading.c: Ditto.
+        * tests/testmimehandling.c: Ditto.
+        * tests/testnetworkrequest.c: Ditto.
+        * tests/testnetworkresponse.c: Ditto.
+        * tests/testwebbackforwardlist.c: Ditto.
+        * tests/testwebdatasource.c: Ditto.
+        * tests/testwebframe.c: Ditto.
+        * tests/testwebhistoryitem.c: Ditto.
+        * tests/testwebinspector.c: Ditto.
+        * tests/testwebplugindatabase.c: Ditto.
+        * tests/testwebresource.c: Ditto.
+        * tests/testwebsettings.c: Ditto.
+        * tests/testwebview.c: Ditto.
+        * tests/testwindow.c: Ditto.
+
+2013-12-20  Enrique Ocaña González  <eocanha@igalia.com>
+
+        [GTK] The fullscreen API should be enabled by default
+        https://bugs.webkit.org/show_bug.cgi?id=125993
+
+        Reviewed by Gustavo Noronha Silva.
+
+        Set the WebSettings property to TRUE
+
+        * webkit/webkitwebsettings.cpp:
+        (webkit_web_settings_class_init):
+
 2013-12-16  Martin Robinson  <mrobinson@igalia.com>
 
         [GTK] [CMake] Add support for building WebKit1

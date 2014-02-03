@@ -39,8 +39,6 @@ InspectorBackend.registerCommand("Page.getResourceContent", [{"name": "frameId",
 InspectorBackend.registerCommand("Page.searchInResource", [{"name": "frameId", "type": "string", "optional": false}, {"name": "url", "type": "string", "optional": false}, {"name": "query", "type": "string", "optional": false}, {"name": "caseSensitive", "type": "boolean", "optional": true}, {"name": "isRegex", "type": "boolean", "optional": true}], ["result"]);
 InspectorBackend.registerCommand("Page.searchInResources", [{"name": "text", "type": "string", "optional": false}, {"name": "caseSensitive", "type": "boolean", "optional": true}, {"name": "isRegex", "type": "boolean", "optional": true}], ["result"]);
 InspectorBackend.registerCommand("Page.setDocumentContent", [{"name": "frameId", "type": "string", "optional": false}, {"name": "html", "type": "string", "optional": false}], []);
-InspectorBackend.registerCommand("Page.canOverrideDeviceMetrics", [], ["result"]);
-InspectorBackend.registerCommand("Page.setDeviceMetricsOverride", [{"name": "width", "type": "number", "optional": false}, {"name": "height", "type": "number", "optional": false}, {"name": "fontScaleFactor", "type": "number", "optional": false}, {"name": "fitWindow", "type": "boolean", "optional": false}], []);
 InspectorBackend.registerCommand("Page.setShowPaintRects", [{"name": "result", "type": "boolean", "optional": false}], []);
 InspectorBackend.registerCommand("Page.getScriptExecutionStatus", [], ["result"]);
 InspectorBackend.registerCommand("Page.setScriptExecutionDisabled", [{"name": "value", "type": "boolean", "optional": false}], []);
@@ -90,7 +88,6 @@ InspectorBackend.registerEvent("Network.webSocketFrameError", ["requestId", "tim
 InspectorBackend.registerEvent("Network.webSocketFrameSent", ["requestId", "timestamp", "response"]);
 InspectorBackend.registerCommand("Network.enable", [], []);
 InspectorBackend.registerCommand("Network.disable", [], []);
-InspectorBackend.registerCommand("Network.setUserAgentOverride", [{"name": "userAgent", "type": "string", "optional": false}], []);
 InspectorBackend.registerCommand("Network.setExtraHTTPHeaders", [{"name": "headers", "type": "object", "optional": false}], []);
 InspectorBackend.registerCommand("Network.getResponseBody", [{"name": "requestId", "type": "string", "optional": false}], ["body", "base64Encoded"]);
 InspectorBackend.registerCommand("Network.canClearBrowserCache", [], ["result"]);
@@ -140,11 +137,6 @@ InspectorBackend.registerCommand("ApplicationCache.getFramesWithManifests", [], 
 InspectorBackend.registerCommand("ApplicationCache.enable", [], []);
 InspectorBackend.registerCommand("ApplicationCache.getManifestForFrame", [{"name": "frameId", "type": "string", "optional": false}], ["manifestURL"]);
 InspectorBackend.registerCommand("ApplicationCache.getApplicationCacheForFrame", [{"name": "frameId", "type": "string", "optional": false}], ["applicationCache"]);
-
-// FileSystem.
-InspectorBackend.registerFileSystemDispatcher = InspectorBackend.registerDomainDispatcher.bind(InspectorBackend, "FileSystem");
-InspectorBackend.registerCommand("FileSystem.enable", [], []);
-InspectorBackend.registerCommand("FileSystem.disable", [], []);
 
 // DOM.
 InspectorBackend.registerDOMDispatcher = InspectorBackend.registerDomainDispatcher.bind(InspectorBackend, "DOM");
@@ -231,7 +223,6 @@ InspectorBackend.registerEvent("Debugger.scriptFailedToParse", ["url", "scriptSo
 InspectorBackend.registerEvent("Debugger.breakpointResolved", ["breakpointId", "location"]);
 InspectorBackend.registerEvent("Debugger.paused", ["callFrames", "reason", "data"]);
 InspectorBackend.registerEvent("Debugger.resumed", []);
-InspectorBackend.registerCommand("Debugger.causesRecompilation", [], ["result"]);
 InspectorBackend.registerCommand("Debugger.supportsNativeBreakpoints", [], ["result"]);
 InspectorBackend.registerCommand("Debugger.enable", [], []);
 InspectorBackend.registerCommand("Debugger.disable", [], []);
@@ -246,8 +237,6 @@ InspectorBackend.registerCommand("Debugger.stepOut", [], []);
 InspectorBackend.registerCommand("Debugger.pause", [], []);
 InspectorBackend.registerCommand("Debugger.resume", [], []);
 InspectorBackend.registerCommand("Debugger.searchInContent", [{"name": "scriptId", "type": "string", "optional": false}, {"name": "query", "type": "string", "optional": false}, {"name": "caseSensitive", "type": "boolean", "optional": true}, {"name": "isRegex", "type": "boolean", "optional": true}], ["result"]);
-InspectorBackend.registerCommand("Debugger.canSetScriptSource", [], ["result"]);
-InspectorBackend.registerCommand("Debugger.setScriptSource", [{"name": "scriptId", "type": "string", "optional": false}, {"name": "scriptSource", "type": "string", "optional": false}, {"name": "preview", "type": "boolean", "optional": true}], ["callFrames", "result"]);
 InspectorBackend.registerCommand("Debugger.getScriptSource", [{"name": "scriptId", "type": "string", "optional": false}], ["scriptSource"]);
 InspectorBackend.registerCommand("Debugger.getFunctionDetails", [{"name": "functionId", "type": "string", "optional": false}], ["details"]);
 InspectorBackend.registerCommand("Debugger.setPauseOnExceptions", [{"name": "state", "type": "string", "optional": false}], []);
@@ -273,7 +262,6 @@ InspectorBackend.registerEvent("Profiler.finishHeapSnapshot", ["uid"]);
 InspectorBackend.registerEvent("Profiler.setRecordingProfile", ["isProfiling"]);
 InspectorBackend.registerEvent("Profiler.resetProfiles", []);
 InspectorBackend.registerEvent("Profiler.reportHeapSnapshotProgress", ["done", "total"]);
-InspectorBackend.registerCommand("Profiler.causesRecompilation", [], ["result"]);
 InspectorBackend.registerCommand("Profiler.isSampling", [], ["result"]);
 InspectorBackend.registerCommand("Profiler.hasHeapProfiler", [], ["result"]);
 InspectorBackend.registerCommand("Profiler.enable", [], []);

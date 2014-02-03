@@ -648,13 +648,6 @@ public:
         if (!(node->flags() & NodeMightClobber))
             return false;
         switch (node->op()) {
-        case ValueAdd:
-        case CompareLess:
-        case CompareLessEq:
-        case CompareGreater:
-        case CompareGreaterEq:
-        case CompareEq:
-            return !isPredictedNumerical(node);
         case GetByVal:
         case PutByValDirect:
         case PutByVal:
@@ -800,6 +793,7 @@ public:
     bool isLiveInBytecode(VirtualRegister, CodeOrigin);
     
     unsigned frameRegisterCount();
+    unsigned stackPointerOffset();
     unsigned requiredRegisterCountForExit();
     unsigned requiredRegisterCountForExecutionAndExit();
     

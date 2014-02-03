@@ -47,6 +47,7 @@
 #import <WebCore/JSElement.h>
 #import <WebCore/LegacyWebArchive.h>
 #import <WebCore/markup.h>
+#import <WebCore/RenderElement.h>
 #import <WebCore/RenderTreeAsText.h>
 #import <WebCore/ShadowRoot.h>
 #import <WebKit/DOMExtensions.h>
@@ -90,6 +91,42 @@ using namespace JSC;
 
     return [webArchive autorelease];
 }
+
+#if PLATFORM(IOS)
+- (BOOL)isHorizontalWritingMode
+{
+    Node* node = core(self);
+    if (!node)
+        return YES;
+    
+    RenderObject* renderer = node->renderer();
+    if (!renderer)
+        return YES;
+    
+    return renderer->style().isHorizontalWritingMode();
+}
+
+- (void)hidePlaceholder
+{
+    if (![self isKindOfClass:[DOMHTMLInputElement class]]
+        && ![self isKindOfClass:[DOMHTMLTextAreaElement class]])
+        return;
+    
+    Node *node = core(self);
+    HTMLTextFormControlElement *formControl = static_cast<HTMLTextFormControlElement *>(node);
+    formControl->hidePlaceholder();
+}
+
+- (void)showPlaceholderIfNecessary
+{
+    if (![self isKindOfClass:[DOMHTMLInputElement class]]
+        && ![self isKindOfClass:[DOMHTMLTextAreaElement class]])
+        return;
+    
+    HTMLTextFormControlElement *formControl = static_cast<HTMLTextFormControlElement *>(core(self));
+    formControl->showPlaceholderIfNecessary();
+}
+#endif
 
 @end
 

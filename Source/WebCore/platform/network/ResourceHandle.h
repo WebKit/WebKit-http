@@ -116,9 +116,9 @@ public:
 #if PLATFORM(MAC) || USE(CFNETWORK) || USE(CURL) || USE(SOUP) || USE(HAIKU)
     bool shouldUseCredentialStorage();
     void didReceiveAuthenticationChallenge(const AuthenticationChallenge&);
-    virtual void receivedCredential(const AuthenticationChallenge&, const Credential&) OVERRIDE;
-    virtual void receivedRequestToContinueWithoutCredential(const AuthenticationChallenge&) OVERRIDE;
-    virtual void receivedCancellation(const AuthenticationChallenge&) OVERRIDE;
+    virtual void receivedCredential(const AuthenticationChallenge&, const Credential&) override;
+    virtual void receivedRequestToContinueWithoutCredential(const AuthenticationChallenge&) override;
+    virtual void receivedCancellation(const AuthenticationChallenge&) override;
 #endif
 
 #if PLATFORM(MAC)
@@ -150,8 +150,9 @@ public:
 
 #endif // USE(CFNETWORK)
 
-#if (PLATFORM(WIN) || PLATFORM(NIX)) && USE(CURL)
+#if PLATFORM(WIN) && USE(CURL)
     static void setHostAllowsAnyHTTPSCertificate(const String&);
+    static void setClientCertificateInfo(const String&, const String&, const String&);
 #endif
 #if PLATFORM(WIN) && USE(CURL) && USE(CF)
     static void setClientCertificate(const String& host, CFDataRef);
@@ -170,7 +171,7 @@ public:
     static void CALLBACK internetStatusCallback(HINTERNET, DWORD_PTR, DWORD, LPVOID, DWORD);
 #endif
 
-#if USE(CURL) || USE(SOUP) || PLATFORM(BLACKBERRY) || PLATFORM(HAIKU)
+#if USE(CURL) || USE(SOUP) || PLATFORM(HAIKU)
     ResourceHandleInternal* getInternal() { return d.get(); }
 #endif
 
@@ -180,10 +181,7 @@ public:
     bool cancelledOrClientless();
     void ensureReadBuffer();
     size_t currentStreamPosition() const;
-    static SoupSession* defaultSession();
-    static SoupSession* createTestingSession();
-    static SoupSession* createPrivateBrowsingSession();
-    static uint64_t getSoupRequestInitiatingPageID(SoupRequest*);
+    void didStartRequest();
     static void setHostAllowsAnyHTTPSCertificate(const String&);
     static void setClientCertificate(const String& host, GTlsCertificate*);
     static void setIgnoreSSLErrors(bool);
@@ -223,16 +221,12 @@ public:
 
     void setDefersLoading(bool);
 
-#if PLATFORM(BLACKBERRY)
-    void pauseLoad(bool); // FIXME: How is this different from setDefersLoading()?
-#endif
-
     void didChangePriority(ResourceLoadPriority);
 
     ResourceRequest& firstRequest();
     const String& lastHTTPMethod() const;
 
-    void fireFailure(Timer<ResourceHandle>*);
+    void failureTimerFired(Timer<ResourceHandle>&);
 
     NetworkingContext* context() const;
 
@@ -273,13 +267,20 @@ private:
     bool start();
     static void platformLoadResourceSynchronously(NetworkingContext*, const ResourceRequest&, StoredCredentials, ResourceError&, ResourceResponse&, Vector<char>& data);
 
-    virtual void refAuthenticationClient() OVERRIDE { ref(); }
-    virtual void derefAuthenticationClient() OVERRIDE { deref(); }
+    virtual void refAuthenticationClient() override { ref(); }
+    virtual void derefAuthenticationClient() override { deref(); }
 
-#if PLATFORM(MAC) && !USE(CFNETWORK)
-    void createNSURLConnection(id delegate, bool shouldUseCredentialStorage, bool shouldContentSniff);
-#elif USE(CFNETWORK)
-    void createCFURLConnection(bool shouldUseCredentialStorage, bool shouldContentSniff, CFDictionaryRef clientProperties);
+#if PLATFORM(MAC) || USE(CFNETWORK)
+    enum class SchedulingBehavior {
+        Asynchronous,
+        Synchronous
+    };
+
+#if USE(CFNETWORK)
+    void createCFURLConnection(bool shouldUseCredentialStorage, bool shouldContentSniff, SchedulingBehavior, CFDictionaryRef clientProperties);
+#else
+    void createNSURLConnection(id delegate, bool shouldUseCredentialStorage, bool shouldContentSniff, SchedulingBehavior);
+#endif
 #endif
 
     friend class ResourceHandleInternal;

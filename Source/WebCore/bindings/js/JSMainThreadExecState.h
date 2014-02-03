@@ -30,6 +30,10 @@
 #include <runtime/Completion.h>
 #include <wtf/MainThread.h>
 
+#if PLATFORM(IOS)
+#include "WebCoreThread.h"
+#endif
+
 namespace WebCore {
 
 class InspectorInstrumentationCookie;
@@ -108,7 +112,8 @@ private:
     JSC::ExecState* m_previousState;
 };
 
-JSC::JSValue functionCallHandlerFromAnyThread(JSC::ExecState* exec, JSC::JSValue functionObject, JSC::CallType callType, const JSC::CallData& callData, JSC::JSValue thisValue, const JSC::ArgList& args);
+JSC::JSValue functionCallHandlerFromAnyThread(JSC::ExecState*, JSC::JSValue functionObject, JSC::CallType callType, const JSC::CallData& callData, JSC::JSValue thisValue, const JSC::ArgList& args);
+JSC::JSValue evaluateHandlerFromAnyThread(JSC::ExecState*, const JSC::SourceCode&, JSC::JSValue thisValue, JSC::JSValue* exception);
 
 } // namespace WebCore
 

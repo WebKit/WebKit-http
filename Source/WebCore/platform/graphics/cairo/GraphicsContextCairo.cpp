@@ -230,7 +230,7 @@ void GraphicsContext::restorePlatformState()
 }
 
 // Draws a filled rectangle with a stroked border.
-void GraphicsContext::drawRect(const IntRect& rect)
+void GraphicsContext::drawRect(const FloatRect& rect)
 {
     if (paintingDisabled())
         return;
@@ -332,7 +332,7 @@ static void drawLineOnCairoContext(GraphicsContext* graphicsContext, cairo_t* co
 }
 
 // This is only used to draw borders, so we should not draw shadows.
-void GraphicsContext::drawLine(const IntPoint& point1, const IntPoint& point2)
+void GraphicsContext::drawLine(const FloatPoint& point1, const FloatPoint& point2)
 {
     if (paintingDisabled())
         return;
@@ -641,6 +641,12 @@ void GraphicsContext::drawLineForText(const FloatPoint& origin, float width, boo
     cairo_restore(cairoContext);
 }
 
+void GraphicsContext::drawLinesForText(const FloatPoint& point, const DashArray& widths, bool printing)
+{
+    for (size_t i = 0; i < widths.size(); i += 2)
+        drawLineForText(FloatPoint(point.x() + widths[i], point.y()), widths[i+1] - widths[i], printing);
+}
+
 void GraphicsContext::updateDocumentMarkerResources()
 {
     // Unnecessary, since our document markers don't use resources.
@@ -752,10 +758,8 @@ void GraphicsContext::setPlatformStrokeStyle(StrokeStyle strokeStyle)
         cairo_set_line_width(platformContext()->cr(), 0);
         break;
     case SolidStroke:
-#if ENABLE(CSS3_TEXT_DECORATION)
     case DoubleStroke:
     case WavyStroke: // FIXME: https://bugs.webkit.org/show_bug.cgi?id=94110 - Needs platform support.
-#endif // CSS3_TEXT_DECORATION
         cairo_set_dash(platformContext()->cr(), 0, 0, 0);
         break;
     case DottedStroke:
@@ -1008,7 +1012,7 @@ void GraphicsContext::scale(const FloatSize& size)
     m_data->scale(size);
 }
 
-void GraphicsContext::clipOut(const IntRect& r)
+void GraphicsContext::clipOut(const FloatRect& r)
 {
     if (paintingDisabled())
         return;
@@ -1024,21 +1028,13 @@ void GraphicsContext::clipOut(const IntRect& r)
     cairo_set_fill_rule(cr, savedFillRule);
 }
 
-static inline FloatPoint getPhase(const FloatRect& dest, const FloatRect& tile)
-{
-    FloatPoint phase = dest.location();
-    phase.move(-tile.x(), -tile.y());
-
-    return phase;
-}
-
-void GraphicsContext::fillRoundedRect(const IntRect& r, const IntSize& topLeft, const IntSize& topRight, const IntSize& bottomLeft, const IntSize& bottomRight, const Color& color, ColorSpace)
+void GraphicsContext::fillRoundedRect(const FloatRect& r, const FloatSize& topLeft, const FloatSize& topRight, const FloatSize& bottomLeft, const FloatSize& bottomRight, const Color& color, ColorSpace)
 {
     if (paintingDisabled())
         return;
 
     if (hasShadow())
-        platformContext()->shadowBlur().drawRectShadow(this, r, RoundedRect::Radii(topLeft, topRight, bottomLeft, bottomRight));
+        platformContext()->shadowBlur().drawRectShadow(this, r, FloatRoundedRect::Radii(topLeft, topRight, bottomLeft, bottomRight));
 
     cairo_t* cr = platformContext()->cr();
     cairo_save(cr);
@@ -1050,7 +1046,7 @@ void GraphicsContext::fillRoundedRect(const IntRect& r, const IntSize& topLeft, 
     cairo_restore(cr);
 }
 
-void GraphicsContext::fillRectWithRoundedHole(const IntRect& rect, const RoundedRect& roundedHoleRect, const Color& color, ColorSpace)
+void GraphicsContext::fillRectWithRoundedHole(const FloatRect& rect, const RoundedRect& roundedHoleRect, const Color& color, ColorSpace)
 {
     if (paintingDisabled() || !color.isValid())
         return;

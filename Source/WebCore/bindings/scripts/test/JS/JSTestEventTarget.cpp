@@ -42,11 +42,11 @@ namespace WebCore {
 
 static const HashTableValue JSTestEventTargetTableValues[] =
 {
-    { "constructor", DontEnum | ReadOnly, NoIntrinsic, (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestEventTargetConstructor), (intptr_t)0 },
+    { "constructor", DontEnum | ReadOnly, NoIntrinsic, (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestEventTargetConstructor), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) },
     { 0, 0, NoIntrinsic, 0, 0 }
 };
 
-static const HashTable JSTestEventTargetTable = { 2, 1, JSTestEventTargetTableValues, 0 };
+static const HashTable JSTestEventTargetTable = { 2, 1, true, JSTestEventTargetTableValues, 0 };
 /* Hash table for constructor */
 
 static const HashTableValue JSTestEventTargetConstructorTableValues[] =
@@ -54,7 +54,7 @@ static const HashTableValue JSTestEventTargetConstructorTableValues[] =
     { 0, 0, NoIntrinsic, 0, 0 }
 };
 
-static const HashTable JSTestEventTargetConstructorTable = { 1, 0, JSTestEventTargetConstructorTableValues, 0 };
+static const HashTable JSTestEventTargetConstructorTable = { 1, 0, false, JSTestEventTargetConstructorTableValues, 0 };
 const ClassInfo JSTestEventTargetConstructor::s_info = { "TestEventTargetConstructor", &Base::s_info, &JSTestEventTargetConstructorTable, 0, CREATE_METHOD_TABLE(JSTestEventTargetConstructor) };
 
 JSTestEventTargetConstructor::JSTestEventTargetConstructor(Structure* structure, JSDOMGlobalObject* globalObject)
@@ -79,14 +79,14 @@ bool JSTestEventTargetConstructor::getOwnPropertySlot(JSObject* object, ExecStat
 
 static const HashTableValue JSTestEventTargetPrototypeTableValues[] =
 {
-    { "item", JSC::Function, NoIntrinsic, (intptr_t)static_cast<NativeFunction>(jsTestEventTargetPrototypeFunctionItem), (intptr_t)1 },
-    { "addEventListener", JSC::Function, NoIntrinsic, (intptr_t)static_cast<NativeFunction>(jsTestEventTargetPrototypeFunctionAddEventListener), (intptr_t)2 },
-    { "removeEventListener", JSC::Function, NoIntrinsic, (intptr_t)static_cast<NativeFunction>(jsTestEventTargetPrototypeFunctionRemoveEventListener), (intptr_t)2 },
-    { "dispatchEvent", JSC::Function, NoIntrinsic, (intptr_t)static_cast<NativeFunction>(jsTestEventTargetPrototypeFunctionDispatchEvent), (intptr_t)1 },
+    { "item", JSC::Function, NoIntrinsic, (intptr_t)static_cast<NativeFunction>(jsTestEventTargetPrototypeFunctionItem), (intptr_t) (1) },
+    { "addEventListener", JSC::Function, NoIntrinsic, (intptr_t)static_cast<NativeFunction>(jsTestEventTargetPrototypeFunctionAddEventListener), (intptr_t) (2) },
+    { "removeEventListener", JSC::Function, NoIntrinsic, (intptr_t)static_cast<NativeFunction>(jsTestEventTargetPrototypeFunctionRemoveEventListener), (intptr_t) (2) },
+    { "dispatchEvent", JSC::Function, NoIntrinsic, (intptr_t)static_cast<NativeFunction>(jsTestEventTargetPrototypeFunctionDispatchEvent), (intptr_t) (1) },
     { 0, 0, NoIntrinsic, 0, 0 }
 };
 
-static const HashTable JSTestEventTargetPrototypeTable = { 8, 7, JSTestEventTargetPrototypeTableValues, 0 };
+static const HashTable JSTestEventTargetPrototypeTable = { 8, 7, false, JSTestEventTargetPrototypeTableValues, 0 };
 const ClassInfo JSTestEventTargetPrototype::s_info = { "TestEventTargetPrototype", &Base::s_info, &JSTestEventTargetPrototypeTable, 0, CREATE_METHOD_TABLE(JSTestEventTargetPrototype) };
 
 JSObject* JSTestEventTargetPrototype::self(VM& vm, JSGlobalObject* globalObject)
@@ -169,9 +169,9 @@ bool JSTestEventTarget::getOwnPropertySlotByIndex(JSObject* object, ExecState* e
     return Base::getOwnPropertySlotByIndex(thisObject, exec, index, slot);
 }
 
-EncodedJSValue jsTestEventTargetConstructor(ExecState* exec, EncodedJSValue slotBase, EncodedJSValue, PropertyName)
+EncodedJSValue jsTestEventTargetConstructor(ExecState* exec, EncodedJSValue, EncodedJSValue thisValue, PropertyName)
 {
-    JSTestEventTarget* domObject = jsDynamicCast<JSTestEventTarget*>(JSValue::decode(slotBase));
+    JSTestEventTarget* domObject = jsDynamicCast<JSTestEventTarget*>(JSValue::decode(thisValue));
     if (!domObject)
         return throwVMTypeError(exec);
     return JSValue::encode(JSTestEventTarget::getConstructor(exec->vm(), domObject->globalObject()));

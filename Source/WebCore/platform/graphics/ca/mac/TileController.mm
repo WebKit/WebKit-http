@@ -29,13 +29,19 @@
 #import "IntRect.h"
 #import "PlatformCALayer.h"
 #import "Region.h"
+#if !PLATFORM(IOS)
 #import "LayerPool.h"
+#endif
 #import "WebLayer.h"
 #import <wtf/MainThread.h>
 #import <utility>
 
+#if PLATFORM(IOS)
+#import "TileControllerMemoryHandlerIOS.h"
+#endif
+
 namespace WebCore {
-    
+
 enum TileValidationPolicyFlag {
     PruneSecondaryTiles = 1 << 0,
     UnparentAllTiles = 1 << 1
@@ -52,6 +58,7 @@ PassOwnPtr<TileController> TileController::create(PlatformCALayer* rootPlatformL
 TileController::TileController(PlatformCALayer* rootPlatformLayer)
     : m_tileCacheLayer(rootPlatformLayer)
     , m_tileSize(defaultTileWidth, defaultTileHeight)
+    , m_exposedRect(FloatRect::infiniteRect())
     , m_tileRevalidationTimer(this, &TileController::tileRevalidationTimerFired)
     , m_cohortRemovalTimer(this, &TileController::cohortRemovalTimerFired)
     , m_scale(1)
@@ -67,10 +74,9 @@ TileController::TileController(PlatformCALayer* rootPlatformLayer)
     , m_unparentsOffscreenTiles(false)
     , m_acceleratesDrawing(false)
     , m_tilesAreOpaque(false)
-    , m_clipsToExposedRect(false)
     , m_hasTilesWithTemporaryScaleFactor(false)
     , m_tileDebugBorderWidth(0)
-    , m_indicatorMode(ThreadedScrollingIndication)
+    , m_indicatorMode(AsyncScrollingIndication)
 {
     m_tileContainerLayer = m_tileCacheLayer->createCompatibleLayer(PlatformCALayer::LayerTypeLayer, nullptr);
 #ifndef NDEBUG
@@ -81,6 +87,10 @@ TileController::TileController(PlatformCALayer* rootPlatformLayer)
 TileController::~TileController()
 {
     ASSERT(isMainThread());
+
+#if PLATFORM(IOS)
+    tileControllerMemoryHandler().removeTileController(this);
+#endif
 
     for (TileMap::iterator it = m_tiles.begin(), end = m_tiles.end(); it != end; ++it)
         it->value.layer->setOwner(nullptr);
@@ -166,6 +176,11 @@ void TileController::setTileNeedsDisplayInRect(const TileIndex& tileIndex, TileI
 
 void TileController::platformCALayerPaintContents(PlatformCALayer* platformCALayer, GraphicsContext& context, const IntRect&)
 {
+#if PLATFORM(IOS)
+    if (pthread_main_np())
+        WebThreadLock();
+#endif
+
     if (platformCALayer == m_tiledScrollingIndicatorLayer.get()) {
         drawTileMapContents(context.platformContext(), m_tiledScrollingIndicatorLayer->bounds());
         return;
@@ -277,9 +292,7 @@ void TileController::setVisibleRect(const FloatRect& visibleRect)
 bool TileController::tilesWouldChangeForVisibleRect(const FloatRect& newVisibleRect) const
 {
     FloatRect visibleRect = newVisibleRect;
-
-    if (m_clipsToExposedRect)
-        visibleRect.intersect(m_exposedRect);
+    visibleRect.intersect(scaledExposedRect());
 
     if (visibleRect.isEmpty() || bounds().isEmpty())
         return false;
@@ -312,16 +325,12 @@ void TileController::setExposedRect(const FloatRect& exposedRect)
     setNeedsRevalidateTiles();
 }
 
-void TileController::setClipsToExposedRect(bool clipsToExposedRect)
+FloatRect TileController::scaledExposedRect() const
 {
-    if (m_clipsToExposedRect == clipsToExposedRect)
-        return;
-
-    m_clipsToExposedRect = clipsToExposedRect;
-
-    // Going from not clipping to clipping, we don't need to revalidate right away.
-    if (clipsToExposedRect)
-        setNeedsRevalidateTiles();
+    // Since the exposedRect is in FrameView-relative coordinates, we need to scale into document space.
+    FloatRect scaledExposedRect = m_exposedRect;
+    scaledExposedRect.scale(1 / m_scale);
+    return scaledExposedRect;
 }
 
 void TileController::prepopulateRect(const FloatRect& rect)
@@ -487,9 +496,7 @@ void TileController::getTileIndexRangeForRect(const IntRect& rect, TileIndex& to
 FloatRect TileController::computeTileCoverageRect(const FloatRect& previousVisibleRect, const FloatRect& currentVisibleRect) const
 {
     FloatRect visibleRect = currentVisibleRect;
-
-    if (m_clipsToExposedRect)
-        visibleRect.intersect(m_exposedRect);
+    visibleRect.intersect(scaledExposedRect());
 
     // If the page is not in a window (for example if it's in a background tab), we limit the tile coverage rect to the visible rect.
     if (!m_isInWindow)
@@ -637,7 +644,9 @@ void TileController::removeAllTiles()
 
     for (size_t i = 0; i < tilesToRemove.size(); ++i) {
         TileInfo tileInfo = m_tiles.take(tilesToRemove[i]);
+#if !PLATFORM(IOS)
         LayerPool::sharedPool()->addLayer(tileInfo.layer);
+#endif
     }
 }
 
@@ -655,7 +664,9 @@ void TileController::removeAllSecondaryTiles()
 
     for (size_t i = 0; i < tilesToRemove.size(); ++i) {
         TileInfo tileInfo = m_tiles.take(tilesToRemove[i]);
+#if !PLATFORM(IOS)
         LayerPool::sharedPool()->addLayer(tileInfo.layer);
+#endif
     }
 }
 
@@ -674,7 +685,9 @@ void TileController::removeTilesInCohort(TileCohort cohort)
 
     for (size_t i = 0; i < tilesToRemove.size(); ++i) {
         TileInfo tileInfo = m_tiles.take(tilesToRemove[i]);
+#if !PLATFORM(IOS)
         LayerPool::sharedPool()->addLayer(tileInfo.layer);
+#endif
     }
 }
 
@@ -688,8 +701,7 @@ void TileController::revalidateTiles(TileValidationPolicyFlags foregroundValidat
     FloatRect visibleRect = m_visibleRect;
     IntRect bounds = this->bounds();
 
-    if (m_clipsToExposedRect)
-        visibleRect.intersect(m_exposedRect);
+    visibleRect.intersect(scaledExposedRect());
 
     if (visibleRect.isEmpty() || bounds.isEmpty())
         return;
@@ -804,7 +816,9 @@ void TileController::revalidateTiles(TileValidationPolicyFlags foregroundValidat
 
         for (size_t i = 0, size = tilesToRemove.size(); i < size; ++i) {
             TileInfo tileInfo = m_tiles.take(tilesToRemove[i]);
+#if !PLATFORM(IOS)
             LayerPool::sharedPool()->addLayer(tileInfo.layer);
+#endif
         }
     }
 
@@ -826,6 +840,10 @@ TileController::TileCohort TileController::nextTileCohort() const
 void TileController::startedNewCohort(TileCohort cohort)
 {
     m_cohortList.append(TileCohortInfo(cohort, monotonicallyIncreasingTime()));
+#if PLATFORM(IOS)
+    if (!m_isInWindow)
+        tileControllerMemoryHandler().tileControllerGainedUnparentedTiles(this);
+#endif
 }
 
 TileController::TileCohort TileController::newestTileCohort() const
@@ -932,9 +950,7 @@ void TileController::updateTileCoverageMap()
     FloatRect containerBounds = bounds();
     FloatRect visibleRect = this->visibleRect();
 
-    if (m_clipsToExposedRect)
-        visibleRect.intersect(m_exposedRect);
-
+    visibleRect.intersect(scaledExposedRect());
     visibleRect.contract(4, 4); // Layer is positioned 2px from top and left edges.
 
     float widthScale = 1;
@@ -948,7 +964,7 @@ void TileController::updateTileCoverageMap()
     FloatRect mapBounds = containerBounds;
     mapBounds.scale(indicatorScale, indicatorScale);
 
-    if (m_clipsToExposedRect)
+    if (!m_exposedRect.isInfinite())
         m_tiledScrollingIndicatorLayer->setPosition(m_exposedRect.location() + FloatPoint(2, 2));
     else
         m_tiledScrollingIndicatorLayer->setPosition(FloatPoint(2, 2));
@@ -963,13 +979,13 @@ void TileController::updateTileCoverageMap()
 
     Color visibleRectIndicatorColor;
     switch (m_indicatorMode) {
-    case MainThreadScrollingBecauseOfStyleIndication:
+    case SynchronousScrollingBecauseOfStyleIndication:
         visibleRectIndicatorColor = Color(255, 0, 0);
         break;
-    case MainThreadScrollingBecauseOfEventHandlersIndication:
+    case SynchronousScrollingBecauseOfEventHandlersIndication:
         visibleRectIndicatorColor = Color(255, 255, 0);
         break;
-    case ThreadedScrollingIndication:
+    case AsyncScrollingIndication:
         visibleRectIndicatorColor = Color(0, 200, 0);
         break;
     }
@@ -1051,6 +1067,8 @@ void TileController::setTileMargins(int marginTop, int marginBottom, int marginL
     m_marginBottom = marginBottom;
     m_marginLeft = marginLeft;
     m_marginRight = marginRight;
+
+    setNeedsRevalidateTiles();
 }
 
 bool TileController::hasMargins() const
@@ -1080,7 +1098,11 @@ int TileController::rightMarginWidth() const
 
 RefPtr<PlatformCALayer> TileController::createTileLayer(const IntRect& tileRect)
 {
+#if PLATFORM(IOS)
+    RefPtr<PlatformCALayer> layer;
+#else
     RefPtr<PlatformCALayer> layer = LayerPool::sharedPool()->takeLayerWithSize(tileRect.size());
+#endif
 
     if (layer) {
         m_tileRepaintCounts.remove(layer.get());
@@ -1168,5 +1190,17 @@ void TileController::drawTileMapContents(CGContextRef context, CGRect layerBound
     }
 }
     
+#if PLATFORM(IOS)
+void TileController::removeUnparentedTilesNow()
+{
+    while (!m_cohortList.isEmpty()) {
+        TileCohortInfo firstCohort = m_cohortList.takeFirst();
+        removeTilesInCohort(firstCohort.cohort);
+    }
+
+    if (m_tiledScrollingIndicatorLayer)
+        updateTileCoverageMap();
+}
+#endif
 
 } // namespace WebCore

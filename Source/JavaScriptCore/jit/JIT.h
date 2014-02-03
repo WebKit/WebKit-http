@@ -241,13 +241,8 @@ namespace JSC {
             return jit.privateCompileCTINativeCall(vm, func);
         }
 
-        static void linkFor(ExecState*, JSFunction* callee, CodeBlock* callerCodeBlock, CodeBlock* calleeCodeBlock, CodePtr, CallLinkInfo*, VM*, CodeSpecializationKind);
-        static void linkSlowCall(CodeBlock* callerCodeBlock, CallLinkInfo*);
-        
-        static unsigned frameRegisterCountFor(CodeBlock* codeBlock)
-        {
-            return codeBlock->m_numCalleeRegisters;
-        }
+        static unsigned frameRegisterCountFor(CodeBlock*);
+        static int stackPointerOffsetFor(CodeBlock*);
 
     private:
         JIT(VM*, CodeBlock* = 0);
@@ -331,16 +326,11 @@ namespace JSC {
         template<typename StructureType> // StructureType can be RegisterID or ImmPtr.
         void emitAllocateJSObject(RegisterID allocator, StructureType, RegisterID result, RegisterID scratch);
         
-#if ENABLE(VALUE_PROFILER)
         // This assumes that the value to profile is in regT0 and that regT3 is available for
         // scratch.
-        void emitValueProfilingSite(ValueProfile*, RegisterID);
-        void emitValueProfilingSite(unsigned bytecodeOffset, RegisterID);
-        void emitValueProfilingSite(RegisterID);
-#else
-        void emitValueProfilingSite(unsigned, RegisterID) { }
-        void emitValueProfilingSite(RegisterID) { }
-#endif
+        void emitValueProfilingSite(ValueProfile*);
+        void emitValueProfilingSite(unsigned bytecodeOffset);
+        void emitValueProfilingSite();
         void emitArrayProfilingSite(RegisterID structureAndIndexingType, RegisterID scratch, ArrayProfile*);
         void emitArrayProfilingSiteForBytecodeIndex(RegisterID structureAndIndexingType, RegisterID scratch, unsigned bytecodeIndex);
         void emitArrayProfileStoreToHoleSpecialCase(ArrayProfile*);
@@ -702,11 +692,11 @@ namespace JSC {
         MacroAssembler::Call callOperation(WithProfileTag, J_JITOperation_EPc, int, Instruction*);
         MacroAssembler::Call callOperation(J_JITOperation_EZ, int, int32_t);
         MacroAssembler::Call callOperation(P_JITOperation_EJS, GPRReg, size_t);
-        MacroAssembler::Call callOperation(P_JITOperation_EZ, int32_t);
         MacroAssembler::Call callOperation(S_JITOperation_ECC, RegisterID, RegisterID);
         MacroAssembler::Call callOperation(S_JITOperation_EJ, RegisterID);
         MacroAssembler::Call callOperation(S_JITOperation_EJJ, RegisterID, RegisterID);
         MacroAssembler::Call callOperation(S_JITOperation_EOJss, RegisterID, RegisterID);
+        MacroAssembler::Call callOperation(Sprt_JITOperation_EZ, int32_t);
         MacroAssembler::Call callOperation(V_JITOperation_E);
         MacroAssembler::Call callOperation(V_JITOperation_EC, RegisterID);
         MacroAssembler::Call callOperation(V_JITOperation_ECC, RegisterID, RegisterID);
@@ -731,6 +721,7 @@ namespace JSC {
         MacroAssembler::Call callOperation(V_JITOperation_EPc, Instruction*);
         MacroAssembler::Call callOperation(V_JITOperation_EZ, int32_t);
         MacroAssembler::Call callOperationWithCallFrameRollbackOnException(J_JITOperation_E);
+        MacroAssembler::Call callOperationNoExceptionCheck(J_JITOperation_EE, RegisterID);
         MacroAssembler::Call callOperationWithCallFrameRollbackOnException(V_JITOperation_ECb, CodeBlock*);
         MacroAssembler::Call callOperationWithCallFrameRollbackOnException(Z_JITOperation_E);
 #if USE(JSVALUE32_64)
@@ -827,11 +818,9 @@ namespace JSC {
         WeakRandom m_randomGenerator;
         static CodeRef stringGetByValStubGenerator(VM*);
 
-#if ENABLE(VALUE_PROFILER)
         bool m_canBeOptimized;
         bool m_canBeOptimizedOrInlined;
         bool m_shouldEmitProfiling;
-#endif
     } JIT_CLASS_ALIGNMENT;
 
 } // namespace JSC

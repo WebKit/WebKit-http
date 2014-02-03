@@ -34,12 +34,12 @@ namespace WebCore {
 
 static const HashTableValue JSattributeTableValues[] =
 {
-    { "readonly", DontDelete | ReadOnly, NoIntrinsic, (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsattributeReadonly), (intptr_t)0 },
-    { "constructor", DontEnum | ReadOnly, NoIntrinsic, (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsattributeConstructor), (intptr_t)0 },
+    { "readonly", DontDelete | ReadOnly | CustomAccessor, NoIntrinsic, (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsattributeReadonly), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) },
+    { "constructor", DontEnum | ReadOnly, NoIntrinsic, (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsattributeConstructor), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) },
     { 0, 0, NoIntrinsic, 0, 0 }
 };
 
-static const HashTable JSattributeTable = { 4, 3, JSattributeTableValues, 0 };
+static const HashTable JSattributeTable = { 4, 3, true, JSattributeTableValues, 0 };
 /* Hash table for constructor */
 
 static const HashTableValue JSattributeConstructorTableValues[] =
@@ -47,7 +47,7 @@ static const HashTableValue JSattributeConstructorTableValues[] =
     { 0, 0, NoIntrinsic, 0, 0 }
 };
 
-static const HashTable JSattributeConstructorTable = { 1, 0, JSattributeConstructorTableValues, 0 };
+static const HashTable JSattributeConstructorTable = { 1, 0, false, JSattributeConstructorTableValues, 0 };
 const ClassInfo JSattributeConstructor::s_info = { "attributeConstructor", &Base::s_info, &JSattributeConstructorTable, 0, CREATE_METHOD_TABLE(JSattributeConstructor) };
 
 JSattributeConstructor::JSattributeConstructor(Structure* structure, JSDOMGlobalObject* globalObject)
@@ -75,7 +75,7 @@ static const HashTableValue JSattributePrototypeTableValues[] =
     { 0, 0, NoIntrinsic, 0, 0 }
 };
 
-static const HashTable JSattributePrototypeTable = { 1, 0, JSattributePrototypeTableValues, 0 };
+static const HashTable JSattributePrototypeTable = { 1, 0, false, JSattributePrototypeTableValues, 0 };
 const ClassInfo JSattributePrototype::s_info = { "attributePrototype", &Base::s_info, &JSattributePrototypeTable, 0, CREATE_METHOD_TABLE(JSattributePrototype) };
 
 JSObject* JSattributePrototype::self(VM& vm, JSGlobalObject* globalObject)
@@ -133,9 +133,9 @@ EncodedJSValue jsattributeReadonly(ExecState* exec, EncodedJSValue slotBase, Enc
 }
 
 
-EncodedJSValue jsattributeConstructor(ExecState* exec, EncodedJSValue slotBase, EncodedJSValue, PropertyName)
+EncodedJSValue jsattributeConstructor(ExecState* exec, EncodedJSValue, EncodedJSValue thisValue, PropertyName)
 {
-    JSattribute* domObject = jsDynamicCast<JSattribute*>(JSValue::decode(slotBase));
+    JSattribute* domObject = jsDynamicCast<JSattribute*>(JSValue::decode(thisValue));
     if (!domObject)
         return throwVMTypeError(exec);
     return JSValue::encode(JSattribute::getConstructor(exec->vm(), domObject->globalObject()));

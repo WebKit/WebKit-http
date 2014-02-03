@@ -536,11 +536,11 @@ bool AccessibilityRenderObject::isReadOnly() const
     
     if (isWebArea()) {
         if (HTMLElement* body = m_renderer->document().body()) {
-            if (body->rendererIsEditable())
+            if (body->hasEditableStyle())
                 return false;
         }
 
-        return !m_renderer->document().rendererIsEditable();
+        return !m_renderer->document().hasEditableStyle();
     }
 
     return AccessibilityNodeObject::isReadOnly();
@@ -550,7 +550,8 @@ bool AccessibilityRenderObject::isOffScreen() const
 {
     ASSERT(m_renderer);
     IntRect contentRect = pixelSnappedIntRect(m_renderer->absoluteClippedOverflowRect());
-    IntRect viewRect = m_renderer->view().frameView().visibleContentRect();
+    // FIXME: unclear if we need LegacyIOSDocumentVisibleRect.
+    IntRect viewRect = m_renderer->view().frameView().visibleContentRect(ScrollableArea::LegacyIOSDocumentVisibleRect);
     viewRect.intersect(contentRect);
     return viewRect.isEmpty();
 }
@@ -962,10 +963,8 @@ void AccessibilityRenderObject::addRadioButtonGroupMembers(AccessibilityChildren
         Vector<Ref<Element>> formElements;
         input->form()->getNamedElements(input->name(), formElements);
         
-        unsigned len = formElements.size();
-        for (unsigned i = 0; i < len; ++i) {
-            Element& associateElement = formElements[i].get();
-            if (AccessibilityObject* object = axObjectCache()->getOrCreate(&associateElement))
+        for (auto& associateElement : formElements) {
+            if (AccessibilityObject* object = axObjectCache()->getOrCreate(&associateElement.get()))
                 linkedUIElements.append(object);        
         } 
     } else {
@@ -1011,6 +1010,17 @@ bool AccessibilityRenderObject::ariaHasPopup() const
     return elementAttributeValue(aria_haspopupAttr);
 }
 
+void AccessibilityRenderObject::ariaElementsFromAttribute(AccessibilityChildrenVector& children, const QualifiedName& attributeName) const
+{
+    Vector<Element*> elements;
+    elementsFromAttribute(elements, attributeName);
+    AXObjectCache* cache = axObjectCache();
+    for (const auto& element : elements) {
+        if (AccessibilityObject* axObject = cache->getOrCreate(element))
+            children.append(axObject);
+    }
+}
+
 bool AccessibilityRenderObject::supportsARIAFlowTo() const
 {
     return !getAttribute(aria_flowtoAttr).isEmpty();
@@ -1018,20 +1028,19 @@ bool AccessibilityRenderObject::supportsARIAFlowTo() const
     
 void AccessibilityRenderObject::ariaFlowToElements(AccessibilityChildrenVector& flowTo) const
 {
-    Vector<Element*> elements;
-    elementsFromAttribute(elements, aria_flowtoAttr);
-    
-    AXObjectCache* cache = axObjectCache();
-    unsigned count = elements.size();
-    for (unsigned k = 0; k < count; ++k) {
-        Element* element = elements[k];
-        AccessibilityObject* flowToElement = cache->getOrCreate(element);
-        if (flowToElement)
-            flowTo.append(flowToElement);
-    }
-        
+    ariaElementsFromAttribute(flowTo, aria_flowtoAttr);
 }
-    
+
+bool AccessibilityRenderObject::supportsARIADescribedBy() const
+{
+    return !getAttribute(aria_describedbyAttr).isEmpty();
+}
+
+void AccessibilityRenderObject::ariaDescribedByElements(AccessibilityChildrenVector& ariaDescribedBy) const
+{
+    ariaElementsFromAttribute(ariaDescribedBy, aria_describedbyAttr);
+}
+
 bool AccessibilityRenderObject::supportsARIADropping() const 
 {
     const AtomicString& dropEffect = getAttribute(aria_dropeffectAttr);
@@ -1244,7 +1253,7 @@ bool AccessibilityRenderObject::computeAccessibilityIsIgnored() const
         return false;
     
     // Anything that is content editable should not be ignored.
-    // However, one cannot just call node->rendererIsEditable() since that will ask if its parents
+    // However, one cannot just call node->hasEditableStyle() since that will ask if its parents
     // are also editable. Only the top level content editable region should be exposed.
     if (hasContentEditableAttributeSet())
         return false;
@@ -1397,11 +1406,7 @@ int AccessibilityRenderObject::textLength() const
     ASSERT(isTextControl());
     
     if (isPasswordField())
-#if PLATFORM(GTK)
         return passwordFieldValue().length();
-#else
-        return -1; // need to return something distinct from 0
-#endif
 
     return text().length();
 }
@@ -1578,9 +1583,7 @@ bool AccessibilityRenderObject::isTabItemSelected() const
     Vector<Element*> elements;
     elementsFromAttribute(elements, aria_controlsAttr);
     
-    unsigned count = elements.size();
-    for (unsigned k = 0; k < count; ++k) {
-        Element* element = elements[k];
+    for (const auto& element : elements) {
         AccessibilityObject* tabPanel = axObjectCache()->getOrCreate(element);
 
         // A tab item should only control tab panels.
@@ -1653,8 +1656,8 @@ void AccessibilityRenderObject::setSelectedRows(AccessibilityChildrenVector& sel
     if (count > 1 && !isMulti)
         count = 1;
     
-    for (unsigned k = 0; k < count; ++k)
-        selectedRows[k]->setSelected(true);
+    for (const auto& selectedRow : selectedRows)
+        selectedRow->setSelected(true);
 }
     
 void AccessibilityRenderObject::setValue(const String& string)
@@ -1679,16 +1682,7 @@ void AccessibilityRenderObject::setValue(const String& string)
 
 void AccessibilityRenderObject::ariaOwnsElements(AccessibilityChildrenVector& axObjects) const
 {
-    Vector<Element*> elements;
-    elementsFromAttribute(elements, aria_ownsAttr);
-    
-    unsigned count = elements.size();
-    for (unsigned k = 0; k < count; ++k) {
-        RenderObject* render = elements[k]->renderer();
-        AccessibilityObject* obj = axObjectCache()->getOrCreate(render);
-        if (obj)
-            axObjects.append(obj);
-    }
+    ariaElementsFromAttribute(axObjects, aria_ownsAttr);
 }
 
 bool AccessibilityRenderObject::supportsARIAOwns() const
@@ -2155,12 +2149,9 @@ AccessibilityObject* AccessibilityRenderObject::accessibilityImageMapHitTest(HTM
     if (!parent)
         return 0;
     
-    AccessibilityObject::AccessibilityChildrenVector children = parent->children();
-    
-    unsigned count = children.size();
-    for (unsigned k = 0; k < count; ++k) {
-        if (children[k]->elementRect().contains(point))
-            return children[k].get();
+    for (const auto& child : parent->children()) {
+        if (child->elementRect().contains(point))
+            return child.get();
     }
     
     return 0;
@@ -2733,7 +2724,7 @@ void AccessibilityRenderObject::textChanged()
         if (parent->supportsARIALiveRegion())
             cache->postNotification(renderParent, AXObjectCache::AXLiveRegionChanged);
 
-        if (parent->isARIATextControl() && !parent->isNativeTextControl() && !parent->node()->rendererIsEditable())
+        if (parent->isARIATextControl() && !parent->isNativeTextControl() && !parent->node()->hasEditableStyle())
             cache->postNotification(renderParent, AXObjectCache::AXValueChanged);
     }
 }
@@ -2809,44 +2800,47 @@ AccessibilitySVGRoot* AccessibilityRenderObject::remoteSVGRootElement() const
 {
 #if ENABLE(SVG)
     if (!m_renderer || !m_renderer->isRenderImage())
-        return 0;
+        return nullptr;
     
     CachedImage* cachedImage = toRenderImage(m_renderer)->cachedImage();
     if (!cachedImage)
-        return 0;
+        return nullptr;
     
     Image* image = cachedImage->image();
     if (!image || !image->isSVGImage())
-        return 0;
+        return nullptr;
     
     SVGImage* svgImage = static_cast<SVGImage*>(image);
     FrameView* frameView = svgImage->frameView();
     if (!frameView)
-        return 0;
+        return nullptr;
     Frame& frame = frameView->frame();
     
     Document* doc = frame.document();
     if (!doc || !doc->isSVGDocument())
-        return 0;
+        return nullptr;
     
     SVGSVGElement* rootElement = toSVGDocument(doc)->rootElement();
     if (!rootElement)
-        return 0;
+        return nullptr;
     RenderObject* rendererRoot = rootElement->renderer();
     if (!rendererRoot)
-        return 0;
+        return nullptr;
     
-    AccessibilityObject* rootSVGObject = frame.document()->axObjectCache()->getOrCreate(rendererRoot);
+    AXObjectCache* cache = frame.document()->axObjectCache();
+    if (!cache)
+        return nullptr;
+    AccessibilityObject* rootSVGObject = cache->getOrCreate(rendererRoot);
 
     // In order to connect the AX hierarchy from the SVG root element from the loaded resource
     // the parent must be set, because there's no other way to get back to who created the image.
     ASSERT(rootSVGObject && rootSVGObject->isAccessibilitySVGRoot());
     if (!rootSVGObject->isAccessibilitySVGRoot())
-        return 0;
+        return nullptr;
     
     return toAccessibilitySVGRoot(rootSVGObject);
 #else
-    return 0;
+    return nullptr;
 #endif
 }
     
@@ -2859,10 +2853,8 @@ void AccessibilityRenderObject::addRemoteSVGChildren()
     root->setParent(this);
     
     if (root->accessibilityIsIgnored()) {
-        AccessibilityChildrenVector children = root->children();
-        unsigned length = children.size();
-        for (unsigned i = 0; i < length; ++i)
-            m_children.append(children[i]);
+        for (const auto& child : root->children())
+            m_children.append(child);
     } else
         m_children.append(root);
 }
@@ -2904,10 +2896,9 @@ void AccessibilityRenderObject::updateAttachmentViewParents()
     if (accessibilityIsIgnored())
         return;
     
-    size_t length = m_children.size();
-    for (size_t k = 0; k < length; k++) {
-        if (m_children[k]->isAttachment())
-            m_children[k]->overrideAttachmentParent(this);
+    for (const auto& child : m_children) {
+        if (child->isAttachment())
+            child->overrideAttachmentParent(this);
     }
 }
 #endif
@@ -2941,7 +2932,7 @@ void AccessibilityRenderObject::addHiddenChildren()
             // Find out where the last render sibling is located within m_children.
             AccessibilityObject* childObject = axObjectCache()->get(child->renderer());
             if (childObject && childObject->accessibilityIsIgnored()) {
-                AccessibilityChildrenVector children = childObject->children();
+                auto& children = childObject->children();
                 if (children.size())
                     childObject = children.last().get();
                 else
@@ -3068,10 +3059,9 @@ void AccessibilityRenderObject::ariaSelectedRows(AccessibilityChildrenVector& re
             return;
     }
 
-    unsigned count = allRows.size();
-    for (unsigned k = 0; k < count; ++k) {
-        if (allRows[k]->isSelected()) {
-            result.append(allRows[k]);
+    for (const auto& row : allRows) {
+        if (row->isSelected()) {
+            result.append(row);
             if (!isMulti)
                 break;
         }
@@ -3082,11 +3072,8 @@ void AccessibilityRenderObject::ariaListboxSelectedChildren(AccessibilityChildre
 {
     bool isMulti = isMultiSelectable();
 
-    AccessibilityChildrenVector childObjects = children();
-    unsigned childrenSize = childObjects.size();
-    for (unsigned k = 0; k < childrenSize; ++k) {
+    for (const auto& child : children()) {
         // Every child should have aria-role option, and if so, check for selected attribute/state.
-        AccessibilityObject* child = childObjects[k].get();
         if (child->isSelected() && child->ariaRoleAttribute() == ListBoxOptionRole) {
             result.append(child);
             if (!isMulti)
@@ -3112,11 +3099,9 @@ void AccessibilityRenderObject::ariaListboxVisibleChildren(AccessibilityChildren
     if (!hasChildren())
         addChildren();
     
-    AccessibilityObject::AccessibilityChildrenVector children = this->children();
-    size_t size = children.size();
-    for (size_t i = 0; i < size; i++) {
-        if (!children[i]->isOffScreen())
-            result.append(children[i]);
+    for (const auto& child : children()) {
+        if (child->isOffScreen())
+            result.append(child);
     }
 }
 
@@ -3136,11 +3121,9 @@ void AccessibilityRenderObject::tabChildren(AccessibilityChildrenVector& result)
 {
     ASSERT(roleValue() == TabListRole);
     
-    AccessibilityObject::AccessibilityChildrenVector children = this->children();
-    size_t size = children.size();
-    for (size_t i = 0; i < size; ++i) {
-        if (children[i]->isTabItem())
-            result.append(children[i]);
+    for (const auto& child : children()) {
+        if (child->isTabItem())
+            result.append(child);
     }
 }
     
@@ -3380,7 +3363,6 @@ AccessibilityRole AccessibilityRenderObject::roleValueForMSAA() const
 
 String AccessibilityRenderObject::passwordFieldValue() const
 {
-#if PLATFORM(GTK)
     ASSERT(isPasswordField());
 
     // Look for the RenderText object in the RenderObject tree for this input field.
@@ -3392,11 +3374,7 @@ String AccessibilityRenderObject::passwordFieldValue() const
         return String();
 
     // Return the text that is actually being rendered in the input field.
-    return static_cast<RenderText*>(renderer)->textWithoutConvertingBackslashToYenSymbol();
-#else
-    // It seems only GTK is interested in this at the moment.
-    return String();
-#endif
+    return toRenderText(renderer)->textWithoutConvertingBackslashToYenSymbol();
 }
 
 ScrollableArea* AccessibilityRenderObject::getScrollableAreaIfScrollable() const
@@ -3571,7 +3549,7 @@ AccessibilityObject* AccessibilityRenderObject::mathRadicandObject()
     if (!isMathRoot())
         return 0;
     
-    AccessibilityObject::AccessibilityChildrenVector children = this->children();
+    const auto& children = this->children();
     if (children.size() < 1)
         return 0;
     
@@ -3584,7 +3562,7 @@ AccessibilityObject* AccessibilityRenderObject::mathRootIndexObject()
     if (!isMathRoot())
         return 0;
     
-    AccessibilityObject::AccessibilityChildrenVector children = this->children();
+    const auto& children = this->children();
     if (children.size() != 2)
         return 0;
 
@@ -3598,7 +3576,7 @@ AccessibilityObject* AccessibilityRenderObject::mathNumeratorObject()
     if (!isMathFraction())
         return 0;
     
-    AccessibilityObject::AccessibilityChildrenVector children = this->children();
+    const auto& children = this->children();
     if (children.size() != 2)
         return 0;
     
@@ -3610,7 +3588,7 @@ AccessibilityObject* AccessibilityRenderObject::mathDenominatorObject()
     if (!isMathFraction())
         return 0;
 
-    AccessibilityObject::AccessibilityChildrenVector children = this->children();
+    const auto& children = this->children();
     if (children.size() != 2)
         return 0;
     
@@ -3622,7 +3600,7 @@ AccessibilityObject* AccessibilityRenderObject::mathUnderObject()
     if (!isMathUnderOver() || !node())
         return 0;
     
-    AccessibilityChildrenVector children = this->children();
+    const auto& children = this->children();
     if (children.size() < 2)
         return 0;
     
@@ -3637,7 +3615,7 @@ AccessibilityObject* AccessibilityRenderObject::mathOverObject()
     if (!isMathUnderOver() || !node())
         return 0;
     
-    AccessibilityChildrenVector children = this->children();
+    const auto& children = this->children();
     if (children.size() < 2)
         return 0;
     
@@ -3654,7 +3632,7 @@ AccessibilityObject* AccessibilityRenderObject::mathBaseObject()
     if (!isMathSubscriptSuperscript() && !isMathUnderOver() && !isMathMultiscript())
         return 0;
     
-    AccessibilityChildrenVector children = this->children();
+    const auto& children = this->children();
     // The base object in question is always the first child.
     if (children.size() > 0)
         return children[0].get();
@@ -3667,7 +3645,7 @@ AccessibilityObject* AccessibilityRenderObject::mathSubscriptObject()
     if (!isMathSubscriptSuperscript() || !node())
         return 0;
     
-    AccessibilityChildrenVector children = this->children();
+    const auto& children = this->children();
     if (children.size() < 2)
         return 0;
 
@@ -3682,7 +3660,7 @@ AccessibilityObject* AccessibilityRenderObject::mathSuperscriptObject()
     if (!isMathSubscriptSuperscript() || !node())
         return 0;
     
-    AccessibilityChildrenVector children = this->children();
+    const auto& children = this->children();
     unsigned count = children.size();
 
     if (count >= 2 && node()->hasTagName(MathMLNames::msupTag))
@@ -3716,7 +3694,7 @@ void AccessibilityRenderObject::mathPrescripts(AccessibilityMathMultiscriptPairs
         return;
     
     bool foundPrescript = false;
-    pair<AccessibilityObject*, AccessibilityObject*> prescriptPair;
+    std::pair<AccessibilityObject*, AccessibilityObject*> prescriptPair;
     for (Node* child = node()->firstChild(); child; child = child->nextSibling()) {
         if (foundPrescript) {
             AccessibilityObject* axChild = axObjectCache()->getOrCreate(child);
@@ -3746,7 +3724,7 @@ void AccessibilityRenderObject::mathPostscripts(AccessibilityMathMultiscriptPair
 
     // In Multiscripts, the post-script elements start after the first element (which is the base)
     // and continue until a <mprescripts> tag is found
-    pair<AccessibilityObject*, AccessibilityObject*> postscriptPair;
+    std::pair<AccessibilityObject*, AccessibilityObject*> postscriptPair;
     bool foundBaseElement = false;
     for (Node* child = node()->firstChild(); child; child = child->nextSibling()) {
         if (child->hasTagName(MathMLNames::mprescriptsTag))

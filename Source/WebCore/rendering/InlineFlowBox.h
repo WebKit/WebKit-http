@@ -36,7 +36,7 @@ class VerticalPositionCache;
 
 struct GlyphOverflow;
 
-typedef HashMap<const InlineTextBox*, pair<Vector<const SimpleFontData*>, GlyphOverflow>> GlyphOverflowAndFallbackFontsMap;
+typedef HashMap<const InlineTextBox*, std::pair<Vector<const SimpleFontData*>, GlyphOverflow>> GlyphOverflowAndFallbackFontsMap;
 
 class InlineFlowBox : public InlineBox {
 public:
@@ -53,6 +53,7 @@ public:
         , m_hasAnnotationsBefore(false)
         , m_hasAnnotationsAfter(false)
         , m_isFirstAfterPageBreak(false)
+        , m_hasContainingRegion(false)
 #if !ASSERT_WITH_SECURITY_IMPLICATION_DISABLED
         , m_hasBadChildList(false)
 #endif
@@ -71,8 +72,8 @@ public:
 #endif
 
 #ifndef NDEBUG
-    virtual void showLineTreeAndMark(const InlineBox* = 0, const char* = 0, const InlineBox* = 0, const char* = 0, const RenderObject* = 0, int = 0) const OVERRIDE;
-    virtual const char* boxName() const OVERRIDE;
+    virtual void showLineTreeAndMark(const InlineBox* = 0, const char* = 0, const InlineBox* = 0, const char* = 0, const RenderObject* = 0, int = 0) const override;
+    virtual const char* boxName() const override;
 #endif
 
     RenderBoxModelObject& renderer() const { return toRenderBoxModelObject(InlineBox::renderer()); }
@@ -86,7 +87,7 @@ public:
     InlineBox* firstChild() const { checkConsistency(); return m_firstChild; }
     InlineBox* lastChild() const { checkConsistency(); return m_lastChild; }
 
-    virtual bool isLeaf() const OVERRIDE FINAL { return false; }
+    virtual bool isLeaf() const override final { return false; }
     
     InlineBox* firstLeafChild() const;
     InlineBox* lastLeafChild() const;
@@ -94,7 +95,7 @@ public:
     typedef void (*CustomInlineBoxRangeReverse)(void* userData, Vector<InlineBox*>::iterator first, Vector<InlineBox*>::iterator last);
     void collectLeafBoxesInLogicalOrder(Vector<InlineBox*>&, CustomInlineBoxRangeReverse customReverseImplementation = 0, void* userData = 0) const;
 
-    virtual void setConstructed() OVERRIDE FINAL
+    virtual void setConstructed() override final
     {
         InlineBox::setConstructed();
         for (InlineBox* child = firstChild(); child; child = child->nextOnLine())
@@ -102,16 +103,16 @@ public:
     }
 
     void addToLine(InlineBox* child);
-    virtual void deleteLine() OVERRIDE FINAL;
-    virtual void extractLine() OVERRIDE FINAL;
-    virtual void attachLine() OVERRIDE FINAL;
-    virtual void adjustPosition(float dx, float dy) OVERRIDE;
+    virtual void deleteLine() override final;
+    virtual void extractLine() override final;
+    virtual void attachLine() override final;
+    virtual void adjustPosition(float dx, float dy) override;
 
     virtual void extractLineBoxFromRenderObject();
     virtual void attachLineBoxToRenderObject();
     virtual void removeLineBoxFromRenderObject();
 
-    virtual void clearTruncation() OVERRIDE;
+    virtual void clearTruncation() override;
 
     IntRect roundedFrameRect() const;
     
@@ -120,8 +121,8 @@ public:
     void paintFillLayers(const PaintInfo&, const Color&, const FillLayer*, const LayoutRect&, CompositeOperator = CompositeSourceOver);
     void paintFillLayer(const PaintInfo&, const Color&, const FillLayer*, const LayoutRect&, CompositeOperator = CompositeSourceOver);
     void paintBoxShadow(const PaintInfo&, const RenderStyle&, ShadowStyle, const LayoutRect&);
-    virtual void paint(PaintInfo&, const LayoutPoint&, LayoutUnit lineTop, LayoutUnit lineBottom) OVERRIDE;
-    virtual bool nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, LayoutUnit lineTop, LayoutUnit lineBottom) OVERRIDE;
+    virtual void paint(PaintInfo&, const LayoutPoint&, LayoutUnit lineTop, LayoutUnit lineBottom) override;
+    virtual bool nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, LayoutUnit lineTop, LayoutUnit lineBottom) override;
 
     bool boxShadowCanBeAppliedToBackground(const FillLayer&) const;
 
@@ -203,10 +204,10 @@ public:
     
     void removeChild(InlineBox* child);
 
-    virtual RenderObject::SelectionState selectionState() OVERRIDE;
+    virtual RenderObject::SelectionState selectionState() override;
 
-    virtual bool canAccommodateEllipsis(bool ltr, int blockEdge, int ellipsisWidth) const OVERRIDE FINAL;
-    virtual float placeEllipsisBox(bool ltr, float blockLeftEdge, float blockRightEdge, float ellipsisWidth, float &truncatedWidth, bool&) OVERRIDE;
+    virtual bool canAccommodateEllipsis(bool ltr, int blockEdge, int ellipsisWidth) const override final;
+    virtual float placeEllipsisBox(bool ltr, float blockLeftEdge, float blockRightEdge, float ellipsisWidth, float &truncatedWidth, bool&) override;
 
     bool hasTextChildren() const { return m_hasTextChildren; }
     bool hasTextDescendants() const { return m_hasTextDescendants; }
@@ -294,8 +295,8 @@ public:
     }
 
 private:
-    virtual bool isInlineFlowBox() const OVERRIDE FINAL { return true; }
-    void boxModelObject() const WTF_DELETED_FUNCTION;
+    virtual bool isInlineFlowBox() const override final { return true; }
+    void boxModelObject() const = delete;
 
     void addBoxShadowVisualOverflow(LayoutRect& logicalVisualOverflow);
     void addBorderOutsetVisualOverflow(LayoutRect& logicalVisualOverflow);
@@ -312,11 +313,9 @@ protected:
     InlineFlowBox* m_prevLineBox; // The previous box that also uses our RenderObject
     InlineFlowBox* m_nextLineBox; // The next box that also uses our RenderObject
 
-#if ENABLE(CSS3_TEXT_DECORATION)
     // Maximum logicalTop among all children of an InlineFlowBox. Used to
     // calculate the offset for TextUnderlinePositionUnder.
     void computeMaxLogicalTop(float& maxLogicalTop) const;
-#endif
 private:
     unsigned m_includeLogicalLeftEdge : 1;
     unsigned m_includeLogicalRightEdge : 1;
@@ -339,6 +338,8 @@ protected:
     unsigned m_lineBreakBidiStatusLast : 5; // UCharDirection
 
     unsigned m_isFirstAfterPageBreak : 1;
+
+    unsigned m_hasContainingRegion : 1;
 
     // End of RootInlineBox-specific members.
 

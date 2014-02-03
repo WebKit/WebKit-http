@@ -28,7 +28,6 @@
 
 #include "Attr.h"
 #include "Element.h"
-#include "Node.h"
 #include "NodeTraversal.h"
 
 namespace WebCore {
@@ -219,9 +218,8 @@ void NodeSet::traversalSort() const
         if (!element->hasAttributes())
             continue;
 
-        unsigned attributeCount = element->attributeCount();
-        for (unsigned i = 0; i < attributeCount; ++i) {
-            RefPtr<Attr> attr = element->attrIfExists(element->attributeAt(i).name());
+        for (const Attribute& attribute : element->attributesIterator()) {
+            RefPtr<Attr> attr = element->attrIfExists(attribute.name());
             if (attr && nodes.contains(attr.get()))
                 sortedNodes.append(attr);
         }

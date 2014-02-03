@@ -36,13 +36,21 @@
 #include "SecItemShimMessages.h"
 #include "SecItemShimProxyMessages.h"
 #include <Security/Security.h>
+#include <atomic>
 #include <dlfcn.h>
+#include <mutex>
 
 namespace WebKit {
 
 static BlockingResponseMap<SecItemResponseData>& responseMap()
 {
-    AtomicallyInitializedStatic(BlockingResponseMap<SecItemResponseData>*, responseMap = new BlockingResponseMap<SecItemResponseData>);
+    static std::once_flag onceFlag;
+    static BlockingResponseMap<SecItemResponseData>* responseMap;
+
+    std::call_once(onceFlag, []{
+        responseMap = std::make_unique<BlockingResponseMap<SecItemResponseData>>().release();
+    });
+
     return *responseMap;
 }
 
@@ -66,8 +74,8 @@ SecItemShim::SecItemShim()
 
 static uint64_t generateSecItemRequestID()
 {
-    static int64_t uniqueSecItemRequestID;
-    return atomicIncrement(&uniqueSecItemRequestID);
+    static std::atomic<int64_t> uniqueSecItemRequestID;
+    return ++uniqueSecItemRequestID;
 }
 
 static std::unique_ptr<SecItemResponseData> sendSecItemRequest(SecItemRequestData::Type requestType, CFDictionaryRef query, CFDictionaryRef attributesToMatch = 0)
@@ -138,7 +146,7 @@ void SecItemShim::initialize(ChildProcess* process)
     func(callbacks);
 }
 
-void SecItemShim::initializeConnection(CoreIPC::Connection* connection)
+void SecItemShim::initializeConnection(IPC::Connection* connection)
 {
     connection->addWorkQueueMessageReceiver(Messages::SecItemShim::messageReceiverName(), m_queue.get(), this);
 }

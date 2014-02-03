@@ -24,11 +24,13 @@ mathbackground
 mathcolor
 mathsize
 mathvariant
+notation
 numalign
 open
 rowspan
 selection
 separators
+src
 stretchy
 subscriptshift
 superscriptshift

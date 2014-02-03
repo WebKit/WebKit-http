@@ -30,7 +30,7 @@
 
 namespace WebCore {
 
-class SVGAElement FINAL : public SVGGraphicsElement,
+class SVGAElement final : public SVGGraphicsElement,
                           public SVGURIReference,
                           public SVGExternalResourcesRequired {
 public:
@@ -39,27 +39,27 @@ public:
 private:
     SVGAElement(const QualifiedName&, Document&);
 
-    virtual bool isValid() const { return SVGTests::isValid(); }
+    virtual bool isValid() const override { return SVGTests::isValid(); }
     
-    virtual String title() const;
-    virtual String target() const { return svgTarget(); }
+    virtual String title() const override;
+    virtual String target() const override { return svgTarget(); }
 
     bool isSupportedAttribute(const QualifiedName&);
-    virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
-    virtual void svgAttributeChanged(const QualifiedName&);
+    virtual void parseAttribute(const QualifiedName&, const AtomicString&) override;
+    virtual void svgAttributeChanged(const QualifiedName&) override;
 
-    virtual RenderElement* createRenderer(PassRef<RenderStyle>) OVERRIDE;
-    virtual bool childShouldCreateRenderer(const Node&) const OVERRIDE;
+    virtual RenderPtr<RenderElement> createElementRenderer(PassRef<RenderStyle>) override;
+    virtual bool childShouldCreateRenderer(const Node&) const override;
 
-    virtual void defaultEventHandler(Event*);
+    virtual void defaultEventHandler(Event*) override;
     
-    virtual bool supportsFocus() const OVERRIDE;
-    virtual bool isMouseFocusable() const OVERRIDE;
-    virtual bool isKeyboardFocusable(KeyboardEvent*) const OVERRIDE;
-    virtual bool isFocusable() const OVERRIDE;
-    virtual bool isURLAttribute(const Attribute&) const;
+    virtual bool supportsFocus() const override;
+    virtual bool isMouseFocusable() const override;
+    virtual bool isKeyboardFocusable(KeyboardEvent*) const override;
+    virtual bool isFocusable() const override;
+    virtual bool isURLAttribute(const Attribute&) const override;
 
-    virtual bool willRespondToMouseClickEvents() OVERRIDE;
+    virtual bool willRespondToMouseClickEvents() override;
 
     BEGIN_DECLARE_ANIMATED_PROPERTIES(SVGAElement)
         // This declaration used to define a non-virtual "String& target() const" method, that clashes with "virtual String Element::target() const".

@@ -45,7 +45,7 @@ namespace WebCore {
 class GraphicsContext;
 class ImageBuffer;
 
-class PDFDocumentImage FINAL : public Image {
+class PDFDocumentImage final : public Image {
 public:
     static PassRefPtr<PDFDocumentImage> create(ImageObserver* observer)
     {
@@ -56,25 +56,23 @@ private:
     PDFDocumentImage(ImageObserver*);
     virtual ~PDFDocumentImage();
 
-    virtual bool isPDFDocumentImage() const OVERRIDE { return true; }
+    virtual bool isPDFDocumentImage() const override { return true; }
 
-    virtual String filenameExtension() const OVERRIDE;
+    virtual String filenameExtension() const override;
 
-    virtual bool hasSingleSecurityOrigin() const OVERRIDE { return true; }
+    virtual bool hasSingleSecurityOrigin() const override { return true; }
 
-    virtual bool dataChanged(bool allDataReceived) OVERRIDE;
+    virtual bool dataChanged(bool allDataReceived) override;
 
-    virtual void destroyDecodedData(bool /*destroyAll*/ = true) OVERRIDE;
+    virtual void destroyDecodedData(bool /*destroyAll*/ = true) override;
 
-    virtual void computeIntrinsicDimensions(Length& intrinsicWidth, Length& intrinsicHeight, FloatSize& intrinsicRatio) OVERRIDE;
-    virtual IntSize size() const OVERRIDE;
+    virtual void computeIntrinsicDimensions(Length& intrinsicWidth, Length& intrinsicHeight, FloatSize& intrinsicRatio) override;
+    virtual IntSize size() const override;
 
-    virtual void draw(GraphicsContext*, const FloatRect& dstRect, const FloatRect& srcRect, ColorSpace styleColorSpace, CompositeOperator, BlendMode, ImageOrientationDescription) OVERRIDE;
+    virtual void draw(GraphicsContext*, const FloatRect& dstRect, const FloatRect& srcRect, ColorSpace styleColorSpace, CompositeOperator, BlendMode, ImageOrientationDescription) override;
 
     // FIXME: Implement this to be less conservative.
-    virtual bool currentFrameKnownToBeOpaque() OVERRIDE { return false; }
-
-    void applyRotationForPainting(GraphicsContext*) const;
+    virtual bool currentFrameKnownToBeOpaque() override { return false; }
 
     void createPDFDocument();
     void computeBoundsForCurrentPage();
@@ -97,7 +95,7 @@ private:
     size_t m_cachedBytes;
 
     FloatRect m_cropBox;
-    float m_rotation;
+    int m_rotationDegrees; // Can only be 0, 90, 180, or 270 degrees.
     bool m_hasPage;
 };
 

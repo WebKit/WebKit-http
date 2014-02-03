@@ -13,7 +13,6 @@ AM_CONDITIONAL([GTK_API_VERSION_2],[test "$GTK_API_VERSION" = "2.0"])
 # For the moment we need to check whether or not indexed database is
 # enabled because it determines if we build leveldb or not.
 AM_WEBKIT_FEATURE_CONDITIONAL([ENABLE_INDEXED_DATABASE])
-AM_WEBKIT_FEATURE_CONDITIONAL([ENABLE_NETWORK_PROCESS])
 
 # OS conditionals.
 AM_CONDITIONAL([OS_WIN32],[test "$os_win32" = "yes"])
@@ -22,6 +21,9 @@ AM_CONDITIONAL([OS_LINUX],[test "$os_linux" = "yes"])
 AM_CONDITIONAL([OS_GNU],[test "$os_gnu" = "yes"])
 AM_CONDITIONAL([OS_DARWIN],[test "$os_darwin" = "yes"])
 AM_CONDITIONAL([OS_FREEBSD],[test "$os_freebsd" = "yes"])
+
+AM_CONDITIONAL([COMPILER_GCC],[test "$c_compiler" = "gcc" && test "$cxx_compiler" = "g++"])
+AM_CONDITIONAL([COMPILER_CLANG],[test "$c_compiler" = "clang" && test "$cxx_compiler" = "clang++"])
 
 # Target conditionals.
 AM_CONDITIONAL([TARGET_X11], [test "$enable_x11_target" = "yes"])

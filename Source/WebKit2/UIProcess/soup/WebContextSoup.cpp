@@ -28,12 +28,21 @@
 #include "WebContext.h"
 
 #include "NetworkProcessCreationParameters.h"
+#include "WebCookieManagerProxy.h"
+#include "WebSoupCustomProtocolRequestManager.h"
+#include <WebCore/Language.h>
 
 namespace WebKit {
 
 void WebContext::platformInitializeNetworkProcess(NetworkProcessCreationParameters& parameters)
 {
+    supplement<WebCookieManagerProxy>()->getCookiePersistentStorage(parameters.cookiePersistentStoragePath, parameters.cookiePersistentStorageType);
+    parameters.cookieAcceptPolicy = m_initialHTTPCookieAcceptPolicy;
     parameters.ignoreTLSErrors = m_ignoreTLSErrors;
+    parameters.languages = WebCore::userPreferredLanguages();
+#if ENABLE(CUSTOM_PROTOCOLS)
+    parameters.urlSchemesRegisteredForCustomProtocols = supplement<WebSoupCustomProtocolRequestManager>()->registeredSchemesForCustomProtocols();
+#endif
 }
 
 }

@@ -28,7 +28,7 @@
 
 namespace WebCore {
 
-class SVGDefsElement FINAL : public SVGGraphicsElement,
+class SVGDefsElement final : public SVGGraphicsElement,
                              public SVGExternalResourcesRequired {
 public:
     static PassRefPtr<SVGDefsElement> create(const QualifiedName&, Document&);
@@ -36,9 +36,9 @@ public:
 private:
     SVGDefsElement(const QualifiedName&, Document&);
 
-    virtual bool isValid() const;
+    virtual bool isValid() const override;
 
-    virtual RenderElement* createRenderer(PassRef<RenderStyle>) OVERRIDE;
+    virtual RenderPtr<RenderElement> createElementRenderer(PassRef<RenderStyle>) override;
 
     BEGIN_DECLARE_ANIMATED_PROPERTIES(SVGDefsElement)
         DECLARE_ANIMATED_BOOLEAN(ExternalResourcesRequired, externalResourcesRequired)

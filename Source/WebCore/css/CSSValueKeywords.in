@@ -31,6 +31,23 @@ small-caption
 -webkit-mini-control
 -webkit-small-control
 -webkit-control
+
+#if defined(WTF_PLATFORM_IOS) && WTF_PLATFORM_IOS
+-apple-system-headline
+-apple-system-body
+-apple-system-subheadline
+-apple-system-footnote
+-apple-system-caption1
+-apple-system-caption2
+-apple-system-short-headline
+-apple-system-short-body
+-apple-system-short-subheadline
+-apple-system-short-footnote
+-apple-system-short-caption1
+-apple-system-tall-body
+#endif
+
+// This has to go after the -apple-system versions.
 status-bar
 
 //
@@ -467,10 +484,8 @@ static
 thick
 thin
 underline
-#if defined(ENABLE_CSS3_TEXT_DECORATION) && ENABLE_CSS3_TEXT_DECORATION
 wavy
 ink
-#endif
 -webkit-nowrap
 
 // CSS3 Values
@@ -729,6 +744,9 @@ padding-box
 
 // CSS_SHAPES
 margin-box
+
+// clip-path
+bounding-box
 
 //
 // background-size
@@ -990,18 +1008,6 @@ alphabetic
 coarse
 fine
 
-#if (defined(ENABLE_CSS_FILTERS) && ENABLE_CSS_FILTERS) || (defined(ENABLE_CSS_COMPOSITING) && ENABLE_CSS_COMPOSITING)
-// -webkit-filter
-#if defined(ENABLE_CSS_SHADERS) && ENABLE_CSS_SHADERS
-// values for the custom() function
-// border-box
-// padding-box
-// content-box
-attached
-filter-box
-detached
-#endif // CSS_SHADERS
-#endif // CSS_FILTERS
 // blend modes
 // normal
 multiply
@@ -1035,12 +1041,6 @@ snap
 // overflow
 -webkit-paged-x
 -webkit-paged-y
-
-// -webkit-app-region
-#if defined(ENABLE_DRAGGABLE_REGION) && ENABLE_DRAGGABLE_REGION
-drag
-no-drag
-#endif
 
 // -webkit-grid-{column-start|column-end|row-start|row-end}
 span

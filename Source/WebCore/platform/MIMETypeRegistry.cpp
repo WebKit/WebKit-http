@@ -36,7 +36,11 @@
 
 #if USE(CG)
 #include "ImageSourceCG.h"
+#if !PLATFORM(IOS)
 #include <ApplicationServices/ApplicationServices.h>
+#else
+#include <ImageIO/CGImageDestination.h>
+#endif
 #include <wtf/RetainPtr.h>
 #endif
 
@@ -233,6 +237,34 @@ static void initializeSupportedImageMIMETypes()
     supportedImageMIMETypes->remove("application/pdf");
     supportedImageMIMETypes->remove("application/postscript");
 
+#if PLATFORM(IOS)
+    // Add malformed image mimetype for compatibility with Mail and to handle malformed mimetypes from the net
+    // These were removed for <rdar://problem/6564538> Re-enable UTI code in WebCore now that MobileCoreServices exists
+    // But Mail relies on at least image/tif reported as being supported (should be image/tiff).
+    // This can be removed when Mail addresses:
+    // <rdar://problem/7879510> Mail should use standard image mimetypes 
+    // and we fix sniffing so that it corrects items such as image/jpg -> image/jpeg.
+    static const char* malformedMIMETypes[] = {
+        // JPEG (image/jpeg)
+        "image/jpg", "image/jp_", "image/jpe_", "application/jpg", "application/x-jpg", "image/pipeg",
+        "image/vnd.switfview-jpeg", "image/x-xbitmap",
+        // GIF (image/gif)
+        "image/gi_",
+        // PNG (image/png)
+        "application/png", "application/x-png",
+        // TIFF (image/tiff)
+        "image/x-tif", "image/tif", "image/x-tiff", "application/tif", "application/x-tif", "application/tiff",
+        "application/x-tiff",
+        // BMP (image/bmp, image/x-bitmap)
+        "image/x-bmp", "image/x-win-bitmap", "image/x-windows-bmp", "image/ms-bmp", "image/x-ms-bmp",
+        "application/bmp", "application/x-bmp", "application/x-win-bitmap",
+    };
+    for (size_t i = 0; i < WTF_ARRAY_LENGTH(malformedMIMETypes); ++i) {
+        supportedImageMIMETypes->add(malformedMIMETypes[i]);
+        supportedImageResourceMIMETypes->add(malformedMIMETypes[i]);
+    }
+#endif
+
 #else
     // assume that all implementations at least support the following standard
     // image types:
@@ -287,9 +319,6 @@ static void initializeSupportedImageMIMETypesForEncoding()
     supportedImageMIMETypesForEncoding->add("image/ico");
 #elif USE(CAIRO)
     supportedImageMIMETypesForEncoding->add("image/png");
-#elif PLATFORM(BLACKBERRY)
-    supportedImageMIMETypesForEncoding->add("image/png");
-    supportedImageMIMETypesForEncoding->add("image/jpeg");
 #elif PLATFORM(HAIKU)
     BTranslatorRoster* roster = BTranslatorRoster::Default();
     translator_id* translators;
@@ -371,9 +400,11 @@ static void initializeSupportedNonImageMimeTypes()
         "text/",
         "application/xml",
         "application/xhtml+xml",
+#if !PLATFORM(IOS)
         "application/vnd.wap.xhtml+xml",
         "application/rss+xml",
         "application/atom+xml",
+#endif
         "application/json",
 #if ENABLE(SVG)
         "image/svg+xml",
@@ -480,7 +511,11 @@ static void initializeUnsupportedTextMIMETypes()
         "text/x-qif",
         "text/x-csv",
         "text/x-vcf",
+#if !PLATFORM(IOS)
         "text/rtf",
+#else
+        "text/vnd.sun.j2me.app-descriptor",
+#endif
     };
     for (size_t i = 0; i < WTF_ARRAY_LENGTH(types); ++i)
       unsupportedTextMIMETypes->add(types[i]);
@@ -705,14 +740,14 @@ const String& defaultMIMEType()
     return defaultMIMEType;
 }
 
-#if !PLATFORM(BLACKBERRY) && !USE(CURL)
+#if !USE(CURL)
 String MIMETypeRegistry::getNormalizedMIMEType(const String& mimeType)
 {
     return mimeType;
 }
 #endif
 
-#if PLATFORM(BLACKBERRY) || USE(CURL)
+#if USE(CURL)
 typedef HashMap<String, String> MIMETypeAssociationMap;
 
 static const MIMETypeAssociationMap& mimeTypeAssociationMap()

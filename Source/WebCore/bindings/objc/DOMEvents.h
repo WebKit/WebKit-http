@@ -40,3 +40,8 @@
 #import <WebCore/DOMProgressEvent.h>
 #import <WebCore/DOMUIEvent.h>
 #import <WebCore/DOMWheelEvent.h>
+
+#if TARGET_OS_IPHONE
+#import <WebCore/DOMGestureEvent.h>
+#import <WebCore/DOMTouchEvent.h>
+#endif

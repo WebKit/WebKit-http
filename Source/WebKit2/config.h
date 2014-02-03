@@ -47,14 +47,6 @@
 #define EXTERN_C_END
 #endif
 
-// For defining getters to a static value, where the getters have internal linkage
-#define DEFINE_STATIC_GETTER(type, name, arguments) \
-static const type& name() \
-{ \
-    DEFINE_STATIC_LOCAL(type, name##Value, arguments); \
-    return name##Value; \
-}
-
 #ifdef __cplusplus
 
 // These undefs match up with defines in WebKit2Prefix.h for Mac OS X.
@@ -89,5 +81,8 @@ static const type& name() \
 #endif
 #endif
 
-// FIXME: Remove this once everything has been moved over to the IPC namespace.
-#define CoreIPC IPC
+#ifndef HAVE_WINDOW_SERVER_OCCLUSION_NOTIFICATIONS
+#if PLATFORM(MAC) && !PLATFORM(IOS) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
+#define HAVE_WINDOW_SERVER_OCCLUSION_NOTIFICATIONS 1
+#endif
+#endif

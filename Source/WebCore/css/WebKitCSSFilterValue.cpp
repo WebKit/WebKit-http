@@ -35,19 +35,9 @@
 namespace WebCore {
 
 WebKitCSSFilterValue::WebKitCSSFilterValue(FilterOperationType operationType)
-    : CSSValueList(WebKitCSSFilterClass, typeUsesSpaceSeparator(operationType) ? SpaceSeparator : CommaSeparator)
+    : CSSValueList(WebKitCSSFilterClass, SpaceSeparator)
     , m_type(operationType)
 {
-}
-
-bool WebKitCSSFilterValue::typeUsesSpaceSeparator(FilterOperationType operationType)
-{
-#if ENABLE(CSS_SHADERS)
-    return operationType != CustomFilterOperation;
-#else
-    UNUSED_PARAM(operationType);
-    return true;
-#endif
 }
 
 String WebKitCSSFilterValue::customCSSText() const
@@ -58,8 +48,7 @@ String WebKitCSSFilterValue::customCSSText() const
         result = "";
         break;
     case ReferenceFilterOperation:
-        result = "url(";
-        break;
+        return CSSValueList::customCSSText();
     case GrayscaleFilterOperation:
         result = "grayscale(";
         break;
@@ -90,11 +79,6 @@ String WebKitCSSFilterValue::customCSSText() const
     case DropShadowFilterOperation:
         result = "drop-shadow(";
         break;
-#if ENABLE(CSS_SHADERS)
-    case CustomFilterOperation:
-        result = "custom(";
-        break;
-#endif
     }
 
     return result + CSSValueList::customCSSText() + ')';

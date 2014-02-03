@@ -115,10 +115,10 @@ public:
     }
 
 public:
-    virtual void computeLogicalHeight(LayoutUnit logicalHeight, LayoutUnit logicalTop, LogicalExtentComputedValues&) const OVERRIDE;
+    virtual void computeLogicalHeight(LayoutUnit logicalHeight, LayoutUnit logicalTop, LogicalExtentComputedValues&) const override;
 
 private:
-    virtual void layout() OVERRIDE;
+    virtual void layout() override;
 };
 
 void RenderSliderContainer::computeLogicalHeight(LayoutUnit logicalHeight, LayoutUnit logicalTop, LogicalExtentComputedValues& computedValues) const
@@ -212,9 +212,9 @@ void SliderThumbElement::setPositionFromValue()
         renderer()->setNeedsLayout();
 }
 
-RenderElement* SliderThumbElement::createRenderer(PassRef<RenderStyle> style)
+RenderPtr<RenderElement> SliderThumbElement::createElementRenderer(PassRef<RenderStyle> style)
 {
-    return new RenderSliderThumb(*this, std::move(style));
+    return createRenderer<RenderSliderThumb>(*this, std::move(style));
 }
 
 bool SliderThumbElement::isDisabledFormControl() const
@@ -519,7 +519,7 @@ void SliderThumbElement::handleTouchEvent(TouchEvent* touchEvent)
 
 bool SliderThumbElement::shouldAcceptTouchEvents()
 {
-    return attached() && !isDisabledFormControl();
+    return renderer() && !isDisabledFormControl();
 }
 
 void SliderThumbElement::registerForTouchEvents()
@@ -579,6 +579,8 @@ const AtomicString& SliderThumbElement::shadowPseudoId() const
     HTMLInputElement* input = hostInput();
     if (!input)
         return sliderThumbShadowPseudoId();
+    if (!input->renderer())
+        return emptyAtom;
 
     const RenderStyle& sliderStyle = input->renderer()->style();
     switch (sliderStyle.appearance()) {
@@ -611,9 +613,9 @@ PassRefPtr<SliderContainerElement> SliderContainerElement::create(Document& docu
     return adoptRef(new SliderContainerElement(document));
 }
 
-RenderElement* SliderContainerElement::createRenderer(PassRef<RenderStyle> style)
+RenderPtr<RenderElement> SliderContainerElement::createElementRenderer(PassRef<RenderStyle> style)
 {
-    return new RenderSliderContainer(*this, std::move(style));
+    return createRenderer<RenderSliderContainer>(*this, std::move(style));
 }
 
 const AtomicString& SliderContainerElement::shadowPseudoId() const
@@ -624,6 +626,8 @@ const AtomicString& SliderContainerElement::shadowPseudoId() const
     HTMLInputElement* input = shadowHost()->toInputElement();
     if (!input)
         return sliderContainer;
+    if (!input->renderer())
+        return emptyAtom;
 
     const RenderStyle& sliderStyle = input->renderer()->style();
     switch (sliderStyle.appearance()) {

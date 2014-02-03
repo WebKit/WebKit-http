@@ -30,7 +30,6 @@
 #define TestRunner_h
 
 #include <JavaScriptCore/JSObjectRef.h>
-#include <JavaScriptCore/JSRetainPtr.h>
 #include <map>
 #include <set>
 #include <string>
@@ -119,6 +118,11 @@ public:
     void setSpatialNavigationEnabled(bool);
     void setScrollbarPolicy(JSStringRef orientation, JSStringRef policy);
     void startSpeechInput(JSContextRef inputElement);
+#if PLATFORM(IOS)
+    void setTelephoneNumberParsingEnabled(bool enable);
+    void setPagePaused(bool paused);
+#endif
+
     void setPageVisibility(const char*);
     void resetPageVisibility();
 
@@ -128,10 +132,6 @@ public:
 
 #if ENABLE(IOS_TEXT_AUTOSIZING)
     void setTextAutosizingEnabled(bool);
-#endif
-
-#if PLATFORM(MAC) || PLATFORM(GTK) || PLATFORM(WIN) || PLATFORM(EFL)
-    JSRetainPtr<JSStringRef> platformName() const;
 #endif
 
     // Legacy here refers to the old TestRunner API for handling web notifications, not the legacy web notification API.

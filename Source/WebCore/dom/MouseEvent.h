@@ -84,23 +84,23 @@ public:
     // but we will match the standard DOM.
     unsigned short button() const { return m_button; }
     bool buttonDown() const { return m_buttonDown; }
-    virtual EventTarget* relatedTarget() const OVERRIDE FINAL { return m_relatedTarget.get(); }
+    virtual EventTarget* relatedTarget() const override final { return m_relatedTarget.get(); }
     void setRelatedTarget(PassRefPtr<EventTarget> relatedTarget) { m_relatedTarget = relatedTarget; }
 
-    Clipboard* clipboard() const { return m_clipboard.get(); }
+    Clipboard* clipboard() const override { return m_clipboard.get(); }
 
     Node* toElement() const;
     Node* fromElement() const;
 
     Clipboard* dataTransfer() const { return isDragEvent() ? m_clipboard.get() : 0; }
 
-    virtual EventInterface eventInterface() const;
+    virtual EventInterface eventInterface() const override;
 
-    virtual bool isMouseEvent() const;
-    virtual bool isDragEvent() const;
-    virtual int which() const;
+    virtual bool isMouseEvent() const override;
+    virtual bool isDragEvent() const override;
+    virtual int which() const override;
 
-    virtual PassRefPtr<Event> cloneFor(HTMLIFrameElement*) const OVERRIDE;
+    virtual PassRefPtr<Event> cloneFor(HTMLIFrameElement*) const override;
 
 protected:
     MouseEvent(const AtomicString& type, bool canBubble, bool cancelable, double timestamp, PassRefPtr<AbstractView>,

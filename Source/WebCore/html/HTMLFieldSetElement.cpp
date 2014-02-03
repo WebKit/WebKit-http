@@ -81,9 +81,9 @@ const AtomicString& HTMLFieldSetElement::formControlType() const
     return fieldset;
 }
 
-RenderElement* HTMLFieldSetElement::createRenderer(PassRef<RenderStyle> style)
+RenderPtr<RenderElement> HTMLFieldSetElement::createElementRenderer(PassRef<RenderStyle> style)
 {
-    return new RenderFieldset(*this, std::move(style));
+    return createRenderer<RenderFieldset>(*this, std::move(style));
 }
 
 HTMLLegendElement* HTMLFieldSetElement::legend() const
@@ -106,7 +106,7 @@ void HTMLFieldSetElement::refreshElementsIfNeeded() const
 
     m_associatedElements.clear();
 
-    for (auto& element : elementDescendants(const_cast<HTMLFieldSetElement&>(*this))) {
+    for (auto& element : descendantsOfType<Element>(const_cast<HTMLFieldSetElement&>(*this))) {
         if (element.hasTagName(objectTag))
             m_associatedElements.append(&toHTMLObjectElement(element));
         else if (element.isFormControlElement())

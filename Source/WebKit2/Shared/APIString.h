@@ -36,7 +36,7 @@
 
 namespace API {
 
-class String FINAL : public ObjectImpl<Object::Type::String> {
+class String final : public ObjectImpl<Object::Type::String> {
 public:
     static PassRefPtr<String> createNull()
     {
@@ -71,7 +71,7 @@ public:
         if (!bufferLength)
             return 0;
         bufferLength = std::min(bufferLength, static_cast<size_t>(m_string.length()));
-        memcpy(buffer, m_string.characters(), bufferLength * sizeof(UChar));
+        memcpy(buffer, m_string.deprecatedCharacters(), bufferLength * sizeof(UChar));
         return bufferLength;
     }
 
@@ -81,7 +81,7 @@ public:
         if (!bufferSize)
             return 0;
         char* p = buffer;
-        const UChar* d = m_string.characters();
+        const UChar* d = m_string.deprecatedCharacters();
         WTF::Unicode::ConversionResult result = WTF::Unicode::convertUTF16ToUTF8(&d, d + m_string.length(), &p, p + bufferSize - 1, /* strict */ true);
         *p++ = '\0';
         if (result != WTF::Unicode::conversionOK && result != WTF::Unicode::targetExhausted)

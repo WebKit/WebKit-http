@@ -22,14 +22,16 @@
         if (window.testRunner)
             testRunner.dumpAsText();
 
-        setTimeout(finish, 0);
+        setTimeout(finish, 50);
     }
 
     function finish()
     {
         document.getElementById("tallBox").style.height = "50px";
-        if (window.testRunner)
-            testRunner.notifyDone();
+        setTimeout(function () {
+            if (window.testRunner)
+                testRunner.notifyDone();
+        }, 50);
     }
 </script>
 <p>

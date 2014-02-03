@@ -94,7 +94,7 @@ struct SVGPropertyTraits<TurbulenceType> {
     }
 };
 
-class SVGFETurbulenceElement FINAL : public SVGFilterPrimitiveStandardAttributes {
+class SVGFETurbulenceElement final : public SVGFilterPrimitiveStandardAttributes {
 public:
     static PassRefPtr<SVGFETurbulenceElement> create(const QualifiedName&, Document&);
 
@@ -102,10 +102,10 @@ private:
     SVGFETurbulenceElement(const QualifiedName&, Document&);
 
     bool isSupportedAttribute(const QualifiedName&);
-    virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
-    virtual bool setFilterEffectAttribute(FilterEffect*, const QualifiedName& attrName);
-    virtual void svgAttributeChanged(const QualifiedName&);
-    virtual PassRefPtr<FilterEffect> build(SVGFilterBuilder*, Filter*);
+    virtual void parseAttribute(const QualifiedName&, const AtomicString&) override;
+    virtual bool setFilterEffectAttribute(FilterEffect*, const QualifiedName& attrName) override;
+    virtual void svgAttributeChanged(const QualifiedName&) override;
+    virtual PassRefPtr<FilterEffect> build(SVGFilterBuilder*, Filter*) override;
 
     static const AtomicString& baseFrequencyXIdentifier();
     static const AtomicString& baseFrequencyYIdentifier();

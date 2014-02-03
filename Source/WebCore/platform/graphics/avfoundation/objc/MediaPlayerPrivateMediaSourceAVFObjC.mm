@@ -20,7 +20,7 @@
  * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
  * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 #import "config.h"
@@ -35,10 +35,11 @@
 #import "SoftLinking.h"
 #import <AVFoundation/AVAsset.h>
 #import <CoreMedia/CMSync.h>
+#import <QuartzCore/CALayer.h>
 #import <objc_runtime.h>
-#import <wtf/NeverDestroyed.h>
 #import <wtf/Functional.h>
 #import <wtf/MainThread.h>
+#import <wtf/NeverDestroyed.h>
 
 #pragma mark -
 #pragma mark Soft Linking
@@ -122,6 +123,7 @@ static void CMTimebaseEffectiveRateChangedCallback(CMNotificationCenterRef, cons
 
 MediaPlayerPrivateMediaSourceAVFObjC::MediaPlayerPrivateMediaSourceAVFObjC(MediaPlayer* player)
     : m_player(player)
+    , m_weakPtrFactory(this)
     , m_synchronizer(adoptNS([[getAVSampleBufferRenderSynchronizerClass() alloc] init]))
     , m_networkState(MediaPlayer::Empty)
     , m_readyState(MediaPlayer::HaveNothing)
@@ -136,11 +138,15 @@ MediaPlayerPrivateMediaSourceAVFObjC::MediaPlayerPrivateMediaSourceAVFObjC(Media
 
     // addPeriodicTimeObserverForInterval: throws an exception if you pass a non-numeric CMTime, so just use
     // an arbitrarily large time value of once an hour:
+    __block auto weakThis = createWeakPtr();
     m_timeJumpedObserver = [m_synchronizer addPeriodicTimeObserverForInterval:toCMTime(MediaTime::createWithDouble(3600)) queue:dispatch_get_main_queue() usingBlock:^(CMTime){
-        if (m_seeking) {
+        // FIXME: Remove the below once <rdar://problem/15798050> is fixed.
+        if (!weakThis)
+            return;
+
+        if (m_seeking)
             m_seeking = false;
-            m_player->timeChanged();
-        }
+        m_player->timeChanged();
     }];
 }
 
@@ -221,7 +227,9 @@ MediaPlayer::SupportsType MediaPlayerPrivateMediaSourceAVFObjC::supportsType(con
 
 void MediaPlayerPrivateMediaSourceAVFObjC::load(const String&)
 {
-    ASSERT_NOT_REACHED();
+    // This media engine only supports MediaSource URLs.
+    m_networkState = MediaPlayer::FormatError;
+    m_player->networkStateChanged();
 }
 
 void MediaPlayerPrivateMediaSourceAVFObjC::load(const String& url, PassRefPtr<HTMLMediaSource> source)
@@ -250,12 +258,10 @@ PlatformMedia MediaPlayerPrivateMediaSourceAVFObjC::platformMedia() const
     return pm;
 }
 
-#if USE(ACCELERATED_COMPOSITING)
 PlatformLayer* MediaPlayerPrivateMediaSourceAVFObjC::platformLayer() const
 {
     return m_sampleBufferDisplayLayer.get();
 }
-#endif
 
 void MediaPlayerPrivateMediaSourceAVFObjC::play()
 {
@@ -303,17 +309,22 @@ void MediaPlayerPrivateMediaSourceAVFObjC::setMuted(bool muted)
 
 IntSize MediaPlayerPrivateMediaSourceAVFObjC::naturalSize() const
 {
-    // FIXME(125156): Report the intrinsic size of the enabled video track.
-    return IntSize();
+    return m_mediaSourcePrivate->naturalSize();
 }
 
 bool MediaPlayerPrivateMediaSourceAVFObjC::hasVideo() const
 {
+    if (!m_mediaSourcePrivate)
+        return false;
+
     return m_mediaSourcePrivate->hasVideo();
 }
 
 bool MediaPlayerPrivateMediaSourceAVFObjC::hasAudio() const
 {
+    if (!m_mediaSourcePrivate)
+        return false;
+
     return m_mediaSourcePrivate->hasAudio();
 }
 
@@ -350,7 +361,7 @@ void MediaPlayerPrivateMediaSourceAVFObjC::seekWithTolerance(double time, double
 
 void MediaPlayerPrivateMediaSourceAVFObjC::seekInternal(double time, double negativeThreshold, double positiveThreshold)
 {
-    MediaTime seekTime = m_mediaSourcePrivate->seekToTime(MediaTime::createWithDouble(time), MediaTime::createWithDouble(positiveThreshold), MediaTime::createWithDouble(negativeThreshold));
+    MediaTime seekTime = m_mediaSourcePrivate ? m_mediaSourcePrivate->seekToTime(MediaTime::createWithDouble(time), MediaTime::createWithDouble(positiveThreshold), MediaTime::createWithDouble(negativeThreshold)) : MediaTime::zeroTime();
 
     [m_synchronizer setRate:(m_playing ? m_rate : 0) time:toCMTime(seekTime)];
 }
@@ -424,7 +435,6 @@ bool MediaPlayerPrivateMediaSourceAVFObjC::hasAvailableVideoFrame() const
     return m_hasAvailableVideoFrame;
 }
 
-#if USE(ACCELERATED_COMPOSITING)
 bool MediaPlayerPrivateMediaSourceAVFObjC::supportsAcceleratedRendering() const
 {
     return true;
@@ -437,7 +447,6 @@ void MediaPlayerPrivateMediaSourceAVFObjC::acceleratedRenderingStateChanged()
     else
         destroyLayer();
 }
-#endif
 
 MediaPlayer::MovieLoadType MediaPlayerPrivateMediaSourceAVFObjC::movieLoadType() const
 {
@@ -518,6 +527,11 @@ void MediaPlayerPrivateMediaSourceAVFObjC::durationChanged()
 void MediaPlayerPrivateMediaSourceAVFObjC::effectiveRateChanged()
 {
     m_player->rateChanged();
+}
+
+void MediaPlayerPrivateMediaSourceAVFObjC::sizeChanged()
+{
+    m_player->sizeChanged();
 }
 
 void MediaPlayerPrivateMediaSourceAVFObjC::setReadyState(MediaPlayer::ReadyState readyState)

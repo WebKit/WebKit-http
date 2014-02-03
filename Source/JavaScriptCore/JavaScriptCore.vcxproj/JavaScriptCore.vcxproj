@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="DebugSuffix|Win32">
       <Configuration>DebugSuffix</Configuration>
@@ -341,6 +341,7 @@
     <ClCompile Include="..\bytecode\StructureStubClearingWatchpoint.cpp" />
     <ClCompile Include="..\bytecode\StructureStubInfo.cpp" />
     <ClCompile Include="..\bytecode\UnlinkedCodeBlock.cpp" />
+    <ClCompile Include="..\bytecode\UnlinkedInstructionStream.cpp" />
     <ClCompile Include="..\bytecode\ValueRecovery.cpp" />
     <ClCompile Include="..\bytecode\Watchpoint.cpp" />
     <ClCompile Include="..\bytecompiler\BytecodeGenerator.cpp" />
@@ -351,6 +352,7 @@
     <ClCompile Include="..\dfg\DFGAbstractHeap.cpp" />
     <ClCompile Include="..\dfg\DFGAbstractValue.cpp" />
     <ClCompile Include="..\dfg\DFGArgumentsSimplificationPhase.cpp" />
+    <ClCompile Include="..\dfg\DFGArithMode.cpp" />
     <ClCompile Include="..\dfg\DFGArrayMode.cpp" />
     <ClCompile Include="..\dfg\DFGAtTailAbstractState.cpp" />
     <ClCompile Include="..\dfg\DFGAvailability.cpp" />
@@ -474,9 +476,24 @@
     <ClCompile Include="..\heap\WeakSet.cpp" />
     <ClCompile Include="..\heap\WriteBarrierBuffer.cpp" />
     <ClCompile Include="..\heap\WriteBarrierSupport.cpp" />
+    <ClCompile Include="..\inspector\ContentSearchUtilities.cpp" />
+    <ClCompile Include="..\inspector\InjectedScript.cpp" />
+    <ClCompile Include="..\inspector\InjectedScriptBase.cpp" />
+    <ClCompile Include="..\inspector\InjectedScriptHost.cpp" />
+    <ClCompile Include="..\inspector\InjectedScriptManager.cpp" />
+    <ClCompile Include="..\inspector\InjectedScriptModule.cpp" />
     <ClCompile Include="..\inspector\InspectorAgentRegistry.cpp" />
     <ClCompile Include="..\inspector\InspectorBackendDispatcher.cpp" />
     <ClCompile Include="..\inspector\InspectorValues.cpp" />
+    <ClCompile Include="..\inspector\JSInjectedScriptHost.cpp" />
+    <ClCompile Include="..\inspector\JSInjectedScriptHostPrototype.cpp" />
+    <ClCompile Include="..\inspector\JSJavaScriptCallFrame.cpp" />
+    <ClCompile Include="..\inspector\JSJavaScriptCallFramePrototype.cpp" />
+    <ClCompile Include="..\inspector\JavaScriptCallFrame.cpp" />
+    <ClCompile Include="..\inspector\ScriptDebugServer.cpp" />
+    <ClCompile Include="..\inspector\agents\InspectorAgent.cpp" />
+    <ClCompile Include="..\inspector\agents\InspectorDebuggerAgent.cpp" />
+    <ClCompile Include="..\inspector\agents\InspectorRuntimeAgent.cpp" />
     <ClCompile Include="..\interpreter\AbstractPC.cpp" />
     <ClCompile Include="..\interpreter\CallFrame.cpp" />
     <ClCompile Include="..\interpreter\Interpreter.cpp" />
@@ -572,6 +589,7 @@
     <ClCompile Include="..\runtime\DumpContext.cpp" />
     <ClCompile Include="..\runtime\Error.cpp" />
     <ClCompile Include="..\runtime\ErrorConstructor.cpp" />
+    <ClCompile Include="..\runtime\ErrorHandlingScope.cpp" />
     <ClCompile Include="..\runtime\ErrorInstance.cpp" />
     <ClCompile Include="..\runtime\ErrorPrototype.cpp" />
     <ClCompile Include="..\runtime\ExceptionHelpers.cpp" />
@@ -612,12 +630,11 @@
     <ClCompile Include="..\runtime\JSONObject.cpp" />
     <ClCompile Include="..\runtime\JSObject.cpp" />
     <ClCompile Include="..\runtime\JSPromise.cpp" />
-    <ClCompile Include="..\runtime\JSPromiseCallback.cpp" />
     <ClCompile Include="..\runtime\JSPromiseConstructor.cpp" />
+    <ClCompile Include="..\runtime\JSPromiseDeferred.cpp" />
+    <ClCompile Include="..\runtime\JSPromiseFunctions.cpp" />
+    <ClCompile Include="..\runtime\JSPromiseReaction.cpp" />
     <ClCompile Include="..\runtime\JSPromisePrototype.cpp" />
-    <ClCompile Include="..\runtime\JSPromiseResolver.cpp" />
-    <ClCompile Include="..\runtime\JSPromiseResolverConstructor.cpp" />
-    <ClCompile Include="..\runtime\JSPromiseResolverPrototype.cpp" />
     <ClCompile Include="..\runtime\JSPropertyNameIterator.cpp" />
     <ClCompile Include="..\runtime\JSProxy.cpp" />
     <ClCompile Include="..\runtime\JSScope.cpp" />
@@ -695,6 +712,7 @@
     <ClCompile Include="..\runtime\WeakMapPrototype.cpp" />
     <ClCompile Include="..\tools\CodeProfile.cpp" />
     <ClCompile Include="..\tools\CodeProfiling.cpp" />
+    <ClCompile Include="..\yarr\RegularExpression.cpp" />
     <ClCompile Include="..\yarr\YarrCanonicalizeUCS2.cpp" />
     <ClCompile Include="..\yarr\YarrInterpreter.cpp" />
     <ClCompile Include="..\yarr\YarrJIT.cpp" />
@@ -712,6 +730,7 @@
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\DatePrototype.lut.h" />
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\ErrorPrototype.lut.h" />
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\HeaderDetection.h" />
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\InjectedScriptSource.h" />
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\InspectorJSBackendDispatchers.h" />
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\InspectorJSFrontendDispatchers.h" />
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\InspectorJSTypeBuilders.h" />
@@ -720,7 +739,6 @@
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSONObject.lut.h" />
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSPromiseConstructor.lut.h" />
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSPromisePrototype.lut.h" />
-    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSPromiseResolverPrototype.lut.h" />
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\KeywordLookup.lut.h" />
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\Lexer.lut.h" />
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\NamePrototype.lut.h" />
@@ -774,6 +792,7 @@
     <ClInclude Include="..\assembler\MacroAssemblerX86.h" />
     <ClInclude Include="..\assembler\MacroAssemblerX86Common.h" />
     <ClInclude Include="..\assembler\MacroAssemblerX86_64.h" />
+    <ClInclude Include="..\assembler\MaxFrameExtentForSlowPathCall.h" />
     <ClInclude Include="..\assembler\RepatchBuffer.h" />
     <ClInclude Include="..\assembler\X86Assembler.h" />
     <ClInclude Include="..\bindings\ScriptFunctionCall.h" />
@@ -808,7 +827,6 @@
     <ClInclude Include="..\bytecode\Instruction.h" />
     <ClInclude Include="..\bytecode\JumpTable.h" />
     <ClInclude Include="..\bytecode\LazyOperandValueProfile.h" />
-    <ClInclude Include="..\bytecode\LineInfo.h" />
     <ClInclude Include="..\bytecode\LLIntCallLinkInfo.h" />
     <ClInclude Include="..\bytecode\MethodOfGettingAValueProfile.h" />
     <ClInclude Include="..\bytecode\Opcode.h" />
@@ -826,6 +844,7 @@
     <ClInclude Include="..\bytecode\StructureStubClearingWatchpoint.h" />
     <ClInclude Include="..\bytecode\StructureStubInfo.h" />
     <ClInclude Include="..\bytecode\UnlinkedCodeBlock.h" />
+    <ClInclude Include="..\bytecode\UnlinkedInstructionStream.h" />
     <ClInclude Include="..\bytecode\ValueProfile.h" />
     <ClInclude Include="..\bytecode\ValueRecovery.h" />
     <ClInclude Include="..\bytecode\VariableWatchpointSet.h" />
@@ -851,6 +870,7 @@
     <ClInclude Include="..\dfg\DFGArgumentPosition.h" />
     <ClInclude Include="..\dfg\DFGArgumentsSimplificationPhase.h" />
     <ClInclude Include="..\dfg\DFGArrayifySlowPathGenerator.h" />
+    <ClInclude Include="..\dfg\DFGArithMode.h" />
     <ClInclude Include="..\dfg\DFGArrayMode.h" />
     <ClInclude Include="..\dfg\DFGAtTailAbstractState.h" />
     <ClInclude Include="..\dfg\DFGAvailability.h" />
@@ -984,6 +1004,7 @@
     <ClInclude Include="..\heap\CopyVisitor.h" />
     <ClInclude Include="..\heap\CopyVisitorInlines.h" />
     <ClInclude Include="..\heap\CopyWorkList.h" />
+    <ClInclude Include="..\heap\CopyWriteBarrier.h" />
     <ClInclude Include="..\heap\DeferGC.h" />
     <ClInclude Include="..\heap\DelayedReleaseScope.h" />
     <ClInclude Include="..\heap\GCAssertions.h" />
@@ -1031,12 +1052,30 @@
     <ClInclude Include="..\heap\WeakSetInlines.h" />
     <ClInclude Include="..\heap\WriteBarrierBuffer.h" />
     <ClInclude Include="..\heap\WriteBarrierSupport.h" />
+    <ClInclude Include="..\inspector\ContentSearchUtilities.h" />
+    <ClInclude Include="..\inspector\InjectedScript.h" />
+    <ClInclude Include="..\inspector\InjectedScriptBase.h" />
+    <ClInclude Include="..\inspector\InjectedScriptHost.h" />
+    <ClInclude Include="..\inspector\InjectedScriptManager.h" />
+    <ClInclude Include="..\inspector\InjectedScriptModule.h" />
     <ClInclude Include="..\inspector\InspectorAgentBase.h" />
     <ClInclude Include="..\inspector\InspectorAgentRegistry.h" />
     <ClInclude Include="..\inspector\InspectorBackendDispatcher.h" />
+    <ClInclude Include="..\inspector\InspectorEnvironment.h" />
     <ClInclude Include="..\inspector\InspectorFrontendChannel.h" />
     <ClInclude Include="..\inspector\InspectorTypeBuilder.h" />
     <ClInclude Include="..\inspector\InspectorValues.h" />
+    <ClInclude Include="..\inspector\JSInjectedScriptHost.h" />
+    <ClInclude Include="..\inspector\JSInjectedScriptHostPrototype.h" />
+    <ClInclude Include="..\inspector\JSJavaScriptCallFrame.h" />
+    <ClInclude Include="..\inspector\JSJavaScriptCallFramePrototype.h" />
+    <ClInclude Include="..\inspector\JavaScriptCallFrame.h" />
+    <ClInclude Include="..\inspector\ScriptBreakpoint.h" />
+    <ClInclude Include="..\inspector\ScriptDebugListener.h" />
+    <ClInclude Include="..\inspector\ScriptDebugServer.h" />
+    <ClInclude Include="..\inspector\agents\InspectorAgent.h" />
+    <ClInclude Include="..\inspector\agents\InspectorDebuggerAgent.h" />
+    <ClInclude Include="..\inspector\agents\InspectorRuntimeAgent.h" />
     <ClInclude Include="..\interpreter\AbstractPC.h" />
     <ClInclude Include="..\interpreter\CachedCall.h" />
     <ClInclude Include="..\interpreter\CallFrame.h" />
@@ -1167,6 +1206,7 @@
     <ClInclude Include="..\runtime\DumpContext.h" />
     <ClInclude Include="..\runtime\Error.h" />
     <ClInclude Include="..\runtime\ErrorConstructor.h" />
+    <ClInclude Include="..\runtime\ErrorHandlingScope.h" />
     <ClInclude Include="..\runtime\ErrorInstance.h" />
     <ClInclude Include="..\runtime\ErrorPrototype.h" />
     <ClInclude Include="..\runtime\ExceptionHelpers.h" />
@@ -1232,12 +1272,11 @@
     <ClInclude Include="..\runtime\JSONObject.h" />
     <ClInclude Include="..\runtime\JSObject.h" />
     <ClInclude Include="..\runtime\JSPromise.h" />
-    <ClInclude Include="..\runtime\JSPromiseCallback.h" />
     <ClInclude Include="..\runtime\JSPromiseConstructor.h" />
+    <ClInclude Include="..\runtime\JSPromiseDeferred.h" />
+    <ClInclude Include="..\runtime\JSPromiseFunctions.h" />
+    <ClInclude Include="..\runtime\JSPromiseReaction.h" />
     <ClInclude Include="..\runtime\JSPromisePrototype.h" />
-    <ClInclude Include="..\runtime\JSPromiseResolver.h" />
-    <ClInclude Include="..\runtime\JSPromiseResolverConstructor.h" />
-    <ClInclude Include="..\runtime\JSPromiseResolverPrototype.h" />
     <ClInclude Include="..\runtime\JSPropertyNameIterator.h" />
     <ClInclude Include="..\runtime\JSProxy.h" />
     <ClInclude Include="..\runtime\JSScope.h" />
@@ -1270,6 +1309,7 @@
     <ClInclude Include="..\runtime\MapPrototype.h" />
     <ClInclude Include="..\runtime\MatchResult.h" />
     <ClInclude Include="..\runtime\MathObject.h" />
+    <ClInclude Include="..\runtime\Microtask.h" />
     <ClInclude Include="..\runtime\NameConstructor.h" />
     <ClInclude Include="..\runtime\NameInstance.h" />
     <ClInclude Include="..\runtime\NamePrototype.h" />
@@ -1349,6 +1389,7 @@
     <ClInclude Include="..\tools\CodeProfiling.h" />
     <ClInclude Include="..\tools\ProfileTreeNode.h" />
     <ClInclude Include="..\tools\TieredMMapArray.h" />
+    <ClInclude Include="..\yarr\RegularExpression.h" />
     <ClInclude Include="..\yarr\Yarr.h" />
     <ClInclude Include="..\yarr\YarrCanonicalizeUCS2.h" />
     <ClInclude Include="..\yarr\YarrInterpreter.h" />
@@ -1367,22 +1408,6 @@
     <None Include="JavaScriptCorePreLink.cmd">
       <FileType>Document</FileType>
     </None>
-  </ItemGroup>
-  <ItemGroup>
-    <MASM Include="..\jit\JITStubsMSVC64.asm">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_WinCairo|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_WinCairo|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|x64'">true</ExcludedFromBuild>
-    </MASM>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

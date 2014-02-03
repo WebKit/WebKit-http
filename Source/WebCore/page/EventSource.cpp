@@ -170,7 +170,7 @@ void EventSource::scheduleReconnect()
     dispatchEvent(Event::create(eventNames().errorEvent, false, false));
 }
 
-void EventSource::connectTimerFired(Timer<EventSource>*)
+void EventSource::connectTimerFired(Timer<EventSource>&)
 {
     connect();
 }
@@ -336,6 +336,7 @@ void EventSource::parseEventStream()
                 break;
             case '\r':
                 m_discardTrailingNewline = true;
+                FALLTHROUGH;
             case '\n':
                 lineLength = i - bufPos;
                 break;

@@ -30,6 +30,7 @@
 #include <glib/gstdio.h>
 #include <wtf/gobject/GOwnPtr.h>
 #include <wtf/gobject/GRefPtr.h>
+#include <wtf/gobject/GUniquePtr.h>
 #include <wtf/gobject/GlibUtilities.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/WTFString.h>
@@ -48,8 +49,19 @@ String filenameToString(const char* filename)
 #if OS(WINDOWS)
     return String::fromUTF8(filename);
 #else
-    GOwnPtr<gchar> escapedString(g_uri_escape_string(filename, "/:", false));
+    GUniquePtr<gchar> escapedString(g_uri_escape_string(filename, "/:", false));
     return escapedString.get();
+#endif
+}
+
+static GUniquePtr<char> unescapedFilename(const String& path)
+{
+    if (path.isEmpty())
+        return nullptr;
+#if OS(WINDOWS)
+    return GUniquePtr<char>(g_strdup(path.utf8().data()));
+#else
+    return GUniquePtr<char>(g_uri_unescape_string(path.utf8().data(), nullptr));
 #endif
 }
 
@@ -58,7 +70,7 @@ CString fileSystemRepresentation(const String& path)
 #if OS(WINDOWS)
     return path.utf8();
 #else
-    GOwnPtr<gchar> filename(g_uri_unescape_string(path.utf8().data(), 0));
+    GUniquePtr<gchar> filename = unescapedFilename(path);
     return filename.get();
 #endif
 }
@@ -69,8 +81,11 @@ String filenameForDisplay(const String& string)
 #if OS(WINDOWS)
     return string;
 #else
-    CString filename = fileSystemRepresentation(string);
-    GOwnPtr<gchar> display(g_filename_to_utf8(filename.data(), 0, 0, 0, 0));
+    GUniquePtr<gchar> filename = unescapedFilename(string);
+    if (!filename)
+        return string;
+
+    GUniquePtr<gchar> display(g_filename_to_utf8(filename.get(), -1, nullptr, nullptr, nullptr));
     if (!display)
         return string;
 
@@ -80,103 +95,80 @@ String filenameForDisplay(const String& string)
 
 bool fileExists(const String& path)
 {
-    bool result = false;
-    CString filename = fileSystemRepresentation(path);
-
-    if (!filename.isNull())
-        result = g_file_test(filename.data(), G_FILE_TEST_EXISTS);
-
-    return result;
+    GUniquePtr<gchar> filename = unescapedFilename(path);
+    return filename ? g_file_test(filename.get(), G_FILE_TEST_EXISTS) : false;
 }
 
 bool deleteFile(const String& path)
 {
-    bool result = false;
-    CString filename = fileSystemRepresentation(path);
-
-    if (!filename.isNull())
-        result = g_remove(filename.data()) == 0;
-
-    return result;
+    GUniquePtr<gchar> filename = unescapedFilename(path);
+    return filename ? g_remove(filename.get()) != -1 : false;
 }
 
 bool deleteEmptyDirectory(const String& path)
 {
-    bool result = false;
-    CString filename = fileSystemRepresentation(path);
+    GUniquePtr<gchar> filename = unescapedFilename(path);
+    return filename ? g_rmdir(filename.get()) != -1 : false;
+}
 
-    if (!filename.isNull())
-        result = g_rmdir(filename.data()) == 0;
+static bool getFileStat(const String& path, GStatBuf* statBuffer)
+{
+    GUniquePtr<gchar> filename = unescapedFilename(path);
+    if (!filename)
+        return false;
 
-    return result;
+    return g_stat(filename.get(), statBuffer) != -1;
 }
 
 bool getFileSize(const String& path, long long& resultSize)
 {
-    CString filename = fileSystemRepresentation(path);
-    if (filename.isNull())
-        return false;
-
     GStatBuf statResult;
-    gint result = g_stat(filename.data(), &statResult);
-    if (result != 0)
+    if (!getFileStat(path, &statResult))
         return false;
 
     resultSize = statResult.st_size;
     return true;
 }
 
+bool getFileCreationTime(const String&, time_t&)
+{
+    // FIXME: Is there a way to retrieve file creation time with Gtk on platforms that support it?
+    return false;
+}
+
 bool getFileModificationTime(const String& path, time_t& modifiedTime)
 {
-    CString filename = fileSystemRepresentation(path);
-    if (filename.isNull())
-        return false;
-
     GStatBuf statResult;
-    gint result = g_stat(filename.data(), &statResult);
-    if (result != 0)
+    if (!getFileStat(path, &statResult))
         return false;
 
     modifiedTime = statResult.st_mtime;
     return true;
-
 }
 
 bool getFileMetadata(const String& path, FileMetadata& metadata)
 {
-    CString filename = fileSystemRepresentation(path);
-    if (filename.isNull())
-        return false;
-
-    struct stat statResult;
-    gint result = g_stat(filename.data(), &statResult);
-    if (result)
+    GStatBuf statResult;
+    if (!getFileStat(path, &statResult))
         return false;
 
     metadata.modificationTime = statResult.st_mtime;
     metadata.length = statResult.st_size;
     metadata.type = S_ISDIR(statResult.st_mode) ? FileMetadata::TypeDirectory : FileMetadata::TypeFile;
     return true;
-
 }
 
 String pathByAppendingComponent(const String& path, const String& component)
 {
     if (path.endsWith(G_DIR_SEPARATOR_S))
         return path + component;
-    else
-        return path + G_DIR_SEPARATOR_S + component;
+    return path + G_DIR_SEPARATOR_S + component;
 }
 
 bool makeAllDirectories(const String& path)
 {
-    CString filename = fileSystemRepresentation(path);
-    if (filename.isNull())
-        return false;
-
-    gint result = g_mkdir_with_parents(filename.data(), S_IRWXU);
-
-    return result == 0;
+    GUniquePtr<gchar> filename = unescapedFilename(path);
+    return filename ? g_mkdir_with_parents(filename.get(), S_IRWXU) != -1 : false;
 }
 
 String homeDirectoryPath()
@@ -186,11 +178,11 @@ String homeDirectoryPath()
 
 String pathGetFileName(const String& pathName)
 {
-    if (pathName.isEmpty())
+    GUniquePtr<gchar> tmpFilename = unescapedFilename(pathName);
+    if (!tmpFilename)
         return pathName;
 
-    CString tmpFilename = fileSystemRepresentation(pathName);
-    GOwnPtr<gchar> baseName(g_path_get_basename(tmpFilename.data()));
+    GUniquePtr<gchar> baseName(g_path_get_basename(tmpFilename.get()));
     return String::fromUTF8(baseName.get());
 }
 
@@ -201,11 +193,11 @@ CString applicationDirectoryPath()
         return path;
 
     // If the above fails, check the PATH env variable.
-    GOwnPtr<char> currentExePath(g_find_program_in_path(g_get_prgname()));
+    GUniquePtr<char> currentExePath(g_find_program_in_path(g_get_prgname()));
     if (!currentExePath.get())
         return CString();
 
-    GOwnPtr<char> dirname(g_path_get_dirname(currentExePath.get()));
+    GUniquePtr<char> dirname(g_path_get_dirname(currentExePath.get()));
     return dirname.get();
 }
 
@@ -219,10 +211,10 @@ CString sharedResourcesPath()
     HMODULE hmodule = 0;
     GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS, reinterpret_cast<char*>(sharedResourcesPath), &hmodule);
 
-    GOwnPtr<gchar> runtimeDir(g_win32_get_package_installation_directory_of_module(hmodule));
-    GOwnPtr<gchar> dataPath(g_build_filename(runtimeDir.get(), "share", "webkitgtk-" WEBKITGTK_API_VERSION_STRING, NULL));
+    GUniquePtr<gchar> runtimeDir(g_win32_get_package_installation_directory_of_module(hmodule));
+    GUniquePtr<gchar> dataPath(g_build_filename(runtimeDir.get(), "share", "webkitgtk-" WEBKITGTK_API_VERSION_STRING, NULL));
 #else
-    GOwnPtr<gchar> dataPath(g_build_filename(DATA_DIR, "webkitgtk-" WEBKITGTK_API_VERSION_STRING, NULL));
+    GUniquePtr<gchar> dataPath(g_build_filename(DATA_DIR, "webkitgtk-" WEBKITGTK_API_VERSION_STRING, NULL));
 #endif
 
     cachedPath = dataPath.get();
@@ -241,8 +233,11 @@ uint64_t getVolumeFreeSizeForPath(const char* path)
 
 String directoryName(const String& path)
 {
-    /* No null checking needed */
-    GOwnPtr<char> dirname(g_path_get_dirname(fileSystemRepresentation(path).data()));
+    GUniquePtr<gchar> filename = unescapedFilename(path);
+    if (!filename)
+        return String();
+
+    GUniquePtr<char> dirname(g_path_get_dirname(filename.get()));
     return String::fromUTF8(dirname.get());
 }
 
@@ -250,29 +245,30 @@ Vector<String> listDirectory(const String& path, const String& filter)
 {
     Vector<String> entries;
 
-    CString filename = fileSystemRepresentation(path);
-    GDir* dir = g_dir_open(filename.data(), 0, 0);
+    GUniquePtr<gchar> filename = unescapedFilename(path);
+    if (!filename)
+        return entries;
+
+    GUniquePtr<GDir> dir(g_dir_open(filename.get(), 0, nullptr));
     if (!dir)
         return entries;
 
-    GPatternSpec *pspec = g_pattern_spec_new((filter.utf8()).data());
-    while (const char* name = g_dir_read_name(dir)) {
-        if (!g_pattern_match_string(pspec, name))
+    GUniquePtr<GPatternSpec> pspec(g_pattern_spec_new((filter.utf8()).data()));
+    while (const char* name = g_dir_read_name(dir.get())) {
+        if (!g_pattern_match_string(pspec.get(), name))
             continue;
 
-        GOwnPtr<gchar> entry(g_build_filename(filename.data(), name, NULL));
+        GUniquePtr<gchar> entry(g_build_filename(filename.get(), name, nullptr));
         entries.append(filenameToString(entry.get()));
     }
-    g_pattern_spec_free(pspec);
-    g_dir_close(dir);
 
     return entries;
 }
 
 String openTemporaryFile(const String& prefix, PlatformFileHandle& handle)
 {
-    GOwnPtr<gchar> filename(g_strdup_printf("%s%s", prefix.utf8().data(), createCanonicalUUIDString().utf8().data()));
-    GOwnPtr<gchar> tempPath(g_build_filename(g_get_tmp_dir(), filename.get(), NULL));
+    GUniquePtr<gchar> filename(g_strdup_printf("%s%s", prefix.utf8().data(), createCanonicalUUIDString().utf8().data()));
+    GUniquePtr<gchar> tempPath(g_build_filename(g_get_tmp_dir(), filename.get(), NULL));
     GRefPtr<GFile> file = adoptGRef(g_file_new_for_path(tempPath.get()));
 
     handle = g_file_create_readwrite(file.get(), G_FILE_CREATE_NONE, 0, 0);
@@ -283,16 +279,16 @@ String openTemporaryFile(const String& prefix, PlatformFileHandle& handle)
 
 PlatformFileHandle openFile(const String& path, FileOpenMode mode)
 {
-    CString fsRep = fileSystemRepresentation(path);
-    if (fsRep.isNull())
+    GUniquePtr<gchar> filename = unescapedFilename(path);
+    if (!filename)
         return invalidPlatformFileHandle;
 
-    GRefPtr<GFile> file = adoptGRef(g_file_new_for_path(fsRep.data()));
+    GRefPtr<GFile> file = adoptGRef(g_file_new_for_path(filename.get()));
     GFileIOStream* ioStream = 0;
     if (mode == OpenForRead)
         ioStream = g_file_open_readwrite(file.get(), 0, 0);
     else if (mode == OpenForWrite) {
-        if (g_file_test(fsRep.data(), static_cast<GFileTest>(G_FILE_TEST_EXISTS | G_FILE_TEST_IS_REGULAR)))
+        if (g_file_test(filename.get(), static_cast<GFileTest>(G_FILE_TEST_EXISTS | G_FILE_TEST_IS_REGULAR)))
             ioStream = g_file_open_readwrite(file.get(), 0, 0);
         else
             ioStream = g_file_create_readwrite(file.get(), G_FILE_CREATE_NONE, 0, 0);

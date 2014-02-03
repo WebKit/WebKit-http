@@ -32,12 +32,12 @@
 
 namespace WebCore {
 
-class CryptoAlgorithmAesKeyGenParams FINAL : public CryptoAlgorithmParameters {
+class CryptoAlgorithmAesKeyGenParams final : public CryptoAlgorithmParameters {
 public:
     // The length, in bits, of the key.
     unsigned length;
 
-    virtual Class parametersClass() const OVERRIDE { return Class::AesKeyGenParams; }
+    virtual Class parametersClass() const override { return Class::AesKeyGenParams; }
 };
 
 CRYPTO_ALGORITHM_PARAMETERS_CASTS(AesKeyGenParams)

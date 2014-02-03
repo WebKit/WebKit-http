@@ -29,33 +29,29 @@
  */
 
 #include "config.h"
+#include "PageConsoleAgent.h"
 
 #if ENABLE(INSPECTOR)
 
-#include "PageConsoleAgent.h"
-
+#include "CommandLineAPIHost.h"
 #include "DOMWindow.h"
-#include "InjectedScriptHost.h"
-#include "InjectedScriptManager.h"
-#include "InspectorAgent.h"
 #include "InspectorDOMAgent.h"
 #include "Node.h"
+#include "PageInjectedScriptManager.h"
 
 using namespace Inspector;
 
 namespace WebCore {
 
-PageConsoleAgent::PageConsoleAgent(InstrumentingAgents* instrumentingAgents, InspectorAgent* inspectorAgent, InjectedScriptManager* injectedScriptManager, InspectorDOMAgent* domAgent)
+PageConsoleAgent::PageConsoleAgent(InstrumentingAgents* instrumentingAgents, PageInjectedScriptManager* injectedScriptManager, InspectorDOMAgent* domAgent)
     : InspectorConsoleAgent(instrumentingAgents, injectedScriptManager)
-    , m_inspectorAgent(inspectorAgent)
     , m_inspectorDOMAgent(domAgent)
 {
 }
 
 PageConsoleAgent::~PageConsoleAgent()
 {
-    m_inspectorAgent = 0;
-    m_inspectorDOMAgent = 0;
+    m_inspectorDOMAgent = nullptr;
 }
 
 void PageConsoleAgent::clearMessages(ErrorString* errorString)
@@ -64,12 +60,12 @@ void PageConsoleAgent::clearMessages(ErrorString* errorString)
     InspectorConsoleAgent::clearMessages(errorString);
 }
 
-class InspectableNode : public InjectedScriptHost::InspectableObject {
+class InspectableNode final : public CommandLineAPIHost::InspectableObject {
 public:
     explicit InspectableNode(Node* node) : m_node(node) { }
-    virtual Deprecated::ScriptValue get(JSC::ExecState* state)
+    virtual Deprecated::ScriptValue get(JSC::ExecState* state) override
     {
-        return InjectedScriptHost::nodeAsScriptValue(state, m_node);
+        return InspectorDOMAgent::nodeAsScriptValue(state, m_node);
     }
 private:
     Node* m_node;
@@ -79,15 +75,12 @@ void PageConsoleAgent::addInspectedNode(ErrorString* errorString, int nodeId)
 {
     Node* node = m_inspectorDOMAgent->nodeForId(nodeId);
     if (!node || node->isInShadowTree()) {
-        *errorString = "nodeId is not valid";
+        *errorString = ASCIILiteral("nodeId is not valid");
         return;
     }
-    m_injectedScriptManager->injectedScriptHost()->addInspectedObject(adoptPtr(new InspectableNode(node)));
-}
 
-bool PageConsoleAgent::developerExtrasEnabled()
-{
-    return m_inspectorAgent->developerExtrasEnabled();
+    if (CommandLineAPIHost* commandLineAPIHost = m_injectedScriptManager->commandLineAPIHost())
+        commandLineAPIHost->addInspectedObject(adoptPtr(new InspectableNode(node)));
 }
 
 } // namespace WebCore

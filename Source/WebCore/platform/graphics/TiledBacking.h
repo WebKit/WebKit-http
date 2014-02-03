@@ -34,9 +34,9 @@ class PlatformCALayer;
 #endif
 
 enum ScrollingModeIndication {
-    MainThreadScrollingBecauseOfStyleIndication,
-    MainThreadScrollingBecauseOfEventHandlersIndication,
-    ThreadedScrollingIndication
+    SynchronousScrollingBecauseOfStyleIndication,
+    SynchronousScrollingBecauseOfEventHandlersIndication,
+    AsyncScrollingIndication
 };
 
 class TiledBacking {
@@ -48,8 +48,6 @@ public:
     virtual bool tilesWouldChangeForVisibleRect(const FloatRect&) const = 0;
 
     virtual void setExposedRect(const FloatRect&) = 0;
-    virtual void setClipsToExposedRect(bool) = 0;
-    virtual bool clipsToExposedRect() = 0;
 
     virtual void prepopulateRect(const FloatRect&) = 0;
 
@@ -90,6 +88,9 @@ public:
     virtual int bottomMarginHeight() const = 0;
     virtual int leftMarginWidth() const = 0;
     virtual int rightMarginWidth() const = 0;
+
+    // Includes margins.
+    virtual IntRect bounds() const = 0;
 
     // Exposed for testing
     virtual IntRect tileCoverageRect() const = 0;

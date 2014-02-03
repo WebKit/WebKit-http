@@ -37,7 +37,7 @@
 
 namespace WebCore {
     
-void AXObjectCache::detachWrapper(AccessibilityObject* obj)
+void AXObjectCache::detachWrapper(AccessibilityObject* obj, AccessibilityDetachmentType)
 {
     [obj->wrapper() detach];
     obj->setWrapper(0);
@@ -98,9 +98,9 @@ void AXObjectCache::frameLoadingEventPlatformNotification(AccessibilityObject*, 
 {
 }
 
-void AXObjectCache::handleFocusedUIElementChanged(Node*, Node* newNode)
+void AXObjectCache::platformHandleFocusedUIElementChanged(Node*, Node* newNode)
 {
-    postNotification(newNode, AXFocusedUIElementChanged, true, PostAsynchronously);
+    postNotification(newNode, AXFocusedUIElementChanged, TargetElement, PostAsynchronously);
 }
 
 void AXObjectCache::handleScrolledToAnchor(const Node*)

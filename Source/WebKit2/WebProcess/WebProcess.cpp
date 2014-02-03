@@ -33,6 +33,7 @@
 #include "InjectedBundleUserMessageCoders.h"
 #include "Logging.h"
 #include "PluginProcessConnectionManager.h"
+#include "SessionTracker.h"
 #include "StatisticsData.h"
 #include "UserData.h"
 #include "WebApplicationCacheManager.h"
@@ -127,7 +128,7 @@
 #include "WebResourceLoadScheduler.h"
 #endif
 
-#if USE(SOUP)
+#if USE(SOUP) && !ENABLE(CUSTOM_PROTOCOLS)
 #include "WebSoupRequestManager.h"
 #endif
 
@@ -154,7 +155,7 @@ WebProcess::WebProcess()
     , m_shouldTrackVisitedLinks(true)
     , m_hasSetCacheModel(false)
     , m_cacheModel(CacheModelDocumentViewer)
-#if USE(ACCELERATED_COMPOSITING) && PLATFORM(MAC)
+#if PLATFORM(MAC)
     , m_compositingRenderServerPort(MACH_PORT_NULL)
 #endif
 #if PLATFORM(MAC)
@@ -200,7 +201,7 @@ WebProcess::WebProcess()
 #if ENABLE(NETWORK_INFO)
     addSupplement<WebNetworkInfoManager>();
 #endif
-#if USE(SOUP)
+#if USE(SOUP) && !ENABLE(CUSTOM_PROTOCOLS)
     addSupplement<WebSoupRequestManager>();
 #endif
 }
@@ -210,7 +211,7 @@ void WebProcess::initializeProcess(const ChildProcessInitializationParameters& p
     platformInitializeProcess(parameters);
 }
 
-void WebProcess::initializeConnection(CoreIPC::Connection* connection)
+void WebProcess::initializeConnection(IPC::Connection* connection)
 {
     ChildProcess::initializeConnection(connection);
 
@@ -250,7 +251,7 @@ void WebProcess::didDestroyDownload()
     enableTermination();
 }
 
-CoreIPC::Connection* WebProcess::downloadProxyConnection()
+IPC::Connection* WebProcess::downloadProxyConnection()
 {
     return parentProcessConnection();
 }
@@ -260,7 +261,7 @@ AuthenticationManager& WebProcess::downloadsAuthenticationManager()
     return *supplement<AuthenticationManager>();
 }
 
-void WebProcess::initializeWebProcess(const WebProcessCreationParameters& parameters, CoreIPC::MessageDecoder& decoder)
+void WebProcess::initializeWebProcess(const WebProcessCreationParameters& parameters, IPC::MessageDecoder& decoder)
 {
     ASSERT(m_pageMap.isEmpty());
 
@@ -326,6 +327,11 @@ void WebProcess::initializeWebProcess(const WebProcessCreationParameters& parame
     for (size_t i = 0; i < parameters.urlSchemesRegisteredAsCORSEnabled.size(); ++i)
         registerURLSchemeAsCORSEnabled(parameters.urlSchemesRegisteredAsCORSEnabled[i]);
 
+#if ENABLE(CACHE_PARTITIONING)
+    for (auto& scheme : parameters.urlSchemesRegisteredAsCachePartitioned)
+        registerURLSchemeAsCORSEnabled(scheme);
+#endif
+
     setDefaultRequestTimeoutInterval(parameters.defaultRequestTimeoutInterval);
 
     if (parameters.shouldAlwaysUseComplexTextCodePath)
@@ -335,7 +341,7 @@ void WebProcess::initializeWebProcess(const WebProcessCreationParameters& parame
         setShouldUseFontSmoothing(true);
 
 #if PLATFORM(MAC) || USE(CFNETWORK)
-    WebFrameNetworkingContext::setPrivateBrowsingStorageSessionIdentifierBase(parameters.uiProcessBundleIdentifier);
+    SessionTracker::setIdentifierBase(parameters.uiProcessBundleIdentifier);
 #endif
 
     if (parameters.shouldUseTestingNetworkSession)
@@ -355,6 +361,8 @@ void WebProcess::initializeWebProcess(const WebProcessCreationParameters& parame
     resetPlugInAutoStartOriginHashes(parameters.plugInAutoStartOriginHashes);
     for (size_t i = 0; i < parameters.plugInAutoStartOrigins.size(); ++i)
         m_plugInAutoStartOrigins.add(parameters.plugInAutoStartOrigins[i]);
+
+    setMemoryCacheDisabled(parameters.memoryCacheDisabled);
 }
 
 #if ENABLE(NETWORK_PROCESS)
@@ -366,20 +374,20 @@ void WebProcess::ensureNetworkProcessConnection()
     if (m_networkProcessConnection)
         return;
 
-    CoreIPC::Attachment encodedConnectionIdentifier;
+    IPC::Attachment encodedConnectionIdentifier;
 
     if (!parentProcessConnection()->sendSync(Messages::WebProcessProxy::GetNetworkProcessConnection(),
         Messages::WebProcessProxy::GetNetworkProcessConnection::Reply(encodedConnectionIdentifier), 0))
         return;
 
 #if PLATFORM(MAC)
-    CoreIPC::Connection::Identifier connectionIdentifier(encodedConnectionIdentifier.port());
+    IPC::Connection::Identifier connectionIdentifier(encodedConnectionIdentifier.port());
 #elif USE(UNIX_DOMAIN_SOCKETS)
-    CoreIPC::Connection::Identifier connectionIdentifier = encodedConnectionIdentifier.releaseFileDescriptor();
+    IPC::Connection::Identifier connectionIdentifier = encodedConnectionIdentifier.releaseFileDescriptor();
 #else
     ASSERT_NOT_REACHED();
 #endif
-    if (CoreIPC::Connection::identifierIsNull(connectionIdentifier))
+    if (IPC::Connection::identifierIsNull(connectionIdentifier))
         return;
     m_networkProcessConnection = NetworkProcessConnection::create(connectionIdentifier);
 }
@@ -426,6 +434,13 @@ void WebProcess::registerURLSchemeAsCORSEnabled(const String& urlScheme) const
     SchemeRegistry::registerURLSchemeAsCORSEnabled(urlScheme);
 }
 
+#if ENABLE(CACHE_PARTITIONING)
+void WebProcess::registerURLSchemeAsCachePartitioned(const String& urlScheme) const
+{
+    SchemeRegistry::registerURLSchemeAsCachePartitioned(urlScheme);
+}
+#endif
+
 void WebProcess::setDefaultRequestTimeoutInterval(double timeoutInterval)
 {
     ResourceRequest::setDefaultTimeoutInterval(timeoutInterval);
@@ -452,27 +467,25 @@ void WebProcess::fullKeyboardAccessModeChanged(bool fullKeyboardAccessEnabled)
     m_fullKeyboardAccessEnabled = fullKeyboardAccessEnabled;
 }
 
-void WebProcess::ensurePrivateBrowsingSession()
+void WebProcess::ensurePrivateBrowsingSession(uint64_t sessionID)
 {
 #if PLATFORM(MAC) || USE(CFNETWORK) || USE(SOUP)
-    WebFrameNetworkingContext::ensurePrivateBrowsingSession();
+    WebFrameNetworkingContext::ensurePrivateBrowsingSession(sessionID);
 #endif
 }
 
-void WebProcess::destroyPrivateBrowsingSession()
+void WebProcess::destroyPrivateBrowsingSession(uint64_t sessionID)
 {
 #if PLATFORM(MAC) || USE(CFNETWORK) || USE(SOUP)
-    WebFrameNetworkingContext::destroyPrivateBrowsingSession();
+    SessionTracker::destroySession(sessionID);
 #endif
 }
 
 DownloadManager& WebProcess::downloadManager()
 {
-#if ENABLE(NETWORK_PROCESS)
-    ASSERT(!m_usesNetworkProcess);
-#endif
+    ASSERT(!usesNetworkProcess());
 
-    DEFINE_STATIC_LOCAL(DownloadManager, downloadManager, (this));
+    static NeverDestroyed<DownloadManager> downloadManager(this);
     return downloadManager;
 }
 
@@ -550,19 +563,6 @@ WebPage* WebProcess::focusedWebPage() const
     return 0;
 }
     
-#if PLATFORM(MAC)
-void WebProcess::setProcessSuppressionEnabled(bool processSuppressionEnabled)
-{
-    HashMap<uint64_t, RefPtr<WebPage>>::const_iterator end = m_pageMap.end();
-    for (HashMap<uint64_t, RefPtr<WebPage>>::const_iterator it = m_pageMap.begin(); it != end; ++it) {
-        WebPage* page = (*it).value.get();
-        page->setThrottled(processSuppressionEnabled);
-    }
-    
-    ChildProcess::setProcessSuppressionEnabled(processSuppressionEnabled);
-}
-#endif
-
 WebPage* WebProcess::webPage(uint64_t pageID) const
 {
     return m_pageMap.get(pageID);
@@ -579,7 +579,8 @@ void WebProcess::createWebPage(uint64_t pageID, const WebPageCreationParameters&
 
         // Balanced by an enableTermination in removeWebPage.
         disableTermination();
-    }
+    } else
+        result.iterator->value->reinitializeWebPage(parameters);
 
     ASSERT(result.iterator->value);
 }
@@ -597,12 +598,7 @@ void WebProcess::removeWebPage(uint64_t pageID)
 bool WebProcess::shouldTerminate()
 {
     ASSERT(m_pageMap.isEmpty());
-
-#if ENABLE(NETWORK_PROCESS)
-    ASSERT(m_usesNetworkProcess || !downloadManager().isDownloading());
-#else
-    ASSERT(!downloadManager().isDownloading());
-#endif
+    ASSERT(usesNetworkProcess() || !downloadManager().isDownloading());
 
     // FIXME: the ShouldTerminate message should also send termination parameters, such as any session cookies that need to be preserved.
     bool shouldTerminate = false;
@@ -629,12 +625,12 @@ void WebProcess::terminate()
     ChildProcess::terminate();
 }
 
-void WebProcess::didReceiveSyncMessage(CoreIPC::Connection* connection, CoreIPC::MessageDecoder& decoder, std::unique_ptr<CoreIPC::MessageEncoder>& replyEncoder)
+void WebProcess::didReceiveSyncMessage(IPC::Connection* connection, IPC::MessageDecoder& decoder, std::unique_ptr<IPC::MessageEncoder>& replyEncoder)
 {
     messageReceiverMap().dispatchSyncMessage(connection, decoder, replyEncoder);
 }
 
-void WebProcess::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::MessageDecoder& decoder)
+void WebProcess::didReceiveMessage(IPC::Connection* connection, IPC::MessageDecoder& decoder)
 {
     if (messageReceiverMap().dispatchMessage(connection, decoder))
         return;
@@ -657,7 +653,7 @@ void WebProcess::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::Mes
     }
 }
 
-void WebProcess::didClose(CoreIPC::Connection*)
+void WebProcess::didClose(IPC::Connection*)
 {
 #ifndef NDEBUG
     m_inDidClose = true;
@@ -678,7 +674,7 @@ void WebProcess::didClose(CoreIPC::Connection*)
     stopRunLoop();
 }
 
-void WebProcess::didReceiveInvalidMessage(CoreIPC::Connection*, CoreIPC::StringReference, CoreIPC::StringReference)
+void WebProcess::didReceiveInvalidMessage(IPC::Connection*, IPC::StringReference, IPC::StringReference)
 {
     // We received an invalid message, but since this is from the UI process (which we trust),
     // we'll let it slide.
@@ -973,13 +969,13 @@ void WebProcess::setJavaScriptGarbageCollectorTimerEnabled(bool flag)
     gcController().setJavaScriptGarbageCollectorTimerEnabled(flag);
 }
 
-void WebProcess::postInjectedBundleMessage(const CoreIPC::DataReference& messageData)
+void WebProcess::postInjectedBundleMessage(const IPC::DataReference& messageData)
 {
     InjectedBundle* injectedBundle = WebProcess::shared().injectedBundle();
     if (!injectedBundle)
         return;
 
-    CoreIPC::ArgumentDecoder decoder(messageData.data(), messageData.size());
+    IPC::ArgumentDecoder decoder(messageData.data(), messageData.size());
 
     String messageName;
     if (!decoder.decode(messageName))
@@ -991,6 +987,15 @@ void WebProcess::postInjectedBundleMessage(const CoreIPC::DataReference& message
         return;
 
     injectedBundle->didReceiveMessage(messageName, messageBody.get());
+}
+
+bool WebProcess::usesNetworkProcess() const
+{
+#if ENABLE(NETWORK_PROCESS)
+    return m_usesNetworkProcess;
+#else
+    return false;
+#endif
 }
 
 #if ENABLE(NETWORK_PROCESS)
@@ -1047,15 +1052,15 @@ void WebProcess::ensureWebToDatabaseProcessConnection()
     if (m_webToDatabaseProcessConnection)
         return;
 
-    CoreIPC::Attachment encodedConnectionIdentifier;
+    IPC::Attachment encodedConnectionIdentifier;
 
     if (!parentProcessConnection()->sendSync(Messages::WebProcessProxy::GetDatabaseProcessConnection(),
         Messages::WebProcessProxy::GetDatabaseProcessConnection::Reply(encodedConnectionIdentifier), 0))
         return;
 
 #if PLATFORM(MAC)
-    CoreIPC::Connection::Identifier connectionIdentifier(encodedConnectionIdentifier.port());
-    if (CoreIPC::Connection::identifierIsNull(connectionIdentifier))
+    IPC::Connection::Identifier connectionIdentifier(encodedConnectionIdentifier.port());
+    if (IPC::Connection::identifierIsNull(connectionIdentifier))
         return;
 #else
     ASSERT_NOT_REACHED();
@@ -1200,6 +1205,12 @@ RefPtr<API::Object> WebProcess::apiObjectByConvertingFromHandles(API::Object* ob
             return nullptr;
         }
     });
+}
+
+void WebProcess::setMemoryCacheDisabled(bool disabled)
+{
+    if (memoryCache()->disabled() != disabled)
+        memoryCache()->setDisabled(disabled);
 }
 
 } // namespace WebKit

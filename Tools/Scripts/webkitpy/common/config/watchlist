@@ -150,28 +150,20 @@
         "Media": {
             "filename": r"(Source|LayoutTests)/.*([Mm]edia|[Aa]udio|[Vv]ideo)",
         },
+        "Track": {
+            "filename": r"Source/WebCore/html/track/"
+                        r"|Source/WebCore/loader/*Track*.*"
+                        r"|Source/WebCore/html/HTMLMediaElement*"
+                        r"|Source/WebCore/html/HTMLTrackElement*"
+                        r"|Source/WebCore/Modules/mediacontrols*"
+                        r"|Source/WebCore/css/mediaControl*"
+                        r"|LayoutTests/media/track/",
+        },
         "MathML": {
             "filename": r"(Source|LayoutTests|Websites)/.*mathml",
         },
         "Editing": {
             "filename": r"Source/WebCore/editing/",
-        },
-        "BlackBerry": {
-            "filename": r"Source/WebKit/blackberry/"
-                        r"|Source/WebCore/page/blackberry"
-                        r"|Source/WebCore/history/blackberry"
-                        r"|Source/WebCore/plugins/blackberry"
-                        r"|Source/WebCore/editing/blackberry"
-                        r"|Source/WebCore/Resources/blackberry"
-                        r"|Source/WebCore/platform/image-decoders/blackberry"
-                        r"|Source/WebCore/platform/blackberry"
-                        r"|Source/WebCore/platform/text/blackberry"
-                        r"|Source/WebCore/platform/network/blackberry"
-                        r"|Source/WebCore/platform/graphics/blackberry"
-                        r"|Source/WTF/wtf/blackberry"
-                        r"|ManualTests/blackberry"
-                        r"|Tools/DumpRenderTree/blackberry"
-                        r"|LayoutTests/platform/blackberry",
         },
         "NetworkInfo": {
             "filename": r"Source/WebCore/Modules/networkinfo",
@@ -202,7 +194,6 @@
         "TouchAdjustment": {
             "filename": r"Source/WebCore/page/TouchAdjustment.*"
                         r"|LayoutTests/touchadjustment"
-                        r"|Source/WebKit/blackberry/WebKitSupport/FatFingers.*",
         },
         "SVG": {
             "filename": r"Source/WebCore/svg"
@@ -300,11 +291,10 @@
         "Animation" : [ "simon.fraser@apple.com", "dino@apple.com", "dstockwell@chromium.org" ],
         "AppleMacPublicApi": [ "timothy@apple.com" ],
         "Battery": [ "gyuyoung.kim@webkit.org", "dchris@gmail.com" ],
-        "BindingsScripts": [ "dchris@gmail.com" ],
-        "BlackBerry": [ "mifenton@rim.com", "rwlbuis@gmail.com", "tonikitoo@webkit.org" ],
+        "BindingsScripts": [ "dchris@gmail.com", "cgarcia@igalia.com" ],
         "Cairo": [ "dominik.rottsches@intel.com" ],
-        "CMake": [ "rakuco@webkit.org", "gyuyoung.kim@webkit.org" ],
-        "CoordinatedGraphics" : [ "noam@webkit.org", "zeno@webkit.org", "cmarcelo@webkit.org", "luiz@webkit.org" ],
+        "CMake": [ "rakuco@webkit.org", "gyuyoung.kim@webkit.org", "ryuan.choi@gmail.com" ],
+        "CoordinatedGraphics" : [ "noam@webkit.org", "zeno@webkit.org", "cmarcelo@webkit.org", "luiz@webkit.org", "ryuan.choi@gmail.com" ],
         "ConsoleUsage" : [ "mkwst@chromium.org" ],
         "ContentSecurityPolicyFiles|ContentSecurityPolicyUsage" : [ "mkwst@chromium.org" ],
         "CoreAnimation" : [ "simon.fraser@apple.com" ],
@@ -312,16 +302,16 @@
         "cURLNetwork": [ "galpeter@inf.u-szeged.hu" ],
         "DOM": [ "esprehn+autocc@chromium.org", "kangil.han@samsung.com" ],
         "DOMAttributes": [ "cmarcelo@webkit.org", ],
-        "EFL": [ "rakuco@webkit.org", "gyuyoung.kim@webkit.org", "dchris@gmail.com" ],
-        "EFLWebKit2PlatformSpecific": [ "gyuyoung.kim@webkit.org", "rakuco@webkit.org", "dchris@gmail.com" ],
-        "EFLWebKit2PublicAPI": [ "gyuyoung.kim@webkit.org", "rakuco@webkit.org", "dchris@gmail.com" ],
+        "EFL": [ "gyuyoung.kim@webkit.org", "dchris@gmail.com", "ryuan.choi@gmail.com" ],
+        "EFLWebKit2PlatformSpecific": [ "gyuyoung.kim@webkit.org", "dchris@gmail.com", "ryuan.choi@gmail.com" ],
+        "EFLWebKit2PublicAPI": [ "gyuyoung.kim@webkit.org", "dchris@gmail.com", "ryuan.choi@gmail.com" ],
         "Editing": [ "mifenton@rim.com" ],
         "Filters": [ "dino@apple.com", "kondapallykalyan@gmail.com" ],
         "Forms": [ "tkent@chromium.org", "mifenton@rim.com", "roger_fong@apple.com" ],
         "FrameLoader": [ "japhet@chromium.org" ],
         "Geolocation": [ "benjamin@webkit.org" ],
         "GraphicsLayer": [ "simon.fraser@apple.com", "kondapallykalyan@gmail.com" ],
-        "GStreamerGraphics": [ "alexis@webkit.org", "pnormand@igalia.com", "gns@gnome.org", "mrobinson@webkit.org" ],
+        "GStreamerGraphics": [ "alexis@webkit.org", "pnormand@igalia.com", "gns@gnome.org", "mrobinson@webkit.org", "cgarcia@igalia.com" ],
         "GStreamerAudio": [ "pnormand@igalia.com", "dchris@gmail.com" ],
         "GtkBuildSystem": [ "zandobersek@gmail.com" ],
         "GtkWebKit2PublicAPI": [ "cgarcia@igalia.com", "gns@gnome.org", "mrobinson@webkit.org" ],
@@ -330,7 +320,8 @@
         "IndexedDB": [ "alecflett@chromium.org", "jsbell@chromium.org" ],
         "Loader": [ "japhet@chromium.org" ],
         "MathML": [ "dbarton@mathscribe.com", "mrobinson@webkit.org", "fred.wang@free.fr" ],
-        "Media": [ "eric.carlson@apple.com", "jer.noble@apple.com", "glenn@skynav.com" ],
+        "Media": [ "eric.carlson@apple.com", "jer.noble@apple.com", "glenn@skynav.com", "philipj@opera.com" ],
+        "Track": [ "eric.carlson@apple.com", "philipj@opera.com" ],
         "MediaStream": [ "tommyw@google.com", "hta@google.com" ],
         "NetworkInfo": [ "gyuyoung.kim@webkit.org", "dchris@gmail.com" ],
         "OpenGL" : [ "noam@webkit.org", "dino@apple.com", "kondapallykalyan@gmail.com", "roger_fong@apple.com" ],
@@ -342,7 +333,7 @@
         "SVNScripts": [ "dbates@webkit.org" ],
         "ScrollingCoordinator": [ "andersca@apple.com", "jamesr@chromium.org", "tonikitoo@webkit.org", "cmarcelo@webkit.org", "luiz@webkit.org" ],
         "Selectors": [ "allan.jensen@digia.com" ],
-        "SoupNetwork": [ "rakuco@webkit.org", "gns@gnome.org", "mrobinson@webkit.org", "danw@gnome.org", "dchris@gmail.com" ],
+        "SoupNetwork": [ "gns@gnome.org", "mrobinson@webkit.org", "danw@gnome.org", "dchris@gmail.com", "cgarcia@igalia.com" ],
         "TextureMapper" : [ "noam@webkit.org", "cmarcelo@webkit.org", "luiz@webkit.org", "kondapallykalyan@gmail.com" ],
         "TouchAdjustment" : [ "allan.jensen@digia.com" ],
         "WTF": [ "benjamin@webkit.org", "cmarcelo@webkit.org" ],

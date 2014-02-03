@@ -45,7 +45,6 @@
 #include "Plugin.h"
 #include "SandboxExtension.h"
 #include "ShareableBitmap.h"
-#include "ViewState.h"
 #include "WebUndoStep.h"
 #include <WebCore/DictationAlternative.h>
 #include <WebCore/DragData.h>
@@ -57,6 +56,8 @@
 #include <WebCore/PlatformScreen.h>
 #include <WebCore/ScrollTypes.h>
 #include <WebCore/TextChecking.h>
+#include <WebCore/UserActivity.h>
+#include <WebCore/ViewState.h>
 #include <WebCore/WebCoreKeyboardUIMode.h>
 #include <wtf/HashMap.h>
 #include <wtf/OwnPtr.h>
@@ -76,7 +77,7 @@
 
 #if ENABLE(TOUCH_EVENTS)
 #if PLATFORM(IOS)
-#include <WebCore/PlatformTouchEventIOS.h>
+#include <WebKitAdditions/PlatformTouchEventIOS.h>
 #else
 #include <WebCore/PlatformTouchEvent.h>
 #endif
@@ -103,7 +104,7 @@ namespace API {
 class Array;
 }
 
-namespace CoreIPC {
+namespace IPC {
     class ArgumentDecoder;
     class Connection;
 }
@@ -121,6 +122,7 @@ namespace WebCore {
     class ResourceResponse;
     class ResourceRequest;
     class SharedBuffer;
+    class SubstituteData;
     class TextCheckingRequest;
     class VisibleSelection;
     struct KeypressCommand;
@@ -154,6 +156,7 @@ class WebPopupMenu;
 class WebWheelEvent;
 struct AttributedString;
 struct EditorState;
+struct InteractionInformationAtPosition;
 struct PrintInfo;
 struct WebPageCreationParameters;
 struct WebPreferencesStore;
@@ -164,10 +167,12 @@ class WebTouchEvent;
 
 typedef Vector<RefPtr<PageOverlay>> PageOverlayList;
 
-class WebPage : public API::ObjectImpl<API::Object::Type::BundlePage>, public CoreIPC::MessageReceiver, public CoreIPC::MessageSender {
+class WebPage : public API::ObjectImpl<API::Object::Type::BundlePage>, public IPC::MessageReceiver, public IPC::MessageSender {
 public:
     static PassRefPtr<WebPage> create(uint64_t pageID, const WebPageCreationParameters&);
     virtual ~WebPage();
+
+    void reinitializeWebPage(const WebPageCreationParameters&);
 
     void close();
 
@@ -175,6 +180,8 @@ public:
 
     WebCore::Page* corePage() const { return m_page.get(); }
     uint64_t pageID() const { return m_pageID; }
+    uint64_t sessionID() const;
+    void setSessionID(uint64_t sessionID) { m_sessionID = sessionID; }
 
     void setSize(const WebCore::IntSize&);
     const WebCore::IntSize& size() const { return m_viewSize; }
@@ -182,6 +189,9 @@ public:
     
     InjectedBundleBackForwardList* backForwardList();
     DrawingArea* drawingArea() const { return m_drawingArea.get(); }
+#if ENABLE(ASYNC_SCROLLING)
+    WebCore::ScrollingCoordinator* scrollingCoordinator() const;
+#endif
 
     WebPageGroupProxy* pageGroup() const { return m_pageGroup.get(); }
 
@@ -238,8 +248,8 @@ public:
     WebOpenPanelResultListener* activeOpenPanelResultListener() const { return m_activeOpenPanelResultListener.get(); }
     void setActiveOpenPanelResultListener(PassRefPtr<WebOpenPanelResultListener>);
 
-    void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&) OVERRIDE;
-    void didReceiveSyncMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&, std::unique_ptr<CoreIPC::MessageEncoder>&) OVERRIDE;
+    void didReceiveMessage(IPC::Connection*, IPC::MessageDecoder&) override;
+    void didReceiveSyncMessage(IPC::Connection*, IPC::MessageDecoder&, std::unique_ptr<IPC::MessageEncoder>&) override;
 
     // -- InjectedBundle methods
 #if ENABLE(CONTEXT_MENUS)
@@ -283,6 +293,10 @@ public:
     PassRefPtr<Plugin> createPlugin(WebFrame*, WebCore::HTMLPlugInElement*, const Plugin::Parameters&, String& newMIMEType);
 #endif
 
+#if ENABLE(WEBGL)
+    WebCore::WebGLLoadPolicy webGLPolicyForURL(WebFrame*, const String&);
+#endif // ENABLE(WEBGL)
+    
     EditorState editorState() const;
 
     String renderTreeExternalRepresentation() const;
@@ -326,7 +340,7 @@ public:
     void setPageLength(double);
     void setGapBetweenPages(double);
 
-    void postInjectedBundleMessage(const String& messageName, CoreIPC::MessageDecoder&);
+    void postInjectedBundleMessage(const String& messageName, IPC::MessageDecoder&);
 
     bool drawsBackground() const { return m_drawsBackground; }
     bool drawsTransparentBackground() const { return m_drawsTransparentBackground; }
@@ -338,20 +352,19 @@ public:
     void stopLoadingFrame(uint64_t frameID);
     void setDefersLoading(bool deferLoading);
 
-#if USE(ACCELERATED_COMPOSITING)
     void enterAcceleratedCompositingMode(WebCore::GraphicsLayer*);
     void exitAcceleratedCompositingMode();
-#endif
 
     void addPluginView(PluginView*);
     void removePluginView(PluginView*);
 
-    bool windowIsVisible() const { return m_windowIsVisible; }
+    bool isVisible() const { return m_viewState & WebCore::ViewState::IsVisible; }
+    bool isVisibleOrOccluded() const { return m_viewState & WebCore::ViewState::IsVisibleOrOccluded; }
+
+    LayerHostingMode layerHostingMode() const { return m_layerHostingMode; }
+    void setLayerHostingMode(unsigned);
 
 #if PLATFORM(MAC)
-    LayerHostingMode layerHostingMode() const { return m_layerHostingMode; }
-    void setLayerHostingMode(LayerHostingMode);
-
     void updatePluginsActiveAndFocusedState();
     const WebCore::FloatRect& windowFrameInScreenCoordinates() const { return m_windowFrameInScreenCoordinates; }
     const WebCore::FloatRect& windowFrameInUnflippedScreenCoordinates() const { return m_windowFrameInUnflippedScreenCoordinates; }
@@ -410,9 +423,13 @@ public:
     void elementDidBlur(WebCore::Node*);
     void requestAutocorrectionData(const String& textForAutocorrection, uint64_t callbackID);
     void applyAutocorrection(const String& correction, const String& originalText, uint64_t callbackID);
+    void requestAutocorrectionContext(uint64_t callbackID);
+    void getAutocorrectionContext(String& beforeText, String& markedText, String& selectedText, String& afterText, uint64_t& location, uint64_t& length);
     void insertText(const String& text, uint64_t replacementRangeStart, uint64_t replacementRangeEnd);
     void setComposition(const String& text, Vector<WebCore::CompositionUnderline> underlines, uint64_t selectionStart, uint64_t selectionEnd);
     void confirmComposition();
+    void getPositionInformation(const WebCore::IntPoint&, InteractionInformationAtPosition&);
+    void requestPositionInformation(const WebCore::IntPoint&);
 #endif
 
     NotificationPermissionRequestManager* notificationPermissionRequestManager();
@@ -475,7 +492,7 @@ public:
     void didChangeSelection();
 
 #if PLATFORM(MAC)
-    void registerUIProcessAccessibilityTokens(const CoreIPC::DataReference& elemenToken, const CoreIPC::DataReference& windowToken);
+    void registerUIProcessAccessibilityTokens(const IPC::DataReference& elemenToken, const IPC::DataReference& windowToken);
     WKAccessibilityWebPageObject* accessibilityRemoteObject();
     NSObject *accessibilityObjectForMainFramePlugin();
     const WebCore::FloatPoint& accessibilityPosition() const { return m_accessibilityPosition; }
@@ -566,7 +583,7 @@ public:
     void setMediaVolume(float);
     void setMayStartMediaWhenInWindow(bool);
 
-    void didChangeScrollOffsetForMainFrame();
+    void updateMainFrameScrollOffsetPinning();
 
     void mainFrameDidLayout();
 
@@ -605,12 +622,8 @@ public:
     void numWheelEventHandlersChanged(unsigned);
     void recomputeShortCircuitHorizontalWheelEventsState();
 
-    bool willGoToBackForwardItemCallbackEnabled() const { return m_willGoToBackForwardItemCallbackEnabled; }
-
-#if ENABLE(PAGE_VISIBILITY_API) || ENABLE(HIDDEN_PAGE_DOM_TIMER_THROTTLING)
-    void setVisibilityState(uint32_t /* WebCore::PageVisibilityState */, bool isInitialState);
-#endif
-    void setThrottled(bool isThrottled);
+    void setVisibilityStatePrerender();
+    void updateVisibilityState(bool isInitialState = false);
 
 #if PLATFORM(IOS)
     void didFinishScrolling(const WebCore::FloatPoint& contentOffset);
@@ -676,18 +689,20 @@ public:
 
     WKTypeRef pageOverlayCopyAccessibilityAttributeValue(WKStringRef attribute, WKTypeRef parameter);
     WKArrayRef pageOverlayCopyAccessibilityAttributesNames(bool parameterizedNames);
-    
+
+    PassRefPtr<WebCore::DocumentLoader> createDocumentLoader(WebCore::Frame&, const WebCore::ResourceRequest&, const WebCore::SubstituteData&);
+
 private:
     WebPage(uint64_t pageID, const WebPageCreationParameters&);
 
-    // CoreIPC::MessageSender
-    virtual CoreIPC::Connection* messageSenderConnection() OVERRIDE;
-    virtual uint64_t messageSenderDestinationID() OVERRIDE;
+    // IPC::MessageSender
+    virtual IPC::Connection* messageSenderConnection() override;
+    virtual uint64_t messageSenderDestinationID() override;
 
     void platformInitialize();
 
-    void didReceiveWebPageMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&);
-    void didReceiveSyncWebPageMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&, std::unique_ptr<CoreIPC::MessageEncoder>&);
+    void didReceiveWebPageMessage(IPC::Connection*, IPC::MessageDecoder&);
+    void didReceiveSyncWebPageMessage(IPC::Connection*, IPC::MessageDecoder&, std::unique_ptr<IPC::MessageEncoder>&);
 
 #if !PLATFORM(MAC)
     static const char* interpretKeyEvent(const WebCore::KeyboardEvent*);
@@ -700,22 +715,20 @@ private:
 
     String sourceForFrame(WebFrame*);
 
-    void loadDataImpl(PassRefPtr<WebCore::SharedBuffer>, const String& MIMEType, const String& encodingName, const WebCore::URL& baseURL, const WebCore::URL& failingURL, CoreIPC::MessageDecoder&);
-    void loadString(const String&, const String& MIMEType, const WebCore::URL& baseURL, const WebCore::URL& failingURL, CoreIPC::MessageDecoder&);
+    void loadDataImpl(PassRefPtr<WebCore::SharedBuffer>, const String& MIMEType, const String& encodingName, const WebCore::URL& baseURL, const WebCore::URL& failingURL, IPC::MessageDecoder&);
+    void loadString(const String&, const String& MIMEType, const WebCore::URL& baseURL, const WebCore::URL& failingURL, IPC::MessageDecoder&);
 
     bool platformHasLocalDataForURL(const WebCore::URL&);
 
     // Actions
     void tryClose();
-    void loadURL(const String&, const SandboxExtension::Handle&, CoreIPC::MessageDecoder&);
-    void loadURLRequest(const WebCore::ResourceRequest&, const SandboxExtension::Handle&, CoreIPC::MessageDecoder&);
-    void loadData(const CoreIPC::DataReference&, const String& MIMEType, const String& encodingName, const String& baseURL, CoreIPC::MessageDecoder&);
-    void loadHTMLString(const String& htmlString, const String& baseURL, CoreIPC::MessageDecoder&);
-    void loadAlternateHTMLString(const String& htmlString, const String& baseURL, const String& unreachableURL, CoreIPC::MessageDecoder&);
-    void loadPlainTextString(const String&, CoreIPC::MessageDecoder&);
-    void loadWebArchiveData(const CoreIPC::DataReference&, CoreIPC::MessageDecoder&);
-    void linkClicked(const String& url, const WebMouseEvent&);
-    void reload(bool reloadFromOrigin, const SandboxExtension::Handle&);
+    void loadRequest(uint64_t navigationID, const WebCore::ResourceRequest&, const SandboxExtension::Handle&, IPC::MessageDecoder&);
+    void loadData(const IPC::DataReference&, const String& MIMEType, const String& encodingName, const String& baseURL, IPC::MessageDecoder&);
+    void loadHTMLString(const String& htmlString, const String& baseURL, IPC::MessageDecoder&);
+    void loadAlternateHTMLString(const String& htmlString, const String& baseURL, const String& unreachableURL, IPC::MessageDecoder&);
+    void loadPlainTextString(const String&, IPC::MessageDecoder&);
+    void loadWebArchiveData(const IPC::DataReference&, IPC::MessageDecoder&);
+    void reload(uint64_t navigationID, bool reloadFromOrigin, const SandboxExtension::Handle&);
     void goForward(uint64_t);
     void goBack(uint64_t);
     void goToBackForwardItem(uint64_t);
@@ -723,11 +736,12 @@ private:
     void setActive(bool);
     void setFocused(bool);
     void setViewIsVisible(bool);
-    void setWindowIsVisible(bool);
     void setInitialFocus(bool forward, bool isKeyboardEventValid, const WebKeyboardEvent&);
     void setWindowResizerSize(const WebCore::IntSize&);
     void setIsInWindow(bool);
-    void setViewState(ViewState::Flags, bool wantsDidUpdateViewState);
+    void setIsVisuallyIdle(bool);
+    void setViewState(WebCore::ViewState::Flags, bool wantsDidUpdateViewState);
+    void setViewStateInternal(WebCore::ViewState::Flags, bool isInitialState);
     void validateCommand(const String&, uint64_t);
     void executeEditCommand(const String&);
 
@@ -754,8 +768,6 @@ private:
 
     void didRemoveBackForwardItem(uint64_t);
 
-    void setWillGoToBackForwardItemCallbackEnabled(bool enabled) { m_willGoToBackForwardItemCallbackEnabled = enabled; }
-    
     void setDrawsBackground(bool);
     void setDrawsTransparentBackground(bool);
 
@@ -798,7 +810,6 @@ private:
     void drawPagesToPDFFromPDFDocument(CGContextRef, PDFDocument *, const PrintInfo&, uint32_t first, uint32_t count);
 #endif
 
-    void viewExposedRectChanged(const WebCore::FloatRect& exposedRect, bool clipsToExposedRect);
     void setMainFrameIsScrollable(bool);
 
     void unapplyEditCommand(uint64_t commandID);
@@ -861,6 +872,7 @@ private:
     void reportUsedFeatures();
 
     uint64_t m_pageID;
+    uint64_t m_sessionID;
 
     OwnPtr<WebCore::Page> m_page;
     RefPtr<WebFrame> m_mainFrame;
@@ -898,9 +910,6 @@ private:
 
     bool m_mainFrameIsScrollable;
 
-    // Whether the containing window is visible or not.
-    bool m_windowIsVisible;
-
 #if ENABLE(PRIMARY_SNAPSHOTTED_PLUGIN_HEURISTIC)
     bool m_readyToFindPrimarySnapshottedPlugin;
     bool m_didFindPrimarySnapshottedPlugin;
@@ -910,6 +919,9 @@ private:
     String m_primaryPlugInMimeType;
     RunLoop::Timer<WebPage> m_determinePrimarySnapshottedPlugInTimer;
 #endif
+
+    // The layer hosting mode.
+    LayerHostingMode m_layerHostingMode;
 
 #if PLATFORM(MAC)
     bool m_pdfPluginEnabled;
@@ -928,22 +940,21 @@ private:
     // The accessibility position of the view.
     WebCore::FloatPoint m_accessibilityPosition;
     
-    // The layer hosting mode.
-    LayerHostingMode m_layerHostingMode;
-
     RetainPtr<WKAccessibilityWebPageObject> m_mockAccessibilityElement;
 
     WebCore::KeyboardEvent* m_keyboardEventBeingInterpreted;
 
+#if !PLATFORM(IOS)
     ViewGestureGeometryCollector m_viewGestureGeometryCollector;
+#endif
 
 #elif HAVE(ACCESSIBILITY) && (PLATFORM(GTK) || PLATFORM(EFL))
     GRefPtr<WebPageAccessibilityObject> m_accessibilityObject;
+#endif
 
-#if USE(TEXTURE_MAPPER_GL)
+#if PLATFORM(GTK) && USE(TEXTURE_MAPPER_GL)
     // Our view's window in the UI process.
     uint64_t m_nativeWindowHandle;
-#endif
 #endif
 
 #if !PLATFORM(IOS)
@@ -1027,17 +1038,12 @@ private:
     bool m_isShowingContextMenu;
 #endif
     
-    bool m_willGoToBackForwardItemCallbackEnabled;
-
 #if PLATFORM(IOS)
     RefPtr<WebCore::Node> m_assistedNode;
     RefPtr<WebCore::Range> m_currentWordRange;
     bool m_shouldReturnWordAtSelection;
 #endif
 
-#if ENABLE(PAGE_VISIBILITY_API)
-    WebCore::PageVisibilityState m_visibilityState;
-#endif
     WebInspectorClient* m_inspectorClient;
 
     WebCore::Color m_backgroundColor;
@@ -1047,9 +1053,13 @@ private:
     
     WebCore::ScrollPinningBehavior m_scrollPinningBehavior;
 
-    bool m_useThreadedScrolling;
+    bool m_useAsyncScrolling;
 
-    ViewState::Flags m_viewState;
+    WebCore::ViewState::Flags m_viewState;
+
+    UserActivity m_processSuppressionDisabledByWebPreference;
+
+    uint64_t m_pendingNavigationID;
 };
 
 } // namespace WebKit

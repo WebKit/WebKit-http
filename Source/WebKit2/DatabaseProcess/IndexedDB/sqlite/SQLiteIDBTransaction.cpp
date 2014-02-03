@@ -27,31 +27,113 @@
 
 #if ENABLE(INDEXED_DATABASE) && ENABLE(DATABASE_PROCESS)
 
+#include "SQLiteIDBCursor.h"
+#include "UniqueIDBDatabaseBackingStoreSQLite.h"
+#include <WebCore/IndexedDB.h>
+#include <WebCore/SQLiteTransaction.h>
+
+using namespace WebCore;
+
+static int64_t nextCursorID = 1;
+
 namespace WebKit {
 
-SQLiteIDBTransaction::SQLiteIDBTransaction(const IDBTransactionIdentifier& identifier)
-    : m_identifier(identifier)
+SQLiteIDBTransaction::SQLiteIDBTransaction(UniqueIDBDatabaseBackingStoreSQLite& backingStore, const IDBIdentifier& transactionIdentifier, IndexedDB::TransactionMode mode)
+    : m_identifier(transactionIdentifier)
+    , m_mode(mode)
+    , m_backingStore(backingStore)
 {
 }
 
-bool SQLiteIDBTransaction::begin()
+SQLiteIDBTransaction::~SQLiteIDBTransaction()
 {
-    return false;
+    if (inProgress())
+        m_sqliteTransaction->rollback();
+
+    // Explicitly clear cursors, as that also unregisters them from the backing store.
+    clearCursors();
+}
+
+
+bool SQLiteIDBTransaction::begin(SQLiteDatabase& database)
+{
+    ASSERT(!m_sqliteTransaction);
+    m_sqliteTransaction = std::make_unique<SQLiteTransaction>(database, m_mode == IndexedDB::TransactionMode::ReadOnly);
+
+    m_sqliteTransaction->begin();
+
+    return m_sqliteTransaction->inProgress();
 }
 
 bool SQLiteIDBTransaction::commit()
 {
-    return false;
+    ASSERT(m_sqliteTransaction);
+    if (!m_sqliteTransaction->inProgress())
+        return false;
+
+    m_sqliteTransaction->commit();
+
+    return !m_sqliteTransaction->inProgress();
 }
 
 bool SQLiteIDBTransaction::reset()
 {
-    return false;
+    m_sqliteTransaction = nullptr;
+    clearCursors();
+
+    return true;
 }
 
 bool SQLiteIDBTransaction::rollback()
 {
-    return false;
+    ASSERT(m_sqliteTransaction);
+    if (m_sqliteTransaction->inProgress())
+        m_sqliteTransaction->rollback();
+
+    return true;
+}
+
+SQLiteIDBCursor* SQLiteIDBTransaction::openCursor(int64_t objectStoreID, int64_t indexID, IndexedDB::CursorDirection cursorDirection, IndexedDB::CursorType cursorType, IDBDatabaseBackend::TaskType taskType, const IDBKeyRangeData& keyRange)
+{
+    ASSERT(m_sqliteTransaction);
+    if (!m_sqliteTransaction->inProgress())
+        return nullptr;
+
+    IDBIdentifier cursorIdentifier(m_identifier.connection(), nextCursorID++);
+
+    auto addResult = m_cursors.add(cursorIdentifier, SQLiteIDBCursor::maybeCreate(this, cursorIdentifier, objectStoreID, indexID, cursorDirection, cursorType, taskType, keyRange));
+
+    ASSERT(addResult.isNewEntry);
+
+    // It is possible the cursor failed to create and we just stored a null value.
+    if (!addResult.iterator->value) {
+        m_cursors.remove(addResult.iterator);
+        return nullptr;
+    }
+
+    return addResult.iterator->value.get();
+}
+
+void SQLiteIDBTransaction::closeCursor(SQLiteIDBCursor& cursor)
+{
+    ASSERT(m_cursors.contains(cursor.identifier()));
+
+    m_backingStore.unregisterCursor(&cursor);
+    m_cursors.remove(cursor.identifier());
+}
+
+void SQLiteIDBTransaction::clearCursors()
+{
+    // Iterate over the keys instead of each key/value pair because std::unique_ptr<> can't be iterated over directly.
+    for (auto key : m_cursors.keys())
+        m_backingStore.unregisterCursor(m_cursors.get(key));
+
+    m_cursors.clear();
+}
+
+bool SQLiteIDBTransaction::inProgress() const
+{
+    return m_sqliteTransaction && m_sqliteTransaction->inProgress();
 }
 
 } // namespace WebKit

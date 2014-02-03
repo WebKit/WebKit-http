@@ -36,14 +36,6 @@
 class BString;
 #endif
 
-#if PLATFORM(BLACKBERRY)
-namespace BlackBerry {
-namespace Platform {
-class String;
-}
-}
-#endif
-
 namespace WTF {
 
 class CString;
@@ -168,13 +160,14 @@ public:
         return m_impl->length();
     }
 
-    const UChar* characters() const
+    const UChar* characters() const { return deprecatedCharacters(); } // FIXME: Delete this.
+    const UChar* deprecatedCharacters() const
     {
         if (!m_impl)
             return 0;
-        return m_impl->characters();
+        return m_impl->deprecatedCharacters();
     }
-    
+
     const LChar* characters8() const
     {
         if (!m_impl)
@@ -423,11 +416,6 @@ public:
     operator BString() const;
 #endif
 
-#if PLATFORM(BLACKBERRY)
-    String(const BlackBerry::Platform::String&);
-    operator BlackBerry::Platform::String() const;
-#endif
-
     WTF_EXPORT_STRING_API static String make8BitFrom16BitSource(const UChar*, size_t);
     template<size_t inlineCapacity>
     static String make8BitFrom16BitSource(const Vector<UChar, inlineCapacity>& buffer)
@@ -562,7 +550,7 @@ inline const LChar* String::getCharactersWithUpconvert<LChar>() const
 template<>
 inline const UChar* String::getCharactersWithUpconvert<UChar>() const
 {
-    return characters();
+    return deprecatedCharacters();
 }
 
 inline bool String::containsOnlyLatin1() const
@@ -609,7 +597,7 @@ inline bool codePointCompareLessThan(const String& a, const String& b)
 template<size_t inlineCapacity>
 inline void append(Vector<UChar, inlineCapacity>& vector, const String& string)
 {
-    vector.append(string.characters(), string.length());
+    vector.append(string.deprecatedCharacters(), string.length());
 }
 
 template<typename CharacterType>
@@ -623,10 +611,12 @@ inline void appendNumber(Vector<CharacterType>& vector, unsigned char number)
     case 3:
         vector[vectorSize + 2] = number % 10 + '0';
         number /= 10;
+        FALLTHROUGH;
 
     case 2:
         vector[vectorSize + 1] = number % 10 + '0';
         number /= 10;
+        FALLTHROUGH;
 
     case 1:
         vector[vectorSize] = number % 10 + '0';
@@ -653,7 +643,7 @@ inline bool String::isAllSpecialCharacters() const
 
     if (is8Bit())
         return WTF::isAllSpecialCharacters<isSpecialCharacter, LChar>(characters8(), len);
-    return WTF::isAllSpecialCharacters<isSpecialCharacter, UChar>(characters(), len);
+    return WTF::isAllSpecialCharacters<isSpecialCharacter, UChar>(characters16(), len);
 }
 
 // StringHash is the default hash for String

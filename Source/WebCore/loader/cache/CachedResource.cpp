@@ -135,56 +135,10 @@ static ResourceLoadPriority defaultPriorityForResourceType(CachedResource::Type 
     case CachedResource::TextTrackResource:
         return ResourceLoadPriorityLow;
 #endif
-#if ENABLE(CSS_SHADERS)
-    case CachedResource::ShaderResource:
-        return ResourceLoadPriorityMedium;
-#endif
     }
     ASSERT_NOT_REACHED();
     return ResourceLoadPriorityLow;
 }
-
-#if PLATFORM(BLACKBERRY)
-static ResourceRequest::TargetType cachedResourceTypeToTargetType(CachedResource::Type type)
-{
-    switch (type) {
-    case CachedResource::MainResource:
-        return ResourceRequest::TargetIsMainFrame;
-    case CachedResource::CSSStyleSheet:
-#if ENABLE(XSLT)
-    case CachedResource::XSLStyleSheet:
-#endif
-        return ResourceRequest::TargetIsStyleSheet;
-    case CachedResource::Script: 
-        return ResourceRequest::TargetIsScript;
-    case CachedResource::FontResource:
-        return ResourceRequest::TargetIsFontResource;
-    case CachedResource::ImageResource:
-        return ResourceRequest::TargetIsImage;
-#if ENABLE(CSS_SHADERS)
-    case CachedResource::ShaderResource:
-#endif
-    case CachedResource::RawResource:
-        return ResourceRequest::TargetIsSubresource;    
-#if ENABLE(LINK_PREFETCH)
-    case CachedResource::LinkPrefetch:
-        return ResourceRequest::TargetIsPrefetch;
-    case CachedResource::LinkSubresource:
-        return ResourceRequest::TargetIsSubresource;
-#endif
-#if ENABLE(VIDEO_TRACK)
-    case CachedResource::TextTrackResource:
-        return ResourceRequest::TargetIsTextTrack;
-#endif
-#if ENABLE(SVG)
-    case CachedResource::SVGDocumentResource:
-        return ResourceRequest::TargetIsImage;
-#endif
-    }
-    ASSERT_NOT_REACHED();
-    return ResourceRequest::TargetIsSubresource;
-}
-#endif
 
 static double deadDecodedDataDeletionIntervalForResourceType(CachedResource::Type type)
 {
@@ -318,11 +272,6 @@ void CachedResource::load(CachedResourceLoader* cachedResourceLoader, const Reso
         const URL& documentURL = cachedResourceLoader->frame() ? cachedResourceLoader->frame()->loader().documentLoader()->response().url() : cachedResourceLoader->document()->url();
         m_resourceRequest.setURL(safeQLURLForDocumentURLAndResourceURL(documentURL, url()));
     }
-#endif
-
-#if PLATFORM(BLACKBERRY)
-    if (m_resourceRequest.targetType() == ResourceRequest::TargetIsUnspecified)
-        m_resourceRequest.setTargetType(cachedResourceTypeToTargetType(type()));
 #endif
 
     if (!accept().isEmpty())
@@ -586,7 +535,7 @@ void CachedResource::destroyDecodedDataIfNeeded()
     m_decodedDataDeletionTimer.restart();
 }
 
-void CachedResource::decodedDataDeletionTimerFired(DeferrableOneShotTimer<CachedResource>*)
+void CachedResource::decodedDataDeletionTimerFired(DeferrableOneShotTimer<CachedResource>&)
 {
     destroyDecodedData();
 }
@@ -766,17 +715,15 @@ void CachedResource::updateResponseAfterRevalidation(const ResourceResponse& val
 
     // RFC2616 10.3.5
     // Update cached headers from the 304 response
-    const HTTPHeaderMap& newHeaders = validatingResponse.httpHeaderFields();
-    HTTPHeaderMap::const_iterator end = newHeaders.end();
-    for (HTTPHeaderMap::const_iterator it = newHeaders.begin(); it != end; ++it) {
+    for (const auto& header : validatingResponse.httpHeaderFields()) {
         // Entity headers should not be sent by servers when generating a 304
         // response; misconfigured servers send them anyway. We shouldn't allow
         // such headers to update the original request. We'll base this on the
         // list defined by RFC2616 7.1, with a few additions for extension headers
         // we care about.
-        if (!shouldUpdateHeaderAfterRevalidation(it->key))
+        if (!shouldUpdateHeaderAfterRevalidation(header.key))
             continue;
-        m_response.setHTTPHeaderField(it->key, it->value);
+        m_response.setHTTPHeaderField(header.key, header.value);
     }
 }
 
@@ -931,7 +878,7 @@ void CachedResource::CachedResourceCallback::cancel()
         m_callbackTimer.stop();
 }
 
-void CachedResource::CachedResourceCallback::timerFired(Timer<CachedResourceCallback>*)
+void CachedResource::CachedResourceCallback::timerFired(Timer<CachedResourceCallback>&)
 {
     m_resource->didAddClient(m_client);
 }

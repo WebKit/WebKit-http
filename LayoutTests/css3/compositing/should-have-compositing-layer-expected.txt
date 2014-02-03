@@ -13,8 +13,14 @@ PASS content has compositing layers
       (contentsOpaque 1)
       (children 1
         (GraphicsLayer
-          (position 8.00 76.00)
-          (bounds 160.00 90.00)
+          (bounds 800.00 600.00)
+          (drawsContent 1)
+          (children 1
+            (GraphicsLayer
+              (position 8.00 76.00)
+              (bounds 160.00 90.00)
+            )
+          )
         )
       )
     )

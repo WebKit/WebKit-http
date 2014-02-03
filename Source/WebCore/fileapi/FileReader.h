@@ -38,6 +38,7 @@
 #include "FileError.h"
 #include "FileReaderLoader.h"
 #include "FileReaderLoaderClient.h"
+#include <chrono>
 #include <wtf/Forward.h>
 #include <wtf/RefCounted.h>
 #include <wtf/text/WTFString.h>
@@ -53,7 +54,7 @@ class ScriptExecutionContext;
 
 typedef int ExceptionCode;
 
-class FileReader FINAL : public RefCounted<FileReader>, public ActiveDOMObject, public EventTargetWithInlineData, public FileReaderLoaderClient {
+class FileReader final : public RefCounted<FileReader>, public ActiveDOMObject, public EventTargetWithInlineData, public FileReaderLoaderClient {
 public:
     static PassRefPtr<FileReader> create(ScriptExecutionContext&);
 
@@ -81,14 +82,14 @@ public:
     String stringResult();
 
     // EventTarget
-    virtual EventTargetInterface eventTargetInterface() const OVERRIDE { return FileReaderEventTargetInterfaceType; }
-    virtual ScriptExecutionContext* scriptExecutionContext() const OVERRIDE { return ActiveDOMObject::scriptExecutionContext(); }
+    virtual EventTargetInterface eventTargetInterface() const override { return FileReaderEventTargetInterfaceType; }
+    virtual ScriptExecutionContext* scriptExecutionContext() const override { return ActiveDOMObject::scriptExecutionContext(); }
 
     // FileReaderLoaderClient
-    virtual void didStartLoading() OVERRIDE;
-    virtual void didReceiveData() OVERRIDE;
-    virtual void didFinishLoading() OVERRIDE;
-    virtual void didFail(int errorCode) OVERRIDE;
+    virtual void didStartLoading() override;
+    virtual void didReceiveData() override;
+    virtual void didFinishLoading() override;
+    virtual void didFail(int errorCode) override;
 
     using RefCounted<FileReader>::ref;
     using RefCounted<FileReader>::deref;
@@ -104,12 +105,12 @@ private:
     explicit FileReader(ScriptExecutionContext&);
 
     // ActiveDOMObject
-    virtual bool canSuspend() const OVERRIDE;
-    virtual void stop() OVERRIDE;
+    virtual bool canSuspend() const override;
+    virtual void stop() override;
 
     // EventTarget
-    virtual void refEventTarget() OVERRIDE { ref(); }
-    virtual void derefEventTarget() OVERRIDE { deref(); }
+    virtual void refEventTarget() override { ref(); }
+    virtual void derefEventTarget() override { deref(); }
 
     void terminate();
     void readInternal(Blob*, FileReaderLoader::ReadType, ExceptionCode&);
@@ -123,7 +124,7 @@ private:
     String m_encoding;
     std::unique_ptr<FileReaderLoader> m_loader;
     RefPtr<FileError> m_error;
-    double m_lastProgressNotificationTimeMS;
+    std::chrono::steady_clock::time_point m_lastProgressNotificationTime;
 };
 
 } // namespace WebCore

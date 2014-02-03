@@ -27,15 +27,15 @@
 
 namespace WebCore {
 
-class SVGFEFloodElement FINAL : public SVGFilterPrimitiveStandardAttributes {
+class SVGFEFloodElement final : public SVGFilterPrimitiveStandardAttributes {
 public:
     static PassRefPtr<SVGFEFloodElement> create(const QualifiedName&, Document&);
 
 private:
     SVGFEFloodElement(const QualifiedName&, Document&);
 
-    virtual bool setFilterEffectAttribute(FilterEffect*, const QualifiedName& attrName);
-    virtual PassRefPtr<FilterEffect> build(SVGFilterBuilder*, Filter*);
+    virtual bool setFilterEffectAttribute(FilterEffect*, const QualifiedName& attrName) override;
+    virtual PassRefPtr<FilterEffect> build(SVGFilterBuilder*, Filter*) override;
 };
 
 } // namespace WebCore

@@ -34,20 +34,20 @@
 
 namespace WebCore {
     
-class RenderMathMLFenced FINAL : public RenderMathMLRow {
+class RenderMathMLFenced final : public RenderMathMLRow {
 public:
     RenderMathMLFenced(MathMLInlineContainerElement&, PassRef<RenderStyle>);
     MathMLInlineContainerElement& element() { return static_cast<MathMLInlineContainerElement&>(nodeForNonAnonymous()); }
     
 private:
-    virtual bool isRenderMathMLFenced() const OVERRIDE { return true; }
-    virtual const char* renderName() const OVERRIDE { return "RenderMathMLFenced"; }
-    virtual void addChild(RenderObject* child, RenderObject* beforeChild) OVERRIDE;
-    virtual void styleDidChange(StyleDifference, const RenderStyle* oldStyle) OVERRIDE;
+    virtual bool isRenderMathMLFenced() const override { return true; }
+    virtual const char* renderName() const override { return "RenderMathMLFenced"; }
+    virtual void addChild(RenderObject* child, RenderObject* beforeChild) override;
+    virtual void styleDidChange(StyleDifference, const RenderStyle* oldStyle) override;
 
-    virtual void updateFromElement() OVERRIDE;
+    virtual void updateFromElement() override;
 
-    RenderMathMLOperator* createMathMLOperator(UChar, RenderMathMLOperator::OperatorType);
+    RenderPtr<RenderMathMLOperator> createMathMLOperator(UChar, RenderMathMLOperator::OperatorType);
     void makeFences();
 
     UChar m_open;

@@ -26,11 +26,12 @@
 #ifndef NetworkStateNotifier_h
 #define NetworkStateNotifier_h
 
+#include <functional>
 #include <wtf/FastMalloc.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/Vector.h>
 
-#if PLATFORM(MAC)
+#if PLATFORM(MAC) && !PLATFORM(IOS)
 
 #include <wtf/RetainPtr.h>
 #include "Timer.h"
@@ -58,24 +59,23 @@ public:
 #if PLATFORM(EFL)
     ~NetworkStateNotifier();
 #endif
-    typedef void (*NetworkStateChangeListener)(bool m_isOnLine);
-    void addNetworkStateChangeListener(NetworkStateChangeListener);
+    void addNetworkStateChangeListener(std::function<void (bool isOnLine)>);
 
     bool onLine() const { return m_isOnLine; }
-
-#if PLATFORM(BLACKBERRY)
-    void networkStateChange(bool online);
+    
+#if PLATFORM(IOS)
+    void setIsOnLine(bool);
 #endif
 
 private:
     bool m_isOnLine;
-    Vector<NetworkStateChangeListener> m_listeners;
+    Vector<std::function<void (bool)>> m_listeners;
 
     void notifyNetworkStateChange();
     void updateState();
 
-#if PLATFORM(MAC)
-    void networkStateChangeTimerFired(Timer<NetworkStateNotifier>*);
+#if PLATFORM(MAC) && !PLATFORM(IOS)
+    void networkStateChangeTimerFired(Timer<NetworkStateNotifier>&);
 
     static void dynamicStoreCallback(SCDynamicStoreRef, CFArrayRef changedKeys, void *info); 
 
@@ -100,7 +100,7 @@ private:
 #endif
 };
 
-#if !PLATFORM(MAC) && !PLATFORM(WIN) && !PLATFORM(BLACKBERRY) && !PLATFORM(EFL)
+#if !PLATFORM(MAC) && !PLATFORM(WIN) && !PLATFORM(EFL)
 
 inline NetworkStateNotifier::NetworkStateNotifier()
     : m_isOnLine(true)

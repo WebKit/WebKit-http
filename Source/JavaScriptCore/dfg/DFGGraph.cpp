@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2011, 2013, 2014 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -36,8 +36,10 @@
 #include "FunctionExecutableDump.h"
 #include "JIT.h"
 #include "JSActivation.h"
+#include "MaxFrameExtentForSlowPathCall.h"
 #include "OperandsInlines.h"
 #include "Operations.h"
+#include "StackAlignment.h"
 #include <wtf/CommaPrinter.h>
 #include <wtf/ListDump.h>
 
@@ -198,6 +200,8 @@ void Graph::dump(PrintStream& out, const char* prefix, Node* node, DumpContext* 
         out.print(comma, SpeculationDump(node->prediction()));
     if (node->hasArrayMode())
         out.print(comma, node->arrayMode());
+    if (node->hasArithMode())
+        out.print(comma, node->arithMode());
     if (node->hasVarNumber())
         out.print(comma, node->varNumber());
     if (node->hasRegisterPointer())
@@ -243,19 +247,21 @@ void Graph::dump(PrintStream& out, const char* prefix, Node* node, DumpContext* 
     }
     ASSERT(node->hasVariableAccessData(*this) == node->hasLocal(*this));
     if (node->hasVariableAccessData(*this)) {
-        VariableAccessData* variableAccessData = node->variableAccessData();
-        VirtualRegister operand = variableAccessData->local();
-        if (operand.isArgument())
-            out.print(comma, "arg", operand.toArgument(), "(", VariableAccessDataDump(*this, variableAccessData), ")");
-        else
-            out.print(comma, "loc", operand.toLocal(), "(", VariableAccessDataDump(*this, variableAccessData), ")");
-        
-        operand = variableAccessData->machineLocal();
-        if (operand.isValid()) {
+        VariableAccessData* variableAccessData = node->tryGetVariableAccessData();
+        if (variableAccessData) {
+            VirtualRegister operand = variableAccessData->local();
             if (operand.isArgument())
-                out.print(comma, "machine:arg", operand.toArgument());
+                out.print(comma, "arg", operand.toArgument(), "(", VariableAccessDataDump(*this, variableAccessData), ")");
             else
-                out.print(comma, "machine:loc", operand.toLocal());
+                out.print(comma, "loc", operand.toLocal(), "(", VariableAccessDataDump(*this, variableAccessData), ")");
+            
+            operand = variableAccessData->machineLocal();
+            if (operand.isValid()) {
+                if (operand.isArgument())
+                    out.print(comma, "machine:arg", operand.toArgument());
+                else
+                    out.print(comma, "machine:loc", operand.toLocal());
+            }
         }
     }
     if (node->hasUnlinkedLocal()) {
@@ -326,8 +332,8 @@ void Graph::dump(PrintStream& out, const char* prefix, Node* node, DumpContext* 
     out.print(")");
 
     if (!skipped) {
-        if (node->hasVariableAccessData(*this))
-            out.print("  predicting ", SpeculationDump(node->variableAccessData()->prediction()));
+        if (node->hasVariableAccessData(*this) && node->tryGetVariableAccessData())
+            out.print("  predicting ", SpeculationDump(node->tryGetVariableAccessData()->prediction()));
         else if (node->hasHeapPrediction())
             out.print("  predicting ", SpeculationDump(node->getHeapPrediction()));
     }
@@ -676,10 +682,10 @@ FullBytecodeLiveness& Graph::livenessFor(InlineCallFrame* inlineCallFrame)
 bool Graph::isLiveInBytecode(VirtualRegister operand, CodeOrigin codeOrigin)
 {
     for (;;) {
+        VirtualRegister reg = VirtualRegister(
+            operand.offset() - codeOrigin.stackOffset());
+        
         if (operand.offset() < codeOrigin.stackOffset() + JSStack::CallFrameHeaderSize) {
-            VirtualRegister reg = VirtualRegister(
-                operand.offset() - codeOrigin.stackOffset());
-            
             if (reg.isArgument()) {
                 RELEASE_ASSERT(reg.offset() < JSStack::CallFrameHeaderSize);
                 
@@ -698,10 +704,18 @@ bool Graph::isLiveInBytecode(VirtualRegister operand, CodeOrigin codeOrigin)
                 reg.offset(), codeOrigin.bytecodeIndex);
         }
         
-        if (!codeOrigin.inlineCallFrame)
+        InlineCallFrame* inlineCallFrame = codeOrigin.inlineCallFrame;
+        if (!inlineCallFrame)
             break;
+
+        // Arguments are always live. This would be redundant if it wasn't for our
+        // op_call_varargs inlining.
+        if (reg.isArgument()
+            && reg.toArgument()
+            && static_cast<size_t>(reg.toArgument()) < inlineCallFrame->arguments.size())
+            return true;
         
-        codeOrigin = codeOrigin.inlineCallFrame->caller;
+        codeOrigin = inlineCallFrame->caller;
     }
     
     return true;
@@ -709,7 +723,13 @@ bool Graph::isLiveInBytecode(VirtualRegister operand, CodeOrigin codeOrigin)
 
 unsigned Graph::frameRegisterCount()
 {
-    return m_nextMachineLocal + m_parameterSlots;
+    unsigned result = m_nextMachineLocal + std::max(m_parameterSlots, static_cast<unsigned>(maxFrameExtentForSlowPathCallInRegisters));
+    return roundLocalRegisterCountForFramePointerOffset(result);
+}
+
+unsigned Graph::stackPointerOffset()
+{
+    return virtualRegisterForLocal(frameRegisterCount() - 1).offset();
 }
 
 unsigned Graph::requiredRegisterCountForExit()

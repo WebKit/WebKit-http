@@ -85,7 +85,7 @@ public:
 #endif // PLATFORM(IOS)
     }
 
-    virtual bool getConnectionIdentifier(CoreIPC::Connection::Identifier& identifier)
+    virtual bool getConnectionIdentifier(IPC::Connection::Identifier& identifier)
     {
         String clientExecutable = m_commandLine["client-executable"];
         if (clientExecutable.isEmpty())
@@ -154,7 +154,7 @@ public:
         RetainPtr<NSURL> clientExecutableURL = adoptNS([[NSURL alloc] initFileURLWithPath:nsStringFromWebCoreString(clientExecutable)]);
         RetainPtr<CFURLRef> clientBundleURL = adoptCF(WKCopyBundleURLForExecutableURL((CFURLRef)clientExecutableURL.get()));
         RetainPtr<NSBundle> clientBundle = adoptNS([[NSBundle alloc] initWithURL:(NSURL *)clientBundleURL.get()]);
-        clientIdentifier = [clientBundle.get() bundleIdentifier];
+        clientIdentifier = [clientBundle bundleIdentifier];
         if (clientIdentifier.isEmpty())
             return false;
         return true;
@@ -175,7 +175,7 @@ public:
         return true;
     }
 
-    virtual void startRunLoop() OVERRIDE
+    virtual void startRunLoop() override
     {
 #if USE(APPKIT)
         ASSERT(NSApp);

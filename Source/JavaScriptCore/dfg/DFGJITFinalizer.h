@@ -42,8 +42,9 @@ public:
     JITFinalizer(Plan&, PassRefPtr<JITCode>, PassOwnPtr<LinkBuffer>, MacroAssemblerCodePtr withArityCheck = MacroAssemblerCodePtr(MacroAssemblerCodePtr::EmptyValue));
     virtual ~JITFinalizer();
     
-    virtual bool finalize() OVERRIDE;
-    virtual bool finalizeFunction() OVERRIDE;
+    virtual size_t codeSize() override;
+    virtual bool finalize() override;
+    virtual bool finalizeFunction() override;
 
 private:
     void finalizeCommon();

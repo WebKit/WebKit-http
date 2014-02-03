@@ -105,6 +105,11 @@ namespace WebCore {
         AboutToInstantiatePlugin,
         NotAboutToInstantiatePlugin
     };
+    
+    enum WebGLLoadPolicy {
+        WebGLBlock = 0,
+        WebGLAllow
+    };
 
 }
 

@@ -670,21 +670,21 @@ void WebFrameLoaderClient::setMainDocumentError(DocumentLoader*, const ResourceE
     m_hasSentResponseToPlugin = false;
 }
 
-void WebFrameLoaderClient::postProgressStartedNotification()
+void WebFrameLoaderClient::progressStarted(WebCore::Frame&)
 {
     static BSTR progressStartedName = SysAllocString(WebViewProgressStartedNotification);
     IWebNotificationCenter* notifyCenter = WebNotificationCenter::defaultCenterInternal();
     notifyCenter->postNotificationName(progressStartedName, static_cast<IWebView*>(m_webFrame->webView()), 0);
 }
 
-void WebFrameLoaderClient::postProgressEstimateChangedNotification()
+void WebFrameLoaderClient::progressEstimateChanged(WebCore::Frame&)
 {
     static BSTR progressEstimateChangedName = SysAllocString(WebViewProgressEstimateChangedNotification);
     IWebNotificationCenter* notifyCenter = WebNotificationCenter::defaultCenterInternal();
     notifyCenter->postNotificationName(progressEstimateChangedName, static_cast<IWebView*>(m_webFrame->webView()), 0);
 }
 
-void WebFrameLoaderClient::postProgressFinishedNotification()
+void WebFrameLoaderClient::progressFinished(WebCore::Frame&)
 {
     static BSTR progressFinishedName = SysAllocString(WebViewProgressFinishedNotification);
     IWebNotificationCenter* notifyCenter = WebNotificationCenter::defaultCenterInternal();
@@ -810,11 +810,6 @@ void WebFrameLoaderClient::updateGlobalHistoryRedirectLinks()
 }
 
 bool WebFrameLoaderClient::shouldGoToHistoryItem(HistoryItem*) const
-{
-    return true;
-}
-
-bool WebFrameLoaderClient::shouldStopLoadingForHistoryItem(HistoryItem*) const
 {
     return true;
 }
@@ -1024,7 +1019,7 @@ void WebFrameLoaderClient::savePlatformDataToCachedFrame(CachedFrame* cachedFram
 
     ASSERT(coreFrame->loader().documentLoader() == cachedFrame->documentLoader());
 
-    cachedFrame->setCachedFramePlatformData(adoptPtr(new WebCachedFramePlatformData(static_cast<IWebDataSource*>(getWebDataSource(coreFrame->loader().documentLoader())))));
+    cachedFrame->setCachedFramePlatformData(std::make_unique<WebCachedFramePlatformData>(static_cast<IWebDataSource*>(getWebDataSource(coreFrame->loader().documentLoader()))));
 #else
     notImplemented();
 #endif
@@ -1258,10 +1253,6 @@ String WebFrameLoaderClient::overrideMediaType() const
     return String();
 }
 
-void WebFrameLoaderClient::documentElementAvailable()
-{
-}
-
 void WebFrameLoaderClient::dispatchDidClearWindowObjectInWorld(DOMWrapperWorld& world)
 {
     Frame* coreFrame = core(m_webFrame);
@@ -1293,27 +1284,6 @@ void WebFrameLoaderClient::dispatchDidClearWindowObjectInWorld(DOMWrapperWorld& 
 void WebFrameLoaderClient::registerForIconNotification(bool listen)
 {
     m_webFrame->webView()->registerForIconNotification(listen);
-}
-
-void WebFrameLoaderClient::didPerformFirstNavigation() const
-{
-    COMPtr<IWebPreferences> preferences;
-    if (FAILED(m_webFrame->webView()->preferences(&preferences)))
-        return;
-
-    COMPtr<IWebPreferencesPrivate> preferencesPrivate(Query, preferences);
-    if (!preferencesPrivate)
-        return;
-    BOOL automaticallyDetectsCacheModel;
-    if (FAILED(preferencesPrivate->automaticallyDetectsCacheModel(&automaticallyDetectsCacheModel)))
-        return;
-
-    WebCacheModel cacheModel;
-    if (FAILED(preferences->cacheModel(&cacheModel)))
-        return;
-
-    if (automaticallyDetectsCacheModel && cacheModel < WebCacheModelDocumentBrowser)
-        preferences->setCacheModel(WebCacheModelDocumentBrowser);
 }
 
 PassRefPtr<FrameNetworkingContext> WebFrameLoaderClient::createNetworkingContext()

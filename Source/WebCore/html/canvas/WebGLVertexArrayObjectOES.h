@@ -55,6 +55,7 @@ public:
             , stride(16)
             , originalStride(0)
             , offset(0)
+            , divisor(0)
         {
         }
         
@@ -70,6 +71,7 @@ public:
         GC3Dsizei stride;
         GC3Dsizei originalStride;
         GC3Dintptr offset;
+        GC3Duint divisor;
     };
     
     bool isDefaultObject() const { return m_type == VaoTypeDefault; }
@@ -84,10 +86,12 @@ public:
     void setVertexAttribState(GC3Duint, GC3Dsizei, GC3Dint, GC3Denum, GC3Dboolean, GC3Dsizei, GC3Dintptr, PassRefPtr<WebGLBuffer>);
     void unbindBuffer(PassRefPtr<WebGLBuffer>);
 
+    void setVertexAttribDivisor(GC3Duint index, GC3Duint divisor);
+
 private:
     WebGLVertexArrayObjectOES(WebGLRenderingContext*, VaoType);
 
-    virtual void deleteObjectImpl(GraphicsContext3D*, Platform3DObject);
+    virtual void deleteObjectImpl(GraphicsContext3D*, Platform3DObject) override;
 
     virtual bool isVertexArray() const { return true; }
     

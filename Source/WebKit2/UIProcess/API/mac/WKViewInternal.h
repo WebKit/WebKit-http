@@ -30,7 +30,9 @@
 #import <wtf/Forward.h>
 #import <wtf/Vector.h>
 
-namespace CoreIPC {
+@class WKWebViewConfiguration;
+
+namespace IPC {
     class DataReference;
 }
 
@@ -50,10 +52,14 @@ namespace WebKit {
 
 @class WKFullScreenWindowController;
 
-@interface WKView (Internal)
+@interface WKView ()
+#if WK_API_ENABLED
+- (instancetype)initWithFrame:(CGRect)frame configuration:(WKWebViewConfiguration *)configuration;
+#endif
+
 - (std::unique_ptr<WebKit::DrawingAreaProxy>)_createDrawingAreaProxy;
 - (BOOL)_isFocused;
-- (void)_processDidCrash;
+- (void)_processDidExit;
 - (void)_pageClosed;
 - (void)_didRelaunchProcess;
 - (void)_preferencesDidChange;
@@ -69,6 +75,10 @@ namespace WebKit {
 - (void)_setFindIndicator:(PassRefPtr<WebKit::FindIndicator>)findIndicator fadeOut:(BOOL)fadeOut animate:(BOOL)animate;
 
 - (void)_setAcceleratedCompositingModeRootLayer:(CALayer *)rootLayer;
+- (CALayer *)_acceleratedCompositingModeRootLayer;
+
+- (RetainPtr<CGImageRef>)_takeViewSnapshot;
+- (void)_wheelEventWasNotHandledByWebCore:(NSEvent *)event;
 
 - (void)_setAccessibilityWebProcessToken:(NSData *)data;
 

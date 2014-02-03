@@ -30,6 +30,10 @@
 #define DumpRenderTreeMac_h
 
 #include <CoreFoundation/CoreFoundation.h>
+#if PLATFORM(IOS) && defined(__OBJC__)
+#import <UIKit/UIKit.h>
+#endif
+
 
 #ifdef __OBJC__
 @class DefaultPolicyDelegate;
@@ -68,5 +72,20 @@ WebView* createWebViewAndOffscreenWindow();
 void setPersistentUserStyleSheetLocation(CFStringRef);
 
 unsigned worldIDForWorld(WebScriptWorld *);
+
+
+#if PLATFORM(IOS) && defined(__OBJC__)
+@interface DumpRenderTree : UIApplication {
+    BOOL _hasFlushedWebThreadRunQueue;
+}
+
+- (void)_waitForWebThread;
+@end
+
+@class UIWebBrowserView;
+extern UIWebBrowserView *gWebBrowserView;
+#endif
+
+int DumpRenderTreeMain(int, const char *[]);
 
 #endif // DumpRenderTreeMac_h 

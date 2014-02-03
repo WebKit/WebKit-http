@@ -33,12 +33,15 @@
 #include "IntSize.h"
 #include <wtf/Forward.h>
 
-#if PLATFORM(MAC)
+#if PLATFORM(IOS)
+#include <wtf/RetainPtr.h>
+typedef struct CGImage *CGImageRef;
+#elif PLATFORM(MAC)
 #include <wtf/RetainPtr.h>
 OBJC_CLASS NSImage;
 #elif PLATFORM(WIN)
 typedef struct HBITMAP__* HBITMAP;
-#elif PLATFORM(GTK) || PLATFORM(NIX)
+#elif PLATFORM(GTK)
 typedef struct _cairo_surface cairo_surface_t;
 #elif PLATFORM(HAIKU)
 class BBitmap;
@@ -56,15 +59,17 @@ class Node;
 class Range;
 class URL;
 
-#if PLATFORM(MAC)
+#if PLATFORM(IOS)
+typedef RetainPtr<CGImageRef> DragImageRef;
+#elif PLATFORM(MAC)
 typedef RetainPtr<NSImage> DragImageRef;
 #elif PLATFORM(WIN)
 typedef HBITMAP DragImageRef;
-#elif PLATFORM(GTK) || PLATFORM(NIX)
+#elif PLATFORM(GTK)
 typedef cairo_surface_t* DragImageRef;
 #elif PLATFORM(HAIKU)
 typedef BBitmap* DragImageRef;
-#elif PLATFORM(EFL) || PLATFORM(BLACKBERRY)
+#elif PLATFORM(EFL)
 typedef void* DragImageRef;
 #endif
 

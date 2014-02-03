@@ -70,7 +70,7 @@ void InitWebCoreSystemInterface(void)
         INIT(GetGlyphsForCharacters);
 #endif
         INIT(GetVerticalGlyphsForCharacters);
-        INIT(GetHTTPPipeliningPriority);
+        INIT(GetHTTPRequestPriority);
         INIT(GetMIMETypeForExtension);
         INIT(GetNSURLResponseLastModifiedDate);
 #if !PLATFORM(IOS)
@@ -85,6 +85,7 @@ void InitWebCoreSystemInterface(void)
         INIT(HitTestMediaUIPart);
 #endif
         INIT(InitializeMaximumHTTPConnectionCountPerHost);
+        INIT(HTTPRequestEnablePipelining);
 #if !PLATFORM(IOS)
         INIT(MeasureMediaUIPart);
         INIT(PopupMenu);
@@ -111,9 +112,9 @@ void InitWebCoreSystemInterface(void)
 #if !PLATFORM(IOS)
         INIT(SetDragImage);
 #endif
-        INIT(SetHTTPPipeliningMaximumPriority);
-        INIT(SetHTTPPipeliningPriority);
-        INIT(SetHTTPPipeliningMinimumFastLanePriority);
+        INIT(SetHTTPRequestMaximumPriority);
+        INIT(SetHTTPRequestPriority);
+        INIT(SetHTTPRequestMinimumFastLanePriority);
         INIT(SetNSURLConnectionDefersCallbacks);
         INIT(SetNSURLRequestShouldContentSniff);
         INIT(SetPatternPhaseInUserSpace);
@@ -201,6 +202,14 @@ void InitWebCoreSystemInterface(void)
 
         INIT(CGPathAddRoundedRect);
         INIT(CFURLRequestAllowAllPostCaching);
+
+#if PLATFORM(IOS)
+        INIT(GetUserAgent);
+        INIT(GetDeviceName);
+        INIT(GetOSNameForUserAgent);
+        INIT(GetPlatformNameForNavigator);
+        INIT(GetVendorNameForNavigator);
+#endif
 
 #if !PLATFORM(IOS) && PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080
         INIT(NSElasticDeltaForTimeDelta);

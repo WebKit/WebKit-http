@@ -56,6 +56,7 @@
 #include "WorkerReportingProxy.h"
 #include "WorkerScriptLoader.h"
 #include "WorkerScriptLoaderClient.h"
+#include <mutex>
 #include <wtf/HashSet.h>
 #include <wtf/Threading.h>
 #include <wtf/text/WTFString.h>
@@ -311,9 +312,6 @@ void SharedWorkerScriptLoader::load(const URL& url)
 
     // Mark this object as active for the duration of the load.
     m_scriptLoader = WorkerScriptLoader::create();
-#if PLATFORM(BLACKBERRY)
-    m_scriptLoader->setTargetType(ResourceRequest::TargetIsSharedWorker);
-#endif
     m_scriptLoader->loadAsynchronously(m_worker->scriptExecutionContext(), url, DenyCrossOriginRequests, this);
 }
 
@@ -343,7 +341,12 @@ void SharedWorkerScriptLoader::notifyFinished()
 
 DefaultSharedWorkerRepository& DefaultSharedWorkerRepository::instance()
 {
-    AtomicallyInitializedStatic(DefaultSharedWorkerRepository*, instance = new DefaultSharedWorkerRepository);
+    static std::once_flag onceFlag;
+    static DefaultSharedWorkerRepository* instance;
+    std::call_once(onceFlag, []{
+        instance = new DefaultSharedWorkerRepository;
+    });
+
     return *instance;
 }
 

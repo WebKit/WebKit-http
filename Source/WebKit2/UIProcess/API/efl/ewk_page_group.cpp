@@ -32,16 +32,15 @@
 #include "WKPageGroup.h"
 #include "WKString.h"
 #include "ewk_page_group_private.h"
+#include <wtf/NeverDestroyed.h>
 
 using namespace WebKit;
-
-const char EwkPageGroup::defaultIdentifier[] = "defaultPageGroupIdentifier";
 
 typedef HashMap<WKPageGroupRef, EwkPageGroup*> PageGroupMap;
 
 static inline PageGroupMap& pageGroupMap()
 {
-    DEFINE_STATIC_LOCAL(PageGroupMap, map, ());
+    static NeverDestroyed<PageGroupMap> map;
     return map;
 }
 
@@ -58,9 +57,9 @@ PassRefPtr<EwkPageGroup> EwkPageGroup::findOrCreateWrapper(WKPageGroupRef pageGr
     return adoptRef(new EwkPageGroup(pageGroupRef));
 }
 
-PassRefPtr<EwkPageGroup> EwkPageGroup::create(const String& identifier)
+PassRefPtr<EwkPageGroup> EwkPageGroup::create(const char* identifier)
 {
-    WKRetainPtr<WKStringRef> identifierRef = adoptWK(toCopiedAPI(identifier.isEmpty() ? defaultIdentifier : identifier));
+    WKRetainPtr<WKStringRef> identifierRef = adoptWK(toCopiedAPI(identifier));
     WKRetainPtr<WKPageGroupRef> pageGroupRef = adoptWK(WKPageGroupCreateWithIdentifier(identifierRef.get()));
 
     return adoptRef(new EwkPageGroup(pageGroupRef.get()));

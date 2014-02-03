@@ -33,8 +33,6 @@
 
 #include "AudioBus.h"
 #include "AudioProcessor.h"
-#include <wtf/OwnPtr.h>
-#include <wtf/PassOwnPtr.h>
 #include <wtf/Vector.h>
 
 namespace WebCore {
@@ -54,21 +52,21 @@ public:
 
     // Subclasses create the appropriate type of processing kernel here.
     // We'll call this to create a kernel for each channel.
-    virtual PassOwnPtr<AudioDSPKernel> createKernel() = 0;
+    virtual std::unique_ptr<AudioDSPKernel> createKernel() = 0;
 
     // AudioProcessor methods
-    virtual void initialize() OVERRIDE;
-    virtual void uninitialize() OVERRIDE;
-    virtual void process(const AudioBus* source, AudioBus* destination, size_t framesToProcess) OVERRIDE;
-    virtual void reset() OVERRIDE;
-    virtual void setNumberOfChannels(unsigned) OVERRIDE;
-    virtual unsigned numberOfChannels() const OVERRIDE { return m_numberOfChannels; }
+    virtual void initialize() override;
+    virtual void uninitialize() override;
+    virtual void process(const AudioBus* source, AudioBus* destination, size_t framesToProcess) override;
+    virtual void reset() override;
+    virtual void setNumberOfChannels(unsigned) override;
+    virtual unsigned numberOfChannels() const override { return m_numberOfChannels; }
 
-    virtual double tailTime() const OVERRIDE;
-    virtual double latencyTime() const OVERRIDE;
+    virtual double tailTime() const override;
+    virtual double latencyTime() const override;
 
 protected:
-    Vector<OwnPtr<AudioDSPKernel>> m_kernels;
+    Vector<std::unique_ptr<AudioDSPKernel>> m_kernels;
     bool m_hasJustReset;
 };
 

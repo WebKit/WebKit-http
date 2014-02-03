@@ -67,7 +67,7 @@ public:
     AccessibilityUIElement(const AccessibilityUIElement&);
     ~AccessibilityUIElement();
 
-    PlatformUIElement platformUIElement() { return m_element; }
+    PlatformUIElement platformUIElement() const { return m_element; }
 
     static JSObjectRef makeJSAccessibilityUIElement(JSContextRef, const AccessibilityUIElement&);
 
@@ -154,6 +154,7 @@ public:
     bool isOffScreen() const;
     bool isCollapsed() const;
     bool isIgnored() const;
+    bool isIndeterminate() const;
     bool hasPopup() const;
     int hierarchicalLevel() const;
     double clickPointX();
@@ -178,6 +179,8 @@ public:
     JSStringRef columnIndexRange();
     int rowCount();
     int columnCount();
+    void rowHeaders(Vector<AccessibilityUIElement>& elements) const;
+    void columnHeaders(Vector<AccessibilityUIElement>& elements) const;
     
     // Tree/Outline specific attributes
     AccessibilityUIElement selectedRowAtIndex(unsigned);
@@ -286,8 +289,10 @@ private:
     static JSClassRef getJSClass();
     PlatformUIElement m_element;
     
+#if PLATFORM(IOS) 
+    JSObjectRef m_notificationFunctionCallback;
+#elif PLATFORM(MAC)
     // A retained, platform specific object used to help manage notifications for this object.
-#if PLATFORM(MAC)
     NotificationHandler m_notificationHandler;
 #endif
 

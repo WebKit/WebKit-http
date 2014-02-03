@@ -733,6 +733,18 @@ FloatPoint ScrollAnimatorMac::adjustScrollPositionIfNecessary(const FloatPoint& 
     return FloatPoint(newX, newY);
 }
 
+void ScrollAnimatorMac::adjustScrollPositionToBoundsIfNecessary()
+{
+    bool currentlyConstrainsToContentEdge = m_scrollableArea->constrainsScrollingToContentEdge();
+    m_scrollableArea->setConstrainsScrollingToContentEdge(true);
+
+    IntPoint currentScrollPosition = absoluteScrollPosition();
+    FloatPoint nearestPointWithinBounds = adjustScrollPositionIfNecessary(absoluteScrollPosition());
+    immediateScrollBy(nearestPointWithinBounds - currentScrollPosition);
+
+    m_scrollableArea->setConstrainsScrollingToContentEdge(currentlyConstrainsToContentEdge);
+}
+
 void ScrollAnimatorMac::immediateScrollTo(const FloatPoint& newPosition)
 {
     FloatPoint adjustedPosition = adjustScrollPositionIfNecessary(newPosition);
@@ -1217,7 +1229,7 @@ void ScrollAnimatorMac::stopSnapRubberbandTimer()
     m_snapRubberBandTimer.stop();
 }
 
-void ScrollAnimatorMac::snapRubberBandTimerFired(Timer<ScrollAnimatorMac>*)
+void ScrollAnimatorMac::snapRubberBandTimerFired(Timer<ScrollAnimatorMac>&)
 {
     m_scrollElasticityController.snapRubberBandTimerFired();
 }
@@ -1298,7 +1310,7 @@ void ScrollAnimatorMac::stopScrollbarPaintTimer()
     m_initialScrollbarPaintTimer.stop();
 }
 
-void ScrollAnimatorMac::initialScrollbarPaintTimerFired(Timer<ScrollAnimatorMac>*)
+void ScrollAnimatorMac::initialScrollbarPaintTimerFired(Timer<ScrollAnimatorMac>&)
 {
     // To force the scrollbars to flash, we have to call hide first. Otherwise, the ScrollbarPainterController
     // might think that the scrollbars are already showing and bail early.
@@ -1322,7 +1334,7 @@ void ScrollAnimatorMac::sendContentAreaScrolled(const FloatSize& delta)
         [m_scrollbarPainterController contentAreaScrolled];
 }
 
-void ScrollAnimatorMac::sendContentAreaScrolledTimerFired(Timer<ScrollAnimatorMac>*)
+void ScrollAnimatorMac::sendContentAreaScrolledTimerFired(Timer<ScrollAnimatorMac>&)
 {
     sendContentAreaScrolled(m_contentAreaScrolledTimerScrollDelta);
     m_contentAreaScrolledTimerScrollDelta = FloatSize();

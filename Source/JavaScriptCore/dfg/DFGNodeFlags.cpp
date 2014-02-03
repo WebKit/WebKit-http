@@ -49,6 +49,9 @@ void dumpNodeFlags(PrintStream& actualOut, NodeFlags flags)
         case NodeResultInt32:
             out.print(comma, "Int32");
             break;
+        case NodeResultInt52:
+            out.print(comma, "Int52");
+            break;
         case NodeResultBoolean:
             out.print(comma, "Boolean");
             break;
@@ -95,9 +98,6 @@ void dumpNodeFlags(PrintStream& actualOut, NodeFlags flags)
     
     if (!(flags & NodeDoesNotExit))
         out.print(comma, "CanExit");
-    
-    if (flags & NodeExitsForward)
-        out.print(comma, "NodeExitsForward");
     
     CString string = out.toCString();
     if (!string.length())

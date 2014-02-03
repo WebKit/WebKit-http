@@ -26,7 +26,7 @@
 
 namespace WebCore {
 
-class SVGDescElement FINAL : public SVGElement {
+class SVGDescElement final : public SVGElement {
 public:
     static PassRefPtr<SVGDescElement> create(const QualifiedName&, Document&);
 
@@ -35,7 +35,7 @@ public:
 private:
     SVGDescElement(const QualifiedName&, Document&);
 
-    virtual bool rendererIsNeeded(const RenderStyle&) { return false; }
+    virtual bool rendererIsNeeded(const RenderStyle&) override { return false; }
 };
 
 } // namespace WebCore

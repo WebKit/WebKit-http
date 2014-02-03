@@ -26,6 +26,7 @@
 #ifndef PluginView_h
 #define PluginView_h
 
+#include "LayerTreeContext.h"
 #include "NPRuntimeObjectMap.h"
 #include "Plugin.h"
 #include "PluginController.h"
@@ -37,6 +38,7 @@
 #include <WebCore/ResourceError.h>
 #include <WebCore/ResourceResponse.h>
 #include <WebCore/Timer.h>
+#include <WebCore/ViewState.h>
 #include <wtf/Deque.h>
 #include <wtf/RunLoop.h>
 
@@ -68,13 +70,14 @@ public:
     void manualLoadDidFinishLoading();
     void manualLoadDidFail(const WebCore::ResourceError&);
 
+    void viewStateDidChange(WebCore::ViewState::Flags changed);
+    void setLayerHostingMode(LayerHostingMode);
+
 #if PLATFORM(MAC)
-    void setWindowIsVisible(bool);
-    void setWindowIsFocused(bool);
+    void platformViewStateDidChange(WebCore::ViewState::Flags changed);
     void setDeviceScaleFactor(float);
     void windowAndViewFramesChanged(const WebCore::FloatRect& windowFrameInScreenCoordinates, const WebCore::FloatRect& viewFrameInWindowCoordinates);
     bool sendComplexTextInput(uint64_t pluginComplexTextInputIdentifier, const String& textInput);
-    void setLayerHostingMode(LayerHostingMode);
     RetainPtr<PDFDocument> pdfDocumentForPrinting() const { return m_plugin->pdfDocumentForPrinting(); }
     NSObject *accessibilityObject() const;
 #endif
@@ -133,7 +136,7 @@ private:
 
     void redeliverManualStream();
 
-    void pluginSnapshotTimerFired(WebCore::DeferrableOneShotTimer<PluginView>*);
+    void pluginSnapshotTimerFired(WebCore::DeferrableOneShotTimer<PluginView>&);
     void pluginDidReceiveUserInteraction();
 
     bool shouldCreateTransientPaintingSnapshot() const;
@@ -150,10 +153,10 @@ private:
     virtual WebCore::Scrollbar* horizontalScrollbar();
     virtual WebCore::Scrollbar* verticalScrollbar();
     virtual bool wantsWheelEvents();
-    virtual bool shouldAlwaysAutoStart() const OVERRIDE;
-    virtual void beginSnapshottingRunningPlugin() OVERRIDE;
-    virtual bool shouldAllowNavigationFromDrags() const OVERRIDE;
-    virtual bool shouldNotAddLayer() const OVERRIDE;
+    virtual bool shouldAlwaysAutoStart() const override;
+    virtual void beginSnapshottingRunningPlugin() override;
+    virtual bool shouldAllowNavigationFromDrags() const override;
+    virtual bool shouldNotAddLayer() const override;
 
     // WebCore::Widget
     virtual void setFrameRect(const WebCore::IntRect&);
@@ -167,7 +170,7 @@ private:
     virtual void show();
     virtual void hide();
     virtual bool transformsAffectFrameRect();
-    virtual void clipRectChanged() OVERRIDE;
+    virtual void clipRectChanged() override;
 
     // WebCore::MediaCanStartListener
     virtual void mediaCanStart();
@@ -193,7 +196,7 @@ private:
     virtual void pluginFocusOrWindowFocusChanged(bool pluginHasFocusAndWindowHasFocus);
     virtual void setComplexTextInputState(PluginComplexTextInputState);
     virtual mach_port_t compositingRenderServerPort();
-    virtual void openPluginPreferencePane() OVERRIDE;
+    virtual void openPluginPreferencePane() override;
 #endif
     virtual float contentsScaleFactor();
     virtual String proxiesForURL(const String&);

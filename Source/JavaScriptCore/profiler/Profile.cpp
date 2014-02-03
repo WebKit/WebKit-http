@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008 Apple Inc. All Rights Reserved.
+ * Copyright (C) 2008, 2014 Apple Inc. All Rights Reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -39,10 +39,11 @@ PassRefPtr<Profile> Profile::create(const String& title, unsigned uid)
 Profile::Profile(const String& title, unsigned uid)
     : m_title(title)
     , m_uid(uid)
+    , m_idleTime(0)
 {
     // FIXME: When multi-threading is supported this will be a vector and calls
     // into the profiler will need to know which thread it is executing on.
-    m_head = ProfileNode::create(0, CallIdentifier("Thread_1", String(), 0), 0, 0);
+    m_head = ProfileNode::create(0, CallIdentifier("Thread_1", String(), 0, 0), 0, 0);
 }
 
 Profile::~Profile()
@@ -63,40 +64,6 @@ void Profile::forEach(void (ProfileNode::*function)())
         (currentNode->*function)();
         currentNode = currentNode->traverseNextNodePostOrder();
     } 
-}
-
-void Profile::focus(const ProfileNode* profileNode)
-{
-    if (!profileNode || !m_head)
-        return;
-
-    bool processChildren;
-    const CallIdentifier& callIdentifier = profileNode->callIdentifier();
-    for (ProfileNode* currentNode = m_head.get(); currentNode; currentNode = currentNode->traverseNextNodePreOrder(processChildren))
-        processChildren = currentNode->focus(callIdentifier);
-
-    // Set the visible time of all nodes so that the %s display correctly.
-    forEach(&ProfileNode::calculateVisibleTotalTime);
-}
-
-void Profile::exclude(const ProfileNode* profileNode)
-{
-    if (!profileNode || !m_head)
-        return;
-
-    const CallIdentifier& callIdentifier = profileNode->callIdentifier();
-
-    for (ProfileNode* currentNode = m_head.get(); currentNode; currentNode = currentNode->traverseNextNodePreOrder())
-        currentNode->exclude(callIdentifier);
-
-    // Set the visible time of the head so the %s display correctly.
-    m_head->setVisibleTotalTime(m_head->totalTime() - m_head->selfTime());
-    m_head->setVisibleSelfTime(0.0);
-}
-
-void Profile::restoreAll()
-{
-    forEach(&ProfileNode::restore);
 }
 
 #ifndef NDEBUG

@@ -67,7 +67,7 @@ public:
     DownloadClient(WebKitDownload*);
 
     virtual void didReceiveResponse(ResourceHandle*, const ResourceResponse&);
-    virtual void didReceiveData(ResourceHandle*, const char*, int, int);
+    virtual void didReceiveData(ResourceHandle*, const char*, unsigned, int);
     virtual void didReceiveBuffer(ResourceHandle*, PassRefPtr<SharedBuffer> buffer, int encodedLength);
     virtual void didFinishLoading(ResourceHandle*, double);
     virtual void didFail(ResourceHandle*, const ResourceError&);
@@ -477,7 +477,9 @@ static gboolean webkit_download_open_stream_for_uri(WebKitDownload* download, co
     }
 
     GRefPtr<GFileInfo> info = adoptGRef(g_file_info_new());
-    g_file_info_set_attribute_string(info.get(), "metadata::download-uri", webkit_download_get_uri(download));
+    const char* uri_string = webkit_download_get_uri(download);
+    g_file_info_set_attribute_string(info.get(), "metadata::download-uri", uri_string);
+    g_file_info_set_attribute_string(info.get(), "xattr::xdg.origin.url", uri_string);
     g_file_set_attributes_async(file.get(), info.get(), G_FILE_QUERY_INFO_NONE, G_PRIORITY_DEFAULT, 0, 0, 0);
 
     return TRUE;
@@ -941,7 +943,7 @@ void DownloadClient::didReceiveResponse(ResourceHandle*, const ResourceResponse&
     }
 }
 
-void DownloadClient::didReceiveData(ResourceHandle*, const char* data, int length, int encodedDataLength)
+void DownloadClient::didReceiveData(ResourceHandle*, const char* data, unsigned length, int encodedDataLength)
 {
     ASSERT_NOT_REACHED();
 }

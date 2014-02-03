@@ -32,9 +32,9 @@
 #include "EventListener.h"
 #include "EventTarget.h"
 #include "MediaCanStartListener.h"
+#include <atomic>
 #include <wtf/HashSet.h>
 #include <wtf/MainThread.h>
-#include <wtf/OwnPtr.h>
 #include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
@@ -93,10 +93,9 @@ public:
     HRTFDatabaseLoader* hrtfDatabaseLoader() const { return m_hrtfDatabaseLoader.get(); }
 
     // Document notification
-    virtual void stop() OVERRIDE;
+    virtual void stop() override;
 
     Document* document() const; // ASSERTs if document no longer exists.
-    bool hasDocument();
 
     AudioDestinationNode* destination() { return m_destinationNode.get(); }
     size_t currentSampleFrame() const { return m_destinationNode->currentSampleFrame(); }
@@ -204,20 +203,20 @@ public:
 
     class AutoLocker {
     public:
-        AutoLocker(AudioContext* context)
+        explicit AutoLocker(AudioContext& context)
             : m_context(context)
         {
-            ASSERT(context);
-            context->lock(m_mustReleaseLock);
+            m_context.lock(m_mustReleaseLock);
         }
         
         ~AutoLocker()
         {
             if (m_mustReleaseLock)
-                m_context->unlock();
+                m_context.unlock();
         }
+
     private:
-        AudioContext* m_context;
+        AudioContext& m_context;
         bool m_mustReleaseLock;
     };
     
@@ -235,8 +234,8 @@ public:
     void removeMarkedSummingJunction(AudioSummingJunction*);
 
     // EventTarget
-    virtual EventTargetInterface eventTargetInterface() const OVERRIDE FINAL { return AudioContextEventTargetInterfaceType; }
-    virtual ScriptExecutionContext* scriptExecutionContext() const OVERRIDE FINAL;
+    virtual EventTargetInterface eventTargetInterface() const override final { return AudioContextEventTargetInterfaceType; }
+    virtual ScriptExecutionContext* scriptExecutionContext() const override final;
 
     DEFINE_ATTRIBUTE_EVENT_LISTENER(complete);
 
@@ -248,7 +247,6 @@ public:
     void fireCompletionEvent();
     
     static unsigned s_hardwareContextCount;
-
 
     // Restrictions to change default behaviors.
     enum BehaviorRestrictionFlags {
@@ -285,7 +283,7 @@ private:
     void scheduleNodeDeletion();
     static void deleteMarkedNodesDispatch(void* userData);
 
-    virtual void mediaCanStart() OVERRIDE;
+    virtual void mediaCanStart() override;
 
     bool m_isInitialized;
     bool m_isAudioThreadFinished;
@@ -350,8 +348,8 @@ private:
     RefPtr<HRTFDatabaseLoader> m_hrtfDatabaseLoader;
 
     // EventTarget
-    virtual void refEventTarget() OVERRIDE { ref(); }
-    virtual void derefEventTarget() OVERRIDE { deref(); }
+    virtual void refEventTarget() override { ref(); }
+    virtual void derefEventTarget() override { deref(); }
 
     RefPtr<AudioBuffer> m_renderTarget;
     
@@ -364,7 +362,7 @@ private:
     enum { MaxNumberOfChannels = 32 };
 
     // Number of AudioBufferSourceNodes that are active (playing).
-    int m_activeSourceCount;
+    std::atomic<int> m_activeSourceCount;
 
     BehaviorRestrictions m_restrictions;
 };

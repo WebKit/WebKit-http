@@ -1,6 +1,7 @@
 (function() {
     var templateParagraph = null;
     var templateRegion = null;
+    var templateNode = null;
     var DEFAULT_PARAGRAPH_COUNT = 100;
     var DEFAULT_REGION_COUNT = 100;
 
@@ -37,6 +38,20 @@
         region.style.height = regionHeight;
         region.style.maxHeight = regionMaxHeight;
         return region;
+    }
+
+    function createRegularNode(nodeWidth, nodeHeight, nodeMaxHeight) {
+        if (!templateNode) {
+            templateNode = document.createElement("div");
+            templateNode.appendChild(createParagraphNode(0));
+            templateNode.className = "regular";
+        }
+
+        var node = templateNode.cloneNode(true);
+        node.style.width = nodeWidth;
+        node.style.height = nodeHeight;
+        node.style.maxHeight = nodeMaxHeight;
+        return node;
     }
 
     function createArticle(paragraphCount, breakChance) {
@@ -88,40 +103,18 @@
         };
     }
 
-    function performSelection(paragraphCount) {
-        var paragraphs = document.getElementsByClassName("contentParagraph");
-        var selection = getSelection();
-
-        selection.collapse(paragraphs[0], 0);
-
-        for (var i = 1; i < paragraphCount; i++)
-            selection.extend(paragraphs[i], 0);
-    }
-
-    function createRegionsSelectionTest(regionCount) {
-        var article = createArticle(regionCount, 1);
-        article.className = "articleInFlow";
-        var regions = createRegions("600px", "auto", regionCount, "auto");
-        document.body.appendChild(article);
-        document.body.appendChild(regions);
-        return {
-            description: "Testing selection with " + regionCount + " regions. Select text from first region to last one passing through all the regions.",
-            run: function() {
-                performSelection(regionCount);
-            },
-            setup: function() {
-                window.getSelection().removeAllRanges();
-            },
-            done: function() {
-                document.body.removeChild(article);
-                document.body.removeChild(regions);
-                templateParagraph = null;
-                templateRegion = null;
-            }
-        };
+    function createMixedContent(regionCount) {
+        var container = document.createElement("div");
+        for (var i = 0; i < regionCount; ++i) {
+            container.appendChild(createRegularNode("600px", "auto", "auto"));
+            container.appendChild(createRegionNode("600px", "auto", "auto"));
+        }
+        return container;
     }
 
     window.createRegionsTest = createRegionsTest;
-    window.createRegionsSelectionTest = createRegionsSelectionTest;
+    window.createArticle = createArticle;
+    window.createRegions = createRegions;
+    window.createMixedContent = createMixedContent;
 
 })();

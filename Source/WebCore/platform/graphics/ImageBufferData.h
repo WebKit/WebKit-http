@@ -31,6 +31,4 @@
 #include "ImageBufferDataHaiku.h"
 #elif USE(WINGDI)
 #include "ImageBufferDataWince.h"
-#elif PLATFORM(BLACKBERRY)
-#include "ImageBufferDataBlackBerry.h"
 #endif

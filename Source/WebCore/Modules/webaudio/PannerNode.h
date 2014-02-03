@@ -33,7 +33,8 @@
 #include "Distance.h"
 #include "FloatPoint3D.h"
 #include "Panner.h"
-#include <wtf/OwnPtr.h>
+#include <memory>
+#include <mutex>
 
 namespace WebCore {
 
@@ -69,11 +70,11 @@ public:
     virtual ~PannerNode();
 
     // AudioNode
-    virtual void process(size_t framesToProcess) OVERRIDE;
-    virtual void pullInputs(size_t framesToProcess) OVERRIDE;
-    virtual void reset() OVERRIDE;
-    virtual void initialize() OVERRIDE;
-    virtual void uninitialize() OVERRIDE;
+    virtual void process(size_t framesToProcess) override;
+    virtual void pullInputs(size_t framesToProcess) override;
+    virtual void reset() override;
+    virtual void initialize() override;
+    virtual void uninitialize() override;
 
     // Listener
     AudioListener* listener();
@@ -126,8 +127,8 @@ public:
     AudioParam* distanceGain() { return m_distanceGain.get(); }
     AudioParam* coneGain() { return m_coneGain.get(); }
 
-    virtual double tailTime() const OVERRIDE { return m_panner ? m_panner->tailTime() : 0; }
-    virtual double latencyTime() const OVERRIDE { return m_panner ? m_panner->latencyTime() : 0; }
+    virtual double tailTime() const override { return m_panner ? m_panner->tailTime() : 0; }
+    virtual double latencyTime() const override { return m_panner ? m_panner->latencyTime() : 0; }
 
 private:
     PannerNode(AudioContext*, float sampleRate);
@@ -139,7 +140,7 @@ private:
     // This is in order to handle the pitch change necessary for the doppler shift.
     void notifyAudioSourcesConnectedToNode(AudioNode*);
 
-    OwnPtr<Panner> m_panner;
+    std::unique_ptr<Panner> m_panner;
     unsigned m_panningModel;
 
     FloatPoint3D m_position;
@@ -156,7 +157,7 @@ private:
     unsigned m_connectionCount;
 
     // Synchronize process() and setPanningModel() which can change the panner.
-    mutable Mutex m_pannerLock;
+    mutable std::mutex m_pannerMutex;
 };
 
 } // namespace WebCore

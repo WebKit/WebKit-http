@@ -45,7 +45,7 @@ class MediaKeyError;
 class MediaKeys;
 class CDMSession;
 
-class MediaKeySession FINAL : public RefCounted<MediaKeySession>, public EventTargetWithInlineData, public ContextDestructionObserver {
+class MediaKeySession final : public RefCounted<MediaKeySession>, public EventTargetWithInlineData, public ContextDestructionObserver {
 public:
     static PassRefPtr<MediaKeySession> create(ScriptExecutionContext*, MediaKeys*, const String& keySystem);
     ~MediaKeySession();
@@ -72,13 +72,13 @@ public:
     DEFINE_ATTRIBUTE_EVENT_LISTENER(webkitkeyerror);
     DEFINE_ATTRIBUTE_EVENT_LISTENER(webkitkeymessage);
 
-    virtual EventTargetInterface eventTargetInterface() const OVERRIDE { return MediaKeySessionEventTargetInterfaceType; }
-    virtual ScriptExecutionContext* scriptExecutionContext() const OVERRIDE { return ContextDestructionObserver::scriptExecutionContext(); }
+    virtual EventTargetInterface eventTargetInterface() const override { return MediaKeySessionEventTargetInterfaceType; }
+    virtual ScriptExecutionContext* scriptExecutionContext() const override { return ContextDestructionObserver::scriptExecutionContext(); }
 
 protected:
     MediaKeySession(ScriptExecutionContext*, MediaKeys*, const String& keySystem);
-    void keyRequestTimerFired(Timer<MediaKeySession>*);
-    void addKeyTimerFired(Timer<MediaKeySession>*);
+    void keyRequestTimerFired(Timer<MediaKeySession>&);
+    void addKeyTimerFired(Timer<MediaKeySession>&);
 
     MediaKeys* m_keys;
     String m_keySystem;
@@ -99,8 +99,8 @@ protected:
     Timer<MediaKeySession> m_addKeyTimer;
 
 private:
-    virtual void refEventTarget() OVERRIDE { ref(); }
-    virtual void derefEventTarget() OVERRIDE { deref(); }
+    virtual void refEventTarget() override { ref(); }
+    virtual void derefEventTarget() override { deref(); }
 };
 
 }

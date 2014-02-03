@@ -43,14 +43,14 @@ namespace WebCore {
 class Frame;
 class URL;
 
-class DOMApplicationCache FINAL : public ScriptWrappable, public RefCounted<DOMApplicationCache>, public EventTargetWithInlineData, public DOMWindowProperty {
+class DOMApplicationCache final : public ScriptWrappable, public RefCounted<DOMApplicationCache>, public EventTargetWithInlineData, public DOMWindowProperty {
 public:
     static PassRefPtr<DOMApplicationCache> create(Frame* frame) { return adoptRef(new DOMApplicationCache(frame)); }
     virtual ~DOMApplicationCache() { ASSERT(!m_frame); }
 
-    virtual void disconnectFrameForPageCache() OVERRIDE;
-    virtual void reconnectFrameFromPageCache(Frame*) OVERRIDE;
-    virtual void willDestroyGlobalObjectInFrame() OVERRIDE;
+    virtual void disconnectFrameForPageCache() override;
+    virtual void reconnectFrameFromPageCache(Frame*) override;
+    virtual void willDestroyGlobalObjectInFrame() override;
 
     unsigned short status() const;
     void update(ExceptionCode&);
@@ -71,16 +71,16 @@ public:
     DEFINE_ATTRIBUTE_EVENT_LISTENER(cached);
     DEFINE_ATTRIBUTE_EVENT_LISTENER(obsolete);
 
-    virtual EventTargetInterface eventTargetInterface() const OVERRIDE { return DOMApplicationCacheEventTargetInterfaceType; }
-    virtual ScriptExecutionContext* scriptExecutionContext() const OVERRIDE;
+    virtual EventTargetInterface eventTargetInterface() const override { return DOMApplicationCacheEventTargetInterfaceType; }
+    virtual ScriptExecutionContext* scriptExecutionContext() const override;
 
     static const AtomicString& toEventType(ApplicationCacheHost::EventID id);
 
 private:
     explicit DOMApplicationCache(Frame*);
 
-    virtual void refEventTarget() OVERRIDE { ref(); }
-    virtual void derefEventTarget() OVERRIDE { deref(); }
+    virtual void refEventTarget() override { ref(); }
+    virtual void derefEventTarget() override { deref(); }
 
     ApplicationCacheHost* applicationCacheHost() const;
 };

@@ -186,6 +186,9 @@
     <ClCompile Include="..\bytecode\UnlinkedCodeBlock.cpp">
       <Filter>bytecode</Filter>
     </ClCompile>
+    <ClCompile Include="..\bytecode\UnlinkedInstructionStream.cpp">
+      <Filter>bytecode</Filter>
+    </ClCompile>
     <ClCompile Include="..\bytecode\Watchpoint.cpp">
       <Filter>bytecode</Filter>
     </ClCompile>
@@ -285,6 +288,9 @@
     <ClCompile Include="..\heap\WriteBarrierSupport.cpp">
       <Filter>heap</Filter>
     </ClCompile>
+    <ClCompile Include="..\inspector\ContentSearchUtilities.cpp">
+      <Filter>inspector</Filter>
+    </ClCompile>
     <ClCompile Include="..\inspector\InspectorAgentRegistry.cpp">
       <Filter>inspector</Filter>
     </ClCompile>
@@ -292,6 +298,15 @@
       <Filter>inspector</Filter>
     </ClCompile>
     <ClCompile Include="..\inspector\InspectorValues.cpp">
+      <Filter>inspector</Filter>
+    </ClCompile>
+    <ClCompile Include="..\inspector\agents\InspectorAgent.cpp">
+      <Filter>inspector</Filter>
+    </ClCompile>
+    <ClCompile Include="..\inspector\agents\InspectorDebuggerAgent.cpp">
+      <Filter>inspector</Filter>
+    </ClCompile>
+    <ClCompile Include="..\inspector\agents\InspectorRuntimeAgent.cpp">
       <Filter>inspector</Filter>
     </ClCompile>
     <ClCompile Include="..\interpreter\AbstractPC.cpp">
@@ -520,6 +535,9 @@
       <Filter>runtime</Filter>
     </ClCompile>
     <ClCompile Include="..\runtime\ErrorConstructor.cpp">
+      <Filter>runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\ErrorHandlingScope.cpp">
       <Filter>runtime</Filter>
     </ClCompile>
     <ClCompile Include="..\runtime\ErrorInstance.cpp">
@@ -786,6 +804,9 @@
     <ClCompile Include="..\tools\CodeProfiling.cpp">
       <Filter>tools</Filter>
     </ClCompile>
+    <ClCompile Include="..\yarr\RegularExpression.cpp">
+      <Filter>yarr</Filter>
+    </ClCompile>
     <ClCompile Include="..\yarr\YarrCanonicalizeUCS2.cpp">
       <Filter>yarr</Filter>
     </ClCompile>
@@ -876,25 +897,22 @@
     <ClCompile Include="..\runtime\SimpleTypedArrayController.cpp">
       <Filter>runtime</Filter>
     </ClCompile>
-    <ClCompile Include="..\runtime\JSPromiseResolverPrototype.cpp">
-      <Filter>runtime</Filter>
-    </ClCompile>
-    <ClCompile Include="..\runtime\JSPromiseResolverConstructor.cpp">
-      <Filter>runtime</Filter>
-    </ClCompile>
-    <ClCompile Include="..\runtime\JSPromiseResolver.cpp">
-      <Filter>runtime</Filter>
-    </ClCompile>
-    <ClCompile Include="..\runtime\JSPromisePrototype.cpp">
+    <ClCompile Include="..\runtime\JSPromise.cpp">
       <Filter>runtime</Filter>
     </ClCompile>
     <ClCompile Include="..\runtime\JSPromiseConstructor.cpp">
       <Filter>runtime</Filter>
     </ClCompile>
-    <ClCompile Include="..\runtime\JSPromiseCallback.cpp">
+    <ClCompile Include="..\runtime\JSPromiseDeferred.cpp">
       <Filter>runtime</Filter>
     </ClCompile>
-    <ClCompile Include="..\runtime\JSPromise.cpp">
+    <ClCompile Include="..\runtime\JSPromiseFunctions.cpp">
+      <Filter>runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\JSPromiseReaction.cpp">
+      <Filter>runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\JSPromisePrototype.cpp">
       <Filter>runtime</Filter>
     </ClCompile>
     <ClCompile Include="..\runtime\WeakMapConstructor.cpp">
@@ -1427,6 +1445,9 @@
     <ClInclude Include="..\assembler\MacroAssemblerX86_64.h">
       <Filter>assembler</Filter>
     </ClInclude>
+    <ClInclude Include="..\assembler\MaxFrameExtentForSlowPathCall.h">
+      <Filter>assembler</Filter>
+    </ClInclude>
     <ClInclude Include="..\assembler\RepatchBuffer.h">
       <Filter>assembler</Filter>
     </ClInclude>
@@ -1502,9 +1523,6 @@
     <ClInclude Include="..\bytecode\LazyOperandValueProfile.h">
       <Filter>bytecode</Filter>
     </ClInclude>
-    <ClInclude Include="..\bytecode\LineInfo.h">
-      <Filter>bytecode</Filter>
-    </ClInclude>
     <ClInclude Include="..\bytecode\LLIntCallLinkInfo.h">
       <Filter>bytecode</Filter>
     </ClInclude>
@@ -1548,6 +1566,9 @@
       <Filter>bytecode</Filter>
     </ClInclude>
     <ClInclude Include="..\bytecode\UnlinkedCodeBlock.h">
+      <Filter>bytecode</Filter>
+    </ClInclude>
+    <ClInclude Include="..\bytecode\UnlinkedInstructionStream.h">
       <Filter>bytecode</Filter>
     </ClInclude>
     <ClInclude Include="..\bytecode\ValueProfile.h">
@@ -1626,6 +1647,9 @@
       <Filter>heap</Filter>
     </ClInclude>
     <ClInclude Include="..\heap\CopyWorkList.h">
+      <Filter>heap</Filter>
+    </ClInclude>
+    <ClInclude Include="..\heap\CopyWriteBarrier.h">
       <Filter>heap</Filter>
     </ClInclude>
     <ClInclude Include="..\heap\DeferGC.h">
@@ -1766,6 +1790,9 @@
     <ClInclude Include="..\heap\WriteBarrierSupport.h">
       <Filter>heap</Filter>
     </ClInclude>
+    <ClInclude Include="..\inspector\ContentSearchUtilities.h">
+      <Filter>inspector</Filter>
+    </ClInclude>
     <ClInclude Include="..\inspector\InspectorAgentBase.h">
       <Filter>inspector</Filter>
     </ClInclude>
@@ -1782,6 +1809,15 @@
       <Filter>inspector</Filter>
     </ClInclude>
     <ClInclude Include="..\inspector\InspectorValues.h">
+      <Filter>inspector</Filter>
+    </ClInclude>
+    <ClInclude Include="..\inspector\agents\InspectorAgent.h">
+      <Filter>inspector</Filter>
+    </ClInclude>
+    <ClInclude Include="..\inspector\agents\InspectorDebuggerAgent.h">
+      <Filter>inspector</Filter>
+    </ClInclude>
+    <ClInclude Include="..\inspector\agents\InspectorRuntimeAgent.h">
       <Filter>inspector</Filter>
     </ClInclude>
     <ClInclude Include="..\interpreter\AbstractPC.h">
@@ -2099,6 +2135,9 @@
     <ClInclude Include="..\runtime\ErrorConstructor.h">
       <Filter>runtime</Filter>
     </ClInclude>
+    <ClInclude Include="..\runtime\ErrorHandlingScope.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
     <ClInclude Include="..\runtime\ErrorInstance.h">
       <Filter>runtime</Filter>
     </ClInclude>
@@ -2411,6 +2450,9 @@
     <ClInclude Include="..\yarr\Yarr.h">
       <Filter>yarr</Filter>
     </ClInclude>
+    <ClInclude Include="..\yarr\RegularExpression.h">
+      <Filter>yarr</Filter>
+    </ClInclude>
     <ClInclude Include="..\yarr\YarrCanonicalizeUCS2.h">
       <Filter>yarr</Filter>
     </ClInclude>
@@ -2568,25 +2610,22 @@
     <ClInclude Include="..\runtime\JSGenericTypedArrayViewPrototype.h">
       <Filter>runtime</Filter>
     </ClInclude>
-    <ClInclude Include="..\runtime\JSPromiseResolverPrototype.h">
-      <Filter>runtime</Filter>
-    </ClInclude>
     <ClInclude Include="..\runtime\JSPromise.h">
-      <Filter>runtime</Filter>
-    </ClInclude>
-    <ClInclude Include="..\runtime\JSPromiseCallback.h">
       <Filter>runtime</Filter>
     </ClInclude>
     <ClInclude Include="..\runtime\JSPromiseConstructor.h">
       <Filter>runtime</Filter>
     </ClInclude>
+    <ClInclude Include="..\runtime\JSPromiseDeferred.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\JSPromiseFunctions.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\JSPromiseReaction.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
     <ClInclude Include="..\runtime\JSPromisePrototype.h">
-      <Filter>runtime</Filter>
-    </ClInclude>
-    <ClInclude Include="..\runtime\JSPromiseResolver.h">
-      <Filter>runtime</Filter>
-    </ClInclude>
-    <ClInclude Include="..\runtime\JSPromiseResolverConstructor.h">
       <Filter>runtime</Filter>
     </ClInclude>
     <ClInclude Include="..\runtime\JSInt8Array.h">
@@ -2698,9 +2737,6 @@
       <Filter>Derived Sources</Filter>
     </ClInclude>
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSPromisePrototype.lut.h">
-      <Filter>Derived Sources</Filter>
-    </ClInclude>
-    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSPromiseResolverPrototype.lut.h">
       <Filter>Derived Sources</Filter>
     </ClInclude>
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\KeywordLookup.lut.h">
@@ -3153,6 +3189,9 @@
     <ClInclude Include="..\runtime\MapIteratorConstructor.h">
       <Filter>runtime</Filter>
     </ClInclude>
+    <ClInclude Include="..\runtime\Microtask.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
     <ClInclude Include="..\jit\AssemblyHelpers.h">
       <Filter>jit</Filter>
     </ClInclude>
@@ -3258,15 +3297,11 @@
     <ClInclude Include="..\runtime\ConstantMode.h">
       <Filter>runtime</Filter>
     </ClInclude>
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSDataViewPrototype.lut.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="JavaScriptCorePreLink.cmd" />
     <None Include="JavaScriptCorePostBuild.cmd" />
     <None Include="JavaScriptCorePreBuild.cmd" />
-  </ItemGroup>
-  <ItemGroup>
-    <MASM Include="..\jit\JITStubsMSVC64.asm">
-      <Filter>jit</Filter>
-    </MASM>
   </ItemGroup>
 </Project>

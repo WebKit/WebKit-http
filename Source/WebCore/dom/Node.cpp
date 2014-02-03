@@ -56,6 +56,7 @@
 #include "KeyboardEvent.h"
 #include "Logging.h"
 #include "MutationEvent.h"
+#include "NodeRenderStyle.h"
 #include "PlatformMouseEvent.h"
 #include "PlatformWheelEvent.h"
 #include "ProcessingInstruction.h"
@@ -153,9 +154,10 @@ void Node::dumpStatistics()
                     result.iterator->value++;
 
                 if (ElementData* elementData = element->elementData()) {
-                    attributes += elementData->length();
+                    unsigned length = elementData->length();
+                    attributes += length;
                     ++elementsWithAttributeStorage;
-                    for (unsigned i = 0; i < elementData->length(); ++i) {
+                    for (unsigned i = 0; i < length; ++i) {
                         Attribute& attr = elementData->attributeAt(i);
                         if (attr.attr())
                             ++attributesWithAttr;
@@ -419,22 +421,22 @@ Node* Node::firstDescendant() const
     return n;
 }
 
-bool Node::insertBefore(PassRefPtr<Node> newChild, Node* refChild, ExceptionCode& ec, AttachBehavior attachBehavior)
+bool Node::insertBefore(PassRefPtr<Node> newChild, Node* refChild, ExceptionCode& ec)
 {
     if (!isContainerNode()) {
         ec = HIERARCHY_REQUEST_ERR;
         return false;
     }
-    return toContainerNode(this)->insertBefore(newChild, refChild, ec, attachBehavior);
+    return toContainerNode(this)->insertBefore(newChild, refChild, ec);
 }
 
-bool Node::replaceChild(PassRefPtr<Node> newChild, Node* oldChild, ExceptionCode& ec, AttachBehavior attachBehavior)
+bool Node::replaceChild(PassRefPtr<Node> newChild, Node* oldChild, ExceptionCode& ec)
 {
     if (!isContainerNode()) {
         ec = HIERARCHY_REQUEST_ERR;
         return false;
     }
-    return toContainerNode(this)->replaceChild(newChild, oldChild, ec, attachBehavior);
+    return toContainerNode(this)->replaceChild(newChild, oldChild, ec);
 }
 
 bool Node::removeChild(Node* oldChild, ExceptionCode& ec)
@@ -446,13 +448,13 @@ bool Node::removeChild(Node* oldChild, ExceptionCode& ec)
     return toContainerNode(this)->removeChild(oldChild, ec);
 }
 
-bool Node::appendChild(PassRefPtr<Node> newChild, ExceptionCode& ec, AttachBehavior attachBehavior)
+bool Node::appendChild(PassRefPtr<Node> newChild, ExceptionCode& ec)
 {
     if (!isContainerNode()) {
         ec = HIERARCHY_REQUEST_ERR;
         return false;
     }
-    return toContainerNode(this)->appendChild(newChild, ec, attachBehavior);
+    return toContainerNode(this)->appendChild(newChild, ec);
 }
 
 void Node::remove(ExceptionCode& ec)
@@ -542,25 +544,27 @@ const AtomicString& Node::namespaceURI() const
 bool Node::isContentEditable(UserSelectAllTreatment treatment)
 {
     document().updateStyleIfNeeded();
-    return rendererIsEditable(Editable, treatment);
+    return hasEditableStyle(Editable, treatment);
 }
 
 bool Node::isContentRichlyEditable()
 {
     document().updateStyleIfNeeded();
-    return rendererIsEditable(RichlyEditable, UserSelectAllIsAlwaysNonEditable);
+    return hasEditableStyle(RichlyEditable, UserSelectAllIsAlwaysNonEditable);
 }
 
 void Node::inspect()
 {
 #if ENABLE(INSPECTOR)
     if (document().page())
-        document().page()->inspectorController()->inspect(this);
+        document().page()->inspectorController().inspect(this);
 #endif
 }
 
-bool Node::rendererIsEditable(EditableLevel editableLevel, UserSelectAllTreatment treatment) const
+bool Node::hasEditableStyle(EditableLevel editableLevel, UserSelectAllTreatment treatment) const
 {
+    if (!document().hasLivingRenderTree())
+        return false;
     if (document().frame() && document().frame()->page() && document().frame()->page()->isEditable() && !containingShadowRoot())
         return true;
 
@@ -572,34 +576,36 @@ bool Node::rendererIsEditable(EditableLevel editableLevel, UserSelectAllTreatmen
     // would fire in the middle of Document::setFocusedElement().
 
     for (const Node* node = this; node; node = node->parentNode()) {
-        if ((node->isHTMLElement() || node->isDocumentNode()) && node->renderer()) {
+        RenderStyle* style = node->isDocumentNode() ? node->renderStyle() : const_cast<Node*>(node)->computedStyle();
+        if (!style)
+            continue;
+        if (style->display() == NONE)
+            continue;
 #if ENABLE(USERSELECT_ALL)
-            // Elements with user-select: all style are considered atomic
-            // therefore non editable.
-            if (treatment == UserSelectAllIsAlwaysNonEditable && node->renderer()->style().userSelect() == SELECT_ALL)
-                return false;
-#else
-            UNUSED_PARAM(treatment);
-#endif
-            switch (node->renderer()->style().userModify()) {
-            case READ_ONLY:
-                return false;
-            case READ_WRITE:
-                return true;
-            case READ_WRITE_PLAINTEXT_ONLY:
-                return editableLevel != RichlyEditable;
-            }
-            ASSERT_NOT_REACHED();
+        // Elements with user-select: all style are considered atomic
+        // therefore non editable.
+        if (treatment == UserSelectAllIsAlwaysNonEditable && style->userSelect() == SELECT_ALL)
             return false;
+#else
+        UNUSED_PARAM(treatment);
+#endif
+        switch (style->userModify()) {
+        case READ_ONLY:
+            return false;
+        case READ_WRITE:
+            return true;
+        case READ_WRITE_PLAINTEXT_ONLY:
+            return editableLevel != RichlyEditable;
         }
+        ASSERT_NOT_REACHED();
+        return false;
     }
-
     return false;
 }
 
 bool Node::isEditableToAccessibility(EditableLevel editableLevel) const
 {
-    if (rendererIsEditable(editableLevel))
+    if (hasEditableStyle(editableLevel))
         return true;
 
     // FIXME: Respect editableLevel for ARIA editable elements.
@@ -672,14 +678,14 @@ void Node::derefEventTarget()
 void Node::setNeedsStyleRecalc(StyleChangeType changeType)
 {
     ASSERT(changeType != NoStyleChange);
-    if (!attached()) // changed compared to what?
+    if (!inRenderedDocument())
         return;
 
     StyleChangeType existingChangeType = styleChangeType();
     if (changeType > existingChangeType)
         setStyleChange(changeType);
 
-    if (existingChangeType == NoStyleChange)
+    if (existingChangeType == NoStyleChange || changeType == ReconstructRenderTree)
         markAncestorsWithChildNeedsStyleRecalc();
 }
 
@@ -920,7 +926,7 @@ int Node::maxCharacterOffset() const
 // is obviously misplaced.
 bool Node::canStartSelection() const
 {
-    if (rendererIsEditable())
+    if (hasEditableStyle())
         return true;
 
     if (renderer()) {
@@ -1016,7 +1022,7 @@ void Node::removedFrom(ContainerNode& insertionPoint)
 
 bool Node::isRootEditableElement() const
 {
-    return rendererIsEditable() && isElementNode() && (!parentNode() || !parentNode()->rendererIsEditable()
+    return hasEditableStyle() && isElementNode() && (!parentNode() || !parentNode()->hasEditableStyle()
         || !parentNode()->isElementNode() || hasTagName(bodyTag));
 }
 
@@ -1033,7 +1039,7 @@ Element* Node::rootEditableElement(EditableType editableType) const
 Element* Node::rootEditableElement() const
 {
     Element* result = 0;
-    for (Node* n = const_cast<Node*>(this); n && n->rendererIsEditable(); n = n->parentNode()) {
+    for (Node* n = const_cast<Node*>(this); n && n->hasEditableStyle(); n = n->parentNode()) {
         if (n->isElementNode())
             result = toElement(n);
         if (n->hasTagName(bodyTag))
@@ -1127,9 +1133,7 @@ bool Node::isDefaultNamespace(const AtomicString& namespaceURIMaybeEmpty) const
                 return elem->namespaceURI() == namespaceURI;
 
             if (elem->hasAttributes()) {
-                for (unsigned i = 0; i < elem->attributeCount(); i++) {
-                    const Attribute& attribute = elem->attributeAt(i);
-                    
+                for (const Attribute& attribute : elem->attributesIterator()) {
                     if (attribute.localName() == xmlnsAtom)
                         return attribute.value() == namespaceURI;
                 }
@@ -1211,8 +1215,7 @@ String Node::lookupNamespaceURI(const String &prefix) const
                 return elem->namespaceURI();
             
             if (elem->hasAttributes()) {
-                for (unsigned i = 0; i < elem->attributeCount(); i++) {
-                    const Attribute& attribute = elem->attributeAt(i);
+                for (const Attribute& attribute : elem->attributesIterator()) {
                     
                     if (attribute.prefix() == xmlnsAtom && attribute.localName() == prefix) {
                         if (!attribute.value().isEmpty())
@@ -1267,9 +1270,7 @@ String Node::lookupNamespacePrefix(const AtomicString &_namespaceURI, const Elem
     ASSERT(isElementNode());
     const Element* thisElement = toElement(this);
     if (thisElement->hasAttributes()) {
-        for (unsigned i = 0; i < thisElement->attributeCount(); i++) {
-            const Attribute& attribute = thisElement->attributeAt(i);
-            
+        for (const Attribute& attribute : thisElement->attributesIterator()) {
             if (attribute.prefix() == xmlnsAtom && attribute.value() == _namespaceURI
                 && originalElement->lookupNamespaceURI(attribute.localName()) == _namespaceURI)
                 return attribute.localName();
@@ -1302,7 +1303,7 @@ static void appendTextContent(const Node* node, bool convertBRsToNewlines, bool&
             content.append('\n');
             break;
         }
-    // Fall through.
+        FALLTHROUGH;
     case Node::ATTRIBUTE_NODE:
     case Node::ENTITY_NODE:
     case Node::ENTITY_REFERENCE_NODE:
@@ -1420,14 +1421,12 @@ unsigned short Node::compareDocumentPosition(Node* otherNode)
         // We are comparing two attributes on the same node. Crawl our attribute map and see which one we hit first.
         Element* owner1 = attr1->ownerElement();
         owner1->synchronizeAllAttributes();
-        unsigned length = owner1->attributeCount();
-        for (unsigned i = 0; i < length; ++i) {
-            // If neither of the two determining nodes is a child node and nodeType is the same for both determining nodes, then an 
+        for (const Attribute& attribute : owner1->attributesIterator()) {
+            // If neither of the two determining nodes is a child node and nodeType is the same for both determining nodes, then an
             // implementation-dependent order between the determining nodes is returned. This order is stable as long as no nodes of
             // the same nodeType are inserted into or removed from the direct container. This would be the case, for example, 
             // when comparing two attributes of the same element, and inserting or removing additional attributes might change 
             // the order between existing attributes.
-            const Attribute& attribute = owner1->attributeAt(i);
             if (attr1->qualifiedName() == attribute.name())
                 return DOCUMENT_POSITION_IMPLEMENTATION_SPECIFIC | DOCUMENT_POSITION_FOLLOWING;
             if (attr2->qualifiedName() == attribute.name())
@@ -2195,19 +2194,6 @@ bool Node::willRespondToMouseWheelEvents()
     return hasEventListeners(eventNames().mousewheelEvent);
 }
 
-bool Node::willRespondToTouchEvents()
-{
-#if ENABLE(TOUCH_EVENTS)
-    if (!isElementNode())
-        return false;
-    if (toElement(this)->isDisabledFormControl())
-        return false;
-    return hasEventListeners(eventNames().touchstartEvent) || hasEventListeners(eventNames().touchmoveEvent) || hasEventListeners(eventNames().touchcancelEvent) || hasEventListeners(eventNames().touchendEvent);
-#else
-    return false;
-#endif
-}
-
 // This is here so it can be inlined into Node::removedLastRef.
 // FIXME: Really? Seems like this could be inlined into Node::removedLastRef if it was in TreeScope.h.
 // FIXME: It also not seem important to inline this. Is this really hot?
@@ -2294,6 +2280,11 @@ void Node::updateAncestorConnectedSubframeCountForInsertion() const
 
     for (Node* node = parentOrShadowHostNode(); node; node = node->parentOrShadowHostNode())
         node->incrementConnectedSubframeCount(count);
+}
+
+bool Node::inRenderedDocument() const
+{
+    return inDocument() && document().hasLivingRenderTree();
 }
 
 } // namespace WebCore

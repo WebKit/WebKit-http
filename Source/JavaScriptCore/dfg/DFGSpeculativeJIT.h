@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2012, 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2011, 2012, 2013, 2014 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -119,6 +119,9 @@ public:
     ~SpeculativeJIT();
 
     bool compile();
+    
+    void prepareJITCodeForTierUp();
+    
     void createOSREntries();
     void linkOSREntries(LinkBuffer&);
 
@@ -290,14 +293,12 @@ public:
     }
 
 #if ENABLE(GGC)
-    static MacroAssembler::Call storeToWriteBarrierBuffer(CCallHelpers& jit, GPRReg cell, GPRReg scratch1, GPRReg scratch2);
     void storeToWriteBarrierBuffer(GPRReg cell, GPRReg scratch1, GPRReg scratch2);
     void storeToWriteBarrierBuffer(JSCell*, GPRReg scratch1, GPRReg scratch2);
 
     static JITCompiler::Jump genericWriteBarrier(CCallHelpers& jit, GPRReg owner, GPRReg scratch1, GPRReg scratch2);
     static JITCompiler::Jump genericWriteBarrier(CCallHelpers& jit, JSCell* owner);
     static void osrWriteBarrier(CCallHelpers&, GPRReg owner, GPRReg scratch1, GPRReg scratch2);
-    static MacroAssembler::Call writeBarrier(CCallHelpers&, GPRReg owner, GPRReg scratch1, GPRReg scratch2);
     void writeBarrier(GPRReg owner, GPRReg scratch1, GPRReg scratch2);
     void writeBarrier(GPRReg owner, JSCell* value, GPRReg scratch1, GPRReg scratch2);
 
@@ -699,8 +700,12 @@ public:
         // Check that no intervening nodes will be generated.
         for (unsigned index = m_indexInBlock + 1; index < m_block->size() - 1; ++index) {
             Node* node = m_block->at(index);
-            if (node->shouldGenerate())
-                return UINT_MAX;
+            if (!node->shouldGenerate())
+                continue;
+            // Check if it's a Phantom that can be safely ignored.
+            if (node->op() == Phantom && !node->child1())
+                continue;
+            return UINT_MAX;
         }
 
         // Check if the lastNode is a branch on this node.
@@ -740,44 +745,45 @@ public:
     
     ptrdiff_t calleeFrameOffset(int numArgs)
     {
-        return virtualRegisterForLocal(m_jit.graph().m_nextMachineLocal + JSStack::CallFrameHeaderSize + numArgs).offset() * sizeof(Register);
+        return virtualRegisterForLocal(m_jit.graph().m_nextMachineLocal - 1 + JSStack::CallFrameHeaderSize + numArgs).offset() * sizeof(Register);
     }
     
     // Access to our fixed callee CallFrame.
-    MacroAssembler::Address calleeFrameSlot(int numArgs, int slot)
+    MacroAssembler::Address calleeFrameSlot(int slot)
     {
-        return MacroAssembler::Address(GPRInfo::callFrameRegister, calleeFrameOffset(numArgs) + sizeof(Register) * slot);
+        ASSERT(slot >= JSStack::CallerFrameAndPCSize);
+        return MacroAssembler::Address(MacroAssembler::stackPointerRegister, sizeof(Register) * (slot - JSStack::CallerFrameAndPCSize));
     }
 
     // Access to our fixed callee CallFrame.
-    MacroAssembler::Address calleeArgumentSlot(int numArgs, int argument)
+    MacroAssembler::Address calleeArgumentSlot(int argument)
     {
-        return calleeFrameSlot(numArgs, virtualRegisterForArgument(argument).offset());
+        return calleeFrameSlot(virtualRegisterForArgument(argument).offset());
     }
 
-    MacroAssembler::Address calleeFrameTagSlot(int numArgs, int slot)
+    MacroAssembler::Address calleeFrameTagSlot(int slot)
     {
-        return calleeFrameSlot(numArgs, slot).withOffset(OBJECT_OFFSETOF(EncodedValueDescriptor, asBits.tag));
+        return calleeFrameSlot(slot).withOffset(OBJECT_OFFSETOF(EncodedValueDescriptor, asBits.tag));
     }
 
-    MacroAssembler::Address calleeFramePayloadSlot(int numArgs, int slot)
+    MacroAssembler::Address calleeFramePayloadSlot(int slot)
     {
-        return calleeFrameSlot(numArgs, slot).withOffset(OBJECT_OFFSETOF(EncodedValueDescriptor, asBits.payload));
+        return calleeFrameSlot(slot).withOffset(OBJECT_OFFSETOF(EncodedValueDescriptor, asBits.payload));
     }
 
-    MacroAssembler::Address calleeArgumentTagSlot(int numArgs, int argument)
+    MacroAssembler::Address calleeArgumentTagSlot(int argument)
     {
-        return calleeArgumentSlot(numArgs, argument).withOffset(OBJECT_OFFSETOF(EncodedValueDescriptor, asBits.tag));
+        return calleeArgumentSlot(argument).withOffset(OBJECT_OFFSETOF(EncodedValueDescriptor, asBits.tag));
     }
 
-    MacroAssembler::Address calleeArgumentPayloadSlot(int numArgs, int argument)
+    MacroAssembler::Address calleeArgumentPayloadSlot(int argument)
     {
-        return calleeArgumentSlot(numArgs, argument).withOffset(OBJECT_OFFSETOF(EncodedValueDescriptor, asBits.payload));
+        return calleeArgumentSlot(argument).withOffset(OBJECT_OFFSETOF(EncodedValueDescriptor, asBits.payload));
     }
 
-    MacroAssembler::Address calleeFrameCallerFrame(int numArgs)
+    MacroAssembler::Address calleeFrameCallerFrame()
     {
-        return calleeFrameSlot(numArgs, 0).withOffset(CallFrame::callerFrameOffset());
+        return calleeFrameSlot(0).withOffset(CallFrame::callerFrameOffset());
     }
 
     void emitCall(Node*);
@@ -1370,6 +1376,11 @@ public:
         m_jit.setupArgumentsWithExecState(arg1, arg2, arg3);
         return appendCallWithExceptionCheck(operation);
     }
+    JITCompiler::Call callOperation(V_JITOperation_EJ operation, GPRReg arg1)
+    {
+        m_jit.setupArgumentsWithExecState(arg1);
+        return appendCallWithExceptionCheck(operation);
+    }
     JITCompiler::Call callOperation(V_JITOperation_EJPP operation, GPRReg arg1, GPRReg arg2, void* pointer)
     {
         m_jit.setupArgumentsWithExecState(arg1, arg2, TrustedImmPtr(pointer));
@@ -1625,6 +1636,12 @@ public:
     JITCompiler::Call callOperation(V_JITOperation_EOZD operation, GPRReg arg1, GPRReg arg2, FPRReg arg3)
     {
         m_jit.setupArgumentsWithExecState(arg1, arg2, EABI_32BIT_DUMMY_ARG arg3);
+        return appendCallWithExceptionCheck(operation);
+    }
+
+    JITCompiler::Call callOperation(V_JITOperation_EJ operation, GPRReg arg1Tag, GPRReg arg1Payload)
+    {
+        m_jit.setupArgumentsWithExecState(arg1Tag, arg1Payload);
         return appendCallWithExceptionCheck(operation);
     }
 
@@ -1964,7 +1981,6 @@ public:
     void compilePeepHoleObjectToObjectOrOtherEquality(Edge leftChild, Edge rightChild, Node* branchNode);
     void compileObjectEquality(Node*);
     void compileObjectToObjectOrOtherEquality(Edge leftChild, Edge rightChild);
-    void compileValueAdd(Node*);
     void compileObjectOrOtherLogicalNot(Edge value);
     void compileLogicalNot(Node*);
     void compileStringEquality(Node*);
@@ -2051,7 +2067,6 @@ public:
     void compileArithSub(Node*);
     void compileArithNegate(Node*);
     void compileArithMul(Node*);
-    void compileArithIMul(Node*);
     void compileArithDiv(Node*);
     void compileArithMod(Node*);
     void compileConstantStoragePointer(Node*);
@@ -2145,43 +2160,28 @@ public:
     JITCompiler::Jump convertToDouble(JSValueOperand&, FPRReg result);
 #endif
     
-    // Add a backward speculation check.
-    void backwardSpeculationCheck(ExitKind, JSValueSource, Node*, MacroAssembler::Jump jumpToFail);
-    void backwardSpeculationCheck(ExitKind, JSValueSource, Node*, const MacroAssembler::JumpList& jumpsToFail);
-
-    // Add a speculation check without additional recovery.
+    // Add a speculation check.
     void speculationCheck(ExitKind, JSValueSource, Node*, MacroAssembler::Jump jumpToFail);
-    void speculationCheck(ExitKind, JSValueSource, Edge, MacroAssembler::Jump jumpToFail);
-    // Add a speculation check without additional recovery, and with a promise to supply a jump later.
-    OSRExitJumpPlaceholder backwardSpeculationCheck(ExitKind, JSValueSource, Node*);
-    OSRExitJumpPlaceholder backwardSpeculationCheck(ExitKind, JSValueSource, Edge);
-    // Add a set of speculation checks without additional recovery.
     void speculationCheck(ExitKind, JSValueSource, Node*, const MacroAssembler::JumpList& jumpsToFail);
+
+    // Add a speculation check without additional recovery, and with a promise to supply a jump later.
+    OSRExitJumpPlaceholder speculationCheck(ExitKind, JSValueSource, Node*);
+    OSRExitJumpPlaceholder speculationCheck(ExitKind, JSValueSource, Edge);
+    void speculationCheck(ExitKind, JSValueSource, Edge, MacroAssembler::Jump jumpToFail);
     void speculationCheck(ExitKind, JSValueSource, Edge, const MacroAssembler::JumpList& jumpsToFail);
     // Add a speculation check with additional recovery.
-    void backwardSpeculationCheck(ExitKind, JSValueSource, Node*, MacroAssembler::Jump jumpToFail, const SpeculationRecovery&);
-    void backwardSpeculationCheck(ExitKind, JSValueSource, Edge, MacroAssembler::Jump jumpToFail, const SpeculationRecovery&);
+    void speculationCheck(ExitKind, JSValueSource, Node*, MacroAssembler::Jump jumpToFail, const SpeculationRecovery&);
+    void speculationCheck(ExitKind, JSValueSource, Edge, MacroAssembler::Jump jumpToFail, const SpeculationRecovery&);
     
     void emitInvalidationPoint(Node*);
     
-    // It is generally a good idea to not use this directly.
-    void convertLastOSRExitToForward(const ValueRecovery& = ValueRecovery());
-    
-    // Note: not specifying the valueRecovery argument (leaving it as ValueRecovery()) implies
-    // that you've ensured that there exists a MovHint prior to your use of forwardSpeculationCheck().
-    void forwardSpeculationCheck(ExitKind, JSValueSource, Node*, MacroAssembler::Jump jumpToFail, const ValueRecovery& = ValueRecovery());
-    void forwardSpeculationCheck(ExitKind, JSValueSource, Node*, const MacroAssembler::JumpList& jumpsToFail, const ValueRecovery& = ValueRecovery());
-    void speculationCheck(ExitKind, JSValueSource, Node*, MacroAssembler::Jump jumpToFail, const SpeculationRecovery&);
-    void speculationCheck(ExitKind, JSValueSource, Edge, MacroAssembler::Jump jumpToFail, const SpeculationRecovery&);
     // Called when we statically determine that a speculation will fail.
     void terminateSpeculativeExecution(ExitKind, JSValueRegs, Node*);
     void terminateSpeculativeExecution(ExitKind, JSValueRegs, Edge);
     
     // Helpers for performing type checks on an edge stored in the given registers.
     bool needsTypeCheck(Edge edge, SpeculatedType typesPassedThrough) { return m_interpreter.needsTypeCheck(edge, typesPassedThrough); }
-    void backwardTypeCheck(JSValueSource, Edge, SpeculatedType typesPassedThrough, MacroAssembler::Jump jumpToFail);
     void typeCheck(JSValueSource, Edge, SpeculatedType typesPassedThrough, MacroAssembler::Jump jumpToFail);
-    void forwardTypeCheck(JSValueSource, Edge, SpeculatedType typesPassedThrough, MacroAssembler::Jump jumpToFail, const ValueRecovery&);
 
     void speculateInt32(Edge);
     void speculateMachineInt(Edge);
@@ -2254,7 +2254,6 @@ public:
     // The current node being generated.
     BasicBlock* m_block;
     Node* m_currentNode;
-    SpeculationDirection m_speculationDirection;
     bool m_canExit;
     unsigned m_indexInBlock;
     // Virtual and physical register maps.

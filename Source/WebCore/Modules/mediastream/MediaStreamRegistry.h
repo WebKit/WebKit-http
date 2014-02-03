@@ -38,16 +38,16 @@ namespace WebCore {
 class URL;
 class MediaStream;
 
-class MediaStreamRegistry FINAL : public URLRegistry {
+class MediaStreamRegistry final : public URLRegistry {
 public:
     // Returns a single instance of MediaStreamRegistry.
     static MediaStreamRegistry& registry();
 
     // Registers a blob URL referring to the specified stream data.
-    virtual void registerURL(SecurityOrigin*, const URL&, URLRegistrable*) OVERRIDE;
-    virtual void unregisterURL(const URL&) OVERRIDE;
+    virtual void registerURL(SecurityOrigin*, const URL&, URLRegistrable*) override;
+    virtual void unregisterURL(const URL&) override;
 
-    virtual URLRegistrable* lookup(const String&) const OVERRIDE;
+    virtual URLRegistrable* lookup(const String&) const override;
 
 private:
     HashMap<String, RefPtr<MediaStream>> m_mediaStreams;

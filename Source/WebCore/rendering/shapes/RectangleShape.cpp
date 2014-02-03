@@ -163,7 +163,7 @@ static FloatPoint cornerInterceptForWidth(float width, float widthAtIntercept, f
     return FloatPoint(xi, yi);
 }
 
-bool RectangleShape::firstIncludedIntervalLogicalTop(LayoutUnit minLogicalIntervalTop, const LayoutSize& minLogicalIntervalSize, LayoutUnit& result) const
+bool RectangleShape::firstIncludedIntervalLogicalTop(LayoutUnit minLogicalIntervalTop, const FloatSize& minLogicalIntervalSize, LayoutUnit& result) const
 {
     float minIntervalTop = minLogicalIntervalTop;
     float minIntervalHeight = minLogicalIntervalSize.height();
@@ -173,7 +173,7 @@ bool RectangleShape::firstIncludedIntervalLogicalTop(LayoutUnit minLogicalInterv
     if (bounds.isEmpty() || minIntervalWidth > bounds.width())
         return false;
 
-    float minY = LayoutUnit::fromFloatCeil(std::max(bounds.y(), minIntervalTop));
+    float minY = std::max(bounds.y(), minIntervalTop);
     float maxY = minY + minIntervalHeight;
 
     if (maxY > bounds.maxY())
@@ -186,7 +186,7 @@ bool RectangleShape::firstIncludedIntervalLogicalTop(LayoutUnit minLogicalInterv
     bool intervalOverlapsMaxCorner = maxY > bounds.maxY() - paddingRadiusY;
 
     if (!intervalOverlapsMinCorner && !intervalOverlapsMaxCorner) {
-        result = minY;
+        result = ceiledLayoutUnit(minY);
         return true;
     }
 
@@ -197,18 +197,18 @@ bool RectangleShape::firstIncludedIntervalLogicalTop(LayoutUnit minLogicalInterv
 
     if (intervalOverlapsMinCorner && (!intervalOverlapsMaxCorner || minCornerDefinesX)) {
         if (intervalFitsWithinCorners || bounds.y() + cornerIntercept.y() < minY) {
-            result = minY;
+            result = ceiledLayoutUnit(minY);
             return true;
         }
         if (minIntervalHeight < bounds.height() - (2 * cornerIntercept.y())) {
-            result = LayoutUnit::fromFloatCeil(bounds.y() + cornerIntercept.y());
+            result = ceiledLayoutUnit(bounds.y() + cornerIntercept.y());
             return true;
         }
     }
 
     if (intervalOverlapsMaxCorner && (!intervalOverlapsMinCorner || !minCornerDefinesX)) {
         if (intervalFitsWithinCorners || minY <=  bounds.maxY() - cornerIntercept.y() - minIntervalHeight) {
-            result = minY;
+            result = ceiledLayoutUnit(minY);
             return true;
         }
     }

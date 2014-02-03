@@ -33,36 +33,31 @@
 
 #if ENABLE(INSPECTOR)
 
-#include "InspectorRuntimeAgent.h"
+#include <inspector/agents/InspectorRuntimeAgent.h>
 #include <wtf/PassOwnPtr.h>
 
 namespace WebCore {
 
 class WorkerGlobalScope;
+typedef String ErrorString;
 
-class WorkerRuntimeAgent : public InspectorRuntimeAgent {
+class WorkerRuntimeAgent final : public Inspector::InspectorRuntimeAgent {
 public:
-    static PassOwnPtr<WorkerRuntimeAgent> create(InstrumentingAgents* instrumentingAgents, InjectedScriptManager* injectedScriptManager, WorkerGlobalScope* context)
-    {
-        return adoptPtr(new WorkerRuntimeAgent(instrumentingAgents, injectedScriptManager, context));
-    }
-    virtual ~WorkerRuntimeAgent();
+    WorkerRuntimeAgent(Inspector::InjectedScriptManager*, WorkerGlobalScope*);
+    virtual ~WorkerRuntimeAgent() { }
 
-    virtual void didCreateFrontendAndBackend(Inspector::InspectorFrontendChannel*, Inspector::InspectorBackendDispatcher*) OVERRIDE;
-    virtual void willDestroyFrontendAndBackend() OVERRIDE;
+    virtual void didCreateFrontendAndBackend(Inspector::InspectorFrontendChannel*, Inspector::InspectorBackendDispatcher*) override;
+    virtual void willDestroyFrontendAndBackend(Inspector::InspectorDisconnectReason) override;
 
-    // Protocol commands.
-    virtual void run(ErrorString*);
+    virtual void run(ErrorString*) override;
 
-#if ENABLE(JAVASCRIPT_DEBUGGER)
     void pauseWorkerGlobalScope(WorkerGlobalScope*);
-#endif // ENABLE(JAVASCRIPT_DEBUGGER)
 
 private:
-    WorkerRuntimeAgent(InstrumentingAgents*, InjectedScriptManager*, WorkerGlobalScope*);
-    virtual InjectedScript injectedScriptForEval(ErrorString*, const int* executionContextId);
-    virtual void muteConsole();
-    virtual void unmuteConsole();
+    virtual JSC::VM* globalVM() override;
+    virtual Inspector::InjectedScript injectedScriptForEval(ErrorString*, const int* executionContextId) override;
+    virtual void muteConsole() override;
+    virtual void unmuteConsole() override;
     WorkerGlobalScope* m_workerGlobalScope;
     RefPtr<Inspector::InspectorRuntimeBackendDispatcher> m_backendDispatcher;
     bool m_paused;

@@ -45,6 +45,7 @@ void webkitWebViewBaseStartDrag(WebKitWebViewBase*, const WebCore::DragData&, Pa
 void webkitWebViewBaseChildMoveResize(WebKitWebViewBase*, GtkWidget*, const WebCore::IntRect&);
 void webkitWebViewBaseEnterFullScreen(WebKitWebViewBase*);
 void webkitWebViewBaseExitFullScreen(WebKitWebViewBase*);
+void webkitWebViewBaseRequestExitFullScreen(WebKitWebViewBase*);
 void webkitWebViewBaseInitializeFullScreenClient(WebKitWebViewBase*, const WKFullScreenClientGtkBase*);
 void webkitWebViewBaseSetInspectorViewSize(WebKitWebViewBase*, unsigned size);
 void webkitWebViewBaseSetActiveContextMenuProxy(WebKitWebViewBase*, WebKit::WebContextMenuProxyGtk*);
@@ -72,5 +73,6 @@ void webkitWebViewBaseHandleDownloadRequest(WebKitWebViewBase*, WebKit::Download
 void webkitWebViewBaseAddAuthenticationDialog(WebKitWebViewBase*, GtkWidget* authDialog);
 void webkitWebViewBaseCancelAuthenticationDialog(WebKitWebViewBase*);
 void webkitWebViewBaseAddWebInspector(WebKitWebViewBase*, GtkWidget* inspector, WebKit::AttachmentSide);
+void webkitWebViewBaseResetClickCounter(WebKitWebViewBase*);
 
 #endif // WebKitWebViewBasePrivate_h

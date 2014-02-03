@@ -34,19 +34,19 @@ namespace WebCore {
 
 class CryptoKeyAES;
 
-class CryptoAlgorithmAES_KW FINAL : public CryptoAlgorithm {
+class CryptoAlgorithmAES_KW final : public CryptoAlgorithm {
 public:
     static const char* const s_name;
     static const CryptoAlgorithmIdentifier s_identifier = CryptoAlgorithmIdentifier::AES_KW;
 
     static std::unique_ptr<CryptoAlgorithm> create();
 
-    virtual CryptoAlgorithmIdentifier identifier() const OVERRIDE;
+    virtual CryptoAlgorithmIdentifier identifier() const override;
 
-    virtual void encryptForWrapKey(const CryptoAlgorithmParameters&, const CryptoKey&, const CryptoOperationData&, VectorCallback, VoidCallback failureCallback, ExceptionCode&) OVERRIDE;
-    virtual void decryptForUnwrapKey(const CryptoAlgorithmParameters&, const CryptoKey&, const CryptoOperationData&, VectorCallback, VoidCallback failureCallback, ExceptionCode&) OVERRIDE;
-    virtual void generateKey(const CryptoAlgorithmParameters&, bool extractable, CryptoKeyUsage, KeyOrKeyPairCallback, VoidCallback failureCallback, ExceptionCode&) OVERRIDE;
-    virtual void importKey(const CryptoAlgorithmParameters&, const CryptoKeyData&, bool extractable, CryptoKeyUsage, KeyCallback, VoidCallback failureCallback, ExceptionCode&) OVERRIDE;
+    virtual void encryptForWrapKey(const CryptoAlgorithmParameters&, const CryptoKey&, const CryptoOperationData&, VectorCallback, VoidCallback failureCallback, ExceptionCode&) override;
+    virtual void decryptForUnwrapKey(const CryptoAlgorithmParameters&, const CryptoKey&, const CryptoOperationData&, VectorCallback, VoidCallback failureCallback, ExceptionCode&) override;
+    virtual void generateKey(const CryptoAlgorithmParameters&, bool extractable, CryptoKeyUsage, KeyOrKeyPairCallback, VoidCallback failureCallback, ExceptionCode&) override;
+    virtual void importKey(const CryptoAlgorithmParameters&, const CryptoKeyData&, bool extractable, CryptoKeyUsage, KeyCallback, VoidCallback failureCallback, ExceptionCode&) override;
 
 private:
     CryptoAlgorithmAES_KW();

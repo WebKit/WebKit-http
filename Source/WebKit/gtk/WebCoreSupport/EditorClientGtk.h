@@ -36,7 +36,6 @@
 #include "TextCheckerClient.h"
 #include <wtf/Deque.h>
 #include <wtf/Forward.h>
-#include <wtf/gobject/GOwnPtr.h>
 #include <wtf/gobject/GRefPtr.h>
 
 #if ENABLE(SPELLCHECK)
@@ -132,7 +131,7 @@ class EditorClient : public WebCore::EditorClient {
 
         virtual bool shouldShowUnicodeMenu();
 
-        virtual bool supportsGlobalSelection() OVERRIDE;
+        virtual bool supportsGlobalSelection() override;
 
     private:
 #if ENABLE(SPELLCHECK)

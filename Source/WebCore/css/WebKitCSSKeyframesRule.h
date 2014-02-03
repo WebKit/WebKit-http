@@ -28,6 +28,7 @@
 
 #include "CSSRule.h"
 #include "StyleRule.h"
+#include <memory>
 #include <wtf/Forward.h>
 #include <wtf/text/AtomicString.h>
 
@@ -70,9 +71,9 @@ public:
 
     virtual ~WebKitCSSKeyframesRule();
 
-    virtual CSSRule::Type type() const OVERRIDE { return WEBKIT_KEYFRAMES_RULE; }
-    virtual String cssText() const OVERRIDE;
-    virtual void reattach(StyleRuleBase*) OVERRIDE;
+    virtual CSSRule::Type type() const override { return WEBKIT_KEYFRAMES_RULE; }
+    virtual String cssText() const override;
+    virtual void reattach(StyleRuleBase*) override;
 
     String name() const { return m_keyframesRule->name(); }
     void setName(const String&);
@@ -92,7 +93,7 @@ private:
 
     RefPtr<StyleRuleKeyframes> m_keyframesRule;
     mutable Vector<RefPtr<WebKitCSSKeyframeRule>> m_childRuleCSSOMWrappers;
-    mutable OwnPtr<CSSRuleList> m_ruleListCSSOMWrapper;
+    mutable std::unique_ptr<CSSRuleList> m_ruleListCSSOMWrapper;
 };
 
 } // namespace WebCore

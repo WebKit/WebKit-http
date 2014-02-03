@@ -28,9 +28,10 @@
 #include "SVGRenderSupport.h"
 
 #include "NodeRenderStyle.h"
+#include "RenderElement.h"
 #include "RenderGeometryMap.h"
+#include "RenderIterator.h"
 #include "RenderLayer.h"
-#include "RenderSVGResource.h"
 #include "RenderSVGResourceClipper.h"
 #include "RenderSVGResourceFilter.h"
 #include "RenderSVGResourceMarker.h"
@@ -38,7 +39,6 @@
 #include "RenderSVGRoot.h"
 #include "RenderSVGText.h"
 #include "RenderSVGViewportContainer.h"
-#include "SVGElement.h"
 #include "SVGResources.h"
 #include "SVGResourcesCache.h"
 #include "TransformState.h"
@@ -182,12 +182,7 @@ bool SVGRenderSupport::paintInfoIntersectsRepaintRect(const FloatRect& localRepa
 
 const RenderSVGRoot& SVGRenderSupport::findTreeRootObject(const RenderElement& start)
 {
-    auto renderer = &start;
-    while (renderer && !renderer->isSVGRoot())
-        renderer = renderer->parent();
-
-    ASSERT(renderer);
-    return toRenderSVGRoot(*renderer);
+    return *lineageOfType<RenderSVGRoot>(start).first();
 }
 
 static inline void invalidateResourcesOfChildren(RenderObject& start)

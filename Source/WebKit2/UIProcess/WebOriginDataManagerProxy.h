@@ -36,7 +36,7 @@
 #include <wtf/RefPtr.h>
 #include <wtf/Vector.h>
 
-namespace CoreIPC {
+namespace IPC {
 class Connection;
 }
 
@@ -47,7 +47,7 @@ struct SecurityOriginData;
 
 typedef GenericCallback<WKArrayRef> ArrayCallback;
 
-class WebOriginDataManagerProxy : public API::ObjectImpl<API::Object::Type::OriginDataManager>, public WebContextSupplement, private CoreIPC::MessageReceiver {
+class WebOriginDataManagerProxy : public API::ObjectImpl<API::Object::Type::OriginDataManager>, public WebContextSupplement, private IPC::MessageReceiver {
 public:
     static const char* supplementName();
 
@@ -72,14 +72,14 @@ private:
     void didChange();
 
     // WebContextSupplement
-    virtual void contextDestroyed() OVERRIDE;
-    virtual void processDidClose(WebProcessProxy*) OVERRIDE;
-    virtual bool shouldTerminate(WebProcessProxy*) const OVERRIDE;
-    virtual void refWebContextSupplement() OVERRIDE;
-    virtual void derefWebContextSupplement() OVERRIDE;
+    virtual void contextDestroyed() override;
+    virtual void processDidClose(WebProcessProxy*) override;
+    virtual bool shouldTerminate(WebProcessProxy*) const override;
+    virtual void refWebContextSupplement() override;
+    virtual void derefWebContextSupplement() override;
 
-    // CoreIPC::MessageReceiver
-    virtual void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&) OVERRIDE;
+    // IPC::MessageReceiver
+    virtual void didReceiveMessage(IPC::Connection*, IPC::MessageDecoder&) override;
 
     HashMap<uint64_t, RefPtr<ArrayCallback>> m_arrayCallbacks;
 

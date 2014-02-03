@@ -38,7 +38,8 @@ public:
 
     enum TextureExtensionFlag {
         TextureExtensionsDisabled = 0,
-        TextureExtensionFloatLinearEnabled = 1 << 0
+        TextureExtensionFloatLinearEnabled = 1 << 0,
+        TextureExtensionHalfFloatLinearEnabled = 2 << 0
     };
 
     virtual ~WebGLTexture();
@@ -82,7 +83,7 @@ public:
 protected:
     WebGLTexture(WebGLRenderingContext*);
 
-    virtual void deleteObjectImpl(GraphicsContext3D*, Platform3DObject);
+    virtual void deleteObjectImpl(GraphicsContext3D*, Platform3DObject) override;
 
 private:
     class LevelInfo {
@@ -112,7 +113,7 @@ private:
         GC3Denum type;
     };
 
-    virtual bool isTexture() const { return true; }
+    virtual bool isTexture() const override { return true; }
 
     void update();
 
@@ -134,6 +135,7 @@ private:
     bool m_needToUseBlackTexture;
     bool m_isCompressed;
     bool m_isFloatType;
+    bool m_isHalfFloatType;
 };
 
 } // namespace WebCore

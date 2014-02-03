@@ -37,7 +37,7 @@ namespace WebKit {
 
 class WebContext;
 
-class WebSoupRequestManagerProxy : public API::ObjectImpl<API::Object::Type::SoupRequestManager>, public WebContextSupplement, private CoreIPC::MessageReceiver {
+class WebSoupRequestManagerProxy : public API::ObjectImpl<API::Object::Type::SoupRequestManager>, public WebContextSupplement, private IPC::MessageReceiver {
 public:
     static const char* supplementName();
 
@@ -61,13 +61,13 @@ private:
     WebSoupRequestManagerProxy(WebContext*);
 
     // WebContextSupplement
-    virtual void contextDestroyed() OVERRIDE;
-    virtual void processDidClose(WebProcessProxy*) OVERRIDE;
-    virtual void refWebContextSupplement() OVERRIDE;
-    virtual void derefWebContextSupplement() OVERRIDE;
+    virtual void contextDestroyed() override;
+    virtual void processDidClose(WebProcessProxy*) override;
+    virtual void refWebContextSupplement() override;
+    virtual void derefWebContextSupplement() override;
 
-    // CoreIPC::MessageReceiver
-    virtual void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&) OVERRIDE;
+    // IPC::MessageReceiver
+    virtual void didReceiveMessage(IPC::Connection*, IPC::MessageDecoder&) override;
 
     void didFailToLoadURIRequest(uint64_t requestID);
 

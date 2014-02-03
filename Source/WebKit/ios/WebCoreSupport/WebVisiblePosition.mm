@@ -87,11 +87,13 @@ using namespace WebCore;
     [super dealloc];
 }
 
-- (BOOL)isEqual:(WebVisiblePosition *)other
+// FIXME: Overriding isEqual: without overriding hash will cause trouble if this ever goes into an NSSet or is the key in an NSDictionary,
+// since two equal objects could have different hashes.
+- (BOOL)isEqual:(id)other
 {
-    VisiblePosition myVP = [self _visiblePosition];
-    VisiblePosition otherVP = [other _visiblePosition];
-    return (myVP == otherVP);
+    if (![other isKindOfClass:[WebVisiblePosition class]])
+        return NO;
+    return [self _visiblePosition] == [(WebVisiblePosition *)other _visiblePosition];
 }
 
 - (NSComparisonResult)compare:(WebVisiblePosition *)other
@@ -301,7 +303,7 @@ static inline SelectionDirection toSelectionDirection(WebTextAdjustmentDirection
 {
     // Ripped from WebCore::Frame::moveSelectionToStartOrEndOfCurrentWord
     
-    // Note: this is the iPhone notion, not the unicode notion.
+    // Note: this is the iOS notion, not the unicode notion.
     // Here, a word starts with non-whitespace or at the start of a line and
     // ends at the next whitespace, or at the end of a line.
     

@@ -37,6 +37,11 @@
 #include "UserScriptTypes.h"
 #include <wtf/RefCounted.h>
 
+#if PLATFORM(IOS)
+#include "ViewportArguments.h"
+#include "VisibleSelection.h"
+#endif
+
 #if PLATFORM(WIN)
 #include "FrameWin.h"
 #endif
@@ -45,9 +50,20 @@
 #include "TiledBackingStoreClient.h"
 #endif
 
+#if PLATFORM(IOS)
+OBJC_CLASS DOMCSSStyleDeclaration;
+OBJC_CLASS DOMNode;
+OBJC_CLASS NSArray;
+OBJC_CLASS NSString;
+#endif
+
 #if PLATFORM(WIN)
 typedef struct HBITMAP__* HBITMAP;
 #endif
+
+namespace JSC { namespace Yarr {
+class RegularExpression;
+} }
 
 namespace WebCore {
 
@@ -63,12 +79,13 @@ namespace WebCore {
     class FrameView;
     class HTMLFrameOwnerElement;
     class HTMLTableCellElement;
+    class HitTestResult;
     class ImageBuffer;
     class IntRect;
     class MainFrame;
     class Node;
     class Range;
-    class RegularExpression;
+    class RenderLayer;
     class RenderView;
     class RenderWidget;
     class ScriptController;
@@ -76,6 +93,19 @@ namespace WebCore {
     class TiledBackingStore;
     class VisiblePosition;
     class Widget;
+
+#if PLATFORM(IOS)
+    enum {
+        OverflowScrollNone = 0,
+        OverflowScrollLeft = 1 << 0,
+        OverflowScrollRight = 1 << 1,
+        OverflowScrollUp = 1 << 2,
+        OverflowScrollDown = 1 << 3
+    };
+
+    enum OverflowScrollAction { DoNotPerformOverflowScroll, PerformOverflowScroll };
+    typedef Node* (*NodeQualifier)(const HitTestResult&, Node* terminationNode, IntRect* nodeBounds);
+#endif
 
 #if !USE(TILED_BACKING_STORE)
     class TiledBackingStoreClient { };
@@ -96,6 +126,10 @@ namespace WebCore {
         static PassRefPtr<Frame> create(Page*, HTMLFrameOwnerElement*, FrameLoaderClient*);
 
         void init();
+#if PLATFORM(IOS)
+        // Creates <html><body style="..."></body></html> doing minimal amount of work.
+        void initWithSimpleHTMLDocument(const String& style, const URL&);
+#endif
         void setView(PassRefPtr<FrameView>);
         void createView(const IntSize&, const Color&, bool,
             const IntSize& fixedLayoutSize = IntSize(), const IntRect& fixedVisibleContentRect = IntRect(),
@@ -161,8 +195,30 @@ namespace WebCore {
         // Scale factor of this frame with respect to the container.
         float frameScaleFactor() const;
 
-#if USE(ACCELERATED_COMPOSITING)
         void deviceOrPageScaleFactorChanged();
+
+#if PLATFORM(IOS)
+        const ViewportArguments& viewportArguments() const;
+        void setViewportArguments(const ViewportArguments&);
+
+        Node* deepestNodeAtLocation(const FloatPoint& viewportLocation);
+        Node* nodeRespondingToClickEvents(const FloatPoint& viewportLocation, FloatPoint& adjustedViewportLocation);
+        Node* nodeRespondingToScrollWheelEvents(const FloatPoint& viewportLocation);
+
+        int indexCountOfWordPrecedingSelection(NSString* word) const;
+        NSArray* wordsInCurrentParagraph() const;
+        CGRect renderRectForPoint(CGPoint, bool* isReplaced, float* fontSize) const;
+
+        void setSelectionChangeCallbacksDisabled(bool = true);
+        bool selectionChangeCallbacksDisabled() const;
+
+        enum ViewportOffsetChangeType { IncrementalScrollOffset, CompletedScrollOffset };
+        void viewportOffsetChanged(ViewportOffsetChangeType);
+        bool containsTiledBackingLayers() const;
+
+        void overflowScrollPositionChangedForNode(const IntPoint&, Node*, bool isUserScroll);
+
+        void resetAllGeolocationPermission();
 #endif
 
 #if ENABLE(ORIENTATION_EVENTS)
@@ -182,7 +238,7 @@ namespace WebCore {
         Document* documentAtPoint(const IntPoint& windowPoint);
         PassRefPtr<Range> rangeForPoint(const IntPoint& framePoint);
 
-        String searchForLabelsAboveCell(RegularExpression*, HTMLTableCellElement*, size_t* resultDistanceFromStartOfCell);
+        String searchForLabelsAboveCell(JSC::Yarr::RegularExpression*, HTMLTableCellElement*, size_t* resultDistanceFromStartOfCell);
         String searchForLabelsBeforeElement(const Vector<String>& labels, Element*, size_t* resultDistance, bool* resultIsInCellAbove);
         String matchLabelsAgainstElement(const Vector<String>& labels, Element*);
 
@@ -191,6 +247,33 @@ namespace WebCore {
         float textAutosizingWidth() const;
 #endif
 
+#if PLATFORM(IOS)
+        // Scroll the selection in an overflow layer on iOS.
+        void scrollOverflowLayer(RenderLayer* , const IntRect& visibleRect, const IntRect& exposeRect);
+
+        int preferredHeight() const;
+        int innerLineHeight(DOMNode*) const;
+        void updateLayout() const;
+        NSRect caretRect() const;
+        NSRect rectForScrollToVisible() const;
+        NSRect rectForSelection(VisibleSelection&) const;
+        DOMCSSStyleDeclaration* styleAtSelectionStart() const;
+        unsigned formElementsCharacterCount() const;
+        void setTimersPaused(bool);
+        bool timersPaused() const { return m_timersPausedCount; }
+        void dispatchPageHideEventBeforePause();
+        void dispatchPageShowEventBeforeResume();
+        void setRangedSelectionBaseToCurrentSelection();
+        void setRangedSelectionBaseToCurrentSelectionStart();
+        void setRangedSelectionBaseToCurrentSelectionEnd();
+        void clearRangedSelectionInitialExtent();
+        void setRangedSelectionInitialExtentToCurrentSelectionStart();
+        void setRangedSelectionInitialExtentToCurrentSelectionEnd();
+        VisibleSelection rangedSelectionBase() const;
+        VisibleSelection rangedSelectionInitialExtent() const;
+        void recursiveSetUpdateAppearanceEnabled(bool);
+        NSArray* interpretationsForCurrentRoot() const;
+#endif
         void suspendActiveDOMObjectsAndAnimations();
         void resumeActiveDOMObjectsAndAnimations();
         bool activeDOMObjectsAndAnimationsSuspended() const { return m_activeDOMObjectsAndAnimationsSuspendedCount > 0; }
@@ -224,6 +307,27 @@ namespace WebCore {
         const OwnPtr<EventHandler> m_eventHandler;
         const std::unique_ptr<AnimationController> m_animationController;
 
+#if PLATFORM(IOS)
+        void betterApproximateNode(const IntPoint& testPoint, NodeQualifier, Node*& best, Node* failedNode, IntPoint& bestPoint, IntRect& bestRect, const IntRect& testRect);
+        bool hitTestResultAtViewportLocation(const FloatPoint& viewportLocation, HitTestResult&, IntPoint& center);
+        Node* qualifyingNodeAtViewportLocation(const FloatPoint& viewportLocation, FloatPoint& adjustedViewportLocation, NodeQualifier, bool shouldApproximate);
+
+        void overflowAutoScrollTimerFired(Timer<Frame>*);
+        void startOverflowAutoScroll(const IntPoint&);
+        int checkOverflowScroll(OverflowScrollAction);
+
+        void setTimersPausedInternal(bool);
+
+        Timer<Frame> m_overflowAutoScrollTimer;
+        float m_overflowAutoScrollDelta;
+        IntPoint m_overflowAutoScrollPos;
+        ViewportArguments m_viewportArguments;
+        bool m_selectionChangeCallbacksDisabled;
+        int m_timersPausedCount;
+        VisibleSelection m_rangedSelectionBase;
+        VisibleSelection m_rangedSelectionInitialExtent;
+#endif
+
 #if ENABLE(IOS_TEXT_AUTOSIZING)
         float m_textAutosizingWidth;
 #endif
@@ -246,12 +350,12 @@ namespace WebCore {
 
     private:
         // TiledBackingStoreClient interface
-        virtual void tiledBackingStorePaintBegin() OVERRIDE FINAL;
-        virtual void tiledBackingStorePaint(GraphicsContext*, const IntRect&) OVERRIDE FINAL;
-        virtual void tiledBackingStorePaintEnd(const Vector<IntRect>& paintedArea) OVERRIDE FINAL;
-        virtual IntRect tiledBackingStoreContentsRect() OVERRIDE FINAL;
-        virtual IntRect tiledBackingStoreVisibleRect() OVERRIDE FINAL;
-        virtual Color tiledBackingStoreBackgroundColor() const OVERRIDE FINAL;
+        virtual void tiledBackingStorePaintBegin() override final;
+        virtual void tiledBackingStorePaint(GraphicsContext*, const IntRect&) override final;
+        virtual void tiledBackingStorePaintEnd(const Vector<IntRect>& paintedArea) override final;
+        virtual IntRect tiledBackingStoreContentsRect() override final;
+        virtual IntRect tiledBackingStoreVisibleRect() override final;
+        virtual Color tiledBackingStoreBackgroundColor() const override final;
 
         OwnPtr<TiledBackingStore> m_tiledBackingStore;
 #endif

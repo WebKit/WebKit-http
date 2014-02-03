@@ -26,8 +26,6 @@
 #ifndef PlatformLayer_h
 #define PlatformLayer_h
 
-#if USE(ACCELERATED_COMPOSITING)
-
 #if PLATFORM(MAC)
 OBJC_CLASS CALayer;
 typedef CALayer PlatformLayer;
@@ -45,22 +43,15 @@ class TextureMapperPlatformLayer;
 typedef TextureMapperPlatformLayer PlatformLayer;
 };
 #endif
-#elif PLATFORM(EFL) || PLATFORM(NIX)
+#elif PLATFORM(EFL)
 #if USE(TEXTURE_MAPPER)
 namespace WebCore {
 class TextureMapperPlatformLayer;
 typedef TextureMapperPlatformLayer PlatformLayer;
 };
-#endif
-#elif PLATFORM(BLACKBERRY)
-namespace WebCore {
-class LayerWebKitThread;
-typedef LayerWebKitThread PlatformLayer;
-}
+#endif // USE(TEXTURE_MAPPER)
 #else
 typedef void* PlatformLayer;
 #endif
-
-#endif // USE(ACCELERATED_COMPOSITING)
 
 #endif // PlatformLayer_h

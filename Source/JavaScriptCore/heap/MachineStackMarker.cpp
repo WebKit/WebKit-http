@@ -62,13 +62,6 @@
 #include <pthread_np.h>
 #endif
 
-#if OS(QNX)
-#include <fcntl.h>
-#include <sys/procfs.h>
-#include <stdio.h>
-#include <errno.h>
-#endif
-
 #if USE(PTHREADS) && !OS(WINDOWS) && !OS(DARWIN)
 #include <signal.h>
 #endif
@@ -247,7 +240,7 @@ void MachineThreads::removeCurrentThread()
 #define REGISTER_BUFFER_ALIGNMENT
 #endif
 
-void MachineThreads::gatherFromCurrentThread(ConservativeRoots& conservativeRoots, void* stackCurrent)
+void MachineThreads::gatherFromCurrentThread(ConservativeRoots& conservativeRoots, JITStubRoutineSet& jitStubRoutines, CodeBlockSet& codeBlocks, void* stackCurrent)
 {
     // setjmp forces volatile registers onto the stack
     jmp_buf registers REGISTER_BUFFER_ALIGNMENT;
@@ -263,12 +256,12 @@ void MachineThreads::gatherFromCurrentThread(ConservativeRoots& conservativeRoot
     void* registersBegin = &registers;
     void* registersEnd = reinterpret_cast<void*>(roundUpToMultipleOf<sizeof(void*)>(reinterpret_cast<uintptr_t>(&registers + 1)));
     swapIfBackwards(registersBegin, registersEnd);
-    conservativeRoots.add(registersBegin, registersEnd);
+    conservativeRoots.add(registersBegin, registersEnd, jitStubRoutines, codeBlocks);
 
     void* stackBegin = stackCurrent;
     void* stackEnd = wtfThreadData().stack().origin();
     swapIfBackwards(stackBegin, stackEnd);
-    conservativeRoots.add(stackBegin, stackEnd);
+    conservativeRoots.add(stackBegin, stackEnd, jitStubRoutines, codeBlocks);
 }
 
 static inline void suspendThread(const PlatformThread& platformThread)
@@ -325,8 +318,6 @@ typedef arm_thread_state64_t PlatformThreadRegisters;
 typedef CONTEXT PlatformThreadRegisters;
 #elif OS(HAIKU)
 typedef thread_info PlatformThreadRegisters;
-#elif OS(QNX)
-typedef struct _debug_thread_info PlatformThreadRegisters;
 #elif USE(PTHREADS)
 typedef pthread_attr_t PlatformThreadRegisters;
 #else
@@ -375,22 +366,6 @@ static size_t getPlatformThreadRegisters(const PlatformThread& platformThread, P
 #elif OS(HAIKU)
 	get_thread_info(platformThread, &regs);
 	return sizeof(thread_info);
-#elif OS(QNX)
-    memset(&regs, 0, sizeof(regs));
-    regs.tid = platformThread;
-    // FIXME: If we find this hurts performance, we can consider caching the fd and keeping it open.
-    int fd = open("/proc/self/as", O_RDONLY);
-    if (fd == -1) {
-        LOG_ERROR("Unable to open /proc/self/as (errno: %d)", errno);
-        CRASH();
-    }
-    int rc = devctl(fd, DCMD_PROC_TIDSTATUS, &regs, sizeof(regs), 0);
-    if (rc != EOK) {
-        LOG_ERROR("devctl(DCMD_PROC_TIDSTATUS) failed (error: %d)", rc);
-        CRASH();
-    }
-    close(fd);
-    return sizeof(struct _debug_thread_info);
 #elif USE(PTHREADS)
     pthread_attr_init(&regs);
 #if HAVE(PTHREAD_NP_H) || OS(NETBSD)
@@ -458,9 +433,6 @@ static inline void* otherThreadStackPointer(const PlatformThreadRegisters& regs)
 #error Unknown Architecture
 #endif
 
-#elif OS(QNX)
-    return reinterpret_cast<void*>((uintptr_t) regs.sp);
-
 #elif USE(PTHREADS)
     void* stackBase = 0;
     size_t stackSize = 0;
@@ -475,31 +447,31 @@ static inline void* otherThreadStackPointer(const PlatformThreadRegisters& regs)
 
 static void freePlatformThreadRegisters(PlatformThreadRegisters& regs)
 {
-#if USE(PTHREADS) && !OS(WINDOWS) && !OS(DARWIN) && !OS(QNX) && !OS(HAIKU)
+#if USE(PTHREADS) && !OS(WINDOWS) && !OS(DARWIN) && !OS(HAIKU)
     pthread_attr_destroy(&regs);
 #else
     UNUSED_PARAM(regs);
 #endif
 }
 
-void MachineThreads::gatherFromOtherThread(ConservativeRoots& conservativeRoots, Thread* thread)
+void MachineThreads::gatherFromOtherThread(ConservativeRoots& conservativeRoots, Thread* thread, JITStubRoutineSet& jitStubRoutines, CodeBlockSet& codeBlocks)
 {
     PlatformThreadRegisters regs;
     size_t regSize = getPlatformThreadRegisters(thread->platformThread, regs);
 
-    conservativeRoots.add(static_cast<void*>(&regs), static_cast<void*>(reinterpret_cast<char*>(&regs) + regSize));
+    conservativeRoots.add(static_cast<void*>(&regs), static_cast<void*>(reinterpret_cast<char*>(&regs) + regSize), jitStubRoutines, codeBlocks);
 
     void* stackPointer = otherThreadStackPointer(regs);
     void* stackBase = thread->stackBase;
     swapIfBackwards(stackPointer, stackBase);
-    conservativeRoots.add(stackPointer, stackBase);
+    conservativeRoots.add(stackPointer, stackBase, jitStubRoutines, codeBlocks);
 
     freePlatformThreadRegisters(regs);
 }
 
-void MachineThreads::gatherConservativeRoots(ConservativeRoots& conservativeRoots, void* stackCurrent)
+void MachineThreads::gatherConservativeRoots(ConservativeRoots& conservativeRoots, JITStubRoutineSet& jitStubRoutines, CodeBlockSet& codeBlocks, void* stackCurrent)
 {
-    gatherFromCurrentThread(conservativeRoots, stackCurrent);
+    gatherFromCurrentThread(conservativeRoots, jitStubRoutines, codeBlocks, stackCurrent);
 
     if (m_threadSpecific) {
         PlatformThread currentPlatformThread = getCurrentPlatformThread();
@@ -521,7 +493,7 @@ void MachineThreads::gatherConservativeRoots(ConservativeRoots& conservativeRoot
         // and since this is a shared heap, they are real locks.
         for (Thread* thread = m_registeredThreads; thread; thread = thread->next) {
             if (!equalThread(thread->platformThread, currentPlatformThread))
-                gatherFromOtherThread(conservativeRoots, thread);
+                gatherFromOtherThread(conservativeRoots, thread, jitStubRoutines, codeBlocks);
         }
 
         for (Thread* thread = m_registeredThreads; thread; thread = thread->next) {

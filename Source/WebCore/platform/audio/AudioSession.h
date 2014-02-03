@@ -28,8 +28,9 @@
 
 #if USE(AUDIO_SESSION)
 
+#include <memory>
 #include <wtf/HashSet.h>
-#include <wtf/OwnPtr.h>
+#include <wtf/Noncopyable.h>
 
 namespace WebCore {
 
@@ -74,7 +75,7 @@ private:
     AudioSession();
     ~AudioSession();
 
-    OwnPtr<AudioSessionPrivate> m_private;
+    std::unique_ptr<AudioSessionPrivate> m_private;
     HashSet<AudioSessionListener*> m_listeners;
 };
 

@@ -33,12 +33,12 @@
 
 namespace WebCore {
 
-class CryptoAlgorithmHmacParams FINAL : public CryptoAlgorithmParameters {
+class CryptoAlgorithmHmacParams final : public CryptoAlgorithmParameters {
 public:
     // The inner hash function to use.
     CryptoAlgorithmIdentifier hash;
 
-    virtual Class parametersClass() const OVERRIDE { return Class::HmacParams; }
+    virtual Class parametersClass() const override { return Class::HmacParams; }
 };
 
 CRYPTO_ALGORITHM_PARAMETERS_CASTS(HmacParams)

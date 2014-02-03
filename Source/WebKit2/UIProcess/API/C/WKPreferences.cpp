@@ -24,8 +24,8 @@
  */
 
 #include "config.h"
-#include "WKPreferences.h"
 #include "WKPreferencesPrivate.h"
+#include "WKPreferencesRef.h"
 
 #include "WKAPICast.h"
 #include "WebContext.h"
@@ -457,16 +457,6 @@ void WKPreferencesSetTiledScrollingIndicatorVisible(WKPreferencesRef preferences
 bool WKPreferencesGetTiledScrollingIndicatorVisible(WKPreferencesRef preferencesRef)
 {
     return toImpl(preferencesRef)->tiledScrollingIndicatorVisible();
-}
-
-void WKPreferencesSetCSSCustomFilterEnabled(WKPreferencesRef preferencesRef, bool flag)
-{
-    toImpl(preferencesRef)->setCSSCustomFilterEnabled(flag);
-}
-
-bool WKPreferencesGetCSSCustomFilterEnabled(WKPreferencesRef preferencesRef)
-{
-    return toImpl(preferencesRef)->cssCustomFilterEnabled();
 }
 
 void WKPreferencesSetWebGLEnabled(WKPreferencesRef preferencesRef, bool flag)
@@ -1244,4 +1234,14 @@ void WKPreferencesSetMediaSourceEnabled(WKPreferencesRef preferencesRef, bool en
 bool WKPreferencesGetMediaSourceEnabled(WKPreferencesRef preferencesRef)
 {
     return toImpl(preferencesRef)->mediaSourceEnabled();
+}
+
+void WKPreferencesSetViewGestureDebuggingEnabled(WKPreferencesRef preferencesRef, bool enabled)
+{
+    toImpl(preferencesRef)->setViewGestureDebuggingEnabled(enabled);
+}
+
+bool WKPreferencesGetViewGestureDebuggingEnabled(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->viewGestureDebuggingEnabled();
 }

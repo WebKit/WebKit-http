@@ -25,8 +25,6 @@
 
 #include "config.h"
 
-#if USE(ACCELERATED_COMPOSITING)
-
 #include "GraphicsLayer.h"
 
 #include "FloatPoint.h"
@@ -78,6 +76,9 @@ GraphicsLayer::GraphicsLayer(GraphicsLayerClient* client)
     , m_anchorPoint(0.5f, 0.5f, 0)
     , m_opacity(1)
     , m_zPosition(0)
+#if ENABLE(CSS_COMPOSITING)
+    , m_blendMode(BlendModeNormal)
+#endif
     , m_contentsOpaque(false)
     , m_preserves3D(false)
     , m_backfaceVisibility(true)
@@ -117,7 +118,6 @@ void GraphicsLayer::willBeDestroyed()
     if (m_client)
         m_client->verifyNotPainting();
 #endif
-
     if (m_replicaLayer)
         m_replicaLayer->setReplicatedLayer(0);
 
@@ -791,5 +791,3 @@ void showGraphicsLayerTree(const WebCore::GraphicsLayer* layer)
     fprintf(stderr, "%s\n", output.utf8().data());
 }
 #endif
-
-#endif // USE(ACCELERATED_COMPOSITING)

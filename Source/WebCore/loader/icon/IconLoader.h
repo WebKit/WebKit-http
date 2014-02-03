@@ -37,7 +37,7 @@ namespace WebCore {
 class CachedRawResource;
 class Frame;
 
-class IconLoader FINAL : private CachedRawResourceClient {
+class IconLoader final : private CachedRawResourceClient {
     WTF_MAKE_NONCOPYABLE(IconLoader); WTF_MAKE_FAST_ALLOCATED;
 public:
     explicit IconLoader(Frame&);
@@ -47,7 +47,7 @@ public:
     void stopLoading();
 
 private:
-    virtual void notifyFinished(CachedResource*) OVERRIDE;
+    virtual void notifyFinished(CachedResource*) override;
 
     Frame& m_frame;
     CachedResourceHandle<CachedRawResource> m_resource;

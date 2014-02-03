@@ -78,15 +78,15 @@ private:
     void clearNotifications(WebPageProxy*, const Vector<uint64_t>& pageNotificationIDs, NotificationFilterFunction);
 
     // WebContextSupplement
-    virtual void contextDestroyed() OVERRIDE;
-    virtual void refWebContextSupplement() OVERRIDE;
-    virtual void derefWebContextSupplement() OVERRIDE;
+    virtual void contextDestroyed() override;
+    virtual void refWebContextSupplement() override;
+    virtual void derefWebContextSupplement() override;
 
     WebNotificationProvider m_provider;
     // Pair comprised of web page ID and the web process's notification ID
-    HashMap<uint64_t, pair<uint64_t, uint64_t>> m_globalNotificationMap;
+    HashMap<uint64_t, std::pair<uint64_t, uint64_t>> m_globalNotificationMap;
     // Key pair comprised of web page ID and the web process's notification ID; value pair comprised of global notification ID, and notification object
-    HashMap<pair<uint64_t, uint64_t>, pair<uint64_t, RefPtr<WebNotification>>> m_notifications;
+    HashMap<std::pair<uint64_t, uint64_t>, std::pair<uint64_t, RefPtr<WebNotification>>> m_notifications;
 };
 
 } // namespace WebKit

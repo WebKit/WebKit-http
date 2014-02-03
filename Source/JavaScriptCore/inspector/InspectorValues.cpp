@@ -472,7 +472,7 @@ inline void doubleQuoteString(const String& str, StringBuilder* dst)
                 //    is also optional.  It would also be a pain to implement here.
                 unsigned int symbol = static_cast<unsigned int>(c);
                 String symbolCode = String::format("\\u%04X", symbol);
-                dst->append(symbolCode.characters(), symbolCode.length());
+                dst->append(symbolCode.deprecatedCharacters(), symbolCode.length());
             } else
                 dst->append(c);
         }
@@ -545,8 +545,8 @@ PassRefPtr<InspectorArray> InspectorValue::asArray()
 
 PassRefPtr<InspectorValue> InspectorValue::parseJSON(const String& json)
 {
-    const UChar* start = json.characters();
-    const UChar* end = json.characters() + json.length();
+    const UChar* start = json.deprecatedCharacters();
+    const UChar* end = json.deprecatedCharacters() + json.length();
     const UChar *tokenEnd;
     RefPtr<InspectorValue> value = buildValue(start, end, &tokenEnd, 0);
     if (!value || tokenEnd != end)

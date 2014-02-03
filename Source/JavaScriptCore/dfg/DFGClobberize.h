@@ -1,5 +1,5 @@
-/*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ /*
+ * Copyright (C) 2013, 2014 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -88,6 +88,9 @@ void clobberize(Graph& graph, Node* node, ReadFunctor& read, WriteFunctor& write
     case WeakJSConstant:
     case Identity:
     case Phantom:
+    case Breakpoint:
+    case ProfileWillCall:
+    case ProfileDidCall:
     case BitAnd:
     case BitOr:
     case BitXor:
@@ -129,9 +132,9 @@ void clobberize(Graph& graph, Node* node, ReadFunctor& read, WriteFunctor& write
     case ConstantStoragePointer:
     case UInt32ToNumber:
     case DoubleAsInt32:
+    case Check:
         return;
         
-    case MovHintAndCheck:
     case MovHint:
     case ZombieHint:
     case Upsilon:
@@ -139,7 +142,6 @@ void clobberize(Graph& graph, Node* node, ReadFunctor& read, WriteFunctor& write
     case Flush:
     case PhantomLocal:
     case SetArgument:
-    case Breakpoint:
     case PhantomArguments:
     case Jump:
     case Branch:
@@ -204,24 +206,10 @@ void clobberize(Graph& graph, Node* node, ReadFunctor& read, WriteFunctor& write
     case In:
     case GetMyArgumentsLengthSafe:
     case GetMyArgumentByValSafe:
+    case ValueAdd:
         read(World);
         write(World);
         return;
-        
-    case ValueAdd:
-        switch (node->binaryUseKind()) {
-        case Int32Use:
-        case NumberUse:
-        case MachineIntUse:
-            return;
-        case UntypedUse:
-            read(World);
-            write(World);
-            return;
-        default:
-            RELEASE_ASSERT_NOT_REACHED();
-            return;
-        }
         
     case GetCallee:
         read(AbstractHeap(Variables, JSStack::Callee));
@@ -579,26 +567,13 @@ void clobberize(Graph& graph, Node* node, ReadFunctor& read, WriteFunctor& write
         }
         return;
         
+    case CompareEq:
     case CompareLess:
     case CompareLessEq:
     case CompareGreater:
     case CompareGreaterEq:
-        if (graph.isPredictedNumerical(node))
+        if (!node->isBinaryUseKind(UntypedUse))
             return;
-        read(World);
-        write(World);
-        return;
-        
-    case CompareEq:
-        if (graph.isPredictedNumerical(node)
-            || node->isBinaryUseKind(StringUse)
-            || node->isBinaryUseKind(StringIdentUse))
-            return;
-        
-        if ((node->child1().useKind() == ObjectUse || node->child1().useKind() == ObjectOrOtherUse)
-            && (node->child2().useKind() == ObjectUse || node->child2().useKind() == ObjectOrOtherUse))
-            return;
-        
         read(World);
         write(World);
         return;

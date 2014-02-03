@@ -166,6 +166,36 @@ namespace WebCore {
         typedef IDBDatabaseMetadata Type;
         static Type copy(const IDBDatabaseMetadata&);
     };
+
+    struct IDBGetResult;
+    template<> struct CrossThreadCopierBase<false, false, IDBGetResult> {
+        typedef IDBGetResult Type;
+        static Type copy(const IDBGetResult&);
+    };
+
+    struct IDBIndexMetadata;
+    template<> struct CrossThreadCopierBase<false, false, IDBIndexMetadata> {
+        typedef IDBIndexMetadata Type;
+        static Type copy(const IDBIndexMetadata&);
+    };
+
+    struct IDBKeyData;
+    template<> struct CrossThreadCopierBase<false, false, IDBKeyData> {
+        typedef IDBKeyData Type;
+        static Type copy(const IDBKeyData&);
+    };
+
+    struct IDBKeyRangeData;
+    template<> struct CrossThreadCopierBase<false, false, IDBKeyRangeData> {
+        typedef IDBKeyRangeData Type;
+        static Type copy(const IDBKeyRangeData&);
+    };
+
+    struct IDBObjectStoreMetadata;
+    template<> struct CrossThreadCopierBase<false, false, IDBObjectStoreMetadata> {
+        typedef IDBObjectStoreMetadata Type;
+        static Type copy(const IDBObjectStoreMetadata&);
+    };
 #endif
 
     template<typename T>

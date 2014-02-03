@@ -91,15 +91,8 @@ TreeOutline.prototype.appendChild = function(child)
     if (child.hasChildren && child.treeOutline._treeElementsExpandedState[child.identifier] !== undefined)
         child.expanded = child.treeOutline._treeElementsExpandedState[child.identifier];
 
-    if (!this._childrenListNode) {
-        this._childrenListNode = this.treeOutline._childrenListNode.ownerDocument.createElement("ol");
-        this._childrenListNode.parentTreeElement = this;
-        this._childrenListNode.classList.add("children");
-        if (this.hidden)
-            this._childrenListNode.classList.add("hidden");
-    }
-
-    child._attach();
+    if (this._childrenListNode)
+        child._attach();
 
     if (this.treeOutline.onadd)
         this.treeOutline.onadd(child);
@@ -147,15 +140,8 @@ TreeOutline.prototype.insertChild = function(child, index)
     if (child.hasChildren && child.treeOutline._treeElementsExpandedState[child.identifier] !== undefined)
         child.expanded = child.treeOutline._treeElementsExpandedState[child.identifier];
 
-    if (!this._childrenListNode) {
-        this._childrenListNode = this.treeOutline._childrenListNode.ownerDocument.createElement("ol");
-        this._childrenListNode.parentTreeElement = this;
-        this._childrenListNode.classList.add("children");
-        if (this.hidden)
-            this._childrenListNode.classList.add("hidden");
-    }
-
-    child._attach();
+    if (this._childrenListNode)
+        child._attach();
 
     if (this.treeOutline.onadd)
         this.treeOutline.onadd(child);
@@ -197,6 +183,9 @@ TreeOutline.prototype.removeChildAtIndex = function(childIndex, suppressOnDesele
     child.parent = null;
     child.nextSibling = null;
     child.previousSibling = null;
+
+    if (this.treeOutline && this.treeOutline.onremove)
+        this.treeOutline.onremove(child);
 }
 
 TreeOutline.prototype.removeChild = function(child, suppressOnDeselect, suppressSelectSibling)
@@ -213,6 +202,8 @@ TreeOutline.prototype.removeChild = function(child, suppressOnDeselect, suppress
 
 TreeOutline.prototype.removeChildren = function(suppressOnDeselect)
 {
+    var treeOutline = this.treeOutline;
+
     for (var i = 0; i < this.children.length; ++i) {
         var child = this.children[i];
         child.deselect(suppressOnDeselect);
@@ -227,6 +218,9 @@ TreeOutline.prototype.removeChildren = function(suppressOnDeselect)
         child.parent = null;
         child.nextSibling = null;
         child.previousSibling = null;
+
+        if (treeOutline && treeOutline.onremove)
+            treeOutline.onremove(child);
     }
 
     this.children = [];
@@ -235,6 +229,8 @@ TreeOutline.prototype.removeChildren = function(suppressOnDeselect)
 TreeOutline.prototype.removeChildrenRecursive = function(suppressOnDeselect)
 {
     var childrenToRemove = this.children;
+
+    var treeOutline = this.treeOutline;
 
     var child = this.children[0];
     while (child) {
@@ -246,14 +242,19 @@ TreeOutline.prototype.removeChildrenRecursive = function(suppressOnDeselect)
     for (var i = 0; i < childrenToRemove.length; ++i) {
         child = childrenToRemove[i];
         child.deselect(suppressOnDeselect);
+
         if (child.treeOutline)
             child.treeOutline._forgetTreeElement(child);
+
         child._detach();
         child.children = [];
         child.treeOutline = null;
         child.parent = null;
         child.nextSibling = null;
         child.previousSibling = null;
+
+        if (treeOutline && treeOutline.onremove)
+            treeOutline.onremove(child);
     }
 
     this.children = [];
@@ -275,6 +276,8 @@ TreeOutline.prototype._rememberTreeElement = function(element)
 
 TreeOutline.prototype._forgetTreeElement = function(element)
 {
+    if (this.selectedTreeElement === element)
+        this.selectedTreeElement = null;
     if (this._knownTreeElements[element.identifier])
         this._knownTreeElements[element.identifier].remove(element, true);
 }
@@ -293,7 +296,7 @@ TreeOutline.prototype.getCachedTreeElement = function(representedObject)
     if (!representedObject)
         return null;
 
-    if ("__treeElementIdentifier" in representedObject) {
+    if (representedObject.__treeElementIdentifier) {
         // If this representedObject has a tree element identifier, and it is a known TreeElement
         // in our tree we can just return that tree element.
         var elements = this._knownTreeElements[representedObject.__treeElementIdentifier];
@@ -321,7 +324,7 @@ TreeOutline.prototype.findTreeElement = function(representedObject, isAncestor, 
     var found = false;
     for (var i = 0; i < this.children.length; ++i) {
         item = this.children[i];
-        if (item.representedObject === representedObject || isAncestor(item.representedObject, representedObject)) {
+        if (item.representedObject === representedObject || (isAncestor && isAncestor(item.representedObject, representedObject))) {
             found = true;
             break;
         }
@@ -626,6 +629,9 @@ TreeElement.prototype = {
             if (this._childrenListNode)
                 this._childrenListNode.classList.remove("hidden");
         }
+
+        if (this.treeOutline && this.treeOutline.onhidden)
+            this.treeOutline.onhidden(this, x);
     },
 
     get shouldRefreshChildren() {

@@ -116,7 +116,7 @@ bool PageClientImpl::isViewInWindow()
     return webkitWebViewBaseIsInWindow(WEBKIT_WEB_VIEW_BASE(m_viewWidget));
 }
 
-void PageClientImpl::PageClientImpl::processDidCrash()
+void PageClientImpl::PageClientImpl::processDidExit()
 {
     notImplemented();
 }
@@ -237,7 +237,6 @@ void PageClientImpl::setFindIndicator(PassRefPtr<FindIndicator>, bool fadeOut, b
     notImplemented();
 }
 
-#if USE(ACCELERATED_COMPOSITING)
 void PageClientImpl::enterAcceleratedCompositingMode(const LayerTreeContext&)
 {
     notImplemented();
@@ -252,7 +251,6 @@ void PageClientImpl::updateAcceleratedCompositingMode(const LayerTreeContext&)
 {
     notImplemented();
 }
-#endif // USE(ACCELERATED_COMPOSITING)
 
 void PageClientImpl::pageClosed()
 {
@@ -279,14 +277,9 @@ void PageClientImpl::handleDownloadRequest(DownloadProxy* download)
     webkitWebViewBaseHandleDownloadRequest(WEBKIT_WEB_VIEW_BASE(m_viewWidget), download);
 }
 
-bool PageClientImpl::isWindowVisible()
-{
-    return webkitWebViewBaseIsWindowVisible(WEBKIT_WEB_VIEW_BASE(m_viewWidget));
-}
-
 void PageClientImpl::didCommitLoadForMainFrame()
 {
-    notImplemented();
+    webkitWebViewBaseResetClickCounter(WEBKIT_WEB_VIEW_BASE(m_viewWidget));
 }
 
 #if ENABLE(FULLSCREEN_API)

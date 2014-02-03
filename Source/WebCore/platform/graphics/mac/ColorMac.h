@@ -31,13 +31,17 @@
 
 #include "Color.h"
 
+#if USE(APPKIT)
 OBJC_CLASS NSColor;
+#endif
 
 namespace WebCore {
     
+#if USE(APPKIT)
     // These functions assume NSColors are in DeviceRGB colorspace
     Color colorFromNSColor(NSColor *);
     NSColor *nsColor(const Color&);
+#endif
 
     bool usesTestModeFocusRingColor();
     void setUsesTestModeFocusRingColor(bool);

@@ -42,7 +42,7 @@
 #include "HTTPCookieAcceptPolicy.h"
 #endif
 
-namespace CoreIPC {
+namespace IPC {
     class ArgumentDecoder;
     class ArgumentEncoder;
 }
@@ -52,8 +52,8 @@ namespace WebKit {
 struct WebProcessCreationParameters {
     WebProcessCreationParameters();
 
-    void encode(CoreIPC::ArgumentEncoder&) const;
-    static bool decode(CoreIPC::ArgumentDecoder&, WebProcessCreationParameters&);
+    void encode(IPC::ArgumentEncoder&) const;
+    static bool decode(IPC::ArgumentDecoder&, WebProcessCreationParameters&);
 
     String injectedBundlePath;
     SandboxExtension::Handle injectedBundlePathExtensionHandle;
@@ -78,11 +78,16 @@ struct WebProcessCreationParameters {
     Vector<String> urlSchemesRegisteredAsNoAccess;
     Vector<String> urlSchemesRegisteredAsDisplayIsolated;
     Vector<String> urlSchemesRegisteredAsCORSEnabled;
+#if ENABLE(CACHE_PARTITIONING)
+    Vector<String> urlSchemesRegisteredAsCachePartitioned;
+#endif
 #if ENABLE(CUSTOM_PROTOCOLS)
     Vector<String> urlSchemesRegisteredForCustomProtocols;
 #endif
 #if USE(SOUP)
+#if !ENABLE(CUSTOM_PROTOCOLS)
     Vector<String> urlSchemesRegistered;
+#endif
     String cookiePersistentStoragePath;
     uint32_t cookiePersistentStorageType;
     HTTPCookieAcceptPolicy cookieAcceptPolicy;
@@ -119,7 +124,7 @@ struct WebProcessCreationParameters {
     uint64_t nsURLCacheMemoryCapacity;
     uint64_t nsURLCacheDiskCapacity;
 
-    CoreIPC::MachPort acceleratedCompositingPort;
+    IPC::MachPort acceleratedCompositingPort;
 
     String uiProcessBundleResourcePath;
     SandboxExtension::Handle uiProcessBundleResourcePathExtensionHandle;
@@ -138,6 +143,8 @@ struct WebProcessCreationParameters {
 
     HashMap<unsigned, double> plugInAutoStartOriginHashes;
     Vector<String> plugInAutoStartOrigins;
+
+    bool memoryCacheDisabled;
 };
 
 } // namespace WebKit

@@ -34,11 +34,6 @@
 #include "Lookup.h"
 #include "ObjectPrototype.h"
 #include "Operations.h"
-
-#if !PLATFORM(MAC) && HAVE(LANGINFO_H)
-#include <langinfo.h>
-#endif
-
 #include <limits.h>
 #include <locale.h>
 #include <math.h>
@@ -47,6 +42,10 @@
 #include <wtf/Assertions.h>
 #include <wtf/MathExtras.h>
 #include <wtf/StringExtras.h>
+
+#if HAVE(LANGINFO_H)
+#include <langinfo.h>
+#endif
 
 #if HAVE(SYS_PARAM_H)
 #include <sys/param.h>
@@ -60,10 +59,12 @@
 #include <sys/timeb.h>
 #endif
 
-#if OS(DARWIN) && USE(CF)
-#include <CoreFoundation/CoreFoundation.h>
-#elif USE(ICU_UNICODE)
+#if !(OS(DARWIN) && USE(CF))
 #include <unicode/udat.h>
+#endif
+
+#if USE(CF)
+#include <CoreFoundation/CoreFoundation.h>
 #endif
 
 using namespace WTF;
@@ -162,36 +163,15 @@ static JSCell* formatLocaleDate(ExecState* exec, DateInstance*, double timeInMil
     else if (format != LocaleDate && !exec->argument(0).isUndefined())
         timeStyle = styleFromArgString(arg0String, timeStyle);
 
-    CFLocaleRef locale = CFLocaleCopyCurrent();
-    CFDateFormatterRef formatter = CFDateFormatterCreate(0, locale, dateStyle, timeStyle);
-    CFRelease(locale);
+    CFAbsoluteTime absoluteTime = floor(timeInMilliseconds / msPerSecond) - kCFAbsoluteTimeIntervalSince1970;
 
-    if (useCustomFormat) {
-        CFStringRef customFormatCFString = CFStringCreateWithCharacters(0, customFormatString.characters(), customFormatString.length());
-        CFDateFormatterSetFormat(formatter, customFormatCFString);
-        CFRelease(customFormatCFString);
-    }
-
-    CFStringRef string = CFDateFormatterCreateStringWithAbsoluteTime(0, formatter, floor(timeInMilliseconds / msPerSecond) - kCFAbsoluteTimeIntervalSince1970);
-
-    CFRelease(formatter);
-
-    // We truncate the string returned from CFDateFormatter if it's absurdly long (> 200 characters).
-    // That's not great error handling, but it just won't happen so it doesn't matter.
-    UChar buffer[200];
-    const size_t bufferLength = WTF_ARRAY_LENGTH(buffer);
-    size_t length = CFStringGetLength(string);
-    ASSERT(length <= bufferLength);
-    if (length > bufferLength)
-        length = bufferLength;
-    CFStringGetCharacters(string, CFRangeMake(0, length), buffer);
-
-    CFRelease(string);
-
-    return jsNontrivialString(exec, String(buffer, length));
+    auto formatter = adoptCF(CFDateFormatterCreate(kCFAllocatorDefault, adoptCF(CFLocaleCopyCurrent()).get(), dateStyle, timeStyle));
+    if (useCustomFormat)
+        CFDateFormatterSetFormat(formatter.get(), customFormatString.createCFString().get());
+    return jsNontrivialString(exec, adoptCF(CFDateFormatterCreateStringWithAbsoluteTime(kCFAllocatorDefault, formatter.get(), absoluteTime)).get());
 }
 
-#elif USE(ICU_UNICODE) && !UCONFIG_NO_FORMATTING
+#elif !UCONFIG_NO_FORMATTING
 
 static JSCell* formatLocaleDate(ExecState* exec, DateInstance*, double timeInMilliseconds, LocaleDateTimeFormat format)
 {
@@ -516,7 +496,7 @@ void DatePrototype::finishCreation(VM& vm, JSGlobalObject*)
 
 bool DatePrototype::getOwnPropertySlot(JSObject* object, ExecState* exec, PropertyName propertyName, PropertySlot& slot)
 {
-    return getStaticFunctionSlot<JSObject>(exec, ExecState::dateTable(exec), jsCast<DatePrototype*>(object), propertyName, slot);
+    return getStaticFunctionSlot<JSObject>(exec, ExecState::dateTable(exec->vm()), jsCast<DatePrototype*>(object), propertyName, slot);
 }
 
 // Functions

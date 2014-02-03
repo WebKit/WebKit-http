@@ -199,9 +199,6 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 - (BOOL)acceleratedCompositingEnabled;
 - (void)setAcceleratedCompositingEnabled:(BOOL)enabled;
 
-- (BOOL)cssCustomFilterEnabled;
-- (void)setCSSCustomFilterEnabled:(BOOL)enabled;
-
 - (BOOL)cssRegionsEnabled;
 - (void)setCSSRegionsEnabled:(BOOL)enabled;
 
@@ -259,6 +256,9 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 - (unsigned)audioSessionCategoryOverride;
 - (void)setAudioSessionCategoryOverride:(unsigned)override;
 
+- (BOOL)avKitEnabled;
+- (void)setAVKitEnabled:(bool)flag;
+
 // WARNING: this affect network performance. This must not be enabled for production use.
 // Enabling this makes WebCore reports the network data usage.
 // This is a global setting.
@@ -267,6 +267,21 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 
 - (void)setNetworkInterfaceName:(NSString *)name;
 - (NSString *)networkInterfaceName;
+
+- (void)_setMinimumZoomFontSize:(float)size;
+- (float)_minimumZoomFontSize;
+
+- (BOOL)diskImageCacheEnabled;
+- (void)setDiskImageCacheEnabled:(BOOL)enabled;
+
+- (unsigned)diskImageCacheMinimumImageSize;
+- (void)setDiskImageCacheMinimumImageSize:(unsigned)minimumSize;
+
+- (unsigned)diskImageCacheMaximumCacheSize;
+- (void)setDiskImageCacheMaximumCacheSize:(unsigned)maximumSize;
+
+- (NSString *)_diskImageCacheSavedCacheDirectory;
+- (void)_setDiskImageCacheSavedCacheDirectory:(NSString *)path;
 
 - (void)setMediaPlaybackAllowsAirPlay:(BOOL)flag;
 - (BOOL)mediaPlaybackAllowsAirPlay;

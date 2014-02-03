@@ -8,10 +8,24 @@ if test "$c_compiler" = "clang"; then
     CFLAGS="$CFLAGS -Qunused-arguments"
 fi
 
-# libstdc++ is at the moment the only option as the C++ standard library when compiling with Clang.
 # Suppress unused arguments warnings for C++ files as well.
 if test "$cxx_compiler" = "clang++"; then
-    CXXFLAGS="$CXXFLAGS -stdlib=libstdc++ -Qunused-arguments"
+    CXXFLAGS="$CXXFLAGS -Qunused-arguments"
+
+    # Default to libc++ as the standard library on Darwin, if it isn't already enforced through CXXFLAGS.
+    if test "$os_darwin" = "yes"; then
+        AS_CASE([$CXXFLAGS], [*-stdlib=*], [], [CXXFLAGS="$CXXFLAGS -stdlib=libc++"])
+    fi
+
+    # If Clang will be using libstdc++ as the standard library, version >= 4.8.1 should be in use.
+    AC_LANG_PUSH([C++])
+    AC_COMPILE_IFELSE([AC_LANG_PROGRAM([
+#if defined(__GLIBCXX__) && __GLIBCXX__ >= 20130531
+#include <type_traits>
+bool libstdcxxTest = std::is_trivially_destructible<bool>::value;
+#endif
+])], [], [AC_MSG_ERROR([libstdc++ >= 4.8.1 is required as the standard library used with the Clang compiler.])])
+    AC_LANG_POP([C++])
 fi
 
 if test "$host_cpu" = "sh4"; then

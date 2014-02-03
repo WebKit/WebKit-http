@@ -39,8 +39,9 @@ public:
     FailedFinalizer(Plan&);
     virtual ~FailedFinalizer();
     
-    virtual bool finalize() OVERRIDE;
-    virtual bool finalizeFunction() OVERRIDE;
+    virtual size_t codeSize() override;
+    virtual bool finalize() override;
+    virtual bool finalizeFunction() override;
 };
 
 } } // namespace JSC::DFG

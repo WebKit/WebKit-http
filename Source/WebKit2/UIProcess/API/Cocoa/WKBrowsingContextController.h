@@ -27,6 +27,7 @@
 #import <WebKit2/WKBrowsingContextGroup.h>
 #import <WebKit2/WKFoundation.h>
 #import <WebKit2/WKProcessGroup.h>
+#import <WebKit2/WKRenderingProgressEvents.h>
 
 #if WK_API_ENABLED
 
@@ -36,16 +37,8 @@
 @protocol WKBrowsingContextLoadDelegate;
 @protocol WKBrowsingContextPolicyDelegate;
 
-typedef NS_OPTIONS(NSUInteger, WKRenderingProgressEvents) {
-    WKRenderingProgressEventFirstLayout = 1 << 0,
-    WKRenderingProgressEventFirstPaintWithSignificantArea = 1 << 2,
-};
-
 WK_API_CLASS
 @interface WKBrowsingContextController : NSObject
-
-@property (readonly) WKProcessGroup *processGroup;
-@property (readonly) WKBrowsingContextGroup *browsingContextGroup;
 
 #pragma mark Delegates
 
@@ -110,6 +103,9 @@ WK_API_CLASS
 - (void)goToBackForwardListItem:(WKBackForwardListItem *)item;
 
 @property(readonly) WKBackForwardList *backForwardList;
+
+@property (readonly) NSData *sessionState;
+- (void)restoreFromSessionState:(NSData *)sessionState;
 
 #pragma mark Active Load Introspection
 

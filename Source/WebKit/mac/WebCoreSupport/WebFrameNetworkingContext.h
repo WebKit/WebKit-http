@@ -38,6 +38,12 @@ public:
     static void ensurePrivateBrowsingSession();
     static void destroyPrivateBrowsingSession();
 
+#if PLATFORM(IOS)
+    // FIXME: If MobileSafari ever switches to per-tab or non-shared private storage, then this can be removed.
+    // <rdar://problem/10075665> Sub-TLF: Per-tab private browsing
+    static void clearPrivateBrowsingSessionCookieStorage();
+#endif
+
 private:
 
     WebFrameNetworkingContext(WebCore::Frame* frame)
@@ -45,12 +51,12 @@ private:
     {
     }
 
-    virtual bool needsSiteSpecificQuirks() const OVERRIDE;
-    virtual bool localFileContentSniffingEnabled() const OVERRIDE;
-    virtual SchedulePairHashSet* scheduledRunLoopPairs() const OVERRIDE;
-    virtual RetainPtr<CFDataRef> sourceApplicationAuditData() const OVERRIDE;
-    virtual WebCore::ResourceError blockedError(const WebCore::ResourceRequest&) const OVERRIDE;
-    virtual WebCore::NetworkStorageSession& storageSession() const OVERRIDE;
+    virtual bool needsSiteSpecificQuirks() const override;
+    virtual bool localFileContentSniffingEnabled() const override;
+    virtual SchedulePairHashSet* scheduledRunLoopPairs() const override;
+    virtual RetainPtr<CFDataRef> sourceApplicationAuditData() const override;
+    virtual WebCore::ResourceError blockedError(const WebCore::ResourceRequest&) const override;
+    virtual WebCore::NetworkStorageSession& storageSession() const override;
 
 };
 

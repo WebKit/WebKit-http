@@ -153,7 +153,7 @@ void ImageBuffer::draw(GraphicsContext* destinationContext, ColorSpace styleColo
 }
 
 void ImageBuffer::drawPattern(GraphicsContext* context, const FloatRect& srcRect, const AffineTransform& patternTransform,
-                              const FloatPoint& phase, ColorSpace styleColorSpace, CompositeOperator op, const FloatRect& destRect)
+    const FloatPoint& phase, ColorSpace styleColorSpace, CompositeOperator op, const FloatRect& destRect, BlendMode)
 {
     RefPtr<Image> image = copyImage(DontCopyBackingStore);
     image->drawPattern(context, srcRect, patternTransform, phase, styleColorSpace, op, destRect);
@@ -406,7 +406,6 @@ void ImageBufferData::paintToTextureMapper(TextureMapper* textureMapper, const F
 }
 #endif
 
-#if USE(ACCELERATED_COMPOSITING)
 PlatformLayer* ImageBuffer::platformLayer() const
 {
 #if ENABLE(ACCELERATED_2D_CANVAS)
@@ -415,6 +414,5 @@ PlatformLayer* ImageBuffer::platformLayer() const
 #endif
     return 0;
 }
-#endif
 
 } // namespace WebCore

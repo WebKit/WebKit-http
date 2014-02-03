@@ -35,19 +35,19 @@ namespace WebCore {
 class CryptoAlgorithmRSAESParams;
 class CryptoKeyRSA;
 
-class CryptoAlgorithmRSAES_PKCS1_v1_5 FINAL : public CryptoAlgorithm {
+class CryptoAlgorithmRSAES_PKCS1_v1_5 final : public CryptoAlgorithm {
 public:
     static const char* const s_name;
     static const CryptoAlgorithmIdentifier s_identifier = CryptoAlgorithmIdentifier::RSAES_PKCS1_v1_5;
 
     static std::unique_ptr<CryptoAlgorithm> create();
 
-    virtual CryptoAlgorithmIdentifier identifier() const OVERRIDE;
+    virtual CryptoAlgorithmIdentifier identifier() const override;
 
-    virtual void encrypt(const CryptoAlgorithmParameters&, const CryptoKey&, const CryptoOperationData&, VectorCallback, VoidCallback failureCallback, ExceptionCode&) OVERRIDE;
-    virtual void decrypt(const CryptoAlgorithmParameters&, const CryptoKey&, const CryptoOperationData&, VectorCallback, VoidCallback failureCallback, ExceptionCode&) OVERRIDE;
-    virtual void generateKey(const CryptoAlgorithmParameters&, bool extractable, CryptoKeyUsage, KeyOrKeyPairCallback, VoidCallback failureCallback, ExceptionCode&) OVERRIDE;
-    virtual void importKey(const CryptoAlgorithmParameters&, const CryptoKeyData&, bool extractable, CryptoKeyUsage, KeyCallback, VoidCallback failureCallback, ExceptionCode&) OVERRIDE;
+    virtual void encrypt(const CryptoAlgorithmParameters&, const CryptoKey&, const CryptoOperationData&, VectorCallback, VoidCallback failureCallback, ExceptionCode&) override;
+    virtual void decrypt(const CryptoAlgorithmParameters&, const CryptoKey&, const CryptoOperationData&, VectorCallback, VoidCallback failureCallback, ExceptionCode&) override;
+    virtual void generateKey(const CryptoAlgorithmParameters&, bool extractable, CryptoKeyUsage, KeyOrKeyPairCallback, VoidCallback failureCallback, ExceptionCode&) override;
+    virtual void importKey(const CryptoAlgorithmParameters&, const CryptoKeyData&, bool extractable, CryptoKeyUsage, KeyCallback, VoidCallback failureCallback, ExceptionCode&) override;
 
 private:
     CryptoAlgorithmRSAES_PKCS1_v1_5();

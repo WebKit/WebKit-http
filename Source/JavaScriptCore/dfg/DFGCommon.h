@@ -87,15 +87,6 @@ inline bool validationEnabled()
 #endif
 }
 
-inline bool enableConcurrentJIT()
-{
-#if ENABLE(CONCURRENT_JIT)
-    return Options::enableConcurrentJIT() && Options::numberOfCompilerThreads();
-#else
-    return false;
-#endif
-}
-
 inline bool enableInt52()
 {
 #if USE(JSVALUE64)
@@ -182,8 +173,6 @@ enum RefCountState {
 
 enum OperandSpeculationMode { AutomaticOperandSpeculation, ManualOperandSpeculation };
 
-enum SpeculationDirection { ForwardSpeculation, BackwardSpeculation };
-
 enum ProofStatus { NeedsCheck, IsProved };
 
 inline bool isProved(ProofStatus proofStatus)
@@ -237,7 +226,13 @@ namespace JSC { namespace DFG {
 
 // Put things here that must be defined even if ENABLE(DFG_JIT) is false.
 
-enum CapabilityLevel { CannotCompile, CanInline, CanCompile, CanCompileAndInline, CapabilityLevelNotSet };
+enum CapabilityLevel {
+    CannotCompile,
+    CanInline,
+    CanCompile,
+    CanCompileAndInline,
+    CapabilityLevelNotSet
+};
 
 inline bool canCompile(CapabilityLevel level)
 {

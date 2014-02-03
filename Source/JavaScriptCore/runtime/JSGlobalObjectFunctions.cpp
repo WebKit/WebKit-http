@@ -164,6 +164,7 @@ bool isStrWhiteSpace(UChar c)
         case 0x000D:
         case 0x0020:
         case 0x00A0:
+        case 0x180E: // This character used to be in Zs category before Unicode 6.3, and EcmaScript says that we should keep treating it as such.
         case 0x2028:
         case 0x2029:
         case 0xFEFF:
@@ -308,7 +309,7 @@ static double parseInt(const String& s, const CharType* data, int radix)
     if (number >= mantissaOverflowLowerBound) {
         if (radix == 10) {
             size_t parsedLength;
-            number = parseDouble(s.characters() + firstDigitPosition, p - firstDigitPosition, parsedLength);
+            number = parseDouble(s.deprecatedCharacters() + firstDigitPosition, p - firstDigitPosition, parsedLength);
         } else if (radix == 2 || radix == 4 || radix == 8 || radix == 16 || radix == 32)
             number = parseIntOverflow(s.substringSharingImpl(firstDigitPosition, p - firstDigitPosition).utf8().data(), p - firstDigitPosition, radix);
     }

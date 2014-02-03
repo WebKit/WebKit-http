@@ -31,14 +31,13 @@
 #include "WebKit2Initialize.h"
 #include <WebCore/AuthenticationChallenge.h>
 #include <WebCore/NetworkingContext.h>
-#include <WebCore/ResourceHandle.h>
+#include <WebCore/SoupNetworkSession.h>
 #include <WebKit2/WebProcess.h>
 #include <gtk/gtk.h>
 #include <libintl.h>
 #include <libsoup/soup.h>
 #include <unistd.h>
 #include <wtf/RunLoop.h>
-#include <wtf/gobject/GOwnPtr.h>
 #include <wtf/gobject/GRefPtr.h>
 
 using namespace WebCore;
@@ -71,15 +70,13 @@ WK_EXPORT int WebProcessMainGtk(int argc, char* argv[])
     // Despite using system CAs to validate certificates we're
     // accepting invalid certificates by default. New API will be
     // added later to let client accept/discard invalid certificates.
-    SoupSession* session = WebCore::ResourceHandle::defaultSession();
-    g_object_set(session, SOUP_SESSION_SSL_USE_SYSTEM_CA_FILE, TRUE,
-                 SOUP_SESSION_SSL_STRICT, FALSE, NULL);
+    SoupNetworkSession::defaultSession().setSSLPolicy(SoupNetworkSession::SSLUseSystemCAFile);
 
     RunLoop::run();
 
-    if (SoupSessionFeature* soupCache = soup_session_get_feature(session, SOUP_TYPE_CACHE)) {
-        soup_cache_flush(SOUP_CACHE(soupCache));
-        soup_cache_dump(SOUP_CACHE(soupCache));
+    if (SoupCache* soupCache = SoupNetworkSession::defaultSession().cache()) {
+        soup_cache_flush(soupCache);
+        soup_cache_dump(soupCache);
     }
 
     return 0;

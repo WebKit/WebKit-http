@@ -51,6 +51,10 @@ public:
     const VisibleSelection& startingSelection() const { return m_startingSelection; }
     const VisibleSelection& endingSelection() const { return m_endingSelection; }
 
+#if PLATFORM(IOS)
+    virtual bool isInsertTextCommand() const { return false; }
+#endif
+    
     virtual bool isSimpleEditCommand() const { return false; }
     virtual bool isCompositeEditCommand() const { return false; }
     virtual bool isEditCommandComposition() const { return false; }
@@ -97,7 +101,7 @@ protected:
 #endif
 
 private:
-    virtual bool isSimpleEditCommand() const OVERRIDE { return true; }
+    virtual bool isSimpleEditCommand() const override { return true; }
 };
 
 inline SimpleEditCommand* toSimpleEditCommand(EditCommand* command)

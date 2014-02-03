@@ -31,16 +31,13 @@
 #include "MIMETypeRegistry.h"
 #include "TextEncoding.h"
 #include <stdio.h>
+#include <unicode/uidna.h>
 #include <wtf/HashMap.h>
 #include <wtf/HexNumber.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/StringBuilder.h>
 #include <wtf/text/StringHash.h>
-
-#if USE(ICU_UNICODE)
-#include <unicode/uidna.h>
-#endif
 
 // FIXME: This file makes too much use of the + operator on String.
 // We either have to optimize that operator so it doesn't involve
@@ -589,9 +586,8 @@ unsigned short URL::port() const
     if (m_hostEnd == m_portEnd || m_hostEnd == m_portEnd - 1)
         return 0;
 
-    const UChar* stringData = m_string.characters();
     bool ok = false;
-    unsigned number = charactersToUIntStrict(stringData + m_hostEnd + 1, m_portEnd - m_hostEnd - 1, &ok);
+    unsigned number = charactersToUIntStrict(m_string.deprecatedCharacters() + m_hostEnd + 1, m_portEnd - m_hostEnd - 1, &ok);
     if (!ok || number > maximumValidPortNumber)
         return invalidPortNumber;
     return number;
@@ -986,9 +982,27 @@ void URL::parse(const String& string)
     parse(buffer.data(), &string);
 }
 
+#if PLATFORM(IOS)
+static bool shouldCanonicalizeScheme = true;
+
+void enableURLSchemeCanonicalization(bool enableSchemeCanonicalization)
+{
+    shouldCanonicalizeScheme = enableSchemeCanonicalization;
+}
+#endif
+
 template<size_t length>
 static inline bool equal(const char* a, const char (&b)[length])
 {
+#if PLATFORM(IOS)
+    if (!shouldCanonicalizeScheme) {
+        for (size_t i = 0; i < length; ++i) {
+            if (toASCIILower(a[i]) != b[i])
+                return false;
+        }
+        return true;
+    }
+#endif
     for (size_t i = 0; i < length; ++i) {
         if (a[i] != b[i])
             return false;
@@ -1109,17 +1123,6 @@ void URL::parse(const char* url, const String* originalString)
         && isLetterMatchIgnoringCase(url[1], 'i')
         && isLetterMatchIgnoringCase(url[2], 'l')
         && isLetterMatchIgnoringCase(url[3], 'e');
-
-#if PLATFORM(BLACKBERRY)
-    // Parse local: urls the same as file: urls.
-    if (!isFile)
-        isFile = schemeEnd == 5
-            && isLetterMatchIgnoringCase(url[0], 'l')
-            && isLetterMatchIgnoringCase(url[1], 'o')
-            && isLetterMatchIgnoringCase(url[2], 'c')
-            && isLetterMatchIgnoringCase(url[3], 'a')
-            && isLetterMatchIgnoringCase(url[4], 'l');
-#endif
 
     m_protocolIsInHTTPFamily = isLetterMatchIgnoringCase(url[0], 'h')
         && isLetterMatchIgnoringCase(url[1], 't')
@@ -1262,8 +1265,18 @@ void URL::parse(const char* url, const String* originalString)
 
     // copy in the scheme
     const char *schemeEndPtr = url + schemeEnd;
+#if PLATFORM(IOS)
+    if (shouldCanonicalizeScheme || m_protocolIsInHTTPFamily) {
+        while (strPtr < schemeEndPtr)
+            *p++ = toASCIILower(*strPtr++);
+    } else {
+        while (strPtr < schemeEndPtr)
+            *p++ = *strPtr++;
+    }
+#else
     while (strPtr < schemeEndPtr)
         *p++ = toASCIILower(*strPtr++);
+#endif
     m_schemeEnd = p - buffer.data();
 
     bool hostIsLocalHost = portEnd - userStart == 9
@@ -1488,17 +1501,15 @@ static void appendEncodedHostname(UCharBuffer& buffer, const UChar* str, unsigne
         return;
     }
 
-#if USE(ICU_UNICODE)
     UChar hostnameBuffer[hostnameBufferLength];
     UErrorCode error = U_ZERO_ERROR;
     int32_t numCharactersConverted = uidna_IDNToASCII(str, strLen, hostnameBuffer,
         hostnameBufferLength, UIDNA_ALLOW_UNASSIGNED, 0, &error);
     if (error == U_ZERO_ERROR)
         buffer.append(hostnameBuffer, numCharactersConverted);
-#endif
 }
 
-static void findHostnamesInMailToURL(const UChar* str, int strLen, Vector<pair<int, int>>& nameRanges)
+static void findHostnamesInMailToURL(const UChar* str, int strLen, Vector<std::pair<int, int>>& nameRanges)
 {
     // In a mailto: URL, host names come after a '@' character and end with a '>' or ',' or '?' or end of string character.
     // Skip quoted strings so that characters in them don't confuse us.
@@ -1614,28 +1625,28 @@ static void encodeHostnames(const String& str, UCharBuffer& output)
     output.clear();
 
     if (protocolIs(str, "mailto")) {
-        Vector<pair<int, int>> hostnameRanges;
-        findHostnamesInMailToURL(str.characters(), str.length(), hostnameRanges);
+        Vector<std::pair<int, int>> hostnameRanges;
+        findHostnamesInMailToURL(str.deprecatedCharacters(), str.length(), hostnameRanges);
         int n = hostnameRanges.size();
         int p = 0;
         for (int i = 0; i < n; ++i) {
-            const pair<int, int>& r = hostnameRanges[i];
-            output.append(&str.characters()[p], r.first - p);
-            appendEncodedHostname(output, &str.characters()[r.first], r.second - r.first);
+            const std::pair<int, int>& r = hostnameRanges[i];
+            output.append(&str.deprecatedCharacters()[p], r.first - p);
+            appendEncodedHostname(output, &str.deprecatedCharacters()[r.first], r.second - r.first);
             p = r.second;
         }
         // This will copy either everything after the last hostname, or the
         // whole thing if there is no hostname.
-        output.append(&str.characters()[p], str.length() - p);
+        output.append(&str.deprecatedCharacters()[p], str.length() - p);
     } else {
         int hostStart, hostEnd;
-        if (findHostnameInHierarchicalURL(str.characters(), str.length(), hostStart, hostEnd)) {
-            output.append(str.characters(), hostStart); // Before hostname.
-            appendEncodedHostname(output, &str.characters()[hostStart], hostEnd - hostStart);
-            output.append(&str.characters()[hostEnd], str.length() - hostEnd); // After hostname.
+        if (findHostnameInHierarchicalURL(str.deprecatedCharacters(), str.length(), hostStart, hostEnd)) {
+            output.append(str.deprecatedCharacters(), hostStart); // Before hostname.
+            appendEncodedHostname(output, &str.deprecatedCharacters()[hostStart], hostEnd - hostStart);
+            output.append(&str.deprecatedCharacters()[hostEnd], str.length() - hostEnd); // After hostname.
         } else {
             // No hostname to encode, return the input.
-            output.append(str.characters(), str.length());
+            output.append(str.deprecatedCharacters(), str.length());
         }
     }
 }
@@ -1757,6 +1768,16 @@ bool URL::isLocalFile() const
 bool protocolIsJavaScript(const String& url)
 {
     return protocolIs(url, "javascript");
+}
+
+bool protocolIsInHTTPFamily(const String& url)
+{
+    // Do the comparison without making a new string object.
+    return isLetterMatchIgnoringCase(url[0], 'h')
+        && isLetterMatchIgnoringCase(url[1], 't')
+        && isLetterMatchIgnoringCase(url[2], 't')
+        && isLetterMatchIgnoringCase(url[3], 'p')
+        && (url[4] == ':' || (isLetterMatchIgnoringCase(url[4], 's') && url[5] == ':'));
 }
 
 const URL& blankURL()
@@ -1886,11 +1907,6 @@ bool portAllowed(const URL& url)
     // Allow any port number in a file URL, since the port number is ignored.
     if (url.protocolIs("file"))
         return true;
-
-#if PLATFORM(BLACKBERRY)
-    if (url.protocolIs("local"))
-        return true;
-#endif
 
     return false;
 }

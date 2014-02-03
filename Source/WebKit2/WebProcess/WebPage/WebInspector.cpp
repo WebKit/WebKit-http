@@ -38,6 +38,7 @@
 #include <WebCore/MainFrame.h>
 #include <WebCore/Page.h>
 #include <WebCore/ScriptController.h>
+#include <inspector/InspectorAgentBase.h>
 #include <bindings/ScriptValue.h>
 #include <wtf/text/StringConcatenate.h>
 
@@ -78,7 +79,7 @@ WebPage* WebInspector::createInspectorPage()
 
     if (!WebProcess::shared().parentProcessConnection()->sendSync(Messages::WebInspectorProxy::CreateInspectorPage(),
             Messages::WebInspectorProxy::CreateInspectorPage::Reply(inspectorPageID, parameters),
-            m_page->pageID(), CoreIPC::Connection::NoTimeout)) {
+            m_page->pageID(), std::chrono::milliseconds::max())) {
         return 0;
     }
 
@@ -89,9 +90,9 @@ WebPage* WebInspector::createInspectorPage()
     m_inspectorPage = WebProcess::shared().webPage(inspectorPageID);
     ASSERT(m_inspectorPage);
 
-    OwnPtr<WebInspectorFrontendClient> frontendClient = adoptPtr(new WebInspectorFrontendClient(m_page, m_inspectorPage));
+    auto frontendClient = std::make_unique<WebInspectorFrontendClient>(m_page, m_inspectorPage);
     m_frontendClient = frontendClient.get();
-    m_inspectorPage->corePage()->inspectorController()->setInspectorFrontendClient(frontendClient.release());
+    m_inspectorPage->corePage()->inspectorController().setInspectorFrontendClient(std::move(frontendClient));
     return m_inspectorPage;
 }
 
@@ -162,12 +163,12 @@ void WebInspector::setToolbarHeight(unsigned height)
 // Called by WebInspector messages
 void WebInspector::show()
 {
-    m_page->corePage()->inspectorController()->show();
+    m_page->corePage()->inspectorController().show();
 }
 
 void WebInspector::close()
 {
-    m_page->corePage()->inspectorController()->close();
+    m_page->corePage()->inspectorController().close();
 }
 
 void WebInspector::didSave(const String& url)
@@ -202,19 +203,19 @@ void WebInspector::detached()
 
 void WebInspector::evaluateScriptForTest(long callID, const String& script)
 {
-    m_page->corePage()->inspectorController()->evaluateForTestInFrontend(callID, script);
+    m_page->corePage()->inspectorController().evaluateForTestInFrontend(callID, script);
 }
 
 void WebInspector::showConsole()
 {
-    m_page->corePage()->inspectorController()->show();
+    m_page->corePage()->inspectorController().show();
     if (m_frontendClient)
         m_frontendClient->showConsole();
 }
 
 void WebInspector::showResources()
 {
-    m_page->corePage()->inspectorController()->show();
+    m_page->corePage()->inspectorController().show();
     if (m_frontendClient)
         m_frontendClient->showResources();
 }
@@ -225,68 +226,58 @@ void WebInspector::showMainResourceForFrame(uint64_t frameID)
     if (!frame)
         return;
 
-    m_page->corePage()->inspectorController()->show();
+    m_page->corePage()->inspectorController().show();
     if (m_frontendClient)
         m_frontendClient->showMainResourceForFrame(frame->coreFrame());
 }
 
 void WebInspector::startJavaScriptDebugging()
 {
-#if ENABLE(JAVASCRIPT_DEBUGGER)
-    m_page->corePage()->inspectorController()->show();
+    m_page->corePage()->inspectorController().show();
     if (m_frontendClient)
         m_frontendClient->setDebuggingEnabled(true);
-#endif
 }
 
 void WebInspector::stopJavaScriptDebugging()
 {
-#if ENABLE(JAVASCRIPT_DEBUGGER)
-    m_page->corePage()->inspectorController()->show();
+    m_page->corePage()->inspectorController().show();
     if (m_frontendClient)
         m_frontendClient->setDebuggingEnabled(false);
-#endif
 }
 
 void WebInspector::setJavaScriptProfilingEnabled(bool enabled)
 {
-#if ENABLE(JAVASCRIPT_DEBUGGER)
-    m_page->corePage()->inspectorController()->show();
+    m_page->corePage()->inspectorController().show();
     if (!m_frontendClient)
         return;
 
-    m_page->corePage()->inspectorController()->setProfilerEnabled(enabled);
-#endif
+    m_page->corePage()->inspectorController().setProfilerEnabled(enabled);
 }
 
 void WebInspector::startJavaScriptProfiling()
 {
-#if ENABLE(JAVASCRIPT_DEBUGGER)
-    m_page->corePage()->inspectorController()->show();
+    m_page->corePage()->inspectorController().show();
     if (m_frontendClient)
         m_frontendClient->startProfilingJavaScript();
-#endif
 }
 
 void WebInspector::stopJavaScriptProfiling()
 {
-#if ENABLE(JAVASCRIPT_DEBUGGER)
-    m_page->corePage()->inspectorController()->show();
+    m_page->corePage()->inspectorController().show();
     if (m_frontendClient)
         m_frontendClient->stopProfilingJavaScript();
-#endif
 }
 
 void WebInspector::startPageProfiling()
 {
-    m_page->corePage()->inspectorController()->show();
+    m_page->corePage()->inspectorController().show();
     if (m_frontendClient)
         m_frontendClient->setTimelineProfilingEnabled(true);
 }
 
 void WebInspector::stopPageProfiling()
 {
-    m_page->corePage()->inspectorController()->show();
+    m_page->corePage()->inspectorController().show();
     if (m_frontendClient)
         m_frontendClient->setTimelineProfilingEnabled(false);
 }
@@ -310,7 +301,7 @@ void WebInspector::sendMessageToRemoteFrontend(const String& message)
 
 void WebInspector::dispatchMessageFromRemoteFrontend(const String& message)
 {
-    m_page->corePage()->inspectorController()->dispatchMessageFromFrontend(message);
+    m_page->corePage()->inspectorController().dispatchMessageFromFrontend(message);
 }
 
 void WebInspector::remoteFrontendConnected()
@@ -319,14 +310,14 @@ void WebInspector::remoteFrontendConnected()
     // Switching between in-process and remote inspectors isn't supported yet.
     ASSERT(!m_inspectorPage);
     
-    m_page->corePage()->inspectorController()->connectFrontend(m_frontendChannel);
+    m_page->corePage()->inspectorController().connectFrontend(m_frontendChannel);
     m_remoteFrontendConnected = true;
 }
 
 void WebInspector::remoteFrontendDisconnected()
 {
     ASSERT(m_remoteFrontendConnected);
-    m_page->corePage()->inspectorController()->disconnectFrontend();
+    m_page->corePage()->inspectorController().disconnectFrontend(Inspector::InspectorDisconnectReason::InspectorDestroyed);
     m_remoteFrontendConnected = false;
 }
 #endif

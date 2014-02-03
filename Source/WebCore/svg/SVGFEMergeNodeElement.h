@@ -27,7 +27,7 @@
 
 namespace WebCore {
 
-class SVGFEMergeNodeElement FINAL : public SVGElement {
+class SVGFEMergeNodeElement final : public SVGElement {
 public:
     static PassRefPtr<SVGFEMergeNodeElement> create(const QualifiedName&, Document&);
 
@@ -35,10 +35,10 @@ private:
     SVGFEMergeNodeElement(const QualifiedName&, Document&);
 
     bool isSupportedAttribute(const QualifiedName&);
-    virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
-    virtual void svgAttributeChanged(const QualifiedName&);
+    virtual void parseAttribute(const QualifiedName&, const AtomicString&) override;
+    virtual void svgAttributeChanged(const QualifiedName&) override;
 
-    virtual bool rendererIsNeeded(const RenderStyle&) OVERRIDE { return false; }
+    virtual bool rendererIsNeeded(const RenderStyle&) override { return false; }
 
     BEGIN_DECLARE_ANIMATED_PROPERTIES(SVGFEMergeNodeElement)
         DECLARE_ANIMATED_STRING(In1, in1)

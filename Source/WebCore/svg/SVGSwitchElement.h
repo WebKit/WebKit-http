@@ -28,7 +28,7 @@
 
 namespace WebCore {
 
-class SVGSwitchElement FINAL : public SVGGraphicsElement,
+class SVGSwitchElement final : public SVGGraphicsElement,
                                public SVGExternalResourcesRequired {
 public:
     static PassRefPtr<SVGSwitchElement> create(const QualifiedName&, Document&);
@@ -36,11 +36,11 @@ public:
 private:
     SVGSwitchElement(const QualifiedName&, Document&);
     
-    virtual bool isValid() const { return SVGTests::isValid(); }
-    virtual bool supportsFocus() const OVERRIDE { return true; }
+    virtual bool isValid() const override { return SVGTests::isValid(); }
+    virtual bool supportsFocus() const override { return true; }
 
-    virtual bool childShouldCreateRenderer(const Node&) const OVERRIDE;
-    virtual RenderElement* createRenderer(PassRef<RenderStyle>) OVERRIDE;
+    virtual bool childShouldCreateRenderer(const Node&) const override;
+    virtual RenderPtr<RenderElement> createElementRenderer(PassRef<RenderStyle>) override;
 
     BEGIN_DECLARE_ANIMATED_PROPERTIES(SVGSwitchElement)
         DECLARE_ANIMATED_BOOLEAN(ExternalResourcesRequired, externalResourcesRequired)

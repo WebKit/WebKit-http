@@ -27,13 +27,13 @@
 
 namespace WebCore {
 
-class SVGAnimateColorElement FINAL : public SVGAnimateElement {
+class SVGAnimateColorElement final : public SVGAnimateElement {
 public:
     static PassRefPtr<SVGAnimateColorElement> create(const QualifiedName&, Document&);
 
 private:
     SVGAnimateColorElement(const QualifiedName&, Document&);
-    virtual void determinePropertyValueTypes(const String& from, const String& to);
+    virtual void determinePropertyValueTypes(const String& from, const String& to) override;
 };
 
 } // namespace WebCore

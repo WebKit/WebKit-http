@@ -42,6 +42,9 @@
 
 #if ENABLE(INDEXED_DATABASE)
 #include "IDBDatabaseMetadata.h"
+#include "IDBGetResult.h"
+#include "IDBKeyData.h"
+#include "IDBKeyRangeData.h"
 #endif
 
 namespace WebCore {
@@ -89,6 +92,31 @@ IndexedDB::CursorType CrossThreadCopierBase<false, false, IndexedDB::CursorType>
 }
 
 CrossThreadCopierBase<false, false, IDBDatabaseMetadata>::Type CrossThreadCopierBase<false, false, IDBDatabaseMetadata>::copy(const IDBDatabaseMetadata& metadata)
+{
+    return metadata.isolatedCopy();
+}
+
+CrossThreadCopierBase<false, false, IDBGetResult>::Type CrossThreadCopierBase<false, false, IDBGetResult>::copy(const IDBGetResult& result)
+{
+    return result.isolatedCopy();
+}
+
+CrossThreadCopierBase<false, false, IDBIndexMetadata>::Type CrossThreadCopierBase<false, false, IDBIndexMetadata>::copy(const IDBIndexMetadata& metadata)
+{
+    return metadata.isolatedCopy();
+}
+
+CrossThreadCopierBase<false, false, IDBKeyData>::Type CrossThreadCopierBase<false, false, IDBKeyData>::copy(const IDBKeyData& keyData)
+{
+    return keyData.isolatedCopy();
+}
+
+CrossThreadCopierBase<false, false, IDBKeyRangeData>::Type CrossThreadCopierBase<false, false, IDBKeyRangeData>::copy(const IDBKeyRangeData& keyRangeData)
+{
+    return keyRangeData.isolatedCopy();
+}
+
+CrossThreadCopierBase<false, false, IDBObjectStoreMetadata>::Type CrossThreadCopierBase<false, false, IDBObjectStoreMetadata>::copy(const IDBObjectStoreMetadata& metadata)
 {
     return metadata.isolatedCopy();
 }

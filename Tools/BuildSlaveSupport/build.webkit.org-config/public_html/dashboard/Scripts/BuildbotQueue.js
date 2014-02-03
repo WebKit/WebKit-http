@@ -33,6 +33,7 @@ BuildbotQueue = function(buildbot, id, info)
     this.buildbot = buildbot;
     this.id = id;
 
+    this.branch = info.branch || null;
     this.platform = info.platform.name || "unknown";
     this.debug = info.debug || false;
     this.builder = info.builder || false;
@@ -68,14 +69,6 @@ BuildbotQueue.prototype = {
         return this.buildbot.baseURL + "builders/" + encodeURIComponent(this.id) + "?numbuilds=50";
     },
 
-    get pendingIterationsCount()
-    {
-        var firstFinishedIteration = this.mostRecentFinishedIteration;
-        if (!firstFinishedIteration)
-            return this.iterations.length;
-        return this.iterations.indexOf(firstFinishedIteration);
-    },
-
     get recentFailedIterationCount()
     {
         var firstFinishedIteration = this.mostRecentFinishedIteration;
@@ -83,25 +76,20 @@ BuildbotQueue.prototype = {
         return this.iterations.indexOf(mostRecentSuccessfulIteration) - this.iterations.indexOf(firstFinishedIteration);
     },
 
-    get mostRecentIteration()
-    {
-        return this.iterations[0];
-    },
-
-    get firstRecentFailedIteration()
+    get firstRecentUnsuccessfulIteration()
     {
         if (!this.iterations.length)
             return null;
 
         for (var i = 0; i < this.iterations.length; ++i) {
-            if (!this.iterations[i].finished || this.iterations[i].failed)
+            if (!this.iterations[i].finished || !this.iterations[i].successful)
                 continue;
-            if (this.iterations[i - 1] && this.iterations[i - 1].failed)
+            if (this.iterations[i - 1] && this.iterations[i - 1].finished && !this.iterations[i - 1].successful)
                 return this.iterations[i - 1];
             return null;
         }
 
-        if (this.iterations[this.iterations.length - 1].failed)
+        if (!this.iterations[this.iterations.length - 1].successful)
             return this.iterations[this.iterations.length - 1];
 
         return null;
@@ -121,7 +109,7 @@ BuildbotQueue.prototype = {
     get mostRecentSuccessfulIteration()
     {
         for (var i = 0; i < this.iterations.length; ++i) {
-            if (!this.iterations[i].finished || this.iterations[i].failed)
+            if (!this.iterations[i].finished || !this.iterations[i].successful)
                 continue;
             return this.iterations[i];
         }
@@ -166,7 +154,7 @@ BuildbotQueue.prototype = {
             this.sortIterations();
 
             this.dispatchEventToListeners(BuildbotQueue.Event.IterationsAdded, {addedIterations: newIterations});
-        }.bind(this));
+        }.bind(this), {withCredentials: this.buildbot.needsAuthentication});
     },
 
     sortIterations: function()

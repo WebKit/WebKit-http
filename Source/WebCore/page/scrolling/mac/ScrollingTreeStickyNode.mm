@@ -26,10 +26,11 @@
 #include "config.h"
 #include "ScrollingTreeStickyNode.h"
 
-#if ENABLE(THREADED_SCROLLING)
+#if ENABLE(ASYNC_SCROLLING)
 
 #include "ScrollingStateStickyNode.h"
 #include "ScrollingTree.h"
+#include <QuartzCore/CALayer.h>
 
 namespace WebCore {
 
@@ -39,7 +40,7 @@ PassOwnPtr<ScrollingTreeStickyNode> ScrollingTreeStickyNode::create(ScrollingTre
 }
 
 ScrollingTreeStickyNode::ScrollingTreeStickyNode(ScrollingTree& scrollingTree, ScrollingNodeID nodeID)
-    : ScrollingTreeNode(scrollingTree, nodeID)
+    : ScrollingTreeNode(scrollingTree, StickyNode, nodeID)
 {
 }
 
@@ -47,15 +48,15 @@ ScrollingTreeStickyNode::~ScrollingTreeStickyNode()
 {
 }
 
-void ScrollingTreeStickyNode::updateBeforeChildren(ScrollingStateNode* stateNode)
+void ScrollingTreeStickyNode::updateBeforeChildren(const ScrollingStateNode& stateNode)
 {
-    ScrollingStateStickyNode* stickyStateNode = toScrollingStateStickyNode(stateNode);
+    const ScrollingStateStickyNode& stickyStateNode = toScrollingStateStickyNode(stateNode);
 
-    if (stickyStateNode->hasChangedProperty(ScrollingStateNode::ScrollLayer))
-        m_layer = stickyStateNode->platformScrollLayer();
+    if (stickyStateNode.hasChangedProperty(ScrollingStateNode::ScrollLayer))
+        m_layer = stickyStateNode.layer();
 
-    if (stateNode->hasChangedProperty(ScrollingStateStickyNode::ViewportConstraints))
-        m_constraints = stickyStateNode->viewportConstraints();
+    if (stateNode.hasChangedProperty(ScrollingStateStickyNode::ViewportConstraints))
+        m_constraints = stickyStateNode.viewportConstraints();
 }
 
 static inline CGPoint operator*(CGPoint& a, const CGSize& b)
@@ -89,4 +90,4 @@ void ScrollingTreeStickyNode::parentScrollPositionDidChange(const IntRect& viewp
 
 } // namespace WebCore
 
-#endif // ENABLE(THREADED_SCROLLING)
+#endif // ENABLE(ASYNC_SCROLLING)

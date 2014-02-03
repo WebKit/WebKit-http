@@ -29,34 +29,10 @@
 #include "GraphicsLayer.h"
 #include "ScrollingStateTree.h"
 
-#if ENABLE(THREADED_SCROLLING)
+#if ENABLE(ASYNC_SCROLLING)
 
 namespace WebCore {
 
-PlatformLayer* ScrollingStateNode::platformScrollLayer() const
-{
-    return m_platformScrollLayer.get();
-}
-
-void ScrollingStateNode::setScrollPlatformLayer(PlatformLayer* platformLayer)
-{
-    m_platformScrollLayer = platformLayer;
-}
-
-void ScrollingStateNode::setScrollLayer(GraphicsLayer* graphicsLayer)
-{
-    PlatformLayer* platformScrollLayer = graphicsLayer ? graphicsLayer->platformLayer() : nil;
-
-    if (m_platformScrollLayer == platformScrollLayer)
-        return;
-
-    m_platformScrollLayer = platformScrollLayer;
-    m_graphicsLayer = graphicsLayer;
-
-    setPropertyChanged(ScrollLayer);
-    m_scrollingStateTree->setHasChangedProperties(true);
-}
-
 } // namespace WebCore
 
-#endif
+#endif // ENABLE(ASYNC_SCROLLING)

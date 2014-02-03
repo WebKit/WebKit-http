@@ -26,8 +26,15 @@
 
 #import <WebCore/DOM.h>
 
+#if TARGET_OS_IPHONE
+#import <WebCore/WebAutocapitalize.h>
+#import <CoreText/CoreText.h>
+#endif
+
 @interface DOMNode (DOMNodeExtensionsPendingPublic)
+#if !TARGET_OS_IPHONE
 - (NSImage *)renderedImage;
+#endif
 - (NSArray *)textRects;
 @end
 
@@ -38,7 +45,9 @@
 // FIXME: this should be removed as soon as all internal Apple uses of it have been replaced with
 // calls to the public method - (NSColor *)color.
 @interface DOMRGBColor (WebPrivate)
+#if !TARGET_OS_IPHONE
 - (NSColor *)_color;
+#endif
 @end
 
 // FIXME: this should be removed as soon as all internal Apple uses of it have been replaced with
@@ -48,15 +57,27 @@
 @end
 
 @interface DOMRange (DOMRangeExtensions)
+#if TARGET_OS_IPHONE
+- (CGRect)boundingBox;
+#else
 - (NSRect)boundingBox;
+#endif
+#if !TARGET_OS_IPHONE
 - (NSImage *)renderedImageForcingBlackText:(BOOL)forceBlackText;
+#else
+- (CGImageRef)renderedImageForcingBlackText:(BOOL)forceBlackText;
+#endif
 - (NSArray *)lineBoxRects; // Deprecated. Use textRects instead.
 - (NSArray *)textRects;
 @end
 
 @interface DOMElement (WebPrivate)
+#if !TARGET_OS_IPHONE
 - (NSFont *)_font;
 - (NSData *)_imageTIFFRepresentation;
+#else
+- (CTFontRef)_font;
+#endif
 - (NSURL *)_getURLAttribute:(NSString *)name;
 - (BOOL)isFocused;
 @end
@@ -81,7 +102,9 @@
 @interface DOMHTMLInputElement (FormAutoFillTransition)
 - (BOOL)_isAutofilled;
 - (BOOL)_isTextField;
+#if !TARGET_OS_IPHONE
 - (NSRect)_rectOnScreen; // bounding box of the text field, in screen coordinates
+#endif
 - (void)_replaceCharactersInRange:(NSRange)targetRange withString:(NSString *)replacementString selectingFromIndex:(int)index;
 - (NSRange)_selectedRange;
 - (void)_setAutofilled:(BOOL)filled;
@@ -105,3 +128,26 @@
 - (void)_activateItemAtIndex:(int)index;
 - (void)_activateItemAtIndex:(int)index allowMultipleSelection:(BOOL)allowMultipleSelection;
 @end
+
+#if TARGET_OS_IPHONE
+enum { WebMediaQueryOrientationCurrent, WebMediaQueryOrientationPortrait, WebMediaQueryOrientationLandscape };
+@interface DOMHTMLLinkElement (WebPrivate)
+- (BOOL)_mediaQueryMatchesForOrientation:(int)orientation;
+- (BOOL)_mediaQueryMatches;
+@end
+
+// These changes are useful to get the AutocapitalizeType on particular form controls.
+@interface DOMHTMLInputElement (AutocapitalizeAdditions)
+- (WebAutocapitalizeType)_autocapitalizeType;
+@end
+
+@interface DOMHTMLTextAreaElement (AutocapitalizeAdditions)
+- (WebAutocapitalizeType)_autocapitalizeType;
+@end
+
+// These are used by Date and Time input types because the generated ObjC methods default to not dispatching events.
+@interface DOMHTMLInputElement (WebInputChangeEventAdditions)
+- (void)setValueWithChangeEvent:(NSString *)newValue;
+- (void)setValueAsNumberWithChangeEvent:(double)newValueAsNumber;
+@end
+#endif // TARGET_OS_IPHONE

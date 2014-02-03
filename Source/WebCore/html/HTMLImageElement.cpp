@@ -115,7 +115,7 @@ const AtomicString& HTMLImageElement::imageSourceURL() const
 void HTMLImageElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
 {
     if (name == altAttr) {
-        if (renderer() && renderer()->isImage())
+        if (renderer() && renderer()->isRenderImage())
             toRenderImage(renderer())->updateAltText();
     } else if (name == srcAttr || name == srcsetAttr) {
         m_bestFitImageURL = bestFitSourceForImageAttributes(document().deviceScaleFactor(), fastGetAttribute(srcAttr), fastGetAttribute(srcsetAttr));
@@ -174,14 +174,12 @@ String HTMLImageElement::altText() const
     return alt;
 }
 
-RenderElement* HTMLImageElement::createRenderer(PassRef<RenderStyle> style)
+RenderPtr<RenderElement> HTMLImageElement::createElementRenderer(PassRef<RenderStyle> style)
 {
     if (style.get().hasContent())
         return RenderElement::createFor(*this, std::move(style));
 
-    RenderImage* image = new RenderImage(*this, std::move(style));
-    image->setImageResource(RenderImageResource::create());
-    return image;
+    return createRenderer<RenderImage>(*this, std::move(style));
 }
 
 bool HTMLImageElement::canStartSelection() const
@@ -194,19 +192,19 @@ bool HTMLImageElement::canStartSelection() const
 
 void HTMLImageElement::didAttachRenderers()
 {
-    if (!renderer() || !renderer()->isImage())
+    if (!renderer() || !renderer()->isRenderImage())
         return;
     if (m_imageLoader.hasPendingBeforeLoadEvent())
         return;
     RenderImage* renderImage = toRenderImage(renderer());
-    RenderImageResource* renderImageResource = renderImage->imageResource();
-    if (renderImageResource->hasImage())
+    RenderImageResource& renderImageResource = renderImage->imageResource();
+    if (renderImageResource.hasImage())
         return;
-    renderImageResource->setCachedImage(m_imageLoader.image());
+    renderImageResource.setCachedImage(m_imageLoader.image());
 
     // If we have no image at all because we have no src attribute, set
     // image height and width for the alt text instead.
-    if (!m_imageLoader.image() && !renderImageResource->cachedImage())
+    if (!m_imageLoader.image() && !renderImageResource.cachedImage())
         renderImage->setImageSizeForAltText();
 }
 
@@ -412,8 +410,7 @@ bool HTMLImageElement::isServerMap() const
 bool HTMLImageElement::willRespondToMouseClickEvents()
 {
     auto renderer = this->renderer();
-    RenderStyle* style = renderer ? renderer->style() : nullptr;
-    if (!style || style->touchCalloutEnabled())
+    if (!renderer || renderer->style().touchCalloutEnabled())
         return true;
     return HTMLElement::willRespondToMouseClickEvents();
 }

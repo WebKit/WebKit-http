@@ -34,6 +34,8 @@ AXDOMIdentifier:
 AXDOMClassList: <array of size 1>
 AXRowIndexRange: NSRange: {0, 2}
 AXColumnIndexRange: NSRange: {0, 2}
+AXColumnHeaderUIElements: <array of size 0>
+AXRowHeaderUIElements: <array of size 0>
 AXElementBusy: 0
 AXRequired: 0
 
@@ -47,7 +49,7 @@ AXRoleDescription: cell
 AXChildren: <array of size 3>
 AXHelp: 
 AXParent: <AXCell>
-AXSize: NSSize: {246, 78}
+AXSize: NSSize: {247, 78}
 AXTitle: 
 AXDescription: 
 AXValue: 
@@ -67,6 +69,8 @@ AXDOMIdentifier:
 AXDOMClassList: <array of size 1>
 AXRowIndexRange: NSRange: {0, 2}
 AXColumnIndexRange: NSRange: {0, 2}
+AXColumnHeaderUIElements: <array of size 0>
+AXRowHeaderUIElements: <array of size 0>
 AXElementBusy: 0
 AXRequired: 0
 
@@ -80,7 +84,7 @@ AXRoleDescription: cell
 AXChildren: <array of size 2>
 AXHelp: 
 AXParent: <AXCell>
-AXSize: NSSize: {123, 60}
+AXSize: NSSize: {124, 60}
 AXTitle: 
 AXDescription: 
 AXValue: 
@@ -100,6 +104,8 @@ AXDOMIdentifier:
 AXDOMClassList: <array of size 1>
 AXRowIndexRange: NSRange: {2, 2}
 AXColumnIndexRange: NSRange: {0, 1}
+AXColumnHeaderUIElements: <array of size 0>
+AXRowHeaderUIElements: <array of size 0>
 AXElementBusy: 0
 AXRequired: 0
 
@@ -113,7 +119,7 @@ AXRoleDescription: cell
 AXChildren: <array of size 2>
 AXHelp: 
 AXParent: <AXCell>
-AXSize: NSSize: {123, 60}
+AXSize: NSSize: {124, 60}
 AXTitle: 
 AXDescription: 
 AXValue: 
@@ -133,6 +139,8 @@ AXDOMIdentifier:
 AXDOMClassList: <array of size 1>
 AXRowIndexRange: NSRange: {2, 2}
 AXColumnIndexRange: NSRange: {0, 1}
+AXColumnHeaderUIElements: <array of size 0>
+AXRowHeaderUIElements: <array of size 0>
 AXElementBusy: 0
 AXRequired: 0
 
@@ -146,7 +154,7 @@ AXRoleDescription: cell
 AXChildren: <array of size 1>
 AXHelp: 
 AXParent: <AXCell>
-AXSize: NSSize: {123, 30}
+AXSize: NSSize: {124, 30}
 AXTitle: 
 AXDescription: 
 AXValue: 
@@ -166,6 +174,8 @@ AXDOMIdentifier:
 AXDOMClassList: <array of size 1>
 AXRowIndexRange: NSRange: {2, 1}
 AXColumnIndexRange: NSRange: {3, 1}
+AXColumnHeaderUIElements: <array of size 0>
+AXRowHeaderUIElements: <array of size 0>
 AXElementBusy: 0
 AXRequired: 0
 

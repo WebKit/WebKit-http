@@ -28,7 +28,7 @@
 
 namespace WebCore {
 
-class HTMLHtmlElement FINAL : public HTMLElement {
+class HTMLHtmlElement final : public HTMLElement {
 public:
     static PassRefPtr<HTMLHtmlElement> create(Document&);
     static PassRefPtr<HTMLHtmlElement> create(const QualifiedName&, Document&);
@@ -38,7 +38,7 @@ public:
 private:
     HTMLHtmlElement(const QualifiedName&, Document&);
 
-    virtual bool isURLAttribute(const Attribute&) const OVERRIDE;
+    virtual bool isURLAttribute(const Attribute&) const override;
 };
 
 NODE_TYPE_CASTS(HTMLHtmlElement)

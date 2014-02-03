@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008, 2009 Apple Inc. All rights reserved.
+ * Copyright (C) 2008, 2009, 2014 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -168,7 +168,7 @@ void JIT::emit_op_get_by_val(Instruction* currentInstruction)
     resultOK.link(this);
 #endif
 
-    emitValueProfilingSite(regT4);
+    emitValueProfilingSite();
     emitStore(dst, regT1, regT0);
     
     m_byValCompilationInfo.append(ByValCompilationInfo(m_bytecodeOffset, badType, mode, done));
@@ -263,7 +263,7 @@ void JIT::emitSlow_op_get_by_val(Instruction* currentInstruction, Vector<SlowCas
     m_byValCompilationInfo[m_byValInstructionIndex].returnAddress = call;
     m_byValInstructionIndex++;
 
-    emitValueProfilingSite(regT4);
+    emitValueProfilingSite();
 }
 
 void JIT::emit_op_put_by_val(Instruction* currentInstruction)
@@ -482,12 +482,12 @@ void JIT::emit_op_get_by_id(Instruction* currentInstruction)
 
     JITGetByIdGenerator gen(
         m_codeBlock, CodeOrigin(m_bytecodeOffset), RegisterSet::specialRegisters(),
-        callFrameRegister, JSValueRegs::payloadOnly(regT0), JSValueRegs(regT1, regT0), true);
+        JSValueRegs::payloadOnly(regT0), JSValueRegs(regT1, regT0), true);
     gen.generateFastPath(*this);
     addSlowCase(gen.slowPathJump());
     m_getByIds.append(gen);
 
-    emitValueProfilingSite(regT4);
+    emitValueProfilingSite();
     emitStore(dst, regT1, regT0);
 }
 
@@ -530,7 +530,7 @@ void JIT::emit_op_put_by_id(Instruction* currentInstruction)
 
     JITPutByIdGenerator gen(
         m_codeBlock, CodeOrigin(m_bytecodeOffset), RegisterSet::specialRegisters(),
-        callFrameRegister, JSValueRegs::payloadOnly(regT0), JSValueRegs(regT3, regT2),
+        JSValueRegs::payloadOnly(regT0), JSValueRegs(regT3, regT2),
         regT1, true, m_codeBlock->ecmaMode(), direct ? Direct : NotDirect);
     
     gen.generateFastPath(*this);
@@ -783,7 +783,7 @@ void JIT::emit_op_get_from_scope(Instruction* currentInstruction)
         addSlowCase(jump());
         break;
     }
-    emitValueProfilingSite(regT4);
+    emitValueProfilingSite();
     emitStore(dst, regT1, regT0);
 }
 

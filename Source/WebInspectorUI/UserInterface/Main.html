@@ -81,16 +81,22 @@
     <link rel="stylesheet" href="ApplicationCacheIcons.css">
     <link rel="stylesheet" href="ResourceTreeElement.css">
     <link rel="stylesheet" href="TreeElementStatusButton.css">
-    <link rel="stylesheet" href="InstrumentSidebarPanel.css">
-    <link rel="stylesheet" href="InstrumentIcons.css">
-    <link rel="stylesheet" href="TimelinesContentView.css">
-    <link rel="stylesheet" href="TimelineDecorations.css">
-    <link rel="stylesheet" href="NetworkDataGrid.css">
+    <link rel="stylesheet" href="TimelineSidebarPanel.css">
+    <link rel="stylesheet" href="TimelineContentView.css">
+    <link rel="stylesheet" href="OverviewTimelineView.css">
+    <link rel="stylesheet" href="NetworkTimelineView.css">
+    <link rel="stylesheet" href="LayoutTimelineView.css">
+    <link rel="stylesheet" href="ScriptTimelineView.css">
+    <link rel="stylesheet" href="TimelineIcons.css">
+    <link rel="stylesheet" href="TimelineRuler.css">
     <link rel="stylesheet" href="TimelineDataGrid.css">
+    <link rel="stylesheet" href="TimelineRecordBar.css">
     <link rel="stylesheet" href="TimelineOverview.css">
-    <link rel="stylesheet" href="ProfileView.css">
-    <link rel="stylesheet" href="JavaScriptProfileView.css">
-    <link rel="stylesheet" href="NetworkTimeline.css">
+    <link rel="stylesheet" href="NetworkTimelineOverviewGraph.css">
+    <link rel="stylesheet" href="LayoutTimelineOverviewGraph.css">
+    <link rel="stylesheet" href="ScriptTimelineOverviewGraph.css">
+    <link rel="stylesheet" href="LegacyProfileView.css">
+    <link rel="stylesheet" href="LegacyJavaScriptProfileView.css">
     <link rel="stylesheet" href="CSSStyleDetailsSidebarPanel.css">
     <link rel="stylesheet" href="DOMTreeDataGrid.css">
     <link rel="stylesheet" href="LayerTreeSidebarPanel.css">
@@ -162,21 +168,20 @@
     <script src="RemoteObject.js"></script>
     <script src="InspectorObserver.js"></script>
     <script src="PageObserver.js"></script>
-    <script src="CanvasObserver.js"></script>
     <script src="ConsoleObserver.js"></script>
     <script src="NetworkObserver.js"></script>
     <script src="CSSObserver.js"></script>
     <script src="DOMObserver.js"></script>
     <script src="DebuggerObserver.js"></script>
     <script src="DatabaseObserver.js"></script>
-    <script src="ProfilerObserver.js"></script>
+    <script src="LegacyProfilerObserver.js"></script>
     <script src="LayerTreeObserver.js"></script>
     <script src="RuntimeObserver.js"></script>
     <script src="ImageUtilities.js"></script>
     <script src="DataGrid.js"></script>
-    <script src="ProfileDataGridTree.js"></script>
-    <script src="BottomUpProfileDataGridTree.js"></script>
-    <script src="TopDownProfileDataGridTree.js"></script>
+    <script src="LegacyProfileDataGridTree.js"></script>
+    <script src="LegacyBottomUpProfileDataGridTree.js"></script>
+    <script src="LegacyTopDownProfileDataGridTree.js"></script>
     <script src="CookieStorageObject.js"></script>
     <script src="DatabaseObject.js"></script>
     <script src="DatabaseTableObject.js"></script>
@@ -189,9 +194,16 @@
     <script src="ApplicationCacheObserver.js"></script>
     <script src="TimelineObserver.js"></script>
     <script src="TimelineManager.js"></script>
+    <script src="TimelineRecording.js"></script>
+    <script src="Timeline.js"></script>
+    <script src="NetworkTimeline.js"></script>
+    <script src="SourceCodeTimeline.js"></script>
     <script src="TimelineRecord.js"></script>
-    <script src="TimelineEventMarker.js"></script>
+    <script src="TimelineMarker.js"></script>
     <script src="ResourceTimelineRecord.js"></script>
+    <script src="Profile.js"></script>
+    <script src="ProfileNode.js"></script>
+    <script src="ProfileNodeCall.js"></script>
     <script src="FrameResourceManager.js"></script>
     <script src="IssueManager.js"></script>
     <script src="RuntimeManager.js"></script>
@@ -269,6 +281,12 @@
     <script src="DatabaseContentView.js"></script>
     <script src="ApplicationCacheFrameContentView.js"></script>
     <script src="TextContentView.js"></script>
+    <script src="TimelineContentView.js"></script>
+    <script src="TimelineView.js"></script>
+    <script src="OverviewTimelineView.js"></script>
+    <script src="NetworkTimelineView.js"></script>
+    <script src="LayoutTimelineView.js"></script>
+    <script src="ScriptTimelineView.js"></script>
     <script src="ApplicationCacheDetailsSidebarPanel.js"></script>
     <script src="DOMTreeManager.js"></script>
     <script src="DOMNode.js"></script>
@@ -335,36 +353,37 @@
     <script src="CSSStyleDeclarationTextEditor.js"></script>
     <script src="CSSStyleDeclarationSection.js"></script>
     <script src="IndeterminateProgressSpinner.js"></script>
-    <script src="InstrumentSidebarPanel.js"></script>
-    <script src="NetworkGraphCalculator.js"></script>
-    <script src="TimelineDecorations.js"></script>
-    <script src="TimelinesObject.js"></script>
+    <script src="TimelineSidebarPanel.js"></script>
+    <script src="TimelineRecordTreeElement.js"></script>
+    <script src="SourceCodeTimelineTreeElement.js"></script>
+    <script src="TimelineRuler.js"></script>
     <script src="TimelineDataGrid.js"></script>
-    <script src="NetworkDataGrid.js"></script>
     <script src="LayoutTimelineDataGrid.js"></script>
     <script src="ScriptTimelineDataGrid.js"></script>
-    <script src="TimelinesContentView.js"></script>
+    <script src="TimelineRecordBar.js"></script>
+    <script src="TimelineDataGridNode.js"></script>
     <script src="ResourceTimelineDataGridNode.js"></script>
     <script src="ResourceTimelineDataGridNodePathComponent.js"></script>
     <script src="LayoutTimelineRecord.js"></script>
     <script src="LayoutTimelineDataGridNode.js"></script>
     <script src="ScriptTimelineRecord.js"></script>
     <script src="ScriptTimelineDataGridNode.js"></script>
+    <script src="SourceCodeTimelineTimelineDataGridNode.js"></script>
+    <script src="ProfileNodeTreeElement.js"></script>
+    <script src="ProfileNodeDataGridNode.js"></script>
+    <script src="TreeOutlineDataGridSynchronizer.js"></script>
     <script src="TimelineOverview.js"></script>
-    <script src="ProfileManager.js"></script>
-    <script src="ProfileType.js"></script>
-    <script src="ProfileView.js"></script>
-    <script src="JavaScriptProfileType.js"></script>
-    <script src="JavaScriptProfileView.js"></script>
-    <script src="CSSSelectorProfileType.js"></script>
-    <script src="CSSSelectorProfileView.js"></script>
-    <script src="CanvasDataGridNode.js"></script>
-    <script src="CanvasProfileType.js"></script>
-    <script src="CanvasProfileView.js"></script>
-    <script src="ProfileObject.js"></script>
-    <script src="JavaScriptProfileObject.js"></script>
-    <script src="CSSSelectorProfileObject.js"></script>
-    <script src="CanvasProfileObject.js"></script>
+    <script src="TimelineOverviewGraph.js"></script>
+    <script src="NetworkTimelineOverviewGraph.js"></script>
+    <script src="LayoutTimelineOverviewGraph.js"></script>
+    <script src="ScriptTimelineOverviewGraph.js"></script>
+    <script src="LegacyProfileManager.js"></script>
+    <script src="LegacyProfileType.js"></script>
+    <script src="LegacyProfileView.js"></script>
+    <script src="LegacyJavaScriptProfileType.js"></script>
+    <script src="LegacyJavaScriptProfileView.js"></script>
+    <script src="LegacyProfileObject.js"></script>
+    <script src="LegacyJavaScriptProfileObject.js"></script>
     <script src="DebuggerSidebarPanel.js"></script>
     <script src="BreakpointTreeElement.js"></script>
     <script src="BreakpointAction.js"></script>

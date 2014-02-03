@@ -38,6 +38,7 @@
 #include "URL.h"
 #include "LayoutRect.h"
 #include "NativeImagePtr.h"
+#include "PlatformLayer.h"
 #include "Timer.h"
 #include "VideoTrackPrivate.h"
 #include <runtime/Uint8Array.h>
@@ -48,10 +49,6 @@
 #include <wtf/OwnPtr.h>
 #include <wtf/PassOwnPtr.h>
 #include <wtf/text/StringHash.h>
-
-#if USE(ACCELERATED_COMPOSITING)
-#include "PlatformLayer.h"
-#endif
 
 #if USE(PLATFORM_TEXT_TRACK_MENU)
 #include "PlatformTextTrackMenu.h"
@@ -68,6 +65,7 @@ class QTMovieVisualContext;
 namespace WebCore {
 
 class AudioSourceProvider;
+class AuthenticationChallenge;
 class Document;
 #if ENABLE(MEDIA_SOURCE)
 class HTMLMediaSource;
@@ -198,14 +196,12 @@ public:
     // A characteristic of the media file, eg. video, audio, closed captions, etc, has changed.
     virtual void mediaPlayerCharacteristicChanged(MediaPlayer*) { }
     
-#if USE(ACCELERATED_COMPOSITING)
     // whether the rendering system can accelerate the display of this MediaPlayer.
     virtual bool mediaPlayerRenderingCanBeAccelerated(MediaPlayer*) { return false; }
 
     // called when the media player's rendering mode changed, which indicates a change in the
     // availability of the platformLayer().
     virtual void mediaPlayerRenderingModeChanged(MediaPlayer*) { }
-#endif
 
 #if PLATFORM(WIN) && USE(AVFOUNDATION)
     virtual GraphicsDeviceAdapter* mediaPlayerGraphicsDeviceAdapter(const MediaPlayer*) const { return 0; }
@@ -223,6 +219,11 @@ public:
     virtual bool mediaPlayerKeyNeeded(MediaPlayer*, Uint8Array*) { return false; }
 #endif
     
+#if ENABLE(IOS_AIRPLAY)
+    virtual void mediaPlayerCurrentPlaybackTargetIsWirelessChanged(MediaPlayer*) { };
+    virtual void mediaPlayerPlaybackTargetAvailabilityChanged(MediaPlayer*) { };
+#endif
+
     virtual String mediaPlayerReferrer() const { return String(); }
     virtual String mediaPlayerUserAgent() const { return String(); }
     virtual CORSMode mediaPlayerCORSMode() const { return Unspecified; }
@@ -252,6 +253,8 @@ public:
 
     virtual void textTrackRepresentationBoundsChanged(const IntRect&) { }
 #endif
+
+    virtual bool mediaPlayerShouldWaitForResponseToAuthenticationChallenge(const AuthenticationChallenge&) { return false; }
 };
 
 class MediaPlayerSupportsTypeClient {
@@ -286,9 +289,7 @@ public:
     bool supportsScanning() const;
     bool requiresImmediateCompositing() const;
     PlatformMedia platformMedia() const;
-#if USE(ACCELERATED_COMPOSITING)
     PlatformLayer* platformLayer() const;
-#endif
 
     IntSize naturalSize();
     bool hasVideo() const;
@@ -430,16 +431,29 @@ public:
     void exitFullscreen();
 #endif
 
+#if ENABLE(IOS_AIRPLAY)
+    bool isCurrentPlaybackTargetWireless() const;
+    void showPlaybackTargetPicker();
+
+    bool hasWirelessPlaybackTargets() const;
+
+    bool wirelessVideoPlaybackDisabled() const;
+    void setWirelessVideoPlaybackDisabled(bool);
+
+    void currentPlaybackTargetIsWirelessChanged();
+    void playbackTargetAvailabilityChanged();
+
+    void setHasPlaybackTargetAvailabilityListeners(bool);
+#endif
+
 #if USE(NATIVE_FULLSCREEN_VIDEO)
     bool canEnterFullscreen() const;
 #endif
 
-#if USE(ACCELERATED_COMPOSITING)
     // whether accelerated rendering is supported by the media engine for the current media.
     bool supportsAcceleratedRendering() const;
     // called when the rendering system flips the into or out of accelerated rendering mode.
     void acceleratedRenderingStateChanged();
-#endif
 
     bool shouldMaintainAspectRatio() const;
     void setShouldMaintainAspectRatio(bool);
@@ -483,6 +497,11 @@ public:
 
     String engineDescription() const;
 
+#if PLATFORM(IOS)
+    void attributeChanged(const String& name, const String& value);
+    bool readyForPlayback() const;
+#endif
+
     CachedResourceLoader* cachedResourceLoader();
 
 #if ENABLE(VIDEO_TRACK)
@@ -521,11 +540,13 @@ public:
     double totalFrameDelay();
 #endif
 
+    bool shouldWaitForResponseToAuthenticationChallenge(const AuthenticationChallenge&);
+
 private:
     MediaPlayer(MediaPlayerClient*);
     MediaPlayerFactory* nextBestMediaEngine(MediaPlayerFactory*) const;
     void loadWithNextMediaEngine(MediaPlayerFactory*);
-    void reloadTimerFired(Timer<MediaPlayer>*);
+    void reloadTimerFired(Timer<MediaPlayer>&);
 
     static void initializeMediaEngines();
 

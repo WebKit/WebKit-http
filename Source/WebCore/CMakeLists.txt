@@ -25,6 +25,7 @@ set(WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/bridge/c"
     "${WEBCORE_DIR}/crypto"
     "${WEBCORE_DIR}/crypto/keys"
+    "${WEBCORE_DIR}/cssjit"
     "${WEBCORE_DIR}/dom/default"
     "${WEBCORE_DIR}/editing"
     "${WEBCORE_DIR}/history"
@@ -71,6 +72,7 @@ set(WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/network"
     "${WEBCORE_DIR}/platform/sql"
     "${WEBCORE_DIR}/platform/text"
+    "${WEBCORE_DIR}/platform/text/icu"
     "${WEBCORE_DIR}/plugins"
     "${WEBCORE_DIR}/rendering"
     "${WEBCORE_DIR}/rendering/line"
@@ -321,12 +323,10 @@ set(WebCore_IDL_FILES
     css/StyleMedia.idl
     css/StyleSheet.idl
     css/StyleSheetList.idl
-    css/WebKitCSSFilterRule.idl
     css/WebKitCSSFilterValue.idl
     css/WebKitCSSKeyframeRule.idl
     css/WebKitCSSKeyframesRule.idl
     css/WebKitCSSMatrix.idl
-    css/WebKitCSSMixFunctionValue.idl
     css/WebKitCSSRegionRule.idl
     css/WebKitCSSTransformValue.idl
     css/WebKitCSSViewportRule.idl
@@ -498,6 +498,7 @@ set(WebCore_IDL_FILES
     html/ValidityState.idl
     html/VoidCallback.idl
 
+    html/canvas/ANGLEInstancedArrays.idl
     html/canvas/CanvasGradient.idl
     html/canvas/CanvasPattern.idl
     html/canvas/CanvasProxy.idl
@@ -511,6 +512,7 @@ set(WebCore_IDL_FILES
     html/canvas/OESTextureFloat.idl
     html/canvas/OESTextureFloatLinear.idl
     html/canvas/OESTextureHalfFloat.idl
+    html/canvas/OESTextureHalfFloatLinear.idl
     html/canvas/OESVertexArrayObject.idl
     html/canvas/WebGLActiveInfo.idl
     html/canvas/WebGLBuffer.idl
@@ -533,9 +535,8 @@ set(WebCore_IDL_FILES
     html/canvas/WebGLUniformLocation.idl
     html/canvas/WebGLVertexArrayObjectOES.idl
 
-    inspector/InjectedScriptHost.idl
+    inspector/CommandLineAPIHost.idl
     inspector/InspectorFrontendHost.idl
-    inspector/JavaScriptCallFrame.idl
     inspector/ScriptProfile.idl
     inspector/ScriptProfileNode.idl
 
@@ -551,9 +552,11 @@ set(WebCore_IDL_FILES
     page/History.idl
     page/Location.idl
     page/Navigator.idl
-    page/Performance.idl
     page/PerformanceEntry.idl
     page/PerformanceEntryList.idl
+    page/Performance.idl
+    page/PerformanceMark.idl
+    page/PerformanceMeasure.idl
     page/PerformanceNavigation.idl
     page/PerformanceResourceTiming.idl
     page/PerformanceTiming.idl
@@ -766,7 +769,6 @@ set(WebCore_INSPECTOR_DOMAINS
     inspector/protocol/DOMDebugger.json
     inspector/protocol/DOMStorage.json
     inspector/protocol/Database.json
-    inspector/protocol/FileSystem.json
     inspector/protocol/HeapProfiler.json
     inspector/protocol/IndexedDB.json
     inspector/protocol/Input.json
@@ -810,8 +812,10 @@ set(WebCore_SOURCES
     Modules/indexeddb/IDBFactoryBackendInterface.cpp
     Modules/indexeddb/IDBIndex.cpp
     Modules/indexeddb/IDBKey.cpp
+    Modules/indexeddb/IDBKeyData.cpp
     Modules/indexeddb/IDBKeyPath.cpp
     Modules/indexeddb/IDBKeyRange.cpp
+    Modules/indexeddb/IDBKeyRangeData.cpp
     Modules/indexeddb/IDBObjectStore.cpp
     Modules/indexeddb/IDBOpenDBRequest.cpp
     Modules/indexeddb/IDBPendingTransactionMonitor.cpp
@@ -832,8 +836,10 @@ set(WebCore_SOURCES
     Modules/indexeddb/leveldb/IDBLevelDBCoding.cpp
     Modules/indexeddb/leveldb/IDBServerConnectionLevelDB.cpp
 
+    Modules/mediasource/DOMURLMediaSource.cpp
     Modules/mediasource/MediaSource.cpp
     Modules/mediasource/MediaSourceRegistry.cpp
+    Modules/mediasource/SampleMap.cpp
     Modules/mediasource/SourceBuffer.cpp
     Modules/mediasource/SourceBufferList.cpp
     Modules/mediasource/VideoPlaybackQuality.cpp
@@ -1107,19 +1113,15 @@ set(WebCore_SOURCES
     css/StyleSheetList.cpp
     css/TransformFunctions.cpp
     css/ViewportStyleResolver.cpp
-    css/WebKitCSSArrayFunctionValue.cpp
-    css/WebKitCSSFilterRule.cpp
     css/WebKitCSSFilterValue.cpp
     css/WebKitCSSKeyframeRule.cpp
     css/WebKitCSSKeyframesRule.cpp
-    css/WebKitCSSMatFunctionValue.cpp
     css/WebKitCSSMatrix.cpp
-    css/WebKitCSSMixFunctionValue.cpp
     css/WebKitCSSRegionRule.cpp
-    css/WebKitCSSSVGDocumentValue.cpp
-    css/WebKitCSSShaderValue.cpp
     css/WebKitCSSTransformValue.cpp
     css/WebKitCSSViewportRule.cpp
+
+    cssjit/SelectorCompiler.cpp
 
     dom/ActiveDOMObject.cpp
     dom/Attr.cpp
@@ -1146,7 +1148,6 @@ set(WebCore_SOURCES
     dom/DOMImplementation.cpp
     dom/DOMNamedFlowCollection.cpp
     dom/DOMStringList.cpp
-    dom/DOMStringMap.cpp
     dom/DataTransferItem.cpp
     dom/DatasetDOMStringMap.cpp
     dom/DecodedDataDocumentParser.cpp
@@ -1411,6 +1412,8 @@ set(WebCore_SOURCES
     html/HTMLMapElement.cpp
     html/HTMLMarqueeElement.cpp
     html/HTMLMediaElement.cpp
+    html/HTMLMediaSession.cpp
+    html/HTMLMediaSource.cpp
     html/HTMLMenuElement.cpp
     html/HTMLMetaElement.cpp
     html/HTMLMeterElement.cpp
@@ -1487,6 +1490,7 @@ set(WebCore_SOURCES
     html/ValidationMessage.cpp
     html/WeekInputType.cpp
 
+    html/canvas/ANGLEInstancedArrays.cpp
     html/canvas/CanvasContextAttributes.cpp
     html/canvas/CanvasGradient.cpp
     html/canvas/CanvasPathMethods.cpp
@@ -1502,6 +1506,7 @@ set(WebCore_SOURCES
     html/canvas/OESTextureFloat.cpp
     html/canvas/OESTextureFloatLinear.cpp
     html/canvas/OESTextureHalfFloat.cpp
+    html/canvas/OESTextureHalfFloatLinear.cpp
     html/canvas/OESVertexArrayObject.cpp
     html/canvas/WebGLBuffer.cpp
     html/canvas/WebGLCompressedTextureATC.cpp
@@ -1531,29 +1536,23 @@ set(WebCore_SOURCES
 
     html/forms/FileIconLoader.cpp
 
-    html/parser/BackgroundHTMLInputStream.cpp
-    html/parser/BackgroundHTMLParser.cpp
     html/parser/CSSPreloadScanner.cpp
-    html/parser/CompactHTMLToken.cpp
     html/parser/HTMLConstructionSite.cpp
     html/parser/HTMLDocumentParser.cpp
     html/parser/HTMLElementStack.cpp
     html/parser/HTMLEntityParser.cpp
     html/parser/HTMLEntitySearch.cpp
     html/parser/HTMLFormattingElementList.cpp
-    html/parser/HTMLIdentifier.cpp
     html/parser/HTMLMetaCharsetParser.cpp
     html/parser/HTMLParserIdioms.cpp
     html/parser/HTMLParserOptions.cpp
     html/parser/HTMLParserScheduler.cpp
-    html/parser/HTMLParserThread.cpp
     html/parser/HTMLPreloadScanner.cpp
     html/parser/HTMLResourcePreloader.cpp
     html/parser/HTMLScriptRunner.cpp
     html/parser/HTMLSourceTracker.cpp
     html/parser/HTMLTokenizer.cpp
     html/parser/HTMLTreeBuilder.cpp
-    html/parser/HTMLTreeBuilderSimulator.cpp
     html/parser/HTMLViewSourceParser.cpp
     html/parser/TextDocumentParser.cpp
     html/parser/TextViewSourceParser.cpp
@@ -1572,18 +1571,13 @@ set(WebCore_SOURCES
     html/shadow/SpinButtonElement.cpp
     html/shadow/TextControlInnerElements.cpp
 
+    inspector/CommandLineAPIHost.cpp
+    inspector/CommandLineAPIModule.cpp
     inspector/ConsoleMessage.cpp
-    inspector/ContentSearchUtils.cpp
     inspector/DOMEditor.cpp
     inspector/DOMPatchSupport.cpp
     inspector/IdentifiersFactory.cpp
-    inspector/InjectedScript.cpp
-    inspector/InjectedScriptBase.cpp
     inspector/InjectedScriptCanvasModule.cpp
-    inspector/InjectedScriptHost.cpp
-    inspector/InjectedScriptManager.cpp
-    inspector/InjectedScriptModule.cpp
-    inspector/InspectorAgent.cpp
     inspector/InspectorApplicationCacheAgent.cpp
     inspector/InspectorCSSAgent.cpp
     inspector/InspectorCanvasAgent.cpp
@@ -1596,7 +1590,6 @@ set(WebCore_SOURCES
     inspector/InspectorDOMStorageAgent.cpp
     inspector/InspectorDatabaseAgent.cpp
     inspector/InspectorDatabaseResource.cpp
-    inspector/InspectorDebuggerAgent.cpp
     inspector/InspectorFrontendClientLocal.cpp
     inspector/InspectorFrontendHost.cpp
     inspector/InspectorHeapProfilerAgent.cpp
@@ -1604,6 +1597,7 @@ set(WebCore_SOURCES
     inspector/InspectorIndexedDBAgent.cpp
     inspector/InspectorInputAgent.cpp
     inspector/InspectorInstrumentation.cpp
+    inspector/InspectorInstrumentationCookie.cpp
     inspector/InspectorLayerTreeAgent.cpp
     inspector/InspectorMemoryAgent.cpp
     inspector/InspectorNodeFinder.cpp
@@ -1611,7 +1605,6 @@ set(WebCore_SOURCES
     inspector/InspectorPageAgent.cpp
     inspector/InspectorProfilerAgent.cpp
     inspector/InspectorResourceAgent.cpp
-    inspector/InspectorRuntimeAgent.cpp
     inspector/InspectorStyleSheet.cpp
     inspector/InspectorStyleTextEditor.cpp
     inspector/InspectorTimelineAgent.cpp
@@ -1620,11 +1613,14 @@ set(WebCore_SOURCES
     inspector/NetworkResourcesData.cpp
     inspector/PageConsoleAgent.cpp
     inspector/PageDebuggerAgent.cpp
+    inspector/PageInjectedScriptHost.cpp
+    inspector/PageInjectedScriptManager.cpp
     inspector/PageRuntimeAgent.cpp
     inspector/ScriptArguments.cpp
     inspector/ScriptCallFrame.cpp
     inspector/ScriptCallStack.cpp
     inspector/TimelineRecordFactory.cpp
+    inspector/WebDebuggerAgent.cpp
     inspector/WorkerConsoleAgent.cpp
     inspector/WorkerDebuggerAgent.cpp
     inspector/WorkerInspectorController.cpp
@@ -1653,7 +1649,6 @@ set(WebCore_SOURCES
     loader/NavigationScheduler.cpp
     loader/NetscapePlugInStreamLoader.cpp
     loader/PingLoader.cpp
-    loader/PlaceholderDocument.cpp
     loader/PolicyCallback.cpp
     loader/PolicyChecker.cpp
     loader/ProgressTracker.cpp
@@ -1697,7 +1692,6 @@ set(WebCore_SOURCES
     loader/cache/CachedSVGDocument.cpp
     loader/cache/CachedSVGDocumentReference.cpp
     loader/cache/CachedScript.cpp
-    loader/cache/CachedShader.cpp
     loader/cache/CachedXSLStyleSheet.cpp
     loader/cache/MemoryCache.cpp
 
@@ -1711,6 +1705,7 @@ set(WebCore_SOURCES
     mathml/MathMLElement.cpp
     mathml/MathMLInlineContainerElement.cpp
     mathml/MathMLMathElement.cpp
+    mathml/MathMLMencloseElement.cpp
     mathml/MathMLSelectElement.cpp
     mathml/MathMLTextElement.cpp
 
@@ -1763,6 +1758,7 @@ set(WebCore_SOURCES
     page/PerformanceNavigation.cpp
     page/PerformanceResourceTiming.cpp
     page/PerformanceTiming.cpp
+    page/PerformanceUserTiming.cpp
     page/PrintContext.cpp
     page/Screen.cpp
     page/SecurityOrigin.cpp
@@ -1774,7 +1770,9 @@ set(WebCore_SOURCES
     page/SpeechInputResult.cpp
     page/SpeechInputResultList.cpp
     page/SuspendableTimer.cpp
+    page/UserContentController.cpp
     page/UserContentURLPattern.cpp
+    page/VisitedLinkProvider.cpp
     page/WindowFeatures.cpp
     page/WindowFocusAllowedIndicator.cpp
     page/WorkerNavigator.cpp
@@ -1839,6 +1837,7 @@ set(WebCore_SOURCES
     platform/ThreadGlobalData.cpp
     platform/ThreadTimers.cpp
     platform/Timer.cpp
+    platform/UserActivity.cpp
     platform/UUID.cpp
     platform/Widget.cpp
 
@@ -1868,6 +1867,8 @@ set(WebCore_SOURCES
     platform/audio/HRTFElevation.cpp
     platform/audio/HRTFKernel.cpp
     platform/audio/HRTFPanner.cpp
+    platform/audio/MediaSession.cpp
+    platform/audio/MediaSessionManager.cpp
     platform/audio/MultiChannelResampler.cpp
     platform/audio/Panner.cpp
     platform/audio/Reverb.cpp
@@ -1935,23 +1936,12 @@ set(WebCore_SOURCES
 
     platform/graphics/cpu/arm/filters/FELightingNEON.cpp
 
-    platform/graphics/filters/CustomFilterCompiledProgram.cpp
-    platform/graphics/filters/CustomFilterGlobalContext.cpp
-    platform/graphics/filters/CustomFilterMesh.cpp
-    platform/graphics/filters/CustomFilterMeshGenerator.cpp
-    platform/graphics/filters/CustomFilterOperation.cpp
-    platform/graphics/filters/CustomFilterParameterList.cpp
-    platform/graphics/filters/CustomFilterProgram.cpp
-    platform/graphics/filters/CustomFilterProgramInfo.cpp
-    platform/graphics/filters/CustomFilterRenderer.cpp
-    platform/graphics/filters/CustomFilterValidatedProgram.cpp
     platform/graphics/filters/DistantLightSource.cpp
     platform/graphics/filters/FEBlend.cpp
     platform/graphics/filters/FEColorMatrix.cpp
     platform/graphics/filters/FEComponentTransfer.cpp
     platform/graphics/filters/FEComposite.cpp
     platform/graphics/filters/FEConvolveMatrix.cpp
-    platform/graphics/filters/FECustomFilter.cpp
     platform/graphics/filters/FEDiffuseLighting.cpp
     platform/graphics/filters/FEDisplacementMap.cpp
     platform/graphics/filters/FEDropShadow.cpp
@@ -1971,9 +1961,6 @@ set(WebCore_SOURCES
     platform/graphics/filters/SourceAlpha.cpp
     platform/graphics/filters/SourceGraphic.cpp
     platform/graphics/filters/SpotLightSource.cpp
-    platform/graphics/filters/ValidatedCustomFilterOperation.cpp
-
-    platform/graphics/filters/texmap/CustomFilterValidatedProgramTextureMapper.cpp
 
     platform/graphics/texmap/TextureMapper.cpp
     platform/graphics/texmap/TextureMapperBackingStore.cpp
@@ -2075,6 +2062,7 @@ set(WebCore_SOURCES
     platform/sql/SQLValue.cpp
     platform/sql/SQLiteAuthorizer.cpp
     platform/sql/SQLiteDatabase.cpp
+    platform/sql/SQLiteDatabaseTracker.cpp
     platform/sql/SQLiteFileSystem.cpp
     platform/sql/SQLiteStatement.cpp
     platform/sql/SQLiteTransaction.cpp
@@ -2086,7 +2074,6 @@ set(WebCore_SOURCES
     platform/text/LocaleToScriptMappingDefault.cpp
     platform/text/PlatformLocale.cpp
     platform/text/QuotedPrintable.cpp
-    platform/text/RegularExpression.cpp
     platform/text/SegmentedString.cpp
     platform/text/TextBoundaries.cpp
     platform/text/TextBreakIterator.cpp
@@ -2098,7 +2085,6 @@ set(WebCore_SOURCES
     platform/text/TextEncoding.cpp
     platform/text/TextEncodingRegistry.cpp
     platform/text/TextStream.cpp
-    platform/text/UnicodeRange.cpp
 
     plugins/DOMMimeType.cpp
     plugins/DOMMimeTypeArray.cpp
@@ -2176,7 +2162,6 @@ set(WebCore_SOURCES
     rendering/RenderMediaControls.cpp
     rendering/RenderMenuList.cpp
     rendering/RenderMeter.cpp
-    rendering/RenderMultiColumnBlock.cpp
     rendering/RenderMultiColumnFlowThread.cpp
     rendering/RenderMultiColumnSet.cpp
     rendering/RenderNamedFlowFragment.cpp
@@ -2234,6 +2219,7 @@ set(WebCore_SOURCES
     rendering/mathml/RenderMathMLFenced.cpp
     rendering/mathml/RenderMathMLFraction.cpp
     rendering/mathml/RenderMathMLMath.cpp
+    rendering/mathml/RenderMathMLMenclose.cpp
     rendering/mathml/RenderMathMLOperator.cpp
     rendering/mathml/RenderMathMLRoot.cpp
     rendering/mathml/RenderMathMLRow.cpp
@@ -2266,9 +2252,6 @@ set(WebCore_SOURCES
     rendering/style/StyleBoxData.cpp
     rendering/style/StyleCachedImage.cpp
     rendering/style/StyleCachedImageSet.cpp
-    rendering/style/StyleCachedShader.cpp
-    rendering/style/StyleCustomFilterProgram.cpp
-    rendering/style/StyleCustomFilterProgramCache.cpp
     rendering/style/StyleDeprecatedFlexibleBoxData.cpp
     rendering/style/StyleFilterData.cpp
     rendering/style/StyleFlexibleBoxData.cpp
@@ -2661,6 +2644,7 @@ if (ENABLE_WEBGL)
     add_definitions(-DWTF_USE_3D_GRAPHICS=1)
 
     list(APPEND WebCore_SOURCES
+        html/canvas/ANGLEInstancedArrays.cpp
         html/canvas/EXTDrawBuffers.cpp
         html/canvas/EXTTextureFilterAnisotropic.cpp
         html/canvas/OESElementIndexUint.cpp
@@ -2668,6 +2652,7 @@ if (ENABLE_WEBGL)
         html/canvas/OESTextureFloat.cpp
         html/canvas/OESTextureFloatLinear.cpp
         html/canvas/OESTextureHalfFloat.cpp
+        html/canvas/OESTextureHalfFloatLinear.cpp
         html/canvas/OESVertexArrayObject.cpp
         html/canvas/WebGLBuffer.cpp
         html/canvas/WebGLCompressedTextureATC.cpp
@@ -2696,6 +2681,7 @@ if (ENABLE_WEBGL)
         html/canvas/WebGLVertexArrayObjectOES.cpp
     )
     list(APPEND WebCore_IDL_FILES
+        html/canvas/ANGLEInstancedArrays.idl
         html/canvas/EXTDrawBuffers.idl
         html/canvas/EXTTextureFilterAnisotropic.idl
         html/canvas/OESElementIndexUint.idl
@@ -2703,6 +2689,7 @@ if (ENABLE_WEBGL)
         html/canvas/OESTextureFloat.idl
         html/canvas/OESTextureFloatLinear.idl
         html/canvas/OESTextureHalfFloat.idl
+        html/canvas/OESTextureHalfFloatLinear.idl
         html/canvas/OESVertexArrayObject.idl
         html/canvas/WebGLActiveInfo.idl
         html/canvas/WebGLBuffer.idl
@@ -2789,27 +2776,19 @@ if (ENABLE_QUOTA)
     )
 endif ()
 
-
-if (WTF_USE_ICU_UNICODE)
-    list(APPEND WebCore_SOURCES
-        platform/text/TextBreakIteratorICU.cpp
-        platform/text/TextCodecICU.cpp
-        platform/text/TextEncodingDetectorICU.cpp
-    )
-    list(APPEND WebCore_INCLUDE_DIRECTORIES
-        ${ICU_INCLUDE_DIRS}
-    )
-    list(APPEND WebCore_LIBRARIES
-        ${ICU_LIBRARIES}
-    )
-elseif (WTF_USE_WCHAR_UNICODE)
-    list(APPEND WebCore_SOURCES
-        platform/text/TextEncodingDetectorNone.cpp
-
-        platform/text/wchar/TextBreakIteratorWchar.cpp
-    )
-endif ()
-
+list(APPEND WebCore_SOURCES
+    platform/text/icu/UTextProvider.cpp
+    platform/text/icu/UTextProviderLatin1.cpp
+    platform/text/icu/UTextProviderUTF16.cpp
+    platform/text/TextCodecICU.cpp
+    platform/text/TextEncodingDetectorICU.cpp
+)
+list(APPEND WebCore_INCLUDE_DIRECTORIES
+    ${ICU_INCLUDE_DIRS}
+)
+list(APPEND WebCore_LIBRARIES
+    ${ICU_LIBRARIES}
+)
 
 if (WTF_USE_LEVELDB)
     list(APPEND WebCore_INCLUDE_DIRECTORIES
@@ -2871,15 +2850,14 @@ if (WTF_USE_3D_GRAPHICS)
         "${THIRDPARTY_DIR}/ANGLE/include/GLSLANG"
         "${WEBCORE_DIR}/platform/graphics/gpu"
     )
-    # Nix may use either OpenGL or OpenGLES2 headers, so we handle this at PlatformNix.cmake.
-    if (OPENGL_FOUND AND NOT PORT STREQUAL "Nix")
+    if (OPENGL_FOUND)
         list(APPEND WebCore_INCLUDE_DIRECTORIES
             ${OPENGL_INCLUDE_DIR}
         )
         list(APPEND WebCore_LIBRARIES
             ${OPENGL_gl_LIBRARY}
         )
-    elseif (OPENGLES2_FOUND AND NOT PORT STREQUAL "Nix")
+    elseif (OPENGLES2_FOUND)
         list(APPEND WebCore_INCLUDE_DIRECTORIES
             ${OPENGLES2_INCLUDE_DIR}
         )
@@ -2970,6 +2948,7 @@ if (WTF_USE_3D_GRAPHICS)
     list(APPEND WebCore_SOURCES
         platform/graphics/ANGLEWebKitBridge.cpp
         platform/graphics/GraphicsContext3D.cpp
+        platform/graphics/FormatConverter.cpp
 
         platform/graphics/gpu/DrawingBuffer.cpp
     )
@@ -2994,6 +2973,12 @@ set(WebCoreTestSupport_IDL_FILES
 
 set(WebCoreTestSupport_SOURCES
     platform/mock/PlatformSpeechSynthesizerMock.cpp
+
+    platform/mock/mediasource/MockBox.cpp
+    platform/mock/mediasource/MockMediaPlayerMediaSource.cpp
+    platform/mock/mediasource/MockMediaSourcePrivate.cpp
+    platform/mock/mediasource/MockSourceBufferPrivate.cpp
+    platform/mock/mediasource/MockTracks.cpp
 
     testing/InternalSettings.cpp
     testing/Internals.cpp
@@ -3069,32 +3054,32 @@ list(APPEND WebCore_SOURCES
 add_custom_command(
     OUTPUT ${DERIVED_SOURCES_WEBCORE_DIR}/InspectorOverlayPage.h ${DERIVED_SOURCES_WEBCORE_DIR}/InspectorOverlayPage.combined.html
     MAIN_DEPENDENCY inspector/InspectorOverlayPage.html
-    DEPENDS ${WEBCORE_DIR}/inspector/xxd.pl ${WEBCORE_DIR}/inspector/Scripts/inline-and-minify-stylesheets-and-scripts.py
+    DEPENDS ${WebCore_INSPECTOR_SCRIPTS_DIR}/xxd.pl ${WebCore_INSPECTOR_SCRIPTS_DIR}/inline-and-minify-stylesheets-and-scripts.py
     DEPENDS inspector/InspectorOverlayPage.css inspector/InspectorOverlayPage.js
-    COMMAND ${PYTHON_EXECUTABLE} ${WEBCORE_DIR}/inspector/Scripts/inline-and-minify-stylesheets-and-scripts.py ${WEBCORE_DIR}/inspector/InspectorOverlayPage.html ${DERIVED_SOURCES_WEBCORE_DIR}/InspectorOverlayPage.combined.html
-    COMMAND ${PERL_EXECUTABLE} ${WEBCORE_DIR}/inspector/xxd.pl InspectorOverlayPage_html ${DERIVED_SOURCES_WEBCORE_DIR}/InspectorOverlayPage.combined.html ${DERIVED_SOURCES_WEBCORE_DIR}/InspectorOverlayPage.h
+    COMMAND ${PYTHON_EXECUTABLE} ${WebCore_INSPECTOR_SCRIPTS_DIR}/inline-and-minify-stylesheets-and-scripts.py ${WEBCORE_DIR}/inspector/InspectorOverlayPage.html ${DERIVED_SOURCES_WEBCORE_DIR}/InspectorOverlayPage.combined.html
+    COMMAND ${PERL_EXECUTABLE} ${WebCore_INSPECTOR_SCRIPTS_DIR}/xxd.pl InspectorOverlayPage_html ${DERIVED_SOURCES_WEBCORE_DIR}/InspectorOverlayPage.combined.html ${DERIVED_SOURCES_WEBCORE_DIR}/InspectorOverlayPage.h
     VERBATIM)
 list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/InspectorOverlayPage.h)
 
 
-# Generate InjectedScriptSource.h
+# Generate CommandLineAPIModuleSource.h
 add_custom_command(
-    OUTPUT ${DERIVED_SOURCES_WEBCORE_DIR}/InjectedScriptSource.h ${DERIVED_SOURCES_WEBCORE_DIR}/InjectedScriptSource.min.js
-    MAIN_DEPENDENCY inspector/InjectedScriptSource.js
-    DEPENDS ${WEBCORE_DIR}/inspector/xxd.pl ${WEBCORE_DIR}/inspector/Scripts/jsmin.py
-    COMMAND ${PYTHON_EXECUTABLE} ${WEBCORE_DIR}/inspector/Scripts/jsmin.py < ${WEBCORE_DIR}/inspector/InjectedScriptSource.js > ${DERIVED_SOURCES_WEBCORE_DIR}/InjectedScriptSource.min.js
-    COMMAND ${PERL_EXECUTABLE} ${WEBCORE_DIR}/inspector/xxd.pl InjectedScriptSource_js ${DERIVED_SOURCES_WEBCORE_DIR}/InjectedScriptSource.min.js ${DERIVED_SOURCES_WEBCORE_DIR}/InjectedScriptSource.h
+    OUTPUT ${DERIVED_SOURCES_WEBCORE_DIR}/CommandLineAPIModuleSource.h ${DERIVED_SOURCES_WEBCORE_DIR}/CommandLineAPIModuleSource.min.js
+    MAIN_DEPENDENCY inspector/CommandLineAPIModuleSource.js
+    DEPENDS ${WebCore_INSPECTOR_SCRIPTS_DIR}/xxd.pl ${WebCore_INSPECTOR_SCRIPTS_DIR}/jsmin.py
+    COMMAND ${PYTHON_EXECUTABLE} ${WebCore_INSPECTOR_SCRIPTS_DIR}/jsmin.py < ${WEBCORE_DIR}/inspector/CommandLineAPIModuleSource.js > ${DERIVED_SOURCES_WEBCORE_DIR}/CommandLineAPIModuleSource.min.js
+    COMMAND ${PERL_EXECUTABLE} ${WebCore_INSPECTOR_SCRIPTS_DIR}/xxd.pl CommandLineAPIModuleSource_js ${DERIVED_SOURCES_WEBCORE_DIR}/CommandLineAPIModuleSource.min.js ${DERIVED_SOURCES_WEBCORE_DIR}/CommandLineAPIModuleSource.h
     VERBATIM)
-list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/InjectedScriptSource.h)
+list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/CommandLineAPIModuleSource.h)
 
 
 # Generate InjectedScriptCanvasModuleSource.h
 add_custom_command(
     OUTPUT ${DERIVED_SOURCES_WEBCORE_DIR}/InjectedScriptCanvasModuleSource.h ${DERIVED_SOURCES_WEBCORE_DIR}/InjectedScriptCanvasModuleSource.min.js
     MAIN_DEPENDENCY inspector/InjectedScriptCanvasModuleSource.js
-    DEPENDS ${WEBCORE_DIR}/inspector/xxd.pl ${WEBCORE_DIR}/inspector/Scripts/jsmin.py
-    COMMAND ${PYTHON_EXECUTABLE} ${WEBCORE_DIR}/inspector/Scripts/jsmin.py < ${WEBCORE_DIR}/inspector/InjectedScriptCanvasModuleSource.js > ${DERIVED_SOURCES_WEBCORE_DIR}/InjectedScriptCanvasModuleSource.min.js
-    COMMAND ${PERL_EXECUTABLE} ${WEBCORE_DIR}/inspector/xxd.pl InjectedScriptCanvasModuleSource_js ${DERIVED_SOURCES_WEBCORE_DIR}/InjectedScriptCanvasModuleSource.min.js ${DERIVED_SOURCES_WEBCORE_DIR}/InjectedScriptCanvasModuleSource.h
+    DEPENDS ${WebCore_INSPECTOR_SCRIPTS_DIR}/xxd.pl ${WebCore_INSPECTOR_SCRIPTS_DIR}/jsmin.py
+    COMMAND ${PYTHON_EXECUTABLE} ${WebCore_INSPECTOR_SCRIPTS_DIR}/jsmin.py < ${WEBCORE_DIR}/inspector/InjectedScriptCanvasModuleSource.js > ${DERIVED_SOURCES_WEBCORE_DIR}/InjectedScriptCanvasModuleSource.min.js
+    COMMAND ${PERL_EXECUTABLE} ${WebCore_INSPECTOR_SCRIPTS_DIR}/xxd.pl InjectedScriptCanvasModuleSource_js ${DERIVED_SOURCES_WEBCORE_DIR}/InjectedScriptCanvasModuleSource.min.js ${DERIVED_SOURCES_WEBCORE_DIR}/InjectedScriptCanvasModuleSource.h
     VERBATIM)
 list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/InjectedScriptCanvasModuleSource.h)
 
@@ -3107,9 +3092,9 @@ list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/ColorData.cpp)
 add_custom_command(
     OUTPUT ${DERIVED_SOURCES_WEBCORE_DIR}/XMLViewerCSS.h ${DERIVED_SOURCES_WEBCORE_DIR}/XMLViewer.min.css
     MAIN_DEPENDENCY xml/XMLViewer.css
-    DEPENDS ${WEBCORE_DIR}/inspector/xxd.pl ${WEBCORE_DIR}/inspector/Scripts/cssmin.py
-    COMMAND ${PYTHON_EXECUTABLE} ${WEBCORE_DIR}/inspector/Scripts/cssmin.py < ${WEBCORE_DIR}/xml/XMLViewer.css > ${DERIVED_SOURCES_WEBCORE_DIR}/XMLViewer.min.css
-    COMMAND ${PERL_EXECUTABLE} ${WEBCORE_DIR}/inspector/xxd.pl XMLViewer_css ${DERIVED_SOURCES_WEBCORE_DIR}/XMLViewer.min.css ${DERIVED_SOURCES_WEBCORE_DIR}/XMLViewerCSS.h
+    DEPENDS ${WebCore_INSPECTOR_SCRIPTS_DIR}/xxd.pl ${WebCore_INSPECTOR_SCRIPTS_DIR}/cssmin.py
+    COMMAND ${PYTHON_EXECUTABLE} ${WebCore_INSPECTOR_SCRIPTS_DIR}/cssmin.py < ${WEBCORE_DIR}/xml/XMLViewer.css > ${DERIVED_SOURCES_WEBCORE_DIR}/XMLViewer.min.css
+    COMMAND ${PERL_EXECUTABLE} ${WebCore_INSPECTOR_SCRIPTS_DIR}/xxd.pl XMLViewer_css ${DERIVED_SOURCES_WEBCORE_DIR}/XMLViewer.min.css ${DERIVED_SOURCES_WEBCORE_DIR}/XMLViewerCSS.h
     VERBATIM)
 list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/XMLViewerCSS.h)
 
@@ -3118,9 +3103,9 @@ list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/XMLViewerCSS.h)
 add_custom_command(
     OUTPUT ${DERIVED_SOURCES_WEBCORE_DIR}/XMLViewerJS.h ${DERIVED_SOURCES_WEBCORE_DIR}/XMLViewer.min.js
     MAIN_DEPENDENCY xml/XMLViewer.js
-    DEPENDS ${WEBCORE_DIR}/inspector/xxd.pl ${WEBCORE_DIR}/inspector/Scripts/jsmin.py
-    COMMAND ${PYTHON_EXECUTABLE} ${WEBCORE_DIR}/inspector/Scripts/jsmin.py < ${WEBCORE_DIR}/xml/XMLViewer.js > ${DERIVED_SOURCES_WEBCORE_DIR}/XMLViewer.min.js
-    COMMAND ${PERL_EXECUTABLE} ${WEBCORE_DIR}/inspector/xxd.pl XMLViewer_js ${DERIVED_SOURCES_WEBCORE_DIR}/XMLViewer.min.js ${DERIVED_SOURCES_WEBCORE_DIR}/XMLViewerJS.h
+    DEPENDS ${WebCore_INSPECTOR_SCRIPTS_DIR}/xxd.pl ${WebCore_INSPECTOR_SCRIPTS_DIR}/jsmin.py
+    COMMAND ${PYTHON_EXECUTABLE} ${WebCore_INSPECTOR_SCRIPTS_DIR}/jsmin.py < ${WEBCORE_DIR}/xml/XMLViewer.js > ${DERIVED_SOURCES_WEBCORE_DIR}/XMLViewer.min.js
+    COMMAND ${PERL_EXECUTABLE} ${WebCore_INSPECTOR_SCRIPTS_DIR}/xxd.pl XMLViewer_js ${DERIVED_SOURCES_WEBCORE_DIR}/XMLViewer.min.js ${DERIVED_SOURCES_WEBCORE_DIR}/XMLViewerJS.h
     VERBATIM)
 list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/XMLViewerJS.h)
 
@@ -3251,13 +3236,15 @@ list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/XMLNSNames.cpp)
 GENERATE_DOM_NAMES(XML ${WEBCORE_DIR}/xml/xmlattrs.in)
 list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/XMLNames.cpp)
 
-add_custom_command(
-    OUTPUT ${DERIVED_SOURCES_WEBCORE_DIR}/WebKitVersion.h
-    MAIN_DEPENDENCY ${WEBKIT_DIR}/scripts/generate-webkitversion.pl
-    DEPENDS ${WEBKIT_DIR}/mac/Configurations/Version.xcconfig
-    COMMAND ${PERL_EXECUTABLE} ${WEBKIT_DIR}/scripts/generate-webkitversion.pl --config ${WEBKIT_DIR}/mac/Configurations/Version.xcconfig --outputDir ${DERIVED_SOURCES_WEBCORE_DIR}
-    VERBATIM)
-list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/WebKitVersion.h)
+if (NOT PORT STREQUAL "GTK")
+    add_custom_command(
+        OUTPUT ${DERIVED_SOURCES_WEBCORE_DIR}/WebKitVersion.h
+        MAIN_DEPENDENCY ${WEBKIT_DIR}/scripts/generate-webkitversion.pl
+        DEPENDS ${WEBKIT_DIR}/mac/Configurations/Version.xcconfig
+        COMMAND ${PERL_EXECUTABLE} ${WEBKIT_DIR}/scripts/generate-webkitversion.pl --config ${WEBKIT_DIR}/mac/Configurations/Version.xcconfig --outputDir ${DERIVED_SOURCES_WEBCORE_DIR}
+        VERBATIM)
+    list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/WebKitVersion.h)
+endif ()
 
 WEBKIT_WRAP_SOURCELIST(${WebCore_IDL_FILES} ${WebCore_SOURCES})
 WEBKIT_WRAP_SOURCELIST(${WebCoreTestSupport_IDL_FILES} ${WebCoreTestSupport_SOURCES})

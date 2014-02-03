@@ -59,15 +59,39 @@ webkit.org/b/102651 [ Debug ] networkinformation/basic-operation.html [ Crash ]
 
 # WebGL test cases crashing in WebCore::GraphicsContext3D::readPixels().
 webkit.org/b/109417 webgl/conformance/textures/texture-attachment-formats.html [ Crash Failure ]
-webkit.org/b/109941 webgl/conformance/textures/origin-clean-conformance.html [ Crash ]
 webkit.org/b/109945 webgl/conformance/glsl/misc/shader-uniform-packing-restrictions.html [ Crash ]
-webkit.org/b/109945 webgl/conformance/uniforms/gl-uniform-arrays.html [ Crash Failure ]
 webkit.org/b/109945 webgl/conformance/uniforms/uniform-default-values.html [ Crash ]
 
 # Known WebGL conformance test failures, fails on Intel and AMD hardware
-webgl/1.0.1/conformance/textures/origin-clean-conformance.html [ Crash ]
 webgl/1.0.2/conformance/glsl/misc/shader-uniform-packing-restrictions.html [ Crash ]
 webgl/1.0.2/conformance/uniforms/uniform-default-values.html [ Crash ]
+
+# EFL specific error : (_ecore_main_fd_handlers_bads_rem() No bad fd found)
+webkit.org/b/116587 http/tests/security/contentSecurityPolicy/connect-src-websocket-blocked.html [ Skip ]
+webkit.org/b/116587 http/tests/security/contentSecurityPolicy/connect-src-xmlhttprequest-allowed.html [ Skip ]
+webkit.org/b/116587 http/tests/security/contentSecurityPolicy/connect-src-xmlhttprequest-blocked.html [ Skip ]
+webkit.org/b/116587 http/tests/websocket/tests/hybi/broken-utf8.html [ Skip ]
+webkit.org/b/116587 http/tests/websocket/tests/hybi/bufferedAmount-after-close-in-busy.html [ Skip ]
+webkit.org/b/116587 http/tests/websocket/tests/hybi/close-on-unload-and-force-gc.html [ Skip ]
+webkit.org/b/116587 http/tests/websocket/tests/hybi/compressed-control-frame.html [ Skip ]
+webkit.org/b/116587 http/tests/websocket/tests/hybi/cross-origin.html [ Skip ]
+webkit.org/b/116587 http/tests/websocket/tests/hybi/extensions.html [ Skip ]
+webkit.org/b/116587 http/tests/websocket/tests/hybi/fragmented-binary-frames.html [ Skip ]
+webkit.org/b/116587 http/tests/websocket/tests/hybi/fragmented-frames.html [ Skip ]
+webkit.org/b/116587 http/tests/websocket/tests/hybi/handshake-challenge-randomness.html [ Skip ]
+webkit.org/b/116587 http/tests/websocket/tests/hybi/handshake-error.html [ Skip ]
+webkit.org/b/116587 http/tests/websocket/tests/hybi/nocache.html [ Skip ]
+webkit.org/b/116587 http/tests/websocket/tests/hybi/no-subprotocol.html [ Skip ]
+webkit.org/b/116587 http/tests/websocket/tests/hybi/reserved-bits.html [ Skip ]
+webkit.org/b/116587 http/tests/websocket/tests/hybi/simple.html [ Skip ]
+webkit.org/b/116587 http/tests/websocket/tests/hybi/sub-protocol.html [ Skip ]
+webkit.org/b/116587 http/tests/websocket/tests/hybi/url-no-trailing-slash.html [ Skip ]
+webkit.org/b/116587 http/tests/websocket/tests/hybi/url-with-credential.html [ Skip ]
+webkit.org/b/116587 http/tests/websocket/tests/hybi/url-with-empty-query.html [ Skip ]
+webkit.org/b/116587 http/tests/websocket/tests/hybi/workers/close-code-and-reason.html [ Skip ]
+webkit.org/b/116587 http/tests/websocket/tests/hybi/workers/close-in-onmessage-crash.html [ Skip ]
+webkit.org/b/116587 http/tests/websocket/tests/hybi/workers/multiple-subprotocols.html [ Skip ]
+webkit.org/b/116587 http/tests/websocket/tests/hybi/zero-length-text.html [ Skip ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # FLAKY TESTS
@@ -76,7 +100,6 @@ webgl/1.0.2/conformance/uniforms/uniform-default-values.html [ Crash ]
 webkit.org/b/111612 animations/animation-delay-changed.html [ Failure Pass ]
 
 Bug(EFL) editing/selection/first-letter-selection-crash.html [ Crash Pass ]
-Bug(EFL) http/tests/security/contentSecurityPolicy/connect-src-websocket-blocked.html [ Crash Pass Failure ]
 Bug(EFL) media/video-played-reset.html [ Failure Pass ]
 Bug(EFL) fast/loader/fragment-after-redirect-gets-back-entry.html [ Failure Pass ]
 Bug(EFL) fast/loader/child-frame-add-after-back-forward.html [ Failure Pass ]
@@ -138,6 +161,51 @@ webkit.org/b/108257 compositing/overflow/composited-scrolling-creates-a-stacking
 webkit.org/b/108355 js/caller-property.html [ Crash Pass ]
 webkit.org/b/108355 storage/websql/close-during-stress-test.html [ Crash Pass ]
 webkit.org/b/108355 storage/websql/sql-error-codes.html [ Crash Pass ]
+
+webkit.org/b/127109 media/video-object-fit-change.html [ ImageOnlyFailure Pass ]
+webkit.org/b/127109 media/video-object-fit.html [ ImageOnlyFailure Pass ]
+
+# Started to crash after r160991
+webkit.org/b/127914 fast/canvas/webgl/css-webkit-canvas-repaint.html [ Crash Pass ]
+webkit.org/b/127914 fast/canvas/webgl/oes-texture-half-float-with-image.html [ Crash Pass ]
+webkit.org/b/127914 fast/canvas/webgl/oes-texture-half-float.html [ Crash Pass ]
+webkit.org/b/127914 fast/canvas/webgl/tex-image-and-sub-image-2d-with-canvas-rgb565.html [ Crash Pass ]
+webkit.org/b/127914 fast/canvas/webgl/tex-image-and-sub-image-2d-with-canvas-rgba5551.html [ Crash Pass ]
+webkit.org/b/127914 fast/canvas/webgl/tex-image-and-sub-image-2d-with-canvas.html [ Crash Pass ]
+webkit.org/b/127914 fast/canvas/webgl/tex-image-and-sub-image-2d-with-image-data-rgb565.html [ Crash Pass ]
+webkit.org/b/127914 fast/canvas/webgl/tex-image-and-sub-image-2d-with-image-data-rgba5551.html [ Crash Pass ]
+webkit.org/b/127914 fast/canvas/webgl/tex-image-and-sub-image-2d-with-image-rgb565.html [ Crash Pass ]
+webkit.org/b/127914 fast/canvas/webgl/tex-image-and-sub-image-2d-with-video.html [ Crash Pass ]
+webkit.org/b/127914 fast/canvas/webgl/texImageTest.html [ Crash Pass ]
+webkit.org/b/127914 fast/canvas/webgl/texture-color-profile.html [ Crash Pass ]
+webkit.org/b/127914 webgl/1.0.1/conformance/rendering/gl-drawelements.html [ Crash Pass ]
+webkit.org/b/127914 webgl/1.0.1/conformance/textures/gl-pixelstorei.html [ Crash Pass ]
+webkit.org/b/127914 webgl/1.0.1/conformance/textures/tex-image-and-sub-image-2d-with-canvas.html [ Crash Pass ]
+webkit.org/b/127914 webgl/1.0.1/conformance/textures/tex-image-and-sub-image-2d-with-image.html [ Crash Pass ]
+webkit.org/b/127914 webgl/1.0.2/conformance/extensions/oes-texture-float-with-image-data.html [ Crash Pass ]
+webkit.org/b/127914 webgl/1.0.2/conformance/extensions/webgl-debug-renderer-info.html [ Crash Pass ]
+webkit.org/b/127914 webgl/1.0.2/conformance/rendering/gl-drawelements.html [ Crash Pass ]
+webkit.org/b/127914 webgl/1.0.2/conformance/textures/gl-get-tex-parameter.html [ Crash Pass ]
+webkit.org/b/127914 webgl/1.0.2/conformance/textures/tex-image-and-sub-image-2d-with-canvas-rgb565.html [ Crash Pass ]
+webkit.org/b/127914 webgl/1.0.2/conformance/textures/tex-image-and-sub-image-2d-with-canvas-rgba4444.html [ Crash Pass ]
+webkit.org/b/127914 webgl/1.0.2/conformance/textures/tex-image-and-sub-image-2d-with-canvas-rgba5551.html [ Crash Pass ]
+webkit.org/b/127914 webgl/1.0.2/conformance/textures/tex-image-and-sub-image-2d-with-canvas.html [ Crash Pass ]
+webkit.org/b/127914 webgl/1.0.2/conformance/textures/tex-image-and-sub-image-2d-with-image-data-rgb565.html [ Crash Pass ]
+webkit.org/b/127914 webgl/1.0.2/conformance/textures/tex-image-and-sub-image-2d-with-image-data-rgba4444.html [ Crash Pass ]
+webkit.org/b/127914 webgl/1.0.2/conformance/textures/tex-image-and-sub-image-2d-with-image-rgb565.html [ Crash Pass ]
+webkit.org/b/127914 webgl/conformance/extensions/oes-texture-float-with-image-data.html [ Crash Pass ]
+webkit.org/b/127914 webgl/conformance/extensions/webgl-debug-renderer-info.html [ Crash Pass ]
+webkit.org/b/127914 webgl/conformance/rendering/gl-drawelements.html [ Crash Pass ]
+webkit.org/b/127914 webgl/conformance/textures/copy-tex-image-and-sub-image-2d.html [ Crash Pass ]
+webkit.org/b/127914 webgl/conformance/textures/gl-get-tex-parameter.html [ Crash Pass ]
+webkit.org/b/127914 webgl/conformance/textures/tex-image-and-sub-image-2d-with-canvas-rgb565.html [ Crash Pass ]
+webkit.org/b/127914 webgl/conformance/textures/tex-image-and-sub-image-2d-with-canvas-rgba4444.html [ Crash Pass ]
+webkit.org/b/127914 webgl/conformance/textures/tex-image-and-sub-image-2d-with-canvas-rgba5551.html [ Crash Pass ]
+webkit.org/b/127914 webgl/conformance/textures/tex-image-and-sub-image-2d-with-canvas.html [ Crash Pass ]
+webkit.org/b/127914 webgl/conformance/textures/tex-image-and-sub-image-2d-with-image-data-rgb565.html [ Crash Pass ]
+webkit.org/b/127914 webgl/conformance/textures/tex-image-and-sub-image-2d-with-image-data-rgba4444.html [ Crash Pass ]
+webkit.org/b/127914 webgl/conformance/textures/tex-image-and-sub-image-2d-with-image-data-rgba5551.html [ Crash Pass ]
+webkit.org/b/127914 webgl/conformance/textures/tex-image-and-sub-image-2d-with-image-rgb565.html [ Crash Pass ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # PASSING TESTS WITH INCORRECT EXPECTATIONS
@@ -297,12 +365,10 @@ webkit.org/b/109435 webgl/conformance/context/context-creation-and-destruction.h
 webkit.org/b/109435 webgl/conformance/glsl/functions/glsl-function-sin.html [ Failure Crash ]
 webkit.org/b/109435 webgl/conformance/glsl/functions/glsl-function-smoothstep-float.html [ Failure Crash ]
 webkit.org/b/109435 webgl/conformance/glsl/literals/float_literal.vert.html [ Failure Crash ]
-webkit.org/b/109435 webgl/conformance/glsl/misc/shader-with-global-variable-precision-mismatch.html [ Failure Crash ]
 webkit.org/b/109435 webgl/conformance/glsl/misc/shaders-with-varyings.html [ Failure Crash ]
 webkit.org/b/109435 webgl/conformance/more/functions/readPixelsBadArgs.html [ Failure Crash ]
 webkit.org/b/109435 webgl/conformance/more/functions/texImage2DHTML.html [ Failure Crash ]
 webkit.org/b/109435 webgl/conformance/more/functions/texSubImage2DHTML.html [ Failure Crash ]
-webkit.org/b/109435 webgl/conformance/renderbuffers/framebuffer-object-attachment.html [ Failure Crash ]
 webkit.org/b/109435 webgl/conformance/rendering/multisample-corruption.html [ Failure Crash ]
 webkit.org/b/109435 webgl/conformance/rendering/point-size.html [ Failure Crash ]
 webkit.org/b/109435 webgl/conformance/textures/copy-tex-image-2d-formats.html [ Failure Crash ]
@@ -321,7 +387,25 @@ webkit.org/b/114946 compositing/patterns/direct-pattern-compositing.html [ Image
 compositing/patterns/direct-pattern-compositing-load.html [ ImageOnlyFailure Pass ]
 
 # Websocket tests are flaky on WK2
-webkit.org/b/111976 http/tests/websocket [ Crash Pass Failure ]
+webkit.org/b/111976 http/tests/websocket/tests/hybi/bufferedAmount-after-close.html [ Crash Pass ]
+webkit.org/b/111976 http/tests/websocket/tests/hybi/close-on-unload-reference-in-parent.html [ Crash Pass ]
+webkit.org/b/111976 http/tests/websocket/tests/hybi/fragmented-control-frame.html [ Crash Pass Failure ]
+webkit.org/b/111976 http/tests/websocket/tests/hybi/handshake-fail-by-extensions-header.html [ Crash Pass Failure ]
+webkit.org/b/111976 http/tests/websocket/tests/hybi/handshake-fail-by-maxlength.html [ Pass Failure ]
+webkit.org/b/111976 http/tests/websocket/tests/hybi/handshake-fail-by-mismatch-protocol-header.html [ Crash Pass ]
+webkit.org/b/111976 http/tests/websocket/tests/hybi/reserved-opcodes.html [ Crash Pass ]
+webkit.org/b/111976 http/tests/websocket/tests/hybi/simple-stress.html [ Crash Pass ]
+webkit.org/b/111976 http/tests/websocket/tests/hybi/too-long-payload.html [ Crash Pass ]
+webkit.org/b/111976 http/tests/websocket/tests/hybi/url-parsing.html [ Crash Pass ]
+webkit.org/b/111976 http/tests/websocket/tests/hybi/url-with-query.html [ Crash Pass ]
+webkit.org/b/111976 http/tests/websocket/tests/hybi/websocket-event-target.html [ Crash Pass Failure ]
+webkit.org/b/111976 http/tests/websocket/tests/hybi/websocket-pending-activity.html [ Crash Pass ]
+webkit.org/b/111976 http/tests/websocket/tests/hybi/workers/close-in-shared-worker.html [ Crash Pass ]
+webkit.org/b/111976 http/tests/websocket/tests/hybi/workers/close.html [ Pass Failure ]
+webkit.org/b/111976 http/tests/websocket/tests/hybi/workers/no-onmessage-in-sync-op.html [ Crash Pass Failure ]
+webkit.org/b/111976 http/tests/websocket/tests/hybi/workers/no-subprotocol.html [ Crash Pass Failure ]
+webkit.org/b/111976 http/tests/websocket/tests/hybi/workers/receive-arraybuffer.html [ Crash Pass ]
+webkit.org/b/111976 http/tests/websocket/tests/hybi/workers/worker-simple.html [ Crash Pass ]
 
 # Most probably failures are result of delay in scrolling caused by 'delegated scrolling' usage.
 webkit.org/b/107286 fast/css/sticky/sticky-margins.html [ ImageOnlyFailure ]
@@ -342,6 +426,8 @@ webkit.org/b/107286 fast/css/sticky/sticky-writing-mode-horizontal-bt.html [ Ima
 webkit.org/b/107286 fast/css/sticky/sticky-top.html [ ImageOnlyFailure ]
 webkit.org/b/107286 fast/css/sticky/sticky-side-margins.html [ ImageOnlyFailure ]
 webkit.org/b/107286 fast/css/sticky/replaced-sticky.html [ ImageOnlyFailure ]
+webkit.org/b/107286 fast/css/sticky/inline-sticky-abspos-child.html [ ImageOnlyFailure ]
+webkit.org/b/107286 fast/css/sticky/inline-sticky.html [ ImageOnlyFailure ]
 
 # New ruby selection test (in r140613) fails to render correctly, not generating an expected result
 webkit.org/b/108315 fast/ruby/select-ruby.html [ Missing ]
@@ -360,7 +446,6 @@ compositing/tiling/rotated-tiled-preserve3d-clamped.html [ Missing ]
 # Failing after r142758.
 webkit.org/b/109948 fast/dom/Window/mozilla-focus-blur.html [ Failure Pass ]
 
-webkit.org/b/119789 fast/events/touch/frame-hover-update.html [ Crash ]
 webkit.org/b/119789 fast/events/touch/multi-touch-inside-iframes.html [ Crash ]
 webkit.org/b/119789 fast/events/touch/multi-touch-inside-nested-iframes.html [ Crash ]
 webkit.org/b/119789 fast/events/touch/touch-before-pressing-spin-button.html [ Crash ]
@@ -391,8 +476,25 @@ webkit.org/b/125632 compositing/layer-creation/fixed-position-transformed-outsid
 webkit.org/b/125633 compositing/repaint/fixed-background-scroll.html [ Failure ]
 
 # Failing after r159030
-webkit.org/b/125634 compositing/repaint/invalidations-on-composited-layers.html [ Failure ]
-
 webkit.org/b/125635 compositing/repaint/positioned-movement.html [ Failure ]
 
 webkit.org/b/125636 compositing/video/video-object-fit.html [ Failure ]
+
+# Tests failing since introduced in r162117
+webkit.org/b/127118 compositing/regions/abs-in-named-flow-from-fixed-in-named-flow.html [ Failure ]
+webkit.org/b/127118 compositing/regions/fixed-in-named-flow-clip-descendant.html [ Failure ]
+webkit.org/b/127118 compositing/regions/fixed-in-named-flow-from-abs-in-named-flow.html [ Failure ]
+webkit.org/b/127118 compositing/regions/fixed-in-named-flow-from-outflow.html [ Failure ]
+webkit.org/b/127118 compositing/regions/fixed-in-named-flow-lost-transformed-parent.html [ Failure ]
+webkit.org/b/127118 compositing/regions/fixed-in-named-flow.html [ Failure ]
+
+webkit.org/b/127277 fast/canvas/webgl/glsl-conformance.html [ Failure ]
+
+webkit.org/b/127279 fast/canvas/webgl/webgl-compressed-texture-size-limit.html [ Failure ]
+
+webkit.org/b/127286 webgl/conformance/typedarrays/data-view-test.html [ Failure ]
+
+webkit.org/b/109941 webgl/conformance/textures/origin-clean-conformance.html [ Failure ]
+webkit.org/b/109941 webgl/1.0.1/conformance/textures/origin-clean-conformance.html [ Failure ]
+
+webkit.org/b/127780 compositing/regions/position-layers-inside-regions-overflow-hidden.html [ ImageOnlyFailure ]

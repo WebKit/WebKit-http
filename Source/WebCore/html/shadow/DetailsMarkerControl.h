@@ -38,16 +38,16 @@ namespace WebCore {
 
 class HTMLSummaryElement;
 
-class DetailsMarkerControl FINAL : public HTMLDivElement {
+class DetailsMarkerControl final : public HTMLDivElement {
 public:
     static PassRefPtr<DetailsMarkerControl> create(Document&);
 
 private:
     DetailsMarkerControl(Document&);
 
-    virtual RenderElement* createRenderer(PassRef<RenderStyle>) OVERRIDE;
-    virtual bool rendererIsNeeded(const RenderStyle&);
-    virtual const AtomicString& shadowPseudoId() const;
+    virtual RenderPtr<RenderElement> createElementRenderer(PassRef<RenderStyle>) override;
+    virtual bool rendererIsNeeded(const RenderStyle&) override;
+    virtual const AtomicString& shadowPseudoId() const override;
 
     HTMLSummaryElement* summaryElement();
 };

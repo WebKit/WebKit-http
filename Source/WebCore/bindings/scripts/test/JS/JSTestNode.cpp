@@ -35,11 +35,11 @@ namespace WebCore {
 
 static const HashTableValue JSTestNodeTableValues[] =
 {
-    { "constructor", DontEnum | ReadOnly, NoIntrinsic, (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestNodeConstructor), (intptr_t)0 },
+    { "constructor", DontEnum | ReadOnly, NoIntrinsic, (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestNodeConstructor), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) },
     { 0, 0, NoIntrinsic, 0, 0 }
 };
 
-static const HashTable JSTestNodeTable = { 2, 1, JSTestNodeTableValues, 0 };
+static const HashTable JSTestNodeTable = { 2, 1, true, JSTestNodeTableValues, 0 };
 /* Hash table for constructor */
 
 static const HashTableValue JSTestNodeConstructorTableValues[] =
@@ -47,7 +47,7 @@ static const HashTableValue JSTestNodeConstructorTableValues[] =
     { 0, 0, NoIntrinsic, 0, 0 }
 };
 
-static const HashTable JSTestNodeConstructorTable = { 1, 0, JSTestNodeConstructorTableValues, 0 };
+static const HashTable JSTestNodeConstructorTable = { 1, 0, false, JSTestNodeConstructorTableValues, 0 };
 EncodedJSValue JSC_HOST_CALL JSTestNodeConstructor::constructJSTestNode(ExecState* exec)
 {
     JSTestNodeConstructor* castedThis = jsCast<JSTestNodeConstructor*>(exec->callee());
@@ -88,7 +88,7 @@ static const HashTableValue JSTestNodePrototypeTableValues[] =
     { 0, 0, NoIntrinsic, 0, 0 }
 };
 
-static const HashTable JSTestNodePrototypeTable = { 1, 0, JSTestNodePrototypeTableValues, 0 };
+static const HashTable JSTestNodePrototypeTable = { 1, 0, false, JSTestNodePrototypeTableValues, 0 };
 const ClassInfo JSTestNodePrototype::s_info = { "TestNodePrototype", &Base::s_info, &JSTestNodePrototypeTable, 0, CREATE_METHOD_TABLE(JSTestNodePrototype) };
 
 JSObject* JSTestNodePrototype::self(VM& vm, JSGlobalObject* globalObject)
@@ -121,9 +121,9 @@ bool JSTestNode::getOwnPropertySlot(JSObject* object, ExecState* exec, PropertyN
     return getStaticValueSlot<JSTestNode, Base>(exec, JSTestNodeTable, thisObject, propertyName, slot);
 }
 
-EncodedJSValue jsTestNodeConstructor(ExecState* exec, EncodedJSValue slotBase, EncodedJSValue, PropertyName)
+EncodedJSValue jsTestNodeConstructor(ExecState* exec, EncodedJSValue, EncodedJSValue thisValue, PropertyName)
 {
-    JSTestNode* domObject = jsDynamicCast<JSTestNode*>(JSValue::decode(slotBase));
+    JSTestNode* domObject = jsDynamicCast<JSTestNode*>(JSValue::decode(thisValue));
     if (!domObject)
         return throwVMTypeError(exec);
     return JSValue::encode(JSTestNode::getConstructor(exec->vm(), domObject->globalObject()));

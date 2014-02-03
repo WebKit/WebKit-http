@@ -42,6 +42,9 @@ messages -> WebProcess LegacyReceiver {
     RegisterURLSchemeAsNoAccess(String scheme)
     RegisterURLSchemeAsDisplayIsolated(String scheme)
     RegisterURLSchemeAsCORSEnabled(String scheme)
+#if ENABLE(CACHE_PARTITIONING)
+    RegisterURLSchemeAsCachePartitioned(String scheme)
+#endif
     SetDefaultRequestTimeoutInterval(double timeoutInterval)
     SetAlwaysUsesComplexTextCodePath(bool alwaysUseComplexText)
     SetShouldUseFontSmoothing(bool useFontSmoothing)
@@ -51,9 +54,9 @@ messages -> WebProcess LegacyReceiver {
     SetIgnoreTLSErrors(bool ignoreTLSErrors)
 #endif
 
-    // Private browsing session is per process. Individual pages or page groups may use the private session or the default one as appropriate.
-    EnsurePrivateBrowsingSession()
-    DestroyPrivateBrowsingSession()
+    // Legacy private browsing session is per process. Individual pages or page groups may use the private session or the default one as appropriate.
+    EnsurePrivateBrowsingSession(uint64_t sessionID)
+    DestroyPrivateBrowsingSession(uint64_t sessionID)
 
     # Plug-ins.
     DidAddPlugInAutoStartOriginHash(uint32_t hash, double expirationTime)
@@ -75,15 +78,18 @@ messages -> WebProcess LegacyReceiver {
     GarbageCollectJavaScriptObjects()
     SetJavaScriptGarbageCollectorTimerEnabled(bool enable)
 
-    PostInjectedBundleMessage(CoreIPC::DataReference messageData);
+    PostInjectedBundleMessage(IPC::DataReference messageData);
 
     ReleasePageCache()
 
 #if PLATFORM(MAC)
-    SetProcessSuppressionEnabled(bool flag);
+    SetProcessSuppressionEnabled(bool flag)
+    SetQOS(int latencyQOS, int throughputQOS)
 #endif
 
-#if !ENABLE(NETWORK_PROCESS) && USE(SOUP)
+#if USE(SOUP)
     AllowSpecificHTTPSCertificateForHost(WebCore::CertificateInfo certificate, String host)
 #endif
+
+    SetMemoryCacheDisabled(bool disabled);
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008 Apple Inc. All rights reserved.
+ * Copyright (C) 2008, 2014 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -48,10 +48,30 @@ namespace JSC {
         {
             return adoptRef(new ProfileNode(callerCallFrame, callIdentifier, headNode, parentNode));
         }
+
         static PassRefPtr<ProfileNode> create(ExecState* callerCallFrame, ProfileNode* headNode, ProfileNode* node)
         {
             return adoptRef(new ProfileNode(callerCallFrame, headNode, node));
         }
+
+        struct Call {
+        public:
+            Call(double startTime, double totalTime = NAN)
+                : m_startTime(startTime)
+                , m_totalTime(totalTime)
+            {
+            }
+
+            double startTime() const { return m_startTime; }
+            void setStartTime(double time) { m_startTime = time; }
+
+            double totalTime() const { return m_totalTime; }
+            void setTotalTime(double time) { m_totalTime = time; }
+
+        private:
+            double m_startTime;
+            double m_totalTime;
+        };
 
         bool operator==(ProfileNode* node) { return m_callIdentifier == node->callIdentifier(); }
 
@@ -63,65 +83,45 @@ namespace JSC {
         // CallIdentifier members
         ExecState* callerCallFrame() const { return m_callerCallFrame; }
         const CallIdentifier& callIdentifier() const { return m_callIdentifier; }
-        unsigned long callUID() const { return m_callIdentifier.hash(); };
-        const String& functionName() const { return m_callIdentifier.m_name; }
-        const String& url() const { return m_callIdentifier.m_url; }
-        unsigned lineNumber() const { return m_callIdentifier.m_lineNumber; }
+        unsigned id() const { return m_callIdentifier.hash(); }
+        const String& functionName() const { return m_callIdentifier.functionName(); }
+        const String& url() const { return m_callIdentifier.url(); }
+        unsigned lineNumber() const { return m_callIdentifier.lineNumber(); }
+        unsigned columnNumber() const { return m_callIdentifier.columnNumber(); }
 
         // Relationships
         ProfileNode* head() const { return m_head; }
         void setHead(ProfileNode* head) { m_head = head; }
+
         ProfileNode* parent() const { return m_parent; }
         void setParent(ProfileNode* parent) { m_parent = parent; }
+
         ProfileNode* nextSibling() const { return m_nextSibling; }
         void setNextSibling(ProfileNode* nextSibling) { m_nextSibling = nextSibling; }
 
         // Time members
-        double startTime() const { return m_startTime; }
-        void setStartTime(double startTime) { m_startTime = startTime; }
-        double totalTime() const { return m_visibleTotalTime; }
-        double actualTotalTime() const { return m_actualTotalTime; }
-        void setTotalTime(double time) { m_actualTotalTime = time; m_visibleTotalTime = time; }
-        void setActualTotalTime(double time) { m_actualTotalTime = time; }
-        void setVisibleTotalTime(double time) { m_visibleTotalTime = time; }
-        double selfTime() const { return m_visibleSelfTime; }
-        double actualSelfTime() const { return m_actualSelfTime; }
-        void setSelfTime(double time) {m_actualSelfTime = time; m_visibleSelfTime = time; }
-        void setActualSelfTime(double time) { m_actualSelfTime = time; }
-        void setVisibleSelfTime(double time) { m_visibleSelfTime = time; }
+        double totalTime() const { return m_totalTime; }
+        void setTotalTime(double time) { m_totalTime = time; }
 
-        double totalPercent() const { return (m_visibleTotalTime / (m_head ? m_head->totalTime() : totalTime())) * 100.0; }
-        double selfPercent() const { return (m_visibleSelfTime / (m_head ? m_head->totalTime() : totalTime())) * 100.0; }
+        double selfTime() const { return m_selfTime; }
+        void setSelfTime(double time) { m_selfTime = time; }
 
-        unsigned numberOfCalls() const { return m_numberOfCalls; }
-        void setNumberOfCalls(unsigned number) { m_numberOfCalls = number; }
+        double totalPercent() const { return (m_totalTime / (m_head ? m_head->totalTime() : totalTime())) * 100.0; }
+        double selfPercent() const { return (m_selfTime / (m_head ? m_head->totalTime() : totalTime())) * 100.0; }
+
+        Vector<Call> calls() const { return m_calls; }
+        Call& lastCall() { ASSERT(!m_calls.isEmpty()); return m_calls.last(); }
+        size_t numberOfCalls() const { return m_calls.size(); }
 
         // Children members
         const Vector<RefPtr<ProfileNode>>& children() const { return m_children; }
         ProfileNode* firstChild() const { return m_children.size() ? m_children.first().get() : 0; }
         ProfileNode* lastChild() const { return m_children.size() ? m_children.last().get() : 0; }
-        ProfileNode* findChild(ProfileNode*) const;
         void removeChild(ProfileNode*);
         void addChild(PassRefPtr<ProfileNode> prpChild);
         void insertNode(PassRefPtr<ProfileNode> prpNode);
 
-        // Visiblity
-        bool visible() const { return m_visible; }
-        void setVisible(bool visible) { m_visible = visible; }
-
-        static void setTreeVisible(ProfileNode*, bool visible);
-
-        // Sorting
         ProfileNode* traverseNextNodePostOrder() const;
-        ProfileNode* traverseNextNodePreOrder(bool processChildren = true) const;
-
-        // Views
-        void calculateVisibleTotalTime();
-        bool focus(const CallIdentifier&);
-        void exclude(const CallIdentifier&);
-        void restore();
-
-        void endAndRecordCall();
 
 #ifndef NDEBUG
         const char* c_str() const { return m_callIdentifier; }
@@ -137,19 +137,7 @@ namespace JSC {
 
         void startTimer();
         void resetChildrensSiblings();
-
-        RefPtr<ProfileNode>* childrenBegin() { return m_children.begin(); }
-        RefPtr<ProfileNode>* childrenEnd() { return m_children.end(); }
-
-        // Sorting comparators
-        static inline bool totalTimeDescendingComparator(const RefPtr<ProfileNode>& a, const RefPtr<ProfileNode>& b) { return a->totalTime() > b->totalTime(); }
-        static inline bool totalTimeAscendingComparator(const RefPtr<ProfileNode>& a, const RefPtr<ProfileNode>& b) { return a->totalTime() < b->totalTime(); }
-        static inline bool selfTimeDescendingComparator(const RefPtr<ProfileNode>& a, const RefPtr<ProfileNode>& b) { return a->selfTime() > b->selfTime(); }
-        static inline bool selfTimeAscendingComparator(const RefPtr<ProfileNode>& a, const RefPtr<ProfileNode>& b) { return a->selfTime() < b->selfTime(); }
-        static inline bool callsDescendingComparator(const RefPtr<ProfileNode>& a, const RefPtr<ProfileNode>& b) { return a->numberOfCalls() > b->numberOfCalls(); }
-        static inline bool callsAscendingComparator(const RefPtr<ProfileNode>& a, const RefPtr<ProfileNode>& b) { return a->numberOfCalls() < b->numberOfCalls(); }
-        static inline bool functionNameDescendingComparator(const RefPtr<ProfileNode>& a, const RefPtr<ProfileNode>& b) { return codePointCompareLessThan(b->functionName(), a->functionName()); }
-        static inline bool functionNameAscendingComparator(const RefPtr<ProfileNode>& a, const RefPtr<ProfileNode>& b) { return codePointCompareLessThan(a->functionName(), b->functionName()); }
+        void endAndRecordCall();
 
         ExecState* m_callerCallFrame;
         CallIdentifier m_callIdentifier;
@@ -157,15 +145,10 @@ namespace JSC {
         ProfileNode* m_parent;
         ProfileNode* m_nextSibling;
 
-        double m_startTime;
-        double m_actualTotalTime;
-        double m_visibleTotalTime;
-        double m_actualSelfTime;
-        double m_visibleSelfTime;
-        unsigned m_numberOfCalls;
+        double m_totalTime;
+        double m_selfTime;
 
-        bool m_visible;
-
+        Vector<Call, 1> m_calls;
         Vector<RefPtr<ProfileNode>> m_children;
     };
 

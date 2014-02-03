@@ -34,6 +34,7 @@
 
 #include "AXObjectCache.h"
 #include "ArchiveResource.h"
+#include "BackForwardController.h"
 #include "BackForwardList.h"
 #include "BatteryClientGtk.h"
 #include "CairoUtilities.h"
@@ -62,7 +63,7 @@
 #include "FrameLoaderClientGtk.h"
 #include "FrameLoaderTypes.h"
 #include "FrameView.h"
-#include "GOwnPtrGtk.h"
+#include "GUniquePtrGtk.h"
 #include "GeolocationClientGtk.h"
 #include "GeolocationController.h"
 #include "GraphicsContext.h"
@@ -82,6 +83,7 @@
 #include "PlatformKeyboardEvent.h"
 #include "PlatformWheelEvent.h"
 #include "ProgressTracker.h"
+#include "ProgressTrackerClientGtk.h"
 #include "RenderView.h"
 #include "ResourceHandle.h"
 #include "RuntimeEnabledFeatures.h"
@@ -418,7 +420,7 @@ static gboolean webkit_web_view_forward_context_menu_event(WebKitWebView* webVie
     g_signal_emit(webView, webkit_web_view_signals[POPULATE_POPUP], 0, defaultMenu);
 
     // If the context menu is now empty, don't show it.
-    GOwnPtr<GList> items(gtk_container_get_children(GTK_CONTAINER(defaultMenu)));
+    GUniquePtr<GList> items(gtk_container_get_children(GTK_CONTAINER(defaultMenu)));
     if (!items)
         return FALSE;
 
@@ -1303,7 +1305,7 @@ static void fileChooserDialogResponseCallback(GtkDialog* dialog, gint responseID
 {
     GRefPtr<WebKitFileChooserRequest> adoptedRequest = adoptGRef(request);
     if (responseID == GTK_RESPONSE_ACCEPT) {
-        GOwnPtr<GSList> filesList(gtk_file_chooser_get_filenames(GTK_FILE_CHOOSER(dialog)));
+        GUniquePtr<GSList> filesList(gtk_file_chooser_get_filenames(GTK_FILE_CHOOSER(dialog)));
         GRefPtr<GPtrArray> filesArray = adoptGRef(g_ptr_array_new());
         for (GSList* file = filesList.get(); file; file = g_slist_next(file))
             g_ptr_array_add(filesArray.get(), file->data);
@@ -1416,6 +1418,7 @@ static gboolean webkit_navigation_request_handled(GSignalInvocationHint* ihint, 
     return TRUE;
 }
 
+#if HAVE(ACCESSIBILITY)
 static AtkObject* webkit_web_view_get_accessible(GtkWidget* widget)
 {
     WebKitWebView* webView = WEBKIT_WEB_VIEW(widget);
@@ -1447,6 +1450,7 @@ static AtkObject* webkit_web_view_get_accessible(GtkWidget* widget)
 
     return axRoot;
 }
+#endif
 
 static double screenDPI(GdkScreen* screen)
 {
@@ -1511,7 +1515,7 @@ static void webkit_web_view_drag_end(GtkWidget* widget, GdkDragContext* context)
     Frame& frame = core(webView)->focusController().focusedOrMainFrame();
 
     // Synthesize a button release event to send with the drag end action.
-    GOwnPtr<GdkEvent> event(gdk_event_new(GDK_BUTTON_RELEASE));
+    GUniquePtr<GdkEvent> event(gdk_event_new(GDK_BUTTON_RELEASE));
     int x, y, xRoot, yRoot;
     GdkModifierType modifiers = static_cast<GdkModifierType>(0);
 #ifdef GTK_API_VERSION_2
@@ -3106,7 +3110,9 @@ static void webkit_web_view_class_init(WebKitWebViewClass* webViewClass)
     widgetClass->grab_focus = webkit_web_view_grab_focus;
     widgetClass->focus_in_event = webkit_web_view_focus_in_event;
     widgetClass->focus_out_event = webkit_web_view_focus_out_event;
+#if HAVE(ACCESSIBILITY)
     widgetClass->get_accessible = webkit_web_view_get_accessible;
+#endif
     widgetClass->screen_changed = webkit_web_view_screen_changed;
 #if ENABLE(DRAG_SUPPORT)
     widgetClass->drag_end = webkit_web_view_drag_end;
@@ -3600,13 +3606,11 @@ static void webkit_web_view_update_settings(WebKitWebView* webView)
     WebCore::RuntimeEnabledFeatures::sharedFeatures().setMediaStreamEnabled(settingsPrivate->enableMediaStream);
 #endif
 
-#if USE(ACCELERATED_COMPOSITING)
     updateAcceleratedCompositingSetting(coreSettings, settingsPrivate->enableAcceleratedCompositing);
     char* debugVisualsEnvironment = getenv("WEBKIT_SHOW_COMPOSITING_DEBUG_VISUALS");
     bool showDebugVisuals = debugVisualsEnvironment && !strcmp(debugVisualsEnvironment, "1");
     coreSettings.setShowDebugBorders(showDebugVisuals);
     coreSettings.setShowRepaintCounter(showDebugVisuals);
-#endif
 
 #if ENABLE(WEB_AUDIO)
     coreSettings.setWebAudioEnabled(settingsPrivate->enableWebAudio);
@@ -3614,10 +3618,6 @@ static void webkit_web_view_update_settings(WebKitWebView* webView)
 
 #if ENABLE(SMOOTH_SCROLLING)
     coreSettings.setScrollAnimatorEnabled(settingsPrivate->enableSmoothScrolling);
-#endif
-
-#if ENABLE(CSS_SHADERS)
-    coreSettings.setCSSCustomFilterEnabled(settingsPrivate->enableCSSShaders);
 #endif
 
 #if ENABLE(CSS_REGIONS)
@@ -3756,10 +3756,8 @@ static void webkit_web_view_settings_notify(WebKitWebSettings* webSettings, GPar
         settings.setWebGLEnabled(g_value_get_boolean(&value));
 #endif
 
-#if USE(ACCELERATED_COMPOSITING)
     else if (name == g_intern_string("enable-accelerated-compositing"))
         updateAcceleratedCompositingSetting(settings, g_value_get_boolean(&value));
-#endif
 
 #if ENABLE(WEB_AUDIO)
     else if (name == g_intern_string("enable-webaudio"))
@@ -3769,11 +3767,6 @@ static void webkit_web_view_settings_notify(WebKitWebSettings* webSettings, GPar
 #if ENABLE(SMOOTH_SCROLLING)
     else if (name == g_intern_string("enable-smooth-scrolling"))
         settings.setScrollAnimatorEnabled(g_value_get_boolean(&value));
-#endif
-
-#if ENABLE(CSS_SHADERS)
-    else if (name == g_intern_string("enable-css-shaders"))
-        settings.setCSSCustomFilterEnabled(g_value_get_boolean(&value));
 #endif
 
 #if ENABLE(MEDIA_SOURCE)
@@ -3810,6 +3803,7 @@ static void webkit_web_view_init(WebKitWebView* webView)
 #endif
     pageClients.inspectorClient = new WebKit::InspectorClient(webView);
     pageClients.loaderClientForMainFrame = new WebKit::FrameLoaderClient;
+    pageClients.progressTrackerClient = new WebKit::ProgressTrackerClient(webView);
 
     priv->corePage = new Page(pageClients);
 
@@ -3887,10 +3881,7 @@ static void webkit_web_view_init(WebKitWebView* webView)
 #endif
 
     priv->selfScrolling = false;
-
-#if USE(ACCELERATED_COMPOSITING)
     priv->acceleratedCompositingContext = AcceleratedCompositingContext::create(webView);
-#endif
 
     g_signal_connect(webView, "direction-changed", G_CALLBACK(webkitWebViewDirectionChanged), 0);
 }
@@ -4103,7 +4094,7 @@ void webkit_web_view_set_maintains_back_forward_list(WebKitWebView* webView, gbo
 {
     g_return_if_fail(WEBKIT_IS_WEB_VIEW(webView));
 
-    static_cast<BackForwardList*>(core(webView)->backForwardClient())->setEnabled(flag);
+    static_cast<BackForwardList*>(core(webView)->backForward().client())->setEnabled(flag);
 }
 
 /**
@@ -4118,7 +4109,7 @@ void webkit_web_view_set_maintains_back_forward_list(WebKitWebView* webView, gbo
 WebKitWebBackForwardList* webkit_web_view_get_back_forward_list(WebKitWebView* webView)
 {
     g_return_val_if_fail(WEBKIT_IS_WEB_VIEW(webView), 0);
-    if (!core(webView) || !static_cast<BackForwardList*>(core(webView)->backForwardClient())->enabled())
+    if (!core(webView) || !static_cast<BackForwardList*>(core(webView)->backForward().client())->enabled())
         return 0;
     return webView->priv->backForwardList.get();
 }
@@ -4155,7 +4146,7 @@ void webkit_web_view_go_back(WebKitWebView* webView)
 {
     g_return_if_fail(WEBKIT_IS_WEB_VIEW(webView));
 
-    core(webView)->goBack();
+    core(webView)->backForward().goBack();
 }
 
 /**
@@ -4171,7 +4162,7 @@ void webkit_web_view_go_back_or_forward(WebKitWebView* webView, gint steps)
 {
     g_return_if_fail(WEBKIT_IS_WEB_VIEW(webView));
 
-    core(webView)->goBackOrForward(steps);
+    core(webView)->backForward().goBackOrForward(steps);
 }
 
 /**
@@ -4184,7 +4175,7 @@ void webkit_web_view_go_forward(WebKitWebView* webView)
 {
     g_return_if_fail(WEBKIT_IS_WEB_VIEW(webView));
 
-    core(webView)->goForward();
+    core(webView)->backForward().goForward();
 }
 
 /**
@@ -4199,7 +4190,7 @@ gboolean webkit_web_view_can_go_back(WebKitWebView* webView)
 {
     g_return_val_if_fail(WEBKIT_IS_WEB_VIEW(webView), FALSE);
 
-    if (!core(webView) || !core(webView)->backForwardClient()->backItem())
+    if (!core(webView) || !core(webView)->backForward().canGoBackOrForward(-1))
         return FALSE;
 
     return TRUE;
@@ -4220,7 +4211,7 @@ gboolean webkit_web_view_can_go_back_or_forward(WebKitWebView* webView, gint ste
 {
     g_return_val_if_fail(WEBKIT_IS_WEB_VIEW(webView), FALSE);
 
-    return core(webView)->canGoBackOrForward(steps);
+    return core(webView)->backForward().canGoBackOrForward(steps);
 }
 
 /**
@@ -4240,7 +4231,7 @@ gboolean webkit_web_view_can_go_forward(WebKitWebView* webView)
     if (!page)
         return FALSE;
 
-    if (!page->backForwardClient()->forwardItem())
+    if (!page->backForward().forwardItem())
         return FALSE;
 
     return TRUE;

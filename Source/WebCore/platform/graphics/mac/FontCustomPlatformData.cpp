@@ -23,7 +23,7 @@
 
 #include "FontPlatformData.h"
 #include "SharedBuffer.h"
-#include <ApplicationServices/ApplicationServices.h>
+#include <CoreGraphics/CoreGraphics.h>
 
 namespace WebCore {
 

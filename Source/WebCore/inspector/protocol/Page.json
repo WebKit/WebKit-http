@@ -111,8 +111,7 @@
             "name": "reload",
             "parameters": [
                 { "name": "ignoreCache", "type": "boolean", "optional": true, "description": "If true, browser cache is ignored (as if the user pressed Shift+refresh)." },
-                { "name": "scriptToEvaluateOnLoad", "type": "string", "optional": true, "description": "If set, the script will be injected into all frames of the inspected page after reload." },
-                { "name": "scriptPreprocessor", "type": "string", "optional": true, "description": "Script body that should evaluate to function that will preprocess all the scripts before their compilation." }
+                { "name": "scriptToEvaluateOnLoad", "type": "string", "optional": true, "description": "If set, the script will be injected into all frames of the inspected page after reload." }
             ],
             "description": "Reloads given page optionally ignoring the cache."
         },
@@ -192,23 +191,6 @@
             ]
         },
         {
-            "name": "canOverrideDeviceMetrics",
-            "description": "Checks whether <code>setDeviceMetricsOverride</code> can be invoked.",
-            "returns": [
-                { "name": "result", "type": "boolean", "description": "If true, <code>setDeviceMetricsOverride</code> can safely be invoked on the agent." }
-            ]
-        },
-        {
-            "name": "setDeviceMetricsOverride",
-            "description": "Overrides the values of device screen dimensions (window.screen.width, window.screen.height, window.innerWidth, window.innerHeight, and \"device-width\"/\"device-height\"-related CSS media query results) and the font scale factor.",
-            "parameters": [
-                { "name": "width", "type": "integer", "description": "Overriding width value in pixels (minimum 0, maximum 10000000). 0 disables the override." },
-                { "name": "height", "type": "integer", "description": "Overriding height value in pixels (minimum 0, maximum 10000000). 0 disables the override." },
-                { "name": "fontScaleFactor", "type": "number", "description": "Overriding font scale factor value (must be positive). 1 disables the override." },
-                { "name": "fitWindow", "type": "boolean", "description": "Whether a view that exceeds the available browser window area should be scaled down to fit." }
-            ]
-        },
-        {
             "name": "setShowPaintRects",
             "description": "Requests that backend shows paint rectangles",
             "parameters": [
@@ -269,46 +251,6 @@
             "description": "Switches script execution in the page.",
             "parameters": [
                 { "name": "value", "type": "boolean", "description": "Whether script execution should be disabled in the page." }
-            ]
-        },
-        {
-            "name": "setGeolocationOverride",
-            "description": "Overrides the Geolocation Position or Error.",
-            "parameters": [
-                { "name": "latitude", "type": "number", "optional": true, "description": "Mock latitude"},
-                { "name": "longitude", "type": "number", "optional": true, "description": "Mock longitude"},
-                { "name": "accuracy", "type": "number", "optional": true, "description": "Mock accuracy"}
-            ]
-        },
-        {
-            "name": "clearGeolocationOverride",
-            "description": "Clears the overriden Geolocation Position and Error."
-        },
-        {
-            "name": "canOverrideGeolocation",
-            "description": "Checks if Geolocation can be overridden.",
-            "returns": [
-                { "name": "result", "type": "boolean", "description": "True if browser can ovrride Geolocation." }
-            ]
-        },
-        {
-            "name": "setDeviceOrientationOverride",
-            "description": "Overrides the Device Orientation.",
-            "parameters": [
-                { "name": "alpha", "type": "number", "description": "Mock alpha"},
-                { "name": "beta", "type": "number", "description": "Mock beta"},
-                { "name": "gamma", "type": "number", "description": "Mock gamma"}
-            ]
-        },
-        {
-            "name": "clearDeviceOrientationOverride",
-            "description": "Clears the overridden Device Orientation."
-        },
-        {
-            "name": "canOverrideDeviceOrientation",
-            "description": "Check the backend if Web Inspector can override the device orientation.",
-            "returns": [
-                { "name": "result", "type": "boolean", "description": "If true, <code>setDeviceOrientationOverride</code> can safely be invoked on the agent." }
             ]
         },
         {

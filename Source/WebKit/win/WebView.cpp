@@ -28,6 +28,7 @@
 #include "config.h"
 #include "WebView.h"
 
+#include "BackForwardController.h"
 #include "COMVariantSetter.h"
 #include "DOMCoreClasses.h"
 #include "FullscreenVideoController.h"
@@ -72,6 +73,7 @@
 #include <WebCore/AXObjectCache.h>
 #include <WebCore/ApplicationCacheStorage.h>
 #include <WebCore/BString.h>
+#include <WebCore/BackForwardController.h>
 #include <WebCore/BackForwardList.h>
 #include <WebCore/BitmapInfo.h>
 #include <WebCore/Chrome.h>
@@ -163,7 +165,7 @@
 #include <WebKitSystemInterface/WebKitSystemInterface.h> 
 #endif
 
-#if USE(ACCELERATED_COMPOSITING) && USE(CA)
+#if USE(CA)
 #include <WebCore/CACFLayerTreeHost.h>
 #include <WebCore/PlatformCALayer.h>
 #endif
@@ -391,9 +393,7 @@ WebView::WebView()
     , m_lastPanY(0)
     , m_xOverpan(0)
     , m_yOverpan(0)
-#if USE(ACCELERATED_COMPOSITING)
     , m_isAcceleratedCompositing(false)
-#endif
     , m_nextDisplayIsSynchronous(false)
     , m_lastSetCursor(0)
     , m_usesLayeredWindow(false)
@@ -432,11 +432,8 @@ WebView::~WebView()
     ASSERT(!m_preferences);
     ASSERT(!m_viewWindow);
 
-#if USE(ACCELERATED_COMPOSITING)
 #if USE(CA)
     ASSERT(!m_layerTreeHost);
-#endif
-    ASSERT(!m_backingLayer);
 #endif
 
     WebViewCount--;
@@ -701,9 +698,7 @@ HRESULT STDMETHODCALLTYPE WebView::close()
 
     m_didClose = true;
 
-#if USE(ACCELERATED_COMPOSITING)
     setAcceleratedCompositing(false);
-#endif
 
     WebNotificationCenter::defaultCenterInternal()->postNotificationName(_bstr_t(WebViewWillCloseNotification).GetBSTR(), static_cast<IWebView*>(this), 0);
 
@@ -777,14 +772,12 @@ HRESULT STDMETHODCALLTYPE WebView::close()
 
 void WebView::repaint(const WebCore::IntRect& windowRect, bool contentChanged, bool immediate, bool repaintContentOnly)
 {
-#if USE(ACCELERATED_COMPOSITING)
     if (isAcceleratedCompositing()) {
         // The contentChanged, immediate, and repaintContentOnly parameters are all based on a non-
         // compositing painting/scrolling model.
         addToDirtyRegion(windowRect);
         return;
     }
-#endif
 
     if (!repaintContentOnly) {
         RECT rect = windowRect;
@@ -843,12 +836,10 @@ void WebView::addToDirtyRegion(const IntRect& dirtyRect)
     // but it was being hit during our layout tests, and is being investigated in
     // http://webkit.org/b/29350.
 
-#if USE(ACCELERATED_COMPOSITING)
     if (isAcceleratedCompositing()) {
         m_backingLayer->setNeedsDisplayInRect(dirtyRect);
         return;
     }
-#endif
 
     auto newRegion = adoptGDIObject(::CreateRectRgn(dirtyRect.x(), dirtyRect.y(),
         dirtyRect.maxX(), dirtyRect.maxY()));
@@ -859,9 +850,7 @@ void WebView::addToDirtyRegion(GDIObject<HRGN> newRegion)
 {
     m_needsDisplay = true;
 
-#if USE(ACCELERATED_COMPOSITING)
     ASSERT(!isAcceleratedCompositing());
-#endif
 
     LOCAL_GDI_COUNTER(0, __FUNCTION__);
 
@@ -880,14 +869,12 @@ void WebView::scrollBackingStore(FrameView* frameView, int dx, int dy, const Int
 {
     m_needsDisplay = true;
 
-#if USE(ACCELERATED_COMPOSITING)
     if (isAcceleratedCompositing()) {
         // FIXME: We should be doing something smarter here, like moving tiles around and painting
         // any newly-exposed tiles. <http://webkit.org/b/52714>
         m_backingLayer->setNeedsDisplayInRect(scrollViewRect);
         return;
     }
-#endif
 
     LOCAL_GDI_COUNTER(0, __FUNCTION__);
 
@@ -939,7 +926,7 @@ void WebView::sizeChanged(const IntSize& newSize)
     if (Frame* coreFrame = core(topLevelFrame()))
         coreFrame->view()->resize(newSize);
 
-#if USE(ACCELERATED_COMPOSITING) && USE(CA)
+#if USE(CA)
     if (m_layerTreeHost)
         m_layerTreeHost->resize();
     if (m_backingLayer) {
@@ -993,9 +980,7 @@ static void getUpdateRects(HRGN region, const IntRect& dirtyRect, Vector<IntRect
 
 void WebView::updateBackingStore(FrameView* frameView, HDC dc, bool backingStoreCompletelyDirty, WindowsToPaint windowsToPaint)
 {
-#if USE(ACCELERATED_COMPOSITING)
     ASSERT(!isAcceleratedCompositing());
-#endif
 
     LOCAL_GDI_COUNTER(0, __FUNCTION__);
 
@@ -1076,7 +1061,7 @@ void WebView::paint(HDC dc, LPARAM options)
 {
     LOCAL_GDI_COUNTER(0, __FUNCTION__);
 
-#if USE(ACCELERATED_COMPOSITING) && USE(CA)
+#if USE(CA)
     if (isAcceleratedCompositing() && !usesLayeredWindow()) {
         m_layerTreeHost->flushPendingLayerChangesNow();
         // Flushing might have taken us out of compositing mode.
@@ -2067,9 +2052,9 @@ bool WebView::keyDown(WPARAM virtualKeyCode, LPARAM keyData, bool systemKeyDown)
     // FIXME: This logic should probably be in EventHandler::defaultArrowEventHandler().
     // FIXME: Should check that other modifiers aren't pressed.
     if (virtualKeyCode == VK_RIGHT && keyEvent.ctrlKey())
-        return m_page->goForward();
+        return m_page->backForward().goForward();
     if (virtualKeyCode == VK_LEFT && keyEvent.ctrlKey())
-        return m_page->goBack();
+        return m_page->backForward().goBack();
 
     // Need to scroll the page if the arrow keys, pgup/dn, or home/end are hit.
     ScrollDirection direction;
@@ -2141,7 +2126,7 @@ void WebView::setShouldInvertColors(bool shouldInvertColors)
 
     m_shouldInvertColors = shouldInvertColors;
 
-#if USE(ACCELERATED_COMPOSITING) && USE(CA)
+#if USE(CA)
     if (m_layerTreeHost)
         m_layerTreeHost->setShouldInvertColors(shouldInvertColors);
 #endif
@@ -2385,10 +2370,8 @@ LRESULT CALLBACK WebView::WebViewWndProc(HWND hWnd, UINT message, WPARAM wParam,
                 RECT windowRect;
                 ::GetClientRect(hWnd, &windowRect);
                 ::InvalidateRect(hWnd, &windowRect, false);
-#if USE(ACCELERATED_COMPOSITING)
                 if (webView->isAcceleratedCompositing())
                     webView->m_backingLayer->setNeedsDisplay();
-#endif
            }
             break;
         case WM_MOUSEACTIVATE:
@@ -2772,6 +2755,7 @@ HRESULT STDMETHODCALLTYPE WebView::initWithFrame(
     pageClients.inspectorClient = m_inspectorClient;
 #endif // ENABLE(INSPECTOR)
     pageClients.loaderClientForMainFrame = new WebFrameLoaderClient;
+    pageClients.progressTrackerClient = static_cast<WebFrameLoaderClient*>(pageClients.loaderClientForMainFrame);
 
     m_page = new Page(pageClients);
     provideGeolocationTo(m_page, new WebGeolocationClient(this));
@@ -3083,7 +3067,7 @@ HRESULT STDMETHODCALLTYPE WebView::backForwardList(
     if (!m_useBackForwardList)
         return E_FAIL;
  
-    *list = WebBackForwardList::createInstance(static_cast<WebCore::BackForwardList*>(m_page->backForwardClient()));
+    *list = WebBackForwardList::createInstance(static_cast<WebCore::BackForwardList*>(m_page->backForward().client()));
 
     return S_OK;
 }
@@ -3098,14 +3082,14 @@ HRESULT STDMETHODCALLTYPE WebView::setMaintainsBackForwardList(
 HRESULT STDMETHODCALLTYPE WebView::goBack( 
     /* [retval][out] */ BOOL* succeeded)
 {
-    *succeeded = m_page->goBack();
+    *succeeded = m_page->backForward().goBack();
     return S_OK;
 }
 
 HRESULT STDMETHODCALLTYPE WebView::goForward( 
     /* [retval][out] */ BOOL* succeeded)
 {
-    *succeeded = m_page->goForward();
+    *succeeded = m_page->backForward().goForward();
     return S_OK;
 }
 
@@ -3916,7 +3900,7 @@ HRESULT STDMETHODCALLTYPE WebView::canGoBack(
         /* [in] */ IUnknown* /*sender*/,
         /* [retval][out] */ BOOL* result)
 {
-    *result = !!(m_page->backForwardClient()->backItem() && !m_page->defersLoading());
+    *result = !!(m_page->backForward().client()->backItem() && !m_page->defersLoading());
     return S_OK;
 }
     
@@ -3931,7 +3915,7 @@ HRESULT STDMETHODCALLTYPE WebView::canGoForward(
         /* [in] */ IUnknown* /*sender*/,
         /* [retval][out] */ BOOL* result)
 {
-    *result = !!(m_page->backForwardClient()->forwardItem() && !m_page->defersLoading());
+    *result = !!(m_page->backForward().client()->forwardItem() && !m_page->defersLoading());
     return S_OK;
 }
     
@@ -4985,12 +4969,10 @@ HRESULT WebView::notifyPreferencesChanged(IWebNotification* notification)
         return hr;
     settings.setFrameFlatteningEnabled(enabled);
 
-#if USE(ACCELERATED_COMPOSITING)
     hr = prefsPrivate->acceleratedCompositingEnabled(&enabled);
     if (FAILED(hr))
         return hr;
     settings.setAcceleratedCompositingEnabled(enabled);
-#endif
 
     hr = prefsPrivate->showDebugBorders(&enabled);
     if (FAILED(hr))
@@ -5410,13 +5392,13 @@ HRESULT STDMETHODCALLTYPE WebView::loadBackForwardListFromOtherView(
     // It turns out the right combination of behavior is done with the back/forward load
     // type.  (See behavior matrix at the top of WebFramePrivate.)  So we copy all the items
     // in the back forward list, and go to the current one.
-    BackForwardClient* backForwardClient = m_page->backForwardClient();
+    BackForwardClient* backForwardClient = m_page->backForward().client();
     ASSERT(!backForwardClient->currentItem()); // destination list should be empty
 
     COMPtr<WebView> otherWebView;
     if (FAILED(otherView->QueryInterface(&otherWebView)))
         return E_FAIL;
-    BackForwardClient* otherBackForwardClient = otherWebView->m_page->backForwardClient();
+    BackForwardClient* otherBackForwardClient = otherWebView->m_page->backForward().client();
     if (!otherBackForwardClient->currentItem())
         return S_OK; // empty back forward list, bail
     
@@ -6553,11 +6535,17 @@ void WebView::downloadURL(const URL& url)
 {
     // It's the delegate's job to ref the WebDownload to keep it alive - otherwise it will be
     // destroyed when this function returns.
+#if USE(CURL)
+    // For Curl we need to set the user agent, otherwise the download request gets the default Curl user agent string.
+    ResourceRequest request(url);
+    request.setHTTPUserAgent(userAgentForKURL(url));
+    COMPtr<WebDownload> download(AdoptCOM, WebDownload::createInstance(0, request, ResourceResponse(), m_downloadDelegate.get()));
+#else
     COMPtr<WebDownload> download(AdoptCOM, WebDownload::createInstance(url, m_downloadDelegate.get()));
+#endif
     download->start();
 }
 
-#if USE(ACCELERATED_COMPOSITING)
 void WebView::setRootChildLayer(GraphicsLayer* layer)
 {
     setAcceleratedCompositing(layer ? true : false);
@@ -6620,7 +6608,6 @@ void WebView::setAcceleratedCompositing(bool accelerated)
     }
 #endif
 }
-#endif
 
 #if PLATFORM(WIN) && USE(AVFOUNDATION)
 WebCore::GraphicsDeviceAdapter* WebView::graphicsDeviceAdapter() const
@@ -6732,7 +6719,6 @@ HRESULT WebView::nextDisplayIsSynchronous()
     return S_OK;
 }
 
-#if USE(ACCELERATED_COMPOSITING)
 void WebView::notifyAnimationStarted(const GraphicsLayer*, double)
 {
     // We never set any animations on our backing layer.
@@ -6775,8 +6761,6 @@ void WebView::flushPendingGraphicsLayerChanges()
 
     view->flushCompositingStateIncludingSubframes();
 }
-
-#endif
 
 class EnumTextMatches : public IEnumTextMatches
 {

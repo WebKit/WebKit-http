@@ -28,7 +28,7 @@
 
 #if USE(CG)
 
-#include <ApplicationServices/ApplicationServices.h>
+#include <CoreGraphics/CoreGraphics.h>
 
 namespace WebCore {
 

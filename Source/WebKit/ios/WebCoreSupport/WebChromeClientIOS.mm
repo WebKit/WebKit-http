@@ -124,7 +124,7 @@ void WebChromeClientIOS::runOpenPanel(Frame*, PassRefPtr<FileChooser> chooser)
     [listener release];
 }
 
-#if ENABLE(TOUCH_EVENTS)
+#if ENABLE(IOS_TOUCH_EVENTS)
 void WebChromeClientIOS::didPreventDefaultForEvent()
 {
     [[webView() _UIKitDelegateForwarder] webViewDidPreventDefaultForEvent:webView()];
@@ -162,7 +162,8 @@ static inline NSDictionary* dictionaryForViewportArguments(const WebCore::Viewpo
               @"maximum-scale":@(arguments.maxZoom),
               @"user-scalable":@(arguments.userZoom),
               @"width":@(arguments.width),
-              @"height":@(arguments.height) };
+              @"height":@(arguments.height),
+              @"minimal-ui":@(arguments.minimalUI) };
 }
 
 void WebChromeClientIOS::dispatchViewportPropertiesDidChange(const WebCore::ViewportArguments& arguments) const
@@ -240,7 +241,6 @@ PassRefPtr<WebCore::SearchPopupMenu> WebChromeClientIOS::createSearchPopupMenu(W
     return adoptRef(new SearchPopupMenuIOS(client));
 }
 
-#if USE(ACCELERATED_COMPOSITING)
 void WebChromeClientIOS::attachRootGraphicsLayer(Frame*, GraphicsLayer* graphicsLayer)
 {
     // FIXME: for non-root frames we rely on RenderView positioning the root layer,
@@ -248,7 +248,6 @@ void WebChromeClientIOS::attachRootGraphicsLayer(Frame*, GraphicsLayer* graphics
     // Send the delegate message on the web thread to avoid <rdar://problem/8567677>
     [[webView() _UIKitDelegate] _webthread_webView:webView() attachRootLayer:graphicsLayer ? graphicsLayer->platformLayer() : 0];
 }
-#endif
 
 void WebChromeClientIOS::didFlushCompositingLayers()
 {

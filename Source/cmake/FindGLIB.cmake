@@ -94,9 +94,26 @@ foreach (_component ${GLIB_FIND_COMPONENTS})
     elseif (${_component} STREQUAL "gthread")
         find_library(GLIB_GTHREAD_LIBRARIES NAMES gthread-2.0 HINTS ${_GLIB_LIBRARY_DIR})
         set(ADDITIONAL_REQUIRED_VARS ${ADDITIONAL_REQUIRED_VARS} GLIB_GTHREAD_LIBRARIES)
+    elseif (${_component} STREQUAL "gio-unix")
+        # gio-unix is compiled as part of the gio library, but the include paths
+        # are separate from the shared glib ones. Since this is currently only used
+        # by WebKitGTK+ we don't go to extraordinary measures beyond pkg-config.
+        pkg_check_modules(GIO_UNIX QUIET gio-unix-2.0)
     endif ()
 endforeach ()
 
 include(FindPackageHandleStandardArgs)
 FIND_PACKAGE_HANDLE_STANDARD_ARGS(GLIB REQUIRED_VARS GLIB_INCLUDE_DIRS GLIB_LIBRARIES ${ADDITIONAL_REQUIRED_VARS}
                                        VERSION_VAR   GLIB_VERSION)
+
+mark_as_advanced(
+    GLIBCONFIG_INCLUDE_DIR
+    GLIB_GIO_LIBRARIES
+    GLIB_GIO_UNIX_LIBRARIES
+    GLIB_GMODULE_LIBRARIES
+    GLIB_GOBJECT_LIBRARIES
+    GLIB_GTHREAD_LIBRARIES
+    GLIB_INCLUDE_DIR
+    GLIB_INCLUDE_DIRS
+    GLIB_LIBRARIES
+)

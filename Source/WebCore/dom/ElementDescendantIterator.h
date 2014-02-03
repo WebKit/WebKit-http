@@ -52,7 +52,7 @@ public:
     ElementDescendantIteratorAdapter(ContainerNode& root);
     ElementDescendantIterator<ElementType> begin();
     ElementDescendantIterator<ElementType> end();
-    ElementDescendantIterator<ElementType> find(Element&);
+    ElementDescendantIterator<ElementType> beginAt(ElementType&);
     ElementDescendantIterator<ElementType> from(Element&);
 
     ElementType* first();
@@ -68,7 +68,7 @@ public:
     ElementDescendantConstIteratorAdapter(const ContainerNode& root);
     ElementDescendantConstIterator<ElementType> begin() const;
     ElementDescendantConstIterator<ElementType> end() const;
-    ElementDescendantConstIterator<ElementType> find(const Element&) const;
+    ElementDescendantConstIterator<ElementType> beginAt(const ElementType&) const;
     ElementDescendantConstIterator<ElementType> from(const Element&) const;
 
     const ElementType* first() const;
@@ -78,8 +78,6 @@ private:
     const ContainerNode& m_root;
 };
 
-ElementDescendantIteratorAdapter<Element> elementDescendants(ContainerNode&);
-ElementDescendantConstIteratorAdapter<Element> elementDescendants(const ContainerNode&);
 template <typename ElementType> ElementDescendantIteratorAdapter<ElementType> descendantsOfType(ContainerNode&);
 template <typename ElementType> ElementDescendantConstIteratorAdapter<ElementType> descendantsOfType(const ContainerNode&);
 
@@ -145,13 +143,10 @@ inline ElementDescendantIterator<ElementType> ElementDescendantIteratorAdapter<E
 }
     
 template <typename ElementType>
-inline ElementDescendantIterator<ElementType> ElementDescendantIteratorAdapter<ElementType>::find(Element& descendant)
+inline ElementDescendantIterator<ElementType> ElementDescendantIteratorAdapter<ElementType>::beginAt(ElementType& descendant)
 {
-    if (!isElementOfType<const ElementType>(descendant))
-        return end();
-    if (!descendant.isDescendantOf(&m_root))
-        return end();
-    return ElementDescendantIterator<ElementType>(m_root, static_cast<ElementType*>(&descendant));
+    ASSERT(descendant.isDescendantOf(&m_root));
+    return ElementDescendantIterator<ElementType>(m_root, &descendant);
 }
 
 template <typename ElementType>
@@ -197,13 +192,10 @@ inline ElementDescendantConstIterator<ElementType> ElementDescendantConstIterato
 }
 
 template <typename ElementType>
-inline ElementDescendantConstIterator<ElementType> ElementDescendantConstIteratorAdapter<ElementType>::find(const Element& descendant) const
+inline ElementDescendantConstIterator<ElementType> ElementDescendantConstIteratorAdapter<ElementType>::beginAt(const ElementType& descendant) const
 {
-    if (!isElementOfType<const ElementType>(descendant))
-        return end();
-    if (!descendant.isDescendantOf(&m_root))
-        return end();
-    return ElementDescendantConstIterator<ElementType>(m_root, static_cast<const ElementType*>(&descendant));
+    ASSERT(descendant.isDescendantOf(&m_root));
+    return ElementDescendantConstIterator<ElementType>(m_root, &descendant);
 }
 
 template <typename ElementType>
@@ -230,20 +222,10 @@ inline const ElementType* ElementDescendantConstIteratorAdapter<ElementType>::la
 
 // Standalone functions
 
-inline ElementDescendantIteratorAdapter<Element> elementDescendants(ContainerNode& root)
-{
-    return ElementDescendantIteratorAdapter<Element>(root);
-}
-
 template <typename ElementType>
 inline ElementDescendantIteratorAdapter<ElementType> descendantsOfType(ContainerNode& root)
 {
     return ElementDescendantIteratorAdapter<ElementType>(root);
-}
-
-inline ElementDescendantConstIteratorAdapter<Element> elementDescendants(const ContainerNode& root)
-{
-    return ElementDescendantConstIteratorAdapter<Element>(root);
 }
 
 template <typename ElementType>

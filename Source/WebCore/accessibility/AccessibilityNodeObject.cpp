@@ -133,7 +133,10 @@ void AccessibilityNodeObject::childrenChanged()
     if (!node() && !renderer())
         return;
 
-    axObjectCache()->postNotification(this, document(), AXObjectCache::AXChildrenChanged);
+    AXObjectCache* cache = axObjectCache();
+    if (!cache)
+        return;
+    cache->postNotification(this, document(), AXObjectCache::AXChildrenChanged);
 
     // Go up the accessibility parent chain, but only if the element already exists. This method is
     // called during render layouts, minimal work should be done. 
@@ -147,11 +150,11 @@ void AccessibilityNodeObject::childrenChanged()
 
         // If this element supports ARIA live regions, then notify the AT of changes.
         if (parent->supportsARIALiveRegion())
-            axObjectCache()->postNotification(parent, parent->document(), AXObjectCache::AXLiveRegionChanged);
+            cache->postNotification(parent, parent->document(), AXObjectCache::AXLiveRegionChanged);
         
         // If this element is an ARIA text control, notify the AT of changes.
-        if (parent->isARIATextControl() && !parent->isNativeTextControl() && !parent->node()->rendererIsEditable())
-            axObjectCache()->postNotification(parent, parent->document(), AXObjectCache::AXValueChanged);
+        if (parent->isARIATextControl() && !parent->isNativeTextControl() && !parent->node()->hasEditableStyle())
+            cache->postNotification(parent, parent->document(), AXObjectCache::AXValueChanged);
     }
 }
 
@@ -335,7 +338,7 @@ void AccessibilityNodeObject::insertChild(AccessibilityObject* child, unsigned i
     child->clearChildren();
     
     if (child->accessibilityIsIgnored()) {
-        AccessibilityChildrenVector children = child->children();
+        const auto& children = child->children();
         size_t length = children.size();
         for (size_t i = 0; i < length; ++i)
             m_children.insert(index + i, children[i]);
@@ -398,6 +401,7 @@ bool AccessibilityNodeObject::canHaveChildren() const
     case LegendRole:
         if (Element* element = this->element())
             return !ancestorsOfType<HTMLFieldSetElement>(*element).first();
+        FALLTHROUGH;
     default:
         return true;
     }
@@ -439,7 +443,7 @@ bool AccessibilityNodeObject::canvasHasFallbackContent() const
     // If it has any children that are elements, we'll assume it might be fallback
     // content. If it has no children or its only children are not elements
     // (e.g. just text nodes), it doesn't have fallback content.
-    return elementChildren(canvasElement).first();
+    return childrenOfType<Element>(canvasElement).first();
 }
 
 bool AccessibilityNodeObject::isImageButton() const
@@ -737,7 +741,7 @@ bool AccessibilityNodeObject::isReadOnly() const
             return input->isReadOnly();
     }
 
-    return !node->rendererIsEditable();
+    return !node->hasEditableStyle();
 }
 
 bool AccessibilityNodeObject::isRequired() const
@@ -909,37 +913,30 @@ bool AccessibilityNodeObject::isGroup() const
 AccessibilityObject* AccessibilityNodeObject::selectedRadioButton()
 {
     if (!isRadioGroup())
-        return 0;
-
-    AccessibilityObject::AccessibilityChildrenVector children = this->children();
+        return nullptr;
 
     // Find the child radio button that is selected (ie. the intValue == 1).
-    size_t size = children.size();
-    for (size_t i = 0; i < size; ++i) {
-        AccessibilityObject* object = children[i].get();
-        if (object->roleValue() == RadioButtonRole && object->checkboxOrRadioValue() == ButtonStateOn)
-            return object;
+    for (const auto& child : children()) {
+        if (child->roleValue() == RadioButtonRole && child->checkboxOrRadioValue() == ButtonStateOn)
+            return child.get();
     }
-    return 0;
+    return nullptr;
 }
 
 AccessibilityObject* AccessibilityNodeObject::selectedTabItem()
 {
     if (!isTabList())
-        return 0;
+        return nullptr;
 
     // Find the child tab item that is selected (ie. the intValue == 1).
     AccessibilityObject::AccessibilityChildrenVector tabs;
     tabChildren(tabs);
 
-    AccessibilityObject::AccessibilityChildrenVector children = this->children();
-    size_t size = tabs.size();
-    for (size_t i = 0; i < size; ++i) {
-        AccessibilityObject* object = children[i].get();
-        if (object->isTabItem() && object->isChecked())
-            return object;
+    for (const auto& child : children()) {
+        if (child->isTabItem() && child->isChecked())
+            return child.get();
     }
-    return 0;
+    return nullptr;
 }
 
 AccessibilityButtonState AccessibilityNodeObject::checkboxOrRadioValue() const
@@ -1103,9 +1100,14 @@ void AccessibilityNodeObject::changeValueByStep(bool increase)
 void AccessibilityNodeObject::changeValueByPercent(float percentChange)
 {
     float range = maxValueForRange() - minValueForRange();
+    float step = range * (percentChange / 100);
     float value = valueForRange();
 
-    value += range * (percentChange / 100);
+    // Make sure the specified percent will cause a change of one integer step or larger.
+    if (fabs(step) < 1)
+        step = fabs(percentChange) * (1 / percentChange);
+
+    value += step;
     setValue(String::number(value));
 
     axObjectCache()->postNotification(node(), AXObjectCache::AXValueChanged);
@@ -1183,7 +1185,7 @@ static Element* siblingWithAriaRole(String role, Node* node)
     if (!parent)
         return nullptr;
 
-    for (auto& sibling : elementChildren(*parent)) {
+    for (auto& sibling : childrenOfType<Element>(*parent)) {
         const AtomicString& siblingAriaRole = sibling.fastGetAttribute(roleAttr);
         if (equalIgnoringCase(siblingAriaRole, role))
             return &sibling;
@@ -1336,6 +1338,7 @@ void AccessibilityNodeObject::visibleText(Vector<AccessibilityText>& textOrder) 
         // Native popup buttons should not use their button children's text as a title. That value is retrieved through stringValue().
         if (node->hasTagName(selectTag))
             break;
+        FALLTHROUGH;
     case ButtonRole:
     case ToggleButtonRole:
     case CheckBoxRole:
@@ -1361,11 +1364,6 @@ void AccessibilityNodeObject::visibleText(Vector<AccessibilityText>& textOrder) 
     // the user as a single atomic object, so we should use its text as the default title.
     if (isHeading() || isLink())
         useTextUnderElement = true;
-    else if (isGenericFocusableElement()) {
-        // If a node uses a negative tabindex, do not expose it as a generic focusable element, because keyboard focus management
-        // will never land on this specific element.
-        useTextUnderElement = !(node && node->isElementNode() && toElement(node)->tabIndex() < 0);
-    }
     
     if (useTextUnderElement) {
         AccessibilityTextUnderElementMode mode;
@@ -1433,9 +1431,8 @@ void AccessibilityNodeObject::ariaLabeledByText(Vector<AccessibilityText>& textO
         ariaLabeledByElements(elements);
         
         Vector<RefPtr<AccessibilityObject>> axElements;
-        unsigned length = elements.size();
-        for (unsigned k = 0; k < length; k++) {
-            RefPtr<AccessibilityObject> axElement = axObjectCache()->getOrCreate(elements[k]);
+        for (const auto& element : elements) {
+            RefPtr<AccessibilityObject> axElement = axObjectCache()->getOrCreate(element);
             axElements.append(axElement);
         }
         
@@ -1717,6 +1714,7 @@ String AccessibilityNodeObject::title() const
         // Native popup buttons should not use their button children's text as a title. That value is retrieved through stringValue().
         if (node->hasTagName(selectTag))
             return String();
+        FALLTHROUGH;
     case ButtonRole:
     case ToggleButtonRole:
     case CheckBoxRole:
@@ -1740,18 +1738,6 @@ String AccessibilityNodeObject::title() const
         return textUnderElement();
     if (isHeading())
         return textUnderElement(AccessibilityTextUnderElementMode(AccessibilityTextUnderElementMode::TextUnderElementModeSkipIgnoredChildren, true));
-
-    // If it's focusable but it's not content editable or a known control type, then it will appear to
-    // the user as a single atomic object, so we should use its text as the default title.                              
-    if (isGenericFocusableElement()) {
-        // If a node uses a negative tabindex, do not expose it as a generic focusable element, because keyboard focus management
-        // will never land on this specific element.
-        Node* node = this->node();
-        if (node && node->isElementNode() && toElement(node)->tabIndex() < 0)
-            return String();
-        
-        return textUnderElement();
-    }
 
     return String();
 }
@@ -1906,32 +1892,6 @@ String AccessibilityNodeObject::ariaDescribedByAttribute() const
     return accessibilityDescriptionForElements(elements);
 }
 
-void AccessibilityNodeObject::elementsFromAttribute(Vector<Element*>& elements, const QualifiedName& attribute) const
-{
-    Node* node = this->node();
-    if (!node || !node->isElementNode())
-        return;
-
-    TreeScope& treeScope = node->treeScope();
-
-    String idList = getAttribute(attribute).string();
-    if (idList.isEmpty())
-        return;
-
-    idList.replace('\n', ' ');
-    Vector<String> idVector;
-    idList.split(' ', idVector);
-
-    unsigned size = idVector.size();
-    for (unsigned i = 0; i < size; ++i) {
-        AtomicString idName(idVector[i]);
-        Element* idElement = treeScope.getElementById(idName);
-        if (idElement)
-            elements.append(idElement);
-    }
-}
-
-
 void AccessibilityNodeObject::ariaLabeledByElements(Vector<Element*>& elements) const
 {
     elementsFromAttribute(elements, aria_labelledbyAttr);
@@ -2048,7 +2008,7 @@ AccessibilityRole AccessibilityNodeObject::remapAriaRoleDueToParent(Accessibilit
     return role;
 }   
 
-// If you call node->rendererIsEditable() since that will return true if an ancestor is editable.
+// If you call node->hasEditableStyle() since that will return true if an ancestor is editable.
 // This only returns true if this is the element that actually has the contentEditable attribute set.
 bool AccessibilityNodeObject::hasContentEditableAttributeSet() const
 {

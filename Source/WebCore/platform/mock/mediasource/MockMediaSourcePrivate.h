@@ -37,7 +37,7 @@ class MockMediaPlayerMediaSource;
 class MockSourceBufferPrivate;
 class TimeRanges;
 
-class MockMediaSourcePrivate FINAL : public MediaSourcePrivate {
+class MockMediaSourcePrivate final : public MediaSourcePrivate {
 public:
     static RefPtr<MockMediaSourcePrivate> create(MockMediaPlayerMediaSource*);
     virtual ~MockMediaSourcePrivate();
@@ -66,13 +66,13 @@ private:
     MockMediaSourcePrivate(MockMediaPlayerMediaSource*);
 
     // MediaSourcePrivate Overrides
-    virtual AddStatus addSourceBuffer(const ContentType&, RefPtr<SourceBufferPrivate>&) OVERRIDE;
-    virtual double duration() OVERRIDE;
-    virtual void setDuration(double) OVERRIDE;
-    virtual void markEndOfStream(EndOfStreamStatus) OVERRIDE;
-    virtual void unmarkEndOfStream() OVERRIDE;
-    virtual MediaPlayer::ReadyState readyState() const OVERRIDE;
-    virtual void setReadyState(MediaPlayer::ReadyState) OVERRIDE;
+    virtual AddStatus addSourceBuffer(const ContentType&, RefPtr<SourceBufferPrivate>&) override;
+    virtual double duration() override;
+    virtual void setDuration(double) override;
+    virtual void markEndOfStream(EndOfStreamStatus) override;
+    virtual void unmarkEndOfStream() override;
+    virtual MediaPlayer::ReadyState readyState() const override;
+    virtual void setReadyState(MediaPlayer::ReadyState) override;
 
     void sourceBufferPrivateDidChangeActiveState(MockSourceBufferPrivate*, bool active);
     void removeSourceBuffer(SourceBufferPrivate*);

@@ -44,7 +44,7 @@ namespace WebCore {
 using namespace HTMLNames;
 
 // FIXME: Share more code with MediaDocumentParser.
-class PluginDocumentParser FINAL : public RawDataDocumentParser {
+class PluginDocumentParser final : public RawDataDocumentParser {
 public:
     static PassRefPtr<PluginDocumentParser> create(PluginDocument& document)
     {
@@ -58,7 +58,7 @@ private:
     {
     }
 
-    virtual void appendBytes(DocumentWriter&, const char*, size_t);
+    virtual void appendBytes(DocumentWriter&, const char*, size_t) override;
 
     void createDocumentStructure();
 
@@ -72,7 +72,7 @@ void PluginDocumentParser::createDocumentStructure()
     toHTMLHtmlElement(rootElement.get())->insertedByParser();
 
     if (document()->frame())
-        document()->frame()->loader().dispatchDocumentElementAvailable();
+        document()->frame()->injectUserScripts(InjectAtDocumentStart);
 
 #if PLATFORM(IOS)
     // Should not be able to zoom into standalone plug-in documents.

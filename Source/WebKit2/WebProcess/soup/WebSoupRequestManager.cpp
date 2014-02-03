@@ -30,7 +30,8 @@
 #include "WebSoupRequestManagerProxyMessages.h"
 #include <WebCore/ResourceHandle.h>
 #include <WebCore/ResourceRequest.h>
-#include <wtf/gobject/GOwnPtr.h>
+#include <WebCore/SoupNetworkSession.h>
+#include <wtf/gobject/GUniquePtr.h>
 #include <wtf/text/CString.h>
 
 namespace WebKit {
@@ -98,13 +99,13 @@ void WebSoupRequestManager::registerURIScheme(const String& scheme)
     g_ptr_array_add(m_schemes.get(), g_strdup(scheme.utf8().data()));
     g_ptr_array_add(m_schemes.get(), 0);
 
-    SoupSession* session = WebCore::ResourceHandle::defaultSession();
+    SoupSession* session = WebCore::SoupNetworkSession::defaultSession().soupSession();
     SoupRequestClass* genericRequestClass = static_cast<SoupRequestClass*>(g_type_class_ref(WEBKIT_TYPE_SOUP_REQUEST_GENERIC));
     genericRequestClass->schemes = const_cast<const char**>(reinterpret_cast<char**>(m_schemes->pdata));
     soup_session_add_feature_by_type(session, WEBKIT_TYPE_SOUP_REQUEST_GENERIC);
 }
 
-void WebSoupRequestManager::didHandleURIRequest(const CoreIPC::DataReference& requestData, uint64_t contentLength, const String& mimeType, uint64_t requestID)
+void WebSoupRequestManager::didHandleURIRequest(const IPC::DataReference& requestData, uint64_t contentLength, const String& mimeType, uint64_t requestID)
 {
     WebSoupRequestAsyncData* data = m_requestMap.get(requestID);
     ASSERT(data);
@@ -133,7 +134,7 @@ void WebSoupRequestManager::didHandleURIRequest(const CoreIPC::DataReference& re
     g_task_return_pointer(task.get(), dataStream, g_object_unref);
 }
 
-void WebSoupRequestManager::didReceiveURIRequestData(const CoreIPC::DataReference& requestData, uint64_t requestID)
+void WebSoupRequestManager::didReceiveURIRequestData(const IPC::DataReference& requestData, uint64_t requestID)
 {
     WebSoupRequestAsyncData* data = m_requestMap.get(requestID);
     // The data might have been removed from the request map if a previous chunk failed
@@ -175,12 +176,12 @@ void WebSoupRequestManager::send(GTask* task)
 {
     WebKitSoupRequestGeneric* request = WEBKIT_SOUP_REQUEST_GENERIC(g_task_get_source_object(task));
     SoupRequest* soupRequest = SOUP_REQUEST(request);
-    GOwnPtr<char> uriString(soup_uri_to_string(soup_request_get_uri(soupRequest), FALSE));
+    GUniquePtr<char> uriString(soup_uri_to_string(soup_request_get_uri(soupRequest), FALSE));
 
     uint64_t requestID = generateSoupRequestID();
     m_requestMap.set(requestID, adoptPtr(new WebSoupRequestAsyncData(task, request)));
 
-    uint64_t initiatingPageID = WebCore::ResourceHandle::getSoupRequestInitiatingPageID(soupRequest);
+    uint64_t initiatingPageID = WebCore::ResourceRequest(soupRequest).initiatingPageID();
     m_process->parentProcessConnection()->send(Messages::WebPageProxy::DidReceiveURIRequest(String::fromUTF8(uriString.get()), requestID), initiatingPageID);
 }
 

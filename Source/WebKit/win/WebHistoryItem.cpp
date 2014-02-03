@@ -91,14 +91,9 @@ WebHistoryItem* WebHistoryItem::createInstance(PassRefPtr<HistoryItem> historyIt
 // IWebHistoryItemPrivate -----------------------------------------------------
 
 static CFStringRef urlKey = CFSTR("");
-static CFStringRef lastVisitedDateKey = CFSTR("lastVisitedDate");
 static CFStringRef titleKey = CFSTR("title");
-static CFStringRef visitCountKey = CFSTR("visitCount");
 static CFStringRef lastVisitWasFailureKey = CFSTR("lastVisitWasFailure");
-static CFStringRef lastVisitWasHTTPNonGetKey = CFSTR("lastVisitWasHTTPNonGet");
 static CFStringRef redirectURLsKey = CFSTR("redirectURLs");
-static CFStringRef dailyVisitCountKey = CFSTR("D"); // short key to save space
-static CFStringRef weeklyVisitCountKey = CFSTR("W"); // short key to save space
 
 HRESULT STDMETHODCALLTYPE WebHistoryItem::initFromDictionaryRepresentation(void* dictionary)
 {
@@ -108,93 +103,32 @@ HRESULT STDMETHODCALLTYPE WebHistoryItem::initFromDictionaryRepresentation(void*
     if (urlStringRef && CFGetTypeID(urlStringRef) != CFStringGetTypeID())
         return E_FAIL;
 
-    CFStringRef lastVisitedRef = (CFStringRef) CFDictionaryGetValue(dictionaryRef, lastVisitedDateKey);
-    if (!lastVisitedRef || CFGetTypeID(lastVisitedRef) != CFStringGetTypeID())
-        return E_FAIL;
-    CFAbsoluteTime lastVisitedTime = CFStringGetDoubleValue(lastVisitedRef);
-
     CFStringRef titleRef = (CFStringRef) CFDictionaryGetValue(dictionaryRef, titleKey);
     if (titleRef && CFGetTypeID(titleRef) != CFStringGetTypeID())
         return E_FAIL;
-
-    CFNumberRef visitCountRef = (CFNumberRef) CFDictionaryGetValue(dictionaryRef, visitCountKey);
-    if (!visitCountRef || CFGetTypeID(visitCountRef) != CFNumberGetTypeID())
-        return E_FAIL;
-    int visitedCount = 0;
-    if (!CFNumberGetValue(visitCountRef, kCFNumberIntType, &visitedCount))
-        return E_FAIL;
-
-    // Can't trust data on disk, and we've had at least one report of this (<rdar://6572300>).
-    if (visitedCount < 0) {
-        LOG_ERROR("visit count for history item \"%s\" is negative (%d), will be reset to 1", String(urlStringRef).utf8().data(), visitedCount);
-        visitedCount = 1;
-    }
 
     CFBooleanRef lastVisitWasFailureRef = static_cast<CFBooleanRef>(CFDictionaryGetValue(dictionaryRef, lastVisitWasFailureKey));
     if (lastVisitWasFailureRef && CFGetTypeID(lastVisitWasFailureRef) != CFBooleanGetTypeID())
         return E_FAIL;
     bool lastVisitWasFailure = lastVisitWasFailureRef && CFBooleanGetValue(lastVisitWasFailureRef);
 
-    CFBooleanRef lastVisitWasHTTPNonGetRef = static_cast<CFBooleanRef>(CFDictionaryGetValue(dictionaryRef, lastVisitWasHTTPNonGetKey));
-    if (lastVisitWasHTTPNonGetRef && CFGetTypeID(lastVisitWasHTTPNonGetRef) != CFBooleanGetTypeID())
-        return E_FAIL;
-    bool lastVisitWasHTTPNonGet = lastVisitWasHTTPNonGetRef && CFBooleanGetValue(lastVisitWasHTTPNonGetRef);
-
-    OwnPtr<Vector<String> > redirectURLsVector;
+    std::unique_ptr<Vector<String>> redirectURLsVector;
     if (CFArrayRef redirectURLsRef = static_cast<CFArrayRef>(CFDictionaryGetValue(dictionaryRef, redirectURLsKey))) {
         CFIndex size = CFArrayGetCount(redirectURLsRef);
-        redirectURLsVector = adoptPtr(new Vector<String>(size));
+        redirectURLsVector = std::make_unique<Vector<String>>(size);
         for (CFIndex i = 0; i < size; ++i)
             (*redirectURLsVector)[i] = String(static_cast<CFStringRef>(CFArrayGetValueAtIndex(redirectURLsRef, i)));
     }
 
-    CFArrayRef dailyCounts = static_cast<CFArrayRef>(CFDictionaryGetValue(dictionaryRef, dailyVisitCountKey));
-    if (dailyCounts && CFGetTypeID(dailyCounts) != CFArrayGetTypeID())
-        dailyCounts = 0;
-    CFArrayRef weeklyCounts = static_cast<CFArrayRef>(CFDictionaryGetValue(dictionaryRef, weeklyVisitCountKey));
-    if (weeklyCounts && CFGetTypeID(weeklyCounts) != CFArrayGetTypeID())
-        weeklyCounts = 0;
-
-    std::auto_ptr<Vector<int> > dailyVector, weeklyVector;
-    if (dailyCounts || weeklyCounts) {
-        CFIndex dailySize = dailyCounts ? CFArrayGetCount(dailyCounts) : 0;
-        CFIndex weeklySize = weeklyCounts ? CFArrayGetCount(weeklyCounts) : 0;
-        dailyVector.reset(new Vector<int>(dailySize));
-        weeklyVector.reset(new Vector<int>(weeklySize));
-
-        // Daily and weekly counts < 0 are errors in the data read from disk, so reset to 0.
-        for (CFIndex i = 0; i < dailySize; ++i) {
-            CFNumberRef dailyCount = static_cast<CFNumberRef>(CFArrayGetValueAtIndex(dailyCounts, i));        
-            if (CFGetTypeID(dailyCount) == CFNumberGetTypeID())
-                CFNumberGetValue(dailyCount, kCFNumberIntType, &(*dailyVector)[i]);
-            if ((*dailyVector)[i] < 0)
-                (*dailyVector)[i] = 0;
-        }
-        for (CFIndex i = 0; i < weeklySize; ++i) {
-            CFNumberRef weeklyCount = static_cast<CFNumberRef>(CFArrayGetValueAtIndex(weeklyCounts, i));        
-            if (CFGetTypeID(weeklyCount) == CFNumberGetTypeID())
-                CFNumberGetValue(weeklyCount, kCFNumberIntType, &(*weeklyVector)[i]);
-            if ((*weeklyVector)[i] < 0)
-                (*weeklyVector)[i] = 0;
-        }
-    }
-
     historyItemWrappers().remove(m_historyItem.get());
-    m_historyItem = HistoryItem::create(urlStringRef, titleRef, lastVisitedTime);
+    m_historyItem = HistoryItem::create(urlStringRef, titleRef);
     historyItemWrappers().set(m_historyItem.get(), this);
 
-    m_historyItem->setVisitCount(visitedCount);
     if (lastVisitWasFailure)
         m_historyItem->setLastVisitWasFailure(true);
 
-    if (lastVisitWasHTTPNonGet && (protocolIs(m_historyItem->urlString(), "http") || protocolIs(m_historyItem->urlString(), "https")))
-        m_historyItem->setLastVisitWasHTTPNonGet(true);
-
-    if (redirectURLsVector)
-        m_historyItem->setRedirectURLs(redirectURLsVector.release());
-
-    if (dailyVector.get())
-        m_historyItem->adoptVisitCounts(*dailyVector, *weeklyVector);
+    if (redirectURLsVector.get())
+        m_historyItem->setRedirectURLs(std::move(redirectURLsVector));
 
     return S_OK;
 }
@@ -202,11 +136,6 @@ HRESULT STDMETHODCALLTYPE WebHistoryItem::initFromDictionaryRepresentation(void*
 HRESULT STDMETHODCALLTYPE WebHistoryItem::dictionaryRepresentation(void** dictionary)
 {
     CFDictionaryRef* dictionaryRef = (CFDictionaryRef*) dictionary;
-    static CFStringRef lastVisitedFormat = CFSTR("%.1lf");
-    CFStringRef lastVisitedStringRef =
-        CFStringCreateWithFormat(0, 0, lastVisitedFormat, m_historyItem->lastVisitedTime());
-    if (!lastVisitedStringRef)
-        return E_FAIL;
 
     int keyCount = 0;
     CFTypeRef keys[9];
@@ -217,26 +146,13 @@ HRESULT STDMETHODCALLTYPE WebHistoryItem::dictionaryRepresentation(void** dictio
         values[keyCount++] = m_historyItem->urlString().createCFString().leakRef();
     }
 
-    keys[keyCount] = lastVisitedDateKey;
-    values[keyCount++] = lastVisitedStringRef;
-
     if (!m_historyItem->title().isEmpty()) {
         keys[keyCount] = titleKey;
         values[keyCount++] = m_historyItem->title().createCFString().leakRef();
     }
 
-    keys[keyCount] = visitCountKey;
-    int visitCount = m_historyItem->visitCount();
-    values[keyCount++] = CFNumberCreate(0, kCFNumberIntType, &visitCount);
-
     if (m_historyItem->lastVisitWasFailure()) {
         keys[keyCount] = lastVisitWasFailureKey;
-        values[keyCount++] = CFRetain(kCFBooleanTrue);
-    }
-
-    if (m_historyItem->lastVisitWasHTTPNonGet()) {
-        ASSERT(m_historyItem->urlString().startsWith("http:", false) || m_historyItem->urlString().startsWith("https:", false));
-        keys[keyCount] = lastVisitWasHTTPNonGetKey;
         values[keyCount++] = CFRetain(kCFBooleanTrue);
     }
 
@@ -255,36 +171,6 @@ HRESULT STDMETHODCALLTYPE WebHistoryItem::dictionaryRepresentation(void** dictio
         values[keyCount++] = result;
     }
 
-    const Vector<int>& dailyVisitCount(m_historyItem->dailyVisitCounts());
-    if (size_t size = dailyVisitCount.size()) {
-        Vector<CFNumberRef, 13> numbers(size);
-        for (size_t i = 0; i < size; ++i)
-            numbers[i] = CFNumberCreate(0, kCFNumberIntType, &dailyVisitCount[i]);
-
-        CFArrayRef result = CFArrayCreate(0, (const void**)numbers.data(), size, &kCFTypeArrayCallBacks);
-
-        for (size_t i = 0; i < size; ++i)
-            CFRelease(numbers[i]);
-
-        keys[keyCount] = dailyVisitCountKey;
-        values[keyCount++] = result;
-    }
-
-    const Vector<int>& weeklyVisitCount(m_historyItem->weeklyVisitCounts());
-    if (size_t size = weeklyVisitCount.size()) {
-        Vector<CFNumberRef, 5> numbers(size);
-        for (size_t i = 0; i < size; ++i)
-            numbers[i] = CFNumberCreate(0, kCFNumberIntType, &weeklyVisitCount[i]);
-
-        CFArrayRef result = CFArrayCreate(0, (const void**)numbers.data(), size, &kCFTypeArrayCallBacks);
-
-        for (size_t i = 0; i < size; ++i)
-            CFRelease(numbers[i]);
-
-        keys[keyCount] = weeklyVisitCountKey;
-        values[keyCount++] = result;
-    }
-
     *dictionaryRef = CFDictionaryCreate(0, keys, values, keyCount, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
     
     for (int i = 0; i < keyCount; ++i)
@@ -299,36 +185,29 @@ HRESULT STDMETHODCALLTYPE WebHistoryItem::hasURLString(BOOL *hasURL)
     return S_OK;
 }
 
+// FIXME: This function should be removed from the IWebHistoryItem interface.
 HRESULT STDMETHODCALLTYPE WebHistoryItem::visitCount(int *count)
 {
-    *count = m_historyItem->visitCount();
-    return S_OK;
+    return E_NOTIMPL;
 }
 
+// FIXME: This function should be removed from the IWebHistoryItem interface.
 HRESULT STDMETHODCALLTYPE WebHistoryItem::setVisitCount(int count)
 {
-    m_historyItem->setVisitCount(count);
-    return S_OK;
+    return E_NOTIMPL;
+
 }
 
+// FIXME: This function should be removed from the IWebHistoryItem interface.
 HRESULT STDMETHODCALLTYPE WebHistoryItem::mergeAutoCompleteHints(IWebHistoryItem* otherItem)
 {
-    if (!otherItem)
-        return E_FAIL;
-
-    COMPtr<WebHistoryItem> otherWebHistoryItem(Query, otherItem);
-    if (!otherWebHistoryItem)
-        return E_FAIL;
-
-    m_historyItem->mergeAutoCompleteHints(otherWebHistoryItem->historyItem());
-
-    return S_OK;
+    return E_NOTIMPL;
 }
 
+// FIXME: This function should be removed from the IWebHistoryItem interface.
 HRESULT STDMETHODCALLTYPE WebHistoryItem::setLastVisitedTimeInterval(DATE time)
 {
-    m_historyItem->setLastVisitedTime(MarshallingHelpers::DATEToCFAbsoluteTime(time));
-    return S_OK;
+    return E_NOTIMPL;
 }
 
 HRESULT STDMETHODCALLTYPE WebHistoryItem::setTitle(BSTR title)
@@ -445,22 +324,16 @@ HRESULT STDMETHODCALLTYPE WebHistoryItem::setLastVisitWasFailure(BOOL wasFailure
     return S_OK;
 }
 
+// FIXME: This function should be removed from the IWebHistoryItem interface.
 HRESULT STDMETHODCALLTYPE WebHistoryItem::lastVisitWasHTTPNonGet(BOOL* HTTPNonGet)
 {
-    if (!HTTPNonGet) {
-        ASSERT_NOT_REACHED();
-        return E_POINTER;
-    }
-
-    *HTTPNonGet = m_historyItem->lastVisitWasHTTPNonGet();
-
-    return S_OK;
+    return E_NOTIMPL;
 }
 
+// FIXME: This function should be removed from the IWebHistoryItem interface.
 HRESULT STDMETHODCALLTYPE WebHistoryItem::setLastVisitWasHTTPNonGet(BOOL HTTPNonGet)
 {
-    m_historyItem->setLastVisitWasHTTPNonGet(HTTPNonGet);
-    return S_OK;
+    return E_NOTIMPL;
 }
 
 HRESULT STDMETHODCALLTYPE WebHistoryItem::redirectURLs(IEnumVARIANT** urls)
@@ -482,40 +355,29 @@ HRESULT STDMETHODCALLTYPE WebHistoryItem::redirectURLs(IEnumVARIANT** urls)
     return S_OK;
 }
 
+// FIXME: This function should be removed from the IWebHistoryItem interface.
 HRESULT STDMETHODCALLTYPE WebHistoryItem::visitedWithTitle(BSTR title, BOOL increaseVisitCount)
 {
-    m_historyItem->visited(title, CFAbsoluteTimeGetCurrent(), increaseVisitCount ? IncreaseVisitCount : DoNotIncreaseVisitCount);
-    return S_OK;
+    return E_NOTIMPL;
 }
 
+// FIXME: This function should be removed from the IWebHistoryItem interface.
 HRESULT STDMETHODCALLTYPE WebHistoryItem::getDailyVisitCounts(int* number, int** counts)
 {
-    if (!number || !counts) {
-        ASSERT_NOT_REACHED();
-        return E_POINTER;
-    }
-
-    *counts = const_cast<int*>(m_historyItem->dailyVisitCounts().data());
-    *number = m_historyItem->dailyVisitCounts().size();
-    return S_OK;
+    return E_NOTIMPL;
 }
 
+// FIXME: This function should be removed from the IWebHistoryItem interface.
 HRESULT STDMETHODCALLTYPE WebHistoryItem::getWeeklyVisitCounts(int* number, int** counts)
 {
-    if (!number || !counts) {
-        ASSERT_NOT_REACHED();
-        return E_POINTER;
-    }
-
-    *counts = const_cast<int*>(m_historyItem->weeklyVisitCounts().data());
-    *number = m_historyItem->weeklyVisitCounts().size();
-    return S_OK;
+    return E_NOTIMPL;
 }
 
+// FIXME: This function should be removed from the IWebHistoryItem interface.
 HRESULT STDMETHODCALLTYPE WebHistoryItem::recordInitialVisit()
 {
-    m_historyItem->recordInitialVisit();
-    return S_OK;
+    // FIXME: This function should be removed from the IWebHistoryItem interface.
+    return E_NOTIMPL;
 }
 
 // IUnknown -------------------------------------------------------------------
@@ -560,7 +422,7 @@ HRESULT STDMETHODCALLTYPE WebHistoryItem::initWithURLString(
     /* [in] */ DATE lastVisited)
 {
     historyItemWrappers().remove(m_historyItem.get());
-    m_historyItem = HistoryItem::create(String(urlString, SysStringLen(urlString)), String(title, SysStringLen(title)), MarshallingHelpers::DATEToCFAbsoluteTime(lastVisited));
+    m_historyItem = HistoryItem::create(String(urlString, SysStringLen(urlString)), String(title, SysStringLen(title)));
     historyItemWrappers().set(m_historyItem.get(), this);
 
     return S_OK;
@@ -599,14 +461,11 @@ HRESULT STDMETHODCALLTYPE WebHistoryItem::title(
     return S_OK;
 }
 
+// FIXME: This function should be removed from the IWebHistoryItem interface.
 HRESULT STDMETHODCALLTYPE WebHistoryItem::lastVisitedTimeInterval( 
     /* [retval][out] */ DATE* lastVisited)
 {
-    if (!lastVisited)
-        return E_POINTER;
-
-    *lastVisited = MarshallingHelpers::CFAbsoluteTimeToDATE(m_historyItem->lastVisitedTime());
-    return S_OK;
+    return E_NOTIMPL;
 }
 
 HRESULT STDMETHODCALLTYPE WebHistoryItem::setAlternateTitle( 

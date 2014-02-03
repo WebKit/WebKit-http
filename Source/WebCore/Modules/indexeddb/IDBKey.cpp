@@ -28,6 +28,8 @@
 
 #if ENABLE(INDEXED_DATABASE)
 
+#include "IDBKeyData.h"
+
 namespace WebCore {
 
 IDBKey::~IDBKey()

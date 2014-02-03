@@ -31,7 +31,7 @@
 #include "ResourceRequest.h"
 #include "ResourceResponse.h"
 #include "SecurityOrigin.h"
-#include <wtf/Threading.h>
+#include <mutex>
 #include <wtf/text/AtomicString.h>
 #include <wtf/text/StringBuilder.h>
 
@@ -67,32 +67,29 @@ bool isSimpleCrossOriginAccessRequest(const String& method, const HTTPHeaderMap&
     if (!isOnAccessControlSimpleRequestMethodWhitelist(method))
         return false;
 
-    HTTPHeaderMap::const_iterator end = headerMap.end();
-    for (HTTPHeaderMap::const_iterator it = headerMap.begin(); it != end; ++it) {
-        if (!isOnAccessControlSimpleRequestHeaderWhitelist(it->key, it->value))
+    for (const auto& header : headerMap) {
+        if (!isOnAccessControlSimpleRequestHeaderWhitelist(header.key, header.value))
             return false;
     }
 
     return true;
 }
 
-static PassOwnPtr<HTTPHeaderSet> createAllowedCrossOriginResponseHeadersSet()
-{
-    OwnPtr<HTTPHeaderSet> headerSet = adoptPtr(new HashSet<String, CaseFoldingHash>);
-    
-    headerSet->add("cache-control");
-    headerSet->add("content-language");
-    headerSet->add("content-type");
-    headerSet->add("expires");
-    headerSet->add("last-modified");
-    headerSet->add("pragma");
-
-    return headerSet.release();
-}
-
 bool isOnAccessControlResponseHeaderWhitelist(const String& name)
 {
-    AtomicallyInitializedStatic(HTTPHeaderSet*, allowedCrossOriginResponseHeaders = createAllowedCrossOriginResponseHeadersSet().leakPtr());
+    static std::once_flag onceFlag;
+    static HTTPHeaderSet* allowedCrossOriginResponseHeaders;
+
+    std::call_once(onceFlag, []{
+        allowedCrossOriginResponseHeaders = std::make_unique<HTTPHeaderSet, std::initializer_list<String>>({
+            "cache-control",
+            "content-language",
+            "content-type",
+            "expires",
+            "last-modified",
+            "pragma"
+        }).release();
+    });
 
     return allowedCrossOriginResponseHeaders->contains(name);
 }
@@ -114,17 +111,17 @@ ResourceRequest createAccessControlPreflightRequest(const ResourceRequest& reque
 
     const HTTPHeaderMap& requestHeaderFields = request.httpHeaderFields();
 
-    if (requestHeaderFields.size() > 0) {
+    if (!requestHeaderFields.isEmpty()) {
         StringBuilder headerBuffer;
-        HTTPHeaderMap::const_iterator it = requestHeaderFields.begin();
-        headerBuffer.append(it->key);
-        ++it;
-
-        HTTPHeaderMap::const_iterator end = requestHeaderFields.end();
-        for (; it != end; ++it) {
-            headerBuffer.append(',');
-            headerBuffer.append(' ');
-            headerBuffer.append(it->key);
+        
+        bool appendComma = false;
+        for (const auto& headerName : requestHeaderFields.keys()) {
+            if (appendComma)
+                headerBuffer.appendLiteral(", ");
+            else
+                appendComma = true;
+            
+            headerBuffer.append(headerName);
         }
 
         preflightRequest.setHTTPHeaderField("Access-Control-Request-Headers", headerBuffer.toString().lower());
@@ -135,12 +132,9 @@ ResourceRequest createAccessControlPreflightRequest(const ResourceRequest& reque
 
 bool passesAccessControlCheck(const ResourceResponse& response, StoredCredentials includeCredentials, SecurityOrigin* securityOrigin, String& errorDescription)
 {
-    AtomicallyInitializedStatic(AtomicString&, accessControlAllowOrigin = *new AtomicString("access-control-allow-origin", AtomicString::ConstructFromLiteral));
-    AtomicallyInitializedStatic(AtomicString&, accessControlAllowCredentials = *new AtomicString("access-control-allow-credentials", AtomicString::ConstructFromLiteral));
-
     // A wildcard Access-Control-Allow-Origin can not be used if credentials are to be sent,
     // even with Access-Control-Allow-Credentials set to true.
-    const String& accessControlOriginString = response.httpHeaderField(accessControlAllowOrigin);
+    const String& accessControlOriginString = response.httpHeaderField("access-control-allow-origin");
     if (accessControlOriginString == "*" && includeCredentials == DoNotAllowStoredCredentials)
         return true;
 
@@ -159,7 +153,7 @@ bool passesAccessControlCheck(const ResourceResponse& response, StoredCredential
     }
 
     if (includeCredentials == AllowStoredCredentials) {
-        const String& accessControlCredentialsString = response.httpHeaderField(accessControlAllowCredentials);
+        const String& accessControlCredentialsString = response.httpHeaderField("access-control-allow-credentials");
         if (accessControlCredentialsString != "true") {
             errorDescription = "Credentials flag is true, but Access-Control-Allow-Credentials is not \"true\".";
             return false;

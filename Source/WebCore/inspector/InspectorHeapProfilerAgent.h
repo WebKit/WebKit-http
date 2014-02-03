@@ -31,7 +31,7 @@
 #ifndef InspectorHeapProfilerAgent_h
 #define InspectorHeapProfilerAgent_h
 
-#if ENABLE(JAVASCRIPT_DEBUGGER) && ENABLE(INSPECTOR)
+#if ENABLE(INSPECTOR)
 
 #include "InspectorWebAgentBase.h"
 #include "InspectorWebBackendDispatchers.h"
@@ -44,7 +44,7 @@
 
 namespace WebCore {
 
-class InjectedScriptManager;
+class PageInjectedScriptManager;
 class ScriptHeapSnapshot;
 class ScriptProfile;
 
@@ -53,37 +53,35 @@ typedef String ErrorString;
 class InspectorHeapProfilerAgent : public InspectorAgentBase, public Inspector::InspectorHeapProfilerBackendDispatcherHandler {
     WTF_MAKE_NONCOPYABLE(InspectorHeapProfilerAgent); WTF_MAKE_FAST_ALLOCATED;
 public:
-    static PassOwnPtr<InspectorHeapProfilerAgent> create(InstrumentingAgents*, InjectedScriptManager*);
+    InspectorHeapProfilerAgent(InstrumentingAgents*, PageInjectedScriptManager*);
     virtual ~InspectorHeapProfilerAgent();
 
-    virtual void collectGarbage(ErrorString*);
-    virtual void clearProfiles(ErrorString*) { resetState(); }
+    virtual void collectGarbage(ErrorString*) override;
+    virtual void clearProfiles(ErrorString*) override { resetState(); }
     void resetState();
 
-    virtual void hasHeapProfiler(ErrorString*, bool*);
+    virtual void hasHeapProfiler(ErrorString*, bool*) override;
 
-    virtual void getProfileHeaders(ErrorString*, RefPtr<Inspector::TypeBuilder::Array<Inspector::TypeBuilder::HeapProfiler::ProfileHeader>>&);
-    virtual void getHeapSnapshot(ErrorString*, int uid);
-    virtual void removeProfile(ErrorString*, int uid);
+    virtual void getProfileHeaders(ErrorString*, RefPtr<Inspector::TypeBuilder::Array<Inspector::TypeBuilder::HeapProfiler::ProfileHeader>>&) override;
+    virtual void getHeapSnapshot(ErrorString*, int uid) override;
+    virtual void removeProfile(ErrorString*, int uid) override;
 
-    virtual void didCreateFrontendAndBackend(Inspector::InspectorFrontendChannel*, Inspector::InspectorBackendDispatcher*) OVERRIDE;
-    virtual void willDestroyFrontendAndBackend() OVERRIDE;
+    virtual void didCreateFrontendAndBackend(Inspector::InspectorFrontendChannel*, Inspector::InspectorBackendDispatcher*) override;
+    virtual void willDestroyFrontendAndBackend(Inspector::InspectorDisconnectReason) override;
 
-    virtual void takeHeapSnapshot(ErrorString*, const bool* reportProgress);
+    virtual void takeHeapSnapshot(ErrorString*, const bool* reportProgress) override;
 
-    virtual void getObjectByHeapObjectId(ErrorString*, const String& heapSnapshotObjectId, const String* objectGroup, RefPtr<Inspector::TypeBuilder::Runtime::RemoteObject>& result);
-    virtual void getHeapObjectId(ErrorString*, const String& objectId, String* heapSnapshotObjectId);
+    virtual void getObjectByHeapObjectId(ErrorString*, const String& heapSnapshotObjectId, const String* objectGroup, RefPtr<Inspector::TypeBuilder::Runtime::RemoteObject>& result) override;
+    virtual void getHeapObjectId(ErrorString*, const String& objectId, String* heapSnapshotObjectId) override;
 
 private:
-    InspectorHeapProfilerAgent(InstrumentingAgents*, InjectedScriptManager*);
-
     typedef HashMap<unsigned, RefPtr<ScriptHeapSnapshot>> IdToHeapSnapshotMap;
 
     void resetFrontendProfiles();
 
     PassRefPtr<Inspector::TypeBuilder::HeapProfiler::ProfileHeader> createSnapshotHeader(const ScriptHeapSnapshot&);
 
-    InjectedScriptManager* m_injectedScriptManager;
+    PageInjectedScriptManager* m_injectedScriptManager;
     std::unique_ptr<Inspector::InspectorHeapProfilerFrontendDispatcher> m_frontendDispatcher;
     RefPtr<Inspector::InspectorHeapProfilerBackendDispatcher> m_backendDispatcher;
     unsigned m_nextUserInitiatedHeapSnapshotNumber;
@@ -93,6 +91,6 @@ private:
 
 } // namespace WebCore
 
-#endif // ENABLE(JAVASCRIPT_DEBUGGER) && ENABLE(INSPECTOR)
+#endif // ENABLE(INSPECTOR)
 
 #endif // !defined(InspectorHeapProfilerAgent_h)

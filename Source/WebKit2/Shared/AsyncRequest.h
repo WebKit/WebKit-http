@@ -55,7 +55,7 @@ private:
 };
 
 template <typename... Arguments>
-class AsyncRequestImpl FINAL : public AsyncRequest {
+class AsyncRequestImpl final : public AsyncRequest {
 public:
     static PassRefPtr<AsyncRequest> create(std::function<void (Arguments...)> completionHandler)
     {
@@ -86,7 +86,7 @@ private:
         ASSERT(m_completionHandler);
     }
 
-    virtual void clearCompletionHandler() OVERRIDE
+    virtual void clearCompletionHandler() override
     {
         m_completionHandler = nullptr;
     }

@@ -32,7 +32,7 @@ namespace WebCore {
     
 class SVGPathElement;
 
-class SVGMPathElement FINAL : public SVGElement,
+class SVGMPathElement final : public SVGElement,
                               public SVGURIReference,
                               public SVGExternalResourcesRequired {
 public:
@@ -47,16 +47,16 @@ public:
 private:
     SVGMPathElement(const QualifiedName&, Document&);
 
-    void buildPendingResource();
+    void buildPendingResource() override;
     void clearResourceReferences();
-    virtual InsertionNotificationRequest insertedInto(ContainerNode&) OVERRIDE;
-    virtual void removedFrom(ContainerNode&) OVERRIDE;
+    virtual InsertionNotificationRequest insertedInto(ContainerNode&) override;
+    virtual void removedFrom(ContainerNode&) override;
 
     bool isSupportedAttribute(const QualifiedName&);
-    virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
-    virtual void svgAttributeChanged(const QualifiedName&) OVERRIDE;
+    virtual void parseAttribute(const QualifiedName&, const AtomicString&) override;
+    virtual void svgAttributeChanged(const QualifiedName&) override;
 
-    virtual bool rendererIsNeeded(const RenderStyle&) OVERRIDE { return false; }
+    virtual bool rendererIsNeeded(const RenderStyle&) override { return false; }
 
     void notifyParentOfPathChange(ContainerNode*);
 

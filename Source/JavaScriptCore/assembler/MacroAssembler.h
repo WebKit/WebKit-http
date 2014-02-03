@@ -140,6 +140,9 @@ public:
     using MacroAssemblerBase::and32;
     using MacroAssemblerBase::branchAdd32;
     using MacroAssemblerBase::branchMul32;
+#if CPU(X86_64)
+    using MacroAssemblerBase::branchPtr;
+#endif // CPU(X86_64)
     using MacroAssemblerBase::branchSub32;
     using MacroAssemblerBase::lshift32;
     using MacroAssemblerBase::or32;
@@ -590,6 +593,11 @@ public:
     void storePtr(TrustedImmPtr imm, void* address)
     {
         store32(TrustedImm32(imm), address);
+    }
+
+    void storePtr(TrustedImm32 imm, ImplicitAddress address)
+    {
+        store32(imm, address);
     }
 
     void storePtr(TrustedImmPtr imm, BaseIndex address)

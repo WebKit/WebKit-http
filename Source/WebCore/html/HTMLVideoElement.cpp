@@ -67,13 +67,13 @@ bool HTMLVideoElement::rendererIsNeeded(const RenderStyle& style)
     return HTMLElement::rendererIsNeeded(style); 
 }
 
-RenderElement* HTMLVideoElement::createRenderer(PassRef<RenderStyle> style)
+RenderPtr<RenderElement> HTMLVideoElement::createElementRenderer(PassRef<RenderStyle> style)
 {
 #if ENABLE(PLUGIN_PROXY_FOR_VIDEO)
     if (shouldUseVideoPluginProxy())
-        return HTMLMediaElement::createRenderer(std::move(style));
+        return HTMLMediaElement::createElementRenderer(std::move(style));
 #endif
-    return new RenderVideo(*this, std::move(style));
+    return createRenderer<RenderVideo>(*this, std::move(style));
 }
 
 void HTMLVideoElement::didAttachRenderers()
@@ -89,7 +89,7 @@ void HTMLVideoElement::didAttachRenderers()
                 m_imageLoader = adoptPtr(new HTMLImageLoader(this));
             m_imageLoader->updateFromElement();
             if (renderer())
-                toRenderImage(renderer())->imageResource()->setCachedImage(m_imageLoader->image()); 
+                toRenderImage(renderer())->imageResource().setCachedImage(m_imageLoader->image());
         }
 #if ENABLE(PLUGIN_PROXY_FOR_VIDEO)
     }
@@ -129,7 +129,7 @@ void HTMLVideoElement::parseAttribute(const QualifiedName& name, const AtomicStr
             m_imageLoader->updateFromElementIgnoringPreviousError();
         } else {
             if (renderer())
-                toRenderImage(renderer())->imageResource()->setCachedImage(0); 
+                toRenderImage(renderer())->imageResource().setCachedImage(0);
         }
     }
 #if ENABLE(IOS_AIRPLAY)
@@ -289,7 +289,7 @@ void HTMLVideoElement::webkitEnterFullscreen(ExceptionCode& ec)
 
     // Generate an exception if this isn't called in response to a user gesture, or if the 
     // element does not support fullscreen.
-    if ((userGestureRequiredForFullscreen() && !ScriptController::processingUserGesture()) || !supportsFullscreen()) {
+    if (!mediaSession().fullscreenPermitted(*this) || !supportsFullscreen()) {
         ec = INVALID_STATE_ERR;
         return;
     }

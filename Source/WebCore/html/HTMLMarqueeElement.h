@@ -30,7 +30,7 @@ namespace WebCore {
 
 class RenderMarquee;
 
-class HTMLMarqueeElement FINAL : public HTMLElement, private ActiveDOMObject {
+class HTMLMarqueeElement final : public HTMLElement, private ActiveDOMObject {
 public:
     static PassRefPtr<HTMLMarqueeElement> create(const QualifiedName&, Document&);
 
@@ -39,7 +39,7 @@ public:
     // DOM Functions
 
     void start();
-    void stop();
+    void stop() override;
     
     int scrollAmount() const;
     void setScrollAmount(int, ExceptionCode&);
@@ -53,13 +53,13 @@ public:
 private:
     HTMLMarqueeElement(const QualifiedName&, Document&);
 
-    virtual bool isPresentationAttribute(const QualifiedName&) const OVERRIDE;
-    virtual void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStyleProperties&) OVERRIDE;
+    virtual bool isPresentationAttribute(const QualifiedName&) const override;
+    virtual void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStyleProperties&) override;
 
     // ActiveDOMObject
-    virtual bool canSuspend() const;
-    virtual void suspend(ReasonForSuspension);
-    virtual void resume();
+    virtual bool canSuspend() const override;
+    virtual void suspend(ReasonForSuspension) override;
+    virtual void resume() override;
 
     RenderMarquee* renderMarquee() const;
 };

@@ -42,6 +42,11 @@
         callback(arg); \
     });
 
+#define ASYNC_COMPLETION_CALLBACK_WITH_TWO_ARGS(callback, arg1, arg2) \
+    callOnMainThread([callback]() { \
+        callback(arg1, arg2); \
+    });
+
 #define ASYNC_COMPLETION_CALLBACK_WITH_NULL_ARG(callback) \
     callOnMainThread([callback]() { \
         callback(0); \
@@ -239,7 +244,7 @@ void IDBServerConnectionLevelDB::deleteIndex(IDBTransactionBackend& transaction,
     ASYNC_COMPLETION_CALLBACK_WITH_NULL_ARG(completionCallback);
 }
 
-void IDBServerConnectionLevelDB::get(IDBTransactionBackend& transaction, const GetOperation& operation, std::function<void(PassRefPtr<IDBDatabaseError>)> completionCallback)
+void IDBServerConnectionLevelDB::get(IDBTransactionBackend& transaction, const GetOperation& operation, std::function<void(const IDBGetResult&, PassRefPtr<IDBDatabaseError>)> completionCallback)
 {
     IDBBackingStoreTransactionLevelDB* backingStoreTransaction = m_backingStoreTransactions.get(transaction.id());
     ASSERT(backingStoreTransaction);
@@ -267,8 +272,7 @@ void IDBServerConnectionLevelDB::get(IDBTransactionBackend& transaction, const G
         }
 
         if (!backingStoreCursor) {
-            operation.callbacks()->onSuccess();
-            ASYNC_COMPLETION_CALLBACK_WITH_NULL_ARG(completionCallback);
+            ASYNC_COMPLETION_CALLBACK_WITH_TWO_ARGS(completionCallback, IDBGetResult(), nullptr);
             return;
         }
 
@@ -282,45 +286,44 @@ void IDBServerConnectionLevelDB::get(IDBTransactionBackend& transaction, const G
         Vector<char> value;
         ok = m_backingStore->getRecord(*backingStoreTransaction, transaction.database().id(), operation.objectStoreID(), *key, value);
         if (!ok) {
-            operation.callbacks()->onError(IDBDatabaseError::create(IDBDatabaseException::UnknownError, "Internal error in getRecord."));
-            ASYNC_COMPLETION_CALLBACK_WITH_NULL_ARG(completionCallback);
+            ASYNC_COMPLETION_CALLBACK_WITH_TWO_ARGS(completionCallback, IDBGetResult(), IDBDatabaseError::create(IDBDatabaseException::UnknownError, "Internal error in getRecord."));
             return;
         }
 
         if (value.isEmpty()) {
-            operation.callbacks()->onSuccess();
-            ASYNC_COMPLETION_CALLBACK_WITH_NULL_ARG(completionCallback);
+            ASYNC_COMPLETION_CALLBACK_WITH_TWO_ARGS(completionCallback, IDBGetResult(), nullptr);
             return;
         }
 
-        if (operation.autoIncrement() && !operation.keyPath().isNull()) {
-            operation.callbacks()->onSuccess(SharedBuffer::adoptVector(value), key, operation.keyPath());
-            ASYNC_COMPLETION_CALLBACK_WITH_NULL_ARG(completionCallback);
-            return;
-        }
+        IDBGetResult result;
 
-        operation.callbacks()->onSuccess(SharedBuffer::adoptVector(value));
-        ASYNC_COMPLETION_CALLBACK_WITH_NULL_ARG(completionCallback);
+        if (operation.autoIncrement() && !operation.keyPath().isNull())
+            result = IDBGetResult(SharedBuffer::adoptVector(value), key, operation.keyPath());
+        else
+            result = IDBGetResult(SharedBuffer::adoptVector(value));
+
+        callOnMainThread([completionCallback, result]() {
+            completionCallback(result, nullptr);
+        });
         return;
-
     }
 
     // From here we are dealing only with indexes.
     ok = m_backingStore->getPrimaryKeyViaIndex(*backingStoreTransaction, transaction.database().id(), operation.objectStoreID(), operation.indexID(), *key, primaryKey);
     if (!ok) {
-        operation.callbacks()->onError(IDBDatabaseError::create(IDBDatabaseException::UnknownError, "Internal error in getPrimaryKeyViaIndex."));
-        ASYNC_COMPLETION_CALLBACK_WITH_NULL_ARG(completionCallback);
+        ASYNC_COMPLETION_CALLBACK_WITH_TWO_ARGS(completionCallback, IDBGetResult(), IDBDatabaseError::create(IDBDatabaseException::UnknownError, "Internal error in getPrimaryKeyViaIndex."));
         return;
     }
     if (!primaryKey) {
-        operation.callbacks()->onSuccess();
-        ASYNC_COMPLETION_CALLBACK_WITH_NULL_ARG(completionCallback);
+        ASYNC_COMPLETION_CALLBACK_WITH_TWO_ARGS(completionCallback, IDBGetResult(), nullptr);
         return;
     }
     if (operation.cursorType() == IndexedDB::CursorType::KeyOnly) {
         // Index Value Retrieval Operation
-        operation.callbacks()->onSuccess(primaryKey.get());
-        ASYNC_COMPLETION_CALLBACK_WITH_NULL_ARG(completionCallback);
+        IDBGetResult result(primaryKey.release());
+        callOnMainThread([completionCallback, result]() {
+            completionCallback(result, nullptr);
+        });
         return;
     }
 
@@ -328,26 +331,30 @@ void IDBServerConnectionLevelDB::get(IDBTransactionBackend& transaction, const G
     Vector<char> value;
     ok = m_backingStore->getRecord(*backingStoreTransaction, transaction.database().id(), operation.objectStoreID(), *primaryKey, value);
     if (!ok) {
-        operation.callbacks()->onError(IDBDatabaseError::create(IDBDatabaseException::UnknownError, "Internal error in getRecord."));
-        ASYNC_COMPLETION_CALLBACK_WITH_NULL_ARG(completionCallback);
+        ASYNC_COMPLETION_CALLBACK_WITH_TWO_ARGS(completionCallback, IDBGetResult(), IDBDatabaseError::create(IDBDatabaseException::UnknownError, "Internal error in getRecord."));
         return;
     }
 
     if (value.isEmpty()) {
-        operation.callbacks()->onSuccess();
-        ASYNC_COMPLETION_CALLBACK_WITH_NULL_ARG(completionCallback);
+        ASYNC_COMPLETION_CALLBACK_WITH_TWO_ARGS(completionCallback, IDBGetResult(), nullptr);
         return;
     }
     if (operation.autoIncrement() && !operation.keyPath().isNull()) {
-        operation.callbacks()->onSuccess(SharedBuffer::adoptVector(value), primaryKey, operation.keyPath());
-        ASYNC_COMPLETION_CALLBACK_WITH_NULL_ARG(completionCallback);
+        IDBGetResult result(SharedBuffer::adoptVector(value), key, operation.keyPath());
+        callOnMainThread([completionCallback, result]() {
+            completionCallback(result, nullptr);
+        });
+
         return;
     }
-    operation.callbacks()->onSuccess(SharedBuffer::adoptVector(value));
-    ASYNC_COMPLETION_CALLBACK_WITH_NULL_ARG(completionCallback);
+
+    IDBGetResult result(SharedBuffer::adoptVector(value));
+    callOnMainThread([completionCallback, result]() {
+        completionCallback(result, nullptr);
+    });
 }
 
-void IDBServerConnectionLevelDB::put(IDBTransactionBackend& transaction, const PutOperation& operation, std::function<void(PassRefPtr<IDBDatabaseError>)> completionCallback)
+void IDBServerConnectionLevelDB::put(IDBTransactionBackend& transaction, const PutOperation& operation, std::function<void(PassRefPtr<IDBKey>, PassRefPtr<IDBDatabaseError>)> completionCallback)
 {
     IDBBackingStoreTransactionLevelDB* backingStoreTransaction = m_backingStoreTransactions.get(transaction.id());
     ASSERT(backingStoreTransaction);
@@ -359,8 +366,7 @@ void IDBServerConnectionLevelDB::put(IDBTransactionBackend& transaction, const P
         RefPtr<IDBKey> autoIncKey = m_backingStore->generateKey(transaction, transaction.database().id(), operation.objectStore().id);
         keyWasGenerated = true;
         if (!autoIncKey->isValid()) {
-            operation.callbacks()->onError(IDBDatabaseError::create(IDBDatabaseException::ConstraintError, "Maximum key generator value reached."));
-            ASYNC_COMPLETION_CALLBACK_WITH_NULL_ARG(completionCallback);
+            ASYNC_COMPLETION_CALLBACK_WITH_TWO_ARGS(completionCallback, nullptr, IDBDatabaseError::create(IDBDatabaseException::ConstraintError, "Maximum key generator value reached."));
             return;
         }
         key = autoIncKey;
@@ -374,13 +380,11 @@ void IDBServerConnectionLevelDB::put(IDBTransactionBackend& transaction, const P
     if (operation.putMode() == IDBDatabaseBackend::AddOnly) {
         bool ok = m_backingStore->keyExistsInObjectStore(*backingStoreTransaction, transaction.database().id(), operation.objectStore().id, *key, recordIdentifier);
         if (!ok) {
-            operation.callbacks()->onError(IDBDatabaseError::create(IDBDatabaseException::UnknownError, "Internal error checking key existence."));
-            ASYNC_COMPLETION_CALLBACK_WITH_NULL_ARG(completionCallback);
+            ASYNC_COMPLETION_CALLBACK_WITH_TWO_ARGS(completionCallback, nullptr, IDBDatabaseError::create(IDBDatabaseException::UnknownError, "Internal error checking key existence."));
             return;
         }
         if (recordIdentifier) {
-            operation.callbacks()->onError(IDBDatabaseError::create(IDBDatabaseException::ConstraintError, "Key already exists in the object store."));
-            ASYNC_COMPLETION_CALLBACK_WITH_NULL_ARG(completionCallback);
+            ASYNC_COMPLETION_CALLBACK_WITH_TWO_ARGS(completionCallback, nullptr, IDBDatabaseError::create(IDBDatabaseException::ConstraintError, "Key already exists in the object store."));
             return;
         }
     }
@@ -390,21 +394,20 @@ void IDBServerConnectionLevelDB::put(IDBTransactionBackend& transaction, const P
     bool obeysConstraints = false;
     bool backingStoreSuccess = m_backingStore->makeIndexWriters(transaction.id(), transaction.database().id(), operation.objectStore(), *key, keyWasGenerated, operation.indexIDs(), operation.indexKeys(), indexWriters, &errorMessage, obeysConstraints);
     if (!backingStoreSuccess) {
-        operation.callbacks()->onError(IDBDatabaseError::create(IDBDatabaseException::UnknownError, "Internal error: backing store error updating index keys."));
-        ASYNC_COMPLETION_CALLBACK_WITH_NULL_ARG(completionCallback);
+        ASYNC_COMPLETION_CALLBACK_WITH_TWO_ARGS(completionCallback, nullptr, IDBDatabaseError::create(IDBDatabaseException::UnknownError, "Internal error: backing store error updating index keys."));
         return;
     }
     if (!obeysConstraints) {
-        operation.callbacks()->onError(IDBDatabaseError::create(IDBDatabaseException::ConstraintError, errorMessage));
-        ASYNC_COMPLETION_CALLBACK_WITH_NULL_ARG(completionCallback);
+        callOnMainThread([completionCallback, errorMessage]() { \
+            completionCallback(nullptr, IDBDatabaseError::create(IDBDatabaseException::ConstraintError, errorMessage)); \
+        });
         return;
     }
 
     // Before this point, don't do any mutation. After this point, rollback the transaction in case of error.
     backingStoreSuccess = m_backingStore->putRecord(*backingStoreTransaction, transaction.database().id(), operation.objectStore().id, *key, operation.value(), recordIdentifier.get());
     if (!backingStoreSuccess) {
-        operation.callbacks()->onError(IDBDatabaseError::create(IDBDatabaseException::UnknownError, "Internal error: backing store error performing put/add."));
-        ASYNC_COMPLETION_CALLBACK_WITH_NULL_ARG(completionCallback);
+        ASYNC_COMPLETION_CALLBACK_WITH_TWO_ARGS(completionCallback, nullptr, IDBDatabaseError::create(IDBDatabaseException::UnknownError, "Internal error: backing store error performing put/add."));
         return;
     }
 
@@ -416,17 +419,17 @@ void IDBServerConnectionLevelDB::put(IDBTransactionBackend& transaction, const P
     if (operation.objectStore().autoIncrement && operation.putMode() != IDBDatabaseBackend::CursorUpdate && key->type() == IDBKey::NumberType) {
         bool ok = m_backingStore->updateKeyGenerator(transaction, transaction.database().id(), operation.objectStore().id, *key, !keyWasGenerated);
         if (!ok) {
-            operation.callbacks()->onError(IDBDatabaseError::create(IDBDatabaseException::UnknownError, "Internal error updating key generator."));
-            ASYNC_COMPLETION_CALLBACK_WITH_NULL_ARG(completionCallback);
+            ASYNC_COMPLETION_CALLBACK_WITH_TWO_ARGS(completionCallback, nullptr, IDBDatabaseError::create(IDBDatabaseException::UnknownError, "Internal error updating key generator."));
             return;
         }
     }
 
-    operation.callbacks()->onSuccess(key.release());
-    ASYNC_COMPLETION_CALLBACK_WITH_NULL_ARG(completionCallback);
+    callOnMainThread([completionCallback, key]() { \
+        completionCallback(key.get(), nullptr); \
+    });
 }
 
-void IDBServerConnectionLevelDB::openCursor(IDBTransactionBackend& transaction, const OpenCursorOperation& operation, std::function<void(PassRefPtr<IDBDatabaseError>)> completionCallback)
+void IDBServerConnectionLevelDB::openCursor(IDBTransactionBackend& transaction, const OpenCursorOperation& operation, std::function<void(int64_t, PassRefPtr<IDBDatabaseError>)> completionCallback)
 {
     IDBBackingStoreTransactionLevelDB* backingStoreTransaction = m_backingStoreTransactions.get(transaction.id());
     ASSERT(backingStoreTransaction);
@@ -453,23 +456,16 @@ void IDBServerConnectionLevelDB::openCursor(IDBTransactionBackend& transaction, 
     }
 
     if (!backingStoreCursor) {
-        operation.callbacks()->onSuccess(static_cast<SharedBuffer*>(0));
-        callOnMainThread([completionCallback]() {
-            completionCallback(0);
-        });
-        return;
+        // FIXME: Should it be an error to not have a backing store cursor?
+        cursorID = 0;
     }
 
-    IDBDatabaseBackend::TaskType taskType(static_cast<IDBDatabaseBackend::TaskType>(operation.taskType()));
-
-    RefPtr<IDBCursorBackend> cursor = IDBCursorBackend::create(cursorID, operation.cursorType(), taskType, transaction, operation.objectStoreID());
-
-    operation.callbacks()->onSuccess(cursor, cursor->key(), cursor->primaryKey(), cursor->value());
-
-    ASYNC_COMPLETION_CALLBACK_WITH_NULL_ARG(completionCallback);
+    callOnMainThread([completionCallback, cursorID]() {
+        completionCallback(cursorID, nullptr);
+    });
 }
 
-void IDBServerConnectionLevelDB::count(IDBTransactionBackend& transaction, const CountOperation& operation, std::function<void(PassRefPtr<IDBDatabaseError>)> completionCallback)
+void IDBServerConnectionLevelDB::count(IDBTransactionBackend& transaction, const CountOperation& operation, std::function<void(int64_t, PassRefPtr<IDBDatabaseError>)> completionCallback)
 {
     IDBBackingStoreTransactionLevelDB* backingStoreTransaction = m_backingStoreTransactions.get(transaction.id());
     ASSERT(backingStoreTransaction);
@@ -484,9 +480,9 @@ void IDBServerConnectionLevelDB::count(IDBTransactionBackend& transaction, const
     else
         backingStoreCursor = m_backingStore->openIndexKeyCursor(cursorID, *backingStoreTransaction, transaction.database().id(), operation.objectStoreID(), operation.indexID(), operation.keyRange(), IndexedDB::CursorDirection::Next);
     if (!backingStoreCursor) {
-        operation.callbacks()->onSuccess(count);
-        callOnMainThread([completionCallback]() {
-            completionCallback(0);
+        // FIXME: Is this an error case?
+        callOnMainThread([completionCallback, count]() {
+            completionCallback(count, nullptr);
         });
         return;
     }
@@ -495,8 +491,9 @@ void IDBServerConnectionLevelDB::count(IDBTransactionBackend& transaction, const
         ++count;
     } while (backingStoreCursor->continueFunction(0));
 
-    operation.callbacks()->onSuccess(count);
-    ASYNC_COMPLETION_CALLBACK_WITH_NULL_ARG(completionCallback);
+    callOnMainThread([completionCallback, count]() {
+        completionCallback(count, nullptr);
+    });
 }
 
 void IDBServerConnectionLevelDB::deleteRange(IDBTransactionBackend& transaction, const DeleteRangeOperation& operation, std::function<void(PassRefPtr<IDBDatabaseError>)> completionCallback)
@@ -510,17 +507,17 @@ void IDBServerConnectionLevelDB::deleteRange(IDBTransactionBackend& transaction,
     if (backingStoreCursor) {
         do {
             if (!m_backingStore->deleteRecord(*backingStoreTransaction, transaction.database().id(), operation.objectStoreID(), backingStoreCursor->recordIdentifier())) {
-                operation.callbacks()->onError(IDBDatabaseError::create(IDBDatabaseException::UnknownError, "Error deleting data in range"));
                 callOnMainThread([completionCallback]() {
-                    completionCallback(0);
+                    completionCallback(IDBDatabaseError::create(IDBDatabaseException::UnknownError, "Error deleting data in range"));
                 });
                 return;
             }
         } while (backingStoreCursor->continueFunction(0));
     }
 
-    operation.callbacks()->onSuccess();
-    ASYNC_COMPLETION_CALLBACK_WITH_NULL_ARG(completionCallback);
+    callOnMainThread([completionCallback]() {
+        completionCallback(nullptr);
+    });
 }
 
 void IDBServerConnectionLevelDB::clearObjectStore(IDBTransactionBackend& transaction, const ClearObjectStoreOperation& operation, std::function<void(PassRefPtr<IDBDatabaseError>)> completionCallback)
@@ -529,13 +526,12 @@ void IDBServerConnectionLevelDB::clearObjectStore(IDBTransactionBackend& transac
     ASSERT(backingStoreTransaction);
 
     if (!m_backingStore->clearObjectStore(*backingStoreTransaction, transaction.database().id(), operation.objectStoreID())) {
-        operation.callbacks()->onError(IDBDatabaseError::create(IDBDatabaseException::UnknownError, "Error clearing object store"));
         callOnMainThread([completionCallback]() {
-            completionCallback(0);
+            completionCallback(IDBDatabaseError::create(IDBDatabaseException::UnknownError, "Error clearing object store"));
         });
         return;
     }
-    operation.callbacks()->onSuccess();
+
     ASYNC_COMPLETION_CALLBACK_WITH_NULL_ARG(completionCallback);
 }
 
@@ -555,32 +551,24 @@ void IDBServerConnectionLevelDB::deleteObjectStore(IDBTransactionBackend& transa
     ASYNC_COMPLETION_CALLBACK_WITH_NULL_ARG(completionCallback);
 }
 
-void IDBServerConnectionLevelDB::changeDatabaseVersion(IDBTransactionBackend& transaction, const IDBDatabaseBackend::VersionChangeOperation& operation, std::function<void(PassRefPtr<IDBDatabaseError>)> completionCallback)
+void IDBServerConnectionLevelDB::changeDatabaseVersion(IDBTransactionBackend& transaction, const IDBDatabaseBackend::VersionChangeOperation&, std::function<void(PassRefPtr<IDBDatabaseError>)> completionCallback)
 {
     IDBBackingStoreTransactionLevelDB* backingStoreTransaction = m_backingStoreTransactions.get(transaction.id());
     ASSERT(backingStoreTransaction);
 
     IDBDatabaseBackend& database = transaction.database();
     int64_t databaseId = database.id();
-    uint64_t oldVersion = database.metadata().version;
 
-    // FIXME: Database versions are now of type uint64_t, but this code expected int64_t.
-    ASSERT(operation.version() > (int64_t)oldVersion);
-    database.setCurrentVersion(operation.version());
     if (!m_backingStore->updateIDBDatabaseVersion(*backingStoreTransaction, databaseId, database.metadata().version)) {
         RefPtr<IDBDatabaseError> error = IDBDatabaseError::create(IDBDatabaseException::UnknownError, "Error writing data to stable storage when updating version.");
-        operation.callbacks()->onError(error);
         ASYNC_COMPLETION_CALLBACK_WITH_ARG(completionCallback, error);
         return;
     }
-    ASSERT(!database.hasPendingSecondHalfOpen());
-    database.setPendingSecondHalfOpen(IDBPendingOpenCall::create(*operation.callbacks(), *operation.databaseCallbacks(), transaction.id(), operation.version()));
-    operation.callbacks()->onUpgradeNeeded(oldVersion, &database, database.metadata());
 
     ASYNC_COMPLETION_CALLBACK_WITH_NULL_ARG(completionCallback);
 }
 
-void IDBServerConnectionLevelDB::cursorAdvance(IDBCursorBackend& cursor, const CursorAdvanceOperation& operation, std::function<void()> completionCallback)
+void IDBServerConnectionLevelDB::cursorAdvance(IDBCursorBackend& cursor, const CursorAdvanceOperation& operation, std::function<void(PassRefPtr<IDBKey>, PassRefPtr<IDBKey>, PassRefPtr<SharedBuffer>, PassRefPtr<IDBDatabaseError>)> completionCallback)
 {
     IDBBackingStoreCursorLevelDB* backingStoreCursor = cursor.id() ? m_backingStoreCursors.get(cursor.id()) : 0;
 #ifndef NDEBUG
@@ -590,109 +578,46 @@ void IDBServerConnectionLevelDB::cursorAdvance(IDBCursorBackend& cursor, const C
 
     if (!backingStoreCursor || !backingStoreCursor->advance(operation.count())) {
         m_backingStoreCursors.remove(cursor.id());
-        cursor.clear();
 
-        operation.callbacks()->onSuccess(static_cast<SharedBuffer*>(0));
-        EMPTY_ASYNC_COMPLETION_CALLBACK(completionCallback);
+        callOnMainThread([completionCallback]() {
+            completionCallback(nullptr, nullptr, nullptr, IDBDatabaseError::create(IDBDatabaseException::UnknownError, "Unknown error advancing cursor"));
+        });
+
         return;
     }
 
-    cursor.updateCursorData(backingStoreCursor->key().get(), backingStoreCursor->primaryKey().get(), backingStoreCursor->value().get());
-    operation.callbacks()->onSuccess(backingStoreCursor->key(), backingStoreCursor->primaryKey(), backingStoreCursor->value());
-    EMPTY_ASYNC_COMPLETION_CALLBACK(completionCallback);
+    RefPtr<IDBKey> key = backingStoreCursor->key(), primaryKey = backingStoreCursor->primaryKey();
+    RefPtr<SharedBuffer> value = backingStoreCursor->value();
+
+    callOnMainThread([completionCallback, key, primaryKey, value]() {
+        completionCallback(key, primaryKey, value, IDBDatabaseError::create(IDBDatabaseException::UnknownError, "Unknown error advancing cursor"));
+    });
 }
 
-void IDBServerConnectionLevelDB::cursorIterate(IDBCursorBackend& cursor, const CursorIterationOperation& operation, std::function<void()> completionCallback)
+void IDBServerConnectionLevelDB::cursorIterate(IDBCursorBackend& cursor, const CursorIterationOperation& operation, std::function<void(PassRefPtr<IDBKey>, PassRefPtr<IDBKey>, PassRefPtr<SharedBuffer>, PassRefPtr<IDBDatabaseError>)> completionCallback)
 {
     IDBBackingStoreCursorLevelDB* backingStoreCursor = cursor.id() ? m_backingStoreCursors.get(cursor.id()) : 0;
 #ifndef NDEBUG
     if (cursor.id())
         ASSERT(backingStoreCursor);
 #endif
-
-    EMPTY_ASYNC_COMPLETION_CALLBACK(completionCallback);
 
     if (!backingStoreCursor || !backingStoreCursor->continueFunction(operation.key())) {
         m_backingStoreCursors.remove(cursor.id());
-        cursor.clear();
-        operation.callbacks()->onSuccess(static_cast<SharedBuffer*>(0));
+
+        callOnMainThread([completionCallback]() {
+            completionCallback(nullptr, nullptr, nullptr, IDBDatabaseError::create(IDBDatabaseException::UnknownError, "Unknown error advancing cursor"));
+        });
+
         return;
     }
 
-    cursor.updateCursorData(backingStoreCursor->key().get(), backingStoreCursor->primaryKey().get(), backingStoreCursor->value().get());
-    operation.callbacks()->onSuccess(backingStoreCursor->key(), backingStoreCursor->primaryKey(), backingStoreCursor->value());
-    
-}
+    RefPtr<IDBKey> key = backingStoreCursor->key(), primaryKey = backingStoreCursor->primaryKey();
+    RefPtr<SharedBuffer> value = backingStoreCursor->value();
 
-void IDBServerConnectionLevelDB::cursorPrefetchIteration(IDBCursorBackend& cursor, const CursorPrefetchIterationOperation& operation, std::function<void()> completionCallback)
-{
-    IDBBackingStoreCursorLevelDB* backingStoreCursor = cursor.id() ? m_backingStoreCursors.get(cursor.id()) : 0;
-#ifndef NDEBUG
-    if (cursor.id())
-        ASSERT(backingStoreCursor);
-#endif
-
-    Vector<RefPtr<IDBKey>> foundKeys;
-    Vector<RefPtr<IDBKey>> foundPrimaryKeys;
-    Vector<RefPtr<SharedBuffer>> foundValues;
-
-    if (backingStoreCursor) {
-        int64_t cursorID = m_nextCursorID++;
-        RefPtr<IDBBackingStoreCursorLevelDB> savedCursor = backingStoreCursor->clone();
-        m_backingStoreCursors.set(cursorID, savedCursor.release());
-        cursor.setSavedCursorID(cursorID);
-    }
-
-    const size_t maxSizeEstimate = 10 * 1024 * 1024;
-    size_t sizeEstimate = 0;
-
-    for (int i = 0; i < operation.numberToFetch(); ++i) {
-        if (!backingStoreCursor || !backingStoreCursor->continueFunction(0)) {
-            m_backingStoreCursors.remove(cursor.id());
-            cursor.clear();
-            break;
-        }
-
-        foundKeys.append(backingStoreCursor->key());
-        foundPrimaryKeys.append(backingStoreCursor->primaryKey());
-
-        switch (cursor.cursorType()) {
-        case IndexedDB::CursorType::KeyOnly:
-            foundValues.append(SharedBuffer::create());
-            break;
-        case IndexedDB::CursorType::KeyAndValue:
-            sizeEstimate += backingStoreCursor->value()->size();
-            foundValues.append(backingStoreCursor->value());
-            break;
-        default:
-            ASSERT_NOT_REACHED();
-        }
-        sizeEstimate += backingStoreCursor->key()->sizeEstimate();
-        sizeEstimate += backingStoreCursor->primaryKey()->sizeEstimate();
-
-        if (sizeEstimate > maxSizeEstimate)
-            break;
-    }
-
-    if (!foundKeys.size()) {
-        operation.callbacks()->onSuccess(static_cast<SharedBuffer*>(0));
-        return;
-    }
-
-    operation.callbacks()->onSuccessWithPrefetch(foundKeys, foundPrimaryKeys, foundValues);
-    
-    EMPTY_ASYNC_COMPLETION_CALLBACK(completionCallback);
-}
-
-void IDBServerConnectionLevelDB::cursorPrefetchReset(IDBCursorBackend& cursor, int usedPrefetches)
-{
-    IDBBackingStoreCursorLevelDB* backingStoreCursor = cursor.id() ? m_backingStoreCursors.get(cursor.id()) : 0;
-    ASSERT(backingStoreCursor);
-
-    for (int i = 0; i < usedPrefetches; ++i) {
-        bool ok = backingStoreCursor->continueFunction();
-        ASSERT_UNUSED(ok, ok);
-    }
+    callOnMainThread([completionCallback, key, primaryKey, value]() {
+        completionCallback(key, primaryKey, value, IDBDatabaseError::create(IDBDatabaseException::UnknownError, "Unknown error advancing cursor"));
+    });
 }
 
 } // namespace WebCore

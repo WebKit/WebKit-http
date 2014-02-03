@@ -34,11 +34,22 @@
 #include "PopupMenuClient.h"
 #include "RenderEmbeddedObject.h"
 #include "ScrollTypes.h"
+#include "ScrollingCoordinator.h"
 #include "SearchPopupMenu.h"
 #include "WebCoreKeyboardUIMode.h"
 #include <wtf/Forward.h>
 #include <wtf/PassOwnPtr.h>
 #include <wtf/Vector.h>
+
+#if PLATFORM(IOS)
+#include "PlatformLayer.h"
+#define NSResponder WAKResponder
+#ifndef __OBJC__
+class WAKResponder;
+#else
+@class WAKResponder;
+#endif
+#endif
 
 #if ENABLE(SQL_DATABASE)
 #include "DatabaseDetails.h"
@@ -62,14 +73,15 @@ class Geolocation;
 class GraphicsContext3D;
 class GraphicsLayer;
 class GraphicsLayerFactory;
-class HitTestResult;
 class HTMLInputElement;
+class HitTestResult;
 class IntRect;
 class NavigationAction;
 class Node;
 class Page;
 class PopupMenuClient;
 class SecurityOrigin;
+class ViewportConstraints;
 class Widget;
 
 struct DateTimeChooserParameters;
@@ -156,8 +168,10 @@ public:
     virtual IntRect rootViewToScreen(const IntRect&) const = 0;
     virtual PlatformPageClient platformPageClient() const = 0;
     virtual void scrollbarsModeDidChange() const = 0;
+#if ENABLE(CURSOR_SUPPORT)
     virtual void setCursor(const Cursor&) = 0;
     virtual void setCursorHiddenUntilMouseMoves(bool) = 0;
+#endif
 #if ENABLE(REQUEST_ANIMATION_FRAME) && !USE(REQUEST_ANIMATION_FRAME_TIMER)
     virtual void scheduleAnimation() = 0;
 #endif
@@ -200,7 +214,7 @@ public:
     // the new cache.
     virtual void reachedApplicationCacheOriginQuota(SecurityOrigin*, int64_t totalSpaceNeeded) = 0;
 
-#if ENABLE(DASHBOARD_SUPPORT) || ENABLE(DRAGGABLE_REGION)
+#if ENABLE(DASHBOARD_SUPPORT)
     virtual void annotatedRegionsChanged();
 #endif
 
@@ -212,11 +226,46 @@ public:
     virtual bool shouldReplaceWithGeneratedFileForUpload(const String& path, String& generatedFilename);
     virtual String generateReplacementFile(const String& path);
 
+#if ENABLE(IOS_TOUCH_EVENTS)
+    virtual void didPreventDefaultForEvent() = 0;
+#endif
+
+#if PLATFORM(IOS)
+    virtual void didReceiveMobileDocType() = 0;
+    virtual void setNeedsScrollNotifications(Frame*, bool) = 0;
+    virtual void observedContentChange(Frame*) = 0;
+    virtual void clearContentChangeObservers(Frame*) = 0;
+    virtual void notifyRevealedSelectionByScrollingFrame(Frame*) = 0;
+
+    enum LayoutType { NormalLayout, Scroll };
+    virtual void didLayout(LayoutType = NormalLayout) = 0;
+    virtual void didStartOverflowScroll() = 0;
+    virtual void didEndOverflowScroll() = 0;
+
+    // FIXME: Remove this functionality. This functionality was added to workaround an issue (<rdar://problem/5973875>)
+    // where the unconfirmed text in a text area would be removed when a person clicks in the text area before a
+    // suggestion is shown. We should fix this issue in <rdar://problem/5975559>.
+    virtual void suppressFormNotifications() = 0;
+    virtual void restoreFormNotifications() = 0;
+
+    virtual void didFlushCompositingLayers() { }
+
+    virtual bool fetchCustomFixedPositionLayoutRect(IntRect&) { return false; }
+
+    // FIXME: Use std::unique_ptr instead of OwnPtr.
+    virtual void updateViewportConstrainedLayers(HashMap<PlatformLayer*, OwnPtr<ViewportConstraints>>&, HashMap<PlatformLayer*, PlatformLayer*>&) { }
+
+    virtual void addOrUpdateScrollingLayer(Node*, PlatformLayer* scrollingLayer, PlatformLayer* contentsLayer, const IntSize& scrollSize, bool allowHorizontalScrollbar, bool allowVerticalScrollbar) = 0;
+    virtual void removeScrollingLayer(Node*, PlatformLayer* scrollingLayer, PlatformLayer* contentsLayer) = 0;
+
+    virtual void webAppOrientationsUpdated() = 0;
+#endif
+
 #if ENABLE(INPUT_TYPE_COLOR)
     virtual PassOwnPtr<ColorChooser> createColorChooser(ColorChooserClient*, const Color&) = 0;
 #endif
 
-#if ENABLE(DATE_AND_TIME_INPUT_TYPES)
+#if ENABLE(DATE_AND_TIME_INPUT_TYPES) && !PLATFORM(IOS)
     virtual PassRefPtr<DateTimeChooser> openDateTimeChooser(DateTimeChooserClient*, const DateTimeChooserParameters&) = 0;
 #endif
 
@@ -238,7 +287,6 @@ public:
     
     virtual bool shouldPaintEntireContents() const { return false; }
 
-#if USE(ACCELERATED_COMPOSITING)
     // Allows ports to customize the type of graphics layers created by this page.
     virtual GraphicsLayerFactory* graphicsLayerFactory() const { return 0; }
 
@@ -272,7 +320,8 @@ public:
     
     // Returns true if layer tree updates are disabled.
     virtual bool layerTreeStateIsFrozen() const { return false; }
-#endif
+
+    virtual PassRefPtr<ScrollingCoordinator> createScrollingCoordinator(Page*) const { return nullptr; }
 
 #if PLATFORM(WIN) && USE(AVFOUNDATION)
     virtual GraphicsDeviceAdapter* graphicsDeviceAdapter() const { return 0; }
@@ -287,7 +336,6 @@ public:
     virtual bool supportsFullScreenForElement(const Element*, bool) { return false; }
     virtual void enterFullScreenForElement(Element*) { }
     virtual void exitFullScreenForElement(Element*) { }
-    virtual void fullScreenRendererChanged(RenderBox*) { }
     virtual void setRootFullScreenLayer(GraphicsLayer*) { }
 #endif
 

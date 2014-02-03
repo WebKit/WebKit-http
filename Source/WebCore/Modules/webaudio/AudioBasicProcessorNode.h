@@ -26,6 +26,7 @@
 #define AudioBasicProcessorNode_h
 
 #include "AudioNode.h"
+#include <memory>
 #include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
 #include <wtf/Threading.h>
@@ -42,24 +43,24 @@ public:
     AudioBasicProcessorNode(AudioContext*, float sampleRate);
 
     // AudioNode
-    virtual void process(size_t framesToProcess) OVERRIDE;
-    virtual void pullInputs(size_t framesToProcess) OVERRIDE;
-    virtual void reset() OVERRIDE;
-    virtual void initialize() OVERRIDE;
-    virtual void uninitialize() OVERRIDE;
+    virtual void process(size_t framesToProcess) override;
+    virtual void pullInputs(size_t framesToProcess) override;
+    virtual void reset() override;
+    virtual void initialize() override;
+    virtual void uninitialize() override;
 
     // Called in the main thread when the number of channels for the input may have changed.
-    virtual void checkNumberOfChannelsForInput(AudioNodeInput*) OVERRIDE;
+    virtual void checkNumberOfChannelsForInput(AudioNodeInput*) override;
 
     // Returns the number of channels for both the input and the output.
     unsigned numberOfChannels();
 
 protected:
-    virtual double tailTime() const OVERRIDE;
-    virtual double latencyTime() const OVERRIDE;
+    virtual double tailTime() const override;
+    virtual double latencyTime() const override;
 
     AudioProcessor* processor() { return m_processor.get(); }
-    OwnPtr<AudioProcessor> m_processor;
+    std::unique_ptr<AudioProcessor> m_processor;
 };
 
 } // namespace WebCore

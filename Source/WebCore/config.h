@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2004, 2005, 2006, 2013 Apple Inc.
+ * Copyright (C) 2004, 2005, 2006, 2013, 2014 Apple Inc. All rights reserved.
  * Copyright (C) 2009 Google Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
@@ -29,7 +29,7 @@
 
 #include <wtf/Platform.h>
 
-#if PLATFORM(MAC) || PLATFORM(IOS)
+#if PLATFORM(COCOA)
 #define WTF_USE_FILE_LOCK 1
 #endif
 
@@ -100,14 +100,13 @@
 #endif
 #endif
 
-#if PLATFORM(MAC)
-// New theme
+#if PLATFORM(MAC) && !PLATFORM(IOS)
 #define WTF_USE_NEW_THEME 1
-#endif // PLATFORM(MAC)
+#endif
 
 #if USE(CG)
 #ifndef CGFLOAT_DEFINED
-#ifdef __LP64__
+#if (defined(__LP64__) && __LP64__) || (defined(__x86_64__) && __x86_64__) || defined(_M_X64) || defined(__amd64__)
 typedef double CGFloat;
 #else
 typedef float CGFloat;
@@ -120,9 +119,9 @@ typedef float CGFloat;
 #define WTF_USE_SAFARI_THEME 1
 #endif
 
-// CoreAnimation is available to IOS, Mac and Windows if using CG
-#if PLATFORM(MAC) || PLATFORM(IOS) || (PLATFORM(WIN) && USE(CG))
-#define WTF_USE_CA 1
+#if PLATFORM(IOS)
+#define WEBCORE_NAVIGATOR_PLATFORM wkGetPlatformNameForNavigator();
+#define WEBCORE_NAVIGATOR_VENDOR wkGetVendorNameForNavigator();
 #endif
 
 // FIXME: Move this to JavaScriptCore/wtf/Platform.h, which is where we define WTF_USE_AVFOUNDATION on the Mac.

@@ -29,10 +29,9 @@
  */
 
 #include "config.h"
+#include "InstrumentingAgents.h"
 
 #if ENABLE(INSPECTOR)
-
-#include "InstrumentingAgents.h"
 
 #include "InspectorController.h"
 #include "Page.h"
@@ -44,77 +43,66 @@ using namespace Inspector;
 
 namespace WebCore {
 
-InstrumentingAgents::InstrumentingAgents()
-    : m_inspectorAgent(0)
-    , m_inspectorPageAgent(0)
-    , m_inspectorCSSAgent(0)
-#if USE(ACCELERATED_COMPOSITING)
-    , m_inspectorLayerTreeAgent(0)
-#endif
-    , m_inspectorConsoleAgent(0)
-    , m_inspectorDOMAgent(0)
-    , m_inspectorResourceAgent(0)
-    , m_pageRuntimeAgent(0)
-    , m_workerRuntimeAgent(0)
-    , m_inspectorTimelineAgent(0)
-    , m_inspectorDOMStorageAgent(0)
+InstrumentingAgents::InstrumentingAgents(InspectorEnvironment& environment)
+    : m_environment(environment)
+    , m_inspectorAgent(nullptr)
+    , m_inspectorPageAgent(nullptr)
+    , m_inspectorCSSAgent(nullptr)
+    , m_inspectorLayerTreeAgent(nullptr)
+    , m_inspectorConsoleAgent(nullptr)
+    , m_inspectorDOMAgent(nullptr)
+    , m_inspectorResourceAgent(nullptr)
+    , m_pageRuntimeAgent(nullptr)
+    , m_workerRuntimeAgent(nullptr)
+    , m_inspectorTimelineAgent(nullptr)
+    , m_inspectorDOMStorageAgent(nullptr)
 #if ENABLE(SQL_DATABASE)
-    , m_inspectorDatabaseAgent(0)
+    , m_inspectorDatabaseAgent(nullptr)
 #endif
-    , m_inspectorApplicationCacheAgent(0)
-#if ENABLE(JAVASCRIPT_DEBUGGER)
-    , m_inspectorDebuggerAgent(0)
-    , m_pageDebuggerAgent(0)
-    , m_inspectorDOMDebuggerAgent(0)
-    , m_inspectorProfilerAgent(0)
-#endif
-    , m_inspectorWorkerAgent(0)
-    , m_inspectorCanvasAgent(0)
+    , m_inspectorApplicationCacheAgent(nullptr)
+    , m_inspectorDebuggerAgent(nullptr)
+    , m_pageDebuggerAgent(nullptr)
+    , m_inspectorDOMDebuggerAgent(nullptr)
+    , m_inspectorProfilerAgent(nullptr)
+    , m_inspectorWorkerAgent(nullptr)
+    , m_inspectorCanvasAgent(nullptr)
 {
 }
 
 void InstrumentingAgents::reset()
 {
-    m_inspectorAgent = 0;
-    m_inspectorPageAgent = 0;
-    m_inspectorCSSAgent = 0;
-#if USE(ACCELERATED_COMPOSITING)
-    m_inspectorLayerTreeAgent = 0;
-#endif
-    m_inspectorConsoleAgent = 0;
-    m_inspectorDOMAgent = 0;
-    m_inspectorResourceAgent = 0;
-    m_pageRuntimeAgent = 0;
-    m_workerRuntimeAgent = 0;
-    m_inspectorTimelineAgent = 0;
-    m_inspectorDOMStorageAgent = 0;
+    m_inspectorAgent = nullptr;
+    m_inspectorPageAgent = nullptr;
+    m_inspectorCSSAgent = nullptr;
+    m_inspectorLayerTreeAgent = nullptr;
+    m_inspectorConsoleAgent = nullptr;
+    m_inspectorDOMAgent = nullptr;
+    m_inspectorResourceAgent = nullptr;
+    m_pageRuntimeAgent = nullptr;
+    m_workerRuntimeAgent = nullptr;
+    m_inspectorTimelineAgent = nullptr;
+    m_inspectorDOMStorageAgent = nullptr;
 #if ENABLE(SQL_DATABASE)
-    m_inspectorDatabaseAgent = 0;
+    m_inspectorDatabaseAgent = nullptr;
 #endif
-    m_inspectorApplicationCacheAgent = 0;
-#if ENABLE(JAVASCRIPT_DEBUGGER)
-    m_inspectorDebuggerAgent = 0;
-    m_pageDebuggerAgent = 0;
-    m_inspectorDOMDebuggerAgent = 0;
-    m_inspectorProfilerAgent = 0;
-#endif
-    m_inspectorWorkerAgent = 0;
-    m_inspectorCanvasAgent = 0;
+    m_inspectorApplicationCacheAgent = nullptr;
+    m_inspectorDebuggerAgent = nullptr;
+    m_pageDebuggerAgent = nullptr;
+    m_inspectorDOMDebuggerAgent = nullptr;
+    m_inspectorProfilerAgent = nullptr;
+    m_inspectorWorkerAgent = nullptr;
+    m_inspectorCanvasAgent = nullptr;
 }
 
 InstrumentingAgents* instrumentationForPage(Page* page)
 {
     ASSERT(isMainThread());
-    if (InspectorController* controller = page->inspectorController())
-        return controller->m_instrumentingAgents.get();
-    return 0;
+    return page ? page->inspectorController().m_instrumentingAgents.get() : nullptr;
 }
 
 InstrumentingAgents* instrumentationForWorkerGlobalScope(WorkerGlobalScope* workerGlobalScope)
 {
-    if (WorkerInspectorController* controller = workerGlobalScope->workerInspectorController())
-        return controller->m_instrumentingAgents.get();
-    return 0;
+    return workerGlobalScope ? workerGlobalScope->workerInspectorController().m_instrumentingAgents.get() : nullptr;
 }
 
 } // namespace WebCore

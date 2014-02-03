@@ -63,7 +63,7 @@ struct LineSegmentRange {
 
 typedef Vector<LineSegmentRange> SegmentRangeList;
 
-class ShapeInsideInfo FINAL : public ShapeInfo<RenderBlock> { 
+class ShapeInsideInfo final : public ShapeInfo<RenderBlock> { 
 public:
     ShapeInsideInfo(const RenderBlock& renderer)
         : ShapeInfo<RenderBlock>(renderer)
@@ -96,29 +96,29 @@ public:
     }
     void clearSegments() { m_segments.clear(); }
     bool adjustLogicalLineTop(float minSegmentWidth);
-    LayoutUnit computeFirstFitPositionForFloat(const LayoutSize) const;
+    LayoutUnit computeFirstFitPositionForFloat(const FloatSize) const;
 
     void setNeedsLayout(bool value) { m_needsLayout = value; }
     bool needsLayout() { return m_needsLayout; }
 
-    virtual bool lineOverlapsShapeBounds() const OVERRIDE
+    virtual bool lineOverlapsShapeBounds() const override
     {
         return computedShape().lineOverlapsShapePaddingBounds(m_shapeLineTop, m_lineHeight);
     }
 
 protected:
-    virtual BasicShape::ReferenceBox resolvedBox() const OVERRIDE
+    virtual LayoutBox resolvedLayoutBox() const override
     {
-        if (shapeValue()->box() == BasicShape::None)
-            return BasicShape::ContentBox;
+        if (shapeValue()->layoutBox() == BoxMissing)
+            return ContentBox;
 
-        return shapeValue()->box();
+        return shapeValue()->layoutBox();
     }
 
 private:
-    virtual LayoutRect computedShapeLogicalBoundingBox() const OVERRIDE { return computedShape().shapePaddingLogicalBoundingBox(); }
-    virtual ShapeValue* shapeValue() const OVERRIDE;
-    virtual void getIntervals(LayoutUnit lineTop, LayoutUnit lineHeight, SegmentList& segments) const OVERRIDE
+    virtual LayoutRect computedShapeLogicalBoundingBox() const override { return computedShape().shapePaddingLogicalBoundingBox(); }
+    virtual ShapeValue* shapeValue() const override;
+    virtual void getIntervals(LayoutUnit lineTop, LayoutUnit lineHeight, SegmentList& segments) const override
     {
         return computedShape().getIncludedIntervals(lineTop, lineHeight, segments);
     }

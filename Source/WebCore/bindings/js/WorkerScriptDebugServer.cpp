@@ -30,16 +30,18 @@
  */
 
 #include "config.h"
-
-#if ENABLE(JAVASCRIPT_DEBUGGER)
 #include "WorkerScriptDebugServer.h"
 
+#include "JSDOMBinding.h"
+#include "Timer.h"
 #include "WorkerDebuggerAgent.h"
 #include "WorkerGlobalScope.h"
 #include "WorkerRunLoop.h"
 #include "WorkerThread.h"
 #include <runtime/VM.h>
 #include <wtf/PassOwnPtr.h>
+
+using namespace Inspector;
 
 namespace WebCore {
 
@@ -55,36 +57,41 @@ void WorkerScriptDebugServer::addListener(ScriptDebugListener* listener)
     if (!listener)
         return;
 
-    if (m_listeners.isEmpty())
-        m_workerGlobalScope->script()->attachDebugger(this);
+    bool wasEmpty = m_listeners.isEmpty();
     m_listeners.add(listener);
-    recompileAllJSFunctions(0);
+
+    if (wasEmpty) {
+        m_workerGlobalScope->script()->attachDebugger(this);
+        recompileAllJSFunctions();
+    }
 }
 
-void WorkerScriptDebugServer::recompileAllJSFunctions(Timer<ScriptDebugServer>*)
-{
-    JSC::VM* vm = m_workerGlobalScope->script()->vm();
-
-    JSC::JSLockHolder lock(vm);
-    // If JavaScript stack is not empty postpone recompilation.
-    if (vm->entryScope)
-        recompileAllJSFunctionsSoon();
-    else
-        JSC::Debugger::recompileAllJSFunctions(vm);
-}
-
-void WorkerScriptDebugServer::removeListener(ScriptDebugListener* listener)
+void WorkerScriptDebugServer::removeListener(ScriptDebugListener* listener, bool skipRecompile)
 {
     if (!listener)
         return;
 
     m_listeners.remove(listener);
-    if (m_listeners.isEmpty())
+
+    if (m_listeners.isEmpty()) {
         m_workerGlobalScope->script()->detachDebugger(this);
+        if (!skipRecompile)
+            recompileAllJSFunctions();
+    }
+}
+
+void WorkerScriptDebugServer::recompileAllJSFunctions()
+{
+    JSC::VM* vm = m_workerGlobalScope->script()->vm();
+
+    JSC::JSLockHolder lock(vm);
+    JSC::Debugger::recompileAllJSFunctions(vm);
 }
 
 void WorkerScriptDebugServer::runEventLoopWhilePaused()
 {
+    TimerBase::fireTimersInNestedEventLoop();
+
     MessageQueueWaitResult result;
     do {
         result = m_workerGlobalScope->thread()->runLoop().runInMode(m_workerGlobalScope, m_debuggerTaskMode);
@@ -92,10 +99,13 @@ void WorkerScriptDebugServer::runEventLoopWhilePaused()
     } while (result != MessageQueueTerminated && !m_doneProcessingDebuggerEvents);
 }
 
+void WorkerScriptDebugServer::reportException(JSC::ExecState* exec, JSC::JSValue exception) const
+{
+    WebCore::reportException(exec, exception);
+}
+
 void WorkerScriptDebugServer::interruptAndRunTask(PassOwnPtr<ScriptDebugServer::Task>)
 {
 }
 
 } // namespace WebCore
-
-#endif // ENABLE(JAVASCRIPT_DEBUGGER)

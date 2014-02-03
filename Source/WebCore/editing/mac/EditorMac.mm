@@ -269,6 +269,8 @@ void Editor::readSelectionFromPasteboard(const String& pasteboardName)
 // This was left in a bad state when selectedTextForClipboard was added. Need to look over clients and fix this.
 String Editor::stringSelectionForPasteboard()
 {
+    if (!canCopy())
+        return "";
     String text = selectedText();
     text.replace(noBreakSpace, ' ');
     return text;
@@ -276,6 +278,8 @@ String Editor::stringSelectionForPasteboard()
 
 String Editor::stringSelectionForPasteboardWithImageAltText()
 {
+    if (!canCopy())
+        return "";
     String text = selectedTextForClipboard();
     text.replace(noBreakSpace, ' ');
     return text;
@@ -324,6 +328,8 @@ PassRefPtr<SharedBuffer> Editor::dataSelectionForPasteboard(const String& pasteb
     // which is only used to support OS X services.
 
     // FIXME: Does this function really need to use adjustedSelectionRange()? Because writeSelectionToPasteboard() just uses selectedRange().
+    if (!canCopy())
+        return nullptr;
 
     if (pasteboardType == WebArchivePboardType)
         return selectionInWebArchiveFormat();
@@ -360,7 +366,7 @@ void Editor::writeSelectionToPasteboard(Pasteboard& pasteboard)
 static void getImage(Element& imageElement, RefPtr<Image>& image, CachedImage*& cachedImage)
 {
     auto renderer = imageElement.renderer();
-    if (!renderer || !renderer->isImage())
+    if (!renderer || !renderer->isRenderImage())
         return;
 
     CachedImage* tentativeCachedImage = toRenderImage(renderer)->cachedImage();
@@ -413,7 +419,7 @@ void Editor::writeImageToPasteboard(Pasteboard& pasteboard, Element& imageElemen
     pasteboard.write(pasteboardImage);
 }
 
-class Editor::WebContentReader FINAL : public PasteboardWebContentReader {
+class Editor::WebContentReader final : public PasteboardWebContentReader {
 public:
     Frame& frame;
     Range& context;

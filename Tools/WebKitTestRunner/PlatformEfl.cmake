@@ -1,12 +1,8 @@
 add_custom_target(forwarding-headersEflForWebKitTestRunner
     COMMAND ${PERL_EXECUTABLE} ${WEBKIT2_DIR}/Scripts/generate-forwarding-headers.pl ${WEBKIT_TESTRUNNER_DIR} ${DERIVED_SOURCES_WEBKIT2_DIR}/include efl
-)
-set(ForwardingHeadersForWebKitTestRunner_NAME forwarding-headersEflForWebKitTestRunner)
-
-add_custom_target(forwarding-headersSoupForWebKitTestRunner
     COMMAND ${PERL_EXECUTABLE} ${WEBKIT2_DIR}/Scripts/generate-forwarding-headers.pl ${WEBKIT_TESTRUNNER_DIR} ${DERIVED_SOURCES_WEBKIT2_DIR}/include soup
 )
-set(ForwardingNetworkHeadersForWebKitTestRunner_NAME forwarding-headersSoupForWebKitTestRunner)
+set(ForwardingHeadersForWebKitTestRunner_NAME forwarding-headersEflForWebKitTestRunner)
 
 list(APPEND WebKitTestRunner_SOURCES
     ${WEBKIT_TESTRUNNER_DIR}/cairo/TestInvocationCairo.cpp
@@ -18,9 +14,16 @@ list(APPEND WebKitTestRunner_SOURCES
 )
 
 list(APPEND WebKitTestRunner_INCLUDE_DIRECTORIES
+    ${DERIVED_SOURCES_WEBCORE_DIR}
+    ${DERIVED_SOURCES_WEBCORE_DIR}/include
+    ${DERIVED_SOURCES_WEBKIT2_DIR}/include
+
+    ${WEBKIT2_DIR}/UIProcess/API/C/efl
+
     ${TOOLS_DIR}/DumpRenderTree/efl/
     ${WEBKIT2_DIR}/UIProcess/API/efl
     "${WTF_DIR}/wtf/gobject"
+    ${WEBCORE_DIR}/platform/network/soup
     ${CAIRO_INCLUDE_DIRS}
     ${ECORE_EVAS_INCLUDE_DIRS}
     ${ECORE_FILE_INCLUDE_DIRS}
@@ -38,9 +41,16 @@ list(APPEND WebKitTestRunner_LIBRARIES
     ${EINA_LIBRARIES}
     ${EO_LIBRARIES}
     ${EVAS_LIBRARIES}
-    ${GLIB_LIBRARIES}
     ${OPENGL_LIBRARIES}
     WTF
+)
+
+list(APPEND WebKitTestRunnerInjectedBundle_LIBRARIES
+    ${ATK_LIBRARIES}
+    ${ECORE_LIBRARIES}
+    ${ECORE_FILE_LIBRARIES}
+    ${FONTCONFIG_LIBRARIES}
+    ${GLIB_GOBJECT_LIBRARIES}
 )
 
 if (ENABLE_ECORE_X)
@@ -69,7 +79,7 @@ list(APPEND WebKitTestRunnerInjectedBundle_SOURCES
 # FIXME: DOWNLOADED_FONTS_DIR should not hardcode the directory
 # structure. See <https://bugs.webkit.org/show_bug.cgi?id=81475>.
 add_definitions(-DFONTS_CONF_DIR="${TOOLS_DIR}/DumpRenderTree/gtk/fonts"
-                -DDOWNLOADED_FONTS_DIR="${CMAKE_SOURCE_DIR}/WebKitBuild/Dependencies/Source/webkitgtk-test-fonts-0.0.3")
+                -DDOWNLOADED_FONTS_DIR="${CMAKE_SOURCE_DIR}/WebKitBuild/Dependencies/Source/webkitgtk-test-fonts")
 
 if (ENABLE_ACCESSIBILITY)
     list(APPEND WebKitTestRunner_INCLUDE_DIRECTORIES

@@ -263,23 +263,6 @@
                 ]
             },
             {
-                "name": "canOverrideDeviceMetrics",
-                "description": "Checks whether <code>setDeviceMetricsOverride</code> can be invoked.",
-                "returns": [
-                    { "name": "result", "type": "boolean", "description": "If true, <code>setDeviceMetricsOverride</code> can safely be invoked on the agent." }
-                ]
-            },
-            {
-                "name": "setDeviceMetricsOverride",
-                "description": "Overrides the values of device screen dimensions (window.screen.width, window.screen.height, window.innerWidth, window.innerHeight, and \"device-width\"/\"device-height\"-related CSS media query results) and the font scale factor.",
-                "parameters": [
-                    { "name": "width", "type": "integer", "description": "Overriding width value in pixels (minimum 0, maximum 10000000). 0 disables the override." },
-                    { "name": "height", "type": "integer", "description": "Overriding height value in pixels (minimum 0, maximum 10000000). 0 disables the override." },
-                    { "name": "fontScaleFactor", "type": "number", "description": "Overriding font scale factor value (must be positive). 1 disables the override." },
-                    { "name": "fitWindow", "type": "boolean", "description": "Whether a view that exceeds the available browser window area should be scaled down to fit." }
-                ]
-            },
-            {
                 "name": "setShowPaintRects",
                 "description": "Requests that backend shows paint rectangles",
                 "parameters": [
@@ -340,46 +323,6 @@
                 "description": "Switches script execution in the page.",
                 "parameters": [
                     { "name": "value", "type": "boolean", "description": "Whether script execution should be disabled in the page." }
-                ]
-            },
-            {
-                "name": "setGeolocationOverride",
-                "description": "Overrides the Geolocation Position or Error.",
-                "parameters": [
-                    { "name": "latitude", "type": "number", "optional": true, "description": "Mock longitude"},
-                    { "name": "longitude", "type": "number", "optional": true, "description": "Mock latitude"},
-                    { "name": "accuracy", "type": "number", "optional": true, "description": "Mock accuracy"}
-                ]
-            },
-            {
-                "name": "clearGeolocationOverride",
-                "description": "Clears the overriden Geolocation Position and Error."
-            },
-            {
-                "name": "canOverrideGeolocation",
-                "description": "Checks if Geolocation can be overridden.",
-                "returns": [
-                    { "name": "result", "type": "boolean", "description": "True if browser can ovrride Geolocation." }
-                ]
-            },
-            {
-                "name": "setDeviceOrientationOverride",
-                "description": "Overrides the Device Orientation.",
-                "parameters": [
-                    { "name": "alpha", "type": "number", "description": "Mock alpha"},
-                    { "name": "beta", "type": "number", "description": "Mock beta"},
-                    { "name": "gamma", "type": "number", "description": "Mock gamma"}
-                ]
-            },
-            {
-                "name": "clearDeviceOrientationOverride",
-                "description": "Clears the overridden Device Orientation."
-            },
-            {
-                "name": "canOverrideDeviceOrientation",
-                "description": "Check the backend if Web Inspector can override the device orientation.",
-                "returns": [
-                    { "name": "result", "type": "boolean", "description": "If true, <code>setDeviceOrientationOverride</code> can safely be invoked on the agent." }
                 ]
             },
             {
@@ -933,13 +876,6 @@
             {
                 "name": "disable",
                 "description": "Disables network tracking, prevents network events from being sent to the client."
-            },
-            {
-                "name": "setUserAgentOverride",
-                "description": "Allows overriding user agent with the given string.",
-                "parameters": [
-                    { "name": "userAgent", "type": "string", "description": "User agent to use." }
-                ]
             },
             {
                 "name": "setExtraHTTPHeaders",
@@ -1520,108 +1456,6 @@
                 "parameters": [
                     { "name": "isNowOnline", "type": "boolean" }
                 ]
-            }
-        ]
-    },
-    {
-        "domain": "FileSystem",
-        "types": [
-            {
-                "id": "Entry",
-                "type": "object",
-                "properties": [
-                    { "name": "url", "type": "string", "description": "filesystem: URL for the entry." },
-                    { "name": "name", "type": "string", "description": "The name of the file or directory." },
-                    { "name": "isDirectory", "type": "boolean", "description": "True if the entry is a directory." },
-                    { "name": "mimeType", "type": "string", "optional": true, "description": "MIME type of the entry, available for a file only." },
-                    { "name": "resourceType", "$ref": "Page.ResourceType", "optional": true, "description": "ResourceType of the entry, available for a file only." },
-                    { "name": "isTextFile", "type": "boolean", "optional": true, "description": "True if the entry is a text file." }
-                ],
-                "description": "Represents a browser side file or directory."
-            },
-            {
-                "id": "Metadata",
-                "type": "object",
-                "properties": [
-                    { "name": "modificationTime", "type": "number", "description": "Modification time." },
-                    { "name": "size", "type": "number", "description": "File size. This field is always zero for directories." }
-                ],
-                "description": "Represents metadata of a file or entry."
-            }
-        ],
-        "commands": [
-            {
-                "name": "enable",
-                "description": "Enables events from backend."
-            },
-            {
-                "name": "disable",
-                "description": "Disables events from backend."
-            },
-            {
-                "name": "requestFileSystemRoot",
-                "async": true,
-                "parameters": [
-                    { "name": "origin", "type": "string", "description": "Security origin of requesting FileSystem. One of frames in current page needs to have this security origin." },
-                    { "name": "type", "type": "string", "enum": ["temporary", "persistent"], "description": "FileSystem type of requesting FileSystem." }
-                ],
-                "returns": [
-                    { "name": "errorCode", "type": "integer", "description": "0, if no error. Otherwise, errorCode is set to FileError::ErrorCode value." },
-                    { "name": "root", "$ref": "Entry", "optional": true, "description": "Contains root of the requested FileSystem if the command completed successfully." }
-                ],
-                "description": "Returns root directory of the FileSystem, if exists."
-            },
-            {
-                "name": "requestDirectoryContent",
-                "async": true,
-                "parameters": [
-                    { "name": "url", "type": "string", "description": "URL of the directory that the frontend is requesting to read from." }
-                ],
-                "returns": [
-                    { "name": "errorCode", "type": "integer", "description": "0, if no error. Otherwise, errorCode is set to FileError::ErrorCode value." },
-                    { "name": "entries", "type": "array", "items": { "$ref": "Entry" }, "optional": true, "description": "Contains all entries on directory if the command completed successfully." }
-                ],
-                "description": "Returns content of the directory."
-            },
-            {
-                "name": "requestMetadata",
-                "async": true,
-                "parameters": [
-                    { "name": "url", "type": "string", "description": "URL of the entry that the frontend is requesting to get metadata from." }
-                ],
-                "returns": [
-                    { "name": "errorCode", "type": "integer", "description": "0, if no error. Otherwise, errorCode is set to FileError::ErrorCode value." },
-                    { "name": "metadata", "$ref": "Metadata", "optional": true, "description": "Contains metadata of the entry if the command completed successfully." }
-                ],
-                "description": "Returns metadata of the entry."
-            },
-            {
-                "name": "requestFileContent",
-                "async": true,
-                "parameters": [
-                    { "name": "url", "type": "string", "description": "URL of the file that the frontend is requesting to read from." },
-                    { "name": "readAsText", "type": "boolean", "description": "True if the content should be read as text, otherwise the result will be returned as base64 encoded text." },
-                    { "name": "start", "type": "integer", "optional": true, "description": "Specifies the start of range to read." },
-                    { "name": "end", "type": "integer", "optional": true, "description": "Specifies the end of range to read exclusively." },
-                    { "name": "charset", "type": "string", "optional": true, "description": "Overrides charset of the content when content is served as text." }
-                ],
-                "returns": [
-                    { "name": "errorCode", "type": "integer", "description": "0, if no error. Otherwise, errorCode is set to FileError::ErrorCode value." },
-                    { "name": "content", "type": "string", "optional": true, "description": "Content of the file." },
-                    { "name": "charset", "type": "string", "optional": true, "description": "Charset of the content if it is served as text." }
-                ],
-                "description": "Returns content of the file. Result should be sliced into [start, end)."
-            },
-            {
-                "name": "deleteEntry",
-                "async": true,
-                "parameters": [
-                    { "name": "url", "type": "string", "description": "URL of the entry to delete." }
-                ],
-                "returns": [
-                    { "name": "errorCode", "type": "integer", "description": "0, if no error. Otherwise errorCode is set to FileError::ErrorCode value." }
-                ],
-                "description": "Deletes specified entry. If the entry is a directory, the agent deletes children recursively."
             }
         ]
     },
@@ -2681,20 +2515,6 @@
         ],
         "commands": [
             {
-                "name": "causesRecompilation",
-                "returns": [
-                    { "name": "result", "type": "boolean", "description": "True if enabling debugger causes scripts recompilation." }
-                ],
-                "description": "Tells whether enabling debugger causes scripts recompilation."
-            },
-            {
-                "name": "supportsSeparateScriptCompilationAndExecution",
-                "returns": [
-                    { "name": "result", "type": "boolean", "description": "True if debugger supports separate script compilation and execution." }
-                ],
-                "description": "Tells whether debugger supports separate script compilation and execution."
-            },
-            {
                 "name": "enable",
                 "description": "Enables debugger for the given page. Clients should not assume that the debugging has been enabled until the result for this command is received."
             },
@@ -2784,26 +2604,6 @@
                 "description": "Searches for given string in script content."
             },
             {
-                "name": "canSetScriptSource",
-                "returns": [
-                    { "name": "result", "type": "boolean", "description": "True if <code>setScriptSource</code> is supported." }
-                ],
-                "description": "Tells whether <code>setScriptSource</code> is supported."
-            },
-            {
-                "name": "setScriptSource",
-                "parameters": [
-                    { "name": "scriptId", "$ref": "ScriptId", "description": "Id of the script to edit." },
-                    { "name": "scriptSource", "type": "string", "description": "New content of the script." },
-                    { "name": "preview", "type": "boolean", "optional": true, "description": " If true the change will not actually be applied. Preview mode may be used to get result description without actually modifying the code." }
-                ],
-                "returns": [
-                    { "name": "callFrames", "type": "array", "optional": true, "items": { "$ref": "CallFrame"}, "description": "New stack trace in case editing has happened while VM was stopped." },
-                    { "name": "result", "type": "object", "optional": true, "description": "VM-specific description of the changes applied." }
-                ],
-                "description": "Edits JavaScript source live."
-            },
-            {
                 "name": "restartFrame",
                 "parameters": [
                     { "name": "callFrameId", "$ref": "CallFrameId", "description": "Call frame identifier to evaluate on." }
@@ -2857,32 +2657,6 @@
                     { "name": "wasThrown", "type": "boolean", "optional": true, "description": "True if the result was thrown during the evaluation." }
                 ],
                 "description": "Evaluates expression on a given call frame."
-            },
-            {
-                "name": "compileScript",
-                "parameters": [
-                    { "name": "expression", "type": "string", "description": "Expression to compile." },
-                    { "name": "sourceURL", "type": "string", "description": "Source url to be set for the script." }
-                ],
-                "returns": [
-                    { "name": "scriptId", "$ref": "ScriptId", "optional": true, "description": "Id of the script." },
-                    { "name": "syntaxErrorMessage", "type": "string", "optional": true, "description": "Syntax error message if compilation failed." }
-                ],
-                "description": "Compiles expression."
-            },
-            {
-                "name": "runScript",
-                "parameters": [
-                    { "name": "scriptId", "$ref": "ScriptId", "description": "Id of the script to run." },
-                    { "name": "contextId", "$ref": "Runtime.ExecutionContextId", "optional": true, "description": "Specifies in which isolated context to perform script run. Each content script lives in an isolated context and this parameter may be used to specify one of those contexts. If the parameter is omitted or 0 the evaluation will be performed in the context of the inspected page." },
-                    { "name": "objectGroup", "type": "string", "optional": true, "description": "Symbolic group name that can be used to release multiple objects." },
-                    { "name": "doNotPauseOnExceptionsAndMuteConsole", "type": "boolean", "optional": true, "description": "Specifies whether script run should stop on exceptions and mute console. Overrides setPauseOnException state." }
-                ],
-                "returns": [
-                    { "name": "result", "$ref": "Runtime.RemoteObject", "description": "Run result." },
-                    { "name": "wasThrown", "type": "boolean", "optional": true, "description": "True if the result was thrown during the script run." }
-                ],
-                "description": "Runs script with given id in a given context."
             },
             {
                 "name": "setOverlayMessage",
@@ -3054,7 +2828,6 @@
                     { "name": "totalTime", "type": "number", "description": "Total execution time." },
                     { "name": "selfTime", "type": "number", "description": "Self time." },
                     { "name": "numberOfCalls", "type": "integer", "description": "Number of calls." },
-                    { "name": "visible", "type": "boolean", "description": "Visibility." },
                     { "name": "callUID", "type": "number", "description": "Call UID." },
                     { "name": "children", "type": "array", "items": { "$ref": "CPUProfileNode" }, "description": "Child nodes." },
                     { "name": "id", "optional": true, "type": "integer", "description": "Unique id of the node." }
@@ -3077,12 +2850,6 @@
             }
         ],
         "commands": [
-            {
-                "name": "causesRecompilation",
-                "returns": [
-                    { "name": "result", "type": "boolean" }
-                ]
-            },
             {
                 "name": "isSampling",
                 "returns": [

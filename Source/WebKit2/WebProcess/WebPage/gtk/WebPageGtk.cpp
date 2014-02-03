@@ -33,6 +33,7 @@
 #include "WebPageAccessibilityObject.h"
 #include "WebPageProxyMessages.h"
 #include "WindowsKeyboardCodes.h"
+#include <WebCore/BackForwardController.h>
 #include <WebCore/EventHandler.h>
 #include <WebCore/FocusController.h>
 #include <WebCore/Frame.h>
@@ -41,7 +42,7 @@
 #include <WebCore/PasteboardHelper.h>
 #include <WebCore/PlatformKeyboardEvent.h>
 #include <WebCore/Settings.h>
-#include <wtf/gobject/GOwnPtr.h>
+#include <wtf/gobject/GUniquePtr.h>
 
 using namespace WebCore;
 
@@ -49,19 +50,22 @@ namespace WebKit {
 
 void WebPage::platformInitialize()
 {
+#if HAVE(ACCESSIBILITY)
     // Create the accessible object (the plug) that will serve as the
     // entry point to the Web process, and send a message to the UI
     // process to connect the two worlds through the accessibility
     // object there specifically placed for that purpose (the socket).
     m_accessibilityObject = adoptGRef(webPageAccessibilityObjectNew(this));
-    GOwnPtr<gchar> plugID(atk_plug_get_id(ATK_PLUG(m_accessibilityObject.get())));
+    GUniquePtr<gchar> plugID(atk_plug_get_id(ATK_PLUG(m_accessibilityObject.get())));
     send(Messages::WebPageProxy::BindAccessibilityTree(String(plugID.get())));
+#endif
 
 #if USE(TEXTURE_MAPPER_GL)
     m_nativeWindowHandle = 0;
 #endif
 }
 
+#if HAVE(ACCESSIBILITY)
 void WebPage::updateAccessibilityTree()
 {
     if (!m_accessibilityObject)
@@ -69,6 +73,7 @@ void WebPage::updateAccessibilityTree()
 
     webPageAccessibilityObjectRefresh(m_accessibilityObject.get());
 }
+#endif
 
 void WebPage::platformPreferencesDidChange(const WebPreferencesStore&)
 {
@@ -88,9 +93,9 @@ bool WebPage::performDefaultBehaviorForKeyEvent(const WebKeyboardEvent& keyboard
     switch (keyboardEvent.windowsVirtualKeyCode()) {
     case VK_BACK:
         if (keyboardEvent.shiftKey())
-            m_page->goForward();
+            m_page->backForward().goForward();
         else
-            m_page->goBack();
+            m_page->backForward().goBack();
         break;
     case VK_SPACE:
         scroll(m_page.get(), keyboardEvent.shiftKey() ? ScrollUp : ScrollDown, ScrollByPage);

@@ -39,13 +39,11 @@ PluginCreationParameters::PluginCreationParameters()
     , isPrivateBrowsingEnabled(false)
     , asynchronousCreationIncomplete(false)
     , artificialPluginInitializationDelayEnabled(false)
-#if USE(ACCELERATED_COMPOSITING)
     , isAcceleratedCompositingEnabled(false)
-#endif
 {
 }
 
-void PluginCreationParameters::encode(CoreIPC::ArgumentEncoder& encoder) const
+void PluginCreationParameters::encode(IPC::ArgumentEncoder& encoder) const
 {
     encoder << pluginInstanceID;
     encoder << windowNPObjectID;
@@ -55,13 +53,10 @@ void PluginCreationParameters::encode(CoreIPC::ArgumentEncoder& encoder) const
     encoder << isPrivateBrowsingEnabled;
     encoder << asynchronousCreationIncomplete;
     encoder << artificialPluginInitializationDelayEnabled;
-
-#if USE(ACCELERATED_COMPOSITING)
     encoder << isAcceleratedCompositingEnabled;
-#endif
 }
 
-bool PluginCreationParameters::decode(CoreIPC::ArgumentDecoder& decoder, PluginCreationParameters& result)
+bool PluginCreationParameters::decode(IPC::ArgumentDecoder& decoder, PluginCreationParameters& result)
 {
     if (!decoder.decode(result.pluginInstanceID) || !result.pluginInstanceID)
         return false;
@@ -87,10 +82,8 @@ bool PluginCreationParameters::decode(CoreIPC::ArgumentDecoder& decoder, PluginC
     if (!decoder.decode(result.artificialPluginInitializationDelayEnabled))
         return false;
 
-#if USE(ACCELERATED_COMPOSITING)
     if (!decoder.decode(result.isAcceleratedCompositingEnabled))
         return false;
-#endif
 
     return true;
 }

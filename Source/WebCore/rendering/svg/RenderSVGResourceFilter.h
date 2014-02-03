@@ -25,7 +25,6 @@
 #define RenderSVGResourceFilter_h
 
 #if ENABLE(SVG) && ENABLE(FILTERS)
-#include "FloatRect.h"
 #include "ImageBuffer.h"
 #include "RenderSVGResourceContainer.h"
 #include "SVGFilter.h"
@@ -62,7 +61,7 @@ public:
 
 class GraphicsContext;
 
-class RenderSVGResourceFilter FINAL : public RenderSVGResourceContainer {
+class RenderSVGResourceFilter final : public RenderSVGResourceContainer {
 public:
     RenderSVGResourceFilter(SVGFilterElement&, PassRef<RenderStyle>);
     virtual ~RenderSVGResourceFilter();
@@ -72,10 +71,10 @@ public:
     virtual void removeAllClientsFromCache(bool markForInvalidation = true);
     virtual void removeClientFromCache(RenderObject&, bool markForInvalidation = true);
 
-    virtual bool applyResource(RenderElement&, const RenderStyle&, GraphicsContext*&, unsigned short resourceMode) OVERRIDE;
-    virtual void postApplyResource(RenderElement&, GraphicsContext*&, unsigned short resourceMode, const Path*, const RenderSVGShape*) OVERRIDE;
+    virtual bool applyResource(RenderElement&, const RenderStyle&, GraphicsContext*&, unsigned short resourceMode) override;
+    virtual void postApplyResource(RenderElement&, GraphicsContext*&, unsigned short resourceMode, const Path*, const RenderSVGShape*) override;
 
-    virtual FloatRect resourceBoundingBox(const RenderObject&) OVERRIDE;
+    virtual FloatRect resourceBoundingBox(const RenderObject&) override;
 
     std::unique_ptr<SVGFilterBuilder> buildPrimitives(SVGFilter*);
 
@@ -89,10 +88,10 @@ public:
 
     FloatRect drawingRegion(RenderObject*) const;
 private:
-    void element() const WTF_DELETED_FUNCTION;
+    void element() const = delete;
 
-    virtual const char* renderName() const OVERRIDE { return "RenderSVGResourceFilter"; }
-    virtual bool isSVGResourceFilter() const OVERRIDE { return true; }
+    virtual const char* renderName() const override { return "RenderSVGResourceFilter"; }
+    virtual bool isSVGResourceFilter() const override { return true; }
 
     bool fitsInMaximumImageSize(const FloatSize&, FloatSize&);
 

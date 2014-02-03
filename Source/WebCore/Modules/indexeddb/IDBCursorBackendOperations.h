@@ -40,10 +40,10 @@ public:
     {
         return adoptRef(new CursorIterationOperation(cursor, key, callbacks));
     }
-    virtual void perform(std::function<void()> completionCallback) OVERRIDE FINAL;
+    virtual void perform(std::function<void()> completionCallback) override final;
 
+    int64_t cursorID() const { return m_cursor->id(); }
     IDBKey* key() const { return m_key.get(); }
-    IDBCallbacks* callbacks() const { return m_callbacks.get(); }
 
 private:
     CursorIterationOperation(PassRefPtr<IDBCursorBackend> cursor, PassRefPtr<IDBKey> key, PassRefPtr<IDBCallbacks> callbacks)
@@ -64,10 +64,10 @@ public:
     {
         return adoptRef(new CursorAdvanceOperation(cursor, count, callbacks));
     }
-    virtual void perform(std::function<void()> completionCallback) OVERRIDE FINAL;
+    virtual void perform(std::function<void()> completionCallback) override final;
 
+    int64_t cursorID() const { return m_cursor->id(); }
     unsigned long count() const { return m_count; }
-    IDBCallbacks* callbacks() const { return m_callbacks.get(); }
 
 private:
     CursorAdvanceOperation(PassRefPtr<IDBCursorBackend> cursor, unsigned long count, PassRefPtr<IDBCallbacks> callbacks)
@@ -79,30 +79,6 @@ private:
 
     RefPtr<IDBCursorBackend> m_cursor;
     unsigned long m_count;
-    RefPtr<IDBCallbacks> m_callbacks;
-};
-
-class CursorPrefetchIterationOperation : public IDBOperation {
-public:
-    static PassRefPtr<IDBOperation> create(PassRefPtr<IDBCursorBackend> cursor, int numberToFetch, PassRefPtr<IDBCallbacks> callbacks)
-    {
-        return adoptRef(new CursorPrefetchIterationOperation(cursor, numberToFetch, callbacks));
-    }
-    virtual void perform(std::function<void()> completionCallback) OVERRIDE FINAL;
-
-    int numberToFetch() const { return m_numberToFetch; }
-    IDBCallbacks* callbacks() const { return m_callbacks.get(); }
-
-private:
-    CursorPrefetchIterationOperation(PassRefPtr<IDBCursorBackend> cursor, int numberToFetch, PassRefPtr<IDBCallbacks> callbacks)
-        : m_cursor(cursor)
-        , m_numberToFetch(numberToFetch)
-        , m_callbacks(callbacks)
-    {
-    }
-
-    RefPtr<IDBCursorBackend> m_cursor;
-    int m_numberToFetch;
     RefPtr<IDBCallbacks> m_callbacks;
 };
 

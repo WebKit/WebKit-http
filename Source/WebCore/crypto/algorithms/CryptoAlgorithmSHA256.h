@@ -32,16 +32,16 @@
 
 namespace WebCore {
 
-class CryptoAlgorithmSHA256 FINAL : public CryptoAlgorithm {
+class CryptoAlgorithmSHA256 final : public CryptoAlgorithm {
 public:
     static const char* const s_name;
     static const CryptoAlgorithmIdentifier s_identifier = CryptoAlgorithmIdentifier::SHA_256;
 
     static std::unique_ptr<CryptoAlgorithm> create();
 
-    virtual CryptoAlgorithmIdentifier identifier() const OVERRIDE;
+    virtual CryptoAlgorithmIdentifier identifier() const override;
 
-    virtual void digest(const CryptoAlgorithmParameters&, const CryptoOperationData&, VectorCallback, VoidCallback failureCallback, ExceptionCode&) OVERRIDE;
+    virtual void digest(const CryptoAlgorithmParameters&, const CryptoOperationData&, VectorCallback, VoidCallback failureCallback, ExceptionCode&) override;
 
 private:
     CryptoAlgorithmSHA256();

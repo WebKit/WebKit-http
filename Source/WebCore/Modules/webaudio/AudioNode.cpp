@@ -69,7 +69,7 @@ AudioNode::~AudioNode()
 {
 #if DEBUG_AUDIONODE_REFERENCES
     --s_nodeCount[nodeType()];
-    fprintf(stderr, "%p: %d: AudioNode::~AudioNode() %d %d\n", this, nodeType(), m_normalRefCount, m_connectionRefCount);
+    fprintf(stderr, "%p: %d: AudioNode::~AudioNode() %d %d\n", this, nodeType(), m_normalRefCount.load(), m_connectionRefCount);
 #endif
 }
 
@@ -98,14 +98,14 @@ void AudioNode::lazyInitialize()
         initialize();
 }
 
-void AudioNode::addInput(PassOwnPtr<AudioNodeInput> input)
+void AudioNode::addInput(std::unique_ptr<AudioNodeInput> input)
 {
-    m_inputs.append(input);
+    m_inputs.append(std::move(input));
 }
 
-void AudioNode::addOutput(PassOwnPtr<AudioNodeOutput> output)
+void AudioNode::addOutput(std::unique_ptr<AudioNodeOutput> output)
 {
-    m_outputs.append(output);
+    m_outputs.append(std::move(output));
 }
 
 AudioNodeInput* AudioNode::input(unsigned i)
@@ -125,7 +125,7 @@ AudioNodeOutput* AudioNode::output(unsigned i)
 void AudioNode::connect(AudioNode* destination, unsigned outputIndex, unsigned inputIndex, ExceptionCode& ec)
 {
     ASSERT(isMainThread()); 
-    AudioContext::AutoLocker locker(context());
+    AudioContext::AutoLocker locker(*context());
 
     if (!destination) {
         ec = SYNTAX_ERR;
@@ -159,7 +159,7 @@ void AudioNode::connect(AudioNode* destination, unsigned outputIndex, unsigned i
 void AudioNode::connect(AudioParam* param, unsigned outputIndex, ExceptionCode& ec)
 {
     ASSERT(isMainThread());
-    AudioContext::AutoLocker locker(context());
+    AudioContext::AutoLocker locker(*context());
 
     if (!param) {
         ec = SYNTAX_ERR;
@@ -183,7 +183,7 @@ void AudioNode::connect(AudioParam* param, unsigned outputIndex, ExceptionCode& 
 void AudioNode::disconnect(unsigned outputIndex, ExceptionCode& ec)
 {
     ASSERT(isMainThread());
-    AudioContext::AutoLocker locker(context());
+    AudioContext::AutoLocker locker(*context());
 
     // Sanity check input and output indices.
     if (outputIndex >= numberOfOutputs()) {
@@ -203,7 +203,7 @@ unsigned long AudioNode::channelCount()
 void AudioNode::setChannelCount(unsigned long channelCount, ExceptionCode& ec)
 {
     ASSERT(isMainThread());
-    AudioContext::AutoLocker locker(context());
+    AudioContext::AutoLocker locker(*context());
 
     if (channelCount > 0 && channelCount <= AudioContext::maxNumberOfChannels()) {
         if (m_channelCount != channelCount) {
@@ -232,7 +232,7 @@ String AudioNode::channelCountMode()
 void AudioNode::setChannelCountMode(const String& mode, ExceptionCode& ec)
 {
     ASSERT(isMainThread());
-    AudioContext::AutoLocker locker(context());
+    AudioContext::AutoLocker locker(*context());
 
     ChannelCountMode oldMode = m_channelCountMode;
 
@@ -264,7 +264,7 @@ String AudioNode::channelInterpretation()
 void AudioNode::setChannelInterpretation(const String& interpretation, ExceptionCode& ec)
 {
     ASSERT(isMainThread());
-    AudioContext::AutoLocker locker(context());
+    AudioContext::AutoLocker locker(*context());
 
     if (interpretation == "speakers")
         m_channelInterpretation = AudioBus::Speakers;
@@ -324,11 +324,14 @@ void AudioNode::checkNumberOfChannelsForInput(AudioNodeInput* input)
 {
     ASSERT(context()->isAudioThread() && context()->isGraphOwner());
 
-    ASSERT(m_inputs.contains(input));
-    if (!m_inputs.contains(input))
-        return;
+    for (const std::unique_ptr<AudioNodeInput>& savedInput : m_inputs) {
+        if (input == savedInput.get()) {
+            input->updateInternalBus();
+            return;
+        }
+    }
 
-    input->updateInternalBus();
+    ASSERT_NOT_REACHED();
 }
 
 bool AudioNode::propagatesSilence() const
@@ -370,7 +373,7 @@ void AudioNode::enableOutputsIfNecessary()
 {
     if (m_isDisabled && m_connectionRefCount > 0) {
         ASSERT(isMainThread());
-        AudioContext::AutoLocker locker(context());
+        AudioContext::AutoLocker locker(*context());
 
         m_isDisabled = false;
         for (unsigned i = 0; i < m_outputs.size(); ++i)
@@ -408,10 +411,10 @@ void AudioNode::ref(RefType refType)
 {
     switch (refType) {
     case RefTypeNormal:
-        atomicIncrement(&m_normalRefCount);
+        ++m_normalRefCount;
         break;
     case RefTypeConnection:
-        atomicIncrement(&m_connectionRefCount);
+        ++m_connectionRefCount;
         break;
     default:
         ASSERT_NOT_REACHED();
@@ -470,11 +473,11 @@ void AudioNode::finishDeref(RefType refType)
     switch (refType) {
     case RefTypeNormal:
         ASSERT(m_normalRefCount > 0);
-        atomicDecrement(&m_normalRefCount);
+        --m_normalRefCount;
         break;
     case RefTypeConnection:
         ASSERT(m_connectionRefCount > 0);
-        atomicDecrement(&m_connectionRefCount);
+        --m_connectionRefCount;
         break;
     default:
         ASSERT_NOT_REACHED();

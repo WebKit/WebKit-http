@@ -25,7 +25,6 @@
 #include "RenderSVGBlock.h"
 
 #include "RenderSVGResource.h"
-#include "SVGElement.h"
 #include "SVGResourcesCache.h"
 #include "StyleInheritedData.h"
 
@@ -44,23 +43,6 @@ LayoutRect RenderSVGBlock::visualOverflowRect() const
         textShadow->adjustRectForShadow(borderRect);
 
     return borderRect;
-}
-
-void RenderSVGBlock::setStyle(PassRef<RenderStyle> style)
-{
-    if (!style.get().isDisplayInlineType()) {
-        RenderBlockFlow::setStyle(std::move(style));
-        return;
-    }
-
-    Ref<RenderStyle> styleToInheritFrom(std::move(style));
-
-    // SVG text layout code expects us to be a block-level style element.   
-    auto newStyle = RenderStyle::create();
-    newStyle.get().inheritFrom(&styleToInheritFrom.get());
-    newStyle.get().setDisplay(BLOCK);
-
-    RenderBlockFlow::setStyle(std::move(newStyle));
 }
 
 void RenderSVGBlock::updateFromStyle()

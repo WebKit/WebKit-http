@@ -29,7 +29,7 @@
 
 namespace WebCore {
 
-class HTMLFrameSetElement FINAL : public HTMLElement {
+class HTMLFrameSetElement final : public HTMLElement {
 public:
     static PassRefPtr<HTMLFrameSetElement> create(const QualifiedName&, Document&);
 
@@ -69,20 +69,20 @@ public:
 private:
     HTMLFrameSetElement(const QualifiedName&, Document&);
 
-    virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
-    virtual bool isPresentationAttribute(const QualifiedName&) const OVERRIDE;
-    virtual void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStyleProperties&) OVERRIDE;
+    virtual void parseAttribute(const QualifiedName&, const AtomicString&) override;
+    virtual bool isPresentationAttribute(const QualifiedName&) const override;
+    virtual void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStyleProperties&) override;
 
-    virtual void willAttachRenderers() OVERRIDE;
-    virtual bool rendererIsNeeded(const RenderStyle&);
-    virtual RenderElement* createRenderer(PassRef<RenderStyle>) OVERRIDE;
+    virtual void willAttachRenderers() override;
+    virtual bool rendererIsNeeded(const RenderStyle&) override;
+    virtual RenderPtr<RenderElement> createElementRenderer(PassRef<RenderStyle>) override;
     
-    virtual void defaultEventHandler(Event*);
+    virtual void defaultEventHandler(Event*) override;
 
-    virtual bool willRecalcStyle(Style::Change) OVERRIDE;
+    virtual bool willRecalcStyle(Style::Change) override;
 
-    virtual InsertionNotificationRequest insertedInto(ContainerNode&) OVERRIDE;
-    virtual void removedFrom(ContainerNode&) OVERRIDE;
+    virtual InsertionNotificationRequest insertedInto(ContainerNode&) override;
+    virtual void removedFrom(ContainerNode&) override;
 
     std::unique_ptr<Length[]> m_rowLengths;
     std::unique_ptr<Length[]> m_colLengths;

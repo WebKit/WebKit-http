@@ -228,10 +228,8 @@ static void buildNodeHighlight(Node* node, RenderRegion* region, const Highlight
     buildRendererHighlight(renderer, region, highlightConfig, highlight);
 }
 
-static void buildQuadHighlight(Page* page, const FloatQuad& quad, const HighlightConfig& highlightConfig, Highlight *highlight)
+static void buildQuadHighlight(const FloatQuad& quad, const HighlightConfig& highlightConfig, Highlight *highlight)
 {
-    if (!page)
-        return;
     highlight->setDataFromConfig(highlightConfig);
     highlight->type = HighlightTypeRects;
     highlight->quads.append(quad);
@@ -239,7 +237,7 @@ static void buildQuadHighlight(Page* page, const FloatQuad& quad, const Highligh
 
 } // anonymous namespace
 
-InspectorOverlay::InspectorOverlay(Page* page, InspectorClient* client)
+InspectorOverlay::InspectorOverlay(Page& page, InspectorClient* client)
     : m_page(page)
     , m_client(client)
 {
@@ -274,7 +272,7 @@ void InspectorOverlay::getHighlight(Highlight* highlight) const
     if (m_highlightNode)
         buildNodeHighlight(m_highlightNode.get(), nullptr, m_nodeHighlightConfig, highlight);
     else
-        buildQuadHighlight(m_page, *m_highlightQuad, m_quadHighlightConfig, highlight);
+        buildQuadHighlight(*m_highlightQuad, m_quadHighlightConfig, highlight);
 }
 
 void InspectorOverlay::setPausedInDebuggerMessage(const String* message)
@@ -300,7 +298,7 @@ void InspectorOverlay::highlightNode(Node* node, const HighlightConfig& highligh
 void InspectorOverlay::highlightQuad(PassOwnPtr<FloatQuad> quad, const HighlightConfig& highlightConfig)
 {
     if (m_quadHighlightConfig.usePageCoordinates)
-        *quad -= m_page->mainFrame().view()->scrollOffset();
+        *quad -= m_page.mainFrame().view()->scrollOffset();
 
     m_quadHighlightConfig = highlightConfig;
     m_highlightQuad = quad;
@@ -324,16 +322,16 @@ void InspectorOverlay::update()
         return;
     }
 
-    FrameView* view = m_page->mainFrame().view();
+    FrameView* view = m_page.mainFrame().view();
     if (!view)
         return;
 
     FrameView* overlayView = overlayPage()->mainFrame().view();
     IntSize viewportSize = view->visibleContentRect().size();
-    IntSize frameViewFullSize = view->visibleContentRect(ScrollableArea::IncludeScrollbars).size();
+    IntSize frameViewFullSize = view->visibleContentRectIncludingScrollbars().size();
     IntSize size = m_size.isEmpty() ? frameViewFullSize : m_size;
-    overlayPage()->setPageScaleFactor(m_page->pageScaleFactor(), IntPoint());
-    size.scale(m_page->pageScaleFactor());
+    overlayPage()->setPageScaleFactor(m_page.pageScaleFactor(), IntPoint());
+    size.scale(m_page.pageScaleFactor());
     overlayView->resize(size);
 
     // Clear canvas and paint things.
@@ -408,7 +406,7 @@ static PassRefPtr<InspectorObject> buildObjectForRegionHighlight(FrameView* main
 
     // Move the link boxes slightly inside the region border box.
     LayoutUnit maxUsableHeight = std::max(LayoutUnit(), borderBox.height() - linkBoxMidpoint.height());
-    LayoutUnit linkBoxVerticalOffset = std::min(LayoutUnit(15), maxUsableHeight);
+    LayoutUnit linkBoxVerticalOffset = std::min(LayoutUnit::fromPixel(15), maxUsableHeight);
     incomingRectBox.move(0, linkBoxVerticalOffset);
     outgoingRectBox.move(0, -linkBoxVerticalOffset);
 
@@ -436,8 +434,7 @@ static PassRefPtr<InspectorArray> buildObjectForCSSRegionsHighlight(RenderRegion
     RefPtr<InspectorArray> array = InspectorArray::create();
 
     const RenderRegionList& regionList = flowThread->renderRegionList();
-    for (RenderRegionList::const_iterator iter = regionList.begin(); iter != regionList.end(); ++iter) {
-        RenderRegion* iterRegion = *iter;
+    for (auto& iterRegion : regionList) {
         if (!iterRegion->isValid())
             continue;
         RefPtr<InspectorObject> regionHighlightObject = buildObjectForRegionHighlight(mainFrameView, iterRegion);
@@ -660,7 +657,7 @@ static PassRefPtr<InspectorObject> buildObjectForElementInfo(Node* node)
     Frame* containingFrame = node->document().frame();
     FrameView* containingView = containingFrame->view();
     IntRect boundingBox = pixelSnappedIntRect(containingView->contentsToRootView(renderer->absoluteBoundingBoxRect()));
-    RenderBoxModelObject* modelObject = renderer->isBoxModelObject() ? toRenderBoxModelObject(renderer) : 0;
+    RenderBoxModelObject* modelObject = renderer->isBoxModelObject() ? toRenderBoxModelObject(renderer) : nullptr;
     elementInfo->setString("nodeWidth", String::number(modelObject ? adjustForAbsoluteZoom(modelObject->pixelSnappedOffsetWidth(), *modelObject) : boundingBox.width()));
     elementInfo->setString("nodeHeight", String::number(modelObject ? adjustForAbsoluteZoom(modelObject->pixelSnappedOffsetHeight(), *modelObject) : boundingBox.height()));
     
@@ -710,7 +707,7 @@ PassRefPtr<InspectorObject> InspectorOverlay::buildObjectForHighlightedNode() co
     RefPtr<InspectorObject> highlightObject = InspectorObject::create();
 
     // The main view's scroll offset is shared across all quads.
-    FrameView* mainView = m_page->mainFrame().view();
+    FrameView* mainView = m_page.mainFrame().view();
     highlightObject->setObject("scroll", buildObjectForPoint(!mainView->delegatesScrolling() ? mainView->visibleContentRect().location() : FloatPoint()));
 
     highlightObject->setArray("fragments", highlightFragments.release());
@@ -738,7 +735,7 @@ void InspectorOverlay::drawQuadHighlight()
         return;
 
     Highlight highlight;
-    buildQuadHighlight(m_page, *m_highlightQuad, m_quadHighlightConfig, &highlight);
+    buildQuadHighlight(*m_highlightQuad, m_quadHighlightConfig, &highlight);
     evaluateInOverlay("drawQuadHighlight", buildObjectForHighlight(highlight));
 }
 
@@ -757,7 +754,7 @@ Page* InspectorOverlay::overlayPage()
     fillWithEmptyClients(pageClients);
     m_overlayPage = adoptPtr(new Page(pageClients));
 
-    Settings& settings = m_page->settings();
+    Settings& settings = m_page.settings();
     Settings& overlaySettings = m_overlayPage->settings();
 
     overlaySettings.setStandardFontFamily(settings.standardFontFamily());
@@ -798,7 +795,7 @@ Page* InspectorOverlay::overlayPage()
 void InspectorOverlay::reset(const IntSize& viewportSize, const IntSize& frameViewFullSize)
 {
     RefPtr<InspectorObject> resetData = InspectorObject::create();
-    resetData->setNumber("deviceScaleFactor", m_page->deviceScaleFactor());
+    resetData->setNumber("deviceScaleFactor", m_page.deviceScaleFactor());
     resetData->setObject("viewportSize", buildObjectForSize(viewportSize));
     resetData->setObject("frameViewFullSize", buildObjectForSize(frameViewFullSize));
     evaluateInOverlay("reset", resetData.release());

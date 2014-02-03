@@ -58,9 +58,9 @@ protected:
 
 private:
     // DocumentParser
-    virtual void insert(const SegmentedString&);
-    virtual void append(PassRefPtr<StringImpl>);
-    virtual void finish();
+    virtual void insert(const SegmentedString&) override;
+    virtual void append(PassRefPtr<StringImpl>) override;
+    virtual void finish() override;
 
     HTMLViewSourceDocument* document() const { return static_cast<HTMLViewSourceDocument*>(DecodedDataDocumentParser::document()); }
 
@@ -71,7 +71,7 @@ private:
     HTMLInputStream m_input;
     HTMLToken m_token;
     HTMLSourceTracker m_sourceTracker;
-    OwnPtr<HTMLTokenizer> m_tokenizer;
+    std::unique_ptr<HTMLTokenizer> m_tokenizer;
 };
 
 }

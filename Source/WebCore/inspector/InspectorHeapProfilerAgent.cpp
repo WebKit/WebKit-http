@@ -29,15 +29,15 @@
  */
 
 #include "config.h"
-
-#if ENABLE(JAVASCRIPT_DEBUGGER) && ENABLE(INSPECTOR)
-
 #include "InspectorHeapProfilerAgent.h"
 
-#include "InjectedScript.h"
-#include "InjectedScriptHost.h"
+#if ENABLE(INSPECTOR)
+
+#include "CommandLineAPIHost.h"
 #include "InstrumentingAgents.h"
+#include "PageInjectedScriptManager.h"
 #include "ScriptProfiler.h"
+#include <inspector/InjectedScript.h>
 
 using namespace Inspector;
 
@@ -45,12 +45,7 @@ namespace WebCore {
 
 static const char* const UserInitiatedProfileNameHeap = "org.webkit.profiles.user-initiated";
 
-PassOwnPtr<InspectorHeapProfilerAgent> InspectorHeapProfilerAgent::create(InstrumentingAgents* instrumentingAgents, InjectedScriptManager* injectedScriptManager)
-{
-    return adoptPtr(new InspectorHeapProfilerAgent(instrumentingAgents, injectedScriptManager));
-}
-
-InspectorHeapProfilerAgent::InspectorHeapProfilerAgent(InstrumentingAgents* instrumentingAgents, InjectedScriptManager* injectedScriptManager)
+InspectorHeapProfilerAgent::InspectorHeapProfilerAgent(InstrumentingAgents* instrumentingAgents, PageInjectedScriptManager* injectedScriptManager)
     : InspectorAgentBase(ASCIILiteral("HeapProfiler"), instrumentingAgents)
     , m_injectedScriptManager(injectedScriptManager)
     , m_nextUserInitiatedHeapSnapshotNumber(1)
@@ -61,7 +56,7 @@ InspectorHeapProfilerAgent::InspectorHeapProfilerAgent(InstrumentingAgents* inst
 
 InspectorHeapProfilerAgent::~InspectorHeapProfilerAgent()
 {
-    m_instrumentingAgents->setInspectorHeapProfilerAgent(0);
+    m_instrumentingAgents->setInspectorHeapProfilerAgent(nullptr);
 }
 
 void InspectorHeapProfilerAgent::resetState()
@@ -69,7 +64,9 @@ void InspectorHeapProfilerAgent::resetState()
     m_snapshots.clear();
     m_nextUserInitiatedHeapSnapshotNumber = 1;
     resetFrontendProfiles();
-    m_injectedScriptManager->injectedScriptHost()->clearInspectedObjects();
+
+    if (CommandLineAPIHost* commandLineAPIHost = m_injectedScriptManager->commandLineAPIHost())
+        commandLineAPIHost->clearInspectedObjects();
 }
 
 void InspectorHeapProfilerAgent::resetFrontendProfiles()
@@ -88,7 +85,7 @@ void InspectorHeapProfilerAgent::didCreateFrontendAndBackend(Inspector::Inspecto
     m_backendDispatcher = InspectorHeapProfilerBackendDispatcher::create(backendDispatcher, this);
 }
 
-void InspectorHeapProfilerAgent::willDestroyFrontendAndBackend()
+void InspectorHeapProfilerAgent::willDestroyFrontendAndBackend(InspectorDisconnectReason)
 {
     m_frontendDispatcher = nullptr;
     m_backendDispatcher.clear();
@@ -106,7 +103,6 @@ PassRefPtr<Inspector::TypeBuilder::HeapProfiler::ProfileHeader> InspectorHeapPro
     RefPtr<Inspector::TypeBuilder::HeapProfiler::ProfileHeader> header = Inspector::TypeBuilder::HeapProfiler::ProfileHeader::create()
         .setUid(snapshot.uid())
         .setTitle(snapshot.title());
-    header->setMaxJSObjectId(snapshot.maxSnapshotJSObjectId());
     return header.release();
 }
 
@@ -131,8 +127,8 @@ void InspectorHeapProfilerAgent::getHeapSnapshot(ErrorString* errorString, int r
     public:
         OutputStream(InspectorHeapProfilerFrontendDispatcher* frontend, unsigned uid)
             : m_frontendDispatcher(frontend), m_uid(uid) { }
-        void Write(const String& chunk) { m_frontendDispatcher->addHeapSnapshotChunk(m_uid, chunk); }
-        void Close() { m_frontendDispatcher->finishHeapSnapshot(m_uid); }
+        void Write(const String& chunk) override { m_frontendDispatcher->addHeapSnapshotChunk(m_uid, chunk); }
+        void Close() override { m_frontendDispatcher->finishHeapSnapshot(m_uid); }
     private:
         InspectorHeapProfilerFrontendDispatcher* m_frontendDispatcher;
         int m_uid;
@@ -164,16 +160,16 @@ void InspectorHeapProfilerAgent::takeHeapSnapshot(ErrorString*, const bool* repo
     public:
         explicit HeapSnapshotProgress(InspectorHeapProfilerFrontendDispatcher* frontend)
             : m_frontendDispatcher(frontend) { }
-        void Start(int totalWork)
+        void Start(int totalWork) override
         {
             m_totalWork = totalWork;
         }
-        void Worked(int workDone)
+        void Worked(int workDone) override
         {
             if (m_frontendDispatcher)
                 m_frontendDispatcher->reportHeapSnapshotProgress(workDone, m_totalWork);
         }
-        void Done() { }
+        void Done() override { }
         bool isCanceled() { return false; }
     private:
         InspectorHeapProfilerFrontendDispatcher* m_frontendDispatcher;
@@ -233,4 +229,4 @@ void InspectorHeapProfilerAgent::getHeapObjectId(ErrorString* errorString, const
 
 } // namespace WebCore
 
-#endif // ENABLE(JAVASCRIPT_DEBUGGER) && ENABLE(INSPECTOR)
+#endif // ENABLE(INSPECTOR)

@@ -67,9 +67,7 @@ PseudoElement::PseudoElement(Element& host, PseudoId pseudoId)
 PseudoElement::~PseudoElement()
 {
     ASSERT(!m_hostElement);
-#if USE(ACCELERATED_COMPOSITING)
     InspectorInstrumentation::pseudoElementDestroyed(document().page(), this);
-#endif
 }
 
 PassRefPtr<RenderStyle> PseudoElement::customStyleForRenderer()
@@ -83,17 +81,17 @@ void PseudoElement::didAttachRenderers()
     if (!renderer || renderer->style().hasFlowFrom())
         return;
 
-    RenderStyle& style = renderer->style();
+    const RenderStyle& style = renderer->style();
     ASSERT(style.contentData());
 
     for (const ContentData* content = style.contentData(); content; content = content->next()) {
-        RenderObject* child = content->createRenderer(document(), style);
+        auto child = content->createContentRenderer(document(), style);
         if (renderer->isChildAllowed(*child, style)) {
-            renderer->addChild(child);
-            if (child->isQuote())
-                toRenderQuote(child)->attachQuote();
-        } else
-            child->destroy();
+            auto* childPtr = child.get();
+            renderer->addChild(child.leakPtr());
+            if (childPtr->isQuote())
+                toRenderQuote(childPtr)->attachQuote();
+        }
     }
 }
 
@@ -112,9 +110,10 @@ void PseudoElement::didRecalcStyle(Style::Change)
     RenderObject* renderer = this->renderer();
     for (RenderObject* child = renderer->nextInPreOrder(renderer); child; child = child->nextInPreOrder(renderer)) {
         // We only manage the style for the generated content which must be images or text.
-        if (!child->isImage())
+        if (!child->isRenderImage() && !child->isQuote())
             continue;
-        toRenderImage(*child).setStyle(RenderImage::createStyleInheritingFromPseudoStyle(renderer->style()));
+        PassRef<RenderStyle> createdStyle = RenderStyle::createStyleInheritingFromPseudoStyle(renderer->style());
+        toRenderElement(*child).setStyle(std::move(createdStyle));
     }
 }
 

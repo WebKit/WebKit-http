@@ -31,8 +31,6 @@
 #define InspectorDOMAgent_h
 
 #include "EventTarget.h"
-#include "InjectedScript.h"
-#include "InjectedScriptManager.h"
 #include "InspectorOverlay.h"
 #include "InspectorWebAgentBase.h"
 #include "InspectorWebBackendDispatchers.h"
@@ -53,6 +51,10 @@ namespace Deprecated {
 class ScriptValue;
 }
 
+namespace Inspector {
+class InjectedScriptManager;
+}
+
 namespace WebCore {
 
 class ContainerNode;
@@ -61,7 +63,6 @@ class DOMEditor;
 class Document;
 class Element;
 class Event;
-class InspectorClient;
 class InspectorHistory;
 class InspectorOverlay;
 class InspectorPageAgent;
@@ -105,57 +106,52 @@ public:
         virtual void didModifyDOMAttr(Element*) = 0;
     };
 
-    static PassOwnPtr<InspectorDOMAgent> create(InstrumentingAgents* instrumentingAgents, InspectorPageAgent* pageAgent, InjectedScriptManager* injectedScriptManager, InspectorOverlay* overlay, InspectorClient* client)
-    {
-        return adoptPtr(new InspectorDOMAgent(instrumentingAgents, pageAgent, injectedScriptManager, overlay, client));
-    }
+    InspectorDOMAgent(InstrumentingAgents*, InspectorPageAgent*, Inspector::InjectedScriptManager*, InspectorOverlay*);
+    ~InspectorDOMAgent();
 
     static String toErrorString(const ExceptionCode&);
 
-    ~InspectorDOMAgent();
-
-    virtual void didCreateFrontendAndBackend(Inspector::InspectorFrontendChannel*, Inspector::InspectorBackendDispatcher*) OVERRIDE;
-    virtual void willDestroyFrontendAndBackend() OVERRIDE;
+    virtual void didCreateFrontendAndBackend(Inspector::InspectorFrontendChannel*, Inspector::InspectorBackendDispatcher*) override;
+    virtual void willDestroyFrontendAndBackend(Inspector::InspectorDisconnectReason) override;
 
     Vector<Document*> documents();
     void reset();
 
     // Methods called from the frontend for DOM nodes inspection.
-    virtual void querySelector(ErrorString*, int nodeId, const String& selectors, int* elementId);
-    virtual void querySelectorAll(ErrorString*, int nodeId, const String& selectors, RefPtr<Inspector::TypeBuilder::Array<int>>& result);
-    virtual void getDocument(ErrorString*, RefPtr<Inspector::TypeBuilder::DOM::Node>& root);
-    virtual void requestChildNodes(ErrorString*, int nodeId, const int* depth);
-    virtual void setAttributeValue(ErrorString*, int elementId, const String& name, const String& value);
-    virtual void setAttributesAsText(ErrorString*, int elementId, const String& text, const String* name);
-    virtual void removeAttribute(ErrorString*, int elementId, const String& name);
-    virtual void removeNode(ErrorString*, int nodeId);
-    virtual void setNodeName(ErrorString*, int nodeId, const String& name, int* newId);
-    virtual void getOuterHTML(ErrorString*, int nodeId, WTF::String* outerHTML);
-    virtual void setOuterHTML(ErrorString*, int nodeId, const String& outerHTML);
-    virtual void setNodeValue(ErrorString*, int nodeId, const String& value);
-    virtual void getEventListenersForNode(ErrorString*, int nodeId, const WTF::String* objectGroup, RefPtr<Inspector::TypeBuilder::Array<Inspector::TypeBuilder::DOM::EventListener>>& listenersArray);
-    virtual void performSearch(ErrorString*, const String& whitespaceTrimmedQuery, const RefPtr<Inspector::InspectorArray>* nodeIds, String* searchId, int* resultCount);
-    virtual void getSearchResults(ErrorString*, const String& searchId, int fromIndex, int toIndex, RefPtr<Inspector::TypeBuilder::Array<int>>&);
-    virtual void discardSearchResults(ErrorString*, const String& searchId);
-    virtual void resolveNode(ErrorString*, int nodeId, const String* objectGroup, RefPtr<Inspector::TypeBuilder::Runtime::RemoteObject>& result);
-    virtual void getAttributes(ErrorString*, int nodeId, RefPtr<Inspector::TypeBuilder::Array<String>>& result);
-    virtual void setInspectModeEnabled(ErrorString*, bool enabled, const RefPtr<Inspector::InspectorObject>* highlightConfig);
-    virtual void requestNode(ErrorString*, const String& objectId, int* nodeId);
-    virtual void pushNodeByPathToFrontend(ErrorString*, const String& path, int* nodeId);
-    virtual void pushNodeByBackendIdToFrontend(ErrorString*, BackendNodeId, int* nodeId);
-    virtual void releaseBackendNodeIds(ErrorString*, const String& nodeGroup);
-    virtual void hideHighlight(ErrorString*);
-    virtual void highlightRect(ErrorString*, int x, int y, int width, int height, const RefPtr<Inspector::InspectorObject>* color, const RefPtr<Inspector::InspectorObject>* outlineColor, const bool* usePageCoordinates);
-    virtual void highlightQuad(ErrorString*, const RefPtr<Inspector::InspectorArray>& quad, const RefPtr<Inspector::InspectorObject>* color, const RefPtr<Inspector::InspectorObject>* outlineColor, const bool* usePageCoordinates);
-    virtual void highlightNode(ErrorString*, const RefPtr<Inspector::InspectorObject>& highlightConfig, const int* nodeId, const String* objectId);
-    virtual void highlightFrame(ErrorString*, const String& frameId, const RefPtr<Inspector::InspectorObject>* color, const RefPtr<Inspector::InspectorObject>* outlineColor);
+    virtual void querySelector(ErrorString*, int nodeId, const String& selectors, int* elementId) override;
+    virtual void querySelectorAll(ErrorString*, int nodeId, const String& selectors, RefPtr<Inspector::TypeBuilder::Array<int>>& result) override;
+    virtual void getDocument(ErrorString*, RefPtr<Inspector::TypeBuilder::DOM::Node>& root) override;
+    virtual void requestChildNodes(ErrorString*, int nodeId, const int* depth) override;
+    virtual void setAttributeValue(ErrorString*, int elementId, const String& name, const String& value) override;
+    virtual void setAttributesAsText(ErrorString*, int elementId, const String& text, const String* name) override;
+    virtual void removeAttribute(ErrorString*, int elementId, const String& name) override;
+    virtual void removeNode(ErrorString*, int nodeId) override;
+    virtual void setNodeName(ErrorString*, int nodeId, const String& name, int* newId) override;
+    virtual void getOuterHTML(ErrorString*, int nodeId, WTF::String* outerHTML) override;
+    virtual void setOuterHTML(ErrorString*, int nodeId, const String& outerHTML) override;
+    virtual void setNodeValue(ErrorString*, int nodeId, const String& value) override;
+    virtual void getEventListenersForNode(ErrorString*, int nodeId, const WTF::String* objectGroup, RefPtr<Inspector::TypeBuilder::Array<Inspector::TypeBuilder::DOM::EventListener>>& listenersArray) override;
+    virtual void performSearch(ErrorString*, const String& whitespaceTrimmedQuery, const RefPtr<Inspector::InspectorArray>* nodeIds, String* searchId, int* resultCount) override;
+    virtual void getSearchResults(ErrorString*, const String& searchId, int fromIndex, int toIndex, RefPtr<Inspector::TypeBuilder::Array<int>>&) override;
+    virtual void discardSearchResults(ErrorString*, const String& searchId) override;
+    virtual void resolveNode(ErrorString*, int nodeId, const String* objectGroup, RefPtr<Inspector::TypeBuilder::Runtime::RemoteObject>& result) override;
+    virtual void getAttributes(ErrorString*, int nodeId, RefPtr<Inspector::TypeBuilder::Array<String>>& result) override;
+    virtual void setInspectModeEnabled(ErrorString*, bool enabled, const RefPtr<Inspector::InspectorObject>* highlightConfig) override;
+    virtual void requestNode(ErrorString*, const String& objectId, int* nodeId) override;
+    virtual void pushNodeByPathToFrontend(ErrorString*, const String& path, int* nodeId) override;
+    virtual void pushNodeByBackendIdToFrontend(ErrorString*, BackendNodeId, int* nodeId) override;
+    virtual void releaseBackendNodeIds(ErrorString*, const String& nodeGroup) override;
+    virtual void hideHighlight(ErrorString*) override;
+    virtual void highlightRect(ErrorString*, int x, int y, int width, int height, const RefPtr<Inspector::InspectorObject>* color, const RefPtr<Inspector::InspectorObject>* outlineColor, const bool* usePageCoordinates) override;
+    virtual void highlightQuad(ErrorString*, const RefPtr<Inspector::InspectorArray>& quad, const RefPtr<Inspector::InspectorObject>* color, const RefPtr<Inspector::InspectorObject>* outlineColor, const bool* usePageCoordinates) override;
+    virtual void highlightNode(ErrorString*, const RefPtr<Inspector::InspectorObject>& highlightConfig, const int* nodeId, const String* objectId) override;
+    virtual void highlightFrame(ErrorString*, const String& frameId, const RefPtr<Inspector::InspectorObject>* color, const RefPtr<Inspector::InspectorObject>* outlineColor) override;
 
-    virtual void moveTo(ErrorString*, int nodeId, int targetNodeId, const int* anchorNodeId, int* newNodeId);
-    virtual void undo(ErrorString*);
-    virtual void redo(ErrorString*);
-    virtual void markUndoableState(ErrorString*);
-    virtual void focus(ErrorString*, int nodeId);
-    virtual void setFileInputFiles(ErrorString*, int nodeId, const RefPtr<Inspector::InspectorArray>& files);
+    virtual void moveTo(ErrorString*, int nodeId, int targetNodeId, const int* anchorNodeId, int* newNodeId) override;
+    virtual void undo(ErrorString*) override;
+    virtual void redo(ErrorString*) override;
+    virtual void markUndoableState(ErrorString*) override;
+    virtual void focus(ErrorString*, int nodeId) override;
 
     void getEventListeners(Node*, Vector<EventListenerInfo>& listenersArray, bool includeAncestors);
 
@@ -208,12 +204,13 @@ public:
     Element* assertElement(ErrorString*, int nodeId);
     Document* assertDocument(ErrorString*, int nodeId);
 
+    static Node* scriptValueAsNode(Deprecated::ScriptValue);
+    static Deprecated::ScriptValue nodeAsScriptValue(JSC::ExecState*, Node*);
+
     // Methods called from other agents.
     InspectorPageAgent* pageAgent() { return m_pageAgent; }
 
 private:
-    InspectorDOMAgent(InstrumentingAgents*, InspectorPageAgent*, InjectedScriptManager*, InspectorOverlay*, InspectorClient*);
-
     void setSearchingForNode(ErrorString*, bool enabled, Inspector::InspectorObject* highlightConfig);
     PassOwnPtr<HighlightConfig> highlightConfigFromInspectorObject(ErrorString*, Inspector::InspectorObject* highlightInspectorObject);
 
@@ -238,15 +235,15 @@ private:
     PassRefPtr<Inspector::TypeBuilder::DOM::EventListener> buildObjectForEventListener(const RegisteredEventListener&, const AtomicString& eventType, Node*, const String* objectGroupId);
 
     Node* nodeForPath(const String& path);
+    Node* nodeForObjectId(const String& objectId);
 
     void discardBindings();
 
     void innerHighlightQuad(PassOwnPtr<FloatQuad>, const RefPtr<Inspector::InspectorObject>* color, const RefPtr<Inspector::InspectorObject>* outlineColor, const bool* usePageCoordinates);
 
     InspectorPageAgent* m_pageAgent;
-    InjectedScriptManager* m_injectedScriptManager;
+    Inspector::InjectedScriptManager* m_injectedScriptManager;
     InspectorOverlay* m_overlay;
-    InspectorClient* m_client;
     std::unique_ptr<Inspector::InspectorDOMFrontendDispatcher> m_frontendDispatcher;
     RefPtr<Inspector::InspectorDOMBackendDispatcher> m_backendDispatcher;
     DOMListener* m_domListener;

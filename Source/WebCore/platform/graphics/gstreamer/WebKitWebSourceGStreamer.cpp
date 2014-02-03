@@ -41,8 +41,8 @@
 #include <gst/pbutils/missing-plugins.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/gobject/GMutexLocker.h>
-#include <wtf/gobject/GOwnPtr.h>
 #include <wtf/gobject/GRefPtr.h>
+#include <wtf/gobject/GUniquePtr.h>
 #include <wtf/text/CString.h>
 
 using namespace WebCore;
@@ -99,7 +99,7 @@ class ResourceHandleStreamingClient : public ResourceHandleClient, public Stream
         virtual char* getOrCreateReadBuffer(size_t requestedSize, size_t& actualSize);
         virtual void willSendRequest(ResourceHandle*, ResourceRequest&, const ResourceResponse&);
         virtual void didReceiveResponse(ResourceHandle*, const ResourceResponse&);
-        virtual void didReceiveData(ResourceHandle*, const char*, int, int);
+        virtual void didReceiveData(ResourceHandle*, const char*, unsigned, int);
         virtual void didReceiveBuffer(ResourceHandle*, PassRefPtr<SharedBuffer>, int encodedLength);
         virtual void didFinishLoading(ResourceHandle*, double /*finishTime*/);
         virtual void didFail(ResourceHandle*, const ResourceError&);
@@ -502,9 +502,7 @@ static gboolean webKitWebSrcStart(WebKitWebSrc* src)
         request.setHTTPUserAgent("Quicktime/7.6.6");
 
     if (priv->requestedOffset) {
-        GOwnPtr<gchar> val;
-
-        val.set(g_strdup_printf("bytes=%" G_GUINT64_FORMAT "-", priv->requestedOffset));
+        GUniquePtr<gchar> val(g_strdup_printf("bytes=%" G_GUINT64_FORMAT "-", priv->requestedOffset));
         request.setHTTPHeaderField("Range", val.get());
     }
     priv->offset = priv->requestedOffset;
@@ -876,6 +874,9 @@ void StreamingClient::handleResponseReceived(const ResourceResponse& response)
     priv->size = length >= 0 ? length : 0;
     priv->seekable = length > 0 && g_ascii_strcasecmp("none", response.httpHeaderField("Accept-Ranges").utf8().data());
 
+    // Wait until we unlock to send notifications
+    g_object_freeze_notify(G_OBJECT(src));
+
     GstTagList* tags = gst_tag_list_new_empty();
     String value = response.httpHeaderField("icy-name");
     if (!value.isEmpty()) {
@@ -907,6 +908,7 @@ void StreamingClient::handleResponseReceived(const ResourceResponse& response)
     }
 
     locker.unlock();
+    g_object_thaw_notify(G_OBJECT(src));
 
     // notify size/duration
     if (length > 0) {
@@ -1117,7 +1119,7 @@ void ResourceHandleStreamingClient::didReceiveResponse(ResourceHandle*, const Re
     handleResponseReceived(response);
 }
 
-void ResourceHandleStreamingClient::didReceiveData(ResourceHandle*, const char* data, int length, int)
+void ResourceHandleStreamingClient::didReceiveData(ResourceHandle*, const char* data, unsigned length, int)
 {
     ASSERT_NOT_REACHED();
 }
@@ -1150,12 +1152,12 @@ void ResourceHandleStreamingClient::didFail(ResourceHandle*, const ResourceError
 void ResourceHandleStreamingClient::wasBlocked(ResourceHandle*)
 {
     WebKitWebSrc* src = WEBKIT_WEB_SRC(m_src.get());
-    GOwnPtr<gchar> uri;
+    GUniquePtr<gchar> uri;
 
     GST_ERROR_OBJECT(src, "Request was blocked");
 
     GMutexLocker locker(GST_OBJECT_GET_LOCK(src));
-    uri.set(g_strdup(src->priv->uri));
+    uri.reset(g_strdup(src->priv->uri));
     locker.unlock();
 
     GST_ELEMENT_ERROR(src, RESOURCE, OPEN_READ, ("Access to \"%s\" was blocked", uri.get()), (0));
@@ -1164,12 +1166,12 @@ void ResourceHandleStreamingClient::wasBlocked(ResourceHandle*)
 void ResourceHandleStreamingClient::cannotShowURL(ResourceHandle*)
 {
     WebKitWebSrc* src = WEBKIT_WEB_SRC(m_src.get());
-    GOwnPtr<gchar> uri;
+    GUniquePtr<gchar> uri;
 
     GST_ERROR_OBJECT(src, "Cannot show URL");
 
     GMutexLocker locker(GST_OBJECT_GET_LOCK(src));
-    uri.set(g_strdup(src->priv->uri));
+    uri.reset(g_strdup(src->priv->uri));
     locker.unlock();
 
     GST_ELEMENT_ERROR(src, RESOURCE, OPEN_READ, ("Can't show \"%s\"", uri.get()), (0));

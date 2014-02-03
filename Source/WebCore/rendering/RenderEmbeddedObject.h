@@ -38,7 +38,7 @@ public:
     RenderEmbeddedObject(HTMLFrameOwnerElement&, PassRef<RenderStyle>);
     virtual ~RenderEmbeddedObject();
 
-    static RenderEmbeddedObject* createForApplet(HTMLAppletElement&, PassRef<RenderStyle>);
+    static RenderPtr<RenderEmbeddedObject> createForApplet(HTMLAppletElement&, PassRef<RenderStyle>);
 
     enum PluginUnavailabilityReason {
         PluginMissing,
@@ -58,34 +58,30 @@ public:
 
     bool isReplacementObscured() const;
 
-#if USE(ACCELERATED_COMPOSITING)
     bool allowsAcceleratedCompositing() const;
-#endif
 
 protected:
-    virtual void paintReplaced(PaintInfo&, const LayoutPoint&) OVERRIDE FINAL;
-    virtual void paint(PaintInfo&, const LayoutPoint&) OVERRIDE;
+    virtual void paintReplaced(PaintInfo&, const LayoutPoint&) override final;
+    virtual void paint(PaintInfo&, const LayoutPoint&) override;
 
-    virtual CursorDirective getCursor(const LayoutPoint&, Cursor&) const OVERRIDE;
+    virtual CursorDirective getCursor(const LayoutPoint&, Cursor&) const override;
 
 protected:
-    virtual void layout() OVERRIDE;
+    virtual void layout() override;
 
 private:
-    virtual const char* renderName() const OVERRIDE { return "RenderEmbeddedObject"; }
-    virtual bool isEmbeddedObject() const OVERRIDE FINAL { return true; }
+    virtual const char* renderName() const override { return "RenderEmbeddedObject"; }
+    virtual bool isEmbeddedObject() const override final { return true; }
 
     void paintSnapshotImage(PaintInfo&, const LayoutPoint&, Image*);
-    virtual void paintContents(PaintInfo&, const LayoutPoint&) OVERRIDE FINAL;
+    virtual void paintContents(PaintInfo&, const LayoutPoint&) override final;
 
-#if USE(ACCELERATED_COMPOSITING)
-    virtual bool requiresLayer() const OVERRIDE FINAL;
-#endif
+    virtual bool requiresLayer() const override final;
 
-    virtual bool nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction) OVERRIDE FINAL;
+    virtual bool nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction) override final;
 
-    virtual bool scroll(ScrollDirection, ScrollGranularity, float multiplier, Element** stopElement) OVERRIDE FINAL;
-    virtual bool logicalScroll(ScrollLogicalDirection, ScrollGranularity, float multiplier, Element** stopElement) OVERRIDE FINAL;
+    virtual bool scroll(ScrollDirection, ScrollGranularity, float multiplier, Element** stopElement) override final;
+    virtual bool logicalScroll(ScrollLogicalDirection, ScrollGranularity, float multiplier, Element** stopElement) override final;
 
     void setUnavailablePluginIndicatorIsPressed(bool);
     bool isInUnavailablePluginIndicator(MouseEvent*) const;
@@ -93,7 +89,7 @@ private:
     bool getReplacementTextGeometry(const LayoutPoint& accumulatedOffset, FloatRect& contentRect, FloatRect& indicatorRect, FloatRect& replacementTextRect, FloatRect& arrowRect, Font&, TextRun&, float& textWidth) const;
     LayoutRect unavailablePluginIndicatorBounds(const LayoutPoint&) const;
 
-    virtual bool canHaveChildren() const OVERRIDE FINAL;
+    virtual bool canHaveChildren() const override final;
     virtual bool canHaveWidget() const { return true; }
 
     bool m_isPluginUnavailable;

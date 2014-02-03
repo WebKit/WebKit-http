@@ -34,7 +34,7 @@
 
 using namespace WebCore;
 
-namespace CoreIPC {
+namespace IPC {
 
 enum NSType {
     NSAttributedStringType,
@@ -216,9 +216,9 @@ void encode(ArgumentEncoder& encoder, NSAttributedString *string)
 
     NSString *plainString = [string string];
     NSUInteger length = [plainString length];
-    CoreIPC::encode(encoder, plainString);
+    IPC::encode(encoder, plainString);
 
-    Vector<pair<NSRange, RetainPtr<NSDictionary>>> ranges;
+    Vector<std::pair<NSRange, RetainPtr<NSDictionary>>> ranges;
 
     NSUInteger position = 0;
     while (position < length) {
@@ -239,17 +239,17 @@ void encode(ArgumentEncoder& encoder, NSAttributedString *string)
     for (size_t i = 0; i < ranges.size(); ++i) {
         encoder << static_cast<uint64_t>(ranges[i].first.location);
         encoder << static_cast<uint64_t>(ranges[i].first.length);
-        CoreIPC::encode(encoder, ranges[i].second.get());
+        IPC::encode(encoder, ranges[i].second.get());
     }
 }
 
 bool decode(ArgumentDecoder& decoder, RetainPtr<NSAttributedString>& result)
 {
     RetainPtr<NSString> plainString;
-    if (!CoreIPC::decode(decoder, plainString))
+    if (!IPC::decode(decoder, plainString))
         return false;
 
-    NSUInteger stringLength = [plainString.get() length];
+    NSUInteger stringLength = [plainString length];
 
     RetainPtr<NSMutableAttributedString> resultString = adoptNS([[NSMutableAttributedString alloc] initWithString:plainString.get()]);
 
@@ -271,9 +271,9 @@ bool decode(ArgumentDecoder& decoder, RetainPtr<NSAttributedString>& result)
         if (rangeLocation + rangeLength <= rangeLocation || rangeLocation + rangeLength > stringLength)
             return false;
 
-        if (!CoreIPC::decode(decoder, attributes))
+        if (!IPC::decode(decoder, attributes))
             return false;
-        [resultString.get() addAttributes:attributes.get() range:NSMakeRange(rangeLocation, rangeLength)];
+        [resultString addAttributes:attributes.get() range:NSMakeRange(rangeLocation, rangeLength)];
     }
 
     result = adoptNS(resultString.leakRef());
@@ -340,7 +340,7 @@ bool decode(ArgumentDecoder& decoder, RetainPtr<NSDictionary>& result)
         if (!decode(decoder, value))
             return false;
 
-        [dictionary.get() setObject:value.get() forKey:key.get()];
+        [dictionary setObject:value.get() forKey:key.get()];
     }
 
     result = adoptNS(dictionary.leakRef());
@@ -425,7 +425,7 @@ bool decode(ArgumentDecoder& decoder, RetainPtr<NSArray>& result)
         if (!decode(decoder, value))
             return false;
 
-        [array.get() addObject:value.get()];
+        [array addObject:value.get()];
     }
 
     result = adoptNS(array.leakRef());
@@ -462,4 +462,4 @@ bool decode(ArgumentDecoder& decoder, RetainPtr<NSData>& result)
     return true;
 }
 
-} // namespace CoreIPC
+} // namespace IPC

@@ -87,10 +87,6 @@ using namespace HTMLNames;
 #define NSAccessibilityVisibleCellsAttribute @"AXVisibleCells"
 #endif
 
-#ifndef NSAccessibilityRowHeaderUIElementsAttribute
-#define NSAccessibilityRowHeaderUIElementsAttribute @"AXRowHeaderUIElements"
-#endif
-
 #ifndef NSAccessibilityRowIndexRangeAttribute
 #define NSAccessibilityRowIndexRangeAttribute @"AXRowIndexRange"
 #endif
@@ -968,7 +964,7 @@ static NSString* nsStringForReplacedNode(Node* replacedNode)
             // Add the text of the list marker item if necessary.
             String listMarkerText = m_object->listMarkerTextForNodeAndPosition(node, VisiblePosition(it.range()->startPosition()));
             if (!listMarkerText.isEmpty())
-                AXAttributedStringAppendText(attrString, node, listMarkerText.characters(), listMarkerText.length());
+                AXAttributedStringAppendText(attrString, node, listMarkerText.deprecatedCharacters(), listMarkerText.length());
             
             AXAttributedStringAppendText(attrString, node, it.characters(), it.length());
         } else {
@@ -1289,6 +1285,7 @@ static id textMarkerRangeFromVisiblePositions(AXObjectCache *cache, VisiblePosit
     if (menuItemAttrs == nil) {
         tempArray = [[NSMutableArray alloc] initWithArray:commonMenuAttrs];
         [tempArray addObject:NSAccessibilityTitleAttribute];
+        [tempArray addObject:NSAccessibilityDescriptionAttribute];
         [tempArray addObject:NSAccessibilityHelpAttribute];
         [tempArray addObject:NSAccessibilitySelectedAttribute];
         [tempArray addObject:NSAccessibilityValueAttribute];
@@ -1356,7 +1353,7 @@ static id textMarkerRangeFromVisiblePositions(AXObjectCache *cache, VisiblePosit
         [tempArray addObject:NSAccessibilityColumnsAttribute];
         [tempArray addObject:NSAccessibilityVisibleColumnsAttribute];
         [tempArray addObject:NSAccessibilityVisibleCellsAttribute];
-        [tempArray addObject:(NSString *)kAXColumnHeaderUIElementsAttribute];
+        [tempArray addObject:NSAccessibilityColumnHeaderUIElementsAttribute];
         [tempArray addObject:NSAccessibilityRowHeaderUIElementsAttribute];
         [tempArray addObject:NSAccessibilityHeaderAttribute];
         [tempArray addObject:NSAccessibilityColumnCountAttribute];
@@ -1383,6 +1380,8 @@ static id textMarkerRangeFromVisiblePositions(AXObjectCache *cache, VisiblePosit
         tempArray = [[NSMutableArray alloc] initWithArray:attributes];
         [tempArray addObject:NSAccessibilityRowIndexRangeAttribute];
         [tempArray addObject:NSAccessibilityColumnIndexRangeAttribute];
+        [tempArray addObject:NSAccessibilityColumnHeaderUIElementsAttribute];
+        [tempArray addObject:NSAccessibilityRowHeaderUIElementsAttribute];
         tableCellAttrs = [[NSArray alloc] initWithArray:tempArray];
         [tempArray release];
     }
@@ -1530,7 +1529,10 @@ static id textMarkerRangeFromVisiblePositions(AXObjectCache *cache, VisiblePosit
     Widget* widget = m_object->widget();
     if (!widget)
         return nil;
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
     return [(widget->platformWidget()) accessibilityAttributeValue: NSAccessibilityChildrenAttribute];
+#pragma clang diagnostic pop
 }
 
 - (id)remoteAccessibilityParentObject
@@ -1562,15 +1564,14 @@ static void convertToVector(NSArray* array, AccessibilityObject::AccessibilityCh
 
 static NSMutableArray* convertToNSArray(const AccessibilityObject::AccessibilityChildrenVector& vector)
 {
-    unsigned length = vector.size();
-    NSMutableArray* array = [NSMutableArray arrayWithCapacity: length];
-    for (unsigned i = 0; i < length; ++i) {
-        WebAccessibilityObjectWrapper* wrapper = vector[i]->wrapper();
+    NSMutableArray* array = [NSMutableArray arrayWithCapacity:vector.size()];
+    for (const auto& child : vector) {
+        WebAccessibilityObjectWrapper* wrapper = child->wrapper();
         ASSERT(wrapper);
         if (wrapper) {
             // we want to return the attachment view instead of the object representing the attachment.
             // otherwise, we get palindrome errors in the AX hierarchy
-            if (vector[i]->isAttachment() && [wrapper attachmentView])
+            if (child->isAttachment() && [wrapper attachmentView])
                 [array addObject:[wrapper attachmentView]];
             else
                 [array addObject:wrapper];
@@ -1581,10 +1582,9 @@ static NSMutableArray* convertToNSArray(const AccessibilityObject::Accessibility
 
 static NSMutableArray *convertStringsToNSArray(const Vector<String>& vector)
 {
-    size_t length = vector.size();
-    NSMutableArray *array = [NSMutableArray arrayWithCapacity:length];
-    for (size_t i = 0; i < length; ++i)
-        [array addObject:vector[i]];
+    NSMutableArray *array = [NSMutableArray arrayWithCapacity:vector.size()];
+    for (const auto& string : vector)
+        [array addObject:string];
     return array;
 }
 
@@ -1836,6 +1836,8 @@ static NSString* roleValueToNSString(AccessibilityRole value)
     return NSAccessibilityUnknownRole;
 }
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
 - (NSString*)subrole
 {
     if (m_object->isPasswordField())
@@ -1980,6 +1982,7 @@ static NSString* roleValueToNSString(AccessibilityRole value)
     
     return nil;
 }
+#pragma clang diagnostic pop
 
 - (NSString*)roleDescription
 {
@@ -2377,7 +2380,7 @@ static NSString* roleValueToNSString(AccessibilityRole value)
     if ([attributeName isEqualToString:NSAccessibilityContentsAttribute]) {
         // The contents of a tab list are all the children except the tabs.
         if (m_object->isTabList()) {
-            AccessibilityObject::AccessibilityChildrenVector children = m_object->children();
+            const auto& children = m_object->children();
             AccessibilityObject::AccessibilityChildrenVector tabsChildren;
             m_object->tabChildren(tabsChildren);
             
@@ -2389,14 +2392,11 @@ static NSString* roleValueToNSString(AccessibilityRole value)
             }
             return convertToNSArray(contents);
         } else if (m_object->isScrollView()) {
-            AccessibilityObject::AccessibilityChildrenVector children = m_object->children();
-            
             // A scrollView's contents are everything except the scroll bars.
             AccessibilityObject::AccessibilityChildrenVector contents;
-            unsigned childrenSize = children.size();
-            for (unsigned k = 0; k < childrenSize; ++k) {
-                if (!children[k]->isScrollbar())
-                    contents.append(children[k]);
+            for (const auto& child : m_object->children()) {
+                if (!child->isScrollbar())
+                    contents.append(child);
             }
             return convertToNSArray(contents);
         }
@@ -2429,7 +2429,7 @@ static NSString* roleValueToNSString(AccessibilityRole value)
             [attributeName isEqualToString:NSAccessibilitySelectedCellsAttribute])
             return nil;
         
-        if ([attributeName isEqualToString:(NSString *)kAXColumnHeaderUIElementsAttribute]) {
+        if ([attributeName isEqualToString:NSAccessibilityColumnHeaderUIElementsAttribute]) {
             AccessibilityObject::AccessibilityChildrenVector columnHeaders;
             toAccessibilityTable(m_object)->columnHeaders(columnHeaders);
             return convertToNSArray(columnHeaders);
@@ -2480,14 +2480,24 @@ static NSString* roleValueToNSString(AccessibilityRole value)
     
     if (m_object->isTableCell()) {
         if ([attributeName isEqualToString:NSAccessibilityRowIndexRangeAttribute]) {
-            pair<unsigned, unsigned> rowRange;
+            std::pair<unsigned, unsigned> rowRange;
             toAccessibilityTableCell(m_object)->rowIndexRange(rowRange);
             return [NSValue valueWithRange:NSMakeRange(rowRange.first, rowRange.second)];
         }
         if ([attributeName isEqualToString:NSAccessibilityColumnIndexRangeAttribute]) {
-            pair<unsigned, unsigned> columnRange;
+            std::pair<unsigned, unsigned> columnRange;
             toAccessibilityTableCell(m_object)->columnIndexRange(columnRange);
             return [NSValue valueWithRange:NSMakeRange(columnRange.first, columnRange.second)];
+        }
+        if ([attributeName isEqualToString:NSAccessibilityColumnHeaderUIElementsAttribute]) {
+            AccessibilityObject::AccessibilityChildrenVector columnHeaders;
+            toAccessibilityTableCell(m_object)->columnHeaders(columnHeaders);
+            return convertToNSArray(columnHeaders);
+        }
+        if ([attributeName isEqualToString:NSAccessibilityRowHeaderUIElementsAttribute]) {
+            AccessibilityObject::AccessibilityChildrenVector rowHeaders;
+            toAccessibilityTableCell(m_object)->rowHeaders(rowHeaders);
+            return convertToNSArray(rowHeaders);
         }
     }
     
@@ -3614,7 +3624,7 @@ static RenderObject* rendererForView(NSView* view)
     if (m_object->isTree())
         return [super accessibilityIndexOfChild:child];
     
-    const AccessibilityObject::AccessibilityChildrenVector& children = m_object->children();
+    const auto& children = m_object->children();
     
     if (children.isEmpty())
         return [[self renderWidgetChildren] indexOfObject:child];
@@ -3629,6 +3639,8 @@ static RenderObject* rendererForView(NSView* view)
     return NSNotFound;
 }
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
 - (NSUInteger)accessibilityArrayAttributeCount:(NSString *)attribute
 {
     if (![self updateObjectBackingStore])
@@ -3640,7 +3652,7 @@ static RenderObject* rendererForView(NSView* view)
         if (m_object->isTree() || m_object->isTreeItem())
             return [[self accessibilityAttributeValue:NSAccessibilityChildrenAttribute] count];
         
-        const AccessibilityObject::AccessibilityChildrenVector& children = m_object->children();
+        const auto& children = m_object->children();
         if (children.isEmpty())
             return [[self renderWidgetChildren] count];
         
@@ -3649,6 +3661,7 @@ static RenderObject* rendererForView(NSView* view)
     
     return [super accessibilityArrayAttributeCount:attribute];
 }
+#pragma clang diagnostic pop
 
 - (NSArray *)accessibilityArrayAttributeValues:(NSString *)attribute index:(NSUInteger)index maxCount:(NSUInteger)maxCount
 {
@@ -3672,7 +3685,7 @@ static RenderObject* rendererForView(NSView* view)
             return [super accessibilityArrayAttributeValues:attribute index:index maxCount:maxCount];
         }
         
-        const AccessibilityObject::AccessibilityChildrenVector& children = m_object->children();
+        const auto& children = m_object->children();
         unsigned childCount = children.size();
         if (index >= childCount)
             return nil;

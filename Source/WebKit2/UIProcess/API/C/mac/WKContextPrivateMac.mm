@@ -44,16 +44,6 @@
 
 using namespace WebKit;
 
-bool WKContextGetProcessSuppressionEnabled(WKContextRef contextRef)
-{
-    return toImpl(contextRef)->processSuppressionEnabled();
-}
-
-void WKContextSetProcessSuppressionEnabled(WKContextRef contextRef, bool enabled)
-{
-    toImpl(contextRef)->setProcessSuppressionEnabled(enabled);
-}
-
 bool WKContextIsPlugInUpdateAvailable(WKContextRef contextRef, WKStringRef plugInBundleIdentifierRef)
 {
 #if PLATFORM(IOS)
@@ -104,6 +94,17 @@ void WKContextResetHSTSHosts(WKContextRef context)
     return toImpl(context)->resetHSTSHosts();
 }
 
+
+
+void WKContextRegisterSchemeForCustomProtocol(WKContextRef context, WKStringRef scheme)
+{
+    WebContext::registerGlobalURLSchemeAsHavingCustomProtocolHandlers(toWTFString(scheme));
+}
+
+void WKContextUnregisterSchemeForCustomProtocol(WKContextRef context, WKStringRef scheme)
+{
+    WebContext::unregisterGlobalURLSchemeAsHavingCustomProtocolHandlers(toWTFString(scheme));
+}
 
 /* DEPRECATED -  Please use constants from WKPluginInformation instead. */
 

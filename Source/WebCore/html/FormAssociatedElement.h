@@ -111,12 +111,15 @@ private:
 
     void resetFormAttributeTargetObserver();
 
-    virtual bool isFormAssociatedElement() const OVERRIDE FINAL { return true; }
+    virtual bool isFormAssociatedElement() const override final { return true; }
 
     std::unique_ptr<FormAttributeTargetObserver> m_formAttributeTargetObserver;
     HTMLFormElement* m_form;
     String m_customValidationMessage;
 };
+
+#define FORM_ASSOCIATED_ELEMENT_TYPE_CASTS(ToClassName, predicate) \
+    TYPE_CASTS_BASE(ToClassName, FormAssociatedElement, element, element->predicate, element.predicate)
 
 } // namespace
 

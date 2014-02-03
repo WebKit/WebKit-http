@@ -71,7 +71,7 @@ bool StructureTransitionTable::contains(StringImpl* rep, unsigned attributes) co
         Structure* transition = singleTransition();
         return transition && transition->m_nameInPrevious == rep && transition->m_attributesInPrevious == attributes;
     }
-    return map()->get(make_pair(rep, attributes));
+    return map()->get(std::make_pair(rep, attributes));
 }
 
 inline Structure* StructureTransitionTable::get(StringImpl* rep, unsigned attributes) const
@@ -80,7 +80,7 @@ inline Structure* StructureTransitionTable::get(StringImpl* rep, unsigned attrib
         Structure* transition = singleTransition();
         return (transition && transition->m_nameInPrevious == rep && transition->m_attributesInPrevious == attributes) ? transition : 0;
     }
-    return map()->get(make_pair(rep, attributes));
+    return map()->get(std::make_pair(rep, attributes));
 }
 
 inline void StructureTransitionTable::add(VM& vm, Structure* structure)
@@ -105,7 +105,7 @@ inline void StructureTransitionTable::add(VM& vm, Structure* structure)
     // Newer versions of the STL have an std::make_pair function that takes rvalue references.
     // When either of the parameters are bitfields, the C++ compiler will try to bind them as lvalues, which is invalid. To work around this, use unary "+" to make the parameter an rvalue.
     // See https://bugs.webkit.org/show_bug.cgi?id=59261 for more details
-    map()->set(make_pair(structure->m_nameInPrevious.get(), +structure->m_attributesInPrevious), structure);
+    map()->set(std::make_pair(structure->m_nameInPrevious.get(), +structure->m_attributesInPrevious), structure);
 }
 
 void Structure::dumpStatistics()
@@ -165,8 +165,8 @@ Structure::Structure(VM& vm, JSGlobalObject* globalObject, JSValue prototype, co
     , m_inlineCapacity(inlineCapacity)
     , m_dictionaryKind(NoneDictionaryKind)
     , m_isPinnedPropertyTable(false)
-    , m_hasGetterSetterProperties(false)
-    , m_hasReadOnlyOrGetterSetterPropertiesExcludingProto(false)
+    , m_hasGetterSetterProperties(classInfo->hasStaticSetterOrReadonlyProperties(vm))
+    , m_hasReadOnlyOrGetterSetterPropertiesExcludingProto(classInfo->hasStaticSetterOrReadonlyProperties(vm))
     , m_hasNonEnumerableProperties(false)
     , m_attributesInPrevious(0)
     , m_specificFunctionThrashCount(0)
@@ -177,6 +177,8 @@ Structure::Structure(VM& vm, JSGlobalObject* globalObject, JSValue prototype, co
     ASSERT(inlineCapacity <= JSFinalObject::maxInlineCapacity());
     ASSERT(static_cast<PropertyOffset>(inlineCapacity) < firstOutOfLineOffset);
     ASSERT(!typeInfo.structureHasRareData());
+    ASSERT(hasReadOnlyOrGetterSetterPropertiesExcludingProto() || !m_classInfo->hasStaticSetterOrReadonlyProperties(vm));
+    ASSERT(hasGetterSetterProperties() || !m_classInfo->hasStaticSetterOrReadonlyProperties(vm));
 }
 
 const ClassInfo Structure::s_info = { "Structure", 0, 0, 0, CREATE_METHOD_TABLE(Structure) };
@@ -192,8 +194,8 @@ Structure::Structure(VM& vm)
     , m_inlineCapacity(0)
     , m_dictionaryKind(NoneDictionaryKind)
     , m_isPinnedPropertyTable(false)
-    , m_hasGetterSetterProperties(false)
-    , m_hasReadOnlyOrGetterSetterPropertiesExcludingProto(false)
+    , m_hasGetterSetterProperties(m_classInfo->hasStaticSetterOrReadonlyProperties(vm))
+    , m_hasReadOnlyOrGetterSetterPropertiesExcludingProto(m_classInfo->hasStaticSetterOrReadonlyProperties(vm))
     , m_hasNonEnumerableProperties(false)
     , m_attributesInPrevious(0)
     , m_specificFunctionThrashCount(0)
@@ -201,6 +203,8 @@ Structure::Structure(VM& vm)
     , m_didTransition(false)
     , m_staticFunctionReified(false)
 {
+    ASSERT(hasReadOnlyOrGetterSetterPropertiesExcludingProto() || !m_classInfo->hasStaticSetterOrReadonlyProperties(vm));
+    ASSERT(hasGetterSetterProperties() || !m_classInfo->hasStaticSetterOrReadonlyProperties(vm));
 }
 
 Structure::Structure(VM& vm, const Structure* previous)
@@ -231,6 +235,8 @@ Structure::Structure(VM& vm, const Structure* previous)
     previous->notifyTransitionFromThisStructure();
     if (previous->m_globalObject)
         m_globalObject.set(vm, this, previous->m_globalObject.get());
+    ASSERT(hasReadOnlyOrGetterSetterPropertiesExcludingProto() || !m_classInfo->hasStaticSetterOrReadonlyProperties(vm));
+    ASSERT(hasGetterSetterProperties() || !m_classInfo->hasStaticSetterOrReadonlyProperties(vm));
 }
 
 void Structure::destroy(JSCell* cell)
@@ -273,7 +279,7 @@ void Structure::materializePropertyMap(VM& vm)
     findStructuresAndMapForMaterialization(structures, structure, table);
     
     if (table) {
-        table = table->copy(vm, 0, numberOfSlotsForLastOffset(m_offset, m_inlineCapacity));
+        table = table->copy(vm, structure, numberOfSlotsForLastOffset(m_offset, m_inlineCapacity));
         structure->m_lock.unlock();
     }
     
@@ -565,6 +571,8 @@ Structure* Structure::freezeTransition(VM& vm, Structure* structure)
             iter->attributes |= iter->attributes & Accessor ? DontDelete : (DontDelete | ReadOnly);
     }
 
+    ASSERT(transition->hasReadOnlyOrGetterSetterPropertiesExcludingProto() || !transition->classInfo()->hasStaticSetterOrReadonlyProperties(vm));
+    ASSERT(transition->hasGetterSetterProperties() || !transition->classInfo()->hasStaticSetterOrReadonlyProperties(vm));
     transition->checkOffsetConsistency();
     return transition;
 }
@@ -1040,8 +1048,13 @@ void Structure::dump(PrintStream& out) const
     if (table) {
         PropertyTable::iterator iter = table->begin();
         PropertyTable::iterator end = table->end();
-        for (; iter != end; ++iter)
+        for (; iter != end; ++iter) {
             out.print(comma, iter->key, ":", static_cast<int>(iter->offset));
+            if (iter->specificValue) {
+                DumpContext dummyContext;
+                out.print("=>", RawPointer(iter->specificValue.get()));
+            }
+        }
         
         structure->m_lock.unlock();
     }
@@ -1051,6 +1064,10 @@ void Structure::dump(PrintStream& out) const
         if (!structure->m_nameInPrevious)
             continue;
         out.print(comma, structure->m_nameInPrevious.get(), ":", static_cast<int>(structure->m_offset));
+        if (structure->m_specificValueInPrevious) {
+            DumpContext dummyContext;
+            out.print("=>", RawPointer(structure->m_specificValueInPrevious.get()));
+        }
     }
     
     out.print("}, ", IndexingTypeDump(indexingType()));
@@ -1155,5 +1172,16 @@ void Structure::checkConsistency()
 }
 
 #endif // DO_PROPERTYMAP_CONSTENCY_CHECK
+
+bool ClassInfo::hasStaticSetterOrReadonlyProperties(VM& vm) const
+{
+    for (const ClassInfo* ci = this; ci; ci = ci->parentClass) {
+        if (const HashTable* table = ci->propHashTable(vm)) {
+            if (table->hasSetterOrReadonlyProperties)
+                return true;
+        }
+    }
+    return false;
+}
 
 } // namespace JSC

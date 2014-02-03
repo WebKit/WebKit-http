@@ -243,22 +243,6 @@ void FrameLoaderClientEfl::assignIdentifierToInitialRequest(unsigned long identi
     evas_object_smart_callback_call(m_view, "resource,request,new", &request);
 }
 
-void FrameLoaderClientEfl::postProgressStartedNotification()
-{
-    ewk_frame_load_started(m_frame);
-    postProgressEstimateChangedNotification();
-}
-
-void FrameLoaderClientEfl::postProgressEstimateChangedNotification()
-{
-    ewk_frame_load_progress_changed(m_frame);
-}
-
-void FrameLoaderClientEfl::postProgressFinishedNotification()
-{
-    notImplemented();
-}
-
 void FrameLoaderClientEfl::frameLoaderDestroyed()
 {
     if (m_frame)
@@ -340,7 +324,7 @@ void FrameLoaderClientEfl::dispatchDecidePolicyForNavigationAction(const Navigat
     CString firstParty = resourceRequest.firstPartyForCookies().string().utf8();
     CString httpMethod = resourceRequest.httpMethod().utf8();
     Ewk_Frame_Resource_Request request = { url.data(), firstParty.data(), httpMethod.data(), 0, m_frame, false };
-    bool ret = ewk_view_navigation_policy_decision(m_view, &request, static_cast<Ewk_Navigation_Type>(action.type()));
+    bool ret = ewk_view_navigation_policy_decision(m_view, &request, action.type());
 
     PolicyAction policy;
     if (!ret)
@@ -474,16 +458,6 @@ void FrameLoaderClientEfl::dispatchDidClearWindowObjectInWorld(DOMWrapperWorld& 
 #endif
 }
 
-void FrameLoaderClientEfl::documentElementAvailable()
-{
-    return;
-}
-
-void FrameLoaderClientEfl::didPerformFirstNavigation() const
-{
-    ewk_frame_did_perform_first_navigation(m_frame);
-}
-
 void FrameLoaderClientEfl::registerForIconNotification(bool)
 {
     notImplemented();
@@ -562,11 +536,6 @@ bool FrameLoaderClientEfl::shouldGoToHistoryItem(HistoryItem* item) const
     // implementation would delegate the decision to a PolicyDelegate.
     // See mac implementation for example.
     return item;
-}
-
-bool FrameLoaderClientEfl::shouldStopLoadingForHistoryItem(HistoryItem*) const
-{
-    return true;
 }
 
 void FrameLoaderClientEfl::didDisplayInsecureContent()
@@ -1026,10 +995,8 @@ void FrameLoaderClientEfl::transitionToCommittedForNewPage()
 
     ewk_frame_view_create_for_view(m_frame, m_view);
 
-    if (isLoadingMainFrame()) {
-        ewk_view_frame_view_creation_notify(m_view);
+    if (isLoadingMainFrame())
         ewk_view_frame_main_cleared(m_view);
-    }
 }
 
 void FrameLoaderClientEfl::didSaveToPageCache()

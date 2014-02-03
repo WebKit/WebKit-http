@@ -94,10 +94,10 @@ class MediaControls : public HTMLDivElement {
     virtual void exitedFullscreen();
 
 #if !PLATFORM(IOS)
-    virtual bool willRespondToMouseMoveEvents() OVERRIDE { return true; }
+    virtual bool willRespondToMouseMoveEvents() override { return true; }
 #endif
 
-    virtual void hideFullscreenControlsTimerFired(Timer<MediaControls>*);
+    virtual void hideFullscreenControlsTimerFired(Timer<MediaControls>&);
     virtual void startHideFullscreenControlsTimer();
     virtual void stopHideFullscreenControlsTimer();
 
@@ -112,7 +112,7 @@ class MediaControls : public HTMLDivElement {
 protected:
     explicit MediaControls(Document&);
 
-    virtual void defaultEventHandler(Event*);
+    virtual void defaultEventHandler(Event*) override;
 
     virtual bool containsRelatedTarget(Event*);
 
@@ -142,9 +142,9 @@ protected:
     bool m_isMouseOverControls;
 
 private:
-    virtual bool isMediaControls() const { return true; }
+    virtual bool isMediaControls() const override { return true; }
 
-    virtual const AtomicString& shadowPseudoId() const;
+    virtual const AtomicString& shadowPseudoId() const override;
 };
 
 inline MediaControls* toMediaControls(Node* node)

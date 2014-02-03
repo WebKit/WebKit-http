@@ -62,14 +62,14 @@ protected:
     RefPtr<EventTarget> m_target;
 };
 
-class MouseOrFocusEventContext FINAL : public EventContext {
+class MouseOrFocusEventContext final : public EventContext {
 public:
     MouseOrFocusEventContext(PassRefPtr<Node>, PassRefPtr<EventTarget> currentTarget, PassRefPtr<EventTarget> target);
     virtual ~MouseOrFocusEventContext();
     EventTarget* relatedTarget() const { return m_relatedTarget.get(); }
     void setRelatedTarget(PassRefPtr<EventTarget>);
-    virtual void handleLocalEvents(Event&) const OVERRIDE;
-    virtual bool isMouseOrFocusEventContext() const OVERRIDE;
+    virtual void handleLocalEvents(Event&) const override;
+    virtual bool isMouseOrFocusEventContext() const override;
 
 private:
     RefPtr<EventTarget> m_relatedTarget;
@@ -83,13 +83,13 @@ inline MouseOrFocusEventContext& toMouseOrFocusEventContext(EventContext& eventC
 
 
 #if ENABLE(TOUCH_EVENTS) && !PLATFORM(IOS)
-class TouchEventContext FINAL : public EventContext {
+class TouchEventContext final : public EventContext {
 public:
     TouchEventContext(PassRefPtr<Node>, PassRefPtr<EventTarget> currentTarget, PassRefPtr<EventTarget> target);
     virtual ~TouchEventContext();
 
-    virtual void handleLocalEvents(Event&) const OVERRIDE;
-    virtual bool isTouchEventContext() const OVERRIDE;
+    virtual void handleLocalEvents(Event&) const override;
+    virtual bool isTouchEventContext() const override;
 
     enum TouchListType { Touches, TargetTouches, ChangedTouches, NotTouchList };
     TouchList* touchList(TouchListType type)

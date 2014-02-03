@@ -37,7 +37,7 @@
 
 namespace WebCore {
 
-class StaticNodeList FINAL : public NodeList {
+class StaticNodeList final : public NodeList {
 public:
     static PassRefPtr<StaticNodeList> adopt(Vector<Ref<Node>>& nodes)
     {
@@ -51,9 +51,9 @@ public:
         return adoptRef(new StaticNodeList);
     }
 
-    virtual unsigned length() const OVERRIDE;
-    virtual Node* item(unsigned index) const OVERRIDE;
-    virtual Node* namedItem(const AtomicString&) const OVERRIDE;
+    virtual unsigned length() const override;
+    virtual Node* item(unsigned index) const override;
+    virtual Node* namedItem(const AtomicString&) const override;
 
 private:
     StaticNodeList() { }
@@ -61,7 +61,7 @@ private:
     Vector<Ref<Node>> m_nodes;
 };
 
-class StaticElementList FINAL : public NodeList {
+class StaticElementList final : public NodeList {
 public:
     static PassRefPtr<StaticElementList> adopt(Vector<Ref<Element>>& elements)
     {
@@ -75,9 +75,9 @@ public:
         return adoptRef(new StaticElementList);
     }
 
-    virtual unsigned length() const OVERRIDE;
-    virtual Node* item(unsigned index) const OVERRIDE;
-    virtual Node* namedItem(const AtomicString&) const OVERRIDE;
+    virtual unsigned length() const override;
+    virtual Node* item(unsigned index) const override;
+    virtual Node* namedItem(const AtomicString&) const override;
 
 private:
     StaticElementList()

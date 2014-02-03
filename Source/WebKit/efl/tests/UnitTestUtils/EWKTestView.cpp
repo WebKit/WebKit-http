@@ -29,7 +29,7 @@ EWKTestView::EWKTestView()
 {
 }
 
-bool EWKTestView::init(EwkViewType testViewType, int width, int height)
+bool EWKTestView::init(int width, int height)
 {
     m_webView = nullptr;
 
@@ -42,16 +42,7 @@ bool EWKTestView::init(EwkViewType testViewType, int width, int height)
     if (!evas)
         return false;
 
-    switch (testViewType) {
-    case SingleView:
-        m_webView = adoptRef(ewk_view_single_add(evas));
-        break;
-
-    case TiledView:
-        m_webView = adoptRef(ewk_view_tiled_add(evas));
-        break;
-    }
-
+    m_webView = adoptRef(ewk_view_add(evas));
     if (!m_webView)
         return false;
 

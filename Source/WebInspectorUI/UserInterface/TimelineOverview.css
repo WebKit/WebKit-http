@@ -23,55 +23,59 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-.timeline-overview > .timeline {
-    height: 26px;
-}
-
-.timeline-overview > .timeline:not(:first-child) {
-    border-top: 1px solid rgb(235, 235, 235);
-}
-
-.timeline-overview > .timeline > .bar-container {
-    position: relative;
-    height: 100%;
-    margin-left: 3px;
-    margin-right: 3px;
-}
-
-.timeline-overview > .timeline .bar {
+.timeline-overview > .scroll-container {
     position: absolute;
-    top: 6px;
-    margin-left: -2px;
-    margin-right: -2px;
-    border-width: 4px 4px 5px;
-    border-image-slice: 4 4 5 4 fill;
-    height: 13px;
-    min-width: 5px;
-    opacity: 0.8;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 16px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    opacity: 0;
 }
 
-.timeline-overview > .timeline .bar.waiting {
-    opacity: 0.4;
+.timeline-overview:hover > .scroll-container {
+    opacity: 0.75;
 }
 
-.timeline-overview > .timeline.timeline-record-type-network .bar {
-    border-image-source: -webkit-image-set(url(Images/TimelineBarBlue.png) 1x, url(Images/TimelineBarBlue@2x.png) 2x);
+.timeline-overview > .scroll-container:hover {
+    opacity: 1;
 }
 
-.timeline-overview > .timeline.timeline-record-type-layout .bar {
-    border-image-source: -webkit-image-set(url(Images/TimelineBarPurple.png) 1x, url(Images/TimelineBarPurple@2x.png) 2x);
+.timeline-overview > .timeline-ruler {
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
 }
 
-.timeline-overview > .timeline.timeline-record-type-script .bar {
-    border-image-source: -webkit-image-set(url(Images/TimelineBarOrange.png) 1x, url(Images/TimelineBarOrange@2x.png) 2x);
+.timeline-overview > .graphs-container {
+    position: absolute;
+    top: 22px;
+    left: 0;
+    bottom: 0;
+    right: 0;
 }
 
-.timeline-overview .timeline-decorations > .event-markers {
-    height: 78px;
-    bottom: 22px;
-    top: auto;
+.timeline-overview > .graphs-container > .timeline-overview-graph {
+    height: 36px;
 }
 
-.timeline-overview .timeline-decorations > .event-markers > .event-marker-tooltip {
-    z-index: 300;
+.timeline-overview > .graphs-container > .timeline-overview-graph:nth-child(even) {
+    background-color: rgb(247, 247, 247);
+    background-clip: padding-box;
+}
+
+.timeline-overview > .graphs-container > .timeline-overview-graph:not(:first-child) {
+    border-top: 1px solid rgba(0, 0, 0, 0.09);
+}
+
+.timeline-overview > .scroll-container > .scroll-width-sizer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 1px;
+    visibility: hidden;
+    pointer-events: none;
 }

@@ -40,6 +40,7 @@
 #include "RenderRegion.h"
 #include "SVGElement.h"
 #include "SelectorCheckerFastPath.h"
+#include "SelectorCompiler.h"
 #include "StyleProperties.h"
 #include "StyledElement.h"
 
@@ -89,7 +90,7 @@ const Vector<RefPtr<StyleRuleBase>>& ElementRuleCollector::matchedRuleList() con
 inline void ElementRuleCollector::addMatchedRule(const RuleData* rule)
 {
     if (!m_matchedRules)
-        m_matchedRules = adoptPtr(new Vector<const RuleData*, 32>);
+        m_matchedRules = std::make_unique<Vector<const RuleData*, 32>>();
     m_matchedRules->append(rule);
 }
 
@@ -292,7 +293,8 @@ inline bool ElementRuleCollector::ruleMatches(const RuleData& ruleData, PseudoId
 {
     const StyleResolver::State& state = m_state;
 
-    if (ruleData.hasFastCheckableSelector()) {
+    bool fastCheckableSelector = ruleData.hasFastCheckableSelector();
+    if (fastCheckableSelector) {
         // We know this selector does not include any pseudo elements.
         if (m_pseudoStyleRequest.pseudoId != NOPSEUDO)
             return false;
@@ -302,6 +304,38 @@ inline bool ElementRuleCollector::ruleMatches(const RuleData& ruleData, PseudoId
             if (!ruleData.hasMultipartSelector())
                 return true;
         }
+    }
+
+#if ENABLE(CSS_SELECTOR_JIT)
+    void* compiledSelectorChecker = ruleData.compiledSelectorCodeRef().code().executableAddress();
+    if (!compiledSelectorChecker && ruleData.compilationStatus() == SelectorCompilationStatus::NotCompiled) {
+        JSC::VM* vm = document().scriptExecutionContext()->vm();
+        SelectorCompilationStatus compilationStatus;
+        JSC::MacroAssemblerCodeRef compiledSelectorCodeRef;
+        compilationStatus = SelectorCompiler::compileSelector(ruleData.selector(), vm, compiledSelectorCodeRef);
+
+        ruleData.setCompiledSelector(compilationStatus, compiledSelectorCodeRef);
+        compiledSelectorChecker = ruleData.compiledSelectorCodeRef().code().executableAddress();
+    }
+    if (compiledSelectorChecker) {
+        if (m_pseudoStyleRequest.pseudoId != NOPSEUDO)
+            return false;
+
+        if (ruleData.compilationStatus() == SelectorCompilationStatus::SimpleSelectorChecker) {
+            SelectorCompiler::SimpleSelectorChecker selectorChecker = SelectorCompiler::simpleSelectorCheckerFunction(compiledSelectorChecker, ruleData.compilationStatus());
+            return selectorChecker(state.element());
+        }
+        ASSERT(ruleData.compilationStatus() == SelectorCompilationStatus::SelectorCheckerWithCheckingContext);
+
+        SelectorCompiler::SelectorCheckerWithCheckingContext selectorChecker = SelectorCompiler::selectorCheckerFunctionWithCheckingContext(compiledSelectorChecker, ruleData.compilationStatus());
+        SelectorCompiler::CheckingContext context;
+        context.elementStyle = state.style();
+        context.resolvingMode = m_mode;
+        return selectorChecker(state.element(), &context);
+    }
+#endif // ENABLE(CSS_SELECTOR_JIT)
+
+    if (fastCheckableSelector) {
         if (ruleData.selector()->m_match == CSSSelector::Tag && !SelectorChecker::tagMatches(state.element(), ruleData.selector()->tagQName()))
             return false;
         SelectorCheckerFastPath selectorCheckerFastPath(ruleData.selector(), state.element());
@@ -327,16 +361,6 @@ inline bool ElementRuleCollector::ruleMatches(const RuleData& ruleData, PseudoId
 
 void ElementRuleCollector::collectMatchingRulesForList(const Vector<RuleData>* rules, const MatchRequest& matchRequest, StyleResolver::RuleRange& ruleRange)
 {
-    if (UNLIKELY(InspectorInstrumentation::hasFrontends())) {
-        doCollectMatchingRulesForList<true>(rules, matchRequest, ruleRange);
-        return;
-    }
-    doCollectMatchingRulesForList<false>(rules, matchRequest, ruleRange);
-}
-
-template<bool hasInspectorFrontends>
-void ElementRuleCollector::doCollectMatchingRulesForList(const Vector<RuleData>* rules, const MatchRequest& matchRequest, StyleResolver::RuleRange& ruleRange)
-{
     if (!rules)
         return;
 
@@ -348,9 +372,6 @@ void ElementRuleCollector::doCollectMatchingRulesForList(const Vector<RuleData>*
             continue;
 
         StyleRule* rule = ruleData.rule();
-        InspectorInstrumentationCookie cookie;
-        if (hasInspectorFrontends)
-            cookie = InspectorInstrumentation::willMatchRule(&document(), rule, m_inspectorCSSOMWrappers, document().styleSheetCollection());
         PseudoId dynamicPseudo = NOPSEUDO;
         if (ruleMatches(ruleData, dynamicPseudo)) {
             // For SharingRules testing, any match is good enough, we don't care what is matched.
@@ -361,25 +382,16 @@ void ElementRuleCollector::doCollectMatchingRulesForList(const Vector<RuleData>*
 
             // If the rule has no properties to apply, then ignore it in the non-debug mode.
             const StyleProperties& properties = rule->properties();
-            if (properties.isEmpty() && !matchRequest.includeEmptyRules) {
-                if (hasInspectorFrontends)
-                    InspectorInstrumentation::didMatchRule(cookie, false);
+            if (properties.isEmpty() && !matchRequest.includeEmptyRules)
                 continue;
-            }
             // FIXME: Exposing the non-standard getMatchedCSSRules API to web is the only reason this is needed.
-            if (m_sameOriginOnly && !ruleData.hasDocumentSecurityOrigin()) {
-                if (hasInspectorFrontends)
-                    InspectorInstrumentation::didMatchRule(cookie, false);
+            if (m_sameOriginOnly && !ruleData.hasDocumentSecurityOrigin())
                 continue;
-            }
             // If we're matching normal rules, set a pseudo bit if
             // we really just matched a pseudo-element.
             if (dynamicPseudo != NOPSEUDO && m_pseudoStyleRequest.pseudoId == NOPSEUDO) {
-                if (m_mode == SelectorChecker::CollectingRules) {
-                    if (hasInspectorFrontends)
-                        InspectorInstrumentation::didMatchRule(cookie, false);
+                if (m_mode == SelectorChecker::CollectingRules)
                     continue;
-                }
                 if (dynamicPseudo < FIRST_INTERNAL_PSEUDOID)
                     state.style()->setHasPseudoStyle(dynamicPseudo);
             } else {
@@ -390,13 +402,9 @@ void ElementRuleCollector::doCollectMatchingRulesForList(const Vector<RuleData>*
 
                 // Add this rule to our list of matched rules.
                 addMatchedRule(&ruleData);
-                if (hasInspectorFrontends)
-                    InspectorInstrumentation::didMatchRule(cookie, true);
                 continue;
             }
         }
-        if (hasInspectorFrontends)
-            InspectorInstrumentation::didMatchRule(cookie, false);
     }
 }
 

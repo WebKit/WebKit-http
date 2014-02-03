@@ -27,8 +27,6 @@
 #import "DumpRenderTree.h"
 #import "AccessibilityController.h"
 
-#if PLATFORM(IOS)
-
 #import "AccessibilityCommonMac.h"
 #import "AccessibilityUIElement.h"
 #import <Foundation/Foundation.h>
@@ -121,8 +119,16 @@ bool AccessibilityController::addNotificationListener(JSObjectRef functionCallba
     return false;
 }
 
+void AccessibilityController::platformResetToConsistentState()
+{
+}
+
 void AccessibilityController::removeNotificationListener()
 {
 }
 
-#endif // PLATFORM(IOS)
+JSRetainPtr<JSStringRef> AccessibilityController::platformName() const
+{
+    JSRetainPtr<JSStringRef> platformName(Adopt, JSStringCreateWithUTF8CString("ios"));
+    return platformName;
+}

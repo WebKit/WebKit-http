@@ -26,14 +26,15 @@
 #include "config.h"
 #include "ScrollingTreeNode.h"
 
-#if ENABLE(THREADED_SCROLLING)
+#if ENABLE(ASYNC_SCROLLING)
 
 #include "ScrollingStateTree.h"
 
 namespace WebCore {
 
-ScrollingTreeNode::ScrollingTreeNode(ScrollingTree& scrollingTree, ScrollingNodeID nodeID)
+ScrollingTreeNode::ScrollingTreeNode(ScrollingTree& scrollingTree, ScrollingNodeType nodeType, ScrollingNodeID nodeID)
     : m_scrollingTree(scrollingTree)
+    , m_nodeType(nodeType)
     , m_nodeID(nodeID)
     , m_parent(0)
 {
@@ -74,4 +75,4 @@ void ScrollingTreeNode::removeChild(ScrollingTreeNode* node)
 
 } // namespace WebCore
 
-#endif // ENABLE(THREADED_SCROLLING)
+#endif // ENABLE(ASYNC_SCROLLING)

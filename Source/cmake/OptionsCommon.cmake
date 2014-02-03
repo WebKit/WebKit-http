@@ -1,8 +1,5 @@
-# Nix doesn't use cmakeconfig.h
-if (NOT PORT STREQUAL "Nix")
-    add_definitions(-DBUILDING_WITH_CMAKE=1)
-    add_definitions(-DHAVE_CONFIG_H=1)
-endif ()
+add_definitions(-DBUILDING_WITH_CMAKE=1)
+add_definitions(-DHAVE_CONFIG_H=1)
 
 if (WTF_OS_UNIX)
     add_definitions(-DXP_UNIX)
@@ -16,9 +13,6 @@ if (MSVC)
     # FIXME: Some codegenerators don't support paths with spaces. So use the executable name only.
     get_filename_component(CODE_GENERATOR_PREPROCESSOR_EXECUTABLE ${CMAKE_CXX_COMPILER} NAME)
     set(CODE_GENERATOR_PREPROCESSOR "${CODE_GENERATOR_PREPROCESSOR_EXECUTABLE} /nologo /EP")
-    set(CODE_GENERATOR_PREPROCESSOR_WITH_LINEMARKERS "${CODE_GENERATOR_PREPROCESSOR}")
-elseif (CMAKE_SYSTEM_NAME MATCHES QNX)
-    set(CODE_GENERATOR_PREPROCESSOR "${CMAKE_CXX_COMPILER} -E -Wp,-P -x c++")
     set(CODE_GENERATOR_PREPROCESSOR_WITH_LINEMARKERS "${CODE_GENERATOR_PREPROCESSOR}")
 else ()
     set(CODE_GENERATOR_PREPROCESSOR "${CMAKE_CXX_COMPILER} -E -P -x c++")
@@ -42,12 +36,15 @@ if (UNIX AND NOT APPLE)
     set(CMAKE_SHARED_LINKER_FLAGS "-Wl,--no-undefined ${CMAKE_SHARED_LINKER_FLAGS}")
 endif ()
 
-IF(HAIKU)
-    set(LIB_SUFFIX "/${CMAKE_HAIKU_SECONDARY_ARCH}" CACHE STRING
-        "Define suffix of directory name (x86/x86_gcc2)")
-ELSE()
-    set(LIB_SUFFIX "" CACHE STRING "Define suffix of directory name (32/64)")
-ENDIF()
-
-set(LIB_INSTALL_DIR "lib${LIB_SUFFIX}" CACHE PATH "Where to install libraries (lib${LIB_SUFFIX})")
-set(EXEC_INSTALL_DIR "bin" CACHE PATH "Where to install executables")
+# GTK uses the GNU installation directories.
+if (NOT PORT STREQUAL "GTK")
+    IF(HAIKU)
+        set(LIB_SUFFIX "/${CMAKE_HAIKU_SECONDARY_ARCH}" CACHE STRING
+            "Define suffix of directory name (x86/x86_gcc2)")
+    ELSE()
+        set(LIB_SUFFIX "" CACHE STRING "Define suffix of directory name (32/64)")
+    ENDIF()
+    set(LIB_INSTALL_DIR "lib${LIB_SUFFIX}" CACHE PATH "Where to install libraries (lib${LIB_SUFFIX})")
+    set(EXEC_INSTALL_DIR "bin" CACHE PATH "Where to install executables")
+    set(LIBEXEC_INSTALL_DIR "bin" CACHE PATH "Where to install executables executed by the library")
+endif ()

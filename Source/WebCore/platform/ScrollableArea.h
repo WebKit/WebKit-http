@@ -33,12 +33,11 @@ namespace WebCore {
 
 class FloatPoint;
 class GraphicsContext;
+class PlatformTouchEvent;
 class PlatformWheelEvent;
 class ScrollAnimator;
-#if USE(ACCELERATED_COMPOSITING)
 class GraphicsLayer;
 class TiledBacking;
-#endif
 
 class ScrollableArea {
 public:
@@ -56,6 +55,19 @@ public:
     virtual bool requestScrollPositionUpdate(const IntPoint&) { return false; }
 
     bool handleWheelEvent(const PlatformWheelEvent&);
+
+#if ENABLE(TOUCH_EVENTS)
+    virtual bool isTouchScrollable() const { return false; }
+    virtual bool handleTouchEvent(const PlatformTouchEvent&);
+#endif
+
+#if PLATFORM(IOS)
+    virtual bool isOverflowScroll() const { return false; }
+    virtual void didStartScroll() { }
+    virtual void didEndScroll() { }
+    virtual void didUpdateScroll() { }
+    virtual void setIsUserScroll(bool) { }
+#endif
 
     // Functions for controlling if you can scroll past the end of the document.
     bool constrainsScrollingToContentEdge() const { return m_constrainsScrollingToContentEdge; }
@@ -139,9 +151,23 @@ public:
     virtual IntPoint maximumScrollPosition() const;
 
     enum VisibleContentRectIncludesScrollbars { ExcludeScrollbars, IncludeScrollbars };
-    virtual IntRect visibleContentRect(VisibleContentRectIncludesScrollbars = ExcludeScrollbars) const;
-    virtual int visibleHeight() const = 0;
-    virtual int visibleWidth() const = 0;
+    enum VisibleContentRectBehavior {
+        ContentsVisibleRect,
+#if PLATFORM(IOS)
+        LegacyIOSDocumentViewRect,
+        LegacyIOSDocumentVisibleRect = LegacyIOSDocumentViewRect
+#else
+        LegacyIOSDocumentVisibleRect = ContentsVisibleRect
+#endif
+    };
+
+    IntRect visibleContentRect(VisibleContentRectBehavior = ContentsVisibleRect) const;
+    IntRect visibleContentRectIncludingScrollbars(VisibleContentRectBehavior = ContentsVisibleRect) const;
+
+    int visibleWidth() const { return visibleSize().width(); }
+    int visibleHeight() const { return visibleSize().height(); }
+    virtual IntSize visibleSize() const = 0;
+
     virtual IntSize contentsSize() const = 0;
     virtual IntSize overhangAmount() const { return IntSize(); }
     virtual IntPoint lastKnownMousePosition() const { return IntPoint(); }
@@ -182,8 +208,18 @@ public:
     virtual bool scheduleAnimation() { return false; }
     void serviceScrollAnimations();
 
-#if USE(ACCELERATED_COMPOSITING)
-    virtual TiledBacking* tiledBacking() { return 0; }
+#if PLATFORM(IOS)
+    bool isHorizontalScrollerPinnedToMinimumPosition() const { return !horizontalScrollbar() || scrollPosition(horizontalScrollbar()) <= minimumScrollPosition().x(); }
+    bool isHorizontalScrollerPinnedToMaximumPosition() const { return !horizontalScrollbar() || scrollPosition(horizontalScrollbar()) >= maximumScrollPosition().x(); }
+    bool isVerticalScrollerPinnedToMinimumPosition() const { return !verticalScrollbar() || scrollPosition(verticalScrollbar()) <= minimumScrollPosition().y(); }
+    bool isVerticalScrollerPinnedToMaximumPosition() const { return !verticalScrollbar() || scrollPosition(verticalScrollbar()) >= maximumScrollPosition().y(); } 
+
+    bool isPinnedInBothDirections(const IntSize&) const; 
+    bool isPinnedHorizontallyInDirection(int horizontalScrollDelta) const; 
+    bool isPinnedVerticallyInDirection(int verticalScrollDelta) const;
+#endif
+
+    virtual TiledBacking* tiledBacking() const { return 0; }
     virtual bool usesCompositedScrolling() const { return false; }
 
     virtual GraphicsLayer* layerForHorizontalScrollbar() const { return 0; }
@@ -191,7 +227,6 @@ public:
 
     void verticalScrollbarLayerDidChange();
     void horizontalScrollbarLayerDidChange();
-#endif
 
 protected:
     ScrollableArea();
@@ -203,19 +238,21 @@ protected:
     virtual void invalidateScrollbarRect(Scrollbar*, const IntRect&) = 0;
     virtual void invalidateScrollCornerRect(const IntRect&) = 0;
 
-#if USE(ACCELERATED_COMPOSITING)
     friend class ScrollingCoordinator;
     virtual GraphicsLayer* layerForScrolling() const { return 0; }
     virtual GraphicsLayer* layerForScrollCorner() const { return 0; }
 #if ENABLE(RUBBER_BANDING)
     virtual GraphicsLayer* layerForOverhangAreas() const { return 0; }
 #endif
-#endif
+
     bool hasLayerForHorizontalScrollbar() const;
     bool hasLayerForVerticalScrollbar() const;
     bool hasLayerForScrollCorner() const;
 
+    virtual void sendWillRevealEdgeEventsIfNeeded(const IntPoint&, const IntPoint&) { }
+
 private:
+    virtual IntRect visibleContentRectInternal(VisibleContentRectIncludesScrollbars, VisibleContentRectBehavior) const;
     void scrollPositionChanged(const IntPoint&);
     
     // NOTE: Only called from the ScrollAnimator.
@@ -227,16 +264,6 @@ private:
     virtual void setScrollOffset(const IntPoint&) = 0;
 
     mutable OwnPtr<ScrollAnimator> m_scrollAnimator;
-    unsigned m_constrainsScrollingToContentEdge : 1;
-
-    unsigned m_inLiveResize : 1;
-
-    unsigned m_verticalScrollElasticity : 2; // ScrollElasticity
-    unsigned m_horizontalScrollElasticity : 2; // ScrollElasticity
-
-    unsigned m_scrollbarOverlayStyle : 2; // ScrollbarOverlayStyle
-
-    unsigned m_scrollOriginChanged : 1;
 
     // There are 8 possible combinations of writing mode and direction. Scroll origin will be non-zero in the x or y axis
     // if there is any reversed direction or writing-mode. The combinations are:
@@ -250,6 +277,17 @@ private:
     // vertical-rl / ltr            YES                     NO
     // vertical-rl / rtl            YES                     YES
     IntPoint m_scrollOrigin;
+
+    unsigned m_constrainsScrollingToContentEdge : 1;
+
+    unsigned m_inLiveResize : 1;
+
+    unsigned m_verticalScrollElasticity : 2; // ScrollElasticity
+    unsigned m_horizontalScrollElasticity : 2; // ScrollElasticity
+
+    unsigned m_scrollbarOverlayStyle : 2; // ScrollbarOverlayStyle
+
+    unsigned m_scrollOriginChanged : 1;
 };
 
 } // namespace WebCore

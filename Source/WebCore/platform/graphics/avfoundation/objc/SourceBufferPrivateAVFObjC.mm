@@ -43,7 +43,8 @@
 #import "VideoTrackPrivateMediaSourceAVFObjC.h"
 #import "InbandTextTrackPrivateAVFObjC.h"
 #import <AVFoundation/AVAssetTrack.h>
-#import <AVFoundation/AVSampleBufferDisplayLayer.h>
+#import <CoreMedia/CMSampleBuffer.h>
+#import <QuartzCore/CALayer.h>
 #import <objc/runtime.h>
 #import <wtf/text/AtomicString.h>
 #import <wtf/text/CString.h>
@@ -117,9 +118,21 @@ SOFT_LINK(CoreMedia, CMSetAttachment, void, (CMAttachmentBearerRef target, CFStr
 @end
 
 #pragma mark -
+#pragma mark AVSampleBufferDisplayLayer
+
+@interface AVSampleBufferDisplayLayer : CALayer
+- (NSInteger)status;
+- (NSError*)error;
+- (void)enqueueSampleBuffer:(CMSampleBufferRef)sampleBuffer;
+- (void)flush;
+- (BOOL)isReadyForMoreMediaData;
+- (void)requestMediaDataWhenReadyOnQueue:(dispatch_queue_t)queue usingBlock:(void (^)(void))block;
+- (void)stopRequestingMediaData;
+@end
+
+#pragma mark -
 #pragma mark AVSampleBufferAudioRenderer
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED <= 1090
 @interface AVSampleBufferAudioRenderer : NSObject
 - (NSInteger)status;
 - (NSError*)error;
@@ -129,7 +142,6 @@ SOFT_LINK(CoreMedia, CMSetAttachment, void, (CMAttachmentBearerRef target, CFStr
 - (void)requestMediaDataWhenReadyOnQueue:(dispatch_queue_t)queue usingBlock:(void (^)(void))block;
 - (void)stopRequestingMediaData;
 @end
-#endif
 
 #pragma mark -
 #pragma mark WebAVStreamDataParserListener
@@ -170,6 +182,16 @@ SOFT_LINK(CoreMedia, CMSetAttachment, void, (CMAttachmentBearerRef target, CFStr
     _parent->didParseStreamDataAsAsset(asset);
 }
 
+- (void)streamDataParser:(AVStreamDataParser *)streamDataParser didParseStreamDataAsAsset:(AVAsset *)asset withDiscontinuity:(BOOL)discontinuity
+{
+    UNUSED_PARAM(discontinuity);
+#if ASSERT_DISABLED
+    UNUSED_PARAM(streamDataParser);
+#endif
+    ASSERT(streamDataParser == _parser);
+    _parent->didParseStreamDataAsAsset(asset);
+}
+
 - (void)streamDataParser:(AVStreamDataParser *)streamDataParser didFailToParseStreamDataWithError:(NSError *)error
 {
 #if ASSERT_DISABLED
@@ -203,18 +225,18 @@ namespace WebCore {
 #pragma mark -
 #pragma mark MediaSampleAVFObjC
 
-class MediaSampleAVFObjC FINAL : public MediaSample {
+class MediaSampleAVFObjC final : public MediaSample {
 public:
     static RefPtr<MediaSampleAVFObjC> create(CMSampleBufferRef sample, int trackID) { return adoptRef(new MediaSampleAVFObjC(sample, trackID)); }
     virtual ~MediaSampleAVFObjC() { }
 
-    virtual MediaTime presentationTime() const OVERRIDE { return toMediaTime(CMSampleBufferGetPresentationTimeStamp(m_sample.get())); }
-    virtual MediaTime decodeTime() const OVERRIDE { return toMediaTime(CMSampleBufferGetDecodeTimeStamp(m_sample.get())); }
-    virtual MediaTime duration() const OVERRIDE { return toMediaTime(CMSampleBufferGetDuration(m_sample.get())); }
-    virtual AtomicString trackID() const OVERRIDE { return m_id; }
+    virtual MediaTime presentationTime() const override { return toMediaTime(CMSampleBufferGetPresentationTimeStamp(m_sample.get())); }
+    virtual MediaTime decodeTime() const override { return toMediaTime(CMSampleBufferGetDecodeTimeStamp(m_sample.get())); }
+    virtual MediaTime duration() const override { return toMediaTime(CMSampleBufferGetDuration(m_sample.get())); }
+    virtual AtomicString trackID() const override { return m_id; }
 
-    virtual SampleFlags flags() const OVERRIDE;
-    virtual PlatformSample platformSample() OVERRIDE;
+    virtual SampleFlags flags() const override;
+    virtual PlatformSample platformSample() override;
 
 protected:
     MediaSampleAVFObjC(CMSampleBufferRef sample, int trackID)
@@ -260,15 +282,15 @@ MediaSample::SampleFlags MediaSampleAVFObjC::flags() const
 #pragma mark -
 #pragma mark MediaDescriptionAVFObjC
 
-class MediaDescriptionAVFObjC FINAL : public MediaDescription {
+class MediaDescriptionAVFObjC final : public MediaDescription {
 public:
     static RefPtr<MediaDescriptionAVFObjC> create(AVAssetTrack* track) { return adoptRef(new MediaDescriptionAVFObjC(track)); }
     virtual ~MediaDescriptionAVFObjC() { }
 
-    virtual AtomicString codec() const OVERRIDE { return m_codec; }
-    virtual bool isVideo() const OVERRIDE { return m_isVideo; }
-    virtual bool isAudio() const OVERRIDE { return m_isAudio; }
-    virtual bool isText() const OVERRIDE { return m_isText; }
+    virtual AtomicString codec() const override { return m_codec; }
+    virtual bool isVideo() const override { return m_isVideo; }
+    virtual bool isAudio() const override { return m_isAudio; }
+    virtual bool isText() const override { return m_isText; }
     
 protected:
     MediaDescriptionAVFObjC(AVAssetTrack* track)
@@ -319,24 +341,34 @@ void SourceBufferPrivateAVFObjC::didParseStreamDataAsAsset(AVAsset* asset)
 
     m_asset = asset;
 
+    m_videoTracks.clear();
+    m_audioTracks.clear();
+
     SourceBufferPrivateClient::InitializationSegment segment;
     segment.duration = toMediaTime([m_asset duration]);
 
     for (AVAssetTrack* track in [m_asset tracks]) {
         if ([track hasMediaCharacteristic:AVMediaCharacteristicVisual]) {
             SourceBufferPrivateClient::InitializationSegment::VideoTrackInformation info;
-            info.track = VideoTrackPrivateMediaSourceAVFObjC::create(track, this);
+            RefPtr<VideoTrackPrivateMediaSourceAVFObjC> videoTrack = VideoTrackPrivateMediaSourceAVFObjC::create(track, this);
+            info.track = videoTrack;
+            m_videoTracks.append(videoTrack);
             info.description = MediaDescriptionAVFObjC::create(track);
             segment.videoTracks.append(info);
         } else if ([track hasMediaCharacteristic:AVMediaCharacteristicAudible]) {
             SourceBufferPrivateClient::InitializationSegment::AudioTrackInformation info;
-            info.track = AudioTrackPrivateMediaSourceAVFObjC::create(track, this);
+            RefPtr<AudioTrackPrivateMediaSourceAVFObjC> audioTrack = AudioTrackPrivateMediaSourceAVFObjC::create(track, this);
+            info.track = audioTrack;
+            m_audioTracks.append(audioTrack);
             info.description = MediaDescriptionAVFObjC::create(track);
             segment.audioTracks.append(info);
         }
 
         // FIXME(125161): Add TextTrack support
     }
+
+    if (!m_videoTracks.isEmpty())
+        m_mediaSource->player()->sizeChanged();
 
     if (m_client)
         m_client->sourceBufferPrivateDidReceiveInitializationSegment(this, segment);
@@ -631,6 +663,16 @@ void SourceBufferPrivateAVFObjC::seekToTime(MediaTime time)
 {
     if (m_client)
         m_client->sourceBufferPrivateSeekToTime(this, time);
+}
+
+IntSize SourceBufferPrivateAVFObjC::naturalSize()
+{
+    for (auto videoTrack : m_videoTracks) {
+        if (videoTrack->selected())
+            return videoTrack->naturalSize();
+    }
+
+    return IntSize();
 }
 
 void SourceBufferPrivateAVFObjC::didBecomeReadyForMoreSamples(int trackID)

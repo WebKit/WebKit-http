@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008, 2009, 2012, 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2008, 2009, 2012, 2013, 2014 Apple Inc. All rights reserved.
  * Copyright (C) 2008 Cameron Zwarich <cwzwarich@uwaterloo.ca>
  * Copyright (C) 2012 Igalia, S.L.
  *
@@ -41,6 +41,7 @@
 #include "StackAlignment.h"
 #include "StrongInlines.h"
 #include "UnlinkedCodeBlock.h"
+#include "UnlinkedInstructionStream.h"
 #include <wtf/StdLibExtras.h>
 #include <wtf/text/WTFString.h>
 
@@ -106,7 +107,7 @@ ParserError BytecodeGenerator::generate()
         m_codeBlock->addExceptionHandler(info);
     }
     
-    m_codeBlock->instructions() = RefCountedArray<UnlinkedInstruction>(m_instructions);
+    m_codeBlock->setInstructions(std::make_unique<UnlinkedInstructionStream>(m_instructions));
 
     m_codeBlock->shrinkToFit();
 
@@ -132,8 +133,8 @@ bool BytecodeGenerator::addVar(
     
     if (watchMode == IsWatchable) {
         while (m_watchableVariables.size() < static_cast<size_t>(m_codeBlock->m_numVars))
-            m_watchableVariables.append(nullptr);
-        m_watchableVariables.append(ident.impl());
+            m_watchableVariables.append(Identifier());
+        m_watchableVariables.append(ident);
     }
     
     r0 = addVar();
@@ -381,7 +382,7 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, FunctionBodyNode* functionBody, Unl
             m_codeBlock->addParameter();
             RegisterID& parameter = registerFor(index);
             parameter.setIndex(index);
-            deconstructedParameters.append(make_pair(&parameter, pattern));
+            deconstructedParameters.append(std::make_pair(&parameter, pattern));
             continue;
         }
         auto simpleParameter = static_cast<const BindingNode*>(pattern);
@@ -469,7 +470,7 @@ RegisterID* BytecodeGenerator::emitInitLazyRegister(RegisterID* reg)
 {
     emitOpcode(op_init_lazy_reg);
     instructions().append(reg->index());
-    ASSERT(!watchableVariable(reg->index()));
+    ASSERT(!hasWatchableVariable(reg->index()));
     return reg;
 }
 
@@ -636,20 +637,12 @@ void BytecodeGenerator::emitOpcode(OpcodeID opcodeID)
 
 UnlinkedArrayProfile BytecodeGenerator::newArrayProfile()
 {
-#if ENABLE(VALUE_PROFILER)
     return m_codeBlock->addArrayProfile();
-#else
-    return 0;
-#endif
 }
 
 UnlinkedArrayAllocationProfile BytecodeGenerator::newArrayAllocationProfile()
 {
-#if ENABLE(VALUE_PROFILER)
     return m_codeBlock->addArrayAllocationProfile();
-#else
-    return 0;
-#endif
 }
 
 UnlinkedObjectAllocationProfile BytecodeGenerator::newObjectAllocationProfile()
@@ -659,11 +652,7 @@ UnlinkedObjectAllocationProfile BytecodeGenerator::newObjectAllocationProfile()
 
 UnlinkedValueProfile BytecodeGenerator::emitProfiledOpcode(OpcodeID opcodeID)
 {
-#if ENABLE(VALUE_PROFILER)
     UnlinkedValueProfile result = m_codeBlock->addValueProfile();
-#else
-    UnlinkedValueProfile result = 0;
-#endif
     emitOpcode(opcodeID);
     return result;
 }
@@ -1640,7 +1629,7 @@ void BytecodeGenerator::createArgumentsIfNecessary()
 
     emitOpcode(op_create_arguments);
     instructions().append(m_codeBlock->argumentsRegister().offset());
-    ASSERT(!watchableVariable(m_codeBlock->argumentsRegister().offset()));
+    ASSERT(!hasWatchableVariable(m_codeBlock->argumentsRegister().offset()));
 }
 
 void BytecodeGenerator::createActivationIfNecessary()
@@ -1962,10 +1951,15 @@ void BytecodeGenerator::emitDebugHook(DebugHookID debugHookID, unsigned line, un
     emitExpressionInfo(divot, divot, divot);
     emitOpcode(op_debug);
     instructions().append(debugHookID);
+    instructions().append(false);
 }
 
 void BytecodeGenerator::pushFinallyContext(StatementNode* finallyBlock)
 {
+    // Reclaim free label scopes.
+    while (m_labelScopes.size() && !m_labelScopes.last().refCount())
+        m_labelScopes.removeLast();
+
     ControlFlowContext scope;
     scope.isFinallyBlock = true;
     FinallyContext context = {

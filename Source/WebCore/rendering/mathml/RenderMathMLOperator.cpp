@@ -172,26 +172,20 @@ void RenderMathMLOperator::updateFromElement()
     // Since we share a node with our children, destroying our children may set our node's
     // renderer to 0, so we need to restore it.
     element().setRenderer(savedRenderer);
-    
-    auto newStyle = RenderStyle::create();
-    newStyle.get().inheritFrom(&style());
-    newStyle.get().setDisplay(FLEX);
 
-    RenderMathMLBlock* container = new RenderMathMLBlock(element(), std::move(newStyle));
+    RenderPtr<RenderMathMLBlock> container = createRenderer<RenderMathMLBlock>(element(), RenderStyle::createAnonymousStyleWithDisplay(&style(), FLEX));
     // This container doesn't offer any useful information to accessibility.
     container->setIgnoreInAccessibilityTree(true);
     container->initializeStyle();
 
-    addChild(container);
-    RenderText* text;
+    RenderPtr<RenderText> text;
     if (m_operator)
-        text = new RenderText(document(), String(&m_operator, 1));
+        text = createRenderer<RenderText>(document(), String(&m_operator, 1));
     else
-        text = new RenderText(document(), element().textContent().replace(hyphenMinus, minusSign).impl());
+        text = createRenderer<RenderText>(document(), element().textContent().replace(hyphenMinus, minusSign).impl());
 
-    // If we can't figure out the text, leave it blank.
-    if (text)
-        container->addChild(text);
+    container->addChild(text.leakPtr());
+    addChild(container.leakPtr());
 
     updateStyle();
     setNeedsLayoutAndPrefWidthsRecalc();
@@ -335,7 +329,7 @@ void RenderMathMLOperator::fillWithExtensionGlyph(PaintInfo& info, const LayoutP
 
     // Clipping the extender region here allows us to draw the bottom extender glyph into the
     // regions of the bottom glyph without worrying about overdraw (hairy pixels) and simplifies later clipping.
-    IntRect clipBounds = info.rect;
+    LayoutRect clipBounds = info.rect;
     clipBounds.shiftYEdgeTo(from.y());
     clipBounds.shiftMaxYEdgeTo(to.y());
     info.context->clip(clipBounds);

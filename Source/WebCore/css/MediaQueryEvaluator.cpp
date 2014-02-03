@@ -55,8 +55,12 @@
 #include "StyleResolver.h"
 #include <wtf/HashMap.h>
 
-#if ENABLE(3D_RENDERING) && USE(ACCELERATED_COMPOSITING)
+#if ENABLE(3D_RENDERING)
 #include "RenderLayerCompositor.h"
+#endif
+
+#if PLATFORM(IOS)
+#include "WebCoreSystemInterface.h"
 #endif
 
 namespace WebCore {
@@ -364,7 +368,6 @@ static bool device_heightMediaFeatureEval(CSSValue* value, RenderStyle* style, F
         RenderStyle* rootStyle = frame->document()->documentElement()->renderStyle();
         int length;
         long height = sg.height();
-        InspectorInstrumentation::applyScreenHeightOverride(frame, &height);
         return computeLength(value, !frame->document()->inQuirksMode(), style, rootStyle, length) && compareValue(static_cast<int>(height), length, op);
     }
     // ({,min-,max-}device-height)
@@ -379,7 +382,6 @@ static bool device_widthMediaFeatureEval(CSSValue* value, RenderStyle* style, Fr
         RenderStyle* rootStyle = frame->document()->documentElement()->renderStyle();
         int length;
         long width = sg.width();
-        InspectorInstrumentation::applyScreenWidthOverride(frame, &width);
         return computeLength(value, !frame->document()->inQuirksMode(), style, rootStyle, length) && compareValue(static_cast<int>(width), length, op);
     }
     // ({,min-,max-}device-width)
@@ -569,10 +571,8 @@ static bool transform_3dMediaFeatureEval(CSSValue* value, RenderStyle*, Frame* f
 
 #if ENABLE(3D_RENDERING)
     bool threeDEnabled = false;
-#if USE(ACCELERATED_COMPOSITING)
     if (RenderView* view = frame->contentRenderer())
         threeDEnabled = view->compositor().canRender3DTransforms();
-#endif
 
     returnValueIfNoParameter = threeDEnabled;
     have3dRendering = threeDEnabled ? 1 : 0;
@@ -623,6 +623,22 @@ static bool view_modeMediaFeatureEval(CSSValue* value, RenderStyle*, Frame* fram
     return result;
 }
 #endif // ENABLE(VIEW_MODE_CSS_MEDIA)
+
+// FIXME: Find a better place for this function. Maybe ChromeClient?
+static inline bool isRunningOnIPhoneOrIPod()
+{
+#if PLATFORM(IOS)
+    static wkDeviceClass deviceClass = iosDeviceClass();
+    return deviceClass == wkDeviceClassiPhone || deviceClass == wkDeviceClassiPod;
+#else
+    return false;
+#endif
+}
+
+static bool video_playable_inlineMediaFeatureEval(CSSValue*, RenderStyle*, Frame* frame, MediaFeaturePrefix)
+{
+    return !isRunningOnIPhoneOrIPod() || frame->settings().mediaPlaybackAllowsInline();
+}
 
 enum PointerDeviceType { TouchPointer, MousePointer, NoPointer, UnknownPointer };
 

@@ -34,10 +34,11 @@
 #include "WebProcessProxyMessages.h"
 #include <wtf/Forward.h>
 #include <wtf/HashSet.h>
+#include <wtf/NeverDestroyed.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/Vector.h>
 
-namespace CoreIPC {
+namespace IPC {
     class ArgumentEncoder;
 }
 
@@ -50,6 +51,7 @@ class WebPluginSiteDataManager;
 
 class PluginProcessManager {
     WTF_MAKE_NONCOPYABLE(PluginProcessManager);
+    friend class NeverDestroyed<PluginProcessManager>;
 public:
     static PluginProcessManager& shared();
 

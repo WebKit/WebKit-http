@@ -27,7 +27,7 @@
  */
 
 #import <Foundation/Foundation.h>
-#import <JavaScriptCore/WebKitAvailability.h>
+#import <WebKit/WebKitAvailability.h>
 
 #if !TARGET_OS_IPHONE
 #import <AppKit/AppKit.h>
@@ -106,7 +106,7 @@
     @discussion This method is only sent to the plug-in if the
     WebPlugInShouldLoadMainResourceKey argument passed to the plug-in was NO.
 */
-- (void)webPlugInMainResourceDidReceiveResponse:(NSURLResponse *)response WEBKIT_OBJC_METHOD_ANNOTATION(AVAILABLE_IN_WEBKIT_VERSION_4_0);
+- (void)webPlugInMainResourceDidReceiveResponse:(NSURLResponse *)response WEBKIT_AVAILABLE_MAC(10_6);
 
 /*!
     @method webPlugInMainResourceDidReceiveData:
@@ -115,7 +115,7 @@
     @discussion This method is only sent to the plug-in if the
     WebPlugInShouldLoadMainResourceKey argument passed to the plug-in was NO.
 */
-- (void)webPlugInMainResourceDidReceiveData:(NSData *)data WEBKIT_OBJC_METHOD_ANNOTATION(AVAILABLE_IN_WEBKIT_VERSION_4_0);
+- (void)webPlugInMainResourceDidReceiveData:(NSData *)data WEBKIT_AVAILABLE_MAC(10_6);
 
 /*!
     @method webPlugInMainResourceDidFailWithError:
@@ -124,7 +124,7 @@
     @discussion This method is only sent to the plug-in if the
     WebPlugInShouldLoadMainResourceKey argument passed to the plug-in was NO.
 */
-- (void)webPlugInMainResourceDidFailWithError:(NSError *)error WEBKIT_OBJC_METHOD_ANNOTATION(AVAILABLE_IN_WEBKIT_VERSION_4_0);
+- (void)webPlugInMainResourceDidFailWithError:(NSError *)error WEBKIT_AVAILABLE_MAC(10_6);
 
 /*!
     @method webPlugInMainResourceDidFinishLoading
@@ -133,6 +133,39 @@
     @discussion This method is only sent to the plug-in if the
     WebPlugInShouldLoadMainResourceKey argument passed to the plug-in was NO.
 */
-- (void)webPlugInMainResourceDidFinishLoading WEBKIT_OBJC_METHOD_ANNOTATION(AVAILABLE_IN_WEBKIT_VERSION_4_0);
+- (void)webPlugInMainResourceDidFinishLoading WEBKIT_AVAILABLE_MAC(10_6);
+
+#if TARGET_OS_IPHONE
+
+// FIXME: Comment me
+- (Class)webPlugInFullScreenWindowClass;
+
+// FIXME: Comment me
+- (void)webPlugInWillEnterFullScreenWithFrame:(CGRect)newFrame;
+
+// FIXME: Comment me
+- (void)webPlugInWillLeaveFullScreenWithFrame:(CGRect)newFrame;
+
+// FIXME: Comment me
+- (BOOL)webPlugInReceivesEventsDirectly;
+
+// FIXME: Comment me
+- (void)webPlugInLayout;
+
+// FIXME: Comment me
+- (void)webPlugInDidDraw;
+
+/*!
+ @method webPlugInStopForPageCache
+ @abstract Tell the plug-in to stop normal operation because the page the plug-in
+ belongs to is entering a cache.
+ @discussion A page in the PageCache can be quickly resumed. This is much like
+ pausing and resuming a plug-in except the frame containing the plug-in will
+ not be visible, is not active, and may even have been torn down. The API contract
+ for messages before and after this message are the same as -webPlugInStop.
+ */
+- (void)webPlugInStopForPageCache;
+
+#endif
 
 @end

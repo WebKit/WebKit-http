@@ -46,17 +46,17 @@ namespace WebCore {
 
 using namespace HTMLNames;
     
-class FTPDirectoryDocumentParser FINAL : public HTMLDocumentParser {
+class FTPDirectoryDocumentParser final : public HTMLDocumentParser {
 public:
     static PassRefPtr<FTPDirectoryDocumentParser> create(HTMLDocument& document)
     {
         return adoptRef(new FTPDirectoryDocumentParser(document));
     }
 
-    virtual void append(PassRefPtr<StringImpl>) OVERRIDE;
-    virtual void finish() OVERRIDE;
+    virtual void append(PassRefPtr<StringImpl>) override;
+    virtual void finish() override;
 
-    virtual bool isWaitingForScripts() const OVERRIDE { return false; }
+    virtual bool isWaitingForScripts() const override { return false; }
 
     inline void checkBuffer(int len = 10)
     {

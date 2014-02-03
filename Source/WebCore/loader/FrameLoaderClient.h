@@ -187,13 +187,6 @@ namespace WebCore {
         virtual void revertToProvisionalState(DocumentLoader*) = 0;
         virtual void setMainDocumentError(DocumentLoader*, const ResourceError&) = 0;
 
-        // Maybe these should go into a ProgressTrackerClient some day
-        virtual void willChangeEstimatedProgress() { }
-        virtual void didChangeEstimatedProgress() { }
-        virtual void postProgressStartedNotification() = 0;
-        virtual void postProgressEstimateChangedNotification() = 0;
-        virtual void postProgressFinishedNotification() = 0;
-        
         virtual void setMainFrameDocumentReady(bool) = 0;
 
         virtual void startDownload(const ResourceRequest&, const String& suggestedName = String()) = 0;
@@ -208,7 +201,6 @@ namespace WebCore {
         virtual void updateGlobalHistoryRedirectLinks() = 0;
 
         virtual bool shouldGoToHistoryItem(HistoryItem*) const = 0;
-        virtual bool shouldStopLoadingForHistoryItem(HistoryItem*) const = 0;
         virtual void updateGlobalHistoryItemForPage() { }
 
         // This frame has set its opener to null, disowning it for the lifetime of the frame.
@@ -288,8 +280,6 @@ namespace WebCore {
         virtual String overrideMediaType() const = 0;
 
         virtual void dispatchDidClearWindowObjectInWorld(DOMWrapperWorld&) = 0;
-        virtual void documentElementAvailable() = 0;
-        virtual void didPerformFirstNavigation() const = 0; // "Navigation" here means a transition from one page to another that ends up in the back/forward list.
 
         virtual void registerForIconNotification(bool listen = true) = 0;
 
@@ -338,6 +328,7 @@ namespace WebCore {
         // Informs the embedder that a WebGL canvas inside this frame received a lost context
         // notification with the given GL_ARB_robustness guilt/innocence code (see Extensions3D.h).
         virtual void didLoseWebGLContext(int) { }
+        virtual WebGLLoadPolicy webGLPolicyForURL(const String&) const { return WebGLAllow; }
 #endif
 
         virtual void forcePageTransitionIfNeeded() { }

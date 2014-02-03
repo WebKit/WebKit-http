@@ -36,6 +36,9 @@
 #include "FormDataStreamCFNet.h"
 #include <CFNetwork/CFURLRequestPriv.h>
 #include <wtf/text/CString.h>
+#if PLATFORM(IOS)
+#include <CFNetwork/CFNetworkConnectionCachePriv.h>
+#endif
 #endif
 
 #if PLATFORM(MAC)
@@ -50,7 +53,12 @@
 
 namespace WebCore {
 
+// FIXME: Make this a NetworkingContext property.
+#if PLATFORM(IOS)
+bool ResourceRequest::s_httpPipeliningEnabled = true;
+#else
 bool ResourceRequest::s_httpPipeliningEnabled = false;
+#endif
 
 #if USE(CFNETWORK)
 
@@ -122,8 +130,8 @@ static inline void setHeaderFields(CFMutableURLRequestRef request, const HTTPHea
             CFURLRequestSetHTTPHeaderFieldValue(request, oldHeaderFieldNames[i], 0);
     }
 
-    for (HTTPHeaderMap::const_iterator it = requestHeaders.begin(), end = requestHeaders.end(); it != end; ++it)
-        CFURLRequestSetHTTPHeaderFieldValue(request, it->key.string().createCFString().get(), it->value.createCFString().get());
+    for (const auto& header : requestHeaders)
+        CFURLRequestSetHTTPHeaderFieldValue(request, header.key.string().createCFString().get(), header.value.createCFString().get());
 }
 
 void ResourceRequest::doUpdatePlatformRequest()
@@ -144,7 +152,10 @@ void ResourceRequest::doUpdatePlatformRequest()
     CFURLRequestSetHTTPRequestMethod(cfRequest, httpMethod().createCFString().get());
 
     if (httpPipeliningEnabled())
-        wkSetHTTPPipeliningPriority(cfRequest, toHTTPPipeliningPriority(m_priority));
+        wkHTTPRequestEnablePipelining(cfRequest);
+
+    wkSetHTTPRequestPriority(cfRequest, toPlatformRequestPriority(m_priority));
+
 #if !PLATFORM(WIN)
     wkCFURLRequestAllowAllPostCaching(cfRequest);
 #endif
@@ -222,10 +233,33 @@ void ResourceRequest::doUpdatePlatformHTTPBody()
 #endif
 }
 
+void ResourceRequest::updateFromDelegatePreservingOldHTTPBody(const ResourceRequest& delegateProvidedRequest)
+{
+    RefPtr<FormData> oldHTTPBody = httpBody();
+
+    *this = delegateProvidedRequest;
+    setHTTPBody(oldHTTPBody.release());
+}
+
 void ResourceRequest::doUpdateResourceRequest()
 {
     if (!m_cfRequest) {
+#if PLATFORM(IOS)
+        // <rdar://problem/9913526>
+        // This is a hack to mimic the subtle behaviour of the Foundation based ResourceRequest
+        // code. That code does not reset m_httpMethod if the NSURLRequest is nil. I filed
+        // <https://bugs.webkit.org/show_bug.cgi?id=66336> to track that.
+        // Another related bug is <https://bugs.webkit.org/show_bug.cgi?id=66350>. Fixing that
+        // would, ideally, allow us to not have this hack. But unfortunately that caused layout test
+        // failures.
+        // Removal of this hack is tracked by <rdar://problem/9970499>.
+
+        String httpMethod = m_httpMethod;
         *this = ResourceRequest();
+        m_httpMethod = httpMethod;
+#else
+        *this = ResourceRequest();
+#endif
         return;
     }
 
@@ -240,8 +274,7 @@ void ResourceRequest::doUpdateResourceRequest()
     }
     m_allowCookies = CFURLRequestShouldHandleHTTPCookies(m_cfRequest.get());
 
-    if (httpPipeliningEnabled())
-        m_priority = toResourceLoadPriority(wkGetHTTPPipeliningPriority(m_cfRequest.get()));
+    m_priority = toResourceLoadPriority(wkGetHTTPRequestPriority(m_cfRequest.get()));
 
     m_httpHeaderFields.clear();
     if (CFDictionaryRef headers = CFURLRequestCopyAllHTTPHeaderFields(m_cfRequest.get())) {
@@ -307,8 +340,10 @@ void ResourceRequest::setStorageSession(CFURLStorageSessionRef storageSession)
 #if PLATFORM(MAC)
 void ResourceRequest::applyWebArchiveHackForMail()
 {
+#if !PLATFORM(IOS)
     // Hack because Mail checks for this property to detect data / archive loads
     _CFURLRequestSetProtocolProperty(cfURLRequest(DoNotUpdateHTTPBody), CFSTR("WebDataRequest"), CFSTR(""));
+#endif
 }
 #endif
 
@@ -360,28 +395,38 @@ void ResourceRequest::doPlatformAdopt(PassOwnPtr<CrossThreadResourceRequestData>
 unsigned initializeMaximumHTTPConnectionCountPerHost()
 {
     static const unsigned preferredConnectionCount = 6;
-
-    // Always set the connection count per host, even when pipelining.
-    unsigned maximumHTTPConnectionCountPerHost = wkInitializeMaximumHTTPConnectionCountPerHost(preferredConnectionCount);
-
     static const unsigned unlimitedConnectionCount = 10000;
+
+    wkInitializeMaximumHTTPConnectionCountPerHost(preferredConnectionCount);
 
     Boolean keyExistsAndHasValidFormat = false;
     Boolean prefValue = CFPreferencesGetAppBooleanValue(CFSTR("WebKitEnableHTTPPipelining"), kCFPreferencesCurrentApplication, &keyExistsAndHasValidFormat);
     if (keyExistsAndHasValidFormat)
         ResourceRequest::setHTTPPipeliningEnabled(prefValue);
 
-    if (ResourceRequest::httpPipeliningEnabled()) {
-        wkSetHTTPPipeliningMaximumPriority(toHTTPPipeliningPriority(ResourceLoadPriorityHighest));
+    wkSetHTTPRequestMaximumPriority(toPlatformRequestPriority(ResourceLoadPriorityHighest));
 #if !PLATFORM(WIN)
-        // FIXME: <rdar://problem/9375609> Implement minimum fast lane priority setting on Windows
-        wkSetHTTPPipeliningMinimumFastLanePriority(toHTTPPipeliningPriority(ResourceLoadPriorityMedium));
+    // FIXME: <rdar://problem/9375609> Implement minimum fast lane priority setting on Windows
+    wkSetHTTPRequestMinimumFastLanePriority(toPlatformRequestPriority(ResourceLoadPriorityMedium));
 #endif
-        // When pipelining do not rate-limit requests sent from WebCore since CFNetwork handles that.
-        return unlimitedConnectionCount;
-    }
 
-    return maximumHTTPConnectionCountPerHost;
+    return unlimitedConnectionCount;
 }
+    
+#if PLATFORM(IOS)
+void initializeHTTPConnectionSettingsOnStartup()
+{
+    // This need to be called from WebKitInitialize so the calls happen early enough, before any requests are made. <rdar://problem/9691871>
+    // Desktop doesn't have early initialization so it is not clear how this should be done there. The CFNetwork SPI probably
+    // needs to become more forgiving.
+    // We can't read settings here as this is called too early for that. All values need to be constants.
+    static const unsigned preferredConnectionCount = 6;
+    static const unsigned fastLaneConnectionCount = 1;
+    wkInitializeMaximumHTTPConnectionCountPerHost(preferredConnectionCount);
+    wkSetHTTPRequestMaximumPriority(ResourceLoadPriorityHighest);
+    wkSetHTTPRequestMinimumFastLanePriority(ResourceLoadPriorityMedium);
+    _CFNetworkHTTPConnectionCacheSetLimit(kHTTPNumFastLanes, fastLaneConnectionCount);
+}
+#endif
 
 } // namespace WebCore

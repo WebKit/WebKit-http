@@ -487,7 +487,7 @@ void DumpRenderTreeSupportGtk::setValueForUser(JSContextRef context, JSValueRef 
         return;
 
     size_t bufferSize = JSStringGetMaximumUTF8CStringSize(value);
-    GOwnPtr<gchar> valueBuffer(static_cast<gchar*>(g_malloc(bufferSize)));
+    GUniquePtr<gchar> valueBuffer(static_cast<gchar*>(g_malloc(bufferSize)));
     JSStringGetUTF8CString(value, valueBuffer.get(), bufferSize);
     inputElement->setValueForUser(String::fromUTF8(valueBuffer.get()));
 }
@@ -575,13 +575,6 @@ void DumpRenderTreeSupportGtk::setCSSGridLayoutEnabled(WebKitWebView* webView, b
 void DumpRenderTreeSupportGtk::setCSSRegionsEnabled(WebKitWebView* webView, bool enabled)
 {
     RuntimeEnabledFeatures::sharedFeatures().setCSSRegionsEnabled(enabled);
-}
-
-void DumpRenderTreeSupportGtk::setCSSCustomFilterEnabled(WebKitWebView* webView, bool enabled)
-{
-#if ENABLE(CSS_SHADERS)
-    core(webView)->settings().setCSSCustomFilterEnabled(enabled);
-#endif
 }
 
 void DumpRenderTreeSupportGtk::setExperimentalContentSecurityPolicyFeaturesEnabled(bool enabled)
@@ -699,6 +692,8 @@ void DumpRenderTreeSupportGtk::setPageVisibility(WebKitWebView* webView, WebCore
     if (!page)
         return;
 
-    page->setVisibilityState(visibilityState, isInitialState);
+    page->setIsVisible(visibilityState == PageVisibilityStateVisible, isInitialState);
+    if (visibilityState == PageVisibilityStatePrerender)
+        page->setIsPrerender();
 #endif
 }

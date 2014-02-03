@@ -296,10 +296,10 @@ namespace WebCore {
         void willSendRequest(ResourceRequest&, const ResourceResponse&);
         void finishedLoading(double finishTime);
         void mainReceivedError(const ResourceError&);
-        virtual void redirectReceived(CachedResource*, ResourceRequest&, const ResourceResponse&) OVERRIDE;
-        virtual void responseReceived(CachedResource*, const ResourceResponse&) OVERRIDE;
-        virtual void dataReceived(CachedResource*, const char* data, int length) OVERRIDE;
-        virtual void notifyFinished(CachedResource*) OVERRIDE;
+        virtual void redirectReceived(CachedResource*, ResourceRequest&, const ResourceResponse&) override;
+        virtual void responseReceived(CachedResource*, const ResourceResponse&) override;
+        virtual void dataReceived(CachedResource*, const char* data, int length) override;
+        virtual void notifyFinished(CachedResource*) override;
 
         bool maybeLoadEmpty();
 
@@ -323,7 +323,7 @@ namespace WebCore {
         void startDataLoadTimer();
 
         void deliverSubstituteResourcesAfterDelay();
-        void substituteResourceDeliveryTimerFired(Timer<DocumentLoader>*);
+        void substituteResourceDeliveryTimerFired(Timer<DocumentLoader>&);
 
         void clearMainResource();
 

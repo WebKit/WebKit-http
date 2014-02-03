@@ -75,6 +75,10 @@ PassRef<RenderStyle> resolveForDocument(const Document& document)
     }
     // This overrides any -webkit-user-modify inherited from the parent iframe.
     documentStyle.get().setUserModify(document.inDesignMode() ? READ_WRITE : READ_ONLY);
+#if PLATFORM(IOS)
+    if (document.inDesignMode())
+        documentStyle.get().setTextSizeAdjust(TextSizeAdjustment(NoTextSizeAdjustment));
+#endif
 
     Element* docElement = document.documentElement();
     RenderObject* docElementRenderer = docElement ? docElement->renderer() : 0;
@@ -97,8 +101,8 @@ PassRef<RenderStyle> resolveForDocument(const Document& document)
     if (pagination.mode != Pagination::Unpaginated) {
         documentStyle.get().setColumnStylesFromPaginationMode(pagination.mode);
         documentStyle.get().setColumnGap(pagination.gap);
-        if (renderView.hasColumns())
-            renderView.updateColumnInfoFromStyle(&documentStyle.get());
+        if (renderView.hasColumns() || renderView.multiColumnFlowThread())
+            renderView.updateColumnProgressionFromStyle(&documentStyle.get());
     }
 
     // Seamless iframes want to inherit their font from their parent iframe, so early return before setting the font.

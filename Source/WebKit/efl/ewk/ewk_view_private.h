@@ -36,26 +36,13 @@ class ColorChooserClient;
 #endif
 
 class Cursor;
-#if USE(ACCELERATED_COMPOSITING)
 class GraphicsContext3D;
 class GraphicsLayer;
-#endif
 class HTMLPlugInElement;
 class IntRect;
 class IntSize;
 class PopupMenuClient;
 }
-
-// Defines the names for initializing ewk_view_smart_class
-const char ewkViewTiledName[] = "Ewk_View_Tiled";
-const char ewkViewSingleName[] = "Ewk_View_Single";
-
-// Define to prevent an application using different view type from calling the function.
-#define EWK_VIEW_TYPE_CHECK_OR_RETURN(ewkView, viewName, ...) \
-    if (!evas_object_smart_type_check(ewkView, viewName)) { \
-        INFO("ewkView isn't an instance of %s", viewName); \
-        return __VA_ARGS__; \
-    }
 
 void ewk_view_cursor_set(Evas_Object* ewkView, const WebCore::Cursor& cursor);
 void ewk_view_ready(Evas_Object* ewkView);
@@ -130,7 +117,6 @@ void ewk_view_editor_client_contents_changed(Evas_Object* ewkView);
 void ewk_view_editor_client_selection_changed(Evas_Object* ewkView);
 
 bool ewk_view_focus_can_cycle(Evas_Object* ewkView, Ewk_Focus_Direction direction);
-void ewk_view_frame_view_creation_notify(Evas_Object* ewkView);
 
 Eina_Bool ewk_view_paint(Ewk_View_Private_Data* priv, Ewk_Paint_Context* context, const Eina_Rectangle* area);
 Eina_Bool ewk_view_paint_contents(Ewk_View_Private_Data* priv, Ewk_Paint_Context* context, const Eina_Rectangle* area);
@@ -149,14 +135,12 @@ bool ewk_view_need_touch_events_get(const Evas_Object*);
 #endif
 
 const Eina_Rectangle* ewk_view_repaints_pop(Ewk_View_Private_Data* priv, size_t* count);
-const Vector<WebCore::IntSize>& ewk_view_scroll_offsets_get(const Ewk_View_Private_Data*);
-const Vector<WebCore::IntRect>& ewk_view_scroll_rects_get(const Ewk_View_Private_Data*);
 
 void ewk_view_repaint_add(Ewk_View_Private_Data* priv, Evas_Coord x, Evas_Coord y, Evas_Coord width, Evas_Coord height);
 
 void ewk_view_layout_if_needed_recursive(Ewk_View_Private_Data* priv);
 
-bool ewk_view_navigation_policy_decision(Evas_Object* ewkView, Ewk_Frame_Resource_Request* request, Ewk_Navigation_Type navigationType);
+bool ewk_view_navigation_policy_decision(Evas_Object* ewkView, Ewk_Frame_Resource_Request* request, WebCore::NavigationType);
 
 void ewk_view_contents_size_changed(Evas_Object* ewkView, Evas_Coord width, Evas_Coord height);
 
@@ -165,12 +149,10 @@ WebCore::FloatRect ewk_view_page_rect_get(const Evas_Object* ewkView);
 void ewk_view_mixed_content_displayed_set(Evas_Object* ewkView, bool hasDisplayed);
 void ewk_view_mixed_content_run_set(Evas_Object* ewkView, bool hasRun);
 
-#if USE(ACCELERATED_COMPOSITING)
 bool ewk_view_accelerated_compositing_object_create(Evas_Object* ewkView, Evas_Native_Surface* nativeSurface, const WebCore::IntRect& rect);
 WebCore::GraphicsContext3D* ewk_view_accelerated_compositing_context_get(Evas_Object* ewkView);
 void ewk_view_root_graphics_layer_set(Evas_Object* ewkView, WebCore::GraphicsLayer* rootLayer);
 void ewk_view_mark_for_sync(Evas_Object* ewkView);
-#endif
 
 #if ENABLE(FULLSCREEN_API)
 void ewk_view_fullscreen_enter(const Evas_Object* ewkView);

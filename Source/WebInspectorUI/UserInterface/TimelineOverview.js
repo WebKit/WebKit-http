@@ -23,48 +23,69 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.TimelineOverview = function(dataSource, recordTypes)
+WebInspector.TimelineOverview = function(timelineOverviewGraphsMap)
 {
     WebInspector.Object.call(this);
 
-    console.assert(dataSource);
-    console.assert(recordTypes instanceof Array);
-
     this._element = document.createElement("div");
     this._element.className = WebInspector.TimelineOverview.StyleClassName;
+    this._element.addEventListener("wheel", this._handleWheelEvent.bind(this));
 
-    this._recordTypes = recordTypes;
+    this._graphsContainer = document.createElement("div");
+    this._graphsContainer.className = WebInspector.TimelineOverview.GraphsContainerStyleClassName;
+    this._element.appendChild(this._graphsContainer);
 
-    this._timelineDecorations = new WebInspector.TimelineDecorations;
+    this._timelineOverviewGraphsMap = timelineOverviewGraphsMap;
 
-    this._timelineElements = [];
-    for (var i = 0; i < this._recordTypes.length; ++i) {
-        var timelineElement = document.createElement("div");
-        timelineElement.classList.add(WebInspector.TimelineOverview.TimelineElementStyleClassName);
-        timelineElement.classList.add(this._recordTypes[i]);
-        this._element.appendChild(timelineElement);
+    for (var timelineOverviewGraph of this._timelineOverviewGraphsMap.values())
+        this._graphsContainer.appendChild(timelineOverviewGraph.element);
 
-        var barContainerElement = document.createElement("div");
-        barContainerElement.className = WebInspector.TimelineOverview.BarContainerElementStyleClassName;
-        timelineElement.appendChild(barContainerElement);
-        timelineElement._barContainerElement = barContainerElement;
+    this._timelineRuler = new WebInspector.TimelineRuler;
+    this._timelineRuler.allowsClippedLabels = true;
+    this._timelineRuler.allowsTimeRangeSelection = true;
+    this._timelineRuler.addEventListener(WebInspector.TimelineRuler.Event.TimeRangeSelectionChanged, this._timeRangeSelectionChanged, this);
+    this._element.appendChild(this._timelineRuler.element);
 
-        this._timelineElements.push(timelineElement);
-    }
+    this._currentTimeMarker = new WebInspector.TimelineMarker(0, WebInspector.TimelineMarker.Type.CurrentTime);
+    this._timelineRuler.addMarker(this._currentTimeMarker);
 
-    this._element.appendChild(this._timelineDecorations.element);
+    this._scrollContainer = document.createElement("div");
+    this._scrollContainer.className = WebInspector.TimelineOverview.ScrollContainerStyleClassName;
+    this._scrollContainer.addEventListener("scroll", this._handleScrollEvent.bind(this));
+    this._element.appendChild(this._scrollContainer);
 
-    this._dataSource = dataSource;
+    this._scrollWidthSizer = document.createElement("div");
+    this._scrollWidthSizer.className = WebInspector.TimelineOverview.ScrollWidthSizerStyleClassName;
+    this._scrollContainer.appendChild(this._scrollWidthSizer);
+
+    this._secondsPerPixelSetting = new WebInspector.Setting("timeline-overview-seconds-per-pixel", 0.01);
+    this._selectionStartTimeSetting = new WebInspector.Setting("timeline-overview-selection-start-time", 0);
+    this._selectionDurationSetting = new WebInspector.Setting("timeline-overview-selection-duration", 5);
+
+    this._startTime = 0;
+    this._currentTime = 0;
+    this._endTime = 0;
+    this._secondsPerPixel = this._secondsPerPixelSetting.value;
+    this._scrollStartTime = 0;
+
+    this.selectionStartTime = this._selectionStartTimeSetting.value;
+    this.selectionDuration = this._selectionDurationSetting.value;
 };
 
 WebInspector.TimelineOverview.StyleClassName = "timeline-overview";
-WebInspector.TimelineOverview.TimelineElementStyleClassName = "timeline";
-WebInspector.TimelineOverview.BarContainerElementStyleClassName = "bar-container";
-WebInspector.TimelineOverview.BarElementStyleClassName = "bar";
-WebInspector.TimelineOverview.WaitingBarElementStyleClassName = "waiting";
+WebInspector.TimelineOverview.GraphsContainerStyleClassName = "graphs-container";
+WebInspector.TimelineOverview.ScrollContainerStyleClassName = "scroll-container";
+WebInspector.TimelineOverview.ScrollWidthSizerStyleClassName = "scroll-width-sizer";
+WebInspector.TimelineOverview.MinimumSecondsPerPixel = 0.001;
+WebInspector.TimelineOverview.ScrollDeltaDenominator = 500;
+
+WebInspector.TimelineOverview.Event = {
+    TimeRangeSelectionChanged: "timeline-overview-time-range-selection-changed"
+};
 
 WebInspector.TimelineOverview.prototype = {
     constructor: WebInspector.TimelineOverview,
+    __proto__: WebInspector.Object.prototype,
 
     // Public
 
@@ -73,179 +94,253 @@ WebInspector.TimelineOverview.prototype = {
         return this._element;
     },
 
-    get recordTypes()
+    get startTime()
     {
-        return this._recordTypes;
+        return this._startTime;
     },
 
-    clear: function()
+    set startTime(x)
     {
-        this._minimumBoundary = NaN;
-        this._maximumBoundary = NaN;
-        this._boundarySpan = NaN;
+        if (this._startTime === x)
+            return;
 
-        this._timelineDecorations.clear();
-        this._timelineDecorations.updateHeaderTimes(this._boundarySpan);
+        this._startTime = x || 0;
 
-        for (var i = 0; i < this._timelineElements.length; ++i)
-            this._timelineElements[i]._barContainerElement.removeChildren();
+        this._needsLayout();
     },
 
-    update: function()
+    get currentTime()
     {
-        var minimumBoundary = NaN;
-        var maximumBoundary = NaN;
+        return this._currentTime;
+    },
 
-        var records = [];
-        for (var i = 0; i < this._recordTypes.length; ++i)
-            records.push(this._dataSource.timelineOverviewRecordsWithType(this._recordTypes[i]));
+    set currentTime(x)
+    {
+        if (this._currentTime === x)
+            return;
 
-        for (var i = 0; i < records.length; ++i) {
-            var currentRecords = records[i];
-            if (!currentRecords.length)
-                continue;
+        this._currentTime = x || 0;
+        this._revealCurrentTime = true;
 
-            // The first record can be assumed to be the oldest start time.
-            var firstRecord = currentRecords[0];
-            if (isNaN(minimumBoundary) || firstRecord.startTime < minimumBoundary)
-                minimumBoundary = firstRecord.startTime;
+        this._needsLayout();
+    },
 
-            if (this._recordTypes[i] === WebInspector.TimelineRecord.Type.Network) {
-                // For the Network timeline we need to look at all the records since
-                // long loading resources can be anywhere, not just at the end. The other
-                // timelines are static, so the last record is always the newest.
-                for (var j = currentRecords.length - 1; j >= 0; --j) {
-                    var record = currentRecords[j];
-                    if (isNaN(maximumBoundary) || record.endTime > maximumBoundary)
-                        maximumBoundary = record.endTime;
-                }
-            } else {
-                // The newest record will always be at the end.
-                var lastRecord = currentRecords.lastValue;
-                if (isNaN(maximumBoundary) || lastRecord.endTime > maximumBoundary)
-                    maximumBoundary = lastRecord.endTime;
-            }
-        }
+    get secondsPerPixel()
+    {
+        return this._secondsPerPixel;
+    },
 
-        this._minimumBoundary = minimumBoundary;
-        this._maximumBoundary = maximumBoundary;
-        this._boundarySpan = maximumBoundary - minimumBoundary;
+    set secondsPerPixel(x)
+    {
+        x = Math.max(WebInspector.TimelineOverview.MinimumSecondsPerPixel, x);
 
-        this._timelineDecorations.updateHeaderTimes(this._boundarySpan);
-        this._timelineDecorations.updateEventMarkers(this._minimumBoundary, this._maximumBoundary);
+        if (this._secondsPerPixel === x)
+            return;
 
-        for (var i = 0; i < records.length; ++i)
-            this._updateTimelineBars(this._timelineElements[i], this._recordTypes[i], records[i]);
+        this._secondsPerPixel = x;
+        this._secondsPerPixelSetting.value = x;
+
+        this._needsLayout();
+    },
+
+    get endTime()
+    {
+        return this._endTime;
+    },
+
+    set endTime(x)
+    {
+        if (this._endTime === x)
+            return;
+
+        this._endTime = x || 0;
+
+        this._needsLayout();
+    },
+
+    get scrollStartTime()
+    {
+        return this._scrollStartTime;
+    },
+
+    set scrollStartTime(x)
+    {
+        if (this._scrollStartTime === x)
+            return;
+
+        this._scrollStartTime = x || 0;
+
+        this._needsLayout();
+    },
+
+    get visibleDuration()
+    {
+        return this._scrollContainer.offsetWidth * this._secondsPerPixel;
+    },
+
+    get selectionStartTime()
+    {
+        return this._timelineRuler.selectionStartTime;
+    },
+
+    set selectionStartTime(x)
+    {
+        x = x || 0;
+
+        var selectionDuration = this.selectionDuration;
+        this._timelineRuler.selectionStartTime = x;
+        this._timelineRuler.selectionEndTime = x + selectionDuration;
+    },
+
+    get selectionDuration()
+    {
+        return this._timelineRuler.selectionEndTime - this._timelineRuler.selectionStartTime;
+    },
+
+    set selectionDuration(x)
+    {
+        x = Math.max(WebInspector.TimelineRuler.MinimumSelectionTimeRange, x);
+        this._timelineRuler.selectionEndTime = this._timelineRuler.selectionStartTime + x;
+    },
+
+    addMarker: function(marker)
+    {
+        this._timelineRuler.addMarker(marker);
+    },
+
+    revealMarker: function(marker)
+    {
+        this.scrollStartTime = marker.time - (this.visibleDuration / 2);
     },
 
     updateLayout: function()
     {
-        this._timelineDecorations.updateHeaderTimes(this._boundarySpan);
+        if (this._scheduledLayoutUpdateIdentifier) {
+            cancelAnimationFrame(this._scheduledLayoutUpdateIdentifier);
+            delete this._scheduledLayoutUpdateIdentifier;
+        }
+
+        // Calculate the required width based on the duration and seconds per pixel.
+        var duration = this._endTime - this._startTime;
+        var newWidth = Math.ceil(duration / this._secondsPerPixel);
+
+        // Update all relevant elements to the new required width.
+        this._updateElementWidth(this._scrollWidthSizer, newWidth);
+
+        this._currentTimeMarker.time = this._currentTime;
+
+        if (this._revealCurrentTime) {
+            this.revealMarker(this._currentTimeMarker);
+            delete this._revealCurrentTime;
+        }
+
+        // Clamp the scroll start time to match what the scroll bar would allow.
+        var scrollStartTime = Math.min(this._scrollStartTime, this._endTime - this.visibleDuration);
+        scrollStartTime = Math.max(this._startTime, scrollStartTime);
+
+        this._timelineRuler.zeroTime = this._startTime;
+        this._timelineRuler.startTime = scrollStartTime;
+        this._timelineRuler.secondsPerPixel = this._secondsPerPixel;
+
+        if (!this._dontUpdateScrollLeft) {
+            this._ignoreNextScrollEvent = true;
+            this._scrollContainer.scrollLeft = Math.ceil((scrollStartTime - this._startTime) / this._secondsPerPixel);
+        }
+
+        this._timelineRuler.updateLayout();
+
+        for (var timelineOverviewGraph of this._timelineOverviewGraphsMap.values()) {
+            timelineOverviewGraph.zeroTime = this._startTime;
+            timelineOverviewGraph.startTime = scrollStartTime;
+            timelineOverviewGraph.currentTime = this._currentTime;
+            timelineOverviewGraph.endTime = scrollStartTime + this.visibleDuration;
+            timelineOverviewGraph.updateLayout();
+        }
     },
 
-    addTimelineEventMarker: function(eventMarker)
+    updateLayoutIfNeeded: function()
     {
-        this._timelineDecorations.addTimelineEventMarker(eventMarker);
+        if (this._scheduledLayoutUpdateIdentifier) {
+            this.updateLayout();
+            return;
+        }
+
+        this._timelineRuler.updateLayoutIfNeeded();
+
+        for (var timelineOverviewGraph of this._timelineOverviewGraphsMap.values())
+            timelineOverviewGraph.updateLayoutIfNeeded();
     },
 
     // Private
 
-    _updateTimelineBars: function(timelineElement, type, records)
+    _updateElementWidth: function(element, newWidth)
     {
-        function computeActivePercentages(record)
-        {
-            // Compute percentages for endTime and the start of activeDuration.
+        var currentWidth = parseInt(element.style.width);
+        if (currentWidth !== newWidth)
+            element.style.width = newWidth + "px";
+    },
 
-            var activeStartTime = record.endTime - record.activeDuration;
-            if (isNaN(activeStartTime))
-                activeStartTime = record.endTime;
+    _needsLayout: function()
+    {
+        if (this._scheduledLayoutUpdateIdentifier)
+            return;
+        this._scheduledLayoutUpdateIdentifier = requestAnimationFrame(this.updateLayout.bind(this));
+    },
 
-            if (isNaN(activeStartTime))
-                var start = 0;
-            else
-                var start = ((activeStartTime - this._minimumBoundary) / this._boundarySpan) * 100;
-
-            if (isNaN(record.endTime))
-                var end = 100;
-            else
-                var end = ((record.endTime - this._minimumBoundary) / this._boundarySpan) * 100;
-
-            return {start: start, end: end};
+    _handleScrollEvent: function(event)
+    {
+        if (this._ignoreNextScrollEvent) {
+            delete this._ignoreNextScrollEvent;
+            return;
         }
 
-        function computePercentages(record)
-        {
-            // Compute percentages for startTime and endTime.
+        this._dontUpdateScrollLeft = true;
 
-            if (isNaN(record.startTime))
-                var start = 0;
-            else
-                var start = ((record.startTime - this._minimumBoundary) / this._boundarySpan) * 100;
+        var scrollOffset = this._scrollContainer.scrollLeft;
+        this.scrollStartTime = this._startTime + (scrollOffset * this._secondsPerPixel);
 
-            if (isNaN(record.endTime))
-                var end = 100;
-            else
-                var end = ((record.endTime - this._minimumBoundary) / this._boundarySpan) * 100;
+        // Force layout so we can update with the scroll position synchronously.
+        this.updateLayoutIfNeeded();
 
-            return {start: start, end: end};
+        delete this._dontUpdateScrollLeft;
+    },
+
+    _handleWheelEvent: function(event)
+    {
+        // Ignore cloned events that come our way, we already handled the original.
+        if (event.__cloned)
+            return;
+
+        // Require twice the vertical delta to overcome horizontal scrolling. This prevents most
+        // cases of inadvertent zooming for slightly diagonal scrolls.
+        if (Math.abs(event.deltaX) >= Math.abs(event.deltaY) * 0.5) {
+            // Clone the event to dispatch it on the scroll container. Mark it as cloned so we don't get into a loop.
+            var newWheelEvent = new event.constructor(event.type, event);
+            newWheelEvent.__cloned = true;
+
+            this._scrollContainer.dispatchEvent(newWheelEvent);
+            return;
         }
 
-        function addBar(startPercentage, endPercentage, extraBarStyleClass)
-        {
-            var barElement = document.createElement("div");
-            barElement.className = WebInspector.TimelineOverview.BarElementStyleClassName;
-            if (extraBarStyleClass)
-                barElement.classList.add(extraBarStyleClass);
+        // Remember the mouse position in time.
+        var mouseOffset = event.pageX - this._element.totalOffsetLeft;
+        var mousePositionTime = this._scrollStartTime + (mouseOffset * this._secondsPerPixel);
+        var deviceDirection = event.webkitDirectionInvertedFromDevice ? 1 : -1;
 
-            if (startPercentage === 0 || startPercentage !== endPercentage)
-                barElement.style.left = startPercentage + "%";
-            barElement.style.right = (100 - endPercentage) + "%";
+        this.secondsPerPixel += event.deltaY * (this._secondsPerPixel / WebInspector.TimelineOverview.ScrollDeltaDenominator) * deviceDirection;
 
-            timelineElement._barContainerElement.appendChild(barElement);
-        }
+        // Center the zoom around the mouse based on the remembered mouse position time.
+        this.scrollStartTime = mousePositionTime - (mouseOffset * this._secondsPerPixel);
 
-        function createBars(percentageCalculator, extraBarStyleClass)
-        {
-            // Iterate over the records and find the percentage distribution on the graph.
-            // The percentages are recorded in a sparse array from 0-100.
+        event.preventDefault();
+        event.stopPropagation();
+    },
 
-            var timelineSlots = new Array(101);
-            for (var i = 0; i < records.length; ++i) {
-                var percentages = percentageCalculator.call(this, records[i]);
-                var end = Math.round(percentages.end);
-                for (var j = Math.round(percentages.start); j <= end; ++j)
-                    timelineSlots[j] = true;
-            }
+    _timeRangeSelectionChanged: function(event)
+    {
+        this._selectionStartTimeSetting.value = this.selectionStartTime - this._startTime;
+        this._selectionDurationSetting.value = this.selectionDuration;
 
-            var barStart = NaN;
-            for (var i = 0; i < timelineSlots.length; ++i) {
-                if (timelineSlots[i]) {
-                    if (isNaN(barStart))
-                        barStart = i;
-                } else {
-                    if (!isNaN(barStart)) {
-                        addBar.call(this, barStart, i, extraBarStyleClass);
-                        barStart = NaN;
-                    }
-                }
-            }
-
-            if (!isNaN(barStart)) {
-                addBar.call(this, barStart, 100, extraBarStyleClass);
-                barStart = NaN;
-            }
-        }
-
-        timelineElement._barContainerElement.removeChildren();
-
-        // The Network timeline shows two bars. The first is the total time (waiting for the resource until it finishes).
-        // The second bar is the active download time (first first response to finish.)
-        if (type === WebInspector.TimelineRecord.Type.Network) {
-            createBars.call(this, computePercentages, WebInspector.TimelineOverview.WaitingBarElementStyleClassName);
-            createBars.call(this, computeActivePercentages);
-        } else
-            createBars.call(this, computePercentages);
+        this.dispatchEventToListeners(WebInspector.TimelineOverview.Event.TimeRangeSelectionChanged);
     }
 };
-
-WebInspector.TimelineOverview.prototype.__proto__ = WebInspector.Object.prototype;

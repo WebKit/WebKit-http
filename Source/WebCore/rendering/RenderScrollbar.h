@@ -26,6 +26,7 @@
 #ifndef RenderScrollbar_h
 #define RenderScrollbar_h
 
+#include "RenderPtr.h"
 #include "RenderStyleConstants.h"
 #include "Scrollbar.h"
 #include <wtf/HashMap.h>
@@ -38,7 +39,7 @@ class RenderBox;
 class RenderScrollbarPart;
 class RenderStyle;
 
-class RenderScrollbar FINAL : public Scrollbar {
+class RenderScrollbar final : public Scrollbar {
 public:
     friend class Scrollbar;
     static RefPtr<Scrollbar> createCustomScrollbar(ScrollableArea*, ScrollbarOrientation, Element*, Frame* owningFrame = nullptr);
@@ -63,21 +64,21 @@ public:
 private:
     RenderScrollbar(ScrollableArea*, ScrollbarOrientation, Element*, Frame*);
 
-    virtual void setParent(ScrollView*) OVERRIDE;
-    virtual void setEnabled(bool) OVERRIDE;
+    virtual void setParent(ScrollView*) override;
+    virtual void setEnabled(bool) override;
 
-    virtual void paint(GraphicsContext*, const IntRect& damageRect) OVERRIDE;
+    virtual void paint(GraphicsContext*, const IntRect& damageRect) override;
 
-    virtual void setHoveredPart(ScrollbarPart) OVERRIDE;
-    virtual void setPressedPart(ScrollbarPart) OVERRIDE;
+    virtual void setHoveredPart(ScrollbarPart) override;
+    virtual void setPressedPart(ScrollbarPart) override;
 
-    virtual void styleChanged() OVERRIDE;
+    virtual void styleChanged() override;
 
-    virtual bool isCustomScrollbar() const OVERRIDE { return true; }
+    virtual bool isCustomScrollbar() const override { return true; }
 
-    void updateScrollbarParts(bool destroy = false);
+    void updateScrollbarParts();
 
-    void updateScrollbarPart(ScrollbarPart, bool destroy = false);
+    void updateScrollbarPart(ScrollbarPart);
 
     // This Scrollbar(Widget) may outlive the DOM which created it (during tear down),
     // so we keep a reference to the Element which caused this custom scrollbar creation.
@@ -86,7 +87,7 @@ private:
     RefPtr<Element> m_ownerElement;
 
     Frame* m_owningFrame;
-    HashMap<unsigned, RenderScrollbarPart*> m_parts;
+    HashMap<unsigned, RenderPtr<RenderScrollbarPart>> m_parts;
 };
 
 inline RenderScrollbar* toRenderScrollbar(ScrollbarThemeClient* scrollbar)

@@ -116,14 +116,13 @@ RenderEmbeddedObject::~RenderEmbeddedObject()
     view().frameView().removeEmbeddedObjectToUpdate(*this);
 }
 
-RenderEmbeddedObject* RenderEmbeddedObject::createForApplet(HTMLAppletElement& applet, PassRef<RenderStyle> style)
+RenderPtr<RenderEmbeddedObject> RenderEmbeddedObject::createForApplet(HTMLAppletElement& applet, PassRef<RenderStyle> style)
 {
-    RenderEmbeddedObject* renderer = new RenderEmbeddedObject(applet, std::move(style));
+    auto renderer = createRenderer<RenderEmbeddedObject>(applet, std::move(style));
     renderer->setInline(true);
     return renderer;
 }
 
-#if USE(ACCELERATED_COMPOSITING)
 bool RenderEmbeddedObject::requiresLayer() const
 {
     if (RenderWidget::requiresLayer())
@@ -141,7 +140,6 @@ bool RenderEmbeddedObject::allowsAcceleratedCompositing() const
     return widget() && widget()->isPluginViewBase() && toPluginViewBase(widget())->platformLayer();
 #endif
 }
-#endif
 
 #if !PLATFORM(IOS)
 static String unavailablePluginReplacementText(RenderEmbeddedObject::PluginUnavailabilityReason pluginUnavailabilityReason)
@@ -424,7 +422,7 @@ bool RenderEmbeddedObject::isReplacementObscured() const
     if (rect.isEmpty())
         return true;
 
-    RenderView* rootRenderView = document().topDocument()->renderView();
+    RenderView* rootRenderView = document().topDocument().renderView();
     ASSERT(rootRenderView);
     if (!rootRenderView)
         return true;
@@ -656,10 +654,7 @@ CursorDirective RenderEmbeddedObject::getCursor(const LayoutPoint& point, Cursor
 bool RenderEmbeddedObject::canHaveChildren() const
 {
 #if ENABLE(PLUGIN_PROXY_FOR_VIDEO)
-    if (!node())
-        return false;
-
-    if (toElement(node())->isMediaElement())
+    if (frameOwnerElement().isMediaElement())
         return true;
 #endif
 

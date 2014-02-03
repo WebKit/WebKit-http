@@ -53,13 +53,20 @@ body.window-inactive .toolbar .dashboard {
     background-color: rgb(239, 239, 239);
 }
 
-.toolbar.collapsed .dashboard {
+.toolbar.collapsed .dashboard,
+body.javascript .toolbar .dashboard {
     width: 175px;
 }
 
-.toolbar.collapsed .dashboard > .time,
-.toolbar.collapsed .dashboard > .resourcesSize,
-.toolbar.collapsed .dashboard > .logs {
+body.web .toolbar.collapsed .dashboard > .time,
+body.web .toolbar.collapsed .dashboard > .resourcesSize,
+body.web .toolbar.collapsed .dashboard > .logs {
+    display: none;
+}
+
+body.javascript .toolbar .dashboard > .time,
+body.javascript .toolbar .dashboard > .resourcesSize,
+body.javascript .toolbar .dashboard > .resourcesCount {
     display: none;
 }
 

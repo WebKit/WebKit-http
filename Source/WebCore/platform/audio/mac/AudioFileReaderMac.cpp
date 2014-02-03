@@ -30,6 +30,8 @@
 
 #if ENABLE(WEB_AUDIO)
 
+#if PLATFORM(MAC) && !PLATFORM(IOS)
+
 #include "AudioFileReaderMac.h"
 
 #include "AudioBus.h"
@@ -58,7 +60,7 @@ static void destroyAudioBufferList(AudioBufferList* bufferList)
 }
 
 AudioFileReader::AudioFileReader(const char* filePath)
-    : m_data(0)
+    : m_data(nullptr)
     , m_dataSize(0)
     , m_audioFileID(0)
     , m_extAudioFileRef(0)
@@ -156,12 +158,12 @@ PassRefPtr<AudioBus> AudioFileReader::createBus(float sampleRate, bool mixToMono
     m_clientDataFormat = m_fileDataFormat;
 
     m_clientDataFormat.mFormatID = kAudioFormatLinearPCM;
-    m_clientDataFormat.mFormatFlags = kAudioFormatFlagsCanonical;
-    m_clientDataFormat.mBitsPerChannel = 8 * sizeof(AudioSampleType);
+    m_clientDataFormat.mFormatFlags = kAudioFormatFlagsNativeFloatPacked;
+    m_clientDataFormat.mBitsPerChannel = 8 * sizeof(Float32);
     m_clientDataFormat.mChannelsPerFrame = numberOfChannels;
     m_clientDataFormat.mFramesPerPacket = 1;
-    m_clientDataFormat.mBytesPerPacket = sizeof(AudioSampleType);
-    m_clientDataFormat.mBytesPerFrame = sizeof(AudioSampleType);
+    m_clientDataFormat.mBytesPerPacket = sizeof(Float32);
+    m_clientDataFormat.mBytesPerFrame = sizeof(Float32);
     m_clientDataFormat.mFormatFlags |= kAudioFormatFlagIsNonInterleaved;
 
     if (sampleRate)
@@ -237,16 +239,16 @@ PassRefPtr<AudioBus> AudioFileReader::createBus(float sampleRate, bool mixToMono
 
 PassRefPtr<AudioBus> createBusFromAudioFile(const char* filePath, bool mixToMono, float sampleRate)
 {
-    AudioFileReader reader(filePath);
-    return reader.createBus(sampleRate, mixToMono);
+    return AudioFileReader(filePath).createBus(sampleRate, mixToMono);
 }
 
 PassRefPtr<AudioBus> createBusFromInMemoryAudioFile(const void* data, size_t dataSize, bool mixToMono, float sampleRate)
 {
-    AudioFileReader reader(data, dataSize);
-    return reader.createBus(sampleRate, mixToMono);
+    return AudioFileReader(data, dataSize).createBus(sampleRate, mixToMono);
 }
 
-} // WebCore
+} // namespace WebCore
+
+#endif // PLATFORM(MAC) && !PLATFORM(IOS)
 
 #endif // ENABLE(WEB_AUDIO)

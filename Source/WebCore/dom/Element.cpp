@@ -4,7 +4,7 @@
  *           (C) 2001 Peter Kelly (pmk@post.com)
  *           (C) 2001 Dirk Mueller (mueller@kde.org)
  *           (C) 2007 David Smith (catfish.man@gmail.com)
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2012, 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2004-2014 Apple Inc. All rights reserved.
  *           (C) 2007 Eric Seidel (eric@webkit.org)
  *
  * This library is free software; you can redistribute it and/or
@@ -36,6 +36,7 @@
 #include "ContainerNodeAlgorithms.h"
 #include "DOMTokenList.h"
 #include "DocumentSharedObjectPool.h"
+#include "ElementIterator.h"
 #include "ElementRareData.h"
 #include "EventDispatcher.h"
 #include "FlowThreadController.h"
@@ -387,12 +388,12 @@ void Element::synchronizeAllAttributes() const
 {
     if (!elementData())
         return;
-    if (elementData()->m_styleAttributeIsDirty) {
+    if (elementData()->styleAttributeIsDirty()) {
         ASSERT(isStyledElement());
         static_cast<const StyledElement*>(this)->synchronizeStyleAttributeInternal();
     }
 #if ENABLE(SVG)
-    if (elementData()->m_animatedSVGAttributesAreDirty) {
+    if (elementData()->animatedSVGAttributesAreDirty()) {
         ASSERT(isSVGElement());
         toSVGElement(this)->synchronizeAnimatedSVGAttribute(anyQName());
     }
@@ -403,13 +404,13 @@ inline void Element::synchronizeAttribute(const QualifiedName& name) const
 {
     if (!elementData())
         return;
-    if (UNLIKELY(name == styleAttr && elementData()->m_styleAttributeIsDirty)) {
+    if (UNLIKELY(name == styleAttr && elementData()->styleAttributeIsDirty())) {
         ASSERT_WITH_SECURITY_IMPLICATION(isStyledElement());
         static_cast<const StyledElement*>(this)->synchronizeStyleAttributeInternal();
         return;
     }
 #if ENABLE(SVG)
-    if (UNLIKELY(elementData()->m_animatedSVGAttributesAreDirty)) {
+    if (UNLIKELY(elementData()->animatedSVGAttributesAreDirty())) {
         ASSERT(isSVGElement());
         toSVGElement(this)->synchronizeAnimatedSVGAttribute(name);
     }
@@ -422,13 +423,13 @@ inline void Element::synchronizeAttribute(const AtomicString& localName) const
     // e.g when called from DOM API.
     if (!elementData())
         return;
-    if (elementData()->m_styleAttributeIsDirty && equalPossiblyIgnoringCase(localName, styleAttr.localName(), shouldIgnoreAttributeCase(*this))) {
+    if (elementData()->styleAttributeIsDirty() && equalPossiblyIgnoringCase(localName, styleAttr.localName(), shouldIgnoreAttributeCase(*this))) {
         ASSERT_WITH_SECURITY_IMPLICATION(isStyledElement());
         static_cast<const StyledElement*>(this)->synchronizeStyleAttributeInternal();
         return;
     }
 #if ENABLE(SVG)
-    if (elementData()->m_animatedSVGAttributesAreDirty) {
+    if (elementData()->animatedSVGAttributesAreDirty()) {
         // We're not passing a namespace argument on purpose. SVGNames::*Attr are defined w/o namespaces as well.
         ASSERT_WITH_SECURITY_IMPLICATION(isSVGElement());
         toSVGElement(this)->synchronizeAnimatedSVGAttribute(QualifiedName(nullAtom, localName, nullAtom));
@@ -461,12 +462,10 @@ bool Element::isFocusable() const
         return e->renderer() && e->renderer()->style().visibility() == VISIBLE;
     }
 
-    if (renderer())
-        ASSERT(!renderer()->needsLayout());
-    else {
+    if (!renderer()) {
         // If the node is in a display:none tree it might say it needs style recalc but
         // the whole document is actually up to date.
-        ASSERT(!document().childNeedsStyleRecalc());
+        ASSERT(!needsStyleRecalc() || !document().childNeedsStyleRecalc());
     }
 
     // FIXME: Even if we are not visible, we might have a child that is visible.
@@ -1097,7 +1096,7 @@ void Element::attributeChanged(const QualifiedName& name, const AtomicString& ne
     document().incDOMTreeVersion();
 
     StyleResolver* styleResolver = document().styleResolverIfExists();
-    bool testShouldInvalidateStyle = attached() && styleResolver && styleChangeType() < FullStyleChange;
+    bool testShouldInvalidateStyle = inRenderedDocument() && styleResolver && styleChangeType() < FullStyleChange;
     bool shouldInvalidateStyle = false;
 
     if (isIdAttributeName(name)) {
@@ -1110,7 +1109,7 @@ void Element::attributeChanged(const QualifiedName& name, const AtomicString& ne
     } else if (name == classAttr)
         classAttributeChanged(newValue);
     else if (name == HTMLNames::nameAttr)
-        elementData()->m_hasNameAttribute = !newValue.isNull();
+        elementData()->setHasNameAttribute(!newValue.isNull());
     else if (name == HTMLNames::pseudoAttr)
         shouldInvalidateStyle |= testShouldInvalidateStyle && isInShadowTree();
 
@@ -1154,42 +1153,43 @@ static inline bool classStringHasClassName(const AtomicString& newClassString)
     return classStringHasClassName(newClassString.characters16(), length);
 }
 
-template<typename Checker>
-static bool checkSelectorForClassChange(const SpaceSplitString& changedClasses, const Checker& checker)
+static bool checkSelectorForClassChange(const SpaceSplitString& changedClasses, const StyleResolver& styleResolver)
 {
     unsigned changedSize = changedClasses.size();
     for (unsigned i = 0; i < changedSize; ++i) {
-        if (checker.hasSelectorForClass(changedClasses[i]))
+        if (styleResolver.hasSelectorForClass(changedClasses[i]))
             return true;
     }
     return false;
 }
 
-template<typename Checker>
-static bool checkSelectorForClassChange(const SpaceSplitString& oldClasses, const SpaceSplitString& newClasses, const Checker& checker)
+static bool checkSelectorForClassChange(const SpaceSplitString& oldClasses, const SpaceSplitString& newClasses, const StyleResolver& styleResolver)
 {
     unsigned oldSize = oldClasses.size();
     if (!oldSize)
-        return checkSelectorForClassChange(newClasses, checker);
+        return checkSelectorForClassChange(newClasses, styleResolver);
     BitVector remainingClassBits;
     remainingClassBits.ensureSize(oldSize);
     // Class vectors tend to be very short. This is faster than using a hash table.
     unsigned newSize = newClasses.size();
     for (unsigned i = 0; i < newSize; ++i) {
+        bool foundFromBoth = false;
         for (unsigned j = 0; j < oldSize; ++j) {
             if (newClasses[i] == oldClasses[j]) {
                 remainingClassBits.quickSet(j);
-                continue;
+                foundFromBoth = true;
             }
         }
-        if (checker.hasSelectorForClass(newClasses[i]))
+        if (foundFromBoth)
+            continue;
+        if (styleResolver.hasSelectorForClass(newClasses[i]))
             return true;
     }
     for (unsigned i = 0; i < oldSize; ++i) {
         // If the bit is not set the the corresponding class has been removed.
         if (remainingClassBits.quickGet(i))
             continue;
-        if (checker.hasSelectorForClass(oldClasses[i]))
+        if (styleResolver.hasSelectorForClass(oldClasses[i]))
             return true;
     }
     return false;
@@ -1198,7 +1198,7 @@ static bool checkSelectorForClassChange(const SpaceSplitString& oldClasses, cons
 void Element::classAttributeChanged(const AtomicString& newClassString)
 {
     StyleResolver* styleResolver = document().styleResolverIfExists();
-    bool testShouldInvalidateStyle = attached() && styleResolver && styleChangeType() < FullStyleChange;
+    bool testShouldInvalidateStyle = inRenderedDocument() && styleResolver && styleChangeType() < FullStyleChange;
     bool shouldInvalidateStyle = false;
 
     if (classStringHasClassName(newClassString)) {
@@ -1341,7 +1341,7 @@ bool Element::rendererIsNeeded(const RenderStyle& style)
     return style.display() != NONE;
 }
 
-RenderElement* Element::createRenderer(PassRef<RenderStyle> style)
+RenderPtr<RenderElement> Element::createElementRenderer(PassRef<RenderStyle> style)
 {
     return RenderElement::createFor(*this, std::move(style));
 }
@@ -1448,28 +1448,6 @@ void Element::unregisterNamedFlowContentElement()
         document().renderView()->flowThreadController().unregisterNamedFlowContentElement(*this);
 }
 
-void Element::lazyReattach(ShouldSetAttached shouldSetAttached)
-{
-    if (attached())
-        Style::detachRenderTreeInReattachMode(*this);
-    lazyAttach(shouldSetAttached);
-}
-
-void Element::lazyAttach(ShouldSetAttached shouldSetAttached)
-{
-    for (Node* node = this; node; node = NodeTraversal::next(node, this)) {
-        if (!node->isTextNode() && !node->isElementNode())
-            continue;
-        if (node->hasChildNodes())
-            node->setChildNeedsStyleRecalc();
-        if (node->isElementNode())
-            toElement(node)->setStyleChange(FullStyleChange);
-        if (shouldSetAttached == SetAttached)
-            node->setAttached(true);
-    }
-    markAncestorsWithChildNeedsStyleRecalc();
-}
-
 PassRef<RenderStyle> Element::styleForRenderer()
 {
     if (hasCustomStyleResolveCallbacks()) {
@@ -1519,11 +1497,7 @@ void Element::addShadowRoot(PassRefPtr<ShadowRoot> newShadowRoot)
 
     resetNeedsNodeRenderingTraversalSlowPath();
 
-    // FIXME(94905): ShadowHost should be reattached during recalcStyle.
-    // Set some flag here and recreate shadow hosts' renderer in
-    // Element::recalcStyle.
-    if (attached())
-        lazyReattach();
+    setNeedsStyleRecalc(ReconstructRenderTree);
 
     InspectorInstrumentation::didPushShadowRoot(this, shadowRoot);
 }
@@ -1536,7 +1510,7 @@ void Element::removeShadowRoot()
     InspectorInstrumentation::willPopShadowRoot(this, oldRoot.get());
     document().removeFocusedNodeOfSubtree(oldRoot.get());
 
-    ASSERT(!oldRoot->attached());
+    ASSERT(!oldRoot->renderer());
 
     elementRareData()->clearShadowRoot();
 
@@ -1650,8 +1624,7 @@ static void checkForSiblingStyleChanges(Element* parent, SiblingCheckType checkT
         // Find the first element node following |afterChange|
 
         // This is the insert/append case.
-        if (newFirstElement != elementAfterChange && elementAfterChange->attached()
-            && elementAfterChange->renderStyle() && elementAfterChange->renderStyle()->firstChildState())
+        if (newFirstElement != elementAfterChange && elementAfterChange->renderStyle() && elementAfterChange->renderStyle()->firstChildState())
             elementAfterChange->setNeedsStyleRecalc();
             
         // We also have to handle node removal.
@@ -1665,8 +1638,7 @@ static void checkForSiblingStyleChanges(Element* parent, SiblingCheckType checkT
         // Find our new last child.
         Element* newLastElement = ElementTraversal::lastChild(parent);
 
-        if (newLastElement != elementBeforeChange && elementBeforeChange->attached()
-            && elementBeforeChange->renderStyle() && elementBeforeChange->renderStyle()->lastChildState())
+        if (newLastElement != elementBeforeChange && elementBeforeChange->renderStyle() && elementBeforeChange->renderStyle()->lastChildState())
             elementBeforeChange->setNeedsStyleRecalc();
             
         // We also have to handle node removal.  The parser callback case is similar to node removal as well in that we need to change the last child
@@ -1679,8 +1651,7 @@ static void checkForSiblingStyleChanges(Element* parent, SiblingCheckType checkT
     // The + selector.  We need to invalidate the first element following the insertion point.  It is the only possible element
     // that could be affected by this DOM change.
     if (parent->childrenAffectedByDirectAdjacentRules() && elementAfterChange) {
-        if (elementAfterChange->attached())
-            elementAfterChange->setNeedsStyleRecalc();
+        elementAfterChange->setNeedsStyleRecalc();
     }
 
     // Forward positional selectors include the ~ selector, nth-child, nth-of-type, first-of-type and only-of-type.
@@ -1720,8 +1691,7 @@ void Element::removeAllEventListeners()
 void Element::beginParsingChildren()
 {
     clearIsParsingChildrenFinished();
-    StyleResolver* styleResolver = document().styleResolverIfExists();
-    if (styleResolver && attached())
+    if (auto styleResolver = document().styleResolverIfExists())
         styleResolver->pushParentElement(this);
 }
 
@@ -1730,7 +1700,7 @@ void Element::finishParsingChildren()
     ContainerNode::finishParsingChildren();
     setIsParsingChildrenFinished();
     checkForSiblingStyleChanges(this, FinishedParsingChildren, ElementTraversal::lastChild(this), nullptr);
-    if (StyleResolver* styleResolver = document().styleResolverIfExists())
+    if (auto styleResolver = document().styleResolverIfExists())
         styleResolver->popParentElement(this);
 }
 
@@ -1904,7 +1874,7 @@ void Element::removeAttribute(const AtomicString& name)
     AtomicString localName = shouldIgnoreAttributeCase(*this) ? name.lower() : name;
     unsigned index = elementData()->findAttributeIndexByName(localName, false);
     if (index == ElementData::attributeNotFound) {
-        if (UNLIKELY(localName == styleAttr) && elementData()->m_styleAttributeIsDirty && isStyledElement())
+        if (UNLIKELY(localName == styleAttr) && elementData()->styleAttributeIsDirty() && isStyledElement())
             toStyledElement(this)->removeAllInlineStyleProperties();
         return;
     }
@@ -2171,7 +2141,7 @@ RenderStyle* Element::computedStyle(PseudoId pseudoElementSpecifier)
         return usedStyle;
     }
 
-    if (!attached()) {
+    if (!inDocument()) {
         // FIXME: Try to do better than this. Ensure that styleForElement() works for elements that are not in the
         // document tree and figure out when to destroy the computed style for such elements.
         return nullptr;
@@ -2188,21 +2158,24 @@ void Element::setStyleAffectedByEmpty()
     ensureElementRareData().setStyleAffectedByEmpty(true);
 }
 
-void Element::setChildrenAffectedByActive(bool value)
+void Element::setChildrenAffectedByActive()
 {
-    if (value || hasRareData())
-        ensureElementRareData().setChildrenAffectedByActive(value);
+    ensureElementRareData().setChildrenAffectedByActive(true);
 }
 
-void Element::setChildrenAffectedByDrag(bool value)
+void Element::setChildrenAffectedByDrag()
 {
-    if (value || hasRareData())
-        ensureElementRareData().setChildrenAffectedByDrag(value);
+    ensureElementRareData().setChildrenAffectedByDrag(true);
 }
 
-void Element::setChildrenAffectedByForwardPositionalRules()
+void Element::setChildrenAffectedByDirectAdjacentRules(Element* element)
 {
-    ensureElementRareData().setChildrenAffectedByForwardPositionalRules(true);
+    element->setChildrenAffectedByDirectAdjacentRules();
+}
+
+void Element::setChildrenAffectedByForwardPositionalRules(Element* element)
+{
+    element->ensureElementRareData().setChildrenAffectedByForwardPositionalRules(true);
 }
 
 void Element::setChildrenAffectedByBackwardPositionalRules()
@@ -2342,8 +2315,8 @@ void Element::normalizeAttributes()
 {
     if (!hasAttributes())
         return;
-    for (unsigned i = 0; i < attributeCount(); ++i) {
-        if (RefPtr<Attr> attr = attrIfExists(attributeAt(i).name()))
+    for (const Attribute& attribute : attributesIterator()) {
+        if (RefPtr<Attr> attr = attrIfExists(attribute.name()))
             attr->normalize();
     }
 }
@@ -2374,7 +2347,7 @@ static void disconnectPseudoElement(PseudoElement* pseudoElement)
 {
     if (!pseudoElement)
         return;
-    if (pseudoElement->attached())
+    if (pseudoElement->renderer())
         Style::detachRenderTree(*pseudoElement);
     ASSERT(pseudoElement->hostElement());
     pseudoElement->clearHostElement();
@@ -2464,7 +2437,7 @@ DOMTokenList* Element::classList()
     return data.classList();
 }
 
-DOMStringMap* Element::dataset()
+DatasetDOMStringMap* Element::dataset()
 {
     ElementRareData& data = ensureElementRareData();
     if (!data.dataset())
@@ -2533,8 +2506,10 @@ bool Element::childShouldCreateRenderer(const Node& child) const
 {
 #if ENABLE(SVG)
     // Only create renderers for SVG elements whose parents are SVG elements, or for proper <svg xmlns="svgNS"> subdocuments.
-    if (child.isSVGElement())
-        return child.hasTagName(SVGNames::svgTag) || isSVGElement();
+    if (child.isSVGElement()) {
+        ASSERT(!isSVGElement());
+        return child.hasTagName(SVGNames::svgTag) && toSVGElement(child).isValid();
+    }
 #endif
     return ContainerNode::childShouldCreateRenderer(child);
 }
@@ -2833,7 +2808,8 @@ void Element::willModifyAttribute(const QualifiedName& name, const AtomicString&
     }
 
     if (oldValue != newValue) {
-        if (attached() && document().styleResolverIfExists() && document().styleResolverIfExists()->hasSelectorForAttribute(name.localName()))
+        auto styleResolver = document().styleResolverIfExists();
+        if (styleResolver && styleResolver->hasSelectorForAttribute(name.localName()))
             setNeedsStyleRecalc();
     }
 
@@ -2941,8 +2917,7 @@ void Element::detachAllAttrNodesFromElement()
     AttrNodeList* attrNodeList = attrNodeListForElement(this);
     ASSERT(attrNodeList);
 
-    for (unsigned i = 0; i < attributeCount(); ++i) {
-        const Attribute& attribute = attributeAt(i);
+    for (const Attribute& attribute : attributesIterator()) {
         if (RefPtr<Attr> attrNode = findAttrNodeInList(*attrNodeList, attribute.name()))
             attrNode->detachFromElementWithValue(attribute.value());
     }
@@ -2952,9 +2927,13 @@ void Element::detachAllAttrNodesFromElement()
 
 void Element::resetComputedStyle()
 {
-    if (!hasRareData())
+    if (!hasRareData() || !elementRareData()->computedStyle())
         return;
     elementRareData()->resetComputedStyle();
+    for (auto& child : descendantsOfType<Element>(*this)) {
+        if (child.hasRareData())
+            child.elementRareData()->resetComputedStyle();
+    }
 }
 
 void Element::clearStyleDerivedDataBeforeDetachingRenderer()
@@ -3059,8 +3038,7 @@ void Element::cloneAttributesFromElement(const Element& other)
     else
         m_elementData = other.m_elementData->makeUniqueCopy();
 
-    for (unsigned i = 0; i < m_elementData->length(); ++i) {
-        const Attribute& attribute = const_cast<const ElementData*>(m_elementData.get())->attributeAt(i);
+    for (const Attribute& attribute : attributesIterator()) {
         attributeChanged(attribute.name(), attribute.value(), ModifiedByCloning);
     }
 }

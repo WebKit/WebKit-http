@@ -310,25 +310,6 @@
                 "hidden": true
             },
             {
-                "name": "canOverrideDeviceMetrics",
-                "description": "Checks whether <code>setDeviceMetricsOverride</code> can be invoked.",
-                "returns": [
-                    { "name": "result", "type": "boolean", "description": "If true, <code>setDeviceMetricsOverride</code> can safely be invoked on the agent." }
-                ],
-                "hidden": true
-            },
-            {
-                "name": "setDeviceMetricsOverride",
-                "description": "Overrides the values of device screen dimensions (window.screen.width, window.screen.height, window.innerWidth, window.innerHeight, and \"device-width\"/\"device-height\"-related CSS media query results) and the font scale factor.",
-                "parameters": [
-                    { "name": "width", "type": "integer", "description": "Overriding width value in pixels (minimum 0, maximum 10000000). 0 disables the override." },
-                    { "name": "height", "type": "integer", "description": "Overriding height value in pixels (minimum 0, maximum 10000000). 0 disables the override." },
-                    { "name": "fontScaleFactor", "type": "number", "description": "Overriding font scale factor value (must be positive). 1 disables the override." },
-                    { "name": "fitWindow", "type": "boolean", "description": "Whether a view that exceeds the available browser window area should be scaled down to fit." }
-                ],
-                "hidden": true
-            },
-            {
                 "name": "setShowPaintRects",
                 "description": "Requests that backend shows paint rectangles",
                 "parameters": [
@@ -732,13 +713,6 @@
             {
                 "name": "disable",
                 "description": "Disables network tracking, prevents network events from being sent to the client."
-            },
-            {
-                "name": "setUserAgentOverride",
-                "description": "Allows overriding user agent with the given string.",
-                "parameters": [
-                    { "name": "userAgent", "type": "string", "description": "User agent to use." }
-                ]
             },
             {
                 "name": "setExtraHTTPHeaders",
@@ -1336,22 +1310,6 @@
                     { "name": "isNowOnline", "type": "boolean" }
                 ]
             }
-        ]
-    },
-    {
-        "domain": "FileSystem",
-        "hidden": true,
-        "commands": [
-            {
-                "name": "enable",
-                "description": "Enables events from backend."
-            },
-            {
-                "name": "disable",
-                "description": "Disables events from backend.."
-            }
-        ],
-        "events": [
         ]
     },
     {
@@ -2238,14 +2196,6 @@
         ],
         "commands": [
             {
-                "name": "causesRecompilation",
-                "returns": [
-                    { "name": "result", "type": "boolean", "description": "True if enabling debugger causes scripts recompilation." }
-                ],
-                "hidden": true,
-                "description": "Tells whether enabling debugger causes scripts recompilation."
-            },
-            {
                 "name": "supportsNativeBreakpoints",
                 "returns": [
                     { "name": "result", "type": "boolean", "description": "True if debugger supports native breakpoints." }
@@ -2341,26 +2291,6 @@
                     { "name": "result", "type": "array", "items": { "$ref": "Page.SearchMatch" }, "description": "List of search matches." }
                 ],
                 "description": "Searches for given string in script content."
-            },
-            {
-                "name": "canSetScriptSource",
-                "returns": [
-                    { "name": "result", "type": "boolean", "description": "True if <code>setScriptSource</code> is supported." }
-                ],
-                "description": "Tells whether <code>setScriptSource</code> is supported."
-            },
-            {
-                "name": "setScriptSource",
-                "parameters": [
-                    { "name": "scriptId", "$ref": "ScriptId", "description": "Id of the script to edit." },
-                    { "name": "scriptSource", "type": "string", "description": "New content of the script." },
-                    { "name": "preview", "type": "boolean", "optional": true, "description": " If true the change will not actually be applied. Preview mode may be used to get result description without actually modifying the code.", "hidden": true }
-                ],
-                "returns": [
-                    { "name": "callFrames", "type": "array", "optional": true, "items": { "$ref": "CallFrame"}, "description": "New stack trace in case editing has happened while VM was stopped." },
-                    { "name": "result", "type": "object", "optional": true, "description": "VM-specific description of the changes applied.", "hidden": true }
-                ],
-                "description": "Edits JavaScript source live."
             },
             {
                 "name": "getScriptSource",
@@ -2560,12 +2490,6 @@
             }
         ],
         "commands": [
-            {
-                "name": "causesRecompilation",
-                "returns": [
-                    { "name": "result", "type": "boolean" }
-                ]
-            },
             {
                 "name": "isSampling",
                 "returns": [

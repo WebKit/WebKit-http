@@ -144,12 +144,15 @@ bool deleteFile(const String&);
 bool deleteEmptyDirectory(const String&);
 bool getFileSize(const String&, long long& result);
 bool getFileModificationTime(const String&, time_t& result);
+bool getFileCreationTime(const String&, time_t& result); // Not all platforms store file creation time.
 bool getFileMetadata(const String&, FileMetadata&);
 String pathByAppendingComponent(const String& path, const String& component);
 bool makeAllDirectories(const String& path);
 String homeDirectoryPath();
 String pathGetFileName(const String&);
 String directoryName(const String&);
+
+void setMetadataURL(String& URLString, const String& referrer, const String& path);
 
 bool canExcludeFromBackup(); // Returns true if any file can ever be excluded from backup.
 bool excludeFromBackup(const String&); // Returns true if successful.
@@ -189,11 +192,7 @@ String encodeForFileName(const String&);
 RetainPtr<CFURLRef> pathAsURL(const String&);
 #endif
 
-#if PLATFORM(MAC)
-void setMetadataURL(String& URLString, const String& referrer, const String& path);
-#endif
-
-#if PLATFORM(GTK) || PLATFORM(NIX)
+#if PLATFORM(GTK)
 String filenameToString(const char*);
 String filenameForDisplay(const String&);
 CString applicationDirectoryPath();

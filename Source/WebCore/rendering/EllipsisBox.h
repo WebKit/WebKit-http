@@ -28,11 +28,11 @@ namespace WebCore {
 class HitTestRequest;
 class HitTestResult;
 
-class EllipsisBox FINAL : public InlineElementBox {
+class EllipsisBox final : public InlineElementBox {
 public:
     EllipsisBox(RenderBlockFlow&, const AtomicString& ellipsisStr, InlineFlowBox* parent, int width, int height, int y, bool firstLine, bool isVertical, InlineBox* markupBox);
     virtual void paint(PaintInfo&, const LayoutPoint&, LayoutUnit lineTop, LayoutUnit lineBottom);
-    virtual bool nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, LayoutUnit lineTop, LayoutUnit lineBottom) OVERRIDE;
+    virtual bool nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, LayoutUnit lineTop, LayoutUnit lineBottom) override;
     void setSelectionState(RenderObject::SelectionState s) { m_selectionState = s; }
     IntRect selectionRect();
 

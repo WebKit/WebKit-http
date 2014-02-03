@@ -33,9 +33,8 @@ namespace WebKit {
 
 class RemoteLayerTreePropertyApplier {
 public:
-    typedef HashMap<RemoteLayerTreeTransaction::LayerID, CALayer *> RelatedLayerMap;
+    typedef HashMap<WebCore::GraphicsLayer::PlatformLayerID, CALayer *> RelatedLayerMap;
     static void applyPropertiesToLayer(CALayer *, RemoteLayerTreeTransaction::LayerProperties, RelatedLayerMap);
-    static void disableActionsForLayer(CALayer *);
 };
 
 } // namespace WebKit

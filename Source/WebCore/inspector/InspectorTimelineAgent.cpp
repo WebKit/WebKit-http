@@ -51,6 +51,7 @@
 #include "RenderView.h"
 #include "ResourceRequest.h"
 #include "ResourceResponse.h"
+#include "ScriptProfiler.h"
 #include "TimelineRecordFactory.h"
 #include <wtf/CurrentTime.h>
 
@@ -73,7 +74,7 @@ void InspectorTimelineAgent::didCreateFrontendAndBackend(Inspector::InspectorFro
     m_backendDispatcher = InspectorTimelineBackendDispatcher::create(backendDispatcher, this);
 }
 
-void InspectorTimelineAgent::willDestroyFrontendAndBackend()
+void InspectorTimelineAgent::willDestroyFrontendAndBackend(InspectorDisconnectReason)
 {
     m_frontendDispatcher = nullptr;
     m_backendDispatcher.clear();
@@ -107,7 +108,7 @@ void InspectorTimelineAgent::stop(ErrorString*)
         return;
 
     m_weakFactory.revokeAll();
-    m_instrumentingAgents->setInspectorTimelineAgent(0);
+    m_instrumentingAgents->setInspectorTimelineAgent(nullptr);
 
     clearRecordStack();
 
@@ -137,10 +138,28 @@ void InspectorTimelineAgent::didCancelFrame()
 void InspectorTimelineAgent::willCallFunction(const String& scriptName, int scriptLine, Frame* frame)
 {
     pushCurrentRecord(TimelineRecordFactory::createFunctionCallData(scriptName, scriptLine), TimelineRecordType::FunctionCall, true, frame);
+
+    if (frame && !m_recordingProfile) {
+        m_recordingProfile = true;
+        ScriptProfiler::start(toJSDOMWindow(frame, debuggerWorld())->globalExec(), ASCIILiteral("Timeline FunctionCall"));
+    }
 }
 
-void InspectorTimelineAgent::didCallFunction()
+void InspectorTimelineAgent::didCallFunction(Frame* frame)
 {
+    if (frame && m_recordingProfile) {
+        if (m_recordStack.isEmpty())
+            return;
+
+        TimelineRecordEntry& entry = m_recordStack.last();
+        ASSERT(entry.type == TimelineRecordType::FunctionCall);
+
+        RefPtr<ScriptProfile> profile = ScriptProfiler::stop(toJSDOMWindow(frame, debuggerWorld())->globalExec(), ASCIILiteral("Timeline FunctionCall"));
+        TimelineRecordFactory::appendProfile(entry.data.get(), profile.release());
+
+        m_recordingProfile = false;
+    }
+
     didCompleteCurrentRecord(TimelineRecordType::FunctionCall);
 }
 
@@ -234,7 +253,7 @@ void InspectorTimelineAgent::didScroll()
 
 void InspectorTimelineAgent::willComposite()
 {
-    pushCurrentRecord(InspectorObject::create(), TimelineRecordType::CompositeLayers, false, 0);
+    pushCurrentRecord(InspectorObject::create(), TimelineRecordType::CompositeLayers, false, nullptr);
 }
 
 void InspectorTimelineAgent::didComposite()
@@ -299,10 +318,28 @@ void InspectorTimelineAgent::didDispatchXHRLoadEvent()
 void InspectorTimelineAgent::willEvaluateScript(const String& url, int lineNumber, Frame* frame)
 {
     pushCurrentRecord(TimelineRecordFactory::createEvaluateScriptData(url, lineNumber), TimelineRecordType::EvaluateScript, true, frame);
+
+    if (frame && !m_recordingProfile) {
+        m_recordingProfile = true;
+        ScriptProfiler::start(toJSDOMWindow(frame, debuggerWorld())->globalExec(), ASCIILiteral("Timeline EvaluateScript"));
+    }
 }
 
-void InspectorTimelineAgent::didEvaluateScript()
+void InspectorTimelineAgent::didEvaluateScript(Frame* frame)
 {
+    if (frame && m_recordingProfile) {
+        if (m_recordStack.isEmpty())
+            return;
+
+        TimelineRecordEntry& entry = m_recordStack.last();
+        ASSERT(entry.type == TimelineRecordType::EvaluateScript);
+
+        RefPtr<ScriptProfile> profile = ScriptProfiler::stop(toJSDOMWindow(frame, debuggerWorld())->globalExec(), ASCIILiteral("Timeline EvaluateScript"));
+        TimelineRecordFactory::appendProfile(entry.data.get(), profile.release());
+
+        m_recordingProfile = false;
+    }
+
     didCompleteCurrentRecord(TimelineRecordType::EvaluateScript);
 }
 
@@ -592,6 +629,7 @@ InspectorTimelineAgent::InspectorTimelineAgent(InstrumentingAgents* instrumentin
     , m_weakFactory(this)
     , m_enabled(false)
     , m_includeDOMCounters(false)
+    , m_recordingProfile(false)
 {
 }
 
@@ -651,7 +689,7 @@ double InspectorTimelineAgent::timestamp()
 
 Page* InspectorTimelineAgent::page()
 {
-    return m_pageAgent ? m_pageAgent->page() : 0;
+    return m_pageAgent ? m_pageAgent->page() : nullptr;
 }
 
 } // namespace WebCore

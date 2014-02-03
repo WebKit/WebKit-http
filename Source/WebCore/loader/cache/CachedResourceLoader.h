@@ -46,7 +46,6 @@ class CachedFont;
 class CachedImage;
 class CachedRawResource;
 class CachedScript;
-class CachedShader;
 class CachedTextTrack;
 class CachedXSLStyleSheet;
 class Document;
@@ -91,9 +90,6 @@ public:
 #endif
 #if ENABLE(VIDEO_TRACK)
     CachedResourceHandle<CachedTextTrack> requestTextTrack(CachedResourceRequest&);
-#endif
-#if ENABLE(CSS_SHADERS)
-    CachedResourceHandle<CachedShader> requestShader(CachedResourceRequest&);
 #endif
 
     // Logs an access denied message to the console for the specified URL.
@@ -156,7 +152,7 @@ private:
     bool shouldContinueAfterNotifyingLoadedFromMemoryCache(CachedResource*);
     bool checkInsecureContent(CachedResource::Type, const URL&) const;
 
-    void garbageCollectDocumentResourcesTimerFired(Timer<CachedResourceLoader>*);
+    void garbageCollectDocumentResourcesTimerFired(Timer<CachedResourceLoader>&);
     void performPostLoadActions();
 
     bool clientDefersImage(const URL&) const;

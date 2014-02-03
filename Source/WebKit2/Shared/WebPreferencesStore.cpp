@@ -29,6 +29,7 @@
 #include "FontSmoothingLevel.h"
 #include "WebCoreArgumentCoders.h"
 #include <WebCore/Settings.h>
+#include <wtf/NeverDestroyed.h>
 
 namespace WebKit {
 
@@ -37,7 +38,7 @@ namespace WebPreferencesKey {
 #define DEFINE_KEY_GETTERS(KeyUpper, KeyLower, TypeName, Type, DefaultValue) \
         const String& KeyLower##Key() \
         { \
-            DEFINE_STATIC_LOCAL(String, key, (ASCIILiteral(#KeyUpper))); \
+            static NeverDestroyed<String> key(ASCIILiteral(#KeyUpper)); \
             return key; \
         }
 
@@ -51,7 +52,7 @@ typedef HashMap<String, bool> BoolOverridesMap;
 
 static BoolOverridesMap& boolTestRunnerOverridesMap()
 {
-    DEFINE_STATIC_LOCAL(BoolOverridesMap, map, ());
+    static NeverDestroyed<BoolOverridesMap> map;
     return map;
 }
 
@@ -59,7 +60,7 @@ WebPreferencesStore::WebPreferencesStore()
 {
 }
 
-void WebPreferencesStore::encode(CoreIPC::ArgumentEncoder& encoder) const
+void WebPreferencesStore::encode(IPC::ArgumentEncoder& encoder) const
 {
     encoder << m_stringValues;
     encoder << m_boolValues;
@@ -68,7 +69,7 @@ void WebPreferencesStore::encode(CoreIPC::ArgumentEncoder& encoder) const
     encoder << m_floatValues;
 }
 
-bool WebPreferencesStore::decode(CoreIPC::ArgumentDecoder& decoder, WebPreferencesStore& result)
+bool WebPreferencesStore::decode(IPC::ArgumentDecoder& decoder, WebPreferencesStore& result)
 {
     if (!decoder.decode(result.m_stringValues))
         return false;

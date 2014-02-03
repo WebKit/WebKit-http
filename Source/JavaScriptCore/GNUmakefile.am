@@ -38,8 +38,6 @@ libjavascriptcoregtk_@WEBKITGTK_API_MAJOR_VERSION@_@WEBKITGTK_API_MINOR_VERSION@
 	$(libjavascriptcoregtk_@WEBKITGTK_API_MAJOR_VERSION@_@WEBKITGTK_API_MINOR_VERSION@_la_CFLAGS)
 
 libjavascriptcoregtk_@WEBKITGTK_API_MAJOR_VERSION@_@WEBKITGTK_API_MINOR_VERSION@_la_CFLAGS = \
-	-fstrict-aliasing \
-	-O3 \
 	$(javascriptcore_cflags)
 
 libjavascriptcoregtk_@WEBKITGTK_API_MAJOR_VERSION@_@WEBKITGTK_API_MINOR_VERSION@_la_CPPFLAGS = \
@@ -61,6 +59,7 @@ javascriptcore_cppflags += \
 	-I$(srcdir)/Source/JavaScriptCore/ftl \
 	-I$(srcdir)/Source/JavaScriptCore/heap \
 	-I$(srcdir)/Source/JavaScriptCore/inspector \
+	-I$(srcdir)/Source/JavaScriptCore/inspector/agents \
 	-I$(srcdir)/Source/JavaScriptCore/interpreter \
 	-I$(srcdir)/Source/JavaScriptCore/jit \
 	-I$(srcdir)/Source/JavaScriptCore/llint \
@@ -72,6 +71,18 @@ javascriptcore_cppflags += \
 	-I$(top_builddir)/DerivedSources/JavaScriptCore \
 	-I$(srcdir)/Source/WTF \
 	$(LLVM_CFLAGS)
+
+# FIXME: the -fomit-frame-pointer and -ftree-dce optimizations are disabled after they've been causing
+# trouble with the merged jsCStack code. The former is required due to otherwise incorrectly compiled
+# operationCallEval function, while the latter is required when using GCC 4.8. See bugs #127777 and
+# #127909 for more information.
+javascriptcore_cppflags += \
+	-fno-omit-frame-pointer
+
+if COMPILER_GCC
+javascriptcore_cppflags += \
+	-fno-tree-dce
+endif
 
 javascriptcore_cflags += \
 	$(global_cflags) \
@@ -97,11 +108,13 @@ DerivedSources/JavaScriptCore/KeywordLookup.h: $(srcdir)/Source/JavaScriptCore/K
 
 DerivedSources/JavaScriptCore/LLIntDesiredOffsets.h: $(javascriptcore_sources) $(llint_nosources) $(offlineasm_nosources)
 	$(AM_V_GEN)$(RUBY) $(srcdir)/Source/JavaScriptCore/offlineasm/generate_offset_extractor.rb $(srcdir)/Source/JavaScriptCore/llint/LowLevelInterpreter.asm $@
+	$(AM_V_at)touch $@
 
 $(Programs_LLIntOffsetsExtractor_OBJECTS): DerivedSources/JavaScriptCore/LLIntDesiredOffsets.h
 
 DerivedSources/JavaScriptCore/LLIntAssembly.h: Programs/LLIntOffsetsExtractor$(EXEEXT)
 	$(AM_V_GEN)$(RUBY) $(srcdir)/Source/JavaScriptCore/offlineasm/asm.rb $(srcdir)/Source/JavaScriptCore/llint/LowLevelInterpreter.asm Programs/LLIntOffsetsExtractor$(EXEEXT) $@
+	$(AM_V_at)touch $@
 
 $(libjavascriptcoregtk_@WEBKITGTK_API_MAJOR_VERSION@_@WEBKITGTK_API_MINOR_VERSION@_la_OBJECTS): DerivedSources/JavaScriptCore/LLIntAssembly.h
 
@@ -133,8 +146,7 @@ Programs_minidom_LDADD = \
 	-lstdc++
 
 Programs_minidom_LDFLAGS = \
-	-no-install \
-	-no-fast-install
+	-no-install
 
 Programs_LLIntOffsetsExtractor_CPPFLAGS = \
 	$(global_cppflags) \
@@ -157,8 +169,7 @@ Programs_LLIntOffsetsExtractor_LDADD = \
 	-lstdc++
 
 Programs_LLIntOffsetsExtractor_LDFLAGS = \
-	-no-install \
-	-no-fast-install
+	-no-install
 
 # jsc
 Programs/jsc$(EXEEXT): Programs/jsc-@WEBKITGTK_API_MAJOR_VERSION@$(EXEEXT)
@@ -190,13 +201,18 @@ EXTRA_DIST += \
 	Source/JavaScriptCore/create_regex_tables \
 	Source/JavaScriptCore/icu/LICENSE \
 	Source/JavaScriptCore/icu/README \
+	Source/JavaScriptCore/inspector/InjectedScriptSource.js \
 	Source/JavaScriptCore/inspector/protocol/Debugger.json \
 	Source/JavaScriptCore/inspector/protocol/GenericTypes.json \
 	Source/JavaScriptCore/inspector/protocol/InspectorDomain.json \
 	Source/JavaScriptCore/inspector/protocol/Runtime.json \
 	Source/JavaScriptCore/inspector/scripts/CodeGeneratorInspector.py \
 	Source/JavaScriptCore/inspector/scripts/CodeGeneratorInspectorStrings.py \
+	Source/JavaScriptCore/inspector/scripts/cssmin.py \
 	Source/JavaScriptCore/inspector/scripts/generate-combined-inspector-json.py \
+	Source/JavaScriptCore/inspector/scripts/inline-and-minify-stylesheets-and-scripts.py \
+	Source/JavaScriptCore/inspector/scripts/jsmin.py \
+	Source/JavaScriptCore/inspector/scripts/xxd.pl \
 	Source/JavaScriptCore/KeywordLookupGenerator.py \
 	Source/JavaScriptCore/parser/Keywords.table \
 	Source/JavaScriptCore/THANKS \
@@ -239,6 +255,7 @@ DerivedSources/JavaScriptCore/InspectorJS.json: $(INSPECTOR_SCRIPTS_DIR)/generat
 # Copy generated header files to DerivedSources/JavaScriptCore/inspector so that WebCore's ForwardingHeader style of #include <inspector/Foo.h> will work.
 DerivedSources/JavaScriptCore/InspectorJSBackendDispatchers.cpp: DerivedSources/JavaScriptCore/InspectorJS.json $(INSPECTOR_SCRIPTS_DIR)/CodeGeneratorInspector.py $(INSPECTOR_SCRIPTS_DIR)/CodeGeneratorInspectorStrings.py
 	$(AM_V_GEN)$(PYTHON) $(INSPECTOR_SCRIPTS_DIR)/CodeGeneratorInspector.py $< --output_h_dir $(GENSOURCES_JAVASCRIPTCORE) --output_cpp_dir $(GENSOURCES_JAVASCRIPTCORE) --output_js_dir $(GENSOURCES_JAVASCRIPTCORE) --output_type JavaScript
+	$(AM_V_at)touch $@
 	mkdir -p DerivedSources/JavaScriptCore/inspector
 	cp DerivedSources/JavaScriptCore/InspectorJSTypeBuilders.h DerivedSources/JavaScriptCore/InspectorJSFrontendDispatchers.h DerivedSources/JavaScriptCore/InspectorJSBackendDispatchers.h DerivedSources/JavaScriptCore/inspector
 DerivedSources/JavaScriptCore/InspectorJSTypeBuilders.h: DerivedSources/JavaScriptCore/InspectorJSTypeBuilders.cpp
@@ -247,3 +264,8 @@ DerivedSources/JavaScriptCore/InspectorJSFrontendDispatchers.h: DerivedSources/J
 DerivedSources/JavaScriptCore/InspectorJSFrontendDispatchers.cpp: DerivedSources/JavaScriptCore/InspectorJSBackendCommands.js
 DerivedSources/JavaScriptCore/InspectorJSBackendCommands.js: DerivedSources/JavaScriptCore/InspectorJSBackendDispatchers.h
 DerivedSources/JavaScriptCore/InspectorJSBackendDispatchers.h: DerivedSources/JavaScriptCore/InspectorJSBackendDispatchers.cpp
+
+DerivedSources/JavaScriptCore/InjectedScriptSource.h: $(JavaScriptCore)/inspector/InjectedScriptSource.js $(INSPECTOR_SCRIPTS_DIR)/xxd.pl $(INSPECTOR_SCRIPTS_DIR)/jsmin.py
+	$(AM_V_GEN)$(PYTHON) $(INSPECTOR_SCRIPTS_DIR)/jsmin.py < $< > $(GENSOURCES_JAVASCRIPTCORE)/InjectedScriptSource.min.js
+	$(AM_V_at)$(PERL) $(INSPECTOR_SCRIPTS_DIR)/xxd.pl InjectedScriptSource_js $(GENSOURCES_JAVASCRIPTCORE)/InjectedScriptSource.min.js $@
+	$(AM_V_at)rm -rf $(GENSOURCES_JAVASCRIPTCORE)/InjectedScriptSource.min.js

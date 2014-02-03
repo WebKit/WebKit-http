@@ -39,15 +39,20 @@ class DrawingAreaProxy;
 class GeolocationPermissionRequestProxy;
 class LayerTreeContext;
 class WebFrameProxy;
+class WebPageProxy;
 class WebSecurityOrigin;
+struct InteractionInformationAtPosition;
 }
 
 @class WebIOSEvent;
 
-@interface WKContentView ()
+@interface WKContentView () {
+@package
+    RefPtr<WebKit::WebPageProxy> _page;
+}
 
 - (std::unique_ptr<WebKit::DrawingAreaProxy>)_createDrawingAreaProxy;
-- (void)_processDidCrash;
+- (void)_processDidExit;
 - (void)_didRelaunchProcess;
 - (void)_setAcceleratedCompositingRootLayer:(CALayer *)rootLayer;
 
@@ -62,7 +67,7 @@ class WebSecurityOrigin;
 - (void)_stopAssistingNode;
 - (void)_selectionChanged;
 - (BOOL)_interpretKeyEvent:(WebIOSEvent *)theEvent isCharEvent:(BOOL)isCharEvent;
-
+- (void)_positionInformationDidChange:(const WebKit::InteractionInformationAtPosition&)info;
 - (void)_decidePolicyForGeolocationRequestFromOrigin:(WebKit::WebSecurityOrigin&)origin frame:(WebKit::WebFrameProxy&)frame request:(WebKit::GeolocationPermissionRequestProxy&)permissionRequest;
 
 @end

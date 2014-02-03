@@ -44,8 +44,10 @@
 #ifndef RenderLayer_h
 #define RenderLayer_h
 
+#include "GraphicsLayer.h"
 #include "PaintInfo.h"
 #include "RenderBox.h"
+#include "RenderPtr.h"
 #include "ScrollableArea.h"
 #include <wtf/OwnPtr.h>
 
@@ -313,7 +315,7 @@ public:
 
 typedef Vector<LayerFragment, 1> LayerFragments;
 
-class RenderLayer FINAL : public ScrollableArea {
+class RenderLayer final : public ScrollableArea {
 public:
     friend class RenderReplica;
 
@@ -342,13 +344,13 @@ public:
 
     void repaintIncludingDescendants();
 
-#if USE(ACCELERATED_COMPOSITING)
     // Indicate that the layer contents need to be repainted. Only has an effect
-    // if layer compositing is being used,
-    void setBackingNeedsRepaint();
-    void setBackingNeedsRepaintInRect(const LayoutRect&); // r is in the coordinate space of the layer's render object
+    // if layer compositing is being used.
+    void setBackingNeedsRepaint(GraphicsLayer::ShouldClipToLayer = GraphicsLayer::ClipToLayer);
+
+    // The rect is in the coordinate space of the layer's render object.
+    void setBackingNeedsRepaintInRect(const LayoutRect&, GraphicsLayer::ShouldClipToLayer = GraphicsLayer::ClipToLayer);
     void repaintIncludingNonCompositingDescendants(RenderLayerModelObject* repaintContainer);
-#endif
 
     void styleChanged(StyleDifference, const RenderStyle* oldStyle);
 
@@ -365,7 +367,7 @@ public:
 
     bool hasReflection() const { return renderer().hasReflection(); }
     bool isReflection() const { return renderer().isReplica(); }
-    RenderReplica* reflection() const { return m_reflection; }
+    RenderReplica* reflection() const { return m_reflection.get(); }
     RenderLayer* reflectionLayer() const;
 
     const RenderLayer* root() const
@@ -420,21 +422,21 @@ public:
     bool hasVerticalScrollbar() const { return verticalScrollbar(); }
 
     // ScrollableArea overrides
-    virtual Scrollbar* horizontalScrollbar() const OVERRIDE { return m_hBar.get(); }
-    virtual Scrollbar* verticalScrollbar() const OVERRIDE { return m_vBar.get(); }
-    virtual ScrollableArea* enclosingScrollableArea() const OVERRIDE;
+    virtual Scrollbar* horizontalScrollbar() const override { return m_hBar.get(); }
+    virtual Scrollbar* verticalScrollbar() const override { return m_vBar.get(); }
+    virtual ScrollableArea* enclosingScrollableArea() const override;
 
 #if PLATFORM(IOS)
 #if ENABLE(TOUCH_EVENTS)
-    virtual bool handleTouchEvent(const PlatformTouchEvent&) OVERRIDE;
-    virtual bool isTouchScrollable() const OVERRIDE { return true; }
+    virtual bool handleTouchEvent(const PlatformTouchEvent&) override;
+    virtual bool isTouchScrollable() const override { return true; }
 #endif
-    virtual bool isOverflowScroll() const OVERRIDE { return true; }
+    virtual bool isOverflowScroll() const override { return true; }
     
-    virtual void didStartScroll() OVERRIDE;
-    virtual void didEndScroll() OVERRIDE;
-    virtual void didUpdateScroll() OVERRIDE;
-    virtual void setIsUserScroll(bool isUserScroll) OVERRIDE { m_inUserScroll = isUserScroll; }
+    virtual void didStartScroll() override;
+    virtual void didEndScroll() override;
+    virtual void didUpdateScroll() override;
+    virtual void setIsUserScroll(bool isUserScroll) override { m_inUserScroll = isUserScroll; }
 
     bool isInUserScroll() const { return m_inUserScroll; }
 
@@ -455,7 +457,7 @@ public:
 
     void paintOverflowControls(GraphicsContext*, const IntPoint&, const IntRect& damageRect, bool paintingOverlayControls = false);
     void paintScrollCorner(GraphicsContext*, const IntPoint&, const IntRect& damageRect);
-    void paintResizer(GraphicsContext*, const IntPoint&, const IntRect& damageRect);
+    void paintResizer(GraphicsContext*, const LayoutPoint&, const LayoutRect& damageRect);
 
     void updateScrollInfoAfterLayout();
 
@@ -469,13 +471,11 @@ public:
 
     bool isRootLayer() const { return m_isRootLayer; }
 
-#if USE(ACCELERATED_COMPOSITING)
     RenderLayerCompositor& compositor() const;
     
     // Notification from the renderer that its content changed (e.g. current frame of image changed).
     // Allows updates of layer content without repainting.
     void contentChanged(ContentChangeType);
-#endif
 
     bool canRender3DTransforms() const;
 
@@ -494,9 +494,7 @@ public:
     void updateLayerPositionsAfterOverflowScroll();
     void updateLayerPositionsAfterDocumentScroll();
 
-#if USE(ACCELERATED_COMPOSITING)
     void positionNewlyCreatedOverflowControls();
-#endif
     
     bool isPaginated() const { return m_isPaginated; }
     RenderLayer* enclosingPaginationLayer() const { return m_enclosingPaginationLayer; }
@@ -600,13 +598,11 @@ public:
 
     RenderLayer* enclosingOverflowClipLayer(IncludeSelfOrNot) const;
 
-#if USE(ACCELERATED_COMPOSITING)
     // Enclosing compositing layer; if includeSelf is true, may return this.
     RenderLayer* enclosingCompositingLayer(IncludeSelfOrNot = IncludeSelf) const;
     RenderLayer* enclosingCompositingLayerForRepaint(IncludeSelfOrNot = IncludeSelf) const;
     // Ancestor compositing layer, excluding this.
     RenderLayer* ancestorCompositingLayer() const { return enclosingCompositingLayer(ExcludeSelf); }
-#endif
 
 #if ENABLE(CSS_FILTERS)
     RenderLayer* enclosingFilterLayer(IncludeSelfOrNot = IncludeSelf) const;
@@ -788,27 +784,20 @@ public:
     bool hasBlendMode() const { return false; }
 #endif
 
-#if USE(ACCELERATED_COMPOSITING)
     bool isComposited() const { return m_backing != 0; }
     bool hasCompositingDescendant() const { return m_hasCompositingDescendant; }
     bool hasCompositedMask() const;
     RenderLayerBacking* backing() const { return m_backing.get(); }
     RenderLayerBacking* ensureBacking();
     void clearBacking(bool layerBeingDestroyed = false);
-    virtual GraphicsLayer* layerForScrolling() const OVERRIDE;
-    virtual GraphicsLayer* layerForHorizontalScrollbar() const OVERRIDE;
-    virtual GraphicsLayer* layerForVerticalScrollbar() const OVERRIDE;
-    virtual GraphicsLayer* layerForScrollCorner() const OVERRIDE;
-    virtual bool usesCompositedScrolling() const OVERRIDE;
+    virtual GraphicsLayer* layerForScrolling() const override;
+    virtual GraphicsLayer* layerForHorizontalScrollbar() const override;
+    virtual GraphicsLayer* layerForVerticalScrollbar() const override;
+    virtual GraphicsLayer* layerForScrollCorner() const override;
+    virtual bool usesCompositedScrolling() const override;
     bool needsCompositedScrolling() const;
     bool needsCompositingLayersRebuiltForClip(const RenderStyle* oldStyle, const RenderStyle* newStyle) const;
     bool needsCompositingLayersRebuiltForOverflow(const RenderStyle* oldStyle, const RenderStyle* newStyle) const;
-#else
-    bool isComposited() const { return false; }
-    bool hasCompositedMask() const { return false; }
-    bool usesCompositedScrolling() const { return false; }
-    bool needsCompositedScrolling() const { return false; }
-#endif
 
     bool paintsWithTransparency(PaintBehavior paintBehavior) const
     {
@@ -824,12 +813,7 @@ public:
     bool containsDirtyOverlayScrollbars() const { return m_containsDirtyOverlayScrollbars; }
     void setContainsDirtyOverlayScrollbars(bool dirtyScrollbars) { m_containsDirtyOverlayScrollbars = dirtyScrollbars; }
 
-#if ENABLE(CSS_SHADERS)
-    bool isCSSCustomFilterEnabled() const;
-#endif
-
 #if ENABLE(CSS_FILTERS)
-    FilterOperations computeFilterOperations(const RenderStyle*);
     bool paintsWithFilters() const;
     bool requiresFullLayerImageForFilters() const;
     FilterEffectRenderer* filterRenderer() const;
@@ -842,7 +826,6 @@ public:
 
     Element* enclosingElement() const;
 
-#if USE(ACCELERATED_COMPOSITING)
     enum ViewportConstrainedNotCompositedReason {
         NoNotCompositedReason,
         NotCompositedForBoundsOutOfView,
@@ -852,7 +835,6 @@ public:
 
     void setViewportConstrainedNotCompositedReason(ViewportConstrainedNotCompositedReason reason) { m_viewportConstrainedNotCompositedReason = reason; }
     ViewportConstrainedNotCompositedReason viewportConstrainedNotCompositedReason() const { return static_cast<ViewportConstrainedNotCompositedReason>(m_viewportConstrainedNotCompositedReason); }
-#endif
     
     bool isRenderFlowThread() const { return renderer().isRenderFlowThread(); }
     bool isOutOfFlowRenderFlowThread() const { return renderer().isOutOfFlowRenderFlowThread(); }
@@ -1046,33 +1028,32 @@ private:
 
     bool shouldBeSelfPaintingLayer() const;
 
-    virtual int scrollPosition(Scrollbar*) const OVERRIDE;
+    virtual int scrollPosition(Scrollbar*) const override;
     
     // ScrollableArea interface
-    virtual void invalidateScrollbarRect(Scrollbar*, const IntRect&) OVERRIDE;
-    virtual void invalidateScrollCornerRect(const IntRect&) OVERRIDE;
-    virtual bool isActive() const OVERRIDE;
-    virtual bool isScrollCornerVisible() const OVERRIDE;
-    virtual IntRect scrollCornerRect() const OVERRIDE;
-    virtual IntRect convertFromScrollbarToContainingView(const Scrollbar*, const IntRect&) const OVERRIDE;
-    virtual IntRect convertFromContainingViewToScrollbar(const Scrollbar*, const IntRect&) const OVERRIDE;
-    virtual IntPoint convertFromScrollbarToContainingView(const Scrollbar*, const IntPoint&) const OVERRIDE;
-    virtual IntPoint convertFromContainingViewToScrollbar(const Scrollbar*, const IntPoint&) const OVERRIDE;
-    virtual int scrollSize(ScrollbarOrientation) const OVERRIDE;
-    virtual void setScrollOffset(const IntPoint&) OVERRIDE;
-    virtual IntPoint scrollPosition() const OVERRIDE;
-    virtual IntPoint minimumScrollPosition() const OVERRIDE;
-    virtual IntPoint maximumScrollPosition() const OVERRIDE;
-    virtual IntRect visibleContentRect(VisibleContentRectIncludesScrollbars) const OVERRIDE;
-    virtual int visibleHeight() const OVERRIDE;
-    virtual int visibleWidth() const OVERRIDE;
-    virtual IntSize contentsSize() const OVERRIDE;
-    virtual IntSize overhangAmount() const OVERRIDE;
-    virtual IntPoint lastKnownMousePosition() const OVERRIDE;
-    virtual bool isHandlingWheelEvent() const OVERRIDE;
-    virtual bool shouldSuspendScrollAnimations() const OVERRIDE;
-    virtual IntRect scrollableAreaBoundingBox() const OVERRIDE;
-    virtual bool updatesScrollLayerPositionOnMainThread() const OVERRIDE { return true; }
+    virtual void invalidateScrollbarRect(Scrollbar*, const IntRect&) override;
+    virtual void invalidateScrollCornerRect(const IntRect&) override;
+    virtual bool isActive() const override;
+    virtual bool isScrollCornerVisible() const override;
+    virtual IntRect scrollCornerRect() const override;
+    virtual IntRect convertFromScrollbarToContainingView(const Scrollbar*, const IntRect&) const override;
+    virtual IntRect convertFromContainingViewToScrollbar(const Scrollbar*, const IntRect&) const override;
+    virtual IntPoint convertFromScrollbarToContainingView(const Scrollbar*, const IntPoint&) const override;
+    virtual IntPoint convertFromContainingViewToScrollbar(const Scrollbar*, const IntPoint&) const override;
+    virtual int scrollSize(ScrollbarOrientation) const override;
+    virtual void setScrollOffset(const IntPoint&) override;
+    virtual IntPoint scrollPosition() const override;
+    virtual IntPoint minimumScrollPosition() const override;
+    virtual IntPoint maximumScrollPosition() const override;
+    virtual IntRect visibleContentRectInternal(VisibleContentRectIncludesScrollbars, VisibleContentRectBehavior) const override;
+    virtual IntSize visibleSize() const override { return m_layerSize; }
+    virtual IntSize contentsSize() const override;
+    virtual IntSize overhangAmount() const override;
+    virtual IntPoint lastKnownMousePosition() const override;
+    virtual bool isHandlingWheelEvent() const override;
+    virtual bool shouldSuspendScrollAnimations() const override;
+    virtual IntRect scrollableAreaBoundingBox() const override;
+    virtual bool updatesScrollLayerPositionOnMainThread() const override { return true; }
 
 #if PLATFORM(IOS)
     void registerAsTouchEventListenerForScrolling();
@@ -1080,7 +1061,7 @@ private:
 #endif
 
     // Rectangle encompassing the scroll corner and resizer rect.
-    IntRect scrollCornerAndResizerRect() const;
+    LayoutRect scrollCornerAndResizerRect() const;
 
     // NOTE: This should only be called by the overriden setScrollOffset from ScrollableArea.
     void scrollTo(int, int);
@@ -1094,9 +1075,7 @@ private:
     void setAncestorChainHasVisibleDescendant();
 
     void updateDescendantDependentFlags(HashSet<const RenderObject*>* outOfFlowDescendantContainingBlocks = 0);
-#if USE(ACCELERATED_COMPOSITING)
     bool checkIfDescendantClippingContextNeedsUpdate(bool isClipping);
-#endif
 
     // This flag is computed by RenderLayerCompositor, which knows more about 3d hierarchies than we do.
     void setHas3DTransformedDescendant(bool b) { m_has3DTransformedDescendant = b; }
@@ -1132,14 +1111,13 @@ private:
     void updateScrollCornerStyle();
     void updateResizerStyle();
 
-    void drawPlatformResizerImage(GraphicsContext*, IntRect resizerCornerRect);
+    void drawPlatformResizerImage(GraphicsContext*, const LayoutRect& resizerCornerRect);
 
     void updatePagination();
     
     // FIXME: Temporary. Remove when new columns come online.
     bool useRegionBasedColumns() const;
-    
-#if USE(ACCELERATED_COMPOSITING)    
+
     void setHasCompositingDescendant(bool b)  { m_hasCompositingDescendant = b; }
     
     enum IndirectCompositingReason {
@@ -1155,7 +1133,6 @@ private:
     void setIndirectCompositingReason(IndirectCompositingReason reason) { m_indirectCompositingReason = reason; }
     IndirectCompositingReason indirectCompositingReason() const { return static_cast<IndirectCompositingReason>(m_indirectCompositingReason); }
     bool mustCompositeForIndirectReasons() const { return m_indirectCompositingReason; }
-#endif
 
     // Returns true if z ordering would not change if this layer were a stacking container.
     bool canBeStackingContainer() const;
@@ -1233,11 +1210,9 @@ private:
     bool m_3DTransformedDescendantStatusDirty : 1;
     bool m_has3DTransformedDescendant : 1;  // Set on a stacking context layer that has 3D descendants anywhere
                                             // in a preserves3D hierarchy. Hint to do 3D-aware hit testing.
-#if USE(ACCELERATED_COMPOSITING)
     bool m_hasCompositingDescendant : 1; // In the z-order tree.
     unsigned m_indirectCompositingReason : 3;
     unsigned m_viewportConstrainedNotCompositedReason : 2;
-#endif
 
 #if PLATFORM(IOS)
     bool m_adjustForIOSCaretWhenScrolling : 1;
@@ -1258,7 +1233,7 @@ private:
 #endif
 
 #if ENABLE(CSS_COMPOSITING)
-    BlendMode m_blendMode;
+    BlendMode m_blendMode : 5;
 #endif
 
     RenderLayerModelObject& m_renderer;
@@ -1315,20 +1290,18 @@ private:
     OwnPtr<TransformationMatrix> m_transform;
     
     // May ultimately be extended to many replicas (with their own paint order).
-    RenderReplica* m_reflection;
-        
+    RenderPtr<RenderReplica> m_reflection;
+
     // Renderers to hold our custom scroll corner and resizer.
-    RenderScrollbarPart* m_scrollCorner;
-    RenderScrollbarPart* m_resizer;
+    RenderPtr<RenderScrollbarPart> m_scrollCorner;
+    RenderPtr<RenderScrollbarPart> m_resizer;
 
     // Pointer to the enclosing RenderLayer that caused us to be paginated. It is 0 if we are not paginated.
     RenderLayer* m_enclosingPaginationLayer;
 
     IntRect m_blockSelectionGapsBounds;
 
-#if USE(ACCELERATED_COMPOSITING)
     OwnPtr<RenderLayerBacking> m_backing;
-#endif
 
     class FilterInfo;
 };

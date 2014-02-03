@@ -30,7 +30,7 @@
 
 namespace WebCore {
 
-class LabelsNodeList FINAL : public LiveNodeList {
+class LabelsNodeList final : public LiveNodeList {
 public:
     static PassRef<LabelsNodeList> create(LabelableElement& forNode, Type type, const AtomicString&)
     {
@@ -42,7 +42,7 @@ public:
 protected:
     explicit LabelsNodeList(LabelableElement& forNode);
 
-    virtual bool nodeMatches(Element*) const OVERRIDE;
+    virtual bool nodeMatches(Element*) const override;
 };
 
 } // namespace WebCore

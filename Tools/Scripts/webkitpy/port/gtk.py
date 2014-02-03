@@ -38,6 +38,7 @@ from webkitpy.port.pulseaudio_sanitizer import PulseAudioSanitizer
 from webkitpy.port.xvfbdriver import XvfbDriver
 from webkitpy.port.westondriver import WestonDriver
 from webkitpy.port.linux_get_crash_log import GDBCrashLogGenerator
+from webkitpy.port.leakdetector_valgrind import LeakDetectorValgrind
 
 
 class GtkPort(Port):
@@ -48,14 +49,33 @@ class GtkPort(Port):
         self._pulseaudio_sanitizer = PulseAudioSanitizer()
 
         if self.get_option("leaks"):
+            self._leakdetector = LeakDetectorValgrind(self._executive, self._filesystem, self.results_directory())
             if not self.get_option("wrapper"):
                 raise ValueError('use --wrapper=\"valgrind\" for memory leak detection on GTK')
+
+    def _is_cmake_build(self):
+        return os.path.exists(self._build_path('CMakeCache.txt'))
+
+    def _built_executables_path(self, *path):
+        if self._is_cmake_build():
+            return self._build_path(*(('bin',) + path))
+        else:
+            return self._build_path(*(('Programs',) + path))
+
+    def _built_libraries_path(self, *path):
+        if self._is_cmake_build():
+            return self._build_path(*(('lib',) + path))
+        else:
+            return self._build_path(*(('.libs',) + path))
 
     def warn_if_bug_missing_in_test_expectations(self):
         return not self.get_option('webkit_test_runner')
 
     def _port_flag_for_scripts(self):
-        return "--gtk"
+        if self._is_cmake_build():
+            return "--gtkcmake"
+        else:
+            return "--gtk"
 
     @memoized
     def _driver_class(self):
@@ -81,6 +101,9 @@ class GtkPort(Port):
         super(GtkPort, self).setup_test_run()
         self._pulseaudio_sanitizer.unload_pulseaudio_module()
 
+        if self.get_option("leaks"):
+            self._leakdetector.clean_leaks_files_from_results_directory()
+
     def clean_up_test_run(self):
         super(GtkPort, self).clean_up_test_run()
         self._pulseaudio_sanitizer.restore_pulseaudio_module()
@@ -89,8 +112,12 @@ class GtkPort(Port):
         environment = super(GtkPort, self).setup_environ_for_server(server_name)
         environment['GSETTINGS_BACKEND'] = 'memory'
         environment['LIBOVERLAY_SCROLLBAR'] = '0'
-        environment['TEST_RUNNER_INJECTED_BUNDLE_FILENAME'] = self._build_path('Libraries', 'libTestRunnerInjectedBundle.la')
-        environment['TEST_RUNNER_TEST_PLUGIN_PATH'] = self._build_path('TestNetscapePlugin', '.libs')
+        if self._is_cmake_build():
+            environment['TEST_RUNNER_INJECTED_BUNDLE_FILENAME'] = self._build_path('lib', 'libTestRunnerInjectedBundle.so')
+            environment['TEST_RUNNER_TEST_PLUGIN_PATH'] = self._build_path('lib')
+        else:
+            environment['TEST_RUNNER_INJECTED_BUNDLE_FILENAME'] = self._build_path('Libraries', 'libTestRunnerInjectedBundle.la')
+            environment['TEST_RUNNER_TEST_PLUGIN_PATH'] = self._build_path('TestNetscapePlugin', '.libs')
         environment['AUDIO_RESOURCES_PATH'] = self.path_from_webkit_base('Source', 'WebCore', 'platform', 'audio', 'resources')
         self._copy_value_from_environ_if_set(environment, 'WEBKIT_OUTPUTDIR')
         if self.get_option("leaks"):
@@ -125,10 +152,10 @@ class GtkPort(Port):
         return configurations
 
     def _path_to_driver(self):
-        return self._build_path('Programs', self.driver_name())
+        return self._built_executables_path(self.driver_name())
 
     def _path_to_image_diff(self):
-        return self._build_path('Programs', 'ImageDiff')
+        return self._built_executables_path('ImageDiff')
 
     def _path_to_webcore_library(self):
         gtk_library_names = [
@@ -138,7 +165,7 @@ class GtkPort(Port):
         ]
 
         for library in gtk_library_names:
-            full_library = self._build_path(".libs", library)
+            full_library = self._built_libraries_path(library)
             if self._filesystem.isfile(full_library):
                 return full_library
         return None
@@ -159,6 +186,16 @@ class GtkPort(Port):
     def _port_specific_expectations_files(self):
         return [self._filesystem.join(self._webkit_baseline_path(p), 'TestExpectations') for p in reversed(self._search_paths())]
 
+    def print_leaks_summary(self):
+        if not self.get_option('leaks'):
+            return
+        # FIXME: This is a hack, but we don't have a better way to get this information from the workers yet
+        # because we're in the manager process.
+        leaks_files = self._leakdetector.leaks_files_in_results_directory()
+        if not leaks_files:
+            return
+        self._leakdetector.parse_and_print_leaks_detail(leaks_files)
+
     # FIXME: We should find a way to share this implmentation with Gtk,
     # or teach run-launcher how to call run-safari and move this down to Port.
     def show_results_html_file(self, results_filename):
@@ -177,11 +214,16 @@ class GtkPort(Port):
 
     def build_webkit_command(self, build_style=None):
         command = super(GtkPort, self).build_webkit_command(build_style)
-        command.extend(["--gtk", "--update-gtk"])
+        if self._is_cmake_build():
+            command.extend(["--gtkcmake", "--update-gtk"])
+        else:
+            command.extend(["--gtk", "--update-gtk"])
+
         if self.get_option('webkit_test_runner'):
             command.append("--no-webkit1")
         else:
             command.append("--no-webkit2")
+
         command.append(super(GtkPort, self).make_args())
         return command
 

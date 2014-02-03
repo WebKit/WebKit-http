@@ -42,8 +42,6 @@ typedef HICON HCURSOR;
 #include "GRefPtrGtk.h"
 #elif PLATFORM(HAIKU)
 #include <app/Cursor.h>
-#elif PLATFORM(BLACKBERRY)
-#include <BlackBerryPlatformCursor.h>
 #endif
 
 #if PLATFORM(MAC) && !PLATFORM(IOS)
@@ -53,11 +51,6 @@ OBJC_CLASS NSCursor;
 #if PLATFORM(WIN)
 typedef struct HICON__ *HICON;
 typedef HICON HCURSOR;
-#endif
-
-// Looks like it's just PLATFORM(BLACKBERRY) still not using this?
-#if PLATFORM(WIN) || PLATFORM(MAC) || PLATFORM(GTK) || PLATFORM(EFL) || PLATFORM(NIX)
-#define WTF_USE_LAZY_NATIVE_CURSOR 1
 #endif
 
 namespace WebCore {
@@ -84,10 +77,6 @@ namespace WebCore {
 #elif PLATFORM(HAIKU)
     typedef BCursor* PlatformCursor;
     typedef BCursor* PlatformCursorHandle;
-#elif PLATFORM(NIX)
-    typedef unsigned PlatformCursor;
-#elif PLATFORM(BLACKBERRY)
-    typedef BlackBerry::Platform::BlackBerryCursor PlatformCursor;
 #else
     typedef void* PlatformCursor;
 #endif
@@ -145,15 +134,11 @@ namespace WebCore {
         static const Cursor& fromType(Cursor::Type);
 
         Cursor()
-#if !PLATFORM(IOS) && !PLATFORM(BLACKBERRY)
-#if USE(LAZY_NATIVE_CURSOR)
+#if !PLATFORM(IOS)
             // This is an invalid Cursor and should never actually get used.
             : m_type(static_cast<Type>(-1))
             , m_platformCursor(0)
-#else
-            : m_platformCursor(0)
-#endif // USE(LAZY_NATIVE_CURSOR)
-#endif // !PLATFORM(IOS) && !PLATFORM(BLACKBERRY)
+#endif // !PLATFORM(IOS)
         {
         }
 
@@ -169,7 +154,6 @@ namespace WebCore {
         ~Cursor();
         Cursor& operator=(const Cursor&);
 
-#if USE(LAZY_NATIVE_CURSOR)
         explicit Cursor(Type);
         Type type() const
         {
@@ -183,13 +167,8 @@ namespace WebCore {
         float imageScaleFactor() const { return m_imageScaleFactor; }
 #endif
         PlatformCursor platformCursor() const;
-#else
-        explicit Cursor(PlatformCursor);
-        PlatformCursor impl() const { return m_platformCursor; }
-#endif
 
      private:
-#if USE(LAZY_NATIVE_CURSOR)
         void ensurePlatformCursor() const;
 
         Type m_type;
@@ -197,7 +176,6 @@ namespace WebCore {
         IntPoint m_hotSpot;
 #if ENABLE(MOUSE_CURSOR_SCALE)
         float m_imageScaleFactor;
-#endif
 #endif
 
 #if !PLATFORM(MAC)

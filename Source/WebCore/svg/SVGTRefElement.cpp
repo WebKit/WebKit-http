@@ -76,8 +76,8 @@ public:
 private:
     SVGTRefTargetEventListener(SVGTRefElement* trefElement);
 
-    virtual void handleEvent(ScriptExecutionContext*, Event*) OVERRIDE;
-    virtual bool operator==(const EventListener&) OVERRIDE;
+    virtual void handleEvent(ScriptExecutionContext*, Event*) override;
+    virtual bool operator==(const EventListener&) override;
 
     SVGTRefElement* m_trefElement;
     RefPtr<Element> m_target;
@@ -220,9 +220,9 @@ void SVGTRefElement::svgAttributeChanged(const QualifiedName& attrName)
     ASSERT_NOT_REACHED();
 }
 
-RenderElement* SVGTRefElement::createRenderer(PassRef<RenderStyle> style)
+RenderPtr<RenderElement> SVGTRefElement::createElementRenderer(PassRef<RenderStyle> style)
 {
-    return new RenderSVGInline(*this, std::move(style));
+    return createRenderer<RenderSVGInline>(*this, std::move(style));
 }
 
 bool SVGTRefElement::childShouldCreateRenderer(const Node& child) const

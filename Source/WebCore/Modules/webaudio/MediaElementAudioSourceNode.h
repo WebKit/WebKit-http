@@ -31,9 +31,9 @@
 #include "AudioSourceProviderClient.h"
 #include "HTMLMediaElement.h"
 #include "MultiChannelResampler.h"
-#include <wtf/OwnPtr.h>
+#include <memory>
+#include <mutex>
 #include <wtf/PassRefPtr.h>
-#include <wtf/Threading.h>
 
 namespace WebCore {
 
@@ -48,11 +48,11 @@ public:
     HTMLMediaElement* mediaElement() { return m_mediaElement.get(); }                                        
 
     // AudioNode
-    virtual void process(size_t framesToProcess) OVERRIDE;
-    virtual void reset() OVERRIDE;
+    virtual void process(size_t framesToProcess) override;
+    virtual void reset() override;
     
     // AudioSourceProviderClient
-    virtual void setFormat(size_t numberOfChannels, float sampleRate) OVERRIDE;
+    virtual void setFormat(size_t numberOfChannels, float sampleRate) override;
     
     void lock();
     void unlock();
@@ -60,19 +60,19 @@ public:
 private:
     MediaElementAudioSourceNode(AudioContext*, HTMLMediaElement*);
 
-    virtual double tailTime() const OVERRIDE { return 0; }
-    virtual double latencyTime() const OVERRIDE { return 0; }
+    virtual double tailTime() const override { return 0; }
+    virtual double latencyTime() const override { return 0; }
 
     // As an audio source, we will never propagate silence.
-    virtual bool propagatesSilence() const OVERRIDE { return false; }
+    virtual bool propagatesSilence() const override { return false; }
 
     RefPtr<HTMLMediaElement> m_mediaElement;
-    Mutex m_processLock;
+    std::mutex m_processMutex;
 
     unsigned m_sourceNumberOfChannels;
     double m_sourceSampleRate;
 
-    OwnPtr<MultiChannelResampler> m_multiChannelResampler;
+    std::unique_ptr<MultiChannelResampler> m_multiChannelResampler;
 };
 
 } // namespace WebCore

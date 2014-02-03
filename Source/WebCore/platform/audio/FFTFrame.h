@@ -49,7 +49,6 @@
 
 #if USE(WEBAUDIO_GSTREAMER)
 #include <glib.h>
-#include <memory>
 G_BEGIN_DECLS
 #include <gst/fft/gstfftf32.h>
 G_END_DECLS
@@ -68,12 +67,8 @@ struct RDFTContext;
 #include <ipps.h>
 #endif // USE(WEBAUDIO_IPP)
 
-#if PLATFORM(NIX)
-#include <public/FFTFrame.h>
-#endif
-
+#include <memory>
 #include <wtf/Forward.h>
-#include <wtf/PassOwnPtr.h>
 #include <wtf/Threading.h>
 
 namespace WebCore {
@@ -105,7 +100,7 @@ public:
     // The remaining public methods have cross-platform implementations:
 
     // Interpolates from frame1 -> frame2 as x goes from 0.0 -> 1.0
-    static PassOwnPtr<FFTFrame> createInterpolatedFrame(const FFTFrame& frame1, const FFTFrame& frame2, double x);
+    static std::unique_ptr<FFTFrame> createInterpolatedFrame(const FFTFrame& frame1, const FFTFrame& frame2, double x);
 
     void doPaddedFFT(const float* data, size_t dataSize); // zero-padding with dataSize <= fftSize
     double extractAverageGroupDelay();
@@ -182,10 +177,6 @@ private:
     AudioFloatArray m_realData;
     AudioFloatArray m_imagData;
 #endif // USE(WEBAUDIO_IPP)
-
-#if PLATFORM(NIX)
-    OwnPtr<Nix::FFTFrame> m_fftFrame;
-#endif // PLATFORM(NIX)
 
 #if USE(WEBAUDIO_OPENMAX_DL_FFT)
     static OMXFFTSpec_R_F32* contextForSize(unsigned log2FFTSize);

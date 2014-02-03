@@ -181,7 +181,7 @@ void HistoryController::saveDocumentState()
     Document* document = m_frame.document();
     ASSERT(document);
     
-    if (item->isCurrentDocument(document) && document->attached()) {
+    if (item->isCurrentDocument(document) && document->hasLivingRenderTree()) {
         LOG(Loading, "WebCoreLoading %s: saving form state to %p", m_frame.tree().uniqueName().string().utf8().data(), item);
         item->setDocumentState(document->formElementsState());
     }
@@ -231,7 +231,7 @@ void HistoryController::invalidateCurrentItemCachedPage()
     if (!pageCache()->get(currentItem()))
         return;
 
-    OwnPtr<CachedPage> cachedPage = pageCache()->take(currentItem());
+    std::unique_ptr<CachedPage> cachedPage = pageCache()->take(currentItem());
 
     // FIXME: This is a grotesque hack to fix <rdar://problem/4059059> Crash in RenderFlow::detach
     // Somehow the PageState object is not properly updated, and is holding onto a stale document.
@@ -253,7 +253,7 @@ bool HistoryController::shouldStopLoadingForHistoryItem(HistoryItem* targetItem)
     if (m_currentItem->shouldDoSameDocumentNavigationTo(targetItem))
         return false;
 
-    return m_frame.loader().client().shouldStopLoadingForHistoryItem(targetItem);
+    return true;
 }
 
 // Main funnel for navigating to a previous location (back/forward, non-search snap-back)
@@ -799,8 +799,6 @@ void HistoryController::updateBackForwardListClippedAtTarget(bool doClip)
 
     FrameLoader& frameLoader = m_frame.mainFrame().loader();
 
-    frameLoader.checkDidPerformFirstNavigation();
-
     RefPtr<HistoryItem> topItem = frameLoader.history().createItemTree(m_frame, doClip);
     LOG(BackForward, "WebCoreBackForward - Adding backforward item %p for frame %s", topItem.get(), m_frame.loader().documentLoader()->url().string().ascii().data());
     page->backForward().addItem(topItem.release());
@@ -855,7 +853,6 @@ void HistoryController::pushState(PassRefPtr<SerializedScriptValue> stateObject,
 
     addVisitedLink(page, URL(ParsedURLString, urlString));
     m_frame.loader().client().updateGlobalHistory();
-
 }
 
 void HistoryController::replaceState(PassRefPtr<SerializedScriptValue> stateObject, const String& title, const String& urlString)

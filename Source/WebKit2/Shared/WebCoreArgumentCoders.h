@@ -41,6 +41,7 @@ class FloatPoint;
 class FloatPoint3D;
 class FloatRect;
 class FloatSize;
+class FixedPositionViewportConstraints;
 class HTTPHeaderMap;
 class IDBKeyPath;
 class IntPoint;
@@ -53,6 +54,7 @@ class ProtectionSpace;
 class ResourceError;
 class ResourceRequest;
 class ResourceResponse;
+class StickyPositionViewportConstraints;
 class TextCheckingRequestData;
 class TransformationMatrix;
 class UserStyleSheet;
@@ -63,7 +65,10 @@ struct DictationAlternative;
 struct DragSession;
 struct FileChooserSettings;
 struct IDBDatabaseMetadata;
+struct IDBGetResult;
 struct IDBIndexMetadata;
+struct IDBKeyData;
+struct IDBKeyRangeData;
 struct IDBObjectStoreMetadata;
 struct Length;
 struct GrammarDetail;
@@ -71,6 +76,7 @@ struct MimeClassInfo;
 struct PasteboardImage;
 struct PasteboardWebContent;
 struct PluginInfo;
+struct ScrollableAreaParameters;
 struct TextCheckingResult;
 struct ViewportAttributes;
 struct WindowFeatures;
@@ -92,7 +98,7 @@ struct ViewportArguments;
 }
 #endif
 
-namespace CoreIPC {
+namespace IPC {
 
 template<> struct ArgumentCoder<WebCore::AffineTransform> {
     static void encode(ArgumentEncoder&, const WebCore::AffineTransform&);
@@ -328,6 +334,21 @@ template<> struct ArgumentCoder<WebCore::UserScript> {
     static bool decode(ArgumentDecoder&, WebCore::UserScript&);
 };
 
+template<> struct ArgumentCoder<WebCore::ScrollableAreaParameters> {
+    static void encode(ArgumentEncoder&, const WebCore::ScrollableAreaParameters&);
+    static bool decode(ArgumentDecoder&, WebCore::ScrollableAreaParameters&);
+};
+
+template<> struct ArgumentCoder<WebCore::FixedPositionViewportConstraints> {
+    static void encode(ArgumentEncoder&, const WebCore::FixedPositionViewportConstraints&);
+    static bool decode(ArgumentDecoder&, WebCore::FixedPositionViewportConstraints&);
+};
+
+template<> struct ArgumentCoder<WebCore::StickyPositionViewportConstraints> {
+    static void encode(ArgumentEncoder&, const WebCore::StickyPositionViewportConstraints&);
+    static bool decode(ArgumentDecoder&, WebCore::StickyPositionViewportConstraints&);
+};
+
 #if ENABLE(CSS_FILTERS) && !USE(COORDINATED_GRAPHICS)
 template<> struct ArgumentCoder<WebCore::FilterOperations> {
     static void encode(ArgumentEncoder&, const WebCore::FilterOperations&);
@@ -341,14 +362,29 @@ template<> struct ArgumentCoder<WebCore::IDBDatabaseMetadata> {
     static bool decode(ArgumentDecoder&, WebCore::IDBDatabaseMetadata&);
 };
 
+template<> struct ArgumentCoder<WebCore::IDBGetResult> {
+    static void encode(ArgumentEncoder&, const WebCore::IDBGetResult&);
+    static bool decode(ArgumentDecoder&, WebCore::IDBGetResult&);
+};
+
 template<> struct ArgumentCoder<WebCore::IDBIndexMetadata> {
     static void encode(ArgumentEncoder&, const WebCore::IDBIndexMetadata&);
     static bool decode(ArgumentDecoder&, WebCore::IDBIndexMetadata&);
 };
 
+template<> struct ArgumentCoder<WebCore::IDBKeyData> {
+    static void encode(ArgumentEncoder&, const WebCore::IDBKeyData&);
+    static bool decode(ArgumentDecoder&, WebCore::IDBKeyData&);
+};
+
 template<> struct ArgumentCoder<WebCore::IDBKeyPath> {
     static void encode(ArgumentEncoder&, const WebCore::IDBKeyPath&);
     static bool decode(ArgumentDecoder&, WebCore::IDBKeyPath&);
+};
+
+template<> struct ArgumentCoder<WebCore::IDBKeyRangeData> {
+    static void encode(ArgumentEncoder&, const WebCore::IDBKeyRangeData&);
+    static bool decode(ArgumentDecoder&, WebCore::IDBKeyRangeData&);
 };
 
 template<> struct ArgumentCoder<WebCore::IDBObjectStoreMetadata> {
@@ -357,6 +393,6 @@ template<> struct ArgumentCoder<WebCore::IDBObjectStoreMetadata> {
 };
 #endif
 
-} // namespace CoreIPC
+} // namespace IPC
 
 #endif // WebCoreArgumentCoders_h

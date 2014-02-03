@@ -31,11 +31,11 @@
 #ifndef InspectorDOMDebuggerAgent_h
 #define InspectorDOMDebuggerAgent_h
 
-#if ENABLE(JAVASCRIPT_DEBUGGER) && ENABLE(INSPECTOR)
+#if ENABLE(INSPECTOR)
 
-#include "InspectorDebuggerAgent.h"
 #include "InspectorWebAgentBase.h"
 #include "InspectorWebBackendDispatchers.h"
+#include <inspector/agents/InspectorDebuggerAgent.h>
 #include <wtf/HashMap.h>
 #include <wtf/PassOwnPtr.h>
 #include <wtf/RefCounted.h>
@@ -48,30 +48,27 @@ class InspectorObject;
 namespace WebCore {
 
 class Element;
-class InspectorAgent;
 class InspectorDOMAgent;
-class InspectorDebuggerAgent;
 class InstrumentingAgents;
 class Node;
 
 typedef String ErrorString;
 
-class InspectorDOMDebuggerAgent : public InspectorAgentBase, public InspectorDebuggerAgent::Listener, public Inspector::InspectorDOMDebuggerBackendDispatcherHandler {
+class InspectorDOMDebuggerAgent : public InspectorAgentBase, public Inspector::InspectorDebuggerAgent::Listener, public Inspector::InspectorDOMDebuggerBackendDispatcherHandler {
     WTF_MAKE_NONCOPYABLE(InspectorDOMDebuggerAgent);
 public:
-    static PassOwnPtr<InspectorDOMDebuggerAgent> create(InstrumentingAgents*, InspectorDOMAgent*, InspectorDebuggerAgent*, InspectorAgent*);
-
+    InspectorDOMDebuggerAgent(InstrumentingAgents*, InspectorDOMAgent*, Inspector::InspectorDebuggerAgent*);
     virtual ~InspectorDOMDebuggerAgent();
 
     // DOMDebugger API
-    virtual void setXHRBreakpoint(ErrorString*, const String& url);
-    virtual void removeXHRBreakpoint(ErrorString*, const String& url);
-    virtual void setEventListenerBreakpoint(ErrorString*, const String& eventName);
-    virtual void removeEventListenerBreakpoint(ErrorString*, const String& eventName);
-    virtual void setInstrumentationBreakpoint(ErrorString*, const String& eventName);
-    virtual void removeInstrumentationBreakpoint(ErrorString*, const String& eventName);
-    virtual void setDOMBreakpoint(ErrorString*, int nodeId, const String& type);
-    virtual void removeDOMBreakpoint(ErrorString*, int nodeId, const String& type);
+    virtual void setXHRBreakpoint(ErrorString*, const String& url) override;
+    virtual void removeXHRBreakpoint(ErrorString*, const String& url) override;
+    virtual void setEventListenerBreakpoint(ErrorString*, const String& eventName) override;
+    virtual void removeEventListenerBreakpoint(ErrorString*, const String& eventName) override;
+    virtual void setInstrumentationBreakpoint(ErrorString*, const String& eventName) override;
+    virtual void removeInstrumentationBreakpoint(ErrorString*, const String& eventName) override;
+    virtual void setDOMBreakpoint(ErrorString*, int nodeId, const String& type) override;
+    virtual void removeDOMBreakpoint(ErrorString*, int nodeId, const String& type) override;
 
     // InspectorInstrumentation API
     void willInsertDOMNode(Node* parent);
@@ -83,18 +80,16 @@ public:
     void willSendXMLHttpRequest(const String& url);
     void pauseOnNativeEventIfNeeded(bool isDOMEvent, const String& eventName, bool synchronous);
 
-    virtual void didCreateFrontendAndBackend(Inspector::InspectorFrontendChannel*, Inspector::InspectorBackendDispatcher*) OVERRIDE;
-    virtual void willDestroyFrontendAndBackend() OVERRIDE;
-    virtual void discardAgent();
+    virtual void didCreateFrontendAndBackend(Inspector::InspectorFrontendChannel*, Inspector::InspectorBackendDispatcher*) override;
+    virtual void willDestroyFrontendAndBackend(Inspector::InspectorDisconnectReason) override;
+    virtual void discardAgent() override;
 
 private:
-    InspectorDOMDebuggerAgent(InstrumentingAgents*, InspectorDOMAgent*, InspectorDebuggerAgent*, InspectorAgent*);
-
-    // InspectorDebuggerAgent::Listener implementation.
-    virtual void debuggerWasEnabled();
-    virtual void debuggerWasDisabled();
-    virtual void stepInto();
-    virtual void didPause();
+    // Inspector::InspectorDebuggerAgent::Listener implementation.
+    virtual void debuggerWasEnabled() override;
+    virtual void debuggerWasDisabled() override;
+    virtual void stepInto() override;
+    virtual void didPause() override;
     void disable();
 
     void descriptionForDOMEvent(Node* target, int breakpointType, bool insertion, Inspector::InspectorObject* description);
@@ -107,7 +102,7 @@ private:
     void clear();
 
     InspectorDOMAgent* m_domAgent;
-    InspectorDebuggerAgent* m_debuggerAgent;
+    Inspector::InspectorDebuggerAgent* m_debuggerAgent;
     RefPtr<Inspector::InspectorDOMDebuggerBackendDispatcher> m_backendDispatcher;
     HashMap<Node*, uint32_t> m_domBreakpoints;
     HashSet<String> m_eventListenerBreakpoints;
@@ -118,6 +113,6 @@ private:
 
 } // namespace WebCore
 
-#endif // ENABLE(JAVASCRIPT_DEBUGGER) && ENABLE(INSPECTOR)
+#endif // ENABLE(INSPECTOR)
 
 #endif // !defined(InspectorDOMDebuggerAgent_h)

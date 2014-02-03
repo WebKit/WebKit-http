@@ -29,9 +29,11 @@
 #import "NativeWebKeyboardEvent.h"
 #import "PageClient.h"
 #import "WKBrowsingContextControllerInternal.h"
+#import "WebKitSystemInterfaceIOS.h"
 #import "WebPageMessages.h"
 #import "WebProcessProxy.h"
 #import <WebCore/NotImplemented.h>
+#import <WebCore/UserAgent.h>
 #import <WebCore/SharedBuffer.h>
 
 using namespace WebCore;
@@ -40,17 +42,24 @@ namespace WebKit {
 
 void WebPageProxy::platformInitialize()
 {
-#if WK_API_ENABLED
-    [WebKit::wrapper(*this) _finishInitialization];
-#endif
 }
 
-String WebPageProxy::standardUserAgent(const String&)
+static String userVisibleWebKitVersionString()
 {
-    notImplemented();
+    // If the version is longer than 3 digits then the leading digits represent the version of the OS. Our user agent
+    // string should not include the leading digits, so strip them off and report the rest as the version. <rdar://problem/4997547>
+    NSString *fullVersion = [[NSBundle bundleForClass:NSClassFromString(@"WKView")] objectForInfoDictionaryKey:(NSString *)kCFBundleVersionKey];
+    NSRange nonDigitRange = [fullVersion rangeOfCharacterFromSet:[[NSCharacterSet decimalDigitCharacterSet] invertedSet]];
+    if (nonDigitRange.location == NSNotFound && fullVersion.length > 3)
+        return [fullVersion substringFromIndex:fullVersion.length - 3];
+    if (nonDigitRange.location != NSNotFound && nonDigitRange.location > 3)
+        return [fullVersion substringFromIndex:nonDigitRange.location - 3];
+    return fullVersion;
+}
 
-    // Just return the iOS 5.1 user agent for now.
-    return "Mozilla/5.0 (iPad; CPU OS 5_1 like Mac OS X) AppleWebKit/534.46 (KHTML, like Gecko) Version/5.1 Mobile/9B176 Safari/7534.48.3";
+String WebPageProxy::standardUserAgent(const String& applicationName)
+{
+    return standardUserAgentWithApplicationName(applicationName, userVisibleWebKitVersionString());
 }
 
 void WebPageProxy::getIsSpeaking(bool&)
@@ -209,6 +218,17 @@ void WebPageProxy::autocorrectionDataCallback(const Vector<WebCore::FloatRect>& 
     callback->performCallbackWithReturnValue(rects, fontName, fontSize, fontTraits);
 }
 
+void WebPageProxy::autocorrectionContextCallback(const String& beforeText, const String& markedText, const String& selectedText, const String& afterText, uint64_t location, uint64_t length, uint64_t callbackID)
+{
+    RefPtr<AutocorrectionContextCallback> callback = m_autocorrectionContextCallbacks.take(callbackID);
+    if (!callback) {
+        ASSERT_NOT_REACHED();
+        return;
+    }
+
+    callback->performCallbackWithReturnValue(beforeText, markedText, selectedText, afterText, location, length);
+}
+
 void WebPageProxy::selectWithGesture(const WebCore::IntPoint point, WebCore::TextGranularity granularity, uint32_t gestureType, uint32_t gestureState, PassRefPtr<GestureCallback> callback)
 {
     if (!isValid()) {
@@ -257,6 +277,23 @@ void WebPageProxy::applyAutocorrection(const String& correction, const String& o
     m_process->send(Messages::WebPage::ApplyAutocorrection(correction, originalText, callbackID), m_pageID);
 }
 
+void WebPageProxy::requestAutocorrectionContext(PassRefPtr<AutocorrectionContextCallback> callback)
+{
+    if (!isValid()) {
+        callback->invalidate();
+        return;
+    }
+
+    uint64_t callbackID = callback->callbackID();
+    m_autocorrectionContextCallbacks.set(callbackID, callback);
+    m_process->send(Messages::WebPage::RequestAutocorrectionContext(callbackID), m_pageID);
+}
+
+void WebPageProxy::getAutocorrectionContext(String& beforeContext, String& markedText, String& selectedText, String& afterContext, uint64_t& location, uint64_t& length)
+{
+    m_process->sendSync(Messages::WebPage::GetAutocorrectionContext(), Messages::WebPage::GetAutocorrectionContext::Reply(beforeContext, markedText, selectedText, afterContext, location, length), m_pageID);
+}
+
 void WebPageProxy::selectWithTwoTouches(const WebCore::IntPoint from, const WebCore::IntPoint to, uint32_t gestureType, uint32_t gestureState, PassRefPtr<GestureCallback> callback)
 {
     if (!isValid()) {
@@ -267,6 +304,21 @@ void WebPageProxy::selectWithTwoTouches(const WebCore::IntPoint from, const WebC
     uint64_t callbackID = callback->callbackID();
     m_gestureCallbacks.set(callbackID, callback);
     m_process->send(Messages::WebPage::SelectWithTwoTouches(from, to, gestureType, gestureState, callbackID), m_pageID);
+}
+
+void WebPageProxy::didReceivePositionInformation(const InteractionInformationAtPosition& info)
+{
+    m_pageClient.positionInformationDidChange(info);
+}
+
+void WebPageProxy::getPositionInformation(const WebCore::IntPoint& point, InteractionInformationAtPosition& info)
+{
+    m_process->sendSync(Messages::WebPage::GetPositionInformation(point), Messages::WebPage::GetPositionInformation::Reply(info), m_pageID);
+}
+
+void WebPageProxy::requestPositionInformation(const WebCore::IntPoint& point)
+{
+    m_process->send(Messages::WebPage::RequestPositionInformation(point), m_pageID);
 }
 
 void WebPageProxy::notifyRevealedSelection()
@@ -301,7 +353,7 @@ void WebPageProxy::setSmartInsertDeleteEnabled(bool)
     notImplemented();
 }
 
-void WebPageProxy::registerWebProcessAccessibilityToken(const CoreIPC::DataReference&)
+void WebPageProxy::registerWebProcessAccessibilityToken(const IPC::DataReference&)
 {
     notImplemented();
 }    
@@ -311,7 +363,7 @@ void WebPageProxy::makeFirstResponder()
     notImplemented();
 }
 
-void WebPageProxy::registerUIProcessAccessibilityTokens(const CoreIPC::DataReference&, const CoreIPC::DataReference&)
+void WebPageProxy::registerUIProcessAccessibilityTokens(const IPC::DataReference&, const IPC::DataReference&)
 {
     notImplemented();
 }
@@ -350,6 +402,7 @@ void WebPageProxy::didFinishScrolling(const WebCore::FloatPoint& contentOffset)
 
 void WebPageProxy::didFinishZooming(float newScale)
 {
+    m_pageScaleFactor = newScale;
     process().send(Messages::WebPage::DidFinishZooming(newScale), m_pageID);
 }
 
@@ -396,7 +449,7 @@ void WebPageProxy::didPerformDictionaryLookup(const AttributedString&, const Dic
     notImplemented();
 }
 
-void WebPageProxy::savePDFToTemporaryFolderAndOpenWithNativeApplication(const String&, const String&, const CoreIPC::DataReference&, const String&)
+void WebPageProxy::savePDFToTemporaryFolderAndOpenWithNativeApplication(const String&, const String&, const IPC::DataReference&, const String&)
 {
     notImplemented();
 }

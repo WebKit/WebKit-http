@@ -54,21 +54,18 @@ typedef String ErrorString;
 
 class InspectorDOMStorageAgent : public InspectorAgentBase, public Inspector::InspectorDOMStorageBackendDispatcherHandler {
 public:
-    static PassOwnPtr<InspectorDOMStorageAgent> create(InstrumentingAgents* instrumentingAgents, InspectorPageAgent* pageAgent)
-    {
-        return adoptPtr(new InspectorDOMStorageAgent(instrumentingAgents, pageAgent));
-    }
+    InspectorDOMStorageAgent(InstrumentingAgents*, InspectorPageAgent*);
     ~InspectorDOMStorageAgent();
 
-    virtual void didCreateFrontendAndBackend(Inspector::InspectorFrontendChannel*, Inspector::InspectorBackendDispatcher*) OVERRIDE;
-    virtual void willDestroyFrontendAndBackend() OVERRIDE;
+    virtual void didCreateFrontendAndBackend(Inspector::InspectorFrontendChannel*, Inspector::InspectorBackendDispatcher*) override;
+    virtual void willDestroyFrontendAndBackend(Inspector::InspectorDisconnectReason) override;
 
     // Called from the front-end.
-    virtual void enable(ErrorString*);
-    virtual void disable(ErrorString*);
-    virtual void getDOMStorageItems(ErrorString*, const RefPtr<Inspector::InspectorObject>& storageId, RefPtr<Inspector::TypeBuilder::Array<Inspector::TypeBuilder::Array<String>>>& items);
-    virtual void setDOMStorageItem(ErrorString*, const RefPtr<Inspector::InspectorObject>& storageId, const String& key, const String& value);
-    virtual void removeDOMStorageItem(ErrorString*, const RefPtr<Inspector::InspectorObject>& storageId, const String& key);
+    virtual void enable(ErrorString*) override;
+    virtual void disable(ErrorString*) override;
+    virtual void getDOMStorageItems(ErrorString*, const RefPtr<Inspector::InspectorObject>& storageId, RefPtr<Inspector::TypeBuilder::Array<Inspector::TypeBuilder::Array<String>>>& items) override;
+    virtual void setDOMStorageItem(ErrorString*, const RefPtr<Inspector::InspectorObject>& storageId, const String& key, const String& value) override;
+    virtual void removeDOMStorageItem(ErrorString*, const RefPtr<Inspector::InspectorObject>& storageId, const String& key) override;
 
     // Called from the injected script.
     String storageId(Storage*);
@@ -78,9 +75,6 @@ public:
     void didDispatchDOMStorageEvent(const String& key, const String& oldValue, const String& newValue, StorageType, SecurityOrigin*, Page*);
 
 private:
-
-    InspectorDOMStorageAgent(InstrumentingAgents*, InspectorPageAgent*);
-
     PassRefPtr<StorageArea> findStorageArea(ErrorString*, const RefPtr<Inspector::InspectorObject>&, Frame*&);
 
     InspectorPageAgent* m_pageAgent;

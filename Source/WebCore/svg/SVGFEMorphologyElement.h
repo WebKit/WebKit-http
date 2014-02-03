@@ -57,7 +57,7 @@ struct SVGPropertyTraits<MorphologyOperatorType> {
     }
 };
 
-class SVGFEMorphologyElement FINAL : public SVGFilterPrimitiveStandardAttributes {
+class SVGFEMorphologyElement final : public SVGFilterPrimitiveStandardAttributes {
 public:
     static PassRefPtr<SVGFEMorphologyElement> create(const QualifiedName&, Document&);
 
@@ -67,10 +67,10 @@ private:
     SVGFEMorphologyElement(const QualifiedName&, Document&);
 
     bool isSupportedAttribute(const QualifiedName&);
-    virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
-    virtual bool setFilterEffectAttribute(FilterEffect*, const QualifiedName&);
-    virtual void svgAttributeChanged(const QualifiedName&);
-    virtual PassRefPtr<FilterEffect> build(SVGFilterBuilder*, Filter*);
+    virtual void parseAttribute(const QualifiedName&, const AtomicString&) override;
+    virtual bool setFilterEffectAttribute(FilterEffect*, const QualifiedName&) override;
+    virtual void svgAttributeChanged(const QualifiedName&) override;
+    virtual PassRefPtr<FilterEffect> build(SVGFilterBuilder*, Filter*) override;
 
     static const AtomicString& radiusXIdentifier();
     static const AtomicString& radiusYIdentifier();

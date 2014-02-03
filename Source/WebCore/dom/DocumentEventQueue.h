@@ -39,14 +39,14 @@ class Document;
 class Event;
 class Node;
 
-class DocumentEventQueue FINAL : public EventQueue {
+class DocumentEventQueue final : public EventQueue {
 public:
     explicit DocumentEventQueue(Document&);
     virtual ~DocumentEventQueue();
 
-    virtual bool enqueueEvent(PassRefPtr<Event>) OVERRIDE;
-    virtual bool cancelEvent(Event&) OVERRIDE;
-    virtual void close() OVERRIDE;
+    virtual bool enqueueEvent(PassRefPtr<Event>) override;
+    virtual bool cancelEvent(Event&) override;
+    virtual void close() override;
 
     void enqueueOrDispatchScrollEvent(Node&);
 

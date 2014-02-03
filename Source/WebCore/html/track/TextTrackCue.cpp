@@ -176,9 +176,9 @@ const AtomicString& TextTrackCueBox::textTrackCueBoxShadowPseudoId()
     return trackDisplayBoxShadowPseudoId;
 }
 
-RenderElement* TextTrackCueBox::createRenderer(PassRef<RenderStyle> style)
+RenderPtr<RenderElement> TextTrackCueBox::createElementRenderer(PassRef<RenderStyle> style)
 {
-    return new RenderTextTrackCue(*this, std::move(style));
+    return createRenderer<RenderTextTrackCue>(*this, std::move(style));
 }
 
 // ----------------------------
@@ -825,7 +825,7 @@ TextTrackCueBox* TextTrackCue::getDisplayTree(const IntSize& videoSize)
 
     // Note: This is contained by default in m_cueBackgroundBox.
     m_cueBackgroundBox->setPseudo(cueShadowPseudoId());
-    displayTree->appendChild(m_cueBackgroundBox, ASSERT_NO_EXCEPTION, AttachLazily);
+    displayTree->appendChild(m_cueBackgroundBox, ASSERT_NO_EXCEPTION);
 
     // FIXME(BUG 79916): Runs of children of WebVTT Ruby Objects that are not
     // WebVTT Ruby Text Objects must be wrapped in anonymous boxes whose

@@ -30,6 +30,7 @@
 #include "ElementTraversal.h"
 #include "HistogramSupport.h"
 #include "InsertionPoint.h"
+#include "RenderElement.h"
 #include "RuntimeEnabledFeatures.h"
 #include "StyleResolver.h"
 #include "markup.h"
@@ -139,8 +140,8 @@ void ShadowRoot::setResetStyleInheritance(bool value)
 
     if (value != m_resetStyleInheritance) {
         m_resetStyleInheritance = value;
-        if (attached() && hostElement())
-            Style::resolveTree(*hostElement(), Style::Force);
+        if (hostElement())
+            setNeedsStyleRecalc();
     }
 }
 

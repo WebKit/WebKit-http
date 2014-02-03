@@ -28,7 +28,6 @@
 #define HTMLPreloadScanner_h
 
 #include "CSSPreloadScanner.h"
-#include "CompactHTMLToken.h"
 #include "HTMLToken.h"
 #include "SegmentedString.h"
 #include <wtf/Vector.h>
@@ -48,9 +47,6 @@ public:
     ~TokenPreloadScanner();
 
     void scan(const HTMLToken&, PreloadRequestStream& requests);
-#if ENABLE(THREADED_HTML_PARSER)
-    void scan(const CompactHTMLToken&, PreloadRequestStream& requests);
-#endif
 
     void setPredictedBaseElementURL(const URL& url) { m_predictedBaseElementURL = url; }
 
@@ -66,27 +62,23 @@ public:
     }
 
 private:
-    enum TagId {
+    enum class TagId {
         // These tags are scanned by the StartTagScanner.
-        ImgTagId,
-        InputTagId,
-        LinkTagId,
-        ScriptTagId,
+        Img,
+        Input,
+        Link,
+        Script,
 
         // These tags are not scanned by the StartTagScanner.
-        UnknownTagId,
-        StyleTagId,
-        BaseTagId,
-        TemplateTagId,
+        Unknown,
+        Style,
+        Base,
+        Template,
     };
 
     class StartTagScanner;
 
-    template<typename Token>
-    inline void scanCommon(const Token&, PreloadRequestStream& requests);
-
     static TagId tagIdFor(const HTMLToken::DataVector&);
-    static TagId tagIdFor(const HTMLIdentifier&);
 
     static String initiatorFor(TagId);
 
@@ -140,7 +132,7 @@ private:
     TokenPreloadScanner m_scanner;
     SegmentedString m_source;
     HTMLToken m_token;
-    OwnPtr<HTMLTokenizer> m_tokenizer;
+    std::unique_ptr<HTMLTokenizer> m_tokenizer;
 };
 
 }

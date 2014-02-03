@@ -19,29 +19,38 @@
 
 #include "config.h"
 #include "HashTable.h"
+
 #include "DataLog.h"
+#include <mutex>
 
 namespace WTF {
 
 #if DUMP_HASHTABLE_STATS
 
-int HashTableStats::numAccesses;
-int HashTableStats::numCollisions;
-int HashTableStats::collisionGraph[4096];
-int HashTableStats::maxCollisions;
-int HashTableStats::numRehashes;
-int HashTableStats::numRemoves;
-int HashTableStats::numReinserts;
+std::atomic<unsigned> HashTableStats::numAccesses;
+std::atomic<unsigned> HashTableStats::numRehashes;
+std::atomic<unsigned> HashTableStats::numRemoves;
+std::atomic<unsigned> HashTableStats::numReinserts;
 
-static Mutex& hashTableStatsMutex()
+unsigned HashTableStats::numCollisions;
+unsigned HashTableStats::collisionGraph[4096];
+unsigned HashTableStats::maxCollisions;
+
+static std::mutex& hashTableStatsMutex()
 {
-    AtomicallyInitializedStatic(Mutex&, mutex = *new Mutex);
-    return mutex;
+    static std::once_flag onceFlag;
+    static std::mutex* mutex;
+    std::call_once(onceFlag, []{
+        mutex = std::make_unique<std::mutex>().release();
+    });
+
+    return *mutex;
 }
 
-void HashTableStats::recordCollisionAtCount(int count)
+void HashTableStats::recordCollisionAtCount(unsigned count)
 {
-    MutexLocker lock(hashTableStatsMutex());
+    std::lock_guard<std::mutex> lock(hashTableStatsMutex());
+
     if (count > maxCollisions)
         maxCollisions = count;
     numCollisions++;
@@ -50,17 +59,17 @@ void HashTableStats::recordCollisionAtCount(int count)
 
 void HashTableStats::dumpStats()
 {
-    MutexLocker lock(hashTableStatsMutex());
+    std::lock_guard<std::mutex> lock(hashTableStatsMutex());
 
     dataLogF("\nWTF::HashTable statistics\n\n");
-    dataLogF("%d accesses\n", numAccesses);
+    dataLogF("%u accesses\n", numAccesses.load());
     dataLogF("%d total collisions, average %.2f probes per access\n", numCollisions, 1.0 * (numAccesses + numCollisions) / numAccesses);
     dataLogF("longest collision chain: %d\n", maxCollisions);
-    for (int i = 1; i <= maxCollisions; i++) {
-        dataLogF("  %d lookups with exactly %d collisions (%.2f%% , %.2f%% with this many or more)\n", collisionGraph[i], i, 100.0 * (collisionGraph[i] - collisionGraph[i+1]) / numAccesses, 100.0 * collisionGraph[i] / numAccesses);
+    for (unsigned i = 1; i <= maxCollisions; i++) {
+        dataLogF("  %u lookups with exactly %u collisions (%.2f%% , %.2f%% with this many or more)\n", collisionGraph[i], i, 100.0 * (collisionGraph[i] - collisionGraph[i+1]) / numAccesses, 100.0 * collisionGraph[i] / numAccesses);
     }
-    dataLogF("%d rehashes\n", numRehashes);
-    dataLogF("%d reinserts\n", numReinserts);
+    dataLogF("%d rehashes\n", numRehashes.load());
+    dataLogF("%d reinserts\n", numReinserts.load());
 }
 
 #endif

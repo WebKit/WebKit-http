@@ -26,8 +26,6 @@
 #import "config.h"
 #import "RemoteLayerBackingStore.h"
 
-#if USE(ACCELERATED_COMPOSITING)
-
 #import "ArgumentCoders.h"
 #import "MachPort.h"
 #import "PlatformCALayerRemote.h"
@@ -75,7 +73,7 @@ void RemoteLayerBackingStore::ensureBackingStore(PlatformCALayerRemote* layer, I
     m_frontBuffer = nullptr;
 }
 
-void RemoteLayerBackingStore::encode(CoreIPC::ArgumentEncoder& encoder) const
+void RemoteLayerBackingStore::encode(IPC::ArgumentEncoder& encoder) const
 {
     encoder << m_size;
     encoder << m_scale;
@@ -84,7 +82,7 @@ void RemoteLayerBackingStore::encode(CoreIPC::ArgumentEncoder& encoder) const
 #if USE(IOSURFACE)
     if (m_acceleratesDrawing) {
         mach_port_t port = IOSurfaceCreateMachPort(m_frontSurface.get());
-        encoder << CoreIPC::MachPort(port, MACH_MSG_TYPE_MOVE_SEND);
+        encoder << IPC::MachPort(port, MACH_MSG_TYPE_MOVE_SEND);
         return;
     }
 #else
@@ -96,7 +94,7 @@ void RemoteLayerBackingStore::encode(CoreIPC::ArgumentEncoder& encoder) const
     encoder << handle;
 }
 
-bool RemoteLayerBackingStore::decode(CoreIPC::ArgumentDecoder& decoder, RemoteLayerBackingStore& result)
+bool RemoteLayerBackingStore::decode(IPC::ArgumentDecoder& decoder, RemoteLayerBackingStore& result)
 {
     if (!decoder.decode(result.m_size))
         return false;
@@ -109,7 +107,7 @@ bool RemoteLayerBackingStore::decode(CoreIPC::ArgumentDecoder& decoder, RemoteLa
 
 #if USE(IOSURFACE)
     if (result.m_acceleratesDrawing) {
-        CoreIPC::MachPort machPort;
+        IPC::MachPort machPort;
         if (!decoder.decode(machPort))
             return false;
         result.m_frontSurface = adoptCF(IOSurfaceLookupFromMachPort(machPort.port()));
@@ -349,5 +347,3 @@ void RemoteLayerBackingStore::enumerateRectsBeingDrawn(CGContextRef context, voi
         block(rectToDraw);
     }
 }
-
-#endif // USE(ACCELERATED_COMPOSITING)

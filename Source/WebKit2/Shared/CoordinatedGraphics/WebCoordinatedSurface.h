@@ -43,8 +43,8 @@ public:
     public:
         Handle();
 
-        void encode(CoreIPC::ArgumentEncoder&) const;
-        static bool decode(CoreIPC::ArgumentDecoder&, Handle&);
+        void encode(IPC::ArgumentEncoder&) const;
+        static bool decode(IPC::ArgumentDecoder&, Handle&);
 
 #if USE(GRAPHICS_SURFACE)
         WebCore::GraphicsSurfaceToken graphicsSurfaceToken() const { return m_graphicsSurfaceToken; }
@@ -71,10 +71,10 @@ public:
 
     virtual ~WebCoordinatedSurface();
 
-    virtual void paintToSurface(const WebCore::IntRect&, WebCore::CoordinatedSurface::Client*) OVERRIDE;
+    virtual void paintToSurface(const WebCore::IntRect&, WebCore::CoordinatedSurface::Client*) override;
 
 #if USE(TEXTURE_MAPPER)
-    virtual void copyToTexture(PassRefPtr<WebCore::BitmapTexture>, const WebCore::IntRect& target, const WebCore::IntPoint& sourceOffset) OVERRIDE;
+    virtual void copyToTexture(PassRefPtr<WebCore::BitmapTexture>, const WebCore::IntRect& target, const WebCore::IntPoint& sourceOffset) override;
 #endif
 
 private:

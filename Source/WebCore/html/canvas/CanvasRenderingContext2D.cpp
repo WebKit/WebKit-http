@@ -48,16 +48,13 @@
 #include "HTMLVideoElement.h"
 #include "ImageData.h"
 #include "RenderElement.h"
+#include "RenderLayer.h"
 #include "SecurityOrigin.h"
 #include "StrokeStyleApplier.h"
 #include "StyleProperties.h"
 #include "StyleResolver.h"
 #include "TextMetrics.h"
 #include "TextRun.h"
-
-#if USE(ACCELERATED_COMPOSITING)
-#include "RenderLayer.h"
-#endif
 
 #include <wtf/CheckedArithmetic.h>
 #include <wtf/MathExtras.h>
@@ -88,7 +85,7 @@ public:
     {
     }
 
-    virtual void strokeStyle(GraphicsContext* c) OVERRIDE
+    virtual void strokeStyle(GraphicsContext* c) override
     {
         c->setStrokeThickness(m_canvasContext->lineWidth());
         c->setLineCap(m_canvasContext->getLineCap());
@@ -1739,7 +1736,7 @@ void CanvasRenderingContext2D::didDraw(const FloatRect& r, unsigned options)
     if (!state().m_hasInvertibleTransform)
         return;
 
-#if ENABLE(ACCELERATED_2D_CANVAS) && USE(ACCELERATED_COMPOSITING)
+#if ENABLE(ACCELERATED_2D_CANVAS)
     // If we are drawing to hardware and we have a composited layer, just call contentChanged().
     if (isAccelerated()) {
         RenderBox* renderBox = canvas()->renderBox();
@@ -2143,7 +2140,7 @@ static void normalizeSpaces(String& text)
 
     unsigned textLength = text.length();
     Vector<UChar> charVector(textLength);
-    memcpy(charVector.data(), text.characters(), textLength * sizeof(UChar));
+    memcpy(charVector.data(), text.deprecatedCharacters(), textLength * sizeof(UChar));
 
     charVector[i++] = ' ';
 
@@ -2327,7 +2324,7 @@ const Font& CanvasRenderingContext2D::accessFont()
     return state().m_font;
 }
 
-#if ENABLE(ACCELERATED_2D_CANVAS) && USE(ACCELERATED_COMPOSITING)
+#if ENABLE(ACCELERATED_2D_CANVAS)
 PlatformLayer* CanvasRenderingContext2D::platformLayer() const
 {
     return canvas()->buffer() ? canvas()->buffer()->platformLayer() : 0;

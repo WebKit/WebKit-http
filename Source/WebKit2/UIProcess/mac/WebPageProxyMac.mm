@@ -42,11 +42,13 @@
 #import "WebProcessProxy.h"
 #import <WebCore/DictationAlternative.h>
 #import <WebCore/GraphicsLayer.h>
+#import <WebCore/RuntimeApplicationChecks.h>
 #import <WebCore/SharedBuffer.h>
-#import <WebCore/SystemVersionMac.h>
 #import <WebCore/TextAlternativeWithRange.h>
+#import <WebCore/UserAgent.h>
 #import <WebKitSystemInterface.h>
 #import <mach-o/dyld.h>
+#import <wtf/NeverDestroyed.h>
 #import <wtf/text/StringConcatenate.h>
 
 @interface NSApplication (Details)
@@ -59,35 +61,23 @@ using namespace WebCore;
 
 namespace WebKit {
 
-static bool shouldUseLegacyImplicitRubberBandControl()
+static inline bool expectsLegacyImplicitRubberBandControl()
 {
-    static bool linkedAgainstExecutableExpectingImplicitRubberBandControl = NSVersionOfLinkTimeLibrary("WebKit2") < 0x021A0200 /* 538.2.0 */;
-    return linkedAgainstExecutableExpectingImplicitRubberBandControl;
+    if (applicationIsSafari()) {
+        const int32_t firstVersionOfSafariNotExpectingImplicitRubberBandControl = 0x021A0F00; // 538.15.0
+        bool linkedAgainstSafariExpectingImplicitRubberBandControl = NSVersionOfLinkTimeLibrary("Safari") < firstVersionOfSafariNotExpectingImplicitRubberBandControl;
+        return linkedAgainstSafariExpectingImplicitRubberBandControl;
+    }
+
+    const int32_t firstVersionOfWebKit2WithNoImplicitRubberBandControl = 0x021A0200; // 538.2.0
+    int32_t linkedWebKit2Version = NSVersionOfLinkTimeLibrary("WebKit2");
+    return linkedWebKit2Version != -1 && linkedWebKit2Version < firstVersionOfWebKit2WithNoImplicitRubberBandControl;
 }
 
 void WebPageProxy::platformInitialize()
 {
-    m_useLegacyImplicitRubberBandControl = shouldUseLegacyImplicitRubberBandControl();
-
-#if WK_API_ENABLED
-    [WebKit::wrapper(*this) _finishInitialization];
-#endif
-}
-
-#if defined(__ppc__) || defined(__ppc64__)
-#define PROCESSOR "PPC"
-#elif defined(__i386__) || defined(__x86_64__)
-#define PROCESSOR "Intel"
-#else
-#error Unknown architecture
-#endif
-
-static NSString *systemMarketingVersionForUserAgentString()
-{
-    // Use underscores instead of dots because when we first added the Mac OS X version to the user agent string
-    // we were concerned about old DHTML libraries interpreting "4." as Netscape 4. That's no longer a concern for us
-    // but we're sticking with the underscores for compatibility with the format used by older versions of Safari.
-    return [systemMarketingVersion() stringByReplacingOccurrencesOfString:@"." withString:@"_"];
+    static bool clientExpectsLegacyImplicitRubberBandControl = expectsLegacyImplicitRubberBandControl();
+    setShouldUseImplicitRubberBandControl(clientExpectsLegacyImplicitRubberBandControl);
 }
 
 static String userVisibleWebKitVersionString()
@@ -105,12 +95,7 @@ static String userVisibleWebKitVersionString()
 
 String WebPageProxy::standardUserAgent(const String& applicationNameForUserAgent)
 {
-    DEFINE_STATIC_LOCAL(String, osVersion, (systemMarketingVersionForUserAgentString()));
-    DEFINE_STATIC_LOCAL(String, webKitVersion, (userVisibleWebKitVersionString()));
-
-    if (applicationNameForUserAgent.isEmpty())
-        return makeString("Mozilla/5.0 (Macintosh; " PROCESSOR " Mac OS X ", osVersion, ") AppleWebKit/", webKitVersion, " (KHTML, like Gecko)");
-    return makeString("Mozilla/5.0 (Macintosh; " PROCESSOR " Mac OS X ", osVersion, ") AppleWebKit/", webKitVersion, " (KHTML, like Gecko) ", applicationNameForUserAgent);
+    return standardUserAgentWithApplicationName(applicationNameForUserAgent, userVisibleWebKitVersionString());
 }
 
 void WebPageProxy::getIsSpeaking(bool& isSpeaking)
@@ -152,31 +137,6 @@ void WebPageProxy::windowAndViewFramesChanged(const FloatRect& viewFrameInWindow
     FloatRect windowFrameInUnflippedScreenCoordinates = m_pageClient.convertToUserSpace(windowFrameInScreenCoordinates);
 
     process().send(Messages::WebPage::WindowAndViewFramesChanged(windowFrameInScreenCoordinates, windowFrameInUnflippedScreenCoordinates, viewFrameInWindowCoordinates, accessibilityViewCoordinates), m_pageID);
-}
-
-void WebPageProxy::viewExposedRectChanged(const FloatRect& exposedRect, bool clipsToExposedRect)
-{
-    if (!isValid())
-        return;
-
-    m_exposedRect = exposedRect;
-    m_clipsToExposedRect = clipsToExposedRect;
-
-    if (!m_exposedRectChangedTimer.isActive())
-        m_exposedRectChangedTimer.startOneShot(0);
-}
-
-void WebPageProxy::exposedRectChangedTimerFired(Timer<WebPageProxy>*)
-{
-    if (!isValid())
-        return;
-
-    if (m_exposedRect == m_lastSentExposedRect && m_clipsToExposedRect == m_lastSentClipsToExposedRect)
-        return;
-
-    process().send(Messages::WebPage::ViewExposedRectChanged(m_exposedRect, m_clipsToExposedRect), m_pageID);
-    m_lastSentExposedRect = m_exposedRect;
-    m_lastSentClipsToExposedRect = m_clipsToExposedRect;
 }
 
 void WebPageProxy::setMainFrameIsScrollable(bool isScrollable)
@@ -320,7 +280,7 @@ String WebPageProxy::stringSelectionForPasteboard()
     if (!isValid())
         return value;
     
-    const double messageTimeout = 20;
+    const auto messageTimeout = std::chrono::seconds(20);
     process().sendSync(Messages::WebPage::GetStringSelectionForPasteboard(), Messages::WebPage::GetStringSelectionForPasteboard::Reply(value), m_pageID, messageTimeout);
     return value;
 }
@@ -331,7 +291,7 @@ PassRefPtr<WebCore::SharedBuffer> WebPageProxy::dataSelectionForPasteboard(const
         return 0;
     SharedMemory::Handle handle;
     uint64_t size = 0;
-    const double messageTimeout = 20;
+    const auto messageTimeout = std::chrono::seconds(20);
     process().sendSync(Messages::WebPage::GetDataSelectionForPasteboard(pasteboardType),
                                                 Messages::WebPage::GetDataSelectionForPasteboard::Reply(handle, size), m_pageID, messageTimeout);
     if (handle.isNull())
@@ -346,7 +306,7 @@ bool WebPageProxy::readSelectionFromPasteboard(const String& pasteboardName)
         return false;
 
     bool result = false;
-    const double messageTimeout = 20;
+    const auto messageTimeout = std::chrono::seconds(20);
     process().sendSync(Messages::WebPage::ReadSelectionFromPasteboard(pasteboardName), Messages::WebPage::ReadSelectionFromPasteboard::Reply(result), m_pageID, messageTimeout);
     return result;
 }
@@ -429,7 +389,7 @@ void WebPageProxy::didPerformDictionaryLookup(const AttributedString& text, cons
     m_pageClient.didPerformDictionaryLookup(text, dictionaryPopupInfo);
 }
     
-void WebPageProxy::registerWebProcessAccessibilityToken(const CoreIPC::DataReference& data)
+void WebPageProxy::registerWebProcessAccessibilityToken(const IPC::DataReference& data)
 {
     m_pageClient.accessibilityWebProcessTokenReceived(data);
 }    
@@ -444,7 +404,7 @@ ColorSpaceData WebPageProxy::colorSpace()
     return m_pageClient.colorSpace();
 }
 
-void WebPageProxy::registerUIProcessAccessibilityTokens(const CoreIPC::DataReference& elementToken, const CoreIPC::DataReference& windowToken)
+void WebPageProxy::registerUIProcessAccessibilityTokens(const IPC::DataReference& elementToken, const IPC::DataReference& windowToken)
 {
     if (!isValid())
         return;
@@ -477,7 +437,7 @@ bool WebPageProxy::shouldDelayWindowOrderingForEvent(const WebKit::WebMouseEvent
         return false;
 
     bool result = false;
-    const double messageTimeout = 3;
+    const auto messageTimeout = std::chrono::seconds(3);
     process().sendSync(Messages::WebPage::ShouldDelayWindowOrderingEvent(event), Messages::WebPage::ShouldDelayWindowOrderingEvent::Reply(result), m_pageID, messageTimeout);
     return result;
 }
@@ -488,7 +448,7 @@ bool WebPageProxy::acceptsFirstMouse(int eventNumber, const WebKit::WebMouseEven
         return false;
 
     bool result = false;
-    const double messageTimeout = 3;
+    const auto messageTimeout = std::chrono::seconds(3);
     process().sendSync(Messages::WebPage::AcceptsFirstMouse(eventNumber, event), Messages::WebPage::AcceptsFirstMouse::Reply(result), m_pageID, messageTimeout);
     return result;
 }
@@ -506,6 +466,11 @@ void WebPageProxy::intrinsicContentSizeDidChange(const IntSize& intrinsicContent
 void WebPageProxy::setAcceleratedCompositingRootLayer(PlatformLayer* rootLayer)
 {
     m_pageClient.setAcceleratedCompositingRootLayer(rootLayer);
+}
+
+PlatformLayer* WebPageProxy::acceleratedCompositingRootLayer() const
+{
+    return m_pageClient.acceleratedCompositingRootLayer();
 }
 
 static NSString *temporaryPDFDirectoryPath()
@@ -586,7 +551,7 @@ void WebPageProxy::savePDFToTemporaryFolderAndOpenWithNativeApplicationRaw(const
     [[NSWorkspace sharedWorkspace] openFile:nsPath];
 }
 
-void WebPageProxy::savePDFToTemporaryFolderAndOpenWithNativeApplication(const String& suggestedFilename, const String& originatingURLString, const CoreIPC::DataReference& data, const String& pdfUUID)
+void WebPageProxy::savePDFToTemporaryFolderAndOpenWithNativeApplication(const String& suggestedFilename, const String& originatingURLString, const IPC::DataReference& data, const String& pdfUUID)
 {
     if (data.isEmpty()) {
         WTFLogAlways("Cannot save empty PDF file to the temporary directory.");

@@ -1150,7 +1150,7 @@ HRESULT WebFrame::elementWithName(BSTR name, IDOMElement* form, IDOMElement** el
         for (unsigned int i = 0; i < elements.size(); i++) {
             if (!elements[i]->isFormControlElement())
                 continue;
-            HTMLFormControlElement* elt = static_cast<HTMLFormControlElement*>(elements[i]);
+            HTMLFormControlElement* elt = toHTMLFormControlElement(elements[i]);
             // Skip option elements, other duds
             if (elt->name() == targetName) {
                 *element = DOMElement::createInstance(elt);
@@ -2012,7 +2012,7 @@ HRESULT STDMETHODCALLTYPE WebFrame::frameBounds(
     if (!view)
         return E_FAIL;
 
-    FloatRect bounds = view->visibleContentRect(ScrollableArea::IncludeScrollbars);
+    FloatRect bounds = view->visibleContentRectIncludingScrollbars();
     result->bottom = (LONG) bounds.height();
     result->right = (LONG) bounds.width();
     return S_OK;

@@ -56,6 +56,21 @@
 #import <wtf/text/Base64.h>
 #import <wtf/text/CString.h>
 
+#if PLATFORM(IOS)
+#import <CFNetwork/CFURLRequest.h>
+
+#import "RuntimeApplicationChecksIOS.h"
+#import "WebCoreThreadRun.h"
+
+@interface NSURLRequest (iOSDetails)
+- (CFURLRequestRef) _CFURLRequest;
+@end
+#endif
+
+#if USE(QUICK_LOOK)
+#import "QuickLook.h"
+#endif
+
 using namespace WebCore;
 
 @interface NSURLConnection (Details)
@@ -94,7 +109,19 @@ ResourceHandle::~ResourceHandle()
     LOG(Network, "Handle %p destroyed", this);
 }
 
-void ResourceHandle::createNSURLConnection(id delegate, bool shouldUseCredentialStorage, bool shouldContentSniff)
+#if PLATFORM(IOS)
+static bool synchronousWillSendRequestEnabled()
+{
+    static bool disabled = [[NSUserDefaults standardUserDefaults] boolForKey:@"WebKitDisableSynchronousWillSendRequestPreferenceKey"];
+    return !disabled;
+}
+#endif
+
+#if !PLATFORM(IOS)
+void ResourceHandle::createNSURLConnection(id delegate, bool shouldUseCredentialStorage, bool shouldContentSniff, SchedulingBehavior schedulingBehavior)
+#else
+void ResourceHandle::createNSURLConnection(id delegate, bool shouldUseCredentialStorage, bool shouldContentSniff, SchedulingBehavior schedulingBehavior, NSDictionary *connectionProperties)
+#endif
 {
     // Credentials for ftp can only be passed in URL, the connection:didReceiveAuthenticationChallenge: delegate call won't be made.
     if ((!d->m_user.isEmpty() || !d->m_pass.isEmpty()) && !firstRequest().url().protocolIsInHTTPFamily()) {
@@ -134,19 +161,45 @@ void ResourceHandle::createNSURLConnection(id delegate, bool shouldUseCredential
 
     ASSERT([NSURLConnection instancesRespondToSelector:@selector(_initWithRequest:delegate:usesCache:maxContentLength:startImmediately:connectionProperties:)]);
 
+#if PLATFORM(IOS)
+    // FIXME: This code is different from iOS code in ResourceHandleCFNet.cpp in that here we respect stream properties that were present in client properties.
+    NSDictionary *streamPropertiesFromClient = [connectionProperties objectForKey:@"kCFURLConnectionSocketStreamProperties"];
+    NSMutableDictionary *streamProperties = streamPropertiesFromClient ? [[streamPropertiesFromClient mutableCopy] autorelease] : [NSMutableDictionary dictionary];
+#else
     NSMutableDictionary *streamProperties = [NSMutableDictionary dictionary];
+#endif
 
-    if (!shouldUseCredentialStorage)
+    if (!shouldUseCredentialStorage) {
+        // Avoid using existing connections, because they may be already authenticated.
         [streamProperties setObject:@"WebKitPrivateSession" forKey:@"_kCFURLConnectionSessionID"];
+    }
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
+    if (schedulingBehavior == SchedulingBehavior::Synchronous) {
+        // Synchronous requests should not be subject to regular connection count limit to avoid deadlocks.
+        // If we are using all available connections for async requests, and make a sync request, then prior
+        // requests may get stuck waiting for delegate calls while we are in nested run loop, and the sync
+        // request won't start because there are no available connections.
+        // Connections are grouped by their socket stream properties, with each group having a separate count.
+        [streamProperties setObject:@TRUE forKey:@"_WebKitSynchronousRequest"];
+    }
+
+#if PLATFORM(IOS) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
     RetainPtr<CFDataRef> sourceApplicationAuditData = d->m_context->sourceApplicationAuditData();
     if (sourceApplicationAuditData)
         [streamProperties setObject:(NSData *)sourceApplicationAuditData.get() forKey:@"kCFStreamPropertySourceApplication"];
 #endif
 
+#if PLATFORM(IOS)
+    NSMutableDictionary *propertyDictionary = [NSMutableDictionary dictionaryWithDictionary:connectionProperties];
+    [propertyDictionary setObject:streamProperties forKey:@"kCFURLConnectionSocketStreamProperties"];
+    const bool usesCache = false;
+    if (synchronousWillSendRequestEnabled())
+        CFURLRequestSetShouldStartSynchronously([nsRequest _CFURLRequest], 1);
+#else
     NSDictionary *propertyDictionary = [NSDictionary dictionaryWithObject:streamProperties forKey:@"kCFURLConnectionSocketStreamProperties"];
-    d->m_connection = adoptNS([[NSURLConnection alloc] _initWithRequest:nsRequest delegate:delegate usesCache:YES maxContentLength:0 startImmediately:NO connectionProperties:propertyDictionary]);
+    const bool usesCache = true;
+#endif
+    d->m_connection = adoptNS([[NSURLConnection alloc] _initWithRequest:nsRequest delegate:delegate usesCache:usesCache maxContentLength:0 startImmediately:NO connectionProperties:propertyDictionary]);
 }
 
 bool ResourceHandle::start()
@@ -168,11 +221,26 @@ bool ResourceHandle::start()
 
     d->m_needsSiteSpecificQuirks = d->m_context->needsSiteSpecificQuirks();
 
+#if !PLATFORM(IOS)
     createNSURLConnection(
         ResourceHandle::delegate(),
         shouldUseCredentialStorage,
-        d->m_shouldContentSniff || d->m_context->localFileContentSniffingEnabled());
+        d->m_shouldContentSniff || d->m_context->localFileContentSniffingEnabled(),
+        SchedulingBehavior::Asynchronous);
+#else
+    createNSURLConnection(
+        d->m_proxy.get(),
+        shouldUseCredentialStorage,
+        d->m_shouldContentSniff || d->m_context->localFileContentSniffingEnabled(),
+        SchedulingBehavior::Asynchronous,
+        (NSDictionary *)client()->connectionProperties(this));
+#endif
 
+#if PLATFORM(IOS)
+    NSURLConnection *urlConnection = connection();
+    [urlConnection scheduleInRunLoop:WebThreadNSRunLoop() forMode:NSDefaultRunLoopMode];
+    [urlConnection start];
+#else
     bool scheduled = false;
     if (SchedulePairHashSet* scheduledPairs = d->m_context->scheduledRunLoopPairs()) {
         SchedulePairHashSet::iterator end = scheduledPairs->end();
@@ -196,6 +264,7 @@ bool ResourceHandle::start()
         [connection() start];
     else
         d->m_startWhenScheduled = true;
+#endif
 
     LOG(Network, "Handle %p starting connection %p for %@", this, connection(), firstRequest().nsURLRequest(DoNotUpdateHTTPBody));
     
@@ -230,6 +299,7 @@ void ResourceHandle::platformSetDefersLoading(bool defers)
 
 void ResourceHandle::schedule(SchedulePair* pair)
 {
+#if !PLATFORM(IOS)
     NSRunLoop *runLoop = pair->nsRunLoop();
     if (!runLoop)
         return;
@@ -238,12 +308,19 @@ void ResourceHandle::schedule(SchedulePair* pair)
         [d->m_connection.get() start];
         d->m_startWhenScheduled = false;
     }
+#else
+    UNUSED_PARAM(pair);
+#endif
 }
 
 void ResourceHandle::unschedule(SchedulePair* pair)
 {
+#if !PLATFORM(IOS)
     if (NSRunLoop *runLoop = pair->nsRunLoop())
         [d->m_connection.get() unscheduleFromRunLoop:runLoop forMode:(NSString *)pair->mode()];
+#else
+    UNUSED_PARAM(pair);
+#endif
 }
 
 id ResourceHandle::delegate()
@@ -299,10 +376,20 @@ void ResourceHandle::platformLoadResourceSynchronously(NetworkingContext* contex
         return;
     }
 
+#if !PLATFORM(IOS)
     handle->createNSURLConnection(
         handle->delegate(),
         storedCredentials == AllowStoredCredentials,
-        handle->shouldContentSniff() || context->localFileContentSniffingEnabled());
+        handle->shouldContentSniff() || context->localFileContentSniffingEnabled(),
+        SchedulingBehavior::Synchronous);
+#else
+    handle->createNSURLConnection(
+        handle->delegate(), // A synchronous request cannot turn into a download, so there is no need to proxy the delegate.
+        storedCredentials == AllowStoredCredentials,
+        handle->shouldContentSniff() || (context && context->localFileContentSniffingEnabled()),
+        SchedulingBehavior::Synchronous,
+        (NSDictionary *)handle->client()->connectionProperties(handle.get()));
+#endif
 
     [handle->connection() scheduleInRunLoop:[NSRunLoop currentRunLoop] forMode:(NSString *)synchronousLoadRunLoopMode()];
     [handle->connection() start];
@@ -491,6 +578,19 @@ void ResourceHandle::didReceiveAuthenticationChallenge(const AuthenticationChall
             }
         }
     }
+
+#if PLATFORM(IOS)
+    // If the challenge is for a proxy protection space, look for default credentials in
+    // the keychain.  CFNetwork used to handle this until WebCore was changed to always
+    // return NO to -connectionShouldUseCredentialStorage: for <rdar://problem/7704943>.
+    if (!challenge.previousFailureCount() && challenge.protectionSpace().isProxy()) {
+        NSURLAuthenticationChallenge *macChallenge = mac(challenge);
+        if (NSURLCredential *credential = [[NSURLCredentialStorage sharedCredentialStorage] defaultCredentialForProtectionSpace:[macChallenge protectionSpace]]) {
+            [challenge.sender() useCredential:credential forAuthenticationChallenge:macChallenge];
+            return;
+        }
+    }
+#endif // PLATFORM(IOS)
 
     d->m_currentMacChallenge = challenge.nsURLAuthenticationChallenge();
     d->m_currentWebChallenge = core(d->m_currentMacChallenge);

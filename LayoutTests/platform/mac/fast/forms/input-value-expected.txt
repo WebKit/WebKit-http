@@ -200,23 +200,23 @@ layer at (0,0) size 800x600
               RenderTableCell {TD} at (698,318) size 61x20 [r=13 c=3 rs=1 cs=1]
                 RenderText {#text} at (1,1) size 40x18
                   text run at (1,1) width 40: "before"
-layer at (403,134) size 140x13
+layer at (403,134) size 139x13
   RenderBlock {DIV} at (3,3) size 140x13
     RenderText {#text} at (0,0) size 35x13
       text run at (0,0) width 35: "before"
-layer at (403,161) size 140x13
+layer at (403,161) size 139x13
   RenderBlock {DIV} at (3,3) size 140x13
     RenderText {#text} at (0,0) size 37x13
       text run at (0,0) width 37: "\x{2022}\x{2022}\x{2022}\x{2022}\x{2022}\x{2022}"
-layer at (403,303) size 140x13
+layer at (403,303) size 139x13
   RenderBlock {DIV} at (3,3) size 140x13
     RenderText {#text} at (0,0) size 25x13
       text run at (0,0) width 25: "after"
-layer at (403,374) size 140x13
+layer at (403,374) size 139x13
   RenderBlock {DIV} at (3,3) size 140x13
     RenderText {#text} at (0,0) size 25x13
       text run at (0,0) width 25: "after"
-layer at (403,423) size 140x13
+layer at (403,423) size 139x13
   RenderBlock {DIV} at (3,3) size 140x13
     RenderText {#text} at (0,0) size 25x13
       text run at (0,0) width 25: "after"

@@ -71,7 +71,7 @@ String stripLeadingAndTrailingHTMLSpaces(const String& string)
     if (string.is8Bit())
         return stripLeadingAndTrailingHTMLSpaces(string, string.characters8(), length);
 
-    return stripLeadingAndTrailingHTMLSpaces(string, string.characters(), length);
+    return stripLeadingAndTrailingHTMLSpaces(string, string.deprecatedCharacters(), length);
 }
 
 String serializeForNumberType(const Decimal& number)
@@ -272,7 +272,7 @@ bool parseHTMLNonNegativeInteger(const String& input, unsigned& value)
         return parseHTMLNonNegativeIntegerInternal(start, start + length, value);
     }
     
-    const UChar* start = input.characters();
+    const UChar* start = input.deprecatedCharacters();
     return parseHTMLNonNegativeIntegerInternal(start, start + length, value);
 }
 
@@ -289,13 +289,6 @@ bool threadSafeMatch(const QualifiedName& a, const QualifiedName& b)
 {
     return threadSafeEqual(a.localName().impl(), b.localName().impl());
 }
-
-#if ENABLE(THREADED_HTML_PARSER)
-bool threadSafeMatch(const HTMLIdentifier& localName, const QualifiedName& qName)
-{
-    return threadSafeEqual(localName.asStringImpl(), qName.localName().impl());
-}
-#endif
 
 struct ImageWithScale {
     unsigned imageURLStart;
@@ -388,7 +381,7 @@ static void parseImagesWithScaleFromSrcsetAttribute(const String& srcsetAttribut
                 }
                 bool validScaleFactor = false;
                 size_t scaleFactorLengthWithoutUnit = imageScaleEnd - imageScaleStart - 1;
-                imageScaleFactor = charactersToFloat(srcsetAttribute.characters() + imageScaleStart, scaleFactorLengthWithoutUnit, &validScaleFactor);
+                imageScaleFactor = charactersToFloat(srcsetAttribute.deprecatedCharacters() + imageScaleStart, scaleFactorLengthWithoutUnit, &validScaleFactor);
 
                 if (!validScaleFactor) {
                     imageCandidateStart = separator + 1;

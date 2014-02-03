@@ -74,7 +74,7 @@ public:
     void disconnect()
     {
         m_frontendApiObject = Deprecated::ScriptObject();
-        m_frontendHost = 0;
+        m_frontendHost = nullptr;
     }
     
 private:
@@ -90,13 +90,13 @@ private:
         contextMenuCleared();
     }
     
-    virtual void populateContextMenu(ContextMenu* menu)
+    virtual void populateContextMenu(ContextMenu* menu) override
     {
         for (size_t i = 0; i < m_items.size(); ++i)
             menu->appendItem(m_items[i]);
     }
     
-    virtual void contextMenuItemSelected(ContextMenuItem* item)
+    virtual void contextMenuItemSelected(ContextMenuItem* item) override
     {
         if (m_frontendHost) {
             UserGestureIndicator gestureIndicator(DefinitelyProcessingUserGesture);
@@ -108,13 +108,13 @@ private:
         }
     }
     
-    virtual void contextMenuCleared()
+    virtual void contextMenuCleared() override
     {
         if (m_frontendHost) {
             Deprecated::ScriptFunctionCall function(m_frontendApiObject, "contextMenuCleared", WebCore::functionCallHandlerFromAnyThread);
             function.call();
 
-            m_frontendHost->m_menuProvider = 0;
+            m_frontendHost->m_menuProvider = nullptr;
         }
         m_items.clear();
     }
@@ -129,7 +129,7 @@ InspectorFrontendHost::InspectorFrontendHost(InspectorFrontendClient* client, Pa
     : m_client(client)
     , m_frontendPage(frontendPage)
 #if ENABLE(CONTEXT_MENUS)
-    , m_menuProvider(0)
+    , m_menuProvider(nullptr)
 #endif
 {
 }
@@ -141,12 +141,12 @@ InspectorFrontendHost::~InspectorFrontendHost()
 
 void InspectorFrontendHost::disconnectClient()
 {
-    m_client = 0;
+    m_client = nullptr;
 #if ENABLE(CONTEXT_MENUS)
     if (m_menuProvider)
         m_menuProvider->disconnect();
 #endif
-    m_frontendPage = 0;
+    m_frontendPage = nullptr;
 }
 
 void InspectorFrontendHost::loaded()
@@ -311,31 +311,6 @@ String InspectorFrontendHost::loadResourceSynchronously(const String& url)
     ResourceResponse response;
     m_frontendPage->mainFrame().loader().loadResourceSynchronously(request, DoNotAllowStoredCredentials, DoNotAskClientForCrossOriginCredentials, error, response, data);
     return String::fromUTF8(data.data(), data.size());
-}
-
-bool InspectorFrontendHost::supportsFileSystems()
-{
-    if (m_client)
-        return m_client->supportsFileSystems();
-    return false;
-}
-
-void InspectorFrontendHost::requestFileSystems()
-{
-    if (m_client)
-        m_client->requestFileSystems();
-}
-
-void InspectorFrontendHost::addFileSystem()
-{
-    if (m_client)
-        m_client->addFileSystem();
-}
-
-void InspectorFrontendHost::removeFileSystem(const String& fileSystemPath)
-{
-    if (m_client)
-        m_client->removeFileSystem(fileSystemPath);
 }
 
 bool InspectorFrontendHost::isUnderTest()

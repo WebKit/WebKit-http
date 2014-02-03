@@ -44,7 +44,7 @@ OBJC_CLASS WKPlaceholderModalWindow;
 #endif
 
 // FIXME: This is platform specific.
-namespace CoreIPC {
+namespace IPC {
     class MachPort;
 }
 
@@ -61,6 +61,11 @@ struct RawPluginMetaData {
     String description;
     String mimeDescription;
 };
+#endif
+
+#if PLATFORM(MAC)
+int pluginProcessLatencyQOS();
+int pluginProcessThroughputQOS();
 #endif
 
 class PluginProcessProxy : public ChildProcessProxy {
@@ -100,23 +105,23 @@ public:
 private:
     PluginProcessProxy(PluginProcessManager*, const PluginProcessAttributes&, uint64_t pluginProcessToken);
 
-    virtual void getLaunchOptions(ProcessLauncher::LaunchOptions&) OVERRIDE;
+    virtual void getLaunchOptions(ProcessLauncher::LaunchOptions&) override;
     void platformGetLaunchOptions(ProcessLauncher::LaunchOptions&, const PluginProcessAttributes&);
 
     void pluginProcessCrashedOrFailedToLaunch();
 
-    // CoreIPC::Connection::Client
-    virtual void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&) OVERRIDE;
-    virtual void didReceiveSyncMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&, std::unique_ptr<CoreIPC::MessageEncoder>&) OVERRIDE;
+    // IPC::Connection::Client
+    virtual void didReceiveMessage(IPC::Connection*, IPC::MessageDecoder&) override;
+    virtual void didReceiveSyncMessage(IPC::Connection*, IPC::MessageDecoder&, std::unique_ptr<IPC::MessageEncoder>&) override;
 
-    virtual void didClose(CoreIPC::Connection*) OVERRIDE;
-    virtual void didReceiveInvalidMessage(CoreIPC::Connection*, CoreIPC::StringReference messageReceiverName, CoreIPC::StringReference messageName) OVERRIDE;
+    virtual void didClose(IPC::Connection*) override;
+    virtual void didReceiveInvalidMessage(IPC::Connection*, IPC::StringReference messageReceiverName, IPC::StringReference messageName) override;
 
     // ProcessLauncher::Client
-    virtual void didFinishLaunching(ProcessLauncher*, CoreIPC::Connection::Identifier);
+    virtual void didFinishLaunching(ProcessLauncher*, IPC::Connection::Identifier);
 
     // Message handlers
-    void didCreateWebProcessConnection(const CoreIPC::Attachment&, bool supportsAsynchronousPluginInitialization);
+    void didCreateWebProcessConnection(const IPC::Attachment&, bool supportsAsynchronousPluginInitialization);
     void didGetSitesWithData(const Vector<String>& sites, uint64_t callbackID);
     void didClearSiteData(uint64_t callbackID);
 
@@ -150,7 +155,7 @@ private:
     uint64_t m_pluginProcessToken;
 
     // The connection to the plug-in host process.
-    RefPtr<CoreIPC::Connection> m_connection;
+    RefPtr<IPC::Connection> m_connection;
 
     Deque<RefPtr<Messages::WebProcessProxy::GetPluginProcessConnection::DelayedReply>> m_pendingConnectionReplies;
 

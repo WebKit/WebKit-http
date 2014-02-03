@@ -34,12 +34,12 @@ void WorkQueue::platformInvalidate()
     dispatchQueue->stopThread();
 }
 
-void WorkQueue::registerSocketEventHandler(int fileDescriptor, const Function<void()>& function)
+void WorkQueue::registerSocketEventHandler(int fileDescriptor, std::function<void ()> function)
 {
     if (!m_dispatchQueue)
         return;
 
-    m_dispatchQueue->setSocketEventHandler(fileDescriptor, function);
+    m_dispatchQueue->setSocketEventHandler(fileDescriptor, std::move(function));
 }
 
 void WorkQueue::unregisterSocketEventHandler(int fileDescriptor)
@@ -52,18 +52,18 @@ void WorkQueue::unregisterSocketEventHandler(int fileDescriptor)
     m_dispatchQueue->clearSocketEventHandler();
 }
 
-void WorkQueue::dispatch(const Function<void()>& function)
+void WorkQueue::dispatch(std::function<void ()> function)
 {
     if (!m_dispatchQueue)
         return;
 
-    m_dispatchQueue->dispatch(WorkItem::create(this, function));
+    m_dispatchQueue->dispatch(WorkItem::create(this, std::move(function)));
 }
 
-void WorkQueue::dispatchAfterDelay(const Function<void()>& function, double delay)
+void WorkQueue::dispatchAfter(std::chrono::nanoseconds duration, std::function<void ()> function)
 {
     if (!m_dispatchQueue)
         return;
 
-    m_dispatchQueue->dispatch(TimerWorkItem::create(this, function, delay));
+    m_dispatchQueue->dispatch(TimerWorkItem::create(this, std::move(function), duration));
 }

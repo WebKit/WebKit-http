@@ -25,6 +25,7 @@
 #include "FrameView.h"
 #include "LayoutState.h"
 #include "PODFreeListArena.h"
+#include "Region.h"
 #include "RenderBlockFlow.h"
 #include <wtf/OwnPtr.h>
 
@@ -32,17 +33,10 @@ namespace WebCore {
 
 class FlowThreadController;
 class ImageQualityController;
+class RenderLayerCompositor;
 class RenderQuote;
 
-#if USE(ACCELERATED_COMPOSITING)
-class RenderLayerCompositor;
-#endif
-
-#if ENABLE(CSS_SHADERS) && USE(3D_GRAPHICS)
-class CustomFilterGlobalContext;
-#endif
-
-class RenderView FINAL : public RenderBlockFlow {
+class RenderView final : public RenderBlockFlow {
 public:
     RenderView(Document&, PassRef<RenderStyle>);
     virtual ~RenderView();
@@ -50,17 +44,17 @@ public:
     bool hitTest(const HitTestRequest&, HitTestResult&);
     bool hitTest(const HitTestRequest&, const HitTestLocation&, HitTestResult&);
 
-    virtual const char* renderName() const OVERRIDE { return "RenderView"; }
+    virtual const char* renderName() const override { return "RenderView"; }
 
-    virtual bool requiresLayer() const OVERRIDE { return true; }
+    virtual bool requiresLayer() const override { return true; }
 
-    virtual bool isChildAllowed(const RenderObject&, const RenderStyle&) const OVERRIDE;
+    virtual bool isChildAllowed(const RenderObject&, const RenderStyle&) const override;
 
-    virtual void layout() OVERRIDE;
-    virtual void updateLogicalWidth() OVERRIDE;
-    virtual void computeLogicalHeight(LayoutUnit logicalHeight, LayoutUnit logicalTop, LogicalExtentComputedValues&) const OVERRIDE;
+    virtual void layout() override;
+    virtual void updateLogicalWidth() override;
+    virtual void computeLogicalHeight(LayoutUnit logicalHeight, LayoutUnit logicalTop, LogicalExtentComputedValues&) const override;
 
-    virtual LayoutUnit availableLogicalHeight(AvailableLogicalHeightType) const OVERRIDE;
+    virtual LayoutUnit availableLogicalHeight(AvailableLogicalHeightType) const override;
 
     // The same as the FrameView's layoutHeight/layoutWidth but with null check guards.
     int viewHeight() const;
@@ -68,12 +62,15 @@ public:
     int viewLogicalWidth() const { return style().isHorizontalWritingMode() ? viewWidth() : viewHeight(); }
     int viewLogicalHeight() const;
 
+    LayoutUnit clientLogicalWidthForFixedPosition() const;
+    LayoutUnit clientLogicalHeightForFixedPosition() const;
+
     float zoomFactor() const;
 
     FrameView& frameView() const { return m_frameView; }
 
-    virtual LayoutRect visualOverflowRect() const OVERRIDE;
-    virtual void computeRectForRepaint(const RenderLayerModelObject* repaintContainer, LayoutRect&, bool fixed = false) const OVERRIDE;
+    virtual LayoutRect visualOverflowRect() const override;
+    virtual void computeRectForRepaint(const RenderLayerModelObject* repaintContainer, LayoutRect&, bool fixed = false) const override;
     void repaintRootContents();
     void repaintViewRectangle(const LayoutRect&, bool immediate = false) const;
     // Repaint the view, and all composited layers that intersect the given absolute rectangle.
@@ -81,8 +78,8 @@ public:
     void repaintRectangleInViewAndCompositedLayers(const LayoutRect&, bool immediate = false);
     void repaintViewAndCompositedLayers();
 
-    virtual void paint(PaintInfo&, const LayoutPoint&) OVERRIDE;
-    virtual void paintBoxDecorations(PaintInfo&, const LayoutPoint&) OVERRIDE;
+    virtual void paint(PaintInfo&, const LayoutPoint&) override;
+    virtual void paintBoxDecorations(PaintInfo&, const LayoutPoint&) override;
 
     enum SelectionRepaintMode { RepaintNewXOROld, RepaintNewMinusOld, RepaintNothing };
     void setSelection(RenderObject* start, int startPos, RenderObject* end, int endPos, SelectionRepaintMode = RepaintNewXOROld);
@@ -96,14 +93,10 @@ public:
 
     bool printing() const;
 
-    virtual void absoluteRects(Vector<IntRect>&, const LayoutPoint& accumulatedOffset) const OVERRIDE;
-    virtual void absoluteQuads(Vector<FloatQuad>&, bool* wasFixed) const OVERRIDE;
+    virtual void absoluteRects(Vector<IntRect>&, const LayoutPoint& accumulatedOffset) const override;
+    virtual void absoluteQuads(Vector<FloatQuad>&, bool* wasFixed) const override;
 
-#if USE(ACCELERATED_COMPOSITING)
     void setMaximalOutlineSize(int o);
-#else
-    void setMaximalOutlineSize(int o) { m_maximalOutlineSize = o; }
-#endif
     int maximalOutlineSize() const { return m_maximalOutlineSize; }
 
     LayoutRect viewRect() const;
@@ -151,7 +144,7 @@ public:
     bool layoutStateEnabled() const { return m_layoutStateDisableCount == 0 && m_layoutState; }
     LayoutState* layoutState() const { return m_layoutState.get(); }
 
-    virtual void updateHitTestResult(HitTestResult&, const LayoutPoint&) OVERRIDE;
+    virtual void updateHitTestResult(HitTestResult&, const LayoutPoint&) override;
 
     LayoutUnit pageLogicalHeight() const { return m_pageLogicalHeight; }
     void setPageLogicalHeight(LayoutUnit height)
@@ -181,14 +174,8 @@ public:
     // Notification that this view moved into or out of a native window.
     void setIsInWindow(bool);
 
-#if USE(ACCELERATED_COMPOSITING)
     RenderLayerCompositor& compositor();
     bool usesCompositing() const;
-#endif
-
-#if ENABLE(CSS_SHADERS) && USE(3D_GRAPHICS)
-    CustomFilterGlobalContext* customFilterGlobalContext();
-#endif
 
     IntRect unscaledDocumentRect() const;
     LayoutRect backgroundRect(RenderBox* backgroundRenderer) const;
@@ -202,7 +189,7 @@ public:
     bool checkTwoPassLayoutForAutoHeightRegions() const;
     FlowThreadController& flowThreadController();
 
-    virtual void styleDidChange(StyleDifference, const RenderStyle* oldStyle) OVERRIDE;
+    virtual void styleDidChange(StyleDifference, const RenderStyle* oldStyle) override;
 
 #if PLATFORM(IOS)
     enum ContainingBlockCheck { CheckContainingBlock, DontCheckContainingBlock };
@@ -224,7 +211,7 @@ public:
     void removeRenderCounter() { ASSERT(m_renderCounterCount > 0); m_renderCounterCount--; }
     bool hasRenderCounters() { return m_renderCounterCount; }
     
-    virtual void addChild(RenderObject* newChild, RenderObject* beforeChild = 0) OVERRIDE;
+    virtual void addChild(RenderObject* newChild, RenderObject* beforeChild = 0) override;
 
     IntRect pixelSnappedLayoutOverflowRect() const { return pixelSnappedIntRect(layoutOverflowRect()); }
 
@@ -239,19 +226,31 @@ public:
     void didCreateRenderer() { ++m_rendererCount; }
     void didDestroyRenderer() { --m_rendererCount; }
 
+    class RepaintRegionAccumulator {
+        WTF_MAKE_NONCOPYABLE(RepaintRegionAccumulator);
+    public:
+        RepaintRegionAccumulator(RenderView*);
+        ~RepaintRegionAccumulator();
+
+    private:
+        RenderView* m_rootView;
+        bool m_wasAccumulatingRepaintRegion;
+    };
+
 protected:
-    virtual void mapLocalToContainer(const RenderLayerModelObject* repaintContainer, TransformState&, MapCoordinatesFlags = ApplyContainerFlip, bool* wasFixed = 0) const OVERRIDE;
-    virtual const RenderObject* pushMappingToContainer(const RenderLayerModelObject* ancestorToStopAt, RenderGeometryMap&) const OVERRIDE;
-    virtual void mapAbsoluteToLocalPoint(MapCoordinatesFlags, TransformState&) const OVERRIDE;
-    virtual bool requiresColumns(int desiredColumnCount) const OVERRIDE;
+    virtual void mapLocalToContainer(const RenderLayerModelObject* repaintContainer, TransformState&, MapCoordinatesFlags = ApplyContainerFlip, bool* wasFixed = 0) const override;
+    virtual const RenderObject* pushMappingToContainer(const RenderLayerModelObject* ancestorToStopAt, RenderGeometryMap&) const override;
+    virtual void mapAbsoluteToLocalPoint(MapCoordinatesFlags, TransformState&) const override;
+    virtual bool requiresColumns(int desiredColumnCount) const override;
     
 private:
     bool initializeLayoutState(LayoutState&);
 
-    virtual void calcColumnWidth() OVERRIDE;
-    virtual ColumnInfo::PaginationUnit paginationUnit() const OVERRIDE;
+    virtual void computeColumnCountAndWidth() override;
+    virtual ColumnInfo::PaginationUnit paginationUnit() const override;
 
     bool shouldRepaint(const LayoutRect&) const;
+    void flushAccumulatedRepaintRegion() const;
 
     // These functions may only be accessed by LayoutStateMaintainer.
     bool pushLayoutState(RenderBox& renderer, const LayoutSize& offset, LayoutUnit pageHeight = 0, bool pageHeightChanged = false, ColumnInfo* colInfo = nullptr)
@@ -308,6 +307,8 @@ private:
 
     uint64_t m_rendererCount;
 
+    mutable std::unique_ptr<Region> m_accumulatedRepaintRegion;
+
     // FIXME: Only used by embedded WebViews inside AppKit NSViews.  Find a way to remove.
     struct LegacyPrinting {
         LegacyPrinting()
@@ -335,12 +336,7 @@ private:
     bool m_pageLogicalHeightChanged;
     std::unique_ptr<LayoutState> m_layoutState;
     unsigned m_layoutStateDisableCount;
-#if USE(ACCELERATED_COMPOSITING)
     OwnPtr<RenderLayerCompositor> m_compositor;
-#endif
-#if ENABLE(CSS_SHADERS) && USE(3D_GRAPHICS)
-    OwnPtr<CustomFilterGlobalContext> m_customFilterGlobalContext;
-#endif
     OwnPtr<FlowThreadController> m_flowThreadController;
     RefPtr<IntervalArena> m_intervalArena;
 

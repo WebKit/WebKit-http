@@ -28,7 +28,7 @@
 namespace WebCore {
     
 class SVGGraphicsElement;
-class RenderSVGTransformableContainer FINAL : public RenderSVGContainer {
+class RenderSVGTransformableContainer final : public RenderSVGContainer {
 public:
     RenderSVGTransformableContainer(SVGGraphicsElement&, PassRef<RenderStyle>);
     SVGGraphicsElement& graphicsElement() { return toSVGGraphicsElement(RenderSVGContainer::element()); }
@@ -39,7 +39,7 @@ public:
     virtual bool didTransformToRootUpdate() { return m_didTransformToRootUpdate; }
 
 private:
-    void element() const WTF_DELETED_FUNCTION;
+    void element() const = delete;
     virtual bool calculateLocalTransform();
     virtual AffineTransform localTransform() const { return m_localTransform; }
 

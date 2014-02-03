@@ -31,25 +31,24 @@ class SVGElement;
 
 class RenderSVGBlock : public RenderBlockFlow {
 public:
-    virtual LayoutRect visualOverflowRect() const OVERRIDE FINAL;
+    virtual LayoutRect visualOverflowRect() const override final;
 
     SVGGraphicsElement& graphicsElement() const { return toSVGGraphicsElement(nodeForNonAnonymous()); }
 
 protected:
     RenderSVGBlock(SVGGraphicsElement&, PassRef<RenderStyle>);
-    virtual void willBeDestroyed() OVERRIDE;
+    virtual void willBeDestroyed() override;
 
 private:
-    void element() const WTF_DELETED_FUNCTION;
+    void element() const = delete;
 
-    virtual void setStyle(PassRef<RenderStyle>) OVERRIDE FINAL;
-    virtual void updateFromStyle() OVERRIDE FINAL;
+    virtual void updateFromStyle() override final;
 
-    virtual bool isRenderSVGBlock() const OVERRIDE FINAL { return true; };
+    virtual bool isRenderSVGBlock() const override final { return true; };
 
     virtual void absoluteRects(Vector<IntRect>&, const LayoutPoint& accumulatedOffset) const;
 
-    virtual void styleDidChange(StyleDifference, const RenderStyle* oldStyle) OVERRIDE FINAL;
+    virtual void styleDidChange(StyleDifference, const RenderStyle* oldStyle) override final;
 };
 
 }

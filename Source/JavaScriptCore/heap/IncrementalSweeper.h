@@ -39,20 +39,18 @@ class IncrementalSweeper : public HeapTimer {
 public:
     static PassOwnPtr<IncrementalSweeper> create(Heap*);
     void startSweeping(Vector<MarkedBlock*>&);
-    JS_EXPORT_PRIVATE virtual void doWork() OVERRIDE;
+    JS_EXPORT_PRIVATE virtual void doWork() override;
     void sweepNextBlock();
     void willFinishSweeping();
 
 protected:
 #if USE(CF)
     JS_EXPORT_PRIVATE IncrementalSweeper(Heap*, CFRunLoopRef);
-#elif PLATFORM(BLACKBERRY)
-    IncrementalSweeper(Heap*);
 #else
     IncrementalSweeper(VM*);
 #endif
 
-#if USE(CF) || PLATFORM(BLACKBERRY)
+#if USE(CF)
 private:
     void doSweep(double startTime);
     void scheduleTimer();

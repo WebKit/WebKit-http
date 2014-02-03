@@ -142,6 +142,11 @@ namespace WebCore {
         static double defaultTimeoutInterval(); // May return 0 when using platform default.
         static void setDefaultTimeoutInterval(double);
 
+#if PLATFORM(IOS)
+        static bool defaultAllowCookies();
+        static void setDefaultAllowCookies(bool);
+#endif
+
         static bool compare(const ResourceRequest&, const ResourceRequest&);
 
     protected:
@@ -160,10 +165,14 @@ namespace WebCore {
 
         ResourceRequestBase(const URL& url, ResourceRequestCachePolicy policy)
             : m_url(url)
-            , m_cachePolicy(policy)
             , m_timeoutInterval(s_defaultTimeoutInterval)
             , m_httpMethod(ASCIILiteral("GET"))
+            , m_cachePolicy(policy)
+#if !PLATFORM(IOS)
             , m_allowCookies(true)
+#else
+            , m_allowCookies(ResourceRequestBase::defaultAllowCookies())
+#endif
             , m_resourceRequestUpdated(true)
             , m_platformRequestUpdated(false)
             , m_resourceRequestBodyUpdated(true)
@@ -182,14 +191,13 @@ namespace WebCore {
         static bool platformCompare(const ResourceRequest&, const ResourceRequest&) { return true; }
 
         URL m_url;
-
-        ResourceRequestCachePolicy m_cachePolicy;
         double m_timeoutInterval; // 0 is a magic value for platform default on platforms that have one.
         URL m_firstPartyForCookies;
         String m_httpMethod;
         HTTPHeaderMap m_httpHeaderFields;
         Vector<String> m_responseContentDispositionEncodingFallbackArray;
         RefPtr<FormData> m_httpBody;
+        ResourceRequestCachePolicy m_cachePolicy : 3;
         bool m_allowCookies : 1;
         mutable bool m_resourceRequestUpdated : 1;
         mutable bool m_platformRequestUpdated : 1;
@@ -198,12 +206,15 @@ namespace WebCore {
         bool m_reportUploadProgress : 1;
         bool m_reportLoadTiming : 1;
         bool m_reportRawHeaders : 1;
-        ResourceLoadPriority m_priority;
+        ResourceLoadPriority m_priority : 4;
 
     private:
         const ResourceRequest& asResourceRequest() const;
 
         static double s_defaultTimeoutInterval;
+#if PLATFORM(IOS)
+        static bool s_defaultAllowCookies;
+#endif
     };
 
     bool equalIgnoringHeaderFields(const ResourceRequestBase&, const ResourceRequestBase&);
@@ -230,7 +241,9 @@ namespace WebCore {
     };
     
     unsigned initializeMaximumHTTPConnectionCountPerHost();
-
+#if PLATFORM(IOS)
+    void initializeHTTPConnectionSettingsOnStartup();
+#endif
 } // namespace WebCore
 
 #endif // ResourceRequestBase_h

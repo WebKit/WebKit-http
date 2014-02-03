@@ -3,6 +3,7 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/editing/atk"
     "${WEBCORE_DIR}/page/gtk"
     "${WEBCORE_DIR}/platform/cairo"
+    "${WEBCORE_DIR}/platform/geoclue"
     "${WEBCORE_DIR}/platform/gtk"
     "${WEBCORE_DIR}/platform/graphics/cairo"
     "${WEBCORE_DIR}/platform/graphics/egl"
@@ -15,14 +16,16 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/graphics/opentype"
     "${WEBCORE_DIR}/platform/linux"
     "${WEBCORE_DIR}/platform/mediastream/gstreamer"
+    "${WEBCORE_DIR}/platform/mock/mediasource"
     "${WEBCORE_DIR}/platform/network/gtk"
     "${WEBCORE_DIR}/platform/network/soup"
     "${WEBCORE_DIR}/platform/text/gtk"
+    "${WEBCORE_DIR}/platform/text/icu"
     "${WEBCORE_DIR}/plugins/gtk"
 )
 
 list(APPEND WebCore_SOURCES
-    editing/SmartReplaceICU.cpp
+    editing/SmartReplace.cpp
 
     html/shadow/MediaControlsGtk.cpp
 
@@ -36,6 +39,8 @@ list(APPEND WebCore_SOURCES
     platform/audio/gstreamer/AudioFileReaderGStreamer.cpp
     platform/audio/gstreamer/FFTFrameGStreamer.cpp
     platform/audio/gstreamer/WebKitWebAudioSourceGStreamer.cpp
+
+    platform/geoclue/GeolocationProviderGeoclue.cpp
 
     platform/graphics/GraphicsContext3DPrivate.cpp
     platform/graphics/OpenGLShims.cpp
@@ -67,10 +72,21 @@ list(APPEND WebCore_SOURCES
     platform/graphics/freetype/GlyphPageTreeNodeFreeType.cpp
     platform/graphics/freetype/SimpleFontDataFreeType.cpp
 
+    platform/graphics/gstreamer/AudioTrackPrivateGStreamer.cpp
     platform/graphics/gstreamer/GRefPtrGStreamer.cpp
     platform/graphics/gstreamer/GStreamerUtilities.cpp
     platform/graphics/gstreamer/ImageGStreamerCairo.cpp
+    platform/graphics/gstreamer/InbandTextTrackPrivateGStreamer.cpp
+    platform/graphics/gstreamer/MediaPlayerPrivateGStreamer.cpp
+    platform/graphics/gstreamer/MediaPlayerPrivateGStreamerBase.cpp
+    platform/graphics/gstreamer/MediaSourceGStreamer.cpp
+    platform/graphics/gstreamer/SourceBufferPrivateGStreamer.cpp
+    platform/graphics/gstreamer/TextCombinerGStreamer.cpp
+    platform/graphics/gstreamer/TextSinkGStreamer.cpp
+    platform/graphics/gstreamer/TrackPrivateBaseGStreamer.cpp
     platform/graphics/gstreamer/VideoSinkGStreamer.cpp
+    platform/graphics/gstreamer/VideoTrackPrivateGStreamer.cpp
+    platform/graphics/gstreamer/WebKitMediaSourceGStreamer.cpp
     platform/graphics/gstreamer/WebKitWebSourceGStreamer.cpp
 
     platform/graphics/harfbuzz/HarfBuzzFace.cpp
@@ -82,8 +98,11 @@ list(APPEND WebCore_SOURCES
     platform/graphics/opengl/Extensions3DOpenGLES.cpp
     platform/graphics/opengl/GraphicsContext3DOpenGL.cpp
     platform/graphics/opengl/GraphicsContext3DOpenGLCommon.cpp
+    platform/graphics/opengl/TemporaryOpenGLSetting.cpp
 
     platform/graphics/opentype/OpenTypeVerticalData.cpp
+
+    platform/gtk/GamepadsGtk.cpp
 
     platform/image-decoders/cairo/ImageDecoderCairo.cpp
 
@@ -105,13 +124,16 @@ list(APPEND WebCore_SOURCES
     platform/network/soup/ResourceRequestSoup.cpp
     platform/network/soup/ResourceResponseSoup.cpp
     platform/network/soup/SocketStreamHandleSoup.cpp
-    platform/network/soup/SoupURIUtils.cpp
+    platform/network/soup/SoupNetworkSession.cpp
     platform/network/soup/SynchronousLoaderClientSoup.cpp
 
     platform/soup/SharedBufferSoup.cpp
+    platform/soup/URLSoup.cpp
 
+    platform/text/icu/UTextProvider.cpp
+    platform/text/icu/UTextProviderLatin1.cpp
+    platform/text/icu/UTextProviderUTF16.cpp
     platform/text/LocaleICU.cpp
-    platform/text/TextBreakIteratorICU.cpp
     platform/text/TextCodecICU.cpp
     platform/text/TextEncodingDetectorICU.cpp
 
@@ -155,9 +177,6 @@ list(APPEND WebCorePlatformGTK_SOURCES
 
     platform/graphics/glx/GLContextGLX.cpp
 
-    platform/graphics/gstreamer/MediaPlayerPrivateGStreamer.cpp
-    platform/graphics/gstreamer/MediaPlayerPrivateGStreamerBase.cpp
-
     platform/graphics/gtk/ColorGtk.cpp
     platform/graphics/gtk/GdkCairoUtilities.cpp
     platform/graphics/gtk/IconGtk.cpp
@@ -177,9 +196,7 @@ list(APPEND WebCorePlatformGTK_SOURCES
     platform/gtk/ErrorsGtk.cpp
     platform/gtk/EventLoopGtk.cpp
     platform/gtk/FileSystemGtk.cpp
-    platform/gtk/GOwnPtrGtk.cpp
     platform/gtk/GRefPtrGtk.cpp
-    platform/gtk/GamepadsGtk.cpp
     platform/gtk/GtkClickCounter.cpp
     platform/gtk/GtkDragAndDropHelper.cpp
     platform/gtk/GtkInputMethodFilter.cpp
@@ -241,8 +258,10 @@ list(APPEND WebCorePlatformGTK_SOURCES
 
     platform/soup/SharedBufferSoup.cpp
 
+    platform/text/icu/UTextProvider.cpp
+    platform/text/icu/UTextProviderLatin1.cpp
+    platform/text/icu/UTextProviderUTF16.cpp
     platform/text/LocaleICU.cpp
-    platform/text/TextBreakIteratorICU.cpp
     platform/text/TextCodecICU.cpp
     platform/text/TextEncodingDetectorICU.cpp
 
@@ -282,10 +301,12 @@ list(APPEND WebCore_LIBRARIES
     ${ENCHANT_LIBRARIES}
     ${FONTCONFIG_LIBRARIES}
     ${FREETYPE_LIBRARIES}
+    ${GEOCLUE_LIBRARIES}
     ${GLIB_GIO_LIBRARIES}
     ${GLIB_GMODULE_LIBRARIES}
     ${GLIB_GOBJECT_LIBRARIES}
     ${GLIB_LIBRARIES}
+    ${GUDEV_LIBRARIES}
     ${HARFBUZZ_LIBRARIES}
     ${ICU_LIBRARIES}
     ${JPEG_LIBRARIES}
@@ -305,19 +326,22 @@ list(APPEND WebCore_LIBRARIES
 
 list(APPEND WebCore_INCLUDE_DIRECTORIES
     ${ATK_INCLUDE_DIRS}
-    ${ENCHANT_INCLUDE_DIRS}
     ${CAIRO_INCLUDE_DIRS}
+    ${ENCHANT_INCLUDE_DIRS}
     ${FREETYPE_INCLUDE_DIRS}
+    ${GEOCLUE_INCLUDE_DIRS}
+    ${GIO_UNIX_INCLUDE_DIRS}
+    ${GLIB_INCLUDE_DIRS}
+    ${GUDEV_INCLUDE_DIRS}
+    ${HARFBUZZ_INCLUDE_DIRS}
     ${ICU_INCLUDE_DIRS}
+    ${LIBSOUP_INCLUDE_DIRS}
     ${LIBXML2_INCLUDE_DIR}
     ${LIBXSLT_INCLUDE_DIR}
     ${SQLITE_INCLUDE_DIR}
-    ${GLIB_INCLUDE_DIRS}
-    ${LIBSOUP_INCLUDE_DIRS}
-    ${ZLIB_INCLUDE_DIRS}
-    ${HARFBUZZ_INCLUDE_DIRS}
     ${WEBP_INCLUDE_DIRS}
     ${XT_INCLUDE_DIRS}
+    ${ZLIB_INCLUDE_DIRS}
 )
 
 if (ENABLE_VIDEO OR ENABLE_WEB_AUDIO)
@@ -377,22 +401,20 @@ if (WTF_USE_EGL)
     )
 endif ()
 
-install(FILES
-            "${WEBCORE_DIR}/Resources/textAreaResizeCorner.png"
-            "${WEBCORE_DIR}/Resources/nullPlugin.png"
-            "${WEBCORE_DIR}/Resources/urlIcon.png"
-            "${WEBCORE_DIR}/Resources/missingImage.png"
-            "${WEBCORE_DIR}/Resources/panIcon.png"
-            "${WEBCORE_DIR}/Resources/deleteButton.png"
-            "${WEBCORE_DIR}/Resources/inputSpeech.png"
-        DESTINATION
-            "${DATA_INSTALL_DIR}/images")
+install(FILES "${WEBCORE_DIR}/Resources/textAreaResizeCorner.png"
+              "${WEBCORE_DIR}/Resources/nullPlugin.png"
+              "${WEBCORE_DIR}/Resources/urlIcon.png"
+              "${WEBCORE_DIR}/Resources/missingImage.png"
+              "${WEBCORE_DIR}/Resources/panIcon.png"
+              "${WEBCORE_DIR}/Resources/deleteButton.png"
+              "${WEBCORE_DIR}/Resources/inputSpeech.png"
+        DESTINATION "${DATA_INSTALL_DIR}/images"
+)
 
 if (ENABLE_WEB_AUDIO)
-    install(FILES
-                "${WEBCORE_DIR}/platform/audio/resources/Composite.wav"
-            DESTINATION
-                "${DATA_INSTALL_DIR}/resources/audio")
+    install(FILES "${WEBCORE_DIR}/platform/audio/resources/Composite.wav"
+            DESTINATION "${DATA_INSTALL_DIR}/resources/audio"
+    )
 endif ()
 
 if (ENABLE_WEBKIT2)
@@ -400,6 +422,7 @@ if (ENABLE_WEBKIT2)
     # dependent files into a separate library which can be used to construct a GTK+2 WebCore
     # for the plugin process.
     add_library(WebCorePlatformGTK2 ${WebCore_LIBRARY_TYPE} ${WebCorePlatformGTK_SOURCES})
+    add_dependencies(WebCorePlatformGTK2 WebCore)
     WEBKIT_SET_EXTRA_COMPILER_FLAGS(WebCorePlatformGTK2)
     set_property(TARGET WebCorePlatformGTK2
         APPEND
@@ -421,24 +444,23 @@ if (ENABLE_WEBKIT2)
 endif ()
 
 add_library(WebCorePlatformGTK ${WebCore_LIBRARY_TYPE} ${WebCorePlatformGTK_SOURCES})
+add_dependencies(WebCorePlatformGTK WebCore)
 WEBKIT_SET_EXTRA_COMPILER_FLAGS(WebCorePlatformGTK)
 set_property(
     TARGET WebCorePlatformGTK
     APPEND
     PROPERTY INCLUDE_DIRECTORIES
         ${WebCore_INCLUDE_DIRECTORIES}
-        ${GTK3_INCLUDE_DIRS}
-        ${GDK3_INCLUDE_DIRS}
+        ${GTK_INCLUDE_DIRS}
+        ${GDK_INCLUDE_DIRS}
 )
 target_link_libraries(WebCorePlatformGTK
     ${WebCore_LIBRARIES}
-    ${GTK3_LIBRARIES}
-    ${GDK3_LIBRARIES}
+    ${GTK_LIBRARIES}
+    ${GDK_LIBRARIES}
 )
 
 if (ENABLE_WEBKIT2)
-    set(DERIVED_SOURCES_GOBJECT_DOM_BINDINGS_DIR ${DERIVED_SOURCES_DIR}/webkitdom)
-
     include_directories(
         "${WebCore_INCLUDE_DIRECTORIES}"
         "${DERIVED_SOURCES_DIR}"
@@ -447,22 +469,13 @@ if (ENABLE_WEBKIT2)
 
     list(APPEND GObjectDOMBindings_SOURCES
         bindings/gobject/ConvertToUTF8String.cpp
-        bindings/gobject/ConvertToUTF8String.h
         bindings/gobject/DOMObjectCache.cpp
-        bindings/gobject/DOMObjectCache.h
         bindings/gobject/GObjectEventListener.cpp
-        bindings/gobject/GObjectEventListener.h
         bindings/gobject/WebKitDOMCustom.cpp
-        bindings/gobject/WebKitDOMCustom.h
         bindings/gobject/WebKitDOMEventTarget.cpp
-        bindings/gobject/WebKitDOMEventTarget.h
-        bindings/gobject/WebKitDOMEventTargetPrivate.h
         bindings/gobject/WebKitDOMHTMLPrivate.cpp
-        bindings/gobject/WebKitDOMHTMLPrivate.h
         bindings/gobject/WebKitDOMObject.cpp
-        bindings/gobject/WebKitDOMObject.h
         bindings/gobject/WebKitDOMPrivate.cpp
-        bindings/gobject/WebKitDOMPrivate.h
         ${DERIVED_SOURCES_GOBJECT_DOM_BINDINGS_DIR}/webkitdomdefines.h
         ${DERIVED_SOURCES_GOBJECT_DOM_BINDINGS_DIR}/webkitdom.h
     )
@@ -472,6 +485,7 @@ if (ENABLE_WEBKIT2)
         Modules/gamepad/Gamepad.idl
         Modules/gamepad/GamepadList.idl
         Modules/geolocation/Geolocation.idl
+        Modules/mediasource/VideoPlaybackQuality.idl
         Modules/quota/StorageInfo.idl
         Modules/quota/StorageQuota.idl
         Modules/webdatabase/Database.idl
@@ -638,10 +652,21 @@ if (ENABLE_WEBKIT2)
         )
     endif ()
 
-    foreach (file Custom EventTarget Object Deprecated ${GObjectDOMBindings_IDL_FILES})
-        get_filename_component(file ${file} NAME_WE)
-        list(APPEND GObjectDOMBindings_CLASS_LIST ${file})
+    set(GObjectDOMBindings_CLASS_LIST Custom EventTarget Object Deprecated)
+    set(GObjectDOMBindings_INSTALLED_HEADERS
+         ${DERIVED_SOURCES_GOBJECT_DOM_BINDINGS_DIR}/webkitdomdefines.h
+         ${DERIVED_SOURCES_GOBJECT_DOM_BINDINGS_DIR}/webkitdom.h
+         ${WEBCORE_DIR}/bindings/gobject/WebKitDOMCustom.h
+    )
+
+    foreach (file ${GObjectDOMBindings_IDL_FILES})
+        get_filename_component(classname ${file} NAME_WE)
+        list(APPEND GObjectDOMBindings_CLASS_LIST ${classname})
+        list(APPEND GObjectDOMBindings_INSTALLED_HEADERS ${DERIVED_SOURCES_GOBJECT_DOM_BINDINGS_DIR}/WebKitDOM${classname}.h)
     endforeach ()
+
+    # Propagate this variable to the parent scope, so that it can be used in other parts of the build.
+    set(GObjectDOMBindings_INSTALLED_HEADERS ${GObjectDOMBindings_INSTALLED_HEADERS} PARENT_SCOPE)
 
     set(GOBJECT_DOM_BINDINGS_FEATURES_DEFINES "LANGUAGE_GOBJECT=1 ${FEATURE_DEFINES_WITH_SPACE_SEPARATOR}")
     string(REPLACE "ENABLE_INDEXED_DATABASE=1" "" GOBJECT_DOM_BINDINGS_FEATURES_DEFINES ${GOBJECT_DOM_BINDINGS_FEATURES_DEFINES})
@@ -686,6 +711,13 @@ if (ENABLE_WEBKIT2)
     add_dependencies(GObjectDOMBindings
         WebCore
         fake-installed-webkitdom-headers
+    )
+
+    install(FILES ${GObjectDOMBindings_INSTALLED_HEADERS}
+                  bindings/gobject/WebKitDOMEventTarget.h
+                  bindings/gobject/WebKitDOMDeprecated.h
+                  bindings/gobject/WebKitDOMObject.h
+            DESTINATION "${WEBKITGTK_HEADER_INSTALL_DIR}/webkitdom"
     )
 endif ()
 

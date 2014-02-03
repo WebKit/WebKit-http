@@ -64,7 +64,7 @@ struct SVGKerningMap {
 
 class SVGMissingGlyphElement;
 
-class SVGFontElement FINAL : public SVGElement
+class SVGFontElement final : public SVGElement
                            , public SVGExternalResourcesRequired {
 public:
     static PassRefPtr<SVGFontElement> create(const QualifiedName&, Document&);
@@ -85,7 +85,7 @@ public:
 private:
     SVGFontElement(const QualifiedName&, Document&);
 
-    virtual bool rendererIsNeeded(const RenderStyle&) OVERRIDE { return false; }
+    virtual bool rendererIsNeeded(const RenderStyle&) override { return false; }
 
     void ensureGlyphCache();
     void registerLigaturesInGlyphCache(Vector<String>&);

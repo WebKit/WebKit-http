@@ -26,8 +26,6 @@
 #ifndef Breakpoint_h
 #define Breakpoint_h
 
-#if ENABLE(JAVASCRIPT_DEBUGGER)
-
 #include "DebuggerPrimitives.h"
 #include <wtf/text/WTFString.h>
 
@@ -59,10 +57,10 @@ struct Breakpoint {
     unsigned column;
     String condition;
     bool autoContinue;
+
+    static const unsigned unspecifiedColumn = UINT_MAX;
 };
 
 } // namespace JSC
-
-#endif // ENABLE(JAVASCRIPT_DEBUGGER)
 
 #endif // Breakpoint_h

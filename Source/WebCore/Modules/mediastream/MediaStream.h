@@ -45,7 +45,7 @@ namespace WebCore {
 
 class MediaStreamCenter;
 
-class MediaStream FINAL : public RefCounted<MediaStream>, public URLRegistrable, public ScriptWrappable, public MediaStreamPrivateClient, public EventTargetWithInlineData, public ContextDestructionObserver {
+class MediaStream final : public RefCounted<MediaStream>, public URLRegistrable, public ScriptWrappable, public MediaStreamPrivateClient, public EventTargetWithInlineData, public ContextDestructionObserver {
 public:
     class Observer {
     public:
@@ -78,14 +78,14 @@ public:
     MediaStreamPrivate* privateStream() const { return m_private.get(); }
 
     // EventTarget
-    virtual EventTargetInterface eventTargetInterface() const FINAL { return MediaStreamEventTargetInterfaceType; }
-    virtual ScriptExecutionContext* scriptExecutionContext() const FINAL { return ContextDestructionObserver::scriptExecutionContext(); }
+    virtual EventTargetInterface eventTargetInterface() const final { return MediaStreamEventTargetInterfaceType; }
+    virtual ScriptExecutionContext* scriptExecutionContext() const final { return ContextDestructionObserver::scriptExecutionContext(); }
 
     using RefCounted<MediaStream>::ref;
     using RefCounted<MediaStream>::deref;
 
     // URLRegistrable
-    virtual URLRegistry& registry() const OVERRIDE;
+    virtual URLRegistry& registry() const override;
 
     void addObserver(Observer*);
     void removeObserver(Observer*);
@@ -94,20 +94,20 @@ protected:
     MediaStream(ScriptExecutionContext&, PassRefPtr<MediaStreamPrivate>);
 
     // ContextDestructionObserver
-    virtual void contextDestroyed() OVERRIDE FINAL;
+    virtual void contextDestroyed() override final;
 
 private:
     // EventTarget
-    virtual void refEventTarget() OVERRIDE FINAL { ref(); }
-    virtual void derefEventTarget() OVERRIDE FINAL { deref(); }
+    virtual void refEventTarget() override final { ref(); }
+    virtual void derefEventTarget() override final { deref(); }
 
     // MediaStreamPrivateClient
-    virtual void trackDidEnd() OVERRIDE FINAL;
-    virtual void streamDidEnd() OVERRIDE FINAL;
-    virtual void addRemoteSource(MediaStreamSource*) OVERRIDE FINAL;
-    virtual void removeRemoteSource(MediaStreamSource*) OVERRIDE FINAL;
-    virtual void addRemoteTrack(MediaStreamTrackPrivate*) OVERRIDE FINAL;
-    virtual void removeRemoteTrack(MediaStreamTrackPrivate*) OVERRIDE FINAL;
+    virtual void trackDidEnd() override final;
+    virtual void streamDidEnd() override final;
+    virtual void addRemoteSource(MediaStreamSource*) override final;
+    virtual void removeRemoteSource(MediaStreamSource*) override final;
+    virtual void addRemoteTrack(MediaStreamTrackPrivate*) override final;
+    virtual void removeRemoteTrack(MediaStreamTrackPrivate*) override final;
 
     bool removeTrack(PassRefPtr<MediaStreamTrack>);
     bool addTrack(PassRefPtr<MediaStreamTrack>);

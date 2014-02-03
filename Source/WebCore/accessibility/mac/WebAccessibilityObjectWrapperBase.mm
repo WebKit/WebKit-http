@@ -78,11 +78,9 @@ using namespace HTMLNames;
 
 static NSArray *convertMathPairsToNSArray(const AccessibilityObject::AccessibilityMathMultiscriptPairs& pairs, NSString *subscriptKey, NSString *superscriptKey)
 {
-    unsigned length = pairs.size();
-    NSMutableArray *array = [NSMutableArray arrayWithCapacity:length];
-    for (unsigned i = 0; i < length; ++i) {
+    NSMutableArray *array = [NSMutableArray arrayWithCapacity:pairs.size()];
+    for (const auto& pair : pairs) {
         NSMutableDictionary *pairDictionary = [NSMutableDictionary dictionary];
-        pair<AccessibilityObject*, AccessibilityObject*> pair = pairs[i];
         if (pair.first && pair.first->wrapper() && !pair.first->accessibilityIsIgnored())
             [pairDictionary setObject:pair.first->wrapper() forKey:subscriptKey];
         if (pair.second && pair.second->wrapper() && !pair.second->accessibilityIsIgnored())
@@ -165,10 +163,7 @@ static NSArray *convertMathPairsToNSArray(const AccessibilityObject::Accessibili
     Vector<AccessibilityText> textOrder;
     m_object->accessibilityText(textOrder);
     
-    unsigned length = textOrder.size();
-    for (unsigned k = 0; k < length; k++) {
-        const AccessibilityText& text = textOrder[k];
-        
+    for (const auto& text : textOrder) {
         // If we have alternative text, then we should not expose a title.
         if (text.textSource == AlternativeText)
             break;
@@ -196,11 +191,8 @@ static NSArray *convertMathPairsToNSArray(const AccessibilityObject::Accessibili
     Vector<AccessibilityText> textOrder;
     m_object->accessibilityText(textOrder);
     
-    unsigned length = textOrder.size();
     bool visibleTextAvailable = false;
-    for (unsigned k = 0; k < length; k++) {
-        const AccessibilityText& text = textOrder[k];
-        
+    for (const auto& text : textOrder) {
         if (text.textSource == AlternativeText)
             return text.text;
         
@@ -209,6 +201,7 @@ static NSArray *convertMathPairsToNSArray(const AccessibilityObject::Accessibili
         case ChildrenText:
         case LabelByElementText:
             visibleTextAvailable = true;
+            break;
         default:
             break;
         }
@@ -225,11 +218,8 @@ static NSArray *convertMathPairsToNSArray(const AccessibilityObject::Accessibili
     Vector<AccessibilityText> textOrder;
     m_object->accessibilityText(textOrder);
     
-    unsigned length = textOrder.size();
     bool descriptiveTextAvailable = false;
-    for (unsigned k = 0; k < length; k++) {
-        const AccessibilityText& text = textOrder[k];
-        
+    for (const auto& text : textOrder) {
         if (text.textSource == HelpText || text.textSource == SummaryText)
             return text.text;
         
@@ -241,6 +231,7 @@ static NSArray *convertMathPairsToNSArray(const AccessibilityObject::Accessibili
         case ChildrenText:
         case LabelByElementText:
             descriptiveTextAvailable = true;
+            break;
         default:
             break;
         }

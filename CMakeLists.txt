@@ -40,7 +40,7 @@ include(WebKitFeatures)
 # -----------------------------------------------------------------------------
 # Determine which port will be built
 # -----------------------------------------------------------------------------
-set(ALL_PORTS Efl WinCE BlackBerry Haiku GTK Nix)
+set(ALL_PORTS Efl WinCE GTK Haiku)
 set(PORT "NOPORT" CACHE STRING "choose which WebKit port to build (one of ${ALL_PORTS})")
 
 list(FIND ALL_PORTS ${PORT} RET)
@@ -100,9 +100,6 @@ if (UNIX)
     endif ()
 elseif (CMAKE_SYSTEM_NAME MATCHES "Windows")
     set(WTF_OS_WINDOWS 1)
-elseif (CMAKE_SYSTEM_NAME MATCHES "QNX")
-    set(WTF_OS_QNX 1)
-    set(WTF_OS_UNIX 1)
 else ()
     message(FATAL_ERROR "Unknown OS '${CMAKE_SYSTEM_NAME}'")
 endif ()

@@ -29,21 +29,23 @@
  */
 
 #include "config.h"
+#include "PageRuntimeAgent.h"
 
 #if ENABLE(INSPECTOR)
 
-#include "PageRuntimeAgent.h"
-
 #include "Document.h"
-#include "InjectedScript.h"
-#include "InjectedScriptManager.h"
+#include "Frame.h"
 #include "InspectorPageAgent.h"
 #include "InstrumentingAgents.h"
+#include "JSDOMWindowBase.h"
 #include "MainFrame.h"
 #include "Page.h"
 #include "PageConsole.h"
 #include "ScriptController.h"
+#include "ScriptState.h"
 #include "SecurityOrigin.h"
+#include <inspector/InjectedScript.h>
+#include <inspector/InjectedScriptManager.h>
 
 using Inspector::TypeBuilder::Runtime::ExecutionContextDescription;
 
@@ -51,18 +53,12 @@ using namespace Inspector;
 
 namespace WebCore {
 
-PageRuntimeAgent::PageRuntimeAgent(InstrumentingAgents* instrumentingAgents, InjectedScriptManager* injectedScriptManager, Page* page, InspectorPageAgent* pageAgent)
-    : InspectorRuntimeAgent(instrumentingAgents, injectedScriptManager)
+PageRuntimeAgent::PageRuntimeAgent(InjectedScriptManager* injectedScriptManager, Page* page, InspectorPageAgent* pageAgent)
+    : InspectorRuntimeAgent(injectedScriptManager)
     , m_inspectedPage(page)
     , m_pageAgent(pageAgent)
     , m_mainWorldContextCreated(false)
 {
-    m_instrumentingAgents->setPageRuntimeAgent(this);
-}
-
-PageRuntimeAgent::~PageRuntimeAgent()
-{
-    m_instrumentingAgents->setPageRuntimeAgent(0);
 }
 
 void PageRuntimeAgent::didCreateFrontendAndBackend(Inspector::InspectorFrontendChannel* frontendChannel, InspectorBackendDispatcher* backendDispatcher)
@@ -71,7 +67,7 @@ void PageRuntimeAgent::didCreateFrontendAndBackend(Inspector::InspectorFrontendC
     m_backendDispatcher = InspectorRuntimeBackendDispatcher::create(backendDispatcher, this);
 }
 
-void PageRuntimeAgent::willDestroyFrontendAndBackend()
+void PageRuntimeAgent::willDestroyFrontendAndBackend(InspectorDisconnectReason)
 {
     m_frontendDispatcher = nullptr;
     m_backendDispatcher.clear();
@@ -82,7 +78,7 @@ void PageRuntimeAgent::willDestroyFrontendAndBackend()
 
 void PageRuntimeAgent::enable(ErrorString* errorString)
 {
-    if (m_enabled)
+    if (enabled())
         return;
 
     InspectorRuntimeAgent::enable(errorString);
@@ -96,7 +92,7 @@ void PageRuntimeAgent::enable(ErrorString* errorString)
 
 void PageRuntimeAgent::disable(ErrorString* errorString)
 {
-    if (!m_enabled)
+    if (!enabled())
         return;
 
     InspectorRuntimeAgent::disable(errorString);
@@ -106,21 +102,28 @@ void PageRuntimeAgent::didCreateMainWorldContext(Frame* frame)
 {
     m_mainWorldContextCreated = true;
 
-    if (!m_enabled)
+    if (!enabled())
         return;
+
     ASSERT(m_frontendDispatcher);
     String frameId = m_pageAgent->frameId(frame);
     JSC::ExecState* scriptState = mainWorldExecState(frame);
-    notifyContextCreated(frameId, scriptState, 0, true);
+    notifyContextCreated(frameId, scriptState, nullptr, true);
 }
 
 void PageRuntimeAgent::didCreateIsolatedContext(Frame* frame, JSC::ExecState* scriptState, SecurityOrigin* origin)
 {
-    if (!m_enabled)
+    if (!enabled())
         return;
+
     ASSERT(m_frontendDispatcher);
     String frameId = m_pageAgent->frameId(frame);
     notifyContextCreated(frameId, scriptState, origin, false);
+}
+
+JSC::VM* PageRuntimeAgent::globalVM()
+{
+    return JSDOMWindowBase::commonVM();
 }
 
 InjectedScript PageRuntimeAgent::injectedScriptForEval(ErrorString* errorString, const int* executionContextId)
@@ -129,12 +132,13 @@ InjectedScript PageRuntimeAgent::injectedScriptForEval(ErrorString* errorString,
         JSC::ExecState* scriptState = mainWorldExecState(&m_inspectedPage->mainFrame());
         InjectedScript result = injectedScriptManager()->injectedScriptFor(scriptState);
         if (result.hasNoValue())
-            *errorString = "Internal error: main world execution context not found.";
+            *errorString = ASCIILiteral("Internal error: main world execution context not found.");
         return result;
     }
+
     InjectedScript injectedScript = injectedScriptManager()->injectedScriptForId(*executionContextId);
     if (injectedScript.hasNoValue())
-        *errorString = "Execution context with given id not found.";
+        *errorString = ASCIILiteral("Execution context with given id not found.");
     return injectedScript;
 }
 
@@ -157,7 +161,7 @@ void PageRuntimeAgent::reportExecutionContextCreation()
         String frameId = m_pageAgent->frameId(frame);
 
         JSC::ExecState* scriptState = mainWorldExecState(frame);
-        notifyContextCreated(frameId, scriptState, 0, true);
+        notifyContextCreated(frameId, scriptState, nullptr, true);
         frame->script().collectIsolatedContexts(isolatedContexts);
         if (isolatedContexts.isEmpty())
             continue;

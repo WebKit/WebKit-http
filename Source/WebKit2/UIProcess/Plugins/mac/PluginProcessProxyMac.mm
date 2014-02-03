@@ -33,15 +33,13 @@
 #import "PluginProcessCreationParameters.h"
 #import "PluginProcessMessages.h"
 #import "WebKitSystemInterface.h"
+#import <QuartzCore/CARemoteLayerServer.h>
 #import <WebCore/FileSystem.h>
 #import <WebCore/URL.h>
-#import <WebCore/RuntimeApplicationChecks.h>
 #import <crt_externs.h>
 #import <mach-o/dyld.h>
 #import <spawn.h>
 #import <wtf/text/CString.h>
-
-#import <QuartzCore/CARemoteLayerServer.h>
 
 @interface WKPlaceholderModalWindow : NSWindow 
 @end
@@ -129,10 +127,6 @@ static bool shouldUseXPC()
         return [value boolValue];
 
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
-    // FIXME: Temporary workaround for <rdar://problem/13236883>
-    if (applicationIsSafari())
-        return false;
-
     return true;
 #else
     return false;
@@ -157,10 +151,10 @@ void PluginProcessProxy::platformInitializePluginProcess(PluginProcessCreationPa
     // For now only Flash is known to behave with asynchronous plug-in initialization.
     parameters.supportsAsynchronousPluginInitialization = m_pluginProcessAttributes.moduleInfo.bundleIdentifier == "com.macromedia.Flash Player.plugin";
 
-#if USE(ACCELERATED_COMPOSITING) && HAVE(HOSTED_CORE_ANIMATION)
+#if HAVE(HOSTED_CORE_ANIMATION)
     mach_port_t renderServerPort = [[CARemoteLayerServer sharedServer] serverPort];
     if (renderServerPort != MACH_PORT_NULL)
-        parameters.acceleratedCompositingPort = CoreIPC::MachPort(renderServerPort, MACH_MSG_TYPE_COPY_SEND);
+        parameters.acceleratedCompositingPort = IPC::MachPort(renderServerPort, MACH_MSG_TYPE_COPY_SEND);
 #endif
 }
 
@@ -271,7 +265,7 @@ void PluginProcessProxy::beginModal()
     ASSERT(!m_activationObserver);
     
     m_placeholderWindow = adoptNS([[WKPlaceholderModalWindow alloc] initWithContentRect:NSMakeRect(0, 0, 1, 1) styleMask:NSBorderlessWindowMask backing:NSBackingStoreBuffered defer:YES]);
-    [m_placeholderWindow.get() setReleasedWhenClosed:NO];
+    [m_placeholderWindow setReleasedWhenClosed:NO];
     
     m_activationObserver = [[NSNotificationCenter defaultCenter] addObserverForName:NSApplicationWillBecomeActiveNotification object:NSApp queue:nil
                                                                          usingBlock:^(NSNotification *){ applicationDidBecomeActive(); }];
@@ -282,7 +276,7 @@ void PluginProcessProxy::beginModal()
 
     [NSApp runModalForWindow:m_placeholderWindow.get()];
     
-    [m_placeholderWindow.get() orderOut:nil];
+    [m_placeholderWindow orderOut:nil];
     m_placeholderWindow = nullptr;
 }
 
@@ -461,6 +455,18 @@ void PluginProcessProxy::openFile(const String& fullPath, bool& result)
 
     result = true;
     [[NSWorkspace sharedWorkspace] openFile:fullPath];
+}
+
+int pluginProcessLatencyQOS()
+{
+    static int qos = [[NSUserDefaults standardUserDefaults] integerForKey:@"WebKitPluginProcessLatencyQOS"];
+    return qos;
+}
+
+int pluginProcessThroughputQOS()
+{
+    static int qos = [[NSUserDefaults standardUserDefaults] integerForKey:@"WebKitPluginProcessThroughputQOS"];
+    return qos;
 }
 
 } // namespace WebKit

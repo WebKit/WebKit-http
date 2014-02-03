@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013, 2014 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -37,6 +37,41 @@ class ShareableElementData;
 class StyleProperties;
 class UniqueElementData;
 
+class AttributeConstIterator {
+public:
+    AttributeConstIterator(const Attribute* array, unsigned offset)
+        : m_array(array)
+        , m_offset(offset)
+    {
+    }
+
+    const Attribute& operator*() const { return m_array[m_offset]; }
+    const Attribute* operator->() const { return &m_array[m_offset]; }
+    AttributeConstIterator& operator++() { ++m_offset; return *this; }
+
+    bool operator==(const AttributeConstIterator& other) const { return m_offset == other.m_offset; }
+    bool operator!=(const AttributeConstIterator& other) const { return !(*this == other); }
+
+private:
+    const Attribute* m_array;
+    unsigned m_offset;
+};
+
+class AttributeIteratorAccessor {
+public:
+    AttributeIteratorAccessor(const Attribute* array, unsigned size)
+        : m_array(array)
+        , m_size(size)
+    {
+    }
+
+    AttributeConstIterator begin() const { return AttributeConstIterator(m_array, 0); }
+    AttributeConstIterator end() const { return AttributeConstIterator(m_array, m_size); }
+private:
+    const Attribute* m_array;
+    unsigned m_size;
+};
+
 class ElementData : public RefCounted<ElementData> {
     WTF_MAKE_FAST_ALLOCATED;
 public:
@@ -49,8 +84,10 @@ public:
     void clearClass() const { m_classNames.clear(); }
     void setClass(const AtomicString& className, bool shouldFoldCase) const { m_classNames.set(className, shouldFoldCase); }
     const SpaceSplitString& classNames() const { return m_classNames; }
+    static ptrdiff_t classNamesMemoryOffset() { return OBJECT_OFFSETOF(ElementData, m_classNames); }
 
     const AtomicString& idForStyleResolution() const { return m_idForStyleResolution; }
+    static ptrdiff_t idForStyleResolutionMemoryOffset() { return OBJECT_OFFSETOF(ElementData, m_idForStyleResolution); }
     void setIdForStyleResolution(const AtomicString& newId) const { m_idForStyleResolution = newId; }
 
     const StyleProperties* inlineStyle() const { return m_inlineStyle.get(); }
@@ -59,6 +96,7 @@ public:
     unsigned length() const;
     bool isEmpty() const { return !length(); }
 
+    AttributeIteratorAccessor attributesIterator() const;
     const Attribute& attributeAt(unsigned index) const;
     const Attribute* findAttributeByName(const QualifiedName&) const;
     unsigned findAttributeIndexByName(const QualifiedName&) const;
@@ -67,24 +105,53 @@ public:
 
     bool hasID() const { return !m_idForStyleResolution.isNull(); }
     bool hasClass() const { return !m_classNames.isEmpty(); }
-    bool hasName() const { return m_hasNameAttribute; }
+    bool hasName() const { return m_arraySizeAndFlags & s_flagHasNameAttribute; }
 
     bool isEquivalent(const ElementData* other) const;
 
-    bool isUnique() const { return m_isUnique; }
+    bool isUnique() const { return m_arraySizeAndFlags & s_flagIsUnique; }
+
+private:
+    mutable uint32_t m_arraySizeAndFlags;
+
+    static const uint32_t s_arraySize = 27;
+    static const uint32_t s_flagCount = 5;
+    static const uint32_t s_flagIsUnique = 1;
+    static const uint32_t s_flagHasNameAttribute = 1 << 1;
+    static const uint32_t s_flagPresentationAttributeStyleIsDirty = 1 << 2;
+    static const uint32_t s_flagStyleAttributeIsDirty = 1 << 3;
+#if ENABLE(SVG)
+    static const uint32_t s_flagAnimatedSVGAttributesAreDirty = 1 << 4;
+#endif
+    static const uint32_t s_flagsMask = (1 << s_flagCount) - 1;
+
+    inline void updateFlag(uint32_t flag, bool set) const
+    {
+        if (set)
+            m_arraySizeAndFlags |= flag;
+        else
+            m_arraySizeAndFlags &= ~flag;
+    }
+    static inline uint32_t arraySizeAndFlagsFromOther(const ElementData& other, bool isUnique);
 
 protected:
     ElementData();
     explicit ElementData(unsigned arraySize);
     ElementData(const ElementData&, bool isUnique);
 
-    unsigned m_isUnique : 1;
-    unsigned m_arraySize : 27;
-    mutable unsigned m_hasNameAttribute : 1;
-    mutable unsigned m_presentationAttributeStyleIsDirty : 1;
-    mutable unsigned m_styleAttributeIsDirty : 1;
+    unsigned arraySize() const { return m_arraySizeAndFlags >> s_flagCount; }
+
+    void setHasNameAttribute(bool hasName) const { updateFlag(s_flagHasNameAttribute, hasName); }
+
+    bool styleAttributeIsDirty() const { return m_arraySizeAndFlags & s_flagStyleAttributeIsDirty; }
+    void setStyleAttributeIsDirty(bool isDirty) const { updateFlag(s_flagStyleAttributeIsDirty, isDirty); }
+
+    bool presentationAttributeStyleIsDirty() const { return m_arraySizeAndFlags & s_flagPresentationAttributeStyleIsDirty; }
+    void setPresentationAttributeStyleIsDirty(bool isDirty) const { updateFlag(s_flagPresentationAttributeStyleIsDirty, isDirty); }
+
 #if ENABLE(SVG)
-    mutable unsigned m_animatedSVGAttributesAreDirty : 1;
+    bool animatedSVGAttributesAreDirty() const { return m_arraySizeAndFlags & s_flagAnimatedSVGAttributesAreDirty; }
+    void setAnimatedSVGAttributesAreDirty(bool dirty) const { updateFlag(s_flagAnimatedSVGAttributesAreDirty, dirty); }
 #endif
 
     mutable RefPtr<StyleProperties> m_inlineStyle;
@@ -160,21 +227,30 @@ inline unsigned ElementData::length() const
 {
     if (isUnique())
         return static_cast<const UniqueElementData*>(this)->m_attributeVector.size();
-    return m_arraySize;
+    return arraySize();
 }
 
 inline const Attribute* ElementData::attributeBase() const
 {
-    if (m_isUnique)
+    if (isUnique())
         return static_cast<const UniqueElementData*>(this)->m_attributeVector.data();
     return static_cast<const ShareableElementData*>(this)->m_attributeArray;
 }
 
 inline const StyleProperties* ElementData::presentationAttributeStyle() const
 {
-    if (!m_isUnique)
+    if (!isUnique())
         return 0;
     return static_cast<const UniqueElementData*>(this)->m_presentationAttributeStyle.get();
+}
+
+inline AttributeIteratorAccessor ElementData::attributesIterator() const
+{
+    if (isUnique()) {
+        const Vector<Attribute, 4>& attributeVector = static_cast<const UniqueElementData*>(this)->m_attributeVector;
+        return AttributeIteratorAccessor(attributeVector.data(), attributeVector.size());
+    }
+    return AttributeIteratorAccessor(static_cast<const ShareableElementData*>(this)->m_attributeArray, arraySize());
 }
 
 inline const Attribute* ElementData::findAttributeByName(const AtomicString& name, bool shouldIgnoreAttributeCase) const

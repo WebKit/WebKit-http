@@ -29,7 +29,7 @@
 
 namespace WebCore {
 
-class BeforeUnloadEvent FINAL : public Event {
+class BeforeUnloadEvent final : public Event {
 public:
     virtual ~BeforeUnloadEvent();
 
@@ -41,12 +41,12 @@ public:
     String returnValue() const { return m_returnValue; }
     void setReturnValue(const String& returnValue) { m_returnValue = returnValue; }
 
-    virtual EventInterface eventInterface() const OVERRIDE { return BeforeUnloadEventInterfaceType; }
+    virtual EventInterface eventInterface() const override { return BeforeUnloadEventInterfaceType; }
 
 private:
     BeforeUnloadEvent();
 
-    virtual bool isBeforeUnloadEvent() const OVERRIDE;
+    virtual bool isBeforeUnloadEvent() const override;
 
     String m_returnValue;
 };

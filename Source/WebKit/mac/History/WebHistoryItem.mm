@@ -56,6 +56,26 @@
 #import <wtf/StdLibExtras.h>
 #import <wtf/text/WTFString.h>
 
+#if PLATFORM(IOS)
+#import <WebCore/WebCoreThreadMessage.h>
+
+NSString *WebViewportInitialScaleKey = @"initial-scale";
+NSString *WebViewportMinimumScaleKey = @"minimum-scale";
+NSString *WebViewportMaximumScaleKey = @"maximum-scale";
+NSString *WebViewportUserScalableKey = @"user-scalable";
+NSString *WebViewportWidthKey        = @"width";
+NSString *WebViewportHeightKey       = @"height";
+NSString *WebViewportMinimalUIKey    = @"minimal-ui";
+
+static NSString *scaleKey = @"scale";
+static NSString *scaleIsInitialKey = @"scaleIsInitial";
+static NSString *scrollPointXKey = @"scrollPointX";
+static NSString *scrollPointYKey = @"scrollPointY";
+
+static NSString * const bookmarkIDKey = @"bookmarkID";
+static NSString * const sharedLinkUniqueIdentifierKey = @"sharedLinkUniqueIdentifier";
+#endif
+
 // Private keys used in the WebHistoryItem's dictionary representation.
 // see 3245793 for explanation of "lastVisitedDate"
 static NSString *lastVisitedTimeIntervalKey = @"lastVisitedDate";
@@ -74,10 +94,16 @@ NSString *WebHistoryItemChangedNotification = @"WebHistoryItemChangedNotificatio
 
 using namespace WebCore;
 
+@implementation WebHistoryItemPrivate
+
+@end
+
 typedef HashMap<HistoryItem*, WebHistoryItem*> HistoryItemMap;
 
-static inline WebHistoryItemPrivate* kitPrivate(WebCoreHistoryItem* list) { return (WebHistoryItemPrivate*)list; }
-static inline WebCoreHistoryItem* core(WebHistoryItemPrivate* list) { return (WebCoreHistoryItem*)list; }
+static inline WebCoreHistoryItem* core(WebHistoryItemPrivate* itemPrivate)
+{
+    return itemPrivate->_historyItem.get();
+}
 
 static HistoryItemMap& historyItemWrappers()
 {
@@ -87,17 +113,23 @@ static HistoryItemMap& historyItemWrappers()
 
 void WKNotifyHistoryItemChanged(HistoryItem*)
 {
+#if !PLATFORM(IOS)
     [[NSNotificationCenter defaultCenter]
         postNotificationName:WebHistoryItemChangedNotification object:nil userInfo:nil];
+#else
+    WebThreadPostNotification(WebHistoryItemChangedNotification, nil, nil);
+#endif
 }
 
 @implementation WebHistoryItem
 
 + (void)initialize
 {
+#if !PLATFORM(IOS)
     JSC::initializeThreading();
     WTF::initializeMainThreadToProcessMainThread();
     RunLoop::initializeMainRunLoop();
+#endif
     WebCoreObjCFinalizeOnMainThread(self);
 }
 
@@ -109,7 +141,11 @@ void WKNotifyHistoryItemChanged(HistoryItem*)
 - (instancetype)initWithURLString:(NSString *)URLString title:(NSString *)title lastVisitedTimeInterval:(NSTimeInterval)time
 {
     WebCoreThreadViolationCheckRoundOne();
-    return [self initWithWebCoreHistoryItem:HistoryItem::create(URLString, title, time)];
+
+    WebHistoryItem *item = [self initWithWebCoreHistoryItem:HistoryItem::create(URLString, title)];
+    item->_private->_lastVisitedTime = time;
+
+    return item;
 }
 
 - (void)dealloc
@@ -117,25 +153,21 @@ void WKNotifyHistoryItemChanged(HistoryItem*)
     if (WebCoreObjCScheduleDeallocateOnMainThread([WebHistoryItem class], self))
         return;
 
-    if (_private) {
-        HistoryItem* coreItem = core(_private);
-        coreItem->deref();
-        historyItemWrappers().remove(coreItem);
-    }
+    historyItemWrappers().remove(_private->_historyItem.get());
+    [_private release];
+
     [super dealloc];
 }
 
 - (void)finalize
 {
     WebCoreThreadViolationCheckRoundOne();
+
     // FIXME: ~HistoryItem is what releases the history item's icon from the icon database
     // It's probably not good to release icons from the database only when the object is garbage-collected. 
     // Need to change design so this happens at a predictable time.
-    if (_private) {
-        HistoryItem* coreItem = core(_private);
-        coreItem->deref();
-        historyItemWrappers().remove(coreItem);
-    }
+    historyItemWrappers().remove(_private->_historyItem.get());
+
     [super finalize];
 }
 
@@ -143,6 +175,14 @@ void WKNotifyHistoryItemChanged(HistoryItem*)
 {
     WebCoreThreadViolationCheckRoundOne();
     WebHistoryItem *copy = [[[self class] alloc] initWithWebCoreHistoryItem:core(_private)->copy()];
+
+    copy->_private->_lastVisitedTime = _private->_lastVisitedTime;
+    copy->_private->_visitCount = _private->_visitCount;
+    copy->_private->_dailyVisitCounts = _private->_dailyVisitCounts;
+    copy->_private->_weeklyVisitCounts = _private->_weeklyVisitCounts;
+
+    copy->_private->_lastVisitWasHTTPNonGet = _private->_lastVisitWasHTTPNonGet;
+
     historyItemWrappers().set(core(copy->_private), copy);
 
     return copy;
@@ -179,15 +219,17 @@ void WKNotifyHistoryItemChanged(HistoryItem*)
     return nsStringNilIfEmpty(core(_private)->alternateTitle());
 }
 
+#if !PLATFORM(IOS)
 - (NSImage *)icon
 {
     return [[WebIconDatabase sharedIconDatabase] iconForURL:[self URLString] withSize:WebIconSmallSize];
 }
+#endif
 
 - (NSTimeInterval)lastVisitedTimeInterval
 {
     ASSERT_MAIN_THREAD();
-    return core(_private)->lastVisitedTime();
+    return _private->_lastVisitedTime;
 }
 
 - (NSUInteger)hash
@@ -238,10 +280,6 @@ void WKNotifyHistoryItemChanged(HistoryItem*)
     return result;
 }
 
-@end
-
-@implementation WebHistoryItem (WebInternal)
-
 HistoryItem* core(WebHistoryItem *item)
 {
     if (!item)
@@ -276,7 +314,11 @@ WebHistoryItem *kit(HistoryItem* item)
 
 - (id)initWithURLString:(NSString *)URLString title:(NSString *)title displayTitle:(NSString *)displayTitle lastVisitedTimeInterval:(NSTimeInterval)time
 {
-    return [self initWithWebCoreHistoryItem:HistoryItem::create(URLString, title, displayTitle, time)];
+    WebHistoryItem *item = [self initWithWebCoreHistoryItem:HistoryItem::create(URLString, title, displayTitle)];
+
+    item->_private->_lastVisitedTime = time;
+
+    return item;
 }
 
 - (id)initWithWebCoreHistoryItem:(PassRefPtr<HistoryItem>)item
@@ -289,9 +331,12 @@ WebHistoryItem *kit(HistoryItem* item)
     // other "init before WebKit is used" type things
     WebCore::notifyHistoryItemChanged = WKNotifyHistoryItemChanged;
     
-    self = [super init];
-    
-    _private = kitPrivate(item.leakRef());
+    if (!(self = [super init]))
+        return nil;
+
+    _private = [[WebHistoryItemPrivate alloc] init];
+    _private->_historyItem = item;
+
     ASSERT(!historyItemWrappers().get(core(_private)));
     historyItemWrappers().set(core(_private), self);
     return self;
@@ -304,7 +349,7 @@ WebHistoryItem *kit(HistoryItem* item)
 
 - (void)setVisitCount:(int)count
 {
-    core(_private)->setVisitCount(count);
+    _private->_visitCount = count;
 }
 
 - (void)setViewState:(id)statePList
@@ -315,7 +360,12 @@ WebHistoryItem *kit(HistoryItem* item)
 - (void)_mergeAutoCompleteHints:(WebHistoryItem *)otherItem
 {
     ASSERT_ARG(otherItem, otherItem);
-    core(_private)->mergeAutoCompleteHints(core(otherItem->_private));
+
+    // FIXME: this is broken - we should be merging the daily counts
+    // somehow.  but this is to support API that's not really used in
+    // practice so leave it broken for now.
+    if (otherItem != self)
+        _private->_visitCount += otherItem->_private->_visitCount;
 }
 
 - (id)initFromDictionaryRepresentation:(NSDictionary *)dict
@@ -348,7 +398,7 @@ WebHistoryItem *kit(HistoryItem* item)
         LOG_ERROR("visit count for history item \"%@\" is negative (%d), will be reset to 1", URLString, visitCount);
         visitCount = 1;
     }
-    core(_private)->setVisitCount(visitCount);
+    _private->_visitCount = visitCount;
 
     if ([dict _webkit_boolForKey:lastVisitWasFailureKey])
         core(_private)->setLastVisitWasFailure(true);
@@ -356,14 +406,14 @@ WebHistoryItem *kit(HistoryItem* item)
     BOOL lastVisitWasHTTPNonGet = [dict _webkit_boolForKey:lastVisitWasHTTPNonGetKey];
     NSString *tempURLString = [URLString lowercaseString];
     if (lastVisitWasHTTPNonGet && ([tempURLString hasPrefix:@"http:"] || [tempURLString hasPrefix:@"https:"]))
-        core(_private)->setLastVisitWasHTTPNonGet(lastVisitWasHTTPNonGet);
+        _private->_lastVisitWasHTTPNonGet = lastVisitWasHTTPNonGet;
 
     if (NSArray *redirectURLs = [dict _webkit_arrayForKey:redirectURLsKey]) {
         NSUInteger size = [redirectURLs count];
-        OwnPtr<Vector<String>> redirectURLsVector = adoptPtr(new Vector<String>(size));
+        auto redirectURLsVector = std::make_unique<Vector<String>>(size);
         for (NSUInteger i = 0; i < size; ++i)
             (*redirectURLsVector)[i] = String([redirectURLs _webkit_stringAtIndex:i]);
-        core(_private)->setRedirectURLs(redirectURLsVector.release());
+        core(_private)->setRedirectURLs(std::move(redirectURLsVector));
     }
 
     NSArray *dailyCounts = [dict _webkit_arrayForKey:dailyVisitCountKey];
@@ -377,8 +427,9 @@ WebHistoryItem *kit(HistoryItem* item)
             coreDailyCounts[i] = std::max([[dailyCounts _webkit_numberAtIndex:i] intValue], 0);
         for (size_t i = 0; i < coreWeeklyCounts.size(); ++i)
             coreWeeklyCounts[i] = std::max([[weeklyCounts _webkit_numberAtIndex:i] intValue], 0);
-    
-        core(_private)->adoptVisitCounts(coreDailyCounts, coreWeeklyCounts);
+
+        _private->_dailyVisitCounts = std::move(coreDailyCounts);
+        _private->_weeklyVisitCounts = std::move(coreWeeklyCounts);
     }
 
     NSArray *childDicts = [dict objectForKey:childrenKey];
@@ -389,6 +440,29 @@ WebHistoryItem *kit(HistoryItem* item)
             [child release];
         }
     }
+
+#if PLATFORM(IOS)
+    NSNumber *scaleValue = [dict objectForKey:scaleKey];
+    NSNumber *scaleIsInitialValue = [dict objectForKey:scaleIsInitialKey];
+    if (scaleValue && scaleIsInitialValue)
+        core(_private)->setScale([scaleValue floatValue], [scaleIsInitialValue boolValue]);
+
+    if (id viewportArguments = [dict objectForKey:@"WebViewportArguments"])
+        [self _setViewportArguments:viewportArguments];
+
+    NSNumber *scrollPointXValue = [dict objectForKey:scrollPointXKey];
+    NSNumber *scrollPointYValue = [dict objectForKey:scrollPointYKey];
+    if (scrollPointXValue && scrollPointYValue)
+        core(_private)->setScrollPoint(IntPoint([scrollPointXValue intValue], [scrollPointYValue intValue]));
+
+    uint32_t bookmarkIDValue = [[dict objectForKey:bookmarkIDKey] unsignedIntValue];
+    if (bookmarkIDValue)
+        core(_private)->setBookmarkID(bookmarkIDValue);
+
+    NSString *sharedLinkUniqueIdentifierValue = [dict objectForKey:sharedLinkUniqueIdentifierKey];
+    if (sharedLinkUniqueIdentifierValue)
+        core(_private)->setSharedLinkUniqueIdentifier(sharedLinkUniqueIdentifierValue);
+#endif
 
     return self;
 }
@@ -401,12 +475,68 @@ WebHistoryItem *kit(HistoryItem* item)
 
 - (void)_visitedWithTitle:(NSString *)title increaseVisitCount:(BOOL)increaseVisitCount
 {
-    core(_private)->visited(title, [NSDate timeIntervalSinceReferenceDate], increaseVisitCount ? IncreaseVisitCount : DoNotIncreaseVisitCount);
+    core(_private)->setTitle(title);
+
+    [self _recordVisitAtTime:[NSDate timeIntervalSinceReferenceDate] increaseVisitCount:increaseVisitCount];
 }
 
 - (void)_recordInitialVisit
 {
-    core(_private)->recordInitialVisit();
+    ASSERT(!_private->_visitCount);
+    [self _recordVisitAtTime:_private->_lastVisitedTime increaseVisitCount:YES];
+}
+
+static inline int timeToDay(double time)
+{
+    return static_cast<int>(ceil(time / secondsPerDay));
+}
+
+- (void)_padDailyCountsForNewVisit:(NSTimeInterval)time
+{
+    if (_private->_dailyVisitCounts.isEmpty())
+        _private->_dailyVisitCounts.insert(0, _private->_visitCount);
+
+    int daysElapsed = timeToDay(time) - timeToDay(_private->_lastVisitedTime);
+
+    if (daysElapsed < 0)
+        daysElapsed = 0;
+
+    Vector<int, 32> padding;
+    padding.fill(0, daysElapsed);
+
+    _private->_dailyVisitCounts.insertVector(0, padding);
+}
+
+static const size_t daysPerWeek = 7;
+static const size_t maxDailyCounts = 2 * daysPerWeek - 1;
+static const size_t maxWeeklyCounts = 5;
+
+- (void)_collapseDailyVisitsToWeekly
+{
+    while (_private->_dailyVisitCounts.size() > maxDailyCounts) {
+        int oldestWeekTotal = 0;
+        for (size_t i = 0; i < daysPerWeek; i++)
+            oldestWeekTotal += _private->_dailyVisitCounts[_private->_dailyVisitCounts.size() - daysPerWeek + i];
+        _private->_dailyVisitCounts.shrink(_private->_dailyVisitCounts.size() - daysPerWeek);
+        _private->_weeklyVisitCounts.insert(0, oldestWeekTotal);
+    }
+
+    if (_private->_weeklyVisitCounts.size() > maxWeeklyCounts)
+        _private->_weeklyVisitCounts.shrink(maxWeeklyCounts);
+}
+
+- (void)_recordVisitAtTime:(NSTimeInterval)time increaseVisitCount:(BOOL)increaseVisitCount
+{
+    [self _padDailyCountsForNewVisit:time];
+
+    _private->_lastVisitedTime = time;
+
+    if (increaseVisitCount) {
+        ++_private->_visitCount;
+        ++_private->_dailyVisitCounts[0];
+    }
+
+    [self _collapseDailyVisitsToWeekly];
 }
 
 @end
@@ -418,7 +548,25 @@ WebHistoryItem *kit(HistoryItem* item)
     return [self initWithURLString:[URL _web_originalDataAsString] title:title lastVisitedTimeInterval:0];
 }
 
+// This should not be called directly for WebHistoryItems that are already included
+// in WebHistory. Use -[WebHistory setLastVisitedTimeInterval:forItem:] instead.
+- (void)_setLastVisitedTimeInterval:(NSTimeInterval)time
+{
+    if (_private->_lastVisitedTime != time)
+        [self _recordVisitAtTime:time increaseVisitCount:YES];
+}
+
+// FIXME: The only iOS difference here should be whether YES or NO is passed to dictionaryRepresentationIncludingChildren:
+#if PLATFORM(IOS)
 - (NSDictionary *)dictionaryRepresentation
+{
+    return [self dictionaryRepresentationIncludingChildren:YES];
+}
+
+- (NSDictionary *)dictionaryRepresentationIncludingChildren:(BOOL)includesChildren
+#else
+- (NSDictionary *)dictionaryRepresentation
+#endif
 {
     ASSERT_MAIN_THREAD();
     NSMutableDictionary *dict = [NSMutableDictionary dictionaryWithCapacity:8];
@@ -431,16 +579,16 @@ WebHistoryItem *kit(HistoryItem* item)
         [dict setObject:(NSString*)coreItem->title() forKey:titleKey];
     if (!coreItem->alternateTitle().isEmpty())
         [dict setObject:(NSString*)coreItem->alternateTitle() forKey:displayTitleKey];
-    if (coreItem->lastVisitedTime() != 0.0) {
+    if (_private->_lastVisitedTime) {
         // Store as a string to maintain backward compatibility. (See 3245793)
-        [dict setObject:[NSString stringWithFormat:@"%.1lf", coreItem->lastVisitedTime()]
+        [dict setObject:[NSString stringWithFormat:@"%.1lf", _private->_lastVisitedTime]
                  forKey:lastVisitedTimeIntervalKey];
     }
-    if (coreItem->visitCount())
-        [dict setObject:[NSNumber numberWithInt:coreItem->visitCount()] forKey:visitCountKey];
+    if (_private->_visitCount)
+        [dict setObject:[NSNumber numberWithInt:_private->_visitCount] forKey:visitCountKey];
     if (coreItem->lastVisitWasFailure())
         [dict setObject:[NSNumber numberWithBool:YES] forKey:lastVisitWasFailureKey];
-    if (coreItem->lastVisitWasHTTPNonGet()) {
+    if (_private->_lastVisitWasHTTPNonGet) {
         ASSERT(coreItem->urlString().startsWith("http:", false) || coreItem->urlString().startsWith("https:", false));
         [dict setObject:[NSNumber numberWithBool:YES] forKey:lastVisitWasHTTPNonGetKey];
     }
@@ -454,7 +602,7 @@ WebHistoryItem *kit(HistoryItem* item)
         [result release];
     }
     
-    const Vector<int>& dailyVisitCounts = coreItem->dailyVisitCounts();
+    const Vector<int>& dailyVisitCounts = _private->_dailyVisitCounts;
     if (dailyVisitCounts.size()) {
         NSMutableArray *array = [[NSMutableArray alloc] initWithCapacity:13];
         for (size_t i = 0; i < dailyVisitCounts.size(); ++i)
@@ -463,7 +611,7 @@ WebHistoryItem *kit(HistoryItem* item)
         [array release];
     }
     
-    const Vector<int>& weeklyVisitCounts = coreItem->weeklyVisitCounts();
+    const Vector<int>& weeklyVisitCounts = _private->_weeklyVisitCounts;
     if (weeklyVisitCounts.size()) {
         NSMutableArray *array = [[NSMutableArray alloc] initWithCapacity:5];
         for (size_t i = 0; i < weeklyVisitCounts.size(); ++i)
@@ -471,8 +619,12 @@ WebHistoryItem *kit(HistoryItem* item)
         [dict setObject:array forKey:weeklyVisitCountKey];
         [array release];
     }    
-    
+
+#if PLATFORM(IOS)
+    if (includesChildren && coreItem->children().size()) {
+#else
     if (coreItem->children().size()) {
+#endif
         const HistoryItemVector& children = coreItem->children();
         NSMutableArray *childDicts = [NSMutableArray arrayWithCapacity:children.size()];
         
@@ -480,6 +632,27 @@ WebHistoryItem *kit(HistoryItem* item)
             [childDicts addObject:[kit(children[i].get()) dictionaryRepresentation]];
         [dict setObject: childDicts forKey:childrenKey];
     }
+
+#if PLATFORM(IOS)
+    [dict setObject:[NSNumber numberWithFloat:core(_private)->scale()] forKey:scaleKey];
+    [dict setObject:[NSNumber numberWithBool:core(_private)->scaleIsInitial()] forKey:scaleIsInitialKey];
+
+    NSDictionary *viewportArguments = [self _viewportArguments];
+    if (viewportArguments)
+        [dict setObject:viewportArguments forKey:@"WebViewportArguments"];
+
+    IntPoint scrollPoint = core(_private)->scrollPoint();
+    [dict setObject:[NSNumber numberWithInt:scrollPoint.x()] forKey:scrollPointXKey];
+    [dict setObject:[NSNumber numberWithInt:scrollPoint.y()] forKey:scrollPointYKey];
+
+    uint32_t bookmarkID = core(_private)->bookmarkID();
+    if (bookmarkID)
+        [dict setObject:[NSNumber numberWithUnsignedInt:bookmarkID] forKey:bookmarkIDKey];
+
+    NSString *sharedLinkUniqueIdentifier = [self _sharedLinkUniqueIdentifier];
+    if (sharedLinkUniqueIdentifier)
+        [dict setObject:sharedLinkUniqueIdentifier forKey:sharedLinkUniqueIdentifierKey];
+#endif
 
     return dict;
 }
@@ -498,7 +671,7 @@ WebHistoryItem *kit(HistoryItem* item)
 - (int)visitCount
 {
     ASSERT_MAIN_THREAD();
-    return core(_private)->visitCount();
+    return _private->_visitCount;
 }
 
 - (NSString *)RSSFeedReferrer
@@ -541,22 +714,17 @@ WebHistoryItem *kit(HistoryItem* item)
     return url;
 }
 
-// This should not be called directly for WebHistoryItems that are already included
-// in WebHistory. Use -[WebHistory setLastVisitedTimeInterval:forItem:] instead.
-- (void)_setLastVisitedTimeInterval:(NSTimeInterval)time
-{
-    core(_private)->setLastVisitedTime(time);
-}
-
 - (WebHistoryItem *)targetItem
 {    
     ASSERT_MAIN_THREAD();
     return kit(core(_private)->targetItem());
 }
 
+#if !PLATFORM(IOS)
 + (void)_releaseAllPendingPageCaches
 {
 }
+#endif
 
 - (id)_transientPropertyForKey:(NSString *)key
 {
@@ -580,7 +748,7 @@ WebHistoryItem *kit(HistoryItem* item)
 
 - (BOOL)_lastVisitWasHTTPNonGet
 {
-    return core(_private)->lastVisitWasHTTPNonGet();
+    return _private->_lastVisitWasHTTPNonGet;
 }
 
 - (NSArray *)_redirectURLs
@@ -599,17 +767,89 @@ WebHistoryItem *kit(HistoryItem* item)
 
 - (size_t)_getDailyVisitCounts:(const int**)counts
 {
-    HistoryItem* coreItem = core(_private);
-    *counts = coreItem->dailyVisitCounts().data();
-    return coreItem->dailyVisitCounts().size();
+    *counts = _private->_dailyVisitCounts.data();
+    return _private->_dailyVisitCounts.size();
 }
 
 - (size_t)_getWeeklyVisitCounts:(const int**)counts
 {
-    HistoryItem* coreItem = core(_private);
-    *counts = coreItem->weeklyVisitCounts().data();
-    return coreItem->weeklyVisitCounts().size();
+    *counts = _private->_weeklyVisitCounts.data();
+    return _private->_weeklyVisitCounts.size();
 }
+
+#if PLATFORM(IOS)
+- (void)_setScale:(float)scale isInitial:(BOOL)aFlag
+{
+    core(_private)->setScale(scale, aFlag);
+}
+
+- (float)_scale
+{
+    return core(_private)->scale();
+}
+
+- (BOOL)_scaleIsInitial
+{
+    return core(_private)->scaleIsInitial();
+}
+
+- (NSDictionary *)_viewportArguments
+{
+    const ViewportArguments& viewportArguments = core(_private)->viewportArguments();
+    NSMutableDictionary *argumentsDictionary = [NSMutableDictionary dictionary];
+    [argumentsDictionary setObject:[NSNumber numberWithFloat:viewportArguments.zoom] forKey:WebViewportInitialScaleKey];
+    [argumentsDictionary setObject:[NSNumber numberWithFloat:viewportArguments.minZoom] forKey:WebViewportMinimumScaleKey];
+    [argumentsDictionary setObject:[NSNumber numberWithFloat:viewportArguments.maxZoom] forKey:WebViewportMaximumScaleKey];
+    [argumentsDictionary setObject:[NSNumber numberWithFloat:viewportArguments.width] forKey:WebViewportWidthKey];
+    [argumentsDictionary setObject:[NSNumber numberWithFloat:viewportArguments.height] forKey:WebViewportHeightKey];
+    [argumentsDictionary setObject:[NSNumber numberWithFloat:viewportArguments.userZoom] forKey:WebViewportUserScalableKey];
+    [argumentsDictionary setObject:[NSNumber numberWithBool:viewportArguments.minimalUI] forKey:WebViewportMinimalUIKey];
+    return argumentsDictionary;
+}
+
+- (void)_setViewportArguments:(NSDictionary *)arguments
+{
+    ViewportArguments viewportArguments;
+    viewportArguments.zoom = [[arguments objectForKey:WebViewportInitialScaleKey] floatValue];
+    viewportArguments.minZoom = [[arguments objectForKey:WebViewportMinimumScaleKey] floatValue];
+    viewportArguments.maxZoom = [[arguments objectForKey:WebViewportMaximumScaleKey] floatValue];
+    viewportArguments.width = [[arguments objectForKey:WebViewportWidthKey] floatValue];
+    viewportArguments.height = [[arguments objectForKey:WebViewportHeightKey] floatValue];
+    viewportArguments.userZoom = [[arguments objectForKey:WebViewportUserScalableKey] floatValue];
+    viewportArguments.minimalUI = [[arguments objectForKey:WebViewportMinimalUIKey] boolValue];
+    core(_private)->setViewportArguments(viewportArguments);
+}
+
+- (CGPoint)_scrollPoint
+{
+    return core(_private)->scrollPoint();
+}
+
+- (void)_setScrollPoint:(CGPoint)scrollPoint
+{
+    core(_private)->setScrollPoint(IntPoint(scrollPoint));
+}
+
+- (uint32_t)_bookmarkID
+{
+    return core(_private)->bookmarkID();
+}
+
+- (void)_setBookmarkID:(uint32_t)bookmarkID
+{
+    core(_private)->setBookmarkID(bookmarkID);
+}
+
+- (NSString *)_sharedLinkUniqueIdentifier
+{
+    return nsStringNilIfEmpty(core(_private)->sharedLinkUniqueIdentifier());
+}
+
+- (void)_setSharedLinkUniqueIdentifier:(NSString *)identifier
+{
+    core(_private)->setSharedLinkUniqueIdentifier(identifier);
+}
+#endif // PLATFORM(IOS)
 
 - (BOOL)_isInPageCache
 {

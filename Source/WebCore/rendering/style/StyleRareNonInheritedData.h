@@ -78,7 +78,7 @@ enum PageSizeType {
 class StyleRareNonInheritedData : public RefCounted<StyleRareNonInheritedData> {
 public:
     static PassRef<StyleRareNonInheritedData> create() { return adoptRef(*new StyleRareNonInheritedData); }
-    PassRef<StyleRareNonInheritedData> copy() const { return adoptRef(*new StyleRareNonInheritedData(*this)); }
+    PassRef<StyleRareNonInheritedData> copy() const;
     ~StyleRareNonInheritedData();
     
     bool operator==(const StyleRareNonInheritedData&) const;
@@ -105,9 +105,6 @@ public:
     LineClampValue lineClamp; // An Apple extension.
 #if ENABLE(DASHBOARD_SUPPORT)
     Vector<StyleDashboardRegion> m_dashboardRegions;
-#endif
-#if ENABLE(DRAGGABLE_REGION)
-    DraggableRegionMode m_draggableRegionMode;
 #endif
 
     DataRef<StyleDeprecatedFlexibleBoxData> m_deprecatedFlexibleBox; // Flexible box properties
@@ -149,10 +146,8 @@ public:
 
     RefPtr<ClipPathOperation> m_clipPath;
 
-#if ENABLE(CSS3_TEXT_DECORATION)
     Color m_textDecorationColor;
     Color m_visitedLinkTextDecorationColor;
-#endif
     Color m_visitedLinkBackgroundColor;
     Color m_visitedLinkOutlineColor;
     Color m_visitedLinkBorderLeftColor;
@@ -187,15 +182,11 @@ public:
     unsigned m_borderFit : 1; // EBorderFit
     unsigned m_textCombine : 1; // CSS3 text-combine properties
 
-#if ENABLE(CSS3_TEXT_DECORATION)
     unsigned m_textDecorationStyle : 3; // TextDecorationStyle
-#endif
     unsigned m_wrapFlow: 3; // WrapFlow
     unsigned m_wrapThrough: 1; // WrapThrough
 
-#if USE(ACCELERATED_COMPOSITING)
     unsigned m_runningAcceleratedAnimation : 1;
-#endif
 
     unsigned m_hasAspectRatio : 1; // Whether or not an aspect ratio has been specified.
 

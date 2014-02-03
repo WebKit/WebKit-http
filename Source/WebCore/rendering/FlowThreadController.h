@@ -80,13 +80,12 @@ public:
     void updateFlowThreadsIntoMeasureContentPhase();
     void updateFlowThreadsIntoFinalPhase();
 
+    void updateNamedFlowsLayerListsIfNeeded();
     // Collect the fixed positioned layers that have the named flows as containing block
     // These layers are painted and hit-tested by RenderView
     void collectFixedPositionedLayers(Vector<RenderLayer*>& fixedPosLayers) const;
 
-#if USE(ACCELERATED_COMPOSITING)
     void updateRenderFlowThreadLayersIfNeeded();
-#endif
 
 #ifndef NDEBUG
     bool isAutoLogicalHeightRegionsCountConsistent() const;

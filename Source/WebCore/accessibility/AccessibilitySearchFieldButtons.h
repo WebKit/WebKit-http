@@ -30,17 +30,17 @@
 
 namespace WebCore {
 
-class AccessibilitySearchFieldCancelButton FINAL : public AccessibilityRenderObject {
+class AccessibilitySearchFieldCancelButton final : public AccessibilityRenderObject {
 public:
     static PassRefPtr<AccessibilitySearchFieldCancelButton> create(RenderObject*);
     
-    virtual String accessibilityDescription() const OVERRIDE;
-    virtual void accessibilityText(Vector<AccessibilityText>&) OVERRIDE;
-    virtual bool press() const OVERRIDE;
-    virtual AccessibilityRole roleValue() const OVERRIDE { return ButtonRole; }
+    virtual String accessibilityDescription() const override;
+    virtual void accessibilityText(Vector<AccessibilityText>&) override;
+    virtual bool press() const override;
+    virtual AccessibilityRole roleValue() const override { return ButtonRole; }
 
 protected:
-    virtual bool computeAccessibilityIsIgnored() const OVERRIDE;
+    virtual bool computeAccessibilityIsIgnored() const override;
 
 private:
     explicit AccessibilitySearchFieldCancelButton(RenderObject*);

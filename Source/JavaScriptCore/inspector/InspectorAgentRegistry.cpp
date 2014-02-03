@@ -29,11 +29,17 @@
 
 #if ENABLE(INSPECTOR)
 
+#include "InspectorAgentBase.h"
+
 namespace Inspector {
 
-void InspectorAgentRegistry::append(PassOwnPtr<InspectorAgentBase> agent)
+InspectorAgentRegistry::InspectorAgentRegistry()
 {
-    m_agents.append(agent);
+}
+
+void InspectorAgentRegistry::append(std::unique_ptr<InspectorAgentBase> agent)
+{
+    m_agents.append(std::move(agent));
 }
 
 void InspectorAgentRegistry::didCreateFrontendAndBackend(InspectorFrontendChannel* frontendChannel, InspectorBackendDispatcher* backendDispatcher)
@@ -42,10 +48,10 @@ void InspectorAgentRegistry::didCreateFrontendAndBackend(InspectorFrontendChanne
         m_agents[i]->didCreateFrontendAndBackend(frontendChannel, backendDispatcher);
 }
 
-void InspectorAgentRegistry::willDestroyFrontendAndBackend()
+void InspectorAgentRegistry::willDestroyFrontendAndBackend(InspectorDisconnectReason reason)
 {
     for (size_t i = 0; i < m_agents.size(); i++)
-        m_agents[i]->willDestroyFrontendAndBackend();
+        m_agents[i]->willDestroyFrontendAndBackend(reason);
 }
 
 void InspectorAgentRegistry::discardAgents()

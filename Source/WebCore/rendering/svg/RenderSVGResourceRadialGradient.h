@@ -30,7 +30,7 @@ namespace WebCore {
 
 class SVGRadialGradientElement;
 
-class RenderSVGResourceRadialGradient FINAL : public RenderSVGResourceGradient {
+class RenderSVGResourceRadialGradient final : public RenderSVGResourceGradient {
 public:
     RenderSVGResourceRadialGradient(SVGRadialGradientElement&, PassRef<RenderStyle>);
     virtual ~RenderSVGResourceRadialGradient();
@@ -50,10 +50,10 @@ public:
     float focalRadius(const RadialGradientAttributes&) const;
 
 private:
-    void gradientElement() const WTF_DELETED_FUNCTION;
+    void gradientElement() const = delete;
 
-    virtual const char* renderName() const OVERRIDE { return "RenderSVGResourceRadialGradient"; }
-    virtual bool collectGradientAttributes() OVERRIDE;
+    virtual const char* renderName() const override { return "RenderSVGResourceRadialGradient"; }
+    virtual bool collectGradientAttributes() override;
 
     RadialGradientAttributes m_attributes;
 };

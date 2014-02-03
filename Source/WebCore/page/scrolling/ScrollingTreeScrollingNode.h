@@ -26,7 +26,7 @@
 #ifndef ScrollingTreeScrollingNode_h
 #define ScrollingTreeScrollingNode_h
 
-#if ENABLE(THREADED_SCROLLING)
+#if ENABLE(ASYNC_SCROLLING)
 
 #include "IntRect.h"
 #include "ScrollTypes.h"
@@ -42,18 +42,18 @@ class ScrollingStateScrollingNode;
 
 class ScrollingTreeScrollingNode : public ScrollingTreeNode {
 public:
-    static PassOwnPtr<ScrollingTreeScrollingNode> create(ScrollingTree&, ScrollingNodeID);
     virtual ~ScrollingTreeScrollingNode();
 
-    virtual void updateBeforeChildren(ScrollingStateNode*) OVERRIDE;
+    virtual void updateBeforeChildren(const ScrollingStateNode&) override;
 
     // FIXME: We should implement this when we support ScrollingTreeScrollingNodes as children.
-    virtual void parentScrollPositionDidChange(const IntRect& /*viewportRect*/, const FloatSize& /*cumulativeDelta*/) OVERRIDE { }
+    virtual void parentScrollPositionDidChange(const IntRect& /*viewportRect*/, const FloatSize& /*cumulativeDelta*/) override { }
 
     virtual void handleWheelEvent(const PlatformWheelEvent&) = 0;
     virtual void setScrollPosition(const IntPoint&) = 0;
 
-    MainThreadScrollingReasons shouldUpdateScrollLayerPositionOnMainThread() const { return m_shouldUpdateScrollLayerPositionOnMainThread; }
+    SynchronousScrollingReasons synchronousScrollingReasons() const { return m_synchronousScrollingReasons; }
+    bool shouldUpdateScrollLayerPositionSynchronously() const { return m_synchronousScrollingReasons; }
 
 protected:
     ScrollingTreeScrollingNode(ScrollingTree&, ScrollingNodeID);
@@ -96,12 +96,14 @@ private:
     int m_headerHeight;
     int m_footerHeight;
 
-    MainThreadScrollingReasons m_shouldUpdateScrollLayerPositionOnMainThread;
+    SynchronousScrollingReasons m_synchronousScrollingReasons;
     ScrollBehaviorForFixedElements m_behaviorForFixed;
 };
 
+SCROLLING_NODE_TYPE_CASTS(ScrollingTreeScrollingNode, nodeType() == ScrollingNode);
+
 } // namespace WebCore
 
-#endif // ENABLE(THREADED_SCROLLING)
+#endif // ENABLE(ASYNC_SCROLLING)
 
 #endif // ScrollingTreeScrollingNode_h

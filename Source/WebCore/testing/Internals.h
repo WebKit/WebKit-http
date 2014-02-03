@@ -56,7 +56,6 @@ class Page;
 class Range;
 class ScriptExecutionContext;
 class ShadowRoot;
-class WebKitPoint;
 class MallocStatistics;
 class SerializedScriptValue;
 class TimeRanges;
@@ -158,13 +157,6 @@ public:
     String rangeAsText(const Range*, ExceptionCode&);
 
     void setDelegatesScrolling(bool enabled, ExceptionCode&);
-#if ENABLE(TOUCH_ADJUSTMENT)
-    PassRefPtr<WebKitPoint> touchPositionAdjustedToBestClickableNode(long x, long y, long width, long height, ExceptionCode&);
-    Node* touchNodeAdjustedToBestClickableNode(long x, long y, long width, long height, ExceptionCode&);
-    PassRefPtr<WebKitPoint> touchPositionAdjustedToBestContextMenuNode(long x, long y, long width, long height, ExceptionCode&);
-    Node* touchNodeAdjustedToBestContextMenuNode(long x, long y, long width, long height, ExceptionCode&);
-    PassRefPtr<ClientRect> bestZoomableAreaForTouchPoint(long x, long y, long width, long height, ExceptionCode&);
-#endif
 
     int lastSpellCheckRequestSequence(ExceptionCode&);
     int lastSpellCheckProcessedSequence(ExceptionCode&);
@@ -331,6 +323,10 @@ public:
 #if ENABLE(MEDIA_SOURCE)
     void initializeMockMediaSource();
 #endif
+
+    void beginMediaSessionInterruption();
+    void endMediaSessionInterruption(const String&);
+    void setMediaSessionRestrictions(const String& mediaType, const String& restrictions, ExceptionCode& ec);
 
 private:
     explicit Internals(Document*);

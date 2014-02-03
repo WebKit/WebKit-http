@@ -34,7 +34,6 @@
 
 #include "InspectorMemoryAgent.h"
 
-#include "BindingVisitors.h"
 #include "CharacterData.h"
 #include "Document.h"
 #include "EventListenerMap.h"
@@ -74,7 +73,7 @@ void InspectorMemoryAgent::didCreateFrontendAndBackend(Inspector::InspectorFront
     m_backendDispatcher = InspectorMemoryBackendDispatcher::create(backendDispatcher, this);
 }
 
-void InspectorMemoryAgent::willDestroyFrontendAndBackend()
+void InspectorMemoryAgent::willDestroyFrontendAndBackend(InspectorDisconnectReason)
 {
     m_backendDispatcher.clear();
 }
@@ -89,11 +88,6 @@ void InspectorMemoryAgent::getDOMCounters(ErrorString*, int* documents, int* nod
 InspectorMemoryAgent::InspectorMemoryAgent(InstrumentingAgents* instrumentingAgents)
     : InspectorAgentBase(ASCIILiteral("Memory"), instrumentingAgents)
 {
-}
-
-PassOwnPtr<InspectorMemoryAgent> InspectorMemoryAgent::create(InstrumentingAgents* instrumentingAgents)
-{
-    return adoptPtr(new InspectorMemoryAgent(instrumentingAgents));
 }
 
 } // namespace WebCore

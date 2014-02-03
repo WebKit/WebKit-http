@@ -41,7 +41,7 @@ class RenderRubyText;
 // RenderRubyRun are 'inline-block/table' like objects,and wrap a single pairing of a ruby base with its ruby text(s).
 // See RenderRuby.h for further comments on the structure
 
-class RenderRubyRun FINAL : public RenderBlockFlow {
+class RenderRubyRun final : public RenderBlockFlow {
 public:
     RenderRubyRun(Document&, PassRef<RenderStyle>);
     virtual ~RenderRubyRun();
@@ -58,7 +58,7 @@ public:
 
     virtual bool isChildAllowed(const RenderObject&, const RenderStyle&) const;
     virtual void addChild(RenderObject* child, RenderObject* beforeChild = 0);
-    virtual void removeChild(RenderObject&) OVERRIDE;
+    virtual void removeChild(RenderObject&) override;
 
     virtual RenderBlock* firstLineBlock() const;
     virtual void updateFirstLetter();
@@ -76,6 +76,8 @@ private:
     virtual bool createsAnonymousWrapper() const { return true; }
     virtual void removeLeftoverAnonymousBlock(RenderBlock*) { }
 };
+
+template<> inline bool isRendererOfType<const RenderRubyRun>(const RenderObject& renderer) { return renderer.isRubyRun(); }
 
 RENDER_OBJECT_TYPE_CASTS(RenderRubyRun, isRubyRun())
 

@@ -54,6 +54,12 @@ public:
     static PassRefPtr<Geolocation> create(ScriptExecutionContext*);
     ~Geolocation();
 
+#if PLATFORM(IOS)
+    virtual bool canSuspend() const override;
+    virtual void suspend(ReasonForSuspension) override;
+    virtual void resume() override;
+    void resetAllGeolocationPermission();
+#endif // PLATFORM(IOS)
     Document* document() const;
     Frame* frame() const;
 
@@ -73,7 +79,7 @@ private:
     Geoposition* lastPosition();
 
     // ActiveDOMObject
-    virtual void stop() OVERRIDE;
+    virtual void stop() override;
 
     bool isDenied() const { return m_allowGeolocation == No; }
 
@@ -94,7 +100,7 @@ private:
 
         void startTimerIfNeeded();
         void stopTimer();
-        void timerFired(Timer<GeoNotifier>*);
+        void timerFired(Timer<GeoNotifier>&);
         bool hasZeroTimeout() const;
 
     private:
@@ -174,6 +180,15 @@ private:
         Yes,
         No
     } m_allowGeolocation;
+#if PLATFORM(IOS)
+    bool m_isSuspended;
+    bool m_resetOnResume;
+    bool m_hasChangedPosition;
+    RefPtr<PositionError> m_errorWaitingForResume;
+
+    void resumeTimerFired(Timer<Geolocation>&);
+    Timer<Geolocation> m_resumeTimer;
+#endif // PLATFORM(IOS)
 
     GeoNotifierSet m_requestsAwaitingCachedPosition;
 };

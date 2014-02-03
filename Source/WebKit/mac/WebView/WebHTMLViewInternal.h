@@ -30,9 +30,7 @@
 
 #import "WebHTMLViewPrivate.h"
 
-#if USE(ACCELERATED_COMPOSITING)
 @class CALayer;
-#endif
 @class WebFrame;
 
 namespace WebCore {
@@ -42,11 +40,14 @@ namespace WebCore {
 
 @interface WebHTMLView (WebInternal)
 - (void)_selectionChanged;
+#if !PLATFORM(IOS)
 - (void)_updateFontPanel;
+#endif
 - (BOOL)_canSmartCopyOrDelete;
 
 - (id <WebHTMLHighlighter>)_highlighterForType:(NSString*)type;
 - (WebFrame *)_frame;
+#if !PLATFORM(IOS)
 - (void)_lookUpInDictionaryFromMenu:(id)sender;
 - (BOOL)_interpretKeyEvent:(WebCore::KeyboardEvent *)event savingCommands:(BOOL)savingCommands;
 - (DOMDocumentFragment *)_documentFragmentFromPasteboard:(NSPasteboard *)pasteboard;
@@ -56,14 +57,27 @@ namespace WebCore {
 - (void)toggleGrammarChecking:(id)sender;
 - (WebCore::CachedImage*)promisedDragTIFFDataSource;
 - (void)setPromisedDragTIFFDataSource:(WebCore::CachedImage*)source;
+#else
+- (BOOL)_handleEditingKeyEvent:(WebCore::KeyboardEvent *)event;
+#endif
 - (void)_web_updateLayoutAndStyleIfNeededRecursive;
 - (void)_destroyAllWebPlugins;
 - (BOOL)_needsLayout;
 
-#if USE(ACCELERATED_COMPOSITING)
 - (void)attachRootLayer:(CALayer*)layer;
 - (void)detachRootLayer;
 - (BOOL)_web_isDrawingIntoLayer;
+
+#if PLATFORM(IOS)
+- (void)_layoutIfNeeded;
 #endif
 
 @end
+
+#if PLATFORM(IOS)
+@interface WebHTMLView (RemovedAppKitSuperclassMethods)
+- (void)delete:(id)sender;
+- (void)transpose:(id)sender;
+- (BOOL)hasMarkedText;
+@end
+#endif

@@ -48,7 +48,6 @@ namespace WebKit {
 WebView::WebView(WebContext* context, WebPageGroup* pageGroup)
     : m_focused(false)
     , m_visible(false)
-    , m_contentScaleFactor(1.0)
     , m_opacity(1.0)
 {
     // Need to call createWebPage after other data members, specifically m_visible, are initialized.
@@ -75,6 +74,12 @@ void WebView::initialize()
 {
     m_page->initializeWebPage();
     setActive(true);
+}
+
+void WebView::setContentScaleFactor(float scaleFactor)
+{
+    m_page->scalePage(scaleFactor, roundedIntPoint(contentPosition()));
+    updateViewportSize();
 }
 
 void WebView::setActive(bool active)
@@ -114,10 +119,8 @@ void WebView::setVisible(bool visible)
     m_visible = visible;
     m_page->viewStateDidChange(ViewState::IsVisible);
 
-#if USE(ACCELERATED_COMPOSITING)
     if (CoordinatedDrawingAreaProxy* drawingArea = static_cast<CoordinatedDrawingAreaProxy*>(page()->drawingArea()))
         drawingArea->visibilityDidChange();
-#endif
 }
 
 void WebView::setUserViewportTranslation(double tx, double ty)
@@ -238,7 +241,7 @@ AffineTransform WebView::transformFromScene() const
 AffineTransform WebView::transformToScene() const
 {
     FloatPoint position = -m_contentPosition;
-    float effectiveScale = m_contentScaleFactor * m_page->deviceScaleFactor();
+    float effectiveScale = contentScaleFactor() * m_page->deviceScaleFactor();
     position.scale(effectiveScale, effectiveScale);
 
     TransformationMatrix transform = m_userViewportTransform;
@@ -278,7 +281,7 @@ inline WebCore::FloatSize WebView::dipSize() const
 WebCore::FloatSize WebView::visibleContentsSize() const
 {
     FloatSize visibleContentsSize(dipSize());
-    visibleContentsSize.scale(1 / m_contentScaleFactor);
+    visibleContentsSize.scale(1 / contentScaleFactor());
 
     return visibleContentsSize;
 }
@@ -333,12 +336,6 @@ bool WebView::isViewFocused()
 bool WebView::isViewVisible()
 {
     return isVisible();
-}
-
-bool WebView::isWindowVisible()
-{
-    notImplemented();
-    return true;
 }
 
 bool WebView::isViewInWindow()

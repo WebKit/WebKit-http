@@ -22,7 +22,6 @@
 
 #if ENABLE(SVG)
 #include "Color.h"
-#include "FloatRect.h"
 #include "RenderSVGResource.h"
 
 namespace WebCore {
@@ -35,9 +34,9 @@ public:
     virtual void removeAllClientsFromCache(bool = true) { }
     virtual void removeClientFromCache(RenderObject&, bool = true) { }
 
-    virtual bool applyResource(RenderElement&, const RenderStyle&, GraphicsContext*&, unsigned short resourceMode) OVERRIDE;
-    virtual void postApplyResource(RenderElement&, GraphicsContext*&, unsigned short resourceMode, const Path*, const RenderSVGShape*) OVERRIDE;
-    virtual FloatRect resourceBoundingBox(const RenderObject&) OVERRIDE { return FloatRect(); }
+    virtual bool applyResource(RenderElement&, const RenderStyle&, GraphicsContext*&, unsigned short resourceMode) override;
+    virtual void postApplyResource(RenderElement&, GraphicsContext*&, unsigned short resourceMode, const Path*, const RenderSVGShape*) override;
+    virtual FloatRect resourceBoundingBox(const RenderObject&) override { return FloatRect(); }
 
     virtual RenderSVGResourceType resourceType() const { return s_resourceType; }
     static RenderSVGResourceType s_resourceType;

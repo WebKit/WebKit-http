@@ -30,30 +30,30 @@ namespace WebCore {
 
 class HTMLSelectElement;
 
-class HTMLKeygenElement FINAL : public HTMLFormControlElementWithState {
+class HTMLKeygenElement final : public HTMLFormControlElementWithState {
 public:
     static PassRefPtr<HTMLKeygenElement> create(const QualifiedName&, Document&, HTMLFormElement*);
 
-    virtual bool willValidate() const { return false; }
+    virtual bool willValidate() const override { return false; }
 
 private:
     HTMLKeygenElement(const QualifiedName&, Document&, HTMLFormElement*);
 
-    virtual bool areAuthorShadowsAllowed() const OVERRIDE { return false; }
+    virtual bool areAuthorShadowsAllowed() const override { return false; }
 
-    virtual bool canStartSelection() const { return false; }
+    virtual bool canStartSelection() const override { return false; }
 
-    virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
+    virtual void parseAttribute(const QualifiedName&, const AtomicString&) override;
 
-    virtual bool appendFormData(FormDataList&, bool);
-    virtual const AtomicString& formControlType() const;
-    virtual bool isOptionalFormControl() const { return false; }
+    virtual bool appendFormData(FormDataList&, bool) override;
+    virtual const AtomicString& formControlType() const override;
+    virtual bool isOptionalFormControl() const override { return false; }
 
-    virtual bool isEnumeratable() const { return true; }
-    virtual bool supportLabels() const OVERRIDE { return true; }
+    virtual bool isEnumeratable() const override { return true; }
+    virtual bool supportLabels() const override { return true; }
 
-    virtual void reset();
-    virtual bool shouldSaveAndRestoreFormControlState() const OVERRIDE;
+    virtual void reset() override;
+    virtual bool shouldSaveAndRestoreFormControlState() const override;
 
     HTMLSelectElement* shadowSelect() const;
 };

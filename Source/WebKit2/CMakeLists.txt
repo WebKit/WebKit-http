@@ -4,7 +4,6 @@ set(WebKit2_INCLUDE_DIRECTORIES
     "${WEBKIT2_DIR}/NetworkProcess"
     "${WEBKIT2_DIR}/NetworkProcess/FileAPI"
     "${WEBKIT2_DIR}/Platform"
-    "${WEBKIT2_DIR}/Platform/CoreIPC"
     "${WEBKIT2_DIR}/Platform/IPC"
     "${WEBKIT2_DIR}/PluginProcess"
     "${WEBKIT2_DIR}/Shared"
@@ -32,6 +31,7 @@ set(WebKit2_INCLUDE_DIRECTORIES
     "${WEBKIT2_DIR}/UIProcess/InspectorServer"
     "${WEBKIT2_DIR}/UIProcess/Launcher"
     "${WEBKIT2_DIR}/UIProcess/Network"
+    "${WEBKIT2_DIR}/UIProcess/Network/CustomProtocols"
     "${WEBKIT2_DIR}/UIProcess/Notifications"
     "${WEBKIT2_DIR}/UIProcess/Plugins"
     "${WEBKIT2_DIR}/UIProcess/Storage"
@@ -94,6 +94,7 @@ set(WebKit2_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/page/scrolling/coordinatedgraphics"
     "${WEBCORE_DIR}/platform"
     "${WEBCORE_DIR}/platform/animation"
+    "${WEBCORE_DIR}/platform/audio"
     "${WEBCORE_DIR}/platform/graphics"
     "${WEBCORE_DIR}/platform/graphics/filters"
     "${WEBCORE_DIR}/platform/graphics/harfbuzz"
@@ -162,16 +163,15 @@ set(WebKit2_SOURCES
     Platform/Module.cpp
     Platform/WorkQueue.cpp
 
-    Platform/CoreIPC/ArgumentCoders.cpp
-    Platform/CoreIPC/ArgumentDecoder.cpp
-    Platform/CoreIPC/ArgumentEncoder.cpp
-    Platform/CoreIPC/Attachment.cpp
-    Platform/CoreIPC/Connection.cpp
-    Platform/CoreIPC/MessageDecoder.cpp
-    Platform/CoreIPC/MessageEncoder.cpp
-    Platform/CoreIPC/MessageReceiverMap.cpp
-
+    Platform/IPC/ArgumentCoders.cpp
+    Platform/IPC/ArgumentDecoder.cpp
+    Platform/IPC/ArgumentEncoder.cpp
+    Platform/IPC/Attachment.cpp
+    Platform/IPC/Connection.cpp
     Platform/IPC/DataReference.cpp
+    Platform/IPC/MessageDecoder.cpp
+    Platform/IPC/MessageEncoder.cpp
+    Platform/IPC/MessageReceiverMap.cpp
     Platform/IPC/MessageSender.cpp
     Platform/IPC/StringReference.cpp
 
@@ -182,6 +182,7 @@ set(WebKit2_SOURCES
 
     Shared/APIArray.cpp
     Shared/APIData.cpp
+    Shared/APIError.cpp
     Shared/APIFrameHandle.cpp
     Shared/APIGeometry.cpp
     Shared/APIPageHandle.cpp
@@ -198,11 +199,13 @@ set(WebKit2_SOURCES
     Shared/FontInfo.cpp
     Shared/ImmutableDictionary.cpp
     Shared/MutableDictionary.cpp
+    Shared/NavigationActionData.cpp
     Shared/OriginAndDatabases.cpp
     Shared/PlatformPopupMenuData.cpp
     Shared/PrintInfo.cpp
     Shared/SecurityOriginData.cpp
     Shared/SessionState.cpp
+    Shared/SessionTracker.cpp
     Shared/ShareableBitmap.cpp
     Shared/ShareableResource.cpp
     Shared/StatisticsData.cpp
@@ -216,7 +219,6 @@ set(WebKit2_SOURCES
     Shared/WebContextMenuItem.cpp
     Shared/WebContextMenuItemData.cpp
     Shared/WebCoreArgumentCoders.cpp
-    Shared/WebError.cpp
     Shared/WebEvent.cpp
     Shared/WebEventConversion.cpp
     Shared/WebGeolocationPosition.cpp
@@ -269,7 +271,6 @@ set(WebKit2_SOURCES
 
     Shared/CoordinatedGraphics/CoordinatedGraphicsArgumentCoders.cpp
     Shared/CoordinatedGraphics/WebCoordinatedSurface.cpp
-    Shared/CoordinatedGraphics/WebCustomFilterProgramProxy.cpp
 
     Shared/Downloads/Download.cpp
     Shared/Downloads/DownloadAuthenticationClient.cpp
@@ -293,6 +294,7 @@ set(WebKit2_SOURCES
     Shared/Plugins/Netscape/PluginInformation.cpp
 
     UIProcess/APINavigationData.cpp
+    UIProcess/APISession.cpp
     UIProcess/BackingStore.cpp
     UIProcess/DrawingAreaProxy.cpp
     UIProcess/FindIndicator.cpp
@@ -337,7 +339,6 @@ set(WebKit2_SOURCES
     UIProcess/WebIconDatabaseClient.cpp
     UIProcess/WebInspectorProxy.cpp
     UIProcess/WebKeyValueStorageManager.cpp
-    UIProcess/WebLoaderClient.cpp
     UIProcess/WebMediaCacheManagerProxy.cpp
     UIProcess/WebNetworkInfoManagerProxy.cpp
     UIProcess/WebNetworkInfoProvider.cpp
@@ -347,7 +348,6 @@ set(WebKit2_SOURCES
     UIProcess/WebPageContextMenuClient.cpp
     UIProcess/WebPageGroup.cpp
     UIProcess/WebPageProxy.cpp
-    UIProcess/WebPolicyClient.cpp
     UIProcess/WebPreferences.cpp
     UIProcess/WebProcessProxy.cpp
     UIProcess/WebResourceCacheManagerProxy.cpp
@@ -548,6 +548,7 @@ set(WebKit2_SOURCES
     WebProcess/WebCoreSupport/WebPlatformStrategies.cpp
     WebProcess/WebCoreSupport/WebPlugInClient.cpp
     WebProcess/WebCoreSupport/WebPopupMenu.cpp
+    WebProcess/WebCoreSupport/WebProgressTrackerClient.cpp
     WebProcess/WebCoreSupport/WebSearchPopupMenu.cpp
     WebProcess/WebCoreSupport/WebVibrationClient.cpp
 
@@ -562,6 +563,7 @@ set(WebKit2_SOURCES
     WebProcess/WebPage/TapHighlightController.cpp
     WebProcess/WebPage/WebBackForwardListProxy.cpp
     WebProcess/WebPage/WebContextMenu.cpp
+    WebProcess/WebPage/WebDocumentLoader.cpp
     WebProcess/WebPage/WebFrame.cpp
     WebProcess/WebPage/WebInspector.cpp
     WebProcess/WebPage/WebOpenPanelResultListener.cpp
@@ -588,6 +590,8 @@ set(WebKit2_MESSAGES_IN_FILES
     Shared/Authentication/AuthenticationManager.messages.in
 
     Shared/Plugins/NPObjectMessageReceiver.messages.in
+
+    Shared/Network/CustomProtocols/CustomProtocolManager.messages.in
 
     UIProcess/DrawingAreaProxy.messages.in
     UIProcess/WebApplicationCacheManagerProxy.messages.in
@@ -669,6 +673,10 @@ set(WebProcess_LIBRARIES
     WebKit2
 )
 
+set(NetworkProcess_LIBRARIES
+    WebKit2
+)
+
 set(WebKit2_LIBRARIES
     JavaScriptCore
     WTF
@@ -677,9 +685,20 @@ set(WebKit2_LIBRARIES
 
 # librt is needed for shm_open on Linux.
 find_library(LIBRT_LIBRARIES NAMES rt)
+mark_as_advanced(LIBRT_LIBRARIES)
 if (LIBRT_LIBRARIES)
     list(APPEND WebKit2_LIBRARIES ${LIBRT_LIBRARIES})
 endif ()
+
+macro(ADD_WEBKIT2_PREFIX_HEADER _target)
+    if (WebKit2_USE_PREFIX_HEADER)
+        get_target_property(OLD_COMPILE_FLAGS ${_target} COMPILE_FLAGS)
+        if (${OLD_COMPILE_FLAGS} STREQUAL "OLD_COMPILE_FLAGS-NOTFOUND")
+            set(OLD_COMPILE_FLAGS "")
+        endif ()
+        set_target_properties(${_target} PROPERTIES COMPILE_FLAGS "${OLD_COMPILE_FLAGS} -include ${WEBKIT2_DIR}/WebKit2Prefix.h")
+    endif ()
+endmacro()
 
 WEBKIT_INCLUDE_CONFIG_FILES_IF_EXISTS()
 
@@ -691,6 +710,7 @@ add_library(WebKit2 ${WebKit2_LIBRARY_TYPE} ${WebKit2_SOURCES})
 
 add_dependencies(WebKit2 WebCore)
 add_dependencies(WebKit2 ${WEBKIT2_EXTRA_DEPENDENCIES})
+add_webkit2_prefix_header(WebKit2)
 target_link_libraries(WebKit2 ${WebKit2_LIBRARIES})
 set_target_properties(WebKit2 PROPERTIES FOLDER "WebKit")
 set_target_properties(WebKit2 PROPERTIES LINK_INTERFACE_LIBRARIES "")
@@ -700,6 +720,7 @@ if (WebKit2_OUTPUT_NAME)
 endif ()
 
 add_executable(WebProcess ${WebProcess_SOURCES})
+add_webkit2_prefix_header(WebProcess)
 target_link_libraries(WebProcess ${WebProcess_LIBRARIES})
 set_target_properties(WebProcess PROPERTIES FOLDER "WebKit")
 
@@ -707,7 +728,20 @@ if (WebKit2_WebProcess_OUTPUT_NAME)
     set_target_properties(WebProcess PROPERTIES OUTPUT_NAME ${WebKit2_WebProcess_OUTPUT_NAME})
 endif ()
 
-set_target_properties(WebKit2 PROPERTIES VERSION ${PROJECT_VERSION} SOVERSION ${PROJECT_VERSION_MAJOR})
+if (ENABLE_NETWORK_PROCESS)
+    add_executable(NetworkProcess ${NetworkProcess_SOURCES})
+    add_webkit2_prefix_header(NetworkProcess)
+    target_link_libraries(NetworkProcess ${NetworkProcess_LIBRARIES})
+    set_target_properties(NetworkProcess PROPERTIES FOLDER "WebKit")
+    install(TARGETS NetworkProcess DESTINATION "${LIBEXEC_INSTALL_DIR}")
+
+    if (WebKit2_NetworkProcess_OUTPUT_NAME)
+        set_target_properties(NetworkProcess PROPERTIES OUTPUT_NAME ${WebKit2_NetworkProcess_OUTPUT_NAME})
+    endif ()
+endif ()
+
+POPULATE_LIBRARY_VERSION(WEBKIT2)
+set_target_properties(WebKit2 PROPERTIES VERSION ${WEBKIT2_VERSION} SOVERSION ${WEBKIT2_VERSION_MAJOR})
 
 install(TARGETS WebKit2 DESTINATION "${LIB_INSTALL_DIR}")
-install(TARGETS WebProcess DESTINATION "${EXEC_INSTALL_DIR}")
+install(TARGETS WebProcess DESTINATION "${LIBEXEC_INSTALL_DIR}")

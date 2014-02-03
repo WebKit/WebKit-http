@@ -182,9 +182,9 @@ bool SVGImageElement::selfHasRelativeLengths() const
         || height().isRelative();
 }
 
-RenderElement* SVGImageElement::createRenderer(PassRef<RenderStyle> style)
+RenderPtr<RenderElement> SVGImageElement::createElementRenderer(PassRef<RenderStyle> style)
 {
-    return new RenderSVGImage(*this, std::move(style));
+    return createRenderer<RenderSVGImage>(*this, std::move(style));
 }
 
 bool SVGImageElement::haveLoadedRequiredResources()
@@ -195,10 +195,10 @@ bool SVGImageElement::haveLoadedRequiredResources()
 void SVGImageElement::didAttachRenderers()
 {
     if (RenderSVGImage* imageObj = toRenderSVGImage(renderer())) {
-        if (imageObj->imageResource()->hasImage())
+        if (imageObj->imageResource().hasImage())
             return;
 
-        imageObj->imageResource()->setCachedImage(m_imageLoader.image());
+        imageObj->imageResource().setCachedImage(m_imageLoader.image());
     }
 }
 

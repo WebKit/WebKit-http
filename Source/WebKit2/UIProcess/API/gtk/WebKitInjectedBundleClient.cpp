@@ -26,7 +26,7 @@
 #include "WebKitWebContextPrivate.h"
 #include "WebKitWebResourcePrivate.h"
 #include "WebKitWebViewPrivate.h"
-#include <wtf/gobject/GOwnPtr.h>
+#include <wtf/gobject/GUniquePtr.h>
 
 using namespace WebKit;
 using namespace WebCore;
@@ -84,9 +84,9 @@ static void didReceiveWebViewMessageFromInjectedBundle(WebKitWebView* webView, c
         if (!resource)
             return;
 
-        WebError* webError = static_cast<WebError*>(message.get(String::fromUTF8("Error")));
+        API::Error* webError = static_cast<API::Error*>(message.get(String::fromUTF8("Error")));
         const ResourceError& platformError = webError->platformError();
-        GOwnPtr<GError> resourceError(g_error_new_literal(g_quark_from_string(platformError.domain().utf8().data()),
+        GUniquePtr<GError> resourceError(g_error_new_literal(g_quark_from_string(platformError.domain().utf8().data()),
             platformError.errorCode(), platformError.localizedDescription().utf8().data()));
 
         webkitWebResourceFailed(resource.get(), resourceError.get());
@@ -118,16 +118,23 @@ static void didReceiveMessageFromInjectedBundle(WKContextRef, WKStringRef messag
         ASSERT_NOT_REACHED();
 }
 
+static WKTypeRef getInjectedBundleInitializationUserData(WKContextRef, const void* clientInfo)
+{
+    GRefPtr<GVariant> data = webkitWebContextInitializeWebExtensions(WEBKIT_WEB_CONTEXT(clientInfo));
+    GUniquePtr<gchar> dataString(g_variant_print(data.get(), TRUE));
+    return static_cast<WKTypeRef>(WKStringCreateWithUTF8CString(dataString.get()));
+}
+
 void attachInjectedBundleClientToContext(WebKitWebContext* webContext)
 {
     WKContextInjectedBundleClientV1 wkInjectedBundleClient = {
         {
-            0, // version
+            1, // version
             webContext, // clientInfo
         },
         didReceiveMessageFromInjectedBundle,
         0, // didReceiveSynchronousMessageFromInjectedBundle
-        0 // getInjectedBundleInitializationUserData
+        getInjectedBundleInitializationUserData
     };
     WKContextSetInjectedBundleClient(toAPI(webkitWebContextGetContext(webContext)), &wkInjectedBundleClient.base);
 }

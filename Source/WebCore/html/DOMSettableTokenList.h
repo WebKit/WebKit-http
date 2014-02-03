@@ -40,17 +40,17 @@ class DOMSettableTokenList : public DOMTokenList, public RefCounted<DOMSettableT
 public:
     static PassRefPtr<DOMSettableTokenList> create();
 
-    virtual void ref() OVERRIDE FINAL;
-    virtual void deref() OVERRIDE FINAL;
+    virtual void ref() override final;
+    virtual void deref() override final;
 
-    virtual unsigned length() const OVERRIDE FINAL;
-    virtual const AtomicString item(unsigned index) const OVERRIDE FINAL;
+    virtual unsigned length() const override final;
+    virtual const AtomicString item(unsigned index) const override final;
 
-    virtual AtomicString value() const OVERRIDE FINAL;
-    virtual void setValue(const AtomicString&) OVERRIDE FINAL;
+    virtual AtomicString value() const override final;
+    virtual void setValue(const AtomicString&) override final;
 
 private:
-    virtual bool containsInternal(const AtomicString&) const OVERRIDE FINAL;
+    virtual bool containsInternal(const AtomicString&) const override final;
 
     AtomicString m_value;
     SpaceSplitString m_tokens;

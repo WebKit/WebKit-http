@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013, 2014 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -118,7 +118,6 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case GetCallee:
     case GetLocal:
     case SetLocal:
-    case MovHintAndCheck:
     case MovHint:
     case ZombieHint:
     case GetArgument:
@@ -194,6 +193,8 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case NewArrayBuffer:
     case NewRegexp:
     case Breakpoint:
+    case ProfileWillCall:
+    case ProfileDidCall:
     case CheckHasInstance:
     case InstanceOf:
     case IsUndefined:
@@ -250,6 +251,7 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case TypedArrayWatchpoint:
     case CheckInBounds:
     case ConstantStoragePointer:
+    case Check:
         return true;
         
     case GetByVal:

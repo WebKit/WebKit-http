@@ -120,6 +120,12 @@ namespace WebCore {
     macro(upgradeneeded) \
     macro(versionchange) \
     macro(visibilitychange) \
+    /* ENABLE(WILL_REVEAL_EDGE_EVENT) */ \
+    macro(webkitwillrevealbottom) \
+    macro(webkitwillrevealleft) \
+    macro(webkitwillrevealright) \
+    macro(webkitwillrevealtop) \
+    /* End of ENABLE(WILL_REVEAL_EDGE_EVENT) */ \
     macro(wheel) \
     macro(write) \
     macro(writeend) \
@@ -289,6 +295,11 @@ public:
     #define DOM_EVENT_NAMES_DECLARE(name) AtomicString name##Event;
     DOM_EVENT_NAMES_FOR_EACH(DOM_EVENT_NAMES_DECLARE)
     #undef DOM_EVENT_NAMES_DECLARE
+
+    inline bool isGestureEventType(const AtomicString& eventType) const
+    {
+        return eventType == gesturestartEvent || eventType == gesturechangeEvent || eventType == gestureendEvent;
+    }
 
     inline bool isTouchEventType(const AtomicString& eventType) const
     {

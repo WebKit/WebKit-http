@@ -44,10 +44,11 @@ WebProcessCreationParameters::WebProcessCreationParameters()
 #if ENABLE(NETWORK_PROCESS)
     , usesNetworkProcess(false)
 #endif
+    , memoryCacheDisabled(false)
 {
 }
 
-void WebProcessCreationParameters::encode(CoreIPC::ArgumentEncoder& encoder) const
+void WebProcessCreationParameters::encode(IPC::ArgumentEncoder& encoder) const
 {
     encoder << injectedBundlePath;
     encoder << injectedBundlePathExtensionHandle;
@@ -69,11 +70,16 @@ void WebProcessCreationParameters::encode(CoreIPC::ArgumentEncoder& encoder) con
     encoder << urlSchemesRegisteredAsNoAccess;
     encoder << urlSchemesRegisteredAsDisplayIsolated;
     encoder << urlSchemesRegisteredAsCORSEnabled;
+#if ENABLE(CACHE_PARTITIONING)
+    encoder << urlSchemesRegisteredAsCachePartitioned;
+#endif
 #if ENABLE(CUSTOM_PROTOCOLS)
     encoder << urlSchemesRegisteredForCustomProtocols;
 #endif
 #if USE(SOUP)
+#if !ENABLE(CUSTOM_PROTOCOLS)
     encoder << urlSchemesRegistered;
+#endif
     encoder << cookiePersistentStoragePath;
     encoder << cookiePersistentStorageType;
     encoder.encodeEnum(cookieAcceptPolicy);
@@ -114,9 +120,10 @@ void WebProcessCreationParameters::encode(CoreIPC::ArgumentEncoder& encoder) con
 
     encoder << plugInAutoStartOriginHashes;
     encoder << plugInAutoStartOrigins;
+    encoder << memoryCacheDisabled;
 }
 
-bool WebProcessCreationParameters::decode(CoreIPC::ArgumentDecoder& decoder, WebProcessCreationParameters& parameters)
+bool WebProcessCreationParameters::decode(IPC::ArgumentDecoder& decoder, WebProcessCreationParameters& parameters)
 {
     if (!decoder.decode(parameters.injectedBundlePath))
         return false;
@@ -158,13 +165,19 @@ bool WebProcessCreationParameters::decode(CoreIPC::ArgumentDecoder& decoder, Web
         return false;
     if (!decoder.decode(parameters.urlSchemesRegisteredAsCORSEnabled))
         return false;
+#if ENABLE(CACHE_PARTITIONING)
+    if (!decoder.decode(parameters.urlSchemesRegisteredAsCachePartitioned))
+        return false;
+#endif
 #if ENABLE(CUSTOM_PROTOCOLS)
     if (!decoder.decode(parameters.urlSchemesRegisteredForCustomProtocols))
         return false;
 #endif
 #if USE(SOUP)
+#if !ENABLE(CUSTOM_PROTOCOLS)
     if (!decoder.decode(parameters.urlSchemesRegistered))
         return false;
+#endif
     if (!decoder.decode(parameters.cookiePersistentStoragePath))
         return false;
     if (!decoder.decode(parameters.cookiePersistentStorageType))
@@ -233,6 +246,8 @@ bool WebProcessCreationParameters::decode(CoreIPC::ArgumentDecoder& decoder, Web
     if (!decoder.decode(parameters.plugInAutoStartOriginHashes))
         return false;
     if (!decoder.decode(parameters.plugInAutoStartOrigins))
+        return false;
+    if (!decoder.decode(parameters.memoryCacheDisabled))
         return false;
 
     return true;

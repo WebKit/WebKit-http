@@ -27,7 +27,7 @@
 #include "config.h"
 #include "ContentDistributor.h"
 
-#include "ElementTraversal.h"
+#include "ElementIterator.h"
 #include "InsertionPoint.h"
 
 namespace WebCore {
@@ -56,9 +56,9 @@ const Vector<RefPtr<InsertionPoint>>& ContentDistributor::ensureInsertionPointLi
     m_insertionPointListIsValid = true;
     ASSERT(m_insertionPointList.isEmpty());
 
-    for (Element* element = ElementTraversal::firstWithin(shadowRoot); element; element = ElementTraversal::next(element, shadowRoot)) {
-        if (element->isInsertionPoint())
-            m_insertionPointList.append(toInsertionPoint(element));
+    for (auto& element : descendantsOfType<Element>(*shadowRoot)) {
+        if (element.isInsertionPoint())
+            m_insertionPointList.append(toInsertionPoint(&element));
     }
 
     return m_insertionPointList;
@@ -144,11 +144,8 @@ void ContentDistributor::invalidateDistribution(Element* host)
     bool didNeedInvalidation = needsInvalidation();
     bool needsReattach = didNeedInvalidation ? invalidate(host) : false;
 
-    if (needsReattach && host->attached()) {
-        for (Element* element = ElementTraversal::firstWithin(host); element; element = ElementTraversal::nextSibling(element))
-            element->lazyReattach();
-        host->setNeedsStyleRecalc();
-    }
+    if (needsReattach)
+        host->setNeedsStyleRecalc(ReconstructRenderTree);
 
     if (didNeedInvalidation) {
         ASSERT(m_validity == Invalidating);

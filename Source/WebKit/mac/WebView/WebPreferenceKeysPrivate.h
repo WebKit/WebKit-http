@@ -100,7 +100,6 @@
 #define WebKitAcceleratedDrawingEnabledPreferenceKey @"WebKitAcceleratedDrawingEnabled"
 #define WebKitCanvasUsesAcceleratedDrawingPreferenceKey @"WebKitCanvasUsesAcceleratedDrawing"
 #define WebKitAcceleratedCompositingEnabledPreferenceKey @"WebKitAcceleratedCompositingEnabled"
-#define WebKitCSSCustomFilterEnabledPreferenceKey @"WebKitCSSCustomFilterEnabled"
 #define WebKitCSSRegionsEnabledPreferenceKey @"WebKitCSSRegionsEnabled"
 #define WebKitCSSCompositingEnabledPreferenceKey @"WebKitCSSCompositingEnabled"
 #define WebKitCSSGridLayoutEnabledPreferenceKey @"WebKitCSSGridLayoutEnabled"
@@ -133,6 +132,7 @@
 #if TARGET_OS_IPHONE
 #define WebKitMediaPlaybackAllowsAirPlayPreferenceKey @"WebKitMediaPlaybackAllowsAirPlay"
 #define WebKitAudioSessionCategoryOverride @"WebKitAudioSessionCategoryOverride"
+#define WebKitAVKitEnabled @"WebKitAVKitEnabled"
 #endif
 #define WebKitRegionBasedColumnsEnabledKey @"WebKitRegionBasedColumnsEnabled"
 #define WebKitShouldRespectImageOrientationKey @"WebKitShouldRespectImageOrientation"
@@ -204,7 +204,7 @@
 #define WebKitDiskImageCacheSavedCacheDirectoryKey @"WebKitDiskImageCacheSavedCacheDirectory"
 
 #if TARGET_OS_IPHONE
-#if ENABLE(REMOTE_INSPECTOR)
+#if !defined(ENABLE_REMOTE_INSPECTOR) || ENABLE_REMOTE_INSPECTOR
 #define WebKitTextFieldRemoteInspectionEnabledPreferenceKey @"WebKitTextFieldRemoteInspectionEnabled"
 #endif
 #endif

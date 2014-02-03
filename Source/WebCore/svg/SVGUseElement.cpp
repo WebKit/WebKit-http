@@ -257,9 +257,6 @@ void SVGUseElement::svgAttributeChanged(const QualifiedName& attrName)
         return;
     }
 
-    if (!renderer)
-        return;
-
     if (SVGLangSpace::isKnownAttribute(attrName)
         || SVGExternalResourcesRequired::isKnownAttribute(attrName)) {
         invalidateShadowTree();
@@ -269,11 +266,10 @@ void SVGUseElement::svgAttributeChanged(const QualifiedName& attrName)
     ASSERT_NOT_REACHED();
 }
 
-bool SVGUseElement::willRecalcStyle(Style::Change)
+void SVGUseElement::willAttachRenderers()
 {
-    if (!m_wasInsertedByParser && m_needsShadowTreeRecreation && renderer() && needsStyleRecalc())
+    if (m_needsShadowTreeRecreation)
         buildPendingResource();
-    return true;
 }
 
 #ifdef DUMP_INSTANCE_TREE
@@ -369,7 +365,7 @@ static bool isDisallowedElement(const Element& element)
 
 static bool subtreeContainsDisallowedElement(SVGElement& start)
 {
-    for (auto& element : elementDescendants(start)) {
+    for (auto& element : descendantsOfType<Element>(start)) {
         if (isDisallowedElement(element))
             return true;
     }
@@ -523,9 +519,9 @@ void SVGUseElement::buildShadowAndInstanceTree(SVGElement* target)
 #endif
 }
 
-RenderElement* SVGUseElement::createRenderer(PassRef<RenderStyle> style)
+RenderPtr<RenderElement> SVGUseElement::createElementRenderer(PassRef<RenderStyle> style)
 {
-    return new RenderSVGTransformableContainer(*this, std::move(style));
+    return createRenderer<RenderSVGTransformableContainer>(*this, std::move(style));
 }
 
 static bool isDirectReference(const Node* node)
@@ -662,8 +658,8 @@ static inline void removeDisallowedElementsFromSubtree(SVGElement& subtree)
 {
     ASSERT(!subtree.inDocument());
     Vector<Element*> toRemove;
-    auto it = elementDescendants(subtree).begin();
-    auto end = elementDescendants(subtree).end();
+    auto it = descendantsOfType<Element>(subtree).begin();
+    auto end = descendantsOfType<Element>(subtree).end();
     while (it != end) {
         if (isDisallowedElement(*it)) {
             toRemove.append(&*it);
@@ -889,10 +885,10 @@ SVGElementInstance* SVGUseElement::instanceForShadowTreeElement(Node* element, S
 
 void SVGUseElement::invalidateShadowTree()
 {
-    if (!renderer() || m_needsShadowTreeRecreation)
+    if (m_needsShadowTreeRecreation)
         return;
     m_needsShadowTreeRecreation = true;
-    setNeedsStyleRecalc();
+    setNeedsStyleRecalc(ReconstructRenderTree);
     invalidateDependentShadowTrees();
 }
 

@@ -70,7 +70,7 @@ public:
     static void dispatchPendingErrorEvents();
 
 protected:
-    virtual void notifyFinished(CachedResource*) OVERRIDE;
+    virtual void notifyFinished(CachedResource*) override;
 
 private:
     virtual void dispatchLoadEvent() = 0;
@@ -88,7 +88,7 @@ private:
     void setImageWithoutConsideringPendingLoadEvent(CachedImage*);
     void clearFailedLoadURL();
 
-    void timerFired(Timer<ImageLoader>*);
+    void timerFired(Timer<ImageLoader>&);
 
     Element* m_element;
     CachedResourceHandle<CachedImage> m_image;

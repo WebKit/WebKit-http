@@ -69,26 +69,26 @@ public:
     ChromeClient& client() { return m_client; }
 
     // HostWindow methods.
-    virtual void invalidateRootView(const IntRect&, bool) OVERRIDE;
-    virtual void invalidateContentsAndRootView(const IntRect&, bool) OVERRIDE;
-    virtual void invalidateContentsForSlowScroll(const IntRect&, bool) OVERRIDE;
-    virtual void scroll(const IntSize&, const IntRect&, const IntRect&) OVERRIDE;
+    virtual void invalidateRootView(const IntRect&, bool) override;
+    virtual void invalidateContentsAndRootView(const IntRect&, bool) override;
+    virtual void invalidateContentsForSlowScroll(const IntRect&, bool) override;
+    virtual void scroll(const IntSize&, const IntRect&, const IntRect&) override;
 #if USE(TILED_BACKING_STORE)
-    virtual void delegatedScrollRequested(const IntPoint& scrollPoint) OVERRIDE;
+    virtual void delegatedScrollRequested(const IntPoint& scrollPoint) override;
 #endif
-    virtual IntPoint screenToRootView(const IntPoint&) const OVERRIDE;
-    virtual IntRect rootViewToScreen(const IntRect&) const OVERRIDE;
-    virtual PlatformPageClient platformPageClient() const OVERRIDE;
-    virtual void scrollbarsModeDidChange() const OVERRIDE;
-    virtual void setCursor(const Cursor&) OVERRIDE;
-    virtual void setCursorHiddenUntilMouseMoves(bool) OVERRIDE;
+    virtual IntPoint screenToRootView(const IntPoint&) const override;
+    virtual IntRect rootViewToScreen(const IntRect&) const override;
+    virtual PlatformPageClient platformPageClient() const override;
+    virtual void scrollbarsModeDidChange() const override;
+    virtual void setCursor(const Cursor&) override;
+    virtual void setCursorHiddenUntilMouseMoves(bool) override;
 
 #if ENABLE(REQUEST_ANIMATION_FRAME)
-    virtual void scheduleAnimation() OVERRIDE;
+    virtual void scheduleAnimation() override;
 #endif
 
-    virtual PlatformDisplayID displayID() const OVERRIDE;
-    virtual void windowScreenDidChange(PlatformDisplayID) OVERRIDE;
+    virtual PlatformDisplayID displayID() const override;
+    virtual void windowScreenDidChange(PlatformDisplayID) override;
 
     void scrollRectIntoView(const IntRect&) const;
 
@@ -155,8 +155,9 @@ public:
 #if ENABLE(INPUT_TYPE_COLOR)
     PassOwnPtr<ColorChooser> createColorChooser(ColorChooserClient*, const Color& initialColor);
 #endif
-#if ENABLE(DATE_AND_TIME_INPUT_TYPES)
-    PassRefPtr<DateTimeChooser> openDateTimeChooser(DateTimeChooserClient*, const DateTimeChooserParameters&);
+
+#if ENABLE(DATE_AND_TIME_INPUT_TYPES) && !PLATFORM(IOS)
+    PassRefPtr<DateTimeChooser> openDateTimeChooser(DateTimeChooserClient*, const DateTimeChooserParameters&)
 #endif
 
     void runOpenPanel(Frame*, PassRefPtr<FileChooser>);
@@ -179,6 +180,13 @@ public:
     PassRefPtr<PopupMenu> createPopupMenu(PopupMenuClient*) const;
     PassRefPtr<SearchPopupMenu> createSearchPopupMenu(PopupMenuClient*) const;
 
+#if PLATFORM(IOS)
+    // FIXME: Can we come up with a better name for this setter?
+    void setDispatchViewportDataDidChangeSuppressed(bool dispatchViewportDataDidChangeSuppressed) { m_isDispatchViewportDataDidChangeSuppressed = dispatchViewportDataDidChangeSuppressed; }
+
+    void didReceiveDocType(Frame*);
+#endif
+
     void registerPopupOpeningObserver(PopupOpeningObserver*);
     void unregisterPopupOpeningObserver(PopupOpeningObserver*);
 
@@ -189,6 +197,9 @@ private:
     ChromeClient& m_client;
     PlatformDisplayID m_displayID;
     Vector<PopupOpeningObserver*> m_popupOpeningObservers;
+#if PLATFORM(IOS)
+    bool m_isDispatchViewportDataDidChangeSuppressed;
+#endif
 };
 
 }

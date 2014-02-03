@@ -64,7 +64,7 @@ void reportTransactionFailed(ExecuteSQLCallback* requestCallback, SQLError* erro
     RefPtr<Inspector::TypeBuilder::Database::Error> errorObject = Inspector::TypeBuilder::Database::Error::create()
         .setMessage(error->message())
         .setCode(error->code());
-    requestCallback->sendSuccess(0, 0, errorObject.release());
+    requestCallback->sendSuccess(nullptr, nullptr, errorObject.release());
 }
 
 class StatementCallback : public SQLStatementCallback {
@@ -76,7 +76,7 @@ public:
 
     virtual ~StatementCallback() { }
 
-    virtual bool handleEvent(SQLTransaction*, SQLResultSet* resultSet)
+    virtual bool handleEvent(SQLTransaction*, SQLResultSet* resultSet) override
     {
         SQLResultSetRowList* rowList = resultSet->rows();
 
@@ -95,7 +95,7 @@ public:
             case SQLValue::NullValue: values->addItem(InspectorValue::null()); break;
             }
         }
-        m_requestCallback->sendSuccess(columnNames.release(), values.release(), 0);
+        m_requestCallback->sendSuccess(columnNames.release(), values.release(), nullptr);
         return true;
     }
 
@@ -114,7 +114,7 @@ public:
 
     virtual ~StatementErrorCallback() { }
 
-    virtual bool handleEvent(SQLTransaction*, SQLError* error)
+    virtual bool handleEvent(SQLTransaction*, SQLError* error) override
     {
         reportTransactionFailed(m_requestCallback.get(), error);
         return true;  
@@ -135,7 +135,7 @@ public:
 
     virtual ~TransactionCallback() { }
 
-    virtual bool handleEvent(SQLTransaction* transaction)
+    virtual bool handleEvent(SQLTransaction* transaction) override
     {
         if (!m_requestCallback->isActive())
             return true;
@@ -163,7 +163,7 @@ public:
 
     virtual ~TransactionErrorCallback() { }
 
-    virtual bool handleEvent(SQLError* error)
+    virtual bool handleEvent(SQLError* error) override
     {
         reportTransactionFailed(m_requestCallback.get(), error);
         return true;
@@ -183,7 +183,7 @@ public:
 
     virtual ~TransactionSuccessCallback() { }
 
-    virtual bool handleEvent() { return false; }
+    virtual bool handleEvent() override { return false; }
 
 private:
     TransactionSuccessCallback() { }
@@ -219,7 +219,7 @@ InspectorDatabaseAgent::InspectorDatabaseAgent(InstrumentingAgents* instrumentin
 
 InspectorDatabaseAgent::~InspectorDatabaseAgent()
 {
-    m_instrumentingAgents->setInspectorDatabaseAgent(0);
+    m_instrumentingAgents->setInspectorDatabaseAgent(nullptr);
 }
 
 void InspectorDatabaseAgent::didCreateFrontendAndBackend(Inspector::InspectorFrontendChannel* frontendChannel, InspectorBackendDispatcher* backendDispatcher)
@@ -228,7 +228,7 @@ void InspectorDatabaseAgent::didCreateFrontendAndBackend(Inspector::InspectorFro
     m_backendDispatcher = InspectorDatabaseBackendDispatcher::create(backendDispatcher, this);
 }
 
-void InspectorDatabaseAgent::willDestroyFrontendAndBackend()
+void InspectorDatabaseAgent::willDestroyFrontendAndBackend(InspectorDisconnectReason)
 {
     m_frontendDispatcher = nullptr;
     m_backendDispatcher.clear();
@@ -308,14 +308,14 @@ InspectorDatabaseResource* InspectorDatabaseAgent::findByFileName(const String& 
         if (it->value->database()->fileName() == fileName)
             return it->value.get();
     }
-    return 0;
+    return nullptr;
 }
 
 Database* InspectorDatabaseAgent::databaseForId(const String& databaseId)
 {
     DatabaseResourcesMap::iterator it = m_resources.find(databaseId);
     if (it == m_resources.end())
-        return 0;
+        return nullptr;
     return it->value->database();
 }
 

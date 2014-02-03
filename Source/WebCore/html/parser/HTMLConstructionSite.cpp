@@ -91,16 +91,6 @@ static inline void executeTask(HTMLConstructionSiteTask& task)
     else
         task.parent->parserAppendChild(task.child.get());
 
-    // JavaScript run from beforeload (or DOM Mutation or event handlers)
-    // might have removed the child, in which case we should not attach it.
-
-    if (task.child->parentNode() && task.parent->attached() && !task.child->attached()) {
-        if (task.child->isElementNode())
-            Style::attachRenderTree(*toElement(task.child.get()));
-        else if (task.child->isTextNode())
-            Style::attachTextRenderer(*toText(task.child.get()));
-    }
-
     task.child->beginParsingChildren();
 
     if (task.selfClosing)
@@ -197,7 +187,7 @@ void HTMLConstructionSite::dispatchDocumentElementAvailableIfNeeded()
 {
     ASSERT(m_document);
     if (m_document->frame() && !m_isParsingFragment)
-        m_document->frame()->loader().dispatchDocumentElementAvailable();
+        m_document->frame()->injectUserScripts(InjectAtDocumentStart);
 }
 
 void HTMLConstructionSite::insertHTMLHtmlStartTagBeforeHTML(AtomicHTMLToken* token)

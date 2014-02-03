@@ -50,13 +50,17 @@
 #import "TextCheckerState.h"
 #import "TiledCoreAnimationDrawingAreaProxy.h"
 #import "ViewGestureController.h"
+#import "ViewSnapshotStore.h"
 #import "WKAPICast.h"
 #import "WKFullScreenWindowController.h"
 #import "WKPrintingView.h"
+#import "WKProcessClassInternal.h"
 #import "WKStringCF.h"
 #import "WKTextInputWindowController.h"
 #import "WKViewInternal.h"
 #import "WKViewPrivate.h"
+#import "WKWebViewConfiguration.h"
+#import "WebBackForwardList.h"
 #import "WebContext.h"
 #import "WebEventFactory.h"
 #import "WebKit2Initialize.h"
@@ -83,6 +87,7 @@
 #import <WebCore/Region.h>
 #import <WebCore/SharedBuffer.h>
 #import <WebCore/TextAlternativeWithRange.h>
+#import <WebCore/WebCoreCALayerExtras.h>
 #import <WebCore/WebCoreFullScreenPlaceholderView.h>
 #import <WebCore/WebCoreFullScreenWindow.h>
 #import <WebCore/WebCoreNSStringExtras.h>
@@ -112,6 +117,19 @@
 - (void)_maskRoundedBottomCorners:(NSRect)clipRect;
 @end
 
+#if defined(__has_include) && __has_include(<CoreGraphics/CoreGraphicsPrivate.h>)
+#import <CoreGraphics/CoreGraphicsPrivate.h>
+#import <CoreGraphics/CGSCapture.h>
+#endif
+
+extern "C" {
+typedef uint32_t CGSConnectionID;
+typedef uint32_t CGSWindowID;
+CGSConnectionID CGSMainConnectionID(void);
+CGError CGSGetScreenRectForWindow(CGSConnectionID cid, CGSWindowID wid, CGRect *rect);
+CGError CGSCaptureWindowsContentsToRect(CGSConnectionID cid, const CGSWindowID windows[], uint32_t windowCount, CGRect rect, CGImageRef *outImage);
+};
+
 using namespace WebKit;
 using namespace WebCore;
 
@@ -130,19 +148,14 @@ struct WKViewInterpretKeyEventsParameters {
     Vector<KeypressCommand>* commands;
 };
 
-@interface WKView ()
-- (void)_accessibilityRegisterUIProcessTokens;
-- (void)_disableComplexTextInputIfNecessary;
-- (float)_intrinsicDeviceScaleFactor;
-- (void)_postFakeMouseMovedEventForFlagsChangedEvent:(NSEvent *)flagsChangedEvent;
-- (void)_setDrawingAreaSize:(NSSize)size;
-- (void)_setPluginComplexTextInputState:(PluginComplexTextInputState)pluginComplexTextInputState;
-@end
-
 @interface WKViewData : NSObject {
 @public
     std::unique_ptr<PageClientImpl> _pageClient;
     RefPtr<WebPageProxy> _page;
+
+#if WK_API_ENABLED
+    RetainPtr<WKBrowsingContextController> _browsingContextController;
+#endif
 
     // For ToolTips.
     NSToolTipTag _lastToolTipTag;
@@ -198,12 +211,6 @@ struct WKViewInterpretKeyEventsParameters {
     BOOL _needsViewFrameInWindowCoordinates;
     BOOL _didScheduleWindowAndViewFrameUpdate;
 
-    // Whether the containing window of the WKView has a valid backing store.
-    // The window server invalidates the backing store whenever the window is resized or minimized.
-    // We use this flag to determine when we need to paint the background (white or clear)
-    // when the web process is unresponsive or takes too long to paint.
-    BOOL _windowHasValidBackingStore;
-
     RetainPtr<NSColorSpace> _colorSpace;
 
     RefPtr<WebCore::Image> _promisedImage;
@@ -218,6 +225,7 @@ struct WKViewInterpretKeyEventsParameters {
 
     std::unique_ptr<ViewGestureController> _gestureController;
     BOOL _allowsMagnification;
+    BOOL _allowsBackForwardNavigationGestures;
 }
 
 @end
@@ -249,6 +257,11 @@ struct WKViewInterpretKeyEventsParameters {
 @implementation WKView
 
 #if WK_API_ENABLED
+
+- (instancetype)initWithFrame:(CGRect)frame configuration:(WKWebViewConfiguration *)configuration
+{
+    return [self initWithFrame:frame contextRef:toAPI(configuration.processClass->_context.get()) pageGroupRef:nullptr];
+}
 
 - (id)initWithFrame:(NSRect)frame processGroup:(WKProcessGroup *)processGroup browsingContextGroup:(WKBrowsingContextGroup *)browsingContextGroup
 {
@@ -283,7 +296,10 @@ struct WKViewInterpretKeyEventsParameters {
 
 - (WKBrowsingContextController *)browsingContextController
 {
-    return wrapper(*_data->_page);
+    if (!_data->_browsingContextController)
+        _data->_browsingContextController = [[WKBrowsingContextController alloc] _initWithPageRef:toAPI(_data->_page.get())];
+
+    return _data->_browsingContextController.get();
 }
 
 #endif // WK_API_ENABLED
@@ -390,14 +406,12 @@ struct WKViewInterpretKeyEventsParameters {
     if (_data->_useContentPreparationRectForVisibleRect)
         exposedRect = NSUnionRect(_data->_contentPreparationRect, exposedRect);
 
-    _data->_page->viewExposedRectChanged(exposedRect, _data->_clipsToVisibleRect);
+    if (auto drawingArea = _data->_page->drawingArea())
+        drawingArea->setExposedRect(_data->_clipsToVisibleRect ? FloatRect(exposedRect) : FloatRect::infiniteRect());
 }
 
 - (void)setFrameSize:(NSSize)size
 {
-    if (!NSEqualSizes(size, [self frame].size))
-        _data->_windowHasValidBackingStore = NO;
-
     [super setFrameSize:size];
 
     if (![self frameSizeUpdatesDisabled]) {
@@ -426,8 +440,11 @@ struct WKViewInterpretKeyEventsParameters {
         if (_data->_needsViewFrameInWindowCoordinates)
             viewFrameInWindowCoordinates = [self convertRect:self.frame toView:nil];
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
         if (WebCore::AXObjectCache::accessibilityEnabled())
             accessibilityPosition = [[self accessibilityAttributeValue:NSAccessibilityPositionAttribute] pointValue];
+#pragma clang diagnostic pop
 
         _data->_page->windowAndViewFramesChanged(viewFrameInWindowCoordinates, accessibilityPosition);
     });
@@ -1090,16 +1107,25 @@ NATIVE_MOUSE_EVENT_HANDLER(rightMouseUp)
 
 #undef NATIVE_MOUSE_EVENT_HANDLER
 
-#define NATIVE_EVENT_HANDLER(Selector, Type) \
-    - (void)Selector:(NSEvent *)theEvent \
-    { \
-        NativeWeb##Type##Event webEvent = NativeWeb##Type##Event(theEvent, self); \
-        _data->_page->handle##Type##Event(webEvent); \
+- (void)_ensureGestureController
+{
+    if (_data->_gestureController)
+        return;
+
+    _data->_gestureController = std::make_unique<ViewGestureController>(*_data->_page);
+}
+
+- (void)scrollWheel:(NSEvent *)event
+{
+    if (_data->_allowsBackForwardNavigationGestures) {
+        [self _ensureGestureController];
+        if (_data->_gestureController->handleScrollWheelEvent(event))
+            return;
     }
 
-NATIVE_EVENT_HANDLER(scrollWheel, Wheel)
-
-#undef NATIVE_EVENT_HANDLER
+    NativeWebWheelEvent webEvent = NativeWebWheelEvent(event, self);
+    _data->_page->handleWheelEvent(webEvent);
+}
 
 - (void)mouseMoved:(NSEvent *)event
 {
@@ -1604,11 +1630,11 @@ static void extractUnderlines(NSAttributedString *string, Vector<CompositionUnde
 
     if (actualRange) {
         *actualRange = nsRange;
-        actualRange->length = [result.string.get() length];
+        actualRange->length = [result.string length];
     }
 
-    LOG(TextInput, "attributedSubstringFromRange:(%u, %u) -> \"%@\"", nsRange.location, nsRange.length, [result.string.get() string]);
-    return [[result.string.get() retain] autorelease];
+    LOG(TextInput, "attributedSubstringFromRange:(%u, %u) -> \"%@\"", nsRange.location, nsRange.length, [result.string string]);
+    return [[result.string retain] autorelease];
 }
 
 - (NSUInteger)characterIndexForPoint:(NSPoint)thePoint
@@ -1808,10 +1834,6 @@ static void createSandboxExtensionsForFileUpload(NSPasteboard *pasteboard, Sandb
     return NSMouseInRect(localPoint, visibleThumbRect, [self isFlipped]);
 }
 
-// FIXME: Use AppKit constants for these when they are available.
-static NSString * const windowDidChangeBackingPropertiesNotification = @"NSWindowDidChangeBackingPropertiesNotification";
-static NSString * const backingPropertyOldScaleFactorKey = @"NSBackingPropertyOldScaleFactorKey";
-
 - (void)addWindowObserversForWindow:(NSWindow *)window
 {
     if (window) {
@@ -1832,7 +1854,7 @@ static NSString * const backingPropertyOldScaleFactorKey = @"NSBackingPropertyOl
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_windowDidOrderOnScreen:) 
                                                      name:@"_NSWindowDidBecomeVisible" object:window];
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_windowDidChangeBackingProperties:)
-                                                     name:windowDidChangeBackingPropertiesNotification object:window];
+                                                     name:NSWindowDidChangeBackingPropertiesNotification object:window];
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_windowDidChangeScreen:)
                                                      name:NSWindowDidChangeScreenNotification object:window];
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
@@ -1857,7 +1879,7 @@ static NSString * const backingPropertyOldScaleFactorKey = @"NSBackingPropertyOl
     [[NSNotificationCenter defaultCenter] removeObserver:self name:@"NSWindowWillOrderOffScreenNotification" object:window];
     [[NSNotificationCenter defaultCenter] removeObserver:self name:@"NSWindowDidOrderOffScreenNotification" object:window];
     [[NSNotificationCenter defaultCenter] removeObserver:self name:@"_NSWindowDidBecomeVisible" object:window];
-    [[NSNotificationCenter defaultCenter] removeObserver:self name:windowDidChangeBackingPropertiesNotification object:window];
+    [[NSNotificationCenter defaultCenter] removeObserver:self name:NSWindowDidChangeBackingPropertiesNotification object:window];
     [[NSNotificationCenter defaultCenter] removeObserver:self name:NSWindowDidChangeScreenNotification object:window];
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
     [[NSNotificationCenter defaultCenter] removeObserver:self name:NSWindowDidChangeOcclusionStateNotification object:window];
@@ -1879,10 +1901,9 @@ static NSString * const backingPropertyOldScaleFactorKey = @"NSBackingPropertyOl
 - (void)viewDidMoveToWindow
 {
     if ([self window]) {
-        _data->_windowHasValidBackingStore = NO;
         [self doWindowDidChangeScreen];
 
-        ViewState::Flags viewStateChanges = ViewState::WindowIsVisible | ViewState::WindowIsActive | ViewState::IsVisible;
+        ViewState::Flags viewStateChanges = ViewState::WindowIsActive | ViewState::IsVisible;
         if ([self isDeferringViewInWindowChanges])
             _data->_viewInWindowChangeWasDeferred = YES;
         else
@@ -1900,7 +1921,7 @@ static NSString * const backingPropertyOldScaleFactorKey = @"NSBackingPropertyOl
 
         [self _accessibilityRegisterUIProcessTokens];
     } else {
-        ViewState::Flags viewStateChanges = ViewState::WindowIsVisible | ViewState::WindowIsActive | ViewState::IsVisible;
+        ViewState::Flags viewStateChanges = ViewState::WindowIsActive | ViewState::IsVisible;
         if ([self isDeferringViewInWindowChanges])
             _data->_viewInWindowChangeWasDeferred = YES;
         else
@@ -1946,13 +1967,12 @@ static NSString * const backingPropertyOldScaleFactorKey = @"NSBackingPropertyOl
 
 - (void)_windowDidMiniaturize:(NSNotification *)notification
 {
-    _data->_windowHasValidBackingStore = NO;
-    _data->_page->viewStateDidChange(ViewState::WindowIsVisible);
+    _data->_page->viewStateDidChange(ViewState::IsVisible);
 }
 
 - (void)_windowDidDeminiaturize:(NSNotification *)notification
 {
-    _data->_page->viewStateDidChange(ViewState::WindowIsVisible);
+    _data->_page->viewStateDidChange(ViewState::IsVisible);
 }
 
 - (void)_windowDidMove:(NSNotification *)notification
@@ -1962,29 +1982,26 @@ static NSString * const backingPropertyOldScaleFactorKey = @"NSBackingPropertyOl
 
 - (void)_windowDidResize:(NSNotification *)notification
 {
-    _data->_windowHasValidBackingStore = NO;
-
     [self _updateWindowAndViewFrames];
 }
 
 - (void)_windowDidOrderOffScreen:(NSNotification *)notification
 {
-    _data->_page->viewStateDidChange(ViewState::WindowIsVisible | ViewState::IsVisible | ViewState::WindowIsActive);
+    _data->_page->viewStateDidChange(ViewState::IsVisible | ViewState::WindowIsActive);
 }
 
 - (void)_windowDidOrderOnScreen:(NSNotification *)notification
 {
-    _data->_page->viewStateDidChange(ViewState::WindowIsVisible | ViewState::IsVisible | ViewState::WindowIsActive);
+    _data->_page->viewStateDidChange(ViewState::IsVisible | ViewState::WindowIsActive);
 }
 
 - (void)_windowDidChangeBackingProperties:(NSNotification *)notification
 {
-    CGFloat oldBackingScaleFactor = [[notification.userInfo objectForKey:backingPropertyOldScaleFactorKey] doubleValue];
+    CGFloat oldBackingScaleFactor = [[notification.userInfo objectForKey:NSBackingPropertyOldScaleFactorKey] doubleValue];
     CGFloat newBackingScaleFactor = [self _intrinsicDeviceScaleFactor]; 
     if (oldBackingScaleFactor == newBackingScaleFactor)
         return; 
 
-    _data->_windowHasValidBackingStore = NO;
     _data->_page->setIntrinsicDeviceScaleFactor(newBackingScaleFactor);
 }
 
@@ -2044,8 +2061,8 @@ static NSString * const backingPropertyOldScaleFactorKey = @"NSBackingPropertyOl
     // Initialize remote accessibility when the window connection has been established.
     NSData *remoteElementToken = WKAXRemoteTokenForElement(self);
     NSData *remoteWindowToken = WKAXRemoteTokenForElement([self window]);
-    CoreIPC::DataReference elementToken = CoreIPC::DataReference(reinterpret_cast<const uint8_t*>([remoteElementToken bytes]), [remoteElementToken length]);
-    CoreIPC::DataReference windowToken = CoreIPC::DataReference(reinterpret_cast<const uint8_t*>([remoteWindowToken bytes]), [remoteWindowToken length]);
+    IPC::DataReference elementToken = IPC::DataReference(reinterpret_cast<const uint8_t*>([remoteElementToken bytes]), [remoteElementToken length]);
+    IPC::DataReference windowToken = IPC::DataReference(reinterpret_cast<const uint8_t*>([remoteWindowToken bytes]), [remoteWindowToken length]);
     _data->_page->registerUIProcessAccessibilityTokens(elementToken, windowToken);
 }
 
@@ -2170,10 +2187,6 @@ static NSString * const backingPropertyOldScaleFactorKey = @"NSBackingPropertyOl
 }
 #endif
 
-@end
-
-@implementation WKView (Internal)
-
 - (std::unique_ptr<WebKit::DrawingAreaProxy>)_createDrawingAreaProxy
 {
     if ([[[NSUserDefaults standardUserDefaults] objectForKey:@"WebKit2UseRemoteLayerTreeDrawingArea"] boolValue])
@@ -2201,17 +2214,19 @@ static NSString * const backingPropertyOldScaleFactorKey = @"NSBackingPropertyOl
     }
         
     ColorSpaceData colorSpaceData;
-    colorSpaceData.cgColorSpace = [_data->_colorSpace.get() CGColorSpace];
+    colorSpaceData.cgColorSpace = [_data->_colorSpace CGColorSpace];
 
     return colorSpaceData;    
 }
 
-- (void)_processDidCrash
+- (void)_processDidExit
 {
     if (_data->_layerHostingView)
         [self _setAcceleratedCompositingModeRootLayer:nil];
 
     [self _updateRemoteAccessibilityRegistration:NO];
+
+    _data->_gestureController = nullptr;
 }
 
 - (void)_pageClosed
@@ -2467,6 +2482,11 @@ static NSString * const backingPropertyOldScaleFactorKey = @"NSBackingPropertyOl
     _data->_findIndicatorWindow->setFindIndicator(findIndicator, fadeOut, animate);
 }
 
+- (CALayer *)_rootLayer
+{
+    return [_data->_layerHostingView layer];
+}
+
 - (void)_setAcceleratedCompositingModeRootLayer:(CALayer *)rootLayer
 {
     [CATransaction begin];
@@ -2476,13 +2496,14 @@ static NSString * const backingPropertyOldScaleFactorKey = @"NSBackingPropertyOl
         if (!_data->_layerHostingView) {
             // Create an NSView that will host our layer tree.
             _data->_layerHostingView = adoptNS([[WKFlippedView alloc] initWithFrame:[self bounds]]);
-            [_data->_layerHostingView.get() setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
+            [_data->_layerHostingView setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
 
 
             [self addSubview:_data->_layerHostingView.get() positioned:NSWindowBelow relativeTo:nil];
 
             // Create a root layer that will back the NSView.
             RetainPtr<CALayer> layer = adoptNS([[CALayer alloc] init]);
+            [layer web_disableAllActions];
 #ifndef NDEBUG
             [layer setName:@"Hosting root layer"];
 #endif
@@ -2503,6 +2524,54 @@ static NSString * const backingPropertyOldScaleFactorKey = @"NSBackingPropertyOl
     }
 
     [CATransaction commit];
+}
+
+- (CALayer *)_acceleratedCompositingModeRootLayer
+{
+    NSView *hostView = _data->_layerHostingView.get();
+
+    if (!hostView)
+        return nullptr;
+
+    return hostView.layer;
+}
+
+- (RetainPtr<CGImageRef>)_takeViewSnapshot
+{
+    NSWindow *window = self.window;
+
+    if (![window windowNumber])
+        return nullptr;
+
+    // FIXME: This should use CGWindowListCreateImage once <rdar://problem/15709646> is resolved.
+    CGSWindowID windowID = [window windowNumber];
+    CGImageRef cgWindowImage = nullptr;
+    CGSCaptureWindowsContentsToRect(CGSMainConnectionID(), &windowID, 1, CGRectNull, &cgWindowImage);
+    RetainPtr<CGImageRef> windowSnapshotImage = adoptCF(cgWindowImage);
+
+    [self _ensureGestureController];
+
+    NSRect windowCaptureRect;
+    FloatRect boundsForCustomSwipeViews = _data->_gestureController->windowRelativeBoundsForCustomSwipeViews();
+    if (!boundsForCustomSwipeViews.isEmpty())
+        windowCaptureRect = boundsForCustomSwipeViews;
+    else
+        windowCaptureRect = [self convertRect:self.bounds toView:nil];
+
+    NSRect windowCaptureScreenRect = [window convertRectToScreen:windowCaptureRect];
+    CGRect windowScreenRect;
+    CGSGetScreenRectForWindow(CGSMainConnectionID(), (CGSWindowID)[window windowNumber], &windowScreenRect);
+
+    NSRect croppedImageRect = windowCaptureRect;
+    croppedImageRect.origin.y = windowScreenRect.size.height - windowCaptureScreenRect.size.height - NSMinY(windowCaptureRect);
+
+    return adoptCF(CGImageCreateWithImageInRect(windowSnapshotImage.get(), NSRectToCGRect([window convertRectToBacking:croppedImageRect])));
+}
+
+- (void)_wheelEventWasNotHandledByWebCore:(NSEvent *)event
+{
+    if (_data->_gestureController)
+        _data->_gestureController->wheelEventWasNotHandledByWebCore(event);
 }
 
 - (void)_setAccessibilityWebProcessToken:(NSData *)data
@@ -2583,7 +2652,7 @@ static bool matchesExtensionOrEquivalent(NSString *filename, NSString *extension
     NSPasteboard *pasteboard = [NSPasteboard pasteboardWithName:pasteboardName];
     RetainPtr<NSMutableArray> types = adoptNS([[NSMutableArray alloc] initWithObjects:NSFilesPromisePboardType, nil]);
     
-    [types.get() addObjectsFromArray:archiveBuffer ? PasteboardTypes::forImagesWithArchive() : PasteboardTypes::forImages()];
+    [types addObjectsFromArray:archiveBuffer ? PasteboardTypes::forImagesWithArchive() : PasteboardTypes::forImages()];
     [pasteboard declareTypes:types.get() owner:self];
     if (!matchesExtensionOrEquivalent(filename, extension))
         filename = [[filename stringByAppendingString:@"."] stringByAppendingString:extension];
@@ -2674,7 +2743,7 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     }
     
     // FIXME: Report an error if we fail to create a file.
-    NSString *path = [[dropDestination path] stringByAppendingPathComponent:[wrapper.get() preferredFilename]];
+    NSString *path = [[dropDestination path] stringByAppendingPathComponent:[wrapper preferredFilename]];
     path = pathWithUniqueFilenameForPath(path);
     if (![wrapper writeToURL:[NSURL fileURLWithPath:path] options:NSFileWrapperWritingWithNameUpdating originalContentsURL:nil error:nullptr])
         LOG_ERROR("Failed to create image file via -[NSFileWrapper writeToURL:options:originalContentsURL:error:]");
@@ -2763,8 +2832,8 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     // 2) prevents any NSBeep; we don't ever want to beep here.
     RetainPtr<WKResponderChainSink> sink = adoptNS([[WKResponderChainSink alloc] initWithResponderChain:self]);
     [super doCommandBySelector:selector];
-    [sink.get() detach];
-    return ![sink.get() didReceiveUnhandledCommand];
+    [sink detach];
+    return ![sink didReceiveUnhandledCommand];
 }
 
 - (void)_setIntrinsicContentSize:(NSSize)intrinsicContentSize
@@ -2820,6 +2889,11 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
 @end
 
 @implementation WKView (Private)
+
+- (void)saveBackForwardSnapshotForCurrentItem
+{
+    _data->_page->recordNavigationSnapshot();
+}
 
 - (void)_registerDraggedTypes
 {
@@ -3169,7 +3243,7 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     // pending did-update message now, such that the new update can be sent. We do so after setting
     // the drawing area size such that the latest update is sent.
     if (DrawingAreaProxy* drawingArea = _data->_page->drawingArea())
-        drawingArea->waitForPossibleGeometryUpdate(0);
+        drawingArea->waitForPossibleGeometryUpdate(std::chrono::milliseconds::zero());
 }
 
 - (void)waitForAsyncDrawingAreaSizeUpdate
@@ -3178,8 +3252,8 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
         // If a geometry update is still pending then the action of receiving the
         // first geometry update may result in another update being scheduled -
         // we should wait for this to complete too.
-        drawingArea->waitForPossibleGeometryUpdate(DrawingAreaProxy::didUpdateBackingStoreStateTimeout * 0.5);
-        drawingArea->waitForPossibleGeometryUpdate(DrawingAreaProxy::didUpdateBackingStoreStateTimeout * 0.5);
+        drawingArea->waitForPossibleGeometryUpdate(DrawingAreaProxy::didUpdateBackingStoreStateTimeout() / 2);
+        drawingArea->waitForPossibleGeometryUpdate(DrawingAreaProxy::didUpdateBackingStoreStateTimeout() / 2);
     }
 }
 
@@ -3189,14 +3263,6 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
         return drawingArea->type() == DrawingAreaTypeRemoteLayerTree;
 
     return NO;
-}
-
-- (void)_ensureGestureController
-{
-    if (_data->_gestureController)
-        return;
-
-    _data->_gestureController = std::make_unique<ViewGestureController>(*_data->_page);
 }
 
 - (void)setAllowsMagnification:(BOOL)allowsMagnification
@@ -3209,6 +3275,18 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     return _data->_allowsMagnification;
 }
 
+- (void)setAllowsBackForwardNavigationGestures:(BOOL)allowsBackForwardNavigationGestures
+{
+    _data->_allowsBackForwardNavigationGestures = allowsBackForwardNavigationGestures;
+    _data->_page->setShouldRecordNavigationSnapshots(allowsBackForwardNavigationGestures);
+    _data->_page->setShouldUseImplicitRubberBandControl(allowsBackForwardNavigationGestures);
+}
+
+- (BOOL)allowsBackForwardNavigationGestures
+{
+    return _data->_allowsBackForwardNavigationGestures;
+}
+
 - (void)magnifyWithEvent:(NSEvent *)event
 {
     if (!_data->_allowsMagnification) {
@@ -3219,6 +3297,18 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     [self _ensureGestureController];
 
     _data->_gestureController->handleMagnificationGesture(event.magnification, [self convertPoint:event.locationInWindow fromView:nil]);
+}
+
+- (void)smartMagnifyWithEvent:(NSEvent *)event
+{
+    if (!_data->_allowsMagnification) {
+        [super smartMagnifyWithEvent:event];
+        return;
+    }
+
+    [self _ensureGestureController];
+
+    _data->_gestureController->handleSmartMagnificationGesture([self convertPoint:event.locationInWindow fromView:nil]);
 }
 
 -(void)endGestureWithEvent:(NSEvent *)event
@@ -3248,6 +3338,20 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
         return _data->_gestureController->magnification();
 
     return _data->_page->pageScaleFactor();
+}
+
+- (void)_setCustomSwipeViews:(NSArray *)customSwipeViews
+{
+    if (!customSwipeViews.count && !_data->_gestureController)
+        return;
+
+    [self _ensureGestureController];
+
+    Vector<RetainPtr<NSView>> views;
+    for (NSView *view in customSwipeViews)
+        views.append(view);
+
+    _data->_gestureController->setCustomSwipeViews(views);
 }
 
 @end

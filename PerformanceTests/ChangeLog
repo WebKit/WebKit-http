@@ -1,3 +1,493 @@
+2014-01-17  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [CSS Regions] Minor fixes in regions performance tests
+        https://bugs.webkit.org/show_bug.cgi?id=127041
+
+        Reviewed by Ryosuke Niwa.
+
+        Fix minor issues in CSS Regions performance tests.
+
+        * Layout/RegionsAuto.html: Change type to lower case.
+        * Layout/RegionsAutoMaxHeight.html: Ditto.
+        * Layout/RegionsFixed.html: Ditto.
+        * Layout/RegionsFixedShort.html: Ditto.
+        * Layout/RegionsSelection.html: Ditto. Move test methods from regions.js.
+        * Layout/resources/regions.js: Remove moved methods.
+
+2014-01-17  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Host DoYouEvenBench on webkit.org
+        https://bugs.webkit.org/show_bug.cgi?id=127185
+
+        Reviewed by Benjamin Poulain.
+
+        Compute the resources directory relative to the benchmark-runner's location
+        so that we can load tests even if the runner HTML was located elsewhere.
+
+        * DoYouEvenBench/Full.html:
+        * DoYouEvenBench/resources/benchmark-runner.js:
+        (BenchmarkState._containingDirectory):
+
+2014-01-17  Ryosuke Niwa  <rniwa@webkit.org>
+
+        DoYouEvenBench: Move flightjs-example-app and todomvc into resources
+        https://bugs.webkit.org/show_bug.cgi?id=127183
+
+        Rubber-stamped by Anders Carlsson.
+
+        * DoYouEvenBench/InteractiveRunner.html: Copied from PerformanceTests/DoYouEvenBench/benchmark.html.
+        * DoYouEvenBench/benchmark.html: Removed.
+        * DoYouEvenBench/flightjs-example-app: Removed.
+        * DoYouEvenBench/flightjs-example-app/LICENSE.md: Removed.
+        * DoYouEvenBench/flightjs-example-app/README.md: Removed.
+        * DoYouEvenBench/flightjs-example-app/app: Removed.
+        * DoYouEvenBench/flightjs-example-app/app/boot: Removed.
+        * DoYouEvenBench/flightjs-example-app/app/boot/page.js: Removed.
+        * DoYouEvenBench/flightjs-example-app/app/component_data: Removed.
+        * DoYouEvenBench/flightjs-example-app/app/component_data/compose_box.js: Removed.
+        * DoYouEvenBench/flightjs-example-app/app/component_data/mail_items.js: Removed.
+        * DoYouEvenBench/flightjs-example-app/app/component_data/move_to.js: Removed.
+        * DoYouEvenBench/flightjs-example-app/app/component_ui: Removed.
+        * DoYouEvenBench/flightjs-example-app/app/component_ui/compose_box.js: Removed.
+        * DoYouEvenBench/flightjs-example-app/app/component_ui/folders.js: Removed.
+        * DoYouEvenBench/flightjs-example-app/app/component_ui/mail_controls.js: Removed.
+        * DoYouEvenBench/flightjs-example-app/app/component_ui/mail_items.js: Removed.
+        * DoYouEvenBench/flightjs-example-app/app/component_ui/move_to_selector.js: Removed.
+        * DoYouEvenBench/flightjs-example-app/app/component_ui/with_select.js: Removed.
+        * DoYouEvenBench/flightjs-example-app/app/css: Removed.
+        * DoYouEvenBench/flightjs-example-app/app/css/custom.css: Removed.
+        * DoYouEvenBench/flightjs-example-app/app/data.js: Removed.
+        * DoYouEvenBench/flightjs-example-app/app/templates.js: Removed.
+        * DoYouEvenBench/flightjs-example-app/components: Removed.
+        * DoYouEvenBench/flightjs-example-app/components/bootstrap: Removed.
+        * DoYouEvenBench/flightjs-example-app/components/bootstrap/css: Removed.
+        * DoYouEvenBench/flightjs-example-app/components/bootstrap/css/bootstrap-responsive.css: Removed.
+        * DoYouEvenBench/flightjs-example-app/components/bootstrap/css/bootstrap-responsive.min.css: Removed.
+        * DoYouEvenBench/flightjs-example-app/components/bootstrap/css/bootstrap.css: Removed.
+        * DoYouEvenBench/flightjs-example-app/components/bootstrap/css/bootstrap.min.css: Removed.
+        * DoYouEvenBench/flightjs-example-app/components/bootstrap/img: Removed.
+        * DoYouEvenBench/flightjs-example-app/components/bootstrap/img/glyphicons-halflings-white.png: Removed.
+        * DoYouEvenBench/flightjs-example-app/components/bootstrap/img/glyphicons-halflings.png: Removed.
+        * DoYouEvenBench/flightjs-example-app/components/bootstrap/js: Removed.
+        * DoYouEvenBench/flightjs-example-app/components/bootstrap/js/bootstrap.js: Removed.
+        * DoYouEvenBench/flightjs-example-app/components/bootstrap/js/bootstrap.min.js: Removed.
+        * DoYouEvenBench/flightjs-example-app/components/es5-shim: Removed.
+        * DoYouEvenBench/flightjs-example-app/components/es5-shim/.gitignore: Removed.
+        * DoYouEvenBench/flightjs-example-app/components/es5-shim/CHANGES: Removed.
+        * DoYouEvenBench/flightjs-example-app/components/es5-shim/CONTRIBUTORS.md: Removed.
+        * DoYouEvenBench/flightjs-example-app/components/es5-shim/LICENSE: Removed.
+        * DoYouEvenBench/flightjs-example-app/components/es5-shim/README.md: Removed.
+        * DoYouEvenBench/flightjs-example-app/components/es5-shim/component.json: Removed.
+        * DoYouEvenBench/flightjs-example-app/components/es5-shim/es5-sham.js: Removed.
+        * DoYouEvenBench/flightjs-example-app/components/es5-shim/es5-sham.min.js: Removed.
+        * DoYouEvenBench/flightjs-example-app/components/es5-shim/es5-shim.js: Removed.
+        * DoYouEvenBench/flightjs-example-app/components/es5-shim/es5-shim.min.js: Removed.
+        * DoYouEvenBench/flightjs-example-app/components/es5-shim/package.json: Removed.
+        * DoYouEvenBench/flightjs-example-app/components/es5-shim/tests: Removed.
+        * DoYouEvenBench/flightjs-example-app/components/es5-shim/tests/helpers: Removed.
+        * DoYouEvenBench/flightjs-example-app/components/es5-shim/tests/helpers/h-kill.js: Removed.
+        * DoYouEvenBench/flightjs-example-app/components/es5-shim/tests/helpers/h-matchers.js: Removed.
+        * DoYouEvenBench/flightjs-example-app/components/es5-shim/tests/helpers/h.js: Removed.
+        * DoYouEvenBench/flightjs-example-app/components/es5-shim/tests/index.html: Removed.
+        * DoYouEvenBench/flightjs-example-app/components/es5-shim/tests/lib: Removed.
+        * DoYouEvenBench/flightjs-example-app/components/es5-shim/tests/lib/jasmine-html.js: Removed.
+        * DoYouEvenBench/flightjs-example-app/components/es5-shim/tests/lib/jasmine.css: Removed.
+        * DoYouEvenBench/flightjs-example-app/components/es5-shim/tests/lib/jasmine.js: Removed.
+        * DoYouEvenBench/flightjs-example-app/components/es5-shim/tests/lib/jasmine_favicon.png: Removed.
+        * DoYouEvenBench/flightjs-example-app/components/es5-shim/tests/lib/json2.js: Removed.
+        * DoYouEvenBench/flightjs-example-app/components/es5-shim/tests/spec: Removed.
+        * DoYouEvenBench/flightjs-example-app/components/es5-shim/tests/spec/s-array.js: Removed.
+        * DoYouEvenBench/flightjs-example-app/components/es5-shim/tests/spec/s-date.js: Removed.
+        * DoYouEvenBench/flightjs-example-app/components/es5-shim/tests/spec/s-function.js: Removed.
+        * DoYouEvenBench/flightjs-example-app/components/es5-shim/tests/spec/s-object.js: Removed.
+        * DoYouEvenBench/flightjs-example-app/components/es5-shim/tests/spec/s-string.js: Removed.
+        * DoYouEvenBench/flightjs-example-app/components/flight: Removed.
+        * DoYouEvenBench/flightjs-example-app/components/flight/.travis.yml: Removed.
+        * DoYouEvenBench/flightjs-example-app/components/flight/lib: Removed.
+        * DoYouEvenBench/flightjs-example-app/components/flight/lib/advice.js: Removed.
+        * DoYouEvenBench/flightjs-example-app/components/flight/lib/component.js: Removed.
+        * DoYouEvenBench/flightjs-example-app/components/flight/lib/compose.js: Removed.
+        * DoYouEvenBench/flightjs-example-app/components/flight/lib/index.js: Removed.
+        * DoYouEvenBench/flightjs-example-app/components/flight/lib/logger.js: Removed.
+        * DoYouEvenBench/flightjs-example-app/components/flight/lib/registry.js: Removed.
+        * DoYouEvenBench/flightjs-example-app/components/flight/lib/utils.js: Removed.
+        * DoYouEvenBench/flightjs-example-app/components/flight/tools: Removed.
+        * DoYouEvenBench/flightjs-example-app/components/flight/tools/debug: Removed.
+        * DoYouEvenBench/flightjs-example-app/components/flight/tools/debug/debug.js: Removed.
+        * DoYouEvenBench/flightjs-example-app/components/jasmine-flight: Removed.
+        * DoYouEvenBench/flightjs-example-app/components/jasmine-flight/LICENSE.md: Removed.
+        * DoYouEvenBench/flightjs-example-app/components/jasmine-flight/README.md: Removed.
+        * DoYouEvenBench/flightjs-example-app/components/jasmine-flight/bower.json: Removed.
+        * DoYouEvenBench/flightjs-example-app/components/jasmine-flight/lib: Removed.
+        * DoYouEvenBench/flightjs-example-app/components/jasmine-flight/lib/jasmine-flight.js: Removed.
+        * DoYouEvenBench/flightjs-example-app/components/jasmine-jquery: Removed.
+        * DoYouEvenBench/flightjs-example-app/components/jasmine-jquery/lib: Removed.
+        * DoYouEvenBench/flightjs-example-app/components/jasmine-jquery/lib/jasmine-jquery.js: Removed.
+        * DoYouEvenBench/flightjs-example-app/components/jquery: Removed.
+        * DoYouEvenBench/flightjs-example-app/components/jquery/component.json: Removed.
+        * DoYouEvenBench/flightjs-example-app/components/jquery/composer.json: Removed.
+        * DoYouEvenBench/flightjs-example-app/components/jquery/jquery.js: Removed.
+        * DoYouEvenBench/flightjs-example-app/components/jquery/jquery.min.js: Removed.
+        * DoYouEvenBench/flightjs-example-app/components/mustache: Removed.
+        * DoYouEvenBench/flightjs-example-app/components/mustache/mustache.js: Removed.
+        * DoYouEvenBench/flightjs-example-app/components/requirejs: Removed.
+        * DoYouEvenBench/flightjs-example-app/components/requirejs/require.js: Removed.
+        * DoYouEvenBench/flightjs-example-app/index.html: Removed.
+        * DoYouEvenBench/flightjs-example-app/karma.conf.js: Removed.
+        * DoYouEvenBench/flightjs-example-app/package.json: Removed.
+        * DoYouEvenBench/flightjs-example-app/requireMain.js: Removed.
+        * DoYouEvenBench/resources/benchmark-runner.js:
+        * DoYouEvenBench/resources/flightjs-example-app: Copied from PerformanceTests/DoYouEvenBench/flightjs-example-app.
+        * DoYouEvenBench/resources/todomvc: Copied from PerformanceTests/DoYouEvenBench/todomvc.
+        * DoYouEvenBench/todomvc: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/angularjs: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/angularjs/bower.json: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/angularjs/bower_components: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/angularjs/bower_components/angular: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/angularjs/bower_components/angular-mocks: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/angularjs/bower_components/angular-mocks/angular-mocks.js: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/angularjs/bower_components/angular/angular.js: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/angularjs/bower_components/todomvc-common: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/angularjs/bower_components/todomvc-common/base.css: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/angularjs/bower_components/todomvc-common/base.js: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/angularjs/bower_components/todomvc-common/bg.png: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/angularjs/index.html: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/angularjs/js: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/angularjs/js/app.js: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/angularjs/js/controllers: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/angularjs/js/controllers/todoCtrl.js: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/angularjs/js/directives: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/angularjs/js/directives/todoBlur.js: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/angularjs/js/directives/todoEscape.js: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/angularjs/js/directives/todoFocus.js: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/angularjs/js/services: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/angularjs/js/services/todoStorage.js: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/angularjs/readme.md: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/angularjs/test: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/angularjs/test/config: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/angularjs/test/config/testacular.conf.js: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/angularjs/test/package.json: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/angularjs/test/readme.md: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/angularjs/test/unit: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/angularjs/test/unit/directivesSpec.js: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/angularjs/test/unit/todoCtrlSpec.js: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/backbone: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/backbone/bower.json: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/backbone/bower_components: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/backbone/bower_components/backbone: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/backbone/bower_components/backbone.localStorage: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/backbone/bower_components/backbone.localStorage/backbone.localStorage.js: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/backbone/bower_components/backbone/backbone.js: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/backbone/bower_components/jquery: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/backbone/bower_components/jquery/jquery.js: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/backbone/bower_components/todomvc-common: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/backbone/bower_components/todomvc-common/base.css: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/backbone/bower_components/todomvc-common/base.js: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/backbone/bower_components/todomvc-common/bg.png: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/backbone/bower_components/underscore: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/backbone/bower_components/underscore/underscore.js: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/backbone/index.html: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/backbone/js: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/backbone/js/app.js: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/backbone/js/collections: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/backbone/js/collections/todos.js: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/backbone/js/models: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/backbone/js/models/todo.js: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/backbone/js/routers: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/backbone/js/routers/router.js: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/backbone/js/views: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/backbone/js/views/app-view.js: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/backbone/js/views/todo-view.js: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/backbone/readme.md: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/emberjs: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/emberjs/bower.json: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/emberjs/bower_components: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/emberjs/bower_components/ember: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/emberjs/bower_components/ember-localstorage-adapter: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/emberjs/bower_components/ember-localstorage-adapter/localstorage_adapter.js: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/emberjs/bower_components/ember/ember.js: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/emberjs/bower_components/handlebars: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/emberjs/bower_components/handlebars/handlebars.js: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/emberjs/bower_components/jquery: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/emberjs/bower_components/jquery/jquery.js: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/emberjs/bower_components/todomvc-common: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/emberjs/bower_components/todomvc-common/base.css: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/emberjs/bower_components/todomvc-common/base.js: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/emberjs/bower_components/todomvc-common/bg.png: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/emberjs/index.html: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/emberjs/js: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/emberjs/js/app.js: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/emberjs/js/controllers: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/emberjs/js/controllers/todo_controller.js: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/emberjs/js/controllers/todos_controller.js: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/emberjs/js/libs: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/emberjs/js/libs/ember-data.js: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/emberjs/js/models: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/emberjs/js/models/store.js: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/emberjs/js/models/todo.js: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/emberjs/js/router.js: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/emberjs/js/views: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/emberjs/js/views/edit_todo_view.js: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/emberjs/readme.md: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/emberjs/test.html: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/jquery: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/jquery/bower.json: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/jquery/bower_components: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/jquery/bower_components/handlebars: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/jquery/bower_components/handlebars/handlebars.js: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/jquery/bower_components/jquery: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/jquery/bower_components/jquery/jquery.js: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/jquery/bower_components/todomvc-common: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/jquery/bower_components/todomvc-common/base.css: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/jquery/bower_components/todomvc-common/base.js: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/jquery/bower_components/todomvc-common/bg.png: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/jquery/css: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/jquery/css/app.css: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/jquery/index.html: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/jquery/js: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/jquery/js/app.js: Removed.
+        * DoYouEvenBench/todomvc/architecture-examples/jquery/readme.md: Removed.
+        * DoYouEvenBench/todomvc/labs: Removed.
+        * DoYouEvenBench/todomvc/labs/architecture-examples: Removed.
+        * DoYouEvenBench/todomvc/labs/architecture-examples/react: Removed.
+        * DoYouEvenBench/todomvc/labs/architecture-examples/react/bower.json: Removed.
+        * DoYouEvenBench/todomvc/labs/architecture-examples/react/bower_components: Removed.
+        * DoYouEvenBench/todomvc/labs/architecture-examples/react/bower_components/director: Removed.
+        * DoYouEvenBench/todomvc/labs/architecture-examples/react/bower_components/director/LICENSE: Removed.
+        * DoYouEvenBench/todomvc/labs/architecture-examples/react/bower_components/director/README.md: Removed.
+        * DoYouEvenBench/todomvc/labs/architecture-examples/react/bower_components/director/build: Removed.
+        * DoYouEvenBench/todomvc/labs/architecture-examples/react/bower_components/director/build/director.js: Removed.
+        * DoYouEvenBench/todomvc/labs/architecture-examples/react/bower_components/director/build/director.min.js: Removed.
+        * DoYouEvenBench/todomvc/labs/architecture-examples/react/bower_components/director/build/ender.js: Removed.
+        * DoYouEvenBench/todomvc/labs/architecture-examples/react/bower_components/react: Removed.
+        * DoYouEvenBench/todomvc/labs/architecture-examples/react/bower_components/react/JSXTransformer.js: Removed.
+        * DoYouEvenBench/todomvc/labs/architecture-examples/react/bower_components/react/bower.json: Removed.
+        * DoYouEvenBench/todomvc/labs/architecture-examples/react/bower_components/react/react.js: Removed.
+        * DoYouEvenBench/todomvc/labs/architecture-examples/react/bower_components/react/react.min.js: Removed.
+        * DoYouEvenBench/todomvc/labs/architecture-examples/react/bower_components/todomvc-common: Removed.
+        * DoYouEvenBench/todomvc/labs/architecture-examples/react/bower_components/todomvc-common/base.css: Removed.
+        * DoYouEvenBench/todomvc/labs/architecture-examples/react/bower_components/todomvc-common/base.js: Removed.
+        * DoYouEvenBench/todomvc/labs/architecture-examples/react/bower_components/todomvc-common/bg.png: Removed.
+        * DoYouEvenBench/todomvc/labs/architecture-examples/react/index.html: Removed.
+        * DoYouEvenBench/todomvc/labs/architecture-examples/react/js: Removed.
+        * DoYouEvenBench/todomvc/labs/architecture-examples/react/js/app.jsx: Removed.
+        * DoYouEvenBench/todomvc/labs/architecture-examples/react/js/footer.jsx: Removed.
+        * DoYouEvenBench/todomvc/labs/architecture-examples/react/js/todoItem.jsx: Removed.
+        * DoYouEvenBench/todomvc/labs/architecture-examples/react/js/utils.jsx: Removed.
+        * DoYouEvenBench/todomvc/labs/architecture-examples/react/readme.md: Removed.
+        * DoYouEvenBench/todomvc/license.md: Removed.
+        * DoYouEvenBench/todomvc/readme.md: Removed.
+        * DoYouEvenBench/todomvc/vanilla-examples: Removed.
+        * DoYouEvenBench/todomvc/vanilla-examples/vanillajs: Removed.
+        * DoYouEvenBench/todomvc/vanilla-examples/vanillajs/bower.json: Removed.
+        * DoYouEvenBench/todomvc/vanilla-examples/vanillajs/bower_components: Removed.
+        * DoYouEvenBench/todomvc/vanilla-examples/vanillajs/bower_components/todomvc-common: Removed.
+        * DoYouEvenBench/todomvc/vanilla-examples/vanillajs/bower_components/todomvc-common/base.css: Removed.
+        * DoYouEvenBench/todomvc/vanilla-examples/vanillajs/bower_components/todomvc-common/base.js: Removed.
+        * DoYouEvenBench/todomvc/vanilla-examples/vanillajs/bower_components/todomvc-common/bg.png: Removed.
+        * DoYouEvenBench/todomvc/vanilla-examples/vanillajs/index.html: Removed.
+        * DoYouEvenBench/todomvc/vanilla-examples/vanillajs/js: Removed.
+        * DoYouEvenBench/todomvc/vanilla-examples/vanillajs/js/app.js: Removed.
+        * DoYouEvenBench/todomvc/vanilla-examples/vanillajs/js/controller.js: Removed.
+        * DoYouEvenBench/todomvc/vanilla-examples/vanillajs/js/helpers.js: Removed.
+        * DoYouEvenBench/todomvc/vanilla-examples/vanillajs/js/model.js: Removed.
+        * DoYouEvenBench/todomvc/vanilla-examples/vanillajs/js/store.js: Removed.
+        * DoYouEvenBench/todomvc/vanilla-examples/vanillajs/js/view.js: Removed.
+        * DoYouEvenBench/todomvc/vanilla-examples/vanillajs/readme.md: Removed.
+        * Skipped:
+
+2014-01-17  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Build fix. Skip HTML files that are not tests.
+
+        * Skipped:
+
+2014-01-16  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Automate DoYouEvenBench
+        https://bugs.webkit.org/show_bug.cgi?id=124497
+
+        Reviewed by Geoffrey Garen.
+
+        Enable DoYouEvenBench/Full.html on perf bots by default.
+
+        Put a space between the time and ms, and fixed a typo in runner.js so that the aggregator name will be reported.
+
+        * DoYouEvenBench/Full.html:
+        * Skipped:
+        * resources/runner.js:
+
+2014-01-15  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [CSS Regions] Add performance tests for selection with mixed content
+        https://bugs.webkit.org/show_bug.cgi?id=126427
+
+        Reviewed by Ryosuke Niwa.
+
+        Add new performance tests for selection in CSS Regions mixing regular
+        content with regions. 2 new tests are added, one checking select all
+        command and another simulating a user selection passing through all the
+        paragraphs (similar to Layout/RegionsSelection.html).
+
+        Test are skipped for now while implementation of selection in CSS
+        Regions is still evolving.
+
+        * Layout/RegionsExtendingSelectionMixedContent.html: Added.
+        * Layout/RegionsSelectAllMixedContent.html: Added.
+        * Layout/resources/regions.css:
+        (.regular):
+        * Layout/resources/regions.js:
+        * Skipped:
+
+2014-01-14  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Make DoYouEvenBench runnable by run-perf-tests
+        https://bugs.webkit.org/show_bug.cgi?id=127030
+
+        Reviewed by Andreas Kling.
+
+        Added Full.html that runs 5 iterations of DoYouEvenBench. This is the canonical DoYouEvenBench,
+        which is also runnable by run-perf-tests.
+
+        * DoYouEvenBench/Full.html: Added.
+
+        * DoYouEvenBench/benchmark.html:
+        (startTest): Updated the code to account for the fact old measuredValues is pushed down to tests
+        property and we now have total property so that we don't have to manually compute the total.
+
+        * DoYouEvenBench/resources/benchmark-report.js: Added. When we're inside a DRT/WTR, use
+        PerfTestRunner to output that can be parsed by run-perf-tests. Do the same when the query part
+        or the fragment part of the current URL is "webkit" for debugging purposes.
+
+        * DoYouEvenBench/resources/benchmark-runner.js:
+        (BenchmarkRunner):
+        (BenchmarkRunner.prototype._appendFrame): Position the frame at (0, 0) inside DRT and WTR since
+        we have exactly 800px by 600px inside those two test runners. Also always insert the iframe as
+        the first child of body to avoid inserting it after the pre inserted by the test runner.
+        (BenchmarkRunner.prototype.step): Initializes _measuredValues.
+        (BenchmarkRunner.prototype.runAllSteps): Merged callNextStep in benchmark.html.
+        (BenchmarkRunner.prototype.runMultipleIterations): Added.
+        (BenchmarkRunner.prototype._runTestAndRecordResults): Compute the grand total among suites.
+        Also push down the sync and async time into tests property for consistency.
+        (BenchmarkRunner.prototype._finalize):
+
+        * Dromaeo/resources/dromaeorunner.js:
+        (DRT.testObject): Renamed dromaeoIterationCount to customIterationCount as this option is also
+        used by DoYouEvenBench.
+
+        * resources/runner.js: Ditto.
+        (.finish): Spit out the aggregator name.
+
+2014-01-07  Ryosuke Niwa  <rniwa@webkit.org>
+
+        DoYouEvenBench: Turn BenchmarkRunner into a real class
+        https://bugs.webkit.org/show_bug.cgi?id=126613
+
+        Reviewed by Stephanie Lewis.
+
+        Made BenchmarkRunner an instantiatable class. Made tests.js simply create an array of suite objects
+        instead of calling BenchmarkRunner.Suite now that we can have mulitple instances of BenchmarkRunner.
+
+        * DoYouEvenBench/benchmark.html:
+        (formatTestName): Moved and renamed from BenchmarkRunner._testName.
+        (createUIForSuites): Extracted from a giant blob of code.
+        (startTest): Ditto.
+        * DoYouEvenBench/resources/benchmark-runner.js:
+        (BenchmarkRunner): Added.
+        (BenchmarkRunner.prototype.waitForElement):
+        (BenchmarkRunner.prototype._removeFrame):
+        (BenchmarkRunner.prototype._appendFrame):
+        (BenchmarkRunner.prototype._waitAndWarmUp):
+        (BenchmarkRunner.prototype._runTest):
+        (BenchmarkState.prototype.prepareCurrentSuite):
+        (BenchmarkRunner.prototype.step):
+        (BenchmarkRunner.prototype._runTestAndRecordResults):
+        (BenchmarkRunner.prototype._finalize):
+        * DoYouEvenBench/resources/tests.js:
+
+2014-01-07  Ryosuke Niwa  <rniwa@webkit.org>
+
+        DoYouEvenBench: Extract tests and runner code from benchmark.js/html
+        https://bugs.webkit.org/show_bug.cgi?id=126596
+
+        Reviewed by Stephanie Lewis.
+        
+        Extracted benchmark-runner.js and tests.js out of benchmark.js and benchmark.html.
+
+        Added a "client" interface to BenchmarkRunner so that benchmark.html could register necessary hooks to
+        update its UI. Also made BenchmarkRunner store a tree of results so that the serialization of test names
+        could be isolated from BenchmarkRunner itself in the future.
+
+        * DoYouEvenBench/benchmark.html:
+        Moved the code to instantiate and update UI here from benchmark.js. The test code was moved out of this
+        file into resources/tests.js.
+
+        * DoYouEvenBench/resources/benchmark-runner.js: Renamed from PerformanceTests/DoYouEvenBench/benchmark.js.
+        (SimplePromise): Moved from benchmark.js
+        (SimplePromise.prototype.then): Ditto.
+        (SimplePromise.prototype.resolve): Ditto.
+        (BenchmarkTestStep): Added. Wraps each test step.
+        (BenchmarkRunner.suite): Moved from benchmark.js.
+        (BenchmarkRunner.setClient): Added.
+        (BenchmarkRunner.waitForElement): Moved.
+        (BenchmarkRunner._removeFrame): Ditto.
+        (BenchmarkRunner._appendFrame): Ditto. Set the width and the height of the iframe as they're more than
+        presentational as they affect performance.
+        (BenchmarkRunner._waitAndWarmUp): Ditto.
+        (BenchmarkRunner._runTest): Ditto.
+        (BenchmarkRunner._testName): Ditto.
+        (BenchmarkState): Ditto.
+        (BenchmarkState.prototype.currentSuite): Ditto.
+        (BenchmarkState.prototype.currentTest): Ditto.
+        (BenchmarkState.prototype.next): Ditto.
+        (BenchmarkState.prototype.isFirstTest): Ditto.
+        (BenchmarkState.prototype.prepareCurrentSuite): Ditto.
+        (BenchmarkRunner.step): Ditto.
+        (BenchmarkRunner._runTestAndRecordResults): Ditto. Note the code to update the UI has been move to
+        benchmark.html. Also moved the code to accumulate the totals here from _finalize.
+        (BenchmarkRunner._finalize): Moved. 
+
+        * DoYouEvenBench/resources/tests.js: Copied from PerformanceTests/DoYouEvenBench/benchmark.html.
+        Uses BenchmarkTestStep instead of an array for each test step.
+
+2014-01-02  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Allow ImageBuffer to re-use IOSurfaces
+        https://bugs.webkit.org/show_bug.cgi?id=125477
+
+        Reviewed by Geoff Garen. 
+
+        This test times creating a variety of different sizes of canvases 
+        once some have already been created. The second creation of the 
+        canvases should re-use the existing IOSurfaces. 
+        
+        * Canvas/reuse.html: Added.
+
+2013-12-23  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r160945.
+        http://trac.webkit.org/changeset/160945
+        https://bugs.webkit.org/show_bug.cgi?id=126164
+
+        Seems to have broken multiple canvas tests (Requested by ap on
+        #webkit).
+
+        * Canvas/reuse.html: Removed.
+
+2013-12-09  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Allow ImageBuffer to re-use IOSurfaces
+        https://bugs.webkit.org/show_bug.cgi?id=125477
+
+        Reviewed by Geoff Garen.
+
+        This test times creating a variety of different sizes of canvases
+        once some have already been created. The second creation of the
+        canvases should re-use the existing IOSurfaces.
+
+        * Canvas/reuse.html: Added.
+
 2013-12-15  Ryosuke Niwa  <rniwa@webkit.org>
 
         REGRESSION: 2x regression on Dromaeo DOM query tests

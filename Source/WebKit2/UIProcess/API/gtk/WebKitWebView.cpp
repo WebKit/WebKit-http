@@ -61,8 +61,8 @@
 #include <JavaScriptCore/APICast.h>
 #include <WebCore/CertificateInfo.h>
 #include <WebCore/DragIcon.h>
-#include <WebCore/GOwnPtrGtk.h>
-#include <WebCore/GOwnPtrSoup.h>
+#include <WebCore/GUniquePtrGtk.h>
+#include <WebCore/GUniquePtrSoup.h>
 #include <WebCore/GtkUtilities.h>
 #include <WebCore/RefPtrCairo.h>
 #include <glib/gi18n-lib.h>
@@ -212,7 +212,7 @@ static gboolean webkitWebViewLoadFail(WebKitWebView* webView, WebKitLoadEvent, c
         || g_error_matches(error, WEBKIT_PLUGIN_ERROR, WEBKIT_PLUGIN_ERROR_WILL_HANDLE_LOAD))
         return FALSE;
 
-    GOwnPtr<char> htmlString(g_strdup_printf("<html><body>%s</body></html>", error->message));
+    GUniquePtr<char> htmlString(g_strdup_printf("<html><body>%s</body></html>", error->message));
     webkit_web_view_load_alternate_html(webView, htmlString.get(), failingURI, 0);
 
     return TRUE;
@@ -228,7 +228,7 @@ static GtkWidget* webkitWebViewCreateJavaScriptDialog(WebKitWebView* webView, Gt
     GtkWidget* parent = gtk_widget_get_toplevel(GTK_WIDGET(webView));
     GtkWidget* dialog = gtk_message_dialog_new(widgetIsOnscreenToplevelWindow(parent) ? GTK_WINDOW(parent) : 0,
                                                GTK_DIALOG_DESTROY_WITH_PARENT, type, buttons, "%s", message);
-    GOwnPtr<char> title(g_strdup_printf("JavaScript - %s", webkit_web_view_get_uri(webView)));
+    GUniquePtr<char> title(g_strdup_printf("JavaScript - %s", webkit_web_view_get_uri(webView)));
     gtk_window_set_title(GTK_WINDOW(dialog), title.get());
     gtk_dialog_set_default_response(GTK_DIALOG(dialog), defaultResponse);
 
@@ -279,7 +279,7 @@ static gboolean webkitWebViewDecidePolicy(WebKitWebView* webView, WebKitPolicyDe
         return TRUE;
     }
 
-    if (webkit_web_view_can_show_mime_type(webView, webkit_uri_response_get_mime_type(response)))
+    if (webkit_response_policy_decision_is_mime_type_supported(WEBKIT_RESPONSE_POLICY_DECISION(decision)))
         webkit_policy_decision_use(decision);
     else
         webkit_policy_decision_ignore(decision);
@@ -450,7 +450,7 @@ static void fileChooserDialogResponseCallback(GtkDialog* dialog, gint responseID
 {
     GRefPtr<WebKitFileChooserRequest> adoptedRequest = adoptGRef(request);
     if (responseID == GTK_RESPONSE_ACCEPT) {
-        GOwnPtr<GSList> filesList(gtk_file_chooser_get_filenames(GTK_FILE_CHOOSER(dialog)));
+        GUniquePtr<GSList> filesList(gtk_file_chooser_get_filenames(GTK_FILE_CHOOSER(dialog)));
         GRefPtr<GPtrArray> filesArray = adoptGRef(g_ptr_array_new());
         for (GSList* file = filesList.get(); file; file = g_slist_next(file))
             g_ptr_array_add(filesArray.get(), file->data);
@@ -1517,7 +1517,7 @@ void webkitWebViewLoadChanged(WebKitWebView* webView, WebKitLoadEvent loadEvent)
         priv->waitingForMainResource = false;
     } else if (loadEvent == WEBKIT_LOAD_COMMITTED) {
         WebKitFaviconDatabase* database = webkit_web_context_get_favicon_database(priv->context);
-        GOwnPtr<char> faviconURI(webkit_favicon_database_get_favicon_uri(database, priv->activeURI.data()));
+        GUniquePtr<char> faviconURI(webkit_favicon_database_get_favicon_uri(database, priv->activeURI.data()));
         webkitWebViewUpdateFaviconURI(webView, faviconURI.get());
 
         if (!priv->mainResource) {
@@ -1552,7 +1552,7 @@ void webkitWebViewLoadFailedWithTLSErrors(WebKitWebView* webView, const char* fa
 
     WebKitTLSErrorsPolicy tlsErrorsPolicy = webkit_web_context_get_tls_errors_policy(webView->priv->context);
     if (tlsErrorsPolicy == WEBKIT_TLS_ERRORS_POLICY_FAIL) {
-        GOwnPtr<SoupURI> soupURI(soup_uri_new(failingURI));
+        GUniquePtr<SoupURI> soupURI(soup_uri_new(failingURI));
         WebKitCertificateInfo info(certificate, tlsErrors);
         gboolean returnValue;
         g_signal_emit(webView, signals[LOAD_FAILED_WITH_TLS_ERRORS], 0, &info, soupURI->host, &returnValue);
@@ -1678,12 +1678,12 @@ void webkitWebViewMouseTargetChanged(WebKitWebView* webView, WebHitTestResult* h
 void webkitWebViewPrintFrame(WebKitWebView* webView, WebFrameProxy* frame)
 {
     GRefPtr<WebKitPrintOperation> printOperation = adoptGRef(webkit_print_operation_new(webView));
+    webkitPrintOperationSetPrintMode(printOperation.get(), PrintInfo::PrintModeSync);
     gboolean returnValue;
     g_signal_emit(webView, signals[PRINT], 0, printOperation.get(), &returnValue);
     if (returnValue)
         return;
 
-    webkitPrintOperationSetPrintMode(printOperation.get(), PrintInfo::PrintModeSync);
     WebKitPrintOperationResponse response = webkitPrintOperationRunDialogForFrame(printOperation.get(), 0, frame);
     if (response == WEBKIT_PRINT_OPERATION_RESPONSE_CANCEL)
         return;
@@ -1815,7 +1815,7 @@ void webkitWebViewPopulateContextMenu(WebKitWebView* webView, API::Array* propos
         webkitWebViewCreateAndAppendInputMethodsMenuItem(webView, contextMenu.get());
 
     GRefPtr<WebKitHitTestResult> hitTestResult = adoptGRef(webkitHitTestResultCreate(webHitTestResult));
-    GOwnPtr<GdkEvent> contextMenuEvent(webkitWebViewBaseTakeContextMenuEvent(webViewBase));
+    GUniquePtr<GdkEvent> contextMenuEvent(webkitWebViewBaseTakeContextMenuEvent(webViewBase));
 
     gboolean returnValue;
     g_signal_emit(webView, signals[CONTEXT_MENU], 0, contextMenu.get(), contextMenuEvent.get(), hitTestResult.get(), &returnValue);
@@ -1945,7 +1945,7 @@ void webkit_web_view_load_uri(WebKitWebView* webView, const gchar* uri)
     g_return_if_fail(WEBKIT_IS_WEB_VIEW(webView));
     g_return_if_fail(uri);
 
-    getPage(webView)->loadURL(String::fromUTF8(uri));
+    getPage(webView)->loadRequest(String::fromUTF8(uri));
 }
 
 /**
@@ -2027,8 +2027,7 @@ void webkit_web_view_load_request(WebKitWebView* webView, WebKitURIRequest* requ
 
     ResourceRequest resourceRequest;
     webkitURIRequestGetResourceRequest(request, resourceRequest);
-    RefPtr<API::URLRequest> urlRequest = API::URLRequest::create(resourceRequest);
-    getPage(webView)->loadURLRequest(urlRequest.get());
+    getPage(webView)->loadRequest(resourceRequest);
 }
 
 /**
@@ -2156,7 +2155,7 @@ gboolean webkit_web_view_can_go_back(WebKitWebView* webView)
 {
     g_return_val_if_fail(WEBKIT_IS_WEB_VIEW(webView), FALSE);
 
-    return getPage(webView)->canGoBack();
+    return !!getPage(webView)->backForwardList().backItem();
 }
 
 /**
@@ -2186,7 +2185,7 @@ gboolean webkit_web_view_can_go_forward(WebKitWebView* webView)
 {
     g_return_val_if_fail(WEBKIT_IS_WEB_VIEW(webView), FALSE);
 
-    return getPage(webView)->canGoForward();
+    return !!getPage(webView)->backForwardList().forwardItem();
 }
 
 /**

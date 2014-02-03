@@ -241,8 +241,10 @@ IntSize ScrollView::unscaledVisibleContentSize(VisibleContentRectIncludesScrollb
     if (platformWidget())
         return platformVisibleContentSize(scrollbarInclusion == IncludeScrollbars);
 
+#if USE(TILED_BACKING_STORE)
     if (!m_fixedVisibleContentRect.isEmpty())
         return m_fixedVisibleContentRect.size();
+#endif
 
     int verticalScrollbarWidth = 0;
     int horizontalScrollbarHeight = 0;
@@ -254,18 +256,31 @@ IntSize ScrollView::unscaledVisibleContentSize(VisibleContentRectIncludesScrollb
             horizontalScrollbarHeight = !horizontalBar->isOverlayScrollbar() ? horizontalBar->height() : 0;
     }
 
-    return IntSize(std::max(0, width() - verticalScrollbarWidth),
-                   std::max(0, height() - horizontalScrollbarHeight));
+    return IntSize(width() - verticalScrollbarWidth, height() - horizontalScrollbarHeight).expandedTo(IntSize());
 }
 
 #if !PLATFORM(GTK)
-IntRect ScrollView::visibleContentRect(VisibleContentRectIncludesScrollbars scollbarInclusion) const
+IntRect ScrollView::visibleContentRectInternal(VisibleContentRectIncludesScrollbars scollbarInclusion, VisibleContentRectBehavior visibleContentRectBehavior) const
 {
+#if PLATFORM(IOS)
+    if (visibleContentRectBehavior == LegacyIOSDocumentViewRect) {
+        if (platformWidget())
+            return platformVisibleContentRect(true /* include scrollbars */);
+    }
+    
+    if (platformWidget())
+        return actualVisibleContentRect();
+#else
+    UNUSED_PARAM(visibleContentRectBehavior);
+#endif
+
     if (platformWidget())
         return platformVisibleContentRect(scollbarInclusion == IncludeScrollbars);
 
+#if USE(TILED_BACKING_STORE)
     if (!m_fixedVisibleContentRect.isEmpty())
         return m_fixedVisibleContentRect;
+#endif
 
     FloatSize visibleContentSize = unscaledVisibleContentSize(scollbarInclusion);
     visibleContentSize.scale(1 / visibleContentScaleFactor());
@@ -367,7 +382,7 @@ int ScrollView::scrollSize(ScrollbarOrientation orientation) const
 {
     // If no scrollbars are present, it does not indicate content is not be scrollable.
     if (!m_horizontalScrollbar && !m_verticalScrollbar && !prohibitsScrolling()) {
-        IntSize scrollSize = m_contentsSize - visibleContentRect().size();
+        IntSize scrollSize = m_contentsSize - visibleContentRect(LegacyIOSDocumentVisibleRect).size();
         scrollSize.clampNegativeToZero();
         return orientation == HorizontalScrollbar ? scrollSize.width() : scrollSize.height();
     }
@@ -501,10 +516,12 @@ void ScrollView::updateScrollbars(const IntSize& desiredOffset)
     if (m_inUpdateScrollbars || prohibitsScrolling() || platformWidget())
         return;
 
+    bool hasOverlayScrollbars = (!m_horizontalScrollbar || m_horizontalScrollbar->isOverlayScrollbar()) && (!m_verticalScrollbar || m_verticalScrollbar->isOverlayScrollbar());
+
     // If we came in here with the view already needing a layout, then go ahead and do that
     // first.  (This will be the common case, e.g., when the page changes due to window resizing for example).
     // This layout will not re-enter updateScrollbars and does not count towards our max layout pass total.
-    if (!m_scrollbarsSuppressed) {
+    if (!m_scrollbarsSuppressed && !hasOverlayScrollbars) {
         m_inUpdateScrollbars = true;
         visibleContentsResized();
         m_inUpdateScrollbars = false;
@@ -542,30 +559,31 @@ void ScrollView::updateScrollbars(const IntSize& desiredOffset)
         bool sendContentResizedNotification = false;
         
         IntSize docSize = totalContentsSize();
-        IntSize fullVisibleSize = visibleContentRect(IncludeScrollbars).size();
+        IntSize fullVisibleSize = visibleContentRectIncludingScrollbars().size();
 
-        if (hScroll == ScrollbarAuto) {
+        if (hScroll == ScrollbarAuto)
             newHasHorizontalScrollbar = docSize.width() > visibleWidth();
-            if (newHasHorizontalScrollbar && !m_updateScrollbarsPass && docSize.width() <= fullVisibleSize.width() && docSize.height() <= fullVisibleSize.height())
-                newHasHorizontalScrollbar = false;
-        }
-        if (vScroll == ScrollbarAuto) {
+        if (vScroll == ScrollbarAuto)
             newHasVerticalScrollbar = docSize.height() > visibleHeight();
-            if (newHasVerticalScrollbar && !m_updateScrollbarsPass && docSize.width() <= fullVisibleSize.width() && docSize.height() <= fullVisibleSize.height())
-                newHasVerticalScrollbar = false;
-        }
 
-        // If we ever turn one scrollbar off, always turn the other one off too.  Never ever
-        // try to both gain/lose a scrollbar in the same pass.
         bool needAnotherPass = false;
-        if (!newHasHorizontalScrollbar && hasHorizontalScrollbar && vScroll != ScrollbarAlwaysOn) {
-            newHasVerticalScrollbar = false;
-            needAnotherPass = true;
-        }
-
-        if (!newHasVerticalScrollbar && hasVerticalScrollbar && hScroll != ScrollbarAlwaysOn) {
-            newHasHorizontalScrollbar = false;
-            needAnotherPass = true;
+        if (!hasOverlayScrollbars) {
+            // If we ever turn one scrollbar off, always turn the other one off too.  Never ever
+            // try to both gain/lose a scrollbar in the same pass.
+            if (!m_updateScrollbarsPass && docSize.width() <= fullVisibleSize.width() && docSize.height() <= fullVisibleSize.height()) {
+                if (hScroll == ScrollbarAuto)
+                    newHasHorizontalScrollbar = false;
+                if (vScroll == ScrollbarAuto)
+                    newHasVerticalScrollbar = false;
+            }
+            if (!newHasHorizontalScrollbar && hasHorizontalScrollbar && vScroll != ScrollbarAlwaysOn) {
+                newHasVerticalScrollbar = false;
+                needAnotherPass = true;
+            }
+            if (!newHasVerticalScrollbar && hasVerticalScrollbar && hScroll != ScrollbarAlwaysOn) {
+                newHasHorizontalScrollbar = false;
+                needAnotherPass = true;
+            }
         }
 
         if (hasHorizontalScrollbar != newHasHorizontalScrollbar && (hasHorizontalScrollbar || !avoidScrollbarCreation())) {
@@ -607,11 +625,11 @@ void ScrollView::updateScrollbars(const IntSize& desiredOffset)
             }
             m_updateScrollbarsPass--;
         }
-
-        if (scrollbarAddedOrRemoved)
-            addedOrRemovedScrollbar();
     }
-    
+
+    if (scrollbarAddedOrRemoved)
+        addedOrRemovedScrollbar();
+
     // Set up the range (and page step/line step), but only do this if we're not in a nested call (to avoid
     // doing it multiple times).
     if (m_updateScrollbarsPass)
@@ -958,7 +976,6 @@ void ScrollView::clipRectChanged()
         (*current)->clipRectChanged();
 }
 
-#if USE(ACCELERATED_COMPOSITING)
 static void positionScrollbarLayer(GraphicsLayer* graphicsLayer, Scrollbar* scrollbar)
 {
     if (!graphicsLayer || !scrollbar)
@@ -991,23 +1008,19 @@ static void positionScrollCornerLayer(GraphicsLayer* graphicsLayer, const IntRec
         graphicsLayer->setNeedsDisplay();
     graphicsLayer->setSize(cornerRect.size());
 }
-#endif
-
 
 void ScrollView::positionScrollbarLayers()
 {
-#if USE(ACCELERATED_COMPOSITING)
     positionScrollbarLayer(layerForHorizontalScrollbar(), horizontalScrollbar());
     positionScrollbarLayer(layerForVerticalScrollbar(), verticalScrollbar());
     positionScrollCornerLayer(layerForScrollCorner(), scrollCornerRect());
-#endif
 }
 
 void ScrollView::repaintContentRectangle(const IntRect& rect, bool now)
 {
     IntRect paintRect = rect;
     if (clipsRepaints() && !paintsEntireContents())
-        paintRect.intersect(visibleContentRect());
+        paintRect.intersect(visibleContentRect(LegacyIOSDocumentVisibleRect));
     if (paintRect.isEmpty())
         return;
 
@@ -1081,23 +1094,14 @@ void ScrollView::invalidateScrollCornerRect(const IntRect& rect)
 
 void ScrollView::paintScrollbars(GraphicsContext* context, const IntRect& rect)
 {
-    if (m_horizontalScrollbar
-#if USE(ACCELERATED_COMPOSITING)
-        && !layerForHorizontalScrollbar()
-#endif
-                                      )
+    if (m_horizontalScrollbar && !layerForHorizontalScrollbar())
         paintScrollbar(context, m_horizontalScrollbar.get(), rect);
-    if (m_verticalScrollbar
-#if USE(ACCELERATED_COMPOSITING)
-        && !layerForVerticalScrollbar()
-#endif
-                                    )
+    if (m_verticalScrollbar && !layerForVerticalScrollbar())
         paintScrollbar(context, m_verticalScrollbar.get(), rect);
 
-#if USE(ACCELERATED_COMPOSITING)
     if (layerForScrollCorner())
         return;
-#endif
+
     paintScrollCorner(context, scrollCornerRect());
 }
 
@@ -1124,7 +1128,7 @@ void ScrollView::paint(GraphicsContext* context, const IntRect& rect)
 
     IntRect documentDirtyRect = rect;
     if (!paintsEntireContents()) {
-        IntRect visibleAreaWithoutScrollbars(location(), visibleContentRect().size());
+        IntRect visibleAreaWithoutScrollbars(location(), visibleContentRect(LegacyIOSDocumentVisibleRect).size());
         documentDirtyRect.intersect(visibleAreaWithoutScrollbars);
     }
 
@@ -1138,13 +1142,13 @@ void ScrollView::paint(GraphicsContext* context, const IntRect& rect)
             context->translate(-scrollX(), -scrollY());
             documentDirtyRect.moveBy(scrollPosition());
 
-            context->clip(visibleContentRect());
+            context->clip(visibleContentRect(LegacyIOSDocumentVisibleRect));
         }
 
         paintContents(context, documentDirtyRect);
     }
 
-#if USE(ACCELERATED_COMPOSITING) && ENABLE(RUBBER_BANDING)
+#if ENABLE(RUBBER_BANDING)
     if (!layerForOverhangAreas())
         calculateAndPaintOverhangAreas(context, rect);
 #else
@@ -1155,7 +1159,7 @@ void ScrollView::paint(GraphicsContext* context, const IntRect& rect)
     if (!m_scrollbarsSuppressed && (m_horizontalScrollbar || m_verticalScrollbar)) {
         GraphicsContextStateSaver stateSaver(*context);
         IntRect scrollViewDirtyRect = rect;
-        IntRect visibleAreaWithScrollbars(location(), visibleContentRect(IncludeScrollbars).size());
+        IntRect visibleAreaWithScrollbars(location(), visibleContentRectIncludingScrollbars().size());
         scrollViewDirtyRect.intersect(visibleAreaWithScrollbars);
         context->translate(x(), y());
         scrollViewDirtyRect.moveBy(-location());

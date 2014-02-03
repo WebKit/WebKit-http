@@ -28,6 +28,7 @@
 
 #include "Timer.h"
 
+#include "UserActivity.h"
 #include <wtf/HashSet.h>
 #include <wtf/OwnPtr.h>
 #include <wtf/PassOwnPtr.h>
@@ -47,7 +48,7 @@ public:
     bool shouldThrottleAnimations() const { return m_throttleState != PageNotThrottledState; }
     bool shouldThrottleTimers() const { return m_throttleState != PageNotThrottledState; }
 
-    void setThrottled(bool);
+    void setIsVisuallyIdle(bool);
 
     void reportInterestingEvent();
 
@@ -64,7 +65,7 @@ private:
 
     void startThrottleHysteresisTimer();
     void stopThrottleHysteresisTimer();
-    void throttleHysteresisTimerFired(Timer<PageThrottler>*);
+    void throttleHysteresisTimerFired(Timer<PageThrottler>&);
 
     void throttlePage();
     void unthrottlePage();
@@ -73,6 +74,7 @@ private:
     PageThrottleState m_throttleState;
     Timer<PageThrottler> m_throttleHysteresisTimer;
     HashSet<PageActivityAssertionToken*> m_activityTokens;
+    UserActivity m_visuallyNonIdle;
 };
 
 }

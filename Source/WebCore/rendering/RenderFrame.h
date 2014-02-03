@@ -30,7 +30,7 @@ namespace WebCore {
 
 class HTMLFrameElement;
 
-class RenderFrame FINAL : public RenderFrameBase {
+class RenderFrame final : public RenderFrameBase {
 public:
     RenderFrame(HTMLFrameElement&, PassRef<RenderStyle>);
 
@@ -38,12 +38,12 @@ public:
     FrameEdgeInfo edgeInfo() const;
 
 private:
-    void frameOwnerElement() const WTF_DELETED_FUNCTION;
+    void frameOwnerElement() const = delete;
 
-    virtual const char* renderName() const OVERRIDE { return "RenderFrame"; }
-    virtual bool isFrame() const OVERRIDE { return true; }
+    virtual const char* renderName() const override { return "RenderFrame"; }
+    virtual bool isFrame() const override { return true; }
 
-    virtual void updateFromElement() OVERRIDE;
+    virtual void updateFromElement() override;
 };
 
 RENDER_OBJECT_TYPE_CASTS(RenderFrame, isFrame())

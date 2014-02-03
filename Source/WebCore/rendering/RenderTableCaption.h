@@ -26,20 +26,20 @@ namespace WebCore {
 
 class RenderTable;
 
-class RenderTableCaption FINAL : public RenderBlockFlow {
+class RenderTableCaption final : public RenderBlockFlow {
 public:
     RenderTableCaption(Element&, PassRef<RenderStyle>);
     virtual ~RenderTableCaption();
 
     Element& element() const { return toElement(nodeForNonAnonymous()); }
 
-    virtual LayoutUnit containingBlockLogicalWidthForContent() const OVERRIDE;
+    virtual LayoutUnit containingBlockLogicalWidthForContent() const override;
     
 private:
-    virtual bool isTableCaption() const OVERRIDE { return true; }
+    virtual bool isTableCaption() const override { return true; }
 
-    virtual void insertedIntoTree() OVERRIDE;
-    virtual void willBeRemovedFromTree() OVERRIDE;
+    virtual void insertedIntoTree() override;
+    virtual void willBeRemovedFromTree() override;
 
     RenderTable* table() const;
 };

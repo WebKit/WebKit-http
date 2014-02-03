@@ -30,7 +30,6 @@
 
 #include "config.h"
 
-#if USE(ACCELERATED_COMPOSITING)
 #if ENABLE(INSPECTOR)
 
 #include "InspectorLayerTreeAgent.h"
@@ -66,7 +65,7 @@ void InspectorLayerTreeAgent::didCreateFrontendAndBackend(Inspector::InspectorFr
     m_backendDispatcher = InspectorLayerTreeBackendDispatcher::create(backendDispatcher, this);
 }
 
-void InspectorLayerTreeAgent::willDestroyFrontendAndBackend()
+void InspectorLayerTreeAgent::willDestroyFrontendAndBackend(InspectorDisconnectReason)
 {
     m_frontendDispatcher = nullptr;
     m_backendDispatcher.clear();
@@ -89,7 +88,7 @@ void InspectorLayerTreeAgent::enable(ErrorString*)
 
 void InspectorLayerTreeAgent::disable(ErrorString*)
 {
-    m_instrumentingAgents->setInspectorLayerTreeAgent(0);
+    m_instrumentingAgents->setInspectorLayerTreeAgent(nullptr);
 }
 
 void InspectorLayerTreeAgent::layerTreeDidChange()
@@ -307,6 +306,9 @@ void InspectorLayerTreeAgent::reasonsForCompositingLayer(ErrorString* errorStrin
 
     if (reasonsBitmask & CompositingReasonRoot)
         compositingReasons->setRoot(true);
+
+    if (reasonsBitmask & CompositingReasonBlending)
+        compositingReasons->setBlending(true);
 }
 
 String InspectorLayerTreeAgent::bind(const RenderLayer* layer)
@@ -356,4 +358,3 @@ void InspectorLayerTreeAgent::unbindPseudoElement(PseudoElement* pseudoElement)
 } // namespace WebCore
 
 #endif // ENABLE(INSPECTOR)
-#endif // USE(ACCELERATED_COMPOSITING)

@@ -74,6 +74,7 @@ public:
         , m_structureCheckHoistingFailed(false)
         , m_checkArrayHoistingFailed(false)
         , m_isProfitableToUnbox(false)
+        , m_isLoadedFrom(false)
         , m_doubleFormatState(EmptyDoubleFormatState)
     {
         clearVotes();
@@ -327,6 +328,9 @@ public:
     FlushFormat flushFormat()
     {
         ASSERT(find() == this);
+        
+        if (isArgumentsAlias())
+            return FlushedArguments;
         
         if (!shouldUnboxIfPossible())
             return FlushedJSValue;

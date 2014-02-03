@@ -52,8 +52,8 @@ PannerNode::PannerNode(AudioContext* context, float sampleRate)
     , m_lastGain(-1.0)
     , m_connectionCount(0)
 {
-    addInput(adoptPtr(new AudioNodeInput(this)));
-    addOutput(adoptPtr(new AudioNodeOutput(this, 2)));
+    addInput(std::make_unique<AudioNodeInput>(this));
+    addOutput(std::make_unique<AudioNodeOutput>(this, 2));
 
     // Node-specific default mixing rules.
     m_channelCount = 2;
@@ -107,28 +107,29 @@ void PannerNode::process(size_t framesToProcess)
         return;
     }
 
-    // The audio thread can't block on this lock, so we call tryLock() instead.
-    MutexTryLocker tryLocker(m_pannerLock);
-    if (tryLocker.locked()) {
-        // Apply the panning effect.
-        double azimuth;
-        double elevation;
-        getAzimuthElevation(&azimuth, &elevation);
-        m_panner->pan(azimuth, elevation, source, destination, framesToProcess);
-
-        // Get the distance and cone gain.
-        double totalGain = distanceConeGain();
-
-        // Snap to desired gain at the beginning.
-        if (m_lastGain == -1.0)
-            m_lastGain = totalGain;
-        
-        // Apply gain in-place with de-zippering.
-        destination->copyWithGainFrom(*destination, &m_lastGain, totalGain);
-    } else {
-        // Too bad - The tryLock() failed. We must be in the middle of changing the panner.
+    // The audio thread can't block on this lock, so we use std::try_to_lock instead.
+    std::unique_lock<std::mutex> lock(m_pannerMutex, std::try_to_lock);
+    if (!lock.owns_lock()) {
+        // Too bad - The try_lock() failed. We must be in the middle of changing the panner.
         destination->zero();
+        return;
     }
+
+    // Apply the panning effect.
+    double azimuth;
+    double elevation;
+    getAzimuthElevation(&azimuth, &elevation);
+    m_panner->pan(azimuth, elevation, source, destination, framesToProcess);
+
+    // Get the distance and cone gain.
+    double totalGain = distanceConeGain();
+
+    // Snap to desired gain at the beginning.
+    if (m_lastGain == -1.0)
+        m_lastGain = totalGain;
+
+    // Apply gain in-place with de-zippering.
+    destination->copyWithGainFrom(*destination, &m_lastGain, totalGain);
 }
 
 void PannerNode::reset()
@@ -153,7 +154,7 @@ void PannerNode::uninitialize()
     if (!isInitialized())
         return;
         
-    m_panner.clear();
+    m_panner = nullptr;
     AudioNode::uninitialize();
 }
 
@@ -196,10 +197,9 @@ bool PannerNode::setPanningModel(unsigned model)
     case HRTF:
         if (!m_panner.get() || model != m_panningModel) {
             // This synchronizes with process().
-            MutexLocker processLocker(m_pannerLock);
-            
-            OwnPtr<Panner> newPanner = Panner::create(model, sampleRate(), context()->hrtfDatabaseLoader());
-            m_panner = newPanner.release();
+            std::lock_guard<std::mutex> lock(m_pannerMutex);
+
+            m_panner = Panner::create(model, sampleRate(), context()->hrtfDatabaseLoader());
             m_panningModel = model;
         }
         break;

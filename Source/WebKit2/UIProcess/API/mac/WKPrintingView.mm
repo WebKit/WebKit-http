@@ -76,14 +76,14 @@ static BOOL isForcingPreviewUpdate;
 
 - (void)_setAutodisplay:(BOOL)newState
 {
-    if (!newState && [[_wkView.get() window] isAutodisplay])
-        [_wkView.get() displayIfNeeded];
+    if (!newState && [[_wkView window] isAutodisplay])
+        [_wkView displayIfNeeded];
     
-    [[_wkView.get() window] setAutodisplay:newState];
+    [[_wkView window] setAutodisplay:newState];
 
     // For some reason, painting doesn't happen for a long time without this call, <rdar://problem/8975229>.
     if (newState)
-        [_wkView.get() displayIfNeeded];
+        [_wkView displayIfNeeded];
 }
 
 
@@ -251,7 +251,7 @@ static void pageDidDrawToPDF(WKDataRef dataRef, WKErrorRef, void* untypedContext
         if (data)
             view->_printedPagesData.append(data->bytes(), data->size());
         view->_expectedPrintCallback = 0;
-        view->_printingCallbackCondition.signal();
+        view->_printingCallbackCondition.notify_one();
     }
 }
 
@@ -260,11 +260,11 @@ static void pageDidDrawToPDF(WKDataRef dataRef, WKErrorRef, void* untypedContext
     ASSERT(RunLoop::isMain());
 
     if (!_webFrame->page()) {
-        _printingCallbackCondition.signal();
+        _printingCallbackCondition.notify_one();
         return;
     }
 
-    MutexLocker lock(_printingCallbackMutex);
+    std::lock_guard<std::mutex> lock(_printingCallbackMutex);
 
     ASSERT([self _hasPageRects]);
     ASSERT(_printedPagesData.isEmpty());
@@ -358,7 +358,7 @@ static void prepareDataForPrintingOnSecondaryThread(void* untypedContext)
     ASSERT(RunLoop::isMain());
 
     WKPrintingView *view = static_cast<WKPrintingView *>(untypedContext);
-    MutexLocker lock(view->_printingCallbackMutex);
+    std::lock_guard<std::mutex> lock(view->_printingCallbackMutex);
 
     // We may have received page rects while a message to call this function traveled from secondary thread to main one.
     if ([view _hasPageRects]) {
@@ -396,9 +396,9 @@ static void prepareDataForPrintingOnSecondaryThread(void* untypedContext)
         *range = NSMakeRange(1, _printingPageRects.size());
     else if (!RunLoop::isMain()) {
         ASSERT(![self _isPrintingPreview]);
-        MutexLocker lock(_printingCallbackMutex);
+        std::unique_lock<std::mutex> lock(_printingCallbackMutex);
         callOnMainThread(prepareDataForPrintingOnSecondaryThread, self);
-        _printingCallbackCondition.wait(_printingCallbackMutex);
+        _printingCallbackCondition.wait(lock);
         *range = NSMakeRange(1, _printingPageRects.size());
     } else {
         ASSERT([self _isPrintingPreview]);

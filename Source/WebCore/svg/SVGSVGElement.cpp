@@ -478,12 +478,12 @@ bool SVGSVGElement::rendererIsNeeded(const RenderStyle& style)
     return StyledElement::rendererIsNeeded(style);
 }
 
-RenderElement* SVGSVGElement::createRenderer(PassRef<RenderStyle> style)
+RenderPtr<RenderElement> SVGSVGElement::createElementRenderer(PassRef<RenderStyle> style)
 {
     if (isOutermostSVGSVGElement())
-        return new RenderSVGRoot(*this, std::move(style));
+        return createRenderer<RenderSVGRoot>(*this, std::move(style));
 
-    return new RenderSVGViewportContainer(*this, std::move(style));
+    return createRenderer<RenderSVGViewportContainer>(*this, std::move(style));
 }
 
 Node::InsertionNotificationRequest SVGSVGElement::insertedInto(ContainerNode& rootParent)
@@ -775,7 +775,7 @@ Element* SVGSVGElement::getElementById(const AtomicString& id)
 
     // Fall back to traversing our subtree. Duplicate ids are allowed, the first found will
     // be returned.
-    for (auto& element : elementDescendants(*this)) {
+    for (auto& element : descendantsOfType<Element>(*this)) {
         if (element.getIdAttribute() == id)
             return &element;
     }

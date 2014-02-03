@@ -57,18 +57,13 @@
 #include "EventListener.h"
 #include "EventNames.h"
 #include "EventTarget.h"
-#include "File.h"
-#include "FileList.h"
 #include "FrameTree.h"
 #include "HTMLElement.h"
 #include "HTMLFrameOwnerElement.h"
-#include "HTMLInputElement.h"
 #include "HTMLNames.h"
 #include "HTMLTemplateElement.h"
 #include "HitTestResult.h"
 #include "IdentifiersFactory.h"
-#include "InjectedScriptManager.h"
-#include "InspectorClient.h"
 #include "InspectorHistory.h"
 #include "InspectorNodeFinder.h"
 #include "InspectorOverlay.h"
@@ -77,6 +72,7 @@
 #include "InstrumentingAgents.h"
 #include "IntRect.h"
 #include "JSEventListener.h"
+#include "JSNode.h"
 #include "MainFrame.h"
 #include "MutationEvent.h"
 #include "Node.h"
@@ -95,6 +91,8 @@
 #include "XPathResult.h"
 #include "htmlediting.h"
 #include "markup.h"
+#include <inspector/InjectedScript.h>
+#include <inspector/InjectedScriptManager.h>
 #include <wtf/HashSet.h>
 #include <wtf/OwnPtr.h>
 #include <wtf/Vector.h>
@@ -170,7 +168,7 @@ public:
     RevalidateStyleAttributeTask(InspectorDOMAgent*);
     void scheduleFor(Element*);
     void reset() { m_timer.stop(); }
-    void onTimer(Timer<RevalidateStyleAttributeTask>*);
+    void timerFired(Timer<RevalidateStyleAttributeTask>&);
 
 private:
     InspectorDOMAgent* m_domAgent;
@@ -180,7 +178,7 @@ private:
 
 RevalidateStyleAttributeTask::RevalidateStyleAttributeTask(InspectorDOMAgent* domAgent)
     : m_domAgent(domAgent)
-    , m_timer(this, &RevalidateStyleAttributeTask::onTimer)
+    , m_timer(this, &RevalidateStyleAttributeTask::timerFired)
 {
 }
 
@@ -191,7 +189,7 @@ void RevalidateStyleAttributeTask::scheduleFor(Element* element)
         m_timer.startOneShot(0);
 }
 
-void RevalidateStyleAttributeTask::onTimer(Timer<RevalidateStyleAttributeTask>*)
+void RevalidateStyleAttributeTask::timerFired(Timer<RevalidateStyleAttributeTask>&)
 {
     // The timer is stopped on m_domAgent destruction, so this method will never be called after m_domAgent has been destroyed.
     Vector<Element*> elements;
@@ -211,12 +209,11 @@ String InspectorDOMAgent::toErrorString(const ExceptionCode& ec)
     return "";
 }
 
-InspectorDOMAgent::InspectorDOMAgent(InstrumentingAgents* instrumentingAgents, InspectorPageAgent* pageAgent, InjectedScriptManager* injectedScriptManager, InspectorOverlay* overlay, InspectorClient* client)
+InspectorDOMAgent::InspectorDOMAgent(InstrumentingAgents* instrumentingAgents, InspectorPageAgent* pageAgent, InjectedScriptManager* injectedScriptManager, InspectorOverlay* overlay)
     : InspectorAgentBase(ASCIILiteral("DOM"), instrumentingAgents)
     , m_pageAgent(pageAgent)
     , m_injectedScriptManager(injectedScriptManager)
     , m_overlay(overlay)
-    , m_client(client)
     , m_domListener(0)
     , m_lastNodeId(1)
     , m_lastBackendNodeId(-1)
@@ -247,7 +244,7 @@ void InspectorDOMAgent::didCreateFrontendAndBackend(Inspector::InspectorFrontend
         focusNode();
 }
 
-void InspectorDOMAgent::willDestroyFrontendAndBackend()
+void InspectorDOMAgent::willDestroyFrontendAndBackend(InspectorDisconnectReason)
 {
     m_frontendDispatcher = nullptr;
     m_backendDispatcher.clear();
@@ -682,10 +679,8 @@ void InspectorDOMAgent::setAttributesAsText(ErrorString* errorString, int elemen
     }
 
     bool foundOriginalAttribute = false;
-    unsigned numAttrs = childElement->attributeCount();
-    for (unsigned i = 0; i < numAttrs; ++i) {
+    for (const Attribute& attribute : childElement->attributesIterator()) {
         // Add attribute pair
-        const Attribute& attribute = childElement->attributeAt(i);
         foundOriginalAttribute = foundOriginalAttribute || (name && attribute.name().toString() == *name);
         if (!m_domEditor->setAttribute(element, attribute.name().toString(), attribute.value(), errorString))
             return;
@@ -998,11 +993,12 @@ void InspectorDOMAgent::focusNode()
     if (!frame)
         return;
 
-    InjectedScript injectedScript = m_injectedScriptManager->injectedScriptFor(mainWorldExecState(frame));
+    JSC::ExecState* scriptState = mainWorldExecState(frame);
+    InjectedScript injectedScript = m_injectedScriptManager->injectedScriptFor(scriptState);
     if (injectedScript.hasNoValue())
         return;
 
-    injectedScript.inspectNode(node.get());
+    injectedScript.inspectObject(InspectorDOMAgent::nodeAsScriptValue(scriptState, node.get()));
 }
 
 void InspectorDOMAgent::mouseDidMoveOverElement(const HitTestResult& result, unsigned)
@@ -1090,8 +1086,7 @@ void InspectorDOMAgent::highlightNode(ErrorString* errorString, const RefPtr<Ins
     if (nodeId) {
         node = assertNode(errorString, *nodeId);
     } else if (objectId) {
-        InjectedScript injectedScript = m_injectedScriptManager->injectedScriptForObjectId(*objectId);
-        node = injectedScript.nodeForObjectId(*objectId);
+        node = nodeForObjectId(*objectId);
         if (!node)
             *errorString = "Node for given objectId not found";
     } else
@@ -1186,34 +1181,6 @@ void InspectorDOMAgent::focus(ErrorString* errorString, int nodeId)
     element->focus();
 }
 
-void InspectorDOMAgent::setFileInputFiles(ErrorString* errorString, int nodeId, const RefPtr<InspectorArray>& files)
-{
-    if (!m_client->canSetFileInputFiles()) {
-        *errorString = "Cannot set file input files";
-        return;
-    }
-
-    Node* node = assertNode(errorString, nodeId);
-    if (!node)
-        return;
-    HTMLInputElement* element = node->toInputElement();
-    if (!element || !element->isFileUpload()) {
-        *errorString = "Node is not a file input element";
-        return;
-    }
-
-    RefPtr<FileList> fileList = FileList::create();
-    for (InspectorArray::const_iterator iter = files->begin(); iter != files->end(); ++iter) {
-        String path;
-        if (!(*iter)->asString(&path)) {
-            *errorString = "Files must be strings";
-            return;
-        }
-        fileList->append(File::create(path));
-    }
-    element->setFiles(fileList);
-}
-
 void InspectorDOMAgent::resolveNode(ErrorString* errorString, int nodeId, const String* const objectGroup, RefPtr<Inspector::TypeBuilder::Runtime::RemoteObject>& result)
 {
     String objectGroupName = objectGroup ? *objectGroup : "";
@@ -1241,8 +1208,7 @@ void InspectorDOMAgent::getAttributes(ErrorString* errorString, int nodeId, RefP
 
 void InspectorDOMAgent::requestNode(ErrorString*, const String& objectId, int* nodeId)
 {
-    InjectedScript injectedScript = m_injectedScriptManager->injectedScriptForObjectId(objectId);
-    Node* node = injectedScript.nodeForObjectId(objectId);
+    Node* node = nodeForObjectId(objectId);
     if (node)
         *nodeId = pushNodePathToFrontend(node);
     else
@@ -1354,10 +1320,8 @@ PassRefPtr<Inspector::TypeBuilder::Array<String>> InspectorDOMAgent::buildArrayF
     // Go through all attributes and serialize them.
     if (!element->hasAttributes())
         return attributesValue.release();
-    unsigned numAttrs = element->attributeCount();
-    for (unsigned i = 0; i < numAttrs; ++i) {
+    for (const Attribute& attribute : element->attributesIterator()) {
         // Add attribute pair
-        const Attribute& attribute = element->attributeAt(i);
         attributesValue->addItem(attribute.name().toString());
         attributesValue->addItem(attribute.value());
     }
@@ -1706,6 +1670,13 @@ Node* InspectorDOMAgent::nodeForPath(const String& path)
     return node;
 }
 
+Node* InspectorDOMAgent::nodeForObjectId(const String& objectId)
+{
+    InjectedScript injectedScript = m_injectedScriptManager->injectedScriptForObjectId(objectId);
+    Deprecated::ScriptValue value = injectedScript.findObjectById(objectId);
+    return InspectorDOMAgent::scriptValueAsNode(value);
+}
+
 void InspectorDOMAgent::pushNodeByPathToFrontend(ErrorString* errorString, const String& path, int* nodeId)
 {
     if (Node* node = nodeForPath(path))
@@ -1737,11 +1708,29 @@ PassRefPtr<Inspector::TypeBuilder::Runtime::RemoteObject> InspectorDOMAgent::res
     if (!frame)
         return 0;
 
-    InjectedScript injectedScript = m_injectedScriptManager->injectedScriptFor(mainWorldExecState(frame));
+    JSC::ExecState* scriptState = mainWorldExecState(frame);
+    InjectedScript injectedScript = m_injectedScriptManager->injectedScriptFor(scriptState);
     if (injectedScript.hasNoValue())
         return 0;
 
-    return injectedScript.wrapNode(node, objectGroup);
+    return injectedScript.wrapObject(InspectorDOMAgent::nodeAsScriptValue(scriptState, node), objectGroup);
+}
+
+Node* InspectorDOMAgent::scriptValueAsNode(Deprecated::ScriptValue value)
+{
+    if (!value.isObject() || value.isNull())
+        return nullptr;
+
+    return toNode(value.jsValue());
+}
+
+Deprecated::ScriptValue InspectorDOMAgent::nodeAsScriptValue(JSC::ExecState* state, Node* node)
+{
+    if (!shouldAllowAccessToNode(state, node))
+        return Deprecated::ScriptValue(state->vm(), JSC::jsNull());
+
+    JSC::JSLockHolder lock(state);
+    return Deprecated::ScriptValue(state->vm(), toJS(state, deprecatedGlobalObjectForPrototype(state), node));
 }
 
 } // namespace WebCore

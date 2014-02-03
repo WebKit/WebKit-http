@@ -231,10 +231,6 @@ static void logCanCachePageDecision(Page* page)
     if (frameRejectReasons)
         rejectReasons |= 1 << FrameCannotBeInPageCache;
     
-    if (!page->backForward().isActive()) {
-        PCLOG("   -The back/forward list is disabled or has 0 capacity");
-        rejectReasons |= 1 << DisabledBackForwardList;
-    }
     if (!page->settings().usesPageCache()) {
         PCLOG("   -Page settings says b/f cache disabled");
         rejectReasons |= 1 << DisabledPageCache;
@@ -310,9 +306,7 @@ PageCache::PageCache()
     , m_size(0)
     , m_head(0)
     , m_tail(0)
-#if USE(ACCELERATED_COMPOSITING)
     , m_shouldClearBackingStores(false)
-#endif
 {
 }
     
@@ -380,7 +374,6 @@ bool PageCache::canCache(Page* page) const
     
     return m_capacity > 0
         && canCachePageContainingThisFrame(&page->mainFrame())
-        && page->backForward().isActive()
         && page->settings().usesPageCache()
 #if ENABLE(DEVICE_ORIENTATION) && !PLATFORM(IOS)
         && !DeviceMotionController::isActiveAt(page)
@@ -439,8 +432,6 @@ void PageCache::markPagesForFullStyleRecalc(Page* page)
     }
 }
 
-
-#if USE(ACCELERATED_COMPOSITING)
 void PageCache::markPagesForDeviceScaleChanged(Page* page)
 {
     for (HistoryItem* current = m_head; current; current = current->m_next) {
@@ -449,7 +440,6 @@ void PageCache::markPagesForDeviceScaleChanged(Page* page)
             cachedPage->markForDeviceScaleChanged();
     }
 }
-#endif
 
 #if ENABLE(VIDEO_TRACK)
 void PageCache::markPagesForCaptionPreferencesChanged()
@@ -472,19 +462,19 @@ void PageCache::add(PassRefPtr<HistoryItem> prpItem, Page& page)
     if (item->m_cachedPage)
         remove(item);
 
-    item->m_cachedPage = CachedPage::create(page);
+    item->m_cachedPage = std::make_unique<CachedPage>(page);
     addToLRUList(item);
     ++m_size;
     
     prune();
 }
 
-PassOwnPtr<CachedPage> PageCache::take(HistoryItem* item)
+std::unique_ptr<CachedPage> PageCache::take(HistoryItem* item)
 {
     if (!item)
         return nullptr;
 
-    OwnPtr<CachedPage> cachedPage = item->m_cachedPage.release();
+    std::unique_ptr<CachedPage> cachedPage = std::move(item->m_cachedPage);
 
     removeFromLRUList(item);
     --m_size;
@@ -499,7 +489,7 @@ PassOwnPtr<CachedPage> PageCache::take(HistoryItem* item)
         return nullptr;
     }
 
-    return cachedPage.release();
+    return cachedPage;
 }
 
 CachedPage* PageCache::get(HistoryItem* item)
@@ -523,7 +513,7 @@ void PageCache::remove(HistoryItem* item)
     if (!item || !item->m_cachedPage)
         return;
 
-    item->m_cachedPage.clear();
+    item->m_cachedPage = nullptr;
     removeFromLRUList(item);
     --m_size;
 

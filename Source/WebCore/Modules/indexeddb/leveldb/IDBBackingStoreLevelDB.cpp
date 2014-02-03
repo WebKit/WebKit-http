@@ -1452,8 +1452,8 @@ public:
     }
 
     // IDBBackingStoreCursorLevelDB
-    virtual PassRefPtr<SharedBuffer> value() const OVERRIDE { ASSERT_NOT_REACHED(); return 0; }
-    virtual bool loadCurrentRow() OVERRIDE;
+    virtual PassRefPtr<SharedBuffer> value() const override { ASSERT_NOT_REACHED(); return 0; }
+    virtual bool loadCurrentRow() override;
 
 protected:
     virtual Vector<char> encodeKey(const IDBKey &key)
@@ -1513,8 +1513,8 @@ public:
     }
 
     // IDBBackingStoreCursorLevelDB
-    virtual PassRefPtr<SharedBuffer> value() const OVERRIDE { return m_currentValue; }
-    virtual bool loadCurrentRow() OVERRIDE;
+    virtual PassRefPtr<SharedBuffer> value() const override { return m_currentValue; }
+    virtual bool loadCurrentRow() override;
 
 protected:
     virtual Vector<char> encodeKey(const IDBKey &key)
@@ -1567,7 +1567,7 @@ bool ObjectStoreCursorImpl::loadCurrentRow()
     return true;
 }
 
-class IndexKeyCursorImpl FINAL : public IDBBackingStoreCursorLevelDB {
+class IndexKeyCursorImpl final : public IDBBackingStoreCursorLevelDB {
 public:
     static PassRefPtr<IndexKeyCursorImpl> create(int64_t cursorID, LevelDBTransaction* transaction, const IDBBackingStoreCursorLevelDB::CursorOptions& cursorOptions)
     {
@@ -1580,10 +1580,10 @@ public:
     }
 
     // IDBBackingStoreCursorLevelDB
-    virtual PassRefPtr<SharedBuffer> value() const OVERRIDE { ASSERT_NOT_REACHED(); return 0; }
-    virtual PassRefPtr<IDBKey> primaryKey() const OVERRIDE { return m_primaryKey; }
-    virtual const IDBRecordIdentifier& recordIdentifier() const OVERRIDE { ASSERT_NOT_REACHED(); return *m_recordIdentifier; }
-    virtual bool loadCurrentRow() OVERRIDE;
+    virtual PassRefPtr<SharedBuffer> value() const override { ASSERT_NOT_REACHED(); return 0; }
+    virtual PassRefPtr<IDBKey> primaryKey() const override { return m_primaryKey; }
+    virtual const IDBRecordIdentifier& recordIdentifier() const override { ASSERT_NOT_REACHED(); return *m_recordIdentifier; }
+    virtual bool loadCurrentRow() override;
 
 protected:
     virtual Vector<char> encodeKey(const IDBKey &key)
@@ -1658,7 +1658,7 @@ bool IndexKeyCursorImpl::loadCurrentRow()
     return true;
 }
 
-class IndexCursorImpl FINAL : public IDBBackingStoreCursorLevelDB {
+class IndexCursorImpl final : public IDBBackingStoreCursorLevelDB {
 public:
     static PassRefPtr<IndexCursorImpl> create(int64_t cursorID, LevelDBTransaction* transaction, const IDBBackingStoreCursorLevelDB::CursorOptions& cursorOptions)
     {
@@ -1671,10 +1671,10 @@ public:
     }
 
     // IDBBackingStoreCursorLevelDB
-    virtual PassRefPtr<SharedBuffer> value() const OVERRIDE { return m_currentValue; }
-    virtual PassRefPtr<IDBKey> primaryKey() const OVERRIDE { return m_primaryKey; }
-    virtual const IDBRecordIdentifier& recordIdentifier() const OVERRIDE { ASSERT_NOT_REACHED(); return *m_recordIdentifier; }
-    virtual bool loadCurrentRow() OVERRIDE;
+    virtual PassRefPtr<SharedBuffer> value() const override { return m_currentValue; }
+    virtual PassRefPtr<IDBKey> primaryKey() const override { return m_primaryKey; }
+    virtual const IDBRecordIdentifier& recordIdentifier() const override { ASSERT_NOT_REACHED(); return *m_recordIdentifier; }
+    virtual bool loadCurrentRow() override;
 
 protected:
     virtual Vector<char> encodeKey(const IDBKey &key)

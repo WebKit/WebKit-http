@@ -86,7 +86,7 @@ class ListAttributeTargetObserver : IdTargetObserver {
     WTF_MAKE_FAST_ALLOCATED;
 public:
     static OwnPtr<ListAttributeTargetObserver> create(const AtomicString& id, HTMLInputElement*);
-    virtual void idTargetChanged() OVERRIDE;
+    virtual void idTargetChanged() override;
 
 private:
     ListAttributeTargetObserver(const AtomicString& id, HTMLInputElement*);
@@ -471,10 +471,6 @@ void HTMLInputElement::updateType()
 
     m_inputType->destroyShadowSubtree();
 
-    bool wasAttached = attached();
-    if (wasAttached)
-        Style::detachRenderTree(*this);
-
     m_inputType = std::move(newType);
     m_inputType->createShadowSubtree();
 
@@ -523,11 +519,11 @@ void HTMLInputElement::updateType()
             attributeChanged(alignAttr, align->value());
     }
 
-    if (wasAttached) {
-        Style::attachRenderTree(*this);
-        if (document().focusedElement() == this)
-            updateFocusAppearance(true);
-    }
+    if (renderer())
+        setNeedsStyleRecalc(ReconstructRenderTree);
+
+    if (document().focusedElement() == this)
+        updateFocusAppearance(true);
 
     if (ShadowRoot* shadowRoot = shadowRootOfParentForDistribution(this))
         shadowRoot->invalidateDistribution();
@@ -686,11 +682,11 @@ void HTMLInputElement::parseAttribute(const QualifiedName& name, const AtomicStr
     } else if (name == resultsAttr) {
         int oldResults = m_maxResults;
         m_maxResults = !value.isNull() ? std::min(value.toInt(), maxSavedResults) : -1;
-        // FIXME: Detaching just for maxResults change is not ideal.  We should figure out the right
-        // time to relayout for this change.
-        if (m_maxResults != oldResults && (m_maxResults <= 0 || oldResults <= 0) && attached())
-            Style::reattachRenderTree(*this);
-        setNeedsStyleRecalc();
+
+        if (m_maxResults != oldResults && (m_maxResults <= 0 || oldResults <= 0))
+            setNeedsStyleRecalc(ReconstructRenderTree);
+        else
+            setNeedsStyleRecalc();
         FeatureObserver::observe(&document(), FeatureObserver::ResultsAttribute);
     } else if (name == autosaveAttr) {
         setNeedsStyleRecalc();
@@ -738,21 +734,15 @@ void HTMLInputElement::parseAttribute(const QualifiedName& name, const AtomicStr
 #endif
 #if ENABLE(INPUT_SPEECH)
     else if (name == webkitspeechAttr) {
-        if (renderer()) {
-            // This renderer and its children have quite different layouts and styles depending on
-            // whether the speech button is visible or not. So we reset the whole thing and recreate
-            // to get the right styles and layout.
-            Style::detachRenderTree(*this);
-            m_inputType->destroyShadowSubtree();
-            m_inputType->createShadowSubtree();
-            if (!attached())
-                Style::attachRenderTree(*this);
-        } else {
-            m_inputType->destroyShadowSubtree();
-            m_inputType->createShadowSubtree();
-        }
+        m_inputType->destroyShadowSubtree();
+        m_inputType->createShadowSubtree();
+
+        // This renderer and its children have quite different layouts and styles depending on
+        // whether the speech button is visible or not. So we reset the whole thing and recreate
+        // to get the right styles and layout.
+        setNeedsStyleRecalc(ReconstructRenderTree);
+
         setFormControlValueMatchesRenderer(false);
-        setNeedsStyleRecalc();
         FeatureObserver::observe(&document(), FeatureObserver::PrefixedSpeechAttribute);
     } else if (name == onwebkitspeechchangeAttr)
         setAttributeEventListener(eventNames().webkitspeechchangeEvent, name, value);
@@ -785,9 +775,9 @@ bool HTMLInputElement::rendererIsNeeded(const RenderStyle& style)
     return m_inputType->rendererIsNeeded() && HTMLTextFormControlElement::rendererIsNeeded(style);
 }
 
-RenderElement* HTMLInputElement::createRenderer(PassRef<RenderStyle> style)
+RenderPtr<RenderElement> HTMLInputElement::createElementRenderer(PassRef<RenderStyle> style)
 {
-    return m_inputType->createRenderer(std::move(style));
+    return m_inputType->createInputRenderer(std::move(style));
 }
 
 void HTMLInputElement::willAttachRenderers()
@@ -1202,6 +1192,7 @@ void HTMLInputElement::defaultEventHandler(Event* evt)
             return;
     }
 
+    document().updateStyleIfNeeded();
     m_inputType->forwardEvent(evt);
 
     if (!callBaseClassEarly && !evt->defaultHandled())

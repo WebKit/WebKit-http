@@ -71,6 +71,7 @@ static String formatLocalizedString(String format, ...)
 #endif
 }
 
+#if ENABLE(CONTEXT_MENUS)
 static String truncatedStringForLookupMenuItem(const String& original)
 {
     if (original.isEmpty())
@@ -84,6 +85,7 @@ static String truncatedStringForLookupMenuItem(const String& original)
     unsigned numberOfCharacters = numCharactersInGraphemeClusters(trimmed, maxNumberOfGraphemeClustersInLookupMenuItem);
     return numberOfCharacters == trimmed.length() ? trimmed : trimmed.left(numberOfCharacters) + ellipsis;
 }
+#endif
 
 String inputElementAltText()
 {
@@ -797,6 +799,26 @@ String htmlSelectMultipleItems(size_t count)
         return formatLocalizedString(WEB_UI_STRING("%zu Items", "Present the number of selected <option> items in a <select multiple> element (iOS only)"), count);
     }
 }
+
+String fileButtonChooseMediaFileLabel()
+{
+    return WEB_UI_STRING("Choose Media (Single)", "Title for file button used in HTML forms for media files");
+}
+
+String fileButtonChooseMultipleMediaFilesLabel()
+{
+    return WEB_UI_STRING("Choose Media (Multiple)", "Title for file button used in HTML5 forms for multiple media files");
+}
+
+String fileButtonNoMediaFileSelectedLabel()
+{
+    return WEB_UI_STRING("no media selected (single)", "Text to display in file button used in HTML forms for media files when no media file is selected");
+}
+
+String fileButtonNoMediaFilesSelectedLabel()
+{
+    return WEB_UI_STRING("no media selected (multiple)", "Text to display in file button used in HTML forms for media files when no media files are selected and the button allows multiple files to be selected");
+}
 #endif
 
 String imageTitle(const String& filename, const IntSize& size)
@@ -1089,6 +1111,11 @@ String snapshottedPlugInLabelTitle()
 String snapshottedPlugInLabelSubtitle()
 {
     return WEB_UI_STRING("Click to restart", "Subtitle of the label to show on a snapshotted plug-in");
+}
+
+String useBlockedPlugInContextMenuTitle()
+{
+    return formatLocalizedString(WEB_UI_STRING("Show in blocked plug-in", "Title of the context menu item to show when PDFPlugin was used instead of a blocked plugin"));
 }
 
 } // namespace WebCore

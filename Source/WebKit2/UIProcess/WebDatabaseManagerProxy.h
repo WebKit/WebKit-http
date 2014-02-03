@@ -46,7 +46,7 @@ class WebSecurityOrigin;
 
 typedef GenericCallback<WKArrayRef> ArrayCallback;
 
-class WebDatabaseManagerProxy : public API::ObjectImpl<API::Object::Type::DatabaseManager>, public WebContextSupplement, private CoreIPC::MessageReceiver {
+class WebDatabaseManagerProxy : public API::ObjectImpl<API::Object::Type::DatabaseManager>, public WebContextSupplement, private IPC::MessageReceiver {
 public:
     static const char* supplementName();
 
@@ -70,6 +70,8 @@ public:
     static String databaseDetailsDisplayNameKey();
     static String databaseDetailsExpectedUsageKey();
     static String databaseDetailsCurrentUsageKey();
+    static String databaseDetailsCreationTimeKey();
+    static String databaseDetailsModificationTimeKey();
 
     using API::Object::ref;
     using API::Object::deref;
@@ -78,14 +80,14 @@ private:
     explicit WebDatabaseManagerProxy(WebContext*);
 
     // WebContextSupplement
-    virtual void contextDestroyed() OVERRIDE;
-    virtual void processDidClose(WebProcessProxy*) OVERRIDE;
-    virtual bool shouldTerminate(WebProcessProxy*) const OVERRIDE;
-    virtual void refWebContextSupplement() OVERRIDE;
-    virtual void derefWebContextSupplement() OVERRIDE;
+    virtual void contextDestroyed() override;
+    virtual void processDidClose(WebProcessProxy*) override;
+    virtual bool shouldTerminate(WebProcessProxy*) const override;
+    virtual void refWebContextSupplement() override;
+    virtual void derefWebContextSupplement() override;
 
-    // CoreIPC::MessageReceiver
-    virtual void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&) OVERRIDE;
+    // IPC::MessageReceiver
+    virtual void didReceiveMessage(IPC::Connection*, IPC::MessageDecoder&) override;
 
     // Message handlers.
     void didGetDatabasesByOrigin(const Vector<OriginAndDatabases>& originAndDatabases, uint64_t callbackID);

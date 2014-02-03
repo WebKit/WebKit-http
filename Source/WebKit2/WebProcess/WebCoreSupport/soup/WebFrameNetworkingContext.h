@@ -42,8 +42,7 @@ public:
         return adoptRef(new WebFrameNetworkingContext(frame));
     }
 
-    static void ensurePrivateBrowsingSession();
-    static void destroyPrivateBrowsingSession();
+    static void ensurePrivateBrowsingSession(uint64_t sessionID);
 
     WebFrameLoaderClient* webFrameLoaderClient() const;
 
@@ -51,9 +50,6 @@ private:
     WebFrameNetworkingContext(WebFrame*);
 
     virtual WebCore::NetworkStorageSession& storageSession() const;
-    virtual uint64_t initiatingPageID() const;
-
-    uint64_t m_initiatingPageID;
 };
 
 }

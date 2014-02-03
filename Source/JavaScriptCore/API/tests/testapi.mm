@@ -37,6 +37,12 @@ extern "C" void testObjectiveCAPI(void);
 
 #if JSC_OBJC_API_ENABLED
 
+@interface UnexportedObject : NSObject
+@end
+
+@implementation UnexportedObject
+@end
+
 @protocol ParentObject <JSExport>
 @end
 
@@ -169,6 +175,9 @@ bool testXYZTested = false;
 - (void)dealloc
 {
     [[m_onclickHandler value].context.virtualMachine removeManagedReference:m_onclickHandler withOwner:self];
+#if !__has_feature(objc_arc)
+    [super dealloc];
+#endif
 }
 @end
 
@@ -437,11 +446,14 @@ static bool evilAllocationObjectWasDealloced = false;
 {
     [self doEvilThingsWithContext:m_context];
     evilAllocationObjectWasDealloced = true;
+#if !__has_feature(objc_arc)
+    [super dealloc];
+#endif
 }
 
 - (JSValue *)doEvilThingsWithContext:(JSContext *)context
 {
-    return [context evaluateScript:@" \
+    JSValue *result = [context evaluateScript:@" \
         (function() { \
             var a = []; \
             var sum = 0; \
@@ -451,6 +463,9 @@ static bool evilAllocationObjectWasDealloced = false;
             } \
             return sum; \
         })()"];
+
+    JSSynchronousGarbageCollectForDebugging([context JSGlobalContextRef]);
+    return result;
 }
 @end
 
@@ -578,6 +593,22 @@ void testObjectiveCAPI()
         };
         [context evaluateScript:@"!@#$%^&*() THIS IS NOT VALID JAVASCRIPT SYNTAX !@#$%^&*()"];
         checkResult(@"JSContext.exceptionHandler", caught);
+    }
+
+    @autoreleasepool {
+        JSContext *context = [[JSContext alloc] init];
+        __block int expectedExceptionLineNumber = 1;
+        __block bool sawExpectedExceptionLineNumber = false;
+        context.exceptionHandler = ^(JSContext *, JSValue *exception) {
+            sawExpectedExceptionLineNumber = [exception[@"line"] toInt32] == expectedExceptionLineNumber;
+        };
+        [context evaluateScript:@"!@#$%^&*() THIS IS NOT VALID JAVASCRIPT SYNTAX !@#$%^&*()"];
+        checkResult(@"evaluteScript exception on line 1", sawExpectedExceptionLineNumber);
+
+        expectedExceptionLineNumber = 2;
+        sawExpectedExceptionLineNumber = false;
+        [context evaluateScript:@"// Line 1\n!@#$%^&*() THIS IS NOT VALID JAVASCRIPT SYNTAX !@#$%^&*()"];
+        checkResult(@"evaluteScript exception on line 2", sawExpectedExceptionLineNumber);
     }
 
     @autoreleasepool {
@@ -1187,12 +1218,13 @@ void testObjectiveCAPI()
 
     @autoreleasepool {
         JSContext *context = [[JSContext alloc] init];
-        @autoreleasepool {
-            EvilAllocationObject *evilObject = [[EvilAllocationObject alloc] initWithContext:context];
-            context[@"evilObject"] = evilObject;
-            context[@"evilObject"] = nil;
+        while (!evilAllocationObjectWasDealloced) {
+            @autoreleasepool {
+                EvilAllocationObject *evilObject = [[EvilAllocationObject alloc] initWithContext:context];
+                context[@"evilObject"] = evilObject;
+                context[@"evilObject"] = nil;
+            }
         }
-        JSSynchronousGarbageCollectForDebugging([context JSGlobalContextRef]);
         checkResult(@"EvilAllocationObject was successfully dealloced without crashing", evilAllocationObjectWasDealloced);
     }
 
@@ -1208,6 +1240,16 @@ void testObjectiveCAPI()
         checkResult(@"fetched context.name was expected", [fetchedName1 isEqualToString:name1]);
         checkResult(@"fetched context.name was expected", [fetchedName2 isEqualToString:name2]);
         checkResult(@"fetched context.name was expected", ![fetchedName1 isEqualToString:fetchedName2]);
+    }
+
+    @autoreleasepool {
+        JSContext *context = [[JSContext alloc] init];
+        context[@"UnexportedObject"] = [UnexportedObject class];
+        context[@"makeObject"] = ^{
+            return [[UnexportedObject alloc] init];
+        };
+        JSValue *result = [context evaluateScript:@"(makeObject() instanceof UnexportedObject)"];
+        checkResult(@"makeObject() instanceof UnexportedObject", [result isBoolean] && [result toBool]);
     }
 
     currentThisInsideBlockGetterTest();

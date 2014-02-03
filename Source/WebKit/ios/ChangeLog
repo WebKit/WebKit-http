@@ -1,3 +1,158 @@
+2014-01-30  Andrei Bucur  <abucur@adobe.com>
+
+        Remove the ACCELERATED_COMPOSITING flag
+        https://bugs.webkit.org/show_bug.cgi?id=127833
+
+        Reviewed by Antti Koivisto.
+
+        Remove the USE(ACCELERATED_COMPOSITING) conditionals from the code base and make AC
+        mandatory.
+
+        * WebCoreSupport/WebChromeClientIOS.h:
+        * WebCoreSupport/WebChromeClientIOS.mm:
+        (WebChromeClientIOS::attachRootGraphicsLayer):
+        * WebView/WebUIKitDelegate.h:
+
+2014-01-27  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Unreviewed iOS build fix. FALLTHROUGHs for iOS.
+
+        * Misc/WebNSStringDrawing.mm:
+        (needsBidiLayout):
+
+2014-01-27  Andy Estes  <aestes@apple.com>
+
+        Scrub WebKit API headers of WTF macros
+        https://bugs.webkit.org/show_bug.cgi?id=127706
+
+        Reviewed by David Kilzer.
+
+        * WebCoreSupport/WebMIMETypeRegistry.h: Changed PLATFORM(IOS) to
+        TARGET_OS_IPHONE.
+
+2014-01-15  Sam Weinig  <sam@webkit.org>
+
+        TextBreakIterator's should support Latin-1 for all iterator types (Part 3)
+        https://bugs.webkit.org/show_bug.cgi?id=126856
+
+        Reviewed by Ryosuke Niwa.
+
+        Change all the TextBreakIterator creation functions to take StringViews. Remove a few
+        now unnecessary up-conversions to UTF-16 in the process.
+
+        * Misc/WebNSStringDrawing.mm:
+
+2014-01-16  Anders Carlsson  <andersca@apple.com>
+
+        Change all uses of FINAL to final now that all our compilers support it
+        https://bugs.webkit.org/show_bug.cgi?id=127142
+
+        Reviewed by Benjamin Poulain.
+
+        * WebCoreSupport/WebDiskImageCacheClientIOS.h:
+
+2014-01-16  Peter Molnar  <pmolnar.u-szeged@partner.samsung.com>
+
+        Remove workaround for compilers not supporting explicit override control
+        https://bugs.webkit.org/show_bug.cgi?id=127111
+
+        Reviewed by Anders Carlsson.
+
+        Now all compilers support explicit override control, this workaround can be removed.
+
+        * Misc/EmojiFallbackFontSelector.h:
+        * Storage/WebSQLiteDatabaseTrackerClient.h:
+        * WebCoreSupport/PopupMenuIOS.h:
+        * WebCoreSupport/SearchPopupMenuIOS.h:
+        * WebCoreSupport/WebChromeClientIOS.h:
+        * WebCoreSupport/WebDiskImageCacheClientIOS.h:
+
+2014-01-16  Andy Estes  <aestes@apple.com>
+
+        [iOS] Fix build issues with exported headers
+
+        * Misc/WebNSStringExtrasIOS.h: Changed PLATFORM(IOS) to
+        TARGET_OS_IPHONE.
+
+2014-01-14  Simon Fraser  <simon.fraser@apple.com>
+
+        Avoid PLATFORM() macros in exported headers.
+
+        * WebView/WebPDFViewPlaceholder.h:
+
+2014-01-14  Simon Fraser  <simon.fraser@apple.com>
+
+        Clean up exports and headers for iOS.
+
+        * Misc/WebNSStringDrawing.h: Don't use PLATFORM() macro in an exported header.
+        * WebCoreSupport/WebFrameIOS.h: Ditto.
+        * WebCoreSupport/WebSelectionRect.h: Ditto.
+
+2014-01-14  Dean Jackson  <dino@apple.com>
+
+        Remove .objc_class_name_WebInspectorXPCWrapper from export on iOS build.
+
+        * WebKit.iOS.exp:
+
+2014-01-14  Simon Fraser  <simon.fraser@apple.com>
+
+        Fix WK1 iOS build: need implementations of these functions in WebInspectorClientIOS.
+
+        * WebCoreSupport/WebInspectorClientIOS.mm:
+        (WebInspectorClient::indicate):
+        (WebInspectorClient::hideIndication):
+
+2014-01-13  Simon Fraser  <simon.fraser@apple.com>
+
+        More work towards getting iOS WK1 building.
+
+        * WebCoreSupport/WebFrameIOS.mm:
+        (-[WebFrame imageForNode:allowDownsampling:drawContentBehindTransparentNodes:]): Stub out this
+        function, since it should use recently-refactored node snapshotting code. Covered by <rdar://problem/15808709>.
+
+2014-01-12  Darin Adler  <darin@apple.com>
+
+        Add type checking to isEqual methods
+        https://bugs.webkit.org/show_bug.cgi?id=126862
+
+        Reviewed by Anders Carlsson.
+
+        * WebCoreSupport/WebVisiblePosition.mm:
+        (-[WebVisiblePosition isEqual:]): Add type checking on the argument.
+        Add a FIXME about the lack of a hash method override. Simplified by
+        removing the unneeded local variables.
+
+2014-01-02  Andy Estes  <aestes@apple.com>
+
+        [iOS] Upstream remainder of minimal-ui viewport changes
+        https://bugs.webkit.org/show_bug.cgi?id=126410
+
+        Reviewed by Sam Weinig.
+
+        * WebCoreSupport/WebChromeClientIOS.mm:
+        (dictionaryForViewportArguments):
+        * WebKit.iOS.exp:
+
+2013-12-31  Andy Estes  <aestes@apple.com>
+
+        [iOS] Upstream PLATFORM(IOS) changes to Source/WebKit/
+        https://bugs.webkit.org/show_bug.cgi?id=125746
+
+        Reviewed by David Kilzer.
+
+        * WebCoreSupport/WebVisiblePosition.mm:
+        (-[WebVisiblePosition positionAtStartOrEndOfWord]): Changed a comment
+        to mention iOS rather than iPhone.
+
+2013-12-27  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Upstream WebCore/page changes
+        https://bugs.webkit.org/show_bug.cgi?id=126180
+
+        Reviewed by Darin Adler.
+
+        * WebCoreSupport/WebChromeClientIOS.mm: Substitute ENABLE(IOS_TOUCH_EVENTS) for ENABLE(TOUCH_EVENTS).
+
 2013-12-04  Brian J. Burg  <burg@cs.washington.edu>
 
         Consolidate various frame snapshot capabilities.

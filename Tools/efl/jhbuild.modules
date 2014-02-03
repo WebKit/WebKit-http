@@ -77,6 +77,7 @@
   <autotools id="fonts"
              skip-autogen="true">
     <branch module="downloads/mrobinson/webkitgtk-test-fonts/webkitgtk-test-fonts-0.0.3.tar.gz" version="0.0.3"
+            checkoutdir="webkitgtk-test-fonts"
             repo="github.com"
             hash="sha256:4a0a01f00855997cdcc7201f164b33a4e4144e8eadf40a5e542a1c448e035de5"
             md5sum="10e74de1a8ba961d9037994d427b1dd2" size="16981642">
@@ -340,9 +341,9 @@
   <autotools id="atk"
              autogen-sh="configure"
              autogenargs="--disable-introspection">
-    <branch module="pub/GNOME/sources/atk/2.10/atk-2.10.0.tar.xz" version="2.10.0"
+    <branch module="pub/GNOME/sources/atk/2.11/atk-2.11.4.tar.xz" version="2.11.4"
             repo="ftp.gnome.org"
-            hash="sha256:636917a5036bc851d8491194645d284798ec118919a828be5e713b6ecc5b50b0"/>
+            hash="sha256:b609fa7a3f21147d40f0fe0f47278a62c263de0eadbbbe9839f2b63a0cb07d41"/>
   </autotools>
 
 </moduleset>

@@ -34,17 +34,19 @@
 #include "CertificateInfo.h"
 #include "WebCookieManager.h"
 #include "WebProcessCreationParameters.h"
-#include "WebSoupRequestManager.h"
 #include <WebCore/FileSystem.h>
 #include <WebCore/Language.h>
 #include <WebCore/MemoryCache.h>
 #include <WebCore/PageCache.h>
 #include <WebCore/ResourceHandle.h>
+#include <WebCore/SoupNetworkSession.h>
 #include <libsoup/soup.h>
 #include <wtf/gobject/GOwnPtr.h>
 #include <wtf/gobject/GRefPtr.h>
-#include <wtf/text/CString.h>
-#include <wtf/text/StringBuilder.h>
+
+#if !ENABLE(CUSTOM_PROTOCOLS)
+#include "WebSoupRequestManager.h"
+#endif
 
 namespace WebKit {
 
@@ -93,34 +95,25 @@ void WebProcess::platformSetCacheModel(CacheModel cacheModel)
     uint64_t diskFreeSize = 0;
     SoupCache* cache = nullptr;
 
-#if ENABLE(NETWORK_PROCESS)
-    if (!m_usesNetworkProcess) {
-#endif
-        SoupSession* session = WebCore::ResourceHandle::defaultSession();
-        cache = SOUP_CACHE(soup_session_get_feature(session, SOUP_TYPE_CACHE));
+    if (!usesNetworkProcess()) {
+        cache = WebCore::SoupNetworkSession::defaultSession().cache();
         diskFreeSize = getCacheDiskFreeSize(cache) / 1024 / 1024;
-#if ENABLE(NETWORK_PROCESS)
     }
-#endif
+
     uint64_t memSize = getMemorySize();
     calculateCacheSizes(cacheModel, memSize, diskFreeSize,
                         cacheTotalCapacity, cacheMinDeadCapacity, cacheMaxDeadCapacity, deadDecodedDataDeletionInterval,
                         pageCacheCapacity, urlCacheMemoryCapacity, urlCacheDiskCapacity);
 
+    WebCore::memoryCache()->setDisabled(cacheModel == CacheModelDocumentViewer);
     WebCore::memoryCache()->setCapacities(cacheMinDeadCapacity, cacheMaxDeadCapacity, cacheTotalCapacity);
     WebCore::memoryCache()->setDeadDecodedDataDeletionInterval(deadDecodedDataDeletionInterval);
     WebCore::pageCache()->setCapacity(pageCacheCapacity);
 
-#if ENABLE(NETWORK_PROCESS)
-    if (!m_usesNetworkProcess) {
-#endif
+    if (!usesNetworkProcess()) {
         if (urlCacheDiskCapacity > soup_cache_get_max_size(cache))
             soup_cache_set_max_size(cache, urlCacheDiskCapacity);
-#if ENABLE(NETWORK_PROCESS)
     }
-#endif
-    if (urlCacheDiskCapacity > soup_cache_get_max_size(cache))
-        soup_cache_set_max_size(cache, urlCacheDiskCapacity);
 }
 
 void WebProcess::platformClearResourceCaches(ResourceCachesToClear cachesToClear)
@@ -129,57 +122,15 @@ void WebProcess::platformClearResourceCaches(ResourceCachesToClear cachesToClear
         return;
 
     // If we're using the network process then it is the only one that needs to clear the disk cache.
-#if ENABLE(NETWORK_PROCESS)
-    if (m_usesNetworkProcess)
+    if (usesNetworkProcess())
         return;
-#endif
-    SoupSession* session = WebCore::ResourceHandle::defaultSession();
-    soup_cache_clear(SOUP_CACHE(soup_session_get_feature(session, SOUP_TYPE_CACHE)));
+
+    soup_cache_clear(WebCore::SoupNetworkSession::defaultSession().cache());
 }
 
-// This function is based on Epiphany code in ephy-embed-prefs.c.
-static CString buildAcceptLanguages(Vector<String> languages)
+static void setSoupSessionAcceptLanguage(const Vector<String>& languages)
 {
-    // Ignore "C" locale.
-    size_t position = languages.find("c");
-    if (position != notFound)
-        languages.remove(position);
-
-    // Fallback to "en" if the list is empty.
-    if (languages.isEmpty())
-        return "en";
-
-    // Calculate deltas for the quality values.
-    int delta;
-    if (languages.size() < 10)
-        delta = 10;
-    else if (languages.size() < 20)
-        delta = 5;
-    else
-        delta = 1;
-
-    // Set quality values for each language.
-    StringBuilder builder;
-    for (size_t i = 0; i < languages.size(); ++i) {
-        if (i)
-            builder.append(", ");
-
-        builder.append(languages[i]);
-
-        int quality = 100 - i * delta;
-        if (quality > 0 && quality < 100) {
-            char buffer[8];
-            g_ascii_formatd(buffer, 8, "%.2f", quality / 100.0);
-            builder.append(String::format(";q=%s", buffer));
-        }
-    }
-
-    return builder.toString().utf8();
-}
-
-static void setSoupSessionAcceptLanguage(Vector<String> languages)
-{
-    g_object_set(WebCore::ResourceHandle::defaultSession(), "accept-language", buildAcceptLanguages(languages).data(), NULL);
+    WebCore::SoupNetworkSession::defaultSession().setAcceptLanguages(languages);
 }
 
 static void languageChanged(void*)
@@ -187,7 +138,7 @@ static void languageChanged(void*)
     setSoupSessionAcceptLanguage(WebCore::userPreferredLanguages());
 }
 
-void WebProcess::platformInitializeWebProcess(const WebProcessCreationParameters& parameters, CoreIPC::MessageDecoder&)
+void WebProcess::platformInitializeWebProcess(const WebProcessCreationParameters& parameters, IPC::MessageDecoder&)
 {
 #if ENABLE(SECCOMP_FILTERS)
     {
@@ -198,27 +149,27 @@ void WebProcess::platformInitializeWebProcess(const WebProcessCreationParameters
     }
 #endif
 
-#if ENABLE(NETWORK_PROCESS)
-    if (!m_usesNetworkProcess) {
-#endif
-        ASSERT(!parameters.diskCacheDirectory.isEmpty());
-        GRefPtr<SoupCache> soupCache = adoptGRef(soup_cache_new(parameters.diskCacheDirectory.utf8().data(), SOUP_CACHE_SINGLE_USER));
-        soup_session_add_feature(WebCore::ResourceHandle::defaultSession(), SOUP_SESSION_FEATURE(soupCache.get()));
-        soup_cache_load(soupCache.get());
-#if ENABLE(NETWORK_PROCESS)
-    }
-#endif
-    if (!parameters.languages.isEmpty())
-        setSoupSessionAcceptLanguage(parameters.languages);
+    if (usesNetworkProcess())
+        return;
 
-    for (size_t i = 0; i < parameters.urlSchemesRegistered.size(); i++)
-        supplement<WebSoupRequestManager>()->registerURIScheme(parameters.urlSchemesRegistered[i]);
+    ASSERT(!parameters.diskCacheDirectory.isEmpty());
+    GRefPtr<SoupCache> soupCache = adoptGRef(soup_cache_new(parameters.diskCacheDirectory.utf8().data(), SOUP_CACHE_SINGLE_USER));
+    WebCore::SoupNetworkSession::defaultSession().setCache(soupCache.get());
+    soup_cache_load(soupCache.get());
 
     if (!parameters.cookiePersistentStoragePath.isEmpty()) {
         supplement<WebCookieManager>()->setCookiePersistentStorage(parameters.cookiePersistentStoragePath,
             parameters.cookiePersistentStorageType);
     }
     supplement<WebCookieManager>()->setHTTPCookieAcceptPolicy(parameters.cookieAcceptPolicy);
+
+    if (!parameters.languages.isEmpty())
+        setSoupSessionAcceptLanguage(parameters.languages);
+
+#if !ENABLE(CUSTOM_PROTOCOLS)
+    for (size_t i = 0; i < parameters.urlSchemesRegistered.size(); i++)
+        supplement<WebSoupRequestManager>()->registerURIScheme(parameters.urlSchemesRegistered[i]);
+#endif
 
     setIgnoreTLSErrors(parameters.ignoreTLSErrors);
 
@@ -227,18 +178,20 @@ void WebProcess::platformInitializeWebProcess(const WebProcessCreationParameters
 
 void WebProcess::platformTerminate()
 {
-    WebCore::removeLanguageChangeObserver(this);
+    if (!usesNetworkProcess())
+        WebCore::removeLanguageChangeObserver(this);
 }
 
 void WebProcess::setIgnoreTLSErrors(bool ignoreTLSErrors)
 {
+    ASSERT(!usesNetworkProcess());
     WebCore::ResourceHandle::setIgnoreSSLErrors(ignoreTLSErrors);
 }
 
-#if !ENABLE(NETWORK_PROCESS)
 void WebProcess::allowSpecificHTTPSCertificateForHost(const WebCore::CertificateInfo& certificateInfo, const String& host)
 {
+    ASSERT(!usesNetworkProcess());
     WebCore::ResourceHandle::setClientCertificate(host, certificateInfo.certificate());
 }
-#endif
+
 } // namespace WebKit

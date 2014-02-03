@@ -35,6 +35,10 @@
 typedef const struct __CFURL* CFURLRef;
 #endif
 
+#if USE(SOUP)
+#include "GUniquePtrSoup.h"
+#endif
+
 #if PLATFORM(MAC)
 OBJC_CLASS NSURL;
 #endif
@@ -164,6 +168,11 @@ public:
     RetainPtr<CFURLRef> createCFURL() const;
 #endif
 
+#if USE(SOUP)
+    URL(SoupURI*);
+    GUniquePtr<SoupURI> createSoupURI() const;
+#endif
+
 #if PLATFORM(MAC)
     URL(NSURL*);
     operator NSURL*() const;
@@ -234,6 +243,7 @@ const URL& blankURL();
 
 bool protocolIs(const String& url, const char* protocol);
 bool protocolIsJavaScript(const String& url);
+bool protocolIsInHTTPFamily(const String& url);
 
 bool isDefaultPortForProtocol(unsigned short port, const String& protocol);
 bool portAllowed(const URL&); // Blacklist ports that should never be used for Web resources.
@@ -340,6 +350,10 @@ inline unsigned URL::pathAfterLastSlash() const
 {
     return m_pathAfterLastSlash;
 }
+
+#if PLATFORM(IOS)
+void enableURLSchemeCanonicalization(bool);
+#endif
 
 } // namespace WebCore
 

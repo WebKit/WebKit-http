@@ -376,9 +376,9 @@ static void getListFromNSArray(ExecState *exec, NSArray *array, RootObject* root
     ASSERT(!exec->hadException());
 
     JSLockHolder lock(exec);
-
-    PutPropertySlot slot;
-    [self _imp]->methodTable()->put([self _imp], exec, Identifier(exec, String(key)), convertObjcValueToValue(exec, &value, ObjcObjectType, [self _rootObject]), slot);
+    JSObject* object = JSC::jsDynamicCast<JSObject*>([self _imp]);
+    PutPropertySlot slot(object);
+    object->methodTable()->put(object, exec, Identifier(exec, String(key)), convertObjcValueToValue(exec, &value, ObjcObjectType, [self _rootObject]), slot);
 
     if (exec->hadException()) {
         addExceptionToConsole(exec);
@@ -551,7 +551,7 @@ static void getListFromNSArray(ExecState *exec, NSArray *array, RootObject* root
     if (value.isString()) {
         ExecState* exec = rootObject->globalObject()->globalExec();
         const String& u = asString(value)->value(exec);
-        return [NSString stringWithCharacters:u.characters() length:u.length()];
+        return [NSString stringWithCharacters:u.deprecatedCharacters() length:u.length()];
     }
 
     if (value.isNumber())

@@ -70,6 +70,12 @@ namespace WTF {
         const_iterator begin() const;
         const_iterator end() const;
 
+        IteratorRange<typename iterator::Keys> keys() { return makeIteratorRange(begin().keys(), end().keys()); }
+        const IteratorRange<typename const_iterator::Keys> keys() const { return makeIteratorRange(begin().keys(), end().keys()); }
+
+        IteratorRange<typename iterator::Values> values() { return makeIteratorRange(begin().values(), end().values()); }
+        const IteratorRange<typename const_iterator::Values> values() const { return makeIteratorRange(begin().values(), end().values()); }
+
         iterator find(const KeyType&);
         iterator find(RawKeyType);
         const_iterator find(const KeyType&) const;

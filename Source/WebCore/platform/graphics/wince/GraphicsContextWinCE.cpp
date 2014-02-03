@@ -354,10 +354,8 @@ static GDIObject<HPEN> createPen(const Color& col, double fWidth, StrokeStyle st
     int penStyle = PS_NULL;
     switch (style) {
         case SolidStroke:
-#if ENABLE(CSS3_TEXT_DECORATION)
         case DoubleStroke:
         case WavyStroke: // FIXME: https://bugs.webkit.org/show_bug.cgi?id=94114 - Needs platform support.
-#endif // CSS3_TEXT_DECORATION
             penStyle = PS_SOLID;
             break;
         case DottedStroke:  // not supported on Windows CE
@@ -626,7 +624,7 @@ void GraphicsContext::restorePlatformState()
     m_data->restore();
 }
 
-void GraphicsContext::drawRect(const IntRect& rect)
+void GraphicsContext::drawRect(const FloatRect& rect)
 {
     if (!m_data->m_opacity || paintingDisabled() || rect.isEmpty())
         return;
@@ -671,7 +669,7 @@ void GraphicsContext::drawRect(const IntRect& rect)
     SelectObject(dc, oldBrush);
 }
 
-void GraphicsContext::drawLine(const IntPoint& point1, const IntPoint& point2)
+void GraphicsContext::drawLine(const FloatPoint& point1, const FloatPoint& point2)
 {
     if (!m_data->m_opacity || paintingDisabled() || strokeStyle() == NoStroke || !strokeColor().alpha())
         return;
@@ -900,7 +898,7 @@ void GraphicsContext::clip(const FloatRect& rect)
     }
 }
 
-void GraphicsContext::clipOut(const IntRect& rect)
+void GraphicsContext::clipOut(const FloatRect& rect)
 {
     if (paintingDisabled())
         return;
@@ -964,6 +962,12 @@ void GraphicsContext::drawLineForText(const FloatPoint& origin, float width, boo
     setStrokeStyle(SolidStroke);
     drawLine(roundedIntPoint(origin), roundedIntPoint(origin + FloatSize(width, 0)));
     setStrokeStyle(oldStyle);
+}
+
+void GraphicsContext::drawLinesForText(const FloatPoint& point, const DashArray& widths, bool printing)
+{
+    for (size_t i = 0; i < widths.size(); i += 2)
+        drawLineForText(FloatPoint(point.x() + widths[i], point.y()), widths[i+1] - widths[i], printing);
 }
 
 void GraphicsContext::updateDocumentMarkerResources()
@@ -1146,7 +1150,7 @@ static inline IntPoint rectCenterPoint(const RECT& rect)
 {
     return IntPoint(rect.left + (rect.right - rect.left) / 2, rect.top + (rect.bottom - rect.top) / 2);
 }
-void GraphicsContext::fillRoundedRect(const IntRect& fillRect, const IntSize& topLeft, const IntSize& topRight, const IntSize& bottomLeft, const IntSize& bottomRight, const Color& c, ColorSpace colorSpace)
+void GraphicsContext::fillRoundedRect(const FloatRect& fillRect, const FloatSize& topLeft, const FloatSize& topRight, const FloatSize& bottomLeft, const FloatSize& bottomRight, const Color& c, ColorSpace colorSpace)
 {
     ScopeDCProvider dcProvider(m_data);
     if (!m_data->m_dc)

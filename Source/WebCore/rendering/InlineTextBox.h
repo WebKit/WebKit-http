@@ -77,7 +77,7 @@ public:
 
     unsigned short truncation() const { return m_truncation; }
 
-    virtual void markDirty(bool dirty = true) OVERRIDE FINAL;
+    virtual void markDirty(bool dirty = true) override final;
 
     using InlineBox::hasHyphen;
     using InlineBox::setHasHyphen;
@@ -86,10 +86,10 @@ public:
 
     static inline bool compareByStart(const InlineTextBox* first, const InlineTextBox* second) { return first->start() < second->start(); }
 
-    virtual int baselinePosition(FontBaseline) const OVERRIDE FINAL;
-    virtual LayoutUnit lineHeight() const OVERRIDE FINAL;
+    virtual int baselinePosition(FontBaseline) const override final;
+    virtual LayoutUnit lineHeight() const override final;
 
-    bool getEmphasisMarkPosition(const RenderStyle&, TextEmphasisPosition&) const;
+    bool emphasisMarkExistsAndIsAbove(const RenderStyle&, bool& isAbove) const;
 
     LayoutRect logicalOverflowRect() const;
     void setLogicalOverflowRect(const LayoutRect&);
@@ -120,22 +120,22 @@ public:
 
 protected:
     virtual void paint(PaintInfo&, const LayoutPoint&, LayoutUnit lineTop, LayoutUnit lineBottom);
-    virtual bool nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, LayoutUnit lineTop, LayoutUnit lineBottom) OVERRIDE;
+    virtual bool nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, LayoutUnit lineTop, LayoutUnit lineBottom) override;
 
 private:
-    virtual void deleteLine() OVERRIDE FINAL;
-    virtual void extractLine() OVERRIDE FINAL;
-    virtual void attachLine() OVERRIDE FINAL;
+    virtual void deleteLine() override final;
+    virtual void extractLine() override final;
+    virtual void attachLine() override final;
 
 public:
-    virtual RenderObject::SelectionState selectionState() OVERRIDE FINAL;
+    virtual RenderObject::SelectionState selectionState() override final;
 
 private:
-    virtual void clearTruncation() OVERRIDE FINAL { m_truncation = cNoTruncation; }
-    virtual float placeEllipsisBox(bool flowIsLTR, float visibleLeftEdge, float visibleRightEdge, float ellipsisWidth, float &truncatedWidth, bool& foundBox) OVERRIDE FINAL;
+    virtual void clearTruncation() override final { m_truncation = cNoTruncation; }
+    virtual float placeEllipsisBox(bool flowIsLTR, float visibleLeftEdge, float visibleRightEdge, float ellipsisWidth, float &truncatedWidth, bool& foundBox) override final;
 
 public:
-    virtual bool isLineBreak() const OVERRIDE FINAL;
+    virtual bool isLineBreak() const override final;
 
     void setExpansion(int newExpansion)
     {
@@ -145,11 +145,11 @@ public:
     }
 
 private:
-    virtual bool isInlineTextBox() const OVERRIDE FINAL { return true; }
+    virtual bool isInlineTextBox() const override final { return true; }
 
 public:
-    virtual int caretMinOffset() const OVERRIDE FINAL;
-    virtual int caretMaxOffset() const OVERRIDE FINAL;
+    virtual int caretMinOffset() const override final;
+    virtual int caretMaxOffset() const override final;
 
 private:
     float textPos() const; // returns the x position relative to the left start of the text line.
@@ -182,7 +182,7 @@ private:
             | (expansion() && nextLeafChild() ? TextRun::AllowTrailingExpansion : TextRun::ForbidTrailingExpansion);
     }
 
-    void behavesLikeText() const WTF_DELETED_FUNCTION;
+    void behavesLikeText() const = delete;
 
     InlineTextBox* m_prevTextBox; // The previous box that also uses our RenderObject
     InlineTextBox* m_nextTextBox; // The next box that also uses our RenderObject

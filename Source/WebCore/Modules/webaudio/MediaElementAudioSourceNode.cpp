@@ -52,7 +52,7 @@ MediaElementAudioSourceNode::MediaElementAudioSourceNode(AudioContext* context, 
     , m_sourceSampleRate(0)
 {
     // Default to stereo. This could change depending on what the media element .src is set to.
-    addOutput(adoptPtr(new AudioNodeOutput(this, 2)));
+    addOutput(std::make_unique<AudioNodeOutput>(this, 2));
 
     setNodeType(NodeTypeMediaElementAudioSource);
 
@@ -80,19 +80,19 @@ void MediaElementAudioSourceNode::setFormat(size_t numberOfChannels, float sourc
         m_sourceSampleRate = sourceSampleRate;
 
         // Synchronize with process().
-        Locker<MediaElementAudioSourceNode> locker(*this);
+        std::lock_guard<MediaElementAudioSourceNode> lock(*this);
 
         if (sourceSampleRate != sampleRate()) {
             double scaleFactor = sourceSampleRate / sampleRate();
-            m_multiChannelResampler = adoptPtr(new MultiChannelResampler(scaleFactor, numberOfChannels));
+            m_multiChannelResampler = std::make_unique<MultiChannelResampler>(scaleFactor, numberOfChannels);
         } else {
             // Bypass resampling.
-            m_multiChannelResampler.clear();
+            m_multiChannelResampler = nullptr;
         }
 
         {
             // The context must be locked when changing the number of output channels.
-            AudioContext::AutoLocker contextLocker(context());
+            AudioContext::AutoLocker contextLocker(*context());
 
             // Do any necesssary re-configuration to the output's number of channels.
             output(0)->setNumberOfChannels(numberOfChannels);
@@ -109,27 +109,28 @@ void MediaElementAudioSourceNode::process(size_t numberOfFrames)
         return;
     }
 
-    // Use a tryLock() to avoid contention in the real-time audio thread.
+    // Use a std::try_to_lock to avoid contention in the real-time audio thread.
     // If we fail to acquire the lock then the HTMLMediaElement must be in the middle of
     // reconfiguring its playback engine, so we output silence in this case.
-    MutexTryLocker tryLocker(m_processLock);
-    if (tryLocker.locked()) {
-        if (AudioSourceProvider* provider = mediaElement()->audioSourceProvider()) {
-            if (m_multiChannelResampler.get()) {
-                ASSERT(m_sourceSampleRate != sampleRate());
-                m_multiChannelResampler->process(provider, outputBus, numberOfFrames);
-            } else {
-                // Bypass the resampler completely if the source is at the context's sample-rate.
-                ASSERT(m_sourceSampleRate == sampleRate());
-                provider->provideInput(outputBus, numberOfFrames);
-            }
+    std::unique_lock<std::mutex> lock(m_processMutex, std::try_to_lock);
+    if (!lock.owns_lock()) {
+        // We failed to acquire the lock.
+        outputBus->zero();
+        return;
+    }
+
+    if (AudioSourceProvider* provider = mediaElement()->audioSourceProvider()) {
+        if (m_multiChannelResampler.get()) {
+            ASSERT(m_sourceSampleRate != sampleRate());
+            m_multiChannelResampler->process(provider, outputBus, numberOfFrames);
         } else {
-            // Either this port doesn't yet support HTMLMediaElement audio stream access,
-            // or the stream is not yet available.
-            outputBus->zero();
+            // Bypass the resampler completely if the source is at the context's sample-rate.
+            ASSERT(m_sourceSampleRate == sampleRate());
+            provider->provideInput(outputBus, numberOfFrames);
         }
     } else {
-        // We failed to acquire the lock.
+        // Either this port doesn't yet support HTMLMediaElement audio stream access,
+        // or the stream is not yet available.
         outputBus->zero();
     }
 }
@@ -141,12 +142,12 @@ void MediaElementAudioSourceNode::reset()
 void MediaElementAudioSourceNode::lock()
 {
     ref();
-    m_processLock.lock();
+    m_processMutex.lock();
 }
 
 void MediaElementAudioSourceNode::unlock()
 {
-    m_processLock.unlock();
+    m_processMutex.unlock();
     deref();
 }
 

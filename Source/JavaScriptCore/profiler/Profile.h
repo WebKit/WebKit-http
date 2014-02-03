@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008 Apple Inc. All Rights Reserved.
+ * Copyright (C) 2008, 2014 Apple Inc. All Rights Reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -39,16 +39,17 @@ namespace JSC {
         virtual ~Profile();
 
         const String& title() const { return m_title; }
+        unsigned uid() const { return m_uid; }
+
         ProfileNode* head() const { return m_head.get(); }
         void setHead(PassRefPtr<ProfileNode> head) { m_head = head; }
+
         double totalTime() const { return m_head->totalTime(); }
-        unsigned int uid() const { return m_uid; }
 
-        JS_EXPORT_PRIVATE void forEach(void (ProfileNode::*)());
+        double idleTime() const { return m_idleTime; }
+        void setIdleTime(double idleTime) { m_idleTime = idleTime; }
 
-        JS_EXPORT_PRIVATE void focus(const ProfileNode*);
-        JS_EXPORT_PRIVATE void exclude(const ProfileNode*);
-        JS_EXPORT_PRIVATE void restoreAll();
+        void forEach(void (ProfileNode::*)());
 
 #ifndef NDEBUG
         void debugPrintData() const;
@@ -65,6 +66,7 @@ namespace JSC {
         String m_title;
         RefPtr<ProfileNode> m_head;
         unsigned int m_uid;
+        double m_idleTime;
     };
 
 } // namespace JSC

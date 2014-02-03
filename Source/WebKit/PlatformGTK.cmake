@@ -1,13 +1,15 @@
-set(DERIVED_SOURCES_WEBKITGTK_DIR ${DERIVED_SOURCES_DIR}/webkit)
 file(MAKE_DIRECTORY ${DERIVED_SOURCES_WEBKITGTK_DIR})
-configure_file(gtk/webkit/webkitversion.h.in ${DERIVED_SOURCES_WEBKITGTK_DIR}/webkitversion.h)
+file(MAKE_DIRECTORY ${DERIVED_SOURCES_WEBKITGTK_API_DIR})
+configure_file(gtk/webkit/webkitversion.h.in ${DERIVED_SOURCES_WEBKITGTK_API_DIR}/webkitversion.h)
+configure_file(gtk/webkit.pc.in ${CMAKE_BINARY_DIR}/Source/WebKit/gtk/webkitgtk-${WEBKITGTK_API_VERSION}.pc @ONLY)
+
 add_definitions(-DPACKAGE_LOCALE_DIR="${CMAKE_INSTALL_FULL_LOCALEDIR}")
 
 list(APPEND WebKit_INCLUDE_DIRECTORIES
     ${DERIVED_SOURCES_DIR}
-    ${DERIVED_SOURCES_DIR}/webkitdom
     ${DERIVED_SOURCES_GOBJECT_DOM_BINDINGS_DIR}
     ${DERIVED_SOURCES_WEBKITGTK_DIR}
+    ${DERIVED_SOURCES_WEBKITGTK_API_DIR}
     ${THIRDPARTY_DIR}/ANGLE/include/GLSLANG
     ${THIRDPARTY_DIR}/ANGLE/src
     ${THIRDPARTY_DIR}/ANGLE/include
@@ -16,6 +18,7 @@ list(APPEND WebKit_INCLUDE_DIRECTORIES
     ${WEBCORE_DIR}/ForwardingHeaders
     ${WEBCORE_DIR}/accessibility/atk
     ${WEBCORE_DIR}/platform/cairo
+    ${WEBCORE_DIR}/platform/geoclue
     ${WEBCORE_DIR}/platform/graphics/cairo
     ${WEBCORE_DIR}/platform/graphics/gtk
     ${WEBCORE_DIR}/platform/graphics/opentype
@@ -27,13 +30,14 @@ list(APPEND WebKit_INCLUDE_DIRECTORIES
     ${WEBKIT_DIR}/gtk/webkit
     ${WEBKIT_DIR}/gtk/WebCoreSupport
     ${ENCHANT_INCLUDE_DIRS}
-    ${GTK3_INCLUDE_DIRS}
+    ${GEOCLUE_INCLUDE_DIRS}
+    ${GTK_INCLUDE_DIRS}
     ${LIBSOUP_INCLUDE_DIRS}
 )
 
 list(APPEND WebKit_SOURCES
-    ${DERIVED_SOURCES_WEBKITGTK_DIR}/webkitenumtypes.cpp
-    ${DERIVED_SOURCES_WEBKITGTK_DIR}/webkitmarshal.cpp
+    ${DERIVED_SOURCES_WEBKITGTK_API_DIR}/webkitenumtypes.cpp
+    ${DERIVED_SOURCES_WEBKITGTK_API_DIR}/webkitmarshal.cpp
 
     gtk/WebCoreSupport/AcceleratedCompositingContextGL.cpp
     gtk/WebCoreSupport/AssertMatchingEnums.cpp
@@ -52,6 +56,7 @@ list(APPEND WebKit_SOURCES
     gtk/WebCoreSupport/InspectorClientGtk.cpp
     gtk/WebCoreSupport/NavigatorContentUtilsClientGtk.cpp
     gtk/WebCoreSupport/PlatformStrategiesGtk.cpp
+    gtk/WebCoreSupport/ProgressTrackerClientGtk.cpp
     gtk/WebCoreSupport/TextCheckerClientGtk.cpp
     gtk/WebCoreSupport/UserMediaClientGtk.cpp
     gtk/WebCoreSupport/WebViewInputMethodFilter.cpp
@@ -91,9 +96,10 @@ list(APPEND WebKit_SOURCES
 )
 
 list(APPEND WebKitGTK_INSTALLED_HEADERS
+    ${DERIVED_SOURCES_WEBKITGTK_API_DIR}/webkitenumtypes.h
+    ${DERIVED_SOURCES_WEBKITGTK_API_DIR}/webkitversion.h
     ${WEBKIT_DIR}/gtk/webkit/webkit.h
     ${WEBKIT_DIR}/gtk/webkit/webkitapplicationcache.h
-    ${WEBKIT_DIR}/gtk/webkit/webkitauthenticationdialog.h
     ${WEBKIT_DIR}/gtk/webkit/webkitdefines.h
     ${WEBKIT_DIR}/gtk/webkit/webkitdom.h
     ${WEBKIT_DIR}/gtk/webkit/webkitdownload.h
@@ -109,7 +115,6 @@ list(APPEND WebKitGTK_INSTALLED_HEADERS
     ${WEBKIT_DIR}/gtk/webkit/webkitsecurityorigin.h
     ${WEBKIT_DIR}/gtk/webkit/webkitsoupauthdialog.h
     ${WEBKIT_DIR}/gtk/webkit/webkitspellchecker.h
-    ${WEBKIT_DIR}/gtk/webkit/webkitspellcheckerenchant.h
     ${WEBKIT_DIR}/gtk/webkit/webkitviewportattributes.h
     ${WEBKIT_DIR}/gtk/webkit/webkitwebbackforwardlist.h
     ${WEBKIT_DIR}/gtk/webkit/webkitwebdatabase.h
@@ -127,33 +132,100 @@ list(APPEND WebKitGTK_INSTALLED_HEADERS
     ${WEBKIT_DIR}/gtk/webkit/webkitwebwindowfeatures.h
 )
 
+# Since the GObjectDOMBindings convenience library exports API that is unused except
+# in embedding applications we need to instruct the linker to link all symbols explicitly.
 list(APPEND WebKit_LIBRARIES
-    GObjectDOMBindings
+    -Wl,--whole-archive GObjectDOMBindings -Wl,--no-whole-archive
     WebCorePlatformGTK
 )
 
 set(WebKit_MARSHAL_LIST ${WEBKIT_DIR}/gtk/webkitmarshal.list)
 
 add_custom_command(
-    OUTPUT ${DERIVED_SOURCES_WEBKITGTK_DIR}/webkitmarshal.cpp
-           ${DERIVED_SOURCES_WEBKITGTK_DIR}/webkitmarshal.h
+    OUTPUT ${DERIVED_SOURCES_WEBKITGTK_API_DIR}/webkitmarshal.cpp
+           ${DERIVED_SOURCES_WEBKITGTK_API_DIR}/webkitmarshal.h
     MAIN_DEPENDENCY ${WebKit_MARSHAL_LIST}
 
-    COMMAND echo extern \"C\" { > ${DERIVED_SOURCES_WEBKITGTK_DIR}/webkitmarshal.cpp
-    COMMAND glib-genmarshal --prefix=webkit_marshal ${WebKit_MARSHAL_LIST} --body >> ${DERIVED_SOURCES_WEBKITGTK_DIR}/webkitmarshal.cpp
-    COMMAND echo } >> ${DERIVED_SOURCES_WEBKITGTK_DIR}/webkitmarshal.cpp
+    COMMAND echo extern \"C\" { > ${DERIVED_SOURCES_WEBKITGTK_API_DIR}/webkitmarshal.cpp
+    COMMAND glib-genmarshal --prefix=webkit_marshal ${WebKit_MARSHAL_LIST} --body >> ${DERIVED_SOURCES_WEBKITGTK_API_DIR}/webkitmarshal.cpp
+    COMMAND echo } >> ${DERIVED_SOURCES_WEBKITGTK_API_DIR}/webkitmarshal.cpp
 
-    COMMAND glib-genmarshal --prefix=webkit_marshal ${WebKit_MARSHAL_LIST} --header > ${DERIVED_SOURCES_WEBKITGTK_DIR}/webkitmarshal.h
+    COMMAND glib-genmarshal --prefix=webkit_marshal ${WebKit_MARSHAL_LIST} --header > ${DERIVED_SOURCES_WEBKITGTK_API_DIR}/webkitmarshal.h
+    VERBATIM
+)
+
+# To generate webkitenumtypes.h we want to use all installed headers, except webkitenumtypes.h itself.
+set(WebKitGTK_ENUM_GENERATION_HEADERS ${WebKitGTK_INSTALLED_HEADERS})
+list(REMOVE_ITEM WebKitGTK_ENUM_GENERATION_HEADERS ${DERIVED_SOURCES_WEBKIT2GTK_API_DIR}/webkitenumtypes.h)
+add_custom_command(
+    OUTPUT ${DERIVED_SOURCES_WEBKITGTK_API_DIR}/webkitenumtypes.h
+           ${DERIVED_SOURCES_WEBKITGTK_API_DIR}/webkitenumtypes.cpp
+    DEPENDS ${WebKitGTK_ENUM_GENERATION_HEADERS}
+
+    COMMAND glib-mkenums --template ${WEBKIT_DIR}/gtk/webkit/webkitenumtypes.h.template ${WebKitGTK_ENUM_GENERATION_HEADERS} | sed s/web_kit/webkit/ | sed s/WEBKIT_TYPE_KIT/WEBKIT_TYPE/ > ${DERIVED_SOURCES_WEBKITGTK_API_DIR}/webkitenumtypes.h
+
+    COMMAND glib-mkenums --template ${WEBKIT_DIR}/gtk/webkit/webkitenumtypes.cpp.template ${WebKitGTK_ENUM_GENERATION_HEADERS} | sed s/web_kit/webkit/ > ${DERIVED_SOURCES_WEBKITGTK_API_DIR}/webkitenumtypes.cpp
     VERBATIM
 )
 
 add_custom_command(
-    OUTPUT ${DERIVED_SOURCES_WEBKITGTK_DIR}/webkitenumtypes.h
-           ${DERIVED_SOURCES_WEBKITGTK_DIR}/webkitenumtypes.cpp
-    DEPENDS ${WebKitGTK_INSTALLED_HEADERS}
+    OUTPUT ${CMAKE_BINARY_DIR}/WebKit-${WEBKITGTK_API_VERSION}.gir
+    DEPENDS WebKit
+    DEPENDS ${CMAKE_BINARY_DIR}/JavaScriptCore-${WEBKITGTK_API_VERSION}.gir
+    COMMAND CC=${CMAKE_C_COMPILER} CFLAGS=-Wno-deprecated-declarations
+        ${INTROSPECTION_SCANNER}
+        --quiet
+        --warn-all
+        --symbol-prefix=webkit
+        --identifier-prefix=WebKit
+        --namespace=WebKit
+        --nsversion=${WEBKITGTK_API_VERSION}
+        --include=GObject-2.0
+        --include=Gtk-${WEBKITGTK_API_VERSION}
+        --include=Soup-2.4
+        --include-uninstalled=${CMAKE_BINARY_DIR}/JavaScriptCore-${WEBKITGTK_API_VERSION}.gir
+        --library=webkitgtk-${WEBKITGTK_API_VERSION}
+        --library=javascriptcoregtk-${WEBKITGTK_API_VERSION}
+        -L${CMAKE_LIBRARY_OUTPUT_DIRECTORY}
+        --no-libtool
+        --pkg=gobject-2.0
+        --pkg=gtk+-${WEBKITGTK_API_VERSION}
+        --pkg=libsoup-2.4
+        --pkg-export=webkitgtk-${WEBKITGTK_API_VERSION}
+        --output=${CMAKE_BINARY_DIR}/WebKit-${WEBKITGTK_API_VERSION}.gir
+        --c-include="webkit/webkit.h"
+        -DBUILDING_WEBKIT
+        -I${CMAKE_SOURCE_DIR}/Source
+        -I${WEBKIT_DIR}/gtk
+        -I${JAVASCRIPTCORE_DIR}/ForwardingHeaders
+        -I${DERIVED_SOURCES_DIR}
+        -I${DERIVED_SOURCES_WEBKITGTK_DIR}
+        -I${WEBCORE_DIR}/platform/gtk
+        ${GObjectDOMBindings_INSTALLED_HEADERS}
+        ${WebKitGTK_INSTALLED_HEADERS}
+        ${WEBKIT_DIR}/gtk/webkit/*.cpp
+)
 
-    COMMAND glib-mkenums --template ${WEBKIT_DIR}/gtk/webkit/webkitenumtypes.h.template ${WebKitGTK_INSTALLED_HEADERS} | sed s/web_kit/webkit/ | sed s/WEBKIT_TYPE_KIT/WEBKIT_TYPE/ > ${DERIVED_SOURCES_WEBKITGTK_DIR}/webkitenumtypes.h
+add_custom_command(
+    OUTPUT ${CMAKE_BINARY_DIR}/WebKit-${WEBKITGTK_API_VERSION}.typelib
+    DEPENDS ${CMAKE_BINARY_DIR}/WebKit-${WEBKITGTK_API_VERSION}.gir
+    COMMAND ${INTROSPECTION_COMPILER} --includedir=${CMAKE_BINARY_DIR} ${CMAKE_BINARY_DIR}/WebKit-${WEBKITGTK_API_VERSION}.gir -o ${CMAKE_BINARY_DIR}/WebKit-${WEBKITGTK_API_VERSION}.typelib
+)
 
-    COMMAND glib-mkenums --template ${WEBKIT_DIR}/gtk/webkit/webkitenumtypes.cpp.template ${WebKitGTK_INSTALLED_HEADERS} | sed s/web_kit/webkit/ > ${DERIVED_SOURCES_WEBKITGTK_DIR}/webkitenumtypes.cpp
-    VERBATIM
+ADD_TYPELIB(${CMAKE_BINARY_DIR}/WebKit-${WEBKITGTK_API_VERSION}.typelib)
+
+install(FILES "${CMAKE_BINARY_DIR}/Source/WebKit/gtk/webkitgtk-${WEBKITGTK_API_VERSION}.pc"
+        DESTINATION "${LIB_INSTALL_DIR}/pkgconfig"
+)
+install(FILES "${WEBKIT_DIR}/gtk/resources/error.html"
+        DESTINATION "${DATA_INSTALL_DIR}/resources"
+)
+install(FILES ${WebKitGTK_INSTALLED_HEADERS}
+        DESTINATION "${WEBKITGTK_HEADER_INSTALL_DIR}/webkit"
+)
+install(FILES ${CMAKE_BINARY_DIR}/WebKit-${WEBKITGTK_API_VERSION}.gir
+        DESTINATION ${INTROSPECTION_INSTALL_GIRDIR}
+)
+install(FILES ${CMAKE_BINARY_DIR}/WebKit-${WEBKITGTK_API_VERSION}.typelib
+        DESTINATION ${INTROSPECTION_INSTALL_TYPELIBDIR}
 )

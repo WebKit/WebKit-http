@@ -26,8 +26,6 @@
 #ifndef RenderLayerBacking_h
 #define RenderLayerBacking_h
 
-#if USE(ACCELERATED_COMPOSITING)
-
 #include "FloatPoint.h"
 #include "FloatPoint3D.h"
 #include "GraphicsLayer.h"
@@ -126,9 +124,9 @@ public:
 
     void setRequiresOwnBackingStore(bool);
 
-    void setContentsNeedDisplay();
+    void setContentsNeedDisplay(GraphicsLayer::ShouldClipToLayer = GraphicsLayer::ClipToLayer);
     // r is in the coordinate space of the layer's render object
-    void setContentsNeedDisplayInRect(const IntRect&);
+    void setContentsNeedDisplayInRect(const IntRect&, GraphicsLayer::ShouldClipToLayer = GraphicsLayer::ClipToLayer);
 
     // Notification from the renderer that its content changed.
     void contentChanged(ContentChangeType);
@@ -157,28 +155,33 @@ public:
     bool tiledBackingHasMargin() const;
     TiledBacking* tiledBacking() const;
     void adjustTiledBackingCoverage();
+    void setTiledBackingHasMargins(bool);
     
     void updateDebugIndicators(bool showBorder, bool showRepaintCounter);
 
     // GraphicsLayerClient interface
-    virtual bool shouldUseTiledBacking(const GraphicsLayer*) const OVERRIDE;
-    virtual void tiledBackingUsageChanged(const GraphicsLayer*, bool /*usingTiledBacking*/) OVERRIDE;
-    virtual void notifyAnimationStarted(const GraphicsLayer*, double startTime) OVERRIDE;
-    virtual void notifyFlushRequired(const GraphicsLayer*) OVERRIDE;
-    virtual void notifyFlushBeforeDisplayRefresh(const GraphicsLayer*) OVERRIDE;
+    virtual bool shouldUseTiledBacking(const GraphicsLayer*) const override;
+    virtual void tiledBackingUsageChanged(const GraphicsLayer*, bool /*usingTiledBacking*/) override;
+    virtual void notifyAnimationStarted(const GraphicsLayer*, double startTime) override;
+    virtual void notifyFlushRequired(const GraphicsLayer*) override;
+    virtual void notifyFlushBeforeDisplayRefresh(const GraphicsLayer*) override;
 
-    virtual void paintContents(const GraphicsLayer*, GraphicsContext&, GraphicsLayerPaintingPhase, const IntRect& clip) OVERRIDE;
+    virtual void paintContents(const GraphicsLayer*, GraphicsContext&, GraphicsLayerPaintingPhase, const IntRect& clip) override;
 
-    virtual float deviceScaleFactor() const OVERRIDE;
-    virtual float contentsScaleMultiplierForNewTiles(const GraphicsLayer*) const OVERRIDE;
+    virtual float deviceScaleFactor() const override;
+    virtual float contentsScaleMultiplierForNewTiles(const GraphicsLayer*) const override;
 
-    virtual float pageScaleFactor() const OVERRIDE;
-    virtual void didCommitChangesForLayer(const GraphicsLayer*) const OVERRIDE;
-    virtual bool getCurrentTransform(const GraphicsLayer*, TransformationMatrix&) const OVERRIDE;
+    virtual float pageScaleFactor() const override;
+    virtual void didCommitChangesForLayer(const GraphicsLayer*) const override;
+    virtual bool getCurrentTransform(const GraphicsLayer*, TransformationMatrix&) const override;
 
-    virtual bool isTrackingRepaints() const OVERRIDE;
-    virtual bool shouldSkipLayerInDump(const GraphicsLayer*) const OVERRIDE;
-    virtual bool shouldDumpPropertyForLayer(const GraphicsLayer*, const char* propertyName) const OVERRIDE;
+    virtual bool isTrackingRepaints() const override;
+    virtual bool shouldSkipLayerInDump(const GraphicsLayer*) const override;
+    virtual bool shouldDumpPropertyForLayer(const GraphicsLayer*, const char* propertyName) const override;
+
+#if ENABLE(PLUGIN_PROXY_FOR_VIDEO)
+    virtual bool mediaLayerMustBeUpdatedOnMainThread() const override;
+#endif
 
 #ifndef NDEBUG
     virtual void verifyNotPainting();
@@ -200,9 +203,6 @@ public:
 
     // Return an estimate of the backing store area (in pixels) allocated by this object's GraphicsLayers.
     double backingStoreMemoryEstimate() const;
-
-    bool didSwitchToFullTileCoverageDuringLoading() const { return m_didSwitchToFullTileCoverageDuringLoading; }
-    void setDidSwitchToFullTileCoverageDuringLoading() { m_didSwitchToFullTileCoverageDuringLoading = true; }
 
 #if ENABLE(CSS_COMPOSITING)
     void setBlendMode(BlendMode);
@@ -233,7 +233,6 @@ private:
     bool requiresScrollCornerLayer() const;
     bool updateScrollingLayers(bool scrollingLayers);
     void updateDrawsContent(bool isSimpleContainer);
-    void registerScrollingLayers();
     
     void updateRootLayerConfiguration();
 
@@ -253,7 +252,7 @@ private:
     void updateFilters(const RenderStyle*);
 #endif
 #if ENABLE(CSS_COMPOSITING)
-    void updateLayerBlendMode(const RenderStyle*);
+    void updateBlendMode(const RenderStyle*);
 #endif
     // Return the opacity value that this layer should use for compositing.
     float compositingOpacity(float rendererOpacity) const;
@@ -323,13 +322,17 @@ private:
     bool m_canCompositeFilters;
 #endif
     bool m_backgroundLayerPaintsFixedRootBackground;
-    bool m_didSwitchToFullTileCoverageDuringLoading;
 
     static bool m_creatingPrimaryGraphicsLayer;
 };
 
-} // namespace WebCore
+enum CanvasCompositingStrategy {
+    UnacceleratedCanvas,
+    CanvasPaintedToLayer,
+    CanvasAsLayerContents
+};
+CanvasCompositingStrategy canvasCompositingStrategy(const RenderObject&);
 
-#endif // USE(ACCELERATED_COMPOSITING)
+} // namespace WebCore
 
 #endif // RenderLayerBacking_h

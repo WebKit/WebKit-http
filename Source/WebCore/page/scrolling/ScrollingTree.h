@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012, 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2012, 2013, 2014 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,7 +26,7 @@
 #ifndef ScrollingTree_h
 #define ScrollingTree_h
 
-#if ENABLE(THREADED_SCROLLING)
+#if ENABLE(ASYNC_SCROLLING)
 
 #include "PlatformWheelEvent.h"
 #include "Region.h"
@@ -35,60 +35,49 @@
 #include <wtf/HashMap.h>
 #include <wtf/OwnPtr.h>
 #include <wtf/PassOwnPtr.h>
-#include <wtf/PassRefPtr.h>
-#include <wtf/RefPtr.h>
 #include <wtf/ThreadSafeRefCounted.h>
-
-#if PLATFORM(MAC)
-#include <wtf/RetainPtr.h>
-OBJC_CLASS CALayer;
-#endif
 
 namespace WebCore {
 
 class IntPoint;
-class ScrollingStateNode;
 class ScrollingStateTree;
+class ScrollingStateNode;
 class ScrollingTreeNode;
 class ScrollingTreeScrollingNode;
 
-// The ScrollingTree class lives almost exclusively on the scrolling thread and manages the
-// hierarchy of scrollable regions on the page. It's also responsible for dispatching events
-// to the correct scrolling tree nodes or dispatching events back to the ScrollingCoordinator
-// object on the main thread if they can't be handled on the scrolling thread for various reasons.
 class ScrollingTree : public ThreadSafeRefCounted<ScrollingTree> {
 public:
-    static PassRefPtr<ScrollingTree> create(ScrollingCoordinator*);
-    ~ScrollingTree();
+    ScrollingTree();
+    virtual ~ScrollingTree();
 
     enum EventResult {
         DidNotHandleEvent,
         DidHandleEvent,
         SendToMainThread
     };
+    
+    virtual bool isThreadedScrollingTree() const { return false; }
+    virtual bool isRemoteScrollingTree() const { return false; }
+    virtual bool isScrollingTreeIOS() const { return false; }
 
-    // Can be called from any thread. Will try to handle the wheel event on the scrolling thread.
-    // Returns true if the wheel event can be handled on the scrolling thread and false if the
-    // event must be sent again to the WebCore event handler.
-    EventResult tryToHandleWheelEvent(const PlatformWheelEvent&);
-    bool hasWheelEventHandlers() const { return m_hasWheelEventHandlers; }
-
-    // Must be called from the scrolling thread. Handles the wheel event.
-    void handleWheelEvent(const PlatformWheelEvent&);
+    virtual EventResult tryToHandleWheelEvent(const PlatformWheelEvent&) = 0;
+    bool shouldHandleWheelEventSynchronously(const PlatformWheelEvent&);
+    
+    virtual void scrollPositionChangedViaDelegatedScrolling(ScrollingNodeID, const IntPoint&);
 
     void setMainFrameIsRubberBanding(bool);
     bool isRubberBandInProgress();
 
-    void invalidate();
-    void commitNewTreeState(PassOwnPtr<ScrollingStateTree>);
+    virtual void invalidate() { }
+    virtual void commitNewTreeState(PassOwnPtr<ScrollingStateTree>);
 
     void setMainFramePinState(bool pinnedToTheLeft, bool pinnedToTheRight, bool pinnedToTheTop, bool pinnedToTheBottom);
 
-    void updateMainFrameScrollPosition(const IntPoint& scrollPosition, SetOrSyncScrollingLayerPosition = SyncScrollingLayerPosition);
+    virtual void scrollingTreeNodeDidScroll(ScrollingNodeID, const IntPoint& scrollPosition, SetOrSyncScrollingLayerPosition = SyncScrollingLayerPosition) = 0;
     IntPoint mainFrameScrollPosition();
 
-#if PLATFORM(MAC)
-    void handleWheelEventPhase(PlatformWheelEventPhase);
+#if PLATFORM(MAC) && !PLATFORM(IOS)
+    virtual void handleWheelEventPhase(PlatformWheelEventPhase) = 0;
 #endif
 
     // Can be called from any thread. Will update what edges allow rubber-banding.
@@ -98,6 +87,7 @@ public:
     bool rubberBandsAtRight();
     bool rubberBandsAtTop();
     bool rubberBandsAtBottom();
+    bool isHandlingProgrammaticScroll();
     
     void setScrollPinningBehavior(ScrollPinningBehavior);
     ScrollPinningBehavior scrollPinningBehavior();
@@ -109,13 +99,25 @@ public:
 
     ScrollingTreeScrollingNode* rootNode() const { return m_rootNode.get(); }
 
+    ScrollingNodeID latchedNode();
+    void setLatchedNode(ScrollingNodeID);
+    void clearLatchedNode();
+
+    bool hasLatchedNode() const { return m_latchedNode; }
+    void setOrClearLatchedNode(const PlatformWheelEvent&, ScrollingNodeID);
+    
+protected:
+    void setMainFrameScrollPosition(IntPoint);
+    virtual void handleWheelEvent(const PlatformWheelEvent&);
+
 private:
-    explicit ScrollingTree(ScrollingCoordinator*);
+    void removeDestroyedNodes(const ScrollingStateTree&);
+    void updateTreeFromStateNode(const ScrollingStateNode*);
 
-    void removeDestroyedNodes(ScrollingStateTree*);
-    void updateTreeFromStateNode(ScrollingStateNode*);
+    virtual PassOwnPtr<ScrollingTreeNode> createNode(ScrollingNodeType, ScrollingNodeID) = 0;
 
-    RefPtr<ScrollingCoordinator> m_scrollingCoordinator;
+    ScrollingTreeNode* nodeForID(ScrollingNodeID) const;
+
     OwnPtr<ScrollingTreeScrollingNode> m_rootNode;
 
     typedef HashMap<ScrollingNodeID, ScrollingTreeNode*> ScrollingTreeNodeMap;
@@ -137,14 +139,18 @@ private:
     bool m_mainFramePinnedToTheBottom;
     bool m_mainFrameIsRubberBanding;
     ScrollPinningBehavior m_scrollPinningBehavior;
+    ScrollingNodeID m_latchedNode;
 
     bool m_scrollingPerformanceLoggingEnabled;
     
     bool m_isHandlingProgrammaticScroll;
 };
 
+#define SCROLLING_TREE_TYPE_CASTS(ToValueTypeName, predicate) \
+    TYPE_CASTS_BASE(ToValueTypeName, WebCore::ScrollingTree, value, value->predicate, value.predicate)
+
 } // namespace WebCore
 
-#endif // ENABLE(THREADED_SCROLLING)
+#endif // ENABLE(ASYNC_SCROLLING)
 
 #endif // ScrollingTree_h

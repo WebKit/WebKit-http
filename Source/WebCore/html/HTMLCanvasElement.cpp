@@ -33,13 +33,16 @@
 #include "CanvasPattern.h"
 #include "CanvasRenderingContext2D.h"
 #include "Chrome.h"
+#include "ChromeClient.h"
 #include "Document.h"
 #include "ExceptionCode.h"
 #include "Frame.h"
+#include "FrameLoaderClient.h"
 #include "GraphicsContext.h"
 #include "HTMLNames.h"
 #include "ImageData.h"
 #include "MIMETypeRegistry.h"
+#include "MainFrame.h"
 #include "Page.h"
 #include "RenderHTMLCanvas.h"
 #include "ScriptController.h"
@@ -112,16 +115,16 @@ void HTMLCanvasElement::parseAttribute(const QualifiedName& name, const AtomicSt
     HTMLElement::parseAttribute(name, value);
 }
 
-RenderElement* HTMLCanvasElement::createRenderer(PassRef<RenderStyle> style)
+RenderPtr<RenderElement> HTMLCanvasElement::createElementRenderer(PassRef<RenderStyle> style)
 {
     Frame* frame = document().frame();
     if (frame && frame->script().canExecuteScripts(NotAboutToExecuteScript)) {
         m_rendererIsCanvas = true;
-        return new RenderHTMLCanvas(*this, std::move(style));
+        return createRenderer<RenderHTMLCanvas>(*this, std::move(style));
     }
 
     m_rendererIsCanvas = false;
-    return HTMLElement::createRenderer(std::move(style));
+    return HTMLElement::createElementRenderer(std::move(style));
 }
 
 void HTMLCanvasElement::willAttachRenderers()
@@ -201,7 +204,7 @@ CanvasRenderingContext* HTMLCanvasElement::getContext(const String& type, Canvas
     // once it is created. https://bugs.webkit.org/show_bug.cgi?id=117095
     if (is2dType(type)) {
         if (m_context && !m_context->is2d())
-            return 0;
+            return nullptr;
         if (!m_context) {
             bool usesDashbardCompatibilityMode = false;
 #if ENABLE(DASHBOARD_SUPPORT)
@@ -209,7 +212,7 @@ CanvasRenderingContext* HTMLCanvasElement::getContext(const String& type, Canvas
                 usesDashbardCompatibilityMode = settings->usesDashboardBackwardCompatibilityMode();
 #endif
             m_context = CanvasRenderingContext2D::create(this, document().inQuirksMode(), usesDashbardCompatibilityMode);
-#if USE(IOSURFACE_CANVAS_BACKING_STORE) || (ENABLE(ACCELERATED_2D_CANVAS) && USE(ACCELERATED_COMPOSITING))
+#if USE(IOSURFACE_CANVAS_BACKING_STORE) || ENABLE(ACCELERATED_2D_CANVAS)
             // Need to make sure a RenderLayer and compositing layer get created for the Canvas
             setNeedsStyleRecalc(SyntheticStyleChange);
 #endif
@@ -221,8 +224,16 @@ CanvasRenderingContext* HTMLCanvasElement::getContext(const String& type, Canvas
 
         if (is3dType(type)) {
             if (m_context && !m_context->is3d())
-                return 0;
+                return nullptr;
             if (!m_context) {
+                Document& topDocument = document().topDocument();
+                Page* page = topDocument.page();
+                if (page && !topDocument.url().isLocalFile()) {
+                    WebGLLoadPolicy policy = page->mainFrame().loader().client().webGLPolicyForURL(topDocument.url());
+
+                    if (policy == WebGLBlock)
+                        return nullptr;
+                }
                 m_context = WebGLRenderingContext::create(this, static_cast<WebGLContextAttributes*>(attrs));
                 if (m_context) {
                     // Need to make sure a RenderLayer and compositing layer get created for the Canvas
@@ -235,7 +246,7 @@ CanvasRenderingContext* HTMLCanvasElement::getContext(const String& type, Canvas
 #else
     UNUSED_PARAM(attrs);
 #endif
-    return 0;
+    return nullptr;
 }
     
 bool HTMLCanvasElement::probablySupportsContext(const String& type, CanvasContextAttributes*)
@@ -346,10 +357,8 @@ void HTMLCanvasElement::reset()
         if (m_rendererIsCanvas) {
             if (oldSize != size()) {
                 toRenderHTMLCanvas(renderer)->canvasSizeChanged();
-#if USE(ACCELERATED_COMPOSITING)
                 if (renderBox() && renderBox()->hasAcceleratedCompositing())
                     renderBox()->contentChanged(CanvasChanged);
-#endif
             }
             if (hadImageBuffer)
                 renderer->repaint();
@@ -377,13 +386,12 @@ bool HTMLCanvasElement::paintsIntoCanvasBuffer() const
         return true;
 #endif
 
-#if USE(ACCELERATED_COMPOSITING)
     if (!m_context->isAccelerated())
         return true;
 
     if (renderBox() && renderBox()->hasAcceleratedCompositing())
         return false;
-#endif
+
     return true;
 }
 
@@ -606,7 +614,7 @@ void HTMLCanvasElement::createImageBuffer() const
     size_t numBytes = 4 * m_imageBuffer->internalSize().width() * m_imageBuffer->internalSize().height();
     scriptExecutionContext()->vm()->heap.reportExtraMemoryCost(numBytes);
 
-#if USE(IOSURFACE_CANVAS_BACKING_STORE) || (ENABLE(ACCELERATED_2D_CANVAS) && USE(ACCELERATED_COMPOSITING))
+#if USE(IOSURFACE_CANVAS_BACKING_STORE) || ENABLE(ACCELERATED_2D_CANVAS)
     if (m_context && m_context->is2d())
         // Recalculate compositing requirements if acceleration state changed.
         const_cast<HTMLCanvasElement*>(this)->setNeedsStyleRecalc(SyntheticStyleChange);
@@ -615,13 +623,13 @@ void HTMLCanvasElement::createImageBuffer() const
 
 GraphicsContext* HTMLCanvasElement::drawingContext() const
 {
-    return buffer() ? m_imageBuffer->context() : 0;
+    return buffer() ? m_imageBuffer->context() : nullptr;
 }
 
 GraphicsContext* HTMLCanvasElement::existingDrawingContext() const
 {
     if (!m_hasCreatedImageBuffer)
-        return 0;
+        return nullptr;
 
     return drawingContext();
 }

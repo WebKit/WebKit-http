@@ -39,6 +39,7 @@
 #include "ExceptionCode.h"
 #include "Frame.h"
 #include "FrameLoader.h"
+#include "FrameView.h"
 #include "HTMLBRElement.h"
 #include "HTMLCollection.h"
 #include "HTMLDocument.h"
@@ -289,6 +290,12 @@ static NEVER_INLINE void populateEventNameForAttributeLocalNameMap(HashMap<Atomi
         &ontouchstartAttr,
         &onvolumechangeAttr,
         &onwaitingAttr,
+#if ENABLE(WILL_REVEAL_EDGE_EVENTS)
+        &onwebkitwillrevealbottomAttr,
+        &onwebkitwillrevealleftAttr,
+        &onwebkitwillrevealrightAttr,
+        &onwebkitwillrevealtopAttr,
+#endif
         &onwheelAttr,
 #if ENABLE(IOS_GESTURE_EVENTS)
         &ongesturechangeAttr,
@@ -478,7 +485,7 @@ void HTMLElement::setInnerText(const String& text, ExceptionCode& ec)
     // FIXME: Can the renderer be out of date here? Do we need to call updateStyleIfNeeded?
     // For example, for the contents of textarea elements that are display:none?
     auto r = renderer();
-    if (r && r->style().preserveNewline()) {
+    if ((r && r->style().preserveNewline()) || (inDocument() && isTextControlInnerTextElement())) {
         if (!text.contains('\r')) {
             replaceChildrenWithText(*this, text, ec);
             return;
@@ -661,7 +668,7 @@ bool HTMLElement::hasCustomFocusLogic() const
 
 bool HTMLElement::supportsFocus() const
 {
-    return Element::supportsFocus() || (rendererIsEditable() && parentNode() && !parentNode()->rendererIsEditable());
+    return Element::supportsFocus() || (hasEditableStyle() && parentNode() && !parentNode()->hasEditableStyle());
 }
 
 String HTMLElement::contentEditable() const
@@ -797,10 +804,10 @@ bool HTMLElement::rendererIsNeeded(const RenderStyle& style)
     return StyledElement::rendererIsNeeded(style);
 }
 
-RenderElement* HTMLElement::createRenderer(PassRef<RenderStyle> style)
+RenderPtr<RenderElement> HTMLElement::createElementRenderer(PassRef<RenderStyle> style)
 {
     if (hasLocalName(wbrTag))
-        return new RenderLineBreak(*this, std::move(style));
+        return createRenderer<RenderLineBreak>(*this, std::move(style));
     return RenderElement::createFor(*this, std::move(style));
 }
 

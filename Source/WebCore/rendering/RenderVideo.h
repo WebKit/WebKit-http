@@ -34,7 +34,7 @@ namespace WebCore {
 
 class HTMLVideoElement;
 
-class RenderVideo FINAL : public RenderMedia {
+class RenderVideo final : public RenderMedia {
 public:
     RenderVideo(HTMLVideoElement&, PassRef<RenderStyle>);
     virtual ~RenderVideo();
@@ -45,17 +45,15 @@ public:
 
     static IntSize defaultSize();
 
-#if USE(ACCELERATED_COMPOSITING)
     bool supportsAcceleratedRendering() const;
     void acceleratedRenderingStateChanged();
-#endif
 
     bool requiresImmediateCompositing() const;
 
     virtual bool shouldDisplayVideo() const;
 
 private:
-    void mediaElement() const WTF_DELETED_FUNCTION;
+    void mediaElement() const = delete;
 
     virtual void updateFromElement();
 
@@ -74,9 +72,9 @@ private:
 
     virtual void layout();
 
-    virtual LayoutUnit computeReplacedLogicalWidth(ShouldComputePreferred  = ComputeActual) const OVERRIDE;
+    virtual LayoutUnit computeReplacedLogicalWidth(ShouldComputePreferred  = ComputeActual) const override;
     virtual LayoutUnit computeReplacedLogicalHeight() const;
-    virtual LayoutUnit minimumReplacedHeight() const OVERRIDE;
+    virtual LayoutUnit minimumReplacedHeight() const override;
 
 #if ENABLE(FULLSCREEN_API)
     virtual LayoutUnit offsetLeft() const;
@@ -87,7 +85,7 @@ private:
 
     void updatePlayer();
 
-    virtual bool foregroundIsKnownToBeOpaqueInRect(const LayoutRect& localRect, unsigned maxDepthToTest) const OVERRIDE;
+    virtual bool foregroundIsKnownToBeOpaqueInRect(const LayoutRect& localRect, unsigned maxDepthToTest) const override;
 
     LayoutSize m_cachedImageSize;
 };

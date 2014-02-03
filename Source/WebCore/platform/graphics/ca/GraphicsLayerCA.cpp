@@ -20,12 +20,10 @@
  * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
  * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 #include "config.h"
-
-#if USE(ACCELERATED_COMPOSITING)
 
 #include "GraphicsLayerCA.h"
 
@@ -47,6 +45,11 @@
 #include <wtf/TemporaryChange.h>
 #include <wtf/text/WTFString.h>
 
+#if PLATFORM(IOS)
+#include "SystemMemory.h"
+#include "WebCoreThread.h"
+#endif
+
 #if PLATFORM(MAC)
 #include "PlatformCALayerMac.h"
 #include "WebCoreSystemInterface.h"
@@ -61,7 +64,13 @@ namespace WebCore {
 // The threshold width or height above which a tiled layer will be used. This should be
 // large enough to avoid tiled layers for most GraphicsLayers, but less than the OpenGL
 // texture size limit on all supported hardware.
+#if PLATFORM(IOS)
+static const int cMaxPixelDimension = 1280;
+static const int cMaxPixelDimensionLowMemory = 1024;
+static const int cMemoryLevelToUseSmallerPixelDimension = 35;
+#else
 static const int cMaxPixelDimension = 2000;
+#endif
 
 // Derived empirically: <rdar://problem/13401861>
 static const int cMaxLayerTreeDepth = 250;
@@ -282,7 +291,7 @@ static float maxScaleFromTransform(const TransformationMatrix& t)
 static inline bool supportsAcceleratedFilterAnimations()
 {
 // <rdar://problem/10907251> - WebKit2 doesn't support CA animations of CI filters on Lion and below
-#if PLATFORM(MAC) && (PLATFORM(IOS) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080)
+#if PLATFORM(IOS) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080)
     return true;
 #else
     return false;
@@ -389,12 +398,17 @@ void GraphicsLayerCA::setName(const String& name)
 {
     String caLayerDescription;
 
-    if (!m_layer->isRemote())
+    if (!m_layer->isPlatformCALayerRemote())
         caLayerDescription = String::format("CALayer(%p) ", m_layer->platformLayer());
 
     String longName = caLayerDescription + String::format("GraphicsLayer(%p) ", this) + name;
     GraphicsLayer::setName(longName);
     noteLayerPropertyChanged(NameChanged);
+}
+
+GraphicsLayer::PlatformLayerID GraphicsLayerCA::primaryLayerID() const
+{
+    return primaryLayer()->layerID();
 }
 
 PlatformLayer* GraphicsLayerCA::platformLayer() const
@@ -698,22 +712,33 @@ bool GraphicsLayerCA::setFilters(const FilterOperations& filterOperations)
 }
 #endif
 
+#if ENABLE(CSS_COMPOSITING)
+void GraphicsLayerCA::setBlendMode(BlendMode blendMode)
+{
+    if (GraphicsLayer::blendMode() == blendMode)
+        return;
+
+    GraphicsLayer::setBlendMode(blendMode);
+    noteLayerPropertyChanged(BlendModeChanged);
+}
+#endif
+
 void GraphicsLayerCA::setNeedsDisplay()
 {
-    FloatRect hugeRect(-std::numeric_limits<float>::max() / 2, -std::numeric_limits<float>::max() / 2,
-                       std::numeric_limits<float>::max(), std::numeric_limits<float>::max());
-
-    setNeedsDisplayInRect(hugeRect);
+    setNeedsDisplayInRect(FloatRect::infiniteRect());
 }
 
-void GraphicsLayerCA::setNeedsDisplayInRect(const FloatRect& r)
+void GraphicsLayerCA::setNeedsDisplayInRect(const FloatRect& r, ShouldClipToLayer shouldClip)
 {
     if (!drawsContent())
         return;
 
     FloatRect rect(r);
-    FloatRect layerBounds(FloatPoint(), m_size);
-    rect.intersect(layerBounds);
+    if (shouldClip == ClipToLayer) {
+        FloatRect layerBounds(FloatPoint(), m_size);
+        rect.intersect(layerBounds);
+    }
+
     if (rect.isEmpty())
         return;
     
@@ -869,7 +894,7 @@ void GraphicsLayerCA::setContentsToImage(Image* image)
         m_uncorrectedContentsImage = newImage;
         m_pendingContentsImage = newImage;
 
-#if !PLATFORM(WIN)
+#if !PLATFORM(WIN) && !PLATFORM(IOS)
         CGColorSpaceRef colorSpace = CGImageGetColorSpace(m_pendingContentsImage.get());
 
         static CGColorSpaceRef deviceRGB = CGColorSpaceCreateDeviceRGB();
@@ -913,6 +938,13 @@ void GraphicsLayerCA::setContentsToMedia(PlatformLayer* mediaLayer)
     noteSublayersChanged();
     noteLayerPropertyChanged(ContentsMediaLayerChanged);
 }
+
+#if PLATFORM(IOS)
+PlatformLayer* GraphicsLayerCA::contentsLayerForMedia() const
+{
+    return m_contentsLayerPurpose == ContentsLayerForMedia ? m_contentsLayer->platformLayer() : nullptr;
+}
+#endif
 
 void GraphicsLayerCA::setContentsToCanvas(PlatformLayer* canvasLayer)
 {
@@ -1099,6 +1131,10 @@ FloatRect GraphicsLayerCA::computeVisibleRect(TransformState& state, ComputeVisi
     bool mapWasClamped;
     FloatRect clipRectForChildren = state.mappedQuad(&mapWasClamped).boundingBox();
     FloatPoint boundsOrigin = m_boundsOrigin;
+#if PLATFORM(IOS)
+    // UIKit may be changing layer bounds behind our back in overflow-scroll layers, so use the layer's origin.
+    boundsOrigin = m_layer->bounds().location();
+#endif
     clipRectForChildren.move(boundsOrigin.x(), boundsOrigin.y());
     
     FloatRect clipRectForSelf(boundsOrigin, m_size);
@@ -1329,7 +1365,12 @@ void GraphicsLayerCA::commitLayerChangesBeforeSublayers(CommitState& commitState
     if (m_uncommittedChanges & FiltersChanged)
         updateFilters();
 #endif
-    
+
+#if ENABLE(CSS_COMPOSITING)
+    if (m_uncommittedChanges & BlendModeChanged)
+        updateBlendMode();
+#endif
+
     if (m_uncommittedChanges & AnimationChanged)
         updateAnimations();
 
@@ -1466,6 +1507,10 @@ void GraphicsLayerCA::updateGeometry(float pageScaleFactor, const FloatPoint& po
     FloatSize pixelAlignmentOffset;
     computePixelAlignment(pageScaleFactor, positionRelativeToBase, scaledPosition, scaledSize, scaledAnchorPoint, pixelAlignmentOffset);
 
+#if PLATFORM(IOS)
+    m_pixelAlignmentOffset = pixelAlignmentOffset;
+#endif
+
     FloatRect adjustedBounds(m_boundsOrigin - pixelAlignmentOffset, scaledSize);
 
     // Update position.
@@ -1475,10 +1520,21 @@ void GraphicsLayerCA::updateGeometry(float pageScaleFactor, const FloatPoint& po
     if (m_structuralLayer) {
         FloatPoint layerPosition(m_position.x() + m_anchorPoint.x() * m_size.width(), m_position.y() + m_anchorPoint.y() * m_size.height());
         FloatRect layerBounds(m_boundsOrigin, m_size);
-        
+
+#if ENABLE(PLUGIN_PROXY_FOR_VIDEO)
+        // FIXME: Consider moving the main thread logic into PlatformCALayer.
+        if (mediaLayerMustBeUpdatedOnMainThread() && WebThreadIsCurrent()) {
+            m_structuralLayer->setPositionOnMainThread(layerPosition);
+            m_structuralLayer->setBoundsOnMainThread(layerBounds);
+            m_structuralLayer->setAnchorPointOnMainThread(m_anchorPoint);
+        } else {
+#endif
         m_structuralLayer->setPosition(layerPosition);
         m_structuralLayer->setBounds(layerBounds);
         m_structuralLayer->setAnchorPoint(m_anchorPoint);
+#if ENABLE(PLUGIN_PROXY_FOR_VIDEO)
+        }
+#endif
 
         if (LayerMap* layerCloneMap = m_structuralLayerClones.get()) {
             LayerMap::const_iterator end = layerCloneMap->end();
@@ -1502,10 +1558,21 @@ void GraphicsLayerCA::updateGeometry(float pageScaleFactor, const FloatPoint& po
         scaledAnchorPoint = FloatPoint(0.5f, 0.5f);
         adjustedPosition = FloatPoint(scaledAnchorPoint.x() * scaledSize.width() - pixelAlignmentOffset.width(), scaledAnchorPoint.y() * scaledSize.height() - pixelAlignmentOffset.height());
     }
-    
+
+#if ENABLE(PLUGIN_PROXY_FOR_VIDEO)
+    // FIXME: Consider moving the main thread logic into PlatformCALayer.
+    if (mediaLayerMustBeUpdatedOnMainThread() && WebThreadIsCurrent()) {
+        m_layer->setPositionOnMainThread(adjustedPosition);
+        m_layer->setBoundsOnMainThread(adjustedBounds);
+        m_layer->setAnchorPointOnMainThread(scaledAnchorPoint);
+    } else {
+#endif
     m_layer->setPosition(adjustedPosition);
     m_layer->setBounds(adjustedBounds);
     m_layer->setAnchorPoint(scaledAnchorPoint);
+#if ENABLE(PLUGIN_PROXY_FOR_VIDEO)
+    }
+#endif
 
     if (LayerMap* layerCloneMap = m_layerClones.get()) {
         LayerMap::const_iterator end = layerCloneMap->end();
@@ -1639,6 +1706,22 @@ void GraphicsLayerCA::updateFilters()
 }
 #endif
 
+#if ENABLE(CSS_COMPOSITING)
+void GraphicsLayerCA::updateBlendMode()
+{
+    primaryLayer()->setBlendMode(m_blendMode);
+
+    if (LayerMap* layerCloneMap = primaryLayerClones()) {
+        LayerMap::const_iterator end = layerCloneMap->end();
+        for (LayerMap::const_iterator it = layerCloneMap->begin(); it != end; ++it) {
+            if (m_replicaLayer && isReplicatedRootClone(it->key))
+                continue;
+            it->value->setBlendMode(m_blendMode);
+        }
+    }
+}
+#endif
+
 void GraphicsLayerCA::updateStructuralLayer()
 {
     ensureStructuralLayer(structuralLayerPurpose());
@@ -1676,7 +1759,11 @@ void GraphicsLayerCA::ensureStructuralLayer(StructuralLayerPurpose purpose)
         }
         return;
     }
-    
+
+#if PLATFORM(IOS)
+    RefPtr<PlatformCALayer> oldPrimaryLayer = m_structuralLayer ? m_structuralLayer.get() : m_layer.get();
+#endif
+
     bool structuralLayerChanged = false;
     
     if (purpose == StructuralLayerForPreserves3D) {
@@ -1975,8 +2062,18 @@ void GraphicsLayerCA::updateContentsRects()
     if (gainedOrLostClippingLayer)
         noteSublayersChanged(DontScheduleFlush);
 
+#if ENABLE(PLUGIN_PROXY_FOR_VIDEO)
+    // FIXME: Consider moving the main thread logic into PlatformCALayer.
+    if (mediaLayerMustBeUpdatedOnMainThread() && WebThreadIsCurrent()) {
+        m_contentsLayer->setPositionOnMainThread(contentOrigin);
+        m_contentsLayer->setBoundsOnMainThread(contentBounds);
+    } else {
+#endif
     m_contentsLayer->setPosition(contentOrigin);
     m_contentsLayer->setBounds(contentBounds);
+#if ENABLE(PLUGIN_PROXY_FOR_VIDEO) 
+    }
+#endif
 
     if (m_contentsLayerClones) {
         LayerMap::const_iterator end = m_contentsLayerClones->end();
@@ -2360,8 +2457,11 @@ bool GraphicsLayerCA::createTransformAnimationsFromKeyframes(const KeyframeValue
     bool isMatrixAnimation = listIndex < 0;
     int numAnimations = isMatrixAnimation ? 1 : operations->size();
 
+#if PLATFORM(IOS)
+    bool reverseAnimationList = false;
+#else
     bool reverseAnimationList = true;
-#if !PLATFORM(IOS) && !PLATFORM(WIN)
+#if !PLATFORM(WIN)
         // Old versions of Core Animation apply animations in reverse order (<rdar://problem/7095638>) so we need to flip the list.
         // to be non-additive. For binary compatibility, the current version of Core Animation preserves this behavior for applications linked
         // on or before Snow Leopard.
@@ -2371,6 +2471,7 @@ bool GraphicsLayerCA::createTransformAnimationsFromKeyframes(const KeyframeValue
         if (!executableWasLinkedOnOrBeforeSnowLeopard)
             reverseAnimationList = false;
 #endif
+#endif // PLATFORM(IOS)
     if (reverseAnimationList) {
         for (int animationIndex = numAnimations - 1; animationIndex >= 0; --animationIndex) {
             if (!appendToUncommittedAnimations(valueList, operations, animation, animationName, boxSize, animationIndex, timeOffset, isMatrixAnimation)) {
@@ -2958,7 +3059,12 @@ bool GraphicsLayerCA::requiresTiledLayer(float pageScaleFactor) const
         return false;
 
     // FIXME: catch zero-size height or width here (or earlier)?
+#if PLATFORM(IOS)
+    int maxPixelDimension = systemMemoryLevel() < cMemoryLevelToUseSmallerPixelDimension ? cMaxPixelDimensionLowMemory : cMaxPixelDimension;
+    return m_size.width() * pageScaleFactor > maxPixelDimension || m_size.height() * pageScaleFactor > maxPixelDimension;
+#else
     return m_size.width() * pageScaleFactor > cMaxPixelDimension || m_size.height() * pageScaleFactor > cMaxPixelDimension;
+#endif
 }
 
 void GraphicsLayerCA::swapFromOrToTiledLayer(bool useTiledLayer)
@@ -3030,7 +3136,9 @@ GraphicsLayer::CompositingCoordinatesOrientation GraphicsLayerCA::defaultContent
 void GraphicsLayerCA::setupContentsLayer(PlatformCALayer* contentsLayer)
 {
     // Turn off implicit animations on the inner layer.
+#if !PLATFORM(IOS)
     contentsLayer->setMasksToBounds(true);
+#endif
 
     if (defaultContentsOrientation() == CompositingCoordinatesBottomUp) {
         TransformationMatrix flipper(
@@ -3048,6 +3156,16 @@ void GraphicsLayerCA::setupContentsLayer(PlatformCALayer* contentsLayer)
         contentsLayer->setBorderWidth(4);
     }
 }
+
+#if ENABLE(PLUGIN_PROXY_FOR_VIDEO)
+bool GraphicsLayerCA::mediaLayerMustBeUpdatedOnMainThread() const
+{
+    if (m_contentsLayerPurpose != ContentsLayerForMedia)
+        return false;
+
+    return m_client && m_client->mediaLayerMustBeUpdatedOnMainThread();
+}
+#endif
 
 PassRefPtr<PlatformCALayer> GraphicsLayerCA::findOrMakeClone(CloneID cloneID, PlatformCALayer *sourceLayer, LayerMap* clones, CloneLevel cloneLevel)
 {
@@ -3325,12 +3443,14 @@ void GraphicsLayerCA::computePixelAlignment(float pageScaleFactor, const FloatPo
     
     // Convert back to layer coordinates.
     alignedBounds.scale(1 / pageScaleFactor);
-    
+
+#if !PLATFORM(IOS)
     // Epsilon is necessary to ensure that backing store size computation in CA, which involves integer truncation,
     // will match our aligned bounds.
     const float epsilon = 1e-5f;
     alignedBounds.expand(epsilon, epsilon);
-    
+#endif
+
     alignmentOffset = baseRelativeBounds.location() - alignedBounds.location();
     position = m_position - alignmentOffset;
     size = alignedBounds.size();
@@ -3389,5 +3509,3 @@ double GraphicsLayerCA::backingStoreMemoryEstimate() const
 }
 
 } // namespace WebCore
-
-#endif // USE(ACCELERATED_COMPOSITING)

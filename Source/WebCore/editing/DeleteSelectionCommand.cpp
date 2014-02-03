@@ -340,7 +340,7 @@ static Position firstEditablePositionInNode(Node* node)
 {
     ASSERT(node);
     Node* next = node;
-    while (next && !next->rendererIsEditable())
+    while (next && !next->hasEditableStyle())
         next = NodeTraversal::next(next, node);
     return next ? firstPositionInOrBeforeNode(next) : Position();
 }
@@ -352,7 +352,7 @@ void DeleteSelectionCommand::removeNode(PassRefPtr<Node> node, ShouldAssumeConte
         
     if (m_startRoot != m_endRoot && !(node->isDescendantOf(m_startRoot.get()) && node->isDescendantOf(m_endRoot.get()))) {
         // If a node is not in both the start and end editable roots, remove it only if its inside an editable region.
-        if (!node->parentNode()->rendererIsEditable()) {
+        if (!node->parentNode()->hasEditableStyle()) {
             // Don't remove non-editable atomic nodes.
             if (!node->firstChild())
                 return;
@@ -861,7 +861,24 @@ void DeleteSelectionCommand::doApply()
         insertNodeAt(placeholder.get(), m_endingPosition);
     }
 
+#if PLATFORM(IOS)
+    // This checking is due to iphone shows the last entered character momentarily, removing and adding back the 
+    // space when deleting password cause space been showed insecurely.
+    bool isSecure = NO;
+    Node* node = m_endingPosition.deprecatedNode();
+    if (node && node->isTextNode()) {
+        Text* textNode = static_cast<Text*>(node);    
+        if (textNode->length() > 0) {
+            RenderObject* renderer = textNode->renderer();
+            isSecure = renderer->style().textSecurity() != TSNONE;
+        }
+    }
+        
+    if (!isSecure)
+        rebalanceWhitespaceAt(m_endingPosition);
+#else
     rebalanceWhitespaceAt(m_endingPosition);
+#endif
 
     calculateTypingStyleAfterDelete();
 

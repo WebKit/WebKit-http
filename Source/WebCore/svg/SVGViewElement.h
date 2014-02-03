@@ -33,7 +33,7 @@
 
 namespace WebCore {
 
-class SVGViewElement FINAL : public SVGElement,
+class SVGViewElement final : public SVGElement,
                              public SVGExternalResourcesRequired,
                              public SVGFitToViewBox,
                              public SVGZoomAndPan {
@@ -52,9 +52,9 @@ private:
 
     // FIXME: svgAttributeChanged missing.
     bool isSupportedAttribute(const QualifiedName&);
-    virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
+    virtual void parseAttribute(const QualifiedName&, const AtomicString&) override;
 
-    virtual bool rendererIsNeeded(const RenderStyle&) { return false; }
+    virtual bool rendererIsNeeded(const RenderStyle&) override { return false; }
 
     BEGIN_DECLARE_ANIMATED_PROPERTIES(SVGViewElement)
         DECLARE_ANIMATED_BOOLEAN(ExternalResourcesRequired, externalResourcesRequired)

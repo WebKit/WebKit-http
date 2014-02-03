@@ -29,6 +29,7 @@
 #include "EventNames.h"
 #include "FileSystem.h"
 #include "HTMLElement.h"
+#include "SQLiteDatabaseTracker.h"
 #include "SQLiteFileSystem.h"
 #include "SQLiteStatement.h"
 #include "SQLiteTransaction.h"
@@ -232,6 +233,8 @@ void StorageAreaSync::openDatabase(OpenDatabaseParamType openingStrategy)
     ASSERT(!m_database.isOpen());
     ASSERT(!m_databaseOpenFailed);
 
+    SQLiteTransactionInProgressAutoCounter transactionCounter;
+
     String databaseFilename = m_syncManager->fullDatabaseFilename(m_databaseIdentifier);
 
     if (!fileExists(databaseFilename) && openingStrategy == SkipIfNonExistent)
@@ -403,6 +406,8 @@ void StorageAreaSync::sync(bool clearItems, const HashMap<String, String>& items
         return;
     }
     
+    SQLiteTransactionInProgressAutoCounter transactionCounter;
+
     // If the clear flag is set, then we clear all items out before we write any new ones in.
     if (clearItems) {
         SQLiteStatement clear(m_database, "DELETE FROM ItemTable");

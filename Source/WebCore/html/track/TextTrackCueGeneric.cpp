@@ -41,14 +41,14 @@
 
 namespace WebCore {
 
-class TextTrackCueGenericBoxElement FINAL : public TextTrackCueBox {
+class TextTrackCueGenericBoxElement final : public TextTrackCueBox {
 public:
     static PassRefPtr<TextTrackCueGenericBoxElement> create(Document& document, TextTrackCueGeneric* cue)
     {
         return adoptRef(new TextTrackCueGenericBoxElement(document, cue));
     }
     
-    virtual void applyCSSProperties(const IntSize&) OVERRIDE;
+    virtual void applyCSSProperties(const IntSize&) override;
     
 private:
     TextTrackCueGenericBoxElement(Document&, TextTrackCue*);

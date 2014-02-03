@@ -90,7 +90,7 @@ static WebKitNSType typeFromObject(id object)
 template<typename Owner>
 class ObjCObjectGraphEncoder {
 public:
-    bool baseEncode(CoreIPC::ArgumentEncoder& encoder, const Owner& coder, WebKitNSType& type) const
+    bool baseEncode(IPC::ArgumentEncoder& encoder, const Owner& coder, WebKitNSType& type) const
     {
         if (!m_root) {
             encoder << static_cast<uint32_t>(NullType);
@@ -106,7 +106,7 @@ public:
 
         switch (type) {
         case NSStringType: {
-            CoreIPC::encode(encoder, static_cast<NSString *>(m_root));
+            IPC::encode(encoder, static_cast<NSString *>(m_root));
             return true;
         }
         case NSArrayType: {
@@ -135,15 +135,15 @@ public:
             return true;
         }
         case NSNumberType: {
-            CoreIPC::encode(encoder, static_cast<NSNumber *>(m_root));
+            IPC::encode(encoder, static_cast<NSNumber *>(m_root));
             return true;
         }
         case NSDateType: {
-            CoreIPC::encode(encoder, static_cast<NSDate *>(m_root));
+            IPC::encode(encoder, static_cast<NSDate *>(m_root));
             return true;
         }
         case NSDataType: {
-            CoreIPC::encode(encoder, static_cast<NSData *>(m_root));
+            IPC::encode(encoder, static_cast<NSData *>(m_root));
             return true;
         }
         default:
@@ -165,7 +165,7 @@ protected:
 template<typename Owner>
 class ObjCObjectGraphDecoder {
 public:
-    static bool baseDecode(CoreIPC::ArgumentDecoder& decoder, Owner& coder, WebKitNSType& type)
+    static bool baseDecode(IPC::ArgumentDecoder& decoder, Owner& coder, WebKitNSType& type)
     {
         uint32_t typeAsUInt32;
         if (!decoder.decode(typeAsUInt32))
@@ -176,7 +176,7 @@ public:
         switch (type) {
         case NSStringType: {
             RetainPtr<NSString> string;
-            if (!CoreIPC::decode(decoder, string))
+            if (!IPC::decode(decoder, string))
                 return false;
             coder.m_root = string;
             break;
@@ -193,7 +193,7 @@ public:
                 if (!decoder.decode(messageCoder))
                     return false;
 
-                [array.get() addObject:value.get()];
+                [array addObject:value.get()];
             }
 
             coder.m_root = array;
@@ -217,7 +217,7 @@ public:
                 if (!decoder.decode(valueMessageCoder))
                     return false;
 
-                [dictionary.get() setObject:value.get() forKey:key.get()];
+                [dictionary setObject:value.get() forKey:key.get()];
             }
 
             coder.m_root = dictionary;
@@ -225,21 +225,21 @@ public:
         }
         case NSNumberType: {
             RetainPtr<NSNumber> number;
-            if (!CoreIPC::decode(decoder, number))
+            if (!IPC::decode(decoder, number))
                 return false;
             coder.m_root = number;
             break;
         }
         case NSDateType: {
             RetainPtr<NSDate> date;
-            if (!CoreIPC::decode(decoder, date))
+            if (!IPC::decode(decoder, date))
                 return false;
             coder.m_root = date;
             break;
         }
         case NSDataType: {
             RetainPtr<NSData> data;
-            if (!CoreIPC::decode(decoder, data))
+            if (!IPC::decode(decoder, data))
                 return false;
             coder.m_root = data;
             break;
@@ -279,7 +279,7 @@ public:
     {
     }
 
-    void encode(CoreIPC::ArgumentEncoder& encoder) const
+    void encode(IPC::ArgumentEncoder& encoder) const
     {
         WebKitNSType type = NullType;
         if (baseEncode(encoder, *this, type))
@@ -326,7 +326,7 @@ public:
     {
     }
 
-    static bool decode(CoreIPC::ArgumentDecoder& decoder, WebContextObjCObjectGraphDecoderImpl& coder)
+    static bool decode(IPC::ArgumentDecoder& decoder, WebContextObjCObjectGraphDecoderImpl& coder)
     {
         WebKitNSType type = NullType;
         if (!Base::baseDecode(decoder, coder, type))
@@ -351,7 +351,7 @@ public:
             if (!webPage)
                 coder.m_root = [NSNull null];
             else 
-                coder.m_root = wrapper(*webPage);
+                coder.m_root = [WKBrowsingContextController _browsingContextControllerForPageRef:toAPI(webPage)];
             break;
         }
         case WKTypeRefWrapperType: {
@@ -393,7 +393,7 @@ public:
     {
     }
 
-    void encode(CoreIPC::ArgumentEncoder& encoder) const
+    void encode(IPC::ArgumentEncoder& encoder) const
     {
         WebKitNSType type = NullType;
         if (baseEncode(encoder, *this, type))
@@ -410,6 +410,7 @@ public:
         case WKTypeRefWrapperType: {
             WKTypeRefWrapper *wrapper = static_cast<WKTypeRefWrapper *>(m_root);
             encoder << InjectedBundleUserMessageEncoder(toImpl(wrapper.object));
+            break;
         }
 #endif
         default:
@@ -438,7 +439,7 @@ public:
     {
     }
 
-    static bool decode(CoreIPC::ArgumentDecoder& decoder, InjectedBundleObjCObjectGraphDecoderImpl& coder)
+    static bool decode(IPC::ArgumentDecoder& decoder, InjectedBundleObjCObjectGraphDecoderImpl& coder)
     {
         WebKitNSType type = NullType;
         if (!Base::baseDecode(decoder, coder, type))
@@ -495,7 +496,7 @@ WebContextObjCObjectGraphEncoder::WebContextObjCObjectGraphEncoder(ObjCObjectGra
 {
 }
 
-void WebContextObjCObjectGraphEncoder::encode(CoreIPC::ArgumentEncoder& encoder) const
+void WebContextObjCObjectGraphEncoder::encode(IPC::ArgumentEncoder& encoder) const
 {
     encoder << WebContextObjCObjectGraphEncoderImpl(m_objectGraph->rootObject(), m_process);
 }
@@ -506,7 +507,7 @@ WebContextObjCObjectGraphDecoder::WebContextObjCObjectGraphDecoder(RefPtr<ObjCOb
 {
 }
 
-bool WebContextObjCObjectGraphDecoder::decode(CoreIPC::ArgumentDecoder& decoder, WebContextObjCObjectGraphDecoder& coder)
+bool WebContextObjCObjectGraphDecoder::decode(IPC::ArgumentDecoder& decoder, WebContextObjCObjectGraphDecoder& coder)
 {
     RetainPtr<id> root;
     WebContextObjCObjectGraphDecoderImpl coderImpl(root, coder.m_process);
@@ -523,7 +524,7 @@ InjectedBundleObjCObjectGraphEncoder::InjectedBundleObjCObjectGraphEncoder(ObjCO
 {
 }
 
-void InjectedBundleObjCObjectGraphEncoder::encode(CoreIPC::ArgumentEncoder& encoder) const
+void InjectedBundleObjCObjectGraphEncoder::encode(IPC::ArgumentEncoder& encoder) const
 {
     encoder << InjectedBundleObjCObjectGraphEncoderImpl(m_objectGraph->rootObject(), m_process);
 }
@@ -534,7 +535,7 @@ InjectedBundleObjCObjectGraphDecoder::InjectedBundleObjCObjectGraphDecoder(RefPt
 {
 }
 
-bool InjectedBundleObjCObjectGraphDecoder::decode(CoreIPC::ArgumentDecoder& decoder, InjectedBundleObjCObjectGraphDecoder& coder)
+bool InjectedBundleObjCObjectGraphDecoder::decode(IPC::ArgumentDecoder& decoder, InjectedBundleObjCObjectGraphDecoder& coder)
 {
     RetainPtr<id> root;
     InjectedBundleObjCObjectGraphDecoderImpl coderImpl(root, coder.m_process);

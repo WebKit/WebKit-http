@@ -30,7 +30,7 @@ namespace WebCore {
 
 class Document;
 
-class HTMLBodyElement FINAL : public HTMLElement {
+class HTMLBodyElement final : public HTMLElement {
 public:
     static PassRefPtr<HTMLBodyElement> create(Document&);
     static PassRefPtr<HTMLBodyElement> create(const QualifiedName&, Document&);
@@ -59,26 +59,26 @@ public:
 private:
     HTMLBodyElement(const QualifiedName&, Document&);
 
-    virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
-    virtual bool isPresentationAttribute(const QualifiedName&) const OVERRIDE;
-    virtual void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStyleProperties&) OVERRIDE;
+    virtual void parseAttribute(const QualifiedName&, const AtomicString&) override;
+    virtual bool isPresentationAttribute(const QualifiedName&) const override;
+    virtual void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStyleProperties&) override;
 
-    virtual InsertionNotificationRequest insertedInto(ContainerNode&) OVERRIDE;
+    virtual InsertionNotificationRequest insertedInto(ContainerNode&) override;
 
-    virtual bool isURLAttribute(const Attribute&) const OVERRIDE;
+    virtual bool isURLAttribute(const Attribute&) const override;
     
-    virtual bool supportsFocus() const OVERRIDE;
+    virtual bool supportsFocus() const override;
 
-    virtual int scrollLeft();
-    virtual void setScrollLeft(int scrollLeft);
+    virtual int scrollLeft() override;
+    virtual void setScrollLeft(int scrollLeft) override;
     
-    virtual int scrollTop();
-    virtual void setScrollTop(int scrollTop);
+    virtual int scrollTop() override;
+    virtual void setScrollTop(int scrollTop) override;
     
-    virtual int scrollHeight();
-    virtual int scrollWidth();
+    virtual int scrollHeight() override;
+    virtual int scrollWidth() override;
     
-    virtual void addSubresourceAttributeURLs(ListHashSet<URL>&) const;
+    virtual void addSubresourceAttributeURLs(ListHashSet<URL>&) const override;
 };
 
 NODE_TYPE_CASTS(HTMLBodyElement)

@@ -30,7 +30,7 @@ namespace WebCore {
     class Frame;
     class QualifiedName;
 
-    class JSLazyEventListener FINAL : public JSEventListener {
+    class JSLazyEventListener final : public JSEventListener {
     public:
         static PassRefPtr<JSLazyEventListener> createForNode(ContainerNode&, const QualifiedName& attributeName, const AtomicString& attributeValue);
         static PassRefPtr<JSLazyEventListener> createForDOMWindow(Frame&, const QualifiedName& attributeName, const AtomicString& attributeValue);
@@ -40,10 +40,10 @@ namespace WebCore {
     private:
         JSLazyEventListener(const String& functionName, const String& eventParameterName, const String& code, ContainerNode*, const String& sourceURL, const TextPosition&, JSC::JSObject* wrapper, DOMWrapperWorld& isolatedWorld);
 
-        virtual JSC::JSObject* initializeJSFunction(ScriptExecutionContext*) const OVERRIDE;
-        virtual bool wasCreatedFromMarkup() const OVERRIDE { return true; }
+        virtual JSC::JSObject* initializeJSFunction(ScriptExecutionContext*) const override;
+        virtual bool wasCreatedFromMarkup() const override { return true; }
 
-        static void create() WTF_DELETED_FUNCTION;
+        static void create() = delete;
 
         mutable String m_functionName;
         mutable String m_eventParameterName;

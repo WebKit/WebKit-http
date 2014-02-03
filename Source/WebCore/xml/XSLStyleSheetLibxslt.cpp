@@ -20,14 +20,12 @@
  */
 
 #include "config.h"
-#include "XSLStyleSheet.h"
 
 #if ENABLE(XSLT)
 
 #include "CachedResourceLoader.h"
 #include "Document.h"
 #include "Frame.h"
-#include "Node.h"
 #include "Page.h"
 #include "PageConsole.h"
 #include "TransformSource.h"
@@ -35,7 +33,6 @@
 #include "XMLDocumentParserScope.h"
 #include "XSLImportRule.h"
 #include "XSLTProcessor.h"
-#include <wtf/text/CString.h>
 
 #include <libxml/uri.h>
 #include <libxslt/xsltutils.h>
@@ -151,7 +148,7 @@ bool XSLStyleSheet::parseString(const String& string)
 
     XMLDocumentParserScope scope(cachedResourceLoader(), XSLTProcessor::genericErrorFunc, XSLTProcessor::parseErrorFunc, console);
 
-    const char* buffer = reinterpret_cast<const char*>(string.characters());
+    const char* buffer = reinterpret_cast<const char*>(string.deprecatedCharacters());
     int size = string.length() * sizeof(UChar);
 
     xmlParserCtxtPtr ctxt = xmlCreateMemoryParserCtxt(buffer, size);

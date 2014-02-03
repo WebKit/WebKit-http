@@ -66,7 +66,7 @@ struct SVGPropertyTraits<ColorMatrixType> {
     }
 };
 
-class SVGFEColorMatrixElement FINAL : public SVGFilterPrimitiveStandardAttributes {
+class SVGFEColorMatrixElement final : public SVGFilterPrimitiveStandardAttributes {
 public:
     static PassRefPtr<SVGFEColorMatrixElement> create(const QualifiedName&, Document&);
 
@@ -74,10 +74,10 @@ private:
     SVGFEColorMatrixElement(const QualifiedName&, Document&);
 
     bool isSupportedAttribute(const QualifiedName&);
-    virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
-    virtual bool setFilterEffectAttribute(FilterEffect*, const QualifiedName&);
-    virtual void svgAttributeChanged(const QualifiedName&);
-    virtual PassRefPtr<FilterEffect> build(SVGFilterBuilder*, Filter*);
+    virtual void parseAttribute(const QualifiedName&, const AtomicString&) override;
+    virtual bool setFilterEffectAttribute(FilterEffect*, const QualifiedName&) override;
+    virtual void svgAttributeChanged(const QualifiedName&) override;
+    virtual PassRefPtr<FilterEffect> build(SVGFilterBuilder*, Filter*) override;
 
     BEGIN_DECLARE_ANIMATED_PROPERTIES(SVGFEColorMatrixElement)
         DECLARE_ANIMATED_STRING(In1, in1)

@@ -28,6 +28,8 @@
 
 #if ENABLE(DFG_JIT)
 
+#include "DFGAbstractHeap.h"
+#include "DFGClobberize.h"
 #include "DFGEdgeUsesStructure.h"
 #include "DFGGraph.h"
 #include "DFGPhase.h"
@@ -136,8 +138,10 @@ private:
             if (node->op() != otherNode->op())
                 continue;
             
-            if (node->arithNodeFlags() != otherNode->arithNodeFlags())
-                continue;
+            if (node->hasArithMode()) {
+                if (node->arithMode() != otherNode->arithMode())
+                    continue;
+            }
             
             Edge otherChild = otherNode->child1();
             if (!otherChild)
@@ -1004,6 +1008,18 @@ private:
         return result;
     }
     
+    bool invalidationPointElimination()
+    {
+        for (unsigned i = m_indexInBlock; i--;) {
+            Node* node = m_currentBlock->at(i);
+            if (node->op() == InvalidationPoint)
+                return true;
+            if (writesOverlap(m_graph, node, Watchpoint_fire))
+                break;
+        }
+        return false;
+    }
+    
     void eliminateIrrelevantPhantomChildren(Node* node)
     {
         ASSERT(node->op() == Phantom);
@@ -1051,7 +1067,7 @@ private:
         if (!node)
             return;
         ASSERT(node->mustGenerate());
-        node->setOpAndDefaultNonExitFlags(phantomType);
+        node->setOpAndDefaultFlags(phantomType);
         if (phantomType == Phantom)
             eliminateIrrelevantPhantomChildren(node);
         
@@ -1082,7 +1098,6 @@ private:
         case ArithSub:
         case ArithNegate:
         case ArithMul:
-        case ArithIMul:
         case ArithMod:
         case ArithDiv:
         case ArithAbs:
@@ -1239,7 +1254,6 @@ private:
             
         // Handle nodes that are conditionally pure: these are pure, and can
         // be CSE'd, so long as the prediction is the one we want.
-        case ValueAdd:
         case CompareLess:
         case CompareLessEq:
         case CompareGreater:
@@ -1385,9 +1399,13 @@ private:
             eliminate(putByOffsetStoreElimination(m_graph.m_storageAccessData[node->storageAccessDataIndex()].identifierNumber, node->child1().node()));
             break;
             
+        case InvalidationPoint:
+            if (invalidationPointElimination())
+                eliminate();
+            break;
+            
         case Phantom:
             // FIXME: we ought to remove Phantom's that have no children.
-            
             eliminateIrrelevantPhantomChildren(node);
             break;
             

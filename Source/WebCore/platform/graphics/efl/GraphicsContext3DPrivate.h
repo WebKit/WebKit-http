@@ -21,8 +21,6 @@
 #ifndef GraphicsContext3DPrivate_h
 #define GraphicsContext3DPrivate_h
 
-#if USE(3D_GRAPHICS) || USE(ACCELERATED_COMPOSITING)
-
 #include "GraphicsContext3D.h"
 
 #if USE(TEXTURE_MAPPER_GL)
@@ -48,13 +46,13 @@ public:
     PlatformGraphicsContext3D platformGraphicsContext3D() const;
     void setContextLostCallback(PassOwnPtr<GraphicsContext3D::ContextLostCallback>);
 #if USE(TEXTURE_MAPPER_GL)
-    virtual void paintToTextureMapper(TextureMapper*, const FloatRect&, const TransformationMatrix&, float) OVERRIDE;
+    virtual void paintToTextureMapper(TextureMapper*, const FloatRect&, const TransformationMatrix&, float) override;
 #endif
 #if USE(GRAPHICS_SURFACE)
-    virtual IntSize platformLayerSize() const OVERRIDE;
-    virtual uint32_t copyToGraphicsSurface() OVERRIDE;
-    virtual GraphicsSurfaceToken graphicsSurfaceToken() const OVERRIDE;
-    virtual GraphicsSurface::Flags graphicsSurfaceFlags() const OVERRIDE;
+    virtual IntSize platformLayerSize() const override;
+    virtual uint32_t copyToGraphicsSurface() override;
+    virtual GraphicsSurfaceToken graphicsSurfaceToken() const override;
+    virtual GraphicsSurface::Flags graphicsSurfaceFlags() const override;
     void didResizeCanvas(const IntSize&);
 #endif
     bool makeContextCurrent() const;
@@ -94,7 +92,5 @@ private:
 };
 
 } // namespace WebCore
-
-#endif
 
 #endif

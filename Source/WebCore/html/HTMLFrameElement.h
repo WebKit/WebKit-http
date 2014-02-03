@@ -28,7 +28,7 @@
 
 namespace WebCore {
 
-class HTMLFrameElement FINAL : public HTMLFrameElementBase {
+class HTMLFrameElement final : public HTMLFrameElementBase {
 public:
     static PassRefPtr<HTMLFrameElement> create(const QualifiedName&, Document&);
 
@@ -39,12 +39,12 @@ public:
 private:
     HTMLFrameElement(const QualifiedName&, Document&);
 
-    virtual void didAttachRenderers() OVERRIDE;
+    virtual void didAttachRenderers() override;
 
-    virtual bool rendererIsNeeded(const RenderStyle&);
-    virtual RenderElement* createRenderer(PassRef<RenderStyle>) OVERRIDE;
+    virtual bool rendererIsNeeded(const RenderStyle&) override;
+    virtual RenderPtr<RenderElement> createElementRenderer(PassRef<RenderStyle>) override;
     
-    virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
+    virtual void parseAttribute(const QualifiedName&, const AtomicString&) override;
 
 #if ENABLE(FULLSCREEN_API)
     virtual bool allowFullScreen() const { return false; }

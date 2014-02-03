@@ -32,7 +32,7 @@ namespace WebCore {
 class HTMLPlugInElement;
 class Widget;
 
-class PluginDocument FINAL : public HTMLDocument {
+class PluginDocument final : public HTMLDocument {
 public:
     static PassRefPtr<PluginDocument> create(Frame* frame, const URL& url)
     {
@@ -53,7 +53,7 @@ public:
 private:
     PluginDocument(Frame*, const URL&);
 
-    virtual PassRefPtr<DocumentParser> createParser() OVERRIDE;
+    virtual PassRefPtr<DocumentParser> createParser() override;
 
     void setShouldLoadPluginManually(bool loadManually) { m_shouldLoadPluginManually = loadManually; }
 

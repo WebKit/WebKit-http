@@ -23,7 +23,6 @@
 #include "SVGInlineTextBox.h"
 
 #if ENABLE(SVG)
-#include "FloatConversion.h"
 #include "FontCache.h"
 #include "Frame.h"
 #include "FrameView.h"
@@ -32,8 +31,6 @@
 #include "InlineFlowBox.h"
 #include "PointerEventsHitRules.h"
 #include "RenderBlock.h"
-#include "RenderSVGInlineText.h"
-#include "RenderSVGResource.h"
 #include "RenderSVGResourceSolidColor.h"
 #include "RenderView.h"
 #include "SVGRenderingContext.h"
@@ -397,7 +394,7 @@ TextRun SVGInlineTextBox::constructTextRun(RenderStyle* style, const SVGTextFrag
 {
     ASSERT(style);
 
-    TextRun run(renderer().characters() + fragment.characterOffset
+    TextRun run(renderer().deprecatedCharacters() + fragment.characterOffset
                 , fragment.length
                 , 0 /* xPos, only relevant with allowTabs=true */
                 , 0 /* padding, only relevant for justified text, not relevant for SVG */

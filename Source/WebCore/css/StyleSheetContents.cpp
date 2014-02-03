@@ -456,6 +456,9 @@ static bool childRulesHaveFailedOrCanceledSubresources(const Vector<RefPtr<Style
 #endif
         case StyleRuleBase::Import:
             ASSERT_NOT_REACHED();
+#if ASSERT_DISABLED
+            FALLTHROUGH;
+#endif
         case StyleRuleBase::Page:
         case StyleRuleBase::Keyframes:
         case StyleRuleBase::Unknown:
@@ -466,9 +469,6 @@ static bool childRulesHaveFailedOrCanceledSubresources(const Vector<RefPtr<Style
 #endif
 #if ENABLE(CSS_DEVICE_ADAPTATION)
         case StyleRuleBase::Viewport:
-#endif
-#if ENABLE(CSS_SHADERS)
-        case StyleRuleBase::Filter:
 #endif
             break;
         }

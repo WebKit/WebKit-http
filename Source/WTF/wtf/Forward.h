@@ -26,6 +26,7 @@
 namespace WTF {
 
 template<typename T> class Function;
+template<typename T> class NeverDestroyed;
 template<typename T> class OwnPtr;
 template<typename T> class PassOwnPtr;
 template<typename T> class PassRef;
@@ -47,6 +48,7 @@ class PrintStream;
 class String;
 class StringBuilder;
 class StringImpl;
+class StringView;
 
 }
 
@@ -58,6 +60,7 @@ using WTF::Decoder;
 using WTF::Encoder;
 using WTF::Function;
 using WTF::FunctionDispatcher;
+using WTF::NeverDestroyed;
 using WTF::OwnPtr;
 using WTF::PassOwnPtr;
 using WTF::PassRef;
@@ -69,6 +72,7 @@ using WTF::String;
 using WTF::StringBuffer;
 using WTF::StringBuilder;
 using WTF::StringImpl;
+using WTF::StringView;
 using WTF::Vector;
 
 #endif // WTF_Forward_h

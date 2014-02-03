@@ -56,6 +56,10 @@
 /* PLATFORM(MAC) is always enabled when PLATFORM(IOS) is enabled. */
 #if PLATFORM(IOS)
 
+#if !defined(ENABLE_ASYNC_SCROLLING)
+#define ENABLE_ASYNC_SCROLLING 1
+#endif
+
 #if !defined(ENABLE_8BIT_TEXTRUN)
 #define ENABLE_8BIT_TEXTRUN 1
 #endif
@@ -66,6 +70,10 @@
 
 #if !defined(ENABLE_CSS_IMAGE_SET)
 #define ENABLE_CSS_IMAGE_SET 1
+#endif
+
+#if !defined(ENABLE_CURSOR_SUPPORT)
+#define ENABLE_CURSOR_SUPPORT 0
 #endif
 
 #if !defined(ENABLE_DISK_IMAGE_CACHE)
@@ -84,6 +92,10 @@
 #define ENABLE_ICONDATABASE 0
 #endif
 
+#if !defined(ENABLE_LETTERPRESS)
+#define ENABLE_LETTERPRESS 1
+#endif
+
 #if !defined(ENABLE_IOS_AUTOCORRECT_AND_AUTOCAPITALIZE)
 #define ENABLE_IOS_AUTOCORRECT_AND_AUTOCAPITALIZE 1
 #endif
@@ -92,12 +104,12 @@
 #define ENABLE_IOS_GESTURE_EVENTS 1
 #endif
 
-#if !defined(ENABLE_LETTERPRESS)
-#define ENABLE_LETTERPRESS 1
-#endif
-
 #if !defined(ENABLE_IOS_TEXT_AUTOSIZING)
 #define ENABLE_IOS_TEXT_AUTOSIZING 1
+#endif
+
+#if !defined(ENABLE_IOS_TOUCH_EVENTS)
+#define ENABLE_IOS_TOUCH_EVENTS 1
 #endif
 
 #if !defined(ENABLE_METER_ELEMENT)
@@ -198,8 +210,8 @@
 #define ENABLE_SMOOTH_SCROLLING 1
 #endif
 
-#if !defined(ENABLE_THREADED_SCROLLING)
-#define ENABLE_THREADED_SCROLLING 1
+#if !defined(ENABLE_ASYNC_SCROLLING)
+#define ENABLE_ASYNC_SCROLLING 1
 #endif
 
 #if ENABLE(VIDEO)
@@ -289,11 +301,6 @@
 
 #endif /* PLATFORM(WIN_CAIRO) */
 
-/* --------- NIX port (Unix) --------- */
-#if PLATFORM(NIX)
-#include "nix/FeatureDefinesNix.h"
-#endif /* PLATFORM(NIX) */
-
 /* --------- EFL port (Unix) --------- */
 #if PLATFORM(EFL)
 
@@ -325,15 +332,6 @@
 #endif
 
 #endif /* PLATFORM(GTK) */
-
-/* --------- Blackberry port (QNX) --------- */
-#if PLATFORM(BLACKBERRY)
-
-#if !defined(ENABLE_BLACKBERRY_CREDENTIAL_PERSIST)
-#define ENABLE_BLACKBERRY_CREDENTIAL_PERSIST 1
-#endif
-
-#endif /* PLATFORM(BLACKBERRY) */
 
 /* ENABLE macro defaults for WebCore */
 /* Do not use PLATFORM() tests in this section ! */
@@ -418,16 +416,16 @@
 #define ENABLE_CSS_IMAGE_SET 0
 #endif
 
-#if !defined(ENABLE_CSS_SHADERS)
-#define ENABLE_CSS_SHADERS 0
-#endif
-
 #if !defined(ENABLE_CSS_STICKY_POSITION)
 #define ENABLE_CSS_STICKY_POSITION 0
 #endif
 
 #if !defined(ENABLE_CSS_TRANSFORMS_ANIMATIONS_TRANSITIONS_UNPREFIXED)
 #define ENABLE_CSS_TRANSFORMS_ANIMATIONS_TRANSITIONS_UNPREFIXED 0
+#endif
+
+#if !defined(ENABLE_CURSOR_SUPPORT)
+#define ENABLE_CURSOR_SUPPORT 1
 #endif
 
 #if !defined(ENABLE_CUSTOM_SCHEME_HANDLER)
@@ -464,10 +462,6 @@
 
 #if !defined(ENABLE_DOWNLOAD_ATTRIBUTE)
 #define ENABLE_DOWNLOAD_ATTRIBUTE 0
-#endif
-
-#if !defined(ENABLE_DRAGGABLE_REGION)
-#define ENABLE_DRAGGABLE_REGION 0
 #endif
 
 #if !defined(ENABLE_DRAG_SUPPORT)
@@ -578,10 +572,6 @@
 
 #if !defined(ENABLE_INSPECTOR)
 #define ENABLE_INSPECTOR 1
-#endif
-
-#if !defined(ENABLE_JAVASCRIPT_DEBUGGER)
-#define ENABLE_JAVASCRIPT_DEBUGGER 1
 #endif
 
 #if !defined(ENABLE_JAVASCRIPT_I18N_API)
@@ -800,12 +790,8 @@
 #define ENABLE_TEXT_SELECTION 1
 #endif
 
-#if !defined(ENABLE_THREADED_HTML_PARSER)
-#define ENABLE_THREADED_HTML_PARSER 0
-#endif
-
-#if !defined(ENABLE_THREADED_SCROLLING)
-#define ENABLE_THREADED_SCROLLING 0
+#if !defined(ENABLE_ASYNC_SCROLLING)
+#define ENABLE_ASYNC_SCROLLING 0
 #endif
 
 #if !defined(ENABLE_TOUCH_EVENTS)
@@ -832,10 +818,6 @@
 #define ENABLE_VIEWPORT 0
 #endif
 
-#if !defined(ENABLE_VIEWSOURCE_ATTRIBUTE)
-#define ENABLE_VIEWSOURCE_ATTRIBUTE 1
-#endif
-
 #if !defined(ENABLE_VIEW_MODE_CSS_MEDIA)
 #define ENABLE_VIEW_MODE_CSS_MEDIA 1
 #endif
@@ -856,12 +838,20 @@
 #define ENABLE_WEB_AUDIO 0
 #endif
 
+#if !defined(ENABLE_WEB_REPLAY)
+#define ENABLE_WEB_REPLAY 0
+#endif
+
 #if !defined(ENABLE_WEB_SOCKETS)
 #define ENABLE_WEB_SOCKETS 1
 #endif
 
 #if !defined(ENABLE_WEB_TIMING)
 #define ENABLE_WEB_TIMING 0
+#endif
+
+#if !defined(ENABLE_WILL_REVEAL_EDGE_EVENTS)
+#define ENABLE_WILL_REVEAL_EDGE_EVENTS 1
 #endif
 
 #if !defined(ENABLE_XHR_TIMEOUT)
@@ -886,12 +876,12 @@
 #error "ENABLE(VIDEO_TRACK) requires ENABLE(VIDEO)"
 #endif
 
-#if ENABLE(CSS_SHADERS) && !ENABLE(WEBGL)
-#error "ENABLE(CSS_SHADERS) requires ENABLE(WEBGL)"
-#endif
-
 #if ENABLE(REMOTE_INSPECTOR) && !ENABLE(INSPECTOR)
 #error "ENABLE(REMOTE_INSPECTOR) requires ENABLE(INSPECTOR)"
+#endif
+
+#if ENABLE(IOS_TOUCH_EVENTS) && !ENABLE(TOUCH_EVENTS)
+#error "ENABLE(IOS_TOUCH_EVENTS) requires ENABLE(TOUCH_EVENTS)"
 #endif
 
 #endif /* WTF_FeatureDefines_h */

@@ -28,88 +28,87 @@
 #define XPathPredicate_h
 
 #include "XPathExpressionNode.h"
-#include "XPathValue.h"
 
 namespace WebCore {
 
     namespace XPath {
         
-        class Number FINAL : public Expression {
+        class Number final : public Expression {
         public:
             explicit Number(double);
 
         private:
-            virtual Value evaluate() const OVERRIDE;
-            virtual Value::Type resultType() const OVERRIDE { return Value::NumberValue; }
+            virtual Value evaluate() const override;
+            virtual Value::Type resultType() const override { return Value::NumberValue; }
 
             Value m_value;
         };
 
-        class StringExpression FINAL : public Expression {
+        class StringExpression final : public Expression {
         public:
             explicit StringExpression(String&&);
 
         private:
-            virtual Value evaluate() const OVERRIDE;
-            virtual Value::Type resultType() const OVERRIDE { return Value::StringValue; }
+            virtual Value evaluate() const override;
+            virtual Value::Type resultType() const override { return Value::StringValue; }
 
             Value m_value;
         };
 
-        class Negative FINAL : public Expression {
+        class Negative final : public Expression {
         public:
             explicit Negative(std::unique_ptr<Expression>);
 
         private:
-            virtual Value evaluate() const OVERRIDE;
-            virtual Value::Type resultType() const OVERRIDE { return Value::NumberValue; }
+            virtual Value evaluate() const override;
+            virtual Value::Type resultType() const override { return Value::NumberValue; }
         };
 
-        class NumericOp FINAL : public Expression {
+        class NumericOp final : public Expression {
         public:
             enum Opcode { OP_Add, OP_Sub, OP_Mul, OP_Div, OP_Mod };
             NumericOp(Opcode, std::unique_ptr<Expression> lhs, std::unique_ptr<Expression> rhs);
 
         private:
-            virtual Value evaluate() const OVERRIDE;
-            virtual Value::Type resultType() const OVERRIDE { return Value::NumberValue; }
+            virtual Value evaluate() const override;
+            virtual Value::Type resultType() const override { return Value::NumberValue; }
 
             Opcode m_opcode;
         };
 
-        class EqTestOp FINAL : public Expression {
+        class EqTestOp final : public Expression {
         public:
             enum Opcode { OP_EQ, OP_NE, OP_GT, OP_LT, OP_GE, OP_LE };
             EqTestOp(Opcode, std::unique_ptr<Expression> lhs, std::unique_ptr<Expression> rhs);
-            virtual Value evaluate() const OVERRIDE;
+            virtual Value evaluate() const override;
 
         private:
-            virtual Value::Type resultType() const OVERRIDE { return Value::BooleanValue; }
+            virtual Value::Type resultType() const override { return Value::BooleanValue; }
             bool compare(const Value&, const Value&) const;
 
             Opcode m_opcode;
         };
 
-        class LogicalOp FINAL : public Expression {
+        class LogicalOp final : public Expression {
         public:
             enum Opcode { OP_And, OP_Or };
             LogicalOp(Opcode, std::unique_ptr<Expression> lhs, std::unique_ptr<Expression> rhs);
 
         private:
-            virtual Value::Type resultType() const OVERRIDE { return Value::BooleanValue; }
+            virtual Value::Type resultType() const override { return Value::BooleanValue; }
             bool shortCircuitOn() const;
-            virtual Value evaluate() const OVERRIDE;
+            virtual Value evaluate() const override;
 
             Opcode m_opcode;
         };
 
-        class Union FINAL : public Expression {
+        class Union final : public Expression {
         public:
             Union(std::unique_ptr<Expression>, std::unique_ptr<Expression>);
 
         private:
-            virtual Value evaluate() const OVERRIDE;
-            virtual Value::Type resultType() const OVERRIDE { return Value::NodeSetValue; }
+            virtual Value evaluate() const override;
+            virtual Value::Type resultType() const override { return Value::NodeSetValue; }
         };
 
         bool evaluatePredicate(const Expression&);

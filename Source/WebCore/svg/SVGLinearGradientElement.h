@@ -30,7 +30,7 @@ namespace WebCore {
 
 struct LinearGradientAttributes;
 
-class SVGLinearGradientElement FINAL : public SVGGradientElement {
+class SVGLinearGradientElement final : public SVGGradientElement {
 public:
     static PassRefPtr<SVGLinearGradientElement> create(const QualifiedName&, Document&);
 
@@ -40,12 +40,12 @@ private:
     SVGLinearGradientElement(const QualifiedName&, Document&);
 
     bool isSupportedAttribute(const QualifiedName&);
-    virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
-    virtual void svgAttributeChanged(const QualifiedName&);
+    virtual void parseAttribute(const QualifiedName&, const AtomicString&) override;
+    virtual void svgAttributeChanged(const QualifiedName&) override;
 
-    virtual RenderElement* createRenderer(PassRef<RenderStyle>) OVERRIDE;
+    virtual RenderPtr<RenderElement> createElementRenderer(PassRef<RenderStyle>) override;
 
-    virtual bool selfHasRelativeLengths() const;
+    virtual bool selfHasRelativeLengths() const override;
 
     BEGIN_DECLARE_ANIMATED_PROPERTIES(SVGLinearGradientElement)
         DECLARE_ANIMATED_LENGTH(X1, x1)

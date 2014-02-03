@@ -147,17 +147,12 @@ function parseFilterImage(s)
 
 function parseFilterFunctionList(s)
 {
-    var reg = /\)*\s*(blur|brightness|contrast|custom|drop\-shadow|grayscale|hue\-rotate|invert|opacity|saturate|sepia|url)\(/
+    var reg = /\)*\s*(blur|brightness|contrast|drop\-shadow|grayscale|hue\-rotate|invert|opacity|saturate|sepia|url)\(/
     var matches = s.split(reg);
 
     // First item must be empty. All other items are of functionName, functionValue.
     if (!matches || matches.shift() != "")
         return null;
-
-    // RegEx above can not handle deprecated custom() function
-    var customPos = matches.indexOf("custom");
-    if (customPos >= 0 && matches[customPos+1] === "")
-        return parseDeprecatedCustomFilterFunction(s);
 
     // Odd items are the function name, even items the function value.
     if (!matches.length || matches.length % 2)
@@ -172,36 +167,10 @@ function parseFilterFunctionList(s)
             // FIXME: Support parsing of drop-shadow.
             functionList.push(functionValue);
             continue;
-        } else if (functionName == "custom") {
-            var filterParams;
-            if (!window.getCustomFilterParameters)
-                throw new Error("getCustomFilterParameters not found. Did you include custom-filter-parser.js?");
-            var filterParams = getCustomFilterParameters(functionValue);
-            if (!filterParams) {
-                console.error("Error on parsing custom filter parameters ", functionValue);
-                return null;
-            }
-            functionList.push(filterParams);
-            continue;
         }
         functionList.push(parseFloat(functionValue));
     }
     return functionList;
-}
-
-// FIXME: Remove function and caller when we removed the deprecated syntax of
-// the custom filter function.
-function parseDeprecatedCustomFilterFunction(s)
-{
-    var filterResult = s.match(/(\w+)\((.+)\)/);
-    var filterParams = filterResult[2];
-
-    if (filterResult[1] != "custom")
-        return null;
-
-    if (!window.getCustomFilterParameters)
-        throw new Error("getCustomFilterParameters not found. Did you include custom-filter-parser.js?");
-    return ["custom", getCustomFilterParameters(filterParams)];
 }
 
 function parseBasicShape(s)
@@ -238,10 +207,15 @@ function parseBasicShape(s)
 
     // Normalize percentage values.
     for (; i < matches.length; ++i) {
-        var param = matches[i];
-        matches[i] = parseFloat(matches[i]);
-        if (param.indexOf('%') != -1)
-            matches[i] = matches[i] / 100;
+        var param = parseFloat(matches[i]);
+
+        if (isNaN(param))
+            continue;
+
+        if (matches[i].indexOf('%') != -1)
+            matches[i] = param / 100;
+        else
+            matches[i] = param;
     }
 
     return {"shape": shapeFunction[1], "params": matches};
@@ -292,13 +266,6 @@ function compareFilterFunctions(computedValue, expectedValue, tolerance)
             console.error("Filter functions do not match.");
             return false;
         }
-        if (actual[i] == "custom") {
-            if (!customFilterParameterMatch(actual[i+1], expected[i+1], tolerance)) {
-                console.error("Custom filter parameters do not match.");
-                return false;
-            }
-            continue;
-        }
         if (!isCloseEnough(actual[i+1], expected[i+1], tolerance)) {
             console.error("Filter function values do not match.");
             return false;
@@ -313,61 +280,15 @@ function basicShapeParametersMatch(paramList1, paramList2, tolerance)
         || paramList1.params.length != paramList2.params.length)
         return false;
     var i = 0;
-    if (paramList1.shape == "polygon") {
-        if (paramList1.params[0] != paramList2.params[0])
-            return false; // fill-rule's don't match
-        i++;
-    }
     for (; i < paramList1.params.length; ++i) {
         var param1 = paramList1.params[i], 
             param2 = paramList2.params[i];
+        if (param1 === param2)
+            continue;
         var match = isCloseEnough(param1, param2, tolerance);
         if (!match)
             return false;
     }
-    return true;
-}
-
-function customFilterParameterMatch(param1, param2, tolerance)
-{
-    if (param1.type != "parameter") {
-        // Checking for shader uris and other keywords. They need to be exactly the same.
-        return (param1.type == param2.type && param1.value == param2.value);
-    }
-
-    if (param1.name != param2.name || param1.value.length != param2.value.length)
-        return false;
-
-    for (var j = 0; j < param1.value.length; ++j) {
-        var val1 = param1.value[j],
-            val2 = param2.value[j];
-        if (val1.type != val2.type)
-            return false;
-        switch (val1.type) {
-        case "function":
-            if (val1.name != val2.name)
-                return false;
-            if (val1.arguments.length != val2.arguments.length) {
-                console.error("Arguments length mismatch: ", val1.arguments.length, "/", val2.arguments.length);
-                return false;
-            }
-            for (var t = 0; t < val1.arguments.length; ++t) {
-                if (val1.arguments[t].type != "number" || val2.arguments[t].type != "number")
-                    return false;
-                if (!isCloseEnough(val1.arguments[t].value, val2.arguments[t].value, tolerance))
-                    return false;
-            }
-            break;
-        case "number":
-            if (!isCloseEnough(val1.value, val2.value, tolerance))
-                return false;
-            break;
-        default:
-            console.error("Unsupported parameter type ", val1.type);
-            return false;
-        }
-    }
-
     return true;
 }
 

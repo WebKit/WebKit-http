@@ -27,7 +27,7 @@
 
 #include "AudioNode.h"
 #include "AudioParam.h"
-#include <wtf/OwnPtr.h>
+#include <memory>
 
 namespace WebCore {
 
@@ -43,10 +43,10 @@ public:
     virtual ~DynamicsCompressorNode();
 
     // AudioNode
-    virtual void process(size_t framesToProcess) OVERRIDE;
-    virtual void reset() OVERRIDE;
-    virtual void initialize() OVERRIDE;
-    virtual void uninitialize() OVERRIDE;
+    virtual void process(size_t framesToProcess) override;
+    virtual void reset() override;
+    virtual void initialize() override;
+    virtual void uninitialize() override;
 
     // Static compression curve parameters.
     AudioParam* threshold() { return m_threshold.get(); }
@@ -59,12 +59,12 @@ public:
     AudioParam* reduction() { return m_reduction.get(); }
 
 private:
-    virtual double tailTime() const OVERRIDE;
-    virtual double latencyTime() const OVERRIDE;
+    virtual double tailTime() const override;
+    virtual double latencyTime() const override;
 
     DynamicsCompressorNode(AudioContext*, float sampleRate);
 
-    OwnPtr<DynamicsCompressor> m_dynamicsCompressor;
+    std::unique_ptr<DynamicsCompressor> m_dynamicsCompressor;
     RefPtr<AudioParam> m_threshold;
     RefPtr<AudioParam> m_knee;
     RefPtr<AudioParam> m_ratio;

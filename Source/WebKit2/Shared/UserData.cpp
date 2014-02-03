@@ -28,16 +28,18 @@
 
 #include "APIArray.h"
 #include "APIData.h"
+#include "APIError.h"
 #include "APIFrameHandle.h"
 #include "APIGeometry.h"
 #include "APINumber.h"
 #include "APIString.h"
+#include "APIURL.h"
 #include "APIURLRequest.h"
+#include "APIURLResponse.h"
 #include "ArgumentCoders.h"
 #include "ArgumentEncoder.h"
 #include "MutableDictionary.h"
 #include "WebSerializedScriptValue.h"
-#include "WebURL.h"
 
 namespace WebKit {
 
@@ -82,17 +84,17 @@ RefPtr<API::Object> UserData::transform(API::Object* object, const std::function
     return object;
 }
 
-void UserData::encode(CoreIPC::ArgumentEncoder& encoder) const
+void UserData::encode(IPC::ArgumentEncoder& encoder) const
 {
     encode(encoder, m_object.get());
 }
 
-bool UserData::decode(CoreIPC::ArgumentDecoder& decoder, UserData& userData)
+bool UserData::decode(IPC::ArgumentDecoder& decoder, UserData& userData)
 {
     return decode(decoder, userData.m_object);
 }
 
-void UserData::encode(CoreIPC::ArgumentEncoder& encoder, const API::Object* object) const
+void UserData::encode(IPC::ArgumentEncoder& encoder, const API::Object* object) const
 {
     if (!object) {
         encoder.encodeEnum(API::Object::Type::Null);
@@ -102,7 +104,7 @@ void UserData::encode(CoreIPC::ArgumentEncoder& encoder, const API::Object* obje
     encode(encoder, *object);
 }
 
-void UserData::encode(CoreIPC::ArgumentEncoder& encoder, const API::Object& object) const
+void UserData::encode(IPC::ArgumentEncoder& encoder, const API::Object& object) const
 {
     API::Object::Type type = object.type();
     encoder.encodeEnum(type);
@@ -136,6 +138,10 @@ void UserData::encode(CoreIPC::ArgumentEncoder& encoder, const API::Object& obje
         break;
     }
 
+    case API::Object::Type::Error:
+        static_cast<const API::Error&>(object).encode(encoder);
+        break;
+
     case API::Object::Type::FrameHandle: {
         auto& frameHandle = static_cast<const API::FrameHandle&>(object);
         encoder << frameHandle.frameID();
@@ -144,9 +150,11 @@ void UserData::encode(CoreIPC::ArgumentEncoder& encoder, const API::Object& obje
 
     case API::Object::Type::Point:
         static_cast<const API::Point&>(object).encode(encoder);
+        break;
 
     case API::Object::Type::Rect:
         static_cast<const API::Rect&>(object).encode(encoder);
+        break;
 
     case API::Object::Type::SerializedScriptValue: {
         auto& serializedScriptValue = static_cast<const WebSerializedScriptValue&>(object);
@@ -165,13 +173,16 @@ void UserData::encode(CoreIPC::ArgumentEncoder& encoder, const API::Object& obje
     }
 
     case API::Object::Type::URL: {
-        auto& url = static_cast<const WebURL&>(object);
-        encoder << url.string();
+        static_cast<const API::URL&>(object).encode(encoder);
         break;
     }
 
     case API::Object::Type::URLRequest:
         static_cast<const API::URLRequest&>(object).encode(encoder);
+        break;
+
+    case API::Object::Type::URLResponse:
+        static_cast<const API::URLResponse&>(object).encode(encoder);
         break;
 
     case API::Object::Type::UInt64:
@@ -183,7 +194,7 @@ void UserData::encode(CoreIPC::ArgumentEncoder& encoder, const API::Object& obje
     }
 }
 
-bool UserData::decode(CoreIPC::ArgumentDecoder& decoder, RefPtr<API::Object>& result)
+bool UserData::decode(IPC::ArgumentDecoder& decoder, RefPtr<API::Object>& result)
 {
     API::Object::Type type;
     if (!decoder.decodeEnum(type))
@@ -246,6 +257,11 @@ bool UserData::decode(CoreIPC::ArgumentDecoder& decoder, RefPtr<API::Object>& re
             return false;
         break;
 
+    case API::Object::Type::Error:
+        if (!API::Error::decode(decoder, result))
+            return false;
+        break;
+
     case API::Object::Type::FrameHandle: {
         uint64_t frameID;
         if (!decoder.decode(frameID))
@@ -270,7 +286,7 @@ bool UserData::decode(CoreIPC::ArgumentDecoder& decoder, RefPtr<API::Object>& re
         break;
 
     case API::Object::Type::SerializedScriptValue: {
-        CoreIPC::DataReference dataReference;
+        IPC::DataReference dataReference;
         if (!decoder.decode(dataReference))
             return false;
 
@@ -293,16 +309,18 @@ bool UserData::decode(CoreIPC::ArgumentDecoder& decoder, RefPtr<API::Object>& re
         break;
     }
 
-    case API::Object::Type::URL: {
-        String string;
-        if (!decoder.decode(string))
+    case API::Object::Type::URL:
+        if (!API::URL::decode(decoder, result))
             return false;
-        result = WebURL::create(string);
         break;
-    }
 
     case API::Object::Type::URLRequest:
         if (!API::URLRequest::decode(decoder, result))
+            return false;
+        break;
+
+    case API::Object::Type::URLResponse:
+        if (!API::URLResponse::decode(decoder, result))
             return false;
         break;
 

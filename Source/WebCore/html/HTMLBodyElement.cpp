@@ -151,6 +151,16 @@ void HTMLBodyElement::parseAttribute(const QualifiedName& name, const AtomicStri
         document().setWindowAttributeEventListener(eventNames().onlineEvent, name, value);
     else if (name == onofflineAttr)
         document().setWindowAttributeEventListener(eventNames().offlineEvent, name, value);
+#if ENABLE(WILL_REVEAL_EDGE_EVENTS)
+    else if (name == onwebkitwillrevealbottomAttr)
+        document().setWindowAttributeEventListener(eventNames().webkitwillrevealbottomEvent, name, value);
+    else if (name == onwebkitwillrevealleftAttr)
+        document().setWindowAttributeEventListener(eventNames().webkitwillrevealleftEvent, name, value);
+    else if (name == onwebkitwillrevealrightAttr)
+        document().setWindowAttributeEventListener(eventNames().webkitwillrevealrightEvent, name, value);
+    else if (name == onwebkitwillrevealtopAttr)
+        document().setWindowAttributeEventListener(eventNames().webkitwillrevealtopEvent, name, value);
+#endif
     else
         HTMLElement::parseAttribute(name, value);
 }
@@ -185,7 +195,7 @@ bool HTMLBodyElement::isURLAttribute(const Attribute& attribute) const
 
 bool HTMLBodyElement::supportsFocus() const
 {
-    return rendererIsEditable() || HTMLElement::supportsFocus();
+    return hasEditableStyle() || HTMLElement::supportsFocus();
 }
 
 static int adjustForZoom(int value, Frame& frame)
@@ -209,7 +219,7 @@ int HTMLBodyElement::scrollLeft()
     if (!view)
         return 0;
 #if PLATFORM(IOS)
-    return adjustForZoom(view->actualVisibleContentRect().x(), *frame);
+    return adjustForZoom(view->actualScrollX(), *frame);
 #else
     return adjustForZoom(view->scrollX(), *frame);
 #endif
@@ -237,7 +247,7 @@ int HTMLBodyElement::scrollTop()
     if (!view)
         return 0;
 #if PLATFORM(IOS)
-    return adjustForZoom(view->actualVisibleContentRect().y(), *frame);
+    return adjustForZoom(view->actualScrollY(), *frame);
 #else
     return adjustForZoom(view->scrollY(), *frame);
 #endif

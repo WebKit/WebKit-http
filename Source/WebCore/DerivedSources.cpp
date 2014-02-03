@@ -20,13 +20,16 @@
  * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
  * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 // This all-in-one cpp file cuts down on template bloat to allow us to build our Windows release build.
 
 #include "HTMLElementFactory.cpp"
 #include "HTMLEntityTable.cpp"
+#if ENABLE(WEBGL)
+#include "JSANGLEInstancedArrays.cpp"
+#endif
 #include "JSAbstractWorker.cpp"
 #include "JSAttr.cpp"
 #include "JSBarProp.cpp"
@@ -45,6 +48,7 @@
 #include "JSOESTextureFloat.cpp"
 #include "JSOESTextureFloatLinear.cpp"
 #include "JSOESTextureHalfFloat.cpp"
+#include "JSOESTextureHalfFloatLinear.cpp"
 #include "JSOESVertexArrayObject.cpp"
 #include "JSWebGLActiveInfo.cpp"
 #include "JSWebGLBuffer.cpp"
@@ -73,6 +77,7 @@
 #include "JSClientRectList.cpp"
 #include "JSClipboard.cpp"
 #include "JSCloseEvent.cpp"
+#include "JSCommandLineAPIHost.cpp"
 #include "JSComment.cpp"
 #include "JSCompositionEvent.cpp"
 #include "JSConsole.cpp"
@@ -237,9 +242,7 @@
 #include "JSIDBRequest.cpp"
 #include "JSIDBTransaction.cpp"
 #include "JSImageData.cpp"
-#include "JSInjectedScriptHost.cpp"
 #include "JSInspectorFrontendHost.cpp"
-#include "JSJavaScriptCallFrame.cpp"
 #include "JSKeyboardEvent.cpp"
 #include "JSLocation.cpp"
 #include "JSMediaController.cpp"
@@ -480,9 +483,6 @@
 #include "JSValidityState.cpp"
 #include "JSVoidCallback.cpp"
 #include "JSWebKitAnimationEvent.cpp"
-#if ENABLE(CSS_SHADERS)
-#include "JSWebKitCSSFilterRule.cpp"
-#endif
 #if ENABLE(CSS_FILTERS)
 #include "JSWebKitCSSFilterValue.cpp"
 #endif
@@ -490,9 +490,6 @@
 #include "JSWebKitCSSKeyframesRule.cpp"
 #include "JSWebKitCSSTransformValue.cpp"
 #include "JSWebKitCSSMatrix.cpp"
-#if ENABLE(CSS_SHADERS)
-#include "JSWebKitCSSMixFunctionValue.cpp"
-#endif
 #include "JSWebKitCSSRegionRule.cpp"
 #include "JSWebKitNamedFlow.cpp"
 #include "JSWebKitPoint.cpp"

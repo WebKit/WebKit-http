@@ -26,7 +26,11 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#if ENABLE(SQL_DATABASE)
+#if !defined(ENABLE_SQL_DATABASE)
+#define ENABLE_SQL_DATABASE 1
+#endif
+
+#if ENABLE_SQL_DATABASE
 
 extern NSString *WebDatabaseDirectoryDefaultsKey;
 
@@ -75,4 +79,4 @@ extern CFStringRef WebDatabaseOriginsDidChangeNotification;
 #endif
 @end
 
-#endif
+#endif // ENABLE_SQL_DATABASE

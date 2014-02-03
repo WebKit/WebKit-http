@@ -226,6 +226,8 @@ webkitgtk_sources += \
 	Source/WebKit/gtk/WebCoreSupport/PasteboardHelperGtk.h \
 	Source/WebKit/gtk/WebCoreSupport/PlatformStrategiesGtk.h \
 	Source/WebKit/gtk/WebCoreSupport/PlatformStrategiesGtk.cpp \
+	Source/WebKit/gtk/WebCoreSupport/ProgressTrackerClientGtk.cpp \
+	Source/WebKit/gtk/WebCoreSupport/ProgressTrackerClientGtk.h \
 	Source/WebKit/gtk/WebCoreSupport/UserMediaClientGtk.cpp \
 	Source/WebKit/gtk/WebCoreSupport/UserMediaClientGtk.h \
 	Source/WebKit/gtk/WebCoreSupport/WebViewInputMethodFilter.cpp \
@@ -386,6 +388,8 @@ EXTRA_DIST += \
 	$(WebKit)/docs/webkitenvironment.xml \
 	$(WebKit)/docs/webkitgtk-overrides.txt \
 	$(WebKit)/webkitmarshal.list \
+	$(WebKit)/webkit/webkitenumtypes.cpp.template \
+	$(WebKit)/webkit/webkitenumtypes.h.template \
 	$(WebKit)/resources/*
 
 # extra resource files

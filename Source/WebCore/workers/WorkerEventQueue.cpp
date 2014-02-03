@@ -46,7 +46,7 @@ WorkerEventQueue::~WorkerEventQueue()
     close();
 }
 
-class WorkerEventQueue::EventDispatcherTask FINAL : public ScriptExecutionContext::Task {
+class WorkerEventQueue::EventDispatcherTask final : public ScriptExecutionContext::Task {
 public:
     static PassOwnPtr<EventDispatcherTask> create(PassRefPtr<Event> event, WorkerEventQueue& eventQueue)
     {
@@ -64,7 +64,7 @@ public:
         event->target()->dispatchEvent(event);
     }
 
-    virtual void performTask(ScriptExecutionContext* context) OVERRIDE
+    virtual void performTask(ScriptExecutionContext* context) override
     {
         if (m_isCancelled)
             return;

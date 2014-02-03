@@ -51,7 +51,7 @@ namespace WebCore {
         void add(PassRefPtr<HistoryItem>, Page&); // Prunes if capacity() is exceeded.
         void remove(HistoryItem*);
         CachedPage* get(HistoryItem* item);
-        PassOwnPtr<CachedPage> take(HistoryItem*);
+        std::unique_ptr<CachedPage> take(HistoryItem*);
 
         int pageCount() const { return m_size; }
         int frameCount() const;
@@ -68,11 +68,9 @@ namespace WebCore {
         void markPagesForCaptionPreferencesChanged();
 #endif
 
-#if USE(ACCELERATED_COMPOSITING)
         bool shouldClearBackingStores() const { return m_shouldClearBackingStores; }
         void setShouldClearBackingStores(bool flag) { m_shouldClearBackingStores = flag; }
         void markPagesForDeviceScaleChanged(Page*);
-#endif
 
     private:
         PageCache(); // Use pageCache() instead.
@@ -92,9 +90,7 @@ namespace WebCore {
         HistoryItem* m_head;
         HistoryItem* m_tail;
         
-#if USE(ACCELERATED_COMPOSITING)
         bool m_shouldClearBackingStores;
-#endif
      };
 
     // Function to obtain the global page cache.

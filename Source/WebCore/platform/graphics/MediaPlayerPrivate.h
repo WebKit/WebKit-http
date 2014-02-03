@@ -52,9 +52,7 @@ public:
     
     virtual void prepareToPlay() { }
     virtual PlatformMedia platformMedia() const { return NoPlatformMedia; }
-#if USE(ACCELERATED_COMPOSITING)
     virtual PlatformLayer* platformLayer() const { return 0; }
-#endif
 
     virtual void play() = 0;
     virtual void pause() = 0;    
@@ -97,6 +95,9 @@ public:
 
     virtual void setVolume(float) { }
     virtual void setVolumeDouble(double volume) { return setVolume(volume); }
+#if PLATFORM(IOS)
+    virtual float volume() const { return 1; }
+#endif
 
     virtual bool supportsMuting() const { return false; }
     virtual void setMuted(bool) { }
@@ -141,16 +142,26 @@ public:
     virtual void exitFullscreen() { }
 #endif
 
+#if ENABLE(IOS_AIRPLAY)
+    virtual bool isCurrentPlaybackTargetWireless() const { return false; }
+    virtual void showPlaybackTargetPicker() { }
+
+    virtual bool hasWirelessPlaybackTargets() const { return false; }
+
+    virtual bool wirelessVideoPlaybackDisabled() const { return false; }
+    virtual void setWirelessVideoPlaybackDisabled(bool) { }
+
+    virtual void setHasPlaybackTargetAvailabilityListeners(bool) { }
+#endif
+
 #if USE(NATIVE_FULLSCREEN_VIDEO)
     virtual bool canEnterFullscreen() const { return false; }
 #endif
 
-#if USE(ACCELERATED_COMPOSITING)
     // whether accelerated rendering is supported by the media engine for the current media.
     virtual bool supportsAcceleratedRendering() const { return false; }
     // called when the rendering system flips the into or out of accelerated rendering mode.
     virtual void acceleratedRenderingStateChanged() { }
-#endif
 
     virtual bool shouldMaintainAspectRatio() const { return true; }
     virtual void setShouldMaintainAspectRatio(bool) { }
@@ -209,7 +220,12 @@ public:
 #if USE(GSTREAMER)
     virtual void simulateAudioInterruption() { }
 #endif
-    
+
+#if PLATFORM(IOS)
+    virtual void attributeChanged(const String&, const String&) { }
+    virtual bool readyForPlayback() const { return true; }
+#endif
+
     virtual String languageOfPrimaryAudioTrack() const { return emptyString(); }
 
     virtual size_t extraMemoryCost() const { return 0; }

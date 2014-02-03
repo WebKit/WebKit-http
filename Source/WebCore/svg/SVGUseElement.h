@@ -30,14 +30,13 @@
 #include "SVGGraphicsElement.h"
 #include "SVGNames.h"
 #include "SVGURIReference.h"
-#include "StyleResolveTree.h"
 
 namespace WebCore {
 
 class CachedSVGDocument;
 class SVGElementInstance;
 
-class SVGUseElement FINAL : public SVGGraphicsElement,
+class SVGUseElement final : public SVGGraphicsElement,
                             public SVGExternalResourcesRequired,
                             public SVGURIReference,
                             public CachedSVGDocumentClient {
@@ -56,30 +55,30 @@ public:
 private:
     SVGUseElement(const QualifiedName&, Document&, bool wasInsertedByParser);
 
-    virtual bool isValid() const { return SVGTests::isValid(); }
-    virtual bool supportsFocus() const OVERRIDE { return true; }
+    virtual bool isValid() const override { return SVGTests::isValid(); }
+    virtual bool supportsFocus() const override { return true; }
 
-    virtual InsertionNotificationRequest insertedInto(ContainerNode&) OVERRIDE;
-    virtual void removedFrom(ContainerNode&) OVERRIDE;
-    virtual void buildPendingResource();
+    virtual InsertionNotificationRequest insertedInto(ContainerNode&) override;
+    virtual void removedFrom(ContainerNode&) override;
+    virtual void buildPendingResource() override;
 
     bool isSupportedAttribute(const QualifiedName&);
-    virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
-    virtual void svgAttributeChanged(const QualifiedName&);
+    virtual void parseAttribute(const QualifiedName&, const AtomicString&) override;
+    virtual void svgAttributeChanged(const QualifiedName&) override;
 
-    virtual bool willRecalcStyle(Style::Change);
+    virtual void willAttachRenderers() override;
 
-    virtual RenderElement* createRenderer(PassRef<RenderStyle>) OVERRIDE;
-    virtual void toClipPath(Path&);
+    virtual RenderPtr<RenderElement> createElementRenderer(PassRef<RenderStyle>) override;
+    virtual void toClipPath(Path&) override;
 
     void clearResourceReferences();
     void buildShadowAndInstanceTree(SVGElement* target);
     void detachInstance();
 
-    virtual bool haveLoadedRequiredResources() { return SVGExternalResourcesRequired::haveLoadedRequiredResources(); }
+    virtual bool haveLoadedRequiredResources() override { return SVGExternalResourcesRequired::haveLoadedRequiredResources(); }
 
-    virtual void finishParsingChildren();
-    virtual bool selfHasRelativeLengths() const;
+    virtual void finishParsingChildren() override;
+    virtual bool selfHasRelativeLengths() const override;
 
     // Instance tree handling
     void buildInstanceTree(SVGElement* target, SVGElementInstance* targetInstance, bool& foundCycle, bool foundUse);
@@ -110,15 +109,15 @@ private:
     bool cachedDocumentIsStillLoading();
     Document* externalDocument() const;
     bool instanceTreeIsLoading(SVGElementInstance*);
-    virtual void notifyFinished(CachedResource*);
+    virtual void notifyFinished(CachedResource*) override;
     Document* referencedDocument() const;
     void setCachedDocument(CachedResourceHandle<CachedSVGDocument>);
 
     // SVGExternalResourcesRequired
-    virtual void setHaveFiredLoadEvent(bool haveFiredLoadEvent) { m_haveFiredLoadEvent = haveFiredLoadEvent; }
-    virtual bool isParserInserted() const { return m_wasInsertedByParser; }
-    virtual bool haveFiredLoadEvent() const { return m_haveFiredLoadEvent; }
-    virtual Timer<SVGElement>* svgLoadEventTimer() OVERRIDE { return &m_svgLoadEventTimer; }
+    virtual void setHaveFiredLoadEvent(bool haveFiredLoadEvent) override { m_haveFiredLoadEvent = haveFiredLoadEvent; }
+    virtual bool isParserInserted() const override { return m_wasInsertedByParser; }
+    virtual bool haveFiredLoadEvent() const override { return m_haveFiredLoadEvent; }
+    virtual Timer<SVGElement>* svgLoadEventTimer() override { return &m_svgLoadEventTimer; }
 
     bool m_wasInsertedByParser;
     bool m_haveFiredLoadEvent;

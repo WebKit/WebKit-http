@@ -164,7 +164,7 @@ void SubresourceLoader::willSendRequest(ResourceRequest& newRequest, const Resou
             cancel();
             return;
         }
-        if (m_resource->type() == CachedResource::ImageResource && m_documentLoader->cachedResourceLoader().shouldDeferImageLoad(newRequest.url())) {
+        if (m_resource->isImage() && m_documentLoader->cachedResourceLoader().shouldDeferImageLoad(newRequest.url())) {
             cancel();
             return;
         }
@@ -245,7 +245,7 @@ void SubresourceLoader::didReceiveResponse(const ResourceResponse& response)
     checkForHTTPStatusCodeError();
 }
 
-void SubresourceLoader::didReceiveData(const char* data, int length, long long encodedDataLength, DataPayloadType dataPayloadType)
+void SubresourceLoader::didReceiveData(const char* data, unsigned length, long long encodedDataLength, DataPayloadType dataPayloadType)
 {
     didReceiveDataOrBuffer(data, length, 0, encodedDataLength, dataPayloadType);
 }

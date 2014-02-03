@@ -37,7 +37,11 @@ WebInspector.ContentViewCookieType = {
     DOMStorage: "dom-storage",
     Resource: "resource", // includes Frame too.
     Timelines: "timelines",
+};
 
+WebInspector.DebuggableType = {
+    Web: "web",
+    JavaScript: "javascript"
 };
 
 WebInspector.SelectedSidebarPanelCookieKey = "selected-sidebar-panel";
@@ -52,31 +56,46 @@ WebInspector.loaded = function()
     this._initializeWebSocketIfNeeded();
 
     // Register observers for events from the InspectorBackend.
-    InspectorBackend.registerInspectorDispatcher(new WebInspector.InspectorObserver);
-    InspectorBackend.registerPageDispatcher(new WebInspector.PageObserver);
-    if (InspectorBackend.registerCanvasDispatcher)
-        InspectorBackend.registerCanvasDispatcher(new WebInspector.CanvasObserver);
-    InspectorBackend.registerConsoleDispatcher(new WebInspector.ConsoleObserver);
-    InspectorBackend.registerNetworkDispatcher(new WebInspector.NetworkObserver);
-    InspectorBackend.registerDOMDispatcher(new WebInspector.DOMObserver);
-    InspectorBackend.registerDebuggerDispatcher(new WebInspector.DebuggerObserver);
-    InspectorBackend.registerDatabaseDispatcher(new WebInspector.DatabaseObserver);
-    InspectorBackend.registerDOMStorageDispatcher(new WebInspector.DOMStorageObserver);
-    InspectorBackend.registerApplicationCacheDispatcher(new WebInspector.ApplicationCacheObserver);
-    InspectorBackend.registerTimelineDispatcher(new WebInspector.TimelineObserver);
-    InspectorBackend.registerProfilerDispatcher(new WebInspector.ProfilerObserver);
-    InspectorBackend.registerCSSDispatcher(new WebInspector.CSSObserver);
+    if (InspectorBackend.registerInspectorDispatcher)
+        InspectorBackend.registerInspectorDispatcher(new WebInspector.InspectorObserver);
+    if (InspectorBackend.registerPageDispatcher)
+        InspectorBackend.registerPageDispatcher(new WebInspector.PageObserver);
+    if (InspectorBackend.registerConsoleDispatcher)
+        InspectorBackend.registerConsoleDispatcher(new WebInspector.ConsoleObserver);
+    if (InspectorBackend.registerNetworkDispatcher)
+        InspectorBackend.registerNetworkDispatcher(new WebInspector.NetworkObserver);
+    if (InspectorBackend.registerDOMDispatcher)
+        InspectorBackend.registerDOMDispatcher(new WebInspector.DOMObserver);
+    if (InspectorBackend.registerDebuggerDispatcher)
+        InspectorBackend.registerDebuggerDispatcher(new WebInspector.DebuggerObserver);
+    if (InspectorBackend.registerDatabaseDispatcher)
+        InspectorBackend.registerDatabaseDispatcher(new WebInspector.DatabaseObserver);
+    if (InspectorBackend.registerDOMStorageDispatcher)
+        InspectorBackend.registerDOMStorageDispatcher(new WebInspector.DOMStorageObserver);
+    if (InspectorBackend.registerApplicationCacheDispatcher)
+        InspectorBackend.registerApplicationCacheDispatcher(new WebInspector.ApplicationCacheObserver);
+    if (InspectorBackend.registerTimelineDispatcher)
+        InspectorBackend.registerTimelineDispatcher(new WebInspector.TimelineObserver);
+    if (InspectorBackend.registerProfilerDispatcher)
+        InspectorBackend.registerProfilerDispatcher(new WebInspector.LegacyProfilerObserver);
+    if (InspectorBackend.registerCSSDispatcher)
+        InspectorBackend.registerCSSDispatcher(new WebInspector.CSSObserver);
     if (InspectorBackend.registerLayerTreeDispatcher)
         InspectorBackend.registerLayerTreeDispatcher(new WebInspector.LayerTreeObserver);
     if (InspectorBackend.registerRuntimeDispatcher)
         InspectorBackend.registerRuntimeDispatcher(new WebInspector.RuntimeObserver);
 
     // Enable agents.
-    InspectorAgent.enable();
+    if (window.InspectorAgent)
+        InspectorAgent.enable();
 
     // Perform one-time tasks.
     WebInspector.CSSCompletions.requestCSSNameCompletions();
     this._generateDisclosureTriangleImages();
+
+    // Listen for the ProvisionalLoadStarted event before registering for events so our code gets called before any managers or sidebars.
+    // This lets us save a state cookie before any managers or sidebars do any resets that would affect state (namely TimelineManager).
+    WebInspector.Frame.addEventListener(WebInspector.Frame.Event.ProvisionalLoadStarted, this._provisionalLoadStarted, this);
 
     // Create the singleton managers next, before the user interface elements, so the user interface can register
     // as event listeners on these managers.
@@ -90,14 +109,15 @@ WebInspector.loaded = function()
     this.runtimeManager = new WebInspector.RuntimeManager;
     this.applicationCacheManager = new WebInspector.ApplicationCacheManager;
     this.timelineManager = new WebInspector.TimelineManager;
-    this.profileManager = new WebInspector.ProfileManager;
+    this.legacyProfileManager = new WebInspector.LegacyProfileManager;
     this.debuggerManager = new WebInspector.DebuggerManager;
     this.sourceMapManager = new WebInspector.SourceMapManager;
     this.layerTreeManager = new WebInspector.LayerTreeManager;
     this.dashboardManager = new WebInspector.DashboardManager;
 
     // Enable the Console Agent after creating the singleton managers.
-    ConsoleAgent.enable();
+    if (window.ConsoleAgent)
+        ConsoleAgent.enable();
 
     // Register for events.
     this.debuggerManager.addEventListener(WebInspector.DebuggerManager.Event.Paused, this._debuggerDidPause, this);
@@ -106,7 +126,6 @@ WebInspector.loaded = function()
     this.frameResourceManager.addEventListener(WebInspector.FrameResourceManager.Event.MainFrameDidChange, this._mainFrameDidChange, this);
 
     WebInspector.Frame.addEventListener(WebInspector.Frame.Event.MainResourceDidChange, this._mainResourceDidChange, this);
-    WebInspector.Frame.addEventListener(WebInspector.Frame.Event.ProvisionalLoadCommitted, this._provisionalLoadCommitted, this);
 
     document.addEventListener("DOMContentLoaded", this.contentLoaded.bind(this));
 
@@ -164,6 +183,9 @@ WebInspector.contentLoaded = function()
     if (versionMatch && versionMatch[1].indexOf("+") !== -1 && document.styleSheets.length < 10)
         document.body.classList.add("nightly-build");
 
+    this.debuggableType = InspectorFrontendHost.debuggableType() === "web" ? WebInspector.DebuggableType.Web : WebInspector.DebuggableType.JavaScript;
+    document.body.classList.add(this.debuggableType);
+
     // Create the user interface elements.
     this.toolbar = new WebInspector.Toolbar(document.getElementById("toolbar"));
     this.toolbar.addEventListener(WebInspector.Toolbar.Event.DisplayModeDidChange, this._toolbarDisplayModeDidChange, this);
@@ -201,6 +223,8 @@ WebInspector.contentLoaded = function()
     this._reloadPageKeyboardShortcut = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.CommandOrControl, "R", this._reloadPage.bind(this));
     this._reloadPageIgnoringCacheKeyboardShortcut = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.CommandOrControl | WebInspector.KeyboardShortcut.Modifier.Shift, "R", this._reloadPageIgnoringCache.bind(this));
 
+    this._consoleKeyboardShortcut = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.Option | WebInspector.KeyboardShortcut.Modifier.CommandOrControl, "C", this.toggleConsoleView.bind(this));
+
     this._inspectModeKeyboardShortcut = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.CommandOrControl | WebInspector.KeyboardShortcut.Modifier.Shift, "C", this._toggleInspectMode.bind(this));
 
     this._undoKeyboardShortcut = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.CommandOrControl, "Z", this._undoKeyboardShortcut.bind(this));
@@ -217,21 +241,24 @@ WebInspector.contentLoaded = function()
     this.toolbar.addToolbarItem(this.undockButtonNavigationItem, WebInspector.Toolbar.Section.Control);
 
     this.resourceSidebarPanel = new WebInspector.ResourceSidebarPanel;
-    this.instrumentSidebarPanel = new WebInspector.InstrumentSidebarPanel;
+    this.timelineSidebarPanel = new WebInspector.TimelineSidebarPanel;
     this.debuggerSidebarPanel = new WebInspector.DebuggerSidebarPanel;
 
     this.navigationSidebar.addSidebarPanel(this.resourceSidebarPanel);
-    this.navigationSidebar.addSidebarPanel(this.instrumentSidebarPanel);
+    // FIXME: Enable timelines panel for JavaScript inspection.
+    if (this.debuggableType !== WebInspector.DebuggableType.JavaScript)
+        this.navigationSidebar.addSidebarPanel(this.timelineSidebarPanel);
     this.navigationSidebar.addSidebarPanel(this.debuggerSidebarPanel);
 
     this.toolbar.addToolbarItem(this.resourceSidebarPanel.toolbarItem, WebInspector.Toolbar.Section.Left);
-    this.toolbar.addToolbarItem(this.instrumentSidebarPanel.toolbarItem, WebInspector.Toolbar.Section.Left);
+    // FIXME: Enable timelines panel for JavaScript inspection.
+    if (this.debuggableType !== WebInspector.DebuggableType.JavaScript)
+        this.toolbar.addToolbarItem(this.timelineSidebarPanel.toolbarItem, WebInspector.Toolbar.Section.Left);
     this.toolbar.addToolbarItem(this.debuggerSidebarPanel.toolbarItem, WebInspector.Toolbar.Section.Left);
 
     // The toolbar button for the console.
-    const consoleKeyboardShortcut = "\u2325\u2318C"; // Option-Command-C
-    var toolTip = WebInspector.UIString("Show console (%s)").format(consoleKeyboardShortcut);
-    var activatedToolTip = WebInspector.UIString("Hide console");
+    var toolTip = WebInspector.UIString("Show console (%s)").format(WebInspector._consoleKeyboardShortcut.displayName);
+    var activatedToolTip = WebInspector.UIString("Hide console (%s)").format(WebInspector._consoleKeyboardShortcut.displayName);
     this._consoleToolbarButton = new WebInspector.ActivateButtonToolbarItem("console", toolTip, activatedToolTip, WebInspector.UIString("Console"), "Images/NavigationItemLog.svg");
     this._consoleToolbarButton.addEventListener(WebInspector.ButtonNavigationItem.Event.Clicked, this.toggleConsoleView, this);
     this.toolbar.addToolbarItem(this._consoleToolbarButton, WebInspector.Toolbar.Section.Center);
@@ -239,11 +266,13 @@ WebInspector.contentLoaded = function()
     this.toolbar.addToolbarItem(this.dashboardManager.toolbarItem, WebInspector.Toolbar.Section.Center);
 
     // The toolbar button for node inspection.
-    var toolTip = WebInspector.UIString("Enable point to inspect mode (%s)").format(WebInspector._inspectModeKeyboardShortcut.displayName);
-    var activatedToolTip = WebInspector.UIString("Disable point to inspect mode (%s)").format(WebInspector._inspectModeKeyboardShortcut.displayName);
-    this._inspectModeToolbarButton = new WebInspector.ActivateButtonToolbarItem("inspect", toolTip, activatedToolTip, WebInspector.UIString("Inspect"), "Images/Crosshair.svg");
-    this._inspectModeToolbarButton.addEventListener(WebInspector.ButtonNavigationItem.Event.Clicked, this._toggleInspectMode, this);
-    this.toolbar.addToolbarItem(this._inspectModeToolbarButton, WebInspector.Toolbar.Section.Center);
+    if (this.debuggableType === WebInspector.DebuggableType.Web) {
+        var toolTip = WebInspector.UIString("Enable point to inspect mode (%s)").format(WebInspector._inspectModeKeyboardShortcut.displayName);
+        var activatedToolTip = WebInspector.UIString("Disable point to inspect mode (%s)").format(WebInspector._inspectModeKeyboardShortcut.displayName);
+        this._inspectModeToolbarButton = new WebInspector.ActivateButtonToolbarItem("inspect", toolTip, activatedToolTip, WebInspector.UIString("Inspect"), "Images/Crosshair.svg");
+        this._inspectModeToolbarButton.addEventListener(WebInspector.ButtonNavigationItem.Event.Clicked, this._toggleInspectMode, this);
+        this.toolbar.addToolbarItem(this._inspectModeToolbarButton, WebInspector.Toolbar.Section.Center);
+    }
 
     this.resourceDetailsSidebarPanel = new WebInspector.ResourceDetailsSidebarPanel;
     this.domNodeDetailsSidebarPanel = new WebInspector.DOMNodeDetailsSidebarPanel;
@@ -319,12 +348,12 @@ WebInspector.sidebarPanelForRepresentedObject = function(representedObject)
         representedObject instanceof WebInspector.ApplicationCacheFrame)
         return this.resourceSidebarPanel;
 
+    if (representedObject instanceof WebInspector.TimelineRecording)
+        return this.timelineSidebarPanel;
+
     // The console does not have a sidebar.
     if (representedObject instanceof WebInspector.LogObject)
         return null;
-
-    if (representedObject instanceof WebInspector.TimelinesObject || representedObject instanceof WebInspector.ProfileObject)
-        return this.instrumentSidebarPanel;
 
     console.error("Unknown representedObject: ", representedObject);
     return null;
@@ -451,7 +480,7 @@ WebInspector.openURL = function(url, frame, alwaysOpenExternally, lineNumber)
     }
 
     var parsedURL = parseURL(url);
-    if (parsedURL.scheme === WebInspector.ProfileType.ProfileScheme) {
+    if (parsedURL.scheme === WebInspector.LegacyProfileType.ProfileScheme) {
         var profileType = parsedURL.host.toUpperCase();
         var profileTitle = parsedURL.path;
 
@@ -460,7 +489,7 @@ WebInspector.openURL = function(url, frame, alwaysOpenExternally, lineNumber)
         console.assert(profileTitle[0] === '/');
         profileTitle = profileTitle.substring(1);
 
-        this.instrumentSidebarPanel.showProfile(profileType, profileTitle);
+        this.timelineSidebarPanel.showProfile(profileType, profileTitle);
         return;
     }
 
@@ -721,7 +750,7 @@ WebInspector._mainResourceDidChange = function(event)
     this.updateWindowTitle();
 }
 
-WebInspector._provisionalLoadCommitted = function(event)
+WebInspector._provisionalLoadStarted = function(event)
 {
     if (!event.target.isMainFrame())
         return;
@@ -858,6 +887,9 @@ WebInspector._revealAndSelectRepresentedObjectInNavigationSidebar = function(rep
         treeElement.revealAndSelect(true, false, true, true);
     else if (selectedSidebarPanel.contentTreeOutline.selectedTreeElement)
         selectedSidebarPanel.contentTreeOutline.selectedTreeElement.deselect(true);
+
+    if (!selectedSidebarPanel.contentTreeOutline.selectedTreeElement)
+        selectedSidebarPanel.showDefaultContentView();
 }
 
 WebInspector._updateNavigationSidebarForCurrentContentView = function()

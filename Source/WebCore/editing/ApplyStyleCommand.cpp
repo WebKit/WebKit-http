@@ -255,10 +255,18 @@ void ApplyStyleCommand::applyBlockStyle(EditingStyle *style)
     if (visibleStart.isNull() || visibleStart.isOrphan() || visibleEnd.isNull() || visibleEnd.isOrphan())
         return;
 
+#if !PLATFORM(IOS)
     // Save and restore the selection endpoints using their indices in the document, since
+#else
+    // Save and restore the selection endpoints using their indices in the editable root, since
+#endif
     // addBlockStyleIfNeeded may moveParagraphs, which can remove these endpoints.
     // Calculate start and end indices from the start of the tree that they're in.
+#if !PLATFORM(IOS)
     Node* scope = highestAncestor(visibleStart.deepEquivalent().deprecatedNode());
+#else
+    Node* scope = highestEditableRoot(visibleStart.deepEquivalent());
+#endif
     RefPtr<Range> startRange = Range::create(document(), firstPositionInNode(scope), visibleStart.deepEquivalent().parentAnchoredEquivalent());
     RefPtr<Range> endRange = Range::create(document(), firstPositionInNode(scope), visibleEnd.deepEquivalent().parentAnchoredEquivalent());
     int startIndex = TextIterator::rangeLength(startRange.get(), true);
@@ -439,7 +447,7 @@ void ApplyStyleCommand::cleanupUnstyledAppleStyleSpans(ContainerNode* dummySpanA
     // all the children of the dummy's parent
 
     Vector<Element*> toRemove;
-    for (auto& child : elementChildren(*dummySpanAncestor)) {
+    for (auto& child : childrenOfType<Element>(*dummySpanAncestor)) {
         if (isSpanWithoutAttributesOrUnstyledStyleSpan(&child))
             toRemove.append(&child);
     }
@@ -711,12 +719,12 @@ void ApplyStyleCommand::fixRangeAndApplyInlineStyle(EditingStyle* style, const P
 
 static bool containsNonEditableRegion(Node* node)
 {
-    if (!node->rendererIsEditable())
+    if (!node->hasEditableStyle())
         return true;
 
     Node* sibling = NodeTraversal::nextSkippingChildren(node);
     for (Node* descendent = node->firstChild(); descendent && descendent != sibling; descendent = NodeTraversal::next(descendent)) {
-        if (!descendent->rendererIsEditable())
+        if (!descendent->hasEditableStyle())
             return true;
     }
 
@@ -757,10 +765,10 @@ void ApplyStyleCommand::applyInlineStyleToNodeRange(EditingStyle* style, PassRef
     for (RefPtr<Node> next; node && node != pastEndNode; node = next) {
         next = NodeTraversal::next(node.get());
 
-        if (!node->renderer() || !node->rendererIsEditable())
+        if (!node->renderer() || !node->hasEditableStyle())
             continue;
         
-        if (!node->rendererIsRichlyEditable() && node->isHTMLElement()) {
+        if (!node->hasRichlyEditableStyle() && node->isHTMLElement()) {
             // This is a plaintext-only region. Only proceed if it's fully selected.
             // pastEndNode is the node after the last fully selected node, so if it's inside node then
             // node isn't fully selected.
@@ -780,7 +788,7 @@ void ApplyStyleCommand::applyInlineStyleToNodeRange(EditingStyle* style, PassRef
             continue;
         
         if (node->childNodeCount()) {
-            if (node->contains(pastEndNode.get()) || containsNonEditableRegion(node.get()) || !node->parentNode()->rendererIsEditable())
+            if (node->contains(pastEndNode.get()) || containsNonEditableRegion(node.get()) || !node->parentNode()->hasEditableStyle())
                 continue;
             if (editingIgnoresContent(node.get())) {
                 next = NodeTraversal::nextSkippingChildren(node.get());
@@ -1360,13 +1368,13 @@ void ApplyStyleCommand::surroundNodeRangeWithElement(PassRefPtr<Node> passedStar
 
     RefPtr<Node> nextSibling = element->nextSibling();
     RefPtr<Node> previousSibling = element->previousSibling();
-    if (nextSibling && nextSibling->isElementNode() && nextSibling->rendererIsEditable()
+    if (nextSibling && nextSibling->isElementNode() && nextSibling->hasEditableStyle()
         && areIdenticalElements(element.get(), toElement(nextSibling.get())))
         mergeIdenticalElements(element.get(), toElement(nextSibling.get()));
 
-    if (previousSibling && previousSibling->isElementNode() && previousSibling->rendererIsEditable()) {
+    if (previousSibling && previousSibling->isElementNode() && previousSibling->hasEditableStyle()) {
         Node* mergedElement = previousSibling->nextSibling();
-        if (mergedElement->isElementNode() && mergedElement->rendererIsEditable()
+        if (mergedElement->isElementNode() && mergedElement->hasEditableStyle()
             && areIdenticalElements(toElement(previousSibling.get()), toElement(mergedElement)))
             mergeIdenticalElements(toElement(previousSibling.get()), toElement(mergedElement));
     }

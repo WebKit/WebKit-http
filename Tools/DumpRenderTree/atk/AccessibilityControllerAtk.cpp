@@ -52,6 +52,9 @@ AccessibilityUIElement AccessibilityController::elementAtPoint(int x, int y)
     return nullptr;
 }
 
+void AccessibilityController::platformResetToConsistentState()
+{
+}
 
 void AccessibilityController::setLogFocusEvents(bool)
 {
@@ -101,6 +104,12 @@ void AccessibilityController::removeNotificationListener()
     ASSERT(m_globalNotificationHandler);
 
     m_globalNotificationHandler = nullptr;
+}
+
+JSRetainPtr<JSStringRef> AccessibilityController::platformName() const
+{
+    JSRetainPtr<JSStringRef> platformName(Adopt, JSStringCreateWithUTF8CString("atk"));
+    return platformName;
 }
 
 AtkObject* AccessibilityController::childElementById(AtkObject* parent, const char* id)

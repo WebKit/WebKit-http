@@ -60,6 +60,7 @@ GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
 GCC_WARN_64_TO_32_BIT_CONVERSION = $(GCC_WARN_64_TO_32_BIT_CONVERSION_$(CURRENT_ARCH));
 GCC_WARN_64_TO_32_BIT_CONVERSION_ = YES;
 GCC_WARN_64_TO_32_BIT_CONVERSION_armv7 = YES;
+GCC_WARN_64_TO_32_BIT_CONVERSION_armv7k = YES;
 GCC_WARN_64_TO_32_BIT_CONVERSION_armv7s = YES;
 GCC_WARN_64_TO_32_BIT_CONVERSION_arm64 = NO;
 GCC_WARN_64_TO_32_BIT_CONVERSION_i386 = YES;
@@ -76,7 +77,7 @@ GCC_WARN_UNUSED_FUNCTION = YES;
 GCC_WARN_UNUSED_VARIABLE = YES;
 LINKER_DISPLAYS_MANGLED_NAMES = YES;
 PREBINDING = NO;
-WARNING_CFLAGS = -Wall -Wextra -Wcast-qual -Wchar-subscripts -Wextra-tokens -Wformat=2 -Winit-self -Wmissing-format-attribute -Wmissing-noreturn -Wpacked -Wpointer-arith -Wredundant-decls -Wundef -Wwrite-strings -Wexit-time-destructors -Wglobal-constructors -Wtautological-compare;
+WARNING_CFLAGS = -Wall -Wextra -Wcast-qual -Wchar-subscripts -Wextra-tokens -Wformat=2 -Winit-self -Wmissing-format-attribute -Wmissing-noreturn -Wpacked -Wpointer-arith -Wredundant-decls -Wundef -Wwrite-strings -Wexit-time-destructors -Wglobal-constructors -Wtautological-compare -Wimplicit-fallthrough;
 HEADER_SEARCH_PATHS = . icu "${BUILT_PRODUCTS_DIR}/usr/local/include" $(HEADER_SEARCH_PATHS);
 
 TARGET_MAC_OS_X_VERSION_MAJOR = $(MAC_OS_X_VERSION_MAJOR);
@@ -100,9 +101,9 @@ JAVASCRIPTCORE_FRAMEWORKS_DIR_macosx_USE_STAGING_INSTALL_PATH_NO = $(NORMAL_JAVA
 JAVASCRIPTCORE_FRAMEWORKS_DIR_macosx_USE_STAGING_INSTALL_PATH_YES = $(SYSTEM_LIBRARY_DIR)/StagedFrameworks/Safari;
 
 JAVASCRIPTCORE_RESOURCES_DIR = $(JAVASCRIPTCORE_RESOURCES_DIR_$(PLATFORM_NAME));
-JAVASCRIPTCORE_RESOURCES_DIR_iphoneos = $(JAVASCRIPTCORE_FRAMEWORKS_DIR)/JavaScriptCore.framework/Resources;
+JAVASCRIPTCORE_RESOURCES_DIR_iphoneos = JavaScriptCore.framework/Resources;
 JAVASCRIPTCORE_RESOURCES_DIR_iphonesimulator = $(JAVASCRIPTCORE_RESOURCES_DIR_iphoneos);
-JAVASCRIPTCORE_RESOURCES_DIR_macosx = $(JAVASCRIPTCORE_FRAMEWORKS_DIR)/JavaScriptCore.framework/Versions/A/Resources;
+JAVASCRIPTCORE_RESOURCES_DIR_macosx = JavaScriptCore.framework/Versions/A/Resources;
 
 // DEBUG_DEFINES, GCC_OPTIMIZATION_LEVEL, STRIP_INSTALLED_PRODUCT and DEAD_CODE_STRIPPING vary between the debug and normal variants.
 // We set up the values for each variant here, and have the Debug configuration in the Xcode project use the _debug variant.

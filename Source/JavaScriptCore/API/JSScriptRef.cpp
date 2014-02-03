@@ -46,7 +46,7 @@ public:
         return WTF::adoptRef(new OpaqueJSScript(vm, url, startingLineNumber, source));
     }
 
-    virtual const String& source() const OVERRIDE
+    virtual const String& source() const override
     {
         return m_source;
     }
@@ -83,6 +83,8 @@ JSScriptRef JSScriptCreateReferencingImmortalASCIIText(JSContextGroupRef context
             return 0;
     }
 
+    startingLineNumber = std::max(1, startingLineNumber);
+
     RefPtr<OpaqueJSScript> result = OpaqueJSScript::create(vm, url->string(), startingLineNumber, String(StringImpl::createFromLiteral(source, length)));
 
     ParserError error;
@@ -101,6 +103,8 @@ JSScriptRef JSScriptCreateFromString(JSContextGroupRef contextGroup, JSStringRef
 {
     VM* vm = toJS(contextGroup);
     APIEntryShim entryShim(vm);
+
+    startingLineNumber = std::max(1, startingLineNumber);
 
     RefPtr<OpaqueJSScript> result = OpaqueJSScript::create(vm, url->string(), startingLineNumber, source->string());
 

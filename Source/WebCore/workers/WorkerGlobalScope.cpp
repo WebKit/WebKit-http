@@ -88,7 +88,7 @@ WorkerGlobalScope::WorkerGlobalScope(const URL& url, const String& userAgent, st
     , m_script(adoptPtr(new WorkerScriptController(this)))
     , m_thread(thread)
 #if ENABLE(INSPECTOR)
-    , m_workerInspectorController(adoptPtr(new WorkerInspectorController(this)))
+    , m_workerInspectorController(std::make_unique<WorkerInspectorController>(*this))
 #endif
     , m_closing(false)
     , m_eventQueue(*this)
@@ -192,13 +192,6 @@ void WorkerGlobalScope::clearTimeout(int timeoutId)
     DOMTimer::removeById(scriptExecutionContext(), timeoutId);
 }
 
-#if ENABLE(INSPECTOR)
-void WorkerGlobalScope::clearInspector()
-{
-    m_workerInspectorController.clear();
-}
-#endif
-
 int WorkerGlobalScope::setInterval(PassOwnPtr<ScheduledAction> action, int timeout)
 {
     return DOMTimer::install(scriptExecutionContext(), action, timeout, false);
@@ -227,9 +220,6 @@ void WorkerGlobalScope::importScripts(const Vector<String>& urls, ExceptionCode&
 
     for (Vector<URL>::const_iterator it = completedURLs.begin(); it != end; ++it) {
         RefPtr<WorkerScriptLoader> scriptLoader(WorkerScriptLoader::create());
-#if PLATFORM(BLACKBERRY)
-        scriptLoader->setTargetType(ResourceRequest::TargetIsScript);
-#endif
         scriptLoader->loadSynchronously(scriptExecutionContext(), *it, AllowCrossOriginRequests);
 
         // If the fetching attempt failed, throw a NETWORK_ERR exception and abort all these steps.

@@ -26,6 +26,7 @@
 #ifndef VideoTrackPrivateMediaSourceAVFObjC_h
 #define VideoTrackPrivateMediaSourceAVFObjC_h
 
+#include "IntSize.h"
 #include "VideoTrackPrivateAVF.h"
 
 #if ENABLE(MEDIA_SOURCE) && ENABLE(VIDEO_TRACK)
@@ -38,7 +39,7 @@ namespace WebCore {
 class AVTrackPrivateAVFObjCImpl;
 class SourceBufferPrivateAVFObjC;
 
-class VideoTrackPrivateMediaSourceAVFObjC FINAL : public VideoTrackPrivateAVF {
+class VideoTrackPrivateMediaSourceAVFObjC final : public VideoTrackPrivateAVF {
     WTF_MAKE_NONCOPYABLE(VideoTrackPrivateMediaSourceAVFObjC)
 public:
     static RefPtr<VideoTrackPrivateMediaSourceAVFObjC> create(AVAssetTrack* track, SourceBufferPrivateAVFObjC* parent)
@@ -46,13 +47,15 @@ public:
         return adoptRef(new VideoTrackPrivateMediaSourceAVFObjC(track, parent));
     }
 
-    virtual bool selected() const OVERRIDE;
-    virtual void setSelected(bool) OVERRIDE;
+    virtual bool selected() const override;
+    virtual void setSelected(bool) override;
 
     void setAssetTrack(AVAssetTrack*);
-    AVAssetTrack* assetTrack();
+    AVAssetTrack* assetTrack() const;
 
     int trackID() { return m_trackID; }
+
+    IntSize naturalSize() const;
 
 private:
     explicit VideoTrackPrivateMediaSourceAVFObjC(AVAssetTrack*, SourceBufferPrivateAVFObjC* parent);

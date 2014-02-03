@@ -37,23 +37,24 @@ namespace WebCore {
 
 class Frame;
 class ResourceResponse;
+class ProgressTrackerClient;
 struct ProgressItem;
 
 class ProgressTracker {
     WTF_MAKE_NONCOPYABLE(ProgressTracker); WTF_MAKE_FAST_ALLOCATED;
 public:
-    ProgressTracker();
+    explicit ProgressTracker(ProgressTrackerClient&);
     ~ProgressTracker();
 
     static unsigned long createUniqueIdentifier();
 
     double estimatedProgress() const;
 
-    void progressStarted(Frame*);
-    void progressCompleted(Frame*);
+    void progressStarted(Frame&);
+    void progressCompleted(Frame&);
     
     void incrementProgress(unsigned long identifier, const ResourceResponse&);
-    void incrementProgress(unsigned long identifier, const char*, int);
+    void incrementProgress(unsigned long identifier, unsigned bytesReceived);
     void completeProgress(unsigned long identifier);
 
     long long totalPageAndResourceBytesToLoad() const { return m_totalPageAndResourceBytesToLoad; }
@@ -65,10 +66,11 @@ private:
     void reset();
     void finalProgressComplete();
 
-    void progressHeartbeatTimerFired(Timer<ProgressTracker>*);
+    void progressHeartbeatTimerFired(Timer<ProgressTracker>&);
     
     static unsigned long s_uniqueIdentifier;
     
+    ProgressTrackerClient& m_client;
     long long m_totalPageAndResourceBytesToLoad;
     long long m_totalBytesReceived;
     double m_lastNotifiedProgressValue;
@@ -80,11 +82,13 @@ private:
     RefPtr<Frame> m_originatingProgressFrame;
     
     int m_numProgressTrackedFrames;
-    HashMap<unsigned long, OwnPtr<ProgressItem>> m_progressItems;
+    HashMap<unsigned long, std::unique_ptr<ProgressItem>> m_progressItems;
 
     Timer<ProgressTracker> m_progressHeartbeatTimer;
     unsigned m_heartbeatsWithNoProgress;
     long long m_totalBytesReceivedBeforePreviousHeartbeat;
+    double m_mainLoadCompletionTimeStamp;
+    bool m_isMainLoad;
 };
     
 }

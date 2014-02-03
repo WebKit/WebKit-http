@@ -26,8 +26,6 @@
 #include "config.h"
 #include "DragImage.h"
 
-#if ENABLE(DRAG_SUPPORT)
-
 #include "Frame.h"
 #include "FrameSnapshotting.h"
 #include "FrameView.h"
@@ -38,36 +36,36 @@
 
 namespace WebCore {
 
-DragImageRef fitDragImageToMaxSize(DragImageRef image, const IntSize& srcSize, const IntSize& size)
+DragImageRef fitDragImageToMaxSize(DragImageRef image, const IntSize& layoutSize, const IntSize& maxSize)
 {
     float heightResizeRatio = 0.0f;
     float widthResizeRatio = 0.0f;
     float resizeRatio = -1.0f;
     IntSize originalSize = dragImageSize(image);
 
-    if (srcSize.width() > size.width()) {
-        widthResizeRatio = size.width() / (float)srcSize.width();
+    if (layoutSize.width() > maxSize.width()) {
+        widthResizeRatio = maxSize.width() / (float)layoutSize.width();
         resizeRatio = widthResizeRatio;
     }
 
-    if (srcSize.height() > size.height()) {
-        heightResizeRatio = size.height() / (float)srcSize.height();
+    if (layoutSize.height() > maxSize.height()) {
+        heightResizeRatio = maxSize.height() / (float)layoutSize.height();
         if ((resizeRatio < 0.0f) || (resizeRatio > heightResizeRatio))
             resizeRatio = heightResizeRatio;
     }
 
-    if (srcSize == originalSize)
+    if (layoutSize == originalSize)
         return resizeRatio > 0.0f ? scaleDragImage(image, FloatSize(resizeRatio, resizeRatio)) : image;
 
-    // The image was scaled in the webpage so at minimum we must account for that scaling
-    float scalex = srcSize.width() / (float)originalSize.width();
-    float scaley = srcSize.height() / (float)originalSize.height();
+    // The image was scaled in the webpage so at minimum we must account for that scaling.
+    float scaleX = layoutSize.width() / (float)originalSize.width();
+    float scaleY = layoutSize.height() / (float)originalSize.height();
     if (resizeRatio > 0.0f) {
-        scalex *= resizeRatio;
-        scaley *= resizeRatio;
+        scaleX *= resizeRatio;
+        scaleY *= resizeRatio;
     }
 
-    return scaleDragImage(image, FloatSize(scalex, scaley));
+    return scaleDragImage(image, FloatSize(scaleX, scaleY));
 }
 
 struct ScopedNodeDragEnabler {
@@ -108,7 +106,7 @@ static DragImageRef createDragImageFromSnapshot(std::unique_ptr<ImageBuffer> sna
 #else
     UNUSED_PARAM(node);
 #endif
-    RefPtr<Image> image = snapshot->copyImage(ImageBuffer::fastCopyImageMode());
+    RefPtr<Image> image = snapshot->copyImage(ImageBuffer::fastCopyImageMode(), Unscaled);
     if (!image)
         return nullptr;
     return createDragImageFromImage(image.get(), orientation);
@@ -212,4 +210,3 @@ DragImageRef createDragImageForLink(URL&, const String&, FontRenderingMode)
 
 } // namespace WebCore
 
-#endif // ENABLE(DRAG_SUPPORT)

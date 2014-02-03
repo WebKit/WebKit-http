@@ -99,8 +99,8 @@ public:
     void removeObserver(Observer*);
 
     // EventTarget
-    virtual EventTargetInterface eventTargetInterface() const OVERRIDE FINAL { return MediaStreamTrackEventTargetInterfaceType; }
-    virtual ScriptExecutionContext* scriptExecutionContext() const OVERRIDE FINAL { return ActiveDOMObject::scriptExecutionContext(); }
+    virtual EventTargetInterface eventTargetInterface() const override final { return MediaStreamTrackEventTargetInterfaceType; }
+    virtual ScriptExecutionContext* scriptExecutionContext() const override final { return ActiveDOMObject::scriptExecutionContext(); }
 
     using RefCounted<MediaStreamTrack>::ref;
     using RefCounted<MediaStreamTrack>::deref;
@@ -119,11 +119,11 @@ private:
     void dispatchQueuedEvents();
 
     // ActiveDOMObject
-    virtual void stop() OVERRIDE FINAL;
+    virtual void stop() override final;
 
     // EventTarget
-    virtual void refEventTarget() OVERRIDE FINAL { ref(); }
-    virtual void derefEventTarget() OVERRIDE FINAL { deref(); }
+    virtual void refEventTarget() override final { ref(); }
+    virtual void derefEventTarget() override final { deref(); }
 
     // MediaStreamTrackPrivateClient
     void trackReadyStateChanged();

@@ -95,7 +95,7 @@ void PluginProcessProxy::getPluginProcessConnection(PassRefPtr<Messages::WebProc
     
     // Ask the plug-in process to create a connection. Since the plug-in can be waiting for a synchronous reply
     // we need to make sure that this message is always processed, even when the plug-in is waiting for a synchronus reply.
-    m_connection->send(Messages::PluginProcess::CreateWebProcessConnection(), 0, CoreIPC::DispatchMessageEvenWhenWaitingForSyncReply);
+    m_connection->send(Messages::PluginProcess::CreateWebProcessConnection(), 0, IPC::DispatchMessageEvenWhenWaitingForSyncReply);
 }
 
 void PluginProcessProxy::getSitesWithData(WebPluginSiteDataManager* webPluginSiteDataManager, uint64_t callbackID)
@@ -138,9 +138,9 @@ void PluginProcessProxy::pluginProcessCrashedOrFailedToLaunch()
         RefPtr<Messages::WebProcessProxy::GetPluginProcessConnection::DelayedReply> reply = m_pendingConnectionReplies.takeFirst();
 
 #if PLATFORM(MAC)
-        reply->send(CoreIPC::Attachment(0, MACH_MSG_TYPE_MOVE_SEND), false);
+        reply->send(IPC::Attachment(0, MACH_MSG_TYPE_MOVE_SEND), false);
 #elif USE(UNIX_DOMAIN_SOCKETS)
-        reply->send(CoreIPC::Attachment(), false);
+        reply->send(IPC::Attachment(), false);
 #else
         notImplemented();
 #endif
@@ -156,7 +156,7 @@ void PluginProcessProxy::pluginProcessCrashedOrFailedToLaunch()
     m_pluginProcessManager->removePluginProcessProxy(this);
 }
 
-void PluginProcessProxy::didClose(CoreIPC::Connection*)
+void PluginProcessProxy::didClose(IPC::Connection*)
 {
 #if PLATFORM(MAC)
     if (m_modalWindowIsShowing)
@@ -174,20 +174,20 @@ void PluginProcessProxy::didClose(CoreIPC::Connection*)
     pluginProcessCrashedOrFailedToLaunch();
 }
 
-void PluginProcessProxy::didReceiveInvalidMessage(CoreIPC::Connection*, CoreIPC::StringReference, CoreIPC::StringReference)
+void PluginProcessProxy::didReceiveInvalidMessage(IPC::Connection*, IPC::StringReference, IPC::StringReference)
 {
 }
 
-void PluginProcessProxy::didFinishLaunching(ProcessLauncher*, CoreIPC::Connection::Identifier connectionIdentifier)
+void PluginProcessProxy::didFinishLaunching(ProcessLauncher*, IPC::Connection::Identifier connectionIdentifier)
 {
     ASSERT(!m_connection);
 
-    if (CoreIPC::Connection::identifierIsNull(connectionIdentifier)) {
+    if (IPC::Connection::identifierIsNull(connectionIdentifier)) {
         pluginProcessCrashedOrFailedToLaunch();
         return;
     }
 
-    m_connection = CoreIPC::Connection::createServerConnection(connectionIdentifier, this, RunLoop::main());
+    m_connection = IPC::Connection::createServerConnection(connectionIdentifier, this, RunLoop::main());
 #if PLATFORM(MAC)
     m_connection->setShouldCloseConnectionOnMachExceptions();
 #endif
@@ -208,6 +208,10 @@ void PluginProcessProxy::didFinishLaunching(ProcessLauncher*, CoreIPC::Connectio
     // Initialize the plug-in host process.
     m_connection->send(Messages::PluginProcess::InitializePluginProcess(parameters), 0);
 
+#if PLATFORM(MAC)
+    m_connection->send(Messages::PluginProcess::SetQOS(pluginProcessLatencyQOS(), pluginProcessThroughputQOS()), 0);
+#endif
+
     // Send all our pending requests.
     for (size_t i = 0; i < m_pendingGetSitesRequests.size(); ++i)
         m_connection->send(Messages::PluginProcess::GetSitesWithData(m_pendingGetSitesRequests[i]), 0);
@@ -225,12 +229,12 @@ void PluginProcessProxy::didFinishLaunching(ProcessLauncher*, CoreIPC::Connectio
     m_numPendingConnectionRequests = 0;
 
 #if PLATFORM(MAC)
-    if (WebContext::canEnableProcessSuppressionForGlobalChildProcesses())
+    if (WebContext::processSuppressionIsEnabledForAllContexts())
         setProcessSuppressionEnabled(true);
 #endif
 }
 
-void PluginProcessProxy::didCreateWebProcessConnection(const CoreIPC::Attachment& connectionIdentifier, bool supportsAsynchronousPluginInitialization)
+void PluginProcessProxy::didCreateWebProcessConnection(const IPC::Attachment& connectionIdentifier, bool supportsAsynchronousPluginInitialization)
 {
     ASSERT(!m_pendingConnectionReplies.isEmpty());
 
@@ -238,7 +242,7 @@ void PluginProcessProxy::didCreateWebProcessConnection(const CoreIPC::Attachment
     RefPtr<Messages::WebProcessProxy::GetPluginProcessConnection::DelayedReply> reply = m_pendingConnectionReplies.takeFirst();
 
 #if PLATFORM(MAC)
-    reply->send(CoreIPC::Attachment(connectionIdentifier.port(), MACH_MSG_TYPE_MOVE_SEND), supportsAsynchronousPluginInitialization);
+    reply->send(IPC::Attachment(connectionIdentifier.port(), MACH_MSG_TYPE_MOVE_SEND), supportsAsynchronousPluginInitialization);
 #elif USE(UNIX_DOMAIN_SOCKETS)
     reply->send(connectionIdentifier, supportsAsynchronousPluginInitialization);
 #else

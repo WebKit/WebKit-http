@@ -31,7 +31,7 @@ namespace WebCore {
 
 class HTMLFieldSetElement;
 
-class RenderFieldset FINAL : public RenderBlockFlow {
+class RenderFieldset final : public RenderBlockFlow {
 public:
     RenderFieldset(HTMLFieldSetElement&, PassRef<RenderStyle>);
 
@@ -41,18 +41,18 @@ public:
     HTMLFieldSetElement& fieldSetElement() const { return toHTMLFieldSetElement(nodeForNonAnonymous()); }
 
 private:
-    void element() const WTF_DELETED_FUNCTION;
+    void element() const = delete;
 
-    virtual const char* renderName() const OVERRIDE { return "RenderFieldSet"; }
-    virtual bool isFieldset() const OVERRIDE { return true; }
+    virtual const char* renderName() const override { return "RenderFieldSet"; }
+    virtual bool isFieldset() const override { return true; }
 
-    virtual RenderObject* layoutSpecialExcludedChild(bool relayoutChildren) OVERRIDE;
+    virtual RenderObject* layoutSpecialExcludedChild(bool relayoutChildren) override;
 
-    virtual void computePreferredLogicalWidths() OVERRIDE;
-    virtual bool avoidsFloats() const OVERRIDE { return true; }
+    virtual void computePreferredLogicalWidths() override;
+    virtual bool avoidsFloats() const override { return true; }
 
-    virtual void paintBoxDecorations(PaintInfo&, const LayoutPoint&) OVERRIDE;
-    virtual void paintMask(PaintInfo&, const LayoutPoint&) OVERRIDE;
+    virtual void paintBoxDecorations(PaintInfo&, const LayoutPoint&) override;
+    virtual void paintMask(PaintInfo&, const LayoutPoint&) override;
 };
 
 RENDER_OBJECT_TYPE_CASTS(RenderFieldset, isFieldset())

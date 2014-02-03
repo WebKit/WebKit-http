@@ -33,7 +33,6 @@
 #include "Identifier.h"
 #include "JSCell.h"
 #include "JSString.h"
-#include "LineInfo.h"
 #include "ParserModes.h"
 #include "RegExp.h"
 #include "SpecialPointer.h"
@@ -58,6 +57,7 @@ class SourceProvider;
 class SymbolTable;
 class UnlinkedCodeBlock;
 class UnlinkedFunctionCodeBlock;
+class UnlinkedInstructionStream;
 
 typedef unsigned UnlinkedValueProfile;
 typedef unsigned UnlinkedArrayProfile;
@@ -229,11 +229,10 @@ struct UnlinkedInstruction {
     UnlinkedInstruction() { u.operand = 0; }
     UnlinkedInstruction(OpcodeID opcode) { u.opcode = opcode; }
     UnlinkedInstruction(int operand) { u.operand = operand; }
-    UnlinkedInstruction(StringImpl* uid) { u.uid = uid; }
     union {
         OpcodeID opcode;
         int32_t operand;
-        StringImpl* uid;
+        unsigned index;
     } u;
 };
 
@@ -343,9 +342,8 @@ public:
         }
     }
 
-    unsigned numberOfInstructions() const { return m_unlinkedInstructions.size(); }
-    RefCountedArray<UnlinkedInstruction>& instructions() { return m_unlinkedInstructions; }
-    const RefCountedArray<UnlinkedInstruction>& instructions() const { return m_unlinkedInstructions; }
+    void setInstructions(std::unique_ptr<UnlinkedInstructionStream>);
+    const UnlinkedInstructionStream& instructions() const;
 
     int m_numVars;
     int m_numCapturedVars;
@@ -462,6 +460,8 @@ public:
     ALWAYS_INLINE unsigned startColumn() const { return 0; }
     unsigned endColumn() const { return m_endColumn; }
 
+    void dumpExpressionRangeInfo(); // For debugging purpose only.
+
 protected:
     UnlinkedCodeBlock(VM*, Structure*, CodeType, const ExecutableInfo&);
     ~UnlinkedCodeBlock();
@@ -482,7 +482,9 @@ private:
             m_rareData = adoptPtr(new RareData);
     }
 
-    RefCountedArray<UnlinkedInstruction> m_unlinkedInstructions;
+    void getLineAndColumn(ExpressionRangeInfo&, unsigned& line, unsigned& column);
+
+    std::unique_ptr<UnlinkedInstructionStream> m_unlinkedInstructions;
 
     int m_numParameters;
     VM* m_vm;

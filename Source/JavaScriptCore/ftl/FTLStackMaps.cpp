@@ -79,7 +79,9 @@ void StackMaps::Location::restoreInto(
 
 bool StackMaps::Record::parse(DataView* view, unsigned& offset)
 {
-    patchpointID = view->read<uint32_t>(offset, true);
+    int64_t id = view->read<int64_t>(offset, true);
+    ASSERT(static_cast<int32_t>(id) == id);
+    patchpointID = static_cast<uint32_t>(id);
     if (static_cast<int32_t>(patchpointID) < 0)
         return false;
     
@@ -89,6 +91,13 @@ bool StackMaps::Record::parse(DataView* view, unsigned& offset)
     unsigned length = view->read<uint16_t>(offset, true);
     while (length--)
         locations.append(readObject<Location>(view, offset));
+    
+    unsigned numLiveOuts = view->read<uint16_t>(offset, true);
+    while (numLiveOuts--) {
+        view->read<uint16_t>(offset, true); // regnum
+        view->read<uint8_t>(offset, true); // reserved
+        view->read<uint8_t>(offset, true); // size in bytes
+    }
     
     return true;
 }
@@ -105,6 +114,18 @@ bool StackMaps::parse(DataView* view)
     unsigned offset = 0;
     
     view->read<uint32_t>(offset, true); // Reserved (header)
+    
+    uint32_t numFunctions = view->read<uint32_t>(offset, true);
+    while (numFunctions--) {
+        // FIXME: Actually use this data.
+        // https://bugs.webkit.org/show_bug.cgi?id=125650
+        uint32_t functionOffset = view->read<uint32_t>(offset, true);
+        uint32_t stackSize = view->read<uint32_t>(offset, true);
+        if (!stackSize || stackSize > (1 << 20)) {
+            dataLog("Bad stack size ", stackSize, " for function offset", functionOffset, "\n");
+            RELEASE_ASSERT_NOT_REACHED();
+        }
+    }
     
     uint32_t numConstants = view->read<uint32_t>(offset, true);
     while (numConstants--)
@@ -140,7 +161,7 @@ StackMaps::RecordMap StackMaps::getRecordMap() const
 {
     RecordMap result;
     for (unsigned i = records.size(); i--;)
-        result.add(records[i].patchpointID, records[i]);
+        result.add(records[i].patchpointID, Vector<Record>()).iterator->value.append(records[i]);
     return result;
 }
 

@@ -89,10 +89,6 @@ WK_EXPORT void WKPreferencesSetTiledScrollingIndicatorVisible(WKPreferencesRef, 
 WK_EXPORT bool WKPreferencesGetTiledScrollingIndicatorVisible(WKPreferencesRef);
 
 // Defaults to true.
-WK_EXPORT void WKPreferencesSetCSSCustomFilterEnabled(WKPreferencesRef, bool flag);
-WK_EXPORT bool WKPreferencesGetCSSCustomFilterEnabled(WKPreferencesRef);
-
-// Defaults to true.
 WK_EXPORT void WKPreferencesSetWebGLEnabled(WKPreferencesRef, bool);
 WK_EXPORT bool WKPreferencesGetWebGLEnabled(WKPreferencesRef);
 
@@ -313,6 +309,10 @@ WK_EXPORT bool WKPreferencesUseLegacyTextAlignPositionedElementBehavior(WKPrefer
 // Defaults to false.
 WK_EXPORT void WKPreferencesSetMediaSourceEnabled(WKPreferencesRef preferencesRef, bool enabled);
 WK_EXPORT bool WKPreferencesGetMediaSourceEnabled(WKPreferencesRef preferencesRef);
+
+// Default to false.
+WK_EXPORT void WKPreferencesSetViewGestureDebuggingEnabled(WKPreferencesRef preferencesRef, bool enabled);
+WK_EXPORT bool WKPreferencesGetViewGestureDebuggingEnabled(WKPreferencesRef preferencesRef);
 
 #ifdef __cplusplus
 }

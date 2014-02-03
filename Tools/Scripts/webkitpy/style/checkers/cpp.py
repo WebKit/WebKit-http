@@ -1924,7 +1924,7 @@ def check_spacing(file_extension, clean_lines, line_number, error):
 
     if file_extension == 'cpp':
         # C++ should have the & or * beside the type not the variable name.
-        matched = match(r'\s*(?P<pre_part>[\w\s]+)\s+(?P<pointer_operator>\*|\&)\s*\w+', line)
+        matched = match(r'\s*(?P<pre_part>\w[\w\s]+)\s+(?P<pointer_operator>\*|\&)\s*\w+', line)
         if matched and not matched.group('pre_part').startswith('return') and not matched.group('pre_part').startswith('delete'):
             error(line_number, 'whitespace/declaration', 3,
                   'Declaration has space between type name and %s in %s' % (matched.group('pointer_operator'), matched.group(0).strip()))
@@ -2363,12 +2363,12 @@ def check_braces(clean_lines, line_number, error):
         # ')', or ') const' and doesn't begin with 'if|for|while|switch|else'.
         # We also allow '#' for #endif and '=' for array initialization.
         previous_line = get_previous_non_blank_line(clean_lines, line_number)[0]
-        if ((not search(r'[;:}{)=]\s*$|\)\s*((const|OVERRIDE)\s*)?(->\s*\S+)?\s*$', previous_line)
+        if ((not search(r'[;:}{)=]\s*$|\)\s*((const|override)\s*)?(->\s*\S+)?\s*$', previous_line)
              or search(r'\b(if|for|foreach|while|switch|else|NS_ENUM)\b', previous_line))
             and previous_line.find('#') < 0):
             error(line_number, 'whitespace/braces', 4,
                   'This { should be at the end of the previous line')
-    elif (search(r'\)\s*(((const|OVERRIDE)\s*)*\s*)?{\s*$', line)
+    elif (search(r'\)\s*(((const|override)\s*)*\s*)?{\s*$', line)
           and line.count('(') == line.count(')')
           and not search(r'\b(if|for|foreach|while|switch|NS_ENUM)\b', line)
           and not match(r'\s+[A-Z_][A-Z_0-9]+\b', line)):
@@ -2916,12 +2916,15 @@ def check_include_line(filename, file_extension, clean_lines, line_number, inclu
             previous_match = _RE_PATTERN_INCLUDE.search(previous_line)
          if previous_match:
             previous_header_type = include_state.header_types[previous_line_number]
-            if previous_header_type == _OTHER_HEADER and previous_line.strip() > line.strip():
-                # This type of error is potentially a problem with this line or the previous one,
-                # so if the error is filtered for one line, report it for the next. This is so that
-                # we properly handle patches, for which only modified lines produce errors.
-                if not error(line_number - 1, 'build/include_order', 4, 'Alphabetical sorting problem.'):
-                    error(line_number, 'build/include_order', 4, 'Alphabetical sorting problem.')
+            if previous_header_type == _OTHER_HEADER:
+                if '<' in previous_line and '"' in line:
+                    error(line_number, 'build/include_order', 4, 'Bad include order. Mixing system and custom headers.')
+                elif previous_line.strip() > line.strip():
+                    # This type of error is potentially a problem with this line or the previous one,
+                    # so if the error is filtered for one line, report it for the next. This is so that
+                    # we properly handle patches, for which only modified lines produce errors.
+                    if not error(line_number - 1, 'build/include_order', 4, 'Alphabetical sorting problem.'):
+                        error(line_number, 'build/include_order', 4, 'Alphabetical sorting problem.')
 
     if error_message:
         if file_extension == 'h':

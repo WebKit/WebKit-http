@@ -9,7 +9,8 @@ if (NOT DEFINED ENABLE_WEBKIT2)
     set(ENABLE_WEBKIT2 ON)
 endif ()
 
-if ("${CMAKE_BUILD_TYPE}" STREQUAL "Debug" AND NOT SHARED_CORE)
+string(TOLOWER ${CMAKE_BUILD_TYPE} LOWERCASE_CMAKE_BUILD_TYPE)
+if (LOWERCASE_CMAKE_BUILD_TYPE STREQUAL "debug" AND NOT SHARED_CORE)
     message(FATAL_ERROR "Turn on the SHARED_CORE flag to make a debug build - e.g.\n build-webkit --efl --debug --cmakeargs=\"-DSHARED_CORE=ON\".\n")
 endif ()
 
@@ -27,12 +28,11 @@ find_package(ZLIB REQUIRED)
 find_package(GLIB 2.36.0 REQUIRED COMPONENTS gio gobject gthread)
 find_package(LibSoup 2.42.0 REQUIRED)
 
-set(WTF_USE_ICU_UNICODE 1)
 set(WTF_USE_SOUP 1)
+set(WTF_USE_UDIS86 1)
 
 add_definitions(-DWTF_USE_GLIB=1)
 add_definitions(-DWTF_USE_SOUP=1)
-add_definitions(-DWTF_USE_ICU_UNICODE=1)
 add_definitions(-DWTF_USE_CAIRO=1)
 add_definitions(-DWTF_USE_CROSS_PLATFORM_CONTEXT_MENUS=1)
 
@@ -266,6 +266,13 @@ if (CMAKE_COMPILER_IS_GNUCC AND UNIX AND NOT APPLE)
     set(CMAKE_SHARED_LINKER_FLAGS_RELEASE "-Wl,--gc-sections ${CMAKE_SHARED_LINKER_FLAGS_RELEASE}")
 endif ()
 
+# push of rbp is needed after JSC JIT uses CStack
+if (CMAKE_COMPILER_IS_GNUCC AND UNIX AND NOT APPLE)
+    set(CMAKE_C_FLAGS_RELEASE "-fno-omit-frame-pointer ${CMAKE_C_FLAGS_RELEASE}")
+    set(CMAKE_CXX_FLAGS_RELEASE "-fno-omit-frame-pointer ${CMAKE_CXX_FLAGS_RELEASE}")
+endif ()
+
+
 if (ENABLE_SPELLCHECK)
     find_package(Enchant REQUIRED)
 endif ()
@@ -280,3 +287,11 @@ if (ENABLE_INDEXED_DATABASE)
     set(WTF_USE_LEVELDB 1)
     add_definitions(-DWTF_USE_LEVELDB=1)
 endif ()
+
+if (ENABLE_FTL_JIT)
+    find_package(LLVM REQUIRED)
+    set(HAVE_LLVM ON)
+endif ()
+
+# [E]WebKit2 tests need a hint to find out where processes such as WebProcess are located at.
+add_definitions(-DWEBKIT_EXEC_PATH=\"${CMAKE_RUNTIME_OUTPUT_DIRECTORY}\")

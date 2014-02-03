@@ -23,37 +23,62 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+var hasEWS = typeof ews != "undefined";
+var EWSCategory = "ews";
+
 var categorizedQueuesByPlatformAndBuildType = {};
 
-for (var id in buildbot.queues) {
-    var queue = buildbot.queues[id];
-    var platform = categorizedQueuesByPlatformAndBuildType[queue.platform];
-    if (!platform)
-        platform = categorizedQueuesByPlatformAndBuildType[queue.platform] = {};
-    if (!platform.builders)
-        platform.builders = {};
+for (var i = 0; i < buildbots.length; ++i) {
+    var buildbot = buildbots[i];
+    for (var id in buildbot.queues) {
+        var queue = buildbot.queues[id];
+        var platform = categorizedQueuesByPlatformAndBuildType[queue.platform];
+        if (!platform)
+            platform = categorizedQueuesByPlatformAndBuildType[queue.platform] = {};
+        if (!platform.builders)
+            platform.builders = {};
 
-    var categoryName;
-    if (queue.builder) {
-        categoryName = "builders";
-    } else if (queue.tester) {
-        categoryName = queue.testCategory;
-    } else {
-        console.assert("Unknown queue type.");
-        continue;
+        var categoryName;
+        if (queue.builder) {
+            categoryName = "builders";
+        } else if (queue.tester) {
+            categoryName = queue.testCategory;
+        } else {
+            console.assert("Unknown queue type.");
+            continue;
+        }
+
+        category = platform[categoryName];
+        if (!category)
+            category = platform[categoryName] = {};
+
+        var buildType = queue.debug ? "debug" : "release";
+
+        buildQueues = category[buildType];
+        if (!buildQueues)
+            buildQueues = category[buildType] = [];
+
+        buildQueues.push(queue);
     }
+}
 
-    category = platform[categoryName];
-    if (!category)
-        category = platform[categoryName] = {};
+if (hasEWS) {
+    for (var id in ews.queues) {
+        var queue = ews.queues[id];
+        var platform = categorizedQueuesByPlatformAndBuildType[queue.platform];
+        if (!platform)
+            platform = categorizedQueuesByPlatformAndBuildType[queue.platform] = {};
+        if (!platform.builders)
+            platform.builders = {};
 
-    var buildType = queue.debug ? "debug" : "release";
+        var categoryName = EWSCategory;
 
-    buildQueues = category[buildType];
-    if (!buildQueues)
-        buildQueues = category[buildType] = [];
+        platformQueues = platform[categoryName];
+        if (!platformQueues)
+            platformQueues = platform[categoryName] = [];
 
-    buildQueues.push(queue);
+        platformQueues.push(queue);
+    }
 }
 
 var testNames = {};
@@ -64,8 +89,8 @@ function sortedPlatforms()
 {
     var platforms = [];
 
-    for (var platformKey in Buildbot.Platform)
-        platforms.push(Buildbot.Platform[platformKey]);
+    for (var platformKey in Dashboard.Platform)
+        platforms.push(Dashboard.Platform[platformKey]);
 
     platforms.sort(function(a, b) {
         return a.order - b.order;
@@ -117,6 +142,12 @@ function documentReady()
     for (var testerKey in Buildbot.TestCategory) {
         var header = document.createElement("th");
         header.textContent = testNames[Buildbot.TestCategory[testerKey]];
+        row.appendChild(header);
+    }
+
+    if (hasEWS) {
+        var header = document.createElement("th");
+        header.textContent = "EWS";
         row.appendChild(header);
     }
 
@@ -172,18 +203,31 @@ function documentReady()
             row.appendChild(cell);
         }
 
+        if (hasEWS) {
+            var cell = document.createElement("td");
+
+            if (platformQueues[EWSCategory]) {
+                var view = new EWSQueueView(platformQueues[EWSCategory]);
+                cell.appendChild(view.element);
+            }
+
+            row.appendChild(cell);
+        }
+
         table.appendChild(row);
     }
 
     document.body.appendChild(table);
 
-    var settingsButton = document.createElement("div");
-    settingsButton.addEventListener("click", function () { settings.toggleSettingsDisplay(); });
-    settingsButton.classList.add("settings");
-    document.body.appendChild(settingsButton);
+    if (settings.available()) {
+        var settingsButton = document.createElement("div");
+        settingsButton.addEventListener("click", function () { settings.toggleSettingsDisplay(); });
+        settingsButton.classList.add("settings");
+        document.body.appendChild(settingsButton);
 
-    updateHiddenPlatforms();
-    settings.addSettingListener("hiddenPlatforms", updateHiddenPlatforms);
+        updateHiddenPlatforms();
+        settings.addSettingListener("hiddenPlatforms", updateHiddenPlatforms);
+    }
 }
 
 document.addEventListener("DOMContentLoaded", documentReady);

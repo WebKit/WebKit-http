@@ -23,7 +23,6 @@
 #if ENABLE(SVG_FONTS)
 #include "SVGTextRunRenderingContext.h"
 
-#include "Font.h"
 #include "GlyphBuffer.h"
 #include "GraphicsContext.h"
 #include "RenderObject.h"
@@ -185,7 +184,7 @@ GlyphData SVGTextRunRenderingContext::glyphDataForCharacter(const Font& font, Wi
     const SimpleFontData* primaryFont = font.primaryFont();
     ASSERT(primaryFont);
 
-    pair<GlyphData, GlyphPage*> pair = font.glyphDataAndPageForCharacter(character, mirror, AutoVariant);
+    std::pair<GlyphData, GlyphPage*> pair = font.glyphDataAndPageForCharacter(character, mirror, AutoVariant);
     GlyphData glyphData = pair.first;
 
     // Check if we have the missing glyph data, in which case we can just return.

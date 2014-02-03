@@ -48,28 +48,17 @@ struct Length;
 class FilterOperations;
 #endif
 
-#if ENABLE(CSS_SHADERS)
-class CustomFilterProgramInfo;
-#endif
-
 #if USE(GRAPHICS_SURFACE)
 struct GraphicsSurfaceToken;
 #endif
 }
 
-namespace CoreIPC {
+namespace IPC {
 
 #if ENABLE(CSS_FILTERS)
 template<> struct ArgumentCoder<WebCore::FilterOperations> {
     static void encode(ArgumentEncoder&, const WebCore::FilterOperations&);
     static bool decode(ArgumentDecoder&, WebCore::FilterOperations&);
-};
-#endif
-
-#if ENABLE(CSS_SHADERS)
-template<> struct ArgumentCoder<WebCore::CustomFilterProgramInfo> {
-    static void encode(ArgumentEncoder&, const WebCore::CustomFilterProgramInfo&);
-    static bool decode(ArgumentDecoder&, WebCore::CustomFilterProgramInfo&);
 };
 #endif
 
@@ -120,7 +109,7 @@ template<> struct ArgumentCoder<WebCore::CoordinatedGraphicsState> {
     static bool decode(ArgumentDecoder&, WebCore::CoordinatedGraphicsState&);
 };
 
-} // namespace CoreIPC
+} // namespace IPC
 
 #endif // USE(COORDINATED_GRAPHICS)
 

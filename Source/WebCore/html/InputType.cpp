@@ -60,7 +60,6 @@
 #include "PasswordInputType.h"
 #include "RadioInputType.h"
 #include "RangeInputType.h"
-#include "RegularExpression.h"
 #include "RenderElement.h"
 #include "RenderTheme.h"
 #include "ResetInputType.h"
@@ -83,7 +82,7 @@ namespace WebCore {
 
 using namespace HTMLNames;
 
-typedef bool (RuntimeEnabledFeatures::*InputTypeConditionalFunction)();
+typedef bool (RuntimeEnabledFeatures::*InputTypeConditionalFunction)() const;
 typedef const AtomicString& (*InputTypeNameFunction)();
 typedef std::unique_ptr<InputType> (*InputTypeFactoryFunction)(HTMLInputElement&);
 typedef HashMap<AtomicString, InputTypeFactoryFunction, CaseFoldingHash> InputTypeFactoryMap;
@@ -479,9 +478,9 @@ PassRefPtr<HTMLFormElement> InputType::formForSubmission() const
     return element().form();
 }
 
-RenderElement* InputType::createRenderer(PassRef<RenderStyle> style) const
+RenderPtr<RenderElement> InputType::createInputRenderer(PassRef<RenderStyle> style)
 {
-    return RenderElement::createFor(element(), std::move(style));
+    return RenderPtr<RenderElement>(RenderElement::createFor(element(), std::move(style)));
 }
 
 void InputType::blur()

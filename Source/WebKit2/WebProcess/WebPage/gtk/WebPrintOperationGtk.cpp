@@ -29,17 +29,22 @@
 #include "WebCoreArgumentCoders.h"
 #include "WebPage.h"
 #include "WebPageProxyMessages.h"
+#include <WebCore/DocumentLoader.h>
 #include <WebCore/ErrorsGtk.h>
+#include <WebCore/Frame.h>
 #include <WebCore/IntRect.h>
 #include <WebCore/NotImplemented.h>
 #include <WebCore/PlatformContextCairo.h>
 #include <WebCore/PrintContext.h>
 #include <WebCore/ResourceError.h>
+#include <WebCore/URL.h>
 #include <gtk/gtk.h>
 #include <wtf/Vector.h>
 #include <wtf/gobject/GOwnPtr.h>
+#include <wtf/gobject/GUniquePtr.h>
 
 #ifdef HAVE_GTK_UNIX_PRINTING
+#include "PrinterListGtk.h"
 #include <cairo-pdf.h>
 #include <cairo-ps.h>
 #include <gtk/gtkunixprint.h>
@@ -56,60 +61,47 @@ public:
     {
     }
 
-    static gboolean enumeratePrintersFunction(GtkPrinter* printer, WebPrintOperationGtkUnix* printOperation)
-    {
-        const char* printerName = gtk_print_settings_get_printer(printOperation->printSettings());
-        if ((printerName && strcmp(printerName, gtk_printer_get_name(printer)))
-            || (!printerName && !gtk_printer_is_default(printer)))
-            return FALSE;
-
-        static int jobNumber = 0;
-        const char* applicationName = g_get_application_name();
-        GOwnPtr<char>jobName(g_strdup_printf("%s job #%d", applicationName ? applicationName : "WebKit", ++jobNumber));
-        printOperation->m_printJob = adoptGRef(gtk_print_job_new(jobName.get(), printer,
-                                                                 printOperation->printSettings(),
-                                                                 printOperation->pageSetup()));
-        return TRUE;
-    }
-
-    static void enumeratePrintersFinished(WebPrintOperationGtkUnix* printOperation)
-    {
-        if (!printOperation->m_printJob) {
-            printOperation->printDone(printerNotFoundError(printOperation->m_printContext));
-            return;
-        }
-
-        GOwnPtr<GError> error;
-        cairo_surface_t* surface = gtk_print_job_get_surface(printOperation->m_printJob.get(), &error.outPtr());
-        if (!surface) {
-            printOperation->printDone(printError(printOperation->m_printContext, error->message));
-            return;
-        }
-
-        int rangesCount;
-        printOperation->m_pageRanges = gtk_print_job_get_page_ranges(printOperation->m_printJob.get(), &rangesCount);
-        printOperation->m_pageRangesCount = rangesCount;
-        printOperation->m_pagesToPrint = gtk_print_job_get_pages(printOperation->m_printJob.get());
-        printOperation->m_needsRotation = gtk_print_job_get_rotate(printOperation->m_printJob.get());
-
-        // Manual capabilities.
-        printOperation->m_numberUp = gtk_print_job_get_n_up(printOperation->m_printJob.get());
-        printOperation->m_numberUpLayout = gtk_print_job_get_n_up_layout(printOperation->m_printJob.get());
-        printOperation->m_pageSet = gtk_print_job_get_page_set(printOperation->m_printJob.get());
-        printOperation->m_reverse = gtk_print_job_get_reverse(printOperation->m_printJob.get());
-        printOperation->m_copies = gtk_print_job_get_num_copies(printOperation->m_printJob.get());
-        printOperation->m_collateCopies = gtk_print_job_get_collate(printOperation->m_printJob.get());
-        printOperation->m_scale = gtk_print_job_get_scale(printOperation->m_printJob.get());
-
-        printOperation->print(surface, 72, 72);
-    }
-
     void startPrint(WebCore::PrintContext* printContext, uint64_t callbackID)
     {
         m_printContext = printContext;
         m_callbackID = callbackID;
-        gtk_enumerate_printers(reinterpret_cast<GtkPrinterFunc>(enumeratePrintersFunction), this,
-            reinterpret_cast<GDestroyNotify>(enumeratePrintersFinished), m_printMode == PrintInfo::PrintModeSync);
+
+        RefPtr<PrinterListGtk> printerList = PrinterListGtk::shared();
+        const char* printerName = gtk_print_settings_get_printer(m_printSettings.get());
+        GtkPrinter* printer = printerName ? printerList->findPrinter(printerName) : printerList->defaultPrinter();
+        if (!printer) {
+            printDone(printerNotFoundError(frameURL()));
+            return;
+        }
+
+        static int jobNumber = 0;
+        const char* applicationName = g_get_application_name();
+        GUniquePtr<char>jobName(g_strdup_printf("%s job #%d", applicationName ? applicationName : "WebKit", ++jobNumber));
+        m_printJob = adoptGRef(gtk_print_job_new(jobName.get(), printer, m_printSettings.get(), m_pageSetup.get()));
+
+        GOwnPtr<GError> error;
+        cairo_surface_t* surface = gtk_print_job_get_surface(m_printJob.get(), &error.outPtr());
+        if (!surface) {
+            printDone(printError(frameURL(), error->message));
+            return;
+        }
+
+        int rangesCount;
+        m_pageRanges = gtk_print_job_get_page_ranges(m_printJob.get(), &rangesCount);
+        m_pageRangesCount = rangesCount;
+        m_pagesToPrint = gtk_print_job_get_pages(m_printJob.get());
+        m_needsRotation = gtk_print_job_get_rotate(m_printJob.get());
+
+        // Manual capabilities.
+        m_numberUp = gtk_print_job_get_n_up(m_printJob.get());
+        m_numberUpLayout = gtk_print_job_get_n_up_layout(m_printJob.get());
+        m_pageSet = gtk_print_job_get_page_set(m_printJob.get());
+        m_reverse = gtk_print_job_get_reverse(m_printJob.get());
+        m_copies = gtk_print_job_get_num_copies(m_printJob.get());
+        m_collateCopies = gtk_print_job_get_collate(m_printJob.get());
+        m_scale = gtk_print_job_get_scale(m_printJob.get());
+
+        print(surface, 72, 72);
     }
 
     void startPage(cairo_t* cr)
@@ -149,7 +141,7 @@ public:
 
     static void printJobComplete(GtkPrintJob* printJob, WebPrintOperationGtkUnix* printOperation, const GError* error)
     {
-        printOperation->printDone(error ? printError(printOperation->m_printContext, error->message) : WebCore::ResourceError());
+        printOperation->printDone(error ? printError(printOperation->frameURL(), error->message) : WebCore::ResourceError());
         printOperation->m_printJob = 0;
     }
 
@@ -439,6 +431,15 @@ bool WebPrintOperationGtk::currentPageIsLastPageOfSheet() const
     return (m_numberUp < 2 || !((m_pagePosition + 1) % m_numberUp) || m_pagePosition == m_numberOfPagesToPrint - 1);
 }
 
+WebCore::URL WebPrintOperationGtk::frameURL() const
+{
+    if (!m_printContext)
+        return WebCore::URL();
+
+    WebCore::DocumentLoader* documentLoader = m_printContext->frame()->loader().documentLoader();
+    return documentLoader ? documentLoader->url() : WebCore::URL();
+}
+
 void WebPrintOperationGtk::rotatePageIfNeeded()
 {
     if (!m_needsRotation)
@@ -705,7 +706,7 @@ void WebPrintOperationGtk::print(cairo_surface_t* surface, double xDPI, double y
     OwnPtr<PrintPagesData> data = adoptPtr(new PrintPagesData(this));
     if (!data->isValid) {
         cairo_surface_finish(surface);
-        printDone(invalidPageRangeToPrint(m_printContext));
+        printDone(invalidPageRangeToPrint(frameURL()));
         return;
     }
 

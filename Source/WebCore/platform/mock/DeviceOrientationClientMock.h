@@ -45,16 +45,16 @@ public:
     DeviceOrientationClientMock();
 
     // DeviceOrientationClient
-    virtual void setController(DeviceOrientationController*) OVERRIDE;
-    virtual void startUpdating() OVERRIDE;
-    virtual void stopUpdating() OVERRIDE;
-    virtual DeviceOrientationData* lastOrientation() const OVERRIDE { return m_orientation.get(); }
-    virtual void deviceOrientationControllerDestroyed() OVERRIDE { }
+    virtual void setController(DeviceOrientationController*) override;
+    virtual void startUpdating() override;
+    virtual void stopUpdating() override;
+    virtual DeviceOrientationData* lastOrientation() const override { return m_orientation.get(); }
+    virtual void deviceOrientationControllerDestroyed() override { }
 
     void setOrientation(PassRefPtr<DeviceOrientationData>);
 
 private:
-    void timerFired(Timer<DeviceOrientationClientMock>*);
+    void timerFired(Timer<DeviceOrientationClientMock>&);
 
     RefPtr<DeviceOrientationData> m_orientation;
     DeviceOrientationController* m_controller;

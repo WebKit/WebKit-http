@@ -53,7 +53,7 @@ public:
 private:
     UploadButtonElement(Document&);
 
-    virtual const AtomicString& shadowPseudoId() const;
+    virtual const AtomicString& shadowPseudoId() const override;
 };
 
 PassRefPtr<UploadButtonElement> UploadButtonElement::create(Document& document)
@@ -208,9 +208,9 @@ void FileInputType::handleDOMActivateEvent(Event* event)
     event->setDefaultHandled();
 }
 
-RenderElement* FileInputType::createRenderer(PassRef<RenderStyle> style) const
+RenderPtr<RenderElement> FileInputType::createInputRenderer(PassRef<RenderStyle> style)
 {
-    return new RenderFileUploadControl(element(), std::move(style));
+    return createRenderer<RenderFileUploadControl>(element(), std::move(style));
 }
 
 bool FileInputType::canSetStringValue() const

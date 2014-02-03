@@ -3,18 +3,15 @@
 add_definitions(-DBUILDING_WEBKIT2__)
 
 add_custom_target(forwarding-headersGTKForTestWebKitAPI
-    COMMAND ${PERL_EXECUTABLE} ${WEBKIT2_DIR}/Scripts/generate-forwarding-headers.pl ${WEBKIT2_DIR} ${DERIVED_SOURCES_WEBKIT2_DIR}/include gtk
-    COMMAND ${PERL_EXECUTABLE} ${WEBKIT2_DIR}/Scripts/generate-forwarding-headers.pl ${TESTWEBKITAPI_DIR} ${DERIVED_SOURCES_WEBKIT2_DIR}/include gtk
+    COMMAND ${PERL_EXECUTABLE} ${WEBKIT2_DIR}/Scripts/generate-forwarding-headers.pl ${WEBKIT2_DIR} ${FORWARDING_HEADERS_DIR} gtk
+    COMMAND ${PERL_EXECUTABLE} ${WEBKIT2_DIR}/Scripts/generate-forwarding-headers.pl ${TESTWEBKITAPI_DIR} ${FORWARDING_HEADERS_DIR}  gtk
+    COMMAND ${PERL_EXECUTABLE} ${WEBKIT2_DIR}/Scripts/generate-forwarding-headers.pl ${WEBKIT2_DIR} ${FORWARDING_HEADERS_DIR} soup
+    COMMAND ${PERL_EXECUTABLE} ${WEBKIT2_DIR}/Scripts/generate-forwarding-headers.pl ${TESTWEBKITAPI_DIR} ${FORWARDING_HEADERS_DIR}  soup
 )
 set(ForwardingHeadersForTestWebKitAPI_NAME forwarding-headersGTKForTestWebKitAPI)
 
-add_custom_target(forwarding-headersSoupForTestWebKitAPI
-    COMMAND ${PERL_EXECUTABLE} ${WEBKIT2_DIR}/Scripts/generate-forwarding-headers.pl ${WEBKIT2_DIR} ${DERIVED_SOURCES_WEBKIT2_DIR}/include soup
-    COMMAND ${PERL_EXECUTABLE} ${WEBKIT2_DIR}/Scripts/generate-forwarding-headers.pl ${TESTWEBKITAPI_DIR} ${DERIVED_SOURCES_WEBKIT2_DIR}/include soup
-)
-set(ForwardingNetworkHeadersForTestWebKitAPI_NAME forwarding-headersSoupForTestWebKitAPI)
-
 include_directories(
+    ${FORWARDING_HEADERS_DIR}
     ${WEBKIT2_DIR}/UIProcess/API/C/soup
     ${WEBKIT2_DIR}/UIProcess/API/C/gtk
     ${WEBKIT2_DIR}/UIProcess/API/gtk
@@ -36,7 +33,6 @@ set(webkit2_api_harness_SOURCES
     ${TESTWEBKITAPI_DIR}/gtk/PlatformUtilitiesGtk.cpp
     ${TESTWEBKITAPI_DIR}/gtk/PlatformWebViewGtk.cpp
     ${TESTWEBKITAPI_DIR}/gtk/PlatformWebViewGtk.cpp
-    ../../Source/WebCore/platform/gtk/GOwnPtrGtk.cpp
 )
 
 list(APPEND test_wtf_LIBRARIES
@@ -112,7 +108,6 @@ set(test_webkit2_api_BINARIES
     ShouldGoToBackForwardListItem
     UserMessage
     WillSendSubmitEvent
-    WKConnection
     WKPageGetScaleFactorNotZero
     WKPreferences
     WKString

@@ -694,9 +694,8 @@ void InlineFlowBox::placeBoxesInBlockDirection(LayoutUnit top, LayoutUnit maxHei
                 }
             }
             if (curr->isInlineTextBox()) {
-                TextEmphasisPosition emphasisMarkPosition;
-                if (toInlineTextBox(curr)->getEmphasisMarkPosition(childLineStyle, emphasisMarkPosition)) {
-                    bool emphasisMarkIsOver = emphasisMarkPosition == TextEmphasisPositionOver;
+                bool emphasisMarkIsOver;
+                if (toInlineTextBox(curr)->emphasisMarkExistsAndIsAbove(childLineStyle, emphasisMarkIsOver)) {
                     if (emphasisMarkIsOver != childLineStyle.isFlippedLinesWritingMode())
                         hasAnnotationsBefore = true;
                     else
@@ -742,7 +741,6 @@ void InlineFlowBox::placeBoxesInBlockDirection(LayoutUnit top, LayoutUnit maxHei
     }
 }
 
-#if ENABLE(CSS3_TEXT_DECORATION)
 void InlineFlowBox::computeMaxLogicalTop(float& maxLogicalTop) const
 {
     for (InlineBox* curr = firstChild(); curr; curr = curr->nextOnLine()) {
@@ -759,7 +757,6 @@ void InlineFlowBox::computeMaxLogicalTop(float& maxLogicalTop) const
         maxLogicalTop = std::max<float>(maxLogicalTop, localMaxLogicalTop);
     }
 }
-#endif // CSS3_TEXT_DECORATION
 
 void InlineFlowBox::flipLinesInBlockDirection(LayoutUnit lineTop, LayoutUnit lineBottom)
 {
@@ -867,10 +864,10 @@ inline void InlineFlowBox::addTextBoxVisualOverflow(InlineTextBox* textBox, Glyp
     int leftGlyphOverflow = -strokeOverflow - leftGlyphEdge;
     int rightGlyphOverflow = strokeOverflow + rightGlyphEdge;
 
-    TextEmphasisPosition emphasisMarkPosition;
-    if (lineStyle.textEmphasisMark() != TextEmphasisMarkNone && textBox->getEmphasisMarkPosition(lineStyle, emphasisMarkPosition)) {
+    bool emphasisMarkIsAbove;
+    if (lineStyle.textEmphasisMark() != TextEmphasisMarkNone && textBox->emphasisMarkExistsAndIsAbove(lineStyle, emphasisMarkIsAbove)) {
         int emphasisMarkHeight = lineStyle.font().emphasisMarkHeight(lineStyle.textEmphasisMarkString());
-        if ((emphasisMarkPosition == TextEmphasisPositionOver) == (!lineStyle.isFlippedLinesWritingMode()))
+        if (emphasisMarkIsAbove == !lineStyle.isFlippedLinesWritingMode())
             topGlyphOverflow = std::min(topGlyphOverflow, -emphasisMarkHeight);
         else
             bottomGlyphOverflow = std::max(bottomGlyphOverflow, emphasisMarkHeight);
@@ -1534,8 +1531,8 @@ LayoutUnit InlineFlowBox::computeOverAnnotationAdjustment(LayoutUnit allowedPosi
 
         if (curr->isInlineTextBox()) {
             const RenderStyle& childLineStyle = curr->lineStyle();
-            TextEmphasisPosition emphasisMarkPosition;
-            if (childLineStyle.textEmphasisMark() != TextEmphasisMarkNone && toInlineTextBox(curr)->getEmphasisMarkPosition(childLineStyle, emphasisMarkPosition) && emphasisMarkPosition == TextEmphasisPositionOver) {
+            bool emphasisMarkIsAbove;
+            if (childLineStyle.textEmphasisMark() != TextEmphasisMarkNone && toInlineTextBox(curr)->emphasisMarkExistsAndIsAbove(childLineStyle, emphasisMarkIsAbove) && emphasisMarkIsAbove) {
                 if (!childLineStyle.isFlippedLinesWritingMode()) {
                     int topOfEmphasisMark = curr->logicalTop() - childLineStyle.font().emphasisMarkHeight(childLineStyle.textEmphasisMarkString());
                     result = std::max(result, allowedPosition - topOfEmphasisMark);
@@ -1582,7 +1579,9 @@ LayoutUnit InlineFlowBox::computeUnderAnnotationAdjustment(LayoutUnit allowedPos
 
         if (curr->isInlineTextBox()) {
             const RenderStyle& childLineStyle = curr->lineStyle();
-            if (childLineStyle.textEmphasisMark() != TextEmphasisMarkNone && childLineStyle.textEmphasisPosition() == TextEmphasisPositionUnder) {
+            bool emphasisMarkIsAbove;
+            toInlineTextBox(curr)->emphasisMarkExistsAndIsAbove(childLineStyle, emphasisMarkIsAbove);
+            if (childLineStyle.textEmphasisMark() != TextEmphasisMarkNone && !emphasisMarkIsAbove) {
                 if (!childLineStyle.isFlippedLinesWritingMode()) {
                     LayoutUnit bottomOfEmphasisMark = curr->logicalBottom() + childLineStyle.font().emphasisMarkHeight(childLineStyle.textEmphasisMarkString());
                     result = std::max(result, bottomOfEmphasisMark - allowedPosition);

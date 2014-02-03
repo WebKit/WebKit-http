@@ -59,7 +59,7 @@ WebResourceLoader::~WebResourceLoader()
 {
 }
 
-CoreIPC::Connection* WebResourceLoader::messageSenderConnection()
+IPC::Connection* WebResourceLoader::messageSenderConnection()
 {
     return WebProcess::shared().networkConnection()->connection();
 }
@@ -106,7 +106,13 @@ void WebResourceLoader::didReceiveResponseWithCertificateInfo(const ResourceResp
     Ref<WebResourceLoader> protect(*this);
 
     ResourceResponse responseCopy(response);
+    // FIXME: This should use CertificateInfo to avoid the platform ifdefs. See https://bugs.webkit.org/show_bug.cgi?id=124724.
+#if PLATFORM(MAC)
     responseCopy.setCertificateChain(certificateInfo.certificateChain());
+#elif USE(SOUP)
+    responseCopy.setSoupMessageCertificate(certificateInfo.certificate());
+    responseCopy.setSoupMessageTLSErrors(certificateInfo.tlsErrors());
+#endif
     m_coreLoader->didReceiveResponse(responseCopy);
 
     // If m_coreLoader becomes null as a result of the didReceiveResponse callback, we can't use the send function(). 
@@ -117,7 +123,7 @@ void WebResourceLoader::didReceiveResponseWithCertificateInfo(const ResourceResp
         send(Messages::NetworkResourceLoader::ContinueDidReceiveResponse());
 }
 
-void WebResourceLoader::didReceiveData(const CoreIPC::DataReference& data, int64_t encodedDataLength)
+void WebResourceLoader::didReceiveData(const IPC::DataReference& data, int64_t encodedDataLength)
 {
     LOG(Network, "(WebProcess) WebResourceLoader::didReceiveData of size %i for '%s'", (int)data.size(), m_coreLoader->url().string().utf8().data());
     m_coreLoader->didReceiveData(reinterpret_cast<const char*>(data.data()), data.size(), encodedDataLength, DataPayloadBytes);

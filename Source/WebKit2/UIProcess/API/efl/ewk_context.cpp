@@ -39,9 +39,11 @@
 #include "ewk_private.h"
 #include "ewk_storage_manager_private.h"
 #include "ewk_url_scheme_request_private.h"
+#include <JavaScriptCore/JSContextRef.h>
 #include <WebCore/FileSystem.h>
 #include <WebCore/IconDatabase.h>
 #include <wtf/HashMap.h>
+#include <wtf/NeverDestroyed.h>
 #include <wtf/text/WTFString.h>
 
 #if ENABLE(SPELLCHECK)
@@ -55,7 +57,7 @@ typedef HashMap<WKContextRef, EwkContext*> ContextMap;
 
 static inline ContextMap& contextMap()
 {
-    DEFINE_STATIC_LOCAL(ContextMap, map, ());
+    static NeverDestroyed<ContextMap> map;
     return map;
 }
 
@@ -72,6 +74,7 @@ EwkContext::EwkContext(WKContextRef context)
     , m_downloadManager(std::make_unique<DownloadManagerEfl>(context))
     , m_requestManagerClient(std::make_unique<RequestManagerClientEfl>(context))
     , m_historyClient(std::make_unique<ContextHistoryClientEfl>(context))
+    , m_jsGlobalContext(nullptr)
 {
     ContextMap::AddResult result = contextMap().add(context, this);
     ASSERT_UNUSED(result, result.isNewEntry);
@@ -96,6 +99,10 @@ EwkContext::EwkContext(WKContextRef context)
 EwkContext::~EwkContext()
 {
     ASSERT(contextMap().get(m_context.get()) == this);
+
+    if (m_jsGlobalContext)
+        JSGlobalContextRelease(m_jsGlobalContext);
+
     contextMap().remove(m_context.get());
 }
 
@@ -214,16 +221,25 @@ void EwkContext::clearResourceCache()
     WKResourceCacheManagerClearCacheForAllOrigins(WKContextGetResourceCacheManager(m_context.get()), WKResourceCachesToClearAll);
 }
 
+
+JSGlobalContextRef EwkContext::jsGlobalContext()
+{
+    if (!m_jsGlobalContext)
+        m_jsGlobalContext = JSGlobalContextCreate(0);
+
+    return m_jsGlobalContext;
+}
+
 Ewk_Cookie_Manager* ewk_context_cookie_manager_get(const Ewk_Context* ewkContext)
 {
-    EWK_OBJ_GET_IMPL_OR_RETURN(const EwkContext, ewkContext, impl, 0);
+    EWK_OBJ_GET_IMPL_OR_RETURN(const EwkContext, ewkContext, impl, nullptr);
 
     return const_cast<EwkContext*>(impl)->cookieManager();
 }
 
 Ewk_Database_Manager* ewk_context_database_manager_get(const Ewk_Context* ewkContext)
 {
-    EWK_OBJ_GET_IMPL_OR_RETURN(const EwkContext, ewkContext, impl, 0);
+    EWK_OBJ_GET_IMPL_OR_RETURN(const EwkContext, ewkContext, impl, nullptr);
 
     return const_cast<EwkContext*>(impl)->databaseManager();
 }
@@ -237,14 +253,14 @@ Eina_Bool ewk_context_favicon_database_directory_set(Ewk_Context* ewkContext, co
 
 Ewk_Favicon_Database* ewk_context_favicon_database_get(const Ewk_Context* ewkContext)
 {
-    EWK_OBJ_GET_IMPL_OR_RETURN(const EwkContext, ewkContext, impl, 0);
+    EWK_OBJ_GET_IMPL_OR_RETURN(const EwkContext, ewkContext, impl, nullptr);
 
     return const_cast<EwkContext*>(impl)->faviconDatabase();
 }
 
 Ewk_Storage_Manager* ewk_context_storage_manager_get(const Ewk_Context* ewkContext)
 {
-    EWK_OBJ_GET_IMPL_OR_RETURN(const EwkContext, ewkContext, impl, 0);
+    EWK_OBJ_GET_IMPL_OR_RETURN(const EwkContext, ewkContext, impl, nullptr);
 
     return impl->storageManager();
 }
@@ -271,7 +287,7 @@ Ewk_Context* ewk_context_new()
 
 Ewk_Context* ewk_context_new_with_injected_bundle_path(const char* path)
 {
-    EINA_SAFETY_ON_NULL_RETURN_VAL(path, 0);
+    EINA_SAFETY_ON_NULL_RETURN_VAL(path, nullptr);
 
     return EwkContext::create(String::fromUTF8(path)).leakRef();
 }
