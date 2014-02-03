@@ -28,9 +28,12 @@
 
 #include "GraphicsContext.h"
 #include "ImageData.h"
+#include "JSCellInlines.h"
 #include "MIMETypeRegistry.h"
 #include "NotImplemented.h"
 #include "StillImageHaiku.h"
+#include "TypedArrayInlines.h"
+#include "TypedArrays.h"
 #include <wtf/text/Base64.h>
 #include <wtf/text/CString.h>
 #include <BitmapStream.h>
