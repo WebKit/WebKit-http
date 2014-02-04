@@ -7,8 +7,6 @@ LIST(APPEND WebCore_INCLUDE_DIRECTORIES
 LIST(APPEND WebCore_SOURCES
   bindings/js/ScriptControllerHaiku.cpp
 
-  editing/SmartReplaceICU.cpp
-
   platform/Cursor.cpp
 
   page/haiku/DragControllerHaiku.cpp
