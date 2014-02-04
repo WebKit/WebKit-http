@@ -141,10 +141,6 @@ public:
                                                         const ResourceRequest&,
                                                         const ResourceResponse&, int);
 
-    virtual void postProgressStartedNotification();
-    virtual void postProgressEstimateChangedNotification();
-    virtual void postProgressFinishedNotification();
-
     virtual void setMainFrameDocumentReady(bool);
 
     virtual void startDownload(const ResourceRequest&, const String& suggestedName = String());
@@ -235,7 +231,7 @@ public:
 private:
     void callPolicyFunction(FramePolicyFunction, PolicyAction);
     void triggerNavigationHistoryUpdate() const;
-    void postCommitFrameViewSetup(BWebFrame*, FrameView*, bool) const;
+    void postCommitFrameViewSetup(FrameView*) const;
     bool isTertiaryMouseButton(const NavigationAction& action) const;
 
 	status_t dispatchNavigationRequested(const ResourceRequest& request) const;

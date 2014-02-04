@@ -1,8 +1,9 @@
 /*
+ * Copyright (C) 2007 Ryan Leavengood <leavengood@gmail.com>
  * Copyright (C) 2009 Maxime Simon <simon.maxime@gmail.com>
  * Copyright (C) 2010 Stephan Aßmus <superstippi@gmx.de>
+ * Copyright (C) 2014 Haiku, Inc. All righrs reserved.
  *
- * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,42 +27,36 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebFramePrivate_h
-#define WebFramePrivate_h
+#ifndef ProgressTrackerClientHaiku_h
+#define ProgressTrackerClientHaiku_h
 
-#include <String.h>
+#include "ProgressTrackerClient.h"
 
-class BMessenger;
+#include <Messenger.h>
+
 class BWebPage;
 
 namespace WebCore {
-class Frame;
-class FrameLoaderClientHaiku;
-class HTMLFrameOwnerElement;
-class Page;
-}
 
-class WebFramePrivate {
+class ProgressTrackerClientHaiku final : public WebCore::ProgressTrackerClient {
 public:
-    WebFramePrivate()
-        : ownerElement(0)
-        , page(0)
-        , frame(0)
-        , loaderClient(0)
-    {}
+    explicit ProgressTrackerClientHaiku(BWebPage*);
 
-    WTF::String name;
-    WTF::String requestedURL;
-    WebCore::HTMLFrameOwnerElement* ownerElement;
-    WebCore::Page* page;
-    // NOTE: We don't keep a reference pointer for the WebCore::Frame, since
-    // that will leave us with one too many references, which will in turn
-    // prevent the shutdown mechanism from working, since that one is only
-    // triggered from the FrameLoader destructor, i.e. when there are no more
-    // references around. (FrameLoader and Frame used to be one class, they
-    // can be considered as one object as far as object life-time goes.)
-    WebCore::Frame* frame;
-    WebCore::FrameLoaderClientHaiku* loaderClient;
+    void setDispatchTarget(const BMessenger& messenger) { m_messenger = messenger; }
+    
+private:
+    void progressTrackerDestroyed() override;
+
+    void progressStarted(WebCore::Frame& originatingProgressFrame) override;
+    void progressEstimateChanged(WebCore::Frame& originatingProgressFrame) override;
+    void progressFinished(WebCore::Frame& originatingProgressFrame) override;
+
+    status_t dispatchMessage(BMessage& message) const;
+
+    BWebPage* m_view;
+    BMessenger m_messenger;
 };
 
-#endif // WebFramePrivate_h
+} // namespace WebCore
+
+#endif // ProgressTrackerClientEfl_h

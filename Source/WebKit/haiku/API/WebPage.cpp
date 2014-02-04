@@ -31,6 +31,7 @@
 #include "WebPage.h"
 
 
+#include "BackForwardController.h"
 #include "ChromeClientHaiku.h"
 #include "ContextMenu.h"
 #include "ContextMenuClientHaiku.h"
@@ -61,6 +62,8 @@
 #include "PlatformMouseEvent.h"
 #include "PlatformStrategiesHaiku.h"
 #include "PlatformWheelEvent.h"
+#include "ProgressTrackerClient.h"
+#include "ProgressTrackerHaiku.h"
 #include "ResourceHandle.h"
 #include "ResourceRequest.h"
 #include "ScriptController.h"
@@ -208,6 +211,7 @@ BWebPage::BWebPage(BWebView* webView)
     pageClients.dragClient = new DragClientHaiku(webView);
     pageClients.inspectorClient = new InspectorClientHaiku();
     pageClients.loaderClientForMainFrame = new FrameLoaderClientHaiku(this);
+    pageClients.progressTrackerClient = new ProgressTrackerClientHaiku(this);
     fPage = new Page(pageClients);
 
     fSettings = new BWebSettings(&fPage->settings());
@@ -419,7 +423,7 @@ void BWebPage::activated(bool activated)
 }
 
 void BWebPage::mouseEvent(const BMessage* message,
-    const BPoint& where, const BPoint& screenWhere)
+    const BPoint& /*where*/, const BPoint& /*screenWhere*/)
 {
     BMessage copiedMessage(*message);
     copiedMessage.AddPointer("target", this);
@@ -541,7 +545,7 @@ BRect BWebPage::viewBounds()
     return bounds;
 }
 
-void BWebPage::setViewBounds(const BRect& bounds)
+void BWebPage::setViewBounds(const BRect& /*bounds*/)
 {
     if (fWebView->LockLooper()) {
         // TODO: Implement this with layout management, i.e. SetExplicitMinSize() or something...
@@ -589,7 +593,7 @@ void BWebPage::closeWindow()
     dispatchMessage(message);
 }
 
-void BWebPage::linkHovered(const BString& url, const BString& title, const BString& content)
+void BWebPage::linkHovered(const BString& url, const BString& /*title*/, const BString& /*content*/)
 {
 	if (url.Length())
 		setDisplayedStatusMessage(url);
@@ -1003,22 +1007,22 @@ void BWebPage::handleLoadURL(const BMessage* message)
     fMainFrame->LoadURL(urlString);
 }
 
-void BWebPage::handleReload(const BMessage* message)
+void BWebPage::handleReload(const BMessage*)
 {
     fMainFrame->Reload();
 }
 
-void BWebPage::handleGoBack(const BMessage* message)
+void BWebPage::handleGoBack(const BMessage*)
 {
-    fPage->goBack();
+    fPage->backForward().goBack();
 }
 
-void BWebPage::handleGoForward(const BMessage* message)
+void BWebPage::handleGoForward(const BMessage*)
 {
-    fPage->goForward();
+    fPage->backForward().goForward();
 }
 
-void BWebPage::handleStop(const BMessage* message)
+void BWebPage::handleStop(const BMessage*)
 {
     fMainFrame->StopLoading();
 }
@@ -1234,8 +1238,8 @@ void BWebPage::handleResendNotifications(BMessage*)
 {
 	// Prepare navigation capabilities notification
     BMessage message(UPDATE_NAVIGATION_INTERFACE);
-    message.AddBool("can go backward", fPage->canGoBackOrForward(-1));
-    message.AddBool("can go forward", fPage->canGoBackOrForward(1));
+    message.AddBool("can go backward", fPage->backForward().canGoBackOrForward(-1));
+    message.AddBool("can go forward", fPage->backForward().canGoBackOrForward(1));
     WebCore::FrameLoader& loader = fMainFrame->Frame()->loader();
     message.AddBool("can stop", loader.isLoading());
     dispatchMessage(message);

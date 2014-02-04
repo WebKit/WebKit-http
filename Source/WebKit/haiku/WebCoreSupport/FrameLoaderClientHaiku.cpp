@@ -35,6 +35,7 @@
 #include "FrameLoaderClientHaiku.h"
 
 #include "AuthenticationChallenge.h"
+#include "BackForwardController.h"
 #include "Credential.h"
 #include "CachedFrame.h"
 #include "DocumentLoader.h"
@@ -170,32 +171,26 @@ void FrameLoaderClientHaiku::detachedFromParent3()
 {
 }
 
-bool FrameLoaderClientHaiku::dispatchDidLoadResourceFromMemoryCache(DocumentLoader* loader,
-                                                                    const ResourceRequest& request,
-                                                                    const ResourceResponse& response,
-                                                                    int length)
+bool FrameLoaderClientHaiku::dispatchDidLoadResourceFromMemoryCache(DocumentLoader* /*loader*/,
+                                                                    const ResourceRequest& /*request*/,
+                                                                    const ResourceResponse& /*response*/,
+                                                                    int /*length*/)
 {
-    CALLED("DocumentLoader: %p, request: %s, length: %d", loader,
-           request.url().string().utf8().data(), length);
     notImplemented();
     return false;
 }
 
-void FrameLoaderClientHaiku::assignIdentifierToInitialRequest(unsigned long identifier,
-                                                              DocumentLoader* loader,
-                                                              const ResourceRequest& request)
+void FrameLoaderClientHaiku::assignIdentifierToInitialRequest(unsigned long /*identifier*/,
+                                                              DocumentLoader* /*loader*/,
+                                                              const ResourceRequest& /*request*/)
 {
-//    CALLED("identifier: %u, DocumentLoader: %p", identifier, loader);
     notImplemented();
 }
 
-void FrameLoaderClientHaiku::dispatchWillSendRequest(DocumentLoader* loader, unsigned long identifier,
-                                                     ResourceRequest& request,
-                                                     const ResourceResponse& redirectResponse)
+void FrameLoaderClientHaiku::dispatchWillSendRequest(DocumentLoader* /*loader*/, unsigned long /*identifier*/,
+                                                     ResourceRequest& /*request*/,
+                                                     const ResourceResponse& /*redirectResponse*/)
 {
-    CALLED("DocumentLoader: %p, identifier: %u, request: %s, redirectResponse: %d", loader, identifier,
-           request.url().string().utf8().data(), redirectResponse.url().string().utf8().data());
-
     notImplemented();
 }
 
@@ -259,25 +254,21 @@ void FrameLoaderClientHaiku::dispatchDidCancelAuthenticationChallenge(DocumentLo
     notImplemented();
 }
 
-void FrameLoaderClientHaiku::dispatchDidReceiveResponse(DocumentLoader* loader,
-                                                        unsigned long identifier,
+void FrameLoaderClientHaiku::dispatchDidReceiveResponse(DocumentLoader* /*loader*/,
+                                                        unsigned long /*identifier*/,
                                                         const ResourceResponse& response)
 {
-//    CALLED("DocumentLoader: %p, identifier: %u, response: %d", loader, identifier,
-//           response.url().string().utf8().data());
     m_response = response;
 }
 
-void FrameLoaderClientHaiku::dispatchDidReceiveContentLength(DocumentLoader* loader,
-                                                             unsigned long id, int length)
+void FrameLoaderClientHaiku::dispatchDidReceiveContentLength(DocumentLoader* /*loader*/,
+                                                             unsigned long /*id*/, int /*length*/)
 {
-//    CALLED("DocumentLoader: %p, identifier: %u, length: %d", loader, id, length);
     notImplemented();
 }
 
-void FrameLoaderClientHaiku::dispatchDidFinishLoading(DocumentLoader* loader, unsigned long identifier)
+void FrameLoaderClientHaiku::dispatchDidFinishLoading(DocumentLoader* /*loader*/, unsigned long /*identifier*/)
 {
-    CALLED("DocumentLoader: %p, identifier: %u", loader, identifier);
     notImplemented();
 }
 
@@ -307,7 +298,7 @@ void FrameLoaderClientHaiku::dispatchDidCancelClientRedirect()
     notImplemented();
 }
 
-void FrameLoaderClientHaiku::dispatchWillPerformClientRedirect(const URL&, double interval, double fireDate)
+void FrameLoaderClientHaiku::dispatchWillPerformClientRedirect(const URL&, double /*interval*/, double /*fireDate*/)
 {
     notImplemented();
 }
@@ -534,7 +525,7 @@ void FrameLoaderClientHaiku::dispatchDecidePolicyForResponse(const WebCore::Reso
 }
 
 void FrameLoaderClientHaiku::dispatchDecidePolicyForNewWindowAction(const NavigationAction& action,
-    const ResourceRequest& request, PassRefPtr<FormState> formState, const String& targetName, FramePolicyFunction function)
+    const ResourceRequest& request, PassRefPtr<FormState> /*formState*/, const String& /*targetName*/, FramePolicyFunction function)
 {
     ASSERT(function);
     if (!function)
@@ -613,7 +604,7 @@ void FrameLoaderClientHaiku::revertToProvisionalState(DocumentLoader*)
     notImplemented();
 }
 
-void FrameLoaderClientHaiku::setMainDocumentError(WebCore::DocumentLoader* loader, const WebCore::ResourceError& error)
+void FrameLoaderClientHaiku::setMainDocumentError(WebCore::DocumentLoader* /*loader*/, const WebCore::ResourceError& error)
 {
     CALLED();
     if (m_pluginView) {
@@ -628,38 +619,6 @@ void FrameLoaderClientHaiku::setMainDocumentError(WebCore::DocumentLoader* loade
     BMessage message(MAIN_DOCUMENT_ERROR);
     message.AddString("url", error.failingURL());
     message.AddString("error", error.localizedDescription());
-    dispatchMessage(message);
-}
-
-void FrameLoaderClientHaiku::postProgressStartedNotification()
-{
-    BMessage message(LOAD_STARTED);
-    message.AddPointer("frame", m_webFrame);
-    message.AddString("url", m_webFrame->Frame()->document()->url().string());
-    dispatchMessage(message);
-
-    if (m_webFrame && m_webFrame->Frame()->page()) {
-        // A new load starts, so lets clear the previous error.
-//        m_loadError = ResourceError();
-        postProgressEstimateChangedNotification();
-    }
-    if (!m_webFrame || m_webFrame->Frame()->tree().parent())
-        return;
-    triggerNavigationHistoryUpdate();
-}
-
-void FrameLoaderClientHaiku::postProgressEstimateChangedNotification()
-{
-    m_webPage->setLoadingProgress(m_webFrame->Frame()->page()->progress().estimatedProgress() * 100);
-
-    // Triggering this continually during loading progress makes stopping more reliably available.
-    triggerNavigationHistoryUpdate();
-}
-
-void FrameLoaderClientHaiku::postProgressFinishedNotification()
-{
-    BMessage message(LOAD_DL_COMPLETED);
-    message.AddString("url", m_webFrame->Frame()->document()->url().string());
     dispatchMessage(message);
 }
 
@@ -863,7 +822,7 @@ bool FrameLoaderClientHaiku::canHandleRequest(const WebCore::ResourceRequest&) c
     return true;
 }
 
-bool FrameLoaderClientHaiku::canShowMIMETypeAsHTML(const String& MIMEType) const
+bool FrameLoaderClientHaiku::canShowMIMETypeAsHTML(const String& /*MIMEType*/) const
 {
     notImplemented();
     return false;
@@ -890,12 +849,12 @@ bool FrameLoaderClientHaiku::canShowMIMEType(const String& mimeType) const
     return false;
 }
 
-bool FrameLoaderClientHaiku::representationExistsForURLScheme(const String& URLScheme) const
+bool FrameLoaderClientHaiku::representationExistsForURLScheme(const String& /*URLScheme*/) const
 {
     return false;
 }
 
-String FrameLoaderClientHaiku::generatedMIMETypeForURLScheme(const String& URLScheme) const
+String FrameLoaderClientHaiku::generatedMIMETypeForURLScheme(const String& /*URLScheme*/) const
 {
     notImplemented();
     return String();
@@ -949,7 +908,7 @@ void FrameLoaderClientHaiku::setTitle(const StringWithDirection&, const URL&)
     // no need for, dispatchDidReceiveTitle is the right callback
 }
 
-void FrameLoaderClientHaiku::savePlatformDataToCachedFrame(CachedFrame* cachedPage)
+void FrameLoaderClientHaiku::savePlatformDataToCachedFrame(CachedFrame* /*cachedPage*/)
 {
     CALLED();
     // Nothing to be done here for the moment. We don't associate any platform data
@@ -963,7 +922,7 @@ void FrameLoaderClientHaiku::transitionToCommittedFromCachedFrame(CachedFrame* c
     // FIXME: I guess we would have to restore platform data from the cachedFrame here,
     // data associated in savePlatformDataToCachedFrame().
 
-    postCommitFrameViewSetup(m_webFrame, cachedFrame->view(), false);
+    postCommitFrameViewSetup(cachedFrame->view());
 }
 
 void FrameLoaderClientHaiku::transitionToCommittedForNewPage()
@@ -983,7 +942,7 @@ void FrameLoaderClientHaiku::transitionToCommittedForNewPage()
 
     frame->createView(size, backgroundColor, transparent);
 
-    postCommitFrameViewSetup(m_webFrame, frame->view(), true);
+    postCommitFrameViewSetup(frame->view());
 }
 
 String FrameLoaderClientHaiku::userAgent(const URL&)
@@ -1008,7 +967,7 @@ bool FrameLoaderClientHaiku::canCachePage() const
 }
 
 PassRefPtr<Frame> FrameLoaderClientHaiku::createFrame(const URL& url, const String& name, HTMLFrameOwnerElement* ownerElement,
-    const String& referrer, bool allowsScrolling, int marginWidth, int marginHeight)
+    const String& referrer, bool /*allowsScrolling*/, int /*marginWidth*/, int /*marginHeight*/)
 {
     CALLED();
     // FIXME: We should apply the right property to the frameView. (scrollbar,margins)
@@ -1087,7 +1046,7 @@ ObjectContentType FrameLoaderClientHaiku::objectContentType(const URL& url, cons
 }
 
 PassRefPtr<Widget> FrameLoaderClientHaiku::createPlugin(const IntSize&, HTMLPlugInElement*, const URL&, const Vector<String>&,
-                                                        const Vector<String>&, const String&, bool loadManually)
+                                                        const Vector<String>&, const String&, bool /*loadManually*/)
 {
     CALLED();
     notImplemented();
@@ -1102,8 +1061,8 @@ void FrameLoaderClientHaiku::redirectDataToPlugin(Widget* pluginWidget)
     m_hasSentResponseToPlugin = false;
 }
 
-PassRefPtr<Widget> FrameLoaderClientHaiku::createJavaAppletWidget(const IntSize&, HTMLAppletElement*, const URL& baseURL,
-                                                                  const Vector<String>& paramNames, const Vector<String>& paramValues)
+PassRefPtr<Widget> FrameLoaderClientHaiku::createJavaAppletWidget(const IntSize&, HTMLAppletElement*, const URL& /*baseURL*/,
+                                                                  const Vector<String>& /*paramNames*/, const Vector<String>& /*paramValues*/)
 {
     notImplemented();
     return 0;
@@ -1155,7 +1114,7 @@ void FrameLoaderClientHaiku::documentElementAvailable()
 {
 }
 
-void FrameLoaderClientHaiku::registerForIconNotification(bool listen)
+void FrameLoaderClientHaiku::registerForIconNotification(bool /*listen*/)
 {
     notImplemented();
 }
@@ -1185,13 +1144,13 @@ void FrameLoaderClientHaiku::triggerNavigationHistoryUpdate() const
     if (!page)
         return;
     BMessage message(UPDATE_NAVIGATION_INTERFACE);
-    message.AddBool("can go backward", page->canGoBackOrForward(-1));
-    message.AddBool("can go forward", page->canGoBackOrForward(1));
+    message.AddBool("can go backward", page->backForward().canGoBackOrForward(-1));
+    message.AddBool("can go forward", page->backForward().canGoBackOrForward(1));
     message.AddBool("can stop", loader.isLoading());
     dispatchMessage(message);
 }
 
-void FrameLoaderClientHaiku::postCommitFrameViewSetup(BWebFrame* frame, FrameView* view, bool resetValues) const
+void FrameLoaderClientHaiku::postCommitFrameViewSetup(FrameView* view) const
 {
     view->setTopLevelPlatformWidget(m_webPage->WebView());
 }

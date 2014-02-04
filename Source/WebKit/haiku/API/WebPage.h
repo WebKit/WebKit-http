@@ -51,6 +51,7 @@ class DumpRenderTreeClient;
 class EditorClientHaiku;
 class FrameLoaderClientHaiku;
 class InspectorClientHaiku;
+class ProgressTrackerClientHaiku;
 
 class FrameView;
 class Page;
@@ -150,6 +151,7 @@ private:
 	friend class WebCore::DumpRenderTreeClient;
 	friend class WebCore::EditorClientHaiku;
 	friend class WebCore::FrameLoaderClientHaiku;
+	friend class WebCore::ProgressTrackerClientHaiku;
 	friend class WebCore::InspectorClientHaiku;
 
 	WebCore::Page* page() const;

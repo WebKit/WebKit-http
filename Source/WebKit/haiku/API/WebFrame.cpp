@@ -41,6 +41,8 @@
 #include "HTMLFrameOwnerElement.h"
 #include "MainFrame.h"
 #include "Page.h"
+#include "ProgressTracker.h"
+#include "ProgressTrackerHaiku.h"
 #include "RenderObject.h"
 #include "RenderTreeAsText.h"
 #include "RenderView.h"
@@ -67,7 +69,7 @@ BWebFrame::BWebFrame(BWebPage* webPage, BWebFrame* parentFrame, WebFramePrivate*
     , fTitle(0)
     , fData(data)
 {
-    if (!parentFrame /*|| !ownerElement*/) {
+    if (!parentFrame) {
         // No parent, we are creating the main BWebFrame.
         // mainframe is already created in WebCore::Page, just use it.
         fData->frame = &webPage->page()->mainFrame();
@@ -263,7 +265,7 @@ BString BWebFrame::FrameSource() const
     return BString();
 }
 
-void BWebFrame::SetFrameSource(const BString& source)
+void BWebFrame::SetFrameSource(const BString& /*source*/)
 {
     // FIXME: see QWebFrame::setHtml/setContent
 }
