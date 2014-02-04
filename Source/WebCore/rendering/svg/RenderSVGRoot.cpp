@@ -34,6 +34,7 @@
 #include "LayoutRepainter.h"
 #include "Page.h"
 #include "RenderIterator.h"
+#include "RenderSVGResourceContainer.h"
 #include "RenderView.h"
 #include "SVGImage.h"
 #include "SVGLength.h"

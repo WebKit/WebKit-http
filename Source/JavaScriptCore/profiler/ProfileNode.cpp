@@ -123,7 +123,7 @@ void ProfileNode::stopProfiling()
 {
     ASSERT(!m_calls.isEmpty());
 
-    if (isnan(m_calls.last().totalTime()))
+    if (std::isnan(m_calls.last().totalTime()))
         endAndRecordCall();
 
     // Because we iterate in post order all of our children have been stopped before us.
@@ -147,7 +147,7 @@ ProfileNode* ProfileNode::traverseNextNodePostOrder() const
 void ProfileNode::endAndRecordCall()
 {
     Call& last = lastCall();
-    ASSERT(isnan(last.totalTime()));
+    ASSERT(std::isnan(last.totalTime()));
 
     last.setTotalTime(currentTime() - last.startTime());
 
