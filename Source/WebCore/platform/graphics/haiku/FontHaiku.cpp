@@ -97,12 +97,14 @@ bool Font::canExpandAroundIdeographsInComplexText()
  * For now, we just call the usual DrawString method. It's better to at least
  * try displaying something.
  */
-void Font::drawComplexText(GraphicsContext* ctx, const TextRun& run, const FloatPoint& point,
+float Font::drawComplexText(GraphicsContext* ctx, const TextRun& run, const FloatPoint& point,
                            int from, int to) const
 {
     BView* view = ctx->platformContext();
     view->SetFont(primaryFont()->platformData().font());
     view->DrawString(run.string().utf8().data() + from, to - from + 1, point);
+
+    return view->StringWidth(run.string().utf8().data() + from, to - from + 1);
 }
 
 
