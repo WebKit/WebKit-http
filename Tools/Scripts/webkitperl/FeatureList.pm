@@ -213,7 +213,7 @@ my @features = (
       define => "ENABLE_CSS_IMAGE_RESOLUTION", default => isGtk(), value => \$cssImageResolutionSupport },
 
     { option => "css-image-set", desc => "Toggle CSS image-set support",
-      define => "ENABLE_CSS_IMAGE_SET", default => (isEfl() || isGtk()), value => \$cssImageSetSupport },
+      define => "ENABLE_CSS_IMAGE_SET", default => (isEfl() || isGtk() || isHaiku()), value => \$cssImageSetSupport },
 
     { option => "css-regions", desc => "Toggle CSS Regions support",
       define => "ENABLE_CSS_REGIONS", default => 1, value => \$cssRegionsSupport },
@@ -366,7 +366,7 @@ my @features = (
       define => "ENABLE_ORIENTATION_EVENTS", default => isIOSWebKit(), value => \$orientationEventsSupport },
 
     { option => "page-visibility-api", desc => "Toggle Page Visibility API support",
-      define => "ENABLE_PAGE_VISIBILITY_API", default => (isEfl() || isGtk()), value => \$pageVisibilityAPISupport },
+      define => "ENABLE_PAGE_VISIBILITY_API", default => (isEfl() || isGtk() || isHaiku()), value => \$pageVisibilityAPISupport },
 
     { option => "plugin-proxy-for-video", desc => "Toggle Plugin Proxy for Video support",
       define => "ENABLE_PLUGIN_PROXY_FOR_VIDEO", default => isIOSWebKit(), value => \$pluginProxyForVideo },
