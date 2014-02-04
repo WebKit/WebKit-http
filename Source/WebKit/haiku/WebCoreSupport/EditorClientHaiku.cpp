@@ -633,7 +633,7 @@ bool EditorClientHaiku::handleEditingKeyboardEvent(KeyboardEvent* event,
         return false;
 
     Node* start = frame.selection().start().anchorNode();
-    if (!start || !start->rendererIsEditable())
+    if (!start)
         return false;
 
     switch (platformEvent->windowsVirtualKeyCode()) {
