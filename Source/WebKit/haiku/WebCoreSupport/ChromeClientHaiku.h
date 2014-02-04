@@ -130,7 +130,6 @@ namespace WebCore {
         virtual void setToolTip(const String&, TextDirection);
 
         virtual void print(Frame*);
-        virtual bool shouldRubberBandInDirection(ScrollDirection) const { return true; }
 
 #if ENABLE(SQL_DATABASE)
         virtual void exceededDatabaseQuota(Frame*, const String& databaseName, DatabaseDetails);
@@ -138,9 +137,10 @@ namespace WebCore {
         virtual void reachedMaxAppCacheSize(int64_t spaceNeeded);
         virtual void reachedApplicationCacheOriginQuota(SecurityOrigin*, int64_t totalSpaceNeeded);
 
-        // This is an asynchronous call. The ChromeClient can display UI asking the user for permission
-        // to use Geolococation.
-        virtual void requestGeolocationPermissionForFrame(Frame*, Geolocation*);
+        virtual void attachRootGraphicsLayer(Frame*, GraphicsLayer*);
+        virtual void setNeedsOneShotDrawingSynchronization();
+        virtual void scheduleCompositingLayerFlush();
+
         virtual void cancelGeolocationPermissionRequestForFrame(Frame*, Geolocation*) { }
 
         virtual void runOpenPanel(Frame*, PassRefPtr<FileChooser>);
