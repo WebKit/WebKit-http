@@ -92,8 +92,8 @@ void Widget::setCursor(const Cursor& cursor)
 {
     AutoPlatformWidgetLocker locker(topLevelPlatformWidget());
     if (locker.isLocked()) {
-        if (cursor.impl())
-            topLevelPlatformWidget()->SetViewCursor(cursor.impl());
+        if (cursor.platformCursor())
+            topLevelPlatformWidget()->SetViewCursor(cursor.platformCursor());
         else
             topLevelPlatformWidget()->SetViewCursor(B_CURSOR_SYSTEM_DEFAULT);
     }

@@ -33,15 +33,10 @@
 
 namespace WebCore {
 
-Cursor::Cursor(PlatformCursor cursor)
-    : m_platformCursor(cursor)
-{
-}
-
 Cursor::Cursor(const Cursor& other)
-    : m_platformCursor(0)
+    : m_type(other.m_type)
+    , m_platformCursor(other.m_platformCursor)
 {
-    *this = other;
 }
 
 Cursor::~Cursor()
@@ -49,267 +44,132 @@ Cursor::~Cursor()
     delete m_platformCursor;
 }
 
-Cursor::Cursor(Image*, const IntPoint&)
-    : m_platformCursor(0)
-{
-    notImplemented();
-}
-
 Cursor& Cursor::operator=(const Cursor& other)
 {
+    m_type = other.m_type;
+
     delete m_platformCursor;
-    m_platformCursor = other.impl() ? new BCursor(*other.impl()) : 0;
+    m_platformCursor = other.platformCursor() ? new BCursor(*other.platformCursor()) : nullptr;
     return *this;
 }
 
-static Cursor createCursorByID(BCursorID id)
+void Cursor::ensurePlatformCursor() const
 {
-    return Cursor(new BCursor(id));
-}
+    if (m_platformCursor)
+        return;
 
-const Cursor& pointerCursor()
-{
-    static Cursor cursorSystemDefault(0);
-    return cursorSystemDefault;
-}
+    BCursorID which;
+    switch(m_type)
+    {
+        case Cursor::Pointer:
+            which = B_CURSOR_ID_SYSTEM_DEFAULT;
+            break;
+        case Cursor::Hand:
+            which = B_CURSOR_ID_FOLLOW_LINK;
+            break;
+        case Cursor::Cross:
+        case Cursor::Cell:
+            which = B_CURSOR_ID_CROSS_HAIR;
+            break;
+        case Cursor::IBeam:
+            which = B_CURSOR_ID_I_BEAM;
+            break;
+        case Cursor::Help:
+            which = B_CURSOR_ID_HELP;
+            break;
+        case Cursor::EastResize:
+            which = B_CURSOR_ID_RESIZE_EAST;
+            break;
+        case Cursor::NorthResize:
+            which = B_CURSOR_ID_RESIZE_NORTH;
+            break;
+        case Cursor::NorthEastResize:
+            which = B_CURSOR_ID_RESIZE_NORTH_EAST;
+            break;
+        case Cursor::NorthWestResize:
+            which = B_CURSOR_ID_RESIZE_NORTH_WEST;
+            break;
+        case Cursor::SouthResize:
+            which = B_CURSOR_ID_RESIZE_SOUTH;
+            break;
+        case Cursor::SouthEastResize:
+            which = B_CURSOR_ID_RESIZE_SOUTH_EAST;
+            break;
+        case Cursor::SouthWestResize:
+            which = B_CURSOR_ID_RESIZE_SOUTH_WEST;
+            break;
+        case Cursor::WestResize:
+            which = B_CURSOR_ID_RESIZE_WEST;
+            break;
+        case Cursor::NorthSouthResize:
+        case Cursor::RowResize:
+            which = B_CURSOR_ID_RESIZE_NORTH_SOUTH;
+            break;
+        case Cursor::EastWestResize:
+        case Cursor::ColumnResize:
+            which = B_CURSOR_ID_RESIZE_EAST_WEST;
+            break;
+        case Cursor::NorthEastSouthWestResize:
+            which = B_CURSOR_ID_RESIZE_NORTH_EAST_SOUTH_WEST;
+            break;
+        case Cursor::NorthWestSouthEastResize:
+            which = B_CURSOR_ID_RESIZE_NORTH_WEST_SOUTH_EAST;
+            break;
+        case Cursor::MiddlePanning:
+        case Cursor::EastPanning:
+        case Cursor::NorthPanning:
+        case Cursor::NorthEastPanning:
+        case Cursor::NorthWestPanning:
+        case Cursor::SouthPanning:
+        case Cursor::SouthEastPanning:
+        case Cursor::SouthWestPanning:
+        case Cursor::WestPanning:
+        case Cursor::Grabbing:
+            which = B_CURSOR_ID_GRABBING;
+            break;
+        case Cursor::Move:
+            which = B_CURSOR_ID_MOVE;
+            break;
+        case Cursor::VerticalText:
+            which = B_CURSOR_ID_I_BEAM_HORIZONTAL;
+            break;
+        case Cursor::ContextMenu:
+            which = B_CURSOR_ID_CONTEXT_MENU;
+            break;
+        case Cursor::Alias:
+            which = B_CURSOR_ID_CREATE_LINK;
+            break;
+        case Cursor::Wait:
+        case Cursor::Progress:
+            which = B_CURSOR_ID_PROGRESS;
+            break;
+        case Cursor::NoDrop:
+        case Cursor::NotAllowed:
+            which = B_CURSOR_ID_NOT_ALLOWED;
+            break;
+        case Cursor::Copy:
+            which = B_CURSOR_ID_COPY;
+            break;
+        case Cursor::None:
+            which = B_CURSOR_ID_NO_CURSOR;
+            break;
+        case Cursor::ZoomIn:
+            which = B_CURSOR_ID_ZOOM_IN;
+            break;
+        case Cursor::ZoomOut:
+            which = B_CURSOR_ID_ZOOM_OUT;
+            break;
+        case Cursor::Grab:
+            which = B_CURSOR_ID_GRAB;
+            break;
+        case Cursor::Custom:
+            which = B_CURSOR_ID_SYSTEM_DEFAULT;
+            notImplemented();
+            // TODO create from bitmap.
+            break;
+    }
 
-const Cursor& moveCursor()
-{
-    static Cursor cursorMove = createCursorByID(B_CURSOR_ID_MOVE);
-    return cursorMove;
-}
-
-const Cursor& crossCursor()
-{
-    static Cursor cursorCrossHair = createCursorByID(B_CURSOR_ID_CROSS_HAIR);
-    return cursorCrossHair;
-}
-
-const Cursor& handCursor()
-{
-    static Cursor cursorFollowLink = createCursorByID(B_CURSOR_ID_FOLLOW_LINK);
-    return cursorFollowLink;
-}
-
-const Cursor& iBeamCursor()
-{
-    static Cursor cursorIBeam = createCursorByID(B_CURSOR_ID_I_BEAM);
-    return cursorIBeam;
-}
-
-const Cursor& waitCursor()
-{
-    static Cursor cursorProgress = createCursorByID(B_CURSOR_ID_PROGRESS);
-    return cursorProgress;
-}
-
-const Cursor& helpCursor()
-{
-    static Cursor cursorHelp = createCursorByID(B_CURSOR_ID_HELP);
-    return cursorHelp;
-}
-
-const Cursor& eastResizeCursor()
-{
-    static Cursor cursorResizeEast = createCursorByID(B_CURSOR_ID_RESIZE_EAST);
-    return cursorResizeEast;
-}
-
-const Cursor& northResizeCursor()
-{
-    static Cursor cursorResizeNorth = createCursorByID(B_CURSOR_ID_RESIZE_NORTH);
-    return cursorResizeNorth;
-}
-
-const Cursor& northEastResizeCursor()
-{
-    static Cursor cursorResizeNorthEast = createCursorByID(B_CURSOR_ID_RESIZE_NORTH_EAST);
-    return cursorResizeNorthEast;
-}
-
-const Cursor& northWestResizeCursor()
-{
-    static Cursor cursorResizeNorthWest = createCursorByID(B_CURSOR_ID_RESIZE_NORTH_WEST);
-    return cursorResizeNorthWest;
-}
-
-const Cursor& southResizeCursor()
-{
-    static Cursor cursorResizeSouth = createCursorByID(B_CURSOR_ID_RESIZE_SOUTH);
-    return cursorResizeSouth;
-}
-
-const Cursor& southEastResizeCursor()
-{
-    static Cursor cursorResizeSouthEast = createCursorByID(B_CURSOR_ID_RESIZE_SOUTH_EAST);
-    return cursorResizeSouthEast;
-}
-
-const Cursor& southWestResizeCursor()
-{
-    static Cursor cursorResizeSouthWest = createCursorByID(B_CURSOR_ID_RESIZE_SOUTH_WEST);
-    return cursorResizeSouthWest;
-}
-
-const Cursor& westResizeCursor()
-{
-    static Cursor cursorResizeWest = createCursorByID(B_CURSOR_ID_RESIZE_WEST);
-    return cursorResizeWest;
-}
-
-const Cursor& northSouthResizeCursor()
-{
-    static Cursor cursorResizeNorthSouth = createCursorByID(B_CURSOR_ID_RESIZE_NORTH_SOUTH);
-    return cursorResizeNorthSouth;
-}
-
-const Cursor& eastWestResizeCursor()
-{
-    static Cursor cursorResizeEastWest = createCursorByID(B_CURSOR_ID_RESIZE_EAST_WEST);
-    return cursorResizeEastWest;
-}
-
-const Cursor& northEastSouthWestResizeCursor()
-{
-    static Cursor cursorResizeNorthEastSouthWest = createCursorByID(B_CURSOR_ID_RESIZE_NORTH_EAST_SOUTH_WEST);
-    return cursorResizeNorthEastSouthWest;
-}
-
-const Cursor& northWestSouthEastResizeCursor()
-{
-    static Cursor cursorResizeNorthWestSouthEast = createCursorByID(B_CURSOR_ID_RESIZE_NORTH_WEST_SOUTH_EAST);
-    return cursorResizeNorthWestSouthEast;
-}
-
-const Cursor& columnResizeCursor()
-{
-    return eastWestResizeCursor();
-}
-
-const Cursor& rowResizeCursor()
-{
-    return northSouthResizeCursor();
-}
-
-const Cursor& verticalTextCursor()
-{
-    static Cursor cursorIBeamHorizontal = createCursorByID(B_CURSOR_ID_I_BEAM_HORIZONTAL);
-    return cursorIBeamHorizontal;
-}
-
-const Cursor& cellCursor()
-{
-    return pointerCursor();
-}
-
-const Cursor& contextMenuCursor()
-{
-    static Cursor cursorContextMenu = createCursorByID(B_CURSOR_ID_CONTEXT_MENU);
-    return cursorContextMenu;
-}
-
-const Cursor& noDropCursor()
-{
-    static Cursor cursorNotAllowed = createCursorByID(B_CURSOR_ID_NOT_ALLOWED);
-    return cursorNotAllowed;
-}
-
-const Cursor& copyCursor()
-{
-    static Cursor cursorCopy = createCursorByID(B_CURSOR_ID_COPY);
-    return cursorCopy;
-}
-
-const Cursor& progressCursor()
-{
-    static Cursor cursorProgress = createCursorByID(B_CURSOR_ID_PROGRESS);
-    return cursorProgress;
-}
-
-const Cursor& aliasCursor()
-{
-    return handCursor();
-}
-
-const Cursor& noneCursor()
-{
-    static Cursor cursorNoCursor = createCursorByID(B_CURSOR_ID_NO_CURSOR);
-    return cursorNoCursor;
-}
-
-const Cursor& notAllowedCursor()
-{
-    static Cursor cursorNotAllowed = createCursorByID(B_CURSOR_ID_NOT_ALLOWED);
-    return cursorNotAllowed;
-}
-
-const Cursor& zoomInCursor()
-{
-    static Cursor cursorZoomIn = createCursorByID(B_CURSOR_ID_ZOOM_IN);
-    return cursorZoomIn;
-}
-
-const Cursor& zoomOutCursor()
-{
-    static Cursor cursorZoomOut = createCursorByID(B_CURSOR_ID_ZOOM_OUT);
-    return cursorZoomOut;
-}
-
-const Cursor& grabCursor()
-{
-    static Cursor cursorGrab = createCursorByID(B_CURSOR_ID_GRAB);
-    return cursorGrab;
-}
-
-const Cursor& grabbingCursor()
-{
-    static Cursor cursorGrabbing = createCursorByID(B_CURSOR_ID_GRABBING);
-    return cursorGrabbing;
-}
-
-const Cursor& middlePanningCursor()
-{
-    return moveCursor();
-}
-
-const Cursor& eastPanningCursor()
-{
-    return eastResizeCursor();
-}
-
-const Cursor& northPanningCursor()
-{
-    return northResizeCursor();
-}
-
-const Cursor& northEastPanningCursor()
-{
-    return northEastResizeCursor();
-}
-
-const Cursor& northWestPanningCursor()
-{
-    return northWestResizeCursor();
-}
-
-const Cursor& southPanningCursor()
-{
-    return southResizeCursor();
-}
-
-const Cursor& southEastPanningCursor()
-{
-    return southEastResizeCursor();
-}
-
-const Cursor& southWestPanningCursor()
-{
-    return southWestResizeCursor();
-}
-
-const Cursor& westPanningCursor()
-{
-    return westResizeCursor();
+    m_platformCursor = new BCursor(which);
 }
 
 } // namespace WebCore

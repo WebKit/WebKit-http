@@ -444,11 +444,6 @@ void ChromeClientHaiku::reachedApplicationCacheOriginQuota(SecurityOrigin*, int6
     notImplemented();
 }
 
-void ChromeClientHaiku::requestGeolocationPermissionForFrame(Frame*, Geolocation*)
-{
-    notImplemented();
-}
-
 void ChromeClientHaiku::runOpenPanel(Frame*, PassRefPtr<FileChooser> chooser)
 {
     RefPtr<FileChooser> *ref = new RefPtr<FileChooser>(chooser);
@@ -469,7 +464,7 @@ void ChromeClientHaiku::setCursor(const Cursor& cursor)
     if (!m_webView->LockLooper())
         return;
 
-    m_webView->SetViewCursor(cursor.impl());
+    m_webView->SetViewCursor(cursor.platformCursor());
 
     m_webView->UnlockLooper();
 }
@@ -508,6 +503,21 @@ PassRefPtr<PopupMenu> ChromeClientHaiku::createPopupMenu(PopupMenuClient* client
 PassRefPtr<SearchPopupMenu> ChromeClientHaiku::createSearchPopupMenu(PopupMenuClient* client) const
 {
     return adoptRef(new SearchPopupMenuHaiku(client));
+}
+
+void ChromeClientHaiku::attachRootGraphicsLayer(Frame*, GraphicsLayer* rootLayer)
+{
+    notImplemented();
+}
+
+void ChromeClientHaiku::setNeedsOneShotDrawingSynchronization()
+{
+    notImplemented();
+}
+
+void ChromeClientHaiku::scheduleCompositingLayerFlush()
+{
+    notImplemented();
 }
 
 } // namespace WebCore
