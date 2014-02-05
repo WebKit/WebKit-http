@@ -1125,29 +1125,11 @@ PassRefPtr<FrameNetworkingContext> FrameLoaderClientHaiku::createNetworkingConte
         m_webPage->GetContext());
 }
 
-void FrameLoaderClientHaiku::didPerformFirstNavigation() const
-{
-    triggerNavigationHistoryUpdate();
-}
-
 // #pragma mark - private
 
 void FrameLoaderClientHaiku::callPolicyFunction(FramePolicyFunction function, PolicyAction action)
 {
     function(action);
-}
-
-void FrameLoaderClientHaiku::triggerNavigationHistoryUpdate() const
-{
-    WebCore::Page* page = m_webFrame->Frame()->page();
-    WebCore::FrameLoader& loader = m_webFrame->Frame()->loader();
-    if (!page)
-        return;
-    BMessage message(UPDATE_NAVIGATION_INTERFACE);
-    message.AddBool("can go backward", page->backForward().canGoBackOrForward(-1));
-    message.AddBool("can go forward", page->backForward().canGoBackOrForward(1));
-    message.AddBool("can stop", loader.isLoading());
-    dispatchMessage(message);
 }
 
 void FrameLoaderClientHaiku::postCommitFrameViewSetup(FrameView* view) const

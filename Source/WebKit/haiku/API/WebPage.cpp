@@ -211,7 +211,8 @@ BWebPage::BWebPage(BWebView* webView)
     pageClients.dragClient = new DragClientHaiku(webView);
     pageClients.inspectorClient = new InspectorClientHaiku();
     pageClients.loaderClientForMainFrame = new FrameLoaderClientHaiku(this);
-    pageClients.progressTrackerClient = new ProgressTrackerClientHaiku(this);
+    fProgressTracker = new ProgressTrackerClientHaiku(this);
+    pageClients.progressTrackerClient = fProgressTracker;
     fPage = new Page(pageClients);
 
     fSettings = new BWebSettings(&fPage->settings());
@@ -260,6 +261,7 @@ void BWebPage::SetListener(const BMessenger& listener)
 {
 	fListener = listener;
     fMainFrame->SetListener(listener);
+    fProgressTracker->setDispatchTarget(listener);
 }
 
 void BWebPage::SetDownloadListener(const BMessenger& listener)

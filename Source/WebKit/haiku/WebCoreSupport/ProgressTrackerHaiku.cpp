@@ -26,6 +26,7 @@
 #include "config.h"
 #include "ProgressTrackerHaiku.h"
 
+#include "BackForwardController.h"
 #include "Document.h"
 #include "Frame.h"
 #include "NotImplemented.h"
@@ -55,27 +56,36 @@ void ProgressTrackerClientHaiku::progressStarted(Frame& originatingProgressFrame
     dispatchMessage(message);
 
     progressEstimateChanged(originatingProgressFrame);
-#if 0
-    if (!m_webFrame || m_webFrame->Frame()->tree().parent())
-        return;
-    triggerNavigationHistoryUpdate();
-#endif
+
+    // Enable the stop button, enable "Back" as needed
+    triggerNavigationHistoryUpdate(originatingProgressFrame);
 }
 
 void ProgressTrackerClientHaiku::progressEstimateChanged(Frame& originatingProgressFrame)
 {
     m_view->setLoadingProgress(originatingProgressFrame.page()->progress().estimatedProgress() * 100);
-
-#if 0
-    // Triggering this continually during loading progress makes stopping more reliably available.
-    triggerNavigationHistoryUpdate();
-#endif
 }
 
 void ProgressTrackerClientHaiku::progressFinished(Frame& frame)
 {
     BMessage message(LOAD_DL_COMPLETED);
     message.AddString("url", frame.document()->url().string());
+    dispatchMessage(message);
+
+    // Disable the stop button, enable "Back" as needed
+    triggerNavigationHistoryUpdate(frame);
+}
+
+void ProgressTrackerClientHaiku::triggerNavigationHistoryUpdate(Frame& frame) const
+{
+    WebCore::Page* page = frame.page();
+    WebCore::FrameLoader& loader = frame.loader();
+    if (!page)
+        return;
+    BMessage message(UPDATE_NAVIGATION_INTERFACE);
+    message.AddBool("can go backward", page->backForward().canGoBackOrForward(-1));
+    message.AddBool("can go forward", page->backForward().canGoBackOrForward(1));
+    message.AddBool("can stop", loader.isLoading());
     dispatchMessage(message);
 }
 

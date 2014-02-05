@@ -222,7 +222,6 @@ public:
 
     virtual void dispatchDidClearWindowObjectInWorld(DOMWrapperWorld&);
     virtual void documentElementAvailable();
-    virtual void didPerformFirstNavigation() const;
 
     virtual void registerForIconNotification(bool listen);
 
@@ -230,7 +229,6 @@ public:
 
 private:
     void callPolicyFunction(FramePolicyFunction, PolicyAction);
-    void triggerNavigationHistoryUpdate() const;
     void postCommitFrameViewSetup(FrameView*) const;
     bool isTertiaryMouseButton(const NavigationAction& action) const;
 

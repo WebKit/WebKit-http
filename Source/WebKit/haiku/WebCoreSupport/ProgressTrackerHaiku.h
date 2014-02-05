@@ -45,12 +45,13 @@ public:
     void setDispatchTarget(const BMessenger& messenger) { m_messenger = messenger; }
     
 private:
+    // ProgressTrackerClient API
     void progressTrackerDestroyed() override;
-
     void progressStarted(WebCore::Frame& originatingProgressFrame) override;
     void progressEstimateChanged(WebCore::Frame& originatingProgressFrame) override;
     void progressFinished(WebCore::Frame& originatingProgressFrame) override;
 
+    void triggerNavigationHistoryUpdate(WebCore::Frame&) const;
     status_t dispatchMessage(BMessage& message) const;
 
     BWebPage* m_view;
@@ -59,4 +60,4 @@ private:
 
 } // namespace WebCore
 
-#endif // ProgressTrackerClientEfl_h
+#endif // ProgressTrackerClientHaiku_h
