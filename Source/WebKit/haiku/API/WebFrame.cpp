@@ -35,6 +35,7 @@
 #include "EditorClientHaiku.h"
 #include "Element.h"
 #include "Frame.h"
+#include "FrameLoadRequest.h"
 #include "FrameLoader.h"
 #include "FrameLoaderClientHaiku.h"
 #include "FrameView.h"
@@ -138,7 +139,8 @@ void BWebFrame::LoadURL(WebCore::URL url)
 
     fData->requestedURL = url.string();
 
-    fData->frame->loader().reloadWithOverrideURL(url);
+    WebCore::ResourceRequest req(url);
+    fData->frame->loader().load(WebCore::FrameLoadRequest(fData->frame, req));
 }
 
 void BWebFrame::StopLoading()
