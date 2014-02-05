@@ -121,7 +121,7 @@ testsuite waits on that, it may mark one or several tests as "timed out".
 
 You can then run the testsuite:
 
-    $ perl Tools/Scripts/run-webkit-tests --platform=haiku --no-build \
+    $ python Tools/Scripts/run-webkit-tests --platform=haiku --no-build \
         --no-http --no-retry-failures --clobber-old-results \
         --no-new-test-results
 
