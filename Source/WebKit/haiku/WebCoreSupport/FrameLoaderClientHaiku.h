@@ -65,167 +65,157 @@ public:
     void setDispatchTarget(const BMessenger& messenger);
     BWebPage* page() const;
 
-    virtual void frameLoaderDestroyed();
+    virtual void frameLoaderDestroyed() override;
 
-    virtual bool hasWebView() const;
+    virtual bool hasWebView() const override;
 
-    virtual void makeRepresentation(DocumentLoader*);
-    virtual void forceLayout();
-    virtual void forceLayoutForNonHTML();
+    virtual void makeRepresentation(DocumentLoader*) override;
+    virtual void forceLayout() override;
+    virtual void forceLayoutForNonHTML() override;
 
-    virtual void setCopiesOnScroll();
+    virtual void setCopiesOnScroll() override;
 
-    virtual void detachedFromParent2();
-    virtual void detachedFromParent3();
+    virtual void detachedFromParent2() override;
+    virtual void detachedFromParent3() override;
 
-    virtual void download(ResourceHandle*, const ResourceRequest&, const ResourceResponse&);
-
-    virtual void assignIdentifierToInitialRequest(unsigned long identifier, DocumentLoader*, const ResourceRequest&);
+    virtual void assignIdentifierToInitialRequest(unsigned long identifier, DocumentLoader*, const ResourceRequest&) override;
 
     virtual void dispatchWillSendRequest(DocumentLoader*, unsigned long, ResourceRequest&,
-                                         const ResourceResponse&);
-    virtual bool shouldUseCredentialStorage(DocumentLoader*, unsigned long identifier);
+                                         const ResourceResponse&) override;
+    virtual bool shouldUseCredentialStorage(DocumentLoader*, unsigned long identifier) override;
     virtual void dispatchDidReceiveAuthenticationChallenge(DocumentLoader*,
                                                            unsigned long identifier,
-                                                           const AuthenticationChallenge&);
+                                                           const AuthenticationChallenge&) override;
     virtual void dispatchDidCancelAuthenticationChallenge(DocumentLoader*,
                                                           unsigned long identifier,
-                                                          const AuthenticationChallenge&);
+                                                          const AuthenticationChallenge&) override;
     virtual void dispatchDidReceiveResponse(DocumentLoader*, unsigned long,
-                                            const ResourceResponse&);
-    virtual void dispatchDidReceiveContentLength(DocumentLoader*, unsigned long, int);
-    virtual void dispatchDidFinishLoading(DocumentLoader*, unsigned long);
+                                            const ResourceResponse&) override;
+    virtual void dispatchDidReceiveContentLength(DocumentLoader*, unsigned long, int) override;
+    virtual void dispatchDidFinishLoading(DocumentLoader*, unsigned long) override;
     virtual void dispatchDidFailLoading(DocumentLoader*, unsigned long,
-                                        const ResourceError&);
+                                        const ResourceError&) override;
 
-    virtual void dispatchDidHandleOnloadEvents();
-    virtual void dispatchDidReceiveServerRedirectForProvisionalLoad();
-    virtual void dispatchDidCancelClientRedirect();
-    virtual void dispatchWillPerformClientRedirect(const URL&, double interval, double fireDate);
-    virtual void dispatchDidChangeLocationWithinPage();
-    virtual void dispatchDidPushStateWithinPage();
-    virtual void dispatchDidReplaceStateWithinPage();
-    virtual void dispatchDidPopStateWithinPage();
-    virtual void dispatchWillClose();
-    virtual void dispatchDidReceiveIcon();
-    virtual void dispatchDidStartProvisionalLoad();
-    virtual void dispatchDidReceiveTitle(const StringWithDirection&);
-    virtual void dispatchDidChangeIcons(IconType);
-    virtual void dispatchDidCommitLoad();
-    virtual void dispatchDidFailProvisionalLoad(const ResourceError&);
-    virtual void dispatchDidFailLoad(const ResourceError&);
-    virtual void dispatchDidFinishDocumentLoad();
-    virtual void dispatchDidFinishLoad();
-    virtual void dispatchDidFirstLayout();
-    virtual void dispatchDidFirstVisuallyNonEmptyLayout();
+    virtual void dispatchDidHandleOnloadEvents() override;
+    virtual void dispatchDidReceiveServerRedirectForProvisionalLoad() override;
+    virtual void dispatchDidCancelClientRedirect() override;
+    virtual void dispatchWillPerformClientRedirect(const URL&, double interval, double fireDate) override;
+    virtual void dispatchDidChangeLocationWithinPage() override;
+    virtual void dispatchDidPushStateWithinPage() override;
+    virtual void dispatchDidReplaceStateWithinPage() override;
+    virtual void dispatchDidPopStateWithinPage() override;
+    virtual void dispatchWillClose() override;
+    virtual void dispatchDidReceiveIcon() override;
+    virtual void dispatchDidStartProvisionalLoad() override;
+    virtual void dispatchDidReceiveTitle(const StringWithDirection&) override;
+    virtual void dispatchDidChangeIcons(IconType) override;
+    virtual void dispatchDidCommitLoad() override;
+    virtual void dispatchDidFailProvisionalLoad(const ResourceError&) override;
+    virtual void dispatchDidFailLoad(const ResourceError&) override;
+    virtual void dispatchDidFinishDocumentLoad() override;
+    virtual void dispatchDidFinishLoad() override;
 
-    virtual Frame* dispatchCreatePage(const NavigationAction&);
-    virtual void dispatchShow();
+    virtual Frame* dispatchCreatePage(const NavigationAction&) override;
+    virtual void dispatchShow() override;
 
-    virtual void dispatchDecidePolicyForResponse(const ResourceResponse&, const ResourceRequest&, FramePolicyFunction);
+    virtual void dispatchDecidePolicyForResponse(const ResourceResponse&, const ResourceRequest&, FramePolicyFunction) override;
     virtual void dispatchDecidePolicyForNewWindowAction(const NavigationAction&,
-        const ResourceRequest&, PassRefPtr<FormState>, const String&, FramePolicyFunction);
+        const ResourceRequest&, PassRefPtr<FormState>, const String&, FramePolicyFunction) override;
     virtual void dispatchDecidePolicyForNavigationAction(const NavigationAction&,
-                                                         const ResourceRequest&, PassRefPtr<FormState>, FramePolicyFunction);
-    virtual void cancelPolicyCheck();
+                                                         const ResourceRequest&, PassRefPtr<FormState>, FramePolicyFunction) override;
+    virtual void cancelPolicyCheck() override;
 
-    virtual void dispatchUnableToImplementPolicy(const ResourceError&);
+    virtual void dispatchUnableToImplementPolicy(const ResourceError&) override;
 
-    virtual void dispatchWillSendSubmitEvent(PassRefPtr<FormState>) { }
-    virtual void dispatchWillSubmitForm(PassRefPtr<FormState>, FramePolicyFunction);
+    virtual void dispatchWillSendSubmitEvent(PassRefPtr<FormState>) override { }
+    virtual void dispatchWillSubmitForm(PassRefPtr<FormState>, FramePolicyFunction) override;
 
-    virtual void dispatchDidLoadMainResource(DocumentLoader*);
-    virtual void revertToProvisionalState(DocumentLoader*);
-    virtual void setMainDocumentError(DocumentLoader*, const ResourceError&);
+    virtual void revertToProvisionalState(DocumentLoader*) override;
+    virtual void setMainDocumentError(DocumentLoader*, const ResourceError&) override;
     virtual bool dispatchDidLoadResourceFromMemoryCache(DocumentLoader*,
                                                         const ResourceRequest&,
-                                                        const ResourceResponse&, int);
+                                                        const ResourceResponse&, int) override;
 
-    virtual void setMainFrameDocumentReady(bool);
+    virtual void setMainFrameDocumentReady(bool) override;
 
-    virtual void startDownload(const ResourceRequest&, const String& suggestedName = String());
+    virtual void startDownload(const ResourceRequest&, const String& suggestedName = String()) override;
 
-    virtual void willChangeTitle(DocumentLoader*);
-    virtual void didChangeTitle(DocumentLoader*);
+    virtual void willChangeTitle(DocumentLoader*) override;
+    virtual void didChangeTitle(DocumentLoader*) override;
 
-    virtual void committedLoad(DocumentLoader*, const char*, int);
-    virtual void finishedLoading(DocumentLoader*);
-    virtual void updateGlobalHistory();
-    virtual void updateGlobalHistoryRedirectLinks();
+    virtual void committedLoad(DocumentLoader*, const char*, int) override;
+    virtual void finishedLoading(DocumentLoader*) override;
+    virtual void updateGlobalHistory() override;
+    virtual void updateGlobalHistoryRedirectLinks() override;
 
-    virtual bool shouldGoToHistoryItem(HistoryItem*) const;
-    virtual bool shouldStopLoadingForHistoryItem(HistoryItem*) const;
+    virtual bool shouldGoToHistoryItem(HistoryItem*) const override;
 
-    virtual void saveScrollPositionAndViewStateToItem(HistoryItem*);
+    virtual bool canCachePage() const override;
+    virtual void convertMainResourceLoadToDownload(DocumentLoader*, const ResourceRequest&, const ResourceResponse&) override;
 
-    virtual bool canCachePage() const;
-    virtual void convertMainResourceLoadToDownload(DocumentLoader*, const ResourceRequest&, const ResourceResponse&);
+    virtual void didDisplayInsecureContent() override;
 
-    virtual void didDisplayInsecureContent();
+    virtual void didRunInsecureContent(SecurityOrigin*, const URL&) override;
+    virtual void didDetectXSS(const URL&, bool didBlockEntirePage) override;
 
-    virtual void didRunInsecureContent(SecurityOrigin*, const URL&);
-    virtual void didDetectXSS(const URL&, bool didBlockEntirePage);
-
-    virtual ResourceError cancelledError(const ResourceRequest&);
-    virtual ResourceError blockedError(const ResourceRequest&);
-    virtual ResourceError cannotShowURLError(const ResourceRequest&);
-    virtual ResourceError interruptedForPolicyChangeError(const ResourceRequest&);
+    virtual ResourceError cancelledError(const ResourceRequest&) override;
+    virtual ResourceError blockedError(const ResourceRequest&) override;
+    virtual ResourceError cannotShowURLError(const ResourceRequest&) override;
+    virtual ResourceError interruptedForPolicyChangeError(const ResourceRequest&) override;
 
 
-    virtual ResourceError cannotShowMIMETypeError(const ResourceResponse&);
-    virtual ResourceError fileDoesNotExistError(const ResourceResponse&);
-    virtual ResourceError pluginWillHandleLoadError(const ResourceResponse&);
+    virtual ResourceError cannotShowMIMETypeError(const ResourceResponse&) override;
+    virtual ResourceError fileDoesNotExistError(const ResourceResponse&) override;
+    virtual ResourceError pluginWillHandleLoadError(const ResourceResponse&) override;
 
-    virtual bool shouldFallBack(const ResourceError&);
+    virtual bool shouldFallBack(const ResourceError&) override;
 
-    virtual String userAgent(const URL&);
+    virtual String userAgent(const URL&) override;
 
-    virtual void savePlatformDataToCachedFrame(CachedFrame*);
-    virtual void transitionToCommittedFromCachedFrame(CachedFrame*);
-    virtual void transitionToCommittedForNewPage();
+    virtual void savePlatformDataToCachedFrame(CachedFrame*) override;
+    virtual void transitionToCommittedFromCachedFrame(CachedFrame*) override;
+    virtual void transitionToCommittedForNewPage() override;
 
-    virtual bool canHandleRequest(const ResourceRequest&) const;
-    virtual bool canShowMIMEType(const String& MIMEType) const;
-    virtual bool canShowMIMETypeAsHTML(const String& MIMEType) const;
-    virtual bool representationExistsForURLScheme(const String& URLScheme) const;
-    virtual String generatedMIMETypeForURLScheme(const String& URLScheme) const;
+    virtual bool canHandleRequest(const ResourceRequest&) const override;
+    virtual bool canShowMIMEType(const String& MIMEType) const override;
+    virtual bool canShowMIMETypeAsHTML(const String& MIMEType) const override;
+    virtual bool representationExistsForURLScheme(const String& URLScheme) const override;
+    virtual String generatedMIMETypeForURLScheme(const String& URLScheme) const override;
 
-    virtual void frameLoadCompleted();
-    virtual void saveViewStateToItem(HistoryItem*);
-    virtual void restoreViewState();
-    virtual void provisionalLoadStarted();
-    virtual void didFinishLoad();
-    virtual void prepareForDataSourceReplacement();
-    virtual PassRefPtr<DocumentLoader> createDocumentLoader(const ResourceRequest&, const SubstituteData&);
+    virtual void frameLoadCompleted() override;
+    virtual void saveViewStateToItem(HistoryItem*) override;
+    virtual void restoreViewState() override;
+    virtual void provisionalLoadStarted() override;
+    virtual void didFinishLoad() override;
+    virtual void prepareForDataSourceReplacement() override;
+    virtual PassRefPtr<DocumentLoader> createDocumentLoader(const ResourceRequest&, const SubstituteData&) override;
 
-    virtual void setTitle(const StringWithDirection&, const URL&);
+    virtual void setTitle(const StringWithDirection&, const URL&) override;
 
     virtual PassRefPtr<Frame> createFrame(const URL& url, const String& name, HTMLFrameOwnerElement*,
-                                                   const String& referrer, bool allowsScrolling, int marginWidth, int marginHeight);
-    virtual void didTransferChildFrameToNewDocument();
+                                                   const String& referrer, bool allowsScrolling, int marginWidth, int marginHeight) override;
     virtual PassRefPtr<Widget> createPlugin(const IntSize&, HTMLPlugInElement*, const URL&, const Vector<String>&,
-                                                     const Vector<String>&, const String&, bool);
-    virtual void recreatePlugin(Widget*) { }
-    virtual void redirectDataToPlugin(Widget* pluginWidget);
+                                                     const Vector<String>&, const String&, bool) override;
+    virtual void recreatePlugin(Widget*) override { }
+    virtual void redirectDataToPlugin(Widget* pluginWidget) override;
 
     virtual PassRefPtr<Widget> createJavaAppletWidget(const IntSize&, HTMLAppletElement*, const URL& baseURL,
-                                                               const Vector<String>& paramNames, const Vector<String>& paramValues);
+                                                               const Vector<String>& paramNames, const Vector<String>& paramValues) override;
 
-    virtual ObjectContentType objectContentType(const URL&, const String& mimeType, bool shouldPreferPlugInsForImages);
+    virtual ObjectContentType objectContentType(const URL&, const String& mimeType, bool shouldPreferPlugInsForImages) override;
 
-    virtual String overrideMediaType() const;
+    virtual String overrideMediaType() const override;
 
-    virtual void didSaveToPageCache();
-    virtual void didRestoreFromPageCache();
+    virtual void didSaveToPageCache() override;
+    virtual void didRestoreFromPageCache() override;
 
-    virtual void dispatchDidBecomeFrameset(bool);
+    virtual void dispatchDidBecomeFrameset(bool) override;
 
-    virtual void dispatchDidClearWindowObjectInWorld(DOMWrapperWorld&);
-    virtual void documentElementAvailable();
+    virtual void dispatchDidClearWindowObjectInWorld(DOMWrapperWorld&) override;
 
-    virtual void registerForIconNotification(bool listen);
+    virtual void registerForIconNotification(bool listen) override;
 
-    virtual PassRefPtr<FrameNetworkingContext> createNetworkingContext();
+    virtual PassRefPtr<FrameNetworkingContext> createNetworkingContext() override;
 
 private:
     void callPolicyFunction(FramePolicyFunction, PolicyAction);

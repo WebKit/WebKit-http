@@ -66,22 +66,22 @@ public:
 
 private:
     // WebPage notification API implementations
-    virtual void NavigationRequested(const BString& url, BWebView* view);
-    virtual void NewWindowRequested(const BString& url, bool primaryAction);
+    virtual void NavigationRequested(const BString& url, BWebView* view) override;
+    virtual void NewWindowRequested(const BString& url, bool primaryAction) override;
 	virtual void NewPageCreated(BWebView* view, BRect windowFrame,
-		bool modalDialog, bool resizable);
-    virtual void LoadNegotiating(const BString& url, BWebView* view);
-    virtual void LoadCommitted(const BString& url, BWebView* view);
-    virtual void LoadProgress(float progress, BWebView* view);
-    virtual void LoadFailed(const BString& url, BWebView* view);
-    virtual void LoadFinished(const BString& url, BWebView* view);
-    virtual void TitleChanged(const BString& title, BWebView* view);
-    virtual void SetToolBarsVisible(bool flag, BWebView* view);
-    virtual void SetStatusBarVisible(bool flag, BWebView* view);
-    virtual void SetMenuBarVisible(bool flag, BWebView* view);
-    virtual void StatusChanged(const BString& status, BWebView* view);
+		bool modalDialog, bool resizable, bool activate) override;
+    virtual void LoadNegotiating(const BString& url, BWebView* view) override;
+    virtual void LoadCommitted(const BString& url, BWebView* view) override;
+    virtual void LoadProgress(float progress, BWebView* view) override;
+    virtual void LoadFailed(const BString& url, BWebView* view) override;
+    virtual void LoadFinished(const BString& url, BWebView* view) override;
+    virtual void TitleChanged(const BString& title, BWebView* view) override;
+    virtual void SetToolBarsVisible(bool flag, BWebView* view) override;
+    virtual void SetStatusBarVisible(bool flag, BWebView* view) override;
+    virtual void SetMenuBarVisible(bool flag, BWebView* view) override;
+    virtual void StatusChanged(const BString& status, BWebView* view) override;
     virtual void NavigationCapabilitiesChanged(bool canGoBackward,
-        bool canGoForward, bool canStop, BWebView* view);
+        bool canGoForward, bool canStop, BWebView* view) override;
 
     void init(BWebView* view, ToolbarPolicy);
     void updateTitle(const BString& title);

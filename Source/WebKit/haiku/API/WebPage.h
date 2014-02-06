@@ -184,10 +184,6 @@ private:
 
 	static void requestDownload(const WebCore::ResourceRequest& request,
 		bool isAsynchronousRequest = true);
-	static void requestDownload(WebCore::ResourceHandle* handle,
-		const WebCore::ResourceRequest& request,
-		const WebCore::ResourceResponse& response,
-		bool isAsynchronousRequest = true);
 	static void downloadCreated(BWebDownload* download,
 		bool isAsynchronousRequest);
 

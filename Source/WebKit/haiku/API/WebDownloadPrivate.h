@@ -57,7 +57,6 @@ class WebDownloadPrivate : public WebCore::ResourceHandleClient {
 	WTF_MAKE_NONCOPYABLE(WebDownloadPrivate);
 public:
     WebDownloadPrivate(const ResourceRequest&);
-    WebDownloadPrivate(ResourceHandle*, const ResourceRequest&, const ResourceResponse&);
 
     // ResourceHandleClient implementation
     virtual void didReceiveResponse(ResourceHandle*, const ResourceResponse&);

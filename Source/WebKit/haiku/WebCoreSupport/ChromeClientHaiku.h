@@ -45,120 +45,110 @@ namespace WebCore {
     public:
         ChromeClientHaiku(BWebPage*, BWebView*);
         virtual ~ChromeClientHaiku();
-        virtual void chromeDestroyed();
+        virtual void chromeDestroyed() override;
 
-        virtual void setWindowRect(const FloatRect&);
-        virtual FloatRect windowRect();
+        virtual void setWindowRect(const FloatRect&) override;
+        virtual FloatRect windowRect() override;
 
-        virtual FloatRect pageRect();
+        virtual FloatRect pageRect() override;
 
-        virtual void focus();
-        virtual void unfocus();
+        virtual void focus() override;
+        virtual void unfocus() override;
 
-        virtual bool canTakeFocus(FocusDirection);
-        virtual void takeFocus(FocusDirection);
+        virtual bool canTakeFocus(FocusDirection) override;
+        virtual void takeFocus(FocusDirection) override;
 
-        virtual void focusedElementChanged(Element*);
-        virtual void focusedFrameChanged(Frame*);
+        virtual void focusedElementChanged(Element*) override;
+        virtual void focusedFrameChanged(Frame*) override;
 
-        virtual Page* createWindow(Frame*, const FrameLoadRequest&, const WindowFeatures&, const NavigationAction&);
+        virtual Page* createWindow(Frame*, const FrameLoadRequest&, const WindowFeatures&, const NavigationAction&) override;
 
-        virtual void show();
+        virtual void show() override;
 
-        virtual bool canRunModal();
-        virtual void runModal();
+        virtual bool canRunModal() override;
+        virtual void runModal() override;
 
-        virtual void setToolbarsVisible(bool);
-        virtual bool toolbarsVisible();
+        virtual void setToolbarsVisible(bool) override;
+        virtual bool toolbarsVisible() override;
 
-        virtual void setStatusbarVisible(bool);
-        virtual bool statusbarVisible();
+        virtual void setStatusbarVisible(bool) override;
+        virtual bool statusbarVisible() override;
 
-        virtual void setScrollbarsVisible(bool);
-        virtual bool scrollbarsVisible();
+        virtual void setScrollbarsVisible(bool) override;
+        virtual bool scrollbarsVisible() override;
 
-        virtual void setMenubarVisible(bool);
-        virtual bool menubarVisible();
+        virtual void setMenubarVisible(bool) override;
+        virtual bool menubarVisible() override;
 
-        virtual void setResizable(bool);
+        virtual void setResizable(bool) override;
 
         virtual void addMessageToConsole(MessageSource, MessageLevel,
-                                         const String& message, unsigned int lineNumber, unsigned columnNumber, const String& sourceID);
+                                         const String& message, unsigned int lineNumber, unsigned columnNumber, const String& sourceID) override;
 
-        virtual bool canRunBeforeUnloadConfirmPanel();
-        virtual bool runBeforeUnloadConfirmPanel(const String& message, Frame* frame);
+        virtual bool canRunBeforeUnloadConfirmPanel() override;
+        virtual bool runBeforeUnloadConfirmPanel(const String& message, Frame* frame) override;
 
-        virtual void closeWindowSoon();
+        virtual void closeWindowSoon() override;
 
-        virtual void runJavaScriptAlert(Frame*, const String&);
-        virtual bool runJavaScriptConfirm(Frame*, const String&);
-        virtual bool runJavaScriptPrompt(Frame*, const String& message, const String& defaultValue, String& result);
-        virtual bool shouldInterruptJavaScript();
-        virtual KeyboardUIMode keyboardUIMode();
+        virtual void runJavaScriptAlert(Frame*, const String&) override;
+        virtual bool runJavaScriptConfirm(Frame*, const String&) override;
+        virtual bool runJavaScriptPrompt(Frame*, const String& message, const String& defaultValue, String& result) override;
+        virtual bool shouldInterruptJavaScript() override;
+        virtual KeyboardUIMode keyboardUIMode() override;
 
-        virtual void* webView() const { return 0; }
+        virtual void setStatusbarText(const String&) override;
 
-        virtual void setStatusbarText(const String&);
+        virtual IntRect windowResizerRect() const override;
 
-        virtual bool tabsToLinks() const;
-        virtual IntRect windowResizerRect() const;
+        virtual void invalidateRootView(const IntRect&, bool) override;
+        virtual void invalidateContentsAndRootView(const IntRect&, bool) override;
 
-        virtual void invalidateRootView(const IntRect&, bool);
-        virtual void invalidateContentsAndRootView(const IntRect&, bool);
+        virtual void invalidateContentsForSlowScroll(const IntRect&, bool) override;
+        virtual void scroll(const IntSize& scrollDelta, const IntRect& rectToScroll, const IntRect& clipRect) override;
 
-        virtual void invalidateContentsForSlowScroll(const IntRect&, bool);
-        virtual void scroll(const IntSize& scrollDelta, const IntRect& rectToScroll, const IntRect& clipRect);
+        virtual IntPoint screenToRootView(const IntPoint&) const override;
+        virtual IntRect rootViewToScreen(const IntRect&) const override;
 
-        virtual IntPoint screenToRootView(const IntPoint&) const;
-        virtual IntRect rootViewToScreen(const IntRect&) const;
+        virtual PlatformPageClient platformPageClient() const override;
+        virtual void contentsSizeChanged(Frame*, const IntSize&) const override;
+        virtual void scrollRectIntoView(const IntRect&) const override;
 
-        virtual PlatformPageClient platformPageClient() const;
-        virtual void contentsSizeChanged(Frame*, const IntSize&) const;
-        virtual void scrollRectIntoView(const IntRect&) const;
+        virtual void scrollbarsModeDidChange() const override { }
+        virtual void setCursor(const Cursor&) override ;
+        virtual void setCursorHiddenUntilMouseMoves(bool) override { }
+        virtual void scheduleAnimation() override;
 
-        virtual void addToDirtyRegion(const IntRect&);
-        virtual void scrollBackingStore(int, int, const IntRect&, const IntRect&);
-        virtual void updateBackingStore();
+        virtual void mouseDidMoveOverElement(const HitTestResult&, unsigned modifierFlags) override;
 
-        virtual void scrollbarsModeDidChange() const { }
-        virtual void setCursor(const Cursor&);
-        virtual void setCursorHiddenUntilMouseMoves(bool) { }
-        virtual void scheduleAnimation();
+        virtual void setToolTip(const String&, TextDirection) override;
 
-        virtual void mouseDidMoveOverElement(const HitTestResult&, unsigned modifierFlags);
-
-        virtual void setToolTip(const String&, TextDirection);
-
-        virtual void print(Frame*);
+        virtual void print(Frame*) override;
 
 #if ENABLE(SQL_DATABASE)
-        virtual void exceededDatabaseQuota(Frame*, const String& databaseName, DatabaseDetails);
+        virtual void exceededDatabaseQuota(Frame*, const String& databaseName, DatabaseDetails) override;
 #endif
-        virtual void reachedMaxAppCacheSize(int64_t spaceNeeded);
-        virtual void reachedApplicationCacheOriginQuota(SecurityOrigin*, int64_t totalSpaceNeeded);
+        virtual void reachedMaxAppCacheSize(int64_t spaceNeeded) override;
+        virtual void reachedApplicationCacheOriginQuota(SecurityOrigin*, int64_t totalSpaceNeeded) override;
 
-        virtual void attachRootGraphicsLayer(Frame*, GraphicsLayer*);
-        virtual void setNeedsOneShotDrawingSynchronization();
-        virtual void scheduleCompositingLayerFlush();
+        virtual void attachRootGraphicsLayer(Frame*, GraphicsLayer*) override;
+        virtual void setNeedsOneShotDrawingSynchronization() override;
+        virtual void scheduleCompositingLayerFlush() override;
 
-        virtual void cancelGeolocationPermissionRequestForFrame(Frame*, Geolocation*) { }
-
-        virtual void runOpenPanel(Frame*, PassRefPtr<FileChooser>);
+        virtual void runOpenPanel(Frame*, PassRefPtr<FileChooser>) override;
         // Asynchronous request to load an icon for specified filenames.
-        virtual void loadIconForFiles(const Vector<String>&, FileIconLoader*);
+        virtual void loadIconForFiles(const Vector<String>&, FileIconLoader*) override;
 
         // Notification that the given form element has changed. This function
         // will be called frequently, so handling should be very fast.
-        virtual void formStateDidChange(const Node*);
+        virtual void formStateDidChange(const Node*) override;
 
-        virtual bool selectItemWritingDirectionIsNatural();
-        virtual bool selectItemAlignmentFollowsMenuWritingDirection();
-        virtual bool hasOpenedPopup() const;
-        virtual PassRefPtr<PopupMenu> createPopupMenu(PopupMenuClient*) const;
-        virtual PassRefPtr<SearchPopupMenu> createSearchPopupMenu(PopupMenuClient*) const;
+        virtual bool selectItemWritingDirectionIsNatural() override;
+        virtual bool selectItemAlignmentFollowsMenuWritingDirection() override;
+        virtual bool hasOpenedPopup() const override;
+        virtual PassRefPtr<PopupMenu> createPopupMenu(PopupMenuClient*) const override;
+        virtual PassRefPtr<SearchPopupMenu> createSearchPopupMenu(PopupMenuClient*) const override;
 
-        virtual void numWheelEventHandlersChanged(unsigned) { }
-        virtual void numTouchEventHandlersChanged(unsigned) { }
+        virtual void numWheelEventHandlersChanged(unsigned) override { }
 
     private:
         BWebPage* m_webPage;

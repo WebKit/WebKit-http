@@ -610,14 +610,6 @@ void BWebPage::linkHovered(const BString& url, const BString& /*title*/, const B
     downloadCreated(download, isAsynchronousRequest);
 }
 
-/*static*/ void BWebPage::requestDownload(WebCore::ResourceHandle* handle,
-    const WebCore::ResourceRequest& request,
-    const WebCore::ResourceResponse& response, bool isAsynchronousRequest)
-{
-    BWebDownload* download = new BWebDownload(new BPrivate::WebDownloadPrivate(handle, request, response));
-    downloadCreated(download, isAsynchronousRequest);
-}
-
 /*static*/ void BWebPage::downloadCreated(BWebDownload* download,
 	bool isAsynchronousRequest)
 {

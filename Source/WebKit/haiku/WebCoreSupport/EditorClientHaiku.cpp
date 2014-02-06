@@ -52,7 +52,6 @@ namespace WebCore {
 
 EditorClientHaiku::EditorClientHaiku(BWebPage* page)
     : m_page(page)
-    , m_editing(false)
     , m_isInRedo(false)
 {
 }
@@ -62,21 +61,10 @@ void EditorClientHaiku::pageDestroyed()
     delete this;
 }
 
-void EditorClientHaiku::frameWillDetachPage(Frame*)
-{
-    notImplemented();
-}
-
 bool EditorClientHaiku::shouldDeleteRange(Range*)
 {
     notImplemented();
     return true;
-}
-
-bool EditorClientHaiku::shouldShowDeleteInterface(HTMLElement*)
-{
-    notImplemented();
-    return false;
 }
 
 bool EditorClientHaiku::smartInsertDeleteEnabled()
@@ -143,8 +131,8 @@ bool EditorClientHaiku::shouldInsertText(const String&, Range*, EditorInsertActi
     return true;
 }
 
-bool EditorClientHaiku::shouldChangeSelectedRange(Range* fromRange, Range* toRange,
-                                                  EAffinity, bool stillSelecting)
+bool EditorClientHaiku::shouldChangeSelectedRange(Range* /*fromRange*/, Range* /*toRange*/,
+                                                  EAffinity, bool /*stillSelecting*/)
 {
     notImplemented();
     return true;
@@ -166,7 +154,6 @@ bool EditorClientHaiku::shouldMoveRangeAfterDelete(Range*, Range*)
 void EditorClientHaiku::didBeginEditing()
 {
     notImplemented();
-    m_editing = true;
 }
 
 void EditorClientHaiku::respondToChangedContents()
@@ -186,7 +173,6 @@ void EditorClientHaiku::respondToChangedSelection(Frame* frame)
 
 void EditorClientHaiku::didEndEditing()
 {
-    m_editing = false;
 }
 
 void EditorClientHaiku::didWriteSelectionToPasteboard()
@@ -200,11 +186,6 @@ void EditorClientHaiku::willWriteSelectionToPasteboard(WebCore::Range*)
 
 void EditorClientHaiku::getClientPasteboardDataForRange(WebCore::Range*, Vector<String>&, Vector<RefPtr<WebCore::SharedBuffer> >&)
 {
-}
-
-void EditorClientHaiku::didSetSelectionTypesForPasteboard()
-{
-    notImplemented();
 }
 
 void EditorClientHaiku::registerUndoStep(WTF::PassRefPtr<WebCore::UndoStep> step)
@@ -519,12 +500,10 @@ void EditorClientHaiku::handleInputMethodKeydown(KeyboardEvent*)
 
 void EditorClientHaiku::textFieldDidBeginEditing(Element*)
 {
-    m_editing = true;
 }
 
 void EditorClientHaiku::textFieldDidEndEditing(Element*)
 {
-    m_editing = false;
 }
 
 void EditorClientHaiku::textDidChangeInTextField(Element*)
@@ -566,7 +545,7 @@ void EditorClientHaiku::checkSpellingOfString(const UChar*, int, int*, int*)
     notImplemented();
 }
 
-String EditorClientHaiku::getAutoCorrectSuggestionForMisspelledWord(const String& misspelledWord)
+String EditorClientHaiku::getAutoCorrectSuggestionForMisspelledWord(const String& /*misspelledWord*/)
 {
     notImplemented();
     return String();
@@ -613,14 +592,9 @@ void EditorClientHaiku::willSetInputMethodState()
     notImplemented();
 }
 
-void EditorClientHaiku::setInputMethodState(bool enabled)
+void EditorClientHaiku::setInputMethodState(bool /*enabled*/)
 {
     notImplemented();
-}
-
-bool EditorClientHaiku::isEditing() const
-{
-    return m_editing;
 }
 
 // #pragma mark -
@@ -767,7 +741,7 @@ void EditorClientHaiku::clearPendingIMData()
     setPendingPreedit(0);
 }
 
-void EditorClientHaiku::imContextCommitted(const char* str, EditorClient* client)
+void EditorClientHaiku::imContextCommitted(const char* str, EditorClient* /*client*/)
 {
     // This signal will fire during a keydown event. We want the contents of the
     // field to change right before the keyup event, so we wait until then to actually
@@ -775,7 +749,7 @@ void EditorClientHaiku::imContextCommitted(const char* str, EditorClient* client
     setPendingComposition(str);
 }
 
-void EditorClientHaiku::imContextPreeditChanged(EditorClient* client)
+void EditorClientHaiku::imContextPreeditChanged(EditorClient* /*client*/)
 {
     const char* newPreedit = 0;
     // FIXME: get pre edit

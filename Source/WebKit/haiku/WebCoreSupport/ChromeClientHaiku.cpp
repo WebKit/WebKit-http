@@ -126,7 +126,7 @@ void ChromeClientHaiku::focusedFrameChanged(Frame*)
     notImplemented();
 }
 
-Page* ChromeClientHaiku::createWindow(Frame* frame, const FrameLoadRequest& request, const WindowFeatures& features, const NavigationAction& /*action*/)
+Page* ChromeClientHaiku::createWindow(Frame* /*frame*/, const FrameLoadRequest& request, const WindowFeatures& features, const NavigationAction& /*action*/)
 {
 	// FIXME: I believe the frame is important for cloning session information.
 	// From looking through the Chromium port code, it is passed to the
@@ -276,7 +276,7 @@ bool ChromeClientHaiku::runJavaScriptConfirm(Frame*, const String& msg)
     return !alert->Go();
 }
 
-bool ChromeClientHaiku::runJavaScriptPrompt(Frame*, const String& message, const String& defaultValue, String& result)
+bool ChromeClientHaiku::runJavaScriptPrompt(Frame*, const String& /*message*/, const String& /*defaultValue*/, String& /*result*/)
 {
     notImplemented();
     return false;
@@ -296,11 +296,6 @@ bool ChromeClientHaiku::shouldInterruptJavaScript()
 KeyboardUIMode ChromeClientHaiku::keyboardUIMode()
 {
     return KeyboardAccessDefault;
-}
-
-bool ChromeClientHaiku::tabsToLinks() const
-{
-    return false;
 }
 
 IntRect ChromeClientHaiku::windowResizerRect() const
@@ -378,21 +373,6 @@ void ChromeClientHaiku::scrollRectIntoView(const IntRect&) const
     // NOTE: Used for example to make the view scroll with the mouse when selecting.
 }
 
-void ChromeClientHaiku::addToDirtyRegion(const IntRect&)
-{
-    notImplemented();
-}
-
-void ChromeClientHaiku::scrollBackingStore(int, int, const IntRect&, const IntRect&)
-{
-    notImplemented();
-}
-
-void ChromeClientHaiku::updateBackingStore()
-{
-    notImplemented();
-}
-
 void ChromeClientHaiku::mouseDidMoveOverElement(const HitTestResult& result, unsigned /*modifierFlags*/)
 {
     TextDirection dir;
@@ -428,7 +408,7 @@ void ChromeClientHaiku::print(Frame*)
 }
 
 #if ENABLE(SQL_DATABASE)
-void ChromeClientHaiku::exceededDatabaseQuota(Frame*, const String& databaseName, DatabaseDetails)
+void ChromeClientHaiku::exceededDatabaseQuota(Frame*, const String& /*databaseName*/, DatabaseDetails)
 {
     notImplemented();
 }
@@ -505,7 +485,7 @@ PassRefPtr<SearchPopupMenu> ChromeClientHaiku::createSearchPopupMenu(PopupMenuCl
     return adoptRef(new SearchPopupMenuHaiku(client));
 }
 
-void ChromeClientHaiku::attachRootGraphicsLayer(Frame*, GraphicsLayer* rootLayer)
+void ChromeClientHaiku::attachRootGraphicsLayer(Frame*, GraphicsLayer* /*rootLayer*/)
 {
     notImplemented();
 }

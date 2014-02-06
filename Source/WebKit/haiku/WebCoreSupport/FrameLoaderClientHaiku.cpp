@@ -466,30 +466,12 @@ void FrameLoaderClientHaiku::dispatchDidFinishLoad()
     dispatchMessage(message);
 }
 
-void FrameLoaderClientHaiku::dispatchDidFirstLayout()
-{
-    notImplemented();
-}
-
-void FrameLoaderClientHaiku::dispatchDidFirstVisuallyNonEmptyLayout()
-{
-    if (m_loadingErrorPage)
-        return;
-
-    notImplemented();
-}
-
 void FrameLoaderClientHaiku::dispatchWillSubmitForm(PassRefPtr<FormState>, FramePolicyFunction function)
 {
     CALLED();
     notImplemented();
     // FIXME: Send an event to allow for alerts and cancellation.
     callPolicyFunction(function, PolicyUse);
-}
-
-void FrameLoaderClientHaiku::dispatchDidLoadMainResource(DocumentLoader*)
-{
-    notImplemented();
 }
 
 Frame* FrameLoaderClientHaiku::dispatchCreatePage(const NavigationAction& /*action*/)
@@ -627,11 +609,6 @@ void FrameLoaderClientHaiku::setMainFrameDocumentReady(bool)
     // this is only interesting once we provide an external API for the DOM
 }
 
-void FrameLoaderClientHaiku::download(ResourceHandle* handle, const ResourceRequest& request, const ResourceResponse& response)
-{
-    m_webPage->requestDownload(handle, request, response);
-}
-
 void FrameLoaderClientHaiku::startDownload(const ResourceRequest& request, const String& /*suggestedName*/)
 {
     m_webPage->requestDownload(request);
@@ -711,19 +688,6 @@ bool FrameLoaderClientHaiku::shouldGoToHistoryItem(WebCore::HistoryItem*) const
     // FIXME: Should probably be refuse to go to the item when it contains
     // form data that has already been sent or something.
     return true;
-}
-
-bool FrameLoaderClientHaiku::shouldStopLoadingForHistoryItem(WebCore::HistoryItem*) const
-{
-    return true;
-}
-
-void FrameLoaderClientHaiku::saveScrollPositionAndViewStateToItem(WebCore::HistoryItem*)
-{
-    // NOTE: I think we don't have anything to do here, since it a) obviously works already
-    // and b) it is probably for the case when using a native ScrollView as widget, which
-    // we don't do.
-    notImplemented();
 }
 
 void FrameLoaderClientHaiku::didDisplayInsecureContent()
@@ -1000,11 +964,6 @@ PassRefPtr<Frame> FrameLoaderClientHaiku::createFrame(const URL& url, const Stri
     return childFrame.release();
 }
 
-void FrameLoaderClientHaiku::didTransferChildFrameToNewDocument()
-{
-    CALLED();
-}
-
 ObjectContentType FrameLoaderClientHaiku::objectContentType(const URL& url, const String& originalMimeType, bool /*shouldPreferPlugInsForImages*/)
 {
     CALLED();
@@ -1108,10 +1067,6 @@ void FrameLoaderClientHaiku::dispatchDidClearWindowObjectInWorld(DOMWrapperWorld
         m_webPage->fDumpRenderTree->didClearWindowObjectInWorld(world, context, windowObject);
     }
 
-}
-
-void FrameLoaderClientHaiku::documentElementAvailable()
-{
 }
 
 void FrameLoaderClientHaiku::registerForIconNotification(bool /*listen*/)

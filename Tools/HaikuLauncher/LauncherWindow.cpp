@@ -207,7 +207,7 @@ void LauncherWindow::NewWindowRequested(const BString& url, bool primaryAction)
 }
 
 void LauncherWindow::NewPageCreated(BWebView* view, BRect windowFrame,
-	bool modalDialog, bool resizable)
+	bool modalDialog, bool resizable, bool activate)
 {
 	if (!windowFrame.IsValid())
 		windowFrame = Frame().OffsetByCopy(10, 10);

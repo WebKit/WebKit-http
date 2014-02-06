@@ -38,19 +38,14 @@ namespace WebCore {
 
     class InspectorClientHaiku : public InspectorClient {
     public:
-        virtual void inspectorDestroyed();
+        virtual void inspectorDestroyed() override;
 
-        virtual InspectorFrontendChannel* openInspectorFrontend(WebCore::InspectorController*);
-        virtual void closeInspectorFrontend();
-        virtual void bringFrontendToFront();
+        virtual InspectorFrontendChannel* openInspectorFrontend(WebCore::InspectorController*) override;
+        virtual void closeInspectorFrontend() override;
+        virtual void bringFrontendToFront() override;
 
-        virtual void highlight();
-        virtual void hideHighlight();
-
-        virtual bool sendMessageToFrontend(const String&);
-
-        virtual void populateSetting(const WTF::String& key, WTF::String* value);
-        virtual void storeSetting(const WTF::String& key, const WTF::String& value);
+        virtual void highlight() override;
+        virtual void hideHighlight() override;
     };
 } // namespace WebCore
 

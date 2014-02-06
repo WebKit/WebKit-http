@@ -66,21 +66,5 @@ void InspectorClientHaiku::hideHighlight()
     notImplemented();
 }
 
-bool InspectorClientHaiku::sendMessageToFrontend(const String&)
-{
-    notImplemented();
-    return false;
-}
-
-void InspectorClientHaiku::populateSetting(const String& key, String* value)
-{
-    notImplemented();
-}
-
-void InspectorClientHaiku::storeSetting(const String& key, const String& value)
-{
-    notImplemented();
-}
-
 } // namespace WebCore
 

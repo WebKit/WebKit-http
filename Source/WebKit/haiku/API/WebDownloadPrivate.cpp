@@ -62,25 +62,6 @@ WebDownloadPrivate::WebDownloadPrivate(const ResourceRequest& request)
 {
 }
 
-WebDownloadPrivate::WebDownloadPrivate(ResourceHandle* handle,
-        const ResourceRequest& request, const ResourceResponse& response)
-    : m_webDownload(0)
-    , m_resourceHandle(handle)
-    , m_currentSize(0)
-    , m_expectedSize(0)
-    , m_url()
-    , m_path("/boot/home/Desktop/")
-    , m_filename("Download")
-    , m_mimeType()
-    , m_mimeTypeGuessTries(kMaxMimeTypeGuessTries)
-    , m_file()
-    , m_lastProgressReportTime(0)
-{
-	m_resourceHandle->setClient(this);
-	// Call the hook manually to figure out the details of the request
-	didReceiveResponse(handle, response);
-}
-
 void WebDownloadPrivate::didReceiveResponse(ResourceHandle*, const ResourceResponse& response)
 {
     if (!response.isNull()) {

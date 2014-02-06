@@ -48,84 +48,79 @@ class PlatformKeyboardEvent;
 class EditorClientHaiku : public EditorClient, public TextCheckerClient {
 public:
     EditorClientHaiku(BWebPage* page);
-    virtual void pageDestroyed();
-    virtual void frameWillDetachPage(Frame*);
+    virtual void pageDestroyed() override;
 
-    virtual bool shouldDeleteRange(Range*);
-    virtual bool shouldShowDeleteInterface(HTMLElement*);
-    virtual bool smartInsertDeleteEnabled();
-    virtual bool isSelectTrailingWhitespaceEnabled();
-    virtual bool isContinuousSpellCheckingEnabled();
-    virtual void toggleContinuousSpellChecking();
-    virtual bool isGrammarCheckingEnabled();
-    virtual void toggleGrammarChecking();
-    virtual int spellCheckerDocumentTag();
+    virtual bool shouldDeleteRange(Range*) override;
+    virtual bool smartInsertDeleteEnabled() override;
+    virtual bool isSelectTrailingWhitespaceEnabled() override;
+    virtual bool isContinuousSpellCheckingEnabled() override;
+    virtual void toggleContinuousSpellChecking() override;
+    virtual bool isGrammarCheckingEnabled() override;
+    virtual void toggleGrammarChecking() override;
+    virtual int spellCheckerDocumentTag() override;
 
-    virtual bool shouldBeginEditing(Range*);
-    virtual bool shouldEndEditing(Range*);
-    virtual bool shouldInsertNode(Node*, Range*, EditorInsertAction);
-    virtual bool shouldInsertText(const String&, Range*, EditorInsertAction);
+    virtual bool shouldBeginEditing(Range*) override;
+    virtual bool shouldEndEditing(Range*) override;
+    virtual bool shouldInsertNode(Node*, Range*, EditorInsertAction) override;
+    virtual bool shouldInsertText(const String&, Range*, EditorInsertAction) override;
     virtual bool shouldChangeSelectedRange(Range* fromRange, Range* toRange,
-                                           EAffinity, bool stillSelecting);
+                                           EAffinity, bool stillSelecting) override;
 
-    virtual bool shouldApplyStyle(StyleProperties*, Range*);
-    virtual bool shouldMoveRangeAfterDelete(Range*, Range*);
+    virtual bool shouldApplyStyle(StyleProperties*, Range*) override;
+    virtual bool shouldMoveRangeAfterDelete(Range*, Range*) override;
 
-    virtual void didBeginEditing();
-    virtual void respondToChangedContents();
-    virtual void respondToChangedSelection(Frame*);
-    virtual void didEndEditing();
-    virtual void willWriteSelectionToPasteboard(WebCore::Range*);
-    virtual void didWriteSelectionToPasteboard();
-    virtual void getClientPasteboardDataForRange(WebCore::Range*, Vector<String>& pasteboardTypes, Vector<RefPtr<WebCore::SharedBuffer> >& pasteboardData);
-    virtual void didSetSelectionTypesForPasteboard();
+    virtual void didBeginEditing() override;
+    virtual void respondToChangedContents() override;
+    virtual void respondToChangedSelection(Frame*) override;
+    virtual void didEndEditing() override;
+    virtual void willWriteSelectionToPasteboard(WebCore::Range*) override;
+    virtual void didWriteSelectionToPasteboard() override;
+    virtual void getClientPasteboardDataForRange(WebCore::Range*, Vector<String>& pasteboardTypes, Vector<RefPtr<WebCore::SharedBuffer> >& pasteboardData) override;
 
-    virtual void registerUndoStep(PassRefPtr<UndoStep>);
-    virtual void registerRedoStep(PassRefPtr<UndoStep>);
-    virtual void clearUndoRedoOperations();
+    virtual void registerUndoStep(PassRefPtr<UndoStep>) override;
+    virtual void registerRedoStep(PassRefPtr<UndoStep>) override;
+    virtual void clearUndoRedoOperations() override;
 
-    virtual bool canCopyCut(Frame*, bool defaultValue) const;
-    virtual bool canPaste(Frame*, bool defaultValue) const;
-    virtual bool canUndo() const;
-    virtual bool canRedo() const;
+    virtual bool canCopyCut(Frame*, bool defaultValue) const override;
+    virtual bool canPaste(Frame*, bool defaultValue) const override;
+    virtual bool canUndo() const override;
+    virtual bool canRedo() const override;
 
-    virtual void undo();
-    virtual void redo();
+    virtual void undo() override;
+    virtual void redo() override;
 
-    virtual void handleKeyboardEvent(KeyboardEvent*);
-    virtual void handleInputMethodKeydown(KeyboardEvent*);
+    virtual void handleKeyboardEvent(KeyboardEvent*) override;
+    virtual void handleInputMethodKeydown(KeyboardEvent*) override;
 
-    virtual void textFieldDidBeginEditing(Element*);
-    virtual void textFieldDidEndEditing(Element*);
-    virtual void textDidChangeInTextField(Element*);
-    virtual bool doTextFieldCommandFromEvent(Element*, KeyboardEvent*);
-    virtual void textWillBeDeletedInTextField(Element*);
-    virtual void textDidChangeInTextArea(Element*);
+    virtual void textFieldDidBeginEditing(Element*) override;
+    virtual void textFieldDidEndEditing(Element*) override;
+    virtual void textDidChangeInTextField(Element*) override;
+    virtual bool doTextFieldCommandFromEvent(Element*, KeyboardEvent*) override;
+    virtual void textWillBeDeletedInTextField(Element*) override;
+    virtual void textDidChangeInTextArea(Element*) override;
 
-    virtual TextCheckerClient* textChecker() { return this; }
+    virtual TextCheckerClient* textChecker() override { return this; }
 
-    virtual void updateSpellingUIWithGrammarString(const String&, const GrammarDetail&);
-    virtual void updateSpellingUIWithMisspelledWord(const String&);
-    virtual void showSpellingUI(bool show);
-    virtual bool spellingUIIsShowing();
-    virtual void willSetInputMethodState();
-    virtual void setInputMethodState(bool enabled);
-
-    bool isEditing() const;
+    virtual void updateSpellingUIWithGrammarString(const String&, const GrammarDetail&) override;
+    virtual void updateSpellingUIWithMisspelledWord(const String&) override;
+    virtual void showSpellingUI(bool show) override;
+    virtual bool spellingUIIsShowing() override;
+    virtual void willSetInputMethodState() override;
+    virtual void setInputMethodState(bool enabled) override;
 
     // TextCheckerClient
 
-    virtual bool shouldEraseMarkersAfterChangeSelection(TextCheckingType) const;
-    virtual void ignoreWordInSpellDocument(const String&);
-    virtual void learnWord(const String&);
+    virtual bool shouldEraseMarkersAfterChangeSelection(TextCheckingType) const override;
+    virtual void ignoreWordInSpellDocument(const String&) override;
+    virtual void learnWord(const String&) override;
     virtual void checkSpellingOfString(const UChar*, int length, int* misspellingLocation,
-                                       int* misspellingLength);
-    virtual String getAutoCorrectSuggestionForMisspelledWord(const String& misspelledWord);
+                                       int* misspellingLength) override;
+    virtual String getAutoCorrectSuggestionForMisspelledWord(const String& misspelledWord) override;
     virtual void checkGrammarOfString(const UChar*, int length, Vector<GrammarDetail>&,
-                                      int* badGrammarLocation, int* badGrammarLength);
+                                      int* badGrammarLocation, int* badGrammarLength) override;
 
-    virtual void getGuessesForWord(const String& word, const String& context, Vector<String>& guesses);
-    virtual void requestCheckingOfString(PassRefPtr<TextCheckingRequest>);
+    virtual void getGuessesForWord(const String& word, const String& context, Vector<String>& guesses) override;
+    virtual void requestCheckingOfString(PassRefPtr<TextCheckingRequest>) override;
 
 private:
     bool handleEditingKeyboardEvent(KeyboardEvent* event,
@@ -142,7 +137,6 @@ private:
     UndoManagerStack m_undoStack;
     UndoManagerStack m_redoStack;
 
-    bool m_editing;
     bool m_isInRedo;
 
     BString m_pendingComposition;
