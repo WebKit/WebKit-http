@@ -66,6 +66,7 @@
 #include <QNetworkProxy>
 #include <QNetworkRequest>
 #include <QPainter>
+#include <QScreen>
 #include <QSslSocket>
 #include <QStyle>
 #include <QSysInfo>
@@ -78,6 +79,7 @@
 #include <QTouchEvent>
 #include <QUndoStack>
 #include <QUrl>
+#include <QWindow>
 #if defined(Q_WS_X11)
 #include <QX11Info>
 #endif
@@ -197,6 +199,7 @@ QWebPagePrivate::QWebPagePrivate(QWebPage *qq)
     , linkPolicy(QWebPage::DontDelegateLinks)
     , m_viewportSize(QSize(0, 0))
     , useFixedLayout(false)
+    , window(0)
     , inspectorFrontend(0)
     , inspector(0)
     , inspectorIsInternalOnly(false)
@@ -1924,13 +1927,37 @@ void QWebPage::setViewportSize(const QSize &size) const
 {
     d->m_viewportSize = size;
 
+    d->updateWindow();
+
     QWebFrameAdapter* mainFrame = d->mainFrameAdapter();
     if (!mainFrame->hasView())
         return;
 
-    d->setDevicePixelRatio(d->view->devicePixelRatio());
-
     mainFrame->setViewportSize(size);
+}
+
+void QWebPagePrivate::updateWindow()
+{
+    QWindow* _window = 0;
+    if (view && view->window())
+        _window = view->window()->windowHandle();
+
+    if (window == _window)
+        return;
+
+    if (window)
+        QObject::disconnect(window, SIGNAL(screenChanged(QScreen*)), q, SLOT(_q_updateScreen(QScreen*)));
+    window = _window;
+    if (window) {
+        QObject::connect(window, SIGNAL(screenChanged(QScreen*)), q, SLOT(_q_updateScreen(QScreen*)));
+        _q_updateScreen(window->screen());
+    }
+}
+
+void QWebPagePrivate::_q_updateScreen(QScreen* screen)
+{
+    if (screen)
+        setDevicePixelRatio(screen->devicePixelRatio());
 }
 
 static int getintenv(const char* variable)

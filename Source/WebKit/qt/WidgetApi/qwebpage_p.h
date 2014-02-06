@@ -48,9 +48,11 @@ class Frame;
 }
 
 QT_BEGIN_NAMESPACE
-class QUndoStack;
-class QMenu;
 class QBitArray;
+class QMenu;
+class QScreen;
+class QUndoStack;
+class QWindow;
 QT_END_NAMESPACE
 
 class QtPluginWidgetAdapter;
@@ -163,6 +165,8 @@ public:
 
     bool gestureEvent(QGestureEvent*);
 
+    void updateWindow();
+    void _q_updateScreen(QScreen*);
 
     void setInspector(QWebInspector*);
     QWebInspector* getOrCreateInspector();
@@ -195,6 +199,7 @@ public:
 
     QAction *actions[QWebPage::WebActionCount];
 
+    QWindow* window;
     QWidget* inspectorFrontend;
     QWebInspector* inspector;
     bool inspectorIsInternalOnly; // True if created through the Inspect context menu action

@@ -35,6 +35,7 @@ class QMenu;
 class QNetworkRequest;
 class QNetworkReply;
 class QNetworkAccessManager;
+class QScreen;
 QT_END_NAMESPACE
 
 class QWebElement;
@@ -468,6 +469,7 @@ private:
     Q_PRIVATE_SLOT(d, void _q_webActionTriggered(bool checked))
 #endif
     Q_PRIVATE_SLOT(d, void _q_cleanupLeakMessages())
+    Q_PRIVATE_SLOT(d, void _q_updateScreen(QScreen*))
 
     QWebPagePrivate *d;
 
