@@ -40,6 +40,7 @@
 #include <Path.h>
 #include <Screen.h>
 #include <stdio.h>
+#include <WebSettings.h>
 
 const char* kApplicationSignature = "application/x-vnd.RJL-HaikuLauncher";
 enum {
@@ -90,6 +91,9 @@ void LauncherApp::ReadyToRun()
 
     BWebPage::InitializeOnce();
     BWebPage::SetCacheModel(B_WEBKIT_CACHE_MODEL_WEB_BROWSER);
+
+    mkdir("localStorage", 0755);
+    BWebSettings::SetPersistentStoragePath("localStorage");
 
 	BFile settingsFile;
 	BRect windowFrameFromSettings = m_lastWindowFrame;
