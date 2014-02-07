@@ -393,7 +393,7 @@ my @features = (
       define => "ENABLE_RESOURCE_TIMING", default => isGtk(), value => \$resourceTimingSupport },
 
     { option => "request-animation-frame", desc => "Toggle Request Animation Frame support",
-      define => "ENABLE_REQUEST_ANIMATION_FRAME", default => (isAppleMacWebKit() || isGtk() || isEfl() || isHaiu()), value => \$requestAnimationFrameSupport },
+      define => "ENABLE_REQUEST_ANIMATION_FRAME", default => (isAppleMacWebKit() || isGtk() || isEfl() || isHaiku()), value => \$requestAnimationFrameSupport },
 
     { option => "seccomp-filters", desc => "Toggle Seccomp Filter sandbox",
       define => "ENABLE_SECCOMP_FILTERS", default => 0, value => \$seccompFiltersSupport },
