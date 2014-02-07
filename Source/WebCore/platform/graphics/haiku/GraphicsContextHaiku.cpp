@@ -39,6 +39,7 @@
 #include <wtf/text/CString.h>
 #include <Bitmap.h>
 #include <GraphicsDefs.h>
+#include <Picture.h>
 #include <Region.h>
 #include <Shape.h>
 #include <View.h>
@@ -62,7 +63,6 @@ public:
             , clippingSet(false)
             , globalAlpha(255)
             , currentShape(0)
-            , clipShape(0)
             , locationInParent(B_ORIGIN)
             , accumulatedOrigin(B_ORIGIN)
             , previous(0)
@@ -75,7 +75,6 @@ public:
             , clippingSet(false)
             , globalAlpha(255)
             , currentShape(0)
-            , clipShape(previous->clipShape ? new BShape(*previous->clipShape) : 0)
             , locationInParent(B_ORIGIN)
             , accumulatedOrigin(B_ORIGIN)
             , previous(previous)
@@ -113,7 +112,6 @@ public:
                 delete bitmap;
             }
             delete currentShape;
-            delete clipShape;
         }
 
         BView* view;
@@ -122,7 +120,6 @@ public:
         bool clippingSet;
         uint8 globalAlpha;
         BShape* currentShape;
-        BShape* clipShape;
         BPoint locationInParent;
         BPoint accumulatedOrigin;
 
@@ -203,44 +200,35 @@ public:
     	m_currentLayer->clipping = BRegion();
     }
 
-    void setClipShape(BShape* shape)
+    void clipToShape(BShape* shape, bool inverse = false)
     {
-    	// NOTE: For proper clipping, the paths would have to
-    	// be combined with the previous layers. But for now,
-    	// this is just supposed to support a small hack to get
-    	// box elements with round corners to work properly. BView shall
-    	// get proper clipping path support in the future.
-        delete m_currentLayer->clipShape;
-        m_currentLayer->clipShape = shape;
-
-#if 0
-        // This sort of works, but there are several problems with it:
-        // - ClipToPicture doesn't do antialias.
-        // - The picture will be constrained to the current viewport, and
-        // will not follow scrolling. So everything made visible by scrolling
-        // is clipped out.
-        // - The way this is implemented seems slow, making scrolling much less
-        // smooth.
-        // A better solution is to improve BView so it can clip directly on a
-        // BShape or a BPolygon, without rasterizing it first, as agg can do
-        // that just fine.
         BPicture picture;
-        BBitmap bmp(shape->Bounds(), B_CMAP8, true);
-        BView* off = new BView(shape->Bounds(), "clipper", 0, 0);
-        bmp.AddChild(off);
-        off->LockLooper();
-        off->BeginPicture(&picture);
-        off->FillShape(shape);
-        m_currentLayer->view->ClipToPicture(off->EndPicture());
-        off->UnlockLooper();
-#endif
-    }
+        BView* view = m_currentLayer->view;
+        view->LockLooper();
 
-    BShape* clipShape() const
-    {
-        if (!m_currentLayer->clipShape)
-            m_currentLayer->clipShape = new BShape();
-        return m_currentLayer->clipShape;
+        // The new clipping is drawn using the current view and context, which
+        // make sure it is further restricted by the existing clippings at the
+        // same level.
+        view->BeginPicture(&picture);
+        view->PushState();
+
+        view->SetLowColor(make_color(255, 255, 255, 0));
+        view->SetViewColor(make_color(255, 255, 255, 0));
+        view->SetHighColor(make_color(0, 0, 0, 255));
+        view->SetDrawingMode(B_OP_ALPHA);
+		view->SetBlendingMode(B_PIXEL_ALPHA, B_ALPHA_COMPOSITE);
+
+        view->FillShape(shape);
+
+        view->PopState();
+        view->EndPicture();
+
+        if (inverse)
+            view->ClipToInversePicture(&picture);
+        else
+            view->ClipToPicture(&picture);
+
+        view->UnlockLooper();
     }
 
     void pushLayer(float opacity)
@@ -428,7 +416,7 @@ void GraphicsContext::strokePath(const Path& path)
     }
 }
 
-void GraphicsContext::drawConvexPolygon(size_t pointsLength, const FloatPoint* points, bool shouldAntialias)
+void GraphicsContext::drawConvexPolygon(size_t pointsLength, const FloatPoint* points, bool /*shouldAntialias*/)
 {
     if (paintingDisabled())
         return;
@@ -443,22 +431,22 @@ void GraphicsContext::drawConvexPolygon(size_t pointsLength, const FloatPoint* p
         m_data->view()->StrokePolygon(bPoints, pointsLength, true, getHaikuStrokeStyle());
 }
 
-void GraphicsContext::clipConvexPolygon(size_t numPoints, const FloatPoint* points, bool antialiased)
+void GraphicsContext::clipConvexPolygon(size_t numPoints, const FloatPoint* points, bool /*antialiased*/)
 {
     if (paintingDisabled())
         return;
 
     BShape* shape = new BShape();
     shape->MoveTo(points[0]);
-    for(int i = 1; i < numPoints; i ++)
+    for(unsigned int i = 1; i < numPoints; i ++)
     {
         shape->LineTo(points[i]);
     }
     shape->Close();
-    m_data->setClipShape(shape);
+    m_data->clipToShape(shape);
 }
 
-void GraphicsContext::fillRect(const FloatRect& rect, const Color& color, ColorSpace colorSpace)
+void GraphicsContext::fillRect(const FloatRect& rect, const Color& color, ColorSpace /*colorSpace*/)
 
 {
     if (paintingDisabled())
@@ -478,9 +466,7 @@ void GraphicsContext::fillRect(const FloatRect& rect, const Color& color, ColorS
 #endif
 
     m_data->view()->SetHighColor(color);
-    // NOTE: having a clipShape means we're filling a rounded rect
-    // thus needing alpha blending for antialiasing
-    if (color.hasAlpha() || m_data->clipShape())
+    if (color.hasAlpha())
         m_data->view()->SetDrawingMode(B_OP_ALPHA);
     fillRect(rect);
 
@@ -493,32 +479,10 @@ void GraphicsContext::fillRect(const FloatRect& rect)
     if (paintingDisabled())
         return;
 
-    // NOTE: Trick to implement filling rects with clipping path
-    // (needed for box elements with round corners):
-    // When the rect extends outside the current clipping path on
-    // all sides, then we can fill the path instead of the rect.
-    // (Clipping paths are simply not supported yet for anything else.)
-    if (m_data->clipShape()) {
-    	BRect bRect(rect);
-    	BRect clipPathBounds(m_data->clipShape()->Bounds());
-
-    	// NOTE: BShapes do not suffer the weird coordinate mixup
-    	// of other drawing primitives, since the conversion would be
-    	// too expensive in the app_server. Thus the right/bottom edge
-    	// can be considered one pixel smaller. On screen, it will be
-    	// the same again.
-    	clipPathBounds.right--;
-    	clipPathBounds.bottom--;
-    	if (clipPathBounds.IsValid() && bRect.Contains(clipPathBounds)) {
-    		m_data->view()->MovePenTo(B_ORIGIN);
-    		m_data->view()->FillShape(m_data->clipShape());
-    		return;
-    	}
-    }
     m_data->view()->FillRect(rect);
 }
 
-void GraphicsContext::fillRoundedRect(const FloatRect& rect, const FloatSize& topLeft, const FloatSize& topRight, const FloatSize& bottomLeft, const FloatSize& bottomRight, const Color& color, ColorSpace colorSpace)
+void GraphicsContext::fillRoundedRect(const FloatRect& rect, const FloatSize& topLeft, const FloatSize& topRight, const FloatSize& bottomLeft, const FloatSize& bottomRight, const Color& color, ColorSpace /*colorSpace*/)
 {
     if (paintingDisabled() || !color.alpha())
         return;
@@ -597,12 +561,15 @@ void GraphicsContext::fillPath(const Path& path)
     }
 }
 
-void GraphicsContext::clipPath(const Path&, WindRule clipRule)
+void GraphicsContext::clipPath(const Path& path, WindRule clipRule)
 {
     if (paintingDisabled())
         return;
 
-    notImplemented();
+    if (path.isEmpty())
+        return;
+
+    clip(path, clipRule);
 }
 
 void GraphicsContext::clip(const FloatRect& rect)
@@ -629,24 +596,7 @@ void GraphicsContext::clip(const Path& path, WindRule)
         return;
 
     if (path.platformPath()->Bounds().IsValid())
-        m_data->setClipShape(new BShape(*path.platformPath()));
-    else
-        m_data->setClipShape(0);
-
-    // FIXME: Support actual clipping paths in the BView API...
-    // ClipToPicture/ClipInverseToPicture may be used?
-    FloatRect rect(path.platformPath()->Bounds());
-
-    // NOTE: BShapes do not suffer the weird coordinate mixup
-    // of other drawing primitives, since the conversion would be
-    // too expensive in the app_server. Thus the right/bottom edge
-    // can be considered one pixel smaller. On screen, it will be
-    // the same again.
-    // Here, we have to exactly match the clipping we apply to
-    // GraphicsContext::fillRect(const FloatRect&) so everything draws at
-    // the same size.
-    rect.contract(1, 1);
-    clip(rect);
+        m_data->clipToShape(path.platformPath());
 }
 
 void GraphicsContext::canvasClip(const Path& path, WindRule)
@@ -659,7 +609,8 @@ void GraphicsContext::clipOut(const Path& path)
     if (paintingDisabled())
         return;
 
-    notImplemented();
+    if (path.platformPath()->Bounds().IsValid())
+        m_data->clipToShape(path.platformPath(), true);
 }
 
 void GraphicsContext::clipOut(const FloatRect& rect)
@@ -672,7 +623,7 @@ void GraphicsContext::clipOut(const FloatRect& rect)
     m_data->setClipping(region);
 }
 
-void GraphicsContext::drawFocusRing(const Path& path, int width, int offset, const Color& color)
+void GraphicsContext::drawFocusRing(const Path& /*path*/, int /*width*/, int /*offset*/, const Color& /*color*/)
 {
     if (paintingDisabled())
         return;
@@ -699,7 +650,7 @@ void GraphicsContext::drawFocusRing(const Vector<IntRect>& rects, int /* width *
     }
 }
 
-void GraphicsContext::drawLineForText(const FloatPoint& origin, float width, bool printing)
+void GraphicsContext::drawLineForText(const FloatPoint& origin, float width, bool /*printing*/)
 {
     if (paintingDisabled())
         return;
@@ -784,7 +735,7 @@ void GraphicsContext::setLineCap(LineCap lineCap)
     m_data->view()->SetLineMode(mode, m_data->view()->LineJoinMode(), m_data->view()->LineMiterLimit());
 }
 
-void GraphicsContext::setLineDash(const DashArray& dashes, float dashOffset)
+void GraphicsContext::setLineDash(const DashArray& /*dashes*/, float /*dashOffset*/)
 {
     notImplemented();
 }
@@ -894,7 +845,7 @@ void GraphicsContext::translate(float x, float y)
     // TODO: currentPath needs to be translated along, according to Qt implementation
 }
 
-void GraphicsContext::rotate(float radians)
+void GraphicsContext::rotate(float /*radians*/)
 {
     if (paintingDisabled())
         return;
@@ -911,7 +862,7 @@ void GraphicsContext::scale(const FloatSize& size)
     m_data->view()->SetScale((size.width() + size.height()) / 2);
 }
 
-void GraphicsContext::concatCTM(const AffineTransform& transform)
+void GraphicsContext::concatCTM(const AffineTransform& /*transform*/)
 {
     if (paintingDisabled())
         return;
@@ -919,7 +870,7 @@ void GraphicsContext::concatCTM(const AffineTransform& transform)
     notImplemented();
 }
 
-void GraphicsContext::setCTM(const AffineTransform& transform)
+void GraphicsContext::setCTM(const AffineTransform& /*transform*/)
 {
     if (paintingDisabled())
         return;
@@ -927,7 +878,7 @@ void GraphicsContext::setCTM(const AffineTransform& transform)
     notImplemented();
 }
 
-void GraphicsContext::setPlatformShouldAntialias(bool enable)
+void GraphicsContext::setPlatformShouldAntialias(bool /*enable*/)
 {
     if (paintingDisabled())
         return;
@@ -945,12 +896,12 @@ InterpolationQuality GraphicsContext::imageInterpolationQuality() const
     return m_data->m_graphicsState->imageInterpolationQuality;
 }
 
-void GraphicsContext::setURLForRect(const URL& link, const IntRect& destRect)
+void GraphicsContext::setURLForRect(const URL& /*link*/, const IntRect& /*destRect*/)
 {
     notImplemented();
 }
 
-void GraphicsContext::setPlatformStrokeColor(const Color& color, ColorSpace colorSpace)
+void GraphicsContext::setPlatformStrokeColor(const Color& color, ColorSpace /*colorSpace*/)
 {
     if (paintingDisabled())
         return;
@@ -1002,7 +953,7 @@ void GraphicsContext::setPlatformStrokeThickness(float thickness)
     m_data->view()->SetPenSize(thickness);
 }
 
-void GraphicsContext::setPlatformFillColor(const Color& color, ColorSpace colorSpace)
+void GraphicsContext::setPlatformFillColor(const Color& color, ColorSpace /*colorSpace*/)
 {
     if (paintingDisabled())
         return;
@@ -1015,8 +966,8 @@ void GraphicsContext::clearPlatformShadow()
     notImplemented();
 }
 
-void GraphicsContext::setPlatformShadow(FloatSize const&, float blur,
-    Color const& color, ColorSpace)
+void GraphicsContext::setPlatformShadow(FloatSize const&, float /*blur*/,
+    Color const& /*color*/, ColorSpace)
 {
     notImplemented();
 }

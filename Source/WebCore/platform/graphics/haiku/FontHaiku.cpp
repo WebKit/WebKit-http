@@ -56,14 +56,13 @@ void Font::drawGlyphs(GraphicsContext* graphicsContext, const SimpleFontData* fo
                       const GlyphBuffer& glyphBuffer, int from, int numGlyphs, const FloatPoint& point) const
 {
     BView* view = graphicsContext->platformContext();
+    view->PushState();
 
     rgb_color color = graphicsContext->fillColor();
-    rgb_color oldColor = view->HighColor();
-    drawing_mode oldMode = view->DrawingMode();
 
     if (color.alpha < 255 || graphicsContext->inTransparencyLayer())
         view->SetDrawingMode(B_OP_ALPHA);
-    else if (oldMode != B_OP_OVER)
+    else
         view->SetDrawingMode(B_OP_OVER);
     view->SetHighColor(color);
     view->SetFont(font->platformData().font());
@@ -79,9 +78,7 @@ void Font::drawGlyphs(GraphicsContext* graphicsContext, const SimpleFontData* fo
     }
 
     view->DrawString(converted.data(), converted.length(), offsets, numGlyphs);
-
-    view->SetHighColor(oldColor);
-    view->SetDrawingMode(oldMode);
+    view->PopState();
 }
 
 bool Font::canExpandAroundIdeographsInComplexText()
