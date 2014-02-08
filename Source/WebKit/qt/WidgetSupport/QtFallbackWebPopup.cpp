@@ -58,10 +58,14 @@ void QtFallbackWebPopup::show(const QWebSelectData& data)
     populate(data);
 
     QRect rect = geometry();
+#ifdef QT_NO_GRAPHICSVIEW
+    if (false) {
+#else
     if (QGraphicsWebView *webView = qobject_cast<QGraphicsWebView*>(pageClient()->pluginParent())) {
         QGraphicsProxyWidget* proxy = new QGraphicsProxyWidget(webView);
         proxy->setWidget(m_combo);
         proxy->setGeometry(rect);
+#endif
     } else {
         m_combo->setParent(qobject_cast<QWidget*>(pageClient()->ownerWidget()));
         m_combo->setGeometry(QRect(rect.left(), rect.top(), rect.width(), m_combo->sizeHint().height()));
