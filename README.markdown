@@ -60,9 +60,28 @@ Example given, this will build the JavaScriptCore library in debug mode:
 In some rare cases the build system can be confused, to be sure that everything gets rebuilt from scratch,
 you can remove the WebKitBuild/ directory and start over.
 
-There are several cmake variable available to configure the build in various ways.
+There are several cmake variables available to configure the build in various ways.
 These can be given to build-webkit using the --cmakearg option, or changed later on
 using "cmake -Dvar=value WebKitBuild/Release".
+
+### Speeding up the build with Ninja ###
+
+Ninja is a replacement for Make. It is designed for use only with generated
+build files (from CMake, in this case), rather than manually written ones. This
+allows Ninja to remove many of Make features such as pattern-rules, complex
+variable substitution, etc. As a result, Ninja is able to start building
+files almost immediately, whereas Make spends several minutes scanning the
+project and building the dependency tree.
+
+To use Ninja, perform the following steps:
+
+* First install Ninja:
+    $ pkgman install ninja_x86
+* Tell CMake to use Ninja instead of make when invoking build-webkit
+    $ .../build-webkit ... --cmakearg="-GNinja"
+* Use Ninja when building:
+    $ cd WebKitBuild/Release
+    $ ninja -j4
 
 ### Speeding up the build with distcc ###
 
