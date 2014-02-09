@@ -2071,7 +2071,7 @@ sub cmakeBasedPortName()
 
 sub isCMakeBuild()
 {
-    return isEfl() || isWinCE() || isGtkCMake();
+    return isEfl() || isWinCE() || isGtkCMake() || isHaiku();
 }
 
 sub promptUser
