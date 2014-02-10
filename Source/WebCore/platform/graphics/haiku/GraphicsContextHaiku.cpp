@@ -276,8 +276,14 @@ public:
         return m_currentLayer->previous;
     }
 
+    ShadowBlur& shadowBlur()
+    {
+        return blur;
+    }
+
     Layer* m_currentLayer;
     CustomGraphicsState* m_graphicsState;
+    ShadowBlur blur;
 };
 
 GraphicsContextPlatformPrivate::GraphicsContextPlatformPrivate(BView* view)
@@ -456,12 +462,9 @@ void GraphicsContext::fillRect(const FloatRect& rect, const Color& color, ColorS
     drawing_mode previousMode = m_data->view()->DrawingMode();
 
 #if 0
-    // FIXME ShadowBlur requires an implementation of ImageBuffer::clip (masking
-    // all drawing on the context with the alpha channel of  a BBitmap).
-    // Either implement that or find another way to draw shadows.
+    // FIXME needs support for Composite SourceIn.
     if (hasShadow()) {
-        ShadowBlur contextShadow(m_state);
-        contextShadow.drawRectShadow(this, rect, RoundedRect::Radii());
+        m_data->shadowBlur().drawRectShadow(this, rect, RoundedRect::Radii());
     }
 #endif
 
@@ -486,6 +489,12 @@ void GraphicsContext::fillRoundedRect(const FloatRect& rect, const FloatSize& to
 {
     if (paintingDisabled() || !color.alpha())
         return;
+
+#if 0
+    // FIXME needs support for Composite SourceIn.
+    if (hasShadow())
+        m_data->shadowBlur().drawRectShadow(this, rect, FloatRoundedRect::Radii(topLeft, topRight, bottomLeft, bottomRight));
+#endif
 
     BPoint points[3];
     const float kRadiusBezierScale = 1.0f - 0.5522847498f; //  1 - (sqrt(2) - 1) * 4 / 3
@@ -804,7 +813,7 @@ void GraphicsContext::setPlatformCompositeOperation(CompositeOperator op, BlendM
     case CompositeSourceAtop:
         // Draw source only where destination isn't transparent
     case CompositeSourceIn:
-        // Erase everything, draw source only where destination wasn't transparent
+        // Like B_OP_ALPHA, but don't touch destination alpha channel
     case CompositeSourceOut:
         // Erase everything, draw source only where destination was transparent
     case CompositeDestinationOver:
@@ -812,7 +821,7 @@ void GraphicsContext::setPlatformCompositeOperation(CompositeOperator op, BlendM
     case CompositeDestinationAtop:
         // Draw source only where destination is transparent, erase where source is transparent
     case CompositeDestinationIn:
-        // Erase where source is transparent
+        // Mask destination with source alpha channel. Don't use source colors.
     case CompositeXOR:
         // Draw source where destination is transparent, erase intersection of source and dest.
     default:
@@ -963,13 +972,30 @@ void GraphicsContext::setPlatformFillColor(const Color& color, ColorSpace /*colo
 
 void GraphicsContext::clearPlatformShadow()
 {
-    notImplemented();
+    if (paintingDisabled())
+        return;
+
+    m_data->shadowBlur().clear();
 }
 
-void GraphicsContext::setPlatformShadow(FloatSize const&, float /*blur*/,
+void GraphicsContext::setPlatformShadow(FloatSize const& size, float /*blur*/,
     Color const& /*color*/, ColorSpace)
 {
-    notImplemented();
+    if (paintingDisabled())
+        return;
+
+    if (m_state.shadowsIgnoreTransforms) {
+        // Meaning that this graphics context is associated with a CanvasRenderingContext
+        // We flip the height since CG and HTML5 Canvas have opposite Y axis
+        m_state.shadowOffset = FloatSize(size.width(), -size.height());
+    }
+
+    // Cairo doesn't support shadows natively, they are drawn manually in the draw* functions using ShadowBlur.
+    m_data->shadowBlur().setShadowValues(FloatSize(m_state.shadowBlur, m_state.shadowBlur),
+                                                    m_state.shadowOffset,
+                                                    m_state.shadowColor,
+                                                    m_state.shadowColorSpace,
+                                                    m_state.shadowsIgnoreTransforms);
 }
 
 } // namespace WebCore
