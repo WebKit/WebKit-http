@@ -168,7 +168,7 @@ my @features = (
       define => "ENABLE_BATTERY_STATUS", default => isEfl(), value => \$batteryStatusSupport },
 
     { option => "blob", desc => "Toggle Blob support",
-      define => "ENABLE_BLOB", default => ((isAppleMacWebKit() && !isIOSWebKit()) || isGtk() || isEfl()), value => \$blobSupport },
+      define => "ENABLE_BLOB", default => ((isAppleMacWebKit() && !isIOSWebKit()) || isGtk() || isEfl() || isHaiku()), value => \$blobSupport },
 
     { option => "canvas-path", desc => "Toggle Canvas Path support",
       define => "ENABLE_CANVAS_PATH", default => 1, value => \$canvasPathSupport },
