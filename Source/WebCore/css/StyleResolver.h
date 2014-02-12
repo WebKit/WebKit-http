@@ -81,9 +81,6 @@ class StyleKeyframe;
 class StylePendingImage;
 class StyleProperties;
 class StyleRule;
-#if ENABLE(SHADOW_DOM)
-class StyleRuleHost;
-#endif
 class StyleRuleKeyframes;
 class StyleRulePage;
 class StyleRuleRegion;
@@ -235,9 +232,7 @@ public:
 
 #if ENABLE(CSS_FILTERS)
     bool createFilterOperations(CSSValue* inValue, FilterOperations& outOperations);
-#if ENABLE(SVG)
     void loadPendingSVGDocuments();
-#endif
 #endif // ENABLE(CSS_FILTERS)
 
     void loadPendingResources();
@@ -376,7 +371,7 @@ public:
         bool applyPropertyToRegularStyle() const { return m_applyPropertyToRegularStyle; }
         bool applyPropertyToVisitedLinkStyle() const { return m_applyPropertyToVisitedLinkStyle; }
         PendingImagePropertyMap& pendingImageProperties() { return m_pendingImageProperties; }
-#if ENABLE(CSS_FILTERS) && ENABLE(SVG)
+#if ENABLE(CSS_FILTERS)
         Vector<RefPtr<ReferenceFilterOperation>>& filtersWithPendingSVGDocuments() { return m_filtersWithPendingSVGDocuments; }
 #endif
 
@@ -423,7 +418,7 @@ public:
         bool m_applyPropertyToVisitedLinkStyle;
 
         PendingImagePropertyMap m_pendingImageProperties;
-#if ENABLE(CSS_FILTERS) && ENABLE(SVG)
+#if ENABLE(CSS_FILTERS)
         Vector<RefPtr<ReferenceFilterOperation>> m_filtersWithPendingSVGDocuments;
 #endif
         CSSValue* m_lineHeightValue;
@@ -473,9 +468,7 @@ private:
 
     void applyProperty(CSSPropertyID, CSSValue*);
 
-#if ENABLE(SVG)
     void applySVGProperty(CSSPropertyID, CSSValue*);
-#endif
 
     PassRefPtr<StyleImage> loadPendingImage(StylePendingImage*, const ResourceLoaderOptions&);
     PassRefPtr<StyleImage> loadPendingImage(StylePendingImage*);

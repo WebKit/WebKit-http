@@ -282,10 +282,7 @@ void DocumentStyleSheetCollection::collectActiveStyleSheets(Vector<RefPtr<StyleS
             }
 #endif
         } else if ((n->isHTMLElement() && (n->hasTagName(linkTag) || n->hasTagName(styleTag)))
-#if ENABLE(SVG)
-                   ||  (n->isSVGElement() && n->hasTagName(SVGNames::styleTag))
-#endif
-                   ) {
+            || (n->isSVGElement() && n->hasTagName(SVGNames::styleTag))) {
             Element* e = toElement(n);
             AtomicString title = e->getAttribute(titleAttr);
             bool enabledViaScript = false;
@@ -311,12 +308,9 @@ void DocumentStyleSheetCollection::collectActiveStyleSheets(Vector<RefPtr<StyleS
             }
             // Get the current preferred styleset. This is the
             // set of sheets that will be enabled.
-#if ENABLE(SVG)
             if (isSVGStyleElement(e))
                 sheet = toSVGStyleElement(e)->sheet();
-            else
-#endif
-            {
+            else {
                 if (isHTMLLinkElement(e))
                     sheet = toHTMLLinkElement(n)->sheet();
                 else {
@@ -432,14 +426,6 @@ static void filterEnabledNonemptyCSSStyleSheets(Vector<RefPtr<CSSStyleSheet>>& r
     }
 }
 
-static void collectActiveCSSStyleSheetsFromSeamlessParents(Vector<RefPtr<CSSStyleSheet>>& sheets, Document& document)
-{
-    HTMLIFrameElement* seamlessParentIFrame = document.seamlessParentIFrame();
-    if (!seamlessParentIFrame)
-        return;
-    sheets.appendVector(seamlessParentIFrame->document().styleSheetCollection().activeAuthorStyleSheets());
-}
-
 bool DocumentStyleSheetCollection::updateActiveStyleSheets(UpdateFlag updateFlag)
 {
     if (m_document.inStyleRecalc()) {
@@ -460,7 +446,6 @@ bool DocumentStyleSheetCollection::updateActiveStyleSheets(UpdateFlag updateFlag
     Vector<RefPtr<CSSStyleSheet>> activeCSSStyleSheets;
     activeCSSStyleSheets.appendVector(injectedAuthorStyleSheets());
     activeCSSStyleSheets.appendVector(documentAuthorStyleSheets());
-    collectActiveCSSStyleSheetsFromSeamlessParents(activeCSSStyleSheets, m_document);
     filterEnabledNonemptyCSSStyleSheets(activeCSSStyleSheets, activeStyleSheets);
 
     StyleResolverUpdateType styleResolverUpdateType;
@@ -487,8 +472,6 @@ bool DocumentStyleSheetCollection::updateActiveStyleSheets(UpdateFlag updateFlag
 
     m_usesRemUnits = styleSheetsUseRemUnits(m_activeAuthorStyleSheets);
     m_pendingUpdateType = NoUpdate;
-
-    m_document.notifySeamlessChildDocumentsOfStylesheetUpdate();
 
     return requiresFullStyleRecalc;
 }

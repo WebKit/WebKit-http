@@ -142,7 +142,7 @@ PassRefPtr<HTMLInputElement> HTMLInputElement::create(const QualifiedName& tagNa
 HTMLImageLoader* HTMLInputElement::imageLoader()
 {
     if (!m_imageLoader)
-        m_imageLoader = adoptPtr(new HTMLImageLoader(this));
+        m_imageLoader = adoptPtr(new HTMLImageLoader(*this));
     return m_imageLoader.get();
 }
 
@@ -746,12 +746,6 @@ void HTMLInputElement::parseAttribute(const QualifiedName& name, const AtomicStr
         FeatureObserver::observe(&document(), FeatureObserver::PrefixedSpeechAttribute);
     } else if (name == onwebkitspeechchangeAttr)
         setAttributeEventListener(eventNames().webkitspeechchangeEvent, name, value);
-#endif
-#if ENABLE(DIRECTORY_UPLOAD)
-    else if (name == webkitdirectoryAttr) {
-        HTMLTextFormControlElement::parseAttribute(name, value);
-        FeatureObserver::observe(&document(), FeatureObserver::PrefixedDirectoryAttribute);
-    }
 #endif
     else
         HTMLTextFormControlElement::parseAttribute(name, value);

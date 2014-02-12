@@ -1851,6 +1851,15 @@
             "xc0ffee"
          ]
       },
+      "Nick Diego Yamane" : {
+         "emails" : [
+            "nick.yamane@openbossa.org",
+            "nick.diego@gmail.com"
+         ],
+         "nicks" : [
+            "diegoyam"
+         ]
+      },
       "Nima Ghanavatian" : {
          "emails" : [
             "nghanavatian@blackberry.com",
@@ -2181,6 +2190,14 @@
          ],
          "nicks" : [
             "seokju"
+         ]
+      },
+      "Sergio Correia" : {
+         "emails" : [
+            "sergio.correia@openbossa.org"
+         ],
+         "nicks" : [
+            "qrwteyrutiyoup"
          ]
       },
       "Sergio Villar Senin" : {
@@ -2602,8 +2619,8 @@
       },
       "Zoltan Horvath" : {
          "emails" : [
-            "zoltan@adobe.com",
             "zoltan@webkit.org",
+            "zoltan@adobe.com",
             "hzoltan@inf.u-szeged.hu",
             "horvath.zoltan.6@stud.u-szeged.hu"
          ],
@@ -2879,6 +2896,14 @@
          ],
          "nicks" : [
             "jcraig"
+         ]
+      },
+      "Javier Fernandez" : {
+         "emails" : [
+            "jfernandez@igalia.com"
+         ],
+         "nicks" : [
+            "lajava"
          ]
       },
       "Jeff Timanus" : {
@@ -3293,6 +3318,15 @@
          "expertise" : "CSS, HTML DOM, Core DOM, Canvas, JavaScript DOM bindings, Memory use",
          "nicks" : [
             "kling"
+         ]
+      },
+      "Andrei Bucur" : {
+         "emails" : [
+            "abucur@adobe.com"
+         ],
+         "expertise" : "CSS Regions, CSS Fragmentation, Layout and rendering",
+         "nicks" : [
+            "abucur"
          ]
       },
       "Andy Estes" : {

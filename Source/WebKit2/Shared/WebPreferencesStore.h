@@ -65,9 +65,15 @@ namespace WebKit {
 #endif
 
 #if PLATFORM(IOS)
-#define DEFAULT_VIDEO_PLUGIN_PROXY_ENABLED true
+#define DEFAULT_FRAME_FLATTENING_ENABLED true
 #else
-#define DEFAULT_VIDEO_PLUGIN_PROXY_ENABLED false
+#define DEFAULT_FRAME_FLATTENING_ENABLED false
+#endif
+
+#if PLATFORM(IOS)
+#define DEFAULT_CANVAS_USES_ACCELERATED_DRAWING false
+#else
+#define DEFAULT_CANVAS_USES_ACCELERATED_DRAWING true
 #endif
 
 #define FOR_EACH_WEBKIT_BOOL_PREFERENCE(macro) \
@@ -82,7 +88,7 @@ namespace WebKit {
     macro(LocalStorageEnabled, localStorageEnabled, Bool, bool, true) \
     macro(DatabasesEnabled, databasesEnabled, Bool, bool, true) \
     macro(XSSAuditorEnabled, xssAuditorEnabled, Bool, bool, true) \
-    macro(FrameFlatteningEnabled, frameFlatteningEnabled, Bool, bool, false) \
+    macro(FrameFlatteningEnabled, frameFlatteningEnabled, Bool, bool, DEFAULT_FRAME_FLATTENING_ENABLED) \
     macro(DeveloperExtrasEnabled, developerExtrasEnabled, Bool, bool, false) \
     macro(JavaScriptExperimentsEnabled, javaScriptExperimentsEnabled, Bool, bool, false) \
     macro(PrivateBrowsingEnabled, privateBrowsingEnabled, Bool, bool, false) \
@@ -93,7 +99,7 @@ namespace WebKit {
     macro(AcceleratedCompositingEnabled, acceleratedCompositingEnabled, Bool, bool, true) \
     macro(ForceCompositingMode, forceCompositingMode, Bool, bool, false) \
     macro(AcceleratedDrawingEnabled, acceleratedDrawingEnabled, Bool, bool, false) \
-    macro(CanvasUsesAcceleratedDrawing, canvasUsesAcceleratedDrawing, Bool, bool, true) \
+    macro(CanvasUsesAcceleratedDrawing, canvasUsesAcceleratedDrawing, Bool, bool, DEFAULT_CANVAS_USES_ACCELERATED_DRAWING) \
     macro(CompositingBordersVisible, compositingBordersVisible, Bool, bool, false) \
     macro(CompositingRepaintCountersVisible, compositingRepaintCountersVisible, Bool, bool, false) \
     macro(TiledScrollingIndicatorVisible, tiledScrollingIndicatorVisible, Bool, bool, false) \
@@ -174,7 +180,6 @@ namespace WebKit {
     macro(SimpleLineLayoutDebugBordersEnabled, simpleLineLayoutDebugBordersEnabled, Bool, bool, false) \
     macro(BackgroundShouldExtendBeyondPage, backgroundShouldExtendBeyondPage, Bool, bool, false) \
     macro(MediaStreamEnabled, mediaStreamEnabled, Bool, bool, false) \
-    macro(VideoPluginProxyEnabled, isVideoPluginProxyEnabled, Bool, bool, DEFAULT_VIDEO_PLUGIN_PROXY_ENABLED) \
     macro(UseLegacyTextAlignPositionedElementBehavior, useLegacyTextAlignPositionedElementBehavior, Bool, bool, false) \
     macro(SpatialNavigationEnabled, spatialNavigationEnabled, Bool, bool, false) \
     macro(MediaSourceEnabled, mediaSourceEnabled, Bool, bool, false) \

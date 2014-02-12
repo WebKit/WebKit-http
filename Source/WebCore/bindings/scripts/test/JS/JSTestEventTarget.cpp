@@ -169,10 +169,8 @@ bool JSTestEventTarget::getOwnPropertySlotByIndex(JSObject* object, ExecState* e
     return Base::getOwnPropertySlotByIndex(thisObject, exec, index, slot);
 }
 
-EncodedJSValue jsTestEventTargetConstructor(ExecState* exec, EncodedJSValue baseValue, EncodedJSValue thisValue, PropertyName)
+EncodedJSValue jsTestEventTargetConstructor(ExecState* exec, JSObject*, EncodedJSValue thisValue, PropertyName)
 {
-    UNUSED_PARAM(baseValue);
-    UNUSED_PARAM(thisValue);
     JSTestEventTarget* domObject = jsDynamicCast<JSTestEventTarget*>(JSValue::decode(thisValue));
     if (!domObject)
         return throwVMTypeError(exec);
@@ -276,9 +274,9 @@ void JSTestEventTarget::visitChildren(JSCell* cell, SlotVisitor& visitor)
 }
 
 
-EncodedJSValue JSTestEventTarget::indexGetter(ExecState* exec, EncodedJSValue slotBase, EncodedJSValue, unsigned index)
+EncodedJSValue JSTestEventTarget::indexGetter(ExecState* exec, JSObject* slotBase, EncodedJSValue, unsigned index)
 {
-    JSTestEventTarget* thisObj = jsCast<JSTestEventTarget*>(JSValue::decode(slotBase));
+    JSTestEventTarget* thisObj = jsCast<JSTestEventTarget*>(slotBase);
     ASSERT_GC_OBJECT_INHERITS(thisObj, info());
     return JSValue::encode(toJS(exec, thisObj->globalObject(), thisObj->impl().item(index)));
 }

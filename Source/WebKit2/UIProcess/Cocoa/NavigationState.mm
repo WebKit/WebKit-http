@@ -28,19 +28,30 @@
 
 #if WK_API_ENABLED
 
+#import "NavigationActionData.h"
+#import "PageLoadState.h"
+#import "WKFrameInfoInternal.h"
+#import "WKNavigationActionInternal.h"
 #import "WKNavigationDelegate.h"
 #import "WKNavigationInternal.h"
+#import "WKWebViewInternal.h"
 #import "WebFrameProxy.h"
+#import "WebPageProxy.h"
 
 namespace WebKit {
 
 NavigationState::NavigationState(WKWebView *webView)
-    : m_navigationDelegateMethods()
+    : m_webView(webView)
+    , m_navigationDelegateMethods()
 {
+    ASSERT(m_webView->_page);
+
+    m_webView->_page->pageLoadState().addObserver(*this);
 }
 
 NavigationState::~NavigationState()
 {
+    m_webView->_page->pageLoadState().removeObserver(*this);
 }
 
 std::unique_ptr<API::LoaderClient> NavigationState::createLoaderClient()
@@ -95,7 +106,37 @@ NavigationState::PolicyClient::~PolicyClient()
 {
 }
 
-void NavigationState::PolicyClient::decidePolicyForNavigationAction(WebPageProxy*, WebFrameProxy* destinationFrame, const NavigationActionData&, WebFrameProxy* sourceFrame, const WebCore::ResourceRequest& originalRequest, const WebCore::ResourceRequest&, RefPtr<WebFramePolicyListenerProxy> listener, API::Object* userData)
+static WKNavigationType toWKNavigationType(WebCore::NavigationType navigationType)
+{
+    switch (navigationType) {
+    case WebCore::NavigationTypeLinkClicked:
+        return WKNavigationTypeLinkActivated;
+    case WebCore::NavigationTypeFormSubmitted:
+        return WKNavigationTypeFormSubmitted;
+    case WebCore::NavigationTypeBackForward:
+        return WKNavigationTypeBackForward;
+    case WebCore::NavigationTypeReload:
+        return WKNavigationTypeReload;
+    case WebCore::NavigationTypeFormResubmitted:
+        return WKNavigationTypeFormResubmitted;
+    case WebCore::NavigationTypeOther:
+        return WKNavigationTypeOther;
+    }
+
+    ASSERT_NOT_REACHED();
+    return WKNavigationTypeOther;
+}
+
+static RetainPtr<WKFrameInfo> frameInfoFromWebFrameProxy(WebFrameProxy& webFrameProxy)
+{
+    auto frameInfo = adoptNS([[WKFrameInfo alloc] init]);
+
+    [frameInfo setMainFrame:webFrameProxy.isMainFrame()];
+
+    return frameInfo;
+}
+
+void NavigationState::PolicyClient::decidePolicyForNavigationAction(WebPageProxy*, WebFrameProxy* destinationFrame, const NavigationActionData& navigationActionData, WebFrameProxy* sourceFrame, const WebCore::ResourceRequest& originalRequest, const WebCore::ResourceRequest& request, RefPtr<WebFramePolicyListenerProxy> listener, API::Object* userData)
 {
     if (!m_navigationState.m_navigationDelegateMethods.webViewDecidePolicyForNavigationActionDecisionHandler) {
         // FIXME: <rdar://problem/15949822> Figure out what the "default delegate behavior" should be here.
@@ -108,9 +149,18 @@ void NavigationState::PolicyClient::decidePolicyForNavigationAction(WebPageProxy
         return;
 
     // FIXME: Set up the navigation action object.
-    WKNavigationAction *navigationAction = nil;
+    auto navigationAction = adoptNS([[WKNavigationAction alloc] init]);
 
-    [navigationDelegate webView:m_navigationState.m_webView decidePolicyForNavigationAction:navigationAction decisionHandler:[listener](WKNavigationPolicyDecision policyDecision) {
+    if (sourceFrame) {
+        auto sourceFrameInfo = frameInfoFromWebFrameProxy(*sourceFrame);
+        [sourceFrameInfo setRequest:originalRequest.nsURLRequest(WebCore::DoNotUpdateHTTPBody)];
+        [navigationAction setSourceFrame:sourceFrameInfo.get()];
+    }
+
+    [navigationAction setNavigationType:toWKNavigationType(navigationActionData.navigationType)];
+    [navigationAction setRequest:request.nsURLRequest(WebCore::DoNotUpdateHTTPBody)];
+
+    [navigationDelegate webView:m_navigationState.m_webView decidePolicyForNavigationAction:navigationAction.get() decisionHandler:[listener](WKNavigationPolicyDecision policyDecision) {
         switch (policyDecision) {
         case WKNavigationPolicyDecisionAllow:
             listener->use();
@@ -293,6 +343,52 @@ void NavigationState::LoaderClient::didFailLoadWithErrorForFrame(WebPageProxy*, 
         navigation = m_navigationState.m_navigations.get(navigationID).get();
 
     [navigationDelegate webView:m_navigationState.m_webView didFailNavigation:navigation withError:error];
+}
+
+void NavigationState::willChangeIsLoading()
+{
+    [m_webView willChangeValueForKey:@"loading"];
+}
+
+void NavigationState::didChangeIsLoading()
+{
+    [m_webView didChangeValueForKey:@"loading"];
+}
+
+void NavigationState::willChangeTitle()
+{
+    [m_webView willChangeValueForKey:@"title"];
+}
+
+void NavigationState::didChangeTitle()
+{
+    [m_webView didChangeValueForKey:@"title"];
+}
+
+void NavigationState::willChangeActiveURL()
+{
+}
+
+void NavigationState::didChangeActiveURL()
+{
+}
+
+void NavigationState::willChangeHasOnlySecureContent()
+{
+    [m_webView willChangeValueForKey:@"hasOnlySecureContent"];
+}
+
+void NavigationState::didChangeHasOnlySecureContent()
+{
+    [m_webView didChangeValueForKey:@"hasOnlySecureContent"];
+}
+
+void NavigationState::willChangeEstimatedProgress()
+{
+}
+
+void NavigationState::didChangeEstimatedProgress()
+{
 }
 
 } // namespace WebKit

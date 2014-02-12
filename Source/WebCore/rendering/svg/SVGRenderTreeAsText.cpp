@@ -27,14 +27,13 @@
  */
 
 #include "config.h"
-
-#if ENABLE(SVG)
 #include "SVGRenderTreeAsText.h"
 
 #include "GraphicsTypes.h"
 #include "HTMLNames.h"
 #include "NodeRenderStyle.h"
 #include "RenderImage.h"
+#include "RenderIterator.h"
 #include "RenderSVGGradientStop.h"
 #include "RenderSVGImage.h"
 #include "RenderSVGPath.h"
@@ -250,17 +249,17 @@ static void writeSVGPaintingResource(TextStream& ts, RenderSVGResource* resource
     ts << " [id=\"" << element.getIdAttribute() << "\"]";
 }
 
-static void writeStyle(TextStream& ts, const RenderObject& object)
+static void writeStyle(TextStream& ts, const RenderElement& renderer)
 {
-    const RenderStyle& style = object.style();
+    const RenderStyle& style = renderer.style();
     const SVGRenderStyle& svgStyle = style.svgStyle();
 
-    if (!object.localTransform().isIdentity())
-        writeNameValuePair(ts, "transform", object.localTransform());
+    if (!renderer.localTransform().isIdentity())
+        writeNameValuePair(ts, "transform", renderer.localTransform());
     writeIfNotDefault(ts, "image rendering", style.imageRendering(), RenderStyle::initialImageRendering());
     writeIfNotDefault(ts, "opacity", style.opacity(), RenderStyle::initialOpacity());
-    if (object.isSVGShape()) {
-        const RenderSVGShape& shape = static_cast<const RenderSVGShape&>(object);
+    if (renderer.isSVGShape()) {
+        const auto& shape = toRenderSVGShape(renderer);
 
         Color fallbackColor;
         if (RenderSVGResource* strokePaintingResource = RenderSVGResource::strokePaintingResource(const_cast<RenderSVGShape&>(shape), shape.style(), fallbackColor)) {
@@ -307,10 +306,10 @@ static void writeStyle(TextStream& ts, const RenderObject& object)
     writeIfNotEmpty(ts, "end marker", svgStyle.markerEndResource());
 }
 
-static TextStream& writePositionAndStyle(TextStream& ts, const RenderObject& object)
+static TextStream& writePositionAndStyle(TextStream& ts, const RenderElement& renderer)
 {
-    ts << " " << enclosingIntRect(const_cast<RenderObject&>(object).absoluteClippedOverflowRect());
-    writeStyle(ts, object);
+    ts << " " << enclosingIntRect(renderer.absoluteClippedOverflowRect());
+    writeStyle(ts, renderer);
     return ts;
 }
 
@@ -451,10 +450,10 @@ static void writeStandardPrefix(TextStream& ts, const RenderObject& object, int 
         ts << " {" << object.node()->nodeName() << "}";
 }
 
-static void writeChildren(TextStream& ts, const RenderObject& object, int indent)
+static void writeChildren(TextStream& ts, const RenderElement& parent, int indent)
 {
-    for (RenderObject* child = object.firstChildSlow(); child; child = child->nextSibling())
-        write(ts, *child, indent + 1);
+    for (const auto& child : childrenOfType<RenderObject>(parent))
+        write(ts, child, indent + 1);
 }
 
 static inline void writeCommonGradientProperties(TextStream& ts, SVGSpreadMethodType spreadMethod, const AffineTransform& gradientTransform, SVGUnitTypes::SVGUnitType gradientUnits)
@@ -468,15 +467,12 @@ static inline void writeCommonGradientProperties(TextStream& ts, SVGSpreadMethod
         ts << " [gradientTransform=" << gradientTransform << "]";
 }
 
-void writeSVGResourceContainer(TextStream& ts, const RenderObject& object, int indent)
+void writeSVGResourceContainer(TextStream& ts, const RenderSVGResourceContainer& resource, int indent)
 {
-    writeStandardPrefix(ts, object, indent);
+    writeStandardPrefix(ts, resource, indent);
 
-    Element* element = toElement(object.node());
-    const AtomicString& id = element->getIdAttribute();
+    const AtomicString& id = resource.element().getIdAttribute();
     writeNameAndQuotedValue(ts, "id", id);    
-
-    const auto& resource = toRenderSVGResourceContainer(object);
 
     if (resource.resourceType() == MaskerResourceType) {
         const auto& masker = static_cast<const RenderSVGResourceMasker&>(resource);
@@ -552,10 +548,10 @@ void writeSVGResourceContainer(TextStream& ts, const RenderObject& object, int i
         ts << " [center=" << centerPoint << "] [focal=" << focalPoint << "] [radius=" << radius << "] [focalRadius=" << focalRadius << "]\n";
     } else
         ts << "\n";
-    writeChildren(ts, object, indent);
+    writeChildren(ts, resource, indent);
 }
 
-void writeSVGContainer(TextStream& ts, const RenderObject& container, int indent)
+void writeSVGContainer(TextStream& ts, const RenderSVGContainer& container, int indent)
 {
     // Currently RenderSVGResourceFilterPrimitive has no meaningful output.
     if (container.isSVGResourceFilterPrimitive())
@@ -610,22 +606,18 @@ void writeSVGGradientStop(TextStream& ts, const RenderSVGGradientStop& stop, int
 {
     writeStandardPrefix(ts, stop, indent);
 
-    SVGStopElement* stopElement = toSVGStopElement(toSVGElement(stop.element()));
-    ASSERT(stopElement);
-
-    ts << " [offset=" << stopElement->offset() << "] [color=" << stopElement->stopColorIncludingOpacity() << "]\n";
+    ts << " [offset=" << stop.element().offset() << "] [color=" << stop.element().stopColorIncludingOpacity() << "]\n";
 }
 
-void writeResources(TextStream& ts, const RenderObject& object, int indent)
+void writeResources(TextStream& ts, const RenderObject& renderer, int indent)
 {
-    const RenderStyle& style = object.style();
+    const RenderStyle& style = renderer.style();
     const SVGRenderStyle& svgStyle = style.svgStyle();
 
     // FIXME: We want to use SVGResourcesCache to determine which resources are present, instead of quering the resource <-> id cache.
     // For now leave the DRT output as is, but later on we should change this so cycles are properly ignored in the DRT output.
-    RenderObject& renderer = const_cast<RenderObject&>(object);
     if (!svgStyle.maskerResource().isEmpty()) {
-        if (RenderSVGResourceMasker* masker = getRenderSVGResourceById<RenderSVGResourceMasker>(object.document(), svgStyle.maskerResource())) {
+        if (RenderSVGResourceMasker* masker = getRenderSVGResourceById<RenderSVGResourceMasker>(renderer.document(), svgStyle.maskerResource())) {
             writeIndent(ts, indent);
             ts << " ";
             writeNameAndQuotedValue(ts, "masker", svgStyle.maskerResource());
@@ -635,7 +627,7 @@ void writeResources(TextStream& ts, const RenderObject& object, int indent)
         }
     }
     if (!svgStyle.clipperResource().isEmpty()) {
-        if (RenderSVGResourceClipper* clipper = getRenderSVGResourceById<RenderSVGResourceClipper>(object.document(), svgStyle.clipperResource())) {
+        if (RenderSVGResourceClipper* clipper = getRenderSVGResourceById<RenderSVGResourceClipper>(renderer.document(), svgStyle.clipperResource())) {
             writeIndent(ts, indent);
             ts << " ";
             writeNameAndQuotedValue(ts, "clipPath", svgStyle.clipperResource());
@@ -646,7 +638,7 @@ void writeResources(TextStream& ts, const RenderObject& object, int indent)
     }
 #if ENABLE(FILTERS)
     if (!svgStyle.filterResource().isEmpty()) {
-        if (RenderSVGResourceFilter* filter = getRenderSVGResourceById<RenderSVGResourceFilter>(object.document(), svgStyle.filterResource())) {
+        if (RenderSVGResourceFilter* filter = getRenderSVGResourceById<RenderSVGResourceFilter>(renderer.document(), svgStyle.filterResource())) {
             writeIndent(ts, indent);
             ts << " ";
             writeNameAndQuotedValue(ts, "filter", svgStyle.filterResource());
@@ -659,5 +651,3 @@ void writeResources(TextStream& ts, const RenderObject& object, int indent)
 }
 
 } // namespace WebCore
-
-#endif // ENABLE(SVG)

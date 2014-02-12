@@ -36,6 +36,7 @@
 #include "JSArray.h"
 #include "JSBoundFunction.h" 
 #include "JSGlobalObject.h"
+#include "JSNameScope.h" 
 #include "JSNotAnObject.h"
 #include "Interpreter.h"
 #include "ObjectConstructor.h"
@@ -107,6 +108,16 @@ void JSFunction::finishCreation(VM& vm, NativeExecutable* executable, int length
     m_executable.set(vm, this, executable);
     putDirect(vm, vm.propertyNames->name, jsString(&vm, name), DontDelete | ReadOnly | DontEnum);
     putDirect(vm, vm.propertyNames->length, jsNumber(length), DontDelete | ReadOnly | DontEnum);
+}
+
+void JSFunction::addNameScopeIfNeeded(VM& vm)
+{
+    FunctionExecutable* executable = jsCast<FunctionExecutable*>(m_executable.get());
+    if (!functionNameIsInScope(executable->name(), executable->functionMode()))
+        return;
+    if (!functionNameScopeIsDynamic(executable->usesEval(), executable->isStrictMode()))
+        return;
+    m_scope.set(vm, this, JSNameScope::create(vm, m_scope->globalObject(), executable->name(), this, ReadOnly | DontDelete, m_scope.get()));
 }
 
 ObjectAllocationProfile* JSFunction::createAllocationProfile(ExecState* exec, size_t inlineCapacity)
@@ -212,9 +223,9 @@ static JSValue retrieveArguments(ExecState* exec, JSFunction* functionObj)
     return functor.result();
 }
 
-EncodedJSValue JSFunction::argumentsGetter(ExecState* exec, EncodedJSValue slotBase, EncodedJSValue, PropertyName)
+EncodedJSValue JSFunction::argumentsGetter(ExecState* exec, JSObject* slotBase, EncodedJSValue, PropertyName)
 {
-    JSFunction* thisObj = jsCast<JSFunction*>(JSValue::decode(slotBase));
+    JSFunction* thisObj = jsCast<JSFunction*>(slotBase);
     ASSERT(!thisObj->isHostFunction());
 
     return JSValue::encode(retrieveArguments(exec, thisObj));
@@ -267,9 +278,9 @@ static JSValue retrieveCallerFunction(ExecState* exec, JSFunction* functionObj)
     return functor.result();
 }
 
-EncodedJSValue JSFunction::callerGetter(ExecState* exec, EncodedJSValue slotBase, EncodedJSValue, PropertyName)
+EncodedJSValue JSFunction::callerGetter(ExecState* exec, JSObject* slotBase, EncodedJSValue, PropertyName)
 {
-    JSFunction* thisObj = jsCast<JSFunction*>(JSValue::decode(slotBase));
+    JSFunction* thisObj = jsCast<JSFunction*>(slotBase);
     ASSERT(!thisObj->isHostFunction());
     JSValue caller = retrieveCallerFunction(exec, thisObj);
 
@@ -282,16 +293,16 @@ EncodedJSValue JSFunction::callerGetter(ExecState* exec, EncodedJSValue slotBase
     return JSValue::encode(throwTypeError(exec, ASCIILiteral("Function.caller used to retrieve strict caller")));
 }
 
-EncodedJSValue JSFunction::lengthGetter(ExecState*, EncodedJSValue slotBase, EncodedJSValue, PropertyName)
+EncodedJSValue JSFunction::lengthGetter(ExecState*, JSObject* slotBase, EncodedJSValue, PropertyName)
 {
-    JSFunction* thisObj = jsCast<JSFunction*>(JSValue::decode(slotBase));
+    JSFunction* thisObj = jsCast<JSFunction*>(slotBase);
     ASSERT(!thisObj->isHostFunction());
     return JSValue::encode(jsNumber(thisObj->jsExecutable()->parameterCount()));
 }
 
-EncodedJSValue JSFunction::nameGetter(ExecState*, EncodedJSValue slotBase, EncodedJSValue, PropertyName)
+EncodedJSValue JSFunction::nameGetter(ExecState*, JSObject* slotBase, EncodedJSValue, PropertyName)
 {
-    JSFunction* thisObj = jsCast<JSFunction*>(JSValue::decode(slotBase));
+    JSFunction* thisObj = jsCast<JSFunction*>(slotBase);
     ASSERT(!thisObj->isHostFunction());
     return JSValue::encode(thisObj->jsExecutable()->nameValue());
 }

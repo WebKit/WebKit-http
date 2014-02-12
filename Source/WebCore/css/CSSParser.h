@@ -94,7 +94,7 @@ public:
     PassRefPtr<CSSPrimitiveValue> parseValidPrimitive(CSSValueID ident, CSSParserValue*);
     bool parseDeclaration(MutableStyleProperties*, const String&, PassRefPtr<CSSRuleSourceData>, StyleSheetContents* contextStyleSheet);
     static PassRef<ImmutableStyleProperties> parseInlineStyleDeclaration(const String&, Element*);
-    PassOwnPtr<MediaQuery> parseMediaQuery(const String&);
+    std::unique_ptr<MediaQuery> parseMediaQuery(const String&);
 
     void addPropertyWithPrefixingVariant(CSSPropertyID, PassRefPtr<CSSValue>, bool important, bool implicit = false);
     void addProperty(CSSPropertyID, PassRefPtr<CSSValue>, bool important, bool implicit = false);
@@ -206,12 +206,10 @@ public:
     bool parseFontFaceSrc();
     bool parseFontFaceUnicodeRange();
 
-#if ENABLE(SVG)
     bool parseSVGValue(CSSPropertyID propId, bool important);
     PassRefPtr<CSSValue> parseSVGPaint();
     PassRefPtr<CSSValue> parseSVGColor();
     PassRefPtr<CSSValue> parseSVGStrokeDasharray();
-#endif
 
     // CSS3 Parsing Routines (for properties specific to CSS3)
     PassRefPtr<CSSValueList> parseShadow(CSSParserValueList*, CSSPropertyID);
@@ -310,9 +308,6 @@ public:
     void markSupportsRuleHeaderEnd();
     PassRefPtr<CSSRuleSourceData> popSupportsRuleData();
 #endif
-#if ENABLE(SHADOW_DOM)
-    PassRefPtr<StyleRuleBase> createHostRule(RuleList*);
-#endif
 
     void startDeclarationsForMarginBox();
     void endDeclarationsForMarginBox();
@@ -340,7 +335,7 @@ public:
     StyleSheetContents* m_styleSheet;
     RefPtr<StyleRuleBase> m_rule;
     RefPtr<StyleKeyframe> m_keyframe;
-    OwnPtr<MediaQuery> m_mediaQuery;
+    std::unique_ptr<MediaQuery> m_mediaQuery;
     OwnPtr<CSSParserValueList> m_valueList;
 #if ENABLE(CSS3_CONDITIONAL_RULES)
     bool m_supportsCondition;

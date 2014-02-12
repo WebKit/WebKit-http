@@ -59,6 +59,10 @@
 #include <wtf/PassRefPtr.h>
 #include <wtf/WeakPtr.h>
 
+#if ENABLE(WEB_REPLAY)
+#include <replay/InputCursor.h>
+#endif
+
 namespace WebCore {
 
 class AXObjectCache;
@@ -141,6 +145,7 @@ class StyleResolver;
 class StyleSheet;
 class StyleSheetContents;
 class StyleSheetList;
+class SVGDocumentExtensions;
 class Text;
 class TextResourceDecoder;
 class TreeWalker;
@@ -151,10 +156,6 @@ class XPathEvaluator;
 class XPathExpression;
 class XPathNSResolver;
 class XPathResult;
-
-#if ENABLE(SVG)
-class SVGDocumentExtensions;
-#endif
 
 #if ENABLE(XSLT)
 class TransformSource;
@@ -442,6 +443,11 @@ public:
 
     virtual URL baseURI() const override;
 
+#if ENABLE(WEB_REPLAY)
+    InputCursor& inputCursor() const { return *m_inputCursor; }
+    void setInputCursor(PassRefPtr<InputCursor> cursor) { m_inputCursor = cursor; }
+#endif
+
 #if ENABLE(PAGE_VISIBILITY_API)
     void visibilityStateChanged();
     String visibilityState() const;
@@ -475,11 +481,7 @@ public:
     bool isSVGDocument() const { return m_documentClasses & SVGDocumentClass; }
     bool isPluginDocument() const { return m_documentClasses & PluginDocumentClass; }
     bool isMediaDocument() const { return m_documentClasses & MediaDocumentClass; }
-#if ENABLE(SVG)
     bool hasSVGRootNode() const;
-#else
-    static bool hasSVGRootNode() { return false; }
-#endif
     virtual bool isFrameSet() const { return false; }
 
     bool isSrcdocDocument() const { return m_isSrcdocDocument; }
@@ -825,9 +827,6 @@ public:
     // Returns 0 if this is the top level document.
     HTMLFrameOwnerElement* ownerElement() const;
 
-    HTMLIFrameElement* seamlessParentIFrame() const;
-    bool shouldDisplaySeamlesslyWithParent() const;
-
     // Used by DOM bindings; no direction known.
     String title() const { return m_title.string(); }
     void setTitle(const String&);
@@ -1040,10 +1039,8 @@ public:
 
     virtual void removeAllEventListeners() override;
 
-#if ENABLE(SVG)
     const SVGDocumentExtensions* svgExtensions();
     SVGDocumentExtensions* accessSVGExtensions();
-#endif
 
     void initSecurityContext();
     void initContentSecurityPolicy();
@@ -1200,7 +1197,6 @@ public:
     void didRemoveAllPendingStylesheet();
     void setNeedsNotifyRemoveAllPendingStylesheet() { m_needsNotifyRemoveAllPendingStylesheet = true; }
     void clearStyleResolver();
-    void notifySeamlessChildDocumentsOfStylesheetUpdate() const;
 
     bool inStyleRecalc() { return m_inStyleRecalc; }
 
@@ -1281,8 +1277,6 @@ private:
     void buildAccessKeyMap(TreeScope* root);
 
     void createStyleResolver();
-
-    void seamlessParentUpdatedStylesheets();
 
     void loadEventDelayTimerFired(Timer<Document>&);
 
@@ -1470,9 +1464,7 @@ private:
 
     RefPtr<XPathEvaluator> m_xpathEvaluator;
 
-#if ENABLE(SVG)
     OwnPtr<SVGDocumentExtensions> m_svgExtensions;
-#endif
 
 #if ENABLE(DASHBOARD_SUPPORT)
     Vector<AnnotatedRegionValue> m_annotatedRegions;
@@ -1643,6 +1635,10 @@ private:
 
 #if ENABLE(FONT_LOAD_EVENTS)
     RefPtr<FontLoader> m_fontloader;
+#endif
+
+#if ENABLE(WEB_REPLAY)
+    RefPtr<InputCursor> m_inputCursor;
 #endif
 
     Timer<Document> m_didAssociateFormControlsTimer;

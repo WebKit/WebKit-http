@@ -96,6 +96,7 @@
 #include "RenderTheme.h"
 #include "RenderTreeAsText.h"
 #include "RenderView.h"
+#include "SVGNames.h"
 #include "ScaleTransformOperation.h"
 #include "ScrollAnimator.h"
 #include "Scrollbar.h"
@@ -119,9 +120,6 @@
 #include "RenderLayerFilterInfo.h"
 #endif
 
-#if ENABLE(SVG)
-#include "SVGNames.h"
-#endif
 
 #define MIN_INTERSECT_FOR_REVEAL 32
 
@@ -1532,10 +1530,8 @@ bool RenderLayer::cannotBlitToWindow() const
 
 bool RenderLayer::isTransparent() const
 {
-#if ENABLE(SVG)
     if (renderer().element() && renderer().element()->isSVGElement())
         return false;
-#endif
     return renderer().isTransparent() || renderer().hasMask();
 }
 
@@ -3563,7 +3559,7 @@ static bool inContainingBlockChain(RenderLayer* startLayer, RenderLayer* endLaye
 void RenderLayer::clipToRect(RenderLayer* rootLayer, GraphicsContext* context, const LayoutRect& paintDirtyRect, const ClipRect& clipRect,
                              BorderRadiusClippingRule rule)
 {
-    if (clipRect.rect() != paintDirtyRect) {
+    if (clipRect.rect() != paintDirtyRect || clipRect.hasRadius()) {
         context->save();
         context->clip(pixelSnappedIntRect(clipRect.rect()));
     }
@@ -3588,7 +3584,7 @@ void RenderLayer::clipToRect(RenderLayer* rootLayer, GraphicsContext* context, c
 
 void RenderLayer::restoreClip(GraphicsContext* context, const LayoutRect& paintDirtyRect, const ClipRect& clipRect)
 {
-    if (clipRect.rect() == paintDirtyRect)
+    if (clipRect.rect() == paintDirtyRect && !clipRect.hasRadius())
         return;
     context->restore();
 }
@@ -3850,7 +3846,6 @@ bool RenderLayer::setupClipPath(GraphicsContext* context, const LayerPaintingInf
         return true;
     }
 
-#if ENABLE(SVG)
     if (style.clipPath()->type() == ClipPathOperation::Reference) {
         ReferenceClipPathOperation* referenceClipPathOperation = static_cast<ReferenceClipPathOperation*>(style.clipPath());
         Element* element = renderer().document().getElementById(referenceClipPathOperation->fragment());
@@ -3860,7 +3855,6 @@ bool RenderLayer::setupClipPath(GraphicsContext* context, const LayerPaintingInf
             static_cast<RenderSVGResourceClipper*>(element->renderer())->applyClippingToContext(renderer(), rootRelativeBounds, paintingInfo.paintDirtyRect, context);
         }
     }
-#endif
 
     return false;
 }
@@ -5041,6 +5035,13 @@ bool RenderLayer::hitTestContents(const HitTestRequest& request, HitTestResult& 
     // the content in the layer has an element. So just walk up
     // the tree.
     if (!result.innerNode() || !result.innerNonSharedNode()) {
+        if (isOutOfFlowRenderFlowThread()) {
+            // The flowthread doesn't have an enclosing element, so when hitting the layer of the
+            // flowthread (e.g. the descent area of the RootInlineBox for the image flowed alone
+            // inside the flow thread) we're letting the hit testing continue so it will hit the region.
+            return false;
+        }
+
         Element* e = enclosingElement();
         if (!result.innerNode())
             result.setInnerNode(e);
@@ -6670,12 +6671,10 @@ void RenderLayer::updateOrRemoveFilterClients()
         return;
     }
 
-#if ENABLE(SVG)
     if (renderer().style().filter().hasReferenceFilter())
         FilterInfo::get(*this).updateReferenceFilterClients(renderer().style().filter());
     else if (FilterInfo* filterInfo = FilterInfo::getIfExists(*this))
         filterInfo->removeReferenceFilterClients();
-#endif
 }
 
 void RenderLayer::updateOrRemoveFilterEffectRenderer()

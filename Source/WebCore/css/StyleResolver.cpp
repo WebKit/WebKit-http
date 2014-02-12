@@ -56,6 +56,8 @@
 #include "CSSValueList.h"
 #include "CachedImage.h"
 #include "CachedResourceLoader.h"
+#include "CachedSVGDocument.h"
+#include "CachedSVGDocumentReference.h"
 #include "CalculationValue.h"
 #include "ContentData.h"
 #include "Counter.h"
@@ -99,8 +101,12 @@
 #include "RenderTheme.h"
 #include "RenderView.h"
 #include "RuleSet.h"
+#include "SVGDocument.h"
 #include "SVGDocumentExtensions.h"
+#include "SVGElement.h"
 #include "SVGFontFaceElement.h"
+#include "SVGNames.h"
+#include "SVGURIReference.h"
 #include "SecurityOrigin.h"
 #include "SelectorCheckerFastPath.h"
 #include "Settings.h"
@@ -148,15 +154,6 @@
 
 #if ENABLE(PLUGIN_PROXY_FOR_VIDEO)
 #include "HTMLAudioElement.h"
-#endif
-
-#if ENABLE(SVG)
-#include "CachedSVGDocument.h"
-#include "CachedSVGDocumentReference.h"
-#include "SVGDocument.h"
-#include "SVGElement.h"
-#include "SVGNames.h"
-#include "SVGURIReference.h"
 #endif
 
 #if ENABLE(VIDEO_TRACK)
@@ -239,7 +236,7 @@ inline void StyleResolver::State::clear()
     m_parentNode = nullptr;
     m_regionForStyling = nullptr;
     m_pendingImageProperties.clear();
-#if ENABLE(CSS_FILTERS) && ENABLE(SVG)
+#if ENABLE(CSS_FILTERS)
     m_filtersWithPendingSVGDocuments.clear();
 #endif
 }
@@ -447,10 +444,8 @@ Node* StyleResolver::locateCousinList(Element* parent, unsigned& visitedNodeCoun
     StyledElement* p = toStyledElement(parent);
     if (p->inlineStyle())
         return 0;
-#if ENABLE(SVG)
     if (p->isSVGElement() && toSVGElement(p)->animatedSMILStyleProperties())
         return 0;
-#endif
     if (p->hasID() && m_ruleSets.features().idsInRules.contains(p->idForStyleResolution().impl()))
         return 0;
 
@@ -491,7 +486,7 @@ bool StyleResolver::styleSharingCandidateMatchesRuleSet(RuleSet* ruleSet)
     if (!ruleSet)
         return false;
 
-    ElementRuleCollector collector(this, m_state);
+    ElementRuleCollector collector(*m_state.element(), m_state.style(), m_ruleSets, m_selectorFilter);
     return collector.hasAnyMatchingRules(ruleSet);
 }
 
@@ -565,18 +560,14 @@ bool StyleResolver::sharingCandidateHasIdenticalStyleAffectingAttributes(StyledE
         if (sharingCandidate->hasClass() && classNamesAffectedByRules(sharingCandidate->classNames()))
             return false;
     } else if (sharingCandidate->hasClass()) {
-#if ENABLE(SVG)
         // SVG elements require a (slow!) getAttribute comparision because "class" is an animatable attribute for SVG.
         if (state.element()->isSVGElement()) {
             if (state.element()->getAttribute(classAttr) != sharingCandidate->getAttribute(classAttr))
                 return false;
         } else {
-#endif
             if (state.element()->classNames() != sharingCandidate->classNames())
                 return false;
-#if ENABLE(SVG)
         }
-#endif
     } else
         return false;
 
@@ -610,10 +601,8 @@ bool StyleResolver::canShareStyleWithElement(StyledElement* element) const
         return false;
     if (element->needsStyleRecalc())
         return false;
-#if ENABLE(SVG)
     if (element->isSVGElement() && toSVGElement(element)->animatedSMILStyleProperties())
         return false;
-#endif
     if (element->isLink() != state.element()->isLink())
         return false;
     if (element->hovered() != state.element()->hovered())
@@ -706,10 +695,8 @@ RenderStyle* StyleResolver::locateSharedStyle()
     // If the element has inline style it is probably unique.
     if (state.styledElement()->inlineStyle())
         return 0;
-#if ENABLE(SVG)
     if (state.styledElement()->isSVGElement() && toSVGElement(state.styledElement())->animatedSMILStyleProperties())
         return 0;
-#endif
     // Ids stop style sharing if they show up in the stylesheets.
     if (state.styledElement()->hasID() && m_ruleSets.features().idsInRules.contains(state.styledElement()->idForStyleResolution().impl()))
         return 0;
@@ -809,7 +796,7 @@ PassRef<RenderStyle> StyleResolver::styleForElement(Element* element, RenderStyl
     if (needsCollection)
         m_ruleSets.collectFeatures(document().isViewSource());
 
-    ElementRuleCollector collector(this, state);
+    ElementRuleCollector collector(*element, state.style(), m_ruleSets, m_selectorFilter);
     collector.setRegionForStyling(regionForStyling);
     collector.setMedium(m_medium.get());
 
@@ -952,17 +939,17 @@ void StyleResolver::keyframeStylesForAnimation(Element* e, const RenderStyle* el
     }
 }
 
-PassRefPtr<RenderStyle> StyleResolver::pseudoStyleForElement(Element* e, const PseudoStyleRequest& pseudoStyleRequest, RenderStyle* parentStyle)
+PassRefPtr<RenderStyle> StyleResolver::pseudoStyleForElement(Element* element, const PseudoStyleRequest& pseudoStyleRequest, RenderStyle* parentStyle)
 {
     ASSERT(parentStyle);
-    if (!e)
+    if (!element)
         return 0;
 
     State& state = m_state;
 
-    initElement(e);
+    initElement(element);
 
-    state.initForStyleResolve(document(), e, parentStyle);
+    state.initForStyleResolve(document(), element, parentStyle);
 
     if (m_state.parentStyle()) {
         state.setStyle(RenderStyle::create());
@@ -976,7 +963,7 @@ PassRefPtr<RenderStyle> StyleResolver::pseudoStyleForElement(Element* e, const P
     // those rules.
 
     // Check UA, user and author rules.
-    ElementRuleCollector collector(this, state);
+    ElementRuleCollector collector(*element, m_state.style(), m_ruleSets, m_selectorFilter);
     collector.setPseudoStyleRequest(pseudoStyleRequest);
     collector.setMedium(m_medium.get());
     collector.matchUARules();
@@ -991,7 +978,7 @@ PassRefPtr<RenderStyle> StyleResolver::pseudoStyleForElement(Element* e, const P
 
     state.style()->setStyleType(pseudoStyleRequest.pseudoId);
 
-    applyMatchedProperties(collector.matchedResult(), e);
+    applyMatchedProperties(collector.matchedResult(), element);
 
     // Clean up our style object's display and text decorations (among other fixups).
     adjustRenderStyle(*state.style(), *m_state.parentStyle(), 0);
@@ -1344,13 +1331,8 @@ void StyleResolver::adjustRenderStyle(RenderStyle& style, const RenderStyle& par
         || style.hasFilter()))
         style.setTransformStyle3D(TransformStyle3DFlat);
 
-    // Seamless iframes behave like blocks. Map their display to inline-block when marked inline.
-    if (e && e->hasTagName(iframeTag) && style.display() == INLINE && toHTMLIFrameElement(e)->shouldDisplaySeamlessly())
-        style.setDisplay(INLINE_BLOCK);
-
     adjustGridItemPosition(style, parentStyle);
 
-#if ENABLE(SVG)
     if (e && e->isSVGElement()) {
         // Spec: http://www.w3.org/TR/SVG/masking.html#OverflowProperty
         if (style.overflowY() == OSCROLL)
@@ -1376,7 +1358,6 @@ void StyleResolver::adjustRenderStyle(RenderStyle& style, const RenderStyle& par
         if ((e->hasTagName(SVGNames::foreignObjectTag) || e->hasTagName(SVGNames::textTag)) && style.isDisplayInlineType())
             style.setDisplay(BLOCK);
     }
-#endif
 }
 
 void StyleResolver::adjustGridItemPosition(RenderStyle& style, const RenderStyle& parentStyle) const
@@ -1471,15 +1452,15 @@ Vector<RefPtr<StyleRuleBase>> StyleResolver::styleRulesForElement(Element* e, un
     return pseudoStyleRulesForElement(e, NOPSEUDO, rulesToInclude);
 }
 
-Vector<RefPtr<StyleRuleBase>> StyleResolver::pseudoStyleRulesForElement(Element* e, PseudoId pseudoId, unsigned rulesToInclude)
+Vector<RefPtr<StyleRuleBase>> StyleResolver::pseudoStyleRulesForElement(Element* element, PseudoId pseudoId, unsigned rulesToInclude)
 {
-    if (!e || !e->document().haveStylesheetsLoaded())
+    if (!element || !element->document().haveStylesheetsLoaded())
         return Vector<RefPtr<StyleRuleBase>>();
 
-    initElement(e);
-    m_state.initForStyleResolve(document(), e, 0);
+    initElement(element);
+    m_state.initForStyleResolve(document(), element, 0);
 
-    ElementRuleCollector collector(this, m_state);
+    ElementRuleCollector collector(*element, m_state.style(), m_ruleSets, m_selectorFilter);
     collector.setMode(SelectorChecker::CollectingRules);
     collector.setPseudoStyleRequest(PseudoStyleRequest(pseudoId));
     collector.setMedium(m_medium.get());
@@ -1805,10 +1786,8 @@ inline bool isValidVisitedLinkProperty(CSSPropertyID id)
     case CSSPropertyWebkitTextEmphasisColor:
     case CSSPropertyWebkitTextFillColor:
     case CSSPropertyWebkitTextStrokeColor:
-#if ENABLE(SVG)
     case CSSPropertyFill:
     case CSSPropertyStroke:
-#endif
         return true;
     default:
         break;
@@ -3027,11 +3006,13 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value)
     case CSSPropertyWebkitUserModify:
     case CSSPropertyWebkitUserSelect:
     case CSSPropertyWebkitClipPath:
+#if ENABLE(CSS_SHAPES) && ENABLE(CSS_SHAPE_INSIDE)
+    case CSSPropertyWebkitShapeInside:
+    case CSSPropertyWebkitShapePadding:
+#endif
 #if ENABLE(CSS_SHAPES)
     case CSSPropertyWebkitShapeMargin:
-    case CSSPropertyWebkitShapePadding:
     case CSSPropertyWebkitShapeImageThreshold:
-    case CSSPropertyWebkitShapeInside:
     case CSSPropertyWebkitShapeOutside:
 #endif
 #if ENABLE(CSS_EXCLUSIONS)
@@ -3055,10 +3036,8 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value)
         ASSERT_NOT_REACHED();
         return;
     default:
-#if ENABLE(SVG)
         // Try the SVG properties
         applySVGProperty(id, value);
-#endif
         return;
     }
 }
@@ -3335,7 +3314,6 @@ static FilterOperation::OperationType filterOperationForType(WebKitCSSFilterValu
     return FilterOperation::NONE;
 }
 
-#if ENABLE(CSS_FILTERS) && ENABLE(SVG)
 void StyleResolver::loadPendingSVGDocuments()
 {
     State& state = m_state;
@@ -3353,7 +3331,6 @@ void StyleResolver::loadPendingSVGDocuments()
 
     state.filtersWithPendingSVGDocuments().clear();
 }
-#endif
 
 bool StyleResolver::createFilterOperations(CSSValue* inValue, FilterOperations& outOperations)
 {
@@ -3385,7 +3362,6 @@ bool StyleResolver::createFilterOperations(CSSValue* inValue, FilterOperations& 
         FilterOperation::OperationType operationType = filterOperationForType(filterValue->operationType());
 
         if (operationType == FilterOperation::REFERENCE) {
-#if ENABLE(SVG)
             if (filterValue->length() != 1)
                 continue;
             CSSValue* argument = filterValue->itemWithoutBoundsCheck(0);
@@ -3402,7 +3378,6 @@ bool StyleResolver::createFilterOperations(CSSValue* inValue, FilterOperations& 
                 state.filtersWithPendingSVGDocuments().append(operation);
 
             operations.operations().append(operation);
-#endif
             continue;
         }
 
@@ -3628,10 +3603,12 @@ void StyleResolver::loadPendingImages()
             }
             break;
         }
-#if ENABLE(CSS_SHAPES)
+#if ENABLE(CSS_SHAPES) && ENABLE(CSS_SHAPE_INSIDE)
         case CSSPropertyWebkitShapeInside:
             loadPendingShapeImage(m_state.style()->shapeInside());
             break;
+#endif
+#if ENABLE(CSS_SHAPES)
         case CSSPropertyWebkitShapeOutside:
             loadPendingShapeImage(m_state.style()->shapeOutside());
             break;
@@ -3666,7 +3643,7 @@ void StyleResolver::loadPendingResources()
     // Start loading images referenced by this style.
     loadPendingImages();
 
-#if ENABLE(CSS_FILTERS) && ENABLE(SVG)
+#if ENABLE(CSS_FILTERS)
     // Start loading the SVG Documents referenced by this style.
     loadPendingSVGDocuments();
 #endif

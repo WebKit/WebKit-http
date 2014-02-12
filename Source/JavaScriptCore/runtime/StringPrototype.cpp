@@ -265,7 +265,7 @@ static ALWAYS_INLINE JSValue jsSpliceSubstrings(ExecState* exec, JSString* sourc
         if (position <= 0 && length >= sourceSize)
             return sourceVal;
         // We could call String::substringSharingImpl(), but this would result in redundant checks.
-        return jsString(exec, StringImpl::create(source.impl(), std::max(0, position), std::min(sourceSize, length)));
+        return jsString(exec, StringImpl::createSubstringSharingImpl(source.impl(), std::max(0, position), std::min(sourceSize, length)));
     }
 
     int totalLength = 0;
@@ -320,7 +320,7 @@ static ALWAYS_INLINE JSValue jsSpliceSubstringsWithSeparators(ExecState* exec, J
         if (position <= 0 && length >= sourceSize)
             return sourceVal;
         // We could call String::substringSharingImpl(), but this would result in redundant checks.
-        return jsString(exec, StringImpl::create(source.impl(), std::max(0, position), std::min(sourceSize, length)));
+        return jsString(exec, StringImpl::createSubstringSharingImpl(source.impl(), std::max(0, position), std::min(sourceSize, length)));
     }
 
     Checked<int, RecordOverflow> totalLength = 0;
@@ -650,14 +650,14 @@ static inline EncodedJSValue replaceUsingStringSearch(ExecState* exec, JSString*
         return JSValue::encode(jsUndefined());
 
     StringImpl* stringImpl = string.impl();
-    String leftPart(StringImpl::create(stringImpl, 0, matchStart));
+    String leftPart(StringImpl::createSubstringSharingImpl(stringImpl, 0, matchStart));
 
     size_t matchEnd = matchStart + searchString.impl()->length();
     int ovector[2] = { static_cast<int>(matchStart),  static_cast<int>(matchEnd)};
     String middlePart = substituteBackreferences(replaceString, string, ovector, 0);
 
     size_t leftLength = stringImpl->length() - matchEnd;
-    String rightPart(StringImpl::create(stringImpl, matchEnd, leftLength));
+    String rightPart(StringImpl::createSubstringSharingImpl(stringImpl, matchEnd, leftLength));
     return JSValue::encode(JSC::jsString(exec, leftPart, middlePart, rightPart));
 }
 
@@ -942,7 +942,7 @@ static ALWAYS_INLINE bool splitStringByOneCharacterImpl(ExecState* exec, JSArray
 {
     // 12. Let q = p.
     size_t matchPosition;
-    const CharacterType* characters = string->getCharacters<CharacterType>();
+    const CharacterType* characters = string->characters<CharacterType>();
     // 13. Repeat, while q != s
     //   a. Call SplitMatch(S, q, R) and let z be its MatchResult result.
     //   b. If z is failure, then let q = q+1.

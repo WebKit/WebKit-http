@@ -768,22 +768,7 @@ bool RenderBox::scrollLayer(ScrollDirection direction, ScrollGranularity granula
     return false;
 }
 
-bool RenderBox::scroll(ScrollDirection direction, ScrollGranularity granularity, float multiplier, Element** stopElement)
-{
-    if (scrollLayer(direction, granularity, multiplier, stopElement))
-        return true;
-
-    if (stopElement && *stopElement && *stopElement == element())
-        return true;
-
-    RenderBlock* b = containingBlock();
-    if (b && !b->isRenderView())
-        return b->scroll(direction, granularity, multiplier, stopElement);
-
-    return false;
-}
-
-bool RenderBox::scrollWithWheelEventLocation(ScrollDirection direction, ScrollGranularity granularity, float multiplier, RenderBox* startBox, Element** stopElement, IntPoint absolutePoint)
+bool RenderBox::scroll(ScrollDirection direction, ScrollGranularity granularity, float multiplier, Element** stopElement, RenderBox* startBox, const IntPoint& wheelEventAbsolutePoint)
 {
     if (scrollLayer(direction, granularity, multiplier, stopElement))
         return true;
@@ -794,11 +779,11 @@ bool RenderBox::scrollWithWheelEventLocation(ScrollDirection direction, ScrollGr
     RenderBlock* nextScrollBlock = containingBlock();
     if (nextScrollBlock && nextScrollBlock->isRenderNamedFlowThread()) {
         ASSERT(startBox);
-        nextScrollBlock = toRenderFlowThread(nextScrollBlock)->regionFromAbsolutePointAndBox(absolutePoint, *startBox);
+        nextScrollBlock = toRenderFlowThread(nextScrollBlock)->regionFromAbsolutePointAndBox(wheelEventAbsolutePoint, *startBox);
     }
 
     if (nextScrollBlock && !nextScrollBlock->isRenderView())
-        return nextScrollBlock->scrollWithWheelEventLocation(direction, granularity, multiplier, startBox, stopElement, absolutePoint);
+        return nextScrollBlock->scroll(direction, granularity, multiplier, stopElement, startBox, wheelEventAbsolutePoint);
 
     return false;
 }
@@ -1553,6 +1538,14 @@ void RenderBox::imageChanged(WrappedImagePtr image, const IntRect*)
         repaint();
         return;
     }
+
+#if ENABLE(CSS_SHAPES)
+    ShapeValue* shapeOutsideValue = style().shapeOutside();
+    if (!view().frameView().isInLayout() && isFloating() && shapeOutsideValue && shapeOutsideValue->image() && shapeOutsideValue->image()->data() == image) {
+        ShapeOutsideInfo::ensureInfo(*this).dirtyShapeSize();
+        markShapeOutsideDependentsForLayout();
+    }
+#endif
 
     bool didFullRepaint = repaintLayerRectsForImage(image, style().backgroundLayers(), true);
     if (!didFullRepaint)

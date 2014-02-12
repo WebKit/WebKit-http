@@ -137,8 +137,8 @@ StringImpl::~StringImpl()
     }
 
     ASSERT(ownership == BufferSubstring);
-    ASSERT(m_substringBuffer);
-    m_substringBuffer->deref();
+    ASSERT(substringBuffer());
+    substringBuffer()->deref();
 }
 
 void StringImpl::destroy(StringImpl* stringImpl)
@@ -195,10 +195,9 @@ inline PassRef<StringImpl> StringImpl::createUninitializedInternalNonEmpty(unsig
     // heap allocation from this call.
     if (length > ((std::numeric_limits<unsigned>::max() - sizeof(StringImpl)) / sizeof(CharType)))
         CRASH();
-    size_t size = sizeof(StringImpl) + length * sizeof(CharType);
-    StringImpl* string = static_cast<StringImpl*>(fastMalloc(size));
+    StringImpl* string = static_cast<StringImpl*>(fastMalloc(allocationSize<CharType>(length)));
 
-    data = reinterpret_cast<CharType*>(string + 1);
+    data = string->tailPointer<CharType>();
     return constructInternal<CharType>(string, length);
 }
 
@@ -226,11 +225,11 @@ inline PassRef<StringImpl> StringImpl::reallocateInternal(PassRefPtr<StringImpl>
     // Same as createUninitialized() except here we use fastRealloc.
     if (length > ((std::numeric_limits<unsigned>::max() - sizeof(StringImpl)) / sizeof(CharType)))
         CRASH();
-    size_t size = sizeof(StringImpl) + length * sizeof(CharType);
-    originalString->~StringImpl();
-    StringImpl* string = static_cast<StringImpl*>(fastRealloc(originalString.leakRef(), size));
 
-    data = reinterpret_cast<CharType*>(string + 1);
+    originalString->~StringImpl();
+    StringImpl* string = static_cast<StringImpl*>(fastRealloc(originalString.leakRef(), allocationSize<CharType>(length)));
+
+    data = string->tailPointer<CharType>();
     return constructInternal<CharType>(string, length);
 }
 
@@ -308,8 +307,8 @@ const UChar* StringImpl::getData16SlowCase() const
     if (bufferOwnership() == BufferSubstring) {
         // If this is a substring, return a pointer into the parent string.
         // TODO: Consider severing this string from the parent string
-        unsigned offset = m_data8 - m_substringBuffer->characters8();
-        return m_substringBuffer->deprecatedCharacters() + offset;
+        unsigned offset = m_data8 - substringBuffer()->characters8();
+        return substringBuffer()->deprecatedCharacters() + offset;
     }
 
     STRING_STATS_ADD_UPCONVERTED_STRING(m_length);
@@ -818,7 +817,7 @@ inline PassRef<StringImpl> StringImpl::simplifyMatchedCharactersToSpace(UCharPre
 {
     StringBuffer<CharType> data(m_length);
 
-    const CharType* from = getCharacters<CharType>();
+    const CharType* from = characters<CharType>();
     const CharType* fromend = from + m_length;
     int outc = 0;
     bool changedToSpace = false;
@@ -1770,24 +1769,24 @@ PassRef<StringImpl> StringImpl::replace(StringImpl* pattern, StringImpl* replace
     return newImpl;
 }
 
-static inline bool stringImplContentEqual(const StringImpl* a, const StringImpl* b)
+static inline bool stringImplContentEqual(const StringImpl& a, const StringImpl& b)
 {
-    unsigned aLength = a->length();
-    unsigned bLength = b->length();
+    unsigned aLength = a.length();
+    unsigned bLength = b.length();
     if (aLength != bLength)
         return false;
 
-    if (a->is8Bit()) {
-        if (b->is8Bit())
-            return equal(a->characters8(), b->characters8(), aLength);
+    if (a.is8Bit()) {
+        if (b.is8Bit())
+            return equal(a.characters8(), b.characters8(), aLength);
 
-        return equal(a->characters8(), b->characters16(), aLength);
+        return equal(a.characters8(), b.characters16(), aLength);
     }
 
-    if (b->is8Bit())
-        return equal(a->characters16(), b->characters8(), aLength);
+    if (b.is8Bit())
+        return equal(a.characters16(), b.characters8(), aLength);
 
-    return equal(a->characters16(), b->characters16(), aLength);
+    return equal(a.characters16(), b.characters16(), aLength);
 }
 
 bool equal(const StringImpl* a, const StringImpl* b)
@@ -1797,7 +1796,7 @@ bool equal(const StringImpl* a, const StringImpl* b)
     if (!a || !b)
         return false;
 
-    return stringImplContentEqual(a, b);
+    return stringImplContentEqual(*a, *b);
 }
 
 template <typename CharType>
@@ -1860,10 +1859,9 @@ bool equal(const StringImpl* a, const LChar* b)
     return !b[length];
 }
 
-bool equalNonNull(const StringImpl* a, const StringImpl* b)
+bool equal(const StringImpl& a, const StringImpl& b)
 {
-    ASSERT(a && b);
-    if (a == b)
+    if (&a == &b)
         return true;
 
     return stringImplContentEqual(a, b);

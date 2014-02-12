@@ -63,7 +63,7 @@ public:
         
     static JSActivation* create(VM& vm, CallFrame* callFrame, CodeBlock* codeBlock)
     {
-        return create(vm, callFrame, callFrame->registers(), codeBlock);
+        return create(vm, callFrame, callFrame->registers() + codeBlock->framePointerOffsetToGetActivationRegisters(), codeBlock);
     }
 
     static void visitChildren(JSCell*, SlotVisitor&);
@@ -100,7 +100,7 @@ private:
     bool symbolTablePut(ExecState*, PropertyName, JSValue, bool shouldThrow);
     bool symbolTablePutWithAttributes(VM&, PropertyName, JSValue, unsigned attributes);
 
-    static EncodedJSValue argumentsGetter(ExecState*, EncodedJSValue, EncodedJSValue, PropertyName);
+    static EncodedJSValue argumentsGetter(ExecState*, JSObject*, EncodedJSValue, PropertyName);
 
     static size_t allocationSize(SymbolTable*);
     static size_t storageOffset();

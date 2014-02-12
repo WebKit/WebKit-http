@@ -73,6 +73,20 @@ WK_API_CLASS
 
 - (WKNavigation *)loadRequest:(NSURLRequest *)request;
 
+@property (nonatomic, readonly) NSString *title;
+
+/*! @abstract Whether the view is loading content. @link WKWebView @/link is KVO-compliant for this
+ property. */
+@property (nonatomic, readonly, getter=isLoading) BOOL loading;
+
+@property (nonatomic, readonly) BOOL hasOnlySecureContent;
+
+@property(readonly) BOOL canGoBack;
+@property(readonly) BOOL canGoForward;
+
+- (void)goBack;
+- (void)goForward;
+
 @end
 
 #endif

@@ -64,6 +64,7 @@ my (
     $cssRegionsSupport,
     $cssShadersSupport,
     $cssShapesSupport,
+    $cssShapeInsideSupport,
     $cssStickyPositionSupport,
     $cssCompositingSupport,
     $cssAnimationsTransformsUnprefixedSupport,
@@ -83,7 +84,6 @@ my (
     $geolocationSupport,
     $highDPICanvasSupport,
     $icondatabaseSupport,
-    $iframeSeamlessSupport,
     $indexedDatabaseSupport,
     $inputSpeechSupport,
     $inputTypeColorSupport,
@@ -191,6 +191,9 @@ my @features = (
     { option => "css-shapes", desc => "Toggle CSS Shapes support",
       define => "ENABLE_CSS_SHAPES", default => 1, value => \$cssShapesSupport },
 
+    { option => "css-shape-inside", desc => "Toggle CSS Shapes shape-inside support",
+      define => "ENABLE_CSS_SHAPE_INSIDE", default => 1, value => \$cssShapeInsideSupport },
+
     { option => "css-filters", desc => "Toggle CSS Filters support",
       define => "ENABLE_CSS_FILTERS", default => (isAppleMacWebKit() || isIOSWebKit()), value => \$cssFiltersSupport },
 
@@ -245,9 +248,6 @@ my @features = (
     { option => "device-orientation", desc => "Toggle Device Orientation support",
       define => "ENABLE_DEVICE_ORIENTATION", default => isIOSWebKit(), value => \$deviceOrientationSupport },
 
-    { option => "directory-upload", desc => "Toggle Directory Upload support",
-      define => "ENABLE_DIRECTORY_UPLOAD", default => 0, value => \$directoryUploadSupport },
-
     { option => "dom4-events-constructor", desc => "Expose DOM4 Events constructors",
       define => "ENABLE_DOM4_EVENTS_CONSTRUCTOR", default => (isAppleWebKit() || isGtk() || isEfl()), value => \$dom4EventsConstructor },
 
@@ -277,9 +277,6 @@ my @features = (
 
     { option => "icon-database", desc => "Toggle Icondatabase support",
       define => "ENABLE_ICONDATABASE", default => !isIOSWebKit(), value => \$icondatabaseSupport },
-
-    { option => "iframe-seamless", desc => "Toggle iframe seamless attribute support",
-      define => "ENABLE_IFRAME_SEAMLESS", default => 1, value => \$iframeSeamlessSupport },
 
     { option => "indexed-database", desc => "Toggle Indexed Database support",
       define => "ENABLE_INDEXED_DATABASE", default => (isGtk() || isEfl()), value => \$indexedDatabaseSupport },
@@ -412,9 +409,6 @@ my @features = (
 
     { option => "suid-linux-sandbox", desc => "Toggle suid sandbox for linux",
       define => "ENABLE_SUID_SANDBOX_LINUX", default => 0, value => \$suidLinuxSandbox },
-
-    { option => "svg", desc => "Toggle SVG support",
-      define => "ENABLE_SVG", default => 1, value => \$svgSupport },
 
     { option => "svg-fonts", desc => "Toggle SVG Fonts support",
       define => "ENABLE_SVG_FONTS", default => 1, value => \$svgFontsSupport },

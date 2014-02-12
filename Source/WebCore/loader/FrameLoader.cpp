@@ -94,6 +94,13 @@
 #include "ProgressTracker.h"
 #include "ResourceHandle.h"
 #include "ResourceRequest.h"
+#include "SVGDocument.h"
+#include "SVGLocatable.h"
+#include "SVGNames.h"
+#include "SVGPreserveAspectRatio.h"
+#include "SVGSVGElement.h"
+#include "SVGViewElement.h"
+#include "SVGViewSpec.h"
 #include "SchemeRegistry.h"
 #include "ScriptCallStack.h"
 #include "ScriptController.h"
@@ -118,16 +125,6 @@
 #include "SharedWorkerRepository.h"
 #endif
 
-#if ENABLE(SVG)
-#include "SVGDocument.h"
-#include "SVGLocatable.h"
-#include "SVGNames.h"
-#include "SVGPreserveAspectRatio.h"
-#include "SVGSVGElement.h"
-#include "SVGViewElement.h"
-#include "SVGViewSpec.h"
-#endif
-
 #if ENABLE(WEB_ARCHIVE) || ENABLE(MHTML)
 #include "Archive.h"
 #endif
@@ -144,10 +141,7 @@
 namespace WebCore {
 
 using namespace HTMLNames;
-
-#if ENABLE(SVG)
 using namespace SVGNames;
-#endif
 
 static const char defaultAcceptHeader[] = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8";
 
@@ -1167,9 +1161,9 @@ void FrameLoader::prepareForHistoryNavigation()
         history().setCurrentItem(currentItem.get());
         m_frame.page()->backForward().setCurrentItem(currentItem.get());
 
-        ASSERT(stateMachine()->isDisplayingInitialEmptyDocument());
-        stateMachine()->advanceTo(FrameLoaderStateMachine::DisplayingInitialEmptyDocumentPostCommit);
-        stateMachine()->advanceTo(FrameLoaderStateMachine::CommittedFirstRealLoad);
+        ASSERT(stateMachine().isDisplayingInitialEmptyDocument());
+        stateMachine().advanceTo(FrameLoaderStateMachine::DisplayingInitialEmptyDocumentPostCommit);
+        stateMachine().advanceTo(FrameLoaderStateMachine::CommittedFirstRealLoad);
     }
 }
 
@@ -3122,25 +3116,6 @@ bool FrameLoader::shouldTreatURLAsSrcdocDocument(const URL& url) const
 Frame* FrameLoader::findFrameForNavigation(const AtomicString& name, Document* activeDocument)
 {
     Frame* frame = m_frame.tree().find(name);
-
-    // From http://www.whatwg.org/specs/web-apps/current-work/#seamlessLinks:
-    //
-    // If the source browsing context is the same as the browsing context
-    // being navigated, and this browsing context has its seamless browsing
-    // context flag set, and the browsing context being navigated was not
-    // chosen using an explicit self-navigation override, then find the
-    // nearest ancestor browsing context that does not have its seamless
-    // browsing context flag set, and continue these steps as if that
-    // browsing context was the one that was going to be navigated instead.
-    if (frame == &m_frame && name != "_self" && m_frame.document()->shouldDisplaySeamlesslyWithParent()) {
-        for (Frame* ancestor = &m_frame; ancestor; ancestor = ancestor->tree().parent()) {
-            if (!ancestor->document()->shouldDisplaySeamlesslyWithParent()) {
-                frame = ancestor;
-                break;
-            }
-        }
-        ASSERT(frame != &m_frame);
-    }
 
     // FIXME: Eventually all callers should supply the actual activeDocument so we can call canNavigate with the right document.
     if (!activeDocument)

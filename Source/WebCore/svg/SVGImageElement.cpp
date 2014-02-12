@@ -20,8 +20,6 @@
  */
 
 #include "config.h"
-
-#if ENABLE(SVG)
 #include "SVGImageElement.h"
 
 #include "Attribute.h"
@@ -62,7 +60,7 @@ inline SVGImageElement::SVGImageElement(const QualifiedName& tagName, Document& 
     , m_y(LengthModeHeight)
     , m_width(LengthModeWidth)
     , m_height(LengthModeHeight)
-    , m_imageLoader(this)
+    , m_imageLoader(*this)
 {
     registerAnimatedPropertiesForSVGImageElement();
 }
@@ -232,5 +230,3 @@ void SVGImageElement::didMoveToNewDocument(Document* oldDocument)
 }
 
 }
-
-#endif // ENABLE(SVG)

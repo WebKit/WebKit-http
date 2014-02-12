@@ -153,6 +153,7 @@ static void Double2Ints(double val, uint32_t& lo, uint32_t& hi)
 // pseudo register, as well as hides endianness differences.
 
 struct CLoopRegister {
+    CLoopRegister() { i = static_cast<intptr_t>(0xbadbeef0baddbeef); }
     union {
         intptr_t i;
         uintptr_t u;
@@ -225,6 +226,7 @@ struct CLoopRegister {
         ExecState* execState;
         void* instruction;
         VM* vm;
+        JSCell* cell;
         ProtoCallFrame* protoCallFrame;
         NativeFunction nativeFunc;
 #if USE(JSVALUE64)
@@ -241,6 +243,7 @@ struct CLoopRegister {
     operator VM*() { return vm; }
     operator ProtoCallFrame*() { return protoCallFrame; }
     operator Register*() { return reinterpret_cast<Register*>(vp); }
+    operator JSCell*() { return cell; }
 
 #if USE(JSVALUE64)
     inline void clearHighWord() { i32padding = 0; }
@@ -477,6 +480,7 @@ JSValue CLoop::execute(OpcodeID entryOpcodeID, void* executableAddress, VM* vm, 
     #undef CAST
     #undef SIGN_BIT32
 
+    return JSValue(); // to suppress a compiler warning.
 } // Interpreter::llintCLoopExecute()
 
 } // namespace JSC

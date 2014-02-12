@@ -209,12 +209,18 @@ using namespace WebKit;
     [self _updateViewExposedRect];
 }
 
+- (void)setMinimumLayoutSize:(CGSize)size
+{
+    _page->setViewportConfigurationMinimumLayoutSize(IntSize(CGCeiling(size.width), CGCeiling(size.height)));
+}
+
 - (void)didFinishScrollTo:(CGPoint)contentOffset
 {
     _currentExposedRectPosition = contentOffset;
     _page->didFinishScrolling(contentOffset);
     [self _updateViewExposedRect];
     [self _updateFixedPositionRect];
+    [_interactionView _didEndScrollingOrZooming];
 }
 
 - (void)didScrollTo:(CGPoint)contentOffset
@@ -225,11 +231,22 @@ using namespace WebKit;
     _page->scrollingCoordinatorProxy()->scrollPositionChangedViaDelegatedScrolling(_page->scrollingCoordinatorProxy()->rootScrollingNodeID(), roundedIntPoint(contentOffset));
 }
 
+- (void)willStartZoomOrScroll
+{
+    [_interactionView _willStartScrollingOrZooming];
+}
+
+- (void)willStartUserTriggeredZoom
+{
+    _page->willStartUserTriggeredZooming();
+}
+
 - (void)didZoomToScale:(CGFloat)scale
 {
     _page->didFinishZooming(scale);
     [self _updateViewExposedRect];
     [self _updateFixedPositionRect];
+    [_interactionView _didEndScrollingOrZooming];
 }
 
 #pragma mark Internal
@@ -297,26 +314,16 @@ using namespace WebKit;
         [_delegate contentViewDidCommitLoadForMainFrame:self];
 }
 
-- (void)_didChangeContentSize:(CGSize)contentsSize
+- (void)_didCommitLayerTree:(const WebKit::RemoteLayerTreeTransaction&)layerTreeTransaction
 {
+    CGSize contentsSize = layerTreeTransaction.contentsSize();
+
     [self setBounds:{CGPointZero, contentsSize}];
     [_interactionView setFrame:CGRectMake(0, 0, contentsSize.width, contentsSize.height)];
     [_rootContentView setFrame:CGRectMake(0, 0, contentsSize.width, contentsSize.height)];
 
-    if ([_delegate respondsToSelector:@selector(contentView:contentsSizeDidChange:)])
-        [_delegate contentView:self contentsSizeDidChange:contentsSize];
-}
-
-- (void)_didReceiveMobileDocTypeForMainFrame
-{
-    if ([_delegate respondsToSelector:@selector(contentViewDidReceiveMobileDocType:)])
-        [_delegate contentViewDidReceiveMobileDocType:self];
-}
-
-- (void)_didChangeViewportArguments:(const WebCore::ViewportArguments&)arguments
-{
-    if ([_delegate respondsToSelector:@selector(contentView:didChangeViewportArgumentsSize:initialScale:minimumScale:maximumScale:allowsUserScaling:)])
-        [_delegate contentView:self didChangeViewportArgumentsSize:CGSizeMake(arguments.width, arguments.height) initialScale:arguments.zoom minimumScale:arguments.minZoom maximumScale:arguments.maxZoom allowsUserScaling:arguments.userZoom];
+    if ([_delegate respondsToSelector:@selector(contentView:didCommitLayerTree:)])
+        [_delegate contentView:self didCommitLayerTree:layerTreeTransaction];
 }
 
 - (void)_didGetTapHighlightForRequest:(uint64_t)requestID color:(const Color&)color quads:(const Vector<FloatQuad>&)highlightedQuads topLeftRadius:(const IntSize&)topLeftRadius topRightRadius:(const IntSize&)topRightRadius bottomLeftRadius:(const IntSize&)bottomLeftRadius bottomRightRadius:(const IntSize&)bottomRightRadius

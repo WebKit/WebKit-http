@@ -136,7 +136,7 @@ typedef OptionRange optionRange;
     v(bool, enableOSREntryToDFG, true) \
     v(bool, enableOSREntryToFTL, true) \
     \
-    v(bool, useExperimentalFTL, false) \
+    v(bool, useFTLJIT, false) \
     v(bool, enableExperimentalFTLCoverage, false) \
     v(bool, useFTLTBAA, true) \
     v(bool, enableLLVMFastISel, false) \
@@ -192,11 +192,12 @@ typedef OptionRange optionRange;
     v(int32, executionCounterIncrementForLoop, 1) \
     v(int32, executionCounterIncrementForEntry, 15) \
     \
-    v(int32, thresholdForFTLOptimizeAfterWarmUp, 25000) \
+    v(int32, thresholdForFTLOptimizeAfterWarmUp, 100000) \
     v(int32, thresholdForFTLOptimizeSoon, 1000) \
     v(int32, ftlTierUpCounterIncrementForLoop, 1) \
     v(int32, ftlTierUpCounterIncrementForReturn, 15) \
     v(unsigned, ftlOSREntryFailureCountForReoptimization, 15) \
+    v(unsigned, ftlOSREntryRetryThreshold, 100) \
     \
     v(int32, evalThresholdMultiplier, 10) \
     \

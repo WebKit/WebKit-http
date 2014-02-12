@@ -1,3 +1,294 @@
+2014-02-06  Andrei Bucur  <abucur@adobe.com>
+
+        Adding myself as a reviewer.
+
+        Unreviewed.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2014-02-05  Zan Dobersek  <zdobersek@igalia.com>
+
+        Remove the WTF_COMPILER_SUPPORTS_CXX_GENERALIZED_INITIALIZERS macro
+        https://bugs.webkit.org/show_bug.cgi?id=128267
+
+        Reviewed by Andreas Kling.
+
+        Remove the COMPILER_SUPPORTS(CXX_GENERALIZED_INITIALIZERS) as the underlying macro is also
+        being removed since the feature is supported by all the compilers the project approves.
+
+        * TestWebKitAPI/Tests/WTF/HashMap.cpp:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WTF/Vector.cpp:
+        (TestWebKitAPI::TEST):
+
+2014-02-05  Jinwoo Song  <jinwoo7.song@samsung.com>
+
+        [EFL][WK2] Remove legacy behavior mode in MiniBrowser
+        https://bugs.webkit.org/show_bug.cgi?id=128298
+
+        Reviewed by Gyuyoung Kim.
+
+        MiniBrowser is crashing when the legacy mode is set in creating webview.
+        As EFL application cannot use this API for creating webview after r146265,
+        it would be better to remove this invalid option.
+
+        * MiniBrowser/efl/main.c:
+        (window_create): Do not create webview with WKViewCreate API.
+        (elm_main): Remove 'legacy' option.
+
+2014-02-05  Andreas Kling  <akling@apple.com>
+
+        Remove ENABLE(DIRECTORY_UPLOAD).
+        <https://webkit.org/b/128275>
+
+        Rubber-stamped by Ryosuke Niwa.
+
+        * Scripts/webkitperl/FeatureList.pm:
+
+2014-02-05  Filip Pizlo  <fpizlo@apple.com>
+
+        Rename useExperimentalFTL to useFTLJIT.
+
+        Rubber stamped by Mark Hahnenberg.
+
+        * Scripts/run-jsc-stress-tests:
+
+2014-02-05  Filip Pizlo  <fpizlo@apple.com>
+
+        JSC on Mac should pull LLVM from prefix=/usr/local/LLVMForJavaScriptCore and not /usr/local
+        https://bugs.webkit.org/show_bug.cgi?id=128269
+
+        Reviewed by Mark Hahnenberg.
+
+        * Scripts/copy-webkitlibraries-to-product-directory:
+
+2014-02-05  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        Create CSS Grid Layout watchlist
+        https://bugs.webkit.org/show_bug.cgi?id=128241
+
+        Reviewed by Andreas Kling.
+
+        Add Sergio Villar, Javier Fernandez and myself to it.
+
+        Add Javier Fernandez as contributor.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+        * Scripts/webkitpy/common/config/watchlist:
+
+2014-02-05  Alexey Proskuryakov  <ap@apple.com>
+
+        Copying failing test paths from build.webkit.org/dashboard popovers also copies non-selectable links
+        https://bugs.webkit.org/show_bug.cgi?id=128236
+
+        Reviewed by Timothy Hatcher.
+
+        Work around bug 80159 - copying should always respect user-select:none, but it doesn't yet.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotTesterQueueView.js:
+        When copying, temporarily make non-selectable parts invisible, and put text of
+        the selection onto pasteboard. Since we immediately make everything visible again,
+        there is even no blinking.
+
+2014-02-05  Nick Diego Yamane  <nick.yamane@openbossa.org>
+
+        Unreviewed. Add myself to contributors.json
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2014-02-05  Sergio Correia  <sergio.correia@openbossa.org>
+
+        Unreviewed. Add myself to contributor and watch lists
+
+        * Scripts/webkitpy/common/config/contributors.json:
+        * Scripts/webkitpy/common/config/watchlist:
+
+2014-02-05  Alberto Garcia  <berto@igalia.com>
+
+        Unreviewed. Add myself to some watchlists.
+
+        * Scripts/webkitpy/common/config/watchlist:
+
+2014-02-05  Gabor Rapcsanyi  <rgabor@webkit.org>
+
+        Fix WaitForSVNServer build step after r163372.
+
+        Rubber-stamped by Csaba Osztrogonác.
+
+        * BuildSlaveSupport/build.webkit.org-config/master.cfg:
+        (WaitForSVNServer.evaluateCommand): add missing return SUCCESS
+
+2014-02-05  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Remove ENABLE(SVG) guards
+        https://bugs.webkit.org/show_bug.cgi?id=127991
+
+        Reviewed by Sam Weinig.
+
+        * Scripts/webkitperl/FeatureList.pm:
+        * TestWebKitAPI/GNUmakefile.am:
+
+2014-02-04  Andreas Kling  <akling@apple.com>
+
+        Remove <iframe seamless> support.
+        <https://webkit.org/b/128213>
+
+        Rubber-stamped by Antti Koivisto.
+
+        * DumpRenderTree/efl/DumpRenderTreeChrome.cpp:
+        (DumpRenderTreeChrome::resetDefaultsToConsistentValues):
+        * DumpRenderTree/gtk/DumpRenderTree.cpp:
+        (resetDefaultsToConsistentValues):
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (resetWebPreferencesToConsistentValues):
+        * DumpRenderTree/win/DumpRenderTree.cpp:
+        (resetDefaultsToConsistentValues):
+        * Scripts/webkitperl/FeatureList.pm:
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp:
+        (WTR::InjectedBundle::beginTesting):
+
+2014-02-04  Filip Pizlo  <fpizlo@apple.com>
+
+        Fix build when the script is called from Xcode.
+
+        * Scripts/copy-webkitlibraries-to-product-directory:
+
+2014-02-04  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG PutByVal on typed arrays should detect OutOfBounds sooner
+        https://bugs.webkit.org/show_bug.cgi?id=128162
+
+        Reviewed by Mark Hahnenberg.
+        
+        Add a defautNoEagerRun, which is intended to be used for convergence tests.
+
+        * Scripts/run-jsc-stress-tests:
+
+2014-02-04  Filip Pizlo  <fpizlo@apple.com>
+
+        export-llvm-build should work with git checkouts
+        https://bugs.webkit.org/show_bug.cgi?id=128217
+
+        Reviewed by Mark Hahnenberg.
+        
+        If svn export fails, just do ditto.
+
+        * Scripts/export-llvm-build:
+
+2014-02-04  Carlos Garnacho  <carlosg@gnome.org>
+
+        [Automake] Add missing $(feature_defines) when generating InjectedBundle bindings
+        https://bugs.webkit.org/show_bug.cgi?id=128170
+
+        Reviewed by Carlos Garcia Campos.
+
+        * WebKitTestRunner/GNUmakefile.am: Add missing $(feature_defines) when
+        generating the InjectedBundle bindings. So the various ENABLE_* defines
+        are available there.
+
+2014-02-04  Carlos Garnacho  <carlosg@gnome.org>
+
+        [GTK] Ensure generated events have given modifiers GDK understands
+        https://bugs.webkit.org/show_bug.cgi?id=128171
+
+        Reviewed by Carlos Garcia Campos.
+
+        * WebKitTestRunner/gtk/EventSenderProxyGtk.cpp:
+        (WTR::webkitModifiersToGDKModifiers): Move around
+        (WTR::EventSenderProxy::createMouseButtonEvent):
+        (WTR::EventSenderProxy::keyDown): Use webkitModifiersToGDKModifiers to
+        translate WKEventModifiers.
+
+2014-02-04  Gabor Rapcsanyi  <rgabor@webkit.org>
+
+        Fine tuning the ARM EFL bots
+        https://bugs.webkit.org/show_bug.cgi?id=128168
+
+        Reviewed by Csaba Osztrogonác.
+
+        * BuildSlaveSupport/build.webkit.org-config/config.json: Add custom SVN mirror.
+        * BuildSlaveSupport/build.webkit.org-config/master.cfg:
+        (WaitForSVNServer): Make it not to halt before the first repository checkout.
+        (WaitForSVNServer.evaluateCommand):
+        (Factory.__init__): Disable kill-old-processes step on EFL ARM bots, because these
+        bots run on the same machine and they kill the processes of each other.
+
+2014-02-03  Ryosuke Niwa  <rniwa@webkit.org>
+
+        kill-old-processes doesn't kill plugin processes
+        https://bugs.webkit.org/show_bug.cgi?id=128138
+
+        Reviewed by Andreas Kling.
+
+        Add plugin process names to the list of processes to kill.
+
+        * BuildSlaveSupport/kill-old-processes:
+        (main):
+
+2014-02-03  Dean Jackson  <dino@apple.com>
+
+        Feature flag for shape-inside
+        https://bugs.webkit.org/show_bug.cgi?id=128001
+
+        Reviewed by Simon Fraser.
+
+        Add CSS_SHAPE_INSIDE flag, and -css-shape-inside build
+        flag.
+
+        * Scripts/webkitperl/FeatureList.pm:
+
+2014-02-03  Zoltan Horvath  <zoltan@webkit.org>
+
+        Unreviewed. Reorder my e-mail addresses in contributors.json,
+        so bugzilla will auto complete my actual bugzilla username.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2014-02-03  Daniel Bates  <dabates@apple.com>
+
+        WebKit Bot Watcher's Dashboard: Defer subsequent resource loads from access-restricted build bot when
+        iteration fails to load with HTTP 401 status code
+        https://bugs.webkit.org/show_bug.cgi?id=128077
+
+        Reviewed by Alexey Proskuryakov.
+
+        Similar to the fix for <https://bugs.webkit.org/show_bug.cgi?id=127849>, we should only prompt for
+        the HTTP credentials of a build bot so long as an earlier authentication request wasn't cancelled
+        (i.e. failed with an HTTP 401 Unauthorized status code). Currently an authentication dialog will be
+        presented for an iteration each time the update queue timer fires until a person successfully
+        authenticates. Instead we should update the authentication status of the build bot on receiving an
+        HTTP 401 response code such that we defer subsequent requests to load any resource from the access-
+        restricted build bot when the queue update timer fires.
+
+        A person must explicitly click the "unauthorized" status line shown for the queue associated with the
+        iteration in the dashboard and authenticate successfully for the iteration to be loaded once an
+        authentication request for an iteration is cancelled.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotIteration.js:
+        (BuildbotIteration.prototype.update): Early return if the associated Buildbot was given invalid credentials.
+        Also notify the associated Buildbot and update the queue view when a load failed with an HTTP 401 status code.
+        (BuildbotIteration.prototype.loadLayoutTestResults): Ditto.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotQueueView.js:
+        (BuildbotQueueView): Modified to call BuildbotQueueView.prototype._unauthorizedAccess instead of
+        QueueView.prototype._updateSoon when event BuildbotQueue.Event.UnauthorizedAccess is received.
+        (BuildbotQueueView.prototype._unauthorizedAccess): Added.
+
+2014-02-03  Daniel Bates  <dabates@apple.com>
+
+        WebKit Bot Watcher's Dashboard: Teach JSON.load() to interpret third argument as either an
+        option dictionary or a failure callback
+        https://bugs.webkit.org/show_bug.cgi?id=128080
+
+        Reviewed by Alexey Proskuryakov.
+
+        Currently JSON.load() takes a failure callback function as its third argument and
+        an option dictionary as its fourth argument. So, a caller that wants to ignore errors
+        and pass an option dictionary must pass null or a reference to an empty function for
+        the value of third argument. Instead, we should make the third argument polymorphic for
+        convenience. Then a caller can either pass a failure callback function or an option dictionary.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/Utilities.js:
+
 2014-02-03  Krzysztof Czech  <k.czech@samsung.com>
 
         [ATK] Expose aria-controls through ATK_RELATION_CONTROLLER_FOR

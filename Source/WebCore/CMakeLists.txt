@@ -299,7 +299,6 @@ set(WebCore_IDL_FILES
     css/CSSCharsetRule.idl
     css/CSSFontFaceLoadEvent.idl
     css/CSSFontFaceRule.idl
-    css/CSSHostRule.idl
     css/CSSImportRule.idl
     css/CSSMediaRule.idl
     css/CSSPageRule.idl
@@ -1044,7 +1043,6 @@ set(WebCore_SOURCES
     css/CSSGradientValue.cpp
     css/CSSGridTemplateValue.cpp
     css/CSSGroupingRule.cpp
-    css/CSSHostRule.cpp
     css/CSSImageGeneratorValue.cpp
     css/CSSImageSetValue.cpp
     css/CSSImageValue.cpp
@@ -2560,20 +2558,6 @@ set(WebCore_SOURCES
     xml/parser/XMLDocumentParserScope.cpp
 )
 
-# GCC 4.6.x crashes when building this file with -O3 and -DNDEBUG.
-# References: https://bugs.webkit.org/show_bug.cgi?id=97268
-#             https://bugs.webkit.org/show_bug.cgi?id=114627
-if (CMAKE_COMPILER_IS_GNUCXX) # Can restrict based on the version.
-    string(TOUPPER "CMAKE_CXX_FLAGS_${CMAKE_BUILD_TYPE}" _CXXFLAGS_VARNAME)
-
-    string(FIND "${${_CXXFLAGS_VARNAME}}" "-O3" _CXXFLAGS_O3_INDEX)
-    if (_CXXFLAGS_O3_INDEX GREATER -1)
-        string(REPLACE "-O3" "-O2" _CXXFLAGS ${${_CXXFLAGS_VARNAME}})
-        set_source_files_properties(Modules/websockets/WebSocketDeflater.cpp
-                                    PROPERTIES COMPILE_FLAGS "${_CXXFLAGS}")
-    endif ()
-endif ()
-
 set(WebCore_CSS_PROPERTY_NAMES
     ${WEBCORE_DIR}/css/CSSPropertyNames.in
 )
@@ -2624,14 +2608,12 @@ else ()
     )
 endif ()
 
-if (ENABLE_SVG)
-    list(APPEND WebCore_CSS_PROPERTY_NAMES
-        ${WEBCORE_DIR}/css/SVGCSSPropertyNames.in
-    )
-    list(APPEND WebCore_CSS_VALUE_KEYWORDS
-        ${WEBCORE_DIR}/css/SVGCSSValueKeywords.in
-    )
-endif ()
+list(APPEND WebCore_CSS_PROPERTY_NAMES
+    ${WEBCORE_DIR}/css/SVGCSSPropertyNames.in
+)
+list(APPEND WebCore_CSS_VALUE_KEYWORDS
+    ${WEBCORE_DIR}/css/SVGCSSValueKeywords.in
+)
 
 if (ENABLE_SMOOTH_SCROLLING)
     list(APPEND WebCore_SOURCES
@@ -3220,10 +3202,8 @@ endif ()
 
 GENERATE_DOM_NAMES(SVG ${WEBCORE_DIR}/svg/svgattrs.in ${WEBCORE_DIR}/svg/svgtags.in "${SVG_EXTRA_DEFINES}")
 list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/SVGNames.cpp)
-if (ENABLE_SVG)
-    list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/SVGElementFactory.cpp ${DERIVED_SOURCES_WEBCORE_DIR}/JSSVGElementWrapperFactory.cpp)
-endif ()
 
+list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/SVGElementFactory.cpp ${DERIVED_SOURCES_WEBCORE_DIR}/JSSVGElementWrapperFactory.cpp)
 
 GENERATE_DOM_NAMES(XLink ${WEBCORE_DIR}/svg/xlinkattrs.in)
 list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/XLinkNames.cpp)

@@ -1,3 +1,650 @@
+2014-02-05  Brady Eidson  <beidson@apple.com>
+
+        IDB: storage/indexeddb/mozilla/autoincrement-indexes.html fails
+        https://bugs.webkit.org/show_bug.cgi?id=128257
+
+        Reviewed by Sam Weinig.
+
+        * platform/mac-wk2/TestExpectations: Enable the test.
+
+2014-02-05  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: add probe manager and model objects to the frontend
+        https://bugs.webkit.org/show_bug.cgi?id=127117
+
+        Reviewed by Timothy Hatcher.
+
+        Set up the debugger and probe managers when testing models.
+
+        Add a workalike for InspectorBackend.dumpInspectorProtocolMessages to
+        InspectorTest.
+
+        Add listeners for breakpoints and probes that produce
+        useful, deterministic trace output. Use the tracing in a new test.
+
+        * http/tests/inspector-protocol/resources/InspectorTest.js:
+        (InspectorTest.sendCommand):
+        (InspectorTest.initializeInspectorModels.console.assert):
+        (InspectorTest.initializeInspectorModels):
+        * inspector-protocol/debugger/didSampleProbe-multiple-probes-expected.txt:
+        * inspector-protocol/debugger/didSampleProbe-multiple-probes.html:
+        * inspector-protocol/model/probe-manager-add-remove-actions-expected.txt: Added.
+        * inspector-protocol/model/probe-manager-add-remove-actions.html: Added.
+        * inspector-protocol/resources/probe-helper.js:
+        (ProbeHelper.stringifyProbeSample):
+        (ProbeHelper.installTracingListeners.WebInspector):
+        (ProbeHelper.installTracingListeners):
+
+2014-02-05  Antti Koivisto  <antti@apple.com>
+
+        ElementRuleCollector should not use StyleResolver::State
+        https://bugs.webkit.org/show_bug.cgi?id=128247
+
+        Reviewed by Andreas Kling.
+
+        * platform/mac/fast/parser/xhtml-alternate-entities-expected.png:
+        * platform/mac/fast/parser/xhtml-alternate-entities-expected.txt: This is a progression.
+
+2014-02-05  Yuki Sekiguchi  <yuki.sekiguchi@access-company.com>
+
+        Ruby base oddly justify its text when the text is ideograph and it contains <br> on Mac.
+        https://bugs.webkit.org/show_bug.cgi?id=106417
+
+        Reviewed by David Hyatt.
+
+        Test that <br> don't change justification behavior in ruby base.
+
+        * fast/text/ruby-justification-br-expected.html: Added.
+        * fast/text/ruby-justification-br.html: Added.
+
+2014-02-05  Yoav Weiss  <yoav@yoav.ws>
+
+        Fix srcset change test flakiness
+        https://bugs.webkit.org/show_bug.cgi?id=128265
+
+        Reviewed by Alexey Proskuryakov.
+
+        * fast/hidpi/image-srcset-change-dynamically-from-js-2x-expected.txt:
+        * fast/hidpi/image-srcset-change-dynamically-from-js-2x.html:
+        * platform/gtk-wk2/fast/hidpi/image-srcset-change-dynamically-from-js-2x-expected.txt: Removed.
+
+2014-02-04  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Move characterAt index checks from InlineIterator to RenderText
+        https://bugs.webkit.org/show_bug.cgi?id=128224
+
+        Move characterAt index checks from InlineIterator to RenderText
+        so that all RenderText calls are covered. Few safe instances are
+        now covered with uncheckedCharacterAt.
+
+        Merged from Blink:
+        http://src.chromium.org/viewvc/blink?view=revision&revision=150830
+
+        Reviewed by Simon Fraser.
+
+        * fast/text/character-at-crash-expected.txt: Added.
+        * fast/text/character-at-crash.html: Added.
+
+2014-02-05  Michał Pakuła vel Rutka  <m.pakula@samsung.com>
+
+        Unreviewed EFL gardening
+
+        Add test expectations for tests crashing after r162947 and for http tests.
+
+        * platform/efl-wk2/TestExpectations:
+
+2014-02-05  Hans Muller  <hmuller@adobe.com>
+
+        [CSS Shapes] Dynamically created element with image valued shape-outside doesn't update automatically
+        https://bugs.webkit.org/show_bug.cgi?id=128187
+
+        Reviewed by Dean Jackson.
+
+        * fast/shapes/shape-outside-floats/shape-outside-insert-svg-shape-expected.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-insert-svg-shape.html: Added.
+
+2014-02-05  Andrzej Badowski  <a.badowski@samsung.com>
+
+        [EFL] Add expectations for two flaky media layout tests
+        https://bugs.webkit.org/show_bug.cgi?id=128253
+
+        Unreviewed EFL layout tests gardening.
+
+        * platform/efl/TestExpectations:
+
+2014-02-05  Alexey Proskuryakov  <ap@apple.com>
+
+        Layout Tests compositing/columns/composited-rl-paginated-repaint.html and
+        compositing/columns/composited-lr-paginated-repaint.html are flaky
+        https://bugs.webkit.org/show_bug.cgi?id=128255
+
+        * platform/mac-wk2/TestExpectations: Marked them as such.
+
+2014-02-05  Sergio Correia  <sergio.correia@openbossa.org>
+
+        SVG preserveAspectRatio=none is not honored.
+        https://bugs.webkit.org/show_bug.cgi?id=111402
+
+        Reviewed by Andreas Kling.
+
+        New test for SVG with preserveAspectRatio=none.
+
+        Merged from Blink: https://chromiumcodereview.appspot.com/14964004
+
+        * svg/custom/image-with-preserveAspectRatio-none-expected.html: Added.
+        * svg/custom/image-with-preserveAspectRatio-none.html: Added.
+
+2014-02-05  Zalan Bujtas  <zalan@apple.com>
+
+        fast/hidpi/image-srcset-relative-svg-canvas.html needs ImageOnlyFailure tag.
+
+        * TestExpectations:
+
+2014-02-05  Grzegorz Czajkowski  <g.czajkowski@samsung.com>
+
+        Verify spellcheck attribute asynchronously
+        https://bugs.webkit.org/show_bug.cgi?id=128174
+
+        Reviewed by Sam Weinig.
+
+        Refactoring spelling tests that verify spellcheck attribute to use
+        asynchronous text checking.
+
+        * editing/spelling/spelling-attribute-at-child-expected.txt:
+        * editing/spelling/script-tests/spelling-attribute-at-child.js:
+        Do not use getElementById if more than one element has the same
+        id ('child'). Although we defined a bunch of elements with id
+        'child', however only first one was retrieved and tested.
+        Additionally, dump current markup so that user is able to see
+        which element is being tested.
+
+        * editing/spelling/spelling-attribute-change-expected.txt:
+        * editing/spelling/script-tests/spelling-attribute-change.js:
+
+        * editing/spelling/spellcheck-attribute-expected.txt:
+        * editing/spelling/spellcheck-attribute.html:
+        Dump markup to increase readability of test expectation.
+
+2014-02-04  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Undelete the "build" directories erroneously removed in r163427.
+
+        * webgl/1.0.2/conformance/ogles/GL/build:
+        * webgl/1.0.2/resources/webgl_test_files/conformance/ogles/GL/build:
+        * webgl/resources/webgl_test_files/conformance/ogles/GL/build:
+
+2014-02-04  Andreas Kling  <akling@apple.com>
+
+        Remove <iframe seamless> support.
+        <https://webkit.org/b/128213>
+
+        Rubber-stamped by Antti Koivisto.
+
+        * fast/frames/seamless/resources/css-cascade-child.html: Removed.
+        * fast/frames/seamless/resources/done.html: Removed.
+        * fast/frames/seamless/resources/nested-seamless.html: Removed.
+        * fast/frames/seamless/resources/percent-square.html: Removed.
+        * fast/frames/seamless/resources/quirks-square.html: Removed.
+        * fast/frames/seamless/resources/span.html: Removed.
+        * fast/frames/seamless/resources/square.html: Removed.
+        * fast/frames/seamless/resources/two-inline-blocks.html: Removed.
+        * fast/frames/seamless/seamless-basic-expected.txt: Removed.
+        * fast/frames/seamless/seamless-basic.html: Removed.
+        * fast/frames/seamless/seamless-body-margin-expected.txt: Removed.
+        * fast/frames/seamless/seamless-body-margin.html: Removed.
+        * fast/frames/seamless/seamless-border-padding-expected.txt: Removed.
+        * fast/frames/seamless/seamless-border-padding.html: Removed.
+        * fast/frames/seamless/seamless-contenteditable-not-inherited-expected.txt: Removed.
+        * fast/frames/seamless/seamless-contenteditable-not-inherited.html: Removed.
+        * fast/frames/seamless/seamless-css-cascade-expected.txt: Removed.
+        * fast/frames/seamless/seamless-css-cascade.html: Removed.
+        * fast/frames/seamless/seamless-custom-font-pruning-crash-expected.txt: Removed.
+        * fast/frames/seamless/seamless-custom-font-pruning-crash.html: Removed.
+        * fast/frames/seamless/seamless-designMode-expected.txt: Removed.
+        * fast/frames/seamless/seamless-designMode.html: Removed.
+        * fast/frames/seamless/seamless-document-write-expected.txt: Removed.
+        * fast/frames/seamless/seamless-document-write.html: Removed.
+        * fast/frames/seamless/seamless-float-expected.txt: Removed.
+        * fast/frames/seamless/seamless-float.html: Removed.
+        * fast/frames/seamless/seamless-form-get-expected.txt: Removed.
+        * fast/frames/seamless/seamless-form-get-named-expected.txt: Removed.
+        * fast/frames/seamless/seamless-form-get-named.html: Removed.
+        * fast/frames/seamless/seamless-form-get-override-expected.txt: Removed.
+        * fast/frames/seamless/seamless-form-get-override.html: Removed.
+        * fast/frames/seamless/seamless-form-get.html: Removed.
+        * fast/frames/seamless/seamless-form-post-expected.txt: Removed.
+        * fast/frames/seamless/seamless-form-post-named-expected.txt: Removed.
+        * fast/frames/seamless/seamless-form-post-named.html: Removed.
+        * fast/frames/seamless/seamless-form-post-override-expected.txt: Removed.
+        * fast/frames/seamless/seamless-form-post-override.html: Removed.
+        * fast/frames/seamless/seamless-form-post.html: Removed.
+        * fast/frames/seamless/seamless-hyperlink-expected.txt: Removed.
+        * fast/frames/seamless/seamless-hyperlink-named-expected.txt: Removed.
+        * fast/frames/seamless/seamless-hyperlink-named.html: Removed.
+        * fast/frames/seamless/seamless-hyperlink-override-expected.txt: Removed.
+        * fast/frames/seamless/seamless-hyperlink-override.html: Removed.
+        * fast/frames/seamless/seamless-hyperlink.html: Removed.
+        * fast/frames/seamless/seamless-inherited-document-style-expected.txt: Removed.
+        * fast/frames/seamless/seamless-inherited-document-style.html: Removed.
+        * fast/frames/seamless/seamless-inherited-origin-expected.txt: Removed.
+        * fast/frames/seamless/seamless-inherited-origin.html: Removed.
+        * fast/frames/seamless/seamless-inline-expected.txt: Removed.
+        * fast/frames/seamless/seamless-inline.html: Removed.
+        * fast/frames/seamless/seamless-min-max-expected.txt: Removed.
+        * fast/frames/seamless/seamless-min-max.html: Removed.
+        * fast/frames/seamless/seamless-nested-crash-expected.txt: Removed.
+        * fast/frames/seamless/seamless-nested-crash.html: Removed.
+        * fast/frames/seamless/seamless-nested-expected.txt: Removed.
+        * fast/frames/seamless/seamless-nested.html: Removed.
+        * fast/frames/seamless/seamless-percent-height-expected.txt: Removed.
+        * fast/frames/seamless/seamless-percent-height.html: Removed.
+        * fast/frames/seamless/seamless-quirks-expected.txt: Removed.
+        * fast/frames/seamless/seamless-quirks.html: Removed.
+        * fast/frames/seamless/seamless-sandbox-flag-expected.txt: Removed.
+        * fast/frames/seamless/seamless-sandbox-flag.html: Removed.
+        * fast/frames/seamless/seamless-sandbox-srcdoc-expected.txt: Removed.
+        * fast/frames/seamless/seamless-sandbox-srcdoc.html: Removed.
+        * fast/frames/seamless/seamless-srcdoc-expected.txt: Removed.
+        * fast/frames/seamless/seamless-srcdoc.html: Removed.
+        * fast/frames/seamless/seamless-window-location-expected.txt: Removed.
+        * fast/frames/seamless/seamless-window-location-href-expected.txt: Removed.
+        * fast/frames/seamless/seamless-window-location-href.html: Removed.
+        * fast/frames/seamless/seamless-window-location-replace-expected.txt: Removed.
+        * fast/frames/seamless/seamless-window-location-replace.html: Removed.
+        * fast/frames/seamless/seamless-window-location-sandbox-expected.txt: Removed.
+        * fast/frames/seamless/seamless-window-location-sandbox.html: Removed.
+        * fast/frames/seamless/seamless-window-location.html: Removed.
+        * fast/frames/seamless/seamless-window-open-expected.txt: Removed.
+        * fast/frames/seamless/seamless-window-open-override-expected.txt: Removed.
+        * fast/frames/seamless/seamless-window-open-override.html: Removed.
+        * fast/frames/seamless/seamless-window-open.html: Removed.
+        * fast/multicol/resources/seamless.html: Removed.
+        * fast/multicol/seamless-flowed-through-columns-expected.html: Removed.
+        * fast/multicol/seamless-flowed-through-columns.html: Removed.
+        * fast/regions/resources/seamless.html: Removed.
+        * fast/regions/seamless-iframe-flowed-into-regions-expected.html: Removed.
+        * fast/regions/seamless-iframe-flowed-into-regions.html: Removed.
+        * http/tests/security/seamless/resources/square.html: Removed.
+        * http/tests/security/seamless/seamless-cross-origin-expected.txt: Removed.
+        * http/tests/security/seamless/seamless-cross-origin.html: Removed.
+        * http/tests/security/seamless/seamless-sandbox-srcdoc-expected.txt: Removed.
+        * http/tests/security/seamless/seamless-sandbox-srcdoc.html: Removed.
+        * platform/efl/TestExpectations:
+        * platform/gtk/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2014-02-04  Zalan Bujtas  <zalan@apple.com>
+
+        And one more test to tag with ImageOnlyFailure.
+
+        * TestExpectations:
+
+2014-02-04  Zalan Bujtas  <zalan@apple.com>
+
+        Some tests introduced by 163415 need ImageOnlyFailure tag.
+
+        Unreviewed gardering.
+
+        * TestExpectations:
+
+2014-02-04  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG PutByVal on typed arrays should detect OutOfBounds sooner
+        https://bugs.webkit.org/show_bug.cgi?id=128162
+
+        Reviewed by Mark Hahnenberg.
+        
+        dfg-string-out-of-blahblah was moved to JSC/tests/stress.
+        
+        dfg-convert-this-dom-window was using dfgShouldBe() incorrectly and this got revealed
+        by my TestRunnerUtils refactoring.
+        
+        * js/dfg-string-out-of-bounds-negative-proto-value-expected.txt: Removed.
+        * js/dfg-string-out-of-bounds-negative-proto-value.html: Removed.
+        * js/script-tests/dfg-convert-this-dom-window.js:
+        * js/script-tests/dfg-string-out-of-bounds-negative-proto-value.js: Removed.
+
+2014-02-04  Brady Eidson  <beidson@apple.com>
+
+        IDB: indexeddb/mozilla/add-twice-failure.html fails
+        <rdar://problem/15982569> and https://bugs.webkit.org/show_bug.cgi?id=128208
+
+        Reviewed by Tim Horton.
+
+        * platform/mac-wk2/TestExpectations: Reenable this test for WK2
+
+2014-02-04  Yoav Weiss  <yoav@yoav.ws>
+
+        Use srcset's pixel density to determine intrinsic size
+        https://bugs.webkit.org/show_bug.cgi?id=123832
+
+        Reviewed by Dean Jackson.
+
+        The patch is a port of a similar Blink patch: https://codereview.chromium.org/25105004
+        According to the spec "When an img element has a current pixel density that is not 1.0,
+        the element's image data must be treated as if its resolution, in device pixels per CSS pixels,
+        was the current pixel density."
+
+        Layout test changes include modifications of existing tests to accomodate the new image dimensions, as well as new tests for this
+        specific functionality.
+
+        * fast/hidpi/image-srcset-change-dynamically-from-js-2x-expected.txt:
+        * fast/hidpi/image-srcset-change-dynamically-from-js-2x.html:
+        * fast/hidpi/image-srcset-data-escaped-srcset-expected.txt:
+        * fast/hidpi/image-srcset-data-escaped-srcset.html:
+        * fast/hidpi/image-srcset-data-src.html:
+        * fast/hidpi/image-srcset-data-srcset.html:
+        * fast/hidpi/image-srcset-fraction.html:
+        * fast/hidpi/image-srcset-intrinsic-size-expected.txt: Added.
+        * fast/hidpi/image-srcset-intrinsic-size.html: Added.
+        * fast/hidpi/image-srcset-invalid-inputs-correct-src-expected.txt:
+        * fast/hidpi/image-srcset-invalid-inputs-correct-src.html:
+        * fast/hidpi/image-srcset-invalid-inputs.html:
+        * fast/hidpi/image-srcset-invalid-inputs-expected.txt: Added.
+        * fast/hidpi/image-srcset-only-src-attribute-expected.txt: Added.
+        * fast/hidpi/image-srcset-only-src-attribute.html:
+        * fast/hidpi/image-srcset-png-canvas-expected.html: Added.
+        * fast/hidpi/image-srcset-png-canvas.html: Added.
+        * fast/hidpi/image-srcset-png-expected.html: Added.
+        * fast/hidpi/image-srcset-png.html: Added.
+        * fast/hidpi/image-srcset-relative-svg-expected.html: Added.
+        * fast/hidpi/image-srcset-relative-svg.html: Added.
+        * fast/hidpi/image-srcset-remove-dynamically-from-js.html:
+        * fast/hidpi/image-srcset-simple-2x-expected.txt:
+        * fast/hidpi/image-srcset-simple-2x.html:
+        * fast/hidpi/image-srcset-space-left-nomodifier-expected.txt: Added.
+        * fast/hidpi/image-srcset-space-left-nomodifier.html: Copied from LayoutTests/fast/hidpi/image-srcset-data-srcset.html.
+        * fast/hidpi/image-srcset-svg-expected.html: Added.
+        * fast/hidpi/image-srcset-svg.html: Added.
+        * fast/hidpi/image-srcset-svg2-expected.html: Added.
+        * fast/hidpi/image-srcset-svg2.html: Added.
+        * fast/hidpi/resources/green-400-px-square.png: Added.
+        * fast/hidpi/resources/relativesrcset.svg: Added.
+        * fast/hidpi/resources/srcset-helper.js:
+        (runTest):
+        * fast/hidpi/resources/srcset.png: Added.
+        * fast/hidpi/resources/srcset.svg: Added.
+        * fast/hidpi/resources/srcset_100px.svg: Added.
+        * fast/hidpi/resources/svg_canvas_helper.js: Added.
+        (drawCanvas):
+        * fast/hidpi/resources/svg_tests.css: Added.
+        (.test):
+        (.test img, .test canvas):
+        (.test .stats):
+        (.expected, .actual):
+        * platform/mac/fast/hidpi/image-srcset-only-src-attribute-expected.png: Removed.
+        * platform/mac/fast/hidpi/image-srcset-only-src-attribute-expected.txt: Removed.
+
+        The following tests were added, but skipped, since they reveal an unrelated SVG on canvas rendering issue:
+        * fast/hidpi/image-srcset-svg-canvas-2x-expected.html: Added.
+        * fast/hidpi/image-srcset-svg-canvas-2x.html: Added.
+        * fast/hidpi/image-srcset-svg-canvas-expected.html: Added.
+        * fast/hidpi/image-srcset-svg-canvas.html: Added.
+        * fast/hidpi/image-srcset-relative-svg-canvas-2x-expected.html: Added.
+        * fast/hidpi/image-srcset-relative-svg-canvas-2x.html: Added.
+        * fast/hidpi/image-srcset-relative-svg-canvas-expected.html: Added.
+        * fast/hidpi/image-srcset-relative-svg-canvas.html: Added.
+
+2014-02-04  Geoffrey Garen  <ggaren@apple.com>
+
+        Rolled out <http://trac.webkit.org/changeset/163280>:
+
+            Push DOM attributes into the prototype chain
+            https://bugs.webkit.org/show_bug.cgi?id=127969
+
+        It caused performance regressions, and broken websites on iOS.
+
+        Reviewed by Geoffrey Garen.
+
+        * fast/dom/Geolocation/enabled-expected.txt:
+        * fast/dom/Geolocation/script-tests/enabled.js:
+        * fast/dom/wrapper-classes-expected.txt:
+        * http/tests/security/cross-frame-access-enumeration-expected.txt:
+        * js/dom/constructor-attributes-expected.txt:
+        * js/dom/delete-syntax-expected.txt:
+        * js/dom/dom-attributes-on-mismatch-type-expected.txt:
+        * js/dom/dom-attributes-on-mismatch-type.html:
+        * js/dom/dom-static-property-for-in-iteration-expected.txt:
+        * js/dom/script-tests/constructor-attributes.js:
+        * js/dom/script-tests/delete-syntax.js:
+
+2014-02-04  Eric Carlson  <eric.carlson@apple.com>
+
+        Refine MediaSession interruptions
+        https://bugs.webkit.org/show_bug.cgi?id=128125
+
+        Reviewed by Jer Noble.
+
+        * media/video-background-playback-expected.txt: Added.
+        * media/video-background-playback.html: Added.
+        * media/video-interruption-active-when-element-created-expected.txt: Removed.
+        * media/video-interruption-active-when-element-created.html: Removed.
+        * media/video-interruption-with-resume-allowing-play.html:
+        * media/video-interruption-with-resume-not-allowing-play.html:
+
+2014-02-04  Radu Stavila  <stavila@adobe.com>
+
+        REGRESSION (r159609): Images are corrupted when hovering over buttons @ github.com
+        https://bugs.webkit.org/show_bug.cgi?id=127729
+
+        Reviewed by Antti Koivisto.
+
+        Added test for the correct repainting of buttons with border radius when hovering.
+
+        * fast/regions/repaint/hover-border-radius-expected.txt: Added.
+        * fast/regions/repaint/hover-border-radius.html: Added.
+
+2014-02-04  Andrzej Badowski  <a.badowski@samsung.com>
+
+        [EFL] Add expectations for two flaky media layout tests
+        https://bugs.webkit.org/show_bug.cgi?id=128183
+
+        Unreviewed EFL gardening.
+
+        * platform/efl/TestExpectations:
+
+2014-02-04  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r163376.
+        http://trac.webkit.org/changeset/163376
+        https://bugs.webkit.org/show_bug.cgi?id=128184
+
+        Unexpected test failures. (Requested by eric_carlson on
+        #webkit).
+
+        * media/video-background-playback-expected.txt: Removed.
+        * media/video-background-playback.html: Removed.
+        * media/video-interruption-active-when-element-created-expected.txt: Copied from LayoutTests/media/video-interruption-with-resume-allowing-play-expected.txt.
+        * media/video-interruption-active-when-element-created.html: Copied from LayoutTests/media/video-interruption-with-resume-not-allowing-play.html.
+        * media/video-interruption-with-resume-allowing-play-expected.txt:
+        * media/video-interruption-with-resume-allowing-play.html:
+        * media/video-interruption-with-resume-not-allowing-play-expected.txt:
+        * media/video-interruption-with-resume-not-allowing-play.html:
+
+2014-02-04  Eric Carlson  <eric.carlson@apple.com>
+
+        Refine MediaSession interruptions
+        https://bugs.webkit.org/show_bug.cgi?id=128125
+
+        Reviewed by Jer Noble.
+
+        * media/video-background-playback-expected.txt: Added.
+        * media/video-background-playback.html: Added.
+        * media/video-interruption-active-when-element-created-expected.txt: Removed.
+        * media/video-interruption-active-when-element-created.html: Removed.
+        * media/video-interruption-with-resume-allowing-play-expected.txt:
+        * media/video-interruption-with-resume-allowing-play.html:
+        * media/video-interruption-with-resume-not-allowing-play-expected.txt:
+        * media/video-interruption-with-resume-not-allowing-play.html:
+
+2014-02-04  Andrzej Badowski   <a.badowski@samsung.com>
+
+        [EFL] Add expectations for three flaky media layout tests
+        https://bugs.webkit.org/show_bug.cgi?id=128104
+
+        Unreviewed EFL gardening
+
+        * platform/efl/TestExpectations:
+
+2014-02-04  Andrzej Badowski  <a.badowski@samsung.com>
+
+        [EFL] Add expectations for two flaky media layout tests
+        https://bugs.webkit.org/show_bug.cgi?id=127994
+
+        Unreviewed EFL gardening.
+
+        * platform/efl/TestExpectations:
+
+2014-02-04  Mihai Maerean  <mmaerean@adobe.com>
+
+        [CSS Regions] Fix Assert SHOULD NEVER BE REACHED in RenderLayer::enclosingElement()
+        https://bugs.webkit.org/show_bug.cgi?id=123329
+
+        Reviewed by Mihnea Ovidenie.
+
+        * fast/regions/assert-hit-test-image.html: Added.
+        * fast/regions/assert-hit-test-image-expected.txt: Added.
+        * fast/regions/auto-size/region-same-height-as-div-with-inline-child.html: Added.
+        * fast/regions/auto-size/region-same-height-as-div-with-inline-child-expected.txt: Added.
+
+2014-02-04  Mihnea Ovidenie  <mihnea@adobe.com>
+
+        ASSERTION FAILED: !object || (object->isRenderBlock())
+        https://bugs.webkit.org/show_bug.cgi?id=127687
+
+        Reviewed by Ryosuke Niwa.
+
+        Added test showing that the content of an inline content node, having
+        flow-into specified, can be properly selected without hitting the assertion.
+        Also added another test to make sure that when the selection starts
+        outside an empty region and ends inside the empty region, the region behaves
+        like an ordinary element with no children.
+
+        * fast/regions/selection/position-for-point-inline-content-node-expected.txt: Added.
+        * fast/regions/selection/position-for-point-inline-content-node.html: Added.
+        * fast/regions/selection/selection-ended-in-empty-region-expected.txt: Added.
+        * fast/regions/selection/selection-ended-in-empty-region.html: Added.
+
+2014-02-03  Mark Lam  <mark.lam@apple.com>
+
+        Need regression test for the debugger modifying locals in a DFG frame.
+        https://bugs.webkit.org/show_bug.cgi?id=128120.
+
+        Reviewed by Geoffrey Garen.
+
+        Regression test for https://bugs.webkit.org/show_bug.cgi?id=128112.
+
+        This test does the following:
+        1. Warm up a DFG function.
+        2. Sets a breakpoint in a function breakpointBasic() that will be called
+           by the DFG function, but has never been called yet.
+        3. Call a driver function which in turn calls the DFG function, and expect
+           the debugger to break.
+        4. At the breakpoint in breakpointBasic(), evaluate an expression on its
+           caller i.e. the DFG function, and change a local variable in it.
+        5. Resume from the debugger, and let the DFG function and its driver
+           function run to completion. The DFG function will return a value
+           computed using the modified local.
+        6. At the end of the driver function, verify that the returned computed
+           value reflects the modified value.
+
+        This test has been verified with tracing enabled to ensure that the test
+        DFG function was indeed DFG compiled, and that the test passed with the
+        expected results.
+
+        * inspector-protocol/debugger/resources/breakpoint.js:
+        (notInlineable2):
+        (dfgWithoutInline2):
+        (callNotInlineable2):
+        * inspector-protocol/debugger/setBreakpoint-dfg-and-modify-local-expected.txt: Added.
+        * inspector-protocol/debugger/setBreakpoint-dfg-and-modify-local.html: Added.
+
+2014-02-03  Mark Lam  <mark.lam@apple.com>
+
+        Need regression test to ensure that the debugger does not attempt to execute a bad script from its console.
+        <https://webkit.org/b/128121>
+
+        Reviewed by Geoffrey Garen.
+
+        Regression test for https://bugs.webkit.org/show_bug.cgi?id=127600.
+
+        * inspector-protocol/debugger/breakpoint-condition-with-bad-script-expected.txt: Added.
+        * inspector-protocol/debugger/breakpoint-condition-with-bad-script.html: Added.
+        - Sets up a breakpoint with a condition script. The condition script
+          will fail to parse with a syntax error.
+          I've tested that without the fix in http://trac.webkit.org/r162752,
+          this will crash the VM. With the fix, it works fine.
+
+2014-02-03  Radu Stavila  <stavila@adobe.com>
+
+        REGRESSION (r163018): Can’t scroll in <select> lists
+        https://bugs.webkit.org/show_bug.cgi?id=128090
+
+        New test validates scrolling using the mouse wheel inside a select list.
+        This test is for the moment added as a ImageOnlyFailure expectation
+        because the current implementation of eventSender cannot simulate mouse wheel events.
+
+        Reviewed by Simon Fraser.
+
+        * TestExpectations:
+        * fast/scrolling/scroll-select-list-expected.html: Added.
+        * fast/scrolling/scroll-select-list.html: Added.
+
+2014-02-03  Oliver Hunt  <oliver@apple.com>
+
+        Deconstructed parameters aren't being placed in the correct scope
+        https://bugs.webkit.org/show_bug.cgi?id=128126
+
+        Reviewed by Antti Koivisto.
+
+        Added tests for correct behaviour.
+
+        * js/deconstructing-parameters-should-be-locals-expected.txt: Added.
+        * js/deconstructing-parameters-should-be-locals.html: Added.
+        * js/script-tests/deconstructing-parameters-should-be-locals.js: Added.
+        (description.value.string_appeared_here.readDeconstructedParameter):
+        (overwriteDeconstructedParameter):
+        (readCapturedDeconstructedParameter):
+        (overwriteCapturedDeconstructedParameter):
+
+2014-01-31  Geoffrey Garen  <ggaren@apple.com>
+
+        Simplified name scope creation for function expressions
+        https://bugs.webkit.org/show_bug.cgi?id=128031
+
+        Reviewed by Mark Lam.
+
+        Added a performance regression test.
+
+        * js/regress/function-with-eval-expected.txt: Added.
+        * js/regress/function-with-eval.html: Added.
+        * js/regress/script-tests/function-with-eval.js: Added.
+        (foo):
+        (bar):
+
+2014-02-03  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: WebKit should support @headers/@id for complex accessible web tables
+        https://bugs.webkit.org/show_bug.cgi?id=128114
+
+        Reviewed by Darin Adler.
+
+        * platform/mac/accessibility/table-headers-attribute-expected.txt: Added.
+        * platform/mac/accessibility/table-headers-attribute.html: Added.
+
+2014-02-03  Jessie Berlin  <jberlin@apple.com>
+
+        Revert r163299 since it broke the ML 32-bit Release build
+
+        * fast/dom/HTMLAnchorElement/anchor-password-expected.txt: Removed.
+        * fast/dom/HTMLAnchorElement/anchor-password.html: Removed.
+        * fast/dom/HTMLAnchorElement/anchor-username-expected.txt: Removed.
+        * fast/dom/HTMLAnchorElement/anchor-username.html: Removed.
+        * fast/dom/HTMLAreaElement/area-password.html: Removed.
+        * fast/dom/HTMLAreaElement/area-username.html: Removed.
+        * js/dom/dom-static-property-for-in-iteration-expected.txt:
+        * js/dom/dom-static-property-for-in-iteration.html:
+
 2014-02-03  Mihai Maerean  <mmaerean@adobe.com>
 
         [CSS Regions] Fix selection and hover effect of content in region with overflow:hidden

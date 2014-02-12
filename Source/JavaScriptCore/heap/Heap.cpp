@@ -270,6 +270,7 @@ Heap::Heap(VM* vm, HeapType heapType)
     , m_slotVisitor(m_sharedData)
     , m_copyVisitor(m_sharedData)
     , m_handleSet(vm)
+    , m_codeBlocks(m_blockAllocator)
     , m_isSafeToCollect(false)
     , m_writeBarrierBuffer(256)
     , m_vm(vm)
@@ -489,7 +490,7 @@ void Heap::markRoots()
 
     m_sharedData.didStartMarking();
     SlotVisitor& visitor = m_slotVisitor;
-    visitor.setup();
+    visitor.didStartMarking();
     HeapRootVisitor heapRootVisitor(visitor);
 
 #if ENABLE(GGC)

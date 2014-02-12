@@ -60,10 +60,6 @@
 #define ENABLE_ASYNC_SCROLLING 1
 #endif
 
-#if !defined(ENABLE_8BIT_TEXTRUN)
-#define ENABLE_8BIT_TEXTRUN 1
-#endif
-
 #if !defined(ENABLE_CONTEXT_MENUS)
 #define ENABLE_CONTEXT_MENUS 0
 #endif
@@ -168,10 +164,6 @@
 
 /* --------- Apple MAC port (not IOS) --------- */
 #if PLATFORM(MAC) && !PLATFORM(IOS)
-
-#if !defined(ENABLE_8BIT_TEXTRUN)
-#define ENABLE_8BIT_TEXTRUN 1
-#endif
 
 #if !defined(ENABLE_CSS_IMAGE_SET)
 #define ENABLE_CSS_IMAGE_SET 1
@@ -312,10 +304,6 @@
 #define ENABLE_SUBPIXEL_LAYOUT 1
 #endif
 
-#if !defined(ENABLE_8BIT_TEXTRUN)
-#define ENABLE_8BIT_TEXTRUN 1
-#endif
-
 #endif /* PLATFORM(EFL) */
 
 /* --------- Gtk port (Unix, Windows, Mac) --------- */
@@ -327,8 +315,8 @@
 #endif
 #endif
 
-#if !defined(ENABLE_8BIT_TEXTRUN)
-#define ENABLE_8BIT_TEXTRUN 1
+#if !defined(ENABLE_SUBPIXEL_LAYOUT)
+#define ENABLE_SUBPIXEL_LAYOUT 1
 #endif
 
 #endif /* PLATFORM(GTK) */
@@ -338,10 +326,6 @@
 
 #if !defined(ENABLE_3D_RENDERING)
 #define ENABLE_3D_RENDERING 0
-#endif
-
-#if !defined(ENABLE_8BIT_TEXTRUN)
-#define ENABLE_8BIT_TEXTRUN 0
 #endif
 
 #if !defined(ENABLE_ACCELERATED_2D_CANVAS)
@@ -456,10 +440,6 @@
 #define ENABLE_DEVICE_ORIENTATION 0
 #endif
 
-#if !defined(ENABLE_DIRECTORY_UPLOAD)
-#define ENABLE_DIRECTORY_UPLOAD 0
-#endif
-
 #if !defined(ENABLE_DOWNLOAD_ATTRIBUTE)
 #define ENABLE_DOWNLOAD_ATTRIBUTE 0
 #endif
@@ -514,10 +494,6 @@
 
 #if !defined(ENABLE_ICONDATABASE)
 #define ENABLE_ICONDATABASE 1
-#endif
-
-#if !defined(ENABLE_IFRAME_SEAMLESS)
-#define ENABLE_IFRAME_SEAMLESS 1
 #endif
 
 #if !defined(ENABLE_IMAGE_DECODER_DOWN_SAMPLING)
@@ -760,14 +736,8 @@
 #define ENABLE_SUBPIXEL_LAYOUT 0
 #endif
 
-#if !defined(ENABLE_SVG)
-#define ENABLE_SVG 1
-#endif
-
-#if ENABLE(SVG)
 #if !defined(ENABLE_SVG_FONTS)
 #define ENABLE_SVG_FONTS 1
-#endif
 #endif
 
 #if !defined(ENABLE_TEMPLATE_ELEMENT)
@@ -862,10 +832,6 @@
 
 #if ENABLE(SATURATED_LAYOUT_ARITHMETIC) && !ENABLE(SUBPIXEL_LAYOUT)
 #error "ENABLE(SATURATED_LAYOUT_ARITHMETIC) requires ENABLE(SUBPIXEL_LAYOUT)"
-#endif
-
-#if ENABLE(SVG_FONTS) && !ENABLE(SVG)
-#error "ENABLE(SVG_FONTS) requires ENABLE(SVG)"
 #endif
 
 #if ENABLE(VIDEO_TRACK) && !ENABLE(VIDEO)

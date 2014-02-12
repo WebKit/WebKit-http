@@ -30,7 +30,6 @@
 #include "PurgeableBuffer.h"
 #include <wtf/PassOwnPtr.h>
 #include <wtf/unicode/UTF8.h>
-#include <wtf/unicode/Unicode.h>
 
 #if ENABLE(DISK_IMAGE_CACHE)
 #include "DiskImageCacheIOS.h"
@@ -273,6 +272,26 @@ const char* SharedBuffer::data() const
         return m_purgeableBuffer->data();
     
     return this->buffer().data();
+}
+
+PassRefPtr<ArrayBuffer> SharedBuffer::createArrayBuffer() const
+{
+    RefPtr<ArrayBuffer> arrayBuffer = ArrayBuffer::createUninitialized(static_cast<unsigned>(size()), sizeof(char));
+
+    const char* segment = 0;
+    unsigned position = 0;
+    while (unsigned segmentSize = getSomeData(segment, position)) {
+        memcpy(static_cast<char*>(arrayBuffer->data()) + position, segment, segmentSize);
+        position += segmentSize;
+    }
+
+    if (position != arrayBuffer->byteLength()) {
+        ASSERT_NOT_REACHED();
+        // Don't return the incomplete ArrayBuffer.
+        return 0;
+    }
+
+    return arrayBuffer.release();
 }
 
 void SharedBuffer::append(SharedBuffer* data)

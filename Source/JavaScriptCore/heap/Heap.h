@@ -147,7 +147,9 @@ namespace JSC {
 
         JS_EXPORT_PRIVATE void collectAllGarbage();
         bool shouldCollect();
-        void collect();
+        void gcTimerDidFire() { m_shouldDoFullCollection = true; }
+        void setShouldDoFullCollection(bool shouldDoFullCollection) { m_shouldDoFullCollection = shouldDoFullCollection; }
+        JS_EXPORT_PRIVATE void collect();
         bool collectIfNecessaryOrDefer(); // Returns true if it did collect.
 
         void reportExtraMemoryCost(size_t cost);

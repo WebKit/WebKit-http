@@ -120,6 +120,10 @@
 #include "ResourceLoadScheduler.h"
 #include "ResourceLoader.h"
 #include "RuntimeEnabledFeatures.h"
+#include "SVGDocumentExtensions.h"
+#include "SVGElementFactory.h"
+#include "SVGNames.h"
+#include "SVGSVGElement.h"
 #include "SchemeRegistry.h"
 #include "ScopedEventQueue.h"
 #include "ScriptCallStack.h"
@@ -161,12 +165,6 @@
 #include "XSLTProcessor.h"
 #endif
 
-#if ENABLE(SVG)
-#include "SVGDocumentExtensions.h"
-#include "SVGElementFactory.h"
-#include "SVGNames.h"
-#include "SVGSVGElement.h"
-#endif
 
 #if ENABLE(TOUCH_EVENTS)
 #include "TouchList.h"
@@ -218,6 +216,10 @@
 
 #if ENABLE(VIDEO_TRACK)
 #include "CaptionUserPreferences.h"
+#endif
+
+#if ENABLE(WEB_REPLAY)
+#include <replay/EmptyInputCursor.h>
 #endif
 
 using namespace WTF;
@@ -496,6 +498,9 @@ Document::Document(Frame* frame, const URL& url, unsigned documentClasses, unsig
 #if ENABLE(TEMPLATE_ELEMENT)
     , m_templateDocumentHost(nullptr)
 #endif
+#if ENABLE(WEB_REPLAY)
+    , m_inputCursor(EmptyInputCursor::create())
+#endif
     , m_didAssociateFormControlsTimer(this, &Document::didAssociateFormControlsTimerFired)
     , m_hasInjectedPlugInsScript(false)
     , m_renderTreeBeingDestroyed(false)
@@ -662,10 +667,8 @@ void Document::dropChildren()
 
 void Document::commonTeardown()
 {
-#if ENABLE(SVG)
     if (svgExtensions())
         accessSVGExtensions()->pauseAnimations();
-#endif
 
 #if ENABLE(REQUEST_ANIMATION_FRAME)
     clearScriptedAnimationController();
@@ -1041,10 +1044,8 @@ PassRefPtr<Element> Document::createElement(const QualifiedName& name, bool crea
     // FIXME: Use registered namespaces and look up in a hash to find the right factory.
     if (name.namespaceURI() == xhtmlNamespaceURI)
         element = HTMLElementFactory::createElement(name, *this, nullptr, createdByParser);
-#if ENABLE(SVG)
     else if (name.namespaceURI() == SVGNames::svgNamespaceURI)
         element = SVGElementFactory::createElement(name, *this, createdByParser);
-#endif
 #if ENABLE(MATHML)
     else if (name.namespaceURI() == MathMLNames::mathmlNamespaceURI)
         element = MathMLElementFactory::createElement(name, *this, createdByParser);
@@ -1395,7 +1396,7 @@ template <typename CharacterType>
 static inline StringWithDirection canonicalizedTitle(Document* document, const StringWithDirection& titleWithDirection)
 {
     const String& title = titleWithDirection.string();
-    const CharacterType* characters = title.getCharacters<CharacterType>();
+    const CharacterType* characters = title.characters<CharacterType>();
     unsigned length = title.length();
     unsigned i;
 
@@ -1643,13 +1644,6 @@ void Document::scheduleForcedStyleRecalc()
 
 void Document::scheduleStyleRecalc()
 {
-    if (shouldDisplaySeamlesslyWithParent()) {
-        // When we're seamless, our parent document manages our style recalcs.
-        ownerElement()->setNeedsStyleRecalc();
-        ownerElement()->document().scheduleStyleRecalc();
-        return;
-    }
-
     if (m_styleRecalcTimer.isActive() || inPageCache())
         return;
 
@@ -2259,12 +2253,6 @@ void Document::implicitOpen()
 
     setCompatibilityMode(NoQuirksMode);
 
-    // Documents rendered seamlessly should start out requiring a stylesheet
-    // collection update in order to ensure they inherit all the relevant data
-    // from their parent.
-    if (shouldDisplaySeamlesslyWithParent())
-        styleResolverChanged(DeferRecalcStyle);
-
     m_parser = createParser();
     setParsing(true);
     setReadyState(Loading);
@@ -2385,13 +2373,11 @@ void Document::implicitClose()
     HTMLLinkElement::dispatchPendingLoadEvents();
     HTMLStyleElement::dispatchPendingLoadEvents();
 
-#if ENABLE(SVG)
     // To align the HTML load event and the SVGLoad event for the outermost <svg> element, fire it from
     // here, instead of doing it from SVGElement::finishedParsingChildren (if externalResourcesRequired="false",
     // which is the default, for ='true' its fired at a later time, once all external resources finished loading).
     if (svgExtensions())
         accessSVGExtensions()->dispatchSVGLoadEventToOutermostSVGElements();
-#endif
 
     dispatchWindowLoadEvent();
     enqueuePageshowEvent(PageshowEventNotPersisted);
@@ -2455,10 +2441,8 @@ void Document::implicitClose()
     }
 #endif
 
-#if ENABLE(SVG)
     if (svgExtensions())
         accessSVGExtensions()->startAnimations();
-#endif
 }
 
 void Document::setParsing(bool b)
@@ -2760,12 +2744,6 @@ Frame* Document::findUnsafeParentScrollPropagationBoundary()
         ancestorFrame = ancestorFrame->tree().parent();
     }
     return nullptr;
-}
-
-
-void Document::seamlessParentUpdatedStylesheets()
-{
-    styleResolverChanged(RecalcStyleImmediately);
 }
 
 void Document::didRemoveAllPendingStylesheet()
@@ -3234,22 +3212,6 @@ void Document::styleResolverChanged(StyleResolverUpdateFlag updateFlag)
     }
 
     evaluateMediaQueryList();
-}
-
-void Document::notifySeamlessChildDocumentsOfStylesheetUpdate() const
-{
-    // If we're not in a frame yet any potential child documents won't have a StyleResolver to update.
-    if (!frame())
-        return;
-
-    // Seamless child frames are expected to notify their seamless children recursively, so we only do direct children.
-    for (Frame* child = frame()->tree().firstChild(); child; child = child->tree().nextSibling()) {
-        Document* childDocument = child->document();
-        if (childDocument->shouldDisplaySeamlesslyWithParent()) {
-            ASSERT(&childDocument->seamlessParentIFrame()->document() == this);
-            childDocument->seamlessParentUpdatedStylesheets();
-        }
-    }
 }
 
 void Document::removeFocusedNodeOfSubtree(Node* node, bool amongChildrenOnly)
@@ -4314,7 +4276,6 @@ PassRefPtr<Attr> Document::createAttributeNS(const String& namespaceURI, const S
     return Attr::create(*this, qName, emptyString());
 }
 
-#if ENABLE(SVG)
 const SVGDocumentExtensions* Document::svgExtensions()
 {
     return m_svgExtensions.get();
@@ -4331,7 +4292,6 @@ bool Document::hasSVGRootNode() const
 {
     return documentElement() && documentElement()->hasTagName(SVGNames::svgTag);
 }
-#endif
 
 PassRefPtr<HTMLCollection> Document::ensureCachedCollection(CollectionType type)
 {
@@ -4547,20 +4507,6 @@ void Document::addIconURL(const String& url, const String&, const String&, IconT
     f->loader().didChangeIcons(iconType);
 }
 
-static bool isEligibleForSeamless(Document* parent, Document* child)
-{
-    // It should not matter what we return for the top-most document.
-    if (!parent)
-        return false;
-    if (parent->isSandboxed(SandboxSeamlessIframes))
-        return false;
-    if (child->isSrcdocDocument())
-        return true;
-    if (parent->securityOrigin()->canAccess(child->securityOrigin()))
-        return true;
-    return parent->securityOrigin()->canRequest(child->url());
-}
-
 void Document::initSecurityContext()
 {
     if (haveInitializedSecurityOrigin()) {
@@ -4619,10 +4565,6 @@ void Document::initSecurityContext()
         m_isSrcdocDocument = true;
         setBaseURLOverride(parentDocument->baseURL());
     }
-
-    // FIXME: What happens if we inherit the security origin? This check may need to be later.
-    // <iframe seamless src="about:blank"> likely won't work as-is.
-    m_mayDisplaySeamlesslyWithParent = isEligibleForSeamless(parentDocument, this);
 
     if (!shouldInheritSecurityOriginFromOwner(m_url))
         return;
@@ -5702,28 +5644,6 @@ void Document::didRemoveEventTargetNode(Node* handler)
 void Document::resetLastHandledUserGestureTimestamp()
 {
     m_lastHandledUserGestureTimestamp = monotonicallyIncreasingTime();
-}
-
-HTMLIFrameElement* Document::seamlessParentIFrame() const
-{
-    if (!shouldDisplaySeamlesslyWithParent())
-        return nullptr;
-
-    return toHTMLIFrameElement(ownerElement());
-}
-
-bool Document::shouldDisplaySeamlesslyWithParent() const
-{
-#if ENABLE(IFRAME_SEAMLESS)
-    if (!RuntimeEnabledFeatures::sharedFeatures().seamlessIFramesEnabled())
-        return false;
-    HTMLFrameOwnerElement* ownerElement = this->ownerElement();
-    if (!ownerElement)
-        return false;
-    return m_mayDisplaySeamlesslyWithParent && ownerElement->hasTagName(iframeTag) && ownerElement->fastHasAttribute(seamlessAttr);
-#else
-    return false;
-#endif
 }
 
 DocumentLoader* Document::loader() const

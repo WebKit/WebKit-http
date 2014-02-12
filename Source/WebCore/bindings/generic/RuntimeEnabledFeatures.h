@@ -219,11 +219,6 @@ public:
     void setExperimentalContentSecurityPolicyFeaturesEnabled(bool isEnabled) { m_areExperimentalContentSecurityPolicyFeaturesEnabled = isEnabled; }
 #endif
 
-#if ENABLE(IFRAME_SEAMLESS)
-    bool seamlessIFramesEnabled() const { return m_areSeamlessIFramesEnabled; }
-    void setSeamlessIFramesEnabled(bool isEnabled) { m_areSeamlessIFramesEnabled = isEnabled; }
-#endif
-
     bool langAttributeAwareFormControlUIEnabled() const { return m_isLangAttributeAwareFormControlUIEnabled; }
     // The lang attribute support is incomplete and should only be turned on for tests.
     void setLangAttributeAwareFormControlUIEnabled(bool isEnabled) { m_isLangAttributeAwareFormControlUIEnabled = isEnabled; }
@@ -309,22 +304,11 @@ private:
     bool m_areExperimentalContentSecurityPolicyFeaturesEnabled;
 #endif
 
-#if ENABLE(IFRAME_SEAMLESS)
-    bool m_areSeamlessIFramesEnabled;
-#endif
-
 #if ENABLE(FONT_LOAD_EVENTS)
     bool m_isFontLoadEventsEnabled;
 #endif
 
-#ifndef CLASS_IF_GCC
-#if COMPILER(GCC)
-#define CLASS_IF_GCC class
-#else
-#define CLASS_IF_GCC
-#endif
-#endif
-    friend CLASS_IF_GCC NeverDestroyed<RuntimeEnabledFeatures>;
+    friend class WTF::NeverDestroyed<RuntimeEnabledFeatures>;
 };
 
 } // namespace WebCore

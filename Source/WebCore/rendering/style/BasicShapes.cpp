@@ -51,10 +51,10 @@ void BasicShapeCenterCoordinate::updateComputedLength()
         return;
     }
 
-    OwnPtr<CalcExpressionLength> lhs = adoptPtr(new CalcExpressionLength(Length(100, Percent)));
-    OwnPtr<CalcExpressionLength> rhs = adoptPtr(new CalcExpressionLength(m_length));
-    OwnPtr<CalcExpressionBinaryOperation> op = adoptPtr(new CalcExpressionBinaryOperation(lhs.release(), rhs.release(), CalcSubtract));
-    m_computedLength = Length(CalculationValue::create(op.release(), CalculationRangeAll));
+    auto lhs = std::make_unique<CalcExpressionLength>(Length(100, Percent));
+    auto rhs = std::make_unique<CalcExpressionLength>(m_length);
+    auto op = std::make_unique<CalcExpressionBinaryOperation>(std::move(lhs), std::move(rhs), CalcSubtract);
+    m_computedLength = Length(CalculationValue::create(std::move(op), CalculationRangeAll));
 }
 
 bool BasicShape::canBlend(const BasicShape* other) const
@@ -344,6 +344,12 @@ PassRefPtr<BasicShape> BasicShapeInsetRectangle::blend(const BasicShape* other, 
     return result.release();
 }
 
+static FloatSize floatSizeForLengthSize(const LengthSize& lengthSize, const FloatRect& boundingBox)
+{
+    return FloatSize(floatValueForLength(lengthSize.width(), boundingBox.width()),
+        floatValueForLength(lengthSize.height(), boundingBox.height()));
+}
+
 void BasicShapeInset::path(Path& path, const FloatRect& boundingBox)
 {
     ASSERT(path.isEmpty());
@@ -356,22 +362,10 @@ void BasicShapeInset::path(Path& path, const FloatRect& boundingBox)
             std::max<float>(boundingBox.width() - left - floatValueForLength(m_right, boundingBox.width()), 0),
             std::max<float>(boundingBox.height() - top - floatValueForLength(m_bottom, boundingBox.height()), 0)
         ),
-        FloatSize(
-            floatValueForLength(m_topLeftRadius.width(), boundingBox.width()),
-            floatValueForLength(m_topLeftRadius.height(), boundingBox.height())
-        ),
-        FloatSize(
-            floatValueForLength(m_topRightRadius.width(), boundingBox.width()),
-            floatValueForLength(m_topRightRadius.height(), boundingBox.height())
-        ),
-        FloatSize(
-            floatValueForLength(m_bottomLeftRadius.width(), boundingBox.width()),
-            floatValueForLength(m_bottomLeftRadius.height(), boundingBox.height())
-        ),
-        FloatSize(
-            floatValueForLength(m_bottomRightRadius.width(), boundingBox.width()),
-            floatValueForLength(m_bottomRightRadius.height(), boundingBox.height())
-        )
+        floatSizeForLengthSize(m_topLeftRadius, boundingBox),
+        floatSizeForLengthSize(m_topRightRadius, boundingBox),
+        floatSizeForLengthSize(m_bottomLeftRadius, boundingBox),
+        floatSizeForLengthSize(m_bottomRightRadius, boundingBox)
     );
 }
 

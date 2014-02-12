@@ -13,6 +13,7 @@ set(WTF_HEADERS
     CompilationThread.h
     Compiler.h
     Compression.h
+    CryptographicUtilities.h
     CryptographicallyRandomNumber.h
     CurrentTime.h
     DataLog.h
@@ -142,7 +143,6 @@ set(WTF_HEADERS
     unicode/CharacterNames.h
     unicode/Collator.h
     unicode/UTF8.h
-    unicode/Unicode.h
 )
 
 set(WTF_SOURCES
@@ -151,6 +151,7 @@ set(WTF_SOURCES
     BitVector.cpp
     CompilationThread.cpp
     Compression.cpp
+    CryptographicUtilities.cpp
     CryptographicallyRandomNumber.cpp
     CurrentTime.cpp
     DataLog.cpp
@@ -223,9 +224,6 @@ set(WTF_LIBRARIES
     ${CMAKE_DL_LIBS}
 )
 
-list(APPEND WTF_HEADERS
-    unicode/icu/UnicodeIcu.h
-)
 list(APPEND WTF_SOURCES
     unicode/icu/CollatorICU.cpp
 )

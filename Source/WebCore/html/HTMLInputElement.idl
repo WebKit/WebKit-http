@@ -62,9 +62,7 @@ interface HTMLInputElement : HTMLElement {
 #else
     [TreatNullAs=NullString] attribute DOMString value;
 #endif
-#if !defined(LANGUAGE_CPP) || !LANGUAGE_CPP
     [SetterRaisesException] attribute Date valueAsDate;
-#endif
     [SetterRaisesException] attribute double valueAsNumber;
 
     [RaisesException] void stepUp(optional long n);
@@ -100,7 +98,6 @@ interface HTMLInputElement : HTMLElement {
 
     // Non-standard attributes
     [Reflect] attribute DOMString align;
-    [Conditional=DIRECTORY_UPLOAD, Reflect] attribute boolean webkitdirectory;
     [Reflect] attribute DOMString useMap;
     [Reflect] attribute boolean incremental;
     [Conditional=INPUT_SPEECH, Reflect] attribute boolean webkitSpeech;

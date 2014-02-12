@@ -46,7 +46,6 @@
 #include "Text.h"
 #include "TextPaintStyle.h"
 #include "break_lines.h"
-#include <wtf/unicode/Unicode.h>
 
 namespace WebCore {
 namespace SimpleLineLayout {
@@ -123,7 +122,7 @@ bool canUseFor(const RenderBlockFlow& flow)
         return false;
     // These tests only works during layout. Outside layout this function may give false positives.
     if (flow.view().layoutState()) {
-#if ENABLE(CSS_SHAPES)
+#if ENABLE(CSS_SHAPES) && ENABLE(CSS_SHAPE_INSIDE)
         if (flow.view().layoutState()->shapeInsideInfo())
             return false;
 #endif
@@ -164,7 +163,7 @@ bool canUseFor(const RenderBlockFlow& flow)
         return false;
     if (style.textShadow())
         return false;
-#if ENABLE(CSS_SHAPES)
+#if ENABLE(CSS_SHAPES) && ENABLE(CSS_SHAPE_INSIDE)
     if (style.resolvedShapeInside())
         return true;
 #endif
@@ -186,10 +185,7 @@ bool canUseFor(const RenderBlockFlow& flow)
             return false;
     }
     if (textRenderer.isCombineText() || textRenderer.isCounter() || textRenderer.isQuote() || textRenderer.isTextFragment()
-#if ENABLE(SVG)
-        || textRenderer.isSVGInlineText()
-#endif
-        )
+        || textRenderer.isSVGInlineText())
         return false;
     if (style.font().codePath(TextRun(textRenderer.text())) != Font::Simple)
         return false;
@@ -415,7 +411,7 @@ void createTextRuns(Layout::RunVector& runs, unsigned& lineCount, RenderBlockFlo
 {
     const Style style(flow.style());
 
-    const CharacterType* text = textRenderer.text()->getCharacters<CharacterType>();
+    const CharacterType* text = textRenderer.text()->characters<CharacterType>();
     const unsigned textLength = textRenderer.textLength();
 
     LayoutUnit borderAndPaddingBefore = flow.borderAndPaddingBefore();

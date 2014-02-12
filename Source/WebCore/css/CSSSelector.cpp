@@ -243,9 +243,6 @@ PseudoId CSSSelector::pseudoId(PseudoType type)
     case PseudoFutureCue:
     case PseudoPastCue:
 #endif
-#if ENABLE(IFRAME_SEAMLESS)
-    case PseudoSeamlessDocument:
-#endif
         return NOPSEUDO;
     case PseudoNotParsed:
         ASSERT_NOT_REACHED();
@@ -342,10 +339,6 @@ static NEVER_INLINE void populatePseudoTypeByNameMap(HashMap<AtomicString, CSSSe
         TABLE_ENTRY("-webkit-full-screen-document", PseudoFullScreenDocument)
 #endif
 
-#if ENABLE(IFRAME_SEAMLESS)
-        TABLE_ENTRY("-webkit-seamless-document", PseudoSeamlessDocument)
-#endif
-
 #if ENABLE(VIDEO_TRACK)
         TABLE_ENTRY("cue(", PseudoCue)
         TABLE_ENTRY("future", PseudoFutureCue)
@@ -401,9 +394,6 @@ void CSSSelector::extractPseudoType() const
     case PseudoFirstLine:
         compat = true;
         FALLTHROUGH;
-#if ENABLE(SHADOW_DOM)
-    case PseudoDistributed:
-#endif
     case PseudoResizer:
     case PseudoScrollbar:
     case PseudoScrollbarCorner:
@@ -473,9 +463,6 @@ void CSSSelector::extractPseudoType() const
     case PseudoFullScreenDocument:
     case PseudoFullScreenAncestor:
     case PseudoAnimatingFullScreenTransition:
-#endif
-#if ENABLE(IFRAME_SEAMLESS)
-    case PseudoSeamlessDocument:
 #endif
     case PseudoInRange:
     case PseudoOutOfRange:

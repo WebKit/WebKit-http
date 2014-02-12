@@ -338,8 +338,10 @@ static const CSSPropertyID computedProperties[] = {
     // we should move it outside the PLATFORM(IOS)-guard. See <https://bugs.webkit.org/show_bug.cgi?id=126296>.
     CSSPropertyWebkitCompositionFillColor,
 #endif
-#if ENABLE(CSS_SHAPES)
+#if ENABLE(CSS_SHAPES) && ENABLE(CSS_SHAPE_INSIDE)
     CSSPropertyWebkitShapeInside,
+#endif
+#if ENABLE(CSS_SHAPES)
     CSSPropertyWebkitShapeOutside,
 #endif
 #if ENABLE(TOUCH_EVENTS)
@@ -383,10 +385,11 @@ static const CSSPropertyID computedProperties[] = {
 #endif
 #if ENABLE(CSS_SHAPES)
     CSSPropertyWebkitShapeMargin,
-    CSSPropertyWebkitShapePadding,
     CSSPropertyWebkitShapeImageThreshold,
+#if ENABLE(CSS_SHAPE_INSIDE)
+    CSSPropertyWebkitShapePadding,
 #endif
-#if ENABLE(SVG)
+#endif
     CSSPropertyBufferedRendering,
     CSSPropertyClipPath,
     CSSPropertyClipRule,
@@ -426,7 +429,6 @@ static const CSSPropertyID computedProperties[] = {
     CSSPropertyGlyphOrientationVertical,
     CSSPropertyWebkitSvgShadow,
     CSSPropertyVectorEffect
-#endif
 };
 
 const unsigned numComputedProperties = WTF_ARRAY_LENGTH(computedProperties);
@@ -1656,17 +1658,15 @@ PassRefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propert
 
         renderer = styledNode->renderer();
 
-#if ENABLE(SVG)
         if (propertyID == CSSPropertyDisplay && !renderer && isSVGElement(*styledNode) && !toSVGElement(*styledNode).isValid())
             return nullptr;
-#endif
+
         style = computeRenderStyleForProperty(styledNode, m_pseudoElementSpecifier, propertyID);
 
         // FIXME: Some of these cases could be narrowed down or optimized better.
         forceFullLayout = isLayoutDependent(propertyID, style.get(), renderer)
             || styledNode->isInShadowTree()
-            || (document.styleResolverIfExists() && document.styleResolverIfExists()->hasViewportDependentMediaQueries() && document.ownerElement())
-            || document.seamlessParentIFrame();
+            || (document.styleResolverIfExists() && document.styleResolverIfExists()->hasViewportDependentMediaQueries() && document.ownerElement());
 
         if (forceFullLayout) {
             document.updateLayoutIgnorePendingStylesheets();
@@ -2761,12 +2761,10 @@ PassRefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propert
             ClipPathOperation* operation = style->clipPath();
             if (!operation)
                 return cssValuePool().createIdentifierValue(CSSValueNone);
-#if ENABLE(SVG)
             if (operation->type() == ClipPathOperation::Reference) {
                 ReferenceClipPathOperation& referenceOperation = toReferenceClipPathOperation(*operation);
                 return CSSPrimitiveValue::create(referenceOperation.url(), CSSPrimitiveValue::CSS_URI);
             }
-#endif
             RefPtr<CSSValueList> list = CSSValueList::createSpaceSeparated();
             if (operation->type() == ClipPathOperation::Shape) {
                 ShapeClipPathOperation& shapeOperation = toShapeClipPathOperation(*operation);
@@ -2801,12 +2799,14 @@ PassRefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propert
 #if ENABLE(CSS_SHAPES)
         case CSSPropertyWebkitShapeMargin:
             return cssValuePool().createValue(style->shapeMargin());
-        case CSSPropertyWebkitShapePadding:
-            return cssValuePool().createValue(style->shapePadding());
         case CSSPropertyWebkitShapeImageThreshold:
             return cssValuePool().createValue(style->shapeImageThreshold(), CSSPrimitiveValue::CSS_NUMBER);
+#if ENABLE(CSS_SHAPE_INSIDE)
+        case CSSPropertyWebkitShapePadding:
+            return cssValuePool().createValue(style->shapePadding());
         case CSSPropertyWebkitShapeInside:
             return shapePropertyValue(style.get(), style->shapeInside());
+#endif
         case CSSPropertyWebkitShapeOutside:
             return shapePropertyValue(style.get(), style->shapeOutside());
 #endif
@@ -2966,7 +2966,6 @@ PassRefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propert
             break;
 #endif
 
-#if ENABLE(SVG)
         case CSSPropertyBufferedRendering:
         case CSSPropertyClipPath:
         case CSSPropertyClipRule:
@@ -3010,7 +3009,6 @@ PassRefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propert
         case CSSPropertyWritingMode:
         case CSSPropertyWebkitSvgShadow:
             return svgPropertyValue(propertyID, DoNotUpdateLayout);
-#endif
     }
 
     logUnimplementedPropertyID(propertyID);

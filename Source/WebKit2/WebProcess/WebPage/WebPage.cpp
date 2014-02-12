@@ -281,6 +281,7 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
 #endif
 #if PLATFORM(IOS)
     , m_shouldReturnWordAtSelection(false)
+    , m_userHasChangedPageScaleFactor(false)
 #endif
     , m_inspectorClient(0)
     , m_backgroundColor(Color::white)
@@ -666,16 +667,18 @@ EditorState WebPage::editorState() const
             result.lastMarkedRect = result.firstMarkedRect;
         result.markedText = plainText(compositionRange.get());
     }
+    FrameView* view = frame.view();
     if (selection.isCaret()) {
-        result.caretRectAtStart = frame.selection().absoluteCaretBounds();
+        result.caretRectAtStart = view->contentsToRootView(frame.selection().absoluteCaretBounds());
         result.caretRectAtEnd = result.caretRectAtStart;
         if (m_shouldReturnWordAtSelection)
             result.wordAtSelection = plainText(wordRangeFromPosition(selection.start()).get());
     } else if (selection.isRange()) {
-        result.caretRectAtStart = VisiblePosition(selection.start()).absoluteCaretBounds();
-        result.caretRectAtEnd = VisiblePosition(selection.end()).absoluteCaretBounds();
+        result.caretRectAtStart = view->contentsToRootView(VisiblePosition(selection.start()).absoluteCaretBounds());
+        result.caretRectAtEnd = view->contentsToRootView(VisiblePosition(selection.end()).absoluteCaretBounds());
         RefPtr<Range> selectedRange = selection.toNormalizedRange();
         selectedRange->collectSelectionRects(result.selectionRects);
+        convertSelectionRectsToRootView(view, result.selectionRects);
         result.selectedTextLength = plainText(selectedRange.get(), TextIteratorDefaultBehavior, true).length();
     }
 #endif
@@ -2529,8 +2532,8 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
     settings.setQTKitEnabled(store.getBoolValueForKey(WebPreferencesKey::isQTKitEnabledKey()));
 #endif
 
-#if USE(PLUGIN_PROXY_FOR_VIDEO)
-    settings->setVideoPluginProxyEnabled(store.getBoolValueForKey(WebPreferencesKey::isVideoPluginProxyEnabledKey()));
+#if ENABLE(PLUGIN_PROXY_FOR_VIDEO)
+    settings.setVideoPluginProxyEnabled(false);
 #endif
 
 #if ENABLE(WEB_AUDIO)
@@ -3072,6 +3075,12 @@ void WebPage::mainFrameDidLayout()
 
 #if PLATFORM(MAC) && !PLATFORM(IOS)
     m_viewGestureGeometryCollector.mainFrameDidLayout();
+#endif
+#if PLATFORM(IOS)
+    if (FrameView* frameView = mainFrameView()) {
+        m_viewportConfiguration.setContentsSize(frameView->contentsSize());
+        viewportConfigurationChanged();
+    }
 #endif
 }
 
@@ -3975,6 +3984,22 @@ void WebPage::didCommitLoad(WebFrame* frame)
         if (page && page->pageScaleFactor() != 1)
             scalePage(1, IntPoint());
     }
+#if PLATFORM(IOS)
+    m_userHasChangedPageScaleFactor = false;
+
+    // FIXME: Setup a real configuration.
+    ViewportConfiguration::Parameters defaultConfiguration;
+    defaultConfiguration.width = 980;
+    defaultConfiguration.widthIsSet = true;
+    defaultConfiguration.allowsUserScaling = true;
+    defaultConfiguration.minimumScale = 0.25;
+    defaultConfiguration.maximumScale = 5;
+
+    m_viewportConfiguration.setDefaultConfiguration(defaultConfiguration);
+    m_viewportConfiguration.setViewportArguments(ViewportArguments());
+    m_viewportConfiguration.setContentsSize(m_viewportConfiguration.minimumLayoutSize());
+    viewportConfigurationChanged();
+#endif
 
 #if ENABLE(PRIMARY_SNAPSHOTTED_PLUGIN_HEURISTIC)
     resetPrimarySnapshottedPlugIn();

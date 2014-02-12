@@ -63,6 +63,10 @@ ParserError BytecodeGenerator::generate()
     SamplingRegion samplingRegion("Bytecode Generation");
     
     m_codeBlock->setThisRegister(m_thisRegister.virtualRegister());
+    for (size_t i = 0; i < m_deconstructedParameters.size(); i++) {
+        auto& entry = m_deconstructedParameters[i];
+        entry.second->bindValue(*this, entry.first.get());
+    }
 
     m_scopeNode->emitBytecode(*this);
 
@@ -110,6 +114,9 @@ ParserError BytecodeGenerator::generate()
     m_codeBlock->setInstructions(std::make_unique<UnlinkedInstructionStream>(m_instructions));
 
     m_codeBlock->shrinkToFit();
+
+    if (m_codeBlock->symbolTable())
+        m_codeBlock->setSymbolTable(m_codeBlock->symbolTable()->cloneCapturedNames(*m_codeBlock->vm()));
 
     if (m_expressionTooDeep)
         return ParserError(ParserError::OutOfMemory);
@@ -298,10 +305,16 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, FunctionBodyNode* functionBody, Unl
 
     const DeclarationStacks::FunctionStack& functionStack = functionBody->functionStack();
     const DeclarationStacks::VarStack& varStack = functionBody->varStack();
+    IdentifierSet test;
 
     // Captured variables and functions go first so that activations don't have
     // to step over the non-captured locals to mark them.
     if (functionBody->hasCapturedVariables()) {
+        for (size_t i = 0; i < boundParameterProperties.size(); i++) {
+            const Identifier& ident = boundParameterProperties[i];
+            if (functionBody->captures(ident))
+                addVar(ident, IsVariable, IsWatchable);
+        }
         for (size_t i = 0; i < functionStack.size(); ++i) {
             FunctionBodyNode* function = functionStack[i];
             const Identifier& ident = function->ident();
@@ -338,6 +351,11 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, FunctionBodyNode* functionBody, Unl
         }
     }
     m_lastLazyFunction = canLazilyCreateFunctions ? codeBlock->m_numVars : m_firstLazyFunction;
+    for (size_t i = 0; i < boundParameterProperties.size(); i++) {
+        const Identifier& ident = boundParameterProperties[i];
+        if (!functionBody->captures(ident))
+            addVar(ident, IsVariable, IsWatchable);
+    }
     for (size_t i = 0; i < varStack.size(); ++i) {
         const Identifier& ident = varStack[i].first;
         if (!functionBody->captures(ident))
@@ -356,7 +374,6 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, FunctionBodyNode* functionBody, Unl
     int nextParameterIndex = CallFrame::thisArgumentOffset();
     m_thisRegister.setIndex(nextParameterIndex++);
     m_codeBlock->addParameter();
-    Vector<std::pair<RegisterID*, const DeconstructionPatternNode*>> deconstructedParameters;
     for (size_t i = 0; i < parameters.size(); ++i, ++nextParameterIndex) {
         int index = nextParameterIndex;
         auto pattern = parameters.at(i);
@@ -364,7 +381,7 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, FunctionBodyNode* functionBody, Unl
             m_codeBlock->addParameter();
             RegisterID& parameter = registerFor(index);
             parameter.setIndex(index);
-            deconstructedParameters.append(std::make_pair(&parameter, pattern));
+            m_deconstructedParameters.append(std::make_pair(&parameter, pattern));
             continue;
         }
         auto simpleParameter = static_cast<const BindingNode*>(pattern);
@@ -383,15 +400,11 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, FunctionBodyNode* functionBody, Unl
 
     if (isConstructor()) {
         emitCreateThis(&m_thisRegister);
-    } else if (functionBody->usesThis() || codeBlock->usesEval() || m_shouldEmitDebugHooks) {
+    } else if (functionBody->usesThis() || codeBlock->usesEval()) {
         m_codeBlock->addPropertyAccessInstruction(instructions().size());
         emitOpcode(op_to_this);
         instructions().append(kill(&m_thisRegister));
         instructions().append(0);
-    }
-    for (size_t i = 0; i < deconstructedParameters.size(); i++) {
-        auto& entry = deconstructedParameters[i];
-        entry.second->bindValue(*this, entry.first);
     }
 }
 
@@ -456,32 +469,24 @@ RegisterID* BytecodeGenerator::emitInitLazyRegister(RegisterID* reg)
 
 RegisterID* BytecodeGenerator::resolveCallee(FunctionBodyNode* functionBodyNode)
 {
-    if (functionBodyNode->ident().isNull() || !functionBodyNode->functionNameIsInScope())
+    if (!functionNameIsInScope(functionBodyNode->ident(), functionBodyNode->functionMode()))
+        return 0;
+
+    if (functionNameScopeIsDynamic(m_codeBlock->usesEval(), m_codeBlock->isStrictMode()))
         return 0;
 
     m_calleeRegister.setIndex(JSStack::Callee);
+    if (functionBodyNode->captures(functionBodyNode->ident()))
+        return emitMove(addVar(), IsCaptured, &m_calleeRegister);
 
-    // If non-strict eval is in play, we use a separate object in the scope chain for the callee's name.
-    if (m_codeBlock->usesEval() && !m_codeBlock->isStrictMode())
-        emitPushFunctionNameScope(functionBodyNode->ident(), &m_calleeRegister, ReadOnly | DontDelete);
-
-    if (!functionBodyNode->captures(functionBodyNode->ident()))
-        return &m_calleeRegister;
-
-    // Move the callee into the captured section of the stack.
-    return emitMove(addVar(), IsCaptured, &m_calleeRegister);
+    return &m_calleeRegister;
 }
 
 void BytecodeGenerator::addCallee(FunctionBodyNode* functionBodyNode, RegisterID* calleeRegister)
 {
-    if (functionBodyNode->ident().isNull() || !functionBodyNode->functionNameIsInScope())
+    if (!calleeRegister)
         return;
 
-    // If non-strict eval is in play, we use a separate object in the scope chain for the callee's name.
-    if (m_codeBlock->usesEval() && !m_codeBlock->isStrictMode())
-        return;
-
-    ASSERT(calleeRegister);
     symbolTable().add(functionBodyNode->ident().impl(), SymbolTableEntry(calleeRegister->index(), ReadOnly));
 }
 

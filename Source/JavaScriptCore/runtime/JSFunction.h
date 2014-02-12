@@ -93,6 +93,7 @@ namespace JSC {
             ASSERT(!isHostFunctionNonInline());
             m_scope.set(vm, this, scope);
         }
+        void addNameScopeIfNeeded(VM&);
 
         ExecutableBase* executable() const { return m_executable.get(); }
 
@@ -171,10 +172,10 @@ namespace JSC {
         
         JS_EXPORT_PRIVATE bool isHostFunctionNonInline() const;
 
-        static EncodedJSValue argumentsGetter(ExecState*, EncodedJSValue, EncodedJSValue, PropertyName);
-        static EncodedJSValue callerGetter(ExecState*, EncodedJSValue, EncodedJSValue, PropertyName);
-        static EncodedJSValue lengthGetter(ExecState*, EncodedJSValue, EncodedJSValue, PropertyName);
-        static EncodedJSValue nameGetter(ExecState*, EncodedJSValue, EncodedJSValue, PropertyName);
+        static EncodedJSValue argumentsGetter(ExecState*, JSObject*, EncodedJSValue, PropertyName);
+        static EncodedJSValue callerGetter(ExecState*, JSObject*, EncodedJSValue, PropertyName);
+        static EncodedJSValue lengthGetter(ExecState*, JSObject*, EncodedJSValue, PropertyName);
+        static EncodedJSValue nameGetter(ExecState*, JSObject*, EncodedJSValue, PropertyName);
 
         WriteBarrier<ExecutableBase> m_executable;
         WriteBarrier<JSScope> m_scope;

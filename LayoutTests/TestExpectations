@@ -2,6 +2,9 @@
 #
 # See http://trac.webkit.org/wiki/TestExpectations for more information on this file.
 
+# Incomplete implementation of eventSender causes this test to fail
+webkit.org/b/42194 fast/scrolling/scroll-select-list.html [ ImageOnlyFailure ]
+
 # pending functional patch and per-port verification
 webkit.org/b/109954 css3/line-break [ Skip ]
 
@@ -54,6 +57,11 @@ webkit.org/b/120148 [ Release ] webaudio/javascriptaudionode-upmix2-8channel-inp
 webkit.org/b/120148 [ Debug ] webaudio/javascriptaudionode-upmix2-8channel-input.html [ Pass Crash ]
 webkit.org/b/120148 [ Release ] webaudio/javascriptaudionode-downmix8-2channel-input.html [ Pass Failure ]
 webkit.org/b/120148 [ Debug ] webaudio/javascriptaudionode-downmix8-2channel-input.html [ Pass Crash ]
+
+webkit.org/b/124342 fast/hidpi/image-srcset-svg-canvas.html [ ImageOnlyFailure ]
+webkit.org/b/124342 fast/hidpi/image-srcset-svg-canvas-2x.html [ ImageOnlyFailure ]
+webkit.org/b/124349 fast/hidpi/image-srcset-relative-svg-canvas-2x.html [ ImageOnlyFailure ]
+webkit.org/b/124349 fast/hidpi/image-srcset-relative-svg-canvas.html [ ImageOnlyFailure ]
 
 webaudio/javascriptaudionode-downmix8-2channel-input.html
 

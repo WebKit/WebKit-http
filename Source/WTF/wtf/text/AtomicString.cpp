@@ -293,7 +293,7 @@ struct SubstringTranslator {
 
     static void translate(StringImpl*& location, const SubstringLocation& buffer, unsigned hash)
     {
-        location = &StringImpl::create(buffer.baseString, buffer.start, buffer.length).leakRef();
+        location = &StringImpl::createSubstringSharingImpl(buffer.baseString, buffer.start, buffer.length).leakRef();
         location->setHash(hash);
         location->setIsAtomic(true);
     }
@@ -400,7 +400,7 @@ PassRefPtr<StringImpl> AtomicString::addSlowCase(StringImpl* string)
 template<typename CharacterType>
 static inline HashSet<StringImpl*>::iterator findString(const StringImpl* stringImpl)
 {
-    HashAndCharacters<CharacterType> buffer = { stringImpl->existingHash(), stringImpl->getCharacters<CharacterType>(), stringImpl->length() };
+    HashAndCharacters<CharacterType> buffer = { stringImpl->existingHash(), stringImpl->characters<CharacterType>(), stringImpl->length() };
     return stringTable().find<HashAndCharactersTranslator<CharacterType>>(buffer);
 }
 

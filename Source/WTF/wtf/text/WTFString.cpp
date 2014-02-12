@@ -35,7 +35,6 @@
 #include <wtf/dtoa.h>
 #include <wtf/unicode/CharacterNames.h>
 #include <wtf/unicode/UTF8.h>
-#include <wtf/unicode/Unicode.h>
 
 namespace WTF {
 
@@ -318,7 +317,7 @@ String String::substringSharingImpl(unsigned offset, unsigned length) const
 
     if (!offset && length == stringLength)
         return *this;
-    return String(StringImpl::create(m_impl, offset, length));
+    return String(StringImpl::createSubstringSharingImpl(m_impl, offset, length));
 }
 
 String String::lower() const

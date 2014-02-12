@@ -23,8 +23,6 @@
  */
 
 #include "config.h"
-
-#if ENABLE(SVG)
 #include "SVGElement.h"
 
 #include "Attr.h"
@@ -811,10 +809,11 @@ RenderStyle* SVGElement::computedStyle(PseudoId pseudoElementSpecifier)
 #ifndef NDEBUG
 bool SVGElement::isAnimatableAttribute(const QualifiedName& name) const
 {
-    DEFINE_STATIC_LOCAL(HashSet<QualifiedName>, animatableAttributes, ());
+    static NeverDestroyed<HashSet<QualifiedName>> neverDestroyedAnimatableAttributes;
+    HashSet<QualifiedName>& animatableAttributes = neverDestroyedAnimatableAttributes;
 
     if (animatableAttributes.isEmpty()) {
-        animatableAttributes.add(XLinkNames::hrefAttr);
+        animatableAttributes.add(HTMLNames::classAttr);
         animatableAttributes.add(SVGNames::amplitudeAttr);
         animatableAttributes.add(SVGNames::azimuthAttr);
         animatableAttributes.add(SVGNames::baseFrequencyAttr);
@@ -907,10 +906,8 @@ bool SVGElement::isAnimatableAttribute(const QualifiedName& name) const
         animatableAttributes.add(SVGNames::yAttr);
         animatableAttributes.add(SVGNames::yChannelSelectorAttr);
         animatableAttributes.add(SVGNames::zAttr);
+        animatableAttributes.add(XLinkNames::hrefAttr);
     }
-
-    if (name == classAttr)
-        return true;
 
     return animatableAttributes.contains(name);
 }
@@ -1150,5 +1147,3 @@ void SVGElement::accessKeyAction(bool sendMouseEvents)
 }
 
 }
-
-#endif // ENABLE(SVG)

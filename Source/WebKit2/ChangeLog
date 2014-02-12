@@ -1,3 +1,917 @@
+2014-02-05  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed GTK build fix after r163480.
+
+        * GNUmakefile.list.am: Removing the WebUIClient build targets.
+
+2014-02-05  Simon Fraser  <simon.fraser@apple.com>
+
+        Transfer the non-fast-scrollable region to the UI process for iOS
+        https://bugs.webkit.org/show_bug.cgi?id=128293
+
+        Reviewed by Benjamin Poulain.
+
+        Two main changes to support sending the non-fast scrollable region
+        to the UI process for iOS:
+        
+        1. Add ScrollingCoordinator::frameViewNonFastScrollableRegionChanged(),
+        which is called when we've updated the touch event region (this can happen
+        independenly of layout). When called we just scheduled a scrolling tree
+        commit with the new region.
+        
+        2. Avoid thinking that we have a new root node with every remote scrolling
+        transaction. This was a side-effect of reconstructing the scrolling state
+        tree in the UI process, and caused us to try to grab a nonFastScrollableRegion
+        from a node which never had one set.
+        
+        Now that we have the non-fast scrollable region in the UI process, we can
+        use it to avoid sending sync messages to the web process.
+        
+        * Shared/Scrolling/RemoteScrollingCoordinatorTransaction.cpp:
+        (ArgumentCoder<ScrollingStateScrollingNode>::encode): Encode hasNewRootNode.
+        (ArgumentCoder<ScrollingStateScrollingNode>::decode): Decode hasNewRootNode and set it on
+        the state tree.
+        (WebKit::RemoteScrollingCoordinatorTransaction::encode): Encode the nonFastScrollableRegion
+        now that we can encode Regions.
+        (WebKit::RemoteScrollingCoordinatorTransaction::decode): Decode the nonFastScrollableRegion
+        now that we can decode Regions.
+        * UIProcess/Scrolling/RemoteScrollingCoordinatorProxy.cpp:
+        (WebKit::RemoteScrollingCoordinatorProxy::isPointInNonFastScrollableRegion):
+        * UIProcess/Scrolling/RemoteScrollingCoordinatorProxy.h:
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::handleTouchEvent): If we're not in the non-fast scrollable region,
+        don't both sending touch events to the web process.
+
+2014-02-05  Benjamin Poulain  <benjamin@webkit.org>
+
+        [iOS] Synchronize the WKContentView and UIScrollView updates with the tiles being commited
+        https://bugs.webkit.org/show_bug.cgi?id=127886
+
+        Reviewed by Simon Fraser.
+
+        * Shared/mac/RemoteLayerTreeTransaction.h:
+        (WebKit::RemoteLayerTreeTransaction::mainFrameContentsSize):
+        (WebKit::RemoteLayerTreeTransaction::setMainFrameContentsSize):
+        (WebKit::RemoteLayerTreeTransaction::pageScaleFactor):
+        (WebKit::RemoteLayerTreeTransaction::setPageScaleFactor):
+        (WebKit::RemoteLayerTreeTransaction::minimumScaleFactor):
+        (WebKit::RemoteLayerTreeTransaction::setMinimumScaleFactor):
+        (WebKit::RemoteLayerTreeTransaction::maximumScaleFactor):
+        (WebKit::RemoteLayerTreeTransaction::setMaximumScaleFactor):
+        (WebKit::RemoteLayerTreeTransaction::allowsUserScaling):
+        (WebKit::RemoteLayerTreeTransaction::setAllowsUserScaling):
+        * Shared/mac/RemoteLayerTreeTransaction.mm:
+        (WebKit::RemoteLayerTreeTransaction::encode):
+        (WebKit::RemoteLayerTreeTransaction::decode):
+        * UIProcess/API/ios/PageClientImplIOS.h:
+        * UIProcess/API/ios/PageClientImplIOS.mm:
+        (WebKit::PageClientImpl::didCommitLayerTree):
+        * UIProcess/API/ios/WKContentView.h:
+        * UIProcess/API/ios/WKContentView.mm:
+        (-[WKContentView setMinimumLayoutSize:]):
+        (-[WKContentView willStartUserTriggeredZoom]):
+        (-[WKContentView _didCommitLayerTree:WebKit::]):
+        * UIProcess/API/ios/WKContentViewInternal.h:
+        * UIProcess/API/ios/WKViewIOS.mm:
+        (-[WKView contentViewDidCommitLoadForMainFrame:]):
+        (-[WKView contentView:didCommitLayerTree:WebKit::]):
+        (-[WKView scrollViewWillBeginZooming:withView:]):
+        (-[WKView _commonInitializationWithContextRef:pageGroupRef:relatedToPage:]):
+        (-[WKView _frameOrBoundsChanged]):
+        (-[WKView minimumLayoutSizeOverride]):
+        (-[WKView setMinimumLayoutSizeOverride:]):
+        * UIProcess/PageClient.h:
+        * UIProcess/WebPageProxy.cpp:
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/WebPageProxy.messages.in:
+        * UIProcess/ios/WebPageProxyIOS.mm:
+        (WebKit::WebPageProxy::setVirtualViewportMinimumLayoutSize):
+        (WebKit::WebPageProxy::didCommitLayerTree):
+        (WebKit::WebPageProxy::willStartUserTriggeredZooming):
+        * UIProcess/mac/RemoteLayerTreeDrawingAreaProxy.mm:
+        (WebKit::RemoteLayerTreeDrawingAreaProxy::commitLayerTree):
+        * WebProcess/WebCoreSupport/WebChromeClient.cpp:
+        (WebKit::WebChromeClient::contentsSizeChanged):
+        (WebKit::WebChromeClient::dispatchViewportPropertiesDidChange):
+        * WebProcess/WebCoreSupport/ios/WebChromeClientIOS.mm:
+        (WebKit::WebChromeClient::didReceiveMobileDocType):
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::WebPage):
+        (WebKit::WebPage::mainFrameDidLayout):
+        (WebKit::WebPage::didCommitLoad):
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/WebPage.messages.in:
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::viewportPropertiesDidChange):
+        (WebKit::WebPage::minimumPageScaleFactor):
+        (WebKit::WebPage::maximumPageScaleFactor):
+        (WebKit::WebPage::allowsUserScaling):
+        (WebKit::WebPage::setVirtualViewportMinimumLayoutSize):
+        (WebKit::WebPage::virtualViewportChanged):
+        (WebKit::WebPage::willStartUserTriggeredZooming):
+        * WebProcess/WebPage/mac/RemoteLayerTreeDrawingArea.mm:
+        (WebKit::RemoteLayerTreeDrawingArea::flushLayers):
+
+2014-02-05  Benjamin Poulain  <bpoulain@apple.com>
+
+        [WK2] Add the minimumLayoutSizeOverride SPI to WKWebView
+        https://bugs.webkit.org/show_bug.cgi?id=128295
+
+        Reviewed by Anders Carlsson.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView minimumLayoutSizeOverride]):
+        (-[WKWebView setMinimumLayoutSizeOverride:]):
+        * UIProcess/API/Cocoa/WKWebViewPrivate.h: Added.
+        * WebKit2.xcodeproj/project.pbxproj:
+
+2014-02-05  Simon Fraser  <simon.fraser@apple.com>
+
+        Support encoding and decoding of Regions
+        https://bugs.webkit.org/show_bug.cgi?id=128284
+
+        Reviewed by Anders Carlsson.
+        
+        Support encoding and decoding of Region, and its internal
+        struct Region::Span.
+        
+        ArgumentCoders had to be taught about how to encode
+        Vectors with inline capacity.
+
+        * Platform/IPC/ArgumentCoders.h:
+        * Shared/WebCoreArgumentCoders.cpp:
+        (IPC::ArgumentCoder<Region::Span>::encode):
+        (IPC::ArgumentCoder<Region::Span>::decode):
+        (IPC::ArgumentCoder<Region>::encode):
+        (IPC::ArgumentCoder<Region>::decode):
+        * Shared/WebCoreArgumentCoders.h:
+
+2014-02-05  Anders Carlsson  <andersca@apple.com>
+
+        Add -[WKNavigationAction request]
+        https://bugs.webkit.org/show_bug.cgi?id=128288
+
+        Reviewed by Andreas Kling.
+
+        * UIProcess/API/Cocoa/WKNavigationAction.h:
+        * UIProcess/API/Cocoa/WKNavigationAction.mm:
+        (-[WKNavigationAction request]):
+        (-[WKNavigationAction setRequest:]):
+        * UIProcess/API/Cocoa/WKNavigationActionInternal.h:
+        * UIProcess/Cocoa/NavigationState.mm:
+        (WebKit::NavigationState::PolicyClient::decidePolicyForNavigationAction):
+
+2014-02-05  Sam Weinig  <sam@webkit.org>
+
+        [WebKit2, FTL] Add user default to enable the FTL
+        https://bugs.webkit.org/show_bug.cgi?id=128281
+
+        Reviewed by Geoffrey Garen.
+
+        * Shared/WebProcessCreationParameters.cpp:
+        (WebKit::WebProcessCreationParameters::WebProcessCreationParameters):
+        (WebKit::WebProcessCreationParameters::encode):
+        (WebKit::WebProcessCreationParameters::decode):
+        * Shared/WebProcessCreationParameters.h:
+        * UIProcess/mac/WebContextMac.mm:
+        (WebKit::registerUserDefaultsIfNeeded):
+        (WebKit::WebContext::platformInitializeWebProcess):
+        * WebProcess/mac/WebProcessMac.mm:
+        (WebKit::WebProcess::platformInitializeWebProcess):
+        Pipe through the default.
+
+2014-02-05  Anders Carlsson  <andersca@apple.com>
+
+        Add sourceFrame to WKNavigationAction
+        https://bugs.webkit.org/show_bug.cgi?id=128280
+
+        Reviewed by Dan Bernstein.
+
+        * UIProcess/API/Cocoa/WKFrameInfo.h: Copied from Source/WebKit2/UIProcess/API/Cocoa/WKNavigationActionInternal.h.
+        * UIProcess/API/Cocoa/WKFrameInfo.mm: Copied from Source/WebKit2/UIProcess/API/Cocoa/WKNavigationActionInternal.h.
+        (-[WKFrameInfo request]):
+        (-[WKFrameInfo setRequest:]):
+        * UIProcess/API/Cocoa/WKFrameInfoInternal.h: Copied from Source/WebKit2/UIProcess/API/Cocoa/WKNavigationActionInternal.h.
+        * UIProcess/API/Cocoa/WKNavigationAction.h:
+        * UIProcess/API/Cocoa/WKNavigationAction.mm:
+        (-[WKNavigationAction sourceFrame]):
+        (-[WKNavigationAction setSourceFrame:]):
+        * UIProcess/API/Cocoa/WKNavigationActionInternal.h:
+        * UIProcess/Cocoa/NavigationState.mm:
+        (WebKit::frameInfoFromWebFrameProxy):
+        (WebKit::NavigationState::PolicyClient::decidePolicyForNavigationAction):
+        * WebKit2.xcodeproj/project.pbxproj:
+
+2014-02-05  Enrica Casucci  <enrica@apple.com>
+
+        WK2: Tap highlight is positioned incorrectly in iframes.
+        https://bugs.webkit.org/show_bug.cgi?id=128277
+        <rdar://problem/15975993>
+
+        Reviewed by Benjamin Poulain.
+
+        We need to convert the quad to root view coordinates
+        before returning it to the UIProcess for drawing the highlight.
+
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::tapHighlightAtPosition):
+
+2014-02-05  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        Unreviewed build fix attempt on EFL build after r163480
+
+        * CMakeLists.txt: Removed WebUIClient.cpp from source lists.
+
+2014-02-05  Oliver Hunt  <oliver@apple.com>
+
+        Change custom getter signature to make the base reference an object pointer
+        https://bugs.webkit.org/show_bug.cgi?id=128279
+
+        Reviewed by Geoffrey Garen.
+
+        Update everything to the new calling convention.
+
+        * WebProcess/Plugins/Netscape/JSNPObject.cpp:
+        (WebKit::JSNPObject::propertyGetter):
+        (WebKit::JSNPObject::methodGetter):
+        * WebProcess/Plugins/Netscape/JSNPObject.h:
+
+2014-02-05  Andreas Kling  <akling@apple.com>
+
+        Remove ENABLE(DIRECTORY_UPLOAD).
+        <https://webkit.org/b/128275>
+
+        Rubber-stamped by Ryosuke Niwa.
+
+        * Configurations/FeatureDefines.xcconfig:
+        * Shared/WebCoreArgumentCoders.cpp:
+        (IPC::ArgumentCoder<FileChooserSettings>::encode):
+        (IPC::ArgumentCoder<FileChooserSettings>::decode):
+
+2014-02-05  Brady Eidson  <beidson@apple.com>
+
+        IDB: storage/indexeddb/mozilla/autoincrement-indexes.html fails
+        https://bugs.webkit.org/show_bug.cgi?id=128257
+
+        Reviewed by Sam Weinig.
+
+        * DatabaseProcess/IndexedDB/UniqueIDBDatabase.cpp:
+        (WebKit::UniqueIDBDatabase::putRecordInBackingStore): Write the correct key to the index if it was auto generated.
+        (WebKit::UniqueIDBDatabase::getRecordFromBackingStore): If this is an auto increment object store with
+          a non-empty key path, save the key path to the get result.
+
+        * DatabaseProcess/IndexedDB/UniqueIDBDatabaseBackingStore.h:
+        * DatabaseProcess/IndexedDB/sqlite/UniqueIDBDatabaseBackingStoreSQLite.cpp:
+        (WebKit::UniqueIDBDatabaseBackingStoreSQLite::createAndPopulateInitialMetadata): The IndexRecord schema shouldn’t
+          have key uniqueness.
+        (WebKit::UniqueIDBDatabaseBackingStoreSQLite::putRecord): Take IDBKeyData instead of IDBKey.
+        (WebKit::UniqueIDBDatabaseBackingStoreSQLite::getIndexRecord): Fill in the primary key from the fetch.
+        * DatabaseProcess/IndexedDB/sqlite/UniqueIDBDatabaseBackingStoreSQLite.h:
+
+2014-02-05  Anders Carlsson  <andersca@apple.com>
+
+        Get rid of WebUIClient
+        https://bugs.webkit.org/show_bug.cgi?id=128274
+
+        Reviewed by Andreas Kling.
+
+        * UIProcess/API/APIUIClient.h: Added.
+        (API::UIClient::~UIClient):
+        (API::UIClient::createNewPage):
+        (API::UIClient::showPage):
+        (API::UIClient::close):
+        (API::UIClient::takeFocus):
+        (API::UIClient::focus):
+        (API::UIClient::unfocus):
+        (API::UIClient::runJavaScriptAlert):
+        (API::UIClient::runJavaScriptConfirm):
+        (API::UIClient::runJavaScriptPrompt):
+        (API::UIClient::setStatusText):
+        (API::UIClient::mouseDidMoveOverElement):
+        (API::UIClient::unavailablePluginButtonClicked):
+        (API::UIClient::implementsDidNotHandleKeyEvent):
+        (API::UIClient::didNotHandleKeyEvent):
+        (API::UIClient::implementsDidNotHandleWheelEvent):
+        (API::UIClient::didNotHandleWheelEvent):
+        (API::UIClient::toolbarsAreVisible):
+        (API::UIClient::setToolbarsAreVisible):
+        (API::UIClient::menuBarIsVisible):
+        (API::UIClient::setMenuBarIsVisible):
+        (API::UIClient::statusBarIsVisible):
+        (API::UIClient::setStatusBarIsVisible):
+        (API::UIClient::isResizable):
+        (API::UIClient::setIsResizable):
+        (API::UIClient::setWindowFrame):
+        (API::UIClient::windowFrame):
+        (API::UIClient::canRunBeforeUnloadConfirmPanel):
+        (API::UIClient::runBeforeUnloadConfirmPanel):
+        (API::UIClient::didDraw):
+        (API::UIClient::pageDidScroll):
+        (API::UIClient::exceededDatabaseQuota):
+        (API::UIClient::runOpenPanel):
+        (API::UIClient::decidePolicyForGeolocationPermissionRequest):
+        (API::UIClient::decidePolicyForNotificationPermissionRequest):
+        (API::UIClient::headerHeight):
+        (API::UIClient::footerHeight):
+        (API::UIClient::drawHeader):
+        (API::UIClient::drawFooter):
+        (API::UIClient::printFrame):
+        (API::UIClient::canRunModal):
+        (API::UIClient::runModal):
+        (API::UIClient::saveDataToFileInDownloadsFolder):
+        (API::UIClient::shouldInterruptJavaScript):
+        (API::UIClient::showColorPicker):
+        (API::UIClient::hideColorPicker):
+        * UIProcess/API/C/WKPage.cpp:
+        (WKPageSetPageUIClient):
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::WebPageProxy):
+        (WebKit::WebPageProxy::setUIClient):
+        (WebKit::WebPageProxy::close):
+        (WebKit::WebPageProxy::createNewPage):
+        (WebKit::WebPageProxy::showPage):
+        (WebKit::WebPageProxy::closePage):
+        (WebKit::WebPageProxy::runJavaScriptAlert):
+        (WebKit::WebPageProxy::runJavaScriptConfirm):
+        (WebKit::WebPageProxy::runJavaScriptPrompt):
+        (WebKit::WebPageProxy::shouldInterruptJavaScript):
+        (WebKit::WebPageProxy::setStatusText):
+        (WebKit::WebPageProxy::mouseDidMoveOverElement):
+        (WebKit::WebPageProxy::unavailablePluginButtonClicked):
+        (WebKit::WebPageProxy::setToolbarsAreVisible):
+        (WebKit::WebPageProxy::getToolbarsAreVisible):
+        (WebKit::WebPageProxy::setMenuBarIsVisible):
+        (WebKit::WebPageProxy::getMenuBarIsVisible):
+        (WebKit::WebPageProxy::setStatusBarIsVisible):
+        (WebKit::WebPageProxy::getStatusBarIsVisible):
+        (WebKit::WebPageProxy::setIsResizable):
+        (WebKit::WebPageProxy::getIsResizable):
+        (WebKit::WebPageProxy::setWindowFrame):
+        (WebKit::WebPageProxy::getWindowFrame):
+        (WebKit::WebPageProxy::runBeforeUnloadConfirmPanel):
+        (WebKit::WebPageProxy::pageDidScroll):
+        (WebKit::WebPageProxy::runOpenPanel):
+        (WebKit::WebPageProxy::printFrame):
+        (WebKit::WebPageProxy::didDraw):
+        (WebKit::WebPageProxy::setFocus):
+        (WebKit::WebPageProxy::takeFocus):
+        (WebKit::WebPageProxy::didReceiveEvent):
+        (WebKit::WebPageProxy::creationParameters):
+        (WebKit::WebPageProxy::exceededDatabaseQuota):
+        (WebKit::WebPageProxy::requestGeolocationPermissionForFrame):
+        (WebKit::WebPageProxy::requestNotificationPermission):
+        (WebKit::WebPageProxy::headerHeight):
+        (WebKit::WebPageProxy::footerHeight):
+        (WebKit::WebPageProxy::drawHeader):
+        (WebKit::WebPageProxy::drawFooter):
+        (WebKit::WebPageProxy::runModal):
+        (WebKit::WebPageProxy::setCanRunModal):
+        (WebKit::WebPageProxy::saveDataToFileInDownloadsFolder):
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/WebUIClient.cpp: Removed.
+        * UIProcess/WebUIClient.h: Removed.
+        * UIProcess/mac/WebInspectorProxyMac.mm:
+        (WebKit::WebInspectorProxy::platformCreateInspectorPage):
+        * UIProcess/mac/WebPageProxyMac.mm:
+        (WebKit::WebPageProxy::windowAndViewFramesChanged):
+        * WebKit2.xcodeproj/project.pbxproj:
+
+2014-02-05  Enrica Casucci  <enrica@apple.com>
+
+        WK2: Caret, selections and autocorrection bubbles are incorrectly positioned when inside an iframe.
+        https://bugs.webkit.org/show_bug.cgi?id=128264
+        <rdar://problem/15986954>
+
+        Reviewed by Simon Fraser.
+
+        Everywhere we return rectangles to the UIProcess, we need to convert them
+        to root view coordinates. Also, we should allow hit testing to go into child
+        frames.
+
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::editorState):
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::selectWithGesture):
+        (WebKit::WebPage::updateSelectionWithTouches):
+        (WebKit::WebPage::convertSelectionRectsToRootView):
+        (WebKit::WebPage::requestAutocorrectionData):
+        (WebKit::WebPage::getPositionInformation):
+
+2014-02-05  Dan Bernstein  <mitz@apple.com>
+
+        [Cocoa] WKRemoteObjectInterface fails with doubles, NSNull, and empty NSStrings
+        https://bugs.webkit.org/show_bug.cgi?id=128268
+
+        Reviewed by Anders Carlsson.
+
+        * Shared/API/Cocoa/WKRemoteObjectCoder.mm:
+        (-[WKRemoteObjectDecoder decodeBytesForKey:returnedLength:]): When returning nullptr, also
+        set the length out parameter to 0.
+
+        * Shared/API/Cocoa/WKRemoteObjectInterface.mm:
+        (propertyListClasses): Added NSNull.
+
+        * Shared/UserData.cpp:
+        (WebKit::UserData::encode): Encode the Double type.
+
+2014-02-05  Jer Noble  <jer.noble@apple.com>
+
+        [WK2] [iOS] No video on embedded YouTube
+        https://bugs.webkit.org/show_bug.cgi?id=128237
+
+        Reviewed by Sam Weinig.
+
+        We were using the wrong #if directive; PLUGIN_PROXY_FOR_VIDEO is an ENABLE not a USE.
+
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::updatePreferences):
+
+2014-02-05  Dan Bernstein  <mitz@apple.com>
+
+        [Cocoa] Expose more WKWebProcessPlugInFrame properties
+        https://bugs.webkit.org/show_bug.cgi?id=128240
+
+        Reviewed by Anders Carlsson.
+
+        * WebProcess/InjectedBundle/API/Cocoa/WKWebProcessPlugInFrame.h: Declared new properties.
+        * WebProcess/InjectedBundle/API/Cocoa/WKWebProcessPlugInFrame.mm:
+        (-[WKWebProcessPlugInFrame URL]): Added.
+        (-[WKWebProcessPlugInFrame childFrames]): Added.
+        (-[WKWebProcessPlugInFrame containsAnyFormElements]): Added.
+
+2014-02-05  Dan Bernstein  <mitz@apple.com>
+
+        [Cocoa] Notify WKWebProcessPlugInLoadDelegate when a frame is removed from the frame hierarchy
+        https://bugs.webkit.org/show_bug.cgi?id=128239
+
+        Reviewed by Anders Carlsson.
+
+        * WebProcess/InjectedBundle/API/Cocoa/WKWebProcessPlugInLoadDelegate.h: Declared new
+        delegate method.
+        * WebProcess/InjectedBundle/API/mac/WKWebProcessPlugInBrowserContextController.mm:
+        (didRemoveFrameFromHierarchy): Implemented this page loader client callback by calling the
+        load delegate.
+        (setUpPageLoaderClient): Set the above callback in the client structure.
+
+2014-02-05  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Remove ENABLE(SVG) guards
+        https://bugs.webkit.org/show_bug.cgi?id=127991
+
+        Reviewed by Sam Weinig.
+
+        * Configurations/FeatureDefines.xcconfig:
+        * GNUmakefile.am:
+
+2014-02-05  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GTK] Replace DEFINE_STATIC_LOCAL with NeverDestroyed<T> in GTK WK1 and WK2 code
+        https://bugs.webkit.org/show_bug.cgi?id=128195
+
+        Reviewed by Martin Robinson.
+
+        Use static NeverDestroyed<T> variables instead of the DEFINE_STATIC_LOCAL macro.
+
+        * UIProcess/API/gtk/WebKitBackForwardListItem.cpp:
+        (historyItemsMap):
+        * UIProcess/API/gtk/WebKitWebContext.cpp:
+        (downloadsMap):
+        * UIProcess/gtk/WebPageProxyGtk.cpp:
+        (WebKit::pluginWindowMap):
+        * WebProcess/gtk/WebGtkExtensionManager.cpp:
+        (WebKit::WebGtkExtensionManager::shared):
+        * WebProcess/gtk/WebGtkExtensionManager.h:
+
+2014-02-04  Andreas Kling  <akling@apple.com>
+
+        Remove <iframe seamless> support.
+        <https://webkit.org/b/128213>
+
+        Rubber-stamped by Antti Koivisto.
+
+        * Configurations/FeatureDefines.xcconfig:
+        * WebProcess/InjectedBundle/API/c/WKBundle.cpp:
+        * WebProcess/InjectedBundle/API/c/WKBundlePrivate.h:
+        * WebProcess/InjectedBundle/InjectedBundle.cpp:
+        * WebProcess/InjectedBundle/InjectedBundle.h:
+
+2014-02-04  Tim Horton  <timothy_horton@apple.com>
+
+        [iOS][wk2] Make development builds of WebKit work on device
+        https://bugs.webkit.org/show_bug.cgi?id=128230
+
+        Reviewed by Anders Carlsson.
+
+        * Configurations/NetworkService.Development.xcconfig:
+        * Configurations/WebContentService.Development.xcconfig:
+        * NetworkProcess/EntryPoint/mac/XPCService/NetworkService.Development/Info-OSX.plist: Copied from Source/WebKit2/NetworkProcess/EntryPoint/mac/XPCService/NetworkService.Development/Info.plist.
+        * NetworkProcess/EntryPoint/mac/XPCService/NetworkService.Development/Info-iOS.plist: Copied from Source/WebKit2/NetworkProcess/EntryPoint/mac/XPCService/NetworkService.Development/Info.plist.
+        * WebKit2.xcodeproj/project.pbxproj:
+        * WebProcess/EntryPoint/mac/XPCService/WebContentService.Development/Info-OSX.plist: Renamed from Source/WebKit2/WebProcess/EntryPoint/mac/XPCService/WebContentService.Development/Info.plist.
+        * WebProcess/EntryPoint/mac/XPCService/WebContentService.Development/Info-iOS.plist: Renamed from Source/WebKit2/NetworkProcess/EntryPoint/mac/XPCService/NetworkService.Development/Info.plist.
+        The Development services should match the non-Development version's behavior
+        of having separate plists for OS X and iOS.
+
+2014-02-04  Brady Eidson  <beidson@apple.com>
+
+        IDB: indexeddb/mozilla/add-twice-failure.html fails
+        <rdar://problem/15982569> and https://bugs.webkit.org/show_bug.cgi?id=128208
+
+        Reviewed by Tim Horton.
+
+        Note that besides making indexeddb/mozilla/add-twice-failure.html pass this also makes some other tests
+        pass and also improves the failure modes of others.
+
+        A full accounting of which tests pass is coming soon.
+
+        * DatabaseProcess/IndexedDB/UniqueIDBDatabase.cpp:
+        (WebKit::UniqueIDBDatabase::putRecordInBackingStore): After checking for existence of the key and before
+          adding the record, remove any previous record. (Defined by the spec, found exploring this test).
+
+        * DatabaseProcess/IndexedDB/UniqueIDBDatabaseBackingStore.h:
+        * DatabaseProcess/IndexedDB/sqlite/UniqueIDBDatabaseBackingStoreSQLite.cpp:
+        (WebKit::UniqueIDBDatabaseBackingStoreSQLite::keyExistsInObjectStore): Implement this.
+        (WebKit::UniqueIDBDatabaseBackingStoreSQLite::deleteRecord): Add a form to be used as mentioned above in
+          UniqueIDBDatabase::putRecordInBackingStore.
+        (WebKit::UniqueIDBDatabaseBackingStoreSQLite::getKeyRecordFromObjectStore): CAST the key argument properly.
+        (WebKit::UniqueIDBDatabaseBackingStoreSQLite::getKeyRangeRecordFromObjectStore): Ditto.
+        * DatabaseProcess/IndexedDB/sqlite/UniqueIDBDatabaseBackingStoreSQLite.h:
+
+2014-02-04  Dan Bernstein  <mitz@apple.com>
+
+        [Cocoa] Expose more WKWebProcessPlugInNodeHandle properties
+        https://bugs.webkit.org/show_bug.cgi?id=128219
+
+        Reviewed by Anders Carlsson.
+
+        * WebProcess/InjectedBundle/API/Cocoa/WKWebProcessPlugInNodeHandle.h: Declared new
+        properties.
+        * WebProcess/InjectedBundle/API/Cocoa/WKWebProcessPlugInNodeHandle.mm:
+        (-[WKWebProcessPlugInNodeHandle elementBounds]): Added.
+        (-[WKWebProcessPlugInNodeHandle HTMLInputElementIsAutoFilled]): Added.
+        (-[WKWebProcessPlugInNodeHandle setHTMLInputElementIsAutoFilled:]): Added.
+        (-[WKWebProcessPlugInNodeHandle HTMLInputELementIsUserEdited]): Added.
+        (-[WKWebProcessPlugInNodeHandle HTMLTextAreaELementIsUserEdited]): Added.
+        (-[WKWebProcessPlugInNodeHandle HTMLTableCellElementCellAbove]): Added.
+        * WebProcess/InjectedBundle/API/Cocoa/WKWebProcessPlugInNodeHandleInternal.h: Rolled
+        Internal category into the class extension.
+
+        * WebProcess/InjectedBundle/API/Cocoa/WKWebProcessPlugInScriptWorld.h: Declared
+        -clearWrappers.
+        * WebProcess/InjectedBundle/API/Cocoa/WKWebProcessPlugInScriptWorld.mm:
+        (-[WKWebProcessPlugInScriptWorld clearWrappers]): Added. Calls through to clearWrappers().
+        * WebProcess/InjectedBundle/API/Cocoa/WKWebProcessPlugInScriptWorldInternal.h: Rolled
+        Internal category into the class extension.
+
+2014-02-04  Alexey Proskuryakov  <ap@apple.com>
+
+        webKitCookieStorageCopyRequestHeaderFieldsForURL builds an empty Cookie header when there are no cookies
+        https://bugs.webkit.org/show_bug.cgi?id=128201
+
+        Reviewed by Sam Weinig.
+
+        * Shared/mac/CookieStorageShim.mm: (WebKit::webKitCookieStorageCopyRequestHeaderFieldsForURL):
+        Return null when NetworkProcess provided a null string, don't build a header dictionary
+        with an empty Cookie value.
+
+2014-02-04  Anders Carlsson  <andersca@apple.com>
+
+        Add a WKNavigationAction object
+        https://bugs.webkit.org/show_bug.cgi?id=128212
+
+        Reviewed by Dan Bernstein.
+
+        * UIProcess/API/Cocoa/WKNavigationAction.h: Added.
+        (NS_ENUM):
+        * UIProcess/API/Cocoa/WKNavigationAction.mm: Added.
+        * UIProcess/API/Cocoa/WKNavigationActionInternal.h: Added.
+        * UIProcess/Cocoa/NavigationState.mm:
+        (WebKit::toWKNavigationType):
+        (WebKit::NavigationState::PolicyClient::decidePolicyForNavigationAction):
+        * WebKit2.xcodeproj/project.pbxproj:
+
+2014-02-04  Anders Carlsson  <andersca@apple.com>
+
+        Add back/forward related methods to WKWebView
+        https://bugs.webkit.org/show_bug.cgi?id=128209
+
+        Reviewed by Dan Bernstein.
+
+        * UIProcess/API/Cocoa/WKWebView.h:
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView canGoBack]):
+        (-[WKWebView canGoForward]):
+        (-[WKWebView goBack]):
+        (-[WKWebView goForward]):
+
+2014-02-04  Enrica Casucci  <enrica@apple.com>
+
+        WK: Cannot select text inside clickable containers.
+        https://bugs.webkit.org/show_bug.cgi?id=128197
+        <rdar://problem/15970890>
+
+        Reviewed by Simon Fraser.
+
+        When retrieving position information, we first try to
+        find the node responding to click events because we want
+        to know whether we are on a link or an image to show
+        the appropriate action sheet.
+        We could still have a node responding to click events if
+        for example we have a DIV with a click handler but that
+        doesn't require any special handling and we still need to
+        perform regular hit testing.
+
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::getPositionInformation):
+
+2014-02-04  Enrica Casucci  <enrica@apple.com>
+
+        WK2: Selection callout bar does not scroll with the selection.
+        https://bugs.webkit.org/show_bug.cgi?id=128142
+        <rdar://problem/15970812>
+
+        Reviewed by Benjamin Poulain.
+
+        Adding notifications to WKContentView to all the delegates
+        for scrolling and zooming to let WKInteractionView about it.
+        This allows the interaction assistants to hide the callout
+        while scrolling or zooming and to fade it in again at the end.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView scrollViewWillBeginZooming:withView:]):
+        (-[WKWebView scrollViewWillBeginDragging:]):
+        * UIProcess/API/ios/WKContentView.h:
+        * UIProcess/API/ios/WKContentView.mm:
+        (-[WKContentView didFinishScrollTo:]):
+        (-[WKContentView willStartZoomOrScroll]):
+        (-[WKContentView didZoomToScale:]):
+        * UIProcess/API/ios/WKInteractionView.h:
+        * UIProcess/API/ios/WKInteractionView.mm:
+        (-[WKInteractionView _willStartScrollingOrZooming]):
+        (-[WKInteractionView _didEndScrollingOrZooming]):
+        * UIProcess/API/ios/WKViewIOS.mm:
+        (-[WKView scrollViewWillBeginZooming:withView:]):
+        (-[WKView scrollViewWillBeginDragging:]):
+
+2014-02-04  Tamas Gergely  <tgergely.u-szeged@partner.samsung.com>
+
+        Code cleanup: remove leftover occurrence of ENABLE(GESTURE_EVENTS)
+        https://bugs.webkit.org/show_bug.cgi?id=128180
+
+        Reviewed by Csaba Osztrogonác.
+
+        Removed last occurrence of ENABLE(GESTURE_EVENTS).
+
+        * WebProcess/Plugins/Netscape/x11/NetscapePluginX11.cpp:
+        (WebKit::NetscapePlugin::platformHandleMouseEvent):
+
+2014-02-04  Eunmi Lee  <eunmi15.lee@samsung.com>
+
+        [EFL][WK2] ewk_context needs to route InjectedBundle messages correctly.
+        https://bugs.webkit.org/show_bug.cgi?id=90772
+
+        Reviewed by Gyuyoung Kim.
+
+        Add APIs to post message to injected bundle and register callback to
+        get message from injected bundle. When callback is registered,
+        WKContextInjectedBundleClient is set to get messages from injected bundle.
+
+        * UIProcess/API/efl/ewk_context.cpp:
+        (EwkContext::EwkContext):
+        (toEwkContext):
+        (EwkContext::didReceiveMessageFromInjectedBundle):
+        (EwkContext::didReceiveSynchronousMessageFromInjectedBundle):
+        (EwkContext::setMessageFromInjectedBundleCallback): register callback to get message from injected bundle.
+        (EwkContext::processReceivedMessageFromInjectedBundle): process message from injected bundle.
+        (ewk_context_message_post_to_injected_bundle):
+        (ewk_context_message_from_injected_bundle_callback_set):
+        * UIProcess/API/efl/ewk_context.h:
+        * UIProcess/API/efl/ewk_context_private.h:
+
+2014-02-04  Jinwoo Song  <jinwoo7.song@samsung.com>
+
+        [EFL][WK2] Stop using COMPILE_ASSERT_MATCHING_ENUM macros in EFL WebKit2
+        https://bugs.webkit.org/show_bug.cgi?id=128156
+
+        Reviewed by Anders Carlsson.
+
+        * UIProcess/API/efl/EwkView.cpp:
+        (EwkView::requestPopupMenu):
+        * UIProcess/API/efl/ewk_context.cpp:
+        (toWKCacheModel):
+        (EwkContext::setCacheModel):
+        * UIProcess/API/efl/ewk_cookie_manager.cpp:
+        (ewk_cookie_manager_persistent_storage_set):
+        (ewk_cookie_manager_accept_policy_set):
+        * UIProcess/API/efl/ewk_navigation_policy_decision.cpp:
+        (toEwkNavigationType):
+        (toEventMouseButton):
+        (toEventModifierKeys):
+        (EwkNavigationPolicyDecision::EwkNavigationPolicyDecision):
+        (EwkNavigationPolicyDecision::navigationType):
+        (EwkNavigationPolicyDecision::mouseButton):
+        (EwkNavigationPolicyDecision::modifiers):
+        (ewk_navigation_policy_decision_download):
+        * UIProcess/API/efl/ewk_navigation_policy_decision_private.h:
+        (EwkNavigationPolicyDecision::create):
+        * UIProcess/API/efl/ewk_popup_menu_item.cpp:
+        (EwkPopupMenuItem::type):
+        (EwkPopupMenuItem::textDirection):
+        * UIProcess/API/efl/ewk_private.h:
+        * UIProcess/API/efl/ewk_view.cpp:
+        (toWKFindOptions):
+        (ewk_view_text_find):
+        (toWKPaginationMode):
+        (toEwkPaginationMode):
+        (ewk_view_pagination_mode_set):
+        (ewk_view_pagination_mode_get):
+
+2014-02-03  Brady Eidson  <beidson@apple.com>
+
+        Unreviewed build fix after http://trac.webkit.org/changeset/163364
+
+        * DatabaseProcess/IndexedDB/sqlite/SQLiteIDBCursor.cpp:
+        (WebKit::getObjectStoreStatement): Args need the new names, and I need to save the file before committing.  :(
+
+2014-02-03  Brady Eidson  <beidson@apple.com>
+
+        IDB: HTML5 Rocks Indexed Database demo fails
+        https://bugs.webkit.org/show_bug.cgi?id=128157
+
+        Reviewed by Anders Carlsson (Provisional review by Jon Lee)
+
+        * DatabaseProcess/IndexedDB/sqlite/SQLiteIDBCursor.cpp:
+        (WebKit::getIndexStatement): Only increment the open/closed counters if those keys exist.
+          Fix order of statements for no lower key.
+        (WebKit::getObjectStoreStatement): Only increment the open/closed counters if those keys exist.
+
+2014-02-03  Jae Hyun Park  <jae.park@company100.net>
+
+        Use nullptr in ShareableBitmap
+        https://bugs.webkit.org/show_bug.cgi?id=128153
+
+        Reviewed by Gyuyoung Kim.
+
+        * Shared/ShareableBitmap.cpp:
+        (WebKit::ShareableBitmap::create):
+        (WebKit::ShareableBitmap::createShareable):
+
+2014-02-03  Anders Carlsson  <andersca@apple.com>
+
+        Add title and hasOnlySecureContent properties to WKWebView
+        https://bugs.webkit.org/show_bug.cgi?id=128152
+
+        Reviewed by Dan Bernstein.
+
+        * UIProcess/API/Cocoa/WKWebView.h:
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView title]):
+        (-[WKWebView hasOnlySecureContent]):
+        * UIProcess/Cocoa/NavigationState.mm:
+        (WebKit::NavigationState::didChangeIsLoading):
+        (WebKit::NavigationState::willChangeTitle):
+        (WebKit::NavigationState::didChangeTitle):
+        (WebKit::NavigationState::willChangeHasOnlySecureContent):
+        (WebKit::NavigationState::didChangeHasOnlySecureContent):
+
+2014-02-03  Sam Weinig  <sam@webkit.org>
+
+        Fix spelling.
+
+        * Shared/WebPreferencesStore.h:
+
+2014-02-03  Sam Weinig  <sam@webkit.org>
+
+        [WebKit2, iOS] Enable frame flattening by default on iOS
+        <rdar://problem/15975983>
+        https://bugs.webkit.org/show_bug.cgi?id=128151
+
+        Reviewed by Tim Horton.
+
+        * Shared/WebPreferencesStore.h:
+
+2014-02-03  Tim Horton  <timothy_horton@apple.com>
+
+        [iOS][wk2] Temporarily disable accelerated drawing for canvas
+        https://bugs.webkit.org/show_bug.cgi?id=128147
+
+        Reviewed by Simon Fraser.
+
+        * Shared/WebPreferencesStore.h:
+        Temporarily disable accelerated canvas for WebKit2 on iOS.
+
+2014-02-03  Anders Carlsson  <andersca@apple.com>
+
+        Add loading property to WKWebView
+        https://bugs.webkit.org/show_bug.cgi?id=128144
+
+        Reviewed by Dan Bernstein.
+
+        * UIProcess/API/Cocoa/WKWebView.h:
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView isLoading]):
+        * UIProcess/Cocoa/NavigationState.mm:
+        (WebKit::NavigationState::willChangeIsLoading):
+        (WebKit::NavigationState::didChangeIsLoading):
+
+2014-02-03  Simon Fraser  <simon.fraser@apple.com>
+
+        Allow WK2 to read from NSUserDefaults when it has no prefs identifier
+        https://bugs.webkit.org/show_bug.cgi?id=128124
+
+        Reviewed by Sam Weinig.
+        
+        WebPreferences would never read from NSUserDefaults if no identifier
+        had been set, but this prevents us from reading useful debugging prefs.
+        
+        Fix to read pref names using a "WebKit2" prefix when no identifier
+        is set.
+
+        * UIProcess/mac/WebPreferencesMac.mm:
+        (WebKit::makeKey):
+        (WebKit::WebPreferences::platformInitializeStore):
+
+2014-02-03  Jer Noble  <jer.noble@apple.com>
+
+        [WK2] Remove the VideoPluginProxyEnabled preference in WK2
+        https://bugs.webkit.org/show_bug.cgi?id=128128
+
+        Reviewed by Brady Eidson.
+
+        The plugin proxy is iOS WK1 only, and has no meaning in WebKit2. Just set the preference to false.
+
+        * Shared/WebPreferencesStore.h:
+        * UIProcess/API/C/WKPreferences.cpp:
+        * UIProcess/API/C/WKPreferencesRef.h:
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::updatePreferences):
+
+2014-02-03  Dean Jackson  <dino@apple.com>
+
+        Feature flag for shape-inside
+        https://bugs.webkit.org/show_bug.cgi?id=128001
+
+        Reviewed by Simon Fraser.
+
+        Add CSS_SHAPE_INSIDE flag.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2014-02-03  Anders Carlsson  <andersca@apple.com>
+
+        NavigationState should be a PageLoadState::Observer
+        https://bugs.webkit.org/show_bug.cgi?id=128130
+
+        Reviewed by Darin Adler.
+
+        This will make it easier to provide load related KVO properties on WKWebView.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView initWithFrame:configuration:]):
+        * UIProcess/API/Cocoa/WKWebViewInternal.h: Added.
+        * UIProcess/Cocoa/NavigationState.h:
+        * UIProcess/Cocoa/NavigationState.mm:
+        (WebKit::NavigationState::NavigationState):
+        (WebKit::NavigationState::~NavigationState):
+        (WebKit::NavigationState::willChangeIsLoading):
+        (WebKit::NavigationState::didChangeIsLoading):
+        (WebKit::NavigationState::willChangeTitle):
+        (WebKit::NavigationState::didChangeTitle):
+        (WebKit::NavigationState::willChangeActiveURL):
+        (WebKit::NavigationState::didChangeActiveURL):
+        (WebKit::NavigationState::willChangeHasOnlySecureContent):
+        (WebKit::NavigationState::didChangeHasOnlySecureContent):
+        (WebKit::NavigationState::willChangeEstimatedProgress):
+        (WebKit::NavigationState::didChangeEstimatedProgress):
+        * WebKit2.xcodeproj/project.pbxproj:
+
+2014-02-03  Tim Horton  <timothy_horton@apple.com>
+
+        WebKit2 View Gestures: Two smart magnifications in a row without moving the mouse should zoom out
+        https://bugs.webkit.org/show_bug.cgi?id=128108
+        <rdar://problem/15914539>
+
+        Reviewed by Darin Adler.
+
+        * UIProcess/mac/ViewGestureController.h:
+        * UIProcess/mac/ViewGestureController.mm:
+        (WebKit::ViewGestureController::ViewGestureController):
+        (WebKit::ViewGestureController::handleMagnificationGesture):
+        Clear the bit that tells us that we should do "smart" things (because the
+        last gesture was also a smart magnification gesture) when the user manually pinch-magnifies.
+
+        (WebKit::ViewGestureController::didCollectGeometryForSmartMagnificationGesture):
+        Zoom out if the mouse hasn't moved since the last pinch-magnification gesture.
+
+
+2014-02-03  Darin Adler  <darin@apple.com>
+
+        Try to fix 32-bit Mac build.
+
+        * WebProcess/Plugins/Netscape/mac/NetscapePluginMac.mm:
+        (WebKit::convertStringToKeyCodes): Use deprecatedCharacters.
+
 2014-02-03  Krzysztof Czech  <k.czech@samsung.com>
 
         Build fix after r163289.

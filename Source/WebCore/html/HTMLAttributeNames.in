@@ -305,7 +305,6 @@ scoped
 scrollamount
 scrolldelay
 scrolling
-seamless
 select
 selected
 shape
@@ -346,7 +345,6 @@ viewsource
 vlink
 vspace
 webkitallowfullscreen
-webkitdirectory
 width
 wrap
 

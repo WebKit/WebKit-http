@@ -19,43 +19,41 @@
  */
 
 #include "config.h"
-
-#if ENABLE(SVG)
 #include "SVGImageLoader.h"
 
 #include "CachedImage.h"
 #include "Event.h"
 #include "EventNames.h"
 #include "HTMLParserIdioms.h"
-#include "RenderImage.h"
 #include "SVGImageElement.h"
 
 namespace WebCore {
 
-SVGImageLoader::SVGImageLoader(SVGImageElement* node)
-    : ImageLoader(node)
+SVGImageLoader::SVGImageLoader(SVGImageElement& element)
+    : ImageLoader(element)
+{
+}
+
+SVGImageLoader::~SVGImageLoader()
 {
 }
 
 void SVGImageLoader::dispatchLoadEvent()
 {
     if (image()->errorOccurred())
-        element()->dispatchEvent(Event::create(eventNames().errorEvent, false, false));
+        element().dispatchEvent(Event::create(eventNames().errorEvent, false, false));
     else {
-        SVGImageElement* imageElement = toSVGImageElement(element());
-        if (imageElement->externalResourcesRequiredBaseValue())
-            imageElement->sendSVGLoadEventIfPossible(true);
+        if (toSVGImageElement(element()).externalResourcesRequiredBaseValue())
+            toSVGImageElement(ImageLoader::element()).sendSVGLoadEventIfPossible(true);
     }
 }
 
 String SVGImageLoader::sourceURI(const AtomicString& attribute) const
 {
-    URL base = element()->baseURI();
+    URL base = element().baseURI();
     if (base.isValid())
         return URL(base, stripLeadingAndTrailingHTMLSpaces(attribute)).string();
-    return element()->document().completeURL(stripLeadingAndTrailingHTMLSpaces(attribute));
+    return element().document().completeURL(stripLeadingAndTrailingHTMLSpaces(attribute));
 }
 
 }
-
-#endif // ENABLE(SVG)

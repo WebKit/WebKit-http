@@ -180,7 +180,7 @@ $numFailures = 0
 
 EAGER_OPTIONS = ["--thresholdForJITAfterWarmUp=10", "--thresholdForJITSoon=10", "--thresholdForOptimizeAfterWarmUp=20", "--thresholdForOptimizeAfterLongWarmUp=20", "--thresholdForOptimizeSoon=20", "--thresholdForFTLOptimizeAfterWarmUp=20", "--thresholdForFTLOptimizeSoon=20"]
 
-FTL_OPTIONS = ["--useExperimentalFTL=true", "--enableExperimentalFTLCoverage=true"]
+FTL_OPTIONS = ["--useFTLJIT=true", "--enableExperimentalFTLCoverage=true"]
 
 $runlist = []
 
@@ -601,6 +601,13 @@ def defaultQuickRun
         runDefaultFTL
         runFTLNoCJIT
     end
+end
+
+# This is expected to not do eager runs because eager runs can have a lot of recompilations
+# for reasons that don't arise in the real world. It's used for tests that assert convergence
+# by counting recompilations.
+def defaultNoEagerRun
+    defaultQuickRun
 end
 
 def runProfiler

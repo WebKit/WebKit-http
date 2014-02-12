@@ -304,7 +304,7 @@ static ProtoChainGenerationResult generateProtoChainAccessStub(ExecState* exec, 
             operationFunction = operationCallGetter;
         } else {
 #if USE(JSVALUE64)
-            // EncodedJSValue (*GetValueFunc)(ExecState*, EncodedJSValue slotBase, EncodedJSValue thisValue, PropertyName);
+            // EncodedJSValue (*GetValueFunc)(ExecState*, JSObject* slotBase, EncodedJSValue thisValue, PropertyName);
             stubJit.setupArgumentsWithExecState(MacroAssembler::TrustedImmPtr(protoObject), scratchGPR, MacroAssembler::TrustedImmPtr(propertyName.impl()));
             operationFunction = FunctionPtr(slot.customGetter());
 #else
@@ -321,6 +321,7 @@ static ProtoChainGenerationResult generateProtoChainAccessStub(ExecState* exec, 
         // right now!
         stubJit.store32(MacroAssembler::TrustedImm32(exec->locationAsRawBits()),
             CCallHelpers::tagFor(static_cast<VirtualRegister>(JSStack::ArgumentCount)));
+        stubJit.storePtr(GPRInfo::callFrameRegister, &vm->topCallFrame);
 
         operationCall = stubJit.call();
 #if USE(JSVALUE64)
@@ -616,7 +617,7 @@ static bool tryBuildGetByIDList(ExecState* exec, JSValue baseValue, const Identi
                 operationFunction = operationCallGetter;
             } else {
 #if USE(JSVALUE64)
-                // EncodedJSValue (*GetValueFunc)(ExecState*, EncodedJSValue slotBase, EncodedJSValue thisValue, PropertyName);
+                // EncodedJSValue (*GetValueFunc)(ExecState*, JSObject* slotBase, EncodedJSValue thisValue, PropertyName);
                 stubJit.setupArgumentsWithExecState(baseGPR, baseGPR, MacroAssembler::TrustedImmPtr(ident.impl()));
                 operationFunction = FunctionPtr(slot.customGetter());
 #else
@@ -634,6 +635,7 @@ static bool tryBuildGetByIDList(ExecState* exec, JSValue baseValue, const Identi
             stubJit.store32(
                 MacroAssembler::TrustedImm32(exec->locationAsRawBits()),
                 CCallHelpers::tagFor(static_cast<VirtualRegister>(JSStack::ArgumentCount)));
+            stubJit.storePtr(GPRInfo::callFrameRegister, &vm->topCallFrame);
             
             operationCall = stubJit.call();
 #if USE(JSVALUE64)

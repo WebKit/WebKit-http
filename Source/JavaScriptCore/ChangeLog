@@ -1,3 +1,894 @@
+2014-02-04  Filip Pizlo  <fpizlo@apple.com>
+
+        Make FTL OSR entry something we only try after we've already compiled the function with the FTL and it still got stuck in a loop after that without ever returning like a sensible function oughta have
+        https://bugs.webkit.org/show_bug.cgi?id=128234
+
+        Reviewed by Geoffrey Garen.
+        
+        Use DFG::JITCode::osrEntryRetry as a counter to decide when to invoke OSR entry. That
+        comes into play only after we've done a replacement compile.
+        
+        This appears to still give us a speed-up on the kinds of things that OSR entry is good
+        for, while also eliminating pointless OSR entry compilations on other things.
+
+        * dfg/DFGJITCode.cpp:
+        (JSC::DFG::JITCode::JITCode):
+        * dfg/DFGJITCode.h:
+        * dfg/DFGOperations.cpp:
+        * dfg/DFGToFTLForOSREntryDeferredCompilationCallback.cpp:
+        (JSC::DFG::ToFTLForOSREntryDeferredCompilationCallback::compilationDidComplete):
+        * runtime/Options.h:
+
+2014-02-04  Filip Pizlo  <fpizlo@apple.com>
+
+        Don't speculate on ToThis if we already know that arg0 has a questionable record with structure checks
+        https://bugs.webkit.org/show_bug.cgi?id=128229
+
+        Reviewed by Geoffrey Garen.
+
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::parseBlock):
+
+2014-02-05  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        Handling of opaque roots is wrong in EdenCollections
+        https://bugs.webkit.org/show_bug.cgi?id=128210
+
+        Reviewed by Oliver Hunt.
+
+        The set of opaque roots is always cleared during each collection. We should instead persist 
+        the set of opaque roots across EdenCollections and only clear it at the beginning of FullCollections.
+
+        Also added a couple of custom objects to the jsc shell that allow us to test this.
+
+        * heap/GCThreadSharedData.cpp:
+        (JSC::GCThreadSharedData::reset):
+        (JSC::GCThreadSharedData::didStartMarking):
+        * heap/Heap.cpp:
+        (JSC::Heap::markRoots):
+        * heap/Heap.h:
+        (JSC::Heap::setShouldDoFullCollection):
+        * heap/SlotVisitor.cpp:
+        (JSC::SlotVisitor::didStartMarking):
+        (JSC::SlotVisitor::reset):
+        * heap/SlotVisitor.h:
+        * jsc.cpp:
+        (WTF::Element::Element):
+        (WTF::Element::root):
+        (WTF::Element::setRoot):
+        (WTF::Element::create):
+        (WTF::Element::createStructure):
+        (WTF::ElementHandleOwner::isReachableFromOpaqueRoots):
+        (WTF::Root::Root):
+        (WTF::Root::element):
+        (WTF::Root::setElement):
+        (WTF::Root::create):
+        (WTF::Root::createStructure):
+        (WTF::Root::visitChildren):
+        (WTF::Element::handleOwner):
+        (WTF::Element::finishCreation):
+        (GlobalObject::finishCreation):
+        (functionCreateRoot):
+        (functionCreateElement):
+        (functionGetElement):
+        (functionSetElementRoot):
+        (functionGCAndSweep):
+        (functionFullGC):
+        (functionEdenGC):
+
+2014-02-05  Anders Carlsson  <andersca@apple.com>
+
+        Remove unused functions.
+
+        * runtime/RegExpConstructor.cpp:
+        (JSC::RegExpConstructor::getOwnPropertySlot):
+        * runtime/RegExpObject.cpp:
+
+2014-02-05  Oliver Hunt  <oliver@apple.com>
+
+        Change custom getter signature to make the base reference an object pointer
+        https://bugs.webkit.org/show_bug.cgi?id=128279
+
+        Reviewed by Geoffrey Garen.
+
+        Make custom getters take a JSObject* instead of EncodedJSValue as the base
+        reference.  This allows us to drop one pointer from the JSVALUE32_64 calling
+        convention.
+
+        * API/JSCallbackObject.h:
+        * API/JSCallbackObjectFunctions.h:
+        (JSC::JSCallbackObject<Parent>::staticFunctionGetter):
+        (JSC::JSCallbackObject<Parent>::callbackGetter):
+        * jit/JITOperations.cpp:
+        * jit/Repatch.cpp:
+        (JSC::generateProtoChainAccessStub):
+        (JSC::tryBuildGetByIDList):
+        * runtime/JSActivation.cpp:
+        (JSC::JSActivation::argumentsGetter):
+        * runtime/JSActivation.h:
+        * runtime/JSFunction.cpp:
+        (JSC::JSFunction::argumentsGetter):
+        (JSC::JSFunction::callerGetter):
+        (JSC::JSFunction::lengthGetter):
+        (JSC::JSFunction::nameGetter):
+        * runtime/JSFunction.h:
+        * runtime/JSObject.h:
+        (JSC::PropertySlot::getValue):
+        * runtime/NumberConstructor.cpp:
+        (JSC::numberConstructorNaNValue):
+        (JSC::numberConstructorNegInfinity):
+        (JSC::numberConstructorPosInfinity):
+        (JSC::numberConstructorMaxValue):
+        (JSC::numberConstructorMinValue):
+        * runtime/PropertySlot.h:
+        * runtime/RegExpConstructor.cpp:
+        (JSC::regExpConstructorDollar1):
+        (JSC::regExpConstructorDollar2):
+        (JSC::regExpConstructorDollar3):
+        (JSC::regExpConstructorDollar4):
+        (JSC::regExpConstructorDollar5):
+        (JSC::regExpConstructorDollar6):
+        (JSC::regExpConstructorDollar7):
+        (JSC::regExpConstructorDollar8):
+        (JSC::regExpConstructorDollar9):
+        (JSC::regExpConstructorInput):
+        (JSC::regExpConstructorMultiline):
+        (JSC::regExpConstructorLastMatch):
+        (JSC::regExpConstructorLastParen):
+        (JSC::regExpConstructorLeftContext):
+        (JSC::regExpConstructorRightContext):
+        * runtime/RegExpObject.cpp:
+        (JSC::regExpObjectGlobal):
+        (JSC::regExpObjectIgnoreCase):
+        (JSC::regExpObjectMultiline):
+        (JSC::regExpObjectSource):
+
+2014-02-05  Andreas Kling  <akling@apple.com>
+
+        Remove ENABLE(DIRECTORY_UPLOAD).
+        <https://webkit.org/b/128275>
+
+        Rubber-stamped by Ryosuke Niwa.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2014-02-05  Filip Pizlo  <fpizlo@apple.com>
+
+        Rename useExperimentalFTL to useFTLJIT.
+
+        Rubber stamped by Mark Hahnenberg.
+
+        * dfg/DFGTierUpCheckInjectionPhase.cpp:
+        (JSC::DFG::TierUpCheckInjectionPhase::run):
+        * runtime/Options.h:
+
+2014-02-05  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: add probe manager and model objects to the frontend
+        https://bugs.webkit.org/show_bug.cgi?id=127117
+
+        Reviewed by Timothy Hatcher.
+
+        The inspector frontend now assigns breakpoint action identifiers,
+        rather than the backend. Remove return values containing breakpoint
+        identifiers, and remove tracking and assignment of action identifiers.
+
+        * inspector/ScriptDebugListener.h:
+        * inspector/ScriptDebugServer.cpp:
+        (Inspector::ScriptDebugServer::evaluateBreakpointAction):
+        (Inspector::ScriptDebugServer::dispatchBreakpointActionProbe):
+        Pass BreakpointAction by reference rather than just the action identifier.
+
+        * inspector/ScriptDebugServer.h:
+        * inspector/agents/InspectorDebuggerAgent.cpp:
+        (Inspector::objectGroupForBreakpointAction):
+        (Inspector::InspectorDebuggerAgent::InspectorDebuggerAgent):
+        (Inspector::InspectorDebuggerAgent::breakpointActionsFromProtocol):
+        (Inspector::InspectorDebuggerAgent::setBreakpointByUrl):
+        (Inspector::InspectorDebuggerAgent::setBreakpoint):
+        (Inspector::InspectorDebuggerAgent::removeBreakpoint):
+        (Inspector::InspectorDebuggerAgent::breakpointActionProbe):
+        * inspector/agents/InspectorDebuggerAgent.h:
+        * inspector/protocol/Debugger.json: Revert change to setBreakpoint return values. Add optional identifier to breakpoint actions.
+
+2014-02-05  Filip Pizlo  <fpizlo@apple.com>
+
+        JSC on Mac should pull LLVM from prefix=/usr/local/LLVMForJavaScriptCore and not /usr/local
+        https://bugs.webkit.org/show_bug.cgi?id=128269
+
+        Reviewed by Mark Hahnenberg.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/LLVMForJSC.xcconfig:
+
+2014-02-05  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        Fix 32-bit builds after r163471
+
+        * dfg/DFGOSRExitCompilerCommon.cpp:
+
+2014-02-05  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        Can no longer run OctaneV2 in browser, crashes in speculationFromCell
+        https://bugs.webkit.org/show_bug.cgi?id=128266
+
+        Reviewed by Filip Pizlo.
+
+        Move the OSR exit write barriers into OSRExitCompilerCommon. Also reorganize some 
+        of the code to be in more appropriate places.
+
+        * dfg/DFGOSRExitCompiler32_64.cpp:
+        (JSC::DFG::OSRExitCompiler::compileExit):
+        * dfg/DFGOSRExitCompiler64.cpp:
+        (JSC::DFG::OSRExitCompiler::compileExit):
+        * dfg/DFGOSRExitCompilerCommon.cpp:
+        (JSC::DFG::osrWriteBarrier):
+        (JSC::DFG::adjustAndJumpToTarget):
+        * dfg/DFGSpeculativeJIT.cpp:
+        * dfg/DFGSpeculativeJIT.h:
+        * jit/AssemblyHelpers.h:
+        (JSC::AssemblyHelpers::genericWriteBarrier):
+
+2014-02-05  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        Malloc called beneath MachineThreads::gatherFromOtherThread(), while forbidden
+        https://bugs.webkit.org/show_bug.cgi?id=128202
+
+        Reviewed by Geoffrey Garen.
+
+        This patch uses the new GCSegmentedArray to replace the Vector that was used 
+        to record the set of currently executing CodeBlocks during the conservative 
+        stack scan. This is primarily to avoid the possibility of the Vector resizing 
+        while FastMalloc is forbidden.
+
+        * heap/BlockAllocator.h:
+        * heap/CodeBlockSet.cpp:
+        (JSC::CodeBlockSet::CodeBlockSet):
+        (JSC::CodeBlockSet::rememberCurrentlyExecutingCodeBlocks):
+        * heap/CodeBlockSet.h:
+        * heap/GCSegmentedArray.h:
+        (JSC::GCSegmentedArray::begin):
+        (JSC::GCSegmentedArray::end):
+        (JSC::GCSegmentedArrayIterator::GCSegmentedArrayIterator):
+        (JSC::GCSegmentedArrayIterator::get):
+        (JSC::GCSegmentedArrayIterator::operator*):
+        (JSC::GCSegmentedArrayIterator::operator->):
+        (JSC::GCSegmentedArrayIterator::operator==):
+        (JSC::GCSegmentedArrayIterator::operator!=):
+        (JSC::GCSegmentedArrayIterator::operator++):
+        * heap/Heap.cpp:
+        (JSC::Heap::Heap):
+
+2014-02-05  Wojciech Bielawski  <w.bielawski@samsung.com>
+
+        XMLHttpRequest performs too many copies for ArrayBuffer results
+        https://bugs.webkit.org/show_bug.cgi?id=117458
+
+        Reviewed by Alexey Proskuryakov.
+
+        Based on blink change: https://chromium.googlesource.com/chromium/blink/+/bed266aa5a43f7c080c87e527bd35e2b80ecc7b7
+
+        Add SharedBuffer::createArrayBuffer() and use it to create XMLHttpRequest's response in ArrayBuffer
+        This cuts
+            - two memsets (in ArrayBuffer::create and SharedBuffer::m_buffer::resize)
+            - one copy (SharedBuffer::m_buffer to ArrayBufferContents::m_data)
+            - one allocation (SharedBuffer::m_buffer)
+
+        * runtime/ArrayBuffer.h:
+
+2014-02-05  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Remove ENABLE(SVG) guards
+        https://bugs.webkit.org/show_bug.cgi?id=127991
+
+        Reviewed by Sam Weinig.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2014-02-05  Zan Dobersek  <zdobersek@igalia.com>
+
+        Remove CLASS_IF_GCC workarounds
+        https://bugs.webkit.org/show_bug.cgi?id=128207
+
+        Reviewed by Anders Carlsson.
+
+        Remove the CLASS_IF_GCC macro that was defined to 'class' when using the GCC compiler.
+        The macro was then used in class friendship declarations for templated classes to avoid
+        corner-case compiler failures on both GCC pre-4.7 and MSVC pre-2013. The problematic
+        versions of both compilers are no longer supported, so this macro is good to go.
+
+        * heap/HeapBlock.h:
+        * heap/Region.h:
+
+2014-02-04  Mark Lam  <mark.lam@apple.com>
+
+        The stack limit computation does not work for Windows.
+        <https://webkit.org/b/128226>
+
+        Reviewed by Geoffrey Garen.
+
+        * llint/LowLevelInterpreter.cpp:
+        (JSC::CLoopRegister::CLoopRegister):
+        (JSC::CLoop::execute):
+        - Suppressed some compiler warnings for the C loop build.
+        * runtime/VM.cpp:
+        (JSC::VM::updateStackLimitWithReservedZoneSize):
+        - Use the new StackBounds::recursionLimit() to compute the stack limit
+          the right way.
+
+2014-02-04  Andreas Kling  <akling@apple.com>
+
+        Remove <iframe seamless> support.
+        <https://webkit.org/b/128213>
+
+        Rubber-stamped by Antti Koivisto.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2014-02-04  Mark Lam  <mark.lam@apple.com>
+
+        DFG::operationTypeOf() needs to set the VM::topCallFrame.
+        <https://webkit.org/b/128228>
+
+        Reviewed by Mark Hahnenberg.
+
+        * dfg/DFGOperations.cpp:
+        - operationTypeOf() can end up calling into WebCore which may in turn
+          call back to JSC, and need a valid VM::topCallFrame. So, we need to
+          set the value of VM::topCallFrame at the top of operationTypeOf().
+
+2014-02-04  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        Fix !ENABLE(JIT) builds after r163418
+
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::reoptimizationRetryCounter): Return 0 if there's no way for us to reoptimize.
+
+2014-02-04  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        Reduce boilerplate in BlockAllocator.h
+        https://bugs.webkit.org/show_bug.cgi?id=128222
+
+        Reviewed by Filip Pizlo.
+
+        There are a lot of template specializations for the various types of HeapBlocks 
+        in BlockAllocator.h. We could reduce the spew by using a macro.
+
+        * heap/BlockAllocator.h:
+
+2014-02-04  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG PutByVal on typed arrays should detect OutOfBounds sooner
+        https://bugs.webkit.org/show_bug.cgi?id=128162
+
+        Reviewed by Mark Hahnenberg.
+        
+        Just wire the m_outOfBounds flag in ArrayProfile into the OutOfBounds speculation in
+        DFG::ArrayMode for typed arrays.
+        
+        Also make it possible to have tests for convergence.
+        
+        Also turn one of the LayoutTests/js/dfg- tests into a stress test because it
+        was relying on a specific number of recompiles. Stress tests instead take
+        the approach of just running for a while. That's more robust.
+
+        * bytecode/CodeBlock.h:
+        * dfg/DFGArrayMode.cpp:
+        (JSC::DFG::ArrayMode::fromObserved):
+        (JSC::DFG::ArrayMode::refine):
+        * dfg/DFGArrayMode.h:
+        (JSC::DFG::ArrayMode::withSpeculationFromProfile):
+        (JSC::DFG::ArrayMode::withProfile):
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::LowerDFGToLLVM::compilePutByVal):
+        * jit/JITPropertyAccess.cpp:
+        (JSC::JIT::emitIntTypedArrayPutByVal):
+        (JSC::JIT::emitFloatTypedArrayPutByVal):
+        * jsc.cpp:
+        (GlobalObject::finishCreation):
+        (functionReoptimizationRetryCount):
+        * runtime/TestRunnerUtils.cpp:
+        (JSC::getExecutableForFunction):
+        (JSC::getSomeBaselineCodeBlockForFunction):
+        (JSC::numberOfDFGCompiles):
+        (JSC::setNeverInline):
+        * runtime/TestRunnerUtils.h:
+        * tests/stress/float32-repeat-out-of-bounds.js: Added.
+        (foo):
+        * tests/stress/int8-repeat-out-of-bounds.js: Added.
+        (foo):
+        * tests/stress/string-out-of-bounds-negative-proto-value.js: Added.
+        (foo):
+
+2014-02-04  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        Refactor MarkStackArray to allow more than JSCells to be stored
+        https://bugs.webkit.org/show_bug.cgi?id=128203
+
+        Reviewed by Geoffrey Garen.
+
+        This patch refactors MarkStackArray into a separate template class named GCSegmentedArray.
+        This class allows subclassing to add functionality that only MarkStackArray wants.
+        Since it uses the JSC BlockAllocator instead of FastMalloc, this class can be used during 
+        conservative stack scanning, which disallows using FastMalloc.
+
+        * GNUmakefile.list.am:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj.filters:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * heap/BlockAllocator.h:
+        * heap/GCSegmentedArray.h: Added.
+        (JSC::GCArraySegment::GCArraySegment):
+        (JSC::GCArraySegment::data):
+        * heap/GCSegmentedArrayInlines.h: Added.
+        (JSC::GCSegmentedArray<T>::GCSegmentedArray):
+        (JSC::GCSegmentedArray<T>::~GCSegmentedArray):
+        (JSC::GCSegmentedArray<T>::clear):
+        (JSC::GCSegmentedArray<T>::expand):
+        (JSC::GCSegmentedArray<T>::refill):
+        (JSC::GCSegmentedArray<T>::fillVector):
+        (JSC::GCArraySegment<T>::create):
+        (JSC::GCSegmentedArray<T>::postIncTop):
+        (JSC::GCSegmentedArray<T>::preDecTop):
+        (JSC::GCSegmentedArray<T>::setTopForFullSegment):
+        (JSC::GCSegmentedArray<T>::setTopForEmptySegment):
+        (JSC::GCSegmentedArray<T>::top):
+        (JSC::GCSegmentedArray<T>::validatePrevious):
+        (JSC::GCSegmentedArray<T>::append):
+        (JSC::GCSegmentedArray<T>::canRemoveLast):
+        (JSC::GCSegmentedArray<T>::removeLast):
+        (JSC::GCSegmentedArray<T>::isEmpty):
+        (JSC::GCSegmentedArray<T>::size):
+        * heap/MarkStack.cpp:
+        (JSC::MarkStackArray::MarkStackArray):
+        (JSC::MarkStackArray::~MarkStackArray):
+        (JSC::MarkStackArray::donateSomeCellsTo):
+        (JSC::MarkStackArray::stealSomeCellsFrom):
+        * heap/MarkStack.h:
+        * heap/MarkStackInlines.h:
+
+2014-02-04  Anders Carlsson  <andersca@apple.com>
+
+        Rename the substring sharing StringImpl::create variants to better indicate what they do
+        https://bugs.webkit.org/show_bug.cgi?id=128214
+
+        Reviewed by Geoffrey Garen.
+
+        * runtime/JSString.h:
+        (JSC::jsSingleCharacterSubstring):
+        (JSC::jsSubstring8):
+        (JSC::jsSubstring):
+        * runtime/SmallStrings.cpp:
+        (JSC::SmallStringsStorage::SmallStringsStorage):
+        * runtime/StringPrototype.cpp:
+        (JSC::jsSpliceSubstrings):
+        (JSC::jsSpliceSubstringsWithSeparators):
+        (JSC::replaceUsingStringSearch):
+
+2014-02-04  Anders Carlsson  <andersca@apple.com>
+
+        Rename StringImpl::getCharacters to StringImpl::characters
+        https://bugs.webkit.org/show_bug.cgi?id=128205
+
+        Reviewed by Antti Koivisto.
+
+        Update for WTF changes.
+
+        * runtime/JSStringJoiner.cpp:
+        (JSC::joinStrings):
+        * runtime/StringPrototype.cpp:
+        (JSC::splitStringByOneCharacterImpl):
+
+2014-02-04  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        Fix a mismatch of uint64_t and size_t on 32-bit platforms.
+
+        * ftl/FTLDWARFDebugLineInfo.h:
+
+2014-01-21  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        JSC needs to be able to parse DWARF debug_line info
+        https://bugs.webkit.org/show_bug.cgi?id=127394
+
+        Reviewed by Geoffrey Garen.
+
+        If we want to encode IR maps in the DWARF debug line info metadata generated by LLVM, 
+        we'll need to know how to decode the .debug_line DWARF section. This patch implements 
+        an interpreter for the .debug_line DWARF section in accordance with the version 3 spec 
+        published at http://www.dwarfstd.org.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * ftl/FTLDWARFDebugLineInfo.cpp: Added.
+        (JSC::FTL::DebugLineInterpreter::DebugLineInterpreter):
+        (JSC::FTL::read):
+        (JSC::FTL::DebugLineInterpreter::parseULEB128):
+        (JSC::FTL::DebugLineInterpreter::parseSLEB128):
+        (JSC::FTL::DebugLineInterpreter::run):
+        (JSC::FTL::DebugLineInterpreter::parsePrologue):
+        (JSC::FTL::DebugLineInterpreter::parseIncludeDirectories):
+        (JSC::FTL::DebugLineInterpreter::parseFileEntries):
+        (JSC::FTL::DebugLineInterpreter::parseFileEntry):
+        (JSC::FTL::DebugLineInterpreter::interpretStatementProgram):
+        (JSC::FTL::DebugLineInterpreter::interpretOpcode):
+        (JSC::FTL::DebugLineInterpreter::printLineInfo):
+        (JSC::FTL::DebugLineInterpreter::resetInterpreterState):
+        * ftl/FTLDWARFDebugLineInfo.h: Added.
+        (JSC::FTL::DebugLineInterpreter::Prologue::Prologue):
+        * ftl/FTLValueRange.cpp: Random build fix for !ENABLE(FTL_JIT).
+
+2014-02-04  Anders Carlsson  <andersca@apple.com>
+
+        Rename String::getCharacters to String::characters
+        https://bugs.webkit.org/show_bug.cgi?id=128196
+
+        Reviewed by Andreas Kling.
+
+        Update for WTF::String changes.
+
+        * yarr/YarrParser.h:
+        (JSC::Yarr::Parser::Parser):
+
+2014-02-04  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        JSC needs to be able to parse DWARF debug_line info
+        https://bugs.webkit.org/show_bug.cgi?id=127394
+
+        Reviewed by Geoffrey Garen.
+
+        If we want to encode IR maps in the DWARF debug line info metadata generated by LLVM, 
+        we'll need to know how to decode the .debug_line DWARF section. This patch implements 
+        an interpreter for the .debug_line DWARF section in accordance with the version 3 spec 
+        published at http://www.dwarfstd.org.
+
+        * CMakeLists.txt:
+        * GNUmakefile.list.am:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * ftl/FTLDWARFDebugLineInfo.cpp: Added.
+        (JSC::FTL::DebugLineInterpreter::DebugLineInterpreter):
+        (JSC::FTL::read):
+        (JSC::FTL::DebugLineInterpreter::parseULEB128):
+        (JSC::FTL::DebugLineInterpreter::parseSLEB128):
+        (JSC::FTL::DebugLineInterpreter::run):
+        (JSC::FTL::DebugLineInterpreter::parsePrologue):
+        (JSC::FTL::DebugLineInterpreter::parseIncludeDirectories):
+        (JSC::FTL::DebugLineInterpreter::parseFileEntries):
+        (JSC::FTL::DebugLineInterpreter::parseFileEntry):
+        (JSC::FTL::DebugLineInterpreter::interpretStatementProgram):
+        (JSC::FTL::DebugLineInterpreter::interpretOpcode):
+        (JSC::FTL::DebugLineInterpreter::printLineInfo):
+        (JSC::FTL::DebugLineInterpreter::resetInterpreterState):
+        * ftl/FTLDWARFDebugLineInfo.h: Added.
+        (JSC::FTL::DebugLineInterpreter::Prologue::Prologue):
+
+2014-02-04  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        ASSERT in speculateMachineInt on 32-bit platforms
+        https://bugs.webkit.org/show_bug.cgi?id=128155
+
+        Reviewed by Filip Pizlo.
+
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        (JSC::DFG::PredictionPropagationPhase::propagate):
+
+2014-02-04  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        GC timer should always do a FullCollection
+        https://bugs.webkit.org/show_bug.cgi?id=128186
+
+        Reviewed by Michael Saboff.
+
+        Right now the GC timer does whatever type of collection the next collection 
+        would have been, which is almost always an EdenCollection. It then thinks 
+        that it has done all of the work it was supposed to do and never schedules 
+        another GC. Ideally we'd like to have some heuristics for the timer that 
+        would schedule both EdenCollections and FullCollections, but the easiest 
+        fix for now is to always do FullCollections since that will at least be 
+        a non-regression.
+
+        * heap/Heap.h:
+        (JSC::Heap::gcTimerDidFire):
+        * runtime/GCActivityCallback.cpp:
+        (JSC::DefaultGCActivityCallback::doWork):
+
+2014-02-03  Filip Pizlo  <fpizlo@apple.com>
+
+        Lift the FTL tier-up threshold from 25000 to 100000
+        https://bugs.webkit.org/show_bug.cgi?id=128158
+
+        Rubber stamped by Michael Saboff.
+
+        * runtime/Options.h:
+
+2014-02-03  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        LLInt: Regex for pseudo-instructions is too big
+        https://bugs.webkit.org/show_bug.cgi?id=128148
+
+        Reviewed by Mark Lam.
+
+        * offlineasm/instructions.rb:
+        * offlineasm/parser.rb:
+
+2014-02-03  Brian Burg  <bburg@apple.com>
+
+        Web Replay: upstream base input classes and the input cursor interface
+        https://bugs.webkit.org/show_bug.cgi?id=128110
+
+        Reviewed by Joseph Pecoraro.
+
+        Add the base class for all replay inputs. Add InputTraits, a trait that
+        provides an input's queue, type, and encode/decode methods statically so
+        that they can be used within templated helper functions in InputCursor and
+        EncodedValue.
+
+        Add the InputCursor base class which mediates the saving and fetching of
+        replay inputs from a replay recording by instrumented nondeterministic code.
+
+        Add a dummy cursor implementation. This allows us to return a cursor reference
+        to clients even if no capturing or replaying is happening.
+
+        Add the ability to set an InputCursor instance on a JSGlobalObject. This
+        is the means for connecting a replay recording to a script context.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * replay/EmptyInputCursor.h: Added.
+        (JSC::EmptyInputCursor::~EmptyInputCursor):
+        (JSC::EmptyInputCursor::create):
+        (JSC::EmptyInputCursor::EmptyInputCursor):
+        * replay/InputCursor.h: Added.
+        (JSC::InputCursor::InputCursor):
+        (JSC::InputCursor::~InputCursor):
+        (JSC::InputCursor::appendInput):
+        (JSC::InputCursor::fetchInput):
+        * replay/NondeterministicInput.h: Added.
+        (JSC::NondeterministicInputBase::NondeterministicInputBase):
+        (JSC::NondeterministicInputBase::~NondeterministicInputBase):
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::JSGlobalObject):
+        (JSC::JSGlobalObject::setInputCursor):
+        * runtime/JSGlobalObject.h:
+        (JSC::JSGlobalObject::inputCursor):
+
+2014-02-03  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        Fix the cloop due to GenGC
+        https://bugs.webkit.org/show_bug.cgi?id=128137
+
+        Reviewed by Geoffrey Garen.
+
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::llint_write_barrier_slow):
+        * llint/LLIntSlowPaths.h:
+        * llint/LowLevelInterpreter.cpp:
+        (JSC::CLoopRegister::operator JSCell*):
+        * llint/LowLevelInterpreter32_64.asm:
+        * llint/LowLevelInterpreter64.asm:
+        * offlineasm/cloop.rb:
+        * offlineasm/instructions.rb:
+
+2014-02-03  Michael Saboff  <msaboff@apple.com>
+
+        REGRESSION (r163011-r163031): Web Inspector: Latest nightly crashes when showing the Web Inspector
+        https://bugs.webkit.org/show_bug.cgi?id=127901
+
+        Reviewed by Geoffrey Garen.
+
+        Set VM::topCallFrame before making calls to possible C++ code in
+        generateProtoChainAccessStub() and tryBuildGetByIDList().
+
+        * jit/Repatch.cpp:
+        (JSC::generateProtoChainAccessStub):
+        (JSC::tryBuildGetByIDList):
+
+2014-02-03  Andreas Kling  <akling@apple.com>
+
+        Keep only captured symbols in CodeBlock symbol tables.
+        <https://webkit.org/b/128050>
+
+        Discard all uncaptured symbols at the end of codegen since only
+        the captured ones will be used after that point.
+
+        ~2MB progression on Membuster OSUS.
+
+        Reviewed by Geoffrey Garen.
+
+        * bytecode/UnlinkedCodeBlock.h:
+        (JSC::UnlinkedCodeBlock::setSymbolTable):
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::generate):
+
+2014-02-03  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        Fix the LLInt C loop
+
+        Rubber stamped by Mark Lam.
+
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::llint_write_barrier_slow):
+        * llint/LLIntSlowPaths.h:
+
+2014-02-03  Dean Jackson  <dino@apple.com>
+
+        Feature flag for shape-inside
+        https://bugs.webkit.org/show_bug.cgi?id=128001
+
+        Reviewed by Simon Fraser.
+
+        Add CSS_SHAPE_INSIDE flag.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2014-02-03  Oliver Hunt  <oliver@apple.com>
+
+        Deconstructed parameters aren't being placed in the correct scope
+        https://bugs.webkit.org/show_bug.cgi?id=128126
+
+        Reviewed by Antti Koivisto.
+
+        Make sure we declare the bound parameter names as variables when
+        we reparse.  In the BytecodeGenerator we now also directly ensure
+        that bound parameters are placed in the symbol table of the function
+        we're currently compiling.  We then delay binding until just before
+        we start codegen for the body of the function so that we can ensure
+        the function has completely initialised all scope details.
+
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::generate):
+        (JSC::BytecodeGenerator::BytecodeGenerator):
+        * bytecompiler/BytecodeGenerator.h:
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::Parser):
+        (JSC::Parser<LexerType>::createBindingPattern):
+
+2014-02-03  Alexey Proskuryakov  <ap@apple.com>
+
+        Update JS whitespace definition for changes in Unicode 6.3
+        https://bugs.webkit.org/show_bug.cgi?id=127450
+
+        Reviewed by Oliver Hunt.
+
+        * parser/Lexer.h: (JSC::Lexer<UChar>::isWhiteSpace): Part 2 of the fix, update lexer too.
+
+2014-02-03  Matthew Mirman  <mmirman@apple.com>
+
+        Added GetTypedArrayByteOffset to FTL
+        https://bugs.webkit.org/show_bug.cgi?id=127589
+
+        Reviewed by Filip Pizlo.
+
+        * ftl/FTLAbstractHeapRepository.h:
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::LowerDFGToLLVM::compileNode):
+        (JSC::FTL::LowerDFGToLLVM::compileGetTypedArrayByteOffset):
+        * tests/stress/ftl-gettypedarrayoffset-simple.js: Added.
+        (foo):
+        * tests/stress/ftl-gettypedarrayoffset-wasteful.js: Added.
+        (foo):
+
+2014-02-03  Mark Lam  <mark.lam@apple.com>
+
+        Debugger created JSActivations should account for CodeBlock::framePointerOffsetToGetActivationRegisters().
+        <https://webkit.org/b/128112>
+
+        Reviewed by Geoffrey Garen.
+
+        Currently, when the DebuggerCallFrame creates the JSActivation object
+        for a frame, it does not account for the framePointerOffsetToGetActivationRegisters()
+        offset that needs to be added for DFG frames.
+
+        Instead of special casing the fix in DebuggerCallFrame::scope(), we fix
+        this by adding CodeBlock::framePointerOffsetToGetActivationRegisters() to
+        callFrame->registers() in the JSActivation::create() method that does not
+        explicitly take a Register*. This ensures that JSActivation::create() will
+        always do the right thing instead of only being a special case for the
+        LLINT and baselineJIT.
+
+        Apart from the DebuggerCallFrame, this create() function is only called by
+        slow paths in the LLINT and baselineJIT. Hence, it is not performance
+        critical.
+
+        * runtime/JSActivation.h:
+        (JSC::JSActivation::create):
+
+2014-01-31  Geoffrey Garen  <ggaren@apple.com>
+
+        Simplified name scope creation for function expressions
+        https://bugs.webkit.org/show_bug.cgi?id=128031
+
+        Reviewed by Mark Lam.
+
+        3X speedup on js/regress/script-tests/function-with-eval.js.
+
+        We used to emit bytecode to push a name into local scope every
+        time a function that needed such a name executed. Now, we push the name
+        into scope once on the function object, and leave it there.
+
+        This is faster, and it also reduces the number of variable resolution
+        modes you have to worry about when thinking about bytecode and the
+        debugger.
+
+        This patch is slightly complicated by the fact that we don't know if
+        a function needs a name scope until we parse its body. So, there's some
+        glue code in here to delay filling in a function's scope until we parse
+        its body for the first time.
+
+        * bytecode/UnlinkedCodeBlock.cpp:
+        (JSC::generateFunctionCodeBlock):
+        (JSC::UnlinkedFunctionExecutable::UnlinkedFunctionExecutable):
+        * bytecode/UnlinkedCodeBlock.h:
+        (JSC::UnlinkedFunctionExecutable::functionMode): Renamed
+        functionNameIsInScopeToggle to functionMode.
+
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::BytecodeGenerator): No need to emit convert_this
+        when debugging. The debugger will perform the conversion as needed.
+
+        (JSC::BytecodeGenerator::resolveCallee):
+        (JSC::BytecodeGenerator::addCallee): Simplified this code by removing
+        the "my function needs a name scope, but didn't allocate one" mode.
+
+        * interpreter/Interpreter.cpp:
+        (JSC::Interpreter::execute):
+        (JSC::Interpreter::executeCall):
+        (JSC::Interpreter::executeConstruct):
+        (JSC::Interpreter::prepareForRepeatCall): Pass a scope slot through to
+        CodeBlock generation, so we can add a function name scope if the parsed
+        function body requires one.
+
+        * jit/JITOperations.cpp:
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::setUpCall): Ditto.
+
+        * parser/NodeConstructors.h:
+        (JSC::FuncExprNode::FuncExprNode):
+        (JSC::FuncDeclNode::FuncDeclNode):
+        * parser/Nodes.cpp:
+        (JSC::FunctionBodyNode::finishParsing):
+        * parser/Nodes.h:
+        (JSC::FunctionBodyNode::functionMode): Updated for rename.
+
+        * parser/ParserModes.h:
+        (JSC::functionNameIsInScope):
+        (JSC::functionNameScopeIsDynamic): Helper functions for reasoning about
+        how crazy JavaScript language semantics are.
+
+        * runtime/ArrayPrototype.cpp:
+        (JSC::isNumericCompareFunction):
+        (JSC::attemptFastSort): Updated for interface changes above.
+
+        * runtime/Executable.cpp:
+        (JSC::ScriptExecutable::newCodeBlockFor):
+        (JSC::ScriptExecutable::prepareForExecutionImpl):
+        (JSC::FunctionExecutable::FunctionExecutable):
+        * runtime/Executable.h:
+        (JSC::ScriptExecutable::prepareForExecution):
+        (JSC::FunctionExecutable::functionMode):
+        * runtime/JSFunction.cpp:
+        (JSC::JSFunction::addNameScopeIfNeeded):
+        * runtime/JSFunction.h:
+        * runtime/JSNameScope.h:
+        (JSC::JSNameScope::create):
+        (JSC::JSNameScope::JSNameScope): Added machinery for pushing a function
+        name scope onto a function when we first discover that it's needed.
+
+2014-01-25  Darin Adler  <darin@apple.com>
+
+        Stop using Unicode.h
+        https://bugs.webkit.org/show_bug.cgi?id=127633
+
+        Reviewed by Anders Carlsson.
+
+        * parser/Lexer.h:
+        * runtime/JSGlobalObjectFunctions.h:
+        * yarr/YarrCanonicalizeUCS2.h:
+        * yarr/YarrInterpreter.h:
+        * yarr/YarrParser.h:
+        * yarr/YarrPattern.h:
+        Removed includes of <wtf/unicode/Unicode.h>, adding includes of
+        ICU headers and <wtf/text/LChar.h> as needed to replace it.
+
 2014-02-03  Dan Bernstein  <mitz@apple.com>
 
         Correctly address Darin’s review comment on the last change.

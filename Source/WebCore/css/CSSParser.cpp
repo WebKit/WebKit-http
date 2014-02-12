@@ -555,9 +555,11 @@ static inline bool isSimpleLengthPropertyID(CSSPropertyID propertyId, bool& acce
     case CSSPropertyWebkitPaddingStart:
         acceptsNegativeNumbers = false;
         return true;
+#if ENABLE(CSS_SHAPES) && ENABLE(CSS_SHAPE_INSIDE)
+    case CSSPropertyWebkitShapePadding:
+#endif
 #if ENABLE(CSS_SHAPES)
     case CSSPropertyWebkitShapeMargin:
-    case CSSPropertyWebkitShapePadding:
         acceptsNegativeNumbers = false;
         return RuntimeEnabledFeatures::sharedFeatures().cssShapesEnabled();
 #endif
@@ -1453,7 +1455,7 @@ bool CSSParser::parseDeclaration(MutableStyleProperties* declaration, const Stri
     return ok;
 }
 
-PassOwnPtr<MediaQuery> CSSParser::parseMediaQuery(const String& string)
+std::unique_ptr<MediaQuery> CSSParser::parseMediaQuery(const String& string)
 {
     if (string.isEmpty())
         return nullptr;
@@ -1465,7 +1467,7 @@ PassOwnPtr<MediaQuery> CSSParser::parseMediaQuery(const String& string)
     setupParser("@-webkit-mediaquery ", string, "} ");
     cssyyparse(this);
 
-    return m_mediaQuery.release();
+    return std::move(m_mediaQuery);
 }
 
 static inline void filterProperties(bool important, const CSSParser::ParsedPropertyVector& input, Vector<CSSProperty, 256>& output, size_t& unusedEntries, std::bitset<numCSSProperties>& seenProperties)
@@ -2406,7 +2408,6 @@ bool CSSParser::parseValue(CSSPropertyID propId, bool important)
             RefPtr<CSSValue> currValue;
             if (!parseFilter(m_valueList.get(), currValue))
                 return false;
-            // m_valueList->next();
             addProperty(propId, currValue, important);
             return true;
         }
@@ -2895,13 +2896,17 @@ bool CSSParser::parseValue(CSSPropertyID propId, bool important)
     case CSSPropertyWebkitClipPath:
         parsedValue = parseClipPath();
         break;
-#if ENABLE(CSS_SHAPES)
+#if ENABLE(CSS_SHAPES) && ENABLE(CSS_SHAPE_INSIDE)
     case CSSPropertyWebkitShapeInside:
+#endif
+#if ENABLE(CSS_SHAPES)
     case CSSPropertyWebkitShapeOutside:
         parsedValue = parseShapeProperty(propId);
         break;
     case CSSPropertyWebkitShapeMargin:
+#if ENABLE(CSS_SHAPE_INSIDE)
     case CSSPropertyWebkitShapePadding:
+#endif
         validPrimitive = (RuntimeEnabledFeatures::sharedFeatures().cssShapesEnabled() && !id && validUnit(value, FLength | FNonNeg));
         break;
     case CSSPropertyWebkitShapeImageThreshold:
@@ -3044,10 +3049,8 @@ bool CSSParser::parseValue(CSSPropertyID propId, bool important)
         validPrimitive = false;
         break;
 #endif
-#if ENABLE(SVG)
     default:
         return parseSVGValue(propId, important);
-#endif
     }
 
     if (validPrimitive) {
@@ -5877,7 +5880,11 @@ PassRefPtr<CSSValue> CSSParser::parseShapeProperty(CSSPropertyID propId)
     RefPtr<CSSPrimitiveValue> shapeValue;
 
     if (valueId == CSSValueNone
-        || (valueId == CSSValueOutsideShape && propId == CSSPropertyWebkitShapeInside)) {
+#if ENABLE(CSS_SHAPE_INSIDE)
+        || (valueId == CSSValueOutsideShape
+            && propId == CSSPropertyWebkitShapeInside)
+#endif
+        ) {
         keywordValue = parseValidPrimitive(valueId, value);
         m_valueList->next();
         return keywordValue.release();
@@ -5902,12 +5909,10 @@ PassRefPtr<CSSValue> CSSParser::parseClipPath()
         m_valueList->next();
         return parseValidPrimitive(valueId, value);
     }
-#if ENABLE(SVG)
     if (value->unit == CSSPrimitiveValue::CSS_URI) {
         m_valueList->next();
         return CSSPrimitiveValue::create(value->string, CSSPrimitiveValue::CSS_URI);
     }
-#endif
 
     return parseBasicShapeAndOrBox(CSSPropertyWebkitClipPath);
 }
@@ -7041,11 +7046,9 @@ PassRefPtr<CSSValueList> CSSParser::parseShadow(CSSParserValueList* valueList, C
                 // Other operators aren't legal or we aren't done with the current shadow
                 // value.  Treat as invalid.
                 return 0;
-#if ENABLE(SVG)
             // -webkit-svg-shadow does not support multiple values.
             if (propId == CSSPropertyWebkitSvgShadow)
                 return 0;
-#endif
             // The value is good.  Commit it.
             context.commitValue();
         } else if (validUnit(val, FLength, CSSStrictMode)) {
@@ -9196,11 +9199,9 @@ bool CSSParser::parseFilter(CSSParserValueList* valueList, RefPtr<CSSValue>& res
 
         // See if the specified primitive is one we understand.
         if (value->unit == CSSPrimitiveValue::CSS_URI) {
-#if ENABLE(SVG)
             RefPtr<WebKitCSSFilterValue> referenceFilterValue = WebKitCSSFilterValue::create(WebKitCSSFilterValue::ReferenceFilterOperation);
             referenceFilterValue->append(CSSPrimitiveValue::create(value->string, CSSPrimitiveValue::CSS_URI));
             list->append(referenceFilterValue.release());
-#endif
         } else {
             const CSSParserString name = value->function->name;
             unsigned maximumArgumentCount = 1;
@@ -10680,10 +10681,6 @@ inline void CSSParser::detectDashToken(int length)
             m_token = MAXFUNCTION;
     } else if (length == 12 && isEqualToCSSIdentifier(name + 1, "webkit-calc"))
         m_token = CALCFUNCTION;
-#if ENABLE(SHADOW_DOM)
-    else if (length == 19 && isEqualToCSSIdentifier(name + 1, "webkit-distributed"))
-        m_token = DISTRIBUTEDFUNCTION;
-#endif
 }
 
 template <typename CharacterType>
@@ -10736,13 +10733,6 @@ inline void CSSParser::detectAtToken(int length, bool hasEscape)
         if (length == 10 && isEqualToCSSIdentifier(name + 2, "ont-face"))
             m_token = FONT_FACE_SYM;
         return;
-
-#if ENABLE(SHADOW_DOM)
-    case 'h':
-        if (length == 5 && isEqualToCSSIdentifier(name + 2, "ost"))
-            m_token = HOST_SYM;
-        return;
-#endif
 
     case 'i':
         if (length == 7 && isEqualToCSSIdentifier(name + 2, "mport")) {
@@ -11061,7 +11051,6 @@ restartAfterComment:
             break;
         }
 
-#if ENABLE(SVG)
         // Use SVG parser for numbers on SVG presentation attributes.
         if (m_context.mode == SVGAttributeMode) {
             // We need to take care of units like 'em' or 'ex'.
@@ -11081,7 +11070,6 @@ restartAfterComment:
             if (!parseSVGNumber(tokenStart<SrcCharacterType>(), character - tokenStart<SrcCharacterType>(), yylval->number))
                 break;
         } else
-#endif
             yylval->number = charactersToDouble(tokenStart<SrcCharacterType>(), currentCharacter<SrcCharacterType>() - tokenStart<SrcCharacterType>());
  
         // Type of the function.
@@ -11542,22 +11530,6 @@ PassRefPtr<StyleRuleBase> CSSParser::createFontFaceRule()
     processAndAddNewRuleToSourceTreeIfNeeded();
     return rule.release();
 }
-
-#if ENABLE(SHADOW_DOM)
-PassRefPtr<StyleRuleBase> CSSParser::createHostRule(RuleList* rules)
-{
-    m_allowImportRules = m_allowNamespaceDeclarations = false;
-    RefPtr<StyleRuleHost> rule;
-    if (rules)
-        rule = StyleRuleHost::create(*rules);
-    else {
-        RuleList emptyRules;
-        rule = StyleRuleHost::create(emptyRules);
-    }
-    processAndAddNewRuleToSourceTreeIfNeeded();
-    return rule.release();
-}
-#endif
 
 void CSSParser::addNamespace(const AtomicString& prefix, const AtomicString& uri)
 {

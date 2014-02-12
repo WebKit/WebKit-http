@@ -578,7 +578,7 @@ bool shouldAllowAccessToFrame(JSC::ExecState*, Frame*, String& message);
 bool shouldAllowAccessToDOMWindow(JSC::ExecState*, DOMWindow&, String& message);
 
 void printErrorMessageForFrame(Frame*, const String& message);
-JSC::EncodedJSValue objectToStringFunctionGetter(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue, JSC::PropertyName);
+JSC::EncodedJSValue objectToStringFunctionGetter(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
 
 inline JSC::JSValue jsStringWithCache(JSC::ExecState* exec, const String& s)
 {
@@ -614,10 +614,7 @@ inline AtomicString propertyNameToAtomicString(JSC::PropertyName propertyName)
 template <class ThisImp>
 inline const JSC::HashEntry* getStaticValueSlotEntryWithoutCaching(JSC::ExecState* exec, JSC::PropertyName propertyName)
 {
-    const JSC::HashTable* table = ThisImp::info()->propHashTable(exec);
-    if (!table)
-        return getStaticValueSlotEntryWithoutCaching<typename ThisImp::Base>(exec, propertyName);
-    const JSC::HashEntry* entry = table->entry(exec, propertyName);
+    const JSC::HashEntry* entry = ThisImp::info()->propHashTable(exec)->entry(exec, propertyName);
     if (!entry) // not found, forward to parent
         return getStaticValueSlotEntryWithoutCaching<typename ThisImp::Base>(exec, propertyName);
     return entry;

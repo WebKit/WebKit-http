@@ -24,6 +24,8 @@
 #define StringImpl_h
 
 #include <limits.h>
+#include <unicode/uchar.h>
+#include <unicode/ustring.h>
 #include <wtf/ASCIICType.h>
 #include <wtf/CompilationThread.h>
 #include <wtf/CryptographicallyRandomNumber.h>
@@ -33,7 +35,6 @@
 #include <wtf/StringHasher.h>
 #include <wtf/Vector.h>
 #include <wtf/text/ConversionMode.h>
-#include <wtf/unicode/Unicode.h>
 
 #if USE(CF)
 typedef const struct __CFString * CFStringRef;
@@ -161,7 +162,6 @@ private:
         : m_refCount(s_refCountFlagIsStaticString)
         , m_length(length)
         , m_data16(characters)
-        , m_buffer(0)
         , m_hashAndFlags(s_hashFlagIsIdentifier | BufferOwned)
     {
         // Ensure that the hash is computed so that AtomicStringHash can call existingHash()
@@ -179,7 +179,6 @@ private:
         : m_refCount(s_refCountFlagIsStaticString)
         , m_length(length)
         , m_data8(characters)
-        , m_buffer(0)
         , m_hashAndFlags(s_hashFlag8BitBuffer | s_hashFlagIsIdentifier | BufferOwned)
     {
         // Ensure that the hash is computed so that AtomicStringHash can call existingHash()
@@ -196,8 +195,7 @@ private:
     StringImpl(unsigned length, Force8Bit)
         : m_refCount(s_refCountIncrement)
         , m_length(length)
-        , m_data8(reinterpret_cast<const LChar*>(this + 1))
-        , m_buffer(0)
+        , m_data8(tailPointer<LChar>())
         , m_hashAndFlags(s_hashFlag8BitBuffer | BufferInternal)
     {
         ASSERT(m_data8);
@@ -210,8 +208,7 @@ private:
     StringImpl(unsigned length)
         : m_refCount(s_refCountIncrement)
         , m_length(length)
-        , m_data16(reinterpret_cast<const UChar*>(this + 1))
-        , m_buffer(0)
+        , m_data16(tailPointer<UChar>())
         , m_hashAndFlags(BufferInternal)
     {
         ASSERT(m_data16);
@@ -225,7 +222,6 @@ private:
         : m_refCount(s_refCountIncrement)
         , m_length(length)
         , m_data8(characters.leakPtr())
-        , m_buffer(0)
         , m_hashAndFlags(s_hashFlag8BitBuffer | BufferOwned)
     {
         ASSERT(m_data8);
@@ -239,7 +235,6 @@ private:
         : m_refCount(s_refCountIncrement)
         , m_length(length)
         , m_data16(characters)
-        , m_buffer(0)
         , m_hashAndFlags(BufferInternal)
     {
         ASSERT(m_data16);
@@ -252,7 +247,6 @@ private:
         : m_refCount(s_refCountIncrement)
         , m_length(length)
         , m_data8(characters)
-        , m_buffer(0)
         , m_hashAndFlags(s_hashFlag8BitBuffer | BufferInternal)
     {
         ASSERT(m_data8);
@@ -266,7 +260,6 @@ private:
         : m_refCount(s_refCountIncrement)
         , m_length(length)
         , m_data16(characters.leakPtr())
-        , m_buffer(0)
         , m_hashAndFlags(BufferOwned)
     {
         ASSERT(m_data16);
@@ -280,13 +273,14 @@ private:
         : m_refCount(s_refCountIncrement)
         , m_length(length)
         , m_data8(characters)
-        , m_substringBuffer(base.leakRef())
         , m_hashAndFlags(s_hashFlag8BitBuffer | BufferSubstring)
     {
         ASSERT(is8Bit());
         ASSERT(m_data8);
         ASSERT(m_length);
-        ASSERT(m_substringBuffer->bufferOwnership() != BufferSubstring);
+        ASSERT(base->bufferOwnership() != BufferSubstring);
+
+        substringBuffer() = base.leakRef();
 
         STRING_STATS_ADD_8BIT_STRING2(m_length, true);
     }
@@ -296,27 +290,27 @@ private:
         : m_refCount(s_refCountIncrement)
         , m_length(length)
         , m_data16(characters)
-        , m_substringBuffer(base.leakRef())
         , m_hashAndFlags(BufferSubstring)
     {
         ASSERT(!is8Bit());
         ASSERT(m_data16);
         ASSERT(m_length);
-        ASSERT(m_substringBuffer->bufferOwnership() != BufferSubstring);
+        ASSERT(base->bufferOwnership() != BufferSubstring);
+
+        substringBuffer() = base.leakRef();
 
         STRING_STATS_ADD_16BIT_STRING2(m_length, true);
     }
 
-    enum CreateEmptyUnique_T { CreateEmptyUnique };
-    StringImpl(CreateEmptyUnique_T)
+    enum CreateEmptyUniqueTag { CreateEmptyUnique };
+    StringImpl(CreateEmptyUniqueTag)
         : m_refCount(s_refCountIncrement)
         , m_length(0)
-        // We expect m_buffer to be initialized to 0 as we use it
+        // We expect m_length to be initialized to 0 as we use it
         // to represent a null terminated buffer.
-        , m_data16(reinterpret_cast<const UChar*>(&m_buffer))
-        , m_buffer(0)
+        , m_data8(reinterpret_cast<const LChar*>(&m_length))
     {
-        ASSERT(m_data16);
+        ASSERT(m_data8);
         // Set the hash early, so that all empty unique StringImpls have a hash,
         // and don't use the normal hashing algorithm - the unique nature of these
         // keys means that we don't need them to match any other string (in fact,
@@ -326,9 +320,9 @@ private:
         hash <<= s_flagCount;
         if (!hash)
             hash = 1 << s_flagCount;
-        m_hashAndFlags = hash | BufferInternal;
+        m_hashAndFlags = hash | BufferInternal | s_hashFlag8BitBuffer;
 
-        STRING_STATS_ADD_16BIT_STRING(m_length);
+        STRING_STATS_ADD_8BIT_STRING(m_length);
     }
 
     ~StringImpl();
@@ -350,7 +344,7 @@ public:
     WTF_EXPORT_STRING_API static PassRef<StringImpl> create(const LChar*);
     ALWAYS_INLINE static PassRef<StringImpl> create(const char* s) { return create(reinterpret_cast<const LChar*>(s)); }
 
-    static ALWAYS_INLINE PassRef<StringImpl> create8(PassRefPtr<StringImpl> rep, unsigned offset, unsigned length)
+    static ALWAYS_INLINE PassRef<StringImpl> createSubstringSharingImpl8(PassRefPtr<StringImpl> rep, unsigned offset, unsigned length)
     {
         ASSERT(rep);
         ASSERT(length <= rep->length());
@@ -359,11 +353,14 @@ public:
             return *empty();
 
         ASSERT(rep->is8Bit());
-        StringImpl* ownerRep = (rep->bufferOwnership() == BufferSubstring) ? rep->m_substringBuffer : rep.get();
-        return adoptRef(*new StringImpl(rep->m_data8 + offset, length, ownerRep));
+        StringImpl* ownerRep = (rep->bufferOwnership() == BufferSubstring) ? rep->substringBuffer() : rep.get();
+
+        // We allocate a buffer that contains both the StringImpl struct as well as the pointer to the owner string.
+        StringImpl* stringImpl = static_cast<StringImpl*>(fastMalloc(allocationSize<StringImpl*>(1)));
+        return adoptRef(*new (NotNull, stringImpl) StringImpl(rep->m_data8 + offset, length, ownerRep));
     }
 
-    static ALWAYS_INLINE PassRef<StringImpl> create(PassRefPtr<StringImpl> rep, unsigned offset, unsigned length)
+    static ALWAYS_INLINE PassRef<StringImpl> createSubstringSharingImpl(PassRefPtr<StringImpl> rep, unsigned offset, unsigned length)
     {
         ASSERT(rep);
         ASSERT(length <= rep->length());
@@ -371,10 +368,13 @@ public:
         if (!length)
             return *empty();
 
-        StringImpl* ownerRep = (rep->bufferOwnership() == BufferSubstring) ? rep->m_substringBuffer : rep.get();
+        StringImpl* ownerRep = (rep->bufferOwnership() == BufferSubstring) ? rep->substringBuffer() : rep.get();
+
+        // We allocate a buffer that contains both the StringImpl struct as well as the pointer to the owner string.
+        StringImpl* stringImpl = static_cast<StringImpl*>(fastMalloc(allocationSize<StringImpl*>(1)));
         if (rep->is8Bit())
-            return adoptRef(*new StringImpl(rep->m_data8 + offset, length, ownerRep));
-        return adoptRef(*new StringImpl(rep->m_data16 + offset, length, ownerRep));
+            return adoptRef(*new (NotNull, stringImpl) StringImpl(rep->m_data8 + offset, length, ownerRep));
+        return adoptRef(*new (NotNull, stringImpl) StringImpl(rep->m_data16 + offset, length, ownerRep));
     }
 
     template<unsigned charactersCount>
@@ -407,11 +407,11 @@ public:
             return 0;
         }
         StringImpl* resultImpl;
-        if (!tryFastMalloc(sizeof(T) * length + sizeof(StringImpl)).getValue(resultImpl)) {
+        if (!tryFastMalloc(allocationSize<T>(length)).getValue(resultImpl)) {
             output = 0;
             return 0;
         }
-        output = reinterpret_cast<T*>(resultImpl + 1);
+        output = resultImpl->tailPointer<T>();
 
         return constructInternal<T>(resultImpl, length);
     }
@@ -461,13 +461,13 @@ public:
     }
 
     template <typename CharType>
-    ALWAYS_INLINE const CharType * getCharacters() const;
+    ALWAYS_INLINE const CharType *characters() const;
 
     size_t cost() const
     {
         // For substrings, return the cost of the base string.
         if (bufferOwnership() == BufferSubstring)
-            return m_substringBuffer->cost();
+            return substringBuffer()->cost();
 
         if (m_hashAndFlags & s_hashFlagDidReportCost)
             return 0;
@@ -485,7 +485,7 @@ public:
             return 0;
         
         if (bufferOwnership() == BufferSubstring)
-            return divideRoundedUp(m_substringBuffer->costDuringGC(), refCount());
+            return divideRoundedUp(substringBuffer()->costDuringGC(), refCount());
         
         size_t result = m_length;
         if (!is8Bit())
@@ -764,8 +764,51 @@ private:
             return true;
 
         if (is8Bit())
-            return reinterpret_cast<const void*>(m_data8) == reinterpret_cast<const void*>(this + 1);
-        return reinterpret_cast<const void*>(m_data16) == reinterpret_cast<const void*>(this + 1);
+            return m_data8 == tailPointer<LChar>();
+        return m_data16 == tailPointer<UChar>();
+    }
+
+    template<typename T>
+    static size_t allocationSize(unsigned tailElementCount)
+    {
+        return tailOffset<T>() + tailElementCount * sizeof(T);
+    }
+
+    template<typename T>
+    static ptrdiff_t tailOffset()
+    {
+#if COMPILER(MSVC)
+        // MSVC doesn't support alignof yet.
+        return roundUpToMultipleOf<sizeof(T)>(sizeof(StringImpl));
+#else
+        return roundUpToMultipleOf<alignof(T)>(offsetof(StringImpl, m_hashAndFlags) + sizeof(StringImpl::m_hashAndFlags));
+#endif
+    }
+
+    template<typename T>
+    const T* tailPointer() const
+    {
+        return reinterpret_cast<const T*>(reinterpret_cast<const uint8_t*>(this) + tailOffset<T>());
+    }
+
+    template<typename T>
+    T* tailPointer()
+    {
+        return reinterpret_cast<T*>(reinterpret_cast<uint8_t*>(this) + tailOffset<T>());
+    }
+
+    StringImpl* const& substringBuffer() const
+    {
+        ASSERT(bufferOwnership() == BufferSubstring);
+
+        return *tailPointer<StringImpl*>();
+    }
+
+    StringImpl*& substringBuffer()
+    {
+        ASSERT(bufferOwnership() == BufferSubstring);
+
+        return *tailPointer<StringImpl*>();
     }
 
     // This number must be at least 2 to avoid sharing empty, null as well as 1 character strings from SmallStrings.
@@ -808,7 +851,7 @@ public:
         unsigned m_refCount;
         unsigned m_length;
         const LChar* m_data8;
-        void* m_buffer;
+        mutable UChar* m_copyData16;
         unsigned m_hashAndFlags;
 
         // These values mimic ConstructFromLiteral.
@@ -833,15 +876,11 @@ private:
         const LChar* m_data8;
         const UChar* m_data16;
     };
-    union {
-        void* m_buffer;
-        StringImpl* m_substringBuffer;
-        mutable UChar* m_copyData16;
-    };
+    mutable UChar* m_copyData16;
     mutable unsigned m_hashAndFlags;
 };
 
-COMPILE_ASSERT(sizeof(StringImpl) == sizeof(StringImpl::StaticASCIILiteral), StringImpl_should_match_its_StaticASCIILiteral);
+static_assert(sizeof(StringImpl) == sizeof(StringImpl::StaticASCIILiteral), "");
 
 #if !ASSERT_DISABLED
 // StringImpls created from StaticASCIILiteral will ASSERT
@@ -861,10 +900,10 @@ template <>
 ALWAYS_INLINE PassRef<StringImpl> StringImpl::constructInternal<UChar>(StringImpl* impl, unsigned length) { return adoptRef(*new (NotNull, impl) StringImpl(length)); }
 
 template <>
-ALWAYS_INLINE const LChar* StringImpl::getCharacters<LChar>() const { return characters8(); }
+ALWAYS_INLINE const LChar* StringImpl::characters<LChar>() const { return characters8(); }
 
 template <>
-ALWAYS_INLINE const UChar* StringImpl::getCharacters<UChar>() const { return deprecatedCharacters(); }
+ALWAYS_INLINE const UChar* StringImpl::characters<UChar>() const { return characters16(); }
 
 WTF_EXPORT_STRING_API bool equal(const StringImpl*, const StringImpl*);
 WTF_EXPORT_STRING_API bool equal(const StringImpl*, const LChar*);
@@ -874,7 +913,7 @@ WTF_EXPORT_STRING_API bool equal(const StringImpl*, const UChar*, unsigned);
 inline bool equal(const StringImpl* a, const char* b, unsigned length) { return equal(a, reinterpret_cast<const LChar*>(b), length); }
 inline bool equal(const LChar* a, StringImpl* b) { return equal(b, a); }
 inline bool equal(const char* a, StringImpl* b) { return equal(b, reinterpret_cast<const LChar*>(a)); }
-WTF_EXPORT_STRING_API bool equalNonNull(const StringImpl* a, const StringImpl* b);
+WTF_EXPORT_STRING_API bool equal(const StringImpl& a, const StringImpl& b);
 
 // Do comparisons 8 or 4 bytes-at-a-time on architectures where it's safe.
 #if CPU(X86_64) || CPU(ARM64)
@@ -1359,7 +1398,6 @@ template<> struct DefaultHash<RefPtr<StringImpl>> {
 
 using WTF::StringImpl;
 using WTF::equal;
-using WTF::equalNonNull;
 using WTF::TextCaseSensitivity;
 using WTF::TextCaseSensitive;
 using WTF::TextCaseInsensitive;

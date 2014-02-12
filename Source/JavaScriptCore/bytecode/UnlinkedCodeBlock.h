@@ -99,7 +99,7 @@ public:
     }
     size_t parameterCount() const;
     bool isInStrictContext() const { return m_isInStrictContext; }
-    FunctionNameIsInScopeToggle functionNameIsInScopeToggle() const { return m_functionNameIsInScopeToggle; }
+    FunctionMode functionMode() const { return m_functionMode; }
 
     unsigned firstLineOffset() const { return m_firstLineOffset; }
     unsigned lineCount() const { return m_lineCount; }
@@ -169,7 +169,7 @@ private:
 
     CodeFeatures m_features;
 
-    FunctionNameIsInScopeToggle m_functionNameIsInScopeToggle;
+    FunctionMode m_functionMode;
 
 protected:
     void finishCreation(VM& vm)
@@ -383,6 +383,7 @@ public:
     UnlinkedHandlerInfo& exceptionHandler(int index) { ASSERT(m_rareData); return m_rareData->m_exceptionHandlers[index]; }
 
     SymbolTable* symbolTable() const { return m_symbolTable.get(); }
+    void setSymbolTable(SymbolTable* table) { m_symbolTable.set(*m_vm, this, table); }
 
     VM* vm() const { return m_vm; }
 

@@ -105,11 +105,13 @@ RenderElement::~RenderElement()
         if (StyleImage* maskBoxImage = m_style->maskBoxImage().image())
             maskBoxImage->removeClient(this);
 
-#if ENABLE(CSS_SHAPES)
+#if ENABLE(CSS_SHAPES) && ENABLE(CSS_SHAPE_INSIDE)
         if (auto shapeValue = m_style->shapeInside()) {
             if (auto shapeImage = shapeValue->image())
                 shapeImage->removeClient(this);
         }
+#endif
+#if ENABLE(CSS_SHAPES)
         if (auto shapeValue = m_style->shapeOutside()) {
             if (auto shapeImage = shapeValue->image())
                 shapeImage->removeClient(this);
@@ -350,8 +352,10 @@ void RenderElement::initializeStyle()
     updateImage(nullptr, m_style->borderImage().image());
     updateImage(nullptr, m_style->maskBoxImage().image());
 
-#if ENABLE(CSS_SHAPES)
+#if ENABLE(CSS_SHAPES) && ENABLE(CSS_SHAPE_INSIDE)
     updateShapeImage(nullptr, m_style->shapeInside());
+#endif
+#if ENABLE(CSS_SHAPES)
     updateShapeImage(nullptr, m_style->shapeOutside());
 #endif
 
@@ -404,8 +408,10 @@ void RenderElement::setStyle(PassRef<RenderStyle> style)
     updateImage(oldStyle.get().borderImage().image(), m_style->borderImage().image());
     updateImage(oldStyle.get().maskBoxImage().image(), m_style->maskBoxImage().image());
 
-#if ENABLE(CSS_SHAPES)
+#if ENABLE(CSS_SHAPES) && ENABLE(CSS_SHAPE_INSIDE)
     updateShapeImage(oldStyle.get().shapeInside(), m_style->shapeInside());
+#endif
+#if ENABLE(CSS_SHAPES)
     updateShapeImage(oldStyle.get().shapeOutside(), m_style->shapeOutside());
 #endif
 
@@ -501,9 +507,7 @@ void RenderElement::addChild(RenderObject* newChild, RenderObject* beforeChild)
     if (newChild->hasLayer() && !layerCreationAllowedForSubtree())
         toRenderLayerModelObject(newChild)->layer()->removeOnlyThisLayer();
 
-#if ENABLE(SVG)
     SVGRenderSupport::childAdded(*this, *newChild);
-#endif
 }
 
 void RenderElement::removeChild(RenderObject& oldChild)
@@ -741,14 +745,12 @@ RenderLayer* RenderElement::findNextLayer(RenderLayer* parentLayer, RenderObject
 
 bool RenderElement::layerCreationAllowedForSubtree() const
 {
-#if ENABLE(SVG)
     RenderElement* parentRenderer = parent();
     while (parentRenderer) {
         if (parentRenderer->isSVGHiddenContainer())
             return false;
         parentRenderer = parentRenderer->parent();
     }
-#endif
     
     return true;
 }
@@ -925,9 +927,8 @@ void RenderElement::styleDidChange(StyleDifference diff, const RenderStyle* oldS
 
     if (s_noLongerAffectsParentBlock)
         removeAnonymousWrappersForInlinesIfNecessary();
-#if ENABLE(SVG)
+
     SVGRenderSupport::styleChanged(*this);
-#endif
 
     if (!m_parent)
         return;

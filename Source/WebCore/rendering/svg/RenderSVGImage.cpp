@@ -24,8 +24,6 @@
  */
 
 #include "config.h"
-
-#if ENABLE(SVG)
 #include "RenderSVGImage.h"
 
 #include "Attr.h"
@@ -68,16 +66,32 @@ SVGImageElement& RenderSVGImage::imageElement() const
 bool RenderSVGImage::updateImageViewport()
 {
     FloatRect oldBoundaries = m_objectBoundingBox;
+    bool updatedViewport = false;
 
     SVGLengthContext lengthContext(&imageElement());
     m_objectBoundingBox = FloatRect(imageElement().x().value(lengthContext), imageElement().y().value(lengthContext), imageElement().width().value(lengthContext), imageElement().height().value(lengthContext));
 
-    if (oldBoundaries == m_objectBoundingBox)
-        return false;
+    // Images with preserveAspectRatio=none should force non-uniform scaling. This can be achieved
+    // by setting the image's container size to its intrinsic size.
+    // See: http://www.w3.org/TR/SVG/single-page.html, 7.8 The ‘preserveAspectRatio’ attribute.
+    if (imageElement().preserveAspectRatio().align() == SVGPreserveAspectRatio::SVG_PRESERVEASPECTRATIO_NONE) {
+        if (CachedImage* cachedImage = imageResource().cachedImage()) {
+            LayoutSize intrinsicSize = cachedImage->imageSizeForRenderer(0, style().effectiveZoom());
+            if (intrinsicSize != imageResource().imageSize(style().effectiveZoom())) {
+                imageResource().setContainerSizeForRenderer(roundedIntSize(intrinsicSize));
+                updatedViewport = true;
+            }
+        }
+    }
 
-    imageResource().setContainerSizeForRenderer(enclosingIntRect(m_objectBoundingBox).size());
-    m_needsBoundariesUpdate = true;
-    return true;
+    if (oldBoundaries != m_objectBoundingBox) {
+        if (!updatedViewport)
+            imageResource().setContainerSizeForRenderer(enclosingIntRect(m_objectBoundingBox).size());
+        updatedViewport = true;
+        m_needsBoundariesUpdate = true;
+    }
+
+    return updatedViewport;
 }
 
 void RenderSVGImage::layout()
@@ -217,5 +231,3 @@ void RenderSVGImage::addFocusRingRects(Vector<IntRect>& rects, const LayoutPoint
 }
 
 } // namespace WebCore
-
-#endif // ENABLE(SVG)

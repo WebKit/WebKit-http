@@ -206,8 +206,6 @@ public:
     void removeRenderCounter() { ASSERT(m_renderCounterCount > 0); m_renderCounterCount--; }
     bool hasRenderCounters() { return m_renderCounterCount; }
     
-    virtual void addChild(RenderObject* newChild, RenderObject* beforeChild = 0) override;
-
     IntRect pixelSnappedLayoutOverflowRect() const { return pixelSnappedIntRect(layoutOverflowRect()); }
 
     ImageQualityController& imageQualityController();
@@ -239,7 +237,7 @@ protected:
     virtual bool requiresColumns(int desiredColumnCount) const override;
     
 private:
-    bool initializeLayoutState(LayoutState&);
+    void initializeLayoutState(LayoutState&);
 
     virtual void computeColumnCountAndWidth() override;
     virtual ColumnInfo::PaginationUnit paginationUnit() const override;
@@ -253,7 +251,7 @@ private:
         // We push LayoutState even if layoutState is disabled because it stores layoutDelta too.
         if (!doingFullRepaint() || m_layoutState->isPaginated() || renderer.hasColumns() || renderer.flowThreadContainingBlock()
             || m_layoutState->lineGrid() || (renderer.style().lineGrid() != RenderStyle::initialLineGrid() && renderer.isRenderBlockFlow())
-#if ENABLE(CSS_SHAPES)
+#if ENABLE(CSS_SHAPES) && ENABLE(CSS_SHAPE_INSIDE)
             || (renderer.isRenderBlock() && toRenderBlock(renderer).shapeInsideInfo())
             || (m_layoutState->shapeInsideInfo() && renderer.isRenderBlock() && !toRenderBlock(renderer).allowsShapeInsideInfoSharing())
 #endif

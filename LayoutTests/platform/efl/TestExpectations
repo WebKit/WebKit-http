@@ -579,6 +579,15 @@ webkit.org/b/96641 media/video-seek-past-end-playing.html [ Failure Pass ]
 # Tests that sometimes fail on the bot (for GTK or Mac ports as well)
 webkit.org/b/127550 media/audio-concurrent-supported.html [ Failure Pass ]
 webkit.org/b/127551 media/video-duration-known-after-eos.html [ Failure Pass ]
+webkit.org/b/122507 media/track/track-cue-rendering.html [ Failure Pass ]
+webkit.org/b/76280  media/W3C/video/networkState/networkState_during_progress.html [ Failure Pass ]
+webkit.org/b/128101 media/video-loop.html [ Pass Failure ]
+webkit.org/b/128103 media/media-element-play-after-eos.html [ Pass Failure ]
+webkit.org/b/116704 media/video-zoom.html [ Pass Failure ]
+webkit.org/b/122039 media/track/track-cue-overlap-snap-to-lines-not-set.html [ Pass Failure ]
+webkit.org/b/128179 media/video-timeupdate-reverse-play.html [ Pass Failure ]
+webkit.org/b/128251 media/video-preload.html [ Pass Failure ]
+webkit.org/b/128252 media/track/track-kind.html [ Pass Failure ]
 
 # Opera-submitted tests to W3C for <track>, a lot of failures still.
 webkit.org/b/103926 media/track/opera/idl/media-idl-tests.html [ Skip ]
@@ -1476,9 +1485,6 @@ webkit.org/b/109951 compositing/transitions/transform-on-large-layer.html [ Imag
 # CUSTOM_ELEMENTS is not enabled.
 webkit.org/b/110958 fast/dom/custom [ Skip ]
 
-# Failing after r143256.
-webkit.org/b/110282 fast/regions/seamless-iframe-flowed-into-regions.html [ ImageOnlyFailure ]
-
 webkit.org/b/110316 svg/as-background-image/tiled-background-image.html [ ImageOnlyFailure ]
 
 webkit.org/b/110338 fast/events/touch/emulate-touch-events.html [ Failure ]
@@ -1709,8 +1715,6 @@ webkit.org/b/118126 fast/flexbox/image-percent-max-height.html [ ImageOnlyFailur
 webkit.org/b/124656 fast/css3-text/css3-text-decoration/text-decoration-skip/text-decoration-skip-ink.html [ ImageOnlyFailure ]
 
 webkit.org/b/124657 fast/dom/SelectorAPI/resig-SelectorsAPI-test.xhtml [ Failure ]
-
-webkit.org/b/124565 fast/multicol/seamless-flowed-through-columns.html [ ImageOnlyFailure ]
 
 webkit.org/b/124658 fast/text/break-word-pre-wrap.html [ ImageOnlyFailure ]
 

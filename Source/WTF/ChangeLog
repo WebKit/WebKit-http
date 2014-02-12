@@ -1,3 +1,315 @@
+2014-02-05  Zan Dobersek  <zdobersek@igalia.com>
+
+        Remove the WTF_COMPILER_SUPPORTS_CXX_GENERALIZED_INITIALIZERS macro
+        https://bugs.webkit.org/show_bug.cgi?id=128267
+
+        Reviewed by Andreas Kling.
+
+        Remove the WTF_COMPILER_SUPPORTS_CXX_GENERALIZED_INITIALIZERS macro that was manually defined for compilers
+        that support the C++11 initializer lists. The feature is well supported in Clang, MSVC and also GCC. It
+        was actually already used unguarded in HashSet.
+
+        * wtf/Compiler.h:
+        * wtf/HashMap.h:
+        (WTF::HashMap::HashMap):
+        * wtf/Vector.h:
+        (WTF::Vector::Vector):
+
+2014-02-05  Andreas Kling  <akling@apple.com>
+
+        Remove ENABLE(DIRECTORY_UPLOAD).
+        <https://webkit.org/b/128275>
+
+        Rubber-stamped by Ryosuke Niwa.
+
+        * wtf/FeatureDefines.h:
+
+2014-02-05  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        HashMap can't be used with std::unique_ptr as value when it has a custom deleter
+        https://bugs.webkit.org/show_bug.cgi?id=128250
+
+        Reviewed by Darin Adler.
+
+        The problem is that the HashMap is using a unique_ptr with the
+        default deleter, so that when trying to move the unique_ptr the
+        deleters don't match.
+
+        * wtf/HashTraits.h: Add the deleter also in the template
+        definitation of the parent class for the HashTraits<std::unique_ptr<T, Deleter>>
+
+2014-02-05  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Remove ENABLE(SVG) guards
+        https://bugs.webkit.org/show_bug.cgi?id=127991
+
+        Reviewed by Sam Weinig.
+
+        * wtf/FeatureDefines.h:
+
+2014-02-04  Mark Lam  <mark.lam@apple.com>
+
+        The stack limit computation does not work for Windows.
+        <https://webkit.org/b/128226>
+
+        Reviewed by Geoffrey Garen.
+
+        The current stack limit computation assumes that the stack is allocated
+        in high memory. On Windows, the stack seems to be allocated very near
+        address 0, and is smaller in size than our Options::maxPerThreadStackUsage().
+        This combination triggers a bug where StackBounds::recursionLimit()
+        underflows and computes a limit address that is ridiculously high in memory.
+        The net effect is that the Windows port thinks its out of stack space all
+        the time.
+
+        We now check for potential underflows in StackBounds and return an
+        appropriate limit address.
+
+        * wtf/StackBounds.h:
+        (WTF::StackBounds::recursionLimit):
+
+2014-02-04  Andreas Kling  <akling@apple.com>
+
+        Remove <iframe seamless> support.
+        <https://webkit.org/b/128213>
+
+        Rubber-stamped by Antti Koivisto.
+
+        * wtf/FeatureDefines.h:
+
+2014-02-04  Anders Carlsson  <andersca@apple.com>
+
+        Store StringImpl substring backpointers as tail data
+        https://bugs.webkit.org/show_bug.cgi?id=128220
+
+        Reviewed by Geoffrey Garen.
+
+        This lets us get rid of m_substringBuffer from the union.
+
+        * wtf/text/StringImpl.cpp:
+        (WTF::StringImpl::~StringImpl):
+        (WTF::StringImpl::getData16SlowCase):
+        * wtf/text/StringImpl.h:
+        (WTF::StringImpl::StringImpl):
+        (WTF::StringImpl::createSubstringSharingImpl8):
+        (WTF::StringImpl::createSubstringSharingImpl):
+        (WTF::StringImpl::cost):
+        (WTF::StringImpl::costDuringGC):
+        (WTF::StringImpl::substringBuffer):
+
+2014-02-04  Anders Carlsson  <andersca@apple.com>
+
+        Rename the substring sharing StringImpl::create variants to better indicate what they do
+        https://bugs.webkit.org/show_bug.cgi?id=128214
+
+        Reviewed by Geoffrey Garen.
+
+        * wtf/text/AtomicString.cpp:
+        (WTF::SubstringTranslator::translate):
+        * wtf/text/StringBuilder.cpp:
+        (WTF::StringBuilder::reifyString):
+        (WTF::StringBuilder::resize):
+        * wtf/text/StringImpl.h:
+        (WTF::StringImpl::createSubstringSharingImpl8):
+        (WTF::StringImpl::createSubstringSharingImpl):
+        * wtf/text/WTFString.cpp:
+        (WTF::String::substringSharingImpl):
+
+2014-02-04  Alexey Proskuryakov  <ap@apple.com>
+
+        WebCrypto HMAC verification uses a non-constant-time memcmp
+        https://bugs.webkit.org/show_bug.cgi?id=128198
+        <rdar://problem/15976961>
+
+        Reviewed by Oliver Hunt.
+
+        Added a "constant time" memcmp that doesn't depend on data. The name is somewhat
+        strange, as the function is of course O(length) and not constant time at all,
+        but apparently this is how everyone calls such functions.
+
+        * GNUmakefile.list.am:
+        * WTF.vcxproj/WTF.vcxproj:
+        * WTF.vcxproj/WTF.vcxproj.filters:
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/CryptographicUtilities.cpp: Added. (WTF::constantTimeMemcmp):
+        * wtf/CryptographicUtilities.h: Added.
+
+2014-02-04  Anders Carlsson  <andersca@apple.com>
+
+        Rename StringImpl::getCharacters to StringImpl::characters
+        https://bugs.webkit.org/show_bug.cgi?id=128205
+
+        Reviewed by Antti Koivisto.
+
+        This lets us use StringImpl::getCharacters for the upconverting version.
+        Also, change StringImpl::characters<UChar>() to call characters16() instead of deprecatedCharacters()
+        and audit all call sites to make sure we weren't relying on upconversion anywhere.
+
+        * wtf/text/AtomicString.cpp:
+        (WTF::findString):
+        * wtf/text/StringImpl.cpp:
+        (WTF::StringImpl::simplifyMatchedCharactersToSpace):
+        * wtf/text/StringImpl.h:
+        (WTF::StringImpl::characters<LChar>):
+        (WTF::StringImpl::characters<UChar>):
+
+2014-02-04  Anders Carlsson  <andersca@apple.com>
+
+        Rename equalNonNull to equal and make it take const StringImpl& instead
+        https://bugs.webkit.org/show_bug.cgi?id=128206
+
+        Reviewed by Andreas Kling.
+
+        * wtf/text/StringHash.h:
+        (WTF::StringHash::equal):
+        * wtf/text/StringImpl.cpp:
+        (WTF::stringImplContentEqual):
+        (WTF::equal):
+        * wtf/text/StringImpl.h:
+
+2014-02-04  Anders Carlsson  <andersca@apple.com>
+
+        Get rid of StringImpl::m_buffer
+        https://bugs.webkit.org/show_bug.cgi?id=128200
+
+        Reviewed by Michael Saboff.
+
+        Trade one lousy hack for another by changing the CreateEmptyUnique StringImpl
+        constructor to initialize its character buffer to point to m_length instead
+        since it will always be null.
+
+        Also change it to be an 8-bit string because why not.
+
+        * wtf/text/StringImpl.h:
+        (WTF::StringImpl::StringImpl):
+
+2014-02-04  Anders Carlsson  <andersca@apple.com>
+
+        Rename String::getCharacters to String::characters
+        https://bugs.webkit.org/show_bug.cgi?id=128196
+
+        Reviewed by Andreas Kling.
+
+        This means String::characters() will end up calling either characters8() or characters16() which
+        makes more logical sense. It also frees up the getCharacters name so we can use it for a new function
+        that will do upconversion.
+        
+        * wtf/text/StringBuilder.cpp:
+        (WTF::StringBuilder::appendUninitializedSlow):
+        * wtf/text/WTFString.h:
+        (WTF::String::characters<LChar>):
+        (WTF::String::characters<UChar>):
+
+2014-02-03  Anders Carlsson  <andersca@apple.com>
+
+        Fix Windows build.
+
+        * wtf/text/StringImpl.h:
+        (WTF::StringImpl::tailOffset):
+
+2014-02-03  Anders Carlsson  <andersca@apple.com>
+
+        StringImpl::tailOffset() should return the offset right after m_hashAndFlags
+        https://bugs.webkit.org/show_bug.cgi?id=128141
+
+        Reviewed by Andreas Kling.
+
+        * wtf/text/StringImpl.h:
+        (WTF::StringImpl::tailOffset):
+
+2014-02-03  Anders Carlsson  <andersca@apple.com>
+
+        More tail pointer consolidation
+        https://bugs.webkit.org/show_bug.cgi?id=128139
+
+        Reviewed by Andreas Kling.
+
+        Add a new tailOffset() function and reimplement allocationSize() and tailPointer()
+        in terms of it. Use tailPointer() instead of reinterpret_cast-ing this + 1.
+
+        * wtf/text/StringImpl.cpp:
+        (WTF::StringImpl::createUninitializedInternalNonEmpty):
+        * wtf/text/StringImpl.h:
+        (WTF::StringImpl::StringImpl):
+        (WTF::StringImpl::requiresCopy):
+        (WTF::StringImpl::allocationSize):
+        (WTF::StringImpl::tailOffset):
+        (WTF::StringImpl::tailPointer):
+
+2014-02-03  Gustavo Noronha Silva  <gns@gnome.org>
+
+        [GTK][CMake] Enable SUBPIXEL_LAYOUT in FeatureDefines.h like EFL does
+        https://bugs.webkit.org/show_bug.cgi?id=128136
+
+        Reviewed by Martin Robinson.
+
+        * wtf/FeatureDefines.h: enable SUBPIXEL_LAYOUT if it's not set, for GTK+.
+
+2014-02-03  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        Turn GenGC on
+        https://bugs.webkit.org/show_bug.cgi?id=128109
+
+        Reviewed by Oliver Hunt.
+
+        * wtf/Platform.h: Initially it will only be enabled for X86-64.
+
+2014-02-03  Anders Carlsson  <andersca@apple.com>
+
+        Consolidate StringImpl tail handling into two functions
+        https://bugs.webkit.org/show_bug.cgi?id=128122
+
+        Reviewed by Andreas Kling.
+
+        * wtf/text/StringImpl.cpp:
+        (WTF::StringImpl::createUninitializedInternalNonEmpty):
+        (WTF::StringImpl::reallocateInternal):
+        * wtf/text/StringImpl.h:
+        (WTF::StringImpl::tryCreateUninitialized):
+        (WTF::StringImpl::allocationSize):
+        (WTF::StringImpl::tailPointer):
+
+2014-02-03  Darin Adler  <darin@apple.com>
+
+        Remove Unicode.h
+        https://bugs.webkit.org/show_bug.cgi?id=128106
+
+        Reviewed by Anders Carlsson.
+
+        * GNUmakefile.list.am: Removed files.
+        * WTF.vcxproj/WTF.vcxproj: Ditto.
+        * WTF.vcxproj/WTF.vcxproj.filters: Ditto.
+        * WTF.xcodeproj/project.pbxproj: Ditto.
+        * wtf/CMakeLists.txt: Ditto.
+
+        * wtf/unicode/ScriptCodesFromICU.h: Removed.
+        * wtf/unicode/Unicode.h: Removed.
+        * wtf/unicode/UnicodeMacrosFromICU.h: Removed.
+        * wtf/unicode/icu/UnicodeIcu.h: Removed.
+        * wtf/unicode/wchar/UnicodeWchar.cpp: Removed.
+        * wtf/unicode/wchar/UnicodeWchar.h: Removed.
+
+2014-01-25  Darin Adler  <darin@apple.com>
+
+        Stop using Unicode.h
+        https://bugs.webkit.org/show_bug.cgi?id=127633
+
+        Reviewed by Anders Carlsson.
+
+        * wtf/StringHasher.h:
+        * wtf/dtoa.h:
+        * wtf/text/ASCIIFastPath.h:
+        * wtf/text/LChar.h:
+        * wtf/text/StringBuffer.h:
+        * wtf/text/StringImpl.h:
+        * wtf/text/WTFString.cpp:
+        * wtf/unicode/CharacterNames.h:
+        * wtf/unicode/Collator.h:
+        * wtf/unicode/UTF8.h:
+        Removed includes of <wtf/unicode/Unicode.h>, adding includes of
+        ICU headers and <wtf/text/LChar.h> as needed to replace it.
+
 2014-02-02  Darin Adler  <darin@apple.com>
 
         Obey "delete this" comments, including deleting String::characters and friends
