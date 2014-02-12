@@ -295,7 +295,7 @@ unsigned FontPlatformData::hash() const
     if (isHashTableDeletedValue())
         return 1;
 	String hashString = description();
-    return StringHasher::hashMemory<sizeof(hashString.length())>(hashString.characters());
+    return StringHasher::hashMemory<sizeof(hashString.length())>(hashString.deprecatedCharacters());
 }
 
 bool FontPlatformData::isHashTableDeletedValue() const

@@ -606,7 +606,7 @@ bool EditorClientHaiku::handleEditingKeyboardEvent(KeyboardEvent* event,
     if (!frame.document())
         return false;
 
-    Node* start = frame.selection().start().anchorNode();
+    Node* start = frame.selection().selection().start().anchorNode();
     if (!start)
         return false;
 
