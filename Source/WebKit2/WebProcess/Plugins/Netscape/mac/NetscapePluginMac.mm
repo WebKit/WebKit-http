@@ -171,8 +171,8 @@ NPError NetscapePlugin::popUpContextMenu(NPMenu* npMenu)
 
 mach_port_t NetscapePlugin::compositingRenderServerPort()
 {
-#if HAVE(LAYER_HOSTING_IN_WINDOW_SERVER)
-    if (m_layerHostingMode == LayerHostingModeInWindowServer)
+#if HAVE(OUT_OF_PROCESS_LAYER_HOSTING)
+    if (m_layerHostingMode == LayerHostingMode::OutOfProcess)
         return MACH_PORT_NULL;
 #endif
 
@@ -986,7 +986,7 @@ static bool convertStringToKeyCodes(const String& string, ScriptCode scriptCode,
     ByteCount maxOutputLength = string.length() * sizeof(UniChar);
 
     Vector<UInt8> outputData(maxOutputLength);
-    OSStatus status = ConvertFromUnicodeToText(textInfo, inputLength, string.characters(), kNilOptions, 0, 0, 0, 0, maxOutputLength, &inputRead, &outputLength, outputData.data());
+    OSStatus status = ConvertFromUnicodeToText(textInfo, inputLength, string.deprecatedCharacters(), kNilOptions, 0, 0, 0, 0, maxOutputLength, &inputRead, &outputLength, outputData.data());
     
     DisposeUnicodeToTextInfo(&textInfo);
     

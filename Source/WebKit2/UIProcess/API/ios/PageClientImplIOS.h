@@ -95,6 +95,7 @@ private:
     virtual void updateAcceleratedCompositingMode(const LayerTreeContext&) override;
     virtual void setAcceleratedCompositingRootLayer(CALayer *rootLayer) override;
     virtual CALayer *acceleratedCompositingRootLayer() const override;
+    virtual LayerHostingMode viewLayerHostingMode() override { return LayerHostingMode::OutOfProcess; }
 
     virtual RetainPtr<CGImageRef> takeViewSnapshot() override;
     virtual void wheelEventWasNotHandledByWebCore(const NativeWebWheelEvent&) override;
@@ -111,6 +112,7 @@ private:
     virtual void selectionDidChange() override;
     virtual bool interpretKeyEvent(const NativeWebKeyboardEvent&, bool isCharEvent) override;
     virtual void positionInformationDidChange(const InteractionInformationAtPosition&);
+    virtual void saveImageToLibrary(PassRefPtr<WebCore::SharedBuffer>);
 
     // Auxiliary Client Creation
 #if ENABLE(FULLSCREEN_API)

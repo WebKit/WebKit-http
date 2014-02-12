@@ -798,6 +798,9 @@
     <ClCompile Include="..\fileapi\WebKitBlobBuilder.cpp">
       <Filter>page</Filter>
     </ClCompile>
+    <ClCompile Include="..\page\WheelEventDeltaTracker.cpp">
+      <Filter>page</Filter>
+    </ClCompile>
     <ClCompile Include="..\page\WindowFeatures.cpp">
       <Filter>page</Filter>
     </ClCompile>
@@ -3877,9 +3880,6 @@
       <Filter>html</Filter>
     </ClCompile>
     <ClCompile Include="..\html\HTMLParamElement.cpp">
-      <Filter>html</Filter>
-    </ClCompile>
-    <ClCompile Include="..\html\HTMLParserErrorCodes.cpp">
       <Filter>html</Filter>
     </ClCompile>
     <ClCompile Include="..\html\HTMLPlugInElement.cpp">
@@ -7661,6 +7661,9 @@
     <ClInclude Include="..\page\WebKitPoint.h">
       <Filter>page</Filter>
     </ClInclude>
+    <ClInclude Include="..\page\WheelEventDeltaTracker.h">
+      <Filter>page</Filter>
+    </ClInclude>
     <ClInclude Include="..\page\WindowFeatures.h">
       <Filter>page</Filter>
     </ClInclude>
@@ -10895,9 +10898,6 @@
     <ClInclude Include="..\html\HTMLParamElement.h">
       <Filter>html</Filter>
     </ClInclude>
-    <ClInclude Include="..\html\HTMLParserErrorCodes.h">
-      <Filter>html</Filter>
-    </ClInclude>
     <ClInclude Include="..\html\HTMLPlugInElement.h">
       <Filter>html</Filter>
     </ClInclude>
@@ -11075,6 +11075,9 @@
     <ClInclude Include="..\html\URLInputType.h">
       <Filter>html</Filter>
     </ClInclude>
+    <ClCompile Include="..\html\URLUtils.h">
+      <Filter>html</Filter>
+    </ClCompile>
     <ClInclude Include="..\html\ValidationMessage.h">
       <Filter>html</Filter>
     </ClInclude>

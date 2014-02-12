@@ -154,14 +154,17 @@ void OpenCursorOperation::perform(std::function<void()> completionCallback)
     LOG(StorageAPI, "OpenCursorOperation");
 
     RefPtr<OpenCursorOperation> operation(this);
-    auto callback = [this, operation, completionCallback](int64_t cursorID, PassRefPtr<IDBDatabaseError>) {
+    auto callback = [this, operation, completionCallback](int64_t cursorID, PassRefPtr<IDBKey> key, PassRefPtr<IDBKey> primaryKey, PassRefPtr<SharedBuffer> valueBuffer, PassRefPtr<IDBKey> valueKey, PassRefPtr<IDBDatabaseError>) {
         // FIXME: When the LevelDB port fails to open a backing store cursor it calls onSuccess(nullptr);
         // This seems nonsensical and might have to change soon, breaking them.
         if (!cursorID)
             m_callbacks->onSuccess(static_cast<SharedBuffer*>(0));
         else {
             RefPtr<IDBCursorBackend> cursor = IDBCursorBackend::create(cursorID, m_cursorType, m_taskType, *m_transaction, m_objectStoreID);
-            m_callbacks->onSuccess(cursor, cursor->key(), cursor->primaryKey(), cursor->value());
+            if (key || primaryKey || valueBuffer || valueKey)
+                cursor->updateCursorData(key.get(), primaryKey.get(), valueBuffer.get(), valueKey.get());
+
+            m_callbacks->onSuccess(cursor.release());
         }
 
         completionCallback();
@@ -240,7 +243,7 @@ void IDBDatabaseBackend::VersionChangeOperation::perform(std::function<void()> c
 
     uint64_t oldVersion = m_transaction->database().metadata().version;
     RefPtr<IDBDatabaseBackend::VersionChangeOperation> operation(this);
-    ASSERT(static_cast<uint64_t>(m_version) > oldVersion);
+    ASSERT(static_cast<uint64_t>(m_version) > oldVersion || oldVersion == IDBDatabaseMetadata::NoIntVersion);
 
     std::function<void(PassRefPtr<IDBDatabaseError>)> operationCallback = [oldVersion, operation, this, completionCallback](PassRefPtr<IDBDatabaseError> prpError) {
         RefPtr<IDBDatabaseError> error = prpError;

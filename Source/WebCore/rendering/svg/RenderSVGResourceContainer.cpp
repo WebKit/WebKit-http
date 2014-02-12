@@ -100,7 +100,7 @@ void RenderSVGResourceContainer::markAllClientsForInvalidation(InvalidationMode 
 
     for (auto client : m_clients) {
         if (client->isSVGResourceContainer()) {
-            client->toRenderSVGResourceContainer()->removeAllClientsFromCache(markForInvalidation);
+            toRenderSVGResourceContainer(*client).removeAllClientsFromCache(markForInvalidation);
             continue;
         }
 
@@ -141,17 +141,15 @@ void RenderSVGResourceContainer::markClientForInvalidation(RenderObject& client,
     }
 }
 
-void RenderSVGResourceContainer::addClient(RenderObject* client)
+void RenderSVGResourceContainer::addClient(RenderElement& client)
 {
-    ASSERT(client);
-    m_clients.add(client);
+    m_clients.add(&client);
 }
 
-void RenderSVGResourceContainer::removeClient(RenderObject* client)
+void RenderSVGResourceContainer::removeClient(RenderElement& client)
 {
-    ASSERT(client);
-    removeClientFromCache(*client, false);
-    m_clients.remove(client);
+    removeClientFromCache(client, false);
+    m_clients.remove(&client);
 }
 
 void RenderSVGResourceContainer::addClientRenderLayer(RenderLayer* client)
@@ -205,7 +203,7 @@ bool RenderSVGResourceContainer::shouldTransformOnTextPainting(RenderObject* obj
     // In text drawing, the scaling part of the graphics context CTM is removed, compare SVGInlineTextBox::paintTextWithShadows.
     // So, we use that scaling factor here, too, and then push it down to pattern or gradient space
     // in order to keep the pattern or gradient correctly scaled.
-    float scalingFactor = SVGRenderingContext::calculateScreenFontSizeScalingFactor(object);
+    float scalingFactor = SVGRenderingContext::calculateScreenFontSizeScalingFactor(*object);
     if (scalingFactor == 1)
         return false;
     resourceTransform.scale(scalingFactor);

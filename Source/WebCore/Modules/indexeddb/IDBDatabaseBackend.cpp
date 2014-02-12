@@ -463,34 +463,26 @@ void IDBDatabaseBackend::openConnectionInternal(PassRefPtr<IDBCallbacks> prpCall
     RefPtr<IDBCallbacks> callbacks = prpCallbacks;
     RefPtr<IDBDatabaseCallbacks> databaseCallbacks = prpDatabaseCallbacks;
 
-    // We infer that the database didn't exist from its lack of either type of version.
+    // We infer that the database didn't exist from its lack of version.
     bool isNewDatabase = m_metadata.version == IDBDatabaseMetadata::NoIntVersion;
 
-    if (version == IDBDatabaseMetadata::DefaultIntVersion) {
-        // FIXME: this comments was related to Chromium code. It may be incorrect
-        // For unit tests only - skip upgrade steps. Calling from script with DefaultIntVersion throws exception.
-        ASSERT(isNewDatabase);
+    if (version == IDBDatabaseMetadata::DefaultIntVersion && !isNewDatabase) {
         m_databaseCallbacksSet.add(databaseCallbacks);
         callbacks->onSuccess(this, this->metadata());
         return;
     }
 
-    if (version == IDBDatabaseMetadata::NoIntVersion) {
-        if (!isNewDatabase) {
-            m_databaseCallbacksSet.add(RefPtr<IDBDatabaseCallbacks>(databaseCallbacks));
-            callbacks->onSuccess(this, this->metadata());
-            return;
-        }
+    if (isNewDatabase && version == IDBDatabaseMetadata::DefaultIntVersion) {
         // Spec says: If no version is specified and no database exists, set database version to 1.
         version = 1;
     }
 
-    if (version > m_metadata.version) {
+    if (version > m_metadata.version || m_metadata.version == IDBDatabaseMetadata::NoIntVersion) {
         runIntVersionChangeTransaction(callbacks, databaseCallbacks, transactionId, version);
         return;
     }
 
-    if (version < m_metadata.version) {
+    if (version < m_metadata.version && m_metadata.version != IDBDatabaseMetadata::NoIntVersion) {
         callbacks->onError(IDBDatabaseError::create(IDBDatabaseException::VersionError, String::format("The requested version (%llu) is less than the existing version (%llu).", static_cast<unsigned long long>(version), static_cast<unsigned long long>(m_metadata.version))));
         return;
     }
@@ -558,13 +550,13 @@ bool IDBDatabaseBackend::isDeleteDatabaseBlocked()
     return connectionCount();
 }
 
-void IDBDatabaseBackend::deleteDatabaseAsync(PassRefPtr<IDBCallbacks> callbacks)
+void IDBDatabaseBackend::deleteDatabaseAsync(PassRefPtr<IDBCallbacks> prpCallbacks)
 {
     ASSERT(!isDeleteDatabaseBlocked());
 
     RefPtr<IDBDatabaseBackend> self(this);
+    RefPtr<IDBCallbacks> callbacks = prpCallbacks;
     m_serverConnection->deleteDatabase(m_metadata.name, [self, callbacks](bool success) {
-        ASSERT(self->m_deleteCallbacksWaitingCompletion.contains(callbacks));
         self->m_deleteCallbacksWaitingCompletion.remove(callbacks);
 
         // If this IDBDatabaseBackend was closed while waiting for deleteDatabase to complete, no point in performing any callbacks.

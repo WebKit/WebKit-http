@@ -1,3 +1,31 @@
+2014-01-31  Benjamin Poulain  <bpoulain@apple.com>
+
+        Remove LEGACY_VIEWPORT_ADAPTION
+        https://bugs.webkit.org/show_bug.cgi?id=128028
+
+        Reviewed by Anders Carlsson.
+
+        * Source/cmake/WebKitFeatures.cmake:
+        * Source/cmakeconfig.h.cmake:
+
+2014-01-31  Oliver Hunt  <oliver@apple.com>
+
+        Rollout r163195 and related patches
+
+        * GNUmakefile.am:
+        * Source/cmake/gtest/CMakeLists.txt:
+
+2014-01-29  Oliver Hunt  <oliver@apple.com>
+
+        Make it possible to implement JS builtins in JS
+        https://bugs.webkit.org/show_bug.cgi?id=127887
+
+        Reviewed by Michael Saboff.
+
+        CMake updates
+
+        * Source/cmake/gtest/CMakeLists.txt:
+
 2014-01-30  Martin Robinson  <mrobinson@igalia.com>
 
         [GTK] [CMake] Add support for building against GTK+ 2

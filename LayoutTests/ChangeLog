@@ -1,3 +1,287 @@
+2014-02-03  Mihai Maerean  <mmaerean@adobe.com>
+
+        [CSS Regions] Fix selection and hover effect of content in region with overflow:hidden
+        https://bugs.webkit.org/show_bug.cgi?id=127101
+
+        Reviewed by Mihnea Ovidenie.
+
+        * fast/regions/hover-overflow-hidden.html: Added.
+        * fast/regions/hover-overflow-hidden-expected.html: Added.
+
+2014-02-02  Maciej Stachowiak  <mjs@apple.com>
+
+        Adopt URLUtils interface and template in HTMLAnchorElement and HTMLAreaElement
+        https://bugs.webkit.org/show_bug.cgi?id=128067
+
+        Reviewed by Antti Koivisto.
+
+        New tests for the newly added attributes.
+        * fast/dom/HTMLAnchorElement/anchor-password-expected.txt: Added.
+        * fast/dom/HTMLAnchorElement/anchor-password.html: Added.
+        * fast/dom/HTMLAnchorElement/anchor-username-expected.txt: Added.
+        * fast/dom/HTMLAnchorElement/anchor-username.html: Added.
+        * fast/dom/HTMLAreaElement/area-password.html: Added.
+        * fast/dom/HTMLAreaElement/area-username.html: Added.
+
+        Update a test to handle the new anchor properties.
+        * js/dom/dom-static-property-for-in-iteration-expected.txt:
+        * js/dom/dom-static-property-for-in-iteration.html:
+
+2014-02-03  Krzysztof Czech  <k.czech@samsung.com>
+
+        [ATK] Expose aria-controls through ATK_RELATION_CONTROLLER_FOR
+        https://bugs.webkit.org/show_bug.cgi?id=127908
+
+        Reviewed by Chris Fleizach.
+
+        Tests whether aria-controls returns correct element at the given index.
+
+        * accessibility/aria-controls-expected.txt: Added.
+        * accessibility/aria-controls.html: Added.
+        * platform/mac/TestExpectations: Skipped it, missing implementation.
+
+2014-01-30  Oliver Hunt  <oliver@apple.com>
+        Push DOM attributes into the prototype chain
+        https://bugs.webkit.org/show_bug.cgi?id=127969
+
+        Reviewed by Mark Lam.
+
+        Update layout test results
+
+        * fast/dom/wrapper-classes-expected.txt:
+        * js/dom/constructor-attributes-expected.txt:
+        * js/dom/dom-static-property-for-in-iteration-expected.txt:
+        * js/dom/script-tests/constructor-attributes.js:
+
+2014-02-02  Zalan Bujtas  <zalan@apple.com>
+
+        Unreviewed Mac gardering after r163265.
+
+        * platform/mac/TestExpectations:
+
+2014-02-02  Zalan Bujtas  <zalan@apple.com>
+
+        Subpixel rendering: Make BorderEdge/RoundedRect::Radii LayoutUnit aware.
+        https://bugs.webkit.org/show_bug.cgi?id=128036
+
+        Reviewed by Darin Adler.
+
+        Bug 128061: Subpixel rendering: borders are reporting float values.
+
+        * platform/efl/TestExpectations:
+        * platform/gtk/TestExpectations:
+        * platform/mac/TestExpectations:
+        * platform/win/TestExpectations:
+
+2014-02-01  Alexey Proskuryakov  <ap@apple.com>
+
+        Update WebCrypto JWK mapping to use key_ops
+        https://bugs.webkit.org/show_bug.cgi?id=127609
+
+        Reviewed by Sam Weinig.
+
+        * crypto/subtle/aes-kw-wrap-unwrap-aes-expected.txt:
+        * crypto/subtle/aes-kw-wrap-unwrap-aes.html:
+        Removed a subtest for wrapping JWK. That doesn't really work per the spec, because
+        JWK is arbitatry length, and AES-KW requires 8*n bytes.
+
+        * crypto/subtle/aes-export-key-expected.txt:
+        * crypto/subtle/aes-export-key.html:
+        * crypto/subtle/hmac-export-key-expected.txt:
+        * crypto/subtle/hmac-export-key.html:
+        * crypto/subtle/jwk-export-use-values-expected.txt:
+        * crypto/subtle/jwk-export-use-values.html:
+        * crypto/subtle/jwk-import-use-values-expected.txt:
+        * crypto/subtle/jwk-import-use-values.html:
+        * crypto/subtle/rsa-export-key-expected.txt:
+        * crypto/subtle/rsa-export-key.html:
+        * crypto/subtle/rsa-export-private-key-expected.txt:
+        * crypto/subtle/rsa-export-private-key.html:
+        * crypto/subtle/rsa-oaep-key-manipulation-expected.txt:
+        * crypto/subtle/rsa-oaep-key-manipulation.html:
+        * crypto/subtle/rsa-postMessage-expected.txt:
+        * crypto/subtle/rsa-postMessage.html:
+        Updated for the fix.
+
+2014-02-01  Benjamin Poulain  <bpoulain@apple.com>
+
+        Improve the JavaScript bindings of DatasetDOMStringMap
+        https://bugs.webkit.org/show_bug.cgi?id=127971
+
+        Reviewed by Sam Weinig.
+
+        * fast/dom/dataset-name-getter-properties-expected.txt: Added.
+        * fast/dom/dataset-name-getter-properties.html: Added.
+
+2014-01-31  Oliver Hunt  <oliver@apple.com>
+
+        Rollout r163195 and related patches
+
+        * js/array-every-expected.txt:
+        * js/dom/array-prototype-properties-expected.txt:
+        * js/regress/array-prototype-every-expected.txt: Removed.
+        * js/regress/array-prototype-every.html: Removed.
+        * js/regress/script-tests/array-prototype-every.js: Removed.
+
+2014-01-31  Alexey Proskuryakov  <ap@apple.com>
+
+        Update test results for a new DOM URL test (we now pass more).
+
+        * fast/dom/DOMURL/invalid-url-getters-expected.txt:
+
+2014-01-31  Maciej Stachowiak  <mjs@apple.com>
+
+        Implement (most of) URL API
+        https://bugs.webkit.org/show_bug.cgi?id=127795
+
+        Reviewed by Alexey Proskuryakov.
+
+        Add a bunch of new tests for URL(), copied from HTMLAnchorElement API tests:
+
+        * fast/dom/DOMURL/get-href-attribute-port-expected.txt: Added.
+        * fast/dom/DOMURL/get-href-attribute-port.html: Added.
+        * fast/dom/DOMURL/resources: Added.
+        * fast/dom/DOMURL/resources/iframe-with-anchor.html: Added.
+        * fast/dom/DOMURL/set-href-attribute-hash-expected.txt: Added.
+        * fast/dom/DOMURL/set-href-attribute-hash.html: Added.
+        * fast/dom/DOMURL/set-href-attribute-host-expected.txt: Added.
+        * fast/dom/DOMURL/set-href-attribute-host.html: Added.
+        * fast/dom/DOMURL/set-href-attribute-hostname-expected.txt: Added.
+        * fast/dom/DOMURL/set-href-attribute-hostname.html: Added.
+        * fast/dom/DOMURL/set-href-attribute-pathname-expected.txt: Added.
+        * fast/dom/DOMURL/set-href-attribute-pathname.html: Added.
+        * fast/dom/DOMURL/set-href-attribute-port-expected.txt: Added.
+        * fast/dom/DOMURL/set-href-attribute-port.html: Added.
+        * fast/dom/DOMURL/set-href-attribute-protocol-expected.txt: Added.
+        * fast/dom/DOMURL/set-href-attribute-protocol.html: Added.
+        * fast/dom/DOMURL/set-href-attribute-search-expected.txt: Added.
+        * fast/dom/DOMURL/set-href-attribute-search.html: Added.
+        * fast/dom/DOMURL/set-href-attribute-whitespace-expected.txt: Added.
+        * fast/dom/DOMURL/set-href-attribute-whitespace.html: Added.
+        * fast/dom/DOMURL/url-origin-expected.txt: Added.
+        * fast/dom/DOMURL/url-origin.html: Added.
+
+        Brand new tests for username and password properties, accessors on invalid URLS,
+        and different constructor modes:
+        * fast/dom/DOMURL/invalid-url-getters-expected.txt: Added.
+        * fast/dom/DOMURL/invalid-url-getters.html: Added.
+        * fast/dom/DOMURL/url-constructor-expected.txt: Added.
+        * fast/dom/DOMURL/url-constructor.html: Added.
+        * fast/dom/DOMURL/url-password-expected.txt: Added.
+        * fast/dom/DOMURL/url-password.html: Added.
+        * fast/dom/DOMURL/url-username-expected.txt: Added.
+        * fast/dom/DOMURL/url-username.html: Added.
+
+        Update tests and results for the fact that URL constructor takes arguments.
+        * fast/dom/DOMURL/check-instanceof-domurl-functions.html:
+        * fast/dom/constructed-objects-prototypes-expected.txt:
+        * fast/dom/script-tests/constructed-objects-prototypes.js:
+        * js/dom/constructor-length.html:
+        * platform/efl/js/dom/constructor-length-expected.txt:
+        * platform/gtk-wk2/js/dom/constructor-length-expected.txt:
+        * platform/gtk/js/dom/constructor-length-expected.txt:
+        * platform/mac/js/dom/constructor-length-expected.txt:
+
+2014-01-31  Bem Jones-Bey  <bjonesbe@adobe.com>
+
+        Create clipping path from <box> value
+        https://bugs.webkit.org/show_bug.cgi?id=126205
+
+        Reviewed by Dirk Schulze.
+
+        Tests for border, padding and content box values. Margin is
+        unimplemented as of yet.
+
+        * css3/masking/clip-path-border-box-expected.html: Added.
+        * css3/masking/clip-path-border-box.html: Added.
+        * css3/masking/clip-path-content-box-expected.html: Added.
+        * css3/masking/clip-path-content-box.html: Added.
+        * css3/masking/clip-path-padding-box-expected.html: Added.
+        * css3/masking/clip-path-padding-box.html: Added.
+
+2014-01-29  Oliver Hunt  <oliver@apple.com>
+
+        Make it possible to implement JS builtins in JS
+        https://bugs.webkit.org/show_bug.cgi?id=127887
+
+        Reviewed by Michael Saboff.
+
+        Updated the test results for new error messages (now that they're
+        actually helpful), and added a js-regress test to track performance.
+
+        * js/array-every-expected.txt:
+        * js/dom/array-prototype-properties-expected.txt:
+        * js/regress/array-prototype-every-expected.txt: Added.
+        * js/regress/array-prototype-every.html: Added.
+        * js/regress/script-tests/array-prototype-every.js: Added.
+        (test1):
+        (test2):
+        (test3):
+
+2014-01-30  Beth Dakin  <bdakin@apple.com>
+
+        Extended background should only create margin tiles for pages with background 
+        images
+        https://bugs.webkit.org/show_bug.cgi?id=127876
+        -and corresponding-
+        <rdar://problem/15827632>
+
+        Reviewed by Simon Fraser.
+
+        We can only test margin tiles if we also give the document a background image.
+        * platform/mac-wk2/tiled-drawing/resources/greenbox.png: Added.
+        * platform/mac-wk2/tiled-drawing/simple-document-with-margin-tiles.html:
+
+2014-01-31  Hans Muller  <hmuller@adobe.com>
+
+        [CSS Shapes] Image valued shape can fail
+        https://bugs.webkit.org/show_bug.cgi?id=127588
+
+        Reviewed by Dean Jackson.
+
+        Check shape-outside layout for image valued shapes where object-fit causes
+        the image to extend into or beyond the image element's margin box.
+
+        * fast/shapes/shape-outside-floats/shape-outside-image-fit-005-expected.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-image-fit-005.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-image-fit-006-expected.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-image-fit-006.html: Added.
+
+2014-01-31  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r163165.
+        http://trac.webkit.org/changeset/163165
+        https://bugs.webkit.org/show_bug.cgi?id=127997
+
+        broke 2 fast/table tests (Requested by kling on #webkit).
+
+        * fast/table/css-table-max-width-expected.txt:
+        * fast/table/css-table-max-width.html:
+        * fast/table/html-table-width-max-width-constrained-expected.txt: Removed.
+        * fast/table/html-table-width-max-width-constrained.html: Removed.
+
+2014-01-31  Mihnea Ovidenie  <mihnea@adobe.com>
+
+        [CSSRegions] Add test(s) for list item as region
+        https://bugs.webkit.org/show_bug.cgi?id=122961
+
+        Reviewed by Dirk Schulze.
+
+        * fast/regions/list-item-as-region-expected.html: Added.
+        * fast/regions/list-item-as-region.html: Added.
+
+2014-01-31  László Langó  <lango@inf.u-szeged.hu>
+
+        Fix table sizing when 'max-width' is used.
+        https://bugs.webkit.org/show_bug.cgi?id=115156
+
+        Reviewed by Andreas Kling.
+
+        * fast/table/css-table-max-width-expected.txt:
+        * fast/table/css-table-max-width.html:
+        * fast/table/html-table-width-max-width-constrained-expected.txt: Added.
+        * fast/table/html-table-width-max-width-constrained.html: Added.
+
 2014-01-28  Timothy Hatcher  <timothy@apple.com>
 
         Add column number and call timing support to LegacyProfiler.

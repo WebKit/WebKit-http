@@ -519,7 +519,7 @@ void SVGInlineTextBox::paintDecorationWithStyle(GraphicsContext* context, TextDe
 
     float scalingFactor = 1;
     Font scaledFont;
-    RenderSVGInlineText::computeNewScaledFontForStyle(&decorationRenderer, &decorationStyle, scalingFactor, scaledFont);
+    RenderSVGInlineText::computeNewScaledFontForStyle(decorationRenderer, decorationStyle, scalingFactor, scaledFont);
     ASSERT(scalingFactor);
 
     // The initial y value refers to overline position.
@@ -581,15 +581,17 @@ void SVGInlineTextBox::paintTextWithShadows(GraphicsContext* context, RenderStyl
 
         context->restore();
 
+        if (shadow) {
+            if (shadow->next())
+                context->restore();
+            else
+                context->clearShadow();
+        }
+
         restoreGraphicsContextAfterTextPainting(context, textRun);
 
         if (!shadow)
             break;
-
-        if (shadow->next())
-            context->restore();
-        else
-            context->clearShadow();
 
         shadow = shadow->next();
     } while (shadow);

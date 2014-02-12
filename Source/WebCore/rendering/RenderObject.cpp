@@ -736,11 +736,11 @@ RenderBlock* RenderObject::containingBlock() const
     return toRenderBlock(o);
 }
 
-void RenderObject::drawLineForBoxSide(GraphicsContext* graphicsContext, int x1, int y1, int x2, int y2,
+void RenderObject::drawLineForBoxSide(GraphicsContext* graphicsContext, LayoutUnit x1, LayoutUnit y1, LayoutUnit x2, LayoutUnit y2,
     BoxSide side, Color color, EBorderStyle borderStyle, int adjacentWidth1, int adjacentWidth2, bool antialias)
 {
-    int thickness;
-    int length;
+    float thickness;
+    float length;
     if (side == BSTop || side == BSBottom) {
         thickness = y2 - y1;
         length = x2 - x1;
@@ -749,13 +749,22 @@ void RenderObject::drawLineForBoxSide(GraphicsContext* graphicsContext, int x1, 
         length = y2 - y1;
     }
 
-    // FIXME: We really would like this check to be an ASSERT as we don't want to draw empty borders. However
-    // nothing guarantees that the following recursive calls to drawLineForBoxSide will have non-null dimensions.
-    if (!thickness || !length)
-        return;
-
     if (borderStyle == DOUBLE && thickness < 3)
         borderStyle = SOLID;
+
+    float pixelSnappingFactor = graphicsContext->pixelSnappingFactor();
+    // FIXME: We really would like this check to be an ASSERT as we don't want to draw empty borders. However
+    // nothing guarantees that the following recursive calls to drawLineForBoxSide will have non-null dimensions.
+    // FIXME: flooring is a temporary solution until the device pixel snapping is added here for all border types.
+    if (borderStyle == SOLID) {
+        thickness = roundToDevicePixel(thickness, pixelSnappingFactor);
+        length = roundToDevicePixel(length, pixelSnappingFactor);
+    } else {
+        thickness = floorf(thickness);
+        length = floorf(length);
+    }
+    if (!thickness || !length)
+        return;
 
     const RenderStyle& style = this->style();
     switch (borderStyle) {
@@ -924,7 +933,7 @@ void RenderObject::drawLineForBoxSide(GraphicsContext* graphicsContext, int x1, 
                 // this matters for rects in transformed contexts.
                 bool wasAntialiased = graphicsContext->shouldAntialias();
                 graphicsContext->setShouldAntialias(antialias);
-                graphicsContext->drawRect(IntRect(x1, y1, x2 - x1, y2 - y1));
+                graphicsContext->drawRect(pixelSnappedForPainting(x1, y1, x2 - x1, y2 - y1, pixelSnappingFactor));
                 graphicsContext->setShouldAntialias(wasAntialiased);
                 graphicsContext->setStrokeStyle(oldStrokeStyle);
                 return;
@@ -2404,12 +2413,6 @@ bool RenderObject::canBeReplacedWithInlineRunIn() const
 }
 
 #if ENABLE(SVG)
-
-RenderSVGResourceContainer* RenderObject::toRenderSVGResourceContainer()
-{
-    ASSERT_NOT_REACHED();
-    return 0;
-}
 
 void RenderObject::setNeedsBoundariesUpdate()
 {

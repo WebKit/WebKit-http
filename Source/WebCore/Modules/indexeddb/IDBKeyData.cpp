@@ -200,7 +200,7 @@ bool IDBKeyData::decode(KeyedDecoder& decoder, IDBKeyData& result)
     return decoder.decodeObjects("array", result.arrayValue, arrayFunction);
 }
 
-int IDBKeyData::compare(const IDBKeyData& other)
+int IDBKeyData::compare(const IDBKeyData& other) const
 {
     if (type == IDBKey::InvalidType) {
         if (other.type != IDBKey::InvalidType)
@@ -245,6 +245,41 @@ int IDBKeyData::compare(const IDBKeyData& other)
     ASSERT_NOT_REACHED();
     return 0;
 }
+
+#ifndef NDEBUG
+String IDBKeyData::loggingString() const
+{
+    if (isNull)
+        return "<null>";
+
+    switch (type) {
+    case IDBKey::InvalidType:
+        return "<invalid>";
+    case IDBKey::ArrayType:
+        {
+            String result = "<array> - { ";
+            for (size_t i = 0; i < arrayValue.size(); ++i) {
+                result.append(arrayValue[i].loggingString());
+                if (i < arrayValue.size() - 1)
+                    result.append(", ");
+            }
+            result.append(" }");
+            return result;
+        }
+    case IDBKey::StringType:
+        return String("<string> - ") + stringValue;
+    case IDBKey::DateType:
+        return String::format("Date type - %f", numberValue);
+    case IDBKey::NumberType:
+        return String::format("<number> - %f", numberValue);
+    case IDBKey::MinType:
+        return "<minimum>";
+    default:
+        return String();
+    }
+    ASSERT_NOT_REACHED();
+}
+#endif
 
 }
 

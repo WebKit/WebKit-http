@@ -81,10 +81,19 @@ void DatabaseProcessIDBConnection::getOrEstablishIDBDatabaseMetadata(uint64_t re
 
 void DatabaseProcessIDBConnection::deleteDatabase(uint64_t requestID, const String& databaseName)
 {
+    ASSERT(m_uniqueIDBDatabase);
+
     LOG(IDB, "DatabaseProcess deleteDatabase request ID %llu", requestID);
 
-    // FIXME: Implement
-    send(Messages::WebIDBServerConnection::DidDeleteDatabase(requestID, false));
+    if (databaseName != m_uniqueIDBDatabase->identifier().databaseName()) {
+        LOG_ERROR("Request to delete database name that doesn't match with this database connection's database name");
+        send(Messages::WebIDBServerConnection::DidDeleteDatabase(requestID, false));
+    }
+
+    RefPtr<DatabaseProcessIDBConnection> connection(this);
+    m_uniqueIDBDatabase->deleteDatabase([connection, requestID](bool success) {
+        connection->send(Messages::WebIDBServerConnection::DidDeleteDatabase(requestID, success));
+    });
 }
 
 void DatabaseProcessIDBConnection::openTransaction(uint64_t requestID, int64_t transactionID, const Vector<int64_t>& objectStoreIDs, uint64_t intMode)
@@ -272,8 +281,9 @@ void DatabaseProcessIDBConnection::openCursor(uint64_t requestID, int64_t transa
 
     LOG(IDB, "DatabaseProcess openCursor request ID %llu, object store id %lli", requestID, objectStoreID);
     RefPtr<DatabaseProcessIDBConnection> connection(this);
-    m_uniqueIDBDatabase->openCursor(IDBIdentifier(*this, transactionID), objectStoreID, indexID, static_cast<IndexedDB::CursorDirection>(cursorDirection), static_cast<IndexedDB::CursorType>(cursorType), static_cast<IDBDatabaseBackend::TaskType>(taskType), keyRangeData, [connection, requestID](int64_t cursorID, uint32_t errorCode, const String& errorMessage) {
-        connection->send(Messages::WebIDBServerConnection::DidOpenCursor(requestID, cursorID, errorCode, errorMessage));
+    m_uniqueIDBDatabase->openCursor(IDBIdentifier(*this, transactionID), objectStoreID, indexID, static_cast<IndexedDB::CursorDirection>(cursorDirection), static_cast<IndexedDB::CursorType>(cursorType), static_cast<IDBDatabaseBackend::TaskType>(taskType), keyRangeData, [connection, requestID](int64_t cursorID, const IDBKeyData& resultKey, const IDBKeyData& primaryKey, PassRefPtr<SharedBuffer> value, const IDBKeyData& valueKey, uint32_t errorCode, const String& errorMessage) {
+        IPC::DataReference data = value ? IPC::DataReference(reinterpret_cast<const uint8_t*>(value->data()), value->size()) : IPC::DataReference();
+        connection->send(Messages::WebIDBServerConnection::DidOpenCursor(requestID, cursorID, resultKey, primaryKey, data, valueKey, errorCode, errorMessage));
     });
 }
 
@@ -283,9 +293,9 @@ void DatabaseProcessIDBConnection::cursorAdvance(uint64_t requestID, int64_t cur
 
     LOG(IDB, "DatabaseProcess cursorAdvance request ID %llu, cursor id %lli", requestID, cursorID);
     RefPtr<DatabaseProcessIDBConnection> connection(this);
-    m_uniqueIDBDatabase->cursorAdvance(IDBIdentifier(*this, cursorID), count, [connection, requestID](const IDBKeyData& resultKey, const IDBKeyData& primaryKey, PassRefPtr<SharedBuffer> value, uint32_t errorCode, const String& errorMessage) {
+    m_uniqueIDBDatabase->cursorAdvance(IDBIdentifier(*this, cursorID), count, [connection, requestID](const IDBKeyData& resultKey, const IDBKeyData& primaryKey, PassRefPtr<SharedBuffer> value, const IDBKeyData& valueKey, uint32_t errorCode, const String& errorMessage) {
         IPC::DataReference data = value ? IPC::DataReference(reinterpret_cast<const uint8_t*>(value->data()), value->size()) : IPC::DataReference();
-        connection->send(Messages::WebIDBServerConnection::DidAdvanceCursor(requestID, resultKey, primaryKey, data, errorCode, errorMessage));
+        connection->send(Messages::WebIDBServerConnection::DidAdvanceCursor(requestID, resultKey, primaryKey, data, valueKey, errorCode, errorMessage));
     });
 }
 
@@ -295,9 +305,9 @@ void DatabaseProcessIDBConnection::cursorIterate(uint64_t requestID, int64_t cur
 
     LOG(IDB, "DatabaseProcess cursorIterate request ID %llu, cursor id %lli", requestID, cursorID);
     RefPtr<DatabaseProcessIDBConnection> connection(this);
-    m_uniqueIDBDatabase->cursorIterate(IDBIdentifier(*this, cursorID), key, [connection, requestID](const IDBKeyData& resultKey, const IDBKeyData& primaryKey, PassRefPtr<SharedBuffer> value, uint32_t errorCode, const String& errorMessage) {
+    m_uniqueIDBDatabase->cursorIterate(IDBIdentifier(*this, cursorID), key, [connection, requestID](const IDBKeyData& resultKey, const IDBKeyData& primaryKey, PassRefPtr<SharedBuffer> value, const IDBKeyData& valueKey, uint32_t errorCode, const String& errorMessage) {
         IPC::DataReference data = value ? IPC::DataReference(reinterpret_cast<const uint8_t*>(value->data()), value->size()) : IPC::DataReference();
-        connection->send(Messages::WebIDBServerConnection::DidIterateCursor(requestID, resultKey, primaryKey, data, errorCode, errorMessage));
+        connection->send(Messages::WebIDBServerConnection::DidIterateCursor(requestID, resultKey, primaryKey, data, valueKey, errorCode, errorMessage));
     });
 }
 

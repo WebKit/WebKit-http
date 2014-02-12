@@ -45,6 +45,9 @@ std::unique_ptr<SQLiteIDBCursor> SQLiteIDBCursor::maybeCreate(SQLiteIDBTransacti
     if (!cursor->establishStatement())
         return nullptr;
 
+    if (!cursor->advance(1))
+        return nullptr;
+
     return cursor;
 }
 
@@ -56,65 +59,146 @@ SQLiteIDBCursor::SQLiteIDBCursor(SQLiteIDBTransaction* transaction, const IDBIde
     , m_cursorDirection(cursorDirection)
     , m_keyRange(keyRange)
     , m_completed(false)
+    , m_errored(false)
 {
     ASSERT(m_objectStoreID);
 }
 
+static const String& getIndexStatement(bool lowerKey, bool lowerOpen, bool upperKey, bool upperOpen, bool descending)
+{
+    DEFINE_STATIC_LOCAL(Vector<String>, indexStatements, ());
+
+    if (indexStatements.isEmpty()) {
+        indexStatements.reserveCapacity(18);
+
+        // No lower key statements (6)
+        indexStatements.append(ASCIILiteral("SELECT key, value FROM IndexRecords WHERE indexID = ? ORDER BY key;"));
+        indexStatements.append(ASCIILiteral("SELECT key, value FROM IndexRecords WHERE indexID = ? ORDER BY key DESC;"));
+        indexStatements.append(ASCIILiteral("SELECT key, value FROM IndexRecords WHERE indexID = ? AND key < CAST(? AS TEXT) ORDER BY key;"));
+        indexStatements.append(ASCIILiteral("SELECT key, value FROM IndexRecords WHERE indexID = ? AND key < CAST(? AS TEXT) ORDER BY key DESC;"));
+        indexStatements.append(ASCIILiteral("SELECT key, value FROM IndexRecords WHERE indexID = ? AND key <= CAST(? AS TEXT) ORDER BY key;"));
+        indexStatements.append(ASCIILiteral("SELECT key, value FROM IndexRecords WHERE indexID = ? AND key <= CAST(? AS TEXT) ORDER BY key DESC;"));
+
+        // Closed lower key statements (6)
+        indexStatements.append(ASCIILiteral("SELECT key, value FROM IndexRecords WHERE indexID = ? AND key >= CAST(? AS TEXT) ORDER BY key;"));
+        indexStatements.append(ASCIILiteral("SELECT key, value FROM IndexRecords WHERE indexID = ? AND key >= CAST(? AS TEXT) ORDER BY key DESC;"));
+        indexStatements.append(ASCIILiteral("SELECT key, value FROM IndexRecords WHERE indexID = ? AND key >= CAST(? AS TEXT) AND key <= CAST(? AS TEXT) ORDER BY key;"));
+        indexStatements.append(ASCIILiteral("SELECT key, value FROM IndexRecords WHERE indexID = ? AND key >= CAST(? AS TEXT) AND key <= CAST(? AS TEXT) ORDER BY key DESC;"));
+        indexStatements.append(ASCIILiteral("SELECT key, value FROM IndexRecords WHERE indexID = ? AND key >= CAST(? AS TEXT) AND key < CAST(? AS TEXT) ORDER BY key;"));
+        indexStatements.append(ASCIILiteral("SELECT key, value FROM IndexRecords WHERE indexID = ? AND key >= CAST(? AS TEXT) AND key < CAST(? AS TEXT) ORDER BY key DESC;"));
+
+        // Open lower key statements (6)
+        indexStatements.append(ASCIILiteral("SELECT key, value FROM IndexRecords WHERE indexID = ? AND key > CAST(? AS TEXT) ORDER BY key;"));
+        indexStatements.append(ASCIILiteral("SELECT key, value FROM IndexRecords WHERE indexID = ? AND key > CAST(? AS TEXT) ORDER BY key DESC;"));
+        indexStatements.append(ASCIILiteral("SELECT key, value FROM IndexRecords WHERE indexID = ? AND key > CAST(? AS TEXT) AND key <= CAST(? AS TEXT) ORDER BY key;"));
+        indexStatements.append(ASCIILiteral("SELECT key, value FROM IndexRecords WHERE indexID = ? AND key > CAST(? AS TEXT) AND key <= CAST(? AS TEXT) ORDER BY key DESC;"));
+        indexStatements.append(ASCIILiteral("SELECT key, value FROM IndexRecords WHERE indexID = ? AND key > CAST(? AS TEXT) AND key < CAST(? AS TEXT) ORDER BY key;"));
+        indexStatements.append(ASCIILiteral("SELECT key, value FROM IndexRecords WHERE indexID = ? AND key > CAST(? AS TEXT) AND key < CAST(? AS TEXT) ORDER BY key DESC;"));
+    }
+
+    size_t i = 0;
+    if (lowerKey)
+        i += 6;
+    if (lowerOpen)
+        i += 6;
+    if (upperKey)
+        i += 2;
+    if (upperOpen)
+        i += 2;
+    if (descending)
+        i += 1;
+
+    return indexStatements[i];
+}
+
+static const String& getObjectStoreStatement(bool lowerKey, bool lowerOpen, bool upperKey, bool upperOpen, bool descending)
+{
+    DEFINE_STATIC_LOCAL(Vector<String>, indexStatements, ());
+
+    if (indexStatements.isEmpty()) {
+        indexStatements.reserveCapacity(18);
+
+        // No lower key statements (6)
+        indexStatements.append(ASCIILiteral("SELECT key, value FROM Records WHERE objectStoreID = ? ORDER BY key;"));
+        indexStatements.append(ASCIILiteral("SELECT key, value FROM Records WHERE objectStoreID = ? ORDER BY key DESC;"));
+        indexStatements.append(ASCIILiteral("SELECT key, value FROM Records WHERE objectStoreID = ? AND key <= CAST(? AS TEXT) ORDER BY key;"));
+        indexStatements.append(ASCIILiteral("SELECT key, value FROM Records WHERE objectStoreID = ? AND key <= CAST(? AS TEXT) ORDER BY key DESC;"));
+        indexStatements.append(ASCIILiteral("SELECT key, value FROM Records WHERE objectStoreID = ? AND key < CAST(? AS TEXT) ORDER BY key;"));
+        indexStatements.append(ASCIILiteral("SELECT key, value FROM Records WHERE objectStoreID = ? AND key < CAST(? AS TEXT) ORDER BY key DESC;"));
+
+        // Closed lower key statements (6)
+        indexStatements.append(ASCIILiteral("SELECT key, value FROM Records WHERE objectStoreID = ? AND key >= CAST(? AS TEXT) ORDER BY key;"));
+        indexStatements.append(ASCIILiteral("SELECT key, value FROM Records WHERE objectStoreID = ? AND key >= CAST(? AS TEXT) ORDER BY key DESC;"));
+        indexStatements.append(ASCIILiteral("SELECT key, value FROM Records WHERE objectStoreID = ? AND key >= CAST(? AS TEXT) AND key <= CAST(? AS TEXT) ORDER BY key;"));
+        indexStatements.append(ASCIILiteral("SELECT key, value FROM Records WHERE objectStoreID = ? AND key >= CAST(? AS TEXT) AND key <= CAST(? AS TEXT) ORDER BY key DESC;"));
+        indexStatements.append(ASCIILiteral("SELECT key, value FROM Records WHERE objectStoreID = ? AND key >= CAST(? AS TEXT) AND key < CAST(? AS TEXT) ORDER BY key;"));
+        indexStatements.append(ASCIILiteral("SELECT key, value FROM Records WHERE objectStoreID = ? AND key >= CAST(? AS TEXT) AND key < CAST(? AS TEXT) ORDER BY key DESC;"));
+
+        // Open lower key statements (6)
+        indexStatements.append(ASCIILiteral("SELECT key, value FROM Records WHERE objectStoreID = ? AND key > CAST(? AS TEXT) ORDER BY key;"));
+        indexStatements.append(ASCIILiteral("SELECT key, value FROM Records WHERE objectStoreID = ? AND key > CAST(? AS TEXT) ORDER BY key DESC;"));
+        indexStatements.append(ASCIILiteral("SELECT key, value FROM Records WHERE objectStoreID = ? AND key > CAST(? AS TEXT) AND key <= CAST(? AS TEXT) ORDER BY key;"));
+        indexStatements.append(ASCIILiteral("SELECT key, value FROM Records WHERE objectStoreID = ? AND key > CAST(? AS TEXT) AND key <= CAST(? AS TEXT) ORDER BY key DESC;"));
+        indexStatements.append(ASCIILiteral("SELECT key, value FROM Records WHERE objectStoreID = ? AND key > CAST(? AS TEXT) AND key < CAST(? AS TEXT) ORDER BY key;"));
+        indexStatements.append(ASCIILiteral("SELECT key, value FROM Records WHERE objectStoreID = ? AND key > CAST(? AS TEXT) AND key < CAST(? AS TEXT) ORDER BY key DESC;"));
+    }
+
+    size_t i = 0;
+    if (lowerKey)
+        i += 6;
+    if (lowerOpen)
+        i += 6;
+    if (upperKey)
+        i += 2;
+    if (upperOpen)
+        i += 2;
+    if (descending)
+        i += 1;
+
+    return indexStatements[i];
+}
+
 bool SQLiteIDBCursor::establishStatement()
 {
-    if (m_indexID != IDBIndexMetadata::InvalidId)
-        return createIndexCursorStatement();
+    String sql;
+    int64_t id;
 
-    return createObjectStoreCursorStatement();
+    if (m_indexID != IDBIndexMetadata::InvalidId) {
+        sql = getIndexStatement(!m_keyRange.lowerKey.isNull, m_keyRange.lowerOpen, !m_keyRange.upperKey.isNull, m_keyRange.upperOpen, m_cursorDirection == IndexedDB::CursorDirection::Prev || m_cursorDirection == IndexedDB::CursorDirection::PrevNoDuplicate);
+        id = m_indexID;
+    } else {
+        sql = getObjectStoreStatement(!m_keyRange.lowerKey.isNull, m_keyRange.lowerOpen, !m_keyRange.upperKey.isNull, m_keyRange.upperOpen, m_cursorDirection == IndexedDB::CursorDirection::Prev || m_cursorDirection == IndexedDB::CursorDirection::PrevNoDuplicate);
+        id = m_objectStoreID;
+    }
+
+    return createSQLiteStatement(sql, id);
 }
 
-bool SQLiteIDBCursor::createIndexCursorStatement()
-{
-    LOG_ERROR("Index cursor not yet supported (index id is %lli)", m_indexID);
-    return false;
-}
-
-bool SQLiteIDBCursor::createObjectStoreCursorStatement()
+bool SQLiteIDBCursor::createSQLiteStatement(const String& sql, int64_t idToBind)
 {
     ASSERT(m_transaction->sqliteTransaction());
     SQLiteDatabase& database = m_transaction->sqliteTransaction()->database();
-
-    String lowerSQL;
-    if (!m_keyRange.lowerKey.isNull)
-        lowerSQL = m_keyRange.lowerOpen ? ASCIILiteral("AND key >= CAST(? AS TEXT)") : ASCIILiteral("AND key > CAST(? AS TEXT)");
-
-    String upperSQL;
-    if (!m_keyRange.upperKey.isNull)
-        lowerSQL = m_keyRange.upperOpen ? ASCIILiteral("AND key <= CAST(? AS TEXT)") : ASCIILiteral("AND key < CAST(? AS TEXT)");
-
-    String orderSQL;
-    if (m_cursorDirection == IndexedDB::CursorDirection::Next || m_cursorDirection == IndexedDB::CursorDirection::NextNoDuplicate)
-        orderSQL = ASCIILiteral(" ORDER BY key;");
-    else
-        orderSQL = ASCIILiteral(" ORDER BY key DESC;");
-
-    String sql = ASCIILiteral("SELECT key, value FROM Records WHERE objectStoreID = ?") + lowerSQL + upperSQL + orderSQL;
 
     LOG(IDB, "Creating cursor with SQL query: \"%s\"", sql.utf8().data());
 
     m_statement = std::make_unique<SQLiteStatement>(database, sql);
 
     if (m_statement->prepare() != SQLResultOk
-        || m_statement->bindInt64(1, m_objectStoreID) != SQLResultOk) {
+        || m_statement->bindInt64(1, idToBind) != SQLResultOk) {
         LOG_ERROR("Could not create cursor statement");
         return false;
     }
 
     int nextBindArgument = 2;
 
-    if (!lowerSQL.isEmpty()) {
+    if (!m_keyRange.lowerKey.isNull) {
         RefPtr<SharedBuffer> buffer = serializeIDBKeyData(m_keyRange.lowerKey);
         if (m_statement->bindBlob(nextBindArgument++, buffer->data(), buffer->size()) != SQLResultOk) {
             LOG_ERROR("Could not create cursor statement");
             return false;
         }
     }
-    if (!upperSQL.isEmpty()) {
+    if (!m_keyRange.upperKey.isNull) {
         RefPtr<SharedBuffer> buffer = serializeIDBKeyData(m_keyRange.upperKey);
         if (m_statement->bindBlob(nextBindArgument, buffer->data(), buffer->size()) != SQLResultOk) {
             LOG_ERROR("Could not create cursor statement");
@@ -127,6 +211,41 @@ bool SQLiteIDBCursor::createObjectStoreCursorStatement()
 
 bool SQLiteIDBCursor::advance(uint64_t count)
 {
+    bool isUnique = m_cursorDirection == IndexedDB::CursorDirection::NextNoDuplicate || m_cursorDirection == IndexedDB::CursorDirection::PrevNoDuplicate;
+
+    for (uint64_t i = 0; i < count; ++i) {
+        if (!isUnique) {
+            if (!advanceOnce())
+                return false;
+            continue;
+        }
+
+        if (!advanceUnique())
+            return false;
+    }
+
+    return true;
+}
+
+bool SQLiteIDBCursor::advanceUnique()
+{
+    IDBKeyData currentKey = m_currentKey;
+
+    while (!m_completed) {
+        if (!advanceOnce())
+            return false;
+
+        // If the new current key is different from the old current key, we're done.
+        if (currentKey.compare(m_currentKey))
+            return true;
+    }
+
+    return false;
+}
+
+
+bool SQLiteIDBCursor::advanceOnce()
+{
     ASSERT(m_transaction->sqliteTransaction());
     ASSERT(m_statement);
 
@@ -138,12 +257,20 @@ bool SQLiteIDBCursor::advance(uint64_t count)
     int result = m_statement->step();
     if (result == SQLResultDone) {
         m_completed = true;
+
+        // When a cursor reaches its end, that is indicated by having undefined keys/values
+        m_currentKey = IDBKeyData();
+        m_currentPrimaryKey = IDBKeyData();
+        m_currentValueBuffer.clear();
+        m_currentValueKey = IDBKeyData();
+
         return true;
     }
 
     if (result != SQLResultRow) {
         LOG_ERROR("Error advancing cursor - (%i) %s", result, m_transaction->sqliteTransaction()->database().lastErrorMsg());
         m_completed = true;
+        m_errored = true;
         return false;
     }
 
@@ -154,6 +281,7 @@ bool SQLiteIDBCursor::advance(uint64_t count)
     if (!deserializeIDBKeyData(reinterpret_cast<const uint8_t*>(keyData.data()), keyData.size(), key)) {
         LOG_ERROR("Unable to deserialize key data from database while advancing cursor");
         m_completed = true;
+        m_errored = true;
         return false;
     }
 
@@ -161,7 +289,30 @@ bool SQLiteIDBCursor::advance(uint64_t count)
 
     m_currentKey = key;
     m_currentPrimaryKey = key;
-    m_currentValue = keyData;
+    m_currentValueBuffer = keyData;
+
+    if (m_indexID != IDBIndexMetadata::InvalidId) {
+        if (!deserializeIDBKeyData(reinterpret_cast<const uint8_t*>(keyData.data()), keyData.size(), m_currentValueKey)) {
+            LOG_ERROR("Unable to deserialize value data from database while advancing index cursor");
+            m_completed = true;
+            m_errored = true;
+            return false;
+        }
+
+        SQLiteStatement objectStoreStatement(*m_statement->database(), "SELECT value FROM Records WHERE key = CAST(? AS TEXT) and objectStoreID = ?;");
+
+        if (objectStoreStatement.prepare() != SQLResultOk
+            || objectStoreStatement.bindBlob(1, m_currentValueBuffer.data(), m_currentValueBuffer.size()) != SQLResultOk
+            || objectStoreStatement.bindInt64(2, m_objectStoreID) != SQLResultOk
+            || objectStoreStatement.step() != SQLResultRow) {
+            LOG_ERROR("Could not create index cursor statement into object store records");
+            m_completed = true;
+            m_errored = true;
+            return false;
+        }
+
+        objectStoreStatement.getColumnBlobAsVector(0, m_currentValueBuffer);
+    }
 
     return true;
 }

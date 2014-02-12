@@ -46,11 +46,16 @@ public:
     virtual ~WebKeyValueStorageManager();
 
     void getKeyValueStorageOrigins(PassRefPtr<ArrayCallback>);
+    void getStorageDetailsByOrigin(PassRefPtr<ArrayCallback>);
     void deleteEntriesForOrigin(WebSecurityOrigin*);
     void deleteAllEntries();
 
     using API::Object::ref;
     using API::Object::deref;
+
+    static String originKey();
+    static String creationTimeKey();
+    static String modificationTimeKey();
 
 private:
     explicit WebKeyValueStorageManager(WebContext*);

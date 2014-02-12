@@ -82,8 +82,8 @@ String RenderSVGInlineText::originalText() const
 void RenderSVGInlineText::setTextInternal(const String& text)
 {
     RenderText::setTextInternal(text);
-    if (RenderSVGText* textRenderer = RenderSVGText::locateRenderSVGTextAncestor(this))
-        textRenderer->subtreeTextDidChange(this);
+    if (auto* textAncestor = RenderSVGText::locateRenderSVGTextAncestor(*this))
+        textAncestor->subtreeTextDidChange(this);
 }
 
 void RenderSVGInlineText::styleDidChange(StyleDifference diff, const RenderStyle* oldStyle)
@@ -107,8 +107,8 @@ void RenderSVGInlineText::styleDidChange(StyleDifference diff, const RenderStyle
         return;
 
     // The text metrics may be influenced by style changes.
-    if (RenderSVGText* textRenderer = RenderSVGText::locateRenderSVGTextAncestor(this))
-        textRenderer->subtreeStyleDidChange(this);
+    if (auto* textAncestor = RenderSVGText::locateRenderSVGTextAncestor(*this))
+        textAncestor->subtreeStyleDidChange(this);
 }
 
 std::unique_ptr<InlineTextBox> RenderSVGInlineText::createTextBox()
@@ -224,29 +224,26 @@ VisiblePosition RenderSVGInlineText::positionForPoint(const LayoutPoint& point)
 
 void RenderSVGInlineText::updateScaledFont()
 {
-    computeNewScaledFontForStyle(this, &style(), m_scalingFactor, m_scaledFont);
+    computeNewScaledFontForStyle(*this, style(), m_scalingFactor, m_scaledFont);
 }
 
-void RenderSVGInlineText::computeNewScaledFontForStyle(RenderObject* renderer, const RenderStyle* style, float& scalingFactor, Font& scaledFont)
+void RenderSVGInlineText::computeNewScaledFontForStyle(const RenderObject& renderer, const RenderStyle& style, float& scalingFactor, Font& scaledFont)
 {
-    ASSERT(style);
-    ASSERT(renderer);
-
     // Alter font-size to the right on-screen value to avoid scaling the glyphs themselves, except when GeometricPrecision is specified
     scalingFactor = SVGRenderingContext::calculateScreenFontSizeScalingFactor(renderer);
-    if (scalingFactor == 1 || !scalingFactor || style->fontDescription().textRenderingMode() == GeometricPrecision) {
+    if (scalingFactor == 1 || !scalingFactor || style.fontDescription().textRenderingMode() == GeometricPrecision) {
         scalingFactor = 1;
-        scaledFont = style->font();
+        scaledFont = style.font();
         return;
     }
 
-    FontDescription fontDescription(style->fontDescription());
+    FontDescription fontDescription(style.fontDescription());
 
     // FIXME: We need to better handle the case when we compute very small fonts below (below 1pt).
-    fontDescription.setComputedSize(Style::computedFontSizeFromSpecifiedSizeForSVGInlineText(fontDescription.computedSize(), fontDescription.isAbsoluteSize(), scalingFactor, renderer->document()));
+    fontDescription.setComputedSize(Style::computedFontSizeFromSpecifiedSizeForSVGInlineText(fontDescription.computedSize(), fontDescription.isAbsoluteSize(), scalingFactor, renderer.document()));
 
     scaledFont = Font(fontDescription, 0, 0);
-    scaledFont.update(renderer->document().ensureStyleResolver().fontSelector());
+    scaledFont.update(renderer.document().ensureStyleResolver().fontSelector());
 }
 
 }

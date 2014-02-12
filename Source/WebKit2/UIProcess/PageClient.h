@@ -115,7 +115,7 @@ public:
     virtual bool isVisuallyIdle() { return !isViewVisible(); }
 
     // Return the layer hosting mode for the view.
-    virtual LayerHostingMode viewLayerHostingMode() { return LayerHostingModeDefault; }
+    virtual LayerHostingMode viewLayerHostingMode() { return LayerHostingMode::InProcess; }
 
     virtual void processDidExit() = 0;
     virtual void didRelaunchProcess() = 0;
@@ -249,6 +249,7 @@ public:
     virtual void selectionDidChange() = 0;
     virtual bool interpretKeyEvent(const NativeWebKeyboardEvent&, bool isCharEvent) = 0;
     virtual void positionInformationDidChange(const InteractionInformationAtPosition&) = 0;
+    virtual void saveImageToLibrary(PassRefPtr<WebCore::SharedBuffer>) = 0;
 #endif
 
     // Auxiliary Client Creation

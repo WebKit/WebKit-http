@@ -56,7 +56,11 @@ struct IDBKeyData {
     //   - Returns negative if this IDBKeyData is less than other.
     //   - Returns positive if this IDBKeyData is greater than other.
     //   - Returns zero if this IDBKeyData is equal to other.
-    int compare(const IDBKeyData& other);
+    int compare(const IDBKeyData& other) const;
+
+#ifndef NDEBUG
+    String loggingString() const;
+#endif
 
     IDBKey::Type type;
     Vector<IDBKeyData> arrayValue;

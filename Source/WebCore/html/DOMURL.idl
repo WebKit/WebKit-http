@@ -26,7 +26,10 @@
 
 [
     GlobalContext=DOMWindow&WorkerGlobalScope,
-    Constructor,
+    Constructor(DOMString url),
+    Constructor(DOMString url, DOMString base),
+    Constructor(DOMString url, DOMURL base),
+    ConstructorRaisesException,
     JSGenerateToNativeObject,
     JSGenerateToJSObject,
     JSNoStaticTables,
@@ -36,3 +39,5 @@
     [CallWith=ScriptExecutionContext,TreatReturnedNullStringAs=Null,Conditional=BLOB] static DOMString createObjectURL(Blob? blob);
     [CallWith=ScriptExecutionContext,Conditional=BLOB] static void revokeObjectURL(DOMString url);
 };
+
+DOMURL implements URLUtils;

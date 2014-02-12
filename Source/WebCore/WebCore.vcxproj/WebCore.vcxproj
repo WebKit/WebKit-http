@@ -7067,6 +7067,7 @@
     <ClCompile Include="..\page\UserContentURLPattern.cpp" />
     <ClCompile Include="..\page\VisitedLinkProvider.cpp" />
     <ClCompile Include="..\fileapi\WebKitBlobBuilder.cpp" />
+    <ClCompile Include="..\page\WheelEventDeltaTracker.cpp" />
     <ClCompile Include="..\page\WindowFeatures.cpp" />
     <ClCompile Include="..\page\WindowFocusAllowedIndicator.cpp" />
     <ClCompile Include="..\page\WorkerNavigator.cpp" />
@@ -15266,7 +15267,6 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\html\HTMLParserErrorCodes.cpp" />
     <ClCompile Include="..\html\HTMLPlugInElement.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
@@ -18847,6 +18847,7 @@
     <ClInclude Include="..\page\VisitedLinkProvider.h" />
     <ClInclude Include="..\fileapi\WebKitBlobBuilder.h" />
     <ClInclude Include="..\page\WebKitPoint.h" />
+    <ClInclude Include="..\page\WheelEventDeltaTracker.h" />
     <ClInclude Include="..\page\WindowFeatures.h" />
     <ClInclude Include="..\page\WindowFocusAllowedIndicator.h" />
     <ClInclude Include="..\page\WorkerNavigator.h" />
@@ -20382,7 +20383,6 @@
     <ClInclude Include="..\html\HTMLOutputElement.h" />
     <ClInclude Include="..\html\HTMLParagraphElement.h" />
     <ClInclude Include="..\html\HTMLParamElement.h" />
-    <ClInclude Include="..\html\HTMLParserErrorCodes.h" />
     <ClInclude Include="..\html\HTMLPlugInElement.h" />
     <ClInclude Include="..\html\HTMLPlugInImageElement.h" />
     <ClInclude Include="..\html\HTMLPreElement.h" />
@@ -20442,6 +20442,7 @@
     <ClInclude Include="..\html\TimeRanges.h" />
     <ClInclude Include="..\html\TypeAhead.h" />
     <ClInclude Include="..\html\URLInputType.h" />
+    <ClInclude Include="..\html\URLUtils.h" />
     <ClInclude Include="..\html\ValidationMessage.h" />
     <ClInclude Include="..\html\ValidityState.h" />
     <ClInclude Include="..\html\VoidCallback.h" />

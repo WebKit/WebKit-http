@@ -1,3 +1,101 @@
+2014-02-02  Darin Adler  <darin@apple.com>
+
+        Obey "delete this" comments, including deleting String::characters and friends
+        https://bugs.webkit.org/show_bug.cgi?id=126865
+
+        Reviewed by Andreas Kling.
+
+        * wtf/text/AtomicString.h: Deleted the characters function.
+        * wtf/text/StringBuilder.h: Deleted the characters function, leaving behind the
+        deprecatedCharacters function.
+        * wtf/text/StringImpl.h: Ditto.
+        * wtf/text/WTFString.h: Ditto. Also added a constructor that takes a StringImpl&,
+        helpful for later string refactoring.
+
+2014-02-02  Dan Bernstein  <mitz@apple.com>
+
+        Stop using PLATFORM(MAC) in WTF except where it means “OS X but not iOS”
+        https://bugs.webkit.org/show_bug.cgi?id=128089
+
+        Reviewed by Darin Adler.
+
+        Replaced all uses of PLATFORM(MAC) that weren’t accompanied by !PLATFORM(IOS) with
+        equivalent(*) tests that are more idiomatic and will not change once PLATFORM(MAC) changes to
+        be false when building for iOS.
+
+        * - One exception noted below.
+
+        * wtf/AutodrainedPool.h: Changed PLATFORM(MAC) to USE(FOUNDATION), because NSAutoreleasePool
+        is a Foundation class.
+
+        * wtf/CurrentTime.cpp:
+        (WTF::monotonicallyIncreasingTime): Changed PLATFORM(MAC) to OS(DARWIN), because Mach is
+        part of the Darwin kernel, but reordered such that the EFL and GLIB implementations continue
+        to take precedence regardless of the OS.
+
+        * wtf/MainThread.cpp: Changed PLATFORM(MAC) to OS(DARWIN) && !PLATFORM(EFL) && !PLATFORM(GTK).
+        * wtf/MainThread.h: Ditto.
+
+        * wtf/Platform.h: Changed USE(CG) and USE(CA) to depend on COCOA, rather than MAC or IOS.
+        Ditto for USE(CFURLCACHE), HAVE(ACCESSIBILITY), USE(PROTECTION_SPACE_AUTH_CALLBACK),
+        USE(ACCESSIBILITY_CONTEXT_MENUS), USE(EXPORT_MACROS), USE(AVFOUNDATION),
+        USE(REQUEST_ANIMATION_FRAME_TIMER), USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR),
+        USE(CONTENT_FILTERING), USE(UNIFIED_TEXT_CHECKING), USE(MARKER_REMOVAL_UPON_EDITING),
+        USE(AUDIO_SESSION), USE(IOSURFACE), and ENABLE(CSS3_TEXT_DECORATION_SKIP_INK). Changed
+        PLATFORM(MAC) to OS(DARWIN) && !PLATFORM(EFL) && !PLATFORM(GTK) in controlling various
+        JavaScriptCore or JavaScriptCore-dependent behaviors.
+
+        * wtf/RunLoop.h: Changed PLATFORM(MAC) to PLATFORM(COCOA).
+        * wtf/RunLoopTimerCF.cpp: Ditto.
+
+        * wtf/SchedulePair.h: Changed PLATFORM(MAC) to USE(FOUNDATION), since it was used to guard
+        usage of Foundation API.
+
+        * wtf/Threading.cpp: Added an explicit !PLATFORM(IOS) in a guard around something needed
+        only on OS X and Windows.
+
+2014-01-31  Benjamin Poulain  <bpoulain@apple.com>
+
+        Remove LEGACY_VIEWPORT_ADAPTION
+        https://bugs.webkit.org/show_bug.cgi?id=128028
+
+        Reviewed by Anders Carlsson.
+
+        * wtf/FeatureDefines.h:
+
+2014-01-31  Tim Horton  <timothy_horton@apple.com>
+
+        [wk2] PlatformCALayerRemoteCustom doesn't work on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=128025
+        <rdar://problem/15950271>
+
+        Reviewed by Simon Fraser.
+
+        * wtf/Platform.h:
+        Rename HAVE_LAYER_HOSTING_IN_WINDOW_SERVER to HAVE_OUT_OF_PROCESS_LAYER_HOSTING
+        and make it true on iOS.
+
+2014-01-31  Michael Saboff  <msaboff@apple.com>
+
+        REGRESSION: Crash in sanitizeStackForVMImpl when scrolling @ lifehacker.com.au
+        https://bugs.webkit.org/show_bug.cgi?id=128017
+
+        Reviewed by Filip Pizlo.
+
+        Moved the setting and saving of VM::stackPointerAtVMEntry and the corresponding stack limit
+        to JSLock and JSLock::DropAllLocks.  The saved data is now stored in per-thread in
+        WTFThreadData.
+
+        * wtf/WTFThreadData.cpp:
+        (WTF::WTFThreadData::WTFThreadData):
+        * wtf/WTFThreadData.h:
+        (WTF::WTFThreadData::savedStackPointerAtVMEntry):
+        (WTF::WTFThreadData::setSavedStackPointerAtVMEntry):
+        (WTF::WTFThreadData::savedLastStackTop):
+        (WTF::WTFThreadData::setSavedLastStackTop):
+        (WTF::WTFThreadData::savedReservedZoneSize):
+        (WTF::WTFThreadData::setSavedReservedZoneSize):
+
 2014-01-30  Andrei Bucur  <abucur@adobe.com>
 
         Remove the ACCELERATED_COMPOSITING flag

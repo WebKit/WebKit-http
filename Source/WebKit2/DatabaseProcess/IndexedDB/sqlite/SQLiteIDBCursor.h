@@ -58,17 +58,22 @@ public:
 
     const WebCore::IDBKeyData& currentKey() const { return m_currentKey; }
     const WebCore::IDBKeyData& currentPrimaryKey() const { return m_currentPrimaryKey; }
-    const Vector<char>& currentValue() const { return m_currentValue; }
+    const Vector<char>& currentValueBuffer() const { return m_currentValueBuffer; }
+    const WebCore::IDBKeyData& currentValueKey() const { return m_currentValueKey; }
 
     bool advance(uint64_t count);
     bool iterate(const WebCore::IDBKeyData& targetKey);
+
+    bool didError() const { return m_errored; }
 
 private:
     SQLiteIDBCursor(SQLiteIDBTransaction*, const IDBIdentifier& cursorIdentifier, int64_t objectStoreID, int64_t indexID, WebCore::IndexedDB::CursorDirection, WebCore::IndexedDB::CursorType, WebCore::IDBDatabaseBackend::TaskType, const WebCore::IDBKeyRangeData&);
 
     bool establishStatement();
-    bool createIndexCursorStatement();
-    bool createObjectStoreCursorStatement();
+    bool createSQLiteStatement(const String& sql, int64_t idToBind);
+
+    bool advanceOnce();
+    bool advanceUnique();
 
     SQLiteIDBTransaction* m_transaction;
     IDBIdentifier m_cursorIdentifier;
@@ -79,11 +84,13 @@ private:
 
     WebCore::IDBKeyData m_currentKey;
     WebCore::IDBKeyData m_currentPrimaryKey;
-    Vector<char> m_currentValue;
+    Vector<char> m_currentValueBuffer;
+    WebCore::IDBKeyData m_currentValueKey;
 
     std::unique_ptr<WebCore::SQLiteStatement> m_statement;
 
     bool m_completed;
+    bool m_errored;
 };
 
 } // namespace WebKit

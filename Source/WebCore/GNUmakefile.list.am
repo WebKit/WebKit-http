@@ -1498,6 +1498,7 @@ dom_binding_idls += \
 	$(WebCore)/html/RadioNodeList.idl \
 	$(WebCore)/html/TextMetrics.idl \
 	$(WebCore)/html/TimeRanges.idl \
+	$(WebCore)/html/URLUtils.idl \
 	$(WebCore)/html/ValidityState.idl \
 	$(WebCore)/html/VoidCallback.idl \
 	$(WebCore)/html/canvas/ANGLEInstancedArrays.idl \
@@ -2693,8 +2694,6 @@ webcore_sources += \
 	Source/WebCore/css/StyleRule.h \
 	Source/WebCore/css/StyleRuleImport.cpp \
 	Source/WebCore/css/StyleRuleImport.h \
-	Source/WebCore/css/StyleScopeResolver.cpp \
-	Source/WebCore/css/StyleScopeResolver.h \
 	Source/WebCore/css/StyleSheet.cpp \
 	Source/WebCore/css/StyleSheet.h \
 	Source/WebCore/css/StyleSheetContents.cpp \
@@ -3469,9 +3468,6 @@ webcore_sources += \
 	Source/WebCore/html/HTMLParagraphElement.h \
 	Source/WebCore/html/HTMLParamElement.cpp \
 	Source/WebCore/html/HTMLParamElement.h \
-	Source/WebCore/html/HTMLParserErrorCodes.cpp \
-	Source/WebCore/html/HTMLParserErrorCodes.h \
-	Source/WebCore/html/HTMLParserQuirks.h \
 	Source/WebCore/html/HTMLPlugInElement.cpp \
 	Source/WebCore/html/HTMLPlugInElement.h \
 	Source/WebCore/html/HTMLPlugInImageElement.cpp \
@@ -3715,6 +3711,7 @@ webcore_sources += \
 	Source/WebCore/html/URLInputType.cpp \
 	Source/WebCore/html/URLInputType.h \
 	Source/WebCore/html/URLRegistry.h \
+	Source/WebCore/html/URLUtils.h \
 	Source/WebCore/html/ValidationMessage.cpp \
 	Source/WebCore/html/ValidationMessage.h \
 	Source/WebCore/html/ValidityState.h \
@@ -4224,6 +4221,8 @@ webcore_sources += \
 	Source/WebCore/page/VisitedLinkProvider.h \
 	Source/WebCore/page/WebCoreKeyboardUIMode.h \
 	Source/WebCore/page/WebKitPoint.h \
+	Source/WebCore/page/WheelEventDeltaTracker.cpp \
+	Source/WebCore/page/WheelEventDeltaTracker.h \
 	Source/WebCore/page/WindowFeatures.cpp \
 	Source/WebCore/page/WindowFeatures.h \
 	Source/WebCore/page/WindowFocusAllowedIndicator.cpp \

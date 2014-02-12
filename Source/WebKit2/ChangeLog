@@ -1,3 +1,812 @@
+2014-02-03  Krzysztof Czech  <k.czech@samsung.com>
+
+        Build fix after r163289.
+
+        Unreviewed EFL build fix.
+
+        Use deprecatedCharacters.
+
+        * UIProcess/efl/TextCheckerEfl.cpp:
+        (WebKit::TextChecker::requestCheckingOfString):
+
+2014-02-03  Dan Bernstein  <mitz@apple.com>
+
+        Build fix.
+
+        * WebProcess/Plugins/Netscape/mac/NetscapePluginMac.mm:
+        (WebKit::convertStringToKeyCodes):
+
+2014-02-03  Alberto Garcia  <berto@igalia.com>
+
+        Fix wrong mix of fcntl commands and flags
+        https://bugs.webkit.org/show_bug.cgi?id=127842
+
+        Reviewed by Darin Adler.
+
+        We are mixing the commands to set file descriptor and file status
+        flags in a couple of fcntl() calls. FD_CLOEXEC must be set using
+        F_SETFD, and the access mode flags (O_RDONLY, O_WRONLY, O_RDWR)
+        with F_SETFL.
+
+        This combines patches by Guillem Jover and Sergio Correia.
+
+        * Platform/IPC/unix/ConnectionUnix.cpp:
+        (IPC::readBytesFromSocket):
+        * Platform/unix/SharedMemoryUnix.cpp:
+        (WebKit::SharedMemory::createHandle):
+
+2014-02-02  Brady Eidson  <beidson@apple.com>
+
+        IDB: Cannot open new databases with the default version
+        https://bugs.webkit.org/show_bug.cgi?id=128096
+
+        Reviewed by Tim Horton.
+
+        * DatabaseProcess/IndexedDB/sqlite/UniqueIDBDatabaseBackingStoreSQLite.cpp:
+        (WebKit::UniqueIDBDatabaseBackingStoreSQLite::createAndPopulateInitialMetadata): New databases should
+          have the magic "no version set" version.
+
+2014-02-02  Sanghyup Lee  <sh53.lee@samsung.com>
+
+        [EFL][WK2] Add a logic for checking multi touch in GestureRecognizer::noGesture
+        https://bugs.webkit.org/show_bug.cgi?id=127675
+
+        Reviewed by Gyuyoung Kim.
+
+        When processing TouchStart event in GestureRecognizer::noGesture(), we should
+        check the number of touch points to distinguish if the gesture is single tap
+        or pinch zoom. Current logic only considers the event as single tap.
+
+        * UIProcess/API/efl/GestureRecognizer.cpp:
+        (WebKit::GestureRecognizer::noGesture):
+
+2014-02-02  Enrica Casucci  <enrica@apple.com>
+
+        WK2: Selection is non editable content is not cleared when navigating to a different page.
+        https://bugs.webkit.org/show_bug.cgi?id=128084
+        <rdar://problem/15966166>
+
+        Reviewed by Dan Bernstein.
+
+        When resigning first responder, we need to cleanup the selection.
+
+        * UIProcess/API/ios/WKInteractionView.mm:
+        (-[WKInteractionView resignFirstResponder]):
+
+2014-02-02  Enrica Casucci  <enrica@apple.com>
+
+        WK2: Cannot focus a second field in a page after the first has been focused.
+        https://bugs.webkit.org/show_bug.cgi?id=128055
+        <rdar://problem/15943652>
+
+        Reviewed by Simon Fraser.
+
+        When handling singleTap, we always need to send
+        a click to WebKit when we are already interacting with text.
+        Also, when we stop assisting the node, we should not call
+        resign responder, since that will trigger another unwanted blur.
+
+        * UIProcess/API/ios/WKInteractionView.mm:
+        (-[WKInteractionView _singleTapRecognized:]):
+        (-[WKInteractionView _stopAssistingNode]):
+
+2014-02-02  Brady Eidson  <beidson@apple.com>
+
+        IDB: Support IDBFactory.deleteDatabase()
+        https://bugs.webkit.org/show_bug.cgi?id=128060
+
+        Reviewed by Filip Pizlo and Maciej Stachowiak (filesystem parts also Tim Hatcher and Simon Fraser)
+
+        * DatabaseProcess/IndexedDB/DatabaseProcessIDBConnection.cpp:
+        (WebKit::DatabaseProcessIDBConnection::deleteDatabase):
+
+        * DatabaseProcess/IndexedDB/UniqueIDBDatabase.cpp:
+        (WebKit::UniqueIDBDatabase::calculateAbsoluteDatabaseFilename): Central place to
+          calculate the database filename.
+        (WebKit::UniqueIDBDatabase::unregisterConnection):
+        (WebKit::UniqueIDBDatabase::shutdown): Pass shutdown type along. 
+        (WebKit::UniqueIDBDatabase::shutdownBackingStore): If this is a delete shutdown, delete the DB.
+        (WebKit::UniqueIDBDatabase::didShutdownBackingStore): 
+        (WebKit::UniqueIDBDatabase::deleteDatabase):
+        (WebKit::UniqueIDBDatabase::postMainThreadTask): All some tasks to bypass the no-more-request restriction.
+        (WebKit::UniqueIDBDatabase::postDatabaseTask): Ditto.
+        * DatabaseProcess/IndexedDB/UniqueIDBDatabase.h:
+
+        * DatabaseProcess/IndexedDB/sqlite/UniqueIDBDatabaseBackingStoreSQLite.cpp:
+        (WebKit::UniqueIDBDatabaseBackingStoreSQLite::~UniqueIDBDatabaseBackingStoreSQLite):
+        (WebKit::UniqueIDBDatabaseBackingStoreSQLite::getOrEstablishMetadata): Use 
+          calculateAbsoluteDatabaseFilename from UniqueIDBDatabase.
+
+        * WebProcess/Databases/IndexedDB/WebIDBFactoryBackend.cpp:
+        (WebKit::WebIDBFactoryBackend::open): Update logging channel.
+        (WebKit::WebIDBFactoryBackend::deleteDatabase): Implement.
+        * WebProcess/Databases/IndexedDB/WebIDBFactoryBackend.h:
+
+        * Shared/WebCrossThreadCopier.h:
+
+2014-02-01  Darin Adler  <darin@apple.com>
+
+        More characters -> deprecatedCharacters (based on more EWS complaints)
+        https://bugs.webkit.org/show_bug.cgi?id=128063
+
+        Reviewed by Anders Carlsson.
+
+        * Shared/Plugins/Netscape/x11/NetscapePluginModuleX11.cpp:
+        (WebKit::truncateToSingleLine): Use deprecatedCharacters.
+
+2014-02-01  Enrica Casucci  <enrica@apple.com>
+
+        Speculative OSX build fix.
+
+        Excluding WKActionSheet.mm and WKActionSheetAssistant.mm.
+
+        * Configurations/WebKit2.xcconfig:
+
+2014-02-01  Enrica Casucci  <enrica@apple.com>
+
+        Add support for ActionSheets in WK2 for iOS.
+        https://bugs.webkit.org/show_bug.cgi?id=127586
+        <rdar://problem/15283667>
+
+        Reviewed by Benjamin Poulain.
+
+        This patch adds the default support for Action Sheets
+        in WK2 for iOS. WKActionSheet is the implementation of the
+        sheet itself that inherits from UIActionSheet and handles
+        the repositioning of the sheet after rotation for iPad.
+        WKActionSheetAssistant is the controller class that implements
+        the delegate methods, controls the lifetime of the action sheet
+        object and performs the actions.
+        We have 3 different types of sheets:
+           - link sheet, displayed when the target element is a link
+           - image sheet, when the target element is an image
+           - data detector sheet when the target is an element
+             recognized by the data detectors library.
+        Both link and image sheet have a set of default buttons, whereas
+        datadetector sheet in only populated by custom actions provided
+        by data detectors.
+        The link sheet provides the following default actions:
+            - open, navigates to the URL
+            - copy, copies the URL to the pasteboard
+            - add to reading list
+        The image sheet provides the following actions depending on whether
+        the image is contained inside an anchor element or not.
+        If the image is NOT inside a link the following actions are provided:
+           - copy, copies the image to the pasteboard
+           - save image, saves the image in the photo library
+        Instead, if the image is inside an link:
+           - open, navigates to the URL spcified by the link
+           - copy, copies the link URL to the pasteboard
+            - save image, saves the image in the photo library
+            - add to reading list, adds the link URL to reading list.
+
+        * Shared/InteractionInformationAtPosition.cpp:
+        (WebKit::InteractionInformationAtPosition::encode):
+        (WebKit::InteractionInformationAtPosition::decode):
+        * Shared/InteractionInformationAtPosition.h:
+        * Shared/ios/WKGestureTypes.h:
+        * UIProcess/API/ios/PageClientImplIOS.h:
+        * UIProcess/API/ios/PageClientImplIOS.mm:
+        (WebKit::PageClientImpl::saveImageToLibrary):
+        * UIProcess/API/ios/WKActionSheet.h: Added.
+        * UIProcess/API/ios/WKActionSheet.mm: Added.
+        (-[WKActionSheet initWithView:]):
+        (-[WKActionSheet dealloc]):
+        (-[WKActionSheet presentSheet]):
+        (-[WKActionSheet presentSheetFromRect:]):
+        (-[WKActionSheet doneWithSheet]):
+        (-[WKActionSheet willRotate]):
+        (-[WKActionSheet updateSheetPosition]):
+        (-[WKActionSheet didRotate]):
+        (-[WKElementActionInfo initWithInfo:location:title:rect:]):
+        (-[WKElementActionInfo dealloc]):
+        (-[WKElementAction initWithTitle:actionHandler:type:]):
+        (-[WKElementAction dealloc]):
+        (+[WKElementAction customElementActionWithTitle:actionHandler:]):
+        (copyElement):
+        (saveImage):
+        (addToReadingList):
+        (+[WKElementAction standardElementActionWithType:customTitle:]):
+        (+[WKElementAction standardElementActionWithType:]):
+        (-[WKElementAction runActionWithElementInfo:view:]):
+        * UIProcess/API/ios/WKActionSheetAssistant.h: Added.
+        * UIProcess/API/ios/WKActionSheetAssistant.mm: Added.
+        (-[WKActionSheetAssistant initWithView:]):
+        (-[WKActionSheetAssistant dealloc]):
+        (-[WKActionSheetAssistant setPage:WebKit::]):
+        (-[WKActionSheetAssistant superviewForSheet]):
+        (-[WKActionSheetAssistant _presentationRectForSheetGivenPoint:inHostView:]):
+        (-[WKActionSheetAssistant hostViewForSheet]):
+        (-[WKActionSheetAssistant initialPresentationRectInHostViewForSheet]):
+        (-[WKActionSheetAssistant presentationRectInHostViewForSheet]):
+        (-[WKActionSheetAssistant presentSheet]):
+        (-[WKActionSheetAssistant actionSheet:clickedButtonAtIndex:]):
+        (-[WKActionSheetAssistant updateSheetPosition]):
+        (-[WKActionSheetAssistant _createSheetWithElementActions:showLinkTitle:]):
+        (-[WKActionSheetAssistant showImageSheet]):
+        (-[WKActionSheetAssistant showLinkSheet]):
+        (-[WKActionSheetAssistant showDataDetectorsSheet]):
+        (-[WKActionSheetAssistant cleanupSheet]):
+        * UIProcess/API/ios/WKInteractionView.h:
+        * UIProcess/API/ios/WKInteractionView.mm:
+        (-[WKInteractionView initWithFrame:]):
+        (-[WKInteractionView dealloc]):
+        (-[WKInteractionView setPage:WebKit::]):
+        (-[WKInteractionView _showImageSheet]):
+        (-[WKInteractionView _showLinkSheet]):
+        (-[WKInteractionView _showDataDetectorsSheet]):
+        (-[WKInteractionView _actionForLongPress]):
+        (-[WKInteractionView _updatePositionInformation]):
+        (-[WKInteractionView _longPressRecognized:]):
+        (-[WKInteractionView _positionInformationDidChange:]):
+        (-[WKInteractionView _performAction:]):
+        (-[WKInteractionView _updateAccessory]):
+        * UIProcess/PageClient.h:
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/WebPageProxy.messages.in:
+        * UIProcess/ios/WebPageProxyIOS.mm:
+        (WebKit::WebPageProxy::startInteractionWithElementAtPosition):
+        (WebKit::WebPageProxy::stopInteraction):
+        (WebKit::WebPageProxy::performActionOnElement):
+        (WebKit::WebPageProxy::saveImageToLibrary):
+        * WebKit2.xcodeproj/project.pbxproj:
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/WebPage.messages.in:
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::containingLinkElement):
+        (WebKit::WebPage::getPositionInformation):
+        (WebKit::WebPage::startInteractionWithElementAtPosition):
+        (WebKit::WebPage::stopInteraction):
+        (WebKit::WebPage::performActionOnElement):
+
+2014-02-01  Brady Eidson  <beidson@apple.com>
+
+        IDB: Implement IDBCursor.delete()
+        <rdar://problem/15944203> and https://bugs.webkit.org/show_bug.cgi?id=127882
+
+        Reviewed by Sam Weinig.
+
+        IDBCursor.delete() actually relies on deleteRange(), which was implemented earlier.
+        So the only thing keeping it from working was a "Cursors iterate past their end" bug,
+        causing the delete transaction to be aborted.
+
+        * DatabaseProcess/IndexedDB/sqlite/SQLiteIDBCursor.cpp:
+        (WebKit::SQLiteIDBCursor::advanceOnce): When the cursor does the final iteration,
+          clear the previous values to indicate completion.
+
+        * DatabaseProcess/IndexedDB/sqlite/SQLiteIDBTransaction.cpp:
+        (WebKit::SQLiteIDBTransaction::clearCursors): Noticed this opportunistic cleanup to
+          iterate over unique_ptr<>s with an auto& instead of an auto.
+
+2014-01-31  Enrica Casucci  <enrica@apple.com>
+
+        Text interaction assistant is not deleted when dismissing the keyboard on iPad.
+        https://bugs.webkit.org/show_bug.cgi?id=128034
+        <rdar://problem/15915695>
+
+        Reviewed by Dan Bernstein.
+
+        In iPhone mode, tapping on 'Done' in the accessory view
+        calls the delegate accessoryDone where we correctly blur
+        the assisted node and tear down the text interaction assistant.
+        The code path for the keyboard in iPad mode is different,
+        all we get is resignFirstResponder.
+        The fix is just to move the blurring in resignFirstResponder
+        and it works for both iPhone and iPad.
+
+        * UIProcess/API/ios/WKInteractionView.mm:
+        (-[WKInteractionView resignFirstResponder]):
+        (-[WKInteractionView accessoryDone]):
+
+2014-02-01  Brady Eidson  <beidson@apple.com>
+
+        IDB: Implement IDBObjectStore.delete()
+        https://bugs.webkit.org/show_bug.cgi?id=127880
+
+        Reviewed by Sam Weinig.
+
+        Implementing IDBObjectStore.delete() involves filling in the already-stubbed deleteRange() method.
+
+        * DatabaseProcess/IndexedDB/UniqueIDBDatabase.cpp:
+        (WebKit::UniqueIDBDatabase::deleteRangeInBackingStore): Call through to the backing store.
+
+        * DatabaseProcess/IndexedDB/UniqueIDBDatabaseBackingStore.h:
+        * DatabaseProcess/IndexedDB/sqlite/UniqueIDBDatabaseBackingStoreSQLite.cpp:
+        (WebKit::UniqueIDBDatabaseBackingStoreSQLite::deleteRange): Call deleteRecord on each key represented
+          by the passed-in keyRange. This involves collecting each key using a cursor.
+        (WebKit::UniqueIDBDatabaseBackingStoreSQLite::deleteRecord): Delete an individual record from the
+          object store and all associated indexes.
+        * DatabaseProcess/IndexedDB/sqlite/UniqueIDBDatabaseBackingStoreSQLite.h:
+
+        Teach the SQLiteIDBCursor to remember if it ended in an error condition:
+        * DatabaseProcess/IndexedDB/sqlite/SQLiteIDBCursor.cpp:
+        (WebKit::SQLiteIDBCursor::SQLiteIDBCursor):
+        (WebKit::SQLiteIDBCursor::advanceOnce):
+        * DatabaseProcess/IndexedDB/sqlite/SQLiteIDBCursor.h:
+        (WebKit::SQLiteIDBCursor::didError):
+
+2014-02-01  Brady Eidson  <beidson@apple.com>
+
+        IDB: Index reading
+        <rdar://problem/15899973> and https://bugs.webkit.org/show_bug.cgi?id=127868
+
+        Reviewed by Jer Noble.
+
+        * DatabaseProcess/IndexedDB/UniqueIDBDatabase.cpp:
+        (WebKit::UniqueIDBDatabase::getRecordFromBackingStore):
+
+        * DatabaseProcess/IndexedDB/UniqueIDBDatabaseBackingStore.h:
+        * DatabaseProcess/IndexedDB/sqlite/UniqueIDBDatabaseBackingStoreSQLite.cpp:
+        (WebKit::UniqueIDBDatabaseBackingStoreSQLite::getIndexRecord): Using an index cursor, read a value.
+        * DatabaseProcess/IndexedDB/sqlite/UniqueIDBDatabaseBackingStoreSQLite.h:
+
+2014-02-01  Brady Eidson  <beidson@apple.com>
+
+        IDB: Index cursor complete advance() and iterate() support
+        <rdar://problem/15941916> and https://bugs.webkit.org/show_bug.cgi?id=127870
+
+        Reviewed by Dan Bernstein.
+
+        * DatabaseProcess/IndexedDB/sqlite/SQLiteIDBCursor.cpp:
+        (WebKit::SQLiteIDBCursor::advanceOnce): Look up the found record value from the
+          object store records based on the key we found from the index.
+
+2014-01-31  Anders Carlsson  <andersca@apple.com>
+
+        Add webView:didFailNavigation:withError: delegate method
+        https://bugs.webkit.org/show_bug.cgi?id=128022
+
+        Reviewed by Darin Adler.
+
+        * UIProcess/API/APILoaderClient.h:
+        (API::LoaderClient::didFailLoadWithErrorForFrame):
+        * UIProcess/API/C/WKPage.cpp:
+        (WKPageSetPageLoaderClient):
+        * UIProcess/API/Cocoa/WKNavigationDelegate.h:
+        * UIProcess/Cocoa/NavigationState.h:
+        * UIProcess/Cocoa/NavigationState.mm:
+        (WebKit::NavigationState::setNavigationDelegate):
+        (WebKit::NavigationState::LoaderClient::didFailLoadWithErrorForFrame):
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::didFailLoadForFrame):
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/WebPageProxy.messages.in:
+        * WebProcess/WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebKit::WebFrameLoaderClient::dispatchDidFailLoad):
+
+2014-01-31  Brady Eidson  <beidson@apple.com>
+
+        IDB: Handle "nextunique" and "prevunique" cursors, and handle "advance()" correctly
+        https://bugs.webkit.org/show_bug.cgi?id=128040
+
+        Reviewed by Jer Noble.
+
+        * DatabaseProcess/IndexedDB/sqlite/SQLiteIDBCursor.cpp:
+        (WebKit::SQLiteIDBCursor::advance): Entry point for advancing by a number of steps,
+          calls either advanceUnique or advanceOnce the appropriate number of times.
+        (WebKit::SQLiteIDBCursor::advanceUnique): Call advanceOnce until the key has changed.
+        (WebKit::SQLiteIDBCursor::advanceOnce):
+        * DatabaseProcess/IndexedDB/sqlite/SQLiteIDBCursor.h:
+
+2014-01-31  Brady Eidson  <beidson@apple.com>
+
+        IDB: Index cursors use wrong deserialization for the retrieved value
+        https://bugs.webkit.org/show_bug.cgi?id=128035
+
+        Reviewed by Dan Bernstein.
+
+        Most of this is updating everything related to the cursor operation callbacks 
+        to support returning an IDBKey value in addition to a SharedBuffer value.
+
+        * DatabaseProcess/IndexedDB/DatabaseProcessIDBConnection.cpp:
+        (WebKit::DatabaseProcessIDBConnection::openCursor):
+        (WebKit::DatabaseProcessIDBConnection::cursorAdvance):
+        (WebKit::DatabaseProcessIDBConnection::cursorIterate):
+
+        * DatabaseProcess/IndexedDB/UniqueIDBDatabase.cpp:
+        (WebKit::UniqueIDBDatabase::openCursor):
+        (WebKit::UniqueIDBDatabase::cursorAdvance):
+        (WebKit::UniqueIDBDatabase::cursorIterate):
+        (WebKit::UniqueIDBDatabase::openCursorInBackingStore):
+        (WebKit::UniqueIDBDatabase::didOpenCursorInBackingStore):
+        (WebKit::UniqueIDBDatabase::advanceCursorInBackingStore):
+        (WebKit::UniqueIDBDatabase::didAdvanceCursorInBackingStore):
+        (WebKit::UniqueIDBDatabase::iterateCursorInBackingStore):
+        (WebKit::UniqueIDBDatabase::didIterateCursorInBackingStore):
+        * DatabaseProcess/IndexedDB/UniqueIDBDatabase.h:
+
+        * DatabaseProcess/IndexedDB/UniqueIDBDatabaseBackingStore.h:
+        * DatabaseProcess/IndexedDB/sqlite/UniqueIDBDatabaseBackingStoreSQLite.cpp:
+        (WebKit::UniqueIDBDatabaseBackingStoreSQLite::openCursor):
+        (WebKit::UniqueIDBDatabaseBackingStoreSQLite::advanceCursor):
+        (WebKit::UniqueIDBDatabaseBackingStoreSQLite::iterateCursor):
+        * DatabaseProcess/IndexedDB/sqlite/UniqueIDBDatabaseBackingStoreSQLite.h:
+
+        * DatabaseProcess/IndexedDB/sqlite/SQLiteIDBCursor.cpp:
+        (WebKit::SQLiteIDBCursor::advance):
+        * DatabaseProcess/IndexedDB/sqlite/SQLiteIDBCursor.h:
+        (WebKit::SQLiteIDBCursor::currentValueBuffer):
+        (WebKit::SQLiteIDBCursor::currentValueKey):
+
+        * WebProcess/Databases/IndexedDB/WebIDBServerConnection.cpp:
+        (WebKit::WebIDBServerConnection::didOpenCursor):
+        (WebKit::WebIDBServerConnection::didAdvanceCursor):
+        (WebKit::WebIDBServerConnection::didIterateCursor):
+        (WebKit::WebIDBServerConnection::openCursor):
+        (WebKit::WebIDBServerConnection::cursorAdvance):
+        (WebKit::WebIDBServerConnection::cursorIterate):
+        * WebProcess/Databases/IndexedDB/WebIDBServerConnection.h:
+        * WebProcess/Databases/IndexedDB/WebIDBServerConnection.messages.in:
+
+2014-01-31  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Remove inline member functions of FrameSelection that access m_selection
+        https://bugs.webkit.org/show_bug.cgi?id=127986
+
+        Reviewed by Enrica Casucci.
+
+        * WebProcess/WebCoreSupport/gtk/WebEditorClientGtk.cpp:
+        (WebKit::collapseSelection):
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::editorState):
+        (WebKit::WebPage::confirmComposition):
+        (WebKit::WebPage::setComposition):
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::setComposition):
+        (WebKit::WebPage::updateSelectionWithTouches):
+        * WebProcess/WebPage/mac/WebPageMac.mm:
+        (WebKit::WebPage::setComposition):
+        (WebKit::WebPage::getAttributedSubstringFromRange):
+
+2014-01-31  Simon Fraser  <simon.fraser@apple.com>
+
+        Pass the viewport rect and scroll origin independently into the scrolling tree, and make things floats
+        https://bugs.webkit.org/show_bug.cgi?id=128032
+
+        Reviewed by Tim Horton.
+
+        Pass the viewport rect and scroll offset independently into the ScrollingTree
+        via the ScrollingStateScrollingNode, since on iOS the scroll offset doesn't
+        always correspond to the viewport rect.
+        
+        Make the viewport rect and the scroll origin be float-based, since on
+        Retina screens and with zooming these can both be non-integral.
+
+        * Shared/Scrolling/RemoteScrollingCoordinatorTransaction.cpp:
+        (ArgumentCoder<ScrollingStateScrollingNode>::encode):
+        (ArgumentCoder<ScrollingStateScrollingNode>::decode):
+        * UIProcess/Scrolling/RemoteScrollingTree.cpp:
+        (WebKit::RemoteScrollingTree::scrollingTreeNodeDidScroll):
+        * UIProcess/Scrolling/RemoteScrollingTree.h:
+
+2014-01-31  Tim Horton  <timothy_horton@apple.com>
+
+        WebKit2 View Gestures: Crash when pinch-zooming on a page that is just a frameset
+        https://bugs.webkit.org/show_bug.cgi?id=127591
+        <rdar://problem/15898349>
+
+        Reviewed by Simon Fraser.
+
+        When we have no shadow layer, we crash in TiledCoreAnimationDrawingArea::adjustTransientZoom.
+        Fix this null deref; also, we always want a shadow layer, even if the page cannot be scrolled,
+        because it can be revealed by pinching out.
+
+        * WebProcess/WebPage/mac/TiledCoreAnimationDrawingArea.mm:
+        (WebKit::TiledCoreAnimationDrawingArea::adjustTransientZoom):
+        (WebKit::TiledCoreAnimationDrawingArea::commitTransientZoom):
+        (WebKit::TiledCoreAnimationDrawingArea::applyTransientZoomToPage):
+
+2014-01-31  Oliver Hunt  <oliver@apple.com>
+
+        Rollout r163195 and related patches
+
+        * CMakeLists.txt:
+
+2014-01-31  Tim Horton  <timothy_horton@apple.com>
+
+        [wk2] PlatformCALayerRemoteCustom doesn't work on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=128025
+        <rdar://problem/15950271>
+
+        Reviewed by Simon Fraser.
+
+        * Platform/mac/LayerHostingContext.h:
+        * Platform/mac/LayerHostingContext.mm:
+        (WebKit::LayerHostingContext::createForPort):
+        (WebKit::LayerHostingContext::createForExternalHostingProcess):
+        Use the new macro name (in a lot of places).
+        Rename LayerHostingContext::createForWindowServer() to createForExternalHostingProcess().
+        Don't use WKCAContextMakeRemoteForWindowServer on iOS, just use the CAContext
+        SPI directly. We don't want our CAContext to be hit tested because it's purely
+        presentational.
+
+        * UIProcess/API/ios/PageClientImplIOS.h:
+        iOS always hosts layers in an external process.
+
+        * PluginProcess/mac/PluginControllerProxyMac.mm:
+        (WebKit::PluginControllerProxy::updateLayerHostingContext):
+        * Shared/LayerTreeContext.h:
+        * UIProcess/API/mac/PageClientImpl.mm:
+        (WebKit::PageClientImpl::viewLayerHostingMode):
+        * UIProcess/PageClient.h:
+        (WebKit::PageClient::viewLayerHostingMode):
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::WebPageProxy):
+        (WebKit::WebPageProxy::viewStateDidChange):
+        * WebProcess/Plugins/Netscape/NetscapePlugin.cpp:
+        (WebKit::NetscapePlugin::NetscapePlugin):
+        * WebProcess/Plugins/Netscape/mac/NetscapePluginMac.mm:
+        (WebKit::NetscapePlugin::compositingRenderServerPort):
+        * WebProcess/Plugins/PluginView.cpp:
+        (WebKit::PluginView::setLayerHostingMode):
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::reinitializeWebPage):
+        * WebProcess/WebPage/mac/PlatformCALayerRemoteCustom.mm:
+        (PlatformCALayerRemoteCustom::PlatformCALayerRemoteCustom):
+        * WebProcess/WebPage/mac/TiledCoreAnimationDrawingArea.mm:
+        (WebKit::TiledCoreAnimationDrawingArea::updateLayerHostingContext):
+        Use enum class for LayerHostingMode and rename the members to InProcess and OutOfProcess.
+
+2014-01-31  Martin Hock  <mhock@apple.com>
+
+        Add session support to WebPlatformStrategies
+        https://bugs.webkit.org/show_bug.cgi?id=127926
+
+        Reviewed by Alexey Proskuryakov.
+
+        * NetworkProcess/mac/RemoteNetworkingContext.mm:
+        (WebKit::RemoteNetworkingContext::ensurePrivateBrowsingSession):
+        * Shared/SessionTracker.cpp:
+        (WebKit::storageSessionToID):
+        (WebKit::SessionTracker::session):
+        (WebKit::SessionTracker::sessionID):
+        (WebKit::SessionTracker::setSession):
+        (WebKit::SessionTracker::destroySession):
+        * Shared/SessionTracker.h:
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::setSession):
+        * WebProcess/WebCoreSupport/WebPlatformStrategies.cpp:
+        (WebKit::WebPlatformStrategies::cookiesForDOM):
+        (WebKit::WebPlatformStrategies::setCookiesFromDOM):
+        (WebKit::WebPlatformStrategies::cookiesEnabled):
+        (WebKit::WebPlatformStrategies::cookieRequestHeaderFieldValue):
+        (WebKit::WebPlatformStrategies::getRawCookies):
+        (WebKit::WebPlatformStrategies::deleteCookie):
+        * WebProcess/WebCoreSupport/mac/WebFrameNetworkingContext.mm:
+        (WebKit::WebFrameNetworkingContext::ensurePrivateBrowsingSession):
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::setSessionID): Ensure the storage session exists.
+        * WebProcess/WebPage/WebPage.h:
+
+2014-01-31  Alexey Proskuryakov  <ap@apple.com>
+
+        Expose creation and modification times for LocalStorage
+        https://bugs.webkit.org/show_bug.cgi?id=128018
+
+        Reviewed by Anders Carlsson.
+
+        * UIProcess/API/C/WKKeyValueStorageManager.cpp:
+        (WKKeyValueStorageManagerGetOriginKey):
+        (WKKeyValueStorageManagerGetCreationTimeKey):
+        (WKKeyValueStorageManagerGetModificationTimeKey):
+        (WKKeyValueStorageManagerGetStorageDetailsByOrigin):
+        * UIProcess/API/C/WKKeyValueStorageManager.h:
+        * UIProcess/Storage/LocalStorageDatabaseTracker.cpp:
+        (WebKit::LocalStorageDatabaseTracker::origins):
+        (WebKit::LocalStorageDatabaseTracker::details):
+        * UIProcess/Storage/LocalStorageDatabaseTracker.h:
+        * UIProcess/Storage/StorageManager.cpp:
+        (WebKit::StorageManager::getStorageDetailsByOrigin):
+        (WebKit::StorageManager::getStorageDetailsByOriginInternal):
+        * UIProcess/Storage/StorageManager.h:
+        * UIProcess/WebKeyValueStorageManager.cpp:
+        (WebKit::WebKeyValueStorageManager::originKey):
+        (WebKit::WebKeyValueStorageManager::creationTimeKey):
+        (WebKit::WebKeyValueStorageManager::modificationTimeKey):
+        (WebKit::didGetKeyValueStorageOrigins):
+        (WebKit::didGetStorageDetailsByOrigin):
+        (WebKit::WebKeyValueStorageManager::getStorageDetailsByOrigin):
+        * UIProcess/WebKeyValueStorageManager.h:
+        * WebKit2.xcodeproj/project.pbxproj:
+
+2014-01-31  Anders Carlsson  <andersca@apple.com>
+
+        Add webView:didReceiveServerRedirectForProvisionalNavigation:
+        https://bugs.webkit.org/show_bug.cgi?id=128016
+
+        Reviewed by Dan Bernstein.
+
+        * UIProcess/API/APILoaderClient.h:
+        (API::LoaderClient::didReceiveServerRedirectForProvisionalLoadForFrame):
+        * UIProcess/API/C/WKPage.cpp:
+        (WKPageSetPageLoaderClient):
+        * UIProcess/API/Cocoa/WKNavigationDelegate.h:
+        * UIProcess/Cocoa/NavigationState.h:
+        * UIProcess/Cocoa/NavigationState.mm:
+        (WebKit::NavigationState::setNavigationDelegate):
+        (WebKit::NavigationState::LoaderClient::didReceiveServerRedirectForProvisionalLoadForFrame):
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::didReceiveServerRedirectForProvisionalLoadForFrame):
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/WebPageProxy.messages.in:
+        * WebProcess/WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebKit::WebFrameLoaderClient::dispatchDidReceiveServerRedirectForProvisionalLoad):
+        (WebKit::WebFrameLoaderClient::dispatchDecidePolicyForNewWindowAction):
+        (WebKit::WebFrameLoaderClient::dispatchDecidePolicyForNavigationAction):
+
+2014-01-31  Brady Eidson  <beidson@apple.com>
+
+        IDB: Index cursor preliminary support
+        https://bugs.webkit.org/show_bug.cgi?id=127869
+
+        Reviewed by Sam Weinig.
+
+        This gets index cursors running and - for some situations - returning results.
+
+        Bug 127870 will make them fully functional.
+
+        * DatabaseProcess/IndexedDB/sqlite/SQLiteIDBCursor.cpp:
+        (WebKit::getIndexStatement): Using the key and sorting parameters, find the appropriate SQL
+          statement to run an index cursor.
+        (WebKit::getObjectStoreStatement): Same, but for object store cursors.
+        (WebKit::SQLiteIDBCursor::establishStatement): Depending on the type of cursor, choose the
+          correct SQL query and id to use.
+        (WebKit::SQLiteIDBCursor::createSQLiteStatement): With the passed in SQL and id, handle both
+          index and object store cursors.
+        * DatabaseProcess/IndexedDB/sqlite/SQLiteIDBCursor.h:
+
+2014-01-29  Oliver Hunt  <oliver@apple.com>
+
+        Make it possible to implement JS builtins in JS
+        https://bugs.webkit.org/show_bug.cgi?id=127887
+
+        Reviewed by Michael Saboff.
+
+        CMake updates
+
+        * CMakeLists.txt:
+
+2014-01-31  Tim Horton  <timothy_horton@apple.com>
+
+        WebKit2 View Gestures (Swipe): Crashes swiping around a Google Docs spreadsheet
+        https://bugs.webkit.org/show_bug.cgi?id=128013
+        <rdar://problem/15959481>
+
+        Reviewed by Anders Carlsson.
+
+        * UIProcess/mac/ViewGestureController.mm:
+        (WebKit::ViewGestureController::wheelEventWasNotHandledByWebCore):
+        We should never (currently) start a swipe from a non-begin-phase wheel event.
+        We already check this in handleScrollWheelEvent, but can still get
+        non-begin-phase events in wheelEventWasNotHandled.
+
+        We only start "pending" swipes with Begin events, so we should never make them
+        non-pending with anything but a Begin event (we'll get it when it bubbles back up,
+        unhandled, from WebCore). In addition, AppKit throws an exception when we try
+        to start a swipe from end-phase events.
+
+2014-01-31  Brady Eidson  <beidson@apple.com>
+
+        IDB: openCursor() needs to prime the cursor with first position values
+        https://bugs.webkit.org/show_bug.cgi?id=128008
+
+        Reviewed by Alexey Proskuryakov.
+
+        Change openCursor() messaging to pass back the initial keys/values
+        * WebProcess/Databases/IndexedDB/WebIDBServerConnection.cpp:
+        (WebKit::WebIDBServerConnection::didOpenCursor):
+        (WebKit::WebIDBServerConnection::openCursor):
+        * WebProcess/Databases/IndexedDB/WebIDBServerConnection.h:
+        * WebProcess/Databases/IndexedDB/WebIDBServerConnection.messages.in:
+
+        * DatabaseProcess/IndexedDB/DatabaseProcessIDBConnection.cpp:
+        (WebKit::DatabaseProcessIDBConnection::openCursor):
+
+        * DatabaseProcess/IndexedDB/UniqueIDBDatabase.cpp:
+        (WebKit::UniqueIDBDatabase::openCursor):
+        (WebKit::UniqueIDBDatabase::cursorAdvance): Const and reference updates.
+        (WebKit::UniqueIDBDatabase::cursorIterate): Ditto.
+        (WebKit::UniqueIDBDatabase::openCursorInBackingStore):
+        (WebKit::UniqueIDBDatabase::didOpenCursorInBackingStore):
+        * DatabaseProcess/IndexedDB/UniqueIDBDatabase.h:
+
+        * DatabaseProcess/IndexedDB/UniqueIDBDatabaseBackingStore.h:
+        * DatabaseProcess/IndexedDB/sqlite/UniqueIDBDatabaseBackingStoreSQLite.cpp:
+        (WebKit::UniqueIDBDatabaseBackingStoreSQLite::openCursor):
+        * DatabaseProcess/IndexedDB/sqlite/UniqueIDBDatabaseBackingStoreSQLite.h:
+
+        * DatabaseProcess/IndexedDB/sqlite/SQLiteIDBCursor.cpp:
+        (WebKit::SQLiteIDBCursor::maybeCreate): After creating the cursor, advance(1) it.
+
+        * Shared/AsyncTask.h:
+        (WebKit::createAsyncTask):
+
+2014-01-31  Beth Dakin  <bdakin@apple.com>
+
+        Sideways 'wobble' when scrolling with trackpad on Mavericks
+        https://bugs.webkit.org/show_bug.cgi?id=127521
+        -and corresponding-
+        <rdar://problem/14137306>
+
+        Reviewed by Simon Fraser.
+
+        Start using WebCore::WheelEventDeltaTracker to filter events.
+        * WebProcess/WebPage/EventDispatcher.cpp:
+        (WebKit::EventDispatcher::EventDispatcher):
+        (WebKit::EventDispatcher::wheelEvent):
+        * WebProcess/WebPage/EventDispatcher.h:
+
+2014-01-31  Zan Dobersek  <zdobersek@igalia.com>
+
+        Fix the forward declaration of RawPluginMetaData in NetscapePluginModule.h
+        https://bugs.webkit.org/show_bug.cgi?id=127992
+
+        Reviewed by Martin Robinson.
+
+        * Shared/Plugins/Netscape/NetscapePluginModule.h: RawPluginMetaData is a struct, so it should
+        be declared as such. The current forward declaration is throwing a warning when using Clang.
+
+2014-01-31  Anders Carlsson  <andersca@apple.com>
+
+        REGRESSION: WebKit2.PageLoadBasic API test is failing
+        https://bugs.webkit.org/show_bug.cgi?id=127892
+
+        Reviewed by Dan Bernstein.
+
+        On Mountain Lion, URLs returned by -[NSBundle URLForResource:withExtension:subdirectory] include
+        localhost as the hostname, but WebCore::URL normalizes those URLs and removes the host name.
+        
+        Because of this, URLs created by WKURLCreateWithCFURL won't be equal to urls passed through 
+        the WebCore::URL constructor. Change WKURLIsEqual to compare the normalized URLs.
+
+        * Shared/API/c/WKURL.cpp:
+        (WKURLIsEqual):
+        * Shared/APIURL.h:
+        (API::URL::equals):
+        (API::URL::url):
+
+2014-01-31  Brady Eidson  <beidson@apple.com>
+
+        IDB: When deleting object stores/indexes, also delete associated records
+        https://bugs.webkit.org/show_bug.cgi?id=127872
+
+        Reviewed by Anders Carlsson.
+
+        This was mostly done via other patches, but clearObjectStore was the last remaining case:
+        * DatabaseProcess/IndexedDB/sqlite/UniqueIDBDatabaseBackingStoreSQLite.cpp:
+        (WebKit::UniqueIDBDatabaseBackingStoreSQLite::clearObjectStore): Also delete Index records.
+
+2014-01-31  Brady Eidson  <beidson@apple.com>
+
+        IDB: Index writing
+        <rdar://problem/15899973> and https://bugs.webkit.org/show_bug.cgi?id=127868
+
+        Reviewed by Anders Carlsson.
+
+        * DatabaseProcess/IndexedDB/UniqueIDBDatabase.cpp:
+        (WebKit::UniqueIDBDatabase::putRecordInBackingStore): Handle writing index records, as well.
+
+        * DatabaseProcess/IndexedDB/UniqueIDBDatabaseBackingStore.h:
+        * DatabaseProcess/IndexedDB/sqlite/UniqueIDBDatabaseBackingStoreSQLite.cpp:
+        (WebKit::UniqueIDBDatabaseBackingStoreSQLite::createAndPopulateInitialMetadata): Create a table
+          for index records
+        (WebKit::UniqueIDBDatabaseBackingStoreSQLite::extractExistingMetadata): Extract IDBIndexMetadata
+        (WebKit::UniqueIDBDatabaseBackingStoreSQLite::deleteObjectStore):
+        (WebKit::UniqueIDBDatabaseBackingStoreSQLite::deleteIndex):
+        (WebKit::UniqueIDBDatabaseBackingStoreSQLite::putIndexRecord): Store in the IndexRecords table.
+        * DatabaseProcess/IndexedDB/sqlite/UniqueIDBDatabaseBackingStoreSQLite.h:
+
+2014-01-30  Jinwoo Song  <jinwoo7.song@samsung.com>
+
+        [EFL][WK2] Unreviewed EFL WebKit2 build fix after r163116.
+        https://bugs.webkit.org/show_bug.cgi?id=127985
+
+        Unreviewed EFL WebKit2 build fix.
+
+        * UIProcess/CoordinatedGraphics/WebView.cpp:
+        (WebKit::WebView::processDidExit):
+        * UIProcess/CoordinatedGraphics/WebView.h:
+
 2014-01-30  Simon Fraser  <simon.fraser@apple.com>
 
         Fix iOS WK2 build after r163156.

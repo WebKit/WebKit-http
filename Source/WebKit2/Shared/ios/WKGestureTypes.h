@@ -64,6 +64,11 @@ typedef enum {
     WKGestureRecognizerStateRecognized = WKGestureRecognizerStateEnded
 } WKGestureRecognizerState;
 
+typedef enum {
+    WKSheetActionCopy,
+    WKSheetActionSaveImage
+} WKSheetActions;
+
 } // namespace WebKit
 
 #endif // WKGestureTypes_h

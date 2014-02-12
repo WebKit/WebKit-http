@@ -1068,7 +1068,7 @@ void RenderTable::recalcBordersInRowDirection()
     m_borderEnd = calcBorderEnd();
 }
 
-int RenderTable::borderBefore() const
+LayoutUnit RenderTable::borderBefore() const
 {
     if (collapseBorders()) {
         recalcSectionsIfNeeded();
@@ -1077,7 +1077,7 @@ int RenderTable::borderBefore() const
     return RenderBlock::borderBefore();
 }
 
-int RenderTable::borderAfter() const
+LayoutUnit RenderTable::borderAfter() const
 {
     if (collapseBorders()) {
         recalcSectionsIfNeeded();

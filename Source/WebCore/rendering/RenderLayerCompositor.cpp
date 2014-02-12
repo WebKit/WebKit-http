@@ -437,11 +437,12 @@ void RenderLayerCompositor::flushPendingLayerChanges(bool isFlushRoot)
     ChromeClient* client = this->chromeClient();
     if (client && isFlushRoot)
         client->didFlushCompositingLayers();
-#else
+#endif
+
     for (auto it = m_viewportConstrainedLayersNeedingUpdate.begin(), end = m_viewportConstrainedLayersNeedingUpdate.end(); it != end; ++it)
         registerOrUpdateViewportConstrainedLayer(**it);
+
     m_viewportConstrainedLayersNeedingUpdate.clear();
-#endif
     startLayerFlushTimerIfNeeded();
 }
 
@@ -788,7 +789,7 @@ bool RenderLayerCompositor::updateBacking(RenderLayer& layer, CompositingChangeR
                     updateLayerForFooter(page->footerHeight());
                 }
 #endif
-                if (mainFrameBackingIsTiledWithMargin())
+                if (m_renderView.frameView().frame().settings().backgroundShouldExtendBeyondPage())
                     m_rootContentLayer->setMasksToBounds(false);
             }
 
@@ -2735,19 +2736,6 @@ bool RenderLayerCompositor::mainFrameBackingIsTiled() const
     return backing->usingTiledBacking();
 }
 
-bool RenderLayerCompositor::mainFrameBackingIsTiledWithMargin() const
-{
-    RenderLayer* layer = m_renderView.layer();
-    if (!layer)
-        return false;
-
-    RenderLayerBacking* backing = layer->backing();
-    if (!backing)
-        return false;
-
-    return backing->tiledBackingHasMargin();
-}
-
 bool RenderLayerCompositor::shouldCompositeOverflowControls() const
 {
     FrameView& frameView = m_renderView.frameView();
@@ -2804,6 +2792,10 @@ bool RenderLayerCompositor::requiresContentShadowLayer() const
 
 #if PLATFORM(MAC)
     if (viewHasTransparentBackground())
+        return false;
+
+    // If the background is going to extend, then it doesn't make sense to have a shadow layer.
+    if (m_renderView.frameView().frame().settings().backgroundShouldExtendBeyondPage())
         return false;
 
     // On Mac, we want a content shadow layer if we're using tiled drawing and can scroll.
@@ -2962,6 +2954,21 @@ bool RenderLayerCompositor::viewHasTransparentBackground(Color* backgroundColor)
     return documentBackgroundColor.hasAlpha();
 }
 
+void RenderLayerCompositor::setRootExtendedBackgroundColor(const Color& color)
+{
+#if ENABLE(RUBBER_BANDING)
+    if (!m_layerForOverhangAreas)
+        return;
+
+    m_layerForOverhangAreas->setBackgroundColor(color);
+
+    if (!color.isValid())
+        m_layerForOverhangAreas->setCustomAppearance(GraphicsLayer::ScrollingOverhang);
+#else
+    UNUSED_PARAM(color);
+#endif
+}
+
 void RenderLayerCompositor::updateOverflowControlsLayers()
 {
 #if ENABLE(RUBBER_BANDING)
@@ -2973,7 +2980,11 @@ void RenderLayerCompositor::updateOverflowControlsLayers()
 #endif
             m_layerForOverhangAreas->setDrawsContent(false);
             m_layerForOverhangAreas->setSize(m_renderView.frameView().frameRect().size());
-            m_layerForOverhangAreas->setCustomAppearance(GraphicsLayer::ScrollingOverhang);
+
+            if (m_renderView.frameView().frame().settings().backgroundShouldExtendBeyondPage())
+                m_layerForOverhangAreas->setBackgroundColor(m_renderView.frameView().documentBackgroundColor());
+            else
+                m_layerForOverhangAreas->setCustomAppearance(GraphicsLayer::ScrollingOverhang);
 
             // We want the overhang areas layer to be positioned below the frame contents,
             // so insert it below the clip layer.
@@ -3428,7 +3439,6 @@ StickyPositionViewportConstraints RenderLayerCompositor::computeStickyViewportCo
     return constraints;
 }
 
-#if !PLATFORM(IOS)
 static RenderLayerBacking* nearestScrollingCoordinatorAncestor(RenderLayer& layer)
 {
     RenderLayer* ancestor = layer.parent();
@@ -3442,14 +3452,9 @@ static RenderLayerBacking* nearestScrollingCoordinatorAncestor(RenderLayer& laye
 
     return nullptr;
 }
-#endif
 
 void RenderLayerCompositor::registerOrUpdateViewportConstrainedLayer(RenderLayer& layer)
 {
-#if PLATFORM(IOS)
-    UNUSED_PARAM(layer);
-    // On iOS, we batch-update viewport-constrained layers in updateCustomLayersAfterFlush().
-#else
     // FIXME: We should support sticky position here! And we should eventuall support fixed/sticky elements
     // that are inside non-main frames once we get non-main frames scrolling with the ScrollingCoordinator.
     if (m_renderView.document().ownerElement())
@@ -3483,19 +3488,14 @@ void RenderLayerCompositor::registerOrUpdateViewportConstrainedLayer(RenderLayer
         scrollingCoordinator->updateViewportConstrainedNode(nodeID, computeStickyViewportConstraints(layer), backing->graphicsLayer());
     else
         scrollingCoordinator->updateViewportConstrainedNode(nodeID, computeFixedViewportConstraints(layer), backing->graphicsLayer());
-#endif
 }
 
 void RenderLayerCompositor::unregisterViewportConstrainedLayer(RenderLayer& layer)
 {
     ASSERT(m_viewportConstrainedLayers.contains(&layer));
-#if PLATFORM(IOS)
-    UNUSED_PARAM(layer);
-    // On iOS, we batch-update viewport-constrained layers in updateCustomLayersAfterFlush().
-#else
+
     if (RenderLayerBacking* backing = layer.backing())
         backing->detachFromScrollingCoordinator();
-#endif
 }
 
 #if PLATFORM(IOS)

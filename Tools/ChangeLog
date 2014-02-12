@@ -1,3 +1,305 @@
+2014-02-03  Krzysztof Czech  <k.czech@samsung.com>
+
+        [ATK] Expose aria-controls through ATK_RELATION_CONTROLLER_FOR
+        https://bugs.webkit.org/show_bug.cgi?id=127908
+
+        Reviewed by Chris Fleizach.
+
+        Updated AccessibilityUIElement both in WKTR and DRT so that aria-controls support could be tested properly.
+        Added empty stubs to not break mac builds.
+
+        * DumpRenderTree/AccessibilityUIElement.cpp:
+        (ariaControlsElementAtIndexCallback):
+        (AccessibilityUIElement::getJSClass):
+        * DumpRenderTree/AccessibilityUIElement.h:
+        * DumpRenderTree/atk/AccessibilityUIElementAtk.cpp:
+        (accessibilityElementAtIndex):
+        (AccessibilityUIElement::disclosedRowAtIndex):
+        (AccessibilityUIElement::ariaOwnsElementAtIndex):
+        (AccessibilityUIElement::ariaFlowToElementAtIndex):
+        (AccessibilityUIElement::ariaControlsElementAtIndex):
+        * DumpRenderTree/ios/AccessibilityUIElementIOS.mm:
+        (AccessibilityUIElement::ariaControlsElementAtIndex):
+        * DumpRenderTree/mac/AccessibilityUIElementMac.mm:
+        (AccessibilityUIElement::ariaControlsElementAtIndex):
+        * DumpRenderTree/win/AccessibilityUIElementWin.cpp:
+        (AccessibilityUIElement::ariaControlsElementAtIndex):
+        * WebKitTestRunner/InjectedBundle/AccessibilityUIElement.h:
+        * WebKitTestRunner/InjectedBundle/Bindings/AccessibilityUIElement.idl:
+        * WebKitTestRunner/InjectedBundle/atk/AccessibilityUIElementAtk.cpp:
+        (WTR::accessibilityElementAtIndex):
+        (WTR::AccessibilityUIElement::linkedUIElementAtIndex):
+        (WTR::AccessibilityUIElement::ariaOwnsElementAtIndex):
+        (WTR::AccessibilityUIElement::ariaFlowToElementAtIndex):
+        (WTR::AccessibilityUIElement::ariaControlsElementAtIndex):
+        * WebKitTestRunner/InjectedBundle/ios/AccessibilityUIElementIOS.mm:
+        (WTR::AccessibilityUIElement::ariaControlsElementAtIndex):
+        * WebKitTestRunner/InjectedBundle/mac/AccessibilityUIElementMac.mm:
+        (WTR::AccessibilityUIElement::ariaControlsElementAtIndex):
+
+2014-02-02  Daniel Bates  <dabates@apple.com>
+
+        WebKit Bot Watcher's Dashboard: Access restricted queue should only prompt for HTTP credentials once per page load
+        https://bugs.webkit.org/show_bug.cgi?id=127849
+
+        I inadvertently used the equality operator instead of the identity operator when comparing the
+        value of the error HTTP status code with the numeric literal 401.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotQueue.js:
+        (BuildbotQueue.prototype.update):
+
+2014-02-02  Daniel Bates  <dabates@apple.com>
+
+        Attempt to fix production dashboard after <http://trac.webkit.org/changeset/163222>
+
+        Actually pass option dictionary to JSON.load(); JSON.load() takes four arguments with the
+        last-most argument being the option dictionary.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotIteration.js:
+        (BuildbotIteration.prototype.update):
+
+2014-02-01  Filip Pizlo  <fpizlo@apple.com>
+
+        JSC profiler's stub info profiling support should work again
+        https://bugs.webkit.org/show_bug.cgi?id=128057
+
+        Reviewed by Mark Lam.
+
+        * Scripts/display-profiler-output: Just make sure that there's always a space between the origin stack dump and the top bytecode index.
+
+2014-02-01  Filip Pizlo  <fpizlo@apple.com>
+
+        JSC profiler should show reasons for jettison
+        https://bugs.webkit.org/show_bug.cgi?id=128047
+
+        Reviewed by Geoffrey Garen.
+        
+        Gave the tool a "log" command, that tells you all of the interesting things
+        that happened to a piece of bytecode, from the standpoint of optimization.
+        It's a great summary view for seeing how our tier-up machinery works.
+        
+        This uses a lot of information that was already available, plus the newly
+        added jettisonReason field.
+
+        * Scripts/display-profiler-output:
+
+2014-01-31  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Remove inline member functions of FrameSelection that access m_selection
+        https://bugs.webkit.org/show_bug.cgi?id=127986
+
+        Reviewed by Enrica Casucci.
+
+        * TestWebKitAPI/Configurations/Base.xcconfig:
+
+2014-01-31  Anders Carlsson  <andersca@apple.com>
+
+        Another attempt at fixing the build.
+
+        * TestWebKitAPI/Configurations/Base.xcconfig:
+
+2014-01-31  Oliver Hunt  <oliver@apple.com>
+
+        Rollout r163195 and related patches
+
+        * DumpRenderTree/CMakeLists.txt:
+        * WebKitTestRunner/CMakeLists.txt:
+        * WinCELauncher/CMakeLists.txt:
+
+2014-01-31  Daniel Bates  <dabates@apple.com>
+
+        Attempt to fix Production Dashboard after <http://trac.webkit.org/changeset/163213>
+        (https://bugs.webkit.org/show_bug.cgi?id=127849)
+
+        Reviewed by David Farler.
+
+        Pass credentials when querying build bot iteration. 
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotIteration.js:
+        (BuildbotIteration.prototype.update):
+        (BuildbotIteration.prototype.loadLayoutTestResults):
+
+2014-01-31  Anders Carlsson  <andersca@apple.com>
+
+        Fix iOS build.
+
+        * TestWebKitAPI/Configurations/Base.xcconfig:
+
+2014-01-31  Simon Fraser  <simon.fraser@apple.com>
+
+        WebKitTestRunner project doesn't show Mac as a valid destination architecture.
+        
+        Make sure that SUPPORTED_PLATFORMS is defined in Base.xcconfig.
+        
+        Also add BaseTarget.xcconfig to the project.
+
+        * WebKitTestRunner/Configurations/Base.xcconfig:
+        * WebKitTestRunner/WebKitTestRunner.xcodeproj/project.pbxproj:
+
+2014-01-31  Daniel Bates  <dabates@apple.com>
+
+        WebKit Bot Watcher's Dashboard: Access restricted queue should only prompt for HTTP credentials once per page load
+        https://bugs.webkit.org/show_bug.cgi?id=127849
+
+        Reviewed by Alexey Proskuryakov.
+
+        Currently whenever the dashboard updates the status of a queue whose Buildbot requires authentication
+        it will cause a browser to prompt for credentials once per update until valid credentials are provided.
+        Instead we should keep track of Buildbots that respond with an HTTP 401 Unauthorized status code to avoid
+        subsequently querying them and hence cause a browser to prompt for credentials. Together with an optional
+        hint provided when instantiating a Buildbot object as to whether it requires authentication, we can make
+        the dashboard prompt for HTTP credentials exactly once per page load for each queue whose associated
+        Buildbot requires authentication.
+
+        Queues whose Buildbot wasn't authenticated will show in the dashboard as "unauthorized". Clicking on
+        this status message will cause the browser to prompt for credentials.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/Buildbot.js:
+        (Buildbot): Initialize instance variable authenticationStatus to Buildbot.AuthenticationStatus.Unauthenticated.
+        (Buildbot.prototype.get needsAuthentication): Added.
+        (Buildbot.prototype.get authenticationStatus): Added.
+        (Buildbot.prototype.get isAuthenticated): Added.
+        (Buildbot.prototype.set isAuthenticated): Added.
+        (Buildbot.prototype.updateQueues): Added.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotBuilderQueueView.js:
+        (BuildbotBuilderQueueView.prototype.update.appendBuilderQueueStatus): Modified to call
+        BuildbotQueueView.prototype._appendUnauthorizedLineView() to update the view and show status of the queue as
+        "unauthorized" if the Buildbot associated with the queue is either unauthenticated or was given invalid credentials.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotQueue.js:
+        (BuildbotQueue.prototype.update): Return immediately if the associated Buildbot requires authentication.
+        Additionally, if the JSON load fails with an HTTP 401 Unauthorized access error (say, credentials were
+        invalidated) then update the authentication status of the Buildbot to avoid subsequently prompting a
+        person for credentials the next time the queue update timer fires.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotQueueView.js:
+        (BuildbotQueueView): Register as a listener for event BuildbotQueue.Event.UnauthorizedAccess on each queue
+        so that the view can be updated to show status "unauthorized".
+        (BuildbotQueueView.prototype._appendUnauthorizedLineView): Added.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotTesterQueueView.js:
+        (BuildbotTesterQueueView.prototype.update.appendBuilderQueueStatus):
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/StatusLineView.js: Added new status, StatusLineView.Status.Unauthorized.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Styles/StatusLineView.css:
+        (.status-line.unauthorized .bubble): Added.
+        (.status-line.unauthorized .bubble.pictogram): Added.
+        (.status-line.unauthorized .message): Added.
+
+2014-01-31  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, really make --copy-libraries a no-able option.
+        
+        * Scripts/build-jsc:
+
+2014-01-31  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, really add the --copy-libraries option.
+
+        * Scripts/build-jsc:
+
+2014-01-31  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, fix the script for older Rubies.
+
+        * Scripts/export-llvm-build:
+
+2014-01-31  Filip Pizlo  <fpizlo@apple.com>
+
+        Having a custom LLVM checkout should always override all other ways of getting LLVM
+        https://bugs.webkit.org/show_bug.cgi?id=128015
+
+        Reviewed by Oliver Hunt.
+
+        * Scripts/copy-webkitlibraries-to-product-directory:
+
+2014-01-31  Daniel Bates  <dabates@apple.com>
+
+        WebKit Bot Watcher's Dashboard: Teach JSON.load() to take optional failure callback function
+        https://bugs.webkit.org/show_bug.cgi?id=127924
+
+        Reviewed by Alexey Proskuryakov.
+
+        Towards providing better error handling when a JSON load fails with a non-200 HTTP status
+        code, we should teach JSON.load() to take an optional failure callback function and invoke
+        it when either a load error or a JSON parsing error occurs.
+
+        As a side benefit of having a failure callback function a caller can separate the error handling
+        logic for a JSON load or parse error from the logic of handling a successful parsing of JSON content.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotIteration.js:
+        (BuildbotIteration.prototype.loadLayoutTestResults): Move JSON parser error logic into failure
+        callback function.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/Utilities.js:
+        (JSON.load): Modified to take optional failure callback function called failureCallback.
+
+2014-01-29  Oliver Hunt  <oliver@apple.com>
+
+        Make it possible to implement JS builtins in JS
+        https://bugs.webkit.org/show_bug.cgi?id=127887
+
+        Reviewed by Michael Saboff.
+
+        CMake updates
+
+        * DumpRenderTree/CMakeLists.txt:
+        * WebKitTestRunner/CMakeLists.txt:
+        * WinCELauncher/CMakeLists.txt:
+
+2014-01-31  Filip Pizlo  <fpizlo@apple.com>
+
+        Allow more flexibility for copy-webkitlibraries-to-product-directory
+        https://bugs.webkit.org/show_bug.cgi?id=128010
+
+        Reviewed by Oliver Hunt.
+        
+        It's now the case that copy-webkitlibraries-to-product-directory does nothing by
+        default, but you can tell it to either copy WebKitSystemInterface (--wksi) or LLVM
+        (--llvm). You can also tell it where to get LLVM from.
+
+        * Scripts/build-jsc:
+        * Scripts/build-webkit:
+        * Scripts/copy-webkitlibraries-to-product-directory:
+
+2014-01-31  David Farler  <dfarler@apple.com>
+
+        DumpRenderTree iOS fails to link: missing rowHeaders and columnHeaders in AccessibilityUIElement
+        https://bugs.webkit.org/show_bug.cgi?id=128004
+
+        Reviewed by Chris Fleizach.
+
+        * DumpRenderTree/ios/AccessibilityUIElementIOS.mm:
+        (AccessibilityUIElement::columnHeaders): Stub added.
+        (AccessibilityUIElement::rowHeaders): Stub added.
+
+2014-01-31  Zoltan Horvath  <zoltan@webkit.org>
+
+        Unreviewed. Update my contributors.json entry.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2014-01-31  Anders Carlsson  <andersca@apple.com>
+
+        REGRESSION: WebKit2.PageLoadBasic API test is failing
+        https://bugs.webkit.org/show_bug.cgi?id=127892
+
+        Reviewed by Dan Bernstein.
+
+        Re-enable test.
+
+        * TestWebKitAPI/Tests/WebKit2/PageLoadBasic.cpp:
+
+2014-01-31  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [jhbuild] Disable escape sequences in EWS output
+        https://bugs.webkit.org/show_bug.cgi?id=127922
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/webkitpy/common/system/environment.py:
+        (Environment.disable_gcc_smartquotes):
+        (Environment):
+        (Environment.disable_jhbuild_VT100_output):
+        * Scripts/webkitpy/tool/commands/download_unittest.py:
+        * Scripts/webkitpy/tool/steps/build.py:
+        (Build.build):
+
 2014-01-30  Martin Robinson  <mrobinson@igalia.com>
 
         [GTK] [CMake] Add support for building against GTK+ 2

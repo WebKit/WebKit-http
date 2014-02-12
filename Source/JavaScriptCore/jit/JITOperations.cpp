@@ -612,8 +612,8 @@ void JIT_OPERATION operationDirectPutByValGeneric(ExecState* exec, EncodedJSValu
 EncodedJSValue JIT_OPERATION operationCallEval(ExecState* exec, ExecState* execCallee)
 {
     ASSERT(exec->codeBlock()->codeType() != FunctionCode
-        || !exec->codeBlock()->needsFullScopeChain()
-        || exec->uncheckedR(exec->codeBlock()->activationRegister().offset()).jsValue());
+        || !exec->codeBlock()->needsActivation()
+        || exec->hasActivation());
 
     execCallee->setScope(exec->scope());
     execCallee->setCodeBlock(0);
@@ -1148,7 +1148,7 @@ SlowPathReturnType JIT_OPERATION operationOptimize(ExecState* exec, int32_t byte
                     "Triggering reoptimization of ", *codeBlock,
                     "(", *codeBlock->replacement(), ") (in loop).\n");
             }
-            codeBlock->replacement()->jettison(CountReoptimization);
+            codeBlock->replacement()->jettison(Profiler::JettisonDueToBaselineLoopReoptimizationTrigger, CountReoptimization);
             return encodeResult(0, 0);
         }
     } else {
@@ -1233,7 +1233,7 @@ SlowPathReturnType JIT_OPERATION operationOptimize(ExecState* exec, int32_t byte
                 "Triggering reoptimization of ", *codeBlock, " -> ",
                 *codeBlock->replacement(), " (after OSR fail).\n");
         }
-        optimizedCodeBlock->jettison(CountReoptimization);
+        optimizedCodeBlock->jettison(Profiler::JettisonDueToBaselineLoopReoptimizationTriggerOnOSREntryFail, CountReoptimization);
         return encodeResult(0, 0);
     }
 
@@ -1517,7 +1517,7 @@ void JIT_OPERATION operationTearOffActivation(ExecState* exec, JSCell* activatio
     VM& vm = exec->vm();
     NativeCallFrameTracer tracer(&vm, exec);
 
-    ASSERT(exec->codeBlock()->needsFullScopeChain());
+    ASSERT(exec->codeBlock()->needsActivation());
     jsCast<JSActivation*>(activationCell)->tearOff(vm);
 }
 

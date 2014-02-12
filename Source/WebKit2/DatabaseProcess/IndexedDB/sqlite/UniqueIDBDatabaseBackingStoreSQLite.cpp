@@ -30,6 +30,7 @@
 
 #include "ArgumentDecoder.h"
 #include "IDBSerialization.h"
+#include "Logging.h"
 #include "SQLiteIDBCursor.h"
 #include "SQLiteIDBTransaction.h"
 #include <WebCore/FileSystem.h>
@@ -67,6 +68,9 @@ UniqueIDBDatabaseBackingStoreSQLite::UniqueIDBDatabaseBackingStoreSQLite(const U
 UniqueIDBDatabaseBackingStoreSQLite::~UniqueIDBDatabaseBackingStoreSQLite()
 {
     ASSERT(!isMainThread());
+
+    m_transactions.clear();
+    m_sqliteDB = nullptr;
 }
 
 std::unique_ptr<IDBDatabaseMetadata> UniqueIDBDatabaseBackingStoreSQLite::createAndPopulateInitialMetadata()
@@ -94,6 +98,12 @@ std::unique_ptr<IDBDatabaseMetadata> UniqueIDBDatabaseBackingStoreSQLite::create
     }
 
     if (!m_sqliteDB->executeCommand("CREATE TABLE Records (objectStoreID INTEGER NOT NULL ON CONFLICT FAIL, key TEXT COLLATE IDBKEY NOT NULL ON CONFLICT FAIL UNIQUE ON CONFLICT REPLACE, value NOT NULL ON CONFLICT FAIL);")) {
+        LOG_ERROR("Could not create Records table in database (%i) - %s", m_sqliteDB->lastError(), m_sqliteDB->lastErrorMsg());
+        m_sqliteDB = nullptr;
+        return nullptr;
+    }
+
+    if (!m_sqliteDB->executeCommand("CREATE TABLE IndexRecords (indexID INTEGER NOT NULL ON CONFLICT FAIL, objectStoreID INTEGER NOT NULL ON CONFLICT FAIL, key TEXT COLLATE IDBKEY NOT NULL ON CONFLICT FAIL UNIQUE ON CONFLICT REPLACE, value NOT NULL ON CONFLICT FAIL);")) {
         LOG_ERROR("Could not create Records table in database (%i) - %s", m_sqliteDB->lastError(), m_sqliteDB->lastErrorMsg());
         m_sqliteDB = nullptr;
         return nullptr;
@@ -130,7 +140,7 @@ std::unique_ptr<IDBDatabaseMetadata> UniqueIDBDatabaseBackingStoreSQLite::create
         // Therefore we'll store the version as a String.
         SQLiteStatement sql(*m_sqliteDB, ASCIILiteral("INSERT INTO IDBDatabaseInfo VALUES ('DatabaseVersion', ?);"));
         if (sql.prepare() != SQLResultOk
-            || sql.bindText(1, String::number(0)) != SQLResultOk
+            || sql.bindText(1, String::number(IDBDatabaseMetadata::NoIntVersion)) != SQLResultOk
             || sql.step() != SQLResultDone) {
             LOG_ERROR("Could not insert default version into IDBDatabaseInfo table (%i) - %s", m_sqliteDB->lastError(), m_sqliteDB->lastErrorMsg());
             m_sqliteDB = nullptr;
@@ -147,7 +157,7 @@ std::unique_ptr<IDBDatabaseMetadata> UniqueIDBDatabaseBackingStoreSQLite::create
     // This initial metadata matches the default values we just put into the metadata database.
     auto metadata = std::make_unique<IDBDatabaseMetadata>();
     metadata->name = m_identifier.databaseName();
-    metadata->version = 0;
+    metadata->version = IDBDatabaseMetadata::NoIntVersion;
     metadata->maxObjectStoreId = 1;
 
     return metadata;
@@ -202,11 +212,10 @@ std::unique_ptr<IDBDatabaseMetadata> UniqueIDBDatabaseBackingStoreSQLite::extrac
             osMetadata.id = sql.getColumnInt64(0);
             osMetadata.name = sql.getColumnText(1);
 
-            int keyPathSize;
-            const uint8_t* keyPathBuffer = static_cast<const uint8_t*>(sql.getColumnBlob(2, keyPathSize));
+            Vector<char> keyPathBuffer;
+            sql.getColumnBlobAsVector(2, keyPathBuffer);
 
-
-            if (!deserializeIDBKeyPath(keyPathBuffer, keyPathSize, osMetadata.keyPath)) {
+            if (!deserializeIDBKeyPath(reinterpret_cast<const uint8_t*>(keyPathBuffer.data()), keyPathBuffer.size(), osMetadata.keyPath)) {
                 LOG_ERROR("Unable to extract key path metadata from database");
                 return nullptr;
             }
@@ -224,7 +233,46 @@ std::unique_ptr<IDBDatabaseMetadata> UniqueIDBDatabaseBackingStoreSQLite::extrac
         }
     }
 
-    // FIXME: Once we save indexes we need to extract their metadata, also.
+    {
+        SQLiteStatement sql(*m_sqliteDB, ASCIILiteral("SELECT id, name, objectStoreID, keyPath, isUnique, multiEntry FROM IndexInfo;"));
+        if (sql.prepare() != SQLResultOk)
+            return nullptr;
+
+        int result = sql.step();
+        while (result == SQLResultRow) {
+            IDBIndexMetadata indexMetadata;
+
+            indexMetadata.id = sql.getColumnInt64(0);
+            indexMetadata.name = sql.getColumnText(1);
+            int64_t objectStoreID = sql.getColumnInt64(2);
+
+            Vector<char> keyPathBuffer;
+            sql.getColumnBlobAsVector(3, keyPathBuffer);
+
+            if (!deserializeIDBKeyPath(reinterpret_cast<const uint8_t*>(keyPathBuffer.data()), keyPathBuffer.size(), indexMetadata.keyPath)) {
+                LOG_ERROR("Unable to extract key path metadata from database");
+                return nullptr;
+            }
+
+            indexMetadata.unique = sql.getColumnInt(4);
+            indexMetadata.multiEntry = sql.getColumnInt(5);
+
+            auto objectStoreMetadataIt = metadata->objectStores.find(objectStoreID);
+            if (objectStoreMetadataIt == metadata->objectStores.end()) {
+                LOG_ERROR("Found index referring to a non-existant object store");
+                return nullptr;
+            }
+
+            objectStoreMetadataIt->value.indexes.set(indexMetadata.id, indexMetadata);
+
+            result = sql.step();
+        }
+
+        if (result != SQLResultDone) {
+            LOG_ERROR("Error fetching index metadata from database on disk");
+            return nullptr;
+        }
+    }
 
     return metadata;
 }
@@ -250,7 +298,8 @@ std::unique_ptr<IDBDatabaseMetadata> UniqueIDBDatabaseBackingStoreSQLite::getOrE
 {
     ASSERT(!isMainThread());
 
-    String dbFilename = pathByAppendingComponent(m_absoluteDatabaseDirectory, "IndexedDB.sqlite3");
+    String dbFilename = UniqueIDBDatabase::calculateAbsoluteDatabaseFilename(m_absoluteDatabaseDirectory);
+
     m_sqliteDB = openSQLiteDatabaseAtPath(dbFilename);
     if (!m_sqliteDB)
         return nullptr;
@@ -452,33 +501,37 @@ bool UniqueIDBDatabaseBackingStoreSQLite::deleteObjectStore(const IDBIdentifier&
         }
     }
 
-    // Delete all associated Index records
+    // Delete all associated records
     {
-        Vector<int64_t> indexIDs;
-        SQLiteStatement sql(*m_sqliteDB, ASCIILiteral("SELECT id FROM IndexInfo WHERE objectStoreID = ?;"));
+        SQLiteStatement sql(*m_sqliteDB, ASCIILiteral("DELETE FROM Records WHERE objectStoreID = ?;"));
         if (sql.prepare() != SQLResultOk
-            || sql.bindInt64(1, objectStoreID) != SQLResultOk) {
-            LOG_ERROR("Error fetching index ID records for object store id %lli from IndexInfo table (%i) - %s", objectStoreID, m_sqliteDB->lastError(), m_sqliteDB->lastErrorMsg());
+            || sql.bindInt64(1, objectStoreID) != SQLResultOk
+            || sql.step() != SQLResultDone) {
+            LOG_ERROR("Could not delete records for object store %lli (%i) - %s", objectStoreID, m_sqliteDB->lastError(), m_sqliteDB->lastErrorMsg());
             return false;
-        }
-
-        int resultCode;
-        while ((resultCode = sql.step()) == SQLResultRow)
-            indexIDs.append(sql.getColumnInt64(0));
-
-        if (resultCode != SQLResultDone) {
-            LOG_ERROR("Error fetching index ID records for object store id %lli from IndexInfo table (%i) - %s", objectStoreID, m_sqliteDB->lastError(), m_sqliteDB->lastErrorMsg());
-            return false;
-        }
-
-        for (auto indexID : indexIDs) {
-            if (!deleteIndex(transactionIdentifier, objectStoreID, indexID))
-                return false;
         }
     }
 
+    // Delete all associated Indexes
     {
-        // FIXME: Execute SQL here to drop all records related to this object store.
+        SQLiteStatement sql(*m_sqliteDB, ASCIILiteral("DELETE FROM IndexInfo WHERE objectStoreID = ?;"));
+        if (sql.prepare() != SQLResultOk
+            || sql.bindInt64(1, objectStoreID) != SQLResultOk
+            || sql.step() != SQLResultDone) {
+            LOG_ERROR("Could not delete index from IndexInfo table (%i) - %s", m_sqliteDB->lastError(), m_sqliteDB->lastErrorMsg());
+            return false;
+        }
+    }
+
+    // Delete all associated Index records
+    {
+        SQLiteStatement sql(*m_sqliteDB, ASCIILiteral("DELETE FROM IndexRecords WHERE objectStoreID = ?;"));
+        if (sql.prepare() != SQLResultOk
+            || sql.bindInt64(1, objectStoreID) != SQLResultOk
+            || sql.step() != SQLResultDone) {
+            LOG_ERROR("Could not delete index records(%i) - %s", m_sqliteDB->lastError(), m_sqliteDB->lastErrorMsg());
+            return false;
+        }
     }
 
     return true;
@@ -510,7 +563,16 @@ bool UniqueIDBDatabaseBackingStoreSQLite::clearObjectStore(const IDBIdentifier& 
         }
     }
 
-    // FIXME <rdar://problem/15779642>: Once indexes are implemented, drop index records.
+    {
+        SQLiteStatement sql(*m_sqliteDB, ASCIILiteral("DELETE FROM IndexRecords WHERE objectStoreID = ?;"));
+        if (sql.prepare() != SQLResultOk
+            || sql.bindInt64(1, objectStoreID) != SQLResultOk
+            || sql.step() != SQLResultDone) {
+            LOG_ERROR("Could not delete records from index record store id %lli (%i) - %s", objectStoreID, m_sqliteDB->lastError(), m_sqliteDB->lastErrorMsg());
+            return false;
+        }
+    }
+
     return true;
 }
 
@@ -579,7 +641,17 @@ bool UniqueIDBDatabaseBackingStoreSQLite::deleteIndex(const IDBIdentifier& trans
         }
     }
 
-    // FIXME (<rdar://problem/15905293>) - Once we store records against indexes, delete them here.
+    {
+        SQLiteStatement sql(*m_sqliteDB, ASCIILiteral("DELETE FROM IndexRecords WHERE indexID = ? AND objectStoreID = ?;"));
+        if (sql.prepare() != SQLResultOk
+            || sql.bindInt64(1, indexID) != SQLResultOk
+            || sql.bindInt64(2, objectStoreID) != SQLResultOk
+            || sql.step() != SQLResultDone) {
+            LOG_ERROR("Could not delete index records for index id %lli from IndexRecords table (%i) - %s", indexID, m_sqliteDB->lastError(), m_sqliteDB->lastErrorMsg());
+            return false;
+        }
+    }
+
     return true;
 }
 
@@ -691,6 +763,181 @@ bool UniqueIDBDatabaseBackingStoreSQLite::putRecord(const IDBIdentifier& transac
             || sql.bindBlob(3, valueBuffer, valueSize) != SQLResultOk
             || sql.step() != SQLResultDone) {
             LOG_ERROR("Could not put record for object store %lli in Records table (%i) - %s", objectStoreID, m_sqliteDB->lastError(), m_sqliteDB->lastErrorMsg());
+            return false;
+        }
+    }
+
+    return true;
+}
+
+bool UniqueIDBDatabaseBackingStoreSQLite::putIndexRecord(const IDBIdentifier& transactionIdentifier, int64_t objectStoreID, int64_t indexID, const IDBKeyData& keyValue, const IDBKeyData& indexKey)
+{
+    ASSERT(!isMainThread());
+    ASSERT(m_sqliteDB);
+    ASSERT(m_sqliteDB->isOpen());
+
+    SQLiteIDBTransaction* transaction = m_transactions.get(transactionIdentifier);
+    if (!transaction || !transaction->inProgress()) {
+        LOG_ERROR("Attempt to put index record into database without an established, in-progress transaction");
+        return false;
+    }
+    if (transaction->mode() == IndexedDB::TransactionMode::ReadOnly) {
+        LOG_ERROR("Attempt to put index record into database during read-only transaction");
+        return false;
+    }
+
+    RefPtr<SharedBuffer> indexKeyBuffer = serializeIDBKeyData(indexKey);
+    if (!indexKeyBuffer) {
+        LOG_ERROR("Unable to serialize index key to be stored in the database");
+        return false;
+    }
+
+    RefPtr<SharedBuffer> valueBuffer = serializeIDBKeyData(keyValue);
+    if (!valueBuffer) {
+        LOG_ERROR("Unable to serialize the value to be stored in the database");
+        return false;
+    }
+    {
+        SQLiteStatement sql(*m_sqliteDB, ASCIILiteral("INSERT INTO IndexRecords VALUES (?, ?, CAST(? AS TEXT), ?);"));
+        if (sql.prepare() != SQLResultOk
+            || sql.bindInt64(1, indexID) != SQLResultOk
+            || sql.bindInt64(2, objectStoreID) != SQLResultOk
+            || sql.bindBlob(3, indexKeyBuffer->data(), indexKeyBuffer->size()) != SQLResultOk
+            || sql.bindBlob(4, valueBuffer->data(), valueBuffer->size()) != SQLResultOk
+            || sql.step() != SQLResultDone) {
+            LOG_ERROR("Could not put index record for index %lli in object store %lli in Records table (%i) - %s", indexID, objectStoreID, m_sqliteDB->lastError(), m_sqliteDB->lastErrorMsg());
+            return false;
+        }
+    }
+
+    return true;
+}
+
+bool UniqueIDBDatabaseBackingStoreSQLite::getIndexRecord(const IDBIdentifier& transactionIdentifier, int64_t objectStoreID, int64_t indexID, const IDBKeyRangeData& keyRangeData, RefPtr<SharedBuffer>& result)
+{
+    ASSERT(!isMainThread());
+    ASSERT(m_sqliteDB);
+    ASSERT(m_sqliteDB->isOpen());
+
+    SQLiteIDBTransaction* transaction = m_transactions.get(transactionIdentifier);
+    if (!transaction || !transaction->inProgress()) {
+        LOG_ERROR("Attempt to get count from database without an established, in-progress transaction");
+        return false;
+    }
+
+    SQLiteIDBCursor* cursor = transaction->openCursor(objectStoreID, indexID, IndexedDB::CursorDirection::Next, IndexedDB::CursorType::KeyAndValue, IDBDatabaseBackend::NormalTask, keyRangeData);
+
+    if (!cursor) {
+        LOG_ERROR("Cannot open cursor to perform index get in database");
+        return false;
+    }
+
+    // Even though we're only using this cursor locally, add it to our cursor set.
+    m_cursors.set(cursor->identifier(), cursor);
+
+    result = SharedBuffer::create(cursor->currentValueBuffer().data(), cursor->currentValueBuffer().size());
+
+    // Closing the cursor will destroy the cursor object and remove it from our cursor set.
+    transaction->closeCursor(*cursor);
+
+    return true;
+}
+
+bool UniqueIDBDatabaseBackingStoreSQLite::deleteRange(const IDBIdentifier& transactionIdentifier, int64_t objectStoreID, const IDBKeyRangeData& keyRangeData)
+{
+    ASSERT(!isMainThread());
+    ASSERT(m_sqliteDB);
+    ASSERT(m_sqliteDB->isOpen());
+
+    SQLiteIDBTransaction* transaction = m_transactions.get(transactionIdentifier);
+    if (!transaction || !transaction->inProgress()) {
+        LOG_ERROR("Attempt to get count from database without an established, in-progress transaction");
+        return false;
+    }
+
+    if (transaction->mode() == IndexedDB::TransactionMode::ReadOnly) {
+        LOG_ERROR("Attempt to delete range from a read-only transaction");
+        return false;
+    }
+
+    // If the range to delete is exactly one key we can delete it right now.
+    if (keyRangeData.isExactlyOneKey()) {
+        if (!deleteRecord(*transaction, objectStoreID, keyRangeData.lowerKey)) {
+            LOG_ERROR("Failed to delete record for key '%s'", keyRangeData.lowerKey.loggingString().utf8().data());
+            return false;
+        }
+        return true;
+    }
+
+    // Otherwise the range might span multiple keys so we collect them with a cursor.
+    SQLiteIDBCursor* cursor = transaction->openCursor(objectStoreID, IDBIndexMetadata::InvalidId, IndexedDB::CursorDirection::Next, IndexedDB::CursorType::KeyAndValue, IDBDatabaseBackend::NormalTask, keyRangeData);
+
+    if (!cursor) {
+        LOG_ERROR("Cannot open cursor to perform index get in database");
+        return false;
+    }
+
+    m_cursors.set(cursor->identifier(), cursor);
+
+    Vector<IDBKeyData> keys;
+    do
+        keys.append(cursor->currentKey());
+    while (cursor->advance(1));
+
+    bool cursorDidError = cursor->didError();
+
+    // closeCursor() will remove the cursor from m_cursors and delete the cursor object
+    transaction->closeCursor(*cursor);
+
+    if (cursorDidError) {
+        LOG_ERROR("Unable to iterate over object store to deleteRange in database");
+        return false;
+    }
+
+    for (auto& key : keys) {
+        if (!deleteRecord(*transaction, objectStoreID, key)) {
+            LOG_ERROR("Failed to delete record for key '%s'", key.loggingString().utf8().data());
+            return false;
+        }
+    }
+
+    return true;
+}
+
+bool UniqueIDBDatabaseBackingStoreSQLite::deleteRecord(SQLiteIDBTransaction& transaction, int64_t objectStoreID, const WebCore::IDBKeyData& key)
+{
+    ASSERT(!isMainThread());
+    ASSERT(m_sqliteDB);
+    ASSERT(m_sqliteDB->isOpen());
+
+    RefPtr<SharedBuffer> keyBuffer = serializeIDBKeyData(key);
+    if (!keyBuffer) {
+        LOG_ERROR("Unable to serialize IDBKeyData to be removed from the database");
+        return false;
+    }
+
+    // Delete record from object store
+    {
+        SQLiteStatement sql(*m_sqliteDB, ASCIILiteral("DELETE FROM Records WHERE objectStoreID = ? AND key = CAST(? AS TEXT);"));
+
+        if (sql.prepare() != SQLResultOk
+            || sql.bindInt64(1, objectStoreID) != SQLResultOk
+            || sql.bindBlob(2, keyBuffer->data(), keyBuffer->size()) != SQLResultOk
+            || sql.step() != SQLResultDone) {
+            LOG_ERROR("Could not delete record from object store %lli (%i) - %s", objectStoreID, m_sqliteDB->lastError(), m_sqliteDB->lastErrorMsg());
+            return false;
+        }
+    }
+
+    // Delete record from indexes store
+    {
+        SQLiteStatement sql(*m_sqliteDB, ASCIILiteral("DELETE FROM IndexRecords WHERE objectStoreID = ? AND value = CAST(? AS TEXT);"));
+
+        if (sql.prepare() != SQLResultOk
+            || sql.bindInt64(1, objectStoreID) != SQLResultOk
+            || sql.bindBlob(2, keyBuffer->data(), keyBuffer->size()) != SQLResultOk
+            || sql.step() != SQLResultDone) {
+            LOG_ERROR("Could not delete record from indexes for object store %lli (%i) - %s", objectStoreID, m_sqliteDB->lastError(), m_sqliteDB->lastErrorMsg());
             return false;
         }
     }
@@ -828,7 +1075,7 @@ bool UniqueIDBDatabaseBackingStoreSQLite::count(const IDBIdentifier& transaction
     return true;
 }
 
-bool UniqueIDBDatabaseBackingStoreSQLite::openCursor(const IDBIdentifier& transactionIdentifier, int64_t objectStoreID, int64_t indexID, IndexedDB::CursorDirection cursorDirection, IndexedDB::CursorType cursorType, IDBDatabaseBackend::TaskType taskType, const IDBKeyRangeData& keyRange, int64_t& cursorID)
+bool UniqueIDBDatabaseBackingStoreSQLite::openCursor(const IDBIdentifier& transactionIdentifier, int64_t objectStoreID, int64_t indexID, IndexedDB::CursorDirection cursorDirection, IndexedDB::CursorType cursorType, IDBDatabaseBackend::TaskType taskType, const IDBKeyRangeData& keyRange, int64_t& cursorID, IDBKeyData& key, IDBKeyData& primaryKey, Vector<char>& valueBuffer, IDBKeyData& valueKey)
 {
     ASSERT(!isMainThread());
     ASSERT(m_sqliteDB);
@@ -846,11 +1093,15 @@ bool UniqueIDBDatabaseBackingStoreSQLite::openCursor(const IDBIdentifier& transa
 
     m_cursors.set(cursor->identifier(), cursor);
     cursorID = cursor->identifier().id();
+    key = cursor->currentKey();
+    primaryKey = cursor->currentPrimaryKey();
+    valueBuffer = cursor->currentValueBuffer();
+    valueKey = cursor->currentValueKey();
 
     return true;
 }
 
-bool UniqueIDBDatabaseBackingStoreSQLite::advanceCursor(const IDBIdentifier& cursorIdentifier, uint64_t count, IDBKeyData& key, IDBKeyData& primaryKey, Vector<char>& value)
+bool UniqueIDBDatabaseBackingStoreSQLite::advanceCursor(const IDBIdentifier& cursorIdentifier, uint64_t count, IDBKeyData& key, IDBKeyData& primaryKey, Vector<char>& valueBuffer, IDBKeyData& valueKey)
 {
     ASSERT(!isMainThread());
     ASSERT(m_sqliteDB);
@@ -873,12 +1124,13 @@ bool UniqueIDBDatabaseBackingStoreSQLite::advanceCursor(const IDBIdentifier& cur
 
     key = cursor->currentKey();
     primaryKey = cursor->currentPrimaryKey();
-    value = cursor->currentValue();
+    valueBuffer = cursor->currentValueBuffer();
+    valueKey = cursor->currentValueKey();
 
     return true;
 }
 
-bool UniqueIDBDatabaseBackingStoreSQLite::iterateCursor(const IDBIdentifier& cursorIdentifier, const IDBKeyData& targetKey, IDBKeyData& key, IDBKeyData& primaryKey, Vector<char>& value)
+bool UniqueIDBDatabaseBackingStoreSQLite::iterateCursor(const IDBIdentifier& cursorIdentifier, const IDBKeyData& targetKey, IDBKeyData& key, IDBKeyData& primaryKey, Vector<char>& valueBuffer, IDBKeyData& valueKey)
 {
     ASSERT(!isMainThread());
     ASSERT(m_sqliteDB);
@@ -901,7 +1153,8 @@ bool UniqueIDBDatabaseBackingStoreSQLite::iterateCursor(const IDBIdentifier& cur
 
     key = cursor->currentKey();
     primaryKey = cursor->currentPrimaryKey();
-    value = cursor->currentValue();
+    valueBuffer = cursor->currentValueBuffer();
+    valueKey = cursor->currentValueKey();
 
     return true;
 }

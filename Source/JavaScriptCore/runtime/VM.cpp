@@ -835,8 +835,8 @@ class SetEnabledProfilerFunctor {
 public:
     bool operator()(CodeBlock* codeBlock)
     {
-        if (codeBlock->jitType() == JITCode::DFGJIT)
-            codeBlock->jettison();
+        if (JITCode::isOptimizingJIT(codeBlock->jitType()))
+            codeBlock->jettison(Profiler::JettisonDueToLegacyProfiler);
         return false;
     }
 };
