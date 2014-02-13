@@ -33,7 +33,6 @@
 
 #include "SimpleFontData.h"
 #include <wtf/Assertions.h>
-#include <wtf/unicode/Unicode.h>
 
 
 namespace WebCore {
