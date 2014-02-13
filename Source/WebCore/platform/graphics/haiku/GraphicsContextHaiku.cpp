@@ -141,12 +141,19 @@ public:
 
         CustomGraphicsState* previous;
         InterpolationQuality imageInterpolationQuality;
+
+        bool clippingSet;
+        BRegion clippingRegion;
+        BPicture clipOutPicture;
     };
 
     void pushState()
     {
     	m_graphicsState = new CustomGraphicsState(m_graphicsState);
         view()->PushState();
+
+        m_graphicsState->clippingSet = m_currentLayer->clippingSet;
+        m_graphicsState->clippingRegion = m_currentLayer->clipping;
         resetClipping();
     }
 
@@ -162,7 +169,9 @@ public:
 
         m_currentLayer->accumulatedOrigin -= view()->Origin();
         view()->PopState();
-        resetClipping();
+
+        m_currentLayer->clippingSet = m_graphicsState->clippingSet;
+        m_currentLayer->clipping = m_graphicsState->clippingRegion;
     }
 
     BView* view() const
@@ -175,18 +184,27 @@ public:
 		return m_currentLayer->globalAlpha;
 	}
 
-    void setClipping(const BRegion& region)
+    // Unlike in Haiku, all clipping operations are cumulative. It's possible
+    // to clip several times, and the intersection of all the clipping path is
+    // used. In Haiku, calling ConstrainClippingRegion or ClipToPicture removes
+    // existing clippings at the same level. So, we have to implement the
+    // combination of clipping levels here.
+    void constrainClipping(const BRegion& region)
     {
-        // If we are supposed to set an empty region, but never
-        // have set any region on this layer before, comparing
-        // the two empty regions alone will prevent us from setting
-        // the clipping, that's why there is the additional "clippingSet" flag.
-        if (m_currentLayer->clippingSet && region == m_currentLayer->clipping)
-    	    return;
+        if(m_currentLayer->clippingSet)
+            m_currentLayer->clipping.IntersectWith(&region);
+        else
+            m_currentLayer->clipping = region;
 
         m_currentLayer->clippingSet = true;
-    	m_currentLayer->clipping = region;
-  	    m_currentLayer->view->ConstrainClippingRegion(&m_currentLayer->clipping);
+        m_currentLayer->view->ConstrainClippingRegion(&m_currentLayer->clipping);
+    }
+
+    void excludeClipping(const FloatRect& rect)
+    {
+        // This is always called after the initial clipping has been set.
+        m_currentLayer->clipping.Exclude(rect);
+        m_currentLayer->view->ConstrainClippingRegion(&m_currentLayer->clipping);
     }
 
     BRegion& clipping()
@@ -198,18 +216,24 @@ public:
     {
         m_currentLayer->clippingSet = false;
     	m_currentLayer->clipping = BRegion();
+        m_currentLayer->view->ConstrainClippingRegion(NULL);
     }
 
     void clipToShape(BShape* shape, bool inverse = false)
     {
+        // FIXME calling clipToShape several times without interleaved
+        // Push/PopState should still intersect the clipping. In Haiku, it is
+        // replaced instead. So, we must keep the clipping picture ourselves
+        // and handle the intersection.
+
         BPicture picture;
         BView* view = m_currentLayer->view;
         view->LockLooper();
 
-        // The new clipping is drawn using the current view and context, which
-        // make sure it is further restricted by the existing clippings at the
-        // same level.
-        view->BeginPicture(&picture);
+        if (inverse)
+            view->AppendToPicture(&m_graphicsState->clipOutPicture);
+        else
+            view->BeginPicture(&picture);
         view->PushState();
 
         view->SetLowColor(make_color(255, 255, 255, 0));
@@ -221,12 +245,12 @@ public:
         view->FillShape(shape);
 
         view->PopState();
-        view->EndPicture();
+        BPicture* result = view->EndPicture();
 
         if (inverse)
-            view->ClipToInversePicture(&picture);
+            view->ClipToInversePicture(result);
         else
-            view->ClipToPicture(&picture);
+            view->ClipToPicture(result);
 
         view->UnlockLooper();
     }
@@ -307,7 +331,7 @@ GraphicsContextPlatformPrivate::~GraphicsContextPlatformPrivate()
     delete m_graphicsState;
 }
 
-void GraphicsContext::platformInit(PlatformGraphicsContext* context)
+void GraphicsContext::platformInit(PlatformGraphicsContext* context, bool /*shouldUseContextColors*/)
 {
     m_data = new GraphicsContextPlatformPrivate(context);
     setPaintingDisabled(!context);
@@ -572,12 +596,6 @@ void GraphicsContext::fillPath(const Path& path)
 
 void GraphicsContext::clipPath(const Path& path, WindRule clipRule)
 {
-    if (paintingDisabled())
-        return;
-
-    if (path.isEmpty())
-        return;
-
     clip(path, clipRule);
 }
 
@@ -586,15 +604,20 @@ void GraphicsContext::clip(const FloatRect& rect)
     if (paintingDisabled())
         return;
 
-    m_data->setClipping(BRegion(rect));
+    if(rect.isEmpty())
+        m_data->constrainClipping(BRegion()); // Clip everything
+    else if(!rect.isInfinite()) {
+        BRegion newRegion(rect);
+        m_data->constrainClipping(newRegion);
+    }
 }
 
 IntRect GraphicsContext::clipBounds() const
 {
-    BRect r = m_data->clipping().Frame();
+    BRect r(m_data->clipping().Frame());
     if(!r.IsValid()) {
-        // No clipping, return an invalid rect
-        return IntRect();
+        // No clipping, return an infinite rect
+        return IntRect::infiniteRect();
     }
     return IntRect(r);
 }
@@ -604,8 +627,11 @@ void GraphicsContext::clip(const Path& path, WindRule)
     if (paintingDisabled())
         return;
 
-    if (path.platformPath()->Bounds().IsValid())
-        m_data->clipToShape(path.platformPath());
+    if (path.isEmpty()) {
+        return;
+    }
+
+    m_data->clipToShape(path.platformPath());
 }
 
 void GraphicsContext::canvasClip(const Path& path, WindRule)
@@ -618,8 +644,10 @@ void GraphicsContext::clipOut(const Path& path)
     if (paintingDisabled())
         return;
 
-    if (path.platformPath()->Bounds().IsValid())
-        m_data->clipToShape(path.platformPath(), true);
+    if (path.isEmpty()) {
+        return;
+    }
+    m_data->clipToShape(path.platformPath(), true);
 }
 
 void GraphicsContext::clipOut(const FloatRect& rect)
@@ -627,9 +655,11 @@ void GraphicsContext::clipOut(const FloatRect& rect)
     if (paintingDisabled())
         return;
 
-    BRegion& region = m_data->clipping();
-    region.Exclude(rect);
-    m_data->setClipping(region);
+    if(rect.isInfinite())
+        m_data->constrainClipping(BRegion()); // Clip everything
+    else if(!rect.isEmpty()) {
+        m_data->excludeClipping(rect);
+    }
 }
 
 void GraphicsContext::drawFocusRing(const Path& /*path*/, int /*width*/, int /*offset*/, const Color& /*color*/)
