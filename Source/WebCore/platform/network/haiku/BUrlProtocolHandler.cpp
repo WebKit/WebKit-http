@@ -349,16 +349,6 @@ void BUrlProtocolHandler::sendResponseIfNeeded()
     WTF::String encoding = extractCharsetFromMediaType(contentType);
     WTF::String mimeType = extractMIMETypeFromMediaType(contentType);
 
-    if (mimeType.isEmpty()) {
-        // let's try to guess from the extension
-        BString extension = m_request->Url().Path();
-        int index = extension.FindLast('.');
-        extension.Remove(0, index + 1);
-
-        if (index >= 0 && extension.Length() > 0)
-            mimeType = MIMETypeRegistry::getMIMETypeForExtension(extension);
-    }
-
     URL url(m_request->Url());
 
     ResourceResponse response(url, mimeType, contentLength, encoding, String());
