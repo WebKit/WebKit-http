@@ -744,7 +744,7 @@
 #endif
 
 #if !defined(ENABLE_DFG_JIT) && ENABLE(JIT) && !COMPILER(MSVC)
-/* Enable the DFG JIT on X86 and X86_64.  Only tested on Mac and GNU/Linux. */
+/* Enable the DFG JIT on X86 and X86_64.  Only tested on Mac and GNU/Linux and Haiku. */
 #if (CPU(X86) || CPU(X86_64)) && (OS(DARWIN) || OS(LINUX) || OS(HAIKU))
 #define ENABLE_DFG_JIT 1
 #endif
