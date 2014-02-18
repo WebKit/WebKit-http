@@ -751,7 +751,6 @@ private:
     Interpreter* m_interpreter;
 };
 
-__attribute__((force_align_arg_pointer))
 JSValue Interpreter::execute(ProgramExecutable* program, CallFrame* callFrame, JSObject* thisObj)
 {
     SamplingScope samplingScope(this);
