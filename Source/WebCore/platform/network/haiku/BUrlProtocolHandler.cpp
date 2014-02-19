@@ -75,7 +75,12 @@ ssize_t BFormDataIO::Size()
                 size += filesize;
                 break;
             }
+#if ENABLE(BLOB)
+            case FormDataElement::encodedBlob:
+                size += element.m_fileLength;
+                break;
         }
+#endif
     }
 
     return size;
@@ -95,6 +100,9 @@ BFormDataIO::Read(void* buffer, size_t size)
         
 		switch (element.m_type) {
 			case FormDataElement::encodedFile:
+#if ENABLE(BLOB)
+            case FormDataElement::encodedBlob:
+#endif
 				{
 					read += m_currentFile->Read(reinterpret_cast<char*>(buffer) + read, remaining);
 
@@ -121,10 +129,6 @@ BFormDataIO::Read(void* buffer, size_t size)
 						_NextElement();
 				}
 				break;
-				
-			default:
-				TRESPASS();
-				break;
 		}
     }
 
@@ -132,10 +136,10 @@ BFormDataIO::Read(void* buffer, size_t size)
 }
 
 ssize_t 
-BFormDataIO::Write(const void* buffer, size_t size)
+BFormDataIO::Write(const void* /*buffer*/, size_t /*size*/)
 {
 	// Write isn't implemented since we don't use it
-	return -1;
+	return B_NOT_SUPPORTED;
 }
 
 void
@@ -152,15 +156,30 @@ BFormDataIO::_NextElement()
 void
 BFormDataIO::_ParseCurrentElement()
 {
-    if (m_formElements.isEmpty() || m_formElements[0].m_type != FormDataElement::encodedFile)
+    if (m_formElements.isEmpty())
         return;
 
-    // If the next element is an encodedFile, prepare the BFile for reading it.
     if (m_currentFile == NULL)
         m_currentFile = new BFile();
 
-    m_currentFile->SetTo(BString(m_formElements[0].m_filename).String(), B_READ_ONLY);
-    m_currentFile->GetSize(&m_currentFileSize);
+    if (m_formElements[0].m_type == FormDataElement::encodedFile)
+    {
+        // If the next element is an encodedFile, prepare the BFile for reading it.
+        m_currentFile->SetTo(BString(m_formElements[0].m_filename).String(), B_READ_ONLY);
+        m_currentFile->GetSize(&m_currentFileSize);
+        return;
+    }
+
+#if ENABLE(BLOB)
+    if (m_formElements[0].m_type == FormDataElement::encodedBlob)
+    {
+        m_currentFileSize = m_formElements[0].m_fileLength;
+        m_currentFile->SetTo(m_formElements[0].m_url.path().utf8().data(),
+            B_READ_ONLY);
+        m_currentFile->Seek(m_formElements[0].m_fileStart, SEEK_SET);
+        return;
+    }
+#endif
 }
 
 
@@ -349,7 +368,7 @@ void BUrlProtocolHandler::sendResponseIfNeeded()
     WTF::String encoding = extractCharsetFromMediaType(contentType);
     WTF::String mimeType = extractMIMETypeFromMediaType(contentType);
 
-    URL url(m_request->Url());
+    const URL& url = m_nextRequest.url();
 
     ResourceResponse response(url, mimeType, contentLength, encoding, String());
 
@@ -391,7 +410,7 @@ void BUrlProtocolHandler::sendResponseIfNeeded()
 
     BString locationString(result.Headers()["Location"]);
     if (locationString.Length()) {
-        URL location(URL(m_request->Url()), locationString);
+        URL location(m_nextRequest.url(), locationString);
 
         m_redirectionTries--;
 
@@ -418,12 +437,12 @@ void BUrlProtocolHandler::sendResponseIfNeeded()
     client->didReceiveResponse(m_resourceHandle, response);
 }
 
-void BUrlProtocolHandler::HeadersReceived(BUrlRequest* caller)
+void BUrlProtocolHandler::HeadersReceived(BUrlRequest* /*caller*/)
 {
     sendResponseIfNeeded();
 }
 
-void BUrlProtocolHandler::DataReceived(BUrlRequest* caller, const char* data, ssize_t size)
+void BUrlProtocolHandler::DataReceived(BUrlRequest* /*caller*/, const char* data, ssize_t size)
 {
     sendResponseIfNeeded();
 
@@ -444,7 +463,7 @@ void BUrlProtocolHandler::DataReceived(BUrlRequest* caller, const char* data, ss
     }
 }
 
-void BUrlProtocolHandler::UploadProgress(BUrlRequest* caller, ssize_t bytesSent, ssize_t bytesTotal)
+void BUrlProtocolHandler::UploadProgress(BUrlRequest* /*caller*/, ssize_t bytesSent, ssize_t bytesTotal)
 {
     if (!m_resourceHandle)
         return;
@@ -502,7 +521,8 @@ void BUrlProtocolHandler::start()
         if (!client)
             return;
 
-        ResourceError error("BUrlProtocol", 42, m_request->Url().UrlString().String(),
+        ResourceError error("BUrlProtocol", 42,
+            m_nextRequest.url().string().utf8().data(),
             "The service kit failed to start the request.");
         client->didFail(m_resourceHandle, error);
     }
