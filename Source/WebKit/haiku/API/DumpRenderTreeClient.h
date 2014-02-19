@@ -43,6 +43,7 @@ typedef Vector<OwnPtr<MessagePortChannel>, 1> MessagePortChannelArray;
 }
 
 class BBitmap;
+class BMessage;
 class BWebFrame;
 class BWebPage;
 class BWebView;
@@ -88,6 +89,7 @@ public:
                     bool runAtStart, bool allFrames);
     static void clearUserScripts(const BWebView* view);
 
+    static void injectMouseEvent(BWebPage* target, BMessage* event);
 private:
     static bool s_drtRun;
 };
