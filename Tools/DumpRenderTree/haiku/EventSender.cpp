@@ -41,6 +41,7 @@
 #include "NotImplemented.h"
 #include "PlatformEvent.h"
 
+#include <WebView.h>
 #include <DumpRenderTreeClient.h>
 #include <JavaScriptCore/JSObjectRef.h>
 #include <JavaScriptCore/JSRetainPtr.h>
@@ -49,6 +50,10 @@
 #include <wtf/ASCIICType.h>
 #include <wtf/Platform.h>
 #include <wtf/text/CString.h>
+
+#include <InterfaceDefs.h>
+#include <View.h>
+#include <Window.h>
 
 static bool gDragMode;
 static int gTimeOffset = 0;
@@ -70,33 +75,6 @@ enum KeyLocationCode {
     DomKeyLocationLeft,
     DomKeyLocationRight,
     DomKeyLocationNumpad
-};
-
-enum EvasKeyModifier {
-    EvasKeyModifierNone    = 0,
-    EvasKeyModifierControl = 1 << 0,
-    EvasKeyModifierShift   = 1 << 1,
-    EvasKeyModifierAlt     = 1 << 2,
-    EvasKeyModifierMeta    = 1 << 3
-};
-
-enum EvasMouseButton {
-    EvasMouseButtonNone,
-    EvasMouseButtonLeft,
-    EvasMouseButtonMiddle,
-    EvasMouseButtonRight
-};
-
-enum EvasMouseEvent {
-    EvasMouseEventNone        = 0,
-    EvasMouseEventDown        = 1 << 0,
-    EvasMouseEventUp          = 1 << 1,
-    EvasMouseEventMove        = 1 << 2,
-    EvasMouseEventScrollUp    = 1 << 3,
-    EvasMouseEventScrollDown  = 1 << 4,
-    EvasMouseEventScrollLeft  = 1 << 5,
-    EvasMouseEventScrollRight = 1 << 6,
-    EvasMouseEventClick       = EvasMouseEventMove | EvasMouseEventDown | EvasMouseEventUp,
 };
 
 enum ZoomEvent {
@@ -122,65 +100,38 @@ struct KeyEventInfo {
     unsigned modifiers;
 };
 
-struct MouseEventInfo {
-    MouseEventInfo(EvasMouseEvent event, unsigned modifiers = EvasKeyModifierNone, EvasMouseButton button = EvasMouseButtonNone, int horizontalDelta = 0, int verticalDelta = 0)
-        : event(event)
-        , modifiers(modifiers)
-        , button(button)
-        , horizontalDelta(horizontalDelta)
-        , verticalDelta(verticalDelta)
-    {
-    }
-
-    EvasMouseEvent event;
-    unsigned modifiers;
-    EvasMouseButton button;
-    int horizontalDelta;
-    int verticalDelta;
-};
-
-struct DelayedEvent {
-    DelayedEvent(MouseEventInfo* eventInfo, unsigned long delay = 0)
-        : eventInfo(eventInfo)
-        , delay(delay)
-    {
-    }
-
-    MouseEventInfo* eventInfo;
-    unsigned long delay;
-};
-
 static unsigned touchModifiers;
 
-WTF::Vector<DelayedEvent>& delayedEventQueue()
+WTF::Vector<BMessage*>& delayedEventQueue()
 {
-    DEFINE_STATIC_LOCAL(WTF::Vector<DelayedEvent>, staticDelayedEventQueue, ());
+    DEFINE_STATIC_LOCAL(WTF::Vector<BMessage*>, staticDelayedEventQueue, ());
     return staticDelayedEventQueue;
 }
 
 
-static void feedOrQueueMouseEvent(MouseEventInfo*, EventQueueStrategy);
-static void feedMouseEvent(MouseEventInfo*);
+static void feedOrQueueMouseEvent(BMessage*, EventQueueStrategy);
+static void feedMouseEvent(BMessage*);
 static void feedQueuedMouseEvents();
 
-static EvasMouseButton translateMouseButtonNumber(int eventSenderButtonNumber)
+static int32 translateMouseButtonNumber(int eventSenderButtonNumber)
 {
-    static const EvasMouseButton translationTable[] = {
-        EvasMouseButtonLeft,
-        EvasMouseButtonMiddle,
-        EvasMouseButtonRight,
-        EvasMouseButtonMiddle // fast/events/mouse-click-events expects the 4th button to be treated as the middle button
+    static const int32 translationTable[] = {
+        B_PRIMARY_MOUSE_BUTTON,
+        B_TERTIARY_MOUSE_BUTTON,
+        B_SECONDARY_MOUSE_BUTTON,
+        B_TERTIARY_MOUSE_BUTTON // fast/events/mouse-click-events expects the 4th button to be treated as the middle button
     };
     static const unsigned translationTableSize = sizeof(translationTable) / sizeof(translationTable[0]);
 
     if (eventSenderButtonNumber < translationTableSize)
         return translationTable[eventSenderButtonNumber];
 
-    return EvasMouseButtonLeft;
+    return 0;
 }
 
 static JSValueRef scheduleAsynchronousClickCallback(JSContextRef context, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception)
 {
+    notImplemented();
     return JSValueMakeUndefined(context);
 }
 
@@ -195,20 +146,20 @@ static void updateClickCount(int button)
         gClickCount++;
 }
 
-static EvasKeyModifier modifierFromJSValue(JSContextRef context, const JSValueRef value)
+static int32 modifierFromJSValue(JSContextRef context, const JSValueRef value)
 {
     JSRetainPtr<JSStringRef> jsKeyValue(Adopt, JSValueToStringCopy(context, value, 0));
 
     if (equals(jsKeyValue, "ctrlKey") || equals(jsKeyValue, "addSelectionKey"))
-        return EvasKeyModifierControl;
+        return B_CONTROL_KEY;
     if (equals(jsKeyValue, "shiftKey") || equals(jsKeyValue, "rangeSelectionKey"))
-        return EvasKeyModifierShift;
+        return B_SHIFT_KEY;
     if (equals(jsKeyValue, "altKey"))
-        return EvasKeyModifierAlt;
+        return B_COMMAND_KEY;
     if (equals(jsKeyValue, "metaKey"))
-        return EvasKeyModifierMeta;
+        return B_OPTION_KEY;
 
-    return EvasKeyModifierNone;
+    return 0;
 }
 
 static unsigned modifiersFromJSValue(JSContextRef context, const JSValueRef modifiers)
@@ -219,9 +170,9 @@ static unsigned modifiersFromJSValue(JSContextRef context, const JSValueRef modi
 
     JSObjectRef modifiersArray = JSValueToObject(context, modifiers, 0);
     if (!modifiersArray)
-        return EvasKeyModifierNone;
+        return 0;
 
-    unsigned modifier = EvasKeyModifierNone;
+    unsigned modifier = 0;
     JSRetainPtr<JSStringRef> lengthProperty(Adopt, JSStringCreateWithUTF8CString("length"));
     int modifiersCount = JSValueToNumber(context, JSObjectGetProperty(context, modifiersArray, lengthProperty.get(), 0), 0);
     for (int i = 0; i < modifiersCount; ++i)
@@ -231,6 +182,7 @@ static unsigned modifiersFromJSValue(JSContextRef context, const JSValueRef modi
 
 static JSValueRef getMenuItemTitleCallback(JSContextRef context, JSObjectRef object, JSStringRef propertyName, JSValueRef* exception)
 {
+    notImplemented();
     return JSValueMakeString(context, JSStringCreateWithUTF8CString(""));
 }
 
@@ -241,6 +193,7 @@ static bool setMenuItemTitleCallback(JSContextRef context, JSObjectRef object, J
 
 static JSValueRef menuItemClickCallback(JSContextRef context, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception)
 {
+    notImplemented();
     return JSValueMakeUndefined(context);
 }
 
@@ -273,6 +226,8 @@ static JSClassRef getMenuItemClass()
 
 static JSValueRef contextClickCallback(JSContextRef context, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception)
 {
+    puts("IMPLEMENT CLICK");
+    notImplemented();
     return JSValueMakeUndefined(context);
 }
 
@@ -293,8 +248,13 @@ static JSValueRef mouseDownCallback(JSContextRef context, JSObjectRef function, 
 
     updateClickCount(button);
 
-    unsigned modifiers = argumentCount >= 2 ? modifiersFromJSValue(context, arguments[1]) : EvasKeyModifierNone;
-    MouseEventInfo* eventInfo = new MouseEventInfo(EvasMouseEventDown, modifiers, static_cast<EvasMouseButton>(button));
+    unsigned modifiers = argumentCount >= 2 ? modifiersFromJSValue(context, arguments[1]) : 0;
+    BMessage* eventInfo = new BMessage(B_MOUSE_DOWN);
+    eventInfo->AddInt32("modifiers", modifiers);
+    eventInfo->AddInt32("buttons", button);
+    eventInfo->AddInt32("clicks", gClickCount);
+    eventInfo->AddPoint("where", BPoint(gLastMousePositionX, gLastMousePositionY));
+    eventInfo->AddPoint("be:view_where", BPoint(gLastMousePositionX, gLastMousePositionY));
     feedOrQueueMouseEvent(eventInfo, FeedQueuedEvents);
     gButtonCurrentlyDown = button;
     return JSValueMakeUndefined(context);
@@ -315,8 +275,12 @@ static JSValueRef mouseUpCallback(JSContextRef context, JSObjectRef function, JS
     gLastClickTimeOffset = gTimeOffset;
     gButtonCurrentlyDown = 0;
 
-    unsigned modifiers = argumentCount >= 2 ? modifiersFromJSValue(context, arguments[1]) : EvasKeyModifierNone;
-    MouseEventInfo* eventInfo = new MouseEventInfo(EvasMouseEventUp, modifiers, translateMouseButtonNumber(button));
+    unsigned modifiers = argumentCount >= 2 ? modifiersFromJSValue(context, arguments[1]) : 0;
+    BMessage* eventInfo = new BMessage(B_MOUSE_UP);
+    eventInfo->AddInt32("modifiers", modifiers);
+    eventInfo->AddInt32("buttons", button);
+    eventInfo->AddPoint("where", BPoint(gLastMousePositionX, gLastMousePositionY));
+    eventInfo->AddPoint("be:view_where", BPoint(gLastMousePositionX, gLastMousePositionY));
     feedOrQueueMouseEvent(eventInfo, FeedQueuedEvents);
     return JSValueMakeUndefined(context);
 }
@@ -333,8 +297,11 @@ static JSValueRef mouseMoveToCallback(JSContextRef context, JSObjectRef function
     if (exception && *exception)
         return JSValueMakeUndefined(context);
 
-    MouseEventInfo* eventInfo = new MouseEventInfo(EvasMouseEventMove);
+    BMessage* eventInfo = new BMessage(B_MOUSE_MOVED);
+    eventInfo->AddPoint("where", BPoint(gLastMousePositionX, gLastMousePositionY));
+    eventInfo->AddPoint("be:view_where", BPoint(gLastMousePositionX, gLastMousePositionY));
     feedOrQueueMouseEvent(eventInfo, DoNotFeedQueuedEvents);
+    eventInfo->AddInt32("buttons", gButtonCurrentlyDown);
     return JSValueMakeUndefined(context);
 }
 
@@ -343,30 +310,20 @@ static JSValueRef leapForwardCallback(JSContextRef context, JSObjectRef function
     if (argumentCount > 0) {
         const unsigned long leapForwardDelay = JSValueToNumber(context, arguments[0], exception);
         if (delayedEventQueue().isEmpty())
-            delayedEventQueue().append(DelayedEvent(0, leapForwardDelay));
-        else
-            delayedEventQueue().last().delay = leapForwardDelay;
+            delayedEventQueue().append(new BMessage((uint32)0));
+        delayedEventQueue().last()->AddInt32("delay", leapForwardDelay);
         gTimeOffset += leapForwardDelay;
     }
 
     return JSValueMakeUndefined(context);
 }
 
-static EvasMouseEvent evasMouseEventFromHorizontalAndVerticalOffsets(int horizontalOffset, int verticalOffset)
+static BMessage* evasMouseEventFromHorizontalAndVerticalOffsets(int horizontalOffset, int verticalOffset)
 {
-    unsigned mouseEvent = 0;
-
-    if (verticalOffset > 0)
-        mouseEvent |= EvasMouseEventScrollUp;
-    else if (verticalOffset < 0)
-        mouseEvent |= EvasMouseEventScrollDown;
-
-    if (horizontalOffset > 0)
-        mouseEvent |= EvasMouseEventScrollRight;
-    else if (horizontalOffset < 0)
-        mouseEvent |= EvasMouseEventScrollLeft;
-
-    return static_cast<EvasMouseEvent>(mouseEvent);
+    BMessage* message = new BMessage(B_MOUSE_WHEEL_CHANGED);
+    message->AddFloat("be:wheel_delta_x", horizontalOffset);
+    message->AddFloat("be:wheel_delta_y", verticalOffset);
+    return message;
 }
 
 static JSValueRef mouseScrollByCallback(JSContextRef context, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception)
@@ -383,7 +340,7 @@ static JSValueRef mouseScrollByCallback(JSContextRef context, JSObjectRef functi
     if (exception && *exception)
         return JSValueMakeUndefined(context);
 
-    MouseEventInfo* eventInfo = new MouseEventInfo(evasMouseEventFromHorizontalAndVerticalOffsets(horizontal, vertical), EvasKeyModifierNone, EvasMouseButtonNone, horizontal, vertical);
+    BMessage* eventInfo = evasMouseEventFromHorizontalAndVerticalOffsets(horizontal, vertical);
     feedOrQueueMouseEvent(eventInfo, FeedQueuedEvents);
     return JSValueMakeUndefined(context);
 }
@@ -495,32 +452,37 @@ static KeyEventInfo* keyNameFromJSValue(JSStringRef character, unsigned modifier
         return new KeyEventInfo("Escape", modifiers, "\x1B");
 
     if ((character->length() == 1) && (charCode >= 'A' && charCode <= 'Z'))
-        modifiers |= EvasKeyModifierShift;
+        modifiers |= B_SHIFT_KEY;
 
     return new KeyEventInfo(character->string().utf8(), modifiers, character->string().utf8());
 }
 
 static KeyEventInfo* createKeyEventInfo(JSContextRef context, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception)
 {
+    notImplemented();
     return 0;
 }
 
 static JSValueRef keyDownCallback(JSContextRef context, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception)
 {
+    notImplemented();
     return JSValueMakeUndefined(context);
 }
 
 static JSValueRef scalePageByCallback(JSContextRef context, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception)
 {
+    notImplemented();
     return JSValueMakeUndefined(context);
 }
 
 static void textZoom(ZoomEvent zoomEvent)
 {
+    notImplemented();
 }
 
 static void pageZoom(ZoomEvent zoomEvent)
 {
+    notImplemented();
 }
 
 static JSValueRef textZoomInCallback(JSContextRef context, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception)
@@ -549,66 +511,19 @@ static JSValueRef zoomPageOutCallback(JSContextRef context, JSObjectRef function
 
 static JSValueRef scheduleAsynchronousKeyDownCallback(JSContextRef context, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception)
 {
-    return JSValueMakeUndefined(context);
-}
-
-static JSValueRef addTouchPointCallback(JSContextRef context, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception)
-{
-    return JSValueMakeUndefined(context);
-}
-
-static JSValueRef touchStartCallback(JSContextRef context, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception)
-{
-    return JSValueMakeUndefined(context);
-}
-
-static JSValueRef updateTouchPointCallback(JSContextRef context, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception)
-{
-    return JSValueMakeUndefined(context);
-}
-
-static JSValueRef touchMoveCallback(JSContextRef context, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception)
-{
-    return JSValueMakeUndefined(context);
-}
-
-static JSValueRef cancelTouchPointCallback(JSContextRef context, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception)
-{
-    return JSValueMakeUndefined(context);
-}
-
-static JSValueRef touchCancelCallback(JSContextRef context, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception)
-{
-    return JSValueMakeUndefined(context);
-}
-
-static JSValueRef releaseTouchPointCallback(JSContextRef context, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception)
-{
-    return JSValueMakeUndefined(context);
-}
-
-static JSValueRef touchEndCallback(JSContextRef context, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception)
-{
-    return JSValueMakeUndefined(context);
-}
-
-static JSValueRef clearTouchPointsCallback(JSContextRef context, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception)
-{
-    return JSValueMakeUndefined(context);
-}
-
-static JSValueRef setTouchModifierCallback(JSContextRef context, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception)
-{
+    notImplemented();
     return JSValueMakeUndefined(context);
 }
 
 static JSStaticFunction staticFunctions[] = {
-    { "contextClick", contextClickCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
-    { "mouseScrollBy", mouseScrollByCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
-    { "continuousMouseScrollBy", continuousMouseScrollByCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
     { "mouseDown", mouseDownCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
     { "mouseUp", mouseUpCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
     { "mouseMoveTo", mouseMoveToCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
+    { "mouseScrollBy", mouseScrollByCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
+#if 0
+    { "contextClick", contextClickCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
+    { "continuousMouseScrollBy", continuousMouseScrollByCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
+    { "beginDragWithFiles", beginDragWithFilesCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
     { "leapForward", leapForwardCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
     { "keyDown", keyDownCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
     { "scheduleAsynchronousClick", scheduleAsynchronousClickCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
@@ -618,16 +533,7 @@ static JSStaticFunction staticFunctions[] = {
     { "textZoomOut", textZoomOutCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
     { "zoomPageIn", zoomPageInCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
     { "zoomPageOut", zoomPageOutCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
-    { "addTouchPoint", addTouchPointCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
-    { "touchStart", touchStartCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
-    { "updateTouchPoint", updateTouchPointCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
-    { "touchMove", touchMoveCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
-    { "releaseTouchPoint", releaseTouchPointCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
-    { "touchEnd", touchEndCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
-    { "cancelTouchPoint", cancelTouchPointCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
-    { "touchCancel", touchCancelCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
-    { "clearTouchPoints", clearTouchPointsCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
-    { "setTouchModifier", setTouchModifierCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
+#endif
     { 0, 0, 0 }
 };
 
@@ -657,13 +563,13 @@ JSObjectRef makeEventSender(JSContextRef context)
     return JSObjectMake(context, getClass(context), 0);
 }
 
-static void feedOrQueueMouseEvent(MouseEventInfo* eventInfo, EventQueueStrategy strategy)
+static void feedOrQueueMouseEvent(BMessage* eventInfo, EventQueueStrategy strategy)
 {
     if (!delayedEventQueue().isEmpty()) {
-        if (delayedEventQueue().last().eventInfo)
-            delayedEventQueue().append(DelayedEvent(eventInfo));
+        if (delayedEventQueue().last() != NULL)
+            delayedEventQueue().append(eventInfo);
         else
-            delayedEventQueue().last().eventInfo = eventInfo;
+            delayedEventQueue().last() = eventInfo;
 
         if (strategy == FeedQueuedEvents)
             feedQueuedMouseEvents();
@@ -671,19 +577,22 @@ static void feedOrQueueMouseEvent(MouseEventInfo* eventInfo, EventQueueStrategy 
         feedMouseEvent(eventInfo);
 }
 
-static void feedMouseEvent(MouseEventInfo* eventInfo)
+static void feedMouseEvent(BMessage* eventInfo)
 {
+    extern BWebView* webView;
+    BMessenger(webView).SendMessage(eventInfo);
     delete eventInfo;
 }
 
 static void feedQueuedMouseEvents()
 {
-    WTF::Vector<DelayedEvent>::const_iterator it = delayedEventQueue().begin();
+    WTF::Vector<BMessage*>::const_iterator it = delayedEventQueue().begin();
     for (; it != delayedEventQueue().end(); it++) {
-        DelayedEvent delayedEvent = *it;
-        if (delayedEvent.delay)
-            usleep(delayedEvent.delay * 1000);
-        feedMouseEvent(delayedEvent.eventInfo);
+        BMessage* delayedEvent = *it;
+        int32 delay = delayedEvent->FindInt32("delay");
+        if (delay)
+            usleep(delay * 1000);
+        feedMouseEvent(delayedEvent);
     }
     delayedEventQueue().clear();
 }
