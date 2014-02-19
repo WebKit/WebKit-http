@@ -1099,7 +1099,6 @@ void BWebPage::handleMouseEvent(const BMessage* message)
             	    delete platformMenu;
             	}
             }
-            break;
     	}
     	// Handle regular mouse events.
         frame->eventHandler().handleMousePressEvent(event);
