@@ -182,7 +182,7 @@ public:
 #endif
 
 #if USE(HAIKU)
-	URL(const BUrl&);
+	explicit URL(const BUrl&);
 	operator BUrl() const;
 #endif
 

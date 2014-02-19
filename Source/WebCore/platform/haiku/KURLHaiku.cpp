@@ -37,16 +37,12 @@ namespace WebCore {
 
 URL::URL(const BUrl& url)
 {
-    *this = URL(URL(), url.UrlString().String());
+    parse(url.UrlString().String());
 }
 
 URL::operator BUrl() const
 {
-	BString str;
-	str.Append(m_string.utf8().data(), m_string.utf8().length());
-
-    BUrl url = BUrl(str);
-    return url;
+    return BUrl(string().utf8().data());
 }
 
 } // namespace WebCore

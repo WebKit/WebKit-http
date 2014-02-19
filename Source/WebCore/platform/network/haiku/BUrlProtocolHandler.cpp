@@ -391,13 +391,12 @@ void BUrlProtocolHandler::sendResponseIfNeeded()
 
     BString locationString(result.Headers()["Location"]);
     if (locationString.Length()) {
-        BUrl location = BUrl(m_request->Url());
-        location = BUrl(location, locationString);
+        URL location(URL(m_request->Url()), locationString);
 
         m_redirectionTries--;
 
         if (m_redirectionTries == 0) {
-            ResourceError error(location.Host().String(), 400, location.UrlString().String(),
+            ResourceError error(location.host(), 400, location.string(),
                 "Redirection limit reached");
             client->didFail(m_resourceHandle, error);
             return;
