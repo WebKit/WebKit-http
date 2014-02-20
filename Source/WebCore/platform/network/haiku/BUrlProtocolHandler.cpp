@@ -368,7 +368,7 @@ void BUrlProtocolHandler::sendResponseIfNeeded()
     WTF::String encoding = extractCharsetFromMediaType(contentType);
     WTF::String mimeType = extractMIMETypeFromMediaType(contentType);
 
-    const URL& url = m_nextRequest.url();
+    URL url(m_request->Url());
 
     ResourceResponse response(url, mimeType, contentLength, encoding, String());
 
@@ -410,7 +410,7 @@ void BUrlProtocolHandler::sendResponseIfNeeded()
 
     BString locationString(result.Headers()["Location"]);
     if (locationString.Length()) {
-        URL location(m_nextRequest.url(), locationString);
+        URL location(URL(m_request->Url()), locationString);
 
         m_redirectionTries--;
 
