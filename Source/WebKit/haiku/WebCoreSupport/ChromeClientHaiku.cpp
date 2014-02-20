@@ -454,11 +454,6 @@ void ChromeClientHaiku::scheduleAnimation()
     notImplemented();
 }
 
-void ChromeClientHaiku::formStateDidChange(const Node*)
-{
-    notImplemented();
-}
-
 bool ChromeClientHaiku::selectItemWritingDirectionIsNatural()
 {
     return false;

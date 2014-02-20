@@ -35,7 +35,6 @@
 #include "EventSender.h"
 
 #include "DumpRenderTree.h"
-//#include "DumpRenderTreeChrome.h"
 #include "IntPoint.h"
 #include "JSStringUtils.h"
 #include "NotImplemented.h"
@@ -226,7 +225,7 @@ static JSClassRef getMenuItemClass()
 
 static JSValueRef contextClickCallback(JSContextRef context, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception)
 {
-    puts("IMPLEMENT CLICK");
+    // Should invoke a context menu, and return its contents
     notImplemented();
     return JSValueMakeUndefined(context);
 }

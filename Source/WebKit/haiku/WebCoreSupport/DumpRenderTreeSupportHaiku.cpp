@@ -94,13 +94,12 @@ String DumpRenderTreeClient::responseMimeType(const BWebFrame* frame)
 }
 
 // Compare with "WebKit/Tools/DumpRenderTree/mac/FrameLoadDelegate.mm
-String DumpRenderTreeClient::suitableDRTFrameName(const BWebFrame* ewkFrame)
+String DumpRenderTreeClient::suitableDRTFrameName(const BWebFrame* frame)
 {
-    Frame* frame = ewkFrame->Frame();
-    const String frameName(ewkFrame->Name());
+    const String frameName(frame->Name());
 
     /*
-    if (ewkFrame == ewk_view_frame_main_get(ewk_frame_view_get(ewkFrame))) {
+    if (frame == ewk_view_frame_main_get(ewk_frame_view_get(frame))) {
         if (!frameName.isEmpty())
             return String("main frame \"") + frameName + String("\"");
 

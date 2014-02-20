@@ -540,7 +540,7 @@ void EditorClientHaiku::learnWord(const String&)
     notImplemented();
 }
 
-void EditorClientHaiku::checkSpellingOfString(const UChar*, int, int*, int*)
+void EditorClientHaiku::checkSpellingOfString(StringView, int*, int*)
 {
     notImplemented();
 }
@@ -551,7 +551,7 @@ String EditorClientHaiku::getAutoCorrectSuggestionForMisspelledWord(const String
     return String();
 }
 
-void EditorClientHaiku::checkGrammarOfString(const UChar*, int, Vector<GrammarDetail>&, int*, int*)
+void EditorClientHaiku::checkGrammarOfString(StringView, Vector<GrammarDetail>&, int*, int*)
 {
     notImplemented();
 }

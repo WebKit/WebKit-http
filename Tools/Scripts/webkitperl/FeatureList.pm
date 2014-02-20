@@ -224,7 +224,7 @@ my @features = (
       define => "ENABLE_CSS_SHADERS", default => isAppleMacWebKit(), value => \$cssShadersSupport },
 
     { option => "css-sticky-position", desc => "Toggle CSS sticky position support",
-      define => "ENABLE_CSS_STICKY_POSITION", default => (isGtk() || isEfl()), value => \$cssStickyPositionSupport },
+      define => "ENABLE_CSS_STICKY_POSITION", default => (isGtk() || isEfl() || isHaiku()), value => \$cssStickyPositionSupport },
 
     { option => "css-compositing", desc => "Toggle CSS Compositing support",
       define => "ENABLE_CSS_COMPOSITING", default => isAppleWebKit(), value => \$cssCompositingSupport },

@@ -40,7 +40,7 @@
 #include <wtf/HashMap.h>
 #include <wtf/text/CString.h>
 
-#define TRACE_COOKIE_JAR 0
+//#define TRACE_COOKIE_JAR 1
 
 
 namespace WebCore {
@@ -48,7 +48,7 @@ namespace WebCore {
 void setCookiesFromDOM(const NetworkStorageSession& session, const URL&, const URL& url, const String& value)
 {
 	BNetworkCookie* heapCookie
-		= new BNetworkCookie(value, BUrl(url.string().utf8().data()));
+		= new BNetworkCookie(value, BUrl(url));
 
 #if TRACE_COOKIE_JAR
 	printf("CookieJar: Add %s for %s\n", heapCookie->RawCookie(true).String(),

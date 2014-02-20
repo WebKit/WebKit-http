@@ -138,10 +138,6 @@ namespace WebCore {
         // Asynchronous request to load an icon for specified filenames.
         virtual void loadIconForFiles(const Vector<String>&, FileIconLoader*) override;
 
-        // Notification that the given form element has changed. This function
-        // will be called frequently, so handling should be very fast.
-        virtual void formStateDidChange(const Node*) override;
-
         virtual bool selectItemWritingDirectionIsNatural() override;
         virtual bool selectItemAlignmentFollowsMenuWritingDirection() override;
         virtual bool hasOpenedPopup() const override;

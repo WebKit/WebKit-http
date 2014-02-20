@@ -113,10 +113,10 @@ public:
     virtual bool shouldEraseMarkersAfterChangeSelection(TextCheckingType) const override;
     virtual void ignoreWordInSpellDocument(const String&) override;
     virtual void learnWord(const String&) override;
-    virtual void checkSpellingOfString(const UChar*, int length, int* misspellingLocation,
+    virtual void checkSpellingOfString(StringView, int* misspellingLocation,
                                        int* misspellingLength) override;
     virtual String getAutoCorrectSuggestionForMisspelledWord(const String& misspelledWord) override;
-    virtual void checkGrammarOfString(const UChar*, int length, Vector<GrammarDetail>&,
+    virtual void checkGrammarOfString(StringView, Vector<GrammarDetail>&,
                                       int* badGrammarLocation, int* badGrammarLength) override;
 
     virtual void getGuessesForWord(const String& word, const String& context, Vector<String>& guesses) override;
