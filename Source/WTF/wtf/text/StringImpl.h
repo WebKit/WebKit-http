@@ -54,6 +54,10 @@ template <typename T> struct IdentifierCharBufferTranslator;
 struct IdentifierLCharFromUCharTranslator;
 }
 
+namespace JSC {
+    class WeakImpl;
+}
+
 namespace WTF {
 
 struct CStringTranslator;
@@ -162,6 +166,7 @@ private:
         : m_refCount(s_refCountFlagIsStaticString)
         , m_length(length)
         , m_data16(characters)
+        , m_weakJSString(nullptr)
         , m_hashAndFlags(s_hashFlagIsIdentifier | BufferOwned)
     {
         // Ensure that the hash is computed so that AtomicStringHash can call existingHash()
@@ -179,6 +184,7 @@ private:
         : m_refCount(s_refCountFlagIsStaticString)
         , m_length(length)
         , m_data8(characters)
+        , m_weakJSString(nullptr)
         , m_hashAndFlags(s_hashFlag8BitBuffer | s_hashFlagIsIdentifier | BufferOwned)
     {
         // Ensure that the hash is computed so that AtomicStringHash can call existingHash()
@@ -196,6 +202,7 @@ private:
         : m_refCount(s_refCountIncrement)
         , m_length(length)
         , m_data8(tailPointer<LChar>())
+        , m_weakJSString(nullptr)
         , m_hashAndFlags(s_hashFlag8BitBuffer | BufferInternal)
     {
         ASSERT(m_data8);
@@ -209,6 +216,7 @@ private:
         : m_refCount(s_refCountIncrement)
         , m_length(length)
         , m_data16(tailPointer<UChar>())
+        , m_weakJSString(nullptr)
         , m_hashAndFlags(BufferInternal)
     {
         ASSERT(m_data16);
@@ -222,6 +230,7 @@ private:
         : m_refCount(s_refCountIncrement)
         , m_length(length)
         , m_data8(characters.leakPtr())
+        , m_weakJSString(nullptr)
         , m_hashAndFlags(s_hashFlag8BitBuffer | BufferOwned)
     {
         ASSERT(m_data8);
@@ -235,6 +244,7 @@ private:
         : m_refCount(s_refCountIncrement)
         , m_length(length)
         , m_data16(characters)
+        , m_weakJSString(nullptr)
         , m_hashAndFlags(BufferInternal)
     {
         ASSERT(m_data16);
@@ -247,6 +257,7 @@ private:
         : m_refCount(s_refCountIncrement)
         , m_length(length)
         , m_data8(characters)
+        , m_weakJSString(nullptr)
         , m_hashAndFlags(s_hashFlag8BitBuffer | BufferInternal)
     {
         ASSERT(m_data8);
@@ -260,6 +271,7 @@ private:
         : m_refCount(s_refCountIncrement)
         , m_length(length)
         , m_data16(characters.leakPtr())
+        , m_weakJSString(nullptr)
         , m_hashAndFlags(BufferOwned)
     {
         ASSERT(m_data16);
@@ -273,6 +285,7 @@ private:
         : m_refCount(s_refCountIncrement)
         , m_length(length)
         , m_data8(characters)
+        , m_weakJSString(nullptr)
         , m_hashAndFlags(s_hashFlag8BitBuffer | BufferSubstring)
     {
         ASSERT(is8Bit());
@@ -290,6 +303,7 @@ private:
         : m_refCount(s_refCountIncrement)
         , m_length(length)
         , m_data16(characters)
+        , m_weakJSString(nullptr)
         , m_hashAndFlags(BufferSubstring)
     {
         ASSERT(!is8Bit());
@@ -309,6 +323,7 @@ private:
         // We expect m_length to be initialized to 0 as we use it
         // to represent a null terminated buffer.
         , m_data8(reinterpret_cast<const LChar*>(&m_length))
+        , m_weakJSString(nullptr)
     {
         ASSERT(m_data8);
         // Set the hash early, so that all empty unique StringImpls have a hash,
@@ -612,6 +627,9 @@ public:
         m_refCount = tempRefCount;
     }
 
+    JSC::WeakImpl* weakJSString() { return m_weakJSString; }
+    void setWeakJSString(JSC::WeakImpl* weakJSString) { m_weakJSString = weakJSString; }
+
     WTF_EXPORT_PRIVATE static StringImpl* empty();
 
     // FIXME: Does this really belong in StringImpl?
@@ -851,6 +869,7 @@ public:
         unsigned m_refCount;
         unsigned m_length;
         const LChar* m_data8;
+        JSC::WeakImpl* m_weakJSString;
         mutable UChar* m_copyData16;
         unsigned m_hashAndFlags;
 
@@ -876,6 +895,7 @@ private:
         const LChar* m_data8;
         const UChar* m_data16;
     };
+    JSC::WeakImpl* m_weakJSString;
     mutable UChar* m_copyData16;
     mutable unsigned m_hashAndFlags;
 };
@@ -1297,7 +1317,7 @@ bool equalIgnoringNullity(const Vector<UChar, inlineCapacity>& a, StringImpl* b)
 }
 
 template<typename CharacterType1, typename CharacterType2>
-static inline int codePointCompare(unsigned l1, unsigned l2, const CharacterType1* c1, const CharacterType2* c2)
+inline int codePointCompare(unsigned l1, unsigned l2, const CharacterType1* c1, const CharacterType2* c2)
 {
     const unsigned lmin = l1 < l2 ? l1 : l2;
     unsigned pos = 0;
@@ -1316,22 +1336,22 @@ static inline int codePointCompare(unsigned l1, unsigned l2, const CharacterType
     return (l1 > l2) ? 1 : -1;
 }
 
-static inline int codePointCompare8(const StringImpl* string1, const StringImpl* string2)
+inline int codePointCompare8(const StringImpl* string1, const StringImpl* string2)
 {
     return codePointCompare(string1->length(), string2->length(), string1->characters8(), string2->characters8());
 }
 
-static inline int codePointCompare16(const StringImpl* string1, const StringImpl* string2)
+inline int codePointCompare16(const StringImpl* string1, const StringImpl* string2)
 {
     return codePointCompare(string1->length(), string2->length(), string1->characters16(), string2->characters16());
 }
 
-static inline int codePointCompare8To16(const StringImpl* string1, const StringImpl* string2)
+inline int codePointCompare8To16(const StringImpl* string1, const StringImpl* string2)
 {
     return codePointCompare(string1->length(), string2->length(), string1->characters8(), string2->characters16());
 }
 
-static inline int codePointCompare(const StringImpl* string1, const StringImpl* string2)
+inline int codePointCompare(const StringImpl* string1, const StringImpl* string2)
 {
     if (!string1)
         return (string2 && string2->length()) ? -1 : 0;
@@ -1351,7 +1371,7 @@ static inline int codePointCompare(const StringImpl* string1, const StringImpl* 
     return codePointCompare16(string1, string2);
 }
 
-static inline bool isSpaceOrNewline(UChar c)
+inline bool isSpaceOrNewline(UChar c)
 {
     // Use isASCIISpace() for basic Latin-1.
     // This will include newlines, which aren't included in Unicode DirWS.

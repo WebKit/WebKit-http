@@ -53,6 +53,7 @@
 #include <WebCore/GUniquePtrGtk.h>
 #include <WebCore/GtkClickCounter.h>
 #include <WebCore/GtkDragAndDropHelper.h>
+#include <WebCore/GtkTouchContextHelper.h>
 #include <WebCore/GtkUtilities.h>
 #include <WebCore/GtkVersioning.h>
 #include <WebCore/NotImplemented.h>
@@ -110,6 +111,7 @@ struct _WebKitWebViewBasePrivate {
     GUniquePtr<GdkEvent> contextMenuEvent;
     WebContextMenuProxyGtk* activeContextMenuProxy;
     WebViewBaseInputMethodFilter inputMethodFilter;
+    GtkTouchContextHelper touchContext;
 
     GtkWindow* toplevelOnScreenWindow;
     unsigned long toplevelResizeGripVisibilityID;
@@ -272,7 +274,8 @@ static void webkitWebViewBaseRealize(GtkWidget* widget)
         | GDK_BUTTON_MOTION_MASK
         | GDK_BUTTON1_MOTION_MASK
         | GDK_BUTTON2_MOTION_MASK
-        | GDK_BUTTON3_MOTION_MASK;
+        | GDK_BUTTON3_MOTION_MASK
+        | GDK_TOUCH_MASK;
 
     gint attributesMask = GDK_WA_X | GDK_WA_Y | GDK_WA_VISUAL;
 
@@ -712,6 +715,19 @@ static gboolean webkitWebViewBaseMotionNotifyEvent(GtkWidget* widget, GdkEventMo
     return TRUE;
 }
 
+static gboolean webkitWebViewBaseTouchEvent(GtkWidget* widget, GdkEventTouch* event)
+{
+    WebKitWebViewBasePrivate* priv = WEBKIT_WEB_VIEW_BASE(widget)->priv;
+
+    if (priv->authenticationDialog)
+        return TRUE;
+
+    priv->touchContext.handleEvent(reinterpret_cast<GdkEvent*>(event));
+    priv->pageProxy->handleTouchEvent(NativeWebTouchEvent(reinterpret_cast<GdkEvent*>(event), priv->touchContext));
+
+    return TRUE;
+}
+
 static gboolean webkitWebViewBaseQueryTooltip(GtkWidget* widget, gint x, gint y, gboolean keyboardMode, GtkTooltip* tooltip)
 {
     WebKitWebViewBasePrivate* priv = WEBKIT_WEB_VIEW_BASE(widget)->priv;
@@ -896,6 +912,7 @@ static void webkit_web_view_base_class_init(WebKitWebViewBaseClass* webkitWebVie
     widgetClass->button_release_event = webkitWebViewBaseButtonReleaseEvent;
     widgetClass->scroll_event = webkitWebViewBaseScrollEvent;
     widgetClass->motion_notify_event = webkitWebViewBaseMotionNotifyEvent;
+    widgetClass->touch_event = webkitWebViewBaseTouchEvent;
     widgetClass->query_tooltip = webkitWebViewBaseQueryTooltip;
 #if ENABLE(DRAG_SUPPORT)
     widgetClass->drag_end = webkitWebViewBaseDragEnd;
@@ -919,10 +936,10 @@ static void webkit_web_view_base_class_init(WebKitWebViewBaseClass* webkitWebVie
     containerClass->forall = webkitWebViewBaseContainerForall;
 }
 
-WebKitWebViewBase* webkitWebViewBaseCreate(WebContext* context, WebPageGroup* pageGroup)
+WebKitWebViewBase* webkitWebViewBaseCreate(WebContext* context, WebPageGroup* pageGroup, WebPageProxy* relatedPage)
 {
     WebKitWebViewBase* webkitWebViewBase = WEBKIT_WEB_VIEW_BASE(g_object_new(WEBKIT_TYPE_WEB_VIEW_BASE, NULL));
-    webkitWebViewBaseCreateWebPage(webkitWebViewBase, context, pageGroup);
+    webkitWebViewBaseCreateWebPage(webkitWebViewBase, context, pageGroup, relatedPage);
     return webkitWebViewBase;
 }
 
@@ -945,14 +962,17 @@ void webkitWebViewBaseUpdatePreferences(WebKitWebViewBase* webkitWebViewBase)
         return;
 #endif
 
-    priv->pageProxy->pageGroup().preferences()->setAcceleratedCompositingEnabled(false);
+    priv->pageProxy->pageGroup().preferences().setAcceleratedCompositingEnabled(false);
 }
 
-void webkitWebViewBaseCreateWebPage(WebKitWebViewBase* webkitWebViewBase, WebContext* context, WebPageGroup* pageGroup)
+void webkitWebViewBaseCreateWebPage(WebKitWebViewBase* webkitWebViewBase, WebContext* context, WebPageGroup* pageGroup, WebPageProxy* relatedPage)
 {
     WebKitWebViewBasePrivate* priv = webkitWebViewBase->priv;
 
-    priv->pageProxy = context->createWebPage(*priv->pageClient, pageGroup);
+    WebPageConfiguration webPageConfiguration;
+    webPageConfiguration.pageGroup = pageGroup;
+    webPageConfiguration.relatedPage = relatedPage;
+    priv->pageProxy = context->createWebPage(*priv->pageClient, std::move(webPageConfiguration));
     priv->pageProxy->initializeWebPage();
 
 #if USE(TEXTURE_MAPPER_GL)

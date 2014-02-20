@@ -41,6 +41,7 @@ line-height [Inherited]
 // The remaining properties are listed in alphabetical order
 background
 background-attachment
+background-blend-mode
 background-clip
 background-color
 background-image
@@ -220,7 +221,6 @@ z-index
 -webkit-appearance
 -webkit-aspect-ratio [Inherited]
 -webkit-backface-visibility
--webkit-background-blend-mode
 -webkit-background-clip
 -webkit-background-composite
 -webkit-background-origin
@@ -304,15 +304,14 @@ z-index
 -webkit-grid-auto-rows
 -webkit-grid-column-end
 -webkit-grid-column-start
--webkit-grid-definition-columns
--webkit-grid-definition-rows
+-webkit-grid-template-columns
+-webkit-grid-template-rows
 -webkit-grid-row-end
 -webkit-grid-row-start
 -webkit-grid-column
 -webkit-grid-row
--webkit-grid-template
+-webkit-grid-template-areas
 -webkit-grid-auto-flow
--webkit-highlight [Inherited]
 -webkit-hyphenate-character [Inherited]
 -webkit-hyphenate-limit-after [Inherited]
 -webkit-hyphenate-limit-before [Inherited]

@@ -27,6 +27,7 @@
 #define JSContext_h
 
 #include <JavaScriptCore/JavaScript.h>
+#include <JavaScriptCore/WebKitAvailability.h>
 
 #if JSC_OBJC_API_ENABLED
 
@@ -91,6 +92,16 @@ OBJC_VISIBLE
 @result The currently executing JSContext or nil if there isn't one.
 */
 + (JSContext *)currentContext;
+
+/*!
+@method
+@abstract Get the JavaScript function that is currently executing.
+@discussion This method may be called from within an Objective-C block or method invoked
+ as a callback from JavaScript to retrieve the callback's context. Outside of
+ a callback from JavaScript this method will return nil.
+@result The currently executing JavaScript function or nil if there isn't one.
+*/
++ (JSValue *)currentCallee NS_AVAILABLE(10_10, 8_0);
 
 /*!
 @method
@@ -168,7 +179,7 @@ OBJC_VISIBLE
 @property
 @discussion Name of the JSContext. Exposed when remote debugging the context.
 */
-@property (copy) NSString *name;
+@property (copy) NSString *name NS_AVAILABLE(10_10, 8_0);
 
 @end
 

@@ -81,6 +81,7 @@
 #include "RenderFlowThread.h"
 #include "RenderGeometryMap.h"
 #include "RenderInline.h"
+#include "RenderIterator.h"
 #include "RenderLayerBacking.h"
 #include "RenderLayerCompositor.h"
 #include "RenderMarquee.h"
@@ -420,9 +421,9 @@ void RenderLayer::updateLayerPositions(RenderGeometryMap* geometryMap, UpdateLay
             if (!renderer().view().printing()) {
                 bool didRepaint = false;
                 if (m_repaintStatus & NeedsFullRepaint) {
-                    renderer().repaintUsingContainer(repaintContainer, pixelSnappedIntRect(oldRepaintRect));
+                    renderer().repaintUsingContainer(repaintContainer, oldRepaintRect);
                     if (m_repaintRect != oldRepaintRect) {
-                        renderer().repaintUsingContainer(repaintContainer, pixelSnappedIntRect(m_repaintRect));
+                        renderer().repaintUsingContainer(repaintContainer, m_repaintRect);
                         didRepaint = true;
                     }
                 } else if (shouldRepaintAfterLayout()) {
@@ -706,8 +707,8 @@ void RenderLayer::clearRepaintRects()
     ASSERT(!m_hasVisibleContent);
     ASSERT(!m_visibleContentStatusDirty);
 
-    m_repaintRect = IntRect();
-    m_outlineBox = IntRect();
+    m_repaintRect = LayoutRect();
+    m_outlineBox = LayoutRect();
 }
 
 void RenderLayer::updateLayerPositionsAfterDocumentScroll()
@@ -1197,7 +1198,7 @@ bool RenderLayer::updateLayerPosition()
         RenderInline& inlineFlow = toRenderInline(renderer());
         IntRect lineBox = inlineFlow.linesBoundingBox();
         setSize(lineBox.size());
-        inlineBoundingBoxOffset = toSize(lineBox.location());
+        inlineBoundingBoxOffset = toLayoutSize(lineBox.location());
         localPoint += inlineBoundingBoxOffset;
     } else if (RenderBox* box = renderBox()) {
         // FIXME: Is snapping the size really needed here for the RenderBox case?
@@ -1682,7 +1683,19 @@ void RenderLayer::beginTransparencyLayers(GraphicsContext* context, const Render
         context->save();
         LayoutRect clipRect = paintingExtent(rootLayer, paintDirtyRect, paintBehavior);
         context->clip(clipRect);
+
+#if ENABLE(CSS_COMPOSITING)
+        if (hasBlendMode())
+            context->setCompositeOperation(context->compositeOperation(), m_blendMode);
+#endif
+
         context->beginTransparencyLayer(renderer().opacity());
+
+#if ENABLE(CSS_COMPOSITING)
+        if (hasBlendMode())
+            context->setCompositeOperation(context->compositeOperation(), BlendModeNormal);
+#endif
+
 #ifdef REVEAL_TRANSPARENCY_LAYERS
         context->setFillColor(Color(0.0f, 0.0f, 0.5f, 0.2f), ColorSpaceDeviceRGB);
         context->fillRect(clipRect);
@@ -1833,10 +1846,8 @@ void RenderLayer::insertOnlyThisLayer()
     }
 
     // Remove all descendant layers from the hierarchy and add them to the new position.
-    for (RenderObject* curr = renderer().firstChild(); curr; curr = curr->nextSibling()) {
-        if (curr->isRenderElement())
-            toRenderElement(curr)->moveLayers(m_parent, this);
-    }
+    for (auto& child : childrenOfType<RenderElement>(renderer()))
+        child.moveLayers(m_parent, this);
 
     // Clear out all the clip rects.
     clearClipRectsIncludingDescendants();
@@ -1919,13 +1930,13 @@ static inline const RenderLayer* accumulateOffsetTowardsAncestor(const RenderLay
     if (position == FixedPosition && fixedFlowThreadContainer) {
         ASSERT(ancestorLayer);
         if (ancestorLayer->isOutOfFlowRenderFlowThread()) {
-            location += toSize(layer->location());
+            location += toLayoutSize(layer->location());
             return ancestorLayer;
         }
 
         if (ancestorLayer == renderer.view().layer()) {
             // Add location in flow thread coordinates.
-            location += toSize(layer->location());
+            location += toLayoutSize(layer->location());
 
             // Add flow thread offset in view coordinates since the view may be scrolled.
             FloatPoint absPos = renderer.view().localToAbsolute(FloatPoint(), IsFixed);
@@ -1979,7 +1990,7 @@ static inline const RenderLayer* accumulateOffsetTowardsAncestor(const RenderLay
     if (!parentLayer)
         return 0;
 
-    location += toSize(layer->location());
+    location += toLayoutSize(layer->location());
 
     if (adjustForColumns == RenderLayer::AdjustForColumns) {
         if (RenderLayer* parentLayer = layer->parent()) {
@@ -2290,7 +2301,7 @@ void RenderLayer::scrollTo(int x, int y)
 #else
     if (requiresRepaint)
 #endif
-        renderer().repaintUsingContainer(repaintContainer, pixelSnappedIntRect(m_repaintRect));
+        renderer().repaintUsingContainer(repaintContainer, m_repaintRect);
 
     // Schedule the scroll DOM event.
     if (Element* element = renderer().element())
@@ -2700,7 +2711,7 @@ LayoutRect RenderLayer::scrollCornerAndResizerRect() const
 {
     RenderBox* box = renderBox();
     if (!box)
-        return IntRect();
+        return LayoutRect();
     LayoutRect scrollCornerAndResizer = scrollCornerRect();
     if (scrollCornerAndResizer.isEmpty())
         scrollCornerAndResizer = resizerCornerRect(this, box->borderBoxRect());
@@ -3777,37 +3788,37 @@ bool RenderLayer::setupFontSubpixelQuantization(GraphicsContext* context, bool& 
 }
 
 template <class ReferenceBoxClipPathOperation>
-static inline LayoutRect computeReferenceBox(const RenderObject& renderer, const ReferenceBoxClipPathOperation& clippingPath, const LayoutRect& rootRelativeBounds)
+static inline LayoutRect computeReferenceBox(const RenderObject& renderer, const ReferenceBoxClipPathOperation& clippingPath, const LayoutPoint& offsetFromRoot, const LayoutRect& rootRelativeBounds)
 {
+    // FIXME: Support different reference boxes for inline content.
+    // https://bugs.webkit.org/show_bug.cgi?id=129047
+    if (!renderer.isBox())
+        return rootRelativeBounds;
+
     LayoutRect referenceBox;
-    if (renderer.isBox()) {
-        const RenderBox& box = toRenderBox(renderer);
-        switch (clippingPath.referenceBox()) {
-            case ContentBox:
-                referenceBox = box.contentBoxRect();
-                referenceBox.moveBy(rootRelativeBounds.location());
-                break;
-            case PaddingBox:
-                referenceBox = box.paddingBoxRect();
-                referenceBox.moveBy(rootRelativeBounds.location());
-                break;
-            case BorderBox:
-                referenceBox = box.borderBoxRect();
-                referenceBox.moveBy(rootRelativeBounds.location());
-                break;
-            case MarginBox:
-                // FIXME: Support margin-box. Use bounding client rect for now.
-                // https://bugs.webkit.org/show_bug.cgi?id=127984
-            case BoundingBox:
-            case BoxMissing:
-                // FIXME: If no reference box was specified the spec demands to use
-                // the border-box. However, the current prefixed version of clip-path uses
-                // bounding-box. Keep bounding-box for now.
-                referenceBox = rootRelativeBounds;
-        }
-    } else
-        // FIXME: Support different reference boxes for inline content.
-        referenceBox = rootRelativeBounds;
+    const RenderBox& box = toRenderBox(renderer);
+    switch (clippingPath.referenceBox()) {
+    case ContentBox:
+        referenceBox = box.contentBoxRect();
+        referenceBox.moveBy(offsetFromRoot);
+        break;
+    case PaddingBox:
+        referenceBox = box.paddingBoxRect();
+        referenceBox.moveBy(offsetFromRoot);
+        break;
+    // FIXME: Support margin-box. Use bounding client rect for now.
+    // https://bugs.webkit.org/show_bug.cgi?id=127984
+    case MarginBox:
+    // fill, stroke, view-box compute to border-box for HTML elements.
+    case Fill:
+    case Stroke:
+    case ViewBox:
+    case BorderBox:
+    case BoxMissing:
+        referenceBox = box.borderBoxRect();
+        referenceBox.moveBy(offsetFromRoot);
+        break;
+    }
 
     return referenceBox;
 }
@@ -3827,7 +3838,7 @@ bool RenderLayer::setupClipPath(GraphicsContext* context, const LayerPaintingInf
     if (style.clipPath()->type() == ClipPathOperation::Shape) {
         ShapeClipPathOperation& clippingPath = toShapeClipPathOperation(*(style.clipPath()));
 
-        LayoutRect referenceBox = computeReferenceBox(renderer(), clippingPath, rootRelativeBounds);
+        LayoutRect referenceBox = computeReferenceBox(renderer(), clippingPath, offsetFromRoot, rootRelativeBounds);
         context->save();
         context->clipPath(clippingPath.pathForReferenceRect(referenceBox), clippingPath.windRule());
         return true;
@@ -3836,7 +3847,7 @@ bool RenderLayer::setupClipPath(GraphicsContext* context, const LayerPaintingInf
     if (style.clipPath()->type() == ClipPathOperation::Box) {
         BoxClipPathOperation& clippingPath = toBoxClipPathOperation(*(style.clipPath()));
 
-        LayoutRect referenceBox = computeReferenceBox(renderer(), clippingPath, rootRelativeBounds);
+        LayoutRect referenceBox = computeReferenceBox(renderer(), clippingPath, offsetFromRoot, rootRelativeBounds);
         // FIXME This does not properly compute the rounded corners as specified in all conditions.
         // https://bugs.webkit.org/show_bug.cgi?id=127982
         const RoundedRect& shapeRect = renderer().style().getRoundedBorderFor(referenceBox, &(renderer().view()));
@@ -4084,7 +4095,8 @@ void RenderLayer::paintLayerContents(GraphicsContext* context, const LayerPainti
         paintFixedLayersInNamedFlows(context, localPaintingInfo, localPaintFlags);
         
         // If this is a region, paint its contents via the flow thread's layer.
-        paintFlowThreadIfRegion(context, localPaintingInfo, localPaintFlags, offsetFromRoot, paintDirtyRect, isPaintingOverflowContents);
+        if (shouldPaintContent)
+            paintFlowThreadIfRegion(context, localPaintingInfo, localPaintFlags, offsetFromRoot, paintDirtyRect, isPaintingOverflowContents);
     }
 
     if (isPaintingOverlayScrollbars)
@@ -4306,8 +4318,8 @@ void RenderLayer::paintBackgroundForFragments(const LayerFragments& layerFragmen
         
         // Paint the background.
         // FIXME: Eventually we will collect the region from the fragment itself instead of just from the paint info.
-        PaintInfo paintInfo(context, pixelSnappedIntRect(fragment.backgroundRect.rect()), PaintPhaseBlockBackground, paintBehavior, subtreePaintRootForRenderer, localPaintingInfo.region, 0, 0, &localPaintingInfo.rootLayer->renderer());
-        renderer().paint(paintInfo, toPoint(fragment.layerBounds.location() - renderBoxLocation() + localPaintingInfo.subPixelAccumulation));
+        PaintInfo paintInfo(context, fragment.backgroundRect.rect(), PaintPhaseBlockBackground, paintBehavior, subtreePaintRootForRenderer, localPaintingInfo.region, 0, 0, &localPaintingInfo.rootLayer->renderer());
+        renderer().paint(paintInfo, toLayoutPoint(fragment.layerBounds.location() - renderBoxLocation() + localPaintingInfo.subPixelAccumulation));
 
         if (localPaintingInfo.clipToDirtyRect)
             restoreClip(context, localPaintingInfo.paintDirtyRect, fragment.backgroundRect);
@@ -4379,10 +4391,10 @@ void RenderLayer::paintForegroundForFragmentsWithPhase(PaintPhase phase, const L
         if (shouldClip)
             clipToRect(localPaintingInfo.rootLayer, context, localPaintingInfo.paintDirtyRect, fragment.foregroundRect);
     
-        PaintInfo paintInfo(context, pixelSnappedIntRect(fragment.foregroundRect.rect()), phase, paintBehavior, subtreePaintRootForRenderer, localPaintingInfo.region, 0, 0, &localPaintingInfo.rootLayer->renderer());
+        PaintInfo paintInfo(context, fragment.foregroundRect.rect(), phase, paintBehavior, subtreePaintRootForRenderer, localPaintingInfo.region, 0, 0, &localPaintingInfo.rootLayer->renderer());
         if (phase == PaintPhaseForeground)
             paintInfo.overlapTestRequests = localPaintingInfo.overlapTestRequests;
-        renderer().paint(paintInfo, toPoint(fragment.layerBounds.location() - renderBoxLocation() + localPaintingInfo.subPixelAccumulation));
+        renderer().paint(paintInfo, toLayoutPoint(fragment.layerBounds.location() - renderBoxLocation() + localPaintingInfo.subPixelAccumulation));
         
         if (shouldClip)
             restoreClip(context, localPaintingInfo.paintDirtyRect, fragment.foregroundRect);
@@ -4398,9 +4410,9 @@ void RenderLayer::paintOutlineForFragments(const LayerFragments& layerFragments,
             continue;
     
         // Paint our own outline
-        PaintInfo paintInfo(context, pixelSnappedIntRect(fragment.outlineRect.rect()), PaintPhaseSelfOutline, paintBehavior, subtreePaintRootForRenderer, localPaintingInfo.region, 0, 0, &localPaintingInfo.rootLayer->renderer());
+        PaintInfo paintInfo(context, fragment.outlineRect.rect(), PaintPhaseSelfOutline, paintBehavior, subtreePaintRootForRenderer, localPaintingInfo.region, 0, 0, &localPaintingInfo.rootLayer->renderer());
         clipToRect(localPaintingInfo.rootLayer, context, localPaintingInfo.paintDirtyRect, fragment.outlineRect, DoNotIncludeSelfForBorderRadius);
-        renderer().paint(paintInfo, toPoint(fragment.layerBounds.location() - renderBoxLocation() + localPaintingInfo.subPixelAccumulation));
+        renderer().paint(paintInfo, toLayoutPoint(fragment.layerBounds.location() - renderBoxLocation() + localPaintingInfo.subPixelAccumulation));
         restoreClip(context, localPaintingInfo.paintDirtyRect, fragment.outlineRect);
     }
 }
@@ -4418,8 +4430,8 @@ void RenderLayer::paintMaskForFragments(const LayerFragments& layerFragments, Gr
         
         // Paint the mask.
         // FIXME: Eventually we will collect the region from the fragment itself instead of just from the paint info.
-        PaintInfo paintInfo(context, pixelSnappedIntRect(fragment.backgroundRect.rect()), PaintPhaseMask, PaintBehaviorNormal, subtreePaintRootForRenderer, localPaintingInfo.region, 0, 0, &localPaintingInfo.rootLayer->renderer());
-        renderer().paint(paintInfo, toPoint(fragment.layerBounds.location() - renderBoxLocation() + localPaintingInfo.subPixelAccumulation));
+        PaintInfo paintInfo(context, fragment.backgroundRect.rect(), PaintPhaseMask, PaintBehaviorNormal, subtreePaintRootForRenderer, localPaintingInfo.region, 0, 0, &localPaintingInfo.rootLayer->renderer());
+        renderer().paint(paintInfo, toLayoutPoint(fragment.layerBounds.location() - renderBoxLocation() + localPaintingInfo.subPixelAccumulation));
         
         if (localPaintingInfo.clipToDirtyRect)
             restoreClip(context, localPaintingInfo.paintDirtyRect, fragment.backgroundRect);
@@ -4431,7 +4443,7 @@ void RenderLayer::paintOverflowControlsForFragments(const LayerFragments& layerF
     for (size_t i = 0; i < layerFragments.size(); ++i) {
         const LayerFragment& fragment = layerFragments.at(i);
         clipToRect(localPaintingInfo.rootLayer, context, localPaintingInfo.paintDirtyRect, fragment.backgroundRect);
-        paintOverflowControls(context, roundedIntPoint(toPoint(fragment.layerBounds.location() - renderBoxLocation() + localPaintingInfo.subPixelAccumulation)),
+        paintOverflowControls(context, roundedIntPoint(toLayoutPoint(fragment.layerBounds.location() - renderBoxLocation() + localPaintingInfo.subPixelAccumulation)),
             pixelSnappedIntRect(fragment.backgroundRect.rect()), true);
         restoreClip(context, localPaintingInfo.paintDirtyRect, fragment.backgroundRect);
     }
@@ -5237,15 +5249,17 @@ void RenderLayer::updateClipRects(const ClipRectsContext& clipRectsContext)
 
 void RenderLayer::mapLayerClipRectsToFragmentationLayer(RenderRegion* region, ClipRects& clipRects) const
 {
-    ASSERT(region && region->parent() && region->parent()->isRenderNamedFlowFragmentContainer());
+    ASSERT(region && region->isRenderNamedFlowFragment() && region->parent() && region->parent()->isRenderNamedFlowFragmentContainer());
+    
+    RenderNamedFlowFragment* flowFragment = toRenderNamedFlowFragment(region);
 
-    ClipRectsContext targetClipRectsContext(region->regionContainerLayer(), 0, TemporaryClipRects);
-    region->regionContainerLayer()->calculateClipRects(targetClipRectsContext, clipRects);
+    ClipRectsContext targetClipRectsContext(&flowFragment->fragmentContainerLayer(), 0, TemporaryClipRects);
+    flowFragment->fragmentContainerLayer().calculateClipRects(targetClipRectsContext, clipRects);
 
     LayoutRect flowThreadPortionRect = region->flowThreadPortionRect();
 
     LayoutPoint portionLocation = flowThreadPortionRect.location();
-    LayoutRect regionContentBox = region->contentBoxRect();
+    LayoutRect regionContentBox = flowFragment->fragmentContainer().contentBoxRect();
     LayoutSize moveOffset = portionLocation - regionContentBox.location();
 
     ClipRect newOverflowClipRect = clipRects.overflowClipRect();
@@ -5441,8 +5455,10 @@ void RenderLayer::calculateRects(const ClipRectsContext& clipRectsContext, const
         outlineRect = backgroundRect;
         
         // If the region does not clip its overflow, inflate the outline rect.
-        if (!(clipRectsContext.region->parent()->hasOverflowClip() && (clipRectsContext.region->regionContainerLayer() != clipRectsContext.rootLayer || clipRectsContext.respectOverflowClip == RespectOverflowClip)))
-            outlineRect.inflate(renderer().maximalOutlineSize(PaintPhaseOutline));
+        if (clipRectsContext.region->isRenderNamedFlowFragment()) {
+            if (!(clipRectsContext.region->parent()->hasOverflowClip() && (&toRenderNamedFlowFragment(clipRectsContext.region)->fragmentContainerLayer() != clipRectsContext.rootLayer || clipRectsContext.respectOverflowClip == RespectOverflowClip)))
+                outlineRect.inflate(renderer().maximalOutlineSize(PaintPhaseOutline));
+        }
     }
 
     // Update the clip rects that will be passed to child layers.
@@ -5511,19 +5527,31 @@ LayoutRect RenderLayer::selfClipRect() const
     return clippingRootLayer->renderer().localToAbsoluteQuad(FloatQuad(backgroundRect.rect())).enclosingBoundingBox();
 }
 
-LayoutRect RenderLayer::localClipRect() const
+LayoutRect RenderLayer::localClipRect(bool& clipExceedsBounds) const
 {
+    clipExceedsBounds = false;
+    
     // FIXME: border-radius not accounted for.
     // FIXME: Regions not accounted for.
     RenderLayer* clippingRootLayer = clippingRootForPainting();
+
+    LayoutPoint offsetFromRoot;
+    convertToLayerCoords(clippingRootLayer, offsetFromRoot);
+
     LayoutRect layerBounds;
     ClipRect backgroundRect, foregroundRect, outlineRect;
     ClipRectsContext clipRectsContext(clippingRootLayer, 0, PaintingClipRects);
-    calculateRects(clipRectsContext, LayoutRect::infiniteRect(), layerBounds, backgroundRect, foregroundRect, outlineRect);
+    calculateRects(clipRectsContext, LayoutRect::infiniteRect(), layerBounds, backgroundRect, foregroundRect, outlineRect, &offsetFromRoot);
 
     LayoutRect clipRect = backgroundRect.rect();
     if (clipRect == LayoutRect::infiniteRect())
         return clipRect;
+
+    if (renderer().hasClip()) {
+        // CSS clip may be larger than our border box.
+        LayoutRect cssClipRect = toRenderBox(renderer()).clipRect(offsetFromRoot, clipRectsContext.region);
+        clipExceedsBounds = !clipRect.contains(cssClipRect);
+    }
 
     LayoutPoint clippingRootOffset;
     convertToLayerCoords(clippingRootLayer, clippingRootOffset);
@@ -5714,8 +5742,9 @@ LayoutRect RenderLayer::calculateLayerBounds(const RenderLayer* ancestorLayer, c
     LayoutRect unionBounds = boundingBoxRect;
 
     if (flags & UseLocalClipRectIfPossible) {
-        LayoutRect localClipRect = this->localClipRect();
-        if (localClipRect != LayoutRect::infiniteRect()) {
+        bool clipExceedsBounds = false;
+        LayoutRect localClipRect = this->localClipRect(clipExceedsBounds);
+        if (localClipRect != LayoutRect::infiniteRect() && !clipExceedsBounds) {
             if ((flags & IncludeSelfTransform) && paintsWithTransform(PaintBehaviorNormal))
                 localClipRect = transform()->mapRect(localClipRect);
 
@@ -6201,13 +6230,13 @@ void RenderLayer::setBackingNeedsRepaintInRect(const LayoutRect& r, GraphicsLaye
 
         renderer().view().repaintViewRectangle(absRect);
     } else
-        backing()->setContentsNeedDisplayInRect(pixelSnappedIntRect(r), shouldClip);
+        backing()->setContentsNeedDisplayInRect(r, shouldClip);
 }
 
 // Since we're only painting non-composited layers, we know that they all share the same repaintContainer.
 void RenderLayer::repaintIncludingNonCompositingDescendants(RenderLayerModelObject* repaintContainer)
 {
-    renderer().repaintUsingContainer(repaintContainer, pixelSnappedIntRect(renderer().clippedOverflowRectForRepaint(repaintContainer)));
+    renderer().repaintUsingContainer(repaintContainer, renderer().clippedOverflowRectForRepaint(repaintContainer));
 
     for (RenderLayer* curr = firstChild(); curr; curr = curr->nextSibling()) {
         if (!curr->isComposited())

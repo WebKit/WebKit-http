@@ -32,7 +32,7 @@ static const int defaultTileWidth = 512;
 static const int defaultTileHeight = 512;
 
 class IntRect;
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
 class PlatformCALayer;
 #endif
 
@@ -60,7 +60,6 @@ public:
         CoverageForVisibleArea = 0,
         CoverageForVerticalScrolling = 1 << 0,
         CoverageForHorizontalScrolling = 1 << 1,
-        CoverageForSlowScrolling = 1 << 2, // Indicates that we expect to paint a lot on scrolling.
         CoverageForScrolling = CoverageForVerticalScrolling | CoverageForHorizontalScrolling
     };
     typedef unsigned TileCoverage;
@@ -100,7 +99,7 @@ public:
     virtual IntRect tileGridExtent() const = 0;
     virtual void setScrollingModeIndication(ScrollingModeIndication) = 0;
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
     virtual PlatformCALayer* tiledScrollingIndicatorLayer() = 0;
 #endif
 };

@@ -70,7 +70,7 @@
 #include <WebCore/Settings.h>
 #include <WebCore/UserGestureIndicator.h>
 
-#if ENABLE(SHADOW_DOM) || ENABLE(CSS_REGIONS) || ENABLE(CSS_COMPOSITING)
+#if ENABLE(CSS_REGIONS) || ENABLE(CSS_COMPOSITING)
 #include <WebCore/RuntimeEnabledFeatures.h>
 #endif
 
@@ -297,7 +297,7 @@ void InjectedBundle::setJavaScriptCanAccessClipboard(WebPageGroupProxy* pageGrou
 void InjectedBundle::setPrivateBrowsingEnabled(WebPageGroupProxy* pageGroup, bool enabled)
 {
     // FIXME (NetworkProcess): This test-only function doesn't work with NetworkProcess, <https://bugs.webkit.org/show_bug.cgi?id=115274>.
-#if PLATFORM(MAC) || USE(CFNETWORK) || USE(SOUP)
+#if PLATFORM(COCOA) || USE(CFNETWORK) || USE(SOUP)
     if (enabled)
         WebFrameNetworkingContext::ensurePrivateBrowsingSession(SessionTracker::legacyPrivateSessionID);
     else
@@ -624,15 +624,6 @@ void InjectedBundle::setTabKeyCyclesThroughElements(WebPage* page, bool enabled)
 void InjectedBundle::setSerialLoadingEnabled(bool enabled)
 {
     resourceLoadScheduler()->setSerialLoadingEnabled(enabled);
-}
-
-void InjectedBundle::setShadowDOMEnabled(bool enabled)
-{
-#if ENABLE(SHADOW_DOM)
-    RuntimeEnabledFeatures::sharedFeatures().setShadowDOMEnabled(enabled);
-#else
-    UNUSED_PARAM(enabled);
-#endif
 }
 
 void InjectedBundle::setCSSRegionsEnabled(bool enabled)

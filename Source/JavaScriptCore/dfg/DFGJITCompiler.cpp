@@ -41,9 +41,10 @@
 #include "DFGSpeculativeJIT.h"
 #include "DFGThunks.h"
 #include "JSCJSValueInlines.h"
-#include "MaxFrameExtentForSlowPathCall.h"
-#include "VM.h"
 #include "LinkBuffer.h"
+#include "MaxFrameExtentForSlowPathCall.h"
+#include "JSCInlines.h"
+#include "VM.h"
 
 namespace JSC { namespace DFG {
 

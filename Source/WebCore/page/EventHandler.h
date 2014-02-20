@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006, 2007, 2009, 2010, 2011, 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2006-2014 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -52,7 +52,7 @@ class WebEvent;
 #endif
 #endif // PLATFORM(IOS)
 
-#if PLATFORM(MAC) && !defined(__OBJC__)
+#if PLATFORM(COCOA) && !defined(__OBJC__)
 class NSView;
 #endif
 
@@ -69,6 +69,7 @@ namespace WebCore {
 
 class AutoscrollController;
 class Clipboard;
+class ContainerNode;
 class Document;
 class Element;
 class Event;
@@ -90,6 +91,7 @@ class RenderBox;
 class RenderElement;
 class RenderLayer;
 class RenderWidget;
+class ScrollableArea;
 class SVGElementInstance;
 class Scrollbar;
 class TextEvent;
@@ -197,6 +199,10 @@ public:
     void defaultWheelEventHandler(Node*, WheelEvent*);
     bool handlePasteGlobalSelection(const PlatformMouseEvent&);
 
+    void platformPrepareForWheelEvents(const PlatformWheelEvent& wheelEvent, const HitTestResult& result, Element*& wheelEventTarget, ContainerNode*& scrollableContainer, ScrollableArea*& scrollableArea, bool& isOverWidget);
+    void platformRecordWheelEvent(const PlatformWheelEvent&);
+    bool platformCompleteWheelEvent(const PlatformWheelEvent&, ContainerNode* scrollableContainer, ScrollableArea* scrollableArea);
+
 #if ENABLE(IOS_TOUCH_EVENTS) || ENABLE(IOS_GESTURE_EVENTS)
     typedef Vector<RefPtr<Touch>> TouchArray;
     typedef HashMap<EventTarget*, TouchArray*> EventTargetTouchMap;
@@ -246,7 +252,7 @@ public:
     
     void sendScrollEvent(); // Ditto
 
-#if PLATFORM(MAC) && defined(__OBJC__)
+#if PLATFORM(COCOA) && defined(__OBJC__)
 #if !PLATFORM(IOS)
     void mouseDown(NSEvent *);
     void mouseDragged(NSEvent *);
@@ -279,7 +285,7 @@ public:
 #else
     static WebEvent *currentEvent();
 #endif // !PLATFORM(IOS)
-#endif // PLATFORM(MAC) && defined(__OBJC__)
+#endif // PLATFORM(COCOA) && defined(__OBJC__)
 
 #if PLATFORM(IOS)
     void invalidateClick();
@@ -413,7 +419,7 @@ private:
 
     bool capturesDragging() const { return m_capturesDragging; }
 
-#if PLATFORM(MAC) && defined(__OBJC__)
+#if PLATFORM(COCOA) && defined(__OBJC__)
     NSView *mouseDownViewIfStillGood();
 
     PlatformMouseEvent currentPlatformMouseEvent() const;
@@ -518,9 +524,11 @@ private:
 
     RefPtr<Element> m_previousWheelScrolledElement;
 
-#if PLATFORM(MAC) || PLATFORM(IOS)
+#if PLATFORM(COCOA)
     NSView *m_mouseDownView;
+    RefPtr<ContainerNode> m_latchedScrollableContainer;
     bool m_sendingEventToSubview;
+    bool m_startedGestureAtScrollLimit;
 #if !PLATFORM(IOS)
     int m_activationEventNumber;
 #endif

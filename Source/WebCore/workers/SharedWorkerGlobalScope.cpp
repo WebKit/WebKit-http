@@ -38,29 +38,29 @@
 #include "EventNames.h"
 #include "MessageEvent.h"
 #include "NotImplemented.h"
-#include "ScriptCallStack.h"
 #include "SecurityOrigin.h"
 #include "SharedWorkerThread.h"
+#include <inspector/ScriptCallStack.h>
 
 namespace WebCore {
 
 PassRefPtr<MessageEvent> createConnectEvent(PassRefPtr<MessagePort> prpPort)
 {
     RefPtr<MessagePort> port = prpPort;
-    RefPtr<MessageEvent> event = MessageEvent::create(adoptPtr(new MessagePortArray(1, port)), Deprecated::ScriptValue(), String(), String(), port);
+    RefPtr<MessageEvent> event = MessageEvent::create(std::make_unique<MessagePortArray>(1, port), Deprecated::ScriptValue(), String(), String(), port);
     event->initEvent(eventNames().connectEvent, false, false);
     return event.release();
 }
 
 // static
-PassRefPtr<SharedWorkerGlobalScope> SharedWorkerGlobalScope::create(const String& name, const URL& url, const String& userAgent, std::unique_ptr<GroupSettings> settings, SharedWorkerThread* thread, const String& contentSecurityPolicy, ContentSecurityPolicy::HeaderType contentSecurityPolicyType)
+PassRefPtr<SharedWorkerGlobalScope> SharedWorkerGlobalScope::create(const String& name, const URL& url, const String& userAgent, std::unique_ptr<GroupSettings> settings, SharedWorkerThread& thread, const String& contentSecurityPolicy, ContentSecurityPolicy::HeaderType contentSecurityPolicyType)
 {
     RefPtr<SharedWorkerGlobalScope> context = adoptRef(new SharedWorkerGlobalScope(name, url, userAgent, std::move(settings), thread));
     context->applyContentSecurityPolicyFromString(contentSecurityPolicy, contentSecurityPolicyType);
     return context.release();
 }
 
-SharedWorkerGlobalScope::SharedWorkerGlobalScope(const String& name, const URL& url, const String& userAgent, std::unique_ptr<GroupSettings> settings, SharedWorkerThread* thread)
+SharedWorkerGlobalScope::SharedWorkerGlobalScope(const String& name, const URL& url, const String& userAgent, std::unique_ptr<GroupSettings> settings, SharedWorkerThread& thread)
     : WorkerGlobalScope(url, userAgent, std::move(settings), thread, 0)
     , m_name(name)
 {
@@ -75,15 +75,15 @@ EventTargetInterface SharedWorkerGlobalScope::eventTargetInterface() const
     return SharedWorkerGlobalScopeEventTargetInterfaceType;
 }
 
-SharedWorkerThread* SharedWorkerGlobalScope::thread()
+SharedWorkerThread& SharedWorkerGlobalScope::thread()
 {
-    return static_cast<SharedWorkerThread*>(Base::thread());
+    return static_cast<SharedWorkerThread&>(Base::thread());
 }
 
-void SharedWorkerGlobalScope::logExceptionToConsole(const String& errorMessage, const String& sourceURL, int lineNumber, int columnNumber, PassRefPtr<ScriptCallStack> callStack)
+void SharedWorkerGlobalScope::logExceptionToConsole(const String& errorMessage, const String& sourceURL, int lineNumber, int columnNumber, PassRefPtr<Inspector::ScriptCallStack> callStack)
 {
     WorkerGlobalScope::logExceptionToConsole(errorMessage, sourceURL, lineNumber, columnNumber, callStack);
-    addMessageToWorkerConsole(JSMessageSource, ErrorMessageLevel, errorMessage, sourceURL, lineNumber, columnNumber, callStack);
+    addMessageToWorkerConsole(MessageSource::JS, MessageLevel::Error, errorMessage, sourceURL, lineNumber, columnNumber, callStack);
 }
 
 } // namespace WebCore

@@ -39,13 +39,13 @@ namespace WebCore {
 // These CoreText Text Spacing feature selectors are not defined in CoreText.
 enum TextSpacingCTFeatureSelector { TextSpacingProportional, TextSpacingFullWidth, TextSpacingHalfWidth, TextSpacingThirdWidth, TextSpacingQuarterWidth };
 
-#if PLATFORM(MAC) && !PLATFORM(IOS)
+#if PLATFORM(MAC)
 void FontPlatformData::loadFont(NSFont* nsFont, float, NSFont*& outNSFont, CGFontRef& cgFont)
 {
     outNSFont = nsFont;
     cgFont = CTFontCopyGraphicsFont(toCTFontRef(nsFont), 0);
 }
-#endif  // PLATFORM(MAC) && !PLATFORM(IOS)
+#endif  // PLATFORM(MAC)
 
 #if !PLATFORM(IOS)
 FontPlatformData::FontPlatformData(NSFont *nsFont, float size, bool isPrinterFont, bool syntheticBold, bool syntheticOblique, FontOrientation orientation, FontWidthVariant widthVariant)
@@ -319,8 +319,10 @@ CTFontRef FontPlatformData::ctFont() const
         else
             fontDescriptor = cascadeToLastResortFontDescriptor();
         m_CTFont = adoptCF(CTFontCreateCopyWithAttributes(m_CTFont.get(), m_size, 0, fontDescriptor));
-    } else
+    } else {
+        ASSERT(m_cgFont.get());
         m_CTFont = adoptCF(CTFontCreateWithGraphicsFont(m_cgFont.get(), m_size, 0, cascadeToLastResortFontDescriptor()));
+    }
 #else
     // Apple Color Emoji size is adjusted (and then re-adjusted by Core Text) and capped.
     CGFloat size = !m_isEmoji ? m_size : m_size <= 15 ? 4 * (m_size + 2) / static_cast<CGFloat>(5) : 16;

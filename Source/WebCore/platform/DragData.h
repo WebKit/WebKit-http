@@ -34,7 +34,7 @@
 #include <wtf/HashMap.h>
 #include <wtf/Vector.h>
 
-#if PLATFORM(MAC) && !PLATFORM(IOS)
+#if PLATFORM(MAC)
 #include <wtf/RetainPtr.h>
 #include <wtf/text/WTFString.h>
 
@@ -111,7 +111,7 @@ public:
     bool containsFiles() const;
     unsigned numberOfFiles() const;
     int modifierKeyState() const;
-#if PLATFORM(MAC) && !PLATFORM(IOS)
+#if PLATFORM(MAC)
     const String& pasteboardName() const { return m_pasteboardName; }
 #endif
 
@@ -137,7 +137,7 @@ private:
     DragDataRef m_platformDragData;
     DragOperation m_draggingSourceOperationMask;
     DragApplicationFlags m_applicationFlags;
-#if PLATFORM(MAC) && !PLATFORM(IOS)
+#if PLATFORM(MAC)
     String m_pasteboardName;
 #endif
 #if PLATFORM(WIN)

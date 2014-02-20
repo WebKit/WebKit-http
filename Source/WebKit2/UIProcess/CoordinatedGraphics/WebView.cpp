@@ -50,16 +50,19 @@ WebView::WebView(WebContext* context, WebPageGroup* pageGroup)
     , m_visible(false)
     , m_opacity(1.0)
 {
-    // Need to call createWebPage after other data members, specifically m_visible, are initialized.
-    m_page = context->createWebPage(*this, pageGroup);
+    WebPageConfiguration webPageConfiguration;
+    webPageConfiguration.pageGroup = pageGroup;
 
-    m_page->pageGroup().preferences()->setAcceleratedCompositingEnabled(true);
-    m_page->pageGroup().preferences()->setForceCompositingMode(true);
+    // Need to call createWebPage after other data members, specifically m_visible, are initialized.
+    m_page = context->createWebPage(*this, std::move(webPageConfiguration));
+
+    m_page->pageGroup().preferences().setAcceleratedCompositingEnabled(true);
+    m_page->pageGroup().preferences().setForceCompositingMode(true);
 
     char* debugVisualsEnvironment = getenv("WEBKIT_SHOW_COMPOSITING_DEBUG_VISUALS");
     bool showDebugVisuals = debugVisualsEnvironment && !strcmp(debugVisualsEnvironment, "1");
-    m_page->pageGroup().preferences()->setCompositingBordersVisible(showDebugVisuals);
-    m_page->pageGroup().preferences()->setCompositingRepaintCountersVisible(showDebugVisuals);
+    m_page->pageGroup().preferences().setCompositingBordersVisible(showDebugVisuals);
+    m_page->pageGroup().preferences().setCompositingRepaintCountersVisible(showDebugVisuals);
 }
 
 WebView::~WebView()
@@ -184,16 +187,6 @@ void WebView::suspendActiveDOMObjectsAndAnimations()
 void WebView::resumeActiveDOMObjectsAndAnimations()
 {
     m_page->resumeActiveDOMObjectsAndAnimations();
-}
-
-void WebView::setShowsAsSource(bool showsAsSource)
-{
-    m_page->setMainFrameInViewSourceMode(showsAsSource);
-}
-
-bool WebView::showsAsSource() const
-{
-    return m_page->mainFrameInViewSourceMode();
 }
 
 #if ENABLE(FULLSCREEN_API)
@@ -404,13 +397,13 @@ void WebView::executeUndoRedo(WebPageProxy::UndoOrRedo undoOrRedo)
     m_undoController.executeUndoRedo(undoOrRedo);
 }
 
-IntPoint WebView::screenToWindow(const IntPoint& point)
+IntPoint WebView::screenToRootView(const IntPoint& point)
 {
     notImplemented();
     return point;
 }
 
-IntRect WebView::windowToScreen(const IntRect&)
+IntRect WebView::rootViewToScreen(const IntRect&)
 {
     notImplemented();
     return IntRect();

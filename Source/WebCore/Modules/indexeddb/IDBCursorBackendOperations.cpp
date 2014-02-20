@@ -40,15 +40,17 @@ void CursorAdvanceOperation::perform(std::function<void()> completionCallback)
     LOG(StorageAPI, "CursorAdvanceOperation");
 
     RefPtr<CursorAdvanceOperation> operation(this);
-    auto callback = [this, operation, completionCallback](PassRefPtr<IDBKey> key, PassRefPtr<IDBKey> primaryKey, PassRefPtr<SharedBuffer> valueBuffer, PassRefPtr<IDBKey> valueKey, PassRefPtr<IDBDatabaseError> error) {
+    auto callback = [this, operation, completionCallback](PassRefPtr<IDBKey> key, PassRefPtr<IDBKey> primaryKey, PassRefPtr<SharedBuffer> valueBuffer, PassRefPtr<IDBDatabaseError> error) {
         if (error) {
             m_cursor->clear();
-            // FIXME: The LevelDB backend calls onSuccess even on failure.
-            // This will probably have to change soon (for sanity) and will probably break LevelDB
+            m_callbacks->onError(error);
+        } else if (!key) {
+            // If there's no error but also no key, then the cursor reached the end.
+            m_cursor->clear();
             m_callbacks->onSuccess(static_cast<SharedBuffer*>(0));
         } else {
-            m_cursor->updateCursorData(key.get(), primaryKey.get(), valueBuffer.get(), valueKey.get());
-            m_callbacks->onSuccess(key, primaryKey, valueBuffer, valueKey);
+            m_cursor->updateCursorData(key.get(), primaryKey.get(), valueBuffer.get());
+            m_callbacks->onSuccess(key, primaryKey, valueBuffer);
         }
 
         // FIXME: Cursor operations should be able to pass along an error instead of success
@@ -63,15 +65,17 @@ void CursorIterationOperation::perform(std::function<void()> completionCallback)
     LOG(StorageAPI, "CursorIterationOperation");
 
     RefPtr<CursorIterationOperation> operation(this);
-    auto callback = [this, operation, completionCallback](PassRefPtr<IDBKey> key, PassRefPtr<IDBKey> primaryKey, PassRefPtr<SharedBuffer> valueBuffer, PassRefPtr<IDBKey> valueKey, PassRefPtr<IDBDatabaseError> error) {
+    auto callback = [this, operation, completionCallback](PassRefPtr<IDBKey> key, PassRefPtr<IDBKey> primaryKey, PassRefPtr<SharedBuffer> valueBuffer, PassRefPtr<IDBDatabaseError> error) {
         if (error) {
             m_cursor->clear();
-            // FIXME: The LevelDB backend calls onSuccess even on failure.
-            // This will probably have to change soon (for sanity) and will probably break LevelDB
+            m_callbacks->onError(error);
+        } else if (!key) {
+            // If there's no error but also no key, then the cursor reached the end.
+            m_cursor->clear();
             m_callbacks->onSuccess(static_cast<SharedBuffer*>(0));
         } else {
-            m_cursor->updateCursorData(key.get(), primaryKey.get(), valueBuffer.get(), valueKey.get());
-            m_callbacks->onSuccess(key, primaryKey, valueBuffer, valueKey);
+            m_cursor->updateCursorData(key.get(), primaryKey.get(), valueBuffer.get());
+            m_callbacks->onSuccess(key, primaryKey, valueBuffer);
         }
 
         // FIXME: Cursor operations should be able to pass along an error instead of success

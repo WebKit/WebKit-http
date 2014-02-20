@@ -71,7 +71,7 @@ const RemoteLayerTreeHost* RemoteScrollingCoordinatorProxy::layerTreeHost() cons
         return nullptr;
     }
 
-    RemoteLayerTreeDrawingAreaProxy* remoteDrawingArea = static_cast<RemoteLayerTreeDrawingAreaProxy*>(drawingArea);
+    RemoteLayerTreeDrawingAreaProxy* remoteDrawingArea = toRemoteLayerTreeDrawingAreaProxy(drawingArea);
     return &remoteDrawingArea->remoteLayerTreeHost();
 }
 
@@ -91,7 +91,7 @@ void RemoteScrollingCoordinatorProxy::updateScrollingTree(const RemoteScrollingC
 
 void RemoteScrollingCoordinatorProxy::connectStateNodeLayers(ScrollingStateTree& stateTree, const RemoteLayerTreeHost& layerTreeHost)
 {
-    for (auto it : stateTree.nodeMap()) {
+    for (auto& it : stateTree.nodeMap()) {
         ScrollingStateNode* currNode = it.value;
         switch (currNode->nodeType()) {
         case ScrollingNode: {
@@ -99,6 +99,9 @@ void RemoteScrollingCoordinatorProxy::connectStateNodeLayers(ScrollingStateTree&
             
             if (scrollingStateNode->hasChangedProperty(ScrollingStateNode::ScrollLayer))
                 scrollingStateNode->setLayer(layerTreeHost.getLayer(scrollingStateNode->layer()));
+
+            if (scrollingStateNode->hasChangedProperty(ScrollingStateScrollingNode::ScrolledContentsLayer))
+                scrollingStateNode->setScrolledContentsLayer(layerTreeHost.getLayer(scrollingStateNode->scrolledContentsLayer()));
 
             if (scrollingStateNode->hasChangedProperty(ScrollingStateScrollingNode::CounterScrollingLayer))
                 scrollingStateNode->setCounterScrollingLayer(layerTreeHost.getLayer(scrollingStateNode->counterScrollingLayer()));
@@ -139,6 +142,7 @@ void RemoteScrollingCoordinatorProxy::scrollPositionChangedViaDelegatedScrolling
     m_scrollingTree->scrollPositionChangedViaDelegatedScrolling(nodeID, offset);
 }
 
+// This comes from the scrolling tree.
 void RemoteScrollingCoordinatorProxy::scrollPositionChanged(WebCore::ScrollingNodeID scrolledNodeID, const WebCore::FloatPoint& newScrollPosition)
 {
     m_webPageProxy.send(Messages::RemoteScrollingCoordinator::ScrollPositionChangedForNode(scrolledNodeID, newScrollPosition));

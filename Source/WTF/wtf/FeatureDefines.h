@@ -128,10 +128,6 @@
 #define ENABLE_REMOTE_INSPECTOR 1
 #endif
 
-#if !defined(ENABLE_REPAINT_THROTTLING)
-#define ENABLE_REPAINT_THROTTLING 0
-#endif
-
 #if !defined(ENABLE_RESPECT_EXIF_ORIENTATION)
 #define ENABLE_RESPECT_EXIF_ORIENTATION 1
 #endif
@@ -163,7 +159,7 @@
 #endif /* PLATFORM(IOS) */
 
 /* --------- Apple MAC port (not IOS) --------- */
-#if PLATFORM(MAC) && !PLATFORM(IOS)
+#if PLATFORM(MAC)
 
 #if !defined(ENABLE_CSS_IMAGE_SET)
 #define ENABLE_CSS_IMAGE_SET 1
@@ -240,7 +236,7 @@
 #define ENABLE_MEDIA_SOURCE 1
 #endif
 
-#endif /* PLATFORM(MAC) && !PLATFORM(IOS) */
+#endif /* PLATFORM(MAC) */
 
 /* --------- Apple Windows port --------- */
 #if PLATFORM(WIN) && !OS(WINCE) && !PLATFORM(WIN_CAIRO)
@@ -684,10 +680,6 @@
 #define ENABLE_QUOTA 0
 #endif
 
-#if !defined(ENABLE_REPAINT_THROTTLING)
-#define ENABLE_REPAINT_THROTTLING 0
-#endif
-
 #if !defined(ENABLE_REMOTE_INSPECTOR)
 #define ENABLE_REMOTE_INSPECTOR 0
 #endif
@@ -706,10 +698,6 @@
 
 #if !defined(ENABLE_SCRIPTED_SPEECH)
 #define ENABLE_SCRIPTED_SPEECH 0
-#endif
-
-#if !defined(ENABLE_SHADOW_DOM)
-#define ENABLE_SHADOW_DOM 0
 #endif
 
 #if !defined(ENABLE_SHARED_WORKERS)

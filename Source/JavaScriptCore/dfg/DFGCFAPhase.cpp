@@ -34,7 +34,7 @@
 #include "DFGPhase.h"
 #include "DFGSafeToExecute.h"
 #include "OperandsInlines.h"
-#include "Operations.h"
+#include "JSCInlines.h"
 
 namespace JSC { namespace DFG {
 

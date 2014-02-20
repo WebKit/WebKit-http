@@ -32,7 +32,7 @@
 #include "DFGClobberize.h"
 #include "DFGGraph.h"
 #include "DFGPhase.h"
-#include "Operations.h"
+#include "JSCInlines.h"
 
 namespace JSC { namespace DFG {
 
@@ -121,7 +121,7 @@ private:
             
         case StructureTransitionWatchpoint:
             m_graph.watchpoints().addLazily(
-                m_node->codeOrigin,
+                m_node->origin.semantic,
                 m_node->child1()->op() == WeakJSConstant ? BadWeakConstantCacheWatchpoint : BadCacheWatchpoint,
                 m_node->structure()->transitionWatchpointSet());
             break;
@@ -157,7 +157,7 @@ private:
             ASSERT(m_graph.watchpoints().isValidOrMixed(stringPrototypeStructure->transitionWatchpointSet()));
             
             m_graph.watchpoints().addLazily(
-                m_node->codeOrigin, NotStringObject,
+                m_node->origin.semantic, NotStringObject,
                 stringPrototypeStructure->transitionWatchpointSet());
             break;
         }
@@ -169,7 +169,7 @@ private:
     
     void handleMasqueradesAsUndefined()
     {
-        if (m_graph.masqueradesAsUndefinedWatchpointIsStillValid(m_node->codeOrigin))
+        if (m_graph.masqueradesAsUndefinedWatchpointIsStillValid(m_node->origin.semantic))
             addLazily(globalObject()->masqueradesAsUndefinedWatchpoint());
     }
     
@@ -198,7 +198,7 @@ private:
     
     JSGlobalObject* globalObject()
     {
-        return m_graph.globalObjectFor(m_node->codeOrigin);
+        return m_graph.globalObjectFor(m_node->origin.semantic);
     }
     
     Node* m_node;

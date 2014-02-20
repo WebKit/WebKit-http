@@ -34,7 +34,7 @@
 typedef struct CGRect CGRect;
 #endif
 
-#if PLATFORM(MAC) && !PLATFORM(IOS)
+#if PLATFORM(MAC)
 #ifdef NSGEOMETRY_TYPES_SAME_AS_CGGEOMETRY_TYPES
 typedef struct CGRect NSRect;
 #else
@@ -198,11 +198,9 @@ public:
     operator CGRect() const;
 #endif
 
-#if !PLATFORM(IOS)
-#if (PLATFORM(MAC) && !defined(NSGEOMETRY_TYPES_SAME_AS_CGGEOMETRY_TYPES))
+#if PLATFORM(MAC) && !defined(NSGEOMETRY_TYPES_SAME_AS_CGGEOMETRY_TYPES)
     operator NSRect() const;
 #endif
-#endif // !PLATFORM(IOS)
 
     void dump(PrintStream& out) const;
 
@@ -255,11 +253,9 @@ inline bool IntRect::isInfinite() const
 IntRect enclosingIntRect(const CGRect&);
 #endif
 
-#if !PLATFORM(IOS)
-#if (PLATFORM(MAC) && !defined(NSGEOMETRY_TYPES_SAME_AS_CGGEOMETRY_TYPES))
+#if PLATFORM(MAC) && !defined(NSGEOMETRY_TYPES_SAME_AS_CGGEOMETRY_TYPES)
 IntRect enclosingIntRect(const NSRect&);
 #endif
-#endif // !PLATFORM(IOS)
 
 } // namespace WebCore
 

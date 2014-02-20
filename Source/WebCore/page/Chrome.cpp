@@ -125,11 +125,6 @@ void Chrome::contentsSizeChanged(Frame* frame, const IntSize& size) const
     m_client.contentsSizeChanged(frame, size);
 }
 
-void Chrome::layoutUpdated(Frame* frame) const
-{
-    m_client.layoutUpdated(frame);
-}
-
 void Chrome::scrollRectIntoView(const IntRect& rect) const
 {
     m_client.scrollRectIntoView(rect);
@@ -559,15 +554,6 @@ void ChromeClient::populateVisitedLinks()
 {
 }
 
-FloatRect ChromeClient::customHighlightRect(Node*, const AtomicString&, const FloatRect&)
-{
-    return FloatRect();
-}
-
-void ChromeClient::paintCustomHighlight(Node*, const AtomicString&, const FloatRect&, const FloatRect&, bool, bool)
-{
-}
-
 bool ChromeClient::shouldReplaceWithGeneratedFileForUpload(const String&, String&)
 {
     return false;
@@ -619,15 +605,10 @@ void Chrome::didReceiveDocType(Frame* frame)
     if (!frame->isMainFrame())
         return;
 
-    DocumentType* documentType = frame->document()->doctype();
-    if (!documentType) {
-        // FIXME: We should notify the client when <!DOCTYPE> is removed so that
-        // it can adjust the viewport accordingly. See <rdar://problem/15417894>.
-        return;
-    }
-
-    if (documentType->publicId().contains("xhtml mobile", false))
-        m_client.didReceiveMobileDocType();
+    bool hasMobileDocType = false;
+    if (DocumentType* documentType = frame->document()->doctype())
+        hasMobileDocType = documentType->publicId().contains("xhtml mobile", false);
+    m_client.didReceiveMobileDocType(hasMobileDocType);
 }
 #endif
 

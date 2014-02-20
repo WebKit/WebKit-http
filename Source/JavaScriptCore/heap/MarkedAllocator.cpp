@@ -1,3 +1,28 @@
+/*
+ * Copyright (C) 2012, 2013 Apple Inc. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY APPLE INC. ``AS IS'' AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE INC. OR
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
+ */
+
 #include "config.h"
 #include "MarkedAllocator.h"
 
@@ -5,6 +30,7 @@
 #include "GCActivityCallback.h"
 #include "Heap.h"
 #include "IncrementalSweeper.h"
+#include "JSCInlines.h"
 #include "VM.h"
 #include <wtf/CurrentTime.h>
 
@@ -79,19 +105,42 @@ inline void* MarkedAllocator::tryAllocateHelper(size_t bytes)
     }
 
     ASSERT(m_freeList.head);
-    MarkedBlock::FreeCell* head = m_freeList.head;
-    m_freeList.head = head->next;
+    void* head = tryPopFreeList(bytes);
     ASSERT(head);
     m_markedSpace->didAllocateInBlock(m_currentBlock);
     return head;
 }
-    
+
+inline void* MarkedAllocator::tryPopFreeList(size_t bytes)
+{
+    ASSERT(m_currentBlock);
+    if (bytes > m_currentBlock->cellSize())
+        return 0;
+
+    MarkedBlock::FreeCell* head = m_freeList.head;
+    m_freeList.head = head->next;
+    return head;
+}
+
 inline void* MarkedAllocator::tryAllocate(size_t bytes)
 {
     ASSERT(!m_heap->isBusy());
     m_heap->m_operationInProgress = Allocation;
     void* result = tryAllocateHelper(bytes);
+
+    // Due to the DelayedReleaseScope in tryAllocateHelper, some other thread might have
+    // created a new block after we thought we didn't find any free cells. 
+    while (!result && m_currentBlock) {
+        // A new block was added by another thread so try popping the free list.
+        result = tryPopFreeList(bytes);
+        if (result)
+            break;
+        // The free list was empty, so call tryAllocateHelper to do the normal sweeping stuff.
+        result = tryAllocateHelper(bytes);
+    }
+
     m_heap->m_operationInProgress = NoOperation;
+    ASSERT(result || !m_currentBlock);
     return result;
 }
     
@@ -145,14 +194,11 @@ MarkedBlock* MarkedAllocator::allocateBlock(size_t bytes)
 
 void MarkedAllocator::addBlock(MarkedBlock* block)
 {
-    // Satisfy the ASSERT in MarkedBlock::sweep.
-    DelayedReleaseScope delayedReleaseScope(*m_markedSpace);
     ASSERT(!m_currentBlock);
     ASSERT(!m_freeList.head);
     
     m_blockList.append(block);
-    m_nextBlockToSweep = m_currentBlock = block;
-    m_freeList = block->sweep(MarkedBlock::SweepToFreeList);
+    m_nextBlockToSweep = block;
     m_markedSpace->didAddBlock(block);
 }
 

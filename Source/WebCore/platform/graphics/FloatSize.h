@@ -43,13 +43,13 @@ class BSize;
 typedef struct CGSize CGSize;
 #endif
 
-#if PLATFORM(MAC) && !PLATFORM(IOS)
+#if PLATFORM(MAC)
 #ifdef NSGEOMETRY_TYPES_SAME_AS_CGGEOMETRY_TYPES
 typedef struct CGSize NSSize;
 #else
 typedef struct _NSSize NSSize;
 #endif
-#endif // PLATFORM(MAC) && !PLATFORM(IOS)
+#endif // PLATFORM(MAC)
 
 namespace WebCore {
 
@@ -122,12 +122,10 @@ public:
     operator CGSize() const;
 #endif
 
-#if !PLATFORM(IOS)
-#if (PLATFORM(MAC) && !defined(NSGEOMETRY_TYPES_SAME_AS_CGGEOMETRY_TYPES))
+#if PLATFORM(MAC) && !defined(NSGEOMETRY_TYPES_SAME_AS_CGGEOMETRY_TYPES)
     explicit FloatSize(const NSSize &); // don't do this implicitly since it's lossy
     operator NSSize() const;
 #endif
-#endif // !PLATFORM(IOS)
 
     void dump(PrintStream& out) const;
 

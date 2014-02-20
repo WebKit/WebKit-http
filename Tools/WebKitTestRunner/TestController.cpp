@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2010, 2014 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -52,11 +52,11 @@
 #include <wtf/PassOwnPtr.h>
 #include <wtf/text/CString.h>
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
 #include <WebKit2/WKPagePrivateMac.h>
 #endif
 
-#if !PLATFORM(MAC)
+#if !PLATFORM(COCOA)
 #include <WebKit2/WKTextChecker.h>
 #endif
 
@@ -79,6 +79,12 @@ static WKURLRef blankURL()
 {
     static WKURLRef staticBlankURL = WKURLCreateWithUTF8CString("about:blank");
     return staticBlankURL;
+}
+
+static WKDataRef copyWebCryptoMasterKey(WKContextRef, const void*)
+{
+    // Any 128 bit key would do, all we need for testing is to implement the callback.
+    return WKDataCreate((const uint8_t*)"\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f", 16);
 }
 
 static TestController* controller;
@@ -336,6 +342,15 @@ void TestController::initialize(int argc, const char* argv[])
 
     platformInitializeContext();
 
+    WKContextClientV1 contextClient = {
+        { 1, this },
+        nullptr, // plugInAutoStartOriginHashesChanged
+        nullptr, // networkProcessDidCrash,
+        nullptr, // plugInInformationBecameAvailable,
+        copyWebCryptoMasterKey
+    };
+    WKContextSetClient(m_context.get(), &contextClient.base);
+
     WKContextInjectedBundleClientV1 injectedBundleClient = {
         { 1, this },
         didReceiveMessageFromInjectedBundle,
@@ -572,7 +587,7 @@ bool TestController::resetStateToConsistentValues()
     // some other code doing this, it should probably be responsible for cleanup too.
     resetPreferencesToConsistentValues();
 
-#if !PLATFORM(MAC)
+#if !PLATFORM(COCOA)
     WKTextCheckerContinuousSpellCheckingEnabledStateChanged(true);
 #endif
 
@@ -841,6 +856,25 @@ void TestController::didReceiveMessageFromInjectedBundle(WKStringRef messageName
             return;
         }
 
+        if (WKStringIsEqualToUTF8CString(subMessageName, "MouseScrollByWithWheelAndMomentumPhases")) {
+            WKRetainPtr<WKStringRef> xKey = adoptWK(WKStringCreateWithUTF8CString("X"));
+            double x = WKDoubleGetValue(static_cast<WKDoubleRef>(WKDictionaryGetItemForKey(messageBodyDictionary, xKey.get())));
+            
+            WKRetainPtr<WKStringRef> yKey = adoptWK(WKStringCreateWithUTF8CString("Y"));
+            double y = WKDoubleGetValue(static_cast<WKDoubleRef>(WKDictionaryGetItemForKey(messageBodyDictionary, yKey.get())));
+            
+            WKRetainPtr<WKStringRef> phaseKey = adoptWK(WKStringCreateWithUTF8CString("Phase"));
+            int phase = static_cast<int>(WKUInt64GetValue(static_cast<WKUInt64Ref>(WKDictionaryGetItemForKey(messageBodyDictionary, phaseKey.get()))));
+            WKRetainPtr<WKStringRef> momentumKey = adoptWK(WKStringCreateWithUTF8CString("Momentum"));
+            int momentum = static_cast<int>(WKUInt64GetValue(static_cast<WKUInt64Ref>(WKDictionaryGetItemForKey(messageBodyDictionary, momentumKey.get()))));
+            
+            // Forward to WebProcess
+            WKPageSetShouldSendEventsSynchronously(mainWebView()->page(), false);
+            m_eventSenderProxy->mouseScrollByWithWheelAndMomentumPhases(x, y, phase, momentum);
+
+            return;
+        }
+
         ASSERT_NOT_REACHED();
     }
 
@@ -910,6 +944,25 @@ WKRetainPtr<WKTypeRef> TestController::didReceiveSynchronousMessageFromInjectedB
             return 0;
         }
 
+        if (WKStringIsEqualToUTF8CString(subMessageName, "MouseScrollByWithWheelAndMomentumPhases")) {
+            WKRetainPtr<WKStringRef> xKey = adoptWK(WKStringCreateWithUTF8CString("X"));
+            double x = WKDoubleGetValue(static_cast<WKDoubleRef>(WKDictionaryGetItemForKey(messageBodyDictionary, xKey.get())));
+            
+            WKRetainPtr<WKStringRef> yKey = adoptWK(WKStringCreateWithUTF8CString("Y"));
+            double y = WKDoubleGetValue(static_cast<WKDoubleRef>(WKDictionaryGetItemForKey(messageBodyDictionary, yKey.get())));
+            
+            WKRetainPtr<WKStringRef> phaseKey = adoptWK(WKStringCreateWithUTF8CString("Phase"));
+            int phase = static_cast<int>(WKUInt64GetValue(static_cast<WKUInt64Ref>(WKDictionaryGetItemForKey(messageBodyDictionary, phaseKey.get()))));
+            WKRetainPtr<WKStringRef> momentumKey = adoptWK(WKStringCreateWithUTF8CString("Momentum"));
+            int momentum = static_cast<int>(WKUInt64GetValue(static_cast<WKUInt64Ref>(WKDictionaryGetItemForKey(messageBodyDictionary, momentumKey.get()))));
+
+            // Forward to WebProcess
+            WKPageSetShouldSendEventsSynchronously(mainWebView()->page(), true);
+            m_eventSenderProxy->mouseScrollByWithWheelAndMomentumPhases(x, y, phase, momentum);
+            WKPageSetShouldSendEventsSynchronously(mainWebView()->page(), false);
+            return 0;
+        }
+        
         if (WKStringIsEqualToUTF8CString(subMessageName, "ContinuousMouseScrollBy")) {
             WKRetainPtr<WKStringRef> xKey = adoptWK(WKStringCreateWithUTF8CString("X"));
             double x = WKDoubleGetValue(static_cast<WKDoubleRef>(WKDictionaryGetItemForKey(messageBodyDictionary, xKey.get())));
@@ -1118,7 +1171,7 @@ void TestController::processDidCrash()
     // This function can be called multiple times when crash logs are being saved on Windows, so
     // ensure we only print the crashed message once.
     if (!m_didPrintWebProcessCrashedMessage) {
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
         pid_t pid = WKPageGetProcessIdentifier(m_mainWebView->page());
         fprintf(stderr, "#CRASHED - WebProcess (pid %ld)\n", static_cast<long>(pid));
 #else
@@ -1164,12 +1217,6 @@ void TestController::setCustomPolicyDelegate(bool enabled, bool permissive)
 {
     m_policyDelegateEnabled = enabled;
     m_policyDelegatePermissive = permissive;
-}
-
-void TestController::setVisibilityState(WKPageVisibilityState visibilityState, bool isInitialState)
-{
-    setHidden(visibilityState != kWKPageVisibilityStateVisible);
-    WKPageSetVisibilityState(m_mainWebView->page(), visibilityState, isInitialState);
 }
 
 void TestController::decidePolicyForGeolocationPermissionRequestIfPossible()

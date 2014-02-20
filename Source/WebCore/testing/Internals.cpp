@@ -57,7 +57,6 @@
 #include "HistoryController.h"
 #include "HistoryItem.h"
 #include "InspectorClient.h"
-#include "InspectorConsoleAgent.h"
 #include "InspectorController.h"
 #include "InspectorCounters.h"
 #include "InspectorForwarding.h"
@@ -65,8 +64,8 @@
 #include "InspectorInstrumentation.h"
 #include "InspectorOverlay.h"
 #include "InstrumentingAgents.h"
-#include "InternalSettings.h"
 #include "IntRect.h"
+#include "InternalSettings.h"
 #include "Language.h"
 #include "MainFrame.h"
 #include "MallocStatistics.h"
@@ -95,6 +94,7 @@
 #include "TreeScope.h"
 #include "TypeConversions.h"
 #include "ViewportArguments.h"
+#include "WebConsoleAgent.h"
 #include "WorkerThread.h"
 #include <bytecode/CodeBlock.h>
 #include <inspector/InspectorAgentBase.h>
@@ -194,7 +194,7 @@ protected:
 };
 
 InspectorFrontendClientDummy::InspectorFrontendClientDummy(InspectorController* controller, Page* page)
-    : InspectorFrontendClientLocal(controller, page, adoptPtr(new InspectorFrontendClientLocal::Settings()))
+    : InspectorFrontendClientLocal(controller, page, std::make_unique<InspectorFrontendClientLocal::Settings>())
 {
 }
 
@@ -365,20 +365,20 @@ Node* Internals::treeScopeRootNode(Node* node, ExceptionCode& ec)
 {
     if (!node) {
         ec = INVALID_ACCESS_ERR;
-        return 0;
+        return nullptr;
     }
 
-    return node->treeScope().rootNode();
+    return &node->treeScope().rootNode();
 }
 
 Node* Internals::parentTreeScope(Node* node, ExceptionCode& ec)
 {
     if (!node) {
         ec = INVALID_ACCESS_ERR;
-        return 0;
+        return nullptr;
     }
     const TreeScope* parentTreeScope = node->treeScope().parentTreeScope();
-    return parentTreeScope ? parentTreeScope->rootNode() : 0;
+    return parentTreeScope ? &parentTreeScope->rootNode() : nullptr;
 }
 
 unsigned Internals::lastSpatialNavigationCandidateCount(ExceptionCode& ec) const
@@ -529,7 +529,7 @@ PassRefPtr<CSSComputedStyleDeclaration> Internals::computedStyleIncludingVisited
     return CSSComputedStyleDeclaration::create(node, allowVisitedStyle);
 }
 
-Internals::ShadowRootIfShadowDOMEnabledOrNode* Internals::ensureShadowRoot(Element* host, ExceptionCode& ec)
+Node* Internals::ensureShadowRoot(Element* host, ExceptionCode& ec)
 {
     if (!host) {
         ec = INVALID_ACCESS_ERR;
@@ -542,7 +542,7 @@ Internals::ShadowRootIfShadowDOMEnabledOrNode* Internals::ensureShadowRoot(Eleme
     return host->createShadowRoot(ec).get();
 }
 
-Internals::ShadowRootIfShadowDOMEnabledOrNode* Internals::createShadowRoot(Element* host, ExceptionCode& ec)
+Node* Internals::createShadowRoot(Element* host, ExceptionCode& ec)
 {
     if (!host) {
         ec = INVALID_ACCESS_ERR;
@@ -551,7 +551,7 @@ Internals::ShadowRootIfShadowDOMEnabledOrNode* Internals::createShadowRoot(Eleme
     return host->createShadowRoot(ec).get();
 }
 
-Internals::ShadowRootIfShadowDOMEnabledOrNode* Internals::shadowRoot(Element* host, ExceptionCode& ec)
+Node* Internals::shadowRoot(Element* host, ExceptionCode& ec)
 {
     if (!host) {
         ec = INVALID_ACCESS_ERR;
@@ -570,8 +570,6 @@ String Internals::shadowRootType(const Node* root, ExceptionCode& ec) const
     switch (toShadowRoot(root)->type()) {
     case ShadowRoot::UserAgentShadowRoot:
         return String("UserAgentShadowRoot");
-    case ShadowRoot::AuthorShadowRoot:
-        return String("AuthorShadowRoot");
     default:
         ASSERT_NOT_REACHED();
         return String("Unknown");
@@ -750,6 +748,8 @@ unsigned Internals::markerCountForNode(Node* node, const String& markerType, Exc
         return 0;
     }
 
+    node->document().frame()->editor().updateEditorUINowIfScheduled();
+
     return node->document().markers().markersFor(node, markerTypes).size();
 }
 
@@ -766,6 +766,8 @@ DocumentMarker* Internals::markerAt(Node* node, const String& markerType, unsign
         ec = SYNTAX_ERR;
         return 0;
     }
+
+    node->document().frame()->editor().updateEditorUINowIfScheduled();
 
     Vector<DocumentMarker*> markers = node->document().markers().markersFor(node, markerTypes);
     if (markers.size() <= index)
@@ -1297,11 +1299,33 @@ void Internals::setDeviceProximity(const String& eventType, double value, double
 #endif
 }
 
+void Internals::updateEditorUINowIfScheduled()
+{
+    if (Document* document = contextDocument()) {
+        if (Frame* frame = document->frame())
+            frame->editor().updateEditorUINowIfScheduled();
+    }
+}
+
+Node* Internals::findEditingDeleteButton()
+{
+    Document* document = contextDocument();
+    if (!document || !document->frame())
+        return 0;
+
+    updateEditorUINowIfScheduled();
+
+    // FIXME: We shouldn't pollute the id namespace with this name.
+    return document->getElementById("WebKit-Editing-Delete-Button");
+}
+
 bool Internals::hasSpellingMarker(int from, int length, ExceptionCode&)
 {
     Document* document = contextDocument();
     if (!document || !document->frame())
         return 0;
+
+    updateEditorUINowIfScheduled();
 
     return document->frame()->editor().selectionStartHasMarkerFor(DocumentMarker::Spelling, from, length);
 }
@@ -1311,7 +1335,9 @@ bool Internals::hasAutocorrectedMarker(int from, int length, ExceptionCode&)
     Document* document = contextDocument();
     if (!document || !document->frame())
         return 0;
-    
+
+    updateEditorUINowIfScheduled();
+
     return document->frame()->editor().selectionStartHasMarkerFor(DocumentMarker::Autocorrected, from, length);
 }
 
@@ -1427,9 +1453,11 @@ Vector<String> Internals::consoleMessageArgumentCounts() const
     InstrumentingAgents* instrumentingAgents = instrumentationForPage(document->page());
     if (!instrumentingAgents)
         return Vector<String>();
-    InspectorConsoleAgent* consoleAgent = instrumentingAgents->inspectorConsoleAgent();
+
+    InspectorConsoleAgent* consoleAgent = instrumentingAgents->webConsoleAgent();
     if (!consoleAgent)
         return Vector<String>();
+
     Vector<unsigned> counts = consoleAgent->consoleMessageArgumentCounts();
     Vector<String> result(counts.size());
     for (size_t i = 0; i < counts.size(); i++)
@@ -2133,7 +2161,7 @@ PassRefPtr<ClientRect> Internals::selectionBounds(ExceptionCode& ec)
         return ClientRect::create();
     }
 
-    return ClientRect::create(document->frame()->selection().bounds());
+    return ClientRect::create(document->frame()->selection().selectionBounds());
 }
 
 #if ENABLE(VIBRATION)

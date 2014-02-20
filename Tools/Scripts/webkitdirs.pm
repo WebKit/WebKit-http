@@ -87,6 +87,7 @@ my $configurationProductDir;
 my $sourceDir;
 my $currentSVNRevision;
 my $debugger;
+my $iPhoneSimulatorVersion;
 my $nmPath;
 my $osXVersion;
 my $generateDsym;
@@ -1124,17 +1125,17 @@ sub isCrossCompilation()
 
 sub isAppleWebKit()
 {
-    return !(isGtk() or isEfl() or isWinCE() or isHaiku());
+    return isAppleMacWebKit() || isAppleWinWebKit();
 }
 
 sub isAppleMacWebKit()
 {
-    return isAppleWebKit() && isDarwin();
+    return isDarwin() && !isGtk();
 }
 
 sub isAppleWinWebKit()
 {
-    return isAppleWebKit() && (isCygwin() || isWindows()) && !isWinCairo();
+    return (isCygwin() || isWindows()) && !isWinCairo() && !isGtk() && !isWinCE();
 }
 
 sub willUseIOSDeviceSDKWhenBuilding()
@@ -1168,6 +1169,31 @@ sub isPerianInstalled()
     }
 
     return 0;
+}
+
+sub determineIPhoneSimulatorVersion()
+{
+    return if $iPhoneSimulatorVersion;
+
+    if (!isIOSWebKit()) {
+        $iPhoneSimulatorVersion = -1;
+        return;
+    }
+
+    my $version = `/usr/local/bin/psw_vers -productVersion`;
+    my @splitVersion = split(/\./, $version);
+    @splitVersion >= 2 or die "Invalid version $version";
+    $iPhoneSimulatorVersion = {
+            "major" => $splitVersion[0],
+            "minor" => $splitVersion[1],
+            "subminor" => defined($splitVersion[2] ? $splitVersion[2] : 0),
+    };
+}
+
+sub iPhoneSimulatorVersion()
+{
+    determineIPhoneSimulatorVersion();
+    return $iPhoneSimulatorVersion;
 }
 
 sub determineNmPath()
@@ -1326,8 +1352,10 @@ sub launcherName()
 {
     if (isGtk()) {
         return "GtkLauncher";
-    } elsif (isAppleWebKit()) {
+    } elsif (isAppleMacWebKit()) {
         return "Safari";
+    } elsif (isAppleWinWebKit()) {
+        return "WinLauncher";
     } elsif (isEfl()) {
         return "EWebLauncher/MiniBrowser";
     } elsif (isHaiku()) {
@@ -1876,14 +1904,16 @@ sub buildAutotoolsProject($@)
 
     chdir ".." or die;
 
-    if ($project eq 'WebKit' && !isCrossCompilation() && !($noWebKit1 && $noWebKit2)) {
-        my @docGenerationOptions = ("$sourceDir/Tools/gtk/generate-gtkdoc", "--skip-html");
-        push(@docGenerationOptions, productDir());
+    if (!checkForArgumentAndRemoveFromARGV("--disable-gtk-doc")) {
+        if ($project eq 'WebKit' && !isCrossCompilation() && !($noWebKit1 && $noWebKit2)) {
+            my @docGenerationOptions = ("$sourceDir/Tools/gtk/generate-gtkdoc", "--skip-html");
+            push(@docGenerationOptions, productDir());
 
-        unshift(@docGenerationOptions, jhbuildWrapperPrefixIfNeeded());
+            unshift(@docGenerationOptions, jhbuildWrapperPrefixIfNeeded());
 
-        if (system(@docGenerationOptions)) {
-            die "\n gtkdoc did not build without warnings\n";
+            if (system(@docGenerationOptions)) {
+                die "\n gtkdoc did not build without warnings\n";
+            }
         }
     }
 
@@ -2292,15 +2322,6 @@ sub debugWebKitTestRunner
 {
     if (isAppleMacWebKit()) {
         execMacWebKitAppForDebugging(File::Spec->catfile(productDir(), "WebKitTestRunner"));
-    }
-
-    return 1;
-}
-
-sub runTestWebKitAPI
-{
-    if (isAppleMacWebKit()) {
-        return runMacWebKitApp(File::Spec->catfile(productDir(), "TestWebKitAPI"));
     }
 
     return 1;

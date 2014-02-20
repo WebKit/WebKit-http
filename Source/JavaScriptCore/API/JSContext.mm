@@ -34,7 +34,7 @@
 #import "JSWrapperMap.h"
 #import "JavaScriptCore.h"
 #import "ObjcRuntimeExtras.h"
-#import "Operations.h"
+#import "JSCInlines.h"
 #import "StrongInlines.h"
 #import <wtf/HashSet.h>
 
@@ -80,6 +80,7 @@
 
 - (void)dealloc
 {
+    m_exception.clear();
     [m_wrapperMap release];
     JSGlobalContextRelease(m_context);
     [m_virtualMachine release];
@@ -139,6 +140,15 @@
     if (!entry)
         return nil;
     return [JSValue valueWithJSValueRef:entry->thisValue inContext:[JSContext currentContext]];
+}
+
++ (JSValue *)currentCallee
+{
+    WTFThreadData& threadData = wtfThreadData();
+    CallbackData *entry = (CallbackData *)threadData.m_apiData;
+    if (!entry)
+        return nil;
+    return [JSValue valueWithJSValueRef:entry->calleeValue inContext:[JSContext currentContext]];
 }
 
 + (NSArray *)currentArguments
@@ -238,12 +248,12 @@
     return NO;
 }
 
-- (void)beginCallbackWithData:(CallbackData *)callbackData thisValue:(JSValueRef)thisValue argumentCount:(size_t)argumentCount arguments:(const JSValueRef *)arguments
+- (void)beginCallbackWithData:(CallbackData *)callbackData calleeValue:(JSValueRef)calleeValue thisValue:(JSValueRef)thisValue argumentCount:(size_t)argumentCount arguments:(const JSValueRef *)arguments
 {
     WTFThreadData& threadData = wtfThreadData();
     [self retain];
     CallbackData *prevStack = (CallbackData *)threadData.m_apiData;
-    *callbackData = (CallbackData){ prevStack, self, [self.exception retain], thisValue, argumentCount, arguments, nil };
+    *callbackData = (CallbackData){ prevStack, self, [self.exception retain], calleeValue, thisValue, argumentCount, arguments, nil };
     threadData.m_apiData = callbackData;
     self.exception = nil;
 }

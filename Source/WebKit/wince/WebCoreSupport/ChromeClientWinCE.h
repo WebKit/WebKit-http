@@ -75,7 +75,7 @@ public:
 
     virtual void setResizable(bool) override;
 
-    virtual void addMessageToConsole(WebCore::MessageSource, WebCore::MessageLevel, const WTF::String& message, unsigned lineNumber, unsigned columnNumber, const WTF::String& sourceID) override;
+    virtual void addMessageToConsole(Inspector::MessageSource, Inspector::MessageLevel, const WTF::String& message, unsigned lineNumber, unsigned columnNumber, const WTF::String& sourceID) override;
 
     virtual bool canRunBeforeUnloadConfirmPanel() override;
     virtual bool runBeforeUnloadConfirmPanel(const WTF::String& message, WebCore::Frame*) override;
@@ -132,10 +132,6 @@ public:
     virtual void runOpenPanel(WebCore::Frame*, PassRefPtr<WebCore::FileChooser>) override;
     // Asynchronous request to load an icon for specified filenames.
     virtual void loadIconForFiles(const Vector<WTF::String>&, WebCore::FileIconLoader*) override;
-
-    // Notification that the given form element has changed. This function
-    // will be called frequently, so handling should be very fast.
-    virtual void formStateDidChange(const WebCore::Node*) override;
 
     // Pass 0 as the GraphicsLayer to detatch the root layer.
     virtual void attachRootGraphicsLayer(WebCore::Frame*, WebCore::GraphicsLayer*) override;

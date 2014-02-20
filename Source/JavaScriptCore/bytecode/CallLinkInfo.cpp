@@ -28,6 +28,7 @@
 
 #include "DFGOperations.h"
 #include "DFGThunks.h"
+#include "JSCInlines.h"
 #include "RepatchBuffer.h"
 
 #if ENABLE(JIT)

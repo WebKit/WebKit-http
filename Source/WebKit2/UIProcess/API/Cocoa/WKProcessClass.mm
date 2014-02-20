@@ -28,9 +28,12 @@
 
 #if WK_API_ENABLED
 
+#import "HistoryClient.h"
 #import "WKObject.h"
 #import "WKProcessClassConfigurationPrivate.h"
+#import "WebCertificateInfo.h"
 #import "WebContext.h"
+#import <WebCore/CertificateInfo.h>
 #import <wtf/RetainPtr.h>
 
 #if PLATFORM(IOS)
@@ -65,6 +68,7 @@
     }
 
     API::Object::constructInWrapper<WebKit::WebContext>(self, bundlePath);
+    _context->setHistoryClient(std::make_unique<WebKit::HistoryClient>());
 
     return self;
 }
@@ -76,6 +80,11 @@
     [super dealloc];
 }
 
+- (NSString *)description
+{
+    return [NSString stringWithFormat:@"<%@: %p; configuration = %@>", NSStringFromClass(self.class), self, _configuration.get()];
+}
+
 - (WKProcessClassConfiguration *)configuration
 {
     return [[_configuration copy] autorelease];
@@ -84,6 +93,15 @@
 - (API::Object&)_apiObject
 {
     return *_context;
+}
+
+@end
+
+@implementation WKProcessClass (WKPrivate)
+
+- (void)_setAllowsSpecificHTTPSCertificate:(NSArray *)certificateChain forHost:(NSString *)host
+{
+    _context->allowSpecificHTTPSCertificateForHost(WebKit::WebCertificateInfo::create(WebCore::CertificateInfo((CFArrayRef)certificateChain)).get(), host);
 }
 
 @end

@@ -751,6 +751,12 @@ JSStringRef AccessibilityUIElement::roleDescription()
     return nullptr;
 }
 
+JSStringRef AccessibilityUIElement::computedRoleString()
+{
+    // FIXME: implement http://webkit.org/b/128420
+    return nullptr;
+}
+
 JSStringRef AccessibilityUIElement::title()
 {
     if (!ATK_IS_OBJECT(m_element))
@@ -1191,13 +1197,19 @@ bool AccessibilityUIElement::attributedStringRangeIsMisspelled(unsigned location
     return false;
 }
 
-unsigned AccessibilityUIElement::uiElementCountForSearchPredicate(JSContextRef context, AccessibilityUIElement* startElement, bool isDirectionNext, JSValueRef searchKey, JSStringRef searchText, bool visibleOnly)
+unsigned AccessibilityUIElement::uiElementCountForSearchPredicate(JSContextRef context, AccessibilityUIElement* startElement, bool isDirectionNext, JSValueRef searchKey, JSStringRef searchText, bool visibleOnly, bool immediateDescendantsOnly)
 {
     // FIXME: implement
     return 0;
 }
 
-AccessibilityUIElement AccessibilityUIElement::uiElementForSearchPredicate(JSContextRef context, AccessibilityUIElement* startElement, bool isDirectionNext, JSValueRef searchKey, JSStringRef searchText, bool visibleOnly)
+AccessibilityUIElement AccessibilityUIElement::uiElementForSearchPredicate(JSContextRef context, AccessibilityUIElement* startElement, bool isDirectionNext, JSValueRef searchKey, JSStringRef searchText, bool visibleOnly, bool immediateDescendantsOnly)
+{
+    // FIXME: implement
+    return nullptr;
+}
+
+JSStringRef AccessibilityUIElement::selectTextWithCriteria(JSContextRef context, JSStringRef ambiguityResolution, JSValueRef searchStrings, JSStringRef replacementString)
 {
     // FIXME: implement
     return nullptr;

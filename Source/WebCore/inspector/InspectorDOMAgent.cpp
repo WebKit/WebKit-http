@@ -34,6 +34,7 @@
 
 #include "InspectorDOMAgent.h"
 
+#include "AXObjectCache.h"
 #include "Attr.h"
 #include "CSSComputedStyleDeclaration.h"
 #include "CSSPropertyNames.h"
@@ -63,7 +64,6 @@
 #include "HTMLNames.h"
 #include "HTMLTemplateElement.h"
 #include "HitTestResult.h"
-#include "IdentifiersFactory.h"
 #include "InspectorHistory.h"
 #include "InspectorNodeFinder.h"
 #include "InspectorOverlay.h"
@@ -91,10 +91,11 @@
 #include "XPathResult.h"
 #include "htmlediting.h"
 #include "markup.h"
+#include <inspector/IdentifiersFactory.h>
 #include <inspector/InjectedScript.h>
 #include <inspector/InjectedScriptManager.h>
+#include <runtime/JSCInlines.h>
 #include <wtf/HashSet.h>
-#include <wtf/OwnPtr.h>
 #include <wtf/Vector.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/WTFString.h>
@@ -234,8 +235,8 @@ void InspectorDOMAgent::didCreateFrontendAndBackend(Inspector::InspectorFrontend
     m_frontendDispatcher = std::make_unique<InspectorDOMFrontendDispatcher>(frontendChannel);
     m_backendDispatcher = InspectorDOMBackendDispatcher::create(backendDispatcher, this);
 
-    m_history = adoptPtr(new InspectorHistory());
-    m_domEditor = adoptPtr(new DOMEditor(m_history.get()));
+    m_history = std::make_unique<InspectorHistory>();
+    m_domEditor = std::make_unique<DOMEditor>(m_history.get());
 
     m_instrumentingAgents->setInspectorDOMAgent(this);
     m_document = m_pageAgent->mainFrame()->document();
@@ -249,8 +250,8 @@ void InspectorDOMAgent::willDestroyFrontendAndBackend(InspectorDisconnectReason)
     m_frontendDispatcher = nullptr;
     m_backendDispatcher.clear();
 
-    m_history.clear();
-    m_domEditor.clear();
+    m_history.reset();
+    m_domEditor.reset();
 
     ErrorString error;
     setSearchingForNode(&error, false, 0);
@@ -582,7 +583,7 @@ int InspectorDOMAgent::pushNodePathToFrontend(Node* nodeToPush)
         Node* parent = innerParentNode(node);
         if (!parent) {
             // Node being pushed is detached -> push subtree root.
-            OwnPtr<NodeToIdMap> newMap = adoptPtr(new NodeToIdMap);
+            auto newMap = std::make_unique<NodeToIdMap>();
             danglingMap = newMap.get();
             m_danglingNodeToIdMaps.append(newMap.release());
             RefPtr<Inspector::TypeBuilder::Array<Inspector::TypeBuilder::DOM::Node>> children = Inspector::TypeBuilder::Array<Inspector::TypeBuilder::DOM::Node>::create();
@@ -873,6 +874,12 @@ void InspectorDOMAgent::getEventListeners(Node* node, Vector<EventListenerInfo>&
     }
 }
 
+void InspectorDOMAgent::getAccessibilityPropertiesForNode(ErrorString* errorString, int nodeId, RefPtr<Inspector::TypeBuilder::DOM::AccessibilityProperties>& axProperties)
+{
+    Node* node = assertNode(errorString, nodeId);
+    axProperties = buildObjectForAccessibilityProperties(node);
+}
+
 void InspectorDOMAgent::performSearch(ErrorString* errorString, const String& whitespaceTrimmedQuery, const RefPtr<InspectorArray>* nodeIds, String* searchId, int* resultCount)
 {
     // FIXME: Search works with node granularity - number of matches within node is not calculated.
@@ -1024,14 +1031,14 @@ void InspectorDOMAgent::setSearchingForNode(ErrorString* errorString, bool enabl
     m_overlay->didSetSearchingForNode(m_searchingForNode);
 }
 
-PassOwnPtr<HighlightConfig> InspectorDOMAgent::highlightConfigFromInspectorObject(ErrorString* errorString, InspectorObject* highlightInspectorObject)
+std::unique_ptr<HighlightConfig> InspectorDOMAgent::highlightConfigFromInspectorObject(ErrorString* errorString, InspectorObject* highlightInspectorObject)
 {
     if (!highlightInspectorObject) {
         *errorString = "Internal error: highlight configuration parameter is missing";
         return nullptr;
     }
 
-    OwnPtr<HighlightConfig> highlightConfig = adoptPtr(new HighlightConfig());
+    auto highlightConfig = std::make_unique<HighlightConfig>();
     bool showInfo = false; // Default: false (do not show a tooltip).
     highlightInspectorObject->getBoolean("showInfo", &showInfo);
     highlightConfig->showInfo = showInfo;
@@ -1043,7 +1050,7 @@ PassOwnPtr<HighlightConfig> InspectorDOMAgent::highlightConfigFromInspectorObjec
     highlightConfig->padding = parseConfigColor("paddingColor", highlightInspectorObject);
     highlightConfig->border = parseConfigColor("borderColor", highlightInspectorObject);
     highlightConfig->margin = parseConfigColor("marginColor", highlightInspectorObject);
-    return highlightConfig.release();
+    return highlightConfig;
 }
 
 void InspectorDOMAgent::setInspectModeEnabled(ErrorString* errorString, bool enabled, const RefPtr<InspectorObject>* highlightConfig)
@@ -1053,27 +1060,27 @@ void InspectorDOMAgent::setInspectModeEnabled(ErrorString* errorString, bool ena
 
 void InspectorDOMAgent::highlightRect(ErrorString*, int x, int y, int width, int height, const RefPtr<InspectorObject>* color, const RefPtr<InspectorObject>* outlineColor, const bool* usePageCoordinates)
 {
-    OwnPtr<FloatQuad> quad = adoptPtr(new FloatQuad(FloatRect(x, y, width, height)));
-    innerHighlightQuad(quad.release(), color, outlineColor, usePageCoordinates);
+    auto quad = std::make_unique<FloatQuad>(FloatRect(x, y, width, height));
+    innerHighlightQuad(std::move(quad), color, outlineColor, usePageCoordinates);
 }
 
 void InspectorDOMAgent::highlightQuad(ErrorString* errorString, const RefPtr<InspectorArray>& quadArray, const RefPtr<InspectorObject>* color, const RefPtr<InspectorObject>* outlineColor, const bool* usePageCoordinates)
 {
-    OwnPtr<FloatQuad> quad = adoptPtr(new FloatQuad());
+    auto quad = std::make_unique<FloatQuad>();
     if (!parseQuad(quadArray, quad.get())) {
         *errorString = "Invalid Quad format";
         return;
     }
-    innerHighlightQuad(quad.release(), color, outlineColor, usePageCoordinates);
+    innerHighlightQuad(std::move(quad), color, outlineColor, usePageCoordinates);
 }
 
-void InspectorDOMAgent::innerHighlightQuad(PassOwnPtr<FloatQuad> quad, const RefPtr<InspectorObject>* color, const RefPtr<InspectorObject>* outlineColor, const bool* usePageCoordinates)
+void InspectorDOMAgent::innerHighlightQuad(std::unique_ptr<FloatQuad> quad, const RefPtr<InspectorObject>* color, const RefPtr<InspectorObject>* outlineColor, const bool* usePageCoordinates)
 {
-    OwnPtr<HighlightConfig> highlightConfig = adoptPtr(new HighlightConfig());
+    auto highlightConfig = std::make_unique<HighlightConfig>();
     highlightConfig->content = parseColor(color);
     highlightConfig->contentOutline = parseColor(outlineColor);
     highlightConfig->usePageCoordinates = usePageCoordinates ? *usePageCoordinates : false;
-    m_overlay->highlightQuad(quad, *highlightConfig);
+    m_overlay->highlightQuad(std::move(quad), *highlightConfig);
 }
 
 void InspectorDOMAgent::highlightNode(ErrorString* errorString, const RefPtr<InspectorObject>& highlightInspectorObject, const int* nodeId, const String* objectId)
@@ -1091,7 +1098,7 @@ void InspectorDOMAgent::highlightNode(ErrorString* errorString, const RefPtr<Ins
     if (!node)
         return;
 
-    OwnPtr<HighlightConfig> highlightConfig = highlightConfigFromInspectorObject(errorString, highlightInspectorObject.get());
+    std::unique_ptr<HighlightConfig> highlightConfig = highlightConfigFromInspectorObject(errorString, highlightInspectorObject.get());
     if (!highlightConfig)
         return;
 
@@ -1106,7 +1113,7 @@ void InspectorDOMAgent::highlightFrame(
 {
     Frame* frame = m_pageAgent->frameForId(frameId);
     if (frame && frame->ownerElement()) {
-        OwnPtr<HighlightConfig> highlightConfig = adoptPtr(new HighlightConfig());
+        auto highlightConfig = std::make_unique<HighlightConfig>();
         highlightConfig->showInfo = true; // Always show tooltips for frames.
         highlightConfig->content = parseColor(color);
         highlightConfig->contentOutline = parseColor(outlineColor);
@@ -1365,7 +1372,7 @@ PassRefPtr<Inspector::TypeBuilder::DOM::EventListener> InspectorDOMAgent::buildO
         if (handler) {
             body = handler->toString(state)->value(state);
             if (auto function = JSC::jsDynamicCast<JSC::JSFunction*>(handler)) {
-                if (!function->isHostFunction()) {
+                if (!function->isHostOrBuiltinFunction()) {
                     if (auto executable = function->jsExecutable()) {
                         lineNumber = executable->lineNo() - 1;
                         scriptID = executable->sourceID() == JSC::SourceProvider::nullID ? emptyString() : String::number(executable->sourceID());
@@ -1395,6 +1402,62 @@ PassRefPtr<Inspector::TypeBuilder::DOM::EventListener> InspectorDOMAgent::buildO
         if (!sourceName.isEmpty())
             value->setSourceName(sourceName);
     }
+    return value.release();
+}
+
+PassRefPtr<TypeBuilder::DOM::AccessibilityProperties> InspectorDOMAgent::buildObjectForAccessibilityProperties(Node* node)
+{
+    ASSERT(node);
+    if (!node)
+        return nullptr;
+
+    if (!WebCore::AXObjectCache::accessibilityEnabled())
+        WebCore::AXObjectCache::enableAccessibility();
+
+    bool exists = false;
+    bool ignored = true;
+    bool ignoredByDefault = false;
+    String invalid = "false"; // String values: true, false, spelling, grammar, etc.
+    bool hidden = false;
+    String label; // FIXME: Waiting on http://webkit.org/b/121134
+    bool required = false;
+    String role;
+    bool supportsRequired = false;
+
+    if (AXObjectCache* axObjectCache = node->document().axObjectCache()) {
+        if (AccessibilityObject* axObject = axObjectCache->getOrCreate(node)) {
+            exists = true;
+            ignored = axObject->accessibilityIsIgnored();
+            ignoredByDefault = axObject->accessibilityIsIgnoredByDefault();
+            invalid = axObject->invalidStatus();
+            if (axObject->isARIAHidden() || axObject->isDOMHidden())
+                hidden = true;
+            supportsRequired = axObject->supportsRequiredAttribute();
+            if (supportsRequired)
+                required = axObject->isRequired();
+            role = axObject->computedRoleString();
+        }
+    }
+    
+    RefPtr<Inspector::TypeBuilder::DOM::AccessibilityProperties> value = Inspector::TypeBuilder::DOM::AccessibilityProperties::create()
+        .setExists(exists)
+        .setLabel(label)
+        .setRole(role)
+        .setNodeId(pushNodePathToFrontend(node));
+
+    if (exists) {
+        if (ignored)
+            value->setIgnored(ignored);
+        if (ignoredByDefault)
+            value->setIgnoredByDefault(ignoredByDefault);
+        if (invalid != "false")
+            value->setInvalid(invalid);
+        if (hidden)
+            value->setHidden(hidden);
+        if (supportsRequired)
+            value->setRequired(required);
+    }
+
     return value.release();
 }
 
@@ -1600,7 +1663,7 @@ void InspectorDOMAgent::didInvalidateStyleAttr(Node* node)
         return;
 
     if (!m_revalidateStyleAttrTask)
-        m_revalidateStyleAttrTask = adoptPtr(new RevalidateStyleAttributeTask(this));
+        m_revalidateStyleAttrTask = std::make_unique<RevalidateStyleAttributeTask>(this);
     m_revalidateStyleAttrTask->scheduleFor(toElement(node));
 }
 

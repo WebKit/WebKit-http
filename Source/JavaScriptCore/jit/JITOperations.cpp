@@ -24,15 +24,16 @@
  */
 
 #include "config.h"
-#if ENABLE(JIT)
 #include "JITOperations.h"
+
+#if ENABLE(JIT)
 
 #include "Arguments.h"
 #include "ArrayConstructor.h"
-#include "CallFrameInlines.h"
 #include "DFGCompilationMode.h"
 #include "DFGDriver.h"
 #include "DFGOSREntry.h"
+#include "DFGThunks.h"
 #include "DFGWorklist.h"
 #include "Error.h"
 #include "ErrorHandlingScope.h"
@@ -47,7 +48,7 @@
 #include "JSStackInlines.h"
 #include "JSWithScope.h"
 #include "ObjectConstructor.h"
-#include "Operations.h"
+#include "JSCInlines.h"
 #include "Repatch.h"
 #include "RepatchBuffer.h"
 
@@ -210,16 +211,6 @@ EncodedJSValue JIT_OPERATION operationGenericIn(ExecState* exec, JSCell* base, E
     NativeCallFrameTracer tracer(vm, exec);
 
     return JSValue::encode(jsBoolean(CommonSlowPaths::opIn(exec, JSValue::decode(key), base)));
-}
-
-EncodedJSValue JIT_OPERATION operationCallCustomGetter(ExecState* exec, JSCell* base, PropertySlot::GetValueFunc function, StringImpl* uid)
-{
-    VM* vm = &exec->vm();
-    NativeCallFrameTracer tracer(vm, exec);
-    
-    Identifier ident(vm, uid);
-    
-    return function(exec, jsCast<JSObject*>(base), JSValue::encode(base), ident);
 }
 
 EncodedJSValue JIT_OPERATION operationCallGetter(ExecState* exec, JSCell* base, JSCell* getterSetter)
@@ -808,7 +799,7 @@ static bool attemptToOptimizeClosureCall(
         codeBlock = 0;
     else {
         codeBlock = jsCast<FunctionExecutable*>(callee->executable())->codeBlockForCall();
-        if (execCallee->argumentCountIncludingThis() < static_cast<size_t>(codeBlock->numParameters()))
+        if (execCallee->argumentCountIncludingThis() < static_cast<size_t>(codeBlock->numParameters()) || callLinkInfo.callType == CallLinkInfo::CallVarargs)
             return false;
     }
     
@@ -1200,16 +1191,14 @@ SlowPathReturnType JIT_OPERATION operationOptimize(ExecState* exec, int32_t byte
     CodeBlock* optimizedCodeBlock = codeBlock->replacement();
     ASSERT(JITCode::isOptimizingJIT(optimizedCodeBlock->jitType()));
     
-    if (void* address = DFG::prepareOSREntry(exec, optimizedCodeBlock, bytecodeIndex)) {
+    if (void* dataBuffer = DFG::prepareOSREntry(exec, optimizedCodeBlock, bytecodeIndex)) {
         if (Options::verboseOSR()) {
             dataLog(
-                "Performing OSR ", *codeBlock, " -> ", *optimizedCodeBlock, ", address ",
-                RawPointer(OUR_RETURN_ADDRESS), " -> ", RawPointer(address), ".\n");
+                "Performing OSR ", *codeBlock, " -> ", *optimizedCodeBlock, ".\n");
         }
 
         codeBlock->optimizeSoon();
-        ASSERT(exec->codeBlock() == optimizedCodeBlock);
-        return encodeResult(address, exec->topOfFrame());
+        return encodeResult(vm.getCTIStub(DFG::osrEntryThunkGenerator).code().executableAddress(), dataBuffer);
     }
 
     if (Options::verboseOSR()) {
@@ -1411,7 +1400,7 @@ EncodedJSValue JIT_OPERATION operationGetArgumentsLength(ExecState* exec, int32_
 static JSValue getByVal(ExecState* exec, JSValue baseValue, JSValue subscript, ReturnAddressPtr returnAddress)
 {
     if (LIKELY(baseValue.isCell() && subscript.isString())) {
-        if (JSValue result = baseValue.asCell()->fastGetOwnProperty(exec, asString(subscript)->value(exec)))
+        if (JSValue result = baseValue.asCell()->fastGetOwnProperty(exec->vm(), asString(subscript)->value(exec)))
             return result;
     }
 
@@ -1750,7 +1739,7 @@ void JIT_OPERATION operationOSRWriteBarrier(ExecState* exec, JSCell* cell)
 {
     VM* vm = &exec->vm();
     NativeCallFrameTracer tracer(vm, exec);
-    exec->heap()->writeBarrier(cell);
+    vm->heap.writeBarrier(cell);
 }
 
 // NB: We don't include the value as part of the barrier because the write barrier elision
@@ -1760,7 +1749,7 @@ void JIT_OPERATION operationUnconditionalWriteBarrier(ExecState* exec, JSCell* c
 {
     VM* vm = &exec->vm();
     NativeCallFrameTracer tracer(vm, exec);
-    Heap::writeBarrier(cell);
+    vm->heap.writeBarrier(cell);
 }
 
 void JIT_OPERATION operationInitGlobalConst(ExecState* exec, Instruction* pc)

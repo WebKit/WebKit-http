@@ -85,8 +85,8 @@ void TileGrid::dropTilesOutsideRect(const IntRect& keepRect)
 void TileGrid::dropTilesBetweenRects(const IntRect& dropRect, const IntRect& keepRect)
 {
     Vector<TileIndex> toRemove;
-    for (auto tile : m_tiles) {
-        TileIndex& index = tile.key;
+    for (const auto& tile : m_tiles) {
+        const TileIndex& index = tile.key;
         IntRect tileRect = tile.value->rect();
         if (tileRect.intersects(dropRect) && !tileRect.intersects(keepRect))
             toRemove.append(index);
@@ -124,9 +124,9 @@ bool TileGrid::dropDistantTiles(unsigned tilesNeeded, double shortestDistance)
 
     IntRect visibleRect = this->visibleRect();
     Vector<std::pair<double, TileIndex>> toRemove;
-    for (auto tile : m_tiles) {
-        TileIndex& index = tile.key;
-        IntRect tileRect = tile.value->rect();
+    for (const auto& tile : m_tiles) {
+        const TileIndex& index = tile.key;
+        const IntRect& tileRect = tile.value->rect();
         double distance = tileDistance2(visibleRect, tileRect);
         if (distance <= shortestDistance)
             continue;
@@ -316,9 +316,9 @@ void TileGrid::dropInvalidTiles()
     IntRect bounds = this->bounds();
     IntRect dropBounds = intersection(m_validBounds, bounds);
     Vector<TileIndex> toRemove;
-    for (auto tile : m_tiles) {
-        TileIndex& index = tile.key;
-        IntRect tileRect = tile.value->rect();
+    for (const auto& tile : m_tiles) {
+        const TileIndex& index = tile.key;
+        const IntRect& tileRect = tile.value->rect();
         IntRect expectedTileRect = tileRectForIndex(index);
         if (expectedTileRect != tileRect || !dropBounds.contains(tileRect))
             toRemove.append(index);

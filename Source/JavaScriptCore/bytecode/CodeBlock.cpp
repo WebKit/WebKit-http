@@ -36,6 +36,7 @@
 #include "DFGCapabilities.h"
 #include "DFGCommon.h"
 #include "DFGDriver.h"
+#include "DFGJITCode.h"
 #include "DFGNode.h"
 #include "DFGWorklist.h"
 #include "Debugger.h"
@@ -48,7 +49,7 @@
 #include "JSNameScope.h"
 #include "LLIntEntrypoint.h"
 #include "LowLevelInterpreter.h"
-#include "Operations.h"
+#include "JSCInlines.h"
 #include "PolymorphicPutByIdList.h"
 #include "ReduceWhitespace.h"
 #include "Repatch.h"
@@ -263,41 +264,8 @@ void CodeBlock::printGetByIdOp(PrintStream& out, ExecState* exec, int location, 
     case op_get_by_id_out_of_line:
         op = "get_by_id_out_of_line";
         break;
-    case op_get_by_id_self:
-        op = "get_by_id_self";
-        break;
-    case op_get_by_id_proto:
-        op = "get_by_id_proto";
-        break;
-    case op_get_by_id_chain:
-        op = "get_by_id_chain";
-        break;
-    case op_get_by_id_getter_self:
-        op = "get_by_id_getter_self";
-        break;
-    case op_get_by_id_getter_proto:
-        op = "get_by_id_getter_proto";
-        break;
-    case op_get_by_id_getter_chain:
-        op = "get_by_id_getter_chain";
-        break;
-    case op_get_by_id_custom_self:
-        op = "get_by_id_custom_self";
-        break;
-    case op_get_by_id_custom_proto:
-        op = "get_by_id_custom_proto";
-        break;
-    case op_get_by_id_custom_chain:
-        op = "get_by_id_custom_chain";
-        break;
-    case op_get_by_id_generic:
-        op = "get_by_id_generic";
-        break;
     case op_get_array_length:
         op = "array_length";
-        break;
-    case op_get_string_length:
-        op = "string_length";
         break;
     default:
         RELEASE_ASSERT_NOT_REACHED();
@@ -381,11 +349,6 @@ void CodeBlock::printGetByIdCacheStatus(PrintStream& out, ExecState* exec, int l
                 out.printf("self");
                 baseStructure = stubInfo.u.getByIdSelf.baseObjectStructure.get();
                 break;
-            case access_get_by_id_proto:
-                out.printf("proto");
-                baseStructure = stubInfo.u.getByIdProto.baseObjectStructure.get();
-                prototypeStructure = stubInfo.u.getByIdProto.prototypeStructure.get();
-                break;
             case access_get_by_id_chain:
                 out.printf("chain");
                 baseStructure = stubInfo.u.getByIdChain.baseObjectStructure.get();
@@ -395,11 +358,6 @@ void CodeBlock::printGetByIdCacheStatus(PrintStream& out, ExecState* exec, int l
                 out.printf("self_list");
                 structureList = stubInfo.u.getByIdSelfList.structureList;
                 listSize = stubInfo.u.getByIdSelfList.listSize;
-                break;
-            case access_get_by_id_proto_list:
-                out.printf("proto_list");
-                structureList = stubInfo.u.getByIdProtoList.structureList;
-                listSize = stubInfo.u.getByIdProtoList.listSize;
                 break;
             case access_unset:
                 out.printf("unset");
@@ -440,16 +398,9 @@ void CodeBlock::printGetByIdCacheStatus(PrintStream& out, ExecState* exec, int l
                         out.printf(", ");
                     out.printf("(");
                     dumpStructure(out, "base", exec, structureList->list[i].base.get(), ident);
-                    if (structureList->list[i].isChain) {
-                        if (structureList->list[i].u.chain.get()) {
-                            out.printf(", ");
-                            dumpChain(out, exec, structureList->list[i].u.chain.get(), ident);
-                        }
-                    } else {
-                        if (structureList->list[i].u.proto.get()) {
-                            out.printf(", ");
-                            dumpStructure(out, "proto", exec, structureList->list[i].u.proto.get(), ident);
-                        }
+                    if (structureList->list[i].chain.get()) {
+                        out.printf(", ");
+                        dumpChain(out, exec, structureList->list[i].chain.get(), ident);
                     }
                     out.printf(")");
                 }
@@ -966,18 +917,7 @@ void CodeBlock::dumpBytecode(PrintStream& out, ExecState* exec, const Instructio
         }
         case op_get_by_id:
         case op_get_by_id_out_of_line:
-        case op_get_by_id_self:
-        case op_get_by_id_proto:
-        case op_get_by_id_chain:
-        case op_get_by_id_getter_self:
-        case op_get_by_id_getter_proto:
-        case op_get_by_id_getter_chain:
-        case op_get_by_id_custom_self:
-        case op_get_by_id_custom_proto:
-        case op_get_by_id_custom_chain:
-        case op_get_by_id_generic:
-        case op_get_array_length:
-        case op_get_string_length: {
+        case op_get_array_length: {
             printGetByIdOp(out, exec, location, it);
             printGetByIdCacheStatus(out, exec, location, map);
             dumpValueProfiling(out, it, hasPrintedProfiling);
@@ -996,14 +936,6 @@ void CodeBlock::dumpBytecode(PrintStream& out, ExecState* exec, const Instructio
             printPutByIdOp(out, exec, location, it, "put_by_id_out_of_line");
             break;
         }
-        case op_put_by_id_replace: {
-            printPutByIdOp(out, exec, location, it, "put_by_id_replace");
-            break;
-        }
-        case op_put_by_id_transition: {
-            printPutByIdOp(out, exec, location, it, "put_by_id_transition");
-            break;
-        }
         case op_put_by_id_transition_direct: {
             printPutByIdOp(out, exec, location, it, "put_by_id_transition_direct");
             break;
@@ -1018,10 +950,6 @@ void CodeBlock::dumpBytecode(PrintStream& out, ExecState* exec, const Instructio
         }
         case op_put_by_id_transition_normal_out_of_line: {
             printPutByIdOp(out, exec, location, it, "put_by_id_transition_normal_out_of_line");
-            break;
-        }
-        case op_put_by_id_generic: {
-            printPutByIdOp(out, exec, location, it, "put_by_id_generic");
             break;
         }
         case op_put_getter_setter: {
@@ -1449,7 +1377,7 @@ void CodeBlock::dumpBytecode(PrintStream& out, ExecState* exec, const Instructio
         out.print(" !! frequent exits: ");
         CommaPrinter comma;
         for (unsigned i = 0; i < exitSites.size(); ++i)
-            out.print(comma, exitSites[i].kind());
+            out.print(comma, exitSites[i].kind(), " ", exitSites[i].jitType());
     }
 #else // ENABLE(DFG_JIT)
     UNUSED_PARAM(location);
@@ -1593,7 +1521,7 @@ CodeBlock::CodeBlock(ScriptExecutable* ownerExecutable, UnlinkedCodeBlock* unlin
 
     setConstantRegisters(unlinkedCodeBlock->constantRegisters());
     if (unlinkedCodeBlock->usesGlobalObject())
-        m_constantRegisters[unlinkedCodeBlock->globalObjectRegister().offset()].set(*m_vm, ownerExecutable, m_globalObject.get());
+        m_constantRegisters[unlinkedCodeBlock->globalObjectRegister().toConstantIndex()].set(*m_vm, ownerExecutable, m_globalObject.get());
     m_functionDecls.resizeToFit(unlinkedCodeBlock->numberOfFunctionDecls());
     for (size_t count = unlinkedCodeBlock->numberOfFunctionDecls(), i = 0; i < count; ++i) {
         UnlinkedFunctionExecutable* unlinkedExecutable = unlinkedCodeBlock->functionDecl(i);
@@ -1777,18 +1705,7 @@ CodeBlock::CodeBlock(ScriptExecutable* ownerExecutable, UnlinkedCodeBlock* unlin
             break;
         }
         case op_get_by_id_out_of_line:
-        case op_get_by_id_self:
-        case op_get_by_id_proto:
-        case op_get_by_id_chain:
-        case op_get_by_id_getter_self:
-        case op_get_by_id_getter_proto:
-        case op_get_by_id_getter_chain:
-        case op_get_by_id_custom_self:
-        case op_get_by_id_custom_proto:
-        case op_get_by_id_custom_chain:
-        case op_get_by_id_generic:
         case op_get_array_length:
-        case op_get_string_length:
             CRASH();
 
         case op_init_global_const_nop: {

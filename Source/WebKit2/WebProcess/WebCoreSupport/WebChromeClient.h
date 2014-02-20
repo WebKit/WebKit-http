@@ -90,7 +90,7 @@ private:
     
     virtual void setResizable(bool) override;
     
-    virtual void addMessageToConsole(WebCore::MessageSource, WebCore::MessageLevel, const String& message, unsigned lineNumber, unsigned columnNumber, const String& sourceID) override;
+    virtual void addMessageToConsole(Inspector::MessageSource, Inspector::MessageLevel, const String& message, unsigned lineNumber, unsigned columnNumber, const String& sourceID) override;
     
     virtual bool canRunBeforeUnloadConfirmPanel() override;
     virtual bool runBeforeUnloadConfirmPanel(const String& message, WebCore::Frame*) override;
@@ -144,10 +144,6 @@ private:
 
     virtual void populateVisitedLinks() override;
     
-    virtual WebCore::FloatRect customHighlightRect(WebCore::Node*, const WTF::AtomicString& type, const WebCore::FloatRect& lineRect) override;
-    virtual void paintCustomHighlight(WebCore::Node*, const AtomicString& type, const WebCore::FloatRect& boxRect, const WebCore::FloatRect& lineRect,
-        bool behindText, bool entireLine) override;
-    
     virtual bool shouldReplaceWithGeneratedFileForUpload(const String& path, String& generatedFilename) override;
     virtual String generateReplacementFile(const String& path) override;
     
@@ -160,7 +156,7 @@ private:
 #endif
 
 #if PLATFORM(IOS)
-    virtual void didReceiveMobileDocType() override;
+    virtual void didReceiveMobileDocType(bool) override;
     virtual void setNeedsScrollNotifications(WebCore::Frame*, bool) override;
     virtual void observedContentChange(WebCore::Frame*) override;
     virtual void clearContentChangeObservers(WebCore::Frame*) override;
@@ -191,10 +187,6 @@ private:
 #if ENABLE(REQUEST_ANIMATION_FRAME) && !USE(REQUEST_ANIMATION_FRAME_TIMER)
     virtual void scheduleAnimation() override;
 #endif
-
-    // Notification that the given form element has changed. This function
-    // will be called frequently, so handling should be very fast.
-    virtual void formStateDidChange(const WebCore::Node*) override;
 
     virtual void didAssociateFormControls(const Vector<RefPtr<WebCore::Element>>&) override;
     virtual bool shouldNotifyOnFormChanges() override;
@@ -238,13 +230,19 @@ private:
     virtual void elementDidBlur(const WebCore::Node*) override;
 #endif
 
+#if PLATFORM(IOS)
+    virtual bool supportsFullscreenForNode(const WebCore::Node*);
+    virtual void enterFullscreenForNode(WebCore::Node*);
+    virtual void exitFullscreenForNode(WebCore::Node*);
+#endif
+
 #if ENABLE(FULLSCREEN_API)
     virtual bool supportsFullScreenForElement(const WebCore::Element*, bool withKeyboard) override;
     virtual void enterFullScreenForElement(WebCore::Element*) override;
     virtual void exitFullScreenForElement(WebCore::Element*) override;
 #endif
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
     virtual void makeFirstResponder() override;
 #endif
 
@@ -257,6 +255,8 @@ private:
     virtual void recommendedScrollbarStyleDidChange(int32_t newStyle) override;
 
     virtual WebCore::Color underlayColor() const override;
+
+    virtual void pageExtendedBackgroundColorDidChange(WebCore::Color) const override;
     
     virtual void numWheelEventHandlersChanged(unsigned) override;
 
@@ -272,8 +272,10 @@ private:
 
     virtual bool shouldUseTiledBackingForFrameView(const WebCore::FrameView*) const override;
 
-    virtual void incrementActivePageCount() override;
-    virtual void decrementActivePageCount() override;
+#if ENABLE(SUBTLE_CRYPTO)
+    virtual bool wrapCryptoKey(const Vector<uint8_t>&, Vector<uint8_t>&) const override;
+    virtual bool unwrapCryptoKey(const Vector<uint8_t>&, Vector<uint8_t>&) const override;
+#endif
 
     String m_cachedToolTip;
     mutable RefPtr<WebFrame> m_cachedFrameSetLargestFrame;

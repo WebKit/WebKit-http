@@ -5,6 +5,7 @@ set(JavaScriptCore_INCLUDE_DIRECTORIES
     "${JAVASCRIPTCORE_DIR}/ForwardingHeaders"
     "${JAVASCRIPTCORE_DIR}/assembler"
     "${JAVASCRIPTCORE_DIR}/bindings"
+    "${JAVASCRIPTCORE_DIR}/builtins"
     "${JAVASCRIPTCORE_DIR}/bytecode"
     "${JAVASCRIPTCORE_DIR}/bytecompiler"
     "${JAVASCRIPTCORE_DIR}/dfg"
@@ -52,6 +53,8 @@ set(JavaScriptCore_SOURCES
     bindings/ScriptObject.cpp
     bindings/ScriptValue.cpp
 
+    builtins/BuiltinExecutables.cpp
+
     bytecode/ArrayAllocationProfile.cpp
     bytecode/ArrayProfile.cpp
     bytecode/BytecodeBasicBlock.cpp
@@ -67,7 +70,9 @@ set(JavaScriptCore_SOURCES
     bytecode/DeferredCompilationCallback.cpp
     bytecode/ExecutionCounter.cpp
     bytecode/ExitKind.cpp
+    bytecode/ExitingJITType.cpp
     bytecode/GetByIdStatus.cpp
+    bytecode/GetByIdVariant.cpp
     bytecode/InlineCallFrameSet.cpp
     bytecode/JumpTable.cpp
     bytecode/LazyOperandValueProfile.cpp
@@ -138,7 +143,9 @@ set(JavaScriptCore_SOURCES
     dfg/DFGFlushLivenessAnalysisPhase.cpp
     dfg/DFGFlushedAt.cpp
     dfg/DFGGraph.cpp
+    dfg/DFGGraphSafepoint.cpp
     dfg/DFGInPlaceAbstractState.cpp
+    dfg/DFGIntegerCheckCombiningPhase.cpp
     dfg/DFGInvalidationPointInjectionPhase.cpp
     dfg/DFGJITCode.cpp
     dfg/DFGJITCompiler.cpp
@@ -172,12 +179,14 @@ set(JavaScriptCore_SOURCES
     dfg/DFGResurrectionForValidationPhase.cpp
     dfg/DFGSSAConversionPhase.cpp
     dfg/DFGSSALoweringPhase.cpp
+    dfg/DFGSafepoint.cpp
     dfg/DFGSpeculativeJIT.cpp
     dfg/DFGSpeculativeJIT32_64.cpp
     dfg/DFGSpeculativeJIT64.cpp
     dfg/DFGStackLayoutPhase.cpp
     dfg/DFGStoreBarrierElisionPhase.cpp
     dfg/DFGStrengthReductionPhase.cpp
+    dfg/DFGThreadData.cpp
     dfg/DFGThunks.cpp
     dfg/DFGTierUpCheckInjectionPhase.cpp
     dfg/DFGTypeCheckHoistingPhase.cpp
@@ -227,7 +236,9 @@ set(JavaScriptCore_SOURCES
     heap/WriteBarrierBuffer.cpp
     heap/WriteBarrierSupport.cpp
 
+    inspector/ConsoleMessage.cpp
     inspector/ContentSearchUtilities.cpp
+    inspector/IdentifiersFactory.cpp
     inspector/InjectedScript.cpp
     inspector/InjectedScriptBase.cpp
     inspector/InjectedScriptHost.cpp
@@ -241,8 +252,13 @@ set(JavaScriptCore_SOURCES
     inspector/JSJavaScriptCallFrame.cpp
     inspector/JSJavaScriptCallFramePrototype.cpp
     inspector/JavaScriptCallFrame.cpp
+    inspector/ScriptArguments.cpp
+    inspector/ScriptCallFrame.cpp
+    inspector/ScriptCallStack.cpp
+    inspector/ScriptCallStackFactory.cpp
     inspector/ScriptDebugServer.cpp
     inspector/agents/InspectorAgent.cpp
+    inspector/agents/InspectorConsoleAgent.cpp
     inspector/agents/InspectorDebuggerAgent.cpp
     inspector/agents/InspectorRuntimeAgent.cpp
 
@@ -279,6 +295,7 @@ set(JavaScriptCore_SOURCES
     jit/JITStubs.cpp
     jit/JITThunks.cpp
     jit/JITToDFGDeferredCompilationCallback.cpp
+    jit/Reg.cpp
     jit/RegisterPreservationWrapperGenerator.cpp
     jit/RegisterSet.cpp
     jit/Repatch.cpp
@@ -395,7 +412,6 @@ set(JavaScriptCore_SOURCES
     runtime/JSSegmentedVariableObject.cpp
     runtime/JSSet.cpp
     runtime/JSSetIterator.cpp
-    runtime/JSStaticScopeObject.cpp
     runtime/JSString.cpp
     runtime/JSStringJoiner.cpp
     runtime/JSSymbolTableObject.cpp
@@ -709,7 +725,7 @@ set(HASH_LUT_GENERATOR ${CMAKE_CURRENT_SOURCE_DIR}/create_hash_table)
 macro(GENERATE_HASH_LUT _input _output)
     add_custom_command(
         OUTPUT ${_output}
-        DEPENDS ${HASH_LUT_GENERATOR} ${_input}
+        DEPENDS ${HASH_LUT_GENERATOR} ${_input} ${CMAKE_CURRENT_SOURCE_DIR}/generate-js-builtins
         COMMAND ${PERL_EXECUTABLE} ${HASH_LUT_GENERATOR} ${_input} -i > ${_output}
         VERBATIM)
     list(APPEND JavaScriptCore_HEADERS ${_output})
@@ -738,6 +754,7 @@ set(JavaScriptCore_FORWARDING_HEADERS_DIRECTORIES
     yarr
 
     collector/handles
+    ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}
 )
 
 set(JavaScriptCore_FORWARDING_HEADERS_FILES
@@ -765,8 +782,11 @@ set(JavaScriptCore_FORWARDING_HEADERS_FILES
     assembler/LinkBuffer.h
     assembler/MacroAssembler.h
     assembler/MacroAssemblerCodeRef.h
+    assembler/MacroAssemblerCodeRef.h
     jit/GPRInfo.h
     runtime/VM.h
+
+    ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/JSCBuiltins.h
 )
 
 
@@ -796,6 +816,7 @@ ADD_SOURCE_DEPENDENCIES(${CMAKE_CURRENT_SOURCE_DIR}/parser/Lexer.cpp ${DERIVED_S
 set(JavaScriptCore_INSPECTOR_SCRIPTS_DIR "${JAVASCRIPTCORE_DIR}/inspector/scripts")
 
 set(JavaScriptCore_INSPECTOR_DOMAINS
+    inspector/protocol/Console.json
     inspector/protocol/Debugger.json
     inspector/protocol/GenericTypes.json
     inspector/protocol/InspectorDomain.json
@@ -817,16 +838,27 @@ add_custom_command(
     COMMAND ${PYTHON_EXECUTABLE} ${JavaScriptCore_INSPECTOR_SCRIPTS_DIR}/CodeGeneratorInspector.py ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InspectorJS.json --output_h_dir "${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}" --output_cpp_dir "${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}" --output_js_dir "${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}" --output_type JavaScript --write_always && mkdir -p ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/inspector && cp ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InspectorJSBackendDispatchers.h ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InspectorJSFrontendDispatchers.h ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InspectorJSTypeBuilders.h ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/inspector
     VERBATIM)
 
+# JSCBuiltins
+file(GLOB JSCBuiltins_js_files "${CMAKE_CURRENT_SOURCE_DIR}/builtins/*.js")
+add_custom_command(
+   OUTPUT ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/JSCBuiltins.cpp ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/JSCBuiltins.h
+   MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/generate-js-builtins
+   DEPENDS ${JSCBuiltins_js_files}
+   COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate-js-builtins ${JSCBuiltins_js_files} ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/JSCBuiltins.h ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/JSCBuiltins.cpp
+   VERBATIM)
+
 list(APPEND JavaScriptCore_SOURCES
     ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InspectorJSBackendDispatchers.cpp
     ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InspectorJSFrontendDispatchers.cpp
     ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InspectorJSTypeBuilders.cpp
+    ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/JSCBuiltins.cpp
 )
 
 list(APPEND JavaScriptCore_HEADERS
     ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InspectorJSBackendDispatchers.h
     ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InspectorJSFrontendDispatchers.h
     ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InspectorJSTypeBuilders.h
+    ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/JSCBuiltins.h
 )
 
 add_custom_command(

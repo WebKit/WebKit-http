@@ -34,7 +34,7 @@
 #include "ImageSource.h"
 #include "IntSize.h"
 
-#if PLATFORM(MAC)
+#if USE(CG) || USE(APPKIT)
 #include <wtf/RetainPtr.h>
 #endif
 
@@ -167,7 +167,7 @@ public:
     virtual NSImage* getNSImage() override;
 #endif
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
     virtual CFDataRef getTIFFRepresentation() override;
 #endif
 

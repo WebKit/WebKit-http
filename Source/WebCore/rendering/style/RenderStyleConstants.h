@@ -214,6 +214,10 @@ enum ObjectFit {
     ObjectFitFill, ObjectFitContain, ObjectFitCover, ObjectFitNone, ObjectFitScaleDown
 };
 
+enum AspectRatioType {
+    AspectRatioAuto, AspectRatioFromIntrinsic, AspectRatioFromDimensions, AspectRatioSpecified
+};
+
 // Word Break Values. Matches WinIE, rather than CSS3
 
 enum EWordBreak {
@@ -385,7 +389,9 @@ enum TextJustify {
 
 enum TextDecorationSkipItems {
     TextDecorationSkipNone = 0,
-    TextDecorationSkipInk = 1 << 0
+    TextDecorationSkipInk = 1 << 0,
+    TextDecorationSkipObjects = 1 << 1,
+    TextDecorationSkipAuto = 1 << 2
 };
 typedef unsigned TextDecorationSkip;
 
@@ -461,7 +467,7 @@ enum CursorVisibility {
 
 // The order of this enum must match the order of the display values in CSSValueKeywords.in.
 enum EDisplay {
-    INLINE, BLOCK, LIST_ITEM, RUN_IN, COMPACT, INLINE_BLOCK,
+    INLINE, BLOCK, LIST_ITEM, COMPACT, INLINE_BLOCK,
     TABLE, INLINE_TABLE, TABLE_ROW_GROUP,
     TABLE_HEADER_GROUP, TABLE_FOOTER_GROUP, TABLE_ROW,
     TABLE_COLUMN_GROUP, TABLE_COLUMN, TABLE_CELL,
@@ -544,7 +550,8 @@ enum TextIndentLine { TextIndentFirstLine, TextIndentEachLine };
 enum TextIndentType { TextIndentNormal, TextIndentHanging };
 #endif
 
-enum LayoutBox { BoxMissing = 0, MarginBox, BorderBox, PaddingBox, ContentBox, BoundingBox };
+// Fill, Stroke, ViewBox are just used for SVG.
+enum LayoutBox { BoxMissing = 0, MarginBox, BorderBox, PaddingBox, ContentBox, Fill, Stroke, ViewBox };
 
 } // namespace WebCore
 

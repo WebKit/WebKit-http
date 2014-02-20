@@ -35,13 +35,13 @@
 typedef struct CGPoint CGPoint;
 #endif
 
-#if PLATFORM(MAC) && !PLATFORM(IOS)
+#if PLATFORM(MAC)
 #ifdef NSGEOMETRY_TYPES_SAME_AS_CGGEOMETRY_TYPES
 typedef struct CGPoint NSPoint;
 #else
 typedef struct _NSPoint NSPoint;
 #endif
-#endif // PLATFORM(MAC) && !PLATFORM(IOS)
+#endif // PLATFORM(MAC)
 
 #if PLATFORM(HAIKU)
 class BPoint;
@@ -140,12 +140,10 @@ public:
     operator CGPoint() const;
 #endif
 
-#if !PLATFORM(IOS)
 #if PLATFORM(MAC) && !defined(NSGEOMETRY_TYPES_SAME_AS_CGGEOMETRY_TYPES)
     FloatPoint(const NSPoint&);
     operator NSPoint() const;
 #endif
-#endif // !PLATFORM(IOS)
 
 #if PLATFORM(HAIKU)
     FloatPoint(const BPoint&);

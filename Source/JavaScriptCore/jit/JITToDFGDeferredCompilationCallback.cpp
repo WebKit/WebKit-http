@@ -30,6 +30,7 @@
 
 #include "CodeBlock.h"
 #include "Executable.h"
+#include "JSCInlines.h"
 
 namespace JSC {
 

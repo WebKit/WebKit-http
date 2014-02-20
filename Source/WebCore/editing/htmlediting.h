@@ -108,7 +108,7 @@ bool isSpecialElement(const Node*);
 bool isTabSpanNode(const Node*);
 bool isTabSpanTextNode(const Node*);
 bool isMailBlockquote(const Node*);
-bool isTableElement(Node*);
+bool isRenderedTable(const Node*);
 bool isTableCell(const Node*);
 bool isEmptyTableCell(const Node*);
 bool isTableStructureNode(const Node*);
@@ -255,6 +255,12 @@ inline bool isAmbiguousBoundaryCharacter(UChar character)
 
 String stringWithRebalancedWhitespace(const String&, bool startIsStartOfParagraph, bool endIsEndOfParagraph);
 const String& nonBreakingSpaceString();
+
+// Miscellaaneous functions that for caret rendering
+
+RenderObject* rendererForCaretPainting(Node*);
+LayoutRect localCaretRectInRendererForCaretPainting(const VisiblePosition&, RenderObject*&);
+IntRect absoluteBoundsForLocalCaretRect(RenderObject* rendererForCaretPainting, const LayoutRect&);
 
 }
 

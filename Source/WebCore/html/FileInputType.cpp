@@ -193,7 +193,7 @@ void FileInputType::handleDOMActivateEvent(Event* event)
         settings.acceptFileExtensions = input.acceptFileExtensions();
         settings.selectedFiles = m_fileList->paths();
 #if ENABLE(MEDIA_CAPTURE)
-        settings.capture = input.capture();
+        settings.capture = input.shouldUseMediaCapture();
 #endif
 
         applyFileChooserSettings(settings);
@@ -349,7 +349,6 @@ void FileInputType::setFiles(PassRefPtr<FileList> files)
     m_fileList = files;
 
     input->setFormControlValueMatchesRenderer(true);
-    input->notifyFormStateChanged();
     input->setNeedsValidityCheck();
 
     Vector<String> paths;

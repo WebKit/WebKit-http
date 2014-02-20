@@ -33,7 +33,7 @@
 #include "JSStringBuilder.h"
 #include "Lookup.h"
 #include "ObjectPrototype.h"
-#include "Operations.h"
+#include "JSCInlines.h"
 #include "PropertyNameArray.h"
 #include "RegExpCache.h"
 #include "RegExpConstructor.h"
@@ -41,6 +41,7 @@
 #include "RegExpObject.h"
 #include <wtf/ASCIICType.h>
 #include <wtf/MathExtras.h>
+#include <wtf/text/StringView.h>
 #include <wtf/unicode/Collator.h>
 
 using namespace WTF;
@@ -157,10 +158,9 @@ static inline JSString* jsStringWithReuse(ExecState* exec, JSValue originalValue
     return jsString(exec, string);
 }
 
-template <typename CharType>
-static NEVER_INLINE String substituteBackreferencesSlow(const String& replacement, const String& source, const int* ovector, RegExp* reg, size_t i)
+static NEVER_INLINE String substituteBackreferencesSlow(StringView replacement, StringView source, const int* ovector, RegExp* reg, size_t i)
 {
-    Vector<CharType> substitutedReplacement;
+    StringBuilder substitutedReplacement;
     int offset = 0;
     do {
         if (i + 1 == replacement.length())
@@ -170,7 +170,7 @@ static NEVER_INLINE String substituteBackreferencesSlow(const String& replacemen
         if (ref == '$') {
             // "$$" -> "$"
             ++i;
-            substitutedReplacement.append(replacement.getCharactersWithUpconvert<CharType>() + offset, i - offset);
+            substitutedReplacement.append(replacement.substring(offset, i - offset));
             offset = i + 1;
             continue;
         }
@@ -210,38 +210,29 @@ static NEVER_INLINE String substituteBackreferencesSlow(const String& replacemen
             continue;
 
         if (i - offset)
-            substitutedReplacement.append(replacement.getCharactersWithUpconvert<CharType>() + offset, i - offset);
+            substitutedReplacement.append(replacement.substring(offset, i - offset));
         i += 1 + advance;
         offset = i + 1;
         if (backrefStart >= 0)
-            substitutedReplacement.append(source.getCharactersWithUpconvert<CharType>() + backrefStart, backrefLength);
+            substitutedReplacement.append(source.substring(backrefStart, backrefLength));
     } while ((i = replacement.find('$', i + 1)) != notFound);
 
     if (replacement.length() - offset)
-        substitutedReplacement.append(replacement.getCharactersWithUpconvert<CharType>() + offset, replacement.length() - offset);
+        substitutedReplacement.append(replacement.substring(offset));
 
-    substitutedReplacement.shrinkToFit();
-    return String::adopt(substitutedReplacement);
+    return substitutedReplacement.toString();
 }
 
-static inline String substituteBackreferences(const String& replacement, const String& source, const int* ovector, RegExp* reg)
+static inline String substituteBackreferences(const String& replacement, StringView source, const int* ovector, RegExp* reg)
 {
     size_t i = replacement.find('$');
-    if (UNLIKELY(i != notFound)) {
-        if (replacement.is8Bit() && source.is8Bit())
-            return substituteBackreferencesSlow<LChar>(replacement, source, ovector, reg, i);
-        return substituteBackreferencesSlow<UChar>(replacement, source, ovector, reg, i);
-    }
+    if (UNLIKELY(i != notFound))
+        return substituteBackreferencesSlow(replacement, source, ovector, reg, i);
+
     return replacement;
 }
 
-static inline int localeCompare(const String& a, const String& b)
-{
-    return Collator::userDefault()->collate(reinterpret_cast<const ::UChar*>(a.deprecatedCharacters()), a.length(), reinterpret_cast<const ::UChar*>(b.deprecatedCharacters()), b.length());
-}
-
 struct StringRange {
-public:
     StringRange(int pos, int len)
         : position(pos)
         , length(len)
@@ -1299,7 +1290,7 @@ EncodedJSValue JSC_HOST_CALL stringProtoFuncLocaleCompare(ExecState* exec)
     String s = thisValue.toString(exec)->value(exec);
 
     JSValue a0 = exec->argument(0);
-    return JSValue::encode(jsNumber(localeCompare(s, a0.toString(exec)->value(exec))));
+    return JSValue::encode(jsNumber(Collator().collate(s, a0.toString(exec)->value(exec))));
 }
 
 EncodedJSValue JSC_HOST_CALL stringProtoFuncBig(ExecState* exec)

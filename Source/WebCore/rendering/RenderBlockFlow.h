@@ -125,7 +125,7 @@ public:
         { 
         }
 
-        virtual ~RenderBlockFlowRareData()
+        ~RenderBlockFlowRareData()
         {
         }
 
@@ -445,6 +445,8 @@ protected:
     bool isTopLayoutOverflowAllowed() const override;
     bool isLeftLayoutOverflowAllowed() const override;
 
+    void moveFloatsTo(RenderBlockFlow* toBlock);
+
 private:
     // Called to lay out the legend for a fieldset or the ruby text of a ruby run. Also used by multi-column layout to handle
     // the flow thread child.
@@ -604,7 +606,6 @@ protected:
     friend class LineWidth; // Needs to know FloatingObject
 };
 
-template<> inline bool isRendererOfType<const RenderBlockFlow>(const RenderObject& renderer) { return renderer.isRenderBlockFlow(); }
 RENDER_OBJECT_TYPE_CASTS(RenderBlockFlow, isRenderBlockFlow())
 
 inline bool RenderElement::isRenderNamedFlowFragmentContainer() const

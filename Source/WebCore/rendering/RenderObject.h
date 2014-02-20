@@ -139,6 +139,7 @@ const int showTreeCharacterOffset = 39;
 
 // Base class for all rendering tree objects.
 class RenderObject : public CachedImageClient {
+    WTF_MAKE_FAST_ALLOCATED;
     friend class RenderBlock;
     friend class RenderBlockFlow;
     friend class RenderElement;
@@ -215,8 +216,6 @@ public:
             return 0;
         return locateFlowThreadContainingBlock();
     }
-
-    RenderNamedFlowThread* renderNamedFlowThreadWrapper() const;
 
     // FIXME: The meaning of this function is unclear.
     virtual bool isEmpty() const { return !firstChildSlow(); }
@@ -414,6 +413,7 @@ public:
     virtual bool isRenderMathMLSquareRoot() const { return false; }
     virtual bool isRenderMathMLScripts() const { return false; }
     virtual bool isRenderMathMLScriptsWrapper() const { return false; }
+    virtual bool isRenderMathMLToken() const { return false; }
     virtual bool isRenderMathMLUnderOver() const { return false; }
 #endif // ENABLE(MATHML)
 
@@ -512,7 +512,6 @@ public:
     bool isBox() const { return m_bitfields.isBox(); }
     bool isRenderView() const  { return m_bitfields.isBox() && m_bitfields.isTextOrRenderView(); }
     bool isInline() const { return m_bitfields.isInline(); } // inline object
-    bool isRunIn() const { return style().display() == RUN_IN; } // run-in object
     bool isDragging() const { return m_bitfields.isDragging(); }
     bool isReplaced() const { return m_bitfields.isReplaced(); } // a "replaced" element (see CSS)
     bool isHorizontalWritingMode() const { return m_bitfields.horizontalWritingMode(); }
@@ -724,7 +723,7 @@ public:
     RenderLayerModelObject* containerForRepaint() const;
     // Actually do the repaint of rect r for this object which has been computed in the coordinate space
     // of repaintContainer. If repaintContainer is 0, repaint via the view.
-    void repaintUsingContainer(const RenderLayerModelObject* repaintContainer, const IntRect&, bool immediate = false, bool shouldClipToLayer = true) const;
+    void repaintUsingContainer(const RenderLayerModelObject* repaintContainer, const LayoutRect&, bool immediate = false, bool shouldClipToLayer = true) const;
     
     // Repaint the entire object.  Called when, e.g., the color of a border changes, or when a border
     // style changes.
@@ -732,6 +731,9 @@ public:
 
     // Repaint a specific subrectangle within a given object.  The rect |r| is in the object's coordinate space.
     void repaintRectangle(const LayoutRect&, bool immediate = false, bool shouldClipToLayer = true) const;
+
+    // Repaint a slow repaint object, which, at this time, means we are repainting an object with background-attachment:fixed.
+    void repaintSlowRepaintObject() const;
 
     bool checkForRepaintDuringLayout() const;
 
@@ -845,7 +847,6 @@ public:
 
     virtual void imageChanged(CachedImage*, const IntRect* = 0) override;
     virtual void imageChanged(WrappedImagePtr, const IntRect* = 0) { }
-    virtual bool willRenderImage(CachedImage*) override;
 
     void selectionStartEnd(int& spos, int& epos) const;
     
@@ -888,8 +889,6 @@ protected:
 
     void clearLayoutRootIfNeeded() const;
     virtual void willBeDestroyed();
-
-    virtual bool canBeReplacedWithInlineRunIn() const;
 
     virtual void insertedIntoTree();
     virtual void willBeRemovedFromTree();
@@ -1128,7 +1127,8 @@ inline bool RenderObject::backgroundIsKnownToBeObscured()
 }
 
 #define RENDER_OBJECT_TYPE_CASTS(ToValueTypeName, predicate) \
-    TYPE_CASTS_BASE(ToValueTypeName, RenderObject, object, object->predicate, object.predicate)
+    template <> inline bool isRendererOfType<const ToValueTypeName>(const RenderObject& renderer) { return renderer.predicate; } \
+    TYPE_CASTS_BASE(ToValueTypeName, RenderObject, renderer, isRendererOfType<const ToValueTypeName>(*renderer), isRendererOfType<const ToValueTypeName>(renderer))
 
 } // namespace WebCore
 

@@ -29,7 +29,7 @@
 #include "JSStringBuilder.h"
 #include "Interpreter.h"
 #include "Lexer.h"
-#include "Operations.h"
+#include "JSCInlines.h"
 
 namespace JSC {
 
@@ -108,7 +108,7 @@ EncodedJSValue JSC_HOST_CALL functionProtoFuncToString(ExecState* exec)
     JSValue thisValue = exec->hostThisValue();
     if (thisValue.inherits(JSFunction::info())) {
         JSFunction* function = jsCast<JSFunction*>(thisValue);
-        if (function->isHostFunction())
+        if (function->isHostOrBuiltinFunction())
             return JSValue::encode(jsMakeNontrivialString(exec, "function ", function->name(exec), "() {\n    [native code]\n}"));
         FunctionExecutable* executable = function->jsExecutable();
         String sourceString = executable->source().toString();

@@ -80,7 +80,7 @@ WebInspector.CSSKeywordCompletions.InheritedProperties = [
     "text-shadow", "text-transform", "visibility", "voice-family", "volume", "white-space", "widows", "word-break",
     "word-spacing", "word-wrap", "writing-mode", "-webkit-aspect-ratio", "-webkit-border-horizontal-spacing",
     "-webkit-border-vertical-spacing", "-webkit-box-direction", "-webkit-color-correction", "-webkit-font-feature-settings",
-    "-webkit-font-kerning", "-webkit-font-smoothing", "-webkit-font-variant-ligatures", "-webkit-highlight",
+    "-webkit-font-kerning", "-webkit-font-smoothing", "-webkit-font-variant-ligatures",
     "-webkit-hyphenate-character", "-webkit-hyphenate-limit-after", "-webkit-hyphenate-limit-before",
     "-webkit-hyphenate-limit-lines", "-webkit-hyphens", "-webkit-line-align", "-webkit-line-box-contain",
     "-webkit-line-break", "-webkit-line-grid", "-webkit-line-snap", "-webkit-locale", "-webkit-nbsp-mode",
@@ -137,6 +137,9 @@ WebInspector.CSSKeywordCompletions._propertyKeywordMap = {
     ],
     "background-repeat": [
         "repeat", "repeat-x", "repeat-y", "no-repeat", "space", "round"
+    ],
+    "background-blend-mode": [
+        "normal", "multiply", "screen", "overlay", "darken", "lighten", "color-dodge", "color-burn", "hard-light", "soft-light", "difference", "exclusion", "hue", "saturation", "color", "luminosity",
     ],
     "text-underline": [
         "none", "dotted", "dashed", "solid", "double", "dot-dash", "dot-dot-dash", "wave"
@@ -340,7 +343,7 @@ WebInspector.CSSKeywordCompletions._propertyKeywordMap = {
         "mathematical", "use-script", "no-change", "reset-size"
     ],
     "display": [
-        "none", "inline", "block", "list-item", "run-in", "compact", "inline-block", "table", "inline-table",
+        "none", "inline", "block", "list-item", "compact", "inline-block", "table", "inline-table",
         "table-row-group", "table-header-group", "table-footer-group", "table-row", "table-column-group",
         "table-column", "table-cell", "table-caption", "-webkit-box", "-webkit-inline-box", "-wap-marquee",
         "-webkit-flex", "-webkit-inline-flex", "-webkit-grid", "-webkit-inline-grid"
@@ -616,9 +619,6 @@ WebInspector.CSSKeywordCompletions._propertyKeywordMap = {
     "-webkit-blend-mode": [
         "normal", "multiply", "screen", "overlay", "darken", "lighten", "color-dodge", "color-burn", "hard-light", "soft-light", "difference", "exclusion", "hue", "saturation", "color", "luminosity",
     ],
-    "-webkit-background-blend-mode": [
-        "normal", "multiply", "screen", "overlay", "darken", "lighten", "color-dodge", "color-burn", "hard-light", "soft-light", "difference", "exclusion", "hue", "saturation", "color", "luminosity",
-    ],
     "mix": [
         "auto",
         "normal", "multiply", "screen", "overlay", "darken", "lighten", "color-dodge", "color-burn", "hard-light", "soft-light", "difference", "exclusion", "hue", "saturation", "color", "luminosity",
@@ -849,9 +849,6 @@ WebInspector.CSSKeywordCompletions._propertyKeywordMap = {
     ],
     "-webkit-column-width": [
         "auto", "calc()", "-webkit-calc()"
-    ],
-    "-webkit-highlight": [
-        "none"
     ],
     "-webkit-hyphenate-character": [
         "none"

@@ -1566,7 +1566,7 @@ void RenderLayerCompositor::fixedRootBackgroundLayerChanged()
         if (!renderViewBacking)
             return;
 
-        scrollingCoordinator->updateScrollingNode(renderViewBacking->scrollLayerID(), scrollLayer(), fixedRootBackgroundLayer());
+        scrollingCoordinator->updateScrollingNode(renderViewBacking->scrollLayerID(), scrollLayer(), nullptr, fixedRootBackgroundLayer());
     }
 }
 
@@ -1912,7 +1912,7 @@ bool RenderLayerCompositor::has3DContent() const
 
 bool RenderLayerCompositor::allowsIndependentlyCompositedFrames(const FrameView* view)
 {
-#if PLATFORM(MAC) && !PLATFORM(IOS)
+#if PLATFORM(MAC)
     // frames are only independently composited in Mac pre-WebKit2.
     return view->platformWidget();
 #else
@@ -1989,8 +1989,7 @@ bool RenderLayerCompositor::requiresCompositingLayer(const RenderLayer& layer, R
 #if PLATFORM(IOS)
         || requiresCompositingForScrolling(*renderer)
 #endif
-        || requiresCompositingForOverflowScrolling(*renderer->layer())
-        || requiresCompositingForBlending(*renderer);
+        || requiresCompositingForOverflowScrolling(*renderer->layer());
 }
 
 bool RenderLayerCompositor::canBeComposited(const RenderLayer& layer) const
@@ -2029,7 +2028,6 @@ bool RenderLayerCompositor::requiresOwnBackingStore(const RenderLayer& layer, co
         || (canRender3DTransforms() && renderer.style().backfaceVisibility() == BackfaceVisibilityHidden)
         || requiresCompositingForAnimation(renderer)
         || requiresCompositingForFilters(renderer)
-        || requiresCompositingForBlending(renderer)
         || requiresCompositingForPosition(renderer, layer)
         || requiresCompositingForOverflowScrolling(layer)
         || renderer.isTransparent()
@@ -2093,9 +2091,6 @@ CompositingReasons RenderLayerCompositor::reasonsForCompositing(const RenderLaye
     if (requiresCompositingForFilters(*renderer))
         reasons |= CompositingReasonFilters;
 
-    if (requiresCompositingForBlending(*renderer))
-        reasons |= CompositingReasonBlending;
-
     if (requiresCompositingForPosition(*renderer, *renderer->layer()))
         reasons |= renderer->style().position() == FixedPosition ? CompositingReasonPositionFixed : CompositingReasonPositionSticky;
 
@@ -2128,9 +2123,10 @@ CompositingReasons RenderLayerCompositor::reasonsForCompositing(const RenderLaye
 
         if (renderer->hasFilter())
             reasons |= CompositingReasonFilterWithCompositedDescendants;
-            
+
         if (renderer->hasBlendMode())
             reasons |= CompositingReasonBlendingWithCompositedDescendants;
+
     } else if (renderer->layer()->indirectCompositingReason() == RenderLayer::IndirectCompositingForPerspective)
         reasons |= CompositingReasonPerspective;
     else if (renderer->layer()->indirectCompositingReason() == RenderLayer::IndirectCompositingForPreserve3D)
@@ -2170,9 +2166,6 @@ const char* RenderLayerCompositor::logReasonsForCompositing(const RenderLayer& l
 
     if (reasons & CompositingReasonFilters)
         return "filters";
-
-    if (reasons & CompositingReasonBlending)
-        return "blending";
 
     if (reasons & CompositingReasonPositionFixed)
         return "position: fixed";
@@ -2390,10 +2383,7 @@ bool RenderLayerCompositor::requiresCompositingForAnimation(RenderLayerModelObje
     return (animController.isRunningAnimationOnRenderer(&renderer, CSSPropertyOpacity)
             && (inCompositingMode() || (m_compositingTriggers & ChromeClient::AnimatedOpacityTrigger)))
 #if ENABLE(CSS_FILTERS)
-#if PLATFORM(IOS) || !PLATFORM(MAC) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080
-            // <rdar://problem/10907251> - WebKit2 doesn't support CA animations of CI filters on Lion and below
             || animController.isRunningAnimationOnRenderer(&renderer, CSSPropertyWebkitFilter)
-#endif // PLATFORM(IOS) || !PLATFORM(MAC) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080
 #endif // CSS_FILTERS
             || animController.isRunningAnimationOnRenderer(&renderer, CSSPropertyWebkitTransform);
 }
@@ -2441,16 +2431,6 @@ bool RenderLayerCompositor::requiresCompositingForFilters(RenderLayerModelObject
         return false;
 
     return renderer.hasFilter();
-#else
-    UNUSED_PARAM(renderer);
-    return false;
-#endif
-}
-
-bool RenderLayerCompositor::requiresCompositingForBlending(RenderLayerModelObject& renderer) const
-{
-#if ENABLE(CSS_COMPOSITING)
-    return renderer.hasBlendMode();
 #else
     UNUSED_PARAM(renderer);
     return false;
@@ -2608,17 +2588,18 @@ static void paintScrollbar(Scrollbar* scrollbar, GraphicsContext& context, const
     context.restore();
 }
 
-void RenderLayerCompositor::paintContents(const GraphicsLayer* graphicsLayer, GraphicsContext& context, GraphicsLayerPaintingPhase, const IntRect& clip)
+void RenderLayerCompositor::paintContents(const GraphicsLayer* graphicsLayer, GraphicsContext& context, GraphicsLayerPaintingPhase, const FloatRect& clip)
 {
+    IntRect pixelSnappedRectForIntegralPositionedItems = pixelSnappedIntRect(LayoutRect(clip));
     if (graphicsLayer == layerForHorizontalScrollbar())
-        paintScrollbar(m_renderView.frameView().horizontalScrollbar(), context, clip);
+        paintScrollbar(m_renderView.frameView().horizontalScrollbar(), context, pixelSnappedRectForIntegralPositionedItems);
     else if (graphicsLayer == layerForVerticalScrollbar())
-        paintScrollbar(m_renderView.frameView().verticalScrollbar(), context, clip);
+        paintScrollbar(m_renderView.frameView().verticalScrollbar(), context, pixelSnappedRectForIntegralPositionedItems);
     else if (graphicsLayer == layerForScrollCorner()) {
         const IntRect& scrollCorner = m_renderView.frameView().scrollCornerRect();
         context.save();
         context.translate(-scrollCorner.x(), -scrollCorner.y());
-        IntRect transformedClip = clip;
+        IntRect transformedClip = pixelSnappedRectForIntegralPositionedItems;
         transformedClip.moveBy(scrollCorner.location());
         m_renderView.frameView().paintScrollCorner(&context, transformedClip);
         context.restore();
@@ -2790,7 +2771,7 @@ bool RenderLayerCompositor::requiresContentShadowLayer() const
     if (m_renderView.document().ownerElement())
         return false;
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
     if (viewHasTransparentBackground())
         return false;
 
@@ -2956,16 +2937,22 @@ bool RenderLayerCompositor::viewHasTransparentBackground(Color* backgroundColor)
 
 void RenderLayerCompositor::setRootExtendedBackgroundColor(const Color& color)
 {
+    if (color == m_rootExtendedBackgroundColor)
+        return;
+
+    m_rootExtendedBackgroundColor = color;
+
+    if (Page* page = this->page())
+        page->chrome().client().pageExtendedBackgroundColorDidChange(color);
+
 #if ENABLE(RUBBER_BANDING)
     if (!m_layerForOverhangAreas)
         return;
 
-    m_layerForOverhangAreas->setBackgroundColor(color);
+    m_layerForOverhangAreas->setBackgroundColor(m_rootExtendedBackgroundColor);
 
-    if (!color.isValid())
+    if (!m_rootExtendedBackgroundColor.isValid())
         m_layerForOverhangAreas->setCustomAppearance(GraphicsLayer::ScrollingOverhang);
-#else
-    UNUSED_PARAM(color);
 #endif
 }
 
@@ -3021,7 +3008,7 @@ void RenderLayerCompositor::updateOverflowControlsLayers()
             m_layerForHorizontalScrollbar->setName("horizontal scrollbar container");
 
 #endif
-#if PLATFORM(MAC) && USE(CA)
+#if PLATFORM(COCOA) && USE(CA)
             m_layerForHorizontalScrollbar->setAcceleratesDrawing(acceleratedDrawingEnabled());
 #endif
             m_overflowControlsHostLayer->addChild(m_layerForHorizontalScrollbar.get());
@@ -3044,7 +3031,7 @@ void RenderLayerCompositor::updateOverflowControlsLayers()
 #ifndef NDEBUG
             m_layerForVerticalScrollbar->setName("vertical scrollbar container");
 #endif
-#if PLATFORM(MAC) && USE(CA)
+#if PLATFORM(COCOA) && USE(CA)
             m_layerForVerticalScrollbar->setAcceleratesDrawing(acceleratedDrawingEnabled());
 #endif
             m_overflowControlsHostLayer->addChild(m_layerForVerticalScrollbar.get());
@@ -3067,7 +3054,7 @@ void RenderLayerCompositor::updateOverflowControlsLayers()
 #ifndef NDEBUG
             m_layerForScrollCorner->setName("scroll corner");
 #endif
-#if PLATFORM(MAC) && USE(CA)
+#if PLATFORM(COCOA) && USE(CA)
             m_layerForScrollCorner->setAcceleratesDrawing(acceleratedDrawingEnabled());
 #endif
             m_overflowControlsHostLayer->addChild(m_layerForScrollCorner.get());

@@ -226,7 +226,7 @@ static void createRendererIfNeeded(Element& element, PassRefPtr<RenderStyle> res
     RenderObject* nextRenderer;
     if (parentFlowRenderer) {
         parentRenderer = parentFlowRenderer;
-        nextRenderer = parentFlowRenderer->nextRendererForNode(&element);
+        nextRenderer = parentFlowRenderer->nextRendererForElement(element);
     } else {
         // FIXME: Make this path Element only, handle the root special case separately.
         parentRenderer = renderingParentNode->renderer();
@@ -452,7 +452,7 @@ static void attachChildren(ContainerNode& current)
         attachDistributedChildren(toInsertionPoint(current));
 
     for (Node* child = current.firstChild(); child; child = child->nextSibling()) {
-        ASSERT(!child->renderer() || current.shadowRoot() || isInsertionPoint(current));
+        ASSERT((!child->renderer() || child->inNamedFlow()) || current.shadowRoot() || isInsertionPoint(current));
         if (child->renderer())
             continue;
         if (child->isTextNode()) {

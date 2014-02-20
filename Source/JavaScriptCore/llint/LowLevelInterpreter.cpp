@@ -36,7 +36,7 @@
 #include "CommonSlowPaths.h"
 #include "LLIntCLoop.h"
 #include "LLIntSlowPaths.h"
-#include "Operations.h"
+#include "JSCInlines.h"
 #include "VMInspector.h"
 #include <wtf/Assertions.h>
 #include <wtf/MathExtras.h>
@@ -485,7 +485,7 @@ JSValue CLoop::execute(OpcodeID entryOpcodeID, void* executableAddress, VM* vm, 
 
 } // namespace JSC
 
-#else // !ENABLE(LLINT_C_LOOP)
+#elif !OS(WINDOWS)
 
 //============================================================================
 // Define the opcode dispatch mechanism when using an ASM loop:

@@ -29,6 +29,7 @@
 #if ENABLE(DFG_JIT)
 
 #include "MacroAssembler.h"
+#include "JSCInlines.h"
 #include "Options.h"
 
 namespace JSC { namespace DFG {

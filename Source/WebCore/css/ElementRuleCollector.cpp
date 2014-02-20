@@ -94,7 +94,7 @@ inline void ElementRuleCollector::addMatchedRule(const RuleData* rule)
     m_matchedRules->append(rule);
 }
 
-inline void ElementRuleCollector::clearMatchedRules()
+void ElementRuleCollector::clearMatchedRules()
 {
     if (!m_matchedRules)
         return;
@@ -154,12 +154,8 @@ void ElementRuleCollector::collectMatchingRules(const MatchRequest& matchRequest
     if (m_element.isWebVTTElement())
         collectMatchingRulesForList(matchRequest.ruleSet->cuePseudoRules(), matchRequest, ruleRange);
 #endif
-    // Check whether other types of rules are applicable in the current tree scope. Criteria for this:
-    // a) it's a UA rule
-    // b) the tree scope allows author rules
-    // c) the rules comes from a scoped style sheet within the same tree scope
-    if (!MatchingUARulesScope::isMatchingUARules()
-        && !m_element.treeScope().applyAuthorStyles())
+    // Only match UA rules in shadow tree.
+    if (!MatchingUARulesScope::isMatchingUARules() && m_element.treeScope().rootNode().isShadowRoot())
         return;
 
     // We need to collect the rules for id, class, tag, and everything else into a buffer and
@@ -261,10 +257,6 @@ void ElementRuleCollector::matchUARules()
     // In quirks mode, we match rules from the quirks user agent sheet.
     if (m_element.document().inQuirksMode())
         matchUARules(CSSDefaultStyleSheets::defaultQuirksStyle);
-
-    // If document uses view source styles (in view source mode or in xml viewer mode), then we match rules from the view source style sheet.
-    if (m_element.document().isViewSource())
-        matchUARules(CSSDefaultStyleSheets::viewSourceStyle());
 }
 
 void ElementRuleCollector::matchUARules(RuleSet* rules)
@@ -299,7 +291,7 @@ inline bool ElementRuleCollector::ruleMatches(const RuleData& ruleData, PseudoId
         JSC::VM* vm = m_element.document().scriptExecutionContext()->vm();
         SelectorCompilationStatus compilationStatus;
         JSC::MacroAssemblerCodeRef compiledSelectorCodeRef;
-        compilationStatus = SelectorCompiler::compileSelector(ruleData.selector(), vm, compiledSelectorCodeRef);
+        compilationStatus = SelectorCompiler::compileSelector(ruleData.selector(), vm, SelectorCompiler::SelectorContext::RuleCollector, compiledSelectorCodeRef);
 
         ruleData.setCompiledSelector(compilationStatus, compiledSelectorCodeRef);
         compiledSelectorChecker = ruleData.compiledSelectorCodeRef().code().executableAddress();
@@ -360,7 +352,7 @@ void ElementRuleCollector::collectMatchingRulesForList(const Vector<RuleData>* r
         PseudoId dynamicPseudo = NOPSEUDO;
         if (ruleMatches(ruleData, dynamicPseudo)) {
             // For SharingRules testing, any match is good enough, we don't care what is matched.
-            if (m_mode == SelectorChecker::SharingRules) {
+            if (m_mode == SelectorChecker::SharingRules || m_mode == SelectorChecker::StyleInvalidation) {
                 addMatchedRule(&ruleData);
                 break;
             }

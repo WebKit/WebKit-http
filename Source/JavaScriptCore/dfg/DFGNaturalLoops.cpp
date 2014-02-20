@@ -29,6 +29,7 @@
 #if ENABLE(DFG_JIT)
 
 #include "DFGGraph.h"
+#include "JSCInlines.h"
 #include <wtf/CommaPrinter.h>
 
 namespace JSC { namespace DFG {

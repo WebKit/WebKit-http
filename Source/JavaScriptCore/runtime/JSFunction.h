@@ -68,6 +68,8 @@ namespace JSC {
             return function;
         }
         
+        static JSFunction* createBuiltinFunction(VM&, FunctionExecutable*, JSGlobalObject*);
+        
         static void destroy(JSCell*);
         
         JS_EXPORT_PRIVATE String name(ExecState*);
@@ -98,7 +100,7 @@ namespace JSC {
         ExecutableBase* executable() const { return m_executable.get(); }
 
         // To call either of these methods include Executable.h
-        inline bool isHostFunction() const;
+        bool isHostFunction() const;
         FunctionExecutable* jsExecutable() const;
 
         JS_EXPORT_PRIVATE const SourceCode* sourceCode() const;
@@ -146,6 +148,10 @@ namespace JSC {
             return m_allocationProfileWatchpoint;
         }
 
+        JS_EXPORT_PRIVATE bool isHostOrBuiltinFunction() const;
+        JS_EXPORT_PRIVATE bool isBuiltinFunction() const;
+        JS_EXPORT_PRIVATE bool isHostFunctionNonInline() const;
+
     protected:
         const static unsigned StructureFlags = OverridesGetOwnPropertySlot | ImplementsHasInstance | OverridesVisitChildren | OverridesGetPropertyNames | JSObject::StructureFlags;
 
@@ -170,8 +176,6 @@ namespace JSC {
     private:
         friend class LLIntOffsetsExtractor;
         
-        JS_EXPORT_PRIVATE bool isHostFunctionNonInline() const;
-
         static EncodedJSValue argumentsGetter(ExecState*, JSObject*, EncodedJSValue, PropertyName);
         static EncodedJSValue callerGetter(ExecState*, JSObject*, EncodedJSValue, PropertyName);
         static EncodedJSValue lengthGetter(ExecState*, JSObject*, EncodedJSValue, PropertyName);

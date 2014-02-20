@@ -45,12 +45,11 @@
 
 namespace WebCore {
 
-RenderNamedFlowThread::RenderNamedFlowThread(Document& document, PassRef<RenderStyle> style, PassRefPtr<WebKitNamedFlow> namedFlow)
+RenderNamedFlowThread::RenderNamedFlowThread(Document& document, PassRef<RenderStyle> style, PassRef<WebKitNamedFlow> namedFlow)
     : RenderFlowThread(document, std::move(style))
-    , m_flowThreadChildList(adoptPtr(new FlowThreadChildList()))
     , m_overset(true)
     , m_hasRegionsWithStyling(false)
-    , m_namedFlow(namedFlow)
+    , m_namedFlow(std::move(namedFlow))
     , m_regionLayoutUpdateEventTimer(this, &RenderNamedFlowThread::regionLayoutUpdateEventTimerFired)
     , m_regionOversetChangeEventTimer(this, &RenderNamedFlowThread::regionOversetChangeEventTimerFired)
 {
@@ -98,12 +97,11 @@ void RenderNamedFlowThread::updateWritingMode()
     setStyle(std::move(newStyle));
 }
 
-RenderObject* RenderNamedFlowThread::nextRendererForNode(Node* node) const
+RenderElement* RenderNamedFlowThread::nextRendererForElement(Element& element) const
 {
-    const FlowThreadChildList& childList = *(m_flowThreadChildList.get());
-    for (auto& child : childList) {
-        ASSERT(child->node());
-        unsigned short position = node->compareDocumentPosition(child->node());
+    for (auto& child : m_flowThreadChildList) {
+        ASSERT(!child->isAnonymous());
+        unsigned short position = element.compareDocumentPosition(child->element());
         if (position & Node::DOCUMENT_POSITION_FOLLOWING)
             return child;
     }
@@ -111,50 +109,24 @@ RenderObject* RenderNamedFlowThread::nextRendererForNode(Node* node) const
     return 0;
 }
 
-RenderObject* RenderNamedFlowThread::previousRendererForNode(Node* node) const
-{
-    if (m_flowThreadChildList->isEmpty())
-        return 0;
-
-    auto begin = m_flowThreadChildList->begin();
-    auto end = m_flowThreadChildList->end();
-    auto it = end;
-
-    do {
-        --it;
-        RenderObject* child = *it;
-        ASSERT(child->node());
-        unsigned short position = node->compareDocumentPosition(child->node());
-        if (position & Node::DOCUMENT_POSITION_PRECEDING)
-            return child;
-    } while (it != begin);
-
-    return 0;
-}
-
-void RenderNamedFlowThread::addFlowChild(RenderObject* newChild)
+void RenderNamedFlowThread::addFlowChild(RenderElement& newChild)
 {
     // The child list is used to sort the flow thread's children render objects 
     // based on their corresponding nodes DOM order. The list is needed to avoid searching the whole DOM.
 
-    Node* childNode = newChild->node();
-
-    // Do not add anonymous objects.
-    if (!childNode)
+    if (newChild.isAnonymous())
         return;
 
-    ASSERT(childNode->isElementNode());
-
-    RenderObject* beforeChild = nextRendererForNode(childNode);
+    auto* beforeChild = nextRendererForElement(*newChild.element());
     if (beforeChild)
-        m_flowThreadChildList->insertBefore(beforeChild, newChild);
+        m_flowThreadChildList.insertBefore(beforeChild, &newChild);
     else
-        m_flowThreadChildList->add(newChild);
+        m_flowThreadChildList.add(&newChild);
 }
 
-void RenderNamedFlowThread::removeFlowChild(RenderObject* child)
+void RenderNamedFlowThread::removeFlowChild(RenderElement& child)
 {
-    m_flowThreadChildList->remove(child);
+    m_flowThreadChildList.remove(&child);
 }
 
 bool RenderNamedFlowThread::dependsOn(RenderNamedFlowThread* otherRenderFlowThread) const
@@ -436,13 +408,13 @@ void RenderNamedFlowThread::registerNamedFlowContentElement(Element& contentElem
         unsigned short position = contentElement.compareDocumentPosition(element);
         if (position & Node::DOCUMENT_POSITION_FOLLOWING) {
             m_contentElements.insertBefore(element, &contentElement);
-            InspectorInstrumentation::didRegisterNamedFlowContentElement(&document(), m_namedFlow.get(), &contentElement, element);
+            InspectorInstrumentation::didRegisterNamedFlowContentElement(&document(), &namedFlow(), &contentElement, element);
             return;
         }
     }
 
     m_contentElements.add(&contentElement);
-    InspectorInstrumentation::didRegisterNamedFlowContentElement(&document(), m_namedFlow.get(), &contentElement);
+    InspectorInstrumentation::didRegisterNamedFlowContentElement(&document(), &namedFlow(), &contentElement);
 }
 
 void RenderNamedFlowThread::unregisterNamedFlowContentElement(Element& contentElement)
@@ -457,7 +429,7 @@ void RenderNamedFlowThread::unregisterNamedFlowContentElement(Element& contentEl
     if (canBeDestroyed())
         setMarkForDestruction();
 
-    InspectorInstrumentation::didUnregisterNamedFlowContentElement(&document(), m_namedFlow.get(), &contentElement);
+    InspectorInstrumentation::didUnregisterNamedFlowContentElement(&document(), &namedFlow(), &contentElement);
 }
 
 bool RenderNamedFlowThread::hasContentElement(Element& contentElement) const
@@ -467,7 +439,7 @@ bool RenderNamedFlowThread::hasContentElement(Element& contentElement) const
     
 const AtomicString& RenderNamedFlowThread::flowThreadName() const
 {
-    return m_namedFlow->name();
+    return namedFlow().name();
 }
 
 bool RenderNamedFlowThread::isChildAllowed(const RenderObject& child, const RenderStyle& style) const
@@ -487,57 +459,53 @@ bool RenderNamedFlowThread::isChildAllowed(const RenderObject& child, const Rend
 void RenderNamedFlowThread::dispatchRegionLayoutUpdateEvent()
 {
     RenderFlowThread::dispatchRegionLayoutUpdateEvent();
-    InspectorInstrumentation::didUpdateRegionLayout(&document(), m_namedFlow.get());
+    InspectorInstrumentation::didUpdateRegionLayout(&document(), &namedFlow());
 
-    if (!m_regionLayoutUpdateEventTimer.isActive() && m_namedFlow->hasEventListeners())
+    if (!m_regionLayoutUpdateEventTimer.isActive() && namedFlow().hasEventListeners())
         m_regionLayoutUpdateEventTimer.startOneShot(0);
 }
 
 void RenderNamedFlowThread::dispatchRegionOversetChangeEvent()
 {
     RenderFlowThread::dispatchRegionOversetChangeEvent();
-    InspectorInstrumentation::didChangeRegionOverset(&document(), m_namedFlow.get());
+    InspectorInstrumentation::didChangeRegionOverset(&document(), &namedFlow());
     
-    if (!m_regionOversetChangeEventTimer.isActive() && m_namedFlow->hasEventListeners())
+    if (!m_regionOversetChangeEventTimer.isActive() && namedFlow().hasEventListeners())
         m_regionOversetChangeEventTimer.startOneShot(0);
 }
 
 void RenderNamedFlowThread::regionLayoutUpdateEventTimerFired(Timer<RenderNamedFlowThread>&)
 {
-    ASSERT(m_namedFlow);
-
-    m_namedFlow->dispatchRegionLayoutUpdateEvent();
+    namedFlow().dispatchRegionLayoutUpdateEvent();
 }
 
 void RenderNamedFlowThread::regionOversetChangeEventTimerFired(Timer<RenderNamedFlowThread>&)
 {
-    ASSERT(m_namedFlow);
-    
-    m_namedFlow->dispatchRegionOversetChangeEvent();
+    namedFlow().dispatchRegionOversetChangeEvent();
 }
 
 void RenderNamedFlowThread::setMarkForDestruction()
 {
-    if (m_namedFlow->flowState() == WebKitNamedFlow::FlowStateNull)
+    if (namedFlow().flowState() == WebKitNamedFlow::FlowStateNull)
         return;
 
-    m_namedFlow->setRenderer(0);
+    namedFlow().setRenderer(nullptr);
     // After this call ends, the renderer can be safely destroyed.
     // The NamedFlow object may outlive its renderer if it's referenced from a script and may be reatached to one if the named flow is recreated in the stylesheet.
 }
 
 void RenderNamedFlowThread::resetMarkForDestruction()
 {
-    if (m_namedFlow->flowState() == WebKitNamedFlow::FlowStateCreated)
+    if (namedFlow().flowState() == WebKitNamedFlow::FlowStateCreated)
         return;
 
-    m_namedFlow->setRenderer(this);
+    namedFlow().setRenderer(this);
 }
 
 bool RenderNamedFlowThread::isMarkedForDestruction() const
 {
     // Flow threads in the "NULL" state can be destroyed.
-    return m_namedFlow->flowState() == WebKitNamedFlow::FlowStateNull;
+    return namedFlow().flowState() == WebKitNamedFlow::FlowStateNull;
 }
 
 static bool isContainedInElements(const Vector<Element*>& others, Element* element)

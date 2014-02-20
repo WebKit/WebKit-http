@@ -97,8 +97,8 @@ private:
 
     virtual WebCore::FloatRect convertToDeviceSpace(const WebCore::FloatRect&);
     virtual WebCore::FloatRect convertToUserSpace(const WebCore::FloatRect&);
-    virtual WebCore::IntPoint screenToWindow(const WebCore::IntPoint&);
-    virtual WebCore::IntRect windowToScreen(const WebCore::IntRect&);
+    virtual WebCore::IntPoint screenToRootView(const WebCore::IntPoint&);
+    virtual WebCore::IntRect rootViewToScreen(const WebCore::IntRect&);
 
     virtual void doneWithKeyEvent(const NativeWebKeyboardEvent&, bool wasEventHandled);
 
@@ -161,7 +161,9 @@ private:
     virtual void beganExitFullScreen(const WebCore::IntRect& initialFrame, const WebCore::IntRect& finalFrame) override;
 #endif
 
-    WKView* m_wkView;
+    NSView *activeView() const;
+
+    WKView *m_wkView;
     RetainPtr<WKEditorUndoTargetObjC> m_undoTarget;
 #if USE(AUTOCORRECTION_PANEL)
     CorrectionPanel m_correctionPanel;

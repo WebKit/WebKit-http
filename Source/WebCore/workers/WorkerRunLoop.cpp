@@ -146,8 +146,7 @@ MessageQueueWaitResult WorkerRunLoop::runInMode(WorkerGlobalScope* context, cons
 MessageQueueWaitResult WorkerRunLoop::runInMode(WorkerGlobalScope* context, const ModePredicate& predicate, WaitMode waitMode)
 {
     ASSERT(context);
-    ASSERT(context->thread());
-    ASSERT(context->thread()->threadID() == currentThread());
+    ASSERT(context->thread().threadID() == currentThread());
 
     double absoluteTime = 0.0;
     if (waitMode == WaitForMessage)
@@ -177,8 +176,7 @@ MessageQueueWaitResult WorkerRunLoop::runInMode(WorkerGlobalScope* context, cons
 void WorkerRunLoop::runCleanupTasks(WorkerGlobalScope* context)
 {
     ASSERT(context);
-    ASSERT(context->thread());
-    ASSERT(context->thread()->threadID() == currentThread());
+    ASSERT(context->thread().threadID() == currentThread());
     ASSERT(m_messageQueue.killed());
 
     while (true) {
@@ -216,8 +214,7 @@ std::unique_ptr<WorkerRunLoop::Task> WorkerRunLoop::Task::create(PassOwnPtr<Scri
 
 void WorkerRunLoop::Task::performTask(const WorkerRunLoop& runLoop, ScriptExecutionContext* context)
 {
-    WorkerGlobalScope* workerGlobalScope = static_cast<WorkerGlobalScope*>(context);
-    if ((!workerGlobalScope->isClosing() && !runLoop.terminated()) || m_task->isCleanupTask())
+    if ((!toWorkerGlobalScope(context)->isClosing() && !runLoop.terminated()) || m_task->isCleanupTask())
         m_task->performTask(context);
 }
 

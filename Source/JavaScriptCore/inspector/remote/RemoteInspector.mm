@@ -34,6 +34,7 @@
 #import "RemoteInspectorDebuggableConnection.h"
 #import <Foundation/Foundation.h>
 #import <notify.h>
+#import <wtf/NeverDestroyed.h>
 #import <wtf/Assertions.h>
 #import <wtf/MainThread.h>
 #import <wtf/text/WTFString.h>
@@ -80,7 +81,8 @@ RemoteInspector& RemoteInspector::shared()
 }
 
 RemoteInspector::RemoteInspector()
-    : m_nextAvailableIdentifier(1)
+    : m_xpcQueue(dispatch_queue_create("com.apple.JavaScriptCore.remote-inspector-xpc", DISPATCH_QUEUE_SERIAL))
+    , m_nextAvailableIdentifier(1)
     , m_notifyToken(0)
     , m_enabled(false)
     , m_hasActiveDebugSession(false)
@@ -99,7 +101,7 @@ unsigned RemoteInspector::nextAvailableIdentifier()
 
 void RemoteInspector::registerDebuggable(RemoteInspectorDebuggable* debuggable)
 {
-    MutexLocker locker(m_lock);
+    std::lock_guard<std::mutex> lock(m_mutex);
 
     unsigned identifier = nextAvailableIdentifier();
     debuggable->setIdentifier(identifier);
@@ -113,7 +115,7 @@ void RemoteInspector::registerDebuggable(RemoteInspectorDebuggable* debuggable)
 
 void RemoteInspector::unregisterDebuggable(RemoteInspectorDebuggable* debuggable)
 {
-    MutexLocker locker(m_lock);
+    std::lock_guard<std::mutex> lock(m_mutex);
 
     unsigned identifier = debuggable->identifier();
     if (!identifier)
@@ -131,7 +133,7 @@ void RemoteInspector::unregisterDebuggable(RemoteInspectorDebuggable* debuggable
 
 void RemoteInspector::updateDebuggable(RemoteInspectorDebuggable* debuggable)
 {
-    MutexLocker locker(m_lock);
+    std::lock_guard<std::mutex> lock(m_mutex);
 
     unsigned identifier = debuggable->identifier();
     if (!identifier)
@@ -145,7 +147,7 @@ void RemoteInspector::updateDebuggable(RemoteInspectorDebuggable* debuggable)
 
 void RemoteInspector::sendMessageToRemoteFrontend(unsigned identifier, const String& message)
 {
-    MutexLocker locker(m_lock);
+    std::lock_guard<std::mutex> lock(m_mutex);
 
     if (!m_xpcConnection)
         return;
@@ -165,14 +167,14 @@ void RemoteInspector::sendMessageToRemoteFrontend(unsigned identifier, const Str
 
 void RemoteInspector::start()
 {
-    MutexLocker locker(m_lock);
+    std::lock_guard<std::mutex> lock(m_mutex);
 
     if (m_enabled)
         return;
 
     m_enabled = true;
 
-    notify_register_dispatch(WIRServiceAvailableNotification, &m_notifyToken, dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^(int) {
+    notify_register_dispatch(WIRServiceAvailableNotification, &m_notifyToken, m_xpcQueue, ^(int) {
         RemoteInspector::shared().setupXPCConnectionIfNeeded();
     });
 
@@ -181,7 +183,7 @@ void RemoteInspector::start()
 
 void RemoteInspector::stop()
 {
-    MutexLocker locker(m_lock);
+    std::lock_guard<std::mutex> lock(m_mutex);
 
     if (!m_enabled)
         return;
@@ -206,16 +208,16 @@ void RemoteInspector::stop()
 
 void RemoteInspector::setupXPCConnectionIfNeeded()
 {
-    MutexLocker locker(m_lock);
+    std::lock_guard<std::mutex> lock(m_mutex);
 
     if (m_xpcConnection)
         return;
 
-    xpc_connection_t connection = xpc_connection_create_mach_service(WIRXPCMachPortName, dispatch_get_main_queue(), 0);
+    xpc_connection_t connection = xpc_connection_create_mach_service(WIRXPCMachPortName, m_xpcQueue, 0);
     if (!connection)
         return;
 
-    m_xpcConnection = adoptRef(new RemoteInspectorXPCConnection(connection, this));
+    m_xpcConnection = adoptRef(new RemoteInspectorXPCConnection(connection, m_xpcQueue, this));
     m_xpcConnection->sendMessage(@"syn", nil); // Send a simple message to initialize the XPC connection.
     xpc_release(connection);
 
@@ -226,7 +228,7 @@ void RemoteInspector::setupXPCConnectionIfNeeded()
 
 void RemoteInspector::xpcConnectionReceivedMessage(RemoteInspectorXPCConnection*, NSString *messageName, NSDictionary *userInfo)
 {
-    MutexLocker locker(m_lock);
+    std::lock_guard<std::mutex> lock(m_mutex);
 
     if ([messageName isEqualToString:WIRPermissionDenied]) {
         stop();
@@ -251,7 +253,7 @@ void RemoteInspector::xpcConnectionReceivedMessage(RemoteInspectorXPCConnection*
 
 void RemoteInspector::xpcConnectionFailed(RemoteInspectorXPCConnection* connection)
 {
-    MutexLocker locker(m_lock);
+    std::lock_guard<std::mutex> lock(m_mutex);
     if (connection != m_xpcConnection)
         return;
 
@@ -349,7 +351,7 @@ void RemoteInspector::pushListingSoon()
 
     m_pushScheduled = true;
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0.02 * NSEC_PER_SEC), dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-        MutexLocker locker(m_lock);
+        std::lock_guard<std::mutex> lock(m_mutex);
         if (m_pushScheduled)
             pushListingNow();
     });
@@ -466,7 +468,7 @@ void RemoteInspector::receivedIndicateMessage(NSDictionary *userInfo)
     BOOL indicateEnabled = [[userInfo objectForKey:WIRIndicateEnabledKey] boolValue];
 
     dispatchAsyncOnQueueSafeForAnyDebuggable(^{
-        MutexLocker locker(m_lock);
+        std::lock_guard<std::mutex> lock(m_mutex);
 
         auto it = m_debuggableMap.find(identifier);
         if (it == m_debuggableMap.end())

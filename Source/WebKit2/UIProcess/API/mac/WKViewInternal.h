@@ -28,6 +28,7 @@
 #import "PluginComplexTextInputState.h"
 #import "WebFindOptions.h"
 #import <wtf/Forward.h>
+#import <wtf/RetainPtr.h>
 #import <wtf/Vector.h>
 
 @class WKWebViewConfiguration;
@@ -43,18 +44,23 @@ namespace WebCore {
 }
 
 namespace WebKit {
-    class DrawingAreaProxy;
-    class FindIndicator;
-    class LayerTreeContext;
-    struct ColorSpaceData;
-    struct EditorState;
+class DrawingAreaProxy;
+class FindIndicator;
+class LayerTreeContext;
+class WebContext;
+struct ColorSpaceData;
+struct EditorState;
+struct WebPageConfiguration;
 }
 
 @class WKFullScreenWindowController;
+#if WK_API_ENABLED
+@class WKThumbnailView;
+#endif
 
 @interface WKView ()
 #if WK_API_ENABLED
-- (instancetype)initWithFrame:(CGRect)frame configuration:(WKWebViewConfiguration *)configuration;
+- (instancetype)initWithFrame:(CGRect)frame context:(WebKit::WebContext&)context configuration:(WebKit::WebPageConfiguration)webPageConfiguration;
 #endif
 
 - (std::unique_ptr<WebKit::DrawingAreaProxy>)_createDrawingAreaProxy;
@@ -100,6 +106,10 @@ namespace WebKit {
 
 - (void)_setSuppressVisibilityUpdates:(BOOL)suppressVisibilityUpdates;
 - (BOOL)_suppressVisibilityUpdates;
+
+#if WK_API_ENABLED
+@property (nonatomic, setter=_setThumbnailView:) WKThumbnailView *_thumbnailView;
+#endif
 
 // FullScreen
 

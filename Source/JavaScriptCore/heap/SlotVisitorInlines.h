@@ -51,6 +51,12 @@ inline void SlotVisitor::appendUnbarrieredPointer(T** slot)
     internalAppend(slot, cell);
 }
 
+template<typename T>
+inline void SlotVisitor::appendUnbarrieredReadOnlyPointer(T* cell)
+{
+    internalAppend(0, cell);
+}
+
 ALWAYS_INLINE void SlotVisitor::append(JSValue* slot)
 {
     ASSERT(slot);
@@ -61,6 +67,11 @@ ALWAYS_INLINE void SlotVisitor::appendUnbarrieredValue(JSValue* slot)
 {
     ASSERT(slot);
     internalAppend(slot, *slot);
+}
+
+ALWAYS_INLINE void SlotVisitor::appendUnbarrieredReadOnlyValue(JSValue value)
+{
+    internalAppend(0, value);
 }
 
 ALWAYS_INLINE void SlotVisitor::append(JSCell** slot)
@@ -176,7 +187,7 @@ inline TriState SlotVisitor::containsOpaqueRootTriState(void* root)
 {
     if (m_opaqueRoots.contains(root))
         return TrueTriState;
-    MutexLocker locker(m_shared.m_opaqueRootsLock);
+    std::lock_guard<std::mutex> lock(m_shared.m_opaqueRootsMutex);
     if (m_shared.m_opaqueRoots.contains(root))
         return TrueTriState;
     return MixedTriState;
@@ -230,6 +241,8 @@ inline void SlotVisitor::copyLater(JSCell* owner, CopyToken token, void* ptr, si
         m_shared.m_copiedSpace->pin(block);
         return;
     }
+
+    ASSERT(heap()->m_storageSpace.contains(block));
 
     SpinLockHolder locker(&block->workListLock());
     if (heap()->operationInProgress() == FullCollection || block->shouldReportLiveBytes(locker, owner)) {

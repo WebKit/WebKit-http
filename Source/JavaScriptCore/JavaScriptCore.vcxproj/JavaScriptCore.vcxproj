@@ -309,6 +309,7 @@
     <ClCompile Include="..\bindings\ScriptFunctionCall.cpp" />
     <ClCompile Include="..\bindings\ScriptObject.cpp" />
     <ClCompile Include="..\bindings\ScriptValue.cpp" />
+    <ClCompile Include="..\builtins\BuiltinExecutables.cpp" />
     <ClCompile Include="..\bytecode\ArrayAllocationProfile.cpp" />
     <ClCompile Include="..\bytecode\ArrayProfile.cpp" />
     <ClCompile Include="..\bytecode\BytecodeBasicBlock.cpp" />
@@ -324,7 +325,9 @@
     <ClCompile Include="..\bytecode\DFGExitProfile.cpp" />
     <ClCompile Include="..\bytecode\ExecutionCounter.cpp" />
     <ClCompile Include="..\bytecode\ExitKind.cpp" />
+    <ClCompile Include="..\bytecode\ExitingJITType.cpp" />
     <ClCompile Include="..\bytecode\GetByIdStatus.cpp" />
+    <ClCompile Include="..\bytecode\GetByIdVariant.cpp" />
     <ClCompile Include="..\bytecode\InlineCallFrameSet.cpp" />
     <ClCompile Include="..\bytecode\JumpTable.cpp" />
     <ClCompile Include="..\bytecode\LazyOperandValueProfile.cpp" />
@@ -392,7 +395,9 @@
     <ClCompile Include="..\dfg\DFGFlushFormat.cpp" />
     <ClCompile Include="..\dfg\DFGFlushLivenessAnalysisPhase.cpp" />
     <ClCompile Include="..\dfg\DFGGraph.cpp" />
+    <ClCompile Include="..\dfg\DFGGraphSafepoint.cpp" />
     <ClCompile Include="..\dfg\DFGInPlaceAbstractState.cpp" />
+    <ClCompile Include="..\dfg\DFGIntegerCheckCombiningPhase.cpp" />
     <ClCompile Include="..\dfg\DFGInvalidationPointInjectionPhase.cpp" />
     <ClCompile Include="..\dfg\DFGJITCode.cpp" />
     <ClCompile Include="..\dfg\DFGJITCompiler.cpp" />
@@ -424,6 +429,7 @@
     <ClCompile Include="..\dfg\DFGPredictionInjectionPhase.cpp" />
     <ClCompile Include="..\dfg\DFGPredictionPropagationPhase.cpp" />
     <ClCompile Include="..\dfg\DFGResurrectionForValidationPhase.cpp" />
+    <ClCompile Include="..\dfg\DFGSafepoint.cpp" />
     <ClCompile Include="..\dfg\DFGSpeculativeJIT.cpp" />
     <ClCompile Include="..\dfg\DFGSpeculativeJIT32_64.cpp" />
     <ClCompile Include="..\dfg\DFGSpeculativeJIT64.cpp" />
@@ -432,6 +438,7 @@
     <ClCompile Include="..\dfg\DFGStackLayoutPhase.cpp" />
     <ClCompile Include="..\dfg\DFGStoreBarrierElisionPhase.cpp" />
     <ClCompile Include="..\dfg\DFGStrengthReductionPhase.cpp" />
+    <ClCompile Include="..\dfg\DFGThreadData.cpp" />
     <ClCompile Include="..\dfg\DFGThunks.cpp" />
     <ClCompile Include="..\dfg\DFGTierUpCheckInjectionPhase.cpp" />
     <ClCompile Include="..\dfg\DFGToFTLDeferredCompilationCallback.cpp" />
@@ -476,7 +483,9 @@
     <ClCompile Include="..\heap\WeakSet.cpp" />
     <ClCompile Include="..\heap\WriteBarrierBuffer.cpp" />
     <ClCompile Include="..\heap\WriteBarrierSupport.cpp" />
+    <ClCompile Include="..\inspector\ConsoleMessage.cpp" />
     <ClCompile Include="..\inspector\ContentSearchUtilities.cpp" />
+    <ClCompile Include="..\inspector\IdentifiersFactory.cpp" />
     <ClCompile Include="..\inspector\InjectedScript.cpp" />
     <ClCompile Include="..\inspector\InjectedScriptBase.cpp" />
     <ClCompile Include="..\inspector\InjectedScriptHost.cpp" />
@@ -490,8 +499,13 @@
     <ClCompile Include="..\inspector\JSJavaScriptCallFrame.cpp" />
     <ClCompile Include="..\inspector\JSJavaScriptCallFramePrototype.cpp" />
     <ClCompile Include="..\inspector\JavaScriptCallFrame.cpp" />
+    <ClCompile Include="..\inspector\ScriptArguments.cpp" />
+    <ClCompile Include="..\inspector\ScriptCallFrame.cpp" />
+    <ClCompile Include="..\inspector\ScriptCallStack.cpp" />
+    <ClCompile Include="..\inspector\ScriptCallStackFactory.cpp" />
     <ClCompile Include="..\inspector\ScriptDebugServer.cpp" />
     <ClCompile Include="..\inspector\agents\InspectorAgent.cpp" />
+    <ClCompile Include="..\inspector\agents\InspectorConsoleAgent.cpp" />
     <ClCompile Include="..\inspector\agents\InspectorDebuggerAgent.cpp" />
     <ClCompile Include="..\inspector\agents\InspectorRuntimeAgent.cpp" />
     <ClCompile Include="..\interpreter\AbstractPC.cpp" />
@@ -501,6 +515,7 @@
     <ClCompile Include="..\interpreter\ProtoCallFrame.cpp" />
     <ClCompile Include="..\interpreter\StackVisitor.cpp" />
     <ClCompile Include="..\interpreter\VMInspector.cpp" />
+    <ClCompile Include="..\jit\ArityCheckFailReturnThunks.cpp" />
     <ClCompile Include="..\jit\AssemblyHelpers.cpp" />
     <ClCompile Include="..\jit\ClosureCallStubRoutine.cpp" />
     <ClCompile Include="..\jit\ExecutableAllocator.cpp" />
@@ -525,6 +540,8 @@
     <ClCompile Include="..\jit\JITStubs.cpp" />
     <ClCompile Include="..\jit\JITThunks.cpp" />
     <ClCompile Include="..\jit\JITToDFGDeferredCompilationCallback.cpp" />
+    <ClCompile Include="..\jit\Reg.cpp" />
+    <ClCompile Include="..\jit\RegisterPreservationWrapperGenerator.cpp" />
     <ClCompile Include="..\jit\Repatch.cpp" />
     <ClCompile Include="..\jit\ThunkGenerators.cpp" />
     <ClCompile Include="..\llint\LLIntCLoop.cpp" />
@@ -722,6 +739,7 @@
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\InspectorJSBackendDispatchers.cpp" />
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\InspectorJSFrontendDispatchers.cpp" />
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\InspectorJSTypeBuilders.cpp" />
+    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSCBuiltins.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\ArrayConstructor.lut.h" />
@@ -751,6 +769,7 @@
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\RegExpObject.lut.h" />
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\RegExpPrototype.lut.h" />
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\StringConstructor.lut.h" />
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSCBuiltins.h" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\API\APICallbackFunction.h" />
@@ -799,6 +818,7 @@
     <ClInclude Include="..\bindings\ScriptFunctionCall.h" />
     <ClInclude Include="..\bindings\ScriptObject.h" />
     <ClInclude Include="..\bindings\ScriptValue.h" />
+    <ClInclude Include="..\builtins\BuiltinExecutables.h" />
     <ClInclude Include="..\bytecode\ArrayAllocationProfile.h" />
     <ClInclude Include="..\bytecode\ArrayProfile.h" />
     <ClInclude Include="..\bytecode\ByValInfo.h" />
@@ -823,6 +843,7 @@
     <ClInclude Include="..\bytecode\ExitKind.h" />
     <ClInclude Include="..\bytecode\ExpressionRangeInfo.h" />
     <ClInclude Include="..\bytecode\GetByIdStatus.h" />
+    <ClInclude Include="..\bytecode\GetByIdVariant.h" />
     <ClInclude Include="..\bytecode\HandlerInfo.h" />
     <ClInclude Include="..\bytecode\InlineCallFrameSet.h" />
     <ClInclude Include="..\bytecode\Instruction.h" />
@@ -922,8 +943,10 @@
     <ClInclude Include="..\dfg\DFGGenerationInfo.h" />
     <ClInclude Include="..\dfg\DFGGPRInfo.h" />
     <ClInclude Include="..\dfg\DFGGraph.h" />
+    <ClInclude Include="..\dfg\DFGGraphSafepoint.h" />
     <ClInclude Include="..\dfg\DFGInPlaceAbstractState.h" />
     <ClInclude Include="..\dfg\DFGInsertionSet.h" />
+    <ClInclude Include="..\dfg\DFGIntegerCheckCombiningPhase.h" />
     <ClInclude Include="..\dfg\DFGInvalidationPointInjectionPhase.h" />
     <ClInclude Include="..\dfg\DFGJITCode.h" />
     <ClInclude Include="..\dfg\DFGJITCompiler.h" />
@@ -942,6 +965,7 @@
     <ClInclude Include="..\dfg\DFGNode.h" />
     <ClInclude Include="..\dfg\DFGNodeAllocator.h" />
     <ClInclude Include="..\dfg\DFGNodeFlags.h" />
+    <ClInclude Include="..\dfg\DFGNodeOrigin.h" />
     <ClInclude Include="..\dfg\DFGNodeType.h" />
     <ClInclude Include="..\dfg\DFGOperations.h" />
     <ClInclude Include="..\dfg\DFGOSRAvailabilityAnalysisPhase.h" />
@@ -962,7 +986,9 @@
     <ClInclude Include="..\dfg\DFGRegisterSet.h" />
     <ClInclude Include="..\dfg\DFGResurrectionForValidationPhase.h" />
     <ClInclude Include="..\dfg\DFGSafeToExecute.h" />
+    <ClInclude Include="..\dfg\DFGSafepoint.h" />
     <ClInclude Include="..\dfg\DFGSaneStringGetByValSlowPathGenerator.h" />
+    <ClInclude Include="..\dfg\DFGScannable.h" />
     <ClInclude Include="..\dfg\DFGScoreBoard.h" />
     <ClInclude Include="..\dfg\DFGScratchRegisterAllocator.h" />
     <ClInclude Include="..\dfg\DFGSilentRegisterSavePlan.h" />
@@ -974,6 +1000,7 @@
     <ClInclude Include="..\dfg\DFGStoreBarrierElisionPhase.h" />
     <ClInclude Include="..\dfg\DFGStrengthReductionPhase.h" />
     <ClInclude Include="..\dfg\DFGStructureAbstractValue.h" />
+    <ClInclude Include="..\dfg\DFGThreadData.h" />
     <ClInclude Include="..\dfg\DFGThunks.h" />
     <ClInclude Include="..\dfg\DFGTierUpCheckInjectionPhase.h" />
     <ClInclude Include="..\dfg\DFGToFTLDeferredCompilationCallback.h" />
@@ -1054,7 +1081,10 @@
     <ClInclude Include="..\heap\WeakSetInlines.h" />
     <ClInclude Include="..\heap\WriteBarrierBuffer.h" />
     <ClInclude Include="..\heap\WriteBarrierSupport.h" />
+    <ClInclude Include="..\inspector\ConsoleMessage.h" />
+    <ClInclude Include="..\inspector\ConsoleTypes.h" />
     <ClInclude Include="..\inspector\ContentSearchUtilities.h" />
+    <ClInclude Include="..\inspector\IdentifiersFactory.h" />
     <ClInclude Include="..\inspector\InjectedScript.h" />
     <ClInclude Include="..\inspector\InjectedScriptBase.h" />
     <ClInclude Include="..\inspector\InjectedScriptHost.h" />
@@ -1072,10 +1102,15 @@
     <ClInclude Include="..\inspector\JSJavaScriptCallFrame.h" />
     <ClInclude Include="..\inspector\JSJavaScriptCallFramePrototype.h" />
     <ClInclude Include="..\inspector\JavaScriptCallFrame.h" />
+    <ClInclude Include="..\inspector\ScriptArguments.h" />
     <ClInclude Include="..\inspector\ScriptBreakpoint.h" />
+    <ClInclude Include="..\inspector\ScriptCallFrame.h" />
+    <ClInclude Include="..\inspector\ScriptCallStack.h" />
+    <ClInclude Include="..\inspector\ScriptCallStackFactory.h" />
     <ClInclude Include="..\inspector\ScriptDebugListener.h" />
     <ClInclude Include="..\inspector\ScriptDebugServer.h" />
     <ClInclude Include="..\inspector\agents\InspectorAgent.h" />
+    <ClInclude Include="..\inspector\agents\InspectorConsoleAgent.h" />
     <ClInclude Include="..\inspector\agents\InspectorDebuggerAgent.h" />
     <ClInclude Include="..\inspector\agents\InspectorRuntimeAgent.h" />
     <ClInclude Include="..\interpreter\AbstractPC.h" />
@@ -1090,6 +1125,7 @@
     <ClInclude Include="..\interpreter\Register.h" />
     <ClInclude Include="..\interpreter\StackVisitor.h" />
     <ClInclude Include="..\interpreter\VMInspector.h" />
+    <ClInclude Include="..\jit\ArityCheckFailReturnThunks.h" />
     <ClInclude Include="..\jit\AssemblyHelpers.h" />
     <ClInclude Include="..\jit\CCallHelpers.h" />
     <ClInclude Include="..\jit\ClosureCallStubRoutine.h" />
@@ -1118,6 +1154,8 @@
     <ClInclude Include="..\jit\JITWriteBarrier.h" />
     <ClInclude Include="..\jit\JSInterfaceJIT.h" />
     <ClCompile Include="..\jit\RegisterSet.cpp" />
+    <ClInclude Include="..\jit\Reg.h" />
+    <ClInclude Include="..\jit\RegisterPreservationWrapperGenerator.h" />
     <ClInclude Include="..\jit\RegisterSet.h" />
     <ClInclude Include="..\jit\Repatch.h" />
     <ClInclude Include="..\jit\ScratchRegisterAllocator.h" />
@@ -1245,6 +1283,7 @@
     <ClInclude Include="..\runtime\JSArrayBufferViewInlines.h" />
     <ClInclude Include="..\runtime\JSArrayIterator.h" />
     <ClInclude Include="..\runtime\JSBoundFunction.h" />
+    <ClInclude Include="..\runtime\JSCInlines.h" />
     <ClInclude Include="..\runtime\JSCJSValue.h" />
     <ClInclude Include="..\runtime\JSCJSValueInlines.h" />
     <ClInclude Include="..\runtime\JSCell.h" />
@@ -1388,6 +1427,7 @@
     <ClInclude Include="..\runtime\WeakMapPrototype.h" />
     <ClInclude Include="..\runtime\WeakRandom.h" />
     <ClInclude Include="..\runtime\WriteBarrier.h" />
+    <ClInclude Include="..\runtime\WriteBarrierInlines.h" />
     <ClInclude Include="..\tools\CodeProfile.h" />
     <ClInclude Include="..\tools\CodeProfiling.h" />
     <ClInclude Include="..\tools\ProfileTreeNode.h" />
@@ -1411,6 +1451,14 @@
     <None Include="JavaScriptCorePreLink.cmd">
       <FileType>Document</FileType>
     </None>
+  </ItemGroup>
+  <ItemGroup>
+    <MASM Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\LowLevelInterpreterWin.asm">
+      <UseSafeExceptionHandlers Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</UseSafeExceptionHandlers>
+      <UseSafeExceptionHandlers Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</UseSafeExceptionHandlers>
+      <UseSafeExceptionHandlers Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|Win32'">true</UseSafeExceptionHandlers>
+      <UseSafeExceptionHandlers Condition="'$(Configuration)|$(Platform)'=='Release_WinCairo|Win32'">true</UseSafeExceptionHandlers>
+    </MASM>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

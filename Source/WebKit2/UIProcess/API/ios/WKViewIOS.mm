@@ -26,17 +26,29 @@
 #import "config.h"
 #import "WKViewPrivate.h"
 
+#import "RemoteLayerTreeTransaction.h"
+#import "ViewGestureController.h"
+#import "WebPageProxy.h"
 #import "WKBrowsingContextGroupPrivate.h"
 #import "WKContentView.h"
 #import "WKProcessGroupPrivate.h"
 #import "WKScrollView.h"
+#import "WKAPICast.h"
+#import <UIKit/UIImage_Private.h>
+#import <UIKit/UIPeripheralHost_Private.h>
 #import <UIKit/UIScreen.h>
 #import <UIKit/UIScrollView_Private.h>
-#import <WebKit2/RemoteLayerTreeTransaction.h>
+#import <UIKit/UIWindow_Private.h>
 #import <wtf/RetainPtr.h>
+
+using namespace WebKit;
 
 @interface WKView () <UIScrollViewDelegate, WKContentViewDelegate>
 - (void)_setDocumentScale:(CGFloat)newScale;
+@end
+
+@interface UIScrollView (UIScrollViewInternal)
+- (void)_adjustForAutomaticKeyboardInfo:(NSDictionary*)info animated:(BOOL)animated lastAdjustment:(CGFloat*)lastAdjustment;
 @end
 
 @implementation WKView {
@@ -44,8 +56,16 @@
     RetainPtr<WKContentView> _contentView;
 
     BOOL _isWaitingForNewLayerTreeAfterDidCommitLoad;
+    std::unique_ptr<ViewGestureController> _gestureController;
+    
+    BOOL _allowsBackForwardNavigationGestures;
+
     BOOL _hasStaticMinimumLayoutSize;
     CGSize _minimumLayoutSizeOverride;
+
+    UIEdgeInsets _obscuredInsets;
+    bool _isChangingObscuredInsetsInteractively;
+    CGFloat _lastAdjustmentForScroller;
 }
 
 - (id)initWithCoder:(NSCoder *)coder
@@ -67,6 +87,12 @@
 
     [self _commonInitializationWithContextRef:processGroup._contextRef pageGroupRef:browsingContextGroup._pageGroupRef relatedToPage:relatedView ? [relatedView pageRef] : nullptr];
     return self;
+}
+
+- (void)dealloc
+{
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
+    [super dealloc];
 }
 
 - (void)setFrame:(CGRect)frame
@@ -97,6 +123,26 @@
     return [_contentView browsingContextController];
 }
 
+- (void)setAllowsBackForwardNavigationGestures:(BOOL)allowsBackForwardNavigationGestures
+{
+    _allowsBackForwardNavigationGestures = allowsBackForwardNavigationGestures;
+    
+    WebPageProxy *webPageProxy = toImpl([_contentView _pageRef]);
+    
+    if (allowsBackForwardNavigationGestures && !_gestureController) {
+        _gestureController = std::make_unique<ViewGestureController>(*webPageProxy);
+        _gestureController->installSwipeHandler(self, [self scrollView]);
+    } else
+        _gestureController = nullptr;
+    
+    webPageProxy->setShouldRecordNavigationSnapshots(allowsBackForwardNavigationGestures);
+}
+
+- (BOOL)allowsBackForwardNavigationGestures
+{
+    return _allowsBackForwardNavigationGestures;
+}
+
 #pragma mark WKContentViewDelegate
 
 - (void)contentViewDidCommitLoadForMainFrame:(WKContentView *)contentView
@@ -104,13 +150,16 @@
     _isWaitingForNewLayerTreeAfterDidCommitLoad = YES;
 }
 
-- (void)contentView:(WKContentView *)contentView didCommitLayerTree:(const WebKit::RemoteLayerTreeTransaction&)layerTreeTransaction
+- (void)contentView:(WKContentView *)contentView didCommitLayerTree:(const RemoteLayerTreeTransaction&)layerTreeTransaction
 {
     [_scrollView setMinimumZoomScale:layerTreeTransaction.minimumScaleFactor()];
     [_scrollView setMaximumZoomScale:layerTreeTransaction.maximumScaleFactor()];
     [_scrollView setZoomEnabled:layerTreeTransaction.allowsUserScaling()];
     if (![_scrollView isZooming] && ![_scrollView isZoomBouncing])
         [_scrollView setZoomScale:layerTreeTransaction.pageScaleFactor()];
+    
+    if (_gestureController)
+        _gestureController->setRenderTreeSize(layerTreeTransaction.renderTreeSize());
 
     if (_isWaitingForNewLayerTreeAfterDidCommitLoad) {
         UIEdgeInsets inset = [_scrollView contentInset];
@@ -190,13 +239,24 @@
 
     [self addSubview:_scrollView.get()];
 
-    _contentView = adoptNS([[WKContentView alloc] initWithFrame:bounds contextRef:contextRef pageGroupRef:pageGroupRef relatedToPage:relatedPage]);
+    WebKit::WebPageConfiguration webPageConfiguration;
+    webPageConfiguration.pageGroup = toImpl(pageGroupRef);
+    webPageConfiguration.relatedPage = toImpl(relatedPage);
+
+    _contentView = adoptNS([[WKContentView alloc] initWithFrame:bounds context:*toImpl(contextRef) configuration:std::move(webPageConfiguration)]);
+
     [_contentView setDelegate:self];
     [[_contentView layer] setAnchorPoint:CGPointZero];
     [_contentView setFrame:bounds];
     [_scrollView addSubview:_contentView.get()];
 
     [self _frameOrBoundsChanged];
+
+    NSNotificationCenter *center = [NSNotificationCenter defaultCenter];
+    [center addObserver:self selector:@selector(_keyboardWillChangeFrame:) name:UIKeyboardWillChangeFrameNotification object:nil];
+    [center addObserver:self selector:@selector(_keyboardDidChangeFrame:) name:UIKeyboardDidChangeFrameNotification object:nil];
+    [center addObserver:self selector:@selector(_keyboardWillShow:) name:UIKeyboardWillShowNotification object:nil];
+    [center addObserver:self selector:@selector(_keyboardWillHide:) name:UIKeyboardWillHideNotification object:nil];
 }
 
 - (void)_frameOrBoundsChanged
@@ -217,6 +277,52 @@
 
     CGPoint contentOffset = [_scrollView convertPoint:contentOffsetInDocumentCoordinates fromView:_contentView.get()];
     [_scrollView setContentOffset:contentOffset];
+}
+
+
+- (RetainPtr<CGImageRef>)takeViewSnapshotForContentView:(WKContentView *)contentView
+{
+    // FIXME: We should be able to use acquire an IOSurface directly, instead of going to CGImage here and back in ViewSnapshotStore.
+    UIGraphicsBeginImageContextWithOptions(self.bounds.size, YES, self.window.screen.scale);
+    [self drawViewHierarchyInRect:[self bounds] afterScreenUpdates:NO];
+    UIImage *image = UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+    return image.CGImage;
+}
+
+- (void)_keyboardChangedWithInfo:(NSDictionary *)keyboardInfo adjustScrollView:(BOOL)adjustScrollView
+{
+    // FIXME: We will also need to adjust the unobscured rect by taking into account the keyboard rect and the obscured insets.
+    if (adjustScrollView)
+        [_scrollView _adjustForAutomaticKeyboardInfo:keyboardInfo animated:YES lastAdjustment:&_lastAdjustmentForScroller];
+}
+
+- (void)_keyboardWillChangeFrame:(NSNotification *)notification
+{
+    if ([_contentView isAssistingNode])
+        [self _keyboardChangedWithInfo:notification.userInfo adjustScrollView:YES];
+}
+
+- (void)_keyboardDidChangeFrame:(NSNotification *)notification
+{
+    [self _keyboardChangedWithInfo:notification.userInfo adjustScrollView:NO];
+}
+
+- (void)_keyboardWillShow:(NSNotification *)notification
+{
+    if ([_contentView isAssistingNode])
+        [self _keyboardChangedWithInfo:notification.userInfo adjustScrollView:YES];
+}
+
+- (void)_keyboardWillHide:(NSNotification *)notification
+{
+    // Ignore keyboard will hide notifications sent during rotation. They're just there for
+    // backwards compatibility reasons and processing the will hide notification would
+    // temporarily screw up the the unobscured view area.
+    if ([[UIPeripheralHost sharedInstance] rotationState])
+        return;
+
+    [self _keyboardChangedWithInfo:notification.userInfo adjustScrollView:YES];
 }
 
 @end
@@ -253,6 +359,42 @@
     _hasStaticMinimumLayoutSize = YES;
     _minimumLayoutSizeOverride = minimumLayoutSizeOverride;
     [_contentView setMinimumLayoutSize:minimumLayoutSizeOverride];
+}
+
+- (UIEdgeInsets)_obscuredInsets
+{
+    return _obscuredInsets;
+}
+
+- (void)_setObscuredInsets:(UIEdgeInsets)obscuredInsets
+{
+    ASSERT(obscuredInsets.top >= 0);
+    ASSERT(obscuredInsets.left >= 0);
+    ASSERT(obscuredInsets.bottom >= 0);
+    ASSERT(obscuredInsets.right >= 0);
+    _obscuredInsets = obscuredInsets;
+}
+
+- (void)_beginInteractiveObscuredInsetsChange
+{
+    ASSERT(!_isChangingObscuredInsetsInteractively);
+    _isChangingObscuredInsetsInteractively = YES;
+}
+
+- (void)_endInteractiveObscuredInsetsChange
+{
+    ASSERT(_isChangingObscuredInsetsInteractively);
+    _isChangingObscuredInsetsInteractively = NO;
+}
+
+- (UIColor *)pageExtendedBackgroundColor
+{
+    WebPageProxy *webPageProxy = toImpl([_contentView _pageRef]);
+    WebCore::Color color = webPageProxy->pageExtendedBackgroundColor();
+    if (!color.isValid())
+        return nil;
+
+    return [UIColor colorWithRed:(color.red() / 255.0) green:(color.green() / 255.0) blue:(color.blue() / 255.0) alpha:(color.alpha() / 255.0)];
 }
 
 @end

@@ -500,7 +500,7 @@ void DumpRenderTreeSupportGtk::rectangleForSelection(WebKitWebFrame* frame, cair
     if (!coreFrame)
         return;
 
-    IntRect bounds = enclosingIntRect(coreFrame->selection().bounds());
+    IntRect bounds = enclosingIntRect(coreFrame->selection().selectionBounds());
     rectangle->x = bounds.x();
     rectangle->y = bounds.y();
     rectangle->width = bounds.width();
@@ -583,13 +583,6 @@ void DumpRenderTreeSupportGtk::setExperimentalContentSecurityPolicyFeaturesEnabl
 {
 #if ENABLE(CSP_NEXT)
     RuntimeEnabledFeatures::sharedFeatures().setExperimentalContentSecurityPolicyFeaturesEnabled(enabled);
-#endif
-}
-
-void DumpRenderTreeSupportGtk::setShadowDOMEnabled(bool enabled)
-{
-#if ENABLE(SHADOW_DOM)
-    RuntimeEnabledFeatures::sharedFeatures().setShadowDOMEnabled(enabled);
 #endif
 }
 
@@ -680,14 +673,14 @@ void DumpRenderTreeSupportGtk::setAuthenticationCallback(AuthenticationCallback 
     s_authenticationCallback = authenticationCallback;
 }
 
-void DumpRenderTreeSupportGtk::setPageVisibility(WebKitWebView* webView, WebCore::PageVisibilityState visibilityState, bool isInitialState)
+void DumpRenderTreeSupportGtk::setPageVisibility(WebKitWebView* webView, WebCore::PageVisibilityState visibilityState, bool)
 {
 #if ENABLE(PAGE_VISIBILITY_API)
     Page* page = core(webView);
     if (!page)
         return;
 
-    page->setIsVisible(visibilityState == PageVisibilityStateVisible, isInitialState);
+    page->setIsVisible(visibilityState == PageVisibilityStateVisible);
     if (visibilityState == PageVisibilityStatePrerender)
         page->setIsPrerender();
 #endif

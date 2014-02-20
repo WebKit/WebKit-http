@@ -234,11 +234,6 @@ void RenderBlock::willBeDestroyed()
     // Mark as being destroyed to avoid trouble with merges in removeChild().
     m_beingDestroyed = true;
 
-    if (!documentBeingDestroyed()) {
-        if (firstChild() && firstChild()->isRunIn())
-            moveRunInToOriginalPosition(*firstChild());
-    }
-
     // Make sure to destroy anonymous children first while they are still connected to the rest of the tree, so that they will
     // properly dirty line boxes that they are removed from. Effects that do :before/:after only on hover could crash otherwise.
     destroyLeftoverChildren();
@@ -767,19 +762,8 @@ void RenderBlock::addChildIgnoringAnonymousColumnBlocks(RenderObject* newChild, 
                 // safe fallback to use the topmost beforeChild container.
                 beforeChild = beforeChildContainer;
             }
-        } else {
-            // We will reach here when beforeChild is a run-in element.
-            // If run-in element precedes a block-level element, it becomes the
-            // the first inline child of that block level element. The insertion
-            // point will be before that block-level element.
-            ASSERT(beforeChild->isRunIn());
-            beforeChild = beforeChildContainer;
         }
     }
-
-    // Nothing goes before the intruded run-in.
-    if (beforeChild && beforeChild->isRunIn() && runInIsPlacedIntoSiblingBlock(*beforeChild))
-        beforeChild = beforeChild->nextSibling();
 
     // Check for a spanning element in columns.
     if (gColumnFlowSplitEnabled) {
@@ -850,9 +834,6 @@ void RenderBlock::addChildIgnoringAnonymousColumnBlocks(RenderObject* newChild, 
 
     RenderBox::addChild(newChild, beforeChild);
  
-    // Handle placement of run-ins.
-    placeRunInIfNeeded(*newChild);
-
     if (madeBoxesNonInline && parent() && isAnonymousBlock() && parent()->isRenderBlock())
         toRenderBlock(parent())->removeLeftoverAnonymousBlock(this);
     // this object may be dead here
@@ -946,13 +927,6 @@ void RenderBlock::makeChildrenNonInline(RenderObject* insertionPoint)
         return;
 
     deleteLines();
-
-    // Since we are going to have block children, we have to move
-    // back the run-in to its original place.
-    if (child->isRunIn()) {
-        moveRunInToOriginalPosition(*child);
-        child = firstChild();
-    }
 
     while (child) {
         RenderObject* inlineRunStart;
@@ -1048,10 +1022,6 @@ static bool canMergeContiguousAnonymousBlocks(RenderObject& oldChild, RenderObje
             return false;
         RenderBlock* previousAnonymousBlock = toRenderBlock(previous);
         if (!canMergeAnonymousBlock(previousAnonymousBlock))
-            return false;
-        // FIXME: This check isn't required when inline run-ins can't be split into continuations.
-        RenderObject* child = previousAnonymousBlock->firstChild();
-        if (child && child->isInline() && child->isRunIn())
             return false;
     }
     if (next) {
@@ -1351,7 +1321,7 @@ void RenderBlock::imageChanged(WrappedImagePtr image, const IntRect*)
     ShapeValue* shapeValue = style().shapeInside();
     if (shapeValue && shapeValue->image() && shapeValue->image()->data() == image) {
         ShapeInsideInfo& shapeInsideInfo = ensureShapeInsideInfo();
-        shapeInsideInfo.dirtyShapeSize();
+        shapeInsideInfo.markShapeAsDirty();
         markShapeInsideDescendantsForLayout();
     }
 #endif
@@ -1411,7 +1381,7 @@ void RenderBlock::updateShapeInsideInfoAfterStyleChange(const ShapeValue* shapeI
 
     if (shapeInside) {
         ShapeInsideInfo& shapeInsideInfo = ensureShapeInsideInfo();
-        shapeInsideInfo.dirtyShapeSize();
+        shapeInsideInfo.markShapeAsDirty();
     } else
         setShapeInsideInfo(nullptr);
     markShapeInsideDescendantsForLayout();
@@ -1476,7 +1446,7 @@ static inline bool shapeInfoRequiresRelayout(const RenderBlock* block)
 {
     ShapeInsideInfo* info = block->shapeInsideInfo();
     if (info)
-        info->setNeedsLayout(info->shapeSizeDirty());
+        info->setNeedsLayout(info->isShapeDirty());
     else
         info = block->layoutShapeInsideInfo();
     return info && info->needsLayout();
@@ -1491,10 +1461,10 @@ void RenderBlock::computeShapeSize()
     if (isRenderNamedFlowFragment()) {
         ShapeInsideInfo* parentShapeInsideInfo = toRenderBlock(parent())->shapeInsideInfo();
         ASSERT(parentShapeInsideInfo);
-        shapeInsideInfo->setShapeSize(parentShapeInsideInfo->shapeSize().width(), parentShapeInsideInfo->shapeSize().height());
+        shapeInsideInfo->setReferenceBoxLogicalSize(parentShapeInsideInfo->referenceBoxLogicalSize());
     } else {
         bool percentageLogicalHeightResolvable = percentageLogicalHeightIsResolvableFromBlock(this, false);
-        shapeInsideInfo->setShapeSize(logicalWidth(), percentageLogicalHeightResolvable ? logicalHeight() : LayoutUnit());
+        shapeInsideInfo->setReferenceBoxLogicalSize(LayoutSize(logicalWidth(), percentageLogicalHeightResolvable ? logicalHeight() : LayoutUnit()));
     }
 }
 #endif
@@ -1530,7 +1500,7 @@ void RenderBlock::updateShapesAfterBlockLayout(bool heightChanged)
     // A previous sibling has changed dimension, so we need to relayout the shape with the content
     ShapeInsideInfo* shapeInsideInfo = layoutShapeInsideInfo();
     if (heightChanged && shapeInsideInfo)
-        shapeInsideInfo->dirtyShapeSize();
+        shapeInsideInfo->markShapeAsDirty();
 #else
     UNUSED_PARAM(heightChanged);
 #endif
@@ -1709,144 +1679,6 @@ bool RenderBlock::expandsToEncloseOverhangingFloats() const
            || hasColumns() || isTableCell() || isTableCaption() || isFieldset() || isWritingModeRoot() || isRoot();
 }
 
-static void destroyRunIn(RenderBoxModelObject& runIn)
-{
-    ASSERT(runIn.isRunIn());
-    ASSERT(!runIn.firstChild());
-
-    // Delete our line box tree. This is needed as our children got moved
-    // and our line box tree is no longer valid.
-    if (runIn.isRenderBlock())
-        toRenderBlock(runIn).deleteLines();
-    else if (runIn.isRenderInline())
-        toRenderInline(runIn).deleteLines();
-    else
-        ASSERT_NOT_REACHED();
-
-    runIn.destroy();
-}
-
-void RenderBlock::placeRunInIfNeeded(RenderObject& newChild)
-{
-    if (newChild.isRunIn())
-        moveRunInUnderSiblingBlockIfNeeded(newChild);
-    else if (RenderObject* prevSibling = newChild.previousSibling()) {
-        if (prevSibling->isRunIn())
-            moveRunInUnderSiblingBlockIfNeeded(*prevSibling);
-    }
-}
-
-RenderBoxModelObject& RenderBlock::createReplacementRunIn(RenderBoxModelObject& runIn)
-{
-    ASSERT(runIn.isRunIn());
-    ASSERT(runIn.element());
-
-    RenderBoxModelObject* newRunIn = 0;
-    if (!runIn.isRenderBlockFlow())
-        newRunIn = new RenderBlockFlow(*runIn.element(), runIn.style());
-    else
-        newRunIn = new RenderInline(*runIn.element(), runIn.style());
-
-    runIn.element()->setRenderer(newRunIn);
-    newRunIn->initializeStyle();
-
-    runIn.moveAllChildrenTo(newRunIn, true);
-
-    return *newRunIn;
-}
-
-void RenderBlock::moveRunInUnderSiblingBlockIfNeeded(RenderObject& runIn)
-{
-    ASSERT(runIn.isRunIn());
-
-    // See if we have inline children. If the children aren't inline,
-    // then just treat the run-in as a normal block.
-    if (!runIn.childrenInline())
-        return;
-
-    // FIXME: We don't handle non-block elements with run-in for now.
-    if (!runIn.isRenderBlockFlow())
-        return;
-
-    // FIXME: We don't support run-ins with or as part of a continuation
-    // as it makes the back-and-forth placing complex.
-    if (runIn.isElementContinuation() || runIn.virtualContinuation())
-        return;
-
-    // Check if this node is allowed to run-in. E.g. <select> expects its renderer to
-    // be a RenderListBox or RenderMenuList, and hence cannot be a RenderInline run-in.
-    if (!runIn.canBeReplacedWithInlineRunIn())
-        return;
-
-    RenderObject* curr = runIn.nextSibling();
-    if (!curr || !curr->isRenderBlock() || !curr->childrenInline())
-        return;
-
-    RenderBlock& nextSiblingBlock = toRenderBlock(*curr);
-    if (nextSiblingBlock.beingDestroyed())
-        return;
-
-    // Per CSS3, "A run-in cannot run in to a block that already starts with a
-    // run-in or that itself is a run-in".
-    if (nextSiblingBlock.isRunIn() || (nextSiblingBlock.firstChild() && nextSiblingBlock.firstChild()->isRunIn()))
-        return;
-
-    if (nextSiblingBlock.isAnonymous() || nextSiblingBlock.isFloatingOrOutOfFlowPositioned())
-        return;
-
-    RenderBoxModelObject& oldRunIn = toRenderBoxModelObject(runIn);
-    RenderBoxModelObject& newRunIn = createReplacementRunIn(oldRunIn);
-    destroyRunIn(oldRunIn);
-
-    // Now insert the new child under |curr| block. Use addChild instead of insertChildNode
-    // since it handles correct placement of the children, especially where we cannot insert
-    // anything before the first child. e.g. details tag. See https://bugs.webkit.org/show_bug.cgi?id=58228.
-    nextSiblingBlock.addChild(&newRunIn, nextSiblingBlock.firstChild());
-
-    // Make sure that |this| get a layout since its run-in child moved.
-    nextSiblingBlock.setNeedsLayoutAndPrefWidthsRecalc();
-}
-
-bool RenderBlock::runInIsPlacedIntoSiblingBlock(RenderObject& runIn)
-{
-    ASSERT(runIn.isRunIn());
-
-    // If we don't have a parent, we can't be moved into our sibling block.
-    if (!parent())
-        return false;
-
-    // An intruded run-in needs to be an inline.
-    if (!runIn.isRenderInline())
-        return false;
-
-    return true;
-}
-
-void RenderBlock::moveRunInToOriginalPosition(RenderObject& runIn)
-{
-    ASSERT(runIn.isRunIn());
-
-    if (!runInIsPlacedIntoSiblingBlock(runIn))
-        return;
-
-    // FIXME: Run-in that are now placed in sibling block can break up into continuation
-    // chains when new children are added to it. We cannot easily send them back to their
-    // original place since that requires writing integration logic with RenderInline::addChild
-    // and all other places that might cause continuations to be created (without blowing away
-    // |this|). Disabling this feature for now to prevent crashes.
-    if (runIn.isElementContinuation() || runIn.virtualContinuation())
-        return;
-
-    RenderBoxModelObject& oldRunIn = toRenderBoxModelObject(runIn);
-    RenderBoxModelObject& newRunIn = createReplacementRunIn(oldRunIn);
-    destroyRunIn(oldRunIn);
-
-    // Add the run-in block as our previous sibling.
-    parent()->addChild(&newRunIn, this);
-
-    // Make sure that the parent holding the new run-in gets layout.
-    parent()->setNeedsLayoutAndPrefWidthsRecalc();
-}
 
 LayoutUnit RenderBlock::computeStartPositionDeltaForChildAvoidingFloats(const RenderBox& child, LayoutUnit childMarginStart, RenderRegion* region)
 {
@@ -2445,7 +2277,7 @@ void RenderBlock::paintCaret(PaintInfo& paintInfo, const LayoutPoint& paintOffse
     RenderObject* caretPainter;
     bool isContentEditable;
     if (type == CursorCaret) {
-        caretPainter = frame().selection().caretRenderer();
+        caretPainter = frame().selection().caretRendererWithoutUpdatingLayout();
         isContentEditable = frame().selection().selection().hasEditableStyle();
     } else {
         caretPainter = frame().page()->dragCaretController().caretRenderer();
@@ -5169,7 +5001,7 @@ void RenderBlock::addFocusRingRects(Vector<IntRect>& rects, const LayoutPoint& a
     }
 
     if (inlineElementContinuation())
-        inlineElementContinuation()->addFocusRingRects(rects, flooredLayoutPoint(additionalOffset + inlineElementContinuation()->containingBlock()->location() - location()), paintContainer);
+        inlineElementContinuation()->addFocusRingRects(rects, flooredLayoutPoint(LayoutPoint(additionalOffset + inlineElementContinuation()->containingBlock()->location() - location())), paintContainer);
 }
 
 RenderBox* RenderBlock::createAnonymousBoxWithSameTypeAs(const RenderObject* parent) const
@@ -5373,8 +5205,6 @@ const char* RenderBlock::renderName() const
         return "RenderBlock (relative positioned)";
     if (isStickyPositioned())
         return "RenderBlock (sticky positioned)";
-    if (isRunIn())
-        return "RenderBlock (run-in)";
     return "RenderBlock";
 }
 
@@ -5478,6 +5308,52 @@ RenderBlock* RenderBlock::createAnonymousColumnSpanWithParentRenderer(const Rend
     RenderBlock* newBox = new RenderBlockFlow(parent->document(), std::move(newStyle));
     newBox->initializeStyle();
     return newBox;
+}
+
+void RenderBlock::computeLineGridPaginationOrigin(LayoutState& layoutState) const
+{
+    if (!hasColumns() || !style().hasInlineColumnAxis())
+        return;
+    
+    // We need to cache a line grid pagination origin so that we understand how to reset the line grid
+    // at the top of each column.
+    // Get the current line grid and offset.
+    const auto lineGrid = layoutState.lineGrid();
+    if (!lineGrid)
+        return;
+
+    // Get the hypothetical line box used to establish the grid.
+    auto lineGridBox = lineGrid->lineGridBox();
+    if (!lineGridBox)
+        return;
+    
+    bool isHorizontalWritingMode = lineGrid->isHorizontalWritingMode();
+
+    LayoutUnit lineGridBlockOffset = isHorizontalWritingMode ? layoutState.lineGridOffset().height() : layoutState.lineGridOffset().width();
+
+    // Now determine our position on the grid. Our baseline needs to be adjusted to the nearest baseline multiple
+    // as established by the line box.
+    // FIXME: Need to handle crazy line-box-contain values that cause the root line box to not be considered. I assume
+    // the grid should honor line-box-contain.
+    LayoutUnit gridLineHeight = lineGridBox->lineBottomWithLeading() - lineGridBox->lineTopWithLeading();
+    if (!gridLineHeight)
+        return;
+
+    LayoutUnit firstLineTopWithLeading = lineGridBlockOffset + lineGridBox->lineTopWithLeading();
+    
+    if (layoutState.isPaginated() && layoutState.pageLogicalHeight()) {
+        LayoutUnit pageLogicalTop = isHorizontalWritingMode ? layoutState.pageOffset().height() : layoutState.pageOffset().width();
+        if (pageLogicalTop > firstLineTopWithLeading) {
+            // Shift to the next highest line grid multiple past the page logical top. Cache the delta
+            // between this new value and the page logical top as the pagination origin.
+            LayoutUnit remainder = roundToInt(pageLogicalTop - firstLineTopWithLeading) % roundToInt(gridLineHeight);
+            LayoutUnit paginationDelta = gridLineHeight - remainder;
+            if (isHorizontalWritingMode)
+                layoutState.setLineGridPaginationOrigin(LayoutSize(layoutState.lineGridPaginationOrigin().width(), paginationDelta));
+            else
+                layoutState.setLineGridPaginationOrigin(LayoutSize(paginationDelta, layoutState.lineGridPaginationOrigin().height()));
+        }
+    }
 }
 
 #ifndef NDEBUG

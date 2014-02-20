@@ -311,7 +311,6 @@ set(WebKit2_SOURCES
     UIProcess/WebBatteryManagerProxy.cpp
     UIProcess/WebBatteryProvider.cpp
     UIProcess/WebColorPicker.cpp
-    UIProcess/WebColorPickerResultListenerProxy.cpp
     UIProcess/WebConnectionToWebProcess.cpp
     UIProcess/WebContext.cpp
     UIProcess/WebContextClient.cpp
@@ -334,7 +333,6 @@ set(WebKit2_SOURCES
     UIProcess/WebGeolocationManagerProxy.cpp
     UIProcess/WebGeolocationProvider.cpp
     UIProcess/WebGrammarDetail.cpp
-    UIProcess/WebHistoryClient.cpp
     UIProcess/WebIconDatabase.cpp
     UIProcess/WebIconDatabaseClient.cpp
     UIProcess/WebInspectorProxy.cpp
@@ -364,7 +362,6 @@ set(WebKit2_SOURCES
     UIProcess/API/C/WKBackForwardListItemRef.cpp
     UIProcess/API/C/WKBatteryManager.cpp
     UIProcess/API/C/WKBatteryStatus.cpp
-    UIProcess/API/C/WKColorPickerResultListener.cpp
     UIProcess/API/C/WKContext.cpp
     UIProcess/API/C/WKCookieManager.cpp
     UIProcess/API/C/WKCredential.cpp

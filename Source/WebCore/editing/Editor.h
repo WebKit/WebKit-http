@@ -41,7 +41,7 @@
 #include "VisibleSelection.h"
 #include "WritingDirection.h"
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
 OBJC_CLASS NSAttributedString;
 OBJC_CLASS NSDictionary;
 #endif
@@ -362,6 +362,7 @@ public:
     IntRect firstRectForRange(Range*) const;
 
     void respondToChangedSelection(const VisibleSelection& oldSelection, FrameSelection::SetSelectionOptions);
+    void updateEditorUINowIfScheduled();
     bool shouldChangeSelection(const VisibleSelection& oldSelection, const VisibleSelection& newSelection, EAffinity, bool stillSelecting) const;
     unsigned countMatchesForText(const String&, Range*, FindOptions, unsigned limit, bool markMatches, Vector<RefPtr<Range>>*);
     bool markedTextMatchesAreHighlighted() const;
@@ -419,7 +420,7 @@ public:
     DeleteButtonController& deleteButtonController() const { return *m_deleteButtonController; }
 #endif
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
     bool insertParagraphSeparatorInQuotedContent();
     const SimpleFontData* fontForSelection(bool&) const;
     NSDictionary* fontAttributesForSelectionStart() const;
@@ -434,7 +435,7 @@ public:
 #endif // !PLATFORM(IOS)
 #endif
 
-#if PLATFORM(MAC) || PLATFORM(EFL)
+#if PLATFORM(COCOA) || PLATFORM(EFL)
     void writeSelectionToPasteboard(Pasteboard&);
     void writeImageToPasteboard(Pasteboard&, Element& imageElement, const URL&, const String& title);
 #endif
@@ -463,13 +464,14 @@ private:
     void setComposition(const String&, SetCompositionMode);
 
     void changeSelectionAfterCommand(const VisibleSelection& newSelection, FrameSelection::SetSelectionOptions);
-    void notifyComponentsOnChangedSelection(const VisibleSelection& oldSelection, FrameSelection::SetSelectionOptions);
+
+    void editorUIUpdateTimerFired(Timer<Editor>&);
 
     Node* findEventTargetFromSelection() const;
 
     bool unifiedTextCheckerEnabled() const;
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
     PassRefPtr<SharedBuffer> selectionInWebArchiveFormat();
     PassRefPtr<Range> adjustedSelectionRange();
     PassRefPtr<DocumentFragment> createFragmentForImageResourceAndAddResource(PassRefPtr<ArchiveResource>);
@@ -496,6 +498,11 @@ private:
     bool m_areMarkedTextMatchesHighlighted;
     EditorParagraphSeparator m_defaultParagraphSeparator;
     bool m_overwriteModeEnabled;
+
+    VisibleSelection m_oldSelectionForEditorUIUpdate;
+    Timer<Editor> m_editorUIUpdateTimer;
+    bool m_editorUIUpdateTimerShouldCheckSpellingAndGrammar;
+    bool m_editorUIUpdateTimerWasTriggeredByDictation;
 };
 
 inline void Editor::setStartNewKillRingSequence(bool flag)

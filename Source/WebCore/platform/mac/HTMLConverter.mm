@@ -137,6 +137,7 @@ SOFT_LINK_CONSTANT(UIFoundation, NSCocoaVersionDocumentAttribute, NSString *)
 #define PlatformNSTextTab           getNSTextTabClass()
 #define PlatformColor               UIColor
 #define PlatformColorClass          getUIColorClass()
+#define PlatformNSColorClass        getNSColorClass()
 #define PlatformFont                UIFont
 #define PlatformFontClass           getUIFontClass()
 #else
@@ -150,6 +151,7 @@ SOFT_LINK_CONSTANT(UIFoundation, NSCocoaVersionDocumentAttribute, NSString *)
 #define PlatformNSTextTab           NSTextTab
 #define PlatformColor               NSColor
 #define PlatformColorClass          NSColor
+#define PlatformNSColorClass        NSColor
 #define PlatformFont                NSFont
 #define PlatformFontClass           NSFont
 
@@ -274,7 +276,6 @@ typedef NSUInteger NSTextTabType;
 
 @interface NSColor : UIColor
 + (id)colorWithCalibratedRed:(CGFloat)red green:(CGFloat)green blue:(CGFloat)blue alpha:(CGFloat)alpha;
-+ (id)colorWithCalibratedWhite:(CGFloat)white alpha:(CGFloat)alpha;
 @end
 
 @interface UIFont
@@ -880,7 +881,7 @@ static inline NSShadow *_shadowForShadowStyle(NSString *shadowStyle)
             CGFloat green = [[components objectAtIndex:1] floatValue] / 255;
             CGFloat blue = [[components objectAtIndex:2] floatValue] / 255;
             CGFloat alpha = ([components count] >= 4) ? [[components objectAtIndex:3] floatValue] / 255 : 1;
-            NSColor *shadowColor = [PlatformColorClass colorWithCalibratedRed:red green:green blue:blue alpha:alpha];
+            NSColor *shadowColor = [PlatformNSColorClass colorWithCalibratedRed:red green:green blue:blue alpha:alpha];
             NSSize shadowOffset;
             CGFloat shadowBlurRadius;
             firstRange = [shadowStyle rangeOfString:@"px"];
@@ -2472,6 +2473,7 @@ static NSInteger _colCompare(id block1, id block2, void *)
 }
 
 #if !PLATFORM(IOS)
+
 // This function uses TextIterator, which makes offsets in its result compatible with HTML editing.
 + (NSAttributedString *)editingAttributedStringFromRange:(Range*)range
 {
@@ -2523,18 +2525,20 @@ static NSInteger _colCompare(id block1, id block2, void *)
         else
             [attrs.get() removeObjectForKey:NSBackgroundColorAttributeName];
 
-        RetainPtr<NSString> substring = adoptNS([[NSString alloc] initWithCharactersNoCopy:const_cast<UChar*>(it.characters()) length:currentTextLength freeWhenDone:NO]);
-        [string replaceCharactersInRange:NSMakeRange(stringLength, 0) withString:substring.get()];
+        [string replaceCharactersInRange:NSMakeRange(stringLength, 0) withString:it.text().createNSStringWithoutCopying().get()];
         [string setAttributes:attrs.get() range:NSMakeRange(stringLength, currentTextLength)];
         stringLength += currentTextLength;
     }
 
     return [string autorelease];
 }
+
 #endif
+
 @end
 
 #if !PLATFORM(IOS)
+
 static NSFileWrapper *fileWrapperForURL(DocumentLoader *dataSource, NSURL *URL)
 {
     if ([URL isFileURL])
@@ -2585,4 +2589,5 @@ static NSFileWrapper *fileWrapperForElement(Element* element)
 
     return wrapper;
 }
+
 #endif

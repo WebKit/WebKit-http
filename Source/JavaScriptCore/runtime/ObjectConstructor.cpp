@@ -22,7 +22,6 @@
 #include "ObjectConstructor.h"
 
 #include "ButterflyInlines.h"
-#include "CallFrameInlines.h"
 #include "CopiedSpaceInlines.h"
 #include "Error.h"
 #include "ExceptionHelpers.h"
@@ -31,7 +30,7 @@
 #include "JSGlobalObject.h"
 #include "Lookup.h"
 #include "ObjectPrototype.h"
-#include "Operations.h"
+#include "JSCInlines.h"
 #include "PropertyDescriptor.h"
 #include "PropertyNameArray.h"
 #include "StackVisitor.h"

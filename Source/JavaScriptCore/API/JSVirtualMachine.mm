@@ -31,16 +31,20 @@
 
 #import "APICast.h"
 #import "APIShims.h"
+#import "JSManagedValueInternal.h"
 #import "JSVirtualMachine.h"
 #import "JSVirtualMachineInternal.h"
 #import "JSWrapperMap.h"
 #import "SlotVisitorInlines.h"
+#import <mutex>
+#import <wtf/NeverDestroyed.h>
 
 static NSMapTable *globalWrapperCache = 0;
 
-static Mutex& wrapperCacheLock()
+static std::mutex& wrapperCacheMutex()
 {
-    DEFINE_STATIC_LOCAL(Mutex, mutex, ());
+    static NeverDestroyed<std::mutex> mutex;
+
     return mutex;
 }
 
@@ -68,13 +72,13 @@ static NSMapTable *wrapperCache()
 
 + (void)addWrapper:(JSVirtualMachine *)wrapper forJSContextGroupRef:(JSContextGroupRef)group
 {
-    MutexLocker locker(wrapperCacheLock());
+    std::lock_guard<std::mutex> lock(wrapperCacheMutex());
     NSMapInsert(wrapperCache(), group, wrapper);
 }
 
 + (JSVirtualMachine *)wrapperForJSContextGroupRef:(JSContextGroupRef)group
 {
-    MutexLocker locker(wrapperCacheLock());
+    std::lock_guard<std::mutex> lock(wrapperCacheMutex());
     return static_cast<JSVirtualMachine *>(NSMapGet(wrapperCache(), group));
 }
 
@@ -144,6 +148,9 @@ static id getInternalObjcObject(id object)
 
 - (void)addManagedReference:(id)object withOwner:(id)owner
 {    
+    if ([object isKindOfClass:[JSManagedValue class]])
+        [object didAddOwner:owner];
+        
     object = getInternalObjcObject(object);
     owner = getInternalObjcObject(owner);
     
@@ -161,11 +168,16 @@ static id getInternalObjcObject(id object)
         [m_externalObjectGraph setObject:ownedObjects forKey:owner];
         [ownedObjects release];
     }
-    NSMapInsert(ownedObjects, object, reinterpret_cast<void*>(reinterpret_cast<size_t>(NSMapGet(ownedObjects, object)) + 1));
+
+    size_t count = reinterpret_cast<size_t>(NSMapGet(ownedObjects, object));
+    NSMapInsert(ownedObjects, object, reinterpret_cast<void*>(count + 1));
 }
 
 - (void)removeManagedReference:(id)object withOwner:(id)owner
 {
+    if ([object isKindOfClass:[JSManagedValue class]])
+        [object didRemoveOwner:owner];
+
     object = getInternalObjcObject(object);
     owner = getInternalObjcObject(owner);
     

@@ -30,9 +30,15 @@
 
 #include "UniqueIDBDatabase.h" 
 #include "UniqueIDBDatabaseBackingStore.h"
+#include <JavaScriptCore/Strong.h>
 #include <wtf/OwnPtr.h>
 #include <wtf/PassRefPtr.h>
 #include <wtf/text/WTFString.h>
+
+namespace JSC {
+class JSGlobalObject;
+class VM;
+}
 
 namespace WebCore {
 class SQLiteDatabase;
@@ -74,7 +80,7 @@ public:
     virtual bool keyExistsInObjectStore(const IDBIdentifier& transactionIdentifier, int64_t objectStoreID, const WebCore::IDBKeyData&, bool& keyExists) override;
     virtual bool putRecord(const IDBIdentifier& transactionIdentifier, int64_t objectStoreID, const WebCore::IDBKeyData&, const uint8_t* valueBuffer, size_t valueSize) override;
     virtual bool putIndexRecord(const IDBIdentifier& transactionIdentifier, int64_t objectStoreID, int64_t indexID, const WebCore::IDBKeyData& keyValue, const WebCore::IDBKeyData& indexKey) override;
-    virtual bool getIndexRecord(const IDBIdentifier& transactionIdentifier, int64_t objectStoreID, int64_t indexID, const WebCore::IDBKeyRangeData&, WebCore::IDBGetResult&) override;
+    virtual bool getIndexRecord(const IDBIdentifier& transactionIdentifier, int64_t objectStoreID, int64_t indexID, const WebCore::IDBKeyRangeData&, WebCore::IndexedDB::CursorType, WebCore::IDBGetResult&) override;
     virtual bool deleteRange(const IDBIdentifier& transactionIdentifier, int64_t objectStoreID, const WebCore::IDBKeyRangeData&) override;
     virtual bool deleteRecord(const IDBIdentifier& transactionIdentifier, int64_t objectStoreID, const WebCore::IDBKeyData&) override;
 
@@ -82,9 +88,10 @@ public:
     virtual bool getKeyRangeRecordFromObjectStore(const IDBIdentifier& transactionIdentifier, int64_t objectStoreID, const WebCore::IDBKeyRange&, RefPtr<WebCore::SharedBuffer>& result, RefPtr<WebCore::IDBKey>& resultKey) override;
     virtual bool count(const IDBIdentifier& transactionIdentifier, int64_t objectStoreID, int64_t indexID, const WebCore::IDBKeyRangeData&, int64_t& count) override;
 
-    virtual bool openCursor(const IDBIdentifier& transactionIdentifier, int64_t objectStoreID, int64_t indexID, WebCore::IndexedDB::CursorDirection, WebCore::IndexedDB::CursorType, WebCore::IDBDatabaseBackend::TaskType, const WebCore::IDBKeyRangeData&, int64_t& cursorID, WebCore::IDBKeyData&, WebCore::IDBKeyData&, Vector<char>&, WebCore::IDBKeyData&) override;
-    virtual bool advanceCursor(const IDBIdentifier& cursorIdentifier, uint64_t count, WebCore::IDBKeyData&, WebCore::IDBKeyData&, Vector<char>&, WebCore::IDBKeyData&) override;
-    virtual bool iterateCursor(const IDBIdentifier& cursorIdentifier, const WebCore::IDBKeyData&, WebCore::IDBKeyData&, WebCore::IDBKeyData&, Vector<char>&, WebCore::IDBKeyData&) override;
+    virtual bool openCursor(const IDBIdentifier& transactionIdentifier, int64_t objectStoreID, int64_t indexID, WebCore::IndexedDB::CursorDirection, WebCore::IndexedDB::CursorType, WebCore::IDBDatabaseBackend::TaskType, const WebCore::IDBKeyRangeData&, int64_t& cursorID, WebCore::IDBKeyData&, WebCore::IDBKeyData&, Vector<uint8_t>&) override;
+    virtual bool advanceCursor(const IDBIdentifier& cursorIdentifier, uint64_t count, WebCore::IDBKeyData&, WebCore::IDBKeyData&, Vector<uint8_t>&) override;
+    virtual bool iterateCursor(const IDBIdentifier& cursorIdentifier, const WebCore::IDBKeyData&, WebCore::IDBKeyData&, WebCore::IDBKeyData&, Vector<uint8_t>&) override;
+    virtual void notifyCursorsOfChanges(const IDBIdentifier& transactionIdentifier, int64_t objectStoreID) override;
 
     void unregisterCursor(SQLiteIDBCursor*);
 
@@ -96,6 +103,7 @@ private:
     std::unique_ptr<WebCore::IDBDatabaseMetadata> createAndPopulateInitialMetadata();
 
     bool deleteRecord(SQLiteIDBTransaction&, int64_t objectStoreID, const WebCore::IDBKeyData&);
+    bool uncheckedPutIndexRecord(int64_t objectStoreID, int64_t indexID, const WebCore::IDBKeyData& keyValue, const WebCore::IDBKeyData& indexKey);
 
     int idbKeyCollate(int aLength, const void* a, int bLength, const void* b);
 
@@ -106,6 +114,9 @@ private:
 
     HashMap<IDBIdentifier, std::unique_ptr<SQLiteIDBTransaction>> m_transactions;
     HashMap<IDBIdentifier, SQLiteIDBCursor*> m_cursors;
+
+    RefPtr<JSC::VM> m_vm;
+    JSC::Strong<JSC::JSGlobalObject> m_globalObject;
 };
 
 } // namespace WebKit

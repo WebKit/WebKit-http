@@ -31,7 +31,7 @@
 #include "DFGOperations.h"
 #include "DFGOSRExitCompilerCommon.h"
 #include "DFGSpeculativeJIT.h"
-#include "Operations.h"
+#include "JSCInlines.h"
 #include "VirtualRegister.h"
 
 #include <wtf/DataLog.h>

@@ -28,7 +28,7 @@
 #include <wtf/Forward.h>
 #include <wtf/RefPtr.h>
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
 #ifndef __OBJC__
 class NSView;
 #endif
@@ -93,7 +93,6 @@ public:
     void scrollRectIntoView(const IntRect&) const;
 
     void contentsSizeChanged(Frame*, const IntSize&) const;
-    void layoutUpdated(Frame*) const;
 
     void setWindowRect(const FloatRect&) const;
     FloatRect windowRect() const;
@@ -167,7 +166,7 @@ public:
 
     bool requiresFullscreenForVideoPlayback();
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
     void focusNSView(NSView*);
 #endif
 

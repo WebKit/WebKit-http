@@ -26,6 +26,8 @@
 #include "config.h"
 #include "PageBanner.h"
 
+#if !PLATFORM(IOS)
+
 #include "WebPage.h"
 #include <WebCore/FrameView.h>
 #include <WebCore/GraphicsLayer.h>
@@ -167,3 +169,5 @@ CALayer *PageBanner::layer()
 }
 
 } // namespace WebKit
+
+#endif // !PLATFORM(IOS)

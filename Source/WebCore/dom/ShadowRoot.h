@@ -39,13 +39,8 @@ namespace WebCore {
 
 class ShadowRoot final : public DocumentFragment, public TreeScope {
 public:
-    // FIXME: We will support multiple shadow subtrees, however current implementation does not work well
-    // if a shadow root is dynamically created. So we prohibit multiple shadow subtrees
-    // in several elements for a while.
-    // See https://bugs.webkit.org/show_bug.cgi?id=77503 and related bugs.
     enum ShadowRootType {
         UserAgentShadowRoot = 0,
-        AuthorShadowRoot
     };
 
     static PassRefPtr<ShadowRoot> create(Document& document, ShadowRootType type)
@@ -55,8 +50,6 @@ public:
 
     virtual ~ShadowRoot();
 
-    virtual bool applyAuthorStyles() const override { return m_applyAuthorStyles; }
-    void setApplyAuthorStyles(bool);
     bool resetStyleInheritance() const { return m_resetStyleInheritance; }
     void setResetStyleInheritance(bool);
 
@@ -80,7 +73,6 @@ public:
 private:
     ShadowRoot(Document&, ShadowRootType);
 
-    virtual void dropChildren() override;
     virtual bool childTypeAllowed(NodeType) const override;
     virtual void childrenChanged(const ChildChange&) override;
 
@@ -90,7 +82,6 @@ private:
     // FIXME: This shouldn't happen. https://bugs.webkit.org/show_bug.cgi?id=88834
     bool isOrphan() const { return !hostElement(); }
 
-    unsigned m_applyAuthorStyles : 1;
     unsigned m_resetStyleInheritance : 1;
     unsigned m_type : 1;
 
@@ -104,16 +95,9 @@ inline Element* ShadowRoot::activeElement() const
     return treeScope().focusedElement();
 }
 
-inline const ShadowRoot* toShadowRoot(const Node* node)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!node || node->isShadowRoot());
-    return static_cast<const ShadowRoot*>(node);
-}
+inline bool isShadowRoot(const Node& node) { return node.isShadowRoot(); }
 
-inline ShadowRoot* toShadowRoot(Node* node)
-{
-    return const_cast<ShadowRoot*>(toShadowRoot(static_cast<const Node*>(node)));
-}
+NODE_TYPE_CASTS(ShadowRoot)
 
 inline ShadowRoot* Node::shadowRoot() const
 {

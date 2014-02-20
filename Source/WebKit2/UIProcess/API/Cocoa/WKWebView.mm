@@ -29,26 +29,48 @@
 #if WK_API_ENABLED
 
 #import "NavigationState.h"
+#import "RemoteLayerTreeTransaction.h"
+#import "RemoteObjectRegistry.h"
+#import "RemoteObjectRegistryMessages.h"
+#import "WKBackForwardListInternal.h"
+#import "WKBackForwardListItemInternal.h"
+#import "WKBrowsingContextHandleInternal.h"
+#import "WKHistoryDelegatePrivate.h"
+#import "WKNSData.h"
 #import "WKNavigationDelegate.h"
 #import "WKNavigationInternal.h"
-#import "WKProcessClass.h"
-#import "WKWebViewConfiguration.h"
+#import "WKPreferencesInternal.h"
+#import "WKProcessClassInternal.h"
+#import "WKRemoteObjectRegistryInternal.h"
+#import "WKWebViewConfigurationPrivate.h"
+#import "WebCertificateInfo.h"
+#import "WebContext.h"
 #import "WebBackForwardList.h"
 #import "WebPageProxy.h"
-#import <WebKit2/RemoteLayerTreeTransaction.h>
+#import "WebProcessProxy.h"
+#import "WKNSURLExtras.h"
 #import <wtf/RetainPtr.h>
 
 #if PLATFORM(IOS)
 #import "WKScrollView.h"
+#import <UIKit/UIPeripheralHost_Private.h>
+
+@interface UIScrollView (UIScrollViewInternal)
+- (void)_adjustForAutomaticKeyboardInfo:(NSDictionary*)info animated:(BOOL)animated lastAdjustment:(CGFloat*)lastAdjustment;
+@end
+
 #endif
 
-#if PLATFORM(MAC) && !PLATFORM(IOS)
+#if PLATFORM(MAC)
 #import "WKViewInternal.h"
 #endif
 
 @implementation WKWebView {
     RetainPtr<WKWebViewConfiguration> _configuration;
     std::unique_ptr<WebKit::NavigationState> _navigationState;
+
+    RetainPtr<WKRemoteObjectRegistry> _remoteObjectRegistry;
+    _WKRenderingProgressEvents _observedRenderingProgressEvents;
 
 #if PLATFORM(IOS)
     RetainPtr<WKScrollView> _scrollView;
@@ -57,8 +79,12 @@
     BOOL _isWaitingForNewLayerTreeAfterDidCommitLoad;
     BOOL _hasStaticMinimumLayoutSize;
     CGSize _minimumLayoutSizeOverride;
+
+    UIEdgeInsets _obscuredInsets;
+    bool _isChangingObscuredInsetsInteractively;
+    CGFloat _lastAdjustmentForScroller;
 #endif
-#if PLATFORM(MAC) && !PLATFORM(IOS)
+#if PLATFORM(MAC)
     RetainPtr<WKView> _wkView;
 #endif
 }
@@ -75,10 +101,29 @@
 
     _configuration = adoptNS([configuration copy]);
 
+    if (WKWebView *relatedWebView = [_configuration _relatedWebView]) {
+        WKProcessClass *processClass = [_configuration processClass];
+        WKProcessClass *relatedWebViewProcessClass = [relatedWebView->_configuration processClass];
+        if (processClass && processClass != relatedWebViewProcessClass)
+            [NSException raise:NSInvalidArgumentException format:@"Related web view %@ has process class %@ but configuration specifies a different process class %@", relatedWebView, relatedWebViewProcessClass, configuration.processClass];
+
+        [_configuration setProcessClass:relatedWebViewProcessClass];
+    }
+
     if (![_configuration processClass])
         [_configuration setProcessClass:adoptNS([[WKProcessClass alloc] init]).get()];
 
+    if (![_configuration preferences])
+        [_configuration setPreferences:adoptNS([[WKPreferences alloc] init]).get()];
+
     CGRect bounds = self.bounds;
+
+    WebKit::WebContext& context = *[_configuration processClass]->_context;
+
+    WebKit::WebPageConfiguration webPageConfiguration;
+    webPageConfiguration.preferences = [_configuration preferences]->_preferences.get();
+    if (WKWebView *relatedWebView = [_configuration _relatedWebView])
+        webPageConfiguration.relatedPage = relatedWebView->_page.get();
 
 #if PLATFORM(IOS)
     _scrollView = adoptNS([[WKScrollView alloc] initWithFrame:bounds]);
@@ -87,7 +132,7 @@
 
     [self addSubview:_scrollView.get()];
 
-    _contentView = adoptNS([[WKContentView alloc] initWithFrame:bounds configuration:_configuration.get()]);
+    _contentView = adoptNS([[WKContentView alloc] initWithFrame:bounds context:context configuration:std::move(webPageConfiguration)]);
     _page = _contentView->_page;
     [_contentView setDelegate:self];
     [_contentView layer].anchorPoint = CGPointZero;
@@ -95,10 +140,16 @@
     [_scrollView addSubview:_contentView.get()];
 
     [self _frameOrBoundsChanged];
+
+    NSNotificationCenter *center = [NSNotificationCenter defaultCenter];
+    [center addObserver:self selector:@selector(_keyboardWillChangeFrame:) name:UIKeyboardWillChangeFrameNotification object:nil];
+    [center addObserver:self selector:@selector(_keyboardDidChangeFrame:) name:UIKeyboardDidChangeFrameNotification object:nil];
+    [center addObserver:self selector:@selector(_keyboardWillShow:) name:UIKeyboardWillShowNotification object:nil];
+    [center addObserver:self selector:@selector(_keyboardWillHide:) name:UIKeyboardWillHideNotification object:nil];
 #endif
 
-#if PLATFORM(MAC) && !PLATFORM(IOS)
-    _wkView = [[WKView alloc] initWithFrame:bounds configuration:_configuration.get()];
+#if PLATFORM(MAC)
+    _wkView = [[WKView alloc] initWithFrame:bounds context:context configuration:std::move(webPageConfiguration)];
     [self addSubview:_wkView.get()];
     _page = WebKit::toImpl([_wkView pageRef]);
 #endif
@@ -110,9 +161,24 @@
     return self;
 }
 
+- (void)dealloc
+{
+    [_remoteObjectRegistry _invalidate];
+#if PLATFORM(IOS)
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
+#endif
+
+    [super dealloc];
+}
+
 - (WKWebViewConfiguration *)configuration
 {
     return [[_configuration copy] autorelease];
+}
+
+- (WKBackForwardList *)backForwardList
+{
+    return wrapper(_page->backForwardList());
 }
 
 - (id <WKNavigationDelegate>)navigationDelegate
@@ -133,14 +199,37 @@
     return [navigation.leakRef() autorelease];
 }
 
+- (WKNavigation *)goToBackForwardListItem:(WKBackForwardListItem *)item
+{
+    _page->goToBackForwardItem(&item._item);
+
+    // FIXME: return a WKNavigation object.
+    return nil;
+}
+
+- (IBAction)stopLoading:(id)sender
+{
+    _page->stopLoading();
+}
+
 - (NSString *)title
 {
     return _page->pageLoadState().title();
 }
 
+- (NSURL *)activeURL
+{
+    return [NSURL _web_URLWithWTFString:_page->pageLoadState().activeURL()];
+}
+
 - (BOOL)isLoading
 {
     return _page->pageLoadState().isLoading();
+}
+
+- (double)estimatedProgress
+{
+    return _page->pageLoadState().estimatedProgress();
 }
 
 - (BOOL)hasOnlySecureContent
@@ -302,7 +391,183 @@
     [_scrollView setContentOffset:contentOffset];
 }
 
-#pragma mark Private API
+- (void)_keyboardChangedWithInfo:(NSDictionary *)keyboardInfo adjustScrollView:(BOOL)adjustScrollView
+{
+    // FIXME: We will also need to adjust the unobscured rect by taking into account the keyboard rect and the obscured insets.
+    if (adjustScrollView)
+        [_scrollView _adjustForAutomaticKeyboardInfo:keyboardInfo animated:YES lastAdjustment:&_lastAdjustmentForScroller];
+}
+
+- (void)_keyboardWillChangeFrame:(NSNotification *)notification
+{
+    if ([_contentView isAssistingNode])
+        [self _keyboardChangedWithInfo:notification.userInfo adjustScrollView:YES];
+}
+
+- (void)_keyboardDidChangeFrame:(NSNotification *)notification
+{
+    [self _keyboardChangedWithInfo:notification.userInfo adjustScrollView:NO];
+}
+
+- (void)_keyboardWillShow:(NSNotification *)notification
+{
+    if ([_contentView isAssistingNode])
+        [self _keyboardChangedWithInfo:notification.userInfo adjustScrollView:YES];
+}
+
+- (void)_keyboardWillHide:(NSNotification *)notification
+{
+    // Ignore keyboard will hide notifications sent during rotation. They're just there for
+    // backwards compatibility reasons and processing the will hide notification would
+    // temporarily screw up the the unobscured view area.
+    if ([[UIPeripheralHost sharedInstance] rotationState])
+        return;
+
+    [self _keyboardChangedWithInfo:notification.userInfo adjustScrollView:YES];
+}
+
+
+#endif
+
+#pragma mark OS X-specific methods
+
+#if PLATFORM(MAC)
+
+- (void)resizeSubviewsWithOldSize:(NSSize)oldSize
+{
+    [_wkView setFrame:self.bounds];
+}
+
+#endif
+
+@end
+
+@implementation WKWebView (WKPrivate)
+
+- (WKRemoteObjectRegistry *)_remoteObjectRegistry
+{
+    if (!_remoteObjectRegistry) {
+        _remoteObjectRegistry = adoptNS([[WKRemoteObjectRegistry alloc] _initWithMessageSender:*_page]);
+        _page->process().context().addMessageReceiver(Messages::RemoteObjectRegistry::messageReceiverName(), _page->pageID(), [_remoteObjectRegistry remoteObjectRegistry]);
+    }
+
+    return _remoteObjectRegistry.get();
+}
+
+- (WKBrowsingContextHandle *)_handle
+{
+    return [[[WKBrowsingContextHandle alloc] _initWithPageID:_page->pageID()] autorelease];
+}
+
+- (_WKRenderingProgressEvents)_observedRenderingProgressEvents
+{
+    return _observedRenderingProgressEvents;
+}
+
+- (id <WKHistoryDelegatePrivate>)_historyDelegate
+{
+    return [_navigationState->historyDelegate().leakRef() autorelease];
+}
+
+- (void)_setHistoryDelegate:(id <WKHistoryDelegatePrivate>)historyDelegate
+{
+    _navigationState->setHistoryDelegate(historyDelegate);
+}
+
+- (NSURL *)_unreachableURL
+{
+    return [NSURL _web_URLWithWTFString:_page->pageLoadState().unreachableURL()];
+}
+
+- (void)_loadAlternateHTMLString:(NSString *)string baseURL:(NSURL *)baseURL forUnreachableURL:(NSURL *)unreachableURL
+{
+    _page->loadAlternateHTMLString(string, [baseURL _web_originalDataAsWTFString], [unreachableURL _web_originalDataAsWTFString]);
+}
+
+- (WKNavigation *)_reload
+{
+    _page->reload(false);
+
+    // FIXME: return a WKNavigation object.
+    return nil;
+}
+
+- (NSArray *)_certificateChain
+{
+    if (WebKit::WebFrameProxy* mainFrame = _page->mainFrame())
+        return mainFrame->certificateInfo() ? (NSArray *)mainFrame->certificateInfo()->certificateInfo().certificateChain() : nil;
+
+    return nil;
+}
+
+- (NSURL *)_committedURL
+{
+    return [NSURL _web_URLWithWTFString:_page->pageLoadState().url()];
+}
+
+- (NSString *)_applicationNameForUserAgent
+{
+    return _page->applicationNameForUserAgent();
+}
+
+- (void)_setApplicationNameForUserAgent:(NSString *)applicationNameForUserAgent
+{
+    _page->setApplicationNameForUserAgent(applicationNameForUserAgent);
+}
+
+- (pid_t)_webProcessIdentifier
+{
+    return _page->processIdentifier();
+}
+
+- (NSData *)_sessionState
+{
+    return [wrapper(*_page->sessionStateData(nullptr, nullptr).leakRef()) autorelease];
+}
+
+static void releaseNSData(unsigned char*, const void* data)
+{
+    [(NSData *)data release];
+}
+
+- (void)_restoreFromSessionState:(NSData *)sessionState
+{
+    [sessionState retain];
+    _page->restoreFromSessionStateData(API::Data::createWithoutCopying((const unsigned char*)sessionState.bytes, sessionState.length, releaseNSData, sessionState).get());
+}
+
+- (BOOL)_privateBrowsingEnabled
+{
+    return [_configuration preferences]->_preferences->privateBrowsingEnabled();
+}
+
+- (void)_setPrivateBrowsingEnabled:(BOOL)privateBrowsingEnabled
+{
+    [_configuration preferences]->_preferences->setPrivateBrowsingEnabled(privateBrowsingEnabled);
+}
+
+static inline WebCore::LayoutMilestones layoutMilestones(_WKRenderingProgressEvents events)
+{
+    WebCore::LayoutMilestones milestones = 0;
+
+    if (events & _WKRenderingProgressEventFirstLayout)
+        milestones |= WebCore::DidFirstLayout;
+
+    if (events & _WKRenderingProgressEventFirstPaintWithSignificantArea)
+        milestones |= WebCore::DidHitRelevantRepaintedObjectsAreaThreshold;
+
+    return milestones;
+}
+
+- (void)_setObservedRenderingProgressEvents:(_WKRenderingProgressEvents)observedRenderingProgressEvents
+{
+    _observedRenderingProgressEvents = observedRenderingProgressEvents;
+    _page->listenForLayoutMilestones(layoutMilestones(observedRenderingProgressEvents));
+}
+
+#pragma mark iOS-specific methods
+
+#if PLATFORM(IOS)
 
 - (CGSize)_minimumLayoutSizeOverride
 {
@@ -317,15 +582,39 @@
     [_contentView setMinimumLayoutSize:minimumLayoutSizeOverride];
 }
 
-#endif
-
-#pragma mark OS X-specific methods
-
-#if PLATFORM(MAC) && !PLATFORM(IOS)
-
-- (void)resizeSubviewsWithOldSize:(NSSize)oldSize
+- (UIEdgeInsets)_obscuredInsets
 {
-    [_wkView setFrame:self.bounds];
+    return _obscuredInsets;
+}
+
+- (void)_setObscuredInsets:(UIEdgeInsets)obscuredInsets
+{
+    ASSERT(obscuredInsets.top >= 0);
+    ASSERT(obscuredInsets.left >= 0);
+    ASSERT(obscuredInsets.bottom >= 0);
+    ASSERT(obscuredInsets.right >= 0);
+    _obscuredInsets = obscuredInsets;
+}
+
+- (UIColor *)pageExtendedBackgroundColor
+{
+    WebCore::Color color = _page->pageExtendedBackgroundColor();
+    if (!color.isValid())
+        return nil;
+
+    return [UIColor colorWithRed:(color.red() / 255.0) green:(color.green() / 255.0) blue:(color.blue() / 255.0) alpha:(color.alpha() / 255.0)];
+}
+
+- (void)_beginInteractiveObscuredInsetsChange
+{
+    ASSERT(!_isChangingObscuredInsetsInteractively);
+    _isChangingObscuredInsetsInteractively = YES;
+}
+
+- (void)_endInteractiveObscuredInsetsChange
+{
+    ASSERT(_isChangingObscuredInsetsInteractively);
+    _isChangingObscuredInsetsInteractively = NO;
 }
 
 #endif

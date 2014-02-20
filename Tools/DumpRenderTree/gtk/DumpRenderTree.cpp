@@ -54,7 +54,6 @@
 #include <locale.h>
 #include <webkit/webkit.h>
 #include <wtf/Assertions.h>
-#include <wtf/gobject/GOwnPtr.h>
 #include <wtf/gobject/GlibUtilities.h>
 #include <wtf/text/WTFString.h>
 
@@ -546,7 +545,6 @@ static void resetDefaultsToConsistentValues()
     DumpRenderTreeSupportGtk::setCSSGridLayoutEnabled(webView, false);
     DumpRenderTreeSupportGtk::setCSSRegionsEnabled(webView, true);
     DumpRenderTreeSupportGtk::setExperimentalContentSecurityPolicyFeaturesEnabled(true);
-    DumpRenderTreeSupportGtk::setShadowDOMEnabled(true);
 
     if (gTestRunner) {
         gTestRunner->setAuthenticationPassword("");

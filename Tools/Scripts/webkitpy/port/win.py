@@ -138,7 +138,11 @@ class WinPort(ApplePort):
         return map(self._webkit_baseline_path, test_fallback_names)
 
     def _ntsd_location(self):
-        possible_paths = [self._filesystem.join(os.environ['PROGRAMFILES'], "Windows Kits", "8.0", "Debuggers", "x86", "ntsd.exe"),
+        if 'PROGRAMFILES' not in os.environ:
+            return None
+        possible_paths = [self._filesystem.join(os.environ['PROGRAMFILES'], "Windows Kits", "8.1", "Debuggers", "x86", "ntsd.exe"),
+            self._filesystem.join(os.environ['PROGRAMFILES'], "Windows Kits", "8.1", "Debuggers", "x64", "ntsd.exe"),
+            self._filesystem.join(os.environ['PROGRAMFILES'], "Windows Kits", "8.0", "Debuggers", "x86", "ntsd.exe"),
             self._filesystem.join(os.environ['PROGRAMFILES'], "Windows Kits", "8.0", "Debuggers", "x64", "ntsd.exe"),
             self._filesystem.join(os.environ['PROGRAMFILES'], "Debugging Tools for Windows (x86)", "ntsd.exe"),
             self._filesystem.join(os.environ['ProgramW6432'], "Debugging Tools for Windows (x64)", "ntsd.exe"),
@@ -199,8 +203,8 @@ class WinPort(ApplePort):
 
     def setup_crash_log_saving(self):
         if '_NT_SYMBOL_PATH' not in os.environ:
-            _log.warning("The _NT_SYMBOL_PATH environment variable is not set. Crash logs will not be saved.")
-            return None
+            _log.warning("The _NT_SYMBOL_PATH environment variable is not set. Using Microsoft Symbol Server.")
+            os.environ['_NT_SYMBOL_PATH'] = 'SRV*http://msdl.microsoft.com/download/symbols'
         ntsd_path = self._ntsd_location()
         if not ntsd_path:
             _log.warning("Can't find ntsd.exe. Crash logs will not be saved.")

@@ -39,7 +39,6 @@
 #include "IDBOpenDBRequest.h"
 #include "IDBPendingTransactionMonitor.h"
 #include "Logging.h"
-#include "ScriptCallStack.h"
 #include "ScriptExecutionContext.h"
 
 namespace WebCore {
@@ -193,6 +192,7 @@ void IDBTransaction::objectStoreDeleted(const String& name)
 
 void IDBTransaction::setActive(bool active)
 {
+    LOG(StorageAPI, "IDBTransaction::setActive(%s) for transaction id %lli", active ? "true" : "false", static_cast<long long>(m_id));
     ASSERT_WITH_MESSAGE(m_state != Finished, "A finished transaction tried to setActive(%s)", active ? "true" : "false");
     if (m_state == Finishing)
         return;

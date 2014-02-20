@@ -1,3 +1,576 @@
+2014-02-19  Jon Honeycutt  <jhoneycutt@apple.com>
+
+        Crash in WTF::StringBuilder::append()
+
+        https://bugs.webkit.org/show_bug.cgi?id=125817
+        <rdar://problem/15671883>
+
+        Reviewed by Oliver Hunt.
+
+        * wtf/text/StringBuilder.cpp:
+        (WTF::expandedCapacity):
+        Ensure that we return a new capacity of at least 'requiredLength' in
+        the case where requiredLength is large. Also, use unsigned rather than
+        size_t for the parameters and the return value, as callers pass
+        unsigned arguments and treat the result as an unsigned int.
+
+2014-02-19  Anders Carlsson  <andersca@apple.com>
+
+        Add WTF_MAKE_FAST_ALLOCATED to more classes
+        https://bugs.webkit.org/show_bug.cgi?id=129064
+
+        Reviewed by Andreas Kling.
+
+        * wtf/Bitmap.h:
+
+2014-02-19  Zan Dobersek  <zdobersek@igalia.com>
+
+        Make PrintStream::print() a variadic template
+        https://bugs.webkit.org/show_bug.cgi?id=126388
+
+        Reviewed by Brent Fulgham.
+
+        PrintStream::print() can be converted into a variadic template, printing the value
+        of the first parameter and recursively calling itself until the single parameter version
+        is used for printing the last value.
+
+        * wtf/DataLog.h:
+        (WTF::dataLog): Convert the function to a variadic template as well.
+        * wtf/PrintStream.h:
+        (WTF::PrintStream::print):
+        * wtf/StringPrintStream.h:
+        (WTF::toCString): Ditto.
+        (WTF::toString): Ditto.
+
+2014-02-19  Zan Dobersek  <zdobersek@igalia.com>
+
+        Use std::swap() in HashTable::swap()
+        https://bugs.webkit.org/show_bug.cgi?id=128995
+
+        Reviewed by Brent Fulgham.
+
+        Use std::swap() to swap the member variable values of two HashTable objects in HashTable::swap().
+
+        * wtf/HashTable.h:
+        (WTF::KeyTraits>::swap):
+
+2014-02-19  Zan Dobersek  <zdobersek@igalia.com>
+
+        SegmentedVector::append() should take in rvalue reference, forward it to Vector::uncheckedAppend()
+        https://bugs.webkit.org/show_bug.cgi?id=128996
+
+        Reviewed by Brent Fulgham.
+
+        * wtf/SegmentedVector.h:
+        (WTF::SegmentedVector::append): Take in an rvalue reference of the object that's to be appended and
+        then forward it to Vector::uncheckedAppend(). This avoids unnecessary copies in the current situation
+        where a const lvalue is accepted and passed on.
+
+2014-02-19  Dan Bernstein  <mitz@apple.com>
+
+        Simplify PLATFORM(MAC) && !PLATFORM(IOS) and similar expressions
+        https://bugs.webkit.org/show_bug.cgi?id=129029
+
+        Reviewed by Mark Rowe.
+
+        * wtf/FeatureDefines.h:
+        * wtf/Platform.h:
+        * wtf/Threading.cpp:
+        * wtf/text/cf/StringImplCF.cpp:
+        (garbageCollectionEnabled):
+
+2014-02-18  Dan Bernstein  <mitz@apple.com>
+
+        PLATFORM(MAC) is true when building for iOS
+        https://bugs.webkit.org/show_bug.cgi?id=129025
+
+        Reviewed by Mark Rowe.
+
+        * wtf/Platform.h: Changed to define WTF_PLATFORM_MAC only on when building for OS X (but
+        still not when WTF_PLATFORM_GTK or WTF_PLATFORM_EFL are defined).
+
+2014-02-17  Gavin Barraclough  <barraclough@apple.com>
+
+        Add fast mapping from StringImpl to JSString
+        https://bugs.webkit.org/show_bug.cgi?id=128625
+
+        Reviewed by Geoff Garen & Andreas Kling.
+
+        Add weak pointer from StringImpl to JSString.
+
+        * wtf/text/StringImpl.cpp:
+        (WTF::StringImpl::~StringImpl):
+            - ASSERT m_weakJSString is null.
+        * wtf/text/StringImpl.h:
+        (WTF::StringImpl::StringImpl):
+            - initialize m_weakJSString.
+        (WTF::StringImpl::weakJSString):
+        (WTF::StringImpl::setWeakJSString):
+            - added acessors for m_weakJSString.
+
+2014-02-18  Joseph Pecoraro  <pecoraro@apple.com>
+
+        [iOS] Web Inspector: JSContext inspection crashes in isMainThread, uninitialized WebCoreWebThreadIsLockedOrDisabled
+        https://bugs.webkit.org/show_bug.cgi?id=128959
+
+        Reviewed by David Kilzer.
+
+        When JavaScriptCore is used without WebCore on iOS (e.g. JSContext)
+        the WebCoreWebThread* functions will not be initialized. Avoid
+        calling the function pointer if it is uninitialized. This was
+        happening with remote inspection via StringImpl::createCFString
+        for implicit NSString / WTFString conversion which uses isMainThread.
+
+        * wtf/mac/MainThreadMac.mm:
+        (WTF::webThreadIsUninitializedOrLockedOrDisabled):
+        (WTF::isMainThread):
+        (WTF::canAccessThreadLocalDataForThread):
+
+2014-02-17  Filip Pizlo  <fpizlo@apple.com>
+
+        More ARM FTL glue
+        https://bugs.webkit.org/show_bug.cgi?id=128948
+
+        Reviewed by Sam Weinig.
+
+        * wtf/Platform.h:
+
+2014-02-17  Anders Carlsson  <andersca@apple.com>
+
+        Remove ENABLE_GLOBAL_FASTMALLOC_NEW
+        https://bugs.webkit.org/show_bug.cgi?id=127067
+
+        Reviewed by Geoffrey Garen.
+
+        Remove the global operator new/operator delete overrides. Having ALWAYS_INLINE operators
+        like we do is really undefined behavior according to the C++ standard and we've been lucky enough
+        to get away with it so far, but any code that calls operator new/operator delete inside from the C++ standard
+        library (not from headers that are included) will be mismatched and potentially crash. libc++ calls
+        delete in it's std::thread implementation for example.
+        
+        The only supported way to override operator new and operator delete globally is to not use inline
+        functions, but that would mean that any application using WebKit would not be able to provide custom
+        operator new/operator delete functions so we'll just reuse the already existing infrastructure consisting
+        of the WTF_MAKE_FAST_ALLOCATED macro.
+
+        * wtf/FastMalloc.cpp:
+        (WTF::TCMalloc_ThreadCache::CreateCacheIfNecessary):
+        * wtf/FastMalloc.h:
+        * wtf/Platform.h:
+
+2014-02-17  Ryan Lortie  <desrt@desrt.ca>
+
+        Enable DFG_JIT on FreeBSD
+        https://bugs.webkit.org/show_bug.cgi?id=128898
+
+        Reviewed by Csaba Osztrogonác.
+
+        * wtf/Platform.h:
+
+2014-02-15  Filip Pizlo  <fpizlo@apple.com>
+
+        FTL should inline polymorphic heap accesses
+        https://bugs.webkit.org/show_bug.cgi?id=128795
+
+        Reviewed by Oliver Hunt.
+
+        * wtf/PrintStream.h:
+        (WTF::PointerDumpInContext::PointerDumpInContext):
+        (WTF::PointerDumpInContext::dump):
+        (WTF::pointerDumpInContext):
+
+2014-02-16  Zan Dobersek  <zdobersek@igalia.com>
+
+        Reintroduce const qualifiers for return types of (Filter|Transform)Iterator::operator*()
+        https://bugs.webkit.org/show_bug.cgi?id=126875
+
+        The const qualifiers for the return types of FilterIterator::operator*() and TransformIterator::operator*()
+        were removed in r161797 and r161802 because of compilation failures when using GCC and having an Iterator
+        type that already had the const qualifier. std::remove_const is now used to appease GCC and enforce the const
+        qualifier on the return type, regardless of the Iterator type and its qualifiers.
+
+        * wtf/IteratorAdaptors.h:
+        (WTF::FilterIterator::operator*):
+        (WTF::TransformIterator::operator*):
+
+2014-02-15  Filip Pizlo  <fpizlo@apple.com>
+
+        Vector with inline capacity should work with non-PODs
+        https://bugs.webkit.org/show_bug.cgi?id=128864
+
+        Reviewed by Michael Saboff.
+        
+        Previously, we would copy the inline storage of a vector as if it was a bag of bits.
+        This presumed that the element type was relocatable. In general this is only true for
+        PODs.
+        
+        This patch changes this by introducing a swap operation over inline storage. This swap
+        operation requires being told about the size that is in use.
+        
+        Deques would have required some cleverness to make this work, because the swap
+        operation needs to know which subset of elements are in-use and assumes that a size is
+        sufficient for this. That's not true for deques. Instead of trying to do very clever
+        things, I just removed the inline capacity option from Deque. I believe that this is
+        fine since there are only two users of Deque with inline capacity, and both of them
+        appear to be allocated rarely enough that inline capacity probably doesn't help much.
+
+        * wtf/Deque.h:
+        (WTF::DequeIterator::DequeIterator):
+        (WTF::DequeConstIterator::DequeConstIterator):
+        (WTF::Deque<T>::checkValidity):
+        (WTF::Deque<T>::checkIndexValidity):
+        (WTF::Deque<T>::invalidateIterators):
+        (WTF::Deque<T>::Deque):
+        (WTF::=):
+        (WTF::Deque<T>::destroyAll):
+        (WTF::Deque<T>::~Deque):
+        (WTF::Deque<T>::swap):
+        (WTF::Deque<T>::clear):
+        (WTF::Deque<T>::expandCapacityIfNeeded):
+        (WTF::Deque<T>::expandCapacity):
+        (WTF::Deque<T>::append):
+        (WTF::Deque<T>::prepend):
+        (WTF::Deque<T>::removeFirst):
+        (WTF::Deque<T>::removeLast):
+        (WTF::Deque<T>::remove):
+        (WTF::DequeIteratorBase<T>::checkValidity):
+        (WTF::DequeIteratorBase<T>::addToIteratorsList):
+        (WTF::DequeIteratorBase<T>::removeFromIteratorsList):
+        (WTF::DequeIteratorBase<T>::DequeIteratorBase):
+        (WTF::DequeIteratorBase<T>::~DequeIteratorBase):
+        (WTF::DequeIteratorBase<T>::isEqual):
+        (WTF::DequeIteratorBase<T>::increment):
+        (WTF::DequeIteratorBase<T>::decrement):
+        (WTF::DequeIteratorBase<T>::after):
+        (WTF::DequeIteratorBase<T>::before):
+        * wtf/Vector.h:
+        (WTF::VectorBuffer::swap):
+        (WTF::VectorBuffer::swapInlineBuffer):
+        (WTF::VectorBuffer::swapInlineBuffers):
+        (WTF::Vector::swap):
+
+2014-02-15  Mikhail Pozdnyakov  <mikhail.pozdnyakov@intel.com>
+
+        Remove 'static' specifier from free inline functions in StringImpl.h
+        https://bugs.webkit.org/show_bug.cgi?id=118554
+
+        Reviewed by Darin Adler.
+
+        At first 'static' does not bring any use here, secondly static free
+        inline functions in headers is a bad practice in general as each instance
+        of function defined as inline is treated as a separate function and each
+        instance has its own copy of static locals and string literals.
+
+        * wtf/text/StringImpl.h:
+        (WTF::codePointCompare):
+        (WTF::codePointCompare8):
+        (WTF::codePointCompare16):
+        (WTF::codePointCompare8To16):
+        (WTF::isSpaceOrNewline):
+
+2014-02-14  Benjamin Poulain  <bpoulain@apple.com>
+
+        Improve the performance on mobile of FTPDirectoryDocument
+        https://bugs.webkit.org/show_bug.cgi?id=128778
+
+        Reviewed by Antti Koivisto.
+
+        * wtf/text/WTFString.h:
+        (WTF::String::endsWith): add a missing overload.
+
+2014-02-14  Wojciech Bielawski  <w.bielawski@samsung.com>
+
+        (try)append and insert operations don't need new operator for PODs
+        https://bugs.webkit.org/show_bug.cgi?id=128185
+
+        Reviewed by Darin Adler.
+
+        Vector's methods use VectorCopier to copy data.
+        VectorCopier for PODs exteded to be used with different types. For different types placement new copy approach is applied. For the same types memcpy is applied.
+
+        * wtf/Vector.h:
+        (WTF::OverflowHandler>::append): use VectorCopier to copy data.
+        (WTF::OverflowHandler>::tryAppend): use VectorCopier to copy data.
+        (WTF::OverflowHandler>::insert): use VectorCopier to copy data.
+
+2014-02-13  Daniel Bates  <dabates@apple.com>
+
+        Fix the iOS build after <http://trac.webkit.org/changeset/164064
+
+        * wtf/Platform.h:
+
+2014-02-13  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Disable HAVE_ARM_NEON_INTRINSICS
+
+        For now, disable HAVE_ARM_NEON_INTRINSICS when building for iOS. We want
+        to audit the applicable code before we enable this define.
+
+        * wtf/Platform.h:
+
+2014-02-11  Filip Pizlo  <fpizlo@apple.com>
+
+        Hoist and combine array bounds checks
+        https://bugs.webkit.org/show_bug.cgi?id=125433
+
+        Reviewed by Mark Hahnenberg.
+
+        * GNUmakefile.list.am:
+        * WTF.vcxproj/WTF.vcxproj:
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/HashMethod.h: Added.
+        (WTF::HashMethod::operator()):
+
+2014-02-13  Tamas Gergely  <tgergely.u-szeged@partner.samsung.com>
+
+        Code cleanup: remove gcc<4.7 guards.
+        https://bugs.webkit.org/show_bug.cgi?id=128729
+
+        Reviewed by Anders Carlsson.
+
+        Remove GCC_VERSION_AT_LEAST guards when it checks for pre-4.7 versions,
+        as WK does not compile with earlier gcc versions.
+
+        * wtf/Assertions.cpp:
+        * wtf/Platform.h:
+
+2014-02-12  Mark Lam  <mark.lam@apple.com>
+
+        No need to save reservedZoneSize when dropping the JSLock.
+        <https://webkit.org/b/128719>
+
+        Reviewed by Geoffrey Garen.
+
+        * wtf/WTFThreadData.cpp:
+        (WTF::WTFThreadData::WTFThreadData):
+        * wtf/WTFThreadData.h:
+        - removed unnneeded m_savedReservedZoneSize.
+
+2014-02-11  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        32-bit LLInt writeBarrierOnGlobalObject is wrong
+        https://bugs.webkit.org/show_bug.cgi?id=128556
+
+        Reviewed by Geoffrey Garen.
+
+        * wtf/Platform.h: Removed OBJECT_MARK_LOGGING from Platform.h since it already exists in FeatureDefines.h
+
+2014-02-11  peavo@outlook.com  <peavo@outlook.com>
+
+        [WinCairo] Compile error, deleted file in WTF.
+        https://bugs.webkit.org/show_bug.cgi?id=128601
+
+        Reviewed by Csaba Osztrogonác.
+
+        * WTF.vcxproj/WTF.vcxproj: Removed reference to deleted file.
+        * WTF.vcxproj/WTF.vcxproj.filters: Ditto.
+
+2014-02-10  Michael Saboff  <msaboff@apple.com>
+
+        Re-enable ARM Thumb2 disassembler
+        https://bugs.webkit.org/show_bug.cgi?id=128577
+
+        Reviewed by Filip Pizlo.
+
+        Added definition of WTF_USE_ARMV7_DISASSEMBLER back to Platform.h
+
+        * wtf/Platform.h:
+
+2014-02-10  Benjamin Poulain  <benjamin@webkit.org>
+
+        Add the basic infrastructure to compile attributes matching in selectors
+        https://bugs.webkit.org/show_bug.cgi?id=128484
+
+        Reviewed by Gavin Barraclough.
+
+        * wtf/Vector.h:
+        (WTF::VectorBufferBase::bufferMemoryOffset):
+        (WTF::Vector::sizeMemoryOffset):
+        (WTF::Vector::dataMemoryOffset):
+        Expose the memory offsets of Vector::size() and the memory buffer pointer for the JIT.
+
+2014-02-10  Enrica Casucci  <enrica@apple.com>
+
+        copyShortASCIIString crashes on iOS after r163793.
+        https://bugs.webkit.org/show_bug.cgi?id=128548.
+
+        Reviewed by Alexey Proskuryakov.
+
+        Adding null check.
+
+        * wtf/unicode/icu/CollatorICU.cpp:
+        (WTF::copyShortASCIIString):
+
+2014-02-10  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GLIB] Add GUniqueOutPtr and use it instead of GOwnPtr
+        https://bugs.webkit.org/show_bug.cgi?id=127554
+
+        Reviewed by Gustavo Noronha Silva.
+
+        GUniqueOutPtr is a simplified version of GOwnPtr for the cases
+        where we need the address of the contained pointer. GUniqueOutPtr
+        uses GUniquePtr to free the contained object and to release the
+        container pointer. The API is very simple to make sure this is
+        only used when outPtr() is needed. It can't be constructed with a
+        pointer, and there's not method to set a new pointer. Another
+        difference with the old GOwnPtr is that outPtr() can be used
+        multiple times, because it frees any pointer previously set.
+
+        * GNUmakefile.list.am:
+        * wtf/PlatformEfl.cmake:
+        * wtf/PlatformGTK.cmake:
+        * wtf/gobject/GOwnPtr.cpp: Removed.
+        * wtf/gobject/GOwnPtr.h: Removed.
+        * wtf/gobject/GUniquePtr.h:
+        (WTF::GUniqueOutPtr::GUniqueOutPtr):
+        (WTF::GUniqueOutPtr::~GUniqueOutPtr):
+        (WTF::GUniqueOutPtr::outPtr):
+        (WTF::GUniqueOutPtr::reset):
+        (WTF::GUniqueOutPtr::release):
+        (WTF::GUniqueOutPtr::operator*):
+        (WTF::GUniqueOutPtr::operator->):
+        (WTF::GUniqueOutPtr::get):
+        (WTF::GUniqueOutPtr::operator!):
+        (WTF::GUniqueOutPtr::operator UnspecifiedBoolType):
+
+2014-02-10  Darin Adler  <darin@apple.com>
+
+        Stop using String::deprecatedCharacters to call WTF::Collator
+        https://bugs.webkit.org/show_bug.cgi?id=128517
+
+        WTF passes ICU’s deprecated ULOC_REQUESTED_LOCALE to ucol_getLocaleByType()
+        rdar://problem/15183390
+
+        Reviewed by Alexey Proskuryakov.
+
+        This patch fixes both bugs above by reworking WTF::Collator.
+
+        * wtf/unicode/Collator.h: Fixed formatting. Got rid of the Collator::Result type,
+        since the collator uses the same return value scheme as strcmp and as ICU; an int
+        will do for the return type. Simplified the support for UCONFIG_NO_COLLATION by
+        using a separate copy of the class definition. (We should check if anyone needs
+        UCONFIG_NO_COLLATION support, and remove it if not.) Changed the lower-first flag
+        from a separate function to a constructor argument. Changed the arguments to
+        the collate function to StringView. Added a collate UTF8 function. Changed the
+        m_collate data member to no longer be mutable since we no longer allocate it lazily.
+
+        * wtf/unicode/CollatorDefault.cpp:
+        (WTF::Collator::collate): Rewrote to be simpler.
+        (WTF::Collator::collateUTF8): Added. Converts from UTF-8 to a String and then calls
+        the collate function above.
+
+        * wtf/unicode/icu/CollatorICU.cpp: Added a FIXME about the fact that this file
+        has the wrong name and location. Since we always use ICU, there's no need to mention
+        it in the file name.
+        (WTF::copyASCIIString): Added.
+        (WTF::copyDefaultLocale): Added.
+        (WTF::resolveDefaultLocale): Added. Maps null locale to a default on Mac and iOS,
+        since on those platforms ICU does not use the correct default locale when passed null.
+        (WTF::localesMatch): Added.
+        (WTF::Collator::Collator): Moved most of the code from createCollator here.
+        Simplified it by storing the collator configuration along with the collator in globals.
+        (WTF::Collator::~Collator): Moved most of the code from releaseCollator here.
+        (WTF::getIndexLatin1): Added.
+        (WTF::moveLatin1): Added.
+        (WTF::hasNextLatin1): Added.
+        (WTF::hasPreviousLatin1): Added.
+        (WTF::currentLatin1): Added.
+        (WTF::nextLatin1): Added.
+        (WTF::previousLatin1): Added.
+        (WTF::getStateLatin1): Added.
+        (WTF::setStateLatin1): Added.
+        (WTF::createLatin1Iterator): Added. Uses the functions above to make a UCharIterator
+        that works for a WTF::StringView-style Latin-1 string.
+        (WTF::createIterator): Added. Uses either createLatin1Iterator or uiter_setString to
+        make a UCharIterator that works for a WTF::StringView.
+        (WTF::Collator::collate): Changed to use ucol_strcollIter.
+        (WTF::createIteratorUTF8): Added. Uses uiter_setUTF8.
+        (WTF::Collator::collateUTF8): Added. Like collate, but for null-terminated UTF-8 strings.
+
+2014-02-10  Tamas Gergely  <tgergely.u-szeged@partner.samsung.com>
+
+        Code cleanup: Remove BUILDING_ON / TARGETING definitions.
+        https://bugs.webkit.org/show_bug.cgi?id=128242
+
+        Reviewed by Brent Fulgham.
+
+        The BUILDING_ON_* and TARGETING_* macros have not been used for a while.
+        According to the FIXME: they are removed.
+
+        * wtf/Platform.h:
+
+2014-02-09  Anders Carlsson  <andersca@apple.com>
+
+        Add WTF_MAKE_FAST_ALLOCATED to more classes
+        https://bugs.webkit.org/show_bug.cgi?id=128506
+
+        Reviewed by Andreas Kling.
+
+        * wtf/Bag.h:
+        * wtf/ListHashSet.h:
+
+2014-02-08  Anders Carlsson  <andersca@apple.com>
+
+        Stop using getCharactersWithUpconvert in JavaScriptCore
+        https://bugs.webkit.org/show_bug.cgi?id=128457
+
+        Reviewed by Andreas Kling.
+
+        * wtf/text/StringBuilder.h:
+        (WTF::StringBuilder::append):
+        Add a new overload that takes a StringView.
+
+        * wtf/text/StringView.h:
+        (WTF::StringView::find):
+        Add new find member function.
+
+2014-02-08  Darin Adler  <darin@apple.com>
+
+        Change TextIterator to use StringView, preparing to wean it from deprecatedCharacters
+        https://bugs.webkit.org/show_bug.cgi?id=128233
+
+        Reviewed by Anders Carlsson.
+
+        * WTF.xcodeproj/project.pbxproj: Added new source files.
+
+        * wtf/text/StringView.h: Added operator[], createCFStringWithoutCopying, and
+        createNSStringWithoutCopying.
+        * wtf/text/cf/StringViewCF.cpp:
+        (WTF::StringView::createCFStringWithoutCopying): Added.
+        * wtf/text/mac/StringViewObjC.mm:
+        (WTF::StringView::createNSString): Added.
+        (WTF::StringView::createNSStringWithoutCopying): Added.
+
+2014-02-06  Andreas Kling  <akling@apple.com>
+
+        Remove unused ENABLE(REPAINT_THROTTLING) flag.
+        <https://webkit.org/b/128329>
+
+        Reviewed by Antti Koivisto.
+
+        * wtf/FeatureDefines.h:
+
+2014-02-06  Filip Pizlo  <fpizlo@apple.com>
+
+        More FTL build scaffolding
+        https://bugs.webkit.org/show_bug.cgi?id=128330
+
+        Reviewed by Geoffrey Garen.
+
+        * wtf/Platform.h:
+
+2014-02-06  Anders Carlsson  <andersca@apple.com>
+
+        Use std::chrono functions in dispatchFunctionsFromMainThread()
+        https://bugs.webkit.org/show_bug.cgi?id=128308
+
+        Reviewed by Antti Koivisto.
+
+        * wtf/MainThread.cpp:
+        (WTF::dispatchFunctionsFromMainThread):
+
 2014-02-05  Zan Dobersek  <zdobersek@igalia.com>
 
         Remove the WTF_COMPILER_SUPPORTS_CXX_GENERALIZED_INITIALIZERS macro

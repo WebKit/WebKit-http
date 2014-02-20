@@ -44,6 +44,7 @@
 #include "PrivateName.h"
 #include "PrototypeMap.h"
 #include "SmallStrings.h"
+#include "SourceCode.h"
 #include "Strong.h"
 #include "ThunkGenerators.h"
 #include "TypedArrayController.h"
@@ -69,6 +70,7 @@
 namespace JSC {
 
     class ArityCheckFailReturnThunks;
+    class BuiltinExecutables;
     class CodeBlock;
     class CodeCache;
     class CommonIdentifiers;
@@ -182,8 +184,8 @@ namespace JSC {
     class VM : public ThreadSafeRefCounted<VM> {
     public:
         // WebCore has a one-to-one mapping of threads to VMs;
-        // either create() or createLeaked() should only be called once
-        // on a thread, this is the 'default' VM (it uses the
+        // either create() or createLeakedForMainThread() should only be
+        // called once on a thread, this is the 'default' VM (it uses the
         // thread's default string uniquing table from wtfThreadData).
         // API contexts created using the new context group aware interface
         // create APIContextGroup objects which require less locking of JSC
@@ -201,7 +203,7 @@ namespace JSC {
         JS_EXPORT_PRIVATE static VM& sharedInstance();
 
         JS_EXPORT_PRIVATE static PassRefPtr<VM> create(HeapType = SmallHeap);
-        JS_EXPORT_PRIVATE static PassRefPtr<VM> createLeaked(HeapType = SmallHeap);
+        JS_EXPORT_PRIVATE static PassRefPtr<VM> createLeakedForMainThread(HeapType = SmallHeap);
         static PassRefPtr<VM> createContextGroup(HeapType = SmallHeap);
         JS_EXPORT_PRIVATE ~VM();
 
@@ -220,7 +222,10 @@ namespace JSC {
         // The heap should be just after executableAllocator and before other members to ensure that it's
         // destructed after all the objects that reference it.
         Heap heap;
-        
+
+        // Used to manage weak references from StringImpls to JSStrings.
+        OwnPtr<WeakHandleOwner> jsStringWeakOwner;
+
 #if ENABLE(DFG_JIT)
         OwnPtr<DFG::LongLivedState> dfgState;
 #endif // ENABLE(DFG_JIT)
@@ -228,7 +233,6 @@ namespace JSC {
         VMType vmType;
         ClientData* clientData;
         ExecState* topCallFrame;
-        void* stackPointerAtVMEntry;
         Watchdog watchdog;
 
         const OwnPtr<const HashTable> arrayConstructorTable;
@@ -341,9 +345,6 @@ namespace JSC {
         NativeExecutable* getHostFunction(NativeFunction, Intrinsic);
         
         std::unique_ptr<ArityCheckFailReturnThunks> arityCheckFailReturnThunks;
-#if CPU(X86)
-        void* currentReturnThunkPC;
-#endif // CPU(X86)
 #endif // ENABLE(JIT)
         std::unique_ptr<CommonSlowPaths::ArityCheckData> arityCheckData;
 #if ENABLE(FTL_JIT)
@@ -377,8 +378,16 @@ namespace JSC {
         JS_EXPORT_PRIVATE JSValue throwException(ExecState*, JSValue);
         JS_EXPORT_PRIVATE JSObject* throwException(ExecState*, JSObject*);
         
+        void* stackPointerAtVMEntry() const { return m_stackPointerAtVMEntry; }
+        void setStackPointerAtVMEntry(void*);
+
         size_t reservedZoneSize() const { return m_reservedZoneSize; }
-        size_t updateStackLimitWithReservedZoneSize(size_t reservedZoneSize);
+        size_t updateReservedZoneSize(size_t reservedZoneSize);
+
+#if ENABLE(FTL_JIT)
+        void updateFTLLargestStackSize(size_t);
+        void** addressOfFTLStackLimit() { return &m_ftlStackLimit; }
+#endif
 
         void** addressOfJSStackLimit() { return &m_jsStackLimit; }
 #if ENABLE(LLINT_C_LOOP)
@@ -497,6 +506,8 @@ namespace JSC {
         void registerWatchpointForImpureProperty(const Identifier&, Watchpoint*);
         // FIXME: Use AtomicString once it got merged with Identifier.
         JS_EXPORT_PRIVATE void addImpureProperty(const String&);
+        
+        BuiltinExecutables* builtinExecutables() { return m_builtinExecutables.get(); }
 
     private:
         friend class LLIntOffsetsExtractor;
@@ -507,7 +518,7 @@ namespace JSC {
         static VM*& sharedInstanceInternal();
         void createNativeThunk();
 
-        void setStackLimit(void* limit) { m_stackLimit = limit; }
+        void updateStackLimit();
 
 #if ENABLE(ASSEMBLER)
         bool m_canUseAssembler;
@@ -521,6 +532,7 @@ namespace JSC {
 #if ENABLE(GC_VALIDATION)
         const ClassInfo* m_initializingObjectClass;
 #endif
+        void* m_stackPointerAtVMEntry;
         size_t m_reservedZoneSize;
 #if ENABLE(LLINT_C_LOOP)
         struct {
@@ -532,15 +544,18 @@ namespace JSC {
             void* m_stackLimit;
             void* m_jsStackLimit;
         };
+#if ENABLE(FTL_JIT)
+        void* m_ftlStackLimit;
+        size_t m_largestFTLStackSize;
+#endif
 #endif
         void* m_lastStackTop;
         JSValue m_exception;
         bool m_inDefineOwnProperty;
         OwnPtr<CodeCache> m_codeCache;
-        RefCountedArray<StackFrame> m_exceptionStack;
-
         LegacyProfiler* m_enabledProfiler;
-
+        OwnPtr<BuiltinExecutables> m_builtinExecutables;
+        RefCountedArray<StackFrame> m_exceptionStack;
         HashMap<String, RefPtr<WatchpointSet>> m_impurePropertyWatchpointSets;
     };
 

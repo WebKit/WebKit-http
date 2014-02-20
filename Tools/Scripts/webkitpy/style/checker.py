@@ -175,11 +175,7 @@ _PATH_RULES_SPECIFIER = [
 
     ([# Header files in ForwardingHeaders have no header guards or
       # exceptional header guards (e.g., WebCore_FWD_Debugger_h).
-      "/ForwardingHeaders/",
-      # Nix platform API classes uses common names under Nix namespace
-      # so the include guards should also include the namespace to avoid
-      # name clashes.
-       "Source/Platform/nix"],
+      "/ForwardingHeaders/"],
      ["-build/header_guard"]),
     ([# assembler has lots of opcodes that use underscores, so
       # we don't check for underscores in that directory.
@@ -204,6 +200,7 @@ _PATH_RULES_SPECIFIER = [
       "Tools/MiniBrowser/efl/"],
      ["-readability/naming",
       "-readability/parameter_name",
+      "-runtime/ctype_function",
       "-whitespace/declaration",
       "-build/include_order"]),
 

@@ -1,3 +1,106 @@
+2014-02-19  Zoltan Horvath  <zoltan@webkit.org>
+
+        [CSS Shapes] Add performance test for stacked floats with shape-outsides
+        https://bugs.webkit.org/show_bug.cgi?id=128821
+
+        Reviewed by Brent Fulgham.
+
+        This tests generate stacked floats content with shape-outsides.
+        The test is skipped by default.
+
+        * Layout/Shapes/ShapeOutsideStackedPolygons.html: Added.
+
+2014-02-15  Zoltan Horvath  <zoltan@webkit.org>
+
+        [CSS Shapes] Add performance test for raster shape with shape-margin
+        https://bugs.webkit.org/show_bug.cgi?id=128770
+
+        Reviewed by Ryosuke Niwa.
+
+        This patch introduces a new performance test for image valued shapes,
+        where shape-margin is applied on the shape.
+        The test is skipped by default.
+
+        * Layout/Shapes/ShapeOutsideRasterWithMargin.html: Added.
+
+2014-02-14  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Improve the appearance of DYEBench
+        https://bugs.webkit.org/show_bug.cgi?id=128866
+
+        Reviewed by Antti Koivisto.
+
+        Add a div that shows progress during the test. Also show 95th percentile,
+        and use a table instead of pre to show results.
+
+        * DoYouEvenBench/Full.html:
+        (.addResult): Added. Shows results in a table.
+        (benchmarkClient.willRunTest): Added to show the progress bar.
+        (benchmarkClient.didRunTest):
+        (benchmarkClient.didRunSuites):
+        (benchmarkClient.didFinishLastIteration): Compute 95th percentile using Statistics.js
+
+        * DoYouEvenBench/resources/benchmark-runner.js:
+        (BenchmarkRunner.prototype._appendFrame): Fix the bug where marginLeft and marginTop
+        weren't correctly parsed. We were treating top as left and bottom as top somehow.
+        (BenchmarkRunner.prototype._runTestAndRecordResults): Fixed a typo.
+
+2014-02-13  Zoltan Horvath  <zoltan@webkit.org>
+
+        [CSS Shapes] Add performance test for complex polygon with shape-margin
+        https://bugs.webkit.org/show_bug.cgi?id=128769
+
+        Reviewed by Ryosuke Niwa.
+
+        This patch modifies the logic of createShapeOutsideTest to accept multiple
+        CSS properties from the test. The patch adds performance test for complex
+        polygon shape (self intersecting at multiple places) case, moreover we
+        apply shape-margin on the polygon also.
+
+        * Layout/Shapes/ShapeOutsideContentBox.html:
+        * Layout/Shapes/ShapeOutsideInset.html:
+        * Layout/Shapes/ShapeOutsidePolygonWithMargin.html: Added.
+        * Layout/Shapes/ShapeOutsideRaster.html:
+        * Layout/Shapes/ShapeOutsideSimplePolygon.html:
+        * Layout/Shapes/resources/shapes.js:
+
+2014-02-13  Zoltan Horvath  <zoltan@webkit.org>
+
+        [CSS Shapes] Add performance test for raster shape
+        https://bugs.webkit.org/show_bug.cgi?id=128746
+
+        Reviewed by Ryosuke Niwa.
+
+        This patch adds performance testing for image valued shape-outside.
+        The test is skipped by default for now.
+
+        * Layout/Shapes/ShapeOutsideRaster.html: Added.
+        * Layout/Shapes/resources/shape.gif: Added.
+
+2014-02-10  Zoltan Horvath  <zoltan@webkit.org>
+
+        [CSS Shapes] Add initial performance tests for polygon shape 
+        https://bugs.webkit.org/show_bug.cgi?id=128554
+
+        Reviewed by Ryosuke Niwa.
+
+        This patch adds performance testing for simple polygon shape-outside.
+        The Shapes performance tests directory is skipped by default.
+
+        * Layout/Shapes/ShapeOutsideSimplePolygon.html: Added.
+
+2014-02-07  Zoltan Horvath  <zoltan@webkit.org>
+
+        [CSS Shapes] Add initial performance tests for inset shape
+        https://bugs.webkit.org/show_bug.cgi?id=128378
+
+        Reviewed by Ryosuke Niwa.
+
+        * Layout/Shapes/ShapeOutsideContentBox.html: Move js to shapes.js.
+        * Layout/Shapes/ShapeOutsideInset.html: Added.
+        * Layout/Shapes/resources/shapes.js: Added.
+        (.):
+
 2014-02-04  Ryosuke Niwa  <rniwa@webkit.org>
 
         Undelete the "build" directory erroneously removed in r163427.

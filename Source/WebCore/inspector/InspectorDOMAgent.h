@@ -41,8 +41,6 @@
 #include <wtf/Deque.h>
 #include <wtf/HashMap.h>
 #include <wtf/HashSet.h>
-#include <wtf/OwnPtr.h>
-#include <wtf/PassOwnPtr.h>
 #include <wtf/RefPtr.h>
 #include <wtf/Vector.h>
 #include <wtf/text/AtomicString.h>
@@ -131,6 +129,7 @@ public:
     virtual void setOuterHTML(ErrorString*, int nodeId, const String& outerHTML) override;
     virtual void setNodeValue(ErrorString*, int nodeId, const String& value) override;
     virtual void getEventListenersForNode(ErrorString*, int nodeId, const WTF::String* objectGroup, RefPtr<Inspector::TypeBuilder::Array<Inspector::TypeBuilder::DOM::EventListener>>& listenersArray) override;
+    virtual void getAccessibilityPropertiesForNode(ErrorString*, int nodeId, RefPtr<Inspector::TypeBuilder::DOM::AccessibilityProperties>& axProperties) override;
     virtual void performSearch(ErrorString*, const String& whitespaceTrimmedQuery, const RefPtr<Inspector::InspectorArray>* nodeIds, String* searchId, int* resultCount) override;
     virtual void getSearchResults(ErrorString*, const String& searchId, int fromIndex, int toIndex, RefPtr<Inspector::TypeBuilder::Array<int>>&) override;
     virtual void discardSearchResults(ErrorString*, const String& searchId) override;
@@ -212,7 +211,7 @@ public:
 
 private:
     void setSearchingForNode(ErrorString*, bool enabled, Inspector::InspectorObject* highlightConfig);
-    PassOwnPtr<HighlightConfig> highlightConfigFromInspectorObject(ErrorString*, Inspector::InspectorObject* highlightInspectorObject);
+    std::unique_ptr<HighlightConfig> highlightConfigFromInspectorObject(ErrorString*, Inspector::InspectorObject* highlightInspectorObject);
 
     // Node-related methods.
     typedef HashMap<RefPtr<Node>, int> NodeToIdMap;
@@ -233,13 +232,14 @@ private:
     PassRefPtr<Inspector::TypeBuilder::Array<String>> buildArrayForElementAttributes(Element*);
     PassRefPtr<Inspector::TypeBuilder::Array<Inspector::TypeBuilder::DOM::Node>> buildArrayForContainerChildren(Node* container, int depth, NodeToIdMap* nodesMap);
     PassRefPtr<Inspector::TypeBuilder::DOM::EventListener> buildObjectForEventListener(const RegisteredEventListener&, const AtomicString& eventType, Node*, const String* objectGroupId);
+    PassRefPtr<Inspector::TypeBuilder::DOM::AccessibilityProperties> buildObjectForAccessibilityProperties(Node*);
 
     Node* nodeForPath(const String& path);
     Node* nodeForObjectId(const String& objectId);
 
     void discardBindings();
 
-    void innerHighlightQuad(PassOwnPtr<FloatQuad>, const RefPtr<Inspector::InspectorObject>* color, const RefPtr<Inspector::InspectorObject>* outlineColor, const bool* usePageCoordinates);
+    void innerHighlightQuad(std::unique_ptr<FloatQuad>, const RefPtr<Inspector::InspectorObject>* color, const RefPtr<Inspector::InspectorObject>* outlineColor, const bool* usePageCoordinates);
 
     InspectorPageAgent* m_pageAgent;
     Inspector::InjectedScriptManager* m_injectedScriptManager;
@@ -251,7 +251,7 @@ private:
     typedef HashMap<RefPtr<Node>, BackendNodeId> NodeToBackendIdMap;
     HashMap<String, NodeToBackendIdMap> m_nodeGroupToBackendIdMap;
     // Owns node mappings for dangling nodes.
-    Vector<OwnPtr<NodeToIdMap>> m_danglingNodeToIdMaps;
+    Vector<std::unique_ptr<NodeToIdMap>> m_danglingNodeToIdMaps;
     HashMap<int, Node*> m_idToNode;
     HashMap<int, NodeToIdMap*> m_idToNodesMap;
     HashSet<int> m_childrenRequested;
@@ -261,12 +261,12 @@ private:
     RefPtr<Document> m_document;
     typedef HashMap<String, Vector<RefPtr<Node>>> SearchResults;
     SearchResults m_searchResults;
-    OwnPtr<RevalidateStyleAttributeTask> m_revalidateStyleAttrTask;
+    std::unique_ptr<RevalidateStyleAttributeTask> m_revalidateStyleAttrTask;
     RefPtr<Node> m_nodeToFocus;
     bool m_searchingForNode;
-    OwnPtr<HighlightConfig> m_inspectModeHighlightConfig;
-    OwnPtr<InspectorHistory> m_history;
-    OwnPtr<DOMEditor> m_domEditor;
+    std::unique_ptr<HighlightConfig> m_inspectModeHighlightConfig;
+    std::unique_ptr<InspectorHistory> m_history;
+    std::unique_ptr<DOMEditor> m_domEditor;
     bool m_suppressAttributeModifiedEvent;
     bool m_documentRequested;
 };

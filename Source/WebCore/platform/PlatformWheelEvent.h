@@ -57,7 +57,7 @@ namespace WebCore {
         ScrollByPixelWheelEvent,
     };
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
     enum PlatformWheelEventPhase {
         PlatformWheelEventPhaseNone        = 0,
         PlatformWheelEventPhaseBegan       = 1 << 0,
@@ -79,7 +79,7 @@ namespace WebCore {
             , m_wheelTicksY(0)
             , m_granularity(ScrollByPixelWheelEvent)
             , m_directionInvertedFromDevice(false)
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
             , m_hasPreciseScrollingDeltas(false)
             , m_phase(PlatformWheelEventPhaseNone)
             , m_momentumPhase(PlatformWheelEventPhaseNone)
@@ -100,7 +100,7 @@ namespace WebCore {
             , m_wheelTicksY(wheelTicksY)
             , m_granularity(granularity)
             , m_directionInvertedFromDevice(false)
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
             , m_hasPreciseScrollingDeltas(false)
             , m_phase(PlatformWheelEventPhaseNone)
             , m_momentumPhase(PlatformWheelEventPhaseNone)
@@ -162,7 +162,7 @@ namespace WebCore {
         explicit PlatformWheelEvent(BMessage*);
 #endif
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
         bool hasPreciseScrollingDeltas() const { return m_hasPreciseScrollingDeltas; }
         void setHasPreciseScrollingDeltas(bool b) { m_hasPreciseScrollingDeltas = b; }
         PlatformWheelEventPhase phase() const { return m_phase; }
@@ -174,6 +174,20 @@ namespace WebCore {
         {
             return m_phase == PlatformWheelEventPhaseBegan || m_phase == PlatformWheelEventPhaseChanged
                 || m_momentumPhase == PlatformWheelEventPhaseBegan || m_momentumPhase == PlatformWheelEventPhaseChanged;
+        }
+        bool shouldConsiderLatching() const
+        {
+            return m_phase == PlatformWheelEventPhaseBegan || m_phase == PlatformWheelEventPhaseMayBegin;
+        }
+        bool shouldResetLatching() const
+        {
+            if (m_phase == PlatformWheelEventPhaseCancelled || m_phase == PlatformWheelEventPhaseMayBegin)
+                return true;
+            
+            if (m_phase == PlatformWheelEventPhaseNone && m_momentumPhase == PlatformWheelEventPhaseEnded)
+                return true;
+            
+            return false;
         }
 #else
         bool useLatchedEventElement() const { return false; }
@@ -193,7 +207,7 @@ namespace WebCore {
         float m_wheelTicksY;
         PlatformWheelEventGranularity m_granularity;
         bool m_directionInvertedFromDevice;
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
         bool m_hasPreciseScrollingDeltas;
         PlatformWheelEventPhase m_phase;
         PlatformWheelEventPhase m_momentumPhase;

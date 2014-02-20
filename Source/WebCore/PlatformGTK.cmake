@@ -115,7 +115,6 @@ list(APPEND WebCore_SOURCES
     platform/network/soup/CookieStorageSoup.cpp
     platform/network/soup/CredentialStorageSoup.cpp
     platform/network/soup/DNSSoup.cpp
-    platform/network/soup/GOwnPtrSoup.cpp
     platform/network/soup/NetworkStorageSessionSoup.cpp
     platform/network/soup/ProxyResolverSoup.cpp
     platform/network/soup/ProxyServerSoup.cpp
@@ -202,6 +201,7 @@ list(APPEND WebCorePlatformGTK_SOURCES
     platform/gtk/GtkInputMethodFilter.cpp
     platform/gtk/GtkPluginWidget.cpp
     platform/gtk/GtkPopupMenu.cpp
+    platform/gtk/GtkTouchContextHelper.cpp
     platform/gtk/GtkUtilities.cpp
     platform/gtk/GtkVersioning.c
     platform/gtk/KeyBindingTranslator.cpp
@@ -244,7 +244,6 @@ list(APPEND WebCorePlatformGTK_SOURCES
     platform/network/soup/CookieStorageSoup.cpp
     platform/network/soup/CredentialStorageSoup.cpp
     platform/network/soup/DNSSoup.cpp
-    platform/network/soup/GOwnPtrSoup.cpp
     platform/network/soup/NetworkStorageSessionSoup.cpp
     platform/network/soup/ProxyResolverSoup.cpp
     platform/network/soup/ProxyServerSoup.cpp
@@ -295,6 +294,13 @@ endif ()
 list(APPEND WebCore_USER_AGENT_STYLE_SHEETS
     ${WEBCORE_DIR}/css/mediaControlsGtk.css
 )
+
+set(WebCore_USER_AGENT_SCRIPTS
+    ${WEBCORE_DIR}/Modules/mediacontrols/mediaControlsApple.js
+    ${WEBCORE_DIR}/Modules/mediacontrols/mediaControlsGtk.js
+)
+
+set(WebCore_USER_AGENT_SCRIPTS_DEPENDENCIES ${WEBCORE_DIR}/platform/gtk/RenderThemeGtk.cpp)
 
 list(APPEND WebCore_LIBRARIES
     ${ATK_LIBRARIES}
@@ -456,6 +462,7 @@ set_property(
         ${GDK_INCLUDE_DIRS}
 )
 target_link_libraries(WebCorePlatformGTK
+    WebCore
     ${WebCore_LIBRARIES}
     ${GTK_LIBRARIES}
     ${GDK_LIBRARIES}
@@ -527,8 +534,8 @@ if (ENABLE_WEBKIT2)
         dom/NodeList.idl
         dom/ProcessingInstruction.idl
         dom/Range.idl
-        dom/ShadowRoot.idl
         dom/Text.idl
+        dom/Touch.idl
         dom/TreeWalker.idl
         dom/UIEvent.idl
         dom/WebKitNamedFlow.idl
@@ -659,11 +666,15 @@ if (ENABLE_WEBKIT2)
          ${DERIVED_SOURCES_GOBJECT_DOM_BINDINGS_DIR}/webkitdom.h
          ${WEBCORE_DIR}/bindings/gobject/WebKitDOMCustom.h
     )
+    file(GLOB GObjectDOMBindingsSymbolsFiles
+        "${WEBCORE_DIR}/bindings/gobject/WebKitDOM*.symbols"
+    )
 
     foreach (file ${GObjectDOMBindings_IDL_FILES})
         get_filename_component(classname ${file} NAME_WE)
         list(APPEND GObjectDOMBindings_CLASS_LIST ${classname})
         list(APPEND GObjectDOMBindings_INSTALLED_HEADERS ${DERIVED_SOURCES_GOBJECT_DOM_BINDINGS_DIR}/WebKitDOM${classname}.h)
+        list(APPEND GObjectDOMBindingsSymbolsFiles ${DERIVED_SOURCES_GOBJECT_DOM_BINDINGS_DIR}/WebKitDOM${classname}.symbols)
     endforeach ()
 
     # Propagate this variable to the parent scope, so that it can be used in other parts of the build.
@@ -686,7 +697,7 @@ if (ENABLE_WEBKIT2)
     )
 
     add_custom_target(fake-installed-webkitdom-headers
-        COMMAND ln -n -s -f ${WEBCORE_DIR}/bindings/gobject/* ${DERIVED_SOURCES_GOBJECT_DOM_BINDINGS_DIR}
+        COMMAND ln -n -s -f ${WEBCORE_DIR}/bindings/gobject/*.h ${DERIVED_SOURCES_GOBJECT_DOM_BINDINGS_DIR}
     )
 
     GENERATE_BINDINGS(GObjectDOMBindings_SOURCES
@@ -719,6 +730,17 @@ if (ENABLE_WEBKIT2)
                   bindings/gobject/WebKitDOMDeprecated.h
                   bindings/gobject/WebKitDOMObject.h
             DESTINATION "${WEBKITGTK_HEADER_INSTALL_DIR}/webkitdom"
+    )
+
+    add_custom_command(
+        OUTPUT ${DERIVED_SOURCES_GOBJECT_DOM_BINDINGS_DIR}/webkitdom.symbols
+        DEPENDS ${GObjectDOMBindingsSymbolsFiles} ${CMAKE_SOURCE_DIR}/Tools/gtk/check-gdom-symbols
+        COMMAND ln -n -s -f ${WEBCORE_DIR}/bindings/gobject/WebKitDOM*.symbols ${DERIVED_SOURCES_GOBJECT_DOM_BINDINGS_DIR}
+        COMMAND ${CMAKE_SOURCE_DIR}/Tools/gtk/check-gdom-symbols
+    )
+
+    add_custom_target(generate-gdom-symbols-file
+        DEPENDS GObjectDOMBindings ${DERIVED_SOURCES_GOBJECT_DOM_BINDINGS_DIR}/webkitdom.symbols
     )
 endif ()
 

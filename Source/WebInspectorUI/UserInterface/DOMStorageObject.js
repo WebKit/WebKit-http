@@ -28,15 +28,24 @@ WebInspector.DOMStorageObject = function(id, host, isLocalStorage)
     this._id = id;
     this._host = host;
     this._isLocalStorage = isLocalStorage;
+    this._entries = new Map;
 };
 
 WebInspector.DOMStorageObject.TypeIdentifier = "dom-storage";
 WebInspector.DOMStorageObject.HostCookieKey = "dom-storage-object-host";
 WebInspector.DOMStorageObject.LocalStorageCookieKey = "dom-storage-object-local-storage";
 
+WebInspector.DOMStorageObject.Event = {
+    ItemsCleared: "dom-storage-object-items-cleared",
+    ItemAdded: "dom-storage-object-item-added",
+    ItemRemoved: "dom-storage-object-item-removed",
+    ItemUpdated: "dom-storage-object-updated",
+};
+
 WebInspector.DOMStorageObject.prototype = {
     constructor: WebInspector.DOMStorageObject,
-    
+    __proto__: WebInspector.Object.prototype,
+
     get id()
     {
         return this._id;
@@ -45,6 +54,11 @@ WebInspector.DOMStorageObject.prototype = {
     get host()
     {
         return this._host;
+    },
+
+    get entries()
+    {
+        return this._entries;
     },
 
     saveIdentityToCookie: function(cookie)
@@ -67,13 +81,38 @@ WebInspector.DOMStorageObject.prototype = {
             DOMStorageAgent.getDOMStorageItems(this._id, callback);
     },
 
-    removeItem: function(key, callback)
+    removeItem: function(key)
     {
-        DOMStorageAgent.removeDOMStorageItem(this._id, key, callback);
+        DOMStorageAgent.removeDOMStorageItem(this._id, key);
     },
 
-    setItem: function(key, value, callback)
+    setItem: function(key, value)
     {
-        DOMStorageAgent.setDOMStorageItem(this._id, key, value, callback);
+        DOMStorageAgent.setDOMStorageItem(this._id, key, value);
+    },
+
+    itemsCleared: function()
+    {
+        this._entries.clear();
+        this.dispatchEventToListeners(WebInspector.DOMStorageObject.Event.ItemsCleared);
+    },
+
+    itemRemoved: function(key)
+    {
+        this._entries.delete(key);
+        this.dispatchEventToListeners(WebInspector.DOMStorageObject.Event.ItemRemoved, {key: key});
+    },
+
+    itemAdded: function(key, value)
+    {
+        this._entries.set(key, value);
+        this.dispatchEventToListeners(WebInspector.DOMStorageObject.Event.ItemAdded, {key: key, value: value});
+    },
+
+    itemUpdated: function(key, oldValue, value)
+    {
+        this._entries.set(key, value);
+        var data = {key: key, oldValue: oldValue, value: value};
+        this.dispatchEventToListeners(WebInspector.DOMStorageObject.Event.ItemUpdated, data);
     }
 };

@@ -46,6 +46,10 @@
 struct OpaqueJSClass;
 struct OpaqueJSClassContextData;
 
+namespace Inspector {
+class JSGlobalObjectInspectorController;
+}
+
 namespace JSC {
 
 class ArrayPrototype;
@@ -68,6 +72,7 @@ class JSStack;
 class LLIntOffsetsExtractor;
 class Microtask;
 class NativeErrorConstructor;
+class ObjectConstructor;
 class ProgramCodeBlock;
 class ProgramExecutable;
 class RegExpConstructor;
@@ -159,6 +164,7 @@ protected:
     WriteBarrier<NativeErrorConstructor> m_typeErrorConstructor;
     WriteBarrier<NativeErrorConstructor> m_URIErrorConstructor;
     WriteBarrier<JSPromiseConstructor> m_promiseConstructor;
+    WriteBarrier<ObjectConstructor> m_objectConstructor;
 
     WriteBarrier<JSFunction> m_evalFunction;
     WriteBarrier<JSFunction> m_callFunction;
@@ -231,6 +237,7 @@ protected:
 #endif
 
 #if ENABLE(REMOTE_INSPECTOR)
+    std::unique_ptr<Inspector::JSGlobalObjectInspectorController> m_inspectorController;
     std::unique_ptr<JSGlobalObjectDebuggable> m_inspectorDebuggable;
 #endif
 
@@ -335,6 +342,7 @@ public:
     RegExpConstructor* regExpConstructor() const { return m_regExpConstructor.get(); }
 
     ErrorConstructor* errorConstructor() const { return m_errorConstructor.get(); }
+    ObjectConstructor* objectConstructor() const { return m_objectConstructor.get(); }
     NativeErrorConstructor* evalErrorConstructor() const { return m_evalErrorConstructor.get(); }
     NativeErrorConstructor* rangeErrorConstructor() const { return m_rangeErrorConstructor.get(); }
     NativeErrorConstructor* referenceErrorConstructor() const { return m_referenceErrorConstructor.get(); }
@@ -425,6 +433,10 @@ public:
 #if ENABLE(WEB_REPLAY)
     JS_EXPORT_PRIVATE void setInputCursor(PassRefPtr<InputCursor>);
     InputCursor& inputCursor() const { return *m_inputCursor; }
+#endif
+
+#if ENABLE(REMOTE_INSPECTOR)
+    Inspector::JSGlobalObjectInspectorController& inspectorController() const { return *m_inspectorController.get(); }
 #endif
 
     void setName(const String&);
@@ -591,7 +603,7 @@ inline bool JSGlobalObject::hasOwnPropertyForWrite(ExecState* exec, PropertyName
 
 inline bool JSGlobalObject::symbolTableHasProperty(PropertyName propertyName)
 {
-    SymbolTableEntry entry = symbolTable()->inlineGet(propertyName.publicName());
+    SymbolTableEntry entry = symbolTable()->inlineGet(propertyName.uid());
     return !entry.isNull();
 }
 

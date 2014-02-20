@@ -743,8 +743,7 @@ public:
     ColorSpace colorSpace() const { return static_cast<ColorSpace>(rareInheritedData->colorSpace); }
     float opacity() const { return rareNonInheritedData->opacity; }
     ControlPart appearance() const { return static_cast<ControlPart>(rareNonInheritedData->m_appearance); }
-    // aspect ratio convenience method
-    bool hasAspectRatio() const { return rareNonInheritedData->m_hasAspectRatio; }
+    AspectRatioType aspectRatioType() const { return static_cast<AspectRatioType>(rareNonInheritedData->m_aspectRatioType); }
     float aspectRatio() const { return aspectRatioNumerator() / aspectRatioDenominator(); }
     float aspectRatioDenominator() const { return rareNonInheritedData->m_aspectRatioDenominator; }
     float aspectRatioNumerator() const { return rareNonInheritedData->m_aspectRatioNumerator; }
@@ -814,7 +813,6 @@ public:
     EOverflowWrap overflowWrap() const { return static_cast<EOverflowWrap>(rareInheritedData->overflowWrap); }
     ENBSPMode nbspMode() const { return static_cast<ENBSPMode>(rareInheritedData->nbspMode); }
     LineBreak lineBreak() const { return static_cast<LineBreak>(rareInheritedData->lineBreak); }
-    const AtomicString& highlight() const { return rareInheritedData->highlight; }
     Hyphens hyphens() const { return static_cast<Hyphens>(rareInheritedData->hyphens); }
     short hyphenationLimitBefore() const { return rareInheritedData->hyphenationLimitBefore; }
     short hyphenationLimitAfter() const { return rareInheritedData->hyphenationLimitAfter; }
@@ -972,6 +970,7 @@ public:
     void setBlendMode(BlendMode v) { rareNonInheritedData.access()->m_effectiveBlendMode = v; }
     bool hasBlendMode() const { return static_cast<BlendMode>(rareNonInheritedData->m_effectiveBlendMode) != BlendModeNormal; }
 #else
+    BlendMode blendMode() const { return BlendModeNormal; }
     bool hasBlendMode() const { return false; }
 #endif
  
@@ -1215,7 +1214,7 @@ public:
     void setEmptyCells(EEmptyCell v) { inherited_flags._empty_cells = v; }
     void setCaptionSide(ECaptionSide v) { inherited_flags._caption_side = v; }
 
-    void setHasAspectRatio(bool b) { SET_VAR(rareNonInheritedData, m_hasAspectRatio, b); }
+    void setAspectRatioType(AspectRatioType aspectRatioType) { SET_VAR(rareNonInheritedData, m_aspectRatioType, aspectRatioType); }
     void setAspectRatioDenominator(float v) { SET_VAR(rareNonInheritedData, m_aspectRatioDenominator, v); }
     void setAspectRatioNumerator(float v) { SET_VAR(rareNonInheritedData, m_aspectRatioNumerator, v); }
 
@@ -1271,7 +1270,7 @@ public:
 
     // CSS3 Setters
     void setOutlineOffset(int v) { SET_VAR(m_background, m_outline.m_offset, v); }
-    void setTextShadow(PassOwnPtr<ShadowData>, bool add = false);
+    void setTextShadow(std::unique_ptr<ShadowData>, bool add = false);
     void setTextStrokeColor(const Color& c) { SET_VAR(rareInheritedData, textStrokeColor, c); }
     void setTextStrokeWidth(float w) { SET_VAR(rareInheritedData, textStrokeWidth, w); }
     void setTextFillColor(const Color& c) { SET_VAR(rareInheritedData, textFillColor, c); }
@@ -1290,7 +1289,7 @@ public:
     void setBoxOrdinalGroup(unsigned int og) { SET_VAR(rareNonInheritedData.access()->m_deprecatedFlexibleBox, ordinal_group, og); }
     void setBoxOrient(EBoxOrient o) { SET_VAR(rareNonInheritedData.access()->m_deprecatedFlexibleBox, orient, o); }
     void setBoxPack(EBoxPack p) { SET_VAR(rareNonInheritedData.access()->m_deprecatedFlexibleBox, pack, p); }
-    void setBoxShadow(PassOwnPtr<ShadowData>, bool add = false);
+    void setBoxShadow(std::unique_ptr<ShadowData>, bool add = false);
     void setBoxReflect(PassRefPtr<StyleReflection> reflect) { if (rareNonInheritedData->m_boxReflect != reflect) rareNonInheritedData.access()->m_boxReflect = reflect; }
     void setBoxSizing(EBoxSizing s) { SET_VAR(m_box, m_boxSizing, s); }
     void setFlexGrow(float f) { SET_VAR(rareNonInheritedData.access()->m_flexibleBox, m_flexGrow, f); }
@@ -1333,7 +1332,6 @@ public:
     void setOverflowWrap(EOverflowWrap b) { SET_VAR(rareInheritedData, overflowWrap, b); }
     void setNBSPMode(ENBSPMode b) { SET_VAR(rareInheritedData, nbspMode, b); }
     void setLineBreak(LineBreak b) { SET_VAR(rareInheritedData, lineBreak, b); }
-    void setHighlight(const AtomicString& h) { SET_VAR(rareInheritedData, highlight, h); }
     void setHyphens(Hyphens h) { SET_VAR(rareInheritedData, hyphens, h); }
     void setHyphenationLimitBefore(short limit) { SET_VAR(rareInheritedData, hyphenationLimitBefore, limit); }
     void setHyphenationLimitAfter(short limit) { SET_VAR(rareInheritedData, hyphenationLimitAfter, limit); }
@@ -1674,7 +1672,7 @@ public:
     static TextJustify initialTextJustify() { return TextJustifyAuto; }
 #endif // CSS3_TEXT
     static TextDecorationStyle initialTextDecorationStyle() { return TextDecorationStyleSolid; }
-    static TextDecorationSkip initialTextDecorationSkip() { return TextDecorationSkipInk; }
+    static TextDecorationSkip initialTextDecorationSkip() { return TextDecorationSkipAuto; }
     static TextUnderlinePosition initialTextUnderlinePosition() { return TextUnderlinePositionAuto; }
     static float initialZoom() { return 1.0f; }
     static int initialOutlineOffset() { return 0; }
@@ -1715,7 +1713,6 @@ public:
     static EOverflowWrap initialOverflowWrap() { return NormalOverflowWrap; }
     static ENBSPMode initialNBSPMode() { return NBNORMAL; }
     static LineBreak initialLineBreak() { return LineBreakAuto; }
-    static const AtomicString& initialHighlight() { return nullAtom; }
     static ESpeak initialSpeak() { return SpeakNormal; }
     static Hyphens initialHyphens() { return HyphensManual; }
     static short initialHyphenationLimitBefore() { return -1; }
@@ -1726,7 +1723,7 @@ public:
     static EBorderFit initialBorderFit() { return BorderFitBorder; }
     static EResize initialResize() { return RESIZE_NONE; }
     static ControlPart initialAppearance() { return NoControlPart; }
-    static bool initialHasAspectRatio() { return false; }
+    static AspectRatioType initialAspectRatioType() { return AspectRatioAuto; }
     static float initialAspectRatioDenominator() { return 1; }
     static float initialAspectRatioNumerator() { return 1; }
     static Order initialRTLOrdering() { return LogicalOrder; }

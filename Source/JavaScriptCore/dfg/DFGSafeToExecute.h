@@ -122,6 +122,7 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case ZombieHint:
     case GetArgument:
     case Phantom:
+    case HardPhantom:
     case Upsilon:
     case Phi:
     case Flush:
@@ -252,6 +253,7 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case CheckInBounds:
     case ConstantStoragePointer:
     case Check:
+    case MultiGetByOffset:
         return true;
         
     case GetByVal:

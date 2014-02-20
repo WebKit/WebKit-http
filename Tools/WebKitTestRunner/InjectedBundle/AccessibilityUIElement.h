@@ -35,7 +35,7 @@
 #include <wtf/Platform.h>
 #include <wtf/Vector.h>
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
 #ifdef __OBJC__
 typedef id PlatformUIElement;
 #else
@@ -50,7 +50,7 @@ typedef GRefPtr<AtkObject> PlatformUIElement;
 typedef void* PlatformUIElement;
 #endif
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
 #ifdef __OBJC__
 typedef id NotificationHandler;
 #else
@@ -113,6 +113,7 @@ public:
     JSRetainPtr<JSStringRef> role();
     JSRetainPtr<JSStringRef> subrole();
     JSRetainPtr<JSStringRef> roleDescription();
+    JSRetainPtr<JSStringRef> computedRoleString();
     JSRetainPtr<JSStringRef> title();
     JSRetainPtr<JSStringRef> description();
     JSRetainPtr<JSStringRef> language();
@@ -203,8 +204,9 @@ public:
     JSRetainPtr<JSStringRef> stringForRange(unsigned location, unsigned length);
     JSRetainPtr<JSStringRef> attributedStringForRange(unsigned location, unsigned length);
     bool attributedStringRangeIsMisspelled(unsigned location, unsigned length);
-    unsigned uiElementCountForSearchPredicate(JSContextRef, AccessibilityUIElement* startElement, bool isDirectionNext, JSValueRef searchKey, JSStringRef searchText, bool visibleOnly);
-    PassRefPtr<AccessibilityUIElement> uiElementForSearchPredicate(JSContextRef, AccessibilityUIElement* startElement, bool isDirectionNext, JSValueRef searchKey, JSStringRef searchText, bool visibleOnly);
+    unsigned uiElementCountForSearchPredicate(JSContextRef, AccessibilityUIElement* startElement, bool isDirectionNext, JSValueRef searchKey, JSStringRef searchText, bool visibleOnly, bool immediateDescendantsOnly);
+    PassRefPtr<AccessibilityUIElement> uiElementForSearchPredicate(JSContextRef, AccessibilityUIElement* startElement, bool isDirectionNext, JSValueRef searchKey, JSStringRef searchText, bool visibleOnly, bool immediateDescendantsOnly);
+    JSRetainPtr<JSStringRef> selectTextWithCriteria(JSContextRef, JSStringRef ambiguityResolution, JSValueRef searchStrings, JSStringRef replacementString);
 
     // Text-specific
     JSRetainPtr<JSStringRef> characterAtOffset(int offset);
@@ -262,7 +264,7 @@ private:
     
     // A retained, platform specific object used to help manage notifications for this object.
 #if HAVE(ACCESSIBILITY)
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
     NotificationHandler m_notificationHandler;
 
     void getLinkedUIElements(Vector<RefPtr<AccessibilityUIElement> >&);
@@ -271,7 +273,7 @@ private:
     void getUIElementsWithAttribute(JSStringRef, Vector<RefPtr<AccessibilityUIElement> >&) const;
 #endif
 
-#if PLATFORM(MAC) || PLATFORM(GTK) || PLATFORM(EFL)
+#if PLATFORM(COCOA) || PLATFORM(GTK) || PLATFORM(EFL)
     void getChildren(Vector<RefPtr<AccessibilityUIElement> >&);
     void getChildrenWithRange(Vector<RefPtr<AccessibilityUIElement> >&, unsigned location, unsigned length);
 #endif

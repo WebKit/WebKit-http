@@ -314,6 +314,10 @@ WK_EXPORT bool WKPreferencesGetMediaSourceEnabled(WKPreferencesRef preferencesRe
 WK_EXPORT void WKPreferencesSetViewGestureDebuggingEnabled(WKPreferencesRef preferencesRef, bool enabled);
 WK_EXPORT bool WKPreferencesGetViewGestureDebuggingEnabled(WKPreferencesRef preferencesRef);
 
+// Default to false.
+WK_EXPORT void WKPreferencesSetShouldConvertPositionStyleOnCopy(WKPreferencesRef preferencesRef, bool convert);
+WK_EXPORT bool WKPreferencesGetShouldConvertPositionStyleOnCopy(WKPreferencesRef preferencesRef);
+
 #ifdef __cplusplus
 }
 #endif

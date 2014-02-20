@@ -104,11 +104,10 @@ public:
     virtual void didReceiveDataArray(WebCore::ResourceHandle*, CFArrayRef) override;
 #endif
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
     static size_t fileBackedResourceMinimumSize();
 #if !PLATFORM(IOS)
     virtual void willCacheResponseAsync(WebCore::ResourceHandle*, NSCachedURLResponse *) override;
-    virtual void willStopBufferingData(WebCore::ResourceHandle*, const char*, unsigned) override;
 #endif
 #endif // PLATFORM(MAC)
 
@@ -122,8 +121,8 @@ public:
     bool isSynchronous() const;
     bool isLoadingMainResource() const { return m_isLoadingMainResource; }
     
-    void setHostRecord(HostRecord* hostRecord) { ASSERT(isMainThread()); m_hostRecord = hostRecord; }
-    HostRecord* hostRecord() const { ASSERT(isMainThread()); return m_hostRecord.get(); }
+    void setHostRecord(HostRecord* hostRecord) { ASSERT(RunLoop::isMain()); m_hostRecord = hostRecord; }
+    HostRecord* hostRecord() const { ASSERT(RunLoop::isMain()); return m_hostRecord.get(); }
 
     template<typename T>
     bool sendAbortingOnFailure(T&& message, unsigned messageSendFlags = 0)

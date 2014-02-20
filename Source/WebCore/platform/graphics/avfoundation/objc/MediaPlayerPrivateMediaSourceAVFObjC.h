@@ -72,10 +72,14 @@ public:
     void effectiveRateChanged();
     void sizeChanged();
 
+#if ENABLE(ENCRYPTED_MEDIA_V2)
+    void keyNeeded(Uint8Array*);
+#endif
+
 private:
     // MediaPlayerPrivateInterface
     virtual void load(const String& url) override;
-    virtual void load(const String& url, PassRefPtr<HTMLMediaSource>) override;
+    virtual void load(const String& url, MediaSourcePrivateClient*) override;
     virtual void cancelLoad() override;
 
     virtual void prepareToPlay() override;
@@ -160,7 +164,7 @@ private:
 
     MediaPlayer* m_player;
     WeakPtrFactory<MediaPlayerPrivateMediaSourceAVFObjC> m_weakPtrFactory;
-    RefPtr<HTMLMediaSource> m_mediaSource;
+    RefPtr<MediaSourcePrivateClient> m_mediaSource;
     RefPtr<MediaSourcePrivateAVFObjC> m_mediaSourcePrivate;
     RetainPtr<AVAsset> m_asset;
     RetainPtr<AVSampleBufferDisplayLayer> m_sampleBufferDisplayLayer;

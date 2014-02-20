@@ -358,7 +358,7 @@ IntPoint ChromeClientEfl::screenToRootView(const IntPoint& point) const
 
 PlatformPageClient ChromeClientEfl::platformPageClient() const
 {
-    return EWKPrivate::corePageClient(m_view);
+    return m_view;
 }
 
 void ChromeClientEfl::scrollbarsModeDidChange() const
@@ -495,11 +495,6 @@ void ChromeClientEfl::runOpenPanel(Frame* frame, PassRefPtr<FileChooser> prpFile
         chooser->chooseFiles(filenames);
     else
         chooser->chooseFile(filenames[0]);
-}
-
-void ChromeClientEfl::formStateDidChange(const Node*)
-{
-    notImplemented();
 }
 
 void ChromeClientEfl::setCursor(const Cursor& cursor)

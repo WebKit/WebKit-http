@@ -441,6 +441,26 @@ WebInspector.DOMNode.prototype = {
         DOMAgent.getEventListenersForNode(this.id, callback);
     },
 
+    accessibilityProperties: function(callback)
+    {
+        function accessibilityPropertiesCallback(error, accessibilityProperties)
+        {
+            if (!error && callback && accessibilityProperties) {
+                callback({
+                    exists: accessibilityProperties.exists,
+                    ignored: accessibilityProperties.ignored,
+                    ignoredByDefault: accessibilityProperties.ignoredByDefault,
+                    invalid: accessibilityProperties.invalid,
+                    hidden: accessibilityProperties.hidden,
+                    label: accessibilityProperties.label,
+                    required: accessibilityProperties.required,
+                    role: accessibilityProperties.role
+                });
+            }
+        }
+        DOMAgent.getAccessibilityPropertiesForNode(this.id, accessibilityPropertiesCallback.bind(this));
+    },
+
     /**
      * @return {string}
      */

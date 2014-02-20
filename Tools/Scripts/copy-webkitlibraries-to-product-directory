@@ -24,6 +24,7 @@
 # THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use strict;
+use File::Spec;
 use FindBin;
 use Getopt::Long qw(:config pass_through);
 use lib $FindBin::Bin;
@@ -34,6 +35,8 @@ my $llvm = 0;
 my $wksi = 0;
 my $llvmIncludePackage = "";
 my $llvmLibraryPackage = "";
+my $useFullLibPaths = 0;
+my $force = 0;
 
 my $programName = basename($0);
 my $usage = <<EOF;
@@ -43,6 +46,8 @@ Usage: $programName [options]
   --[no-]wksi                   Toggle copying WebKitSystemInterface drops (default: $wksi)
   --use-llvm-includes=<path>    Get the LLVM inludes package from <path>
   --use-llvm-libraries=<path>   Get the LLVM libraries package from <path>
+  --[no-]use-full-lib-paths     Toggle using full library paths
+  --[no-]force                  Toggle forcing the copy - i.e. ignoring timestamps (default: $force)
 EOF
 
 GetOptions(
@@ -51,6 +56,8 @@ GetOptions(
     'wksi!' => \$wksi,
     'use-llvm-includes=s' => \$llvmIncludePackage,
     'use-llvm-libraries=s' => \$llvmLibraryPackage,
+    'use-full-lib-paths!' => \$useFullLibPaths,
+    'force!' => \$force
 );
 
 if ($showHelp) {
@@ -59,7 +66,11 @@ if ($showHelp) {
 }
 
 my $productDir = shift @ARGV;
-$productDir = $ENV{BUILT_PRODUCTS_DIR} if !$productDir;
+if ($productDir) {
+    $productDir = File::Spec->rel2abs($productDir);
+} else {
+    $productDir = $ENV{BUILT_PRODUCTS_DIR};
+}
 
 chdirWebKit();
 
@@ -69,7 +80,7 @@ chomp $ranlib;
 sub unpackIfNecessary
 {
     my ($targetDir, $sampleFile, $package, $hasLibraries) = @_;
-    if (!-e $sampleFile || -M $sampleFile > -M $package) {
+    if ($force || !-e $sampleFile || -M $sampleFile > -M $package) {
         print "Unpacking $package into $targetDir\n";
         (system("tar -C $targetDir -xmf $package") == 0) or die;
         if ($hasLibraries) {
@@ -87,7 +98,7 @@ sub unpackIfNecessary
 sub dittoHeaders
 {
     my ($srcHeader, $header) = @_;
-    if (!-e $header || -M $header > -M $srcHeader) {
+    if ($force || !-e $header || -M $header > -M $srcHeader) {
         print "Updating $header\n";
         (system("ditto", $srcHeader, $header) == 0) or die;
     }
@@ -95,6 +106,9 @@ sub dittoHeaders
 
 if ($wksi) {
     (system("mkdir", "-p", "$productDir/usr/local/include") == 0) or die;
+    
+    my $libraryDir = $useFullLibPaths ? "$productDir/usr/local/lib" : $productDir;
+    (system("mkdir", "-p", $libraryDir) == 0) or die;
 
     my @librariesToCopy = (
         "libWebKitSystemInterfaceLion.a",
@@ -104,8 +118,8 @@ if ($wksi) {
     
     foreach my $libName (@librariesToCopy) {
         my $srcLib = "WebKitLibraries/" . $libName;
-        my $lib = "$productDir/" . $libName;
-        if (!-e $lib || -M $lib > -M $srcLib) {
+        my $lib = "$libraryDir/" . $libName;
+        if ($force || !-e $lib || -M $lib > -M $srcLib) {
             print "Updating $lib\n";
             (system("ditto", $srcLib, $lib) == 0) or die;
             (system($ranlib, $lib) == 0) or die;
@@ -117,6 +131,9 @@ if ($wksi) {
 
 if ($llvm) {
     (system("mkdir", "-p", "$productDir/usr/local/LLVMForJavaScriptCore/include") == 0) or die;
+
+    my $libraryDir = $useFullLibPaths ? "$productDir/usr/local/LLVMForJavaScriptCore/lib" : $productDir;
+    (system("mkdir", "-p", $libraryDir) == 0) or die;
 
     # Determine where to get LLVM binaries and headers.
     my $majorDarwinVersion = (split /\./, `uname -r`)[0];
@@ -175,31 +192,39 @@ if ($llvm) {
     my $shouldUpdateLLVMLibraryToken = 0;
 
     if ($useOwnLLVM) {
-        if (!-e "$ownLLVMDirectory/Makefile.config") {
+        if (!-e "$ownLLVMDirectory/wkLLVMBuild/Makefile.config") {
             print("Configuring LLVM.\n");
-            (system("sh", "Tools/Scripts/configure-llvm", $ownLLVMDirectory)==0) or die;
+            (system("mkdir -p $ownLLVMDirectory/wkLLVMBuild"));
+            my $flags = "--enable-optimized=yes --enable-backtraces=no --enable-targets=x86_64 --enable-libcpp=yes --enable-zlib=no --enable-terminfo=no --enable-crash-overrides=no";
+            (system("(cd $ownLLVMDirectory/wkLLVMBuild && ../configure $flags)") == 0) or die;
         }
 
         print("Building LLVM.\n");
-        chdir $ownLLVMDirectory;
+        chdir "$ownLLVMDirectory/wkLLVMBuild";
+        my $oldPath = $ENV{"PATH"};
+        my $binariesDirectory = "binariesForLLVMBuild";
+        if (-e $binariesDirectory) {
+            $ENV{"PATH"} = File::Spec->rel2abs($binariesDirectory) . ":" . $oldPath;
+        }
         (system("(unset PROJECT_NAME ; make -j `sysctl -n hw.activecpu`)") == 0) or die;
+        $ENV{"PATH"} = $oldPath;
         chdirWebKit();
         
         my $ownLLVMBuildMode = "";
-        if (fileContains($ownLLVMDirectory . "/Makefile.config", "ENABLE_OPTIMIZED=1")) {
+        if (fileContains($ownLLVMDirectory . "/wkLLVMBuild/Makefile.config", "ENABLE_OPTIMIZED=1")) {
             $ownLLVMBuildMode .= "Release";
         } else {
             $ownLLVMBuildMode .= "Debug";
         }
         
-        if (fileContains($ownLLVMDirectory . "/Makefile.config", "DISABLE_ASSERTIONS=1")) {
+        if (fileContains($ownLLVMDirectory . "/wkLLVMBuild/Makefile.config", "DISABLE_ASSERTIONS=1")) {
             # Nothing to do.
         } else {
             $ownLLVMBuildMode .= "+Asserts";
         }
         
-        my $librarySourceDirectory = "$ownLLVMDirectory/$ownLLVMBuildMode/lib";
-        my $libraryTargetDirectory = $productDir;
+        my $librarySourceDirectory = "$ownLLVMDirectory/wkLLVMBuild/$ownLLVMBuildMode/lib";
+        my $libraryTargetDirectory = $libraryDir;
         $shouldUpdateLLVMLibraryToken = 0;
         print("Symlinking libraries from $librarySourceDirectory to $libraryTargetDirectory\n");
         opendir (my $dirHandle, $librarySourceDirectory);
@@ -212,7 +237,8 @@ if ($llvm) {
             my $ranlibToken = "$libraryTargetDirectory/.ranlibToken-$filename";
             unlink($targetLibrary);
             symlink($sourceLibrary, $targetLibrary);
-            if (!-e $ranlibToken
+            if ($force
+                || !-e $ranlibToken
                 || !fileContentsEquals($ranlibToken, $sourceLibrary)
                 || -M $ranlibToken > -M $sourceLibrary) {
                 print "   Ranlib $filename\n";
@@ -226,23 +252,22 @@ if ($llvm) {
         closedir $dirHandle;
     } else {
         $shouldUpdateLLVMLibraryToken =
-            unpackIfNecessary($productDir, "$productDir/libLLVMCore.a", $llvmLibraryPackage, 1);
+            unpackIfNecessary($libraryDir, "$libraryDir/libLLVMCore.a", $llvmLibraryPackage, 1);
     }
 
+    (system("rm", "-f", "$productDir/ExtraIncludesForLocalLLVMBuild") == 0) or die;
     if ($useOwnLLVM) {
         (system("rm", "-rf", "$productDir/usr/local/LLVMForJavaScriptCore/include/llvm") == 0) or die;
         (system("rm", "-rf", "$productDir/usr/local/LLVMForJavaScriptCore/include/llvm-c") == 0) or die;
         symlink("$ownLLVMDirectory/include/llvm", "$productDir/usr/local/LLVMForJavaScriptCore/include/llvm") or die;
         symlink("$ownLLVMDirectory/include/llvm-c", "$productDir/usr/local/LLVMForJavaScriptCore/include/llvm-c") or die;
+        symlink("$ownLLVMDirectory/wkLLVMBuild/include", "$productDir/ExtraIncludesForLocalLLVMBuild") or die;
     } else {
         unpackIfNecessary("$productDir/usr/local/LLVMForJavaScriptCore/include", "$productDir/usr/local/LLVMForJavaScriptCore/include/llvm-c/Core.h", $llvmIncludePackage, 0);
     }
 
-    my $llvmLibraryToken = "$productDir/usr/local/LLVMForJavaScriptCore/include/WebKitLLVMLibraryToken.h";
-    if ($shouldUpdateLLVMLibraryToken || !-e $llvmLibraryToken) {
-        (open my $fileHandle, ">", $llvmLibraryToken) or die;
-        print {$fileHandle} "/* This file fools WebKit's build system into relinking JavaScriptCore if the LLVM libraries changed. */\n";
-        close $fileHandle;
+    if ($shouldUpdateLLVMLibraryToken) {
+        (system("touch", "Source/JavaScriptCore/llvm/library/LLVMAnchor.cpp") == 0) or die;
     }
 }
 

@@ -28,6 +28,8 @@
 
 #if ENABLE(DFG_JIT)
 
+#include "JSCInlines.h"
+
 namespace JSC { namespace DFG {
 
 BinarySwitch::BinarySwitch(GPRReg value, const Vector<int64_t>& cases, Type type)

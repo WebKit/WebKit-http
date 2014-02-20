@@ -37,7 +37,7 @@
 #include "DFGJITCode.h"
 #include "GetByIdStatus.h"
 #include "JSActivation.h"
-#include "Operations.h"
+#include "JSCInlines.h"
 #include "PreciseJumpTargets.h"
 #include "PutByIdStatus.h"
 #include "StackAlignment.h"
@@ -179,6 +179,7 @@ private:
     void handleGetById(
         int destinationOperand, SpeculatedType, Node* base, unsigned identifierNumber,
         const GetByIdStatus&);
+    Node* emitPrototypeChecks(const GetByIdVariant&);
 
     Node* getScope(bool skipTop, unsigned skipCount);
     
@@ -257,7 +258,7 @@ private:
     Node* injectLazyOperandSpeculation(Node* node)
     {
         ASSERT(node->op() == GetLocal);
-        ASSERT(node->codeOrigin.bytecodeIndex == m_currentIndex);
+        ASSERT(node->origin.semantic.bytecodeIndex == m_currentIndex);
         ConcurrentJITLocker locker(m_inlineStackTop->m_profiledBlock->m_lock);
         LazyOperandValueProfileKey key(m_currentIndex, node->local());
         SpeculatedType prediction = m_inlineStackTop->m_lazyOperands.prediction(locker, key);
@@ -725,7 +726,8 @@ private:
     Node* addToGraph(NodeType op, Node* child1 = 0, Node* child2 = 0, Node* child3 = 0)
     {
         Node* result = m_graph.addNode(
-            SpecNone, op, currentCodeOrigin(), Edge(child1), Edge(child2), Edge(child3));
+            SpecNone, op, NodeOrigin(currentCodeOrigin()), Edge(child1), Edge(child2),
+            Edge(child3));
         ASSERT(op != Phi);
         m_currentBlock->append(result);
         return result;
@@ -733,7 +735,7 @@ private:
     Node* addToGraph(NodeType op, Edge child1, Edge child2 = Edge(), Edge child3 = Edge())
     {
         Node* result = m_graph.addNode(
-            SpecNone, op, currentCodeOrigin(), child1, child2, child3);
+            SpecNone, op, NodeOrigin(currentCodeOrigin()), child1, child2, child3);
         ASSERT(op != Phi);
         m_currentBlock->append(result);
         return result;
@@ -741,7 +743,8 @@ private:
     Node* addToGraph(NodeType op, OpInfo info, Node* child1 = 0, Node* child2 = 0, Node* child3 = 0)
     {
         Node* result = m_graph.addNode(
-            SpecNone, op, currentCodeOrigin(), info, Edge(child1), Edge(child2), Edge(child3));
+            SpecNone, op, NodeOrigin(currentCodeOrigin()), info, Edge(child1), Edge(child2),
+            Edge(child3));
         ASSERT(op != Phi);
         m_currentBlock->append(result);
         return result;
@@ -749,7 +752,7 @@ private:
     Node* addToGraph(NodeType op, OpInfo info1, OpInfo info2, Node* child1 = 0, Node* child2 = 0, Node* child3 = 0)
     {
         Node* result = m_graph.addNode(
-            SpecNone, op, currentCodeOrigin(), info1, info2,
+            SpecNone, op, NodeOrigin(currentCodeOrigin()), info1, info2,
             Edge(child1), Edge(child2), Edge(child3));
         ASSERT(op != Phi);
         m_currentBlock->append(result);
@@ -759,7 +762,7 @@ private:
     Node* addToGraph(Node::VarArgTag, NodeType op, OpInfo info1, OpInfo info2)
     {
         Node* result = m_graph.addNode(
-            SpecNone, Node::VarArg, op, currentCodeOrigin(), info1, info2,
+            SpecNone, Node::VarArg, op, NodeOrigin(currentCodeOrigin()), info1, info2,
             m_graph.m_varArgChildren.size() - m_numPassedVarArgs, m_numPassedVarArgs);
         ASSERT(op != Phi);
         m_currentBlock->append(result);
@@ -1665,6 +1668,11 @@ bool ByteCodeParser::handleIntrinsic(int resultOperand, Intrinsic intrinsic, int
         return true;
     }
         
+    case DFGTrue: {
+        set(VirtualRegister(resultOperand), getJSConstantForValue(jsBoolean(true), 0));
+        return true;
+    }
+        
     default:
         return false;
     }
@@ -1819,6 +1827,21 @@ Node* ByteCodeParser::handlePutByOffset(Node* base, unsigned identifier, Propert
     return result;
 }
 
+Node* ByteCodeParser::emitPrototypeChecks(const GetByIdVariant& variant)
+{
+    Node* base = 0;
+    m_graph.chains().addLazily(variant.chain());
+    Structure* currentStructure = variant.structureSet().singletonStructure();
+    JSObject* currentObject = 0;
+    for (unsigned i = 0; i < variant.chain()->size(); ++i) {
+        currentObject = asObject(currentStructure->prototypeForLookup(m_inlineStackTop->m_codeBlock));
+        currentStructure = variant.chain()->at(i);
+        base = cellConstantWithStructureCheck(currentObject, currentStructure);
+    }
+    RELEASE_ASSERT(base);
+    return base;
+}
+
 void ByteCodeParser::handleGetById(
     int destinationOperand, SpeculatedType prediction, Node* base, unsigned identifierNumber,
     const GetByIdStatus& getByIdStatus)
@@ -1831,25 +1854,42 @@ void ByteCodeParser::handleGetById(
         return;
     }
     
-    ASSERT(getByIdStatus.structureSet().size());
+    if (getByIdStatus.numVariants() > 1) {
+        if (!isFTL(m_graph.m_plan.mode)) {
+            set(VirtualRegister(destinationOperand),
+                addToGraph(GetById, OpInfo(identifierNumber), OpInfo(prediction), base));
+            return;
+        }
+        
+        // 1) Emit prototype structure checks for all chains. This could sort of maybe not be
+        //    optimal, if there is some rarely executed case in the chain that requires a lot
+        //    of checks and those checks are not watchpointable.
+        for (unsigned variantIndex = getByIdStatus.numVariants(); variantIndex--;) {
+            if (getByIdStatus[variantIndex].chain())
+                emitPrototypeChecks(getByIdStatus[variantIndex]);
+        }
+        
+        // 2) Emit a MultiGetByOffset
+        MultiGetByOffsetData* data = m_graph.m_multiGetByOffsetData.add();
+        data->variants = getByIdStatus.variants();
+        data->identifierNumber = identifierNumber;
+        set(VirtualRegister(destinationOperand),
+            addToGraph(MultiGetByOffset, OpInfo(data), OpInfo(prediction), base));
+        return;
+    }
+    
+    ASSERT(getByIdStatus.numVariants() == 1);
+    GetByIdVariant variant = getByIdStatus[0];
                 
     if (m_graph.compilation())
         m_graph.compilation()->noticeInlinedGetById();
     
     Node* originalBaseForBaselineJIT = base;
                 
-    addToGraph(CheckStructure, OpInfo(m_graph.addStructureSet(getByIdStatus.structureSet())), base);
+    addToGraph(CheckStructure, OpInfo(m_graph.addStructureSet(variant.structureSet())), base);
     
-    if (getByIdStatus.chain()) {
-        m_graph.chains().addLazily(getByIdStatus.chain());
-        Structure* currentStructure = getByIdStatus.structureSet().singletonStructure();
-        JSObject* currentObject = 0;
-        for (unsigned i = 0; i < getByIdStatus.chain()->size(); ++i) {
-            currentObject = asObject(currentStructure->prototypeForLookup(m_inlineStackTop->m_codeBlock));
-            currentStructure = getByIdStatus.chain()->at(i);
-            base = cellConstantWithStructureCheck(currentObject, currentStructure);
-        }
-    }
+    if (variant.chain())
+        base = emitPrototypeChecks(variant);
     
     // Unless we want bugs like https://bugs.webkit.org/show_bug.cgi?id=88783, we need to
     // ensure that the base of the original get_by_id is kept alive until we're done with
@@ -1857,18 +1897,18 @@ void ByteCodeParser::handleGetById(
     // on something other than the base following the CheckStructure on base, or if the
     // access was compiled to a WeakJSConstant specific value, in which case we might not
     // have any explicit use of the base at all.
-    if (getByIdStatus.specificValue() || originalBaseForBaselineJIT != base)
+    if (variant.specificValue() || originalBaseForBaselineJIT != base)
         addToGraph(Phantom, originalBaseForBaselineJIT);
     
-    if (getByIdStatus.specificValue()) {
-        ASSERT(getByIdStatus.specificValue().isCell());
+    if (variant.specificValue()) {
+        ASSERT(variant.specificValue().isCell());
         
-        set(VirtualRegister(destinationOperand), cellConstant(getByIdStatus.specificValue().asCell()));
+        set(VirtualRegister(destinationOperand), cellConstant(variant.specificValue().asCell()));
         return;
     }
     
     handleGetByOffset(
-        destinationOperand, prediction, base, identifierNumber, getByIdStatus.offset());
+        destinationOperand, prediction, base, identifierNumber, variant.offset());
 }
 
 void ByteCodeParser::prepareToParseBlock()
@@ -1955,6 +1995,8 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             // Initialize all locals to undefined.
             for (int i = 0; i < m_inlineStackTop->m_codeBlock->m_numVars; ++i)
                 set(virtualRegisterForLocal(i), constantUndefined(), ImmediateSet);
+            if (m_inlineStackTop->m_codeBlock->specializationKind() == CodeForConstruct)
+                set(virtualRegisterForArgument(0), constantUndefined(), ImmediateSet);
             NEXT_OPCODE(op_enter);
             
         case op_touch_entry:
@@ -3130,13 +3172,13 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             case GlobalProperty:
             case GlobalPropertyWithVarInjectionChecks: {
                 GetByIdStatus status = GetByIdStatus::computeFor(*m_vm, structure, uid);
-                if (status.takesSlowPath()) {
+                if (status.state() != GetByIdStatus::Simple || status.numVariants() != 1) {
                     set(VirtualRegister(dst), addToGraph(GetByIdFlush, OpInfo(identifierNumber), OpInfo(prediction), get(VirtualRegister(scope))));
                     break;
                 }
-                Node* base = cellConstantWithStructureCheck(globalObject, status.structureSet().singletonStructure());
+                Node* base = cellConstantWithStructureCheck(globalObject, status[0].structureSet().singletonStructure());
                 addToGraph(Phantom, get(VirtualRegister(scope)));
-                if (JSValue specificValue = status.specificValue())
+                if (JSValue specificValue = status[0].specificValue())
                     set(VirtualRegister(dst), cellConstant(specificValue.asCell()));
                 else
                     set(VirtualRegister(dst), handleGetByOffset(prediction, base, identifierNumber, operand));

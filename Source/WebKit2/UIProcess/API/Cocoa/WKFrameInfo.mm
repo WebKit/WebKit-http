@@ -28,10 +28,29 @@
 
 #if WK_API_ENABLED
 
+#import "WebFrameProxy.h"
 #import <wtf/RetainPtr.h>
 
 @implementation WKFrameInfo {
     RetainPtr<NSURLRequest> _request;
+}
+
+- (instancetype)initWithWebFrameProxy:(WebKit::WebFrameProxy&)webFrameProxy
+{
+    if (!(self = [super init]))
+        return nil;
+
+    _mainFrame = webFrameProxy.isMainFrame();
+
+    // FIXME: This should use the full request of the frame, not just the URL.
+    _request = [NSURLRequest requestWithURL:[NSURL URLWithString:webFrameProxy.url()]];
+
+    return self;
+}
+
+- (NSString *)description
+{
+    return [NSString stringWithFormat:@"<%@: %p; isMainFrame = %s; request = %@>", NSStringFromClass(self.class), self, _mainFrame ? "YES" : "NO", _request.get()];
 }
 
 - (NSURLRequest *)request

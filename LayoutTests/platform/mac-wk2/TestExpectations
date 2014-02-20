@@ -1,14 +1,15 @@
 # This file should contain entries for expectations that are specific
 # to the Apple Mac port running the WebKit2 variant (--webkit-test-runner)
 
-###### This file has four sections. When adding new tests, make sure to
+###### This file has six sections. When adding new tests, make sure to
 ###### add to the right section:
 
 ### (1) Classified failures with bug reports
 ### (2) Classified failures without bug reports (yet)
 ### (3) Unclassified failures
 ### (4) Features that are not supported in WebKit2 and likely never will be
-
+### (5) IndexedDB related failures
+### (6) Features that are not supported in WebKit2, on Mavericks
 
 ########################################
 ### START OF (1) Classified failures with bug reports
@@ -435,9 +436,13 @@ webkit.org/b/127316 svg/dom/SVGPolygonElement-baseVal-list-removal-crash.html [ 
 webkit.org/b/128255 compositing/columns/composited-lr-paginated-repaint.html [ Pass Failure ]
 webkit.org/b/128255 compositing/columns/composited-rl-paginated-repaint.html [ Pass Failure ]
 
+webkit.org/b/128315 editing/caret/caret-color.html [ Pass Failure ]
+
+# Temporarily disabled while working out compositing failures
+plugins/snapshotting [ Skip ]
+
 ### END OF (3) Unclassified failures
 ########################################
-
 
 ########################################
 ### START OF (4) Features that are not supported in WebKit2 and likely never will be
@@ -446,36 +451,132 @@ webkit.org/b/128255 compositing/columns/composited-rl-paginated-repaint.html [ P
 ########################################
 
 ########################################
-### START OF (5) Features that are not supported in WebKit1, so skipped in mac/TestExpectations then re-enabled here
+### START OF (5) IndexedDB related failures
 
-# Snapshotted plugins not enabled on WK1 but are on WK2
-# Temporarily disabled while working out compositing failures
-plugins/snapshotting [ Skip ]
+# Mozilla test failures.
+storage/indexeddb/mozilla/global-data.html [ Skip ]
 
-# This test fails with WebKit1 only.
-editing/secure-input/reset-state-on-navigation.html [ Pass ]
+# Blink tests with unexplained timeouts
+storage/indexeddb/exceptions.html [ Skip ]
+storage/indexeddb/transaction-basics.html [ Skip ]
 
-# Asserts in WebKit1-debug only, so reenabling.
-compositing/geometry/fixed-position-flipped-writing-mode.html [ Pass ]
+# Blink tests with non-trivial text failures.
+storage/indexeddb/create-object-store-options.html [ Skip ]
+storage/indexeddb/cursor-advance.html [ Skip ]
+storage/indexeddb/cursor-basics.html [ Skip ]
+storage/indexeddb/cursor-continue-validity.html [ Skip ]
+storage/indexeddb/cursor-continueprimarykey.html [ Skip ]
+storage/indexeddb/cursor-index-delete.html [ Skip ]
+storage/indexeddb/cursor-key-order.html [ Skip ]
+storage/indexeddb/cursor-leak.html [ Skip ] # Missing needed WKTR feature?
+storage/indexeddb/cursor-overloads.html [ Skip ]
+storage/indexeddb/cursor-primary-key-order.html [ Skip ]
+storage/indexeddb/cursor-request-cycle.html [ Skip ] # Missing needed WKTR feature?
+storage/indexeddb/cursor-update.html [ Skip ]
+storage/indexeddb/data-corruption.html [ Skip ]
+storage/indexeddb/database-close.html [ Skip ]
+storage/indexeddb/database-quota.html [ Skip ]
+storage/indexeddb/duplicates.html [ Skip ] # Difference between null + undefined
+storage/indexeddb/events.html [ Skip ]
+storage/indexeddb/factory-basics.html [ Skip ] # indexedDB.webkitGetDatabaseNames is missing)
+storage/indexeddb/factory-cmp.html [ Skip ]
+storage/indexeddb/get-keyrange.html [ Skip ]
+storage/indexeddb/index-basics.html [ Skip ] # Difference between null + undefined
+storage/indexeddb/index-duplicate-keypaths.html [ Skip ]
+storage/indexeddb/index-multientry.html [ Skip ]
+storage/indexeddb/index-population.html [ Skip ]
+storage/indexeddb/index-unique.html [ Skip ]
+storage/indexeddb/intversion-close-between-events.html [ Skip ]
+storage/indexeddb/intversion-open-with-version.html [ Skip ] # INTMAX exposed to script as database version
+storage/indexeddb/intversion-two-opens-no-versions.html [ Skip ] # INTMAX exposed to script as database version
+storage/indexeddb/key-generator.html [ Skip ]
+storage/indexeddb/key-type-binary.html [ Skip ]
+storage/indexeddb/lazy-index-population.html [ Skip ]
+storage/indexeddb/noblobs.html [ Skip ] # Missing DRT file/blob support
+storage/indexeddb/objectstore-autoincrement.html [ Skip ]
+storage/indexeddb/objectstore-keycursor.html [ Skip ]
+storage/indexeddb/optional-arguments.html [ Skip ]
+storage/indexeddb/request-leak.html [ Skip ] # Missing WKTR support? GC?
+storage/indexeddb/setversion-blocked-by-versionchange-close.html [ Skip ]
+storage/indexeddb/structured-clone.html [ Skip ] # Missing DRT file/blob support
+storage/indexeddb/transaction-and-objectstore-calls.html [ Skip ]
+storage/indexeddb/transaction-error.html [ Skip ]
+storage/indexeddb/transaction-scope-sequencing.html [ Skip ]
 
-# Plug-in blocking callback doesn't exist in WebKit1, so reenabling.
-plugins/unavailable-plugin-indicator-obscurity.html [ Pass ]
+# Blink tests that crash the WebProcess.
+storage/indexeddb/cursor-cast.html [ Skip ]
+storage/indexeddb/deleted-objects.html [ Skip ] # Crashes under WebCore::GetOperation::GetOperation
+storage/indexeddb/metadata.html [ Skip ] # Crashes under IDBDatabaseBackend::createIndex
+storage/indexeddb/persistence.html [ Skip ] # Crash under IDBDatabaseBackend::createObjectStore
+storage/indexeddb/transaction-abort.html [ Skip ] # IDBTransactionBackend::start()
 
-# Color input is enabled on Mac WK2 but not on WK1.
-fast/forms/color/input-color-onchange-event.html [ Pass ]
+# Blink tests that crash the WebProcess under IDBDatabase::dispatchEvent or IDBRequest::dispatchEvent (possibly all related).
+storage/indexeddb/database-deletepending-flag.html [ Skip ]	  
+storage/indexeddb/database-wrapper.html [ Skip ]
+storage/indexeddb/delete-in-upgradeneeded-close-in-open-success.html [ Skip ]
+storage/indexeddb/delete-in-upgradeneeded-close-in-versionchange.html [ Skip ]
+storage/indexeddb/deletedatabase-blocked.html [ Skip ]
+storage/indexeddb/deletedatabase-delayed-by-open-and-versionchange.html [ Skip ]
+storage/indexeddb/deletedatabase-delayed-by-versionchange.html [ Skip ]
+storage/indexeddb/deletedatabase-not-blocked.html [ Skip ]
+storage/indexeddb/factory-deletedatabase.html [ Skip ]
+storage/indexeddb/intversion-blocked.html [ Skip ]
+storage/indexeddb/intversion-gated-on-delete.html [ Skip ]
+storage/indexeddb/intversion-long-queue.html [ Skip ]
+storage/indexeddb/intversion-open-in-upgradeneeded.html [ Skip ]
+storage/indexeddb/intversion-pending-version-changes-ascending.html [ Skip ]
+storage/indexeddb/intversion-pending-version-changes-descending.html [ Skip ]
+storage/indexeddb/intversion-pending-version-changes-same.html [ Skip ]
+storage/indexeddb/intversion-upgrades.html [ Skip ]
+storage/indexeddb/objectstore-basics.html [ Skip ]
+storage/indexeddb/set_version_blocked.html [ Skip ]
+storage/indexeddb/setversion-not-blocked.html [ Skip ]
 
-# This test times out in WebKit1 only.
-fullscreen/anonymous-block-merge-crash.html [ Pass ]
+# Blink tests that crash the DatabaseProcess.
+storage/indexeddb/createIndex-after-failure.html [ Skip ]
+storage/indexeddb/database-odd-names.html [ Skip ] # Crashes under WebKit::DatabaseProcess::ensurePathExists
+storage/indexeddb/deleteIndex.html [ Skip ] # Crashes under WebKit::UniqueIDBDatabase::deleteIndex
+storage/indexeddb/index-cursor.html [ Skip ] # Flaky crash under UniqueIDBDatabase::unregisterConnection
+storage/indexeddb/open-ordering.html [ Skip ] # DatabaseProcessIDBConnection::GetOrEstablishIDBDatabaseMetadata
+storage/indexeddb/transaction-coordination-within-database.html [ Skip ] # SQLiteTransaction::begin
 
-# All IndexedDB tests are skipped in WK1.
-# Reenable individual tests here that are known to pass, with the eventual goal of re-enabling the entire directory.
-storage/indexeddb/mozilla/add-twice-failure.html [ Pass ]
-storage/indexeddb/mozilla/autoincrement-indexes.html [ Pass ]
+# Blink tests that crash the DatabaseProcess under DatabaseProcessIDBConnection::deleteDatabase.
+storage/indexeddb/database-closepending-flag.html [ Skip ]
+storage/indexeddb/key-sort-order-across-types.html [ Skip ]
+storage/indexeddb/key-sort-order-date.html [ Skip ]
+storage/indexeddb/key-type-infinity.html [ Skip ]
+storage/indexeddb/keypath-fetch-key.html [ Skip ]
+storage/indexeddb/odd-strings.html [ Skip ]
+storage/indexeddb/prefetch-invalidation.html [ Skip ]
+storage/indexeddb/queued-commands.html [ Skip ]
 
+# Blink tests that pass once, but are known to cause trouble downstream.
+storage/indexeddb/clone-exception.html [ Skip ]
+storage/indexeddb/connection-leak.html [ Skip ]
+storage/indexeddb/dont-wedge.html [ Skip ]
+storage/indexeddb/key-sort-order-across-types.html [ Skip ]
 
-### END OF (5) Features that are not supported in WebKit1, so skipped in mac/TestExpectations then re-enabled here
+# We don't currently support indexeddb in workers
+storage/indexeddb/basics-shared-workers.html [ Skip ]
+storage/indexeddb/basics-workers.html [ Skip ]
+storage/indexeddb/cursor-advance-workers.html [ Skip ]
+storage/indexeddb/deletedatabase-delayed-by-open-and-versionchange-workers.html [ Skip ]
+storage/indexeddb/dont-commit-on-blocked.html [ Skip ]
+storage/indexeddb/factory-basics-workers.html [ Skip ]
+storage/indexeddb/index-basics-workers.html [ Skip ]
+storage/indexeddb/objectstore-basics-workers.html [ Skip ]
+storage/indexeddb/open-twice-workers.html [ Skip ]
+storage/indexeddb/pending-activity-workers.html [ Skip ]
+storage/indexeddb/pending-version-change-on-exit.html [ Skip ]
+storage/indexeddb/pending-version-change-stuck-works-with-terminate.html [ Skip ]
+storage/indexeddb/pending-version-change-stuck.html [ Skip ]
+storage/indexeddb/transaction-complete-workers.html [ Skip ]
+storage/indexeddb/unprefix-workers.html [ Skip ]
+http/tests/security/cross-origin-worker-indexeddb-allowed.html [ Skip ]
+http/tests/security/cross-origin-worker-indexeddb.html [ Skip ]
+
+### END OF (5) IndexedDB related failures
 ########################################
-
 
 ########################################
 ### START OF (6) Features that are not supported in WebKit2, on Mavericks

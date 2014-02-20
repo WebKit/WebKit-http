@@ -31,10 +31,10 @@
 #include "CodeBlock.h"
 #include "DFGCommon.h"
 #include "Interpreter.h"
+#include "JSCInlines.h"
 
 namespace JSC { namespace DFG {
 
-#if ENABLE(DFG_JIT)
 bool mightCompileEval(CodeBlock* codeBlock)
 {
     return codeBlock->instructionCount() <= Options::maximumOptimizationCandidateInstructionCount();
@@ -245,8 +245,6 @@ CapabilityLevel capabilityLevel(CodeBlock* codeBlock)
     
     return result;
 }
-
-#endif
 
 } } // namespace JSC::DFG
 

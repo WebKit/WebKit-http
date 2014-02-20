@@ -71,20 +71,33 @@ webkit.org/b/116587 http/tests/security/contentSecurityPolicy/connect-src-websoc
 webkit.org/b/116587 http/tests/security/contentSecurityPolicy/connect-src-xmlhttprequest-allowed.html [ Skip ]
 webkit.org/b/116587 http/tests/security/contentSecurityPolicy/connect-src-xmlhttprequest-blocked.html [ Skip ]
 webkit.org/b/116587 http/tests/security/contentSecurityPolicy/default-src-inline-allowed.html [ Skip ]
+webkit.org/b/116587 http/tests/security/contentSecurityPolicy/default-src-inline-blocked.html [ Skip ]
+webkit.org/b/116587 http/tests/security/contentSecurityPolicy/directive-parsing-01.html [ Skip ]
+webkit.org/b/116587 http/tests/security/contentSecurityPolicy/directive-parsing-02.html [ Skip ]
+webkit.org/b/116587 http/tests/security/contentSecurityPolicy/directive-parsing-03.html [ Skip ]
 webkit.org/b/116587 http/tests/websocket/tests/hybi/broken-utf8.html [ Skip ]
 webkit.org/b/116587 http/tests/websocket/tests/hybi/bufferedAmount-after-close-in-busy.html [ Skip ]
 webkit.org/b/116587 http/tests/websocket/tests/hybi/deflate-frame-comp-bit-onoff.html [ Skip ]
+webkit.org/b/116587 http/tests/websocket/tests/hybi/deflate-frame-invalid-parameter.html [ Skip ]
+webkit.org/b/116587 http/tests/websocket/tests/hybi/deflate-frame-parameter.html [ Skip ]
+webkit.org/b/116587 http/tests/websocket/tests/hybi/deflate-frame-set-bfinal.html [ Skip ]
 webkit.org/b/116587 http/tests/websocket/tests/hybi/close-on-unload-and-force-gc.html [ Skip ]
 webkit.org/b/116587 http/tests/websocket/tests/hybi/compressed-control-frame.html [ Skip ]
 webkit.org/b/116587 http/tests/websocket/tests/hybi/cross-origin.html [ Skip ]
 webkit.org/b/116587 http/tests/websocket/tests/hybi/extensions.html [ Skip ]
+webkit.org/b/116587 http/tests/websocket/tests/hybi/echo-with-no-extension.html [ Skip ]
 webkit.org/b/116587 http/tests/websocket/tests/hybi/fragmented-binary-frames.html [ Skip ]
 webkit.org/b/116587 http/tests/websocket/tests/hybi/fragmented-frames.html [ Skip ]
+webkit.org/b/116587 http/tests/websocket/tests/hybi/frame-lengths.html [ Skip ]
 webkit.org/b/116587 http/tests/websocket/tests/hybi/handshake-challenge-randomness.html [ Skip ]
 webkit.org/b/116587 http/tests/websocket/tests/hybi/handshake-error.html [ Skip ]
+webkit.org/b/116587 http/tests/websocket/tests/hybi/handshake-fail-by-maxlength.html [ Skip ]
 webkit.org/b/116587 http/tests/websocket/tests/hybi/nocache.html [ Skip ]
 webkit.org/b/116587 http/tests/websocket/tests/hybi/no-subprotocol.html [ Skip ]
 webkit.org/b/116587 http/tests/websocket/tests/hybi/null-character.html [ Skip ]
+webkit.org/b/116587 http/tests/websocket/tests/hybi/pong.html [ Skip ]
+webkit.org/b/116587 http/tests/websocket/tests/hybi/receive-arraybuffer.html [ Skip ]
+webkit.org/b/116587 http/tests/websocket/tests/hybi/receive-blob.html [ Skip ]
 webkit.org/b/116587 http/tests/websocket/tests/hybi/reserved-bits.html [ Skip ]
 webkit.org/b/116587 http/tests/websocket/tests/hybi/simple.html [ Skip ]
 webkit.org/b/116587 http/tests/websocket/tests/hybi/sub-protocol.html [ Skip ]
@@ -93,14 +106,17 @@ webkit.org/b/116587 http/tests/websocket/tests/hybi/url-with-credential.html [ S
 webkit.org/b/116587 http/tests/websocket/tests/hybi/url-with-empty-query.html [ Skip ]
 webkit.org/b/116587 http/tests/websocket/tests/hybi/workers/close-code-and-reason.html [ Skip ]
 webkit.org/b/116587 http/tests/websocket/tests/hybi/workers/close-in-onmessage-crash.html [ Skip ]
+webkit.org/b/116587 http/tests/websocket/tests/hybi/workers/close-in-worker.html [ Skip ]
 webkit.org/b/116587 http/tests/websocket/tests/hybi/workers/multiple-subprotocols.html [ Skip ]
 webkit.org/b/116587 http/tests/websocket/tests/hybi/zero-length-text.html [ Skip ]
 
 # Started to crash after r162947
 webkit.org/b/128259 compositing/iframes/remove-iframe-crash.html [ Crash ]
 webkit.org/b/128259 fast/dom/Window/web-timing-minimal-performance-now.html [ Crash ]
-webkit.org/b/128259 fast/events/pagehide-xhr-open.html [ Crash ] fast/events/pageshow-pagehide-on-back-cached.html [ Crash ]
-webkit.org/b/128259 fast/events/tab-crash-with-image-map.html [ Crash ] fast/forms/autocomplete.html [ Crash ]
+webkit.org/b/128259 fast/events/pagehide-xhr-open.html [ Crash ]
+webkit.org/b/128259 fast/events/pageshow-pagehide-on-back-cached.html [ Crash ]
+webkit.org/b/128259 fast/events/tab-crash-with-image-map.html [ Crash ]
+webkit.org/b/128259 fast/forms/autocomplete.html [ Crash ]
 webkit.org/b/128259 fast/history/go-back-to-iframe-with-plugin.html [ Crash ]
 webkit.org/b/128259 fast/history/history-back-while-pdf-in-pagecache.html [ Crash ]
 webkit.org/b/128259 fast/history/visited-generated-content-test.html [ Crash ]
@@ -204,9 +220,11 @@ webkit.org/b/127914 webgl/1.0.1/conformance/rendering/gl-drawelements.html [ Cra
 webkit.org/b/127914 webgl/1.0.1/conformance/textures/gl-pixelstorei.html [ Crash Pass ]
 webkit.org/b/127914 webgl/1.0.1/conformance/textures/tex-image-and-sub-image-2d-with-canvas.html [ Crash Pass ]
 webkit.org/b/127914 webgl/1.0.1/conformance/textures/tex-image-and-sub-image-2d-with-image.html [ Crash Pass ]
+webkit.org/b/127914 webgl/1.0.2/conformance/textures/tex-image-and-sub-image-2d-with-image-data.html [ Crash Pass ]
 webkit.org/b/127914 webgl/1.0.2/conformance/extensions/oes-texture-float-with-image-data.html [ Crash Pass ]
 webkit.org/b/127914 webgl/1.0.2/conformance/extensions/webgl-debug-renderer-info.html [ Crash Pass ]
 webkit.org/b/127914 webgl/1.0.2/conformance/rendering/gl-drawelements.html [ Crash Pass ]
+webkit.org/b/127914 webgl/1.0.2/conformance/textures/copy-tex-image-and-sub-image-2d.html [ Crash Pass ]
 webkit.org/b/127914 webgl/1.0.2/conformance/textures/gl-get-tex-parameter.html [ Crash Pass ]
 webkit.org/b/127914 webgl/1.0.2/conformance/textures/tex-image-and-sub-image-2d-with-canvas-rgb565.html [ Crash Pass ]
 webkit.org/b/127914 webgl/1.0.2/conformance/textures/tex-image-and-sub-image-2d-with-canvas-rgba4444.html [ Crash Pass ]
@@ -228,6 +246,11 @@ webkit.org/b/127914 webgl/conformance/textures/tex-image-and-sub-image-2d-with-i
 webkit.org/b/127914 webgl/conformance/textures/tex-image-and-sub-image-2d-with-image-data-rgba4444.html [ Crash Pass ]
 webkit.org/b/127914 webgl/conformance/textures/tex-image-and-sub-image-2d-with-image-data-rgba5551.html [ Crash Pass ]
 webkit.org/b/127914 webgl/conformance/textures/tex-image-and-sub-image-2d-with-image-rgb565.html [ Crash Pass ]
+webkit.org/b/127914 webgl/conformance/textures/texture-npot.html [ Crash Pass ]
+
+webkit.org/b/128259 animations/simultaneous-start-left.html [ Crash Pass ]
+
+webkit.org/b/128906 fast/events/touch/basic-single-touch-events.html [ Crash ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # PASSING TESTS WITH INCORRECT EXPECTATIONS
@@ -270,6 +293,9 @@ webarchive [ Skip ]
 svg/webarchive [ Skip ]
 svg/custom/image-with-prefix-in-webarchive.svg [ Skip ]
 http/tests/webarchive [ Skip ]
+
+# isProtocolHandlerRegistered() isn't supported by WK2 yet.
+webkit.org/b/92749 fast/dom/is-protocol-handler-registered.html [ Skip ]
 
 # WebKitTestRunner needs an implementation for testRunner.titleTextDirection
 webkit.org/b/93470 fast/dom/title-directionality-removeChild.html [ Failure ]
@@ -413,7 +439,6 @@ webkit.org/b/111976 http/tests/websocket/tests/hybi/bufferedAmount-after-close.h
 webkit.org/b/111976 http/tests/websocket/tests/hybi/close-on-unload-reference-in-parent.html [ Crash Pass ]
 webkit.org/b/111976 http/tests/websocket/tests/hybi/fragmented-control-frame.html [ Crash Pass Failure ]
 webkit.org/b/111976 http/tests/websocket/tests/hybi/handshake-fail-by-extensions-header.html [ Crash Pass Failure ]
-webkit.org/b/111976 http/tests/websocket/tests/hybi/handshake-fail-by-maxlength.html [ Pass Failure ]
 webkit.org/b/111976 http/tests/websocket/tests/hybi/handshake-fail-by-mismatch-protocol-header.html [ Crash Pass ]
 webkit.org/b/111976 http/tests/websocket/tests/hybi/reserved-opcodes.html [ Crash Pass ]
 webkit.org/b/111976 http/tests/websocket/tests/hybi/simple-stress.html [ Crash Pass ]
@@ -520,3 +545,19 @@ webkit.org/b/109941 webgl/conformance/textures/origin-clean-conformance.html [ F
 webkit.org/b/109941 webgl/1.0.1/conformance/textures/origin-clean-conformance.html [ Failure ]
 
 webkit.org/b/127780 compositing/regions/position-layers-inside-regions-overflow-hidden.html [ ImageOnlyFailure ]
+
+webkit.org/b/128732 fast/css3-text/css3-text-align-last/text-align-last-with-text-align-justify.html [ ImageOnlyFailure ]
+
+# Failing since added in r162960
+webkit.org/b/128733 fast/css/sticky/sticky-table-row-top.html [ ImageOnlyFailure ]
+webkit.org/b/128733 fast/css/sticky/sticky-table-thead-top.html [ ImageOnlyFailure ]
+
+# Failing since r164015
+webkit.org/b/128734 plugins/nested-plugin-objects.html [ Failure ]
+webkit.org/b/128734 plugins/netscape-destroy-plugin-script-objects.html [ Failure ]
+
+webkit.org/b/128737 fast/events/touch/basic-multi-touch-events.html [ Failure ]
+
+webkit.org/b/128969 fast/sub-pixel/input-caret-on-subpixel-bound.html [ ImageOnlyFailure ]
+
+webkit.org/b/128972 fast/regions/box-decorations-over-region-padding-fragmented.html [ ImageOnlyFailure ]

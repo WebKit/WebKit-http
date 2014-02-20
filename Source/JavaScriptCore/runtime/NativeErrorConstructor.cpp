@@ -25,7 +25,7 @@
 #include "JSFunction.h"
 #include "JSString.h"
 #include "NativeErrorPrototype.h"
-#include "Operations.h"
+#include "JSCInlines.h"
 
 namespace JSC {
 
@@ -36,6 +36,20 @@ const ClassInfo NativeErrorConstructor::s_info = { "Function", &InternalFunction
 NativeErrorConstructor::NativeErrorConstructor(VM& vm, Structure* structure)
     : InternalFunction(vm, structure)
 {
+}
+
+void NativeErrorConstructor::finishCreation(VM& vm, JSGlobalObject* globalObject, Structure* prototypeStructure, const String& name)
+{
+    Base::finishCreation(vm, name);
+    ASSERT(inherits(info()));
+    
+    NativeErrorPrototype* prototype = NativeErrorPrototype::create(vm, globalObject, prototypeStructure, name, this);
+    
+    putDirect(vm, vm.propertyNames->length, jsNumber(1), DontDelete | ReadOnly | DontEnum); // ECMA 15.11.7.5
+    putDirect(vm, vm.propertyNames->prototype, prototype, DontDelete | ReadOnly | DontEnum);
+    m_errorStructure.set(vm, this, ErrorInstance::createStructure(vm, globalObject, prototype));
+    ASSERT(m_errorStructure);
+    ASSERT(m_errorStructure->isObject());
 }
 
 void NativeErrorConstructor::visitChildren(JSCell* cell, SlotVisitor& visitor)

@@ -47,6 +47,7 @@
 #include "PODIntervalTree.h"
 #include "TextTrack.h"
 #include "TextTrackCue.h"
+#include "VTTCue.h"
 #include "VideoTrack.h"
 #endif
 
@@ -74,13 +75,14 @@ class TimeRanges;
 #if ENABLE(PLUGIN_PROXY_FOR_VIDEO)
 class Widget;
 #endif
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
 class DisplaySleepDisabler;
 #endif
 #if ENABLE(ENCRYPTED_MEDIA_V2)
 class MediaKeys;
 #endif
 #if ENABLE(MEDIA_SOURCE)
+class MediaSource;
 class VideoPlaybackQuality;
 #endif
 
@@ -178,6 +180,7 @@ public:
 // playback state
     virtual double currentTime() const override;
     virtual void setCurrentTime(double) override;
+    virtual void setCurrentTime(double, ExceptionCode&);
     virtual double duration() const override;
     virtual bool paused() const override;
     virtual double defaultPlaybackRate() const override;
@@ -249,6 +252,21 @@ public:
     virtual bool canPlay() const override;
 
     double percentLoaded() const;
+
+    DEFINE_ATTRIBUTE_EVENT_LISTENER(emptied);
+    DEFINE_ATTRIBUTE_EVENT_LISTENER(loadedmetadata);
+    DEFINE_ATTRIBUTE_EVENT_LISTENER(loadeddata);
+    DEFINE_ATTRIBUTE_EVENT_LISTENER(canplay);
+    DEFINE_ATTRIBUTE_EVENT_LISTENER(canplaythrough);
+    DEFINE_ATTRIBUTE_EVENT_LISTENER(playing);
+    DEFINE_ATTRIBUTE_EVENT_LISTENER(ended);
+    DEFINE_ATTRIBUTE_EVENT_LISTENER(waiting);
+    DEFINE_ATTRIBUTE_EVENT_LISTENER(durationchange);
+    DEFINE_ATTRIBUTE_EVENT_LISTENER(timeupdate);
+    DEFINE_ATTRIBUTE_EVENT_LISTENER(play);
+    DEFINE_ATTRIBUTE_EVENT_LISTENER(pause);
+    DEFINE_ATTRIBUTE_EVENT_LISTENER(ratechange);
+    DEFINE_ATTRIBUTE_EVENT_LISTENER(volumechange);
 
 #if ENABLE(VIDEO_TRACK)
     PassRefPtr<TextTrack> addTextTrack(const String& kind, const String& label, const String& language, ExceptionCode&);
@@ -459,7 +477,6 @@ private:
     void createMediaPlayer();
 
     virtual bool alwaysCreateUserAgentShadowRoot() const override { return true; }
-    virtual bool areAuthorShadowsAllowed() const override { return false; }
 
     virtual bool hasCustomFocusLogic() const override;
     virtual bool supportsFocus() const override;
@@ -636,7 +653,7 @@ private:
     virtual void mediaCanStart() override;
 
     void setShouldDelayLoadEvent(bool);
-    void invalidateCachedTime();
+    void invalidateCachedTime() const;
     void refreshCachedTime() const;
 
     bool hasMediaControls() const;
@@ -658,7 +675,7 @@ private:
     bool isAutoplaying() const { return m_autoplaying; }
 
     void updateSleepDisabling();
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
     bool shouldDisableSleep() const;
 #endif
 
@@ -721,7 +738,7 @@ private:
     int m_processingMediaPlayerCallback;
 
 #if ENABLE(MEDIA_SOURCE)
-    RefPtr<HTMLMediaSource> m_mediaSource;
+    RefPtr<MediaSource> m_mediaSource;
     unsigned long m_droppedVideoFrames;
 #endif
 
@@ -810,7 +827,7 @@ private:
     friend class MediaController;
     RefPtr<MediaController> m_mediaController;
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
     OwnPtr<DisplaySleepDisabler> m_sleepDisabler;
 #endif
 
@@ -845,7 +862,10 @@ template <>
 struct ValueToString<TextTrackCue*> {
     static String string(TextTrackCue* const& cue)
     {
-        return String::format("%p id=%s interval=%f-->%f cue=%s)", cue, cue->id().utf8().data(), cue->startTime(), cue->endTime(), cue->text().utf8().data());
+        String text;
+        if (cue->isRenderable())
+            text = toVTTCue(cue)->text();
+        return String::format("%p id=%s interval=%f-->%f cue=%s)", cue, cue->id().utf8().data(), cue->startTime(), cue->endTime(), text.utf8().data());
     }
 };
 #endif

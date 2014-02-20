@@ -32,6 +32,7 @@
 #include "DFGClobberSet.h"
 #include "DFGGraph.h"
 #include "DFGPhase.h"
+#include "JSCInlines.h"
 #include <wtf/HashSet.h>
 
 namespace JSC { namespace DFG {

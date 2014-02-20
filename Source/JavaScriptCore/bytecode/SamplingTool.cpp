@@ -32,6 +32,7 @@
 #include "CodeBlock.h"
 #include "Interpreter.h"
 #include "Opcode.h"
+#include "JSCInlines.h"
 
 #if !OS(WINDOWS)
 #include <unistd.h>

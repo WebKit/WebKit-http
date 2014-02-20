@@ -42,7 +42,6 @@
 #include "WebContextConnectionClient.h"
 #include "WebContextInjectedBundleClient.h"
 #include "WebDownloadClient.h"
-#include "WebHistoryClient.h"
 #include "WebProcessProxy.h"
 #include <WebCore/LinkHash.h>
 #include <wtf/Forward.h>
@@ -61,10 +60,14 @@
 #include "NetworkProcessProxy.h"
 #endif
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
 OBJC_CLASS NSObject;
 OBJC_CLASS NSString;
 #endif
+
+namespace API {
+class HistoryClient;
+}
 
 namespace WebKit {
 
@@ -74,9 +77,10 @@ class WebIconDatabase;
 class WebPageGroup;
 class WebPageProxy;
 struct StatisticsData;
+struct WebPageConfiguration;
 struct WebProcessCreationParameters;
     
-typedef GenericCallback<WKDictionaryRef> DictionaryCallback;
+typedef GenericCallback<ImmutableDictionary*> DictionaryCallback;
 
 #if ENABLE(NETWORK_INFO)
 class WebNetworkInfoManagerProxy;
@@ -85,7 +89,7 @@ class WebNetworkInfoManagerProxy;
 struct NetworkProcessCreationParameters;
 #endif
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
 int networkProcessLatencyQOS();
 int networkProcessThroughputQOS();
 int webProcessLatencyQOS();
@@ -127,7 +131,7 @@ public:
     void initializeClient(const WKContextClientBase*);
     void initializeInjectedBundleClient(const WKContextInjectedBundleClientBase*);
     void initializeConnectionClient(const WKContextConnectionClientBase*);
-    void initializeHistoryClient(const WKContextHistoryClientBase*);
+    void setHistoryClient(std::unique_ptr<API::HistoryClient>);
     void initializeDownloadClient(const WKContextDownloadClientBase*);
 
     void setProcessModel(ProcessModel); // Can only be called when there are no processes running.
@@ -156,8 +160,7 @@ public:
 
     StorageManager& storageManager() const { return *m_storageManager; }
 
-    PassRefPtr<WebPageProxy> createWebPage(PageClient&, WebPageGroup*, API::Session&, WebPageProxy* relatedPage = 0);
-    PassRefPtr<WebPageProxy> createWebPage(PageClient&, WebPageGroup*, WebPageProxy* relatedPage = 0);
+    PassRefPtr<WebPageProxy> createWebPage(PageClient&, WebPageConfiguration);
 
     const String& injectedBundlePath() const { return m_injectedBundlePath; }
 
@@ -217,7 +220,7 @@ public:
     DownloadProxy* createDownloadProxy();
     WebDownloadClient& downloadClient() { return m_downloadClient; }
 
-    WebHistoryClient& historyClient() { return m_historyClient; }
+    API::HistoryClient& historyClient() { return *m_historyClient; }
     WebContextClient& client() { return m_client; }
 
     WebIconDatabase* iconDatabase() const { return m_iconDatabase.get(); }
@@ -262,7 +265,7 @@ public:
     void garbageCollectJavaScriptObjects();
     void setJavaScriptGarbageCollectorTimerEnabled(bool flag);
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
     static bool omitPDFSupport();
 #endif
 
@@ -293,7 +296,7 @@ public:
     void getDatabaseProcessConnection(PassRefPtr<Messages::WebProcessProxy::GetDatabaseProcessConnection::DelayedReply>);
 #endif
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
     bool processSuppressionEnabled() const;
     static bool processSuppressionIsEnabledForAllContexts();
 #endif
@@ -327,7 +330,7 @@ public:
     static void unregisterGlobalURLSchemeAsHavingCustomProtocolHandlers(const String&);
 #endif
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
     void updateProcessSuppressionState() const;
 #endif
 
@@ -348,7 +351,6 @@ private:
     void platformInitializeNetworkProcess(NetworkProcessCreationParameters&);
 #endif
 
-#if PLATFORM(MAC)
 #if PLATFORM(IOS)
     void writeWebContentToPasteboard(const WebCore::PasteboardWebContent&);
     void writeImageToPasteboard(const WebCore::PasteboardImage&);
@@ -358,6 +360,7 @@ private:
     void readBufferFromPasteboard(uint64_t index, const String& pasteboardType, SharedMemory::Handle&, uint64_t& size);
     void getPasteboardItemsCount(uint64_t& itemsCount);
 #endif
+#if PLATFORM(COCOA)
     void getPasteboardTypes(const String& pasteboardName, Vector<String>& pasteboardTypes);
     void getPasteboardPathnamesForType(const String& pasteboardName, const String& pasteboardType, Vector<String>& pathnames);
     void getPasteboardStringForType(const String& pasteboardName, const String& pasteboardType, String&);
@@ -374,7 +377,7 @@ private:
     void setPasteboardBufferForType(const String& pasteboardName, const String& pasteboardType, const SharedMemory::Handle&, uint64_t size, uint64_t& newChangeCount);
 #endif
 
-#if !PLATFORM(MAC)
+#if !PLATFORM(COCOA)
     // FIXME: This a dummy message, to avoid breaking the build for platforms that don't require
     // any synchronous messages, and should be removed when <rdar://problem/8775115> is fixed.
     void dummy(bool&);
@@ -406,7 +409,7 @@ private:
     String cookieStorageDirectory() const;
     String platformDefaultCookieStorageDirectory() const;
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
     void registerNotificationObservers();
     void unregisterNotificationObservers();
 #endif
@@ -440,7 +443,7 @@ private:
     WebContextClient m_client;
     WebContextConnectionClient m_connectionClient;
     WebDownloadClient m_downloadClient;
-    WebHistoryClient m_historyClient;
+    std::unique_ptr<API::HistoryClient> m_historyClient;
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
     PluginInfoStore m_pluginInfoStore;
@@ -489,7 +492,7 @@ private:
     RetainPtr<NSObject> m_enhancedAccessibilityObserver;
     RetainPtr<NSObject> m_automaticTextReplacementNotificationObserver;
     RetainPtr<NSObject> m_automaticSpellingCorrectionNotificationObserver;
-#if !PLATFORM(IOS) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
     RetainPtr<NSObject> m_automaticQuoteSubstitutionNotificationObserver;
     RetainPtr<NSObject> m_automaticDashSubstitutionNotificationObserver;
 #endif

@@ -30,13 +30,14 @@
 #if JSC_OBJC_API_ENABLED
 
 #import "APICast.h"
+#import "APIShims.h"
 #import "Heap.h"
 #import "JSContextInternal.h"
 #import "JSValueInternal.h"
 #import "Weak.h"
 #import "WeakHandleOwner.h"
 #import "ObjcRuntimeExtras.h"
-#import "Operations.h"
+#import "JSCInlines.h"
 
 class JSManagedValueHandleOwner : public JSC::WeakHandleOwner {
 public:
@@ -168,12 +169,21 @@ private:
 
 @implementation JSManagedValue {
     JSC::Weak<JSC::JSGlobalObject> m_globalObject;
+    RefPtr<JSC::JSLock> m_lock;
     WeakValueRef m_weakValue;
+    NSMapTable *m_owners;
 }
 
 + (JSManagedValue *)managedValueWithValue:(JSValue *)value
 {
     return [[[self alloc] initWithValue:value] autorelease];
+}
+
++ (JSManagedValue *)managedValueWithValue:(JSValue *)value andOwner:(id)owner
+{
+    JSManagedValue *managedValue = [[self alloc] initWithValue:value];
+    [value.context.virtualMachine addManagedReference:managedValue withOwner:owner];
+    return [managedValue autorelease];
 }
 
 - (instancetype)init
@@ -195,6 +205,12 @@ private:
     JSC::Weak<JSC::JSGlobalObject> weak(globalObject, managedValueHandleOwner(), self);
     m_globalObject.swap(weak);
 
+    m_lock = &exec->vm().apiLock();
+
+    NSPointerFunctionsOptions weakIDOptions = NSPointerFunctionsWeakMemory | NSPointerFunctionsObjectPersonality;
+    NSPointerFunctionsOptions integerOptions = NSPointerFunctionsOpaqueMemory | NSPointerFunctionsIntegerPersonality;
+    m_owners = [[NSMapTable alloc] initWithKeyOptions:weakIDOptions valueOptions:integerOptions capacity:1];
+
     JSC::JSValue jsValue = toJS(exec, [value JSValueRef]);
     if (jsValue.isObject())
         m_weakValue.setObject(JSC::jsCast<JSC::JSObject*>(jsValue.asCell()), self);
@@ -205,8 +221,52 @@ private:
     return self;
 }
 
+- (void)dealloc
+{
+    JSVirtualMachine *virtualMachine = [[[self value] context] virtualMachine];
+    if (virtualMachine) {
+        NSMapTable *copy = [m_owners copy];
+        for (id owner in [copy keyEnumerator]) {
+            size_t count = reinterpret_cast<size_t>(NSMapGet(m_owners, owner));
+            while (count--)
+                [virtualMachine removeManagedReference:self withOwner:owner];
+        }
+        [copy release];
+    }
+
+    [self disconnectValue];
+    [m_owners release];
+    [super dealloc];
+}
+
+- (void)didAddOwner:(id)owner
+{
+    size_t count = reinterpret_cast<size_t>(NSMapGet(m_owners, owner));
+    NSMapInsert(m_owners, owner, reinterpret_cast<void*>(count + 1));
+}
+
+- (void)didRemoveOwner:(id)owner
+{
+    size_t count = reinterpret_cast<size_t>(NSMapGet(m_owners, owner));
+
+    if (!count)
+        return;
+
+    if (count == 1) {
+        NSMapRemove(m_owners, owner);
+        return;
+    }
+
+    NSMapInsert(m_owners, owner, reinterpret_cast<void*>(count - 1));
+}
+
 - (JSValue *)value
 {
+    WTF::Locker<JSC::JSLock> locker(m_lock.get());
+    if (!m_lock->vm())
+        return nil;
+
+    JSC::APIEntryShim shim(m_lock->vm());
     if (!m_globalObject)
         return nil;
     if (m_weakValue.isClear())

@@ -122,8 +122,6 @@
 #include "ewk_window_features.h"
 
 #include <Evas.h>
-#include <cairo.h>
-#include <libsoup/soup.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -2053,62 +2051,6 @@ EAPI Ewk_View_Smart_Data *ewk_view_smart_data_get(const Evas_Object *o);
 EAPI void ewk_view_scrolls_process(Ewk_View_Smart_Data *sd);
 
 /**
- * Paints using given graphics context the given area.
- *
- * This uses viewport relative area and will also handle scrollbars
- * and other extra elements. See ewk_view_paint_contents() for the
- * alternative function.
- *
- * @param priv the pointer to the private data of the view to use as paint source
- * @param cr the cairo context to use as paint destination, its state will
- *        be saved before operation and restored afterwards
- * @param area viewport relative geometry to paint
- *
- * @return @c EINA_TRUE on success or @c EINA_FALSE on failure
- *
- * @note This is an easy to use version, but internal structures are
- *       always created, then graphics context is clipped, then
- *       painted, restored and destroyed. This might not be optimum,
- *       so using @a Ewk_View_Paint_Context may be a better solutions
- *       for large number of operations.
- *
- * @see ewk_view_paint_contents()
- * @see ewk_view_paint_context_paint()
- *
- * @note This is not for general use but just for subclasses that want
- *       to define their own backing store.
- */
-EAPI Eina_Bool ewk_view_paint(Ewk_View_Private_Data *priv, cairo_t *cr, const Eina_Rectangle *area);
-
-/**
- * Paints just contents using given graphics context the given area.
- *
- * This uses absolute coordinates for area and will just handle
- * contents, no scrollbars or extras. See ewk_view_paint() for the
- * alternative solution.
- *
- * @param priv the pointer to the private data of the view to use as paint source
- * @param cr the cairo context to use as paint destination, its state will
- *        be saved before operation and restored afterwards
- * @param area absolute geometry to paint
- *
- * @return @c EINA_TRUE on success or @c EINA_FALSE on failure
- *
- * @note This is an easy to use version, but internal structures are
- *       always created, then graphics context is clipped, then
- *       painted, restored and destroyed. This might not be optimum,
- *       so using @a Ewk_View_Paint_Context may be a better solutions
- *       for large number of operations.
- *
- * @see ewk_view_paint()
- * @see ewk_view_paint_context_paint_contents()
- *
- * @note This is not for general use but just for subclasses that want
- *       to define their own backing store.
- */
-EAPI Eina_Bool ewk_view_paint_contents(Ewk_View_Private_Data *priv, cairo_t *cr, const Eina_Rectangle *area);
-
-/**
  * Gets the attributes of the viewport meta tag.
  *
  * Properties are returned in the respective pointers. Passing @c NULL to any of
@@ -2350,34 +2292,6 @@ EAPI Eina_Bool ewk_view_mixed_content_displayed_get(const Evas_Object *o);
 EAPI Eina_Bool ewk_view_mixed_content_run_get(const Evas_Object *o);
 
 /**
- * Returns the SoupSession associated with this view.
- *
- * By default, all views share the same, default soup session also available
- * by calling ewk_network_default_soup_session_get.
- *
- * @param o The view to query.
- *
- * @sa ewk_view_soup_session_set, ewk_network_default_soup_session_get
- */
-EAPI SoupSession* ewk_view_soup_session_get(const Evas_Object *o);
-
-/**
- * Associates a new SoupSession with this view.
- *
- * Only sessions of type SoupSessionAsync are supported.
- *
- * @note Changing the SoupSession should not be needed in most cases. If
- *       a different SoupSession is used, the cookie management and some
- *       network functions in ewk will not have any effect on it.
- *
- * @param o The view to change.
- * @param session The new SoupSession.
- *
- * @sa ewk_view_soup_session_get, ewk_network_default_soup_session_get
- */
-EAPI void ewk_view_soup_session_set(Evas_Object *o, SoupSession *session);
-
-/**
  * Returns whether XSSAuditor feature is enabled.
  *
  * @param o view object to query whether XSSAuditor feature is enabled.
@@ -2570,6 +2484,19 @@ EAPI Eina_Bool ewk_view_setting_tiled_backing_store_enabled_get(Evas_Object *o);
  * @return context menu structure on success or @c NULL on failure
  */
 EAPI Ewk_Context_Menu *ewk_view_context_menu_get(const Evas_Object *o);
+
+/**
+ * Gets the image object of the specified area of the page
+ *
+ * The returned image object @b should be freed after use.
+ *
+ * @param o view object to be captured
+ * @param area The area of the page will be captured.
+ * @param scale scale factor of captured object.
+ *
+ * @return newly allocated image object on sucess or @c NULL on failure.
+ */
+EAPI Evas_Object *ewk_view_screenshot_contents_get(const Evas_Object *o, const Eina_Rectangle *area, float scale);
 
 #ifdef __cplusplus
 }

@@ -117,6 +117,8 @@ public:
     virtual LayoutUnit borderBottom() const { return style().borderBottomWidth(); }
     virtual LayoutUnit borderLeft() const { return style().borderLeftWidth(); }
     virtual LayoutUnit borderRight() const { return style().borderRightWidth(); }
+    virtual LayoutUnit borderWidth() const { return borderLeft() + borderRight(); }
+    virtual LayoutUnit borderHeight() const { return borderTop() + borderBottom(); }
     virtual LayoutUnit borderBefore() const { return style().borderBeforeWidth(); }
     virtual LayoutUnit borderAfter() const { return style().borderAfterWidth(); }
     virtual LayoutUnit borderStart() const { return style().borderStartWidth(); }
@@ -174,8 +176,6 @@ public:
     virtual int baselinePosition(FontBaseline, bool firstLine, LineDirectionMode, LinePositionMode = PositionOnContainingLine) const = 0;
 
     virtual void mapAbsoluteToLocalPoint(MapCoordinatesFlags, TransformState&) const override;
-
-    void highQualityRepaintTimerFired(Timer<RenderBoxModelObject>*);
 
     virtual void setSelectionState(SelectionState) override;
 
@@ -342,8 +342,6 @@ private:
                             Color, EBorderStyle, BackgroundBleedAvoidance, bool includeLogicalLeftEdge, bool includeLogicalRightEdge);
     void paintMaskForTextFillBox(ImageBuffer*, const IntRect&, InlineFlowBox*, const LayoutRect&, RenderRegion*);
 };
-
-template <> inline bool isRendererOfType<const RenderBoxModelObject>(const RenderObject& renderer) { return renderer.isBoxModelObject(); }
 
 RENDER_OBJECT_TYPE_CASTS(RenderBoxModelObject, isBoxModelObject())
 

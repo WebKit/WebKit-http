@@ -29,6 +29,7 @@
 #include "CallFrame.h"
 #include "JSCJSValueInlines.h"
 #include "JSObject.h"
+#include "JSCInlines.h"
 #include <wtf/InlineASM.h>
 
 

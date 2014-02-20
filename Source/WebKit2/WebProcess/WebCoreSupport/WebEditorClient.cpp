@@ -279,7 +279,7 @@ void WebEditorClient::redo()
     m_page->sendSync(Messages::WebPageProxy::ExecuteUndoRedo(static_cast<uint32_t>(WebPageProxy::Redo)), Messages::WebPageProxy::ExecuteUndoRedo::Reply(result));
 }
 
-#if !PLATFORM(GTK) && !PLATFORM(MAC) && !PLATFORM(EFL)
+#if !PLATFORM(GTK) && !PLATFORM(COCOA) && !PLATFORM(EFL)
 void WebEditorClient::handleKeyboardEvent(KeyboardEvent* event)
 {
     if (m_page->handleEditingKeyboardEvent(event))
@@ -396,7 +396,7 @@ void WebEditorClient::textWillBeDeletedInTextField(Element* element)
 bool WebEditorClient::shouldEraseMarkersAfterChangeSelection(WebCore::TextCheckingType type) const
 {
     // This prevents erasing spelling markers on OS X Lion or later to match AppKit on these Mac OS X versions.
-#if PLATFORM(MAC) || PLATFORM(EFL)
+#if PLATFORM(COCOA) || PLATFORM(EFL)
     return type != TextCheckingTypeSpelling;
 #else
     UNUSED_PARAM(type);
@@ -414,12 +414,11 @@ void WebEditorClient::learnWord(const String& word)
     m_page->send(Messages::WebPageProxy::LearnWord(word));
 }
 
-void WebEditorClient::checkSpellingOfString(const UChar* text, int length, int* misspellingLocation, int* misspellingLength)
+void WebEditorClient::checkSpellingOfString(StringView text, int* misspellingLocation, int* misspellingLength)
 {
     int32_t resultLocation = -1;
     int32_t resultLength = 0;
-    // FIXME: It would be nice if we wouldn't have to copy the text here.
-    m_page->sendSync(Messages::WebPageProxy::CheckSpellingOfString(String(text, length)),
+    m_page->sendSync(Messages::WebPageProxy::CheckSpellingOfString(text.toStringWithoutCopying()),
         Messages::WebPageProxy::CheckSpellingOfString::Reply(resultLocation, resultLength));
     *misspellingLocation = resultLocation;
     *misspellingLength = resultLength;
@@ -431,12 +430,11 @@ String WebEditorClient::getAutoCorrectSuggestionForMisspelledWord(const String&)
     return String();
 }
 
-void WebEditorClient::checkGrammarOfString(const UChar* text, int length, Vector<WebCore::GrammarDetail>& grammarDetails, int* badGrammarLocation, int* badGrammarLength)
+void WebEditorClient::checkGrammarOfString(StringView text, Vector<WebCore::GrammarDetail>& grammarDetails, int* badGrammarLocation, int* badGrammarLength)
 {
     int32_t resultLocation = -1;
     int32_t resultLength = 0;
-    // FIXME: It would be nice if we wouldn't have to copy the text here.
-    m_page->sendSync(Messages::WebPageProxy::CheckGrammarOfString(String(text, length)),
+    m_page->sendSync(Messages::WebPageProxy::CheckGrammarOfString(text.toStringWithoutCopying()),
         Messages::WebPageProxy::CheckGrammarOfString::Reply(grammarDetails, resultLocation, resultLength));
     *badGrammarLocation = resultLocation;
     *badGrammarLength = resultLength;

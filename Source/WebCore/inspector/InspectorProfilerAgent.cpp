@@ -28,31 +28,28 @@
  */
 
 #include "config.h"
+#include "InspectorProfilerAgent.h"
 
 #if ENABLE(INSPECTOR)
 
-#include "InspectorProfilerAgent.h"
-
 #include "CommandLineAPIHost.h"
 #include "Console.h"
-#include "ConsoleAPITypes.h"
-#include "ConsoleTypes.h"
-#include "InspectorConsoleAgent.h"
 #include "InspectorWebFrontendDispatchers.h"
 #include "InstrumentingAgents.h"
-#include "URL.h"
 #include "Page.h"
-#include "PageInjectedScriptManager.h"
 #include "PageScriptDebugServer.h"
 #include "ScriptHeapSnapshot.h"
 #include "ScriptProfile.h"
 #include "ScriptProfiler.h"
+#include "URL.h"
+#include "WebInjectedScriptManager.h"
 #include "WorkerScriptDebugServer.h"
 #include <bindings/ScriptObject.h>
+#include <inspector/ConsoleTypes.h>
 #include <inspector/InjectedScript.h>
 #include <inspector/InspectorValues.h>
+#include <inspector/agents/InspectorConsoleAgent.h>
 #include <wtf/CurrentTime.h>
-#include <wtf/OwnPtr.h>
 #include <wtf/text/StringConcatenate.h>
 
 using namespace Inspector;
@@ -66,7 +63,7 @@ static const char* const HeapProfileType = "HEAP";
 
 class PageProfilerAgent : public InspectorProfilerAgent {
 public:
-    PageProfilerAgent(InstrumentingAgents* instrumentingAgents, InspectorConsoleAgent* consoleAgent, Page* inspectedPage, PageInjectedScriptManager* injectedScriptManager)
+    PageProfilerAgent(InstrumentingAgents* instrumentingAgents, InspectorConsoleAgent* consoleAgent, Page* inspectedPage, WebInjectedScriptManager* injectedScriptManager)
         : InspectorProfilerAgent(instrumentingAgents, consoleAgent, injectedScriptManager), m_inspectedPage(inspectedPage) { }
     virtual ~PageProfilerAgent() { }
 
@@ -89,14 +86,14 @@ private:
     Page* m_inspectedPage;
 };
 
-std::unique_ptr<InspectorProfilerAgent> InspectorProfilerAgent::create(InstrumentingAgents* instrumentingAgents, InspectorConsoleAgent* consoleAgent, Page* inspectedPage, PageInjectedScriptManager* injectedScriptManager)
+std::unique_ptr<InspectorProfilerAgent> InspectorProfilerAgent::create(InstrumentingAgents* instrumentingAgents, InspectorConsoleAgent* consoleAgent, Page* inspectedPage, WebInjectedScriptManager* injectedScriptManager)
 {
     return std::make_unique<PageProfilerAgent>(instrumentingAgents, consoleAgent, inspectedPage, injectedScriptManager);
 }
 
 class WorkerProfilerAgent : public InspectorProfilerAgent {
 public:
-    WorkerProfilerAgent(InstrumentingAgents* instrumentingAgents, InspectorConsoleAgent* consoleAgent, WorkerGlobalScope* workerGlobalScope, PageInjectedScriptManager* injectedScriptManager)
+    WorkerProfilerAgent(InstrumentingAgents* instrumentingAgents, InspectorConsoleAgent* consoleAgent, WorkerGlobalScope* workerGlobalScope, WebInjectedScriptManager* injectedScriptManager)
         : InspectorProfilerAgent(instrumentingAgents, consoleAgent, injectedScriptManager), m_workerGlobalScope(workerGlobalScope) { }
     virtual ~WorkerProfilerAgent() { }
 
@@ -116,12 +113,12 @@ private:
     WorkerGlobalScope* m_workerGlobalScope;
 };
 
-std::unique_ptr<InspectorProfilerAgent> InspectorProfilerAgent::create(InstrumentingAgents* instrumentingAgents, InspectorConsoleAgent* consoleAgent, WorkerGlobalScope* workerGlobalScope, PageInjectedScriptManager* injectedScriptManager)
+std::unique_ptr<InspectorProfilerAgent> InspectorProfilerAgent::create(InstrumentingAgents* instrumentingAgents, InspectorConsoleAgent* consoleAgent, WorkerGlobalScope* workerGlobalScope, WebInjectedScriptManager* injectedScriptManager)
 {
     return std::make_unique<WorkerProfilerAgent>(instrumentingAgents, consoleAgent, workerGlobalScope, injectedScriptManager);
 }
 
-InspectorProfilerAgent::InspectorProfilerAgent(InstrumentingAgents* instrumentingAgents, InspectorConsoleAgent* consoleAgent, PageInjectedScriptManager* injectedScriptManager)
+InspectorProfilerAgent::InspectorProfilerAgent(InstrumentingAgents* instrumentingAgents, InspectorConsoleAgent* consoleAgent, WebInjectedScriptManager* injectedScriptManager)
     : InspectorAgentBase(ASCIILiteral("Profiler"), instrumentingAgents)
     , m_consoleAgent(consoleAgent)
     , m_injectedScriptManager(injectedScriptManager)
@@ -156,14 +153,14 @@ void InspectorProfilerAgent::addProfileFinishedMessageToConsole(PassRefPtr<Scrip
         return;
     RefPtr<ScriptProfile> profile = prpProfile;
     String message = makeString(profile->title(), '#', String::number(profile->uid()));
-    m_consoleAgent->addMessageToConsole(ConsoleAPIMessageSource, ProfileEndMessageType, DebugMessageLevel, message, sourceURL, lineNumber, columnNumber);
+    m_consoleAgent->addMessageToConsole(MessageSource::ConsoleAPI, MessageType::ProfileEnd, MessageLevel::Debug, message, sourceURL, lineNumber, columnNumber);
 }
 
 void InspectorProfilerAgent::addStartProfilingMessageToConsole(const String& title, unsigned lineNumber, unsigned columnNumber, const String& sourceURL)
 {
     if (!m_frontendDispatcher)
         return;
-    m_consoleAgent->addMessageToConsole(ConsoleAPIMessageSource, ProfileMessageType, DebugMessageLevel, title, sourceURL, lineNumber, columnNumber);
+    m_consoleAgent->addMessageToConsole(MessageSource::ConsoleAPI, MessageType::Profile, MessageLevel::Debug, title, sourceURL, lineNumber, columnNumber);
 }
 
 void InspectorProfilerAgent::collectGarbage(WebCore::ErrorString*)

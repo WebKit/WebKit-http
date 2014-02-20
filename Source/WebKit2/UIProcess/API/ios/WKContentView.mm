@@ -35,6 +35,7 @@
 #import "WKBrowsingContextGroupPrivate.h"
 #import "WKGeolocationProviderIOS.h"
 #import "WKInteractionView.h"
+#import "WKPreferencesInternal.h"
 #import "WKProcessGroupPrivate.h"
 #import "WKProcessClassInternal.h"
 #import "WKWebViewConfiguration.h"
@@ -45,6 +46,10 @@
 #import <UIKit/UIWindow_Private.h>
 #import <WebCore/ViewportArguments.h>
 #import <wtf/RetainPtr.h>
+
+#if USE(IOSURFACE)
+#import <IOSurface/IOSurface.h>
+#endif
 
 #if __has_include(<QuartzCore/QuartzCorePrivate.h>)
 #import <QuartzCore/QuartzCorePrivate.h>
@@ -67,43 +72,20 @@ using namespace WebKit;
     WebCore::FloatPoint _currentExposedRectPosition;
 }
 
-- (id)initWithFrame:(CGRect)frame contextRef:(WKContextRef)contextRef pageGroupRef:(WKPageGroupRef)pageGroupRef
-{
-    return [self initWithFrame:frame contextRef:contextRef pageGroupRef:pageGroupRef relatedToPage:nullptr];
-}
-
-- (id)initWithFrame:(CGRect)frame contextRef:(WKContextRef)contextRef pageGroupRef:(WKPageGroupRef)pageGroupRef relatedToPage:(WKPageRef)relatedPage
-{
-    if (!(self = [super initWithFrame:frame]))
-        return nil;
-
-    [self _commonInitializationWithContextRef:contextRef pageGroupRef:pageGroupRef relatedToPage:relatedPage];
-    return self;
-}
-
-- (id)initWithFrame:(CGRect)frame processGroup:(WKProcessGroup *)processGroup browsingContextGroup:(WKBrowsingContextGroup *)browsingContextGroup
-{
-    if (!(self = [super initWithFrame:frame]))
-        return nil;
-
-    [self _commonInitializationWithContextRef:processGroup._contextRef pageGroupRef:browsingContextGroup._pageGroupRef relatedToPage:nullptr];
-    return self;
-}
-
-- (instancetype)initWithFrame:(CGRect)frame configuration:(WKWebViewConfiguration *)configuration
+- (instancetype)initWithFrame:(CGRect)frame context:(WebKit::WebContext&)context configuration:(WebKit::WebPageConfiguration)webPageConfiguration
 {
     if (!(self = [super initWithFrame:frame]))
         return nil;
 
     InitializeWebKit2();
-    RunLoop::initializeMainRunLoop();
 
     _pageClient = std::make_unique<PageClientImpl>(self);
 
-    _page = configuration.processClass->_context->createWebPage(*_pageClient, nullptr);
+    _page = context.createWebPage(*_pageClient, std::move(webPageConfiguration));
     _page->initializeWebPage();
     _page->setIntrinsicDeviceScaleFactor([UIScreen mainScreen].scale);
     _page->setUseFixedLayout(true);
+    _page->setDelegatesScrolling(true);
 
     WebContext::statistics().wkViewCount++;
 
@@ -158,18 +140,14 @@ using namespace WebKit;
     return _browsingContextController.get();
 }
 
-- (WKContentType)contentType
-{
-    if (_page->mainFrame()->mimeType() == "text/plain")
-        return WKContentType::PlainText;
-    else if (_page->mainFrame()->isDisplayingStandaloneImageDocument())
-        return WKContentType::Image;
-    return WKContentType::Standard;
-}
-
 - (WKPageRef)_pageRef
 {
     return toAPI(_page.get());
+}
+
+- (BOOL)isAssistingNode
+{
+    return [_interactionView isEditable];
 }
 
 - (void)setMinimumSize:(CGSize)size
@@ -201,12 +179,6 @@ using namespace WebKit;
     FloatRect exposedRect(_currentExposedRectPosition, drawingArea->size());
     FloatRect fixedPosRect = [self fixedPositionRectFromExposedRect:exposedRect scale:_page->pageScaleFactor()];
     drawingArea->setCustomFixedPositionRect(fixedPosRect);
-}
-
-- (void)setViewportSize:(CGSize)size
-{
-    _page->setFixedLayoutSize(IntSize(size));
-    [self _updateViewExposedRect];
 }
 
 - (void)setMinimumLayoutSize:(CGSize)size
@@ -250,32 +222,6 @@ using namespace WebKit;
 }
 
 #pragma mark Internal
-
-- (void)_commonInitializationWithContextRef:(WKContextRef)contextRef pageGroupRef:(WKPageGroupRef)pageGroupRef relatedToPage:(WKPageRef)relatedPage
-{
-    InitializeWebKit2();
-    RunLoop::initializeMainRunLoop();
-
-    _pageClient = std::make_unique<PageClientImpl>(self);
-    _page = toImpl(contextRef)->createWebPage(*_pageClient, toImpl(pageGroupRef), toImpl(relatedPage));
-    _page->initializeWebPage();
-    _page->setIntrinsicDeviceScaleFactor([UIScreen mainScreen].scale);
-    _page->setUseFixedLayout(true);
-
-    WebContext::statistics().wkViewCount++;
-
-    _rootContentView = adoptNS([[UIView alloc] init]);
-    [[_rootContentView layer] setMasksToBounds:NO];
-    [_rootContentView setUserInteractionEnabled:NO];
-
-    [self addSubview:_rootContentView.get()];
-
-    _interactionView = adoptNS([[WKInteractionView alloc] init]);
-    [_interactionView setPage:_page];
-    [self addSubview:_interactionView.get()];
-
-    self.layer.hitTestsAsOpaque = YES;
-}
 
 - (void)_windowDidMoveToScreenNotification:(NSNotification *)notification
 {
@@ -367,6 +313,11 @@ using namespace WebKit;
     // FIXME: The line below is commented out since wrapper(WebContext&) now returns a WKProcessClass.
     // As part of the new API we should figure out where geolocation fits in, see <rdar://problem/15885544>.
     // [[wrapper(_page->process().context()) _geolocationProvider] decidePolicyForGeolocationRequestFromOrigin:toAPI(&origin) frame:toAPI(&frame) request:toAPI(&permissionRequest) window:[self window]];
+}
+
+- (RetainPtr<CGImageRef>)_takeViewSnapshot
+{
+    return [_delegate takeViewSnapshotForContentView:self];
 }
 
 @end

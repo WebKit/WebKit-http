@@ -28,11 +28,14 @@
 
 #if WK_API_ENABLED
 
+#import "WKFrameHandleInternal.h"
 #import "WKNSArray.h"
 #import "WKNSURLExtras.h"
+#import "WKWebProcessPlugInBrowserContextControllerInternal.h"
 #import "WKWebProcessPlugInHitTestResultInternal.h"
 #import "WKWebProcessPlugInNodeHandleInternal.h"
 #import "WKWebProcessPlugInScriptWorldInternal.h"
+#import "WebProcess.h"
 #import <JavaScriptCore/JSValue.h>
 #import <WebCore/IntPoint.h>
 
@@ -40,6 +43,15 @@ using namespace WebKit;
 
 @implementation WKWebProcessPlugInFrame {
     API::ObjectStorage<WebFrame> _frame;
+}
+
++ (instancetype)lookUpFrameFromHandle:(WKFrameHandle *)handle
+{
+    WebFrame* webFrame = WebProcess::shared().webFrame(handle._frameID);
+    if (!webFrame)
+        return nil;
+
+    return wrapper(*webFrame);
 }
 
 - (void)dealloc
@@ -65,6 +77,11 @@ using namespace WebKit;
     return [JSValue valueWithJSValueRef:valueRef inContext:[self jsContextForWorld:world]];
 }
 
+- (WKWebProcessPlugInBrowserContextController *)_browserContextController
+{
+    return wrapper(*_frame->page());
+}
+
 - (NSURL *)URL
 {
     return [NSURL _web_URLWithWTFString:_frame->url()];
@@ -78,6 +95,11 @@ using namespace WebKit;
 - (BOOL)containsAnyFormElements
 {
     return !!_frame->containsAnyFormElements();
+}
+
+- (WKFrameHandle *)handle
+{
+    return [wrapper(*API::FrameHandle::create(_frame->frameID()).leakRef()) autorelease];
 }
 
 #pragma mark WKObject protocol implementation

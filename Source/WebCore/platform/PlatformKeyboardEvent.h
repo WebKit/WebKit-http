@@ -31,17 +31,13 @@
 #include <wtf/WindowsExtras.h>
 #include <wtf/text/WTFString.h>
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
 #include <wtf/RetainPtr.h>
 OBJC_CLASS NSEvent;
 #endif
 
 #if PLATFORM(IOS)
-#ifdef __OBJC__
-@class WebEvent;
-#else
-class WebEvent;
-#endif
+OBJC_CLASS WebEvent;
 #endif
 
 #if PLATFORM(GTK)
@@ -123,7 +119,7 @@ namespace WebCore {
         static bool currentCapsLockState();
         static void getCurrentModifierState(bool& shiftKey, bool& ctrlKey, bool& altKey, bool& metaKey);
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
 #if !PLATFORM(IOS)
         NSEvent* macEvent() const { return m_macEvent.get(); }
 #else
@@ -166,7 +162,7 @@ namespace WebCore {
         bool m_isKeypad;
         bool m_isSystemKey;
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
 #if !PLATFORM(IOS)
         RetainPtr<NSEvent> m_macEvent;
 #else

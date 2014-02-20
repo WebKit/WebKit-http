@@ -131,14 +131,6 @@ canvas/philip/tests/2d.composite.operation.darker.html
 # exceptions that were previously expected
 canvas/philip/tests/2d.drawImage.outsidesource.html
 
-# IndexedDB is not yet enabled.
-storage/indexeddb
-http/tests/security/cross-origin-indexeddb-allowed.html
-http/tests/security/cross-origin-indexeddb.html
-http/tests/security/cross-origin-worker-indexeddb-allowed.html
-http/tests/security/cross-origin-worker-indexeddb.html
-http/tests/security/no-indexeddb-from-sandbox.html
-
 # This port doesn't support DeviceMotion or DeviceOrientation.
 fast/dom/DeviceMotion
 fast/dom/DeviceOrientation
@@ -271,8 +263,6 @@ http/tests/images/webp-progressive-load.html
 # Times out because plugins aren't allowed to execute JS after NPP_Destroy has been called in WebKit1's OOP plugins implementation
 webkit.org/b/48929 plugins/evaluate-js-after-removing-plugin-element.html
 
-webkit.org/b/49182 animations/stop-animation-on-suspend.html [ Pass Failure ]
-
 # DRT does not support toggling caret browsing on / off
 editing/selection/caret-mode-paragraph-keys-navigation.html
 
@@ -336,9 +326,6 @@ webkit.org/b/49142 fast/css/style-scoped
 
 # fails because of antialiasing differences.
 fast/css/object-fit/object-fit-canvas.html [ Pass ImageOnlyFailure ]
-
-# CSS Regions tests for region styling and scoped styles
-fast/regions/style-scoped
 
 # ENABLE(SHADOW_DOM) is disabled.
 fast/dom/shadow
@@ -512,8 +499,6 @@ webkit.org/b/112617 [ Debug ] http/tests/navigation/navigation-redirect-schedule
 webkit.org/b/82981 http/tests/misc/favicon-loads-with-icon-loading-override.html [ Pass Failure ]
 
 webkit.org/b/82982 fast/dom/jsDevicePixelRatio.html [ Pass Failure ]
-
-webkit.org/b/83618 fast/dom/inline-event-attributes-release.html [ Pass Failure ]
 
 # Failing subpixel reference tests
 webkit.org/b/85532 fast/sub-pixel/file-upload-control-at-fractional-offset.html [ ImageOnlyFailure ]
@@ -1086,6 +1071,9 @@ webkit.org/b/121331 http/tests/misc/submit-post-keygen.html [ Pass Failure Timeo
 # Feature not implemented
 webkit.org/b/91611 media/media-higher-prio-audio-stream.html [ Skip ]
 
+# isProtocolHandlerRegistered() isn't supported yet.
+webkit.org/b/92749 fast/dom/is-protocol-handler-registered.html [ Skip ]
+
 # Snapshotted plugins not enabled on WK1
 plugins/snapshotting [ Skip ]
 
@@ -1093,9 +1081,6 @@ webkit.org/b/113227 transitions/cross-fade-background-image.html [ Pass Failure 
 webkit.org/b/113227 transitions/cross-fade-border-image.html [ Pass Failure ]
 webkit.org/b/113227 transitions/default-timing-function.html [ Pass Failure ]
 webkit.org/b/113227 transitions/svg-text-shadow-transition.html [ Pass Failure ]
-
-# Color input is not yet enabled on Mac WK1.
-fast/forms/color/input-color-onchange-event.html [ Skip ]
 
 # New test failing, needs investigation.
 webkit.org/b/103857 fast/events/mouse-cursor-change.html
@@ -1133,22 +1118,13 @@ webkit.org/b/115292 fast/writing-mode/japanese-ruby-vertical-rl.html
 webkit.org/b/115292 fast/writing-mode/vertical-baseline-alignment.html
 webkit.org/b/115292 fast/writing-mode/vertical-font-fallback.html
 
-# Fails with WebKit1 only.
-editing/secure-input/reset-state-on-navigation.html [ Failure ]
-
 webkit.org/b/116244 fast/events/mouse-cursor-image-set.html [ Failure Pass ]
 
 webkit.org/b/116245 canvas/philip/tests/2d.text.draw.fontface.notinpage.html [ Pass Failure ]
 
-# Asserts in WebKit1-debug due to a preexisting issue with overflow rect computation
-webkit.org/b/118269 compositing/geometry/fixed-position-flipped-writing-mode.html
-
 webkit.org/b/118479 fast/repaint/fixed-right-in-page-scale.html [ Pass ImageOnlyFailure ]
 
 webkit.org/b/118900 mathml/presentation/mspace-units.html [ ImageOnlyFailure ]
-
-# Plug-in blocking callback doesn't exist in WebKit1, so skip and re-enable for WebKit2.
-plugins/unavailable-plugin-indicator-obscurity.html
 
 webkit.org/b/82747 fast/events/scroll-div-with-prevent-default-in-subframe.html [ Pass Failure ]
 
@@ -1214,8 +1190,6 @@ webkit.org/b/122038 animations/transform-non-accelerated.html [ Pass Failure ]
 
 webkit.org/b/122039 media/track/track-cue-overlap-snap-to-lines-not-set.html [ Pass Failure ]
 
-webkit.org/b/122040 animations/combo-transform-translate+scale.html [ Pass Failure ]
-
 webkit.org/b/122042 media/media-controller-playback.html [ Pass Failure ]
 
 webkit.org/b/115048 media/media-element-play-after-eos.html [ Pass Failure ]
@@ -1270,8 +1244,6 @@ media/track/video
 webkit.org/b/124261 [ MountainLion ] crypto/subtle [ Skip ]
 
 webkit.org/b/124311 compositing/regions/transform-transparent-positioned-video-inside-region.html [ Pass ImageOnlyFailure ]
-
-webkit.org/b/124318 fullscreen/anonymous-block-merge-crash.html [ Pass Failure ]
 
 webkit.org/b/124321 [ Mavericks ] animations/resume-after-page-cache.html [ Pass Failure ]
 
@@ -1339,6 +1311,8 @@ webkit.org/b/128061 svg/zoom/page/zoom-img-preserveAspectRatio-support-1.html [ 
 webkit.org/b/128061 svg/zoom/page/zoom-svg-float-border-padding.xml [ Failure ]
 webkit.org/b/128061 svg/zoom/page/zoom-svg-through-object-with-auto-size.html [ Failure ]
 webkit.org/b/128061 tables/mozilla_expected_failures/bugs/bug1055-2.html [ Failure ]
+# debug assert on empty drawRect
+webkit.org/b/128283 [ Debug ] transitions/shorthand-border-transitions.html [ Skip ]
 # Non-uniform scaling context.
 webkit.org/b/128081 fast/events/page-scaled-mouse-click-iframe.html
 # End of subpixel failures.
@@ -1346,3 +1320,14 @@ webkit.org/b/128081 fast/events/page-scaled-mouse-click-iframe.html
 webkit.org/b/35297 media/video-display-aspect-ratio.html [ Pass Failure ]
 
 webkit.org/b/127310 svg/filters/feComponentTransfer-style-crash.xhtml [ Pass Failure Timeout ]
+
+webkit.org/b/128312 [ Mavericks ] media/video-load-preload-metadata.html [ Pass Failure ]
+
+# These tests were always flaky, but became a lot more so at in r163472-r163476.
+webkit.org/b/49182 animations/stop-animation-on-suspend.html [ Pass Failure ]
+webkit.org/b/50959 animations/play-state-suspend.html [ Pass Failure ]
+webkit.org/b/122040 animations/combo-transform-translate+scale.html [ Pass Failure ]
+webkit.org/b/128379 animations/suspend-resume-animation.html [ Pass Failure ]
+
+webkit.org/b/119747 [ Debug ] svg/text/text-overflow-ellipsis-svgfont-kerning-ligatures.html [ Skip ]
+webkit.org/b/119747 [ Debug ] svg/css/font-face-crash.html [ Skip ]

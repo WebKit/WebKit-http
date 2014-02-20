@@ -57,7 +57,7 @@
 #include "LiteralParser.h"
 #include "NameInstance.h"
 #include "ObjectPrototype.h"
-#include "Operations.h"
+#include "JSCInlines.h"
 #include "Parser.h"
 #include "ProtoCallFrame.h"
 #include "RegExpObject.h"
@@ -527,7 +527,7 @@ public:
     {
         VM& vm = m_vm;
         if (m_remainingCapacityForFrameCapture) {
-            if (visitor->isJSFrame()) {
+            if (visitor->isJSFrame() && !visitor->codeBlock()->unlinkedCodeBlock()->isBuiltinFunction()) {
                 CodeBlock* codeBlock = visitor->codeBlock();
                 StackFrame s = {
                     Strong<JSObject>(vm, visitor->callee()),
@@ -760,6 +760,7 @@ JSValue Interpreter::execute(ProgramExecutable* program, CallFrame* callFrame, J
 
     ASSERT(!vm.exception());
     ASSERT(!vm.isCollectorBusy());
+    RELEASE_ASSERT(vm.currentThreadIsHoldingAPILock());
     if (vm.isCollectorBusy())
         return jsNull();
 
@@ -1075,6 +1076,7 @@ JSValue Interpreter::execute(CallFrameClosure& closure)
     SamplingScope samplingScope(this);
     
     ASSERT(!vm.isCollectorBusy());
+    RELEASE_ASSERT(vm.currentThreadIsHoldingAPILock());
     if (vm.isCollectorBusy())
         return jsNull();
 
@@ -1110,6 +1112,7 @@ JSValue Interpreter::execute(EvalExecutable* eval, CallFrame* callFrame, JSValue
     ASSERT(scope->vm() == &callFrame->vm());
     ASSERT(!vm.exception());
     ASSERT(!vm.isCollectorBusy());
+    RELEASE_ASSERT(vm.currentThreadIsHoldingAPILock());
     if (vm.isCollectorBusy())
         return jsNull();
 

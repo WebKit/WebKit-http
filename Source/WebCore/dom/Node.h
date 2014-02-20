@@ -119,7 +119,6 @@ class Node : public EventTarget, public ScriptWrappable, public TreeShared<Node>
     friend class Document;
     friend class TreeScope;
     friend class TreeScopeAdopter;
-
 public:
     enum NodeType {
         ELEMENT_NODE = 1,
@@ -154,7 +153,7 @@ public:
     static void dumpStatistics();
 
     virtual ~Node();
-    void willBeDeletedFrom(Document*);
+    void willBeDeletedFrom(Document&);
 
     // DOM methods & attributes for Node
 
@@ -383,8 +382,7 @@ public:
     Document& document() const
     {
         ASSERT(this);
-        ASSERT(documentInternal());
-        return *documentInternal();
+        return treeScope().documentScope();
     }
 
     TreeScope& treeScope() const
@@ -397,7 +395,6 @@ public:
     // node tree, false otherwise.
     bool inDocument() const 
     { 
-        ASSERT(documentInternal() || !getFlag(InDocumentFlag));
         return getFlag(InDocumentFlag);
     }
     bool isInShadowTree() const { return getFlag(IsInShadowTreeFlag); }
@@ -505,6 +502,7 @@ public:
 
     virtual Node* toNode() override;
     virtual HTMLInputElement* toInputElement();
+    const HTMLInputElement* toInputElement() const { return const_cast<Node*>(this)->toInputElement(); }
 
     virtual EventTargetInterface eventTargetInterface() const override;
     virtual ScriptExecutionContext* scriptExecutionContext() const override final; // Implemented in Document.h
@@ -562,6 +560,7 @@ public:
 #if ENABLE(CSS_SELECTOR_JIT)
     static ptrdiff_t nodeFlagsMemoryOffset() { return OBJECT_OFFSETOF(Node, m_nodeFlags); }
     static int32_t flagIsElement() { return IsElementFlag; }
+    static int32_t flagIsHTML() { return IsHTMLFlag; }
     static int32_t flagIsLink() { return IsLinkFlag; }
 #endif // ENABLE(CSS_SELECTOR_JIT)
 
@@ -625,7 +624,7 @@ protected:
         CreateEditingText = CreateText | IsEditingTextFlag,
         CreateMathMLElement = CreateStyledElement | IsMathMLFlag,
     };
-    Node(Document*, ConstructionType);
+    Node(Document&, ConstructionType);
 
     virtual void didMoveToNewDocument(Document* oldDocument);
     
@@ -643,7 +642,6 @@ protected:
 
     void setNeedsNodeRenderingTraversalSlowPath(bool flag) { setFlag(flag, NeedsNodeRenderingTraversalSlowPathFlag); }
 
-    Document* documentInternal() const { return treeScope().documentScope(); }
     void setTreeScope(TreeScope& scope) { m_treeScope = &scope; }
 
     void setStyleChange(StyleChangeType changeType) { m_nodeFlags = (m_nodeFlags & ~StyleChangeMask) | changeType; }

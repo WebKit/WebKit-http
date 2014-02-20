@@ -63,6 +63,7 @@
 #include "MediaSessionManager.h"
 #include "PageActivityAssertionToken.h"
 #include "PageGroup.h"
+#include "PageThrottler.h"
 #include "ProgressTracker.h"
 #include "RenderLayerCompositor.h"
 #include "RenderVideo.h"
@@ -111,13 +112,13 @@
 #include "WebKitPlaybackTargetAvailabilityEvent.h"
 #endif
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
 #include "DisplaySleepDisabler.h"
 #endif
 
 #if ENABLE(MEDIA_SOURCE)
 #include "DOMWindow.h"
-#include "HTMLMediaSource.h"
+#include "MediaSource.h"
 #include "Performance.h"
 #include "VideoPlaybackQuality.h"
 #endif
@@ -140,7 +141,6 @@
 #include "JSMediaControlsHost.h"
 #include "MediaControlsHost.h"
 #include "ScriptGlobalObject.h"
-#include "UserAgentScripts.h"
 #include <bindings/ScriptObject.h>
 #endif
 
@@ -1230,11 +1230,11 @@ void HTMLMediaElement::loadResource(const URL& initialURL, ContentType& contentT
     ASSERT(!m_mediaSource);
 
     if (url.protocolIs(mediaSourceBlobProtocol))
-        m_mediaSource = HTMLMediaSource::lookup(url.string());
+        m_mediaSource = MediaSource::lookup(url.string());
 
     if (m_mediaSource) {
         if (m_mediaSource->attachToElement(this))
-            m_player->load(url, contentType, m_mediaSource);
+            m_player->load(url, contentType, m_mediaSource.get());
         else {
             // Forget our reference to the MediaSource, so we leave it alone
             // while processing remainder of load failure.
@@ -1374,9 +1374,12 @@ void HTMLMediaElement::updateActiveTextTrackCues(double movieTime)
             activeSetChanged = true;
 
     for (size_t i = 0; i < currentCuesSize; ++i) {
-        currentCues[i].data()->updateDisplayTree(movieTime);
+        TextTrackCue* cue = currentCues[i].data();
 
-        if (!currentCues[i].data()->isActive())
+        if (cue->isRenderable())
+            toVTTCue(cue)->updateDisplayTree(movieTime);
+
+        if (!cue->isActive())
             activeSetChanged = true;
     }
 
@@ -1668,7 +1671,8 @@ void HTMLMediaElement::textTrackRemoveCue(TextTrack*, PassRefPtr<TextTrackCue> c
         m_currentlyActiveCues.remove(index);
     }
 
-    cue->removeDisplayTree();
+    if (cue->isRenderable())
+        toVTTCue(cue.get())->removeDisplayTree();
     updateActiveTextTrackCues(currentTime());
 }
 
@@ -2435,10 +2439,18 @@ bool HTMLMediaElement::seeking() const
 void HTMLMediaElement::refreshCachedTime() const
 {
     m_cachedTime = m_player->currentTime();
+    if (!m_cachedTime) { 
+        // Do not use m_cachedTime until the media engine returns a non-zero value because we can't 
+        // estimate current time until playback actually begins. 
+        invalidateCachedTime(); 
+        return; 
+    } 
+
+    LOG(Media, "HTMLMediaElement::refreshCachedTime - caching time %f", m_cachedTime); 
     m_clockTimeAtLastCachedTimeUpdate = monotonicallyIncreasingTime();
 }
 
-void HTMLMediaElement::invalidateCachedTime()
+void HTMLMediaElement::invalidateCachedTime() const
 {
     LOG(Media, "HTMLMediaElement::invalidateCachedTime");
 
@@ -2505,6 +2517,9 @@ double HTMLMediaElement::currentTime() const
 
     refreshCachedTime();
 
+    if (m_cachedTime == MediaPlayer::invalidTime())
+        return 0;
+    
     return m_cachedTime;
 }
 
@@ -2512,6 +2527,18 @@ void HTMLMediaElement::setCurrentTime(double time)
 {
     if (m_mediaController)
         return;
+
+    seek(time);
+}
+
+void HTMLMediaElement::setCurrentTime(double time, ExceptionCode& ec)
+{
+    // On setting, if the media element has a current media controller, then the user agent must
+    // throw an InvalidStateError exception
+    if (m_mediaController) {
+        ec = INVALID_STATE_ERR;
+        return;
+    }
 
     seek(time);
 }
@@ -2747,7 +2774,7 @@ void HTMLMediaElement::webkitGenerateKeyRequest(const String& keySystem, PassRef
 #if ENABLE(ENCRYPTED_MEDIA_V2)
     static bool firstTime = true;
     if (firstTime && scriptExecutionContext()) {
-        scriptExecutionContext()->addConsoleMessage(JSMessageSource, WarningMessageLevel, "'HTMLMediaElement.webkitGenerateKeyRequest()' is deprecated.  Use 'MediaKeys.createSession()' instead.");
+        scriptExecutionContext()->addConsoleMessage(MessageSource::JS, MessageLevel::Warning, ASCIILiteral("'HTMLMediaElement.webkitGenerateKeyRequest()' is deprecated.  Use 'MediaKeys.createSession()' instead."));
         firstTime = false;
     }
 #endif
@@ -2783,7 +2810,7 @@ void HTMLMediaElement::webkitAddKey(const String& keySystem, PassRefPtr<Uint8Arr
 #if ENABLE(ENCRYPTED_MEDIA_V2)
     static bool firstTime = true;
     if (firstTime && scriptExecutionContext()) {
-        scriptExecutionContext()->addConsoleMessage(JSMessageSource, WarningMessageLevel, "'HTMLMediaElement.webkitAddKey()' is deprecated.  Use 'MediaKeySession.update()' instead.");
+        scriptExecutionContext()->addConsoleMessage(MessageSource::JS, MessageLevel::Warning, ASCIILiteral("'HTMLMediaElement.webkitAddKey()' is deprecated.  Use 'MediaKeySession.update()' instead."));
         firstTime = false;
     }
 #endif
@@ -4268,7 +4295,7 @@ void HTMLMediaElement::updatePlayState()
         invalidateCachedTime();
 
         if (playerPaused) {
-            if (m_mediaSession->requiresFullscreenForVideoPlayback(*this))
+            if (m_mediaSession->requiresFullscreenForVideoPlayback(*this) && !isFullscreen())
                 enterFullscreen();
 
             // Set rate, muted before calling play in case they were set before the media engine was setup.
@@ -4282,7 +4309,7 @@ void HTMLMediaElement::updatePlayState()
         if (hasMediaControls())
             mediaControls()->playbackStarted();
         if (document().page())
-            m_activityToken = document().page()->createActivityToken();
+            m_activityToken = document().page()->pageThrottler().mediaActivityToken();
 
         startPlaybackProgressTimer();
         m_playing = true;
@@ -4843,6 +4870,8 @@ void HTMLMediaElement::toggleFullscreenState()
 void HTMLMediaElement::enterFullscreen()
 {
     LOG(Media, "HTMLMediaElement::enterFullscreen");
+    if (m_isFullscreen)
+        return;
 
 #if ENABLE(FULLSCREEN_API)
     if (document().settings() && document().settings()->fullScreenEnabled()) {
@@ -4850,7 +4879,7 @@ void HTMLMediaElement::enterFullscreen()
         return;
     }
 #endif
-    ASSERT(!m_isFullscreen);
+
     m_isFullscreen = true;
     if (hasMediaControls())
         mediaControls()->enteredFullscreen();
@@ -5470,7 +5499,7 @@ void HTMLMediaElement::applyMediaFragmentURI()
 
 void HTMLMediaElement::updateSleepDisabling()
 {
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
     if (!shouldDisableSleep() && m_sleepDisabler)
         m_sleepDisabler = nullptr;
     else if (shouldDisableSleep() && !m_sleepDisabler)
@@ -5478,7 +5507,7 @@ void HTMLMediaElement::updateSleepDisabling()
 #endif
 }
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
 bool HTMLMediaElement::shouldDisableSleep() const
 {
 #if ENABLE(PAGE_VISIBILITY_API)
@@ -5695,7 +5724,13 @@ bool HTMLMediaElement::ensureMediaControlsInjectedScript()
     if (overlayValue.isFunction())
         return true;
 
-    scriptController.evaluateInWorld(ScriptSourceCode(mediaControlsScript), world);
+#ifndef NDEBUG
+    // Setting a scriptURL allows the source to be debuggable in the inspector.
+    URL scriptURL = URL(ParsedURLString, ASCIILiteral("mediaControlsScript"));
+#else
+    URL scriptURL;
+#endif
+    scriptController.evaluateInWorld(ScriptSourceCode(mediaControlsScript, scriptURL), world);
     if (exec->hadException()) {
         exec->clearException();
         return false;

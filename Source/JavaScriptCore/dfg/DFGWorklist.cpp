@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013, 2014 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,6 +31,8 @@
 #include "CodeBlock.h"
 #include "DeferGC.h"
 #include "DFGLongLivedState.h"
+#include "DFGSafepoint.h"
+#include "JSCInlines.h"
 #include <mutex>
 
 namespace JSC { namespace DFG {
@@ -49,15 +51,18 @@ Worklist::~Worklist()
         m_planEnqueued.broadcast();
     }
     for (unsigned i = m_threads.size(); i--;)
-        waitForThreadCompletion(m_threads[i]);
+        waitForThreadCompletion(m_threads[i]->m_identifier);
     ASSERT(!m_numberOfActiveThreads);
 }
 
 void Worklist::finishCreation(unsigned numberOfThreads)
 {
     RELEASE_ASSERT(numberOfThreads);
-    for (unsigned i = numberOfThreads; i--;)
-        m_threads.append(createThread(threadFunction, this, "JSC Compilation Thread"));
+    for (unsigned i = numberOfThreads; i--;) {
+        std::unique_ptr<ThreadData> data = std::make_unique<ThreadData>(this);
+        data->m_identifier = createThread(threadFunction, data.get(), "JSC Compilation Thread");
+        m_threads.append(std::move(data));
+    }
 }
 
 PassRefPtr<Worklist> Worklist::create(unsigned numberOfThreads)
@@ -65,6 +70,16 @@ PassRefPtr<Worklist> Worklist::create(unsigned numberOfThreads)
     RefPtr<Worklist> result = adoptRef(new Worklist());
     result->finishCreation(numberOfThreads);
     return result;
+}
+
+bool Worklist::isActiveForVM(VM& vm) const
+{
+    PlanMap::const_iterator end = m_plans.end();
+    for (PlanMap::const_iterator iter = m_plans.begin(); iter != end; ++iter) {
+        if (&iter->value->vm == &vm)
+            return true;
+    }
+    return false;
 }
 
 void Worklist::enqueue(PassRefPtr<Plan> passedPlan)
@@ -188,6 +203,39 @@ void Worklist::completeAllPlansForVM(VM& vm)
     completeAllReadyPlansForVM(vm);
 }
 
+void Worklist::suspendAllThreads()
+{
+    m_suspensionLock.lock();
+    for (unsigned i = m_threads.size(); i--;)
+        m_threads[i]->m_rightToRun.lock();
+}
+
+void Worklist::resumeAllThreads()
+{
+    for (unsigned i = m_threads.size(); i--;)
+        m_threads[i]->m_rightToRun.unlock();
+    m_suspensionLock.unlock();
+}
+
+void Worklist::visitChildren(SlotVisitor& visitor, CodeBlockSet& codeBlocks)
+{
+    VM* vm = visitor.heap()->vm();
+    for (PlanMap::iterator iter = m_plans.begin(); iter != m_plans.end(); ++iter) {
+        Plan* plan = iter->value.get();
+        if (&plan->vm != vm)
+            continue;
+        iter->key.visitChildren(codeBlocks);
+        iter->value->visitChildren(visitor, codeBlocks);
+    }
+    
+    for (unsigned i = m_threads.size(); i--;) {
+        ThreadData* data = m_threads[i].get();
+        Safepoint* safepoint = data->m_safepoint;
+        if (safepoint && &safepoint->vm() == vm)
+            safepoint->visitChildren(visitor);
+    }
+}
+
 size_t Worklist::queueLength()
 {
     MutexLocker locker(m_lock);
@@ -208,7 +256,7 @@ void Worklist::dump(const MutexLocker&, PrintStream& out) const
         ", Num Active Threads = ", m_numberOfActiveThreads, "/", m_threads.size(), "]");
 }
 
-void Worklist::runThread()
+void Worklist::runThread(ThreadData* data)
 {
     CompilationScope compilationScope;
     
@@ -223,6 +271,7 @@ void Worklist::runThread()
             MutexLocker locker(m_lock);
             while (m_queue.isEmpty())
                 m_planEnqueued.wait(m_lock);
+            
             plan = m_queue.takeFirst();
             if (plan)
                 m_numberOfActiveThreads++;
@@ -234,10 +283,14 @@ void Worklist::runThread()
             return;
         }
         
-        if (Options::verboseCompilationQueue())
-            dataLog(*this, ": Compiling ", plan->key(), " asynchronously\n");
+        {
+            MutexLocker locker(data->m_rightToRun);
         
-        plan->compileInThread(longLivedState);
+            if (Options::verboseCompilationQueue())
+                dataLog(*this, ": Compiling ", plan->key(), " asynchronously\n");
+        
+            plan->compileInThread(longLivedState, data);
+        }
         
         {
             MutexLocker locker(m_lock);
@@ -258,7 +311,8 @@ void Worklist::runThread()
 
 void Worklist::threadFunction(void* argument)
 {
-    static_cast<Worklist*>(argument)->runThread();
+    ThreadData* data = static_cast<ThreadData*>(argument);
+    data->m_worklist->runThread(data);
 }
 
 static Worklist* theGlobalDFGWorklist;

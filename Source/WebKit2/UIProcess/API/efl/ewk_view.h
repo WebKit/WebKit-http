@@ -867,30 +867,6 @@ EAPI void ewk_view_draws_page_background_set(Evas_Object *o, Eina_Bool enabled);
 EAPI Eina_Bool ewk_view_page_contents_get(const Evas_Object *o, Ewk_Page_Contents_Type type, Ewk_Page_Contents_Cb callback, void *user_data);
 
 /**
- * Sets the source mode as EINA_TRUE to display the web source code
- * or EINA_FALSE otherwise. The default value is EINA_FALSE.
- *
- * This method should be called before loading new contents on web view
- * so that the new view mode will be applied to the new contents.
- *
- * @param o view object to set the view source mode
- * @param enabled a state to set view source mode
- *
- * @return @c EINA_TRUE on success, or @c EINA_FALSE on failure
- */
-EAPI Eina_Bool ewk_view_source_mode_set(Evas_Object *o, Eina_Bool enabled);
-
-/**
- * Gets the view source mode of the current web page.
- *
- * @param o view object to get the view source mode
- *
- * @return @c EINA_TRUE if the view mode is set to load source code, or
- *         @c EINA_FALSE otherwise
- */
-EAPI Eina_Bool ewk_view_source_mode_get(const Evas_Object *o);
-
-/**
  * Requests execution of the given script.
  *
  * The result value for the execution can be retrieved from the asynchronous callback.
@@ -903,6 +879,29 @@ EAPI Eina_Bool ewk_view_source_mode_get(const Evas_Object *o);
  * @return @c EINA_TRUE on success or @c EINA_FALSE on failure
  */
 EAPI Eina_Bool ewk_view_script_execute(Evas_Object *o, const char *script, Ewk_View_Script_Execute_Cb callback, void *user_data);
+
+/**
+ * Sets whether the ewk_view use fixed layout or not.
+ *
+ * The webview will use fixed layout if EINA_TRUE or not use it otherwise.
+ * The default value is EINA_FALSE.
+ *
+ * @param o view object to set fixed layout
+ * @param enabled a state to set
+ *
+ * @return @c EINA_TRUE on success, or @c EINA_FALSE on failure
+ */
+EAPI Eina_Bool ewk_view_layout_fixed_set(Evas_Object *o, Eina_Bool enabled);
+
+/**
+ * Queries if the webview is using fixed layout.
+ *
+ * @param o view object to query the status
+ *
+ * @return @c EINA_TRUE if the webview is using fixed layout, or
+ *         @c EINA_FALSE otherwise
+ */
+EAPI Eina_Bool ewk_view_layout_fixed_get(const Evas_Object *o);
 
 #ifdef __cplusplus
 }

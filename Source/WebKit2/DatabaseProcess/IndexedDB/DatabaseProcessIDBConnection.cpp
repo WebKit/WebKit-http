@@ -57,8 +57,13 @@ DatabaseProcessIDBConnection::~DatabaseProcessIDBConnection()
 
 void DatabaseProcessIDBConnection::disconnectedFromWebProcess()
 {
+    // It's possible that the m_uniqueIDBDatabase pointer has already been cleared
+    // if the represented database was deleted.
+    if (!m_uniqueIDBDatabase)
+        return;
+
     m_uniqueIDBDatabase->unregisterConnection(*this);
-    m_uniqueIDBDatabase.clear();
+    m_uniqueIDBDatabase = nullptr;
 }
 
 void DatabaseProcessIDBConnection::establishConnection(const String& databaseName, const SecurityOriginData& openingOrigin, const SecurityOriginData& mainFrameOrigin)
@@ -71,7 +76,7 @@ void DatabaseProcessIDBConnection::getOrEstablishIDBDatabaseMetadata(uint64_t re
 {
     ASSERT(m_uniqueIDBDatabase);
 
-    LOG(IDB, "DatabaseProcess getOrEstablishIDBDatabaseMetadata request ID %llu", requestID);
+    LOG(IDB, "DatabaseProcess getOrEstablishIDBDatabaseMetadata request ID %llu (connection %p)", requestID, this);
 
     RefPtr<DatabaseProcessIDBConnection> connection(this);
     m_uniqueIDBDatabase->getOrEstablishIDBDatabaseMetadata([connection, requestID](bool success, const IDBDatabaseMetadata& metadata) {
@@ -83,7 +88,7 @@ void DatabaseProcessIDBConnection::deleteDatabase(uint64_t requestID, const Stri
 {
     ASSERT(m_uniqueIDBDatabase);
 
-    LOG(IDB, "DatabaseProcess deleteDatabase request ID %llu", requestID);
+    LOG(IDB, "DatabaseProcess deleteDatabase request ID %llu (connection %p)", requestID, this);
 
     if (databaseName != m_uniqueIDBDatabase->identifier().databaseName()) {
         LOG_ERROR("Request to delete database name that doesn't match with this database connection's database name");
@@ -91,7 +96,12 @@ void DatabaseProcessIDBConnection::deleteDatabase(uint64_t requestID, const Stri
     }
 
     RefPtr<DatabaseProcessIDBConnection> connection(this);
-    m_uniqueIDBDatabase->deleteDatabase([connection, requestID](bool success) {
+    m_uniqueIDBDatabase->deleteDatabase([connection, this, requestID](bool success) {
+        if (success) {
+            // If the database was deleted, this connection should detach from it so it can be cleaned up.
+            m_uniqueIDBDatabase->unregisterConnection(*this);
+            m_uniqueIDBDatabase = nullptr;
+        }
         connection->send(Messages::WebIDBServerConnection::DidDeleteDatabase(requestID, success));
     });
 }
@@ -100,7 +110,22 @@ void DatabaseProcessIDBConnection::openTransaction(uint64_t requestID, int64_t t
 {
     ASSERT(m_uniqueIDBDatabase);
 
-    LOG(IDB, "DatabaseProcess openTransaction request ID %llu", requestID);
+#ifndef NDEBUG
+    const char* modeString = nullptr;
+    switch (static_cast<IndexedDB::TransactionMode>(intMode)) {
+    case IndexedDB::TransactionMode::ReadOnly:
+        modeString = "readonly";
+        break;
+    case IndexedDB::TransactionMode::ReadWrite:
+        modeString = "readwrite";
+        break;
+    case IndexedDB::TransactionMode::VersionChange:
+        modeString = "versionchange";
+        break;
+    }
+
+    LOG(IDB, "DatabaseProcess openTransaction id %llu in mode '%s', request ID %llu", transactionID, modeString, requestID);
+#endif
 
     if (intMode > IndexedDB::TransactionModeMaximum) {
         send(Messages::WebIDBServerConnection::DidOpenTransaction(requestID, false));
@@ -281,9 +306,9 @@ void DatabaseProcessIDBConnection::openCursor(uint64_t requestID, int64_t transa
 
     LOG(IDB, "DatabaseProcess openCursor request ID %llu, object store id %lli", requestID, objectStoreID);
     RefPtr<DatabaseProcessIDBConnection> connection(this);
-    m_uniqueIDBDatabase->openCursor(IDBIdentifier(*this, transactionID), objectStoreID, indexID, static_cast<IndexedDB::CursorDirection>(cursorDirection), static_cast<IndexedDB::CursorType>(cursorType), static_cast<IDBDatabaseBackend::TaskType>(taskType), keyRangeData, [connection, requestID](int64_t cursorID, const IDBKeyData& resultKey, const IDBKeyData& primaryKey, PassRefPtr<SharedBuffer> value, const IDBKeyData& valueKey, uint32_t errorCode, const String& errorMessage) {
+    m_uniqueIDBDatabase->openCursor(IDBIdentifier(*this, transactionID), objectStoreID, indexID, static_cast<IndexedDB::CursorDirection>(cursorDirection), static_cast<IndexedDB::CursorType>(cursorType), static_cast<IDBDatabaseBackend::TaskType>(taskType), keyRangeData, [connection, requestID](int64_t cursorID, const IDBKeyData& resultKey, const IDBKeyData& primaryKey, PassRefPtr<SharedBuffer> value, uint32_t errorCode, const String& errorMessage) {
         IPC::DataReference data = value ? IPC::DataReference(reinterpret_cast<const uint8_t*>(value->data()), value->size()) : IPC::DataReference();
-        connection->send(Messages::WebIDBServerConnection::DidOpenCursor(requestID, cursorID, resultKey, primaryKey, data, valueKey, errorCode, errorMessage));
+        connection->send(Messages::WebIDBServerConnection::DidOpenCursor(requestID, cursorID, resultKey, primaryKey, data, errorCode, errorMessage));
     });
 }
 
@@ -293,9 +318,9 @@ void DatabaseProcessIDBConnection::cursorAdvance(uint64_t requestID, int64_t cur
 
     LOG(IDB, "DatabaseProcess cursorAdvance request ID %llu, cursor id %lli", requestID, cursorID);
     RefPtr<DatabaseProcessIDBConnection> connection(this);
-    m_uniqueIDBDatabase->cursorAdvance(IDBIdentifier(*this, cursorID), count, [connection, requestID](const IDBKeyData& resultKey, const IDBKeyData& primaryKey, PassRefPtr<SharedBuffer> value, const IDBKeyData& valueKey, uint32_t errorCode, const String& errorMessage) {
+    m_uniqueIDBDatabase->cursorAdvance(IDBIdentifier(*this, cursorID), count, [connection, requestID](const IDBKeyData& resultKey, const IDBKeyData& primaryKey, PassRefPtr<SharedBuffer> value, uint32_t errorCode, const String& errorMessage) {
         IPC::DataReference data = value ? IPC::DataReference(reinterpret_cast<const uint8_t*>(value->data()), value->size()) : IPC::DataReference();
-        connection->send(Messages::WebIDBServerConnection::DidAdvanceCursor(requestID, resultKey, primaryKey, data, valueKey, errorCode, errorMessage));
+        connection->send(Messages::WebIDBServerConnection::DidAdvanceCursor(requestID, resultKey, primaryKey, data, errorCode, errorMessage));
     });
 }
 
@@ -305,10 +330,17 @@ void DatabaseProcessIDBConnection::cursorIterate(uint64_t requestID, int64_t cur
 
     LOG(IDB, "DatabaseProcess cursorIterate request ID %llu, cursor id %lli", requestID, cursorID);
     RefPtr<DatabaseProcessIDBConnection> connection(this);
-    m_uniqueIDBDatabase->cursorIterate(IDBIdentifier(*this, cursorID), key, [connection, requestID](const IDBKeyData& resultKey, const IDBKeyData& primaryKey, PassRefPtr<SharedBuffer> value, const IDBKeyData& valueKey, uint32_t errorCode, const String& errorMessage) {
+    m_uniqueIDBDatabase->cursorIterate(IDBIdentifier(*this, cursorID), key, [connection, requestID](const IDBKeyData& resultKey, const IDBKeyData& primaryKey, PassRefPtr<SharedBuffer> value, uint32_t errorCode, const String& errorMessage) {
         IPC::DataReference data = value ? IPC::DataReference(reinterpret_cast<const uint8_t*>(value->data()), value->size()) : IPC::DataReference();
-        connection->send(Messages::WebIDBServerConnection::DidIterateCursor(requestID, resultKey, primaryKey, data, valueKey, errorCode, errorMessage));
+        connection->send(Messages::WebIDBServerConnection::DidIterateCursor(requestID, resultKey, primaryKey, data, errorCode, errorMessage));
     });
+}
+
+void DatabaseProcessIDBConnection::close()
+{
+    LOG(IDB, "DatabaseProcessIDBConnection close");
+
+    disconnectedFromWebProcess();
 }
 
 IPC::Connection* DatabaseProcessIDBConnection::messageSenderConnection()

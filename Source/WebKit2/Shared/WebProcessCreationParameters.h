@@ -34,7 +34,7 @@
 #include <wtf/text/StringHash.h>
 #include <wtf/text/WTFString.h>
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
 #include "MachPort.h"
 #endif
 
@@ -112,11 +112,11 @@ struct WebProcessCreationParameters {
 
     double defaultRequestTimeoutInterval;
 
-#if PLATFORM(MAC) || USE(CFNETWORK)
+#if PLATFORM(COCOA) || USE(CFNETWORK)
     String uiProcessBundleIdentifier;
 #endif
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
     pid_t presenterApplicationPid;
 
     bool accessibilityEnhancedUserInterfaceEnabled;
@@ -131,8 +131,9 @@ struct WebProcessCreationParameters {
 
     bool shouldForceScreenFontSubstitution;
     bool shouldEnableKerningAndLigaturesByDefault;
+    bool shouldEnableJIT;
     bool shouldEnableFTL;
-#endif // PLATFORM(MAC)
+#endif // PLATFORM(COCOA)
 
 #if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
     HashMap<String, bool> notificationPermissions;

@@ -34,7 +34,7 @@
 #include <WebCore/EditorClient.h>
 #include <wtf/Forward.h>
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
 #include "PluginComplexTextInputState.h"
 
 OBJC_CLASS CALayer;
@@ -72,7 +72,7 @@ class WebColorPicker;
 class WebFullScreenManagerProxyClient;
 #endif
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
 struct ColorSpaceData;
 #endif
 
@@ -166,7 +166,7 @@ public:
     virtual void clearAllEditCommands() = 0;
     virtual bool canUndoRedo(WebPageProxy::UndoOrRedo) = 0;
     virtual void executeUndoRedo(WebPageProxy::UndoOrRedo) = 0;
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
     virtual void accessibilityWebProcessTokenReceived(const IPC::DataReference&) = 0;
     virtual bool interpretKeyEvent(const NativeWebKeyboardEvent&, Vector<WebCore::KeypressCommand>&) = 0;
     virtual bool executeSavedCommandBySelector(const String& selector) = 0;
@@ -192,8 +192,8 @@ public:
 #endif
     virtual WebCore::FloatRect convertToDeviceSpace(const WebCore::FloatRect&) = 0;
     virtual WebCore::FloatRect convertToUserSpace(const WebCore::FloatRect&) = 0;
-    virtual WebCore::IntPoint screenToWindow(const WebCore::IntPoint&) = 0;
-    virtual WebCore::IntRect windowToScreen(const WebCore::IntRect&) = 0;
+    virtual WebCore::IntPoint screenToRootView(const WebCore::IntPoint&) = 0;
+    virtual WebCore::IntRect rootViewToScreen(const WebCore::IntRect&) = 0;
     
     virtual void doneWithKeyEvent(const NativeWebKeyboardEvent&, bool wasEventHandled) = 0;
 #if ENABLE(TOUCH_EVENTS)
@@ -213,7 +213,7 @@ public:
     virtual void exitAcceleratedCompositingMode() = 0;
     virtual void updateAcceleratedCompositingMode(const LayerTreeContext&) = 0;
 
-#if !PLATFORM(IOS) && PLATFORM(MAC)
+#if PLATFORM(MAC)
     virtual void pluginFocusOrWindowFocusChanged(uint64_t pluginComplexTextInputIdentifier, bool pluginHasFocusAndWindowHasFocus) = 0;
     virtual void setPluginComplexTextInputState(uint64_t pluginComplexTextInputIdentifier, PluginComplexTextInputState) = 0;
     virtual void didPerformDictionaryLookup(const AttributedString&, const DictionaryPopupInfo&) = 0;

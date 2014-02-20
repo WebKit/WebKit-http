@@ -62,7 +62,6 @@
 #include "RTCVoidRequestImpl.h"
 #include "ScriptExecutionContext.h"
 #include "VoidCallback.h"
-#include <wtf/Functional.h>
 #include <wtf/MainThread.h>
 
 namespace WebCore {
@@ -86,7 +85,15 @@ PassRefPtr<RTCConfiguration> RTCPeerConnection::parseConfiguration(const Diction
         return nullptr;
     }
 
+    String iceTransports;
+    String requestIdentity;
+    configuration.get("iceTransports", iceTransports);
+    configuration.get("requestIdentity", requestIdentity);
+
     RefPtr<RTCConfiguration> rtcConfiguration = RTCConfiguration::create();
+
+    rtcConfiguration->setIceTransports(iceTransports);
+    rtcConfiguration->setRequestIdentity(requestIdentity);
 
     for (size_t i = 0; i < numberOfServers; ++i) {
         Dictionary iceServer;
@@ -250,8 +257,10 @@ void RTCPeerConnection::setLocalDescription(PassRefPtr<RTCSessionDescription> pr
     }
 
     if (!checkStateForLocalDescription(sessionDescription.get())) {
-        RefPtr<DOMError> error = DOMError::create(RTCPeerConnectionHandler::invalidSessionDescriptionErrorName());
-        callOnMainThread(bind(&RTCPeerConnectionErrorCallback::handleEvent, errorCallback.get(), error.release()));
+        callOnMainThread([=] {
+            RefPtr<DOMError> error = DOMError::create(RTCPeerConnectionHandler::invalidSessionDescriptionErrorName());
+            errorCallback->handleEvent(error.get());
+        });
         return;
     }
 
@@ -285,8 +294,10 @@ void RTCPeerConnection::setRemoteDescription(PassRefPtr<RTCSessionDescription> p
     }
 
     if (!checkStateForRemoteDescription(sessionDescription.get())) {
-        RefPtr<DOMError> error = DOMError::create(RTCPeerConnectionHandler::invalidSessionDescriptionErrorName());
-        callOnMainThread(bind(&RTCPeerConnectionErrorCallback::handleEvent, errorCallback.get(), error.release()));
+        callOnMainThread([=] {
+            RefPtr<DOMError> error = DOMError::create(RTCPeerConnectionHandler::invalidSessionDescriptionErrorName());
+            errorCallback->handleEvent(error.get());
+        });
         return;
     }
 

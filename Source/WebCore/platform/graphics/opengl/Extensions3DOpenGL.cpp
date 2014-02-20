@@ -174,6 +174,11 @@ bool Extensions3DOpenGL::supportsExtension(const String& name)
     if (name == "GL_ANGLE_framebuffer_multisample")
         return m_availableExtensions.contains("GL_EXT_framebuffer_multisample");
 
+    if (name == "GL_ANGLE_instanced_arrays") {
+        return (m_availableExtensions.contains("GL_ARB_instanced_arrays") || m_availableExtensions.contains("GL_EXT_instanced_arrays"))
+            && (m_availableExtensions.contains("GL_ARB_draw_instanced") || m_availableExtensions.contains("GL_EXT_draw_instanced"));
+    }
+
     // Desktop GL always supports GL_OES_rgb8_rgba8.
     if (name == "GL_OES_rgb8_rgba8")
         return true;
@@ -223,11 +228,49 @@ bool Extensions3DOpenGL::supportsExtension(const String& name)
 void Extensions3DOpenGL::drawBuffersEXT(GC3Dsizei n, const GC3Denum* bufs)
 {
     //  FIXME: implement support for other platforms.
-#if PLATFORM(MAC) && !PLATFORM(IOS)
+#if PLATFORM(MAC)
     ::glDrawBuffersARB(n, bufs);
 #else
     UNUSED_PARAM(n);
     UNUSED_PARAM(bufs);
+#endif
+}
+
+void Extensions3DOpenGL::drawArraysInstanced(GC3Denum mode, GC3Dint first, GC3Dsizei count, GC3Dsizei primcount)
+{
+#if PLATFORM(GTK)
+    m_context->makeContextCurrent();
+    ::glDrawArraysInstanced(mode, first, count, primcount);
+#else
+    UNUSED_PARAM(mode);
+    UNUSED_PARAM(first);
+    UNUSED_PARAM(count);
+    UNUSED_PARAM(primcount);
+#endif
+}
+
+void Extensions3DOpenGL::drawElementsInstanced(GC3Denum mode, GC3Dsizei count, GC3Denum type, long long offset, GC3Dsizei primcount)
+{
+#if PLATFORM(GTK)
+    m_context->makeContextCurrent();
+    ::glDrawElementsInstanced(mode, count, type, reinterpret_cast<GLvoid*>(static_cast<intptr_t>(offset)), primcount);
+#else
+    UNUSED_PARAM(mode);
+    UNUSED_PARAM(count);
+    UNUSED_PARAM(type);
+    UNUSED_PARAM(offset);
+    UNUSED_PARAM(primcount);
+#endif
+}
+
+void Extensions3DOpenGL::vertexAttribDivisor(GC3Duint index, GC3Duint divisor)
+{
+#if PLATFORM(GTK)
+    m_context->makeContextCurrent();
+    ::glVertexAttribDivisor(index, divisor);
+#else
+    UNUSED_PARAM(index);
+    UNUSED_PARAM(divisor);
 #endif
 }
 

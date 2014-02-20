@@ -614,7 +614,7 @@ void DocumentLoader::responseReceived(CachedResource* resource, const ResourceRe
         if (frameLoader()->shouldInterruptLoadForXFrameOptions(content, response.url(), identifier)) {
             InspectorInstrumentation::continueAfterXFrameOptionsDenied(m_frame, this, identifier, response);
             String message = "Refused to display '" + response.url().stringCenterEllipsizedToLength() + "' in a frame because it set 'X-Frame-Options' to '" + content + "'.";
-            frame()->document()->addConsoleMessage(SecurityMessageSource, ErrorMessageLevel, message, identifier);
+            frame()->document()->addConsoleMessage(MessageSource::Security, MessageLevel::Error, message, identifier);
             frame()->document()->enforceSandboxFlags(SandboxOrigin);
             if (HTMLFrameOwnerElement* ownerElement = frame()->ownerElement())
                 ownerElement->dispatchEvent(Event::create(eventNames().loadEvent, false, false));
@@ -849,12 +849,6 @@ void DocumentLoader::dataReceived(CachedResource* resource, const char* data, in
     ASSERT(length);
     ASSERT_UNUSED(resource, resource == m_mainResource);
     ASSERT(!m_response.isNull());
-
-#if USE(CFNETWORK) || PLATFORM(MAC)
-    // Workaround for <rdar://problem/6060782>
-    if (m_response.isNull())
-        m_response = ResourceResponse(URL(), "text/html", 0, String(), String());
-#endif
 
     // There is a bug in CFNetwork where callbacks can be dispatched even when loads are deferred.
     // See <rdar://problem/6304600> for more details.

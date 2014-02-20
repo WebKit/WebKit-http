@@ -82,6 +82,11 @@ public:
     double maximumScale() const { return m_configuration.maximumScale; }
     bool allowsUserScaling() const { return m_configuration.allowsUserScaling; }
 
+    static Parameters webpageParameters();
+    static Parameters textDocumentParameters();
+    static Parameters imageDocumentParameters();
+    static Parameters xhtmlMobileParameters();
+
 private:
     void updateConfiguration();
     int layoutWidth() const;

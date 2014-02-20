@@ -1,3 +1,127 @@
+2014-02-17  Sergio Correia  <sergio.correia@openbossa.org>
+
+        Replace uses of PassOwnPtr/OwnPtr with std::unique_ptr in WebCore/inspector
+        https://bugs.webkit.org/show_bug.cgi?id=128681
+
+        Reviewed by Timothy Hatcher.
+
+        Another step towards getting rid of PassOwnPtr/OwnPtr, now targeting
+        WebCore/inspector/*. Besides files in there, a few other files in
+        JavaScriptCore/inspector, WebKit/, WebKit2/WebProcess/WebCoreSupport/
+        and WebCore/testing were touched.
+
+        * WebCoreSupport/InspectorClientEfl.cpp:
+
+2014-02-15  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [EFL][WK1] Do not include cairo header in the public headers
+        https://bugs.webkit.org/show_bug.cgi?id=128779
+
+        Reviewed by Gyuyoung Kim.
+
+        Although ewebkit used cairo internally, it's not good for EFL developers
+        to use it.
+        Indeed, almost APIs which returns cairo_surface are duplicated with other APIs
+        which returns evas_object.
+
+        * ewk/ewk_history.cpp:
+        Removed ewk_history_item_icon_surface_get.
+        ewk_history_item_icon_object_add will be used instead.
+        * ewk/ewk_history.h:
+        * ewk/ewk_settings.cpp:
+        Removed ewk_settings_icon_database_icon_surface_get.
+        ewk_settings_icon_database_icon_object_get will be used instead.
+        * ewk/ewk_settings.h:
+        * ewk/ewk_view.cpp:
+        (ewk_view_screenshot_contents_get):
+        Implemented to replace ewk_view_paint and ewk_view_paint_contents.
+        * ewk/ewk_view.h:
+        * tests/test_ewk_view.cpp:
+        (TEST_F): Added test case for ewk_view_screenshot_contents_get
+
+2014-02-13  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [EFL][WK1] Do not include libsoup header in the public headers
+        https://bugs.webkit.org/show_bug.cgi?id=128701
+
+        Reviewed by Gyuyoung Kim.
+
+        Although ewebkit used libsoup internally, it's not good for EFL developers
+        to use it.
+        Instead, we should provide some wrapper APIs like ewk_network_proxy_uri_set
+        for future changes.
+
+        * ewk/ewk_network.cpp: Removed soup related header,APIs and comments.
+        (ewk_network_tls_ca_certificates_path_set):
+        * ewk/ewk_network.h: Ditto.
+        * ewk/ewk_view.cpp: Ditto.
+        * ewk/ewk_view.h: Ditto.
+
+2014-02-12  Raphael Kubo da Costa  <raphael.kubo.da.costa@intel.com>
+
+        Update the HTML Media Capture implementation.
+        https://bugs.webkit.org/show_bug.cgi?id=118465
+
+        Reviewed by Darin Adler.
+
+        Make the implementation in WebKit compatible with the 2013-05-09
+        version of the spec, which makes the "capture" attribute a boolean
+        instead of an enum.
+
+        * ewk/ewk_file_chooser.cpp:
+        (ewk_file_chooser_capture_get): Return an Eina_Bool now.
+        * ewk/ewk_file_chooser.h: Get rid of Ewk_File_Chooser_Capture_Type.
+
+2014-02-09  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [EFL] Remove PageClientEfl
+        https://bugs.webkit.org/show_bug.cgi?id=128508
+
+        Reviewed by Andreas Kling.
+
+        * WebCoreSupport/AcceleratedCompositingContextEfl.cpp:
+        Removed dependencies of PageClientEfl.
+        (WebCore::AcceleratedCompositingContext::initialize):
+        * WebCoreSupport/ChromeClientEfl.cpp:
+        (WebCore::ChromeClientEfl::platformPageClient):
+        * WebCoreSupport/PageClientEfl.cpp: Removed.
+        * WebCoreSupport/PageClientEfl.h: Removed.
+        * ewk/ewk_view.cpp:
+        (_ewk_view_priv_new):
+
+2014-02-08  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Cleanup the interface of FrameSelection
+        https://bugs.webkit.org/show_bug.cgi?id=128481
+
+        Reviewed by Andreas Kling.
+
+        * WebCoreSupport/DumpRenderTreeSupportEfl.cpp:
+        (DumpRenderTreeSupportEfl::selectionRectangle):
+
+2014-02-08  Darin Adler  <darin@apple.com>
+
+        Change TextIterator to use StringView, preparing to wean it from deprecatedCharacters
+        https://bugs.webkit.org/show_bug.cgi?id=128233
+
+        Reviewed by Anders Carlsson.
+
+        * WebCoreSupport/EditorClientEfl.cpp:
+        (WebCore::EditorClientEfl::checkSpellingOfString): Use StringView.
+        (WebCore::EditorClientEfl::checkGrammarOfString): Ditto.
+        * WebCoreSupport/EditorClientEfl.h: Ditto.
+
+2014-02-07  Gavin Barraclough  <barraclough@apple.com>
+
+        Remove isInitialState flag from Page::setViewState
+        https://bugs.webkit.org/show_bug.cgi?id=128428
+
+        Reviewed by Sam Weinig.
+
+        * ewk/ewk_view.cpp:
+        (ewk_view_visibility_state_set):
+            - don't pass isInitialState to setViewState.
+
 2014-02-05  Andreas Kling  <akling@apple.com>
 
         Remove ENABLE(DIRECTORY_UPLOAD).

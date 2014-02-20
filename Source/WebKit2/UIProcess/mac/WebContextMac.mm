@@ -67,7 +67,8 @@ NSString *WebDatabaseDirectoryDefaultsKey = @"WebDatabaseDirectory";
 NSString *WebKitLocalCacheDefaultsKey = @"WebKitLocalCache";
 NSString *WebStorageDirectoryDefaultsKey = @"WebKitLocalStorageDatabasePathPreferenceKey";
 NSString *WebKitKerningAndLigaturesEnabledByDefaultDefaultsKey = @"WebKitKerningAndLigaturesEnabledByDefault";
-NSString *WebKitFTLEnabledDefaultsKey = @"WebKitFTLEnabledDefaultsKey";
+NSString *WebKitJSCFTLEnabledDefaultsKey = @"WebKitJSCFTLEnabledDefaultsKey";
+NSString *WebKitJSCJITEnabledDefaultsKey = @"WebKitJSCJITEnabledDefaultsKey";
 
 #if !PLATFORM(IOS)
 static NSString *WebKitApplicationDidChangeAccessibilityEnhancedUserInterfaceNotification = @"NSApplicationDidChangeAccessibilityEnhancedUserInterfaceNotification";
@@ -95,9 +96,11 @@ static void registerUserDefaultsIfNeeded()
     didRegister = true;
     NSMutableDictionary *registrationDictionary = [NSMutableDictionary dictionary];
     
+    [registrationDictionary setObject:[NSNumber numberWithBool:YES] forKey:WebKitJSCJITEnabledDefaultsKey];
+
 #if PLATFORM(IOS) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
     [registrationDictionary setObject:[NSNumber numberWithBool:YES] forKey:WebKitKerningAndLigaturesEnabledByDefaultDefaultsKey];
-    [registrationDictionary setObject:[NSNumber numberWithBool:NO] forKey:WebKitFTLEnabledDefaultsKey];
+    [registrationDictionary setObject:[NSNumber numberWithBool:NO] forKey:WebKitJSCFTLEnabledDefaultsKey];
 #endif
 
     [[NSUserDefaults standardUserDefaults] registerDefaults:registrationDictionary];
@@ -141,7 +144,7 @@ void WebContext::platformInitializeWebProcess(WebProcessCreationParameters& para
 {
     parameters.presenterApplicationPid = getpid();
 
-#if PLATFORM(MAC) && !PLATFORM(IOS)
+#if PLATFORM(MAC)
     parameters.accessibilityEnhancedUserInterfaceEnabled = [[NSApp accessibilityAttributeValue:@"AXEnhancedUserInterface"] boolValue];
 #else
     parameters.accessibilityEnhancedUserInterfaceEnabled = false;
@@ -155,7 +158,8 @@ void WebContext::platformInitializeWebProcess(WebProcessCreationParameters& para
     parameters.shouldForceScreenFontSubstitution = [[NSUserDefaults standardUserDefaults] boolForKey:@"NSFontDefaultScreenFontSubstitutionEnabled"];
 #endif
     parameters.shouldEnableKerningAndLigaturesByDefault = [[NSUserDefaults standardUserDefaults] boolForKey:WebKitKerningAndLigaturesEnabledByDefaultDefaultsKey];
-    parameters.shouldEnableFTL = [[NSUserDefaults standardUserDefaults] boolForKey:WebKitFTLEnabledDefaultsKey];
+    parameters.shouldEnableJIT = [[NSUserDefaults standardUserDefaults] boolForKey:WebKitJSCJITEnabledDefaultsKey];
+    parameters.shouldEnableFTL = [[NSUserDefaults standardUserDefaults] boolForKey:WebKitJSCFTLEnabledDefaultsKey];
 
 #if HAVE(HOSTED_CORE_ANIMATION)
 #if !PLATFORM(IOS)

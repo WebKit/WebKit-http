@@ -26,6 +26,8 @@
 #include "config.h"
 #include "PreciseJumpTargets.h"
 
+#include "JSCInlines.h"
+
 namespace JSC {
 
 template <size_t vectorSize>

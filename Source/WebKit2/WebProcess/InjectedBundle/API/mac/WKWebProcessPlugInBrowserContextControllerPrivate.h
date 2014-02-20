@@ -31,6 +31,7 @@
 
 @class WKBrowsingContextHandle;
 @class WKRemoteObjectRegistry;
+@protocol WKWebProcessPlugInFormDelegatePrivate;
 
 @interface WKWebProcessPlugInBrowserContextController (Private)
 
@@ -39,6 +40,8 @@
 @property (nonatomic, readonly) WKBrowsingContextHandle *handle;
 
 @property (nonatomic, readonly) WKRemoteObjectRegistry *remoteObjectRegistry;
+
+@property (weak, setter=_setFormDelegate:) id <WKWebProcessPlugInFormDelegatePrivate> _formDelegate;
 
 + (instancetype)lookUpBrowsingContextFromHandle:(WKBrowsingContextHandle *)handle;
 

@@ -262,7 +262,7 @@ public:
             misc.access()->baselineShiftValue = obj;
     }
 
-    void setShadow(PassOwnPtr<ShadowData> obj) { shadowSVG.access()->shadow = obj; }
+    void setShadow(std::unique_ptr<ShadowData> obj) { shadowSVG.access()->shadow = std::move(obj); }
 
     // Setters for non-inherited resources
     void setClipperResource(const String& obj)
@@ -364,6 +364,7 @@ public:
     bool hasVisibleStroke() const { return hasStroke() && !strokeWidth().isZero(); }
     bool hasFill() const { return fillPaintType() != SVGPaint::SVG_PAINTTYPE_NONE; }
     bool isVerticalWritingMode() const { return writingMode() == WM_TBRL || writingMode() == WM_TB; }
+    bool isolatesBlending() const { return hasMasker() || hasFilter() || shadow(); }
 
 protected:
     // inherit

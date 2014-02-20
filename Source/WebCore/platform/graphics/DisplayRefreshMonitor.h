@@ -35,7 +35,7 @@
 #include <wtf/RefPtr.h>
 #include <wtf/Threading.h>
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
 typedef struct __CVDisplayLink *CVDisplayLinkRef;
 #endif
 
@@ -119,7 +119,7 @@ private:
     HashSet<DisplayRefreshMonitorClient*> m_clients;
     HashSet<DisplayRefreshMonitorClient*>* m_clientsToBeNotified;
 
-#if PLATFORM(MAC) && !PLATFORM(IOS)
+#if PLATFORM(MAC)
 public:
     void displayLinkFired(double nowSeconds, double outputTimeSeconds);
 private:

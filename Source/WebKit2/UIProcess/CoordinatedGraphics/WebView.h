@@ -93,9 +93,6 @@ public:
     void suspendActiveDOMObjectsAndAnimations();
     void resumeActiveDOMObjectsAndAnimations();
 
-    void setShowsAsSource(bool);
-    bool showsAsSource() const;
-
 #if ENABLE(FULLSCREEN_API)
     bool requestExitFullScreen();
 #endif
@@ -168,8 +165,8 @@ protected:
 
     virtual WebCore::FloatRect convertToDeviceSpace(const WebCore::FloatRect&) override;
     virtual WebCore::FloatRect convertToUserSpace(const WebCore::FloatRect&) override;
-    virtual WebCore::IntPoint screenToWindow(const WebCore::IntPoint&) override;
-    virtual WebCore::IntRect windowToScreen(const WebCore::IntRect&) override;
+    virtual WebCore::IntPoint screenToRootView(const WebCore::IntPoint&) override;
+    virtual WebCore::IntRect rootViewToScreen(const WebCore::IntRect&) override;
 
     virtual void updateTextInputState() override;
 

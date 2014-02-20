@@ -46,10 +46,13 @@
 namespace JSC {
 
 class CodeBlock;
+class CodeBlockSet;
+class SlotVisitor;
 
 namespace DFG {
 
 class LongLivedState;
+class ThreadData;
 
 #if ENABLE(DFG_JIT)
 
@@ -60,7 +63,7 @@ struct Plan : public ThreadSafeRefCounted<Plan> {
         const Operands<JSValue>& mustHandleValues);
     ~Plan();
     
-    void compileInThread(LongLivedState&);
+    void compileInThread(LongLivedState&, ThreadData*);
     
     CompilationResult finalizeWithoutNotifyingCallback();
     void finalizeAndNotifyCallback();
@@ -69,12 +72,16 @@ struct Plan : public ThreadSafeRefCounted<Plan> {
     
     CompilationKey key();
     
+    void visitChildren(SlotVisitor&, CodeBlockSet&);
+    
     VM& vm;
     RefPtr<CodeBlock> codeBlock;
     RefPtr<CodeBlock> profiledDFGCodeBlock;
     CompilationMode mode;
     const unsigned osrEntryBytecodeIndex;
     Operands<JSValue> mustHandleValues;
+    
+    ThreadData* threadData;
 
     RefPtr<Profiler::Compilation> compilation;
 

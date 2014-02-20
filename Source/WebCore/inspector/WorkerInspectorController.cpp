@@ -36,7 +36,6 @@
 
 #include "CommandLineAPIHost.h"
 #include "InspectorClient.h"
-#include "InspectorConsoleAgent.h"
 #include "InspectorForwarding.h"
 #include "InspectorHeapProfilerAgent.h"
 #include "InspectorInstrumentation.h"
@@ -46,8 +45,8 @@
 #include "InspectorWebFrontendDispatchers.h"
 #include "InstrumentingAgents.h"
 #include "JSMainThreadExecState.h"
-#include "PageInjectedScriptHost.h"
-#include "PageInjectedScriptManager.h"
+#include "WebInjectedScriptHost.h"
+#include "WebInjectedScriptManager.h"
 #include "WorkerConsoleAgent.h"
 #include "WorkerDebuggerAgent.h"
 #include "WorkerGlobalScope.h"
@@ -71,7 +70,7 @@ public:
 private:
     virtual bool sendMessageToFrontend(const String& message) override
     {
-        m_workerGlobalScope.thread()->workerReportingProxy().postMessageToPageInspector(message);
+        m_workerGlobalScope.thread().workerReportingProxy().postMessageToPageInspector(message);
         return true;
     }
     WorkerGlobalScope& m_workerGlobalScope;
@@ -82,7 +81,7 @@ private:
 WorkerInspectorController::WorkerInspectorController(WorkerGlobalScope& workerGlobalScope)
     : m_workerGlobalScope(workerGlobalScope)
     , m_instrumentingAgents(InstrumentingAgents::create(*this))
-    , m_injectedScriptManager(std::make_unique<PageInjectedScriptManager>(*this, PageInjectedScriptHost::create()))
+    , m_injectedScriptManager(std::make_unique<WebInjectedScriptManager>(*this, WebInjectedScriptHost::create()))
     , m_runtimeAgent(nullptr)
 {
     auto runtimeAgent = std::make_unique<WorkerRuntimeAgent>(m_injectedScriptManager.get(), &workerGlobalScope);
@@ -90,7 +89,9 @@ WorkerInspectorController::WorkerInspectorController(WorkerGlobalScope& workerGl
     m_instrumentingAgents->setWorkerRuntimeAgent(m_runtimeAgent);
     m_agents.append(std::move(runtimeAgent));
 
-    auto consoleAgent = std::make_unique<WorkerConsoleAgent>(m_instrumentingAgents.get(), m_injectedScriptManager.get());
+    auto consoleAgent = std::make_unique<WorkerConsoleAgent>(m_injectedScriptManager.get());
+    m_instrumentingAgents->setWebConsoleAgent(consoleAgent.get());
+
     auto debuggerAgent = std::make_unique<WorkerDebuggerAgent>(m_injectedScriptManager.get(), m_instrumentingAgents.get(), &workerGlobalScope);
     m_runtimeAgent->setScriptDebugServer(&debuggerAgent->scriptDebugServer());
     m_agents.append(std::move(debuggerAgent));

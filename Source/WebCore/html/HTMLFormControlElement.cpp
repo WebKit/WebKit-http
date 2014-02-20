@@ -101,17 +101,17 @@ bool HTMLFormControlElement::formNoValidate() const
 
 void HTMLFormControlElement::updateAncestorDisabledState() const
 {
-    HTMLFieldSetElement* fieldSetAncestor = 0;
-    ContainerNode* legendAncestor = 0;
-    for (ContainerNode* ancestor = parentNode(); ancestor; ancestor = ancestor->parentNode()) {
-        if (!legendAncestor && ancestor->hasTagName(legendTag))
-            legendAncestor = ancestor;
-        if (ancestor->hasTagName(fieldsetTag)) {
-            fieldSetAncestor = toHTMLFieldSetElement(ancestor);
-            break;
+    Element* previousAncestor = nullptr;
+    for (Element* ancestor = parentElement(); ancestor; ancestor = ancestor->parentElement()) {
+        if (isHTMLFieldSetElement(ancestor) && ancestor->hasAttribute(disabledAttr)) {
+            HTMLFieldSetElement& fieldSetAncestor = toHTMLFieldSetElement(*ancestor);
+            bool isInFirstLegend = previousAncestor && isHTMLLegendElement(previousAncestor) && previousAncestor == fieldSetAncestor.legend();
+            m_ancestorDisabledState = isInFirstLegend ? AncestorDisabledStateEnabled : AncestorDisabledStateDisabled;
+            return;
         }
+        previousAncestor = ancestor;
     }
-    m_ancestorDisabledState = (fieldSetAncestor && fieldSetAncestor->isDisabledFormControl() && !(legendAncestor && legendAncestor == fieldSetAncestor->legend())) ? AncestorDisabledStateDisabled : AncestorDisabledStateEnabled;
+    m_ancestorDisabledState = AncestorDisabledStateEnabled;
 }
 
 void HTMLFormControlElement::ancestorDisabledStateWasChanged()
@@ -180,7 +180,7 @@ static bool shouldAutofocus(HTMLFormControlElement* element)
         return false;
     if (element->document().isSandboxed(SandboxAutomaticFeatures)) {
         // FIXME: This message should be moved off the console once a solution to https://bugs.webkit.org/show_bug.cgi?id=103274 exists.
-        element->document().addConsoleMessage(SecurityMessageSource, ErrorMessageLevel, "Blocked autofocusing on a form control because the form's frame is sandboxed and the 'allow-scripts' permission is not set.");
+        element->document().addConsoleMessage(MessageSource::Security, MessageLevel::Error, ASCIILiteral("Blocked autofocusing on a form control because the form's frame is sandboxed and the 'allow-scripts' permission is not set."));
         return false;
     }
     if (element->hasAutofocused())
@@ -419,7 +419,7 @@ bool HTMLFormControlElement::checkValidity(Vector<RefPtr<FormAssociatedElement>>
     return false;
 }
 
-bool HTMLFormControlElement::isValidFormControlElement()
+bool HTMLFormControlElement::isValidFormControlElement() const
 {
     // If the following assertion fails, setNeedsValidityCheck() is not called
     // correctly when something which changes validity is updated.

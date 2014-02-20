@@ -26,7 +26,7 @@
 #include "JSGlobalObject.h"
 #include "JSLock.h"
 #include "JSObject.h"
-
+#include "JSCInlines.h"
 
 namespace JSC {
 
@@ -213,7 +213,6 @@ struct ResumeAllocatingFunctor {
 void MarkedSpace::resumeAllocating()
 {
     ASSERT(isIterating());
-    DelayedReleaseScope scope(*this);
     forEachAllocator<ResumeAllocatingFunctor>();
 }
 
@@ -346,6 +345,7 @@ void MarkedSpace::willStartIterating()
 void MarkedSpace::didFinishIterating()
 {
     ASSERT(isIterating());
+    DelayedReleaseScope scope(*this);
     resumeAllocating();
     m_isIterating = false;
 }

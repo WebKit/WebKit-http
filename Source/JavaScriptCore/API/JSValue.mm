@@ -35,8 +35,10 @@
 #import "JSValueInternal.h"
 #import "JSWrapperMap.h"
 #import "ObjcRuntimeExtras.h"
-#import "Operations.h"
+#import "JSCInlines.h"
 #import "JSCJSValue.h"
+#import "Strong.h"
+#import "StrongInlines.h"
 #import <wtf/HashMap.h>
 #import <wtf/HashSet.h>
 #import <wtf/ObjcRuntimeExtras.h>
@@ -595,6 +597,7 @@ private:
     JSGlobalContextRef m_context;
     HashMap<JSValueRef, id> m_objectMap;
     Vector<Task> m_worklist;
+    Vector<JSC::Strong<JSC::Unknown>> m_jsValues;
 };
 
 inline id JSContainerConvertor::convert(JSValueRef value)
@@ -611,6 +614,8 @@ inline id JSContainerConvertor::convert(JSValueRef value)
 
 void JSContainerConvertor::add(Task task)
 {
+    JSC::ExecState* exec = toJS(m_context);
+    m_jsValues.append(JSC::Strong<JSC::Unknown>(exec->vm(), toJSForGC(exec, task.js)));
     m_objectMap.add(task.js, task.objc);
     if (task.type != ContainerNone)
         m_worklist.append(task);
@@ -656,7 +661,7 @@ static JSContainerConvertor::Task valueToObjectWithoutCopy(JSGlobalContextRef co
         return (JSContainerConvertor::Task){ object, wrapped, ContainerNone };
 
     if (isDate(object, context))
-        return (JSContainerConvertor::Task){ object, [NSDate dateWithTimeIntervalSince1970:JSValueToNumber(context, object, 0)], ContainerNone };
+        return (JSContainerConvertor::Task){ object, [NSDate dateWithTimeIntervalSince1970:JSValueToNumber(context, object, 0) / 1000.0], ContainerNone };
 
     if (isArray(object, context))
         return (JSContainerConvertor::Task){ object, [NSMutableArray array], ContainerArray };
@@ -667,6 +672,7 @@ static JSContainerConvertor::Task valueToObjectWithoutCopy(JSGlobalContextRef co
 static id containerValueToObject(JSGlobalContextRef context, JSContainerConvertor::Task task)
 {
     ASSERT(task.type != ContainerNone);
+    JSC::APIEntryShim entryShim(toJS(context));
     JSContainerConvertor convertor(context);
     convertor.add(task);
     ASSERT(!convertor.isWorkListEmpty());
@@ -759,7 +765,7 @@ id valueToDate(JSGlobalContextRef context, JSValueRef value, JSValueRef* excepti
             return wrapped;
     }
 
-    double result = JSValueToNumber(context, value, exception);
+    double result = JSValueToNumber(context, value, exception) / 1000.0;
     return *exception ? nil : [NSDate dateWithTimeIntervalSince1970:result];
 }
 
@@ -774,8 +780,9 @@ id valueToArray(JSGlobalContextRef context, JSValueRef value, JSValueRef* except
     if (JSValueIsObject(context, value))
         return containerValueToObject(context, (JSContainerConvertor::Task){ value, [NSMutableArray array], ContainerArray});
 
+    JSC::APIEntryShim shim(toJS(context));
     if (!(JSValueIsNull(context, value) || JSValueIsUndefined(context, value)))
-        *exception = toRef(JSC::createTypeError(toJS(context), "Cannot convert primitive to NSArray"));
+        *exception = toRef(JSC::createTypeError(toJS(context), ASCIILiteral("Cannot convert primitive to NSArray")));
     return nil;
 }
 
@@ -790,8 +797,9 @@ id valueToDictionary(JSGlobalContextRef context, JSValueRef value, JSValueRef* e
     if (JSValueIsObject(context, value))
         return containerValueToObject(context, (JSContainerConvertor::Task){ value, [NSMutableDictionary dictionary], ContainerDictionary});
 
+    JSC::APIEntryShim shim(toJS(context));
     if (!(JSValueIsNull(context, value) || JSValueIsUndefined(context, value)))
-        *exception = toRef(JSC::createTypeError(toJS(context), "Cannot convert primitive to NSDictionary"));
+        *exception = toRef(JSC::createTypeError(toJS(context), ASCIILiteral("Cannot convert primitive to NSDictionary")));
     return nil;
 }
 
@@ -817,6 +825,7 @@ private:
     JSContext *m_context;
     HashMap<id, JSValueRef> m_objectMap;
     Vector<Task> m_worklist;
+    Vector<JSC::Strong<JSC::Unknown>> m_jsValues;
 };
 
 JSValueRef ObjcContainerConvertor::convert(id object)
@@ -834,6 +843,8 @@ JSValueRef ObjcContainerConvertor::convert(id object)
 
 void ObjcContainerConvertor::add(ObjcContainerConvertor::Task task)
 {
+    JSC::ExecState* exec = toJS(m_context.JSGlobalContextRef);
+    m_jsValues.append(JSC::Strong<JSC::Unknown>(exec->vm(), toJSForGC(exec, task.js)));
     m_objectMap.add(task.objc, task.js);
     if (task.type != ContainerNone)
         m_worklist.append(task);
@@ -889,7 +900,7 @@ static ObjcContainerConvertor::Task objectToValueWithoutCopy(JSContext *context,
         }
 
         if ([object isKindOfClass:[NSDate class]]) {
-            JSValueRef argument = JSValueMakeNumber(contextRef, [object timeIntervalSince1970]);
+            JSValueRef argument = JSValueMakeNumber(contextRef, [object timeIntervalSince1970] * 1000.0);
             JSObjectRef result = JSObjectMakeDate(contextRef, 1, &argument, 0);
             return (ObjcContainerConvertor::Task){ object, result, ContainerNone };
         }
@@ -913,6 +924,7 @@ JSValueRef objectToValue(JSContext *context, id object)
     if (task.type == ContainerNone)
         return task.js;
 
+    JSC::APIEntryShim entryShim(toJS(contextRef));
     ObjcContainerConvertor convertor(context);
     convertor.add(task);
     ASSERT(!convertor.isWorkListEmpty());

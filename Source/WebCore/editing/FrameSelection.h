@@ -68,7 +68,6 @@ protected:
     void invalidateCaretRect(Node*, bool caretRectChanged = false);
     void clearCaretRect();
     bool updateCaretRect(Document*, const VisiblePosition& caretPosition);
-    IntRect absoluteBoundsForLocalRect(Node*, const LayoutRect&) const;
     bool shouldRepaintCaret(const RenderView*, bool isContentEditable) const;
     void paintCaret(Node*, GraphicsContext*, const LayoutPoint&, const LayoutRect& clipRect) const;
 
@@ -118,33 +117,34 @@ public:
     enum CursorAlignOnScroll { AlignCursorOnScrollIfNeeded,
                                AlignCursorOnScrollAlways };
     enum SetSelectionOption {
-        // 1 << 0 is reserved for EUserTriggered
+        FireSelectEvent = 1 << 0,
         CloseTyping = 1 << 1,
         ClearTypingStyle = 1 << 2,
         SpellCorrectionTriggered = 1 << 3,
         DoNotSetFocus = 1 << 4,
         DictationTriggered = 1 << 5,
-        DoNotUpdateAppearance = 1 << 6,
-        DoNotRevealSelection = 1 << 7,
+        RevealSelection = 1 << 6,
     };
     typedef unsigned SetSelectionOptions; // Union of values in SetSelectionOption and EUserTriggered
-    static inline EUserTriggered selectionOptionsToUserTriggered(SetSelectionOptions options)
+    static inline SetSelectionOptions defaultSetSelectionOptions(EUserTriggered userTriggered = NotUserTriggered)
     {
-        return static_cast<EUserTriggered>(options & UserTriggered);
+        return CloseTyping | ClearTypingStyle | (userTriggered ? (RevealSelection | FireSelectEvent) : 0);
     }
 
     explicit FrameSelection(Frame* = 0);
 
     Element* rootEditableElementOrDocumentElement() const;
      
-    void moveTo(const Range*, EAffinity, EUserTriggered = NotUserTriggered);
+    void moveTo(const Range*);
     void moveTo(const VisiblePosition&, EUserTriggered = NotUserTriggered, CursorAlignOnScroll = AlignCursorOnScrollIfNeeded);
     void moveTo(const VisiblePosition&, const VisiblePosition&, EUserTriggered = NotUserTriggered);
     void moveTo(const Position&, EAffinity, EUserTriggered = NotUserTriggered);
     void moveTo(const Position&, const Position&, EAffinity, EUserTriggered = NotUserTriggered);
+    void moveWithoutValidationTo(const Position&, const Position&, bool selectionHasDirection, bool shouldSetFocus);
 
     const VisibleSelection& selection() const { return m_selection; }
-    void setSelection(const VisibleSelection&, SetSelectionOptions = CloseTyping | ClearTypingStyle, CursorAlignOnScroll = AlignCursorOnScrollIfNeeded, TextGranularity = CharacterGranularity);
+    void setSelection(const VisibleSelection&, SetSelectionOptions = defaultSetSelectionOptions(), CursorAlignOnScroll = AlignCursorOnScrollIfNeeded, TextGranularity = CharacterGranularity);
+    void updateAndRevealSelection();
     bool setSelectedRange(Range*, EAffinity, bool closeTyping);
     void selectAll();
     void clear();
@@ -166,13 +166,8 @@ public:
     void setExtent(const VisiblePosition&, EUserTriggered = NotUserTriggered);
     void setExtent(const Position&, EAffinity, EUserTriggered = NotUserTriggered);
 
-    Position end() const { return m_selection.end(); }
-
     // Return the renderer that is responsible for painting the caret (in the selection start node)
-    RenderObject* caretRenderer() const;
-
-    // Caret rect local to the caret's renderer
-    LayoutRect localCaretRect();
+    RenderObject* caretRendererWithoutUpdatingLayout() const;
 
     // Bounds of (possibly transformed) caret in absolute coords
     IntRect absoluteCaretBounds();
@@ -194,8 +189,6 @@ public:
     void textWasReplaced(CharacterData*, unsigned offset, unsigned oldLength, unsigned newLength);
 
     void setCaretVisible(bool caretIsVisible) { setCaretVisibility(caretIsVisible ? Visible : Hidden); }
-    bool recomputeCaretRect();
-    void invalidateCaretRect();
     void paintCaret(GraphicsContext*, const LayoutPoint&, const LayoutRect& clipRect);
 
     // Used to suspend caret blinking while the mouse is down.
@@ -234,8 +227,6 @@ public:
     PassRefPtr<Range> rangeByMovingCurrentSelection(int amount) const;
     PassRefPtr<Range> rangeByExtendingCurrentSelection(int amount) const;
     void selectRangeOnElement(unsigned location, unsigned length, Node*);
-    void suppressCloseTyping() { ++m_closeTypingSuppressions; }
-    void restoreCloseTyping() { --m_closeTypingSuppressions; }
     void clearCurrentSelection();
     void setCaretBlinks(bool caretBlinks = true);
     void setCaretColor(const Color&);
@@ -258,14 +249,12 @@ public:
     enum EndPointsAdjustmentMode { AdjustEndpointsAtBidiBoundary, DoNotAdjsutEndpoints };
     void setSelectionByMouseIfDifferent(const VisibleSelection&, TextGranularity, EndPointsAdjustmentMode = DoNotAdjsutEndpoints);
 
-    void paintDragCaret(GraphicsContext*, const LayoutPoint&, const LayoutRect& clipRect) const;
-
     EditingStyle* typingStyle() const;
     PassRefPtr<MutableStyleProperties> copyTypingStyle() const;
     void setTypingStyle(PassRefPtr<EditingStyle>);
     void clearTypingStyle();
 
-    FloatRect bounds(bool clipToVisibleContent = true) const;
+    FloatRect selectionBounds(bool clipToVisibleContent = true) const;
 
     void getClippedVisibleTextRectangles(Vector<FloatRect>&) const;
 
@@ -279,6 +268,8 @@ public:
 
 private:
     enum EPositionType { START, END, BASE, EXTENT };
+
+    bool setSelectionWithoutUpdatingAppearance(const VisibleSelection&, SetSelectionOptions, CursorAlignOnScroll, TextGranularity);
 
     void respondToNodeModification(Node*, bool baseRemoved, bool extentRemoved, bool startRemoved, bool endRemoved);
     TextDirection directionOfEnclosingBlock();
@@ -302,6 +293,8 @@ private:
 
 #if HAVE(ACCESSIBILITY)
     void notifyAccessibilityForSelectionChange();
+#else
+    void notifyAccessibilityForSelectionChange() { }
 #endif
 
     void updateSelectionCachesIfSelectionIsInsideTextFormControl(EUserTriggered);
@@ -314,6 +307,8 @@ private:
     void caretBlinkTimerFired(Timer<FrameSelection>&);
 
     void setCaretVisibility(CaretVisibility);
+    bool recomputeCaretRect();
+    void invalidateCaretRect();
 
     bool dispatchSelectStart();
 
@@ -338,12 +333,14 @@ private:
     bool m_isCaretBlinkingSuspended : 1;
     bool m_focused : 1;
     bool m_shouldShowBlockCursor : 1;
+    bool m_pendingSelectionUpdate : 1;
+    bool m_shouldRevealSelection : 1;
+    bool m_alwaysAlignCursorOnScrollWhenRevealingSelection : 1;
 
 #if PLATFORM(IOS)
     bool m_updateAppearanceEnabled : 1;
     bool m_caretBlinks : 1;
     Color m_caretColor;
-    int m_closeTypingSuppressions;
     int m_scrollingSuppressCount;
 #endif
 };
@@ -363,7 +360,7 @@ inline void FrameSelection::setTypingStyle(PassRefPtr<EditingStyle> style)
     m_typingStyle = style;
 }
 
-#if !(PLATFORM(MAC) || PLATFORM(GTK) || PLATFORM(EFL))
+#if !(PLATFORM(COCOA) || PLATFORM(GTK) || PLATFORM(EFL))
 #if HAVE(ACCESSIBILITY)
 inline void FrameSelection::notifyAccessibilityForSelectionChange()
 {

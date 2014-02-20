@@ -120,7 +120,7 @@ void ResourceResponse::platformLazyInit(InitLevel initLevel)
         // Workaround for <rdar://problem/8757088>, can be removed once that is fixed.
         unsigned textEncodingNameLength = m_textEncodingName.length();
         if (textEncodingNameLength >= 2 && m_textEncodingName[0U] == '"' && m_textEncodingName[textEncodingNameLength - 1] == '"')
-            m_textEncodingName = m_textEncodingName.substring(1, textEncodingNameLength - 2);
+            m_textEncodingName = m_textEncodingName.string().substring(1, textEncodingNameLength - 2);
 
         if ([m_nsResponse.get() isKindOfClass:[NSHTTPURLResponse class]]) {
             NSHTTPURLResponse *httpResponse = (NSHTTPURLResponse *)m_nsResponse.get();
@@ -174,7 +174,7 @@ bool ResourceResponse::platformCompare(const ResourceResponse& a, const Resource
 
 #endif // USE(CFNETWORK)
 
-#if PLATFORM(MAC) || USE(CFNETWORK)
+#if PLATFORM(COCOA) || USE(CFNETWORK)
 
 void ResourceResponse::setCertificateChain(CFArrayRef certificateChain)
 {
@@ -190,7 +190,7 @@ RetainPtr<CFArrayRef> ResourceResponse::certificateChain() const
     return adoptCF(wkCopyNSURLResponseCertificateChain(nsURLResponse()));
 }
 
-#endif // PLATFORM(MAC) || USE(CFNETWORK)
+#endif // PLATFORM(COCOA) || USE(CFNETWORK)
 
 } // namespace WebCore
 

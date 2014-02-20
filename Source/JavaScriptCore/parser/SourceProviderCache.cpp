@@ -26,6 +26,8 @@
 #include "config.h"
 #include "SourceProviderCache.h"
 
+#include "JSCInlines.h"
+
 namespace JSC {
 
 SourceProviderCache::~SourceProviderCache()

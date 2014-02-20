@@ -33,14 +33,14 @@ namespace API {
 
 class FrameHandle : public ObjectImpl<Object::Type::FrameHandle> {
 public:
-    static RefPtr<FrameHandle> create(uint64_t frameID);
+    explicit FrameHandle(uint64_t frameID);
+
+    static PassRefPtr<FrameHandle> create(uint64_t frameID);
     virtual ~FrameHandle();
 
     uint64_t frameID() const { return m_frameID; }
 
 private:
-    explicit FrameHandle(uint64_t frameID);
-
     uint64_t m_frameID;
 };
 

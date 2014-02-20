@@ -538,15 +538,6 @@ RenderFlowThread* RenderObject::locateFlowThreadContainingBlock() const
     return 0;
 }
 
-RenderNamedFlowThread* RenderObject::renderNamedFlowThreadWrapper() const
-{
-    RenderObject* object = const_cast<RenderObject*>(this);
-    while (object && object->isAnonymousBlock() && !object->isRenderNamedFlowThread())
-        object = object->parent();
-
-    return object && object->isRenderNamedFlowThread() ? toRenderNamedFlowThread(object) : 0;
-}
-
 RenderBlock* RenderObject::firstLineBlock() const
 {
     return 0;
@@ -1234,7 +1225,7 @@ RenderLayerModelObject* RenderObject::containerForRepaint() const
     return repaintContainer;
 }
 
-void RenderObject::repaintUsingContainer(const RenderLayerModelObject* repaintContainer, const IntRect& r, bool immediate, bool shouldClipToLayer) const
+void RenderObject::repaintUsingContainer(const RenderLayerModelObject* repaintContainer, const LayoutRect& r, bool immediate, bool shouldClipToLayer) const
 {
     if (!repaintContainer) {
         view().repaintViewRectangle(r, immediate);
@@ -1280,7 +1271,7 @@ void RenderObject::repaint(bool immediate) const
         return; // Don't repaint if we're printing.
 
     RenderLayerModelObject* repaintContainer = containerForRepaint();
-    repaintUsingContainer(repaintContainer ? repaintContainer : view, pixelSnappedIntRect(clippedOverflowRectForRepaint(repaintContainer)), immediate);
+    repaintUsingContainer(repaintContainer ? repaintContainer : view, clippedOverflowRectForRepaint(repaintContainer), immediate);
 }
 
 void RenderObject::repaintRectangle(const LayoutRect& r, bool immediate, bool shouldClipToLayer) const
@@ -1301,7 +1292,36 @@ void RenderObject::repaintRectangle(const LayoutRect& r, bool immediate, bool sh
 
     RenderLayerModelObject* repaintContainer = containerForRepaint();
     computeRectForRepaint(repaintContainer, dirtyRect);
-    repaintUsingContainer(repaintContainer ? repaintContainer : view, pixelSnappedIntRect(dirtyRect), immediate, shouldClipToLayer);
+    repaintUsingContainer(repaintContainer ? repaintContainer : view, dirtyRect, immediate, shouldClipToLayer);
+}
+
+void RenderObject::repaintSlowRepaintObject() const
+{
+    // Don't repaint if we're unrooted (note that view() still returns the view when unrooted)
+    RenderView* view;
+    if (!isRooted(&view))
+        return;
+
+    // Don't repaint if we're printing.
+    if (view->printing())
+        return;
+
+    RenderLayerModelObject* repaintContainer = containerForRepaint();
+    if (!repaintContainer)
+        repaintContainer = view;
+
+    bool shouldClipToLayer = true;
+    IntRect repaintRect;
+
+    // If this is the root background, we need to check if there is an extended background rect. If
+    // there is, then we should not allow painting to clip to the layer size.
+    if (isRoot() || isBody()) {
+        shouldClipToLayer = !view->frameView().hasExtendedBackgroundRectForPainting();
+        repaintRect = pixelSnappedIntRect(view->backgroundRect(view));
+    } else
+        repaintRect = pixelSnappedIntRect(clippedOverflowRectForRepaint(repaintContainer));
+
+    repaintUsingContainer(repaintContainer, repaintRect, false, shouldClipToLayer);
 }
 
 IntRect RenderObject::pixelSnappedAbsoluteClippedOverflowRect() const
@@ -1835,18 +1855,6 @@ void RenderObject::willBeDestroyed()
     if (AXObjectCache* cache = document().existingAXObjectCache())
         cache->remove(this);
 
-#ifndef NDEBUG
-    if (!documentBeingDestroyed() && view().hasRenderNamedFlowThreads()) {
-        // After remove, the object and the associated information should not be in any flow thread.
-        const RenderNamedFlowThreadList* flowThreadList = view().flowThreadController().renderNamedFlowThreadList();
-        for (RenderNamedFlowThreadList::const_iterator iter = flowThreadList->begin(); iter != flowThreadList->end(); ++iter) {
-            const RenderNamedFlowThread* renderFlowThread = *iter;
-            ASSERT(!renderFlowThread->hasChild(this));
-            ASSERT(!renderFlowThread->hasChildInfo(this));
-        }
-    }
-#endif
-
     // If this renderer had a parent, remove should have destroyed any counters
     // attached to this renderer and marked the affected other counters for
     // reevaluation. This apparently redundant check is here for the case when
@@ -1871,9 +1879,6 @@ void RenderObject::insertedIntoTree()
 
     if (!isFloating() && parent()->childrenInline())
         parent()->dirtyLinesFromChangedChild(this);
-
-    if (RenderNamedFlowThread* containerFlowThread = parent()->renderNamedFlowThreadWrapper())
-        containerFlowThread->addFlowChild(this);
 }
 
 void RenderObject::willBeRemovedFromTree()
@@ -1881,9 +1886,6 @@ void RenderObject::willBeRemovedFromTree()
     // FIXME: We should ASSERT(isRooted()) but we have some out-of-order removals which would need to be fixed first.
 
     removeFromRenderFlowThread();
-
-    if (RenderNamedFlowThread* containerFlowThread = parent()->renderNamedFlowThreadWrapper())
-        containerFlowThread->removeFlowChild(this);
 
     // Update cached boundaries in SVG renderers, if a child is removed.
     parent()->setNeedsBoundariesUpdate();
@@ -2183,26 +2185,6 @@ void RenderObject::collectAnnotatedRegions(Vector<AnnotatedRegionValue>& regions
 }
 #endif
 
-bool RenderObject::willRenderImage(CachedImage*)
-{
-    // Without visibility we won't render (and therefore don't care about animation).
-    if (style().visibility() != VISIBLE)
-        return false;
-
-#if PLATFORM(IOS)
-    if (document().frame()->timersPaused())
-        return false;
-#else
-    // We will not render a new image when Active DOM is suspended
-    if (document().activeDOMObjectsAreSuspended())
-        return false;
-#endif
-
-    // If we're not in a window (i.e., we're dormant from being put in the b/f cache or in a background tab)
-    // then we don't want to render either.
-    return !document().inPageCache() && !document().view()->isOffscreen();
-}
-
 int RenderObject::maximalOutlineSize(PaintPhase p) const
 {
     if (p != PaintPhaseOutline && p != PaintPhaseSelfOutline && p != PaintPhaseChildOutlines)
@@ -2392,11 +2374,6 @@ bool RenderObject::canHaveGeneratedChildren() const
 Node* RenderObject::generatingPseudoHostElement() const
 {
     return toPseudoElement(node())->hostElement();
-}
-
-bool RenderObject::canBeReplacedWithInlineRunIn() const
-{
-    return true;
 }
 
 void RenderObject::setNeedsBoundariesUpdate()

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011, 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2006-2014 Apple Inc. All rights reserved.
  * Copyright (C) 2006 Alexey Proskuryakov (ap@webkit.org)
  * Copyright (C) 2012 Digia Plc. and/or its subsidiary(-ies)
  *
@@ -72,6 +72,7 @@
 #include "PluginDocument.h"
 #include "RenderFrameSet.h"
 #include "RenderLayer.h"
+#include "RenderListBox.h"
 #include "RenderTextControlSingleLine.h"
 #include "RenderView.h"
 #include "RenderWidget.h"
@@ -298,7 +299,7 @@ static inline bool shouldGesturesTriggerActive()
 }
 #endif
 
-#if !PLATFORM(MAC)
+#if !PLATFORM(COCOA)
 
 inline bool EventHandler::eventLoopHandleMouseUp(const MouseEventWithHitTestResults&)
 {
@@ -350,9 +351,10 @@ EventHandler::EventHandler(Frame& frame)
     , m_mouseDownTimestamp(0)
     , m_recentWheelEventDeltaTracker(adoptPtr(new WheelEventDeltaTracker))
     , m_widgetIsLatched(false)
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
     , m_mouseDownView(nil)
     , m_sendingEventToSubview(false)
+    , m_startedGestureAtScrollLimit(false)
 #if !PLATFORM(IOS)
     , m_activationEventNumber(-1)
 #endif // !PLATFORM(IOS)
@@ -432,6 +434,9 @@ void EventHandler::clear()
     m_capturesDragging = false;
     m_capturingMouseEventsElement = nullptr;
     m_latchedWheelEventElement = nullptr;
+#if PLATFORM(COCOA)
+    m_latchedScrollableContainer = nullptr;
+#endif
     m_previousWheelScrolledElement = nullptr;
 #if ENABLE(TOUCH_EVENTS) && !ENABLE(IOS_TOUCH_EVENTS)
     m_originatingTouchPointTargets.clear();
@@ -759,7 +764,7 @@ bool EventHandler::handleMouseDraggedEvent(const MouseEventWithHitTestResults& e
             return false;
     }
 
-#if PLATFORM(MAC) // FIXME: Why does this assertion fire on other platforms?
+#if PLATFORM(COCOA) // FIXME: Why does this assertion fire on other platforms?
     ASSERT(m_mouseDownMayStartSelect || m_mouseDownMayStartAutoscroll);
 #endif
 
@@ -1155,7 +1160,7 @@ bool EventHandler::logicalScrollRecursively(ScrollLogicalDirection direction, Sc
     FrameView* view = frame->view();
     
     bool scrolled = false;
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
     // Mac also resets the scroll position in the inline direction.
     if (granularity == ScrollByDocument && view && view->logicalScroll(ScrollInlineDirectionBackward, ScrollByDocument))
         scrolled = true;
@@ -2217,7 +2222,7 @@ void EventHandler::clearDragState()
     m_dragTarget = nullptr;
     m_capturingMouseEventsElement = nullptr;
     m_shouldOnlyFireDragOverEvent = false;
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
     m_sendingEventToSubview = false;
 #endif
 }
@@ -2442,6 +2447,27 @@ bool EventHandler::shouldTurnVerticalTicksIntoHorizontal(const HitTestResult&, c
 }
 #endif
 
+#if !PLATFORM(MAC)
+void EventHandler::platformPrepareForWheelEvents(const PlatformWheelEvent&, const HitTestResult&, Element*&, ContainerNode*&, ScrollableArea*&, bool&)
+{
+}
+
+void EventHandler::platformRecordWheelEvent(const PlatformWheelEvent& event)
+{
+    m_recentWheelEventDeltaTracker->recordWheelEventDelta(event);
+}
+
+bool EventHandler::platformCompleteWheelEvent(const PlatformWheelEvent& event, ContainerNode*, ScrollableArea*)
+{
+    // We do another check on the frame view because the event handler can run JS which results in the frame getting destroyed.
+    FrameView* view = m_frame.view();
+    
+    bool didHandleEvent = view ? view->wheelEvent(event) : false;
+    m_isHandlingWheelEvent = false;
+    return didHandleEvent;
+}
+#endif
+
 bool EventHandler::handleWheelEvent(const PlatformWheelEvent& e)
 {
     Document* document = m_frame.document();
@@ -2463,27 +2489,13 @@ bool EventHandler::handleWheelEvent(const PlatformWheelEvent& e)
     HitTestResult result(vPoint);
     document->renderView()->hitTest(request, result);
 
-    bool useLatchedWheelEventElement = e.useLatchedEventElement();
-
     Element* element = result.innerElement();
 
-    bool isOverWidget;
-    if (useLatchedWheelEventElement) {
-        if (!m_latchedWheelEventElement) {
-            m_latchedWheelEventElement = element;
-            m_widgetIsLatched = result.isOverWidget();
-        } else
-            element = m_latchedWheelEventElement.get();
+    bool isOverWidget = result.isOverWidget();
 
-        isOverWidget = m_widgetIsLatched;
-    } else {
-        if (m_latchedWheelEventElement)
-            m_latchedWheelEventElement = nullptr;
-        if (m_previousWheelScrolledElement)
-            m_previousWheelScrolledElement = nullptr;
-
-        isOverWidget = result.isOverWidget();
-    }
+    ContainerNode* scrollableContainer = nullptr;
+    ScrollableArea* scrollableArea = nullptr;
+    platformPrepareForWheelEvents(e, result, element, scrollableContainer, scrollableArea, isOverWidget);
 
     // FIXME: It should not be necessary to do this mutation here.
     // Instead, the handlers should know convert vertical scrolls
@@ -2492,20 +2504,7 @@ bool EventHandler::handleWheelEvent(const PlatformWheelEvent& e)
     if (m_baseEventType == PlatformEvent::NoType && shouldTurnVerticalTicksIntoHorizontal(result, e))
         event = event.copyTurningVerticalTicksIntoHorizontalTicks();
 
-#if PLATFORM(MAC)
-    switch (event.phase()) {
-    case PlatformWheelEventPhaseBegan:
-        m_recentWheelEventDeltaTracker->beginTrackingDeltas();
-        break;
-    case PlatformWheelEventPhaseEnded:
-        m_recentWheelEventDeltaTracker->endTrackingDeltas();
-        break;
-    default:
-        break;
-    }
-#endif
-
-    m_recentWheelEventDeltaTracker->recordWheelEventDelta(event);
+    platformRecordWheelEvent(event);
 
     if (element) {
         // Figure out which view to send the event to.
@@ -2525,12 +2524,7 @@ bool EventHandler::handleWheelEvent(const PlatformWheelEvent& e)
         }
     }
 
-
-    // We do another check on the frame view because the event handler can run JS which results in the frame getting destroyed.
-    view = m_frame.view();
-    bool didHandleEvent = view ? view->wheelEvent(event) : false;
-    m_isHandlingWheelEvent = false;
-    return didHandleEvent;
+    return platformCompleteWheelEvent(e, scrollableContainer, scrollableArea);
 }
 
 void EventHandler::defaultWheelEventHandler(Node* startNode, WheelEvent* wheelEvent)
@@ -2543,7 +2537,7 @@ void EventHandler::defaultWheelEventHandler(Node* startNode, WheelEvent* wheelEv
     DominantScrollGestureDirection dominantDirection = DominantScrollGestureDirection::None;
 
     // Workaround for scrolling issues <rdar://problem/14758615>.
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
     if (m_recentWheelEventDeltaTracker->isTrackingDeltas())
         dominantDirection = m_recentWheelEventDeltaTracker->dominantScrollGestureDirection();
 #endif
@@ -2790,7 +2784,7 @@ bool EventHandler::handleAccessKey(const PlatformKeyboardEvent& evt)
     return true;
 }
 
-#if !PLATFORM(MAC) || PLATFORM(IOS)
+#if !PLATFORM(MAC)
 bool EventHandler::needsKeyboardEventDisambiguationQuirks() const
 {
     return false;
@@ -2926,7 +2920,7 @@ bool EventHandler::keyEvent(const PlatformKeyboardEvent& initialKeyEvent)
     keypress->setTarget(element);
     if (keydownResult)
         keypress->setDefaultPrevented(true);
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
     keypress->keypressCommands() = keydown->keypressCommands();
 #endif
     element->dispatchEvent(keypress, IGNORE_EXCEPTION);
@@ -3263,7 +3257,7 @@ bool EventHandler::handleTextInputEvent(const String& text, Event* underlyingEve
 {
     // Platforms should differentiate real commands like selectAll from text input in disguise (like insertNewline),
     // and avoid dispatching text input events from keydown default handlers.
-    ASSERT(!underlyingEvent || !underlyingEvent->isKeyboardEvent() || static_cast<KeyboardEvent*>(underlyingEvent)->type() == eventNames().keypressEvent);
+    ASSERT(!underlyingEvent || !underlyingEvent->isKeyboardEvent() || toKeyboardEvent(underlyingEvent)->type() == eventNames().keypressEvent);
 
     EventTarget* target;
     if (underlyingEvent)
@@ -3293,7 +3287,7 @@ bool EventHandler::isKeyboardOptionTab(KeyboardEvent* event)
 
 bool EventHandler::eventInvertsTabsToLinksClientCallResult(KeyboardEvent* event)
 {
-#if PLATFORM(MAC) || PLATFORM(EFL)
+#if PLATFORM(COCOA) || PLATFORM(EFL)
     return EventHandler::isKeyboardOptionTab(event);
 #else
     UNUSED_PARAM(event);

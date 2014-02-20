@@ -51,7 +51,7 @@
 #include "LLIntExceptions.h"
 #include "LowLevelInterpreter.h"
 #include "ObjectConstructor.h"
-#include "Operations.h"
+#include "JSCInlines.h"
 #include "ProtoCallFrame.h"
 #include "StructureRareDataInlines.h"
 #include <wtf/StringPrintStream.h>
@@ -573,9 +573,10 @@ LLINT_SLOW_PATH_DECL(slow_path_get_by_id)
         Structure* structure = baseCell->structure();
         
         if (!structure->isUncacheableDictionary()
-            && !structure->typeInfo().prohibitsPropertyCaching()) {
+            && !structure->typeInfo().prohibitsPropertyCaching()
+            && !structure->typeInfo().newImpurePropertyFiresWatchpoints()) {
             ConcurrentJITLocker locker(codeBlock->m_lock);
-            
+
             pc[4].u.structure.set(
                 vm, codeBlock->ownerExecutable(), structure);
             if (isInlineOffset(slot.cachedOffset())) {
@@ -706,7 +707,7 @@ LLINT_SLOW_PATH_DECL(slow_path_del_by_id)
 inline JSValue getByVal(ExecState* exec, JSValue baseValue, JSValue subscript)
 {
     if (LIKELY(baseValue.isCell() && subscript.isString())) {
-        if (JSValue result = baseValue.asCell()->fastGetOwnProperty(exec, asString(subscript)->value(exec)))
+        if (JSValue result = baseValue.asCell()->fastGetOwnProperty(exec->vm(), asString(subscript)->value(exec)))
             return result;
     }
     
@@ -1436,9 +1437,15 @@ extern "C" SlowPathReturnType llint_stack_check_at_vm_entry(VM* vm, Register* ne
 }
 #endif
 
-extern "C" void llint_write_barrier_slow(ExecState*, JSCell* cell)
+extern "C" void llint_write_barrier_slow(ExecState* exec, JSCell* cell)
 {
-    Heap::writeBarrier(cell);
+    VM& vm = exec->vm();
+    vm.heap.writeBarrier(cell);
+}
+
+extern "C" NO_RETURN_DUE_TO_CRASH void llint_crash()
+{
+    CRASH();
 }
 
 } } // namespace JSC::LLInt

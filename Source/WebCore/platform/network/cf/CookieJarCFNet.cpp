@@ -41,7 +41,7 @@
 #include <windows.h>
 #endif
 
-#if PLATFORM(WIN) || (!PLATFORM(IOS) && PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED <= 1090)
+#if PLATFORM(WIN) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED <= 1090)
 enum {
     CFHTTPCookieStorageAcceptPolicyExclusivelyFromMainDocumentDomain = 3
 };
@@ -237,6 +237,10 @@ void deleteCookiesForHostname(const NetworkStorageSession& session, const String
 void deleteAllCookies(const NetworkStorageSession& session)
 {
     CFHTTPCookieStorageDeleteAllCookies(session.cookieStorage().get());
+}
+
+void deleteAllCookiesModifiedAfterDate(const NetworkStorageSession&, double)
+{
 }
 
 } // namespace WebCore

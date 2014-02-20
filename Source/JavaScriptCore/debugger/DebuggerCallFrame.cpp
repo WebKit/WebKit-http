@@ -29,12 +29,11 @@
 #include "config.h"
 #include "DebuggerCallFrame.h"
 
-#include "CallFrameInlines.h"
 #include "CodeBlock.h"
 #include "Interpreter.h"
 #include "JSActivation.h"
 #include "JSFunction.h"
-#include "Operations.h"
+#include "JSCInlines.h"
 #include "Parser.h"
 #include "StackVisitor.h"
 

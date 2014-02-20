@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013, 2014 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,13 +31,19 @@
 #if ENABLE(DFG_JIT)
 
 #include "DFGPlan.h"
+#include "DFGThreadData.h"
 #include <wtf/Deque.h>
 #include <wtf/HashMap.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/PassOwnPtr.h>
 #include <wtf/ThreadingPrimitives.h>
 
-namespace JSC { namespace DFG {
+namespace JSC {
+
+class CodeBlockSet;
+class SlotVisitor;
+
+namespace DFG {
 
 class Worklist : public RefCounted<Worklist> {
 public:
@@ -61,13 +67,21 @@ public:
     State compilationState(CompilationKey);
     
     size_t queueLength();
+    
+    void suspendAllThreads();
+    void resumeAllThreads();
+    
+    bool isActiveForVM(VM&) const;
+    
+    void visitChildren(SlotVisitor&, CodeBlockSet&); // Only called on the main thread after suspending all threads.
+    
     void dump(PrintStream&) const;
     
 private:
     Worklist();
     void finishCreation(unsigned numberOfThreads);
     
-    void runThread();
+    void runThread(ThreadData*);
     static void threadFunction(void* argument);
     
     void removeAllReadyPlansForVM(VM&, Vector<RefPtr<Plan>, 8>&);
@@ -75,7 +89,7 @@ private:
     void dump(const MutexLocker&, PrintStream&) const;
 
     // Used to inform the thread about what work there is left to do.
-    Deque<RefPtr<Plan>, 16> m_queue;
+    Deque<RefPtr<Plan>> m_queue;
     
     // Used to answer questions about the current state of a code block. This
     // is particularly great for the cti_optimize OSR slow path, which wants
@@ -87,11 +101,14 @@ private:
     // Used to quickly find which plans have been compiled and are ready to
     // be completed.
     Vector<RefPtr<Plan>, 16> m_readyPlans;
+
+    Mutex m_suspensionLock;
     
     mutable Mutex m_lock;
     ThreadCondition m_planEnqueued;
     ThreadCondition m_planCompiled;
-    Vector<ThreadIdentifier> m_threads;
+    
+    Vector<std::unique_ptr<ThreadData>> m_threads;
     unsigned m_numberOfActiveThreads;
 };
 
@@ -104,6 +121,21 @@ Worklist* ensureGlobalFTLWorklist();
 Worklist* existingGlobalFTLWorklistOrNull();
 
 Worklist* ensureGlobalWorklistFor(CompilationMode);
+
+// Simplify doing things for all worklists.
+inline unsigned numberOfWorklists() { return 2; }
+inline Worklist* worklistForIndexOrNull(unsigned index)
+{
+    switch (index) {
+    case 0:
+        return existingGlobalDFGWorklistOrNull();
+    case 1:
+        return existingGlobalFTLWorklistOrNull();
+    default:
+        RELEASE_ASSERT_NOT_REACHED();
+        return 0;
+    }
+}
 
 } } // namespace JSC::DFG
 

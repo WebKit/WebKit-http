@@ -7,13 +7,13 @@
  * are met:
  *
  * 1.  Redistributions of source code must retain the above copyright
- *     notice, this list of conditions and the following disclaimer. 
+ *     notice, this list of conditions and the following disclaimer.
  * 2.  Redistributions in binary form must reproduce the above copyright
  *     notice, this list of conditions and the following disclaimer in the
- *     documentation and/or other materials provided with the distribution. 
+ *     documentation and/or other materials provided with the distribution.
  * 3.  Neither the name of Apple Computer, Inc. ("Apple") nor the names of
  *     its contributors may be used to endorse or promote products derived
- *     from this software without specific prior written permission. 
+ *     from this software without specific prior written permission.
  *
  * THIS SOFTWARE IS PROVIDED BY APPLE AND ITS CONTRIBUTORS "AS IS" AND ANY
  * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
@@ -35,9 +35,6 @@
 #import <wtf/Platform.h>
 #import <wtf/text/WTFString.h>
 #import <WebCore/Chrome.h>
-
-using WebCore::MessageLevel;
-using WebCore::MessageSource;
 #endif
 
 @class WebView;
@@ -82,7 +79,7 @@ public:
     
     virtual void setResizable(bool) override;
     
-    virtual void addMessageToConsole(WebCore::MessageSource, WebCore::MessageLevel, const WTF::String& message, unsigned lineNumber, unsigned columnNumber, const WTF::String& sourceURL) override;
+    virtual void addMessageToConsole(Inspector::MessageSource, Inspector::MessageLevel, const WTF::String& message, unsigned lineNumber, unsigned columnNumber, const WTF::String& sourceURL) override;
 
     virtual bool canRunBeforeUnloadConfirmPanel() override;
     virtual bool runBeforeUnloadConfirmPanel(const WTF::String& message, WebCore::Frame*) override;
@@ -137,9 +134,6 @@ public:
     virtual void setCursorHiddenUntilMouseMoves(bool) override;
 #endif
 
-    virtual WebCore::FloatRect customHighlightRect(WebCore::Node*, const WTF::AtomicString& type, const WebCore::FloatRect& lineRect) override;
-    virtual void paintCustomHighlight(WebCore::Node*, const WTF::AtomicString& type, const WebCore::FloatRect& boxRect, const WebCore::FloatRect& lineRect, bool behindText, bool entireLine) override;
-
 #if ENABLE(INPUT_TYPE_COLOR)
     virtual PassOwnPtr<WebCore::ColorChooser> createColorChooser(WebCore::ColorChooserClient*, const WebCore::Color&) override;
 #endif
@@ -158,8 +152,6 @@ public:
 
     virtual bool shouldReplaceWithGeneratedFileForUpload(const WTF::String& path, WTF::String &generatedFilename) override;
     virtual WTF::String generateReplacementFile(const WTF::String& path) override;
-
-    virtual void formStateDidChange(const WebCore::Node*) override { }
 
     virtual void elementDidFocus(const WebCore::Node*) override;
     virtual void elementDidBlur(const WebCore::Node*) override;
@@ -202,6 +194,11 @@ public:
     virtual PassRefPtr<WebCore::SearchPopupMenu> createSearchPopupMenu(WebCore::PopupMenuClient*) const override;
 
     virtual void numWheelEventHandlersChanged(unsigned) override { }
+
+#if ENABLE(SUBTLE_CRYPTO)
+    virtual bool wrapCryptoKey(const Vector<uint8_t>&, Vector<uint8_t>&) const override;
+    virtual bool unwrapCryptoKey(const Vector<uint8_t>&, Vector<uint8_t>&) const override;
+#endif
 
 #if PLATFORM(IOS)
     WebView* webView() const { return m_webView; }

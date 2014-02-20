@@ -37,7 +37,7 @@ PageBanner::~PageBanner()
     m_client->pageBannerDestroyed(this);
 }
 
-#if !PLATFORM(MAC)
+#if !PLATFORM(COCOA)
 void PageBanner::addToPage(Type, WebPage*)
 {
 }

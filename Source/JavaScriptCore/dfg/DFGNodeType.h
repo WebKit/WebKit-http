@@ -62,6 +62,7 @@ namespace JSC { namespace DFG {
     macro(ZombieHint, NodeDoesNotExit) \
     macro(GetArgument, NodeResultJS | NodeMustGenerate) \
     macro(Phantom, NodeMustGenerate) \
+    macro(HardPhantom, NodeMustGenerate) /* Like Phantom, but we never remove any of its children. */ \
     macro(Check, 0) /* Used if we want just a type check but not liveness. DCE eithers kills this or converts it to Phantom. */\
     macro(Upsilon, NodeDoesNotExit | NodeRelevantToOSR) \
     macro(Phi, NodeDoesNotExit | NodeRelevantToOSR) \
@@ -174,6 +175,7 @@ namespace JSC { namespace DFG {
     macro(ConstantStoragePointer, NodeResultStorage) \
     macro(TypedArrayWatchpoint, NodeMustGenerate) \
     macro(GetByOffset, NodeResultJS) \
+    macro(MultiGetByOffset, NodeResultJS) \
     macro(PutByOffset, NodeMustGenerate) \
     macro(GetArrayLength, NodeResultInt32) \
     macro(GetTypedArrayByteOffset, NodeResultInt32) \

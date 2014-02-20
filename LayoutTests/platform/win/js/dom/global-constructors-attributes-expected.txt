@@ -198,6 +198,11 @@ PASS Object.getOwnPropertyDescriptor(global, 'DOMTokenList').hasOwnProperty('get
 PASS Object.getOwnPropertyDescriptor(global, 'DOMTokenList').hasOwnProperty('set') is false
 PASS Object.getOwnPropertyDescriptor(global, 'DOMTokenList').enumerable is false
 PASS Object.getOwnPropertyDescriptor(global, 'DOMTokenList').configurable is true
+PASS Object.getOwnPropertyDescriptor(global, 'DataCue').value is DataCue
+PASS Object.getOwnPropertyDescriptor(global, 'DataCue').hasOwnProperty('get') is false
+PASS Object.getOwnPropertyDescriptor(global, 'DataCue').hasOwnProperty('set') is false
+PASS Object.getOwnPropertyDescriptor(global, 'DataCue').enumerable is false
+PASS Object.getOwnPropertyDescriptor(global, 'DataCue').configurable is true
 PASS Object.getOwnPropertyDescriptor(global, 'Document').value is Document
 PASS Object.getOwnPropertyDescriptor(global, 'Document').hasOwnProperty('get') is false
 PASS Object.getOwnPropertyDescriptor(global, 'Document').hasOwnProperty('set') is false
@@ -1628,6 +1633,11 @@ PASS Object.getOwnPropertyDescriptor(global, 'UIEvent').hasOwnProperty('get') is
 PASS Object.getOwnPropertyDescriptor(global, 'UIEvent').hasOwnProperty('set') is false
 PASS Object.getOwnPropertyDescriptor(global, 'UIEvent').enumerable is false
 PASS Object.getOwnPropertyDescriptor(global, 'UIEvent').configurable is true
+PASS Object.getOwnPropertyDescriptor(global, 'VTTCue').value is VTTCue
+PASS Object.getOwnPropertyDescriptor(global, 'VTTCue').hasOwnProperty('get') is false
+PASS Object.getOwnPropertyDescriptor(global, 'VTTCue').hasOwnProperty('set') is false
+PASS Object.getOwnPropertyDescriptor(global, 'VTTCue').enumerable is false
+PASS Object.getOwnPropertyDescriptor(global, 'VTTCue').configurable is true
 PASS Object.getOwnPropertyDescriptor(global, 'WebKitAnimationEvent').value is WebKitAnimationEvent
 PASS Object.getOwnPropertyDescriptor(global, 'WebKitAnimationEvent').hasOwnProperty('get') is false
 PASS Object.getOwnPropertyDescriptor(global, 'WebKitAnimationEvent').hasOwnProperty('set') is false

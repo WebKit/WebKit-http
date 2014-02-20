@@ -21,6 +21,7 @@
 #include "config.h"
 #include "JSTestException.h"
 
+#include "ScriptExecutionContext.h"
 #include "TestException.h"
 #include "URL.h"
 #include <runtime/JSString.h>
@@ -35,11 +36,10 @@ namespace WebCore {
 static const HashTableValue JSTestExceptionTableValues[] =
 {
     { "name", DontDelete | ReadOnly | CustomAccessor, NoIntrinsic, (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestExceptionName), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) },
-    { "constructor", DontEnum | ReadOnly, NoIntrinsic, (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestExceptionConstructor), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) },
     { 0, 0, NoIntrinsic, 0, 0 }
 };
 
-static const HashTable JSTestExceptionTable = { 5, 3, true, JSTestExceptionTableValues, 0 };
+static const HashTable JSTestExceptionTable = { 2, 1, true, JSTestExceptionTableValues, 0 };
 /* Hash table for constructor */
 
 static const HashTableValue JSTestExceptionConstructorTableValues[] =
@@ -72,15 +72,22 @@ bool JSTestExceptionConstructor::getOwnPropertySlot(JSObject* object, ExecState*
 
 static const HashTableValue JSTestExceptionPrototypeTableValues[] =
 {
+    { "constructor", DontEnum | ReadOnly, NoIntrinsic, (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestExceptionConstructor), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) },
     { 0, 0, NoIntrinsic, 0, 0 }
 };
 
-static const HashTable JSTestExceptionPrototypeTable = { 1, 0, false, JSTestExceptionPrototypeTableValues, 0 };
+static const HashTable JSTestExceptionPrototypeTable = { 2, 1, true, JSTestExceptionPrototypeTableValues, 0 };
 const ClassInfo JSTestExceptionPrototype::s_info = { "TestExceptionPrototype", &Base::s_info, &JSTestExceptionPrototypeTable, 0, CREATE_METHOD_TABLE(JSTestExceptionPrototype) };
 
 JSObject* JSTestExceptionPrototype::self(VM& vm, JSGlobalObject* globalObject)
 {
     return getDOMPrototype<JSTestException>(vm, globalObject);
+}
+
+bool JSTestExceptionPrototype::getOwnPropertySlot(JSObject* object, ExecState* exec, PropertyName propertyName, PropertySlot& slot)
+{
+    JSTestExceptionPrototype* thisObject = jsCast<JSTestExceptionPrototype*>(object);
+    return getStaticPropertySlot<JSTestExceptionPrototype, JSObject>(exec, JSTestExceptionPrototypeTable, thisObject, propertyName, slot);
 }
 
 const ClassInfo JSTestException::s_info = { "TestException", &Base::s_info, &JSTestExceptionTable, 0 , CREATE_METHOD_TABLE(JSTestException) };
@@ -124,8 +131,14 @@ EncodedJSValue jsTestExceptionName(ExecState* exec, JSObject* slotBase, EncodedJ
 {
     JSTestException* castedThis = jsDynamicCast<JSTestException*>(JSValue::decode(thisValue));
     UNUSED_PARAM(slotBase);
-    if (!castedThis)
+    if (!castedThis) {
+        if (jsDynamicCast<JSTestExceptionPrototype*>(slotBase)) {
+            ScriptExecutionContext* scriptExecutionContext = jsCast<JSDOMGlobalObject*>(exec->lexicalGlobalObject())->scriptExecutionContext();
+            scriptExecutionContext->addConsoleMessage(MessageSource::JS, MessageLevel::Error, String("Deprecated attempt to access property 'name' on a non-TestException object."));
+            return JSValue::encode(jsUndefined());
+        }
         return throwVMTypeError(exec);
+    }
     UNUSED_PARAM(exec);
     TestException& impl = castedThis->impl();
     JSValue result = jsStringWithCache(exec, impl.name());
@@ -133,9 +146,11 @@ EncodedJSValue jsTestExceptionName(ExecState* exec, JSObject* slotBase, EncodedJ
 }
 
 
-EncodedJSValue jsTestExceptionConstructor(ExecState* exec, JSObject*, EncodedJSValue thisValue, PropertyName)
+EncodedJSValue jsTestExceptionConstructor(ExecState* exec, JSObject* baseValue, EncodedJSValue thisValue, PropertyName)
 {
-    JSTestException* domObject = jsDynamicCast<JSTestException*>(JSValue::decode(thisValue));
+    UNUSED_PARAM(baseValue);
+    UNUSED_PARAM(thisValue);
+    JSTestExceptionPrototype* domObject = jsDynamicCast<JSTestExceptionPrototype*>(baseValue);
     if (!domObject)
         return throwVMTypeError(exec);
     return JSValue::encode(JSTestException::getConstructor(exec->vm(), domObject->globalObject()));

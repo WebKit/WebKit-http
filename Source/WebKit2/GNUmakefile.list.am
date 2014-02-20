@@ -384,6 +384,7 @@ webkit2_sources += \
 	Source/WebKit2/Shared/gtk/LayerTreeContextGtk.cpp \
 	Source/WebKit2/Shared/gtk/NativeWebKeyboardEventGtk.cpp \
 	Source/WebKit2/Shared/gtk/NativeWebMouseEventGtk.cpp \
+	Source/WebKit2/Shared/gtk/NativeWebTouchEventGtk.cpp \
 	Source/WebKit2/Shared/gtk/NativeWebWheelEventGtk.cpp \
 	Source/WebKit2/Shared/gtk/PrintInfoGtk.cpp \
 	Source/WebKit2/Shared/gtk/ProcessExecutablePathGtk.cpp \
@@ -537,8 +538,6 @@ webkit2_sources += \
 	Source/WebKit2/UIProcess/API/C/WKBatteryManager.h \
 	Source/WebKit2/UIProcess/API/C/WKBatteryStatus.cpp \
 	Source/WebKit2/UIProcess/API/C/WKBatteryStatus.h \
-	Source/WebKit2/UIProcess/API/C/WKColorPickerResultListener.cpp \
-	Source/WebKit2/UIProcess/API/C/WKColorPickerResultListener.h \
 	Source/WebKit2/UIProcess/API/C/WKContext.cpp \
 	Source/WebKit2/UIProcess/API/C/WKContext.h \
 	Source/WebKit2/UIProcess/API/C/WKContextPrivate.h \
@@ -895,8 +894,6 @@ webkit2_sources += \
 	Source/WebKit2/UIProcess/WebBatteryProvider.h \
 	Source/WebKit2/UIProcess/WebColorPicker.cpp \
 	Source/WebKit2/UIProcess/WebColorPicker.h \
-	Source/WebKit2/UIProcess/WebColorPickerResultListenerProxy.cpp \
-	Source/WebKit2/UIProcess/WebColorPickerResultListenerProxy.h \
 	Source/WebKit2/UIProcess/WebConnectionToWebProcess.cpp \
 	Source/WebKit2/UIProcess/WebConnectionToWebProcess.h \
 	Source/WebKit2/UIProcess/WebContext.cpp \
@@ -943,8 +940,6 @@ webkit2_sources += \
 	Source/WebKit2/UIProcess/WebGeolocationProvider.h \
 	Source/WebKit2/UIProcess/WebGrammarDetail.cpp \
 	Source/WebKit2/UIProcess/WebGrammarDetail.h \
-	Source/WebKit2/UIProcess/WebHistoryClient.cpp \
-	Source/WebKit2/UIProcess/WebHistoryClient.h \
 	Source/WebKit2/UIProcess/WebIconDatabase.cpp \
 	Source/WebKit2/UIProcess/WebIconDatabase.h \
 	Source/WebKit2/UIProcess/WebIconDatabaseClient.cpp \

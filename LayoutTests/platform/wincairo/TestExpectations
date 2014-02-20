@@ -1581,6 +1581,7 @@ http/tests/security/cross-origin-indexeddb.html
 http/tests/security/cross-origin-worker-indexeddb-allowed.html
 http/tests/security/cross-origin-worker-indexeddb.html
 http/tests/security/no-indexeddb-from-sandbox.html
+crypto/subtle/rsa-indexeddb.html
 
 # StorageTracker is not enabled.
 storage/domstorage/localstorage/storagetracker
@@ -1972,8 +1973,6 @@ fast/css-grid-layout
 
 # <style scoped> is not yet enabled. http://webkit.org/b/49142
 fast/css/style-scoped
-# CSS Regions tests for region styling and scoped styles
-fast/regions/style-scoped
 
 # ENABLE(SHADOW_DOM) is disabled.
 editing/shadow

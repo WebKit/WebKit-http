@@ -46,7 +46,7 @@ public:
 
     virtual void load(const String& url) = 0;
 #if ENABLE(MEDIA_SOURCE)
-    virtual void load(const String& url, PassRefPtr<HTMLMediaSource>) = 0;
+    virtual void load(const String& url, MediaSourcePrivateClient*) = 0;
 #endif
     virtual void cancelLoad() = 0;
     
@@ -122,7 +122,7 @@ public:
 
     virtual void paintCurrentFrameInContext(GraphicsContext* c, const IntRect& r) { paint(c, r); }
     virtual bool copyVideoTextureToPlatformTexture(GraphicsContext3D*, Platform3DObject, GC3Dint, GC3Denum, GC3Denum, bool, bool) { return false; }
-    virtual PassNativeImagePtr nativeImageForCurrentTime() { return 0; }
+    virtual PassNativeImagePtr nativeImageForCurrentTime() { return nullptr; }
 
     virtual void setPreload(MediaPlayer::Preload) { }
 
@@ -205,6 +205,12 @@ public:
     virtual MediaPlayer::MediaKeyException addKey(const String&, const unsigned char*, unsigned, const unsigned char*, unsigned, const String&) { return MediaPlayer::KeySystemNotSupported; }
     virtual MediaPlayer::MediaKeyException generateKeyRequest(const String&, const unsigned char*, unsigned) { return MediaPlayer::KeySystemNotSupported; }
     virtual MediaPlayer::MediaKeyException cancelKeyRequest(const String&, const String&) { return MediaPlayer::KeySystemNotSupported; }
+#endif
+
+#if ENABLE(ENCRYPTED_MEDIA_V2)
+    virtual PassRefPtr<Uint8Array> generateKeyRequest(const String&, const String&, Uint8Array*, String&, MediaPlayer::MediaKeyException&, unsigned long&) { return nullptr; }
+    virtual void releaseKeys(const String&) { }
+    virtual bool update(const String&, Uint8Array*, RefPtr<Uint8Array>&, MediaPlayer::MediaKeyException&, unsigned long&) { return false; }
 #endif
 
 #if ENABLE(VIDEO_TRACK)

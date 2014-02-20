@@ -125,7 +125,6 @@ my (
     $resourceTimingSupport,
     $scriptedSpeechSupport,
     $seccompFiltersSupport,
-    $shadowDOMSupport,
     $sharedWorkersSupport,
     $sqlDatabaseSupport,
     $styleScopedSupport,
@@ -398,9 +397,6 @@ my @features = (
     { option => "scripted-speech", desc => "Toggle Scripted Speech support",
       define => "ENABLE_SCRIPTED_SPEECH", default => 0, value => \$scriptedSpeechSupport },
 
-    { option => "shadow-dom", desc => "Toggle Shadow DOM support",
-      define => "ENABLE_SHADOW_DOM", default => 0, value => \$shadowDOMSupport },
-
     { option => "shared-workers", desc => "Toggle Shared Workers support",
       define => "ENABLE_SHARED_WORKERS", default => (isAppleWebKit() || isGtk() || isEfl() || isHaiku()), value => \$sharedWorkersSupport },
 
@@ -426,7 +422,7 @@ my @features = (
       define => "WTF_USE_TILED_BACKING_STORE", default => isEfl(), value => \$tiledBackingStoreSupport },
 
     { option => "touch-events", desc => "Toggle Touch Events support",
-      define => "ENABLE_TOUCH_EVENTS", default => (isIOSWebKit() || isEfl()), value => \$touchEventsSupport },
+      define => "ENABLE_TOUCH_EVENTS", default => (isIOSWebKit() || isEfl() || isGtk()), value => \$touchEventsSupport },
 
     { option => "touch-slider", desc => "Toggle Touch Slider support",
       define => "ENABLE_TOUCH_SLIDER", default => 0, value => \$touchSliderSupport },

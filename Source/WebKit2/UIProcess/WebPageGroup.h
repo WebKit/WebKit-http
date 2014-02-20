@@ -56,7 +56,7 @@ public:
     const WebPageGroupData& data() { return m_data; }
 
     void setPreferences(WebPreferences*);
-    WebPreferences* preferences() const;
+    WebPreferences& preferences() const;
     void preferencesDidChange();
     
     void addUserStyleSheet(const String& source, const String& baseURL, API::Array* whitelist, API::Array* blacklist, WebCore::UserContentInjectedFrames, WebCore::UserStyleLevel);
@@ -69,7 +69,7 @@ private:
     template<typename T> void sendToAllProcessesInGroup(const T&, uint64_t destinationID);
 
     WebPageGroupData m_data;
-    mutable RefPtr<WebPreferences> m_preferences;
+    RefPtr<WebPreferences> m_preferences;
     HashSet<WebPageProxy*> m_pages;
 };
 

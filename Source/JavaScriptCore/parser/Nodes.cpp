@@ -36,7 +36,7 @@
 #include "JSNameScope.h"
 #include "LabelScope.h"
 #include "Lexer.h"
-#include "Operations.h"
+#include "JSCInlines.h"
 #include "Parser.h"
 #include "PropertyNameArray.h"
 #include "RegExpObject.h"
@@ -130,6 +130,12 @@ PassRefPtr<ProgramNode> ProgramNode::create(VM* vm, const JSTokenLocation& start
     ASSERT(!node->m_arena.contains(node.get()));
 
     return node.release();
+}
+
+
+void ProgramNode::setClosedVariables(const Vector<RefPtr<StringImpl>>&& closedVariables)
+{
+    m_closedVariables = std::move(closedVariables);
 }
 
 // ------------------------------ EvalNode -----------------------------

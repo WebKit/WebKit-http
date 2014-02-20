@@ -25,7 +25,6 @@
 #include "APIShims.h"
 #include "ButterflyInlines.h"
 #include "BytecodeGenerator.h"
-#include "CallFrameInlines.h"
 #include "Completion.h"
 #include "CopiedSpaceInlines.h"
 #include "ExceptionHelpers.h"
@@ -34,11 +33,11 @@
 #include "Interpreter.h"
 #include "JSArray.h"
 #include "JSArrayBuffer.h"
+#include "JSCInlines.h"
 #include "JSFunction.h"
 #include "JSLock.h"
 #include "JSProxy.h"
 #include "JSString.h"
-#include "Operations.h"
 #include "SamplingTool.h"
 #include "StackVisitor.h"
 #include "StructureRareDataInlines.h"
@@ -238,6 +237,8 @@ static EncodedJSValue JSC_HOST_CALL functionNumberOfDFGCompiles(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionReoptimizationRetryCount(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionTransferArrayBuffer(ExecState*);
 static NO_RETURN_WITH_VALUE EncodedJSValue JSC_HOST_CALL functionQuit(ExecState*);
+static EncodedJSValue JSC_HOST_CALL functionFalse(ExecState*);
+static EncodedJSValue JSC_HOST_CALL functionEffectful42(ExecState*);
 
 #if ENABLE(SAMPLING_FLAGS)
 static EncodedJSValue JSC_HOST_CALL functionSetSamplingFlags(ExecState*);
@@ -370,6 +371,10 @@ protected:
         addConstructableFunction(vm, "Element", functionCreateElement, 1);
         addFunction(vm, "getElement", functionGetElement, 1);
         addFunction(vm, "setElementRoot", functionSetElementRoot, 2);
+        
+        putDirectNativeFunction(vm, this, Identifier(&vm, "DFGTrue"), 0, functionFalse, DFGTrue, DontEnum | JSC::Function);
+        
+        addFunction(vm, "effectful42", functionEffectful42, 0);
         
         JSArray* array = constructEmptyArray(globalExec(), 0);
         for (size_t i = 0; i < arguments.size(); ++i)
@@ -718,6 +723,16 @@ EncodedJSValue JSC_HOST_CALL functionQuit(ExecState*)
     // Without this, Visual Studio will complain that this method does not return a value.
     return JSValue::encode(jsUndefined());
 #endif
+}
+
+EncodedJSValue JSC_HOST_CALL functionFalse(ExecState*)
+{
+    return JSValue::encode(jsBoolean(false));
+}
+
+EncodedJSValue JSC_HOST_CALL functionEffectful42(ExecState*)
+{
+    return JSValue::encode(jsNumber(42));
 }
 
 // Use SEH for Release builds only to get rid of the crash report dialog

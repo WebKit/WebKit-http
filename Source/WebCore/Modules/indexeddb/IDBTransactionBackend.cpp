@@ -83,8 +83,8 @@ IDBTransactionBackend::IDBTransactionBackend(IDBDatabaseBackend* databaseBackend
 
 IDBTransactionBackend::~IDBTransactionBackend()
 {
-    // It shouldn't be possible for this object to get deleted until it's either complete or aborted.
-    ASSERT(m_state == Finished);
+    // It shouldn't be possible for this object to get deleted unless it's unused, complete, or aborted.
+    ASSERT(m_state == Finished || m_state == Unused);
 }
 
 void IDBTransactionBackend::scheduleTask(IDBDatabaseBackend::TaskType type, PassRefPtr<IDBOperation> task, PassRefPtr<IDBSynchronousOperation> abortTask)
@@ -158,12 +158,12 @@ void IDBTransactionBackend::abort(PassRefPtr<IDBDatabaseError> error)
     ASSERT(!m_database->transactionCoordinator()->isActive(this));
     m_database->transactionFinished(this);
 
+    RefPtr<IDBDatabaseBackend> database = m_database.release();
+
     if (m_callbacks)
         m_callbacks->onAbort(id(), error);
 
-    m_database->transactionFinishedAndAbortFired(this);
-
-    m_database = 0;
+    database->transactionFinishedAndAbortFired(this);
 }
 
 bool IDBTransactionBackend::isTaskQueueEmpty() const
@@ -207,14 +207,14 @@ void IDBTransactionBackend::start()
 
 void IDBTransactionBackend::commit()
 {
-    LOG(StorageAPI, "IDBTransactionBackend::commit (Transaction %lli)", static_cast<long long>(m_id));
+    LOG(StorageAPI, "IDBTransactionBackend::commit transaction %lli in state %u", static_cast<long long>(m_id), m_state);
 
     // In multiprocess ports, front-end may have requested a commit but an abort has already
     // been initiated asynchronously by the back-end.
     if (m_state == Finished)
         return;
 
-    ASSERT(m_state == Unused || m_state == Running);
+    ASSERT(m_state == Unopened || m_state == Unused || m_state == Running);
     m_commitPending = true;
 
     // Front-end has requested a commit, but there may be tasks like createIndex which
@@ -229,12 +229,20 @@ void IDBTransactionBackend::commit()
     // alive while executing this method.
     RefPtr<IDBTransactionBackend> backend(this);
 
-    bool unused = m_state == Unused;
+    bool unused = m_state == Unused || m_state == Unopened;
     m_state = Finished;
 
     bool committed = unused;
 
     m_database->serverConnection().commitTransaction(m_id, [backend, this, committed, unused](bool success) mutable {
+        // This might be commitTransaction request aborting during or after synchronous IDBTransactionBackend::abort() call.
+        // This can easily happen if the page is navigated before all transactions finish.
+        // In this case we have no further cleanup and don't need to make any callbacks.
+        if (!m_database) {
+            ASSERT(!success);
+            return;
+        }
+
         committed |= success;
 
         // Backing store resources (held via cursors) must be released before script callbacks

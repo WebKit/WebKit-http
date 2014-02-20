@@ -31,7 +31,6 @@
 #if ENABLE(DFG_JIT)
 
 #include "CodeBlock.h"
-#include "CodeOrigin.h"
 #include "DFGAbstractValue.h"
 #include "DFGAdjacencyList.h"
 #include "DFGArithMode.h"
@@ -39,8 +38,10 @@
 #include "DFGCommon.h"
 #include "DFGLazyJSValue.h"
 #include "DFGNodeFlags.h"
+#include "DFGNodeOrigin.h"
 #include "DFGNodeType.h"
 #include "DFGVariableAccessData.h"
+#include "GetByIdVariant.h"
 #include "JSCJSValue.h"
 #include "Operands.h"
 #include "SpeculatedType.h"
@@ -52,6 +53,11 @@ namespace JSC { namespace DFG {
 
 class Graph;
 struct BasicBlock;
+
+struct MultiGetByOffsetData {
+    unsigned identifierNumber;
+    Vector<GetByIdVariant, 2> variants;
+};
 
 struct StructureTransitionData {
     Structure* previousStructure;
@@ -161,9 +167,8 @@ struct Node {
     
     Node() { }
     
-    Node(NodeType op, CodeOrigin codeOrigin, const AdjacencyList& children)
-        : codeOrigin(codeOrigin)
-        , codeOriginForExitTarget(codeOrigin)
+    Node(NodeType op, NodeOrigin nodeOrigin, const AdjacencyList& children)
+        : origin(nodeOrigin)
         , children(children)
         , m_virtualRegister(VirtualRegister())
         , m_refCount(1)
@@ -174,9 +179,8 @@ struct Node {
     }
     
     // Construct a node with up to 3 children, no immediate value.
-    Node(NodeType op, CodeOrigin codeOrigin, Edge child1 = Edge(), Edge child2 = Edge(), Edge child3 = Edge())
-        : codeOrigin(codeOrigin)
-        , codeOriginForExitTarget(codeOrigin)
+    Node(NodeType op, NodeOrigin nodeOrigin, Edge child1 = Edge(), Edge child2 = Edge(), Edge child3 = Edge())
+        : origin(nodeOrigin)
         , children(AdjacencyList::Fixed, child1, child2, child3)
         , m_virtualRegister(VirtualRegister())
         , m_refCount(1)
@@ -190,9 +194,8 @@ struct Node {
     }
 
     // Construct a node with up to 3 children and an immediate value.
-    Node(NodeType op, CodeOrigin codeOrigin, OpInfo imm, Edge child1 = Edge(), Edge child2 = Edge(), Edge child3 = Edge())
-        : codeOrigin(codeOrigin)
-        , codeOriginForExitTarget(codeOrigin)
+    Node(NodeType op, NodeOrigin nodeOrigin, OpInfo imm, Edge child1 = Edge(), Edge child2 = Edge(), Edge child3 = Edge())
+        : origin(nodeOrigin)
         , children(AdjacencyList::Fixed, child1, child2, child3)
         , m_virtualRegister(VirtualRegister())
         , m_refCount(1)
@@ -206,9 +209,8 @@ struct Node {
     }
 
     // Construct a node with up to 3 children and two immediate values.
-    Node(NodeType op, CodeOrigin codeOrigin, OpInfo imm1, OpInfo imm2, Edge child1 = Edge(), Edge child2 = Edge(), Edge child3 = Edge())
-        : codeOrigin(codeOrigin)
-        , codeOriginForExitTarget(codeOrigin)
+    Node(NodeType op, NodeOrigin nodeOrigin, OpInfo imm1, OpInfo imm2, Edge child1 = Edge(), Edge child2 = Edge(), Edge child3 = Edge())
+        : origin(nodeOrigin)
         , children(AdjacencyList::Fixed, child1, child2, child3)
         , m_virtualRegister(VirtualRegister())
         , m_refCount(1)
@@ -222,9 +224,8 @@ struct Node {
     }
     
     // Construct a node with a variable number of children and two immediate values.
-    Node(VarArgTag, NodeType op, CodeOrigin codeOrigin, OpInfo imm1, OpInfo imm2, unsigned firstChild, unsigned numChildren)
-        : codeOrigin(codeOrigin)
-        , codeOriginForExitTarget(codeOrigin)
+    Node(VarArgTag, NodeType op, NodeOrigin nodeOrigin, OpInfo imm1, OpInfo imm2, unsigned firstChild, unsigned numChildren)
+        : origin(nodeOrigin)
         , children(AdjacencyList::Variable, firstChild, numChildren)
         , m_virtualRegister(VirtualRegister())
         , m_refCount(1)
@@ -332,7 +333,7 @@ struct Node {
     bool isStronglyProvedConstantIn(InlineCallFrame* inlineCallFrame)
     {
         return !!(flags() & NodeIsStaticConstant)
-            && codeOrigin.inlineCallFrame == inlineCallFrame;
+            && origin.semantic.inlineCallFrame == inlineCallFrame;
     }
     
     bool isStronglyProvedConstantIn(const CodeOrigin& codeOrigin)
@@ -411,7 +412,7 @@ struct Node {
     
     void convertToGetByOffset(unsigned storageAccessDataIndex, Edge storage)
     {
-        ASSERT(m_op == GetById || m_op == GetByIdFlush);
+        ASSERT(m_op == GetById || m_op == GetByIdFlush || m_op == MultiGetByOffset);
         m_opInfo = storageAccessDataIndex;
         children.setChild2(children.child1());
         children.child2().setUseKind(KnownCellUse);
@@ -910,6 +911,7 @@ struct Node {
         case Call:
         case Construct:
         case GetByOffset:
+        case MultiGetByOffset:
         case GetClosureVar:
         case ArrayPop:
         case ArrayPush:
@@ -1059,6 +1061,16 @@ struct Node {
         return m_opInfo;
     }
     
+    bool hasMultiGetByOffsetData()
+    {
+        return op() == MultiGetByOffset;
+    }
+    
+    MultiGetByOffsetData& multiGetByOffsetData()
+    {
+        return *reinterpret_cast<MultiGetByOffsetData*>(m_opInfo);
+    }
+    
     bool hasFunctionDeclIndex()
     {
         return op() == NewFunction
@@ -1203,6 +1215,7 @@ struct Node {
         case PhantomArguments:
             return true;
         case Phantom:
+        case HardPhantom:
             return child1().useKindUnchecked() != UntypedUse || child2().useKindUnchecked() != UntypedUse || child3().useKindUnchecked() != UntypedUse;
         default:
             return shouldGenerate();
@@ -1537,12 +1550,9 @@ struct Node {
     }
     
     // NB. This class must have a trivial destructor.
-    
-    // Used for determining what bytecode this came from. This is important for
-    // debugging, exceptions, and even basic execution semantics.
-    CodeOrigin codeOrigin;
-    // Code origin for where the node exits to.
-    CodeOrigin codeOriginForExitTarget;
+
+    NodeOrigin origin;
+
     // References to up to 3 children, or links to a variable length set of children.
     AdjacencyList children;
 

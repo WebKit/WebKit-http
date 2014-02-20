@@ -77,7 +77,7 @@ public:
 
     virtual void setResizable(bool);
 
-    virtual void addMessageToConsole(WebCore::MessageSource, WebCore::MessageLevel, const WTF::String& message, unsigned lineNumber, unsigned columnNumber, const WTF::String& url);
+    virtual void addMessageToConsole(Inspector::MessageSource, Inspector::MessageLevel, const WTF::String& message, unsigned lineNumber, unsigned columnNumber, const WTF::String& url);
 
     virtual bool canRunBeforeUnloadConfirmPanel();
     virtual bool runBeforeUnloadConfirmPanel(const WTF::String& message, WebCore::Frame* frame);
@@ -127,8 +127,6 @@ public:
     virtual void setCursor(const WebCore::Cursor&);
     virtual void setCursorHiddenUntilMouseMoves(bool);
     virtual void setLastSetCursorToCurrentCursor();
-
-    virtual void formStateDidChange(const WebCore::Node*) { }
 
     // Pass 0 as the GraphicsLayer to detatch the root layer.
     virtual void attachRootGraphicsLayer(WebCore::Frame*, WebCore::GraphicsLayer*);

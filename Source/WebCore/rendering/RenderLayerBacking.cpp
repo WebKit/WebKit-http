@@ -179,7 +179,7 @@ std::unique_ptr<GraphicsLayer> RenderLayerBacking::createGraphicsLayer(const Str
 #endif
     graphicsLayer->setMaintainsPixelAlignment(compositor().keepLayersPixelAligned());
 
-#if PLATFORM(MAC) && USE(CA)
+#if PLATFORM(COCOA) && USE(CA)
     graphicsLayer->setAcceleratesDrawing(compositor().acceleratedDrawingEnabled());
 #endif    
     
@@ -215,12 +215,6 @@ static TiledBacking::TileCoverage computeTileCoverage(RenderLayerBacking* backin
 
         if (frameView.verticalScrollbarMode() != ScrollbarAlwaysOff || clipsToExposedRect)
             tileCoverage |= TiledBacking::CoverageForVerticalScrolling;
-    }
-    if (ScrollingCoordinator* scrollingCoordinator = scrollingCoordinatorFromLayer(backing->owningLayer())) {
-        // Ask our TiledBacking for large tiles unless the only reason we're main-thread-scrolling
-        // is a page overlay (find-in-page, the Web Inspector highlight mechanism, etc.).
-        if (scrollingCoordinator->synchronousScrollingReasons() & ~ScrollingCoordinator::ForcedOnMainThread)
-            tileCoverage |= TiledBacking::CoverageForSlowScrolling;
     }
     return tileCoverage;
 }
@@ -315,7 +309,7 @@ void RenderLayerBacking::createPrimaryGraphicsLayer()
 #endif
     }
 
-#if PLATFORM(MAC) && USE(CA)
+#if PLATFORM(COCOA) && USE(CA)
     if (!compositor().acceleratedDrawingEnabled() && renderer().isCanvas()) {
         const HTMLCanvasElement* canvas = toHTMLCanvasElement(renderer().element());
         if (canvas->shouldAccelerate(canvas->size()))
@@ -2088,41 +2082,42 @@ void RenderLayerBacking::setContentsNeedDisplay(GraphicsLayer::ShouldClipToLayer
 }
 
 // r is in the coordinate space of the layer's render object
-void RenderLayerBacking::setContentsNeedDisplayInRect(const IntRect& r, GraphicsLayer::ShouldClipToLayer shouldClip)
+void RenderLayerBacking::setContentsNeedDisplayInRect(const LayoutRect& r, GraphicsLayer::ShouldClipToLayer shouldClip)
 {
     ASSERT(!paintsIntoCompositedAncestor());
 
+    FloatRect pixelSnappedRectForPainting = pixelSnappedForPainting(r, deviceScaleFactor());
     FrameView& frameView = owningLayer().renderer().view().frameView();
     if (m_isMainFrameRenderViewLayer && frameView.isTrackingRepaints())
         frameView.addTrackedRepaintRect(pixelSnappedIntRect(r));
 
     if (m_graphicsLayer && m_graphicsLayer->drawsContent()) {
-        IntRect layerDirtyRect = r;
+        FloatRect layerDirtyRect = pixelSnappedRectForPainting;
         layerDirtyRect.move(-m_graphicsLayer->offsetFromRenderer());
         m_graphicsLayer->setNeedsDisplayInRect(layerDirtyRect, shouldClip);
     }
 
     if (m_foregroundLayer && m_foregroundLayer->drawsContent()) {
-        IntRect layerDirtyRect = r;
+        FloatRect layerDirtyRect = pixelSnappedRectForPainting;
         layerDirtyRect.move(-m_foregroundLayer->offsetFromRenderer());
         m_foregroundLayer->setNeedsDisplayInRect(layerDirtyRect, shouldClip);
     }
 
     // FIXME: need to split out repaints for the background.
     if (m_backgroundLayer && m_backgroundLayer->drawsContent()) {
-        IntRect layerDirtyRect = r;
+        FloatRect layerDirtyRect = pixelSnappedRectForPainting;
         layerDirtyRect.move(-m_backgroundLayer->offsetFromRenderer());
         m_backgroundLayer->setNeedsDisplayInRect(layerDirtyRect, shouldClip);
     }
 
     if (m_maskLayer && m_maskLayer->drawsContent()) {
-        IntRect layerDirtyRect = r;
+        FloatRect layerDirtyRect = pixelSnappedRectForPainting;
         layerDirtyRect.move(-m_maskLayer->offsetFromRenderer());
         m_maskLayer->setNeedsDisplayInRect(layerDirtyRect, shouldClip);
     }
 
     if (m_scrollingContentsLayer && m_scrollingContentsLayer->drawsContent()) {
-        IntRect layerDirtyRect = r;
+        FloatRect layerDirtyRect = pixelSnappedRectForPainting;
         layerDirtyRect.move(-m_scrollingContentsLayer->offsetFromRenderer());
 #if PLATFORM(IOS)
         // Account for the fact that RenderLayerBacking::updateGraphicsLayerGeometry() bakes scrollOffset into offsetFromRenderer on iOS.
@@ -2133,8 +2128,8 @@ void RenderLayerBacking::setContentsNeedDisplayInRect(const IntRect& r, Graphics
 }
 
 void RenderLayerBacking::paintIntoLayer(const GraphicsLayer* graphicsLayer, GraphicsContext* context,
-                    const IntRect& paintDirtyRect, // In the coords of rootLayer.
-                    PaintBehavior paintBehavior, GraphicsLayerPaintingPhase paintingPhase)
+    const LayoutRect& paintDirtyRect, // In the coords of rootLayer.
+    PaintBehavior paintBehavior, GraphicsLayerPaintingPhase paintingPhase)
 {
     if (paintsIntoWindow() || paintsIntoCompositedAncestor()) {
 #if !PLATFORM(IOS)
@@ -2192,12 +2187,16 @@ static void paintScrollbar(Scrollbar* scrollbar, GraphicsContext& context, const
 }
 
 // Up-call from compositing layer drawing callback.
-void RenderLayerBacking::paintContents(const GraphicsLayer* graphicsLayer, GraphicsContext& context, GraphicsLayerPaintingPhase paintingPhase, const IntRect& clip)
+void RenderLayerBacking::paintContents(const GraphicsLayer* graphicsLayer, GraphicsContext& context, GraphicsLayerPaintingPhase paintingPhase, const FloatRect& clip)
 {
 #ifndef NDEBUG
     if (Page* page = renderer().frame().page())
         page->setIsPainting(true);
 #endif
+
+    // The dirtyRect is in the coords of the painting root.
+    LayoutRect dirtyRect(clip);
+    IntRect pixelSnappedRectForIntegralPositionedItems = pixelSnappedIntRect(dirtyRect);
 
     if (graphicsLayer == m_graphicsLayer.get()
         || graphicsLayer == m_foregroundLayer.get()
@@ -2206,24 +2205,22 @@ void RenderLayerBacking::paintContents(const GraphicsLayer* graphicsLayer, Graph
         || graphicsLayer == m_scrollingContentsLayer.get()) {
         InspectorInstrumentation::willPaint(&renderer());
 
-        // The dirtyRect is in the coords of the painting root.
-        IntRect dirtyRect = clip;
         if (!(paintingPhase & GraphicsLayerPaintOverflowContents))
             dirtyRect.intersect(enclosingIntRect(compositedBoundsIncludingMargin()));
 
         // We have to use the same root as for hit testing, because both methods can compute and cache clipRects.
         paintIntoLayer(graphicsLayer, &context, dirtyRect, PaintBehaviorNormal, paintingPhase);
 
-        InspectorInstrumentation::didPaint(&renderer(), &context, clip);
+        InspectorInstrumentation::didPaint(&renderer(), &context, dirtyRect);
     } else if (graphicsLayer == layerForHorizontalScrollbar()) {
-        paintScrollbar(m_owningLayer.horizontalScrollbar(), context, clip);
+        paintScrollbar(m_owningLayer.horizontalScrollbar(), context, pixelSnappedRectForIntegralPositionedItems);
     } else if (graphicsLayer == layerForVerticalScrollbar()) {
-        paintScrollbar(m_owningLayer.verticalScrollbar(), context, clip);
+        paintScrollbar(m_owningLayer.verticalScrollbar(), context, pixelSnappedRectForIntegralPositionedItems);
     } else if (graphicsLayer == layerForScrollCorner()) {
         const LayoutRect& scrollCornerAndResizer = m_owningLayer.scrollCornerAndResizerRect();
         context.save();
         context.translate(-scrollCornerAndResizer.x(), -scrollCornerAndResizer.y());
-        LayoutRect transformedClip = clip;
+        LayoutRect transformedClip = LayoutRect(clip);
         transformedClip.moveBy(scrollCornerAndResizer.location());
         m_owningLayer.paintScrollCorner(&context, IntPoint(), pixelSnappedIntRect(transformedClip));
         m_owningLayer.paintResizer(&context, IntPoint(), transformedClip);

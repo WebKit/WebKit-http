@@ -26,6 +26,8 @@
 #import <JavaScriptCore/JavaScriptCore.h>
 
 #import "CurrentThisInsideBlockGetterTest.h"
+#import "DateTests.h"
+#import "JSExportTests.h"
 
 extern "C" void JSSynchronousGarbageCollectForDebugging(JSContextRef);
 
@@ -34,6 +36,7 @@ extern "C" const char * _Block_signature(id);
 
 extern int failed;
 extern "C" void testObjectiveCAPI(void);
+extern "C" void checkResult(NSString *, bool);
 
 #if JSC_OBJC_API_ENABLED
 
@@ -172,13 +175,6 @@ bool testXYZTested = false;
     JSValue *function = [m_onclickHandler value];
     [function callWithArguments:[NSArray array]];
 }
-- (void)dealloc
-{
-    [[m_onclickHandler value].context.virtualMachine removeManagedReference:m_onclickHandler withOwner:self];
-#if !__has_feature(objc_arc)
-    [super dealloc];
-#endif
-}
 @end
 
 @class TinyDOMNode;
@@ -211,18 +207,6 @@ bool testXYZTested = false;
 #endif
 
     return self;
-}
-
-- (void)dealloc
-{
-    for (TinyDOMNode *child in m_children)
-        [m_sharedVirtualMachine removeManagedReference:child withOwner:self];
-
-#if !__has_feature(objc_arc)
-    [m_children release];
-    [m_sharedVirtualMachine release];
-    [super dealloc];
-#endif
 }
 
 - (void)appendChild:(TinyDOMNode *)child
@@ -469,7 +453,7 @@ static bool evilAllocationObjectWasDealloced = false;
 }
 @end
 
-static void checkResult(NSString *description, bool passed)
+extern "C" void checkResult(NSString *description, bool passed)
 {
     NSLog(@"TEST: \"%@\": %@", description, passed ? @"PASSED" : @"FAILED");
     if (!passed)
@@ -488,6 +472,12 @@ static bool blockSignatureContainsClass()
 void testObjectiveCAPI()
 {
     NSLog(@"Testing Objective-C API");
+
+    @autoreleasepool {
+        JSVirtualMachine* vm = [[JSVirtualMachine alloc] init];
+        JSContext* context = [[JSContext alloc] initWithVirtualMachine:vm];
+        [context evaluateScript:@"bad"];
+    }
 
     @autoreleasepool {
         JSContext *context = [[JSContext alloc] init];
@@ -551,6 +541,20 @@ void testObjectiveCAPI()
         checkResult(@"my_number is 42", ![myPrivateProperties valueForKey:@"my_number"]);
         checkResult(@"definitely_null is null", ![myPrivateProperties valueForKey:@"definitely_null"]);
         checkResult(@"not_sure_if_undefined is undefined", ![myPrivateProperties valueForKey:@"not_sure_if_undefined"]);
+    }
+
+    @autoreleasepool {
+        JSContext *context = [[JSContext alloc] init];
+        JSValue *message = [JSValue valueWithObject:@"hello" inContext:context];
+        TestObject *rootObject = [TestObject testObject];
+        JSCollection *collection = [[JSCollection alloc] init];
+        context[@"root"] = rootObject;
+        @autoreleasepool {
+            JSValue *jsCollection = [JSValue valueWithObject:collection inContext:context];
+            JSManagedValue *weakCollection = [JSManagedValue managedValueWithValue:jsCollection andOwner:rootObject];
+            [context.virtualMachine addManagedReference:weakCollection withOwner:message];
+            JSSynchronousGarbageCollectForDebugging([context JSGlobalContextRef]);
+        }
     }
 
     @autoreleasepool {
@@ -1160,6 +1164,28 @@ void testObjectiveCAPI()
     @autoreleasepool {
         checkResult(@"[JSContext currentThis] == nil outside of callback", ![JSContext currentThis]);
         checkResult(@"[JSContext currentArguments] == nil outside of callback", ![JSContext currentArguments]);
+        if ([JSContext currentCallee])
+            checkResult(@"[JSContext currentCallee] == nil outside of callback", ![JSContext currentCallee]);
+    }
+
+    if ([JSContext currentCallee]) {
+        @autoreleasepool {
+            JSContext *context = [[JSContext alloc] init];
+            context[@"testFunction"] = ^{
+                checkResult(@"testFunction.foo === 42", [[JSContext currentCallee][@"foo"] toInt32] == 42);
+            };
+            context[@"testFunction"][@"foo"] = @42;
+            [context[@"testFunction"] callWithArguments:nil];
+
+            context[@"TestConstructor"] = ^{
+                JSValue *newThis = [JSValue valueWithNewObjectInContext:[JSContext currentContext]];
+                JSGlobalContextRef contextRef = [[JSContext currentContext] JSGlobalContextRef];
+                JSObjectRef newThisRef = JSValueToObject(contextRef, [newThis JSValueRef], NULL);
+                JSObjectSetPrototype(contextRef, newThisRef, [[JSContext currentCallee][@"prototype"] JSValueRef]);
+                return newThis;
+            };
+            checkResult(@"(new TestConstructor) instanceof TestConstructor", [context evaluateScript:@"(new TestConstructor) instanceof TestConstructor"]);
+        }
     }
 
     @autoreleasepool {
@@ -1252,7 +1278,15 @@ void testObjectiveCAPI()
         checkResult(@"makeObject() instanceof UnexportedObject", [result isBoolean] && [result toBool]);
     }
 
+    @autoreleasepool {
+        JSContext *context = [[JSContext alloc] init];
+        [[JSValue valueWithInt32:42 inContext:context] toDictionary];
+        [[JSValue valueWithInt32:42 inContext:context] toArray];
+    }
+
     currentThisInsideBlockGetterTest();
+    runDateTests();
+    runJSExportTests();
 }
 
 #else

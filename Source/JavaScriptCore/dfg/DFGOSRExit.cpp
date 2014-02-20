@@ -31,7 +31,7 @@
 #include "AssemblyHelpers.h"
 #include "DFGGraph.h"
 #include "DFGSpeculativeJIT.h"
-#include "JSCellInlines.h"
+#include "JSCInlines.h"
 
 namespace JSC { namespace DFG {
 

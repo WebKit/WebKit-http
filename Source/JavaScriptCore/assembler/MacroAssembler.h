@@ -258,6 +258,10 @@ public:
     {
         push(src);
     }
+    void pushToSaveImmediateWithoutTouchingRegisters(TrustedImm32 imm)
+    {
+        push(imm);
+    }
     void popToRestore(RegisterID dest)
     {
         pop(dest);
@@ -272,6 +276,8 @@ public:
         loadDouble(stackPointerRegister, dest);
         addPtr(TrustedImm32(sizeof(double)), stackPointerRegister);
     }
+    
+    static ptrdiff_t pushToSaveByteOffset() { return sizeof(void*); }
 #endif // !CPU(ARM64)
 
 #if CPU(X86_64) || CPU(ARM64)
@@ -472,6 +478,11 @@ public:
     void andPtr(TrustedImmPtr imm, RegisterID srcDest)
     {
         and32(TrustedImm32(imm), srcDest);
+    }
+
+    void lshiftPtr(Imm32 imm, RegisterID srcDest)
+    {
+        lshift32(trustedImm32ForShift(imm), srcDest);
     }
 
     void negPtr(RegisterID dest)

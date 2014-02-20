@@ -32,7 +32,7 @@
 #include "DFGBlockInsertionSet.h"
 #include "DFGGraph.h"
 #include "DFGPhase.h"
-#include "Operations.h"
+#include "JSCInlines.h"
 #include <wtf/HashMap.h>
 
 namespace JSC { namespace DFG {
@@ -75,7 +75,7 @@ private:
     {
         BasicBlock* pad = m_insertionSet.insertBefore(*successor);
         pad->appendNode(
-            m_graph, SpecNone, Jump, (*successor)->at(0)->codeOrigin, OpInfo(*successor));
+            m_graph, SpecNone, Jump, (*successor)->at(0)->origin, OpInfo(*successor));
         pad->predecessors.append(predecessor);
         (*successor)->replacePredecessor(predecessor, pad);
         

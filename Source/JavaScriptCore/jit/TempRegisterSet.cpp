@@ -28,6 +28,7 @@
 
 #if ENABLE(JIT)
 
+#include "JSCInlines.h"
 #include "RegisterSet.h"
 
 namespace JSC {

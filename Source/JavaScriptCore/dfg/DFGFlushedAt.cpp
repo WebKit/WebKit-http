@@ -28,6 +28,8 @@
 
 #if ENABLE(DFG_JIT)
 
+#include "JSCInlines.h"
+
 namespace JSC { namespace DFG {
 
 void FlushedAt::dump(PrintStream& out) const

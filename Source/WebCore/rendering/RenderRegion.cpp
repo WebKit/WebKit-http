@@ -150,12 +150,6 @@ LayoutPoint RenderRegion::flowThreadPortionLocation() const
     return portionLocation;
 }
 
-RenderLayer* RenderRegion::regionContainerLayer() const
-{
-    ASSERT(parent() && parent()->isRenderNamedFlowFragmentContainer());
-    return toRenderBlockFlow(parent())->layer();
-}
-
 LayoutRect RenderRegion::overflowRectForFlowThreadPortion(const LayoutRect& flowThreadPortionRect, bool isFirstPortion, bool isLastPortion, OverflowType overflowType)
 {
     ASSERT(isValid());
@@ -516,8 +510,15 @@ LayoutRect RenderRegion::rectFlowPortionForBox(const RenderBox* box, const Layou
     }
 
     bool isLastRegionWithRegionFragmentBreak = (isLastRegion() && (style().regionFragment() == BreakRegionFragment));
-    if (hasOverflowClip() || isLastRegionWithRegionFragmentBreak)
-        mappedRect.intersect(flowThreadPortionRect());
+    if (hasOverflowClip() || isLastRegionWithRegionFragmentBreak) {
+        LayoutRect portionRect;
+        if (isRenderNamedFlowFragment())
+            portionRect = toRenderNamedFlowFragment(this)->flowThreadPortionRectForClipping(this == startRegion, this == endRegion);
+        else
+            portionRect = flowThreadPortionRect();
+        
+        mappedRect.intersect(portionRect);
+    }
 
     return mappedRect.isEmpty() ? mappedRect : m_flowThread->mapFromFlowThreadToLocal(box, mappedRect);
 }

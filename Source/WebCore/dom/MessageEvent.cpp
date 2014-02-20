@@ -28,6 +28,8 @@
 #include "config.h"
 #include "MessageEvent.h"
 
+#include <runtime/JSCInlines.h>
+
 namespace WebCore {
 
 static inline bool isValidSource(EventTarget* source)
@@ -51,30 +53,30 @@ MessageEvent::MessageEvent(const AtomicString& type, const MessageEventInit& ini
     , m_origin(initializer.origin)
     , m_lastEventId(initializer.lastEventId)
     , m_source(isValidSource(initializer.source.get()) ? initializer.source : 0)
-    , m_ports(adoptPtr(new MessagePortArray(initializer.ports)))
+    , m_ports(std::make_unique<MessagePortArray>(initializer.ports))
 {
 }
 
-MessageEvent::MessageEvent(const Deprecated::ScriptValue& data, const String& origin, const String& lastEventId, PassRefPtr<EventTarget> source, PassOwnPtr<MessagePortArray> ports)
+MessageEvent::MessageEvent(const Deprecated::ScriptValue& data, const String& origin, const String& lastEventId, PassRefPtr<EventTarget> source, std::unique_ptr<MessagePortArray> ports)
     : Event(eventNames().messageEvent, false, false)
     , m_dataType(DataTypeScriptValue)
     , m_dataAsScriptValue(data)
     , m_origin(origin)
     , m_lastEventId(lastEventId)
     , m_source(source)
-    , m_ports(ports)
+    , m_ports(std::move(ports))
 {
     ASSERT(isValidSource(m_source.get()));
 }
 
-MessageEvent::MessageEvent(PassRefPtr<SerializedScriptValue> data, const String& origin, const String& lastEventId, PassRefPtr<EventTarget> source, PassOwnPtr<MessagePortArray> ports)
+MessageEvent::MessageEvent(PassRefPtr<SerializedScriptValue> data, const String& origin, const String& lastEventId, PassRefPtr<EventTarget> source, std::unique_ptr<MessagePortArray> ports)
     : Event(eventNames().messageEvent, false, false)
     , m_dataType(DataTypeSerializedScriptValue)
     , m_dataAsSerializedScriptValue(data)
     , m_origin(origin)
     , m_lastEventId(lastEventId)
     , m_source(source)
-    , m_ports(ports)
+    , m_ports(std::move(ports))
 {
     ASSERT(isValidSource(m_source.get()));
 }
@@ -107,7 +109,7 @@ MessageEvent::~MessageEvent()
 {
 }
 
-void MessageEvent::initMessageEvent(const AtomicString& type, bool canBubble, bool cancelable, const Deprecated::ScriptValue& data, const String& origin, const String& lastEventId, DOMWindow* source, PassOwnPtr<MessagePortArray> ports)
+void MessageEvent::initMessageEvent(const AtomicString& type, bool canBubble, bool cancelable, const Deprecated::ScriptValue& data, const String& origin, const String& lastEventId, DOMWindow* source, std::unique_ptr<MessagePortArray> ports)
 {
     if (dispatched())
         return;
@@ -119,10 +121,10 @@ void MessageEvent::initMessageEvent(const AtomicString& type, bool canBubble, bo
     m_origin = origin;
     m_lastEventId = lastEventId;
     m_source = source;
-    m_ports = ports;
+    m_ports = std::move(ports);
 }
 
-void MessageEvent::initMessageEvent(const AtomicString& type, bool canBubble, bool cancelable, PassRefPtr<SerializedScriptValue> data, const String& origin, const String& lastEventId, DOMWindow* source, PassOwnPtr<MessagePortArray> ports)
+void MessageEvent::initMessageEvent(const AtomicString& type, bool canBubble, bool cancelable, PassRefPtr<SerializedScriptValue> data, const String& origin, const String& lastEventId, DOMWindow* source, std::unique_ptr<MessagePortArray> ports)
 {
     if (dispatched())
         return;
@@ -134,7 +136,7 @@ void MessageEvent::initMessageEvent(const AtomicString& type, bool canBubble, bo
     m_origin = origin;
     m_lastEventId = lastEventId;
     m_source = source;
-    m_ports = ports;
+    m_ports = std::move(ports);
 }
 
 // FIXME: Remove this when we have custom ObjC binding support.
@@ -155,12 +157,12 @@ MessagePort* MessageEvent::messagePort()
 
 void MessageEvent::initMessageEvent(const AtomicString& type, bool canBubble, bool cancelable, PassRefPtr<SerializedScriptValue> data, const String& origin, const String& lastEventId, DOMWindow* source, MessagePort* port)
 {
-    OwnPtr<MessagePortArray> ports;
+    std::unique_ptr<MessagePortArray> ports;
     if (port) {
-        ports = adoptPtr(new MessagePortArray);
+        ports = std::make_unique<MessagePortArray>();
         ports->append(port);
     }
-    initMessageEvent(type, canBubble, cancelable, data, origin, lastEventId, source, ports.release());
+    initMessageEvent(type, canBubble, cancelable, data, origin, lastEventId, source, std::move(ports));
 }
 
 EventInterface MessageEvent::eventInterface() const

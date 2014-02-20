@@ -1,3 +1,169 @@
+2014-02-18  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        [EFL][CMake] Fix javascriptcore test failings by the jsCStack branch merge
+        https://bugs.webkit.org/show_bug.cgi?id=128961
+
+        Reviewed by Ryosuke Niwa.
+
+        Javascriptcore test on EFL port has been broken since the jsCStack branch merge.
+        For now we can fix almost tests by using "-fno-tree-dce option". Unfortunately,
+        EFL port needs not to check "uninitialized" build warning as error in order to
+        adjust the option to EFL port. This patch don't take it as error temporarily.
+
+        * Source/cmake/OptionsEfl.cmake:
+        * Source/cmake/WebKitHelpers.cmake:
+
+2014-02-16  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK] [CMake] JavaScriptCore crashes in JSC::eval
+        https://bugs.webkit.org/show_bug.cgi?id=128434
+
+        Reviewed by Anders Carlsson.
+
+        * Source/cmake/OptionsGTK.cmake: Add -fno-omit-frame-pointer to the GTK+ CMake
+        port as well as -fno-tree-dce, like it is used in the autotools build.
+
+2014-02-17  ChangSeok Oh  <changseok.oh@collabora.com>
+
+        [GTK] MEDIA_CONTROLS_SCRIPT depends on VIDEO_TRACK
+        https://bugs.webkit.org/show_bug.cgi?id=128799
+
+        Reviewed by Philippe Normand.
+
+        MEDIA_CONTROLS_SCRIPT has a dependency on VIDEO_TRACK. So it causes a build break
+        if building with autotools. cmake system has enabled it as default. So I propose
+        enabling VIDEO_TRACK as well.
+
+        * Source/autotools/SetupWebKitFeatures.m4:
+
+2014-02-14  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r164090.
+        http://trac.webkit.org/changeset/164090
+        https://bugs.webkit.org/show_bug.cgi?id=128807
+
+        It broke the EFL build (Requested by Ossy on #webkit).
+
+        * Source/cmake/OptionsCommon.cmake:
+        * Source/cmake/OptionsEfl.cmake:
+
+2014-02-09  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK] [CMake] JavaScriptCore crashes in JSC::eval
+        https://bugs.webkit.org/show_bug.cgi?id=128434
+
+        Extend a fix for EFL to all ports that use GCC. Also include further fixes
+        that were applied only to the autotools build.
+
+        Reviewed by Gyuyoung Kim.
+
+        * Source/cmake/OptionsCommon.cmake: Add -fno-omit-frame-pointer to all ports as well
+        as -fno-tree-dce, which is necessary for GTK+.
+        * Source/cmake/OptionsEfl.cmake: The GCC flag additions are now in the common options file.
+
+2014-02-04  Gustavo Noronha Silva  <gns@gnome.org>
+
+        [GTK][CMake] Generate GObject DOM bindings .symbols files
+        https://bugs.webkit.org/show_bug.cgi?id=126210
+
+        Reviewed by Martin Robinson.
+
+        * Source/PlatformGTK.cmake: add checking DOM bindings API as a dependency
+        for documentation generation.
+
+2014-02-13  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        [GTK] MEDIA_CONTROLS_SCRIPT support
+        https://bugs.webkit.org/show_bug.cgi?id=123097
+
+        Reviewed by Jer Noble.
+
+        Part of the Autotools and CMake structure to build the media
+        controls script.
+
+        * Source/autotools/SetupWebKitFeatures.m4: Activated the media
+        controls script by default.
+        * Source/cmake/OptionsGTK.cmake: Activated the media controls
+        script by default.
+        * Source/cmake/WebKitFeatures.cmake: Created the option to
+        activate the controls script.
+        * Source/cmakeconfig.h.cmake: Created the define template the the
+        media controls script.
+
+2014-02-12  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GDB] Add .gdbinit to the list of files ignored by Git
+        https://bugs.webkit.org/show_bug.cgi?id=128455
+
+        Reviewed by Anders Carlsson.
+
+        * .gitignore: Ignore the .gdbinit file which can be used to perform WebKit-specific GDB initialization
+        when the debugger is launched in the repository's root directory. Also remove a Chromium-specific comment
+        that covers already removed entries.
+
+2014-02-11  Oliver Hunt  <oliver@apple.com>
+
+        Make it possible to implement JS builtins in JS
+        https://bugs.webkit.org/show_bug.cgi?id=127887
+
+        Reviewed by Michael Saboff.
+
+        * GNUmakefile.am:
+        * Source/cmake/gtest/CMakeLists.txt:
+
+2014-02-12  Ryan Lortie  <desrt@desrt.ca>
+
+        'ar T' is not portable and breaks the build on FreeBSD
+        https://bugs.webkit.org/show_bug.cgi?id=128596
+
+        Reviewed by Gustavo Noronha Silva.
+
+        Create thin archives only if we are using GNU ar.
+
+        * Source/autotools/SetupLibtool.m4:
+
+2014-02-10  Krzysztof Wolanski  <k.wolanski@samsung.com>
+
+        Add the CSS_SHAPE_INSIDE to CMake feature list
+        https://bugs.webkit.org/show_bug.cgi?id=128530
+
+        Reviewed by Gyuyoung Kim.
+
+        CSS_SHAPE_INSIDE flag was added in r163333,
+        this patch is adding this flag to CMake feature list.
+
+        * Source/cmake/WebKitFeatures.cmake:
+        * Source/cmakeconfig.h.cmake:
+
+2014-02-09  Carlos Garnacho  <carlosg@gnome.org>
+
+        [GTK] Enable touch features
+        https://bugs.webkit.org/show_bug.cgi?id=98931
+
+        Reviewed by Carlos Garcia Campos.
+
+        * Source/autotools/SetupWebKitFeatures.m4:
+        * Source/cmake/OptionsGTK.cmake: set ENABLE_TOUCH_EVENTS to 1 if building with GTK+.
+
+2014-02-06  Andreas Kling  <akling@apple.com>
+
+        Remove unused ENABLE(REPAINT_THROTTLING) flag.
+        <https://webkit.org/b/128329>
+
+        Reviewed by Antti Koivisto.
+
+        * Source/cmake/WebKitFeatures.cmake:
+        * Source/cmakeconfig.h.cmake:
+
+2014-02-06  Joseph Pecoraro  <pecoraro@apple.com>
+
+        [iOS] make should build WebKit2
+        https://bugs.webkit.org/show_bug.cgi?id=128351
+
+        Reviewed by Daniel Bates.
+
+        * Source/Makefile:
+
 2014-02-05  Andreas Kling  <akling@apple.com>
 
         Remove ENABLE(DIRECTORY_UPLOAD).

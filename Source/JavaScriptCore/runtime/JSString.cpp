@@ -26,7 +26,7 @@
 #include "JSGlobalObject.h"
 #include "JSGlobalObjectFunctions.h"
 #include "JSObject.h"
-#include "Operations.h"
+#include "JSCInlines.h"
 #include "StringObject.h"
 #include "StringPrototype.h"
 
@@ -296,6 +296,13 @@ bool JSString::getStringPropertyDescriptor(ExecState* exec, PropertyName propert
     }
     
     return false;
+}
+
+void JSString::WeakOwner::finalize(Handle<Unknown>, void* context)
+{
+    StringImpl* impl = static_cast<StringImpl*>(context);
+    WeakSet::deallocate(impl->weakJSString());
+    impl->setWeakJSString(nullptr);
 }
 
 } // namespace JSC

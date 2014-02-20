@@ -138,7 +138,7 @@ private:
     virtual bool platformCALayerRespondsToLayoutChanges() const override { return false; }
     virtual void platformCALayerAnimationStarted(CFTimeInterval) override { }
     virtual GraphicsLayer::CompositingCoordinatesOrientation platformCALayerContentsOrientation() const override { return GraphicsLayer::CompositingCoordinatesTopDown; }
-    virtual void platformCALayerPaintContents(PlatformCALayer*, GraphicsContext&, const IntRect&) override;
+    virtual void platformCALayerPaintContents(PlatformCALayer*, GraphicsContext&, const FloatRect&) override;
     virtual bool platformCALayerShowDebugBorders() const override;
     virtual bool platformCALayerShowRepaintCounter(PlatformCALayer*) const override;
     virtual int platformCALayerIncrementRepaintCount(PlatformCALayer*) override;
@@ -159,7 +159,6 @@ private:
     void getTileIndexRangeForRect(const IntRect&, TileIndex& topLeft, TileIndex& bottomRight) const;
 
     FloatRect computeTileCoverageRect(const FloatRect& previousVisibleRect, const FloatRect& currentVisibleRect) const;
-    IntSize computeTileSize() const;
 
     void scheduleTileRevalidation(double interval);
     void tileRevalidationTimerFired(Timer<TileController>*);

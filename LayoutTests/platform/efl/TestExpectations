@@ -271,6 +271,7 @@ webkit.org/b/87661 http/tests/security/cross-origin-indexeddb.html [ Skip ]
 webkit.org/b/87661 http/tests/security/cross-origin-worker-indexeddb-allowed.html [ Skip ]
 webkit.org/b/87661 http/tests/security/cross-origin-worker-indexeddb.html [ Skip ]
 webkit.org/b/87661 http/tests/security/no-indexeddb-from-sandbox.html [ Skip ]
+webkit.org/b/87661 crypto/subtle/rsa-indexeddb.html [ Skip ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # TESTS EXPECTED TO FAIL
@@ -457,9 +458,6 @@ webkit.org/b/90928 fast/dom/Orientation [ Skip ]
 # EFL port does not implement DeviceMotion
 webkit.org/b/95300 fast/dom/DeviceMotion [ Skip ]
 
-# CSS Regions tests for region styling and scoped styles, of which the latter are not enabled by default.
-webkit.org/b/82340 fast/regions/style-scoped [ ImageOnlyFailure ]
-
 # This port does not enable HIDDEN_PAGE_DOM_TIMER_THROTTLING
 fast/dom/timer-throttling-hidden-page.html [ WontFix ]
 
@@ -483,7 +481,6 @@ webkit.org/b/99200 css3/compositing/blend-mode-layers.html [ Skip ]
 webkit.org/b/99200 css3/compositing/blend-mode-overflow.html [ Skip ]
 webkit.org/b/99200 css3/compositing/blend-mode-reflection.html [ Skip ]
 webkit.org/b/99200 css3/compositing/blend-mode-simple.html [ Skip ]
-webkit.org/b/99200 css3/compositing/blend-mode-should-not-have-compositing-layer.html [ Skip ]
 webkit.org/b/118894 css3/compositing/background-blend-mode-data-uri-svg-image.html [ Skip ]
 webkit.org/b/126888 css3/compositing/background-blend-mode-tiled-layers.html [ Skip ]
 
@@ -583,11 +580,11 @@ webkit.org/b/122507 media/track/track-cue-rendering.html [ Failure Pass ]
 webkit.org/b/76280  media/W3C/video/networkState/networkState_during_progress.html [ Failure Pass ]
 webkit.org/b/128101 media/video-loop.html [ Pass Failure ]
 webkit.org/b/128103 media/media-element-play-after-eos.html [ Pass Failure ]
-webkit.org/b/116704 media/video-zoom.html [ Pass Failure ]
 webkit.org/b/122039 media/track/track-cue-overlap-snap-to-lines-not-set.html [ Pass Failure ]
 webkit.org/b/128179 media/video-timeupdate-reverse-play.html [ Pass Failure ]
 webkit.org/b/128251 media/video-preload.html [ Pass Failure ]
 webkit.org/b/128252 media/track/track-kind.html [ Pass Failure ]
+webkit.org/b/128528 media/media-ended.html [ Pass Failure ]
 
 # Opera-submitted tests to W3C for <track>, a lot of failures still.
 webkit.org/b/103926 media/track/opera/idl/media-idl-tests.html [ Skip ]
@@ -665,7 +662,8 @@ webkit.org/b/114918 http/tests/xmlhttprequest/range-test.html [ Failure Pass ]
 
 webkit.org/b/115440 svg/stroke/animated-non-scaling-stroke.html [ ImageOnlyFailure Pass ]
 
-webkit.org/b/119042 animations/resume-after-page-cache.html [ Failure Pass ]
+# Started to crash after r162947
+webkit.org/b/119042 animations/resume-after-page-cache.html [ Failure Pass Crash ]
 
 webkit.org/b/124655 css3/masking/clip-path-animation.html [ Failure Pass ]
 
@@ -692,6 +690,10 @@ webkit.org/b/124934 svg/animations/svglengthlist-animation-3.html [ Failure Pass
 
 webkit.org/b/124935 webgl/1.0.2/conformance/glsl/misc/shader-with-non-reserved-words.html [ Failure Pass ]
 webkit.org/b/124935 webgl/1.0.2/conformance/uniforms/out-of-bounds-uniform-array-access.html [ Failure Pass ]
+
+# Started to crash after r163871
+webkit.org/b/128905 media/video-fast-seek.html [ Crash Pass ]
+webkit.org/b/128905 media/video-extreme-playbackrate-crash.html [ Crash Pass ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # PASSING TESTS WITH INCORRECT EXPECTATIONS
@@ -816,12 +818,15 @@ webkit.org/b/84338 editing/pasteboard/copy-element-with-conflicting-background-c
 webkit.org/b/84338 editing/pasteboard/copy-in-password-field.html [ Failure ]
 webkit.org/b/84338 editing/pasteboard/copy-null-characters.html [ Failure ]
 webkit.org/b/84338 editing/pasteboard/copy-paste-bidi.html [ Failure ]
+webkit.org/b/84338 editing/pasteboard/copy-paste-converts-sticky-and-fixed.html [ Failure ]
+webkit.org/b/84338 editing/pasteboard/copy-paste-doesnt-convert-sticky-and-fixed-during-partial-copy.html [ Failure ]
 webkit.org/b/84338 editing/pasteboard/copy-paste-first-line-in-textarea.html [ Failure ]
 webkit.org/b/84338 editing/pasteboard/copy-paste-float.html [ Failure ]
 webkit.org/b/84338 editing/pasteboard/copy-paste-pre-line-content.html [ Failure ]
 webkit.org/b/84338 editing/pasteboard/copy-paste-ruby-text-with-block.html [ Failure ]
 webkit.org/b/84338 editing/pasteboard/copy-resolves-urls.html [ Failure ]
 webkit.org/b/84338 editing/pasteboard/copy-text-with-backgroundcolor.html [ Failure ]
+webkit.org/b/84338 editing/pasteboard/copy-text-with-wrapped-tag.html [ Failure ]
 webkit.org/b/84338 editing/pasteboard/copy-two-pasteboard-types-both-work.html [ Failure ]
 webkit.org/b/84338 editing/pasteboard/data-transfer-items.html [ Failure ]
 webkit.org/b/86623 editing/pasteboard/data-transfer-items-image-png.html [ ImageOnlyFailure ]
@@ -890,6 +895,7 @@ webkit.org/b/84338 editing/pasteboard/style-from-rules.html [ Failure ]
 webkit.org/b/84338 editing/pasteboard/testcase-9507.html [ Failure ]
 webkit.org/b/84338 editing/spelling/spellcheck-async-mutation.html [ Failure ]
 webkit.org/b/84338 editing/spelling/spellcheck-queue.html [ Failure ]
+webkit.org/b/84338 editing/spelling/spellcheck-paste-continuous-disabled.html [ Failure ]
 webkit.org/b/84338 editing/spelling/spellcheck-paste-disabled.html [ Failure ]
 webkit.org/b/84338 editing/spelling/spellcheck-paste.html [ Failure ]
 webkit.org/b/84338 editing/style/apply-through-end-of-document.html [ Failure ]
@@ -1549,8 +1555,6 @@ webkit.org/b/114739 compositing/patterns/direct-pattern-compositing-contain-no-r
 # Newly added test in r148131 is failing.
 webkit.org/b/114876 media/click-volume-bar-not-pausing.html [ Failure ]
 
-webkit.org/b/114612 editing/style/block-style-005.html [ Failure ]
-
 # Unidentified failing media tests
 webkit.org/b/115419 http/tests/media/video-redirect.html [ Failure ]
 webkit.org/b/115419 media/media-can-play-ogg.html [ Failure ]
@@ -1747,7 +1751,6 @@ webkit.org/b/125355 fast/events/updateLayoutForHitTest.html [ Failure ]
 
 webkit.org/b/125458 fast/repaint/line-flow-with-floats-9.html [ Failure ]
 
-webkit.org/b/125459 fast/text/partial-textruns.html [ ImageOnlyFailure ]
 
 # Started failing after r154906
 webkit.org/b/125496 animations/cross-fade-border-image-source.html [ Failure ]
@@ -1813,6 +1816,7 @@ webkit.org/b/127731 plugins/embed-prefers-plugins-for-images.html [ Failure ]
 
 # Subpixel rendering: borders are reporting float values.
 webkit.org/b/128061 css1/units/length_units.html [ Failure ]
+webkit.org/b/128061 fast/block/float/016.html [ Failure ]
 webkit.org/b/128061 fast/css/bidi-override-in-anonymous-block.html [ Failure ]
 webkit.org/b/128061 fast/multicol/span/anonymous-style-inheritance.html [ Failure ]
 webkit.org/b/128061 fast/repaint/repaint-during-scroll-with-zoom.html [ Failure ]
@@ -1828,7 +1832,40 @@ webkit.org/b/128061 svg/custom/svg-fonts-in-html.html [ Failure ]
 webkit.org/b/128061 svg/zoom/page/zoom-background-image-tiled.html [ Failure ]
 webkit.org/b/128061 svg/zoom/page/zoom-background-images.html [ Failure ]
 webkit.org/b/128061 svg/zoom/page/zoom-img-preserveAspectRatio-support-1.html [ Failure ]
+webkit.org/b/128061 svg/zoom/page/zoom-replaced-intrinsic-ratio-001.htm [ Failure ]
 webkit.org/b/128061 svg/zoom/page/zoom-svg-float-border-padding.xml [ Failure ]
 webkit.org/b/128061 svg/zoom/page/zoom-svg-through-object-with-auto-size.html [ Failure ]
 webkit.org/b/128061 tables/mozilla_expected_failures/bugs/bug1055-2.html [ Failure ]
 # End of subpixel failures.
+
+webkit.org/b/128663 accessibility/roles-computedRoleString.html [ Failure ]
+
+webkit.org/b/128664 fast/css3-text/css3-text-decoration/text-decoration-thickness.html [ ImageOnlyFailure ]
+
+webkit.org/b/128665 fast/regions/clip-to-padding-box-vertical-lr.html [ ImageOnlyFailure ]
+
+webkit.org/b/128666 fast/regions/overflow-nested-regions.html [ ImageOnlyFailure ]
+
+webkit.org/b/128667 fast/regions/repaint/hover-border-radius.html [ Failure ]
+
+webkit.org/b/128668 fast/sub-pixel/sub-pixel-root-layer.html [ ImageOnlyFailure ]
+
+webkit.org/b/128669 fast/sub-pixel/zoomed-em-border.html [ ImageOnlyFailure ]
+
+# Failing after r163562
+webkit.org/b/128670 batterystatus/window-property.html [ Failure ]
+webkit.org/b/128670 fast/dom/webtiming-document-open.html [ Failure ]
+webkit.org/b/128670 fast/dom/webtiming-navigate-within-document.html [ Failure ]
+webkit.org/b/128670 fast/forms/form-hides-table.html [ Failure ]
+webkit.org/b/128670 js/dom/dom-static-property-for-in-iteration.html [ Failure ]
+webkit.org/b/128670 networkinformation/window-property.html [ Failure ]
+
+webkit.org/b/128735 fast/regions/nested-floated-region.html [ ImageOnlyFailure ]
+
+webkit.org/b/128736 inspector-protocol/debugger/setBreakpoint-dfg.html [ Failure ]
+
+webkit.org/b/128901 accessibility/list-detection.html [ Failure ]
+
+webkit.org/b/128902 media/media-event-listeners.html [ Failure ]
+
+webkit.org/b/128973 fast/multicol/span/span-as-immediate-columns-child-dynamic.html [ Failure ]

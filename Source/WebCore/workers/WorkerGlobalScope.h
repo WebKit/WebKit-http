@@ -74,7 +74,7 @@ namespace WebCore {
         WorkerScriptController* script() { return m_script.get(); }
         void clearScript() { m_script.clear(); }
 
-        WorkerThread* thread() const { return m_thread; }
+        WorkerThread& thread() const { return m_thread; }
 
         bool hasPendingActivity() const;
 
@@ -135,12 +135,17 @@ namespace WebCore {
 
         virtual void addConsoleMessage(MessageSource, MessageLevel, const String& message, unsigned long requestIdentifier = 0) override;
 
+#if ENABLE(SUBTLE_CRYPTO)
+        virtual bool wrapCryptoKey(const Vector<uint8_t>& key, Vector<uint8_t>& wrappedKey) override;
+        virtual bool unwrapCryptoKey(const Vector<uint8_t>& wrappedKey, Vector<uint8_t>& key) override;
+#endif
+
     protected:
-        WorkerGlobalScope(const URL&, const String& userAgent, std::unique_ptr<GroupSettings>, WorkerThread*, PassRefPtr<SecurityOrigin> topOrigin);
+        WorkerGlobalScope(const URL&, const String& userAgent, std::unique_ptr<GroupSettings>, WorkerThread&, PassRefPtr<SecurityOrigin> topOrigin);
         void applyContentSecurityPolicyFromString(const String& contentSecurityPolicy, ContentSecurityPolicy::HeaderType);
 
-        virtual void logExceptionToConsole(const String& errorMessage, const String& sourceURL, int lineNumber, int columnNumber, PassRefPtr<ScriptCallStack>) override;
-        void addMessageToWorkerConsole(MessageSource, MessageLevel, const String& message, const String& sourceURL, unsigned lineNumber, unsigned columnNumber, PassRefPtr<ScriptCallStack>, JSC::ExecState* = 0, unsigned long requestIdentifier = 0);
+        virtual void logExceptionToConsole(const String& errorMessage, const String& sourceURL, int lineNumber, int columnNumber, PassRefPtr<Inspector::ScriptCallStack>) override;
+        void addMessageToWorkerConsole(MessageSource, MessageLevel, const String& message, const String& sourceURL, unsigned lineNumber, unsigned columnNumber, PassRefPtr<Inspector::ScriptCallStack>, JSC::ExecState* = 0, unsigned long requestIdentifier = 0);
 
     private:
         virtual void refScriptExecutionContext() override { ref(); }
@@ -149,7 +154,7 @@ namespace WebCore {
         virtual void refEventTarget() override final { ref(); }
         virtual void derefEventTarget() override final { deref(); }
 
-        virtual void addMessage(MessageSource, MessageLevel, const String& message, const String& sourceURL, unsigned lineNumber, unsigned columnNumber, PassRefPtr<ScriptCallStack>, JSC::ExecState* = 0, unsigned long requestIdentifier = 0) override;
+        virtual void addMessage(MessageSource, MessageLevel, const String& message, const String& sourceURL, unsigned lineNumber, unsigned columnNumber, PassRefPtr<Inspector::ScriptCallStack>, JSC::ExecState* = 0, unsigned long requestIdentifier = 0) override;
 
         virtual EventTarget* errorEventTarget() override;
 
@@ -163,7 +168,7 @@ namespace WebCore {
         mutable RefPtr<WorkerNavigator> m_navigator;
 
         OwnPtr<WorkerScriptController> m_script;
-        WorkerThread* m_thread;
+        WorkerThread& m_thread;
 
 #if ENABLE(INSPECTOR)
         const std::unique_ptr<WorkerInspectorController> m_workerInspectorController;
@@ -176,6 +181,8 @@ namespace WebCore {
 
         RefPtr<SecurityOrigin> m_topOrigin;
     };
+
+SCRIPT_EXECUTION_CONTEXT_TYPE_CASTS(WorkerGlobalScope)
 
 } // namespace WebCore
 

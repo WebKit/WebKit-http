@@ -39,14 +39,19 @@
 
 @class WKNavigation;
 @class WKWebView;
+@protocol WKHistoryDelegatePrivate;
 @protocol WKNavigationDelegate;
 
 namespace WebKit {
+
+struct WebNavigationDataStore;
 
 class NavigationState : private PageLoadState::Observer {
 public:
     explicit NavigationState(WKWebView *);
     ~NavigationState();
+
+    static NavigationState& fromWebPage(WebPageProxy&);
 
     std::unique_ptr<API::PolicyClient> createPolicyClient();
     std::unique_ptr<API::LoaderClient> createLoaderClient();
@@ -54,7 +59,16 @@ public:
     RetainPtr<id <WKNavigationDelegate> > navigationDelegate();
     void setNavigationDelegate(id <WKNavigationDelegate>);
 
+    RetainPtr<id <WKHistoryDelegatePrivate> > historyDelegate();
+    void setHistoryDelegate(id <WKHistoryDelegatePrivate>);
+
     RetainPtr<WKNavigation> createLoadRequestNavigation(uint64_t navigationID, NSURLRequest *);
+
+    // Called by the history client.
+    void didNavigateWithNavigationData(const WebKit::WebNavigationDataStore&);
+    void didPerformClientRedirect(const WTF::String& sourceURL, const WTF::String& destinationURL);
+    void didPerformServerRedirect(const WTF::String& sourceURL, const WTF::String& destinationURL);
+    void didUpdateHistoryTitle(const WTF::String& title, const WTF::String& url);
 
 private:
     class PolicyClient : public API::PolicyClient {
@@ -82,7 +96,12 @@ private:
         virtual void didFailProvisionalLoadWithErrorForFrame(WebPageProxy*, WebFrameProxy*, uint64_t navigationID, const WebCore::ResourceError&, API::Object*) override;
         virtual void didCommitLoadForFrame(WebPageProxy*, WebFrameProxy*, uint64_t navigationID, API::Object*) override;
         virtual void didFinishLoadForFrame(WebPageProxy*, WebFrameProxy*, uint64_t navigationID, API::Object*) override;
-        virtual void didFailLoadWithErrorForFrame(WebPageProxy*, WebFrameProxy*, uint64_t navigationID, const WebCore::ResourceError&, API::Object* userData) override;
+        virtual void didFailLoadWithErrorForFrame(WebPageProxy*, WebFrameProxy*, uint64_t navigationID, const WebCore::ResourceError&, API::Object*) override;
+        virtual void didLayout(WebKit::WebPageProxy*, WebCore::LayoutMilestones, API::Object*) override;
+        virtual bool canAuthenticateAgainstProtectionSpaceInFrame(WebKit::WebPageProxy*, WebKit::WebFrameProxy*, WebKit::WebProtectionSpace*) override;
+        virtual void didReceiveAuthenticationChallengeInFrame(WebKit::WebPageProxy*, WebKit::WebFrameProxy*, WebKit::AuthenticationChallengeProxy*) override;
+        virtual void processDidCrash(WebKit::WebPageProxy*) override;
+        virtual void didChangeBackForwardList(WebKit::WebPageProxy*, WebKit::WebBackForwardListItem* addedItem, Vector<RefPtr<WebKit::WebBackForwardListItem>> removedItems) override;
 
         NavigationState& m_navigationState;
     };
@@ -112,9 +131,22 @@ private:
         bool webViewDidCommitNavigation : 1;
         bool webViewDidFinishLoadingNavigation : 1;
         bool webViewDidFailNavigationWithError : 1;
+
+        bool webViewRenderingProgressDidChange : 1;
+        bool webViewCanAuthenticateAgainstProtectionSpace : 1;
+        bool webViewDidReceiveAuthenticationChallenge : 1;
+        bool webViewWebProcessDidCrash : 1;
     } m_navigationDelegateMethods;
 
     HashMap<uint64_t, RetainPtr<WKNavigation>> m_navigations;
+
+    WeakObjCPtr<id <WKHistoryDelegatePrivate> > m_historyDelegate;
+    struct {
+        bool webViewDidNavigateWithNavigationData : 1;
+        bool webViewDidPerformClientRedirectFromURLToURL : 1;
+        bool webViewDidPerformServerRedirectFromURLToURL : 1;
+        bool webViewDidUpdateHistoryTitleForURL : 1;
+    } m_historyDelegateMethods;
 };
 
 } // namespace WebKit

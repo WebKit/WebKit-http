@@ -24,19 +24,63 @@
  */
 
 #import "config.h"
-#import "WKWebViewConfiguration.h"
+#import "WKWebViewConfigurationPrivate.h"
 
 #if WK_API_ENABLED
 
-@implementation WKWebViewConfiguration
+#import "WeakObjCPtr.h"
+#import <wtf/RetainPtr.h>
+
+@implementation WKWebViewConfiguration {
+    RetainPtr<WKProcessClass> _processClass;
+    RetainPtr<WKPreferences> _preferences;
+    WebKit::WeakObjCPtr<WKWebView> _relatedWebView;
+}
+
+- (NSString *)description
+{
+    return [NSString stringWithFormat:@"<%@: %p; processClass = %@; preferences = %@>", NSStringFromClass(self.class), self, _processClass.get(), _preferences.get()];
+}
 
 - (id)copyWithZone:(NSZone *)zone
 {
     WKWebViewConfiguration *configuration = [[[self class] allocWithZone:zone] init];
 
-    configuration.processClass = _processClass;
+    configuration.processClass = _processClass.get();
+    configuration.preferences = _preferences.get();
+    configuration._relatedWebView = _relatedWebView.get().get();
 
     return configuration;
+}
+
+- (WKProcessClass *)processClass
+{
+    return _processClass.get();
+}
+
+- (void)setProcessClass:(WKProcessClass *)processClass
+{
+    _processClass = processClass;
+}
+
+- (WKPreferences *)preferences
+{
+    return _preferences.get();
+}
+
+- (void)setPreferences:(WKPreferences *)preferences
+{
+    _preferences = preferences;
+}
+
+- (WKWebView *)_relatedWebView
+{
+    return _relatedWebView.getAutoreleased();
+}
+
+- (void)_setRelatedWebView:(WKWebView *)relatedWebView
+{
+    _relatedWebView = relatedWebView;
 }
 
 @end

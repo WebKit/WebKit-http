@@ -119,7 +119,6 @@
 #include <bindings/ScriptValue.h>
 #include <gdk/gdkkeysyms.h>
 #include <glib/gi18n-lib.h>
-#include <wtf/gobject/GOwnPtr.h>
 #include <wtf/text/CString.h>
 
 #if ENABLE(DEVICE_ORIENTATION)
@@ -670,7 +669,7 @@ static void webkit_web_view_set_property(GObject* object, guint prop_id, const G
 static gboolean webkit_web_view_expose_event(GtkWidget* widget, GdkEventExpose* event)
 {
     int rectCount;
-    GOwnPtr<GdkRectangle> rects;
+    GUniqueOutPtr<GdkRectangle> rects;
     gdk_region_get_rectangles(event->region, &rects.outPtr(), &rectCount);
 
     RefPtr<cairo_t> cr = adoptRef(gdk_cairo_create(event->window));
@@ -5192,7 +5191,7 @@ void webkit_web_view_set_view_source_mode (WebKitWebView* webView, gboolean mode
 {
     g_return_if_fail(WEBKIT_IS_WEB_VIEW(webView));
 
-    core(webView)->mainFrame().setInViewSourceMode(mode);
+    g_warning("webkit_web_view_set_view_source_mode has been deprecated and is a no-op.");
 }
 
 /**
@@ -5207,7 +5206,8 @@ gboolean webkit_web_view_get_view_source_mode (WebKitWebView* webView)
 {
     g_return_val_if_fail(WEBKIT_IS_WEB_VIEW(webView), FALSE);
 
-    return core(webView)->mainFrame().inViewSourceMode();
+    g_warning("webkit_web_view_get_view_source_mode has been deprecated and always returns FALSE.");
+    return FALSE;
 }
 
 // Internal subresource management

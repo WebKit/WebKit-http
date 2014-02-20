@@ -21,12 +21,11 @@
  * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
  * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  */
 
 #include "config.h"
-
 #include "WorkerGlobalScope.h"
 
 #include "ActiveDOMObject.h"
@@ -39,13 +38,12 @@
 #include "EventException.h"
 #include "ExceptionCode.h"
 #include "InspectorConsoleInstrumentation.h"
-#include "URL.h"
 #include "MessagePort.h"
 #include "NotImplemented.h"
 #include "ScheduledAction.h"
-#include "ScriptCallStack.h"
 #include "ScriptSourceCode.h"
 #include "SecurityOrigin.h"
+#include "URL.h"
 #include "WorkerInspectorController.h"
 #include "WorkerLocation.h"
 #include "WorkerNavigator.h"
@@ -55,11 +53,14 @@
 #include "WorkerThreadableLoader.h"
 #include "XMLHttpRequestException.h"
 #include <bindings/ScriptValue.h>
+#include <inspector/ScriptCallStack.h>
 #include <wtf/RefPtr.h>
 
 #if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
 #include "NotificationCenter.h"
 #endif
+
+using namespace Inspector;
 
 namespace WebCore {
 
@@ -72,16 +73,14 @@ public:
 
     virtual void performTask(ScriptExecutionContext *context)
     {
-        ASSERT_WITH_SECURITY_IMPLICATION(context->isWorkerGlobalScope());
-        WorkerGlobalScope* workerGlobalScope = static_cast<WorkerGlobalScope*>(context);
         // Notify parent that this context is closed. Parent is responsible for calling WorkerThread::stop().
-        workerGlobalScope->thread()->workerReportingProxy().workerGlobalScopeClosed();
+        toWorkerGlobalScope(context)->thread().workerReportingProxy().workerGlobalScopeClosed();
     }
 
     virtual bool isCleanupTask() const { return true; }
 };
 
-WorkerGlobalScope::WorkerGlobalScope(const URL& url, const String& userAgent, std::unique_ptr<GroupSettings> settings, WorkerThread* thread, PassRefPtr<SecurityOrigin> topOrigin)
+WorkerGlobalScope::WorkerGlobalScope(const URL& url, const String& userAgent, std::unique_ptr<GroupSettings> settings, WorkerThread& thread, PassRefPtr<SecurityOrigin> topOrigin)
     : m_url(url)
     , m_userAgent(userAgent)
     , m_groupSettings(std::move(settings))
@@ -99,13 +98,13 @@ WorkerGlobalScope::WorkerGlobalScope(const URL& url, const String& userAgent, st
 
 WorkerGlobalScope::~WorkerGlobalScope()
 {
-    ASSERT(currentThread() == thread()->threadID());
+    ASSERT(currentThread() == thread().threadID());
 
     // Make sure we have no observers.
     notifyObserversOfStop();
 
     // Notify proxy that we are going away. This can free the WorkerThread object, so do not access it after this.
-    thread()->workerReportingProxy().workerGlobalScopeDestroyed();
+    thread().workerReportingProxy().workerGlobalScopeDestroyed();
 }
 
 void WorkerGlobalScope::applyContentSecurityPolicyFromString(const String& policy, ContentSecurityPolicy::HeaderType contentSecurityPolicyType)
@@ -179,7 +178,7 @@ bool WorkerGlobalScope::hasPendingActivity() const
 
 void WorkerGlobalScope::postTask(PassOwnPtr<Task> task)
 {
-    thread()->runLoop().postTask(task);
+    thread().runLoop().postTask(task);
 }
 
 int WorkerGlobalScope::setTimeout(PassOwnPtr<ScheduledAction> action, int timeout)
@@ -246,7 +245,7 @@ EventTarget* WorkerGlobalScope::errorEventTarget()
 
 void WorkerGlobalScope::logExceptionToConsole(const String& errorMessage, const String& sourceURL, int lineNumber, int columnNumber, PassRefPtr<ScriptCallStack>)
 {
-    thread()->workerReportingProxy().postExceptionToWorkerObject(errorMessage, lineNumber, columnNumber, sourceURL);
+    thread().workerReportingProxy().postExceptionToWorkerObject(errorMessage, lineNumber, columnNumber, sourceURL);
 }
 
 void WorkerGlobalScope::addConsoleMessage(MessageSource source, MessageLevel level, const String& message, unsigned long requestIdentifier)
@@ -256,7 +255,7 @@ void WorkerGlobalScope::addConsoleMessage(MessageSource source, MessageLevel lev
         return;
     }
 
-    thread()->workerReportingProxy().postConsoleMessageToWorkerObject(source, level, message, 0, 0, String());
+    thread().workerReportingProxy().postConsoleMessageToWorkerObject(source, level, message, 0, 0, String());
     addMessageToWorkerConsole(source, level, message, String(), 0, 0, 0, 0, requestIdentifier);
 }
 
@@ -267,7 +266,7 @@ void WorkerGlobalScope::addMessage(MessageSource source, MessageLevel level, con
         return;
     }
 
-    thread()->workerReportingProxy().postConsoleMessageToWorkerObject(source, level, message, lineNumber, columnNumber, sourceURL);
+    thread().workerReportingProxy().postConsoleMessageToWorkerObject(source, level, message, lineNumber, columnNumber, sourceURL);
     addMessageToWorkerConsole(source, level, message, sourceURL, lineNumber, columnNumber, callStack, state, requestIdentifier);
 }
 
@@ -275,14 +274,14 @@ void WorkerGlobalScope::addMessageToWorkerConsole(MessageSource source, MessageL
 {
     ASSERT(isContextThread());
     if (callStack)
-        InspectorInstrumentation::addMessageToConsole(this, source, LogMessageType, level, message, callStack, requestIdentifier);
+        InspectorInstrumentation::addMessageToConsole(this, source, MessageType::Log, level, message, callStack, requestIdentifier);
     else
-        InspectorInstrumentation::addMessageToConsole(this, source, LogMessageType, level, message, sourceURL, lineNumber, columnNumber, state, requestIdentifier);
+        InspectorInstrumentation::addMessageToConsole(this, source, MessageType::Log, level, message, sourceURL, lineNumber, columnNumber, state, requestIdentifier);
 }
 
 bool WorkerGlobalScope::isContextThread() const
 {
-    return currentThread() == thread()->threadID();
+    return currentThread() == thread().threadID();
 }
 
 bool WorkerGlobalScope::isJSExecutionForbidden() const
@@ -341,5 +340,17 @@ WorkerEventQueue& WorkerGlobalScope::eventQueue() const
 {
     return m_eventQueue;
 }
+
+#if ENABLE(SUBTLE_CRYPTO)
+bool WorkerGlobalScope::wrapCryptoKey(const Vector<uint8_t>&, Vector<uint8_t>&)
+{
+    return false;
+}
+
+bool WorkerGlobalScope::unwrapCryptoKey(const Vector<uint8_t>&, Vector<uint8_t>&)
+{
+    return false;
+}
+#endif // ENABLE(SUBTLE_CRYPTO)
 
 } // namespace WebCore

@@ -49,8 +49,8 @@
 #include "Settings.h"
 #include <math.h>
 
+#include <runtime/JSCInlines.h>
 #include <runtime/JSLock.h>
-#include <runtime/Operations.h>
 
 #if ENABLE(WEBGL)    
 #include "WebGLContextAttributes.h"
@@ -130,11 +130,6 @@ RenderPtr<RenderElement> HTMLCanvasElement::createElementRenderer(PassRef<Render
 void HTMLCanvasElement::willAttachRenderers()
 {
     setIsInCanvasSubtree(true);
-}
-
-bool HTMLCanvasElement::areAuthorShadowsAllowed() const
-{
-    return false;
 }
 
 bool HTMLCanvasElement::canContainRangeEndPoint() const

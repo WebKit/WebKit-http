@@ -31,10 +31,15 @@
 #include "JSString.h"
 #include "JSStringBuilder.h"
 #include "ObjectPrototype.h"
-#include "Operations.h"
+#include "JSCInlines.h"
 #include <math.h>
 #include <time.h>
 #include <wtf/MathExtras.h>
+
+#if ENABLE(WEB_REPLAY)
+#include "InputCursor.h"
+#include "JSReplayInputs.h"
+#endif
 
 #if OS(WINCE)
 extern "C" time_t time(time_t* timer); // Provided by libce.
@@ -72,6 +77,28 @@ const ClassInfo DateConstructor::s_info = { "Function", &InternalFunction::s_inf
 @end
 */
 
+#if ENABLE(WEB_REPLAY)
+static double deterministicCurrentTime(JSGlobalObject* globalObject)
+{
+    double currentTime = jsCurrentTime();
+    InputCursor& cursor = globalObject->inputCursor();
+    if (cursor.isCapturing())
+        cursor.appendInput<GetCurrentTime>(currentTime);
+
+    if (cursor.isReplaying()) {
+        if (GetCurrentTime* input = cursor.fetchInput<GetCurrentTime>())
+            currentTime = input->currentTime();
+    }
+    return currentTime;
+}
+#endif
+
+#if ENABLE(WEB_REPLAY)
+#define NORMAL_OR_DETERMINISTIC_FUNCTION(a, b) (b)
+#else
+#define NORMAL_OR_DETERMINISTIC_FUNCTION(a, b) (a)
+#endif
+
 STATIC_ASSERT_IS_TRIVIALLY_DESTRUCTIBLE(DateConstructor);
 
 DateConstructor::DateConstructor(VM& vm, Structure* structure)
@@ -100,7 +127,7 @@ JSObject* constructDate(ExecState* exec, JSGlobalObject* globalObject, const Arg
     double value;
 
     if (numArgs == 0) // new Date() ECMA 15.9.3.3
-        value = jsCurrentTime();
+        value = NORMAL_OR_DETERMINISTIC_FUNCTION(jsCurrentTime(), deterministicCurrentTime(globalObject));
     else if (numArgs == 1) {
         if (args.at(0).inherits(DateInstance::info()))
             value = asDateInstance(args.at(0))->internalNumber();
@@ -121,13 +148,13 @@ JSObject* constructDate(ExecState* exec, JSGlobalObject* globalObject, const Arg
             args.at(5).toNumber(exec), 
             args.at(6).toNumber(exec)
         };
-        if (!std::isfinite(doubleArguments[0])
-            || !std::isfinite(doubleArguments[1])
-            || (numArgs >= 3 && !std::isfinite(doubleArguments[2]))
-            || (numArgs >= 4 && !std::isfinite(doubleArguments[3]))
-            || (numArgs >= 5 && !std::isfinite(doubleArguments[4]))
-            || (numArgs >= 6 && !std::isfinite(doubleArguments[5]))
-            || (numArgs >= 7 && !std::isfinite(doubleArguments[6])))
+        if ((!std::isfinite(doubleArguments[0]) || (doubleArguments[0] > INT_MAX) || (doubleArguments[0] < INT_MIN))
+            || (!std::isfinite(doubleArguments[1]) || (doubleArguments[1] > INT_MAX) || (doubleArguments[1] < INT_MIN))
+            || (numArgs >= 3 && (!std::isfinite(doubleArguments[2]) || (doubleArguments[2] > INT_MAX) || (doubleArguments[2] < INT_MIN)))
+            || (numArgs >= 4 && (!std::isfinite(doubleArguments[3]) || (doubleArguments[3] > INT_MAX) || (doubleArguments[3] < INT_MIN)))
+            || (numArgs >= 5 && (!std::isfinite(doubleArguments[4]) || (doubleArguments[4] > INT_MAX) || (doubleArguments[4] < INT_MIN)))
+            || (numArgs >= 6 && (!std::isfinite(doubleArguments[5]) || (doubleArguments[5] > INT_MAX) || (doubleArguments[5] < INT_MIN)))
+            || (numArgs >= 7 && (!std::isfinite(doubleArguments[6]) || (doubleArguments[6] > INT_MAX) || (doubleArguments[6] < INT_MIN))))
             value = QNaN;
         else {
             GregorianDateTime t;
@@ -179,9 +206,13 @@ static EncodedJSValue JSC_HOST_CALL dateParse(ExecState* exec)
     return JSValue::encode(jsNumber(parseDate(exec->vm(), exec->argument(0).toString(exec)->value(exec))));
 }
 
-static EncodedJSValue JSC_HOST_CALL dateNow(ExecState*)
+static EncodedJSValue JSC_HOST_CALL dateNow(ExecState* exec)
 {
-    return JSValue::encode(jsNumber(jsCurrentTime()));
+#if !ENABLE(WEB_REPLAY)
+    UNUSED_PARAM(exec);
+#endif
+
+    return JSValue::encode(jsNumber(NORMAL_OR_DETERMINISTIC_FUNCTION(jsCurrentTime(), deterministicCurrentTime(exec->lexicalGlobalObject()))));
 }
 
 static EncodedJSValue JSC_HOST_CALL dateUTC(ExecState* exec) 
@@ -196,13 +227,13 @@ static EncodedJSValue JSC_HOST_CALL dateUTC(ExecState* exec)
         exec->argument(6).toNumber(exec)
     };
     int n = exec->argumentCount();
-    if (std::isnan(doubleArguments[0])
-        || std::isnan(doubleArguments[1])
-        || (n >= 3 && std::isnan(doubleArguments[2]))
-        || (n >= 4 && std::isnan(doubleArguments[3]))
-        || (n >= 5 && std::isnan(doubleArguments[4]))
-        || (n >= 6 && std::isnan(doubleArguments[5]))
-        || (n >= 7 && std::isnan(doubleArguments[6])))
+    if ((std::isnan(doubleArguments[0]) || (doubleArguments[0] > INT_MAX) || (doubleArguments[0] < INT_MIN))
+        || (std::isnan(doubleArguments[1]) || (doubleArguments[1] > INT_MAX) || (doubleArguments[1] < INT_MIN))
+        || (n >= 3 && (std::isnan(doubleArguments[2]) || (doubleArguments[2] > INT_MAX) || (doubleArguments[2] < INT_MIN)))
+        || (n >= 4 && (std::isnan(doubleArguments[3]) || (doubleArguments[3] > INT_MAX) || (doubleArguments[3] < INT_MIN)))
+        || (n >= 5 && (std::isnan(doubleArguments[4]) || (doubleArguments[4] > INT_MAX) || (doubleArguments[4] < INT_MIN)))
+        || (n >= 6 && (std::isnan(doubleArguments[5]) || (doubleArguments[5] > INT_MAX) || (doubleArguments[5] < INT_MIN)))
+        || (n >= 7 && (std::isnan(doubleArguments[6]) || (doubleArguments[6] > INT_MAX) || (doubleArguments[6] < INT_MIN))))
         return JSValue::encode(jsNaN());
 
     GregorianDateTime t;

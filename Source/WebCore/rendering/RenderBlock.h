@@ -32,6 +32,7 @@
 
 namespace WebCore {
 
+class LayoutState;
 class LineLayoutState;
 class LogicalSelectionOffsetCaches;
 class RenderInline;
@@ -277,6 +278,7 @@ public:
     enum ApplyLayoutDeltaMode { ApplyLayoutDelta, DoNotApplyLayoutDelta };
     LayoutUnit logicalWidthForChild(const RenderBox& child) const { return isHorizontalWritingMode() ? child.width() : child.height(); }
     LayoutUnit logicalHeightForChild(const RenderBox& child) const { return isHorizontalWritingMode() ? child.height() : child.width(); }
+    LayoutSize logicalSizeForChild(const RenderBox& child) const { return isHorizontalWritingMode() ? child.size() : child.size().transposedSize(); }
     LayoutUnit logicalTopForChild(const RenderBox& child) const { return isHorizontalWritingMode() ? child.y() : child.x(); }
     void setLogicalLeftForChild(RenderBox& child, LayoutUnit logicalLeft, ApplyLayoutDeltaMode = DoNotApplyLayoutDelta);
     void setLogicalTopForChild(RenderBox& child, LayoutUnit logicalTop, ApplyLayoutDeltaMode = DoNotApplyLayoutDelta);
@@ -338,9 +340,6 @@ public:
     LayoutUnit logicalRightSelectionOffset(RenderBlock& rootBlock, LayoutUnit position, const LogicalSelectionOffsetCaches&);
 
     LayoutUnit computeStartPositionDeltaForChildAvoidingFloats(const RenderBox& child, LayoutUnit childMarginStart, RenderRegion* = 0);
-
-    void placeRunInIfNeeded(RenderObject& newChild);
-    bool runInIsPlacedIntoSiblingBlock(RenderObject& runIn);
 
 #ifndef NDEBUG
     void checkPositionedObjectsNeedLayout();
@@ -428,6 +427,9 @@ public:
     
     bool isTopLayoutOverflowAllowed() const override;
     bool isLeftLayoutOverflowAllowed() const override;
+
+    // FIXME: Can devirtualize once old column code is gone.
+    virtual void computeLineGridPaginationOrigin(LayoutState&) const;
 
 protected:
     virtual void addOverflowFromChildren();
@@ -577,10 +579,6 @@ private:
     RenderBlock* containingColumnsBlock(bool allowAnonymousColumnBlock = true);
     RenderBlock* columnsBlockForSpanningElement(RenderObject* newChild);
 
-    RenderBoxModelObject& createReplacementRunIn(RenderBoxModelObject& runIn);
-    void moveRunInUnderSiblingBlockIfNeeded(RenderObject& runIn);
-    void moveRunInToOriginalPosition(RenderObject& runIn);
-
 private:
     bool hasRareData() const;
     
@@ -627,7 +625,6 @@ private:
     static bool s_canPropagateFloatIntoSibling;
 };
 
-template<> inline bool isRendererOfType<const RenderBlock>(const RenderObject& renderer) { return renderer.isRenderBlock(); }
 RENDER_OBJECT_TYPE_CASTS(RenderBlock, isRenderBlock())
 
 LayoutUnit blockDirectionOffset(RenderBlock& rootBlock, const LayoutSize& offsetFromRootBlock);

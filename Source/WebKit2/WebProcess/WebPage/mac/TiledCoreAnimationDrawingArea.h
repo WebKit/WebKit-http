@@ -35,6 +35,7 @@
 #include <WebCore/LayerFlushScheduler.h>
 #include <WebCore/LayerFlushSchedulerClient.h>
 #include <WebCore/Timer.h>
+#include <WebCore/TransformationMatrix.h>
 #include <wtf/HashMap.h>
 #include <wtf/RetainPtr.h>
 
@@ -94,7 +95,7 @@ private:
     // WebCore::GraphicsLayerClient
     virtual void notifyAnimationStarted(const WebCore::GraphicsLayer*, double time) override;
     virtual void notifyFlushRequired(const WebCore::GraphicsLayer*) override;
-    virtual void paintContents(const WebCore::GraphicsLayer*, WebCore::GraphicsContext&, WebCore::GraphicsLayerPaintingPhase, const WebCore::IntRect& clipRect) override;
+    virtual void paintContents(const WebCore::GraphicsLayer*, WebCore::GraphicsContext&, WebCore::GraphicsLayerPaintingPhase, const WebCore::FloatRect& clipRect) override;
     virtual float deviceScaleFactor() const override;
     virtual void didCommitChangesForLayer(const WebCore::GraphicsLayer*) const override;
 
@@ -112,6 +113,8 @@ private:
     virtual void adjustTransientZoom(double scale, WebCore::FloatPoint origin) override;
     virtual void commitTransientZoom(double scale, WebCore::FloatPoint origin) override;
     void applyTransientZoomToPage(double scale, WebCore::FloatPoint origin);
+
+    virtual void setTransform(const WebCore::TransformationMatrix&) override;
 
     void updateLayerHostingContext();
 
@@ -132,17 +135,17 @@ private:
 
     std::unique_ptr<LayerHostingContext> m_layerHostingContext;
 
+    RetainPtr<CALayer> m_hostingLayer;
     RetainPtr<CALayer> m_rootLayer;
-    RetainPtr<CALayer> m_pendingRootCompositingLayer;
-
     RetainPtr<CALayer> m_debugInfoLayer;
+
+    RetainPtr<CALayer> m_pendingRootLayer;
 
     typedef HashMap<PageOverlay*, std::unique_ptr<WebCore::GraphicsLayer>> PageOverlayLayerMap;
     PageOverlayLayerMap m_pageOverlayLayers;
     mutable HashMap<const WebCore::GraphicsLayer*, RetainPtr<CALayer>> m_pageOverlayPlatformLayers;
 
     bool m_isPaintingSuspended;
-    bool m_hasRootCompositingLayer;
 
     WebCore::FloatRect m_exposedRect;
     WebCore::FloatRect m_scrolledExposedRect;
@@ -153,7 +156,11 @@ private:
 
     double m_transientZoomScale;
     WebCore::FloatPoint m_transientZoomOrigin;
+
+    WebCore::TransformationMatrix m_transform;
 };
+
+DRAWING_AREA_TYPE_CASTS(TiledCoreAnimationDrawingArea, type() == DrawingAreaTypeTiledCoreAnimation);
 
 } // namespace WebKit
 

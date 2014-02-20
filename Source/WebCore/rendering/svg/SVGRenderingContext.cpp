@@ -35,6 +35,7 @@
 #include "RenderSVGResourceFilter.h"
 #include "RenderSVGResourceMasker.h"
 #include "RenderView.h"
+#include "SVGLengthContext.h"
 #include "SVGResources.h"
 #include "SVGResourcesCache.h"
 
@@ -102,17 +103,34 @@ void SVGRenderingContext::prepareToRenderSVGContent(RenderElement& renderer, Pai
     bool isRenderingMask = isRenderingMaskImage(*m_renderer);
     float opacity = isRenderingMask ? 1 : style.opacity();
     const ShadowData* shadow = svgStyle.shadow();
-    if (opacity < 1 || shadow) {
-        FloatRect repaintRect = m_renderer->repaintRectInLocalCoordinates();
+    bool hasBlendMode = style.hasBlendMode();
+    bool isolateMaskForBlending = false;
 
-        if (opacity < 1) {
-            m_paintInfo->context->clip(repaintRect);
+#if ENABLE(CSS_COMPOSITING)
+    if (svgStyle.hasMasker() && toSVGElement(renderer.element())->isSVGGraphicsElement()) {
+        SVGGraphicsElement& graphicsElement = *toSVGGraphicsElement(renderer.element());
+        isolateMaskForBlending = graphicsElement.shouldIsolateBlending();
+    }
+#endif
+
+    if (opacity < 1 || shadow || hasBlendMode || isolateMaskForBlending) {
+        FloatRect repaintRect = m_renderer->repaintRectInLocalCoordinates();
+        m_paintInfo->context->clip(repaintRect);
+
+        if (opacity < 1 || hasBlendMode || isolateMaskForBlending) {
+
+            if (hasBlendMode)
+                m_paintInfo->context->setCompositeOperation(m_paintInfo->context->compositeOperation(), style.blendMode());
+
             m_paintInfo->context->beginTransparencyLayer(opacity);
+
+            if (hasBlendMode)
+                m_paintInfo->context->setCompositeOperation(m_paintInfo->context->compositeOperation(), BlendModeNormal);
+
             m_renderingFlags |= EndOpacityLayer;
         }
 
         if (shadow) {
-            m_paintInfo->context->clip(repaintRect);
             m_paintInfo->context->setShadow(IntSize(roundToInt(shadow->x()), roundToInt(shadow->y())), shadow->radius(), shadow->color(), style.colorSpace());
             m_paintInfo->context->beginTransparencyLayer(1);
             m_renderingFlags |= EndShadowLayer;
@@ -121,8 +139,19 @@ void SVGRenderingContext::prepareToRenderSVGContent(RenderElement& renderer, Pai
 
     ClipPathOperation* clipPathOperation = style.clipPath();
     if (clipPathOperation && clipPathOperation->type() == ClipPathOperation::Shape) {
-        ShapeClipPathOperation* clipPath = static_cast<ShapeClipPathOperation*>(clipPathOperation);
-        m_paintInfo->context->clipPath(clipPath->pathForReferenceRect(renderer.objectBoundingBox()), clipPath->windRule());
+        ShapeClipPathOperation& clipPath = toShapeClipPathOperation(*clipPathOperation);
+        FloatRect referenceBox;
+        if (clipPath.referenceBox() == Stroke)
+            // FIXME: strokeBoundingBox() takes dasharray into account but shouldn't.
+            referenceBox = renderer.strokeBoundingBox();
+        else if (clipPath.referenceBox() == ViewBox && renderer.element()) {
+            FloatSize viewportSize;
+            SVGLengthContext(toSVGElement(renderer.element())).determineViewport(viewportSize);
+            referenceBox.setWidth(viewportSize.width());
+            referenceBox.setHeight(viewportSize.height());
+        } else
+            referenceBox = renderer.objectBoundingBox();
+        m_paintInfo->context->clipPath(clipPath.pathForReferenceRect(referenceBox), clipPath.windRule());
     }
 
     SVGResources* resources = SVGResourcesCache::cachedResourcesForRenderObject(*m_renderer);

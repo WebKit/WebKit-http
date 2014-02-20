@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008 Apple Inc. All Rights Reserved.
+ * Copyright (C) 2008, 2014 Apple Inc. All Rights Reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -38,8 +38,12 @@
 #include <wtf/WTFThreadData.h>
 #include <wtf/text/StringImpl.h>
 
-#if PLATFORM(MAC) && !PLATFORM(IOS)
+#if PLATFORM(MAC)
 #include "TextCodeCMac.h"
+#endif
+
+#if ENABLE(WEB_REPLAY)
+#include "ReplayInputTypes.h"
 #endif
 
 namespace WebCore {
@@ -53,11 +57,14 @@ ThreadGlobalData::ThreadGlobalData()
     : m_cachedResourceRequestInitiators(adoptPtr(new CachedResourceRequestInitiators))
     , m_eventNames(adoptPtr(new EventNames))
     , m_threadTimers(adoptPtr(new ThreadTimers))
+#if ENABLE(WEB_REPLAY)
+    , m_inputTypes(std::make_unique<ReplayInputTypes>())
+#endif
 #ifndef NDEBUG
     , m_isMainThread(isMainThread())
 #endif
     , m_cachedConverterICU(adoptPtr(new ICUConverterWrapper))
-#if PLATFORM(MAC) && !PLATFORM(IOS)
+#if PLATFORM(MAC)
     , m_cachedConverterTEC(adoptPtr(new TECConverterWrapper))
 #endif
 #if ENABLE(INSPECTOR)
@@ -78,7 +85,7 @@ ThreadGlobalData::~ThreadGlobalData()
 
 void ThreadGlobalData::destroy()
 {
-#if PLATFORM(MAC) && !PLATFORM(IOS)
+#if PLATFORM(MAC)
     m_cachedConverterTEC.clear();
 #endif
 
@@ -86,6 +93,10 @@ void ThreadGlobalData::destroy()
 
 #if ENABLE(INSPECTOR)
     m_inspectorCounters.clear();
+#endif
+
+#if ENABLE(WEB_REPLAY)
+    m_inputTypes = nullptr;
 #endif
 
     m_eventNames.clear();

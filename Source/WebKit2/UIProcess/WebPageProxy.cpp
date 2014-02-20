@@ -58,7 +58,6 @@
 #include "WebBackForwardList.h"
 #include "WebBackForwardListItem.h"
 #include "WebCertificateInfo.h"
-#include "WebColorPickerResultListenerProxy.h"
 #include "WebContext.h"
 #include "WebContextMenuProxy.h"
 #include "WebContextUserMessageCoders.h"
@@ -94,10 +93,11 @@
 #include <WebCore/FocusDirection.h>
 #include <WebCore/MIMETypeRegistry.h>
 #include <WebCore/RenderEmbeddedObject.h>
+#include <WebCore/SerializedCryptoKeyWrap.h>
 #include <WebCore/TextCheckerClient.h>
 #include <WebCore/WindowFeatures.h>
-#include <wtf/NeverDestroyed.h>
 #include <stdio.h>
+#include <wtf/NeverDestroyed.h>
 
 #if ENABLE(ASYNC_SCROLLING)
 #include "RemoteScrollingCoordinatorProxy.h"
@@ -127,8 +127,13 @@
 #include "NetworkProcessMessages.h"
 #endif
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
 #include "ViewSnapshotStore.h"
+#endif
+
+#if PLATFORM(IOS)
+#include "WebVideoFullscreenManagerProxy.h"
+#include "WebVideoFullscreenManagerProxyMessages.h"
 #endif
 
 // This controls what strategy we use for mouse wheel coalescing.
@@ -241,18 +246,19 @@ static const char* webKeyboardEventTypeString(WebEvent::Type type)
 }
 #endif // !LOG_DISABLED
 
-PassRefPtr<WebPageProxy> WebPageProxy::create(PageClient& pageClient, WebProcessProxy& process, WebPageGroup& pageGroup, API::Session& session, uint64_t pageID)
+PassRefPtr<WebPageProxy> WebPageProxy::create(PageClient& pageClient, WebProcessProxy& process, uint64_t pageID, const WebPageConfiguration& configuration)
 {
-    return adoptRef(new WebPageProxy(pageClient, process, pageGroup, session, pageID));
+    return adoptRef(new WebPageProxy(pageClient, process, pageID, configuration));
 }
 
-WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, WebPageGroup& pageGroup, API::Session& session, uint64_t pageID)
+WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uint64_t pageID, const WebPageConfiguration& configuration)
     : m_pageClient(pageClient)
     , m_loaderClient(std::make_unique<API::LoaderClient>())
     , m_policyClient(std::make_unique<API::PolicyClient>())
     , m_uiClient(std::make_unique<API::UIClient>())
     , m_process(process)
-    , m_pageGroup(pageGroup)
+    , m_pageGroup(*configuration.pageGroup)
+    , m_preferences(*configuration.preferences)
     , m_mainFrame(nullptr)
     , m_userAgent(standardUserAgent())
     , m_geolocationPermissionRequestManager(*this)
@@ -291,15 +297,19 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, Web
     , m_syncNavigationActionPolicyAction(PolicyUse)
     , m_syncNavigationActionPolicyDownloadID(0)
     , m_processingMouseMoveEvent(false)
+#if ENABLE(TOUCH_EVENTS)
+    , m_isTrackingTouchEvents(false)
+#endif
     , m_pageID(pageID)
-    , m_session(session)
+    , m_session(*configuration.session)
     , m_isPageSuspended(false)
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
     , m_isSmartInsertDeleteEnabled(TextChecker::isSmartInsertDeleteEnabled())
 #endif
     , m_spellDocumentTag(0)
     , m_hasSpellDocumentTag(false)
     , m_pendingLearnOrIgnoreWordMessageCount(0)
+    , m_delegatesScrolling(false)
     , m_mainFrameHasHorizontalScrollbar(false)
     , m_mainFrameHasVerticalScrollbar(false)
     , m_canShortCircuitHorizontalWheelEvents(true)
@@ -313,7 +323,6 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, Web
     , m_rubberBandsAtTop(true)
     , m_rubberBandsAtBottom(true)
     , m_backgroundExtendsBeyondPage(false)
-    , m_mainFrameInViewSourceMode(false)
     , m_shouldRecordNavigationSnapshots(false)
     , m_pageCount(0)
     , m_renderTreeSize(0)
@@ -340,6 +349,7 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, Web
 
     WebContext::statistics().wkPageCount++;
 
+    m_preferences->addPage(*this);
     m_pageGroup->addPage(this);
 
 #if ENABLE(INSPECTOR)
@@ -347,6 +357,9 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, Web
 #endif
 #if ENABLE(FULLSCREEN_API)
     m_fullScreenManager = WebFullScreenManagerProxy::create(*this, m_pageClient.fullScreenManagerProxyClient());
+#endif
+#if PLATFORM(IOS)
+    m_videoFullscreenManager = WebVideoFullscreenManagerProxy::create(*this);
 #endif
 #if ENABLE(VIBRATION)
     m_vibration = WebVibrationProxy::create(this);
@@ -356,7 +369,7 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, Web
 
     // FIXME: If we ever expose the session storage size as a preference, we need to pass it here.
     m_process->context().storageManager().createSessionStorageNamespace(m_pageID, m_process->isValid() ? m_process->connection() : 0, std::numeric_limits<unsigned>::max());
-    setSession(session);
+    setSession(*configuration.session);
 }
 
 WebPageProxy::~WebPageProxy()
@@ -369,6 +382,7 @@ WebPageProxy::~WebPageProxy()
     if (m_hasSpellDocumentTag)
         TextChecker::closeSpellDocumentWithTag(m_spellDocumentTag);
 
+    m_preferences->removePage(*this);
     m_pageGroup->removePage(this);
 
 #ifndef NDEBUG
@@ -391,6 +405,18 @@ bool WebPageProxy::isValid() const
         return false;
 
     return m_isValid;
+}
+
+void WebPageProxy::setPreferences(WebPreferences& preferences)
+{
+    if (&preferences == &m_preferences.get())
+        return;
+
+    m_preferences->removePage(*this);
+    m_preferences = preferences;
+    m_preferences->addPage(*this);
+
+    preferencesDidChange();
 }
 
 PassRefPtr<API::Array> WebPageProxy::relatedPages() const
@@ -539,20 +565,20 @@ void WebPageProxy::initializeWebPage()
 #endif
 
 #if ENABLE(INSPECTOR_SERVER)
-    if (pageGroup().preferences()->developerExtrasEnabled())
+    if (pageGroup().preferences().developerExtrasEnabled())
         inspector()->enableRemoteInspection();
 #endif
 
     process().send(Messages::WebProcess::CreateWebPage(m_pageID, creationParameters()), 0);
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
     send(Messages::WebPage::SetSmartInsertDeleteEnabled(m_isSmartInsertDeleteEnabled));
 #endif
 }
 
 bool WebPageProxy::isProcessSuppressible() const
 {
-    return (m_viewState & ViewState::IsVisuallyIdle) && m_pageGroup->preferences()->pageVisibilityBasedProcessSuppressionEnabled();
+    return (m_viewState & ViewState::IsVisuallyIdle) && m_preferences->pageVisibilityBasedProcessSuppressionEnabled();
 }
 
 void WebPageProxy::close()
@@ -569,10 +595,10 @@ void WebPageProxy::close()
 
     resetState();
 
-    m_loaderClient = nullptr;
-    m_policyClient = nullptr;
+    m_loaderClient = std::make_unique<API::LoaderClient>();
+    m_policyClient = std::make_unique<API::PolicyClient>();
     m_formClient.initialize(0);
-    m_uiClient = nullptr;
+    m_uiClient = std::make_unique<API::UIClient>();
 #if PLATFORM(EFL)
     m_uiPopupMenuClient.initialize(0);
 #endif
@@ -755,7 +781,7 @@ void WebPageProxy::recordNavigationSnapshot()
     if (!m_shouldRecordNavigationSnapshots)
         return;
 
-#if PLATFORM(MAC) && !PLATFORM(IOS)
+#if PLATFORM(COCOA)
     ViewSnapshotStore::shared().recordSnapshot(*this);
 #endif
 }
@@ -827,11 +853,11 @@ void WebPageProxy::tryRestoreScrollPosition()
     m_process->send(Messages::WebPage::TryRestoreScrollPosition(), m_pageID);
 }
 
-void WebPageProxy::didChangeBackForwardList(WebBackForwardListItem* added, Vector<RefPtr<API::Object>>* removed)
+void WebPageProxy::didChangeBackForwardList(WebBackForwardListItem* added, Vector<RefPtr<WebBackForwardListItem>> removed)
 {
-    m_loaderClient->didChangeBackForwardList(this, added, removed);
+    m_loaderClient->didChangeBackForwardList(this, added, std::move(removed));
 
-#if PLATFORM(MAC) && !PLATFORM(IOS)
+#if PLATFORM(MAC)
     m_pageClient.clearCustomSwipeViews();
 #endif
 }
@@ -855,15 +881,15 @@ bool WebPageProxy::canShowMIMEType(const String& mimeType)
 #if ENABLE(NETSCAPE_PLUGIN_API)
     String newMimeType = mimeType;
     PluginModuleInfo plugin = m_process->context().pluginInfoStore().findPlugin(newMimeType, URL());
-    if (!plugin.path.isNull() && m_pageGroup->preferences()->pluginsEnabled())
+    if (!plugin.path.isNull() && m_preferences->pluginsEnabled())
         return true;
 #endif // ENABLE(NETSCAPE_PLUGIN_API)
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
     // On Mac, we can show PDFs.
     if (MIMETypeRegistry::isPDFOrPostScriptMIMEType(mimeType) && !WebContext::omitPDFSupport())
         return true;
-#endif // PLATFORM(MAC)
+#endif // PLATFORM(COCOA)
 
     return false;
 }
@@ -1193,7 +1219,7 @@ static bool canCoalesce(const WebWheelEvent& a, const WebWheelEvent& b)
         return false;
     if (a.granularity() != b.granularity())
         return false;
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
     if (a.phase() != b.phase())
         return false;
     if (a.momentumPhase() != b.momentumPhase())
@@ -1212,7 +1238,7 @@ static WebWheelEvent coalesce(const WebWheelEvent& a, const WebWheelEvent& b)
     FloatSize mergedDelta = a.delta() + b.delta();
     FloatSize mergedWheelTicks = a.wheelTicks() + b.wheelTicks();
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
     FloatSize mergedUnacceleratedScrollingDelta = a.unacceleratedScrollingDelta() + b.unacceleratedScrollingDelta();
 
     return WebWheelEvent(WebEvent::Wheel, b.position(), b.globalPosition(), mergedDelta, mergedWheelTicks, b.granularity(), b.directionInvertedFromDevice(), b.phase(), b.momentumPhase(), b.hasPreciseScrollingDeltas(), b.scrollCount(), mergedUnacceleratedScrollingDelta, b.modifiers(), b.timestamp());
@@ -1344,7 +1370,7 @@ void WebPageProxy::findPlugin(const String& mimeType, uint32_t processType, cons
 
     pluginLoadPolicy = PluginInfoStore::defaultLoadPolicyForPlugin(plugin);
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
     RefPtr<ImmutableDictionary> pluginInformation = createPluginInformationDictionary(plugin, frameURLString, String(), pageURLString, String(), String());
     pluginLoadPolicy = m_loaderClient->pluginLoadPolicy(this, static_cast<PluginModuleLoadPolicy>(pluginLoadPolicy), pluginInformation.get(), unavailabilityDescription);
 #else
@@ -1373,14 +1399,18 @@ void WebPageProxy::findPlugin(const String& mimeType, uint32_t processType, cons
 #endif // ENABLE(NETSCAPE_PLUGIN_API)
 
 #if ENABLE(TOUCH_EVENTS)
-static bool anyTouchIsInNonFastScrollableRegion(RemoteScrollingCoordinatorProxy& scrollingCoordinator, const WebTouchEvent& event)
+
+bool WebPageProxy::shouldStartTrackingTouchEvents(const WebTouchEvent& touchStartEvent) const
 {
-    for (auto touchPoint : event.touchPoints()) {
-        if (scrollingCoordinator.isPointInNonFastScrollableRegion(touchPoint.location()))
+#if ENABLE(ASYNC_SCROLLING)
+    for (auto& touchPoint : touchStartEvent.touchPoints()) {
+        if (m_scrollingCoordinatorProxy->isPointInNonFastScrollableRegion(touchPoint.location()))
             return true;
     }
 
     return false;
+#endif // ENABLE(ASYNC_SCROLLING)
+    return true;
 }
 
 void WebPageProxy::handleTouchEvent(const NativeWebTouchEvent& event)
@@ -1388,14 +1418,16 @@ void WebPageProxy::handleTouchEvent(const NativeWebTouchEvent& event)
     if (!isValid())
         return;
 
+    if (event.type() == WebEvent::TouchStart)
+        m_isTrackingTouchEvents = shouldStartTrackingTouchEvents(event);
+
+    if (!m_isTrackingTouchEvents)
+        return;
+
     // If the page is suspended, which should be the case during panning, pinching
     // and animation on the page itself (kinetic scrolling, tap to zoom) etc, then
     // we do not send any of the events to the page even if is has listeners.
     if (!m_isPageSuspended) {
-        // FIXME: we should only do this check for the start of a touch gesture.
-        if (!anyTouchIsInNonFastScrollableRegion(*m_scrollingCoordinatorProxy, event))
-            return;
-
         m_touchEventQueue.append(event);
         m_process->responsivenessTimer()->start();
         if (m_shouldSendEventsSynchronously) {
@@ -1415,8 +1447,11 @@ void WebPageProxy::handleTouchEvent(const NativeWebTouchEvent& event)
             lastEvent.deferredTouchEvents.append(event);
         }
     }
+
+    if (event.type() == WebEvent::TouchEnd || event.type() == WebEvent::TouchCancel)
+        m_isTrackingTouchEvents = false;
 }
-#endif
+#endif // ENABLE(TOUCH_EVENTS)
 
 void WebPageProxy::scrollBy(ScrollDirection direction, ScrollGranularity granularity)
 {
@@ -1708,13 +1743,6 @@ void WebPageProxy::listenForLayoutMilestones(WebCore::LayoutMilestones milestone
     m_process->send(Messages::WebPage::ListenForLayoutMilestones(milestones), m_pageID);
 }
 
-void WebPageProxy::setVisibilityStatePrerender()
-{
-    if (!isValid())
-        return;
-    m_process->send(Messages::WebPage::SetVisibilityStatePrerender(), m_pageID);
-}
-
 void WebPageProxy::setSuppressScrollbarAnimations(bool suppressAnimations)
 {
     if (!isValid())
@@ -1946,6 +1974,20 @@ void WebPageProxy::getContentsAsString(PassRefPtr<StringCallback> prpCallback)
     m_process->send(Messages::WebPage::GetContentsAsString(callbackID), m_pageID);
 }
 
+void WebPageProxy::getBytecodeProfile(PassRefPtr<StringCallback> prpCallback)
+{
+    RefPtr<StringCallback> callback = prpCallback;
+    if (!isValid()) {
+        callback->invalidate();
+        return;
+    }
+    
+    uint64_t callbackID = callback->callbackID();
+    m_loadDependentStringCallbackIDs.add(callbackID);
+    m_stringCallbacks.set(callbackID, callback.get());
+    m_process->send(Messages::WebPage::GetBytecodeProfile(callbackID), m_pageID);
+}
+    
 #if ENABLE(MHTML)
 void WebPageProxy::getContentsAsMHTMLData(PassRefPtr<DataCallback> prpCallback, bool useBinaryEncoding)
 {
@@ -2046,7 +2088,7 @@ void WebPageProxy::preferencesDidChange()
         return;
 
 #if ENABLE(INSPECTOR_SERVER)
-    if (m_pageGroup->preferences()->developerExtrasEnabled())
+    if (m_preferences->developerExtrasEnabled())
         inspector()->enableRemoteInspection();
 #endif
 
@@ -2059,7 +2101,7 @@ void WebPageProxy::preferencesDidChange()
     // even if nothing changed in UI process, so that overrides get removed.
 
     // Preferences need to be updated during synchronous printing to make "print backgrounds" preference work when toggled from a print dialog checkbox.
-    m_process->send(Messages::WebPage::PreferencesDidChange(pageGroup().preferences()->store()), m_pageID, m_isPerformingDOMPrintOperation ? IPC::DispatchMessageEvenWhenWaitingForSyncReply : 0);
+    m_process->send(Messages::WebPage::PreferencesDidChange(m_preferences->store()), m_pageID, m_isPerformingDOMPrintOperation ? IPC::DispatchMessageEvenWhenWaitingForSyncReply : 0);
 }
 
 void WebPageProxy::didCreateMainFrame(uint64_t frameID)
@@ -2761,14 +2803,14 @@ void WebPageProxy::getWindowFrame(FloatRect& newWindowFrame)
     newWindowFrame = m_pageClient.convertToUserSpace(m_uiClient->windowFrame(this));
 }
     
-void WebPageProxy::screenToWindow(const IntPoint& screenPoint, IntPoint& windowPoint)
+void WebPageProxy::screenToRootView(const IntPoint& screenPoint, IntPoint& windowPoint)
 {
-    windowPoint = m_pageClient.screenToWindow(screenPoint);
+    windowPoint = m_pageClient.screenToRootView(screenPoint);
 }
     
-void WebPageProxy::windowToScreen(const IntRect& viewRect, IntRect& result)
+void WebPageProxy::rootViewToScreen(const IntRect& viewRect, IntRect& result)
 {
-    result = m_pageClient.windowToScreen(viewRect);
+    result = m_pageClient.rootViewToScreen(viewRect);
 }
     
 void WebPageProxy::runBeforeUnloadConfirmPanel(const String& message, uint64_t frameID, bool& shouldClose)
@@ -2808,7 +2850,7 @@ void WebPageProxy::didChangeViewportProperties(const ViewportAttributes& attr)
 void WebPageProxy::pageDidScroll()
 {
     m_uiClient->pageDidScroll(this);
-#if !PLATFORM(IOS) && PLATFORM(MAC)
+#if PLATFORM(MAC)
     dismissCorrectionPanel(ReasonForDismissingAlternativeTextIgnored);
 #endif
 }
@@ -2965,6 +3007,13 @@ WebFullScreenManagerProxy* WebPageProxy::fullScreenManager()
     return m_fullScreenManager.get();
 }
 #endif
+    
+#if PLATFORM(IOS)
+RefPtr<WebVideoFullscreenManagerProxy> WebPageProxy::videoFullscreenManager()
+{
+    return m_videoFullscreenManager;
+}
+#endif
 
 // BackForwardList
 
@@ -3003,7 +3052,7 @@ void WebPageProxy::backForwardForwardListCount(int32_t& count)
 
 void WebPageProxy::editorStateChanged(const EditorState& editorState)
 {
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
     bool couldChangeSecureInputState = m_editorState.isInPasswordField != editorState.isInPasswordField || m_editorState.selectionIsNone;
     bool closedComposition = !editorState.shouldIgnoreCompositionSelectionChange && !editorState.hasComposition && (m_editorState.hasComposition || m_temporarilyClosedComposition);
     m_temporarilyClosedComposition = editorState.shouldIgnoreCompositionSelectionChange && (m_temporarilyClosedComposition || m_editorState.hasComposition) && !editorState.hasComposition;
@@ -3011,7 +3060,7 @@ void WebPageProxy::editorStateChanged(const EditorState& editorState)
 
     m_editorState = editorState;
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
     // Selection being none is a temporary state when editing. Flipping secure input state too quickly was causing trouble (not fully understood).
     if (couldChangeSecureInputState && !editorState.selectionIsNone)
         m_pageClient.updateSecureInputState();
@@ -3245,7 +3294,7 @@ void WebPageProxy::contextMenuItemSelected(const WebContextMenuItemData& item)
         return;
     }
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
     if (item.action() == ContextMenuItemTagSmartCopyPaste) {
         setSmartInsertDeleteEnabled(!isSmartInsertDeleteEnabled());
         return;
@@ -3547,7 +3596,7 @@ void WebPageProxy::didReceiveEvent(uint32_t opaqueType, bool handled)
         if (!handled) {
             if (m_uiClient->implementsDidNotHandleWheelEvent())
                 m_uiClient->didNotHandleWheelEvent(this, oldestCoalescedEvent->last());
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
             m_pageClient.wheelEventWasNotHandledByWebCore(oldestCoalescedEvent->last());
 #endif
         }
@@ -3890,7 +3939,7 @@ void WebPageProxy::resetStateAfterProcessExited()
     // FIXME: Notify input methods about abandoned composition.
     m_temporarilyClosedComposition = false;
 
-#if !PLATFORM(IOS) && PLATFORM(MAC)
+#if PLATFORM(MAC)
     dismissCorrectionPanel(ReasonForDismissingAlternativeTextIgnored);
     m_pageClient.dismissDictionaryLookupPanel();
 #endif
@@ -3903,7 +3952,7 @@ WebPageCreationParameters WebPageProxy::creationParameters()
     parameters.viewSize = m_pageClient.viewSize();
     parameters.viewState = m_viewState;
     parameters.drawingAreaType = m_drawingArea->type();
-    parameters.store = m_pageGroup->preferences()->store();
+    parameters.store = m_preferences->store();
     parameters.pageGroupData = m_pageGroup->data();
     parameters.drawsBackground = m_drawsBackground;
     parameters.drawsTransparentBackground = m_drawsTransparentBackground;
@@ -3930,7 +3979,7 @@ WebPageCreationParameters WebPageProxy::creationParameters()
     parameters.backgroundExtendsBeyondPage = m_backgroundExtendsBeyondPage;
     parameters.layerHostingMode = m_layerHostingMode;
 
-#if PLATFORM(MAC) && !PLATFORM(IOS)
+#if PLATFORM(MAC)
     parameters.colorSpace = m_pageClient.colorSpace();
 #endif
 
@@ -4135,6 +4184,11 @@ void WebPageProxy::didChangePageCount(unsigned pageCount)
     m_pageCount = pageCount;
 }
 
+void WebPageProxy::pageExtendedBackgroundColorDidChange(Color backgroundColor)
+{
+    m_pageExtendedBackgroundColor = backgroundColor;
+}
+
 #if ENABLE(NETSCAPE_PLUGIN_API)
 void WebPageProxy::didFailToInitializePlugin(const String& mimeType, const String& frameURLString, const String& pageURLString)
 {
@@ -4145,7 +4199,7 @@ void WebPageProxy::didBlockInsecurePluginVersion(const String& mimeType, const S
 {
     RefPtr<ImmutableDictionary> pluginInformation;
 
-#if PLATFORM(MAC) && ENABLE(NETSCAPE_PLUGIN_API)
+#if PLATFORM(COCOA) && ENABLE(NETSCAPE_PLUGIN_API)
     String newMimeType = mimeType;
     PluginModuleInfo plugin = m_process->context().pluginInfoStore().findPlugin(newMimeType, URL(URL(), pluginURLString));
     pluginInformation = createPluginInformationDictionary(plugin, frameURLString, mimeType, pageURLString, String(), String(), replacementObscured);
@@ -4220,7 +4274,7 @@ void WebPageProxy::computePagesForPrinting(WebFrameProxy* frame, const PrintInfo
     m_process->send(Messages::WebPage::ComputePagesForPrinting(frame->frameID(), printInfo, callbackID), m_pageID, m_isPerformingDOMPrintOperation ? IPC::DispatchMessageEvenWhenWaitingForSyncReply : 0);
 }
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
 void WebPageProxy::drawRectToImage(WebFrameProxy* frame, const PrintInfo& printInfo, const IntRect& rect, const WebCore::IntSize& imageSize, PassRefPtr<ImageCallback> prpCallback)
 {
     RefPtr<ImageCallback> callback = prpCallback;
@@ -4323,7 +4377,7 @@ void WebPageProxy::setAutoSizingShouldExpandToViewHeight(bool shouldExpand)
     m_process->send(Messages::WebPage::SetAutoSizingShouldExpandToViewHeight(shouldExpand), m_pageID, 0);
 }
 
-#if !PLATFORM(IOS) && PLATFORM(MAC)
+#if PLATFORM(MAC)
 
 void WebPageProxy::substitutionsPanelIsShowing(bool& isShowing)
 {
@@ -4373,9 +4427,9 @@ void WebPageProxy::dictationAlternatives(uint64_t dictationContext, Vector<Strin
 }
 #endif
 
-#endif // !PLATFORM(IOS) && PLATFORM(MAC)
+#endif // PLATFORM(MAC)
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
 RetainPtr<CGImageRef> WebPageProxy::takeViewSnapshot()
 {
     return m_pageClient.takeViewSnapshot();
@@ -4416,17 +4470,6 @@ void WebPageProxy::cancelComposition()
 }
 #endif // PLATFORM(GTK)
 
-void WebPageProxy::setMainFrameInViewSourceMode(bool mainFrameInViewSourceMode)
-{
-    if (m_mainFrameInViewSourceMode == mainFrameInViewSourceMode)
-        return;
-
-    m_mainFrameInViewSourceMode = mainFrameInViewSourceMode;
-
-    if (isValid())
-        m_process->send(Messages::WebPage::SetMainFrameInViewSourceMode(mainFrameInViewSourceMode), m_pageID);
-}
-
 void WebPageProxy::didSaveToPageCache()
 {
     m_process->didSaveToPageCache();
@@ -4441,6 +4484,44 @@ void WebPageProxy::setScrollPinningBehavior(ScrollPinningBehavior pinning)
 
     if (isValid())
         m_process->send(Messages::WebPage::SetScrollPinningBehavior(pinning), m_pageID);
+}
+
+#if ENABLE(SUBTLE_CRYPTO)
+void WebPageProxy::wrapCryptoKey(const Vector<uint8_t>& key, bool& succeeded, Vector<uint8_t>& wrappedKey)
+{
+    Vector<uint8_t> masterKey;
+    RefPtr<API::Data> keyData = m_process->context().client().copyWebCryptoMasterKey(&m_process->context());
+    if (keyData)
+        masterKey = keyData->dataReference().vector();
+    else if (!getDefaultWebCryptoMasterKey(masterKey)) {
+        succeeded = false;
+        return;
+    }
+
+    succeeded = wrapSerializedCryptoKey(masterKey, key, wrappedKey);
+}
+
+void WebPageProxy::unwrapCryptoKey(const Vector<uint8_t>& wrappedKey, bool& succeeded, Vector<uint8_t>& key)
+{
+    Vector<uint8_t> masterKey;
+    RefPtr<API::Data> keyData = m_process->context().client().copyWebCryptoMasterKey(&m_process->context());
+    if (keyData)
+        masterKey = keyData->dataReference().vector();
+    else if (!getDefaultWebCryptoMasterKey(masterKey)) {
+        succeeded = false;
+        return;
+    }
+
+    succeeded = unwrapSerializedCryptoKey(masterKey, wrappedKey, key);
+}
+#endif
+
+void WebPageProxy::setThumbnailScale(double scale)
+{
+    if (!isValid())
+        return;
+
+    m_process->send(Messages::WebPage::SetThumbnailScale(scale), m_pageID);
 }
 
 } // namespace WebKit

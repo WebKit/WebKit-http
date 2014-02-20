@@ -30,7 +30,6 @@
 
 #include "ArityCheckFailReturnThunks.h"
 #include "CCallHelpers.h"
-#include "CallFrameInlines.h"
 #include "CodeBlockWithJITType.h"
 #include "DFGCommon.h"
 #include "FTLJITCode.h"
@@ -38,6 +37,7 @@
 #include "JITStubs.h"
 #include "LLVMAPI.h"
 #include "LinkBuffer.h"
+#include "JSCInlines.h"
 #include "ProfilerCompilation.h"
 #include "VirtualRegister.h"
 
@@ -102,9 +102,9 @@ void link(State& state)
                 
                 Profiler::OriginStack stack;
                 
-                if (node->codeOrigin.isSet()) {
+                if (node->origin.semantic.isSet()) {
                     stack = Profiler::OriginStack(
-                        *vm.m_perBytecodeProfiler, codeBlock, node->codeOrigin);
+                        *vm.m_perBytecodeProfiler, codeBlock, node->origin.semantic);
                 }
                 
                 if (graph.dumpCodeOrigin(out, prefix, lastNode, node, &dumpContext)) {
@@ -116,7 +116,7 @@ void link(State& state)
                 compilation->addDescription(stack, out.toCString());
                 out.reset();
                 
-                if (node->codeOrigin.isSet())
+                if (node->origin.semantic.isSet())
                     lastNode = node;
             }
         }

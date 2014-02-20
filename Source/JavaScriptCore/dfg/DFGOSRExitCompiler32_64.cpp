@@ -31,7 +31,7 @@
 #include "DFGOperations.h"
 #include "DFGOSRExitCompilerCommon.h"
 #include "DFGSpeculativeJIT.h"
-#include "Operations.h"
+#include "JSCInlines.h"
 #include <wtf/DataLog.h>
 
 namespace JSC { namespace DFG {

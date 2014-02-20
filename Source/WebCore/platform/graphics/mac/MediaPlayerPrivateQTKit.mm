@@ -432,10 +432,8 @@ void MediaPlayerPrivateQTKit::createQTMovieView()
     m_qtMovieView = adoptNS([[QTMovieView alloc] init]);
     setSize(m_player->size());
     NSView* parentView = 0;
-#if PLATFORM(MAC)
     parentView = m_player->frameView()->documentView();
     [parentView addSubview:m_qtMovieView.get()];
-#endif
     [m_qtMovieView.get() setDelegate:m_objcObserver.get()];
     [m_objcObserver.get() setView:m_qtMovieView.get()];
     [m_qtMovieView.get() setMovie:m_qtMovie.get()];
@@ -660,7 +658,7 @@ void MediaPlayerPrivateQTKit::loadInternal(const String& url)
 }
 
 #if ENABLE(MEDIA_SOURCE)
-void MediaPlayerPrivateQTKit::load(const String&, PassRefPtr<HTMLMediaSource>)
+void MediaPlayerPrivateQTKit::load(const String&, MediaSourcePrivateClient*)
 {
     m_networkState = MediaPlayer::FormatError;
     m_player->networkStateChanged();

@@ -36,7 +36,7 @@
 #include "DFGWorklist.h"
 #include "Debugger.h"
 #include "JITCode.h"
-#include "Operations.h"
+#include "JSCInlines.h"
 #include "Options.h"
 #include "SamplingTool.h"
 #include <wtf/Atomics.h>
@@ -82,7 +82,7 @@ static CompilationResult compileImpl(
     if (debugger && (debugger->isStepping() || codeBlock->baselineAlternative()->hasDebuggerRequests()))
         return CompilationInvalidated;
 
-    if (logCompilationChanges())
+    if (logCompilationChanges(mode))
         dataLog("DFG(Driver) compiling ", *codeBlock, " with ", mode, ", number of instructions = ", codeBlock->instructionCount(), "\n");
     
     // Make sure that any stubs that the DFG is going to use are initialized. We want to
@@ -115,13 +115,13 @@ static CompilationResult compileImpl(
     if (enableConcurrentJIT) {
         Worklist* worklist = ensureGlobalWorklistFor(mode);
         plan->callback = callback;
-        if (logCompilationChanges())
+        if (logCompilationChanges(mode))
             dataLog("Deferring DFG compilation of ", *codeBlock, " with queue length ", worklist->queueLength(), ".\n");
         worklist->enqueue(plan);
         return CompilationDeferred;
     }
     
-    plan->compileInThread(*vm.dfgState);
+    plan->compileInThread(*vm.dfgState, 0);
     return plan->finalizeWithoutNotifyingCallback();
 }
 #else // ENABLE(DFG_JIT)

@@ -23,7 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#import "WKProcessClass.h"
+#import "WKProcessClassPrivate.h"
 
 #if WK_API_ENABLED
 

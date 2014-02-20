@@ -27,6 +27,7 @@
 #include "RenderBoxModelObject.h"
 
 #include "Frame.h"
+#include "FrameView.h"
 #include "GraphicsContext.h"
 #include "HTMLFrameOwnerElement.h"
 #include "HTMLNames.h"
@@ -422,6 +423,8 @@ LayoutSize RenderBoxModelObject::stickyPositionOffset() const
     if (enclosingClippingLayer) {
         RenderBox& enclosingClippingBox = toRenderBox(enclosingClippingLayer->renderer());
         LayoutRect clipRect = enclosingClippingBox.overflowClipRect(LayoutPoint(), 0); // FIXME: make this work in regions.
+        clipRect.contract(LayoutSize(enclosingClippingBox.paddingLeft() + enclosingClippingBox.paddingRight(),
+            enclosingClippingBox.paddingTop() + enclosingClippingBox.paddingBottom()));
         constrainingRect = enclosingClippingBox.localToContainerQuad(FloatRect(clipRect), &view()).boundingBox();
 
         FloatPoint scrollOffset = FloatPoint() + enclosingClippingLayer->scrollOffset();
@@ -2748,12 +2751,10 @@ void RenderBoxModelObject::mapAbsoluteToLocalPoint(MapCoordinatesFlags mode, Tra
 
     // The point inside a box that's inside a region has its coordinates relative to the region,
     // not the FlowThread that is its container in the RenderObject tree.
-    if (o->isRenderFlowThread() && isRenderBlock()) {
-        // FIXME (CSSREGIONS): switch to Box instead of Block when we'll have range information
-        // for boxes as well, not just for blocks.
+    if (o->isRenderFlowThread() && isBox()) {
         RenderRegion* startRegion;
         RenderRegion* endRegion;
-        toRenderFlowThread(o)->getRegionRangeForBox(toRenderBlock(this), startRegion, endRegion);
+        toRenderFlowThread(o)->getRegionRangeForBox(toRenderBox(this), startRegion, endRegion);
         if (startRegion)
             o = startRegion;
     }

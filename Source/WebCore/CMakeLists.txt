@@ -6,6 +6,7 @@ set(WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/Modules/indexeddb"
     "${WEBCORE_DIR}/Modules/indexeddb/leveldb"
     "${WEBCORE_DIR}/Modules/indieui"
+    "${WEBCORE_DIR}/Modules/mediacontrols/"
     "${WEBCORE_DIR}/Modules/mediasource"
     "${WEBCORE_DIR}/Modules/mediastream"
     "${WEBCORE_DIR}/Modules/navigatorcontentutils"
@@ -188,6 +189,8 @@ set(WebCore_IDL_FILES
     Modules/indexeddb/IDBTransaction.idl
     Modules/indexeddb/IDBVersionChangeEvent.idl
     Modules/indexeddb/WorkerGlobalScopeIndexedDatabase.idl
+
+    Modules/mediacontrols/MediaControlsHost.idl
 
     Modules/mediasource/DOMURLMediaSource.idl
     Modules/mediasource/MediaSource.idl
@@ -387,7 +390,6 @@ set(WebCore_IDL_FILES
     dom/RangeException.idl
     dom/RequestAnimationFrameCallback.idl
     dom/SecurityPolicyViolationEvent.idl
-    dom/ShadowRoot.idl
     dom/StringCallback.idl
     dom/Text.idl
     dom/TextEvent.idl
@@ -764,7 +766,6 @@ set(WebCore_INSPECTOR_DOMAINS
     inspector/protocol/ApplicationCache.json
     inspector/protocol/CSS.json
     inspector/protocol/Canvas.json
-    inspector/protocol/Console.json
     inspector/protocol/DOM.json
     inspector/protocol/DOMDebugger.json
     inspector/protocol/DOMStorage.json
@@ -835,6 +836,8 @@ set(WebCore_SOURCES
     Modules/indexeddb/leveldb/IDBIndexWriterLevelDB.cpp
     Modules/indexeddb/leveldb/IDBLevelDBCoding.cpp
     Modules/indexeddb/leveldb/IDBServerConnectionLevelDB.cpp
+
+    Modules/mediacontrols/MediaControlsHost.cpp
 
     Modules/mediasource/DOMURLMediaSource.cpp
     Modules/mediasource/MediaSource.cpp
@@ -1041,7 +1044,7 @@ set(WebCore_SOURCES
     css/CSSFontValue.cpp
     css/CSSFunctionValue.cpp
     css/CSSGradientValue.cpp
-    css/CSSGridTemplateValue.cpp
+    css/CSSGridTemplateAreasValue.cpp
     css/CSSGroupingRule.cpp
     css/CSSImageGeneratorValue.cpp
     css/CSSImageSetValue.cpp
@@ -1411,7 +1414,6 @@ set(WebCore_SOURCES
     html/HTMLMarqueeElement.cpp
     html/HTMLMediaElement.cpp
     html/HTMLMediaSession.cpp
-    html/HTMLMediaSource.cpp
     html/HTMLMenuElement.cpp
     html/HTMLMetaElement.cpp
     html/HTMLMeterElement.cpp
@@ -1451,7 +1453,6 @@ set(WebCore_SOURCES
     html/HTMLTrackElement.cpp
     html/HTMLUListElement.cpp
     html/HTMLVideoElement.cpp
-    html/HTMLViewSourceDocument.cpp
     html/HiddenInputType.cpp
     html/ImageData.cpp
     html/ImageDocument.cpp
@@ -1550,9 +1551,7 @@ set(WebCore_SOURCES
     html/parser/HTMLSourceTracker.cpp
     html/parser/HTMLTokenizer.cpp
     html/parser/HTMLTreeBuilder.cpp
-    html/parser/HTMLViewSourceParser.cpp
     html/parser/TextDocumentParser.cpp
-    html/parser/TextViewSourceParser.cpp
     html/parser/XSSAuditor.cpp
     html/parser/XSSAuditorDelegate.cpp
 
@@ -1570,16 +1569,13 @@ set(WebCore_SOURCES
 
     inspector/CommandLineAPIHost.cpp
     inspector/CommandLineAPIModule.cpp
-    inspector/ConsoleMessage.cpp
     inspector/DOMEditor.cpp
     inspector/DOMPatchSupport.cpp
-    inspector/IdentifiersFactory.cpp
     inspector/InjectedScriptCanvasModule.cpp
     inspector/InspectorApplicationCacheAgent.cpp
     inspector/InspectorCSSAgent.cpp
     inspector/InspectorCanvasAgent.cpp
     inspector/InspectorClient.cpp
-    inspector/InspectorConsoleAgent.cpp
     inspector/InspectorController.cpp
     inspector/InspectorCounters.cpp
     inspector/InspectorDOMAgent.cpp
@@ -1610,14 +1606,12 @@ set(WebCore_SOURCES
     inspector/NetworkResourcesData.cpp
     inspector/PageConsoleAgent.cpp
     inspector/PageDebuggerAgent.cpp
-    inspector/PageInjectedScriptHost.cpp
-    inspector/PageInjectedScriptManager.cpp
     inspector/PageRuntimeAgent.cpp
-    inspector/ScriptArguments.cpp
-    inspector/ScriptCallFrame.cpp
-    inspector/ScriptCallStack.cpp
     inspector/TimelineRecordFactory.cpp
+    inspector/WebConsoleAgent.cpp
     inspector/WebDebuggerAgent.cpp
+    inspector/WebInjectedScriptHost.cpp
+    inspector/WebInjectedScriptManager.cpp
     inspector/WorkerConsoleAgent.cpp
     inspector/WorkerDebuggerAgent.cpp
     inspector/WorkerInspectorController.cpp
@@ -2193,11 +2187,11 @@ set(WebCore_SOURCES
     rendering/RenderTextControlSingleLine.cpp
     rendering/RenderTextFragment.cpp
     rendering/RenderTextLineBoxes.cpp
-    rendering/RenderTextTrackCue.cpp
     rendering/RenderTheme.cpp
     rendering/RenderTreeAsText.cpp
     rendering/RenderVideo.cpp
     rendering/RenderView.cpp
+    rendering/RenderVTTCue.cpp
     rendering/RenderWidget.cpp
     rendering/RootInlineBox.cpp
     rendering/ScrollBehavior.cpp
@@ -2224,6 +2218,7 @@ set(WebCore_SOURCES
     rendering/mathml/RenderMathMLScripts.cpp
     rendering/mathml/RenderMathMLSpace.cpp
     rendering/mathml/RenderMathMLSquareRoot.cpp
+    rendering/mathml/RenderMathMLToken.cpp
     rendering/mathml/RenderMathMLUnderOver.cpp
 
     rendering/shapes/BoxShape.cpp
@@ -2574,7 +2569,6 @@ set(WebCore_USER_AGENT_STYLE_SHEETS
     ${WEBCORE_DIR}/css/plugIns.css
     ${WEBCORE_DIR}/css/quirks.css
     ${WEBCORE_DIR}/css/svg.css
-    ${WEBCORE_DIR}/css/view-source.css
 )
 
 set(WebCore_PLUG_INS_RESOURCES
@@ -2700,6 +2694,7 @@ if (ENABLE_VIDEO_TRACK)
     list(APPEND WebCore_IDL_FILES
         html/track/AudioTrack.idl
         html/track/AudioTrackList.idl
+        html/track/DataCue.idl
         html/track/TextTrack.idl
         html/track/TextTrackCue.idl
         html/track/TextTrackCueList.idl
@@ -2707,11 +2702,13 @@ if (ENABLE_VIDEO_TRACK)
         html/track/TrackEvent.idl
         html/track/VideoTrack.idl
         html/track/VideoTrackList.idl
+        html/track/VTTCue.idl
     )
 
     list(APPEND WebCore_SOURCES
         html/track/AudioTrack.cpp
         html/track/AudioTrackList.cpp
+        html/track/DataCue.cpp
         html/track/InbandGenericTextTrack.cpp
         html/track/InbandTextTrack.cpp
         html/track/InbandWebVTTTextTrack.cpp
@@ -2726,6 +2723,7 @@ if (ENABLE_VIDEO_TRACK)
         html/track/TrackListBase.cpp
         html/track/VideoTrack.cpp
         html/track/VideoTrackList.cpp
+        html/track/VTTCue.cpp
         html/track/WebVTTElement.cpp
         html/track/WebVTTParser.cpp
         html/track/WebVTTTokenizer.cpp
@@ -2736,7 +2734,10 @@ if (ENABLE_VIDEO_TRACK)
     )
 endif ()
 
-if (ENABLE_QUOTA)
+# On the GTK+ autotools build we used to add these files even if QUOTA is disabled, and
+# because of that we generate GObject bindings for some of the objects. We need to do
+# the same for the cmake build, for now.
+if (ENABLE_QUOTA OR PORT STREQUAL "GTK")
     list(APPEND WebCore_SOURCES
         Modules/quota/DOMWindowQuota.cpp
         Modules/quota/NavigatorStorageQuota.cpp
@@ -2989,8 +2990,6 @@ set(SHAREDWORKERGLOBALSCOPE_CONSTRUCTORS_FILE ${DERIVED_SOURCES_WEBCORE_DIR}/Sha
 set(DEDICATEDWORKERGLOBALSCOPE_CONSTRUCTORS_FILE ${DERIVED_SOURCES_WEBCORE_DIR}/DedicatedWorkerGlobalScopeConstructors.idl)
 set(IDL_ATTRIBUTES_FILE ${WEBCORE_DIR}/bindings/scripts/IDLAttributes.txt)
 
-include(${WEBCORE_DIR}/UseJSC.cmake)
-
 WEBKIT_INCLUDE_CONFIG_FILES_IF_EXISTS()
 
 # ANGLE tokenizer & parser
@@ -3139,6 +3138,22 @@ add_custom_command(
 list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/UserAgentStyleSheetsData.cpp)
 ADD_SOURCE_WEBCORE_DERIVED_DEPENDENCIES(${WEBCORE_DIR}/css/StyleResolver.cpp UserAgentStyleSheetsData.cpp UserAgentStyleSheets.h)
 
+if (WebCore_USER_AGENT_SCRIPTS)
+    # Necessary variables:
+    # WebCore_USER_AGENT_SCRIPTS containing the JavaScript sources list
+    # WebCore_USER_AGENT_SCRIPTS_DEPENDENCIES containing the source file that will load the scripts to add the proper
+    #   dependency and having them built at the right moment
+
+    add_custom_command(
+        OUTPUT ${DERIVED_SOURCES_WEBCORE_DIR}/UserAgentScriptsData.cpp ${DERIVED_SOURCES_WEBCORE_DIR}/UserAgentScripts.h
+        MAIN_DEPENDENCY ${WEBCORE_DIR}/Scripts/make-js-file-arrays.py
+        DEPENDS ${WebCore_USER_AGENT_SCRIPTS}
+        COMMAND "PYTHONPATH=${WebCore_INSPECTOR_SCRIPTS_DIR}" ${PYTHON_EXECUTABLE} ${WEBCORE_DIR}/Scripts/make-js-file-arrays.py ${DERIVED_SOURCES_WEBCORE_DIR}/UserAgentScripts.h ${DERIVED_SOURCES_WEBCORE_DIR}/UserAgentScriptsData.cpp ${WebCore_USER_AGENT_SCRIPTS}
+        VERBATIM)
+    list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/UserAgentScriptsData.cpp)
+    ADD_SOURCE_WEBCORE_DERIVED_DEPENDENCIES(${WebCore_USER_AGENT_SCRIPTS_DEPENDENCIES} UserAgentScriptsData.cpp UserAgentScripts.h)
+endif ()
+
 # Generate plug-in resources
 add_custom_command(
     OUTPUT ${DERIVED_SOURCES_WEBCORE_DIR}/PlugInsResourcesData.cpp ${DERIVED_SOURCES_WEBCORE_DIR}/PlugInsResources.h
@@ -3157,6 +3172,7 @@ GENERATE_GRAMMAR(xpathyy ${WEBCORE_DIR}/xml/XPathGrammar.y ${DERIVED_SOURCES_WEB
 list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/XPathGrammar.cpp)
 
 
+include(${WEBCORE_DIR}/UseJSC.cmake)
 
 ADD_SOURCE_WEBCORE_DERIVED_DEPENDENCIES(${WEBCORE_DIR}/html/HTMLTreeBuilder.cpp MathMLNames.cpp)
 

@@ -73,7 +73,6 @@
 #include "Settings.h"
 #include "StyleProperties.h"
 #include "StyleResolver.h"
-#include "TextIterator.h"
 #include "VoidCallback.h"
 #include "WheelEvent.h"
 #include "XMLNSNames.h"
@@ -339,16 +338,17 @@ PassRefPtr<Attr> Element::detachAttribute(unsigned index)
     return attrNode.release();
 }
 
-void Element::removeAttribute(const QualifiedName& name)
+bool Element::removeAttribute(const QualifiedName& name)
 {
     if (!elementData())
-        return;
+        return false;
 
     unsigned index = elementData()->findAttributeIndexByName(name);
     if (index == ElementData::attributeNotFound)
-        return;
+        return false;
 
     removeAttributeInternal(index, NotInSynchronizationOfLazyAttribute);
+    return true;
 }
 
 void Element::setBooleanAttribute(const QualifiedName& name, bool value)
@@ -1353,9 +1353,9 @@ Node::InsertionNotificationRequest Element::insertedInto(ContainerNode& insertio
         elementRareData()->clearClassListValueForQuirksMode();
 
     TreeScope* newScope = &insertionPoint.treeScope();
-    HTMLDocument* newDocument = !wasInDocument && inDocument() && newScope->documentScope()->isHTMLDocument() ? toHTMLDocument(newScope->documentScope()) : 0;
+    HTMLDocument* newDocument = !wasInDocument && inDocument() && newScope->documentScope().isHTMLDocument() ? toHTMLDocument(&newScope->documentScope()) : nullptr;
     if (newScope != &treeScope())
-        newScope = 0;
+        newScope = nullptr;
 
     const AtomicString& idValue = getIdAttribute();
     if (!idValue.isNull()) {
@@ -1396,9 +1396,9 @@ void Element::removedFrom(ContainerNode& insertionPoint)
 
     if (insertionPoint.isInTreeScope()) {
         TreeScope* oldScope = &insertionPoint.treeScope();
-        HTMLDocument* oldDocument = inDocument() && oldScope->documentScope()->isHTMLDocument() ? toHTMLDocument(oldScope->documentScope()) : 0;
+        HTMLDocument* oldDocument = inDocument() && oldScope->documentScope().isHTMLDocument() ? toHTMLDocument(&oldScope->documentScope()) : nullptr;
         if (oldScope != &treeScope())
-            oldScope = 0;
+            oldScope = nullptr;
 
         const AtomicString& idValue = getIdAttribute();
         if (!idValue.isNull()) {
@@ -1513,31 +1513,8 @@ PassRefPtr<ShadowRoot> Element::createShadowRoot(ExceptionCode& ec)
     if (alwaysCreateUserAgentShadowRoot())
         ensureUserAgentShadowRoot();
 
-#if ENABLE(SHADOW_DOM)
-    if (RuntimeEnabledFeatures::sharedFeatures().authorShadowDOMForAnyElementEnabled()) {
-        addShadowRoot(ShadowRoot::create(document(), ShadowRoot::AuthorShadowRoot));
-        return shadowRoot();
-    }
-#endif
-
-    // Since some elements recreates shadow root dynamically, multiple shadow
-    // subtrees won't work well in that element. Until they are fixed, we disable
-    // adding author shadow root for them.
-    if (!areAuthorShadowsAllowed()) {
-        ec = HIERARCHY_REQUEST_ERR;
-        return 0;
-    }
-    addShadowRoot(ShadowRoot::create(document(), ShadowRoot::AuthorShadowRoot));
-
-    return shadowRoot();
-}
-
-ShadowRoot* Element::authorShadowRoot() const
-{
-    ShadowRoot* shadowRoot = this->shadowRoot();
-    if (shadowRoot->type() == ShadowRoot::AuthorShadowRoot)
-        return shadowRoot;
-    return 0;
+    ec = HIERARCHY_REQUEST_ERR;
+    return nullptr;
 }
 
 ShadowRoot* Element::userAgentShadowRoot() const
@@ -1546,7 +1523,7 @@ ShadowRoot* Element::userAgentShadowRoot() const
         ASSERT(shadowRoot->type() == ShadowRoot::UserAgentShadowRoot);
         return shadowRoot;
     }
-    return 0;
+    return nullptr;
 }
 
 ShadowRoot& Element::ensureUserAgentShadowRoot()
@@ -1852,25 +1829,26 @@ void Element::addAttributeInternal(const QualifiedName& name, const AtomicString
         didAddAttribute(name, value);
 }
 
-void Element::removeAttribute(const AtomicString& name)
+bool Element::removeAttribute(const AtomicString& name)
 {
     if (!elementData())
-        return;
+        return false;
 
     AtomicString localName = shouldIgnoreAttributeCase(*this) ? name.lower() : name;
     unsigned index = elementData()->findAttributeIndexByName(localName, false);
     if (index == ElementData::attributeNotFound) {
         if (UNLIKELY(localName == styleAttr) && elementData()->styleAttributeIsDirty() && isStyledElement())
             toStyledElement(this)->removeAllInlineStyleProperties();
-        return;
+        return false;
     }
 
     removeAttributeInternal(index, NotInSynchronizationOfLazyAttribute);
+    return true;
 }
 
-void Element::removeAttributeNS(const AtomicString& namespaceURI, const AtomicString& localName)
+bool Element::removeAttributeNS(const AtomicString& namespaceURI, const AtomicString& localName)
 {
-    removeAttribute(QualifiedName(nullAtom, localName, namespaceURI));
+    return removeAttribute(QualifiedName(nullAtom, localName, namespaceURI));
 }
 
 PassRefPtr<Attr> Element::getAttributeNode(const AtomicString& localName)
@@ -2795,7 +2773,7 @@ void Element::willModifyAttribute(const QualifiedName& name, const AtomicString&
             setNeedsStyleRecalc();
     }
 
-    if (OwnPtr<MutationObserverInterestGroup> recipients = MutationObserverInterestGroup::createForAttributesMutation(*this, name))
+    if (std::unique_ptr<MutationObserverInterestGroup> recipients = MutationObserverInterestGroup::createForAttributesMutation(*this, name))
         recipients->enqueueMutationRecord(MutationRecord::createAttributes(*this, name, oldValue));
 
 #if ENABLE(INSPECTOR)

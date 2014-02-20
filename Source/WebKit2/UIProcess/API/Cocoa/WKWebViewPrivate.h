@@ -27,10 +27,52 @@
 
 #if WK_API_ENABLED
 
+typedef NS_OPTIONS(NSUInteger, _WKRenderingProgressEvents) {
+    _WKRenderingProgressEventFirstLayout = 1 << 0,
+    _WKRenderingProgressEventFirstPaintWithSignificantArea = 1 << 2,
+};
+
+@class WKBrowsingContextHandle;
+@class WKRemoteObjectRegistry;
+@protocol WKHistoryDelegatePrivate;
+
 @interface WKWebView (WKPrivate)
 
+@property (nonatomic, readonly) WKRemoteObjectRegistry *_remoteObjectRegistry;
+@property (nonatomic, readonly) WKBrowsingContextHandle *_handle;
+
+@property (nonatomic, setter=_setObservedRenderingProgressEvents:) _WKRenderingProgressEvents _observedRenderingProgressEvents;
+
+@property (nonatomic, weak, setter=_setHistoryDelegate:) id <WKHistoryDelegatePrivate> _historyDelegate;
+
+@property (nonatomic, readonly) NSURL *_unreachableURL;
+
+- (void)_loadAlternateHTMLString:(NSString *)string baseURL:(NSURL *)baseURL forUnreachableURL:(NSURL *)unreachableURL;
+
+- (WKNavigation *)_reload;
+
+@property (nonatomic, readonly) NSArray *_certificateChain;
+@property (nonatomic, readonly) NSURL *_committedURL;
+
+@property (copy, setter=_setApplicationNameForUserAgent:) NSString *_applicationNameForUserAgent;
+
+@property (nonatomic, readonly) pid_t _webProcessIdentifier;
+
+@property (nonatomic, readonly) NSData *_sessionState;
+- (void)_restoreFromSessionState:(NSData *)sessionState;
+
+@property (nonatomic, setter=_setPrivateBrowsingEnabled:) BOOL _privateBrowsingEnabled;
+
 #if TARGET_OS_IPHONE
-@property (nonatomic, setter=_setMinimumLayoutSizeOverride) CGSize _minimumLayoutSizeOverride;
+@property (nonatomic, setter=_setMinimumLayoutSizeOverride:) CGSize _minimumLayoutSizeOverride;
+
+// Define the inset of the scrollview unusable by the web page.
+@property (nonatomic, setter=_setObscuredInsets:) UIEdgeInsets _obscuredInsets;
+
+- (UIColor *)pageExtendedBackgroundColor;
+
+- (void)_beginInteractiveObscuredInsetsChange;
+- (void)_endInteractiveObscuredInsetsChange;
 #endif
 
 @end

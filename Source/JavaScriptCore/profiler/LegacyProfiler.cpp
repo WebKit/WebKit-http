@@ -36,7 +36,7 @@
 #include "JSFunction.h"
 #include "JSGlobalObject.h"
 #include "Nodes.h"
-#include "Operations.h"
+#include "JSCInlines.h"
 #include "Profile.h"
 #include "ProfileGenerator.h"
 #include "ProfileNode.h"
@@ -176,7 +176,7 @@ CallIdentifier createCallIdentifierFromFunctionImp(ExecState* exec, JSObject* fu
 {
     const String& name = getCalculatedDisplayName(exec, function);
     JSFunction* jsFunction = jsDynamicCast<JSFunction*>(function);
-    if (jsFunction && !jsFunction->isHostFunction())
+    if (jsFunction && !jsFunction->isHostOrBuiltinFunction())
         return CallIdentifier(name.isEmpty() ? ASCIILiteral(AnonymousFunction) : name, jsFunction->jsExecutable()->sourceURL(), jsFunction->jsExecutable()->lineNo(), jsFunction->jsExecutable()->startColumn());
     return CallIdentifier(name.isEmpty() ? ASCIILiteral(AnonymousFunction) : name, defaultSourceURL, defaultLineNumber, defaultColumnNumber);
 }

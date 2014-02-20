@@ -49,87 +49,55 @@
 namespace WebCore {
 
 struct SameSizeAsTreeScope {
-    virtual ~SameSizeAsTreeScope();
     void* pointers[9];
-    int ints[1];
 };
 
 COMPILE_ASSERT(sizeof(TreeScope) == sizeof(SameSizeAsTreeScope), treescope_should_stay_small);
 
 using namespace HTMLNames;
 
-TreeScope::TreeScope(ContainerNode* rootNode, Document* document)
-    : m_rootNode(rootNode)
-    , m_documentScope(document)
-    , m_parentTreeScope(document)
-    , m_selfOnlyRefCount(0)
-    , m_idTargetObserverRegistry(IdTargetObserverRegistry::create())
+TreeScope::TreeScope(ShadowRoot& shadowRoot, Document& document)
+    : m_rootNode(shadowRoot)
+    , m_documentScope(&document)
+    , m_parentTreeScope(&document)
+    , m_idTargetObserverRegistry(std::make_unique<IdTargetObserverRegistry>())
 {
-    ASSERT(rootNode);
-    ASSERT(document);
-    ASSERT(rootNode != document);
-    m_parentTreeScope->selfOnlyRef();
-    m_rootNode->setTreeScope(*this);
+    shadowRoot.setTreeScope(*this);
 }
 
-TreeScope::TreeScope(Document* document)
+TreeScope::TreeScope(Document& document)
     : m_rootNode(document)
-    , m_documentScope(document)
+    , m_documentScope(&document)
     , m_parentTreeScope(nullptr)
-    , m_selfOnlyRefCount(0)
-    , m_idTargetObserverRegistry(IdTargetObserverRegistry::create())
+    , m_idTargetObserverRegistry(std::make_unique<IdTargetObserverRegistry>())
 {
-    ASSERT(document);
-    m_rootNode->setTreeScope(*this);
-}
-
-TreeScope::TreeScope()
-    : m_rootNode(nullptr)
-    , m_documentScope(nullptr)
-    , m_parentTreeScope(nullptr)
-    , m_selfOnlyRefCount(0)
-{
+    document.setTreeScope(*this);
 }
 
 TreeScope::~TreeScope()
 {
-    ASSERT(!m_selfOnlyRefCount);
-    m_rootNode->setTreeScope(noDocumentInstance());
-
     if (m_selection) {
         m_selection->clearTreeScope();
         m_selection = nullptr;
     }
-
-    if (m_parentTreeScope)
-        m_parentTreeScope->selfOnlyDeref();
 }
 
 void TreeScope::destroyTreeScopeData()
 {
-    m_elementsById.clear();
-    m_imageMapsByName.clear();
-    m_labelsByForAttribute.clear();
-}
-
-void TreeScope::clearDocumentScope()
-{
-    ASSERT(rootNode()->isDocumentNode());
-    m_documentScope = nullptr;
+    m_elementsById = nullptr;
+    m_imageMapsByName = nullptr;
+    m_labelsByForAttribute = nullptr;
 }
 
 void TreeScope::setParentTreeScope(TreeScope* newParentScope)
 {
     // A document node cannot be re-parented.
-    ASSERT(!rootNode()->isDocumentNode());
+    ASSERT(!m_rootNode.isDocumentNode());
     // Every scope other than document needs a parent scope.
     ASSERT(newParentScope);
 
-    newParentScope->selfOnlyRef();
-    if (m_parentTreeScope)
-        m_parentTreeScope->selfOnlyDeref();
     m_parentTreeScope = newParentScope;
-    setDocumentScope(newParentScope->documentScope());
+    setDocumentScope(&newParentScope->documentScope());
 }
 
 Element* TreeScope::getElementById(const AtomicString& elementId) const
@@ -153,7 +121,7 @@ const Vector<Element*>* TreeScope::getAllElementsById(const AtomicString& elemen
 void TreeScope::addElementById(const AtomicStringImpl& elementId, Element& element)
 {
     if (!m_elementsById)
-        m_elementsById = adoptPtr(new DocumentOrderedMap);
+        m_elementsById = std::make_unique<DocumentOrderedMap>();
     m_elementsById->add(elementId, element, *this);
     m_idTargetObserverRegistry->notifyObservers(elementId);
 }
@@ -178,7 +146,7 @@ Element* TreeScope::getElementByName(const AtomicString& name) const
 void TreeScope::addElementByName(const AtomicStringImpl& name, Element& element)
 {
     if (!m_elementsByName)
-        m_elementsByName = adoptPtr(new DocumentOrderedMap);
+        m_elementsByName = std::make_unique<DocumentOrderedMap>();
     m_elementsByName->add(name, element, *this);
 }
 
@@ -206,7 +174,7 @@ void TreeScope::addImageMap(HTMLMapElement& imageMap)
     if (!name)
         return;
     if (!m_imageMapsByName)
-        m_imageMapsByName = adoptPtr(new DocumentOrderedMap);
+        m_imageMapsByName = std::make_unique<DocumentOrderedMap>();
     m_imageMapsByName->add(*name, imageMap, *this);
 }
 
@@ -230,7 +198,7 @@ HTMLMapElement* TreeScope::getImageMap(const String& url) const
     String name = (hashPos == notFound ? url : url.substring(hashPos + 1)).impl();
     if (name.isEmpty())
         return nullptr;
-    if (rootNode()->document().isHTMLDocument()) {
+    if (m_rootNode.document().isHTMLDocument()) {
         AtomicString lowercasedName = name.lower();
         return m_imageMapsByName->getElementByLowercasedMapName(*lowercasedName.impl(), *this);
     }
@@ -271,7 +239,7 @@ Node* nodeFromPoint(Document* document, int x, int y, LayoutPoint* localPoint)
 
 Element* TreeScope::elementFromPoint(int x, int y) const
 {
-    Node* node = nodeFromPoint(&rootNode()->document(), x, y);
+    Node* node = nodeFromPoint(&m_rootNode.document(), x, y);
     while (node && !node->isElementNode())
         node = node->parentNode();
     if (node)
@@ -298,9 +266,9 @@ HTMLLabelElement* TreeScope::labelElementForId(const AtomicString& forAttributeV
 
     if (!m_labelsByForAttribute) {
         // Populate the map on first access.
-        m_labelsByForAttribute = adoptPtr(new DocumentOrderedMap);
+        m_labelsByForAttribute = std::make_unique<DocumentOrderedMap>();
 
-        for (auto& label : descendantsOfType<HTMLLabelElement>(*rootNode())) {
+        for (auto& label : descendantsOfType<HTMLLabelElement>(m_rootNode)) {
             const AtomicString& forValue = label.fastGetAttribute(forAttr);
             if (!forValue.isEmpty())
                 addLabel(*forValue.impl(), label);
@@ -312,26 +280,16 @@ HTMLLabelElement* TreeScope::labelElementForId(const AtomicString& forAttributeV
 
 DOMSelection* TreeScope::getSelection() const
 {
-    if (!rootNode()->document().frame())
+    if (!m_rootNode.document().frame())
         return nullptr;
 
     if (m_selection)
         return m_selection.get();
 
-    // FIXME: The correct selection in Shadow DOM requires that Position can have a ShadowRoot
-    // as a container. It is now enabled only if runtime Shadow DOM feature is enabled.
-    // See https://bugs.webkit.org/show_bug.cgi?id=82697
-#if ENABLE(SHADOW_DOM)
-    if (RuntimeEnabledFeatures::sharedFeatures().shadowDOMEnabled()) {
-        m_selection = DOMSelection::create(this);
-        return m_selection.get();
-    }
-#endif
+    if (this != &m_rootNode.document())
+        return m_rootNode.document().getSelection();
 
-    if (this != &rootNode()->document())
-        return rootNode()->document().getSelection();
-
-    m_selection = DOMSelection::create(&rootNode()->document());
+    m_selection = DOMSelection::create(&m_rootNode.document());
     return m_selection.get();
 }
 
@@ -341,8 +299,8 @@ Element* TreeScope::findAnchor(const String& name)
         return nullptr;
     if (Element* element = getElementById(name))
         return element;
-    for (auto& anchor : descendantsOfType<HTMLAnchorElement>(*rootNode())) {
-        if (rootNode()->document().inQuirksMode()) {
+    for (auto& anchor : descendantsOfType<HTMLAnchorElement>(m_rootNode)) {
+        if (m_rootNode.document().inQuirksMode()) {
             // Quirks mode, case insensitive comparison of names.
             if (equalIgnoringCase(anchor.name(), name))
                 return &anchor;
@@ -353,11 +311,6 @@ Element* TreeScope::findAnchor(const String& name)
         }
     }
     return nullptr;
-}
-
-bool TreeScope::applyAuthorStyles() const
-{
-    return true;
 }
 
 void TreeScope::adoptIfNeeded(Node* node)
@@ -382,7 +335,7 @@ static Element* focusedFrameOwnerElement(Frame* focusedFrame, Frame* currentFram
 
 Element* TreeScope::focusedElement()
 {
-    Document& document = rootNode()->document();
+    Document& document = m_rootNode.document();
     Element* element = document.focusedElement();
 
     if (!element && document.page())
@@ -391,7 +344,7 @@ Element* TreeScope::focusedElement()
         return nullptr;
     TreeScope* treeScope = &element->treeScope();
     while (treeScope != this && treeScope != &document) {
-        element = toShadowRoot(treeScope->rootNode())->hostElement();
+        element = toShadowRoot(treeScope->rootNode()).hostElement();
         treeScope = &element->treeScope();
     }
     if (this != treeScope)
@@ -434,26 +387,6 @@ TreeScope* commonTreeScope(Node* nodeA, Node* nodeB)
         return nullptr;
     
     return treeScopesA[indexA] == treeScopesB[indexB] ? treeScopesA[indexA] : nullptr;
-}
-
-#ifndef NDEBUG
-bool TreeScope::deletionHasBegun()
-{
-    return rootNode() && rootNode()->m_deletionHasBegun;
-}
-
-void TreeScope::beginDeletion()
-{
-    ASSERT(this != &noDocumentInstance());
-    rootNode()->m_deletionHasBegun = true;
-}
-#endif
-
-int TreeScope::refCount() const
-{
-    if (Node* root = rootNode())
-        return root->refCount();
-    return 0;
 }
 
 } // namespace WebCore

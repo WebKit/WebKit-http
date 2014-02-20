@@ -26,11 +26,13 @@
 #include "FrameLoaderTypes.h"
 #include "LayoutMilestones.h"
 #include "LayoutRect.h"
+#include "PageThrottler.h"
 #include "PageVisibilityState.h"
 #include "Pagination.h"
 #include "PlatformScreen.h"
 #include "Region.h"
 #include "Supplementable.h"
+#include "ViewState.h"
 #include "ViewportArguments.h"
 #include <wtf/Forward.h>
 #include <wtf/HashMap.h>
@@ -44,7 +46,7 @@
 #include <sys/time.h> // For time_t structure.
 #endif
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
 #include <wtf/SchedulePair.h>
 #endif
 
@@ -248,7 +250,7 @@ public:
     // NoMatchAfterUserSelection if there is no matching text after the user selection.
     enum { NoMatchAfterUserSelection = -1 };
     void findStringMatchingRanges(const String&, FindOptions, int maxCount, Vector<RefPtr<Range>>*, int& indexForSelection);
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
     void addSchedulePair(PassRefPtr<SchedulePair>);
     void removeSchedulePair(PassRefPtr<SchedulePair>);
     SchedulePairHashSet* scheduledRunLoopPairs() { return m_scheduledRunLoopPairs.get(); }
@@ -289,18 +291,18 @@ public:
     unsigned pageCount() const;
 
     // Notifications when the Page starts and stops being presented via a native window.
-    void setIsVisible(bool isVisible, bool isInitial);
+    void setViewState(ViewState::Flags);
+    void setIsVisible(bool);
     void setIsPrerender();
-    bool isVisible() const { return m_isVisible; }
+    bool isVisible() const { return m_viewState & ViewState::IsVisible; }
 
     // Notification that this Page was moved into or out of a native window.
     void setIsInWindow(bool);
-    bool isInWindow() const { return m_isInWindow; }
+    bool isInWindow() const { return m_viewState & ViewState::IsInWindow; }
 
     void suspendScriptedAnimations();
     void resumeScriptedAnimations();
     bool scriptedAnimationsSuspended() const { return m_scriptedAnimationsSuspended; }
-    void setIsVisuallyIdle(bool);
 
     void userStyleSheetLocationChanged();
     const String& userStyleSheet() const;
@@ -320,20 +322,8 @@ public:
     StorageNamespace* sessionStorage(bool optionalCreate = true);
     void setSessionStorage(PassRefPtr<StorageNamespace>);
 
-    // FIXME: We should make Settings::maxParseDuration() platform-independent, remove {has, set}CustomHTMLTokenizerTimeDelay()
-    // and customHTMLTokenizerTimeDelay() and modify theirs callers to update or query Settings::maxParseDuration().
-    void setCustomHTMLTokenizerTimeDelay(double);
-#if PLATFORM(IOS)
-    bool hasCustomHTMLTokenizerTimeDelay() const { return m_settings->maxParseDuration() != -1; }
-    double customHTMLTokenizerTimeDelay() const { ASSERT(m_settings->maxParseDuration() != -1); return m_settings->maxParseDuration(); }
-#else
-    bool hasCustomHTMLTokenizerTimeDelay() const { return m_customHTMLTokenizerTimeDelay != -1; }
-    double customHTMLTokenizerTimeDelay() const { ASSERT(m_customHTMLTokenizerTimeDelay != -1); return m_customHTMLTokenizerTimeDelay; }
-#endif
-
-    void setCustomHTMLTokenizerChunkSize(int);
-    bool hasCustomHTMLTokenizerChunkSize() const { return m_customHTMLTokenizerChunkSize != -1; }
-    int customHTMLTokenizerChunkSize() const { ASSERT(m_customHTMLTokenizerChunkSize != -1); return m_customHTMLTokenizerChunkSize; }
+    bool hasCustomHTMLTokenizerTimeDelay() const;
+    double customHTMLTokenizerTimeDelay() const;
 
     void setMemoryCacheClientCallsEnabled(bool);
     bool areMemoryCacheClientCallsEnabled() const { return m_areMemoryCacheClientCallsEnabled; }
@@ -389,14 +379,10 @@ public:
     void sawMediaEngine(const String& engineName);
     void resetSeenMediaEngines();
 
-    PageThrottler& pageThrottler() { return *m_pageThrottler; }
-    std::unique_ptr<PageActivityAssertionToken> createActivityToken();
+    PageThrottler& pageThrottler() { return m_pageThrottler; }
 
     PageConsole& console() { return *m_console; }
 
-#if ENABLE(HIDDEN_PAGE_DOM_TIMER_THROTTLING)
-    void hiddenPageDOMTimerThrottlingStateChanged();
-#endif
 #if ENABLE(PAGE_VISIBILITY_API)
     void hiddenPageCSSAnimationSuspensionStateChanged();
 #endif
@@ -417,6 +403,10 @@ public:
 private:
     void initGroup();
 
+    void setIsInWindowInternal(bool);
+    void setIsVisibleInternal(bool);
+    void setIsVisuallyIdleInternal(bool);
+
 #if ASSERT_DISABLED
     void checkSubframeCountConsistency() const { }
 #else
@@ -433,13 +423,11 @@ private:
     void setMinimumTimerInterval(double);
     double minimumTimerInterval() const;
 
-    void setTimerAlignmentInterval(double);
-    double timerAlignmentInterval() const;
+    double timerAlignmentInterval() const { return m_timerAlignmentInterval; }
 
     Vector<Ref<PluginViewBase>> pluginViews();
 
-    void throttleTimers();
-    void unthrottleTimers();
+    void setTimerThrottlingEnabled(bool);
 
     const std::unique_ptr<Chrome> m_chrome;
     const std::unique_ptr<DragCaretController> m_dragCaretController;
@@ -504,9 +492,6 @@ private:
 
     JSC::Debugger* m_debugger;
 
-    double m_customHTMLTokenizerTimeDelay;
-    int m_customHTMLTokenizerChunkSize;
-
     bool m_canStartMedia;
 
     RefPtr<StorageNamespace> m_sessionStorage;
@@ -517,12 +502,12 @@ private:
 
     double m_minimumTimerInterval;
 
+    bool m_timerThrottlingEnabled;
     double m_timerAlignmentInterval;
 
     bool m_isEditable;
-    bool m_isInWindow;
-    bool m_isVisible;
     bool m_isPrerender;
+    ViewState::Flags m_viewState;
 
     LayoutMilestones m_requestedLayoutMilestones;
 
@@ -540,7 +525,7 @@ private:
     AlternativeTextClient* m_alternativeTextClient;
 
     bool m_scriptedAnimationsSuspended;
-    const std::unique_ptr<PageThrottler> m_pageThrottler;
+    PageThrottler m_pageThrottler;
     const std::unique_ptr<PageConsole> m_console;
 
 #if ENABLE(REMOTE_INSPECTOR)

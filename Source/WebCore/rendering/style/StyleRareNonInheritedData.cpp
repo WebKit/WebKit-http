@@ -89,7 +89,7 @@ StyleRareNonInheritedData::StyleRareNonInheritedData()
     , m_wrapFlow(RenderStyle::initialWrapFlow())
     , m_wrapThrough(RenderStyle::initialWrapThrough())
     , m_runningAcceleratedAnimation(false)
-    , m_hasAspectRatio(false)
+    , m_aspectRatioType(RenderStyle::initialAspectRatioType())
 #if ENABLE(CSS_COMPOSITING)
     , m_effectiveBlendMode(RenderStyle::initialBlendMode())
 #endif
@@ -119,7 +119,7 @@ inline StyleRareNonInheritedData::StyleRareNonInheritedData(const StyleRareNonIn
     , m_gridItem(o.m_gridItem)
     , m_content(o.m_content ? o.m_content->clone() : nullptr)
     , m_counterDirectives(o.m_counterDirectives ? clone(*o.m_counterDirectives) : nullptr)
-    , m_boxShadow(o.m_boxShadow ? adoptPtr(new ShadowData(*o.m_boxShadow)) : nullptr)
+    , m_boxShadow(o.m_boxShadow ? std::make_unique<ShadowData>(*o.m_boxShadow) : nullptr)
     , m_boxReflect(o.m_boxReflect)
     , m_animations(o.m_animations ? adoptPtr(new AnimationList(*o.m_animations)) : nullptr)
     , m_transitions(o.m_transitions ? adoptPtr(new AnimationList(*o.m_transitions)) : nullptr)
@@ -169,7 +169,7 @@ inline StyleRareNonInheritedData::StyleRareNonInheritedData(const StyleRareNonIn
     , m_wrapFlow(o.m_wrapFlow)
     , m_wrapThrough(o.m_wrapThrough)
     , m_runningAcceleratedAnimation(o.m_runningAcceleratedAnimation)
-    , m_hasAspectRatio(o.m_hasAspectRatio)
+    , m_aspectRatioType(o.m_aspectRatioType)
 #if ENABLE(CSS_COMPOSITING)
     , m_effectiveBlendMode(o.m_effectiveBlendMode)
 #endif
@@ -263,7 +263,7 @@ bool StyleRareNonInheritedData::operator==(const StyleRareNonInheritedData& o) c
 #if ENABLE(CSS_COMPOSITING)
         && m_effectiveBlendMode == o.m_effectiveBlendMode
 #endif
-        && m_hasAspectRatio == o.m_hasAspectRatio
+        && m_aspectRatioType == o.m_aspectRatioType
         && m_objectFit == o.m_objectFit;
 }
 

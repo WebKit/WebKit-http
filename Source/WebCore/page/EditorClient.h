@@ -35,7 +35,7 @@
 #include <wtf/Forward.h>
 #include <wtf/Vector.h>
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
 OBJC_CLASS NSAttributedString;
 OBJC_CLASS NSString;
 OBJC_CLASS NSURL;
@@ -119,8 +119,6 @@ public:
     virtual void textDidChangeInTextArea(Element*) = 0;
 
 #if PLATFORM(IOS)
-    virtual void suppressSelectionNotifications() = 0;
-    virtual void restoreSelectionNotifications() = 0;
     virtual void startDelayingAndCoalescingContentChangeNotifications() = 0;
     virtual void stopDelayingAndCoalescingContentChangeNotifications() = 0;
     virtual void writeDataToPasteboard(NSDictionary*) = 0;
@@ -133,7 +131,7 @@ public:
     virtual int pasteboardChangeCount() = 0;
 #endif
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
     virtual NSString* userVisibleString(NSURL*) = 0;
     virtual DocumentFragment* documentFragmentFromAttributedString(NSAttributedString*, Vector< RefPtr<ArchiveResource>>&) = 0;
     virtual void setInsertionPasteboard(const String& pasteboardName) = 0;

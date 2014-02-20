@@ -88,6 +88,7 @@ void clobberize(Graph& graph, Node* node, ReadFunctor& read, WriteFunctor& write
     case WeakJSConstant:
     case Identity:
     case Phantom:
+    case HardPhantom:
     case Breakpoint:
     case ProfileWillCall:
     case ProfileDidCall:
@@ -469,6 +470,10 @@ void clobberize(Graph& graph, Node* node, ReadFunctor& read, WriteFunctor& write
         read(AbstractHeap(NamedProperties, graph.m_storageAccessData[node->storageAccessDataIndex()].identifierNumber));
         return;
         
+    case MultiGetByOffset:
+        read(AbstractHeap(NamedProperties, node->multiGetByOffsetData().identifierNumber));
+        return;
+        
     case PutByOffset:
         write(AbstractHeap(NamedProperties, graph.m_storageAccessData[node->storageAccessDataIndex()].identifierNumber));
         return;
@@ -604,7 +609,7 @@ void clobberize(Graph& graph, Node* node, ReadFunctor& read, WriteFunctor& write
         return;
         
     case GetMyArgumentsLength:
-        read(AbstractHeap(Variables, graph.argumentsRegisterFor(node->codeOrigin)));
+        read(AbstractHeap(Variables, graph.argumentsRegisterFor(node->origin.semantic)));
         read(AbstractHeap(Variables, JSStack::ArgumentCount));
         return;
         
@@ -613,7 +618,7 @@ void clobberize(Graph& graph, Node* node, ReadFunctor& read, WriteFunctor& write
         return;
         
     case CheckArgumentsNotCreated:
-        read(AbstractHeap(Variables, graph.argumentsRegisterFor(node->codeOrigin)));
+        read(AbstractHeap(Variables, graph.argumentsRegisterFor(node->origin.semantic)));
         return;
 
     case ThrowReferenceError:

@@ -60,9 +60,6 @@
 #include "FrameLoader.h"
 #include "FrameLoaderClient.h"
 #include "FrameView.h"
-#include "HashChangeEvent.h"
-#include "HistogramSupport.h"
-#include "History.h"
 #include "HTMLAllCollection.h"
 #include "HTMLAnchorElement.h"
 #include "HTMLBaseElement.h"
@@ -86,6 +83,9 @@
 #include "HTMLStyleElement.h"
 #include "HTMLTitleElement.h"
 #include "HTTPParsers.h"
+#include "HashChangeEvent.h"
+#include "HistogramSupport.h"
+#include "History.h"
 #include "HitTestResult.h"
 #include "IconController.h"
 #include "ImageLoader.h"
@@ -126,7 +126,6 @@
 #include "SVGSVGElement.h"
 #include "SchemeRegistry.h"
 #include "ScopedEventQueue.h"
-#include "ScriptCallStack.h"
 #include "ScriptController.h"
 #include "ScriptRunner.h"
 #include "ScriptSourceCode.h"
@@ -153,6 +152,7 @@
 #include "XPathNSResolver.h"
 #include "XPathResult.h"
 #include "htmlediting.h"
+#include <inspector/ScriptCallStack.h>
 #include <wtf/CurrentTime.h>
 #include <wtf/TemporaryChange.h>
 #include <wtf/text/StringBuffer.h>
@@ -393,13 +393,14 @@ bool TextAutoSizingTraits::isDeletedValue(const TextAutoSizingKey& value)
 #endif
 
 Document::Document(Frame* frame, const URL& url, unsigned documentClasses, unsigned constructionFlags)
-    : ContainerNode(nullptr, CreateDocument)
-    , TreeScope(this)
+    : ContainerNode(*this, CreateDocument)
+    , TreeScope(*this)
 #if ENABLE(TOUCH_EVENTS) && PLATFORM(IOS)
     , m_handlingTouchEvent(false)
     , m_touchEventRegionsDirty(false)
     , m_touchEventsChangedTimer(this, &Document::touchEventsChangedTimerFired)
 #endif
+    , m_referencingNodeCount(0)
     , m_styleResolverThrowawayTimer(this, &Document::styleResolverThrowawayTimerFired, timeBeforeThrowingAwayStyleResolverAfterLastUseInSeconds)
     , m_didCalculateStyleResolver(false)
     , m_hasNodesWithPlaceholderStyle(false)
@@ -457,7 +458,6 @@ Document::Document(Frame* frame, const URL& url, unsigned documentClasses, unsig
     , m_documentClasses(documentClasses)
     , m_isSynthesized(constructionFlags & Synthesized)
     , m_isNonRenderedPlaceholder(constructionFlags & NonRenderedPlaceholder)
-    , m_isViewSource(false)
     , m_sawElementsInKnownNamespaces(false)
     , m_isSrcdocDocument(false)
     , m_eventQueue(*this)
@@ -559,6 +559,13 @@ static bool isAttributeOnAllOwners(const WebCore::QualifiedName& attribute, cons
 }
 #endif
 
+PassRefPtr<Document> Document::create(ScriptExecutionContext& context)
+{
+    RefPtr<Document> document = adoptRef(new Document(nullptr, URL()));
+    document->setSecurityOrigin(context.securityOrigin());
+    return document.release();
+}
+
 Document::~Document()
 {
     ASSERT(!renderView());
@@ -626,43 +633,58 @@ Document::~Document()
     for (unsigned i = 0; i < WTF_ARRAY_LENGTH(m_nodeListAndCollectionCounts); ++i)
         ASSERT(!m_nodeListAndCollectionCounts[i]);
 
-    clearDocumentScope();
-
     InspectorCounters::decrementCounter(InspectorCounters::DocumentCounter);
 }
 
-void Document::dropChildren()
+void Document::removedLastRef()
 {
     ASSERT(!m_deletionHasBegun);
+    if (m_referencingNodeCount) {
+        // If removing a child removes the last node reference, we don't want the scope to be destroyed
+        // until after removeDetachedChildren returns, so we protect ourselves.
+        incrementReferencingNodeCount();
 
-    // We must make sure not to be retaining any of our children through
-    // these extra pointers or we will create a reference cycle.
-    m_focusedElement = nullptr;
-    m_hoveredElement = nullptr;
-    m_activeElement = nullptr;
-    m_titleElement = nullptr;
-    m_documentElement = nullptr;
-    m_userActionElements.documentDidRemoveLastRef();
+        // We must make sure not to be retaining any of our children through
+        // these extra pointers or we will create a reference cycle.
+        m_focusedElement = nullptr;
+        m_hoveredElement = nullptr;
+        m_activeElement = nullptr;
+        m_titleElement = nullptr;
+        m_documentElement = nullptr;
+        m_userActionElements.documentDidRemoveLastRef();
 #if ENABLE(FULLSCREEN_API)
-    m_fullScreenElement = nullptr;
-    m_fullScreenElementStack.clear();
+        m_fullScreenElement = nullptr;
+        m_fullScreenElementStack.clear();
 #endif
 
-    detachParser();
+        detachParser();
 
-    // removeDetachedChildren() doesn't always unregister IDs,
-    // so tear down scope information up front to avoid having
-    // stale references in the map.
+        // removeDetachedChildren() doesn't always unregister IDs,
+        // so tear down scope information up front to avoid having
+        // stale references in the map.
 
-    destroyTreeScopeData();
-    removeDetachedChildren();
-    m_formController.clear();
+        destroyTreeScopeData();
+        removeDetachedChildren();
+        m_formController.clear();
+        
+        m_markers->detach();
+        
+        m_cssCanvasElements.clear();
+        
+        commonTeardown();
 
-    m_markers->detach();
-
-    m_cssCanvasElements.clear();
-
-    commonTeardown();
+#ifndef NDEBUG
+        // We need to do this right now since selfOnlyDeref() can delete this.
+        m_inRemovedLastRefFunction = false;
+#endif
+        decrementReferencingNodeCount();
+    } else {
+#ifndef NDEBUG
+        m_inRemovedLastRefFunction = false;
+        m_deletionHasBegun = true;
+#endif
+        delete this;
+    }
 }
 
 void Document::commonTeardown()
@@ -689,8 +711,7 @@ Element* Document::getElementByAccessKey(const String& key)
 void Document::buildAccessKeyMap(TreeScope* scope)
 {
     ASSERT(scope);
-    ContainerNode* rootNode = scope->rootNode();
-    for (auto& element : descendantsOfType<Element>(*rootNode)) {
+    for (auto& element : descendantsOfType<Element>(scope->rootNode())) {
         const AtomicString& accessKey = element.fastGetAttribute(accesskeyAttr);
         if (!accessKey.isEmpty())
             m_elementsByAccessKey.set(accessKey.impl(), &element);
@@ -796,6 +817,14 @@ DocumentType* Document::doctype() const
 void Document::childrenChanged(const ChildChange& change)
 {
     ContainerNode::childrenChanged(change);
+
+#if PLATFORM(IOS)
+    // FIXME: Chrome::didReceiveDocType() used to be called only when the doctype changed. We need to check the
+    // impact of calling this systematically. If the overhead is negligible, we need to rename didReceiveDocType,
+    // otherwise, we need to detect the doc type changes before updating the viewport.
+    if (Page* page = this->page())
+        page->chrome().didReceiveDocType(frame());
+#endif
 
     Element* newDocumentElement = childrenOfType<Element>(*this).first();
     if (newDocumentElement == m_documentElement)
@@ -1065,11 +1094,6 @@ PassRefPtr<Element> Document::createElement(const QualifiedName& name, bool crea
 bool Document::regionBasedColumnsEnabled() const
 {
     return settings() && settings()->regionBasedColumnsEnabled(); 
-}
-
-bool Document::cssStickyPositionEnabled() const
-{
-    return settings() && settings()->cssStickyPositionEnabled(); 
 }
 
 bool Document::cssRegionsEnabled() const
@@ -1893,15 +1917,6 @@ void Document::pageSizeAndMarginsInPixels(int pageIndex, IntSize& pageSize, int&
     marginLeft = style->marginLeft().isAuto() ? marginLeft : intValueForLength(style->marginLeft(), width, view);
 }
 
-void Document::setIsViewSource(bool isViewSource)
-{
-    m_isViewSource = isViewSource;
-    if (!m_isViewSource)
-        return;
-
-    setSecurityOrigin(SecurityOrigin::createUnique());
-}
-
 void Document::createStyleResolver()
 {
     bool matchAuthorAndUserStyles = true;
@@ -2424,7 +2439,7 @@ void Document::implicitClose()
 
     m_processingLoadEvent = false;
 
-#if PLATFORM(MAC) || PLATFORM(WIN) || PLATFORM(GTK) || PLATFORM(EFL)
+#if PLATFORM(COCOA) || PLATFORM(WIN) || PLATFORM(GTK) || PLATFORM(EFL)
     if (f && hasLivingRenderTree() && AXObjectCache::accessibilityEnabled()) {
         // The AX cache may have been cleared at this point, but we need to make sure it contains an
         // AX object to send the notification to. getOrCreate will make sure that an valid AX object
@@ -2560,9 +2575,9 @@ EventTarget* Document::errorEventTarget()
     return m_domWindow.get();
 }
 
-void Document::logExceptionToConsole(const String& errorMessage, const String& sourceURL, int lineNumber, int columnNumber, PassRefPtr<ScriptCallStack> callStack)
+void Document::logExceptionToConsole(const String& errorMessage, const String& sourceURL, int lineNumber, int columnNumber, PassRefPtr<Inspector::ScriptCallStack> callStack)
 {
-    addMessage(JSMessageSource, ErrorMessageLevel, errorMessage, sourceURL, lineNumber, columnNumber, callStack);
+    addMessage(MessageSource::JS, MessageLevel::Error, errorMessage, sourceURL, lineNumber, columnNumber, callStack);
 }
 
 void Document::setURL(const URL& url)
@@ -2821,7 +2836,7 @@ void Document::processHttpEquiv(const String& equiv, const String& content)
                 // intent, we must navigate away from the possibly partially-rendered document to a location that
                 // doesn't inherit the parent's SecurityOrigin.
                 frame->navigationScheduler().scheduleLocationChange(securityOrigin(), SecurityOrigin::urlWithUniqueSecurityOrigin(), String());
-                addConsoleMessage(SecurityMessageSource, ErrorMessageLevel, message, requestIdentifier);
+                addConsoleMessage(MessageSource::Security, MessageLevel::Error, message, requestIdentifier);
             }
         }
     } else if (equalIgnoringCase(equiv, "content-security-policy"))
@@ -3747,6 +3762,11 @@ String Document::referrer() const
     if (frame())
         return frame()->loader().referrer();
     return String();
+}
+
+String Document::origin() const
+{
+    return securityOrigin()->databaseIdentifier();
 }
 
 String Document::domain() const
@@ -4781,7 +4801,7 @@ void Document::addConsoleMessage(MessageSource source, MessageLevel level, const
         page->console().addMessage(source, level, message, requestIdentifier, this);
 }
 
-void Document::addMessage(MessageSource source, MessageLevel level, const String& message, const String& sourceURL, unsigned lineNumber, unsigned columnNumber, PassRefPtr<ScriptCallStack> callStack, JSC::ExecState* state, unsigned long requestIdentifier)
+void Document::addMessage(MessageSource source, MessageLevel level, const String& message, const String& sourceURL, unsigned lineNumber, unsigned columnNumber, PassRefPtr<Inspector::ScriptCallStack> callStack, JSC::ExecState* state, unsigned long requestIdentifier)
 {
     if (!isContextThread()) {
         postTask(AddConsoleMessageTask::create(source, level, message));
@@ -5993,5 +6013,23 @@ void Document::ensurePlugInsInjectedScript(DOMWrapperWorld& world)
 
     m_hasInjectedPlugInsScript = true;
 }
+
+#if ENABLE(SUBTLE_CRYPTO)
+bool Document::wrapCryptoKey(const Vector<uint8_t>& key, Vector<uint8_t>& wrappedKey)
+{
+    Page* page = this->page();
+    if (!page)
+        return false;
+    return page->chrome().client().wrapCryptoKey(key, wrappedKey);
+}
+
+bool Document::unwrapCryptoKey(const Vector<uint8_t>& wrappedKey, Vector<uint8_t>& key)
+{
+    Page* page = this->page();
+    if (!page)
+        return false;
+    return page->chrome().client().unwrapCryptoKey(wrappedKey, key);
+}
+#endif // ENABLE(SUBTLE_CRYPTO)
 
 } // namespace WebCore

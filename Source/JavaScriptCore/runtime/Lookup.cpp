@@ -22,7 +22,7 @@
 
 #include "Executable.h"
 #include "JSFunction.h"
-#include "Operations.h"
+#include "JSCInlines.h"
 
 namespace JSC {
 
@@ -34,8 +34,8 @@ void HashTable::createTable(VM& vm) const
     for (int i = 0; i < compactSize; ++i)
         entries[i].setKey(0);
     for (int i = 0; values[i].key; ++i) {
-        StringImpl* identifier = Identifier::add(&vm, values[i].key).leakRef();
-        int hashIndex = identifier->existingHash() & compactHashSizeMask;
+        StringImpl& identifier = Identifier::add(&vm, values[i].key).leakRef();
+        int hashIndex = identifier.existingHash() & compactHashSizeMask;
         HashEntry* entry = &entries[hashIndex];
 
         if (entry->key()) {
@@ -47,7 +47,7 @@ void HashTable::createTable(VM& vm) const
             entry = entry->next();
         }
 
-        entry->initialize(identifier, values[i].attributes, values[i].value1, values[i].value2, values[i].intrinsic);
+        entry->initialize(&identifier, values[i].attributes, values[i].value1, values[i].value2, values[i].intrinsic);
     }
     table = entries;
 }
@@ -68,7 +68,7 @@ void HashTable::deleteTable() const
 bool setUpStaticFunctionSlot(ExecState* exec, const HashEntry* entry, JSObject* thisObj, PropertyName propertyName, PropertySlot& slot)
 {
     ASSERT(thisObj->globalObject());
-    ASSERT(entry->attributes() & Function);
+    ASSERT(entry->attributes() & BuiltinOrFunction);
     VM& vm = exec->vm();
     unsigned attributes;
     PropertyOffset offset = thisObj->getDirectOffset(vm, propertyName, attributes);
@@ -79,9 +79,13 @@ bool setUpStaticFunctionSlot(ExecState* exec, const HashEntry* entry, JSObject* 
         if (thisObj->staticFunctionsReified())
             return false;
     
-        thisObj->putDirectNativeFunction(
-            vm, thisObj->globalObject(), propertyName, entry->functionLength(),
-            entry->function(), entry->intrinsic(), entry->attributes());
+        if (entry->attributes() & Builtin)
+            thisObj->putDirectBuiltinFunction(vm, thisObj->globalObject(), propertyName, entry->builtinGenerator()(vm), entry->attributes());
+        else {
+            thisObj->putDirectNativeFunction(
+                vm, thisObj->globalObject(), propertyName, entry->functionLength(),
+                entry->function(), entry->intrinsic(), entry->attributes());
+        }
         offset = thisObj->getDirectOffset(vm, propertyName, attributes);
         ASSERT(isValidOffset(offset));
     }

@@ -32,6 +32,8 @@
 #include "config.h"
 #include "WorkerScriptDebugServer.h"
 
+#if ENABLE(INSPECTOR)
+
 #include "JSDOMBinding.h"
 #include "Timer.h"
 #include "WorkerDebuggerAgent.h"
@@ -94,7 +96,7 @@ void WorkerScriptDebugServer::runEventLoopWhilePaused()
 
     MessageQueueWaitResult result;
     do {
-        result = m_workerGlobalScope->thread()->runLoop().runInMode(m_workerGlobalScope, m_debuggerTaskMode);
+        result = m_workerGlobalScope->thread().runLoop().runInMode(m_workerGlobalScope, m_debuggerTaskMode);
     // Keep waiting until execution is resumed.
     } while (result != MessageQueueTerminated && !m_doneProcessingDebuggerEvents);
 }
@@ -109,3 +111,5 @@ void WorkerScriptDebugServer::interruptAndRunTask(PassOwnPtr<ScriptDebugServer::
 }
 
 } // namespace WebCore
+
+#endif // ENABLE(INSPECTOR)

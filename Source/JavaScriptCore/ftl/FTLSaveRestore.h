@@ -32,6 +32,7 @@
 
 #include "FPRInfo.h"
 #include "GPRInfo.h"
+#include "Reg.h"
 
 namespace JSC {
 
@@ -41,6 +42,7 @@ namespace FTL {
 
 size_t requiredScratchMemorySizeInBytes();
 
+size_t offsetOfReg(Reg);
 size_t offsetOfGPR(GPRReg);
 size_t offsetOfFPR(FPRReg);
 

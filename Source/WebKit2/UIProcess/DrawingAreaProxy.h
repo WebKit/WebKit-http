@@ -73,13 +73,16 @@ public:
     virtual void adjustTransientZoom(double, WebCore::FloatPoint) { }
     virtual void commitTransientZoom(double, WebCore::FloatPoint) { }
 
-#if PLATFORM(MAC)
-    void setExposedRect(const WebCore::FloatRect&);
+#if PLATFORM(COCOA)
+    virtual void setExposedRect(const WebCore::FloatRect&);
     WebCore::FloatRect exposedRect() const { return m_exposedRect; }
     void exposedRectChangedTimerFired(WebCore::Timer<DrawingAreaProxy>*);
     
     void setCustomFixedPositionRect(const WebCore::FloatRect&);
 #endif
+
+    virtual void showDebugIndicator(bool) { }
+    virtual bool isShowingDebugIndicator() const { return false; }
 
 protected:
     explicit DrawingAreaProxy(DrawingAreaType, WebPageProxy*);
@@ -104,7 +107,7 @@ private:
     virtual void enterAcceleratedCompositingMode(uint64_t /* backingStoreStateID */, const LayerTreeContext&) { }
     virtual void exitAcceleratedCompositingMode(uint64_t /* backingStoreStateID */, const UpdateInfo&) { }
     virtual void updateAcceleratedCompositingMode(uint64_t /* backingStoreStateID */, const LayerTreeContext&) { }
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
     virtual void didUpdateGeometry() { }
     virtual void intrinsicContentSizeDidChange(const WebCore::IntSize& newIntrinsicContentSize) { }
 
@@ -113,6 +116,9 @@ private:
     WebCore::FloatRect m_lastSentExposedRect;
 #endif
 };
+
+#define DRAWING_AREA_PROXY_TYPE_CASTS(ToValueTypeName, predicate) \
+    TYPE_CASTS_BASE(ToValueTypeName, DrawingAreaProxy, value, value->predicate, value.predicate)
 
 } // namespace WebKit
 

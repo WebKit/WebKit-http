@@ -101,7 +101,7 @@ macro cCall2(function, arg1, arg2)
         move arg1, a0
         move arg2, a1
         call function
-    elsif X86
+    elsif X86 or X86_WIN
         subp 8, sp
         push arg2
         push arg1
@@ -133,7 +133,7 @@ macro cCall4(function, arg1, arg2, arg3, arg4)
         move arg3, a2
         move arg4, a3
         call function
-    elsif X86
+    elsif X86 or X86_WIN
         push arg4
         push arg3
         push arg2
@@ -156,7 +156,7 @@ macro callSlowPath(slowPath)
 end
 
 macro doCallToJavaScript(makeCall)
-    if X86
+    if X86 or X86_WIN
         const entry = t4
         const vm = t3
         const protoCallFrame = t5
@@ -209,6 +209,9 @@ macro doCallToJavaScript(makeCall)
     if X86
         loadp 36[sp], vm
         loadp 32[sp], entry
+    elsif X86_WIN
+        loadp 40[sp, temp3], vm
+        loadp 36[sp, temp3], entry
     else
         move cfr, previousCFR
     end
@@ -228,12 +231,17 @@ macro doCallToJavaScript(makeCall)
     if X86
         loadp 28[sp], previousPC
         loadp 24[sp], previousCFR
+    elsif X86_WIN
+        loadp 32[sp, temp3], previousPC
+        loadp 28[sp, temp3], previousCFR
     end
     storep previousPC, ReturnPC[cfr]
     storep previousCFR, CallerFrame[cfr]
 
     if X86
         loadp 40[sp], protoCallFrame
+    elsif X86_WIN
+        loadp 44[sp, temp3], protoCallFrame
     end
 
     loadi ProtoCallFrame::paddedArgCount[protoCallFrame], temp2
@@ -344,7 +352,7 @@ macro makeHostFunctionCall(entry, temp1, temp2)
         storep lr, PtrSize[sp]
         cloopCallNative temp1
     else
-        if X86
+        if X86 or X86_WIN
             # Put callee frame pointer on stack as arg0, also put it in ecx for "fastcall" targets
             move 0, temp2
             move temp2, 4[sp] # put 0 in ReturnPC
@@ -357,7 +365,7 @@ macro makeHostFunctionCall(entry, temp1, temp2)
             addp CallerFrameAndPCSize, sp
         end
         call temp1
-        if X86
+        if X86 or X86_WIN
             addp 8, sp
         else
             subp CallerFrameAndPCSize, sp
@@ -556,6 +564,7 @@ end
 macro writeBarrierOnGlobalObject(valueOperand)
     if GGC
         loadisFromInstruction(valueOperand, t1)
+        loadConstantOrVariableTag(t1, t0)
         bineq t0, CellTag, .writeBarrierDone
     
         loadp CodeBlock[cfr], t3
@@ -1458,14 +1467,14 @@ macro putById(getPropertyStorage)
             storei t2, PayloadOffset[propertyStorage, t1]
             dispatch(9)
         end)
+
+    .opPutByIdSlow:
+        callSlowPath(_llint_slow_path_put_by_id)
+        dispatch(9)
 end
 
 _llint_op_put_by_id:
     putById(withInlineStorage)
-
-.opPutByIdSlow:
-    callSlowPath(_llint_slow_path_put_by_id)
-    dispatch(9)
 
 
 _llint_op_put_by_id_out_of_line:
@@ -1480,7 +1489,7 @@ macro putByIdTransition(additionalChecks, getPropertyStorage)
     loadConstantOrVariablePayload(t3, CellTag, t0, .opPutByIdSlow)
     loadi 12[PC], t2
     bpneq JSCell::m_structure[t0], t1, .opPutByIdSlow
-    additionalChecks(t1, t3)
+    additionalChecks(t1, t3, .opPutByIdSlow)
     loadi 20[PC], t1
     getPropertyStorage(
         t0,
@@ -1494,12 +1503,16 @@ macro putByIdTransition(additionalChecks, getPropertyStorage)
             storep t1, JSCell::m_structure[t0]
             dispatch(9)
         end)
+
+    .opPutByIdSlow:
+        callSlowPath(_llint_slow_path_put_by_id)
+        dispatch(9)
 end
 
-macro noAdditionalChecks(oldStructure, scratch)
+macro noAdditionalChecks(oldStructure, scratch, slowPath)
 end
 
-macro structureChainChecks(oldStructure, scratch)
+macro structureChainChecks(oldStructure, scratch, slowPath)
     const protoCell = oldStructure   # Reusing the oldStructure register for the proto
 
     loadp 28[PC], scratch
@@ -1510,7 +1523,7 @@ macro structureChainChecks(oldStructure, scratch)
 .loop:
     loadi Structure::m_prototype + PayloadOffset[oldStructure], protoCell
     loadp JSCell::m_structure[protoCell], oldStructure
-    bpneq oldStructure, [scratch], .opPutByIdSlow
+    bpneq oldStructure, [scratch], slowPath
     addp 4, scratch
     bineq Structure::m_prototype + TagOffset[oldStructure], NullTag, .loop
 .done:
@@ -2173,7 +2186,7 @@ macro nativeCallTrampoline(executableOffsetToFunction)
     loadi ScopeChain + PayloadOffset[t0], t1
     storei CellTag, ScopeChain + TagOffset[cfr]
     storei t1, ScopeChain + PayloadOffset[cfr]
-    if X86
+    if X86 or X86_WIN
         subp 8, sp # align stack pointer
         andp MarkedBlockMask, t1
         loadp MarkedBlock::m_weakSet + WeakSet::m_vm[t1], t3

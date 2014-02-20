@@ -258,16 +258,14 @@ FloatRect PageClientImpl::convertToUserSpace(const FloatRect& rect)
     return FloatRect();
 }
 
-IntPoint PageClientImpl::screenToWindow(const IntPoint& point)
+IntPoint PageClientImpl::screenToRootView(const IntPoint& point)
 {
-    notImplemented();
-    return IntPoint();
+    return IntPoint([m_view convertPoint:point fromView:nil]);
 }
 
-IntRect PageClientImpl::windowToScreen(const IntRect& rect)
+IntRect PageClientImpl::rootViewToScreen(const IntRect& rect)
 {
-    notImplemented();
-    return IntRect();
+    return enclosingIntRect([m_view convertRect:rect toView:nil]);
 }
 
 void PageClientImpl::doneWithKeyEvent(const NativeWebKeyboardEvent&, bool)
@@ -325,8 +323,7 @@ CALayer *PageClientImpl::acceleratedCompositingRootLayer() const
 
 RetainPtr<CGImageRef> PageClientImpl::takeViewSnapshot()
 {
-    notImplemented();
-    return nullptr;
+    return [m_view _takeViewSnapshot];
 }
 
 void PageClientImpl::wheelEventWasNotHandledByWebCore(const NativeWebWheelEvent& event)

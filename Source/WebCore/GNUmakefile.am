@@ -15,6 +15,7 @@ webcore_cppflags += \
 	-I$(srcdir)/Source/WebCore/Modules/indexeddb \
 	-I$(srcdir)/Source/WebCore/Modules/indexeddb/leveldb \
 	-I$(srcdir)/Source/WebCore/Modules/indieui \
+	-I$(srcdir)/Source/WebCore/Modules/mediacontrols \
 	-I$(srcdir)/Source/WebCore/Modules/mediasource \
 	-I$(srcdir)/Source/WebCore/Modules/mediastream \
 	-I$(srcdir)/Source/WebCore/Modules/navigatorcontentutils \
@@ -264,12 +265,16 @@ DerivedSources/WebCore/CSSGrammar.cpp: $(WebCore)/css/CSSGrammar.y.in
 	$(AM_V_GEN)
 	$(AM_V_at)perl -I $(WebCore)/bindings/scripts $(WebCore)/css/makegrammar.pl --extraDefines "$(feature_defines)" --outputDir $(GENSOURCES_WEBCORE) --bison "$(BISON)" --symbolsPrefix cssyy $<
 
+USER_AGENT_SCRIPT_FILES = $(WebCore)/Modules/mediacontrols/mediaControlsApple.js $(WebCore)/Modules/mediacontrols/mediaControlsGtk.js
+DerivedSources/WebCore/UserAgentScriptsData.cpp: DerivedSources/WebCore/UserAgentScripts.h
+DerivedSources/WebCore/UserAgentScripts.h: $(WebCore)/Scripts/make-js-file-arrays.py $(USER_AGENT_SCRIPT_FILES)
+	$(AM_V_GEN) PYTHONPATH=$(INSPECTOR_SCRIPTS_DIR) $(PYTHON) $< $@ DerivedSources/WebCore/UserAgentScriptsData.cpp $(USER_AGENT_SCRIPT_FILES)
+
 # user agent style sheets
 USER_AGENT_STYLE_SHEETS = \
 	$(WebCore)/css/html.css \
 	$(WebCore)/css/mathml.css \
 	$(WebCore)/css/quirks.css \
-	$(WebCore)/css/view-source.css \
 	$(WebCore)/css/svg.css \
 	$(WebCore)/css/mediaControls.css \
 	$(WebCore)/css/mediaControlsGtk.css \
@@ -337,7 +342,6 @@ WebCore_INSPECTOR_DOMAINS := \
     $(WebCore)/inspector/protocol/ApplicationCache.json \
     $(WebCore)/inspector/protocol/CSS.json \
     $(WebCore)/inspector/protocol/Canvas.json \
-    $(WebCore)/inspector/protocol/Console.json \
     $(WebCore)/inspector/protocol/DOM.json \
     $(WebCore)/inspector/protocol/DOMDebugger.json \
     $(WebCore)/inspector/protocol/DOMStorage.json \
@@ -399,6 +403,7 @@ IDL_PATH := \
     $(WebCore)/Modules/gamepad \
     $(WebCore)/Modules/geolocation \
     $(WebCore)/Modules/indexeddb \
+    $(WebCore)/Modules/mediacontrols \
     $(WebCore)/Modules/mediasource \
     $(WebCore)/Modules/mediastream \
     $(WebCore)/Modules/notifications \
@@ -695,7 +700,6 @@ EXTRA_DIST += \
 	Source/WebCore/css/svg.css \
 	Source/WebCore/css/SVGCSSPropertyNames.in \
 	Source/WebCore/css/SVGCSSValueKeywords.in \
-	Source/WebCore/css/view-source.css \
 	Source/WebCore/css/WebKitFontFamilyNames.in \
 	Source/WebCore/dom/EventNames.in \
 	Source/WebCore/dom/EventTargetFactory.in \

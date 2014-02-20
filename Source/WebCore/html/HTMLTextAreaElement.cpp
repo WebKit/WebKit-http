@@ -47,7 +47,6 @@
 #include "Text.h"
 #include "TextBreakIterator.h"
 #include "TextControlInnerElements.h"
-#include "TextIterator.h"
 #include "TextNodeTraversal.h"
 #include <wtf/Ref.h>
 #include <wtf/StdLibExtras.h>
@@ -270,7 +269,7 @@ void HTMLTextAreaElement::defaultEventHandler(Event* event)
     if (renderer() && (event->isMouseEvent() || event->isDragEvent() || event->eventInterface() == WheelEventInterfaceType || event->type() == eventNames().blurEvent))
         forwardEvent(event);
     else if (renderer() && event->isBeforeTextInsertedEvent())
-        handleBeforeTextInsertedEvent(static_cast<BeforeTextInsertedEvent*>(event));
+        handleBeforeTextInsertedEvent(toBeforeTextInsertedEvent(event));
 
     HTMLTextFormControlElement::defaultEventHandler(event);
 }
@@ -342,7 +341,6 @@ void HTMLTextAreaElement::updateValue() const
     ASSERT(renderer());
     m_value = innerTextValue();
     const_cast<HTMLTextAreaElement*>(this)->setFormControlValueMatchesRenderer(true);
-    const_cast<HTMLTextAreaElement*>(this)->notifyFormStateChanged();
     m_isDirty = true;
     m_wasModifiedByUser = true;
     const_cast<HTMLTextAreaElement*>(this)->updatePlaceholderVisibility(false);
@@ -395,7 +393,6 @@ void HTMLTextAreaElement::setValueCommon(const String& newValue)
         setSelectionRange(endOfString, endOfString);
     }
 
-    notifyFormStateChanged();
     setTextAsOfLastFormControlChangeEvent(normalizedValue);
 }
 

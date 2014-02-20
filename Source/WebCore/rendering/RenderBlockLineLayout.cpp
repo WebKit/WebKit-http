@@ -1016,11 +1016,6 @@ RootInlineBox* RenderBlockFlow::createLineBoxesFromBidiRuns(BidiRunList<BidiRun>
     // Compute our overflow now.
     lineBox->computeOverflow(lineBox->lineTop(), lineBox->lineBottom(), textBoxDataMap);
     
-#if PLATFORM(MAC)
-    // Highlight acts as an overflow inflation.
-    if (style().highlight() != nullAtom)
-        lineBox->addHighlightOverflow();
-#endif
     return lineBox;
 }
 
@@ -1059,7 +1054,7 @@ void RenderBlockFlow::layoutRunsAndFloats(LineLayoutState& layoutState, bool has
             // that the block really needed a full layout, we missed our chance to repaint the layer
             // before layout started.  Luckily the layer has cached the repaint rect for its original
             // position and size, and so we can use that to make a repaint happen now.
-            repaintUsingContainer(containerForRepaint(), pixelSnappedIntRect(layer()->repaintRect()));
+            repaintUsingContainer(containerForRepaint(), layer()->repaintRect());
         }
     }
 
@@ -2116,7 +2111,7 @@ bool RenderBlockFlow::positionNewFloatOnLine(FloatingObject* newFloat, FloatingO
     ASSERT(floatingObjectSet.last().get() == newFloat);
 
     LayoutUnit floatLogicalTop = logicalTopForFloat(newFloat);
-    int paginationStrut = newFloat->paginationStrut();
+    LayoutUnit paginationStrut = newFloat->paginationStrut();
 
     if (floatLogicalTop - paginationStrut != logicalHeight() + lineInfo.floatPaginationStrut())
         return true;

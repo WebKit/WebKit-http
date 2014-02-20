@@ -37,7 +37,7 @@
 #include <wtf/RetainPtr.h>
 #endif
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
 #include "WebCoreSystemInterface.h"
 #endif
 
@@ -133,7 +133,7 @@ String defaultDetailsSummaryText()
     return WEB_UI_STRING("Details", "text to display in <details> tag when it has no <summary> child");
 }
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
 String copyImageUnknownFileLabel()
 {
     return WEB_UI_STRING("unknown", "Unknown filename");
@@ -226,7 +226,7 @@ String contextMenuItemTagLearnSpelling()
     return WEB_UI_STRING("Learn Spelling", "Learn Spelling context menu item");
 }
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
 String contextMenuItemTagSearchInSpotlight()
 {
     return WEB_UI_STRING("Search in Spotlight", "Search in Spotlight context menu item");
@@ -235,7 +235,7 @@ String contextMenuItemTagSearchInSpotlight()
 
 String contextMenuItemTagSearchWeb()
 {
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
     RetainPtr<CFStringRef> searchProviderName = adoptCF(wkCopyDefaultSearchProviderDisplayName());
     return formatLocalizedString(WEB_UI_STRING("Search with %@", "Search with search provider context menu item with provider name inserted"), searchProviderName.get());
 #else
@@ -295,7 +295,7 @@ String contextMenuItemTagFontMenu()
     return WEB_UI_STRING("Font", "Font context sub-menu item");
 }
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
 String contextMenuItemTagShowFonts()
 {
     return WEB_UI_STRING("Show Fonts", "Show fonts context menu item");
@@ -322,7 +322,7 @@ String contextMenuItemTagOutline()
     return WEB_UI_STRING("Outline", "Outline context menu item");
 }
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
 String contextMenuItemTagStyles()
 {
     return WEB_UI_STRING("Styles...", "Styles context menu item");
@@ -374,7 +374,7 @@ String contextMenuItemTagRightToLeft()
     return WEB_UI_STRING("Right to Left", "Right to Left context menu item");
 }
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
 
 String contextMenuItemTagCorrectSpellingAutomatically()
 {
@@ -444,7 +444,7 @@ String contextMenuItemTagChangeBack(const String& replacedString)
     return replacedString;
 }
 
-#endif // PLATFORM(MAC)
+#endif // PLATFORM(COCOA)
 
 String contextMenuItemTagOpenVideoInNewWindow()
 {
@@ -653,7 +653,7 @@ String AXListItemActionVerb()
 }
 #endif // !PLATFORM(IOS)
 
-#if PLATFORM(MAC) || PLATFORM(IOS)
+#if PLATFORM(COCOA)
 String AXARIAContentGroupText(const String& ariaType)
 {
     if (ariaType == "ARIAApplicationAlert")
@@ -700,7 +700,7 @@ String AXARIAContentGroupText(const String& ariaType)
         return WEB_UI_STRING("math", "An ARIA accessibility group that contains mathematical symbols.");
     return String();
 }
-#endif // PLATFORM(MAC) || PLATFORM(IOS)
+#endif // PLATFORM(COCOA)
 
 String missingPluginText()
 {
@@ -746,7 +746,7 @@ String allFilesText()
 }
 #endif
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
 String builtInPDFPluginName()
 {
     // Also exposed to DOM.
@@ -1074,7 +1074,7 @@ String textTrackNoLabelText()
     return WEB_UI_STRING_KEY("Unknown", "Unknown (text track)", "Menu item label for a text track that has no other name");
 }
     
-#if PLATFORM(MAC) || PLATFORM(WIN)
+#if PLATFORM(COCOA) || PLATFORM(WIN)
 String textTrackCountryAndLanguageMenuItemText(const String& title, const String& country, const String& language)
 {
     return formatLocalizedString(WEB_UI_STRING("%@ (%@-%@)", "Text track display name format that includes the country and language of the subtitle, in the form of 'Title (Language-Country)'"), title.createCFString().get(), language.createCFString().get(), country.createCFString().get());
@@ -1117,5 +1117,17 @@ String useBlockedPlugInContextMenuTitle()
 {
     return formatLocalizedString(WEB_UI_STRING("Show in blocked plug-in", "Title of the context menu item to show when PDFPlugin was used instead of a blocked plugin"));
 }
+
+#if ENABLE(SUBTLE_CRYPTO)
+String webCryptoMasterKeyKeychainLabel(const String& localizedApplicationName)
+{
+    return formatLocalizedString(WEB_UI_STRING("%@ WebCrypto Master Key", "Name of application's single WebCrypto master key in Keychain"), localizedApplicationName.createCFString().get());
+}
+
+String webCryptoMasterKeyKeychainComment()
+{
+    return WEB_UI_STRING("Used to encrypt WebCrypto keys in persistent storage, such as IndexedDB", "Description of WebCrypto master keys in Keychain");
+}
+#endif
 
 } // namespace WebCore

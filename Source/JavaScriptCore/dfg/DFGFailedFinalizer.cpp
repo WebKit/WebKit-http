@@ -28,6 +28,8 @@
 
 #if ENABLE(DFG_JIT)
 
+#include "JSCInlines.h"
+
 namespace JSC { namespace DFG {
 
 FailedFinalizer::FailedFinalizer(Plan& plan)

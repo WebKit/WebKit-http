@@ -35,6 +35,8 @@
 WK_API_CLASS
 @interface WKPreferences : NSObject
 
+@property (nonatomic) CGFloat minimumFontSize;
+
 @end
 
 #endif // WK_API_ENABLED

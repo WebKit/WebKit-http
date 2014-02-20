@@ -169,7 +169,6 @@ public:
     static void setDefaultDOMTimerAlignmentInterval(double);
     static double defaultDOMTimerAlignmentInterval();
 
-    void setDOMTimerAlignmentInterval(double);
     double domTimerAlignmentInterval() const;
 
     void setLayoutInterval(std::chrono::milliseconds);
@@ -180,46 +179,11 @@ public:
     void setHiddenPageDOMTimerThrottlingEnabled(bool);
 #endif
 
-#if PLATFORM(IOS)
-    // FIXME: This setting isn't specific to iOS.
-    void setMaxParseDuration(double maxParseDuration) { m_maxParseDuration = maxParseDuration; }
-    double maxParseDuration() const { return m_maxParseDuration; }
-
-    void setStandalone(bool);
-    bool standalone() const { return m_standalone; }
-
-    void setTelephoneNumberParsingEnabled(bool flag) { m_telephoneNumberParsingEnabled = flag; }
-    bool telephoneNumberParsingEnabled() const { return m_telephoneNumberParsingEnabled; }
-
-    void setMediaDataLoadsAutomatically(bool flag) { m_mediaDataLoadsAutomatically = flag; }
-    bool mediaDataLoadsAutomatically() const { return m_mediaDataLoadsAutomatically; }
-
-    void setShouldTransformsAffectOverflow(bool flag) { m_shouldTransformsAffectOverflow = flag; }
-    bool shouldTransformsAffectOverflow() const { return m_shouldTransformsAffectOverflow; }
-
-    void setShouldDispatchJavaScriptWindowOnErrorEvents(bool flag) { m_shouldDispatchJavaScriptWindowOnErrorEvents = flag; }
-    bool shouldDispatchJavaScriptWindowOnErrorEvents() const { return m_shouldDispatchJavaScriptWindowOnErrorEvents; }
-
-    void setAlwaysUseBaselineOfPrimaryFont(bool flag) { m_alwaysUseBaselineOfPrimaryFont = flag; }
-    bool alwaysUseBaselineOfPrimaryFont() const { return m_alwaysUseBaselineOfPrimaryFont; }
-
-    void setAlwaysUseAcceleratedOverflowScroll(bool flag) { m_alwaysUseAcceleratedOverflowScroll = flag; }
-    bool alwaysUseAcceleratedOverflowScroll() const { return m_alwaysUseAcceleratedOverflowScroll; }
-#endif
-
     void setUsesPageCache(bool);
     bool usesPageCache() const { return m_usesPageCache; }
         
     void setFontRenderingMode(FontRenderingMode mode);
     FontRenderingMode fontRenderingMode() const;
-
-#if ENABLE(CSS_STICKY_POSITION)
-    void setCSSStickyPositionEnabled(bool enabled) { m_cssStickyPositionEnabled = enabled; }
-    bool cssStickyPositionEnabled() const { return m_cssStickyPositionEnabled; }
-#else
-    void setCSSStickyPositionEnabled(bool) { }
-    bool cssStickyPositionEnabled() const { return false; }
-#endif
 
     void setShowTiledScrollingIndicator(bool);
     bool showTiledScrollingIndicator() const { return m_showTiledScrollingIndicator; }
@@ -240,7 +204,7 @@ public:
     static bool isAVFoundationEnabled() { return gAVFoundationEnabled; }
 #endif
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
     static void setQTKitEnabled(bool flag);
     static bool isQTKitEnabled() { return gQTKitEnabled; }
 #endif
@@ -272,6 +236,11 @@ public:
         
     void setAggressiveTileRetentionEnabled(bool);
     bool aggressiveTileRetentionEnabled() { return m_aggressiveTileRetentionEnabled; }
+
+#if ENABLE(IMAGE_CONTROLS)
+    void setImageControlsEnabled(bool);
+    bool imageControlsEnabled() { return m_imageControlsEnabled; }
+#endif
 
     static void setShouldRespectPriorityInCSSAttributeSetters(bool);
     static bool shouldRespectPriorityInCSSAttributeSetters();
@@ -322,9 +291,6 @@ private:
     const std::unique_ptr<FontGenericFamilies> m_fontGenericFamilies;
     SecurityOrigin::StorageBlockingPolicy m_storageBlockingPolicy;
     std::chrono::milliseconds m_layoutInterval;
-#if PLATFORM(IOS)
-    double m_maxParseDuration;
-#endif
 #if ENABLE(TEXT_AUTOSIZING)
     float m_textAutosizingFontScaleFactor;
     IntSize m_textAutosizingWindowSizeOverride;
@@ -344,19 +310,6 @@ private:
     bool m_needsAdobeFrameReloadingQuirk : 1;
     bool m_usesPageCache : 1;
     unsigned m_fontRenderingMode : 1;
-#if PLATFORM(IOS)
-    bool m_standalone : 1;
-    bool m_telephoneNumberParsingEnabled : 1;
-    bool m_mediaDataLoadsAutomatically : 1;
-    bool m_shouldTransformsAffectOverflow : 1;
-    bool m_shouldDispatchJavaScriptWindowOnErrorEvents : 1;
-    bool m_alwaysUseBaselineOfPrimaryFont : 1;
-    bool m_allowMultiElementImplicitFormSubmission : 1;
-    bool m_alwaysUseAcceleratedOverflowScroll : 1;
-#endif
-#if ENABLE(CSS_STICKY_POSITION)
-    bool m_cssStickyPositionEnabled : 1;
-#endif
     bool m_showTiledScrollingIndicator : 1;
     bool m_tiledBackingStoreEnabled : 1;
     bool m_backgroundShouldExtendBeyondPage : 1;
@@ -367,6 +320,9 @@ private:
 #endif
     bool m_scrollingPerformanceLoggingEnabled : 1;
     bool m_aggressiveTileRetentionEnabled : 1;
+#if ENABLE(IMAGE_CONTROLS)
+    bool m_imageControlsEnabled : 1;
+#endif
 
     double m_timeWithoutMouseMovementBeforeHidingControls;
 
@@ -388,7 +344,7 @@ private:
     static bool gAVFoundationEnabled;
 #endif
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
     static bool gQTKitEnabled;
 #endif
         

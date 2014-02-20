@@ -404,7 +404,7 @@ void RenderBox::updateShapeOutsideInfoAfterStyleChange(const RenderStyle& style,
     if (!shapeOutside)
         ShapeOutsideInfo::removeInfo(*this);
     else
-        ShapeOutsideInfo::ensureInfo(*this).dirtyShapeSize();
+        ShapeOutsideInfo::ensureInfo(*this).markShapeAsDirty();
 
     if (shapeOutside || shapeOutside != oldShapeOutside)
         markShapeOutsideDependentsForLayout();
@@ -794,7 +794,7 @@ bool RenderBox::logicalScroll(ScrollLogicalDirection direction, ScrollGranularit
     
     RenderLayer* l = layer();
     if (l) {
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
         // On Mac only we reset the inline direction position when doing a document scroll (e.g., hitting Home/End).
         if (granularity == ScrollByDocument)
             scrolled = l->scroll(logicalToPhysical(ScrollInlineDirectionBackward, isHorizontalWritingMode(), style().isFlippedBlocksWritingMode()), ScrollByDocument, multiplier);
@@ -1289,9 +1289,13 @@ bool RenderBox::backgroundIsKnownToBeOpaqueInRect(const LayoutRect& localRect) c
         return false;
     // FIXME: Check the opaqueness of background images.
 
+    if (hasClipPath())
+        return false;
+
     // FIXME: Use rounded rect if border radius is present.
     if (style().hasBorderRadius())
         return false;
+    
     // FIXME: The background color clip is defined by the last layer.
     if (style().backgroundLayers()->next())
         return false;
@@ -1542,7 +1546,7 @@ void RenderBox::imageChanged(WrappedImagePtr image, const IntRect*)
 #if ENABLE(CSS_SHAPES)
     ShapeValue* shapeOutsideValue = style().shapeOutside();
     if (!view().frameView().isInLayout() && isFloating() && shapeOutsideValue && shapeOutsideValue->image() && shapeOutsideValue->image()->data() == image) {
-        ShapeOutsideInfo::ensureInfo(*this).dirtyShapeSize();
+        ShapeOutsideInfo::ensureInfo(*this).markShapeAsDirty();
         markShapeOutsideDependentsForLayout();
     }
 #endif
@@ -1621,28 +1625,6 @@ bool RenderBox::repaintLayerRectsForImage(WrappedImagePtr image, const FillLayer
     }
     return false;
 }
-
-#if PLATFORM(MAC)
-
-void RenderBox::paintCustomHighlight(const LayoutPoint& paintOffset, const AtomicString& type, bool behindText)
-{
-    Page* page = frame().page();
-    if (!page)
-        return;
-
-    InlineBox* boxWrap = inlineBoxWrapper();
-    RootInlineBox* r = boxWrap ? &boxWrap->root() : 0;
-    if (r) {
-        FloatRect rootRect(paintOffset.x() + r->x(), paintOffset.y() + r->selectionTop(), r->logicalWidth(), r->selectionHeight());
-        FloatRect imageRect(paintOffset.x() + x(), rootRect.y(), width(), rootRect.height());
-        page->chrome().client().paintCustomHighlight(element(), type, imageRect, rootRect, behindText, false);
-    } else {
-        FloatRect imageRect(paintOffset.x() + x(), paintOffset.y() + y(), width(), height());
-        page->chrome().client().paintCustomHighlight(element(), type, imageRect, imageRect, behindText, false);
-    }
-}
-
-#endif
 
 bool RenderBox::pushContentsClip(PaintInfo& paintInfo, const LayoutPoint& accumulatedOffset)
 {
@@ -1964,7 +1946,7 @@ LayoutSize RenderBox::offsetFromContainer(RenderObject* o, const LayoutPoint& po
             RenderBlock* block = toRenderBlock(o);
             LayoutRect columnRect(frameRect());
             block->adjustStartEdgeForWritingModeIncludingColumns(columnRect);
-            offset += toSize(columnRect.location());
+            offset += toLayoutSize(columnRect.location());
             LayoutPoint columnPoint = block->flipForWritingModeIncludingColumns(point + offset);
             offset = toLayoutSize(block->flipForWritingModeIncludingColumns(toLayoutPoint(offset)));
             o->adjustForColumns(offset, columnPoint);
@@ -4116,7 +4098,7 @@ LayoutRect RenderBox::localCaretRect(InlineBox* box, int caretOffset, LayoutUnit
     // FIXME: Border/padding should be added for all elements but this workaround
     // is needed because we use offsets inside an "atomic" element to represent
     // positions before and after the element in deprecated editing offsets.
-    if (element() && !(editingIgnoresContent(element()) || isTableElement(element()))) {
+    if (element() && !(editingIgnoresContent(element()) || isRenderedTable(element()))) {
         rect.setX(rect.x() + borderLeft() + paddingLeft());
         rect.setY(rect.y() + paddingTop() + borderTop());
     }
@@ -4430,10 +4412,7 @@ bool RenderBox::hasUnsplittableScrollingOverflow() const
 
 bool RenderBox::isUnsplittableForPagination() const
 {
-    return isReplaced() || hasUnsplittableScrollingOverflow() || (parent() && isWritingModeRoot())
-        // FIXME: Treat multi-column elements as unsplittable for now. Remove once we implement the correct
-        // fragmentation model for multicolumn.
-        || isMultiColumnBlockFlow();
+    return isReplaced() || hasUnsplittableScrollingOverflow() || (parent() && isWritingModeRoot()) || isRenderNamedFlowFragmentContainer();
 }
 
 LayoutUnit RenderBox::lineHeight(bool /*firstLine*/, LineDirectionMode direction, LinePositionMode /*linePositionMode*/) const

@@ -29,10 +29,11 @@
 #if ENABLE(DFG_JIT)
 
 #include "Arguments.h"
+#include "DFGJITCode.h"
 #include "DFGOperations.h"
 #include "JIT.h"
 #include "JSCJSValueInlines.h"
-#include "Operations.h"
+#include "JSCInlines.h"
 
 namespace JSC { namespace DFG {
 

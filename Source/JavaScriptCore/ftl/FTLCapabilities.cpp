@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013, 2014 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -45,11 +45,13 @@ inline CapabilityLevel canCompile(Node* node)
     switch (node->op()) {
     case JSConstant:
     case WeakJSConstant:
+    case GetMyArgumentsLength:
     case GetLocal:
     case SetLocal:
     case MovHint:
     case ZombieHint:
     case Phantom:
+    case HardPhantom:
     case Flush:
     case PhantomLocal:
     case SetArgument:
@@ -107,6 +109,7 @@ inline CapabilityLevel canCompile(Node* node)
     case CheckFunction:
     case StringCharCodeAt:
     case AllocatePropertyStorage:
+    case ReallocatePropertyStorage:
     case FunctionReentryWatchpoint:
     case TypedArrayWatchpoint:
     case GetTypedArrayByteOffset:
@@ -133,6 +136,9 @@ inline CapabilityLevel canCompile(Node* node)
     case MakeRope:
     case NewArrayWithSize:
     case GetById:
+    case ToThis:
+    case MultiGetByOffset:
+    case ToPrimitive:
         // These are OK.
         break;
     case PutByIdDirect:
@@ -223,6 +229,12 @@ inline CapabilityLevel canCompile(Node* node)
         if (node->isBinaryUseKind(ObjectUse))
             break;
         if (node->isBinaryUseKind(UntypedUse))
+            break;
+        if (node->child1().useKind() == ObjectUse
+            && node->child2().useKind() == ObjectOrOtherUse)
+            break;
+        if (node->child1().useKind() == ObjectOrOtherUse
+            && node->child2().useKind() == ObjectUse)
             break;
         return CannotCompile;
     case CompareStrictEq:

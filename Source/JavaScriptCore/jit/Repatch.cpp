@@ -29,13 +29,12 @@
 #if ENABLE(JIT)
 
 #include "CCallHelpers.h"
-#include "CallFrameInlines.h"
 #include "DFGOperations.h"
 #include "DFGSpeculativeJIT.h"
 #include "FTLThunks.h"
 #include "GCAwareJITStubRoutine.h"
 #include "LinkBuffer.h"
-#include "Operations.h"
+#include "JSCInlines.h"
 #include "PolymorphicPutByIdList.h"
 #include "RepatchBuffer.h"
 #include "ScratchRegisterAllocator.h"
@@ -303,17 +302,13 @@ static ProtoChainGenerationResult generateProtoChainAccessStub(ExecState* exec, 
             stubJit.setupArgumentsWithExecState(scratchGPR, resultGPR);
             operationFunction = operationCallGetter;
         } else {
-#if USE(JSVALUE64)
             // EncodedJSValue (*GetValueFunc)(ExecState*, JSObject* slotBase, EncodedJSValue thisValue, PropertyName);
+#if USE(JSVALUE64)
             stubJit.setupArgumentsWithExecState(MacroAssembler::TrustedImmPtr(protoObject), scratchGPR, MacroAssembler::TrustedImmPtr(propertyName.impl()));
-            operationFunction = FunctionPtr(slot.customGetter());
 #else
-            stubJit.move(MacroAssembler::TrustedImmPtr(protoObject), scratchGPR);
-            stubJit.setupArgumentsWithExecState(scratchGPR,
-                MacroAssembler::TrustedImmPtr(FunctionPtr(slot.customGetter()).executableAddress()),
-                MacroAssembler::TrustedImmPtr(propertyName.impl()));
-            operationFunction = operationCallCustomGetter;
+            stubJit.setupArgumentsWithExecState(MacroAssembler::TrustedImmPtr(protoObject), scratchGPR, MacroAssembler::TrustedImm32(JSValue::CellTag), MacroAssembler::TrustedImmPtr(propertyName.impl()));
 #endif
+            operationFunction = FunctionPtr(slot.customGetter());
         }
 
         // Need to make sure that whenever this call is made in the future, we remember the
@@ -506,7 +501,7 @@ static bool getPolymorphicStructureList(
     } else if (stubInfo.accessType == access_get_by_id_chain) {
         RELEASE_ASSERT(!!stubInfo.stubRoutine);
         slowCase = CodeLocationLabel(stubInfo.stubRoutine->code().code());
-        polymorphicStructureList = new PolymorphicAccessStructureList(*vm, codeBlock->ownerExecutable(), stubInfo.stubRoutine, stubInfo.u.getByIdChain.baseObjectStructure.get(), stubInfo.u.getByIdChain.chain.get(), true);
+        polymorphicStructureList = new PolymorphicAccessStructureList(*vm, codeBlock->ownerExecutable(), stubInfo.stubRoutine, stubInfo.u.getByIdChain.baseObjectStructure.get(), stubInfo.u.getByIdChain.chain.get(), stubInfo.u.getByIdChain.isDirect, stubInfo.u.getByIdChain.count);
         stubInfo.stubRoutine.clear();
         stubInfo.initGetByIdSelfList(polymorphicStructureList, 1, false);
         listIndex = 1;
@@ -619,14 +614,10 @@ static bool tryBuildGetByIDList(ExecState* exec, JSValue baseValue, const Identi
 #if USE(JSVALUE64)
                 // EncodedJSValue (*GetValueFunc)(ExecState*, JSObject* slotBase, EncodedJSValue thisValue, PropertyName);
                 stubJit.setupArgumentsWithExecState(baseGPR, baseGPR, MacroAssembler::TrustedImmPtr(ident.impl()));
-                operationFunction = FunctionPtr(slot.customGetter());
 #else
-                stubJit.setupArgumentsWithExecState(
-                    baseGPR,
-                    MacroAssembler::TrustedImmPtr(FunctionPtr(slot.customGetter()).executableAddress()),
-                    MacroAssembler::TrustedImmPtr(ident.impl()));
-                operationFunction = operationCallCustomGetter;
+                stubJit.setupArgumentsWithExecState(baseGPR, baseGPR, MacroAssembler::TrustedImm32(JSValue::CellTag), MacroAssembler::TrustedImmPtr(ident.impl()));
 #endif
+                operationFunction = FunctionPtr(slot.customGetter());
             }
             
             // Need to make sure that whenever this call is made in the future, we remember the
@@ -735,7 +726,7 @@ static bool tryBuildGetByIDList(ExecState* exec, JSValue baseValue, const Identi
         slowCase, stubRoutine) == ProtoChainGenerationFailed)
         return false;
     
-    polymorphicStructureList->list[listIndex].set(*vm, codeBlock->ownerExecutable(), stubRoutine, structure, slot.isCacheableValue());
+    polymorphicStructureList->list[listIndex].set(*vm, codeBlock->ownerExecutable(), stubRoutine, structure, prototypeChain, slot.isCacheableValue(), count);
     
     patchJumpToGetByIdStub(codeBlock, stubInfo, stubRoutine.get());
     

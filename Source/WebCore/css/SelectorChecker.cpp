@@ -2,7 +2,7 @@
  * Copyright (C) 1999 Lars Knoll (knoll@kde.org)
  *           (C) 2004-2005 Allan Sandfeld Jensen (kde@carewolf.com)
  * Copyright (C) 2006, 2007 Nicholas Shanks (webkit@nickshanks.com)
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Apple Inc. All rights reserved.
  * Copyright (C) 2007 Alexey Proskuryakov <ap@webkit.org>
  * Copyright (C) 2007, 2008 Eric Seidel <eric@webkit.org>
  * Copyright (C) 2008, 2009 Torch Mobile Inc. All rights reserved. (http://www.torchmobile.com/)
@@ -53,13 +53,10 @@
 #include "RenderStyle.h"
 #include "ScrollableArea.h"
 #include "ScrollbarTheme.h"
+#include "SelectorCheckerTestFunctions.h"
 #include "ShadowRoot.h"
 #include "StyledElement.h"
 #include "Text.h"
-
-#if ENABLE(VIDEO_TRACK)
-#include "WebVTTElement.h"
-#endif
 
 namespace WebCore {
 
@@ -162,13 +159,14 @@ SelectorChecker::Match SelectorChecker::matchRecursively(const SelectorCheckingC
 
                 if (context.selector->pseudoType() == CSSSelector::PseudoWebKitCustomElement && root->type() != ShadowRoot::UserAgentShadowRoot)
                     return SelectorFailsLocally;
-            } else
+            } else if (m_mode != StyleInvalidation)
                 return SelectorFailsLocally;
         } else {
             if ((!context.elementStyle && m_mode == ResolvingStyle) || m_mode == QueryingRules)
                 return SelectorFailsLocally;
 
-            PseudoId pseudoId = CSSSelector::pseudoId(context.selector->pseudoType());
+            // When invalidating style all pseudo elements need to match.
+            PseudoId pseudoId = m_mode == StyleInvalidation ? NOPSEUDO : CSSSelector::pseudoId(context.selector->pseudoType());
             if (pseudoId == FIRST_LETTER)
                 context.element->document().styleSheetCollection().setUsesFirstLetterRules(true);
             if (pseudoId != NOPSEUDO)
@@ -374,7 +372,7 @@ bool SelectorChecker::checkOne(const SelectorCheckingContext& context) const
             return false;
 
         const QualifiedName& attr = selector->attribute();
-        bool caseSensitive = !m_documentIsHTML || HTMLDocument::isCaseSensitiveAttribute(attr);
+        bool caseSensitive = !(m_documentIsHTML && element->isHTMLElement()) || HTMLDocument::isCaseSensitiveAttribute(attr);
 
         if (!anyAttributeMatches(element, selector, attr, caseSensitive))
             return false;
@@ -586,11 +584,7 @@ bool SelectorChecker::checkOne(const SelectorCheckingContext& context) const
             }
             break;
         case CSSSelector::PseudoAutofill:
-            if (!element->isFormControlElement())
-                break;
-            if (HTMLInputElement* inputElement = element->toInputElement())
-                return inputElement->isAutofilled();
-            break;
+            return isAutofilled(element);
         case CSSSelector::PseudoAnyLink:
         case CSSSelector::PseudoLink:
             // :visited and :link matches are separated later when applying the style. Here both classes match all links...
@@ -639,46 +633,30 @@ bool SelectorChecker::checkOne(const SelectorCheckingContext& context) const
             }
             break;
         case CSSSelector::PseudoEnabled:
-            if (element->isFormControlElement() || isHTMLOptionElement(element) || isHTMLOptGroupElement(element))
-                return !element->isDisabledFormControl();
-            break;
+            return isEnabled(element);
         case CSSSelector::PseudoFullPageMedia:
             return element->document().isMediaDocument();
             break;
         case CSSSelector::PseudoDefault:
-            return element->isDefaultButtonForForm();
+            return isDefaultButtonForForm(element);
         case CSSSelector::PseudoDisabled:
-            if (element->isFormControlElement() || isHTMLOptionElement(element) || isHTMLOptGroupElement(element))
-                return element->isDisabledFormControl();
-            break;
+            return isDisabled(element);
         case CSSSelector::PseudoReadOnly:
-            return element->matchesReadOnlyPseudoClass();
+            return matchesReadOnlyPseudoClass(element);
         case CSSSelector::PseudoReadWrite:
-            return element->matchesReadWritePseudoClass();
+            return matchesReadWritePseudoClass(element);
         case CSSSelector::PseudoOptional:
-            return element->isOptionalFormControl();
+            return isOptionalFormControl(element);
         case CSSSelector::PseudoRequired:
-            return element->isRequiredFormControl();
+            return isRequiredFormControl(element);
         case CSSSelector::PseudoValid:
-            element->document().setContainsValidityStyleRules();
-            return element->willValidate() && element->isValidFormControlElement();
+            return isValid(element);
         case CSSSelector::PseudoInvalid:
-            element->document().setContainsValidityStyleRules();
-            return element->willValidate() && !element->isValidFormControlElement();
+            return isInvalid(element);
         case CSSSelector::PseudoChecked:
-            {
-                // Even though WinIE allows checked and indeterminate to co-exist, the CSS selector spec says that
-                // you can't be both checked and indeterminate. We will behave like WinIE behind the scenes and just
-                // obey the CSS spec here in the test for matching the pseudo.
-                HTMLInputElement* inputElement = element->toInputElement();
-                if (inputElement && inputElement->shouldAppearChecked() && !inputElement->shouldAppearIndeterminate())
-                    return true;
-                if (isHTMLOptionElement(element) && toHTMLOptionElement(element)->selected())
-                    return true;
-                break;
-            }
+            return isChecked(element);
         case CSSSelector::PseudoIndeterminate:
-            return element->shouldAppearIndeterminate();
+            return shouldAppearIndeterminate(element);
         case CSSSelector::PseudoRoot:
             if (element == element->document().documentElement())
                 return true;
@@ -701,15 +679,7 @@ bool SelectorChecker::checkOne(const SelectorCheckingContext& context) const
             }
 #if ENABLE(FULLSCREEN_API)
         case CSSSelector::PseudoFullScreen:
-            // While a Document is in the fullscreen state, and the document's current fullscreen
-            // element is an element in the document, the 'full-screen' pseudoclass applies to
-            // that element. Also, an <iframe>, <object> or <embed> element whose child browsing
-            // context's Document is in the fullscreen state has the 'full-screen' pseudoclass applied.
-            if (element->isFrameElementBase() && element->containsFullScreenElement())
-                return true;
-            if (!element->document().webkitIsFullScreen())
-                return false;
-            return element == element->document().webkitCurrentFullScreenElement();
+            return matchesFullScreenPseudoClass(element);
         case CSSSelector::PseudoAnimatingFullScreenTransition:
             if (element != element->document().webkitCurrentFullScreenElement())
                 return false;
@@ -731,9 +701,9 @@ bool SelectorChecker::checkOne(const SelectorCheckingContext& context) const
             return element->isOutOfRange();
 #if ENABLE(VIDEO_TRACK)
         case CSSSelector::PseudoFutureCue:
-            return (element->isWebVTTElement() && !toWebVTTElement(element)->isPastNode());
+            return matchesFutureCuePseudoClass(element);
         case CSSSelector::PseudoPastCue:
-            return (element->isWebVTTElement() && toWebVTTElement(element)->isPastNode());
+            return matchesPastCuePseudoClass(element);
 #endif
 
         case CSSSelector::PseudoScope:

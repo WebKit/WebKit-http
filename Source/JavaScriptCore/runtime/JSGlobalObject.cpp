@@ -7,13 +7,13 @@
  * are met:
  *
  * 1.  Redistributions of source code must retain the above copyright
- *     notice, this list of conditions and the following disclaimer. 
+ *     notice, this list of conditions and the following disclaimer.
  * 2.  Redistributions in binary form must reproduce the above copyright
  *     notice, this list of conditions and the following disclaimer in the
- *     documentation and/or other materials provided with the distribution. 
+ *     documentation and/or other materials provided with the distribution.
  * 3.  Neither the name of Apple Computer, Inc. ("Apple") nor the names of
  *     its contributors may be used to endorse or promote products derived
- *     from this software without specific prior written permission. 
+ *     from this software without specific prior written permission.
  *
  * THIS SOFTWARE IS PROVIDED BY APPLE AND ITS CONTRIBUTORS "AS IS" AND ANY
  * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
@@ -60,6 +60,7 @@
 #include "JSArrayBufferPrototype.h"
 #include "JSArrayIterator.h"
 #include "JSBoundFunction.h"
+#include "JSCInlines.h"
 #include "JSCallbackConstructor.h"
 #include "JSCallbackFunction.h"
 #include "JSCallbackObject.h"
@@ -100,7 +101,6 @@
 #include "ObjCCallbackFunction.h"
 #include "ObjectConstructor.h"
 #include "ObjectPrototype.h"
-#include "Operations.h"
 #include "ParserError.h"
 #include "RegExpConstructor.h"
 #include "RegExpMatchesArray.h"
@@ -124,11 +124,12 @@
 
 #if ENABLE(REMOTE_INSPECTOR)
 #include "JSGlobalObjectDebuggable.h"
-#include "RemoteInspector.h"
+#include "JSGlobalObjectInspectorController.h"
 #endif
 
 #if ENABLE(WEB_REPLAY)
 #include "EmptyInputCursor.h"
+#include "JSReplayInputs.h"
 #endif
 
 #include "JSGlobalObject.lut.h"
@@ -170,6 +171,10 @@ JSGlobalObject::JSGlobalObject(VM& vm, Structure* structure, const GlobalObjectM
 
 JSGlobalObject::~JSGlobalObject()
 {
+#if ENABLE(REMOTE_INSPECTOR)
+    m_inspectorController->globalObjectDestroyed();
+#endif
+
     if (m_debugger)
         m_debugger->detach(this, Debugger::GlobalObjectIsDestructing);
 
@@ -183,7 +188,7 @@ void JSGlobalObject::destroy(JSCell* cell)
 }
 
 void JSGlobalObject::setGlobalThis(VM& vm, JSObject* globalThis)
-{ 
+{
     m_globalThis.set(vm, this, globalThis);
 }
 
@@ -197,6 +202,7 @@ void JSGlobalObject::init(JSObject* thisValue)
     m_debugger = 0;
 
 #if ENABLE(REMOTE_INSPECTOR)
+    m_inspectorController = std::make_unique<Inspector::JSGlobalObjectInspectorController>(*this);
     m_inspectorDebuggable = std::make_unique<JSGlobalObjectDebuggable>(*this);
     m_inspectorDebuggable->init();
     m_inspectorDebuggable->setRemoteDebuggingAllowed(true);
@@ -353,7 +359,8 @@ void JSGlobalObject::reset(JSValue prototype)
 
     // Constructors
 
-    JSCell* objectConstructor = ObjectConstructor::create(vm, ObjectConstructor::createStructure(vm, this, m_functionPrototype.get()), m_objectPrototype.get());
+    ObjectConstructor* objectConstructor = ObjectConstructor::create(vm, ObjectConstructor::createStructure(vm, this, m_functionPrototype.get()), m_objectPrototype.get());
+    m_objectConstructor.set(vm, this, objectConstructor);
     JSCell* functionConstructor = FunctionConstructor::create(vm, FunctionConstructor::createStructure(vm, this, m_functionPrototype.get()), m_functionPrototype.get());
     JSCell* arrayConstructor = ArrayConstructor::create(vm, ArrayConstructor::createStructure(vm, this, m_functionPrototype.get()), m_arrayPrototype.get());
 
@@ -439,7 +446,10 @@ void JSGlobalObject::reset(JSValue prototype)
     GlobalPropertyInfo staticGlobals[] = {
         GlobalPropertyInfo(vm.propertyNames->NaN, jsNaN(), DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->Infinity, jsNumber(std::numeric_limits<double>::infinity()), DontEnum | DontDelete | ReadOnly),
-        GlobalPropertyInfo(vm.propertyNames->undefinedKeyword, jsUndefined(), DontEnum | DontDelete | ReadOnly)
+        GlobalPropertyInfo(vm.propertyNames->undefinedKeyword, jsUndefined(), DontEnum | DontDelete | ReadOnly),
+        GlobalPropertyInfo(vm.propertyNames->undefinedPrivateName, jsUndefined(), DontEnum | DontDelete | ReadOnly),
+        GlobalPropertyInfo(vm.propertyNames->ObjectPrivateName, objectConstructor, DontEnum | DontDelete | ReadOnly),
+        GlobalPropertyInfo(vm.propertyNames->TypeErrorPrivateName, m_typeErrorConstructor.get(), DontEnum | DontDelete | ReadOnly)
     };
     addStaticGlobals(staticGlobals, WTF_ARRAY_LENGTH(staticGlobals));
     
@@ -615,6 +625,7 @@ void JSGlobalObject::visitChildren(JSCell* cell, SlotVisitor& visitor)
     visitor.append(&thisObject->m_syntaxErrorConstructor);
     visitor.append(&thisObject->m_typeErrorConstructor);
     visitor.append(&thisObject->m_URIErrorConstructor);
+    visitor.append(&thisObject->m_objectConstructor);
     visitor.append(&thisObject->m_promiseConstructor);
 
     visitor.append(&thisObject->m_evalFunction);
@@ -781,6 +792,17 @@ bool JSGlobalObject::remoteDebuggingEnabled() const
 void JSGlobalObject::setInputCursor(PassRefPtr<InputCursor> prpCursor)
 {
     m_inputCursor = prpCursor;
+    ASSERT(m_inputCursor);
+
+    InputCursor& cursor = inputCursor();
+    // Save or set the random seed. This performed here rather than the constructor
+    // to avoid threading the input cursor through all the abstraction layers.
+    if (cursor.isCapturing())
+        cursor.appendInput<SetRandomSeed>(m_weakRandom.seedUnsafe());
+    else if (cursor.isReplaying()) {
+        if (SetRandomSeed* input = cursor.fetchInput<SetRandomSeed>())
+            m_weakRandom.initializeSeed(input->randomSeed());
+    }
 }
 #endif
 

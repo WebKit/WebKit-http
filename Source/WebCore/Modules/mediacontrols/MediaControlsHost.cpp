@@ -153,6 +153,16 @@ bool MediaControlsHost::mediaPlaybackAllowsInline() const
     return !m_mediaElement->mediaSession().requiresFullscreenForVideoPlayback(*m_mediaElement);
 }
 
+bool MediaControlsHost::supportsFullscreen()
+{
+    return m_mediaElement->supportsFullscreen();
+}
+
+bool MediaControlsHost::userGestureRequired() const
+{
+    return !m_mediaElement->mediaSession().playbackPermitted(*m_mediaElement);
+}
+
 }
 
 #endif

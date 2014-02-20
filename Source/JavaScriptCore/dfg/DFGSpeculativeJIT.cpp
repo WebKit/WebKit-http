@@ -35,8 +35,8 @@
 #include "DFGCallArrayAllocatorSlowPathGenerator.h"
 #include "DFGSaneStringGetByValSlowPathGenerator.h"
 #include "DFGSlowPathGenerator.h"
-#include "JSCJSValueInlines.h"
 #include "LinkBuffer.h"
+#include "JSCInlines.h"
 #include "ScratchRegisterAllocator.h"
 #include "WriteBarrierBuffer.h"
 #include <wtf/MathExtras.h>
@@ -870,7 +870,7 @@ void SpeculativeJIT::compileIn(Node* node)
                 JSValueRegs::payloadOnly(resultGPR), stubInfo, baseGPR,
                 string->tryGetValueImpl());
             
-            stubInfo->codeOrigin = node->codeOrigin;
+            stubInfo->codeOrigin = node->origin.semantic;
             stubInfo->patch.baseGPR = static_cast<int8_t>(baseGPR);
             stubInfo->patch.valueGPR = static_cast<int8_t>(resultGPR);
             stubInfo->patch.usedRegisters = usedRegisters();
@@ -1389,8 +1389,8 @@ void SpeculativeJIT::compileCurrentBlock()
         m_canExit = m_currentNode->canExit();
         bool shouldExecuteEffects = m_interpreter.startExecuting(m_currentNode);
         m_jit.setForNode(m_currentNode);
-        m_codeOriginForExitTarget = m_currentNode->codeOriginForExitTarget;
-        m_codeOriginForExitProfile = m_currentNode->codeOrigin;
+        m_codeOriginForExitTarget = m_currentNode->origin.forExit;
+        m_codeOriginForExitProfile = m_currentNode->origin.semantic;
         if (!m_currentNode->shouldGenerate()) {
             switch (m_currentNode->op()) {
             case JSConstant:
@@ -1426,7 +1426,7 @@ void SpeculativeJIT::compileCurrentBlock()
                 dataLogF(
                     "SpeculativeJIT generating Node @%d (bc#%u) at JIT offset 0x%x",
                     (int)m_currentNode->index(),
-                    m_currentNode->codeOrigin.bytecodeIndex, m_jit.debugOffset());
+                    m_currentNode->origin.semantic.bytecodeIndex, m_jit.debugOffset());
                 dataLog("\n");
             }
             
@@ -1779,7 +1779,7 @@ void SpeculativeJIT::compileGetByValOnString(Node* node)
         m_jit.move(TrustedImm32(JSValue::CellTag), resultTagReg);
 #endif
 
-        JSGlobalObject* globalObject = m_jit.globalObjectFor(node->codeOrigin);
+        JSGlobalObject* globalObject = m_jit.globalObjectFor(node->origin.semantic);
         if (globalObject->stringPrototypeChainIsSane()) {
 #if USE(JSVALUE64)
             addSlowPathGenerator(adoptPtr(new SaneStringGetByValSlowPathGenerator(
@@ -2629,7 +2629,7 @@ void SpeculativeJIT::compileAdd(Node* node)
     case Int32Use: {
         ASSERT(!shouldCheckNegativeZero(node->arithMode()));
         
-        if (isNumberConstant(node->child1().node())) {
+        if (isInt32Constant(node->child1().node())) {
             int32_t imm1 = valueOfInt32Constant(node->child1().node());
             SpeculateInt32Operand op2(this, node->child2());
             GPRTemporary result(this);
@@ -2644,7 +2644,7 @@ void SpeculativeJIT::compileAdd(Node* node)
             return;
         }
         
-        if (isNumberConstant(node->child2().node())) {
+        if (isInt32Constant(node->child2().node())) {
             SpeculateInt32Operand op1(this, node->child1());
             int32_t imm2 = valueOfInt32Constant(node->child2().node());
             GPRTemporary result(this);
@@ -4298,10 +4298,6 @@ void SpeculativeJIT::compileReallocatePropertyStorage(Node* node)
 
         GPRResult result(this);
         callOperation(operationReallocateButterflyToGrowPropertyStorage, result.gpr(), baseGPR, newSize / sizeof(JSValue));
-        
-        MacroAssembler::Jump notNull = m_jit.branchTestPtr(MacroAssembler::NonZero, result.gpr());
-        m_jit.breakpoint();
-        notNull.link(&m_jit);
 
         storageResult(result.gpr(), node);
         return;
@@ -4458,7 +4454,7 @@ void SpeculativeJIT::compileNewStringObject(Node* node)
 
 void SpeculativeJIT::compileNewTypedArray(Node* node)
 {
-    JSGlobalObject* globalObject = m_jit.graph().globalObjectFor(node->codeOrigin);
+    JSGlobalObject* globalObject = m_jit.graph().globalObjectFor(node->origin.semantic);
     TypedArrayType type = node->typedArrayType();
     Structure* structure = globalObject->typedArrayStructure(type);
     

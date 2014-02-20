@@ -41,7 +41,7 @@
     readonly attribute TextTrackCueList activeCues;
              attribute EventListener oncuechange;
 
-    void addCue(TextTrackCue cue);
+    [RaisesException] void addCue(TextTrackCue cue);
     [RaisesException] void removeCue(TextTrackCue cue);
 
 #if defined(ENABLE_WEBVTT_REGIONS) && ENABLE_WEBVTT_REGIONS

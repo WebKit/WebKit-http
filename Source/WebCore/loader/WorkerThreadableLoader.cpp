@@ -53,7 +53,7 @@ static const char loadResourceSynchronouslyMode[] = "loadResourceSynchronouslyMo
 WorkerThreadableLoader::WorkerThreadableLoader(WorkerGlobalScope* workerGlobalScope, ThreadableLoaderClient* client, const String& taskMode, const ResourceRequest& request, const ThreadableLoaderOptions& options)
     : m_workerGlobalScope(workerGlobalScope)
     , m_workerClientWrapper(ThreadableLoaderClientWrapper::create(client))
-    , m_bridge(*(new MainThreadBridge(m_workerClientWrapper, m_workerGlobalScope->thread()->workerLoaderProxy(), taskMode, request, options, workerGlobalScope->url().strippedForUseAsReferrer())))
+    , m_bridge(*(new MainThreadBridge(m_workerClientWrapper, m_workerGlobalScope->thread().workerLoaderProxy(), taskMode, request, options, workerGlobalScope->url().strippedForUseAsReferrer())))
 {
 }
 
@@ -64,7 +64,7 @@ WorkerThreadableLoader::~WorkerThreadableLoader()
 
 void WorkerThreadableLoader::loadResourceSynchronously(WorkerGlobalScope* workerGlobalScope, const ResourceRequest& request, ThreadableLoaderClient& client, const ThreadableLoaderOptions& options)
 {
-    WorkerRunLoop& runLoop = workerGlobalScope->thread()->runLoop();
+    WorkerRunLoop& runLoop = workerGlobalScope->thread().runLoop();
 
     // Create a unique mode just for this synchronous resource load.
     String mode = loadResourceSynchronouslyMode;
@@ -110,7 +110,7 @@ void WorkerThreadableLoader::MainThreadBridge::mainThreadCreateLoader(ScriptExec
     // FIXME: If the a site requests a local resource, then this will return a non-zero value but the sync path
     // will return a 0 value.  Either this should return 0 or the other code path should do a callback with
     // a failure.
-    thisPtr->m_mainThreadLoader = DocumentThreadableLoader::create(document, thisPtr, *request, options);
+    thisPtr->m_mainThreadLoader = DocumentThreadableLoader::create(*document, *thisPtr, *request, options);
     ASSERT(thisPtr->m_mainThreadLoader);
 }
 

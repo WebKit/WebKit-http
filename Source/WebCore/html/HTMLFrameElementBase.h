@@ -63,10 +63,6 @@ private:
 
     virtual bool isFrameElementBase() const override { return true; }
 
-    virtual bool areAuthorShadowsAllowed() const override { return false; }
-
-    bool viewSourceMode() const { return m_viewSource; }
-
     void setNameAndOpenURL();
     void openURL(bool lockHistory = true, bool lockBackForwardList = true);
 
@@ -77,8 +73,6 @@ private:
 
     int m_marginWidth;
     int m_marginHeight;
-
-    bool m_viewSource;
 };
 
 void isHTMLFrameElementBase(const HTMLFrameElementBase&); // Catch unnecessary runtime check of type known at compile time.

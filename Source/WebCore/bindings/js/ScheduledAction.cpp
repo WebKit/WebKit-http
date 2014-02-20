@@ -76,10 +76,8 @@ void ScheduledAction::execute(ScriptExecutionContext* context)
 {
     if (context->isDocument())
         execute(toDocument(context));
-    else {
-        ASSERT_WITH_SECURITY_IMPLICATION(context->isWorkerGlobalScope());
-        execute(static_cast<WorkerGlobalScope*>(context));
-    }
+    else
+        execute(toWorkerGlobalScope(context));
 }
 
 void ScheduledAction::executeFunctionInContext(JSGlobalObject* globalObject, JSValue thisValue, ScriptExecutionContext* context)
@@ -131,7 +129,7 @@ void ScheduledAction::execute(Document* document)
 void ScheduledAction::execute(WorkerGlobalScope* workerGlobalScope)
 {
     // In a Worker, the execution should always happen on a worker thread.
-    ASSERT(workerGlobalScope->thread()->threadID() == currentThread());
+    ASSERT(workerGlobalScope->thread().threadID() == currentThread());
 
     WorkerScriptController* scriptController = workerGlobalScope->script();
 

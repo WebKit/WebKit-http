@@ -39,14 +39,14 @@
 
 namespace WebCore {
 
-PassRefPtr<DedicatedWorkerGlobalScope> DedicatedWorkerGlobalScope::create(const URL& url, const String& userAgent, std::unique_ptr<GroupSettings> settings, DedicatedWorkerThread* thread, const String& contentSecurityPolicy, ContentSecurityPolicy::HeaderType contentSecurityPolicyType, PassRefPtr<SecurityOrigin> topOrigin)
+PassRefPtr<DedicatedWorkerGlobalScope> DedicatedWorkerGlobalScope::create(const URL& url, const String& userAgent, std::unique_ptr<GroupSettings> settings, DedicatedWorkerThread& thread, const String& contentSecurityPolicy, ContentSecurityPolicy::HeaderType contentSecurityPolicyType, PassRefPtr<SecurityOrigin> topOrigin)
 {
     RefPtr<DedicatedWorkerGlobalScope> context = adoptRef(new DedicatedWorkerGlobalScope(url, userAgent, std::move(settings), thread, topOrigin));
     context->applyContentSecurityPolicyFromString(contentSecurityPolicy, contentSecurityPolicyType);
     return context.release();
 }
 
-DedicatedWorkerGlobalScope::DedicatedWorkerGlobalScope(const URL& url, const String& userAgent, std::unique_ptr<GroupSettings> settings, DedicatedWorkerThread* thread, PassRefPtr<SecurityOrigin> topOrigin)
+DedicatedWorkerGlobalScope::DedicatedWorkerGlobalScope(const URL& url, const String& userAgent, std::unique_ptr<GroupSettings> settings, DedicatedWorkerThread& thread, PassRefPtr<SecurityOrigin> topOrigin)
     : WorkerGlobalScope(url, userAgent, std::move(settings), thread, topOrigin)
 {
 }
@@ -71,21 +71,21 @@ void DedicatedWorkerGlobalScope::postMessage(PassRefPtr<SerializedScriptValue> m
 void DedicatedWorkerGlobalScope::postMessage(PassRefPtr<SerializedScriptValue> message, const MessagePortArray* ports, ExceptionCode& ec)
 {
     // Disentangle the port in preparation for sending it to the remote context.
-    OwnPtr<MessagePortChannelArray> channels = MessagePort::disentanglePorts(ports, ec);
+    std::unique_ptr<MessagePortChannelArray> channels = MessagePort::disentanglePorts(ports, ec);
     if (ec)
         return;
-    thread()->workerObjectProxy().postMessageToWorkerObject(message, channels.release());
+    thread().workerObjectProxy().postMessageToWorkerObject(message, std::move(channels));
 }
 
 void DedicatedWorkerGlobalScope::importScripts(const Vector<String>& urls, ExceptionCode& ec)
 {
     Base::importScripts(urls, ec);
-    thread()->workerObjectProxy().reportPendingActivity(hasPendingActivity());
+    thread().workerObjectProxy().reportPendingActivity(hasPendingActivity());
 }
 
-DedicatedWorkerThread* DedicatedWorkerGlobalScope::thread()
+DedicatedWorkerThread& DedicatedWorkerGlobalScope::thread()
 {
-    return static_cast<DedicatedWorkerThread*>(Base::thread());
+    return static_cast<DedicatedWorkerThread&>(Base::thread());
 }
 
 } // namespace WebCore

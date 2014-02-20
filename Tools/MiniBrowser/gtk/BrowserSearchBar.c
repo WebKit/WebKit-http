@@ -63,7 +63,7 @@ static void doSearch(BrowserSearchBar *searchBar)
     if (!gtk_entry_get_icon_stock(entry, GTK_ENTRY_ICON_SECONDARY))
         gtk_entry_set_icon_from_stock(entry, GTK_ENTRY_ICON_SECONDARY, GTK_STOCK_CLEAR);
 
-    WebKitFindOptions options = WEBKIT_FIND_OPTIONS_NONE;
+    WebKitFindOptions options = WEBKIT_FIND_OPTIONS_WRAP_AROUND;
     if (!gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(searchBar->caseCheckButton)))
         options |= WEBKIT_FIND_OPTIONS_CASE_INSENSITIVE;
     if (gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(searchBar->begginigWordCheckButton)))
@@ -274,9 +274,13 @@ void browser_search_bar_open(BrowserSearchBar *searchBar)
 {
     g_return_if_fail(BROWSER_IS_SEARCH_BAR(searchBar));
 
+    GtkEntry *entry = GTK_ENTRY(searchBar->entry);
+
     gtk_widget_show(GTK_WIDGET(searchBar));
-    gtk_widget_grab_focus(GTK_WIDGET(searchBar->entry));
-    gtk_editable_select_region(GTK_EDITABLE(searchBar->entry), 0, -1);
+    gtk_widget_grab_focus(GTK_WIDGET(entry));
+    gtk_editable_select_region(GTK_EDITABLE(entry), 0, -1);
+    if (gtk_entry_get_text_length(entry))
+        doSearch(searchBar);
 }
 
 void browser_search_bar_close(BrowserSearchBar *searchBar)

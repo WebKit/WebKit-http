@@ -323,7 +323,9 @@ void RenderImage::imageDimensionsChanged(bool imageSizeChanged, const IntRect* r
             || style().logicalMaxWidth().isPercent()
             || style().logicalMinWidth().isPercent();
 
-        if (imageSizeChanged || hasOverrideSize || containingBlockNeedsToRecomputePreferredSize) {
+        bool layoutSizeDependsOnIntrinsicSize = style().aspectRatioType() == AspectRatioFromIntrinsic;
+
+        if (imageSizeChanged || hasOverrideSize || containingBlockNeedsToRecomputePreferredSize || layoutSizeDependsOnIntrinsicSize) {
             shouldRepaint = false;
             if (!selfNeedsLayout())
                 setNeedsLayout();
@@ -462,11 +464,6 @@ void RenderImage::paintReplaced(PaintInfo& paintInfo, const LayoutPoint& paintOf
                 page->addRelevantUnpaintedObject(this, visualOverflowRect());
             return;
         }
-
-#if PLATFORM(MAC)
-        if (style().highlight() != nullAtom && !paintInfo.context->paintingDisabled())
-            paintCustomHighlight(toPoint(paintOffset - location()), style().highlight(), true);
-#endif
 
         LayoutRect contentRect = contentBoxRect();
         contentRect.moveBy(paintOffset);

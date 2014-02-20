@@ -29,6 +29,7 @@
 #include "GCAssertions.h"
 #include "Heap.h"
 #include "JSCell.h"
+#include "JSCInlines.h"
 #include "Structure.h"
 
 namespace JSC {

@@ -91,7 +91,6 @@
 #include "ScrollingCoordinator.h"
 #include "Settings.h"
 #include "StyleProperties.h"
-#include "TextIterator.h"
 #include "TextNodeTraversal.h"
 #include "TextResourceDecoder.h"
 #include "UserContentController.h"
@@ -177,7 +176,6 @@ Frame::Frame(Page& page, HTMLFrameOwnerElement* ownerElement, FrameLoaderClient&
 #if ENABLE(ORIENTATION_EVENTS)
     , m_orientation(0)
 #endif
-    , m_inViewSourceMode(false)
     , m_activeDOMObjectsAndAnimationsSuspendedCount(0)
 {
     AtomicString::init();

@@ -60,8 +60,8 @@ messages -> WebPageProxy {
     GetIsResizable() -> (bool isResizable)
     SetWindowFrame(WebCore::FloatRect windowFrame)
     GetWindowFrame() -> (WebCore::FloatRect windowFrame)
-    ScreenToWindow(WebCore::IntPoint screenPoint) -> (WebCore::IntPoint windowPoint)
-    WindowToScreen(WebCore::IntRect rect) -> (WebCore::IntRect screenFrame)
+    ScreenToRootView(WebCore::IntPoint screenPoint) -> (WebCore::IntPoint windowPoint)
+    RootViewToScreen(WebCore::IntRect rect) -> (WebCore::IntRect screenFrame)
     RunBeforeUnloadConfirmPanel(String message, uint64_t frameID) -> (bool shouldClose)
     PageDidScroll()
     RunOpenPanel(uint64_t frameID, WebCore::FileChooserSettings parameters)
@@ -71,7 +71,8 @@ messages -> WebPageProxy {
     RecommendedScrollbarStyleDidChange(int32_t newStyle)
     DidChangeScrollbarsForMainFrame(bool hasHorizontalScrollbar, bool hasVerticalScrollbar)
     DidChangeScrollOffsetPinningForMainFrame(bool pinnedToLeftSide, bool pinnedToRightSide, bool pinnedToTopSide, bool pinnedToBottomSide)
-    DidChangePageCount(unsigned pageCount);
+    DidChangePageCount(unsigned pageCount)
+    PageExtendedBackgroundColorDidChange(WebCore::Color backgroundColor)
 #if ENABLE(NETSCAPE_PLUGIN_API)
     DidFailToInitializePlugin(String mimeType, String frameURLString, String pageURLString)
     DidBlockInsecurePluginVersion(String mimeType, String pluginURLString, String frameURLString, String pageURLString, bool replacementObscured)
@@ -242,7 +243,7 @@ messages -> WebPageProxy {
 #if ENABLE(DRAG_SUPPORT)
     DidPerformDragControllerAction(WebCore::DragSession dragSession)
 #endif
-#if PLATFORM(MAC) && ENABLE(DRAG_SUPPORT)
+#if PLATFORM(COCOA) && ENABLE(DRAG_SUPPORT)
     SetDragImage(WebCore::IntPoint clientPosition, WebKit::ShareableBitmap::Handle dragImage, bool linkDrag)
     SetPromisedData(String pasteboardName, WebKit::SharedMemory::Handle imageHandle, uint64_t imageSize, String filename, String extension, String title, String url, String visibleURL, WebKit::SharedMemory::Handle archiveHandle, uint64_t archiveSize)
 #endif
@@ -250,7 +251,7 @@ messages -> WebPageProxy {
     StartDrag(WebCore::DragData dragData, WebKit::ShareableBitmap::Handle dragImage)
 #endif
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
     # Dictionary support.
     DidPerformDictionaryLookup(WebKit::AttributedString text, WebKit::DictionaryPopupInfo dictionaryPopupInfo)
 
@@ -281,7 +282,7 @@ messages -> WebPageProxy {
 #if USE(APPKIT)
     SubstitutionsPanelIsShowing() -> (bool isShowing)
 #endif
-#if !PLATFORM(IOS) && PLATFORM(MAC)
+#if PLATFORM(MAC)
     # Autocorrection messages
     ShowCorrectionPanel(int32_t panelType, WebCore::FloatRect boundingBoxOfReplacedString, String replacedString, String replacementString, Vector<String> alternativeReplacementStrings)
     DismissCorrectionPanel(int32_t reason)
@@ -322,7 +323,7 @@ messages -> WebPageProxy {
 
     SavePDFToFileInDownloadsFolder(String suggestedFilename, String originatingURLString, IPC::DataReference data)
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
     SavePDFToTemporaryFolderAndOpenWithNativeApplication(String suggestedFilename, String originatingURLString, IPC::DataReference data, String pdfUUID)
     OpenPDFFromTemporaryFolderWithNativeApplication(String pdfUUID)
 #endif
@@ -334,4 +335,9 @@ messages -> WebPageProxy {
     DidUpdateViewState()
     
     DidSaveToPageCache()
+
+#if ENABLE(SUBTLE_CRYPTO)
+    WrapCryptoKey(Vector<uint8_t> key) -> (bool succeeded, Vector<uint8_t> wrappedKey)
+    UnwrapCryptoKey(Vector<uint8_t> wrappedKey) -> (bool succeeded, Vector<uint8_t> key)
+#endif
 }

@@ -69,8 +69,7 @@ public:
     Color visitedLinkTextFillColor;
     Color visitedLinkTextEmphasisColor;    
 
-    OwnPtr<ShadowData> textShadow; // Our text shadow information for shadowed text drawing.
-    AtomicString highlight; // Apple-specific extension for custom highlight rendering.
+    std::unique_ptr<ShadowData> textShadow; // Our text shadow information for shadowed text drawing.
     
     RefPtr<CursorList> cursorData;
     Length indent;

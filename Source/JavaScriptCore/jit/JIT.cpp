@@ -26,6 +26,7 @@
 #include "config.h"
 
 #if ENABLE(JIT)
+
 #include "JIT.h"
 
 // This probably does not belong here; adding here for now as a quick Windows build fix.
@@ -44,7 +45,7 @@ JSC::MacroAssemblerX86Common::SSE2CheckState JSC::MacroAssemblerX86Common::s_sse
 #include "JSFunction.h"
 #include "LinkBuffer.h"
 #include "MaxFrameExtentForSlowPathCall.h"
-#include "Operations.h"
+#include "JSCInlines.h"
 #include "RepatchBuffer.h"
 #include "ResultType.h"
 #include "SamplingTool.h"
@@ -290,22 +291,6 @@ void JIT::privateCompileMainPass()
         DEFINE_OP(op_resolve_scope)
         DEFINE_OP(op_get_from_scope)
         DEFINE_OP(op_put_to_scope)
-
-        case op_get_by_id_chain:
-        case op_get_by_id_generic:
-        case op_get_by_id_proto:
-        case op_get_by_id_self:
-        case op_get_by_id_getter_chain:
-        case op_get_by_id_getter_proto:
-        case op_get_by_id_getter_self:
-        case op_get_by_id_custom_chain:
-        case op_get_by_id_custom_proto:
-        case op_get_by_id_custom_self:
-        case op_get_string_length:
-        case op_put_by_id_generic:
-        case op_put_by_id_replace:
-        case op_put_by_id_transition:
-            RELEASE_ASSERT_NOT_REACHED();
         }
     }
 

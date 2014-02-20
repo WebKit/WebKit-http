@@ -32,6 +32,7 @@
 #include "CopiedSpaceInlines.h"
 #include "JSCell.h"
 #include "JSObject.h"
+#include "JSCInlines.h"
 #include "Structure.h"
 
 namespace JSC {

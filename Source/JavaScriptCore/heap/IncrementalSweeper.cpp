@@ -32,6 +32,7 @@
 #include "JSObject.h"
 #include "JSString.h"
 #include "MarkedBlock.h"
+#include "JSCInlines.h"
 
 #include <wtf/HashSet.h>
 #include <wtf/WTFThreadData.h>

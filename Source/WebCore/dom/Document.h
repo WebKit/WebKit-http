@@ -240,6 +240,7 @@ enum DocumentClass {
     PluginDocumentClass = 1 << 3,
     MediaDocumentClass = 1 << 4,
     SVGDocumentClass = 1 << 5,
+    TextDocumentClass = 1 << 6
 };
 
 typedef unsigned char DocumentClassFlags;
@@ -258,7 +259,34 @@ public:
     {
         return adoptRef(new Document(frame, url, DefaultDocumentClass, NonRenderedPlaceholder));
     }
+    static PassRefPtr<Document> create(ScriptExecutionContext&);
+
     virtual ~Document();
+
+    // Nodes belonging to this document increase referencingNodeCount -
+    // these are enough to keep the document from being destroyed, but
+    // not enough to keep it from removing its children. This allows a
+    // node that outlives its document to still have a valid document
+    // pointer without introducing reference cycles.
+    void incrementReferencingNodeCount()
+    {
+        ASSERT(!m_deletionHasBegun);
+        ++m_referencingNodeCount;
+    }
+
+    void decrementReferencingNodeCount()
+    {
+        ASSERT(!m_deletionHasBegun || !m_referencingNodeCount);
+        --m_referencingNodeCount;
+        if (!m_referencingNodeCount && !refCount()) {
+#if !ASSERT_DISABLED
+            m_deletionHasBegun = true;
+#endif
+            delete this;
+        }
+    }
+
+    void removedLastRef();
 
     MediaQueryMatcher& mediaQueryMatcher();
 
@@ -391,7 +419,6 @@ public:
     PassRefPtr<Element> createElementNS(const String& namespaceURI, const String& qualifiedName, ExceptionCode&);
     PassRefPtr<Element> createElement(const QualifiedName&, bool createdByParser);
 
-    bool cssStickyPositionEnabled() const;
     bool cssRegionsEnabled() const;
     bool cssCompositingEnabled() const;
 #if ENABLE(CSS_REGIONS)
@@ -481,15 +508,13 @@ public:
     bool isSVGDocument() const { return m_documentClasses & SVGDocumentClass; }
     bool isPluginDocument() const { return m_documentClasses & PluginDocumentClass; }
     bool isMediaDocument() const { return m_documentClasses & MediaDocumentClass; }
+    bool isTextDocument() const { return m_documentClasses & TextDocumentClass; }
     bool hasSVGRootNode() const;
     virtual bool isFrameSet() const { return false; }
 
     bool isSrcdocDocument() const { return m_isSrcdocDocument; }
 
     StyleResolver* styleResolverIfExists() const { return m_styleResolver.get(); }
-
-    bool isViewSource() const { return m_isViewSource; }
-    void setIsViewSource(bool);
 
     bool sawElementsInKnownNamespaces() const { return m_sawElementsInKnownNamespaces; }
 
@@ -839,6 +864,8 @@ public:
 
     String referrer() const;
 
+    String origin() const;
+
     String domain() const;
     void setDomain(const String& newDomain, ExceptionCode&);
 
@@ -1140,7 +1167,7 @@ public:
 #endif
 
     virtual EventTarget* errorEventTarget() override;
-    virtual void logExceptionToConsole(const String& errorMessage, const String& sourceURL, int lineNumber, int columnNumber, PassRefPtr<ScriptCallStack>) override;
+    virtual void logExceptionToConsole(const String& errorMessage, const String& sourceURL, int lineNumber, int columnNumber, PassRefPtr<Inspector::ScriptCallStack>) override;
 
     void initDNSPrefetch();
 
@@ -1224,6 +1251,11 @@ public:
 
     void setVisualUpdatesAllowedByClient(bool);
 
+#if ENABLE(SUBTLE_CRYPTO)
+    virtual bool wrapCryptoKey(const Vector<uint8_t>& key, Vector<uint8_t>& wrappedKey) override;
+    virtual bool unwrapCryptoKey(const Vector<uint8_t>& wrappedKey, Vector<uint8_t>& key) override;
+#endif
+
 protected:
     enum ConstructionFlags { Synthesized = 1, NonRenderedPlaceholder = 1 << 1 };
     Document(Frame*, const URL&, unsigned = DefaultDocumentClass, unsigned constructionFlags = 0);
@@ -1244,8 +1276,6 @@ private:
     void createRenderTree();
     void detachParser();
 
-    virtual void dropChildren() override;
-
     typedef void (*ArgumentsCallback)(const String& keyString, const String& valueString, Document*, void* data);
     void processArguments(const String& features, void* data, ArgumentsCallback);
 
@@ -1262,7 +1292,7 @@ private:
     virtual void refScriptExecutionContext() override { ref(); }
     virtual void derefScriptExecutionContext() override { deref(); }
 
-    virtual void addMessage(MessageSource, MessageLevel, const String& message, const String& sourceURL, unsigned lineNumber, unsigned columnNumber, PassRefPtr<ScriptCallStack>, JSC::ExecState* = 0, unsigned long requestIdentifier = 0) override;
+    virtual void addMessage(MessageSource, MessageLevel, const String& message, const String& sourceURL, unsigned lineNumber, unsigned columnNumber, PassRefPtr<Inspector::ScriptCallStack>, JSC::ExecState* = 0, unsigned long requestIdentifier = 0) override;
 
     virtual double minimumTimerInterval() const override;
 
@@ -1310,6 +1340,9 @@ private:
     void didAssociateFormControlsTimerFired(Timer<Document>&);
 
     void styleResolverThrowawayTimerFired(DeferrableOneShotTimer<Document>&);
+
+    unsigned m_referencingNodeCount;
+
     DeferrableOneShotTimer<Document> m_styleResolverThrowawayTimer;
 
     OwnPtr<StyleResolver> m_styleResolver;
@@ -1501,7 +1534,6 @@ private:
     bool m_isSynthesized;
     bool m_isNonRenderedPlaceholder;
 
-    bool m_isViewSource;
     bool m_sawElementsInKnownNamespaces;
     bool m_isSrcdocDocument;
 
@@ -1669,17 +1701,17 @@ inline const Document* Document::templateDocument() const
 
 inline bool Node::isDocumentNode() const
 {
-    return this == documentInternal();
+    return this == &document();
 }
 
-inline Node::Node(Document* document, ConstructionType type)
+inline Node::Node(Document& document, ConstructionType type)
     : m_nodeFlags(type)
     , m_parentNode(0)
-    , m_treeScope(document ? document : &TreeScope::noDocumentInstance())
+    , m_treeScope(&document)
     , m_previous(0)
     , m_next(0)
 {
-    m_treeScope->selfOnlyRef();
+    document.incrementReferencingNodeCount();
 
 #if !defined(NDEBUG) || (defined(DUMP_NODE_STATISTICS) && DUMP_NODE_STATISTICS)
     trackForDebugging();
@@ -1695,29 +1727,7 @@ inline ScriptExecutionContext* Node::scriptExecutionContext() const
 
 Element* eventTargetElementForDocument(Document*);
 
-inline Document& toDocument(ScriptExecutionContext& scriptExecutionContext)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(scriptExecutionContext.isDocument());
-    return static_cast<Document&>(scriptExecutionContext);
-}
-
-inline const Document& toDocument(const ScriptExecutionContext& scriptExecutionContext)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(scriptExecutionContext.isDocument());
-    return static_cast<const Document&>(scriptExecutionContext);
-}
-
-inline Document* toDocument(ScriptExecutionContext* scriptExecutionContext)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!scriptExecutionContext || scriptExecutionContext->isDocument());
-    return static_cast<Document*>(scriptExecutionContext);
-}
-
-inline const Document* toDocument(const ScriptExecutionContext* scriptExecutionContext)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!scriptExecutionContext || scriptExecutionContext->isDocument());
-    return static_cast<const Document*>(scriptExecutionContext);
-}
+SCRIPT_EXECUTION_CONTEXT_TYPE_CASTS(Document)
 
 inline bool isDocument(const Node& node) { return node.isDocumentNode(); }
 void isDocument(const Document&); // Catch unnecessary runtime check of type known at compile time.

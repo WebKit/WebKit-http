@@ -24,7 +24,7 @@
 #include <wtf/RefCounted.h>
 #include <wtf/RetainPtr.h>
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
 #include <wtf/SchedulePair.h>
 #endif
 
@@ -32,7 +32,7 @@
 class BUrlContext;
 #endif
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
 OBJC_CLASS NSOperationQueue;
 #endif
 
@@ -53,7 +53,7 @@ public:
 
     virtual bool shouldClearReferrerOnHTTPSToHTTPRedirect() const = 0;
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
     virtual bool needsSiteSpecificQuirks() const = 0;
     virtual bool localFileContentSniffingEnabled() const = 0; // FIXME: Reconcile with ResourceHandle::forceContentSniffing().
     virtual SchedulePairHashSet* scheduledRunLoopPairs() const { return 0; }
@@ -61,7 +61,7 @@ public:
     virtual ResourceError blockedError(const ResourceRequest&) const = 0;
 #endif
 
-#if PLATFORM(MAC) || USE(CFNETWORK) || USE(SOUP)
+#if PLATFORM(COCOA) || USE(CFNETWORK) || USE(SOUP)
     virtual NetworkStorageSession& storageSession() const = 0;
 #endif
 

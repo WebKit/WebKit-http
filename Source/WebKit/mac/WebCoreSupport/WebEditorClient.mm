@@ -71,7 +71,6 @@
 #import <wtf/MainThread.h>
 #import <wtf/PassRefPtr.h>
 #import <wtf/RunLoop.h>
-#import <wtf/text/StringView.h>
 #import <wtf/text/WTFString.h>
 
 #if PLATFORM(IOS)
@@ -195,7 +194,6 @@ WebEditorClient::WebEditorClient(WebView *webView)
     , m_undoTarget([[[WebEditorUndoTarget alloc] init] autorelease])
     , m_haveUndoRedoOperations(false)
 #if PLATFORM(IOS)
-    , m_selectionNotificationSuppressions(0)
     , m_delayingContentChangeNotifications(0)
     , m_hasDelayedContentChangeNotification(0)
 #endif
@@ -358,7 +356,7 @@ void WebEditorClient::respondToChangedSelection(Frame* frame)
 #else
     // Selection can be changed while deallocating down the WebView / Frame / Editor.  Do not post in that case because it's already too late
     // for the NSInvocation to retain the WebView.
-    if (![m_webView _isClosing] && m_selectionNotificationSuppressions == 0)
+    if (![m_webView _isClosing])
         WebThreadPostNotification(WebViewDidChangeSelectionNotification, m_webView, nil);
 #endif
 }
@@ -797,26 +795,7 @@ void WebEditorClient::textDidChangeInTextArea(Element* element)
     CallFormDelegate(m_webView, @selector(textDidChangeInTextArea:inFrame:), textAreaElement, kit(element->document().frame()));
 }
 
-static RetainPtr<NSString> nsStringWithoutCopying(StringView stringView)
-{
-    if (stringView.is8Bit())
-        return adoptNS([[NSString alloc] initWithBytesNoCopy:const_cast<LChar*>(stringView.characters8()) length:stringView.length() encoding:NSISOLatin1StringEncoding freeWhenDone:NO]);
-
-    return adoptNS([[NSString alloc] initWithCharactersNoCopy:const_cast<unichar*>(stringView.characters16()) length:stringView.length() freeWhenDone:NO]);
-}
-
 #if PLATFORM(IOS)
-void WebEditorClient::suppressSelectionNotifications() 
-{
-    m_selectionNotificationSuppressions++;
-}
-
-void WebEditorClient::restoreSelectionNotifications() 
-{
-    --m_selectionNotificationSuppressions;
-    if (m_selectionNotificationSuppressions < 0)
-        m_selectionNotificationSuppressions = 0;
-}
 
 void WebEditorClient::writeDataToPasteboard(NSDictionary* representation)
 {
@@ -889,8 +868,7 @@ Vector<TextCheckingResult> WebEditorClient::checkTextOfParagraph(StringView stri
 
     Vector<TextCheckingResult> results;
 
-    auto textString = nsStringWithoutCopying(string);
-    NSArray *incomingResults = [[m_webView _UIKitDelegateForwarder] checkSpellingOfString:textString.get()];
+    NSArray *incomingResults = [[m_webView _UIKitDelegateForwarder] checkSpellingOfString:string.createNSStringWithoutCopying().get()];
     for (NSValue *incomingResult in incomingResults) {
         NSRange resultRange = [incomingResult rangeValue];
         ASSERT(resultRange.location != NSNotFound && resultRange.length > 0);
@@ -903,9 +881,11 @@ Vector<TextCheckingResult> WebEditorClient::checkTextOfParagraph(StringView stri
 
     return results;
 }
+
 #endif // PLATFORM(IOS)
 
 #if !PLATFORM(IOS)
+
 bool WebEditorClient::shouldEraseMarkersAfterChangeSelection(TextCheckingType type) const
 {
     // This prevents erasing spelling markers on OS X Lion or later to match AppKit on these Mac OS X versions.
@@ -914,8 +894,7 @@ bool WebEditorClient::shouldEraseMarkersAfterChangeSelection(TextCheckingType ty
 
 void WebEditorClient::ignoreWordInSpellDocument(const String& text)
 {
-    [[NSSpellChecker sharedSpellChecker] ignoreWord:text 
-                             inSpellDocumentWithTag:spellCheckerDocumentTag()];
+    [[NSSpellChecker sharedSpellChecker] ignoreWord:text inSpellDocumentWithTag:spellCheckerDocumentTag()];
 }
 
 void WebEditorClient::learnWord(const String& text)
@@ -923,11 +902,10 @@ void WebEditorClient::learnWord(const String& text)
     [[NSSpellChecker sharedSpellChecker] learnWord:text];
 }
 
-void WebEditorClient::checkSpellingOfString(const UChar* text, int length, int* misspellingLocation, int* misspellingLength)
+void WebEditorClient::checkSpellingOfString(StringView text, int* misspellingLocation, int* misspellingLength)
 {
-    NSString* textString = [[NSString alloc] initWithCharactersNoCopy:const_cast<UChar*>(text) length:length freeWhenDone:NO];
-    NSRange range = [[NSSpellChecker sharedSpellChecker] checkSpellingOfString:textString startingAt:0 language:nil wrap:NO inSpellDocumentWithTag:spellCheckerDocumentTag() wordCount:NULL];
-    [textString release];
+    NSRange range = [[NSSpellChecker sharedSpellChecker] checkSpellingOfString:text.createNSStringWithoutCopying().get() startingAt:0 language:nil wrap:NO inSpellDocumentWithTag:spellCheckerDocumentTag() wordCount:NULL];
+
     if (misspellingLocation) {
         // WebCore expects -1 to represent "not found"
         if (range.location == NSNotFound)
@@ -947,12 +925,10 @@ String WebEditorClient::getAutoCorrectSuggestionForMisspelledWord(const String& 
     return String();
 }
 
-void WebEditorClient::checkGrammarOfString(const UChar* text, int length, Vector<GrammarDetail>& details, int* badGrammarLocation, int* badGrammarLength)
+void WebEditorClient::checkGrammarOfString(StringView text, Vector<GrammarDetail>& details, int* badGrammarLocation, int* badGrammarLength)
 {
     NSArray *grammarDetails;
-    NSString* textString = [[NSString alloc] initWithCharactersNoCopy:const_cast<UChar*>(text) length:length freeWhenDone:NO];
-    NSRange range = [[NSSpellChecker sharedSpellChecker] checkGrammarOfString:textString startingAt:0 language:nil wrap:NO inSpellDocumentWithTag:spellCheckerDocumentTag() details:&grammarDetails];
-    [textString release];
+    NSRange range = [[NSSpellChecker sharedSpellChecker] checkGrammarOfString:text.createNSStringWithoutCopying().get() startingAt:0 language:nil wrap:NO inSpellDocumentWithTag:spellCheckerDocumentTag() details:&grammarDetails];
     if (badGrammarLocation)
         // WebCore expects -1 to represent "not found"
         *badGrammarLocation = (range.location == NSNotFound) ? -1 : static_cast<int>(range.location);
@@ -1057,11 +1033,7 @@ static Vector<TextCheckingResult> core(NSArray *incomingResults, TextCheckingTyp
 
 Vector<TextCheckingResult> WebEditorClient::checkTextOfParagraph(StringView string, TextCheckingTypeMask checkingTypes)
 {
-    auto textString = nsStringWithoutCopying(string);
-
-    NSArray *incomingResults = [[NSSpellChecker sharedSpellChecker] checkString:textString.get() range:NSMakeRange(0, [textString length]) types:(checkingTypes|NSTextCheckingTypeOrthography) options:nil inSpellDocumentWithTag:spellCheckerDocumentTag() orthography:NULL wordCount:NULL];
-
-    return core(incomingResults, checkingTypes);
+    return core([[NSSpellChecker sharedSpellChecker] checkString:string.createNSStringWithoutCopying().get() range:NSMakeRange(0, string.length()) types:(checkingTypes | NSTextCheckingTypeOrthography) options:nil inSpellDocumentWithTag:spellCheckerDocumentTag() orthography:NULL wordCount:NULL], checkingTypes);
 }
 
 void WebEditorClient::updateSpellingUIWithGrammarString(const String& badGrammarPhrase, const GrammarDetail& grammarDetail)
@@ -1116,6 +1088,7 @@ void WebEditorClient::getGuessesForWord(const String& word, const String& contex
             guesses.append(string);
     }
 }
+
 #endif // !PLATFORM(IOS)
 
 void WebEditorClient::willSetInputMethodState()

@@ -35,6 +35,7 @@
 #include "InspectorBackendDispatcher.h"
 #include "InspectorFrontendChannel.h"
 #include "JSGlobalObject.h"
+#include "JSGlobalObjectConsoleAgent.h"
 #include "JSGlobalObjectDebuggerAgent.h"
 #include "JSGlobalObjectRuntimeAgent.h"
 
@@ -47,22 +48,28 @@ JSGlobalObjectInspectorController::JSGlobalObjectInspectorController(JSGlobalObj
     , m_injectedScriptManager(std::make_unique<InjectedScriptManager>(*this, InjectedScriptHost::create()))
     , m_inspectorFrontendChannel(nullptr)
 {
-    m_agents.append(std::make_unique<InspectorAgent>());
-
-    auto runtimeAgentPtr = std::make_unique<JSGlobalObjectRuntimeAgent>(m_injectedScriptManager.get(), m_globalObject);
-    InspectorRuntimeAgent* runtimeAgent = runtimeAgentPtr.get();
-    m_agents.append(std::move(runtimeAgentPtr));
-
-    auto debuggerAgentPtr = std::make_unique<JSGlobalObjectDebuggerAgent>(m_injectedScriptManager.get(), m_globalObject);
-    InspectorDebuggerAgent* debuggerAgent = debuggerAgentPtr.get();
-    m_agents.append(std::move(debuggerAgentPtr));
+    auto runtimeAgent = std::make_unique<JSGlobalObjectRuntimeAgent>(m_injectedScriptManager.get(), m_globalObject);
+    auto consoleAgent = std::make_unique<JSGlobalObjectConsoleAgent>(m_injectedScriptManager.get());
+    auto debuggerAgent = std::make_unique<JSGlobalObjectDebuggerAgent>(m_injectedScriptManager.get(), m_globalObject, consoleAgent.get());
 
     runtimeAgent->setScriptDebugServer(&debuggerAgent->scriptDebugServer());
+
+    m_agents.append(std::make_unique<InspectorAgent>());
+    m_agents.append(std::move(runtimeAgent));
+    m_agents.append(std::move(consoleAgent));
+    m_agents.append(std::move(debuggerAgent));
 }
 
 JSGlobalObjectInspectorController::~JSGlobalObjectInspectorController()
 {
     m_agents.discardAgents();
+}
+
+void JSGlobalObjectInspectorController::globalObjectDestroyed()
+{
+    disconnectFrontend(InspectorDisconnectReason::InspectedTargetDestroyed);
+
+    m_injectedScriptManager->disconnect();
 }
 
 void JSGlobalObjectInspectorController::connectFrontend(InspectorFrontendChannel* frontendChannel)
@@ -86,8 +93,6 @@ void JSGlobalObjectInspectorController::disconnectFrontend(InspectorDisconnectRe
     m_inspectorBackendDispatcher->clearFrontend();
     m_inspectorBackendDispatcher.clear();
     m_inspectorFrontendChannel = nullptr;
-
-    m_injectedScriptManager->disconnect();
 }
 
 void JSGlobalObjectInspectorController::dispatchMessageFromFrontend(const String& message)

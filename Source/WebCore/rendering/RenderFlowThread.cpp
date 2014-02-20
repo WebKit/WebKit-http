@@ -33,6 +33,7 @@
 #include "FlowThreadController.h"
 #include "HitTestRequest.h"
 #include "HitTestResult.h"
+#include "InlineElementBox.h"
 #include "Node.h"
 #include "PODIntervalTree.h"
 #include "PaintInfo.h"
@@ -388,14 +389,6 @@ void RenderFlowThread::computeLogicalHeight(LayoutUnit, LayoutUnit logicalTop, L
         if (computedValues.m_extent == maxFlowSize)
             return;
     }
-}
-
-LayoutRect RenderFlowThread::computeRegionClippingRect(const LayoutPoint& offset, const LayoutRect& flowThreadPortionRect, const LayoutRect& flowThreadPortionOverflowRect) const
-{
-    LayoutRect regionClippingRect(offset + (flowThreadPortionOverflowRect.location() - flowThreadPortionRect.location()), flowThreadPortionOverflowRect.size());
-    if (style().isFlippedBlocksWritingMode())
-        regionClippingRect.move(flowThreadPortionRect.size() - flowThreadPortionOverflowRect.size());
-    return regionClippingRect;
 }
 
 bool RenderFlowThread::nodeAtPoint(const HitTestRequest& request, HitTestResult& result, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction hitTestAction)
@@ -792,16 +785,23 @@ void RenderFlowThread::setRegionRangeForBox(const RenderBox* box, RenderRegion* 
 
 void RenderFlowThread::getRegionRangeForBox(const RenderBox* box, RenderRegion*& startRegion, RenderRegion*& endRegion) const
 {
-    startRegion = 0;
-    endRegion = 0;
+    startRegion = endRegion = 0;
     auto it = m_regionRangeMap.find(box);
-    if (it == m_regionRangeMap.end())
-        return;
 
-    const RenderRegionRange& range = it->value;
-    startRegion = range.startRegion();
-    endRegion = range.endRegion();
-    ASSERT(m_regionList.contains(startRegion) && m_regionList.contains(endRegion));
+    if (it != m_regionRangeMap.end()) {
+        const RenderRegionRange& range = it->value;
+        startRegion = range.startRegion();
+        endRegion = range.endRegion();
+        ASSERT(m_regionList.contains(startRegion) && m_regionList.contains(endRegion));
+        return;
+    }
+
+    InlineElementBox* boxWrapper = box->inlineBoxWrapper();
+    if (boxWrapper) {
+        const RootInlineBox& boxWrapperRootInlineBox =  boxWrapper->root();
+        startRegion = endRegion = boxWrapperRootInlineBox.containingRegion();
+        return;
+    }
 }
 
 void RenderFlowThread::applyBreakAfterContent(LayoutUnit clientHeight)

@@ -43,7 +43,6 @@
 #include "ParsedContentType.h"
 #include "ResourceError.h"
 #include "ResourceRequest.h"
-#include "ScriptCallStack.h"
 #include "ScriptController.h"
 #include "ScriptProfile.h"
 #include "Settings.h"
@@ -58,8 +57,8 @@
 #include <mutex>
 #include <runtime/ArrayBuffer.h>
 #include <runtime/ArrayBufferView.h>
+#include <runtime/JSCInlines.h>
 #include <runtime/JSLock.h>
-#include <runtime/Operations.h>
 #include <wtf/Ref.h>
 #include <wtf/RefCountedLeakCounter.h>
 #include <wtf/StdLibExtras.h>
@@ -103,6 +102,7 @@ XMLHttpRequestStaticData::XMLHttpRequestStaticData()
         "cookie",
         "cookie2",
         "date",
+        "dnt",
         "expect",
         "host",
         "keep-alive",
@@ -160,7 +160,7 @@ static void logConsoleError(ScriptExecutionContext* context, const String& messa
         return;
     // FIXME: It's not good to report the bad usage without indicating what source line it came from.
     // We should pass additional parameters so we can tell the console where the mistake occurred.
-    context->addConsoleMessage(JSMessageSource, ErrorMessageLevel, message);
+    context->addConsoleMessage(MessageSource::JS, MessageLevel::Error, message);
 }
 
 PassRefPtr<XMLHttpRequest> XMLHttpRequest::create(ScriptExecutionContext& context)
@@ -241,7 +241,8 @@ String XMLHttpRequest::responseText(ExceptionCode& ec)
 
 void XMLHttpRequest::didCacheResponseJSON()
 {
-    ASSERT(m_responseTypeCode == ResponseTypeJSON && doneWithoutErrors());
+    ASSERT(m_responseTypeCode == ResponseTypeJSON);
+    ASSERT(doneWithoutErrors());
     m_responseCacheIsValid = true;
     m_responseBuilder.clear();
 }
@@ -250,11 +251,11 @@ Document* XMLHttpRequest::responseXML(ExceptionCode& ec)
 {
     if (m_responseTypeCode != ResponseTypeDefault && m_responseTypeCode != ResponseTypeDocument) {
         ec = INVALID_STATE_ERR;
-        return 0;
+        return nullptr;
     }
 
     if (!doneWithoutErrors())
-        return 0;
+        return nullptr;
 
     if (!m_createdDocument) {
         bool isHTML = equalIgnoringCase(responseMIMEType(), "text/html");
@@ -285,10 +286,7 @@ Document* XMLHttpRequest::responseXML(ExceptionCode& ec)
 Blob* XMLHttpRequest::responseBlob()
 {
     ASSERT(m_responseTypeCode == ResponseTypeBlob);
-
-    // We always return null before DONE.
-    if (m_state != DONE)
-        return 0;
+    ASSERT(doneWithoutErrors());
 
     if (!m_responseBlob) {
         // FIXME: This causes two (or more) unnecessary copies of the data.
@@ -319,9 +317,7 @@ Blob* XMLHttpRequest::responseBlob()
 ArrayBuffer* XMLHttpRequest::responseArrayBuffer()
 {
     ASSERT(m_responseTypeCode == ResponseTypeArrayBuffer);
-
-    if (m_state != DONE)
-        return 0;
+    ASSERT(doneWithoutErrors());
 
     if (!m_responseArrayBuffer) {
         if (m_binaryResponseBuilder)
@@ -713,7 +709,7 @@ void XMLHttpRequest::send(DOMFormData* body, ExceptionCode& ec)
 void XMLHttpRequest::send(ArrayBuffer* body, ExceptionCode& ec)
 {
     String consoleMessage("ArrayBuffer is deprecated in XMLHttpRequest.send(). Use ArrayBufferView instead.");
-    scriptExecutionContext()->addConsoleMessage(JSMessageSource, WarningMessageLevel, consoleMessage);
+    scriptExecutionContext()->addConsoleMessage(MessageSource::JS, MessageLevel::Warning, consoleMessage);
 
     HistogramSupport::histogramEnumeration("WebCore.XHR.send.ArrayBufferOrView", XMLHttpRequestSendArrayBuffer, XMLHttpRequestSendArrayBufferOrViewMax);
 

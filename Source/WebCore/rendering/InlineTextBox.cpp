@@ -103,12 +103,12 @@ static DashArray translateIntersectionPointsToSkipInkBoundaries(const DashArray&
     // Step 3: Output the space between the ranges, but only if the space warrants an underline.
     float previous = 0;
     DashArray result;
-    for (auto i = intermediateTuples.begin(); i != intermediateTuples.end(); i++) {
-        if (i->first - previous > dilationAmount) {
+    for (const auto& tuple : intermediateTuples) {
+        if (tuple.first - previous > dilationAmount) {
             result.append(previous);
-            result.append(i->first);
+            result.append(tuple.first);
         }
-        previous = i->second;
+        previous = tuple.second;
     }
     if (totalWidth - previous > dilationAmount) {
         result.append(previous);
@@ -585,12 +585,6 @@ void InlineTextBox::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffset, 
     // 1. Paint backgrounds behind text if needed. Examples of such backgrounds include selection
     // and composition underlines.
     if (paintInfo.phase != PaintPhaseSelection && paintInfo.phase != PaintPhaseTextClip && !isPrinting) {
-#if PLATFORM(MAC)
-        // Custom highlighters go behind everything else.
-        if (lineStyle.highlight() != nullAtom && !context->paintingDisabled())
-            paintCustomHighlight(adjustedPaintOffset, lineStyle.highlight());
-#endif
-
         if (containsComposition && !useCustomUnderlines)
             paintCompositionBackground(context, boxOrigin, lineStyle, font,
                 renderer().frame().editor().compositionStart(),
@@ -813,23 +807,6 @@ void InlineTextBox::paintCompositionBackground(GraphicsContext* context, const F
     FloatPoint localOrigin(boxOrigin.x(), boxOrigin.y() - deltaY);
     context->drawHighlightForText(font, constructTextRun(style, font), localOrigin, selHeight, c, style.colorSpace(), sPos, ePos);
 }
-
-#if PLATFORM(MAC)
-
-void InlineTextBox::paintCustomHighlight(const LayoutPoint& paintOffset, const AtomicString& type)
-{
-    Page* page = renderer().frame().page();
-    if (!page)
-        return;
-
-    const RootInlineBox& rootBox = root();
-    FloatRect rootRect(paintOffset.x() + rootBox.x(), paintOffset.y() + selectionTop(), rootBox.logicalWidth(), selectionHeight());
-    FloatRect textRect(paintOffset.x() + x(), rootRect.y(), logicalWidth(), rootRect.height());
-
-    page->chrome().client().paintCustomHighlight(renderer().textNode(), type, textRect, rootRect, true, false);
-}
-
-#endif
 
 static StrokeStyle textDecorationStyleToStrokeStyle(TextDecorationStyle decorationStyle)
 {
@@ -1082,9 +1059,7 @@ void InlineTextBox::paintDecoration(GraphicsContext& context, const FloatPoint& 
     
     // Use a special function for underlines to get the positioning exactly right.
     bool isPrinting = renderer().document().printing();
-#if !PLATFORM(IOS)
-    context.setStrokeThickness(textDecorationThickness);
-#else
+
     // On iOS we want to draw crisp decorations. The function drawLineForText takes the context's
     // strokeThickness and renders that at device pixel scale (i.e. a strokeThickness of 1 will
     // produce a 1 device pixel line, so thinner on retina than non-retina). We will also scale
@@ -1098,7 +1073,6 @@ void InlineTextBox::paintDecoration(GraphicsContext& context, const FloatPoint& 
     float fontSizeScaling = renderer().style().fontSize() / textDecorationBaseFontSize;
     float strokeThickness = roundf(textDecorationThickness * fontSizeScaling * pageScale);
     context.setStrokeThickness(strokeThickness);
-#endif
 
     bool linesAreOpaque = !isPrinting && (!(decoration & TextDecorationUnderline) || underline.alpha() == 255) && (!(decoration & TextDecorationOverline) || overline.alpha() == 255) && (!(decoration & TextDecorationLineThrough) || linethrough.alpha() == 255);
 
@@ -1188,7 +1162,7 @@ void InlineTextBox::paintDecoration(GraphicsContext& context, const FloatPoint& 
             }
             default:
 #if ENABLE(CSS3_TEXT_DECORATION_SKIP_INK)
-                if (lineStyle.textDecorationSkip() == TextDecorationSkipInk) {
+                if ((lineStyle.textDecorationSkip() == TextDecorationSkipInk || lineStyle.textDecorationSkip() == TextDecorationSkipAuto) && isHorizontal()) {
                     if (!context.paintingDisabled()) {
                         drawSkipInkUnderline(textPainter, context, localOrigin, underlineOffset, width, isPrinting);
 
@@ -1196,6 +1170,7 @@ void InlineTextBox::paintDecoration(GraphicsContext& context, const FloatPoint& 
                             drawSkipInkUnderline(textPainter, context, localOrigin, underlineOffset + doubleOffset, width, isPrinting);
                     }
                 } else {
+                    // FIXME: Need to support text-decoration-skip: none.
 #endif // CSS3_TEXT_DECORATION_SKIP_INK
                     context.drawLineForText(FloatPoint(localOrigin.x(), localOrigin.y() + underlineOffset), width, isPrinting);
 
@@ -1217,7 +1192,7 @@ void InlineTextBox::paintDecoration(GraphicsContext& context, const FloatPoint& 
             }
             default:
 #if ENABLE(CSS3_TEXT_DECORATION_SKIP_INK)
-                if (lineStyle.textDecorationSkip() == TextDecorationSkipInk) {
+                if ((lineStyle.textDecorationSkip() == TextDecorationSkipInk || lineStyle.textDecorationSkip() == TextDecorationSkipAuto) && isHorizontal()) {
                     if (!context.paintingDisabled()) {
                         drawSkipInkUnderline(textPainter, context, localOrigin, 0, width, isPrinting);
 
@@ -1225,6 +1200,7 @@ void InlineTextBox::paintDecoration(GraphicsContext& context, const FloatPoint& 
                             drawSkipInkUnderline(textPainter, context, localOrigin, -doubleOffset, width, isPrinting);
                     }
                 } else {
+                    // FIXME: Need to support text-decoration-skip: none.
 #endif // CSS3_TEXT_DECORATION_SKIP_INK
                     context.drawLineForText(localOrigin, width, isPrinting);
                     if (decorationStyle == TextDecorationStyleDouble)

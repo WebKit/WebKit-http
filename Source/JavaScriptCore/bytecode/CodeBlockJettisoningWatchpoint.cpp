@@ -28,6 +28,7 @@
 
 #include "CodeBlock.h"
 #include "DFGCommon.h"
+#include "JSCInlines.h"
 
 namespace JSC {
 

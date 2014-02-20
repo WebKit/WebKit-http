@@ -286,6 +286,11 @@ JSStringRef AccessibilityUIElement::roleDescription()
     return 0;
 }
 
+JSStringRef AccessibilityUIElement::computedRoleString()
+{
+    return 0;
+}
+
 JSStringRef AccessibilityUIElement::title()
 {
     if (!m_element)
@@ -598,12 +603,17 @@ bool AccessibilityUIElement::attributedStringRangeIsMisspelled(unsigned, unsigne
     return false;
 }
 
-unsigned AccessibilityUIElement::uiElementCountForSearchPredicate(JSContextRef context, AccessibilityUIElement* startElement, bool isDirectionNext, JSValueRef searchKey, JSStringRef searchText, bool visibleOnly)
+unsigned AccessibilityUIElement::uiElementCountForSearchPredicate(JSContextRef context, AccessibilityUIElement* startElement, bool isDirectionNext, JSValueRef searchKey, JSStringRef searchText, bool visibleOnly, bool immediateDescendantsOnly)
 {
     return 0;
 }
 
-AccessibilityUIElement AccessibilityUIElement::uiElementForSearchPredicate(JSContextRef context, AccessibilityUIElement* startElement, bool isDirectionNext, JSValueRef searchKey, JSStringRef searchText, bool visibleOnly)
+AccessibilityUIElement AccessibilityUIElement::uiElementForSearchPredicate(JSContextRef context, AccessibilityUIElement* startElement, bool isDirectionNext, JSValueRef searchKey, JSStringRef searchText, bool visibleOnly, bool immediateDescendantsOnly)
+{
+    return 0;
+}
+
+JSStringRef AccessibilityUIElement::selectTextWithCriteria(JSContextRef context, JSStringRef ambiguityResolution, JSValueRef searchStrings, JSStringRef replacementString)
 {
     return 0;
 }

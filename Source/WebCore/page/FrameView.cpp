@@ -1296,7 +1296,7 @@ void FrameView::layout(bool allowSubtree)
     
     m_layoutCount++;
 
-#if PLATFORM(MAC) || PLATFORM(WIN) || PLATFORM(GTK) || PLATFORM(EFL)
+#if PLATFORM(COCOA) || PLATFORM(WIN) || PLATFORM(GTK) || PLATFORM(EFL)
     if (AXObjectCache* cache = root->document().existingAXObjectCache())
         cache->postNotification(root, AXObjectCache::AXLayoutComplete);
 #endif
@@ -1340,12 +1340,6 @@ void FrameView::layout(bool allowSubtree)
     InspectorInstrumentation::didLayout(cookie, root);
 
     --m_nestedLayoutCount;
-
-    if (m_nestedLayoutCount)
-        return;
-
-    if (Page* page = frame().page())
-        page->chrome().client().layoutUpdated(&frame());
 }
 
 RenderBox* FrameView::embeddedContentBox() const
@@ -1544,7 +1538,7 @@ LayoutRect FrameView::viewportConstrainedVisibleContentRect() const
         return customFixedPositionLayoutRect();
 #endif
     LayoutRect viewportRect = visibleContentRect();
-    viewportRect.setLocation(toPoint(scrollOffsetForFixedPosition()));
+    viewportRect.setLocation(toLayoutPoint(scrollOffsetForFixedPosition()));
     return viewportRect;
 }
 
@@ -1710,7 +1704,7 @@ void FrameView::scrollContentsSlowPath(const IntRect& updateRect)
         updateRect.scale(1 / frame().frameScaleFactor());
 
         ASSERT(renderView());
-        renderView()->layer()->setBackingNeedsRepaintInRect(updateRect);
+        renderView()->layer()->setBackingNeedsRepaintInRect(updateRect, GraphicsLayer::DoNotClipToLayer);
     }
 
     repaintSlowRepaintObjects();
@@ -1736,7 +1730,7 @@ void FrameView::repaintSlowRepaintObjects()
     // Renderers with fixed backgrounds may be in compositing layers, so we need to explicitly
     // repaint them after scrolling.
     for (auto& renderer : *m_slowRepaintObjects)
-        renderer->repaint();
+        renderer->repaintSlowRepaintObject();
 }
 
 // Note that this gets called at painting time.
@@ -1953,6 +1947,7 @@ void FrameView::scrollPositionChanged(const IntPoint& oldPosition, const IntPoin
     sendWillRevealEdgeEventsIfNeeded(oldPosition, newPosition);
 
     if (RenderView* renderView = this->renderView()) {
+        renderView->resumePausedImageAnimationsIfNeeded();
         if (renderView->usesCompositing())
             renderView->compositor().frameViewDidScroll();
     }
@@ -2632,7 +2627,7 @@ void FrameView::performPostLayoutTasks()
     m_postLayoutTasksTimer.stop();
 
     frame().selection().setCaretRectNeedsUpdate();
-    frame().selection().updateAppearance();
+    frame().selection().updateAndRevealSelection();
 
     LayoutMilestones requestedMilestones = 0;
     LayoutMilestones milestonesAchieved = 0;

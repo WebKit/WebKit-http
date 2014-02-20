@@ -28,6 +28,7 @@
 
 #if ENABLE(DFG_JIT)
 
+#include "JSCInlines.h"
 #include <wtf/PrintStream.h>
 
 namespace WTF {

@@ -54,10 +54,6 @@ public:
 
         bool m_originalCSSExclusionsEnabled;
         bool m_originalCSSShapesEnabled;
-#if ENABLE(SHADOW_DOM)
-        bool m_originalShadowDOMEnabled;
-        bool m_originalAuthorShadowDOMForAnyElementEnabled;
-#endif
         EditingBehaviorType m_originalEditingBehavior;
 
         // Initially empty, only used if changed by a test.
@@ -91,6 +87,7 @@ public:
         bool m_useLegacyBackgroundSizeShorthandBehavior;
         bool m_autoscrollForDragAndDropEnabled;
         bool m_pluginReplacementEnabled;
+        bool m_shouldConvertPositionStyleOnCopy;
     };
 
     static PassRefPtr<InternalSettings> create(Page* page)
@@ -106,8 +103,6 @@ public:
     void setMockScrollbarsEnabled(bool enabled, ExceptionCode&);
     void setUsesOverlayScrollbars(bool enabled, ExceptionCode&);
     void setTouchEventEmulationEnabled(bool enabled, ExceptionCode&);
-    void setShadowDOMEnabled(bool enabled, ExceptionCode&);
-    void setAuthorShadowDOMForAnyElementEnabled(bool);
     void setStandardFontFamily(const String& family, const String& script, ExceptionCode&);
     void setSerifFontFamily(const String& family, const String& script, ExceptionCode&);
     void setSansSerifFontFamily(const String& family, const String& script, ExceptionCode&);
@@ -136,6 +131,7 @@ public:
     void setFontFallbackPrefersPictographs(bool preferPictographs, ExceptionCode&);
     void setPluginReplacementEnabled(bool);
     void setBackgroundShouldExtendBeyondPage(bool hasExtendedBackground, ExceptionCode&);
+    void setShouldConvertPositionStyleOnCopy(bool convert, ExceptionCode&);
 
 
 private:

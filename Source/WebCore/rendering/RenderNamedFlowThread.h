@@ -45,21 +45,20 @@ typedef ListHashSet<Element*> NamedFlowContentElements;
 
 class RenderNamedFlowThread final : public RenderFlowThread {
 public:
-    RenderNamedFlowThread(Document&, PassRef<RenderStyle>, PassRefPtr<WebKitNamedFlow>);
+    RenderNamedFlowThread(Document&, PassRef<RenderStyle>, PassRef<WebKitNamedFlow>);
     virtual ~RenderNamedFlowThread();
 
     const AtomicString& flowThreadName() const;
 
     const RenderRegionList& invalidRenderRegionList() const { return m_invalidRegionList; }
 
-    RenderObject* nextRendererForNode(Node*) const;
-    RenderObject* previousRendererForNode(Node*) const;
+    RenderElement* nextRendererForElement(Element&) const;
 
-    void addFlowChild(RenderObject* newChild);
-    void removeFlowChild(RenderObject*);
-    bool hasChildren() const { return !m_flowThreadChildList->isEmpty(); }
+    void addFlowChild(RenderElement&);
+    void removeFlowChild(RenderElement&);
+    bool hasChildren() const { return !m_flowThreadChildList.isEmpty(); }
 #ifndef NDEBUG
-    bool hasChild(RenderObject* child) const { return m_flowThreadChildList->contains(child); }
+    bool hasChild(RenderElement& child) const { return m_flowThreadChildList.contains(&child); }
 #endif
 
     void pushDependencies(RenderNamedFlowThreadList&);
@@ -116,7 +115,9 @@ private:
     void clearContentElements();
     void updateWritingMode();
 
-private:
+    WebKitNamedFlow& namedFlow() { return m_namedFlow.get(); }
+    const WebKitNamedFlow& namedFlow() const { return m_namedFlow.get(); }
+
     // Observer flow threads have invalid regions that depend on the state of this thread
     // to re-validate their regions. Keeping a set of observer threads make it easy
     // to notify them when a region was removed from this flow.
@@ -128,8 +129,7 @@ private:
     RenderNamedFlowThreadCountedSet m_layoutBeforeThreadsSet;
 
     // Holds the sorted children of a named flow. This is the only way we can get the ordering right.
-    typedef ListHashSet<RenderObject*> FlowThreadChildList;
-    OwnPtr<FlowThreadChildList> m_flowThreadChildList;
+    ListHashSet<RenderElement*> m_flowThreadChildList;
 
     NamedFlowContentElements m_contentElements;
 
@@ -139,13 +139,12 @@ private:
     bool m_hasRegionsWithStyling : 1;
 
     // The DOM Object that represents a named flow.
-    RefPtr<WebKitNamedFlow> m_namedFlow;
+    Ref<WebKitNamedFlow> m_namedFlow;
 
     Timer<RenderNamedFlowThread> m_regionLayoutUpdateEventTimer;
     Timer<RenderNamedFlowThread> m_regionOversetChangeEventTimer;
 };
 
-template<> inline bool isRendererOfType<const RenderNamedFlowThread>(const RenderObject& renderer) { return renderer.isRenderNamedFlowThread(); }
 RENDER_OBJECT_TYPE_CASTS(RenderNamedFlowThread, isRenderNamedFlowThread())
 
 } // namespace WebCore

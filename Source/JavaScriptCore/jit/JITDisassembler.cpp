@@ -26,11 +26,12 @@
 #include "config.h"
 #include "JITDisassembler.h"
 
-#if ENABLE(JIT) && ENABLE(DISASSEMBLER)
+#if ENABLE(JIT)
 
 #include "CodeBlock.h"
 #include "CodeBlockWithJITType.h"
 #include "JIT.h"
+#include "JSCInlines.h"
 #include <wtf/StringPrintStream.h>
 
 namespace JSC {
@@ -164,5 +165,5 @@ void JITDisassembler::dumpDisassembly(PrintStream& out, LinkBuffer& linkBuffer, 
 
 } // namespace JSC
 
-#endif // ENABLE(JIT) && ENABLE(DISASSEMBLER)
+#endif // ENABLE(JIT)
 

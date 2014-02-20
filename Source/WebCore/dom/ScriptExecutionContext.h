@@ -29,15 +29,19 @@
 #define ScriptExecutionContext_h
 
 #include "ActiveDOMObject.h"
-#include "ConsoleTypes.h"
-#include "URL.h"
 #include "SecurityContext.h"
 #include "Supplementable.h"
+#include "URL.h"
+#include <inspector/ConsoleTypes.h>
 #include <wtf/HashSet.h>
 
 namespace JSC {
 class ExecState;
 class VM;
+}
+
+namespace Inspector {
+class ScriptCallStack;
 }
 
 namespace WebCore {
@@ -49,7 +53,6 @@ class EventListener;
 class EventQueue;
 class EventTarget;
 class MessagePort;
-class ScriptCallStack;
 
 #if ENABLE(BLOB)
 class PublicURLManager;
@@ -75,7 +78,7 @@ public:
 
     bool sanitizeScriptError(String& errorMessage, int& lineNumber, int& columnNumber, String& sourceURL, CachedScript* = 0);
     // FIXME: <http://webkit.org/b/114315> ScriptExecutionContext log exception should include a column number
-    void reportException(const String& errorMessage, int lineNumber, int columnNumber, const String& sourceURL, PassRefPtr<ScriptCallStack>, CachedScript* = 0);
+    void reportException(const String& errorMessage, int lineNumber, int columnNumber, const String& sourceURL, PassRefPtr<Inspector::ScriptCallStack>, CachedScript* = 0);
 
     void addConsoleMessage(MessageSource, MessageLevel, const String& message, const String& sourceURL, unsigned lineNumber, unsigned columnNumber, JSC::ExecState* = 0, unsigned long requestIdentifier = 0);
     virtual void addConsoleMessage(MessageSource, MessageLevel, const String& message, unsigned long requestIdentifier = 0) = 0;
@@ -85,6 +88,7 @@ public:
 #if ENABLE(BLOB)
     PublicURLManager& publicURLManager();
 #endif
+
     // Active objects are not garbage collected even if inaccessible, e.g. because their activity may result in callbacks being invoked.
     bool canSuspendActiveDOMObjects();
     // Active objects can be asked to suspend even if canSuspendActiveDOMObjects() returns 'false' -
@@ -154,6 +158,11 @@ public:
     void setDatabaseContext(DatabaseContext*);
 #endif
 
+#if ENABLE(SUBTLE_CRYPTO)
+    virtual bool wrapCryptoKey(const Vector<uint8_t>& key, Vector<uint8_t>& wrappedKey) = 0;
+    virtual bool unwrapCryptoKey(const Vector<uint8_t>& wrappedKey, Vector<uint8_t>& key) = 0;
+#endif
+
 protected:
     class AddConsoleMessageTask : public Task {
     public:
@@ -177,9 +186,9 @@ protected:
     ActiveDOMObject::ReasonForSuspension reasonForSuspendingActiveDOMObjects() const { return m_reasonForSuspendingActiveDOMObjects; }
 
 private:
-    virtual void addMessage(MessageSource, MessageLevel, const String& message, const String& sourceURL, unsigned lineNumber, unsigned columnNumber, PassRefPtr<ScriptCallStack>, JSC::ExecState* = 0, unsigned long requestIdentifier = 0) = 0;
+    virtual void addMessage(MessageSource, MessageLevel, const String& message, const String& sourceURL, unsigned lineNumber, unsigned columnNumber, PassRefPtr<Inspector::ScriptCallStack>, JSC::ExecState* = 0, unsigned long requestIdentifier = 0) = 0;
     virtual EventTarget* errorEventTarget() = 0;
-    virtual void logExceptionToConsole(const String& errorMessage, const String& sourceURL, int lineNumber, int columnNumber, PassRefPtr<ScriptCallStack>) = 0;
+    virtual void logExceptionToConsole(const String& errorMessage, const String& sourceURL, int lineNumber, int columnNumber, PassRefPtr<Inspector::ScriptCallStack>) = 0;
     bool dispatchErrorEvent(const String& errorMessage, int lineNumber, int columnNumber, const String& sourceURL, CachedScript*);
 
     void closeMessagePorts();
@@ -206,13 +215,16 @@ private:
     bool m_activeDOMObjectsAreStopped;
 
 #if ENABLE(BLOB)
-    OwnPtr<PublicURLManager> m_publicURLManager;
+    std::unique_ptr<PublicURLManager> m_publicURLManager;
 #endif
 
 #if ENABLE(SQL_DATABASE)
     RefPtr<DatabaseContext> m_databaseContext;
 #endif
 };
+
+#define SCRIPT_EXECUTION_CONTEXT_TYPE_CASTS(ToValueTypeName) \
+    TYPE_CASTS_BASE(ToValueTypeName, ScriptExecutionContext, context, context->is##ToValueTypeName(), context.is##ToValueTypeName())
 
 } // namespace WebCore
 

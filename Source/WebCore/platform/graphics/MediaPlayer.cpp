@@ -45,7 +45,7 @@
 #endif
 
 #if ENABLE(MEDIA_SOURCE)
-#include "HTMLMediaSource.h"
+#include "MediaSourcePrivateClient.h"
 #endif
 
 #if USE(GSTREAMER)
@@ -53,7 +53,7 @@
 #define PlatformMediaEngineClassName MediaPlayerPrivateGStreamer
 #endif
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
 #if PLATFORM(IOS)
 #include "MediaPlayerPrivateIOS.h"
 #else
@@ -86,7 +86,7 @@ public:
 
     virtual void load(const String&) { }
 #if ENABLE(MEDIA_SOURCE)
-    virtual void load(const String&, PassRefPtr<HTMLMediaSource>) { }
+    virtual void load(const String&, MediaSourcePrivateClient*) { }
 #endif
     virtual void cancelLoad() { }
 
@@ -213,7 +213,7 @@ static Vector<MediaPlayerFactory*>& installedMediaEngines(RequeryEngineOptions r
 
 #if USE(AVFOUNDATION)
     if (Settings::isAVFoundationEnabled()) {
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
         MediaPlayerPrivateAVFoundationObjC::registerMediaEngine(addMediaEngine);
 #if ENABLE(MEDIA_SOURCE)
         MediaPlayerPrivateMediaSourceAVFObjC::registerMediaEngine(addMediaEngine);
@@ -224,7 +224,7 @@ static Vector<MediaPlayerFactory*>& installedMediaEngines(RequeryEngineOptions r
     }
 #endif
 
-#if PLATFORM(MAC) && !PLATFORM(IOS)
+#if PLATFORM(MAC)
     if (Settings::isQTKitEnabled())
         MediaPlayerPrivateQTKit::registerMediaEngine(addMediaEngine);
 #endif
@@ -388,8 +388,9 @@ bool MediaPlayer::load(const URL& url, const ContentType& contentType, const Str
 }
 
 #if ENABLE(MEDIA_SOURCE)
-bool MediaPlayer::load(const URL& url, const ContentType& contentType, PassRefPtr<HTMLMediaSource> mediaSource)
+bool MediaPlayer::load(const URL& url, const ContentType& contentType, MediaSourcePrivateClient* mediaSource)
 {
+    ASSERT(mediaSource);
     m_mediaSource = mediaSource;
     m_contentMIMEType = contentType.type().lower();
     m_contentTypeCodecs = contentType.parameter(codecs());
@@ -451,7 +452,7 @@ void MediaPlayer::loadWithNextMediaEngine(MediaPlayerFactory* current)
     if (m_private) {
 #if ENABLE(MEDIA_SOURCE)
         if (m_mediaSource)
-            m_private->load(m_url.string(), m_mediaSource);
+            m_private->load(m_url.string(), m_mediaSource.get());
         else
 #endif
         m_private->load(m_url.string());
@@ -522,6 +523,23 @@ MediaPlayer::MediaKeyException MediaPlayer::cancelKeyRequest(const String& keySy
 }
 #endif
 
+#if ENABLE(ENCRYPTED_MEDIA_V2)
+PassRefPtr<Uint8Array> MediaPlayer::generateKeyRequest(const String& sessionID, const String& mimeType, Uint8Array* initData, String& destinationURL, MediaKeyException& error, unsigned long& systemCode)
+{
+    return m_private->generateKeyRequest(sessionID, mimeType, initData, destinationURL, error, systemCode);
+}
+
+void MediaPlayer::releaseKeys(const String& sessionID)
+{
+    m_private->releaseKeys(sessionID);
+}
+
+bool MediaPlayer::update(const String& sessionID, Uint8Array* key, RefPtr<Uint8Array>& nextMessage, MediaKeyException& error, unsigned long& systemCode)
+{
+    return m_private->update(sessionID, key, nextMessage, error, systemCode);
+}
+#endif
+    
 double MediaPlayer::duration() const
 {
     return m_private->durationDouble();
@@ -769,7 +787,7 @@ MediaPlayer::SupportsType MediaPlayer::supportsType(const MediaEngineSupportPara
     if (!engine)
         return IsNotSupported;
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
     // YouTube will ask if the HTMLMediaElement canPlayType video/webm, then
     // video/x-flv, then finally video/mp4, and will then load a URL of the first type
     // in that list which returns "probably". When Perian is installed,

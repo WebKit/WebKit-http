@@ -84,8 +84,7 @@ static String getIndexedDBDatabasePath(ScriptExecutionContext* context)
         Document* document = toDocument(context);
         return document->page()->group().groupSettings().indexedDBDatabasePath();
     }
-    WorkerGlobalScope* workerGlobalScope = static_cast<WorkerGlobalScope*>(context);
-    const GroupSettings* groupSettings = workerGlobalScope->groupSettings();
+    const GroupSettings* groupSettings = toWorkerGlobalScope(context)->groupSettings();
     if (groupSettings)
         return groupSettings->indexedDBDatabasePath();
     return String();
@@ -103,7 +102,7 @@ PassRefPtr<IDBRequest> IDBFactory::getDatabaseNames(ScriptExecutionContext* cont
     }
 
     RefPtr<IDBRequest> request = IDBRequest::create(context, IDBAny::create(this), 0);
-    m_backend->getDatabaseNames(request, context->securityOrigin(), context, getIndexedDBDatabasePath(context));
+    m_backend->getDatabaseNames(request, *(context->securityOrigin()), *(context->topOrigin()), context, getIndexedDBDatabasePath(context));
     return request;
 }
 

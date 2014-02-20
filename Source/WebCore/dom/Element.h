@@ -145,7 +145,7 @@ public:
     const AtomicString& getAttribute(const QualifiedName&) const;
     void setAttribute(const QualifiedName&, const AtomicString& value);
     void setSynchronizedLazyAttribute(const QualifiedName&, const AtomicString& value);
-    void removeAttribute(const QualifiedName&);
+    bool removeAttribute(const QualifiedName&);
 
     // Typed getters and setters for language bindings.
     int getIntegralAttribute(const QualifiedName& attributeName) const;
@@ -236,8 +236,8 @@ public:
     // Returns the absolute bounding box translated into screen coordinates.
     IntRect screenRect() const;
 
-    void removeAttribute(const AtomicString& name);
-    void removeAttributeNS(const AtomicString& namespaceURI, const AtomicString& localName);
+    bool removeAttribute(const AtomicString& name);
+    bool removeAttributeNS(const AtomicString& namespaceURI, const AtomicString& localName);
 
     PassRefPtr<Attr> detachAttribute(unsigned index);
 
@@ -323,9 +323,6 @@ public:
 
     ShadowRoot* shadowRoot() const;
     PassRefPtr<ShadowRoot> createShadowRoot(ExceptionCode&);
-    ShadowRoot* authorShadowRoot() const;
-
-    bool hasAuthorShadowRoot() const { return authorShadowRoot(); }
 
     ShadowRoot* userAgentShadowRoot() const;
     ShadowRoot& ensureUserAgentShadowRoot();
@@ -482,7 +479,7 @@ public:
     virtual bool isRequiredFormControl() const { return false; }
     virtual bool isDefaultButtonForForm() const { return false; }
     virtual bool willValidate() const { return false; }
-    virtual bool isValidFormControlElement() { return false; }
+    virtual bool isValidFormControlElement() const { return false; }
     virtual bool isInRange() const { return false; }
     virtual bool isOutOfRange() const { return false; }
     virtual bool isFrameElementBase() const { return false; }
@@ -572,7 +569,7 @@ public:
 
 protected:
     Element(const QualifiedName& tagName, Document& document, ConstructionType type)
-        : ContainerNode(&document, type)
+        : ContainerNode(document, type)
         , m_tagName(tagName)
     {
     }
@@ -605,7 +602,6 @@ private:
 
     void resetNeedsNodeRenderingTraversalSlowPath();
 
-    virtual bool areAuthorShadowsAllowed() const { return true; }
     virtual void didAddUserAgentShadowRoot(ShadowRoot*) { }
     virtual bool alwaysCreateUserAgentShadowRoot() const { return false; }
 

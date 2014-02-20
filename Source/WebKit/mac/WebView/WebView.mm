@@ -290,6 +290,7 @@
 - (NSView *)_hitTest:(NSPoint *)aPoint dragTypes:(NSSet *)types;
 - (void)_autoscrollForDraggingInfo:(id)dragInfo timeDelta:(NSTimeInterval)repeatDelta;
 - (BOOL)_shouldAutoscrollForDraggingInfo:(id)dragInfo;
+- (void)_windowChangedKeyState;
 @end
 
 @interface NSWindow (WebNSWindowDetails)
@@ -994,7 +995,7 @@ static bool shouldUseLegacyBackgroundSizeShorthandBehavior()
     [self _registerDraggedTypes];
 #endif
 
-    [self _setIsVisible:[self _isViewVisible] isInitialState:YES];
+    [self _setIsVisible:[self _isViewVisible]];
 
     WebPreferences *prefs = [self preferences];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_preferencesChangedNotification:)
@@ -1238,7 +1239,11 @@ static bool shouldUseLegacyBackgroundSizeShorthandBehavior()
         [WebView _handleMemoryWarning];
     }, shouldAutoClearPressureOnMemoryRelease);
 
+#if PLATFORM(IOS) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
+    static dispatch_source_t memoryNotificationEventSource = dispatch_source_create(DISPATCH_SOURCE_TYPE_MEMORYSTATUS, 0, DISPATCH_MEMORYSTATUS_PRESSURE_WARN, dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0));
+#else
     static dispatch_source_t memoryNotificationEventSource = dispatch_source_create(DISPATCH_SOURCE_TYPE_VM, 0, DISPATCH_VM_PRESSURE, dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0));
+#endif
     dispatch_source_set_event_handler(memoryNotificationEventSource, ^{
         // Set memory pressure flag and schedule releasing memory in web thread runloop exit.
         memoryPressureHandler().setReceivedMemoryPressure(WebCore::MemoryPressureReasonVMPressure);
@@ -2378,6 +2383,8 @@ static bool needsSelfRetainWhileLoadingQuirk()
     settings.setMediaSourceEnabled([preferences mediaSourceEnabled]);
 #endif
 
+    settings.setShouldConvertPositionStyleOnCopy([preferences shouldConvertPositionStyleOnCopy]);
+
     switch ([preferences storageBlockingPolicy]) {
     case WebAllowAllStorage:
         settings.setStorageBlockingPolicy(SecurityOrigin::AllowAllStorage);
@@ -3324,18 +3331,6 @@ static inline IMP getMethod(id o, SEL s)
 }
 #endif // !PLATFORM(IOS)
 
-- (void)_setInViewSourceMode:(BOOL)flag
-{
-    if (Frame* mainFrame = [self _mainCoreFrame])
-        mainFrame->setInViewSourceMode(flag);
-}
-
-- (BOOL)_inViewSourceMode
-{
-    Frame* mainFrame = [self _mainCoreFrame];
-    return mainFrame && mainFrame->inViewSourceMode();
-}
-
 - (void)_setUseFastImageScalingMode:(BOOL)flag
 {
     if (_private->page && _private->page->inLowQualityImageInterpolationMode() != flag) {
@@ -3813,20 +3808,6 @@ static inline IMP getMethod(id o, SEL s)
     coreFrame->editor().command(name).execute(value);
 }
 
-- (void)_setCustomHTMLTokenizerTimeDelay:(double)timeDelay
-{
-    if (!_private->page)
-        return;
-    return _private->page->setCustomHTMLTokenizerTimeDelay(timeDelay);
-}
-
-- (void)_setCustomHTMLTokenizerChunkSize:(int)chunkSize
-{
-    if (!_private->page)
-        return;
-    return _private->page->setCustomHTMLTokenizerChunkSize(chunkSize);
-}
-
 - (void)_clearMainFrameName
 {
     _private->page->mainFrame().tree().clearName();
@@ -4009,7 +3990,7 @@ static inline IMP getMethod(id o, SEL s)
 - (void)_updateVisibilityState
 {
     if (_private && _private->page)
-        [self _setIsVisible:[self _isViewVisible] isInitialState:NO];
+        [self _setIsVisible:[self _isViewVisible]];
 }
 
 - (void)_updateActiveState
@@ -4374,16 +4355,18 @@ static Vector<String> toStringVector(NSArray* patterns)
     return WebPageVisibilityStateVisible;
 }
 
-- (void)_setIsVisible:(BOOL)isVisible isInitialState:(BOOL)isInitialState
+- (void)_setIsVisible:(BOOL)isVisible
 {
     if (_private->page)
-        _private->page->setIsVisible(isVisible, isInitialState);
+        _private->page->setIsVisible(isVisible);
 }
 
 - (void)_setVisibilityState:(WebPageVisibilityState)visibilityState isInitialState:(BOOL)isInitialState
 {
+    UNUSED_PARAM(isInitialState);
+
     if (_private->page) {
-        _private->page->setIsVisible(visibilityState == WebPageVisibilityStateVisible, isInitialState);
+        _private->page->setIsVisible(visibilityState == WebPageVisibilityStateVisible);
         if (visibilityState == WebPageVisibilityStatePrerender)
             _private->page->setIsPrerender();
     }
@@ -5340,6 +5323,8 @@ static NSString * const backingPropertyOldScaleFactorKey = @"NSBackingPropertyOl
 - (void)_windowChangedKeyState
 {
     [self _updateActiveState];
+
+    [super _windowChangedKeyState];
 }
 
 - (void)_windowWillOrderOnScreen:(NSNotification *)notification
@@ -5352,7 +5337,7 @@ static NSString * const backingPropertyOldScaleFactorKey = @"NSBackingPropertyOl
 
     if (_private && _private->page) {
         _private->page->resumeScriptedAnimations();
-        _private->page->focusController().setContentIsVisible(true);
+        _private->page->setIsVisible(true);
     }
 }
 
@@ -5365,7 +5350,7 @@ static NSString * const backingPropertyOldScaleFactorKey = @"NSBackingPropertyOl
 {
     if (_private && _private->page) {
         _private->page->suspendScriptedAnimations();
-        _private->page->focusController().setContentIsVisible(false);
+        _private->page->setIsVisible(false);
     }
 }
 

@@ -23,16 +23,19 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#import "WKNavigationAction.h"
+#import "WKNavigationActionPrivate.h"
 
 #if WK_API_ENABLED
 
 @interface WKNavigationAction ()
 
 @property (nonatomic, readwrite, strong) WKFrameInfo *sourceFrame;
+@property (nonatomic, readwrite, strong) WKFrameInfo *destinationFrame;
 
 @property (nonatomic, readwrite) WKNavigationType navigationType;
 @property (nonatomic, readwrite, copy) NSURLRequest *request;
+
+@property (nonatomic, readwrite, copy, setter=_setOriginalURL:) NSURL *_originalURL;
 
 @end
 

@@ -53,6 +53,7 @@ static Eina_Bool local_storage_enabled = EINA_TRUE;
 static Eina_Bool fullscreen_enabled = EINA_FALSE;
 static Eina_Bool spell_checking_enabled = EINA_FALSE;
 static Eina_Bool touch_events_enabled = EINA_FALSE;
+static Eina_Bool fixed_layout_enabled = EINA_FALSE;
 static int window_width = 800;
 static int window_height = 600;
 /* Default value of device_pixel_ratio is '0' so that we don't set custom device
@@ -168,6 +169,8 @@ static const Ecore_Getopt options = {
             ('t', "text-checking", "text spell checking enabled", EINA_TRUE),
         ECORE_GETOPT_STORE_DEF_BOOL
             ('T', "touch-events", "touch events enabled", EINA_FALSE),
+        ECORE_GETOPT_STORE_DEF_BOOL
+            ('L', "fixed-layout", "enable/disable to use fixed layout", EINA_FALSE),
         ECORE_GETOPT_STORE_DEF_STR
             ('p', "policy-cookies", "Cookies policy:\n  always - always accept,\n  never - never accept,\n  no-third-party - don't accept third-party cookies.", "no-third-party"),
         ECORE_GETOPT_VERSION
@@ -181,7 +184,7 @@ static const Ecore_Getopt options = {
 };
 
 static Eina_Stringshare *show_file_entry_dialog(Browser_Window *window, const char *label_tag, const char *default_text);
-static Browser_Window *window_create(Evas_Object* opener, int width, int height, Eina_Bool view_mode);
+static Browser_Window *window_create(Evas_Object* opener, int width, int height);
 
 static Browser_Window *window_find_with_elm_window(Evas_Object *elm_window)
 {
@@ -424,17 +427,12 @@ on_key_down(void *user_data, Evas *e, Evas_Object *ewk_view, void *event_info)
             info("Change Pagination Mode (F7) was pressed, changed to: %d", mode);
         else
             info("Change Pagination Mode (F7) was pressed, but NOT changed!");
-    } else if (!strcmp(ev->key, "F8")) {
-        info("Create souce code window (F8) was pressed.");
-        Browser_Window *window = window_create(ewk_view, 0, 0, EINA_TRUE);
-        ewk_view_url_set(window->ewk_view, ewk_view_url_get(ewk_view));
-        windows = eina_list_append(windows, window);
     } else if (!strcmp(ev->key, "F11")) {
         info("Fullscreen (F11) was pressed, toggling window/fullscreen.");
         elm_win_fullscreen_set(window->elm_window, !elm_win_fullscreen_get(window->elm_window));
     } else if (!strcmp(ev->key, "n") && ctrlPressed) {
         info("Create new window (Ctrl+n) was pressed.");
-        Browser_Window *window = window_create(NULL, 0, 0, EINA_FALSE);
+        Browser_Window *window = window_create(NULL, 0, 0);
         ewk_view_url_set(window->ewk_view, DEFAULT_URL);
         // 0 equals default width and height.
         windows = eina_list_append(windows, window);
@@ -1374,7 +1372,7 @@ on_window_create(Ewk_View_Smart_Data *smartData, const Ewk_Window_Features *wind
     if (!height)
         height = window_height;
 
-    Browser_Window *window = window_create(smartData->self, width, height, EINA_FALSE);
+    Browser_Window *window = window_create(smartData->self, width, height);
     Evas_Object *new_view = window->ewk_view;
 
     windows = eina_list_append(windows, window);
@@ -1669,7 +1667,7 @@ create_toolbar_button(Evas_Object *elm_window, const char *icon_name)
     return button;
 }
 
-static Browser_Window *window_create(Evas_Object *opener, int width, int height, Eina_Bool view_mode)
+static Browser_Window *window_create(Evas_Object *opener, int width, int height)
 {
     Browser_Window *window = calloc(1, sizeof(Browser_Window));
     if (!window) {
@@ -1825,8 +1823,8 @@ static Browser_Window *window_create(Evas_Object *opener, int width, int height,
     ewk_view_theme_set(window->ewk_view, TEST_THEME_DIR "/default.edj");
     if (device_pixel_ratio)
         ewk_view_device_pixel_ratio_set(window->ewk_view, (float)device_pixel_ratio);
-    ewk_view_source_mode_set(window->ewk_view, view_mode);
     ewk_view_user_agent_set(window->ewk_view, user_agent_string);
+    ewk_view_layout_fixed_set(window->ewk_view, fixed_layout_enabled);
 
     if (touch_events_enabled) {
         ewk_view_touch_events_enabled_set(window->ewk_view, EINA_TRUE);
@@ -1942,6 +1940,7 @@ elm_main(int argc, char *argv[])
         ECORE_GETOPT_VALUE_BOOL(fullscreen_enabled),
         ECORE_GETOPT_VALUE_BOOL(spell_checking_enabled),
         ECORE_GETOPT_VALUE_BOOL(touch_events_enabled),
+        ECORE_GETOPT_VALUE_BOOL(fixed_layout_enabled),
         ECORE_GETOPT_VALUE_STR(cookies_policy_string),
         ECORE_GETOPT_VALUE_BOOL(quitOption),
         ECORE_GETOPT_VALUE_BOOL(quitOption),
@@ -1984,11 +1983,11 @@ elm_main(int argc, char *argv[])
 
     if (args < argc) {
         char *url = url_from_user_input(argv[args]);
-        window = window_create(NULL, 0, 0, EINA_FALSE);
+        window = window_create(NULL, 0, 0);
         ewk_view_url_set(window->ewk_view, url);
         free(url);
     } else {
-        window = window_create(NULL, 0, 0, EINA_FALSE);
+        window = window_create(NULL, 0, 0);
         ewk_view_url_set(window->ewk_view, DEFAULT_URL);
     }
 

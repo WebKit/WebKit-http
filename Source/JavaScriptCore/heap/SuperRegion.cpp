@@ -26,6 +26,7 @@
 #include "config.h"
 #include "SuperRegion.h"
 
+#include "JSCInlines.h"
 #include "Region.h"
 
 namespace JSC {

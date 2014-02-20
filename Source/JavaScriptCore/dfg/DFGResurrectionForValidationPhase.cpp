@@ -32,7 +32,7 @@
 #include "DFGGraph.h"
 #include "DFGInsertionSet.h"
 #include "DFGPhase.h"
-#include "Operations.h"
+#include "JSCInlines.h"
 
 namespace JSC { namespace DFG {
 
@@ -57,7 +57,7 @@ public:
                 if (!node->hasResult())
                     continue;
                 insertionSet.insertNode(
-                    nodeIndex + 1, SpecNone, Phantom, node->codeOrigin, Edge(node));
+                    nodeIndex + 1, SpecNone, Phantom, node->origin, Edge(node));
             }
             
             insertionSet.execute(block);

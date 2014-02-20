@@ -61,7 +61,7 @@ JSRetainPtr<JSStringRef> AccessibilityUIElement::lineAtOffset(int) { return 0; }
 JSRetainPtr<JSStringRef> AccessibilityUIElement::sentenceAtOffset(int) { return 0; }
 #endif
 
-#if (!PLATFORM(MAC) && !PLATFORM(GTK) && !PLATFORM(EFL)) || !HAVE(ACCESSIBILITY)
+#if (!PLATFORM(COCOA) && !PLATFORM(GTK) && !PLATFORM(EFL)) || !HAVE(ACCESSIBILITY)
 AccessibilityUIElement::AccessibilityUIElement(PlatformUIElement) { }
 AccessibilityUIElement::AccessibilityUIElement(const AccessibilityUIElement&) { }
 AccessibilityUIElement::~AccessibilityUIElement() { }
@@ -99,6 +99,7 @@ bool AccessibilityUIElement::isDecrementActionSupported() { return false; }
 JSRetainPtr<JSStringRef> AccessibilityUIElement::role() { return 0; }
 JSRetainPtr<JSStringRef> AccessibilityUIElement::subrole() { return 0; }
 JSRetainPtr<JSStringRef> AccessibilityUIElement::roleDescription() { return 0; }
+JSRetainPtr<JSStringRef> AccessibilityUIElement::computedRoleString() { return 0; }
 JSRetainPtr<JSStringRef> AccessibilityUIElement::title() { return 0; }
 JSRetainPtr<JSStringRef> AccessibilityUIElement::description() { return 0; }
 JSRetainPtr<JSStringRef> AccessibilityUIElement::language() { return 0; }
@@ -153,12 +154,15 @@ JSRetainPtr<JSStringRef> AccessibilityUIElement::rowIndexRange() { return 0; }
 JSRetainPtr<JSStringRef> AccessibilityUIElement::columnIndexRange() { return 0; }
 int AccessibilityUIElement::rowCount() { return 0; }
 int AccessibilityUIElement::columnCount() { return 0; }
+JSValueRef AccessibilityUIElement::rowHeaders() const { return nullptr; }
+JSValueRef AccessibilityUIElement::columnHeaders() const { return nullptr; }
 PassRefPtr<AccessibilityUIElement> AccessibilityUIElement::selectedRowAtIndex(unsigned) { return 0; }
 PassRefPtr<AccessibilityUIElement> AccessibilityUIElement::disclosedByRow() { return 0; }
 PassRefPtr<AccessibilityUIElement> AccessibilityUIElement::disclosedRowAtIndex(unsigned) { return 0; }
 PassRefPtr<AccessibilityUIElement> AccessibilityUIElement::rowAtIndex(unsigned) { return 0; }
 PassRefPtr<AccessibilityUIElement> AccessibilityUIElement::ariaOwnsElementAtIndex(unsigned) { return 0; }
 PassRefPtr<AccessibilityUIElement> AccessibilityUIElement::ariaFlowToElementAtIndex(unsigned) { return 0; }
+PassRefPtr<AccessibilityUIElement> AccessibilityUIElement::ariaControlsElementAtIndex(unsigned) { return nullptr; }
 bool AccessibilityUIElement::ariaIsGrabbed() const { return false; }
 JSRetainPtr<JSStringRef> AccessibilityUIElement::ariaDropEffects() const { return 0; }
 JSRetainPtr<JSStringRef> AccessibilityUIElement::classList() const { return 0; }
@@ -170,8 +174,9 @@ void AccessibilityUIElement::setSelectedTextRange(unsigned, unsigned) { }
 JSRetainPtr<JSStringRef> AccessibilityUIElement::stringForRange(unsigned, unsigned) { return 0; }
 JSRetainPtr<JSStringRef> AccessibilityUIElement::attributedStringForRange(unsigned, unsigned) { return 0; }
 bool AccessibilityUIElement::attributedStringRangeIsMisspelled(unsigned, unsigned) { return false; }
-unsigned AccessibilityUIElement::uiElementCountForSearchPredicate(JSContextRef, AccessibilityUIElement*, bool, JSValueRef, JSStringRef, bool) { return 0; }
-PassRefPtr<AccessibilityUIElement> AccessibilityUIElement::uiElementForSearchPredicate(JSContextRef, AccessibilityUIElement*, bool, JSValueRef, JSStringRef, bool) { return 0; }
+unsigned AccessibilityUIElement::uiElementCountForSearchPredicate(JSContextRef, AccessibilityUIElement*, bool, JSValueRef, JSStringRef, bool, bool) { return 0; }
+PassRefPtr<AccessibilityUIElement> AccessibilityUIElement::uiElementForSearchPredicate(JSContextRef, AccessibilityUIElement*, bool, JSValueRef, JSStringRef, bool, bool) { return 0; }
+JSRetainPtr<JSStringRef> AccessibilityUIElement::selectTextWithCriteria(JSContextRef, JSStringRef, JSValueRef, JSStringRef) { return nullptr; }
 PassRefPtr<AccessibilityUIElement> AccessibilityUIElement::cellForColumnAndRow(unsigned, unsigned) { return 0; }
 PassRefPtr<AccessibilityUIElement> AccessibilityUIElement::horizontalScrollbar() const { return 0; }
 PassRefPtr<AccessibilityUIElement> AccessibilityUIElement::verticalScrollbar() const { return 0; }

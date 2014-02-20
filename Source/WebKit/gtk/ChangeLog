@@ -1,3 +1,126 @@
+2014-02-17  Sergio Correia  <sergio.correia@openbossa.org>
+
+        Replace uses of PassOwnPtr/OwnPtr with std::unique_ptr in WebCore/inspector
+        https://bugs.webkit.org/show_bug.cgi?id=128681
+
+        Reviewed by Timothy Hatcher.
+
+        Another step towards getting rid of PassOwnPtr/OwnPtr, now targeting
+        WebCore/inspector/*. Besides files in there, a few other files in
+        JavaScriptCore/inspector, WebKit/, WebKit2/WebProcess/WebCoreSupport/
+        and WebCore/testing were touched.
+
+        * WebCoreSupport/InspectorClientGtk.cpp:
+
+2014-02-17  Anders Carlsson  <andersca@apple.com>
+
+        WebKitGTK+ should stop calling functions to set the view source mode
+        https://bugs.webkit.org/show_bug.cgi?id=128919
+
+        Reviewed by Carlos Garcia Campos.
+
+        This is a first step towards getting rid of the view source mode from WebCore. 
+        View source shouldn't be a mode on the web page and can be implemented in other ways by
+        embedding apps. Furthermore, the inspector has an excellent view source mode.
+
+        * webkit/webkitwebview.cpp:
+        (webkit_web_view_set_view_source_mode):
+        (webkit_web_view_get_view_source_mode):
+        Turn these into no-ops.
+
+2014-02-11  Zalan Bujtas  <zalan@apple.com>
+
+        Subpixel rendering: Make GraphicsLayerClient::paintContents's clip rect subpixel based.
+        https://bugs.webkit.org/show_bug.cgi?id=128460
+
+        Reviewed by Simon Fraser.
+
+        GraphicsClient::paintContents takes clipRect as FloatRect now so that we can paint on
+        subpixel position.
+
+        No change in functionality.
+
+        * WebCoreSupport/AcceleratedCompositingContext.h:
+        * WebCoreSupport/AcceleratedCompositingContextGL.cpp:
+        (WebKit::AcceleratedCompositingContext::paintContents):
+
+2014-02-10  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GLIB] Add GUniqueOutPtr and use it instead of GOwnPtr
+        https://bugs.webkit.org/show_bug.cgi?id=127554
+
+        Reviewed by Gustavo Noronha Silva.
+
+        Use GUniqueOutPtr instead of GOwnPtr.
+
+        * WebCoreSupport/FrameLoaderClientGtk.cpp:
+        (WebKit::FrameLoaderClient::dispatchDidFailLoad):
+        * WebCoreSupport/TextCheckerClientGtk.cpp:
+        * webkit/webkitdownload.cpp:
+        (webkit_download_open_stream_for_uri):
+        (webkit_download_set_destination_uri):
+        (webkit_download_received_data):
+        * webkit/webkitwebplugin.cpp:
+        (webkit_web_plugin_get_path):
+        * webkit/webkitwebview.cpp:
+        (webkit_web_view_expose_event):
+
+2014-02-09  Carlos Garnacho  <carlosg@gnome.org>
+
+        [GTK] Allow building with touch events enabled
+        https://bugs.webkit.org/show_bug.cgi?id=98931
+
+        Reviewed by Carlos Garcia Campos.
+
+        Even though WebKit1 GTK code doesn't implement touch events,
+        Fix build if ENABLE_TOUCH_EVENTS is present for WK2.
+
+        * WebCoreSupport/ChromeClientGtk.h:
+        (WebKit::ChromeClient::needTouchEvents): Add empty stub
+
+2014-02-08  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Cleanup the interface of FrameSelection
+        https://bugs.webkit.org/show_bug.cgi?id=128481
+
+        Reviewed by Andreas Kling.
+
+        * WebCoreSupport/DumpRenderTreeSupportGtk.cpp:
+        (DumpRenderTreeSupportGtk::rectangleForSelection):
+
+2014-02-08  Darin Adler  <darin@apple.com>
+
+        Change TextIterator to use StringView, preparing to wean it from deprecatedCharacters
+        https://bugs.webkit.org/show_bug.cgi?id=128233
+
+        Reviewed by Anders Carlsson.
+
+        * WebCoreSupport/TextCheckerClientGtk.cpp:
+        (WebKit::TextCheckerClientGtk::checkSpellingOfString): Use StringView.
+        (WebKit::TextCheckerClientGtk::checkGrammarOfString): Ditto.
+        * WebCoreSupport/TextCheckerClientGtk.h: Ditto.
+
+2014-02-07  Gavin Barraclough  <barraclough@apple.com>
+
+        Remove isInitialState flag from Page::setViewState
+        https://bugs.webkit.org/show_bug.cgi?id=128428
+
+        Reviewed by Sam Weinig.
+
+        * WebCoreSupport/DumpRenderTreeSupportGtk.cpp:
+        (DumpRenderTreeSupportGtk::setPageVisibility):
+            - don't pass isInitialState to setViewState.
+
+2014-02-06  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Add Console support to JSContext Inspection
+        https://bugs.webkit.org/show_bug.cgi?id=127941
+
+        Reviewed by Geoffrey Garen.
+
+        * WebCoreSupport/ChromeClientGtk.cpp:
+        (WebKit::ChromeClient::addMessageToConsole):
+
 2014-02-05  Csaba Osztrogonác  <ossy@webkit.org>
 
         Remove ENABLE(SVG) guards

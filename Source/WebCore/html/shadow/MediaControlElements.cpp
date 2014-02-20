@@ -225,7 +225,7 @@ void MediaControlPanelElement::defaultEventHandler(Event* event)
     MediaControlDivElement::defaultEventHandler(event);
 
     if (event->isMouseEvent()) {
-        LayoutPoint location = static_cast<MouseEvent*>(event)->absoluteLocation();
+        LayoutPoint location = toMouseEvent(event)->absoluteLocation();
         if (event->type() == eventNames().mousedownEvent && event->target() == this) {
             startDrag(location);
             event->setDefaultHandled();
@@ -362,7 +362,7 @@ void MediaControlVolumeSliderContainerElement::defaultEventHandler(Event* event)
         return;
 
     // Poor man's mouseleave event detection.
-    MouseEvent* mouseEvent = static_cast<MouseEvent*>(event);
+    MouseEvent* mouseEvent = toMouseEvent(event);
     EventTarget* relatedTarget = mouseEvent->relatedTarget();
     if (!relatedTarget || !relatedTarget->toNode())
         return;
@@ -673,11 +673,11 @@ const AtomicString& MediaControlReturnToRealtimeButtonElement::shadowPseudoId() 
 
 MediaControlToggleClosedCaptionsButtonElement::MediaControlToggleClosedCaptionsButtonElement(Document& document, MediaControls* controls)
     : MediaControlInputElement(document, MediaShowClosedCaptionsButton)
-#if PLATFORM(MAC) || PLATFORM(WIN) || PLATFORM(GTK)
+#if PLATFORM(COCOA) || PLATFORM(WIN) || PLATFORM(GTK)
     , m_controls(controls)
 #endif
 {
-#if !PLATFORM(MAC) && !PLATFORM(WIN) || !PLATFORM(GTK)
+#if !PLATFORM(COCOA) && !PLATFORM(WIN) || !PLATFORM(GTK)
     UNUSED_PARAM(controls);
 #endif
 }
@@ -707,7 +707,7 @@ void MediaControlToggleClosedCaptionsButtonElement::defaultEventHandler(Event* e
         // UI. Not all ports may want the closed captions button to toggle a list of tracks, so
         // we have to use #if.
         // https://bugs.webkit.org/show_bug.cgi?id=101877
-#if !PLATFORM(MAC) && !PLATFORM(WIN) && !PLATFORM(GTK)
+#if !PLATFORM(COCOA) && !PLATFORM(WIN) && !PLATFORM(GTK)
         mediaController()->setClosedCaptionsVisible(!mediaController()->closedCaptionsVisible());
         setChecked(mediaController()->closedCaptionsVisible());
         updateDisplayType();
@@ -939,7 +939,7 @@ PassRefPtr<MediaControlTimelineElement> MediaControlTimelineElement::create(Docu
 void MediaControlTimelineElement::defaultEventHandler(Event* event)
 {
     // Left button is 0. Rejects mouse events not from left button.
-    if (event->isMouseEvent() && static_cast<MouseEvent*>(event)->button())
+    if (event->isMouseEvent() && toMouseEvent(event)->button())
         return;
 
     if (!renderer())
@@ -1281,13 +1281,17 @@ void MediaControlTextTrackContainerElement::updateDisplay()
     // corresponding CSS boxes added to output, in text track cue order, run the
     // following substeps:
     for (size_t i = 0; i < activeCues.size(); ++i) {
-        TextTrackCue* cue = activeCues[i].data();
+        TextTrackCue* textTrackCue = activeCues[i].data();
+        if (!textTrackCue->isRenderable())
+            continue;
+
+        VTTCue* cue = toVTTCue(textTrackCue);
 
         ASSERT(cue->isActive());
         if (!cue->track() || !cue->track()->isRendered() || !cue->isActive() || cue->text().isEmpty())
             continue;
 
-        RefPtr<TextTrackCueBox> displayBox = cue->getDisplayTree(m_videoDisplaySize.size());
+        RefPtr<VTTCueBox> displayBox = cue->getDisplayTree(m_videoDisplaySize.size());
         if (displayBox->hasChildNodes() && !contains(displayBox.get())) {
             // Note: the display tree of a cue is removed when the active flag of the cue is unset.
             appendChild(displayBox, ASSERT_NO_EXCEPTION);
@@ -1337,7 +1341,10 @@ void MediaControlTextTrackContainerElement::updateTimerFired(Timer<MediaControlT
     CueList activeCues = mediaElement->currentlyActiveCues();
     for (size_t i = 0; i < activeCues.size(); ++i) {
         TextTrackCue* cue = activeCues[i].data();
-        cue->setFontSize(m_fontSize, m_videoDisplaySize.size(), m_fontSizeIsImportant);
+        if (!cue->isRenderable())
+            continue;
+
+        toVTTCue(cue)->setFontSize(m_fontSize, m_videoDisplaySize.size(), m_fontSizeIsImportant);
     }
     updateDisplay();
 }

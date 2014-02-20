@@ -80,8 +80,7 @@ enum {
     CompositingReasonBlendingWithCompositedDescendants      = 1 << 20,
     CompositingReasonPerspective                            = 1 << 21,
     CompositingReasonPreserve3D                             = 1 << 22,
-    CompositingReasonRoot                                   = 1 << 23,
-    CompositingReasonBlending                               = 1 << 24
+    CompositingReasonRoot                                   = 1 << 23
 };
 typedef unsigned CompositingReasons;
 
@@ -307,7 +306,7 @@ private:
     // GraphicsLayerClient implementation
     virtual void notifyAnimationStarted(const GraphicsLayer*, double) override { }
     virtual void notifyFlushRequired(const GraphicsLayer*) override;
-    virtual void paintContents(const GraphicsLayer*, GraphicsContext&, GraphicsLayerPaintingPhase, const IntRect&) override;
+    virtual void paintContents(const GraphicsLayer*, GraphicsContext&, GraphicsLayerPaintingPhase, const FloatRect&) override;
 
     virtual bool isTrackingRepaints() const override;
     
@@ -393,7 +392,6 @@ private:
     bool requiresCompositingForPlugin(RenderLayerModelObject&) const;
     bool requiresCompositingForFrame(RenderLayerModelObject&) const;
     bool requiresCompositingForFilters(RenderLayerModelObject&) const;
-    bool requiresCompositingForBlending(RenderLayerModelObject&) const;
     bool requiresCompositingForScrollableFrame() const;
     bool requiresCompositingForPosition(RenderLayerModelObject&, const RenderLayer&, RenderLayer::ViewportConstrainedNotCompositedReason* = 0) const;
     bool requiresCompositingForOverflowScrolling(const RenderLayer&) const;
@@ -515,6 +513,8 @@ private:
     double m_obligatoryBackingStoreBytes;
     double m_secondaryBackingStoreBytes;
 #endif
+
+    Color m_rootExtendedBackgroundColor;
 };
 
 

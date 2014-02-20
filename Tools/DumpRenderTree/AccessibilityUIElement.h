@@ -31,7 +31,7 @@
 #include <wtf/Platform.h>
 #include <wtf/Vector.h>
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
 #ifdef __OBJC__
 typedef id PlatformUIElement;
 #else
@@ -53,7 +53,7 @@ typedef AtkObject* PlatformUIElement;
 typedef void* PlatformUIElement;
 #endif
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
 #ifdef __OBJC__
 typedef id NotificationHandler;
 #else
@@ -117,6 +117,7 @@ public:
     JSStringRef role();
     JSStringRef subrole();
     JSStringRef roleDescription();
+    JSStringRef computedRoleString();
     JSStringRef title();
     JSStringRef description();
     JSStringRef language();
@@ -207,8 +208,9 @@ public:
     JSStringRef stringForRange(unsigned location, unsigned length);
     JSStringRef attributedStringForRange(unsigned location, unsigned length);
     bool attributedStringRangeIsMisspelled(unsigned location, unsigned length);
-    unsigned uiElementCountForSearchPredicate(JSContextRef, AccessibilityUIElement* startElement, bool isDirectionNext, JSValueRef searchKey, JSStringRef searchText, bool visibleOnly);
-    AccessibilityUIElement uiElementForSearchPredicate(JSContextRef, AccessibilityUIElement* startElement, bool isDirectionNext, JSValueRef searchKey, JSStringRef searchText, bool visibleOnly);
+    unsigned uiElementCountForSearchPredicate(JSContextRef, AccessibilityUIElement* startElement, bool isDirectionNext, JSValueRef searchKey, JSStringRef searchText, bool visibleOnly, bool immediateDescendantsOnly);
+    AccessibilityUIElement uiElementForSearchPredicate(JSContextRef, AccessibilityUIElement* startElement, bool isDirectionNext, JSValueRef searchKey, JSStringRef searchText, bool visibleOnly, bool immediateDescendantsOnly);
+    JSStringRef selectTextWithCriteria(JSContextRef, JSStringRef ambiguityResolution, JSValueRef searchStrings, JSStringRef replacementString);
 #if PLATFORM(IOS)
     void elementsForRange(unsigned location, unsigned length, Vector<AccessibilityUIElement>& elements);
     JSStringRef stringForSelection();

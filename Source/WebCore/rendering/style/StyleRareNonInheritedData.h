@@ -124,7 +124,7 @@ public:
     OwnPtr<CounterDirectiveMap> m_counterDirectives;
     String m_altText;
 
-    OwnPtr<ShadowData> m_boxShadow;  // For box-shadow decorations.
+    std::unique_ptr<ShadowData> m_boxShadow; // For box-shadow decorations.
     
     RefPtr<StyleReflection> m_boxReflect;
 
@@ -190,7 +190,7 @@ public:
 
     unsigned m_runningAcceleratedAnimation : 1;
 
-    unsigned m_hasAspectRatio : 1; // Whether or not an aspect ratio has been specified.
+    unsigned m_aspectRatioType : 2;
 
 #if ENABLE(CSS_COMPOSITING)
     unsigned m_effectiveBlendMode: 5; // EBlendMode

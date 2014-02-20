@@ -141,6 +141,12 @@ public:
     bool hasBlendMode() const { return false; }
 #endif
 
+    bool repaintForPausedImageAnimationsIfNeeded(const IntRect& visibleRect);
+    bool hasPausedImageAnimations() const { return m_hasPausedImageAnimations; }
+    void setHasPausedImageAnimations(bool b) { m_hasPausedImageAnimations = b; }
+
+    RenderNamedFlowThread* renderNamedFlowThreadWrapper();
+
 protected:
     enum BaseTypeFlags {
         RenderLayerModelObjectFlag = 1 << 0,
@@ -198,12 +204,14 @@ private:
     StyleDifference adjustStyleDifference(StyleDifference, unsigned contextSensitiveProperties) const;
     RenderStyle* cachedFirstLineStyle() const;
 
+    virtual void newImageAnimationFrameAvailable(CachedImage&) final override;
+
     unsigned m_baseTypeFlags : 6;
     bool m_ancestorLineBoxDirty : 1;
     bool m_hasInitializedStyle : 1;
 
-    // Specific to RenderInline.
     bool m_renderInlineAlwaysCreatesLineBoxes : 1;
+    bool m_hasPausedImageAnimations : 1;
 
     RenderObject* m_firstChild;
     RenderObject* m_lastChild;
@@ -216,7 +224,7 @@ private:
     static bool s_noLongerAffectsParentBlock;
 };
 
-template <> inline bool isRendererOfType<const RenderElement>(const RenderObject& renderer) { return renderer.isRenderElement(); }
+RENDER_OBJECT_TYPE_CASTS(RenderElement, isRenderElement())
 
 inline RenderStyle& RenderElement::firstLineStyle() const
 {
@@ -279,8 +287,6 @@ inline bool RenderElement::isRenderInline() const
 {
     return m_baseTypeFlags & RenderInlineFlag;
 }
-
-RENDER_OBJECT_TYPE_CASTS(RenderElement, isRenderElement())
 
 inline Element* RenderElement::generatingElement() const
 {

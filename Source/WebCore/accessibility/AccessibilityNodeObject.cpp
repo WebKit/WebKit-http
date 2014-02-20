@@ -74,7 +74,6 @@
 #include "SVGNames.h"
 #include "Text.h"
 #include "TextControlInnerElements.h"
-#include "TextIterator.h"
 #include "UserGestureIndicator.h"
 #include "VisibleUnits.h"
 #include "Widget.h"
@@ -228,8 +227,11 @@ AccessibilityObject* AccessibilityNodeObject::parentObject() const
         return 0;
 
     Node* parentObj = node()->parentNode();
-    if (parentObj)
-        return axObjectCache()->getOrCreate(parentObj);
+    if (!parentObj)
+        return nullptr;
+    
+    if (AXObjectCache* cache = axObjectCache())
+        return cache->getOrCreate(parentObj);
     
     return 0;
 }
@@ -1204,7 +1206,9 @@ Element* AccessibilityNodeObject::menuElementForMenuButton() const
 
 AccessibilityObject* AccessibilityNodeObject::menuForMenuButton() const
 {
-    return axObjectCache()->getOrCreate(menuElementForMenuButton());
+    if (AXObjectCache* cache = axObjectCache())
+        return cache->getOrCreate(menuElementForMenuButton());
+    return nullptr;
 }
 
 Element* AccessibilityNodeObject::menuItemElementForMenu() const
@@ -1217,11 +1221,15 @@ Element* AccessibilityNodeObject::menuItemElementForMenu() const
 
 AccessibilityObject* AccessibilityNodeObject::menuButtonForMenu() const
 {
+    AXObjectCache* cache = axObjectCache();
+    if (!cache)
+        return nullptr;
+
     Element* menuItem = menuItemElementForMenu();
 
     if (menuItem) {
         // ARIA just has generic menu items. AppKit needs to know if this is a top level items like MenuBarButton or MenuBarItem
-        AccessibilityObject* menuItemAX = axObjectCache()->getOrCreate(menuItem);
+        AccessibilityObject* menuItemAX = cache->getOrCreate(menuItem);
         if (menuItemAX && menuItemAX->isMenuButton())
             return menuItemAX;
     }
@@ -1342,7 +1350,7 @@ void AccessibilityNodeObject::visibleText(Vector<AccessibilityText>& textOrder) 
     case CheckBoxRole:
     case ListBoxOptionRole:
     // MacOS does not expect native <li> elements to expose label information, it only expects leaf node elements to do that.
-#if !PLATFORM(MAC)
+#if !PLATFORM(COCOA)
     case ListItemRole:
 #endif
     case MenuButtonRole:

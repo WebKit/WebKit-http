@@ -69,7 +69,7 @@
 
 - (const unichar *)currentTextPointer
 {
-    return _textIterator->characters();
+    return _textIterator->deprecatedTextIteratorCharacters();
 }
 
 - (NSUInteger)currentTextLength

@@ -30,7 +30,7 @@
 
 #include "Heap.h"
 #include "VM.h"
-#include "Operations.h"
+#include "JSCInlines.h"
 #include "SlotVisitor.h"
 #include "Structure.h"
 

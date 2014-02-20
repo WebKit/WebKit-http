@@ -32,7 +32,7 @@
 #include "ArgList.h"
 #include "ArityCheckFailReturnThunks.h"
 #include "ArrayBufferNeuteringWatchpoint.h"
-#include "CallFrameInlines.h"
+#include "BuiltinExecutables.h"
 #include "CodeBlock.h"
 #include "CodeCache.h"
 #include "CommonIdentifiers.h"
@@ -55,6 +55,7 @@
 #include "JSAPIValueWrapper.h"
 #include "JSActivation.h"
 #include "JSArray.h"
+#include "JSCInlines.h"
 #include "JSFunction.h"
 #include "JSGlobalObjectFunctions.h"
 #include "JSLock.h"
@@ -68,13 +69,16 @@
 #include "Lookup.h"
 #include "MapData.h"
 #include "Nodes.h"
+#include "Parser.h"
 #include "ParserArena.h"
+#include "PropertyMapHashTable.h"
 #include "RegExpCache.h"
 #include "RegExpObject.h"
 #include "SimpleTypedArrayController.h"
 #include "SourceProviderCache.h"
 #include "StrictEvalActivation.h"
 #include "StrongInlines.h"
+#include "StructureInlines.h"
 #include "UnlinkedCodeBlock.h"
 #include "WeakMapData.h"
 #include <wtf/ProcessID.h>
@@ -169,7 +173,6 @@ VM::VM(VMType vmType, HeapType heapType)
     , vmType(vmType)
     , clientData(0)
     , topCallFrame(CallFrame::noCaller())
-    , stackPointerAtVMEntry(0)
     , arrayConstructorTable(adoptPtr(new HashTable(JSC::arrayConstructorTable)))
     , arrayPrototypeTable(adoptPtr(new HashTable(JSC::arrayPrototypeTable)))
     , booleanPrototypeTable(adoptPtr(new HashTable(JSC::booleanPrototypeTable)))
@@ -219,17 +222,23 @@ VM::VM(VMType vmType, HeapType heapType)
 #if ENABLE(GC_VALIDATION)
     , m_initializingObjectClass(0)
 #endif
+    , m_stackPointerAtVMEntry(0)
     , m_stackLimit(0)
 #if ENABLE(LLINT_C_LOOP)
     , m_jsStackLimit(0)
 #endif
+#if ENABLE(FTL_JIT)
+    , m_ftlStackLimit(0)
+    , m_largestFTLStackSize(0)
+#endif
     , m_inDefineOwnProperty(false)
     , m_codeCache(CodeCache::create())
     , m_enabledProfiler(nullptr)
+    , m_builtinExecutables(BuiltinExecutables::create(*this))
 {
     interpreter = new Interpreter(*this);
     StackBounds stack = wtfThreadData().stack();
-    updateStackLimitWithReservedZoneSize(Options::reservedZoneSize());
+    updateReservedZoneSize(Options::reservedZoneSize());
 #if ENABLE(LLINT_C_LOOP)
     interpreter->stack().setReservedZoneSize(Options::reservedZoneSize());
 #endif
@@ -316,16 +325,6 @@ VM::VM(VMType vmType, HeapType heapType)
     m_typedArrayController = adoptRef(new SimpleTypedArrayController());
 }
 
-#if ENABLE(DFG_JIT)
-static void cleanWorklist(VM& vm, DFG::Worklist* worklist)
-{
-    if (!worklist)
-        return;
-    worklist->waitUntilAllPlansForVMAreReady(vm);
-    worklist->removeAllReadyPlansForVM(vm);
-}
-#endif // ENABLE(DFG_JIT)
-
 VM::~VM()
 {
     // Never GC, ever again.
@@ -334,8 +333,12 @@ VM::~VM()
 #if ENABLE(DFG_JIT)
     // Make sure concurrent compilations are done, but don't install them, since there is
     // no point to doing so.
-    cleanWorklist(*this, DFG::existingGlobalDFGWorklistOrNull());
-    cleanWorklist(*this, DFG::existingGlobalFTLWorklistOrNull());
+    for (unsigned i = DFG::numberOfWorklists(); i--;) {
+        if (DFG::Worklist* worklist = DFG::worklistForIndexOrNull(i)) {
+            worklist->waitUntilAllPlansForVMAreReady(*this);
+            worklist->removeAllReadyPlansForVM(*this);
+        }
+    }
 #endif // ENABLE(DFG_JIT)
     
     // Clear this first to ensure that nobody tries to remove themselves from it.
@@ -400,9 +403,11 @@ PassRefPtr<VM> VM::create(HeapType heapType)
     return adoptRef(new VM(Default, heapType));
 }
 
-PassRefPtr<VM> VM::createLeaked(HeapType heapType)
+PassRefPtr<VM> VM::createLeakedForMainThread(HeapType heapType)
 {
-    return create(heapType);
+    VM* vm = new VM(Default, heapType);
+    vm->jsStringWeakOwner = adoptPtr(new JSString::WeakOwner);
+    return adoptRef(vm);
 }
 
 bool VM::sharedInstanceExists()
@@ -508,20 +513,13 @@ void VM::stopSampling()
     interpreter->stopSampling();
 }
 
-#if ENABLE(DFG_JIT)
-static void prepareToDiscardCodeFor(VM& vm, DFG::Worklist* worklist)
-{
-    if (!worklist)
-        return;
-    worklist->completeAllPlansForVM(vm);
-}
-#endif // ENABLE(DFG_JIT)
-
 void VM::prepareToDiscardCode()
 {
 #if ENABLE(DFG_JIT)
-    prepareToDiscardCodeFor(*this, DFG::existingGlobalDFGWorklistOrNull());
-    prepareToDiscardCodeFor(*this, DFG::existingGlobalFTLWorklistOrNull());
+    for (unsigned i = DFG::numberOfWorklists(); i--;) {
+        if (DFG::Worklist* worklist = DFG::worklistForIndexOrNull(i))
+            worklist->completeAllPlansForVM(*this);
+    }
 #endif // ENABLE(DFG_JIT)
 }
 
@@ -736,22 +734,53 @@ void VM:: clearExceptionStack()
     m_exceptionStack = RefCountedArray<StackFrame>();
 }
 
-size_t VM::updateStackLimitWithReservedZoneSize(size_t reservedZoneSize)
+void VM::setStackPointerAtVMEntry(void* sp)
+{
+    m_stackPointerAtVMEntry = sp;
+    updateStackLimit();
+}
+
+size_t VM::updateReservedZoneSize(size_t reservedZoneSize)
 {
     size_t oldReservedZoneSize = m_reservedZoneSize;
     m_reservedZoneSize = reservedZoneSize;
 
-    void* stackLimit;
-    if (stackPointerAtVMEntry) {
-        ASSERT(wtfThreadData().stack().isGrowingDownward());
-        char* startOfStack = reinterpret_cast<char*>(stackPointerAtVMEntry);
-        stackLimit = wtfThreadData().stack().recursionLimit(startOfStack, Options::maxPerThreadStackUsage(), reservedZoneSize);
-    } else
-        stackLimit = wtfThreadData().stack().recursionLimit(reservedZoneSize);
+    updateStackLimit();
 
-    setStackLimit(stackLimit);
     return oldReservedZoneSize;
 }
+
+inline void VM::updateStackLimit()
+{
+    if (m_stackPointerAtVMEntry) {
+        ASSERT(wtfThreadData().stack().isGrowingDownward());
+        char* startOfStack = reinterpret_cast<char*>(m_stackPointerAtVMEntry);
+#if ENABLE(FTL_JIT)
+        m_stackLimit = wtfThreadData().stack().recursionLimit(startOfStack, Options::maxPerThreadStackUsage(), m_reservedZoneSize + m_largestFTLStackSize);
+        m_ftlStackLimit = wtfThreadData().stack().recursionLimit(startOfStack, Options::maxPerThreadStackUsage(), m_reservedZoneSize + 2 * m_largestFTLStackSize);
+#else
+        m_stackLimit = wtfThreadData().stack().recursionLimit(startOfStack, Options::maxPerThreadStackUsage(), m_reservedZoneSize);
+#endif
+    } else {
+#if ENABLE(FTL_JIT)
+        m_stackLimit = wtfThreadData().stack().recursionLimit(m_reservedZoneSize + m_largestFTLStackSize);
+        m_ftlStackLimit = wtfThreadData().stack().recursionLimit(m_reservedZoneSize + 2 * m_largestFTLStackSize);
+#else
+        m_stackLimit = wtfThreadData().stack().recursionLimit(m_reservedZoneSize);
+#endif
+    }
+
+}
+
+#if ENABLE(FTL_JIT)
+void VM::updateFTLLargestStackSize(size_t stackSize)
+{
+    if (stackSize > m_largestFTLStackSize) {
+        m_largestFTLStackSize = stackSize;
+        updateStackLimit();
+    }
+}
+#endif
 
 void releaseExecutableMemory(VM& vm)
 {

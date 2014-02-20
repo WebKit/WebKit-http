@@ -51,5 +51,12 @@ inline ExitingJITType exitingJITTypeFor(JITCode::JITType type)
 
 } // namespace JSC
 
+namespace WTF {
+
+class PrintStream;
+void printInternal(PrintStream&, JSC::ExitingJITType);
+
+} // namespace WTF
+
 #endif // ExitingJITType_h
 

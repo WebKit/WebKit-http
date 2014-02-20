@@ -27,6 +27,7 @@
 #define JSManagedValue_h
 
 #import <JavaScriptCore/JSBase.h>
+#import <JavaScriptCore/WebKitAvailability.h>
 
 #if JSC_OBJC_API_ENABLED
 
@@ -63,6 +64,7 @@ OBJC_VISIBLE
 @result The new JSManagedValue.
 */
 + (JSManagedValue *)managedValueWithValue:(JSValue *)value;
++ (JSManagedValue *)managedValueWithValue:(JSValue *)value andOwner:(id)owner NS_AVAILABLE(10_10, 8_0);
 
 /*!
 @method

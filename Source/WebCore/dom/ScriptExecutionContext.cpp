@@ -33,10 +33,10 @@
 #include "ErrorEvent.h"
 #include "MessagePort.h"
 #include "PublicURLManager.h"
-#include "ScriptCallStack.h"
 #include "Settings.h"
 #include "WorkerGlobalScope.h"
 #include "WorkerThread.h"
+#include <inspector/ScriptCallStack.h>
 #include <wtf/MainThread.h>
 #include <wtf/Ref.h>
 
@@ -50,6 +50,8 @@
 #if ENABLE(SQL_DATABASE)
 #include "DatabaseContext.h"
 #endif
+
+using namespace Inspector;
 
 namespace WebCore {
 
@@ -115,10 +117,6 @@ ScriptExecutionContext::~ScriptExecutionContext()
         ASSERT((*iter)->scriptExecutionContext() == this);
         (*iter)->contextDestroyed();
     }
-#if ENABLE(BLOB)
-    if (m_publicURLManager)
-        m_publicURLManager->contextDestroyed();
-#endif
 }
 
 void ScriptExecutionContext::processMessagePortMessagesSoon()
@@ -148,7 +146,7 @@ void ScriptExecutionContext::createdMessagePort(MessagePort* port)
 {
     ASSERT(port);
     ASSERT((isDocument() && isMainThread())
-        || (isWorkerGlobalScope() && currentThread() == static_cast<WorkerGlobalScope*>(this)->thread()->threadID()));
+        || (isWorkerGlobalScope() && currentThread() == toWorkerGlobalScope(this)->thread().threadID()));
 
     m_messagePorts.add(port);
 }
@@ -157,7 +155,7 @@ void ScriptExecutionContext::destroyedMessagePort(MessagePort* port)
 {
     ASSERT(port);
     ASSERT((isDocument() && isMainThread())
-        || (isWorkerGlobalScope() && currentThread() == static_cast<WorkerGlobalScope*>(this)->thread()->threadID()));
+        || (isWorkerGlobalScope() && currentThread() == toWorkerGlobalScope(this)->thread().threadID()));
 
     m_messagePorts.remove(port);
 }
@@ -365,7 +363,7 @@ int ScriptExecutionContext::circularSequentialID()
 PublicURLManager& ScriptExecutionContext::publicURLManager()
 {
     if (!m_publicURLManager)
-        m_publicURLManager = PublicURLManager::create();
+        m_publicURLManager = PublicURLManager::create(this);
     return *m_publicURLManager;
 }
 #endif
@@ -413,7 +411,7 @@ JSC::VM* ScriptExecutionContext::vm()
         return JSDOMWindow::commonVM();
 
     if (isWorkerGlobalScope())
-        return static_cast<WorkerGlobalScope*>(this)->script()->vm();
+        return toWorkerGlobalScope(this)->script()->vm();
 
     ASSERT_NOT_REACHED();
     return 0;

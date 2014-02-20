@@ -195,7 +195,7 @@ static JSStringRef descriptionOfElements(Vector<AccessibilityUIElement>& element
     return [allElementString createJSStringRef];
 }
 
-static NSDictionary *searchPredicateParameterizedAttributeForSearchCriteria(JSContextRef context, AccessibilityUIElement *startElement, bool isDirectionNext, unsigned resultsLimit, JSValueRef searchKey, JSStringRef searchText, bool visibleOnly)
+static NSDictionary *searchPredicateParameterizedAttributeForSearchCriteria(JSContextRef context, AccessibilityUIElement *startElement, bool isDirectionNext, unsigned resultsLimit, JSValueRef searchKey, JSStringRef searchText, bool visibleOnly, bool immediateDescendantsOnly)
 {
     NSMutableDictionary *parameterizedAttribute = [NSMutableDictionary dictionary];
     
@@ -241,6 +241,49 @@ static NSDictionary *searchPredicateParameterizedAttributeForSearchCriteria(JSCo
         [parameterizedAttribute setObject:[NSString stringWithJSStringRef:searchText] forKey:@"AXSearchText"];
     
     [parameterizedAttribute setObject:@(visibleOnly) forKey:@"AXVisibleOnly"];
+    
+    [parameterizedAttribute setObject:@(immediateDescendantsOnly) forKey:@"AXImmediateDescendantsOnly"];
+    
+    return parameterizedAttribute;
+}
+
+static NSDictionary *selectTextParameterizedAttributeForCriteria(JSContextRef context, JSStringRef ambiguityResolution, JSValueRef searchStrings, JSStringRef replacementString)
+{
+    NSMutableDictionary *parameterizedAttribute = [NSMutableDictionary dictionary];
+    
+    if (ambiguityResolution)
+        [parameterizedAttribute setObject:[NSString stringWithJSStringRef:ambiguityResolution] forKey:@"AXSelectTextAmbiguityResolution"];
+    
+    if (searchStrings) {
+        NSMutableArray *searchStringsParameter = [NSMutableArray array];
+        if (JSValueIsString(context, searchStrings)) {
+            JSRetainPtr<JSStringRef> searchStringsString(Adopt, JSValueToStringCopy(context, searchStrings, nullptr));
+            if (searchStringsString)
+                [searchStringsParameter addObject:[NSString stringWithJSStringRef:searchStringsString.get()]];
+        }
+        else if (JSValueIsObject(context, searchStrings)) {
+            JSObjectRef searchStringsArray = JSValueToObject(context, searchStrings, nullptr);
+            unsigned searchStringsArrayLength = 0;
+            
+            JSRetainPtr<JSStringRef> lengthPropertyString(Adopt, JSStringCreateWithUTF8CString("length"));
+            JSValueRef searchStringsArrayLengthValue = JSObjectGetProperty(context, searchStringsArray, lengthPropertyString.get(), nullptr);
+            if (searchStringsArrayLengthValue && JSValueIsNumber(context, searchStringsArrayLengthValue))
+                searchStringsArrayLength = static_cast<unsigned>(JSValueToNumber(context, searchStringsArrayLengthValue, nullptr));
+            
+            for (unsigned i = 0; i < searchStringsArrayLength; ++i) {
+                JSRetainPtr<JSStringRef> searchStringsString(Adopt, JSValueToStringCopy(context, JSObjectGetPropertyAtIndex(context, searchStringsArray, i, nullptr), nullptr));
+                if (searchStringsString)
+                    [searchStringsParameter addObject:[NSString stringWithJSStringRef:searchStringsString.get()]];
+            }
+        }
+        [parameterizedAttribute setObject:searchStringsParameter forKey:@"AXSelectTextSearchStrings"];
+    }
+    
+    if (replacementString) {
+        [parameterizedAttribute setObject:@"AXSelectTextActivityFindAndReplace" forKey:@"AXSelectTextActivity"];
+        [parameterizedAttribute setObject:[NSString stringWithJSStringRef:replacementString] forKey:@"AXSelectTextReplacementString"];
+    } else
+        [parameterizedAttribute setObject:@"AXSelectTextActivityFindAndSelect" forKey:@"AXSelectTextActivity"];
     
     return parameterizedAttribute;
 }
@@ -587,6 +630,16 @@ JSStringRef AccessibilityUIElement::roleDescription()
     BEGIN_AX_OBJC_EXCEPTIONS
     NSString* role = descriptionOfValue([m_element accessibilityAttributeValue:NSAccessibilityRoleDescriptionAttribute], m_element);
     return concatenateAttributeAndValue(@"AXRoleDescription", role);
+    END_AX_OBJC_EXCEPTIONS
+    
+    return nullptr;
+}
+
+JSStringRef AccessibilityUIElement::computedRoleString()
+{
+    BEGIN_AX_OBJC_EXCEPTIONS
+    NSString *computedRoleString = descriptionOfValue([m_element accessibilityAttributeValue:@"AXARIARole"], m_element);
+    return [computedRoleString createJSStringRef];
     END_AX_OBJC_EXCEPTIONS
     
     return nullptr;
@@ -1034,10 +1087,10 @@ bool AccessibilityUIElement::attributedStringRangeIsMisspelled(unsigned location
     return false;
 }
 
-unsigned AccessibilityUIElement::uiElementCountForSearchPredicate(JSContextRef context, AccessibilityUIElement *startElement, bool isDirectionNext, JSValueRef searchKey, JSStringRef searchText, bool visibleOnly)
+unsigned AccessibilityUIElement::uiElementCountForSearchPredicate(JSContextRef context, AccessibilityUIElement *startElement, bool isDirectionNext, JSValueRef searchKey, JSStringRef searchText, bool visibleOnly, bool immediateDescendantsOnly)
 {
     BEGIN_AX_OBJC_EXCEPTIONS
-    NSDictionary *parameterizedAttribute = searchPredicateParameterizedAttributeForSearchCriteria(context, startElement, isDirectionNext, UINT_MAX, searchKey, searchText, visibleOnly);
+    NSDictionary *parameterizedAttribute = searchPredicateParameterizedAttributeForSearchCriteria(context, startElement, isDirectionNext, UINT_MAX, searchKey, searchText, visibleOnly, immediateDescendantsOnly);
     id value = [m_element accessibilityAttributeValue:@"AXUIElementCountForSearchPredicate" forParameter:parameterizedAttribute];
     if ([value isKindOfClass:[NSNumber class]])
         return [value unsignedIntValue];
@@ -1046,13 +1099,25 @@ unsigned AccessibilityUIElement::uiElementCountForSearchPredicate(JSContextRef c
     return 0;
 }
 
-AccessibilityUIElement AccessibilityUIElement::uiElementForSearchPredicate(JSContextRef context, AccessibilityUIElement *startElement, bool isDirectionNext, JSValueRef searchKey, JSStringRef searchText, bool visibleOnly)
+AccessibilityUIElement AccessibilityUIElement::uiElementForSearchPredicate(JSContextRef context, AccessibilityUIElement *startElement, bool isDirectionNext, JSValueRef searchKey, JSStringRef searchText, bool visibleOnly, bool immediateDescendantsOnly)
 {
     BEGIN_AX_OBJC_EXCEPTIONS
-    NSDictionary *parameterizedAttribute = searchPredicateParameterizedAttributeForSearchCriteria(context, startElement, isDirectionNext, 1, searchKey, searchText, visibleOnly);
+    NSDictionary *parameterizedAttribute = searchPredicateParameterizedAttributeForSearchCriteria(context, startElement, isDirectionNext, 1, searchKey, searchText, visibleOnly, immediateDescendantsOnly);
     id value = [m_element accessibilityAttributeValue:@"AXUIElementsForSearchPredicate" forParameter:parameterizedAttribute];
     if ([value isKindOfClass:[NSArray class]])
         return AccessibilityUIElement([value lastObject]);
+    END_AX_OBJC_EXCEPTIONS
+    
+    return nullptr;
+}
+
+JSStringRef AccessibilityUIElement::selectTextWithCriteria(JSContextRef context, JSStringRef ambiguityResolution, JSValueRef searchStrings, JSStringRef replacementString)
+{
+    BEGIN_AX_OBJC_EXCEPTIONS
+    NSDictionary *parameterizedAttribute = selectTextParameterizedAttributeForCriteria(context, ambiguityResolution, searchStrings, replacementString);
+    id result = [m_element accessibilityAttributeValue:@"AXSelectTextWithCriteria" forParameter:parameterizedAttribute];
+    if ([result isKindOfClass:[NSString class]])
+        return [result createJSStringRef];
     END_AX_OBJC_EXCEPTIONS
     
     return nullptr;

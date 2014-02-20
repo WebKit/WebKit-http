@@ -44,6 +44,15 @@
     _injectedBundleURL = adoptNS([injectedBundleURL copy]);
 }
 
+- (NSString *)description
+{
+    NSString *description = [NSString stringWithFormat:@"<%@: %p; maximumProcessCount = %lu", NSStringFromClass(self.class), self, static_cast<unsigned long>(_maximumProcessCount)];
+    if (_injectedBundleURL)
+        return [description stringByAppendingFormat:@"; injectedBundleURL: \"%@\">", _injectedBundleURL.get()];
+
+    return [description stringByAppendingString:@">"];
+}
+
 - (id)copyWithZone:(NSZone *)zone
 {
     WKProcessClassConfiguration *configuration = [[[self class] allocWithZone:zone] init];

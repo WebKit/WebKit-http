@@ -36,7 +36,7 @@ typedef struct HICON__* HICON;
 typedef HICON HCURSOR;
 #include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
-#elif PLATFORM(MAC)
+#elif PLATFORM(COCOA)
 #include <wtf/RetainPtr.h>
 #elif PLATFORM(GTK)
 #include "GRefPtrGtk.h"
@@ -44,7 +44,7 @@ typedef HICON HCURSOR;
 #include <app/Cursor.h>
 #endif
 
-#if PLATFORM(MAC) && !PLATFORM(IOS)
+#if USE(APPKIT)
 OBJC_CLASS NSCursor;
 #endif
 
@@ -68,7 +68,7 @@ namespace WebCore {
         HCURSOR m_nativeCursor;
     };
     typedef RefPtr<SharedCursor> PlatformCursor;
-#elif PLATFORM(MAC) && !PLATFORM(IOS)
+#elif USE(APPKIT)
     typedef NSCursor *PlatformCursor;
 #elif PLATFORM(GTK)
     typedef GRefPtr<GdkCursor> PlatformCursor;
@@ -178,7 +178,7 @@ namespace WebCore {
         float m_imageScaleFactor;
 #endif
 
-#if !PLATFORM(MAC)
+#if !USE(APPKIT)
         mutable PlatformCursor m_platformCursor;
 #else
         mutable RetainPtr<NSCursor> m_platformCursor;

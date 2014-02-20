@@ -189,11 +189,11 @@ void RemoteLayerTreeDrawingArea::clearPageOverlay(PageOverlay* pageOverlay)
     scheduleCompositingLayerFlush();
 }
 
-void RemoteLayerTreeDrawingArea::paintContents(const GraphicsLayer* graphicsLayer, GraphicsContext& graphicsContext, GraphicsLayerPaintingPhase, const IntRect& clipRect)
+void RemoteLayerTreeDrawingArea::paintContents(const GraphicsLayer* graphicsLayer, GraphicsContext& graphicsContext, GraphicsLayerPaintingPhase, const FloatRect& clipRect)
 {
     for (const auto& overlayAndLayer : m_pageOverlayLayers) {
         if (overlayAndLayer.value.get() == graphicsLayer) {
-            m_webPage->drawPageOverlay(overlayAndLayer.key, graphicsContext, clipRect);
+            m_webPage->drawPageOverlay(overlayAndLayer.key, graphicsContext, enclosingIntRect(clipRect));
             break;
         }
     }
@@ -323,6 +323,7 @@ void RemoteLayerTreeDrawingArea::flushLayers()
     m_remoteLayerTreeContext->buildTransaction(layerTransaction, *m_rootLayer);
     layerTransaction.setContentsSize(m_webPage->corePage()->mainFrame().view()->contentsSize());
     layerTransaction.setPageScaleFactor(m_webPage->corePage()->pageScaleFactor());
+    layerTransaction.setRenderTreeSize(m_webPage->corePage()->renderTreeSize());
 #if PLATFORM(IOS)
     layerTransaction.setMinimumScaleFactor(m_webPage->minimumPageScaleFactor());
     layerTransaction.setMaximumScaleFactor(m_webPage->maximumPageScaleFactor());

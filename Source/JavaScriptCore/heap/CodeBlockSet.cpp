@@ -27,6 +27,7 @@
 #include "CodeBlockSet.h"
 
 #include "CodeBlock.h"
+#include "JSCInlines.h"
 #include "SlotVisitor.h"
 
 namespace JSC {

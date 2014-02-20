@@ -316,6 +316,7 @@ public:
 typedef Vector<LayerFragment, 1> LayerFragments;
 
 class RenderLayer final : public ScrollableArea {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     friend class RenderReplica;
 
@@ -692,7 +693,7 @@ public:
 
     LayoutRect childrenClipRect() const; // Returns the foreground clip rect of the layer in the document's coordinate space.
     LayoutRect selfClipRect() const; // Returns the background clip rect of the layer in the document's coordinate space.
-    LayoutRect localClipRect() const; // Returns the background clip rect of the layer in the local coordinate space.
+    LayoutRect localClipRect(bool& clipExceedsBounds) const; // Returns the background clip rect of the layer in the local coordinate space.
 
     // Pass offsetFromRoot if known.
     bool intersectsDamageRect(const LayoutRect& layerBounds, const LayoutRect& damageRect, const RenderLayer* rootLayer, const LayoutPoint* offsetFromRoot = 0, RenderRegion* = 0) const;
@@ -797,7 +798,7 @@ public:
 
     bool paintsWithTransparency(PaintBehavior paintBehavior) const
     {
-        return isTransparent() && ((paintBehavior & PaintBehaviorFlattenCompositingLayers) || !isComposited());
+        return (isTransparent() || hasBlendMode()) && ((paintBehavior & PaintBehaviorFlattenCompositingLayers) || !isComposited());
     }
 
     bool paintsWithTransform(PaintBehavior) const;

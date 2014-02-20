@@ -288,7 +288,6 @@
 #include "JSScreen.cpp"
 #include "JSScriptProfile.cpp"
 #include "JSScriptProfileNode.cpp"
-#include "JSShadowRoot.cpp"
 #include "JSSharedWorker.cpp"
 #include "JSSharedWorkerGlobalScope.cpp"
 #include "JSSQLError.cpp"
@@ -463,12 +462,14 @@
 #if ENABLE(VIDEO_TRACK)
 #include "JSAudioTrack.cpp"
 #include "JSAudioTrackList.cpp"
+#include "JSDataCue.cpp"
 #include "JSHTMLTrackElement.cpp"
 #include "JSTextTrack.cpp"
 #include "JSTextTrackCue.cpp"
 #include "JSTextTrackCueList.cpp"
 #include "JSTextTrackList.cpp"
 #include "JSTrackEvent.cpp"
+#include "JSVTTCue.cpp"
 #include "JSVideoTrack.cpp"
 #include "JSVideoTrackList.cpp"
 #endif

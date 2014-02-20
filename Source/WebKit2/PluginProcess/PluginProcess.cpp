@@ -57,9 +57,10 @@ PluginProcess& PluginProcess::shared()
 PluginProcess::PluginProcess()
     : m_supportsAsynchronousPluginInitialization(false)
     , m_minimumLifetimeTimer(RunLoop::main(), this, &PluginProcess::minimumLifetimeTimerFired)
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
     , m_compositingRenderServerPort(MACH_PORT_NULL)
 #endif
+    , m_connectionActivity("PluginProcess connection activity.")
 {
     NetscapePlugin::setSetExceptionFunction(WebProcessConnection::setGlobalException);
 }
@@ -152,7 +153,7 @@ void PluginProcess::createWebProcessConnection()
 {
     bool didHaveAnyWebProcessConnections = !m_webProcessConnections.isEmpty();
 
-#if PLATFORM(MAC)
+#if OS(DARWIN)
     // Create the listening port.
     mach_port_t listeningPort;
     mach_port_allocate(mach_task_self(), MACH_PORT_RIGHT_RECEIVE, &listeningPort);
@@ -225,7 +226,7 @@ void PluginProcess::minimumLifetimeTimerFired()
     enableTermination();
 }
 
-#if !PLATFORM(MAC)
+#if !PLATFORM(COCOA)
 void PluginProcess::initializeProcessName(const ChildProcessInitializationParameters&)
 {
 }

@@ -63,7 +63,6 @@
 #import "RenderText.h"
 #import "ResourceBuffer.h"
 #import "SharedBuffer.h"
-#import "TextIterator.h"
 #import "VisiblePosition.h"
 #import "VisibleUnits.h"
 
@@ -87,7 +86,6 @@ using WebCore::RenderObject;
 using WebCore::RenderStyle;
 using WebCore::RenderText;
 using WebCore::RootInlineBox;
-using WebCore::TextIterator;
 using WebCore::VisiblePosition;
 
 @implementation DOMRange (UIKitExtensions)
@@ -96,7 +94,7 @@ using WebCore::VisiblePosition;
 {
     Range *range = core(self);
     FrameSelection frameSelection;
-    frameSelection.moveTo(range, DOWNSTREAM);
+    frameSelection.moveTo(range);
     
     TextGranularity granularity = CharacterGranularity;
     // Until WebKit supports vertical layout, "down" is equivalent to "forward by a line" and
@@ -123,7 +121,7 @@ using WebCore::VisiblePosition;
 {
     Range *range = core(self);
     FrameSelection frameSelection;
-    frameSelection.moveTo(range, DOWNSTREAM);
+    frameSelection.moveTo(range);
     
     for (UInt32 i = 0; i < amount; i++)
         frameSelection.modify(FrameSelection::AlterationExtend, (SelectionDirection)direction, CharacterGranularity);    

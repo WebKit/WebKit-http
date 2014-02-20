@@ -28,6 +28,7 @@
 
 #if ENABLE(VMINSPECTOR)
 
+#include "JSCInlines.h"
 #include <wtf/ASCIICType.h>
 #include <wtf/text/WTFString.h>
 

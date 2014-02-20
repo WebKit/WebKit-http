@@ -51,10 +51,21 @@ WebInspector.DOMNodeDetailsSidebarPanel = function() {
     this._eventListenersSectionGroup = new WebInspector.DetailsSectionGroup;
     var eventListenersSection = new WebInspector.DetailsSection("dom-node-event-listeners", WebInspector.UIString("Event Listeners"), [this._eventListenersSectionGroup]);    
 
+    this._accessibilityEmptyRow = new WebInspector.DetailsSectionRow(WebInspector.UIString("No Accessibility Information"));
+    this._accessibilityNodeIgnoredRow = new WebInspector.DetailsSectionSimpleRow(WebInspector.UIString("Ignored"));
+    this._accessibilityNodeInvalidRow = new WebInspector.DetailsSectionSimpleRow(WebInspector.UIString("Invalid"));
+    this._accessibilityNodeLabelRow = new WebInspector.DetailsSectionSimpleRow(WebInspector.UIString("Label"));
+    this._accessibilityNodeRequiredRow = new WebInspector.DetailsSectionSimpleRow(WebInspector.UIString("Required"));
+    this._accessibilityNodeRoleRow = new WebInspector.DetailsSectionSimpleRow(WebInspector.UIString("Role"));
+    
+    this._accessibilityGroup = new WebInspector.DetailsSectionGroup([this._accessibilityEmptyRow]);
+    var accessibilitySection = new WebInspector.DetailsSection("dom-node-accessibility", WebInspector.UIString("Accessibility"), [this._accessibilityGroup]);    
+    
     this.element.appendChild(identitySection.element);
     this.element.appendChild(attributesSection.element);
     this.element.appendChild(propertiesSection.element);
     this.element.appendChild(eventListenersSection.element);
+    this.element.appendChild(accessibilitySection.element);
 };
 
 WebInspector.DOMNodeDetailsSidebarPanel.StyleClassName = "dom-node";
@@ -78,6 +89,7 @@ WebInspector.DOMNodeDetailsSidebarPanel.prototype = {
         this._refreshAttributes();
         this._refreshProperties();
         this._refreshEventListeners();
+        this._refreshAccessibility();
     },
 
     // Private
@@ -223,11 +235,83 @@ WebInspector.DOMNodeDetailsSidebarPanel.prototype = {
         }
     },
 
+    _refreshAccessibility: function()
+    {
+        var domNode = this.domNode;
+        if (!domNode)
+            return;
+
+        function accessibilityPropertiesCallback(accessibilityProperties)
+        {
+            if (this.domNode !== domNode)
+                return;
+
+            if (accessibilityProperties && accessibilityProperties.exists) {
+                
+                var ignored = "";
+                if (accessibilityProperties.ignored) {
+                    ignored = WebInspector.UIString("Yes");
+                    if (accessibilityProperties.hidden)
+                        ignored = WebInspector.UIString("%s (hidden)").format(ignored);
+                    else if (accessibilityProperties.ignoredByDefault)
+                        ignored = WebInspector.UIString("%s (default)").format(ignored);
+                }
+
+                var invalid = accessibilityProperties.invalid ? accessibilityProperties.invalid : "";
+
+                // FIXME: label will always come back as empty. Blocked by http://webkit.org/b/121134
+                var label = accessibilityProperties.label;
+                if (label && label !== domNode.getAttribute("aria-label"))
+                    label = WebInspector.UIString("%s (computed)").format(label);
+
+                var required = "";
+                if (accessibilityProperties.required !== undefined) {
+                    if (accessibilityProperties.required)
+                        required = WebInspector.UIString("Yes");
+                    else
+                        required = WebInspector.UIString("No");
+                }
+
+                var role = accessibilityProperties.role;
+                if (role === "" || role === "unknown")
+                    role = WebInspector.UIString("No exact ARIA role match.");
+                else if (role) {
+                    if (!domNode.getAttribute("role"))
+                        role = WebInspector.UIString("%s (default)").format(role);
+                    else if (domNode.getAttribute("role") !== role)
+                        role = WebInspector.UIString("%s (computed)").format(role);
+                }
+                
+                this._accessibilityNodeIgnoredRow.value = ignored;
+                this._accessibilityNodeInvalidRow.value = invalid;
+                this._accessibilityNodeLabelRow.value = label;
+                this._accessibilityNodeRequiredRow.value = required;
+                this._accessibilityNodeRoleRow.value = role;
+
+                this._accessibilityGroup.rows = [
+                    this._accessibilityNodeIgnoredRow,
+                    this._accessibilityNodeRoleRow,
+                    this._accessibilityNodeLabelRow,
+                    this._accessibilityNodeRequiredRow,
+                    this._accessibilityNodeInvalidRow
+                ];
+
+                this._accessibilityEmptyRow.hideEmptyMessage();
+
+            } else {
+                this._accessibilityGroup.rows = [this._accessibilityEmptyRow];
+                this._accessibilityEmptyRow.showEmptyMessage();
+            }
+        }
+        domNode.accessibilityProperties(accessibilityPropertiesCallback.bind(this));
+    },
+
     _attributesChanged: function(event)
     {
         if (event.data.node !== this.domNode)
             return;
         this._refreshAttributes();
+        this._refreshAccessibility();
     },
 
     _nodeTypeDisplayName: function()

@@ -85,6 +85,7 @@
 #include "Page.h"
 #include "PageActivityAssertionToken.h"
 #include "PageCache.h"
+#include "PageThrottler.h"
 #include "PageTransitionEvent.h"
 #include "PlatformStrategies.h"
 #include "PluginData.h"
@@ -102,7 +103,6 @@
 #include "SVGViewElement.h"
 #include "SVGViewSpec.h"
 #include "SchemeRegistry.h"
-#include "ScriptCallStack.h"
 #include "ScriptController.h"
 #include "ScriptSourceCode.h"
 #include "ScrollAnimator.h"
@@ -370,7 +370,7 @@ void FrameLoader::submitForm(PassRefPtr<FormSubmission> submission)
 
     if (isDocumentSandboxed(&m_frame, SandboxForms)) {
         // FIXME: This message should be moved off the console once a solution to https://bugs.webkit.org/show_bug.cgi?id=103274 exists.
-        m_frame.document()->addConsoleMessage(SecurityMessageSource, ErrorMessageLevel, "Blocked form submission to '" + submission->action().stringCenterEllipsizedToLength() + "' because the form's frame is sandboxed and the 'allow-forms' permission is not set.");
+        m_frame.document()->addConsoleMessage(MessageSource::Security, MessageLevel::Error, "Blocked form submission to '" + submission->action().stringCenterEllipsizedToLength() + "' because the form's frame is sandboxed and the 'allow-forms' permission is not set.");
         return;
     }
 
@@ -663,8 +663,6 @@ void FrameLoader::receivedFirstData()
 
     if (!m_documentLoader)
         return;
-    if (m_frame.document()->isViewSource())
-        return;
 
     double delay;
     String url;
@@ -942,7 +940,7 @@ ObjectContentType FrameLoader::defaultObjectContentType(const URL& url, const St
     if (mimeType.isEmpty())
         mimeType = mimeTypeFromURL(url);
 
-#if !PLATFORM(MAC) && !PLATFORM(EFL) && !PLATFORM(HAIKU) // Mac has no PluginDatabase, nor does Haiku or EFL
+#if !PLATFORM(COCOA) && !PLATFORM(EFL) && !PLATFORM(HAIKU) // Mac has no PluginDatabase, nor does EFL
     if (mimeType.isEmpty()) {
         String decodedPath = decodeURLEscapeSequences(url.path());
         mimeType = PluginDatabase::installedPlugins()->MIMETypeForExtension(decodedPath.substring(decodedPath.reverseFind('.') + 1));
@@ -952,7 +950,7 @@ ObjectContentType FrameLoader::defaultObjectContentType(const URL& url, const St
     if (mimeType.isEmpty())
         return ObjectContentFrame; // Go ahead and hope that we can display the content.
 
-#if !PLATFORM(MAC) && !PLATFORM(EFL) && !PLATFORM(HAIKU) // Mac has no PluginDatabase, nor does Haiku or EFL
+#if !PLATFORM(COCOA) && !PLATFORM(EFL) && !PLATFORM(HAIKU) // Mac has no PluginDatabase, nor does EFL
     bool plugInSupportsMIMEType = PluginDatabase::installedPlugins()->isMIMETypeRegistered(mimeType);
 #else
     bool plugInSupportsMIMEType = false;
@@ -1143,7 +1141,7 @@ void FrameLoader::completed()
 void FrameLoader::started()
 {
     if (m_frame.page())
-        m_activityAssertion = m_frame.page()->createActivityToken();
+        m_activityAssertion = m_frame.page()->pageThrottler().pageLoadActivityToken();
     for (Frame* frame = &m_frame; frame; frame = frame->tree().parent())
         frame->loader().m_isComplete = false;
 }
@@ -1479,7 +1477,7 @@ void FrameLoader::reportLocalLoadFailed(Frame* frame, const String& url)
     if (!frame)
         return;
 
-    frame->document()->addConsoleMessage(SecurityMessageSource, ErrorMessageLevel, "Not allowed to load local resource: " + url);
+    frame->document()->addConsoleMessage(MessageSource::Security, MessageLevel::Error, "Not allowed to load local resource: " + url);
 }
 
 const ResourceRequest& FrameLoader::initialRequest() const
@@ -2158,7 +2156,7 @@ CachePolicy FrameLoader::subresourceCachePolicy() const
         return CachePolicyRevalidate;
 
     const ResourceRequest& request(documentLoader()->request());
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
     if (request.cachePolicy() == ReloadIgnoringCacheData && !equalIgnoringCase(request.httpMethod(), "post") && ResourceRequest::useQuickLookResourceCachingQuirks())
         return CachePolicyRevalidate;
 #endif
@@ -2842,7 +2840,7 @@ bool FrameLoader::handleBeforeUnloadEvent(Chrome& chrome, FrameLoader* frameLoad
     // If the navigating FrameLoader has already shown a beforeunload confirmation panel for the current navigation attempt,
     // this frame is not allowed to cause another one to be shown.
     if (frameLoaderBeingNavigated->m_currentNavigationHasShownBeforeUnloadConfirmPanel) {
-        document->addConsoleMessage(JSMessageSource, ErrorMessageLevel, "Blocked attempt to show multiple beforeunload confirmation dialogs for the same navigation.");
+        document->addConsoleMessage(MessageSource::JS, MessageLevel::Error, ASCIILiteral("Blocked attempt to show multiple beforeunload confirmation dialogs for the same navigation."));
         return true;
     }
 
@@ -2855,7 +2853,7 @@ bool FrameLoader::handleBeforeUnloadEvent(Chrome& chrome, FrameLoader* frameLoad
             if (!parentDocument)
                 return true;
             if (!m_frame.document() || !m_frame.document()->securityOrigin()->canAccess(parentDocument->securityOrigin())) {
-                document->addConsoleMessage(JSMessageSource, ErrorMessageLevel, "Blocked attempt to show beforeunload confirmation dialog on behalf of a frame with different security origin. Protocols, domains, and ports must match.");
+                document->addConsoleMessage(MessageSource::JS, MessageLevel::Error, ASCIILiteral("Blocked attempt to show beforeunload confirmation dialog on behalf of a frame with different security origin. Protocols, domains, and ports must match."));
                 return true;
             }
             
@@ -3065,10 +3063,10 @@ bool FrameLoader::shouldInterruptLoadForXFrameOptions(const String& content, con
     case XFrameOptionsAllowAll:
         return false;
     case XFrameOptionsConflict:
-        m_frame.document()->addConsoleMessage(JSMessageSource, ErrorMessageLevel, "Multiple 'X-Frame-Options' headers with conflicting values ('" + content + "') encountered when loading '" + url.stringCenterEllipsizedToLength() + "'. Falling back to 'DENY'.", requestIdentifier);
+        m_frame.document()->addConsoleMessage(MessageSource::JS, MessageLevel::Error, "Multiple 'X-Frame-Options' headers with conflicting values ('" + content + "') encountered when loading '" + url.stringCenterEllipsizedToLength() + "'. Falling back to 'DENY'.", requestIdentifier);
         return true;
     case XFrameOptionsInvalid:
-        m_frame.document()->addConsoleMessage(JSMessageSource, ErrorMessageLevel, "Invalid 'X-Frame-Options' header encountered when loading '" + url.stringCenterEllipsizedToLength() + "': '" + content + "' is not a recognized directive. The header will be ignored.", requestIdentifier);
+        m_frame.document()->addConsoleMessage(MessageSource::JS, MessageLevel::Error, "Invalid 'X-Frame-Options' header encountered when loading '" + url.stringCenterEllipsizedToLength() + "': '" + content + "' is not a recognized directive. The header will be ignored.", requestIdentifier);
         return false;
     default:
         ASSERT_NOT_REACHED();
@@ -3441,7 +3439,7 @@ PassRefPtr<Frame> createWindow(Frame* openerFrame, Frame* lookupFrame, const Fra
     // Sandboxed frames cannot open new auxiliary browsing contexts.
     if (isDocumentSandboxed(openerFrame, SandboxPopups)) {
         // FIXME: This message should be moved off the console once a solution to https://bugs.webkit.org/show_bug.cgi?id=103274 exists.
-        openerFrame->document()->addConsoleMessage(SecurityMessageSource, ErrorMessageLevel, "Blocked opening '" + request.resourceRequest().url().stringCenterEllipsizedToLength() + "' in a new window because the request was made in a sandboxed frame whose 'allow-popups' permission is not set.");
+        openerFrame->document()->addConsoleMessage(MessageSource::Security, MessageLevel::Error, "Blocked opening '" + request.resourceRequest().url().stringCenterEllipsizedToLength() + "' in a new window because the request was made in a sandboxed frame whose 'allow-popups' permission is not set.");
         return 0;
     }
 

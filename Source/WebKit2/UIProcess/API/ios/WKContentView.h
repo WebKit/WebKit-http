@@ -23,50 +23,44 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#import "WKBase.h"
+#import "WKBrowsingContextController.h"
+#import "WKBrowsingContextGroup.h"
+#import "WKProcessGroup.h"
 #import <UIKit/UIKit.h>
-#import <WebKit2/WKBase.h>
-#import <WebKit2/WKBrowsingContextController.h>
-#import <WebKit2/WKBrowsingContextGroup.h>
-#import <WebKit2/WKProcessGroup.h>
+#import <wtf/RetainPtr.h>
 
 @class WKContentView;
 @class WKWebViewConfiguration;
 
-typedef NS_ENUM(unsigned, WKContentType)
-{
-    Standard = 0,
-    PlainText,
-    Image
-};
-
 namespace WebKit {
 class RemoteLayerTreeTransaction;
+class WebContext;
+struct WebPageConfiguration;
 }
 
 @protocol WKContentViewDelegate <NSObject>
 @optional
 - (void)contentViewDidCommitLoadForMainFrame:(WKContentView *)contentView;
 - (void)contentView:(WKContentView *)contentView didCommitLayerTree:(const WebKit::RemoteLayerTreeTransaction&)layerTreeTransaction;
+
+// FIXME: This doesn't belong in a 'delegate'.
+- (RetainPtr<CGImageRef>)takeViewSnapshotForContentView:(WKContentView *)contentView;
 @end
 
 WK_API_CLASS
 @interface WKContentView : UIView
 
-@property (readonly, nonatomic) WKBrowsingContextController *browsingContextController;
+@property (nonatomic, readonly) WKBrowsingContextController *browsingContextController;
 
 @property (nonatomic, assign) id <WKContentViewDelegate> delegate;
-@property (nonatomic, readonly) WKContentType contentType;
 
-@property (readonly) WKPageRef _pageRef;
+@property (nonatomic, readonly) WKPageRef _pageRef;
+@property (nonatomic, readonly) BOOL isAssistingNode;
 
-- (instancetype)initWithFrame:(CGRect)frame configuration:(WKWebViewConfiguration *)configuration;
-
-- (id)initWithFrame:(CGRect)frame contextRef:(WKContextRef)contextRef pageGroupRef:(WKPageGroupRef)pageGroupRef;
-- (id)initWithFrame:(CGRect)frame contextRef:(WKContextRef)contextRef pageGroupRef:(WKPageGroupRef)pageGroupRef relatedToPage:(WKPageRef)relatedPage;
-- (id)initWithFrame:(CGRect)frame processGroup:(WKProcessGroup *)processGroup browsingContextGroup:(WKBrowsingContextGroup *)browsingContextGroup;
+- (instancetype)initWithFrame:(CGRect)frame context:(WebKit::WebContext&)context configuration:(WebKit::WebPageConfiguration)webPageConfiguration;
 
 - (void)setMinimumSize:(CGSize)size;
-- (void)setViewportSize:(CGSize)size;
 - (void)setMinimumLayoutSize:(CGSize)size;
 
 - (void)didFinishScrollTo:(CGPoint)contentOffset;

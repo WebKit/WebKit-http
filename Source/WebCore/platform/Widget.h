@@ -38,11 +38,11 @@
 #include <wtf/Forward.h>
 #include <wtf/RefCounted.h>
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
 #include <wtf/RetainPtr.h>
 #endif
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
 OBJC_CLASS NSView;
 OBJC_CLASS NSWindow;
 typedef NSView *PlatformWidget;
@@ -73,12 +73,7 @@ typedef struct _Evas_Object Evas_Object;
 typedef Evas_Object* PlatformWidget;
 #endif
 
-#if PLATFORM(EFL)
-class PageClientEfl;
-typedef PageClientEfl* PlatformPageClient;
-#else
 typedef PlatformWidget PlatformPageClient;
-#endif
 
 namespace WebCore {
 
@@ -197,7 +192,7 @@ public:
     // the frame rects be the same no matter what transforms are applied.
     virtual bool transformsAffectFrameRect() { return true; }
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
     NSView* getOuterView() const;
 
     void removeFromSuperview();
@@ -233,7 +228,7 @@ private:
 
 private:
     ScrollView* m_parent;
-#if !PLATFORM(MAC)
+#if !PLATFORM(COCOA)
     PlatformWidget m_widget;
 #else
     RetainPtr<NSView> m_widget;
@@ -255,7 +250,7 @@ private:
 #define WIDGET_TYPE_CASTS(ToValueTypeName, predicate) \
     TYPE_CASTS_BASE(ToValueTypeName, Widget, object, object->predicate, object.predicate)
 
-#if !PLATFORM(MAC)
+#if !PLATFORM(COCOA)
 
 inline PlatformWidget Widget::platformWidget() const
 {

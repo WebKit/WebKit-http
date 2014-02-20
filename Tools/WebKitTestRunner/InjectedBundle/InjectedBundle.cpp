@@ -252,7 +252,6 @@ void InjectedBundle::beginTesting(WKDictionaryRef settings)
     WKBundleSetPopupBlockingEnabled(m_bundle, m_pageGroup, false);
     WKBundleSetAlwaysAcceptCookies(m_bundle, false);
     WKBundleSetSerialLoadingEnabled(m_bundle, false);
-    WKBundleSetShadowDOMEnabled(m_bundle, true);
     WKBundleSetCacheModel(m_bundle, 1 /*CacheModelDocumentBrowser*/);
 
     WKBundleRemoveAllUserContent(m_bundle, m_pageGroup);
@@ -465,17 +464,13 @@ void InjectedBundle::setCustomPolicyDelegate(bool enabled, bool permissive)
     WKBundlePostMessage(m_bundle, messageName.get(), messageBody.get());
 }
 
-void InjectedBundle::setVisibilityState(WKPageVisibilityState visibilityState, bool isInitialState)
+void InjectedBundle::setHidden(bool hidden)
 {
-    WKRetainPtr<WKStringRef> messageName(AdoptWK, WKStringCreateWithUTF8CString("SetVisibilityState"));
+    WKRetainPtr<WKStringRef> messageName(AdoptWK, WKStringCreateWithUTF8CString("SetHidden"));
     WKRetainPtr<WKMutableDictionaryRef> messageBody(AdoptWK, WKMutableDictionaryCreate());
 
-    WKRetainPtr<WKStringRef> visibilityStateKeyWK(AdoptWK, WKStringCreateWithUTF8CString("visibilityState"));
-    WKRetainPtr<WKUInt64Ref> visibilityStateWK(AdoptWK, WKUInt64Create(visibilityState));
-    WKDictionarySetItem(messageBody.get(), visibilityStateKeyWK.get(), visibilityStateWK.get());
-
-    WKRetainPtr<WKStringRef> isInitialKeyWK(AdoptWK, WKStringCreateWithUTF8CString("isInitialState"));
-    WKRetainPtr<WKBooleanRef> isInitialWK(AdoptWK, WKBooleanCreate(isInitialState));
+    WKRetainPtr<WKStringRef> isInitialKeyWK(AdoptWK, WKStringCreateWithUTF8CString("hidden"));
+    WKRetainPtr<WKBooleanRef> isInitialWK(AdoptWK, WKBooleanCreate(hidden));
     WKDictionarySetItem(messageBody.get(), isInitialKeyWK.get(), isInitialWK.get());
 
     WKBundlePostMessage(m_bundle, messageName.get(), messageBody.get());

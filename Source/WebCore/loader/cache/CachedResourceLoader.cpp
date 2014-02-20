@@ -149,14 +149,15 @@ Frame* CachedResourceLoader::frame() const
 
 CachedResourceHandle<CachedImage> CachedResourceLoader::requestImage(CachedResourceRequest& request)
 {
-    if (Frame* f = frame()) {
-        if (f->loader().pageDismissalEventBeingDispatched() != FrameLoader::NoDismissal) {
+    if (Frame* frame = this->frame()) {
+        if (frame->loader().pageDismissalEventBeingDispatched() != FrameLoader::NoDismissal) {
             URL requestURL = request.resourceRequest().url();
             if (requestURL.isValid() && canRequest(CachedResource::ImageResource, requestURL, request.options(), request.forPreload()))
-                PingLoader::loadImage(f, requestURL);
-            return 0;
+                PingLoader::loadImage(*frame, requestURL);
+            return nullptr;
         }
     }
+    
     request.setDefer(clientDefersImage(request.resourceRequest().url()) ? CachedResourceRequest::DeferredByClient : CachedResourceRequest::NoDefer);
     return toCachedImage(requestResource(CachedResource::ImageResource, request).get());
 }
@@ -632,7 +633,7 @@ void CachedResourceLoader::printAccessDeniedMessage(const URL& url) const
     else
         message = "Unsafe attempt to load URL " + url.stringCenterEllipsizedToLength() + " from frame with URL " + m_document->url().stringCenterEllipsizedToLength() + ". Domains, protocols and ports must match.\n";
 
-    frame()->document()->addConsoleMessage(SecurityMessageSource, ErrorMessageLevel, message);
+    frame()->document()->addConsoleMessage(MessageSource::Security, MessageLevel::Error, message);
 }
 
 void CachedResourceLoader::setAutoLoadImages(bool enable)

@@ -33,7 +33,7 @@
 #include "DFGPhase.h"
 #include "DFGPredictionPropagationPhase.h"
 #include "DFGVariableAccessDataDump.h"
-#include "Operations.h"
+#include "JSCInlines.h"
 
 namespace JSC { namespace DFG {
 
@@ -70,13 +70,8 @@ private:
     {
         switch (m_node->op()) {
         case BitOr:
-            if (m_node->child1()->isConstant()) {
-                JSValue op1 = m_graph.valueOfJSConstant(m_node->child1().node());
-                if (op1.isInt32() && !op1.asInt32()) {
-                    convertToIdentityOverChild2();
-                    break;
-                }
-            }
+            handleCommutativity();
+
             if (m_node->child2()->isConstant()) {
                 JSValue op2 = m_graph.valueOfJSConstant(m_node->child2().node());
                 if (op2.isInt32() && !op2.asInt32()) {
@@ -84,6 +79,11 @@ private:
                     break;
                 }
             }
+            break;
+            
+        case BitXor:
+        case BitAnd:
+            handleCommutativity();
             break;
             
         case BitLShift:
@@ -105,6 +105,38 @@ private:
                     m_node->child1()->child2().node());
                 if (shiftAmount.isInt32() && (shiftAmount.asInt32() & 0x1f)) {
                     m_node->convertToIdentity();
+                    m_changed = true;
+                    break;
+                }
+            }
+            break;
+            
+        case ArithAdd:
+            handleCommutativity();
+            
+            if (m_graph.isInt32Constant(m_node->child2().node())) {
+                int32_t value = m_graph.valueOfInt32Constant(
+                    m_node->child2().node());
+                if (!value) {
+                    convertToIdentityOverChild1();
+                    break;
+                }
+            }
+            break;
+            
+        case ArithMul:
+            handleCommutativity();
+            break;
+            
+        case ArithSub:
+            if (m_graph.isInt32Constant(m_node->child2().node())
+                && m_node->isBinaryUseKind(Int32Use)) {
+                int32_t value = m_graph.valueOfInt32Constant(m_node->child2().node());
+                if (-value != value) {
+                    m_node->setOp(ArithAdd);
+                    m_node->child2().setNode(
+                        m_insertionSet.insertConstant(
+                            m_nodeIndex, m_node->origin, jsNumber(-value)));
                     m_changed = true;
                     break;
                 }
@@ -146,7 +178,7 @@ private:
     void convertToIdentityOverChild(unsigned childIndex)
     {
         m_insertionSet.insertNode(
-            m_nodeIndex, SpecNone, Phantom, m_node->codeOrigin, m_node->children);
+            m_nodeIndex, SpecNone, Phantom, m_node->origin, m_node->children);
         m_node->children.removeEdge(childIndex ^ 1);
         m_node->convertToIdentity();
         m_changed = true;
@@ -172,10 +204,32 @@ private:
     void prepareToFoldTypedArray(JSArrayBufferView* view)
     {
         m_insertionSet.insertNode(
-            m_nodeIndex, SpecNone, TypedArrayWatchpoint, m_node->codeOrigin,
+            m_nodeIndex, SpecNone, TypedArrayWatchpoint, m_node->origin,
             OpInfo(view));
         m_insertionSet.insertNode(
-            m_nodeIndex, SpecNone, Phantom, m_node->codeOrigin, m_node->children);
+            m_nodeIndex, SpecNone, Phantom, m_node->origin, m_node->children);
+    }
+    
+    void handleCommutativity()
+    {
+        // If the right side is a constant then there is nothing left to do.
+        if (m_node->child2()->hasConstant())
+            return;
+        
+        // This case ensures that optimizations that look for x + const don't also have
+        // to look for const + x.
+        if (m_node->child1()->hasConstant()) {
+            std::swap(m_node->child1(), m_node->child2());
+            m_changed = true;
+            return;
+        }
+        
+        // This case ensures that CSE is commutativity-aware.
+        if (m_node->child1().node() > m_node->child2().node()) {
+            std::swap(m_node->child1(), m_node->child2());
+            m_changed = true;
+            return;
+        }
     }
     
     InsertionSet m_insertionSet;

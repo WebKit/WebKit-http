@@ -52,7 +52,7 @@
 #import "WebCoreSystemInterface.h"
 #import <objc/runtime.h>
 #import <runtime/DataView.h>
-#import <runtime/Operations.h>
+#import <runtime/JSCInlines.h>
 #import <runtime/TypedArrayInlines.h>
 #import <runtime/Uint16Array.h>
 #import <runtime/Uint32Array.h>
@@ -207,10 +207,11 @@ enum MediaPlayerAVFoundationObservationContext {
 
 #if HAVE(AVFOUNDATION_VIDEO_OUTPUT)
 @interface WebCoreAVFPullDelegate : NSObject<AVPlayerItemOutputPullDelegate> {
-    MediaPlayerPrivateAVFoundationObjC* m_callback;
+    MediaPlayerPrivateAVFoundationObjC *m_callback;
     dispatch_semaphore_t m_semaphore;
 }
-- (id)initWithCallback:(MediaPlayerPrivateAVFoundationObjC*)callback;
+- (id)initWithCallback:(MediaPlayerPrivateAVFoundationObjC *)callback;
+- (void)setCallback:(MediaPlayerPrivateAVFoundationObjC*)callback;
 - (void)outputMediaDataWillChange:(AVPlayerItemOutput *)sender;
 - (void)outputSequenceWasFlushed:(AVPlayerItemOutput *)output;
 @end
@@ -280,7 +281,7 @@ MediaPlayerPrivateAVFoundationObjC::MediaPlayerPrivateAVFoundationObjC(MediaPlay
     , m_haveCheckedPlayability(false)
 #if HAVE(AVFOUNDATION_VIDEO_OUTPUT)
     , m_videoOutputDelegate(adoptNS([[WebCoreAVFPullDelegate alloc] initWithCallback:this]))
-    , m_videoOutputSemaphore(0)
+    , m_videoOutputSemaphore(nullptr)
 #endif
 #if HAVE(AVFOUNDATION_LOADER_DELEGATE)
     , m_loaderDelegate(adoptNS([[WebCoreAVFLoaderDelegate alloc] initWithCallback:this]))
@@ -308,6 +309,10 @@ MediaPlayerPrivateAVFoundationObjC::~MediaPlayerPrivateAVFoundationObjC()
 #if HAVE(AVFOUNDATION_LOADER_DELEGATE)
     [m_loaderDelegate.get() setCallback:0];
     [[m_avAsset.get() resourceLoader] setDelegate:nil queue:0];
+#endif
+#if HAVE(AVFOUNDATION_VIDEO_OUTPUT)
+    [m_videoOutputDelegate setCallback:0];
+    [m_videoOutput setDelegate:nil queue:0];
 #endif
     cancelLoad();
 }
@@ -1377,20 +1382,20 @@ bool MediaPlayerPrivateAVFoundationObjC::videoOutputHasAvailableFrame()
 
 static const void* CVPixelBufferGetBytePointerCallback(void* info)
 {
-    CVPixelBufferRef pixelBuffer = (CVPixelBufferRef)info;
+    CVPixelBufferRef pixelBuffer = static_cast<CVPixelBufferRef>(info);
     CVPixelBufferLockBaseAddress(pixelBuffer, kCVPixelBufferLock_ReadOnly);
     return CVPixelBufferGetBaseAddress(pixelBuffer);
 }
 
-static void CVPixelBufferReleaseBytePointerCallback(void *info, const void *)
+static void CVPixelBufferReleaseBytePointerCallback(void* info, const void*)
 {
-    CVPixelBufferRef pixelBuffer = (CVPixelBufferRef)info;
+    CVPixelBufferRef pixelBuffer = static_cast<CVPixelBufferRef>(info);
     CVPixelBufferUnlockBaseAddress(pixelBuffer, kCVPixelBufferLock_ReadOnly);
 }
 
-static void CVPixelBufferReleaseInfoCallback(void *info)
+static void CVPixelBufferReleaseInfoCallback(void* info)
 {
-    CVPixelBufferRef pixelBuffer = (CVPixelBufferRef)info;
+    CVPixelBufferRef pixelBuffer = static_cast<CVPixelBufferRef>(info);
     CFRelease(pixelBuffer);
 }
 
@@ -1597,14 +1602,69 @@ MediaPlayer::MediaKeyException MediaPlayerPrivateAVFoundationObjC::cancelKeyRequ
 #endif
 
 #if ENABLE(ENCRYPTED_MEDIA_V2)
-RetainPtr<AVAssetResourceLoadingRequest> MediaPlayerPrivateAVFoundationObjC::takeRequestForPlayerAndKeyURI(MediaPlayer* player, const String& keyURI)
+PassRefPtr<Uint8Array> MediaPlayerPrivateAVFoundationObjC::generateKeyRequest(const String& sessionId, const String& mimeType, Uint8Array* initData, String& destinationURL, MediaPlayer::MediaKeyException& error, unsigned long& systemCode)
 {
-    MediaPlayerPrivateAVFoundationObjC* _this = playerToPrivateMap().get(player);
-    if (!_this)
-        return nullptr;
+    UNUSED_PARAM(mimeType);
 
-    return _this->m_keyURIToRequestMap.take(keyURI);
+    String keyURI;
+    String keyID;
+    RefPtr<Uint8Array> certificate;
+    if (!MediaPlayerPrivateAVFoundationObjC::extractKeyURIKeyIDAndCertificateFromInitData(initData, keyURI, keyID, certificate)) {
+        error = MediaPlayer::InvalidPlayerState;
+        return 0;
+    }
 
+    RetainPtr<AVAssetResourceLoadingRequest> request = m_keyURIToRequestMap.take(keyURI);
+    if (!request) {
+        error = MediaPlayer::InvalidPlayerState;
+        return 0;
+    }
+
+    m_sessionIDToRequestMap.add(sessionId, request);
+
+    RetainPtr<NSData> certificateData = adoptNS([[NSData alloc] initWithBytes:certificate->baseAddress() length:certificate->byteLength()]);
+    NSString* assetStr = keyID;
+    RetainPtr<NSData> assetID = [NSData dataWithBytes: [assetStr cStringUsingEncoding:NSUTF8StringEncoding] length:[assetStr lengthOfBytesUsingEncoding:NSUTF8StringEncoding]];
+    NSError* nsError = 0;
+    RetainPtr<NSData> keyRequest = [request streamingContentKeyRequestDataForApp:certificateData.get() contentIdentifier:assetID.get() options:nil error:&nsError];
+
+    if (!keyRequest) {
+        NSError* underlyingError = [[nsError userInfo] objectForKey:NSUnderlyingErrorKey];
+        systemCode = [underlyingError code];
+        return 0;
+    }
+
+    error = MediaPlayer::NoError;
+    systemCode = 0;
+    destinationURL = String();
+
+    RefPtr<ArrayBuffer> keyRequestBuffer = ArrayBuffer::create([keyRequest.get() bytes], [keyRequest.get() length]);
+    return Uint8Array::create(keyRequestBuffer, 0, keyRequestBuffer->byteLength());
+}
+
+void MediaPlayerPrivateAVFoundationObjC::releaseKeys(const String& sessionId)
+{
+    UNUSED_PARAM(sessionId);
+}
+
+bool MediaPlayerPrivateAVFoundationObjC::update(const String& sessionId, Uint8Array* key, RefPtr<Uint8Array>& nextMessage, MediaPlayer::MediaKeyException& error, unsigned long& systemCode)
+{
+    ASSERT(key);
+
+    RetainPtr<AVAssetResourceLoadingRequest> request = m_sessionIDToRequestMap.get(sessionId);
+    if (!request) {
+        error = MediaPlayer::InvalidPlayerState;
+        return false;
+    }
+
+    RetainPtr<NSData> keyData = adoptNS([[NSData alloc] initWithBytes:key->baseAddress() length:key->byteLength()]);
+    [[request dataRequest] respondWithData:keyData.get()];
+    [request finishLoading];
+    error = MediaPlayer::NoError;
+    systemCode = 0;
+    nextMessage = nullptr;
+
+    return true;
 }
 #endif
 
@@ -2144,7 +2204,7 @@ NSArray* itemKVOProperties()
 
 #if HAVE(AVFOUNDATION_VIDEO_OUTPUT)
 @implementation WebCoreAVFPullDelegate
-- (id)initWithCallback:(MediaPlayerPrivateAVFoundationObjC*)callback
+- (id)initWithCallback:(MediaPlayerPrivateAVFoundationObjC *)callback
 {
     self = [super init];
     if (self)
@@ -2152,9 +2212,15 @@ NSArray* itemKVOProperties()
     return self;
 }
 
+- (void)setCallback:(MediaPlayerPrivateAVFoundationObjC *)callback
+{
+    m_callback = callback;
+}
+
 - (void)outputMediaDataWillChange:(AVPlayerItemVideoOutput *)output
 {
-    m_callback->outputMediaDataWillChange(output);
+    if (m_callback)
+        m_callback->outputMediaDataWillChange(output);
 }
 
 - (void)outputSequenceWasFlushed:(AVPlayerItemVideoOutput *)output

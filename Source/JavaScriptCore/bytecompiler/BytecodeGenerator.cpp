@@ -36,7 +36,7 @@
 #include "JSFunction.h"
 #include "JSNameScope.h"
 #include "LowLevelInterpreter.h"
-#include "Operations.h"
+#include "JSCInlines.h"
 #include "Options.h"
 #include "StackAlignment.h"
 #include "StrongInlines.h"
@@ -182,6 +182,7 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, ProgramNode* programNode, UnlinkedP
 #endif
     , m_usesExceptions(false)
     , m_expressionTooDeep(false)
+    , m_isBuiltinFunction(false)
 {
     m_codeBlock->setNumParameters(1); // Allocate space for "this"
 
@@ -225,7 +226,11 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, FunctionBodyNode* functionBody, Unl
 #endif
     , m_usesExceptions(false)
     , m_expressionTooDeep(false)
+    , m_isBuiltinFunction(codeBlock->isBuiltinFunction())
 {
+    if (m_isBuiltinFunction)
+        m_shouldEmitDebugHooks = false;
+
     m_symbolTable->setUsesNonStrictEval(codeBlock->usesEval() && !codeBlock->isStrictMode());
     Vector<Identifier> boundParameterProperties;
     FunctionParameters& parameters = *functionBody->parameters();
@@ -433,6 +438,7 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, EvalNode* evalNode, UnlinkedEvalCod
 #endif
     , m_usesExceptions(false)
     , m_expressionTooDeep(false)
+    , m_isBuiltinFunction(false)
 {
     m_symbolTable->setUsesNonStrictEval(codeBlock->usesEval() && !codeBlock->isStrictMode());
     m_codeBlock->setNumParameters(1);
@@ -1410,7 +1416,10 @@ RegisterID* BytecodeGenerator::emitGetByVal(RegisterID* dst, RegisterID* base, R
 RegisterID* BytecodeGenerator::emitPutByVal(RegisterID* base, RegisterID* property, RegisterID* value)
 {
     UnlinkedArrayProfile arrayProfile = newArrayProfile();
-    emitOpcode(op_put_by_val);
+    if (m_isBuiltinFunction)
+        emitOpcode(op_put_by_val_direct);
+    else
+        emitOpcode(op_put_by_val);
     instructions().append(base->index());
     instructions().append(property->index());
     instructions().append(value->index());

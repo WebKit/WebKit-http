@@ -36,7 +36,6 @@
 #include "CommandLineAPIHost.h"
 #include "DOMWrapperWorld.h"
 #include "GraphicsContext.h"
-#include "IdentifiersFactory.h"
 #include "InspectorApplicationCacheAgent.h"
 #include "InspectorCSSAgent.h"
 #include "InspectorCanvasAgent.h"
@@ -68,10 +67,11 @@
 #include "Page.h"
 #include "PageConsoleAgent.h"
 #include "PageDebuggerAgent.h"
-#include "PageInjectedScriptHost.h"
-#include "PageInjectedScriptManager.h"
 #include "PageRuntimeAgent.h"
 #include "Settings.h"
+#include "WebInjectedScriptHost.h"
+#include "WebInjectedScriptManager.h"
+#include <inspector/IdentifiersFactory.h>
 #include <inspector/InspectorBackendDispatcher.h>
 #include <inspector/agents/InspectorAgent.h>
 #include <runtime/JSLock.h>
@@ -83,7 +83,7 @@ namespace WebCore {
 
 InspectorController::InspectorController(Page& page, InspectorClient* inspectorClient)
     : m_instrumentingAgents(InstrumentingAgents::create(*this))
-    , m_injectedScriptManager(std::make_unique<PageInjectedScriptManager>(*this, PageInjectedScriptHost::create()))
+    , m_injectedScriptManager(std::make_unique<WebInjectedScriptManager>(*this, WebInjectedScriptHost::create()))
     , m_overlay(std::make_unique<InspectorOverlay>(page, inspectorClient))
     , m_inspectorFrontendChannel(nullptr)
     , m_page(page)
@@ -141,8 +141,9 @@ InspectorController::InspectorController(Page& page, InspectorClient* inspectorC
     m_resourceAgent = resourceAgentPtr.get();
     m_agents.append(std::move(resourceAgentPtr));
 
-    auto consoleAgentPtr = std::make_unique<PageConsoleAgent>(m_instrumentingAgents.get(), m_injectedScriptManager.get(), m_domAgent);
-    InspectorConsoleAgent* consoleAgent = consoleAgentPtr.get();
+    auto consoleAgentPtr = std::make_unique<PageConsoleAgent>(m_injectedScriptManager.get(), m_domAgent);
+    WebConsoleAgent* consoleAgent = consoleAgentPtr.get();
+    m_instrumentingAgents->setWebConsoleAgent(consoleAgentPtr.get());
     m_agents.append(std::move(consoleAgentPtr));
 
     auto debuggerAgentPtr = std::make_unique<PageDebuggerAgent>(m_injectedScriptManager.get(), m_instrumentingAgents.get(), pageAgent, m_overlay.get());
@@ -271,7 +272,7 @@ void InspectorController::disconnectFrontend(InspectorDisconnectReason reason)
     m_inspectorBackendDispatcher.clear();
     m_inspectorFrontendChannel = nullptr;
 
-    // relese overlay page resources
+    // Release overlay page resources.
     m_overlay->freePage();
     InspectorInstrumentation::frontendDeleted();
     InspectorInstrumentation::unregisterInstrumentingAgents(m_instrumentingAgents.get());

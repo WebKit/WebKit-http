@@ -146,8 +146,7 @@ inline StyleRareInheritedData::StyleRareInheritedData(const StyleRareInheritedDa
     , visitedLinkTextStrokeColor(o.visitedLinkTextStrokeColor)
     , visitedLinkTextFillColor(o.visitedLinkTextFillColor)
     , visitedLinkTextEmphasisColor(o.visitedLinkTextEmphasisColor)
-    , textShadow(o.textShadow ? adoptPtr(new ShadowData(*o.textShadow)) : nullptr)
-    , highlight(o.highlight)
+    , textShadow(o.textShadow ? std::make_unique<ShadowData>(*o.textShadow) : nullptr)
     , cursorData(o.cursorData)
     , indent(o.indent)
     , m_effectiveZoom(o.m_effectiveZoom)
@@ -261,7 +260,6 @@ bool StyleRareInheritedData::operator==(const StyleRareInheritedData& o) const
         && tapHighlightColor == o.tapHighlightColor
 #endif
         && shadowDataEquivalent(o)
-        && highlight == o.highlight
         && cursorDataEquivalent(cursorData.get(), o.cursorData.get())
         && indent == o.indent
         && m_effectiveZoom == o.m_effectiveZoom

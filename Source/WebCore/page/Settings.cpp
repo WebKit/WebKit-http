@@ -78,7 +78,7 @@ bool Settings::gShouldPaintNativeControls = true;
 bool Settings::gAVFoundationEnabled = false;
 #endif
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
 bool Settings::gQTKitEnabled = true;
 #endif
 
@@ -156,9 +156,6 @@ Settings::Settings(Page* page)
     , m_fontGenericFamilies(std::make_unique<FontGenericFamilies>())
     , m_storageBlockingPolicy(SecurityOrigin::AllowAllStorage)
     , m_layoutInterval(layoutScheduleThreshold)
-#if PLATFORM(IOS)
-    , m_maxParseDuration(-1)
-#endif
 #if ENABLE(TEXT_AUTOSIZING)
     , m_textAutosizingFontScaleFactor(1)
 #if HACK_FORCE_TEXT_AUTOSIZING_ON_DESKTOP
@@ -180,18 +177,6 @@ Settings::Settings(Page* page)
     , m_needsAdobeFrameReloadingQuirk(false)
     , m_usesPageCache(false)
     , m_fontRenderingMode(0)
-#if PLATFORM(IOS)
-    , m_standalone(false)
-    , m_telephoneNumberParsingEnabled(false)
-    , m_mediaDataLoadsAutomatically(false)
-    , m_shouldTransformsAffectOverflow(true)
-    , m_shouldDispatchJavaScriptWindowOnErrorEvents(false)
-    , m_alwaysUseBaselineOfPrimaryFont(false)
-    , m_alwaysUseAcceleratedOverflowScroll(false)
-#endif
-#if ENABLE(CSS_STICKY_POSITION)
-    , m_cssStickyPositionEnabled(true)
-#endif
     , m_showTiledScrollingIndicator(false)
     , m_tiledBackingStoreEnabled(false)
     , m_backgroundShouldExtendBeyondPage(false)
@@ -201,6 +186,9 @@ Settings::Settings(Page* page)
 #endif
     , m_scrollingPerformanceLoggingEnabled(false)
     , m_aggressiveTileRetentionEnabled(false)
+#if ENABLE(IMAGE_CONTROLS)
+    , m_imageControlsEnabled(false)
+#endif
     , m_timeWithoutMouseMovementBeforeHidingControls(3)
     , m_setImageLoadingSettingsTimer(this, &Settings::imageLoadingSettingsTimerFired)
 #if ENABLE(HIDDEN_PAGE_DOM_TIMER_THROTTLING)
@@ -239,14 +227,14 @@ double Settings::hiddenPageDOMTimerAlignmentInterval()
     return gHiddenPageDOMTimerAlignmentInterval;
 }
 
-#if !PLATFORM(MAC)
+#if !PLATFORM(COCOA)
 bool Settings::shouldEnableScreenFontSubstitutionByDefault()
 {
     return true;
 }
 #endif
 
-#if !PLATFORM(MAC)
+#if !PLATFORM(COCOA)
 void Settings::initializeDefaultFontFamilies()
 {
     // Other platforms can set up fonts from a client, but on Mac, we want it in WebCore to share code between WebKit1 and WebKit2.
@@ -499,11 +487,6 @@ double Settings::defaultDOMTimerAlignmentInterval()
     return gDefaultDOMTimerAlignmentInterval;
 }
 
-void Settings::setDOMTimerAlignmentInterval(double interval)
-{
-    m_page->setTimerAlignmentInterval(interval);
-}
-
 double Settings::domTimerAlignmentInterval() const
 {
     return m_page->timerAlignmentInterval();
@@ -620,7 +603,7 @@ void Settings::setAVFoundationEnabled(bool enabled)
 }
 #endif
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
 void Settings::setQTKitEnabled(bool enabled)
 {
     if (gQTKitEnabled == enabled)
@@ -654,6 +637,13 @@ void Settings::setAggressiveTileRetentionEnabled(bool enabled)
 {
     m_aggressiveTileRetentionEnabled = enabled;
 }
+
+#if ENABLE(IMAGE_CONTROLS)
+void Settings::setImageControlsEnabled(bool enabled)
+{
+    m_imageControlsEnabled = enabled;
+}
+#endif
 
 void Settings::setMockScrollbarsEnabled(bool flag)
 {
@@ -693,7 +683,7 @@ void Settings::setHiddenPageDOMTimerThrottlingEnabled(bool flag)
     if (m_hiddenPageDOMTimerThrottlingEnabled == flag)
         return;
     m_hiddenPageDOMTimerThrottlingEnabled = flag;
-    m_page->hiddenPageDOMTimerThrottlingStateChanged();
+    m_page->pageThrottler().hiddenPageDOMTimerThrottlingStateChanged();
 }
 #endif
 
@@ -722,11 +712,6 @@ void Settings::setLowPowerVideoAudioBufferSizeEnabled(bool flag)
 }
 
 #if PLATFORM(IOS)
-void Settings::setStandalone(bool standalone)
-{
-    m_standalone = standalone;
-}
-
 void Settings::setAudioSessionCategoryOverride(unsigned sessionCategory)
 {
     AudioSession::sharedSession().setCategoryOverride(static_cast<AudioSession::CategoryType>(sessionCategory));

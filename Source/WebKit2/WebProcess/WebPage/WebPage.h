@@ -76,6 +76,10 @@
 #include "WebPrintOperationGtk.h"
 #endif
 
+#if PLATFORM(IOS)
+#include "WKGestureTypes.h"
+#endif
+
 #if ENABLE(TOUCH_EVENTS)
 #if PLATFORM(IOS)
 #include <WebKitAdditions/PlatformTouchEventIOS.h>
@@ -88,7 +92,7 @@
 #include "InjectedBundlePageContextMenuClient.h"
 #endif
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
 #include "DictionaryPopupInfo.h"
 #include "LayerHostingContext.h"
 #include "ViewGestureGeometryCollector.h"
@@ -154,6 +158,7 @@ class WebNotificationClient;
 class WebOpenPanelResultListener;
 class WebPageGroupProxy;
 class WebPopupMenu;
+class WebVideoFullscreenManager;
 class WebWheelEvent;
 struct AttributedString;
 struct EditorState;
@@ -182,6 +187,7 @@ public:
     WebCore::Page* corePage() const { return m_page.get(); }
     uint64_t pageID() const { return m_pageID; }
     uint64_t sessionID() const;
+    bool isUsingEphemeralSession() const;
     void setSessionID(uint64_t);
 
     void setSize(const WebCore::IntSize&);
@@ -205,6 +211,10 @@ public:
 #if ENABLE(INSPECTOR)
     WebInspector* inspector();
 #endif
+    
+#if PLATFORM(IOS)
+    WebVideoFullscreenManager* videoFullscreenManager();
+#endif
 
 #if ENABLE(FULLSCREEN_API)
     WebFullScreenManager* fullScreenManager();
@@ -217,7 +227,7 @@ public:
     void layoutIfNeeded();
 
     // -- Called from WebCore clients.
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
     bool handleEditingKeyboardEvent(WebCore::KeyboardEvent*, bool saveCommands);
 #elif !PLATFORM(GTK)
     bool handleEditingKeyboardEvent(WebCore::KeyboardEvent*);
@@ -359,13 +369,15 @@ public:
     void addPluginView(PluginView*);
     void removePluginView(PluginView*);
 
+    void setThumbnailScale(double);
+
     bool isVisible() const { return m_viewState & WebCore::ViewState::IsVisible; }
     bool isVisibleOrOccluded() const { return m_viewState & WebCore::ViewState::IsVisibleOrOccluded; }
 
     LayerHostingMode layerHostingMode() const { return m_layerHostingMode; }
     void setLayerHostingMode(unsigned);
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
     void updatePluginsActiveAndFocusedState();
     const WebCore::FloatRect& windowFrameInScreenCoordinates() const { return m_windowFrameInScreenCoordinates; }
     const WebCore::FloatRect& windowFrameInUnflippedScreenCoordinates() const { return m_windowFrameInUnflippedScreenCoordinates; }
@@ -379,7 +391,7 @@ public:
 #endif // !PLATFORM(IOS)
 
     void updateHeaderAndFooterLayersForDeviceScaleChange(float scaleFactor);
-#endif // PLATFORM(MAC)
+#endif // PLATFORM(COCOA)
 
     bool windowIsFocused() const;
     bool windowAndWebPageAreFocused() const;
@@ -398,8 +410,8 @@ public:
     void showPageBanners();
 #endif // !PLATFORM(IOS)
 
-    WebCore::IntPoint screenToWindow(const WebCore::IntPoint&);
-    WebCore::IntRect windowToScreen(const WebCore::IntRect&);
+    WebCore::IntPoint screenToRootView(const WebCore::IntPoint&);
+    WebCore::IntRect rootViewToScreen(const WebCore::IntRect&);
 
     PassRefPtr<WebImage> scaledSnapshotWithOptions(const WebCore::IntRect&, double scaleFactor, SnapshotOptions);
 
@@ -413,6 +425,7 @@ public:
 
 #if PLATFORM(IOS)
     void viewportPropertiesDidChange(const WebCore::ViewportArguments&);
+    void didReceiveMobileDocType(bool);
 
     double minimumPageScaleFactor() const;
     double maximumPageScaleFactor() const;
@@ -501,7 +514,7 @@ public:
 
     void didChangeSelection();
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
     void registerUIProcessAccessibilityTokens(const IPC::DataReference& elemenToken, const IPC::DataReference& windowToken);
     WKAccessibilityWebPageObject* accessibilityRemoteObject();
     NSObject *accessibilityObjectForMainFramePlugin();
@@ -550,7 +563,7 @@ public:
     // any synchronous messages, and should be removed when <rdar://problem/8775115> is fixed.
     void dummy(bool&);
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
     void performDictionaryLookupForSelection(WebCore::Frame*, const WebCore::VisibleSelection&);
 
     bool isSpeaking();
@@ -583,7 +596,7 @@ public:
     void beginPrinting(uint64_t frameID, const PrintInfo&);
     void endPrinting();
     void computePagesForPrinting(uint64_t frameID, const PrintInfo&, uint64_t callbackID);
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
     void drawRectToImage(uint64_t frameID, const PrintInfo&, const WebCore::IntRect&, const WebCore::IntSize&, uint64_t callbackID);
     void drawPagesToPDF(uint64_t frameID, const PrintInfo&, uint32_t first, uint32_t count, uint64_t callbackID);
 #elif PLATFORM(GTK)
@@ -614,7 +627,7 @@ public:
 
     void unmarkAllMisspellings();
     void unmarkAllBadGrammar();
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
     void handleAlternativeTextUIResult(const String&);
 #endif
 
@@ -632,7 +645,6 @@ public:
     void numWheelEventHandlersChanged(unsigned);
     void recomputeShortCircuitHorizontalWheelEventsState();
 
-    void setVisibilityStatePrerender();
     void updateVisibilityState(bool isInitialState = false);
 
 #if PLATFORM(IOS)
@@ -661,14 +673,14 @@ public:
     bool scrollingPerformanceLoggingEnabled() const { return m_scrollingPerformanceLoggingEnabled; }
     void setScrollingPerformanceLoggingEnabled(bool);
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
     bool shouldUsePDFPlugin() const;
     bool pdfPluginEnabled() const { return m_pdfPluginEnabled; }
     void setPDFPluginEnabled(bool enabled) { m_pdfPluginEnabled = enabled; }
 #endif
 
     void savePDFToFileInDownloadsFolder(const String& suggestedFilename, const String& originatingURLString, const uint8_t* data, unsigned long size);
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
     void savePDFToTemporaryFolderAndOpenWithNativeApplication(const String& suggestedFilename, const String& originatingURLString, const uint8_t* data, unsigned long size, const String& pdfUUID);
 #endif
 
@@ -705,6 +717,8 @@ public:
 
     PassRefPtr<WebCore::DocumentLoader> createDocumentLoader(WebCore::Frame&, const WebCore::ResourceRequest&, const WebCore::SubstituteData&);
 
+    void getBytecodeProfile(uint64_t callbackID);
+
 private:
     WebPage(uint64_t pageID, const WebPageCreationParameters&);
 
@@ -719,13 +733,14 @@ private:
 
 #if PLATFORM(IOS)
     static void convertSelectionRectsToRootView(WebCore::FrameView*, Vector<WebCore::SelectionRect>&);
+    PassRefPtr<WebCore::Range> rangeForWebSelectionAtPosition(const WebCore::IntPoint&, const WebCore::VisiblePosition&, WKSelectionFlags&);
 #endif
-#if !PLATFORM(MAC)
+#if !PLATFORM(COCOA)
     static const char* interpretKeyEvent(const WebCore::KeyboardEvent*);
 #endif
     bool performDefaultBehaviorForKeyEvent(const WebKeyboardEvent&);
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
     bool executeKeypressCommandsInternal(const Vector<WebCore::KeypressCommand>&, WebCore::KeyboardEvent*);
 #endif
 
@@ -754,10 +769,8 @@ private:
     void setViewIsVisible(bool);
     void setInitialFocus(bool forward, bool isKeyboardEventValid, const WebKeyboardEvent&);
     void setWindowResizerSize(const WebCore::IntSize&);
-    void setIsInWindow(bool);
-    void setIsVisuallyIdle(bool);
-    void setViewState(WebCore::ViewState::Flags, bool wantsDidUpdateViewState);
-    void setViewStateInternal(WebCore::ViewState::Flags, bool isInitialState);
+    void updateIsInWindow(bool isInitialState = false);
+    void setViewState(WebCore::ViewState::Flags, bool wantsDidUpdateViewState = false);
     void validateCommand(const String&, uint64_t);
     void executeEditCommand(const String&);
 
@@ -814,7 +827,7 @@ private:
     void suspendActiveDOMObjectsAndAnimations();
     void resumeActiveDOMObjectsAndAnimations();
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
     void performDictionaryLookupAtLocation(const WebCore::FloatPoint&);
     void performDictionaryLookupForRange(WebCore::Frame*, WebCore::Range*, NSDictionary *options);
 
@@ -878,8 +891,6 @@ private:
 
     bool canHandleUserEvents() const;
 
-    void setMainFrameInViewSourceMode(bool);
-
     static bool platformCanHandleRequest(const WebCore::ResourceRequest&);
 
     static PluginView* focusedPluginViewForFrame(WebCore::Frame&);
@@ -939,7 +950,7 @@ private:
     // The layer hosting mode.
     LayerHostingMode m_layerHostingMode;
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
     bool m_pdfPluginEnabled;
 
     bool m_hasCachedWindowFrame;
@@ -1006,6 +1017,9 @@ private:
 #if ENABLE(INSPECTOR)
     RefPtr<WebInspector> m_inspector;
 #endif
+#if PLATFORM(IOS)
+    RefPtr<WebVideoFullscreenManager> m_videoFullscreenManager;
+#endif
 #if ENABLE(FULLSCREEN_API)
     RefPtr<WebFullScreenManager> m_fullScreenManager;
 #endif
@@ -1062,6 +1076,7 @@ private:
 
     WebCore::ViewportConfiguration m_viewportConfiguration;
     bool m_userHasChangedPageScaleFactor;
+    WebCore::IntSize m_blockSelectionDesiredSize;
 #endif
 
     WebInspectorClient* m_inspectorClient;
@@ -1080,6 +1095,10 @@ private:
     UserActivity m_processSuppressionDisabledByWebPreference;
 
     uint64_t m_pendingNavigationID;
+
+    double m_pageScaleWithoutThumbnailScale;
+    WebCore::IntPoint m_scrollPositionIgnoringThumbnailScale;
+    double m_thumbnailScale;
 };
 
 } // namespace WebKit

@@ -246,8 +246,6 @@ webkitgtk_gdom_built_sources += \
 	DerivedSources/webkitdom/WebKitDOMRangePrivate.h \
 	DerivedSources/webkitdom/WebKitDOMScreen.cpp \
 	DerivedSources/webkitdom/WebKitDOMScreenPrivate.h \
-	DerivedSources/webkitdom/WebKitDOMShadowRoot.cpp \
-	DerivedSources/webkitdom/WebKitDOMShadowRootPrivate.h \
 	DerivedSources/webkitdom/WebKitDOMStorage.cpp \
 	DerivedSources/webkitdom/WebKitDOMStorageInfo.cpp \
 	DerivedSources/webkitdom/WebKitDOMStorageInfoPrivate.h \
@@ -262,6 +260,8 @@ webkitgtk_gdom_built_sources += \
 	DerivedSources/webkitdom/WebKitDOMStyleSheetPrivate.h \
 	DerivedSources/webkitdom/WebKitDOMText.cpp \
 	DerivedSources/webkitdom/WebKitDOMTextPrivate.h \
+	DerivedSources/webkitdom/WebKitDOMTouch.cpp \
+	DerivedSources/webkitdom/WebKitDOMTouchPrivate.h \
 	DerivedSources/webkitdom/WebKitDOMTimeRanges.cpp \
 	DerivedSources/webkitdom/WebKitDOMTimeRangesPrivate.h \
 	DerivedSources/webkitdom/WebKitDOMTreeWalker.cpp \
@@ -323,6 +323,7 @@ webkitgtk_gdom_built_h_api += \
 	DerivedSources/webkitdom/WebKitDOMProcessingInstruction.h \
 	DerivedSources/webkitdom/WebKitDOMRange.h \
 	DerivedSources/webkitdom/WebKitDOMText.h \
+	DerivedSources/webkitdom/WebKitDOMTouch.h \
 	DerivedSources/webkitdom/WebKitDOMTreeWalker.h \
 	DerivedSources/webkitdom/WebKitDOMUIEvent.h \
 	DerivedSources/webkitdom/WebKitDOMBlob.h \
@@ -409,7 +410,6 @@ webkitgtk_gdom_built_h_api += \
 	DerivedSources/webkitdom/WebKitDOMObject.h \
 	DerivedSources/webkitdom/WebKitDOMNavigator.h \
 	DerivedSources/webkitdom/WebKitDOMScreen.h \
-	DerivedSources/webkitdom/WebKitDOMShadowRoot.h \
 	DerivedSources/webkitdom/WebKitDOMWebKitPoint.h \
 	DerivedSources/webkitdom/WebKitDOMWebKitNamedFlow.h \
 	DerivedSources/webkitdom/WebKitDOMDOMMimeType.h \
@@ -498,10 +498,8 @@ $(top_builddir)/DerivedSources/webkitdom/WebKitDOMDeprecated.symbols: $(WebCore)
 DerivedSources/webkitdom/WebKitDOM%.symbols: DerivedSources/webkitdom/WebKitDOM%.h
 	@true
 
-DerivedSources/webkitdom/webkitdom.symbols: $(gdom_symbol_files) $(WebCore)/bindings/gobject/webkitdom.symbols $(WebCore)/bindings/scripts/gobject-run-api-break-test
-	$(AM_V_GEN)cat $(gdom_symbol_files) > gdom-gen-symbols \
-	&& $(PYTHON) $(WebCore)/bindings/scripts/gobject-run-api-break-test $(WebCore)/bindings/gobject/webkitdom.symbols gdom-gen-symbols \
-	&& mv gdom-gen-symbols $@
+DerivedSources/webkitdom/webkitdom.symbols: $(gdom_symbol_files) $(WebCore)/bindings/gobject/webkitdom.symbols $(WebCore)/bindings/scripts/gobject-run-api-break-test $(srcdir)/Tools/gtk/check-gdom-symbols
+	$(AM_V_GEN)$(srcdir)/Tools/gtk/check-gdom-symbols
 
 EXTRA_DIST += \
 	$(WebCore)/bindings/gobject/WebKitDOMCustom.symbols \

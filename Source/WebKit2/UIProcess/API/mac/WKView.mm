@@ -57,9 +57,10 @@
 #import "WKProcessClassInternal.h"
 #import "WKStringCF.h"
 #import "WKTextInputWindowController.h"
+#import "WKThumbnailView.h"
+#import "WKThumbnailViewInternal.h"
 #import "WKViewInternal.h"
 #import "WKViewPrivate.h"
-#import "WKWebViewConfiguration.h"
 #import "WebBackForwardList.h"
 #import "WebContext.h"
 #import "WebEventFactory.h"
@@ -226,6 +227,10 @@ struct WKViewInterpretKeyEventsParameters {
     std::unique_ptr<ViewGestureController> _gestureController;
     BOOL _allowsMagnification;
     BOOL _allowsBackForwardNavigationGestures;
+
+#if WK_API_ENABLED
+    WKThumbnailView *_thumbnailView;
+#endif
 }
 
 @end
@@ -258,11 +263,6 @@ struct WKViewInterpretKeyEventsParameters {
 
 #if WK_API_ENABLED
 
-- (instancetype)initWithFrame:(CGRect)frame configuration:(WKWebViewConfiguration *)configuration
-{
-    return [self initWithFrame:frame contextRef:toAPI(configuration.processClass->_context.get()) pageGroupRef:nullptr];
-}
-
 - (id)initWithFrame:(NSRect)frame processGroup:(WKProcessGroup *)processGroup browsingContextGroup:(WKBrowsingContextGroup *)browsingContextGroup
 {
     return [self initWithFrame:frame contextRef:processGroup._contextRef pageGroupRef:browsingContextGroup._pageGroupRef relatedToPage:nil];
@@ -279,6 +279,9 @@ struct WKViewInterpretKeyEventsParameters {
 {
     _data->_page->close();
 
+#if WK_API_ENABLED
+    ASSERT(!_data->_thumbnailView);
+#endif
     ASSERT(!_data->_inSecureInputState);
 
     [_data release];
@@ -725,18 +728,6 @@ static NSToolbarItem *toolbarItem(id <NSValidatedUserInterfaceItem> item)
     return (NSToolbarItem *)item;
 }
 
-static void validateCommandCallback(WKStringRef commandName, bool isEnabled, int32_t state, WKErrorRef error, void* context)
-{
-    // If the process exits before the command can be validated, we'll be called back with an error.
-    if (error)
-        return;
-    
-    WKView* wkView = static_cast<WKView*>(context);
-    ASSERT(wkView);
-    
-    [wkView _setUserInterfaceItemState:nsStringFromWebCoreString(toImpl(commandName)->string()) enabled:isEnabled state:state];
-}
-
 - (BOOL)validateUserInterfaceItem:(id <NSValidatedUserInterfaceItem>)item
 {
     SEL action = [item action];
@@ -828,7 +819,13 @@ static void validateCommandCallback(WKStringRef commandName, bool isEnabled, int
         // If we are not already awaiting validation for this command, start the asynchronous validation process.
         // FIXME: Theoretically, there is a race here; when we get the answer it might be old, from a previous time
         // we asked for the same command; there is no guarantee the answer is still valid.
-        _data->_page->validateCommand(commandName, ValidateCommandCallback::create(self, validateCommandCallback));
+        _data->_page->validateCommand(commandName, ValidateCommandCallback::create([self](bool error, StringImpl* commandName, bool isEnabled, int32_t state) {
+            // If the process exits before the command can be validated, we'll be called back with an error.
+            if (error)
+                return;
+            
+            [self _setUserInterfaceItemState:nsStringFromWebCoreString(commandName) enabled:isEnabled state:state];
+        }));
     }
 
     // Treat as enabled until we get the result back from the web process and _setUserInterfaceItemState is called.
@@ -837,20 +834,16 @@ static void validateCommandCallback(WKStringRef commandName, bool isEnabled, int
     return YES;
 }
 
-static void speakString(WKStringRef string, WKErrorRef error, void*)
-{
-    if (error)
-        return;
-    if (!string)
-        return;
-
-    NSString *convertedString = toImpl(string)->string();
-    [NSApp speakString:convertedString];
-}
-
 - (IBAction)startSpeaking:(id)sender
 {
-    _data->_page->getSelectionOrContentsAsString(StringCallback::create(0, speakString));
+    _data->_page->getSelectionOrContentsAsString(StringCallback::create([self](bool error, StringImpl* string) {
+        if (error)
+            return;
+        if (!string)
+            return;
+
+        [NSApp speakString:*string];
+    }));
 }
 
 - (IBAction)stopSpeaking:(id)sender
@@ -1080,6 +1073,20 @@ static void speakString(WKStringRef string, WKErrorRef error, void*)
     _data->_mouseDownEvent = [event retain];
 }
 
+#if WK_API_ENABLED
+#define NATIVE_MOUSE_EVENT_HANDLER(Selector) \
+    - (void)Selector:(NSEvent *)theEvent \
+    { \
+        if (_data->_thumbnailView) \
+            return; \
+        if ([[self inputContext] handleEvent:theEvent]) { \
+            LOG(TextInput, "%s was handled by text input context", String(#Selector).substring(0, String(#Selector).find("Internal")).ascii().data()); \
+            return; \
+        } \
+        NativeWebMouseEvent webEvent(theEvent, self); \
+        _data->_page->handleMouseEvent(webEvent); \
+    }
+#else
 #define NATIVE_MOUSE_EVENT_HANDLER(Selector) \
     - (void)Selector:(NSEvent *)theEvent \
     { \
@@ -1090,6 +1097,7 @@ static void speakString(WKStringRef string, WKErrorRef error, void*)
         NativeWebMouseEvent webEvent(theEvent, self); \
         _data->_page->handleMouseEvent(webEvent); \
     }
+#endif
 
 NATIVE_MOUSE_EVENT_HANDLER(mouseEntered)
 NATIVE_MOUSE_EVENT_HANDLER(mouseExited)
@@ -1117,6 +1125,11 @@ NATIVE_MOUSE_EVENT_HANDLER(rightMouseUp)
 
 - (void)scrollWheel:(NSEvent *)event
 {
+#if WK_API_ENABLED
+    if (_data->_thumbnailView)
+        return;
+#endif
+
     if (_data->_allowsBackForwardNavigationGestures) {
         [self _ensureGestureController];
         if (_data->_gestureController->handleScrollWheelEvent(event))
@@ -1129,6 +1142,11 @@ NATIVE_MOUSE_EVENT_HANDLER(rightMouseUp)
 
 - (void)mouseMoved:(NSEvent *)event
 {
+#if WK_API_ENABLED
+    if (_data->_thumbnailView)
+        return;
+#endif
+
     // When a view is first responder, it gets mouse moved events even when the mouse is outside its visible rect.
     if (self == [[self window] firstResponder] && !NSPointInRect([self convertPoint:[event locationInWindow] fromView:nil], [self visibleRect]))
         return;
@@ -1138,6 +1156,11 @@ NATIVE_MOUSE_EVENT_HANDLER(rightMouseUp)
 
 - (void)mouseDown:(NSEvent *)event
 {
+#if WK_API_ENABLED
+    if (_data->_thumbnailView)
+        return;
+#endif
+
     [self _setMouseDownEvent:event];
     _data->_ignoringMouseDraggedEvents = NO;
     [self mouseDownInternal:event];
@@ -1145,12 +1168,22 @@ NATIVE_MOUSE_EVENT_HANDLER(rightMouseUp)
 
 - (void)mouseUp:(NSEvent *)event
 {
+#if WK_API_ENABLED
+    if (_data->_thumbnailView)
+        return;
+#endif
+
     [self _setMouseDownEvent:nil];
     [self mouseUpInternal:event];
 }
 
 - (void)mouseDragged:(NSEvent *)event
 {
+#if WK_API_ENABLED
+    if (_data->_thumbnailView)
+        return;
+#endif
+
     if (_data->_ignoringMouseDraggedEvents)
         return;
     [self mouseDraggedInternal:event];
@@ -2241,7 +2274,7 @@ static void createSandboxExtensionsForFileUpload(NSPasteboard *pasteboard, Sandb
 
 - (void)_preferencesDidChange
 {
-    BOOL needsViewFrameInWindowCoordinates = _data->_page->pageGroup().preferences()->pluginsEnabled();
+    BOOL needsViewFrameInWindowCoordinates = _data->_page->preferences().pluginsEnabled();
 
     if (!!needsViewFrameInWindowCoordinates == !!_data->_needsViewFrameInWindowCoordinates)
         return;
@@ -2489,6 +2522,15 @@ static void createSandboxExtensionsForFileUpload(NSPasteboard *pasteboard, Sandb
 
 - (void)_setAcceleratedCompositingModeRootLayer:(CALayer *)rootLayer
 {
+    [rootLayer web_disableAllActions];
+
+#if WK_API_ENABLED
+    if (_data->_thumbnailView) {
+        _data->_thumbnailView.thumbnailLayer = rootLayer;
+        return;
+    }
+#endif
+
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
 
@@ -2533,7 +2575,10 @@ static void createSandboxExtensionsForFileUpload(NSPasteboard *pasteboard, Sandb
     if (!hostView)
         return nullptr;
 
-    return hostView.layer;
+    if (!hostView.layer.sublayers.count)
+        return nullptr;
+
+    return [hostView.layer.sublayers objectAtIndex:0];
 }
 
 - (RetainPtr<CGImageRef>)_takeViewSnapshot
@@ -2886,29 +2931,7 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     return _data->_page->suppressVisibilityUpdates();
 }
 
-@end
-
-@implementation WKView (Private)
-
-- (void)saveBackForwardSnapshotForCurrentItem
-{
-    _data->_page->recordNavigationSnapshot();
-}
-
-- (void)_registerDraggedTypes
-{
-    NSMutableSet *types = [[NSMutableSet alloc] initWithArray:PasteboardTypes::forEditing()];
-    [types addObjectsFromArray:PasteboardTypes::forURL()];
-    [self registerForDraggedTypes:[types allObjects]];
-    [types release];
-}
-
-- (id)initWithFrame:(NSRect)frame contextRef:(WKContextRef)contextRef pageGroupRef:(WKPageGroupRef)pageGroupRef
-{
-    return [self initWithFrame:frame contextRef:contextRef pageGroupRef:pageGroupRef relatedToPage:nil];
-}
-
-- (id)initWithFrame:(NSRect)frame contextRef:(WKContextRef)contextRef pageGroupRef:(WKPageGroupRef)pageGroupRef relatedToPage:(WKPageRef)relatedPage
+- (instancetype)initWithFrame:(NSRect)frame context:(WebContext&)context configuration:(WebPageConfiguration)webPageConfiguration
 {
     self = [super initWithFrame:frame];
     if (!self)
@@ -2933,9 +2956,8 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     [trackingArea release];
 
     _data = [[WKViewData alloc] init];
-
     _data->_pageClient = std::make_unique<PageClientImpl>(self);
-    _data->_page = toImpl(contextRef)->createWebPage(*_data->_pageClient, toImpl(pageGroupRef), toImpl(relatedPage));
+    _data->_page = context.createWebPage(*_data->_pageClient, std::move(webPageConfiguration));
     _data->_page->setIntrinsicDeviceScaleFactor([self _intrinsicDeviceScaleFactor]);
     _data->_page->initializeWebPage();
 
@@ -2947,7 +2969,7 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
 
     _data->_intrinsicContentSize = NSMakeSize(NSViewNoInstrinsicMetric, NSViewNoInstrinsicMetric);
 
-    _data->_needsViewFrameInWindowCoordinates = _data->_page->pageGroup().preferences()->pluginsEnabled();
+    _data->_needsViewFrameInWindowCoordinates = _data->_page->preferences().pluginsEnabled();
     
     [self _registerDraggedTypes];
 
@@ -2962,6 +2984,60 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     [workspaceNotificationCenter addObserver:self selector:@selector(_activeSpaceDidChange:) name:NSWorkspaceActiveSpaceDidChangeNotification object:nil];
 
     return self;
+}
+
+- (void)_registerDraggedTypes
+{
+    NSMutableSet *types = [[NSMutableSet alloc] initWithArray:PasteboardTypes::forEditing()];
+    [types addObjectsFromArray:PasteboardTypes::forURL()];
+    [self registerForDraggedTypes:[types allObjects]];
+    [types release];
+}
+
+#if WK_API_ENABLED
+- (void)_setThumbnailView:(WKThumbnailView *)thumbnailView
+{
+    ASSERT(!_data->_thumbnailView || !thumbnailView);
+
+    RetainPtr<CALayer> thumbnailLayer = _data->_thumbnailView.thumbnailLayer;
+
+    _data->_thumbnailView = thumbnailView;
+
+    if (thumbnailView)
+        thumbnailView.thumbnailLayer = [self _acceleratedCompositingModeRootLayer];
+    else
+        [self _setAcceleratedCompositingModeRootLayer:thumbnailLayer.get()];
+
+    _data->_page->viewStateDidChange(ViewState::WindowIsActive | ViewState::IsInWindow | ViewState::IsVisible);
+}
+
+- (WKThumbnailView *)_thumbnailView
+{
+    return _data->_thumbnailView;
+}
+#endif // WK_API_ENABLED
+
+@end
+
+@implementation WKView (Private)
+
+- (void)saveBackForwardSnapshotForCurrentItem
+{
+    _data->_page->recordNavigationSnapshot();
+}
+
+- (id)initWithFrame:(NSRect)frame contextRef:(WKContextRef)contextRef pageGroupRef:(WKPageGroupRef)pageGroupRef
+{
+    return [self initWithFrame:frame contextRef:contextRef pageGroupRef:pageGroupRef relatedToPage:nil];
+}
+
+- (id)initWithFrame:(NSRect)frame contextRef:(WKContextRef)contextRef pageGroupRef:(WKPageGroupRef)pageGroupRef relatedToPage:(WKPageRef)relatedPage
+{
+    WebPageConfiguration webPageConfiguration;
+    webPageConfiguration.pageGroup = toImpl(pageGroupRef);
+    webPageConfiguration.relatedPage = toImpl(relatedPage);
+
+    return [self initWithFrame:frame context:*toImpl(contextRef) configuration:webPageConfiguration];
 }
 
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080
@@ -3229,6 +3305,18 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     _data->_windowOcclusionDetectionEnabled = flag;
 }
 
+- (void)setAllowsBackForwardNavigationGestures:(BOOL)allowsBackForwardNavigationGestures
+{
+    _data->_allowsBackForwardNavigationGestures = allowsBackForwardNavigationGestures;
+    _data->_page->setShouldRecordNavigationSnapshots(allowsBackForwardNavigationGestures);
+    _data->_page->setShouldUseImplicitRubberBandControl(allowsBackForwardNavigationGestures);
+}
+
+- (BOOL)allowsBackForwardNavigationGestures
+{
+    return _data->_allowsBackForwardNavigationGestures;
+}
+
 // This method forces a drawing area geometry update, even if frame size updates are disabled.
 // The updated is performed asynchronously; we don't wait for the geometry update before returning.
 // The area drawn need not match the current frame size - if it differs it will be anchored to the
@@ -3273,18 +3361,6 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
 - (BOOL)allowsMagnification
 {
     return _data->_allowsMagnification;
-}
-
-- (void)setAllowsBackForwardNavigationGestures:(BOOL)allowsBackForwardNavigationGestures
-{
-    _data->_allowsBackForwardNavigationGestures = allowsBackForwardNavigationGestures;
-    _data->_page->setShouldRecordNavigationSnapshots(allowsBackForwardNavigationGestures);
-    _data->_page->setShouldUseImplicitRubberBandControl(allowsBackForwardNavigationGestures);
-}
-
-- (BOOL)allowsBackForwardNavigationGestures
-{
-    return _data->_allowsBackForwardNavigationGestures;
 }
 
 - (void)magnifyWithEvent:(NSEvent *)event

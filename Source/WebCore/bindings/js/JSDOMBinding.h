@@ -37,11 +37,11 @@
 #include <runtime/FunctionPrototype.h>
 #include <runtime/JSArray.h>
 #include <runtime/JSArrayBuffer.h>
+#include <runtime/JSCInlines.h>
 #include <runtime/JSDataView.h>
 #include <runtime/JSTypedArrays.h>
 #include <runtime/Lookup.h>
 #include <runtime/ObjectPrototype.h>
-#include <runtime/Operations.h>
 #include <runtime/TypedArrayInlines.h>
 #include <runtime/TypedArrays.h>
 #include <wtf/Forward.h>
@@ -594,11 +594,7 @@ inline JSC::JSValue jsStringWithCache(JSC::ExecState* exec, const String& s)
         }
     }
 
-    JSStringCache& stringCache = currentWorld(exec).m_stringCache;
-    JSStringCache::AddResult addResult = stringCache.add(stringImpl, nullptr);
-    if (addResult.isNewEntry)
-        addResult.iterator->value = JSC::jsString(exec, String(stringImpl));
-    return JSC::JSValue(addResult.iterator->value.get());
+    return JSC::jsStringWithWeakOwner(&exec->vm(), s);
 }
 
 inline String propertyNameToString(JSC::PropertyName propertyName)
@@ -614,7 +610,10 @@ inline AtomicString propertyNameToAtomicString(JSC::PropertyName propertyName)
 template <class ThisImp>
 inline const JSC::HashEntry* getStaticValueSlotEntryWithoutCaching(JSC::ExecState* exec, JSC::PropertyName propertyName)
 {
-    const JSC::HashEntry* entry = ThisImp::info()->propHashTable(exec)->entry(exec, propertyName);
+    const JSC::HashTable* table = ThisImp::info()->propHashTable(exec);
+    if (!table)
+        return getStaticValueSlotEntryWithoutCaching<typename ThisImp::Base>(exec, propertyName);
+    const JSC::HashEntry* entry = table->entry(exec, propertyName);
     if (!entry) // not found, forward to parent
         return getStaticValueSlotEntryWithoutCaching<typename ThisImp::Base>(exec, propertyName);
     return entry;

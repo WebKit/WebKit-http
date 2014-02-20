@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013, 2014 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,6 +30,7 @@
 
 #include "GPRInfo.h"
 #include "MacroAssembler.h"
+#include "JSCInlines.h"
 
 namespace JSC {
 
@@ -50,6 +51,9 @@ RegisterSet RegisterSet::specialRegisters()
     result.set(GPRInfo::tagTypeNumberRegister);
     result.set(GPRInfo::tagMaskRegister);
 #endif
+#if CPU(ARM64)
+    result.set(ARM64Registers::lr);
+#endif
     return result;
 }
 
@@ -63,6 +67,20 @@ RegisterSet RegisterSet::calleeSaveRegisters()
     result.set(X86Registers::r13);
     result.set(X86Registers::r14);
     result.set(X86Registers::r15);
+#elif CPU(ARM64)
+    // We don't include LR in the set of callee-save registers even though it technically belongs
+    // there. But, the way we use this list, it makes no sense to have it there.
+    for (
+        ARM64Registers::RegisterID reg = ARM64Registers::x19;
+        reg <= ARM64Registers::x28;
+        reg = static_cast<ARM64Registers::RegisterID>(reg + 1))
+        result.set(reg);
+    result.set(ARM64Registers::fp);
+    for (
+        ARM64Registers::FPRegisterID reg = ARM64Registers::q8;
+        reg <= ARM64Registers::q15;
+        reg = static_cast<ARM64Registers::FPRegisterID>(reg + 1))
+        result.set(reg);
 #else
     UNREACHABLE_FOR_PLATFORM();
 #endif

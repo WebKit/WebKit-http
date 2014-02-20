@@ -227,6 +227,11 @@ static inline String toString(BSTR bstr)
     return String(bstr, SysStringLen(bstr));
 }
 
+static inline String toString(BString &bstr)
+{
+    return String(bstr, SysStringLen(bstr));
+}
+
 static inline URL toURL(BSTR bstr)
 {
     return URL(URL(), toString(bstr));
@@ -3605,7 +3610,7 @@ HRESULT STDMETHODCALLTYPE WebView::selectionRect(RECT* rc)
 {
     WebCore::Frame& frame = m_page->focusController().focusedOrMainFrame();
 
-    IntRect ir = enclosingIntRect(frame.selection().bounds());
+    IntRect ir = enclosingIntRect(frame.selection().selectionBounds());
     ir = frame.view()->convertToContainingWindow(ir);
     ir.move(-frame.view()->scrollOffset().width(), -frame.view()->scrollOffset().height());
     rc->left = ir.x();
@@ -5042,6 +5047,16 @@ HRESULT WebView::notifyPreferencesChanged(IWebNotification* notification)
         return hr;
     settings.setRequestAnimationFrameEnabled(enabled);
 
+    hr = prefsPrivate->mockScrollbarsEnabled(&enabled);
+    if (FAILED(hr))
+        return hr;
+    settings.setMockScrollbarsEnabled(enabled);
+
+    hr = prefsPrivate->screenFontSubstitutionEnabled(&enabled);
+    if (FAILED(hr))
+        return hr;
+    settings.setScreenFontSubstitutionEnabled(enabled);
+
     return S_OK;
 }
 
@@ -5099,19 +5114,13 @@ HRESULT STDMETHODCALLTYPE WebView::removeCustomDropTarget()
 HRESULT STDMETHODCALLTYPE WebView::setInViewSourceMode( 
         /* [in] */ BOOL flag)
 {
-    if (!m_mainFrame)
-        return E_FAIL;
-
-    return m_mainFrame->setInViewSourceMode(flag);
+    return E_NOTIMPL;
 }
     
 HRESULT STDMETHODCALLTYPE WebView::inViewSourceMode( 
         /* [retval][out] */ BOOL* flag)
 {
-    if (!m_mainFrame)
-        return E_FAIL;
-
-    return m_mainFrame->inViewSourceMode(flag);
+    return E_NOTIMPL;
 }
 
 HRESULT STDMETHODCALLTYPE WebView::viewWindow( 
@@ -5563,7 +5572,7 @@ void WebView::resetIME(Frame* targetFrame)
 void WebView::updateSelectionForIME()
 {
     Frame& targetFrame = m_page->focusController().focusedOrMainFrame();
-    if (!targetFrame.editor().cancelCompositionIfSelectionIsInvalid())
+    if (targetFrame.editor().cancelCompositionIfSelectionIsInvalid())
         resetIME(&targetFrame);
 }
 
@@ -5967,21 +5976,15 @@ HRESULT STDMETHODCALLTYPE WebView::elementFromJS(
 HRESULT STDMETHODCALLTYPE WebView::setCustomHTMLTokenizerTimeDelay(
     /* [in] */ double timeDelay)
 {
-    if (!m_page)
-        return E_FAIL;
-
-    m_page->setCustomHTMLTokenizerTimeDelay(timeDelay);
-    return S_OK;
+    ASSERT_NOT_REACHED();
+    return E_FAIL;
 }
 
 HRESULT STDMETHODCALLTYPE WebView::setCustomHTMLTokenizerChunkSize(
     /* [in] */ int chunkSize)
 {
-    if (!m_page)
-        return E_FAIL;
-
-    m_page->setCustomHTMLTokenizerChunkSize(chunkSize);
-    return S_OK;
+    ASSERT_NOT_REACHED();
+    return E_FAIL;
 }
 
 HRESULT STDMETHODCALLTYPE WebView::backingStore(
@@ -6725,7 +6728,7 @@ void WebView::notifyFlushRequired(const GraphicsLayer*)
     flushPendingGraphicsLayerChangesSoon();
 }
 
-void WebView::paintContents(const GraphicsLayer*, GraphicsContext& context, GraphicsLayerPaintingPhase, const IntRect& inClip)
+void WebView::paintContents(const GraphicsLayer*, GraphicsContext& context, GraphicsLayerPaintingPhase, const FloatRect& inClip)
 {
     Frame* frame = core(m_mainFrame);
     if (!frame)
@@ -6733,7 +6736,7 @@ void WebView::paintContents(const GraphicsLayer*, GraphicsContext& context, Grap
 
     context.save();
     context.clip(inClip);
-    frame->view()->paint(&context, inClip);
+    frame->view()->paint(&context, enclosingIntRect(inClip));
     context.restore();
 }
 

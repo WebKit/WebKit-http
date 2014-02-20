@@ -765,7 +765,7 @@ void JIT::emit_op_neq_null(Instruction* currentInstruction)
     emitPutVirtualRegister(dst);
 }
 
-void JIT::emit_op_enter(Instruction* currentInstruction)
+void JIT::emit_op_enter(Instruction*)
 {
     emitEnterOptimizationCheck();
     
@@ -776,8 +776,7 @@ void JIT::emit_op_enter(Instruction* currentInstruction)
     for (size_t j = 0; j < count; ++j)
         emitInitRegister(virtualRegisterForLocal(j).offset());
 
-    JITSlowPathCall slowPathCall(this, currentInstruction, slow_path_enter);
-    slowPathCall.call();
+    emitWriteBarrier(m_codeBlock->ownerExecutable());
 }
 
 void JIT::emit_op_create_activation(Instruction* currentInstruction)
@@ -1107,7 +1106,11 @@ void JIT::emitSlow_op_loop_hint(Instruction*, Vector<SlowCaseEntry>::iterator& i
         
         callOperation(operationOptimize, m_bytecodeOffset);
         Jump noOptimizedEntry = branchTestPtr(Zero, returnValueGPR);
-        move(returnValueGPR2, stackPointerRegister);
+        if (!ASSERT_DISABLED) {
+            Jump ok = branchPtr(MacroAssembler::Above, regT0, TrustedImmPtr(bitwise_cast<void*>(static_cast<intptr_t>(1000))));
+            breakpoint();
+            ok.link(this);
+        }
         jump(returnValueGPR);
         noOptimizedEntry.link(this);
 

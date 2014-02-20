@@ -44,7 +44,6 @@
 #include "URL.h"
 #include "Logging.h"
 #include "ResourceRequest.h"
-#include "ScriptCallStack.h"
 #include "ScriptExecutionContext.h"
 #include "SecurityOrigin.h"
 #include <wtf/CryptographicallyRandomNumber.h>
@@ -237,8 +236,6 @@ CString WebSocketHandshake::clientHandshakeMessage() const
 ResourceRequest WebSocketHandshake::clientHandshakeRequest() const
 {
     // Keep the following consistent with clientHandshakeMessage().
-    // FIXME: do we need to store m_secWebSocketKey1, m_secWebSocketKey2 and
-    // m_key3 in the request?
     ResourceRequest request(m_url);
     request.setHTTPMethod("GET");
 

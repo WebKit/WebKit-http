@@ -1076,8 +1076,8 @@ PassRefPtr<Frame> WebFrame::createSubframeWithOwnerElement(IWebView* webView, Pa
     webView->QueryInterface(&d->webView);
     d->webView->Release(); // don't hold the extra ref
 
-    HWND viewWindow;
-    d->webView->viewWindow((OLE_HANDLE*)&viewWindow);
+    OLE_HANDLE viewWindow;
+    d->webView->viewWindow(&viewWindow);
 
     this->AddRef(); // We release this ref in frameLoaderDestroyed()
     RefPtr<Frame> frame = Frame::create(page, ownerElement, new WebFrameLoaderClient(this));
@@ -1090,8 +1090,8 @@ void WebFrame::initWithWebView(IWebView* webView, Page* page)
     webView->QueryInterface(&d->webView);
     d->webView->Release(); // don't hold the extra ref
 
-    HWND viewWindow;
-    d->webView->viewWindow((OLE_HANDLE*)&viewWindow);
+    OLE_HANDLE viewWindow;
+    d->webView->viewWindow(&viewWindow);
 
     this->AddRef(); // We release this ref in frameLoaderDestroyed()
     d->frame = &page->mainFrame();
@@ -1113,29 +1113,12 @@ void WebFrame::invalidate()
 
 HRESULT WebFrame::inViewSourceMode(BOOL* flag)
 {
-    if (!flag) {
-        ASSERT_NOT_REACHED();
-        return E_POINTER;
-    }
-
-    *flag = FALSE;
-
-    Frame* coreFrame = core(this);
-    if (!coreFrame)
-        return E_FAIL;
-
-    *flag = coreFrame->inViewSourceMode() ? TRUE : FALSE;
-    return S_OK;
+    return E_NOTIMPL;
 }
 
 HRESULT WebFrame::setInViewSourceMode(BOOL flag)
 {
-    Frame* coreFrame = core(this);
-    if (!coreFrame)
-        return E_FAIL;
-
-    coreFrame->setInViewSourceMode(!!flag);
-    return S_OK;
+    return E_NOTIMPL;
 }
 
 HRESULT WebFrame::elementWithName(BSTR name, IDOMElement* form, IDOMElement** element)

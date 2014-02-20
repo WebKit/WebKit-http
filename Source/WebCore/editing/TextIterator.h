@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2004, 2006, 2009 Apple Inc. All rights reserved.
+ * Copyright (C) 2004, 2006, 2009, 2014 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,6 +29,7 @@
 #include "FindOptions.h"
 #include "Range.h"
 #include <wtf/Vector.h>
+#include <wtf/text/StringView.h>
 
 namespace WebCore {
 
@@ -46,6 +47,7 @@ enum TextIteratorBehavior {
     TextIteratorEmitsOriginalText = 1 << 5,
     TextIteratorStopsOnFormControls = 1 << 6,
     TextIteratorEmitsImageAltText = 1 << 7,
+    TextIteratorBehavesAsIfNodesFollowing = 1 << 8,
 };
     
 // FIXME: Can't really answer this question correctly without knowing the white-space mode.
@@ -93,8 +95,11 @@ public:
     bool atEnd() const { return !m_positionNode || m_shouldStop; }
     void advance();
     
+    StringView text() const { return m_textCharacters ? StringView(m_textCharacters, m_textLength) : StringView(m_text).substring(m_positionStartOffset, m_textLength); }
     int length() const { return m_textLength; }
-    const UChar* characters() const { return m_textCharacters ? m_textCharacters : m_text.deprecatedCharacters() + startOffset(); }
+
+    const UChar* deprecatedTextIteratorCharacters() const { return m_textCharacters ? m_textCharacters : m_text.deprecatedCharacters() + m_positionStartOffset; }
+
     UChar characterAt(unsigned index) const;
     void appendTextToStringBuilder(StringBuilder&) const;
     
@@ -107,8 +112,6 @@ public:
     static PassRefPtr<Range> subrange(Range* entireRange, int characterOffset, int characterCount);
     
 private:
-    int startOffset() const { return m_positionStartOffset; }
-    const String& string() const { return m_text; }
     void exitNode();
     bool shouldRepresentNodeOffsetZero();
     bool shouldEmitSpaceBeforeAndAfterNode(Node*);
@@ -196,6 +199,7 @@ private:
     bool m_shouldStop;
 
     bool m_emitsImageAltText;
+    bool m_hasNodesFollowing;
 };
 
 // Iterates through the DOM range, returning all the text, and 0-length boundaries
@@ -209,9 +213,10 @@ public:
     void advance();
 
     Node* node() const { return m_node; }
+
+    StringView text() const { return StringView(m_textCharacters, m_textLength); }
     int length() const { return m_textLength; }
-    const UChar* characters() const { return m_textCharacters; }
-    
+
     PassRefPtr<Range> range() const;
         
 private:
@@ -279,13 +284,14 @@ public:
     bool atBreak() const { return m_atBreak; }
     bool atEnd() const { return m_textIterator.atEnd(); }
     
+    StringView text() const { return m_textIterator.text().substring(m_runOffset); }
     int length() const { return m_textIterator.length() - m_runOffset; }
-    const UChar* characters() const { return m_textIterator.characters() + m_runOffset; }
-    String string(int numChars);
+
+    String string(int numCharacters);
     
     int characterOffset() const { return m_offset; }
     PassRefPtr<Range> range() const;
-        
+
 private:
     int m_offset;
     int m_runOffset;
@@ -323,20 +329,18 @@ public:
     void advance();
     
     int length() const;
-    const UChar* characters() const;
-    
-    // Range of the text we're currently returning
+
+    StringView text() const;
     PassRefPtr<Range> range() const { return m_range; }
 
 private:
-    // text from the previous chunk from the textIterator
-    const UChar* m_previousText;
-    int m_previousLength;
+    // Text from the previous chunk from the text iterator.
+    StringView m_previousText;
 
-    // many chunks from textIterator concatenated
+    // Many chunks from text iterator concatenated.
     Vector<UChar> m_buffer;
     
-    // Did we have to look ahead in the textIterator to confirm the current chunk?
+    // Did we have to look ahead in the text iterator to confirm the current chunk?
     bool m_didLookAhead;
 
     RefPtr<Range> m_range;

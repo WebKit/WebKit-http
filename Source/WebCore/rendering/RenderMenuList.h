@@ -29,7 +29,7 @@
 #include "PopupMenuClient.h"
 #include "RenderFlexibleBox.h"
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
 #define POPUP_MENU_PULLS_DOWN 0
 #else
 #define POPUP_MENU_PULLS_DOWN 1
@@ -74,7 +74,6 @@ private:
     virtual LayoutRect controlClipRect(const LayoutPoint&) const override;
     virtual bool hasControlClip() const override { return true; }
     virtual bool canHaveGeneratedChildren() const override { return false; }
-    virtual bool canBeReplacedWithInlineRunIn() const override;
 
     virtual const char* renderName() const override { return "RenderMenuList"; }
 
@@ -153,7 +152,6 @@ private:
 #endif
 };
 
-template<> inline bool isRendererOfType<const RenderMenuList>(const RenderObject& renderer) { return renderer.isMenuList(); }
 RENDER_OBJECT_TYPE_CASTS(RenderMenuList, isMenuList())
 
 }

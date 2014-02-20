@@ -127,6 +127,32 @@ public:
         return StringImpl::createWithoutCopying(characters16(), length());
     }
 
+    UChar operator[](unsigned index) const
+    {
+        ASSERT(index < length());
+        if (is8Bit())
+            return characters8()[index];
+        return characters16()[index];
+    }
+
+    size_t find(UChar character, unsigned start = 0) const
+    {
+        if (is8Bit())
+            return WTF::find(characters8(), length(), character, start);
+        return WTF::find(characters16(), length(), character, start);
+    }
+
+#if USE(CF)
+    // This function converts null strings to empty strings.
+    WTF_EXPORT_STRING_API RetainPtr<CFStringRef> createCFStringWithoutCopying() const;
+#endif
+
+#ifdef __OBJC__
+    // These functions convert null strings to empty strings.
+    WTF_EXPORT_STRING_API RetainPtr<NSString> createNSString() const;
+    WTF_EXPORT_STRING_API RetainPtr<NSString> createNSStringWithoutCopying() const;
+#endif
+
 private:
     void initialize(const LChar* characters, unsigned length)
     {

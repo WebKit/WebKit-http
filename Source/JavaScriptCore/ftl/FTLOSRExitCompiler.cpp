@@ -34,9 +34,10 @@
 #include "FTLJITCode.h"
 #include "FTLOSRExit.h"
 #include "FTLSaveRestore.h"
+#include "LinkBuffer.h"
 #include "MaxFrameExtentForSlowPathCall.h"
 #include "OperandsInlines.h"
-#include "Operations.h"
+#include "JSCInlines.h"
 #include "RegisterPreservationWrapperGenerator.h"
 #include "RepatchBuffer.h"
 
@@ -69,14 +70,14 @@ static void compileStub(
     char* registerScratch = bitwise_cast<char*>(scratch + exit.m_values.size());
     uint64_t* unwindScratch = bitwise_cast<uint64_t*>(registerScratch + requiredScratchMemorySizeInBytes());
     
-    // Make sure that saveAllRegisters() has a place on top of the stack to spill things. That
-    // function expects to be able to use top of stack for scratch memory.
-    jit.push(GPRInfo::regT0);
+    // Note that we come in here, the stack used to be as LLVM left it except that someone called pushToSave().
+    // We don't care about the value they saved. But, we do appreciate the fact that they did it, because we use
+    // that slot for saveAllRegisters().
+
     saveAllRegisters(jit, registerScratch);
     
     // Bring the stack back into a sane form.
-    jit.pop(GPRInfo::regT0);
-    jit.pop(GPRInfo::regT0);
+    jit.popToRestore(GPRInfo::regT0);
     
     if (vm->m_perBytecodeProfiler && codeBlock->jitCode()->dfgCommon()->compilation) {
         Profiler::Database& database = *vm->m_perBytecodeProfiler;
@@ -273,17 +274,17 @@ static void compileStub(
     
     // At this point regT1 points to where we would save our registers. Save them here.
     ptrdiff_t currentOffset = 0;
-    for (GPRReg gpr = AssemblyHelpers::firstRegister(); gpr <= AssemblyHelpers::lastRegister(); gpr = static_cast<GPRReg>(gpr + 1)) {
-        if (!toSave.get(gpr))
+    for (Reg reg = Reg::first(); reg <= Reg::last(); reg = reg.next()) {
+        if (!toSave.get(reg))
             continue;
         currentOffset += sizeof(Register);
-        unsigned unwindIndex = jitCode->unwindInfo.indexOf(gpr);
+        unsigned unwindIndex = jitCode->unwindInfo.indexOf(reg);
         if (unwindIndex == UINT_MAX) {
             // The FTL compilation didn't preserve this register. This means that it also
             // didn't use the register. So its value at the beginning of OSR exit should be
             // preserved by the thunk. Luckily, we saved all registers into the register
             // scratch buffer, so we can restore them from there.
-            jit.load64(registerScratch + offsetOfGPR(gpr), GPRInfo::regT0);
+            jit.load64(registerScratch + offsetOfReg(reg), GPRInfo::regT0);
         } else {
             // The FTL compilation preserved the register. Its new value is therefore
             // irrelevant, but we can get the value that was preserved by using the unwind
@@ -340,7 +341,7 @@ static void compileStub(
     
     LinkBuffer patchBuffer(*vm, &jit, codeBlock);
     exit.m_code = FINALIZE_CODE_IF(
-        shouldShowDisassembly() || Options::verboseOSR(),
+        shouldShowDisassembly() || Options::verboseOSR() || Options::verboseFTLOSRExit(),
         patchBuffer,
         ("FTL OSR exit #%u (%s, %s) from %s, with operands = %s, and record = %s",
             exitID, toCString(exit.m_codeOrigin).data(),

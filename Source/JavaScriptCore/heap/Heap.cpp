@@ -38,7 +38,7 @@
 #include "JSGlobalObject.h"
 #include "JSLock.h"
 #include "JSONObject.h"
-#include "Operations.h"
+#include "JSCInlines.h"
 #include "RecursiveAllocationScope.h"
 #include "Tracing.h"
 #include "UnlinkedCodeBlock.h"
@@ -524,6 +524,14 @@ void Heap::markRoots()
             visitor.append(scratchBufferRoots);
             visitor.donateAndDrain();
         }
+        {
+            GCPHASE(VisitDFGWorklists);
+            MARK_LOG_ROOT(visitor, "DFG Worklists");
+            for (unsigned i = DFG::numberOfWorklists(); i--;) {
+                if (DFG::Worklist* worklist = DFG::worklistForIndexOrNull(i))
+                    worklist->visitChildren(visitor, m_codeBlocks);
+            }
+        }
 #endif
         {
             GCPHASE(VisitProtectedObjects);
@@ -724,6 +732,22 @@ void Heap::deleteAllCompiledCode()
     // up deleting code that is live on the stack.
     if (m_vm->entryScope)
         return;
+    
+    // If we have things on any worklist, then don't delete code. This is kind of
+    // a weird heuristic. It's definitely not safe to throw away code that is on
+    // the worklist. But this change was made in a hurry so we just avoid throwing
+    // away any code if there is any code on any worklist. I suspect that this
+    // might not actually be too dumb: if there is code on worklists then that
+    // means that we are running some hot JS code right now. Maybe causing
+    // recompilations isn't a good idea.
+#if ENABLE(DFG_JIT)
+    for (unsigned i = DFG::numberOfWorklists(); i--;) {
+        if (DFG::Worklist* worklist = DFG::worklistForIndexOrNull(i)) {
+            if (worklist->isActiveForVM(*vm()))
+                return;
+        }
+    }
+#endif // ENABLE(DFG_JIT)
 
     for (ExecutableBase* current = m_compiledCode.head(); current; current = current->next()) {
         if (!current->isFunctionExecutable())
@@ -801,10 +825,12 @@ void Heap::collect()
     JAVASCRIPTCORE_GC_BEGIN();
     RELEASE_ASSERT(m_operationInProgress == NoOperation);
     
-    {
-        RecursiveAllocationScope scope(*this);
-        m_vm->prepareToDiscardCode();
+#if ENABLE(DFG_JIT)
+    for (unsigned i = DFG::numberOfWorklists(); i--;) {
+        if (DFG::Worklist* worklist = DFG::worklistForIndexOrNull(i))
+            worklist->suspendAllThreads();
     }
+#endif
 
     bool isFullCollection = m_shouldDoFullCollection;
     if (isFullCollection) {
@@ -950,6 +976,13 @@ void Heap::collect()
     if (Options::showObjectStatistics())
         HeapStatistics::showObjectStatistics(this);
     
+#if ENABLE(DFG_JIT)
+    for (unsigned i = DFG::numberOfWorklists(); i--;) {
+        if (DFG::Worklist* worklist = DFG::worklistForIndexOrNull(i))
+            worklist->resumeAllThreads();
+    }
+#endif
+
     if (Options::logGC()) {
         double after = currentTimeMS();
         dataLog(after - before, " ms, ", currentHeapSize / 1024, " kb]\n");
@@ -1087,8 +1120,7 @@ void Heap::writeBarrier(const JSCell* from)
     ASSERT_GC_OBJECT_LOOKS_VALID(const_cast<JSCell*>(from));
     if (!from || !isMarked(from))
         return;
-    Heap* heap = Heap::heap(from);
-    heap->addToRememberedSet(from);
+    addToRememberedSet(from);
 #else
     UNUSED_PARAM(from);
 #endif

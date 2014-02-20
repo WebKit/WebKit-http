@@ -29,13 +29,12 @@
 
 #include "APICast.h"
 #include "CallFrame.h"
-#include "CallFrameInlines.h"
 #include "InitializeThreading.h"
 #include "JSCallbackObject.h"
 #include "JSClassRef.h"
 #include "JSGlobalObject.h"
 #include "JSObject.h"
-#include "Operations.h"
+#include "JSCInlines.h"
 #include "SourceProvider.h"
 #include "StackVisitor.h"
 #include <wtf/text/StringBuilder.h>

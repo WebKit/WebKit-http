@@ -27,10 +27,13 @@
 
 #if WK_API_ENABLED
 
+namespace WebKit {
+class WebFrameProxy;
+}
+
 @interface WKFrameInfo ()
 
-@property (nonatomic, readwrite, getter=isMainFrame) BOOL mainFrame;
-@property (nonatomic, readwrite, copy) NSURLRequest *request;
+- (instancetype)initWithWebFrameProxy:(WebKit::WebFrameProxy&)webFrameProxy;
 
 @end
 

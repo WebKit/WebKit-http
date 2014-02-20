@@ -299,7 +299,6 @@ BINDING_IDLS = \
     $(WebCore)/dom/Range.idl \
     $(WebCore)/dom/RangeException.idl \
     $(WebCore)/dom/RequestAnimationFrameCallback.idl \
-    $(WebCore)/dom/ShadowRoot.idl \
     $(WebCore)/dom/StringCallback.idl \
     $(WebCore)/dom/Text.idl \
     $(WebCore)/dom/TextEvent.idl \
@@ -444,6 +443,7 @@ BINDING_IDLS = \
     $(WebCore)/html/canvas/WebGLVertexArrayObjectOES.idl \
     $(WebCore)/html/track/AudioTrack.idl \
     $(WebCore)/html/track/AudioTrackList.idl \
+    $(WebCore)/html/track/DataCue.idl \
     $(WebCore)/html/track/TextTrack.idl \
     $(WebCore)/html/track/TextTrackCue.idl \
     $(WebCore)/html/track/TextTrackCueList.idl \
@@ -451,6 +451,7 @@ BINDING_IDLS = \
     $(WebCore)/html/track/TrackEvent.idl \
     $(WebCore)/html/track/VideoTrack.idl \
     $(WebCore)/html/track/VideoTrackList.idl \
+    $(WebCore)/html/track/VTTCue.idl \
     $(WebCore)/inspector/CommandLineAPIHost.idl \
     $(WebCore)/inspector/InspectorFrontendHost.idl \
     $(WebCore)/inspector/ScriptProfile.idl \
@@ -845,7 +846,7 @@ XPathGrammar.cpp : xml/XPathGrammar.y $(PROJECT_FILE)
 
 # user agent style sheets
 
-USER_AGENT_STYLE_SHEETS = $(WebCore)/css/html.css $(WebCore)/css/quirks.css $(WebCore)/css/view-source.css $(WebCore)/css/themeWin.css $(WebCore)/css/themeWinQuirks.css $(WebCore)/css/plugIns.css
+USER_AGENT_STYLE_SHEETS = $(WebCore)/css/html.css $(WebCore)/css/quirks.css $(WebCore)/css/themeWin.css $(WebCore)/css/themeWinQuirks.css $(WebCore)/css/plugIns.css
 USER_AGENT_STYLE_SHEETS := $(USER_AGENT_STYLE_SHEETS) $(WebCore)/css/svg.css
 
 ifeq ($(findstring ENABLE_MATHML,$(FEATURE_DEFINES)), ENABLE_MATHML)
@@ -891,8 +892,8 @@ ifeq ($(OS),MACOS)
 	USER_AGENT_SCRIPTS := $(USER_AGENT_SCRIPTS) $(WebCore)/Modules/plugins/QuickTimePluginReplacement.js
 endif
 
-UserAgentScripts.h : css/make-css-file-arrays.pl bindings/scripts/preprocessor.pm $(USER_AGENT_SCRIPTS) $(PLATFORM_FEATURE_DEFINES)
-	perl -I$(WebCore)/bindings/scripts $< --defines "$(FEATURE_DEFINES)" $@ UserAgentScriptsData.cpp $(USER_AGENT_SCRIPTS)
+UserAgentScripts.h : Scripts/make-js-file-arrays.py $(USER_AGENT_SCRIPTS)
+	PYTHONPATH=$(InspectorScripts) python $< $@ UserAgentScriptsData.cpp $(USER_AGENT_SCRIPTS)
 
 # --------
 
@@ -936,10 +937,6 @@ endif
 
 ifeq ($(findstring ENABLE_VIDEO_TRACK,$(FEATURE_DEFINES)), ENABLE_VIDEO_TRACK)
     HTML_FLAGS := $(HTML_FLAGS) ENABLE_VIDEO_TRACK=0
-endif
-
-ifeq ($(findstring ENABLE_SHADOW_DOM,$(FEATURE_DEFINES)), ENABLE_SHADOW_DOM)
-    HTML_FLAGS := $(HTML_FLAGS) ENABLE_SHADOW_DOM=1
 endif
 
 ifeq ($(findstring ENABLE_ENCRYPTED_MEDIA,$(FEATURE_DEFINES)), ENABLE_ENCRYPTED_MEDIA)
@@ -1092,7 +1089,6 @@ INSPECTOR_DOMAINS = \
     $(WebCore)/inspector/protocol/ApplicationCache.json \
     $(WebCore)/inspector/protocol/CSS.json \
     $(WebCore)/inspector/protocol/Canvas.json \
-    $(WebCore)/inspector/protocol/Console.json \
     $(WebCore)/inspector/protocol/DOM.json \
     $(WebCore)/inspector/protocol/DOMDebugger.json \
     $(WebCore)/inspector/protocol/DOMStorage.json \

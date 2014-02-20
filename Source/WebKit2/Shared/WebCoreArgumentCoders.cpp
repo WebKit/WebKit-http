@@ -574,7 +574,7 @@ bool ArgumentCoder<ResourceRequest>::decode(ArgumentDecoder& decoder, ResourceRe
 
 void ArgumentCoder<ResourceResponse>::encode(ArgumentEncoder& encoder, const ResourceResponse& resourceResponse)
 {
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
     bool shouldSerializeWebCoreData = !resourceResponse.platformResponseIsUpToDate();
     encoder << shouldSerializeWebCoreData;
 #else
@@ -603,7 +603,7 @@ void ArgumentCoder<ResourceResponse>::encode(ArgumentEncoder& encoder, const Res
 
 bool ArgumentCoder<ResourceResponse>::decode(ArgumentDecoder& decoder, ResourceResponse& resourceResponse)
 {
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
     bool hasSerializedWebCoreData;
     if (!decoder.decode(hasSerializedWebCoreData))
         return false;
@@ -1724,7 +1724,10 @@ void ArgumentCoder<IDBKeyData>::encode(ArgumentEncoder& encoder, const IDBKeyDat
     case IDBKey::NumberType:
         encoder << keyData.numberValue;
         break;
+    case IDBKey::MaxType:
     case IDBKey::MinType:
+        // MaxType and MinType are only used for comparison to other keys.
+        // They should never be sent across the wire.
         ASSERT_NOT_REACHED();
         break;
     }
@@ -1757,7 +1760,10 @@ bool ArgumentCoder<IDBKeyData>::decode(ArgumentDecoder& decoder, IDBKeyData& key
         if (!decoder.decode(keyData.numberValue))
             return false;
         break;
+    case IDBKey::MaxType:
     case IDBKey::MinType:
+        // MaxType and MinType are only used for comparison to other keys.
+        // They should never be sent across the wire.
         ASSERT_NOT_REACHED();
         return false;
     }

@@ -45,6 +45,7 @@
 #include "HTMLUListElement.h"
 #include "NodeTraversal.h"
 #include "PositionIterator.h"
+#include "RenderBlock.h"
 #include "RenderElement.h"
 #include "ShadowRoot.h"
 #include "Text.h"
@@ -70,7 +71,6 @@ int comparePositions(const Position& a, const Position& b)
 {
     TreeScope* commonScope = commonTreeScope(a.containerNode(), b.containerNode());
 
-    ASSERT(commonScope);
     if (!commonScope)
         return 0;
 
@@ -145,13 +145,13 @@ bool isEditablePosition(const Position& p, EditableType editableType, EUpdateSty
     if (!node)
         return false;
     if (updateStyle == UpdateStyle)
-        node->document().updateLayoutIgnorePendingStylesheets();
+        node->document().updateStyleIfNeeded();
     else
         ASSERT(updateStyle == DoNotUpdateStyle);
 
     if (node->renderer() && node->renderer()->isTable())
         node = node->parentNode();
-    
+
     return node->hasEditableStyle(editableType);
 }
 
@@ -423,7 +423,7 @@ static Node* firstInSpecialElement(const Position& pos)
         if (isSpecialElement(n)) {
             VisiblePosition vPos = VisiblePosition(pos, DOWNSTREAM);
             VisiblePosition firstInElement = VisiblePosition(firstPositionInOrBeforeNode(n), DOWNSTREAM);
-            if (isTableElement(n) && vPos == firstInElement.next())
+            if (isRenderedTable(n) && vPos == firstInElement.next())
                 return n;
             if (vPos == firstInElement)
                 return n;
@@ -438,7 +438,7 @@ static Node* lastInSpecialElement(const Position& pos)
         if (isSpecialElement(n)) {
             VisiblePosition vPos = VisiblePosition(pos, DOWNSTREAM);
             VisiblePosition lastInElement = VisiblePosition(lastPositionInOrAfterNode(n), DOWNSTREAM);
-            if (isTableElement(n) && vPos == lastInElement.previous())
+            if (isRenderedTable(n) && vPos == lastInElement.previous())
                 return n;
             if (vPos == lastInElement)
                 return n;
@@ -807,14 +807,14 @@ Node* nextLeafNode(const Node* node)
     return 0;
 }
 
-// FIXME: do not require renderer, so that this can be used within fragments, or rename to isRenderedTable()
-bool isTableElement(Node* n)
+// FIXME: do not require renderer, so that this can be used within fragments
+bool isRenderedTable(const Node* n)
 {
     if (!n || !n->isElementNode())
         return false;
 
     RenderObject* renderer = n->renderer();
-    return (renderer && (renderer->style().display() == TABLE || renderer->style().display() == INLINE_TABLE));
+    return (renderer && renderer->isTable());
 }
 
 bool isTableCell(const Node* node)
@@ -987,12 +987,12 @@ void updatePositionForNodeRemoval(Position& position, Node* node)
         return;
     switch (position.anchorType()) {
     case Position::PositionIsBeforeChildren:
-        if (position.containerNode() == node)
+        if (node->containsIncludingShadowDOM(position.containerNode()))
             position = positionInParentBeforeNode(node);
         break;
     case Position::PositionIsAfterChildren:
-        if (position.containerNode() == node)
-            position = positionInParentAfterNode(node);
+        if (node->containsIncludingShadowDOM(position.containerNode()))
+            position = positionInParentBeforeNode(node);
         break;
     case Position::PositionIsOffsetInAnchor:
         if (position.containerNode() == node->parentNode() && static_cast<unsigned>(position.offsetInContainerNode()) > node->nodeIndex())
@@ -1258,6 +1258,63 @@ Element* deprecatedEnclosingBlockFlowElement(Node* node)
             return toElement(node);
     }
     return 0;
+}
+
+static inline bool caretRendersInsideNode(Node* node)
+{
+    return node && !isRenderedTable(node) && !editingIgnoresContent(node);
+}
+
+RenderObject* rendererForCaretPainting(Node* node)
+{
+    if (!node)
+        return 0;
+
+    RenderObject* renderer = node->renderer();
+    if (!renderer)
+        return 0;
+
+    // If caretNode is a block and caret is inside it, then caret should be painted by that block.
+    bool paintedByBlock = renderer->isRenderBlockFlow() && caretRendersInsideNode(node);
+    return paintedByBlock ? renderer : renderer->containingBlock();
+}
+
+LayoutRect localCaretRectInRendererForCaretPainting(const VisiblePosition& caretPosition, RenderObject*& caretPainter)
+{
+    if (caretPosition.isNull())
+        return LayoutRect();
+
+    ASSERT(caretPosition.deepEquivalent().deprecatedNode()->renderer());
+
+    // First compute a rect local to the renderer at the selection start.
+    RenderObject* renderer;
+    LayoutRect localRect = caretPosition.localCaretRect(renderer);
+
+    // Get the renderer that will be responsible for painting the caret
+    // (which is either the renderer we just found, or one of its containers).
+    caretPainter = rendererForCaretPainting(caretPosition.deepEquivalent().deprecatedNode());
+
+    // Compute an offset between the renderer and the caretPainter.
+    while (renderer != caretPainter) {
+        RenderObject* containerObject = renderer->container();
+        if (!containerObject)
+            return LayoutRect();
+        localRect.move(renderer->offsetFromContainer(containerObject, localRect.location()));
+        renderer = containerObject;
+    }
+
+    return localRect;
+}
+
+IntRect absoluteBoundsForLocalCaretRect(RenderObject* rendererForCaretPainting, const LayoutRect& rect)
+{
+    if (!rendererForCaretPainting || rect.isEmpty())
+        return IntRect();
+
+    LayoutRect localRect(rect);
+    if (rendererForCaretPainting->isBox())
+        toRenderBox(rendererForCaretPainting)->flipForWritingMode(localRect);
+    return rendererForCaretPainting->localToAbsoluteQuad(FloatRect(localRect)).enclosingBoundingBox();
 }
 
 } // namespace WebCore

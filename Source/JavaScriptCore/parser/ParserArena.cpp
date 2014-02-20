@@ -27,6 +27,7 @@
 #include "ParserArena.h"
 
 #include "Nodes.h"
+#include "JSCInlines.h"
 #include <wtf/PassOwnPtr.h>
 
 namespace JSC {

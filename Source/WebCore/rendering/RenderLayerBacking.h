@@ -126,7 +126,7 @@ public:
 
     void setContentsNeedDisplay(GraphicsLayer::ShouldClipToLayer = GraphicsLayer::ClipToLayer);
     // r is in the coordinate space of the layer's render object
-    void setContentsNeedDisplayInRect(const IntRect&, GraphicsLayer::ShouldClipToLayer = GraphicsLayer::ClipToLayer);
+    void setContentsNeedDisplayInRect(const LayoutRect&, GraphicsLayer::ShouldClipToLayer = GraphicsLayer::ClipToLayer);
 
     // Notification from the renderer that its content changed.
     void contentChanged(ContentChangeType);
@@ -165,7 +165,7 @@ public:
     virtual void notifyFlushRequired(const GraphicsLayer*) override;
     virtual void notifyFlushBeforeDisplayRefresh(const GraphicsLayer*) override;
 
-    virtual void paintContents(const GraphicsLayer*, GraphicsContext&, GraphicsLayerPaintingPhase, const IntRect& clip) override;
+    virtual void paintContents(const GraphicsLayer*, GraphicsContext&, GraphicsLayerPaintingPhase, const FloatRect& clip) override;
 
     virtual float deviceScaleFactor() const override;
     virtual float contentsScaleMultiplierForNewTiles(const GraphicsLayer*) const override;
@@ -283,7 +283,7 @@ private:
     bool hasTiledBackingFlatteningLayer() const { return (m_childContainmentLayer && m_usingTiledCacheLayer); }
     GraphicsLayer* tileCacheFlatteningLayer() const { return m_usingTiledCacheLayer ? m_childContainmentLayer.get() : 0; }
 
-    void paintIntoLayer(const GraphicsLayer*, GraphicsContext*, const IntRect& paintDirtyRect, PaintBehavior, GraphicsLayerPaintingPhase);
+    void paintIntoLayer(const GraphicsLayer*, GraphicsContext*, const LayoutRect& paintDirtyRect, PaintBehavior, GraphicsLayerPaintingPhase);
 
     // Helper function for updateGraphicsLayerGeometry.
     void adjustAncestorCompositingBoundsForFlowThread(IntRect& ancestorCompositingBounds, const RenderLayer* compositingAncestor) const;

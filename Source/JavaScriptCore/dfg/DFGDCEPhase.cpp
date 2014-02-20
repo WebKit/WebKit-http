@@ -32,7 +32,7 @@
 #include "DFGGraph.h"
 #include "DFGInsertionSet.h"
 #include "DFGPhase.h"
-#include "Operations.h"
+#include "JSCInlines.h"
 
 namespace JSC { namespace DFG {
 
@@ -218,7 +218,7 @@ private:
                         if (!edge || edge.willNotHaveCheck())
                             continue;
 
-                        m_insertionSet.insertNode(indexInBlock, SpecNone, Phantom, node->codeOrigin, edge);
+                        m_insertionSet.insertNode(indexInBlock, SpecNone, Phantom, node->origin, edge);
                     }
 
                     node->convertToPhantomUnchecked();

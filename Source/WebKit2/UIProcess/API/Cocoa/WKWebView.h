@@ -34,6 +34,8 @@
 #import <AppKit/AppKit.h>
 #endif
 
+@class WKBackForwardList;
+@class WKBackForwardListItem;
 @class WKNavigation;
 @class WKWebViewConfiguration;
 
@@ -57,6 +59,9 @@ WK_API_CLASS
 
 @property (nonatomic, weak) id <WKNavigationDelegate> navigationDelegate;
 
+/*! @abstract The view's back-forward list. */
+@property (nonatomic, readonly) WKBackForwardList *backForwardList;
+
 /*! @abstract Returns a view initialized with the specified frame and configuration.
  @param frame The frame for the new view.
  @param configuration The configuration for the new view.
@@ -73,19 +78,48 @@ WK_API_CLASS
 
 - (WKNavigation *)loadRequest:(NSURLRequest *)request;
 
+/*! @abstract Navigates to an item from the back-forward list and sets it as the current item.
+ @param item The item to navigate to. Must be one of the items in the receiver's back-forward
+ list.
+ @result A new navigation to requested item, or nil if it is the current item.
+ @seealso backForwardList
+ */
+- (WKNavigation *)goToBackForwardListItem:(WKBackForwardListItem *)item;
+
+- (IBAction)stopLoading:(id)sender;
+
 @property (nonatomic, readonly) NSString *title;
+
+/*! @abstract The active URL. @link WKWebView @/link is KVO-compliant for this property.
+ @discussion This is the URL that should be reflected in the user interface.
+ */
+@property (nonatomic, readonly) NSURL *activeURL;
 
 /*! @abstract Whether the view is loading content. @link WKWebView @/link is KVO-compliant for this
  property. */
 @property (nonatomic, readonly, getter=isLoading) BOOL loading;
 
+/*!
+ @abstract An estimate of the fraction complete for a document load. @link WKWebView @/link is
+ KVO-compliant for this property.
+ @discussion This value will range from 0 to 1 and, once a load completes, will remain at 1.0
+ until a new load starts, at which point it will be reset to 0. The value is an estimate based
+ on the total number of bytes expected to be received for a document,
+ including all its possible subresources.
+ */
+@property (nonatomic, readonly) double estimatedProgress;
+
 @property (nonatomic, readonly) BOOL hasOnlySecureContent;
 
-@property(readonly) BOOL canGoBack;
-@property(readonly) BOOL canGoForward;
+@property (readonly) BOOL canGoBack;
+@property (readonly) BOOL canGoForward;
 
 - (void)goBack;
 - (void)goForward;
+
+#if TARGET_OS_IPHONE
+@property (nonatomic, readonly) UIScrollView *scrollView;
+#endif
 
 @end
 

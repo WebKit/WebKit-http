@@ -68,10 +68,6 @@ namespace WebCore {
 InternalSettings::Backup::Backup(Settings& settings)
     : m_originalCSSExclusionsEnabled(RuntimeEnabledFeatures::sharedFeatures().cssExclusionsEnabled())
     , m_originalCSSShapesEnabled(RuntimeEnabledFeatures::sharedFeatures().cssShapesEnabled())
-#if ENABLE(SHADOW_DOM)
-    , m_originalShadowDOMEnabled(RuntimeEnabledFeatures::sharedFeatures().shadowDOMEnabled())
-    , m_originalAuthorShadowDOMForAnyElementEnabled(RuntimeEnabledFeatures::sharedFeatures().authorShadowDOMForAnyElementEnabled())
-#endif
     , m_originalEditingBehavior(settings.editingBehaviorType())
 #if ENABLE(TEXT_AUTOSIZING)
     , m_originalTextAutosizingEnabled(settings.textAutosizingEnabled())
@@ -94,6 +90,7 @@ InternalSettings::Backup::Backup(Settings& settings)
     , m_useLegacyBackgroundSizeShorthandBehavior(settings.useLegacyBackgroundSizeShorthandBehavior())
     , m_autoscrollForDragAndDropEnabled(settings.autoscrollForDragAndDropEnabled())
     , m_pluginReplacementEnabled(RuntimeEnabledFeatures::sharedFeatures().pluginReplacementEnabled())
+    , m_shouldConvertPositionStyleOnCopy(settings.shouldConvertPositionStyleOnCopy())
 {
 }
 
@@ -101,38 +98,34 @@ void InternalSettings::Backup::restoreTo(Settings& settings)
 {
     RuntimeEnabledFeatures::sharedFeatures().setCSSExclusionsEnabled(m_originalCSSExclusionsEnabled);
     RuntimeEnabledFeatures::sharedFeatures().setCSSShapesEnabled(m_originalCSSShapesEnabled);
-#if ENABLE(SHADOW_DOM)
-    RuntimeEnabledFeatures::sharedFeatures().setShadowDOMEnabled(m_originalShadowDOMEnabled);
-    RuntimeEnabledFeatures::sharedFeatures().setAuthorShadowDOMForAnyElementEnabled(m_originalAuthorShadowDOMForAnyElementEnabled);
-#endif
     settings.setEditingBehaviorType(m_originalEditingBehavior);
 
-    for (auto iter = m_standardFontFamilies.begin(); iter != m_standardFontFamilies.end(); ++iter)
-        settings.setStandardFontFamily(iter->value, static_cast<UScriptCode>(iter->key));
+    for (const auto& standardFont : m_standardFontFamilies)
+        settings.setStandardFontFamily(standardFont.value, static_cast<UScriptCode>(standardFont.key));
     m_standardFontFamilies.clear();
 
-    for (auto iter = m_fixedFontFamilies.begin(); iter != m_fixedFontFamilies.end(); ++iter)
-        settings.setFixedFontFamily(iter->value, static_cast<UScriptCode>(iter->key));
+    for (const auto& fixedFont : m_fixedFontFamilies)
+        settings.setFixedFontFamily(fixedFont.value, static_cast<UScriptCode>(fixedFont.key));
     m_fixedFontFamilies.clear();
 
-    for (auto iter = m_serifFontFamilies.begin(); iter != m_serifFontFamilies.end(); ++iter)
-        settings.setSerifFontFamily(iter->value, static_cast<UScriptCode>(iter->key));
+    for (const auto& serifFont : m_serifFontFamilies)
+        settings.setSerifFontFamily(serifFont.value, static_cast<UScriptCode>(serifFont.key));
     m_serifFontFamilies.clear();
 
-    for (auto iter = m_sansSerifFontFamilies.begin(); iter != m_sansSerifFontFamilies.end(); ++iter)
-        settings.setSansSerifFontFamily(iter->value, static_cast<UScriptCode>(iter->key));
+    for (const auto& sansSerifFont : m_sansSerifFontFamilies)
+        settings.setSansSerifFontFamily(sansSerifFont.value, static_cast<UScriptCode>(sansSerifFont.key));
     m_sansSerifFontFamilies.clear();
 
-    for (auto iter = m_cursiveFontFamilies.begin(); iter != m_cursiveFontFamilies.end(); ++iter)
-        settings.setCursiveFontFamily(iter->value, static_cast<UScriptCode>(iter->key));
+    for (const auto& cursiveFont : m_cursiveFontFamilies)
+        settings.setCursiveFontFamily(cursiveFont.value, static_cast<UScriptCode>(cursiveFont.key));
     m_cursiveFontFamilies.clear();
 
-    for (auto iter = m_fantasyFontFamilies.begin(); iter != m_fantasyFontFamilies.end(); ++iter)
-        settings.setFantasyFontFamily(iter->value, static_cast<UScriptCode>(iter->key));
+    for (const auto& fantasyFont : m_fantasyFontFamilies)
+        settings.setFantasyFontFamily(fantasyFont.value, static_cast<UScriptCode>(fantasyFont.key));
     m_fantasyFontFamilies.clear();
 
-    for (auto iter = m_pictographFontFamilies.begin(); iter != m_pictographFontFamilies.end(); ++iter)
-        settings.setPictographFontFamily(iter->value, static_cast<UScriptCode>(iter->key));
+    for (const auto& pictographFont : m_pictographFontFamilies)
+        settings.setPictographFontFamily(pictographFont.value, static_cast<UScriptCode>(pictographFont.key));
     m_pictographFontFamilies.clear();
 
 #if ENABLE(TEXT_AUTOSIZING)
@@ -155,6 +148,7 @@ void InternalSettings::Backup::restoreTo(Settings& settings)
     settings.setTimeWithoutMouseMovementBeforeHidingControls(m_originalTimeWithoutMouseMovementBeforeHidingControls);
     settings.setUseLegacyBackgroundSizeShorthandBehavior(m_useLegacyBackgroundSizeShorthandBehavior);
     settings.setAutoscrollForDragAndDropEnabled(m_autoscrollForDragAndDropEnabled);
+    settings.setShouldConvertPositionStyleOnCopy(m_shouldConvertPositionStyleOnCopy);
     RuntimeEnabledFeatures::sharedFeatures().setPluginReplacementEnabled(m_pluginReplacementEnabled);
 }
 
@@ -220,40 +214,6 @@ void InternalSettings::setMockScrollbarsEnabled(bool enabled, ExceptionCode& ec)
 {
     InternalSettingsGuardForSettings();
     settings()->setMockScrollbarsEnabled(enabled);
-}
-
-static bool urlIsWhitelistedForSetShadowDOMEnabled(const String& url)
-{
-    // This check is just for preventing fuzzers from crashing because of unintended API calls.
-    // You can list your test if needed.
-    return notFound != url.find("fast/dom/shadow/content-shadow-unknown.html")
-        || notFound != url.find("fast/dom/shadow/insertion-points-with-shadow-disabled.html");
-}
-
-void InternalSettings::setShadowDOMEnabled(bool enabled, ExceptionCode& ec)
-{
-    if (!urlIsWhitelistedForSetShadowDOMEnabled(page()->mainFrame().document()->url().string())) {
-        ec = INVALID_ACCESS_ERR;
-        return;
-    }
-
-#if ENABLE(SHADOW_DOM)
-    RuntimeEnabledFeatures::sharedFeatures().setShadowDOMEnabled(enabled);
-#else
-    // Even SHADOW_DOM is off, InternalSettings allows setShadowDOMEnabled(false) to
-    // have broader test coverage. But it cannot be setShadowDOMEnabled(true).
-    if (enabled)
-        ec = INVALID_ACCESS_ERR;
-#endif
-}
-
-void InternalSettings::setAuthorShadowDOMForAnyElementEnabled(bool isEnabled)
-{
-#if ENABLE(SHADOW_DOM)
-    RuntimeEnabledFeatures::sharedFeatures().setAuthorShadowDOMForAnyElementEnabled(isEnabled);
-#else
-    UNUSED_PARAM(isEnabled);
-#endif
 }
 
 void InternalSettings::setTouchEventEmulationEnabled(bool enabled, ExceptionCode& ec)
@@ -525,6 +485,12 @@ void InternalSettings::setBackgroundShouldExtendBeyondPage(bool hasExtendedBackg
 {
     InternalSettingsGuardForSettings();
     settings()->setBackgroundShouldExtendBeyondPage(hasExtendedBackground);
+}
+
+void InternalSettings::setShouldConvertPositionStyleOnCopy(bool convert, ExceptionCode& ec)
+{
+    InternalSettingsGuardForSettings();
+    settings()->setShouldConvertPositionStyleOnCopy(convert);
 }
 
 }

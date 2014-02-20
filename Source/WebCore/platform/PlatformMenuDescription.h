@@ -26,7 +26,7 @@
 #ifndef PlatformMenuDescription_h
 #define PlatformMenuDescription_h
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
 OBJC_CLASS NSMutableArray;
 #elif PLATFORM(WIN)
 #include <windows.h>
@@ -39,7 +39,7 @@ class BMenu;
 namespace WebCore {
 
 #if !USE(CROSS_PLATFORM_CONTEXT_MENUS)
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
     typedef NSMutableArray* PlatformMenuDescription;
 #elif PLATFORM(GTK)
     typedef GtkMenu* PlatformMenuDescription;

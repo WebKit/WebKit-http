@@ -160,11 +160,6 @@ void RenderBlockFlow::willBeDestroyed()
     if (renderNamedFlowFragment())
         setRenderNamedFlowFragment(0);
 
-    if (!documentBeingDestroyed()) {
-        if (firstChild() && firstChild()->isRunIn())
-            moveRunInToOriginalPosition(*firstChild());
-    }
-
     // Make sure to destroy anonymous children first while they are still connected to the rest of the tree, so that they will
     // properly dirty line boxes that they are removed from. Effects that do :before/:after only on hover could crash otherwise.
     destroyLeftoverChildren();
@@ -1777,7 +1772,7 @@ LayoutUnit RenderBlockFlow::pageLogicalTopForOffset(LayoutUnit offset) const
             return 0;
         return cumulativeOffset - roundToInt(cumulativeOffset - firstPageLogicalTop) % roundToInt(pageLogicalHeight);
     }
-    return flowThread->pageLogicalTopForOffset(cumulativeOffset);
+    return firstPageLogicalTop + flowThread->pageLogicalTopForOffset(cumulativeOffset - firstPageLogicalTop);
 }
 
 LayoutUnit RenderBlockFlow::pageLogicalHeightForOffset(LayoutUnit offset) const
@@ -1906,11 +1901,8 @@ void RenderBlockFlow::deleteLines()
     RenderBlock::deleteLines();
 }
 
-void RenderBlockFlow::moveAllChildrenIncludingFloatsTo(RenderBlock* toBlock, bool fullRemoveInsert)
+void RenderBlockFlow::moveFloatsTo(RenderBlockFlow* toBlockFlow)
 {
-    RenderBlockFlow* toBlockFlow = toRenderBlockFlow(toBlock);
-    moveAllChildrenTo(toBlockFlow, fullRemoveInsert);
-
     // When a portion of the render tree is being detached, anonymous blocks
     // will be combined as their children are deleted. In this process, the
     // anonymous block later in the tree is merged into the one preceeding it.
@@ -1945,6 +1937,13 @@ void RenderBlockFlow::moveAllChildrenIncludingFloatsTo(RenderBlock* toBlock, boo
             toBlockFlow->m_floatingObjects->add(floatingObject->unsafeClone());
         }
     }
+}
+
+void RenderBlockFlow::moveAllChildrenIncludingFloatsTo(RenderBlock* toBlock, bool fullRemoveInsert)
+{
+    RenderBlockFlow* toBlockFlow = toRenderBlockFlow(toBlock);
+    moveAllChildrenTo(toBlockFlow, fullRemoveInsert);
+    moveFloatsTo(toBlockFlow);
 }
 
 void RenderBlockFlow::addOverflowFromFloats()
@@ -2347,7 +2346,7 @@ bool RenderBlockFlow::positionNewFloats()
 
 #if ENABLE(CSS_SHAPES)
         if (ShapeOutsideInfo* shapeOutside = childBox.shapeOutsideInfo())
-            shapeOutside->setShapeSize(logicalWidthForChild(childBox), logicalHeightForChild(childBox));
+            shapeOutside->setReferenceBoxLogicalSize(logicalSizeForChild(childBox));
 #endif
         // If the child moved, we have to repaint it.
         if (childBox.checkForRepaintDuringLayout())
@@ -2951,7 +2950,7 @@ void RenderBlockFlow::setMultiColumnFlowThread(RenderMultiColumnFlowThread* flow
 
 static bool shouldCheckLines(const RenderBlockFlow& blockFlow)
 {
-    return !blockFlow.isFloatingOrOutOfFlowPositioned() && !blockFlow.isRunIn() && blockFlow.style().height().isAuto();
+    return !blockFlow.isFloatingOrOutOfFlowPositioned() && blockFlow.style().height().isAuto();
 }
 
 RootInlineBox* RenderBlockFlow::lineAtIndex(int i) const
@@ -3030,7 +3029,7 @@ static int getHeightForLineCount(const RenderBlockFlow& block, int lineCount, bo
                 int result = getHeightForLineCount(toRenderBlockFlow(*obj), lineCount, false, count);
                 if (result != -1)
                     return result + obj->y() + (includeBottom ? (block.borderBottom() + block.paddingBottom()) : LayoutUnit());
-            } else if (!obj->isFloatingOrOutOfFlowPositioned() && !obj->isRunIn())
+            } else if (!obj->isFloatingOrOutOfFlowPositioned())
                 normalFlowChildWithoutLines = obj;
         }
         if (normalFlowChildWithoutLines && !lineCount)

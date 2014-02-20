@@ -112,16 +112,19 @@ typedef OptionRange optionRange;
     /* showDisassembly implies showDFGDisassembly. */ \
     v(bool, showDisassembly, false) \
     v(bool, showDFGDisassembly, false) \
+    v(bool, showFTLDisassembly, false) \
     v(bool, showAllDFGNodes, false) \
     v(optionRange, bytecodeRangeToDFGCompile, 0) \
     v(bool, dumpBytecodeAtDFGTime, false) \
     v(bool, dumpGraphAtEachPhase, false) \
     v(bool, verboseCompilation, false) \
+    v(bool, verboseFTLCompilation, false) \
     v(bool, logCompilationChanges, false) \
     v(bool, printEachOSRExit, false) \
     v(bool, validateGraph, false) \
     v(bool, validateGraphAtEachPhase, false) \
     v(bool, verboseOSR, false) \
+    v(bool, verboseFTLOSRExit, false) \
     v(bool, verboseCallLink, false) \
     v(bool, verboseCompilationQueue, false) \
     v(bool, reportCompileTimes, false) \
@@ -149,6 +152,7 @@ typedef OptionRange optionRange;
     v(unsigned, llvmBackendOptimizationLevel, 2) \
     v(unsigned, llvmOptimizationLevel, 2) \
     v(unsigned, llvmSizeLevel, 0) \
+    v(unsigned, llvmMaxStackSize, 128 * KB) \
     v(bool, llvmDisallowAVX, true) \
     v(bool, ftlCrashes, false) /* fool-proof way of checking that you ended up in the FTL. ;-) */\
     \
@@ -267,7 +271,8 @@ public:
 
     // Declare accessors for each option:
 #define FOR_EACH_OPTION(type_, name_, defaultValue_) \
-    ALWAYS_INLINE static type_& name_() { return s_options[OPT_##name_].u.type_##Val; }
+    ALWAYS_INLINE static type_& name_() { return s_options[OPT_##name_].u.type_##Val; } \
+    static bool name_##WasOverridden() { return s_options[OPT_##name_].didOverride; }
 
     JSC_OPTIONS(FOR_EACH_OPTION)
 #undef FOR_EACH_OPTION
@@ -290,6 +295,7 @@ private:
             int32 int32Val;
             OptionRange optionRangeVal;
         } u;
+        bool didOverride;
     };
 
     // For storing constant meta data about each option:

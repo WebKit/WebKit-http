@@ -59,6 +59,11 @@ public:
 
     virtual LayoutUnit pageLogicalHeight() const;
     LayoutUnit maxPageLogicalHeight() const;
+    
+    LayoutRect flowThreadPortionRectForClipping(bool isFirstRegionInRange, bool isLastRegionInRange) const;
+
+    RenderBlockFlow& fragmentContainer() const;
+    RenderLayer& fragmentContainerLayer() const;
 
     bool isPseudoElementRegion() const { return parent() && parent()->isPseudoElement(); }
 

@@ -21,7 +21,7 @@
  * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
  * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 #include "config.h"
@@ -69,7 +69,7 @@
 #include "HTMLFrameOwnerElement.h"
 #include "History.h"
 #include "InspectorInstrumentation.h"
-#include "URL.h"
+#include "JSMainThreadExecState.h"
 #include "Location.h"
 #include "MainFrame.h"
 #include "MediaQueryList.h"
@@ -85,8 +85,6 @@
 #include "RuntimeEnabledFeatures.h"
 #include "ScheduledAction.h"
 #include "Screen.h"
-#include "ScriptCallStack.h"
-#include "ScriptCallStackFactory.h"
 #include "ScriptController.h"
 #include "SecurityOrigin.h"
 #include "SecurityPolicy.h"
@@ -98,10 +96,13 @@
 #include "StyleMedia.h"
 #include "StyleResolver.h"
 #include "SuddenTermination.h"
+#include "URL.h"
 #include "WebKitPoint.h"
 #include "WindowFeatures.h"
 #include "WindowFocusAllowedIndicator.h"
 #include <algorithm>
+#include <inspector/ScriptCallStack.h>
+#include <inspector/ScriptCallStackFactory.h>
 #include <wtf/CurrentTime.h>
 #include <wtf/MainThread.h>
 #include <wtf/MathExtras.h>
@@ -124,16 +125,18 @@
 #include "WKContentObservation.h"
 #endif
 
+using namespace Inspector;
+
 namespace WebCore {
 
 class PostMessageTimer : public TimerBase {
 public:
-    PostMessageTimer(DOMWindow* window, PassRefPtr<SerializedScriptValue> message, const String& sourceOrigin, PassRefPtr<DOMWindow> source, PassOwnPtr<MessagePortChannelArray> channels, SecurityOrigin* targetOrigin, PassRefPtr<ScriptCallStack> stackTrace)
+    PostMessageTimer(DOMWindow* window, PassRefPtr<SerializedScriptValue> message, const String& sourceOrigin, PassRefPtr<DOMWindow> source, std::unique_ptr<MessagePortChannelArray> channels, SecurityOrigin* targetOrigin, PassRefPtr<ScriptCallStack> stackTrace)
         : m_window(window)
         , m_message(message)
         , m_origin(sourceOrigin)
         , m_source(source)
-        , m_channels(channels)
+        , m_channels(std::move(channels))
         , m_targetOrigin(targetOrigin)
         , m_stackTrace(stackTrace)
     {
@@ -141,8 +144,8 @@ public:
 
     PassRefPtr<MessageEvent> event(ScriptExecutionContext* context)
     {
-        OwnPtr<MessagePortArray> messagePorts = MessagePort::entanglePorts(*context, m_channels.release());
-        return MessageEvent::create(messagePorts.release(), m_message, m_origin, String(), m_source);
+        std::unique_ptr<MessagePortArray> messagePorts = MessagePort::entanglePorts(*context, std::move(m_channels));
+        return MessageEvent::create(std::move(messagePorts), m_message, m_origin, String(), m_source);
     }
     SecurityOrigin* targetOrigin() const { return m_targetOrigin.get(); }
     ScriptCallStack* stackTrace() const { return m_stackTrace.get(); }
@@ -158,7 +161,7 @@ private:
     RefPtr<SerializedScriptValue> m_message;
     String m_origin;
     RefPtr<DOMWindow> m_source;
-    OwnPtr<MessagePortChannelArray> m_channels;
+    std::unique_ptr<MessagePortChannelArray> m_channels;
     RefPtr<SecurityOrigin> m_targetOrigin;
     RefPtr<ScriptCallStack> m_stackTrace;
 };
@@ -830,7 +833,7 @@ void DOMWindow::postMessage(PassRefPtr<SerializedScriptValue> message, const Mes
         }
     }
 
-    OwnPtr<MessagePortChannelArray> channels = MessagePort::disentanglePorts(ports, ec);
+    std::unique_ptr<MessagePortChannelArray> channels = MessagePort::disentanglePorts(ports, ec);
     if (ec)
         return;
 
@@ -843,10 +846,10 @@ void DOMWindow::postMessage(PassRefPtr<SerializedScriptValue> message, const Mes
     // Capture stack trace only when inspector front-end is loaded as it may be time consuming.
     RefPtr<ScriptCallStack> stackTrace;
     if (InspectorInstrumentation::consoleAgentEnabled(sourceDocument))
-        stackTrace = createScriptCallStack(ScriptCallStack::maxCallStackSizeToCapture, true);
+        stackTrace = createScriptCallStack(JSMainThreadExecState::currentState(), ScriptCallStack::maxCallStackSizeToCapture, true);
 
     // Schedule the message.
-    PostMessageTimer* timer = new PostMessageTimer(this, message, sourceOrigin, &source, channels.release(), target.get(), stackTrace.release());
+    PostMessageTimer* timer = new PostMessageTimer(this, message, sourceOrigin, &source, std::move(channels), target.get(), stackTrace.release());
     timer->startOneShot(0);
 }
 
@@ -867,7 +870,7 @@ void DOMWindow::dispatchMessageEventWithOriginCheck(SecurityOrigin* intendedTarg
         if (!intendedTargetOrigin->isSameSchemeHostPort(document()->securityOrigin())) {
             String message = "Unable to post message to " + intendedTargetOrigin->toString() +
                              ". Recipient has origin " + document()->securityOrigin()->toString() + ".\n";
-            pageConsole()->addMessage(SecurityMessageSource, ErrorMessageLevel, message, stackTrace);
+            pageConsole()->addMessage(MessageSource::Security, MessageLevel::Error, message, stackTrace);
             return;
         }
     }
@@ -966,7 +969,7 @@ void DOMWindow::close(ScriptExecutionContext* context)
     bool allowScriptsToCloseWindows = m_frame->settings().allowScriptsToCloseWindows();
 
     if (!(page->openedByDOM() || page->backForward().count() <= 1 || allowScriptsToCloseWindows)) {
-        pageConsole()->addMessage(JSMessageSource, WarningMessageLevel, ASCIILiteral("Can't close the window since it was not opened by JavaScript"));
+        pageConsole()->addMessage(MessageSource::JS, MessageLevel::Warning, ASCIILiteral("Can't close the window since it was not opened by JavaScript"));
         return;
     }
 
@@ -1936,7 +1939,7 @@ void DOMWindow::printErrorMessage(const String& message)
     if (message.isEmpty())
         return;
 
-    pageConsole()->addMessage(JSMessageSource, ErrorMessageLevel, message);
+    pageConsole()->addMessage(MessageSource::JS, MessageLevel::Error, message);
 }
 
 String DOMWindow::crossDomainAccessErrorMessage(const DOMWindow& activeWindow)
