@@ -255,10 +255,17 @@ void FrameLoaderClientHaiku::dispatchDidCancelAuthenticationChallenge(DocumentLo
 }
 
 void FrameLoaderClientHaiku::dispatchDidReceiveResponse(DocumentLoader* /*loader*/,
-                                                        unsigned long /*identifier*/,
-                                                        const ResourceResponse& response)
+                                                        unsigned long identifier,
+                                                        const ResourceResponse& coreResponse)
 {
-    m_response = response;
+    m_response = coreResponse;
+
+    BMessage message(RESPONSE_RECEIVED);
+    message.AddInt32("status", coreResponse.httpStatusCode());
+    message.AddInt32("identifier", identifier);
+    message.AddString("url", coreResponse.url().string());
+    message.AddString("mimeType", coreResponse.mimeType());
+    dispatchMessage(message);
 }
 
 void FrameLoaderClientHaiku::dispatchDidReceiveContentLength(DocumentLoader* /*loader*/,

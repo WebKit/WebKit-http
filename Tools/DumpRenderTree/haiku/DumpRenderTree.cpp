@@ -534,6 +534,26 @@ void DumpRenderTreeApp::MessageReceived(BMessage* message)
         break;
     }
 
+    case RESPONSE_RECEIVED: {
+        if (!done && gTestRunner->dumpResourceLoadCallbacks()) {
+#if 0
+            CString responseDescription(descriptionSuitableForTestResult(response));
+            printf("%s - didReceiveResponse %s\n",
+                m_dumpAssignedUrls.contains(response->identifier) ? m_dumpAssignedUrls.get(response->identifier).data() : "<unknown>",
+                responseDescription.data());
+#endif
+        }
+
+        if (!done && gTestRunner->dumpResourceResponseMIMETypes()) {
+            BString mimeType = message->FindString("mimeType");
+            BString url = message->FindString("url");
+            printf("%s has MIME type %s\n",
+                WebCore::URL(WebCore::ParsedURLString, url).lastPathComponent().utf8().data(),
+                mimeType.String());
+        }
+        break;
+    }
+
     case LOAD_FINISHED: {
         // efl: DumpRenderTreeChrome::onFrameLoadFinished
         if (!done && gTestRunner->dumpProgressFinishedCallback())
