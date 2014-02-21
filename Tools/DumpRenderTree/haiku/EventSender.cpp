@@ -590,6 +590,8 @@ void DumpRenderTreeClient::injectMouseEvent(BWebPage* target, BMessage* event)
     delete event;
 }
 
+}
+
 static void feedQueuedMouseEvents()
 {
     WTF::Vector<BMessage*>::const_iterator it = delayedEventQueue().begin();
