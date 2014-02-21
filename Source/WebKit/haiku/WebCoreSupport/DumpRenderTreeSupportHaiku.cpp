@@ -27,15 +27,19 @@
 #include "FrameLoaderClientHaiku.h"
 
 #include "WebFrame.h"
+#include "WebFramePrivate.h"
 #include "WebPage.h"
 #include "WebView.h"
 
 #include <bindings/js/DOMWrapperWorld.h>
 #include <Bitmap.h>
 #include <DocumentLoader.h>
+#include <dom/Document.h>
+#include <DOMWindow.h>
 #include <Frame.h>
 #include <FrameLoader.h>
 #include <FrameView.h>
+#include <MainFrame.h>
 #include "NotImplemented.h"
 #include <Page.h>
 #include <PageGroup.h>
@@ -83,6 +87,13 @@ DumpRenderTreeClient::setShouldTrackVisitedLinks(bool)
     notImplemented();
 }
 
+
+unsigned DumpRenderTreeClient::pendingUnloadEventCount(const BWebFrame* frame)
+{
+    return frame->Frame()->document()->domWindow()->pendingUnloadEventListeners();
+}
+
+
 String DumpRenderTreeClient::responseMimeType(const BWebFrame* frame)
 {
     WebCore::DocumentLoader *documentLoader = frame->Frame()->loader().documentLoader();
@@ -98,14 +109,12 @@ String DumpRenderTreeClient::suitableDRTFrameName(const BWebFrame* frame)
 {
     const String frameName(frame->Name());
 
-    /*
-    if (frame == ewk_view_frame_main_get(ewk_frame_view_get(frame))) {
+    if (frame->Frame() == &frame->fData->page->mainFrame()) {
         if (!frameName.isEmpty())
             return String("main frame \"") + frameName + String("\"");
 
         return String("main frame");
     }
-    */
 
     if (!frameName.isEmpty())
         return String("frame \"") + frameName + String("\"");

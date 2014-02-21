@@ -582,11 +582,9 @@ void DumpRenderTreeApp::MessageReceived(BMessage* message)
         if (!done && gTestRunner->dumpFrameLoadCallbacks())
             printf("%s - didFinishDocumentLoadForFrame\n", frameName.utf8().data());
         else if (!done) {
-#if 0
             const unsigned pendingFrameUnloadEvents = DumpRenderTreeClient::pendingUnloadEventCount(frame);
             if (pendingFrameUnloadEvents)
                 printf("%s - has %u onunload handler(s)\n", frameName.utf8().data(), pendingFrameUnloadEvents);
-#endif
         }
 
         break;

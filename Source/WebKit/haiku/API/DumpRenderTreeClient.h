@@ -62,6 +62,7 @@ public:
     static void setDumpRenderTreeModeEnabled(bool);
     static bool dumpRenderTreeModeEnabled();
 
+    static unsigned pendingUnloadEventCount(const BWebFrame* frame);
     static String responseMimeType(const BWebFrame* frame);
     static String suitableDRTFrameName(const BWebFrame* frame);
     static void setValueForUser(JSContextRef, JSValueRef nodeObject, const String& value);
