@@ -70,6 +70,8 @@ static int gClickCount;
 
 static const float zoomMultiplierRatio = 1.2f;
 
+extern BWebView* webView;
+
 // Key event location code defined in DOM Level 3.
 enum KeyLocationCode {
     DomKeyLocationStandard,
@@ -86,19 +88,6 @@ enum ZoomEvent {
 enum EventQueueStrategy {
     FeedQueuedEvents,
     DoNotFeedQueuedEvents
-};
-
-struct KeyEventInfo {
-    KeyEventInfo(const CString& keyName, unsigned modifiers, const CString& keyString = CString())
-        : keyName(keyName)
-        , keyString(keyString)
-        , modifiers(modifiers)
-    {
-    }
-
-    const CString keyName;
-    const CString keyString;
-    unsigned modifiers;
 };
 
 static unsigned touchModifiers;
@@ -350,56 +339,93 @@ static JSValueRef continuousMouseScrollByCallback(JSContextRef context, JSObject
     return JSValueMakeUndefined(context);
 }
 
-static KeyEventInfo* keyPadNameFromJSValue(JSStringRef character, unsigned modifiers)
+static BMessage* keyPadNameFromJSValue(JSStringRef character, unsigned modifiers)
 {
+    BMessage* message = new BMessage(B_KEY_DOWN);
+    message->AddInt32("modifiers", modifiers);
     if (equals(character, "leftArrow"))
-        return new KeyEventInfo("KP_Left", modifiers);
-    if (equals(character, "rightArrow"))
-        return new KeyEventInfo("KP_Right", modifiers);
-    if (equals(character, "upArrow"))
-        return new KeyEventInfo("KP_Up", modifiers);
-    if (equals(character, "downArrow"))
-        return new KeyEventInfo("KP_Down", modifiers);
-    if (equals(character, "pageUp"))
-        return new KeyEventInfo("KP_Prior", modifiers);
-    if (equals(character, "pageDown"))
-        return new KeyEventInfo("KP_Next", modifiers);
-    if (equals(character, "home"))
-        return new KeyEventInfo("KP_Home", modifiers);
-    if (equals(character, "end"))
-        return new KeyEventInfo("KP_End", modifiers);
-    if (equals(character, "insert"))
-        return new KeyEventInfo("KP_Insert", modifiers);
-    if (equals(character, "delete"))
-        return new KeyEventInfo("KP_Delete", modifiers);
+        message->AddInt32("key", B_LEFT_ARROW);
+    else if (equals(character, "rightArrow"))
+        message->AddInt32("key", B_RIGHT_ARROW);
+    else if (equals(character, "upArrow"))
+        message->AddInt32("key", B_UP_ARROW);
+    else if (equals(character, "downArrow"))
+        message->AddInt32("key", B_DOWN_ARROW);
+    else if (equals(character, "pageUp"))
+        message->AddInt32("key", B_PAGE_UP);
+    else if (equals(character, "pageDown"))
+        message->AddInt32("key", B_PAGE_DOWN);
+    else if (equals(character, "home"))
+        message->AddInt32("key", B_HOME);
+    else if (equals(character, "end"))
+        message->AddInt32("key", B_END);
+    else if (equals(character, "insert"))
+        message->AddInt32("key", B_INSERT);
+    else if (equals(character, "delete"))
+        message->AddInt32("key", B_DELETE);
+    else
+        message->AddString("bytes", character->string());
 
-    return new KeyEventInfo(character->string().utf8(), modifiers, character->string().utf8());
+    return message;
 }
 
-static KeyEventInfo* keyNameFromJSValue(JSStringRef character, unsigned modifiers)
+static BMessage* keyNameFromJSValue(JSStringRef character, unsigned modifiers)
 {
+    BMessage* message = new BMessage(B_KEY_DOWN);
+
+    message->AddInt32("modifiers", modifiers);
+
     if (equals(character, "leftArrow"))
-        return new KeyEventInfo("Left", modifiers);
-    if (equals(character, "rightArrow"))
-        return new KeyEventInfo("Right", modifiers);
-    if (equals(character, "upArrow"))
-        return new KeyEventInfo("Up", modifiers);
-    if (equals(character, "downArrow"))
-        return new KeyEventInfo("Down", modifiers);
-    if (equals(character, "pageUp"))
-        return new KeyEventInfo("Prior", modifiers);
-    if (equals(character, "pageDown"))
-        return new KeyEventInfo("Next", modifiers);
-    if (equals(character, "home"))
-        return new KeyEventInfo("Home", modifiers);
-    if (equals(character, "end"))
-        return new KeyEventInfo("End", modifiers);
-    if (equals(character, "insert"))
-        return new KeyEventInfo("Insert", modifiers);
-    if (equals(character, "delete"))
-        return new KeyEventInfo("Delete", modifiers);
-    if (equals(character, "printScreen"))
-        return new KeyEventInfo("Print", modifiers);
+        message->AddInt32("key", B_LEFT_ARROW);
+    else if (equals(character, "rightArrow"))
+        message->AddInt32("key", B_RIGHT_ARROW);
+    else if (equals(character, "upArrow"))
+        message->AddInt32("key", B_UP_ARROW);
+    else if (equals(character, "downArrow"))
+        message->AddInt32("key", B_DOWN_ARROW);
+    else if (equals(character, "pageUp"))
+        message->AddInt32("key", B_PAGE_UP);
+    else if (equals(character, "pageDown"))
+        message->AddInt32("key", B_PAGE_DOWN);
+    else if (equals(character, "home"))
+        message->AddInt32("key", B_HOME);
+    else if (equals(character, "end"))
+        message->AddInt32("key", B_END);
+    else if (equals(character, "insert"))
+        message->AddInt32("key", B_INSERT);
+    else if (equals(character, "delete"))
+        message->AddInt32("key", B_DELETE);
+
+    // Function keys
+    else if (equals(character, "printScreen"))
+        message->AddInt32("key", B_PRINT_KEY);
+    else if (equals(character, "F1"))
+        message->AddInt32("key", B_F1_KEY);
+    else if (equals(character, "F2"))
+        message->AddInt32("key", B_F2_KEY);
+    else if (equals(character, "F3"))
+        message->AddInt32("key", B_F3_KEY);
+    else if (equals(character, "F4"))
+        message->AddInt32("key", B_F4_KEY);
+    else if (equals(character, "F5"))
+        message->AddInt32("key", B_F5_KEY);
+    else if (equals(character, "F6"))
+        message->AddInt32("key", B_F6_KEY);
+    else if (equals(character, "F7"))
+        message->AddInt32("key", B_F7_KEY);
+    else if (equals(character, "F8"))
+        message->AddInt32("key", B_F8_KEY);
+    else if (equals(character, "F9"))
+        message->AddInt32("key", B_F9_KEY);
+    else if (equals(character, "F10"))
+        message->AddInt32("key", B_F10_KEY);
+    else if (equals(character, "F11"))
+        message->AddInt32("key", B_F11_KEY);
+    else if (equals(character, "F12"))
+        message->AddInt32("key", B_F12_KEY);
+
+#if 0
+    // Modifiers
     if (equals(character, "menu"))
         return new KeyEventInfo("Menu", modifiers);
     if (equals(character, "leftControl"))
@@ -414,58 +440,43 @@ static KeyEventInfo* keyNameFromJSValue(JSStringRef character, unsigned modifier
         return new KeyEventInfo("Alt_L", modifiers);
     if (equals(character, "rightAlt"))
         return new KeyEventInfo("Alt_R", modifiers);
-    if (equals(character, "F1"))
-        return new KeyEventInfo("F1", modifiers);
-    if (equals(character, "F2"))
-        return new KeyEventInfo("F2", modifiers);
-    if (equals(character, "F3"))
-        return new KeyEventInfo("F3", modifiers);
-    if (equals(character, "F4"))
-        return new KeyEventInfo("F4", modifiers);
-    if (equals(character, "F5"))
-        return new KeyEventInfo("F5", modifiers);
-    if (equals(character, "F6"))
-        return new KeyEventInfo("F6", modifiers);
-    if (equals(character, "F7"))
-        return new KeyEventInfo("F7", modifiers);
-    if (equals(character, "F8"))
-        return new KeyEventInfo("F8", modifiers);
-    if (equals(character, "F9"))
-        return new KeyEventInfo("F9", modifiers);
-    if (equals(character, "F10"))
-        return new KeyEventInfo("F10", modifiers);
-    if (equals(character, "F11"))
-        return new KeyEventInfo("F11", modifiers);
-    if (equals(character, "F12"))
-        return new KeyEventInfo("F12", modifiers);
+#endif
 
-    int charCode = JSStringGetCharactersPtr(character)[0];
-    if (charCode == '\n' || charCode == '\r')
-        return new KeyEventInfo("Return", modifiers, "\r");
-    if (charCode == '\t')
-        return new KeyEventInfo("Tab", modifiers, "\t");
-    if (charCode == '\x8')
-        return new KeyEventInfo("BackSpace", modifiers, "\x8");
-    if (charCode == ' ')
-        return new KeyEventInfo("space", modifiers, " ");
-    if (charCode == '\x1B')
-        return new KeyEventInfo("Escape", modifiers, "\x1B");
+    else {
+        BString bytes(character->string());
+        message->AddString("bytes", bytes);
+        if ((character->length() == 1) && (bytes[0] >= 'A' && bytes[0] <= 'Z'))
+            modifiers |= B_SHIFT_KEY;
+    }
 
-    if ((character->length() == 1) && (charCode >= 'A' && charCode <= 'Z'))
-        modifiers |= B_SHIFT_KEY;
-
-    return new KeyEventInfo(character->string().utf8(), modifiers, character->string().utf8());
+    return message;
 }
 
-static KeyEventInfo* createKeyEventInfo(JSContextRef context, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception)
+static BMessage* createKeyEventInfo(JSContextRef context, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception)
 {
-    notImplemented();
-    return 0;
+    if (argumentCount < 1)
+        return 0;
+
+    // handle location argument.
+    int location = DomKeyLocationStandard;
+    if (argumentCount > 2)
+        location = static_cast<int>(JSValueToNumber(context, arguments[2], exception));
+
+    JSRetainPtr<JSStringRef> character(Adopt, JSValueToStringCopy(context, arguments[0], exception));
+    if (exception && *exception)
+        return 0;
+
+    unsigned modifiers = 0;
+    if (argumentCount >= 2)
+        modifiers = modifiersFromJSValue(context, arguments[1]);
+
+    return (location == DomKeyLocationNumpad) ? keyPadNameFromJSValue(character.get(), modifiers) : keyNameFromJSValue(character.get(), modifiers);
 }
 
 static JSValueRef keyDownCallback(JSContextRef context, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception)
 {
-    notImplemented();
+    BMessage* event = createKeyEventInfo(context, argumentCount, arguments, exception);
+    WebCore::DumpRenderTreeClient::injectKeyEvent(webView->WebPage(), event);
     return JSValueMakeUndefined(context);
 }
 
@@ -521,11 +532,11 @@ static JSStaticFunction staticFunctions[] = {
     { "mouseMoveTo", mouseMoveToCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
     { "mouseScrollBy", mouseScrollByCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
     { "leapForward", leapForwardCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
+    { "keyDown", keyDownCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
 #if 0
     { "contextClick", contextClickCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
     { "continuousMouseScrollBy", continuousMouseScrollByCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
     { "beginDragWithFiles", beginDragWithFilesCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
-    { "keyDown", keyDownCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
     { "scheduleAsynchronousClick", scheduleAsynchronousClickCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
     { "scheduleAsynchronousKeyDown", scheduleAsynchronousKeyDownCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
     { "scalePageBy", scalePageByCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
@@ -563,8 +574,6 @@ JSObjectRef makeEventSender(JSContextRef context)
     return JSObjectMake(context, getClass(context), 0);
 }
 
-extern BWebView* webView;
-
 static void feedOrQueueMouseEvent(BMessage* eventInfo, EventQueueStrategy strategy)
 {
     if (!delayedEventQueue().isEmpty()) {
@@ -590,6 +599,14 @@ void DumpRenderTreeClient::injectMouseEvent(BWebPage* target, BMessage* event)
     delete event;
 }
 
+void DumpRenderTreeClient::injectKeyEvent(BWebPage* target, BMessage* event)
+{
+    // We are short-circuiting the normal message delivery path, because tests
+    // expect this to be synchronous (the event must be processed when the
+    // method returns)
+    target->handleKeyEvent(event);
+    delete event;
+}
 }
 
 static void feedQueuedMouseEvents()

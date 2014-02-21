@@ -90,6 +90,7 @@ public:
     static void clearUserScripts(const BWebView* view);
 
     static void injectMouseEvent(BWebPage* target, BMessage* event);
+    static void injectKeyEvent(BWebPage* target, BMessage* event);
 private:
     static bool s_drtRun;
 };
