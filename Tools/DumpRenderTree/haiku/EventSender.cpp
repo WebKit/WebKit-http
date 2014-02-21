@@ -40,6 +40,7 @@
 #include "NotImplemented.h"
 #include "PlatformEvent.h"
 
+#include <WebView.h>
 #include <DumpRenderTreeClient.h>
 #include <JavaScriptCore/JSObjectRef.h>
 #include <JavaScriptCore/JSRetainPtr.h>
@@ -587,8 +588,6 @@ void DumpRenderTreeClient::injectMouseEvent(BWebPage* target, BMessage* event)
     // method returns)
     target->handleMouseEvent(event);
     delete event;
-}
-
 }
 
 static void feedQueuedMouseEvents()
