@@ -121,6 +121,45 @@ static String dumpFramesAsText(BWebFrame* frame)
     return result;
 }
 
+static void dumpFrameScrollPosition(BWebFrame* frame)
+{
+    BPoint pos = frame->ScrollPosition();
+    if (abs(pos.x) > 0 || abs(pos.y) > 0) {
+        StringBuilder result;
+
+#if 0
+        Evas_Object* parent = evas_object_smart_parent_get(frame);
+
+        // smart parent of main frame is view object.
+        if (parent != browser->mainView()) {
+            result.append("frame '");
+            result.append(ewk_frame_name_get(frame));
+            result.append("' ");
+        }
+#endif
+
+        result.append("scrolled to ");
+        result.append(WTF::String::number(pos.x));
+        result.append(",");
+        result.append(WTF::String::number(pos.y));
+        result.append("\n");
+
+        printf("%s", result.toString().utf8().data());
+    }
+
+    if (gTestRunner->dumpChildFrameScrollPositions()) {
+#if 0
+        Eina_List* children = DumpRenderTreeSupportEfl::frameChildren(frame);
+        void* iterator;
+
+        EINA_LIST_FREE(children, iterator) {
+            Evas_Object* currentFrame = static_cast<Evas_Object*>(iterator);
+            dumpFrameScrollPosition(currentFrame);
+        }
+#endif
+    }
+}
+
 static void adjustOutputTypeByMimeType(BWebFrame* frame)
 {
     const String responseMimeType(WebCore::DumpRenderTreeClient::responseMimeType(frame));
@@ -141,6 +180,11 @@ static void dumpFrameContentsAsText(BWebFrame* frame)
     printf("%s", result.utf8().data());
 }
 
+static bool shouldDumpFrameScrollPosition()
+{
+    return !gTestRunner->dumpAsText() && !gTestRunner->dumpDOMAsWebArchive() && !gTestRunner->dumpSourceAsWebArchive();
+}
+
 static bool shouldDumpPixelsAndCompareWithExpected()
 {
     return dumpPixelsForCurrentTest && gTestRunner->generatePixelResults() && !gTestRunner->dumpDOMAsWebArchive() && !gTestRunner->dumpSourceAsWebArchive();
@@ -153,6 +197,9 @@ void dump()
     if (dumpTree) {
         adjustOutputTypeByMimeType(frame);
         dumpFrameContentsAsText(frame);
+
+        if (shouldDumpFrameScrollPosition())
+            dumpFrameScrollPosition(frame);
 
         if (gTestRunner->dumpBackForwardList()) {
             // FIXME:

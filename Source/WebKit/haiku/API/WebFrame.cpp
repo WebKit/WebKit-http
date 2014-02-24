@@ -249,6 +249,11 @@ void BWebFrame::SetAllowsScrolling(bool flag)
         fData->frame->view()->setCanHaveScrollbars(flag);
 }
 
+BPoint BWebFrame::ScrollPosition()
+{
+    return fData->frame->view()->scrollPosition();
+}
+
 /*!
     Returns the frame's content as HTML, enclosed in HTML and BODY tags.
 */

@@ -29,6 +29,7 @@
 #define _WEB_FRAME_H_
 
 
+#include <Point.h>
 #include <String.h>
 
 #include "FindOptions.h"
@@ -75,6 +76,7 @@ public:
 
 			bool				AllowsScrolling() const;
 			void				SetAllowsScrolling(bool enable);
+            BPoint              ScrollPosition();
 
 			BString				FrameSource() const;
 			void				SetFrameSource(const BString& source);
