@@ -80,11 +80,6 @@ enum KeyLocationCode {
     DomKeyLocationNumpad
 };
 
-enum ZoomEvent {
-    ZoomIn,
-    ZoomOut
-};
-
 enum EventQueueStrategy {
     FeedQueuedEvents,
     DoNotFeedQueuedEvents
@@ -486,37 +481,27 @@ static JSValueRef scalePageByCallback(JSContextRef context, JSObjectRef function
     return JSValueMakeUndefined(context);
 }
 
-static void textZoom(ZoomEvent zoomEvent)
-{
-    notImplemented();
-}
-
-static void pageZoom(ZoomEvent zoomEvent)
-{
-    notImplemented();
-}
-
 static JSValueRef textZoomInCallback(JSContextRef context, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception)
 {
-    textZoom(ZoomIn);
+    webView->IncreaseZoomFactor(true);
     return JSValueMakeUndefined(context);
 }
 
 static JSValueRef textZoomOutCallback(JSContextRef context, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception)
 {
-    textZoom(ZoomOut);
+    webView->DecreaseZoomFactor(true);
     return JSValueMakeUndefined(context);
 }
 
 static JSValueRef zoomPageInCallback(JSContextRef context, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception)
 {
-    pageZoom(ZoomIn);
+    webView->IncreaseZoomFactor(false);
     return JSValueMakeUndefined(context);
 }
 
 static JSValueRef zoomPageOutCallback(JSContextRef context, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception)
 {
-    pageZoom(ZoomOut);
+    webView->DecreaseZoomFactor(false);
     return JSValueMakeUndefined(context);
 }
 
@@ -540,11 +525,11 @@ static JSStaticFunction staticFunctions[] = {
     { "scheduleAsynchronousClick", scheduleAsynchronousClickCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
     { "scheduleAsynchronousKeyDown", scheduleAsynchronousKeyDownCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
     { "scalePageBy", scalePageByCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
+#endif
     { "textZoomIn", textZoomInCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
     { "textZoomOut", textZoomOutCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
     { "zoomPageIn", zoomPageInCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
     { "zoomPageOut", zoomPageOutCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
-#endif
     { 0, 0, 0 }
 };
 
