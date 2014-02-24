@@ -49,7 +49,8 @@ enum {
     CLOSE_WINDOW_REQUESTED =                            317,
     MAIN_DOCUMENT_ERROR =                               318,
     LOAD_STARTED =                                      319,
-    RESPONSE_RECEIVED =                                 320
+    RESPONSE_RECEIVED =                                 320,
+    ICON_CHANGED =                                      321
 };
 
 enum {

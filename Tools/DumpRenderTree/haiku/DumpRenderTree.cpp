@@ -601,6 +601,18 @@ void DumpRenderTreeApp::MessageReceived(BMessage* message)
         break;
     }
 
+    case ICON_CHANGED: {
+        // efl: DumpRenderTreeChrome::onFrameIconChanged
+        BWebFrame* frame = NULL;
+        message->FindPointer("frame", (void**)&frame);
+
+        if (!done && gTestRunner->dumpIconChanges()) {
+            const String frameName(DumpRenderTreeClient::suitableDRTFrameName(frame));
+            printf("%s - didChangeIcons\n", frameName.utf8().data());
+        }
+        break;
+    }
+
     case LOAD_FINISHED: {
         // efl: DumpRenderTreeChrome::onFrameLoadFinished
         if (!done && gTestRunner->dumpProgressFinishedCallback())

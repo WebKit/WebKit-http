@@ -376,13 +376,16 @@ void FrameLoaderClientHaiku::dispatchDidReceiveTitle(const StringWithDirection& 
     dispatchMessage(message);
 }
 
-void FrameLoaderClientHaiku::dispatchDidChangeIcons(WebCore::IconType)
+void FrameLoaderClientHaiku::dispatchDidChangeIcons(WebCore::IconType iconType)
 {
     if (!m_webFrame)
         return;
 
-    // FIXME: In order to get notified of icon URLS' changes, add a notification.
-    // emit iconsChanged();
+    // Other icon types are apple-specific
+    ASSERT_UNUSED(iconType, iconType == WebCore::Favicon);
+
+    BMessage message(ICON_CHANGED);
+    dispatchMessage(message);
 }
 
 void FrameLoaderClientHaiku::dispatchDidCommitLoad()
