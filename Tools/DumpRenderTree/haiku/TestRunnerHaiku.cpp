@@ -353,7 +353,7 @@ void TestRunner::setPluginsEnabled(bool flag)
 
 void TestRunner::execCommand(JSStringRef name, JSStringRef value)
 {
-    notImplemented();
+    WebCore::DumpRenderTreeClient::executeCoreCommandByName(webView, name->string(), value->string());
 }
 
 bool TestRunner::findString(JSContextRef context, JSStringRef target, JSObjectRef optionsArray)

@@ -82,13 +82,16 @@ public:
     static void setMockScrollbarsEnabled(bool);
 
     static void deliverAllMutationsIfNecessary();
-    static void setDomainRelaxationForbiddenForURLScheme(bool forbidden, const String& scheme);
+    static void setDomainRelaxationForbiddenForURLScheme(bool forbidden,
+        const String& scheme);
     static void setSerializeHTTPLoads(bool);
     static void setShouldTrackVisitedLinks(bool);
     
     static void addUserScript(const BWebView* view, const String& sourceCode,
-                    bool runAtStart, bool allFrames);
+        bool runAtStart, bool allFrames);
     static void clearUserScripts(const BWebView* view);
+    static void executeCoreCommandByName(const BWebView* view,
+        const BString name, const BString value);
 
     static void injectMouseEvent(BWebPage* target, BMessage* event);
     static void injectKeyEvent(BWebPage* target, BMessage* event);

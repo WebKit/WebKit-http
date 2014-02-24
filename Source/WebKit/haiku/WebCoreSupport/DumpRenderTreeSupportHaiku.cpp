@@ -36,6 +36,8 @@
 #include <DocumentLoader.h>
 #include <dom/Document.h>
 #include <DOMWindow.h>
+#include <Editor.h>
+#include <FocusController.h>
 #include <Frame.h>
 #include <FrameLoader.h>
 #include <FrameView.h>
@@ -78,6 +80,13 @@ void DumpRenderTreeClient::clearUserScripts(const BWebView* view)
 {
     view->WebPage()->page()->group().removeUserScriptsFromWorld(
         WebCore::mainThreadNormalWorld());
+}
+
+
+void DumpRenderTreeClient::executeCoreCommandByName(const BWebView* view,
+        const BString name, const BString value)
+{
+    view->WebPage()->page()->focusController().focusedOrMainFrame().editor().command(name).execute(value);
 }
 
 
