@@ -215,7 +215,7 @@ void BWebWindow::MessageReceived(BMessage* message)
         int32 lineNumber = message->FindInt32("line");
         int32 columnNumber = message->FindInt32("column");
         BString text = message->FindString("string");
-        printf("MESSAGE %s:%i:%i: %s\n", source.String(), lineNumber,
+        printf("MESSAGE %s:%li:%li: %s\n", source.String(), lineNumber,
             columnNumber, text.String());
 
         break;
@@ -329,16 +329,16 @@ BWebView* BWebWindow::CurrentWebView() const
 
 // #pragma mark - Notification API
 
-void BWebWindow::NavigationRequested(const BString& url, BWebView* view)
+void BWebWindow::NavigationRequested(const BString& /*url*/, BWebView* /*view*/)
 {
 }
 
-void BWebWindow::NewWindowRequested(const BString& url, bool primaryAction)
+void BWebWindow::NewWindowRequested(const BString& /*url*/, bool /*primaryAction*/)
 {
 }
 
 void BWebWindow::NewPageCreated(BWebView* view, BRect windowFrame,
-    bool modalDialog, bool resizable, bool activate)
+    bool modalDialog, bool resizable, bool /*activate*/)
 {
 	if (!windowFrame.IsValid())
 		windowFrame = Frame().OffsetByCopy(10, 10);
@@ -366,33 +366,33 @@ void BWebWindow::NewPageCreated(BWebView* view, BRect windowFrame,
     window->Show();
 }
 
-void BWebWindow::CloseWindowRequested(BWebView* view)
+void BWebWindow::CloseWindowRequested(BWebView* /*view*/)
 {
     PostMessage(B_QUIT_REQUESTED);
 }
 
-void BWebWindow::LoadNegotiating(const BString& url, BWebView* view)
+void BWebWindow::LoadNegotiating(const BString& /*url*/, BWebView* /*view*/)
 {
 }
 
-void BWebWindow::LoadCommitted(const BString& url, BWebView* view)
+void BWebWindow::LoadCommitted(const BString& /*url*/, BWebView* /*view*/)
 {
 }
 
-void BWebWindow::LoadProgress(float progress, BWebView* view)
+void BWebWindow::LoadProgress(float /*progress*/, BWebView* /*view*/)
 {
 }
 
-void BWebWindow::LoadFailed(const BString& url, BWebView* view)
+void BWebWindow::LoadFailed(const BString& /*url*/, BWebView* /*view*/)
 {
 }
 
-void BWebWindow::LoadFinished(const BString& url, BWebView* view)
+void BWebWindow::LoadFinished(const BString& /*url*/, BWebView* /*view*/)
 {
 }
 
 void BWebWindow::MainDocumentError(const BString& failingURL,
-	const BString& localizedDescription, BWebView* view)
+	const BString& localizedDescription, BWebView* /*view*/)
 {
     BString errorString("Error loading ");
     errorString << failingURL;
@@ -403,33 +403,33 @@ void BWebWindow::MainDocumentError(const BString& failingURL,
     alert->Go(NULL);
 }
 
-void BWebWindow::TitleChanged(const BString& title, BWebView* view)
+void BWebWindow::TitleChanged(const BString& title, BWebView* /*view*/)
 {
     SetTitle(title.String());
 }
 
-void BWebWindow::IconReceived(const BBitmap* icon, BWebView* view)
+void BWebWindow::IconReceived(const BBitmap* /*icon*/, BWebView* /*view*/)
 {
 }
 
-void BWebWindow::ResizeRequested(float width, float height, BWebView* view)
+void BWebWindow::ResizeRequested(float width, float height, BWebView* /*view*/)
 {
     ResizeTo(width, height);
 }
 
-void BWebWindow::SetToolBarsVisible(bool flag, BWebView* view)
+void BWebWindow::SetToolBarsVisible(bool /*flag*/, BWebView* /*view*/)
 {
 }
 
-void BWebWindow::SetStatusBarVisible(bool flag, BWebView* view)
+void BWebWindow::SetStatusBarVisible(bool /*flag*/, BWebView* /*view*/)
 {
 }
 
-void BWebWindow::SetMenuBarVisible(bool flag, BWebView* view)
+void BWebWindow::SetMenuBarVisible(bool /*flag*/, BWebView* /*view*/)
 {
 }
 
-void BWebWindow::SetResizable(bool flag, BWebView* view)
+void BWebWindow::SetResizable(bool flag, BWebView* /*view*/)
 {
     if (flag)
         SetFlags(Flags() & ~B_NOT_RESIZABLE);
@@ -437,22 +437,23 @@ void BWebWindow::SetResizable(bool flag, BWebView* view)
         SetFlags(Flags() | B_NOT_RESIZABLE);
 }
 
-void BWebWindow::StatusChanged(const BString& statusText, BWebView* view)
+void BWebWindow::StatusChanged(const BString& /*statusText*/, BWebView* /*view*/)
 {
 }
 
-void BWebWindow::NavigationCapabilitiesChanged(bool canGoBackward,
-    bool canGoForward, bool canStop, BWebView* view)
+void BWebWindow::NavigationCapabilitiesChanged(bool /*canGoBackward*/,
+    bool /*canGoForward*/, bool /*canStop*/, BWebView* /*view*/)
 {
 }
 
-void BWebWindow::UpdateGlobalHistory(const BString& url)
+void BWebWindow::UpdateGlobalHistory(const BString& /*url*/)
 {
 }
 
-bool BWebWindow::AuthenticationChallenge(BString message, BString& inOutUser,
-	BString& inOutPassword, bool& inOutRememberCredentials, uint32 failureCount,
-	BWebView* view)
+bool BWebWindow::AuthenticationChallenge(BString /*message*/,
+    BString& /*inOutUser*/,	BString& /*inOutPassword*/,
+    bool& /*inOutRememberCredentials*/, uint32 /*failureCount*/,
+    BWebView* /*view*/)
 {
 	return false;
 }
