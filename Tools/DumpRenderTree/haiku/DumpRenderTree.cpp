@@ -36,6 +36,7 @@
 #include "AccessibilityController.h"
 #include <wtf/text/AtomicString.h> // FIXME EventSender not standalone ?
 #include "DumpRenderTreeClient.h"
+#include "EditingCallbacks.h"
 #include "EventSender.h"
 //#include "FontManagement.h"
 #include "Frame.h"
@@ -720,7 +721,8 @@ void DumpRenderTreeApp::MessageReceived(BMessage* message)
     }
 
     default:
-        BApplication::MessageReceived(message);
+        if(!handleEditingCallback(message))
+           BApplication::MessageReceived(message);
         break;
     }
 }

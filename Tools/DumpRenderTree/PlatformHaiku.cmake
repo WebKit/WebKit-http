@@ -1,5 +1,6 @@
 list(APPEND DumpRenderTree_SOURCES
     haiku/DumpRenderTree.cpp
+    haiku/EditingCallbacks.cpp
     haiku/EventSender.cpp
     haiku/GCControllerHaiku.cpp
     haiku/JSStringUtils.cpp
@@ -15,7 +16,7 @@ list(APPEND DumpRenderTree_LIBRARIES
 )
 
 list(APPEND DumpRenderTree_INCLUDE_DIRECTORIES
-    "${WEBKIT_DIR}/haiku/API"
+    ${WEBKIT_DIR}/haiku/API
     ${WEBKIT_DIR}/haiku
     ${WEBKIT_DIR}/haiku/WebCoreSupport
     ${WEBCORE_DIR}/platform/graphics/haiku

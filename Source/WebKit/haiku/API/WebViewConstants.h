@@ -75,4 +75,18 @@ enum {
     SHOW_JS_CONFIRM =                                   410,
 };
 
+enum {
+    EDITOR_DELETE_RANGE =                               500,
+    EDITOR_BEGIN_EDITING =                              501,
+    EDITOR_EDITING_BEGAN =                              502,
+    EDITOR_EDITING_ENDED =                              503,
+    EDITOR_END_EDITING =                                504,
+    EDITOR_INSERT_NODE =                                505,
+    EDITOR_INSERT_TEXT =                                506,
+    EDITOR_CHANGE_SELECTED_RANGE =                      507,
+    EDITOR_APPLY_STYLE =                                508,
+    EDITOR_SELECTION_CHANGED =                          509,
+    EDITOR_CONTENTS_CHANGED =                           510
+};
+
 #endif // WebViewConstants_h

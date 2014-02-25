@@ -40,6 +40,7 @@
 #include <wtf/Forward.h>
 #include <String.h>
 
+class BMessage;
 class BWebPage;
 
 namespace WebCore {
@@ -130,6 +131,8 @@ private:
     void clearPendingIMData();
     void imContextCommitted(const char* str, EditorClient* client);
     void imContextPreeditChanged(EditorClient* client);
+
+    void dispatchMessage(BMessage& message);
 
     BWebPage* m_page;
 

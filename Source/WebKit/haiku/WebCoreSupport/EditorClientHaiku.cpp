@@ -45,6 +45,7 @@
 #include "PlatformKeyboardEvent.h"
 #include "Settings.h"
 #include "WebFrame.h"
+#include "WebViewConstants.h"
 #include "WebPage.h"
 #include "WindowsKeyboardCodes.h"
 
@@ -61,9 +62,11 @@ void EditorClientHaiku::pageDestroyed()
     delete this;
 }
 
-bool EditorClientHaiku::shouldDeleteRange(Range*)
+bool EditorClientHaiku::shouldDeleteRange(Range* range)
 {
-    notImplemented();
+    BMessage message(EDITOR_DELETE_RANGE);
+    message.AddPointer("range", range);
+    dispatchMessage(message);
     return true;
 }
 
@@ -107,41 +110,61 @@ int EditorClientHaiku::spellCheckerDocumentTag()
     return 0;
 }
 
-bool EditorClientHaiku::shouldBeginEditing(WebCore::Range*)
+bool EditorClientHaiku::shouldBeginEditing(WebCore::Range* range)
 {
-    notImplemented();
+    BMessage message(EDITOR_BEGIN_EDITING);
+    message.AddPointer("range", range);
+    dispatchMessage(message);
     return true;
 }
 
-bool EditorClientHaiku::shouldEndEditing(WebCore::Range*)
+bool EditorClientHaiku::shouldEndEditing(WebCore::Range* range)
 {
-    notImplemented();
+    BMessage message(EDITOR_END_EDITING);
+    message.AddPointer("range", range);
+    dispatchMessage(message);
     return true;
 }
 
-bool EditorClientHaiku::shouldInsertNode(Node*, Range*, EditorInsertAction)
+bool EditorClientHaiku::shouldInsertNode(Node* node, Range* range, EditorInsertAction action)
 {
-    notImplemented();
+    BMessage message(EDITOR_INSERT_NODE);
+    message.AddPointer("node", node);
+    message.AddPointer("range", range);
+    message.AddInt32("action", action);
+    dispatchMessage(message);
     return true;
 }
 
-bool EditorClientHaiku::shouldInsertText(const String&, Range*, EditorInsertAction)
+bool EditorClientHaiku::shouldInsertText(const String& text, Range* range, EditorInsertAction action)
 {
-    notImplemented();
+    BMessage message(EDITOR_INSERT_TEXT);
+    message.AddString("text", text);
+    message.AddPointer("range", range);
+    message.AddInt32("action", action);
+    dispatchMessage(message);
     return true;
 }
 
-bool EditorClientHaiku::shouldChangeSelectedRange(Range* /*fromRange*/, Range* /*toRange*/,
-                                                  EAffinity, bool /*stillSelecting*/)
+bool EditorClientHaiku::shouldChangeSelectedRange(Range* fromRange, Range* toRange,
+    EAffinity affinity, bool stillSelecting)
 {
-    notImplemented();
+    BMessage message(EDITOR_CHANGE_SELECTED_RANGE);
+    message.AddPointer("from", fromRange);
+    message.AddPointer("to", toRange);
+    message.AddInt32("affinity", affinity);
+    message.AddInt32("stillEditing", stillSelecting);
+    dispatchMessage(message);
     return true;
 }
 
-bool EditorClientHaiku::shouldApplyStyle(WebCore::StyleProperties*,
-                                      WebCore::Range*)
+bool EditorClientHaiku::shouldApplyStyle(WebCore::StyleProperties* style,
+                                      WebCore::Range* range)
 {
-    notImplemented();
+    BMessage message(EDITOR_APPLY_STYLE);
+    message.AddPointer("style", style);
+    message.AddPointer("range", range);
+    dispatchMessage(message);
     return true;
 }
 
@@ -153,26 +176,32 @@ bool EditorClientHaiku::shouldMoveRangeAfterDelete(Range*, Range*)
 
 void EditorClientHaiku::didBeginEditing()
 {
-    notImplemented();
+    BMessage message(EDITOR_EDITING_BEGAN);
+    dispatchMessage(message);
 }
 
 void EditorClientHaiku::respondToChangedContents()
 {
-    notImplemented();
+    BMessage message(EDITOR_CONTENTS_CHANGED);
+    dispatchMessage(message);
 }
 
 void EditorClientHaiku::respondToChangedSelection(Frame* frame)
 {
-    if (!frame->editor().ignoreCompositionSelectionChange()) {
-        // FIXME:
-        // notify "micro focus changed" event
-    }
+    if (!frame)
+        return;
 
-    notImplemented();
+    if (frame->editor().ignoreCompositionSelectionChange())
+        return;
+
+    BMessage message(EDITOR_SELECTION_CHANGED);
+    dispatchMessage(message);
 }
 
 void EditorClientHaiku::didEndEditing()
 {
+    BMessage message(EDITOR_EDITING_ENDED);
+    dispatchMessage(message);
 }
 
 void EditorClientHaiku::didWriteSelectionToPasteboard()
@@ -756,6 +785,13 @@ void EditorClientHaiku::imContextPreeditChanged(EditorClient* /*client*/)
     setPendingPreedit(newPreedit);
 }
 
+
+void EditorClientHaiku::dispatchMessage(BMessage& message)
+{
+    m_page->fListener.Target(NULL)->MessageReceived(&message);
+        // We need the message to be delivered synchronously, otherwise the
+        // pointers passed through it would not be valid anymore.
+}
 
 } // namespace WebCore
 
