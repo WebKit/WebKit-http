@@ -50,10 +50,10 @@ public:
 
     void waitForCompletion();
 
-    void didReceiveResponse(ResourceHandle*, const ResourceResponse&);
-    void didReceiveData(ResourceHandle*, const char*, int, int lengthReceived);
-    void didFinishLoading(ResourceHandle*, double /*finishTime*/);
-    void didFail(ResourceHandle*, const ResourceError&);
+    void didReceiveResponse(ResourceHandle*, const ResourceResponse&) override;
+    void didReceiveData(ResourceHandle*, const char*, unsigned, int encodedDataLength) override;
+    void didFinishLoading(ResourceHandle*, double /*finishTime*/) override;
+    void didFail(ResourceHandle*, const ResourceError&) override;
 
     ResourceResponse resourceResponse() const { return m_response; }
     ResourceError resourceError() const { return m_error; }
@@ -77,7 +77,7 @@ void WebCoreSynchronousLoader::didReceiveResponse(ResourceHandle*, const Resourc
     m_response = response;
 }
 
-void WebCoreSynchronousLoader::didReceiveData(ResourceHandle*, const char* data, int length, int)
+void WebCoreSynchronousLoader::didReceiveData(ResourceHandle*, const char* data, unsigned length, int l2)
 {
     m_data.append(data, length);
 }
