@@ -602,6 +602,32 @@ void DumpRenderTreeApp::MessageReceived(BMessage* message)
         break;
     }
 
+    case TITLE_CHANGED: {
+        // efl: DumpRenderTreeChrome::onFrameTitleChanged
+        BWebFrame* frame = NULL;
+        message->FindPointer("frame", (void**)&frame);
+        BString title = message->FindString("title");
+
+        if (!done && gTestRunner->dumpFrameLoadCallbacks()) {
+            const String frameName(DumpRenderTreeClient::suitableDRTFrameName(
+                frame));
+            printf("%s - didReceiveTitle: %s\n", frameName.utf8().data(),
+                title.String());
+        }
+
+        if (!done && gTestRunner->dumpTitleChanges()) {
+            printf("TITLE CHANGED: '%s'\n", title.String());
+        }
+
+        if (!done && gTestRunner->dumpHistoryDelegateCallbacks()) {
+            printf("WebView updated the title for history URL \"%s\" to \"%s\".\n",
+                frame->URL().String(), title.String());
+        }
+
+        gTestRunner->setTitleTextDirection(message->FindBool("ltr") ? "ltr" : "rtl");
+        break;
+    }
+
     case ICON_CHANGED: {
         // efl: DumpRenderTreeChrome::onFrameIconChanged
         BWebFrame* frame = NULL;
