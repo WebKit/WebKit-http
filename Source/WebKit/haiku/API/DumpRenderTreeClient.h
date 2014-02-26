@@ -67,7 +67,6 @@ public:
     static String suitableDRTFrameName(const BWebFrame* frame);
     static void setValueForUser(JSContextRef, JSValueRef nodeObject, const String& value);
     static BBitmap* getOffscreen(BWebView* view);
-    static BSize    getOffscreenSize(BWebView* view);
     static BList    frameChildren(BWebFrame* frame);
 
     static void setSeamlessIFramesEnabled(bool);

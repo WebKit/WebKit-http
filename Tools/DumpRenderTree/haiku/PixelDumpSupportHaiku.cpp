@@ -46,7 +46,12 @@ extern BWebView* webView;
 
 PassRefPtr<BitmapContext> createBitmapContextFromWebView(bool, bool, bool, bool drawSelectionRect)
 {
-    BSize size = WebCore::DumpRenderTreeClient::getOffscreenSize(webView);
+    BSize size;
+    webView->LockLooper();
+    BRect r = webView->Bounds();
+    webView->UnlockLooper();
+    size.width = r.Width() + 1;
+    size.height = r.Height() + 1;
     BBitmap* bitmap = WebCore::DumpRenderTreeClient::getOffscreen(webView);
     return BitmapContext::createByAdoptingData(size, bitmap);
 }
@@ -59,7 +64,7 @@ void computeMD5HashStringForBitmapContext(BitmapContext* context, char hashStrin
         return;
 
     BRect bounds = context->m_bitmap->Bounds();
-    int pixelsWide = bounds.Width() + 1;
+    int pixelsWide = bounds.Width();
     int pixelsHigh = bounds.Height();
     int bytesPerRow = context->m_bitmap->BytesPerRow();
     unsigned char* pixelData = (unsigned char*)context->m_bitmap->Bits();

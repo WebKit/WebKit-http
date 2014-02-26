@@ -139,14 +139,6 @@ BBitmap* DumpRenderTreeClient::getOffscreen(BWebView* view)
     return view->OffscreenBitmap();
 }
 
-BSize DumpRenderTreeClient::getOffscreenSize(BWebView* view)
-{
-    view->OffscreenView()->LockLooper();
-    BRect bounds = view->OffscreenView()->Bounds();
-    view->OffscreenView()->UnlockLooper();
-    return BSize(bounds.Width(), bounds.Height());
-}
-
 BList DumpRenderTreeClient::frameChildren(BWebFrame* webFrame)
 {
     WebCore::Frame* frame = webFrame->Frame();
