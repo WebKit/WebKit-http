@@ -370,7 +370,7 @@ void BUrlProtocolHandler::sendResponseIfNeeded()
 
     URL url(m_request->Url());
 
-    ResourceResponse response(url, mimeType, contentLength, encoding, String());
+    ResourceResponse response(url, mimeType, contentLength, encoding, url.lastPathComponent());
 
     if (!httpRequest) {
         // For protocols other than http, we don't have more information to add.
