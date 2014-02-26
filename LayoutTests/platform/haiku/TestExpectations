@@ -21,6 +21,7 @@ accessibility/crash-adopt-node-from-new-document.html [ Pass ]
 accessibility/crashing-a-tag-in-map.html [ Pass ]
 accessibility/crash-with-noelement-selectbox.html [ Pass ]
 accessibility/container-node-delete-causes-crash.html [ Pass ]
+accessibility/display-table-cell-causes-crash.html [ Pass ]
 accessibility/duplicate-child-nodes.html [ Pass ]
 accessibility/duplicate-axrenderobject-crash.html [ Pass ]
 accessibility/hang-in-isignored.html [ Pass ]
@@ -527,15 +528,15 @@ css3/supports-cssom.html [ Failure ]
 css3/supports-dom-api.html [ Failure ]
 css3/supports.html [ Failure ]
 css3/unicode-bidi-isolate-aharon-failing.html [ ImageOnlyFailure ]
-css3/viewport-percentage-lengths/vh-resize.html [ ImageOnlyFailure ]
+#css3/viewport-percentage-lengths/vh-resize.html [ ImageOnlyFailure ]
 
 
 # Editing - Testsuite support missing!
 Bug(Haiku) editing/ [ Failure ]
-editing/caret/caret-color.html [ Pass ]
 editing/editability/ [ Pass ]
 editing/shadow/ [ Pass ]
 
+# TODO list passing tests explicitly. This isn't meant to pass!
 editing/deleting/ [ Pass ]
 editing/execCommand/ [ Pass ]
 editing/inserting/ [ Pass ]
@@ -543,24 +544,33 @@ editing/pasteboard/ [ Pass ]
 editing/selection/ [ Pass ]
 editing/style/ [ Pass ]
 
+editing/caret/caret-color.html [ Pass ]
+editing/caret/selection-with-caret-type-progress.html [ Pass ]
+
 editing/input/caret-at-the-edge-of-contenteditable.html [ Pass ]
 editing/input/caret-at-the-edge-of-input.html [ Pass ]
 editing/input/div-first-child-rule-input.html [ Pass ]
 editing/input/div-first-child-rule-textarea.html [ Pass ]
+editing/input/editable-container-with-word-wrap-normal.html [ Pass ]
 editing/input/emacs-ctrl-o.html [ Pass ]
 editing/input/insert-wrapping-space-in-textarea.html [ Pass ]
 editing/input/paste-linebreak-into-initially-hidden-textarea.html [ Pass ]
 editing/input/reveal-caret-of-multiline-contenteditable.html [ Pass ]
 editing/input/reveal-caret-of-multiline-input.html [ Pass ]
 editing/input/reveal-caret-of-transformed-input-scrollable-parent.html [ Pass ]
+editing/input/reveal-caret-of-transformed-multiline-input.html [ Pass ]
 editing/input/reveal-edit-on-paste-vertically.html [ Pass ]
+editing/input/scroll-to-edge-if-line-break-at-end-of-document-contenteditable.html [ Pass ]
 editing/input/scroll-to-edge-if-line-break-at-end-of-document-textarea.html [ Pass ]
+editing/input/scroll-to-edge-if-paragraph-separator-at-end-of-document-contenteditable.html [ Pass ]
 editing/input/search-field-crash-in-designmode.html [ Pass ]
 editing/input/set-value-on-input-and-delete.html [ Pass ]
 editing/input/set-value-on-input-and-forward-delete.html [ Pass ]
 editing/input/set-value-on-input-and-type-input.html [ Pass ]
 editing/input/set-value-on-input-and-type-textarea.html [ Pass ]
+editing/input/style-change-during-input.html [ Pass ]
 
+editing/spelling/design-mode-spellcheck-off.html [ Pass ]
 editing/spelling/inline_spelling_markers.html [ Pass ]
 editing/spelling/inline-spelling-markers-hidpi.html [ Pass ]
 editing/spelling/spelling.html [ Pass ]
@@ -576,6 +586,7 @@ editing/text-iterator/first-letter-word-boundary.html [ Pass ]
 editing/text-iterator/range-to-from-location-and-length.html [ Pass ]
 editing/text-iterator/rtl-first-letter-text-iterator-crash.html [ Pass ]
 editing/text-iterator/rtl-selection-crash.html [ Pass ]
+editing/text-iterator/thai-cursor-movement.html [ Pass ]
 
 editing/undo/4059423-1.html [ Pass ]
 editing/undo/4059423-2.html [ Pass ]
@@ -595,6 +606,8 @@ editing/undo/undo-forward-delete-boundary.html [ Pass ]
 editing/undo/undo-iframe-location-change.html [ Pass ]
 editing/undo/undo-indent-noneditable.html [ Pass ]
 editing/undo/undo-paste-when-caret-is-not-in-range.html [ Pass ]
+editing/undo/undo-smart-delete-word.html [ Pass ]
+editing/undo/undo-typing-001.html [ Pass ]
 editing/undo/orphaned-selection-crash-bug32823-1.html [ Pass ]
 editing/undo/orphaned-selection-crash-bug32823-2.html [ Pass ]
 editing/undo/orphaned-selection-crash-bug32823-3.html [ Pass ]
@@ -613,12 +626,21 @@ editing/unsupported-content/table-delete-002.html [ Pass ]
 editing/unsupported-content/table-type-before.html [ Pass ]
 editing/unsupported-content/table-type-after.html [ Pass ]
 
-fast/dom/shadow [ Skip ] # Removed from current WebKit versions, anyway.
+fast/css/style-scoped/style-scoped-change-scoped-in-shadow.html [ Failurl ]
+
+fast/dom/Geolocation/ [ Failure ]
+fast/dom/shadow/ [ Skip ] # Removed from current WebKit versions, anyway.
 
 fast/hidpi/image-srcset-svg-canvas.html [ Pass ]
 fast/hidpi/image-srcset-svg-canvas-2x.html [ Pass ]
 fast/hidpi/image-srcset-relative-svg-canvas.html [ Pass ]
 fast/hidpi/image-srcset-relative-svg-canvas-2x.html [ Pass ]
+
+fast/mediastream/ [ Failure ]
+fast/mediastream/no-interface-object.html [ Pass ]
+
+fast/notifications/ [ Failure ]
+fast/notifications/notification-window-close-crash.html [ Pass ]
 
 fast/xsl/xslt_unicode.xml [ Failure ] # Font metrics
 
@@ -710,7 +732,7 @@ jquery/traversing.html [ Failure ]
 # JS
 js/dom/basic-weakmap.html [ Failure ]
 js/dom/custom-constructors.html [ Failure ] # Missing Audio
-js/dom/document-all-between-frames.html [ Failure ]
+#js/dom/document-all-between-frames.html [ Failure ]
 js/dom/dom-static-property-for-in-iteration.html [ Failure ] # Font metrics differences
 js/dom/function-length.html [ Failure ] # Missing showModalDialog.length ?
 js/dom/global-constructors-attributes.html [ Failure ] # Missing some PASS logs, but test completes anyway?
@@ -1076,6 +1098,7 @@ fast/canvas/webgl/css-webkit-canvas-repaint.html [ Pass ]
 #webgl/conformance/ [ Pass ] # TODO list specific passing tests
 webgl/conformance/more/glsl/uniformOutOfBounds.html [ Pass ]
 webgl/conformance/typedarrays [ Pass ]
+webgl/conformance/typedarrays/data-view-test.html [ Failure ]
 
 webgl/1.0.1/conformance/more/conformance/constants.html      [ Pass ]
 webgl/1.0.1/conformance/more/conformance/methods.html        [ Pass ]
@@ -1137,9 +1160,8 @@ printing/standards-percentage-heights.html [ Failure ]
 # Scrolling - These should definitely work. I think part of the problem is we
 # don't properly inject mouse events to test the scrollbars from DRT.
 Bug(Haiku) scrollbars/scroll-rtl-or-bt-layer.html [ Failure ]
-Bug(Haiku) scrollbars/scrollbar-drag-thumb-with-large-content.html [ Failure ]
+#Bug(Haiku) scrollbars/scrollbar-drag-thumb-with-large-content.html [ Failure ]
 Bug(Haiku) scrollbars/scrollbar-iframe-click-does-not-blur-content.html [ Failure ]
-Bug(Haiku) scrollbars/scrollbar-miss-mousemove-disabled.html [ Failure ]
 Bug(Haiku) scrollingcoordinator/non-fast-scrollable-region-transformed-iframe.html [ Failure ]
 Bug(Haiku) scrollingcoordinator/non-fast-scrollable-region-scaled-iframe.html [ Failure ]
 
@@ -1219,7 +1241,7 @@ svg/transforms/change-transform-origin-css.xhtml [ ImageOnlyFailure ]
 svg/transforms/change-transform-origin-presentation-attribute.xhtml [ ImageOnlyFailure ]
 #svg/transforms/transform-origin-css-property.xhtml [ ImageOnlyFailure ]
 svg/transforms/transformed-text-fill-gradient.html [ ImageOnlyFailure ]
-svg/transforms/transformed-text-fill-pattern.html [ ImageOnlyFailure ]
+svg/transforms/transformed-text-fill-pattern.html [ Pass ]
 
 # Tests that pass anyway
 svg/animations/ [ Pass ]
