@@ -219,6 +219,7 @@ public:
         m_currentLayer->view->ConstrainClippingRegion(NULL);
     }
 
+
     void clipToShape(BShape* shape, bool inverse = false)
     {
         // FIXME calling clipToShape several times without interleaved
@@ -626,10 +627,6 @@ void GraphicsContext::clip(const Path& path, WindRule)
 {
     if (paintingDisabled())
         return;
-
-    if (path.isEmpty()) {
-        return;
-    }
 
     m_data->clipToShape(path.platformPath());
 }
