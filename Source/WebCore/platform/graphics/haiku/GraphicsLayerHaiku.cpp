@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Google Inc. All rights reserved.
+ * Copyright (C) 2014 Haiku, Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -20,47 +20,51 @@
  * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
  * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef PlatformLayer_h
-#define PlatformLayer_h
+#include "config.h"
+#include "GraphicsLayer.h"
 
-#if PLATFORM(COCOA)
-OBJC_CLASS CALayer;
-typedef CALayer PlatformLayer;
-#elif PLATFORM(WIN) && USE(CA)
-typedef struct _CACFLayer PlatformLayer;
-#elif PLATFORM(WIN) && USE(TEXTURE_MAPPER)
-namespace WebCore {
-class TextureMapperPlatformLayer;
-typedef TextureMapperPlatformLayer PlatformLayer;
-};
-#elif PLATFORM(GTK)
-#if USE(TEXTURE_MAPPER_GL)
-namespace WebCore {
-class TextureMapperPlatformLayer;
-typedef TextureMapperPlatformLayer PlatformLayer;
-};
-#endif
-#elif PLATFORM(EFL)
-#if USE(TEXTURE_MAPPER)
-namespace WebCore {
-class TextureMapperPlatformLayer;
-typedef TextureMapperPlatformLayer PlatformLayer;
-};
-#endif // USE(TEXTURE_MAPPER)
-#elif PLATFORM(HAIKU)
-#if USE(TEXTURE_MAPPER)
-namespace WebCore {
-class TextureMapperPlatformLayer;
-typedef TextureMapperPlatformLayer PlatformLayer;
-};
-#else
-typedef void* PlatformLayer;
-#endif // USE(TEXTURE_MAPPER)
-#else
-typedef void* PlatformLayer;
-#endif
+#include "GraphicsLayerFactory.h"
 
-#endif // PlatformLayer_h
+
+namespace WebCore {
+
+class GraphicsLayerHaiku: public GraphicsLayer {
+public:
+    GraphicsLayerHaiku(GraphicsLayerClient* client);
+
+    void setNeedsDisplay();
+    void setNeedsDisplayInRect(const FloatRect&, ShouldClipToLayer);
+};
+
+GraphicsLayerHaiku::GraphicsLayerHaiku(GraphicsLayerClient* client)
+    : GraphicsLayer(client)
+{
+}
+
+void GraphicsLayerHaiku::setNeedsDisplay()
+{
+    puts(__func__);
+}
+
+void GraphicsLayerHaiku::setNeedsDisplayInRect(const FloatRect&, ShouldClipToLayer)
+{
+    puts(__func__);
+}
+
+std::unique_ptr<GraphicsLayer> GraphicsLayer::create(GraphicsLayerFactory* factory, GraphicsLayerClient* client)
+{
+    std::unique_ptr<GraphicsLayer> graphicsLayer;
+    if (!factory)
+        graphicsLayer = std::make_unique<GraphicsLayerHaiku>(client);
+    else
+        graphicsLayer = factory->createGraphicsLayer(client);
+
+    graphicsLayer->initialize();
+
+    return std::move(graphicsLayer);
+}
+
+}

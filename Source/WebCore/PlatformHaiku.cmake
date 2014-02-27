@@ -52,6 +52,7 @@ LIST(APPEND WebCore_SOURCES
   platform/graphics/haiku/GlyphPageTreeNodeHaiku.cpp
   platform/graphics/haiku/GradientHaiku.cpp
   platform/graphics/haiku/GraphicsContextHaiku.cpp
+  platform/graphics/haiku/GraphicsLayerHaiku.cpp
   platform/graphics/haiku/IconHaiku.cpp
   platform/graphics/haiku/ImageHaiku.cpp
   platform/graphics/haiku/IntPointHaiku.cpp
