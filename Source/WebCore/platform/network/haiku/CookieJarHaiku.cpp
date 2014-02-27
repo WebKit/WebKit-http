@@ -40,7 +40,7 @@
 #include <wtf/HashMap.h>
 #include <wtf/text/CString.h>
 
-//#define TRACE_COOKIE_JAR 1
+#define TRACE_COOKIE_JAR 0
 
 
 namespace WebCore {
@@ -72,7 +72,10 @@ String cookiesForDOM(const NetworkStorageSession& session, const URL& firstParty
 	for (BNetworkCookieJar::UrlIterator it(
             session.context()->context()->GetCookieJar().GetUrlIterator(hUrl));
 		    (c = it.Next()); ) {
-		result << "; " << c->RawCookie(false);
+        // filter out httpOnly cookies,as this method is used to get cookies
+        // from JS code and these shouldn't be visible there.
+        if(!c->HttpOnly())
+		    result << "; " << c->RawCookie(false);
 	}
 	result.Remove(0, 2);
 
@@ -92,10 +95,7 @@ String cookieRequestHeaderFieldValue(const NetworkStorageSession& session, const
 	for (BNetworkCookieJar::UrlIterator it(
             session.context()->context()->GetCookieJar().GetUrlIterator(hUrl));
 		    (c = it.Next()); ) {
-        // filter out httpOnly cookies,as this method is used to get cookies
-        // from JS code and these shouldn't be visible there.
-        if(!c->HttpOnly())
-		    result << "; " << c->RawCookie(false);
+		result << "; " << c->RawCookie(false);
 	}
 	result.Remove(0, 2);
 
