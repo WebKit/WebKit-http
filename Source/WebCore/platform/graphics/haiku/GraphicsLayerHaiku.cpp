@@ -27,6 +27,7 @@
 #include "GraphicsLayer.h"
 
 #include "GraphicsLayerFactory.h"
+#include "NotImplemented.h"
 
 
 namespace WebCore {
@@ -46,12 +47,12 @@ GraphicsLayerHaiku::GraphicsLayerHaiku(GraphicsLayerClient* client)
 
 void GraphicsLayerHaiku::setNeedsDisplay()
 {
-    puts(__func__);
+    notImplemented();
 }
 
 void GraphicsLayerHaiku::setNeedsDisplayInRect(const FloatRect&, ShouldClipToLayer)
 {
-    puts(__func__);
+    notImplemented();
 }
 
 std::unique_ptr<GraphicsLayer> GraphicsLayer::create(GraphicsLayerFactory* factory, GraphicsLayerClient* client)
