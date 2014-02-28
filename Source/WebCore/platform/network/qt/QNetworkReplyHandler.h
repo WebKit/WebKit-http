@@ -52,6 +52,7 @@ public:
 
     typedef void (QNetworkReplyHandler::*EnqueuedCall)();
     void push(EnqueuedCall method);
+    void requeue(EnqueuedCall method);
     void clear() { m_enqueuedCalls.clear(); }
 
     void lock();

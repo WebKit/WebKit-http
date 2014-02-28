@@ -215,6 +215,12 @@ void QNetworkReplyHandlerCallQueue::push(EnqueuedCall method)
     flush();
 }
 
+void QNetworkReplyHandlerCallQueue::requeue(EnqueuedCall method)
+{
+    m_enqueuedCalls.prepend(method);
+    flush();
+}
+
 void QNetworkReplyHandlerCallQueue::lock()
 {
     ++m_locks;
@@ -646,17 +652,25 @@ void QNetworkReplyHandler::forwardData()
 {
     ASSERT(m_replyWrapper && m_replyWrapper->reply() && !wasAborted() && !m_replyWrapper->wasRedirected());
 
-    QByteArray data = m_replyWrapper->reply()->read(m_replyWrapper->reply()->bytesAvailable());
-
     ResourceHandleClient* client = m_resourceHandle->client();
     if (!client)
         return;
 
-    // FIXME: https://bugs.webkit.org/show_bug.cgi?id=19793
-    // -1 means we do not provide any data about transfer size to inspector so it would use
-    // Content-Length headers or content size to show transfer size.
-    if (!data.isEmpty())
-        client->didReceiveData(m_resourceHandle, data.constData(), data.length(), -1);
+    qint64 bytesAvailable = m_replyWrapper->reply()->bytesAvailable();
+    char* buffer = new char[8128]; // smaller than 8192 to fit within 8k including overhead.
+    while (bytesAvailable > 0 && !m_queue.deferSignals()) {
+        qint64 readSize = m_replyWrapper->reply()->read(buffer, 8128);
+        if (readSize <= 0)
+            break;
+        bytesAvailable -= readSize;
+        // FIXME: https://bugs.webkit.org/show_bug.cgi?id=19793
+        // -1 means we do not provide any data about transfer size to inspector so it would use
+        // Content-Length headers or content size to show transfer size.
+        client->didReceiveData(m_resourceHandle, buffer, readSize, -1);
+    }
+    delete[] buffer;
+    if (bytesAvailable > 0)
+        m_queue.requeue(&QNetworkReplyHandler::forwardData);
 }
 
 void QNetworkReplyHandler::uploadProgress(qint64 bytesSent, qint64 bytesTotal)
