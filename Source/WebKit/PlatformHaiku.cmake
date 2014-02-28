@@ -6,18 +6,13 @@ LIST(APPEND WebKit_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/haiku"
     "${WEBCORE_DIR}/platform/graphics/haiku"
     "${WEBCORE_DIR}/platform/network/haiku"
+    "${WEBCORE_DIR}/rendering/svg"
+    "${WEBCORE_DIR}/svg"
+    "${WEBCORE_DIR}/svg/animation"
     ${LIBXML2_INCLUDE_DIR}
     ${LIBXSLT_INCLUDE_DIR}
     ${SQLITE_INCLUDE_DIR}
-)
-
-IF (ENABLE_SVG)
-  LIST(APPEND WebKit_INCLUDE_DIRECTORIES
-    "${WEBCORE_DIR}/svg"
-    "${WEBCORE_DIR}/svg/animation"
-    "${WEBCORE_DIR}/rendering/svg"
   )
-ENDIF ()
 
 IF (ENABLE_VIDEO_TRACK)
   LIST(APPEND WebKit_INCLUDE_DIRECTORIES
