@@ -1979,7 +1979,11 @@ bool URL::isLocalFile() const
     // and including feed would allow feeds to potentially let someone's blog
     // read the contents of the clipboard on a drag, even without a drop.
     // Likewise with using the FrameLoader::shouldTreatURLAsLocal() function.
+#if PLATFORM(QT)
+    return protocolIs("file") || protocolIs("qrc");
+#else
     return protocolIs("file");
+#endif
 }
 
 bool protocolIsJavaScript(const String& url)

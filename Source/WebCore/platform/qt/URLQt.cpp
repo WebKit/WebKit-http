@@ -42,7 +42,7 @@ String URL::fileSystemPath() const
     if (!isValid())
         return String();
 
-    if (isLocalFile())
+    if (protocolIs("file"))
         return static_cast<QUrl>(*this).toLocalFile();
 
     // A valid qrc resource path begins with a colon.
