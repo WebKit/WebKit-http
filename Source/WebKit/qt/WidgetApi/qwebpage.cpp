@@ -2136,6 +2136,9 @@ bool QWebPage::acceptNavigationRequest(QWebFrame *frame, const QNetworkRequest &
             return true;
 
         case DelegateExternalLinks:
+            if (request.url().scheme().isEmpty() &&
+              QWebPageAdapter::treatSchemeAsLocal(frame->baseUrl().scheme()))
+                return true;
             if (QWebPageAdapter::treatSchemeAsLocal(request.url().scheme()))
                 return true;
             emit linkClicked(request.url());
