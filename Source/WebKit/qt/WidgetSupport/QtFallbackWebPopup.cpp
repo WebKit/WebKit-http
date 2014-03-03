@@ -128,7 +128,7 @@ void QtFallbackWebPopup::deleteComboBox()
 {
     if (!m_combo)
         return;
-    m_combo->deleteLater();
+    m_combo->deleteComboBox();
     m_combo = 0;
 }
 

@@ -31,7 +31,7 @@
 namespace WebCore {
 
 QtWebComboBox::QtWebComboBox()
-    : QComboBox()
+    : QComboBox(), m_hiding(false), m_deleteAfterHiding(false)
 {
     // Install an event filter on the view inside the combo box popup to make sure we know
     // when the popup got closed. E.g. QComboBox::hidePopup() won't be called when the popup
@@ -53,6 +53,25 @@ bool QtWebComboBox::eventFilter(QObject* watched, QEvent* event)
     return false;
 }
 
+void QtWebComboBox::hidePopup()
+{
+    m_hiding = true;
+    // QComboBox::hidePopup() runs an eventloop, we need to make sure we do not delete ourselves in that loop.
+    QComboBox::hidePopup();
+    m_hiding = false;
+    if (m_deleteAfterHiding)
+        deleteLater();
 }
+
+
+void QtWebComboBox::deleteComboBox()
+{
+    if (!m_hiding)
+        deleteLater();
+    else
+        m_deleteAfterHiding = true;
+}
+
+} // namespace
 
 #endif // QT_NO_COMBOBOX
