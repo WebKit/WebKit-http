@@ -59,12 +59,12 @@ public:
     WebDownloadPrivate(const ResourceRequest&);
 
     // ResourceHandleClient implementation
-    virtual void didReceiveResponse(ResourceHandle*, const ResourceResponse&);
-    virtual void didReceiveData(ResourceHandle*, const char*, int, int);
-    virtual void didFinishLoading(ResourceHandle*, double);
-    virtual void didFail(ResourceHandle*, const ResourceError&);
-    virtual void wasBlocked(ResourceHandle*);
-    virtual void cannotShowURL(ResourceHandle*);
+    virtual void didReceiveResponse(ResourceHandle*, const ResourceResponse&) override;
+    virtual void didReceiveData(ResourceHandle*, const char*, unsigned, int) override;
+    virtual void didFinishLoading(ResourceHandle*, double) override;
+    virtual void didFail(ResourceHandle*, const ResourceError&) override;
+    virtual void wasBlocked(ResourceHandle*) override;
+    virtual void cannotShowURL(ResourceHandle*) override;
 
     void setDownload(BWebDownload*);
     void start(const BPath& path);

@@ -92,7 +92,7 @@ void WebDownloadPrivate::didReceiveResponse(ResourceHandle*, const ResourceRespo
     m_url = response.url().string();
 }
 
-void WebDownloadPrivate::didReceiveData(ResourceHandle*, const char* data, int length, int lengthReceived)
+void WebDownloadPrivate::didReceiveData(ResourceHandle*, const char* data, unsigned length, int lengthReceived)
 {
 	if (m_file.InitCheck() != B_OK)
 		createFile();
