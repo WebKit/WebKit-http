@@ -35,6 +35,7 @@ namespace WebCore {
 class GraphicsLayerHaiku: public GraphicsLayer {
 public:
     GraphicsLayerHaiku(GraphicsLayerClient* client);
+    ~GraphicsLayerHaiku();
 
     void setNeedsDisplay();
     void setNeedsDisplayInRect(const FloatRect&, ShouldClipToLayer);
@@ -43,6 +44,12 @@ public:
 GraphicsLayerHaiku::GraphicsLayerHaiku(GraphicsLayerClient* client)
     : GraphicsLayer(client)
 {
+}
+
+GraphicsLayerHaiku::~GraphicsLayerHaiku()
+{
+    // Call this cleanup method before destroying our vtable.
+    willBeDestroyed();
 }
 
 void GraphicsLayerHaiku::setNeedsDisplay()
