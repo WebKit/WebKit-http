@@ -47,11 +47,16 @@ namespace WebCore {
 
 ImageBufferData::ImageBufferData(const IntSize& size)
     : m_bitmap(BRect(0, 0, size.width() - 1, size.height() - 1), B_RGBA32, true)
-    , m_view(new BView(m_bitmap.Bounds(), "WebKit ImageBufferData", 0, 0))
+    , m_view(NULL)
 {
+    if(size.isEmpty())
+        return;
+
+    ASSERT(m_bitmap.IsValid());
     // Always keep the bitmap locked, we are the only client.
     m_bitmap.Lock();
     ASSERT(m_bitmap.IsLocked());
+    m_view = new BView(m_bitmap.Bounds(), "WebKit ImageBufferData", 0, 0);
     m_bitmap.AddChild(m_view);
 
     // Fill with completely transparent color.
@@ -89,15 +94,18 @@ ImageBuffer::~ImageBuffer()
 
 GraphicsContext* ImageBuffer::context() const
 {
-    ASSERT(m_data.m_view->Window());
+    if(!m_data.m_view)
+        return NULL;
 
+    ASSERT(m_data.m_view->Window());
     return m_context.get();
 }
 
 PassRefPtr<Image> ImageBuffer::copyImage(BackingStoreCopy copyBehavior, ScaleBehavior) const
 {
-    ASSERT(context());
-    m_data.m_view->Sync();
+    if (context())
+        m_data.m_view->Sync();
+
     if (copyBehavior == CopyBackingStore)
         return StillImage::create(m_data.m_bitmap);
 
@@ -112,7 +120,9 @@ BackingStoreCopy ImageBuffer::fastCopyImageMode()
 void ImageBuffer::draw(GraphicsContext* destContext, ColorSpace styleColorSpace, const FloatRect& destRect, const FloatRect& srcRect,
                        CompositeOperator op, BlendMode, bool useLowQualityScale)
 {
-    ASSERT(context());
+    if (!context())
+        return;
+
     m_data.m_view->Sync();
     if (destContext == context()) {
         // We're drawing into our own buffer.  In order for this to work, we need to copy the source buffer first.
@@ -125,7 +135,9 @@ void ImageBuffer::draw(GraphicsContext* destContext, ColorSpace styleColorSpace,
 void ImageBuffer::drawPattern(GraphicsContext* destContext, const FloatRect& srcRect, const AffineTransform& patternTransform,
                               const FloatPoint& phase, ColorSpace styleColorSpace, CompositeOperator op, const FloatRect& destRect, BlendMode)
 {
-    ASSERT(context());
+    if (!context())
+        return;
+
     m_data.m_view->Sync();
     if (destContext == context()) {
         // We're drawing into our own buffer.  In order for this to work, we need to copy the source buffer first.
