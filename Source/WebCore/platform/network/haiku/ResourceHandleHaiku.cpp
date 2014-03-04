@@ -77,7 +77,7 @@ void WebCoreSynchronousLoader::didReceiveResponse(ResourceHandle*, const Resourc
     m_response = response;
 }
 
-void WebCoreSynchronousLoader::didReceiveData(ResourceHandle*, const char* data, unsigned length, int l2)
+void WebCoreSynchronousLoader::didReceiveData(ResourceHandle*, const char* data, unsigned length, int)
 {
     m_data.append(data, length);
 }
