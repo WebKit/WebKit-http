@@ -642,7 +642,7 @@ bool EditorClientHaiku::handleEditingKeyboardEvent(KeyboardEvent* event,
     // the key, and decide to swallow the event (return true) or not, in which
     // case the BWebFrame code can handle it for scrolling or other keyboard
     // shortcuts.
-    if (!frame.selection().isRange())
+    if (!frame.selection().isRange() && !frame.editor().canEdit())
         return false;
 
     switch (platformEvent->windowsVirtualKeyCode()) {
