@@ -410,7 +410,7 @@ void BUrlProtocolHandler::sendResponseIfNeeded()
 
     BString locationString(result.Headers()["Location"]);
     if (locationString.Length()) {
-        URL location(URL(m_request->Url()), locationString);
+        URL location(url, locationString);
 
         m_redirectionTries--;
 
