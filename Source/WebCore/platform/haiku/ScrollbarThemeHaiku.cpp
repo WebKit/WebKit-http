@@ -214,6 +214,8 @@ void ScrollbarThemeHaiku::paintThumb(GraphicsContext* context, ScrollbarThemeCli
     rgb_color dark2 = tint_color(base, B_DARKEN_2_TINT);
     rgb_color dark3 = tint_color(base, B_DARKEN_3_TINT);
 
+    view->PushState();
+
     enum orientation orientation;
     if (scrollbar->orientation() == VerticalScrollbar) {
         orientation = B_VERTICAL;
@@ -241,6 +243,8 @@ void ScrollbarThemeHaiku::paintThumb(GraphicsContext* context, ScrollbarThemeCli
     if (!scrollbar->enabled())
         flags |= BControlLook::B_DISABLED;
     be_control_look->DrawButtonBackground(view, drawRect, drawRect, base, flags, BControlLook::B_ALL_BORDERS, orientation);
+
+    view->PopState();
 }
 
 void ScrollbarThemeHaiku::paintScrollCorner(ScrollView* scrollView, GraphicsContext* context, const IntRect& rect)
