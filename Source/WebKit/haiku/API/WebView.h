@@ -114,6 +114,9 @@ public:
 			void				SetUserData(UserData* cookie);
 			UserData*			GetUserData() const;
 
+            void                SetInspectorView(BWebView* inspector);
+            BWebView*           GetInspectorView();
+
 private:
 	friend class BWebPage;
     friend class WebCore::DumpRenderTreeClient;
@@ -148,6 +151,7 @@ private:
 			BWebPage*			fWebPage;
 
 			UserData*			fUserData;
+            BWebView*           fInspectorView;
 };
 
 #endif // _WEB_VIEW_H_

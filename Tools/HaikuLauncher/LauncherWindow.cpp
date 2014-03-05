@@ -54,6 +54,7 @@
 
 enum {
 	OPEN_LOCATION = 'open',
+	OPEN_INSPECTOR = 'insp',
     GO_BACK = 'goba',
     GO_FORWARD = 'gofo',
     STOP = 'stop',
@@ -118,6 +119,16 @@ void LauncherWindow::MessageReceived(BMessage* message)
         	    m_url->MakeFocus(true);
         }
     	break;
+    case OPEN_INSPECTOR:
+        {
+            BRect frame = Frame();
+            frame.OffsetBy(20, 20);
+            LauncherWindow* inspectorWindow = new LauncherWindow(frame);
+            inspectorWindow->Show();
+
+            CurrentWebView()->SetInspectorView(inspectorWindow->CurrentWebView());
+        }
+        break;
     case RELOAD:
         CurrentWebView()->Reload();
         break;
@@ -314,6 +325,7 @@ void LauncherWindow::init(BWebView* webView, ToolbarPolicy toolbarPolicy)
         menu->AddItem(newItem);
         newItem->SetTarget(be_app);
         menu->AddItem(new BMenuItem("Open location", new BMessage(OPEN_LOCATION), 'L'));
+        menu->AddItem(new BMenuItem("Inspect page", new BMessage(OPEN_INSPECTOR), 'I'));
         menu->AddSeparatorItem();
         menu->AddItem(new BMenuItem("Close", new BMessage(B_QUIT_REQUESTED), 'W', B_SHIFT_KEY));
         BMenuItem* quitItem = new BMenuItem("Quit", new BMessage(B_QUIT_REQUESTED), 'Q');

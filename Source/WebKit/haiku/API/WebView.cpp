@@ -29,7 +29,9 @@
 #include "config.h"
 #include "WebView.h"
 
+#include "InspectorController.h"
 #include "NotImplemented.h"
+#include "Page.h"
 #include "WebPage.h"
 #include "WebViewConstants.h"
 #include <Alert.h>
@@ -138,6 +140,19 @@ void BWebView::Draw(BRect rect)
     fOffscreenView->Sync();
     DrawBitmap(fOffscreenBitmap, fOffscreenView->Bounds(),
         fOffscreenView->Bounds());
+
+#if ENABLE(INSPECTOR)
+    if (fWebPage) {
+        WebCore::InspectorController& controller = fWebPage->page()->inspectorController();
+        if (controller.highlightedNode()) {
+#if 0
+            controller.drawHighlight(this);
+                // TODO How can we get a handle to the WebCore graphics context
+                // here?
+#endif
+        }
+    }
+#endif
 
     fOffscreenBitmap->Unlock();
 }
@@ -367,6 +382,19 @@ BWebView::UserData* BWebView::GetUserData() const
 	return fUserData;
 }
 
+
+void BWebView::SetInspectorView(BWebView* inspector)
+{
+    fInspectorView = inspector;
+}
+
+
+BWebView* BWebView::GetInspectorView()
+{
+    return fInspectorView;
+}
+
+
 // #pragma mark - API for WebPage only
 
 void BWebView::SetOffscreenViewClean(BRect cleanRect, bool immediate)
@@ -395,6 +423,7 @@ void BWebView::InvalidateOffscreenView()
 void BWebView::_ResizeOffscreenView(int width, int height)
 {
     BRect bounds(0, 0, width - 1, height - 1);
+
     if (fOffscreenBitmap) {
         fOffscreenBitmap->Lock();
         if (fOffscreenBitmap->Bounds().Contains(bounds)) {
