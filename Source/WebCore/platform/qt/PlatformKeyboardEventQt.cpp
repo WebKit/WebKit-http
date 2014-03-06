@@ -697,6 +697,7 @@ int windowsKeyCodeForKeyEvent(unsigned int keycode, bool isKeypad)
     case Qt::Key_BraceRight:
         return VK_OEM_6; // case ']': case '}': return 0xDD;
         // VK_OEM_7 (DE) Used for miscellaneous characters; it can vary by keyboard. Windows 2000/XP: For the US standard keyboard, the 'single-quote/double-quote' key
+    case Qt::Key_Apostrophe:
     case Qt::Key_QuoteDbl:
         return VK_OEM_7; // case '\'': case '"': return 0xDE;
         // VK_OEM_8 (DF) Used for miscellaneous characters; it can vary by keyboard.
