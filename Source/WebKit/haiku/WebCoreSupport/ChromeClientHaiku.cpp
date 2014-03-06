@@ -303,27 +303,22 @@ IntRect ChromeClientHaiku::windowResizerRect() const
     return IntRect();
 }
 
-void ChromeClientHaiku::invalidateRootView(const IntRect&, bool)
+void ChromeClientHaiku::invalidateRootView(const IntRect&)
 {
 	// FIXME: This can be used to blit the BWebView bitmap contents
 	// to the screen. If rect is invalid, blit everything.
 }
 
-void ChromeClientHaiku::invalidateContentsAndRootView(const IntRect& rect,
-                                                    bool immediate)
+void ChromeClientHaiku::invalidateContentsAndRootView(const IntRect& rect)
 {
-	if (immediate)
-        m_webPage->paint(BRect(rect), true);
-    else
-        m_webPage->draw(BRect(rect));
+    m_webPage->draw(BRect(rect));
 }
 
-void ChromeClientHaiku::invalidateContentsForSlowScroll(const IntRect& rect,
-                                                        bool immediate)
+void ChromeClientHaiku::invalidateContentsForSlowScroll(const IntRect& rect)
 {
 	// FIXME: We should be able to ignore this,
 	// since we implement fast scrolling.
-    invalidateContentsAndRootView(rect, immediate);
+    invalidateContentsAndRootView(rect);
 }
 
 void ChromeClientHaiku::scroll(const IntSize& scrollDelta,
@@ -449,10 +444,12 @@ void ChromeClientHaiku::setCursor(const Cursor& cursor)
     m_webView->UnlockLooper();
 }
 
+#if ENABLE(REQUEST_ANIMATION_FRAME) && !USE(REQUEST_ANIMATION_FRAME_TIMER)
 void ChromeClientHaiku::scheduleAnimation()
 {
     notImplemented();
 }
+#endif
 
 bool ChromeClientHaiku::selectItemWritingDirectionIsNatural()
 {

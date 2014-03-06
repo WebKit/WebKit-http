@@ -100,10 +100,10 @@ namespace WebCore {
 
         virtual IntRect windowResizerRect() const override;
 
-        virtual void invalidateRootView(const IntRect&, bool) override;
-        virtual void invalidateContentsAndRootView(const IntRect&, bool) override;
+        virtual void invalidateRootView(const IntRect&) override;
+        virtual void invalidateContentsAndRootView(const IntRect&) override;
 
-        virtual void invalidateContentsForSlowScroll(const IntRect&, bool) override;
+        virtual void invalidateContentsForSlowScroll(const IntRect&) override;
         virtual void scroll(const IntSize& scrollDelta, const IntRect& rectToScroll, const IntRect& clipRect) override;
 
         virtual IntPoint screenToRootView(const IntPoint&) const override;
@@ -116,7 +116,10 @@ namespace WebCore {
         virtual void scrollbarsModeDidChange() const override { }
         virtual void setCursor(const Cursor&) override ;
         virtual void setCursorHiddenUntilMouseMoves(bool) override { }
+
+#if ENABLE(REQUEST_ANIMATION_FRAME) && !USE(REQUEST_ANIMATION_FRAME_TIMER)
         virtual void scheduleAnimation() override;
+#endif
 
         virtual void mouseDidMoveOverElement(const HitTestResult&, unsigned modifierFlags) override;
 
