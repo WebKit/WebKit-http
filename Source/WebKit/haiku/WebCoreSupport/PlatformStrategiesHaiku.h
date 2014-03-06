@@ -28,9 +28,8 @@
 #include "PluginStrategy.h"
 #include "SharedWorkerStrategy.h"
 #include "StorageStrategy.h"
-#include "VisitedLinkStrategy.h"
 
-class PlatformStrategiesHaiku : public WebCore::PlatformStrategies, private WebCore::CookiesStrategy, private WebCore::DatabaseStrategy, private WebCore::LoaderStrategy, private WebCore::PluginStrategy, private WebCore::SharedWorkerStrategy, private WebCore::StorageStrategy, private WebCore::VisitedLinkStrategy {
+class PlatformStrategiesHaiku : public WebCore::PlatformStrategies, private WebCore::CookiesStrategy, private WebCore::DatabaseStrategy, private WebCore::LoaderStrategy, private WebCore::PluginStrategy, private WebCore::SharedWorkerStrategy, private WebCore::StorageStrategy {
 public:
     static void initialize();
 
@@ -45,7 +44,6 @@ private:
     virtual WebCore::PluginStrategy* createPluginStrategy() override;
     virtual WebCore::SharedWorkerStrategy* createSharedWorkerStrategy() override;
     virtual WebCore::StorageStrategy* createStorageStrategy() override;
-    virtual WebCore::VisitedLinkStrategy* createVisitedLinkStrategy() override;
 
     // WebCore::CookiesStrategy
     virtual String cookiesForDOM(const WebCore::NetworkStorageSession&, const WebCore::URL& firstParty, const WebCore::URL&) override;
@@ -61,10 +59,6 @@ private:
     // WebCore::PluginStrategy
     virtual void refreshPlugins() override;
     virtual void getPluginInfo(const WebCore::Page*, Vector<WebCore::PluginInfo>&) override;
-
-    // WebCore::VisitedLinkStrategy
-    virtual bool isLinkVisited(WebCore::Page*, WebCore::LinkHash, const WebCore::URL& baseURL, const WTF::AtomicString& attributeURL) override;
-    virtual void addVisitedLink(WebCore::Page*, WebCore::LinkHash) override;
 };
 
 #endif // PlatformStrategiesHaiku_h

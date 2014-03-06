@@ -76,11 +76,6 @@ SharedWorkerStrategy* PlatformStrategiesHaiku::createSharedWorkerStrategy()
     return this;
 }
 
-VisitedLinkStrategy* PlatformStrategiesHaiku::createVisitedLinkStrategy()
-{
-    return this;
-}
-
 StorageStrategy* PlatformStrategiesHaiku::createStorageStrategy()
 {
     return this;
@@ -155,15 +150,4 @@ void PlatformStrategiesHaiku::getPluginInfo(const Page*, Vector<PluginInfo>& out
 #else
     UNUSED_PARAM(outPlugins);
 #endif
-}
-
-// VisitedLinkStrategy
-bool PlatformStrategiesHaiku::isLinkVisited(Page* page, LinkHash hash, const URL&, const AtomicString&)
-{
-    return page->group().isLinkVisited(hash);
-}
-
-void PlatformStrategiesHaiku::addVisitedLink(Page* page, LinkHash hash)
-{
-    page->group().addVisitedLinkHash(hash);
 }
