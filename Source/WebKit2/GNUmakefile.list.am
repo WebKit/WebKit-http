@@ -360,6 +360,8 @@ webkit2_sources += \
 	Source/WebKit2/Shared/CommandLine.h \
 	Source/WebKit2/Shared/ConnectionStack.cpp \
 	Source/WebKit2/Shared/ConnectionStack.h \
+	Source/WebKit2/Shared/ContextMenuContextData.cpp \
+	Source/WebKit2/Shared/ContextMenuContextData.h \
 	Source/WebKit2/Shared/CoreIPCSupport/WebContextMessageKinds.h \
 	Source/WebKit2/Shared/DrawingAreaInfo.h \
 	Source/WebKit2/Shared/Downloads/Download.cpp \
@@ -864,6 +866,8 @@ webkit2_sources += \
 	Source/WebKit2/UIProcess/Plugins/PluginProcessProxy.h \
 	Source/WebKit2/UIProcess/Plugins/WebPluginSiteDataManager.h \
 	Source/WebKit2/UIProcess/Plugins/WebPluginSiteDataManager.cpp \
+	Source/WebKit2/UIProcess/Plugins/gtk/PluginInfoCache.cpp \
+	Source/WebKit2/UIProcess/Plugins/gtk/PluginInfoCache.h \
 	Source/WebKit2/UIProcess/Plugins/unix/PluginInfoStoreUnix.cpp \
 	Source/WebKit2/UIProcess/Plugins/unix/PluginProcessProxyUnix.cpp \
 	Source/WebKit2/UIProcess/ProcessModel.h \
@@ -1247,6 +1251,8 @@ webkit2_sources += \
 	Source/WebKit2/WebProcess/WebPage/PageBanner.h \
 	Source/WebKit2/WebProcess/WebPage/PageOverlay.cpp \
 	Source/WebKit2/WebProcess/WebPage/PageOverlay.h \
+	Source/WebKit2/WebProcess/WebPage/VisitedLinkTableController.cpp \
+	Source/WebKit2/WebProcess/WebPage/VisitedLinkTableController.h \
 	Source/WebKit2/WebProcess/WebPage/WebBackForwardListProxy.cpp \
 	Source/WebKit2/WebProcess/WebPage/WebBackForwardListProxy.h \
 	Source/WebKit2/WebProcess/WebPage/WebContextMenu.cpp \

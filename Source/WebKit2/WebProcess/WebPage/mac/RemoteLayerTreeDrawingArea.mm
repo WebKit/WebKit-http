@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2014 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -246,6 +246,18 @@ void RemoteLayerTreeDrawingArea::setExposedRect(const FloatRect& exposedRect)
     updateScrolledExposedRect();
 }
 
+#if PLATFORM(IOS)
+void RemoteLayerTreeDrawingArea::setExposedContentRect(const FloatRect& exposedContentRect)
+{
+    FrameView* frameView = m_webPage->corePage()->mainFrame().view();
+    if (!frameView)
+        return;
+
+    frameView->setExposedContentRect(enclosingIntRect(exposedContentRect));
+    scheduleCompositingLayerFlush();
+}
+#endif
+
 void RemoteLayerTreeDrawingArea::updateScrolledExposedRect()
 {
     FrameView* frameView = m_webPage->corePage()->mainFrame().view();
@@ -321,14 +333,7 @@ void RemoteLayerTreeDrawingArea::flushLayers()
     // FIXME: minize these transactions if nothing changed.
     RemoteLayerTreeTransaction layerTransaction;
     m_remoteLayerTreeContext->buildTransaction(layerTransaction, *m_rootLayer);
-    layerTransaction.setContentsSize(m_webPage->corePage()->mainFrame().view()->contentsSize());
-    layerTransaction.setPageScaleFactor(m_webPage->corePage()->pageScaleFactor());
-    layerTransaction.setRenderTreeSize(m_webPage->corePage()->renderTreeSize());
-#if PLATFORM(IOS)
-    layerTransaction.setMinimumScaleFactor(m_webPage->minimumPageScaleFactor());
-    layerTransaction.setMaximumScaleFactor(m_webPage->maximumPageScaleFactor());
-    layerTransaction.setAllowsUserScaling(m_webPage->allowsUserScaling());
-#endif
+    m_webPage->willCommitLayerTree(layerTransaction);
 
     RemoteScrollingCoordinatorTransaction scrollingTransaction;
 #if ENABLE(ASYNC_SCROLLING)

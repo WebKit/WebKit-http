@@ -33,7 +33,6 @@
 #include "Logging.h"
 #include "MutableDictionary.h"
 #include "SandboxExtension.h"
-#include "SessionTracker.h"
 #include "StatisticsData.h"
 #include "TextChecker.h"
 #include "WKContextPrivate.h"
@@ -63,6 +62,7 @@
 #include <WebCore/LinkHash.h>
 #include <WebCore/Logging.h>
 #include <WebCore/ResourceRequest.h>
+#include <WebCore/SessionID.h>
 #include <runtime/JSCInlines.h>
 #include <wtf/CurrentTime.h>
 #include <wtf/MainThread.h>
@@ -137,7 +137,8 @@ WebContext::WebContext(const String& injectedBundlePath)
     , m_defaultPageGroup(WebPageGroup::createNonNull())
     , m_injectedBundlePath(injectedBundlePath)
     , m_historyClient(std::make_unique<API::HistoryClient>())
-    , m_visitedLinkProvider(this)
+    , m_visitedLinkProvider(VisitedLinkProvider::create())
+    , m_visitedLinksPopulated(false)
     , m_plugInAutoStartProvider(this)
     , m_alwaysUsesComplexTextCodePath(false)
     , m_shouldUseFontSmoothing(true)
@@ -486,16 +487,16 @@ void WebContext::setAnyPageGroupMightHavePrivateBrowsingEnabled(bool privateBrow
 #if ENABLE(NETWORK_PROCESS)
     if (usesNetworkProcess() && networkProcess()) {
         if (privateBrowsingEnabled)
-            networkProcess()->send(Messages::NetworkProcess::EnsurePrivateBrowsingSession(SessionTracker::legacyPrivateSessionID), 0);
+            networkProcess()->send(Messages::NetworkProcess::EnsurePrivateBrowsingSession(SessionID::legacyPrivateSessionID()), 0);
         else
-            networkProcess()->send(Messages::NetworkProcess::DestroyPrivateBrowsingSession(SessionTracker::legacyPrivateSessionID), 0);
+            networkProcess()->send(Messages::NetworkProcess::DestroyPrivateBrowsingSession(SessionID::legacyPrivateSessionID()), 0);
     }
 #endif // ENABLED(NETWORK_PROCESS)
 
     if (privateBrowsingEnabled)
-        sendToAllProcesses(Messages::WebProcess::EnsurePrivateBrowsingSession(SessionTracker::legacyPrivateSessionID));
+        sendToAllProcesses(Messages::WebProcess::EnsurePrivateBrowsingSession(SessionID::legacyPrivateSessionID()));
     else
-        sendToAllProcesses(Messages::WebProcess::DestroyPrivateBrowsingSession(SessionTracker::legacyPrivateSessionID));
+        sendToAllProcesses(Messages::WebProcess::DestroyPrivateBrowsingSession(SessionID::legacyPrivateSessionID()));
 }
 
 void (*s_invalidMessageCallback)(WKStringRef messageName);
@@ -625,7 +626,7 @@ WebProcessProxy& WebContext::createNewWebProcess()
 #endif
 
     if (WebPreferences::anyPagesAreUsingPrivateBrowsing())
-        process->send(Messages::WebProcess::EnsurePrivateBrowsingSession(SessionTracker::legacyPrivateSessionID), 0);
+        process->send(Messages::WebProcess::EnsurePrivateBrowsingSession(SessionID::legacyPrivateSessionID()), 0);
 
     m_processes.append(process);
 
@@ -699,7 +700,11 @@ void WebContext::processDidFinishLaunching(WebProcessProxy* process)
 {
     ASSERT(m_processes.contains(process));
 
-    m_visitedLinkProvider.processDidFinishLaunching(process);
+    m_visitedLinkProvider->processDidFinishLaunching(process);
+    if (!m_visitedLinksPopulated) {
+        populateVisitedLinks();
+        m_visitedLinksPopulated = true;
+    }
 
     // Sometimes the memorySampler gets initialized after process initialization has happened but before the process has finished launching
     // so check if it needs to be started here
@@ -719,7 +724,7 @@ void WebContext::disconnectProcess(WebProcessProxy* process)
 {
     ASSERT(m_processes.contains(process));
 
-    m_visitedLinkProvider.processDidClose(process);
+    m_visitedLinkProvider->processDidClose(process);
 
     if (m_haveInitialEmptyProcess && process == m_processes.last())
         m_haveInitialEmptyProcess = false;
@@ -756,16 +761,12 @@ WebProcessProxy& WebContext::createNewWebProcessRespectingProcessCountLimit()
     if (m_processes.size() < m_webProcessCountLimit)
         return createNewWebProcess();
 
-    // Choose a process with fewest pages, to achieve flat distribution.
-    WebProcessProxy* result = nullptr;
-    unsigned fewestPagesSeen = UINT_MAX;
-    for (unsigned i = 0; i < m_processes.size(); ++i) {
-        if (fewestPagesSeen > m_processes[i]->pages().size()) {
-            result = m_processes[i].get();
-            fewestPagesSeen = m_processes[i]->pages().size();
-        }
-    }
-    return *result;
+    // Choose the process with fewest pages.
+    auto& process = *std::min_element(m_processes.begin(), m_processes.end(), [](const RefPtr<WebProcessProxy>& a, const RefPtr<WebProcessProxy>& b) {
+        return a->pageCount() < b->pageCount();
+    });
+
+    return *process;
 }
 
 PassRefPtr<WebPageProxy> WebContext::createWebPage(PageClient& pageClient, WebPageConfiguration configuration)
@@ -774,6 +775,8 @@ PassRefPtr<WebPageProxy> WebContext::createWebPage(PageClient& pageClient, WebPa
         configuration.pageGroup = &m_defaultPageGroup.get();
     if (!configuration.preferences)
         configuration.preferences = &configuration.pageGroup->preferences();
+    if (!configuration.visitedLinkProvider)
+        configuration.visitedLinkProvider = m_visitedLinkProvider.get();
     if (!configuration.session)
         configuration.session = configuration.preferences->privateBrowsingEnabled() ? &API::Session::legacyPrivateSession() : &API::Session::defaultSession();
 
@@ -979,7 +982,7 @@ void WebContext::addVisitedLink(const String& visitedURL)
 
 void WebContext::addVisitedLinkHash(LinkHash linkHash)
 {
-    m_visitedLinkProvider.addVisitedLink(linkHash);
+    m_visitedLinkProvider->addVisitedLink(linkHash);
 }
 
 DownloadProxy* WebContext::createDownloadProxy()

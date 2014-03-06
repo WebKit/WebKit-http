@@ -41,7 +41,6 @@ namespace WebCore {
 
     class EventNames;
     class ReplayInputTypes;
-    class ThreadLocalInspectorCounters;
     class ThreadTimers;
 
     struct CachedResourceRequestInitiators;
@@ -68,12 +67,8 @@ namespace WebCore {
         TECConverterWrapper& cachedConverterTEC() { return *m_cachedConverterTEC; }
 #endif
 
-#if ENABLE(WORKERS) && USE(WEB_THREAD)
+#if USE(WEB_THREAD)
         void setWebCoreThreadData();
-#endif
-
-#if ENABLE(INSPECTOR)
-        ThreadLocalInspectorCounters& inspectorCounters() { return *m_inspectorCounters; }
 #endif
 
     private:
@@ -93,10 +88,6 @@ namespace WebCore {
 
 #if PLATFORM(MAC)
         OwnPtr<TECConverterWrapper> m_cachedConverterTEC;
-#endif
-
-#if ENABLE(INSPECTOR)
-        OwnPtr<ThreadLocalInspectorCounters> m_inspectorCounters;
 #endif
 
         static ThreadSpecific<ThreadGlobalData>* staticData;

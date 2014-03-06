@@ -26,8 +26,6 @@
 #ifndef StructureStubInfo_h
 #define StructureStubInfo_h
 
-#include <wtf/Platform.h>
-
 #include "CodeOrigin.h"
 #include "Instruction.h"
 #include "JITStubRoutine.h"
@@ -54,10 +52,6 @@ enum AccessType {
     access_put_by_id_replace,
     access_put_by_id_list,
     access_unset,
-    access_get_by_id_generic,
-    access_put_by_id_generic,
-    access_get_array_length,
-    access_get_string_length,
     access_in_list
 };
 
@@ -67,9 +61,6 @@ inline bool isGetByIdAccess(AccessType accessType)
     case access_get_by_id_self:
     case access_get_by_id_chain:
     case access_get_by_id_self_list:
-    case access_get_by_id_generic:
-    case access_get_array_length:
-    case access_get_string_length:
         return true;
     default:
         return false;
@@ -83,7 +74,6 @@ inline bool isPutByIdAccess(AccessType accessType)
     case access_put_by_id_transition_direct:
     case access_put_by_id_replace:
     case access_put_by_id_list:
-    case access_put_by_id_generic:
         return true;
     default:
         return false;

@@ -158,6 +158,8 @@ InspectorTest.importScript = function(scriptName)
     window.eval(script);
 }
 
+// FIXME: Move model tests off of the stub inspector page, and delete this function
+// since it's now implemented as Test.html. <https://webkit.org/b/129217>
 InspectorTest.initializeInspectorModels = function()
 {
     // Catch any errors and finish the test early.
@@ -180,54 +182,64 @@ InspectorTest.initializeInspectorModels = function()
     // way to intercept the messages from the backend.
 
     var inspectorScripts = [
-        "Utilities",
-        "WebInspector",
-        "Object",
-        "InspectorBackend",
-        "InspectorFrontendAPI",
-        "InspectorFrontendHostStub",
-        "InspectorJSBackendCommands",
-        "InspectorWebBackendCommands",
-        "URLUtilities",
-        "MessageDispatcher",
-        "Setting",
-        "InspectorObserver",
-        "PageObserver",
-        "DOMObserver",
-        "CSSObserver",
-        "FrameResourceManager",
-        "RuntimeManager",
-        "Frame",
-        "Revision",
-        "SourceCodeRevision",
-        "SourceCode",
-        "SourceCodeLocation",
-        "Script",
-        "TextRange",
-        "Resource",
-        "ResourceCollection",
-        "SourceMapResource",
-        "DOMTreeManager",
-        "DOMNode",
-        "ContentFlow",
-        "DOMTree",
-        "DOMUtilities",
-        "ExecutionContext",
-        "ExecutionContextList",
-        "CSSStyleManager",
-        "Color",
-        "RuntimeObserver",
-        "RuntimeManager",
-        "DebuggerObserver",
-        "DebuggerManager",
-        "BreakpointAction",
-        "Breakpoint",
-        "Probe",
-        "ProbeSet",
-        "ProbeManager",
-        "ProbeSetDataFrame",
-        "ProbeSetDataTable",
-        "RemoteObject"
+        "Base/WebInspector",
+        "Base/Object",
+
+        "Base/DOMUtilities",
+        "Base/URLUtilities",
+        "Base/Utilities",
+
+        "Protocol/CSSObserver",
+        "Protocol/DOMObserver",
+        "Protocol/DebuggerObserver",
+        "Protocol/InspectorBackend",
+        "Protocol/InspectorFrontendAPI",
+        "Protocol/InspectorFrontendHostStub",
+        "Protocol/InspectorJSBackendCommands",
+        "Protocol/InspectorObserver",
+        "Protocol/InspectorWebBackendCommands",
+        "Protocol/MessageDispatcher",
+        "Protocol/PageObserver",
+        "Protocol/RemoteObject",
+        "Protocol/RuntimeObserver",
+
+        "Models/BreakpointAction",
+        "Models/SourceCode",
+
+        "Models/Breakpoint",
+        "Models/Color",
+        "Models/ContentFlow",
+        "Models/DOMNode",
+        "Models/DOMStorageObject",
+        "Models/DOMTree",
+        "Models/ExecutionContext",
+        "Models/ExecutionContextList",
+        "Models/Frame",
+        "Models/IndexedDatabase",
+        "Models/IndexedDatabaseObjectStore",
+        "Models/IndexedDatabaseObjectStoreIndex",
+        "Models/Probe",
+        "Models/ProbeSet",
+        "Models/ProbeSetDataFrame",
+        "Models/ProbeSetDataTable",
+        "Models/Resource",
+        "Models/ResourceCollection",
+        "Models/Revision",
+        "Models/Script",
+        "Models/Setting",
+        "Models/SourceCodeLocation",
+        "Models/SourceCodeRevision",
+        "Models/SourceMapResource",
+        "Models/TextRange",
+
+        "Controllers/CSSStyleManager",
+        "Controllers/DOMTreeManager",
+        "Controllers/DebuggerManager",
+        "Controllers/FrameResourceManager",
+        "Controllers/ProbeManager",
+        "Controllers/RuntimeManager",
+        "Controllers/RuntimeManager",
+        "Controllers/StorageManager"
     ];
 
     // This corresponds to loading the scripts in Main.hml.
@@ -252,6 +264,7 @@ InspectorTest.initializeInspectorModels = function()
         InspectorBackend.registerRuntimeDispatcher(new WebInspector.RuntimeObserver);
 
     WebInspector.frameResourceManager = new WebInspector.FrameResourceManager;
+    WebInspector.storageManager = new WebInspector.StorageManager;
     WebInspector.domTreeManager = new WebInspector.DOMTreeManager;
     WebInspector.cssStyleManager = new WebInspector.CSSStyleManager;
     WebInspector.debuggerManager = new WebInspector.DebuggerManager;

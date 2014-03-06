@@ -133,19 +133,15 @@ static NodeListInvalidationType invalidationTypeExcludingIdAndNameAttributes(Col
 
 HTMLCollection::HTMLCollection(ContainerNode& ownerNode, CollectionType type, ElementTraversalType traversalType)
     : m_ownerNode(ownerNode)
-    , m_rootType(rootTypeFromCollectionType(type))
-    , m_invalidationType(invalidationTypeExcludingIdAndNameAttributes(type))
-    , m_shouldOnlyIncludeDirectChildren(shouldOnlyIncludeDirectChildren(type))
-    , m_isNameCacheValid(false)
     , m_collectionType(type)
+    , m_invalidationType(invalidationTypeExcludingIdAndNameAttributes(type))
+    , m_rootType(rootTypeFromCollectionType(type))
+    , m_shouldOnlyIncludeDirectChildren(shouldOnlyIncludeDirectChildren(type))
     , m_usesCustomForwardOnlyTraversal(traversalType == CustomForwardOnlyTraversal)
-    , m_isItemRefElementsCacheValid(false)
 {
     ASSERT(m_rootType == static_cast<unsigned>(rootTypeFromCollectionType(type)));
     ASSERT(m_invalidationType == static_cast<unsigned>(invalidationTypeExcludingIdAndNameAttributes(type)));
     ASSERT(m_collectionType == static_cast<unsigned>(type));
-
-    document().registerCollection(*this);
 }
 
 PassRefPtr<HTMLCollection> HTMLCollection::create(ContainerNode& base, CollectionType type)
@@ -155,7 +151,10 @@ PassRefPtr<HTMLCollection> HTMLCollection::create(ContainerNode& base, Collectio
 
 HTMLCollection::~HTMLCollection()
 {
-    document().unregisterCollection(*this);
+    if (m_indexCache.hasValidCache())
+        document().unregisterCollection(*this);
+    if (hasNamedElementCache())
+        document().collectionWillClearIdNameMap(*this);
     // HTMLNameCollection removes cache by itself.
     if (type() != WindowNamedItems && type() != DocumentNamedItems)
         ownerNode().nodeLists()->removeCachedCollection(this);
@@ -364,19 +363,21 @@ Element* HTMLCollection::collectionTraverseBackward(Element& current, unsigned c
     return element;
 }
 
-void HTMLCollection::invalidateCache() const
+void HTMLCollection::invalidateCache(Document& document) const
 {
-    m_indexCache.invalidate();
-    m_isNameCacheValid = false;
-    m_isItemRefElementsCacheValid = false;
-    m_idCache.clear();
-    m_nameCache.clear();
+    if (m_indexCache.hasValidCache()) {
+        document.unregisterCollection(const_cast<HTMLCollection&>(*this));
+        m_indexCache.invalidate();
+    }
+    if (hasNamedElementCache())
+        invalidateNamedElementCache(document);
 }
 
-void HTMLCollection::invalidateIdNameCacheMaps() const
+void HTMLCollection::invalidateNamedElementCache(Document& document) const
 {
-    m_idCache.clear();
-    m_nameCache.clear();
+    ASSERT(hasNamedElementCache());
+    document.collectionWillClearIdNameMap(*this);
+    m_namedElementCache = nullptr;
 }
 
 Node* HTMLCollection::namedItem(const AtomicString& name) const
@@ -412,14 +413,15 @@ Node* HTMLCollection::namedItem(const AtomicString& name) const
     }
 
     // The pathological case. We need to walk the entire subtree.
-    updateNameCache();
+    updateNamedElementCache();
+    ASSERT(m_namedElementCache);
 
-    if (Vector<Element*>* idResults = idCache(name)) {
+    if (const Vector<Element*>* idResults = m_namedElementCache->findElementsWithId(name)) {
         if (idResults->size())
             return idResults->at(0);
     }
 
-    if (Vector<Element*>* nameResults = nameCache(name)) {
+    if (const Vector<Element*>* nameResults = m_namedElementCache->findElementsWithName(name)) {
         if (nameResults->size())
             return nameResults->at(0);
     }
@@ -427,26 +429,29 @@ Node* HTMLCollection::namedItem(const AtomicString& name) const
     return 0;
 }
 
-void HTMLCollection::updateNameCache() const
+void HTMLCollection::updateNamedElementCache() const
 {
-    if (hasNameCache())
+    if (hasNamedElementCache())
         return;
 
     ContainerNode& root = rootNode();
+    CollectionNamedElementCache& cache = createNameItemCache();
 
     unsigned count;
     for (Element* element = firstElement(root); element; element = traverseForward(*element, 1, count, root)) {
         const AtomicString& idAttrVal = element->getIdAttribute();
         if (!idAttrVal.isEmpty())
-            appendIdCache(idAttrVal, element);
+            cache.appendIdCache(idAttrVal, element);
         if (!element->isHTMLElement())
             continue;
         const AtomicString& nameAttrVal = element->getNameAttribute();
         if (!nameAttrVal.isEmpty() && idAttrVal != nameAttrVal && (type() != DocAll || nameShouldBeVisibleInDocumentAll(toHTMLElement(*element))))
-            appendNameCache(nameAttrVal, element);
+            cache.appendNameCache(nameAttrVal, element);
     }
 
-    setHasNameCache();
+    m_indexCache.nodeCount(*this);
+
+    cache.didPopulate();
 }
 
 bool HTMLCollection::hasNamedItem(const AtomicString& name) const
@@ -461,10 +466,11 @@ void HTMLCollection::namedItems(const AtomicString& name, Vector<Ref<Element>>& 
     if (name.isEmpty())
         return;
 
-    updateNameCache();
+    updateNamedElementCache();
+    ASSERT(m_namedElementCache);
 
-    Vector<Element*>* idResults = idCache(name);
-    Vector<Element*>* nameResults = nameCache(name);
+    const Vector<Element*>* idResults = m_namedElementCache->findElementsWithId(name);
+    const Vector<Element*>* nameResults = m_namedElementCache->findElementsWithName(name);
 
     for (unsigned i = 0; idResults && i < idResults->size(); ++i)
         result.append(*idResults->at(i));
@@ -476,14 +482,6 @@ void HTMLCollection::namedItems(const AtomicString& name, Vector<Ref<Element>>& 
 PassRefPtr<NodeList> HTMLCollection::tags(const String& name)
 {
     return ownerNode().getElementsByTagName(name);
-}
-
-void HTMLCollection::append(NodeCacheMap& map, const AtomicString& key, Element* element)
-{
-    OwnPtr<Vector<Element*>>& vector = map.add(key.impl(), nullptr).iterator->value;
-    if (!vector)
-        vector = adoptPtr(new Vector<Element*>);
-    vector->append(element);
 }
 
 } // namespace WebCore

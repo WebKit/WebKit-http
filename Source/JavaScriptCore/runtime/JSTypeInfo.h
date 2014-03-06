@@ -44,21 +44,30 @@ namespace JSC {
     static const unsigned OverridesGetOwnPropertySlot = 1 << 5;
     static const unsigned InterceptsGetOwnPropertySlotByIndexEvenWhenLengthIsNotZero = 1 << 6;
     static const unsigned OverridesVisitChildren = 1 << 7;
+
     static const unsigned OverridesGetPropertyNames = 1 << 8;
     static const unsigned ProhibitsPropertyCaching = 1 << 9;
     static const unsigned HasImpureGetOwnPropertySlot = 1 << 10;
     static const unsigned NewImpurePropertyFiresWatchpoints = 1 << 11;
     static const unsigned StructureHasRareData = 1 << 12;
+    static const unsigned StructureIsImmortal = 1 << 13;
 
     class TypeInfo {
     public:
+        typedef uint8_t InlineTypeFlags;
+        typedef uint8_t OutOfLineTypeFlags;
+
         TypeInfo(JSType type, unsigned flags = 0)
-            : m_type(type)
-            , m_flags(flags & 0xff)
-            , m_flags2(flags >> 8)
+            : TypeInfo(type, flags & 0xff, flags >> 8)
         {
-            ASSERT(static_cast<int>(type) <= 0xff);
-            ASSERT(type >= CompoundType || !(flags & OverridesVisitChildren));
+        }
+        
+        TypeInfo(JSType type, InlineTypeFlags inlineTypeFlags, OutOfLineTypeFlags outOfLineTypeFlags)
+            : m_type(type)
+            , m_flags(inlineTypeFlags)
+            , m_flags2(outOfLineTypeFlags)
+        {
+            ASSERT(m_type >= CompoundType || !(isSetOnFlags1(OverridesVisitChildren)));
             // No object that doesn't ImplementsHasInstance should override it!
             ASSERT((m_flags & (ImplementsHasInstance | OverridesHasInstance)) != OverridesHasInstance);
             // ImplementsDefaultHasInstance means (ImplementsHasInstance & !OverridesHasInstance)
@@ -67,7 +76,8 @@ namespace JSC {
         }
 
         JSType type() const { return static_cast<JSType>(m_type); }
-        bool isObject() const { return type() >= ObjectType; }
+        bool isObject() const { return isObject(type()); }
+        static bool isObject(JSType type) { return type >= ObjectType; }
         bool isFinalObject() const { return type() == FinalObjectType; }
         bool isNumberObject() const { return type() == NumberObjectType; }
         bool isName() const { return type() == NameInstanceType; }
@@ -78,7 +88,8 @@ namespace JSC {
         bool isEnvironmentRecord() const { return isSetOnFlags1(IsEnvironmentRecord); }
         bool overridesHasInstance() const { return isSetOnFlags1(OverridesHasInstance); }
         bool implementsDefaultHasInstance() const { return isSetOnFlags1(ImplementsDefaultHasInstance); }
-        bool overridesGetOwnPropertySlot() const { return isSetOnFlags1(OverridesGetOwnPropertySlot); }
+        bool overridesGetOwnPropertySlot() const { return overridesGetOwnPropertySlot(inlineTypeFlags()); }
+        static bool overridesGetOwnPropertySlot(InlineTypeFlags flags) { return flags & OverridesGetOwnPropertySlot; }
         bool interceptsGetOwnPropertySlotByIndexEvenWhenLengthIsNotZero() const { return isSetOnFlags1(InterceptsGetOwnPropertySlotByIndexEvenWhenLengthIsNotZero); }
         bool overridesVisitChildren() const { return isSetOnFlags1(OverridesVisitChildren); }
         bool overridesGetPropertyNames() const { return isSetOnFlags2(OverridesGetPropertyNames); }
@@ -86,6 +97,7 @@ namespace JSC {
         bool hasImpureGetOwnPropertySlot() const { return isSetOnFlags2(HasImpureGetOwnPropertySlot); }
         bool newImpurePropertyFiresWatchpoints() const { return isSetOnFlags2(NewImpurePropertyFiresWatchpoints); }
         bool structureHasRareData() const { return isSetOnFlags2(StructureHasRareData); }
+        bool structureIsImmortal() const { return isSetOnFlags2(StructureIsImmortal); }
 
         static ptrdiff_t flagsOffset()
         {
@@ -96,6 +108,9 @@ namespace JSC {
         {
             return OBJECT_OFFSETOF(TypeInfo, m_type);
         }
+
+        InlineTypeFlags inlineTypeFlags() const { return m_flags; }
+        OutOfLineTypeFlags outOfLineTypeFlags() const { return m_flags2; }
 
     private:
         friend class LLIntOffsetsExtractor;

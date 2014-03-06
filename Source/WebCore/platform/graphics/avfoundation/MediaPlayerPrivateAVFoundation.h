@@ -59,7 +59,10 @@ public:
     virtual void configureInbandTracks();
     virtual void setCurrentTrack(InbandTextTrackPrivateAVF*) { }
     virtual InbandTextTrackPrivateAVF* currentTrack() const = 0;
-
+#if ENABLE(IOS_AIRPLAY)
+    void playbackTargetIsWirelessChanged();
+#endif
+    
     class Notification {
     public:
 #define FOR_EACH_MEDIAPLAYERPRIVATEAVFOUNDATION_NOTIFICATION_TYPE(macro) \
@@ -81,6 +84,7 @@ public:
     macro(DurationChanged) \
     macro(ContentsNeedsDisplay) \
     macro(InbandTracksNeedConfiguration) \
+    macro(TargetIsWirelessChanged) \
 
         enum Type {
 #define DEFINE_TYPE_ENUM(type) type,
@@ -110,7 +114,7 @@ public:
         {
         }
 
-        Notification(WTF::Function<void ()> function)
+        Notification(std::function<void ()> function)
             : m_type(FunctionType)
             , m_time(0)
             , m_finished(false)
@@ -122,13 +126,13 @@ public:
         bool isValid() { return m_type != None; }
         double time() { return m_time; }
         bool finished() { return m_finished; }
-        Function<void ()>& function() { return m_function; }
+        std::function<void ()>& function() { return m_function; }
         
     private:
         Type m_type;
         double m_time;
         bool m_finished;
-        Function<void ()> m_function;
+        std::function<void ()> m_function;
     };
 
     void scheduleMainThreadNotification(Notification);
@@ -174,7 +178,7 @@ protected:
     virtual MediaPlayer::ReadyState readyState() const override { return m_readyState; }
     virtual double maxTimeSeekableDouble() const override;
     virtual double minTimeSeekable() const override;
-    virtual PassRefPtr<TimeRanges> buffered() const override;
+    virtual std::unique_ptr<PlatformTimeRanges> buffered() const override;
     virtual bool didLoadingProgress() const override;
     virtual void setSize(const IntSize&) override;
     virtual void paint(GraphicsContext*, const IntRect&) = 0;
@@ -229,7 +233,7 @@ protected:
     virtual float rate() const = 0;
     virtual void seekToTime(double time, double negativeTolerance, double positiveTolerance) = 0;
     virtual unsigned long long totalBytes() const = 0;
-    virtual PassRefPtr<TimeRanges> platformBufferedTimeRanges() const = 0;
+    virtual std::unique_ptr<PlatformTimeRanges> platformBufferedTimeRanges() const = 0;
     virtual double platformMaxTimeSeekable() const = 0;
     virtual double platformMinTimeSeekable() const = 0;
     virtual float platformMaxTimeLoaded() const = 0;
@@ -304,7 +308,7 @@ private:
     Vector<Notification> m_queuedNotifications;
     mutable Mutex m_queueMutex;
 
-    mutable RefPtr<TimeRanges> m_cachedLoadedTimeRanges;
+    mutable std::unique_ptr<PlatformTimeRanges> m_cachedLoadedTimeRanges;
 
     MediaPlayer::NetworkState m_networkState;
     MediaPlayer::ReadyState m_readyState;

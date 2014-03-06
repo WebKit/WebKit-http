@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013, 2014 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -25,8 +25,6 @@
 
 #ifndef DFGUseKind_h
 #define DFGUseKind_h
-
-#include <wtf/Platform.h>
 
 #if ENABLE(DFG_JIT)
 
@@ -56,6 +54,7 @@ enum UseKind {
     StringOrStringObjectUse,
     NotCellUse,
     OtherUse,
+    MiscUse,
     LastUseKind // Must always be the last entry in the enum, as it is used to denote the number of enum elements.
 };
 
@@ -98,6 +97,8 @@ ALWAYS_INLINE SpeculatedType typeFilterFor(UseKind useKind)
         return ~SpecCell;
     case OtherUse:
         return SpecOther;
+    case MiscUse:
+        return SpecMisc;
     default:
         RELEASE_ASSERT_NOT_REACHED();
         return SpecFullTop;

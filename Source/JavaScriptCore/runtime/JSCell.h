@@ -26,7 +26,9 @@
 #include "CallData.h"
 #include "ConstructData.h"
 #include "Heap.h"
+#include "IndexingType.h"
 #include "JSLock.h"
+#include "JSTypeInfo.h"
 #include "SlotVisitor.h"
 #include "TypedArrayType.h"
 #include "WriteBarrier.h"
@@ -92,9 +94,15 @@ public:
     bool inherits(const ClassInfo*) const;
     bool isAPIValueWrapper() const;
 
+    JSType type() const;
+    IndexingType indexingType() const;
+    StructureID structureID() const { return m_structureID; }
     Structure* structure() const;
+    Structure* structure(VM&) const;
     void setStructure(VM&, Structure*);
-    void clearStructure() { m_structure.clear(); }
+    void clearStructure() { m_structureID = 0; }
+
+    TypeInfo::InlineTypeFlags inlineTypeFlags() const { return m_flags; }
 
     const char* className();
 
@@ -121,6 +129,7 @@ public:
     // Object operations, with the toObject operation included.
     const ClassInfo* classInfo() const;
     const MethodTable* methodTable() const;
+    const MethodTable* methodTable(VM&) const;
     const MethodTable* methodTableForDestruction() const;
     static void put(JSCell*, ExecState*, PropertyName, JSValue, PutPropertySlot&);
     static void putByIndex(JSCell*, ExecState*, unsigned propertyName, JSValue, bool shouldThrow);
@@ -135,20 +144,57 @@ public:
 
     JSValue fastGetOwnProperty(VM&, const String&);
 
-    static ptrdiff_t structureOffset()
+    enum GCData : uint8_t {
+        Marked = 0,
+        NotMarked = 1,
+        MarkedAndRemembered = 2,
+    };
+
+    void setMarked() { m_gcData = Marked; }
+    void setRemembered(bool remembered)
     {
-        return OBJECT_OFFSETOF(JSCell, m_structure);
+        ASSERT(m_gcData == remembered ? Marked : MarkedAndRemembered);
+        m_gcData = remembered ? MarkedAndRemembered : Marked; 
+    }
+    bool isMarked() const
+    {
+        switch (m_gcData) {
+        case Marked:
+        case MarkedAndRemembered:
+            return true;
+        case NotMarked:
+            return false;
+        }
+        RELEASE_ASSERT_NOT_REACHED();
+        return false;
+    }
+    bool isRemembered() const { return m_gcData == MarkedAndRemembered; }
+
+    static ptrdiff_t structureIDOffset()
+    {
+        return OBJECT_OFFSETOF(JSCell, m_structureID);
     }
 
-    void* structureAddress()
+    static ptrdiff_t typeInfoFlagsOffset()
     {
-        return &m_structure;
+        return OBJECT_OFFSETOF(JSCell, m_flags);
     }
-        
-#if ENABLE(GC_VALIDATION)
-    Structure* unvalidatedStructure() const { return m_structure.unvalidatedGet(); }
-#endif
-        
+
+    static ptrdiff_t typeInfoTypeOffset()
+    {
+        return OBJECT_OFFSETOF(JSCell, m_type);
+    }
+
+    static ptrdiff_t indexingTypeOffset()
+    {
+        return OBJECT_OFFSETOF(JSCell, m_indexingType);
+    }
+
+    static ptrdiff_t gcDataOffset()
+    {
+        return OBJECT_OFFSETOF(JSCell, m_gcData);
+    }
+
     static const TypedArrayType TypedArrayStorageType = NotTypedArray;
 protected:
 
@@ -170,8 +216,12 @@ protected:
 
 private:
     friend class LLIntOffsetsExtractor;
-        
-    WriteBarrier<Structure> m_structure;
+
+    StructureID m_structureID;
+    IndexingType m_indexingType;
+    JSType m_type;
+    TypeInfo::InlineTypeFlags m_flags;
+    uint8_t m_gcData;
 };
 
 template<typename To, typename From>
@@ -191,13 +241,17 @@ inline To jsCast(JSValue from)
 template<typename To, typename From>
 inline To jsDynamicCast(From* from)
 {
-    return from->inherits(std::remove_pointer<To>::type::info()) ? static_cast<To>(from) : 0;
+    if (LIKELY(from->inherits(std::remove_pointer<To>::type::info())))
+        return static_cast<To>(from);
+    return nullptr;
 }
 
 template<typename To>
 inline To jsDynamicCast(JSValue from)
 {
-    return from.isCell() && from.asCell()->inherits(std::remove_pointer<To>::type::info()) ? static_cast<To>(from.asCell()) : 0;
+    if (LIKELY(from.isCell() && from.asCell()->inherits(std::remove_pointer<To>::type::info())))
+        return static_cast<To>(from.asCell());
+    return nullptr;
 }
 
 } // namespace JSC

@@ -432,11 +432,6 @@ fonts/monospace.html
 fonts/sans-serif.html 
 fonts/serif.html 
 
-# Skipping the tests for the old inspector UI
-inspector [ Skip ]
-http/tests/inspector [ Skip ]
-http/tests/inspector-enabled [ Skip ]
-
 loader/go-back-to-different-window-size.html 
 loader/load-defer-resume-crash.html
 
@@ -956,9 +951,6 @@ animations/stop-animation-on-suspend.html
 
 # Crashing in AccessibilityUIElement::parentElement http://webkit.org/b/49379
 accessibility/iframe-bastardization.html
-
-# Spews a console message into the next test under Aero http://webkit.org/b/49945
-svg/custom/clip-path-referencing-use2.svg
 
 # Assertion failure http://webkit.org/b/52913
 transitions/transition-end-event-destroy-iframe.html
@@ -2750,9 +2742,6 @@ webkit.org/b/98666 media/track/track-cue-rendering-horizontal.html [ Failure ]
 #https://bugs.webkit.org/show_bug.cgi?id=98079
 http/tests/security/cross-origin-local-storage-wk1.html
 
-#Skipped on other platforms here: http://trac.webkit.org/changeset/129897
-svg/custom/clip-mask-negative-scale.svg
-
 #https://bugs.webkit.org/show_bug.cgi?id=98306
 css3/flexbox/flexbox-baseline.html
 #https://bugs.webkit.org/show_bug.cgi?id=99878
@@ -2832,9 +2821,7 @@ fast/css3-text/css3-text-indent [ Failure ImageOnlyFailure ]
 webkit.org/b/108370 editing/spelling/context-menu-suggestions-multiword-selection.html [ Skip ]
 webkit.org/b/108370 editing/spelling/context-menu-suggestions-subword-selection.html [ Skip ]
 webkit.org/b/108370 editing/spelling/spelling-double-clicked-word.html [ Skip ]
-webkit.org/b/108370 editing/spelling/spelling-exactly-selected-multiple-words.html [ Skip ]
 webkit.org/b/108370 editing/spelling/spelling-exactly-selected-word.html [ Skip ]
-webkit.org/b/108370 editing/spelling/spelling-should-select-multiple-words.html [ Skip ]
 webkit.org/b/108370 editing/spelling/spelling-with-punctuation-selection.html [ Skip ]
 webkit.org/b/108370 editing/spelling/spelling-with-whitespace-selection.html [ Skip ]
 

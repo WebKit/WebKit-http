@@ -277,10 +277,11 @@ SelectorChecker::Match SelectorChecker::matchRecursively(const SelectorCheckingC
 static bool attributeValueMatches(const Attribute& attribute, CSSSelector::Match match, const AtomicString& selectorValue, bool caseSensitive)
 {
     const AtomicString& value = attribute.value();
-    if (value.isNull())
-        return false;
+    ASSERT(!value.isNull());
 
     switch (match) {
+    case CSSSelector::Set:
+        break;
     case CSSSelector::Exact:
         if (caseSensitive ? selectorValue != value : !equalIgnoringCase(selectorValue, value))
             return false;
@@ -328,10 +329,9 @@ static bool attributeValueMatches(const Attribute& attribute, CSSSelector::Match
         if (value.length() != selectorValue.length() && value[selectorValue.length()] != '-')
             return false;
         break;
-    case CSSSelector::PseudoClass:
-    case CSSSelector::PseudoElement:
     default:
-        break;
+        ASSERT_NOT_REACHED();
+        return false;
     }
 
     return true;
@@ -636,7 +636,6 @@ bool SelectorChecker::checkOne(const SelectorCheckingContext& context) const
             return isEnabled(element);
         case CSSSelector::PseudoFullPageMedia:
             return element->document().isMediaDocument();
-            break;
         case CSSSelector::PseudoDefault:
             return isDefaultButtonForForm(element);
         case CSSSelector::PseudoDisabled:

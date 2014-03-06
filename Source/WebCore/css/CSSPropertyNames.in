@@ -282,7 +282,8 @@ z-index
 -webkit-box-decoration-break
 #endif
 #if defined(ENABLE_CSS_COMPOSITING) && ENABLE_CSS_COMPOSITING
--webkit-blend-mode
+-webkit-mix-blend-mode
+-webkit-isolation
 #endif
 #if defined(ENABLE_CSS_FILTERS) && ENABLE_CSS_FILTERS
 -webkit-filter
@@ -299,6 +300,7 @@ z-index
 -webkit-flex-wrap
 -webkit-justify-content
 -webkit-font-size-delta
+#if defined(ENABLE_CSS_GRID_LAYOUT) && ENABLE_CSS_GRID_LAYOUT
 -webkit-grid-area
 -webkit-grid-auto-columns
 -webkit-grid-auto-rows
@@ -312,6 +314,7 @@ z-index
 -webkit-grid-row
 -webkit-grid-template-areas
 -webkit-grid-auto-flow
+#endif
 -webkit-hyphenate-character [Inherited]
 -webkit-hyphenate-limit-after [Inherited]
 -webkit-hyphenate-limit-before [Inherited]

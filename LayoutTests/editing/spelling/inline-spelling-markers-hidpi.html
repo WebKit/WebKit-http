@@ -17,65 +17,96 @@
 .ellipses {
     text-overflow:ellipsis;
 }
-
 </style>
+</head>
+
+<body>
+<script src="../../resources/js-test-pre.js"></script>
+LTR
+<div id="testLTR" class="testDiv" contenteditable="true"></div>
+RTL
+<div id="testRTL" class="testDiv forcertl" contenteditable="true"></div>
+LTR (text-overflow:ellipses):
+<div id="testLTREllipses" class="testDiv ellipses" contenteditable="true"></div>
+RTL (text-overflow:ellipses):
+<div id="testRTLEllipses" class="testDiv forcertl ellipses" contenteditable="true"></div>
 
 <script>
-function moveCursorOverAllWords(divName, numWords) {
-    div = document.getElementById(divName);
-    div.focus();
-    var selection = window.getSelection();
-    // Move to start of text
-    selection.modify("move", "backward", "line");
-    // Move cursor over all words so inline spellchecking is activated for all
-    for (var i = 0; i < 100; i++ ) {
-        selection.modify("move", "forward", "word");
-    }
-    // Remove focus from the element, since the word under the cursor won't have a misspelling marker.
-    div.blur();
+
+const incorrectPhrase = "the the adlj adaasj sdklj. there there";
+
+description("This tests the correct placement of inline spelling and grammar "
+    + "markers in the following text: "
+    + "'" + incorrectPhrase + "'. "
+    + "Spelling markers should line up exactly under misspelled words in all cases.");
+
+jsTestIsAsync = true;
+
+if (window.internals) {
+    internals.settings.setUnifiedTextCheckerEnabled(true);
+    internals.settings.setAsynchronousSpellCheckingEnabled(true);
 }
 
-function startTest() {
-    if (!window.testRunner)
-        return;
+function runTextCheckingTestFor(id)
+{
+    var div = document.getElementById(id);
+    div.focus();
+    document.execCommand("InsertText", false, incorrectPhrase);
+
+    // Add a word separator so that both spelling and grammar markers will appear.
+    document.execCommand("InsertText", false, " ");
+
+    verifyMarkers();
+}
+
+function verifyMarkers()
+{
+    if (!window.internals)
+        return done();
+
+    // Take care of spelling markers first.
+    shouldBecomeEqual('internals.hasSpellingMarker(8, 4)', 'true', function() { // Verifies 'adlj'.
+        shouldBecomeEqual('internals.hasSpellingMarker(13, 6)', 'true', function() { // Verifies 'adaasj'.
+            shouldBecomeEqual('internals.hasSpellingMarker(20, 5)', 'true', function() {  // Verifies 'sdklj'.
+                verifyGrammarMarkers();
+            });
+         });
+    });
+
+    function verifyGrammarMarkers()
+    {
+        shouldBecomeEqual('internals.hasGrammarMarker(4, 3)', 'true', function() { // Verifies duplicated 'the'.
+            shouldBecomeEqual('internals.hasGrammarMarker(33, 5)', 'true', function() { // Verifies duplicated 'there'.
+                done();
+            });
+        });
+    }
+}
+
+var tests = [
+    function() { runTextCheckingTestFor('testLTR'); },
+    function() { runTextCheckingTestFor('testRTL'); },
+    function() { runTextCheckingTestFor('testLTREllipses'); },
+    function() { runTextCheckingTestFor('testRTLEllipses'); }
+];
+
+function done()
+{
+    var next = tests.shift();
+    if (next)
+        return window.setTimeout(next, 0);
+
+    finishJSTest();
+}
+
+if (window.testRunner) {
     testRunner.dumpAsText(true);
-    testRunner.waitUntilDone();
     testRunner.setBackingScaleFactor(2, function () {
-        moveCursorOverAllWords('testLTR');
-        moveCursorOverAllWords('testRTL');
-        moveCursorOverAllWords('testLTREllipses');
-        moveCursorOverAllWords('testRTLEllipses');
-        testRunner.notifyDone();
+        done();
     });
 }
+
 </script>
-</head>
-<body onload="startTest()">
-<p id="explanation">
-This tests the correct placement of inline spelling and grammar markers in text.<br>
-Spelling markers should line up exactly under misspelled words in all cases.
-</p>
-
-LTR
-<div id="testLTR" class="testDiv" contenteditable="true">
-the the adlj adaasj sdklj. there there
-</div>
-
-RTL
-<div id="testRTL" class="testDiv forcertl" contenteditable="true">
-the the adlj adaasj sdklj. there there
-</div>
-
-
-LTR (text-overflow:ellipses):
-<div id="testLTREllipses" class="testDiv ellipses" contenteditable="true">
-the the adlj adaasj sdklj. there there
-</div>
-
-RTL (text-overflow:ellipses):
-<div id="testRTLEllipses" class="testDiv forcertl ellipses" contenteditable="true">
-the the adlj adaasj sdklj. there there
-</div>
-
+<script src="../../resources/js-test-post.js"></script>
 </body>
 </html>

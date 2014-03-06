@@ -538,17 +538,18 @@ bool TextIterator::handleTextNode()
         if (renderer->style().visibility() != VISIBLE && !m_ignoresStyleVisibility)
             return true;
         // This code aims to produce same results as handleTextBox() below so test results don't change. It does not make much logical sense.
+        const unsigned end = (m_node == m_endContainer) ? static_cast<unsigned>(m_endOffset) : str.length();
         unsigned runEnd = m_offset;
         unsigned runStart = m_offset;
-        while (runEnd < str.length() && (isCollapsibleWhitespace(str[runEnd]) || str[runEnd] == '\t'))
+        while (runEnd < end && (deprecatedIsCollapsibleWhitespace(str[runEnd]) || str[runEnd] == '\t'))
             ++runEnd;
-        bool addSpaceForPrevious = m_lastTextNodeEndedWithCollapsedSpace && m_lastCharacter && !isCollapsibleWhitespace(m_lastCharacter);
+        bool addSpaceForPrevious = m_lastTextNodeEndedWithCollapsedSpace && m_lastCharacter && !deprecatedIsCollapsibleWhitespace(m_lastCharacter);
         if (runEnd > runStart || addSpaceForPrevious) {
             if (runEnd == str.length()) {
                 m_lastTextNodeEndedWithCollapsedSpace = true;
                 return true;
             }
-            bool addSpaceForCurrent = runStart || (m_lastCharacter && !isCollapsibleWhitespace(m_lastCharacter));
+            bool addSpaceForCurrent = runStart || (m_lastCharacter && !deprecatedIsCollapsibleWhitespace(m_lastCharacter));
             if (addSpaceForCurrent || addSpaceForPrevious) {
                 emitCharacter(' ', m_node, 0, runStart, runEnd);
                 m_offset = runEnd;
@@ -556,12 +557,12 @@ bool TextIterator::handleTextNode()
             }
             runStart = runEnd;
         }
-        while (runEnd < str.length() && !isCollapsibleWhitespace(str[runEnd]))
+        while (runEnd < end && !deprecatedIsCollapsibleWhitespace(str[runEnd]))
             ++runEnd;
-        if (runStart < str.length())
+        if (runStart < end)
             emitText(m_node, renderer, runStart, runEnd);
         m_offset = runEnd;
-        return runEnd == str.length();
+        return runEnd == end;
     }
 
     if (renderer->firstTextBox())
@@ -614,7 +615,7 @@ void TextIterator::handleTextBox()
         InlineTextBox* firstTextBox = renderer->containsReversedText() ? (m_sortedTextBoxes.isEmpty() ? 0 : m_sortedTextBoxes[0]) : renderer->firstTextBox();
         bool needSpace = m_lastTextNodeEndedWithCollapsedSpace
             || (m_textBox == firstTextBox && textBoxStart == runStart && runStart > 0);
-        if (needSpace && !isCollapsibleWhitespace(m_lastCharacter) && m_lastCharacter) {
+        if (needSpace && !deprecatedIsCollapsibleWhitespace(m_lastCharacter) && m_lastCharacter) {
             if (m_lastTextNode == m_node && runStart > 0 && str[runStart - 1] == ' ') {
                 unsigned spaceRunStart = runStart - 1;
                 while (spaceRunStart > 0 && str[spaceRunStart - 1] == ' ')
@@ -647,7 +648,7 @@ void TextIterator::handleTextBox()
                 size_t subrunEnd = str.find('\n', runStart);
                 if (subrunEnd == notFound || subrunEnd > runEnd) {
                     subrunEnd = runEnd;
-                    bool lastSpaceCollapsedByNextNonTextBox = !nextTextBox && m_hasNodesFollowing && (str.length() == runEnd + 1);
+                    bool lastSpaceCollapsedByNextNonTextBox = !nextTextBox && m_hasNodesFollowing && (str.length() > runEnd);
                     if (lastSpaceCollapsedByNextNonTextBox)
                         subrunEnd++; // runEnd stopped before last space. Increment by one to restore the space.
                 }
@@ -1300,7 +1301,7 @@ bool SimplifiedBackwardsTextIterator::handleTextNode()
         return true;
 
     String text = renderer->text();
-    if (!renderer->firstTextBox() && text.length() > 0)
+    if (!renderer->hasRenderedText() && text.length() > 0)
         return true;
 
     m_positionEndOffset = m_offset;

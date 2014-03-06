@@ -28,7 +28,6 @@
 #include "JSBasePrivate.h"
 
 #include "APICast.h"
-#include "APIShims.h"
 #include "CallFrame.h"
 #include "Completion.h"
 #include "InitializeThreading.h"
@@ -40,6 +39,10 @@
 #include "SourceCode.h"
 #include <wtf/text/StringHash.h>
 
+#if ENABLE(REMOTE_INSPECTOR)
+#include "JSGlobalObjectInspectorController.h"
+#endif
+
 using namespace JSC;
 
 JSValueRef JSEvaluateScript(JSContextRef ctx, JSStringRef script, JSObjectRef thisObject, JSStringRef sourceURL, int startingLineNumber, JSValueRef* exception)
@@ -49,7 +52,7 @@ JSValueRef JSEvaluateScript(JSContextRef ctx, JSStringRef script, JSObjectRef th
         return 0;
     }
     ExecState* exec = toJS(ctx);
-    APIEntryShim entryShim(exec);
+    JSLockHolder locker(exec);
 
     JSObject* jsThisObject = toJS(thisObject);
 
@@ -65,6 +68,14 @@ JSValueRef JSEvaluateScript(JSContextRef ctx, JSStringRef script, JSObjectRef th
     if (evaluationException) {
         if (exception)
             *exception = toRef(exec, evaluationException);
+#if ENABLE(REMOTE_INSPECTOR)
+        // FIXME: If we have a debugger attached we could learn about ParseError exceptions through
+        // ScriptDebugServer::sourceParsed and this path could produce a duplicate warning. The
+        // Debugger path is currently ignored by inspector.
+        // NOTE: If we don't have a debugger, this SourceCode will be forever lost to the inspector.
+        // We could stash it in the inspector in case an inspector is ever opened.
+        globalObject->inspectorController().reportAPIException(exec, evaluationException);
+#endif
         return 0;
     }
 
@@ -82,7 +93,7 @@ bool JSCheckScriptSyntax(JSContextRef ctx, JSStringRef script, JSStringRef sourc
         return false;
     }
     ExecState* exec = toJS(ctx);
-    APIEntryShim entryShim(exec);
+    JSLockHolder locker(exec);
 
     startingLineNumber = std::max(1, startingLineNumber);
 
@@ -94,6 +105,9 @@ bool JSCheckScriptSyntax(JSContextRef ctx, JSStringRef script, JSStringRef sourc
     if (!isValidSyntax) {
         if (exception)
             *exception = toRef(exec, syntaxException);
+#if ENABLE(REMOTE_INSPECTOR)
+        exec->vmEntryGlobalObject()->inspectorController().reportAPIException(exec, syntaxException);
+#endif
         return false;
     }
 
@@ -111,7 +125,7 @@ void JSGarbageCollect(JSContextRef ctx)
         return;
 
     ExecState* exec = toJS(ctx);
-    APIEntryShim entryShim(exec, false);
+    JSLockHolder locker(exec);
 
     exec->vm().heap.reportAbandonedObjectGraph();
 }
@@ -123,7 +137,7 @@ void JSReportExtraMemoryCost(JSContextRef ctx, size_t size)
         return;
     }
     ExecState* exec = toJS(ctx);
-    APIEntryShim entryShim(exec);
+    JSLockHolder locker(exec);
     exec->vm().heap.reportExtraMemoryCost(size);
 }
 
@@ -135,7 +149,7 @@ void JSSynchronousGarbageCollectForDebugging(JSContextRef ctx)
         return;
 
     ExecState* exec = toJS(ctx);
-    APIEntryShim entryShim(exec);
+    JSLockHolder locker(exec);
     exec->vm().heap.collectAllGarbage();
 }
 

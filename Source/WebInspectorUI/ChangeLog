@@ -1,3 +1,1236 @@
+2014-03-04  Brian Burg  <bburg@apple.com>
+
+        Inspector does not restore breakpoints after a page reload
+        https://bugs.webkit.org/show_bug.cgi?id=129655
+
+        Reviewed by Joseph Pecoraro.
+
+        Fix some console asserts that fire when breakpoints resolve.
+
+        * UserInterface/Controllers/DebuggerManager.js:
+        (WebInspector.DebuggerManager.prototype.breakpointResolved):
+        This had a typo, it should be `breakpoint.identifier`.
+        (WebInspector.DebuggerManager.prototype.scriptDidParse):
+        Sometimes the `url` parameter is empty instead of null.
+
+2014-03-04  Diego Pino Garcia  <dpino@igalia.com>
+
+        Web Inspector: Remove WebInspector.EventHandler in favor of WebInspector.EventListenerSet
+        https://bugs.webkit.org/show_bug.cgi?id=129185
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Base/EventHandler.js: Removed.
+        * UserInterface/Main.html: Don't include EventHandler.js.
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WebInspector.SourceCodeTextEditor.prototype._dismissPopover):
+        (WebInspector.SourceCodeTextEditor.prototype._trackPopoverEvents):
+        Use EventListenerSet instead of EventHandler.
+
+2014-03-03  Jonathan Wells  <jonowells@apple.com>
+
+        Web Inspector: Match color of regex in source view with a popover
+        https://bugs.webkit.org/show_bug.cgi?id=129645
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/LogContentView.css:
+        (.console-formatted-string):
+        (.console-formatted-regexp):
+
+2014-03-03  Jonathan Wells  <jonowells@apple.com>
+
+        Web Inspector: Better Debugger popovers for RegExp values
+        https://bugs.webkit.org/show_bug.cgi?id=129633
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WebInspector.SourceCodeTextEditor.prototype._tokenTrackingControllerHighlightedJavaScriptExpression.populate):
+        (WebInspector.SourceCodeTextEditor.prototype._tokenTrackingControllerHighlightedJavaScriptExpression):
+        (WebInspector.SourceCodeTextEditor.prototype._showPopoverForRegExp):
+
+2014-03-03  Timothy Hatcher  <timothy@apple.com>
+
+        Don't try to parse legacy CSS gradients -- we don't support them.
+
+        https://bugs.webkit.org/show_bug.cgi?id=129623
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Models/Gradient.js:
+        (WebInspector.Gradient.stopsWithComponents): Fix a possible exception on malformed stops.
+        (WebInspector.LinearGradient.linearGradientWithComponents): Return early for legacy gradients.
+
+2014-03-03  Timothy Hatcher  <timothy@apple.com>
+
+        Remove an innocuous error message and support default views for Resource and Debugger sidebars.
+
+        https://bugs.webkit.org/show_bug.cgi?id=129622
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WebInspector.DebuggerSidebarPanel.prototype.showDefaultContentView): Added.
+        * UserInterface/Views/ResourceSidebarPanel.js:
+        (WebInspector.ResourceSidebarPanel.prototype.showDefaultContentView): Added.
+        (WebInspector.ResourceSidebarPanel.prototype.treeElementForRepresentedObject): Don't log an error
+        if the tree element isn't a Script. We try to find any represented object, and it can fail.
+
+2014-03-03  Timothy Hatcher  <timothy@apple.com>
+
+        Fix an exception caused by trying to access the DOM before it is loaded.
+
+        https://bugs.webkit.org/show_bug.cgi?id=129617
+
+        Reviewed by Andreas Kling.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.loaded): Move global event listeners from here...
+        (WebInspector.contentLoaded): ... to here.
+
+2014-03-01  Timothy Hatcher  <timothy@apple.com>
+
+        Make Start Timeline Recording in the Develop menu show the Timeline view again.
+
+        This also fixes a noticeable delay between showing the sidebar and the default Timeline
+        view when initially opening the Web Inspector to the Timeline.
+
+        https://bugs.webkit.org/show_bug.cgi?id=129545
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.contentLoaded): Call TimelineSidebarPanel.initialize to prime the content view.
+        This is needed so the view is ready in this run loop cycle, where it was delayed before.
+        * UserInterface/Protocol/InspectorFrontendAPI.js:
+        (InspectorFrontendAPI.setTimelineProfilingEnabled): Call TimelineSidebarPanel.showTimelineOverview.
+        * UserInterface/Views/TimelineSidebarPanel.js:
+        (WebInspector.TimelineSidebarPanel.prototype.initialize): Added.
+
+2014-03-01  Timothy Hatcher  <timothy@apple.com>
+
+        Select the Resource navigation sidebar by default when there is no cookie.
+
+        https://bugs.webkit.org/show_bug.cgi?id=129544
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector._restoreInspectorViewStateFromCookie):
+
+2014-03-01  Timothy Hatcher  <timothy@apple.com>
+
+        Label JavaScript forced layouts as such in the Timeline.
+
+        https://bugs.webkit.org/show_bug.cgi?id=129546
+
+        Reviewed by David Kilzer.
+
+        * Localizations/en.lproj/localizedStrings.js: Updated.
+        * UserInterface/Controllers/TimelineManager.js:
+        (WebInspector.TimelineManager.prototype.eventRecorded.processRecord):
+        (WebInspector.TimelineManager.prototype.eventRecorded):
+        * UserInterface/Models/LayoutTimelineRecord.js:
+        (WebInspector.LayoutTimelineRecord.EventType.displayName):
+        * UserInterface/Views/TimelineRecordTreeElement.js:
+        (WebInspector.TimelineRecordTreeElement):
+
+2014-02-28  Timothy Hatcher  <timothy@apple.com>
+
+        Enable breakpoints when adding a new breakpoint or enabling an existing breakpoint.
+
+        This eliminates a multi-step process for the user that can be confusing.
+
+        https://bugs.webkit.org/show_bug.cgi?id=129426
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Controllers/DebuggerManager.js:
+        (WebInspector.DebuggerManager.prototype.set breakpointsEnabled):
+        (WebInspector.DebuggerManager.prototype._breakpointDisabledStateDidChange):
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WebInspector.DebuggerSidebarPanel):
+        (WebInspector.DebuggerSidebarPanel.prototype._breakpointsEnabledDidChange):
+        (WebInspector.DebuggerSidebarPanel.prototype._breakpointsToggleButtonClicked):
+
+2014-02-27  Timothy Hatcher  <timothy@apple.com>
+
+        Use a RegExp when when using CodeMirror's SearchCursor.
+
+        This avoids doing toLowerCase() on every line of the TextEditor.
+
+        https://bugs.webkit.org/show_bug.cgi?id=129463
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/TextEditor.js:
+        (TextEditor.prototype.performSearch): Use a RegExp for query. Pass false for the caseFold
+        argument, but it is ignored for RegExp searches anyway.
+
+2014-02-27  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: model tests should use a special Test.html inspector page
+        https://bugs.webkit.org/show_bug.cgi?id=129190
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Base/Test.js: Added.
+        (WebInspector.loaded):
+        (WebInspector.contentLoaded):
+        (WebInspector.updateDockedState):
+        (InspectorTest.log):
+        (InspectorTest.assert):
+        (InspectorTest.debugLog):
+        (InspectorTest.completeTest):
+        (InspectorTest.evaluateInPage):
+        (InspectorTest.addResult):
+        (InspectorTest.clearResults):
+        (InspectorTest.pageLoaded):
+        (InspectorTest.reportUncaughtException):
+        (.console.logType):
+        * UserInterface/Protocol/InspectorBackend.js:
+        (InspectorBackendClass):
+        (InspectorBackendClass.prototype.dispatch):
+        (InspectorBackendClass.prototype.runAfterPendingDispatches):
+        (InspectorBackendClass.prototype._flushPendingScripts):
+        * UserInterface/Protocol/InspectorObserver.js:
+        (WebInspector.InspectorObserver.prototype.evaluateForTestInFrontend):
+        * UserInterface/Test.html: Added.
+
+2014-02-27  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: JSContext inspection should report exceptions in the console
+        https://bugs.webkit.org/show_bug.cgi?id=128776
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/ConsoleMessageImpl.js:
+        (WebInspector.ConsoleMessageImpl.prototype._formatMessage):
+        (WebInspector.ConsoleMessageImpl.prototype._shouldHideURL):
+        (WebInspector.ConsoleMessageImpl.prototype._firstNonNativeCallFrame):
+        (WebInspector.ConsoleMessageImpl.prototype._populateStackTraceTreeElement):
+        Provide better handling for "[native code]" and legacy "undefined"
+        call frame URLs. Never linkify these. Also, when showing a link
+        for an exception, always use the first non-native call frame as
+        the link location.
+
+2014-02-26  Timothy Hatcher  <timothy@apple.com>
+
+        Fix an issue where the Timeline filter scope bars were not applying.
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/TimelineDataGrid.js:
+        (TimelineDataGrid.prototype.treeElementMatchesActiveScopeFilters): Use .get() to access the ScopeBar.
+
+2014-02-25  Andreas Kling  <akling@apple.com>
+
+        Prune dead code for Web Inspector memory instrumentation.
+        <https://webkit.org/b/129286>
+
+        Reviewed by Sam Weinig.
+
+        * UserInterface/Protocol/InspectorWebBackendCommands.js:
+
+2014-02-24  Timothy Hatcher  <timothy@apple.com>
+
+        Switch from prefixed CSS gradient to unprefixed.
+
+        https://bugs.webkit.org/show_bug.cgi?id=129279
+
+        Reviewed by Andreas Kling.
+
+        * UserInterface/Views/BreakpointActionView.css:
+        (.breakpoint-action-append-button):
+        (.breakpoint-action-remove-button):
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.css:
+        (.css-style-text-editor > .CodeMirror .CodeMirror-lines .color-swatch):
+        * UserInterface/Views/CompletionSuggestionsView.css:
+        (.completion-suggestions-container > .item:active):
+        * UserInterface/Views/DashboardView.css:
+        (.toolbar .dashboard):
+        * UserInterface/Views/DataGrid.css:
+        (.data-grid th):
+        (.data-grid table.data):
+        (.data-grid th.sortable:not(.mouse-over-collapser):active):
+        (.data-grid th.sort-ascending, .data-grid th.sort-descending):
+        (.data-grid th.sortable.sort-ascending:not(.mouse-over-collapser):active, .data-grid th.sortable.sort-descending:not(.mouse-over-collapser):active):
+        (body.window-inactive .data-grid th.sort-descending):
+        * UserInterface/Views/DetailsSection.css:
+        (.details-section > .header):
+        (.details-section .details-section > .header):
+        * UserInterface/Views/DividerNavigationItem.css:
+        (.navigation-bar .item.divider):
+        * UserInterface/Views/FindBanner.css:
+        (.find-banner > button:active:not(:disabled)):
+        * UserInterface/Views/Main.css:
+        (#split-content-browser > .navigation-bar):
+        * UserInterface/Views/NavigationSidebarPanel.css:
+        (.sidebar > .panel.navigation > .overflow-shadow):
+        (.navigation-sidebar-panel-content-tree-outline .item.selected):
+        (.navigation-sidebar-panel-content-tree-outline:focus .item.selected):
+        (body.window-inactive .navigation-sidebar-panel-content-tree-outline .item.selected):
+        * UserInterface/Views/ProbeSetDataGrid.css:
+        (.details-section.probe-set .data-grid > .data-container td.unknown-value):
+        (.details-section.probe-set .data-grid th):
+        * UserInterface/Views/RadioButtonNavigationItem.css:
+        (.navigation-bar .item.radio.button.text-only.selected):
+        * UserInterface/Views/TextEditor.css:
+        (.text-editor .bouncy-highlight):
+        * UserInterface/Views/TimelineContentView.css:
+        (.content-view.timeline > .view-container > .timeline-view > .data-grid table.data):
+        * UserInterface/Views/TimelineDataGrid.css:
+        (.timeline-data-grid-tree-outline .item:hover):
+        * UserInterface/Views/TimelineRuler.css:
+        (.timeline-ruler > .header > .divider):
+        * UserInterface/Views/TimelineSidebarPanel.css:
+        (.sidebar > .panel.timeline > .title-bar):
+        (.sidebar > .panel.timeline > .content > .stripe-background):
+        * UserInterface/Views/Toolbar.css:
+        (body:not(.mac-platform) .toolbar):
+        (body.docked.mac-platform.mavericks .toolbar):
+
+2014-02-24  Timothy Hatcher  <timothy@apple.com>
+
+        Fix the missing navigation bar in the Debugger sidebar panel.
+
+        Sorting the CSS resources caused specificity issue.
+
+        https://bugs.webkit.org/show_bug.cgi?id=129251
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/DebuggerSidebarPanel.css:
+        (.sidebar > .panel.navigation.debugger > .content):
+        (.sidebar > .panel.navigation.debugger > .navigation-bar):
+        * UserInterface/Views/LayoutTimelineView.css:
+        (.sidebar > .panel.navigation.timeline.timeline-content-view-showing .navigation-sidebar-panel-content-tree-outline.layout .item .subtitle):
+        * UserInterface/Views/NetworkTimelineView.css:
+        (.sidebar > .panel.navigation.timeline.timeline-content-view-showing .navigation-sidebar-panel-content-tree-outline.network .item .subtitle):
+        * UserInterface/Views/ResourceSidebarPanel.css:
+        (.sidebar > .panel.navigation.resource > .empty-content-placeholder):
+        (.sidebar > .panel.navigation.resource > .search-bar):
+        (.sidebar > .panel.navigation.resource > .search-bar > input[type="search"]):
+        * UserInterface/Views/ScriptTimelineView.css:
+        (.sidebar > .panel.navigation.timeline.timeline-content-view-showing .navigation-sidebar-panel-content-tree-outline.script .item .subtitle):
+        * UserInterface/Views/TimelineSidebarPanel.css:
+        (.sidebar > .panel.navigation.timeline > .status-bar):
+        (.sidebar > .panel.navigation.timeline > .status-bar > .record-glyph):
+        (.sidebar > .panel.navigation.timeline > .status-bar > .record-glyph.recording):
+        (.sidebar > .panel.navigation.timeline > .status-bar > .record-glyph:hover):
+        (.sidebar > .panel.navigation.timeline > .status-bar > .record-glyph.recording:hover):
+        (.sidebar > .panel.navigation.timeline > .status-bar > .record-glyph.forced):
+        (.sidebar > .panel.navigation.timeline > .status-bar > .record-glyph.recording.forced):
+        (.sidebar > .panel.navigation.timeline > .status-bar > .record-status):
+        (.sidebar > .panel.navigation.timeline > .title-bar):
+        (.sidebar > .panel.navigation.timeline > .title-bar.timelines):
+        (.sidebar > .panel.navigation.timeline > .title-bar.timeline-events):
+        (.sidebar > .panel.navigation.timeline > .timelines-content):
+        (.sidebar > .panel.navigation.timeline > .timelines-content .close-button):
+        (.sidebar > .panel.navigation.timeline > .timelines-content li.item .icon):
+        (.sidebar > .panel.navigation.timeline > .timelines-content li.item.selected .close-button):
+        (.sidebar > .panel.navigation.timeline > .timelines-content li.item:not(.selected):nth-child(even)):
+        (.sidebar > .panel.navigation.timeline > .timelines-content li.item:not(.selected):not(:first-child)):
+        (.sidebar > .panel.navigation.timeline > .timelines-content li.item.selected + li.item):
+        (.sidebar > .panel.navigation.timeline > .timelines-content :focus li.item.selected + li.item):
+        (.sidebar > .panel.navigation.timeline > .timelines-content .close-button:active):
+        (.sidebar > .panel.navigation.timeline > .empty-content-placeholder):
+        (.sidebar > .panel.navigation.timeline.timeline-content-view-showing > .content):
+        (.sidebar > .panel.navigation.timeline > .content > .stripe-background):
+        (.sidebar > .panel.navigation.timeline.timeline-content-view-showing > .content > .stripe-background):
+
+2014-02-24  Timothy Hatcher  <timothy@apple.com>
+
+        Give non-Mac platforms a default toolbar background so it isn't just white.
+
+        https://bugs.webkit.org/show_bug.cgi?id=129260
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.contentLoaded): Style the boby with platform classes.
+        * UserInterface/Base/Utilities.js:
+        (String.prototype.contains): Added.
+        * UserInterface/Views/Toolbar.css:
+        (body.docked .toolbar, body:not(.mac-platform) .toolbar): Added. Default toolbar background.
+        (body.docked.mac-platform.mavericks .toolbar, body.docked.mac-platform.mountain-lion): Added.
+        (body.mac-platform:not(.docked) .toolbar .item.button > .label): Only apply to Mac.
+
+2014-02-24  Diego Pino Garcia  <dpino@igalia.com>
+
+        Web Inspector: Remove single quote characters from Web Inspector JavaScript files
+        https://bugs.webkit.org/show_bug.cgi?id=129253
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.openURL):
+        * UserInterface/Views/CookieStorageContentView.js:
+        (WebInspector.cookieDomainMatchesResourceDomain):
+        * UserInterface/Views/DOMTreeElement.js:
+        (WebInspector.DOMTreeElement.prototype._insertInLastAttributePosition):
+        (WebInspector.DOMTreeElement.prototype._startEditingTagName.editingComitted):
+        (WebInspector.DOMTreeElement.prototype._startEditingTagName.editingCancelled):
+        (WebInspector.DOMTreeElement.prototype._startEditingTagName):
+        * UserInterface/Views/DOMTreeOutline.js:
+        (WebInspector.DOMTreeOutline.prototype._ondragover):
+        * UserInterface/Views/DataGrid.js:
+        (WebInspector.DataGrid.prototype.addPlaceholderNode):
+
+2014-02-23  Dan Bernstein  <mitz@apple.com>
+
+        Removed -Wno-format-y2k from WARNING_CFLAGS
+
+        Rubber-stamped by Sam Weinig.
+
+        * Configurations/Base.xcconfig:
+
+2014-02-23  Diego Pino García  <dpino@igalia.com>
+
+        [GTK] Fix build after Web Inspector code reorganization (r164543)
+        https://bugs.webkit.org/show_bug.cgi?id=129231
+
+        Reviewed by Dean Jackson.
+
+        * GNUmakefile.am:
+        Modify paths to Web Inspector code.
+
+2014-02-23  Antoine Quint  <graouts@webkit.org>
+
+        Web Inspector: color picker sliders aren't laid out correctly
+        https://bugs.webkit.org/show_bug.cgi?id=129234
+
+        Reviewed by Joseph Pecoraro.
+
+        While it's unclear to me what happened, the "position" property for the color picker sliders
+        wasn't being computed as expected and used relative positioning. I assume this is related to
+        r164543 when the order of CSS files changed.
+
+        * UserInterface/Views/Slider.css:
+        (.slider):
+
+2014-02-22  Dan Bernstein  <mitz@apple.com>
+
+        REGRESSION (r164507): Crash beneath JSGlobalObjectInspectorController::reportAPIException at facebook.com, twitter.com, youtube.com
+        https://bugs.webkit.org/show_bug.cgi?id=129227
+
+        Reviewed by Eric Carlson.
+
+        Reverted r164507.
+
+        * UserInterface/Views/ConsoleMessageImpl.js:
+        (WebInspector.ConsoleMessageImpl.prototype._formatMessage):
+        (WebInspector.ConsoleMessageImpl.prototype._populateStackTraceTreeElement):
+
+2014-02-21  Timothy Hatcher  <timothy@apple.com>
+
+        Organize WebInspectorUI/UserInterface into sub-directories.
+
+        https://bugs.webkit.org/show_bug.cgi?id=129194
+
+        Rubber-stamped by Joseph Pecoraro.
+
+        * Scripts/copy-user-interface-resources.sh: Fix Image URLs and Protocol paths.
+        * UserInterface/Base: Added.
+        * UserInterface/Controllers: Added.
+        * UserInterface/Images: Added.
+        * UserInterface/Main.html: Updated.
+        * UserInterface/Models Added.
+        * UserInterface/Protocol Added.
+        * UserInterface/Views: Added.
+
+2014-02-21  Timothy Hatcher  <timothy@apple.com>
+
+        Add inspection user interface for IndexedDB.
+
+        https://bugs.webkit.org/show_bug.cgi?id=129162
+
+        Reviewed by Joseph Pecoraro.
+
+        * Localizations/en.lproj/localizedStrings.js: Updated.
+        * UserInterface/ContentView.js:
+        (WebInspector.ContentView):
+        (WebInspector.ContentView.isViewable):
+        * UserInterface/IndexedDatabase.js: Added.
+        (WebInspector.IndexedDatabase):
+        (WebInspector.IndexedDatabase.prototype.get name):
+        (WebInspector.IndexedDatabase.prototype.get securityOrigin):
+        (WebInspector.IndexedDatabase.prototype.get host):
+        (WebInspector.IndexedDatabase.prototype.get version):
+        (WebInspector.IndexedDatabase.prototype.get objectStores):
+        (WebInspector.IndexedDatabase.prototype.saveIdentityToCookie):
+        * UserInterface/IndexedDatabaseEntryDataGridNode.js: Added.
+        (WebInspector.IndexedDatabaseEntryDataGridNode):
+        (WebInspector.IndexedDatabaseEntryDataGridNode.prototype.get entry):
+        (WebInspector.IndexedDatabaseEntryDataGridNode.prototype.createCellContent):
+        * UserInterface/IndexedDatabaseHostTreeElement.js: Added.
+        (WebInspector.IndexedDatabaseHostTreeElement):
+        (WebInspector.IndexedDatabaseHostTreeElement.prototype.get name):
+        (WebInspector.IndexedDatabaseHostTreeElement.prototype.get categoryName):
+        * UserInterface/IndexedDatabaseObjectStore.js: Added.
+        (WebInspector.IndexedDatabaseObjectStore):
+        (WebInspector.IndexedDatabaseObjectStore.prototype.get name):
+        (WebInspector.IndexedDatabaseObjectStore.prototype.get keyPath):
+        (WebInspector.IndexedDatabaseObjectStore.prototype.get autoIncrement):
+        (WebInspector.IndexedDatabaseObjectStore.prototype.get parentDatabase):
+        (WebInspector.IndexedDatabaseObjectStore.prototype.get indexes):
+        (WebInspector.IndexedDatabaseObjectStore.prototype.saveIdentityToCookie):
+        (WebInspector.IndexedDatabaseObjectStore.prototype.establishRelationship):
+        * UserInterface/IndexedDatabaseObjectStoreContentView.css: Added.
+        (.content-view.indexed-database-object-store > .data-grid):
+        (.content-view.indexed-database-object-store > .data-grid td .section .header):
+        (.content-view.indexed-database-object-store > .data-grid td .section .header::before):
+        (.content-view.indexed-database-object-store > .data-grid td .section .header .title):
+        (.content-view.indexed-database-object-store > .data-grid table.data):
+        (.content-view.indexed-database-object-store > .data-grid table.data tr:nth-child(even)):
+        (.content-view.indexed-database-object-store > .data-grid table.data tr:nth-child(odd)):
+        (.content-view.indexed-database-object-store > .data-grid table.data tr.filler):
+        (.content-view.indexed-database-object-store > .data-grid :focus tr.selected td .section .header::before):
+        (.content-view.indexed-database-object-store > .data-grid :focus tr.selected td .section.expanded .header::before):
+        (.content-view.indexed-database-object-store > .data-grid :focus tr.selected td .properties-tree li.parent::before):
+        (.content-view.indexed-database-object-store > .data-grid :focus tr.selected td .properties-tree li.parent.expanded::before):
+        (.content-view.indexed-database-object-store > .data-grid :focus tr.selected td .properties-tree li *):
+        * UserInterface/IndexedDatabaseObjectStoreContentView.js: Added.
+        (WebInspector.IndexedDatabaseObjectStoreContentView.displayKeyPath):
+        (WebInspector.IndexedDatabaseObjectStoreContentView):
+        (WebInspector.IndexedDatabaseObjectStoreContentView.prototype.closed):
+        (WebInspector.IndexedDatabaseObjectStoreContentView.prototype.saveToCookie):
+        (WebInspector.IndexedDatabaseObjectStoreContentView.prototype.updateLayout):
+        (WebInspector.IndexedDatabaseObjectStoreContentView.prototype._reset):
+        (WebInspector.IndexedDatabaseObjectStoreContentView.prototype._dataGridScrolled):
+        (WebInspector.IndexedDatabaseObjectStoreContentView.prototype._fetchMoreData.processEntries):
+        (WebInspector.IndexedDatabaseObjectStoreContentView.prototype._fetchMoreData):
+        * UserInterface/IndexedDatabaseObjectStoreIndex.js: Added.
+        (WebInspector.IndexedDatabaseObjectStoreIndex):
+        (WebInspector.IndexedDatabaseObjectStoreIndex.prototype.get name):
+        (WebInspector.IndexedDatabaseObjectStoreIndex.prototype.get keyPath):
+        (WebInspector.IndexedDatabaseObjectStoreIndex.prototype.get unique):
+        (WebInspector.IndexedDatabaseObjectStoreIndex.prototype.get multiEntry):
+        (WebInspector.IndexedDatabaseObjectStoreIndex.prototype.get parentObjectStore):
+        (WebInspector.IndexedDatabaseObjectStoreIndex.prototype.saveIdentityToCookie):
+        (WebInspector.IndexedDatabaseObjectStoreIndex.prototype.establishRelationship):
+        * UserInterface/IndexedDatabaseObjectStoreIndexTreeElement.js: Added.
+        (WebInspector.IndexedDatabaseObjectStoreIndexTreeElement):
+        (WebInspector.IndexedDatabaseObjectStoreIndexTreeElement.prototype.get objectStoreIndex):
+        * UserInterface/IndexedDatabaseObjectStoreTreeElement.js: Added.
+        (WebInspector.IndexedDatabaseObjectStoreTreeElement):
+        (WebInspector.IndexedDatabaseObjectStoreTreeElement.prototype.get objectStore):
+        (WebInspector.IndexedDatabaseObjectStoreTreeElement.prototype.oncollapse):
+        (WebInspector.IndexedDatabaseObjectStoreTreeElement.prototype.onpopulate):
+        * UserInterface/IndexedDatabaseTreeElement.js: Added.
+        (WebInspector.IndexedDatabaseTreeElement):
+        (WebInspector.IndexedDatabaseTreeElement.prototype.get indexedDatabase):
+        (WebInspector.IndexedDatabaseTreeElement.prototype.oncollapse):
+        (WebInspector.IndexedDatabaseTreeElement.prototype.onpopulate):
+        * UserInterface/Main.html:
+        * UserInterface/Main.js:
+        (WebInspector.sidebarPanelForRepresentedObject):
+        * UserInterface/ResourceSidebarPanel.js:
+        (WebInspector.ResourceSidebarPanel):
+        (WebInspector.ResourceSidebarPanel.prototype._treeElementSelected):
+        (WebInspector.ResourceSidebarPanel.prototype._indexedDatabaseWasAdded):
+        (WebInspector.ResourceSidebarPanel.prototype._storageCleared):
+        * UserInterface/StorageManager.js:
+        (WebInspector.StorageManager):
+        (WebInspector.StorageManager.prototype.initialize):
+        (WebInspector.StorageManager.prototype.processData):
+        (WebInspector.StorageManager.prototype.requestIndexedDatabaseData):
+        (WebInspector.StorageManager.prototype._mainResourceDidChange):
+        (WebInspector.StorageManager.prototype._addIndexedDBDatabasesIfNeeded.processDatabaseNames):
+        (WebInspector.StorageManager.prototype._addIndexedDBDatabasesIfNeeded.processDatabase):
+        (WebInspector.StorageManager.prototype._addIndexedDBDatabasesIfNeeded):
+        (WebInspector.StorageManager.prototype._addIndexedDBDatabasesIfNeeded.processObjectStore):
+        (WebInspector.StorageManager.prototype._addIndexedDBDatabasesIfNeeded.processObjectStoreIndex):
+        (WebInspector.StorageManager.prototype._securityOriginDidChange):
+        * UserInterface/URLUtilities.js:
+        (parseSecurityOrigin):
+
+2014-02-22  Antoine Quint  <graouts@webkit.org>
+
+        Web Inspector: allow drag-to-adjust on angle input of gradients editor
+        https://bugs.webkit.org/show_bug.cgi?id=129095
+
+        Reviewed by Timothy Hatcher.
+
+        Rename CodeMirrorDragToAlterNumberController to CodeMirrorDragToAdjustNumberController and move
+        the core logic of a drag-to-adjust behavior out of it to a new generic class DragToAdjustController.
+        We use this new class from CodeMirrorGradientEditingController to provide drag-to-adjust behavior
+        in the angle input field of the gradient editor and also as a supporting object for the CodeMirror-
+        specific class.
+
+        * UserInterface/CodeMirrorDragToAdjustNumberController.css: Renamed from Source/WebInspectorUI/UserInterface/CodeMirrorDragToAlterNumberController.css.
+        (.CodeMirror.drag-to-adjust .CodeMirror-lines):
+
+        * UserInterface/CodeMirrorDragToAdjustNumberController.js: Added.
+        Removed the UI logic and use the new DragToAdjustController as a supporting object instead. We implement
+        the various DragToAdjustController delegate methods in order to customize its behavior to work within the
+        context of a CodeMirror editor, specifically to prevent activation when the editor is read-only and to
+        prevent adjustment when the hovered token isn't a number.
+
+        (WebInspector.CodeMirrorDragToAdjustNumberController):
+        (WebInspector.CodeMirrorDragToAdjustNumberController.prototype.get enabled):
+        (WebInspector.CodeMirrorDragToAdjustNumberController.prototype.set enabled):
+        (WebInspector.CodeMirrorDragToAdjustNumberController.prototype.dragToAdjustControllerActiveStateChanged):
+        (WebInspector.CodeMirrorDragToAdjustNumberController.prototype.dragToAdjustControllerCanBeActivated):
+        (WebInspector.CodeMirrorDragToAdjustNumberController.prototype.dragToAdjustControllerCanBeAdjusted):
+        (WebInspector.CodeMirrorDragToAdjustNumberController.prototype.dragToAdjustControllerWasAdjustedByAmount):
+        (WebInspector.CodeMirrorDragToAdjustNumberController.prototype.dragToAdjustControllerDidReset):
+        (WebInspector.CodeMirrorDragToAdjustNumberController.prototype.dragToAdjustControllerCanAdjustObjectAtPoint):
+
+        * UserInterface/CodeMirrorGradientEditingController.css:
+        (.gradient-editing-controller > label.drag-to-adjust > input):
+
+        * UserInterface/CodeMirrorGradientEditingController.js:
+        Adopt the new DragToAdjustController to make the angle input field value adjustable by dragging.
+
+        (WebInspector.CodeMirrorGradientEditingController.prototype.popoverWillPresent):
+        (WebInspector.CodeMirrorGradientEditingController.prototype.dragToAdjustControllerWasAdjustedByAmount):
+        (WebInspector.CodeMirrorGradientEditingController.prototype._handleInputEvent):
+        (WebInspector.CodeMirrorGradientEditingController.prototype._angleInputValueDidChange):
+
+        * UserInterface/DragToAdjustController.js: Renamed from Source/WebInspectorUI/UserInterface/CodeMirrorDragToAlterNumberController.js.
+        New DragToAdjustController class exposing only the core UI logic of a drag-to-adjust behavior in the context
+        of a DOM element, exposing a few delegation methods to customize the controller's behavior:
+
+        - dragToAdjustControllerActiveStateChanged() notifies that the .active property has changed, allowing bringup
+        and cleanup work to be performed.
+
+        - dragToAdjustControllerDidReset() notifies that the various tracking states of the controller have been reset
+        allowing other state objects used by clients to be cleared.
+
+        - dragToAdjustControllerCanBeActivated() is used to check whether the controller may enter the active state upon
+        first hovering the target element.
+
+        - dragToAdjustControllerCanBeAdjusted() is used to check whether adjustment can be performed at the moment when
+        the user actually is about to engage in a drag-to-adjust interaction.
+
+        - dragToAdjustControllerCanAdjustObjectAtPoint() is used to check whether the object at the provided point (mouse
+        location) is an adjustable value.
+
+        - dragToAdjustControllerWasAdjustedByAmount() notifies that there is a new amount to add to the current value
+        following a drag-to-adjust interaction.
+
+        (WebInspector.DragToAdjustController):
+        (WebInspector.DragToAdjustController.prototype.get element):
+        (WebInspector.DragToAdjustController.prototype.set element):
+        (WebInspector.DragToAdjustController.prototype.set enabled):
+        (WebInspector.DragToAdjustController.prototype.get active):
+        (WebInspector.DragToAdjustController.prototype.set active):
+        (WebInspector.DragToAdjustController.prototype.reset):
+        (WebInspector.DragToAdjustController.prototype.handleEvent):
+        (WebInspector.DragToAdjustController.prototype._setDragging):
+        (WebInspector.DragToAdjustController.prototype._setTracksMouseClickAndDrag):
+        (WebInspector.DragToAdjustController.prototype._modifiersDidChange):
+        (WebInspector.DragToAdjustController.prototype._mouseMoved):
+        (WebInspector.DragToAdjustController.prototype._mouseWasPressed):
+        (WebInspector.DragToAdjustController.prototype._mouseWasDragged):
+        (WebInspector.DragToAdjustController.prototype._mouseWasReleased):
+
+        * UserInterface/Main.html:
+        Link in new source files.
+
+2014-02-21  Chi Wai Lau  <clau@apple.com>
+
+        Web Inspector: Replace binarySearch with lowerBound and upperBound functions
+        https://bugs.webkit.org/show_bug.cgi?id=118609
+
+        Reviewed by Timothy Hatcher.
+
+        This makes insertionIndexForObjectInListSortedByFunction work in O(log(n)) time instead of O(n).
+
+        * UserInterface/BinarySearch.js: Removed.
+        * UserInterface/Main.html:
+        * UserInterface/Utilities.js:
+        * WebInspectorUI.vcxproj/WebInspectorUI.vcxproj:
+        * WebInspectorUI.vcxproj/WebInspectorUI.vcxproj.filters:
+
+2014-02-21  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: animate breakpoint tree elements when probe samples are received
+        https://bugs.webkit.org/show_bug.cgi?id=128334
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/BreakpointIcons.css: Removed, rules migrated to the following file.
+
+        * UserInterface/BreakpointTreeElement.css: When we want to animateon top of the
+        static icon, we set the icon image as the icon element's background, and animate
+        a span on top of the icon element.
+
+        (.breakpoint-exception-icon .icon): Moved.
+        (.breakpoint-generic-line-icon .icon):
+        (.breakpoint-generic-line-icon .icon > span): Added.
+        (.data-updated.breakpoint-generic-line-icon .icon > span): Added.
+
+        * UserInterface/BreakpointTreeElement.js:
+        (WebInspector.BreakpointTreeElement): Rewrite event listener add/remove to use EventListenerSet.
+        (WebInspector.BreakpointTreeElement.prototype.ondetach): Override to unregister the instance's listeners.
+        (WebInspector.BreakpointTreeElement.prototype._addProbeSet): Added.
+        (WebInspector.BreakpointTreeElement.prototype._removeProbeSet): Added.
+        (WebInspector.BreakpointTreeElement.prototype._probeSetAdded): Added.
+        (WebInspector.BreakpointTreeElement.prototype._probeSetRemoved): Added.
+        Add/remove listeners when probe sets change.
+
+        (WebInspector.BreakpointTreeElement.prototype._samplesCleared): Listeners should follow
+        the active data table.
+
+        (WebInspector.BreakpointTreeElement.prototype._dataUpdated): Run the animation when probe data changes.
+        (WebInspector.BreakpointTreeElement.prototype._breakpointLocationDidChange): Fix a listener leak.
+        * UserInterface/Main.html: Remove BreakpointIcons.css.
+        * UserInterface/NavigationSidebarPanel.css:
+        (.navigation-sidebar-panel-content-tree-outline .item .icon): give icons
+        'position: relative' so child spans can be absolutely positioned.
+        * UserInterface/ProbeDetailsSidebarPanel.js: Get probeSet out of the event data
+        container. The probe set used to be passed as the data container itself.
+        (WebInspector.ProbeDetailsSidebarPanel.prototype._probeSetAdded):
+        * UserInterface/ProbeManager.js:
+        (WebInspector.ProbeManager.prototype._breakpointActionsChanged.set get knownProbeIdentifiers):
+        (WebInspector.ProbeManager.prototype._breakpointActionsChanged):
+        (WebInspector.ProbeManager.prototype.get _probeSetForBreakpoint.set this):
+        * UserInterface/ProbeSet.js:
+        (WebInspector.ProbeSet.prototype.clearSamples): include the old data table as the SamplesCleared event data.
+        * UserInterface/TextResourceContentView.js:
+        (WebInspector.TextResourceContentView.prototype._probeSetsChanged):
+
+2014-02-21  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: JSContext inspection should report exceptions in the console
+        https://bugs.webkit.org/show_bug.cgi?id=128776
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/ConsoleMessageImpl.js:
+        (WebInspector.ConsoleMessageImpl.prototype._formatMessage):
+        (WebInspector.ConsoleMessageImpl.prototype._shouldHideURL):
+        (WebInspector.ConsoleMessageImpl.prototype._firstNonNativeCallFrame):
+        (WebInspector.ConsoleMessageImpl.prototype._populateStackTraceTreeElement):
+        Provide better handling for "[native code]" and legacy "undefined"
+        call frame URLs. Never linkify these. Also, when showing a link
+        for an exception, always use the first non-native call frame as
+        the link location.
+
+2014-02-21  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Revert r164486, causing a number of test failures.
+
+        Unreviewed rollout.
+
+2014-02-21  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: JSContext inspection should report exceptions in the console
+        https://bugs.webkit.org/show_bug.cgi?id=128776
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/ConsoleMessageImpl.js:
+        (WebInspector.ConsoleMessageImpl.prototype._formatMessage):
+        (WebInspector.ConsoleMessageImpl.prototype._shouldHideURL):
+        (WebInspector.ConsoleMessageImpl.prototype._firstNonNativeCallFrame):
+        (WebInspector.ConsoleMessageImpl.prototype._populateStackTraceTreeElement):
+        Provide better handling for "[native code]" and legacy "undefined"
+        call frame URLs. Never linkify these. Also, when showing a link
+        for an exception, always use the first non-native call frame as
+        the link location.
+
+2014-02-21  Antoine Quint  <graouts@webkit.org>
+
+        Web Inspector: scrollbar may appear when selecting a stop in gradient editor
+        https://bugs.webkit.org/show_bug.cgi?id=129149
+
+        Reviewed by Timothy Hatcher.
+
+        Ensure the angle input is not focused as we update the size of the gradient editor's
+        popover content since, if it were, it'd make a scrollbar appear as we animate the
+        popover's frame to fit its new content.
+
+        * UserInterface/CodeMirrorGradientEditingController.js:
+        (WebInspector.CodeMirrorGradientEditingController.prototype.gradientSliderStopWasSelected):
+
+2014-02-20  Antoine Quint  <graouts@webkit.org>
+
+        Web Inspector: rich editing of CSS gradients
+        https://bugs.webkit.org/show_bug.cgi?id=119686
+
+        Reviewed by Timothy Hatcher.
+
+        Look for gradient definitions in CSS resources and implement a gradient-specific CodeMirrorEditingController
+        to edit those CSS gradients. The CodeMirrorGradientEditingController consists of a GradientSlider, a new widget
+        allowing the editing of gradient stops, a <select> to pick between various gradient types, a text input to edit
+        the gradient angle (for linear gradients) and finally a ColorPicker when a gradient stop is picked for editing.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        New localized strings for the content of the gradient editing controller popover.
+
+        * UserInterface/CodeMirrorAdditions.js:
+        New .createGradientMarkers() method which, similar to .createColorMarkers(), takes in an optional TextRange, and
+        looks for all gradients specified in CSS to create TextMarkers with new type WebInspector.TextMarker.Type.Gradient.
+        In order to fully identify these CSS gradient strings, we implement a tokenizer to look for the final closing
+        parenthesis since there can be nested opening and closing parentheses as colors are specified for stops.
+
+        * UserInterface/CodeMirrorGradientEditingController.css: Added.
+        (.gradient-editing-controller):
+        (.gradient-editing-controller.edits-color):
+        (.gradient-editing-controller.radial-gradient):
+        (.gradient-editing-controller.edits-color.radial-gradient):
+        (.gradient-editing-controller select):
+        (.gradient-editing-controller .gradient-slider):
+        (.gradient-editing-controller .color-picker):
+        (.gradient-editing-controller > .color-picker > .slider):
+        (.gradient-editing-controller > .color-picker > .brightness):
+        (.gradient-editing-controller > .color-picker > .opacity):
+        (.gradient-editing-controller > label):
+        (.gradient-editing-controller.radial-gradient > label):
+        (.gradient-editing-controller.edits-color > label):
+        (.gradient-editing-controller > label > input):
+
+        * UserInterface/CodeMirrorGradientEditingController.js: Added.
+        (WebInspector.CodeMirrorGradientEditingController):
+        (WebInspector.CodeMirrorGradientEditingController.prototype.get initialValue):
+        (WebInspector.CodeMirrorGradientEditingController.prototype.get cssClassName):
+        (WebInspector.CodeMirrorGradientEditingController.prototype.get popoverPreferredEdges):
+        (WebInspector.CodeMirrorGradientEditingController.prototype.popoverTargetFrameWithRects):
+        (WebInspector.CodeMirrorGradientEditingController.prototype.popoverWillPresent):
+        (WebInspector.CodeMirrorGradientEditingController.prototype.popoverDidPresent):
+        Implementation of CodeMirrorEditingController methods meant to be overridden. This allows us
+        to customize the popover's appearance, mostly to control how it attaches to the gradient
+        strings in the editor.
+
+        (WebInspector.CodeMirrorGradientEditingController.prototype.handleEvent):
+        Event handler for changes in the <select> governing gradient type and <input> for the angle.
+
+        (WebInspector.CodeMirrorGradientEditingController.prototype.gradientSliderStopsDidChange):
+        Implementation of a GradientSlider delegation method, we use this to update the .text property
+        in order to propagate the stops change to the editor.
+
+        (WebInspector.CodeMirrorGradientEditingController.prototype.gradientSliderStopWasSelected):
+        Implementation of a GradientSlider delegation method, we use this to control the display of the
+        ColorPicker used to edit the color of a selected stop.
+
+        (WebInspector.CodeMirrorGradientEditingController.prototype._handleInputEvent):
+        Deal with changes in the <input> for the angle, ensuring we have a "º" string added to the value.
+
+        (WebInspector.CodeMirrorGradientEditingController.prototype._handleChangeEvent):
+        Deal with changes in the <select> for the type, preserving the stops list from one gradient type
+        to the other. Gradient type-specific information (angle for linear gradients, sizing for radial
+        gradients) is lost as we toggle between gradient types.
+
+        (WebInspector.CodeMirrorGradientEditingController.prototype._colorPickerColorChanged):
+        Propagate a color change in the ColorPicker to the stop being edited in the GradientSlider and
+        and update the .text property in order to propagate the stops change to the editor.
+
+        (WebInspector.CodeMirrorGradientEditingController.prototype._updateCSSClassForGradientType):
+        As we toggle the gradient type in ._handleChangeEvent(), update the CSS class used to hide or show
+        the angle <input> which is only relevant for linear gradients.
+
+        * UserInterface/ColorPicker.js:
+        (WebInspector.ColorPicker):
+        Adopt the new Checkers.svg file to display the checkers pattern in the background of the opacity slider.
+
+        (WebInspector.ColorPicker.prototype.get colorWheel):
+        Expose the ColorWheel such that it can be sized by ColorPicker clients.
+
+        (WebInspector.ColorPicker.prototype._updateColor):
+        Drive-by fix for a bug where we'd attempt to use the RGB components of a color to get the alpha-aware version
+        of the color even though the base format was HSL.
+
+        * UserInterface/Gradient.js: Added.
+        Parser for gradient strings as passed from the CodeMirror .createGradientMarkers() extension method. In the case
+        of linear gradients, we parse all values, save for lengths, and in the case of radial gradients, we preserve the
+        sizing information as a string and parse only the gradient stops as the sizing information is only useful to show
+        in an editor if attached to an element with metrics.
+        
+        Since instances of Gradient are used as the .value property of CodeMirrorGradientEditingController, we implement
+        the required .copy() and .toString() methods. The .toString() implementations are aware of default values for angles
+        and color stop offsets and only print those as necessary and use shorthands when possible.
+
+        (WebInspector.Gradient.fromString):
+        (WebInspector.Gradient.stopsWithComponents):
+        (WebInspector.Gradient.stringFromStops):
+        (WebInspector.LinearGradient):
+        (WebInspector.LinearGradient.linearGradientWithComponents):
+        (WebInspector.LinearGradient.prototype.copy):
+        (WebInspector.LinearGradient.prototype.toString):
+        (WebInspector.RadialGradient):
+        (WebInspector.RadialGradient.radialGradientWithComponents):
+        (WebInspector.RadialGradient.prototype.copy):
+        (WebInspector.RadialGradient.prototype.toString):
+
+        * UserInterface/GradientSlider.css: Added.
+        (.gradient-slider):
+        (.gradient-slider > canvas):
+        (.gradient-slider > .add-area):
+        (.gradient-slider-knob):
+        (.gradient-slider-knob.shadow):
+        (.gradient-slider-knob.selected):
+        (.gradient-slider-knob.detaching):
+        (.gradient-slider-knob.fade-out):
+        (.gradient-slider-knob > div):
+        (.gradient-slider-knob > img):
+
+        * UserInterface/GradientSlider.js: Added.
+        Widget used to edit a list of stops for a gradient, linear or radial. The widget features a <canvas> element
+        that draws the gradient as a linear gradient from left to right with checkers in the background to correctly
+        display transparent colors. Attached to this background, individual knobs are shown for each stop in the provided
+        stops array. These knobs can be dragged from left to right to change the matching stop offset, but also down to
+        detach the knob and remove this stop. Additionally, knobs can be clicked to toggle their selected state, where only
+        one knob can be selected at a time. The Esc. key is used to remove selection of the currently selected knob.
+
+        (WebInspector.GradientSlider):
+        (WebInspector.GradientSlider.prototype.get element):
+        (WebInspector.GradientSlider.prototype.get stops):
+        (WebInspector.GradientSlider.prototype.set stops):
+        (WebInspector.GradientSlider.prototype.get selectedStop):
+        (WebInspector.GradientSlider.prototype.handleEvent):
+        (WebInspector.GradientSlider.prototype.handleKeydownEvent):
+        (WebInspector.GradientSlider.prototype.knobXDidChange):
+        (WebInspector.GradientSlider.prototype.knobCanDetach):
+        (WebInspector.GradientSlider.prototype.knobWillDetach):
+        (WebInspector.GradientSlider.prototype.knobSelectionChanged):
+        (WebInspector.GradientSlider.prototype._handleMouseover):
+        (WebInspector.GradientSlider.prototype._handleMousemove):
+        (WebInspector.GradientSlider.prototype._handleMouseout):
+        (WebInspector.GradientSlider.prototype._handleClick):
+        (WebInspector.GradientSlider.prototype._updateShadowKnob):
+        (WebInspector.GradientSlider.prototype._sortStops):
+        (WebInspector.GradientSlider.prototype._updateStops):
+        (WebInspector.GradientSlider.prototype._updateCanvas):
+        (WebInspector.GradientSlider.prototype._updateKnobs):
+        (WebInspector.GradientSliderKnob):
+        (WebInspector.GradientSliderKnob.prototype.get element):
+        (WebInspector.GradientSliderKnob.prototype.get stop):
+        (WebInspector.GradientSliderKnob.prototype.set stop):
+        (WebInspector.GradientSliderKnob.prototype.get x):
+        (WebInspector.GradientSliderKnob.prototype.set x):
+        (WebInspector.GradientSliderKnob.prototype.get y):
+        (WebInspector.GradientSliderKnob.prototype.set y):
+        (WebInspector.GradientSliderKnob.prototype.get wellColor):
+        (WebInspector.GradientSliderKnob.prototype.set wellColor):
+        (WebInspector.GradientSliderKnob.prototype.get selected):
+        (WebInspector.GradientSliderKnob.prototype.set selected):
+        (WebInspector.GradientSliderKnob.prototype.handleEvent):
+        (WebInspector.GradientSliderKnob.prototype._handleMousedown):
+        (WebInspector.GradientSliderKnob.prototype._handleMousemove):
+        (WebInspector.GradientSliderKnob.prototype._handleMouseup):
+        (WebInspector.GradientSliderKnob.prototype._handleTransitionEnd):
+        (WebInspector.GradientSliderKnob.prototype._updateTransform):
+
+        * UserInterface/Images/Checkers.svg: Added.
+        New asset to draw checkers for color wells.
+
+        * UserInterface/Images/GradientStop.png: Added.
+        * UserInterface/Images/GradientStop@2x.png: Added.
+        * UserInterface/Images/GradientStopSelected.png: Added.
+        * UserInterface/Images/GradientStopSelected@2x.png: Added.
+        New assets used by the gradient slider.
+
+        * UserInterface/Main.html:
+        Link to the new source files.
+
+        * UserInterface/SourceCodeTextEditor.js:
+        (WebInspector.SourceCodeTextEditor.prototype._updateEditableMarkers):
+        Add a call to .createGradientMarkers() such that we support editing of CSS gradients in such editors.
+
+        (WebInspector.SourceCodeTextEditor.prototype._tokenTrackingControllerHighlightedMarkedExpression):
+        Also recognize gradient markers as valid editable markers.
+
+        * UserInterface/TextEditor.js:
+        (WebInspector.TextEditor.prototype.createGradientMarkers):
+        Wrapper for the CodeMirror extension method .createGradientMarkers() such that it may be used by subclasses
+        that have no knowledge of CodeMirror.
+
+        (WebInspector.TextEditor.prototype.editingControllerForMarker):
+        Return a CodeMirrorGradientEditingController for TextMarkers with WebInspector.TextMarker.Type.Gradient type.
+
+        * UserInterface/TextMarker.js:
+        Add the WebInspector.TextMarker.Type.Gradient type.
+
+2014-02-20  Antoine Quint  <graouts@webkit.org>
+
+        Web Inspector: create a CodeMirrorEditingController superclass
+        https://bugs.webkit.org/show_bug.cgi?id=129094
+
+        Reviewed by Timothy Hatcher.
+
+        Take code that is generic to editing of any text marker out of CodeMirrorColorEditingController to
+        create a new CodeMirrorEditingController superclass that'll be fit to use for future editing controllers.
+        Additioanlly, we fix existing issues with such editing by supporting text markers spread across several
+        lines and more robustly handling the Esc. key being pressed to dismiss a controller's popover.
+
+        * UserInterface/CSSStyleDeclarationTextEditor.js:
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._createColorSwatches):
+        Adopt the new .createColorMarkers() method signature to provide a TextRange parameter rather than a single
+        line number.
+
+        * UserInterface/CodeMirrorAdditions.js:
+        Remove the .boundsForRange() method in favor of a .rectsForRange() method which will allow us to draw better
+        menus when hovering over a text range by providing tight bounds rather than a large box. We also handle any
+        line wrapping produced by CodeMirror and remove any leading white-space so that the rects are tight to the
+        actual characters in the text marker.
+
+        We also change .createColorMarkers() to take in a TextRange parameter rather than a line number in order to
+        better deal with text markers spread across multiple lines.
+
+        * UserInterface/CodeMirrorColorEditingController.js:
+        Remove any code that is adequate for any editing controller (which is moving to CodeMirrorEditingController).
+        We also adopt new interfaces exposed by CodeMirrorEditingController.
+
+        (WebInspector.CodeMirrorColorEditingController):
+        (WebInspector.CodeMirrorColorEditingController.prototype.get initialValue):
+        (WebInspector.CodeMirrorColorEditingController.prototype.get cssClassName):
+        (WebInspector.CodeMirrorColorEditingController.prototype.popoverWillPresent):
+        (WebInspector.CodeMirrorColorEditingController.prototype.popoverDidPresent):
+        (WebInspector.CodeMirrorColorEditingController.prototype._colorPickerColorChanged):
+
+        * UserInterface/CodeMirrorEditingController.js: Copied from Source/WebInspectorUI/UserInterface/CodeMirrorColorEditingController.js.
+        New class meant to be subclassed by any future editing controller, and already subclassed by
+        CodeMirrorColorEditingController. This class exposes several hooks for subclasses to customize its behavior:
+        
+        .initialValue: a value we can revert to if the editing is canceled
+        .cssClassName: a CSS class name that can be added to the editing controller's container
+        .popoverPreferredEdges: a list of preferredEdges as passed to Popover.prototype.present() with a sensible default
+        .popoverTargetFrameWithRects: a targetFrame passed to Popover.prototype.present(), defaults to a union of provided rects
+        .popoverWillPresent: called as the popover is about to be presented, typically overridden to set the popover's content
+        .popoverDidPresent: called as the popover just was presented, typically overridden when content needs to tuned only after
+        being added to the DOM and setting of the necessary machinery to update the serialized value in the editor based on interaction
+        within the popover without changing the serialized value upon showing the popover the very first time.
+        
+        Additionally, the .value property must be an object supporting .toString() and .copy() method.
+
+        Finally, the .editingControllerDidStartEditing() and .editingControllerDidFinishEditing() delegate methods are fired
+        as editing begins and finishes. 
+
+        (WebInspector.CodeMirrorEditingController):
+        (WebInspector.CodeMirrorEditingController.prototype.get marker):
+        (WebInspector.CodeMirrorEditingController.prototype.get range):
+        (WebInspector.CodeMirrorEditingController.prototype.get value):
+        (WebInspector.CodeMirrorEditingController.prototype.set value):
+        (WebInspector.CodeMirrorEditingController.prototype.get delegate):
+        (WebInspector.CodeMirrorEditingController.prototype.set delegate):
+        (WebInspector.CodeMirrorEditingController.prototype.get text):
+        (WebInspector.CodeMirrorEditingController.prototype.set text):
+        (WebInspector.CodeMirrorEditingController.prototype.get initialValue):
+        (WebInspector.CodeMirrorEditingController.prototype.get cssClassName):
+        (WebInspector.CodeMirrorEditingController.prototype.get popover):
+        (WebInspector.CodeMirrorEditingController.prototype.get popoverPreferredEdges):
+        (WebInspector.CodeMirrorEditingController.prototype.popoverTargetFrameWithRects):
+        (WebInspector.CodeMirrorEditingController.prototype.presentHoverMenu):
+        (WebInspector.CodeMirrorEditingController.prototype.dismissHoverMenu):
+        (WebInspector.CodeMirrorEditingController.prototype.popoverWillPresent):
+        (WebInspector.CodeMirrorEditingController.prototype.popoverDidPresent):
+
+        (WebInspector.CodeMirrorEditingController.prototype.handleKeydownEvent):
+        Event handler for keydown events as registered via the new WebInspector.addWindowKeydownListener() method.
+
+        (WebInspector.CodeMirrorEditingController.prototype.hoverMenuButtonWasPressed):
+        (WebInspector.CodeMirrorEditingController.prototype.didDismissPopover):
+
+        * UserInterface/Geometry.js:
+        (WebInspector.Rect.unionOfRects):
+        (WebInspector.Rect.prototype.unionWithRect):
+        New utilities to get a Rect that is the union of the provided Rect or array of Rects.
+
+        (WebInspector.Polygon):
+        (WebInspector.Polygon.prototype.bounds):
+        New class used to store a list of points for a polygon and get its bounds, used by the HoverMenu class.
+
+        * UserInterface/HoverMenu.css:
+        (.hover-menu):
+        (.hover-menu > svg):
+        (.hover-menu > svg > rect):
+        (.hover-menu > img):
+
+        * UserInterface/HoverMenu.js:
+        We remove the assumption that a HoverMenu is only used to draw a single rounded rect based on a simple
+        Rect and instead support presentation based on an array of Rects where we either:
+        
+        - draw a single rounded rectangle if there is only a single Rect provided
+        - draw two disconnected open-ended rects if we're provided with two non-overlapping Rects
+        - draw a polygon surrounding all provided Rects in all other cases
+
+        No matter how the HoverMenu is drawn, the drawing is performed in SVG with either <rect> or a <path> elements.
+
+        (WebInspector.HoverMenu):
+        (WebInspector.HoverMenu.prototype.present):
+        (WebInspector.HoverMenu.prototype.dismiss):
+        (WebInspector.HoverMenu.prototype.handleEvent):
+        (WebInspector.HoverMenu.prototype._handleClickEvent):
+        (WebInspector.HoverMenu.prototype._drawOutline):
+        (WebInspector.HoverMenu.prototype._addRect):
+        (WebInspector.HoverMenu.prototype._addPath):
+        (WebInspector.HoverMenu.prototype._drawSingleLine):
+        (WebInspector.HoverMenu.prototype._drawTwoNonOverlappingLines):
+        (WebInspector.HoverMenu.prototype._drawOverlappingLines):
+
+        * UserInterface/Main.html:
+        Link to the new CodeMirrorEditingController class.
+
+        * UserInterface/Main.js:
+        Expose a new mechanism to deal with window-level handling of keydown events in order to allow
+        a list of handlers to accept or reject dealing with the provided keydown event based on the order
+        they were registered, in most recent to oldest registered handler. This allows, for instance, for
+        a more graceful handling of the Esc. key being pressed in the CodeMirrorEditingController and
+        bypasses the DOM structure allowing for objects managing elements in different DOM hierarchies
+        to compete with handling of keydown events.
+
+        (WebInspector.loaded):
+        (WebInspector.addWindowKeydownListener):
+        (WebInspector.removeWindowKeydownListener):
+        (WebInspector._updateWindowKeydownListener):
+        (WebInspector._sharedWindowKeydownListener):
+
+        * UserInterface/SourceCodeTextEditor.css:
+        (.hover-menu.color > img):
+        Update the offset applied to a HoverMenu button based on the change of layout for such buttons which
+        are now absolutely positioned in code by HoverMenu rather than being laid out using the flex-box model.
+
+        * UserInterface/SourceCodeTextEditor.js:
+        Abstrct away the assumption that only a color editing controller may be used to edit text markers in
+        a source code text editor.
+
+        (WebInspector.SourceCodeTextEditor.prototype.hidden):
+        Ensure we remove any currently-displayed hover menu for an editing controller when the editor is hidden.
+        This would happen in the situation where a keyboard shortcut was used to jump to another part of the
+        Web Inspector UI without using the mouse.
+
+        (WebInspector.SourceCodeTextEditor.prototype.contentDidChange):
+        Since we're now working with text ranges rather than lines, remove the code where we'd work out a set of
+        changed lines and call ._updateEditableMarkers() with the changed range directly instead.
+
+        (WebInspector.SourceCodeTextEditor.prototype._contentDidPopulate):
+        (WebInspector.SourceCodeTextEditor.prototype.tokenTrackingControllerNewHighlightCandidate):
+        (WebInspector.SourceCodeTextEditor.prototype.tokenTrackingControllerMouseOutOfHoveredMarker):
+        Adopt the more generic method names rather than color-specific ones.
+
+        (WebInspector.SourceCodeTextEditor.prototype._showPopover):
+        When showing the popover outside of the use of a CodeMirrorEditingController, such as a JavaScript expression
+        when debugging, also deal with the possibility of the highlighted range containing multiple lines rather
+        than assume a single line.
+
+        (WebInspector.SourceCodeTextEditor.prototype._updateEditableMarkers):
+        More generic method name to support future, non-color editing controllers.
+
+        (WebInspector.SourceCodeTextEditor.prototype._tokenTrackingControllerHighlightedMarkedExpression):
+        Find the outermost marker in the list of markers provided such that a marker containing other markers
+        shows the UI for the containing marker. For instance, a gradient marker would contain several color
+        markers and it's preferable to show the editing UI for the whole gradient rather than a specific color.
+
+        Additionally, adopt more generic ivars and method names to support future, non-color editing controllers.
+
+        (WebInspector.SourceCodeTextEditor.prototype._dismissEditingController):
+        Support for new parameter instructing that the editing controller dismissal should be instant rather than
+        animated, which is the default. This is useful when, for instance, the text editor is cleared.
+
+        (WebInspector.SourceCodeTextEditor.prototype.editingControllerDidStartEditing):
+        (WebInspector.SourceCodeTextEditor.prototype.editingControllerDidFinishEditing):
+        Adopt the more generic method names rather than color-specific ones.
+
+        * UserInterface/TextEditor.js:
+        (WebInspector.TextEditor.prototype.rectsForRange):
+        Remove .boundsForRange() in favor of this new method where we return a series of rects so that we may
+        draw a more pleasing HoverMenu.
+
+        (WebInspector.TextEditor.prototype.createColorMarkers):
+        Use a TextRanger rather than a single line number to match the underlying CodeMirror extension method.
+
+        (WebInspector.TextEditor.prototype.editingControllerForMarker):
+        Use the provided TextMarker's type to provide the most adequate CodeMirrorEditingController class.
+
+        * UserInterface/TextMarker.js:
+        (WebInspector.TextMarker.prototype.get rects):
+        Remove the .bounds property in favor of .rects to match the underlying CodeMirror extension method.
+
+2014-02-20  Antoine Quint  <graouts@webkit.org>
+
+        Web Inspector: Popover should animate its frame to display its refreshed content
+        https://bugs.webkit.org/show_bug.cgi?id=129088
+
+        Reviewed by Timothy Hatcher.
+
+        When calling .update(), we now check whether we can animate the change of frame provided the
+        new computed frame to best fit the current content still matches the edge the popover uses
+        to attach to the target frame. If we find that we can do so, we animate the background frame
+        of the popover while ensuring the anchor point remains stable during the animation such that
+        only the popover's frame seems to animate.
+
+        * UserInterface/Geometry.js:
+        (WebInspector.Rect.prototype.round):
+        Returns a new Rect with rounded values, using a floor for the position and a ceil for the size.
+
+        * UserInterface/Main.html:
+        Link to the new UnitBezier.js source file.
+
+        * UserInterface/Popover.js:
+        (WebInspector.Popover):
+        Make ._anchorPoint an ivar such that we don't need to pass a reference to the anchorPoint into
+        the various calls leading to an update of the popover's background drawing.
+
+        (WebInspector.Popover.prototype.set frame):
+        We no longer round the values of the frame here, instead calling the new .round() method on Rect
+        in places where we compute a new frame.
+
+        (WebInspector.Popover.prototype.set content):
+        (WebInspector.Popover.prototype.update):
+        Update the calls to ._update() to set the new shouldAnimate flag to true in situations where the
+        popover is already visible.
+
+        (WebInspector.Popover.prototype._update):
+        In the situation where there is a preference to animate the frame, as set by the new shouldAnimate
+        parameter, check that we can indeed animate by ensuring that the edge the popover uses to attach to
+        the target frame remains the same upon computing the new best metrics for the new content size. If
+        we can indeed animate, call _animateFrame(), otherwise set the new frame, anchor point and frame
+        drawing discretely like we used to.
+
+        (WebInspector.Popover.prototype._setAnchorPoint):
+        New method to ensure we floor the position of the anchor point to ensure, when animating, that the
+        anchor point remains stationary.
+
+        (WebInspector.Popover.prototype._animateFrame):
+        Using the new UnitBezier class, animate the popover frame from its previous value to its newly computed
+        value while ensuring the anchor point remains, at all times, the same absolute position such that it
+        remains stationary during the animation. The spline used to animate the frame is the same that a CSS
+        transition set with an "ease" timing-function (default value) would use.
+
+        (WebInspector.Popover.prototype._drawBackground):
+        (WebInspector.Popover.prototype._drawFrame):
+        Adopt new ._edge and ._anchorPoint ivars.
+
+        * UserInterface/UnitBezier.js: Added.
+        New class used to perform animations using a timing function specified with a cubic Bézier curve. The code
+        is directly adapted from the Source/WebCore/platform/graphics/UnitBezier.h file.
+
+        (WebInspector.UnitBezier):
+        (WebInspector.UnitBezier.prototype.solve):
+        (WebInspector.UnitBezier.prototype._sampleCurveX):
+        (WebInspector.UnitBezier.prototype._sampleCurveY):
+        (WebInspector.UnitBezier.prototype._sampleCurveDerivativeX):
+        (WebInspector.UnitBezier.prototype._solveCurveX):
+
+2014-02-20  Antoine Quint  <graouts@webkit.org>
+
+        Web Inspector: content using a CSS transition within a popover causes the popover to disappear
+        https://bugs.webkit.org/show_bug.cgi?id=129089
+
+        Reviewed by Timothy Hatcher.
+
+        Simply check that the element being transitioned is indeed the popover's container before assuming
+        that the "transitonend" received was for a fade-out transition.
+
+        * UserInterface/Popover.js:
+        (WebInspector.Popover.prototype.handleEvent):
+
+2014-02-20  Antoine Quint  <graouts@webkit.org>
+
+        Web Inspector: clicking on a color swatch in the Computed styles tab shouldn't show the color editing popover
+        https://bugs.webkit.org/show_bug.cgi?id=129093
+
+        Reviewed by Timothy Hatcher.
+
+        If the current editor is read-only, only allow cycling between color types since it wouldn't make sense to edit
+        such colors.
+
+        * UserInterface/CSSStyleDeclarationTextEditor.js:
+
 2014-02-19  Joseph Pecoraro  <pecoraro@apple.com>
 
         Web Inspector: Remove unused InspectorBackend member variable

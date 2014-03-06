@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2012 Google Inc. All rights reserved.
+ * Copyright (C) 2013, 2014 Igalia S.L.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -31,6 +32,8 @@
 #ifndef GridPosition_h
 #define GridPosition_h
 
+#if ENABLE(CSS_GRID_LAYOUT)
+
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
@@ -42,12 +45,33 @@ enum GridPositionType {
     NamedGridAreaPosition // <ident>
 };
 
+enum GridPositionSide {
+    ColumnStartSide,
+    ColumnEndSide,
+    RowStartSide,
+    RowEndSide
+};
+
 class GridPosition {
 public:
     GridPosition()
         : m_type(AutoPosition)
         , m_integerPosition(0)
     {
+    }
+
+    static inline size_t adjustGridPositionForRowEndColumnEndSide(size_t resolvedPosition)
+    {
+        return resolvedPosition ? resolvedPosition - 1 : 0;
+    }
+
+    static size_t adjustGridPositionForSide(size_t resolvedPosition, GridPositionSide side)
+    {
+        // An item finishing on the N-th line belongs to the N-1-th cell.
+        if (side == ColumnEndSide || side == RowEndSide)
+            return adjustGridPositionForRowEndColumnEndSide(resolvedPosition);
+
+        return resolvedPosition;
     }
 
     bool isPositive() const { return integerPosition() > 0; }
@@ -100,7 +124,7 @@ public:
 
     bool operator==(const GridPosition& other) const
     {
-        return m_type == other.m_type && m_integerPosition == other.m_integerPosition;
+        return m_type == other.m_type && m_integerPosition == other.m_integerPosition && m_namedGridLine == other.m_namedGridLine;
     }
 
     bool shouldBeResolvedAgainstOppositePosition() const
@@ -114,5 +138,7 @@ private:
 };
 
 } // namespace WebCore
+
+#endif /* ENABLE(CSS_GRID_LAYOUT) */
 
 #endif // GridPosition_h

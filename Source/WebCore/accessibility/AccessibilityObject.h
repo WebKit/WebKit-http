@@ -33,7 +33,7 @@
 #include "FloatQuad.h"
 #include "LayoutRect.h"
 #include "Path.h"
-#include "TextIterator.h"
+#include "TextIteratorBehavior.h"
 #include "VisiblePosition.h"
 #include "VisibleSelection.h"
 #include <wtf/Forward.h>
@@ -316,6 +316,7 @@ enum AccessibilitySearchKey {
     ListSearchKey,
     LiveRegionSearchKey,
     MisspelledWordSearchKey,
+    OutlineSearchKey,
     PlainTextSearchKey,
     RadioGroupSearchKey,
     SameTypeSearchKey,
@@ -659,7 +660,11 @@ public:
     virtual String ariaLabeledByAttribute() const { return String(); }
     virtual String ariaDescribedByAttribute() const { return String(); }
     const AtomicString& placeholderValue() const;
-
+    
+    // Abbreviations
+    virtual String expandedTextValue() const { return String(); }
+    virtual bool supportsExpandedTextValue() const { return false; }
+    
     void elementsFromAttribute(Vector<Element*>&, const QualifiedName&) const;
 
     // Only if isColorWell()
@@ -757,6 +762,7 @@ public:
     static AccessibilityRole ariaRoleToWebCoreRole(const String&);
     bool hasAttribute(const QualifiedName&) const;
     const AtomicString& getAttribute(const QualifiedName&) const;
+    bool hasTagName(const QualifiedName&) const;
 
     virtual VisiblePositionRange visiblePositionRange() const { return VisiblePositionRange(); }
     virtual VisiblePositionRange visiblePositionRangeForLine(unsigned) const { return VisiblePositionRange(); }

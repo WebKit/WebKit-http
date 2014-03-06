@@ -21,6 +21,7 @@
 #endif
 
 @class AVAsset;
+@class AVPlayer;
 @class QTMovie;
 @class QTMovieView;
 
@@ -107,7 +108,11 @@ NSString *WKSpeechSynthesisGetDefaultVoiceIdentifierForLocale(NSLocale*);
 BOOL WKShouldBlockPlugin(NSString *bundleIdentifier, NSString *bundleVersionString);
 BOOL WKIsPluginUpdateAvailable(NSString *bundleIdentifier);
 
+BOOL WKShouldBlockWebGL();
+BOOL WKShouldSuggestBlockingWebGL();
+
 // Remote Accessibility API.
+#if !TARGET_OS_IPHONE
 void WKAXRegisterRemoteApp(void);
 void WKAXInitializeElementWithPresenterPid(id, pid_t);
 NSData *WKAXRemoteTokenForElement(id);
@@ -115,6 +120,7 @@ id WKAXRemoteElementForToken(NSData *);
 void WKAXSetWindowForRemoteElement(id remoteWindow, id remoteElement);
 void WKAXRegisterRemoteProcess(bool registerProcess, pid_t);
 pid_t WKAXRemoteProcessIdentifier(id remoteElement);
+#endif
 
 void WKSetUpFontCache(void);
 
@@ -545,6 +551,15 @@ void WKCFURLCacheDeleteHostNamesInPersistentStoreForPartition(CFArrayRef hostArr
 CFStringRef WKCachePartitionKey(void);
 void WKCFURLCacheCopyAllPartitionNames(CFURLCacheCopyAllPartitionNamesResultsNotification resultsBlock);
 #endif
+
+typedef enum {
+    WKExternalPlaybackTypeNone,
+    WKExternalPlaybackTypeAirPlay,
+    WKExternalPlaybackTypeTVOut,
+} WKExternalPlaybackType;
+
+int WKExernalDeviceTypeForPlayer(AVPlayer *);
+NSString *WKExernalDeviceDisplayNameForPlayer(AVPlayer *);
 
 #ifdef __cplusplus
 }

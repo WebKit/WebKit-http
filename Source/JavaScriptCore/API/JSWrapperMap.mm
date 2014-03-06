@@ -29,7 +29,6 @@
 #if JSC_OBJC_API_ENABLED
 
 #import "APICast.h"
-#import "APIShims.h"
 #import "JSAPIWrapperObject.h"
 #import "JSCallbackObject.h"
 #import "JSContextInternal.h"
@@ -59,7 +58,7 @@ static const int32_t webkitFirstVersionWithInitConstructorSupport = 0x21A0400; /
 static NSString *selectorToPropertyName(const char* start)
 {
     // Use 'index' to check for colons, if there are none, this is easy!
-    const char* firstColon = index(start, ':');
+    const char* firstColon = strchr(start, ':');
     if (!firstColon)
         return [NSString stringWithUTF8String:start];
 
@@ -101,7 +100,7 @@ done:
 static bool constructorHasInstance(JSContextRef ctx, JSObjectRef constructorRef, JSValueRef possibleInstance, JSValueRef*)
 {
     JSC::ExecState* exec = toJS(ctx);
-    JSC::APIEntryShim entryShim(exec);
+    JSC::JSLockHolder locker(exec);
 
     JSC::JSObject* constructor = toJS(constructorRef);
     JSC::JSValue instance = toJS(exec, possibleInstance);
@@ -111,7 +110,7 @@ static bool constructorHasInstance(JSContextRef ctx, JSObjectRef constructorRef,
 static JSObjectRef makeWrapper(JSContextRef ctx, JSClassRef jsClass, id wrappedObject)
 {
     JSC::ExecState* exec = toJS(ctx);
-    JSC::APIEntryShim entryShim(exec);
+    JSC::JSLockHolder locker(exec);
 
     ASSERT(jsClass);
     JSC::JSCallbackObject<JSC::JSAPIWrapperObject>* object = JSC::JSCallbackObject<JSC::JSAPIWrapperObject>::create(exec, exec->lexicalGlobalObject(), exec->lexicalGlobalObject()->objcWrapperObjectStructure(), jsClass, 0);
@@ -625,6 +624,7 @@ id tryUnwrapObjcObject(JSGlobalContextRef context, JSValueRef value)
     JSValueRef exception = 0;
     JSObjectRef object = JSValueToObject(context, value, &exception);
     ASSERT(!exception);
+    JSC::JSLockHolder locker(toJS(context));
     if (toJS(object)->inherits(JSC::JSCallbackObject<JSC::JSAPIWrapperObject>::info()))
         return (id)JSC::jsCast<JSC::JSAPIWrapperObject*>(toJS(object))->wrappedObject();
     if (id target = tryUnwrapConstructor(object))

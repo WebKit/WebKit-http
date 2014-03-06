@@ -79,7 +79,7 @@ static inline void putByVal(ExecState* exec, JSValue baseValue, uint32_t index, 
             return;
         }
 
-        object->methodTable()->putByIndex(object, exec, index, value, strict);
+        object->methodTable(vm)->putByIndex(object, exec, index, value, strict);
         return;
     }
 
@@ -222,12 +222,12 @@ EncodedJSValue JIT_OPERATION operationToThisStrict(ExecState* exec, EncodedJSVal
 
 JSCell* JIT_OPERATION operationCreateThis(ExecState* exec, JSObject* constructor, int32_t inlineCapacity)
 {
-    VM* vm = &exec->vm();
-    NativeCallFrameTracer tracer(vm, exec);
+    VM& vm = exec->vm();
+    NativeCallFrameTracer tracer(&vm, exec);
 
 #if !ASSERT_DISABLED
     ConstructData constructData;
-    ASSERT(jsCast<JSFunction*>(constructor)->methodTable()->getConstructData(jsCast<JSFunction*>(constructor), constructData) == ConstructTypeJS);
+    ASSERT(jsCast<JSFunction*>(constructor)->methodTable(vm)->getConstructData(jsCast<JSFunction*>(constructor), constructData) == ConstructTypeJS);
 #endif
     
     return constructEmptyObject(exec, jsCast<JSFunction*>(constructor)->allocationProfile(exec, inlineCapacity)->structure());
@@ -392,8 +392,8 @@ void JIT_OPERATION operationPutByValCellNonStrict(ExecState* exec, JSCell* cell,
 
 void JIT_OPERATION operationPutByValBeyondArrayBoundsStrict(ExecState* exec, JSObject* array, int32_t index, EncodedJSValue encodedValue)
 {
-    VM* vm = &exec->vm();
-    NativeCallFrameTracer tracer(vm, exec);
+    VM& vm = exec->vm();
+    NativeCallFrameTracer tracer(&vm, exec);
     
     if (index >= 0) {
         array->putByIndexInline(exec, index, JSValue::decode(encodedValue), true);
@@ -1253,13 +1253,16 @@ char* JIT_OPERATION triggerOSREntryNow(
     Operands<JSValue> mustHandleValues;
     jitCode->reconstruct(
         exec, codeBlock, CodeOrigin(bytecodeIndex), streamIndex, mustHandleValues);
+    RefPtr<CodeBlock> replacementCodeBlock = codeBlock->newReplacement();
     CompilationResult forEntryResult = compile(
-        *vm, codeBlock->newReplacement().get(), codeBlock, FTLForOSREntryMode, bytecodeIndex,
+        *vm, replacementCodeBlock.get(), codeBlock, FTLForOSREntryMode, bytecodeIndex,
         mustHandleValues, ToFTLForOSREntryDeferredCompilationCallback::create(codeBlock));
     
-    if (forEntryResult != CompilationSuccessful)
+    if (forEntryResult != CompilationSuccessful) {
+        ASSERT(forEntryResult == CompilationDeferred || replacementCodeBlock->hasOneRef());
         return 0;
-    
+    }
+
     // It's possible that the for-entry compile already succeeded. In that case OSR
     // entry will succeed unless we ran out of stack. It's not clear what we should do.
     // We signal to try again after a while if that happens.

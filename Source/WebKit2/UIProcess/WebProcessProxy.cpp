@@ -211,13 +211,6 @@ void WebProcessProxy::removeWebPage(uint64_t pageID)
     }
 }
 
-Vector<WebPageProxy*> WebProcessProxy::pages() const
-{
-    Vector<WebPageProxy*> result;
-    copyValuesToVector(m_pageMap, result);
-    return result;
-}
-
 WebBackForwardListItem* WebProcessProxy::webBackForwardItem(uint64_t itemID) const
 {
     return m_backForwardListItemMap.get(itemID);
@@ -453,6 +446,7 @@ void WebProcessProxy::didFinishLaunching(ProcessLauncher* launcher, IPC::Connect
 #if PLATFORM(COCOA)
     updateProcessSuppressionState();
 #endif
+    updateProcessState();
 }
 
 WebFrameProxy* WebProcessProxy::webFrame(uint64_t frameID) const
@@ -652,7 +646,7 @@ void WebProcessProxy::windowServerConnectionStateChanged()
 
 void WebProcessProxy::requestTermination()
 {
-    if (!isValid())
+    if (state() != State::Running)
         return;
 
     ChildProcessProxy::terminate();
@@ -665,7 +659,7 @@ void WebProcessProxy::requestTermination()
 
 void WebProcessProxy::enableSuddenTermination()
 {
-    if (!isValid())
+    if (state() != State::Running)
         return;
 
     ASSERT(m_numberOfTimesSuddenTerminationWasDisabled);
@@ -675,7 +669,7 @@ void WebProcessProxy::enableSuddenTermination()
 
 void WebProcessProxy::disableSuddenTermination()
 {
-    if (!isValid())
+    if (state() != State::Running)
         return;
 
     WebCore::disableSuddenTermination();

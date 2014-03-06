@@ -52,10 +52,10 @@
 #include "DocumentEventQueue.h"
 #include "Element.h"
 #include "EventHandler.h"
-#include "FeatureObserver.h"
 #include "FloatConversion.h"
 #include "FloatPoint3D.h"
 #include "FloatRect.h"
+#include "FloatRoundedRect.h"
 #include "FlowThreadController.h"
 #include "FocusController.h"
 #include "Frame.h"
@@ -185,6 +185,8 @@ RenderLayer::RenderLayer(RenderLayerModelObject& rendererLayerModelObject)
 #endif
 #if ENABLE(CSS_COMPOSITING)
     , m_blendMode(BlendModeNormal)
+    , m_isolatesBlending(false)
+    , m_updateParentStackingContextShouldIsolateBlendingDirty(false)
 #endif
     , m_renderer(rendererLayerModelObject)
     , m_parent(0)
@@ -801,14 +803,39 @@ void RenderLayer::positionNewlyCreatedOverflowControls()
 
 #if ENABLE(CSS_COMPOSITING)
 
-void RenderLayer::updateBlendMode()
+void RenderLayer::updateBlendMode(const RenderStyle* oldStyle)
 {
+    m_updateParentStackingContextShouldIsolateBlendingDirty = false;
+
+    if ((!oldStyle && renderer().style().hasBlendMode()) || (oldStyle && oldStyle->hasBlendMode() != renderer().style().hasBlendMode()))
+        m_updateParentStackingContextShouldIsolateBlendingDirty = true;
+
     BlendMode newBlendMode = renderer().style().blendMode();
     if (newBlendMode != m_blendMode) {
         m_blendMode = newBlendMode;
         if (backing())
             backing()->setBlendMode(newBlendMode);
     }
+}
+
+void RenderLayer::updateParentStackingContextShouldIsolateBlending()
+{
+    if (!m_updateParentStackingContextShouldIsolateBlendingDirty)
+        return;
+
+    if (isComposited()) {
+        m_updateParentStackingContextShouldIsolateBlendingDirty = false;
+        return;
+    }
+
+    for (auto ancestor = parent(); ancestor && !ancestor->isComposited() && !ancestor->isRootLayer(); ancestor = ancestor->parent()) {
+        if (ancestor->isStackingContext()) {
+            ancestor->m_isolatesBlending = renderer().style().hasBlendMode();
+            break;
+        }
+    }
+
+    m_updateParentStackingContextShouldIsolateBlendingDirty = false;
 }
 
 #endif
@@ -1444,7 +1471,7 @@ RenderLayer* RenderLayer::enclosingFilterRepaintLayer() const
     return 0;
 }
 
-void RenderLayer::setFilterBackendNeedsRepaintingInRect(const LayoutRect& rect, bool immediate)
+void RenderLayer::setFilterBackendNeedsRepaintingInRect(const LayoutRect& rect)
 {
     if (rect.isEmpty())
         return;
@@ -1471,12 +1498,12 @@ void RenderLayer::setFilterBackendNeedsRepaintingInRect(const LayoutRect& rect, 
     }
 
     if (parentLayer->paintsWithFilters()) {
-        parentLayer->setFilterBackendNeedsRepaintingInRect(parentLayerRect, immediate);
+        parentLayer->setFilterBackendNeedsRepaintingInRect(parentLayerRect);
         return;        
     }
     
     if (parentLayer->isRootLayer()) {
-        toRenderView(parentLayer->renderer()).repaintViewRectangle(parentLayerRect, immediate);
+        toRenderView(parentLayer->renderer()).repaintViewRectangle(parentLayerRect);
         return;
     }
     
@@ -2026,6 +2053,12 @@ bool RenderLayer::hasAcceleratedTouchScrolling() const
 #if ENABLE(ACCELERATED_OVERFLOW_SCROLLING)
     if (!scrollsOverflow())
         return false;
+
+    // Temporary: turn off accelerated scrolling in WK2.
+    if (Page* page = renderer().frame().page()) {
+        if (page->scrollingCoordinator())
+            return false;
+    }
     
     Settings* settings = renderer().document().settings();
 
@@ -2565,7 +2598,7 @@ void RenderLayer::resize(const PlatformMouseEvent& evt, const LayoutSize& oldOff
             styledElement->setInlineStyleProperty(CSSPropertyMarginLeft, renderer->marginLeft() / zoomFactor, CSSPrimitiveValue::CSS_PX);
             styledElement->setInlineStyleProperty(CSSPropertyMarginRight, renderer->marginRight() / zoomFactor, CSSPrimitiveValue::CSS_PX);
         }
-        LayoutUnit baseWidth = renderer->width() - (isBoxSizingBorder ? LayoutUnit() : renderer->borderAndPaddingWidth());
+        LayoutUnit baseWidth = renderer->width() - (isBoxSizingBorder ? LayoutUnit() : renderer->horizontalBorderAndPaddingExtent());
         baseWidth = baseWidth / zoomFactor;
         styledElement->setInlineStyleProperty(CSSPropertyWidth, roundToInt(baseWidth + difference.width()), CSSPrimitiveValue::CSS_PX);
     }
@@ -2576,7 +2609,7 @@ void RenderLayer::resize(const PlatformMouseEvent& evt, const LayoutSize& oldOff
             styledElement->setInlineStyleProperty(CSSPropertyMarginTop, renderer->marginTop() / zoomFactor, CSSPrimitiveValue::CSS_PX);
             styledElement->setInlineStyleProperty(CSSPropertyMarginBottom, renderer->marginBottom() / zoomFactor, CSSPrimitiveValue::CSS_PX);
         }
-        LayoutUnit baseHeight = renderer->height() - (isBoxSizingBorder ? LayoutUnit() : renderer->borderAndPaddingHeight());
+        LayoutUnit baseHeight = renderer->height() - (isBoxSizingBorder ? LayoutUnit() : renderer->verticalBorderAndPaddingExtent());
         baseHeight = baseHeight / zoomFactor;
         styledElement->setInlineStyleProperty(CSSPropertyHeight, roundToInt(baseHeight + difference.height()), CSSPrimitiveValue::CSS_PX);
     }
@@ -3400,11 +3433,9 @@ void RenderLayer::paintScrollCorner(GraphicsContext* context, const IntPoint& pa
 
 void RenderLayer::drawPlatformResizerImage(GraphicsContext* context, const LayoutRect& resizerCornerRect)
 {
-    float deviceScaleFactor = WebCore::deviceScaleFactor(&renderer().frame());
-
     RefPtr<Image> resizeCornerImage;
     IntSize cornerResizerSize;
-    if (deviceScaleFactor >= 2) {
+    if (renderer().document().deviceScaleFactor() >= 2) {
         DEFINE_STATIC_LOCAL(Image*, resizeCornerImageHiRes, (Image::loadPlatformResource("textAreaResizeCorner@2x").leakRef()));
         resizeCornerImage = resizeCornerImageHiRes;
         cornerResizerSize = resizeCornerImage->size();
@@ -3530,11 +3561,11 @@ bool RenderLayer::scroll(ScrollDirection direction, ScrollGranularity granularit
     return ScrollableArea::scroll(direction, granularity, multiplier);
 }
 
-void RenderLayer::paint(GraphicsContext* context, const LayoutRect& damageRect, PaintBehavior paintBehavior, RenderObject* subtreePaintRoot, RenderRegion* region, PaintLayerFlags paintFlags)
+void RenderLayer::paint(GraphicsContext* context, const LayoutRect& damageRect, PaintBehavior paintBehavior, RenderObject* subtreePaintRoot, RenderNamedFlowFragment* namedFlowFragment, PaintLayerFlags paintFlags)
 {
     OverlapTestRequestMap overlapTestRequests;
 
-    LayerPaintingInfo paintingInfo(this, enclosingIntRect(damageRect), paintBehavior, LayoutSize(), subtreePaintRoot, region, &overlapTestRequests);
+    LayerPaintingInfo paintingInfo(this, enclosingIntRect(damageRect), paintBehavior, LayoutSize(), subtreePaintRoot, namedFlowFragment, &overlapTestRequests);
     paintLayer(context, paintingInfo, paintFlags);
 
     OverlapTestRequestMap::iterator end = overlapTestRequests.end();
@@ -3572,7 +3603,7 @@ void RenderLayer::clipToRect(RenderLayer* rootLayer, GraphicsContext* context, c
 {
     if (clipRect.rect() != paintDirtyRect || clipRect.hasRadius()) {
         context->save();
-        context->clip(pixelSnappedIntRect(clipRect.rect()));
+        context->clip(clipRect.rect());
     }
 
     if (!clipRect.hasRadius())
@@ -3585,7 +3616,7 @@ void RenderLayer::clipToRect(RenderLayer* rootLayer, GraphicsContext* context, c
         if (layer->renderer().hasOverflowClip() && layer->renderer().style().hasBorderRadius() && inContainingBlockChain(this, layer)) {
                 LayoutPoint delta;
                 layer->convertToLayerCoords(rootLayer, delta);
-                context->clipRoundedRect(layer->renderer().style().getRoundedInnerBorderFor(LayoutRect(delta, layer->size())));
+                context->clipRoundedRect(FloatRoundedRect(layer->renderer().style().getRoundedInnerBorderFor(LayoutRect(delta, layer->size()))));
         }
 
         if (layer == rootLayer)
@@ -3679,15 +3710,15 @@ void RenderLayer::paintLayer(GraphicsContext* context, const LayerPaintingInfo& 
 
     // FIXME: Hack to disable region information for in flow threads. Implement this logic in a different way.
     LayerPaintingInfo& info = const_cast<LayerPaintingInfo&>(paintingInfo);
-    RenderRegion* region = info.region;
-    if (region) {
+    RenderNamedFlowFragment* namedFlowFragment = info.renderNamedFlowFragment;
+    if (namedFlowFragment) {
         if (enclosingPaginationLayer())
-            info.region = 0;
+            info.renderNamedFlowFragment = nullptr;
         else {
-            RenderFlowThread* flowThread = region->flowThread();
+            RenderFlowThread* flowThread = namedFlowFragment->flowThread();
             ASSERT(flowThread);
 
-            if (!flowThread->objectShouldPaintInFlowRegion(&renderer(), region))
+            if (!flowThread->objectShouldPaintInFlowRegion(&renderer(), namedFlowFragment))
                 return;
         }
     }
@@ -3700,7 +3731,7 @@ void RenderLayer::paintLayer(GraphicsContext* context, const LayerPaintingInfo& 
         TransformationMatrix layerTransform = renderableTransform(paintingInfo.paintBehavior);
         // If the transform can't be inverted, then don't paint anything.
         if (!layerTransform.isInvertible()) {
-            info.region = region;
+            info.renderNamedFlowFragment = namedFlowFragment;
             return;
         }
 
@@ -3715,14 +3746,14 @@ void RenderLayer::paintLayer(GraphicsContext* context, const LayerPaintingInfo& 
 
         if (enclosingPaginationLayer()) {
             paintTransformedLayerIntoFragments(context, paintingInfo, paintFlags);
-            info.region = region;
+            info.renderNamedFlowFragment = namedFlowFragment;
             return;
         }
 
         // Make sure the parent's clip rects have been calculated.
         ClipRect clipRect = paintingInfo.paintDirtyRect;
         if (parent()) {
-            ClipRectsContext clipRectsContext(paintingInfo.rootLayer, paintingInfo.region, (paintFlags & PaintLayerTemporaryClipRects) ? TemporaryClipRects : PaintingClipRects,
+            ClipRectsContext clipRectsContext(paintingInfo.rootLayer, paintingInfo.renderNamedFlowFragment, (paintFlags & PaintLayerTemporaryClipRects) ? TemporaryClipRects : PaintingClipRects,
                 IgnoreOverlayScrollbarSize, (paintFlags & PaintLayerPaintingOverflowContents) ? IgnoreOverflowClip : RespectOverflowClip);
             clipRect = backgroundClipRect(clipRectsContext);
             clipRect.intersect(paintingInfo.paintDirtyRect);
@@ -3737,12 +3768,12 @@ void RenderLayer::paintLayer(GraphicsContext* context, const LayerPaintingInfo& 
         if (parent())
             parent()->restoreClip(context, paintingInfo.paintDirtyRect, clipRect);
 
-        info.region = region;
+        info.renderNamedFlowFragment = namedFlowFragment;
         return;
     }
     
     paintLayerContentsAndReflection(context, paintingInfo, paintFlags);
-    info.region = region;
+    info.renderNamedFlowFragment = namedFlowFragment;
 }
 
 void RenderLayer::paintLayerContentsAndReflection(GraphicsContext* context, const LayerPaintingInfo& paintingInfo, PaintLayerFlags paintFlags)
@@ -4058,7 +4089,7 @@ void RenderLayer::paintLayerContents(GraphicsContext* context, const LayerPainti
             localPaintingInfo.clipToDirtyRect = true;
             paintDirtyRect = selfClipRect();
         }
-        collectFragments(layerFragments, localPaintingInfo.rootLayer, localPaintingInfo.region, paintDirtyRect,
+        collectFragments(layerFragments, localPaintingInfo.rootLayer, localPaintingInfo.renderNamedFlowFragment, paintDirtyRect,
             (localPaintFlags & PaintLayerTemporaryClipRects) ? TemporaryClipRects : PaintingClipRects, IgnoreOverlayScrollbarSize,
             (isPaintingOverflowContents) ? IgnoreOverflowClip : RespectOverflowClip, &offsetFromRoot);
         updatePaintingInfoForFragments(layerFragments, localPaintingInfo, localPaintFlags, shouldPaintContent, &offsetFromRoot);
@@ -4096,7 +4127,7 @@ void RenderLayer::paintLayerContents(GraphicsContext* context, const LayerPainti
         
         // If this is a region, paint its contents via the flow thread's layer.
         if (shouldPaintContent)
-            paintFlowThreadIfRegion(context, localPaintingInfo, localPaintFlags, offsetFromRoot, paintDirtyRect, isPaintingOverflowContents);
+            paintFlowThreadIfRegionForFragments(layerFragments, context, localPaintingInfo, localPaintFlags);
     }
 
     if (isPaintingOverlayScrollbars)
@@ -4136,21 +4167,22 @@ void RenderLayer::paintLayerByApplyingTransform(GraphicsContext* context, const 
 {
     // This involves subtracting out the position of the layer in our current coordinate space, but preserving
     // the accumulated error for sub-pixel layout.
+    float deviceScaleFactor = renderer().document().deviceScaleFactor();
     LayoutPoint delta;
     convertToLayerCoords(paintingInfo.rootLayer, delta);
     delta.moveBy(translationOffset);
     TransformationMatrix transform(renderableTransform(paintingInfo.paintBehavior));
-    IntPoint roundedDelta = roundedIntPoint(delta);
+    FloatPoint roundedDelta = roundedForPainting(delta, deviceScaleFactor);
     transform.translateRight(roundedDelta.x(), roundedDelta.y());
-    LayoutSize adjustedSubPixelAccumulation = paintingInfo.subPixelAccumulation + (delta - roundedDelta);
+    LayoutSize adjustedSubPixelAccumulation = paintingInfo.subPixelAccumulation + (delta - LayoutPoint(roundedDelta));
 
     // Apply the transform.
     GraphicsContextStateSaver stateSaver(*context);
     context->concatCTM(transform.toAffineTransform());
 
     // Now do a paint with the root layer shifted to be us.
-    LayerPaintingInfo transformedPaintingInfo(this, enclosingIntRect(transform.inverse().mapRect(paintingInfo.paintDirtyRect)), paintingInfo.paintBehavior,
-        adjustedSubPixelAccumulation, paintingInfo.subtreePaintRoot, paintingInfo.region, paintingInfo.overlapTestRequests);
+    LayerPaintingInfo transformedPaintingInfo(this, LayoutRect(enclosingRectForPainting(transform.inverse().mapRect(paintingInfo.paintDirtyRect), deviceScaleFactor)), paintingInfo.paintBehavior,
+        adjustedSubPixelAccumulation, paintingInfo.subtreePaintRoot, paintingInfo.renderNamedFlowFragment, paintingInfo.overlapTestRequests);
     paintLayerContentsAndReflection(context, transformedPaintingInfo, paintFlags);
 }
 
@@ -4259,7 +4291,7 @@ void RenderLayer::updatePaintingInfoForFragments(LayerFragments& fragments, cons
         fragment.shouldPaintContent = shouldPaintContent;
         if (this != localPaintingInfo.rootLayer || !(localPaintFlags & PaintLayerPaintingOverflowContents)) {
             LayoutPoint newOffsetFromRoot = *offsetFromRoot + fragment.paginationOffset;
-            fragment.shouldPaintContent &= intersectsDamageRect(fragment.layerBounds, fragment.backgroundRect.rect(), localPaintingInfo.rootLayer, &newOffsetFromRoot, localPaintingInfo.region);
+            fragment.shouldPaintContent &= intersectsDamageRect(fragment.layerBounds, fragment.backgroundRect.rect(), localPaintingInfo.rootLayer, &newOffsetFromRoot, localPaintingInfo.renderNamedFlowFragment);
         }
     }
 }
@@ -4269,7 +4301,7 @@ void RenderLayer::paintTransformedLayerIntoFragments(GraphicsContext* context, c
     LayerFragments enclosingPaginationFragments;
     LayoutPoint offsetOfPaginationLayerFromRoot;
     LayoutRect transformedExtent = transparencyClipBox(this, enclosingPaginationLayer(), PaintingTransparencyClipBox, RootOfTransparencyClipBox, paintingInfo.paintBehavior);
-    enclosingPaginationLayer()->collectFragments(enclosingPaginationFragments, paintingInfo.rootLayer, paintingInfo.region, paintingInfo.paintDirtyRect,
+    enclosingPaginationLayer()->collectFragments(enclosingPaginationFragments, paintingInfo.rootLayer, paintingInfo.renderNamedFlowFragment, paintingInfo.paintDirtyRect,
         (paintFlags & PaintLayerTemporaryClipRects) ? TemporaryClipRects : PaintingClipRects, IgnoreOverlayScrollbarSize,
         (paintFlags & PaintLayerPaintingOverflowContents) ? IgnoreOverflowClip : RespectOverflowClip, &offsetOfPaginationLayerFromRoot, &transformedExtent);
     
@@ -4284,7 +4316,7 @@ void RenderLayer::paintTransformedLayerIntoFragments(GraphicsContext* context, c
         if (parent() != enclosingPaginationLayer()) {
             enclosingPaginationLayer()->convertToLayerCoords(paintingInfo.rootLayer, offsetOfPaginationLayerFromRoot);
     
-            ClipRectsContext clipRectsContext(enclosingPaginationLayer(), paintingInfo.region, (paintFlags & PaintLayerTemporaryClipRects) ? TemporaryClipRects : PaintingClipRects,
+            ClipRectsContext clipRectsContext(enclosingPaginationLayer(), paintingInfo.renderNamedFlowFragment, (paintFlags & PaintLayerTemporaryClipRects) ? TemporaryClipRects : PaintingClipRects,
                 IgnoreOverlayScrollbarSize, (paintFlags & PaintLayerPaintingOverflowContents) ? IgnoreOverflowClip : RespectOverflowClip);
             LayoutRect parentClipRect = backgroundClipRect(clipRectsContext).rect();
             parentClipRect.moveBy(fragment.paginationOffset + offsetOfPaginationLayerFromRoot);
@@ -4318,7 +4350,7 @@ void RenderLayer::paintBackgroundForFragments(const LayerFragments& layerFragmen
         
         // Paint the background.
         // FIXME: Eventually we will collect the region from the fragment itself instead of just from the paint info.
-        PaintInfo paintInfo(context, fragment.backgroundRect.rect(), PaintPhaseBlockBackground, paintBehavior, subtreePaintRootForRenderer, localPaintingInfo.region, 0, 0, &localPaintingInfo.rootLayer->renderer());
+        PaintInfo paintInfo(context, fragment.backgroundRect.rect(), PaintPhaseBlockBackground, paintBehavior, subtreePaintRootForRenderer, localPaintingInfo.renderNamedFlowFragment, 0, 0, &localPaintingInfo.rootLayer->renderer());
         renderer().paint(paintInfo, toLayoutPoint(fragment.layerBounds.location() - renderBoxLocation() + localPaintingInfo.subPixelAccumulation));
 
         if (localPaintingInfo.clipToDirtyRect)
@@ -4391,7 +4423,7 @@ void RenderLayer::paintForegroundForFragmentsWithPhase(PaintPhase phase, const L
         if (shouldClip)
             clipToRect(localPaintingInfo.rootLayer, context, localPaintingInfo.paintDirtyRect, fragment.foregroundRect);
     
-        PaintInfo paintInfo(context, fragment.foregroundRect.rect(), phase, paintBehavior, subtreePaintRootForRenderer, localPaintingInfo.region, 0, 0, &localPaintingInfo.rootLayer->renderer());
+        PaintInfo paintInfo(context, fragment.foregroundRect.rect(), phase, paintBehavior, subtreePaintRootForRenderer, localPaintingInfo.renderNamedFlowFragment, 0, 0, &localPaintingInfo.rootLayer->renderer());
         if (phase == PaintPhaseForeground)
             paintInfo.overlapTestRequests = localPaintingInfo.overlapTestRequests;
         renderer().paint(paintInfo, toLayoutPoint(fragment.layerBounds.location() - renderBoxLocation() + localPaintingInfo.subPixelAccumulation));
@@ -4410,7 +4442,7 @@ void RenderLayer::paintOutlineForFragments(const LayerFragments& layerFragments,
             continue;
     
         // Paint our own outline
-        PaintInfo paintInfo(context, fragment.outlineRect.rect(), PaintPhaseSelfOutline, paintBehavior, subtreePaintRootForRenderer, localPaintingInfo.region, 0, 0, &localPaintingInfo.rootLayer->renderer());
+        PaintInfo paintInfo(context, fragment.outlineRect.rect(), PaintPhaseSelfOutline, paintBehavior, subtreePaintRootForRenderer, localPaintingInfo.renderNamedFlowFragment, 0, 0, &localPaintingInfo.rootLayer->renderer());
         clipToRect(localPaintingInfo.rootLayer, context, localPaintingInfo.paintDirtyRect, fragment.outlineRect, DoNotIncludeSelfForBorderRadius);
         renderer().paint(paintInfo, toLayoutPoint(fragment.layerBounds.location() - renderBoxLocation() + localPaintingInfo.subPixelAccumulation));
         restoreClip(context, localPaintingInfo.paintDirtyRect, fragment.outlineRect);
@@ -4430,7 +4462,7 @@ void RenderLayer::paintMaskForFragments(const LayerFragments& layerFragments, Gr
         
         // Paint the mask.
         // FIXME: Eventually we will collect the region from the fragment itself instead of just from the paint info.
-        PaintInfo paintInfo(context, fragment.backgroundRect.rect(), PaintPhaseMask, PaintBehaviorNormal, subtreePaintRootForRenderer, localPaintingInfo.region, 0, 0, &localPaintingInfo.rootLayer->renderer());
+        PaintInfo paintInfo(context, fragment.backgroundRect.rect(), PaintPhaseMask, PaintBehaviorNormal, subtreePaintRootForRenderer, localPaintingInfo.renderNamedFlowFragment, 0, 0, &localPaintingInfo.rootLayer->renderer());
         renderer().paint(paintInfo, toLayoutPoint(fragment.layerBounds.location() - renderBoxLocation() + localPaintingInfo.subPixelAccumulation));
         
         if (localPaintingInfo.clipToDirtyRect)
@@ -4863,13 +4895,6 @@ RenderLayer* RenderLayer::hitTestLayer(RenderLayer* rootLayer, RenderLayer* cont
         candidateLayer = hitLayer;
     }
 
-    hitLayer = hitTestFlowThreadIfRegion(rootLayer, request, result, hitTestRect, hitTestLocation, localTransformState.get(), zOffsetForDescendantsPtr);
-    if (hitLayer) {
-        if (!depthSortDescendants)
-            return hitLayer;
-        candidateLayer = hitLayer;
-    }
-
     // Collect the fragments. This will compute the clip rectangles for each layer fragment.
     LayerFragments layerFragments;
     collectFragments(layerFragments, rootLayer, hitTestLocation.region(), hitTestRect, RootRelativeClipRects, IncludeOverlayScrollbarSize);
@@ -4877,6 +4902,13 @@ RenderLayer* RenderLayer::hitTestLayer(RenderLayer* rootLayer, RenderLayer* cont
     if (canResize() && hitTestResizerInFragments(layerFragments, hitTestLocation)) {
         renderer().updateHitTestResult(result, hitTestLocation.point());
         return this;
+    }
+
+    hitLayer = hitTestFlowThreadIfRegionForFragments(layerFragments, rootLayer, request, result, hitTestRect, hitTestLocation, localTransformState.get(), zOffsetForDescendantsPtr);
+    if (hitLayer) {
+        if (!depthSortDescendants)
+            return hitLayer;
+        candidateLayer = hitLayer;
     }
 
     // Next we want to see if the mouse pos is inside the child RenderObjects of the layer. Check
@@ -5247,20 +5279,19 @@ void RenderLayer::updateClipRects(const ClipRectsContext& clipRectsContext)
 #endif
 }
 
-void RenderLayer::mapLayerClipRectsToFragmentationLayer(RenderRegion* region, ClipRects& clipRects) const
+void RenderLayer::mapLayerClipRectsToFragmentationLayer(RenderNamedFlowFragment* namedFlowFragment, ClipRects& clipRects) const
 {
-    ASSERT(region && region->isRenderNamedFlowFragment() && region->parent() && region->parent()->isRenderNamedFlowFragmentContainer());
+    ASSERT(namedFlowFragment && namedFlowFragment->parent() && namedFlowFragment->parent()->isRenderNamedFlowFragmentContainer());
     
-    RenderNamedFlowFragment* flowFragment = toRenderNamedFlowFragment(region);
+    ClipRectsContext targetClipRectsContext(&namedFlowFragment->fragmentContainerLayer(), 0, TemporaryClipRects);
+    namedFlowFragment->fragmentContainerLayer().calculateClipRects(targetClipRectsContext, clipRects);
 
-    ClipRectsContext targetClipRectsContext(&flowFragment->fragmentContainerLayer(), 0, TemporaryClipRects);
-    flowFragment->fragmentContainerLayer().calculateClipRects(targetClipRectsContext, clipRects);
-
-    LayoutRect flowThreadPortionRect = region->flowThreadPortionRect();
+    LayoutRect flowThreadPortionRect = namedFlowFragment->flowThreadPortionRect();
 
     LayoutPoint portionLocation = flowThreadPortionRect.location();
-    LayoutRect regionContentBox = flowFragment->fragmentContainer().contentBoxRect();
-    LayoutSize moveOffset = portionLocation - regionContentBox.location();
+    LayoutRect regionContentBox = namedFlowFragment->fragmentContainer().contentBoxRect();
+    IntSize scrolledContentOffset = namedFlowFragment->fragmentContainer().hasOverflowClip() ? namedFlowFragment->fragmentContainer().scrolledContentOffset() : IntSize();
+    LayoutSize moveOffset = portionLocation - regionContentBox.location() + scrolledContentOffset;
 
     ClipRect newOverflowClipRect = clipRects.overflowClipRect();
     newOverflowClipRect.move(moveOffset);
@@ -5286,8 +5317,8 @@ void RenderLayer::calculateClipRects(const ClipRectsContext& clipRectsContext, C
     ClipRectsType clipRectsType = clipRectsContext.clipRectsType;
     bool useCached = clipRectsType != TemporaryClipRects;
 
-    if (renderer().isRenderFlowThread() && clipRectsContext.region) {
-        mapLayerClipRectsToFragmentationLayer(clipRectsContext.region, clipRects);
+    if (renderer().isRenderNamedFlowThread() && clipRectsContext.region) {
+        mapLayerClipRectsToFragmentationLayer(toRenderNamedFlowFragment(clipRectsContext.region), clipRects);
         return;
     }
 
@@ -5354,8 +5385,8 @@ void RenderLayer::calculateClipRects(const ClipRectsContext& clipRectsContext, C
 void RenderLayer::parentClipRects(const ClipRectsContext& clipRectsContext, ClipRects& clipRects) const
 {
     ASSERT(parent());
-    if (renderer().isRenderFlowThread() && clipRectsContext.region) {
-        mapLayerClipRectsToFragmentationLayer(clipRectsContext.region, clipRects);
+    if (renderer().isRenderNamedFlowThread() && clipRectsContext.region) {
+        mapLayerClipRectsToFragmentationLayer(toRenderNamedFlowFragment(clipRectsContext.region), clipRects);
         return;
     }
 
@@ -5707,6 +5738,11 @@ LayoutRect RenderLayer::boundingBox(const RenderLayer* ancestorLayer, CalculateL
 IntRect RenderLayer::absoluteBoundingBox() const
 {
     return pixelSnappedIntRect(boundingBox(root()));
+}
+
+FloatRect RenderLayer::absoluteBoundingBoxForPainting() const
+{
+    return pixelSnappedForPainting(boundingBox(root()), renderer().document().deviceScaleFactor());
 }
 
 LayoutRect RenderLayer::calculateLayerBounds(const RenderLayer* ancestorLayer, const LayoutPoint* offsetFromRoot, CalculateLayerBoundsFlags flags) const
@@ -6483,7 +6519,6 @@ void RenderLayer::styleChanged(StyleDifference diff, const RenderStyle* oldStyle
     if (renderer().style().overflowX() == OMARQUEE && renderer().style().marqueeBehavior() != MNONE && renderer().isBox()) {
         if (!m_marquee)
             m_marquee = adoptPtr(new RenderMarquee(this));
-        FeatureObserver::observe(&renderer().document(), renderer().isHTMLMarquee() ? FeatureObserver::HTMLMarqueeElement : FeatureObserver::CSSOverflowMarquee);
         m_marquee->updateMarqueeStyle();
     }
     else if (m_marquee) {
@@ -6504,7 +6539,6 @@ void RenderLayer::styleChanged(StyleDifference diff, const RenderStyle* oldStyle
             createReflection();
         else
             m_reflection->setStyle(createReflectionStyle());
-        FeatureObserver::observe(&renderer().document(), FeatureObserver::Reflection);
     }
     
     // FIXME: Need to detect a swap from custom to native scrollbars (and vice versa).
@@ -6519,7 +6553,7 @@ void RenderLayer::styleChanged(StyleDifference diff, const RenderStyle* oldStyle
     updateDescendantDependentFlags();
     updateTransform();
 #if ENABLE(CSS_COMPOSITING)
-    updateBlendMode();
+    updateBlendMode(oldStyle);
 #endif
 #if ENABLE(CSS_FILTERS)
     updateOrRemoveFilterClients();
@@ -6753,6 +6787,9 @@ void RenderLayer::paintNamedFlowThreadInsideRegion(GraphicsContext* context, Ren
 {
     LayoutRect regionContentBox = toRenderBox(region->layerOwner()).contentBoxRect();
     LayoutSize moveOffset = region->flowThreadPortionLocation() - (paintOffset + regionContentBox.location());
+    if (region->fragmentContainer().hasOverflowClip())
+        moveOffset += region->fragmentContainer().scrolledContentOffset();
+    
     IntPoint adjustedPaintOffset = roundedIntPoint(-moveOffset);
     paintDirtyRect.move(moveOffset);
 
@@ -6766,7 +6803,7 @@ void RenderLayer::paintNamedFlowThreadInsideRegion(GraphicsContext* context, Ren
     context->restore();
 }
 
-void RenderLayer::paintFlowThreadIfRegion(GraphicsContext* context, const LayerPaintingInfo& paintingInfo, PaintLayerFlags paintFlags, LayoutPoint paintOffset, LayoutRect dirtyRect, bool isPaintingOverflowContents)
+void RenderLayer::paintFlowThreadIfRegionForFragments(const LayerFragments& fragments, GraphicsContext* context, const LayerPaintingInfo& paintingInfo, PaintLayerFlags paintFlags)
 {
     if (!renderer().isRenderNamedFlowFragmentContainer())
         return;
@@ -6775,12 +6812,12 @@ void RenderLayer::paintFlowThreadIfRegion(GraphicsContext* context, const LayerP
     RenderNamedFlowFragment* flowFragment = renderNamedFlowFragmentContainer->renderNamedFlowFragment();
     if (!flowFragment->isValid())
         return;
-    
-    ClipRect regionClipRect;
+
     RenderNamedFlowThread* flowThread = flowFragment->namedFlowThread();
     RenderLayer* flowThreadLayer = flowThread->layer();
-    bool isLastRegionWithRegionFragmentBreak = (flowFragment->isLastRegion() && flowFragment->style().regionFragment() == BreakRegionFragment);
-    if (flowFragment->hasOverflowClip() || isLastRegionWithRegionFragmentBreak) {
+
+    LayoutRect regionClipRect = LayoutRect::infiniteRect();
+    if (flowFragment->shouldClipFlowThreadContent()) {
         regionClipRect = renderNamedFlowFragmentContainer->paddingBoxRect();
 
         // When the layer of the flow fragment's container is composited, the flow fragment container receives a
@@ -6790,30 +6827,31 @@ void RenderLayer::paintFlowThreadIfRegion(GraphicsContext* context, const LayerP
         // thread's layer.
         if (!isComposited()) {
             LayoutPoint regionOffsetFromRoot;
-            convertToLayerCoords(flowThreadLayer, regionOffsetFromRoot);
+            convertToLayerCoords(paintingInfo.rootLayer, regionOffsetFromRoot);
             regionClipRect.moveBy(regionOffsetFromRoot);
         }
-    } else {
-        if (paintingInfo.rootLayer != this && parent()) {
-            ClipRectsContext clipRectsContext(paintingInfo.rootLayer, flowFragment,
-                (paintFlags & PaintLayerTemporaryClipRects) ? TemporaryClipRects : PaintingClipRects,
-                IgnoreOverlayScrollbarSize, (isPaintingOverflowContents) ? IgnoreOverflowClip : RespectOverflowClip);
-            regionClipRect = backgroundClipRect(clipRectsContext);
-        } else
-            regionClipRect = dirtyRect;
     }
+    
+    for (size_t i = 0; i < fragments.size(); ++i) {
+        const LayerFragment& fragment = fragments.at(i);
 
-    // Optimize clipping for the single fragment case.
-    if (!regionClipRect.isEmpty() && regionClipRect != LayoutRect::infiniteRect())
-        clipToRect(paintingInfo.rootLayer, context, paintingInfo.paintDirtyRect, regionClipRect);
+        ClipRect clipRect = fragment.backgroundRect;
+        if (flowFragment->shouldClipFlowThreadContent())
+            clipRect.intersect(regionClipRect);
 
-    flowThreadLayer->paintNamedFlowThreadInsideRegion(context, flowFragment, paintingInfo.paintDirtyRect, paintOffset, paintingInfo.paintBehavior, paintFlags);
+        bool shouldClip = (clipRect != LayoutRect::infiniteRect());
+        // Optimize clipping for the single fragment case.
+        if (shouldClip)
+            clipToRect(paintingInfo.rootLayer, context, paintingInfo.paintDirtyRect, clipRect);
 
-    if (!regionClipRect.isEmpty() && regionClipRect != LayoutRect::infiniteRect())
-        restoreClip(context, paintingInfo.paintDirtyRect, regionClipRect);
+        flowThreadLayer->paintNamedFlowThreadInsideRegion(context, flowFragment, paintingInfo.paintDirtyRect, fragment.layerBounds.location() + paintingInfo.subPixelAccumulation, paintingInfo.paintBehavior, paintFlags);
+
+        if (shouldClip)
+            restoreClip(context, paintingInfo.paintDirtyRect, clipRect);
+    }
 }
 
-RenderLayer* RenderLayer::hitTestFlowThreadIfRegion(RenderLayer* rootLayer, const HitTestRequest& request, HitTestResult& result, const LayoutRect& hitTestRect, 
+RenderLayer* RenderLayer::hitTestFlowThreadIfRegionForFragments(const LayerFragments& fragments, RenderLayer* rootLayer, const HitTestRequest& request, HitTestResult& result, const LayoutRect& hitTestRect, 
     const HitTestLocation& hitTestLocation,
     const HitTestingTransformState* transformState, 
     double* zOffsetForDescendants)
@@ -6826,20 +6864,10 @@ RenderLayer* RenderLayer::hitTestFlowThreadIfRegion(RenderLayer* rootLayer, cons
         return 0;
 
     RenderFlowThread* flowThread = region->flowThread();
-
-    // If the hit location is inside a clipped out area, don't forward the hit test to the flow thread.
-    if (rootLayer != this && parent()) {
-        ClipRectsContext clipRectsContext(rootLayer, hitTestLocation.region(), TemporaryClipRects);
-        ClipRect clipRect = backgroundClipRect(clipRectsContext);
-        if (!clipRect.intersects(hitTestLocation))
-            return 0;
-    }
-
     LayoutPoint regionOffsetFromRoot;
     convertToLayerCoords(rootLayer, regionOffsetFromRoot);
 
     LayoutPoint portionLocation = region->flowThreadPortionRect().location();
-
     if (flowThread->style().isFlippedBlocksWritingMode()) {
         // The portion location coordinate must be translated into physical coordinates.
         if (flowThread->style().isHorizontalWritingMode())
@@ -6849,20 +6877,33 @@ RenderLayer* RenderLayer::hitTestFlowThreadIfRegion(RenderLayer* rootLayer, cons
     }
 
     LayoutRect regionContentBox = toRenderBlockFlow(&renderer())->contentBoxRect();
-    LayoutSize hitTestOffset = portionLocation - (regionOffsetFromRoot + regionContentBox.location());
 
-    // Always ignore clipping, since the RenderFlowThread has nothing to do with the bounds of the FrameView.
-    HitTestRequest newRequest(request.type() | HitTestRequest::IgnoreClipping | HitTestRequest::DisallowShadowContent);
+    RenderLayer* resultLayer = 0;
+    for (int i = fragments.size() - 1; i >= 0; --i) {
+        const LayerFragment& fragment = fragments.at(i);
 
-    // Make a new temporary HitTestLocation in the new region.
-    HitTestLocation newHitTestLocation(hitTestLocation, hitTestOffset, region);
+        if (!fragment.backgroundRect.intersects(hitTestLocation))
+            continue;
 
-    // Expand the hit-test rect to the flow thread's coordinate system.
-    LayoutRect hitTestRectInFlowThread = hitTestRect;
-    hitTestRectInFlowThread.move(hitTestOffset.width(), hitTestOffset.height());
-    hitTestRectInFlowThread.expand(LayoutSize(fabs((double)hitTestOffset.width()), fabs((double)hitTestOffset.height())));
+        LayoutSize hitTestOffset = portionLocation - (fragment.layerBounds.location() + regionContentBox.location());
 
-    return flowThread->layer()->hitTestLayer(flowThread->layer(), 0, newRequest, result, hitTestRectInFlowThread, newHitTestLocation, false, transformState, zOffsetForDescendants);
+        // Always ignore clipping, since the RenderFlowThread has nothing to do with the bounds of the FrameView.
+        HitTestRequest newRequest(request.type() | HitTestRequest::IgnoreClipping | HitTestRequest::DisallowShadowContent);
+
+        // Make a new temporary HitTestLocation in the new region.
+        HitTestLocation newHitTestLocation(hitTestLocation, hitTestOffset, region);
+
+        // Expand the hit-test rect to the flow thread's coordinate system.
+        LayoutRect hitTestRectInFlowThread = hitTestRect;
+        hitTestRectInFlowThread.move(hitTestOffset.width(), hitTestOffset.height());
+        hitTestRectInFlowThread.expand(LayoutSize(fabs((double)hitTestOffset.width()), fabs((double)hitTestOffset.height())));
+
+        resultLayer = flowThread->layer()->hitTestLayer(flowThread->layer(), 0, newRequest, result, hitTestRectInFlowThread, newHitTestLocation, false, transformState, zOffsetForDescendants);
+        if (!resultLayer)
+            continue;
+    }
+
+    return resultLayer;
 }
 
 } // namespace WebCore

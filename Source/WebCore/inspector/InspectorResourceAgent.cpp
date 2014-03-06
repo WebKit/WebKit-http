@@ -439,7 +439,7 @@ void InspectorResourceAgent::didScheduleStyleRecalculation(Document* document)
 
 PassRefPtr<Inspector::TypeBuilder::Network::Initiator> InspectorResourceAgent::buildInitiatorObject(Document* document)
 {
-    RefPtr<ScriptCallStack> stackTrace = createScriptCallStack(JSMainThreadExecState::currentState(), ScriptCallStack::maxCallStackSizeToCapture, true);
+    RefPtr<ScriptCallStack> stackTrace = createScriptCallStack(JSMainThreadExecState::currentState(), ScriptCallStack::maxCallStackSizeToCapture);
     if (stackTrace && stackTrace->size() > 0) {
         RefPtr<Inspector::TypeBuilder::Network::Initiator> initiatorObject = Inspector::TypeBuilder::Network::Initiator::create()
             .setType(Inspector::TypeBuilder::Network::Initiator::Type::Script);
@@ -594,7 +594,7 @@ void InspectorResourceAgent::replayXHR(ErrorString*, const String& requestId)
 #if ENABLE(CACHE_PARTITIONING)
     request.setCachePartition(m_pageAgent->mainFrame()->document()->topOrigin()->cachePartition());
 #endif
-    CachedResource* cachedResource = memoryCache()->resourceForRequest(request);
+    CachedResource* cachedResource = memoryCache()->resourceForRequest(request, m_pageAgent->page()->sessionID());
     if (cachedResource)
         memoryCache()->remove(cachedResource);
 

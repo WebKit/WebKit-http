@@ -47,7 +47,7 @@ RemoteInspectorDebuggableConnection::RemoteInspectorDebuggableConnection(RemoteI
     // Web debuggables must be accessed on the main queue (or the WebThread on iOS). Signal that with a NULL m_queueForDebuggable.
     // However, JavaScript debuggables can be accessed from any thread/queue, so we create a queue for each JavaScript debuggable.
     if (type == RemoteInspectorDebuggable::JavaScript)
-        m_queueForDebuggable = dispatch_queue_create("com.apple.JavaScriptCore.remote-inspector-xpc-connection", DISPATCH_QUEUE_SERIAL);
+        m_queueForDebuggable = dispatch_queue_create("com.apple.JavaScriptCore.remote-inspector-debuggable-connection", DISPATCH_QUEUE_SERIAL);
 }
 
 RemoteInspectorDebuggableConnection::~RemoteInspectorDebuggableConnection()
@@ -66,18 +66,6 @@ NSString *RemoteInspectorDebuggableConnection::destination() const
 NSString *RemoteInspectorDebuggableConnection::connectionIdentifier() const
 {
     return [[m_connectionIdentifier copy] autorelease];
-}
-
-void RemoteInspectorDebuggableConnection::dispatchSyncOnDebuggable(void (^block)())
-{
-    if (m_queueForDebuggable)
-        dispatch_sync(m_queueForDebuggable, block);
-#if PLATFORM(IOS)
-    else if (WebCoreWebThreadIsEnabled && WebCoreWebThreadIsEnabled())
-        WebCoreWebThreadRunSync(block);
-#endif
-    else
-        dispatch_sync(dispatch_get_main_queue(), block);
 }
 
 void RemoteInspectorDebuggableConnection::dispatchAsyncOnDebuggable(void (^block)())
@@ -99,18 +87,22 @@ bool RemoteInspectorDebuggableConnection::setup()
     if (!m_debuggable)
         return false;
 
-    dispatchSyncOnDebuggable(^{
-        if (!m_debuggable->remoteDebuggingAllowed())
-            return;
-
-        if (m_debuggable->hasLocalDebugger())
-            return;
-
-        m_debuggable->connect(this);
-        m_connected = true;
+    ref();
+    dispatchAsyncOnDebuggable(^{
+        {
+            std::lock_guard<std::mutex> lock(m_debuggableMutex);
+            if (!m_debuggable || !m_debuggable->remoteDebuggingAllowed() || m_debuggable->hasLocalDebugger()) {
+                RemoteInspector::shared().setupFailed(identifier());
+                m_debuggable = nullptr;
+            } else {
+                m_debuggable->connect(this);
+                m_connected = true;
+            }
+        }
+        deref();
     });
 
-    return m_connected;
+    return true;
 }
 
 void RemoteInspectorDebuggableConnection::closeFromDebuggable()

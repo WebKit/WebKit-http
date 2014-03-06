@@ -26,8 +26,6 @@
 #ifndef DFGAbstractHeap_h
 #define DFGAbstractHeap_h
 
-#include <wtf/Platform.h>
-
 #if ENABLE(DFG_JIT)
 
 #include "VirtualRegister.h"
@@ -55,7 +53,10 @@ namespace JSC { namespace DFG {
     macro(JSArrayBufferView_length) \
     macro(JSArrayBufferView_mode) \
     macro(JSArrayBufferView_vector) \
-    macro(JSCell_structure) \
+    macro(JSCell_structureID) \
+    macro(JSCell_indexingType) \
+    macro(JSCell_typeInfoFlags) \
+    macro(JSCell_typeInfoType) \
     macro(JSFunction_executable) \
     macro(JSFunction_scopeChain) \
     macro(JSObject_butterfly) \

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010, 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2010, 2011, 2014 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,8 +28,10 @@
 
 #include "APIObject.h"
 #include "APISession.h"
+#include "AssistedNodeInformation.h"
 #include "AutoCorrectionCallback.h"
 #include "Connection.h"
+#include "ContextMenuContextData.h"
 #include "DragControllerAction.h"
 #include "DrawingAreaProxy.h"
 #include "EditorState.h"
@@ -42,6 +44,7 @@
 #include "PlatformProcessIdentifier.h"
 #include "SandboxExtension.h"
 #include "ShareableBitmap.h"
+#include "VisibleContentRectUpdateInfo.h"
 #include "WKBase.h"
 #include "WKPagePrivate.h"
 #include "WebColorPicker.h"
@@ -50,7 +53,6 @@
 #include "WebFindClient.h"
 #include "WebFormClient.h"
 #include "WebFrameProxy.h"
-#include "WebHitTestResult.h"
 #include "WebPageContextMenuClient.h"
 #include "WebPageCreationParameters.h"
 #include "WebPreferences.h"
@@ -93,7 +95,7 @@
 #endif
 
 #if PLATFORM(COCOA)
-#include <WebCore/PlatformLayer.h>
+#include "LayerRepresentation.h"
 #endif
 
 namespace API {
@@ -142,6 +144,7 @@ class PageClient;
 class RemoteLayerTreeTransaction;
 class RemoteScrollingCoordinatorProxy;
 class StringPairVector;
+class VisitedLinkProvider;
 class WebBackForwardList;
 class WebBackForwardListItem;
 class WebContextMenuProxy;
@@ -289,7 +292,7 @@ public:
     {
         ASSERT(m_callback);
 
-        m_callback(true, returnValue1, returnValue2);
+        m_callback(false, returnValue1, returnValue2);
 
         m_callback = 0;
     }
@@ -299,7 +302,7 @@ public:
         ASSERT(m_callback);
 
         RefPtr<API::Error> error = API::Error::create();
-        m_callback(false, WebCore::IntPoint(), 0);
+        m_callback(true, WebCore::IntPoint(), 0);
         
         m_callback = 0;
     }
@@ -319,6 +322,7 @@ private:
 struct WebPageConfiguration {
     WebPageGroup* pageGroup = nullptr;
     WebPreferences* preferences = nullptr;
+    VisitedLinkProvider* visitedLinkProvider = nullptr;
     API::Session* session = nullptr;
     WebPageProxy* relatedPage = nullptr;
 };
@@ -337,7 +341,7 @@ public:
     void setSession(API::Session&);
 
     uint64_t pageID() const { return m_pageID; }
-    uint64_t sessionID() const { return m_session->getID(); }
+    WebCore::SessionID sessionID() const { return m_session->getID(); }
 
     WebFrameProxy* mainFrame() const { return m_mainFrame.get(); }
     WebFrameProxy* focusedFrame() const { return m_focusedFrame.get(); }
@@ -374,6 +378,8 @@ public:
     void initializeFormClient(const WKPageFormClientBase*);
     void setLoaderClient(std::unique_ptr<API::LoaderClient>);
     void setPolicyClient(std::unique_ptr<API::PolicyClient>);
+
+    API::UIClient& uiClient() { return *m_uiClient; }
     void setUIClient(std::unique_ptr<API::UIClient>);
 #if PLATFORM(EFL)
     void initializeUIPopupMenuClient(const WKPageUIPopupMenuClientBase*);
@@ -448,14 +454,22 @@ public:
     void executeEditCommand(const String& commandName);
     void validateCommand(const String& commandName, PassRefPtr<ValidateCommandCallback>);
 #if PLATFORM(IOS)
+    double displayedContentScale() const { return m_lastVisibleContentRectUpdate.scale(); }
+    const WebCore::FloatRect& exposedContentRect() const { return m_lastVisibleContentRectUpdate.exposedRect(); }
+    const WebCore::FloatRect& unobscuredContentRect() const { return m_lastVisibleContentRectUpdate.unobscuredRect(); }
+
+    bool updateVisibleContentRects(const VisibleContentRectUpdateInfo&);
     void setViewportConfigurationMinimumLayoutSize(const WebCore::IntSize&);
     void didCommitLayerTree(const WebKit::RemoteLayerTreeTransaction&);
+
     void selectWithGesture(const WebCore::IntPoint, WebCore::TextGranularity, uint32_t gestureType, uint32_t gestureState, PassRefPtr<GestureCallback>);
     void updateSelectionWithTouches(const WebCore::IntPoint, uint32_t touches, bool baseIsStart, PassRefPtr<TouchesCallback>);
     void selectWithTwoTouches(const WebCore::IntPoint from, const WebCore::IntPoint to, uint32_t gestureType, uint32_t gestureState, PassRefPtr<GestureCallback>);
+    void updateBlockSelectionWithTouch(const WebCore::IntPoint, uint32_t touch, uint32_t handlePosition);
     void extendSelection(WebCore::TextGranularity);
     void requestAutocorrectionData(const String& textForAutocorrection, PassRefPtr<AutocorrectionDataCallback>);
     void applyAutocorrection(const String& correction, const String& originalText, PassRefPtr<StringCallback>);
+    bool applyAutocorrection(const String& correction, const String& originalText);
     void requestAutocorrectionContext(PassRefPtr<AutocorrectionContextCallback>);
     void getAutocorrectionContext(String& contextBefore, String& markedText, String& selectedText, String& contextAfter, uint64_t& location, uint64_t& length);
     void didReceivePositionInformation(const InteractionInformationAtPosition&);
@@ -465,6 +479,14 @@ public:
     void stopInteraction();
     void performActionOnElement(uint32_t action);
     void saveImageToLibrary(const SharedMemory::Handle& imageHandle, uint64_t imageSize);
+    void didUpdateBlockSelectionWithTouch(uint32_t touch, uint32_t flags, float growThreshold, float shrinkThreshold);
+    void focusNextAssistedNode(bool isForward);
+    void setAssistedNodeValue(const String&);
+    void setAssistedNodeValueAsNumber(double);
+    void setAssistedNodeSelectedIndex(uint32_t index, bool allowMultipleSelection = false);
+    void applicationWillEnterForeground();
+    void applicationWillResignActive();
+    void applicationDidBecomeActive();
 #endif
 
     const EditorState& editorState() const { return m_editorState; }
@@ -511,8 +533,8 @@ public:
     bool shouldDelayWindowOrderingForEvent(const WebMouseEvent&);
     bool acceptsFirstMouse(int eventNumber, const WebMouseEvent&);
 
-    void setAcceleratedCompositingRootLayer(PlatformLayer* rootLayer);
-    PlatformLayer* acceleratedCompositingRootLayer() const;
+    void setAcceleratedCompositingRootLayer(LayerOrView*);
+    LayerOrView* acceleratedCompositingRootLayer() const;
 
 #if USE(APPKIT)
     WKView* wkView() const;
@@ -839,8 +861,6 @@ public:
 
 #if PLATFORM(IOS)
     void willStartUserTriggeredZooming();
-    void didFinishScrolling(const WebCore::FloatPoint& contentOffset);
-    void didFinishZooming(float newScale);
 
     void tapHighlightAtPosition(const WebCore::FloatPoint&, uint64_t& requestID);
 
@@ -956,9 +976,9 @@ private:
     void createNewPage(const WebCore::ResourceRequest&, const WebCore::WindowFeatures&, uint32_t modifiers, int32_t mouseButton, uint64_t& newPageID, WebPageCreationParameters&);
     void showPage();
     void closePage(bool stopResponsivenessTimer);
-    void runJavaScriptAlert(uint64_t frameID, const String&);
-    void runJavaScriptConfirm(uint64_t frameID, const String&, bool& result);
-    void runJavaScriptPrompt(uint64_t frameID, const String&, const String&, String& result);
+    void runJavaScriptAlert(uint64_t frameID, const String&, RefPtr<Messages::WebPageProxy::RunJavaScriptAlert::DelayedReply>);
+    void runJavaScriptConfirm(uint64_t frameID, const String&, RefPtr<Messages::WebPageProxy::RunJavaScriptConfirm::DelayedReply>);
+    void runJavaScriptPrompt(uint64_t frameID, const String&, const String&, RefPtr<Messages::WebPageProxy::RunJavaScriptPrompt::DelayedReply>);
     void shouldInterruptJavaScript(bool& result);
     void setStatusText(const String&);
     void mouseDidMoveOverElement(const WebHitTestResult::Data& hitTestResultData, uint32_t modifiers, IPC::MessageDecoder&);
@@ -967,6 +987,8 @@ private:
 #endif // ENABLE(NETSCAPE_PLUGIN_API)
 #if ENABLE(WEBGL)
     void webGLPolicyForURL(const String& url, uint32_t& loadPolicy);
+    void resolveWebGLPolicyForURL(const String& url, uint32_t& loadPolicy);
+    void setSystemWebGLPolicy(uint32_t loadPolicy);
 #endif // ENABLE(WEBGL)
     void setToolbarsAreVisible(bool toolbarsAreVisible);
     void getToolbarsAreVisible(bool& toolbarsAreVisible);
@@ -1062,8 +1084,8 @@ private:
 
 #if ENABLE(CONTEXT_MENUS)
     // Context Menu.
-    void showContextMenu(const WebCore::IntPoint& menuLocation, const WebHitTestResult::Data&, const Vector<WebContextMenuItemData>&, IPC::MessageDecoder&);
-    void internalShowContextMenu(const WebCore::IntPoint& menuLocation, const WebHitTestResult::Data&, const Vector<WebContextMenuItemData>&, IPC::MessageDecoder&);
+    void showContextMenu(const WebCore::IntPoint& menuLocation, const ContextMenuContextData&, const Vector<WebContextMenuItemData>&, IPC::MessageDecoder&);
+    void internalShowContextMenu(const WebCore::IntPoint& menuLocation, const ContextMenuContextData&, const Vector<WebContextMenuItemData>&, IPC::MessageDecoder&);
 #endif
 
     // Search popup results
@@ -1156,7 +1178,7 @@ private:
 #if PLATFORM(IOS)
     void didGetTapHighlightGeometries(uint64_t requestID, const WebCore::Color& color, const Vector<WebCore::FloatQuad>& geometries, const WebCore::IntSize& topLeftRadius, const WebCore::IntSize& topRightRadius, const WebCore::IntSize& bottomLeftRadius, const WebCore::IntSize& bottomRightRadius);
 
-    void startAssistingNode(const WebCore::IntRect&, bool hasNextFocusable, bool hasPreviousFocusable);
+    void startAssistingNode(const AssistedNodeInformation&);
     void stopAssistingNode();
     void notifyRevealedSelection();
 #endif // PLATFORM(IOS)
@@ -1213,6 +1235,7 @@ private:
     Ref<WebProcessProxy> m_process;
     Ref<WebPageGroup> m_pageGroup;
     Ref<WebPreferences> m_preferences;
+    Ref<VisitedLinkProvider> m_visitedLinkProvider;
 
     RefPtr<WebFrameProxy> m_mainFrame;
     RefPtr<WebFrameProxy> m_focusedFrame;
@@ -1232,6 +1255,7 @@ private:
 #endif
 #if PLATFORM(IOS)
     RefPtr<WebVideoFullscreenManagerProxy> m_videoFullscreenManager;
+    VisibleContentRectUpdateInfo m_lastVisibleContentRectUpdate;
 #endif
 
 #if ENABLE(VIBRATION)
@@ -1263,8 +1287,10 @@ private:
 #endif
 
     RefPtr<WebPopupMenuProxy> m_activePopupMenu;
+#if ENABLE(CONTEXT_MENUS)
     RefPtr<WebContextMenuProxy> m_activeContextMenu;
-    WebHitTestResult::Data m_activeContextMenuHitTestResultData;
+    ContextMenuContextData m_activeContextMenuContextData;
+#endif
     RefPtr<WebOpenPanelResultListenerProxy> m_openPanelResultListener;
     GeolocationPermissionRequestManagerProxy m_geolocationPermissionRequestManager;
     NotificationPermissionRequestManagerProxy m_notificationPermissionRequestManager;

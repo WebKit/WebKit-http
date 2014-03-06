@@ -27,6 +27,7 @@
 #include "ThunkGenerators.h"
 
 #include "CodeBlock.h"
+#include "DFGSpeculativeJIT.h"
 #include "JITOperations.h"
 #include "JSArray.h"
 #include "JSArrayIterator.h"
@@ -189,7 +190,7 @@ static MacroAssemblerCodeRef virtualForThunkGenerator(
             CCallHelpers::NotEqual, GPRInfo::regT1,
             CCallHelpers::TrustedImm32(JSValue::CellTag)));
 #endif
-    jit.loadPtr(CCallHelpers::Address(GPRInfo::regT0, JSCell::structureOffset()), GPRInfo::regT2);
+    AssemblyHelpers::emitLoadStructure(jit, GPRInfo::regT0, GPRInfo::regT2, GPRInfo::regT1);
     slowCase.append(
         jit.branchPtr(
             CCallHelpers::NotEqual,
@@ -924,8 +925,7 @@ MacroAssemblerCodeRef imulThunkGenerator(VM* vm)
         nonIntArg0Jump.link(&jit);
         jit.loadDoubleArgument(0, SpecializedThunkJIT::fpRegT0, SpecializedThunkJIT::regT0);
         jit.branchTruncateDoubleToInt32(SpecializedThunkJIT::fpRegT0, SpecializedThunkJIT::regT0, SpecializedThunkJIT::BranchIfTruncateSuccessful).linkTo(doneLoadingArg0, &jit);
-        jit.xor32(SpecializedThunkJIT::regT0, SpecializedThunkJIT::regT0);
-        jit.jump(doneLoadingArg0);
+        jit.appendFailure(jit.jump());
     } else
         jit.appendFailure(nonIntArg0Jump);
 
@@ -933,8 +933,7 @@ MacroAssemblerCodeRef imulThunkGenerator(VM* vm)
         nonIntArg1Jump.link(&jit);
         jit.loadDoubleArgument(1, SpecializedThunkJIT::fpRegT0, SpecializedThunkJIT::regT1);
         jit.branchTruncateDoubleToInt32(SpecializedThunkJIT::fpRegT0, SpecializedThunkJIT::regT1, SpecializedThunkJIT::BranchIfTruncateSuccessful).linkTo(doneLoadingArg1, &jit);
-        jit.xor32(SpecializedThunkJIT::regT1, SpecializedThunkJIT::regT1);
-        jit.jump(doneLoadingArg1);
+        jit.appendFailure(jit.jump());
     } else
         jit.appendFailure(nonIntArg1Jump);
 
@@ -961,9 +960,7 @@ static MacroAssemblerCodeRef arrayIteratorNextThunkGenerator(VM* vm, ArrayIterat
     jit.load32(Address(SpecializedThunkJIT::regT4, JSArrayIterator::offsetOfNextIndex()), SpecializedThunkJIT::regT1);
     
     // Pull out the butterfly from iteratedObject
-    jit.loadPtr(Address(SpecializedThunkJIT::regT0, JSCell::structureOffset()), SpecializedThunkJIT::regT2);
-    
-    jit.load8(Address(SpecializedThunkJIT::regT2, Structure::indexingTypeOffset()), SpecializedThunkJIT::regT3);
+    jit.load8(Address(SpecializedThunkJIT::regT0, JSCell::indexingTypeOffset()), SpecializedThunkJIT::regT3);
     jit.loadPtr(Address(SpecializedThunkJIT::regT0, JSObject::butterflyOffset()), SpecializedThunkJIT::regT2);
     
     jit.and32(TrustedImm32(IndexingShapeMask), SpecializedThunkJIT::regT3);

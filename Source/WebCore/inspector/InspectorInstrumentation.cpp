@@ -1,5 +1,6 @@
 /*
 * Copyright (C) 2011 Google Inc. All rights reserved.
+* Copyright (C) 2014 Apple Inc. All rights reserved.
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are
@@ -43,7 +44,6 @@
 #include "EventDispatcher.h"
 #include "InspectorApplicationCacheAgent.h"
 #include "InspectorCSSAgent.h"
-#include "InspectorCanvasAgent.h"
 #include "InspectorDOMAgent.h"
 #include "InspectorDOMDebuggerAgent.h"
 #include "InspectorDOMStorageAgent.h"
@@ -76,6 +76,11 @@
 #include <inspector/agents/InspectorDebuggerAgent.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/text/CString.h>
+
+#if ENABLE(WEB_REPLAY)
+#include "InspectorReplayAgent.h"
+#include "ReplayController.h" // for ReplayPosition.
+#endif
 
 using namespace Inspector;
 
@@ -739,10 +744,15 @@ void InspectorInstrumentation::loadEventFiredImpl(InstrumentingAgents* instrumen
 
 void InspectorInstrumentation::frameDetachedFromParentImpl(InstrumentingAgents* instrumentingAgents, Frame* frame)
 {
-    if (InspectorCanvasAgent* canvasAgent = instrumentingAgents->inspectorCanvasAgent())
-        canvasAgent->frameDetached(frame);
     if (InspectorPageAgent* pageAgent = instrumentingAgents->inspectorPageAgent())
         pageAgent->frameDetached(frame);
+
+#if ENABLE(WEB_REPLAY)
+    if (frame->isMainFrame()) {
+        if (InspectorReplayAgent* replayAgent = instrumentingAgents->inspectorReplayAgent())
+            replayAgent->frameDetached(frame);
+    }
+#endif
 }
 
 void InspectorInstrumentation::didCommitLoadImpl(InstrumentingAgents* instrumentingAgents, Page* page, DocumentLoader* loader)
@@ -773,10 +783,12 @@ void InspectorInstrumentation::didCommitLoadImpl(InstrumentingAgents* instrument
     }
     if (InspectorDOMAgent* domAgent = instrumentingAgents->inspectorDOMAgent())
         domAgent->didCommitLoad(loader->frame()->document());
-    if (InspectorCanvasAgent* canvasAgent = instrumentingAgents->inspectorCanvasAgent())
-        canvasAgent->frameNavigated(loader->frame());
     if (InspectorPageAgent* pageAgent = instrumentingAgents->inspectorPageAgent())
         pageAgent->frameNavigated(loader);
+#if ENABLE(WEB_REPLAY)
+    if (InspectorReplayAgent* replayAgent = instrumentingAgents->inspectorReplayAgent())
+        replayAgent->frameNavigated(loader);
+#endif
 }
 
 void InspectorInstrumentation::frameDocumentUpdatedImpl(InstrumentingAgents* instrumentingAgents, Frame* frame)
@@ -1050,6 +1062,80 @@ void InspectorInstrumentation::didSendWebSocketFrameImpl(InstrumentingAgents* in
 }
 #endif
 
+#if ENABLE(WEB_REPLAY)
+void InspectorInstrumentation::sessionCreatedImpl(InstrumentingAgents* instrumentingAgents, PassRefPtr<ReplaySession> session)
+{
+    if (InspectorReplayAgent* replayAgent = instrumentingAgents->inspectorReplayAgent())
+        replayAgent->sessionCreated(session);
+}
+
+void InspectorInstrumentation::sessionLoadedImpl(InstrumentingAgents* instrumentingAgents, PassRefPtr<ReplaySession> session)
+{
+    if (InspectorReplayAgent* replayAgent = instrumentingAgents->inspectorReplayAgent())
+        replayAgent->sessionLoaded(session);
+}
+
+void InspectorInstrumentation::sessionModifiedImpl(InstrumentingAgents* instrumentingAgents, PassRefPtr<ReplaySession> session)
+{
+    if (InspectorReplayAgent* replayAgent = instrumentingAgents->inspectorReplayAgent())
+        replayAgent->sessionModified(session);
+}
+
+void InspectorInstrumentation::segmentCreatedImpl(InstrumentingAgents* instrumentingAgents, PassRefPtr<ReplaySessionSegment> segment)
+{
+    if (InspectorReplayAgent* replayAgent = instrumentingAgents->inspectorReplayAgent())
+        replayAgent->segmentCreated(segment);
+}
+
+void InspectorInstrumentation::segmentCompletedImpl(InstrumentingAgents* instrumentingAgents, PassRefPtr<ReplaySessionSegment> segment)
+{
+    if (InspectorReplayAgent* replayAgent = instrumentingAgents->inspectorReplayAgent())
+        replayAgent->segmentCompleted(segment);
+}
+
+void InspectorInstrumentation::segmentLoadedImpl(InstrumentingAgents* instrumentingAgents, PassRefPtr<ReplaySessionSegment> segment)
+{
+    if (InspectorReplayAgent* replayAgent = instrumentingAgents->inspectorReplayAgent())
+        replayAgent->segmentLoaded(segment);
+}
+
+void InspectorInstrumentation::segmentUnloadedImpl(InstrumentingAgents* instrumentingAgents)
+{
+    if (InspectorReplayAgent* replayAgent = instrumentingAgents->inspectorReplayAgent())
+        replayAgent->segmentUnloaded();
+}
+
+void InspectorInstrumentation::captureStartedImpl(InstrumentingAgents* instrumentingAgents)
+{
+    if (InspectorReplayAgent* replayAgent = instrumentingAgents->inspectorReplayAgent())
+        replayAgent->captureStarted();
+}
+
+void InspectorInstrumentation::captureStoppedImpl(InstrumentingAgents* instrumentingAgents)
+{
+    if (InspectorReplayAgent* replayAgent = instrumentingAgents->inspectorReplayAgent())
+        replayAgent->captureStopped();
+}
+
+void InspectorInstrumentation::playbackStartedImpl(InstrumentingAgents* instrumentingAgents)
+{
+    if (InspectorReplayAgent* replayAgent = instrumentingAgents->inspectorReplayAgent())
+        replayAgent->playbackStarted();
+}
+
+void InspectorInstrumentation::playbackPausedImpl(InstrumentingAgents* instrumentingAgents, const ReplayPosition& position)
+{
+    if (InspectorReplayAgent* replayAgent = instrumentingAgents->inspectorReplayAgent())
+        replayAgent->playbackPaused(position);
+}
+
+void InspectorInstrumentation::playbackHitPositionImpl(InstrumentingAgents* instrumentingAgents, const ReplayPosition& position)
+{
+    if (InspectorReplayAgent* replayAgent = instrumentingAgents->inspectorReplayAgent())
+        replayAgent->playbackHitPosition(position);
+}
+#endif
+
 void InspectorInstrumentation::networkStateChangedImpl(InstrumentingAgents* instrumentingAgents)
 {
     if (InspectorApplicationCacheAgent* applicationCacheAgent = instrumentingAgents->inspectorApplicationCacheAgent())
@@ -1060,12 +1146,6 @@ void InspectorInstrumentation::updateApplicationCacheStatusImpl(InstrumentingAge
 {
     if (InspectorApplicationCacheAgent* applicationCacheAgent = instrumentingAgents->inspectorApplicationCacheAgent())
         applicationCacheAgent->updateApplicationCacheStatus(frame);
-}
-
-bool InspectorInstrumentation::canvasAgentEnabled(ScriptExecutionContext* scriptExecutionContext)
-{
-    InstrumentingAgents* instrumentingAgents = instrumentingAgentsForContext(scriptExecutionContext);
-    return instrumentingAgents && instrumentingAgents->inspectorCanvasAgent();
 }
 
 bool InspectorInstrumentation::consoleAgentEnabled(ScriptExecutionContext* scriptExecutionContext)
@@ -1079,6 +1159,17 @@ bool InspectorInstrumentation::timelineAgentEnabled(ScriptExecutionContext* scri
 {
     InstrumentingAgents* instrumentingAgents = instrumentingAgentsForContext(scriptExecutionContext);
     return instrumentingAgents && instrumentingAgents->inspectorTimelineAgent();
+}
+
+bool InspectorInstrumentation::replayAgentEnabled(ScriptExecutionContext* scriptExecutionContext)
+{
+#if ENABLE(WEB_REPLAY)
+    InstrumentingAgents* instrumentingAgents = instrumentingAgentsForContext(scriptExecutionContext);
+    return instrumentingAgents && instrumentingAgents->inspectorReplayAgent();
+#else
+    UNUSED_PARAM(scriptExecutionContext);
+    return false;
+#endif
 }
 
 void InspectorInstrumentation::pauseOnNativeEventIfNeeded(InstrumentingAgents* instrumentingAgents, bool isDOMEvent, const String& eventName, bool synchronous)

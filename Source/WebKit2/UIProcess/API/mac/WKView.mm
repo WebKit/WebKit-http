@@ -26,6 +26,8 @@
 #import "config.h"
 #import "WKView.h"
 
+#if PLATFORM(MAC)
+
 #if USE(DICTATION_ALTERNATIVES)
 #import <AppKit/NSTextAlternatives.h>
 #import <AppKit/NSAttributedString.h>
@@ -54,7 +56,7 @@
 #import "WKAPICast.h"
 #import "WKFullScreenWindowController.h"
 #import "WKPrintingView.h"
-#import "WKProcessClassInternal.h"
+#import "WKProcessPoolInternal.h"
 #import "WKStringCF.h"
 #import "WKTextInputWindowController.h"
 #import "WKThumbnailView.h"
@@ -106,11 +108,6 @@
 @interface NSApplication (WKNSApplicationDetails)
 - (void)speakString:(NSString *)string;
 - (void)_setCurrentEvent:(NSEvent *)event;
-@end
-
-@interface NSObject (WKNSTextInputContextDetails)
-- (BOOL)wantsToHandleMouseEvents;
-- (BOOL)handleMouseEvent:(NSEvent *)event;
 @end
 
 @interface NSWindow (WKNSWindowDetails)
@@ -1055,6 +1052,17 @@ static NSToolbarItem *toolbarItem(id <NSValidatedUserInterfaceItem> item)
 
 // Events
 
+-(BOOL)shouldIgnoreMouseEvents
+{
+    // FIXME: This check is surprisingly specific. Are there any other cases where we need to block mouse events?
+    // Do we actually need to in thumbnail view? And if we do, what about non-mouse events?
+#if WK_API_ENABLED
+    if (_data->_thumbnailView)
+        return YES;
+#endif
+    return NO;
+}
+
 // Override this so that AppKit will send us arrow keys as key down events so we can
 // support them via the key bindings mechanism.
 - (BOOL)_wantsKeyDownForEvent:(NSEvent *)event
@@ -1073,11 +1081,10 @@ static NSToolbarItem *toolbarItem(id <NSValidatedUserInterfaceItem> item)
     _data->_mouseDownEvent = [event retain];
 }
 
-#if WK_API_ENABLED
 #define NATIVE_MOUSE_EVENT_HANDLER(Selector) \
     - (void)Selector:(NSEvent *)theEvent \
     { \
-        if (_data->_thumbnailView) \
+        if ([self shouldIgnoreMouseEvents]) \
             return; \
         if ([[self inputContext] handleEvent:theEvent]) { \
             LOG(TextInput, "%s was handled by text input context", String(#Selector).substring(0, String(#Selector).find("Internal")).ascii().data()); \
@@ -1086,18 +1093,6 @@ static NSToolbarItem *toolbarItem(id <NSValidatedUserInterfaceItem> item)
         NativeWebMouseEvent webEvent(theEvent, self); \
         _data->_page->handleMouseEvent(webEvent); \
     }
-#else
-#define NATIVE_MOUSE_EVENT_HANDLER(Selector) \
-    - (void)Selector:(NSEvent *)theEvent \
-    { \
-        if ([[self inputContext] handleEvent:theEvent]) { \
-            LOG(TextInput, "%s was handled by text input context", String(#Selector).substring(0, String(#Selector).find("Internal")).ascii().data()); \
-            return; \
-        } \
-        NativeWebMouseEvent webEvent(theEvent, self); \
-        _data->_page->handleMouseEvent(webEvent); \
-    }
-#endif
 
 NATIVE_MOUSE_EVENT_HANDLER(mouseEntered)
 NATIVE_MOUSE_EVENT_HANDLER(mouseExited)
@@ -1125,10 +1120,8 @@ NATIVE_MOUSE_EVENT_HANDLER(rightMouseUp)
 
 - (void)scrollWheel:(NSEvent *)event
 {
-#if WK_API_ENABLED
-    if (_data->_thumbnailView)
+    if ([self shouldIgnoreMouseEvents])
         return;
-#endif
 
     if (_data->_allowsBackForwardNavigationGestures) {
         [self _ensureGestureController];
@@ -1142,10 +1135,8 @@ NATIVE_MOUSE_EVENT_HANDLER(rightMouseUp)
 
 - (void)mouseMoved:(NSEvent *)event
 {
-#if WK_API_ENABLED
-    if (_data->_thumbnailView)
+    if ([self shouldIgnoreMouseEvents])
         return;
-#endif
 
     // When a view is first responder, it gets mouse moved events even when the mouse is outside its visible rect.
     if (self == [[self window] firstResponder] && !NSPointInRect([self convertPoint:[event locationInWindow] fromView:nil], [self visibleRect]))
@@ -1156,10 +1147,8 @@ NATIVE_MOUSE_EVENT_HANDLER(rightMouseUp)
 
 - (void)mouseDown:(NSEvent *)event
 {
-#if WK_API_ENABLED
-    if (_data->_thumbnailView)
+    if ([self shouldIgnoreMouseEvents])
         return;
-#endif
 
     [self _setMouseDownEvent:event];
     _data->_ignoringMouseDraggedEvents = NO;
@@ -1168,10 +1157,8 @@ NATIVE_MOUSE_EVENT_HANDLER(rightMouseUp)
 
 - (void)mouseUp:(NSEvent *)event
 {
-#if WK_API_ENABLED
-    if (_data->_thumbnailView)
+    if ([self shouldIgnoreMouseEvents])
         return;
-#endif
 
     [self _setMouseDownEvent:nil];
     [self mouseUpInternal:event];
@@ -1179,10 +1166,8 @@ NATIVE_MOUSE_EVENT_HANDLER(rightMouseUp)
 
 - (void)mouseDragged:(NSEvent *)event
 {
-#if WK_API_ENABLED
-    if (_data->_thumbnailView)
+    if ([self shouldIgnoreMouseEvents])
         return;
-#endif
 
     if (_data->_ignoringMouseDraggedEvents)
         return;
@@ -1310,32 +1295,6 @@ NATIVE_MOUSE_EVENT_HANDLER(rightMouseUp)
         parameters->eventInterpretationHadSideEffects |= eventHandled;
 }
 
-- (BOOL)_handleStyleKeyEquivalent:(NSEvent *)event
-{
-    if (!_data->_page->editorState().isContentEditable)
-        return NO;
-
-    if (([event modifierFlags] & NSDeviceIndependentModifierFlagsMask) != NSCommandKeyMask)
-        return NO;
-    
-    // Here we special case cmd+b and cmd+i but not cmd+u, for historic reason.
-    // This should not be changed, since it could break some Mac applications that
-    // rely on this inherent behavior.
-    // See https://bugs.webkit.org/show_bug.cgi?id=24943
-    
-    NSString *string = [event characters];
-    if ([string caseInsensitiveCompare:@"b"] == NSOrderedSame) {
-        _data->_page->executeEditCommand("ToggleBold");
-        return YES;
-    }
-    if ([string caseInsensitiveCompare:@"i"] == NSOrderedSame) {
-        _data->_page->executeEditCommand("ToggleItalic");
-        return YES;
-    }
-    
-    return NO;
-}
-
 - (BOOL)performKeyEquivalent:(NSEvent *)event
 {
     // There's a chance that responding to this event will run a nested event loop, and
@@ -1357,7 +1316,7 @@ NATIVE_MOUSE_EVENT_HANDLER(rightMouseUp)
         return YES;
     }
     
-    return [self _handleStyleKeyEquivalent:event] || [super performKeyEquivalent:event];
+    return [super performKeyEquivalent:event];
 }
 
 - (void)keyUp:(NSEvent *)theEvent
@@ -1700,13 +1659,7 @@ static void extractUnderlines(NSAttributedString *string, Vector<CompositionUnde
     
     NSRect resultRect = _data->_page->firstRectForCharacterRange(theRange.location, theRange.length);
     resultRect = [self convertRect:resultRect toView:nil];
-    
-    NSWindow *window = [self window];
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-    if (window)
-        resultRect.origin = [window convertBaseToScreen:resultRect.origin];
-#pragma clang diagnostic pop
+    resultRect = [self.window convertRectToScreen:resultRect];
 
     if (actualRange) {
         // FIXME: Update actualRange to match the range of first rect.
@@ -2180,12 +2133,9 @@ static void createSandboxExtensionsForFileUpload(NSPasteboard *pasteboard, Sandb
 
 - (void)_postFakeMouseMovedEventForFlagsChangedEvent:(NSEvent *)flagsChangedEvent
 {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-    NSEvent *fakeEvent = [NSEvent mouseEventWithType:NSMouseMoved location:[[flagsChangedEvent window] convertScreenToBase:[NSEvent mouseLocation]]
+    NSEvent *fakeEvent = [NSEvent mouseEventWithType:NSMouseMoved location:flagsChangedEvent.locationInWindow
         modifierFlags:[flagsChangedEvent modifierFlags] timestamp:[flagsChangedEvent timestamp] windowNumber:[flagsChangedEvent windowNumber]
         context:[flagsChangedEvent context] eventNumber:0 clickCount:0 pressure:0];
-#pragma clang diagnostic pop
     NativeWebMouseEvent webEvent(fakeEvent, self);
     _data->_page->handleMouseEvent(webEvent);
 }
@@ -3122,14 +3072,7 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
 
 - (void)performDictionaryLookupAtCurrentMouseLocation
 {
-    NSPoint thePoint = [NSEvent mouseLocation];
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-    thePoint = [[self window] convertScreenToBase:thePoint];
-#pragma clang diagnostic pop
-    thePoint = [self convertPoint:thePoint fromView:nil];
-
-    _data->_page->performDictionaryLookupAtLocation(FloatPoint(thePoint.x, thePoint.y));
+    _data->_page->performDictionaryLookupAtLocation([self convertPoint:[[NSApp currentEvent] locationInWindow] fromView:nil]);
 }
 
 + (void)hideWordDefinitionWindow
@@ -3317,6 +3260,15 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     return _data->_allowsBackForwardNavigationGestures;
 }
 
+- (NSColor *)_pageExtendedBackgroundColor
+{
+    WebCore::Color color = _data->_page->pageExtendedBackgroundColor();
+    if (!color.isValid())
+        return nil;
+
+    return nsColor(color);
+}
+
 // This method forces a drawing area geometry update, even if frame size updates are disabled.
 // The updated is performed asynchronously; we don't wait for the geometry update before returning.
 // The area drawn need not match the current frame size - if it differs it will be anchored to the
@@ -3487,3 +3439,5 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
 }
 
 @end
+
+#endif // PLATFORM(MAC)

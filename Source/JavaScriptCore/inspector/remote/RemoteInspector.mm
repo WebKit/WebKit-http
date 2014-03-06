@@ -165,6 +165,17 @@ void RemoteInspector::sendMessageToRemoteFrontend(unsigned identifier, const Str
     m_xpcConnection->sendMessage(WIRRawDataMessage, userInfo);
 }
 
+void RemoteInspector::setupFailed(unsigned identifier)
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+
+    m_connectionMap.remove(identifier);
+
+    updateHasActiveDebugSession();
+
+    pushListingSoon();
+}
+
 void RemoteInspector::start()
 {
     std::lock_guard<std::mutex> lock(m_mutex);
@@ -254,6 +265,8 @@ void RemoteInspector::xpcConnectionReceivedMessage(RemoteInspectorXPCConnection*
 void RemoteInspector::xpcConnectionFailed(RemoteInspectorXPCConnection* connection)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
+
+    ASSERT(connection == m_xpcConnection);
     if (connection != m_xpcConnection)
         return;
 
@@ -265,10 +278,8 @@ void RemoteInspector::xpcConnectionFailed(RemoteInspectorXPCConnection* connecti
 
     updateHasActiveDebugSession();
 
-    if (m_xpcConnection) {
-        m_xpcConnection->close();
-        m_xpcConnection = nullptr;
-    }
+    // The connection will close itself.
+    m_xpcConnection = nullptr;
 }
 
 void RemoteInspector::xpcConnectionUnhandledMessage(RemoteInspectorXPCConnection*, xpc_object_t)
@@ -350,7 +361,7 @@ void RemoteInspector::pushListingSoon()
         return;
 
     m_pushScheduled = true;
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0.02 * NSEC_PER_SEC), dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0.2 * NSEC_PER_SEC), dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
         std::lock_guard<std::mutex> lock(m_mutex);
         if (m_pushScheduled)
             pushListingNow();
@@ -468,13 +479,16 @@ void RemoteInspector::receivedIndicateMessage(NSDictionary *userInfo)
     BOOL indicateEnabled = [[userInfo objectForKey:WIRIndicateEnabledKey] boolValue];
 
     dispatchAsyncOnQueueSafeForAnyDebuggable(^{
-        std::lock_guard<std::mutex> lock(m_mutex);
+        RemoteInspectorDebuggable* debuggable = nullptr;
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
 
-        auto it = m_debuggableMap.find(identifier);
-        if (it == m_debuggableMap.end())
-            return;
+            auto it = m_debuggableMap.find(identifier);
+            if (it == m_debuggableMap.end())
+                return;
 
-        RemoteInspectorDebuggable* debuggable = it->value.first;
+            debuggable = it->value.first;
+        }
         debuggable->setIndicating(indicateEnabled);
     });
 }

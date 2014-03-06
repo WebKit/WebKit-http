@@ -141,12 +141,6 @@ void Extensions3DOpenGL::bindVertexArrayOES(Platform3DObject array)
 #endif
 }
 
-void Extensions3DOpenGL::copyTextureCHROMIUM(GC3Denum, Platform3DObject, Platform3DObject, GC3Dint, GC3Denum)
-{
-    // FIXME: implement this function and add GL_CHROMIUM_copy_texture in supports().
-    return;
-}
-
 void Extensions3DOpenGL::insertEventMarkerEXT(const String&)
 {
     // FIXME: implement this function and add GL_EXT_debug_marker in supports().
@@ -209,7 +203,7 @@ bool Extensions3DOpenGL::supportsExtension(const String& name)
         return m_availableExtensions.contains("GL_EXT_texture_filter_anisotropic");
 
     if (name == "GL_EXT_draw_buffers") {
-#if PLATFORM(MAC)
+#if PLATFORM(MAC) || PLATFORM(GTK)
         return m_availableExtensions.contains("GL_ARB_draw_buffers");
 #else
         // FIXME: implement support for other platforms.
@@ -230,6 +224,8 @@ void Extensions3DOpenGL::drawBuffersEXT(GC3Dsizei n, const GC3Denum* bufs)
     //  FIXME: implement support for other platforms.
 #if PLATFORM(MAC)
     ::glDrawBuffersARB(n, bufs);
+#elif PLATFORM(GTK)
+    ::glDrawBuffers(n, bufs);
 #else
     UNUSED_PARAM(n);
     UNUSED_PARAM(bufs);
@@ -238,9 +234,11 @@ void Extensions3DOpenGL::drawBuffersEXT(GC3Dsizei n, const GC3Denum* bufs)
 
 void Extensions3DOpenGL::drawArraysInstanced(GC3Denum mode, GC3Dint first, GC3Dsizei count, GC3Dsizei primcount)
 {
-#if PLATFORM(GTK)
     m_context->makeContextCurrent();
+#if PLATFORM(GTK)
     ::glDrawArraysInstanced(mode, first, count, primcount);
+#elif PLATFORM(IOS) || PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
+    ::glDrawArraysInstancedARB(mode, first, count, primcount);
 #else
     UNUSED_PARAM(mode);
     UNUSED_PARAM(first);
@@ -251,9 +249,11 @@ void Extensions3DOpenGL::drawArraysInstanced(GC3Denum mode, GC3Dint first, GC3Ds
 
 void Extensions3DOpenGL::drawElementsInstanced(GC3Denum mode, GC3Dsizei count, GC3Denum type, long long offset, GC3Dsizei primcount)
 {
-#if PLATFORM(GTK)
     m_context->makeContextCurrent();
+#if PLATFORM(GTK)
     ::glDrawElementsInstanced(mode, count, type, reinterpret_cast<GLvoid*>(static_cast<intptr_t>(offset)), primcount);
+#elif PLATFORM(IOS) || PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
+    ::glDrawElementsInstancedARB(mode, count, type, reinterpret_cast<GLvoid*>(static_cast<intptr_t>(offset)), primcount);
 #else
     UNUSED_PARAM(mode);
     UNUSED_PARAM(count);
@@ -265,9 +265,11 @@ void Extensions3DOpenGL::drawElementsInstanced(GC3Denum mode, GC3Dsizei count, G
 
 void Extensions3DOpenGL::vertexAttribDivisor(GC3Duint index, GC3Duint divisor)
 {
-#if PLATFORM(GTK)
     m_context->makeContextCurrent();
+#if PLATFORM(GTK)
     ::glVertexAttribDivisor(index, divisor);
+#elif PLATFORM(IOS) || PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
+    ::glVertexAttribDivisorARB(index, divisor);
 #else
     UNUSED_PARAM(index);
     UNUSED_PARAM(divisor);

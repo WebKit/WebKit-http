@@ -32,10 +32,10 @@
 #include <WebCore/FloatRect.h>
 #include <WebCore/IntRect.h>
 #include <WebCore/IntSize.h>
-#include <WebCore/Timer.h>
 #include <chrono>
 #include <stdint.h>
 #include <wtf/Noncopyable.h>
+#include <wtf/RunLoop.h>
 
 namespace WebKit {
 
@@ -73,14 +73,17 @@ public:
     virtual void adjustTransientZoom(double, WebCore::FloatPoint) { }
     virtual void commitTransientZoom(double, WebCore::FloatPoint) { }
 
-#if PLATFORM(COCOA)
+#if PLATFORM(MAC)
     virtual void setExposedRect(const WebCore::FloatRect&);
     WebCore::FloatRect exposedRect() const { return m_exposedRect; }
-    void exposedRectChangedTimerFired(WebCore::Timer<DrawingAreaProxy>*);
+#endif
+#if PLATFORM(COCOA)
+    void exposedRectChangedTimerFired();
     
     void setCustomFixedPositionRect(const WebCore::FloatRect&);
 #endif
 
+    virtual void updateDebugIndicator() { }
     virtual void showDebugIndicator(bool) { }
     virtual bool isShowingDebugIndicator() const { return false; }
 
@@ -111,9 +114,11 @@ private:
     virtual void didUpdateGeometry() { }
     virtual void intrinsicContentSizeDidChange(const WebCore::IntSize& newIntrinsicContentSize) { }
 
-    WebCore::Timer<DrawingAreaProxy> m_exposedRectChangedTimer;
+#if PLATFORM(MAC)
+    RunLoop::Timer<DrawingAreaProxy> m_exposedRectChangedTimer;
     WebCore::FloatRect m_exposedRect;
     WebCore::FloatRect m_lastSentExposedRect;
+#endif // PLATFORM(MAC)
 #endif
 };
 

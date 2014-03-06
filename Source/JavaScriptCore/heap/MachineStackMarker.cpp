@@ -190,7 +190,7 @@ void MachineThreads::makeUsableFromMultipleThreads()
 
 void MachineThreads::addCurrentThread()
 {
-    ASSERT(!m_heap->vm()->exclusiveThread || m_heap->vm()->exclusiveThread == currentThread());
+    ASSERT(!m_heap->vm()->hasExclusiveThread() || m_heap->vm()->exclusiveThread() == std::this_thread::get_id());
 
     if (!m_threadSpecific || threadSpecificGet(m_threadSpecific))
         return;
@@ -465,6 +465,7 @@ void MachineThreads::gatherFromOtherThread(ConservativeRoots& conservativeRoots,
     void* stackPointer = otherThreadStackPointer(regs);
     void* stackBase = thread->stackBase;
     swapIfBackwards(stackPointer, stackBase);
+    stackPointer = reinterpret_cast<void*>(WTF::roundUpToMultipleOf<sizeof(void*)>(reinterpret_cast<uintptr_t>(stackPointer)));
     conservativeRoots.add(stackPointer, stackBase, jitStubRoutines, codeBlocks);
 
     freePlatformThreadRegisters(regs);

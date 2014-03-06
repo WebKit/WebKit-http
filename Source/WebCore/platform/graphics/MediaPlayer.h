@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007, 2008, 2009, 2010, 2011, 2012, 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2007-2014 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,6 +33,7 @@
 #endif
 
 #include "AudioTrackPrivate.h"
+#include "CDMSession.h"
 #include "InbandTextTrackPrivate.h"
 #include "IntRect.h"
 #include "URL.h"
@@ -49,6 +50,10 @@
 #include <wtf/OwnPtr.h>
 #include <wtf/PassOwnPtr.h>
 #include <wtf/text/StringHash.h>
+
+#if ENABLE(AVF_CAPTIONS)
+#include "PlatformTextTrack.h"
+#endif
 
 #if USE(PLATFORM_TEXT_TRACK_MENU)
 #include "PlatformTextTrackMenu.h"
@@ -128,12 +133,12 @@ class ContentType;
 class FrameView;
 class GraphicsContext;
 class GraphicsContext3D;
+class HostWindow;
 class IntRect;
 class IntSize;
 class MediaPlayer;
 struct MediaPlayerFactory;
-class TimeRanges;
-class HostWindow;
+class PlatformTimeRanges;
 
 #if PLATFORM(WIN) && USE(AVFOUNDATION)
 struct GraphicsDeviceAdapter;
@@ -252,7 +257,11 @@ public:
     virtual void mediaPlayerDidRemoveVideoTrack(PassRefPtr<VideoTrackPrivate>) { }
 
     virtual void textTrackRepresentationBoundsChanged(const IntRect&) { }
+#if ENABLE(AVF_CAPTIONS)
+    virtual Vector<RefPtr<PlatformTextTrack>> outOfBandTrackSources() { return Vector<RefPtr<PlatformTextTrack>>(); }
 #endif
+#endif
+
 
     virtual bool mediaPlayerShouldWaitForResponseToAuthenticationChallenge(const AuthenticationChallenge&) { return false; }
 };
@@ -283,6 +292,7 @@ public:
     static void getSitesInMediaCache(Vector<String>&);
     static void clearMediaCache();
     static void clearMediaCacheForSite(const String&);
+    static bool supportsKeySystem(const String& keySystem, const String& mimeType);
 
     bool supportsFullscreen() const;
     bool supportsSave() const;
@@ -328,9 +338,7 @@ public:
 #endif
 
 #if ENABLE(ENCRYPTED_MEDIA_V2)
-    PassRefPtr<Uint8Array> generateKeyRequest(const String& sessionID, const String& mimeType, Uint8Array* initData, String& destinationURL, MediaKeyException& error, unsigned long& systemCode);
-    void releaseKeys(const String& sessionID);
-    bool update(const String& sessionID, Uint8Array* key, RefPtr<Uint8Array>& nextMessage, MediaKeyException& error, unsigned long& systemCode);
+    std::unique_ptr<CDMSession> createSession(const String& keySystem);
 #endif
 
     bool paused() const;
@@ -352,8 +360,8 @@ public:
     bool preservesPitch() const;
     void setPreservesPitch(bool);
 
-    PassRefPtr<TimeRanges> buffered();
-    PassRefPtr<TimeRanges> seekable();
+    std::unique_ptr<PlatformTimeRanges> buffered();
+    std::unique_ptr<PlatformTimeRanges> seekable();
     double minTimeSeekable();
     double maxTimeSeekable();
 
@@ -441,6 +449,12 @@ public:
 
 #if ENABLE(IOS_AIRPLAY)
     bool isCurrentPlaybackTargetWireless() const;
+
+    enum WirelessPlaybackTargetType { TargetTypeNone, TargetTypeAirPlay, TargetTypeTVOut };
+    WirelessPlaybackTargetType wirelessPlaybackTargetType() const;
+
+    String wirelessPlaybackTargetName() const;
+
     void showPlaybackTargetPicker();
 
     bool hasWirelessPlaybackTargets() const;
@@ -522,6 +536,9 @@ public:
 
     bool requiresTextTrackRepresentation() const;
     void setTextTrackRepresentation(TextTrackRepresentation*);
+#if ENABLE(AVF_CAPTIONS)
+    Vector<RefPtr<PlatformTextTrack>> outOfBandTrackSources();
+#endif
 #endif
 
     static void resetMediaEngines();
@@ -592,9 +609,10 @@ typedef MediaPlayer::SupportsType (*MediaEngineSupportsType)(const MediaEngineSu
 typedef void (*MediaEngineGetSitesInMediaCache)(Vector<String>&);
 typedef void (*MediaEngineClearMediaCache)();
 typedef void (*MediaEngineClearMediaCacheForSite)(const String&);
+typedef bool (*MediaEngineSupportsKeySystem)(const String& keySystem, const String& mimeType);
 
 typedef void (*MediaEngineRegistrar)(CreateMediaEnginePlayer, MediaEngineSupportedTypes, MediaEngineSupportsType,
-    MediaEngineGetSitesInMediaCache, MediaEngineClearMediaCache, MediaEngineClearMediaCacheForSite);
+    MediaEngineGetSitesInMediaCache, MediaEngineClearMediaCache, MediaEngineClearMediaCacheForSite, MediaEngineSupportsKeySystem);
 typedef void (*MediaEngineRegister)(MediaEngineRegistrar);
 
 class MediaPlayerFactorySupport {

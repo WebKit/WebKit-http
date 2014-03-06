@@ -29,18 +29,26 @@
 #include "VisitedLinkTable.h"
 #include <WebCore/LinkHash.h>
 #include <wtf/Forward.h>
+#include <wtf/HashCountedSet.h>
 #include <wtf/HashSet.h>
+#include <wtf/RefCounted.h>
 #include <wtf/RunLoop.h>
 
 namespace WebKit {
 
 class WebContext;
+class WebPageProxy;
 class WebProcessProxy;
     
-class VisitedLinkProvider {
-    WTF_MAKE_NONCOPYABLE(VisitedLinkProvider);
+class VisitedLinkProvider : public RefCounted<VisitedLinkProvider> {
 public:
-    explicit VisitedLinkProvider(WebContext*);
+    static PassRefPtr<VisitedLinkProvider> create();
+    ~VisitedLinkProvider();
+
+    uint64_t identifier() const { return m_identifier; }
+
+    void addProcess(WebProcessProxy&);
+    void removeProcess(WebProcessProxy&);
 
     void addVisitedLink(WebCore::LinkHash);
 
@@ -48,12 +56,16 @@ public:
     void processDidClose(WebProcessProxy*);
 
 private:
+    VisitedLinkProvider();
+
     void pendingVisitedLinksTimerFired();
 
-    WebContext* m_context;
-    bool m_visitedLinksPopulated;
+    HashCountedSet<WebProcessProxy*> m_processes;
+
     HashSet<WebProcessProxy*> m_processesWithVisitedLinkState;
     HashSet<WebProcessProxy*> m_processesWithoutVisitedLinkState;
+
+    uint64_t m_identifier;
 
     unsigned m_keyCount;
     unsigned m_tableSize;

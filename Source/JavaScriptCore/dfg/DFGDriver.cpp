@@ -34,7 +34,6 @@
 #include "DFGPlan.h"
 #include "DFGThunks.h"
 #include "DFGWorklist.h"
-#include "Debugger.h"
 #include "JITCode.h"
 #include "JSCInlines.h"
 #include "Options.h"
@@ -69,19 +68,6 @@ static CompilationResult compileImpl(
     ASSERT(codeBlock->alternative()->jitType() == JITCode::BaselineJIT);
     ASSERT(!profiledDFGCodeBlock || profiledDFGCodeBlock->jitType() == JITCode::DFGJIT);
     
-    if (!Options::useDFGJIT() || !MacroAssembler::supportsFloatingPoint())
-        return CompilationFailed;
-
-    if (!Options::bytecodeRangeToDFGCompile().isInRange(codeBlock->instructionCount()))
-        return CompilationFailed;
-    
-    if (vm.enabledProfiler())
-        return CompilationInvalidated;
-
-    Debugger* debugger = codeBlock->globalObject()->debugger();
-    if (debugger && (debugger->isStepping() || codeBlock->baselineAlternative()->hasDebuggerRequests()))
-        return CompilationInvalidated;
-
     if (logCompilationChanges(mode))
         dataLog("DFG(Driver) compiling ", *codeBlock, " with ", mode, ", number of instructions = ", codeBlock->instructionCount(), "\n");
     
@@ -106,13 +92,7 @@ static CompilationResult compileImpl(
     RefPtr<Plan> plan = adoptRef(
         new Plan(codeBlock, profiledDFGCodeBlock, mode, osrEntryBytecodeIndex, mustHandleValues));
     
-    bool enableConcurrentJIT;
-#if ENABLE(CONCURRENT_JIT)
-    enableConcurrentJIT = Options::enableConcurrentJIT();
-#else // ENABLE(CONCURRENT_JIT)
-    enableConcurrentJIT = false;
-#endif // ENABLE(CONCURRENT_JIT)
-    if (enableConcurrentJIT) {
+    if (Options::enableConcurrentJIT()) {
         Worklist* worklist = ensureGlobalWorklistFor(mode);
         plan->callback = callback;
         if (logCompilationChanges(mode))

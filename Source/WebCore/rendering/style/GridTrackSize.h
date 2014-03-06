@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2012 Google Inc. All rights reserved.
+ * Copyright (C) 2013, 2014 Igalia S.L.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -30,6 +31,8 @@
 
 #ifndef GridTrackSize_h
 #define GridTrackSize_h
+
+#if ENABLE(CSS_GRID_LAYOUT)
 
 #include "GridLength.h"
 
@@ -96,6 +99,8 @@ public:
 
     bool isContentSized() const { return m_minTrackBreadth.isContentSized() || m_maxTrackBreadth.isContentSized(); }
 
+    bool isPercentage() const { return m_type == LengthTrackSizing && length().isLength() && length().length().isPercent(); }
+
     bool operator==(const GridTrackSize& other) const
     {
         return m_type == other.m_type && m_minTrackBreadth == other.m_minTrackBreadth && m_maxTrackBreadth == other.m_maxTrackBreadth;
@@ -113,5 +118,7 @@ private:
 };
 
 } // namespace WebCore
+
+#endif /* ENABLE(CSS_GRID_LAYOUT) */
 
 #endif // GridTrackSize_h

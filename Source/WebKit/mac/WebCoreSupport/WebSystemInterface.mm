@@ -152,10 +152,12 @@ void InitWebCoreSystemInterface(void)
 #endif
     INIT(CreateCTTypesetterWithUniCharProviderAndOptions);
     INIT(CTRunGetInitialAdvance);
+#if PLATFORM(MAC) || PLATFORM(IOS_SIMULATOR)
+    INIT(SetCrashReportApplicationSpecificInformation);
+#endif
 #if !PLATFORM(IOS)
     INIT(RecommendedScrollerStyle);
     INIT(ExecutableWasLinkedOnOrBeforeSnowLeopard);
-    INIT(SetCrashReportApplicationSpecificInformation);
     INIT(CopyDefaultSearchProviderDisplayName);
     INIT(AVAssetResolvedURL);
     INIT(Cursor);
@@ -241,6 +243,9 @@ void InitWebCoreSystemInterface(void)
 #if ENABLE(CACHE_PARTITIONING)
     INIT(CachePartitionKey);
 #endif
+
+    INIT(ExernalDeviceTypeForPlayer);
+    INIT(ExernalDeviceDisplayNameForPlayer);
 
     didInit = true;
 }

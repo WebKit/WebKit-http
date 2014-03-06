@@ -26,13 +26,12 @@
 #ifndef ViewGestureGeometryCollector_h
 #define ViewGestureGeometryCollector_h
 
-#if !PLATFORM(IOS)
-
 #include "MessageReceiver.h"
 #include <wtf/RunLoop.h>
 
 namespace WebCore {
 class FloatPoint;
+class FloatRect;
 }
 
 namespace WebKit {
@@ -51,20 +50,25 @@ private:
     virtual void didReceiveMessage(IPC::Connection*, IPC::MessageDecoder&) override;
 
     // Message handlers.
-    void collectGeometryForMagnificationGesture();
     void collectGeometryForSmartMagnificationGesture(WebCore::FloatPoint origin);
+
+#if PLATFORM(MAC)
+    void collectGeometryForMagnificationGesture();
     void setRenderTreeSizeNotificationThreshold(uint64_t size) { m_renderTreeSizeNotificationThreshold = size; }
 
     void renderTreeSizeNotificationTimerFired();
+#endif
+
+    void dispatchDidCollectGeometryForSmartMagnificationGesture(WebCore::FloatPoint origin, WebCore::FloatRect targetRect, WebCore::FloatRect visibleContentRect, bool isReplacedElement, double viewportMinimumScale, double viewportMaximumScale);
 
     WebPage& m_webPage;
 
+#if PLATFORM(MAC)
     uint64_t m_renderTreeSizeNotificationThreshold;
     RunLoop::Timer<ViewGestureGeometryCollector> m_renderTreeSizeNotificationTimer;
+#endif
 };
 
 } // namespace WebKit
-
-#endif // !PLATFORM(IOS)
 
 #endif // ViewGestureGeometryCollector

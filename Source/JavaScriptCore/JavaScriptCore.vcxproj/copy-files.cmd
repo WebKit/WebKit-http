@@ -54,6 +54,7 @@ for %%d in (
     llint
     parser
     profiler
+    replay
     runtime
     yarr
 ) do (
@@ -73,8 +74,19 @@ xcopy /y "%DerivedSourcesDirectory%\InspectorJSTypeBuilders.h" "%PrivateHeadersD
 xcopy /y "%DerivedSourcesDirectory%\InspectorJSBackendDispatchers.h" "%PrivateHeadersDirectory%" >NUL
 xcopy /y "%DerivedSourcesDirectory%\InspectorJSFrontendDispatchers.h" "%PrivateHeadersDirectory%" >NUL
 
+echo Copying Web Replay scripts as if they were private headers...
+for %%d in (
+    replay\scripts
+) do (
+    xcopy /y /d ..\%%d\* "%PrivateHeadersDirectory%" >NUL
+)
+
+echo Copying Web Replay generated headers as if they were private headers...
+xcopy /y "%DerivedSourcesDirectory%\JSReplayInputs.h" "%PrivateHeadersDirectory%" >NUL
+
 echo Copying builtins header as if it were a private header...
 xcopy /y "%DerivedSourcesDirectory%\JSCBuiltins.h" "%PrivateHeadersDirectory%" >NUL
+xcopy /y "%DerivedSourcesDirectory%\Bytecodes.h" "%PrivateHeadersDirectory%" >NUL
 
 echo Copying resources...
 mkdir "%ResourcesDirectory%" 2>NUL

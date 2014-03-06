@@ -66,6 +66,47 @@
 
 namespace WebCore {
 
+static bool appendIceServer(const String& iceURL, const String& credential, const String& username, RTCConfiguration* rtcConfiguration)
+{
+    URL url(URL(), iceURL);
+    if (url.isEmpty() || !url.isValid() || !(url.protocolIs("turn") || url.protocolIs("stun")))
+        return false;
+
+    rtcConfiguration->appendServer(RTCIceServer::create(url, credential, username));
+    return true;
+}
+
+static ExceptionCode processIceServer(const Dictionary& iceServer, RTCConfiguration* rtcConfiguration)
+{
+    String credential, username;
+    iceServer.get("credential", credential);
+    iceServer.get("username", username);
+
+    // Spec says that "urls" can be either a string or a sequence, so we must check for both.
+    Vector<String> urlsList;
+    String urlString;
+    iceServer.get("urls", urlString);
+    // This is the only way to check if "urls" is a sequence or a string. If we try to convert
+    // to a sequence and it fails (in case it is a string), an exception will be set and the
+    // RTCPeerConnection will fail.
+    // So we convert to a string always, which converts a sequence to a string in the format: "foo, bar, ..",
+    // then checking for a comma in the string assures that a string was a sequence and then we convert
+    // it to a sequence safely.
+    if (urlString.find(',') != notFound && iceServer.get("urls", urlsList) && urlsList.size()) {
+        for (auto iter = urlsList.begin(); iter != urlsList.end(); ++iter) {
+            if (!appendIceServer((*iter), credential, username, rtcConfiguration))
+                return INVALID_ACCESS_ERR;
+        }
+
+        return 0;
+    }
+
+    if (!urlString.isEmpty() && appendIceServer(urlString, credential, username, rtcConfiguration))
+        return 0;
+
+    return INVALID_ACCESS_ERR;
+}
+
 PassRefPtr<RTCConfiguration> RTCPeerConnection::parseConfiguration(const Dictionary& configuration, ExceptionCode& ec)
 {
     if (configuration.isUndefinedOrNull())
@@ -80,8 +121,8 @@ PassRefPtr<RTCConfiguration> RTCPeerConnection::parseConfiguration(const Diction
 
     size_t numberOfServers;
     ok = iceServers.length(numberOfServers);
-    if (!ok) {
-        ec = TYPE_MISMATCH_ERR;
+    if (!ok || !numberOfServers) {
+        ec = !ok ? TYPE_MISMATCH_ERR : INVALID_ACCESS_ERR;
         return nullptr;
     }
 
@@ -103,38 +144,21 @@ PassRefPtr<RTCConfiguration> RTCPeerConnection::parseConfiguration(const Diction
             return nullptr;
         }
 
-        String urlString, credential, username;
-        ok = iceServer.get("url", urlString);
-        if (!ok) {
-            ec = TYPE_MISMATCH_ERR;
+        ec = processIceServer(iceServer, rtcConfiguration.get());
+        if (ec)
             return nullptr;
-        }
-        URL url(URL(), urlString);
-        if (!url.isValid() || !(url.protocolIs("turn") || url.protocolIs("stun"))) {
-            ec = TYPE_MISMATCH_ERR;
-            return nullptr;
-        }
-
-        iceServer.get("credential", credential);
-        iceServer.get("username", username);
-
-        rtcConfiguration->appendServer(RTCIceServer::create(url, credential, username));
     }
 
     return rtcConfiguration.release();
 }
 
-PassRefPtr<RTCPeerConnection> RTCPeerConnection::create(ScriptExecutionContext& context, const Dictionary& rtcConfiguration, const Dictionary& mediaConstraints, ExceptionCode& ec)
+PassRefPtr<RTCPeerConnection> RTCPeerConnection::create(ScriptExecutionContext& context, const Dictionary& rtcConfiguration, ExceptionCode& ec)
 {
     RefPtr<RTCConfiguration> configuration = parseConfiguration(rtcConfiguration, ec);
     if (ec)
         return nullptr;
 
-    RefPtr<MediaConstraints> constraints = MediaConstraintsImpl::create(mediaConstraints, ec);
-    if (ec)
-        return nullptr;
-
-    RefPtr<RTCPeerConnection> peerConnection = adoptRef(new RTCPeerConnection(context, configuration.release(), constraints.release(), ec));
+    RefPtr<RTCPeerConnection> peerConnection = adoptRef(new RTCPeerConnection(context, configuration.release(), ec));
     peerConnection->suspendIfNeeded();
     if (ec)
         return nullptr;
@@ -142,7 +166,7 @@ PassRefPtr<RTCPeerConnection> RTCPeerConnection::create(ScriptExecutionContext& 
     return peerConnection.release();
 }
 
-RTCPeerConnection::RTCPeerConnection(ScriptExecutionContext& context, PassRefPtr<RTCConfiguration> configuration, PassRefPtr<MediaConstraints> constraints, ExceptionCode& ec)
+RTCPeerConnection::RTCPeerConnection(ScriptExecutionContext& context, PassRefPtr<RTCConfiguration> configuration, ExceptionCode& ec)
     : ActiveDOMObject(&context)
     , m_signalingState(SignalingStateStable)
     , m_iceGatheringState(IceGatheringStateNew)
@@ -165,7 +189,7 @@ RTCPeerConnection::RTCPeerConnection(ScriptExecutionContext& context, PassRefPtr
 
     document.frame()->loader().client().dispatchWillStartUsingPeerConnectionHandler(m_peerHandler.get());
 
-    if (!m_peerHandler->initialize(configuration, constraints)) {
+    if (!m_peerHandler->initialize(configuration)) {
         ec = NOT_SUPPORTED_ERR;
         return;
     }
@@ -317,7 +341,7 @@ PassRefPtr<RTCSessionDescription> RTCPeerConnection::remoteDescription(Exception
     return desc.release();
 }
 
-void RTCPeerConnection::updateIce(const Dictionary& rtcConfiguration, const Dictionary& mediaConstraints, ExceptionCode& ec)
+void RTCPeerConnection::updateIce(const Dictionary& rtcConfiguration, ExceptionCode& ec)
 {
     if (m_signalingState == SignalingStateClosed) {
         ec = INVALID_STATE_ERR;
@@ -328,11 +352,7 @@ void RTCPeerConnection::updateIce(const Dictionary& rtcConfiguration, const Dict
     if (ec)
         return;
 
-    RefPtr<MediaConstraints> constraints = MediaConstraintsImpl::create(mediaConstraints, ec);
-    if (ec)
-        return;
-
-    bool valid = m_peerHandler->updateIce(configuration, constraints);
+    bool valid = m_peerHandler->updateIce(configuration);
     if (!valid)
         ec = SYNTAX_ERR;
 }
@@ -415,7 +435,7 @@ String RTCPeerConnection::iceConnectionState() const
     return String();
 }
 
-void RTCPeerConnection::addStream(PassRefPtr<MediaStream> prpStream, const Dictionary& mediaConstraints, ExceptionCode& ec)
+void RTCPeerConnection::addStream(PassRefPtr<MediaStream> prpStream, ExceptionCode& ec)
 {
     if (m_signalingState == SignalingStateClosed) {
         ec = INVALID_STATE_ERR;
@@ -431,11 +451,7 @@ void RTCPeerConnection::addStream(PassRefPtr<MediaStream> prpStream, const Dicti
     if (m_localStreams.contains(stream))
         return;
 
-    RefPtr<MediaConstraints> constraints = MediaConstraintsImpl::create(mediaConstraints, ec);
-    if (ec)
-        return;
-
-    bool valid = m_peerHandler->addStream(stream->privateStream(), constraints);
+    bool valid = m_peerHandler->addStream(stream->privateStream());
     if (!valid)
         ec = SYNTAX_ERR;
     else {

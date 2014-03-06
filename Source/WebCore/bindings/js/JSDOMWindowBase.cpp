@@ -204,7 +204,7 @@ JSDOMWindowShell* JSDOMWindowBase::shell() const
     return m_shell;
 }
 
-VM* JSDOMWindowBase::commonVM()
+VM& JSDOMWindowBase::commonVM()
 {
     ASSERT(isMainThread());
 
@@ -215,7 +215,7 @@ VM* JSDOMWindowBase::commonVM()
 #endif
     if (!vm) {
         ScriptController::initializeThreading();
-        vm = VM::createLeakedForMainThread(LargeHeap).leakRef();
+        vm = VM::createLeaked(LargeHeap).leakRef();
 #if PLATFORM(IOS)
         PassOwnPtr<WebSafeGCActivityCallback> activityCallback = WebSafeGCActivityCallback::create(&vm->heap);
         vm->heap.setActivityCallback(activityCallback);
@@ -224,12 +224,12 @@ VM* JSDOMWindowBase::commonVM()
         vm->makeUsableFromMultipleThreads();
         vm->heap.machineThreads().addCurrentThread();
 #else
-        vm->exclusiveThread = currentThread();
+        vm->setExclusiveThread(std::this_thread::get_id());
 #endif // !PLATFORM(IOS)
         initNormalWorldClientData(vm);
     }
 
-    return vm;
+    return *vm;
 }
 
 #if PLATFORM(IOS)

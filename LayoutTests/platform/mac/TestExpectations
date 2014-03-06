@@ -49,6 +49,8 @@ accessibility/multiselect-list-reports-active-option.html
 
 # isIndeterminate is not implemented in mac
 webkit.org/b/125855 accessibility/aria-checked-mixed-value.html [ Skip ]
+# Missing implementation of some functions in mac.
+webkit.org/b/129039 accessibility/select-element-at-index.html [ Skip ]
 
 # ariaControlsElementAtIndex is not implemented in mac
 webkit.org/b/127908 accessibility/aria-controls.html [ Skip ]
@@ -218,15 +220,6 @@ webkit.org/b/42821 animations/play-state.html
 
 webkit.org/b/113598 animations/animation-delay-changed.html [ Pass Failure ]
 webkit.org/b/113599 svg/animations/reinserting-svg-into-document.html [ Pass Failure ]
-
-# Skipping the tests for the old inspector UI
-inspector [ Skip ]
-http/tests/inspector [ Skip ]
-http/tests/inspector-enabled [ Skip ]
-
-# JSC doesn't support heap profiling
-# https://bugs.webkit.org/show_bug.cgi?id=50485
-webkit.org/b/50485 inspector-protocol/heap-profiler [ Skip ]
 
 # Flakey notification test.
 webkit.org/b/112499 http/tests/notifications/window-show-on-click.html [ Pass Failure ]
@@ -666,9 +659,6 @@ webgl/1.0.1/conformance/limits/gl-max-texture-dimensions.html [ Pass Failure ]
 webgl/1.0.2/conformance/textures/texture-size.html [ Pass Failure ]
 webgl/1.0.2/conformance/limits/gl-max-texture-dimensions.html [ Pass Failure ]
 
-# Currently working on 1.0.2 conformance, skip currently known failing tests, <rdar://problem/12099869>
-webgl/1.0.2/conformance/glsl/misc/shaders-with-varyings.html [ Failure ]
-
 # Test is faulty, skipping for now
 webgl/1.0.2/conformance/ogles/GL/build/build_009_to_016.html [ Failure ]
 
@@ -946,6 +936,9 @@ webkit.org/b/84893 http/tests/w3c/webperf/submission/Intel/user-timing [ Skip ]
 # Expected to fail until WebGL extension implementation lands
 webkit.org/b/98257 fast/canvas/webgl/oes-element-index-uint.html [ Failure Pass ]
 
+# Expected to fail until GL_EXT_draw_buffers works properly for DARWIN. See WebGLDrawBuffers::supported
+webkit.org/b/112486 fast/canvas/webgl/webgl-draw-buffers.html [ Failure Pass ]
+
 # Resource Timing is not enable yet, skip it.
 webkit.org/b/61138 http/tests/w3c/webperf/submission/Intel/resource-timing [ Skip ]
 
@@ -1005,9 +998,6 @@ webkit.org/b/106415 fast/workers/worker-lifecycle.html [ Pass Failure ]
 
 webkit.org/b/119374 fast/workers/termination-early.html [ Pass Crash ]
 webkit.org/b/119375 fast/workers/worker-call.html [ Failure ]
- 
-webkit.org/b/114470 editing/spelling/spelling-exactly-selected-multiple-words.html [ Skip ]
-webkit.org/b/114470 editing/spelling/spelling-should-select-multiple-words.html [ Skip ]
 
 webkit.org/b/110027 compositing/transitions/transform-on-large-layer.html [ Pass ImageOnlyFailure ]
 
@@ -1222,8 +1212,6 @@ webkit.org/b/123369 [ MountainLion ] svg/css/parent-shadow-offscreen.svg [ Pass 
 webkit.org/b/123369 svg/css/root-shadow-offscreen.svg [ ImageOnlyFailure ]
 webkit.org/b/123369 [ MountainLion ] svg/css/root-shadow-offscreen.svg [ Pass ]
 webkit.org/b/123369 [ Mavericks ] svg/filters/feSpecularLight-premultiplied.svg [ ImageOnlyFailure ]
-webkit.org/b/123369 [ Mavericks ] svg/masking/mask-type-luminance.svg [ ImageOnlyFailure ]
-webkit.org/b/123369 [ Mavericks ] svg/masking/mask-type-not-set.svg [ ImageOnlyFailure ]
 webkit.org/b/123369 [ Mavericks ] svg/repaint/buffered-rendering-static-image.html [ ImageOnlyFailure ]
 
 webkit.org/b/123489 [ Mavericks ] inspector-protocol/debugger/call-frame-this-strict.html [ Pass Failure ]
@@ -1331,3 +1319,10 @@ webkit.org/b/128379 animations/suspend-resume-animation.html [ Pass Failure ]
 
 webkit.org/b/119747 [ Debug ] svg/text/text-overflow-ellipsis-svgfont-kerning-ligatures.html [ Skip ]
 webkit.org/b/119747 [ Debug ] svg/css/font-face-crash.html [ Skip ]
+
+# Regressions in svg/clip-path
+webkit.org/b/128499 svg/clip-path/clip-path-content-use-005.svg [ ImageOnlyFailure ]
+webkit.org/b/128499 svg/clip-path/clip-path-precision-001.svg [ ImageOnlyFailure ]
+webkit.org/b/128499 svg/clip-path/clip-path-content-use-006.svg [ ImageOnlyFailure ]
+webkit.org/b/129180 svg/clip-path/clip-path-on-svg-001.svg [ ImageOnlyFailure ]
+webkit.org/b/129180 svg/clip-path/clip-path-on-svg-002.svg [ ImageOnlyFailure ]

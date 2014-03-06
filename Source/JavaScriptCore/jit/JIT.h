@@ -305,7 +305,7 @@ namespace JSC {
         
         void emitLoadDouble(int index, FPRegisterID value);
         void emitLoadInt32ToDouble(int index, FPRegisterID value);
-        Jump emitJumpIfNotObject(RegisterID structureReg);
+        Jump emitJumpIfCellNotObject(RegisterID cellReg);
 
         Jump addStructureTransitionCheck(JSCell*, Structure*, StructureStubInfo*, RegisterID scratch);
         void addStructureTransitionCheck(JSCell*, Structure*, StructureStubInfo*, JumpList& failureCases, RegisterID scratch);
@@ -314,8 +314,8 @@ namespace JSC {
         enum WriteBarrierMode { UnconditionalWriteBarrier, ShouldFilterValue, ShouldFilterBaseAndValue };
         // value register in write barrier is used before any scratch registers
         // so may safely be the same as either of the scratch registers.
-        Jump checkMarkWord(RegisterID owner, RegisterID scratch1, RegisterID scratch2);
-        Jump checkMarkWord(JSCell* owner);
+        Jump checkMarkByte(RegisterID owner);
+        Jump checkMarkByte(JSCell* owner);
         void emitWriteBarrier(unsigned owner, unsigned value, WriteBarrierMode);
         void emitWriteBarrier(JSCell* owner, unsigned value, WriteBarrierMode);
         void emitWriteBarrier(JSCell* owner);
@@ -328,8 +328,8 @@ namespace JSC {
         void emitValueProfilingSite(ValueProfile*);
         void emitValueProfilingSite(unsigned bytecodeOffset);
         void emitValueProfilingSite();
-        void emitArrayProfilingSite(RegisterID structureAndIndexingType, RegisterID scratch, ArrayProfile*);
-        void emitArrayProfilingSiteForBytecodeIndex(RegisterID structureAndIndexingType, RegisterID scratch, unsigned bytecodeIndex);
+        void emitArrayProfilingSiteWithCell(RegisterID cell, RegisterID indexingType, ArrayProfile*);
+        void emitArrayProfilingSiteForBytecodeIndexWithCell(RegisterID cell, RegisterID indexingType, unsigned bytecodeIndex);
         void emitArrayProfileStoreToHoleSpecialCase(ArrayProfile*);
         void emitArrayProfileOutOfBoundsSpecialCase(ArrayProfile*);
         
@@ -368,6 +368,8 @@ namespace JSC {
         JumpList emitFloatTypedArrayPutByVal(Instruction*, PatchableJump& badType, TypedArrayType);
         
         enum FinalObjectMode { MayBeFinal, KnownNotFinal };
+
+        template <typename T> Jump branchStructure(RelationalCondition, T leftHandSide, Structure*);
 
 #if USE(JSVALUE32_64)
         bool getOperandConstantImmediateInt(int op1, int op2, int& op, int32_t& constant);
@@ -665,7 +667,7 @@ namespace JSC {
         MacroAssembler::Call callOperation(C_JITOperation_EO, GPRReg);
         MacroAssembler::Call callOperation(C_JITOperation_ESt, Structure*);
         MacroAssembler::Call callOperation(C_JITOperation_EZ, int32_t);
-        MacroAssembler::Call callOperation(F_JITOperation_EJZ, GPRReg, int32_t);
+        MacroAssembler::Call callOperation(F_JITOperation_EJZZ, GPRReg, int32_t, int32_t);
         MacroAssembler::Call callOperation(J_JITOperation_E, int);
         MacroAssembler::Call callOperation(J_JITOperation_EAapJ, int, ArrayAllocationProfile*, GPRReg);
         MacroAssembler::Call callOperation(J_JITOperation_EAapJcpZ, int, ArrayAllocationProfile*, GPRReg, int32_t);
@@ -707,7 +709,7 @@ namespace JSC {
 #endif
         MacroAssembler::Call callOperation(V_JITOperation_EJIdJJ, RegisterID, const Identifier*, RegisterID, RegisterID);
 #if USE(JSVALUE64)
-        MacroAssembler::Call callOperation(F_JITOperation_EFJJ, RegisterID, RegisterID, RegisterID);
+        MacroAssembler::Call callOperation(F_JITOperation_EFJJZ, RegisterID, RegisterID, RegisterID, int32_t);
         MacroAssembler::Call callOperation(V_JITOperation_ESsiJJI, StructureStubInfo*, RegisterID, RegisterID, StringImpl*);
 #else
         MacroAssembler::Call callOperation(V_JITOperation_ESsiJJI, StructureStubInfo*, RegisterID, RegisterID, RegisterID, RegisterID, StringImpl*);
@@ -722,8 +724,8 @@ namespace JSC {
         MacroAssembler::Call callOperationWithCallFrameRollbackOnException(V_JITOperation_ECb, CodeBlock*);
         MacroAssembler::Call callOperationWithCallFrameRollbackOnException(Z_JITOperation_E);
 #if USE(JSVALUE32_64)
-        MacroAssembler::Call callOperation(F_JITOperation_EFJJ, RegisterID, RegisterID, RegisterID, RegisterID, RegisterID);
-        MacroAssembler::Call callOperation(F_JITOperation_EJZ, GPRReg, GPRReg, int32_t);
+        MacroAssembler::Call callOperation(F_JITOperation_EFJJZ, RegisterID, RegisterID, RegisterID, RegisterID, RegisterID, int32_t);
+        MacroAssembler::Call callOperation(F_JITOperation_EJZZ, GPRReg, GPRReg, int32_t, int32_t);
         MacroAssembler::Call callOperation(J_JITOperation_EAapJ, int, ArrayAllocationProfile*, GPRReg, GPRReg);
         MacroAssembler::Call callOperation(J_JITOperation_EJ, int, GPRReg, GPRReg);
         MacroAssembler::Call callOperation(J_JITOperation_EJIdc, int, GPRReg, GPRReg, const Identifier*);

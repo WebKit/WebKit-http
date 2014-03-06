@@ -49,9 +49,15 @@
 #include "TimeRanges.h"
 #include "VideoTrackList.h"
 #include <map>
+#include <wtf/CurrentTime.h>
 #include <wtf/NeverDestroyed.h>
 
 namespace WebCore {
+
+static double ExponentialMovingAverageCoefficient = 0.1;
+
+// Allow hasCurrentTime() to be off by as much as the length of a 24fps video frame
+static double CurrentTimeFudgeFactor = 1. / 24;
 
 struct SourceBuffer::TrackBuffer {
     MediaTime lastDecodeTimestamp;
@@ -94,6 +100,9 @@ SourceBuffer::SourceBuffer(PassRef<SourceBufferPrivate> sourceBufferPrivate, Med
     , m_buffered(TimeRanges::create())
     , m_active(false)
     , m_appendState(WaitingForSegment)
+    , m_timeOfBufferingMonitor(monotonicallyIncreasingTime())
+    , m_bufferedSinceLastMonitor(0)
+    , m_averageBufferRate(0)
 {
     ASSERT(m_private);
     ASSERT(m_source);
@@ -520,6 +529,9 @@ void SourceBuffer::sourceBufferPrivateDidEndStream(SourceBufferPrivate*, const W
 
 void SourceBuffer::sourceBufferPrivateDidReceiveInitializationSegment(SourceBufferPrivate*, const InitializationSegment& segment)
 {
+    if (isRemoved())
+        return;
+
     // 3.5.7 Initialization Segment Received
     // https://dvcs.w3.org/hg/html-media/raw-file/default/media-source/media-source.html#sourcebuffer-init-segment-received
     // 1. Update the duration attribute if it currently equals NaN:
@@ -771,6 +783,9 @@ public:
 
 void SourceBuffer::sourceBufferPrivateDidReceiveSample(SourceBufferPrivate*, PassRefPtr<MediaSample> prpSample)
 {
+    if (isRemoved())
+        return;
+
     RefPtr<MediaSample> sample = prpSample;
 
     // 3.5.8 Coded Frame Processing
@@ -967,7 +982,7 @@ void SourceBuffer::sourceBufferPrivateDidReceiveSample(SourceBufferPrivate*, Pas
             }
 
             erasedRanges->invert();
-            m_buffered->intersectWith(erasedRanges.get());
+            m_buffered->intersectWith(*erasedRanges.get());
         }
 
         // 1.17 If spliced audio frame is set:
@@ -999,6 +1014,7 @@ void SourceBuffer::sourceBufferPrivateDidReceiveSample(SourceBufferPrivate*, Pas
             m_highestPresentationEndTimestamp = frameEndTimestamp;
 
         m_buffered->add(presentationTimestamp.toDouble(), (presentationTimestamp + frameDuration + microsecond).toDouble());
+        m_bufferedSinceLastMonitor += frameDuration.toDouble();
 
         break;
     } while (1);
@@ -1164,6 +1180,73 @@ void SourceBuffer::didDropSample()
 {
     if (!isRemoved())
         m_source->mediaElement()->incrementDroppedFrameCount();
+}
+
+void SourceBuffer::monitorBufferingRate()
+{
+    if (!m_bufferedSinceLastMonitor)
+        return;
+
+    double now = monotonicallyIncreasingTime();
+    double interval = now - m_timeOfBufferingMonitor;
+    double rateSinceLastMonitor = m_bufferedSinceLastMonitor / interval;
+
+    m_timeOfBufferingMonitor = now;
+    m_bufferedSinceLastMonitor = 0;
+
+    m_averageBufferRate = m_averageBufferRate * (1 - ExponentialMovingAverageCoefficient) + rateSinceLastMonitor * ExponentialMovingAverageCoefficient;
+
+    LOG(Media, "SourceBuffer::monitorBufferingRate(%p) - m_avegareBufferRate: %lf", this, m_averageBufferRate);
+}
+
+bool SourceBuffer::hasCurrentTime() const
+{
+    if (!m_buffered->length())
+        return false;
+
+    double currentTime = m_source->currentTime();
+    return fabs(m_buffered->nearest(m_source->currentTime()) - currentTime) <= CurrentTimeFudgeFactor;
+}
+
+bool SourceBuffer::hasFutureTime() const
+{
+    double currentTime = m_source->currentTime();
+    const PlatformTimeRanges& ranges = m_buffered->ranges();
+    double nearest = m_buffered->nearest(m_source->currentTime());
+    if (fabs(m_buffered->nearest(m_source->currentTime()) - currentTime) > CurrentTimeFudgeFactor)
+        return false;
+
+    size_t found = ranges.find(nearest);
+    ASSERT(found != notFound);
+
+    bool ignoredValid = false;
+    return ranges.end(found, ignoredValid) - currentTime > CurrentTimeFudgeFactor;
+}
+
+bool SourceBuffer::canPlayThrough()
+{
+    monitorBufferingRate();
+
+    // Assuming no fluctuations in the buffering rate, loading 1 second per second or greater
+    // means indefinite playback. This could be improved by taking jitter into account.
+    if (m_averageBufferRate > 1)
+        return true;
+
+    // Add up all the time yet to be buffered.
+    double unbufferedTime = 0;
+    double currentTime = m_source->currentTime();
+    double duration = m_source->duration();
+
+    PlatformTimeRanges unbufferedRanges = m_buffered->ranges();
+    unbufferedRanges.invert();
+    unbufferedRanges.intersectWith(PlatformTimeRanges(currentTime, std::max(currentTime, duration)));
+    bool valid = true;
+
+    for (size_t i = 0, end = unbufferedRanges.length(); i < end; ++i)
+        unbufferedTime += unbufferedRanges.end(i, valid) - unbufferedRanges.start(i, valid);
+
+    double timeRemaining = duration - currentTime;
+    return unbufferedTime / m_averageBufferRate < timeRemaining;
 }
 
 } // namespace WebCore

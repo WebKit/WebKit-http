@@ -464,9 +464,11 @@ bool RenderStyle::changeRequiresLayout(const RenderStyle* other, unsigned& chang
             // Don't return; keep looking for another change
         }
 
+#if ENABLE(CSS_GRID_LAYOUT)
         if (rareNonInheritedData->m_grid.get() != other->rareNonInheritedData->m_grid.get()
             || rareNonInheritedData->m_gridItem.get() != other->rareNonInheritedData->m_gridItem.get())
             return true;
+#endif
 
 #if ENABLE(DASHBOARD_SUPPORT)
         // If regions change, trigger a relayout to re-calc regions.
@@ -678,6 +680,9 @@ bool RenderStyle::changeRequiresLayerRepaint(const RenderStyle* other, unsigned&
 
 #if ENABLE(CSS_COMPOSITING)
     if (rareNonInheritedData->m_effectiveBlendMode != other->rareNonInheritedData->m_effectiveBlendMode)
+        return true;
+
+    if (rareNonInheritedData->m_isolation != other->rareNonInheritedData->m_isolation)
         return true;
 #endif
 

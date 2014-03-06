@@ -1,3 +1,52 @@
+2014-03-05  Dean Jackson  <dino@apple.com>
+
+        https://bugs.webkit.org/show_bug.cgi?id=129722
+        Update WKSI, again, to fix the build.
+
+        * libWebKitSystemInterfaceLion.a:
+        * libWebKitSystemInterfaceMavericks.a:
+        * libWebKitSystemInterfaceMountainLion.a:
+
+2014-03-05  Dean Jackson  <dino@apple.com>
+
+        https://bugs.webkit.org/show_bug.cgi?id=129722
+
+        And remember to copy the header file!
+
+        * WebKitSystemInterface.h:
+
+2014-03-05  Dean Jackson  <dino@apple.com>
+
+        https://bugs.webkit.org/show_bug.cgi?id=129722
+        Update WKSI.
+
+        * libWebKitSystemInterfaceLion.a:
+        * libWebKitSystemInterfaceMavericks.a:
+        * libWebKitSystemInterfaceMountainLion.a:
+
+2014-03-05  Eric Carlson  <eric.carlson@apple.com>
+
+        [iOS] Show external device name/type in placeholder
+        https://bugs.webkit.org/show_bug.cgi?id=129723
+
+        Reviewed by Jer Noble.
+
+        * WebKitSystemInterface.h:
+        * libWebKitSystemInterfaceLion.a:
+        * libWebKitSystemInterfaceMavericks.a:
+        * libWebKitSystemInterfaceMountainLion.a:
+
+2014-02-21  Jeffrey Pfau  <jpfau@apple.com>
+
+        [Mac] Cache callbacks for cache partitioning may be passed null
+        https://bugs.webkit.org/show_bug.cgi?id=129175
+
+        Reviewed by Brady Eidson.
+
+        * libWebKitSystemInterfaceLion.a:
+        * libWebKitSystemInterfaceMavericks.a:
+        * libWebKitSystemInterfaceMountainLion.a:
+
 2014-02-11  Roger Fong  <roger_fong@apple.com>
 
         [Windows] Set ENABLE_CSS_SHAPE_INSIDE feature flag on Windows.

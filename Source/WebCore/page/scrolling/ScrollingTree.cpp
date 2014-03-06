@@ -98,7 +98,7 @@ void ScrollingTree::handleWheelEvent(const PlatformWheelEvent& wheelEvent)
         m_rootNode->handleWheelEvent(wheelEvent);
 }
 
-void ScrollingTree::scrollPositionChangedViaDelegatedScrolling(ScrollingNodeID nodeID, const IntPoint& scrollPosition)
+void ScrollingTree::scrollPositionChangedViaDelegatedScrolling(ScrollingNodeID nodeID, const FloatPoint& scrollPosition)
 {
     ScrollingTreeNode* node = nodeForID(nodeID);
     if (!node)
@@ -107,7 +107,7 @@ void ScrollingTree::scrollPositionChangedViaDelegatedScrolling(ScrollingNodeID n
     if (node->nodeType() != ScrollingNode)
         return;
 
-    toScrollingTreeScrollingNode(node)->setScrollPosition(scrollPosition);
+    toScrollingTreeScrollingNode(node)->setScrollPositionWithoutContentEdgeConstraints(scrollPosition);
 }
 
 void ScrollingTree::commitNewTreeState(PassOwnPtr<ScrollingStateTree> scrollingStateTree)
@@ -197,13 +197,13 @@ void ScrollingTree::removeDestroyedNodes(const ScrollingStateTree& stateTree)
         if (!node)
             continue;
 
+        if (node->scrollingNodeID() == m_latchedNode)
+            clearLatchedNode();
+
         // Never destroy the root node. There will be a new root node in the state tree, and we will
         // associate it with our existing root node in updateTreeFromStateNode().
         if (node->parent())
             m_rootNode->removeChild(node);
-
-        if (node->scrollingNodeID() == m_latchedNode)
-            clearLatchedNode();
     }
 }
 

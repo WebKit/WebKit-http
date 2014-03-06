@@ -23,7 +23,6 @@
 #include "BeforeUnloadEvent.h"
 #include "Event.h"
 #include "Frame.h"
-#include "InspectorCounters.h"
 #include "JSEvent.h"
 #include "JSEventTarget.h"
 #include "JSMainThreadExecState.h"
@@ -51,16 +50,10 @@ JSEventListener::JSEventListener(JSObject* function, JSObject* wrapper, bool isA
         m_jsFunction = JSC::Weak<JSC::JSObject>(function);
     } else
         ASSERT(!function);
-#if ENABLE(INSPECTOR)
-    ThreadLocalInspectorCounters::current().incrementCounter(ThreadLocalInspectorCounters::JSEventListenerCounter);
-#endif
 }
 
 JSEventListener::~JSEventListener()
 {
-#if ENABLE(INSPECTOR)
-    ThreadLocalInspectorCounters::current().decrementCounter(ThreadLocalInspectorCounters::JSEventListenerCounter);
-#endif
 }
 
 JSObject* JSEventListener::initializeJSFunction(ScriptExecutionContext*) const

@@ -38,6 +38,7 @@ namespace WebCore {
 ReplayInputTypes::ReplayInputTypes()
     : dummy(0)
 JS_REPLAY_INPUT_NAMES_FOR_EACH(INITIALIZE_INPUT_TYPE)
+WEB_REPLAY_INPUT_NAMES_FOR_EACH(INITIALIZE_INPUT_TYPE)
 {
     UNUSED_PARAM(dummy);
 }

@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2011 Apple Inc. All rights reserved.
- * Copyright (C) 2013 Igalia S.L. All rights reserved.
+ * Copyright (C) 2013, 2014 Igalia S.L.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,6 +26,8 @@
 
 #ifndef RenderGrid_h
 #define RenderGrid_h
+
+#if ENABLE(CSS_GRID_LAYOUT)
 
 #include "OrderIterator.h"
 #include "RenderBlock.h"
@@ -53,13 +55,6 @@ public:
     virtual bool avoidsFloats() const override { return true; }
     virtual bool canCollapseAnonymousBlockChild() const override { return false; }
 
-    enum GridPositionSide {
-        ColumnStartSide,
-        ColumnEndSide,
-        RowStartSide,
-        RowEndSide
-    };
-
     const Vector<LayoutUnit>& columnPositions() const { return m_columnPositions; }
     const Vector<LayoutUnit>& rowPositions() const { return m_rowPositions; }
 
@@ -72,8 +67,9 @@ private:
     class GridIterator;
     class GridSizingData;
     enum GridTrackSizingDirection { ForColumns, ForRows };
-    void computedUsedBreadthOfGridTracks(GridTrackSizingDirection, GridSizingData&);
-    void computedUsedBreadthOfGridTracks(GridTrackSizingDirection, GridSizingData&, LayoutUnit& availableLogicalSpace);
+    void computeUsedBreadthOfGridTracks(GridTrackSizingDirection, GridSizingData&);
+    void computeUsedBreadthOfGridTracks(GridTrackSizingDirection, GridSizingData&, LayoutUnit& availableLogicalSpace);
+    bool gridElementIsShrinkToFit();
     LayoutUnit computeUsedBreadthOfMinLength(GridTrackSizingDirection, const GridLength&) const;
     LayoutUnit computeUsedBreadthOfMaxLength(GridTrackSizingDirection, const GridLength&, LayoutUnit usedBreadth) const;
     LayoutUnit computeUsedBreadthOfSpecifiedLength(GridTrackSizingDirection, const Length&) const;
@@ -101,7 +97,7 @@ private:
     void resolveContentBasedTrackSizingFunctionsForItems(GridTrackSizingDirection, GridSizingData&, RenderBox*, FilterFunction, SizingFunction, AccumulatorGetter, AccumulatorGrowFunction);
     void distributeSpaceToTracks(Vector<GridTrack*>&, Vector<GridTrack*>* tracksForGrowthAboveMaxBreadth, AccumulatorGetter, AccumulatorGrowFunction, GridSizingData&, LayoutUnit& availableLogicalSpace);
 
-    double computeNormalizedFractionBreadth(Vector<GridTrack>&, GridTrackSizingDirection, LayoutUnit availableLogicalSpace) const;
+    double computeNormalizedFractionBreadth(Vector<GridTrack>&, const GridSpan& tracksSpan, GridTrackSizingDirection, LayoutUnit availableLogicalSpace) const;
 
     const GridTrackSize& gridTrackSize(GridTrackSizingDirection, size_t) const;
     size_t explicitGridColumnCount() const;
@@ -153,5 +149,7 @@ private:
 RENDER_OBJECT_TYPE_CASTS(RenderGrid, isRenderGrid())
 
 } // namespace WebCore
+
+#endif /* ENABLE(CSS_GRID_LAYOUT) */
 
 #endif // RenderGrid_h

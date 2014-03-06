@@ -59,6 +59,7 @@
 #include "Settings.h"
 #include "TextCheckerClient.h"
 #include "TextCheckingHelper.h"
+#include "TextIterator.h"
 #include "UserGestureIndicator.h"
 #include "VisibleUnits.h"
 #include "htmlediting.h"
@@ -202,6 +203,9 @@ bool AccessibilityObject::isAccessibilityObjectSearchMatchAtIndex(AccessibilityO
         
     case MisspelledWordSearchKey:
         return axObject->hasMisspelling();
+        
+    case OutlineSearchKey:
+        return axObject->isTree();
         
     case PlainTextSearchKey:
         return axObject->hasPlainText();
@@ -475,10 +479,11 @@ void AccessibilityObject::findMatchingObjects(AccessibilitySearchCriteria* crite
     
     bool isForward = criteria->searchDirection == SearchDirectionNext;
     
-    // In the first iteration of the loop, it will examine the children of the start object for matches.
-    // However, when going backwards, those children should not be considered, so the loop is skipped ahead.
+    // The first iteration of the outer loop will examine the children of the start object for matches. However, when
+    // iterating backwards, the start object children should not be considered, so the loop is skipped ahead. We make an
+    // exception when no start object was specified because we want to search everything regardless of search direction.
     AccessibilityObject* previousObject = 0;
-    if (!isForward) {
+    if (!isForward && startObject != this) {
         previousObject = startObject;
         startObject = startObject->parentObjectUnignored();
     }
@@ -508,7 +513,7 @@ void AccessibilityObject::findMatchingObjects(AccessibilitySearchCriteria* crite
             break;
 
         // When moving backwards, the parent object needs to be checked, because technically it's "before" the starting element.
-        if (!isForward && objectMatchesSearchCriteriaWithResultLimit(startObject, criteria, results))
+        if (!isForward && startObject != this && objectMatchesSearchCriteriaWithResultLimit(startObject, criteria, results))
             break;
 
         previousObject = startObject;
@@ -697,13 +702,9 @@ IntRect AccessibilityObject::boundingBoxForQuads(RenderObject* obj, const Vector
     if (!obj)
         return IntRect();
     
-    size_t count = quads.size();
-    if (!count)
-        return IntRect();
-    
     IntRect result;
-    for (size_t i = 0; i < count; ++i) {
-        IntRect r = quads[i].enclosingBoundingBox();
+    for (const auto& quad : quads) {
+        IntRect r = quad.enclosingBoundingBox();
         if (!r.isEmpty()) {
             if (obj->style().hasAppearance())
                 obj->theme().adjustRepaintRect(obj, r);
@@ -1039,20 +1040,15 @@ String AccessibilityObject::stringForVisiblePositionRange(const VisiblePositionR
     RefPtr<Range> range = makeRange(visiblePositionRange.start, visiblePositionRange.end);
     for (TextIterator it(range.get()); !it.atEnd(); it.advance()) {
         // non-zero length means textual node, zero length means replaced node (AKA "attachments" in AX)
-        if (it.length()) {
-            // Add a textual representation for list marker text
-            String listMarkerText = listMarkerTextForNodeAndPosition(it.node(), visiblePositionRange.start);
-            if (!listMarkerText.isEmpty())
-                builder.append(listMarkerText);
-
+        if (it.text().length()) {
+            // Add a textual representation for list marker text.
+            builder.append(listMarkerTextForNodeAndPosition(it.node(), visiblePositionRange.start));
             it.appendTextToStringBuilder(builder);
         } else {
             // locate the node and starting offset for this replaced range
-            int exception = 0;
-            Node* node = it.range()->startContainer(exception);
-            ASSERT(node == it.range()->endContainer(exception));
-            int offset = it.range()->startOffset(exception);
-
+            Node* node = it.range()->startContainer();
+            ASSERT(node == it.range()->endContainer());
+            int offset = it.range()->startOffset();
             if (replacedNodeNeedsCharacter(node->childNode(offset)))
                 builder.append(objectReplacementCharacter);
         }
@@ -1071,8 +1067,8 @@ int AccessibilityObject::lengthForVisiblePositionRange(const VisiblePositionRang
     RefPtr<Range> range = makeRange(visiblePositionRange.start, visiblePositionRange.end);
     for (TextIterator it(range.get()); !it.atEnd(); it.advance()) {
         // non-zero length means textual node, zero length means replaced node (AKA "attachments" in AX)
-        if (it.length())
-            length += it.length();
+        if (it.text().length())
+            length += it.text().length();
         else {
             // locate the node and starting offset for this replaced range
             int exception = 0;
@@ -1551,6 +1547,13 @@ const AtomicString& AccessibilityObject::invalidStatus() const
     return invalidStatusTrue;
 }
  
+bool AccessibilityObject::hasTagName(const QualifiedName& tagName) const
+{
+    if (Node* node = this->node())
+        return node->hasTagName(tagName);
+    return false;
+}
+    
 bool AccessibilityObject::hasAttribute(const QualifiedName& attribute) const
 {
     Node* elementNode = node();
@@ -1728,9 +1731,7 @@ AccessibilityRole AccessibilityObject::ariaRoleToWebCoreRole(const String& value
     Vector<String> roleVector;
     value.split(' ', roleVector);
     AccessibilityRole role = UnknownRole;
-    unsigned size = roleVector.size();
-    for (unsigned i = 0; i < size; ++i) {
-        String roleName = roleVector[i];
+    for (const auto& roleName : roleVector) {
         role = ariaRoleMap().get(roleName);
         if (role)
             return role;

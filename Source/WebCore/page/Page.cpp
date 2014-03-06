@@ -83,7 +83,9 @@
 #include "SubframeLoader.h"
 #include "TextResourceDecoder.h"
 #include "UserContentController.h"
+#include "UserInputBridge.h"
 #include "VisitedLinkState.h"
+#include "VisitedLinkStore.h"
 #include "VoidCallback.h"
 #include "Widget.h"
 #include <wtf/HashMap.h>
@@ -91,6 +93,10 @@
 #include <wtf/StdLibExtras.h>
 #include <wtf/text/Base64.h>
 #include <wtf/text/StringHash.h>
+
+#if ENABLE(WEB_REPLAY)
+#include "ReplayController.h"
+#endif
 
 namespace WebCore {
 
@@ -114,16 +120,6 @@ static void networkStateChanged(bool isOnLine)
         frames[i]->document()->dispatchWindowEvent(Event::create(eventName, false, false));
 }
 
-float deviceScaleFactor(Frame* frame)
-{
-    if (!frame)
-        return 1;
-    Page* page = frame->page();
-    if (!page)
-        return 1;
-    return page->deviceScaleFactor();
-}
-
 static const ViewState::Flags PageInitialViewState = ViewState::IsVisible | ViewState::IsInWindow;
 
 Page::Page(PageClients& pageClients)
@@ -135,6 +131,10 @@ Page::Page(PageClients& pageClients)
     , m_focusController(std::make_unique<FocusController>(*this, PageInitialViewState))
 #if ENABLE(CONTEXT_MENUS)
     , m_contextMenuController(std::make_unique<ContextMenuController>(*this, *pageClients.contextMenuClient))
+#endif
+    , m_userInputBridge(std::make_unique<UserInputBridge>(*this))
+#if ENABLE(WEB_REPLAY)
+    , m_replayController(std::make_unique<ReplayController>(*this))
 #endif
 #if ENABLE(INSPECTOR)
     , m_inspectorController(std::make_unique<InspectorController>(*this, pageClients.inspectorClient))
@@ -191,8 +191,13 @@ Page::Page(PageClients& pageClients)
 #endif
     , m_lastSpatialNavigationCandidatesCount(0) // NOTE: Only called from Internals for Spatial Navigation testing.
     , m_framesHandlingBeforeUnloadEvent(0)
+    , m_visitedLinkStore(std::move(pageClients.visitedLinkStore))
+    , m_sessionID(SessionID::emptySessionID())
 {
     ASSERT(m_editorClient);
+
+    if (m_visitedLinkStore)
+        m_visitedLinkStore->addPage(*this);
 
     if (!allPages) {
         allPages = new HashSet<Page*>;
@@ -244,6 +249,8 @@ Page::~Page()
 
     if (m_userContentController)
         m_userContentController->removePage(*this);
+    if (m_visitedLinkStore)
+        m_visitedLinkStore->removePage(*this);
 }
 
 uint64_t Page::renderTreeSize() const
@@ -940,36 +947,16 @@ void Page::removeAllVisitedLinks()
         (*it)->removeVisitedLinks();
 }
 
-void Page::allVisitedStateChanged(PageGroup* group)
+void Page::invalidateStylesForAllLinks()
 {
-    ASSERT(group);
-    if (!allPages)
-        return;
-
-    HashSet<Page*>::iterator pagesEnd = allPages->end();
-    for (HashSet<Page*>::iterator it = allPages->begin(); it != pagesEnd; ++it) {
-        Page* page = *it;
-        if (page->m_group != group)
-            continue;
-        for (Frame* frame = page->m_mainFrame.get(); frame; frame = frame->tree().traverseNext())
-            frame->document()->visitedLinkState().invalidateStyleForAllLinks();
-    }
+    for (Frame* frame = m_mainFrame.get(); frame; frame = frame->tree().traverseNext())
+        frame->document()->visitedLinkState().invalidateStyleForAllLinks();
 }
 
-void Page::visitedStateChanged(PageGroup* group, LinkHash linkHash)
+void Page::invalidateStylesForLink(LinkHash linkHash)
 {
-    ASSERT(group);
-    if (!allPages)
-        return;
-
-    HashSet<Page*>::iterator pagesEnd = allPages->end();
-    for (HashSet<Page*>::iterator it = allPages->begin(); it != pagesEnd; ++it) {
-        Page* page = *it;
-        if (page->m_group != group)
-            continue;
-        for (Frame* frame = page->m_mainFrame.get(); frame; frame = frame->tree().traverseNext())
-            frame->document()->visitedLinkState().invalidateStyleForLink(linkHash);
-    }
+    for (Frame* frame = m_mainFrame.get(); frame; frame = frame->tree().traverseNext())
+        frame->document()->visitedLinkState().invalidateStyleForLink(linkHash);
 }
 
 void Page::setDebugger(JSC::Debugger* debugger)
@@ -1501,6 +1488,31 @@ void Page::setUserContentController(UserContentController* userContentController
 
     if (m_userContentController)
         m_userContentController->addPage(*this);
+}
+
+VisitedLinkStore& Page::visitedLinkStore()
+{
+    if (m_visitedLinkStore)
+        return *m_visitedLinkStore;
+
+    return group().visitedLinkStore();
+}
+
+SessionID Page::sessionID() const
+{
+    if (m_sessionID.isValid())
+        return m_sessionID;
+
+    if (settings().privateBrowsingEnabled())
+        return SessionID::legacyPrivateSessionID();
+
+    return SessionID::defaultSessionID();
+}
+
+void Page::setSessionID(SessionID sessionID)
+{
+    ASSERT(sessionID.isValid());
+    m_sessionID = sessionID;
 }
 
 Page::PageClients::PageClients()

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008, 2009, 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2008, 2009, 2013, 2014 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -184,8 +184,8 @@ namespace JSC {
     class VM : public ThreadSafeRefCounted<VM> {
     public:
         // WebCore has a one-to-one mapping of threads to VMs;
-        // either create() or createLeakedForMainThread() should only be
-        // called once on a thread, this is the 'default' VM (it uses the
+        // either create() or createLeaked() should only be called once
+        // on a thread, this is the 'default' VM (it uses the
         // thread's default string uniquing table from wtfThreadData).
         // API contexts created using the new context group aware interface
         // create APIContextGroup objects which require less locking of JSC
@@ -203,7 +203,7 @@ namespace JSC {
         JS_EXPORT_PRIVATE static VM& sharedInstance();
 
         JS_EXPORT_PRIVATE static PassRefPtr<VM> create(HeapType = SmallHeap);
-        JS_EXPORT_PRIVATE static PassRefPtr<VM> createLeakedForMainThread(HeapType = SmallHeap);
+        JS_EXPORT_PRIVATE static PassRefPtr<VM> createLeaked(HeapType = SmallHeap);
         static PassRefPtr<VM> createContextGroup(HeapType = SmallHeap);
         JS_EXPORT_PRIVATE ~VM();
 
@@ -222,10 +222,7 @@ namespace JSC {
         // The heap should be just after executableAllocator and before other members to ensure that it's
         // destructed after all the objects that reference it.
         Heap heap;
-
-        // Used to manage weak references from StringImpls to JSStrings.
-        OwnPtr<WeakHandleOwner> jsStringWeakOwner;
-
+        
 #if ENABLE(DFG_JIT)
         OwnPtr<DFG::LongLivedState> dfgState;
 #endif // ENABLE(DFG_JIT)
@@ -389,12 +386,12 @@ namespace JSC {
         void** addressOfFTLStackLimit() { return &m_ftlStackLimit; }
 #endif
 
-        void** addressOfJSStackLimit() { return &m_jsStackLimit; }
 #if ENABLE(LLINT_C_LOOP)
         void* jsStackLimit() { return m_jsStackLimit; }
         void setJSStackLimit(void* limit) { m_jsStackLimit = limit; }
 #endif
         void* stackLimit() { return m_stackLimit; }
+        void** addressOfStackLimit() { return &m_stackLimit; }
 
         bool isSafeToRecurse(size_t neededStackInBytes = 0) const
         {
@@ -463,7 +460,9 @@ namespace JSC {
         RTTraceList* m_rtTraceList;
 #endif
 
-        ThreadIdentifier exclusiveThread;
+        bool hasExclusiveThread() const { return m_apiLock->hasExclusiveThread(); }
+        std::thread::id exclusiveThread() const { return m_apiLock->exclusiveThread(); }
+        void setExclusiveThread(std::thread::id threadId) { m_apiLock->setExclusiveThread(threadId); }
 
         JS_EXPORT_PRIVATE void resetDateCache();
 
@@ -491,15 +490,12 @@ namespace JSC {
         bool haveEnoughNewStringsToHashCons() { return m_newStringsSinceLastHashCons > s_minNumberOfNewStringsToHashCons; }
         void resetNewStringsSinceLastHashCons() { m_newStringsSinceLastHashCons = 0; }
 
-        bool currentThreadIsHoldingAPILock() const
-        {
-            return m_apiLock->currentThreadIsHoldingLock() || exclusiveThread == currentThread();
-        }
+        bool currentThreadIsHoldingAPILock() const { return m_apiLock->currentThreadIsHoldingLock(); }
 
         JSLock& apiLock() { return *m_apiLock; }
         CodeCache* codeCache() { return m_codeCache.get(); }
 
-        void prepareToDiscardCode();
+        void waitForCompilationsToComplete();
         
         JS_EXPORT_PRIVATE void discardAllCode();
 

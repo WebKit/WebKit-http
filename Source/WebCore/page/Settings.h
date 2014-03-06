@@ -237,11 +237,6 @@ public:
     void setAggressiveTileRetentionEnabled(bool);
     bool aggressiveTileRetentionEnabled() { return m_aggressiveTileRetentionEnabled; }
 
-#if ENABLE(IMAGE_CONTROLS)
-    void setImageControlsEnabled(bool);
-    bool imageControlsEnabled() { return m_imageControlsEnabled; }
-#endif
-
     static void setShouldRespectPriorityInCSSAttributeSetters(bool);
     static bool shouldRespectPriorityInCSSAttributeSetters();
 
@@ -276,6 +271,9 @@ public:
 
     static void setAVKitEnabled(bool flag) { gAVKitEnabled = flag; }
     static bool avKitEnabled() { return gAVKitEnabled; }
+
+    static void setShouldOptOutOfNetworkStateObservation(bool flag) { gShouldOptOutOfNetworkStateObservation = flag; }
+    static bool shouldOptOutOfNetworkStateObservation() { return gShouldOptOutOfNetworkStateObservation; }
 #endif
 
 private:
@@ -320,9 +318,6 @@ private:
 #endif
     bool m_scrollingPerformanceLoggingEnabled : 1;
     bool m_aggressiveTileRetentionEnabled : 1;
-#if ENABLE(IMAGE_CONTROLS)
-    bool m_imageControlsEnabled : 1;
-#endif
 
     double m_timeWithoutMouseMovementBeforeHidingControls;
 
@@ -361,6 +356,7 @@ private:
 #if PLATFORM(IOS)
     static bool gNetworkDataUsageTrackingEnabled;
     static bool gAVKitEnabled;
+    static bool gShouldOptOutOfNetworkStateObservation;
 #endif
 
     static double gHiddenPageDOMTimerAlignmentInterval;

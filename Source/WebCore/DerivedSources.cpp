@@ -41,7 +41,6 @@
 #include "JSCanvasRenderingContext.cpp"
 #include "JSCanvasRenderingContext2D.cpp"
 #if ENABLE(WEBGL)
-#include "JSEXTDrawBuffers.cpp"
 #include "JSEXTTextureFilterAnisotropic.cpp"
 #include "JSOESElementIndexUint.cpp"
 #include "JSOESStandardDerivatives.cpp"
@@ -60,6 +59,7 @@
 #include "JSWebGLDebugRendererInfo.cpp"
 #include "JSWebGLDebugShaders.cpp"
 #include "JSWebGLDepthTexture.cpp"
+#include "JSWebGLDrawBuffers.cpp"
 #include "JSWebGLFramebuffer.cpp"
 #include "JSWebGLLoseContext.cpp"
 #include "JSWebGLProgram.cpp"
@@ -247,6 +247,7 @@
 #include "JSMediaController.cpp"
 #if ENABLE(MEDIA_CONTROLS_SCRIPT)
 #include "JSMediaControlsHost.cpp"
+#include "UserAgentScriptsData.cpp"
 #endif
 #include "JSMediaError.cpp"
 #include "JSMediaList.cpp"

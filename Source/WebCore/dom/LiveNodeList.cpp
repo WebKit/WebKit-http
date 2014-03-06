@@ -100,9 +100,9 @@ inline Element* traverseMatchingElementsForward(const NodeListType* nodeList, El
 Element* LiveNodeList::collectionFirst() const
 {
     auto& root = rootNode();
-    if (type() == HTMLTagNodeListType)
+    if (type() == Type::HTMLTagNodeListType)
         return firstMatchingElement(static_cast<const HTMLTagNodeList*>(this), root);
-    if (type() == ClassNodeListType)
+    if (type() == Type::ClassNodeListType)
         return firstMatchingElement(static_cast<const ClassNodeList*>(this), root);
     return firstMatchingElement(static_cast<const LiveNodeList*>(this), root);
 }
@@ -116,9 +116,9 @@ Element* LiveNodeList::collectionLast() const
 Element* LiveNodeList::collectionTraverseForward(Element& current, unsigned count, unsigned& traversedCount) const
 {
     auto& root = rootNode();
-    if (type() == HTMLTagNodeListType)
+    if (type() == Type::HTMLTagNodeListType)
         return traverseMatchingElementsForward(static_cast<const HTMLTagNodeList*>(this), current, count, traversedCount, root);
-    if (type() == ClassNodeListType)
+    if (type() == Type::ClassNodeListType)
         return traverseMatchingElementsForward(static_cast<const ClassNodeList*>(this), current, count, traversedCount, root);
     return traverseMatchingElementsForward(static_cast<const LiveNodeList*>(this), current, count, traversedCount, root);
 }
@@ -143,8 +143,16 @@ Node* LiveNodeList::item(unsigned offset) const
     return m_indexCache.nodeAt(*this, offset);
 }
 
-void LiveNodeList::invalidateCache() const
+size_t LiveNodeList::memoryCost() const
 {
+    return m_indexCache.memoryCost();
+}
+
+void LiveNodeList::invalidateCache(Document& document) const
+{
+    if (!m_indexCache.hasValidCache())
+        return;
+    document.unregisterNodeList(const_cast<LiveNodeList&>(*this));
     m_indexCache.invalidate();
 }
 

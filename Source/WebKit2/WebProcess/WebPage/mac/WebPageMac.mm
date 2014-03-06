@@ -26,6 +26,8 @@
 #import "config.h"
 #import "WebPage.h"
 
+#if PLATFORM(MAC)
+
 #import "AttributedString.h"
 #import "DataReference.h"
 #import "EditorState.h"
@@ -33,7 +35,7 @@
 #import "PageBanner.h"
 #import "PluginView.h"
 #import "PrintInfo.h"
-#import "WKAccessibilityWebPageObject.h"
+#import "WKAccessibilityWebPageObjectMac.h"
 #import "WebCoreArgumentCoders.h"
 #import "WebEvent.h"
 #import "WebEventConversion.h"
@@ -954,4 +956,38 @@ void WebPage::didUpdateViewStateTimerFired()
     send(Messages::WebPageProxy::DidUpdateViewState());
 }
 
+#if ENABLE(WEBGL)
+WebCore::WebGLLoadPolicy WebPage::webGLPolicyForURL(WebFrame* frame, const String& url)
+{
+    if (WKShouldBlockWebGL()) {
+        if (m_systemWebGLPolicy != WebGLBlockCreation)
+            sendSync(Messages::WebPageProxy::SetSystemWebGLPolicy(static_cast<uint32_t>(WebGLBlockCreation)), Messages::WebPageProxy::SetSystemWebGLPolicy::Reply());
+        m_systemWebGLPolicy = WebGLBlockCreation;
+    } else if (WKShouldSuggestBlockingWebGL()) {
+        if (m_systemWebGLPolicy != WebGLPendingCreation)
+            sendSync(Messages::WebPageProxy::SetSystemWebGLPolicy(static_cast<uint32_t>(WebGLPendingCreation)), Messages::WebPageProxy::SetSystemWebGLPolicy::Reply());
+        m_systemWebGLPolicy = WebGLPendingCreation;
+    }
+
+    uint32_t policyResult = 0;
+
+    if (sendSync(Messages::WebPageProxy::WebGLPolicyForURL(url), Messages::WebPageProxy::WebGLPolicyForURL::Reply(policyResult)))
+        return static_cast<WebGLLoadPolicy>(policyResult);
+
+    return WebGLAllowCreation;
+}
+
+WebCore::WebGLLoadPolicy WebPage::resolveWebGLPolicyForURL(WebFrame* frame, const String& url)
+{
+    uint32_t policyResult = 0;
+
+    if (sendSync(Messages::WebPageProxy::ResolveWebGLPolicyForURL(url), Messages::WebPageProxy::ResolveWebGLPolicyForURL::Reply(policyResult)))
+        return static_cast<WebGLLoadPolicy>(policyResult);
+
+    return WebGLAllowCreation;
+}
+#endif // ENABLE(WEBGL)
+
 } // namespace WebKit
+
+#endif // PLATFORM(MAC)

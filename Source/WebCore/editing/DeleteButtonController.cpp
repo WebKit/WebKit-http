@@ -245,9 +245,8 @@ void DeleteButtonController::createDeletionUI()
     button->setInlineStyleProperty(CSSPropertyHeight, buttonHeight, CSSPrimitiveValue::CSS_PX);
     button->setInlineStyleProperty(CSSPropertyVisibility, CSSValueVisible);
 
-    float deviceScaleFactor = WebCore::deviceScaleFactor(&m_frame);
     RefPtr<Image> buttonImage;
-    if (deviceScaleFactor >= 2)
+    if (m_target->document().deviceScaleFactor() >= 2)
         buttonImage = Image::loadPlatformResource("deleteButton@2x");
     else
         buttonImage = Image::loadPlatformResource("deleteButton");
@@ -255,7 +254,7 @@ void DeleteButtonController::createDeletionUI()
     if (buttonImage->isNull())
         return;
 
-    button->setCachedImage(new CachedImage(buttonImage.get()));
+    button->setCachedImage(new CachedImage(buttonImage.get(), m_frame.page()->sessionID()));
 
     container->appendChild(button.get(), ec);
     ASSERT(!ec);

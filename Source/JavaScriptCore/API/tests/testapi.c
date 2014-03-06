@@ -23,6 +23,8 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <wtf/Platform.h>
+
 #include "JavaScriptCore.h"
 #include "JSBasePrivate.h"
 #include "JSContextRefPrivate.h"
@@ -568,7 +570,6 @@ static JSValueRef EvilExceptionObject_convertToType(JSContextRef context, JSObje
         break;
     default:
         return JSValueMakeNull(context);
-        break;
     }
     
     JSValueRef func = JSObjectGetProperty(context, object, funcName, exception);

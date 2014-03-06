@@ -531,7 +531,7 @@ static VisiblePosition previousBoundary(const VisiblePosition& c, BoundarySearch
             prepend(string, it.text());
         else {
             // Treat bullets used in the text security mode as regular characters when looking for boundaries
-            prependRepeatedCharacter(string, 'x', it.length());
+            prependRepeatedCharacter(string, 'x', it.text().length());
         }
         if (string.size() > suffixLength) {
             next = searchFunction(StringView(string.data(), string.size()), string.size() - suffixLength, MayHaveMoreContext, needMoreContext);
@@ -604,7 +604,7 @@ static VisiblePosition nextBoundary(const VisiblePosition& c, BoundarySearchFunc
             append(string, it.text());
         else {
             // Treat bullets used in the text security mode as regular characters when looking for boundaries
-            appendRepeatedCharacter(string, 'x', it.length());
+            appendRepeatedCharacter(string, 'x', it.text().length());
         }
         if (string.size() > prefixLength) {
             next = searchFunction(StringView(string.data(), string.size()), prefixLength, MayHaveMoreContext, needMoreContext);
@@ -1231,6 +1231,7 @@ VisiblePosition endOfParagraph(const VisiblePosition& c, EditingBoundaryCrossing
             continue;
         }
         
+        // FIXME: This is wrong when startNode is a block. We should return a position after the block.
         if (r->isBR() || isBlock(n))
             break;
 

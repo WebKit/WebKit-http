@@ -414,7 +414,7 @@ class BaseIndex
     end
     
     def x86Operand(kind)
-        if !isIntelSyntax || kind != :double
+        if !isIntelSyntax
             x86AddressOperand(:ptr)
         else
             "#{getSizeString(kind)}[#{offset.value} + #{base.x86Operand(:ptr)} + #{index.x86Operand(:ptr)} * #{scale}]"
@@ -806,12 +806,16 @@ class Instruction
 
     def handleX87BinOp(opcode, opcodereverse)
         if (operands[1].x87DefaultStackPosition == 0)
-            $asm.puts "#{opcode} #{operands[0].x87Operand(0)}, #{register("st")}"
+            $asm.puts "#{opcode} #{orderOperands(operands[0].x87Operand(0), register("st"))}"
         elsif (operands[0].x87DefaultStackPosition == 0)
-            $asm.puts "#{opcodereverse} #{register("st")}, #{operands[1].x87Operand(0)}"
+            if !isIntelSyntax
+                $asm.puts "#{opcodereverse} #{register("st")}, #{operands[1].x87Operand(0)}"
+            else
+                $asm.puts "#{opcode} #{operands[1].x87Operand(0)}, #{register("st")}"
+            end
         else
             $asm.puts "fld #{operands[0].x87Operand(0)}"
-            $asm.puts "#{opcodereverse}p #{register("st")}, #{operands[1].x87Operand(1)}"
+            $asm.puts "#{opcodereverse}p #{orderOperands(register("st"), operands[1].x87Operand(1))}"
         end
     end
 
@@ -1322,7 +1326,7 @@ class Instruction
                 }
             end
             op = operands[0].x86CallOperand(:ptr)
-            if isMSVC && (/\Allint_/.match(op) || /\Aslow_path/.match(op))
+            if isMSVC && (operands[0].is_a? LabelReference)
                 writeSymbolToFile(op)
             end
             $asm.puts "call #{op}"

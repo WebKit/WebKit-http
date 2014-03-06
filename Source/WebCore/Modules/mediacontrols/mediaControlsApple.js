@@ -69,6 +69,7 @@ Controller.prototype = {
     ClassNames: {
         exit: 'exit',
         hidden: 'hidden',
+        hiding: 'hiding',
         list: 'list',
         muteBox: 'mute-box',
         muted: 'muted',
@@ -82,6 +83,7 @@ Controller.prototype = {
         volumeBox: 'volume-box',
         noVideo: 'no-video',
         down: 'down',
+        out: 'out',
     },
     KeyCodes: {
         enter: 13,
@@ -225,15 +227,15 @@ Controller.prototype = {
                 var handler = this[handlerName];
                 if (handler && handler instanceof Function)
                     handler.call(this, event);
-            } else {
-                if (!(this.listeners[event.type] instanceof Array))
-                    return;
-
-                this.listeners[event.type].forEach(function(entry) {
-                    if (entry.element === event.currentTarget && entry.handler instanceof Function)
-                        entry.handler.call(this, event);
-                }, this);
             }
+
+            if (!(this.listeners[event.type] instanceof Array))
+                return;
+
+            this.listeners[event.type].forEach(function(entry) {
+                if (entry.element === event.currentTarget && entry.handler instanceof Function)
+                    entry.handler.call(this, event);
+            }, this);
         } catch(e) {
             if (window.console)
                 console.error(e);

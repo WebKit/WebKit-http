@@ -114,7 +114,7 @@ PassOwnPtr<MediaPlayerPrivateInterface> MediaPlayerPrivateIOS::create(MediaPlaye
 void MediaPlayerPrivateIOS::registerMediaEngine(MediaEngineRegistrar registrar)
 {
     if (isAvailable())
-        registrar(create, getSupportedTypes, supportsType, 0, 0, 0);
+        registrar(create, getSupportedTypes, supportsType, 0, 0, 0, 0);
 }
 
 MediaPlayerPrivateIOS::MediaPlayerPrivateIOS(MediaPlayer* player)
@@ -497,16 +497,16 @@ float MediaPlayerPrivateIOS::maxTimeSeekable() const
     return [m_mediaPlayerHelper.get() _maxTimeSeekable];
 }
 
-PassRefPtr<TimeRanges> MediaPlayerPrivateIOS::buffered() const
+std::unique_ptr<PlatformTimeRanges> MediaPlayerPrivateIOS::buffered() const
 {
-    RefPtr<TimeRanges> timeRanges = TimeRanges::create();
+    auto timeRanges = PlatformTimeRanges::create();
 
     if (!m_mediaPlayerHelper)
-        return timeRanges.release();
+        return timeRanges;
 
     NSArray *ranges = [m_mediaPlayerHelper.get() _bufferedTimeRanges];
     if (!ranges)
-        return timeRanges.release();
+        return timeRanges;
 
     float timeRange[2];
     int count = [ranges count];
@@ -517,7 +517,7 @@ PassRefPtr<TimeRanges> MediaPlayerPrivateIOS::buffered() const
         timeRanges->add(timeRange[0], timeRange[1]);
     }
 
-    return timeRanges.release();
+    return timeRanges;
 }
 
 void MediaPlayerPrivateIOS::setSize(const IntSize&)

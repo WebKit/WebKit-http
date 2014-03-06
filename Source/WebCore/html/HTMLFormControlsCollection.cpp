@@ -135,13 +135,13 @@ Node* HTMLFormControlsCollection::namedItem(const AtomicString& name) const
     return firstNamedItem(formControlElements(), imagesElements, nameAttr, name);
 }
 
-void HTMLFormControlsCollection::updateNameCache() const
+void HTMLFormControlsCollection::updateNamedElementCache() const
 {
-    if (hasNameCache())
+    if (hasNamedElementCache())
         return;
 
+    CollectionNamedElementCache& cache = createNameItemCache();
     HashSet<AtomicStringImpl*> foundInputElements;
-
     const Vector<FormAssociatedElement*>& elementsArray = formControlElements();
 
     for (unsigned i = 0; i < elementsArray.size(); ++i) {
@@ -151,11 +151,11 @@ void HTMLFormControlsCollection::updateNameCache() const
             const AtomicString& idAttrVal = element.getIdAttribute();
             const AtomicString& nameAttrVal = element.getNameAttribute();
             if (!idAttrVal.isEmpty()) {
-                appendIdCache(idAttrVal, &element);
+                cache.appendIdCache(idAttrVal, &element);
                 foundInputElements.add(idAttrVal.impl());
             }
             if (!nameAttrVal.isEmpty() && idAttrVal != nameAttrVal) {
-                appendNameCache(nameAttrVal, &element);
+                cache.appendNameCache(nameAttrVal, &element);
                 foundInputElements.add(nameAttrVal.impl());
             }
         }
@@ -168,18 +168,18 @@ void HTMLFormControlsCollection::updateNameCache() const
             const AtomicString& idAttrVal = element.getIdAttribute();
             const AtomicString& nameAttrVal = element.getNameAttribute();
             if (!idAttrVal.isEmpty() && !foundInputElements.contains(idAttrVal.impl()))
-                appendIdCache(idAttrVal, &element);
+                cache.appendIdCache(idAttrVal, &element);
             if (!nameAttrVal.isEmpty() && idAttrVal != nameAttrVal && !foundInputElements.contains(nameAttrVal.impl()))
-                appendNameCache(nameAttrVal, &element);
+                cache.appendNameCache(nameAttrVal, &element);
         }
     }
 
-    setHasNameCache();
+    cache.didPopulate();
 }
 
-void HTMLFormControlsCollection::invalidateCache() const
+void HTMLFormControlsCollection::invalidateCache(Document& document) const
 {
-    HTMLCollection::invalidateCache();
+    HTMLCollection::invalidateCache(document);
     m_cachedElement = nullptr;
     m_cachedElementOffsetInArray = 0;
 }

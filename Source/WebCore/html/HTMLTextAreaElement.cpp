@@ -47,6 +47,7 @@
 #include "Text.h"
 #include "TextBreakIterator.h"
 #include "TextControlInnerElements.h"
+#include "TextIterator.h"
 #include "TextNodeTraversal.h"
 #include <wtf/Ref.h>
 #include <wtf/StdLibExtras.h>
@@ -110,6 +111,7 @@ PassRefPtr<HTMLTextAreaElement> HTMLTextAreaElement::create(const QualifiedName&
 void HTMLTextAreaElement::didAddUserAgentShadowRoot(ShadowRoot* root)
 {
     root->appendChild(TextControlInnerTextElement::create(document()), ASSERT_NO_EXCEPTION);
+    updateInnerTextElementEditability();
 }
 
 const AtomicString& HTMLTextAreaElement::formControlType() const

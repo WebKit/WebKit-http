@@ -70,8 +70,7 @@ void JIT::emit_op_ret_object_or_this(Instruction* currentInstruction)
 
     emitLoad(result, regT1, regT0);
     Jump notJSCell = branch32(NotEqual, regT1, TrustedImm32(JSValue::CellTag));
-    loadPtr(Address(regT0, JSCell::structureOffset()), regT2);
-    Jump notObject = emitJumpIfNotObject(regT2);
+    Jump notObject = emitJumpIfCellNotObject(regT0);
 
     checkStackPointerAlignment();
     emitFunctionEpilogue();
@@ -131,6 +130,7 @@ void JIT::compileLoadVarargs(Instruction* instruction)
     int thisValue = instruction[3].u.operand;
     int arguments = instruction[4].u.operand;
     int firstFreeRegister = instruction[5].u.operand;
+    int firstVarArgOffset = instruction[6].u.operand;
 
     JumpList slowCase;
     JumpList end;
@@ -143,6 +143,14 @@ void JIT::compileLoadVarargs(Instruction* instruction)
         slowCase.append(branch32(NotEqual, regT1, TrustedImm32(JSValue::EmptyValueTag)));
 
         load32(payloadFor(JSStack::ArgumentCount), regT2);
+        if (firstVarArgOffset) {
+            Jump sufficientArguments = branch32(GreaterThan, regT2, TrustedImm32(firstVarArgOffset + 1));
+            move(TrustedImm32(1), regT2);
+            Jump endVarArgs = jump();
+            sufficientArguments.link(this);
+            sub32(TrustedImm32(firstVarArgOffset), regT2);
+            endVarArgs.link(this);
+        }
         slowCase.append(branch32(Above, regT2, TrustedImm32(Arguments::MaxArguments + 1)));
         // regT2: argumentCountIncludingThis
 
@@ -157,7 +165,7 @@ void JIT::compileLoadVarargs(Instruction* instruction)
         addPtr(callFrameRegister, regT3);
         // regT3: newCallFrame
 
-        slowCase.append(branchPtr(Above, AbsoluteAddress(m_vm->addressOfJSStackLimit()), regT3));
+        slowCase.append(branchPtr(Above, AbsoluteAddress(m_vm->addressOfStackLimit()), regT3));
 
         // Initialize ArgumentCount.
         store32(regT2, payloadFor(JSStack::ArgumentCount, regT3));
@@ -172,8 +180,8 @@ void JIT::compileLoadVarargs(Instruction* instruction)
         // regT2: argumentCount;
 
         Label copyLoop = label();
-        load32(BaseIndex(callFrameRegister, regT2, TimesEight, OBJECT_OFFSETOF(JSValue, u.asBits.payload) +(CallFrame::thisArgumentOffset() * static_cast<int>(sizeof(Register)))), regT0);
-        load32(BaseIndex(callFrameRegister, regT2, TimesEight, OBJECT_OFFSETOF(JSValue, u.asBits.tag) +(CallFrame::thisArgumentOffset() * static_cast<int>(sizeof(Register)))), regT1);
+        load32(BaseIndex(callFrameRegister, regT2, TimesEight, OBJECT_OFFSETOF(JSValue, u.asBits.payload) +((CallFrame::thisArgumentOffset() + firstVarArgOffset) * static_cast<int>(sizeof(Register)))), regT0);
+        load32(BaseIndex(callFrameRegister, regT2, TimesEight, OBJECT_OFFSETOF(JSValue, u.asBits.tag) +((CallFrame::thisArgumentOffset() + firstVarArgOffset) * static_cast<int>(sizeof(Register)))), regT1);
         store32(regT0, BaseIndex(regT3, regT2, TimesEight, OBJECT_OFFSETOF(JSValue, u.asBits.payload) +(CallFrame::thisArgumentOffset() * static_cast<int>(sizeof(Register)))));
         store32(regT1, BaseIndex(regT3, regT2, TimesEight, OBJECT_OFFSETOF(JSValue, u.asBits.tag) +(CallFrame::thisArgumentOffset() * static_cast<int>(sizeof(Register)))));
         branchSub32(NonZero, TrustedImm32(1), regT2).linkTo(copyLoop, this);
@@ -185,11 +193,11 @@ void JIT::compileLoadVarargs(Instruction* instruction)
         slowCase.link(this);
 
     emitLoad(arguments, regT1, regT0);
-    callOperation(operationSizeFrameForVarargs, regT1, regT0, firstFreeRegister);
+    callOperation(operationSizeFrameForVarargs, regT1, regT0, firstFreeRegister, firstVarArgOffset);
     addPtr(TrustedImm32(-sizeof(CallerFrameAndPC)), returnValueGPR, stackPointerRegister);
     emitLoad(thisValue, regT1, regT4);
     emitLoad(arguments, regT3, regT2);
-    callOperation(operationLoadVarargs, returnValueGPR, regT1, regT4, regT3, regT2);
+    callOperation(operationLoadVarargs, returnValueGPR, regT1, regT4, regT3, regT2, firstVarArgOffset);
     move(returnValueGPR, regT3);
 
     if (canOptimize)
@@ -263,8 +271,8 @@ void JIT::compileOpCall(OpcodeID opcodeID, Instruction* instruction, unsigned ca
         if (opcodeID == op_call && shouldEmitProfiling()) {
             emitLoad(registerOffset + CallFrame::argumentOffsetIncludingThis(0), regT0, regT1);
             Jump done = branch32(NotEqual, regT0, TrustedImm32(JSValue::CellTag));
-            loadPtr(Address(regT1, JSCell::structureOffset()), regT1);
-            storePtr(regT1, instruction[6].u.arrayProfile->addressOfLastSeenStructure());
+            loadPtr(Address(regT1, JSCell::structureIDOffset()), regT1);
+            storePtr(regT1, instruction[OPCODE_LENGTH(op_call) - 2].u.arrayProfile->addressOfLastSeenStructureID());
             done.link(this);
         }
     
@@ -339,7 +347,7 @@ void JIT::privateCompileClosureCall(CallLinkInfo* callLinkInfo, CodeBlock* calle
     JumpList slowCases;
 
     slowCases.append(branch32(NotEqual, regT1, TrustedImm32(JSValue::CellTag)));
-    slowCases.append(branchPtr(NotEqual, Address(regT0, JSCell::structureOffset()), TrustedImmPtr(expectedStructure)));
+    slowCases.append(branchPtr(NotEqual, Address(regT0, JSCell::structureIDOffset()), TrustedImmPtr(expectedStructure)));
     slowCases.append(branchPtr(NotEqual, Address(regT0, JSFunction::offsetOfExecutable()), TrustedImmPtr(expectedExecutable)));
     
     loadPtr(Address(regT0, JSFunction::offsetOfScopeChain()), regT1);

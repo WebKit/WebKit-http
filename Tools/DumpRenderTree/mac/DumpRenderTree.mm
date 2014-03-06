@@ -90,6 +90,7 @@
 #import <wtf/Threading.h>
 #import <wtf/ObjcRuntimeExtras.h>
 #import <wtf/OwnPtr.h>
+#import <wtf/text/WTFString.h>
 
 #if !PLATFORM(IOS)
 #import <Carbon/Carbon.h>
@@ -775,6 +776,32 @@ WebView *createWebViewAndOffscreenWindow()
     return webView;
 }
 
+static void destroyWebViewAndOffscreenWindow()
+{
+    WebView *webView = [mainFrame webView];
+#if !PLATFORM(IOS)
+    NSWindow *window = [webView window];
+#endif
+    [webView close];
+    mainFrame = nil;
+
+#if !PLATFORM(IOS)
+    // Work around problem where registering drag types leaves an outstanding
+    // "perform selector" on the window, which retains the window. It's a bit
+    // inelegant and perhaps dangerous to just blow them all away, but in practice
+    // it probably won't cause any trouble (and this is just a test tool, after all).
+    [NSObject cancelPreviousPerformRequestsWithTarget:window];
+
+    [window close]; // releases when closed
+#else
+    UIWindow *uiWindow = [gWebBrowserView window];
+    [uiWindow removeFromSuperview];
+    [uiWindow release];
+#endif
+
+    [webView release];
+}
+
 static NSString *libraryPathForDumpRenderTree()
 {
     //FIXME: This may not be sufficient to prevent interactions/crashes
@@ -1148,27 +1175,7 @@ void dumpRenderTree(int argc, const char *argv[])
     if (threaded)
         stopJavaScriptThreads();
 
-#if !PLATFORM(IOS)
-    NSWindow *window = [webView window];
-#endif
-    [webView close];
-    mainFrame = nil;
-
-#if !PLATFORM(IOS)
-    // Work around problem where registering drag types leaves an outstanding
-    // "perform selector" on the window, which retains the window. It's a bit
-    // inelegant and perhaps dangerous to just blow them all away, but in practice
-    // it probably won't cause any trouble (and this is just a test tool, after all).
-    [NSObject cancelPreviousPerformRequestsWithTarget:window];
-    
-    [window close]; // releases when closed
-#else
-    UIWindow *uiWindow = [gWebBrowserView window];
-    [uiWindow removeFromSuperview];
-    [uiWindow release];
-#endif
-
-    [webView release];
+    destroyWebViewAndOffscreenWindow();
     
     releaseGlobalControllers();
     
@@ -1437,6 +1444,22 @@ static void dumpBackForwardListForWebView(WebView *view)
     printf("===============================================\n");
 }
 
+#if !PLATFORM(IOS)
+static void changeWindowScaleIfNeeded(const char* testPathOrUR)
+{
+    bool hasHighDPIWindow = [[[mainFrame webView] window] backingScaleFactor] != 1;
+    WTF::String localPathOrUrl = String(testPathOrUR);
+    bool needsHighDPIWindow = localPathOrUrl.findIgnoringCase("hidpi-") != notFound;
+    if (hasHighDPIWindow == needsHighDPIWindow)
+        return;
+
+    CGFloat newScaleFactor = needsHighDPIWindow ? 2 : 1;
+    // When the new scale factor is set on the window first, WebView doesn't see it as a new scale and stops propagating the behavior change to WebCore::Page.
+    gTestRunner->setBackingScaleFactor(newScaleFactor);
+    [[[mainFrame webView] window] _setWindowResolution:newScaleFactor displayIfChanged:YES];
+}
+#endif
+
 static void sizeWebViewForCurrentTest()
 {
     // W3C SVG tests expect to be 480x360
@@ -1598,11 +1621,6 @@ static bool shouldLogHistoryDelegates(const char* pathOrURL)
     return strstr(pathOrURL, "globalhistory/");
 }
 
-static bool shouldOpenWebInspector(const char* pathOrURL)
-{
-    return strstr(pathOrURL, "inspector/");
-}
-
 static bool shouldDumpAsText(const char* pathOrURL)
 {
     return strstr(pathOrURL, "dumpAsText/");
@@ -1738,8 +1756,11 @@ static void runTest(const string& inputLine)
         return;
     }
 
-    const string testURL([[url absoluteString] UTF8String]);
+    const char* testURL([[url absoluteString] UTF8String]);
     
+#if !PLATFORM(IOS)
+    changeWindowScaleIfNeeded(testURL);
+#endif
     resetWebViewToConsistentStateBeforeTesting();
 
     gTestRunner = TestRunner::create(testURL, command.expectedPixelHash);
@@ -1765,8 +1786,6 @@ static void runTest(const string& inputLine)
 
     if (shouldEnableDeveloperExtras(pathOrURL.c_str())) {
         gTestRunner->setDeveloperExtrasEnabled(true);
-        if (shouldOpenWebInspector(pathOrURL.c_str()))
-            gTestRunner->showWebInspector();
         if (shouldDumpAsText(pathOrURL.c_str())) {
             gTestRunner->setDumpAsText(true);
             gTestRunner->setGeneratePixelResults(false);

@@ -104,6 +104,7 @@
 #import "WebUIDelegate.h"
 #import "WebUIDelegatePrivate.h"
 #import "WebUserMediaClient.h"
+#import "WebViewGroup.h"
 #import <CoreFoundation/CFSet.h>
 #import <Foundation/NSURLConnection.h>
 #import <JavaScriptCore/APICast.h>
@@ -1181,7 +1182,7 @@ static bool shouldUseLegacyBackgroundSizeShorthandBehavior()
     // FIXME: this is a workaround for <rdar://problem/11820090> Quoted text changes in size when replying to certain email
     _private->page->settings().setMinimumFontSize([_private->preferences minimumFontSize]);
 
-    _private->page->setGroupName(groupName);
+    [self setGroupName:groupName];
 
 #if ENABLE(REMOTE_INSPECTOR)
     // Production installs always disallow debugging simple HTML documents.
@@ -1732,7 +1733,9 @@ static bool fastDocumentTeardownEnabled()
     [self removeDragCaret];
 #endif
 
-    // Deleteing the WebCore::Page will clear the page cache so we call destroy on 
+    _private->group->removeWebView(self);
+
+    // Deleteing the WebCore::Page will clear the page cache so we call destroy on
     // all the plug-ins in the page cache to break any retain cycles.
     // See comment in HistoryItem::releaseAllPendingPageCaches() for more information.
     Page* page = _private->page;
@@ -2381,6 +2384,10 @@ static bool needsSelfRetainWhileLoadingQuirk()
 
 #if ENABLE(MEDIA_SOURCE)
     settings.setMediaSourceEnabled([preferences mediaSourceEnabled]);
+#endif
+
+#if ENABLE(IMAGE_CONTROLS)
+    settings.setImageControlsEnabled([preferences imageControlsEnabled]);
 #endif
 
     settings.setShouldConvertPositionStyleOnCopy([preferences shouldConvertPositionStyleOnCopy]);
@@ -3600,11 +3607,9 @@ static inline IMP getMethod(id o, SEL s)
     return _private->allowsMessaging;
 }
 
+// FIXME: Remove once this is no longer necessary for UIKit binary compatibility.
 - (void)_setNetworkStateIsOnline:(BOOL)isOnLine
 {
-    WebThreadRun(^{
-        networkStateNotifier().setIsOnLine(isOnLine);
-    });
 }
 
 - (void)_setFixedLayoutSize:(CGSize)size
@@ -3692,6 +3697,11 @@ static inline IMP getMethod(id o, SEL s)
         return;
 
     frame->overflowScrollPositionChangedForNode(roundedIntPoint(offset), node, userScroll);
+}
+
++ (void)_doNotStartObservingNetworkReachability
+{
+    Settings::setShouldOptOutOfNetworkStateObservation(true);
 }
 #endif // PLATFORM(IOS)
 
@@ -3942,11 +3952,11 @@ static inline IMP getMethod(id o, SEL s)
     if (!view || !view->isTrackingRepaints())
         return nil;
 
-    const Vector<IntRect>& repaintRects = view->trackedRepaintRects();
+    const Vector<FloatRect>& repaintRects = view->trackedRepaintRects();
     NSMutableArray* rectsArray = [[NSMutableArray alloc] initWithCapacity:repaintRects.size()];
     
     for (unsigned i = 0; i < repaintRects.size(); ++i)
-        [rectsArray addObject:[NSValue valueWithRect:pixelSnappedIntRect(repaintRects[i])]];
+        [rectsArray addObject:[NSValue valueWithRect:pixelSnappedIntRect(LayoutRect(repaintRects[i]))]];
 
     return [rectsArray autorelease];
 }
@@ -6119,6 +6129,12 @@ static WebFrame *incrementFrame(WebFrame *frame, WebFindOptions options = 0)
 
 - (void)setGroupName:(NSString *)groupName
 {
+    if (_private->group)
+        _private->group->removeWebView(self);
+
+    _private->group = WebViewGroup::getOrCreate(groupName);
+    _private->group->addWebView(self);
+
     if (!_private->page)
         return;
     _private->page->setGroupName(groupName);

@@ -40,7 +40,7 @@
 #include "DrawErrorUnderline.h"
 #include "FloatConversion.h"
 #include "FloatRect.h"
-#include "Font.h"
+#include "FloatRoundedRect.h"
 #include "GraphicsContextPlatformPrivateCairo.h"
 #include "IntRect.h"
 #include "NotImplemented.h"
@@ -177,7 +177,6 @@ static inline void shadowAndStrokeCurrentCairoPath(GraphicsContext* context)
 GraphicsContext::GraphicsContext(cairo_t* cr)
     : m_updatingControlTints(false)
     , m_transparencyCount(0)
-    , m_pixelSnappingFactor(1)
 {
     m_data = new GraphicsContextPlatformPrivateToplevel(new PlatformContextCairo(cr));
 }
@@ -461,7 +460,7 @@ void GraphicsContext::fillRect(const FloatRect& rect, const Color& color, ColorS
         return;
 
     if (hasShadow())
-        platformContext()->shadowBlur().drawRectShadow(this, rect, RoundedRect::Radii());
+        platformContext()->shadowBlur().drawRectShadow(this, FloatRoundedRect(rect));
 
     fillRectWithColor(platformContext()->cr(), rect, color);
 }
@@ -620,7 +619,7 @@ FloatRect GraphicsContext::computeLineBoundsForText(const FloatPoint& origin, fl
     return FloatRect(origin, FloatSize(width, strokeThickness()));
 }
 
-void GraphicsContext::drawLineForText(const FloatPoint& origin, float width, bool printing)
+void GraphicsContext::drawLineForText(const FloatPoint& origin, float width, bool printing, bool doubleUnderlines)
 {
     if (paintingDisabled())
         return;
@@ -635,17 +634,21 @@ void GraphicsContext::drawLineForText(const FloatPoint& origin, float width, boo
     ShadowBlur& shadow = platformContext()->shadowBlur();
     if (GraphicsContext* shadowContext = shadow.beginShadowLayer(this, lineExtents)) {
         drawLineOnCairoContext(this, shadowContext->platformContext()->cr(), origin, endPoint);
+        if (doubleUnderlines)
+            drawLineOnCairoContext(this, shadowContext->platformContext()->cr(), origin + FloatSize(0, strokeThickness() * 2), endPoint + FloatSize(0, strokeThickness() * 2));
         shadow.endShadowLayer(this);
     }
 
     drawLineOnCairoContext(this, cairoContext, origin, endPoint);
+    if (doubleUnderlines)
+        drawLineOnCairoContext(this, cairoContext, origin + FloatSize(0, strokeThickness() * 2), endPoint + FloatSize(0, strokeThickness() * 2));
     cairo_restore(cairoContext);
 }
 
-void GraphicsContext::drawLinesForText(const FloatPoint& point, const DashArray& widths, bool printing)
+void GraphicsContext::drawLinesForText(const FloatPoint& point, const DashArray& widths, bool printing, bool doubleUnderlines)
 {
     for (size_t i = 0; i < widths.size(); i += 2)
-        drawLineForText(FloatPoint(point.x() + widths[i], point.y()), widths[i+1] - widths[i], printing);
+        drawLineForText(FloatPoint(point.x() + widths[i], point.y()), widths[i+1] - widths[i], printing, doubleUnderlines);
 }
 
 void GraphicsContext::updateDocumentMarkerResources()
@@ -1029,31 +1032,31 @@ void GraphicsContext::clipOut(const FloatRect& r)
     cairo_set_fill_rule(cr, savedFillRule);
 }
 
-void GraphicsContext::fillRoundedRect(const FloatRect& r, const FloatSize& topLeft, const FloatSize& topRight, const FloatSize& bottomLeft, const FloatSize& bottomRight, const Color& color, ColorSpace)
+void GraphicsContext::platformFillRoundedRect(const FloatRoundedRect& rect, const Color& color, ColorSpace)
 {
     if (paintingDisabled())
         return;
 
     if (hasShadow())
-        platformContext()->shadowBlur().drawRectShadow(this, r, FloatRoundedRect::Radii(topLeft, topRight, bottomLeft, bottomRight));
+        platformContext()->shadowBlur().drawRectShadow(this, rect);
 
     cairo_t* cr = platformContext()->cr();
     cairo_save(cr);
     Path path;
-    path.addRoundedRect(r, topLeft, topRight, bottomLeft, bottomRight);
+    path.addRoundedRect(rect);
     appendWebCorePathToCairoContext(cr, path);
     setSourceRGBAFromColor(cr, color);
     cairo_fill(cr);
     cairo_restore(cr);
 }
 
-void GraphicsContext::fillRectWithRoundedHole(const FloatRect& rect, const RoundedRect& roundedHoleRect, const Color& color, ColorSpace)
+void GraphicsContext::fillRectWithRoundedHole(const FloatRect& rect, const FloatRoundedRect& roundedHoleRect, const Color& color, ColorSpace)
 {
     if (paintingDisabled() || !color.isValid())
         return;
 
     if (this->mustUseShadowBlur())
-        platformContext()->shadowBlur().drawInsetShadow(this, rect, roundedHoleRect.rect(), roundedHoleRect.radii());
+        platformContext()->shadowBlur().drawInsetShadow(this, rect, roundedHoleRect);
 
     Path path;
     path.addRect(rect);

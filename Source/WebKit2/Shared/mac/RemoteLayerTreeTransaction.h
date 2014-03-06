@@ -164,6 +164,9 @@ public:
 
     double pageScaleFactor() const { return m_pageScaleFactor; }
     void setPageScaleFactor(double pageScaleFactor) { m_pageScaleFactor = pageScaleFactor; }
+
+    bool scaleWasSetByUIProcess() const { return m_scaleWasSetByUIProcess; }
+    void setScaleWasSetByUIProcess(bool scaleWasSetByUIProcess) { m_scaleWasSetByUIProcess = scaleWasSetByUIProcess; }
     
     uint64_t renderTreeSize() const { return m_renderTreeSize; }
     void setRenderTreeSize(uint64_t renderTreeSize) { m_renderTreeSize = renderTreeSize; }
@@ -176,6 +179,9 @@ public:
 
     bool allowsUserScaling() const { return m_allowsUserScaling; }
     void setAllowsUserScaling(bool allowsUserScaling) { m_allowsUserScaling = allowsUserScaling; }
+    
+    bool isVideoLayerIDPendingFullscreen(WebCore::GraphicsLayer::PlatformLayerID layerID) const { return m_videoLayerIDsPendingFullscreen.contains(layerID); }
+    void addVideoLayerIDPendingFullscreen(WebCore::GraphicsLayer::PlatformLayerID layerID) { m_videoLayerIDsPendingFullscreen.append(layerID); }
 
 private:
     WebCore::GraphicsLayer::PlatformLayerID m_rootLayerID;
@@ -184,10 +190,12 @@ private:
     Vector<WebCore::GraphicsLayer::PlatformLayerID> m_destroyedLayerIDs;
     WebCore::IntSize m_contentsSize;
     double m_pageScaleFactor;
+    bool m_scaleWasSetByUIProcess;
     uint64_t m_renderTreeSize;
     double m_minimumScaleFactor;
     double m_maximumScaleFactor;
     bool m_allowsUserScaling;
+    Vector<WebCore::GraphicsLayer::PlatformLayerID> m_videoLayerIDsPendingFullscreen;
 };
 
 } // namespace WebKit

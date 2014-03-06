@@ -434,7 +434,7 @@ public:
 
     // DataLabel32:
     //
-    // A DataLabelPtr is used to refer to a location in the code containing a pointer to be
+    // A DataLabel32 is used to refer to a location in the code containing a 32-bit constant to be
     // patched after the code has been generated.
     class DataLabel32 {
         template<class TemplateAssemblerType>
@@ -840,6 +840,7 @@ protected:
     AbstractMacroAssembler()
         : m_randomSource(cryptographicallyRandomNumber())
     {
+        invalidateAllTempRegisters();
     }
 
     uint32_t random()

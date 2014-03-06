@@ -45,6 +45,7 @@ typedef uint32_t WKPluginLoadPolicy;
 enum {
     kWKWebGLLoadPolicyBlocked = 0,
     kWKWebGLLoadPolicyLoadNormally,
+    kWKWebGLLoadPolicyPending
 };
 typedef uint32_t WKWebGLLoadPolicy;
 
@@ -73,6 +74,7 @@ typedef void (*WKPageDidLayoutCallback)(WKPageRef page, WKLayoutMilestones miles
 typedef WKPluginLoadPolicy (*WKPagePluginLoadPolicyCallback)(WKPageRef page, WKPluginLoadPolicy currentPluginLoadPolicy, WKDictionaryRef pluginInfoDictionary, WKStringRef* unavailabilityDescription, const void* clientInfo);
 typedef void (*WKPagePluginDidFailCallback)(WKPageRef page, WKErrorCode errorCode, WKDictionaryRef pluginInfoDictionary, const void* clientInfo);
 typedef WKWebGLLoadPolicy (*WKPageWebGLLoadPolicyCallback)(WKPageRef page, WKStringRef url, const void* clientInfo);
+typedef void (*WKPageSetSystemWebGLLoadPolicyCallback)(WKPageRef page, WKWebGLLoadPolicy policy, const void* clientInfo);
 
 // Deprecated
 typedef void (*WKPageDidFailToInitializePluginCallback_deprecatedForUseWithV0)(WKPageRef page, WKStringRef mimeType, const void* clientInfo);
@@ -330,6 +332,8 @@ typedef struct WKPageLoaderClientV4 {
     
     // Version 4
     WKPageWebGLLoadPolicyCallback                                       webGLLoadPolicy;
+    WKPageWebGLLoadPolicyCallback                                       resolveWebGLLoadPolicy;
+    WKPageSetSystemWebGLLoadPolicyCallback                              setSystemWebGLLoadPolicy;
 } WKPageLoaderClientV4;
 
 // FIXME: These should be deprecated.

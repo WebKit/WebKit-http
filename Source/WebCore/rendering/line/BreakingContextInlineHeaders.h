@@ -341,8 +341,7 @@ inline void BreakingContext::handleFloat()
     FloatingObject* floatingObject = m_lineBreaker.insertFloatingObject(floatBox);
     // check if it fits in the current line.
     // If it does, position it now, otherwise, position
-    // it after moving to next line (in newLine() func)
-    // FIXME: Bug 110372: Properly position multiple stacked floats with non-rectangular shape outside.
+    // it after moving to next line (in clearFloats() func)
     if (m_floatsFitOnLine && m_width.fitsOnLineExcludingTrailingWhitespace(m_block.logicalWidthForFloat(floatingObject))) {
         m_lineBreaker.positionNewFloatOnLine(floatingObject, m_lastFloatFromPreviousLine, m_lineInfo, m_width);
         if (m_lineBreak.renderer() == m_current.renderer()) {
@@ -462,6 +461,7 @@ inline float firstPositiveWidth(const WordMeasurements& wordMeasurements)
 }
 
 #if ENABLE(CSS_SHAPES) && ENABLE(CSS_SHAPE_INSIDE)
+// FIXME: We can move this function & logic into LineWidth::fitBelowFloats
 inline void updateSegmentsForShapes(RenderBlockFlow& block, const FloatingObject* lastFloatFromPreviousLine, const WordMeasurements& wordMeasurements, LineWidth& width, bool isFirstLine)
 {
     ASSERT(lastFloatFromPreviousLine);
@@ -496,11 +496,7 @@ inline void updateSegmentsForShapes(RenderBlockFlow& block, const FloatingObject
         block.setLogicalHeight(shapeInsideInfo->logicalLineTop() - logicalOffsetFromShapeContainer);
     }
 
-    lineLogicalTop = block.logicalHeight() + logicalOffsetFromShapeContainer;
-
-    shapeInsideInfo->updateSegmentsForLine(lineLogicalTop, lineLogicalHeight);
-    width.updateCurrentShapeSegment();
-    width.updateAvailableWidth();
+    width.updateLineSegment(block.logicalHeight());
 }
 #endif
 
@@ -782,7 +778,7 @@ inline bool BreakingContext::handleText(WordMeasurements& wordMeasurements, bool
             applyWordSpacing = wordSpacing && m_currentCharacterIsSpace;
 
             if (!m_width.committedWidth() && m_autoWrap && !m_width.fitsOnLine())
-                m_width.fitBelowFloats();
+                m_width.fitBelowFloats(m_lineInfo.isFirstLine());
 
             if (m_autoWrap || breakWords) {
                 // If we break only after white-space, consider the current character
@@ -1004,7 +1000,7 @@ inline bool BreakingContext::canBreakAtThisPosition()
 
     // See if attempting to fit below floats creates more available width on the line.
     if (!m_width.fitsOnLine() && !m_width.committedWidth())
-        m_width.fitBelowFloats();
+        m_width.fitBelowFloats(m_lineInfo.isFirstLine());
 
     bool canPlaceOnLine = m_width.fitsOnLine() || !m_autoWrapWasEverTrueOnLine;
 
@@ -1028,7 +1024,7 @@ inline void BreakingContext::commitAndUpdateLineBreakIfNeeded()
             return;
         }
 
-        m_width.fitBelowFloats();
+        m_width.fitBelowFloats(m_lineInfo.isFirstLine());
 
         // |width| may have been adjusted because we got shoved down past a float (thus
         // giving us more room), so we need to retest, and only jump to
@@ -1040,7 +1036,7 @@ inline void BreakingContext::commitAndUpdateLineBreakIfNeeded()
     } else if (m_blockStyle.autoWrap() && !m_width.fitsOnLine() && !m_width.committedWidth()) {
         // If the container autowraps but the current child does not then we still need to ensure that it
         // wraps and moves below any floats.
-        m_width.fitBelowFloats();
+        m_width.fitBelowFloats(m_lineInfo.isFirstLine());
     }
 
     if (!m_current.renderer()->isFloatingOrOutOfFlowPositioned()) {

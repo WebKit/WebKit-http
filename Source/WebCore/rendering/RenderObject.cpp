@@ -722,9 +722,10 @@ RenderBlock* RenderObject::containingBlock() const
     return toRenderBlock(o);
 }
 
-void RenderObject::drawLineForBoxSide(GraphicsContext* graphicsContext, LayoutUnit x1, LayoutUnit y1, LayoutUnit x2, LayoutUnit y2,
-    BoxSide side, Color color, EBorderStyle borderStyle, int adjacentWidth1, int adjacentWidth2, bool antialias)
+void RenderObject::drawLineForBoxSide(GraphicsContext* graphicsContext, float x1, float y1, float x2, float y2,
+    BoxSide side, Color color, EBorderStyle borderStyle, float adjacentWidth1, float adjacentWidth2, bool antialias)
 {
+    float deviceScaleFactor = document().deviceScaleFactor();
     float thickness;
     float length;
     if (side == BSTop || side == BSBottom) {
@@ -734,21 +735,15 @@ void RenderObject::drawLineForBoxSide(GraphicsContext* graphicsContext, LayoutUn
         thickness = x2 - x1;
         length = y2 - y1;
     }
+    // FIXME: flooring is a temporary solution until the device pixel snapping is added here for all border types (including recursive calls such as groove->(inset/outset)).
+    thickness = floorToDevicePixel(thickness, deviceScaleFactor);
+    length = floorToDevicePixel(length, deviceScaleFactor);
 
-    if (borderStyle == DOUBLE && thickness < 3)
+    if (borderStyle == DOUBLE && (thickness * deviceScaleFactor) < 3)
         borderStyle = SOLID;
 
-    float pixelSnappingFactor = graphicsContext->pixelSnappingFactor();
     // FIXME: We really would like this check to be an ASSERT as we don't want to draw empty borders. However
     // nothing guarantees that the following recursive calls to drawLineForBoxSide will have non-null dimensions.
-    // FIXME: flooring is a temporary solution until the device pixel snapping is added here for all border types.
-    if (borderStyle == SOLID) {
-        thickness = roundToDevicePixel(thickness, pixelSnappingFactor);
-        length = roundToDevicePixel(length, pixelSnappingFactor);
-    } else {
-        thickness = floorf(thickness);
-        length = floorf(length);
-    }
     if (!thickness || !length)
         return;
 
@@ -767,14 +762,18 @@ void RenderObject::drawLineForBoxSide(GraphicsContext* graphicsContext, LayoutUn
                 graphicsContext->setStrokeThickness(thickness);
                 graphicsContext->setStrokeStyle(borderStyle == DASHED ? DashedStroke : DottedStroke);
 
+                // FIXME: There's some odd adjustment in GraphicsContext::drawLine() that disables device pixel precision line drawing.
+                int adjustedX = floorToInt((x1 + x2) / 2);
+                int adjustedY = floorToInt((y1 + y2) / 2);
+
                 switch (side) {
                     case BSBottom:
                     case BSTop:
-                        graphicsContext->drawLine(IntPoint(x1, (y1 + y2) / 2), IntPoint(x2, (y1 + y2) / 2));
+                        graphicsContext->drawLine(FloatPoint(x1, adjustedY), FloatPoint(x2, adjustedY));
                         break;
                     case BSRight:
                     case BSLeft:
-                        graphicsContext->drawLine(IntPoint((x1 + x2) / 2, y1), IntPoint((x1 + x2) / 2, y2));
+                        graphicsContext->drawLine(FloatPoint(adjustedX, y1), FloatPoint(adjustedX, y2));
                         break;
                 }
                 graphicsContext->setShouldAntialias(wasAntialiased);
@@ -783,7 +782,7 @@ void RenderObject::drawLineForBoxSide(GraphicsContext* graphicsContext, LayoutUn
             break;
         }
         case DOUBLE: {
-            int thirdOfThickness = (thickness + 1) / 3;
+            float thirdOfThickness = ceilToDevicePixel(thickness / 3, deviceScaleFactor);
             ASSERT(thirdOfThickness);
 
             if (adjacentWidth1 == 0 && adjacentWidth2 == 0) {
@@ -797,57 +796,67 @@ void RenderObject::drawLineForBoxSide(GraphicsContext* graphicsContext, LayoutUn
                 switch (side) {
                     case BSTop:
                     case BSBottom:
-                        graphicsContext->drawRect(IntRect(x1, y1, length, thirdOfThickness));
-                        graphicsContext->drawRect(IntRect(x1, y2 - thirdOfThickness, length, thirdOfThickness));
+                        graphicsContext->drawRect(pixelSnappedForPainting(x1, y1, length, thirdOfThickness, deviceScaleFactor));
+                        graphicsContext->drawRect(pixelSnappedForPainting(x1, y2 - thirdOfThickness, length, thirdOfThickness, deviceScaleFactor));
                         break;
                     case BSLeft:
                     case BSRight:
-                        // FIXME: Why do we offset the border by 1 in this case but not the other one?
-                        if (length > 1) {
-                            graphicsContext->drawRect(IntRect(x1, y1 + 1, thirdOfThickness, length - 1));
-                            graphicsContext->drawRect(IntRect(x2 - thirdOfThickness, y1 + 1, thirdOfThickness, length - 1));
-                        }
+                        graphicsContext->drawRect(pixelSnappedForPainting(x1, y1, thirdOfThickness, length, deviceScaleFactor));
+                        graphicsContext->drawRect(pixelSnappedForPainting(x2 - thirdOfThickness, y1, thirdOfThickness, length, deviceScaleFactor));
                         break;
                 }
 
                 graphicsContext->setShouldAntialias(wasAntialiased);
                 graphicsContext->setStrokeStyle(oldStrokeStyle);
             } else {
-                int adjacent1BigThird = ((adjacentWidth1 > 0) ? adjacentWidth1 + 1 : adjacentWidth1 - 1) / 3;
-                int adjacent2BigThird = ((adjacentWidth2 > 0) ? adjacentWidth2 + 1 : adjacentWidth2 - 1) / 3;
+                float adjacent1BigThird = ceilToDevicePixel(adjacentWidth1 / 3, deviceScaleFactor);
+                float adjacent2BigThird = ceilToDevicePixel(adjacentWidth2 / 3, deviceScaleFactor);
 
+                float offset1 = floorToDevicePixel(fabs(adjacentWidth1) * 2 / 3, deviceScaleFactor);
+                float offset2 = floorToDevicePixel(fabs(adjacentWidth2) * 2 / 3, deviceScaleFactor);
+
+                float mitreOffset1 = adjacentWidth1 < 0 ? offset1 : 0;
+                float mitreOffset2 = adjacentWidth1 > 0 ? offset1 : 0;
+                float mitreOffset3 = adjacentWidth2 < 0 ? offset2 : 0;
+                float mitreOffset4 = adjacentWidth2 > 0 ? offset2 : 0;
+
+                FloatRect paintBorderRect;
                 switch (side) {
                     case BSTop:
-                        drawLineForBoxSide(graphicsContext, x1 + std::max((-adjacentWidth1 * 2 + 1) / 3, 0),
-                                   y1, x2 - std::max((-adjacentWidth2 * 2 + 1) / 3, 0), y1 + thirdOfThickness,
-                                   side, color, SOLID, adjacent1BigThird, adjacent2BigThird, antialias);
-                        drawLineForBoxSide(graphicsContext, x1 + std::max((adjacentWidth1 * 2 + 1) / 3, 0),
-                                   y2 - thirdOfThickness, x2 - std::max((adjacentWidth2 * 2 + 1) / 3, 0), y2,
-                                   side, color, SOLID, adjacent1BigThird, adjacent2BigThird, antialias);
+                        paintBorderRect = pixelSnappedForPainting(LayoutRect(x1 + mitreOffset1, y1, (x2 - mitreOffset3) - (x1 + mitreOffset1), thirdOfThickness), deviceScaleFactor);
+                        drawLineForBoxSide(graphicsContext, paintBorderRect.x(), paintBorderRect.y(), paintBorderRect.maxX(), paintBorderRect.maxY(), side, color, SOLID,
+                            adjacent1BigThird, adjacent2BigThird, antialias);
+
+                        paintBorderRect = pixelSnappedForPainting(LayoutRect(x1 + mitreOffset2, y2 - thirdOfThickness, (x2 - mitreOffset4) - (x1 + mitreOffset2), thirdOfThickness), deviceScaleFactor);
+                        drawLineForBoxSide(graphicsContext, paintBorderRect.x(), paintBorderRect.y(), paintBorderRect.maxX(), paintBorderRect.maxY(), side, color, SOLID,
+                            adjacent1BigThird, adjacent2BigThird, antialias);
                         break;
                     case BSLeft:
-                        drawLineForBoxSide(graphicsContext, x1, y1 + std::max((-adjacentWidth1 * 2 + 1) / 3, 0),
-                                   x1 + thirdOfThickness, y2 - std::max((-adjacentWidth2 * 2 + 1) / 3, 0),
-                                   side, color, SOLID, adjacent1BigThird, adjacent2BigThird, antialias);
-                        drawLineForBoxSide(graphicsContext, x2 - thirdOfThickness, y1 + std::max((adjacentWidth1 * 2 + 1) / 3, 0),
-                                   x2, y2 - std::max((adjacentWidth2 * 2 + 1) / 3, 0),
-                                   side, color, SOLID, adjacent1BigThird, adjacent2BigThird, antialias);
+                        paintBorderRect = pixelSnappedForPainting(LayoutRect(x1, y1 + mitreOffset1, thirdOfThickness, (y2 - mitreOffset3) - (y1 + mitreOffset1)), deviceScaleFactor);
+                        drawLineForBoxSide(graphicsContext, paintBorderRect.x(), paintBorderRect.y(), paintBorderRect.maxX(), paintBorderRect.maxY(), side, color, SOLID,
+                            adjacent1BigThird, adjacent2BigThird, antialias);
+
+                        paintBorderRect = pixelSnappedForPainting(LayoutRect(x2 - thirdOfThickness, y1 + mitreOffset2, thirdOfThickness, (y2 - mitreOffset4) - (y1 + mitreOffset2)), deviceScaleFactor);
+                        drawLineForBoxSide(graphicsContext, paintBorderRect.x(), paintBorderRect.y(), paintBorderRect.maxX(), paintBorderRect.maxY(), side, color, SOLID,
+                            adjacent1BigThird, adjacent2BigThird, antialias);
                         break;
                     case BSBottom:
-                        drawLineForBoxSide(graphicsContext, x1 + std::max((adjacentWidth1 * 2 + 1) / 3, 0),
-                                   y1, x2 - std::max((adjacentWidth2 * 2 + 1) / 3, 0), y1 + thirdOfThickness,
-                                   side, color, SOLID, adjacent1BigThird, adjacent2BigThird, antialias);
-                        drawLineForBoxSide(graphicsContext, x1 + std::max((-adjacentWidth1 * 2 + 1) / 3, 0),
-                                   y2 - thirdOfThickness, x2 - std::max((-adjacentWidth2 * 2 + 1) / 3, 0), y2,
-                                   side, color, SOLID, adjacent1BigThird, adjacent2BigThird, antialias);
+                        paintBorderRect = pixelSnappedForPainting(LayoutRect(x1 + mitreOffset2, y1, (x2 - mitreOffset4) - (x1 + mitreOffset2), thirdOfThickness), deviceScaleFactor);
+                        drawLineForBoxSide(graphicsContext, paintBorderRect.x(), paintBorderRect.y(), paintBorderRect.maxX(), paintBorderRect.maxY(), side, color, SOLID,
+                            adjacent1BigThird, adjacent2BigThird, antialias);
+
+                        paintBorderRect = pixelSnappedForPainting(LayoutRect(x1 + mitreOffset1, y2 - thirdOfThickness, (x2 - mitreOffset3) - (x1 + mitreOffset1), thirdOfThickness), deviceScaleFactor);
+                        drawLineForBoxSide(graphicsContext, paintBorderRect.x(), paintBorderRect.y(), paintBorderRect.maxX(), paintBorderRect.maxY(), side, color, SOLID,
+                            adjacent1BigThird, adjacent2BigThird, antialias);
                         break;
                     case BSRight:
-                        drawLineForBoxSide(graphicsContext, x1, y1 + std::max((adjacentWidth1 * 2 + 1) / 3, 0),
-                                   x1 + thirdOfThickness, y2 - std::max((adjacentWidth2 * 2 + 1) / 3, 0),
-                                   side, color, SOLID, adjacent1BigThird, adjacent2BigThird, antialias);
-                        drawLineForBoxSide(graphicsContext, x2 - thirdOfThickness, y1 + std::max((-adjacentWidth1 * 2 + 1) / 3, 0),
-                                   x2, y2 - std::max((-adjacentWidth2 * 2 + 1) / 3, 0),
-                                   side, color, SOLID, adjacent1BigThird, adjacent2BigThird, antialias);
+                        paintBorderRect = pixelSnappedForPainting(LayoutRect(x1, y1 + mitreOffset2, thirdOfThickness, (y2 - mitreOffset4) - (y1 + mitreOffset2)), deviceScaleFactor);
+                        drawLineForBoxSide(graphicsContext, paintBorderRect.x(), paintBorderRect.y(), paintBorderRect.maxX(), paintBorderRect.maxY(), side, color, SOLID,
+                            adjacent1BigThird, adjacent2BigThird, antialias);
+
+                        paintBorderRect = pixelSnappedForPainting(LayoutRect(x2 - thirdOfThickness, y1 + mitreOffset1, thirdOfThickness, (y2 - mitreOffset3) - (y1 + mitreOffset1)), deviceScaleFactor);
+                        drawLineForBoxSide(graphicsContext, paintBorderRect.x(), paintBorderRect.y(), paintBorderRect.maxX(), paintBorderRect.maxY(), side, color, SOLID,
+                            adjacent1BigThird, adjacent2BigThird, antialias);
                         break;
                     default:
                         break;
@@ -867,33 +876,53 @@ void RenderObject::drawLineForBoxSide(GraphicsContext* graphicsContext, LayoutUn
                 s2 = INSET;
             }
 
-            int adjacent1BigHalf = ((adjacentWidth1 > 0) ? adjacentWidth1 + 1 : adjacentWidth1 - 1) / 2;
-            int adjacent2BigHalf = ((adjacentWidth2 > 0) ? adjacentWidth2 + 1 : adjacentWidth2 - 1) / 2;
+            float adjacent1BigHalf = ceilToDevicePixel(adjacentWidth1 / 2, deviceScaleFactor);
+            float adjacent2BigHalf = ceilToDevicePixel(adjacentWidth2 / 2, deviceScaleFactor);
+
+            float adjacent1SmallHalf = floorToDevicePixel(adjacentWidth1 / 2, deviceScaleFactor);
+            float adjacent2SmallHalf = floorToDevicePixel(adjacentWidth2 / 2, deviceScaleFactor);
+
+            float offset1 = 0;
+            float offset2 = 0;
+            float offset3 = 0;
+            float offset4 = 0;
+
+            if (((side == BSTop || side == BSLeft) && adjacentWidth1 < 0) || ((side == BSBottom || side == BSRight) && adjacentWidth1 > 0))
+                offset1 = floorToDevicePixel(adjacentWidth1 / 2, deviceScaleFactor);
+
+            if (((side == BSTop || side == BSLeft) && adjacentWidth2 < 0) || ((side == BSBottom || side == BSRight) && adjacentWidth2 > 0))
+                offset2 = ceilToDevicePixel(adjacentWidth2 / 2, deviceScaleFactor);
+
+            if (((side == BSTop || side == BSLeft) && adjacentWidth1 > 0) || ((side == BSBottom || side == BSRight) && adjacentWidth1 < 0))
+                offset3 = floorToDevicePixel(fabs(adjacentWidth1) / 2, deviceScaleFactor);
+
+            if (((side == BSTop || side == BSLeft) && adjacentWidth2 > 0) || ((side == BSBottom || side == BSRight) && adjacentWidth2 < 0))
+                offset4 = ceilToDevicePixel(adjacentWidth2 / 2, deviceScaleFactor);
+
+            float adjustedX = ceilToDevicePixel((x1 + x2) / 2, deviceScaleFactor);
+            float adjustedY = ceilToDevicePixel((y1 + y2) / 2, deviceScaleFactor);
+            /// Quads can't use the default snapping rect functions.
+            x1 = roundToDevicePixel(x1, deviceScaleFactor);
+            x2 = roundToDevicePixel(x2, deviceScaleFactor);
+            y1 = roundToDevicePixel(y1, deviceScaleFactor);
+            y2 = roundToDevicePixel(y2, deviceScaleFactor);
 
             switch (side) {
                 case BSTop:
-                    drawLineForBoxSide(graphicsContext, x1 + std::max(-adjacentWidth1, 0) / 2, y1, x2 - std::max(-adjacentWidth2, 0) / 2, (y1 + y2 + 1) / 2,
-                               side, color, s1, adjacent1BigHalf, adjacent2BigHalf, antialias);
-                    drawLineForBoxSide(graphicsContext, x1 + std::max(adjacentWidth1 + 1, 0) / 2, (y1 + y2 + 1) / 2, x2 - std::max(adjacentWidth2 + 1, 0) / 2, y2,
-                               side, color, s2, adjacentWidth1 / 2, adjacentWidth2 / 2, antialias);
+                    drawLineForBoxSide(graphicsContext, x1 + offset1, y1, x2 - offset2, adjustedY, side, color, s1, adjacent1BigHalf, adjacent2BigHalf, antialias);
+                    drawLineForBoxSide(graphicsContext, x1 + offset3, adjustedY, x2 - offset4, y2, side, color, s2, adjacent1SmallHalf, adjacent2SmallHalf, antialias);
                     break;
                 case BSLeft:
-                    drawLineForBoxSide(graphicsContext, x1, y1 + std::max(-adjacentWidth1, 0) / 2, (x1 + x2 + 1) / 2, y2 - std::max(-adjacentWidth2, 0) / 2,
-                               side, color, s1, adjacent1BigHalf, adjacent2BigHalf, antialias);
-                    drawLineForBoxSide(graphicsContext, (x1 + x2 + 1) / 2, y1 + std::max(adjacentWidth1 + 1, 0) / 2, x2, y2 - std::max(adjacentWidth2 + 1, 0) / 2,
-                               side, color, s2, adjacentWidth1 / 2, adjacentWidth2 / 2, antialias);
+                    drawLineForBoxSide(graphicsContext, x1, y1 + offset1, adjustedX, y2 - offset2, side, color, s1, adjacent1BigHalf, adjacent2BigHalf, antialias);
+                    drawLineForBoxSide(graphicsContext, adjustedX, y1 + offset3, x2, y2 - offset4, side, color, s2, adjacent1SmallHalf, adjacent2SmallHalf, antialias);
                     break;
                 case BSBottom:
-                    drawLineForBoxSide(graphicsContext, x1 + std::max(adjacentWidth1, 0) / 2, y1, x2 - std::max(adjacentWidth2, 0) / 2, (y1 + y2 + 1) / 2,
-                               side, color, s2, adjacent1BigHalf, adjacent2BigHalf, antialias);
-                    drawLineForBoxSide(graphicsContext, x1 + std::max(-adjacentWidth1 + 1, 0) / 2, (y1 + y2 + 1) / 2, x2 - std::max(-adjacentWidth2 + 1, 0) / 2, y2,
-                               side, color, s1, adjacentWidth1 / 2, adjacentWidth2 / 2, antialias);
+                    drawLineForBoxSide(graphicsContext, x1 + offset1, y1, x2 - offset2, adjustedY, side, color, s2, adjacent1BigHalf, adjacent2BigHalf, antialias);
+                    drawLineForBoxSide(graphicsContext, x1 + offset3, adjustedY, x2 - offset4, y2, side, color, s1, adjacent1SmallHalf, adjacent2SmallHalf, antialias);
                     break;
                 case BSRight:
-                    drawLineForBoxSide(graphicsContext, x1, y1 + std::max(adjacentWidth1, 0) / 2, (x1 + x2 + 1) / 2, y2 - std::max(adjacentWidth2, 0) / 2,
-                               side, color, s2, adjacent1BigHalf, adjacent2BigHalf, antialias);
-                    drawLineForBoxSide(graphicsContext, (x1 + x2 + 1) / 2, y1 + std::max(-adjacentWidth1 + 1, 0) / 2, x2, y2 - std::max(-adjacentWidth2 + 1, 0) / 2,
-                               side, color, s1, adjacentWidth1 / 2, adjacentWidth2 / 2, antialias);
+                    drawLineForBoxSide(graphicsContext, x1, y1 + offset1, adjustedX, y2 - offset2, side, color, s2, adjacent1BigHalf, adjacent2BigHalf, antialias);
+                    drawLineForBoxSide(graphicsContext, adjustedX, y1 + offset3, x2, y2 - offset4, side, color, s1, adjacent1SmallHalf, adjacent2SmallHalf, antialias);
                     break;
             }
             break;
@@ -919,36 +948,42 @@ void RenderObject::drawLineForBoxSide(GraphicsContext* graphicsContext, LayoutUn
                 // this matters for rects in transformed contexts.
                 bool wasAntialiased = graphicsContext->shouldAntialias();
                 graphicsContext->setShouldAntialias(antialias);
-                graphicsContext->drawRect(pixelSnappedForPainting(x1, y1, x2 - x1, y2 - y1, pixelSnappingFactor));
+                graphicsContext->drawRect(pixelSnappedForPainting(x1, y1, x2 - x1, y2 - y1, deviceScaleFactor));
                 graphicsContext->setShouldAntialias(wasAntialiased);
                 graphicsContext->setStrokeStyle(oldStrokeStyle);
                 return;
             }
+
+            // FIXME: These roundings should be replaced by ASSERT(device pixel positioned) when all the callers transitioned to device pixels.
+            x1 = roundToDevicePixel(x1, deviceScaleFactor);
+            y1 = roundToDevicePixel(y1, deviceScaleFactor);
+            x2 = roundToDevicePixel(x2, deviceScaleFactor);
+            y2 = roundToDevicePixel(y2, deviceScaleFactor);
             FloatPoint quad[4];
             switch (side) {
                 case BSTop:
-                    quad[0] = FloatPoint(x1 + std::max(-adjacentWidth1, 0), y1);
-                    quad[1] = FloatPoint(x1 + std::max(adjacentWidth1, 0), y2);
-                    quad[2] = FloatPoint(x2 - std::max(adjacentWidth2, 0), y2);
-                    quad[3] = FloatPoint(x2 - std::max(-adjacentWidth2, 0), y1);
+                    quad[0] = FloatPoint(x1 + std::max<float>(-adjacentWidth1, 0), y1);
+                    quad[1] = FloatPoint(x1 + std::max<float>(adjacentWidth1, 0), y2);
+                    quad[2] = FloatPoint(x2 - std::max<float>(adjacentWidth2, 0), y2);
+                    quad[3] = FloatPoint(x2 - std::max<float>(-adjacentWidth2, 0), y1);
                     break;
                 case BSBottom:
-                    quad[0] = FloatPoint(x1 + std::max(adjacentWidth1, 0), y1);
-                    quad[1] = FloatPoint(x1 + std::max(-adjacentWidth1, 0), y2);
-                    quad[2] = FloatPoint(x2 - std::max(-adjacentWidth2, 0), y2);
-                    quad[3] = FloatPoint(x2 - std::max(adjacentWidth2, 0), y1);
+                    quad[0] = FloatPoint(x1 + std::max<float>(adjacentWidth1, 0), y1);
+                    quad[1] = FloatPoint(x1 + std::max<float>(-adjacentWidth1, 0), y2);
+                    quad[2] = FloatPoint(x2 - std::max<float>(-adjacentWidth2, 0), y2);
+                    quad[3] = FloatPoint(x2 - std::max<float>(adjacentWidth2, 0), y1);
                     break;
                 case BSLeft:
-                    quad[0] = FloatPoint(x1, y1 + std::max(-adjacentWidth1, 0));
-                    quad[1] = FloatPoint(x1, y2 - std::max(-adjacentWidth2, 0));
-                    quad[2] = FloatPoint(x2, y2 - std::max(adjacentWidth2, 0));
-                    quad[3] = FloatPoint(x2, y1 + std::max(adjacentWidth1, 0));
+                    quad[0] = FloatPoint(x1, y1 + std::max<float>(-adjacentWidth1, 0));
+                    quad[1] = FloatPoint(x1, y2 - std::max<float>(-adjacentWidth2, 0));
+                    quad[2] = FloatPoint(x2, y2 - std::max<float>(adjacentWidth2, 0));
+                    quad[3] = FloatPoint(x2, y1 + std::max<float>(adjacentWidth1, 0));
                     break;
                 case BSRight:
-                    quad[0] = FloatPoint(x1, y1 + std::max(adjacentWidth1, 0));
-                    quad[1] = FloatPoint(x1, y2 - std::max(adjacentWidth2, 0));
-                    quad[2] = FloatPoint(x2, y2 - std::max(-adjacentWidth2, 0));
-                    quad[3] = FloatPoint(x2, y1 + std::max(-adjacentWidth1, 0));
+                    quad[0] = FloatPoint(x1, y1 + std::max<float>(adjacentWidth1, 0));
+                    quad[1] = FloatPoint(x1, y2 - std::max<float>(adjacentWidth2, 0));
+                    quad[2] = FloatPoint(x2, y2 - std::max<float>(-adjacentWidth2, 0));
+                    quad[3] = FloatPoint(x2, y1 + std::max<float>(-adjacentWidth1, 0));
                     break;
             }
 
@@ -1225,21 +1260,21 @@ RenderLayerModelObject* RenderObject::containerForRepaint() const
     return repaintContainer;
 }
 
-void RenderObject::repaintUsingContainer(const RenderLayerModelObject* repaintContainer, const LayoutRect& r, bool immediate, bool shouldClipToLayer) const
+void RenderObject::repaintUsingContainer(const RenderLayerModelObject* repaintContainer, const LayoutRect& r, bool shouldClipToLayer) const
 {
     if (!repaintContainer) {
-        view().repaintViewRectangle(r, immediate);
+        view().repaintViewRectangle(r);
         return;
     }
 
     if (repaintContainer->isRenderFlowThread()) {
-        toRenderFlowThread(repaintContainer)->repaintRectangleInRegions(r, immediate);
+        toRenderFlowThread(repaintContainer)->repaintRectangleInRegions(r);
         return;
     }
 
 #if ENABLE(CSS_FILTERS)
     if (repaintContainer->hasFilter() && repaintContainer->layer() && repaintContainer->layer()->requiresFullLayerImageForFilters()) {
-        repaintContainer->layer()->setFilterBackendNeedsRepaintingInRect(r, immediate);
+        repaintContainer->layer()->setFilterBackendNeedsRepaintingInRect(r);
         return;
     }
 #endif
@@ -1249,7 +1284,7 @@ void RenderObject::repaintUsingContainer(const RenderLayerModelObject* repaintCo
         ASSERT(repaintContainer == &v);
         bool viewHasCompositedLayer = v.hasLayer() && v.layer()->isComposited();
         if (!viewHasCompositedLayer || v.layer()->backing()->paintsIntoWindow()) {
-            v.repaintViewRectangle(viewHasCompositedLayer && v.layer()->transform() ? v.layer()->transform()->mapRect(r) : r, immediate);
+            v.repaintViewRectangle(viewHasCompositedLayer && v.layer()->transform() ? v.layer()->transform()->mapRect(r) : r);
             return;
         }
     }
@@ -1260,7 +1295,7 @@ void RenderObject::repaintUsingContainer(const RenderLayerModelObject* repaintCo
     }
 }
 
-void RenderObject::repaint(bool immediate) const
+void RenderObject::repaint() const
 {
     // Don't repaint if we're unrooted (note that view() still returns the view when unrooted)
     RenderView* view;
@@ -1271,10 +1306,10 @@ void RenderObject::repaint(bool immediate) const
         return; // Don't repaint if we're printing.
 
     RenderLayerModelObject* repaintContainer = containerForRepaint();
-    repaintUsingContainer(repaintContainer ? repaintContainer : view, clippedOverflowRectForRepaint(repaintContainer), immediate);
+    repaintUsingContainer(repaintContainer ? repaintContainer : view, clippedOverflowRectForRepaint(repaintContainer));
 }
 
-void RenderObject::repaintRectangle(const LayoutRect& r, bool immediate, bool shouldClipToLayer) const
+void RenderObject::repaintRectangle(const LayoutRect& r, bool shouldClipToLayer) const
 {
     // Don't repaint if we're unrooted (note that view() still returns the view when unrooted)
     RenderView* view;
@@ -1292,7 +1327,7 @@ void RenderObject::repaintRectangle(const LayoutRect& r, bool immediate, bool sh
 
     RenderLayerModelObject* repaintContainer = containerForRepaint();
     computeRectForRepaint(repaintContainer, dirtyRect);
-    repaintUsingContainer(repaintContainer ? repaintContainer : view, dirtyRect, immediate, shouldClipToLayer);
+    repaintUsingContainer(repaintContainer ? repaintContainer : view, dirtyRect, shouldClipToLayer);
 }
 
 void RenderObject::repaintSlowRepaintObject() const
@@ -1321,7 +1356,7 @@ void RenderObject::repaintSlowRepaintObject() const
     } else
         repaintRect = pixelSnappedIntRect(clippedOverflowRectForRepaint(repaintContainer));
 
-    repaintUsingContainer(repaintContainer, repaintRect, false, shouldClipToLayer);
+    repaintUsingContainer(repaintContainer, repaintRect, shouldClipToLayer);
 }
 
 IntRect RenderObject::pixelSnappedAbsoluteClippedOverflowRect() const

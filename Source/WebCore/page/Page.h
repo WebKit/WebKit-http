@@ -21,7 +21,6 @@
 #ifndef Page_h
 #define Page_h
 
-#include "FeatureObserver.h"
 #include "FindOptions.h"
 #include "FrameLoaderTypes.h"
 #include "LayoutMilestones.h"
@@ -31,6 +30,7 @@
 #include "Pagination.h"
 #include "PlatformScreen.h"
 #include "Region.h"
+#include "SessionID.h"
 #include "Supplementable.h"
 #include "ViewState.h"
 #include "ViewportArguments.h"
@@ -79,6 +79,7 @@ class FrameLoaderClient;
 class FrameSelection;
 class HaltablePlugin;
 class HistoryItem;
+class UserInputBridge;
 class InspectorClient;
 class InspectorController;
 class MainFrame;
@@ -98,6 +99,7 @@ class ProgressTrackerClient;
 class Range;
 class RenderObject;
 class RenderTheme;
+class ReplayController;
 class VisibleSelection;
 class ScrollableArea;
 class ScrollingCoordinator;
@@ -105,12 +107,11 @@ class Settings;
 class StorageNamespace;
 class UserContentController;
 class ValidationMessageClient;
+class VisitedLinkStore;
 
 typedef uint64_t LinkHash;
 
 enum FindDirection { FindDirectionForward, FindDirectionBackward };
-
-float deviceScaleFactor(Frame*);
 
 class Page : public Supplementable<Page> {
     WTF_MAKE_NONCOPYABLE(Page);
@@ -141,6 +142,8 @@ public:
         RefPtr<BackForwardClient> backForwardClient;
         ValidationMessageClient* validationMessageClient;
         FrameLoaderClient* loaderClientForMainFrame;
+
+        RefPtr<VisitedLinkStore> visitedLinkStore;
     };
 
     explicit Page(PageClients&);
@@ -196,6 +199,10 @@ public:
 #if ENABLE(CONTEXT_MENUS)
     ContextMenuController& contextMenuController() const { return *m_contextMenuController; }
 #endif
+    UserInputBridge& userInputBridge() const { return *m_userInputBridge; }
+#if ENABLE(WEB_REPLAY)
+    ReplayController& replayController() const { return *m_replayController; }
+#endif
 #if ENABLE(INSPECTOR)
     InspectorController& inspectorController() const { return *m_inspectorController; }
 #endif
@@ -213,8 +220,6 @@ public:
     Settings& settings() const { return *m_settings; }
     ProgressTracker& progress() const { return *m_progress; }
     BackForwardController& backForward() const { return *m_backForwardController; }
-
-    FeatureObserver* featureObserver() { return &m_featureObserver; }
 
 #if ENABLE(VIEW_MODE_CSS_MEDIA)
     enum ViewMode {
@@ -316,8 +321,8 @@ public:
 
     static void removeAllVisitedLinks();
 
-    static void allVisitedStateChanged(PageGroup*);
-    static void visitedStateChanged(PageGroup*, LinkHash visitedHash);
+    void invalidateStylesForAllLinks();
+    void invalidateStylesForLink(LinkHash);
 
     StorageNamespace* sessionStorage(bool optionalCreate = true);
     void setSessionStorage(PassRefPtr<StorageNamespace>);
@@ -400,6 +405,12 @@ public:
     void setUserContentController(UserContentController*);
     UserContentController* userContentController() { return m_userContentController.get(); }
 
+    VisitedLinkStore& visitedLinkStore();
+
+    SessionID sessionID() const;
+    void setSessionID(SessionID);
+    bool isSessionIDSet() const { return m_sessionID.isValid(); }
+
 private:
     void initGroup();
 
@@ -439,6 +450,10 @@ private:
 #if ENABLE(CONTEXT_MENUS)
     const std::unique_ptr<ContextMenuController> m_contextMenuController;
 #endif
+    const std::unique_ptr<UserInputBridge> m_userInputBridge;
+#if ENABLE(WEB_REPLAY)
+    const std::unique_ptr<ReplayController> m_replayController;
+#endif
 #if ENABLE(INSPECTOR)
     const std::unique_ptr<InspectorController> m_inspectorController;
 #endif
@@ -460,8 +475,6 @@ private:
     EditorClient* m_editorClient;
     PlugInClient* m_plugInClient;
     ValidationMessageClient* m_validationMessageClient;
-
-    FeatureObserver m_featureObserver;
 
     int m_subframeCount;
     String m_groupName;
@@ -539,6 +552,9 @@ private:
     unsigned m_framesHandlingBeforeUnloadEvent;
 
     RefPtr<UserContentController> m_userContentController;
+    RefPtr<VisitedLinkStore> m_visitedLinkStore;
+
+    SessionID m_sessionID;
 };
 
 inline PageGroup& Page::group()

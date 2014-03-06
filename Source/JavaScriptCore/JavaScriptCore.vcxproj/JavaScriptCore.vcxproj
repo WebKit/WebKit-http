@@ -337,6 +337,7 @@
     <ClCompile Include="..\bytecode\ProfiledCodeBlockJettisoningWatchpoint.cpp" />
     <ClCompile Include="..\bytecode\PreciseJumpTargets.cpp" />
     <ClCompile Include="..\bytecode\PutByIdStatus.cpp" />
+    <ClCompile Include="..\bytecode\PutByIdVariant.cpp" />
     <ClCompile Include="..\bytecode\ReduceWhitespace.cpp" />
     <ClCompile Include="..\bytecode\SamplingTool.cpp" />
     <ClCompile Include="..\bytecode\SpecialPointer.cpp" />
@@ -436,6 +437,7 @@
     <ClCompile Include="..\dfg\DFGSSAConversionPhase.cpp" />
     <ClCompile Include="..\dfg\DFGSSALoweringPhase.cpp" />
     <ClCompile Include="..\dfg\DFGStackLayoutPhase.cpp" />
+    <ClCompile Include="..\dfg\DFGStaticExecutionCountEstimationPhase.cpp" />
     <ClCompile Include="..\dfg\DFGStoreBarrierElisionPhase.cpp" />
     <ClCompile Include="..\dfg\DFGStrengthReductionPhase.cpp" />
     <ClCompile Include="..\dfg\DFGThreadData.cpp" />
@@ -716,6 +718,7 @@
     <ClCompile Include="..\runtime\StringRecursionChecker.cpp" />
     <ClCompile Include="..\runtime\Structure.cpp" />
     <ClCompile Include="..\runtime\StructureChain.cpp" />
+    <ClCompile Include="..\runtime\StructureIDTable.cpp" />
     <ClCompile Include="..\runtime\StructureRareData.cpp" />
     <ClCompile Include="..\runtime\SymbolTable.cpp" />
     <ClCompile Include="..\runtime\TestRunnerUtils.cpp" />
@@ -857,6 +860,7 @@
     <ClInclude Include="..\bytecode\ProfiledCodeBlockJettisoningWatchpoint.h" />
     <ClInclude Include="..\bytecode\PreciseJumpTargets.h" />
     <ClInclude Include="..\bytecode\PutByIdStatus.h" />
+    <ClInclude Include="..\bytecode\PutByIdVariant.h" />
     <ClInclude Include="..\bytecode\PutKind.h" />
     <ClInclude Include="..\bytecode\ReduceWhitespace.h" />
     <ClInclude Include="..\bytecode\SamplingTool.h" />
@@ -997,6 +1001,7 @@
     <ClInclude Include="..\dfg\DFGSSAConversionPhase.h" />
     <ClInclude Include="..\dfg\DFGSSALoweringPhase.h" />
     <ClInclude Include="..\dfg\DFGStackLayoutPhase.h" />
+    <ClInclude Include="..\dfg\DFGStaticExecutionCountEstimationPhase.h" />
     <ClInclude Include="..\dfg\DFGStoreBarrierElisionPhase.h" />
     <ClInclude Include="..\dfg\DFGStrengthReductionPhase.h" />
     <ClInclude Include="..\dfg\DFGStructureAbstractValue.h" />
@@ -1402,6 +1407,8 @@
     <ClInclude Include="..\runtime\StringRecursionChecker.h" />
     <ClInclude Include="..\runtime\Structure.h" />
     <ClInclude Include="..\runtime\StructureChain.h" />
+    <ClInclude Include="..\runtime\StructureIDBlob.h" />
+    <ClInclude Include="..\runtime\StructureIDTable.h" />
     <ClInclude Include="..\runtime\StructureRareData.h" />
     <ClInclude Include="..\runtime\StructureRareDataInlines.h" />
     <ClInclude Include="..\runtime\StructureTransitionTable.h" />
@@ -1442,6 +1449,7 @@
     <ClInclude Include="..\yarr\YarrSyntaxChecker.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\bytecode\BytecodeList.json" />
     <None Include="JavaScriptCorePostBuild.cmd">
       <FileType>Document</FileType>
     </None>

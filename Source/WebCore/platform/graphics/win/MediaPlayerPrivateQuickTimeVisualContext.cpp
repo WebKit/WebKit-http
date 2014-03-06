@@ -152,7 +152,7 @@ PassOwnPtr<MediaPlayerPrivateInterface> MediaPlayerPrivateQuickTimeVisualContext
 void MediaPlayerPrivateQuickTimeVisualContext::registerMediaEngine(MediaEngineRegistrar registrar)
 {
     if (isAvailable())
-        registrar(create, getSupportedTypes, supportsType, 0, 0, 0);
+        registrar(create, getSupportedTypes, supportsType, 0, 0, 0, 0);
 }
 
 MediaPlayerPrivateQuickTimeVisualContext::MediaPlayerPrivateQuickTimeVisualContext(MediaPlayer* player)
@@ -547,14 +547,15 @@ void MediaPlayerPrivateQuickTimeVisualContext::setClosedCaptionsVisible(bool vis
     m_movie->setClosedCaptionsVisible(visible);
 }
 
-PassRefPtr<TimeRanges> MediaPlayerPrivateQuickTimeVisualContext::buffered() const
+std::unique_ptr<PlatformTimeRanges> MediaPlayerPrivateQuickTimeVisualContext::buffered() const
 {
-    RefPtr<TimeRanges> timeRanges = TimeRanges::create();
+    auto timeRanges = PlatformTimeRanges::create();
+
     float loaded = maxTimeLoaded();
     // rtsp streams are not buffered
     if (!m_isStreaming && loaded > 0)
         timeRanges->add(0, loaded);
-    return timeRanges.release();
+    return timeRanges;
 }
 
 float MediaPlayerPrivateQuickTimeVisualContext::maxTimeSeekable() const

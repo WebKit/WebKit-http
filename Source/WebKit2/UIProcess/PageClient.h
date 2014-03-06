@@ -175,8 +175,8 @@ public:
     virtual void resetSecureInputState() = 0;
     virtual void notifyInputContextAboutDiscardedComposition() = 0;
     virtual void makeFirstResponder() = 0;
-    virtual void setAcceleratedCompositingRootLayer(CALayer *) = 0;
-    virtual CALayer *acceleratedCompositingRootLayer() const = 0;
+    virtual void setAcceleratedCompositingRootLayer(LayerOrView *) = 0;
+    virtual LayerOrView *acceleratedCompositingRootLayer() const = 0;
     virtual RetainPtr<CGImageRef> takeViewSnapshot() = 0;
     virtual void wheelEventWasNotHandledByWebCore(const NativeWebWheelEvent&) = 0;
     virtual void clearCustomSwipeViews() = 0;
@@ -243,12 +243,13 @@ public:
 
     virtual void didCommitLayerTree(const RemoteLayerTreeTransaction&) = 0;
 
-    virtual void startAssistingNode(const WebCore::IntRect&, bool hasNextFocusable, bool hasPreviousFocusable) = 0;
+    virtual void startAssistingNode(const AssistedNodeInformation&) = 0;
     virtual void stopAssistingNode() = 0;
     virtual void selectionDidChange() = 0;
     virtual bool interpretKeyEvent(const NativeWebKeyboardEvent&, bool isCharEvent) = 0;
     virtual void positionInformationDidChange(const InteractionInformationAtPosition&) = 0;
     virtual void saveImageToLibrary(PassRefPtr<WebCore::SharedBuffer>) = 0;
+    virtual void didUpdateBlockSelectionWithTouch(uint32_t touch, uint32_t flags, float growThreshold, float shrinkThreshold) = 0;
 #endif
 
     // Auxiliary Client Creation

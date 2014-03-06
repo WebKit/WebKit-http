@@ -33,13 +33,13 @@
 #include "Interpreter.h"
 #include "Intrinsic.h"
 #include "Options.h"
-#include <wtf/Platform.h>
 
 namespace JSC { namespace DFG {
 
 #if ENABLE(DFG_JIT)
 // Fast check functions; if they return true it is still necessary to
 // check opcodes.
+bool isSupported(CodeBlock*);
 bool mightCompileEval(CodeBlock*);
 bool mightCompileProgram(CodeBlock*);
 bool mightCompileFunctionForCall(CodeBlock*);
@@ -143,6 +143,11 @@ inline CapabilityLevel inlineFunctionForCapabilityLevel(CodeBlock* codeBlock, Co
         return inlineFunctionForCallCapabilityLevel(codeBlock);
     ASSERT(kind == CodeForConstruct);
     return inlineFunctionForConstructCapabilityLevel(codeBlock);
+}
+
+inline bool isSmallEnoughToInlineCodeInto(CodeBlock* codeBlock)
+{
+    return codeBlock->instructionCount() <= Options::maximumInliningCallerSize();
 }
 
 } } // namespace JSC::DFG

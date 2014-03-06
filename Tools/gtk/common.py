@@ -21,12 +21,19 @@ import select
 import subprocess
 import sys
 
-script_dir = None
+top_level_dir = None
 build_dir = None
 library_build_dir = None
 tests_library_build_dir = None
 is_cmake = None
 build_types = ('Release', 'Debug')
+
+
+def top_level_path(*args):
+    global top_level_dir
+    if not top_level_dir:
+        top_level_dir = os.path.join(os.path.dirname(__file__), '..', '..')
+    return os.path.join(*(top_level_dir,) + args)
 
 
 def set_build_types(new_build_types):
@@ -69,17 +76,6 @@ def binary_build_path(*args):
         else:
             library_build_dir = build_path('Programs', *args)
     return library_build_dir
-
-
-def script_path(*args):
-    global script_dir
-    if not script_dir:
-        script_dir = os.path.join(os.path.dirname(__file__), '..', 'Scripts')
-    return os.path.join(*(script_dir,) + args)
-
-
-def top_level_path(*args):
-    return os.path.join(*((os.path.join(os.path.dirname(__file__), '..', '..'),) + args))
 
 
 def get_build_path(fatal=True):

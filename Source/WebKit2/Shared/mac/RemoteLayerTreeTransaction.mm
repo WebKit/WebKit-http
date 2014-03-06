@@ -41,6 +41,9 @@ using namespace WebCore;
 namespace WebKit {
 
 RemoteLayerTreeTransaction::LayerCreationProperties::LayerCreationProperties()
+    : layerID(0)
+    , type(PlatformCALayer::LayerTypeLayer)
+    , hostingContextID(0)
 {
 }
 
@@ -410,10 +413,12 @@ void RemoteLayerTreeTransaction::encode(IPC::ArgumentEncoder& encoder) const
     encoder << m_destroyedLayerIDs;
     encoder << m_contentsSize;
     encoder << m_pageScaleFactor;
+    encoder << m_scaleWasSetByUIProcess;
     encoder << m_minimumScaleFactor;
     encoder << m_maximumScaleFactor;
     encoder << m_allowsUserScaling;
     encoder << m_renderTreeSize;
+    encoder << m_videoLayerIDsPendingFullscreen;
 }
 
 bool RemoteLayerTreeTransaction::decode(IPC::ArgumentDecoder& decoder, RemoteLayerTreeTransaction& result)
@@ -456,6 +461,9 @@ bool RemoteLayerTreeTransaction::decode(IPC::ArgumentDecoder& decoder, RemoteLay
     if (!decoder.decode(result.m_pageScaleFactor))
         return false;
 
+    if (!decoder.decode(result.m_scaleWasSetByUIProcess))
+        return false;
+
     if (!decoder.decode(result.m_minimumScaleFactor))
         return false;
 
@@ -466,6 +474,9 @@ bool RemoteLayerTreeTransaction::decode(IPC::ArgumentDecoder& decoder, RemoteLay
         return false;
     
     if (!decoder.decode(result.m_renderTreeSize))
+        return false;
+    
+    if (!decoder.decode(result.m_videoLayerIDsPendingFullscreen))
         return false;
 
     return true;

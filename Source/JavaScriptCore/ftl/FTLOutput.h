@@ -26,8 +26,6 @@
 #ifndef FTLOutput_h
 #define FTLOutput_h
 
-#include <wtf/Platform.h>
-
 #if ENABLE(FTL_JIT)
 
 #include "DFGCommon.h"
@@ -35,6 +33,7 @@
 #include "FTLAbstractHeapRepository.h"
 #include "FTLCommonValues.h"
 #include "FTLIntrinsicRepository.h"
+#include "FTLState.h"
 #include "FTLSwitchCase.h"
 #include "FTLTypedPointer.h"
 #include "FTLWeight.h"
@@ -169,14 +168,15 @@ public:
     {
         return call(doubleAbsIntrinsic(), value);
     }
+
     LValue doubleSin(LValue value)
     {
-        return call(doubleSinIntrinsic(), value);
+        return call(isX86() ? doubleSinIntrinsic() : operation(sin), value);
+        
     }
-
     LValue doubleCos(LValue value)
     {
-        return call(doubleCosIntrinsic(), value);
+        return call(isX86() ? doubleCosIntrinsic() : operation(cos), value);
     }
 
     LValue doubleSqrt(LValue value)
@@ -205,7 +205,15 @@ public:
     LValue bitCast(LValue value, LType type) { return buildBitCast(m_builder, value, type); }
     
     LValue alloca(LType type) { return buildAlloca(m_builder, type); }
+    
+    // Access the value of an alloca. Also used as a low-level implementation primitive for
+    // load(). Never use this to load from "pointers" in the FTL sense, since FTL pointers
+    // are actually integers. This requires an LLVM pointer. Broadly speaking, you don't
+    // have any LLVM pointers even if you really think you do. A TypedPointer is not an
+    // LLVM pointer. See comment block at top of this file to understand the distinction
+    // between LLVM pointers, FTL pointers, and FTL references.
     LValue get(LValue reference) { return buildLoad(m_builder, reference); }
+    // Similar to get() but for storing to the value in an alloca.
     LValue set(LValue value, LValue reference) { return buildStore(m_builder, value, reference); }
     
     LValue load(TypedPointer, LType refType);
@@ -269,6 +277,7 @@ public:
     LValue load64(LValue base, const AbstractField& field) { return load64(address(base, field)); }
     LValue loadPtr(LValue base, const AbstractField& field) { return loadPtr(address(base, field)); }
     LValue loadDouble(LValue base, const AbstractField& field) { return loadDouble(address(base, field)); }
+    void store8(LValue value, LValue base, const AbstractField& field) { store8(value, address(base, field)); }
     void store32(LValue value, LValue base, const AbstractField& field) { store32(value, address(base, field)); }
     void store64(LValue value, LValue base, const AbstractField& field) { store64(value, address(base, field)); }
     void storePtr(LValue value, LValue base, const AbstractField& field) { storePtr(value, address(base, field)); }
@@ -415,7 +424,7 @@ public:
 };
 
 #define FTL_NEW_BLOCK(output, nameArguments) \
-    (LIKELY(!::JSC::DFG::verboseCompilationEnabled()) \
+    (LIKELY(!verboseCompilationEnabled()) \
     ? (output).newBlock() \
     : (output).newBlock((toCString nameArguments).data()))
 

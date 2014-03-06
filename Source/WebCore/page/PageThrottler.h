@@ -33,6 +33,7 @@
 #include <wtf/HashSet.h>
 #include <wtf/OwnPtr.h>
 #include <wtf/PassOwnPtr.h>
+#include <wtf/WeakPtr.h>
 
 namespace WebCore {
 
@@ -42,47 +43,34 @@ class PageActivityAssertionToken;
 class PageThrottler {
 public:
     PageThrottler(Page&, ViewState::Flags);
-    ~PageThrottler();
 
     void setViewState(ViewState::Flags);
 
-    void didReceiveUserInput() { reportInterestingEvent(); }
-    void pluginDidEvaluate() { reportInterestingEvent(); }
+    void didReceiveUserInput() { m_hysteresis.impulse(); }
+    void pluginDidEvaluate() { m_hysteresis.impulse(); }
     std::unique_ptr<PageActivityAssertionToken> mediaActivityToken();
     std::unique_ptr<PageActivityAssertionToken> pageLoadActivityToken();
 
     void hiddenPageDOMTimerThrottlingStateChanged();
 
 private:
-    enum PageThrottleState {
-        PageNotThrottledState,
-        PageWaitingToThrottleState,
-        PageThrottledState
-    };
-
     friend class PageActivityAssertionToken;
-    void addActivityToken(PageActivityAssertionToken&);
-    void removeActivityToken(PageActivityAssertionToken&);
+    WeakPtr<PageThrottler> weakPtr() { return m_weakPtrFactory.createWeakPtr(); }
+    void incrementActivityCount();
+    void decrementActivityCount();
 
-    void reportInterestingEvent();
+    void updateHysteresis();
 
-    void startThrottleHysteresisTimer();
-    void stopThrottleHysteresisTimer();
-    void throttleHysteresisTimerFired(Timer<PageThrottler>&);
-
-    void throttlePage();
-    void unthrottlePage();
-
-    void setIsVisuallyIdle(bool);
-    void setIsVisible(bool);
+    friend class HysteresisActivity<PageThrottler>;
+    void started();
+    void stopped();
 
     Page& m_page;
     ViewState::Flags m_viewState;
-    PageThrottleState m_throttleState;
-    Timer<PageThrottler> m_throttleHysteresisTimer;
-    HashSet<PageActivityAssertionToken*> m_activityTokens;
-    UserActivity m_visuallyNonIdle;
-    UserActivity m_pageActivity;
+    WeakPtrFactory<PageThrottler> m_weakPtrFactory;
+    HysteresisActivity<PageThrottler> m_hysteresis;
+    UserActivity::Impl m_activity;
+    size_t m_activityCount;
 };
 
 }

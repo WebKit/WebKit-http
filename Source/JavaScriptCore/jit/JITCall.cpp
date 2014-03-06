@@ -58,6 +58,7 @@ void JIT::compileLoadVarargs(Instruction* instruction)
     int thisValue = instruction[3].u.operand;
     int arguments = instruction[4].u.operand;
     int firstFreeRegister = instruction[5].u.operand;
+    int firstVarArgOffset = instruction[6].u.operand;
 
     JumpList slowCase;
     JumpList end;
@@ -70,6 +71,14 @@ void JIT::compileLoadVarargs(Instruction* instruction)
         slowCase.append(branch64(NotEqual, regT0, TrustedImm64(JSValue::encode(JSValue()))));
 
         emitGetFromCallFrameHeader32(JSStack::ArgumentCount, regT0);
+        if (firstVarArgOffset) {
+            Jump sufficientArguments = branch32(GreaterThan, regT0, TrustedImm32(firstVarArgOffset + 1));
+            move(TrustedImm32(1), regT0);
+            Jump endVarArgs = jump();
+            sufficientArguments.link(this);
+            sub32(TrustedImm32(firstVarArgOffset), regT0);
+            endVarArgs.link(this);
+        }
         slowCase.append(branch32(Above, regT0, TrustedImm32(Arguments::MaxArguments + 1)));
         // regT0: argumentCountIncludingThis
         move(regT0, regT1);
@@ -84,7 +93,7 @@ void JIT::compileLoadVarargs(Instruction* instruction)
         addPtr(callFrameRegister, regT1);
         // regT1: newCallFrame
 
-        slowCase.append(branchPtr(Above, AbsoluteAddress(m_vm->addressOfJSStackLimit()), regT1));
+        slowCase.append(branchPtr(Above, AbsoluteAddress(m_vm->addressOfStackLimit()), regT1));
 
         // Initialize ArgumentCount.
         store32(regT0, Address(regT1, JSStack::ArgumentCount * static_cast<int>(sizeof(Register)) + OBJECT_OFFSETOF(EncodedValueDescriptor, asBits.payload)));
@@ -99,7 +108,7 @@ void JIT::compileLoadVarargs(Instruction* instruction)
         // regT0: argumentCount
 
         Label copyLoop = label();
-        load64(BaseIndex(callFrameRegister, regT0, TimesEight, CallFrame::thisArgumentOffset() * static_cast<int>(sizeof(Register))), regT2);
+        load64(BaseIndex(callFrameRegister, regT0, TimesEight, (CallFrame::thisArgumentOffset() + firstVarArgOffset) * static_cast<int>(sizeof(Register))), regT2);
         store64(regT2, BaseIndex(regT1, regT0, TimesEight, CallFrame::thisArgumentOffset() * static_cast<int>(sizeof(Register))));
         branchSub64(NonZero, TrustedImm32(1), regT0).linkTo(copyLoop, this);
 
@@ -110,11 +119,11 @@ void JIT::compileLoadVarargs(Instruction* instruction)
         slowCase.link(this);
 
     emitGetVirtualRegister(arguments, regT1);
-    callOperation(operationSizeFrameForVarargs, regT1, firstFreeRegister);
+    callOperation(operationSizeFrameForVarargs, regT1, firstFreeRegister, firstVarArgOffset);
     move(returnValueGPR, stackPointerRegister);
     emitGetVirtualRegister(thisValue, regT1);
     emitGetVirtualRegister(arguments, regT2);
-    callOperation(operationLoadVarargs, returnValueGPR, regT1, regT2);
+    callOperation(operationLoadVarargs, returnValueGPR, regT1, regT2, firstVarArgOffset);
     move(returnValueGPR, regT1);
 
     if (canOptimize)
@@ -174,7 +183,8 @@ void JIT::compileOpCall(OpcodeID opcodeID, Instruction* instruction, unsigned ca
         - Caller initializes ScopeChain; ReturnPC; CodeBlock.
         - Caller restores callFrameRegister after return.
     */
-
+    COMPILE_ASSERT(OPCODE_LENGTH(op_call) == OPCODE_LENGTH(op_construct), call_and_construct_opcodes_must_be_same_length);
+    COMPILE_ASSERT(OPCODE_LENGTH(op_call) == OPCODE_LENGTH(op_call_varargs), call_and_call_varargs_opcodes_must_be_same_length);
     if (opcodeID == op_call_varargs)
         compileLoadVarargs(instruction);
     else {
@@ -184,8 +194,8 @@ void JIT::compileOpCall(OpcodeID opcodeID, Instruction* instruction, unsigned ca
         if (opcodeID == op_call && shouldEmitProfiling()) {
             emitGetVirtualRegister(registerOffset + CallFrame::argumentOffsetIncludingThis(0), regT0);
             Jump done = emitJumpIfNotJSCell(regT0);
-            loadPtr(Address(regT0, JSCell::structureOffset()), regT0);
-            storePtr(regT0, instruction[6].u.arrayProfile->addressOfLastSeenStructure());
+            load32(Address(regT0, JSCell::structureIDOffset()), regT0);
+            store32(regT0, instruction[OPCODE_LENGTH(op_call) - 2].u.arrayProfile->addressOfLastSeenStructureID());
             done.link(this);
         }
     
@@ -256,7 +266,7 @@ void JIT::privateCompileClosureCall(CallLinkInfo* callLinkInfo, CodeBlock* calle
     JumpList slowCases;
 
     slowCases.append(branchTestPtr(NonZero, regT0, tagMaskRegister));
-    slowCases.append(branchPtr(NotEqual, Address(regT0, JSCell::structureOffset()), TrustedImmPtr(expectedStructure)));
+    slowCases.append(branchStructure(NotEqual, Address(regT0, JSCell::structureIDOffset()), expectedStructure));
     slowCases.append(branchPtr(NotEqual, Address(regT0, JSFunction::offsetOfExecutable()), TrustedImmPtr(expectedExecutable)));
     
     loadPtr(Address(regT0, JSFunction::offsetOfScopeChain()), regT1);

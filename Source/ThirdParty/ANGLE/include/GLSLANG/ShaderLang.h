@@ -184,8 +184,8 @@ typedef enum {
   // This flag limits the depth of the call stack.
   SH_LIMIT_CALL_STACK_DEPTH = 0x4000,
 
-  // This flag initializes gl_Position to vec4(0.0, 0.0, 0.0, 1.0) at
-  // the beginning of the vertex shader, and has no effect in the
+  // This flag initializes gl_Position to vec4(0,0,0,0) at the
+  // beginning of the vertex shader's main(), and has no effect in the
   // fragment shader. It is intended as a workaround for drivers which
   // incorrectly fail to link programs if gl_Position is not written.
   SH_INIT_GL_POSITION = 0x8000,
@@ -196,6 +196,12 @@ typedef enum {
   // This is to work around a MacOSX driver bug that |b| is executed
   // independent of |a|'s value.
   SH_UNFOLD_SHORT_CIRCUIT = 0x10000,
+
+  // This flag initializes varyings without static use in vertex shader
+  // at the beginning of main(), and has no effects in the fragment shader.
+  // It is intended as a workaround for drivers which incorrectly optimize
+  // out such varyings and cause a link failure.
+  SH_INIT_VARYINGS_WITHOUT_STATIC_USE = 0x20000,
 } ShCompileOptions;
 
 // Defines alternate strategies for implementing array index clamping.
@@ -377,8 +383,8 @@ COMPILER_EXPORT void ShGetInfoLog(const ShHandle handle, char* infoLog);
 // Returns null-terminated object code for a compiled shader.
 // Parameters:
 // handle: Specifies the compiler
-// infoLog: Specifies an array of characters that is used to return
-//          the object code. It is assumed that infoLog has enough memory to
+// objCode: Specifies an array of characters that is used to return
+//          the object code. It is assumed that objCode has enough memory to
 //          accomodate the object code. The size of the buffer required to
 //          store the returned object code can be obtained by calling
 //          ShGetInfo with SH_OBJECT_CODE_LENGTH.

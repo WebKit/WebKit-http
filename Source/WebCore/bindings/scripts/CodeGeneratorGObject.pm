@@ -1053,9 +1053,8 @@ sub GenerateFunction {
     foreach my $param (@{$function->parameters}) {
         my $paramName = $param->name;
         my $paramIDLType = $param->type;
-        my $paramTypeIsPrimitive = $codeGenerator->IsPrimitiveType($paramIDLType);
-        my $paramIsGDOMType = IsGDOMClassType($paramIDLType);
-        if (!$paramTypeIsPrimitive) {
+        my $paramTypeIsPointer = !$codeGenerator->IsNonPointerType($paramIDLType);
+        if ($paramTypeIsPointer) {
             $gReturnMacro = GetGReturnMacro($paramName, $paramIDLType, $returnType, $functionName);
             push(@cBody, $gReturnMacro);
         }
@@ -1553,7 +1552,6 @@ EOF
 
     print PRIVHEADER $text;
     print PRIVHEADER "#if ${conditionalString}\n" if $conditionalString;
-    print PRIVHEADER map { "#include \"$_\"\n" } sort keys(%hdrPropIncludes);
     print PRIVHEADER "\n";
     $text = << "EOF";
 namespace WebKit {

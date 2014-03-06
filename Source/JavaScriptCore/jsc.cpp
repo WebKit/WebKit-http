@@ -22,7 +22,6 @@
 
 #include "config.h"
 
-#include "APIShims.h"
 #include "ButterflyInlines.h"
 #include "BytecodeGenerator.h"
 #include "Completion.h"
@@ -95,6 +94,7 @@ namespace {
 
 class Element;
 class ElementHandleOwner;
+class Masuqerader;
 class Root;
 
 class Element : public JSNonFinalObject {
@@ -141,6 +141,35 @@ public:
         Element* element = jsCast<Element*>(handle.slot()->asCell());
         return visitor.containsOpaqueRoot(element->root());
     }
+};
+
+class Masquerader : public JSNonFinalObject {
+public:
+    Masquerader(VM& vm, Structure* structure)
+        : Base(vm, structure)
+    {
+    }
+
+    typedef JSNonFinalObject Base;
+
+    static Masquerader* create(VM& vm, JSGlobalObject* globalObject)
+    {
+        globalObject->masqueradesAsUndefinedWatchpoint()->fireAll();
+        Structure* structure = createStructure(vm, globalObject, jsNull());
+        Masquerader* result = new (NotNull, allocateCell<Masquerader>(vm.heap, sizeof(Masquerader))) Masquerader(vm, structure);
+        result->finishCreation(vm);
+        return result;
+    }
+
+    static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue prototype)
+    {
+        return Structure::create(vm, globalObject, prototype, TypeInfo(ObjectType, StructureFlags), info());
+    }
+
+    DECLARE_INFO;
+
+protected:
+    static const unsigned StructureFlags = JSC::MasqueradesAsUndefined | Base::StructureFlags;
 };
 
 class Root : public JSDestructibleObject {
@@ -190,6 +219,7 @@ private:
 };
 
 const ClassInfo Element::s_info = { "Element", &Base::s_info, 0, 0, CREATE_METHOD_TABLE(Element) };
+const ClassInfo Masquerader::s_info = { "Masquerader", &Base::s_info, 0, 0, CREATE_METHOD_TABLE(Masquerader) };
 const ClassInfo Root::s_info = { "Root", &Base::s_info, 0, 0, CREATE_METHOD_TABLE(Root) };
 
 ElementHandleOwner* Element::handleOwner()
@@ -217,6 +247,7 @@ static EncodedJSValue JSC_HOST_CALL functionGetElement(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionPrint(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionDebug(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionDescribe(ExecState*);
+static EncodedJSValue JSC_HOST_CALL functionDescribeArray(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionJSCStack(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionGCAndSweep(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionFullGC(ExecState*);
@@ -239,6 +270,7 @@ static EncodedJSValue JSC_HOST_CALL functionTransferArrayBuffer(ExecState*);
 static NO_RETURN_WITH_VALUE EncodedJSValue JSC_HOST_CALL functionQuit(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionFalse(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionEffectful42(ExecState*);
+static EncodedJSValue JSC_HOST_CALL functionMakeMasquerader(ExecState*);
 
 #if ENABLE(SAMPLING_FLAGS)
 static EncodedJSValue JSC_HOST_CALL functionSetSamplingFlags(ExecState*);
@@ -341,6 +373,7 @@ protected:
         
         addFunction(vm, "debug", functionDebug, 1);
         addFunction(vm, "describe", functionDescribe, 1);
+        addFunction(vm, "describeArray", functionDescribeArray, 1);
         addFunction(vm, "print", functionPrint, 1);
         addFunction(vm, "quit", functionQuit, 0);
         addFunction(vm, "gc", functionGCAndSweep, 0);
@@ -375,6 +408,7 @@ protected:
         putDirectNativeFunction(vm, this, Identifier(&vm, "DFGTrue"), 0, functionFalse, DFGTrue, DontEnum | JSC::Function);
         
         addFunction(vm, "effectful42", functionEffectful42, 0);
+        addFunction(vm, "makeMasquerader", functionMakeMasquerader, 0);
         
         JSArray* array = constructEmptyArray(globalExec(), 0);
         for (size_t i = 0; i < arguments.size(); ++i)
@@ -459,8 +493,19 @@ EncodedJSValue JSC_HOST_CALL functionDebug(ExecState* exec)
 
 EncodedJSValue JSC_HOST_CALL functionDescribe(ExecState* exec)
 {
-    fprintf(stderr, "--> %s\n", toCString(exec->argument(0)).data());
-    return JSValue::encode(jsUndefined());
+    if (exec->argumentCount() < 1)
+        return JSValue::encode(jsUndefined());
+    return JSValue::encode(jsString(exec, toString(exec->argument(0))));
+}
+
+EncodedJSValue JSC_HOST_CALL functionDescribeArray(ExecState* exec)
+{
+    if (exec->argumentCount() < 1)
+        return JSValue::encode(jsUndefined());
+    JSObject* object = jsDynamicCast<JSObject*>(exec->argument(0));
+    if (!object)
+        return JSValue::encode(jsString(exec, "<not object>"));
+    return JSValue::encode(jsString(exec, toString("<Public length: ", object->getArrayLength(), "; vector length: ", object->getVectorLength(), ">")));
 }
 
 class FunctionJSCStackFunctor {
@@ -733,6 +778,11 @@ EncodedJSValue JSC_HOST_CALL functionFalse(ExecState*)
 EncodedJSValue JSC_HOST_CALL functionEffectful42(ExecState*)
 {
     return JSValue::encode(jsNumber(42));
+}
+
+EncodedJSValue JSC_HOST_CALL functionMakeMasquerader(ExecState* exec)
+{
+    return JSValue::encode(Masquerader::create(exec->vm(), exec->lexicalGlobalObject()));
 }
 
 // Use SEH for Release builds only to get rid of the crash report dialog
@@ -1073,7 +1123,7 @@ int jscmain(int argc, char** argv)
     VM* vm = VM::create(LargeHeap).leakRef();
     int result;
     {
-        APIEntryShim shim(vm);
+        JSLockHolder locker(vm);
 
         if (options.m_profile && !vm->m_perBytecodeProfiler)
             vm->m_perBytecodeProfiler = adoptPtr(new Profiler::Database(*vm));

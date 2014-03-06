@@ -33,6 +33,8 @@
 #include <wtf/Forward.h>
 
 #if USE(CG)
+#include <wtf/RetainPtr.h>
+#include <CoreGraphics/CGPath.h>
 typedef struct CGPath PlatformPath;
 #elif USE(CAIRO)
 namespace WebCore {
@@ -58,6 +60,7 @@ namespace WebCore {
     class AffineTransform;
     class FloatPoint;
     class FloatRect;
+    class FloatRoundedRect;
     class FloatSize;
     class GraphicsContext;
     class RoundedRect;
@@ -85,6 +88,9 @@ namespace WebCore {
         WTF_MAKE_FAST_ALLOCATED;
     public:
         Path();
+#if USE(CG)
+        Path(RetainPtr<CGMutablePathRef>);
+#endif
         ~Path();
 
         Path(const Path&);
@@ -127,7 +133,7 @@ namespace WebCore {
         };
 
         void addRoundedRect(const FloatRect&, const FloatSize& roundingRadii, RoundedRectStrategy = PreferNativeRoundedRect);
-        void addRoundedRect(const FloatRect&, const FloatSize& topLeftRadius, const FloatSize& topRightRadius, const FloatSize& bottomLeftRadius, const FloatSize& bottomRightRadius, RoundedRectStrategy = PreferNativeRoundedRect);
+        void addRoundedRect(const FloatRoundedRect&, RoundedRectStrategy = PreferNativeRoundedRect);
         void addRoundedRect(const RoundedRect&);
 
         void translate(const FloatSize&);
@@ -141,7 +147,6 @@ namespace WebCore {
         void apply(void* info, PathApplierFunction) const;
         void transform(const AffineTransform&);
 
-        void addPathForRoundedRect(const FloatRect&, const FloatSize& topLeftRadius, const FloatSize& topRightRadius, const FloatSize& bottomLeftRadius, const FloatSize& bottomRightRadius, RoundedRectStrategy = PreferNativeRoundedRect);
         void addBeziersForRoundedRect(const FloatRect&, const FloatSize& topLeftRadius, const FloatSize& topRightRadius, const FloatSize& bottomLeftRadius, const FloatSize& bottomRightRadius);
 
 #if USE(CG)

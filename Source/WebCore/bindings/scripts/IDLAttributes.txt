@@ -88,6 +88,7 @@ NoInterfaceObject
 NotEnumerable
 NotDeletable
 ObjCCustomImplementation
+ObjCExplicitAtomicString
 ObjCLegacyUnnamedParameters
 ObjCPolymorphic
 ObjCProtocol
@@ -97,6 +98,7 @@ RaisesException
 Reflect=*
 Replaceable
 ReplaceableConstructor
+ReportExtraMemoryCost
 ReturnNewObject
 SetterRaisesException
 SkipVTableValidation

@@ -37,13 +37,43 @@ namespace WebKit {
 
 static const int VisitedLinkTableMaxLoad = 2;
 
-VisitedLinkProvider::VisitedLinkProvider(WebContext* context)
-    : m_context(context)
-    , m_visitedLinksPopulated(false)
+static uint64_t generateIdentifier()
+{
+    static uint64_t identifier;
+
+    return ++identifier;
+}
+
+PassRefPtr<VisitedLinkProvider> VisitedLinkProvider::create()
+{
+    return adoptRef(new VisitedLinkProvider);
+}
+
+VisitedLinkProvider::~VisitedLinkProvider()
+{
+    ASSERT(m_processes.isEmpty());
+}
+
+VisitedLinkProvider::VisitedLinkProvider()
+    : m_identifier(generateIdentifier())
     , m_keyCount(0)
     , m_tableSize(0)
     , m_pendingVisitedLinksTimer(RunLoop::main(), this, &VisitedLinkProvider::pendingVisitedLinksTimerFired)
 {
+}
+
+void VisitedLinkProvider::addProcess(WebProcessProxy& process)
+{
+    ASSERT(process.state() == WebProcessProxy::State::Running);
+
+    m_processes.add(&process);
+}
+
+void VisitedLinkProvider::removeProcess(WebProcessProxy& process)
+{
+    ASSERT(m_processes.contains(&process));
+
+    m_processes.remove(&process);
 }
 
 void VisitedLinkProvider::processDidFinishLaunching(WebProcessProxy* process)
@@ -52,13 +82,6 @@ void VisitedLinkProvider::processDidFinishLaunching(WebProcessProxy* process)
 
     if (m_keyCount)
         m_pendingVisitedLinksTimer.startOneShot(0);
-
-    if (m_visitedLinksPopulated)
-        return;
-
-    m_context->populateVisitedLinks();
-
-    m_visitedLinksPopulated = true;
 }
 
 void VisitedLinkProvider::addVisitedLink(LinkHash linkHash)

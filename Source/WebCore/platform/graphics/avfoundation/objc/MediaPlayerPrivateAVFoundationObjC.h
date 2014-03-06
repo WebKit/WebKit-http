@@ -91,7 +91,7 @@ public:
 #endif
 
 #if ENABLE(ENCRYPTED_MEDIA_V2)
-    static RetainPtr<AVAssetResourceLoadingRequest> takeRequestForPlayerAndKeyURI(MediaPlayer*, const String&);
+    RetainPtr<AVAssetResourceLoadingRequest> takeRequestForKeyURI(const String&);
 #endif
 
     void playerItemStatusDidChange(int);
@@ -113,15 +113,20 @@ public:
     void outputMediaDataWillChange(AVPlayerItemVideoOutput*);
 #endif
 
-private:
-    MediaPlayerPrivateAVFoundationObjC(MediaPlayer*);
+#if ENABLE(IOS_AIRPLAY)
+    void playbackTargetIsWirelessDidChange();
+#endif
 
     WeakPtr<MediaPlayerPrivateAVFoundationObjC> createWeakPtr() { return m_weakPtrFactory.createWeakPtr(); }
+
+private:
+    MediaPlayerPrivateAVFoundationObjC(MediaPlayer*);
 
     // engine support
     static PassOwnPtr<MediaPlayerPrivateInterface> create(MediaPlayer*);
     static void getSupportedTypes(HashSet<String>& types);
     static MediaPlayer::SupportsType supportsType(const MediaEngineSupportParameters&);
+    static bool supportsKeySystem(const String& keySystem, const String& mimeType);
 
     static bool isAvailable();
 
@@ -153,7 +158,7 @@ private:
     virtual float rate() const;
     virtual void seekToTime(double time, double negativeTolerance, double positiveTolerance);
     virtual unsigned long long totalBytes() const;
-    virtual PassRefPtr<TimeRanges> platformBufferedTimeRanges() const;
+    virtual std::unique_ptr<PlatformTimeRanges> platformBufferedTimeRanges() const;
     virtual double platformMinTimeSeekable() const;
     virtual double platformMaxTimeSeekable() const;
     virtual float platformDuration() const;
@@ -199,9 +204,7 @@ private:
 #endif
 
 #if ENABLE(ENCRYPTED_MEDIA_V2)
-    PassRefPtr<Uint8Array> generateKeyRequest(const String& sessionId, const String& mimeType, Uint8Array* initData, String& destinationURL, MediaPlayer::MediaKeyException& error, unsigned long& systemCode);
-    void releaseKeys(const String& sessionId);
-    bool update(const String& sessionId, Uint8Array* key, RefPtr<Uint8Array>& nextMessage, MediaPlayer::MediaKeyException& error, unsigned long& systemCode);
+    std::unique_ptr<CDMSession> createSession(const String& keySystem);
 #endif
 
     virtual String languageOfPrimaryAudioTrack() const override;
@@ -221,6 +224,14 @@ private:
 #if ENABLE(VIDEO_TRACK)
     void updateAudioTracks();
     void updateVideoTracks();
+#endif
+
+#if ENABLE(IOS_AIRPLAY)
+    virtual bool isCurrentPlaybackTargetWireless() const override;
+    virtual String wirelessPlaybackTargetName() const override;
+    virtual MediaPlayer::WirelessPlaybackTargetType wirelessPlaybackTargetType() const override;
+    virtual bool wirelessVideoPlaybackDisabled() const override;
+    virtual void setWirelessVideoPlaybackDisabled(bool) override;
 #endif
 
     WeakPtrFactory<MediaPlayerPrivateAVFoundationObjC> m_weakPtrFactory;
@@ -278,6 +289,9 @@ private:
     bool m_cachedBufferEmpty;
     bool m_cachedBufferFull;
     bool m_cachedHasEnabledAudio;
+#if ENABLE(IOS_AIRPLAY)
+    mutable bool m_allowsWirelessVideoPlayback;
+#endif
 };
 
 }

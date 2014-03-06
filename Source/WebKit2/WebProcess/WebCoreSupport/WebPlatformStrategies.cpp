@@ -54,6 +54,7 @@
 #include <WebCore/PlatformCookieJar.h>
 #include <WebCore/PlatformPasteboard.h>
 #include <WebCore/ResourceError.h>
+#include <WebCore/SessionID.h>
 #include <WebCore/StorageNamespace.h>
 #include <WebCore/SubframeLoader.h>
 #include <WebCore/URL.h>
@@ -118,11 +119,6 @@ SharedWorkerStrategy* WebPlatformStrategies::createSharedWorkerStrategy()
 }
 
 StorageStrategy* WebPlatformStrategies::createStorageStrategy()
-{
-    return this;
-}
-
-VisitedLinkStrategy* WebPlatformStrategies::createVisitedLinkStrategy()
 {
     return this;
 }
@@ -263,7 +259,7 @@ void WebPlatformStrategies::loadResourceSynchronously(NetworkingContext* context
     loadParameters.identifier = resourceLoadIdentifier;
     loadParameters.webPageID = webPage ? webPage->pageID() : 0;
     loadParameters.webFrameID = webFrame ? webFrame->frameID() : 0;
-    loadParameters.sessionID = webPage ? webPage->sessionID() : SessionTracker::defaultSessionID;
+    loadParameters.sessionID = webPage ? webPage->sessionID() : SessionID::defaultSessionID();
     loadParameters.request = request;
     loadParameters.priority = ResourceLoadPriorityHighest;
     loadParameters.contentSniffingPolicy = SniffContent;
@@ -371,18 +367,6 @@ PassRefPtr<StorageNamespace> WebPlatformStrategies::sessionStorageNamespace(Page
 #else
     return StorageStrategy::sessionStorageNamespace(page);
 #endif
-}
-
-// VisitedLinkStrategy
-
-bool WebPlatformStrategies::isLinkVisited(Page*, LinkHash linkHash, const URL&, const AtomicString&)
-{
-    return WebProcess::shared().isLinkVisited(linkHash);
-}
-
-void WebPlatformStrategies::addVisitedLink(Page*, LinkHash linkHash)
-{
-    WebProcess::shared().addVisitedLink(linkHash);
 }
 
 #if PLATFORM(COCOA)

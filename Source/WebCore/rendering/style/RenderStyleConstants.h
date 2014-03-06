@@ -473,7 +473,9 @@ enum EDisplay {
     TABLE_COLUMN_GROUP, TABLE_COLUMN, TABLE_CELL,
     TABLE_CAPTION, BOX, INLINE_BOX,
     FLEX, INLINE_FLEX,
+#if ENABLE(CSS_GRID_LAYOUT)
     GRID, INLINE_GRID,
+#endif
     NONE
 };
 
@@ -540,7 +542,9 @@ enum WrapThrough { WrapThroughWrap, WrapThroughNone };
 
 enum RubyPosition { RubyPositionBefore, RubyPositionAfter };
 
+#if ENABLE(CSS_GRID_LAYOUT)
 enum GridAutoFlow { AutoFlowNone, AutoFlowColumn, AutoFlowRow };
+#endif
 
 // Reasonable maximum to prevent insane font sizes from causing crashes on some platforms (such as Windows).
 static const float maximumAllowedFontSize = 1000000.0f;
@@ -549,6 +553,8 @@ static const float maximumAllowedFontSize = 1000000.0f;
 enum TextIndentLine { TextIndentFirstLine, TextIndentEachLine };
 enum TextIndentType { TextIndentNormal, TextIndentHanging };
 #endif
+
+enum Isolation { IsolationAuto, IsolationIsolate };
 
 // Fill, Stroke, ViewBox are just used for SVG.
 enum LayoutBox { BoxMissing = 0, MarginBox, BorderBox, PaddingBox, ContentBox, Fill, Stroke, ViewBox };

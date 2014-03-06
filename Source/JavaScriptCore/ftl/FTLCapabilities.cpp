@@ -138,7 +138,13 @@ inline CapabilityLevel canCompile(Node* node)
     case GetById:
     case ToThis:
     case MultiGetByOffset:
+    case MultiPutByOffset:
     case ToPrimitive:
+    case PhantomArguments:
+    case Throw:
+    case ThrowReferenceError:
+    case Unreachable:
+    case GetMyArgumentByVal:
         // These are OK.
         break;
     case PutByIdDirect:
@@ -230,6 +236,8 @@ inline CapabilityLevel canCompile(Node* node)
             break;
         if (node->isBinaryUseKind(UntypedUse))
             break;
+        if (node->isBinaryUseKind(BooleanUse))
+            break;
         if (node->child1().useKind() == ObjectUse
             && node->child2().useKind() == ObjectOrOtherUse)
             break;
@@ -245,6 +253,10 @@ inline CapabilityLevel canCompile(Node* node)
         if (node->isBinaryUseKind(NumberUse))
             break;
         if (node->isBinaryUseKind(ObjectUse))
+            break;
+        if (node->isBinaryUseKind(MiscUse))
+            break;
+        if (node->isBinaryUseKind(BooleanUse))
             break;
         return CannotCompile;
     case CompareLess:
@@ -278,6 +290,12 @@ inline CapabilityLevel canCompile(Node* node)
 
 CapabilityLevel canCompile(Graph& graph)
 {
+    if (graph.m_codeBlock->instructionCount() > Options::maximumFTLCandidateInstructionCount()) {
+        if (verboseCapabilities())
+            dataLog("FTL rejecting ", *graph.m_codeBlock, " because it's too big.\n");
+        return CannotCompile;
+    }
+    
     if (graph.m_codeBlock->codeType() != FunctionCode) {
         if (verboseCapabilities())
             dataLog("FTL rejecting ", *graph.m_codeBlock, " because it doesn't belong to a function.\n");
@@ -288,6 +306,8 @@ CapabilityLevel canCompile(Graph& graph)
         // Need this because although we also don't support
         // CreateActivation/TearOffActivation, we might not see those nodes in case of
         // OSR entry.
+        // FIXME: Support activations.
+        // https://bugs.webkit.org/show_bug.cgi?id=129576
         if (verboseCapabilities())
             dataLog("FTL rejecting ", *graph.m_codeBlock, " because it uses activations.\n");
         return CannotCompile;
@@ -330,6 +350,7 @@ CapabilityLevel canCompile(Graph& graph)
                 case StringOrStringObjectUse:
                 case FinalObjectUse:
                 case NotCellUse:
+                case MiscUse:
                     // These are OK.
                     break;
                 default:

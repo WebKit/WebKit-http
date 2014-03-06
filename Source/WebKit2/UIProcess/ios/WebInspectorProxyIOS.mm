@@ -26,7 +26,7 @@
 #import "config.h"
 #import "WebInspectorProxy.h"
 
-#if ENABLE(INSPECTOR)
+#if PLATFORM(IOS) && ENABLE(INSPECTOR)
 
 #import <WebCore/NotImplemented.h>
 
@@ -112,6 +112,12 @@ String WebInspectorProxy::inspectorPageURL() const
     return String();
 }
 
+String WebInspectorProxy::inspectorTestPageURL() const
+{
+    notImplemented();
+    return String();
+}
+
 String WebInspectorProxy::inspectorBaseURL() const
 {
     notImplemented();
@@ -130,4 +136,4 @@ void WebInspectorProxy::platformAttachAvailabilityChanged(bool available)
 
 } // namespace WebKit
 
-#endif // ENABLE(INSPECTOR)
+#endif // PLATFORM(IOS) && ENABLE(INSPECTOR)

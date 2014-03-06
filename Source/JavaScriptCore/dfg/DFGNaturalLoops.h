@@ -26,8 +26,6 @@
 #ifndef DFGNaturalLoops_h
 #define DFGNaturalLoops_h
 
-#include <wtf/Platform.h>
-
 #if ENABLE(DFG_JIT)
 
 #include "DFGAnalysis.h"
@@ -154,6 +152,14 @@ public:
                 return true;
         }
         return false;
+    }
+    
+    unsigned loopDepth(BasicBlock* block) const
+    {
+        unsigned depth = 0;
+        for (const NaturalLoop* loop = innerMostLoopOf(block); loop; loop = innerMostOuterLoop(*loop))
+            depth++;
+        return depth;
     }
     
     // Return the indices of all loops this belongs to.

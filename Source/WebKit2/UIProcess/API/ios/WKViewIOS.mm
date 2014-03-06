@@ -26,6 +26,8 @@
 #import "config.h"
 #import "WKViewPrivate.h"
 
+#if PLATFORM(IOS)
+
 #import "RemoteLayerTreeTransaction.h"
 #import "ViewGestureController.h"
 #import "WebPageProxy.h"
@@ -43,8 +45,7 @@
 
 using namespace WebKit;
 
-@interface WKView () <UIScrollViewDelegate, WKContentViewDelegate>
-- (void)_setDocumentScale:(CGFloat)newScale;
+@interface WKView () <UIScrollViewDelegate>
 @end
 
 @interface UIScrollView (UIScrollViewInternal)
@@ -125,13 +126,18 @@ using namespace WebKit;
 
 - (void)setAllowsBackForwardNavigationGestures:(BOOL)allowsBackForwardNavigationGestures
 {
+    if (_allowsBackForwardNavigationGestures == allowsBackForwardNavigationGestures)
+        return;
+
     _allowsBackForwardNavigationGestures = allowsBackForwardNavigationGestures;
     
-    WebPageProxy *webPageProxy = toImpl([_contentView _pageRef]);
+    WebPageProxy *webPageProxy = [_contentView page];
     
-    if (allowsBackForwardNavigationGestures && !_gestureController) {
-        _gestureController = std::make_unique<ViewGestureController>(*webPageProxy);
-        _gestureController->installSwipeHandler(self, [self scrollView]);
+    if (allowsBackForwardNavigationGestures) {
+        if (!_gestureController) {
+            _gestureController = std::make_unique<ViewGestureController>(*webPageProxy);
+            _gestureController->installSwipeHandler(self, [self scrollView]);
+        }
     } else
         _gestureController = nullptr;
     
@@ -141,32 +147,6 @@ using namespace WebKit;
 - (BOOL)allowsBackForwardNavigationGestures
 {
     return _allowsBackForwardNavigationGestures;
-}
-
-#pragma mark WKContentViewDelegate
-
-- (void)contentViewDidCommitLoadForMainFrame:(WKContentView *)contentView
-{
-    _isWaitingForNewLayerTreeAfterDidCommitLoad = YES;
-}
-
-- (void)contentView:(WKContentView *)contentView didCommitLayerTree:(const RemoteLayerTreeTransaction&)layerTreeTransaction
-{
-    [_scrollView setMinimumZoomScale:layerTreeTransaction.minimumScaleFactor()];
-    [_scrollView setMaximumZoomScale:layerTreeTransaction.maximumScaleFactor()];
-    [_scrollView setZoomEnabled:layerTreeTransaction.allowsUserScaling()];
-    if (![_scrollView isZooming] && ![_scrollView isZoomBouncing])
-        [_scrollView setZoomScale:layerTreeTransaction.pageScaleFactor()];
-    
-    if (_gestureController)
-        _gestureController->setRenderTreeSize(layerTreeTransaction.renderTreeSize());
-
-    if (_isWaitingForNewLayerTreeAfterDidCommitLoad) {
-        UIEdgeInsets inset = [_scrollView contentInset];
-        [_scrollView setContentOffset:CGPointMake(-inset.left, -inset.top)];
-        _isWaitingForNewLayerTreeAfterDidCommitLoad = NO;
-    }
-
 }
 
 #pragma mark - UIScrollViewDelegate
@@ -186,41 +166,48 @@ using namespace WebKit;
 
 - (void)scrollViewWillBeginDragging:(UIScrollView *)scrollView
 {
+    if (scrollView.panGestureRecognizer.state == UIGestureRecognizerStateBegan)
+        [_contentView willStartUserTriggeredScroll];
     [_contentView willStartZoomOrScroll];
 }
 
-- (void)_didFinishScroll
+- (void)_didFinishScrolling
 {
-    CGPoint position = [_scrollView convertPoint:[_scrollView contentOffset] toView:_contentView.get()];
-    [_contentView didFinishScrollTo:position];
+    [self _updateVisibleContentRects];
+    [_contentView didFinishScrolling];
 }
 
 - (void)scrollViewDidEndDragging:(UIScrollView *)scrollView willDecelerate:(BOOL)decelerate
 {
     // If we're decelerating, scroll offset will be updated when scrollViewDidFinishDecelerating: is called.
     if (!decelerate)
-        [self _didFinishScroll];
+        [self _didFinishScrolling];
 }
 
 - (void)scrollViewDidEndDecelerating:(UIScrollView *)scrollView
 {
-    [self _didFinishScroll];
+    [self _didFinishScrolling];
 }
 
 - (void)scrollViewDidScrollToTop:(UIScrollView *)scrollView
 {
-    [self _didFinishScroll];
+    [self _didFinishScrolling];
 }
 
 - (void)scrollViewDidScroll:(UIScrollView *)scrollView
 {
-    CGPoint position = [_scrollView convertPoint:[_scrollView contentOffset] toView:_contentView.get()];
-    [_contentView didScrollTo:position];
+    [self _updateVisibleContentRects];
+}
+
+- (void)scrollViewDidZoom:(UIScrollView *)scrollView
+{
+    [self _updateVisibleContentRects];
 }
 
 - (void)scrollViewDidEndZooming:(UIScrollView *)scrollView withView:(UIView *)view atScale:(CGFloat)scale
 {
     ASSERT(scrollView == _scrollView);
+    [self _updateVisibleContentRects];
     [_contentView didZoomToScale:scale];
 }
 
@@ -243,9 +230,8 @@ using namespace WebKit;
     webPageConfiguration.pageGroup = toImpl(pageGroupRef);
     webPageConfiguration.relatedPage = toImpl(relatedPage);
 
-    _contentView = adoptNS([[WKContentView alloc] initWithFrame:bounds context:*toImpl(contextRef) configuration:std::move(webPageConfiguration)]);
+    _contentView = adoptNS([[WKContentView alloc] initWithFrame:bounds context:*toImpl(contextRef) configuration:std::move(webPageConfiguration) webView:nil]);
 
-    [_contentView setDelegate:self];
     [[_contentView layer] setAnchorPoint:CGPointZero];
     [_contentView setFrame:bounds];
     [_scrollView addSubview:_contentView.get()];
@@ -266,28 +252,20 @@ using namespace WebKit;
         [_contentView setMinimumLayoutSize:bounds.size];
     [_scrollView setFrame:bounds];
     [_contentView setMinimumSize:bounds.size];
+    [self _updateVisibleContentRects];
 }
 
-- (void)_setDocumentScale:(CGFloat)newScale
+- (void)_updateVisibleContentRects
 {
-    CGPoint contentOffsetInDocumentCoordinates = [_scrollView convertPoint:[_scrollView contentOffset] toView:_contentView.get()];
+    CGRect fullViewRect = self.bounds;
+    CGRect visibleRectInContentCoordinates = [self convertRect:fullViewRect toView:_contentView.get()];
 
-    [_scrollView setZoomScale:newScale];
-    [_contentView didZoomToScale:newScale];
+    CGRect unobscuredRect = UIEdgeInsetsInsetRect(fullViewRect, _obscuredInsets);
+    CGRect unobscuredRectInContentCoordinates = [self convertRect:unobscuredRect toView:_contentView.get()];
 
-    CGPoint contentOffset = [_scrollView convertPoint:contentOffsetInDocumentCoordinates fromView:_contentView.get()];
-    [_scrollView setContentOffset:contentOffset];
-}
+    CGFloat scaleFactor = [_scrollView zoomScale];
 
-
-- (RetainPtr<CGImageRef>)takeViewSnapshotForContentView:(WKContentView *)contentView
-{
-    // FIXME: We should be able to use acquire an IOSurface directly, instead of going to CGImage here and back in ViewSnapshotStore.
-    UIGraphicsBeginImageContextWithOptions(self.bounds.size, YES, self.window.screen.scale);
-    [self drawViewHierarchyInRect:[self bounds] afterScreenUpdates:NO];
-    UIImage *image = UIGraphicsGetImageFromCurrentImageContext();
-    UIGraphicsEndImageContext();
-    return image.CGImage;
+    [_contentView didUpdateVisibleRect:visibleRectInContentCoordinates unobscuredRect:unobscuredRectInContentCoordinates scale:scaleFactor inStableState:YES];
 }
 
 - (void)_keyboardChangedWithInfo:(NSDictionary *)keyboardInfo adjustScrollView:(BOOL)adjustScrollView
@@ -331,7 +309,7 @@ using namespace WebKit;
 
 - (WKPageRef)pageRef
 {
-    return [_contentView _pageRef];
+    return toAPI([_contentView page]);
 }
 
 - (id)initWithFrame:(CGRect)frame contextRef:(WKContextRef)contextRef pageGroupRef:(WKPageGroupRef)pageGroupRef
@@ -373,6 +351,7 @@ using namespace WebKit;
     ASSERT(obscuredInsets.bottom >= 0);
     ASSERT(obscuredInsets.right >= 0);
     _obscuredInsets = obscuredInsets;
+    [self _updateVisibleContentRects];
 }
 
 - (void)_beginInteractiveObscuredInsetsChange
@@ -387,14 +366,25 @@ using namespace WebKit;
     _isChangingObscuredInsetsInteractively = NO;
 }
 
-- (UIColor *)pageExtendedBackgroundColor
+- (UIColor *)_pageExtendedBackgroundColor
 {
-    WebPageProxy *webPageProxy = toImpl([_contentView _pageRef]);
-    WebCore::Color color = webPageProxy->pageExtendedBackgroundColor();
+    WebCore::Color color = [_contentView page]->pageExtendedBackgroundColor();
     if (!color.isValid())
         return nil;
 
     return [UIColor colorWithRed:(color.red() / 255.0) green:(color.green() / 255.0) blue:(color.blue() / 255.0) alpha:(color.alpha() / 255.0)];
 }
 
+- (void)_setBackgroundExtendsBeyondPage:(BOOL)backgroundExtends
+{
+    [_contentView page]->setBackgroundExtendsBeyondPage(backgroundExtends);
+}
+
+- (BOOL)_backgroundExtendsBeyondPage
+{
+    return [_contentView page]->backgroundExtendsBeyondPage();
+}
+
 @end
+
+#endif // PLATFORM(IOS)

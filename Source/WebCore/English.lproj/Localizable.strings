@@ -127,6 +127,9 @@
 /* Title for file button used in HTML forms for media files */
 "Choose Media (Single)" = "Choose Media (Single)";
 
+/* Clear button in date input popover */
+"Clear Button Date Popover" = "Clear";
+
 /* menu item in Recent Searches menu that empties menu's contents */
 "Clear Recent Searches" = "Clear Recent Searches";
 
@@ -312,6 +315,9 @@
 
 /* No Guesses Found context menu item */
 "No Guesses Found" = "No Guesses Found";
+
+/* Empty select list */
+"No Options Select Popover" = "No Options";
 
 /* Label for only item in menu that appears when clicking on the search field image, when no searches have been performed */
 "No recent searches" = "No recent searches";

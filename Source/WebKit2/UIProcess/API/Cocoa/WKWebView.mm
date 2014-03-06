@@ -32,6 +32,8 @@
 #import "RemoteLayerTreeTransaction.h"
 #import "RemoteObjectRegistry.h"
 #import "RemoteObjectRegistryMessages.h"
+#import "UIClient.h"
+#import "ViewGestureController.h"
 #import "WKBackForwardListInternal.h"
 #import "WKBackForwardListItemInternal.h"
 #import "WKBrowsingContextHandleInternal.h"
@@ -40,9 +42,11 @@
 #import "WKNavigationDelegate.h"
 #import "WKNavigationInternal.h"
 #import "WKPreferencesInternal.h"
-#import "WKProcessClassInternal.h"
+#import "WKProcessPoolInternal.h"
 #import "WKRemoteObjectRegistryInternal.h"
+#import "WKUIDelegate.h"
 #import "WKWebViewConfigurationPrivate.h"
+#import "WKVisitedLinkProviderInternal.h"
 #import "WebCertificateInfo.h"
 #import "WebContext.h"
 #import "WebBackForwardList.h"
@@ -59,10 +63,15 @@
 - (void)_adjustForAutomaticKeyboardInfo:(NSDictionary*)info animated:(BOOL)animated lastAdjustment:(CGFloat*)lastAdjustment;
 @end
 
+@interface UIPeripheralHost(UIKitInternal)
+- (CGFloat)getVerticalOverlapForView:(UIView *)view usingKeyboardInfo:(NSDictionary *)info;
+@end
+
 #endif
 
 #if PLATFORM(MAC)
 #import "WKViewInternal.h"
+#import <WebCore/ColorMac.h>
 #endif
 
 @implementation WKWebView {
@@ -83,6 +92,10 @@
     UIEdgeInsets _obscuredInsets;
     bool _isChangingObscuredInsetsInteractively;
     CGFloat _lastAdjustmentForScroller;
+    CGFloat _keyboardVerticalOverlap;
+
+    std::unique_ptr<WebKit::ViewGestureController> _gestureController;
+    BOOL _allowsBackForwardNavigationGestures;
 #endif
 #if PLATFORM(MAC)
     RetainPtr<WKView> _wkView;
@@ -102,28 +115,33 @@
     _configuration = adoptNS([configuration copy]);
 
     if (WKWebView *relatedWebView = [_configuration _relatedWebView]) {
-        WKProcessClass *processClass = [_configuration processClass];
-        WKProcessClass *relatedWebViewProcessClass = [relatedWebView->_configuration processClass];
-        if (processClass && processClass != relatedWebViewProcessClass)
-            [NSException raise:NSInvalidArgumentException format:@"Related web view %@ has process class %@ but configuration specifies a different process class %@", relatedWebView, relatedWebViewProcessClass, configuration.processClass];
+        WKProcessPool *processPool = [_configuration processPool];
+        WKProcessPool *relatedWebViewProcessPool = [relatedWebView->_configuration processPool];
+        if (processPool && processPool != relatedWebViewProcessPool)
+            [NSException raise:NSInvalidArgumentException format:@"Related web view %@ has process pool %@ but configuration specifies a different process pool %@", relatedWebView, relatedWebViewProcessPool, configuration.processPool];
 
-        [_configuration setProcessClass:relatedWebViewProcessClass];
+        [_configuration setProcessPool:relatedWebViewProcessPool];
     }
 
-    if (![_configuration processClass])
-        [_configuration setProcessClass:adoptNS([[WKProcessClass alloc] init]).get()];
+    if (![_configuration processPool])
+        [_configuration setProcessPool:adoptNS([[WKProcessPool alloc] init]).get()];
 
     if (![_configuration preferences])
         [_configuration setPreferences:adoptNS([[WKPreferences alloc] init]).get()];
 
+    if (![_configuration visitedLinkProvider])
+        [_configuration setVisitedLinkProvider:adoptNS([[WKVisitedLinkProvider alloc] init]).get()];
+
     CGRect bounds = self.bounds;
 
-    WebKit::WebContext& context = *[_configuration processClass]->_context;
+    WebKit::WebContext& context = *[_configuration processPool]->_context;
 
     WebKit::WebPageConfiguration webPageConfiguration;
     webPageConfiguration.preferences = [_configuration preferences]->_preferences.get();
     if (WKWebView *relatedWebView = [_configuration _relatedWebView])
         webPageConfiguration.relatedPage = relatedWebView->_page.get();
+
+    webPageConfiguration.visitedLinkProvider = [_configuration visitedLinkProvider]->_visitedLinkProvider.get();
 
 #if PLATFORM(IOS)
     _scrollView = adoptNS([[WKScrollView alloc] initWithFrame:bounds]);
@@ -132,9 +150,8 @@
 
     [self addSubview:_scrollView.get()];
 
-    _contentView = adoptNS([[WKContentView alloc] initWithFrame:bounds context:context configuration:std::move(webPageConfiguration)]);
-    _page = _contentView->_page;
-    [_contentView setDelegate:self];
+    _contentView = adoptNS([[WKContentView alloc] initWithFrame:bounds context:context configuration:std::move(webPageConfiguration) webView:self]);
+    _page = [_contentView page];
     [_contentView layer].anchorPoint = CGPointZero;
     [_contentView setFrame:bounds];
     [_scrollView addSubview:_contentView.get()];
@@ -157,6 +174,8 @@
     _navigationState = std::make_unique<WebKit::NavigationState>(self);
     _page->setPolicyClient(_navigationState->createPolicyClient());
     _page->setLoaderClient(_navigationState->createLoaderClient());
+
+    _page->setUIClient(std::make_unique<WebKit::UIClient>(self));
 
     return self;
 }
@@ -189,6 +208,16 @@
 - (void)setNavigationDelegate:(id <WKNavigationDelegate>)navigationDelegate
 {
     _navigationState->setNavigationDelegate(navigationDelegate);
+}
+
+- (id <WKUIDelegate>)UIDelegate
+{
+    return [static_cast<WebKit::UIClient&>(_page->uiClient()).delegate().leakRef() autorelease];
+}
+
+- (void)setUIDelegate:(id<WKUIDelegate>)UIDelegate
+{
+    static_cast<WebKit::UIClient&>(_page->uiClient()).setDelegate(UIDelegate);
 }
 
 - (WKNavigation *)loadRequest:(NSURLRequest *)request
@@ -292,20 +321,22 @@
     return [_contentView browsingContextController];
 }
 
-#pragma mark WKContentViewDelegate
-
-- (void)contentViewDidCommitLoadForMainFrame:(WKContentView *)contentView
+- (void)_didCommitLoadForMainFrame
 {
     _isWaitingForNewLayerTreeAfterDidCommitLoad = YES;
 }
 
-- (void)contentView:(WKContentView *)contentView didCommitLayerTree:(const WebKit::RemoteLayerTreeTransaction&)layerTreeTransaction
+- (void)_didCommitLayerTree:(const WebKit::RemoteLayerTreeTransaction&)layerTreeTransaction
 {
+    [_scrollView setContentSize:[_contentView frame].size];
     [_scrollView setMinimumZoomScale:layerTreeTransaction.minimumScaleFactor()];
     [_scrollView setMaximumZoomScale:layerTreeTransaction.maximumScaleFactor()];
     [_scrollView setZoomEnabled:layerTreeTransaction.allowsUserScaling()];
-    if (![_scrollView isZooming] && ![_scrollView isZoomBouncing])
+    if (!layerTreeTransaction.scaleWasSetByUIProcess() && ![_scrollView isZooming] && ![_scrollView isZoomBouncing] && ![_scrollView _isAnimatingZoom])
         [_scrollView setZoomScale:layerTreeTransaction.pageScaleFactor()];
+
+    if (_gestureController)
+        _gestureController->setRenderTreeSize(layerTreeTransaction.renderTreeSize());
 
     if (_isWaitingForNewLayerTreeAfterDidCommitLoad) {
         UIEdgeInsets inset = [_scrollView contentInset];
@@ -313,6 +344,124 @@
         _isWaitingForNewLayerTreeAfterDidCommitLoad = NO;
     }
     
+}
+
+- (RetainPtr<CGImageRef>)_takeViewSnapshot
+{
+    // FIXME: We should be able to use acquire an IOSurface directly, instead of going to CGImage here and back in ViewSnapshotStore.
+    UIGraphicsBeginImageContextWithOptions(self.bounds.size, YES, self.window.screen.scale);
+    [self drawViewHierarchyInRect:[self bounds] afterScreenUpdates:NO];
+    UIImage *image = UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+    return image.CGImage;
+}
+
+- (void)_zoomToPoint:(WebCore::FloatPoint)point atScale:(double)scale
+{
+    double maximumZoomDuration = 0.4;
+    double minimumZoomDuration = 0.1;
+    double zoomDurationFactor = 0.3;
+
+    CFTimeInterval duration = std::min(fabs(log([_scrollView zoomScale]) - log(scale)) * zoomDurationFactor + minimumZoomDuration, maximumZoomDuration);
+
+    if (scale != [_scrollView zoomScale])
+        [_contentView willStartUserTriggeredZoom];
+
+    [_scrollView _zoomToCenter:point scale:scale duration:duration];
+}
+
+- (void)_zoomToRect:(WebCore::FloatRect)targetRect atScale:(double)scale origin:(WebCore::FloatPoint)origin
+{
+    WebCore::FloatSize unobscuredContentSize = _page->unobscuredContentRect().size();
+    WebCore::FloatSize targetRectSizeAfterZoom = targetRect.size();
+    targetRectSizeAfterZoom.scale(scale);
+
+    // Center the target rect in the scroll view.
+    // If the target doesn't fit in the scroll view, center on the gesture location instead.
+    WebCore::FloatPoint zoomCenter = targetRect.center();
+
+    if (targetRectSizeAfterZoom.width() > unobscuredContentSize.width())
+        zoomCenter.setX(origin.x());
+    if (targetRectSizeAfterZoom.height() > unobscuredContentSize.height())
+        zoomCenter.setY(origin.y());
+
+    [self _zoomToPoint:zoomCenter atScale:scale];
+}
+
+static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOffset, WebCore::FloatSize contentSize, WebCore::FloatSize unobscuredContentSize)
+{
+    WebCore::FloatSize maximumContentOffset = contentSize - unobscuredContentSize;
+    contentOffset = contentOffset.shrunkTo(WebCore::FloatPoint(maximumContentOffset.width(), maximumContentOffset.height()));
+    contentOffset = contentOffset.expandedTo(WebCore::FloatPoint());
+    return contentOffset;
+}
+
+- (BOOL)_scrollToRect:(WebCore::FloatRect)targetRect origin:(WebCore::FloatPoint)origin minimumScrollDistance:(float)minimumScrollDistance
+{
+    WebCore::FloatRect unobscuredContentRect = _page->unobscuredContentRect();
+    WebCore::FloatPoint unobscuredContentOffset = unobscuredContentRect.location();
+    WebCore::FloatSize contentSize([_contentView bounds].size);
+
+    // Center the target rect in the scroll view.
+    // If the target doesn't fit in the scroll view, center on the gesture location instead.
+    WebCore::FloatPoint newUnobscuredContentOffset;
+    if (targetRect.width() <= unobscuredContentRect.width())
+        newUnobscuredContentOffset.setX(targetRect.x() - (unobscuredContentRect.width() - targetRect.width()) / 2);
+    else
+        newUnobscuredContentOffset.setX(origin.x() - unobscuredContentRect.width() / 2);
+    if (targetRect.height() <= unobscuredContentRect.height())
+        newUnobscuredContentOffset.setY(targetRect.y() - (unobscuredContentRect.height() - targetRect.height()) / 2);
+    else
+        newUnobscuredContentOffset.setY(origin.y() - unobscuredContentRect.height() / 2);
+    newUnobscuredContentOffset = constrainContentOffset(newUnobscuredContentOffset, contentSize, unobscuredContentRect.size());
+
+    if (unobscuredContentOffset == newUnobscuredContentOffset) {
+        if (targetRect.width() > unobscuredContentRect.width())
+            newUnobscuredContentOffset.setX(origin.x() - unobscuredContentRect.width() / 2);
+        if (targetRect.height() > unobscuredContentRect.height())
+            newUnobscuredContentOffset.setY(origin.y() - unobscuredContentRect.height() / 2);
+        newUnobscuredContentOffset = constrainContentOffset(newUnobscuredContentOffset, contentSize, unobscuredContentRect.size());
+    }
+
+    WebCore::FloatSize scrollViewOffsetDelta = newUnobscuredContentOffset - unobscuredContentOffset;
+    scrollViewOffsetDelta.scale([_scrollView zoomScale]);
+
+    float scrollDistance = scrollViewOffsetDelta.diagonalLength();
+    if (scrollDistance < minimumScrollDistance)
+        return false;
+
+    [_scrollView setContentOffset:([_scrollView contentOffset] + scrollViewOffsetDelta) animated:YES];
+    return true;
+}
+
+- (void)_zoomOutWithOrigin:(WebCore::FloatPoint)origin
+{
+    [self _zoomToPoint:origin atScale:[_scrollView minimumZoomScale]];
+}
+
+- (BOOL)_zoomToRect:(WebCore::FloatRect)targetRect withOrigin:(WebCore::FloatPoint)origin fitEntireRect:(BOOL)fitEntireRect minimumScale:(double)minimumScale maximumScale:(double)maximumScale minimumScrollDistance:(float)minimumScrollDistance
+{
+    const float maximumScaleFactorDeltaForPanScroll = 0.02;
+
+    double currentScale = [_scrollView zoomScale];
+
+    WebCore::FloatSize unobscuredContentSize = _page->unobscuredContentRect().size();
+    double horizontalScale = unobscuredContentSize.width() * currentScale / targetRect.width();
+    double verticalScale = unobscuredContentSize.height() * currentScale / targetRect.height();
+
+    horizontalScale = std::min(std::max(horizontalScale, minimumScale), maximumScale);
+    verticalScale = std::min(std::max(verticalScale, minimumScale), maximumScale);
+
+    double targetScale = fitEntireRect ? std::min(horizontalScale, verticalScale) : horizontalScale;
+    if (fabs(targetScale - currentScale) < maximumScaleFactorDeltaForPanScroll) {
+        if ([self _scrollToRect:targetRect origin:origin minimumScrollDistance:minimumScrollDistance])
+            return true;
+    } else if (targetScale != currentScale) {
+        [self _zoomToRect:targetRect atScale:targetScale origin:origin];
+        return true;
+    }
+    
+    return false;
 }
 
 #pragma mark - UIScrollViewDelegate
@@ -332,41 +481,48 @@
 
 - (void)scrollViewWillBeginDragging:(UIScrollView *)scrollView
 {
+    if (scrollView.panGestureRecognizer.state == UIGestureRecognizerStateBegan)
+        [_contentView willStartUserTriggeredScroll];
     [_contentView willStartZoomOrScroll];
 }
 
-- (void)_didFinishScroll
+- (void)_didFinishScrolling
 {
-    CGPoint position = [_scrollView convertPoint:[_scrollView contentOffset] toView:_contentView.get()];
-    [_contentView didFinishScrollTo:position];
+    [self _updateVisibleContentRects];
+    [_contentView didFinishScrolling];
 }
 
 - (void)scrollViewDidEndDragging:(UIScrollView *)scrollView willDecelerate:(BOOL)decelerate
 {
     // If we're decelerating, scroll offset will be updated when scrollViewDidFinishDecelerating: is called.
     if (!decelerate)
-        [self _didFinishScroll];
+        [self _didFinishScrolling];
 }
 
 - (void)scrollViewDidEndDecelerating:(UIScrollView *)scrollView
 {
-    [self _didFinishScroll];
+    [self _didFinishScrolling];
 }
 
 - (void)scrollViewDidScrollToTop:(UIScrollView *)scrollView
 {
-    [self _didFinishScroll];
+    [self _didFinishScrolling];
 }
 
 - (void)scrollViewDidScroll:(UIScrollView *)scrollView
 {
-    CGPoint position = [_scrollView convertPoint:[_scrollView contentOffset] toView:_contentView.get()];
-    [_contentView didScrollTo:position];
+    [self _updateVisibleContentRects];
+}
+
+- (void)scrollViewDidZoom:(UIScrollView *)scrollView
+{
+    [self _updateVisibleContentRects];
 }
 
 - (void)scrollViewDidEndZooming:(UIScrollView *)scrollView withView:(UIView *)view atScale:(CGFloat)scale
 {
     ASSERT(scrollView == _scrollView);
+    [self _updateVisibleContentRects];
     [_contentView didZoomToScale:scale];
 }
 
@@ -378,22 +534,30 @@
         [_contentView setMinimumLayoutSize:bounds.size];
     [_scrollView setFrame:bounds];
     [_contentView setMinimumSize:bounds.size];
+    [self _updateVisibleContentRects];
 }
 
-- (void)_setDocumentScale:(CGFloat)newScale
+- (void)_updateVisibleContentRects
 {
-    CGPoint contentOffsetInDocumentCoordinates = [_scrollView convertPoint:[_scrollView contentOffset] toView:_contentView.get()];
+    CGRect fullViewRect = self.bounds;
+    CGRect visibleRectInContentCoordinates = [self convertRect:fullViewRect toView:_contentView.get()];
 
-    [_scrollView setZoomScale:newScale];
-    [_contentView didZoomToScale:newScale];
+    UIEdgeInsets obscuredInsets = _obscuredInsets;
+    obscuredInsets.bottom = std::max(_obscuredInsets.bottom, _keyboardVerticalOverlap);
+    CGRect unobscuredRect = UIEdgeInsetsInsetRect(fullViewRect, obscuredInsets);
+    CGRect unobscuredRectInContentCoordinates = [self convertRect:unobscuredRect toView:_contentView.get()];
 
-    CGPoint contentOffset = [_scrollView convertPoint:contentOffsetInDocumentCoordinates fromView:_contentView.get()];
-    [_scrollView setContentOffset:contentOffset];
+    CGFloat scaleFactor = [_scrollView zoomScale];
+
+    BOOL isStableState = !(_isChangingObscuredInsetsInteractively || [_scrollView isDragging] || [_scrollView isDecelerating] || [_scrollView isZooming] || [_scrollView isZoomBouncing] || [_scrollView _isAnimatingZoom]);
+    [_contentView didUpdateVisibleRect:visibleRectInContentCoordinates unobscuredRect:unobscuredRectInContentCoordinates scale:scaleFactor inStableState:isStableState];
 }
 
 - (void)_keyboardChangedWithInfo:(NSDictionary *)keyboardInfo adjustScrollView:(BOOL)adjustScrollView
 {
-    // FIXME: We will also need to adjust the unobscured rect by taking into account the keyboard rect and the obscured insets.
+    _keyboardVerticalOverlap = [[UIPeripheralHost sharedInstance] getVerticalOverlapForView:self usingKeyboardInfo:keyboardInfo];
+    [self _updateVisibleContentRects];
+
     if (adjustScrollView)
         [_scrollView _adjustForAutomaticKeyboardInfo:keyboardInfo animated:YES lastAdjustment:&_lastAdjustmentForScroller];
 }
@@ -426,6 +590,28 @@
     [self _keyboardChangedWithInfo:notification.userInfo adjustScrollView:YES];
 }
 
+- (void)setAllowsBackForwardNavigationGestures:(BOOL)allowsBackForwardNavigationGestures
+{
+    if (_allowsBackForwardNavigationGestures == allowsBackForwardNavigationGestures)
+        return;
+
+    _allowsBackForwardNavigationGestures = allowsBackForwardNavigationGestures;
+
+    if (allowsBackForwardNavigationGestures) {
+        if (!_gestureController) {
+            _gestureController = std::make_unique<WebKit::ViewGestureController>(*_page);
+            _gestureController->installSwipeHandler(self, [self scrollView]);
+        }
+    } else
+        _gestureController = nullptr;
+
+    _page->setShouldRecordNavigationSnapshots(allowsBackForwardNavigationGestures);
+}
+
+- (BOOL)allowsBackForwardNavigationGestures
+{
+    return _allowsBackForwardNavigationGestures;
+}
 
 #endif
 
@@ -436,6 +622,41 @@
 - (void)resizeSubviewsWithOldSize:(NSSize)oldSize
 {
     [_wkView setFrame:self.bounds];
+}
+
+- (void)setAllowsBackForwardNavigationGestures:(BOOL)allowsBackForwardNavigationGestures
+{
+    [_wkView setAllowsBackForwardNavigationGestures:allowsBackForwardNavigationGestures];
+}
+
+- (BOOL)allowsBackForwardNavigationGestures
+{
+    return [_wkView allowsBackForwardNavigationGestures];
+}
+
+- (void)setAllowsMagnification:(BOOL)allowsMagnification
+{
+    [_wkView setAllowsMagnification:allowsMagnification];
+}
+
+- (BOOL)allowsMagnification
+{
+    return [_wkView allowsMagnification];
+}
+
+- (void)setMagnification:(CGFloat)magnification
+{
+    [_wkView setMagnification:magnification];
+}
+
+- (CGFloat)magnification
+{
+    return [_wkView magnification];
+}
+
+- (void)setMagnification:(CGFloat)magnification centeredAtPoint:(CGPoint)point
+{
+    [_wkView setMagnification:magnification centeredAtPoint:NSPointFromCGPoint(point)];
 }
 
 #endif
@@ -594,15 +815,26 @@ static inline WebCore::LayoutMilestones layoutMilestones(_WKRenderingProgressEve
     ASSERT(obscuredInsets.bottom >= 0);
     ASSERT(obscuredInsets.right >= 0);
     _obscuredInsets = obscuredInsets;
+    [self _updateVisibleContentRects];
 }
 
-- (UIColor *)pageExtendedBackgroundColor
+- (UIColor *)_pageExtendedBackgroundColor
 {
     WebCore::Color color = _page->pageExtendedBackgroundColor();
     if (!color.isValid())
         return nil;
 
     return [UIColor colorWithRed:(color.red() / 255.0) green:(color.green() / 255.0) blue:(color.blue() / 255.0) alpha:(color.alpha() / 255.0)];
+}
+
+- (void)_setBackgroundExtendsBeyondPage:(BOOL)backgroundExtends
+{
+    _page->setBackgroundExtendsBeyondPage(backgroundExtends);
+}
+
+- (BOOL)_backgroundExtendsBeyondPage
+{
+    return _page->backgroundExtendsBeyondPage();
 }
 
 - (void)_beginInteractiveObscuredInsetsChange
@@ -615,6 +847,20 @@ static inline WebCore::LayoutMilestones layoutMilestones(_WKRenderingProgressEve
 {
     ASSERT(_isChangingObscuredInsetsInteractively);
     _isChangingObscuredInsetsInteractively = NO;
+    [self _updateVisibleContentRects];
+}
+
+#else
+
+#pragma mark - OS X-specific methods
+
+- (NSColor *)_pageExtendedBackgroundColor
+{
+    WebCore::Color color = _page->pageExtendedBackgroundColor();
+    if (!color.isValid())
+        return nil;
+
+    return nsColor(color);
 }
 
 #endif

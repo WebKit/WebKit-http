@@ -74,6 +74,8 @@ const DeletedValueTag = -7
 const LowestTag = DeletedValueTag
 end
 
+const CallOpCodeSize = 9
+
 if X86_64 or ARM64 or C_LOOP
 const maxFrameExtentForSlowPathCall = 0
 elsif ARM or ARMv7_TRADITIONAL or ARMv7 or SH4
@@ -437,22 +439,16 @@ macro slowPathForCall(slowPath)
         end)
 end
 
-macro arrayProfile(structureAndIndexingType, profile, scratch)
-    const structure = structureAndIndexingType
-    const indexingType = structureAndIndexingType
-    storep structure, ArrayProfile::m_lastSeenStructure[profile]
-    loadb Structure::m_indexingType[structure], indexingType
+macro arrayProfile(cellAndIndexingType, profile, scratch)
+    const cell = cellAndIndexingType
+    const indexingType = cellAndIndexingType 
+    loadi JSCell::m_structureID[cell], scratch
+    storei scratch, ArrayProfile::m_lastSeenStructureID[profile]
+    loadb JSCell::m_indexingType[cell], indexingType
 end
 
 macro checkMarkByte(cell, scratch1, scratch2, continuation)
-    move cell, scratch1
-    move cell, scratch2
-
-    andp MarkedBlockMask, scratch1
-    andp ~MarkedBlockMask, scratch2
-
-    rshiftp AtomNumberShift + BitMapWordShift, scratch2
-    loadb MarkedBlock::m_marks[scratch1, scratch2, 1], scratch1
+    loadb JSCell::m_gcData[cell], scratch1
     continuation(scratch1)
 end
 
@@ -618,14 +614,20 @@ macro allocateJSObject(allocator, structure, result, scratch1, slowCase)
         storep scratch1, offsetOfFirstFreeCell[allocator]
     
         # Initialize the object.
-        storep structure, JSCell::m_structure[result]
         storep 0, JSObject::m_butterfly[result]
+        storeStructureWithTypeInfo(result, structure, scratch1)
     end
 end
 
 macro doReturn()
     restoreCallerPCAndCFR()
     ret
+end
+
+# Dummy entry point the C Loop uses to initialize.
+if C_LOOP
+_llint_c_loop_init:
+    crash()
 end
 
 # stub to call into JavaScript or Native functions
@@ -684,11 +686,6 @@ _sanitizeStackForVMImpl:
     storep address, VM::m_lastStackTop[vm]
     ret
 end
-
-
-# Indicate the beginning of LLInt.
-_llint_begin:
-    crash()
 
 
 _llint_program_prologue:
@@ -1140,8 +1137,4 @@ end
 
 _llint_op_init_global_const_nop:
     dispatch(5)
-
-# Indicate the end of LLInt.
-_llint_end:
-    crash()
 

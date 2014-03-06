@@ -1907,8 +1907,6 @@ sub buildAutotoolsProject($@)
     if (!checkForArgumentAndRemoveFromARGV("--disable-gtk-doc")) {
         if ($project eq 'WebKit' && !isCrossCompilation() && !($noWebKit1 && $noWebKit2)) {
             my @docGenerationOptions = ("$sourceDir/Tools/gtk/generate-gtkdoc", "--skip-html");
-            push(@docGenerationOptions, productDir());
-
             unshift(@docGenerationOptions, jhbuildWrapperPrefixIfNeeded());
 
             if (system(@docGenerationOptions)) {
@@ -2002,7 +2000,7 @@ sub generateBuildSystemFromCMakeProject
     chdir($buildPath) or die;
 
     # For GTK+ we try to be smart about when to rerun cmake, so that we can have faster incremental builds.
-    if (isGtk() && -e cmakeCachePath()) {
+    if (isGtk() && -e cmakeCachePath() && -e File::Spec->catfile(baseProductDir(), configuration(), "Makefile")) {
         return 0;
     }
 
@@ -2149,7 +2147,8 @@ sub setPathForRunningWebKitApp
         $env->{PATH} = join(':', productDir(), dirname(installedSafariPath()), appleApplicationSupportPath(), $env->{PATH} || "");
     } elsif (isWinCairo()) {
         my $winCairoBin = sourceDir() . "/WebKitLibraries/win/" . (isWin64() ? "bin64/" : "bin32/");
-        $env->{PATH} = join(':', productDir(), $winCairoBin , $env->{PATH} || "");
+        my $gstreamerBin = isWin64() ? $ENV{"GSTREAMER_1_0_ROOT_X86_64"} . "bin" : $ENV{"GSTREAMER_1_0_ROOT_X86"} . "bin";
+        $env->{PATH} = join(':', productDir(), $winCairoBin, $gstreamerBin, $env->{PATH} || "");
     }
 }
 

@@ -26,8 +26,6 @@
 #ifndef DFGNodeType_h
 #define DFGNodeType_h
 
-#include <wtf/Platform.h>
-
 #if ENABLE(DFG_JIT)
 
 #include "DFGNodeFlags.h"
@@ -177,6 +175,7 @@ namespace JSC { namespace DFG {
     macro(GetByOffset, NodeResultJS) \
     macro(MultiGetByOffset, NodeResultJS) \
     macro(PutByOffset, NodeMustGenerate) \
+    macro(MultiPutByOffset, NodeMustGenerate) \
     macro(GetArrayLength, NodeResultInt32) \
     macro(GetTypedArrayByteOffset, NodeResultInt32) \
     macro(GetScope, NodeResultJS) \

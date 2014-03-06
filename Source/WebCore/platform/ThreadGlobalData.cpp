@@ -29,7 +29,6 @@
 
 #include "CachedResourceRequestInitiators.h"
 #include "EventNames.h"
-#include "InspectorCounters.h"
 #include "TextCodecICU.h"
 #include "ThreadTimers.h"
 #include <wtf/MainThread.h>
@@ -67,9 +66,6 @@ ThreadGlobalData::ThreadGlobalData()
 #if PLATFORM(MAC)
     , m_cachedConverterTEC(adoptPtr(new TECConverterWrapper))
 #endif
-#if ENABLE(INSPECTOR)
-    , m_inspectorCounters(adoptPtr(new ThreadLocalInspectorCounters()))
-#endif
 {
     // This constructor will have been called on the main thread before being called on
     // any other thread, and is only called once per thread - this makes this a convenient
@@ -91,10 +87,6 @@ void ThreadGlobalData::destroy()
 
     m_cachedConverterICU.clear();
 
-#if ENABLE(INSPECTOR)
-    m_inspectorCounters.clear();
-#endif
-
 #if ENABLE(WEB_REPLAY)
     m_inputTypes = nullptr;
 #endif
@@ -103,7 +95,7 @@ void ThreadGlobalData::destroy()
     m_threadTimers.clear();
 }
 
-#if ENABLE(WORKERS) && USE(WEB_THREAD)
+#if USE(WEB_THREAD)
 void ThreadGlobalData::setWebCoreThreadData()
 {
     ASSERT(isWebThread());

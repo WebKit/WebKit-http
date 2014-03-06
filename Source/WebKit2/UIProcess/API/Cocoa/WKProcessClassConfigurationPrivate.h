@@ -24,16 +24,4 @@
  */
 
 #import <WebKit2/WKProcessClassConfiguration.h>
-
-#if WK_API_ENABLED
-
-@interface WKProcessClassConfiguration (WKPrivate)
-
-/*! @abstract The location of a bundle that will be loaded into Web Content processes of the
- class.
- */
-@property (nonatomic, copy, setter=_setInjectedBundleURL:) NSURL *_injectedBundleURL;
-
-@end
-
-#endif
+#import <WebKit2/WKProcessPoolConfigurationPrivate.h>

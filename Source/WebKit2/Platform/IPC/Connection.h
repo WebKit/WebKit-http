@@ -113,6 +113,8 @@ public:
         xpc_connection_t xpcConnection;
     };
     static bool identifierIsNull(Identifier identifier) { return identifier.port == MACH_PORT_NULL; }
+    xpc_connection_t xpcConnection() { return m_xpcConnection; }
+
 #elif USE(UNIX_DOMAIN_SOCKETS)
     typedef int Identifier;
     static bool identifierIsNull(Identifier identifier) { return !identifier; }
@@ -131,7 +133,7 @@ public:
 
     Client* client() const { return m_client; }
 
-#if OS(DARWIN)
+#if PLATFORM(MAC)
     void setShouldCloseConnectionOnMachExceptions();
 #endif
 
@@ -172,6 +174,8 @@ public:
 
     bool inSendSync() const { return m_inSendSyncCount; }
 
+    Identifier identifier() const;
+    
 private:
     Connection(Identifier, bool isServer, Client*, WTF::RunLoop* clientRunLoop);
     void platformInitialize(Identifier);
@@ -281,7 +285,6 @@ private:
     // Called on the connection queue.
     void receiveSourceEventHandler();
     void initializeDeadNameSource();
-    void exceptionSourceEventHandler();
 
     mach_port_t m_sendPort;
     dispatch_source_t m_deadNameSource;
@@ -289,10 +292,14 @@ private:
     mach_port_t m_receivePort;
     dispatch_source_t m_receivePortDataAvailableSource;
 
+#if !PLATFORM(IOS)
+    void exceptionSourceEventHandler();
+
     // If setShouldCloseConnectionOnMachExceptions has been called, this has
     // the exception port that exceptions from the other end will be sent on.
     mach_port_t m_exceptionPort;
     dispatch_source_t m_exceptionPortDataAvailableSource;
+#endif
 
     xpc_connection_t m_xpcConnection;
 

@@ -63,11 +63,6 @@ namespace JSC {
 
     class JSString : public JSCell {
     public:
-        class WeakOwner final : public WeakHandleOwner {
-        public:
-            virtual void finalize(Handle<Unknown>, void* context) override;
-        };
-
         friend class JIT;
         friend class VM;
         friend class SpecializedThunkJIT;
@@ -163,7 +158,7 @@ namespace JSC {
 
         static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue proto)
         {
-            return Structure::create(vm, globalObject, proto, TypeInfo(StringType, OverridesGetOwnPropertySlot | InterceptsGetOwnPropertySlotByIndexEvenWhenLengthIsNotZero), info());
+            return Structure::create(vm, globalObject, proto, TypeInfo(StringType, StructureFlags), info());
         }
 
         static size_t offsetOfLength() { return OBJECT_OFFSETOF(JSString, m_length); }
@@ -181,6 +176,8 @@ namespace JSC {
         };
 
     protected:
+        static const unsigned StructureFlags = OverridesGetOwnPropertySlot | InterceptsGetOwnPropertySlotByIndexEvenWhenLengthIsNotZero | StructureIsImmortal;
+
         friend class JSValue;
             
         bool isRope() const { return m_value.isNull(); }
@@ -410,28 +407,6 @@ namespace JSC {
         return JSString::create(*vm, s.impl());
     }
 
-    inline JSString* jsStringWithWeakOwner(VM* vm, const String& s)
-    {
-        WeakHandleOwner* jsStringWeakOwner = vm->jsStringWeakOwner.get();
-        StringImpl* impl = s.impl();
-
-        // If this vm is not allowed to weakly own strings just call jsString.
-        if (!jsStringWeakOwner || !impl)
-            return jsString(vm, s);
-
-        // Check for an existing weakly owned JSString.
-        if (WeakImpl* weakImpl = impl->weakJSString()) {
-            if (weakImpl->state() == WeakImpl::Live)
-                return asString(weakImpl->jsValue());
-            WeakSet::deallocate(weakImpl);
-            impl->setWeakJSString(nullptr);
-        }
-
-        JSString* string = jsString(vm, s);
-        impl->setWeakJSString(WeakSet::allocate(string, jsStringWeakOwner, impl));
-        return string;
-    }
-
     inline JSString* jsSubstring(ExecState* exec, JSString* s, unsigned offset, unsigned length)
     {
         ASSERT(offset <= static_cast<unsigned>(s->length()));
@@ -526,7 +501,7 @@ namespace JSC {
         return false;
     }
 
-    inline bool isJSString(JSValue v) { return v.isCell() && v.asCell()->classInfo() == JSString::info(); }
+    inline bool isJSString(JSValue v) { return v.isCell() && v.asCell()->type() == StringType; }
 
     // --- JSValue inlines ----------------------------
         

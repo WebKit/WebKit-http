@@ -1071,30 +1071,18 @@ void ContainerNode::setAttributeEventListener(const AtomicString& eventType, con
     setAttributeEventListener(eventType, JSLazyEventListener::createForNode(*this, attributeName, attributeValue));
 }
 
-Element* ContainerNode::querySelector(const AtomicString& selectors, ExceptionCode& ec)
+Element* ContainerNode::querySelector(const String& selectors, ExceptionCode& ec)
 {
-    if (selectors.isEmpty()) {
-        ec = SYNTAX_ERR;
-        return nullptr;
-    }
-
-    SelectorQuery* selectorQuery = document().selectorQueryCache().add(selectors, document(), ec);
-    if (!selectorQuery)
-        return nullptr;
-    return selectorQuery->queryFirst(*this);
+    if (SelectorQuery* selectorQuery = document().selectorQueryForString(selectors, ec))
+        return selectorQuery->queryFirst(*this);
+    return nullptr;
 }
 
-RefPtr<NodeList> ContainerNode::querySelectorAll(const AtomicString& selectors, ExceptionCode& ec)
+RefPtr<NodeList> ContainerNode::querySelectorAll(const String& selectors, ExceptionCode& ec)
 {
-    if (selectors.isEmpty()) {
-        ec = SYNTAX_ERR;
-        return nullptr;
-    }
-
-    SelectorQuery* selectorQuery = document().selectorQueryCache().add(selectors, document(), ec);
-    if (!selectorQuery)
-        return nullptr;
-    return selectorQuery->queryAll(*this);
+    if (SelectorQuery* selectorQuery = document().selectorQueryForString(selectors, ec))
+        return selectorQuery->queryAll(*this);
+    return nullptr;
 }
 
 PassRefPtr<NodeList> ContainerNode::getElementsByTagName(const AtomicString& localName)
@@ -1103,8 +1091,8 @@ PassRefPtr<NodeList> ContainerNode::getElementsByTagName(const AtomicString& loc
         return 0;
 
     if (document().isHTMLDocument())
-        return ensureRareData().ensureNodeLists().addCacheWithAtomicName<HTMLTagNodeList>(*this, LiveNodeList::HTMLTagNodeListType, localName);
-    return ensureRareData().ensureNodeLists().addCacheWithAtomicName<TagNodeList>(*this, LiveNodeList::TagNodeListType, localName);
+        return ensureRareData().ensureNodeLists().addCacheWithAtomicName<HTMLTagNodeList>(*this, LiveNodeList::Type::HTMLTagNodeListType, localName);
+    return ensureRareData().ensureNodeLists().addCacheWithAtomicName<TagNodeList>(*this, LiveNodeList::Type::TagNodeListType, localName);
 }
 
 PassRefPtr<NodeList> ContainerNode::getElementsByTagNameNS(const AtomicString& namespaceURI, const AtomicString& localName)
@@ -1120,18 +1108,18 @@ PassRefPtr<NodeList> ContainerNode::getElementsByTagNameNS(const AtomicString& n
 
 PassRefPtr<NodeList> ContainerNode::getElementsByName(const String& elementName)
 {
-    return ensureRareData().ensureNodeLists().addCacheWithAtomicName<NameNodeList>(*this, LiveNodeList::NameNodeListType, elementName);
+    return ensureRareData().ensureNodeLists().addCacheWithAtomicName<NameNodeList>(*this, LiveNodeList::Type::NameNodeListType, elementName);
 }
 
 PassRefPtr<NodeList> ContainerNode::getElementsByClassName(const String& classNames)
 {
-    return ensureRareData().ensureNodeLists().addCacheWithName<ClassNodeList>(*this, LiveNodeList::ClassNodeListType, classNames);
+    return ensureRareData().ensureNodeLists().addCacheWithName<ClassNodeList>(*this, LiveNodeList::Type::ClassNodeListType, classNames);
 }
 
 PassRefPtr<RadioNodeList> ContainerNode::radioNodeList(const AtomicString& name)
 {
     ASSERT(hasTagName(HTMLNames::formTag) || hasTagName(HTMLNames::fieldsetTag));
-    return ensureRareData().ensureNodeLists().addCacheWithAtomicName<RadioNodeList>(*this, LiveNodeList::RadioNodeListType, name);
+    return ensureRareData().ensureNodeLists().addCacheWithAtomicName<RadioNodeList>(*this, LiveNodeList::Type::RadioNodeListType, name);
 }
 
 } // namespace WebCore

@@ -29,8 +29,9 @@
 #if ENABLE(VIDEO)
 
 #include "MediaPlayer.h"
-#include "TimeRanges.h"
+#include "PlatformTimeRanges.h"
 #include <wtf/Forward.h>
+#include <wtf/OwnPtr.h>
 
 namespace WebCore {
 
@@ -108,11 +109,11 @@ public:
     virtual MediaPlayer::NetworkState networkState() const = 0;
     virtual MediaPlayer::ReadyState readyState() const = 0;
 
-    virtual PassRefPtr<TimeRanges> seekable() const { return maxTimeSeekableDouble() ? TimeRanges::create(minTimeSeekable(), maxTimeSeekableDouble()) : TimeRanges::create(); }
+    virtual std::unique_ptr<PlatformTimeRanges> seekable() const { return maxTimeSeekableDouble() ? PlatformTimeRanges::create(minTimeSeekable(), maxTimeSeekableDouble()) : PlatformTimeRanges::create(); }
     virtual float maxTimeSeekable() const { return 0; }
     virtual double maxTimeSeekableDouble() const { return maxTimeSeekable(); }
     virtual double minTimeSeekable() const { return 0; }
-    virtual PassRefPtr<TimeRanges> buffered() const = 0;
+    virtual std::unique_ptr<PlatformTimeRanges> buffered() const = 0;
 
     virtual bool didLoadingProgress() const = 0;
 
@@ -144,6 +145,10 @@ public:
 
 #if ENABLE(IOS_AIRPLAY)
     virtual bool isCurrentPlaybackTargetWireless() const { return false; }
+
+    virtual String wirelessPlaybackTargetName() const { return emptyString(); }
+    virtual MediaPlayer::WirelessPlaybackTargetType wirelessPlaybackTargetType() const { return MediaPlayer::TargetTypeNone; }
+
     virtual void showPlaybackTargetPicker() { }
 
     virtual bool hasWirelessPlaybackTargets() const { return false; }
@@ -208,9 +213,7 @@ public:
 #endif
 
 #if ENABLE(ENCRYPTED_MEDIA_V2)
-    virtual PassRefPtr<Uint8Array> generateKeyRequest(const String&, const String&, Uint8Array*, String&, MediaPlayer::MediaKeyException&, unsigned long&) { return nullptr; }
-    virtual void releaseKeys(const String&) { }
-    virtual bool update(const String&, Uint8Array*, RefPtr<Uint8Array>&, MediaPlayer::MediaKeyException&, unsigned long&) { return false; }
+    virtual std::unique_ptr<CDMSession> createSession(const String&) { return nullptr; }
 #endif
 
 #if ENABLE(VIDEO_TRACK)

@@ -26,8 +26,6 @@
 #ifndef DFGSafeToExecute_h
 #define DFGSafeToExecute_h
 
-#include <wtf/Platform.h>
-
 #if ENABLE(DFG_JIT)
 
 #include "DFGGraph.h"
@@ -61,6 +59,7 @@ public:
         case StringOrStringObjectUse:
         case NotCellUse:
         case OtherUse:
+        case MiscUse:
         case MachineIntUse:
             return;
             
@@ -254,6 +253,7 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case ConstantStoragePointer:
     case Check:
     case MultiGetByOffset:
+    case MultiPutByOffset:
         return true;
         
     case GetByVal:

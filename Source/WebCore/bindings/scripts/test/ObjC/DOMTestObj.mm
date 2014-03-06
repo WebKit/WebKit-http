@@ -53,7 +53,6 @@
 #import "ObjCEventListener.h"
 #import "SVGDocument.h"
 #import "SVGPoint.h"
-#import "SVGStaticPropertyTearOff.h"
 #import "SerializedScriptValue.h"
 #import "TestEnumType.h"
 #import "TestNode.h"
@@ -268,7 +267,7 @@
 - (void)setReflectedStringAttr:(NSString *)newReflectedStringAttr
 {
     WebCore::JSMainThreadNullState state;
-    IMPL->setAttribute(WebCore::HTMLNames::reflectedstringattrAttr, newReflectedStringAttr);
+    IMPL->setAttributeWithoutSynchronization(WebCore::HTMLNames::reflectedstringattrAttr, newReflectedStringAttr);
 }
 
 - (int)reflectedIntegralAttr
@@ -316,7 +315,7 @@
 - (void)setReflectedURLAttr:(NSString *)newReflectedURLAttr
 {
     WebCore::JSMainThreadNullState state;
-    IMPL->setAttribute(WebCore::HTMLNames::reflectedurlattrAttr, newReflectedURLAttr);
+    IMPL->setAttributeWithoutSynchronization(WebCore::HTMLNames::reflectedurlattrAttr, newReflectedURLAttr);
 }
 
 - (NSString *)reflectedStringAttr
@@ -328,7 +327,7 @@
 - (void)setReflectedStringAttr:(NSString *)newReflectedStringAttr
 {
     WebCore::JSMainThreadNullState state;
-    IMPL->setAttribute(WebCore::HTMLNames::customContentStringAttrAttr, newReflectedStringAttr);
+    IMPL->setAttributeWithoutSynchronization(WebCore::HTMLNames::customContentStringAttrAttr, newReflectedStringAttr);
 }
 
 - (int)reflectedCustomIntegralAttr
@@ -364,7 +363,7 @@
 - (void)setReflectedCustomURLAttr:(NSString *)newReflectedCustomURLAttr
 {
     WebCore::JSMainThreadNullState state;
-    IMPL->setAttribute(WebCore::HTMLNames::customContentURLAttrAttr, newReflectedCustomURLAttr);
+    IMPL->setAttributeWithoutSynchronization(WebCore::HTMLNames::customContentURLAttrAttr, newReflectedCustomURLAttr);
 }
 
 - (int)attrWithGetterException
@@ -669,7 +668,7 @@
 - (DOMSVGPoint *)mutablePoint
 {
     WebCore::JSMainThreadNullState state;
-    return kit(WTF::getPtr(WebCore::SVGStaticPropertyTearOff<WebCore::TestObj, WebCore::SVGPoint>::create(IMPL, IMPL->mutablePoint(), &WebCore::TestObj::updateMutablePoint)));
+    return kit(WTF::getPtr(IMPL->mutablePoint()));
 }
 
 - (void)setMutablePoint:(DOMSVGPoint *)newMutablePoint
@@ -683,7 +682,7 @@
 - (DOMSVGPoint *)immutablePoint
 {
     WebCore::JSMainThreadNullState state;
-    return kit(WTF::getPtr(WebCore::SVGPropertyTearOff<WebCore::SVGPoint>::create(IMPL->immutablePoint())));
+    return kit(WTF::getPtr(IMPL->immutablePoint()));
 }
 
 - (void)setImmutablePoint:(DOMSVGPoint *)newImmutablePoint
@@ -1128,13 +1127,13 @@
 - (DOMSVGPoint *)mutablePointFunction
 {
     WebCore::JSMainThreadNullState state;
-    return kit(WTF::getPtr(WebCore::SVGPropertyTearOff<WebCore::SVGPoint>::create(IMPL->mutablePointFunction())));
+    return kit(WTF::getPtr(IMPL->mutablePointFunction()));
 }
 
 - (DOMSVGPoint *)immutablePointFunction
 {
     WebCore::JSMainThreadNullState state;
-    return kit(WTF::getPtr(WebCore::SVGPropertyTearOff<WebCore::SVGPoint>::create(IMPL->immutablePointFunction())));
+    return kit(WTF::getPtr(IMPL->immutablePointFunction()));
 }
 
 - (void)orange

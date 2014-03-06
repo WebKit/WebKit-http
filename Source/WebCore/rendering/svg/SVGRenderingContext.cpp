@@ -104,6 +104,7 @@ void SVGRenderingContext::prepareToRenderSVGContent(RenderElement& renderer, Pai
     float opacity = isRenderingMask ? 1 : style.opacity();
     const ShadowData* shadow = svgStyle.shadow();
     bool hasBlendMode = style.hasBlendMode();
+    bool hasIsolation = style.hasIsolation();
     bool isolateMaskForBlending = false;
 
 #if ENABLE(CSS_COMPOSITING)
@@ -113,11 +114,11 @@ void SVGRenderingContext::prepareToRenderSVGContent(RenderElement& renderer, Pai
     }
 #endif
 
-    if (opacity < 1 || shadow || hasBlendMode || isolateMaskForBlending) {
+    if (opacity < 1 || shadow || hasBlendMode || isolateMaskForBlending || hasIsolation) {
         FloatRect repaintRect = m_renderer->repaintRectInLocalCoordinates();
         m_paintInfo->context->clip(repaintRect);
 
-        if (opacity < 1 || hasBlendMode || isolateMaskForBlending) {
+        if (opacity < 1 || hasBlendMode || isolateMaskForBlending || hasIsolation) {
 
             if (hasBlendMode)
                 m_paintInfo->context->setCompositeOperation(m_paintInfo->context->compositeOperation(), style.blendMode());
@@ -218,10 +219,7 @@ void SVGRenderingContext::calculateTransformationToOutermostCoordinateSystem(con
 {
     absoluteTransform = currentContentTransformation();
 
-    float deviceScaleFactor = 1;
-    if (Page* page = renderer.document().page())
-        deviceScaleFactor = page->deviceScaleFactor();
-
+    float deviceScaleFactor = renderer.document().deviceScaleFactor();
     // Walk up the render tree, accumulating SVG transforms.
     const RenderObject* ancestor = &renderer;
     while (ancestor) {

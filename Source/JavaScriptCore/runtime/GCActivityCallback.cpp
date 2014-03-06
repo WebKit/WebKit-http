@@ -29,7 +29,6 @@
 #include "config.h"
 #include "GCActivityCallback.h"
 
-#include "APIShims.h"
 #include "Heap.h"
 #include "VM.h"
 #include "JSLock.h"
@@ -86,7 +85,12 @@ void DefaultGCActivityCallback::doWork()
     if (!isEnabled())
         return;
     
-    APIEntryShim shim(m_vm);
+    JSLockHolder locker(m_vm);
+    if (heap->isDeferred()) {
+        scheduleTimer(0);
+        return;
+    }
+
 #if !PLATFORM(IOS)
     double startTime = WTF::monotonicallyIncreasingTime();
     if (heap->isPagedOut(startTime + pagingTimeOut)) {

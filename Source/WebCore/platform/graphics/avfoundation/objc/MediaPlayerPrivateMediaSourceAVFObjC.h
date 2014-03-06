@@ -73,8 +73,11 @@ public:
     void sizeChanged();
 
 #if ENABLE(ENCRYPTED_MEDIA_V2)
+    virtual std::unique_ptr<CDMSession> createSession(const String&);
     void keyNeeded(Uint8Array*);
 #endif
+
+    WeakPtr<MediaPlayerPrivateMediaSourceAVFObjC> createWeakPtr() { return m_weakPtrFactory.createWeakPtr(); }
 
 private:
     // MediaPlayerPrivateInterface
@@ -116,10 +119,10 @@ private:
     virtual bool seeking() const override;
     virtual void setRateDouble(double) override;
 
-    virtual PassRefPtr<TimeRanges> seekable() const override;
+    virtual std::unique_ptr<PlatformTimeRanges> seekable() const override;
     virtual double maxTimeSeekableDouble() const override;
     virtual double minTimeSeekable() const override;
-    virtual PassRefPtr<TimeRanges> buffered() const override;
+    virtual std::unique_ptr<PlatformTimeRanges> buffered() const override;
 
     virtual bool didLoadingProgress() const override;
 
@@ -152,13 +155,12 @@ private:
     void ensureLayer();
     void destroyLayer();
 
-    WeakPtr<MediaPlayerPrivateMediaSourceAVFObjC> createWeakPtr() { return m_weakPtrFactory.createWeakPtr(); }
-
     // MediaPlayer Factory Methods
     static PassOwnPtr<MediaPlayerPrivateInterface> create(MediaPlayer*);
     static bool isAvailable();
     static void getSupportedTypes(HashSet<String>& types);
     static MediaPlayer::SupportsType supportsType(const MediaEngineSupportParameters&);
+    static bool supportsKeySystem(const String& keySystem, const String& mimeType);
 
     friend class MediaSourcePrivateAVFObjC;
 

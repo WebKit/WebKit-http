@@ -106,9 +106,9 @@ static void compileStub(
         if (exit.m_kind == BadCache || exit.m_kind == BadIndexingType) {
             CodeOrigin codeOrigin = exit.m_codeOriginForExitProfile;
             if (ArrayProfile* arrayProfile = jit.baselineCodeBlockFor(codeOrigin)->getArrayProfile(codeOrigin.bytecodeIndex)) {
-                jit.loadPtr(MacroAssembler::Address(GPRInfo::regT0, JSCell::structureOffset()), GPRInfo::regT1);
-                jit.storePtr(GPRInfo::regT1, arrayProfile->addressOfLastSeenStructure());
-                jit.load8(MacroAssembler::Address(GPRInfo::regT1, Structure::indexingTypeOffset()), GPRInfo::regT1);
+                jit.load32(MacroAssembler::Address(GPRInfo::regT0, JSCell::structureIDOffset()), GPRInfo::regT1);
+                jit.store32(GPRInfo::regT1, arrayProfile->addressOfLastSeenStructureID());
+                jit.load8(MacroAssembler::Address(GPRInfo::regT0, JSCell::indexingTypeOffset()), GPRInfo::regT1);
                 jit.move(MacroAssembler::TrustedImm32(1), GPRInfo::regT2);
                 jit.lshift32(GPRInfo::regT1, GPRInfo::regT2);
                 jit.or32(GPRInfo::regT2, MacroAssembler::AbsoluteAddress(arrayProfile->addressOfArrayModes()));
@@ -144,6 +144,12 @@ static void compileStub(
         case ExitValueInJSStackAsInt52:
         case ExitValueInJSStackAsDouble:
             jit.load64(AssemblyHelpers::addressFor(value.virtualRegister()), GPRInfo::regT0);
+            break;
+            
+        case ExitValueArgumentsObjectThatWasNotCreated:
+            // We can't actually recover this yet, but we can make the stack look sane. This is
+            // a prerequisite to running the actual arguments recovery.
+            jit.move(MacroAssembler::TrustedImm64(JSValue::encode(JSValue())), GPRInfo::regT0);
             break;
             
         case ExitValueRecovery:
@@ -243,7 +249,8 @@ static void compileStub(
     jit.add32(
         MacroAssembler::TrustedImm32(-codeBlock->numParameters()), GPRInfo::regT2,
         GPRInfo::regT3);
-    MacroAssembler::Jump arityIntact = jit.branchTest32(MacroAssembler::Zero, GPRInfo::regT3);
+    MacroAssembler::Jump arityIntact = jit.branch32(
+        MacroAssembler::GreaterThanOrEqual, GPRInfo::regT3, MacroAssembler::TrustedImm32(0));
     jit.neg32(GPRInfo::regT3);
     jit.add32(MacroAssembler::TrustedImm32(1 + stackAlignmentRegisters() - 1), GPRInfo::regT3);
     jit.and32(MacroAssembler::TrustedImm32(-stackAlignmentRegisters()), GPRInfo::regT3);
@@ -297,8 +304,10 @@ static void compileStub(
     
     // We need to make sure that we return into the register restoration thunk. This works
     // differently depending on whether or not we had arity issues.
-    MacroAssembler::Jump arityIntactForReturnPC =
-        jit.branchTest32(MacroAssembler::Zero, GPRInfo::regT3);
+    MacroAssembler::Jump arityIntactForReturnPC = jit.branch32(
+        MacroAssembler::GreaterThanOrEqual,
+        CCallHelpers::payloadFor(JSStack::ArgumentCount),
+        MacroAssembler::TrustedImm32(codeBlock->numParameters()));
     
     // The return PC in the call frame header points at exactly the right arity restoration
     // thunk. We don't want to change that. But the arity restoration thunk's frame has a
@@ -337,6 +346,15 @@ static void compileStub(
     
     handleExitCounts(jit, exit);
     reifyInlinedCallFrames(jit, exit);
+    
+    ArgumentsRecoveryGenerator argumentsRecovery;
+    for (unsigned index = exit.m_values.size(); index--;) {
+        if (!exit.m_values[index].isArgumentsObjectThatWasNotCreated())
+            continue;
+        int operand = exit.m_values.operandForIndex(index);
+        argumentsRecovery.generateFor(operand, exit.m_codeOrigin, jit);
+    }
+    
     adjustAndJumpToTarget(jit, exit);
     
     LinkBuffer patchBuffer(*vm, &jit, codeBlock);
@@ -353,6 +371,9 @@ static void compileStub(
 extern "C" void* compileFTLOSRExit(ExecState* exec, unsigned exitID)
 {
     SamplingRegion samplingRegion("FTL OSR Exit Compilation");
+
+    if (shouldShowDisassembly() || Options::verboseOSR() || Options::verboseFTLOSRExit())
+        dataLog("Compiling OSR exit with exitID = ", exitID, "\n");
     
     CodeBlock* codeBlock = exec->codeBlock();
     

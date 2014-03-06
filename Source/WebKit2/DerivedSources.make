@@ -93,10 +93,12 @@ MESSAGE_RECEIVERS = \
     RemoteScrollingCoordinator \
     SecItemShim \
     SecItemShimProxy \
+    SmartMagnificationController \
     StorageAreaMap \
     StorageManager \
     ViewGestureController \
     ViewGestureGeometryCollector \
+    ViewUpdateDispatcher \
     WebApplicationCacheManager \
     WebApplicationCacheManagerProxy \
     WebConnection \

@@ -38,11 +38,12 @@
 #include "URL.h"
 #include "Logging.h"
 #include "PlatformLayer.h"
+#include "PlatformTimeRanges.h"
 #include "Settings.h"
 #include "SoftLinking.h"
-#include "TimeRanges.h"
 #include <CoreMedia/CoreMedia.h>
 #include <wtf/MainThread.h>
+#include <wtf/text/CString.h>
 
 namespace WebCore {
 
@@ -385,12 +386,12 @@ void MediaPlayerPrivateAVFoundation::setDelayCharacteristicsChangedNotification(
         characteristicsChanged();
 }
 
-PassRefPtr<TimeRanges> MediaPlayerPrivateAVFoundation::buffered() const
+std::unique_ptr<PlatformTimeRanges> MediaPlayerPrivateAVFoundation::buffered() const
 {
     if (!m_cachedLoadedTimeRanges)
         m_cachedLoadedTimeRanges = platformBufferedTimeRanges();
 
-    return m_cachedLoadedTimeRanges->copy();
+    return PlatformTimeRanges::create(*m_cachedLoadedTimeRanges);
 }
 
 double MediaPlayerPrivateAVFoundation::maxTimeSeekableDouble() const
@@ -620,7 +621,7 @@ void MediaPlayerPrivateAVFoundation::rateChanged()
 
 void MediaPlayerPrivateAVFoundation::loadedTimeRangesChanged()
 {
-    m_cachedLoadedTimeRanges = 0;
+    m_cachedLoadedTimeRanges = nullptr;
     m_cachedMaxTimeLoaded = 0;
     invalidateCachedDuration();
 }
@@ -768,8 +769,9 @@ static const char* notificationName(MediaPlayerPrivateAVFoundation::Notification
 {
 #define DEFINE_TYPE_STRING_CASE(type) case MediaPlayerPrivateAVFoundation::Notification::type: return #type;
     switch (notification.type()) {
-        FOR_EACH_MEDIAPLAYERPRIVATEAVFOUNDATION_NOTIFICATION_TYPE(DEFINE_TYPE_STRING_CASE)
-        default: return "";
+    FOR_EACH_MEDIAPLAYERPRIVATEAVFOUNDATION_NOTIFICATION_TYPE(DEFINE_TYPE_STRING_CASE)
+    case MediaPlayerPrivateAVFoundation::Notification::FunctionType: return "FunctionType";
+    default: ASSERT_NOT_REACHED(); return "";
     }
 #undef DEFINE_TYPE_STRING_CASE
 }
@@ -890,6 +892,11 @@ void MediaPlayerPrivateAVFoundation::dispatchNotification()
     case Notification::FunctionType:
         notification.function()();
         break;
+    case Notification::TargetIsWirelessChanged:
+#if ENABLE(IOS_AIRPLAY)
+        playbackTargetIsWirelessChanged();
+#endif
+        break;
 
     case Notification::None:
         ASSERT_NOT_REACHED();
@@ -969,6 +976,13 @@ void MediaPlayerPrivateAVFoundation::processNewAndRemovedTextTracks(const Vector
     LOG(Media, "MediaPlayerPrivateAVFoundation::processNewAndRemovedTextTracks(%p) - found %lu text tracks", this, m_textTracks.size());
 }
 
+#if ENABLE(IOS_AIRPLAY)
+void MediaPlayerPrivateAVFoundation::playbackTargetIsWirelessChanged()
+{
+    if (m_player)
+        m_player->currentPlaybackTargetIsWirelessChanged();
+}
+#endif
 } // namespace WebCore
 
 #endif

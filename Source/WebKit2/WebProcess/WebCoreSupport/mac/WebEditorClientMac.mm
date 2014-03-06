@@ -30,6 +30,8 @@
 #import "config.h"
 #import "WebEditorClient.h"
 
+#if PLATFORM(MAC)
+
 #import "WebCoreArgumentCoders.h"
 #import "WebPage.h"
 #import "WebFrame.h"
@@ -44,8 +46,8 @@
 #import <WebCore/KeyboardEvent.h>
 #import <WebCore/NotImplemented.h>
 #import <WebCore/Page.h>
-#import <WebKit/WebResource.h>
-#import <WebKit/WebNSURLExtras.h>
+#import <WebCore/WebCoreNSURLExtras.h>
+#import <WebKit/WebResource.h> // FIXME: WebKit2 should not include WebKit headers.
 
 using namespace WebCore;
 
@@ -73,19 +75,19 @@ void WebEditorClient::handleInputMethodKeydown(KeyboardEvent* event)
     
 NSString *WebEditorClient::userVisibleString(NSURL *url)
 {
-    return [url _web_userVisibleString];
+    return WebCore::userVisibleString(url);
 }
 
 NSURL *WebEditorClient::canonicalizeURL(NSURL *url)
 {
-    return [url _webkit_canonicalize];
+    return URLByCanonicalizingURL(url);
 }
 
 NSURL *WebEditorClient::canonicalizeURLString(NSString *URLString)
 {
     NSURL *URL = nil;
-    if ([URLString _webkit_looksLikeAbsoluteURL])
-        URL = [[NSURL _web_URLWithUserTypedString:URLString] _webkit_canonicalize];
+    if (looksLikeAbsoluteURL(URLString))
+        URL = URLByCanonicalizingURL(URLWithUserTypedString(URLString, nil));
     return URL;
 }
     
@@ -235,3 +237,5 @@ void WebEditorClient::toggleAutomaticSpellingCorrection()
 #endif // USE(AUTOMATIC_TEXT_REPLACEMENT)
 
 } // namespace WebKit
+
+#endif // PLATFORM(MAC)

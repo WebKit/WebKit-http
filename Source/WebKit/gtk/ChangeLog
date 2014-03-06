@@ -1,3 +1,152 @@
+2014-03-04  Zalan Bujtas  <zalan@apple.com>
+
+        Enable device pixel repaint rect tracking.
+        https://bugs.webkit.org/show_bug.cgi?id=129712
+
+        Reviewed by Simon Fraser.
+
+        Tracked repaint rects are device pixel snapped now to support hiDPI test cases.
+
+        * WebCoreSupport/DumpRenderTreeSupportGtk.cpp:
+        (DumpRenderTreeSupportGtk::trackedRepaintRects):
+
+2014-03-03  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK] Fix some simple gtkdoc warnings for WebKit1
+        https://bugs.webkit.org/show_bug.cgi?id=129659
+
+        Reviewed by Carlos Garcia Campos.
+
+        * docs/webkitgtk-sections.txt: Make public some enum documentation that is used
+        in public APIs.
+        * webkit/webkitwebview.cpp: Fix typos and add documentation for enums previously
+        marked as private.
+        (webkit_web_view_class_init):
+        * webkit/webkitwebview.h: Ditto.
+
+2014-02-26  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Remove console.profiles from window.console API
+        https://bugs.webkit.org/show_bug.cgi?id=116883
+
+        Reviewed by Timothy Hatcher.
+
+        * webkit/webkitwebinspector.cpp:
+        (webkit_web_inspector_class_init):
+        Removed stale part of comment.
+
+2014-02-26  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK] generate-gtkdoc can fail with WebKit1 or WebKit2 only builds
+        https://bugs.webkit.org/show_bug.cgi?id=129319
+
+        Reviewed by Carlos Garcia Campos.
+
+        * GNUmakefile.am: Do not generate the documentation configuration file if the port
+        is disabled.
+
+2014-02-25  Anders Carlsson  <andersca@apple.com>
+
+        Get rid of VisitedLinkStrategy
+        https://bugs.webkit.org/show_bug.cgi?id=129324
+
+        Reviewed by Dan Bernstein.
+
+        * WebCoreSupport/PlatformStrategiesGtk.cpp:
+        (PlatformStrategiesGtk::getPluginInfo):
+        * WebCoreSupport/PlatformStrategiesGtk.h:
+
+2014-02-24  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Mark view source mode methods as deprecated
+        https://bugs.webkit.org/show_bug.cgi?id=128920
+
+        Reviewed by Martin Robinson.
+
+        * webkit/webkitwebview.cpp: Mark set/get_view_source_mode as
+        deprecated in the documentation.
+        * webkit/webkitwebview.h: Add deprecation guards.
+
+2014-02-24  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK] generate-gtkdoc should not generate documentation for source files for unbuilt source files
+        https://bugs.webkit.org/show_bug.cgi?id=128417
+
+        Reviewed by Carlos Garcia Campos.
+
+        * GNUmakefile.am: Generate a config file for generate-gtkdoc.
+
+2014-02-24  Enrique Ocaña González  <eocanha@igalia.com>
+
+        REGRESSION(r164438): [GTK] Tests /WebKitGtk/testcontextmenu, /WebKitGtk/testmimehandling, /WebKitGtk/testloading assert in Debug build
+        https://bugs.webkit.org/show_bug.cgi?id=129256
+
+        Reviewed by Carlos Garcia Campos.
+
+        * WebCoreSupport/FrameLoaderClientGtk.cpp: Manage error values not present in WebCore
+        (WebKit::toWebKitNetworkError):
+
+2014-02-24  Renata Hodovan  <rhodovan.u-szeged@partner.samsung.com>
+
+        Get rid of the unused 'immediate' parameters from repaint related functions
+        https://bugs.webkit.org/show_bug.cgi?id=129111
+
+        Reviewed by Simon Fraser.
+
+        Removing the 'immediate' parameters from repaint related functions - accoring
+        to the FIXME in RenderView::repaintViewRectangle() - since they have no effect.
+
+        * WebCoreSupport/ChromeClientGtk.cpp:
+        (WebKit::ChromeClient::invalidateRootView):
+        (WebKit::ChromeClient::invalidateContentsAndRootView):
+        (WebKit::ChromeClient::invalidateContentsForSlowScroll):
+        * WebCoreSupport/ChromeClientGtk.h:
+
+2014-02-23  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Change a url parameter type with URL in NavigatorContentUtils
+        https://bugs.webkit.org/show_bug.cgi?id=129202
+
+        Reviewed by Sam Weinig.
+
+        It would be good if we use *URL* for url parameters instead of using String.
+
+        Merge from blink. https://src.chromium.org/viewvc/blink?view=rev&revision=165458.
+
+        * WebCoreSupport/NavigatorContentUtilsClientGtk.cpp:
+        (WebKit::NavigatorContentUtilsClient::registerProtocolHandler):
+        * WebCoreSupport/NavigatorContentUtilsClientGtk.h:
+
+2014-02-20  Enrique Ocaña González  <eocanha@igalia.com>
+
+        WebKitGTK+ should stop using COMPILE_ASSERT_MATCHING_ENUM macros
+        https://bugs.webkit.org/show_bug.cgi?id=127800
+
+        Reviewed by Martin Robinson.
+
+        * GNUmakefile.am: Removed AssertMatchingEnums.cpp
+        * WebCoreSupport/AssertMatchingEnums.cpp: Removed.
+        * WebCoreSupport/DumpRenderTreeSupportGtk.cpp: Defined and applied type conversions.
+        (toWebCoreFindOptions):
+        (DumpRenderTreeSupportGtk::findString):
+        * WebCoreSupport/FrameLoaderClientGtk.cpp: Defined and applied type conversions.
+        (WebKit::toWebKitNetworkError):
+        (WebKit::FrameLoaderClient::dispatchDidFailLoading):
+        (WebKit::FrameLoaderClient::dispatchDidFailLoad):
+        (WebKit::FrameLoaderClient::shouldFallBack):
+        * webkit/webkitwebnavigationaction.cpp: Defined and applied type conversions.
+        (WebKit::kit):
+        (WebKit::core):
+        * webkit/webkitwebsettings.cpp: Defined and applied type conversions.
+        (WebKit::core):
+        * webkit/webkitwebview.cpp: Defined and applied type conversions.
+        (copyGtkTargetListConvertingWebCoreEnumValuesToWebKitEnumValues):
+        (webkit_web_view_dispose):
+        (webkit_web_view_init):
+        (webkit_web_view_get_copy_target_list):
+        (webkit_web_view_get_paste_target_list):
+        * webkit/webkitwebviewprivate.h: Added targetList private field, which mirrors PasteboardHelper::defaultPasteboardHelper()->targetList() but with the flags converted to WebKitWebViewTargetInfo
+
 2014-02-17  Sergio Correia  <sergio.correia@openbossa.org>
 
         Replace uses of PassOwnPtr/OwnPtr with std::unique_ptr in WebCore/inspector

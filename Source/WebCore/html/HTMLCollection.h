@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 1999 Lars Knoll (knoll@kde.org)
  *           (C) 1999 Antti Koivisto (koivisto@kde.org)
- * Copyright (C) 2003, 2004, 2005, 2006, 2007, 2008, 2011, 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2003, 2004, 2005, 2006, 2007, 2008, 2011, 2012, 2013, 2014 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -38,6 +38,52 @@ namespace WebCore {
 
 class Element;
 
+class CollectionNamedElementCache {
+public:
+#ifndef ASSERT_DISABLED
+    CollectionNamedElementCache : m_didPopulateCalled(false) { }
+#endif
+
+    const Vector<Element*>* findElementsWithId(const AtomicString& id) const { return find(m_idToElementsMap, id); }
+    const Vector<Element*>* findElementsWithName(const AtomicString& name) const { return find(m_nameToElementsMap, name); }
+
+    void appendIdCache(const AtomicString& id, Element* element) { return append(m_idToElementsMap, id, element); }
+    void appendNameCache(const AtomicString& name, Element* element)  { return append(m_nameToElementsMap, name, element); }
+
+    void didPopulate()
+    {
+#ifndef ASSERT_DISABLED
+        m_didPopulateCalled = true;
+#endif
+        if (size_t cost = memoryCost())
+            reportExtraMemoryCostForCollectionIndexCache(cost);
+    }
+    size_t memoryCost() const { return (m_idToElementsMap.size() + m_nameToElementsMap.size()) * sizeof(Element*); }
+
+private:
+    typedef HashMap<AtomicStringImpl*, Vector<Element*>> StringToElementsMap;
+
+    const Vector<Element*>* find(const StringToElementsMap& map, const AtomicString& key) const
+    {
+#ifndef ASSERT_DISABLED
+        ASSERT(m_didPopulateCalled);
+#endif
+        auto it = map.find(key.impl());
+        return it != map.end() ? &it->value : nullptr;
+    }
+
+    static void append(StringToElementsMap& map, const AtomicString& key, Element* element)
+    {
+        map.add(key.impl(), Vector<Element*>()).iterator->value.append(element);
+    }
+
+    StringToElementsMap m_idToElementsMap;
+    StringToElementsMap m_nameToElementsMap;
+#ifndef ASSERT_DISABLED
+    bool m_didPopulateCalled;
+#endif
+};
+
 class HTMLCollection : public ScriptWrappable, public RefCounted<HTMLCollection> {
 public:
     static PassRefPtr<HTMLCollection> create(ContainerNode& base, CollectionType);
@@ -52,6 +98,7 @@ public:
     // Non-DOM API
     bool hasNamedItem(const AtomicString& name) const;
     void namedItems(const AtomicString& name, Vector<Ref<Element>>&) const;
+    size_t memoryCost() const { return m_indexCache.memoryCost() + (m_namedElementCache ? m_namedElementCache->memoryCost() : 0); }
 
     bool isRootedAtDocument() const { return m_rootType == NodeListIsRootedAtDocument; }
     NodeListInvalidationType invalidationType() const { return static_cast<NodeListInvalidationType>(m_invalidationType); }
@@ -60,12 +107,11 @@ public:
     void invalidateCache(const QualifiedName* attrName) const
     {
         if (!attrName || shouldInvalidateTypeOnAttributeChange(invalidationType(), *attrName))
-            invalidateCache();
-        else if (*attrName == HTMLNames::idAttr || *attrName == HTMLNames::nameAttr)
-            invalidateIdNameCacheMaps();
+            invalidateCache(document());
+        else if (hasNamedElementCache() && (*attrName == HTMLNames::idAttr || *attrName == HTMLNames::nameAttr))
+            invalidateNamedElementCache(document());
     }
-    virtual void invalidateCache() const;
-    void invalidateIdNameCacheMaps() const;
+    virtual void invalidateCache(Document&) const;
 
     // For CollectionIndexCache
     Element* collectionFirst() const;
@@ -73,55 +119,55 @@ public:
     Element* collectionTraverseForward(Element&, unsigned count, unsigned& traversedCount) const;
     Element* collectionTraverseBackward(Element&, unsigned count) const;
     bool collectionCanTraverseBackward() const { return !m_usesCustomForwardOnlyTraversal; }
+    void willValidateIndexCache() const { document().registerCollection(const_cast<HTMLCollection&>(*this)); }
+
+    bool hasNamedElementCache() const { return !!m_namedElementCache; }
 
 protected:
     enum ElementTraversalType { NormalTraversal, CustomForwardOnlyTraversal };
     HTMLCollection(ContainerNode& base, CollectionType, ElementTraversalType = NormalTraversal);
 
-    virtual void updateNameCache() const;
-
-    typedef HashMap<AtomicStringImpl*, OwnPtr<Vector<Element*>>> NodeCacheMap;
-    Vector<Element*>* idCache(const AtomicString& name) const { return m_idCache.get(name.impl()); }
-    Vector<Element*>* nameCache(const AtomicString& name) const { return m_nameCache.get(name.impl()); }
-    void appendIdCache(const AtomicString& name, Element* element) const { append(m_idCache, name, element); }
-    void appendNameCache(const AtomicString& name, Element* element) const { append(m_nameCache, name, element); }
+    virtual void updateNamedElementCache() const;
 
     Document& document() const { return m_ownerNode->document(); }
     ContainerNode& rootNode() const;
     bool usesCustomForwardOnlyTraversal() const { return m_usesCustomForwardOnlyTraversal; }
 
-    bool isItemRefElementsCacheValid() const { return m_isItemRefElementsCacheValid; }
-    void setItemRefElementsCacheValid() const { m_isItemRefElementsCacheValid = true; }
-
     NodeListRootType rootType() const { return static_cast<NodeListRootType>(m_rootType); }
 
-    bool hasNameCache() const { return m_isNameCacheValid; }
-    void setHasNameCache() const { m_isNameCacheValid = true; }
+    CollectionNamedElementCache& createNameItemCache() const
+    {
+        ASSERT(!m_namedElementCache);
+        m_namedElementCache = std::make_unique<CollectionNamedElementCache>();
+        document().collectionCachedIdNameMap(*this);
+        return *m_namedElementCache;
+    }
+
+    const CollectionNamedElementCache& namedItemCaches() const
+    {
+        ASSERT(!!m_namedElementCache);
+        return *m_namedElementCache;
+    }
 
 private:
-    static void append(NodeCacheMap&, const AtomicString&, Element*);
-
     Element* iterateForPreviousElement(Element* current) const;
     Element* firstElement(ContainerNode& root) const;
     Element* traverseForward(Element& current, unsigned count, unsigned& traversedCount, ContainerNode& root) const;
 
     virtual Element* customElementAfter(Element*) const { ASSERT_NOT_REACHED(); return nullptr; }
+    
+    void invalidateNamedElementCache(Document&) const;
 
     Ref<ContainerNode> m_ownerNode;
 
     mutable CollectionIndexCache<HTMLCollection, Element> m_indexCache;
+    mutable std::unique_ptr<CollectionNamedElementCache> m_namedElementCache;
 
-    const unsigned m_rootType : 2;
-    const unsigned m_invalidationType : 4;
-    const unsigned m_shouldOnlyIncludeDirectChildren : 1;
-
-    mutable unsigned m_isNameCacheValid : 1;
     const unsigned m_collectionType : 5;
+    const unsigned m_invalidationType : 4;
+    const unsigned m_rootType : 1;
+    const unsigned m_shouldOnlyIncludeDirectChildren : 1;
     const unsigned m_usesCustomForwardOnlyTraversal : 1;
-    mutable unsigned m_isItemRefElementsCacheValid : 1;
-
-    mutable NodeCacheMap m_idCache;
-    mutable NodeCacheMap m_nameCache;
 };
 
 } // namespace

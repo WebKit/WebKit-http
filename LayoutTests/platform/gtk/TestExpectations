@@ -561,7 +561,6 @@ webkit.org/b/120200 [ Debug ] http/tests/security/XFrameOptions/x-frame-options-
 webkit.org/b/55126 media/video-aspect-ratio.html [ Failure Pass ]
 
 webkit.org/b/122481 svg/animations/svglengthlist-animation-3.html [ Failure Pass ]
-webkit.org/b/56561 svg/custom/clip-path-referencing-use2.svg [ Failure Pass ]
 webkit.org/b/62204 svg/custom/circular-marker-reference-4.svg [ Failure Pass ]
 
 webkit.org/b/89097 plugins/plugin-initiate-popup-window.html [ Failure Pass ]
@@ -1050,12 +1049,6 @@ webkit.org/b/36627 editing/selection/extend-after-mouse-selection.html [ Failure
 # Need to add functionality to DumpRenderTree to handle scrollbar policy changes
 Bug(GTK) fast/overflow/scrollbar-restored-and-then-locked.html [ Failure ]
 
-# Skipping the tests for the old inspector UI
-webkit.org/b/83174 inspector [ Skip ]
-webkit.org/b/83174 inspector-protocol/heap-profiler [ Skip ]
-webkit.org/b/83174 http/tests/inspector [ Skip ]
-webkit.org/b/83174 http/tests/inspector-enabled [ Skip ]
-
 webkit.org/b/37613 webkit.org/b/20011 printing [ Skip ]
 webkit.org/b/37613 editing/execCommand/print.html [ Skip ]
 
@@ -1142,10 +1135,13 @@ Bug(GTK) editing/spelling/grammar-edit-word.html [ Skip ]
 Bug(GTK) editing/spelling/grammar-markers.html [ Skip ]
 Bug(GTK) editing/spelling/grammar-markers-hidpi.html [ Skip ]
 Bug(GTK) editing/spelling/grammar-paste.html [ Skip ]
+Bug(GTK) editing/spelling/inline-spelling-markers.html [ Skip ]
+Bug(GTK) editing/spelling/inline-spelling-markers-hidpi.html [ Skip ]
 Bug(GTK) editing/spelling/markers.html [ Skip ]
 
 # Missing asynchronous spellchecking implementation.
 Bug(GTK) editing/spelling/design-mode-spellcheck-off.html [ Skip ]
+Bug(GTK) editing/spelling/spelling-insert-html.html [ Skip ]
 Bug(GTK) editing/spelling/spelling-hasspellingmarker.html [ Skip ]
 
 # testRunner.overridePreference("WebKitDefaultFontSize"...) does not take into account screen DPI
@@ -1249,8 +1245,6 @@ webkit.org/b/89845 fast/forms/input-set-composition-scroll.html [ Failure ]
 # This failure appears to be GTK-specific
 webkit.org/b/91319 css2.1/20110323/vertical-align-boxes-001.htm [ ImageOnlyFailure ]
 
-webkit.org/b/92100 accessibility/canvas-accessibilitynodeobject.html [ Failure ]
-
 webkit.org/b/93976 fast/css-generated-content/quotes-lang.html [ ImageOnlyFailure ]
 
 # This has always failed on Gtk/Efl - exposed by bug 89826
@@ -1337,9 +1331,7 @@ webkit.org/b/108169 fast/dom/shadow/touch-event-retargeting.html [ Failure ]
 webkit.org/b/108370 editing/spelling/context-menu-suggestions-multiword-selection.html [ Skip ]
 webkit.org/b/108370 editing/spelling/context-menu-suggestions-subword-selection.html [ Skip ]
 webkit.org/b/108370 editing/spelling/spelling-double-clicked-word.html [ Skip ]
-webkit.org/b/108370 editing/spelling/spelling-exactly-selected-multiple-words.html [ Skip ]
 webkit.org/b/108370 editing/spelling/spelling-exactly-selected-word.html [ Skip ]
-webkit.org/b/108370 editing/spelling/spelling-should-select-multiple-words.html [ Skip ]
 webkit.org/b/108370 editing/spelling/spelling-with-punctuation-selection.html [ Skip ]
 webkit.org/b/108370 editing/spelling/spelling-with-whitespace-selection.html [ Skip ]
 
@@ -1549,6 +1541,13 @@ webkit.org/b/128061 tables/mozilla_expected_failures/bugs/bug1055-2.html [ Failu
 webkit.org/b/123097 media/track/track-cue-mutable-text.html [ Failure ]
 webkit.org/b/123097 media/video-controls-captions-trackmenu-sorted.html [ Failure ]
 webkit.org/b/123097 media/video-controls-toggling.html [ Timeout ]
+
+# Regressions in svg/clip-path
+webkit.org/b/128499 svg/clip-path/clip-path-content-use-005.svg [ ImageOnlyFailure ]
+webkit.org/b/128499 svg/clip-path/clip-path-precision-001.svg [ ImageOnlyFailure ]
+webkit.org/b/128499 svg/clip-path/clip-path-content-use-006.svg [ ImageOnlyFailure ]
+webkit.org/b/129180 svg/clip-path/clip-path-on-svg-001.svg [ ImageOnlyFailure ]
+webkit.org/b/129180 svg/clip-path/clip-path-on-svg-002.svg [ ImageOnlyFailure ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Tests failing

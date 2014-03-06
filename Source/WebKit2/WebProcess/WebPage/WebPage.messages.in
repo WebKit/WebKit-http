@@ -25,7 +25,7 @@ messages -> WebPage LegacyReceiver {
     SetViewState(unsigned viewState, bool wantsDidUpdateViewState)
     SetLayerHostingMode(unsigned layerHostingMode)
 
-    SetSessionID(uint64_t sessionID)
+    SetSessionID(WebCore::SessionID sessionID)
 
     SetDrawsBackground(bool drawsBackground)
     SetDrawsTransparentBackground(bool drawsTransparentBackground)
@@ -48,10 +48,12 @@ messages -> WebPage LegacyReceiver {
     BlurAssistedNode()
     SelectWithGesture(WebCore::IntPoint point, uint32_t granularity, uint32_t gestureType, uint32_t gestureState, uint64_t callbackID)
     UpdateSelectionWithTouches(WebCore::IntPoint point, uint32_t touches, bool baseIsStart, uint64_t callbackID)
+    UpdateBlockSelectionWithTouch(WebCore::IntPoint point, uint32_t touch, uint32_t handlePosition)
     SelectWithTwoTouches(WebCore::IntPoint from, WebCore::IntPoint to, uint32_t gestureType, uint32_t gestureState, uint64_t callbackID)
     ExtendSelection(uint32_t granularity)
     RequestAutocorrectionData(String textForAutocorrection, uint64_t callbackID)
     ApplyAutocorrection(String correction, String originalText, uint64_t callbackID)
+    SyncApplyAutocorrection(String correction, String originalText) -> (bool autocorrectionApplied)
     RequestAutocorrectionContext(uint64_t callbackID)
     GetAutocorrectionContext() -> (String beforeContext, String markedText, String selectedText, String afterContext, uint64_t location, uint64_t length) 
     InsertText(String text, uint64_t replacementRangeStart, uint64_t replacementRangeEnd)
@@ -62,6 +64,13 @@ messages -> WebPage LegacyReceiver {
     StartInteractionWithElementAtPosition(WebCore::IntPoint point)
     StopInteraction()
     PerformActionOnElement(uint32_t action)
+    FocusNextAssistedNode(bool isForward)
+    SetAssistedNodeValue(String value)
+    SetAssistedNodeValueAsNumber(double value)
+    SetAssistedNodeSelectedIndex(uint32_t index, bool allowMultipleSelection)
+    ApplicationWillResignActive()
+    ApplicationWillEnterForeground()
+    ApplicationDidBecomeActive()
 #endif
 
 #if ENABLE(TOUCH_EVENTS)
@@ -314,8 +323,6 @@ messages -> WebPage LegacyReceiver {
 
 #if PLATFORM(IOS)
     WillStartUserTriggeredZooming();
-    DidFinishScrolling(WebCore::FloatPoint contentOffset);
-    DidFinishZooming(float scale);
 #endif
 
 #if PLATFORM(GTK) && USE(TEXTURE_MAPPER_GL)

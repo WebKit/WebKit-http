@@ -34,20 +34,41 @@
 
 namespace WebCore {
     
+namespace MathMLOperatorDictionary {
+
+enum Form { Infix, Prefix, Postfix };
+enum Flag {
+    Accent = 0x1, // FIXME: This must be used to implement accentunder/accent on munderover (https://bugs.webkit.org/show_bug.cgi?id=124826).
+    Fence = 0x2, // This has no visual effect but allows to expose semantic information via the accessibility tree.
+    LargeOp = 0x4, // FIXME: This must be used to implement displaystyle (https://bugs.webkit.org/show_bug.cgi?id=118737)
+    MovableLimits = 0x8, // FIXME: This must be used to implement displaystyle  (https://bugs.webkit.org/show_bug.cgi?id=118737).
+    Separator = 0x10, // This has no visual effect but allows to expose semantic information via the accessibility tree.
+    Stretchy = 0x20,
+    Symmetric = 0x40
+};
+struct Entry {
+    UChar character;
+    Form form;
+    // FIXME: spacing around <mo> operators is not implemented yet (https://bugs.webkit.org/show_bug.cgi?id=115787).
+    unsigned short lspace;
+    unsigned short rspace;
+    unsigned short flags;
+};
+
+}
+
 class RenderMathMLOperator final : public RenderMathMLBlock {
 public:
     RenderMathMLOperator(MathMLElement&, PassRef<RenderStyle>);
-    RenderMathMLOperator(MathMLElement&, PassRef<RenderStyle>, UChar operatorChar);
+    RenderMathMLOperator(MathMLElement&, PassRef<RenderStyle>, UChar operatorChar, MathMLOperatorDictionary::Form, MathMLOperatorDictionary::Flag);
 
     MathMLElement& element() { return toMathMLElement(nodeForNonAnonymous()); }
 
-    void stretchToHeight(int pixelHeight);
-    int stretchHeight() { return m_stretchHeight; }
-    float expandedStretchHeight() const;
+    void stretchTo(LayoutUnit heightAboveBaseline, LayoutUnit depthBelowBaseline);
+    LayoutUnit stretchSize() const { return m_stretchHeightAboveBaseline + m_stretchDepthBelowBaseline; }
     
-    enum OperatorType { Default, Separator, Fence };
-    void setOperatorType(OperatorType type) { m_operatorType = type; }
-    OperatorType operatorType() const { return m_operatorType; }
+    bool hasOperatorFlag(MathMLOperatorDictionary::Flag flag) const { return m_operatorFlags & flag; }
+
     void updateStyle();
 
     void paint(PaintInfo&, const LayoutPoint&);
@@ -89,24 +110,26 @@ private:
     LayoutRect paintCharacter(PaintInfo&, UChar, const LayoutPoint& origin, CharacterPaintTrimming);
     void fillWithExtensionGlyph(PaintInfo&, const LayoutPoint& from, const LayoutPoint& to);
 
-    int m_stretchHeight;
+    LayoutUnit m_stretchHeightAboveBaseline;
+    LayoutUnit m_stretchDepthBelowBaseline;
     bool m_isStretched;
 
     UChar m_operator;
-    OperatorType m_operatorType;
     StretchyCharacter* m_stretchyCharacter;
+    bool m_isFencedOperator;
+    MathMLOperatorDictionary::Form m_operatorForm;
+    unsigned short m_operatorFlags;
+    LayoutUnit m_leadingSpace;
+    LayoutUnit m_trailingSpace;
+    LayoutUnit m_minSize;
+    LayoutUnit m_maxSize;
+
+    void setOperatorFlagFromAttribute(MathMLOperatorDictionary::Flag, const QualifiedName&);
+    void setOperatorPropertiesFromOpDictEntry(const MathMLOperatorDictionary::Entry*);
+    void SetOperatorProperties();
 };
 
 RENDER_OBJECT_TYPE_CASTS(RenderMathMLOperator, isRenderMathMLOperator())
-
-inline UChar convertHyphenMinusToMinusSign(UChar glyph)
-{
-    // When rendered as a mathematical operator, minus glyph should be larger.
-    if (glyph == hyphenMinus)
-        return minusSign;
-    
-    return glyph;
-}
 
 }
 

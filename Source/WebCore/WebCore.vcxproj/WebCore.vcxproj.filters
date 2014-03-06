@@ -193,6 +193,9 @@
     <Filter Include="rendering\svg">
       <UniqueIdentifier>{76d4960a-59c1-42de-bc37-cf4dba01b7a3}</UniqueIdentifier>
     </Filter>
+    <Filter Include="replay">
+      <UniqueIdentifier>{1fac2980-eaa4-4245-8073-90b55475479f}</UniqueIdentifier>
+    </Filter>
     <Filter Include="xml">
       <UniqueIdentifier>{7bf95243-bb51-49a0-8e4f-173242e5fc4e}</UniqueIdentifier>
     </Filter>
@@ -702,6 +705,9 @@
     <ClCompile Include="..\page\DOMWindowProperty.cpp">
       <Filter>page</Filter>
     </ClCompile>
+    <ClCompile Include="..\page\DefaultVisitedLinkStore.cpp">
+      <Filter>page</Filter>
+    </ClCompile>
     <ClCompile Include="..\page\DragController.cpp">
       <Filter>page</Filter>
     </ClCompile>
@@ -715,9 +721,6 @@
       <Filter>page</Filter>
     </ClCompile>
     <ClCompile Include="..\page\EventSource.cpp">
-      <Filter>page</Filter>
-    </ClCompile>
-    <ClCompile Include="..\page\FeatureObserver.cpp">
       <Filter>page</Filter>
     </ClCompile>
     <ClCompile Include="..\page\FocusController.cpp">
@@ -792,7 +795,7 @@
     <ClCompile Include="..\page\UserContentURLPattern.cpp">
       <Filter>page</Filter>
     </ClCompile>
-    <ClCompile Include="..\page\VisitedLinkProvider.cpp">
+    <ClCompile Include="..\page\VisitedLinkStore.cpp">
       <Filter>page</Filter>
     </ClCompile>
     <ClCompile Include="..\fileapi\WebKitBlobBuilder.cpp">
@@ -1381,6 +1384,9 @@
       <Filter>platform\graphics</Filter>
     </ClCompile>
     <ClCompile Include="..\platform\graphics\Region.cpp">
+      <Filter>platform\graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="..\platform\graphics\PlatformTimeRanges.cpp">
       <Filter>platform\graphics</Filter>
     </ClCompile>
     <ClCompile Include="..\platform\graphics\RoundedRect.cpp">
@@ -2906,6 +2912,9 @@
     </ClCompile>
     <ClCompile Include="..\rendering\TextPainter.cpp">
       <Filter>rendering</Filter>
+    </ClCompile>
+    <ClCompile Include="..\replay\UserInputBridge.cpp">
+      <Filter>replay</Filter>
     </ClCompile>
     <ClCompile Include="..\xml\DOMParser.cpp">
       <Filter>xml</Filter>
@@ -4725,25 +4734,16 @@
     <ClCompile Include="..\inspector\DOMPatchSupport.cpp">
       <Filter>inspector</Filter>
     </ClCompile>
-    <ClCompile Include="..\inspector\InjectedScriptCanvasModule.cpp">
-      <Filter>inspector</Filter>
-    </ClCompile>
     <ClCompile Include="..\inspector\InspectorAllInOne.cpp">
       <Filter>inspector</Filter>
     </ClCompile>
     <ClCompile Include="..\inspector\InspectorApplicationCacheAgent.cpp">
       <Filter>inspector</Filter>
     </ClCompile>
-    <ClCompile Include="..\inspector\InspectorCanvasAgent.cpp">
-      <Filter>inspector</Filter>
-    </ClCompile>
     <ClCompile Include="..\inspector\InspectorClient.cpp">
       <Filter>inspector</Filter>
     </ClCompile>
     <ClCompile Include="..\inspector\InspectorController.cpp">
-      <Filter>inspector</Filter>
-    </ClCompile>
-    <ClCompile Include="..\inspector\InspectorCounters.cpp">
       <Filter>inspector</Filter>
     </ClCompile>
     <ClCompile Include="..\inspector\InspectorCSSAgent.cpp">
@@ -4789,9 +4789,6 @@
       <Filter>inspector</Filter>
     </ClCompile>
     <ClCompile Include="..\inspector\InspectorLayerTreeAgent.cpp">
-      <Filter>inspector</Filter>
-    </ClCompile>
-    <ClCompile Include="..\inspector\InspectorMemoryAgent.cpp">
       <Filter>inspector</Filter>
     </ClCompile>
     <ClCompile Include="..\inspector\InspectorOverlay.cpp">
@@ -6463,6 +6460,9 @@
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\WebCore\DerivedSources\JSWebGLDepthTexture.cpp">
       <Filter>DerivedSources</Filter>
     </ClCompile>
+    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\WebCore\DerivedSources\JSWebGLDrawBuffers.cpp">
+      <Filter>DerivedSources</Filter>
+    </ClCompile>
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\WebCore\DerivedSources\JSWebGLFramebuffer.cpp">
       <Filter>DerivedSources</Filter>
     </ClCompile>
@@ -6494,9 +6494,6 @@
       <Filter>DerivedSources</Filter>
     </ClCompile>
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\WebCore\DerivedSources\JSANGLEInstancedArrays.cpp">
-      <Filter>DerivedSources</Filter>
-    </ClCompile>
-    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\WebCore\DerivedSources\JSEXTDrawBuffers.cpp">
       <Filter>DerivedSources</Filter>
     </ClCompile>
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\WebCore\DerivedSources\JSEXTTextureFilterAnisotropic.cpp">
@@ -6557,6 +6554,9 @@
       <Filter>html\canvas</Filter>
     </ClCompile>
     <ClCompile Include="..\html\canvas\WebGLDepthTexture.cpp">
+      <Filter>html\canvas</Filter>
+    </ClCompile>
+    <ClCompile Include="..\html\canvas\WebGLDrawBuffers.cpp">
       <Filter>html\canvas</Filter>
     </ClCompile>
     <ClCompile Include="..\html\canvas\WebGLExtension.cpp">
@@ -6620,9 +6620,6 @@
       <Filter>html\canvas</Filter>
     </ClCompile>
     <ClCompile Include="..\html\canvas\OESVertexArrayObject.cpp">
-      <Filter>html\canvas</Filter>
-    </ClCompile>
-    <ClCompile Include="..\html\canvas\EXTDrawBuffers.cpp">
       <Filter>html\canvas</Filter>
     </ClCompile>
     <ClCompile Include="..\html\canvas\EXTTextureFilterAnisotropic.cpp">
@@ -7508,6 +7505,9 @@
     <ClInclude Include="..\page\DOMWindowProperty.h">
       <Filter>page</Filter>
     </ClInclude>
+    <ClCompile Include="..\page\DefaultVisitedLinkStore.h">
+      <Filter>page</Filter>
+    </ClCompile>
     <ClInclude Include="..\page\DragActions.h">
       <Filter>page</Filter>
     </ClInclude>
@@ -7524,9 +7524,6 @@
       <Filter>page</Filter>
     </ClInclude>
     <ClInclude Include="..\page\EventSource.h">
-      <Filter>page</Filter>
-    </ClInclude>
-    <ClInclude Include="..\page\FeatureObserver.h">
       <Filter>page</Filter>
     </ClInclude>
     <ClInclude Include="..\page\FocusController.h">
@@ -7622,7 +7619,7 @@
     <ClInclude Include="..\page\UserStyleSheetTypes.h">
       <Filter>page</Filter>
     </ClInclude>
-    <ClCompile Include="..\page\VisitedLinkProvider.h">
+    <ClCompile Include="..\page\VisitedLinkStore.h">
       <Filter>page</Filter>
     </ClCompile>
     <ClInclude Include="..\fileapi\WebKitBlobBuilder.h">
@@ -8123,6 +8120,9 @@
     <ClInclude Include="..\platform\UserActivity.h">
       <Filter>platform</Filter>
     </ClInclude>
+    <ClInclude Include="..\platform\HysteresisActivity.h">
+      <Filter>platform</Filter>
+    </ClInclude>
     <ClInclude Include="..\platform\UUID.h">
       <Filter>platform</Filter>
     </ClInclude>
@@ -8322,6 +8322,9 @@
       <Filter>platform\graphics</Filter>
     </ClInclude>
     <ClInclude Include="..\platform\graphics\PlatformLayer.h">
+      <Filter>platform\graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="..\platform\graphics\PlatformTimeRanges.h">
       <Filter>platform\graphics</Filter>
     </ClInclude>
     <ClInclude Include="..\platform\graphics\Region.h">
@@ -9785,6 +9788,9 @@
     <ClInclude Include="..\rendering\svg\SVGTextRunRenderingContext.h">
       <Filter>rendering\svg</Filter>
     </ClInclude>
+    <ClInclude Include="..\replay\UserInputBridge.h">
+      <Filter>replay</Filter>
+    </ClInclude>
     <ClInclude Include="..\xml\DOMParser.h">
       <Filter>xml</Filter>
     </ClInclude>
@@ -10557,6 +10563,9 @@
       <Filter>editing</Filter>
     </ClInclude>
     <ClInclude Include="..\editing\TextIterator.h">
+      <Filter>editing</Filter>
+    </ClInclude>
+    <ClInclude Include="..\editing\TextIteratorBehavior.h">
       <Filter>editing</Filter>
     </ClInclude>
     <ClInclude Include="..\editing\TypingCommand.h">
@@ -11975,6 +11984,9 @@
     <ClInclude Include="..\svg\properties\SVGListPropertyTearOff.h">
       <Filter>rendering\svg\properties</Filter>
     </ClInclude>
+    <ClInclude Include="..\svg\properties\SVGMatrixTearOff.h">
+      <Filter>rendering\svg\properties</Filter>
+    </ClInclude>
     <ClInclude Include="..\svg\properties\SVGPathSegListPropertyTearOff.h">
       <Filter>rendering\svg\properties</Filter>
     </ClInclude>
@@ -11994,9 +12006,6 @@
       <Filter>rendering\svg\properties</Filter>
     </ClInclude>
     <ClInclude Include="..\svg\properties\SVGStaticPropertyTearOff.h">
-      <Filter>rendering\svg\properties</Filter>
-    </ClInclude>
-    <ClInclude Include="..\svg\properties\SVGStaticPropertyWithParentTearOff.h">
       <Filter>rendering\svg\properties</Filter>
     </ClInclude>
     <ClInclude Include="..\svg\properties\SVGTransformListPropertyTearOff.h">
@@ -12260,16 +12269,7 @@
     <ClInclude Include="..\inspector\DOMPatchSupport.h">
       <Filter>inspector</Filter>
     </ClInclude>
-    <ClInclude Include="..\inspector\InjectedScriptCanvasModule.h">
-      <Filter>inspector</Filter>
-    </ClInclude>
     <ClInclude Include="..\inspector\InspectorApplicationCacheAgent.h">
-      <Filter>inspector</Filter>
-    </ClInclude>
-    <ClInclude Include="..\inspector\InspectorCanvasAgent.h">
-      <Filter>inspector</Filter>
-    </ClInclude>
-    <ClInclude Include="..\inspector\InspectorCanvasInstrumentation.h">
       <Filter>inspector</Filter>
     </ClInclude>
     <ClInclude Include="..\inspector\InspectorClient.h">
@@ -12279,9 +12279,6 @@
       <Filter>inspector</Filter>
     </ClInclude>
     <ClInclude Include="..\inspector\InspectorController.h">
-      <Filter>inspector</Filter>
-    </ClInclude>
-    <ClInclude Include="..\inspector\InspectorCounters.h">
       <Filter>inspector</Filter>
     </ClInclude>
     <ClInclude Include="..\inspector\InspectorCSSAgent.h">
@@ -12336,9 +12333,6 @@
       <Filter>inspector</Filter>
     </ClInclude>
     <ClInclude Include="..\inspector\InspectorLayerTreeAgent.h">
-      <Filter>inspector</Filter>
-    </ClInclude>
-    <ClInclude Include="..\inspector\InspectorMemoryAgent.h">
       <Filter>inspector</Filter>
     </ClInclude>
     <ClInclude Include="..\inspector\InspectorNodeFinder.h">
@@ -12865,9 +12859,6 @@
     <ClInclude Include="..\loader\cache\CachedRawResourceClient.h">
       <Filter>loader\cache</Filter>
     </ClInclude>
-    <ClInclude Include="..\platform\VisitedLinkStrategy.h">
-      <Filter>platform</Filter>
-    </ClInclude>
     <ClInclude Include="..\platform\graphics\AudioTrackPrivate.h">
       <Filter>html\track</Filter>
     </ClInclude>
@@ -12920,9 +12911,6 @@
       <Filter>DerivedSources</Filter>
     </ClInclude>
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\HTMLNames.h">
-      <Filter>DerivedSources</Filter>
-    </ClInclude>
-    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\InjectedScriptCanvasModuleSource.h">
       <Filter>DerivedSources</Filter>
     </ClInclude>
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\InspectorOverlayPage.h">
@@ -14224,6 +14212,9 @@
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\WebCore\DerivedSources\JSWebGLDepthTexture.h">
       <Filter>DerivedSources</Filter>
     </ClInclude>
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\WebCore\DerivedSources\JSWebGLDrawBuffers.h">
+      <Filter>DerivedSources</Filter>
+    </ClInclude>
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\WebCore\DerivedSources\JSWebGLFramebuffer.h">
       <Filter>DerivedSources</Filter>
     </ClInclude>
@@ -14252,9 +14243,6 @@
       <Filter>DerivedSources</Filter>
     </ClInclude>
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\WebCore\DerivedSources\JSWebGLVertexArrayObjectOES.h">
-      <Filter>DerivedSources</Filter>
-    </ClInclude>
-    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\WebCore\DerivedSources\JSEXTDrawBuffers.h">
       <Filter>DerivedSources</Filter>
     </ClInclude>
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\WebCore\DerivedSources\JSEXTTextureFilterAnisotropic.h">
@@ -14323,6 +14311,9 @@
     <ClInclude Include="..\html\canvas\WebGLDepthTexture.h">
       <Filter>html\canvas</Filter>
     </ClInclude>
+    <ClInclude Include="..\html\canvas\WebGLDrawBuffers.h">
+      <Filter>html\canvas</Filter>
+    </ClInclude>
     <ClInclude Include="..\html\canvas\WebGLExtension.h">
       <Filter>html\canvas</Filter>
     </ClInclude>
@@ -14384,9 +14375,6 @@
       <Filter>html\canvas</Filter>
     </ClInclude>
     <ClInclude Include="..\html\canvas\OESVertexArrayObject.h">
-      <Filter>html\canvas</Filter>
-    </ClInclude>
-    <ClInclude Include="..\html\canvas\EXTDrawBuffers.h">
       <Filter>html\canvas</Filter>
     </ClInclude>
     <ClInclude Include="..\html\canvas\EXTTextureFilterAnisotropic.h">

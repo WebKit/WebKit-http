@@ -26,8 +26,6 @@
 #ifndef TempRegisterSet_h
 #define TempRegisterSet_h
 
-#include <wtf/Platform.h>
-
 #if ENABLE(JIT)
 
 #include "FPRInfo.h"
@@ -41,8 +39,7 @@ class TempRegisterSet {
 public:
     TempRegisterSet()
     {
-        for (unsigned i = numberOfBytesInTempRegisterSet; i--;)
-            m_set[i] = 0;
+        clearAll();
     }
     
     TempRegisterSet(const RegisterSet&);
@@ -164,6 +161,12 @@ public:
     }
     
 private:
+    void clearAll()
+    {
+        for (unsigned i = numberOfBytesInTempRegisterSet; i--;)
+            m_set[i] = 0;
+    }
+
     void setBit(unsigned i)
     {
         ASSERT(i < totalNumberOfRegisters);

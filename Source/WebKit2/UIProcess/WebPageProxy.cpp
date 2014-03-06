@@ -98,6 +98,7 @@
 #include <WebCore/WindowFeatures.h>
 #include <stdio.h>
 #include <wtf/NeverDestroyed.h>
+#include <wtf/text/StringView.h>
 
 #if ENABLE(ASYNC_SCROLLING)
 #include "RemoteScrollingCoordinatorProxy.h"
@@ -259,6 +260,7 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
     , m_process(process)
     , m_pageGroup(*configuration.pageGroup)
     , m_preferences(*configuration.preferences)
+    , m_visitedLinkProvider(*configuration.visitedLinkProvider)
     , m_mainFrame(nullptr)
     , m_userAgent(standardUserAgent())
     , m_geolocationPermissionRequestManager(*this)
@@ -335,6 +337,9 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
     , m_scrollPinningBehavior(DoNotPin)
     , m_navigationID(0)
 {
+    if (m_process->state() == WebProcessProxy::State::Running)
+        m_visitedLinkProvider->addProcess(m_process.get());
+
     updateViewState();
 
 #if HAVE(OUT_OF_PROCESS_LAYER_HOSTING)
@@ -368,7 +373,8 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
     m_process->addMessageReceiver(Messages::WebPageProxy::messageReceiverName(), m_pageID, *this);
 
     // FIXME: If we ever expose the session storage size as a preference, we need to pass it here.
-    m_process->context().storageManager().createSessionStorageNamespace(m_pageID, m_process->isValid() ? m_process->connection() : 0, std::numeric_limits<unsigned>::max());
+    IPC::Connection* connection = m_process->state() == WebProcessProxy::State::Running ? m_process->connection() : nullptr;
+    m_process->context().storageManager().createSessionStorageNamespace(m_pageID, connection, std::numeric_limits<unsigned>::max());
     setSession(*configuration.session);
 }
 
@@ -417,22 +423,6 @@ void WebPageProxy::setPreferences(WebPreferences& preferences)
     m_preferences->addPage(*this);
 
     preferencesDidChange();
-}
-
-PassRefPtr<API::Array> WebPageProxy::relatedPages() const
-{
-    // pages() returns a list of pages in WebProcess, so this page may or may not be among them - a client can use a reference to WebPageProxy after the page has closed.
-    Vector<WebPageProxy*> pages = m_process->pages();
-
-    Vector<RefPtr<API::Object>> result;
-    result.reserveInitialCapacity(pages.size());
-
-    for (const auto& page : pages) {
-        if (page != this)
-            result.uncheckedAppend(page);
-    }
-
-    return API::Array::create(std::move(result));
 }
 
 void WebPageProxy::setLoaderClient(std::unique_ptr<API::LoaderClient> loaderClient)
@@ -496,8 +486,7 @@ void WebPageProxy::initializeContextMenuClient(const WKPageContextMenuClientBase
 void WebPageProxy::reattachToWebProcess()
 {
     ASSERT(!isValid());
-    ASSERT(!m_process->isValid());
-    ASSERT(!m_process->isLaunching());
+    ASSERT(m_process->state() == WebProcessProxy::State::Terminated);
 
     updateViewState();
 
@@ -587,6 +576,9 @@ void WebPageProxy::close()
         return;
 
     m_isClosed = true;
+
+    if (m_process->state() == WebProcessProxy::State::Running)
+        m_visitedLinkProvider->removeProcess(m_process.get());
 
     m_backForwardList->pageClosed();
     m_pageClient.pageClosed();
@@ -1025,6 +1017,9 @@ void WebPageProxy::viewStateDidChange(ViewState::Flags mayHaveChanged, WantsRepl
     }
 #endif
 
+    if (changed & ViewState::IsInWindow)
+        process().updateProcessState();
+
     updateBackingStoreDiscardableState();
 }
 
@@ -1039,7 +1034,7 @@ void WebPageProxy::waitForDidUpdateViewState()
 
     m_waitingForDidUpdateViewState = true;
 
-    if (!m_process->isLaunching()) {
+    if (m_process->state() != WebProcessProxy::State::Launching) {
         auto viewStateUpdateTimeout = std::chrono::milliseconds(250);
         m_process->connection()->waitForAndDispatchImmediately<Messages::WebPageProxy::DidUpdateViewState>(m_pageID, viewStateUpdateTimeout);
     }
@@ -2642,7 +2637,7 @@ void WebPageProxy::closePage(bool stopResponsivenessTimer)
     m_uiClient->close(this);
 }
 
-void WebPageProxy::runJavaScriptAlert(uint64_t frameID, const String& message)
+void WebPageProxy::runJavaScriptAlert(uint64_t frameID, const String& message, RefPtr<Messages::WebPageProxy::RunJavaScriptAlert::DelayedReply> reply)
 {
     WebFrameProxy* frame = m_process->webFrame(frameID);
     MESSAGE_CHECK(frame);
@@ -2650,10 +2645,10 @@ void WebPageProxy::runJavaScriptAlert(uint64_t frameID, const String& message)
     // Since runJavaScriptAlert() can spin a nested run loop we need to turn off the responsiveness timer.
     m_process->responsivenessTimer()->stop();
 
-    m_uiClient->runJavaScriptAlert(this, message, frame);
+    m_uiClient->runJavaScriptAlert(this, message, frame, [reply]{ reply->send(); });
 }
 
-void WebPageProxy::runJavaScriptConfirm(uint64_t frameID, const String& message, bool& result)
+void WebPageProxy::runJavaScriptConfirm(uint64_t frameID, const String& message, RefPtr<Messages::WebPageProxy::RunJavaScriptConfirm::DelayedReply> reply)
 {
     WebFrameProxy* frame = m_process->webFrame(frameID);
     MESSAGE_CHECK(frame);
@@ -2661,10 +2656,10 @@ void WebPageProxy::runJavaScriptConfirm(uint64_t frameID, const String& message,
     // Since runJavaScriptConfirm() can spin a nested run loop we need to turn off the responsiveness timer.
     m_process->responsivenessTimer()->stop();
 
-    result = m_uiClient->runJavaScriptConfirm(this, message, frame);
+    m_uiClient->runJavaScriptConfirm(this, message, frame, [reply](bool result) { reply->send(result); });
 }
 
-void WebPageProxy::runJavaScriptPrompt(uint64_t frameID, const String& message, const String& defaultValue, String& result)
+void WebPageProxy::runJavaScriptPrompt(uint64_t frameID, const String& message, const String& defaultValue, RefPtr<Messages::WebPageProxy::RunJavaScriptPrompt::DelayedReply> reply)
 {
     WebFrameProxy* frame = m_process->webFrame(frameID);
     MESSAGE_CHECK(frame);
@@ -2672,7 +2667,7 @@ void WebPageProxy::runJavaScriptPrompt(uint64_t frameID, const String& message, 
     // Since runJavaScriptPrompt() can spin a nested run loop we need to turn off the responsiveness timer.
     m_process->responsivenessTimer()->stop();
 
-    result = m_uiClient->runJavaScriptPrompt(this, message, defaultValue, frame);
+    m_uiClient->runJavaScriptPrompt(this, message, defaultValue, frame, [reply](const String& result) { reply->send(result); });
 }
 
 void WebPageProxy::shouldInterruptJavaScript(bool& result)
@@ -2703,6 +2698,8 @@ void WebPageProxy::mouseDidMoveOverElement(const WebHitTestResult::Data& hitTest
 void WebPageProxy::connectionWillOpen(IPC::Connection* connection)
 {
     ASSERT(connection == m_process->connection());
+
+    m_visitedLinkProvider->addProcess(m_process.get());
 
     m_process->context().storageManager().setAllowedSessionStorageNamespaceConnection(m_pageID, connection);
 }
@@ -2750,6 +2747,16 @@ void WebPageProxy::unavailablePluginButtonClicked(uint32_t opaquePluginUnavailab
 void WebPageProxy::webGLPolicyForURL(const String& url, uint32_t& loadPolicy)
 {
     loadPolicy = static_cast<uint32_t>(m_loaderClient->webGLLoadPolicy(this, url));
+}
+
+void WebPageProxy::resolveWebGLPolicyForURL(const String& url, uint32_t& loadPolicy)
+{
+    loadPolicy = static_cast<uint32_t>(m_loaderClient->resolveWebGLLoadPolicy(this, url));
+}
+
+void WebPageProxy::setSystemWebGLPolicy(uint32_t loadPolicy)
+{
+    m_loaderClient->setSystemWebGLLoadPolicy(this, static_cast<WebCore::WebGLLoadPolicy>(loadPolicy));
 }
 #endif // ENABLE(WEBGL)
 
@@ -3246,22 +3253,22 @@ void WebPageProxy::hidePopupMenu()
 }
 
 #if ENABLE(CONTEXT_MENUS)
-void WebPageProxy::showContextMenu(const IntPoint& menuLocation, const WebHitTestResult::Data& hitTestResultData, const Vector<WebContextMenuItemData>& proposedItems, IPC::MessageDecoder& decoder)
+void WebPageProxy::showContextMenu(const IntPoint& menuLocation, const ContextMenuContextData& contextMenuContextData, const Vector<WebContextMenuItemData>& proposedItems, IPC::MessageDecoder& decoder)
 {
-    internalShowContextMenu(menuLocation, hitTestResultData, proposedItems, decoder);
+    internalShowContextMenu(menuLocation, contextMenuContextData, proposedItems, decoder);
     
     // No matter the result of internalShowContextMenu, always notify the WebProcess that the menu is hidden so it starts handling mouse events again.
     m_process->send(Messages::WebPage::ContextMenuHidden(), m_pageID);
 }
 
-void WebPageProxy::internalShowContextMenu(const IntPoint& menuLocation, const WebHitTestResult::Data& hitTestResultData, const Vector<WebContextMenuItemData>& proposedItems, IPC::MessageDecoder& decoder)
+void WebPageProxy::internalShowContextMenu(const IntPoint& menuLocation, const ContextMenuContextData& contextMenuContextData, const Vector<WebContextMenuItemData>& proposedItems, IPC::MessageDecoder& decoder)
 {
     RefPtr<API::Object> userData;
     WebContextUserMessageDecoder messageDecoder(userData, process());
     if (!decoder.decode(messageDecoder))
         return;
 
-    m_activeContextMenuHitTestResultData = hitTestResultData;
+    m_activeContextMenuContextData = contextMenuContextData;
 
     if (!m_contextMenuClient.hideContextMenu(this) && m_activeContextMenu) {
         m_activeContextMenu->hideContextMenu();
@@ -3275,13 +3282,21 @@ void WebPageProxy::internalShowContextMenu(const IntPoint& menuLocation, const W
     // Since showContextMenu() can spin a nested run loop we need to turn off the responsiveness timer.
     m_process->responsivenessTimer()->stop();
 
-    // Give the PageContextMenuClient one last swipe at changing the menu.
+    // Unless this is an image control, give the PageContextMenuClient one last swipe at changing the menu.
     Vector<WebContextMenuItemData> items;
-    if (!m_contextMenuClient.getContextMenuFromProposedMenu(this, proposedItems, items, hitTestResultData, userData.get())) {
-        if (!m_contextMenuClient.showContextMenu(this, menuLocation, proposedItems))
-            m_activeContextMenu->showContextMenu(menuLocation, proposedItems);
-    } else if (!m_contextMenuClient.showContextMenu(this, menuLocation, items))
-        m_activeContextMenu->showContextMenu(menuLocation, items);
+    bool useProposedItems = true;
+
+#if ENABLE(IMAGE_CONTROLS)
+    if (!contextMenuContextData.isImageControl() && m_contextMenuClient.getContextMenuFromProposedMenu(this, proposedItems, items, contextMenuContextData.webHitTestResultData(), userData.get())) {
+#else
+    if (m_contextMenuClient.getContextMenuFromProposedMenu(this, proposedItems, items, contextMenuContextData.webHitTestResultData(), userData.get())) {
+#endif
+        useProposedItems = false;
+    }
+    
+    const Vector<WebContextMenuItemData>& itemsToShow = useProposedItems ? proposedItems : items;
+    if (!m_contextMenuClient.showContextMenu(this, menuLocation, itemsToShow))
+        m_activeContextMenu->showContextMenu(menuLocation, itemsToShow);
     
     m_contextMenuClient.contextMenuDismissed(this);
 }
@@ -3330,15 +3345,15 @@ void WebPageProxy::contextMenuItemSelected(const WebContextMenuItemData& item)
     }
 #endif
     if (item.action() == ContextMenuItemTagDownloadImageToDisk) {
-        m_process->context().download(this, URL(URL(), m_activeContextMenuHitTestResultData.absoluteImageURL));
+        m_process->context().download(this, URL(URL(), m_activeContextMenuContextData.webHitTestResultData().absoluteImageURL));
         return;    
     }
     if (item.action() == ContextMenuItemTagDownloadLinkToDisk) {
-        m_process->context().download(this, URL(URL(), m_activeContextMenuHitTestResultData.absoluteLinkURL));
+        m_process->context().download(this, URL(URL(), m_activeContextMenuContextData.webHitTestResultData().absoluteLinkURL));
         return;
     }
     if (item.action() == ContextMenuItemTagDownloadMediaToDisk) {
-        m_process->context().download(this, URL(URL(), m_activeContextMenuHitTestResultData.absoluteMediaURL));
+        m_process->context().download(this, URL(URL(), m_activeContextMenuContextData.webHitTestResultData().absoluteMediaURL));
         return;
     }
     if (item.action() == ContextMenuItemTagCheckSpellingWhileTyping) {
@@ -3903,6 +3918,12 @@ void WebPageProxy::resetStateAfterProcessExited()
     if (!isValid())
         return;
 
+    // FIXME: It's weird that resetStateAfterProcessExited() is called even though the process is launching.
+    ASSERT(m_process->state() == WebProcessProxy::State::Launching || m_process->state() == WebProcessProxy::State::Terminated);
+
+    if (m_process->state() == WebProcessProxy::State::Terminated)
+        m_visitedLinkProvider->removeProcess(m_process.get());
+
     m_process->removeMessageReceiver(Messages::WebPageProxy::messageReceiverName(), m_pageID);
 
     m_isValid = false;
@@ -3968,6 +3989,7 @@ WebPageCreationParameters WebPageProxy::creationParameters()
     parameters.userAgent = userAgent();
     parameters.sessionState = SessionState(m_backForwardList->entries(), m_backForwardList->currentIndex());
     parameters.highestUsedBackForwardItemID = WebBackForwardListItem::highedUsedItemID();
+    parameters.visitedLinkTableID = m_visitedLinkProvider->identifier();
     parameters.canRunBeforeUnloadConfirmPanel = m_uiClient->canRunBeforeUnloadConfirmPanel();
     parameters.canRunModal = m_canRunModal;
     parameters.deviceScaleFactor = deviceScaleFactor();

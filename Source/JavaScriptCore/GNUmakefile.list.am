@@ -34,17 +34,19 @@ javascriptcore_built_nosources += \
 	DerivedSources/JavaScriptCore/RegExpObject.lut.h \
 	DerivedSources/JavaScriptCore/RegExpPrototype.lut.h \
 	DerivedSources/JavaScriptCore/StringConstructor.lut.h \
+	DerivedSources/JavaScriptCore/Bytecodes.h \
+	DerivedSources/JavaScriptCore/InitBytecodes.asm \
 	DerivedSources/JavaScriptCore/LLIntDesiredOffsets.h \
-	DerivedSources/JavaScriptCore/LLIntAssembly.h
+	DerivedSources/JavaScriptCore/LLIntAssembly.h \
+	DerivedSources/JavaScriptCore/udis86_itab.c \
+	DerivedSources/JavaScriptCore/udis86_itab.h
 
 javascriptcore_builtins_js_nosources += \
-	Source/JavaScriptCore/builtins/Array.prototype.js
-	Source/JavaScriptCore/builtins/Promise.prototype.js
+	$(wildcard $(srcdir)/Source/JavaScriptCore/builtins/*.js)
 
 javascriptcore_sources += \
 	Source/JavaScriptCore/API/APICallbackFunction.h \
 	Source/JavaScriptCore/API/APICast.h \
-	Source/JavaScriptCore/API/APIShims.h \
 	Source/JavaScriptCore/API/JSAPIWrapperObject.h \
 	Source/JavaScriptCore/API/JSBase.cpp \
 	Source/JavaScriptCore/API/JSBasePrivate.h \
@@ -183,6 +185,8 @@ javascriptcore_sources += \
 	Source/JavaScriptCore/bytecode/SpeculatedType.h \
 	Source/JavaScriptCore/bytecode/PutByIdStatus.cpp \
 	Source/JavaScriptCore/bytecode/PutByIdStatus.h \
+	Source/JavaScriptCore/bytecode/PutByIdVariant.cpp \
+	Source/JavaScriptCore/bytecode/PutByIdVariant.h \
 	Source/JavaScriptCore/bytecode/PutKind.h \
 	Source/JavaScriptCore/bytecode/ReduceWhitespace.cpp \
 	Source/JavaScriptCore/bytecode/ReduceWhitespace.h \
@@ -411,6 +415,8 @@ javascriptcore_sources += \
 	Source/JavaScriptCore/dfg/DFGSSALoweringPhase.h \
 	Source/JavaScriptCore/dfg/DFGStackLayoutPhase.cpp \
 	Source/JavaScriptCore/dfg/DFGStackLayoutPhase.h \
+	Source/JavaScriptCore/dfg/DFGStaticExecutionCountEstimationPhase.cpp \
+	Source/JavaScriptCore/dfg/DFGStaticExecutionCountEstimationPhase.h \
 	Source/JavaScriptCore/dfg/DFGStoreBarrierElisionPhase.cpp \
 	Source/JavaScriptCore/dfg/DFGStoreBarrierElisionPhase.h \
 	Source/JavaScriptCore/dfg/DFGStrengthReductionPhase.cpp \
@@ -458,7 +464,22 @@ javascriptcore_sources += \
 	Source/JavaScriptCore/disassembler/Disassembler.h \
 	Source/JavaScriptCore/disassembler/LLVMDisassembler.cpp \
 	Source/JavaScriptCore/disassembler/LLVMDisassembler.h \
+	Source/JavaScriptCore/disassembler/UDis86Disassembler.cpp \
+	Source/JavaScriptCore/disassembler/UDis86Disassembler.h \
 	Source/JavaScriptCore/disassembler/X86Disassembler.cpp \
+	Source/JavaScriptCore/disassembler/udis86/udis86.c \
+	Source/JavaScriptCore/disassembler/udis86/udis86.h \
+	Source/JavaScriptCore/disassembler/udis86/udis86_decode.c \
+	Source/JavaScriptCore/disassembler/udis86/udis86_decode.h \
+	Source/JavaScriptCore/disassembler/udis86/udis86_extern.h \
+	Source/JavaScriptCore/disassembler/udis86/udis86_input.c \
+	Source/JavaScriptCore/disassembler/udis86/udis86_input.h \
+	Source/JavaScriptCore/disassembler/udis86/udis86_itab_holder.c \
+	Source/JavaScriptCore/disassembler/udis86/udis86_syn.c \
+	Source/JavaScriptCore/disassembler/udis86/udis86_syn.h \
+	Source/JavaScriptCore/disassembler/udis86/udis86_syn-att.c \
+	Source/JavaScriptCore/disassembler/udis86/udis86_syn-intel.c \
+	Source/JavaScriptCore/disassembler/udis86/udis86_types.h \
 	Source/JavaScriptCore/ftl/FTLAbbreviatedTypes.h \
 	Source/JavaScriptCore/ftl/FTLAbbreviations.h \
 	Source/JavaScriptCore/ftl/FTLAbstractHeap.cpp \
@@ -622,7 +643,6 @@ javascriptcore_sources += \
 	Source/JavaScriptCore/debugger/Debugger.h \
 	Source/JavaScriptCore/debugger/DebuggerPrimitives.h \
 	Source/JavaScriptCore/ForwardingHeaders/JavaScriptCore/APICast.h \
-	Source/JavaScriptCore/ForwardingHeaders/JavaScriptCore/APIShims.h \
 	Source/JavaScriptCore/ForwardingHeaders/JavaScriptCore/JavaScript.h \
 	Source/JavaScriptCore/ForwardingHeaders/JavaScriptCore/JSBase.h \
 	Source/JavaScriptCore/ForwardingHeaders/JavaScriptCore/JSContextRef.h \
@@ -1225,6 +1245,9 @@ javascriptcore_sources += \
 	Source/JavaScriptCore/runtime/StructureChain.h \
 	Source/JavaScriptCore/runtime/Structure.cpp \
 	Source/JavaScriptCore/runtime/Structure.h \
+	Source/JavaScriptCore/runtime/StructureIDBlob.h \
+	Source/JavaScriptCore/runtime/StructureIDTable.cpp \
+	Source/JavaScriptCore/runtime/StructureIDTable.h \
 	Source/JavaScriptCore/runtime/StructureInlines.h \
 	Source/JavaScriptCore/runtime/StructureRareData.cpp \
 	Source/JavaScriptCore/runtime/StructureRareData.h \
@@ -1317,6 +1340,12 @@ offlineasm_nosources += \
 	Source/JavaScriptCore/offlineasm/sh4.rb \
 	Source/JavaScriptCore/offlineasm/transform.rb \
 	Source/JavaScriptCore/offlineasm/x86.rb
+
+udis86_nosources += \
+	Source/JavaScriptCore/disassembler/udis86/itab.py \
+	Source/JavaScriptCore/disassembler/udis86/optable.xml \
+	Source/JavaScriptCore/disassembler/udis86/ud_opcode.py \
+	Source/JavaScriptCore/disassembler/udis86/ud_optable.py
 
 # minidom
 Programs_minidom_SOURCES = \

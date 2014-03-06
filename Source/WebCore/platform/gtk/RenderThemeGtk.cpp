@@ -62,7 +62,7 @@ namespace WebCore {
 // This would be a static method, except that forward declaring GType is tricky, since its
 // definition depends on including glib.h, negating the benefit of using a forward declaration.
 extern GRefPtr<GdkPixbuf> getStockIconForWidgetType(GType, const char* iconName, gint direction, gint state, gint iconSize);
-extern GRefPtr<GdkPixbuf> getStockSymbolicIconForWidgetType(GType widgetType, const char* symbolicIconName, const char *fallbackStockIconName, gint direction, gint state, gint iconSize);
+extern GRefPtr<GdkPixbuf> getStockSymbolicIconForWidgetType(GType widgetType, const char* symbolicIconName, const char* fallbackStockIconName, gint direction, gint state, gint iconSize);
 
 #if ENABLE(VIDEO)
 static HTMLMediaElement* getMediaElementFromRenderObject(RenderObject* o)
@@ -513,7 +513,7 @@ bool RenderThemeGtk::paintMediaButton(RenderObject* renderObject, GraphicsContex
     GRefPtr<GdkPixbuf> icon = getStockSymbolicIconForWidgetType(GTK_TYPE_CONTAINER, symbolicIconName, fallbackStockIconName,
         gtkTextDirection(renderObject->style().direction()), gtkIconState(this, renderObject), iconRect.width());
     paintGdkPixbuf(context, icon.get(), iconRect);
-    return false;
+    return true;
 }
 
 bool RenderThemeGtk::hasOwnDisabledStateHandlingFor(ControlPart part) const
@@ -566,13 +566,21 @@ bool RenderThemeGtk::paintMediaSeekForwardButton(RenderObject* renderObject, con
 #if ENABLE(VIDEO_TRACK)
 bool RenderThemeGtk::paintMediaToggleClosedCaptionsButton(RenderObject* renderObject, const PaintInfo& paintInfo, const IntRect& rect)
 {
-    return paintMediaButton(renderObject, paintInfo.context, rect, "user-invisible-symbolic", GTK_STOCK_JUSTIFY_FILL);
+    IntRect iconRect(rect.x() + (rect.width() - m_mediaIconSize) / 2, rect.y() + (rect.height() - m_mediaIconSize) / 2,
+        m_mediaIconSize, m_mediaIconSize);
+    GRefPtr<GdkPixbuf> icon = getStockSymbolicIconForWidgetType(GTK_TYPE_CONTAINER, "media-view-subtitles-symbolic", nullptr,
+        gtkTextDirection(renderObject->style().direction()), gtkIconState(this, renderObject), iconRect.width());
+    if (!icon)
+        icon = getStockSymbolicIconForWidgetType(GTK_TYPE_CONTAINER, "user-invisible-symbolic", GTK_STOCK_JUSTIFY_FILL,
+            gtkTextDirection(renderObject->style().direction()), gtkIconState(this, renderObject), iconRect.width());
+    paintGdkPixbuf(paintInfo.context, icon.get(), iconRect);
+    return true;
 }
 #endif
 
-static RoundedRect::Radii borderRadiiFromStyle(RenderStyle* style)
+static FloatRoundedRect::Radii borderRadiiFromStyle(RenderStyle* style)
 {
-    return RoundedRect::Radii(
+    return FloatRoundedRect::Radii(
         IntSize(style->borderTopLeftRadius().width().intValue(), style->borderTopLeftRadius().height().intValue()),
         IntSize(style->borderTopRightRadius().width().intValue(), style->borderTopRightRadius().height().intValue()),
         IntSize(style->borderBottomLeftRadius().width().intValue(), style->borderBottomLeftRadius().height().intValue()),
@@ -605,7 +613,7 @@ bool RenderThemeGtk::paintMediaSliderTrack(RenderObject* o, const PaintInfo& pai
         rangeRect.setWidth(lengthRatio * totalTrackWidth);
         if (index)
             rangeRect.move(startRatio * totalTrackWidth, 0);
-        context->fillRoundedRect(RoundedRect(rangeRect, borderRadiiFromStyle(style)), style->visitedDependentColor(CSSPropertyColor), style->colorSpace());
+        context->fillRoundedRect(FloatRoundedRect(rangeRect, borderRadiiFromStyle(style)), style->visitedDependentColor(CSSPropertyColor), style->colorSpace());
     }
 
     context->restore();
@@ -615,7 +623,7 @@ bool RenderThemeGtk::paintMediaSliderTrack(RenderObject* o, const PaintInfo& pai
 bool RenderThemeGtk::paintMediaSliderThumb(RenderObject* o, const PaintInfo& paintInfo, const IntRect& r)
 {
     RenderStyle* style = &o->style();
-    paintInfo.context->fillRoundedRect(RoundedRect(r, borderRadiiFromStyle(style)), style->visitedDependentColor(CSSPropertyColor), style->colorSpace());
+    paintInfo.context->fillRoundedRect(FloatRoundedRect(r, borderRadiiFromStyle(style)), style->visitedDependentColor(CSSPropertyColor), style->colorSpace());
     return false;
 }
 
@@ -645,7 +653,7 @@ bool RenderThemeGtk::paintMediaVolumeSliderTrack(RenderObject* renderObject, con
     volumeRect.move(0, rectHeight - trackHeight);
     volumeRect.setHeight(ceil(trackHeight));
 
-    context->fillRoundedRect(RoundedRect(volumeRect, borderRadiiFromStyle(style)),
+    context->fillRoundedRect(FloatRoundedRect(volumeRect, borderRadiiFromStyle(style)),
         style->visitedDependentColor(CSSPropertyColor), style->colorSpace());
     context->restore();
 

@@ -98,12 +98,27 @@ typedef enum
     WEBKIT_WEB_VIEW_VIEW_MODE_MINIMIZED
 } WebKitWebViewViewMode;
 
+/**
+ * WebKitSelectionAffinity:
+ * @WEBKIT_SELECTION_AFFINITY_UPSTREAM: Downstream selection affinity
+ * @WEBKIT_SELECTION_AFFINITY_DOWNSTREAM: Upstream selection affinity
+ *
+ * Enum values used to denote selection affinity.
+ **/
 typedef enum
 {
     WEBKIT_SELECTION_AFFINITY_UPSTREAM,
     WEBKIT_SELECTION_AFFINITY_DOWNSTREAM,
 } WebKitSelectionAffinity;
 
+/**
+ * WebKitInsertAction:
+ * @WEBKIT_INSERT_ACTION_TYPED: The insert action was from typing.
+ * @WEBKIT_INSERT_ACTION_PASTED: The insert action was from pasting.
+ * @WEBKIT_INSERT_ACTION_DROPPED: The insert action was from dragging and dropping.
+ *
+ * Enum values used to denote source of an insert action.
+ **/
 typedef enum
 {
     WEBKIT_INSERT_ACTION_TYPED,
@@ -415,12 +430,14 @@ webkit_web_view_redo                            (WebKitWebView        *web_view)
 WEBKIT_API gboolean
 webkit_web_view_can_redo                        (WebKitWebView        *web_view);
 
+#if !defined(WEBKIT_DISABLE_DEPRECATED)
 WEBKIT_API void
 webkit_web_view_set_view_source_mode            (WebKitWebView        *web_view,
                                                  gboolean             view_source_mode);
 
 WEBKIT_API gboolean
 webkit_web_view_get_view_source_mode            (WebKitWebView        *web_view);
+#endif
 
 WEBKIT_API WebKitHitTestResult*
 webkit_web_view_get_hit_test_result             (WebKitWebView        *web_view,

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013, 2014 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,8 +26,6 @@
 #ifndef DFGBlockInsertionSet_h
 #define DFGBlockInsertionSet_h
 
-#include <wtf/Platform.h>
-
 #if ENABLE(DFG_JIT)
 
 #include "DFGGraph.h"
@@ -45,8 +43,8 @@ public:
     
     void insert(const BlockInsertion& insertion);
     void insert(size_t index, PassRefPtr<BasicBlock> block);
-    BasicBlock* insert(size_t index);
-    BasicBlock* insertBefore(BasicBlock* before);
+    BasicBlock* insert(size_t index, float executionCount);
+    BasicBlock* insertBefore(BasicBlock* before, float executionCount);
     
     bool execute();
 

@@ -55,6 +55,7 @@ public:
 
     Element* focusedElement();
     Element* getElementById(const AtomicString&) const;
+    Element* getElementById(const String&) const;
     const Vector<Element*>* getAllElementsById(const AtomicString&) const;
     bool hasElementWithId(const AtomicStringImpl&) const;
     bool containsMultipleElementsWithId(const AtomicString& id) const;
@@ -68,6 +69,7 @@ public:
     void removeElementByName(const AtomicStringImpl&, Element&);
 
     Document& documentScope() const { return *m_documentScope; }
+    static ptrdiff_t documentScopeMemoryOffset() { return OBJECT_OFFSETOF(TreeScope, m_documentScope); }
 
     Node* ancestorInThisScope(Node*) const;
 

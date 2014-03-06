@@ -208,7 +208,6 @@ VM::VM(VMType vmType, HeapType heapType)
 #if ENABLE(REGEXP_TRACING)
     , m_rtTraceList(new RTTraceList())
 #endif
-    , exclusiveThread(0)
     , m_newStringsSinceLastHashCons(0)
 #if ENABLE(ASSEMBLER)
     , m_canUseAssembler(enableAssembler(executableAllocator))
@@ -403,11 +402,9 @@ PassRefPtr<VM> VM::create(HeapType heapType)
     return adoptRef(new VM(Default, heapType));
 }
 
-PassRefPtr<VM> VM::createLeakedForMainThread(HeapType heapType)
+PassRefPtr<VM> VM::createLeaked(HeapType heapType)
 {
-    VM* vm = new VM(Default, heapType);
-    vm->jsStringWeakOwner = adoptPtr(new JSString::WeakOwner);
-    return adoptRef(vm);
+    return create(heapType);
 }
 
 bool VM::sharedInstanceExists()
@@ -513,7 +510,7 @@ void VM::stopSampling()
     interpreter->stopSampling();
 }
 
-void VM::prepareToDiscardCode()
+void VM::waitForCompilationsToComplete()
 {
 #if ENABLE(DFG_JIT)
     for (unsigned i = DFG::numberOfWorklists(); i--;) {
@@ -525,7 +522,7 @@ void VM::prepareToDiscardCode()
 
 void VM::discardAllCode()
 {
-    prepareToDiscardCode();
+    waitForCompilationsToComplete();
     m_codeCache->clear();
     heap.deleteAllCompiledCode();
     heap.reportAbandonedObjectGraph();
@@ -567,7 +564,7 @@ struct StackPreservingRecompiler : public MarkedBlock::VoidFunctor {
 
 void VM::releaseExecutableMemory()
 {
-    prepareToDiscardCode();
+    waitForCompilationsToComplete();
     
     if (entryScope) {
         StackPreservingRecompiler recompiler;
@@ -750,8 +747,37 @@ size_t VM::updateReservedZoneSize(size_t reservedZoneSize)
     return oldReservedZoneSize;
 }
 
+#if PLATFORM(WIN)
+// On Windows the reserved stack space consists of committed memory, a guard page, and uncommitted memory,
+// where the guard page is a barrier between committed and uncommitted memory.
+// When data from the guard page is read or written, the guard page is moved, and memory is committed.
+// This is how the system grows the stack.
+// When using the C stack on Windows we need to precommit the needed stack space.
+// Otherwise we might crash later if we access uncommitted stack memory.
+// This can happen if we allocate stack space larger than the page guard size (4K).
+// The system does not get the chance to move the guard page, and commit more memory,
+// and we crash if uncommitted memory is accessed.
+// The MSVC compiler fixes this by inserting a call to the _chkstk() function,
+// when needed, see http://support.microsoft.com/kb/100775.
+// By touching every page up to the stack limit with a dummy operation,
+// we force the system to move the guard page, and commit memory.
+
+static void preCommitStackMemory(void* stackLimit)
+{
+    const int pageSize = 4096;
+    for (volatile char* p = reinterpret_cast<char*>(&stackLimit); p > stackLimit; p -= pageSize) {
+        char ch = *p;
+        *p = ch;
+    }
+}
+#endif
+
 inline void VM::updateStackLimit()
 {
+#if PLATFORM(WIN)
+    void* lastStackLimit = m_stackLimit;
+#endif
+
     if (m_stackPointerAtVMEntry) {
         ASSERT(wtfThreadData().stack().isGrowingDownward());
         char* startOfStack = reinterpret_cast<char*>(m_stackPointerAtVMEntry);
@@ -770,6 +796,10 @@ inline void VM::updateStackLimit()
 #endif
     }
 
+#if PLATFORM(WIN)
+    if (lastStackLimit != m_stackLimit)
+        preCommitStackMemory(m_stackLimit);
+#endif
 }
 
 #if ENABLE(FTL_JIT)
@@ -873,6 +903,7 @@ void VM::setEnabledProfiler(LegacyProfiler* profiler)
 {
     m_enabledProfiler = profiler;
     if (m_enabledProfiler) {
+        waitForCompilationsToComplete();
         SetEnabledProfilerFunctor functor;
         heap.forEachCodeBlock(functor);
     }

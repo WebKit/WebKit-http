@@ -30,22 +30,34 @@ namespace WebCore {
 
 #if !HAVE(NS_ACTIVITY)
 
-UserActivity::UserActivity(const char*)
-    : m_count(0)
+UserActivity::Impl::Impl(const char*)
 {
 }
 
-void UserActivity::beginActivity()
+void UserActivity::Impl::beginActivity()
 {
-    ++m_count;
 }
 
-void UserActivity::endActivity()
+void UserActivity::Impl::endActivity()
 {
-    ASSERT(m_count);
-    --m_count;
 }
 
 #endif
+
+UserActivity::UserActivity(const char* description)
+    : HysteresisActivity<UserActivity>(*this)
+    , m_impl(description)
+{
+}
+
+void UserActivity::started()
+{
+    m_impl.beginActivity();
+}
+
+void UserActivity::stopped()
+{
+    m_impl.endActivity();
+}
 
 } // namespace WebCore

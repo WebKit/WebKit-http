@@ -36,6 +36,7 @@
 #include "ChromeClient.h"
 #include "ClientRect.h"
 #include "ClientRectList.h"
+#include "Console.h"
 #include "ContentDistributor.h"
 #include "Cursor.h"
 #include "DOMStringList.h"
@@ -58,7 +59,6 @@
 #include "HistoryItem.h"
 #include "InspectorClient.h"
 #include "InspectorController.h"
-#include "InspectorCounters.h"
 #include "InspectorForwarding.h"
 #include "InspectorFrontendClientLocal.h"
 #include "InspectorInstrumentation.h"
@@ -153,6 +153,7 @@
 #include "MockMediaStreamCenter.h"
 #include "RTCPeerConnection.h"
 #include "RTCPeerConnectionHandlerMock.h"
+#include "UserMediaClientMock.h"
 #endif
 
 #if ENABLE(MEDIA_SOURCE)
@@ -307,6 +308,7 @@ Internals::Internals(Document* document)
 #if ENABLE(MEDIA_STREAM)
     MockMediaStreamCenter::registerMockMediaStreamCenter();
     enableMockRTCPeerConnectionHandler();
+    WebCore::provideUserMediaTo(document->page(), new UserMediaClientMock());
 #endif
 }
 
@@ -354,9 +356,9 @@ bool Internals::isPreloaded(const String& url)
 
 bool Internals::isLoadingFromMemoryCache(const String& url)
 {
-    if (!contextDocument())
+    if (!contextDocument() || !contextDocument()->page())
         return false;
-    CachedResource* resource = memoryCache()->resourceForURL(contextDocument()->completeURL(url));
+    CachedResource* resource = memoryCache()->resourceForURL(contextDocument()->completeURL(url), contextDocument()->page()->sessionID());
     return resource && resource->status() == CachedResource::Cached;
 }
 
@@ -1316,7 +1318,7 @@ Node* Internals::findEditingDeleteButton()
     updateEditorUINowIfScheduled();
 
     // FIXME: We shouldn't pollute the id namespace with this name.
-    return document->getElementById("WebKit-Editing-Delete-Button");
+    return document->getElementById(String(ASCIILiteral("WebKit-Editing-Delete-Button")));
 }
 
 bool Internals::hasSpellingMarker(int from, int length, ExceptionCode&)
@@ -1433,17 +1435,35 @@ void Internals::toggleOverwriteModeEnabled(ExceptionCode&)
     document->frame()->editor().toggleOverwriteModeEnabled();
 }
 
-#if ENABLE(INSPECTOR)
+unsigned Internals::countMatchesForText(const String& text, unsigned findOptions, const String& markMatches, ExceptionCode&)
+{
+    Document* document = contextDocument();
+    if (!document || !document->frame())
+        return 0;
+
+    bool mark = markMatches == "mark";
+    return document->frame()->editor().countMatchesForText(text, nullptr, findOptions, std::numeric_limits<unsigned>::max(), mark, nullptr);
+}
+
+const ProfilesArray& Internals::consoleProfiles() const
+{
+    return contextDocument()->domWindow()->console()->profiles();
+}
+
 unsigned Internals::numberOfLiveNodes() const
 {
-    return InspectorCounters::counterValue(InspectorCounters::NodeCounter);
+    unsigned nodeCount = 0;
+    for (auto* document : Document::allDocuments())
+        nodeCount += document->referencingNodeCount();
+    return nodeCount;
 }
 
 unsigned Internals::numberOfLiveDocuments() const
 {
-    return InspectorCounters::counterValue(InspectorCounters::DocumentCounter);
+    return Document::allDocuments().size();
 }
 
+#if ENABLE(INSPECTOR)
 Vector<String> Internals::consoleMessageArgumentCounts() const
 {
     Document* document = contextDocument();
@@ -1523,6 +1543,17 @@ void Internals::setJavaScriptProfilingEnabled(bool enabled, ExceptionCode& ec)
     }
 
     page->inspectorController().setProfilerEnabled(enabled);
+}
+
+void Internals::setInspectorIsUnderTest(bool isUnderTest, ExceptionCode& ec)
+{
+    Page* page = contextDocument()->frame()->page();
+    if (!page) {
+        ec = INVALID_ACCESS_ERR;
+        return;
+    }
+
+    page->inspectorController().setIsUnderTest(isUnderTest);
 }
 #endif // ENABLE(INSPECTOR)
 

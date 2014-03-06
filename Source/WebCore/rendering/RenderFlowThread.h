@@ -85,7 +85,7 @@ public:
 
     virtual void styleDidChange(StyleDifference, const RenderStyle* oldStyle) override;
 
-    void repaintRectangleInRegions(const LayoutRect&, bool immediate) const;
+    void repaintRectangleInRegions(const LayoutRect&) const;
     
     LayoutPoint adjustedPositionRelativeToOffsetParent(const RenderBoxModelObject&, const LayoutPoint&);
 
@@ -178,10 +178,10 @@ public:
             updateAllLayerToRegionMappings();
     }
 
-    const RenderLayerList* getLayerListForRegion(RenderNamedFlowFragment*);
+    const RenderLayerList* getLayerListForRegion(RenderNamedFlowFragment*) const;
 
     RenderNamedFlowFragment* regionForCompositedLayer(RenderLayer&); // By means of getRegionRangeForBox or regionAtBlockOffset.
-    RenderNamedFlowFragment* cachedRegionForCompositedLayer(RenderLayer&);
+    RenderNamedFlowFragment* cachedRegionForCompositedLayer(RenderLayer&) const;
 
     virtual bool collectsGraphicsLayersUnderRegions() const;
 
@@ -199,9 +199,7 @@ public:
 
     LayoutRect mapFromFlowThreadToLocal(const RenderBox*, const LayoutRect&) const;
     LayoutRect mapFromLocalToFlowThread(const RenderBox*, const LayoutRect&) const;
-    
-    LayoutRect decorationsClipRectForBoxInRegion(const RenderBox&, RenderRegion&) const;
-    
+
     void flipForWritingModeLocalCoordinates(LayoutRect&) const;
 
     // Used to estimate the maximum height of the flow thread.
@@ -211,7 +209,6 @@ public:
 
 private:
     virtual bool isRenderFlowThread() const override final { return true; }
-    virtual void layout() override final;
 
     // Always create a RenderLayer for the RenderFlowThread so that we
     // can easily avoid drawing the children directly.
@@ -221,6 +218,7 @@ protected:
     RenderFlowThread(Document&, PassRef<RenderStyle>);
 
     virtual const char* renderName() const = 0;
+    virtual void layout() override;
 
     // Overridden by columns/pages to set up an initial logical width of the page width even when
     // no regions have been generated yet.
@@ -235,19 +233,7 @@ protected:
 
     // Triggers a layers' update if a layer has moved from a region to another since the last update.
     void updateLayerToRegionMappings(RenderLayer&, LayerToRegionMap&, RegionToLayerListMap&, bool& needsLayerUpdate);
-    RenderNamedFlowFragment* regionForCompositedLayer(RenderLayer*);
-    bool updateLayerToRegionMappings();
     void updateRegionForRenderLayer(RenderLayer*, LayerToRegionMap&, RegionToLayerListMap&, bool& needsLayerUpdate);
-
-    void setDispatchRegionLayoutUpdateEvent(bool value) { m_dispatchRegionLayoutUpdateEvent = value; }
-    bool shouldDispatchRegionLayoutUpdateEvent() { return m_dispatchRegionLayoutUpdateEvent; }
-    
-    void setDispatchRegionOversetChangeEvent(bool value) { m_dispatchRegionOversetChangeEvent = value; }
-    bool shouldDispatchRegionOversetChangeEvent() const { return m_dispatchRegionOversetChangeEvent; }
-    
-    // Override if the flow thread implementation supports dispatching events when the flow layout is updated (e.g. for named flows)
-    virtual void dispatchRegionLayoutUpdateEvent() { m_dispatchRegionLayoutUpdateEvent = false; }
-    virtual void dispatchRegionOversetChangeEvent() { m_dispatchRegionOversetChangeEvent = false; }
 
     void initializeRegionsComputedAutoHeight(RenderRegion* = 0);
 
@@ -315,10 +301,10 @@ protected:
         RenderRegion* m_result;
     };
 
-    // To easily find the region where a layer should be painted.
+    // Map a layer to the region in which the layer is painted.
     OwnPtr<LayerToRegionMap> m_layerToRegionMap;
 
-    // To easily find the list of layers that paint in a region.
+    // Map a region to the list of layers that paint in that region.
     OwnPtr<RegionToLayerListMap> m_regionToLayerListMap;
 
     // Map a box to the list of regions in which the box is rendered.
@@ -343,8 +329,6 @@ protected:
     bool m_regionsInvalidated : 1;
     bool m_regionsHaveUniformLogicalWidth : 1;
     bool m_regionsHaveUniformLogicalHeight : 1;
-    bool m_dispatchRegionLayoutUpdateEvent : 1;
-    bool m_dispatchRegionOversetChangeEvent : 1;
     bool m_pageLogicalSizeChanged : 1;
     unsigned m_layoutPhase : 2;
     bool m_needsTwoPhasesLayout : 1;

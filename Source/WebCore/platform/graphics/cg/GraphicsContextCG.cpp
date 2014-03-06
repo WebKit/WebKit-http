@@ -125,9 +125,6 @@ void GraphicsContext::platformInit(CGContextRef cgContext, bool shouldUseContext
     m_data = new GraphicsContextPlatformPrivate(cgContext);
     setPaintingDisabled(!cgContext);
     if (cgContext) {
-        CGAffineTransform baseDeviceMatrix = CGContextGetUserSpaceToDeviceSpaceTransform(cgContext);
-        ASSERT(fabs(baseDeviceMatrix.a) == fabs(baseDeviceMatrix.d));
-        m_pixelSnappingFactor = baseDeviceMatrix.a;
 #if PLATFORM(IOS)
         m_state.shouldUseContextColors = shouldUseContextColors;
         if (shouldUseContextColors) {
@@ -809,7 +806,7 @@ void GraphicsContext::fillRect(const FloatRect& rect)
         CGContextSetShadowWithColor(platformContext(), CGSizeZero, 0, 0);
 
         ShadowBlur contextShadow(m_state);
-        contextShadow.drawRectShadow(this, rect, RoundedRect::Radii());
+        contextShadow.drawRectShadow(this, FloatRoundedRect(rect));
     }
 
     CGContextFillRect(context, rect);
@@ -837,7 +834,7 @@ void GraphicsContext::fillRect(const FloatRect& rect, const Color& color, ColorS
         CGContextSetShadowWithColor(platformContext(), CGSizeZero, 0, 0);
 
         ShadowBlur contextShadow(m_state);
-        contextShadow.drawRectShadow(this, rect, RoundedRect::Radii());
+        contextShadow.drawRectShadow(this, FloatRoundedRect(rect));
     }
 
     CGContextFillRect(context, rect);
@@ -849,7 +846,7 @@ void GraphicsContext::fillRect(const FloatRect& rect, const Color& color, ColorS
         setCGFillColor(context, oldFillColor, oldColorSpace);
 }
 
-void GraphicsContext::fillRoundedRect(const FloatRect& rect, const FloatSize& topLeft, const FloatSize& topRight, const FloatSize& bottomLeft, const FloatSize& bottomRight, const Color& color, ColorSpace colorSpace)
+void GraphicsContext::platformFillRoundedRect(const FloatRoundedRect& rect, const Color& color, ColorSpace colorSpace)
 {
     if (paintingDisabled())
         return;
@@ -868,17 +865,19 @@ void GraphicsContext::fillRoundedRect(const FloatRect& rect, const FloatSize& to
         CGContextSetShadowWithColor(platformContext(), CGSizeZero, 0, 0);
 
         ShadowBlur contextShadow(m_state);
-        contextShadow.drawRectShadow(this, rect, FloatRoundedRect::Radii(topLeft, topRight, bottomLeft, bottomRight));
+        contextShadow.drawRectShadow(this, rect);
     }
 
-    bool equalWidths = (topLeft.width() == topRight.width() && topRight.width() == bottomLeft.width() && bottomLeft.width() == bottomRight.width());
-    bool equalHeights = (topLeft.height() == bottomLeft.height() && bottomLeft.height() == topRight.height() && topRight.height() == bottomRight.height());
+    const FloatRect& r = rect.rect();
+    const FloatRoundedRect::Radii& radii = rect.radii();
+    bool equalWidths = (radii.topLeft().width() == radii.topRight().width() && radii.topRight().width() == radii.bottomLeft().width() && radii.bottomLeft().width() == radii.bottomRight().width());
+    bool equalHeights = (radii.topLeft().height() == radii.bottomLeft().height() && radii.bottomLeft().height() == radii.topRight().height() && radii.topRight().height() == radii.bottomRight().height());
     bool hasCustomFill = m_state.fillGradient || m_state.fillPattern;
-    if (!hasCustomFill && equalWidths && equalHeights && topLeft.width() * 2 == rect.width() && topLeft.height() * 2 == rect.height())
-        CGContextFillEllipseInRect(context, rect);
+    if (!hasCustomFill && equalWidths && equalHeights && radii.topLeft().width() * 2 == r.width() && radii.topLeft().height() * 2 == r.height())
+        CGContextFillEllipseInRect(context, r);
     else {
         Path path;
-        path.addRoundedRect(rect, topLeft, topRight, bottomLeft, bottomRight);
+        path.addRoundedRect(rect);
         fillPath(path);
     }
 
@@ -889,7 +888,7 @@ void GraphicsContext::fillRoundedRect(const FloatRect& rect, const FloatSize& to
         setCGFillColor(context, oldFillColor, oldColorSpace);
 }
 
-void GraphicsContext::fillRectWithRoundedHole(const FloatRect& rect, const RoundedRect& roundedHoleRect, const Color& color, ColorSpace colorSpace)
+void GraphicsContext::fillRectWithRoundedHole(const FloatRect& rect, const FloatRoundedRect& roundedHoleRect, const Color& color, ColorSpace colorSpace)
 {
     if (paintingDisabled())
         return;
@@ -919,7 +918,7 @@ void GraphicsContext::fillRectWithRoundedHole(const FloatRect& rect, const Round
         CGContextSetShadowWithColor(platformContext(), CGSizeZero, 0, 0);
 
         ShadowBlur contextShadow(m_state);
-        contextShadow.drawInsetShadow(this, rect, roundedHoleRect.rect(), roundedHoleRect.radii());
+        contextShadow.drawInsetShadow(this, rect, roundedHoleRect);
     }
 
     fillPath(path);
@@ -1395,36 +1394,15 @@ FloatRect GraphicsContext::computeLineBoundsForText(const FloatPoint& point, flo
     return computeLineBoundsAndAntialiasingModeForText(*this, point, width, printing, dummyBool, dummyColor);
 }
 
-void GraphicsContext::drawLineForText(const FloatPoint& point, float width, bool printing)
+void GraphicsContext::drawLineForText(const FloatPoint& point, float width, bool printing, bool doubleLines)
 {
-    if (paintingDisabled())
-        return;
-
-    if (width <= 0)
-        return;
-
-    Color localStrokeColor(strokeColor());
-
-    bool shouldAntialiasLine;
-    FloatRect bounds = computeLineBoundsAndAntialiasingModeForText(*this, point, width, printing, shouldAntialiasLine, localStrokeColor);
-    bool fillColorIsNotEqualToStrokeColor = fillColor() != localStrokeColor;
-
-#if PLATFORM(IOS)
-    if (m_state.shouldUseContextColors)
-#endif
-        if (fillColorIsNotEqualToStrokeColor)
-            setCGFillColor(platformContext(), localStrokeColor, strokeColorSpace());
-
-    CGContextFillRect(platformContext(), bounds);
-
-#if PLATFORM(IOS)
-    if (m_state.shouldUseContextColors)
-#endif
-        if (fillColorIsNotEqualToStrokeColor)
-            setCGFillColor(platformContext(), fillColor(), fillColorSpace());
+    DashArray widths;
+    widths.append(width);
+    widths.append(0);
+    drawLinesForText(point, widths, printing, doubleLines);
 }
 
-void GraphicsContext::drawLinesForText(const FloatPoint& point, const DashArray& widths, bool printing)
+void GraphicsContext::drawLinesForText(const FloatPoint& point, const DashArray& widths, bool printing, bool doubleLines)
 {
     if (paintingDisabled())
         return;
@@ -1443,6 +1421,12 @@ void GraphicsContext::drawLinesForText(const FloatPoint& point, const DashArray&
     dashBounds.reserveInitialCapacity(dashBounds.size() / 2);
     for (size_t i = 0; i < widths.size(); i += 2)
         dashBounds.append(CGRectMake(bounds.x() + widths[i], bounds.y(), widths[i+1] - widths[i], bounds.height()));
+
+    if (doubleLines) {
+        // The space between double underlines is equal to the height of the underline
+        for (size_t i = 0; i < widths.size(); i += 2)
+            dashBounds.append(CGRectMake(bounds.x() + widths[i], bounds.y() + 2 * bounds.height(), widths[i+1] - widths[i], bounds.height()));
+    }
 
 #if PLATFORM(IOS)
     if (m_state.shouldUseContextColors)

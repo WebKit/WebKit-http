@@ -78,34 +78,35 @@
 
 namespace WebCore {
 
-static void cancelAll(const ResourceLoaderSet& loaders)
+static void cancelAll(const ResourceLoaderMap& loaders)
 {
     Vector<RefPtr<ResourceLoader>> loadersCopy;
-    copyToVector(loaders, loadersCopy);
-    size_t size = loadersCopy.size();
-    for (size_t i = 0; i < size; ++i)
-        loadersCopy[i]->cancel();
+    copyValuesToVector(loaders, loadersCopy);
+    for (auto& loader : loadersCopy)
+        loader->cancel();
 }
 
-static void setAllDefersLoading(const ResourceLoaderSet& loaders, bool defers)
+static void setAllDefersLoading(const ResourceLoaderMap& loaders, bool defers)
 {
     Vector<RefPtr<ResourceLoader>> loadersCopy;
-    copyToVector(loaders, loadersCopy);
-    size_t size = loadersCopy.size();
-    for (size_t i = 0; i < size; ++i)
-        loadersCopy[i]->setDefersLoading(defers);
+    copyValuesToVector(loaders, loadersCopy);
+    for (auto& loader : loadersCopy)
+        loader->setDefersLoading(defers);
 }
 
-static bool areAllLoadersPageCacheAcceptable(const ResourceLoaderSet& loaders)
+static bool areAllLoadersPageCacheAcceptable(const ResourceLoaderMap& loaders)
 {
     Vector<RefPtr<ResourceLoader>> loadersCopy;
-    copyToVector(loaders, loadersCopy);
+    copyValuesToVector(loaders, loadersCopy);
     for (auto& loader : loadersCopy) {
         ResourceHandle* handle = loader->handle();
         if (!handle)
             return false;
 
-        CachedResource* cachedResource = memoryCache()->resourceForURL(handle->firstRequest().url());
+        if (!loader->frameLoader())
+            return false;
+
+        CachedResource* cachedResource = memoryCache()->resourceForURL(handle->firstRequest().url(), loader->frameLoader()->frame().page()->sessionID());
         if (!cachedResource)
             return false;
 
@@ -635,10 +636,8 @@ void DocumentLoader::responseReceived(CachedResource* resource, const ResourceRe
     if (m_isLoadingMultipartContent) {
         setupForReplace();
         m_mainResource->clear();
-    } else if (response.isMultipart()) {
-        FeatureObserver::observe(m_frame->document(), FeatureObserver::MultipartMainResource);
+    } else if (response.isMultipart())
         m_isLoadingMultipartContent = true;
-    }
 
     m_response = response;
 
@@ -1340,14 +1339,18 @@ void DocumentLoader::addSubresourceLoader(ResourceLoader* loader)
     // if we are just starting the main resource load.
     if (!m_gotFirstByte)
         return;
-    ASSERT(!m_subresourceLoaders.contains(loader));
+    ASSERT(loader->identifier());
+    ASSERT(!m_subresourceLoaders.contains(loader->identifier()));
     ASSERT(!mainResourceLoader() || mainResourceLoader() != loader);
-    m_subresourceLoaders.add(loader);
+
+    m_subresourceLoaders.add(loader->identifier(), loader);
 }
 
 void DocumentLoader::removeSubresourceLoader(ResourceLoader* loader)
 {
-    if (!m_subresourceLoaders.remove(loader))
+    ASSERT(loader->identifier());
+
+    if (!m_subresourceLoaders.remove(loader->identifier()))
         return;
     checkLoadComplete();
     if (Frame* frame = m_frame)
@@ -1356,12 +1359,18 @@ void DocumentLoader::removeSubresourceLoader(ResourceLoader* loader)
 
 void DocumentLoader::addPlugInStreamLoader(ResourceLoader* loader)
 {
-    m_plugInStreamLoaders.add(loader);
+    ASSERT(loader->identifier());
+    ASSERT(!m_plugInStreamLoaders.contains(loader->identifier()));
+
+    m_plugInStreamLoaders.add(loader->identifier(), loader);
 }
 
 void DocumentLoader::removePlugInStreamLoader(ResourceLoader* loader)
 {
-    m_plugInStreamLoaders.remove(loader);
+    ASSERT(loader->identifier());
+    ASSERT(loader == m_plugInStreamLoaders.get(loader->identifier()));
+
+    m_plugInStreamLoaders.remove(loader->identifier());
     checkLoadComplete();
 }
 
@@ -1486,8 +1495,12 @@ void DocumentLoader::clearMainResource()
 
 void DocumentLoader::subresourceLoaderFinishedLoadingOnePart(ResourceLoader* loader)
 {
-    m_multipartSubresourceLoaders.add(loader);
-    m_subresourceLoaders.remove(loader);
+    ASSERT(loader->identifier());
+    ASSERT(!m_multipartSubresourceLoaders.contains(loader->identifier()));
+    ASSERT(m_subresourceLoaders.contains(loader->identifier()));
+
+    m_multipartSubresourceLoaders.add(loader->identifier(), loader);
+    m_subresourceLoaders.remove(loader->identifier());
     checkLoadComplete();
     if (Frame* frame = m_frame)
         frame->loader().checkLoadComplete();    

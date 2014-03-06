@@ -34,14 +34,11 @@
 #include <heap/Weak.h>
 #include <heap/WeakInlines.h>
 #include <runtime/Error.h>
-#include <runtime/FunctionPrototype.h>
 #include <runtime/JSArray.h>
 #include <runtime/JSArrayBuffer.h>
 #include <runtime/JSCInlines.h>
-#include <runtime/JSDataView.h>
 #include <runtime/JSTypedArrays.h>
 #include <runtime/Lookup.h>
-#include <runtime/ObjectPrototype.h>
 #include <runtime/TypedArrayInlines.h>
 #include <runtime/TypedArrays.h>
 #include <wtf/Forward.h>
@@ -117,7 +114,7 @@ template<class WrapperClass> inline JSC::JSObject* getDOMPrototype(JSC::VM& vm, 
 
 inline JSC::WeakHandleOwner* wrapperOwner(DOMWrapperWorld& world, JSC::ArrayBuffer*)
 {
-    return static_cast<WebCoreTypedArrayController*>(world.vm()->m_typedArrayController.get())->wrapperOwner();
+    return static_cast<WebCoreTypedArrayController*>(world.vm().m_typedArrayController.get())->wrapperOwner();
 }
 
 inline void* wrapperContext(DOMWrapperWorld& world, JSC::ArrayBuffer*)
@@ -464,14 +461,6 @@ inline PassRefPtr<JSC::Uint32Array> toUint32Array(JSC::JSValue value) { return J
 inline PassRefPtr<JSC::Float32Array> toFloat32Array(JSC::JSValue value) { return JSC::toNativeTypedView<JSC::Float32Adaptor>(value); }
 inline PassRefPtr<JSC::Float64Array> toFloat64Array(JSC::JSValue value) { return JSC::toNativeTypedView<JSC::Float64Adaptor>(value); }
 
-inline PassRefPtr<JSC::DataView> toDataView(JSC::JSValue value)
-{
-    JSC::JSDataView* wrapper = JSC::jsDynamicCast<JSC::JSDataView*>(value);
-    if (!wrapper)
-        return 0;
-    return wrapper->typedImpl();
-}
-
 template<class T> struct NativeValueTraits;
 
 template<>
@@ -594,7 +583,11 @@ inline JSC::JSValue jsStringWithCache(JSC::ExecState* exec, const String& s)
         }
     }
 
-    return JSC::jsStringWithWeakOwner(&exec->vm(), s);
+    JSStringCache& stringCache = currentWorld(exec).m_stringCache;
+    JSStringCache::AddResult addResult = stringCache.add(stringImpl, nullptr);
+    if (addResult.isNewEntry)
+        addResult.iterator->value = JSC::jsString(exec, String(stringImpl));
+    return JSC::JSValue(addResult.iterator->value.get());
 }
 
 inline String propertyNameToString(JSC::PropertyName propertyName)
@@ -640,19 +633,6 @@ class HasMemoryCostMemberFunction {
 
 public:
     static const bool value = sizeof(test<T>(0)) == sizeof(YesType);
-};
-
-template <typename T, bool hasReportCostFunction = HasMemoryCostMemberFunction<T>::value > struct ReportMemoryCost;
-template <typename T> struct ReportMemoryCost<T, true> {
-    static void reportMemoryCost(JSC::ExecState* exec, T* impl)
-    {
-        exec->heap()->reportExtraMemoryCost(impl->memoryCost());
-    }
-};
-template <typename T> struct ReportMemoryCost<T, false> {
-    static void reportMemoryCost(JSC::ExecState*, T*)
-    {
-    }
 };
 
 enum SecurityReportingOption {

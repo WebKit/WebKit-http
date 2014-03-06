@@ -72,7 +72,7 @@ public:
     // MediaSourcePrivateClient
     virtual void setPrivateAndOpen(PassRef<MediaSourcePrivate>) override;
     virtual double duration() const override;
-    virtual PassRefPtr<TimeRanges> buffered() const override;
+    virtual std::unique_ptr<PlatformTimeRanges> buffered() const override;
 
     bool attachToElement(HTMLMediaElement*);
     void close();
@@ -80,6 +80,7 @@ public:
     void monitorSourceBuffers();
 
     void setDuration(double, ExceptionCode&);
+    double currentTime() const;
     const AtomicString& readyState() const { return m_readyState; }
     void setReadyState(const AtomicString&);
     void endOfStream(const AtomicString& error, ExceptionCode&);

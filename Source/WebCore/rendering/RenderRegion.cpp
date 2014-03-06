@@ -154,8 +154,7 @@ LayoutRect RenderRegion::overflowRectForFlowThreadPortion(const LayoutRect& flow
 {
     ASSERT(isValid());
 
-    bool isLastRegionWithRegionFragmentBreak = (isLastPortion && (style().regionFragment() == BreakRegionFragment));
-    if (hasOverflowClip() || isLastRegionWithRegionFragmentBreak)
+    if (shouldClipFlowThreadContent())
         return flowThreadPortionRect;
 
     LayoutRect flowThreadOverflow = overflowType == VisualOverflow ? visualOverflowRectForBox(m_flowThread) : layoutOverflowRectForBox(m_flowThread);
@@ -182,23 +181,6 @@ LayoutRect RenderRegion::overflowRectForFlowThreadPortion(const LayoutRect& flow
     return clipRect;
 }
 
-RegionOversetState RenderRegion::regionOversetState() const
-{
-    ASSERT(generatingElement());
-
-    if (!isValid())
-        return RegionUndefined;
-
-    return generatingElement()->regionOversetState();
-}
-
-void RenderRegion::setRegionOversetState(RegionOversetState state)
-{
-    ASSERT(generatingElement());
-
-    generatingElement()->setRegionOversetState(state);
-}
-
 LayoutUnit RenderRegion::pageLogicalTopForOffset(LayoutUnit /* offset */) const
 {
     return flowThread()->isHorizontalWritingMode() ? flowThreadPortionRect().y() : flowThreadPortionRect().x();
@@ -217,7 +199,12 @@ bool RenderRegion::isLastRegion() const
 
     return m_flowThread->lastRegion() == this;
 }
-    
+
+bool RenderRegion::shouldClipFlowThreadContent() const
+{
+    return hasOverflowClip();
+}
+
 void RenderRegion::styleDidChange(StyleDifference diff, const RenderStyle* oldStyle)
 {
     RenderBlockFlow::styleDidChange(diff, oldStyle);
@@ -253,12 +240,12 @@ void RenderRegion::computeOverflowFromFlowThread()
     updateScrollInfoAfterLayout();
 }
 
-void RenderRegion::repaintFlowThreadContent(const LayoutRect& repaintRect, bool immediate)
+void RenderRegion::repaintFlowThreadContent(const LayoutRect& repaintRect)
 {
-    repaintFlowThreadContentRectangle(repaintRect, immediate, flowThreadPortionRect(), contentBoxRect().location());
+    repaintFlowThreadContentRectangle(repaintRect, flowThreadPortionRect(), contentBoxRect().location());
 }
 
-void RenderRegion::repaintFlowThreadContentRectangle(const LayoutRect& repaintRect, bool immediate, const LayoutRect& flowThreadPortionRect, const LayoutPoint& regionLocation, const LayoutRect* flowThreadPortionClipRect)
+void RenderRegion::repaintFlowThreadContentRectangle(const LayoutRect& repaintRect, const LayoutRect& flowThreadPortionRect, const LayoutPoint& regionLocation, const LayoutRect* flowThreadPortionClipRect)
 {
     ASSERT(isValid());
 
@@ -284,7 +271,7 @@ void RenderRegion::repaintFlowThreadContentRectangle(const LayoutRect& repaintRe
     flipForWritingMode(clippedRect);
     
     // Issue the repaint.
-    repaintRectangle(clippedRect, immediate);
+    repaintRectangle(clippedRect);
 }
 
 void RenderRegion::installFlowThread()
@@ -438,17 +425,11 @@ void RenderRegion::computePreferredLogicalWidths()
     setPreferredLogicalWidthsDirty(false);
 }
 
-void RenderRegion::getRanges(Vector<RefPtr<Range>>& rangeObjects) const
-{
-    const RenderNamedFlowThread& namedFlow = view().flowThreadController().ensureRenderFlowThreadWithName(style().regionThread());
-    namedFlow.getRanges(rangeObjects, this);
-}
-
-void RenderRegion::adjustRegionBoundsFromFlowThreadPortionRect(const IntPoint& layerOffset, IntRect& regionBounds)
+void RenderRegion::adjustRegionBoundsFromFlowThreadPortionRect(const LayoutPoint& layerOffset, LayoutRect& regionBounds)
 {
     LayoutRect flippedFlowThreadPortionRect = flowThreadPortionRect();
     flowThread()->flipForWritingMode(flippedFlowThreadPortionRect);
-    regionBounds.moveBy(roundedIntPoint(flippedFlowThreadPortionRect.location()));
+    regionBounds.moveBy(flippedFlowThreadPortionRect.location());
 
     UNUSED_PARAM(layerOffset);
 }
@@ -509,8 +490,7 @@ LayoutRect RenderRegion::rectFlowPortionForBox(const RenderBox* box, const Layou
             mappedRect.setWidth(std::max<LayoutUnit>(0, std::min<LayoutUnit>(logicalBottomForFlowThreadContent() - mappedRect.x(), mappedRect.width())));
     }
 
-    bool isLastRegionWithRegionFragmentBreak = (isLastRegion() && (style().regionFragment() == BreakRegionFragment));
-    if (hasOverflowClip() || isLastRegionWithRegionFragmentBreak) {
+    if (shouldClipFlowThreadContent()) {
         LayoutRect portionRect;
         if (isRenderNamedFlowFragment())
             portionRect = toRenderNamedFlowFragment(this)->flowThreadPortionRectForClipping(this == startRegion, this == endRegion);

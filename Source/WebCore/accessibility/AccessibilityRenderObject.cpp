@@ -97,6 +97,7 @@
 #include "SVGSVGElement.h"
 #include "Text.h"
 #include "TextControlInnerElements.h"
+#include "TextIterator.h"
 #include "VisibleUnits.h"
 #include "htmlediting.h"
 #include <wtf/StdLibExtras.h>
@@ -2431,6 +2432,26 @@ bool AccessibilityRenderObject::isDescendantOfElementType(const QualifiedName& t
     }
     return false;
 }
+    
+String AccessibilityRenderObject::expandedTextValue() const
+{
+    if (AccessibilityObject* parent = parentObject()) {
+        if (parent->hasTagName(abbrTag) || parent->hasTagName(acronymTag))
+            return parent->getAttribute(titleAttr);
+    }
+    
+    return String();
+}
+
+bool AccessibilityRenderObject::supportsExpandedTextValue() const
+{
+    if (roleValue() == StaticTextRole) {
+        if (AccessibilityObject* parent = parentObject())
+            return parent->hasTagName(abbrTag) || parent->hasTagName(acronymTag);
+    }
+    
+    return false;
+}
 
 AccessibilityRole AccessibilityRenderObject::determineAccessibilityRole()
 {
@@ -3492,7 +3513,7 @@ bool AccessibilityRenderObject::isMathFenceOperator() const
     if (!m_renderer || !m_renderer->isRenderMathMLOperator())
         return false;
 
-    return toRenderMathMLOperator(*m_renderer).operatorType() == RenderMathMLOperator::Fence;
+    return toRenderMathMLOperator(*m_renderer).hasOperatorFlag(MathMLOperatorDictionary::Fence);
 }
 
 bool AccessibilityRenderObject::isMathSeparatorOperator() const
@@ -3500,7 +3521,7 @@ bool AccessibilityRenderObject::isMathSeparatorOperator() const
     if (!m_renderer || !m_renderer->isRenderMathMLOperator())
         return false;
 
-    return toRenderMathMLOperator(*m_renderer).operatorType() == RenderMathMLOperator::Separator;
+    return toRenderMathMLOperator(*m_renderer).hasOperatorFlag(MathMLOperatorDictionary::Separator);
 }
     
 bool AccessibilityRenderObject::isMathText() const

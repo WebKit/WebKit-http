@@ -143,6 +143,7 @@ class PageBanner;
 class PageOverlay;
 class PluginView;
 class SessionState;
+class VisibleContentRectUpdateInfo;
 class WebColorChooser;
 class WebContextMenu;
 class WebContextMenuItemData;
@@ -160,12 +161,17 @@ class WebPageGroupProxy;
 class WebPopupMenu;
 class WebVideoFullscreenManager;
 class WebWheelEvent;
+struct AssistedNodeInformation;
 struct AttributedString;
 struct EditorState;
 struct InteractionInformationAtPosition;
 struct PrintInfo;
 struct WebPageCreationParameters;
 struct WebPreferencesStore;
+
+#if PLATFORM(COCOA)
+class RemoteLayerTreeTransaction;
+#endif
 
 #if ENABLE(TOUCH_EVENTS)
 class WebTouchEvent;
@@ -186,9 +192,9 @@ public:
 
     WebCore::Page* corePage() const { return m_page.get(); }
     uint64_t pageID() const { return m_pageID; }
-    uint64_t sessionID() const;
+    WebCore::SessionID sessionID() const;
     bool isUsingEphemeralSession() const;
-    void setSessionID(uint64_t);
+    void setSessionID(WebCore::SessionID);
 
     void setSize(const WebCore::IntSize&);
     const WebCore::IntSize& size() const { return m_viewSize; }
@@ -207,6 +213,10 @@ public:
     bool scrollBy(uint32_t scrollDirection, uint32_t scrollGranularity);
 
     void centerSelectionInVisibleArea();
+    
+#if PLATFORM(COCOA)
+    void willCommitLayerTree(RemoteLayerTreeTransaction&);
+#endif
 
 #if ENABLE(INSPECTOR)
     WebInspector* inspector();
@@ -306,6 +316,7 @@ public:
 
 #if ENABLE(WEBGL)
     WebCore::WebGLLoadPolicy webGLPolicyForURL(WebFrame*, const String&);
+    WebCore::WebGLLoadPolicy resolveWebGLPolicyForURL(WebFrame*, const String&);
 #endif // ENABLE(WEBGL)
     
     EditorState editorState() const;
@@ -437,12 +448,14 @@ public:
     void blurAssistedNode();
     void selectWithGesture(const WebCore::IntPoint&, uint32_t granularity, uint32_t gestureType, uint32_t gestureState, uint64_t callbackID);
     void updateSelectionWithTouches(const WebCore::IntPoint& point, uint32_t touches, bool baseIsStart, uint64_t callbackID);
+    void updateBlockSelectionWithTouch(const WebCore::IntPoint&, uint32_t touch, uint32_t handlePosition);
     void selectWithTwoTouches(const WebCore::IntPoint& from, const WebCore::IntPoint& to, uint32_t gestureType, uint32_t gestureState, uint64_t callbackID);
     void extendSelection(uint32_t granularity);
     void elementDidFocus(WebCore::Node*);
     void elementDidBlur(WebCore::Node*);
     void requestAutocorrectionData(const String& textForAutocorrection, uint64_t callbackID);
     void applyAutocorrection(const String& correction, const String& originalText, uint64_t callbackID);
+    void syncApplyAutocorrection(const String& correction, const String& originalText, bool& correctionApplied);
     void requestAutocorrectionContext(uint64_t callbackID);
     void getAutocorrectionContext(String& beforeText, String& markedText, String& selectedText, String& afterText, uint64_t& location, uint64_t& length);
     void insertText(const String& text, uint64_t replacementRangeStart, uint64_t replacementRangeEnd);
@@ -453,6 +466,10 @@ public:
     void startInteractionWithElementAtPosition(const WebCore::IntPoint&);
     void stopInteraction();
     void performActionOnElement(uint32_t action);
+    void focusNextAssistedNode(bool isForward);
+    void setAssistedNodeValue(const String&);
+    void setAssistedNodeValueAsNumber(double);
+    void setAssistedNodeSelectedIndex(uint32_t index, bool allowMultipleSelection);
 #endif
 
     NotificationPermissionRequestManager* notificationPermissionRequestManager();
@@ -650,9 +667,12 @@ public:
 #if PLATFORM(IOS)
     void setViewportConfigurationMinimumLayoutSize(const WebCore::IntSize&);
     void viewportConfigurationChanged();
+    void updateVisibleContentRects(const VisibleContentRectUpdateInfo&);
+    bool scaleWasSetByUIProcess() const { return m_scaleWasSetByUIProcess; }
     void willStartUserTriggeredZooming();
-    void didFinishScrolling(const WebCore::FloatPoint& contentOffset);
-    void didFinishZooming(float);
+    void applicationWillResignActive();
+    void applicationWillEnterForeground();
+    void applicationDidBecomeActive();
 #endif
 
 #if PLATFORM(GTK) && USE(TEXTURE_MAPPER_GL)
@@ -734,6 +754,14 @@ private:
 #if PLATFORM(IOS)
     static void convertSelectionRectsToRootView(WebCore::FrameView*, Vector<WebCore::SelectionRect>&);
     PassRefPtr<WebCore::Range> rangeForWebSelectionAtPosition(const WebCore::IntPoint&, const WebCore::VisiblePosition&, WKSelectionFlags&);
+    PassRefPtr<WebCore::Range> rangeForBlockAtPoint(const WebCore::IntPoint&);
+    void computeExpandAndShrinkThresholdsForHandle(const WebCore::IntPoint&, WKHandlePosition, float& growThreshold, float& shrinkThreshold);
+    PassRefPtr<WebCore::Range> changeBlockSelection(const WebCore::IntPoint&, WKHandlePosition, float& growThreshold, float& shrinkThreshold, WKSelectionFlags&);
+    PassRefPtr<WebCore::Range> expandedRangeFromHandle(WebCore::Range*, WKHandlePosition);
+    PassRefPtr<WebCore::Range> contractedRangeFromHandle(WebCore::Range* currentRange, WKHandlePosition, WKSelectionFlags&);
+    void getAssistedNodeInformation(AssistedNodeInformation&);
+    void platformInitializeAccessibility();
+    RefPtr<WebCore::Range> m_currentBlockSelection;
 #endif
 #if !PLATFORM(COCOA)
     static const char* interpretKeyEvent(const WebCore::KeyboardEvent*);
@@ -899,7 +927,6 @@ private:
     void reportUsedFeatures();
 
     uint64_t m_pageID;
-    uint64_t m_sessionID;
 
     OwnPtr<WebCore::Page> m_page;
     RefPtr<WebFrame> m_mainFrame;
@@ -971,9 +998,7 @@ private:
 
     WebCore::KeyboardEvent* m_keyboardEventBeingInterpreted;
 
-#if !PLATFORM(IOS)
     ViewGestureGeometryCollector m_viewGestureGeometryCollector;
-#endif
 
 #elif HAVE(ACCESSIBILITY) && (PLATFORM(GTK) || PLATFORM(EFL))
     GRefPtr<WebPageAccessibilityObject> m_accessibilityObject;
@@ -1075,6 +1100,7 @@ private:
     bool m_shouldReturnWordAtSelection;
 
     WebCore::ViewportConfiguration m_viewportConfiguration;
+    bool m_scaleWasSetByUIProcess;
     bool m_userHasChangedPageScaleFactor;
     WebCore::IntSize m_blockSelectionDesiredSize;
 #endif
@@ -1099,6 +1125,10 @@ private:
     double m_pageScaleWithoutThumbnailScale;
     WebCore::IntPoint m_scrollPositionIgnoringThumbnailScale;
     double m_thumbnailScale;
+
+#if ENABLE(WEBGL)
+    WebCore::WebGLLoadPolicy m_systemWebGLPolicy;
+#endif
 };
 
 } // namespace WebKit

@@ -203,7 +203,7 @@ void RenderBlockFlow::willBeDestroyed()
     RenderBox::willBeDestroyed();
 }
 
-void RenderBlockFlow::clearFloats()
+void RenderBlockFlow::rebuildFloatingObjectSetFromIntrudingFloats()
 {
     if (m_floatingObjects)
         m_floatingObjects->setHorizontalWritingMode(isHorizontalWritingMode());
@@ -351,7 +351,7 @@ void RenderBlockFlow::layoutBlock(bool relayoutChildren, LayoutUnit pageLogicalH
     if (updateLogicalWidthAndColumnWidth())
         relayoutChildren = true;
 
-    clearFloats();
+    rebuildFloatingObjectSetFromIntrudingFloats();
 
     LayoutUnit previousHeight = logicalHeight();
     // FIXME: should this start out as borderAndPaddingLogicalHeight() + scrollbarLogicalHeight(),
@@ -1692,9 +1692,10 @@ bool RenderBlockFlow::hasNextPage(LayoutUnit logicalOffset, PageBoundaryRule pag
 
 LayoutUnit RenderBlockFlow::adjustForUnsplittableChild(RenderBox& child, LayoutUnit logicalOffset, bool includeMargins)
 {
-    bool checkColumnBreaks = view().layoutState()->isPaginatingColumns();
-    bool checkPageBreaks = !checkColumnBreaks && view().layoutState()->m_pageLogicalHeight;
     RenderFlowThread* flowThread = flowThreadContainingBlock();
+    bool isInsideMulticolFlowThread = flowThread && !flowThread->isRenderNamedFlowThread();
+    bool checkColumnBreaks = isInsideMulticolFlowThread || view().layoutState()->isPaginatingColumns();
+    bool checkPageBreaks = !checkColumnBreaks && view().layoutState()->m_pageLogicalHeight;
     bool checkRegionBreaks = flowThread && flowThread->isRenderNamedFlowThread();
     bool isUnsplittable = child.isUnsplittableForPagination() || (checkColumnBreaks && child.style().columnBreakInside() == PBAVOID)
         || (checkPageBreaks && child.style().pageBreakInside() == PBAVOID)
@@ -2355,7 +2356,7 @@ bool RenderBlockFlow::positionNewFloats()
     return true;
 }
 
-void RenderBlockFlow::newLine(EClear clear)
+void RenderBlockFlow::clearFloats(EClear clear)
 {
     positionNewFloats();
     // set y position
@@ -2718,9 +2719,9 @@ void RenderBlockFlow::adjustForBorderFit(LayoutUnit x, LayoutUnit& left, LayoutU
 
         for (auto box = firstRootBox(); box; box = box->nextRootBox()) {
             if (box->firstChild())
-                left = std::min(left, x + static_cast<LayoutUnit>(box->firstChild()->x()));
+                left = std::min(left, x + LayoutUnit(box->firstChild()->x()));
             if (box->lastChild())
-                right = std::max(right, x + static_cast<LayoutUnit>(ceilf(box->lastChild()->logicalRight())));
+                right = std::max(right, x + LayoutUnit(ceilf(box->lastChild()->logicalRight())));
         }
     } else {
         for (RenderBox* obj = firstChildBox(); obj; obj = obj->nextSiblingBox()) {

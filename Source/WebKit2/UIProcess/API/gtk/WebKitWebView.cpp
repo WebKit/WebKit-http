@@ -3035,7 +3035,8 @@ void webkit_web_view_set_view_mode(WebKitWebView* webView, WebKitViewMode viewMo
 {
     g_return_if_fail(WEBKIT_IS_WEB_VIEW(webView));
 
-    g_warning("webkit_web_view_set_view_mode has been deprecated and is a no-op.");
+    if (viewMode == WEBKIT_VIEW_MODE_SOURCE)
+        g_warning("WEBKIT_VIEW_MODE_SOURCE has been deprecated and is no longer supported.");
 }
 
 /**
@@ -3050,7 +3051,6 @@ WebKitViewMode webkit_web_view_get_view_mode(WebKitWebView* webView)
 {
     g_return_val_if_fail(WEBKIT_IS_WEB_VIEW(webView), WEBKIT_VIEW_MODE_WEB);
 
-    g_warning("webkit_web_view_get_view_mode has been deprecated and always returns WEBKIT_VIEW_MODE_WEB.");
     return WEBKIT_VIEW_MODE_WEB;
 }
 
@@ -3106,9 +3106,6 @@ void webKitWebViewDidReceiveSnapshot(WebKitWebView* webView, uint64_t callbackID
         g_task_return_pointer(task.get(), 0, 0);
 }
 
-COMPILE_ASSERT_MATCHING_ENUM(WEBKIT_SNAPSHOT_REGION_VISIBLE, SnapshotRegionVisible);
-COMPILE_ASSERT_MATCHING_ENUM(WEBKIT_SNAPSHOT_REGION_FULL_DOCUMENT, SnapshotRegionFullDocument);
-
 static inline unsigned webKitSnapshotOptionsToSnapshotOptions(WebKitSnapshotOptions options)
 {
     SnapshotOptions snapshotOptions = 0;
@@ -3117,6 +3114,19 @@ static inline unsigned webKitSnapshotOptionsToSnapshotOptions(WebKitSnapshotOpti
         snapshotOptions |= SnapshotOptionsExcludeSelectionHighlighting;
 
     return snapshotOptions;
+}
+
+static inline SnapshotRegion toSnapshotRegion(WebKitSnapshotRegion region)
+{
+    switch (region) {
+    case WEBKIT_SNAPSHOT_REGION_VISIBLE:
+        return SnapshotRegionVisible;
+    case WEBKIT_SNAPSHOT_REGION_FULL_DOCUMENT:
+        return SnapshotRegionFullDocument;
+    default:
+        ASSERT_NOT_REACHED();
+        return SnapshotRegionVisible;
+    }
 }
 
 static inline uint64_t generateSnapshotCallbackID()
@@ -3148,7 +3158,7 @@ void webkit_web_view_get_snapshot(WebKitWebView* webView, WebKitSnapshotRegion r
     ImmutableDictionary::MapType message;
     uint64_t callbackID = generateSnapshotCallbackID();
     message.set(String::fromUTF8("SnapshotOptions"), API::UInt64::create(static_cast<uint64_t>(webKitSnapshotOptionsToSnapshotOptions(options))));
-    message.set(String::fromUTF8("SnapshotRegion"), API::UInt64::create(static_cast<uint64_t>(region)));
+    message.set(String::fromUTF8("SnapshotRegion"), API::UInt64::create(static_cast<uint64_t>(toSnapshotRegion(region))));
     message.set(String::fromUTF8("CallbackID"), API::UInt64::create(callbackID));
 
     webView->priv->snapshotResultsMap.set(callbackID, adoptGRef(g_task_new(webView, cancellable, callback, userData)));

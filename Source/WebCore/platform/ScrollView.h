@@ -170,7 +170,8 @@ public:
     // This is the area that is not covered by UI elements.
     IntRect actualVisibleContentRect() const;
     // This is the area that is partially or fully exposed, and may extend under overlapping UI elements.
-    IntRect visibleExtentContentRect() const;
+    IntRect exposedContentRect() const;
+    void setExposedContentRect(const IntRect&);
 
     void setActualScrollPosition(const IntPoint&);
     TileCache* tileCache();
@@ -341,7 +342,7 @@ public:
 protected:
     ScrollView();
 
-    virtual void repaintContentRectangle(const IntRect&, bool now = false);
+    virtual void repaintContentRectangle(const IntRect&);
     virtual void paintContents(GraphicsContext*, const IntRect& damageRect) = 0;
 
     virtual void paintOverhangAreas(GraphicsContext*, const IntRect& horizontalOverhangArea, const IntRect& verticalOverhangArea, const IntRect& dirtyRect);
@@ -392,7 +393,11 @@ private:
     // whether it is safe to blit on scroll.
     bool m_canBlitOnScroll;
 
-#if !PLATFORM(IOS)
+    // FIXME: exposedContentRect is a very similar concept to fixedVisibleContentRect except it does not differentiate
+    // between exposed rect and unobscuredRects. The two attributes should eventually be merged.
+#if PLATFORM(IOS)
+    IntRect m_exposedContentRect;
+#else
     IntRect m_fixedVisibleContentRect;
 #endif
     IntSize m_scrollOffset; // FIXME: Would rather store this as a position, but we will wait to make this change until more code is shared.
@@ -437,7 +442,7 @@ private:
     void platformSetScrollPosition(const IntPoint&);
     bool platformScroll(ScrollDirection, ScrollGranularity);
     void platformSetScrollbarsSuppressed(bool repaintOnUnsuppress);
-    void platformRepaintContentRectangle(const IntRect&, bool now);
+    void platformRepaintContentRectangle(const IntRect&);
     bool platformIsOffscreen() const;
     void platformSetScrollbarOverlayStyle(ScrollbarOverlayStyle);
    

@@ -68,8 +68,7 @@ public:
 
     virtual void regionChangedWritingMode(RenderRegion*) override;
 
-    bool overset() const { return m_overset; }
-    void computeOversetStateForRegions(LayoutUnit oldClientAfterEdge);
+    LayoutRect decorationsClipRectForBoxInNamedFlowFragment(const RenderBox&, RenderNamedFlowFragment&) const;
 
     void registerNamedFlowContentElement(Element&);
     void unregisterNamedFlowContentElement(Element&);
@@ -77,7 +76,7 @@ public:
     bool hasContentElement(Element&) const;
 
     bool isMarkedForDestruction() const;
-    void getRanges(Vector<RefPtr<Range>>&, const RenderRegion*) const;
+    void getRanges(Vector<RefPtr<Range>>&, const RenderNamedFlowFragment*) const;
 
     virtual bool collectsGraphicsLayersUnderRegions() const override;
 
@@ -89,6 +88,12 @@ public:
 
     virtual void removeFlowChildInfo(RenderObject*) override final;
 
+    LayoutUnit flowContentBottom() const { return m_flowContentBottom; }
+    void dispatchNamedFlowEvents();
+
+    void setDispatchRegionLayoutUpdateEvent(bool value) { m_dispatchRegionLayoutUpdateEvent = value; }
+    void setDispatchRegionOversetChangeEvent(bool value) { m_dispatchRegionOversetChangeEvent = value; }
+
 protected:
     void setMarkForDestruction();
     void resetMarkForDestruction();
@@ -97,15 +102,17 @@ private:
     virtual const char* renderName() const override;
     virtual bool isRenderNamedFlowThread() const override { return true; }
     virtual bool isChildAllowed(const RenderObject&, const RenderStyle&) const override;
+    virtual void computeOverflow(LayoutUnit, bool = false) override;
+    virtual void layout() override final;
 
-    virtual void dispatchRegionLayoutUpdateEvent() override;
-    virtual void dispatchRegionOversetChangeEvent() override;
+    void dispatchRegionLayoutUpdateEventIfNeeded();
+    void dispatchRegionOversetChangeEventIfNeeded();
 
     bool dependsOn(RenderNamedFlowThread* otherRenderFlowThread) const;
     void addDependencyOnFlowThread(RenderNamedFlowThread*);
     void removeDependencyOnFlowThread(RenderNamedFlowThread*);
 
-    void addRegionToNamedFlowThread(RenderRegion*);
+    void addFragmentToNamedFlowThread(RenderNamedFlowFragment*);
 
     void checkInvalidRegions();
 
@@ -135,14 +142,17 @@ private:
 
     RenderRegionList m_invalidRegionList;
 
-    bool m_overset : 1;
     bool m_hasRegionsWithStyling : 1;
+    bool m_dispatchRegionLayoutUpdateEvent : 1;
+    bool m_dispatchRegionOversetChangeEvent : 1;
 
     // The DOM Object that represents a named flow.
     Ref<WebKitNamedFlow> m_namedFlow;
 
     Timer<RenderNamedFlowThread> m_regionLayoutUpdateEventTimer;
     Timer<RenderNamedFlowThread> m_regionOversetChangeEventTimer;
+
+    LayoutUnit m_flowContentBottom;
 };
 
 RENDER_OBJECT_TYPE_CASTS(RenderNamedFlowThread, isRenderNamedFlowThread())

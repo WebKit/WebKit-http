@@ -26,6 +26,8 @@
 #import "config.h"
 #import "NativeWebTouchEvent.h"
 
+#if PLATFORM(IOS)
+
 #import "WebEvent.h"
 #import <Foundation/NSGeometry.h>
 #import <UIKit/UITouch.h>
@@ -34,6 +36,8 @@
 #import <wtf/CurrentTime.h>
 
 namespace WebKit {
+
+static unsigned uniqueTouchEventIdIndex = 0;
 
 static inline WebEvent::Type webEventTypeForUIWebTouchEventType(UIWebTouchEventType type)
 {
@@ -95,8 +99,10 @@ static inline Vector<WebPlatformTouchPoint> extractWebTouchPoint(UIWebTouchEvent
 
 NativeWebTouchEvent::NativeWebTouchEvent(UIWebTouchEventsGestureRecognizer *gestureRecognizer)
     : WebTouchEvent(webEventTypeForUIWebTouchEventType(gestureRecognizer.type), static_cast<Modifiers>(0), WTF::currentTime(), extractWebTouchPoint(gestureRecognizer), positionForCGPoint(gestureRecognizer.locationInWindow), gestureRecognizer.inJavaScriptGesture, gestureRecognizer.scale, gestureRecognizer.rotation)
-    , m_nativeEvent(gestureRecognizer)
+    , m_uniqueID(uniqueTouchEventIdIndex++)
 {
 }
 
 } // namespace WebKit
+
+#endif // PLATFORM(IOS)

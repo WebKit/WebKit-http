@@ -76,6 +76,7 @@ javascriptcore_built_sources :=
 javascriptcore_built_nosources :=
 llint_nosources :=
 offlineasm_nosources :=
+udis86_nosources :=
 platform_webcore_cppflags :=
 platform_cppflags :=
 platform_built_sources :=
@@ -131,6 +132,15 @@ gir_DATA :=
 typelibs_DATA :=
 girdir := $(datadir)/gir-1.0
 typelibsdir := $(libdir)/girepository-1.0
+endif
+
+webkit1_pkg_config_file = Source/WebKit/gtk/webkitgtk-@WEBKITGTK_API_MAJOR_VERSION@.@WEBKITGTK_API_MINOR_VERSION@.pc
+webkit2_pkg_config_file = Source/WebKit2/webkit2gtk-@WEBKITGTK_API_MAJOR_VERSION@.@WEBKITGTK_API_MINOR_VERSION@.pc
+
+if ENABLE_WEBKIT2
+webkitdom_pkgconfig_file = $(webkit2_pkg_config_file)
+else
+webkitdom_pkgconfig_file = $(webkit1_pkg_config_file)
 endif
 
 # We do not care at all about this implicit built-in make rules,

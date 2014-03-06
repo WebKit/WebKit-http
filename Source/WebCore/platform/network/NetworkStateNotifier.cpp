@@ -26,6 +26,10 @@
 #include "config.h"
 #include "NetworkStateNotifier.h"
 
+#if PLATFORM(IOS)
+#include "Settings.h"
+#endif
+
 #include <mutex>
 #include <wtf/Assertions.h>
 #include <wtf/StdLibExtras.h>
@@ -47,11 +51,16 @@ NetworkStateNotifier& networkStateNotifier()
 void NetworkStateNotifier::addNetworkStateChangeListener(std::function<void (bool)> listener)
 {
     ASSERT(listener);
+#if PLATFORM(IOS)
+    if (Settings::shouldOptOutOfNetworkStateObservation())
+        return;
+    registerObserverIfNecessary();
+#endif
 
     m_listeners.append(std::move(listener));
 }
 
-void NetworkStateNotifier::notifyNetworkStateChange()
+void NetworkStateNotifier::notifyNetworkStateChange() const
 {
     for (const auto& listener : m_listeners)
         listener(m_isOnLine);

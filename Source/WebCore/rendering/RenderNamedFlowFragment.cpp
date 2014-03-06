@@ -62,8 +62,6 @@ PassRef<RenderStyle> RenderNamedFlowFragment::createStyle(const RenderStyle& par
     style.get().setFlowThread(parentStyle.flowThread());
     style.get().setRegionThread(parentStyle.regionThread());
     style.get().setRegionFragment(parentStyle.regionFragment());
-    style.get().setOverflowX(parentStyle.overflowX());
-    style.get().setOverflowY(parentStyle.overflowY());
 #if ENABLE(CSS_SHAPES) && ENABLE(CSS_SHAPE_INSIDE)
     style.get().setShapeInside(parentStyle.shapeInside());
 #endif
@@ -89,6 +87,12 @@ void RenderNamedFlowFragment::styleDidChange(StyleDifference diff, const RenderS
 
     if (parent() && parent()->needsLayout())
         setNeedsLayout(MarkOnlyThis);
+}
+
+void RenderNamedFlowFragment::getRanges(Vector<RefPtr<Range>>& rangeObjects) const
+{
+    const RenderNamedFlowThread& namedFlow = view().flowThreadController().ensureRenderFlowThreadWithName(style().regionThread());
+    namedFlow.getRanges(rangeObjects, this);
 }
 
 bool RenderNamedFlowFragment::shouldHaveAutoLogicalHeight() const
@@ -241,6 +245,14 @@ RenderLayer& RenderNamedFlowFragment::fragmentContainerLayer() const
     return *fragmentContainer().layer();
 }
 
+bool RenderNamedFlowFragment::shouldClipFlowThreadContent() const
+{
+    if (fragmentContainer().hasOverflowClip())
+        return true;
+    
+    return isLastRegion() && (style().regionFragment() == BreakRegionFragment);
+}
+
 void RenderNamedFlowFragment::layoutBlock(bool relayoutChildren, LayoutUnit)
 {
     StackStats::LayoutCheckPoint layoutCheckPoint;
@@ -251,8 +263,10 @@ void RenderNamedFlowFragment::layoutBlock(bool relayoutChildren, LayoutUnit)
         if (!isHorizontalWritingMode())
             oldRegionRect = oldRegionRect.transposedRect();
 
-        if (m_flowThread->inOverflowLayoutPhase() || m_flowThread->inFinalLayoutPhase())
+        if (m_flowThread->inOverflowLayoutPhase() || m_flowThread->inFinalLayoutPhase()) {
             computeOverflowFromFlowThread();
+            updateOversetState();
+        }
 
         if (hasAutoLogicalHeight() && m_flowThread->inMeasureContentLayoutPhase()) {
             m_flowThread->invalidateRegions();
@@ -264,6 +278,55 @@ void RenderNamedFlowFragment::layoutBlock(bool relayoutChildren, LayoutUnit)
             // This can happen even if we are in the inConstrainedLayoutPhase and it will trigger a pathological layout of the flow thread.
             m_flowThread->invalidateRegions();
     }
+}
+
+void RenderNamedFlowFragment::setRegionOversetState(RegionOversetState state)
+{
+    ASSERT(generatingElement());
+
+    generatingElement()->setRegionOversetState(state);
+}
+
+RegionOversetState RenderNamedFlowFragment::regionOversetState() const
+{
+    ASSERT(generatingElement());
+
+    if (!isValid())
+        return RegionUndefined;
+
+    return generatingElement()->regionOversetState();
+}
+
+void RenderNamedFlowFragment::updateOversetState()
+{
+    ASSERT(isValid());
+
+    RenderNamedFlowThread* flowThread = namedFlowThread();
+    ASSERT(flowThread && (flowThread->inOverflowLayoutPhase() || flowThread->inFinalLayoutPhase()));
+
+    LayoutUnit flowContentBottom = flowThread->flowContentBottom();
+    bool isHorizontalWritingMode = flowThread->isHorizontalWritingMode();
+
+    LayoutUnit flowMin = flowContentBottom - (isHorizontalWritingMode ? flowThreadPortionRect().y() : flowThreadPortionRect().x());
+    LayoutUnit flowMax = flowContentBottom - (isHorizontalWritingMode ? flowThreadPortionRect().maxY() : flowThreadPortionRect().maxX());
+
+    RegionOversetState previousState = regionOversetState();
+    RegionOversetState state = RegionFit;
+    if (flowMin <= 0)
+        state = RegionEmpty;
+    if (flowMax > 0 && isLastRegion())
+        state = RegionOverset;
+    
+    setRegionOversetState(state);
+
+    // Determine whether the NamedFlow object should dispatch a regionLayoutUpdate event
+    if (previousState != state
+        || state == RegionFit
+        || state == RegionOverset)
+        flowThread->setDispatchRegionLayoutUpdateEvent(true);
+    
+    if (previousState != state)
+        flowThread->setDispatchRegionOversetChangeEvent(true);
 }
 
 void RenderNamedFlowFragment::checkRegionStyle()

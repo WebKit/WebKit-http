@@ -29,6 +29,7 @@
 #if ENABLE(ENCRYPTED_MEDIA_V2)
 
 #include "CDM.h"
+#include "CDMSession.h"
 #include "Event.h"
 #include "GenericEventQueue.h"
 #include "MediaKeyError.h"
@@ -67,7 +68,7 @@ void MediaKeySession::close()
 {
     if (m_session)
         m_session->releaseKeys();
-    m_session = 0;
+    m_session = nullptr;
     m_asyncEventQueue.cancelAllEvents();
 }
 
@@ -199,7 +200,7 @@ void MediaKeySession::addKeyTimerFired(Timer<MediaKeySession>&)
         }
 
         // 2.8. If any of the preceding steps in the task failed
-        if (!didStoreKey) {
+        if (errorCode) {
             // 2.8.1. Create a new MediaKeyError object with the following attributes:
             //        code = the appropriate MediaKeyError code
             //        systemCode = a Key System-specific value, if provided, and 0 otherwise

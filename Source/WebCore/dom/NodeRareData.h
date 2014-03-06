@@ -225,34 +225,26 @@ public:
 
     void adoptDocument(Document* oldDocument, Document* newDocument)
     {
-        invalidateCaches();
-
-        if (oldDocument != newDocument) {
-            for (auto it = m_atomicNameCaches.begin(), end = m_atomicNameCaches.end(); it != end; ++it) {
-                LiveNodeList& list = *it->value;
-                oldDocument->unregisterNodeList(list);
-                newDocument->registerNodeList(list);
-            }
-
-            for (auto it = m_nameCaches.begin(), end = m_nameCaches.end(); it != end; ++it) {
-                LiveNodeList& list = *it->value;
-                oldDocument->unregisterNodeList(list);
-                newDocument->registerNodeList(list);
-            }
-
-            for (auto it = m_tagNodeListCacheNS.begin(), end = m_tagNodeListCacheNS.end(); it != end; ++it) {
-                LiveNodeList& list = *it->value;
-                ASSERT(!list.isRootedAtDocument());
-                oldDocument->unregisterNodeList(list);
-                newDocument->registerNodeList(list);
-            }
-
-            for (auto it = m_cachedCollections.begin(), end = m_cachedCollections.end(); it != end; ++it) {
-                HTMLCollection& collection = *it->value;
-                oldDocument->unregisterCollection(collection);
-                newDocument->registerCollection(collection);
-            }
+        ASSERT(oldDocument);
+        if (oldDocument == newDocument) {
+            invalidateCaches();
+            return;
         }
+
+        for (auto it : m_atomicNameCaches)
+            it.value->invalidateCache(*oldDocument);
+
+        for (auto it : m_nameCaches)
+            it.value->invalidateCache(*oldDocument);
+
+        for (auto it : m_tagNodeListCacheNS) {
+            LiveNodeList& list = *it.value;
+            ASSERT(!list.isRootedAtDocument());
+            list.invalidateCache(*oldDocument);
+        }
+
+        for (auto it : m_cachedCollections)
+            it.value->invalidateCache(*oldDocument);
     }
 
 private:
@@ -268,7 +260,7 @@ private:
 
     std::pair<unsigned char, String> namedNodeListKey(LiveNodeList::Type type, const String& name)
     {
-        return std::pair<unsigned char, String>(type, name);
+        return std::pair<unsigned char, String>(static_cast<unsigned char>(type), name);
     }
 
     bool deleteThisAndUpdateNodeRareDataIfAboutToRemoveLastList(Node&);

@@ -39,9 +39,9 @@
 #import "Logging.h"
 #import "MIMETypeRegistry.h"
 #import "PlatformLayer.h"
+#import "PlatformTimeRanges.h"
 #import "SecurityOrigin.h"
 #import "SoftLinking.h"
-#import "TimeRanges.h"
 #import "WebCoreSystemInterface.h"
 #import <QTKit/QTKit.h>
 #import <objc/runtime.h>
@@ -185,7 +185,7 @@ PassOwnPtr<MediaPlayerPrivateInterface> MediaPlayerPrivateQTKit::create(MediaPla
 void MediaPlayerPrivateQTKit::registerMediaEngine(MediaEngineRegistrar registrar)
 {
     if (isAvailable())
-        registrar(create, getSupportedTypes, supportsType, getSitesInMediaCache, clearMediaCache, clearMediaCacheForSite);
+        registrar(create, getSupportedTypes, supportsType, getSitesInMediaCache, clearMediaCache, clearMediaCacheForSite, 0);
 }
 
 MediaPlayerPrivateQTKit::MediaPlayerPrivateQTKit(MediaPlayer* player)
@@ -917,13 +917,13 @@ void MediaPlayerPrivateQTKit::setPreservesPitch(bool preservesPitch)
     createQTMovie([movieAttributes.get() valueForKey:QTMovieURLAttribute], movieAttributes.get());
 }
 
-PassRefPtr<TimeRanges> MediaPlayerPrivateQTKit::buffered() const
+std::unique_ptr<PlatformTimeRanges> MediaPlayerPrivateQTKit::buffered() const
 {
-    RefPtr<TimeRanges> timeRanges = TimeRanges::create();
+    auto timeRanges = PlatformTimeRanges::create();
     float loaded = maxTimeLoaded();
     if (loaded > 0)
         timeRanges->add(0, loaded);
-    return timeRanges.release();
+    return timeRanges;
 }
 
 float MediaPlayerPrivateQTKit::maxTimeSeekable() const

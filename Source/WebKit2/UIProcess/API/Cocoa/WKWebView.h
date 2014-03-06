@@ -40,6 +40,7 @@
 @class WKWebViewConfiguration;
 
 @protocol WKNavigationDelegate;
+@protocol WKUIDelegate;
 
 /*!
  A @link WKWebView @/link displays interactive Web content.
@@ -58,6 +59,8 @@ WK_API_CLASS
 @property (nonatomic, readonly) WKWebViewConfiguration *configuration;
 
 @property (nonatomic, weak) id <WKNavigationDelegate> navigationDelegate;
+
+@property (nonatomic, weak) id <WKUIDelegate> UIDelegate;
 
 /*! @abstract The view's back-forward list. */
 @property (nonatomic, readonly) WKBackForwardList *backForwardList;
@@ -117,8 +120,15 @@ WK_API_CLASS
 - (void)goBack;
 - (void)goForward;
 
+@property (nonatomic) BOOL allowsBackForwardNavigationGestures;
+
 #if TARGET_OS_IPHONE
 @property (nonatomic, readonly) UIScrollView *scrollView;
+#else
+@property (nonatomic) BOOL allowsMagnification;
+@property (nonatomic) CGFloat magnification;
+
+- (void)setMagnification:(CGFloat)magnification centeredAtPoint:(CGPoint)point;
 #endif
 
 @end

@@ -44,28 +44,8 @@
 #include <wtf/MainThread.h>
 #include <wtf/unicode/CharacterNames.h>
 
-// FIXME: Extract the following iOS-specific code into a separate file.
-#if PLATFORM(IOS)
-#include "SoftLinking.h"
-
-#ifdef __has_include
-#if __has_include(<DataDetectorsCore/DDDFACache.h>)
-#include <DataDetectorsCore/DDDFACache.h>
-#else
-typedef void* DDDFACacheRef;
-#endif
-
-#if __has_include(<DataDetectorsCore/DDDFAScanner.h>)
-#include <DataDetectorsCore/DDDFAScanner.h>
-#else
-typedef void* DDDFAScannerRef;
-#endif
-#endif
-
-SOFT_LINK_PRIVATE_FRAMEWORK_OPTIONAL(DataDetectorsCore)
-SOFT_LINK(DataDetectorsCore, DDDFACacheCreateFromFramework, DDDFACacheRef, (), ())
-SOFT_LINK(DataDetectorsCore, DDDFAScannerCreateFromCache, DDDFAScannerRef, (DDDFACacheRef cache), (cache))
-SOFT_LINK(DataDetectorsCore, DDDFAScannerFirstResultInUnicharArray, Boolean, (DDDFAScannerRef scanner, const UniChar* str, unsigned length, int* startPos, int* endPos), (scanner, str, length, startPos, endPos))
+#if ENABLE(TELEPHONE_NUMBER_DETECTION)
+#include "TelephoneNumberDetector.h"
 #endif
 
 namespace WebCore {
@@ -2297,8 +2277,6 @@ void HTMLTreeBuilder::processEndTag(AtomicHTMLToken* token)
             processTemplateEndTag(token);
             return;
         }
-
-        break;
 #else
         ASSERT_NOT_REACHED();
 #endif
@@ -2336,7 +2314,7 @@ void HTMLTreeBuilder::processCharacter(AtomicHTMLToken* token)
 }
 
 // FIXME: Extract the following iOS-specific code into a separate file.
-#if PLATFORM(IOS)
+#if ENABLE(TELEPHONE_NUMBER_DETECTION)
 // From the string 4089961010, creates a link of the form <a href="tel:4089961010">4089961010</a> and inserts it.
 void HTMLTreeBuilder::insertPhoneNumberLink(const String& string)
 {
@@ -2360,13 +2338,7 @@ void HTMLTreeBuilder::insertPhoneNumberLink(const String& string)
 // 4. Appends the rest of the string as a text node.
 void HTMLTreeBuilder::linkifyPhoneNumbers(const String& string)
 {
-    static DDDFACacheRef phoneNumbersCache = DDDFACacheCreateFromFramework();
-    if (!phoneNumbersCache) {
-        m_tree.insertTextNode(string);
-        return;
-    }
-
-    static DDDFAScannerRef phoneNumbersScanner = DDDFAScannerCreateFromCache(phoneNumbersCache);
+    ASSERT(TelephoneNumberDetector::isSupported());
 
     // relativeStartPosition and relativeEndPosition are the endpoints of the phone number range,
     // relative to the scannerPosition
@@ -2376,7 +2348,7 @@ void HTMLTreeBuilder::linkifyPhoneNumbers(const String& string)
     int relativeEndPosition = 0;
 
     // While there's a phone number in the rest of the string...
-    while ((scannerPosition < length) && DDDFAScannerFirstResultInUnicharArray(phoneNumbersScanner, &string.deprecatedCharacters()[scannerPosition], length - scannerPosition, &relativeStartPosition, &relativeEndPosition)) {
+    while ((scannerPosition < length) && TelephoneNumberDetector::find(&string.deprecatedCharacters()[scannerPosition], length - scannerPosition, &relativeStartPosition, &relativeEndPosition)) {
         // The convention in the Data Detectors framework is that the end position is the first character NOT in the phone number
         // (that is, the length of the range is relativeEndPosition - relativeStartPosition). So substract 1 to get the same
         // convention as the old WebCore phone number parser (so that the rest of the code is still valid if we want to go back
@@ -2424,7 +2396,7 @@ static inline bool shouldParseTelephoneNumbersInNode(const ContainerNode& node)
     } while (currentNode);
     return true;
 }
-#endif // PLATFORM(IOS)
+#endif
 
 void HTMLTreeBuilder::processCharacterBuffer(ExternalCharacterTokenBuffer& buffer)
 {
@@ -2552,7 +2524,6 @@ ReprocessBuffer:
         // FIXME: parse error
         setInsertionMode(InsertionMode::InBody);
         goto ReprocessBuffer;
-        break;
     }
     case InsertionMode::Text: {
         ASSERT(insertionMode() == InsertionMode::Text);
@@ -2568,7 +2539,6 @@ ReprocessBuffer:
             return;
         defaultForInHeadNoscript();
         goto ReprocessBuffer;
-        break;
     }
     case InsertionMode::InFrameset:
     case InsertionMode::AfterFrameset: {
@@ -2603,8 +2573,8 @@ void HTMLTreeBuilder::processCharacterBufferForInBody(ExternalCharacterTokenBuff
 {
     m_tree.reconstructTheActiveFormattingElements();
     String characters = buffer.takeRemaining();
-#if PLATFORM(IOS)
-    if (!isParsingFragment() && m_tree.isTelephoneNumberParsingEnabled() && shouldParseTelephoneNumbersInNode(*m_tree.currentNode()) && DataDetectorsCoreLibrary())
+#if ENABLE(TELEPHONE_NUMBER_DETECTION)
+    if (!isParsingFragment() && m_tree.isTelephoneNumberParsingEnabled() && shouldParseTelephoneNumbersInNode(*m_tree.currentNode()) && TelephoneNumberDetector::isSupported())
         linkifyPhoneNumbers(characters);
     else
         m_tree.insertTextNode(characters);

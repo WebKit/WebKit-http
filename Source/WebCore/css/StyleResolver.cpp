@@ -9,6 +9,7 @@
  * Copyright (c) 2011, Code Aurora Forum. All rights reserved.
  * Copyright (C) Research In Motion Limited 2011. All rights reserved.
  * Copyright (C) 2012 Google Inc. All rights reserved.
+ * Copyright (C) 2014 Igalia S.L.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -40,7 +41,6 @@
 #include "CSSFontSelector.h"
 #include "CSSFontValue.h"
 #include "CSSFunctionValue.h"
-#include "CSSGridTemplateAreasValue.h"
 #include "CSSLineBoxContainValue.h"
 #include "CSSPageRule.h"
 #include "CSSParser.h"
@@ -141,6 +141,10 @@
 #if ENABLE(CSS_FILTERS)
 #include "FilterOperation.h"
 #include "WebKitCSSFilterValue.h"
+#endif
+
+#if ENABLE(CSS_GRID_LAYOUT)
+#include "CSSGridTemplateAreasValue.h"
 #endif
 
 #if ENABLE(CSS_IMAGE_SET)
@@ -1073,7 +1077,9 @@ static EDisplay equivalentBlockDisplay(EDisplay display, bool isFloating, bool s
     case TABLE:
     case BOX:
     case FLEX:
+#if ENABLE(CSS_GRID_LAYOUT)
     case GRID:
+#endif
         return display;
 
     case LIST_ITEM:
@@ -1087,8 +1093,10 @@ static EDisplay equivalentBlockDisplay(EDisplay display, bool isFloating, bool s
         return BOX;
     case INLINE_FLEX:
         return FLEX;
+#if ENABLE(CSS_GRID_LAYOUT)
     case INLINE_GRID:
         return GRID;
+#endif
 
     case INLINE:
     case COMPACT:
@@ -1238,6 +1246,7 @@ void StyleResolver::adjustRenderStyle(RenderStyle& style, const RenderStyle& par
         || style.boxReflect()
         || style.hasFilter()
         || style.hasBlendMode()
+        || style.hasIsolation()
         || style.position() == StickyPosition
         || (style.position() == FixedPosition && e && e->document().page() && e->document().page()->settings().fixedPositionCreatesStackingContext())
         || style.hasFlowFrom()
@@ -1249,6 +1258,10 @@ void StyleResolver::adjustRenderStyle(RenderStyle& style, const RenderStyle& par
         style.setOverflowX(style.overflowX() == OVISIBLE ? OAUTO : style.overflowX());
         style.setOverflowY(style.overflowY() == OVISIBLE ? OAUTO : style.overflowY());
     }
+
+    // Disallow -webkit-user-modify on :pseudo and ::pseudo elements.
+    if (e && !e->shadowPseudoId().isNull())
+        style.setUserModify(READ_ONLY);
 
     if (doesNotInheritTextDecoration(style, e))
         style.setTextDecorationsInEffect(style.textDecoration());
@@ -1324,10 +1337,13 @@ void StyleResolver::adjustRenderStyle(RenderStyle& style, const RenderStyle& par
     // FIXME: when dropping the -webkit prefix on transform-style, we should also have opacity < 1 cause flattening.
     if (style.preserves3D() && (style.overflowX() != OVISIBLE
         || style.overflowY() != OVISIBLE
-        || style.hasFilter()))
+        || style.hasFilter()
+        || style.hasBlendMode()))
         style.setTransformStyle3D(TransformStyle3DFlat);
 
+#if ENABLE(CSS_GRID_LAYOUT)
     adjustGridItemPosition(style, parentStyle);
+#endif
 
     if (e && e->isSVGElement()) {
         // Spec: http://www.w3.org/TR/SVG/masking.html#OverflowProperty
@@ -1360,6 +1376,83 @@ void StyleResolver::adjustRenderStyle(RenderStyle& style, const RenderStyle& par
     }
 }
 
+#if ENABLE(CSS_GRID_LAYOUT)
+static inline bool gridLineDefinedBeforeGridArea(const String& gridLineName, const String& gridAreaName, const NamedGridAreaMap& gridAreaMap, const NamedGridLinesMap& namedLinesMap, GridPositionSide side)
+{
+    ASSERT(namedLinesMap.contains(gridLineName));
+    // Grid line indexes are inserted in order.
+    size_t namedGridLineFirstDefinition = GridPosition::adjustGridPositionForSide(namedLinesMap.get(gridLineName)[0], side);
+
+    ASSERT(gridAreaMap.contains(gridAreaName));
+    const GridCoordinate& gridAreaCoordinates = gridAreaMap.get(gridAreaName);
+
+    // GridCoordinate refers to tracks while the indexes in namedLinesMap refer to lines, that's why we need to add 1 to
+    // the grid coordinate to get the end line index.
+    switch (side) {
+    case ColumnStartSide:
+        return namedGridLineFirstDefinition < gridAreaCoordinates.columns.initialPositionIndex;
+    case ColumnEndSide:
+        return namedGridLineFirstDefinition < gridAreaCoordinates.columns.finalPositionIndex;
+    case RowStartSide:
+        return namedGridLineFirstDefinition < gridAreaCoordinates.rows.initialPositionIndex;
+    case RowEndSide:
+        return namedGridLineFirstDefinition < gridAreaCoordinates.rows.finalPositionIndex;
+    }
+    ASSERT_NOT_REACHED();
+    return false;
+}
+
+std::unique_ptr<GridPosition> StyleResolver::adjustNamedGridItemPosition(const NamedGridAreaMap& gridAreaMap, const NamedGridLinesMap& namedLinesMap, const GridPosition& position, GridPositionSide side) const
+{
+    ASSERT(position.isNamedGridArea());
+    // The StyleBuilder always treats <custom-ident> as a named grid area. We must decide here if they are going to be
+    // resolved to either a grid area or a grid line.
+
+    String namedGridAreaOrGridLine = position.namedGridLine();
+    bool hasStartSuffix = namedGridAreaOrGridLine.endsWith("-start");
+    bool hasEndSuffix = namedGridAreaOrGridLine.endsWith("-end");
+    bool isStartSide = side == ColumnStartSide || side == RowStartSide;
+    bool hasStartSuffixForStartSide = hasStartSuffix && isStartSide;
+    bool hasEndSuffixForEndSide = hasEndSuffix && !isStartSide;
+    size_t suffixLength = hasStartSuffix ? strlen("-start") : strlen("-end");
+    String gridAreaName = hasStartSuffixForStartSide || hasEndSuffixForEndSide ? namedGridAreaOrGridLine.substring(0, namedGridAreaOrGridLine.length() - suffixLength) : namedGridAreaOrGridLine;
+
+    if (gridAreaMap.contains(gridAreaName)) {
+        String gridLineName;
+        if (isStartSide && !hasStartSuffix)
+            gridLineName = namedGridAreaOrGridLine + "-start";
+        else if (!isStartSide && !hasEndSuffix)
+            gridLineName = namedGridAreaOrGridLine + "-end";
+        else
+            gridLineName = namedGridAreaOrGridLine;
+
+        if (namedLinesMap.contains(gridLineName) && gridLineDefinedBeforeGridArea(gridLineName, gridAreaName, gridAreaMap, namedLinesMap, side)) {
+            // Use the explicitly defined grid line defined before the grid area instead of the grid area.
+            auto adjustedPosition = std::make_unique<GridPosition>();
+            adjustedPosition->setExplicitPosition(1, gridLineName);
+            return adjustedPosition;
+        }
+
+        if (hasStartSuffixForStartSide || hasEndSuffixForEndSide) {
+            // Renderer expects the grid area name instead of the implicit grid line name.
+            auto adjustedPosition = std::make_unique<GridPosition>();
+            adjustedPosition->setNamedGridArea(gridAreaName);
+            return adjustedPosition;
+        }
+
+        return nullptr;
+    }
+
+    if (namedLinesMap.contains(namedGridAreaOrGridLine)) {
+        auto adjustedPosition = std::make_unique<GridPosition>();
+        adjustedPosition->setExplicitPosition(1, namedGridAreaOrGridLine);
+        return adjustedPosition;
+    }
+
+    // We must clear unknown named grid areas
+    return std::make_unique<GridPosition>();
+}
+
 void StyleResolver::adjustGridItemPosition(RenderStyle& style, const RenderStyle& parentStyle) const
 {
     const GridPosition& columnStartPosition = style.gridItemColumnStart();
@@ -1378,18 +1471,29 @@ void StyleResolver::adjustGridItemPosition(RenderStyle& style, const RenderStyle
         style.setGridItemRowEnd(GridPosition());
     }
 
-    // Unknown named grid area compute to 'auto'.
-    const NamedGridAreaMap& map = parentStyle.namedGridArea();
+    // If the grid position is a single <custom-ident> then the spec mandates us to resolve it following this steps:
+    //     * If there is a named grid area called <custom-ident> resolve the position to the area's corresponding edge.
+    //         * If a grid area was found with that name, check that there is no <custom-ident>-start or <custom-ident>-end (depending
+    // on the css property being defined) specified before the grid area. If that's the case resolve to that grid line.
+    //     * Otherwise check if there is a grid line named <custom-ident>.
+    //     * Otherwise treat it as auto.
+    const NamedGridLinesMap& namedGridColumnLines = parentStyle.namedGridColumnLines();
+    const NamedGridLinesMap& namedGridRowLines = parentStyle.namedGridRowLines();
+    const NamedGridAreaMap& gridAreaMap = parentStyle.namedGridArea();
 
-#define CLEAR_UNKNOWN_NAMED_AREA(prop, Prop) \
-    if (prop.isNamedGridArea() && !map.contains(prop.namedGridLine())) \
-        style.setGridItem##Prop(GridPosition());
+#define ADJUST_GRID_POSITION_MAYBE(position, Prop, namedGridLines, side) \
+    if (position.isNamedGridArea()) {                                   \
+        std::unique_ptr<GridPosition> adjustedPosition = adjustNamedGridItemPosition(gridAreaMap, namedGridLines, position, side); \
+        if (adjustedPosition)                                           \
+            style.setGridItem##Prop(*adjustedPosition);                 \
+    }
 
-    CLEAR_UNKNOWN_NAMED_AREA(columnStartPosition, ColumnStart);
-    CLEAR_UNKNOWN_NAMED_AREA(columnEndPosition, ColumnEnd);
-    CLEAR_UNKNOWN_NAMED_AREA(rowStartPosition, RowStart);
-    CLEAR_UNKNOWN_NAMED_AREA(rowEndPosition, RowEnd);
+    ADJUST_GRID_POSITION_MAYBE(columnStartPosition, ColumnStart, namedGridColumnLines, ColumnStartSide);
+    ADJUST_GRID_POSITION_MAYBE(columnEndPosition, ColumnEnd, namedGridColumnLines, ColumnEndSide);
+    ADJUST_GRID_POSITION_MAYBE(rowStartPosition, RowStart, namedGridRowLines, RowStartSide);
+    ADJUST_GRID_POSITION_MAYBE(rowEndPosition, RowEnd, namedGridRowLines, RowEndSide);
 }
+#endif /* ENABLE(CSS_GRID_LAYOUT) */
 
 bool StyleResolver::checkRegionStyle(Element* regionElement)
 {
@@ -1864,6 +1968,7 @@ bool StyleResolver::useSVGZoomRules()
     return m_state.element() && m_state.element()->isSVGElement();
 }
 
+#if ENABLE(CSS_GRID_LAYOUT)
 static bool createGridTrackBreadth(CSSPrimitiveValue* primitiveValue, const StyleResolver::State& state, GridLength& workingLength)
 {
     if (primitiveValue->getValueID() == CSSValueWebkitMinContent) {
@@ -2005,6 +2110,7 @@ static bool createGridPosition(CSSValue* value, GridPosition& position)
 
     return true;
 }
+#endif /* ENABLE(CSS_GRID_LAYOUT) */
 
 void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value)
 {
@@ -2286,9 +2392,11 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value)
     case CSSPropertyWebkitColumnRule:
     case CSSPropertyWebkitFlex:
     case CSSPropertyWebkitFlexFlow:
+#if ENABLE(CSS_GRID_LAYOUT)
     case CSSPropertyWebkitGridArea:
     case CSSPropertyWebkitGridColumn:
     case CSSPropertyWebkitGridRow:
+#endif
     case CSSPropertyWebkitMarginCollapse:
     case CSSPropertyWebkitMarquee:
     case CSSPropertyWebkitMask:
@@ -2640,6 +2748,7 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value)
         return;
     }
 #endif
+#if ENABLE(CSS_GRID_LAYOUT)
     case CSSPropertyWebkitGridAutoColumns: {
         HANDLE_INHERIT_AND_INITIAL(gridAutoColumns, GridAutoColumns);
         GridTrackSize trackSize;
@@ -2753,7 +2862,7 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value)
         state.style()->setNamedGridAreaColumnCount(gridTemplateValue->columnCount());
         return;
     }
-
+#endif /* ENABLE(CSS_GRID_LAYOUT) */
     // These properties are aliased and DeprecatedStyleBuilder already applied the property on the prefixed version.
     case CSSPropertyTransitionDelay:
     case CSSPropertyTransitionDuration:
@@ -3482,28 +3591,28 @@ bool StyleResolver::createFilterOperations(CSSValue* inValue, FilterOperations& 
 
 #endif
 
-PassRefPtr<StyleImage> StyleResolver::loadPendingImage(StylePendingImage* pendingImage, const ResourceLoaderOptions& options)
+PassRefPtr<StyleImage> StyleResolver::loadPendingImage(const StylePendingImage& pendingImage, const ResourceLoaderOptions& options)
 {
-    if (auto imageValue = pendingImage->cssImageValue())
+    if (auto imageValue = pendingImage.cssImageValue())
         return imageValue->cachedImage(m_state.document().cachedResourceLoader(), options);
 
-    if (auto imageGeneratorValue = pendingImage->cssImageGeneratorValue()) {
+    if (auto imageGeneratorValue = pendingImage.cssImageGeneratorValue()) {
         imageGeneratorValue->loadSubimages(m_state.document().cachedResourceLoader());
         return StyleGeneratedImage::create(*imageGeneratorValue);
     }
 
-    if (auto cursorImageValue = pendingImage->cssCursorImageValue())
+    if (auto cursorImageValue = pendingImage.cssCursorImageValue())
         return cursorImageValue->cachedImage(m_state.document().cachedResourceLoader());
 
 #if ENABLE(CSS_IMAGE_SET)
-    if (CSSImageSetValue* imageSetValue = pendingImage->cssImageSetValue())
+    if (auto imageSetValue = pendingImage.cssImageSetValue())
         return imageSetValue->cachedImageSet(m_state.document().cachedResourceLoader(), options);
 #endif
 
     return nullptr;
 }
 
-PassRefPtr<StyleImage> StyleResolver::loadPendingImage(StylePendingImage* pendingImage)
+PassRefPtr<StyleImage> StyleResolver::loadPendingImage(const StylePendingImage& pendingImage)
 {
     return loadPendingImage(pendingImage, CachedResourceLoader::defaultCachedResourceOptions());
 }
@@ -3518,7 +3627,7 @@ void StyleResolver::loadPendingShapeImage(ShapeValue* shapeValue)
     if (!image || !image->isPendingImage())
         return;
 
-    StylePendingImage* pendingImage = toStylePendingImage(image);
+    auto& pendingImage = toStylePendingImage(*image);
 
     ResourceLoaderOptions options = CachedResourceLoader::defaultCachedResourceOptions();
     options.requestOriginPolicy = PotentiallyCrossOriginEnabled;
@@ -3540,8 +3649,9 @@ void StyleResolver::loadPendingImages()
         switch (currentProperty) {
         case CSSPropertyBackgroundImage: {
             for (FillLayer* backgroundLayer = m_state.style()->accessBackgroundLayers(); backgroundLayer; backgroundLayer = backgroundLayer->next()) {
-                if (backgroundLayer->image() && backgroundLayer->image()->isPendingImage())
-                    backgroundLayer->setImage(loadPendingImage(toStylePendingImage(backgroundLayer->image())));
+                auto styleImage = backgroundLayer->image();
+                if (styleImage && styleImage->isPendingImage())
+                    backgroundLayer->setImage(loadPendingImage(toStylePendingImage(*styleImage)));
             }
             break;
         }
@@ -3550,7 +3660,7 @@ void StyleResolver::loadPendingImages()
                 if (contentData->isImage()) {
                     auto& styleImage = toImageContentData(contentData)->image();
                     if (styleImage.isPendingImage()) {
-                        RefPtr<StyleImage> loadedImage = loadPendingImage(toStylePendingImage(const_cast<StyleImage*>(&styleImage)));
+                        RefPtr<StyleImage> loadedImage = loadPendingImage(toStylePendingImage(styleImage));
                         if (loadedImage)
                             toImageContentData(contentData)->setImage(loadedImage.release());
                     }
@@ -3562,43 +3672,47 @@ void StyleResolver::loadPendingImages()
             if (CursorList* cursorList = m_state.style()->cursors()) {
                 for (size_t i = 0; i < cursorList->size(); ++i) {
                     CursorData& currentCursor = cursorList->at(i);
-                    if (StyleImage* image = currentCursor.image()) {
-                        if (image->isPendingImage())
-                            currentCursor.setImage(loadPendingImage(toStylePendingImage(image)));
-                    }
+                    auto styleImage = currentCursor.image();
+                    if (styleImage && styleImage->isPendingImage())
+                        currentCursor.setImage(loadPendingImage(toStylePendingImage(*styleImage)));
                 }
             }
             break;
         }
         case CSSPropertyListStyleImage: {
-            if (m_state.style()->listStyleImage() && m_state.style()->listStyleImage()->isPendingImage())
-                m_state.style()->setListStyleImage(loadPendingImage(toStylePendingImage(m_state.style()->listStyleImage())));
+            auto styleImage = m_state.style()->listStyleImage();
+            if (styleImage && styleImage->isPendingImage())
+                m_state.style()->setListStyleImage(loadPendingImage(toStylePendingImage(*styleImage)));
             break;
         }
         case CSSPropertyBorderImageSource: {
-            if (m_state.style()->borderImageSource() && m_state.style()->borderImageSource()->isPendingImage())
-                m_state.style()->setBorderImageSource(loadPendingImage(toStylePendingImage(m_state.style()->borderImageSource())));
+            auto styleImage = m_state.style()->borderImageSource();
+            if (styleImage && styleImage->isPendingImage())
+                m_state.style()->setBorderImageSource(loadPendingImage(toStylePendingImage(*styleImage)));
             break;
         }
         case CSSPropertyWebkitBoxReflect: {
             if (StyleReflection* reflection = m_state.style()->boxReflect()) {
                 const NinePieceImage& maskImage = reflection->mask();
-                if (maskImage.image() && maskImage.image()->isPendingImage()) {
-                    RefPtr<StyleImage> loadedImage = loadPendingImage(toStylePendingImage(maskImage.image()));
+                auto styleImage = maskImage.image();
+                if (styleImage && styleImage->isPendingImage()) {
+                    RefPtr<StyleImage> loadedImage = loadPendingImage(toStylePendingImage(*styleImage));
                     reflection->setMask(NinePieceImage(loadedImage.release(), maskImage.imageSlices(), maskImage.fill(), maskImage.borderSlices(), maskImage.outset(), maskImage.horizontalRule(), maskImage.verticalRule()));
                 }
             }
             break;
         }
         case CSSPropertyWebkitMaskBoxImageSource: {
-            if (m_state.style()->maskBoxImageSource() && m_state.style()->maskBoxImageSource()->isPendingImage())
-                m_state.style()->setMaskBoxImageSource(loadPendingImage(toStylePendingImage(m_state.style()->maskBoxImageSource())));
+            auto styleImage = m_state.style()->maskBoxImageSource();
+            if (styleImage && styleImage->isPendingImage())
+                m_state.style()->setMaskBoxImageSource(loadPendingImage(toStylePendingImage(*styleImage)));
             break;
         }
         case CSSPropertyWebkitMaskImage: {
             for (FillLayer* maskLayer = m_state.style()->accessMaskLayers(); maskLayer; maskLayer = maskLayer->next()) {
-                if (maskLayer->image() && maskLayer->image()->isPendingImage())
-                    maskLayer->setImage(loadPendingImage(toStylePendingImage(maskLayer->image())));
+                auto styleImage = maskLayer->image();
+                if (styleImage && styleImage->isPendingImage())
+                    maskLayer->setImage(loadPendingImage(toStylePendingImage(*styleImage)));
             }
             break;
         }

@@ -45,7 +45,7 @@ static bool shouldInvalidateTypeOnAttributeChange(NodeListInvalidationType, cons
 
 class LiveNodeList : public NodeList {
 public:
-    enum Type {
+    enum class Type {
         ClassNodeListType,
         NameNodeListType,
         TagNodeListType,
@@ -58,25 +58,25 @@ public:
         : m_ownerNode(ownerNode)
         , m_rootType(rootType)
         , m_invalidationType(invalidationType)
-        , m_type(type)
+        , m_type(static_cast<unsigned>(type))
     {
         ASSERT(m_rootType == static_cast<unsigned>(rootType));
         ASSERT(m_invalidationType == static_cast<unsigned>(invalidationType));
         ASSERT(m_type == static_cast<unsigned>(type));
-
-        document().registerNodeList(*this);
     }
     virtual Node* namedItem(const AtomicString&) const override final;
     virtual bool nodeMatches(Element*) const = 0;
 
     virtual ~LiveNodeList()
     {
-        document().unregisterNodeList(*this);
+        if (m_indexCache.hasValidCache())
+            document().unregisterNodeList(*this);
     }
 
     // DOM API
     virtual unsigned length() const override final;
     virtual Node* item(unsigned offset) const override final;
+    virtual size_t memoryCost() const override;
 
     ALWAYS_INLINE bool isRootedAtDocument() const { return m_rootType == NodeListIsRootedAtDocument; }
     ALWAYS_INLINE NodeListInvalidationType invalidationType() const { return static_cast<NodeListInvalidationType>(m_invalidationType); }
@@ -85,9 +85,9 @@ public:
     ALWAYS_INLINE void invalidateCache(const QualifiedName* attrName) const
     {
         if (!attrName || shouldInvalidateTypeOnAttributeChange(invalidationType(), *attrName))
-            invalidateCache();
+            invalidateCache(document());
     }
-    void invalidateCache() const;
+    void invalidateCache(Document&) const;
 
     // For CollectionIndexCache
     Element* collectionFirst() const;
@@ -95,6 +95,7 @@ public:
     Element* collectionTraverseForward(Element&, unsigned count, unsigned& traversedCount) const;
     Element* collectionTraverseBackward(Element&, unsigned count) const;
     bool collectionCanTraverseBackward() const { return true; }
+    void willValidateIndexCache() const { document().registerNodeList(const_cast<LiveNodeList&>(*this)); }
 
 protected:
     Document& document() const { return m_ownerNode->document(); }
@@ -111,9 +112,9 @@ private:
 
     mutable CollectionIndexCache<LiveNodeList, Element> m_indexCache;
 
-    const unsigned m_rootType : 2;
+    const unsigned m_rootType : 1;
     const unsigned m_invalidationType : 4;
-    const unsigned m_type : 5;
+    const unsigned m_type : 3;
 };
 
 ALWAYS_INLINE bool shouldInvalidateTypeOnAttributeChange(NodeListInvalidationType type, const QualifiedName& attrName)

@@ -54,6 +54,7 @@
 #include "RenderBlock.h"
 #include "Settings.h"
 #include "StyleProperties.h"
+#include "TextIterator.h"
 #include "VisibleSelection.h"
 #include "VisibleUnits.h"
 #include "htmlediting.h"
@@ -125,6 +126,7 @@ public:
     String takeResults();
     
     bool needRelativeStyleWrapper() const { return m_needRelativeStyleWrapper; }
+    bool needClearingDiv() const { return m_needClearingDiv; }
 
     using MarkupAccumulator::appendString;
 
@@ -162,6 +164,7 @@ private:
     RefPtr<EditingStyle> m_wrappingStyle;
     bool m_needRelativeStyleWrapper;
     bool m_needsPositionStyleConversion;
+    bool m_needClearingDiv;
 };
 
 inline StyledMarkupAccumulator::StyledMarkupAccumulator(Vector<Node*>* nodes, EAbsoluteURLs shouldResolveURLs, EAnnotateForInterchange shouldAnnotate, const Range* range, bool needsPositionStyleConversion, Node* highestNodeToBeSerialized)
@@ -170,6 +173,7 @@ inline StyledMarkupAccumulator::StyledMarkupAccumulator(Vector<Node*>* nodes, EA
     , m_highestNodeToBeSerialized(highestNodeToBeSerialized)
     , m_needRelativeStyleWrapper(false)
     , m_needsPositionStyleConversion(needsPositionStyleConversion)
+    , m_needClearingDiv(false)
 {
 }
 
@@ -327,8 +331,10 @@ void StyledMarkupAccumulator::appendElement(StringBuilder& out, const Element& e
             if (addDisplayInline)
                 newInlineStyle->forceInline();
             
-            if (m_needsPositionStyleConversion)
+            if (m_needsPositionStyleConversion) {
                 m_needRelativeStyleWrapper |= newInlineStyle->convertPositionStyle();
+                m_needClearingDiv |= newInlineStyle->isFloating();
+            }
 
             // If the node is not fully selected by the range, then we don't want to keep styles that affect its relationship to the nodes around it
             // only the ones that affect it and the nodes within it.
@@ -566,7 +572,8 @@ static String createMarkupInternal(Document& document, const Range& range, const
     Node* body = enclosingNodeWithTag(firstPositionInNode(commonAncestor), bodyTag);
     Node* fullySelectedRoot = 0;
     // FIXME: Do this for all fully selected blocks, not just the body.
-    if (body && areRangesEqual(VisibleSelection::selectionFromContentsOfNode(body).toNormalizedRange().get(), &range))
+    if (body && VisiblePosition(firstPositionInNode(body)) == VisiblePosition(range.startPosition())
+        && VisiblePosition(lastPositionInNode(body)) == VisiblePosition(range.endPosition()))
         fullySelectedRoot = body;
     Node* specialCommonAncestor = highestAncestorToWrapMarkup(&updatedRange, shouldAnnotate);
 
@@ -629,6 +636,8 @@ static String createMarkupInternal(Document& document, const Range& range, const
     }
     
     if (accumulator.needRelativeStyleWrapper() && needsPositionStyleConversion) {
+        if (accumulator.needClearingDiv())
+            accumulator.appendString("<div style=\"clear: both;\"></div>");
         RefPtr<EditingStyle> positionRelativeStyle = styleFromMatchedRulesAndInlineDecl(body);
         positionRelativeStyle->style()->setProperty(CSSPropertyPosition, CSSValueRelative);
         accumulator.wrapWithStyleNode(positionRelativeStyle->style(), document, true);

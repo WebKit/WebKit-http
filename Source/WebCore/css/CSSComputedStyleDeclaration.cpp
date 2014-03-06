@@ -227,7 +227,8 @@ static const CSSPropertyID computedProperties[] = {
     CSSPropertyWebkitBackgroundOrigin,
     CSSPropertyWebkitBackgroundSize,
 #if ENABLE(CSS_COMPOSITING)
-    CSSPropertyWebkitBlendMode,
+    CSSPropertyWebkitMixBlendMode,
+    CSSPropertyWebkitIsolation,
 #endif
     CSSPropertyWebkitBorderFit,
     CSSPropertyWebkitBorderHorizontalSpacing,
@@ -281,6 +282,7 @@ static const CSSPropertyID computedProperties[] = {
     CSSPropertyWebkitFontKerning,
     CSSPropertyWebkitFontSmoothing,
     CSSPropertyWebkitFontVariantLigatures,
+#if ENABLE(CSS_GRID_LAYOUT)
     CSSPropertyWebkitGridAutoColumns,
     CSSPropertyWebkitGridAutoFlow,
     CSSPropertyWebkitGridAutoRows,
@@ -290,6 +292,7 @@ static const CSSPropertyID computedProperties[] = {
     CSSPropertyWebkitGridTemplateRows,
     CSSPropertyWebkitGridRowEnd,
     CSSPropertyWebkitGridRowStart,
+#endif
     CSSPropertyWebkitHyphenateCharacter,
     CSSPropertyWebkitHyphenateLimitAfter,
     CSSPropertyWebkitHyphenateLimitBefore,
@@ -956,6 +959,7 @@ PassRef<CSSValue> ComputedStyleExtractor::valueForFilter(const RenderStyle* styl
 }
 #endif
 
+#if ENABLE(CSS_GRID_LAYOUT)
 static PassRef<CSSValue> specifiedValueForGridTrackBreadth(const GridLength& trackBreadth, const RenderStyle* style, RenderView* renderView)
 {
     if (!trackBreadth.isLength())
@@ -1055,6 +1059,7 @@ static PassRef<CSSValue> valueForGridPosition(const GridPosition& position)
         list.get().append(cssValuePool().createValue(position.namedGridLine(), CSSPrimitiveValue::CSS_STRING));
     return std::move(list);
 }
+#endif
 
 static PassRef<CSSValue> createTransitionPropertyValue(const Animation& animation)
 {
@@ -1535,8 +1540,10 @@ static bool isLayoutDependent(CSSPropertyID propertyID, RenderStyle* style, Rend
     switch (propertyID) {
     case CSSPropertyWidth:
     case CSSPropertyHeight:
+#if ENABLE(CSS_GRID_LAYOUT)
     case CSSPropertyWebkitGridTemplateColumns:
     case CSSPropertyWebkitGridTemplateRows:
+#endif
     case CSSPropertyWebkitPerspectiveOrigin:
     case CSSPropertyWebkitTransformOrigin:
     case CSSPropertyWebkitTransform:
@@ -1602,17 +1609,6 @@ PassRef<MutableStyleProperties> CSSComputedStyleDeclaration::copyProperties() co
     return ComputedStyleExtractor(m_node, m_allowVisitedStyle, m_pseudoElementSpecifier).copyProperties();
 }
 
-static inline bool nodeOrItsAncestorNeedsStyleRecalc(Node* styledNode)
-{
-    if (styledNode->document().hasPendingForcedStyleRecalc())
-        return true;
-    for (Node* n = styledNode; n; n = n->parentNode()) {// FIXME: Call parentOrShadowHostNode() instead
-        if (n->needsStyleRecalc())
-            return true;
-    }
-    return false;
-}
-
 static inline PassRefPtr<RenderStyle> computeRenderStyleForProperty(Node* styledNode, PseudoId pseudoElementSpecifier, CSSPropertyID propertyID)
 {
     RenderObject* renderer = styledNode->renderer();
@@ -1667,8 +1663,7 @@ PassRefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propert
     if (updateLayout) {
         Document& document = styledNode->document();
 
-        if (nodeOrItsAncestorNeedsStyleRecalc(styledNode)) {
-            document.updateStyleIfNeeded();
+        if (document.updateStyleIfNeededForNode(*styledNode)) {
             // The style recalc could have caused the styled node to be discarded or replaced
             // if it was a PseudoElement so we need to update it.
             styledNode = this->styledNode();
@@ -2067,6 +2062,7 @@ PassRefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propert
             }
             return list.release();
         }
+#if ENABLE(CSS_GRID_LAYOUT)
         case CSSPropertyWebkitGridAutoFlow:
             return cssValuePool().createValue(style->gridAutoFlow());
 
@@ -2107,7 +2103,7 @@ PassRefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propert
             }
 
             return CSSGridTemplateAreasValue::create(style->namedGridArea(), style->namedGridAreaRowCount(), style->namedGridAreaColumnCount());
-
+#endif /* ENABLE(CSS_GRID_LAYOUT) */
         case CSSPropertyHeight:
             if (renderer) {
                 // According to http://www.w3.org/TR/CSS2/visudet.html#the-height-property,
@@ -2840,8 +2836,10 @@ PassRefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propert
             return valueForFilter(style.get(), style->filter());
 #endif
 #if ENABLE(CSS_COMPOSITING)
-        case CSSPropertyWebkitBlendMode:
+        case CSSPropertyWebkitMixBlendMode:
             return cssValuePool().createValue(style->blendMode());
+        case CSSPropertyWebkitIsolation:
+            return cssValuePool().createValue(style->isolation());
 #endif
         case CSSPropertyBackgroundBlendMode: {
             const FillLayer* layers = style->backgroundLayers();

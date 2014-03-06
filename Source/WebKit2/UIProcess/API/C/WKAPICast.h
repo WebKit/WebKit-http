@@ -481,13 +481,30 @@ inline WebCore::WebGLLoadPolicy toWebGLLoadPolicy(WKWebGLLoadPolicy webGLLoadPol
 {
     switch (webGLLoadPolicy) {
     case kWKWebGLLoadPolicyLoadNormally:
-        return WebCore::WebGLAllow;
+        return WebCore::WebGLAllowCreation;
     case kWKWebGLLoadPolicyBlocked:
-        return WebCore::WebGLBlock;
+        return WebCore::WebGLBlockCreation;
+    case kWKWebGLLoadPolicyPending:
+        return WebCore::WebGLPendingCreation;
     }
     
     ASSERT_NOT_REACHED();
-    return WebCore::WebGLAllow;
+    return WebCore::WebGLAllowCreation;
+}
+
+inline WKWebGLLoadPolicy toAPI(WebCore::WebGLLoadPolicy webGLLoadPolicy)
+{
+    switch (webGLLoadPolicy) {
+    case WebCore::WebGLAllowCreation:
+        return kWKWebGLLoadPolicyLoadNormally;
+    case WebCore::WebGLBlockCreation:
+        return kWKWebGLLoadPolicyBlocked;
+    case WebCore::WebGLPendingCreation:
+        return kWKWebGLLoadPolicyPending;
+    }
+
+    ASSERT_NOT_REACHED();
+    return kWKWebGLLoadPolicyLoadNormally;
 }
 
 inline ProxyingRefPtr<WebGrammarDetail> toAPI(const WebCore::GrammarDetail& grammarDetail)

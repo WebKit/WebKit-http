@@ -1,3 +1,48 @@
+2014-03-03  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Use DYEBench v0.9 by default.
+
+        Rubber-stamped by Benjamin Poulain.
+
+        * perf/DoYouEvenBench/index.html:
+
+2014-02-27  Darin Adler  <darin@apple.com>
+
+        Some small modernizing tweaks to the coding style guide
+        https://bugs.webkit.org/show_bug.cgi?id=129427
+
+        Reviewed by Alexey Proskuryakov.
+
+        My intent here was originally to do the nullptr style guide update, but that was already done.
+        I did some other improvements. There's still quite a bit to do -- the guide is out of date in
+        a number of subtle ways.
+
+        * coding/coding-style.html: Change "left side operator" example to be a more modern example
+        without non-WebKit-style abbreviations and such. Use auto& instead of const auto& in for loop
+        example, since that's normally preferred. Changed section title to say "zero" instead of "0".
+        Use words instead of abbreviations in code examples. Show that a modern C++ for loop is preferred
+        over index iteration in vector iteration example and also showed use of unsigned rather than
+        size_t since that is almost always what we want. Eliminated the use of PassOwnPtr in the "return
+        a newly created object" example. Use references instead of pointers in one example.
+
+2014-02-26  Julien Brianceau  <jbriance@cisco.com>
+
+        Add Cisco to team.html
+        https://bugs.webkit.org/show_bug.cgi?id=129405
+
+        Reviewed by Andreas Kling.
+
+        * team.html:
+
+2014-02-26  Bem Jones-Bey  <bjonesbe@adobe.com>
+
+        Update style guide to use nullptr instead of 0 for C++ null pointers.
+        https://bugs.webkit.org/show_bug.cgi?id=129413
+
+        Reviewed by Ryosuke Niwa.
+
+        * coding/coding-style.html:
+
 2014-02-10  Bem Jones-Bey  <bjonesbe@adobe.com>
 
         Change tools.html to say Xcode 5 is required to build

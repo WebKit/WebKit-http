@@ -30,6 +30,7 @@
 
 #import "Logging.h"
 #import "MediaSession.h"
+#import "NotImplemented.h"
 #import "SoftLinking.h"
 #import "WebCoreSystemInterface.h"
 #import "WebCoreThreadRun.h"
@@ -48,6 +49,7 @@ SOFT_LINK_POINTER(AVFoundation, AVAudioSessionInterruptionTypeKey, NSString *)
 SOFT_LINK_POINTER(AVFoundation, AVAudioSessionInterruptionOptionKey, NSString *)
 SOFT_LINK_POINTER(UIKit, UIApplicationWillResignActiveNotification, NSString *)
 SOFT_LINK_POINTER(UIKit, UIApplicationWillEnterForegroundNotification, NSString *)
+SOFT_LINK_POINTER(UIKit, UIApplicationDidBecomeActiveNotification, NSString *)
 
 #define AVAudioSession getAVAudioSessionClass()
 #define AVAudioSessionInterruptionNotification getAVAudioSessionInterruptionNotification()
@@ -55,6 +57,11 @@ SOFT_LINK_POINTER(UIKit, UIApplicationWillEnterForegroundNotification, NSString 
 #define AVAudioSessionInterruptionOptionKey getAVAudioSessionInterruptionOptionKey()
 #define UIApplicationWillResignActiveNotification getUIApplicationWillResignActiveNotification()
 #define UIApplicationWillEnterForegroundNotification getUIApplicationWillEnterForegroundNotification()
+#define UIApplicationDidBecomeActiveNotification getUIApplicationDidBecomeActiveNotification()
+
+NSString* WebUIApplicationWillResignActiveNotification = @"WebUIApplicationWillResignActiveNotification";
+NSString* WebUIApplicationWillEnterForegroundNotification = @"WebUIApplicationWillEnterForegroundNotification";
+NSString* WebUIApplicationDidBecomeActiveNotification = @"WebUIApplicationDidBecomeActiveNotification";
 
 using namespace WebCore;
 
@@ -106,6 +113,13 @@ void MediaSessionManageriOS::resetRestrictions()
     addRestriction(MediaSession::Video, AutoPreloadingNotPermitted);
 }
 
+#if ENABLE(IOS_AIRPLAY)
+void MediaSessionManageriOS::showPlaybackTargetPicker()
+{
+    notImplemented();
+}
+#endif
+
 } // namespace WebCore
 
 @implementation WebMediaSessionHelper
@@ -122,7 +136,11 @@ void MediaSessionManageriOS::resetRestrictions()
 
     // FIXME: These need to be piped through from the UI process in WK2 mode.
     [center addObserver:self selector:@selector(applicationWillEnterForeground:) name:UIApplicationWillEnterForegroundNotification object:nil];
+    [center addObserver:self selector:@selector(applicationWillEnterForeground:) name:WebUIApplicationWillEnterForegroundNotification object:nil];
+    [center addObserver:self selector:@selector(applicationDidBecomeActive:) name:UIApplicationDidBecomeActiveNotification object:nil];
+    [center addObserver:self selector:@selector(applicationDidBecomeActive:) name:WebUIApplicationDidBecomeActiveNotification object:nil];
     [center addObserver:self selector:@selector(applicationWillResignActive:) name:UIApplicationWillResignActiveNotification object:nil];
+    [center addObserver:self selector:@selector(applicationWillResignActive:) name:WebUIApplicationWillResignActiveNotification object:nil];
 
     return self;
 }
@@ -164,14 +182,29 @@ void MediaSessionManageriOS::resetRestrictions()
 - (void)applicationWillEnterForeground:(NSNotification *)notification
 {
     UNUSED_PARAM(notification);
-    
+
     if (!_callback)
         return;
 
     WebThreadRun(^{
         if (!_callback)
             return;
-        
+
+        _callback->applicationWillEnterForeground();
+    });
+}
+
+- (void)applicationDidBecomeActive:(NSNotification *)notification
+{
+    UNUSED_PARAM(notification);
+
+    if (!_callback)
+        return;
+
+    WebThreadRun(^{
+        if (!_callback)
+            return;
+
         _callback->applicationWillEnterForeground();
     });
 }

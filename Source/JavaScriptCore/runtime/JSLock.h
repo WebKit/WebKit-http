@@ -21,10 +21,12 @@
 #ifndef JSLock_h
 #define JSLock_h
 
+#include <mutex>
+#include <thread>
 #include <wtf/Assertions.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/RefPtr.h>
-#include <wtf/Threading.h>
+#include <wtf/ThreadSafeRefCounted.h>
 
 namespace JSC {
 
@@ -47,6 +49,7 @@ namespace JSC {
     // DropAllLocks object takes care to release the JSLock only if your
     // thread acquired it to begin with.
 
+    class IdentifierTable;
     class ExecState;
     class VM;
 
@@ -60,7 +63,7 @@ namespace JSC {
 
         static void initialize();
     private:
-        static Mutex* s_sharedInstanceLock;
+        static std::mutex* s_sharedInstanceMutex;
     };
 
     class JSLockHolder {
@@ -92,6 +95,13 @@ namespace JSC {
 
         VM* vm() { return m_vm; }
 
+        bool hasExclusiveThread() const { return m_hasExclusiveThread; }
+        std::thread::id exclusiveThread() const
+        {
+            ASSERT(m_hasExclusiveThread);
+            return m_ownerThreadID;
+        }
+        JS_EXPORT_PRIVATE void setExclusiveThread(std::thread::id);
         JS_EXPORT_PRIVATE bool currentThreadIsHoldingLock();
 
         void willDestroyVM(VM*);
@@ -101,34 +111,35 @@ namespace JSC {
         public:
             JS_EXPORT_PRIVATE DropAllLocks(ExecState*);
             JS_EXPORT_PRIVATE DropAllLocks(VM*);
+            JS_EXPORT_PRIVATE DropAllLocks(VM&);
             JS_EXPORT_PRIVATE ~DropAllLocks();
             
-#if ENABLE(LLINT_C_LOOP)
             void setDropDepth(unsigned depth) { m_dropDepth = depth; }
             unsigned dropDepth() const { return m_dropDepth; }
-#endif
 
         private:
             intptr_t m_droppedLockCount;
             RefPtr<VM> m_vm;
-#if ENABLE(LLINT_C_LOOP)
             unsigned m_dropDepth;
-#endif
         };
 
     private:
         void lock(intptr_t lockCount);
         void unlock(intptr_t unlockCount);
-        void setOwnerThread(ThreadIdentifier owner) { m_ownerThread = owner; }
+
+        void didAcquireLock();
+        void willReleaseLock();
 
         unsigned dropAllLocks(DropAllLocks*);
         void grabAllLocks(DropAllLocks*, unsigned lockCount);
 
-        Mutex m_lock;
-        ThreadIdentifier m_ownerThread;
+        std::mutex m_lock;
+        std::thread::id m_ownerThreadID;
         intptr_t m_lockCount;
         unsigned m_lockDropDepth;
+        bool m_hasExclusiveThread;
         VM* m_vm;
+        IdentifierTable* m_entryIdentifierTable; 
     };
 
 } // namespace

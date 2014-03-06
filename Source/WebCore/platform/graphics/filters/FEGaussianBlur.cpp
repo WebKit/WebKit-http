@@ -43,7 +43,7 @@ static inline float gaussianKernelFactor()
     return 3 / 4.f * sqrtf(2 * piFloat);
 }
 
-static const unsigned gMaxKernelSize = 1000;
+static const unsigned gMaxKernelSize = 500;
 
 namespace WebCore {
 
@@ -362,12 +362,6 @@ TextStream& FEGaussianBlur::externalRepresentation(TextStream& ts, int indent) c
     ts << " stdDeviation=\"" << m_stdX << ", " << m_stdY << "\"]\n";
     inputEffect(0)->externalRepresentation(ts, indent + 1);
     return ts;
-}
-
-float FEGaussianBlur::calculateStdDeviation(float radius)
-{
-    // Blur radius represents 2/3 times the kernel size, the dest pixel is half of the radius applied 3 times
-    return std::max((radius * 2 / 3.f - 0.5f) / gaussianKernelFactor(), 0.f);
 }
 
 } // namespace WebCore

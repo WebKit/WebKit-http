@@ -26,6 +26,8 @@
 #import "config.h"
 #import "WebPageProxy.h"
 
+#if PLATFORM(MAC)
+
 #import "APIUIClient.h"
 #import "AttributedString.h"
 #import "ColorSpaceData.h"
@@ -393,6 +395,9 @@ void WebPageProxy::didPerformDictionaryLookup(const AttributedString& text, cons
     
 void WebPageProxy::registerWebProcessAccessibilityToken(const IPC::DataReference& data)
 {
+    if (!isValid())
+        return;
+    
     m_pageClient.accessibilityWebProcessTokenReceived(data);
 }    
     
@@ -435,7 +440,7 @@ void WebPageProxy::executeSavedCommandBySelector(const String& selector, bool& h
 
 bool WebPageProxy::shouldDelayWindowOrderingForEvent(const WebKit::WebMouseEvent& event)
 {
-    if (!process().isValid())
+    if (process().state() != WebProcessProxy::State::Running)
         return false;
 
     bool result = false;
@@ -465,12 +470,12 @@ void WebPageProxy::intrinsicContentSizeDidChange(const IntSize& intrinsicContent
     m_pageClient.intrinsicContentSizeDidChange(intrinsicContentSize);
 }
 
-void WebPageProxy::setAcceleratedCompositingRootLayer(PlatformLayer* rootLayer)
+void WebPageProxy::setAcceleratedCompositingRootLayer(LayerOrView* rootLayer)
 {
     m_pageClient.setAcceleratedCompositingRootLayer(rootLayer);
 }
 
-PlatformLayer* WebPageProxy::acceleratedCompositingRootLayer() const
+LayerOrView* WebPageProxy::acceleratedCompositingRootLayer() const
 {
     return m_pageClient.acceleratedCompositingRootLayer();
 }
@@ -574,3 +579,5 @@ void WebPageProxy::openPDFFromTemporaryFolderWithNativeApplication(const String&
 }
 
 } // namespace WebKit
+
+#endif // PLATFORM(MAC)

@@ -29,35 +29,51 @@
 #if PLATFORM(IOS)
 
 #include "MessageReceiver.h"
+#include <WebCore/GraphicsLayer.h>
 #include <WebCore/WebVideoFullscreenInterfaceAVKit.h>
 #include <WebCore/WebVideoFullscreenModel.h>
 #include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
 
+OBJC_CLASS UIView;
+
 namespace WebKit {
 
 class WebPageProxy;
+class RemoteLayerTreeTransaction;
 
-class WebVideoFullscreenManagerProxy : public WebCore::WebVideoFullscreenInterfaceAVKit, public WebCore::WebVideoFullscreenModel, private IPC::MessageReceiver {
+class WebVideoFullscreenManagerProxy : public WebCore::WebVideoFullscreenInterfaceAVKit, public WebCore::WebVideoFullscreenChangeObserver, public WebCore::WebVideoFullscreenModel, private IPC::MessageReceiver {
 public:
     static PassRefPtr<WebVideoFullscreenManagerProxy> create(WebPageProxy&);
     virtual ~WebVideoFullscreenManagerProxy();
 
+    void didCommitLayerTree(const RemoteLayerTreeTransaction&);
+    
 private:
     explicit WebVideoFullscreenManagerProxy(WebPageProxy&);
     virtual void didReceiveMessage(IPC::Connection*, IPC::MessageDecoder&) override;
 
-    virtual void setVideoLayerID(uint32_t) override;
+    // Translate to FullscreenInterface
+    virtual void willLendVideoLayerWithID(WebCore::GraphicsLayer::PlatformLayerID);
+
+    // Fullscreen Observer
+    virtual void requestExitFullscreen() override;
+    virtual void didExitFullscreen() override;
+    virtual void didEnterFullscreen() override;
     
-    virtual void requestExitFullScreen() override;
+    // FullscreenModel
     virtual void play() override;
     virtual void pause() override;
     virtual void togglePlayState() override;
     virtual void seekToTime(double) override;
-    virtual void didExitFullscreen() override;
+    virtual void borrowVideoLayer() override;
+    virtual void returnVideoLayer() override;
 
     WebPageProxy* m_page;
+    bool m_enterFullscreenAfterVideoLayerUnparentedTransaction;
+    WebCore::GraphicsLayer::PlatformLayerID m_videoLayerID;
+    RetainPtr<UIView> m_videoView;
 };
     
 } // namespace WebKit

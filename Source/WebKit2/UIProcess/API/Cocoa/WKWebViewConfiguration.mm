@@ -32,35 +32,36 @@
 #import <wtf/RetainPtr.h>
 
 @implementation WKWebViewConfiguration {
-    RetainPtr<WKProcessClass> _processClass;
+    RetainPtr<WKProcessPool> _processPool;
     RetainPtr<WKPreferences> _preferences;
+    RetainPtr<WKVisitedLinkProvider> _visitedLinkProvider;
     WebKit::WeakObjCPtr<WKWebView> _relatedWebView;
 }
 
 - (NSString *)description
 {
-    return [NSString stringWithFormat:@"<%@: %p; processClass = %@; preferences = %@>", NSStringFromClass(self.class), self, _processClass.get(), _preferences.get()];
+    return [NSString stringWithFormat:@"<%@: %p; processPool = %@; preferences = %@>", NSStringFromClass(self.class), self, _processPool.get(), _preferences.get()];
 }
 
 - (id)copyWithZone:(NSZone *)zone
 {
     WKWebViewConfiguration *configuration = [[[self class] allocWithZone:zone] init];
 
-    configuration.processClass = _processClass.get();
+    configuration.processPool = _processPool.get();
     configuration.preferences = _preferences.get();
     configuration._relatedWebView = _relatedWebView.get().get();
 
     return configuration;
 }
 
-- (WKProcessClass *)processClass
+- (WKProcessPool *)processPool
 {
-    return _processClass.get();
+    return _processPool.get();
 }
 
-- (void)setProcessClass:(WKProcessClass *)processClass
+- (void)setProcessPool:(WKProcessPool *)processPool
 {
-    _processClass = processClass;
+    _processPool = processPool;
 }
 
 - (WKPreferences *)preferences
@@ -71,6 +72,16 @@
 - (void)setPreferences:(WKPreferences *)preferences
 {
     _preferences = preferences;
+}
+
+- (WKVisitedLinkProvider *)visitedLinkProvider
+{
+    return _visitedLinkProvider.get();
+}
+
+- (void)setVisitedLinkProvider:(WKVisitedLinkProvider *)visitedLinkProvider
+{
+    _visitedLinkProvider = visitedLinkProvider;
 }
 
 - (WKWebView *)_relatedWebView

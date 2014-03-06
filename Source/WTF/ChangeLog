@@ -1,3 +1,203 @@
+2014-03-05  peavo@outlook.com  <peavo@outlook.com>
+
+        [Win32][LLINT] Crash when running JSC stress tests.
+        https://bugs.webkit.org/show_bug.cgi?id=129429
+
+        Reviewed by Geoffrey Garen.
+
+        * wtf/Platform.h: Enable LLINT on Win32.
+
+2014-03-04  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GTK] Build the Udis86 disassembler
+        https://bugs.webkit.org/show_bug.cgi?id=129679
+
+        Reviewed by Michael Saboff.
+
+        * wtf/Platform.h: Also enable the Udis86 disassembler for the GTK port on Linux.
+
+2014-03-02  Jaehun Lim  <ljaehun.lim@samsung.com>
+
+        [EFL] Remove m_initEfl from RunLoop.
+        https://bugs.webkit.org/show_bug.cgi?id=129568
+
+        Reviewed by Gyuyoung Kim.
+
+        We don't use m_initEfl except RunLoop constructor.
+
+        * wtf/RunLoop.h:
+        * wtf/efl/RunLoopEfl.cpp:
+        (WTF::RunLoop::RunLoop):
+
+2014-03-02  Darin Adler  <darin@apple.com>
+
+        Cut down use of OwnPtr within WTF itself
+        https://bugs.webkit.org/show_bug.cgi?id=129567
+
+        Reviewed by Sam Weinig.
+
+        * wtf/RefCounted.h: Removed OwnPtr includes.
+
+        * wtf/StreamBuffer.h: Removed OwnPtr includes and switched to use
+        std::make_unique and std::unique_ptr instead.
+
+        * wtf/Threading.cpp: Removed OwnPtr includes.
+        * wtf/ThreadingPthreads.cpp: Ditto.
+        * wtf/Vector.h: Ditto.
+
+2014-02-26  Gavin Barraclough  <barraclough@apple.com>
+
+        FastMalloc should use vm_page_shift intead of PAGE_SHIFT.
+        https://bugs.webkit.org/show_bug.cgi?id=129370
+
+        Reviewed by Mark Rowe.
+
+        "Doesn't this lead to the page map using fewer bits than it was before?
+        It seems like this will cause some page addresses to no longer be
+        representable in the map when using 4K pages. Am I missing something?"
+
+        * wtf/FastMalloc.cpp:
+            - bdash raises a valid point. This should make the TCMalloc_PageMap
+              larger than absolutely necessary, rather than potentially too small.
+
+2014-02-25  Gavin Barraclough  <barraclough@apple.com>
+
+        FastMalloc should use vm_page_shift intead of PAGE_SHIFT.
+        https://bugs.webkit.org/show_bug.cgi?id=129370
+
+        Reviewed by Geoff Garen.
+
+        Previously we used PAGE_SHIFT to initialize kPageShift.
+        Since this was a constant, it could be used to calculate other
+        contants used in the code. Some of these values are used in the
+        definition of certain data structures (specifiying the length of
+        some array members).
+
+        Make kPageShift & dependent properties variables setup during
+        initialization. Add upper bound values (K_PAGE_SHIFT_MAX,
+        K_NUM_CLASSES_MAX) for use in cases where we need a constant.
+
+        * wtf/FastMalloc.cpp:
+        (WTF::InitSizeClasses):
+            - initialize kPageShift, kNumClasses, kPageSize, kMaxValidPages.
+        (WTF::pages):
+            - added ASSERT.
+        (WTF::AllocationSize):
+            - added ASSERT.
+        (WTF::TCMalloc_PageHeap::FreeBytes):
+            - added ASSERT.
+        (WTF::TCMalloc_PageHeap::init):
+            - COMPILE_ASSERT -> ASSERT
+        (WTF::TCMalloc_PageHeap::scavenge):
+            - added ASSERT.
+        (WTF::TCMalloc_PageHeap::Carve):
+            - added ASSERT.
+        (WTF::mergeDecommittedStates):
+            - added ASSERT.
+        (WTF::TCMalloc_PageHeap::IncrementalScavenge):
+            - added ASSERT.
+        (WTF::TCMalloc_PageHeap::ReturnedBytes):
+            - added ASSERT.
+        (WTF::PagesToMB):
+            - added ASSERT.
+        (WTF::TCMalloc_PageHeap::GrowHeap):
+            - added ASSERT.
+        (WTF::TCMalloc_PageHeap::ReleaseFreeList):
+            - kNumClasses -> K_NUM_CLASSES_MAX
+        (WTF::TCMalloc_ThreadCache::enumerateFreeObjects):
+            - added ASSERT.
+        (WTF::TCMalloc_Central_FreeList::Init):
+            - added ASSERT.
+        (WTF::TCMalloc_Central_FreeList::ReleaseToSpans):
+            - added ASSERT.
+        (WTF::TCMalloc_Central_FreeList::EvictRandomSizeClass):
+            - added ASSERT.
+        (WTF::TCMalloc_Central_FreeList::MakeCacheSpace):
+            - added ASSERT.
+        (WTF::TCMalloc_Central_FreeList::InsertRange):
+            - added ASSERT.
+        (WTF::TCMalloc_Central_FreeList::Populate):
+            - added ASSERT.
+        (WTF::TCMalloc_ThreadCache::Init):
+            - added ASSERT.
+        (WTF::TCMalloc_ThreadCache::Cleanup):
+            - added ASSERT.
+        (WTF::TCMalloc_ThreadCache::Scavenge):
+            - added ASSERT.
+        (WTF::TCMalloc_ThreadCache::CreateCacheIfNecessary):
+            - added ASSERT.
+
+2014-02-24  Alex Christensen  <achristensen@webkit.org>
+
+        Disabled WebGL on WinCairo.
+
+        Unreviewed.
+
+        * wtf/FeatureDefines.h:
+        Removed ENABLE_WEBGL definition for WinCairo port.
+        WebGL has not worked on WinCairo since r163079
+        and it was not compiling with a recent ANGLE update.
+
+2014-02-24  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        Turn GenGC on for 32-bit systems
+        https://bugs.webkit.org/show_bug.cgi?id=128824
+
+        Reviewed by Geoffrey Garen.
+
+        * wtf/Platform.h:
+
+2014-02-21  Benjamin Poulain  <benjamin@webkit.org>
+
+        jsDocumentPrototypeFunctionGetElementById should not create an AtomicString for the function argument
+        https://bugs.webkit.org/show_bug.cgi?id=128893
+
+        Reviewed by Darin Adler.
+
+        AtomicString::find() is a special case optimized for the JavaScript bindings. The method can only
+        be called under specific conditions.
+        The method is renamed to findStringWithHash().
+
+        The new AtomicString::find is generic and does not require any propery on the input.
+
+        * wtf/text/AtomicString.cpp:
+        (WTF::AtomicString::findStringWithHash):
+        (WTF::AtomicString::findSlowCase):
+        * wtf/text/AtomicString.h:
+        (WTF::AtomicString::find):
+
+2014-02-20  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Add StackStats sources to cmake and autotools build files
+        https://bugs.webkit.org/show_bug.cgi?id=129103
+
+        Reviewed by Anders Carlsson.
+
+        * GNUmakefile.list.am:
+        * wtf/CMakeLists.txt:
+
+2014-02-20  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Get rid of redundant Platform.h includes
+        https://bugs.webkit.org/show_bug.cgi?id=128817
+
+        Reviewed by Brent Fulgham.
+
+        * wtf/Assertions.h:
+        * wtf/Atomics.h:
+        * wtf/ByteOrder.h:
+        * wtf/DataLog.h:
+        * wtf/DisallowCType.h:
+        * wtf/DynamicAnnotations.h:
+        * wtf/ExportMacros.h:
+        * wtf/FastMalloc.h:
+        * wtf/FlipBytes.h:
+        * wtf/InlineASM.h:
+        * wtf/PrintStream.h:
+        * wtf/ProcessID.h:
+        * wtf/Threading.h:
+        * wtf/ThreadingPrimitives.h:
+
 2014-02-19  Jon Honeycutt  <jhoneycutt@apple.com>
 
         Crash in WTF::StringBuilder::append()
@@ -88,25 +288,6 @@
 
         * wtf/Platform.h: Changed to define WTF_PLATFORM_MAC only on when building for OS X (but
         still not when WTF_PLATFORM_GTK or WTF_PLATFORM_EFL are defined).
-
-2014-02-17  Gavin Barraclough  <barraclough@apple.com>
-
-        Add fast mapping from StringImpl to JSString
-        https://bugs.webkit.org/show_bug.cgi?id=128625
-
-        Reviewed by Geoff Garen & Andreas Kling.
-
-        Add weak pointer from StringImpl to JSString.
-
-        * wtf/text/StringImpl.cpp:
-        (WTF::StringImpl::~StringImpl):
-            - ASSERT m_weakJSString is null.
-        * wtf/text/StringImpl.h:
-        (WTF::StringImpl::StringImpl):
-            - initialize m_weakJSString.
-        (WTF::StringImpl::weakJSString):
-        (WTF::StringImpl::setWeakJSString):
-            - added acessors for m_weakJSString.
 
 2014-02-18  Joseph Pecoraro  <pecoraro@apple.com>
 

@@ -22,6 +22,7 @@
 #include "config.h"
 #include "RenderTextControl.h"
 
+#include "CSSPrimitiveValueMappings.h"
 #include "HTMLTextFormControlElement.h"
 #include "HitTestResult.h"
 #include "RenderText.h"
@@ -29,6 +30,7 @@
 #include "RenderTheme.h"
 #include "ScrollbarTheme.h"
 #include "StyleInheritedData.h"
+#include "StyleProperties.h"
 #include "TextControlInnerElements.h"
 #include "VisiblePosition.h"
 #include <wtf/unicode/CharacterNames.h>
@@ -72,15 +74,6 @@ void RenderTextControl::styleDidChange(StyleDifference diff, const RenderStyle* 
     textFormControlElement().updatePlaceholderVisibility(false);
 }
 
-static inline bool updateUserModifyProperty(const HTMLTextFormControlElement& element, RenderStyle* style)
-{
-    bool isDisabled = element.isDisabledFormControl();
-    bool isReadOnlyControl = element.isReadOnly();
-
-    style->setUserModify((isReadOnlyControl || isDisabled) ? READ_ONLY : READ_WRITE_PLAINTEXT_ONLY);
-    return isDisabled;
-}
-
 void RenderTextControl::adjustInnerTextStyle(const RenderStyle* startStyle, RenderStyle* textBlockStyle) const
 {
     // The inner block, if present, always has its direction set to LTR,
@@ -88,8 +81,16 @@ void RenderTextControl::adjustInnerTextStyle(const RenderStyle* startStyle, Rend
     textBlockStyle->setDirection(style().direction());
     textBlockStyle->setUnicodeBidi(style().unicodeBidi());
 
-    bool disabled = updateUserModifyProperty(textFormControlElement(), textBlockStyle);
-    if (disabled)
+    HTMLTextFormControlElement& control = textFormControlElement();
+    if (HTMLElement* innerText = control.innerTextElement()) {
+        if (const StyleProperties* properties = innerText->presentationAttributeStyle()) {
+            RefPtr<CSSValue> value = properties->getPropertyCSSValue(CSSPropertyWebkitUserModify);
+            if (value && value->isPrimitiveValue())
+                textBlockStyle->setUserModify(toCSSPrimitiveValue(*value));
+        }
+    }
+
+    if (control.isDisabledFormControl())
         textBlockStyle->setColor(theme().disabledTextColor(textBlockStyle->visitedDependentColor(CSSPropertyColor), startStyle->visitedDependentColor(CSSPropertyBackgroundColor)));
 #if PLATFORM(IOS)
     if (textBlockStyle->textSecurity() != TSNONE && !textBlockStyle->isLeftToRightDirection()) {
@@ -135,13 +136,6 @@ int RenderTextControl::textBlockLogicalWidth() const
     return unitWidth;
 }
 
-void RenderTextControl::updateFromElement()
-{
-    TextControlInnerTextElement* innerText = innerTextElement();
-    if (innerText && innerText->renderer())
-        updateUserModifyProperty(textFormControlElement(), &innerText->renderer()->style());
-}
-
 int RenderTextControl::scrollbarThickness() const
 {
     // FIXME: We should get the size of the scrollbar from the RenderTheme instead.
@@ -153,8 +147,8 @@ void RenderTextControl::computeLogicalHeight(LayoutUnit logicalHeight, LayoutUni
     TextControlInnerTextElement* innerText = innerTextElement();
     ASSERT(innerText);
     if (RenderBox* innerTextBox = innerText->renderBox()) {
-        LayoutUnit nonContentHeight = innerTextBox->borderAndPaddingHeight() + innerTextBox->marginHeight();
-        logicalHeight = computeControlLogicalHeight(innerTextBox->lineHeight(true, HorizontalLine, PositionOfInteriorLineBoxes), nonContentHeight) + borderAndPaddingHeight();
+        LayoutUnit nonContentHeight = innerTextBox->verticalBorderAndPaddingExtent() + innerTextBox->verticalMarginExtent();
+        logicalHeight = computeControlLogicalHeight(innerTextBox->lineHeight(true, HorizontalLine, PositionOfInteriorLineBoxes), nonContentHeight) + verticalBorderAndPaddingExtent();
 
         // We are able to have a horizontal scrollbar if the overflow style is scroll, or if its auto and there's no word wrap.
         if ((isHorizontalWritingMode() && (style().overflowX() == OSCROLL ||  (style().overflowX() == OAUTO && innerText->renderer()->style().overflowWrap() == NormalOverflowWrap)))

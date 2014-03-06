@@ -179,7 +179,12 @@ private:
     void handleGetById(
         int destinationOperand, SpeculatedType, Node* base, unsigned identifierNumber,
         const GetByIdStatus&);
-    Node* emitPrototypeChecks(const GetByIdVariant&);
+    void emitPutById(
+        Node* base, unsigned identifierNumber, Node* value, bool isDirect);
+    void handlePutById(
+        Node* base, unsigned identifierNumber, Node* value, const PutByIdStatus&,
+        bool isDirect);
+    Node* emitPrototypeChecks(Structure*, IntendedStructureChain*);
 
     Node* getScope(bool skipTop, unsigned skipCount);
     
@@ -721,6 +726,13 @@ private:
             return false;
         JSValue value = valueOfJSConstant(node);
         return value.isBoolean() || value.isUndefinedOrNull();
+    }
+    
+    BranchData* branchData(unsigned taken, unsigned notTaken)
+    {
+        BranchData* data = m_graph.m_branchData.add();
+        *data = BranchData::withBytecodeIndices(taken, notTaken);
+        return data;
     }
     
     Node* addToGraph(NodeType op, Node* child1 = 0, Node* child2 = 0, Node* child3 = 0)
@@ -1309,6 +1321,16 @@ bool ByteCodeParser::handleInlining(Node* callTargetNode, int resultOperand, con
         return false;
     }
     
+    // Check if the caller is already too large. We do this check here because that's just
+    // where we happen to also have the callee's code block, and we want that for the
+    // purpose of unsetting SABI.
+    if (!isSmallEnoughToInlineCodeInto(m_codeBlock)) {
+        codeBlock->m_shouldAlwaysBeInlined = false;
+        if (verbose)
+            dataLog("    Failing because the caller is too large.\n");
+        return false;
+    }
+    
     // FIXME: this should be better at predicting how much bloat we will introduce by inlining
     // this function.
     // https://bugs.webkit.org/show_bug.cgi?id=127627
@@ -1448,7 +1470,7 @@ bool ByteCodeParser::handleInlining(Node* callTargetNode, int resultOperand, con
     
 
     // Need to create a new basic block for the continuation at the caller.
-    RefPtr<BasicBlock> block = adoptRef(new BasicBlock(nextOffset, m_numArguments, m_numLocals));
+    RefPtr<BasicBlock> block = adoptRef(new BasicBlock(nextOffset, m_numArguments, m_numLocals, QNaN));
 
     // Link the early returns to the basic block we're about to create.
     for (size_t i = 0; i < inlineStackEntry.m_unlinkedBlocks.size(); ++i) {
@@ -1458,8 +1480,8 @@ bool ByteCodeParser::handleInlining(Node* callTargetNode, int resultOperand, con
         ASSERT(!blockToLink->isLinked);
         Node* node = blockToLink->last();
         ASSERT(node->op() == Jump);
-        ASSERT(node->takenBlock() == 0);
-        node->setTakenBlock(block.get());
+        ASSERT(!node->targetBlock());
+        node->targetBlock() = block.get();
         inlineStackEntry.m_unlinkedBlocks[i].m_needsEarlyReturnLinking = false;
 #if !ASSERT_DISABLED
         blockToLink->isLinked = true;
@@ -1560,7 +1582,7 @@ bool ByteCodeParser::handleIntrinsic(int resultOperand, Intrinsic intrinsic, int
         if (argumentCountIncludingThis != 2)
             return false;
         
-        ArrayMode arrayMode = getArrayMode(m_currentInstruction[6].u.arrayProfile);
+        ArrayMode arrayMode = getArrayMode(m_currentInstruction[OPCODE_LENGTH(op_call) - 2].u.arrayProfile);
         if (!arrayMode.isJSArray())
             return false;
         switch (arrayMode.type()) {
@@ -1584,7 +1606,7 @@ bool ByteCodeParser::handleIntrinsic(int resultOperand, Intrinsic intrinsic, int
         if (argumentCountIncludingThis != 1)
             return false;
         
-        ArrayMode arrayMode = getArrayMode(m_currentInstruction[6].u.arrayProfile);
+        ArrayMode arrayMode = getArrayMode(m_currentInstruction[OPCODE_LENGTH(op_call) - 2].u.arrayProfile);
         if (!arrayMode.isJSArray())
             return false;
         switch (arrayMode.type()) {
@@ -1827,15 +1849,16 @@ Node* ByteCodeParser::handlePutByOffset(Node* base, unsigned identifier, Propert
     return result;
 }
 
-Node* ByteCodeParser::emitPrototypeChecks(const GetByIdVariant& variant)
+Node* ByteCodeParser::emitPrototypeChecks(
+    Structure* structure, IntendedStructureChain* chain)
 {
     Node* base = 0;
-    m_graph.chains().addLazily(variant.chain());
-    Structure* currentStructure = variant.structureSet().singletonStructure();
+    m_graph.chains().addLazily(chain);
+    Structure* currentStructure = structure;
     JSObject* currentObject = 0;
-    for (unsigned i = 0; i < variant.chain()->size(); ++i) {
+    for (unsigned i = 0; i < chain->size(); ++i) {
         currentObject = asObject(currentStructure->prototypeForLookup(m_inlineStackTop->m_codeBlock));
-        currentStructure = variant.chain()->at(i);
+        currentStructure = chain->at(i);
         base = cellConstantWithStructureCheck(currentObject, currentStructure);
     }
     RELEASE_ASSERT(base);
@@ -1861,12 +1884,18 @@ void ByteCodeParser::handleGetById(
             return;
         }
         
+        if (m_graph.compilation())
+            m_graph.compilation()->noticeInlinedGetById();
+    
         // 1) Emit prototype structure checks for all chains. This could sort of maybe not be
         //    optimal, if there is some rarely executed case in the chain that requires a lot
         //    of checks and those checks are not watchpointable.
         for (unsigned variantIndex = getByIdStatus.numVariants(); variantIndex--;) {
-            if (getByIdStatus[variantIndex].chain())
-                emitPrototypeChecks(getByIdStatus[variantIndex]);
+            if (getByIdStatus[variantIndex].chain()) {
+                emitPrototypeChecks(
+                    getByIdStatus[variantIndex].structureSet().singletonStructure(),
+                    getByIdStatus[variantIndex].chain());
+            }
         }
         
         // 2) Emit a MultiGetByOffset
@@ -1888,8 +1917,10 @@ void ByteCodeParser::handleGetById(
                 
     addToGraph(CheckStructure, OpInfo(m_graph.addStructureSet(variant.structureSet())), base);
     
-    if (variant.chain())
-        base = emitPrototypeChecks(variant);
+    if (variant.chain()) {
+        base = emitPrototypeChecks(
+            variant.structureSet().singletonStructure(), variant.chain());
+    }
     
     // Unless we want bugs like https://bugs.webkit.org/show_bug.cgi?id=88783, we need to
     // ensure that the base of the original get_by_id is kept alive until we're done with
@@ -1909,6 +1940,123 @@ void ByteCodeParser::handleGetById(
     
     handleGetByOffset(
         destinationOperand, prediction, base, identifierNumber, variant.offset());
+}
+
+void ByteCodeParser::emitPutById(
+    Node* base, unsigned identifierNumber, Node* value, bool isDirect)
+{
+    if (isDirect)
+        addToGraph(PutByIdDirect, OpInfo(identifierNumber), base, value);
+    else
+        addToGraph(PutById, OpInfo(identifierNumber), base, value);
+}
+
+void ByteCodeParser::handlePutById(
+    Node* base, unsigned identifierNumber, Node* value,
+    const PutByIdStatus& putByIdStatus, bool isDirect)
+{
+    if (!putByIdStatus.isSimple()) {
+        if (!putByIdStatus.isSet())
+            addToGraph(ForceOSRExit);
+        emitPutById(base, identifierNumber, value, isDirect);
+        return;
+    }
+    
+    if (putByIdStatus.numVariants() > 1) {
+        if (!isFTL(m_graph.m_plan.mode)) {
+            emitPutById(base, identifierNumber, value, isDirect);
+            return;
+        }
+        
+        if (m_graph.compilation())
+            m_graph.compilation()->noticeInlinedPutById();
+        
+        if (!isDirect) {
+            for (unsigned variantIndex = putByIdStatus.numVariants(); variantIndex--;) {
+                if (putByIdStatus[variantIndex].kind() != PutByIdVariant::Transition)
+                    continue;
+                if (!putByIdStatus[variantIndex].structureChain())
+                    continue;
+                emitPrototypeChecks(
+                    putByIdStatus[variantIndex].oldStructure(),
+                    putByIdStatus[variantIndex].structureChain());
+            }
+        }
+        
+        MultiPutByOffsetData* data = m_graph.m_multiPutByOffsetData.add();
+        data->variants = putByIdStatus.variants();
+        data->identifierNumber = identifierNumber;
+        addToGraph(MultiPutByOffset, OpInfo(data), base, value);
+        return;
+    }
+    
+    ASSERT(putByIdStatus.numVariants() == 1);
+    const PutByIdVariant& variant = putByIdStatus[0];
+    
+    if (variant.kind() == PutByIdVariant::Replace) {
+        addToGraph(CheckStructure, OpInfo(m_graph.addStructureSet(variant.structure())), base);
+        handlePutByOffset(base, identifierNumber, variant.offset(), value);
+        if (m_graph.compilation())
+            m_graph.compilation()->noticeInlinedPutById();
+        return;
+    }
+    
+    ASSERT(variant.kind() == PutByIdVariant::Transition);
+    if (variant.structureChain() && !variant.structureChain()->isStillValid()) {
+        emitPutById(base, identifierNumber, value, isDirect);
+        return;
+    }
+    
+    m_graph.chains().addLazily(variant.structureChain());
+                
+    addToGraph(CheckStructure, OpInfo(m_graph.addStructureSet(variant.oldStructure())), base);
+    if (!isDirect)
+        emitPrototypeChecks(variant.oldStructure(), variant.structureChain());
+
+    ASSERT(variant.oldStructure()->transitionWatchpointSetHasBeenInvalidated());
+    
+    Node* propertyStorage;
+    StructureTransitionData* transitionData = m_graph.addStructureTransitionData(
+        StructureTransitionData(variant.oldStructure(), variant.newStructure()));
+
+    if (variant.oldStructure()->outOfLineCapacity()
+        != variant.newStructure()->outOfLineCapacity()) {
+
+        // If we're growing the property storage then it must be because we're
+        // storing into the out-of-line storage.
+        ASSERT(!isInlineOffset(variant.offset()));
+
+        if (!variant.oldStructure()->outOfLineCapacity()) {
+            propertyStorage = addToGraph(
+                AllocatePropertyStorage, OpInfo(transitionData), base);
+        } else {
+            propertyStorage = addToGraph(
+                ReallocatePropertyStorage, OpInfo(transitionData),
+                base, addToGraph(GetButterfly, base));
+        }
+    } else {
+        if (isInlineOffset(variant.offset()))
+            propertyStorage = base;
+        else
+            propertyStorage = addToGraph(GetButterfly, base);
+    }
+
+    addToGraph(PutStructure, OpInfo(transitionData), base);
+
+    addToGraph(
+        PutByOffset,
+        OpInfo(m_graph.m_storageAccessData.size()),
+        propertyStorage,
+        base,
+        value);
+
+    StorageAccessData storageAccessData;
+    storageAccessData.offset = variant.offset();
+    storageAccessData.identifierNumber = identifierNumber;
+    m_graph.m_storageAccessData.append(storageAccessData);
+
+    if (m_graph.compilation())
+        m_graph.compilation()->noticeInlinedPutById();
 }
 
 void ByteCodeParser::prepareToParseBlock()
@@ -2573,91 +2721,8 @@ bool ByteCodeParser::parseBlock(unsigned limit)
                 m_inlineStackTop->m_profiledBlock, m_dfgCodeBlock,
                 m_inlineStackTop->m_stubInfos, m_dfgStubInfos,
                 currentCodeOrigin(), m_graph.identifiers()[identifierNumber]);
-            bool canCountAsInlined = true;
-            if (!putByIdStatus.isSet()) {
-                addToGraph(ForceOSRExit);
-                canCountAsInlined = false;
-            }
             
-            if (putByIdStatus.isSimpleReplace()) {
-                addToGraph(CheckStructure, OpInfo(m_graph.addStructureSet(putByIdStatus.oldStructure())), base);
-                handlePutByOffset(base, identifierNumber, putByIdStatus.offset(), value);
-            } else if (
-                putByIdStatus.isSimpleTransition()
-                && (!putByIdStatus.structureChain()
-                    || putByIdStatus.structureChain()->isStillValid())) {
-                
-                m_graph.chains().addLazily(putByIdStatus.structureChain());
-                
-                addToGraph(CheckStructure, OpInfo(m_graph.addStructureSet(putByIdStatus.oldStructure())), base);
-                if (!direct) {
-                    if (!putByIdStatus.oldStructure()->storedPrototype().isNull()) {
-                        cellConstantWithStructureCheck(
-                            putByIdStatus.oldStructure()->storedPrototype().asCell());
-                    }
-                    
-                    for (unsigned i = 0; i < putByIdStatus.structureChain()->size(); ++i) {
-                        JSValue prototype = putByIdStatus.structureChain()->at(i)->storedPrototype();
-                        if (prototype.isNull())
-                            continue;
-                        cellConstantWithStructureCheck(prototype.asCell());
-                    }
-                }
-                ASSERT(putByIdStatus.oldStructure()->transitionWatchpointSetHasBeenInvalidated());
-                
-                Node* propertyStorage;
-                StructureTransitionData* transitionData =
-                    m_graph.addStructureTransitionData(
-                        StructureTransitionData(
-                            putByIdStatus.oldStructure(),
-                            putByIdStatus.newStructure()));
-
-                if (putByIdStatus.oldStructure()->outOfLineCapacity()
-                    != putByIdStatus.newStructure()->outOfLineCapacity()) {
-                    
-                    // If we're growing the property storage then it must be because we're
-                    // storing into the out-of-line storage.
-                    ASSERT(!isInlineOffset(putByIdStatus.offset()));
-                    
-                    if (!putByIdStatus.oldStructure()->outOfLineCapacity()) {
-                        propertyStorage = addToGraph(
-                            AllocatePropertyStorage, OpInfo(transitionData), base);
-                    } else {
-                        propertyStorage = addToGraph(
-                            ReallocatePropertyStorage, OpInfo(transitionData),
-                            base, addToGraph(GetButterfly, base));
-                    }
-                } else {
-                    if (isInlineOffset(putByIdStatus.offset()))
-                        propertyStorage = base;
-                    else
-                        propertyStorage = addToGraph(GetButterfly, base);
-                }
-                
-                addToGraph(PutStructure, OpInfo(transitionData), base);
-                
-                addToGraph(
-                    PutByOffset,
-                    OpInfo(m_graph.m_storageAccessData.size()),
-                    propertyStorage,
-                    base,
-                    value);
-                
-                StorageAccessData storageAccessData;
-                storageAccessData.offset = putByIdStatus.offset();
-                storageAccessData.identifierNumber = identifierNumber;
-                m_graph.m_storageAccessData.append(storageAccessData);
-            } else {
-                if (direct)
-                    addToGraph(PutByIdDirect, OpInfo(identifierNumber), base, value);
-                else
-                    addToGraph(PutById, OpInfo(identifierNumber), base, value);
-                canCountAsInlined = false;
-            }
-            
-            if (canCountAsInlined && m_graph.compilation())
-                m_graph.compilation()->noticeInlinedPutById();
-
+            handlePutById(base, identifierNumber, value, putByIdStatus, direct);
             NEXT_OPCODE(op_put_by_id);
         }
 
@@ -2697,7 +2762,7 @@ bool ByteCodeParser::parseBlock(unsigned limit)
                     NEXT_OPCODE(op_jtrue);
                 }
             }
-            addToGraph(Branch, OpInfo(m_currentIndex + relativeOffset), OpInfo(m_currentIndex + OPCODE_LENGTH(op_jtrue)), condition);
+            addToGraph(Branch, OpInfo(branchData(m_currentIndex + relativeOffset, m_currentIndex + OPCODE_LENGTH(op_jtrue))), condition);
             LAST_OPCODE(op_jtrue);
         }
 
@@ -2716,7 +2781,7 @@ bool ByteCodeParser::parseBlock(unsigned limit)
                     NEXT_OPCODE(op_jfalse);
                 }
             }
-            addToGraph(Branch, OpInfo(m_currentIndex + OPCODE_LENGTH(op_jfalse)), OpInfo(m_currentIndex + relativeOffset), condition);
+            addToGraph(Branch, OpInfo(branchData(m_currentIndex + OPCODE_LENGTH(op_jfalse), m_currentIndex + relativeOffset)), condition);
             LAST_OPCODE(op_jfalse);
         }
 
@@ -2724,7 +2789,7 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             unsigned relativeOffset = currentInstruction[2].u.operand;
             Node* value = get(VirtualRegister(currentInstruction[1].u.operand));
             Node* condition = addToGraph(CompareEqConstant, value, constantNull());
-            addToGraph(Branch, OpInfo(m_currentIndex + relativeOffset), OpInfo(m_currentIndex + OPCODE_LENGTH(op_jeq_null)), condition);
+            addToGraph(Branch, OpInfo(branchData(m_currentIndex + relativeOffset, m_currentIndex + OPCODE_LENGTH(op_jeq_null))), condition);
             LAST_OPCODE(op_jeq_null);
         }
 
@@ -2732,7 +2797,7 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             unsigned relativeOffset = currentInstruction[2].u.operand;
             Node* value = get(VirtualRegister(currentInstruction[1].u.operand));
             Node* condition = addToGraph(CompareEqConstant, value, constantNull());
-            addToGraph(Branch, OpInfo(m_currentIndex + OPCODE_LENGTH(op_jneq_null)), OpInfo(m_currentIndex + relativeOffset), condition);
+            addToGraph(Branch, OpInfo(branchData(m_currentIndex + OPCODE_LENGTH(op_jneq_null), m_currentIndex + relativeOffset)), condition);
             LAST_OPCODE(op_jneq_null);
         }
 
@@ -2758,7 +2823,7 @@ bool ByteCodeParser::parseBlock(unsigned limit)
                 }
             }
             Node* condition = addToGraph(CompareLess, op1, op2);
-            addToGraph(Branch, OpInfo(m_currentIndex + relativeOffset), OpInfo(m_currentIndex + OPCODE_LENGTH(op_jless)), condition);
+            addToGraph(Branch, OpInfo(branchData(m_currentIndex + relativeOffset, m_currentIndex + OPCODE_LENGTH(op_jless))), condition);
             LAST_OPCODE(op_jless);
         }
 
@@ -2784,7 +2849,7 @@ bool ByteCodeParser::parseBlock(unsigned limit)
                 }
             }
             Node* condition = addToGraph(CompareLessEq, op1, op2);
-            addToGraph(Branch, OpInfo(m_currentIndex + relativeOffset), OpInfo(m_currentIndex + OPCODE_LENGTH(op_jlesseq)), condition);
+            addToGraph(Branch, OpInfo(branchData(m_currentIndex + relativeOffset, m_currentIndex + OPCODE_LENGTH(op_jlesseq))), condition);
             LAST_OPCODE(op_jlesseq);
         }
 
@@ -2810,7 +2875,7 @@ bool ByteCodeParser::parseBlock(unsigned limit)
                 }
             }
             Node* condition = addToGraph(CompareGreater, op1, op2);
-            addToGraph(Branch, OpInfo(m_currentIndex + relativeOffset), OpInfo(m_currentIndex + OPCODE_LENGTH(op_jgreater)), condition);
+            addToGraph(Branch, OpInfo(branchData(m_currentIndex + relativeOffset, m_currentIndex + OPCODE_LENGTH(op_jgreater))), condition);
             LAST_OPCODE(op_jgreater);
         }
 
@@ -2836,7 +2901,7 @@ bool ByteCodeParser::parseBlock(unsigned limit)
                 }
             }
             Node* condition = addToGraph(CompareGreaterEq, op1, op2);
-            addToGraph(Branch, OpInfo(m_currentIndex + relativeOffset), OpInfo(m_currentIndex + OPCODE_LENGTH(op_jgreatereq)), condition);
+            addToGraph(Branch, OpInfo(branchData(m_currentIndex + relativeOffset, m_currentIndex + OPCODE_LENGTH(op_jgreatereq))), condition);
             LAST_OPCODE(op_jgreatereq);
         }
 
@@ -2862,7 +2927,7 @@ bool ByteCodeParser::parseBlock(unsigned limit)
                 }
             }
             Node* condition = addToGraph(CompareLess, op1, op2);
-            addToGraph(Branch, OpInfo(m_currentIndex + OPCODE_LENGTH(op_jnless)), OpInfo(m_currentIndex + relativeOffset), condition);
+            addToGraph(Branch, OpInfo(branchData(m_currentIndex + OPCODE_LENGTH(op_jnless), m_currentIndex + relativeOffset)), condition);
             LAST_OPCODE(op_jnless);
         }
 
@@ -2888,7 +2953,7 @@ bool ByteCodeParser::parseBlock(unsigned limit)
                 }
             }
             Node* condition = addToGraph(CompareLessEq, op1, op2);
-            addToGraph(Branch, OpInfo(m_currentIndex + OPCODE_LENGTH(op_jnlesseq)), OpInfo(m_currentIndex + relativeOffset), condition);
+            addToGraph(Branch, OpInfo(branchData(m_currentIndex + OPCODE_LENGTH(op_jnlesseq), m_currentIndex + relativeOffset)), condition);
             LAST_OPCODE(op_jnlesseq);
         }
 
@@ -2914,7 +2979,7 @@ bool ByteCodeParser::parseBlock(unsigned limit)
                 }
             }
             Node* condition = addToGraph(CompareGreater, op1, op2);
-            addToGraph(Branch, OpInfo(m_currentIndex + OPCODE_LENGTH(op_jngreater)), OpInfo(m_currentIndex + relativeOffset), condition);
+            addToGraph(Branch, OpInfo(branchData(m_currentIndex + OPCODE_LENGTH(op_jngreater), m_currentIndex + relativeOffset)), condition);
             LAST_OPCODE(op_jngreater);
         }
 
@@ -2940,66 +3005,63 @@ bool ByteCodeParser::parseBlock(unsigned limit)
                 }
             }
             Node* condition = addToGraph(CompareGreaterEq, op1, op2);
-            addToGraph(Branch, OpInfo(m_currentIndex + OPCODE_LENGTH(op_jngreatereq)), OpInfo(m_currentIndex + relativeOffset), condition);
+            addToGraph(Branch, OpInfo(branchData(m_currentIndex + OPCODE_LENGTH(op_jngreatereq), m_currentIndex + relativeOffset)), condition);
             LAST_OPCODE(op_jngreatereq);
         }
             
         case op_switch_imm: {
-            SwitchData data;
+            SwitchData& data = *m_graph.m_switchData.add();
             data.kind = SwitchImm;
             data.switchTableIndex = m_inlineStackTop->m_switchRemap[currentInstruction[1].u.operand];
-            data.setFallThroughBytecodeIndex(m_currentIndex + currentInstruction[2].u.operand);
+            data.fallThrough.setBytecodeIndex(m_currentIndex + currentInstruction[2].u.operand);
             SimpleJumpTable& table = m_codeBlock->switchJumpTable(data.switchTableIndex);
             for (unsigned i = 0; i < table.branchOffsets.size(); ++i) {
                 if (!table.branchOffsets[i])
                     continue;
                 unsigned target = m_currentIndex + table.branchOffsets[i];
-                if (target == data.fallThroughBytecodeIndex())
+                if (target == data.fallThrough.bytecodeIndex())
                     continue;
                 data.cases.append(SwitchCase::withBytecodeIndex(jsNumber(static_cast<int32_t>(table.min + i)), target));
             }
-            m_graph.m_switchData.append(data);
-            addToGraph(Switch, OpInfo(&m_graph.m_switchData.last()), get(VirtualRegister(currentInstruction[3].u.operand)));
+            addToGraph(Switch, OpInfo(&data), get(VirtualRegister(currentInstruction[3].u.operand)));
             LAST_OPCODE(op_switch_imm);
         }
             
         case op_switch_char: {
-            SwitchData data;
+            SwitchData& data = *m_graph.m_switchData.add();
             data.kind = SwitchChar;
             data.switchTableIndex = m_inlineStackTop->m_switchRemap[currentInstruction[1].u.operand];
-            data.setFallThroughBytecodeIndex(m_currentIndex + currentInstruction[2].u.operand);
+            data.fallThrough.setBytecodeIndex(m_currentIndex + currentInstruction[2].u.operand);
             SimpleJumpTable& table = m_codeBlock->switchJumpTable(data.switchTableIndex);
             for (unsigned i = 0; i < table.branchOffsets.size(); ++i) {
                 if (!table.branchOffsets[i])
                     continue;
                 unsigned target = m_currentIndex + table.branchOffsets[i];
-                if (target == data.fallThroughBytecodeIndex())
+                if (target == data.fallThrough.bytecodeIndex())
                     continue;
                 data.cases.append(
                     SwitchCase::withBytecodeIndex(LazyJSValue::singleCharacterString(table.min + i), target));
             }
-            m_graph.m_switchData.append(data);
-            addToGraph(Switch, OpInfo(&m_graph.m_switchData.last()), get(VirtualRegister(currentInstruction[3].u.operand)));
+            addToGraph(Switch, OpInfo(&data), get(VirtualRegister(currentInstruction[3].u.operand)));
             LAST_OPCODE(op_switch_char);
         }
 
         case op_switch_string: {
-            SwitchData data;
+            SwitchData& data = *m_graph.m_switchData.add();
             data.kind = SwitchString;
             data.switchTableIndex = currentInstruction[1].u.operand;
-            data.setFallThroughBytecodeIndex(m_currentIndex + currentInstruction[2].u.operand);
+            data.fallThrough.setBytecodeIndex(m_currentIndex + currentInstruction[2].u.operand);
             StringJumpTable& table = m_codeBlock->stringSwitchJumpTable(data.switchTableIndex);
             StringJumpTable::StringOffsetTable::iterator iter;
             StringJumpTable::StringOffsetTable::iterator end = table.offsetTable.end();
             for (iter = table.offsetTable.begin(); iter != end; ++iter) {
                 unsigned target = m_currentIndex + iter->value.branchOffset;
-                if (target == data.fallThroughBytecodeIndex())
+                if (target == data.fallThrough.bytecodeIndex())
                     continue;
                 data.cases.append(
                     SwitchCase::withBytecodeIndex(LazyJSValue::knownStringImpl(iter->key.get()), target));
             }
-            m_graph.m_switchData.append(data);
-            addToGraph(Switch, OpInfo(&m_graph.m_switchData.last()), get(VirtualRegister(currentInstruction[3].u.operand)));
+            addToGraph(Switch, OpInfo(&data), get(VirtualRegister(currentInstruction[3].u.operand)));
             LAST_OPCODE(op_switch_string);
         }
 
@@ -3255,11 +3317,11 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             case GlobalProperty:
             case GlobalPropertyWithVarInjectionChecks: {
                 PutByIdStatus status = PutByIdStatus::computeFor(*m_vm, globalObject, structure, uid, false);
-                if (!status.isSimpleReplace()) {
+                if (status.numVariants() != 1 || status[0].kind() != PutByIdVariant::Replace) {
                     addToGraph(PutById, OpInfo(identifierNumber), get(VirtualRegister(scope)), get(VirtualRegister(value)));
                     break;
                 }
-                Node* base = cellConstantWithStructureCheck(globalObject, status.oldStructure());
+                Node* base = cellConstantWithStructureCheck(globalObject, status[0].structure());
                 addToGraph(Phantom, get(VirtualRegister(scope)));
                 handlePutByOffset(base, identifierNumber, static_cast<PropertyOffset>(operand), get(VirtualRegister(value)));
                 // Keep scope alive until after put.
@@ -3423,19 +3485,23 @@ void ByteCodeParser::linkBlock(BasicBlock* block, Vector<BasicBlock*>& possibleT
     
     switch (node->op()) {
     case Jump:
-        node->setTakenBlock(blockForBytecodeOffset(possibleTargets, node->takenBytecodeOffsetDuringParsing()));
+        node->targetBlock() = blockForBytecodeOffset(possibleTargets, node->targetBytecodeOffsetDuringParsing());
         break;
         
-    case Branch:
-        node->setTakenBlock(blockForBytecodeOffset(possibleTargets, node->takenBytecodeOffsetDuringParsing()));
-        node->setNotTakenBlock(blockForBytecodeOffset(possibleTargets, node->notTakenBytecodeOffsetDuringParsing()));
+    case Branch: {
+        BranchData* data = node->branchData();
+        data->taken.block = blockForBytecodeOffset(possibleTargets, data->takenBytecodeIndex());
+        data->notTaken.block = blockForBytecodeOffset(possibleTargets, data->notTakenBytecodeIndex());
         break;
+    }
         
-    case Switch:
+    case Switch: {
+        SwitchData* data = node->switchData();
         for (unsigned i = node->switchData()->cases.size(); i--;)
-            node->switchData()->cases[i].target = blockForBytecodeOffset(possibleTargets, node->switchData()->cases[i].targetBytecodeIndex());
-        node->switchData()->fallThrough = blockForBytecodeOffset(possibleTargets, node->switchData()->fallThroughBytecodeIndex());
+            data->cases[i].target.block = blockForBytecodeOffset(possibleTargets, data->cases[i].target.bytecodeIndex());
+        data->fallThrough.block = blockForBytecodeOffset(possibleTargets, data->fallThrough.bytecodeIndex());
         break;
+    }
         
     default:
         break;
@@ -3702,7 +3768,7 @@ void ByteCodeParser::parseCodeBlock()
                     m_currentBlock = m_graph.lastBlock();
                     m_currentBlock->bytecodeBegin = m_currentIndex;
                 } else {
-                    RefPtr<BasicBlock> block = adoptRef(new BasicBlock(m_currentIndex, m_numArguments, m_numLocals));
+                    RefPtr<BasicBlock> block = adoptRef(new BasicBlock(m_currentIndex, m_numArguments, m_numLocals, QNaN));
                     m_currentBlock = block.get();
                     // This assertion checks two things:
                     // 1) If the bytecodeBegin is greater than currentIndex, then something has gone

@@ -26,6 +26,9 @@
 #import "config.h"
 #import "WebProcessProxy.h"
 
+#if PLATFORM(IOS)
+
+#import <assertion/extension_private.h>
 #import <WebCore/NotImplemented.h>
 
 namespace WebKit {
@@ -68,4 +71,29 @@ void WebProcessProxy::updateProcessSuppressionState()
     notImplemented();
 }
 
+void WebProcessProxy::updateProcessState()
+{
+#if USE(XPC_SERVICES)
+    if (state() != State::Running)
+        return;
+
+    xpc_connection_t xpcConnection = connection()->xpcConnection();
+    if (!xpcConnection)
+        return;
+
+    assertion_extension_state_t extensionState = ASSERTION_EXTENSION_STATE_BACKGROUND;
+    for (const auto& page : m_pageMap.values()) {
+        if (page->isInWindow()) {
+            extensionState = ASSERTION_EXTENSION_STATE_FOREGROUND;
+            break;
+        }
+    }
+
+    errno_t tabStateError = assertion_extension_set_state(xpcConnection, extensionState, NULL);
+    ASSERT_UNUSED(tabStateError, !tabStateError);
+#endif
+}
+
 } // namespace WebKit
+
+#endif // PLATFORM(IOS)

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2014 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -78,6 +78,18 @@ void RemoteLayerTreeDrawingAreaProxy::didUpdateGeometry()
         sendUpdateGeometry();
 }
 
+FloatRect RemoteLayerTreeDrawingAreaProxy::scaledExposedRect() const
+{
+#if PLATFORM(IOS)
+    return m_webPageProxy->exposedContentRect();
+#else
+    FloatRect scaledExposedRect = exposedRect();
+    float scale = 1 / m_webPageProxy->pageScaleFactor();
+    scaledExposedRect.scale(scale, scale);
+    return scaledExposedRect;
+#endif
+}
+
 void RemoteLayerTreeDrawingAreaProxy::sendUpdateGeometry()
 {
     m_lastSentSize = m_size;
@@ -104,26 +116,33 @@ void RemoteLayerTreeDrawingAreaProxy::commitLayerTree(const RemoteLayerTreeTrans
         float scale = indicatorScale(layerTreeTransaction.contentsSize());
         bool rootLayerChanged = m_debugIndicatorLayerTreeHost->updateLayerTree(layerTreeTransaction, scale);
         updateDebugIndicator(layerTreeTransaction.contentsSize(), rootLayerChanged, scale);
-        m_debugIndicatorLayerTreeHost->rootLayer().name = @"Indicator host root";
+        asLayer(m_debugIndicatorLayerTreeHost->rootLayer()).name = @"Indicator host root";
     }
 }
 
 static const float indicatorInset = 10;
-static const float indicatorTopInset = 100;
 
+#if PLATFORM(MAC)
 void RemoteLayerTreeDrawingAreaProxy::setExposedRect(const WebCore::FloatRect& r)
 {
     DrawingAreaProxy::setExposedRect(r);
     updateDebugIndicatorPosition();
 }
+#endif
 
 FloatPoint RemoteLayerTreeDrawingAreaProxy::indicatorLocation() const
 {
     if (m_webPageProxy->delegatesScrolling()) {
+#if PLATFORM(IOS)
+        FloatPoint tiledMapLocation = m_webPageProxy->unobscuredContentRect().location();
+        float absoluteInset = indicatorInset / m_webPageProxy->displayedContentScale();
+        tiledMapLocation += FloatSize(absoluteInset, absoluteInset);
+#else
         FloatPoint tiledMapLocation = exposedRect().location();
-        tiledMapLocation += FloatSize(indicatorInset, indicatorTopInset);
-        float scale = 1 / m_webPageProxy->pageScaleFactor();
+        tiledMapLocation += FloatSize(indicatorInset, indicatorInset);
+        float scale = 1 / m_webPageProxy->pageScaleFactor();;
         tiledMapLocation.scale(scale, scale);
+#endif
         return tiledMapLocation;
     }
     
@@ -146,16 +165,22 @@ float RemoteLayerTreeDrawingAreaProxy::indicatorScale(IntSize contentsSize) cons
     float scale = 1;
     if (!contentsSize.isEmpty()) {
         float widthScale = std::min<float>((viewSize.width() - 2 * indicatorInset) / contentsSize.width(), 0.05);
-        scale = std::min(widthScale, static_cast<float>(viewSize.height() - indicatorTopInset - indicatorInset) / contentsSize.height());
+        scale = std::min(widthScale, static_cast<float>(viewSize.height() - 2 * indicatorInset) / contentsSize.height());
     }
     
     return scale;
 }
 
+void RemoteLayerTreeDrawingAreaProxy::updateDebugIndicator()
+{
+    // FIXME: we should also update live information during scale.
+    updateDebugIndicatorPosition();
+}
+
 void RemoteLayerTreeDrawingAreaProxy::updateDebugIndicator(IntSize contentsSize, bool rootLayerChanged, float scale)
 {
     // Make sure we're the last sublayer.
-    CALayer *rootLayer = m_remoteLayerTreeHost.rootLayer();
+    CALayer *rootLayer = asLayer(m_remoteLayerTreeHost.rootLayer());
     [m_tileMapHostLayer removeFromSuperlayer];
     [rootLayer addSublayer:m_tileMapHostLayer.get()];
 
@@ -168,7 +193,7 @@ void RemoteLayerTreeDrawingAreaProxy::updateDebugIndicator(IntSize contentsSize,
 
     if (rootLayerChanged) {
         [m_tileMapHostLayer setSublayers:@[]];
-        [m_tileMapHostLayer addSublayer:m_debugIndicatorLayerTreeHost->rootLayer()];
+        [m_tileMapHostLayer addSublayer:asLayer(m_debugIndicatorLayerTreeHost->rootLayer())];
         [m_tileMapHostLayer addSublayer:m_exposedRectIndicatorLayer.get()];
     }
     
@@ -178,10 +203,7 @@ void RemoteLayerTreeDrawingAreaProxy::updateDebugIndicator(IntSize contentsSize,
     [m_exposedRectIndicatorLayer setBorderWidth:counterScaledBorder];
 
     if (m_webPageProxy->delegatesScrolling()) {
-        FloatRect scaledExposedRect = exposedRect();
-        float scale = 1 / m_webPageProxy->pageScaleFactor();
-        scaledExposedRect.scale(scale, scale);
-
+        FloatRect scaledExposedRect = this->scaledExposedRect();
         [m_exposedRectIndicatorLayer setPosition:scaledExposedRect.location()];
         [m_exposedRectIndicatorLayer setBounds:FloatRect(FloatPoint(), scaledExposedRect.size())];
     } else {

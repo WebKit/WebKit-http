@@ -127,17 +127,17 @@ static void sizeWebViewForCurrentTest(const char* pathOrURL)
         TestController::shared().mainWebView()->resizeTo(TestController::viewWidth, TestController::viewHeight);
 }
 
+static void changeWindowScaleIfNeeded(const char* pathOrURL)
+{
+    WTF::String localPathOrUrl = String(pathOrURL);
+    bool needsHighDPIWindow = localPathOrUrl.findIgnoringCase("hidpi-") != notFound;
+    TestController::shared().mainWebView()->changeWindowScaleIfNeeded(needsHighDPIWindow ? 2 : 1);
+}
+
 static bool shouldLogFrameLoadDelegates(const char* pathOrURL)
 {
     return strstr(pathOrURL, "loading/");
 }
-
-#if ENABLE(INSPECTOR) && !PLATFORM(IOS)
-static bool shouldOpenWebInspector(const char* pathOrURL)
-{
-    return strstr(pathOrURL, "inspector/") || strstr(pathOrURL, "inspector\\");
-}
-#endif
 
 #if PLATFORM(COCOA)
 static bool shouldUseThreadedScrolling(const char* pathOrURL)
@@ -193,6 +193,7 @@ static void updateLayoutType(const char* pathOrURL)
 void TestInvocation::invoke()
 {
     TestController::TimeoutDuration timeoutToUse = TestController::LongTimeout;
+    changeWindowScaleIfNeeded(m_pathOrURL.c_str());
     sizeWebViewForCurrentTest(m_pathOrURL.c_str());
     updateLayoutType(m_pathOrURL.c_str());
     updateThreadedScrollingForCurrentTest(m_pathOrURL.c_str());
@@ -228,11 +229,6 @@ void TestInvocation::invoke()
     }
     if (m_error)
         goto end;
-
-#if ENABLE(INSPECTOR) && !PLATFORM(IOS)
-    if (shouldOpenWebInspector(m_pathOrURL.c_str()))
-        WKInspectorShow(WKPageGetInspector(TestController::shared().mainWebView()->page()));
-#endif // ENABLE(INSPECTOR)        
 
     WKPageLoadURL(TestController::shared().mainWebView()->page(), m_url.get());
 

@@ -32,7 +32,7 @@
 #include "LayoutRepainter.h"
 #include "Page.h"
 #include "RenderIterator.h"
-#include "RenderSVGResourceContainer.h"
+#include "RenderNamedFlowFragment.h"
 #include "RenderView.h"
 #include "SVGImage.h"
 #include "SVGLength.h"
@@ -133,7 +133,7 @@ bool RenderSVGRoot::isEmbeddedThroughFrameContainingSVGDocument() const
 
 static inline LayoutUnit resolveLengthAttributeForSVG(const Length& length, float scale, float maxSize, RenderView* renderView)
 {
-    return static_cast<LayoutUnit>(valueForLength(length, maxSize, renderView) * (length.isFixed() ? scale : 1));
+    return valueForLength(length, maxSize, renderView) * (length.isFixed() ? scale : 1);
 }
 
 LayoutUnit RenderSVGRoot::computeReplacedLogicalWidth(ShouldComputePreferred shouldComputePreferred) const
@@ -268,7 +268,7 @@ void RenderSVGRoot::paintReplaced(PaintInfo& paintInfo, const LayoutPoint& paint
     childPaintInfo.context->save();
 
     // Apply initial viewport clip - not affected by overflow handling
-    childPaintInfo.context->clip(pixelSnappedIntRect(overflowClipRect(paintOffset, paintInfo.renderRegion)));
+    childPaintInfo.context->clip(pixelSnappedIntRect(overflowClipRect(paintOffset, paintInfo.renderNamedFlowFragment)));
 
     // Convert from container offsets (html renderers) to a relative transform (svg renderers).
     // Transform from our paint container's coordinate system to our local coords.
@@ -390,7 +390,7 @@ void RenderSVGRoot::updateCachedBoundaries()
 {
     SVGRenderSupport::computeContainerBoundingBoxes(*this, m_objectBoundingBox, m_objectBoundingBoxValid, m_strokeBoundingBox, m_repaintBoundingBoxExcludingShadow);
     SVGRenderSupport::intersectRepaintRectWithResources(*this, m_repaintBoundingBoxExcludingShadow);
-    m_repaintBoundingBoxExcludingShadow.inflate(borderAndPaddingWidth());
+    m_repaintBoundingBoxExcludingShadow.inflate(horizontalBorderAndPaddingExtent());
 
     m_repaintBoundingBox = m_repaintBoundingBoxExcludingShadow;
     SVGRenderSupport::intersectRepaintRectWithShadows(*this, m_repaintBoundingBox);

@@ -1,3 +1,59 @@
+2014-02-24  Dean Jackson  <dino@apple.com>
+
+        Unreviewed. This file should not be marked as executable (copied in from ANGLE).
+
+        * include/KHR/khrplatform.h:
+
+2014-02-23  David Kilzer  <ddkilzer@apple.com>
+
+        ANGLE: Stop using unsafe strcpy method
+        <http://webkit.org/b/129237>
+        <rdar://problem/11077580>
+
+        Reviewed by Dean Jackson.
+
+        * include/GLSLANG/ShaderLang.h:
+        - Drive-by fix for header documentation.
+
+        * src/compiler/translator/ShaderLang.cpp:
+        (ShGetInfoLog):
+        (ShGetObjectCode):
+        * src/libGLESv2/Program.cpp:
+        (gl::InfoLog::append):
+        - Switch to use strncpy(), and explicitly set NULL terminator at
+          the end of the buffer.
+
+2014-02-23  Brent Fulgham  <bfulgham@apple.com>
+
+        [WinCairo] Unreviewed build fix after r164565.
+
+        * ANGLE.vcxproj/libEGL.vcxproj: Use correct path to files.
+        * ANGLE.vcxproj/libGLESv2.vcxproj: Ditto.
+        * ANGLE.vcxproj/libGLESv2.vcxproj.filters: Ditto.
+        * ANGLE.vcxproj/preprocessor.vcxproj: Ditto.
+        * ANGLE.vcxproj/translator_common.vcxproj: Ditto.
+        * ANGLE.vcxproj/translator_common.vcxproj.filters: Ditto.
+        * ANGLE.vcxproj/translator_glsl.vcxproj: Ditto.
+        * ANGLE.vcxproj/translator_glsl.vcxproj.filters: Ditto.
+        * ANGLE.vcxproj/translator_hlsl.vcxproj: Ditto.
+        * ANGLE.vcxproj/translator_hlsl.vcxproj.filters: Ditto.
+
+2014-02-23  Dean Jackson  <dino@apple.com>
+
+        Missing files from previous commit.
+
+2014-02-23  Dean Jackson  <dino@apple.com>
+
+        Update ANGLE to 836bd2176e5607b14846cf1fbc5932dbc91318f4
+        https://bugs.webkit.org/show_bug.cgi?id=129232
+
+        Reviewed by Brent Fulgham.
+
+        I also reapplied some of our changes from previous updates, including disabling the clang deprecation
+        warnings in some files, adding the Apple note about license and defining YY_NO_INPUT.
+
+        Huge list of source changes omitted.
+
 2013-12-18  Carlos Garcia Campos  <cgarcia@igalia.com>
 
         Unreviewed. Fix make distcheck.

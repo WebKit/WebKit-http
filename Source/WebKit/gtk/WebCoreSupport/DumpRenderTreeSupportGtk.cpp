@@ -86,6 +86,16 @@ bool DumpRenderTreeSupportGtk::s_linksIncludedInTabChain = true;
 DumpRenderTreeSupportGtk::FrameLoadEventCallback DumpRenderTreeSupportGtk::s_frameLoadEventCallback = 0;
 DumpRenderTreeSupportGtk::AuthenticationCallback DumpRenderTreeSupportGtk::s_authenticationCallback = 0;
 
+static inline WebCore::FindOptions toWebCoreFindOptions(WebKitFindOptions type)
+{
+    return static_cast<WebCore::FindOptions>((type & WebFindOptionsCaseInsensitive ? CaseInsensitive : 0)
+        | (type & WebFindOptionsAtWordStarts ? AtWordStarts : 0)
+        | (type & WebFindOptionsTreatMedialCapitalAsWordStart ? TreatMedialCapitalAsWordStart : 0)
+        | (type & WebFindOptionsBackwards ? Backwards : 0)
+        | (type & WebFindOptionsWrapAround ? WrapAround : 0)
+        | (type & WebFindOptionsStartInSelection ? StartInSelection : 0));
+}
+
 DumpRenderTreeSupportGtk::DumpRenderTreeSupportGtk()
 {
 }
@@ -450,7 +460,7 @@ void DumpRenderTreeSupportGtk::gcCollectJavascriptObjectsOnAlternateThread(bool 
 unsigned long DumpRenderTreeSupportGtk::gcCountJavascriptObjects()
 {
     JSC::JSLockHolder lock(JSDOMWindow::commonVM());
-    return JSDOMWindow::commonVM()->heap.objectCount();
+    return JSDOMWindow::commonVM().heap.objectCount();
 }
 
 void DumpRenderTreeSupportGtk::layoutFrame(WebKitWebFrame* frame)
@@ -475,7 +485,7 @@ void DumpRenderTreeSupportGtk::clearOpener(WebKitWebFrame* frame)
 
 bool DumpRenderTreeSupportGtk::findString(WebKitWebView* webView, const gchar* targetString, WebKitFindOptions findOptions)
 {
-    return core(webView)->findString(String::fromUTF8(targetString), findOptions);
+    return core(webView)->findString(String::fromUTF8(targetString), toWebCoreFindOptions(findOptions));
 }
 
 void DumpRenderTreeSupportGtk::setValueForUser(JSContextRef context, JSValueRef nodeObject, JSStringRef value)
@@ -630,7 +640,7 @@ GSList* DumpRenderTreeSupportGtk::trackedRepaintRects(WebKitWebFrame* frame)
         return 0;
 
     GSList* rects = 0;
-    const Vector<IntRect>& repaintRects = coreFrame->view()->trackedRepaintRects();
+    const Vector<FloatRect>& repaintRects = coreFrame->view()->trackedRepaintRects();
     for (unsigned i = 0; i < repaintRects.size(); i++) {
         GdkRectangle* rect = g_new0(GdkRectangle, 1);
         rect->x = repaintRects[i].x();

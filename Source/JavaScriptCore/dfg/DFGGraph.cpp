@@ -251,6 +251,12 @@ void Graph::dump(PrintStream& out, const char* prefix, Node* node, DumpContext* 
         for (unsigned i = 0; i < data.variants.size(); ++i)
             out.print(comma, inContext(data.variants[i], context));
     }
+    if (node->hasMultiPutByOffsetData()) {
+        MultiPutByOffsetData& data = node->multiPutByOffsetData();
+        out.print(comma, "id", data.identifierNumber, "{", identifiers()[data.identifierNumber], "}");
+        for (unsigned i = 0; i < data.variants.size(); ++i)
+            out.print(comma, inContext(data.variants[i], context));
+    }
     ASSERT(node->hasVariableAccessData(*this) == node->hasLocal(*this));
     if (node->hasVariableAccessData(*this)) {
         VariableAccessData* variableAccessData = node->tryGetVariableAccessData();
@@ -315,16 +321,16 @@ void Graph::dump(PrintStream& out, const char* prefix, Node* node, DumpContext* 
     }
     if (op == WeakJSConstant)
         out.print(comma, RawPointer(node->weakConstant()), " (", inContext(*node->weakConstant()->structure(), context), ")");
-    if (node->isBranch() || node->isJump())
-        out.print(comma, "T:", *node->takenBlock());
+    if (node->isJump())
+        out.print(comma, "T:", *node->targetBlock());
     if (node->isBranch())
-        out.print(comma, "F:", *node->notTakenBlock());
+        out.print(comma, "T:", node->branchData()->taken, ", F:", node->branchData()->notTaken);
     if (node->isSwitch()) {
         SwitchData* data = node->switchData();
         out.print(comma, data->kind);
         for (unsigned i = 0; i < data->cases.size(); ++i)
-            out.print(comma, inContext(data->cases[i].value, context), ":", *data->cases[i].target);
-        out.print(comma, "default:", *data->fallThrough);
+            out.print(comma, inContext(data->cases[i].value, context), ":", data->cases[i].target);
+        out.print(comma, "default:", data->fallThrough);
     }
     ClobberSet reads;
     ClobberSet writes;

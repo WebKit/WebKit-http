@@ -85,8 +85,6 @@ SOFT_LINK_CONSTANT(UIFoundation, NSLigatureAttributeName, NSString *)
 #define NSLigatureAttributeName getNSLigatureAttributeName()
 SOFT_LINK_CONSTANT(UIFoundation, NSUnderlineStyleAttributeName, NSString *)
 #define NSUnderlineStyleAttributeName getNSUnderlineStyleAttributeName()
-SOFT_LINK_CONSTANT(UIFoundation, NSSuperscriptAttributeName, NSString *)
-#define NSSuperscriptAttributeName getNSSuperscriptAttributeName()
 SOFT_LINK_CONSTANT(UIFoundation, NSStrikethroughStyleAttributeName, NSString *)
 #define NSStrikethroughStyleAttributeName getNSStrikethroughStyleAttributeName()
 SOFT_LINK_CONSTANT(UIFoundation, NSBaselineOffsetAttributeName, NSString *)
@@ -140,6 +138,11 @@ SOFT_LINK_CONSTANT(UIFoundation, NSCocoaVersionDocumentAttribute, NSString *)
 #define PlatformNSColorClass        getNSColorClass()
 #define PlatformFont                UIFont
 #define PlatformFontClass           getUIFontClass()
+
+// We don't softlink NSSuperscriptAttributeName because UIFoundation stopped exporting it.
+// This attribute is being deprecated at the API level, but internally UIFoundation
+// will continue to support it.
+static NSString *const NSSuperscriptAttributeName = @"NSSuperscript";
 #else
 
 #define PlatformNSShadow            NSShadow
@@ -2499,7 +2502,7 @@ static NSInteger _colCompare(id block1, id block2, void *)
             }
         }
 
-        int currentTextLength = it.length();
+        int currentTextLength = it.text().length();
         if (!currentTextLength)
             continue;
 

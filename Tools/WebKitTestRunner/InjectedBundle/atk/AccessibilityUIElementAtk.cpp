@@ -35,6 +35,9 @@
 #include "NotImplemented.h"
 #include <JavaScriptCore/JSStringRef.h>
 #include <JavaScriptCore/OpaqueJSString.h>
+#if ATK_CHECK_VERSION(2,11,90)
+#include <WebKit2/WKBundleFrame.h>
+#endif
 #include <atk/atk.h>
 #include <wtf/Assertions.h>
 #include <wtf/gobject/GRefPtr.h>
@@ -203,7 +206,10 @@ bool checkElementState(PlatformUIElement element, AtkStateType stateType)
 JSStringRef indexRangeInTable(PlatformUIElement element, bool isRowRange)
 {
     GUniquePtr<gchar> rangeString(g_strdup("{0, 0}"));
-
+#if ATK_CHECK_VERSION(2,11,90)
+    if (!ATK_IS_TABLE_CELL(element.get()))
+        return JSStringCreateWithUTF8CString(rangeString.get());
+#else
     if (!ATK_IS_OBJECT(element.get()))
         return JSStringCreateWithUTF8CString(rangeString.get());
 
@@ -215,11 +221,20 @@ JSStringRef indexRangeInTable(PlatformUIElement element, bool isRowRange)
     gint indexInParent = atk_object_get_index_in_parent(ATK_OBJECT(element.get()));
     if (indexInParent == -1)
         return JSStringCreateWithUTF8CString(rangeString.get());
+#endif
 
-    int row = -1;
-    int column = -1;
+    gint row = -1;
+    gint column = -1;
+    gint rowSpan = -1;
+    gint columnSpan = -1;
+#if ATK_CHECK_VERSION(2,11,90)
+    atk_table_cell_get_row_column_span(ATK_TABLE_CELL(element.get()), &row, &column, &rowSpan, &columnSpan);
+#else
     row = atk_table_get_row_at_index(ATK_TABLE(axTable), indexInParent);
     column = atk_table_get_column_at_index(ATK_TABLE(axTable), indexInParent);
+    rowSpan = atk_table_get_row_extent_at(ATK_TABLE(axTable), row, column);
+    columnSpan = atk_table_get_column_extent_at(ATK_TABLE(axTable), row, column);
+#endif
 
     // Get the actual values, if row and columns are valid values.
     if (row != -1 && column != -1) {
@@ -227,10 +242,10 @@ JSStringRef indexRangeInTable(PlatformUIElement element, bool isRowRange)
         int length = 0;
         if (isRowRange) {
             base = row;
-            length = atk_table_get_row_extent_at(ATK_TABLE(axTable), row, column);
+            length = rowSpan;
         } else {
             base = column;
-            length = atk_table_get_column_extent_at(ATK_TABLE(axTable), row, column);
+            length = columnSpan;
         }
         rangeString.reset(g_strdup_printf("{%d, %d}", base, length));
     }
@@ -550,6 +565,31 @@ static Vector<RefPtr<AccessibilityUIElement> > getVisibleCells(AccessibilityUIEl
     return visibleCells;
 }
 
+#if ATK_CHECK_VERSION(2,11,90)
+static Vector<RefPtr<AccessibilityUIElement>> convertGPtrArrayToVector(const GPtrArray* array)
+{
+    Vector<RefPtr<AccessibilityUIElement>> cells;
+    for (guint i = 0; i < array->len; i++) {
+        if (AtkObject* atkObject = static_cast<AtkObject*>(g_ptr_array_index(array, i)))
+            cells.append(AccessibilityUIElement::create(atkObject));
+    }
+    return cells;
+}
+
+static JSValueRef convertToJSObjectArray(const Vector<RefPtr<AccessibilityUIElement>>& children)
+{
+    WKBundleFrameRef mainFrame = WKBundlePageGetMainFrame(InjectedBundle::shared().page()->page());
+    JSContextRef context = WKBundleFrameGetJavaScriptContext(mainFrame);
+
+    size_t elementCount = children.size();
+    auto valueElements = std::make_unique<JSValueRef[]>(elementCount);
+    for (size_t i = 0; i < elementCount; i++)
+        valueElements[i] = JSObjectMake(context, children[i]->wrapperClass(), children[i].get());
+
+    return JSObjectMakeArray(context, elementCount, valueElements.get(), nullptr);
+}
+#endif
+
 } // namespace
 
 AccessibilityUIElement::AccessibilityUIElement(PlatformUIElement element)
@@ -701,14 +741,18 @@ PassRefPtr<AccessibilityUIElement> AccessibilityUIElement::rowAtIndex(unsigned i
 
 PassRefPtr<AccessibilityUIElement> AccessibilityUIElement::selectedChildAtIndex(unsigned index) const
 {
-    // FIXME: implement
-    return nullptr;
+    if (!ATK_SELECTION(m_element.get()))
+        return nullptr;
+
+    GRefPtr<AtkObject> child = adoptGRef(atk_selection_ref_selection(ATK_SELECTION(m_element.get()), index));
+    return child ? AccessibilityUIElement::create(child.get()) : nullptr;
 }
 
 unsigned AccessibilityUIElement::selectedChildrenCount() const
 {
-    // FIXME: implement
-    return 0;
+    if (!ATK_IS_SELECTION(m_element.get()))
+        return 0;
+    return atk_selection_get_selection_count(ATK_SELECTION(m_element.get()));
 }
 
 PassRefPtr<AccessibilityUIElement> AccessibilityUIElement::selectedRowAtIndex(unsigned index)
@@ -832,14 +876,36 @@ JSValueRef AccessibilityUIElement::uiElementArrayAttributeValue(JSStringRef attr
 
 JSValueRef AccessibilityUIElement::rowHeaders() const
 {
-    // FIXME: implement
+#if ATK_CHECK_VERSION(2,11,90)
+    if (!ATK_IS_TABLE_CELL(m_element.get()))
+        return nullptr;
+
+    GRefPtr<GPtrArray> array = adoptGRef(atk_table_cell_get_row_header_cells(ATK_TABLE_CELL(m_element.get())));
+    if (!array)
+        return nullptr;
+
+    Vector<RefPtr<AccessibilityUIElement>> rows = convertGPtrArrayToVector(array.get());
+    return convertToJSObjectArray(rows);
+#else
     return nullptr;
+#endif
 }
 
 JSValueRef AccessibilityUIElement::columnHeaders() const
 {
-    // FIXME: implement
+#if ATK_CHECK_VERSION(2,11,90)
+    if (!ATK_IS_TABLE_CELL(m_element.get()))
+        return nullptr;
+
+    GRefPtr<GPtrArray> array = adoptGRef(atk_table_cell_get_column_header_cells(ATK_TABLE_CELL(m_element.get())));
+    if (!array)
+        return nullptr;
+
+    Vector<RefPtr<AccessibilityUIElement>> columns = convertGPtrArrayToVector(array.get());
+    return convertToJSObjectArray(columns);
+#else
     return nullptr;
+#endif
 }
 
 PassRefPtr<AccessibilityUIElement> AccessibilityUIElement::uiElementAttributeValue(JSStringRef attribute) const
@@ -1463,6 +1529,22 @@ void AccessibilityUIElement::press()
 void AccessibilityUIElement::setSelectedChild(AccessibilityUIElement* element) const
 {
     // FIXME: implement
+}
+
+void AccessibilityUIElement::setSelectedChildAtIndex(unsigned index) const
+{
+    if (!ATK_IS_SELECTION(m_element.get()))
+        return;
+
+    atk_selection_add_selection(ATK_SELECTION(m_element.get()), index);
+}
+
+void AccessibilityUIElement::removeSelectionAtIndex(unsigned index) const
+{
+    if (!ATK_IS_SELECTION(m_element.get()))
+        return;
+
+    atk_selection_remove_selection(ATK_SELECTION(m_element.get()), index);
 }
 
 JSRetainPtr<JSStringRef> AccessibilityUIElement::accessibilityValue() const

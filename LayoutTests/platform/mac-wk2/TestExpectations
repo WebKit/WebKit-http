@@ -126,11 +126,9 @@ webkit.org/b/105616 editing/spelling/spellcheck-attribute.html
 webkit.org/b/105616 editing/spelling/spelling-attribute-at-child.html
 webkit.org/b/105616 editing/spelling/spelling-attribute-change.html
 webkit.org/b/105616 editing/spelling/spelling-double-clicked-word.html
-webkit.org/b/105616 editing/spelling/spelling-exactly-selected-multiple-words.html
 webkit.org/b/105616 editing/spelling/spelling-exactly-selected-word.html
 webkit.org/b/105616 editing/spelling/spelling-hasspellingmarker.html
 webkit.org/b/105616 editing/spelling/spelling-linebreak.html
-webkit.org/b/105616 editing/spelling/spelling-should-select-multiple-words.html
 webkit.org/b/105616 editing/spelling/spelling-with-punctuation-selection.html
 webkit.org/b/105616 editing/spelling/spelling-with-whitespace-selection.html
 webkit.org/b/105616 editing/spelling/spellcheck-input-search-crash.html
@@ -185,11 +183,6 @@ fast/events/drag-link.html
 # appcache tests often fail on the Mac WebKit2 bot
 # https://bugs.webkit.org/show_bug.cgi?id=82061 rdar://problem/11108649
 http/tests/appcache
-
-# Skipping the tests for the old inspector UI
-inspector [ Skip ]
-http/tests/inspector [ Skip ]
-http/tests/inspector-enabled [ Skip ]
 
 # flaky storage tests
 # https://bugs.webkit.org/show_bug.cgi?id=82679
@@ -336,8 +329,6 @@ webkit.org/b/107018 svg/animations/mozilla/animateMotion-mpath-pathLength-1.svg 
 # Color space issues from switching to tiled drawing.
 webkit.org/b/122234 fast/css/computed-image-width-with-percent-height.html [ ImageOnlyFailure ]
 webkit.org/b/122234 svg/filters/color-space-conversion.svg  [ ImageOnlyFailure ]
-webkit.org/b/122234 svg/masking/mask-type-luminance.svg  [ ImageOnlyFailure ]
-webkit.org/b/122234 svg/masking/mask-type-not-set.svg  [ ImageOnlyFailure ]
 webkit.org/b/122234 svg/filters/feSpecularLight-premultiplied.svg [ ImageOnlyFailure ]
 webkit.org/b/122234 svg/filters/filter-cycle.html [ ImageOnlyFailure ]
 webkit.org/b/122234 css3/filters/null-effect-check.html [ ImageOnlyFailure ]
@@ -378,11 +369,14 @@ webkit.org/b/127960 [ MountainLion ] http/tests/security/cross-origin-plugin-pri
 editing/spelling/grammar-markers.html
 editing/spelling/grammar-paste.html
 editing/spelling/grammar-markers-hidpi.html
+editing/spelling/inline-spelling-markers.html
+editing/spelling/inline-spelling-markers-hidpi.html
 editing/spelling/spellcheck-async-mutation.html
 editing/spelling/spellcheck-async-remove-frame.html
 editing/spelling/spellcheck-async.html
 editing/spelling/spellcheck-queue.html
 editing/spelling/spellcheck-sequencenum.html
+editing/spelling/spelling-insert-html.html
 editing/spelling/spelling-marker-description.html
 
 ### END OF (2) Classified failures without bug reports (yet)
@@ -440,6 +434,8 @@ webkit.org/b/128315 editing/caret/caret-color.html [ Pass Failure ]
 
 # Temporarily disabled while working out compositing failures
 plugins/snapshotting [ Skip ]
+
+webkit.org/b/129468 [ MountainLion Debug ] css3/compositing/isolation-isolate-blended-child.html [ ImageOnlyFailure ]
 
 ### END OF (3) Unclassified failures
 ########################################
@@ -637,7 +633,6 @@ http/tests/security/cross-origin-worker-indexeddb.html [ Skip ]
 [ Mavericks ] http/tests/security/cross-origin-plugin-private-browsing-toggled.html [ Skip ]
 [ Mavericks ] http/tests/security/storage-blocking-loosened-private-browsing-plugin.html [ Skip ]
 [ Mavericks ] http/tests/security/storage-blocking-strengthened-private-browsing-plugin.html [ Skip ]
-[ Mavericks ] inspector/console/clients-ignored-in-privatebrowsing.html [ Skip ]
 [ Mavericks ] plugins/private-browsing-mode-2.html [ Skip ]
 [ Mavericks ] plugins/private-browsing-mode.html [ Skip ]
 [ Mavericks ] storage/domstorage/localstorage/private-browsing-affects-storage.html [ Skip ]
