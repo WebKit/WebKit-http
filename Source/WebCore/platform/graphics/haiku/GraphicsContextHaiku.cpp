@@ -453,13 +453,17 @@ void GraphicsContext::drawConvexPolygon(size_t pointsLength, const FloatPoint* p
         return;
 
     BPoint bPoints[pointsLength];
-    for (size_t i = 0; i < pointsLength; i++)
+    for (size_t i = 0; i < pointsLength; i++) {
         bPoints[i] = points[i];
+    }
 
-    m_data->view()->FillPolygon(bPoints, pointsLength);
-    if (strokeStyle() != NoStroke)
+    if (fillColor().alpha())
+        m_data->view()->FillPolygon(bPoints, pointsLength);
+
+    if (strokeStyle() != NoStroke) {
         // Stroke with low color
         m_data->view()->StrokePolygon(bPoints, pointsLength, true, getHaikuStrokeStyle());
+    }
 }
 
 void GraphicsContext::clipConvexPolygon(size_t numPoints, const FloatPoint* points, bool /*antialiased*/)
@@ -510,10 +514,16 @@ void GraphicsContext::fillRect(const FloatRect& rect)
     m_data->view()->FillRect(rect);
 }
 
-void GraphicsContext::fillRoundedRect(const FloatRect& rect, const FloatSize& topLeft, const FloatSize& topRight, const FloatSize& bottomLeft, const FloatSize& bottomRight, const Color& color, ColorSpace /*colorSpace*/)
+void GraphicsContext::platformFillRoundedRect(const FloatRoundedRect& roundRect, const Color& color, ColorSpace /*colorSpace*/)
 {
     if (paintingDisabled() || !color.alpha())
         return;
+
+    const FloatRect& rect = roundRect.rect();
+    const FloatSize& topLeft = roundRect.radii().topLeft();
+    const FloatSize& topRight = roundRect.radii().topRight();
+    const FloatSize& bottomLeft = roundRect.radii().bottomLeft();
+    const FloatSize& bottomRight = roundRect.radii().bottomRight();
 
 #if 0
     // FIXME needs support for Composite SourceIn.
@@ -589,6 +599,8 @@ void GraphicsContext::fillPath(const Path& path)
             if (m_data->view()->HighColor().alpha < 255)
                 m_data->view()->SetDrawingMode(B_OP_ALPHA);
 
+            // FIXME must use even-odd rule (this is used to make the "hole"
+            // inside a border!)
             m_data->view()->FillShape(path.platformPath());
             m_data->view()->SetDrawingMode(mode);
         }
@@ -686,7 +698,7 @@ void GraphicsContext::drawFocusRing(const Vector<IntRect>& rects, int /* width *
     }
 }
 
-void GraphicsContext::drawLineForText(const FloatPoint& origin, float width, bool /*printing*/)
+void GraphicsContext::drawLineForText(const FloatPoint& origin, float width, bool /*printing*/, bool /* doubleLines */)
 {
     if (paintingDisabled())
         return;
