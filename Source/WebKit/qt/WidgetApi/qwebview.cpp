@@ -82,7 +82,7 @@ void QWebViewPrivate::_q_pageDestroyed()
     It can be used in various applications to display web content live from the
     Internet.
 
-    The image below shows QWebView previewed in \QD with a Nokia website.
+    The image below shows QWebView previewed in Qt Creator with the \l{Qt Homepage}.
 
     \image qwebview-url.png
 
