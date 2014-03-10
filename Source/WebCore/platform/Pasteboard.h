@@ -225,6 +225,7 @@ public:
     bool isForDragAndDrop() const { return m_isForDragAndDrop; }
     bool isForCopyAndPaste() const { return !m_isForDragAndDrop; }
     void writeImage(Node&, const URL&, const String& title); // FIXME: Layering violation.
+    void updateSystemPasteboard();
 #endif
 
 #if PLATFORM(WIN)

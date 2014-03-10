@@ -34,6 +34,7 @@
 #include "DragData.h"
 #include "Editor.h"
 #include "Frame.h"
+#include "HTMLElement.h"
 #include "Image.h"
 #include "NotImplemented.h"
 #include "RenderImage.h"
@@ -44,8 +45,6 @@
 #include <qmimedata.h>
 #include <qtextcodec.h>
 #include <qurl.h>
-
-#define methodDebug() qDebug() << "PasteboardQt: " << __FUNCTION__;
 
 namespace WebCore {
 
@@ -59,6 +58,19 @@ static bool isHtmlMimeType(const String& type)
     return type == "text/html" || type.startsWith("text/html;");
 }
 
+static String normalizeMimeType(const String& type)
+{
+    // http://www.whatwg.org/specs/web-apps/current-work/multipage/dnd.html#dom-datatransfer-setdata
+    String qType = type.convertToASCIILowercase();
+
+    if (qType == "text")
+        qType = ASCIILiteral("text/plain");
+    else if (qType == "url")
+        qType = ASCIILiteral("text/uri-list");
+
+    return qType;
+}
+
 std::unique_ptr<Pasteboard> Pasteboard::create(const QMimeData* readableClipboard, bool isForDragAndDrop)
 {
     return std::make_unique<Pasteboard>(readableClipboard, isForDragAndDrop);
@@ -66,11 +78,7 @@ std::unique_ptr<Pasteboard> Pasteboard::create(const QMimeData* readableClipboar
 
 std::unique_ptr<Pasteboard> Pasteboard::createForCopyAndPaste()
 {
-#ifndef QT_NO_CLIPBOARD
-    return create(QGuiApplication::clipboard()->mimeData());
-#else
     return create();
-#endif
 }
 
 std::unique_ptr<Pasteboard> Pasteboard::createForGlobalSelection()
@@ -82,7 +90,7 @@ std::unique_ptr<Pasteboard> Pasteboard::createForGlobalSelection()
 
 std::unique_ptr<Pasteboard> Pasteboard::createPrivate()
 {
-    return create();
+    return create(0, true /* Not really for drag-and-drop, but shouldn't actively update the system pasteboard */);
 }
 
 #if ENABLE(DRAG_SUPPORT)
@@ -116,49 +124,47 @@ Pasteboard::~Pasteboard()
 
 void Pasteboard::writeSelection(Range& selectedRange, bool canSmartCopyOrDelete, Frame& frame, ShouldSerializeSelectedTextForDataTransfer shouldSerializeSelectedTextForDataTransfer)
 {
-    QMimeData* md = new QMimeData;
+    if (!m_writableData)
+        m_writableData = new QMimeData;
     QString text = shouldSerializeSelectedTextForDataTransfer == IncludeImageAltTextForDataTransfer ? frame.editor().selectedTextForDataTransfer() : frame.editor().selectedText();
     text.replace(QChar(0xa0), QLatin1Char(' '));
-    md->setText(text);
+    m_writableData->setText(text);
 
     QString markup = createMarkup(selectedRange, 0, AnnotateForInterchange, false, ResolveNonLocalURLs);
 #ifdef Q_OS_MAC
     markup.prepend(QLatin1String("<html><head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\" /></head><body>"));
     markup.append(QLatin1String("</body></html>"));
-    md->setData(QLatin1String("text/html"), markup.toUtf8());
+    m_writableData->setData(QLatin1String("text/html"), markup.toUtf8());
 #else
-    md->setHtml(markup);
+    m_writableData->setHtml(markup);
 #endif
 
     if (canSmartCopyOrDelete)
-        md->setData(QLatin1String("application/vnd.qtwebkit.smartpaste"), QByteArray());
-#ifndef QT_NO_CLIPBOARD
-    QGuiApplication::clipboard()->setMimeData(md, m_selectionMode ? QClipboard::Selection : QClipboard::Clipboard);
-#endif
+        m_writableData->setData(QStringLiteral("application/vnd.qtwebkit.smartpaste"), QByteArray());
+    if (isForCopyAndPaste())
+        updateSystemPasteboard();
 }
 
 bool Pasteboard::canSmartReplace()
 {
-#ifndef QT_NO_CLIPBOARD
-    if (QGuiApplication::clipboard()->mimeData()->hasFormat((QLatin1String("application/vnd.qtwebkit.smartpaste"))))
-        return true;
-#endif
+    if (const QMimeData* data = readData())
+        return data->hasFormat(QStringLiteral("application/vnd.qtwebkit.smartpaste"));
+
     return false;
 }
 
 void Pasteboard::read(PasteboardPlainText& text)
 {
-#ifndef QT_NO_CLIPBOARD
-    text.text = QGuiApplication::clipboard()->text(m_selectionMode ? QClipboard::Selection : QClipboard::Clipboard);
-#endif
+    if (const QMimeData* data = readData())
+        text.text =  data->text();
 }
 
 PassRefPtr<DocumentFragment> Pasteboard::documentFragment(Frame& frame, Range& context,
                                                           bool allowPlainText, bool& chosePlainText)
 {
-#ifndef QT_NO_CLIPBOARD
-    const QMimeData* mimeData = QGuiApplication::clipboard()->mimeData(
-            m_selectionMode ? QClipboard::Selection : QClipboard::Clipboard);
+    const QMimeData* mimeData = readData();
+    if (!mimeData)
+        return 0;
 
     chosePlainText = false;
 
@@ -171,48 +177,67 @@ PassRefPtr<DocumentFragment> Pasteboard::documentFragment(Frame& frame, Range& c
         }
     }
 
+    if (mimeData->hasImage()) {
+        if (mimeData->hasUrls()) {
+            QList<QUrl> urls = mimeData->urls();
+            QString title = mimeData->text();
+            if (!title.isEmpty())
+                title = QStringLiteral(" title=\"") + title + QStringLiteral("\"");
+            if (urls.count() == 1) {
+                QString html = QStringLiteral("<img src=\"") + urls.first().toString(QUrl::FullyEncoded) + QStringLiteral("\"") + title + QStringLiteral(">");
+                RefPtr<DocumentFragment> fragment = createFragmentFromMarkup(*frame.document(), html, "", DisallowScriptingAndPluginContent);
+                if (fragment)
+                    return fragment.release();
+            }
+        }
+        // FIXME: We could fallback to a raw encoded data URL.
+    }
+
     if (allowPlainText && mimeData->hasText()) {
         chosePlainText = true;
         RefPtr<DocumentFragment> fragment = createFragmentFromText(context, mimeData->text());
         if (fragment)
             return fragment.release();
     }
-#endif
     return nullptr;
 }
 
 void Pasteboard::writePlainText(const String& text, SmartReplaceOption smartReplaceOption)
 {
-#ifndef QT_NO_CLIPBOARD
-    QMimeData* md = new QMimeData;
+    if (!m_writableData)
+        m_writableData = new QMimeData;
     QString qtext = text;
     qtext.replace(QChar(0xa0), QLatin1Char(' '));
-    md->setText(qtext);
+    m_writableData->setText(qtext);
     if (smartReplaceOption == CanSmartReplace)
-        md->setData(QLatin1String("application/vnd.qtwebkit.smartpaste"), QByteArray());
-    QGuiApplication::clipboard()->setMimeData(md, m_selectionMode ? QClipboard::Selection : QClipboard::Clipboard);
-#endif
+        m_writableData->setData(QLatin1String("application/vnd.qtwebkit.smartpaste"), QByteArray());
+    if (isForCopyAndPaste())
+        updateSystemPasteboard();
 }
 
 void Pasteboard::write(const PasteboardURL& pasteboardURL)
 {
     ASSERT(!pasteboardURL.url.isEmpty());
 
-#ifndef QT_NO_CLIPBOARD
-    QMimeData* md = new QMimeData;
+    if (!m_writableData)
+        m_writableData = new QMimeData;
+
     QString urlString = pasteboardURL.url.string();
-    md->setText(urlString);
-    md->setUrls(QList<QUrl>() << pasteboardURL.url);
-    QGuiApplication::clipboard()->setMimeData(md, m_selectionMode ? QClipboard::Selection : QClipboard::Clipboard);
-#endif
+    m_writableData->setText(urlString);
+
+    QString html = QStringLiteral("<a href=\"") + urlString + QStringLiteral("\">") + QString(pasteboardURL.title) + QStringLiteral("</a>");
+    m_writableData->setHtml(html);
+
+    m_writableData->setUrls(QList<QUrl>() << pasteboardURL.url);
+    if (isForCopyAndPaste())
+        updateSystemPasteboard();
 }
 
-void Pasteboard::writeImage(Element& node, const URL&, const String&)
+void Pasteboard::writeImage(Element& node, const URL& url, const String& title)
 {
     if (!(node.renderer() && node.renderer()->isImage()))
         return;
 
-#ifndef QT_NO_CLIPBOARD
     CachedImage* cachedImage = downcast<RenderImage>(node.renderer())->cachedImage();
     if (!cachedImage || cachedImage->errorOccurred())
         return;
@@ -223,14 +248,31 @@ void Pasteboard::writeImage(Element& node, const URL&, const String&)
     QPixmap* pixmap = image->nativeImageForCurrentFrame();
     if (!pixmap)
         return;
-    QGuiApplication::clipboard()->setPixmap(*pixmap, QClipboard::Clipboard);
-#endif
+    if (!m_writableData)
+        m_writableData = new QMimeData;
+    m_writableData->setImageData(pixmap->toImage());
+    if (!title.isEmpty())
+        m_writableData->setText(title);
+    m_writableData->setUrls(QList<QUrl>() << url);
+
+    if (node.isHTMLElement())
+        m_writableData->setHtml(downcast<HTMLElement>(node).outerHTML());
+
+    if (isForCopyAndPaste())
+        updateSystemPasteboard();
 }
 
 const QMimeData* Pasteboard::readData() const
 {
-    ASSERT(!(m_readableData && m_writableData));
-    return m_readableData ? m_readableData : m_writableData;
+    if (m_readableData)
+        return m_readableData;
+    if (m_writableData)
+        return m_writableData;
+#ifndef QT_NO_CLIPBOARD
+    if (isForCopyAndPaste())
+        return QGuiApplication::clipboard()->mimeData(m_selectionMode ? QClipboard::Selection : QClipboard::Clipboard);
+#endif
+    return 0;
 }
 
 bool Pasteboard::hasData()
@@ -251,10 +293,8 @@ void Pasteboard::clear(const String& type)
             m_writableData = 0;
         }
     }
-#ifndef QT_NO_CLIPBOARD
     if (isForCopyAndPaste())
-        QGuiApplication::clipboard()->setMimeData(m_writableData);
-#endif
+        updateSystemPasteboard();
 }
 
 void Pasteboard::clear()
@@ -274,13 +314,15 @@ String Pasteboard::readString(const String& type)
     if (!data)
         return String();
 
-    if (isHtmlMimeType(type) && data->hasHtml())
+    String mimeType = normalizeMimeType(type);
+
+    if (isHtmlMimeType(mimeType) && data->hasHtml())
         return data->html();
 
-    if (isTextMimeType(type) && data->hasText())
+    if (isTextMimeType(mimeType) && data->hasText())
         return data->text();
 
-    QByteArray rawData = data->data(type);
+    QByteArray rawData = data->data(mimeType);
     QString stringData = QTextCodec::codecForName("UTF-16")->toUnicode(rawData);
     return stringData;
 }
@@ -290,14 +332,16 @@ void Pasteboard::writeString(const String& type, const String& data)
     if (!m_writableData)
         m_writableData = new QMimeData;
 
-    if (isTextMimeType(type))
+    String mimeType = normalizeMimeType(type);
+
+    if (isTextMimeType(mimeType))
         m_writableData->setText(QString(data));
-    else if (isHtmlMimeType(type))
+    else if (isHtmlMimeType(mimeType))
         m_writableData->setHtml(QString(data));
     else {
         // FIXME: we may want to transfer String in UTF8
         QByteArray array(reinterpret_cast<const char*>(data.characters16()), data.length() * 2);
-        m_writableData->setData(QString(type), array);
+        m_writableData->setData(QString(mimeType), array);
     }
 }
 
@@ -342,10 +386,21 @@ void Pasteboard::setDragImage(DragImageRef, const IntPoint& hotSpot)
 }
 #endif
 
+void Pasteboard::updateSystemPasteboard()
+{
+    ASSERT(isForCopyAndPaste());
+#ifndef QT_NO_CLIPBOARD
+    QGuiApplication::clipboard()->setMimeData(m_writableData, m_selectionMode ? QClipboard::Selection : QClipboard::Clipboard);
+    invalidateWritableData();
+#endif
+}
+
 void Pasteboard::writePasteboard(const Pasteboard& sourcePasteboard)
 {
+    ASSERT(isForCopyAndPaste());
 #ifndef QT_NO_CLIPBOARD
     QGuiApplication::clipboard()->setMimeData(sourcePasteboard.clipboardData());
+    sourcePasteboard.invalidateWritableData();
 #endif
 }
 
