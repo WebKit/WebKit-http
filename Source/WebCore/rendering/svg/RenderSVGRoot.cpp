@@ -33,6 +33,7 @@
 #include "Page.h"
 #include "RenderIterator.h"
 #include "RenderNamedFlowFragment.h"
+#include "RenderSVGResourceContainer.h"
 #include "RenderView.h"
 #include "SVGImage.h"
 #include "SVGLength.h"
