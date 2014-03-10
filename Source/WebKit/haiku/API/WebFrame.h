@@ -42,6 +42,7 @@ class ChromeClientHaiku;
 class DumpRenderTreeClient;
 class Frame;
 class FrameLoaderClientHaiku;
+class HTMLFrameOwnerElement;
 class URL;
 }
 
@@ -122,6 +123,9 @@ private:
 
 			void				LoadURL(WebCore::URL);
 			WebCore::Frame*		Frame() const;
+
+            BWebFrame*          AddChild(BWebPage* page, BString name,
+                                    WebCore::HTMLFrameOwnerElement* ownerElement);
 
 private:
 			float				fZoomFactor;

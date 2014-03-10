@@ -29,6 +29,7 @@
 #ifndef WebFramePrivate_h
 #define WebFramePrivate_h
 
+#include <wtf/RefPtr.h>
 #include <String.h>
 
 class BMessenger;
@@ -44,12 +45,16 @@ class Page;
 class WebFramePrivate {
 public:
     WebFramePrivate()
-        : ownerElement(0)
-        , page(0)
-        , frame(0)
-        , loaderClient(0)
+        : ownerElement(nullptr)
+        , page(nullptr)
+        , frame(nullptr)
+        , loaderClient(nullptr)
     {}
 
+    bool Init(WebCore::Page* page, BWebFrame* frame,
+        PassOwnPtr<WebCore::FrameLoaderClientHaiku> frameLoaderClient);
+
+    
     WTF::String name;
     WTF::String requestedURL;
     WebCore::HTMLFrameOwnerElement* ownerElement;
@@ -61,7 +66,7 @@ public:
     // references around. (FrameLoader and Frame used to be one class, they
     // can be considered as one object as far as object life-time goes.)
     WebCore::Frame* frame;
-    WebCore::FrameLoaderClientHaiku* loaderClient;
+    OwnPtr<WebCore::FrameLoaderClientHaiku> loaderClient;
 };
 
 #endif // WebFramePrivate_h

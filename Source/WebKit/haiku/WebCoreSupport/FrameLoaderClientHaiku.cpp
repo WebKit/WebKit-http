@@ -941,38 +941,40 @@ bool FrameLoaderClientHaiku::canCachePage() const
     return true;
 }
 
-PassRefPtr<Frame> FrameLoaderClientHaiku::createFrame(const URL& url, const String& name, HTMLFrameOwnerElement* ownerElement,
-    const String& referrer, bool /*allowsScrolling*/, int /*marginWidth*/, int /*marginHeight*/)
+PassRefPtr<Frame> FrameLoaderClientHaiku::createFrame(const URL& url,
+    const String& name, HTMLFrameOwnerElement* ownerElement,
+    const String& referrer, bool /*allowsScrolling*/, int /*marginWidth*/,
+    int /*marginHeight*/)
 {
-    CALLED();
-    // FIXME: We should apply the right property to the frameView. (scrollbar,margins)
+    // FIXME: We should apply the right property to the frameView.
+    // (scrollbar,margins)
     ASSERT(m_webFrame);
+    ASSERT(m_webPage);
 
-    WebFramePrivate* data = new WebFramePrivate;
-    data->requestedURL = url.string();
-    data->name = name;
-    data->ownerElement = ownerElement;
-    data->page = m_webPage->page();
+    BWebFrame* subFrame = m_webFrame->AddChild(m_webPage, name, ownerElement);
+    if (!subFrame)
+        return nullptr;
 
-    BWebFrame* frame = new BWebFrame(m_webPage, m_webFrame, data);
-    frame->SetListener(m_messenger);
-    // The ownership of "frame" is implicitely transferred to the FrameLoadClientHaiku
-    // instance which is created in the BWebFrame consructor.
+    WebCore::Frame* coreSubFrame = subFrame->Frame();
+    ASSERT(coreSubFrame);
 
-    // As long as we don't return the Frame, we are responsible for deleting it.
-    RefPtr<Frame> childFrame = frame->Frame();
-    
-    // The creation of the frame may have run arbitrary JavaScript that removed it from the page already.
-    if (!childFrame->page())
-        return 0;
+    // The creation of the frame may have run arbitrary JavaScript that removed
+    // it from the page already.
+    if (!coreSubFrame->page()) {
+        delete subFrame;
+        return nullptr;
+    }
 
-    childFrame->loader().loadURLIntoChildFrame(url, referrer, childFrame.get());
+    subFrame->SetListener(m_messenger);
+    m_webFrame->Frame()->loader().loadURLIntoChildFrame(url, referrer, coreSubFrame);
 
     // The frame's onload handler may have removed it from the document.
-    if (!childFrame->tree().parent())
-        return 0;
+    if (!coreSubFrame->tree().parent()) {
+        delete subFrame;
+        return nullptr;
+    }
 
-    return childFrame.release();
+    return coreSubFrame;
 }
 
 ObjectContentType FrameLoaderClientHaiku::objectContentType(const URL& url, const String& originalMimeType, bool /*shouldPreferPlugInsForImages*/)

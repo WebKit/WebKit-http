@@ -64,7 +64,8 @@ static const float kZoomFactorMultiplierRatio = 1.1;
 
 using namespace WebCore;
 
-BWebFrame::BWebFrame(BWebPage* webPage, BWebFrame* parentFrame, WebFramePrivate* data)
+BWebFrame::BWebFrame(BWebPage* webPage, BWebFrame* parentFrame,
+        WebFramePrivate* data)
     : fZoomFactor(1.0)
     , fIsEditable(false)
     , fTitle(0)
@@ -74,28 +75,38 @@ BWebFrame::BWebFrame(BWebPage* webPage, BWebFrame* parentFrame, WebFramePrivate*
         // No parent, we are creating the main BWebFrame.
         // mainframe is already created in WebCore::Page, just use it.
         fData->frame = &webPage->page()->mainFrame();
-        fData->loaderClient = static_cast<FrameLoaderClientHaiku*>(&fData->frame->loader().client());
+        fData->loaderClient = adoptPtr(static_cast<FrameLoaderClientHaiku*>(
+            &fData->frame->loader().client()));
+        fData->loaderClient->setFrame(this);
+
+        fData->frame->init();
+        fData->frame->tree().setName(fData->name);
     } else {
-	    fData->loaderClient = new WebCore::FrameLoaderClientHaiku(webPage);
-        RefPtr<WebCore::Frame> frame = WebCore::Frame::create(fData->page, fData->ownerElement,
-        fData->loaderClient);
-
-        // We don't keep the reference to the Frame, see WebFramePrivate.h.
-        fData->frame = frame.get();
-        parentFrame->Frame()->tree().appendChild(fData->frame);
+        // Will be initialized in BWebFrame::AddChild
     }
-    fData->loaderClient->setFrame(this);
-
-    fData->frame->tree().setName(fData->name);
-    fData->frame->init();
-    fData->frame->loader().prepareForHistoryNavigation();
 }
 
 BWebFrame::~BWebFrame()
 {
-    delete fData->loaderClient;
     delete fData;
 }
+
+
+bool
+WebFramePrivate::Init(WebCore::Page* page, BWebFrame* frame,
+    PassOwnPtr<WebCore::FrameLoaderClientHaiku> frameLoaderClient)
+{
+    if(!frame) {
+        loaderClient = frameLoaderClient;
+        loaderClient->setFrame(frame);
+        this->page = page;
+        return true;
+    }
+
+    // Frame is already initialized.
+    return false;
+}
+
 
 void
 BWebFrame::Shutdown()
@@ -414,7 +425,41 @@ const char* BWebFrame::Name() const
     return frameName.utf8().data();
 }
 
+
 WebCore::Frame* BWebFrame::Frame() const
 {
     return fData->frame;
+}
+
+
+BWebFrame* BWebFrame::AddChild(BWebPage* page, BString name,
+    WebCore::HTMLFrameOwnerElement* ownerElement)
+{
+    WebFramePrivate* data = new WebFramePrivate();
+    data->name = name;
+    data->ownerElement = ownerElement;
+
+    BWebFrame* frame = new(std::nothrow) BWebFrame(page, this, data); 
+
+    if (!frame)
+        return nullptr;
+
+    if (!data->Init(fData->page, frame,
+            adoptPtr(new WebCore::FrameLoaderClientHaiku(page)))) {
+        delete frame;
+        return nullptr;
+    }
+
+    RefPtr<WebCore::Frame> coreFrame = WebCore::Frame::create(data->page,
+        ownerElement, fData->loaderClient.get());
+    // We don't keep the reference to the Frame, see WebFramePrivate.h.
+    data->frame = coreFrame.get();
+    coreFrame->tree().setName(name.String());
+
+    if (fData->ownerElement)
+        Frame()->tree().appendChild(coreFrame.release());
+    data->frame->init();
+    // TODO? evas_object_smart_member_add(frame, ewkFrame);
+    
+    return frame;
 }
