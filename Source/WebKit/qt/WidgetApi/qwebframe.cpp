@@ -768,8 +768,10 @@ QWebElement QWebFrame::documentElement() const
     Returns a new list of elements matching the given CSS selector \a selectorQuery.
     If there are no matching elements, an empty list is returned.
 
-    \l{http://www.w3.org/TR/REC-CSS2/selector.html#q1}{Standard CSS2 selector} syntax is
+    \l{Standard CSS selector} syntax is
     used for the query.
+
+    This method is equivalent to Document::querySelectorAll in the \l{DOM Selectors API}.
 
     \sa QWebElement::findAll()
 */
@@ -784,8 +786,9 @@ QWebElementCollection QWebFrame::findAllElements(const QString &selectorQuery) c
     given CSS selector \a selectorQuery. If there is no matching element, a
     null element is returned.
 
-    \l{http://www.w3.org/TR/REC-CSS2/selector.html#q1}{Standard CSS2 selector} syntax is
-    used for the query.
+    \l{Standard CSS selector} syntax is used for the query.
+
+    This method is equivalent to Document::querySelector in the \l{DOM Selectors API}.
 
     \sa QWebElement::findFirst()
 */

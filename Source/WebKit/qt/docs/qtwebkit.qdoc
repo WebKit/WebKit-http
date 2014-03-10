@@ -223,3 +223,13 @@
     Boston, MA 02110-1301, USA.
     \endlegalese
 */
+
+/*!
+    \externalpage http://www.w3.org/TR/selectors/
+    \title Standard CSS selector
+*/
+
+/*!
+    \externalpage http://www.w3.org/TR/selectors-api/
+    \title DOM Selectors API
+*/
