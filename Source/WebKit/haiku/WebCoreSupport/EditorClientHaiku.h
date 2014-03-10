@@ -38,6 +38,7 @@
 #include <wtf/RefCounted.h>
 #include <wtf/Deque.h>
 #include <wtf/Forward.h>
+#include "wtf/text/StringView.h"
 #include <String.h>
 
 class BMessage;
