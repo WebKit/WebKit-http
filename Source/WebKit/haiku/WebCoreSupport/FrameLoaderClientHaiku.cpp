@@ -139,19 +139,6 @@ void FrameLoaderClientHaiku::makeRepresentation(DocumentLoader*)
 {
 }
 
-void FrameLoaderClientHaiku::forceLayout()
-{
-    CALLED();
-
-    Frame* frame = m_webFrame->Frame();
-    if (frame->document() && frame->document()->inPageCache())
-        return;
-
-    FrameView* view = frame->view();
-    if (view)
-        view->forceLayout(true);
-}
-
 void FrameLoaderClientHaiku::forceLayoutForNonHTML()
 {
 }

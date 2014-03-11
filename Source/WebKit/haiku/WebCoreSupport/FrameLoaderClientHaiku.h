@@ -70,7 +70,6 @@ public:
     bool hasWebView() const override;
 
     void makeRepresentation(DocumentLoader*) override;
-    void forceLayout() override;
     void forceLayoutForNonHTML() override;
 
     void setCopiesOnScroll() override;
