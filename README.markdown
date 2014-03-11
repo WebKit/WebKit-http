@@ -61,7 +61,7 @@ In some rare cases the build system can be confused, to be sure that everything 
 you can remove the WebKitBuild/ directory and start over.
 
 There are several cmake variables available to configure the build in various ways.
-These can be given to build-webkit using the --cmakearg option, or changed later on
+These can be given to build-webkit using the --cmakeargs option, or changed later on
 using "cmake -Dvar=value WebKitBuild/Release".
 
 ### Speeding up the build with Ninja ###
@@ -78,7 +78,7 @@ To use Ninja, perform the following steps:
 * First install Ninja:
     $ pkgman install ninja_x86
 * Tell CMake to use Ninja instead of make when invoking build-webkit
-    $ .../build-webkit ... --cmakearg="-GNinja"
+    $ .../build-webkit ... --cmakeargs="-GNinja"
 * Use Ninja when building:
     $ cd WebKitBuild/Release
     $ ninja -j4
