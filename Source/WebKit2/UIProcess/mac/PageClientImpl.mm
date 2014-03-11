@@ -285,7 +285,11 @@ void PageClientImpl::toolTipChanged(const String& oldToolTip, const String& newT
     [m_wkView _toolTipChangedFrom:nsStringFromWebCoreString(oldToolTip) to:nsStringFromWebCoreString(newToolTip)];
 }
 
-void PageClientImpl::didCommitLoadForMainFrame()
+void PageClientImpl::didCommitLoadForMainFrame(const String& mimeType, bool useCustomContentProvider)
+{
+}
+
+void PageClientImpl::didFinishLoadingDataForCustomContentProvider(const String& suggestedFilename, const IPC::DataReference& dataReference)
 {
 }
 
@@ -330,11 +334,6 @@ bool PageClientImpl::canUndoRedo(WebPageProxy::UndoOrRedo undoOrRedo)
 void PageClientImpl::executeUndoRedo(WebPageProxy::UndoOrRedo undoOrRedo)
 {
     return (undoOrRedo == WebPageProxy::Undo) ? [[m_wkView undoManager] undo] : [[m_wkView undoManager] redo];
-}
-
-bool PageClientImpl::interpretKeyEvent(const NativeWebKeyboardEvent& event, Vector<WebCore::KeypressCommand>& commands)
-{
-    return [m_wkView _interpretKeyEvent:event.nativeEvent() savingCommandsTo:commands];
 }
 
 void PageClientImpl::setDragImage(const IntPoint& clientPosition, PassRefPtr<ShareableBitmap> dragImage, bool isLinkDrag)

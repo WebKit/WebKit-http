@@ -164,6 +164,9 @@ public:
 
     double pageScaleFactor() const { return m_pageScaleFactor; }
     void setPageScaleFactor(double pageScaleFactor) { m_pageScaleFactor = pageScaleFactor; }
+    
+    void setLastVisibleContentRectUpdateID(uint64_t lastVisibleContentRectUpdateID) { m_lastVisibleContentRectUpdateID = lastVisibleContentRectUpdateID; }
+    uint64_t lastVisibleContentRectUpdateID() const { return m_lastVisibleContentRectUpdateID; }
 
     bool scaleWasSetByUIProcess() const { return m_scaleWasSetByUIProcess; }
     void setScaleWasSetByUIProcess(bool scaleWasSetByUIProcess) { m_scaleWasSetByUIProcess = scaleWasSetByUIProcess; }
@@ -180,22 +183,21 @@ public:
     bool allowsUserScaling() const { return m_allowsUserScaling; }
     void setAllowsUserScaling(bool allowsUserScaling) { m_allowsUserScaling = allowsUserScaling; }
     
-    bool isVideoLayerIDPendingFullscreen(WebCore::GraphicsLayer::PlatformLayerID layerID) const { return m_videoLayerIDsPendingFullscreen.contains(layerID); }
-    void addVideoLayerIDPendingFullscreen(WebCore::GraphicsLayer::PlatformLayerID layerID) { m_videoLayerIDsPendingFullscreen.append(layerID); }
-
 private:
     WebCore::GraphicsLayer::PlatformLayerID m_rootLayerID;
     LayerPropertiesMap m_changedLayerProperties;
     Vector<LayerCreationProperties> m_createdLayers;
     Vector<WebCore::GraphicsLayer::PlatformLayerID> m_destroyedLayerIDs;
+    Vector<WebCore::GraphicsLayer::PlatformLayerID> m_videoLayerIDsPendingFullscreen;
+
     WebCore::IntSize m_contentsSize;
     double m_pageScaleFactor;
-    bool m_scaleWasSetByUIProcess;
-    uint64_t m_renderTreeSize;
     double m_minimumScaleFactor;
     double m_maximumScaleFactor;
+    uint64_t m_lastVisibleContentRectUpdateID;
+    uint64_t m_renderTreeSize;
+    bool m_scaleWasSetByUIProcess;
     bool m_allowsUserScaling;
-    Vector<WebCore::GraphicsLayer::PlatformLayerID> m_videoLayerIDsPendingFullscreen;
 };
 
 } // namespace WebKit

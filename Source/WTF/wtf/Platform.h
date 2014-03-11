@@ -208,6 +208,7 @@
 #define WTF_ARM_ARCH_VERSION 6
 
 #elif defined(__ARM_ARCH_7A__) \
+    || defined(__ARM_ARCH_7K__) \
     || defined(__ARM_ARCH_7R__) \
     || defined(__ARM_ARCH_7S__)
 #define WTF_ARM_ARCH_VERSION 7
@@ -254,6 +255,7 @@
 #elif defined(__ARM_ARCH_6T2__) \
     || defined(__ARM_ARCH_7__) \
     || defined(__ARM_ARCH_7A__) \
+    || defined(__ARM_ARCH_7K__) \
     || defined(__ARM_ARCH_7M__) \
     || defined(__ARM_ARCH_7R__) \
     || defined(__ARM_ARCH_7S__)
@@ -305,6 +307,10 @@
 
 #if (defined(__VFP_FP__) && !defined(__SOFTFP__))
 #define WTF_CPU_ARM_VFP 1
+#endif
+
+#if defined(__ARM_ARCH_7K__)
+#define WTF_CPU_APPLE_ARMV7K 1
 #endif
 
 #if defined(__ARM_ARCH_7S__)
@@ -665,9 +671,10 @@
 #define ENABLE_FTL_JIT 0
 #endif
 
-/* The JIT is enabled by default on all x86, x86-64, ARM & MIPS platforms except Windows. */
+/* The JIT is enabled by default on all x86, x86-64, ARM & MIPS platforms except ARMv7k and Windows. */
 #if !defined(ENABLE_JIT) \
     && (CPU(X86) || CPU(X86_64) || CPU(ARM) || CPU(ARM64) || CPU(MIPS)) \
+    && !CPU(APPLE_ARMV7K)                                                           \
     && !OS(WINCE) \
     && !(OS(WINDOWS) && CPU(X86_64))
 #define ENABLE_JIT 1
@@ -706,7 +713,7 @@
 #define ENABLE_DISASSEMBLER 1
 #endif
 
-#if !defined(WTF_USE_ARM64_DISASSEMBLER) && ENABLE(JIT) && PLATFORM(IOS) && CPU(ARM64)
+#if !defined(WTF_USE_ARM64_DISASSEMBLER) && ENABLE(JIT) && PLATFORM(IOS) && CPU(ARM64) && !USE(LLVM_DISASSEMBLER)
 #define WTF_USE_ARM64_DISASSEMBLER 1
 #endif
 
@@ -812,12 +819,12 @@
 #endif
 
 /* Configure the interpreter */
-#if COMPILER(GCC) || COMPILER(MSVC)
+#if COMPILER(GCC)
 #define HAVE_COMPUTED_GOTO 1
 #endif
 
 /* Determine if we need to enable Computed Goto Opcodes or not: */
-#if HAVE(COMPUTED_GOTO) && ENABLE(LLINT)
+#if HAVE(COMPUTED_GOTO) || !ENABLE(LLINT_C_LOOP)
 #define ENABLE_COMPUTED_GOTO_OPCODES 1
 #endif
 

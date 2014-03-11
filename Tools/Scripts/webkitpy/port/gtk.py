@@ -54,7 +54,9 @@ class GtkPort(Port):
                 raise ValueError('use --wrapper=\"valgrind\" for memory leak detection on GTK')
 
     def _is_cmake_build(self):
-        return os.path.exists(self._build_path('CMakeCache.txt'))
+        # Look for the autotools config.log file, which means that we
+        # assume a CMake build (--gtk) when lacking evidence of either.
+        return not os.path.exists(self._build_path('config.log'))
 
     def _built_executables_path(self, *path):
         if self._is_cmake_build():
@@ -73,9 +75,9 @@ class GtkPort(Port):
 
     def _port_flag_for_scripts(self):
         if self._is_cmake_build():
-            return "--gtkcmake"
-        else:
             return "--gtk"
+        else:
+            return "--gtkautotools"
 
     @memoized
     def _driver_class(self):
@@ -215,9 +217,9 @@ class GtkPort(Port):
     def build_webkit_command(self, build_style=None):
         command = super(GtkPort, self).build_webkit_command(build_style)
         if self._is_cmake_build():
-            command.extend(["--gtkcmake", "--update-gtk"])
-        else:
             command.extend(["--gtk", "--update-gtk"])
+        else:
+            command.extend(["--gtkautotools", "--update-gtk"])
 
         if self.get_option('webkit_test_runner'):
             command.append("--no-webkit1")

@@ -215,6 +215,7 @@ set(JavaScriptCore_SOURCES
     heap/CopiedSpace.cpp
     heap/CopyVisitor.cpp
     heap/DeferGC.cpp
+    heap/GCActivityCallback.cpp
     heap/GCThread.cpp
     heap/GCThreadSharedData.cpp
     heap/HandleSet.cpp
@@ -352,6 +353,8 @@ set(JavaScriptCore_SOURCES
     runtime/CommonSlowPathsExceptions.cpp
     runtime/CompilationResult.cpp
     runtime/Completion.cpp
+    runtime/ConsoleClient.cpp
+    runtime/ConsolePrototype.cpp
     runtime/ConstructData.cpp
     runtime/DataView.cpp
     runtime/DataView.h
@@ -370,7 +373,6 @@ set(JavaScriptCore_SOURCES
     runtime/FunctionConstructor.cpp
     runtime/FunctionExecutableDump.cpp
     runtime/FunctionPrototype.cpp
-    runtime/GCActivityCallback.cpp
     runtime/GetterSetter.cpp
     runtime/Identifier.cpp
     runtime/IndexingType.cpp
@@ -389,6 +391,7 @@ set(JavaScriptCore_SOURCES
     runtime/JSBoundFunction.cpp
     runtime/JSCJSValue.cpp
     runtime/JSCell.cpp
+    runtime/JSConsole.cpp
     runtime/JSDataView.cpp
     runtime/JSDataViewPrototype.cpp
     runtime/JSDateMath.cpp

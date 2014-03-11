@@ -168,7 +168,7 @@ public:
 
 #if PLATFORM(IOS)
     // This is the area that is not covered by UI elements.
-    IntRect actualVisibleContentRect() const;
+    IntRect unobscuredContentRect() const;
     // This is the area that is partially or fully exposed, and may extend under overlapping UI elements.
     IntRect exposedContentRect() const;
     void setExposedContentRect(const IntRect&);
@@ -212,10 +212,10 @@ public:
     int scrollY() const { return scrollPosition().y(); }
 
 #if PLATFORM(IOS)
-    int actualScrollX() const { return visibleContentRect().x(); }
-    int actualScrollY() const { return visibleContentRect().y(); }
+    int actualScrollX() const { return unobscuredContentRect().x(); }
+    int actualScrollY() const { return unobscuredContentRect().y(); }
     // FIXME: maybe fix scrollPosition() on iOS to return the actual scroll position.
-    IntPoint actualScrollPosition() const { return visibleContentRect().location(); }
+    IntPoint actualScrollPosition() const { return unobscuredContentRect().location(); }
 #endif
 
     // scrollOffset() anchors its (0,0) point at the top end of the header if this ScrollableArea

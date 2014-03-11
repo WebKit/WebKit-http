@@ -129,12 +129,6 @@ static const float tapAndHoldDelay  = 0.75;
 - (void)selectWord;
 @end
 
-@interface WKContentView () {
-
-}
-
-@end
-
 @implementation WKContentView (WKInteraction)
 
 - (void)setupInteraction
@@ -741,8 +735,39 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
     [_textSelectionAssistant didEndScrollingOverflow];
 }
 
+- (BOOL)requiresAccessoryView
+{
+    switch (_assistedNodeInformation.elementType) {
+    case WKTypeNone:
+        return NO;
+    case WKTypeText:
+    case WKTypePassword:
+    case WKTypeSearch:
+    case WKTypeEmail:
+    case WKTypeURL:
+    case WKTypePhone:
+    case WKTypeNumber:
+    case WKTypeNumberPad:
+        return YES;
+    case WKTypeContentEditable:
+    case WKTypeTextArea:
+        return YES;
+    case WKTypeSelect:
+    case WKTypeDate:
+    case WKTypeDateTime:
+    case WKTypeDateTimeLocal:
+    case WKTypeMonth:
+    case WKTypeWeek:
+    case WKTypeTime:
+        return !UICurrentUserInterfaceIdiomIsPad();
+    }
+}
+
 - (UIView *)inputAccessoryView
 {
+    if (![self requiresAccessoryView])
+        return nil;
+
     if (!_formAccessoryView) {
         _formAccessoryView = adoptNS([[UIWebFormAccessory alloc] init]);
         [_formAccessoryView setDelegate:self];

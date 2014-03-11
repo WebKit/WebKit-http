@@ -61,6 +61,7 @@
 #import <WebCore/HTMLParserIdioms.h>
 #import <WebCore/HTMLSelectElement.h>
 #import <WebCore/HTMLTextAreaElement.h>
+#import <WebCore/KeyboardEvent.h>
 #import <WebCore/MainFrame.h>
 #import <WebCore/MediaSessionManagerIOS.h>
 #import <WebCore/Node.h>
@@ -142,8 +143,9 @@ bool WebPage::allowsUserScaling() const
     return m_viewportConfiguration.allowsUserScaling();
 }
 
-bool WebPage::handleEditingKeyboardEvent(KeyboardEvent* event, bool)
+bool WebPage::handleEditingKeyboardEvent(KeyboardEvent* event)
 {
+    // FIXME: Interpret the event immediately upon receiving it in UI process, without sending to WebProcess first.
     bool eventWasHandled = false;
     bool sendResult = WebProcess::shared().parentProcessConnection()->sendSync(Messages::WebPageProxy::InterpretKeyEvent(editorState(), event->keyEvent()->type() == PlatformKeyboardEvent::Char),
                                                                                Messages::WebPageProxy::InterpretKeyEvent::Reply(eventWasHandled), m_pageID);
@@ -206,7 +208,7 @@ void WebPage::insertText(const String& text, uint64_t replacementRangeStart, uin
     if (!frame.editor().hasComposition()) {
         // An insertText: might be handled by other responders in the chain if we don't handle it.
         // One example is space bar that results in scrolling down the page.
-        frame.editor().insertText(text, 0);
+        frame.editor().insertText(text, nullptr);
     } else
         frame.editor().confirmComposition(text);
 }
@@ -1466,24 +1468,21 @@ void WebPage::getPositionInformation(const IntPoint& point, InteractionInformati
         info.clickableElementName = hitNode->nodeName();
 
         Element* element = hitNode->isElementNode() ? toElement(hitNode) : 0;
-        // FIXME: should not return here but do what is under if (!elementIsLinkOrImage)
-        if (element)
-            return;
-
-        Element* linkElement = nullptr;
-        if (element->renderer() && element->renderer()->isRenderImage()) {
-            elementIsLinkOrImage = true;
-            linkElement = containingLinkElement(element);
-
-        } else if (element->isLink()) {
-            linkElement = element;
-            elementIsLinkOrImage = true;
+        if (element) {
+            Element* linkElement = nullptr;
+            if (element->renderer() && element->renderer()->isRenderImage()) {
+                elementIsLinkOrImage = true;
+                linkElement = containingLinkElement(element);
+            } else if (element->isLink()) {
+                linkElement = element;
+                elementIsLinkOrImage = true;
+            }
+            if (linkElement)
+                info.url = linkElement->document().completeURL(stripLeadingAndTrailingHTMLSpaces(linkElement->getAttribute(HTMLNames::hrefAttr)));
+            info.title = element->fastGetAttribute(HTMLNames::titleAttr).string();
+            if (element->renderer())
+                info.bounds = element->renderer()->absoluteBoundingBoxRect(true);
         }
-        if (linkElement)
-            info.url = linkElement->document().completeURL(stripLeadingAndTrailingHTMLSpaces(linkElement->getAttribute(HTMLNames::hrefAttr)));
-        info.title = element->getAttribute(HTMLNames::titleAttr).string();
-        if (element->renderer())
-            info.bounds = element->renderer()->absoluteBoundingBoxRect(true);
     }
 
     if (!elementIsLinkOrImage) {
@@ -1729,6 +1728,8 @@ void WebPage::applicationDidBecomeActive()
 
 void WebPage::updateVisibleContentRects(const VisibleContentRectUpdateInfo& visibleContentRectUpdateInfo)
 {
+    m_lastVisibleContentRectUpdateID = visibleContentRectUpdateInfo.updateID();
+
     FloatRect exposedRect = visibleContentRectUpdateInfo.exposedRect();
     m_drawingArea->setExposedContentRect(enclosingIntRect(exposedRect));
 
@@ -1746,6 +1747,10 @@ void WebPage::updateVisibleContentRects(const VisibleContentRectUpdateInfo& visi
     }
 
     m_page->mainFrame().view()->setScrollOffset(scrollPosition);
+    
+    if (visibleContentRectUpdateInfo.inStableState())
+        m_page->mainFrame().view()->setCustomFixedPositionLayoutRect(enclosingIntRect(visibleContentRectUpdateInfo.customFixedPositionRect()));
+
     // FIXME: we should also update the frame view from unobscured rect. Altenatively, we can have it pull the values from ScrollView.
 }
 

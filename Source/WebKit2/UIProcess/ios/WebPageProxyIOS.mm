@@ -252,8 +252,6 @@ void WebPageProxy::setViewportConfigurationMinimumLayoutSize(const WebCore::IntS
 void WebPageProxy::didCommitLayerTree(const WebKit::RemoteLayerTreeTransaction& layerTreeTransaction)
 {
     m_pageClient.didCommitLayerTree(layerTreeTransaction);
-    if (m_videoFullscreenManager)
-        m_videoFullscreenManager->didCommitLayerTree(layerTreeTransaction);
 }
 
 void WebPageProxy::selectWithGesture(const WebCore::IntPoint point, WebCore::TextGranularity granularity, uint32_t gestureType, uint32_t gestureState, PassRefPtr<GestureCallback> callback)
@@ -410,11 +408,6 @@ void WebPageProxy::notifyRevealedSelection()
 void WebPageProxy::extendSelection(WebCore::TextGranularity granularity)
 {
     m_process->send(Messages::WebPage::ExtendSelection(static_cast<uint32_t>(granularity)), m_pageID);
-}
-
-void WebPageProxy::interpretQueuedKeyEvent(const EditorState&, bool&, Vector<WebCore::KeypressCommand>&)
-{
-    notImplemented();
 }
 
 void WebPageProxy::interpretKeyEvent(const EditorState& state, bool isCharEvent, bool& handled)

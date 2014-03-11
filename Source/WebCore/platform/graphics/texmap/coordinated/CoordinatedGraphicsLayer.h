@@ -84,7 +84,7 @@ public:
     virtual void setContentsOpaque(bool) override;
     virtual void setBackfaceVisibility(bool) override;
     virtual void setOpacity(float) override;
-    virtual void setContentsRect(const IntRect&) override;
+    virtual void setContentsRect(const FloatRect&) override;
     virtual void setContentsTilePhase(const IntPoint&) override;
     virtual void setContentsTileSize(const IntSize&) override;
     virtual void setContentsToImage(Image*) override;
@@ -104,7 +104,7 @@ public:
 #if ENABLE(CSS_FILTERS)
     virtual bool setFilters(const FilterOperations&) override;
 #endif
-    virtual bool addAnimation(const KeyframeValueList&, const IntSize&, const Animation*, const String&, double) override;
+    virtual bool addAnimation(const KeyframeValueList&, const FloatSize&, const Animation*, const String&, double) override;
     virtual void pauseAnimation(const String&, double) override;
     virtual void removeAnimation(const String&) override;
     virtual void suspendAnimations(double time) override;

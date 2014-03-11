@@ -42,6 +42,7 @@
 #import "GraphicsContextCG.h"
 #import "InbandTextTrackPrivateAVFObjC.h"
 #import "InbandTextTrackPrivateLegacyAVFObjC.h"
+#import "OutOfBandTextTrackPrivateAVF.h"
 #import "URL.h"
 #import "Logging.h"
 #import "PlatformTimeRanges.h"
@@ -83,7 +84,8 @@
 // Note: This must be defined before our SOFT_LINK macros:
 @class AVMediaSelectionOption;
 @interface AVMediaSelectionOption (OutOfBandExtensions)
-@property (nonatomic, readonly) NSString *outOfBandSource /*NS_AVAILABLE(TBD, TBD)*/;
+@property (nonatomic, readonly) NSString* outOfBandSource;
+@property (nonatomic, readonly) NSString* outOfBandIdentifier;
 @end
 #endif
 
@@ -133,6 +135,7 @@ SOFT_LINK_POINTER(AVFoundation, AVPlayerItemDidPlayToEndTimeNotification, NSStri
 SOFT_LINK_POINTER(AVFoundation, AVAssetImageGeneratorApertureModeCleanAperture, NSString *)
 SOFT_LINK_POINTER(AVFoundation, AVURLAssetReferenceRestrictionsKey, NSString *)
 SOFT_LINK_POINTER(AVFoundation, AVLayerVideoGravityResizeAspect, NSString *)
+SOFT_LINK_POINTER(AVFoundation, AVLayerVideoGravityResizeAspectFill, NSString *)
 SOFT_LINK_POINTER(AVFoundation, AVLayerVideoGravityResize, NSString *)
 SOFT_LINK_POINTER(CoreVideo, kCVPixelBufferPixelFormatTypeKey, NSString *)
 
@@ -153,6 +156,7 @@ SOFT_LINK_CONSTANT(CoreMedia, kCMTimeZero, CMTime)
 #define AVAssetImageGeneratorApertureModeCleanAperture getAVAssetImageGeneratorApertureModeCleanAperture()
 #define AVURLAssetReferenceRestrictionsKey getAVURLAssetReferenceRestrictionsKey()
 #define AVLayerVideoGravityResizeAspect getAVLayerVideoGravityResizeAspect()
+#define AVLayerVideoGravityResizeAspectFill getAVLayerVideoGravityResizeAspectFill()
 #define AVLayerVideoGravityResize getAVLayerVideoGravityResize()
 #define kCVPixelBufferPixelFormatTypeKey getkCVPixelBufferPixelFormatTypeKey()
 
@@ -311,6 +315,9 @@ void MediaPlayerPrivateAVFoundationObjC::registerMediaEngine(MediaEngineRegistra
 MediaPlayerPrivateAVFoundationObjC::MediaPlayerPrivateAVFoundationObjC(MediaPlayer* player)
     : MediaPlayerPrivateAVFoundation(player)
     , m_weakPtrFactory(this)
+#if PLATFORM(IOS)
+    , m_videoFullscreenGravity(MediaPlayer::VideoGravityResizeAspect)
+#endif
     , m_objcObserver(adoptNS([[WebCoreAVFMovieObserver alloc] initWithCallback:this]))
     , m_videoFrameHasDrawn(false)
     , m_haveCheckedPlayability(false)
@@ -351,6 +358,8 @@ MediaPlayerPrivateAVFoundationObjC::~MediaPlayerPrivateAVFoundationObjC()
 #if HAVE(AVFOUNDATION_VIDEO_OUTPUT)
     [m_videoOutputDelegate setCallback:0];
     [m_videoOutput setDelegate:nil queue:0];
+    if (m_videoOutputSemaphore)
+        dispatch_release(m_videoOutputSemaphore);
 #endif
     cancelLoad();
 }
@@ -490,6 +499,12 @@ void MediaPlayerPrivateAVFoundationObjC::createVideoLayer()
         updateVideoLayerGravity();
         LOG(Media, "MediaPlayerPrivateAVFoundationObjC::createVideoLayer(%p) - returning %p", this, m_videoLayer.get());
 
+#if PLATFORM(IOS)
+        if (m_videoFullscreenLayer) {
+            [m_videoLayer setFrame:CGRectMake(0, 0, m_videoFullscreenFrame.width(), m_videoFullscreenFrame.height())];
+            [m_videoFullscreenLayer addSublayer:m_videoLayer.get()];
+        }
+#endif
         player()->mediaPlayerClient()->mediaPlayerRenderingModeChanged(player());
     });
 }
@@ -531,6 +546,42 @@ static const NSArray* mediaDescriptionForKind(PlatformTextTrack::TrackKind kind)
         return [NSArray arrayWithObjects: AVMediaCharacteristicContainsOnlyForcedSubtitles, nil];
 
     return [NSArray arrayWithObjects: AVMediaCharacteristicTranscribesSpokenDialogForAccessibility, nil];
+}
+    
+void MediaPlayerPrivateAVFoundationObjC::notifyTrackModeChanged()
+{
+    trackModeChanged();
+}
+    
+void MediaPlayerPrivateAVFoundationObjC::synchronizeTextTrackState()
+{
+    const Vector<RefPtr<PlatformTextTrack>>& outOfBandTrackSources = player()->outOfBandTrackSources();
+    
+    for (auto& textTrack : m_textTracks) {
+        if (textTrack->textTrackCategory() != InbandTextTrackPrivateAVF::OutOfBand)
+            continue;
+        
+        RefPtr<OutOfBandTextTrackPrivateAVF> trackPrivate = static_cast<OutOfBandTextTrackPrivateAVF*>(textTrack.get());
+        RetainPtr<AVMediaSelectionOptionType> currentOption = trackPrivate->mediaSelectionOption();
+        
+        for (auto& track : outOfBandTrackSources) {
+            RetainPtr<CFStringRef> uniqueID = String::number(track->uniqueId()).createCFString();
+            
+            if (![[currentOption.get() outOfBandIdentifier] isEqual: reinterpret_cast<const NSString*>(uniqueID.get())])
+                continue;
+            
+            InbandTextTrackPrivate::Mode mode = InbandTextTrackPrivate::Hidden;
+            if (track->mode() == PlatformTextTrack::Hidden)
+                mode = InbandTextTrackPrivate::Hidden;
+            else if (track->mode() == PlatformTextTrack::Disabled)
+                mode = InbandTextTrackPrivate::Disabled;
+            else if (track->mode() == PlatformTextTrack::Showing)
+                mode = InbandTextTrackPrivate::Showing;
+            
+            textTrack->setMode(mode);
+            break;
+        }
+    }
 }
 #endif
 
@@ -714,6 +765,53 @@ PlatformLayer* MediaPlayerPrivateAVFoundationObjC::platformLayer() const
 {
     return m_videoLayer.get();
 }
+
+#if PLATFORM(IOS)
+void MediaPlayerPrivateAVFoundationObjC::setVideoFullscreenLayer(PlatformLayer* videoFullscreenLayer)
+{
+    if (m_videoFullscreenLayer == videoFullscreenLayer)
+        return;
+
+    if (m_videoFullscreenLayer)
+       [m_videoLayer removeFromSuperlayer];
+
+    m_videoFullscreenLayer = videoFullscreenLayer;
+
+    if (!m_videoFullscreenLayer || !m_videoLayer)
+        return;
+
+    [m_videoLayer setFrame:CGRectMake(0, 0, m_videoFullscreenFrame.width(), m_videoFullscreenFrame.height())];
+    [m_videoFullscreenLayer addSublayer:m_videoLayer.get()];
+}
+
+void MediaPlayerPrivateAVFoundationObjC::setVideoFullscreenFrame(FloatRect frame)
+{
+    m_videoFullscreenFrame = frame;
+    if (!m_videoFullscreenLayer || !m_videoLayer)
+        return;
+    
+    [m_videoLayer setFrame:CGRectMake(0, 0, frame.width(), frame.height())];
+}
+
+void MediaPlayerPrivateAVFoundationObjC::setVideoFullscreenGravity(MediaPlayer::VideoGravity gravity)
+{
+    m_videoFullscreenGravity = gravity;
+    if (!m_videoLayer)
+        return;
+
+    NSString *videoGravity = AVLayerVideoGravityResizeAspect;
+    if (gravity == MediaPlayer::VideoGravityResize)
+        videoGravity = AVLayerVideoGravityResize;
+    else if (gravity == MediaPlayer::VideoGravityResizeAspect)
+        videoGravity = AVLayerVideoGravityResizeAspect;
+    else if (gravity == MediaPlayer::VideoGravityResizeAspectFill)
+        videoGravity = AVLayerVideoGravityResizeAspectFill;
+    else
+        ASSERT_NOT_REACHED();
+
+    [m_videoLayer setVideoGravity:videoGravity];
+}
+#endif
 
 void MediaPlayerPrivateAVFoundationObjC::platformSetVisible(bool isVisible)
 {
@@ -1743,7 +1841,7 @@ void MediaPlayerPrivateAVFoundationObjC::processLegacyClosedCaptionsTracks()
 
         bool newCCTrack = true;
         for (unsigned i = removedTextTracks.size(); i > 0; --i) {
-            if (!removedTextTracks[i - 1]->isLegacyClosedCaptionsTrack())
+            if (removedTextTracks[i - 1]->textTrackCategory() != InbandTextTrackPrivateAVF::LegacyClosedCaption)
                 continue;
 
             RefPtr<InbandTextTrackPrivateLegacyAVFObjC> track = static_cast<InbandTextTrackPrivateLegacyAVFObjC*>(m_textTracks[i - 1].get());
@@ -1794,11 +1892,22 @@ void MediaPlayerPrivateAVFoundationObjC::processMediaSelectionOptions()
     for (AVMediaSelectionOptionType *option in legibleOptions) {
         bool newTrack = true;
         for (unsigned i = removedTextTracks.size(); i > 0; --i) {
-             if (removedTextTracks[i - 1]->isLegacyClosedCaptionsTrack())
-                 continue;
-
-            RefPtr<InbandTextTrackPrivateAVFObjC> track = static_cast<InbandTextTrackPrivateAVFObjC*>(removedTextTracks[i - 1].get());
-            if ([track->mediaSelectionOption() isEqual:option]) {
+            if (removedTextTracks[i - 1]->textTrackCategory() == InbandTextTrackPrivateAVF::LegacyClosedCaption)
+                continue;
+            
+            RetainPtr<AVMediaSelectionOptionType> currentOption;
+#if ENABLE(AVF_CAPTIONS)
+            if (removedTextTracks[i - 1]->textTrackCategory() == InbandTextTrackPrivateAVF::OutOfBand) {
+                RefPtr<OutOfBandTextTrackPrivateAVF> track = static_cast<OutOfBandTextTrackPrivateAVF*>(removedTextTracks[i - 1].get());
+                currentOption = track->mediaSelectionOption();
+            } else
+#endif
+            {
+                RefPtr<InbandTextTrackPrivateAVFObjC> track = static_cast<InbandTextTrackPrivateAVFObjC*>(removedTextTracks[i - 1].get());
+                currentOption = track->mediaSelectionOption();
+            }
+            
+            if ([currentOption.get() isEqual:option]) {
                 removedTextTracks.remove(i - 1);
                 newTrack = false;
                 break;
@@ -1808,9 +1917,11 @@ void MediaPlayerPrivateAVFoundationObjC::processMediaSelectionOptions()
             continue;
 
 #if ENABLE(AVF_CAPTIONS)
-        // Ignore out-of-band tracks that we passed to AVFoundation so we do not double-count them
-        if ([option outOfBandSource])
+        if ([option outOfBandSource]) {
+            m_textTracks.append(OutOfBandTextTrackPrivateAVF::create(this, option));
+            m_textTracks.last()->setHasBeenReported(true); // Ignore out-of-band tracks that we passed to AVFoundation so we do not double-count them
             continue;
+        }
 #endif
 
         m_textTracks.append(InbandTextTrackPrivateAVFObjC::create(this, option));
@@ -1848,9 +1959,13 @@ void MediaPlayerPrivateAVFoundationObjC::setCurrentTrack(InbandTextTrackPrivateA
     m_currentTrack = track;
 
     if (track) {
-        if (track->isLegacyClosedCaptionsTrack())
+        if (track->textTrackCategory() == InbandTextTrackPrivateAVF::LegacyClosedCaption)
             [m_avPlayer.get() setClosedCaptionDisplayEnabled:YES];
 #if HAVE(AVFOUNDATION_MEDIA_SELECTION_GROUP)
+#if ENABLE(AVF_CAPTIONS)
+        else if (track->textTrackCategory() == InbandTextTrackPrivateAVF::OutOfBand)
+            [m_avPlayerItem.get() selectMediaOption:static_cast<OutOfBandTextTrackPrivateAVF*>(track)->mediaSelectionOption() inMediaSelectionGroup:safeMediaSelectionGroupForLegibleMedia()];
+#endif
         else
             [m_avPlayerItem.get() selectMediaOption:static_cast<InbandTextTrackPrivateAVFObjC*>(track)->mediaSelectionOption() inMediaSelectionGroup:safeMediaSelectionGroupForLegibleMedia()];
 #endif

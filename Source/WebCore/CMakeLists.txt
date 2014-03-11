@@ -205,6 +205,7 @@ set(WebCore_IDL_FILES
     Modules/mediastream/AllVideoCapabilities.idl
     Modules/mediastream/AudioStreamTrack.idl
     Modules/mediastream/CapabilityRange.idl
+    Modules/mediastream/DOMURLMediaStream.idl
     Modules/mediastream/HTMLMediaElementMediaStream.idl
     Modules/mediastream/MediaSourceStates.idl
     Modules/mediastream/MediaStream.idl
@@ -220,6 +221,7 @@ set(WebCore_IDL_FILES
     Modules/mediastream/NavigatorUserMediaError.idl
     Modules/mediastream/NavigatorUserMediaErrorCallback.idl
     Modules/mediastream/NavigatorUserMediaSuccessCallback.idl
+    Modules/mediastream/RTCConfiguration.idl
     Modules/mediastream/RTCDTMFSender.idl
     Modules/mediastream/RTCDTMFToneChangeEvent.idl
     Modules/mediastream/RTCDataChannel.idl
@@ -227,6 +229,7 @@ set(WebCore_IDL_FILES
     Modules/mediastream/RTCPeerConnectionErrorCallback.idl
     Modules/mediastream/RTCIceCandidate.idl
     Modules/mediastream/RTCIceCandidateEvent.idl
+    Modules/mediastream/RTCIceServer.idl
     Modules/mediastream/RTCPeerConnection.idl
     Modules/mediastream/RTCSessionDescription.idl
     Modules/mediastream/RTCSessionDescriptionCallback.idl
@@ -548,7 +551,6 @@ set(WebCore_IDL_FILES
     loader/appcache/DOMApplicationCache.idl
 
     page/BarProp.idl
-    page/Console.idl
     page/Crypto.idl
     page/DOMSecurityPolicy.idl
     page/DOMSelection.idl
@@ -842,6 +844,7 @@ set(WebCore_SOURCES
 
     Modules/mediastream/AudioStreamTrack.cpp
     Modules/mediastream/CapabilityRange.cpp
+    Modules/mediastream/DOMURLMediaStream.cpp
     Modules/mediastream/HTMLMediaElementMediaStream.cpp
     Modules/mediastream/MediaConstraintsImpl.cpp
     Modules/mediastream/MediaSourceStates.cpp
@@ -863,6 +866,7 @@ set(WebCore_SOURCES
     Modules/mediastream/RTCDataChannelEvent.cpp
     Modules/mediastream/RTCIceCandidate.cpp
     Modules/mediastream/RTCIceCandidateEvent.cpp
+    Modules/mediastream/RTCOfferAnswerOptions.cpp
     Modules/mediastream/RTCPeerConnection.cpp
     Modules/mediastream/RTCSessionDescription.cpp
     Modules/mediastream/RTCSessionDescriptionRequestImpl.cpp
@@ -1694,7 +1698,6 @@ set(WebCore_SOURCES
     page/BarProp.cpp
     page/CaptionUserPreferences.cpp
     page/Chrome.cpp
-    page/Console.cpp
     page/ContentSecurityPolicy.cpp
     page/ContextMenuContext.cpp
     page/ContextMenuController.cpp

@@ -1,3 +1,804 @@
+2014-03-10  Andreas Kling  <akling@apple.com>
+
+        [X86_64] Smaller code for xor_ir when register is accumulator.
+        <https://webkit.org/b/130008>
+
+        Generate the shorthand version of "xor eax, imm" when possible.
+
+        Reviewed by Benjamin Poulain.
+
+        * assembler/X86Assembler.h:
+        (JSC::X86Assembler::xorl_ir):
+        (JSC::X86Assembler::xorq_ir):
+
+2014-03-10  Andreas Kling  <akling@apple.com>
+
+        [X86_64] Smaller code for or_ir when register is accumulator.
+        <https://webkit.org/b/130007>
+
+        Generate the shorthand version of "or eax, imm" when possible.
+
+        Reviewed by Benjamin Poulain.
+
+        * assembler/X86Assembler.h:
+        (JSC::X86Assembler::orl_ir):
+        (JSC::X86Assembler::orq_ir):
+
+2014-03-10  Andreas Kling  <akling@apple.com>
+
+        [X86_64] Smaller code for test_ir when register is accumulator.
+        <https://webkit.org/b/130006>
+
+        Generate the shorthand version of "test eax, imm" when possible.
+
+        Reviewed by Benjamin Poulain.
+
+        * assembler/X86Assembler.h:
+        (JSC::X86Assembler::testl_i32r):
+        (JSC::X86Assembler::testq_i32r):
+
+2014-03-10  Andreas Kling  <akling@apple.com>
+
+        [X86_64] Smaller code for cmp_ir when register is accumulator.
+        <https://webkit.org/b/130005>
+
+        Generate the shorthand version of "cmp eax, imm" when possible.
+
+        Reviewed by Benjamin Poulain.
+
+        * assembler/X86Assembler.h:
+        (JSC::X86Assembler::cmpl_ir):
+        (JSC::X86Assembler::cmpq_ir):
+
+2014-03-10  Andreas Kling  <akling@apple.com>
+
+        [X86_64] Smaller code for store64(imm, address) when imm fits in 32 bits.
+        <https://webkit.org/b/130002>
+
+        Generate this:
+
+            mov [address], imm32
+
+        Instead of this:
+
+            mov scratchRegister, imm32
+            mov [address], scratchRegister
+
+        For store64(imm, address) where the 64-bit immediate can be passed as
+        a sign-extended 32-bit value.
+
+        Reviewed by Benjamin Poulain.
+
+        * assembler/MacroAssemblerX86_64.h:
+        (CAN_SIGN_EXTEND_32_64):
+        (JSC::MacroAssemblerX86_64::store64):
+
+2014-03-10  Andreas Kling  <akling@apple.com>
+
+        [X86_64] Smaller code for xchg_rr when one register is accumulator.
+        <https://webkit.org/b/130004>
+
+        Generate the 1-byte version of "xchg eax, reg" when possible.
+
+        Reviewed by Benjamin Poulain.
+
+        * assembler/X86Assembler.h:
+        (JSC::X86Assembler::xchgl_rr):
+        (JSC::X86Assembler::xchgq_rr):
+
+2014-03-09  Filip Pizlo  <fpizlo@apple.com>
+
+        GPRInfo::toIndex should return InvalidIndex for non-temp registers on ARM64
+        https://bugs.webkit.org/show_bug.cgi?id=129998
+
+        Reviewed by Geoffrey Garen.
+        
+        Not only is that the established contract, but this is used to signal to
+        ScratchRegisterAllocator that the register doesn't need locking since it isn't a register
+        that this allocator would use. In the FTL, we may have an inline cache where LLVM had used
+        some non-temp register (i.e. a register that JSC itself wouldn't have used). This is totally
+        fine but previously it would have led to either an assertion failure, or data corruption, in
+        the ScratchRegisterAllocator.
+
+        * jit/GPRInfo.h:
+        (JSC::GPRInfo::toIndex):
+
+2014-03-09  Filip Pizlo  <fpizlo@apple.com>
+
+        FTL fails the new equals-masquerader strictEqualConstant test
+        https://bugs.webkit.org/show_bug.cgi?id=129996
+
+        Reviewed by Mark Lam.
+        
+        It turns out that the FTL was trying to do the masquerading stuff for ===null. But
+        that's wrong since none of the other engines do it. The DFG even had an ancient
+        FIXME about doing it - but that doesn't make sense since the LLInt and baseline JIT
+        don't do it and JSValue::strictEqual() doesn't do it.
+        
+        Remove the FIXME and remove the extra checks in the FTL.
+        
+        This is a glorious patch: nothing but red and it fixes a test failure.
+
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileStrictEqForConstant):
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::LowerDFGToLLVM::compileCompareStrictEqConstant):
+
+2014-03-09  Andreas Kling  <akling@apple.com>
+
+        Short-circuit JSGlobalObjectInspectorController when not inspecting.
+        <https://webkit.org/b/129995>
+
+        Add an early return in reportAPIException() when the console agent
+        is disabled. This avoids expensive symbolication during exceptions
+        if there's nobody expecting the fancy backtrace anyway.
+
+        ~2% progression on DYEB on my MBP.
+
+        Reviewed by Geoff Garen.
+
+        * inspector/JSGlobalObjectInspectorController.cpp:
+        (Inspector::JSGlobalObjectInspectorController::reportAPIException):
+
+2014-03-09  Andreas Kling  <akling@apple.com>
+
+        Inline the trivial parts of GC deferral.
+        <https://webkit.org/b/129984>
+
+        Made most of the functions called by the DeferGC RAII object inline
+        to avoid function call overhead.
+
+        Looks like ~1% progression on DYEB.
+
+        Reviewed by Geoffrey Garen.
+
+        * heap/Heap.cpp:
+        * heap/Heap.h:
+        (JSC::Heap::incrementDeferralDepth):
+        (JSC::Heap::decrementDeferralDepth):
+        (JSC::Heap::collectIfNecessaryOrDefer):
+        (JSC::Heap::decrementDeferralDepthAndGCIfNeeded):
+
+2014-03-08  Mark Lam  <mark.lam@apple.com>
+
+        32-bit x86 handleUncaughtException returns to wrong location after a stack overflow.
+        <https://webkit.org/b/129969>
+
+        Reviewed by Geoffrey Garen.
+
+        The 32-bit version of handleUncaughtException was missing the handling of an
+        edge case for stack overflows where the current frame may already be the
+        sentinel frame.  This edge case was handled in the 64-bit version.  The fix
+        is to bring the 32-bit version up to parity.
+
+        * jit/JIT.cpp:
+        (JSC::JIT::privateCompile):
+        * llint/LowLevelInterpreter32_64.asm:
+
+2014-03-07  Mark Lam  <mark.lam@apple.com>
+
+        Fix bugs in 32-bit Structure implementation.
+        <https://webkit.org/b/129947>
+
+        Reviewed by Mark Hahnenberg.
+
+        Added the loading of the Structure (from the JSCell) before use that was
+        missing in a few places.  Also added more test cases to equals-masquerader.js.
+
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::nonSpeculativeNonPeepholeCompareNull):
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * llint/LowLevelInterpreter32_64.asm:
+        * tests/stress/equals-masquerader.js:
+        (equalsNull):
+        (notEqualsNull):
+        (strictEqualsNull):
+        (strictNotEqualsNull):
+        (equalsUndefined):
+        (notEqualsUndefined):
+        (strictEqualsUndefined):
+        (strictNotEqualsUndefined):
+        (isFalsey):
+        (test):
+
+2014-03-07  Andrew Trick  <atrick@apple.com>
+
+        Temporarily disable repeat-out-of-bounds stress tests pending fix for 129953.
+        https://bugs.webkit.org/show_bug.cgi?id=129954
+
+        Reviewed by Filip Pizlo.
+
+        * tests/stress/float32-repeat-out-of-bounds.js:
+        * tests/stress/int8-repeat-out-of-bounds.js:
+
+2014-03-07  Michael Saboff  <msaboff@apple.com>
+
+        .cfi directives in LowLevelInterpreter.cpp are providing no benefit
+        https://bugs.webkit.org/show_bug.cgi?id=129945
+
+        Reviewed by Mark Lam.
+
+        Removed .cfi directive.  Verified that stack traces didn't regress in crash reporter
+        or in lldb.
+
+        * llint/LowLevelInterpreter.cpp:
+
+2014-03-07  Oliver Hunt  <oliver@apple.com>
+
+        Continue hangs when performing for-of over arguments
+        https://bugs.webkit.org/show_bug.cgi?id=129915
+
+        Reviewed by Geoffrey Garen.
+
+        Put the continue label in the right place
+
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::emitEnumeration):
+
+2014-03-07  peavo@outlook.com  <peavo@outlook.com>
+
+        [Win64] Compile error after r165128.
+        https://bugs.webkit.org/show_bug.cgi?id=129807
+
+        Reviewed by Mark Lam.
+
+        * JavaScriptCore.vcxproj/LLInt/LLIntAssembly/build-LLIntAssembly.sh: 
+        Check platform environment variable to determine if an assembler file should be generated.
+
+2014-03-07  Michael Saboff  <msaboff@apple.com>
+
+        Clarify how we deal with "special" registers
+        https://bugs.webkit.org/show_bug.cgi?id=129806
+
+        Already reviewed change being relanded.
+
+        Relanding change set r165196 as it wasn't responsible for the breakage reported in
+        https://bugs.webkit.org/show_bug.cgi?id=129822.  That appears to be a build or
+
+        Reviewed by Michael Saboff.
+        configuration issue.
+
+        * assembler/ARM64Assembler.h:
+        (JSC::ARM64Assembler::lastRegister):
+        * assembler/MacroAssembler.h:
+        (JSC::MacroAssembler::nextRegister):
+        * ftl/FTLLocation.cpp:
+        (JSC::FTL::Location::restoreInto):
+        * ftl/FTLSaveRestore.cpp:
+        (JSC::FTL::saveAllRegisters):
+        (JSC::FTL::restoreAllRegisters):
+        * ftl/FTLSlowPathCall.cpp:
+        * jit/RegisterSet.cpp:
+        (JSC::RegisterSet::reservedHardwareRegisters):
+        (JSC::RegisterSet::runtimeRegisters):
+        (JSC::RegisterSet::specialRegisters):
+        (JSC::RegisterSet::calleeSaveRegisters):
+        * jit/RegisterSet.h:
+
+2014-03-07  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        Move GCActivityCallback to heap
+        https://bugs.webkit.org/show_bug.cgi?id=129457
+
+        Reviewed by Geoffrey Garen.
+
+        All the other GC timer related stuff is there already.
+
+        * CMakeLists.txt:
+        * GNUmakefile.list.am:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj.filters:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * heap/GCActivityCallback.cpp: Copied from Source/JavaScriptCore/runtime/GCActivityCallback.cpp.
+        * heap/GCActivityCallback.h: Copied from Source/JavaScriptCore/runtime/GCActivityCallback.h.
+        * runtime/GCActivityCallback.cpp: Removed.
+        * runtime/GCActivityCallback.h: Removed.
+
+2014-03-07  Andrew Trick  <atrick@apple.com>
+
+        Correct a comment typo from:
+        FLT should call fmod directly on platforms where LLVM cannot relocate the libcall
+        https://bugs.webkit.org/show_bug.cgi?id=129865
+
+        Reviewed by Mark Lam.
+
+        * ftl/FTLOutput.h:
+        (JSC::FTL::Output::doubleRem):
+
+2014-03-07  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        Use OwnPtr in StructureIDTable
+        https://bugs.webkit.org/show_bug.cgi?id=129828
+
+        Reviewed by Geoffrey Garen.
+
+        This reduces the amount of boilerplate and fixes a memory leak.
+
+        * runtime/StructureIDTable.cpp:
+        (JSC::StructureIDTable::StructureIDTable):
+        (JSC::StructureIDTable::resize):
+        (JSC::StructureIDTable::flushOldTables):
+        (JSC::StructureIDTable::allocateID):
+        (JSC::StructureIDTable::deallocateID):
+        * runtime/StructureIDTable.h:
+        (JSC::StructureIDTable::table):
+        (JSC::StructureIDTable::get):
+
+2014-03-07  Andrew Trick  <atrick@apple.com>
+
+        FLT should call fmod directly on platforms where LLVM cannot relocate the libcall
+        https://bugs.webkit.org/show_bug.cgi?id=129865
+
+        Reviewed by Filip Pizlo.
+
+        * ftl/FTLIntrinsicRepository.h:
+        * ftl/FTLOutput.h:
+        (JSC::FTL::Output::doubleRem):
+
+2014-03-06  Filip Pizlo  <fpizlo@apple.com>
+
+        If the FTL is build-time enabled then it should be run-time enabled.
+
+        Rubber stamped by Geoffrey Garen.
+
+        * runtime/Options.cpp:
+        (JSC::recomputeDependentOptions):
+        * runtime/Options.h:
+
+2014-03-06  Joseph Pecoraro  <pecoraro@apple.com>
+
+        [OS X] Web Inspector: Allow Apps using JavaScriptCore to access "com.apple.webinspector" mach port
+        https://bugs.webkit.org/show_bug.cgi?id=129852
+
+        Reviewed by Geoffrey Garen.
+
+        * framework.sb: Added.
+        Sandbox extension to allow access to "com.apple.webinspector".
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        Add a Copy Resources build phase and include framework.sb.
+
+        * Configurations/JavaScriptCore.xcconfig:
+        Do not copy framework.sb on iOS.
+
+2014-03-06  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        JSGlobalContextRelease incorrectly handles saving/restoring IdentifierTable
+        https://bugs.webkit.org/show_bug.cgi?id=129858
+
+        Reviewed by Mark Lam.
+
+        It was correct (but really ugly) prior to the combining of APIEntryShim and JSLock, 
+        but now it ends up overwriting the IdentifierTable that JSLock just restored.
+
+        * API/JSContextRef.cpp:
+        (JSGlobalContextRelease):
+
+2014-03-06  Oliver Hunt  <oliver@apple.com>
+
+        Fix FTL build.
+
+        * dfg/DFGConstantFoldingPhase.cpp:
+        (JSC::DFG::ConstantFoldingPhase::foldConstants):
+
+2014-03-06  Brent Fulgham  <bfulgham@apple.com>
+
+        Unreviewed build fix after r165128.
+
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj: The SEH flag was not getting set when
+        performing 'Production' and 'DebugSuffix' type builds.
+
+2014-03-06  Julien Brianceau  <jbriance@cisco.com>
+
+        Unreviewed, fix style in my previous commit.
+        https://bugs.webkit.org/show_bug.cgi?id=129833
+
+        * runtime/JSConsole.cpp:
+
+2014-03-06  Julien Brianceau  <jbriance@cisco.com>
+
+        Build fix: add missing include in JSConole.cpp.
+        https://bugs.webkit.org/show_bug.cgi?id=129833
+
+        Reviewed by Oliver Hunt.
+
+        * runtime/JSConsole.cpp:
+
+2014-03-06  Oliver Hunt  <oliver@apple.com>
+
+        Fix ARMv7
+
+        * jit/CCallHelpers.h:
+        (JSC::CCallHelpers::setupArgumentsWithExecState):
+
+2014-03-06  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r165196.
+        http://trac.webkit.org/changeset/165196
+        https://bugs.webkit.org/show_bug.cgi?id=129822
+
+        broke arm64 on hardware (Requested by bfulgham on #webkit).
+
+        * assembler/ARM64Assembler.h:
+        (JSC::ARM64Assembler::lastRegister):
+        * assembler/MacroAssembler.h:
+        (JSC::MacroAssembler::isStackRelated):
+        (JSC::MacroAssembler::firstRealRegister):
+        (JSC::MacroAssembler::nextRegister):
+        (JSC::MacroAssembler::secondRealRegister):
+        * ftl/FTLLocation.cpp:
+        (JSC::FTL::Location::restoreInto):
+        * ftl/FTLSaveRestore.cpp:
+        (JSC::FTL::saveAllRegisters):
+        (JSC::FTL::restoreAllRegisters):
+        * ftl/FTLSlowPathCall.cpp:
+        * jit/RegisterSet.cpp:
+        (JSC::RegisterSet::specialRegisters):
+        (JSC::RegisterSet::calleeSaveRegisters):
+        * jit/RegisterSet.h:
+
+2014-03-06  Mark Lam  <mark.lam@apple.com>
+
+        REGRESSION(r165205): broke the CLOOP build (Requested by smfr on #webkit).
+        <https://webkit.org/b/129813>
+
+        Reviewed by Michael Saboff.
+
+        Fixed broken C loop LLINT build.
+
+        * llint/LowLevelInterpreter.cpp:
+        (JSC::CLoop::execute):
+        * offlineasm/cloop.rb:
+
+2014-03-03  Oliver Hunt  <oliver@apple.com>
+
+        Support caching of custom setters
+        https://bugs.webkit.org/show_bug.cgi?id=129519
+
+        Reviewed by Filip Pizlo.
+
+        This patch adds caching of assignment to properties that
+        are backed by C functions. This provides most of the leg
+        work required to start supporting setters, and resolves
+        the remaining regressions from moving DOM properties up
+        the prototype chain.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * bytecode/PolymorphicPutByIdList.cpp:
+        (JSC::PutByIdAccess::visitWeak):
+        (JSC::PolymorphicPutByIdList::PolymorphicPutByIdList):
+        (JSC::PolymorphicPutByIdList::from):
+        * bytecode/PolymorphicPutByIdList.h:
+        (JSC::PutByIdAccess::transition):
+        (JSC::PutByIdAccess::replace):
+        (JSC::PutByIdAccess::customSetter):
+        (JSC::PutByIdAccess::isCustom):
+        (JSC::PutByIdAccess::oldStructure):
+        (JSC::PutByIdAccess::chain):
+        (JSC::PutByIdAccess::stubRoutine):
+        * bytecode/PutByIdStatus.cpp:
+        (JSC::PutByIdStatus::computeForStubInfo):
+        (JSC::PutByIdStatus::computeFor):
+        (JSC::PutByIdStatus::dump):
+        * bytecode/PutByIdStatus.h:
+        (JSC::PutByIdStatus::PutByIdStatus):
+        (JSC::PutByIdStatus::takesSlowPath):
+        (JSC::PutByIdStatus::makesCalls):
+        * bytecode/StructureStubInfo.h:
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::emitPutById):
+        (JSC::DFG::ByteCodeParser::handlePutById):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGCommon.h:
+        * dfg/DFGConstantFoldingPhase.cpp:
+        (JSC::DFG::ConstantFoldingPhase::foldConstants):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::hasIdentifier):
+        * dfg/DFGNodeType.h:
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        (JSC::DFG::PredictionPropagationPhase::propagate):
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileIn):
+        * dfg/DFGSpeculativeJIT.h:
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::cachedGetById):
+        (JSC::DFG::SpeculativeJIT::cachedPutById):
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::cachedGetById):
+        (JSC::DFG::SpeculativeJIT::cachedPutById):
+        (JSC::DFG::SpeculativeJIT::compile):
+        * jit/CCallHelpers.h:
+        (JSC::CCallHelpers::setupArgumentsWithExecState):
+        * jit/JITInlineCacheGenerator.cpp:
+        (JSC::JITByIdGenerator::JITByIdGenerator):
+        (JSC::JITPutByIdGenerator::JITPutByIdGenerator):
+        * jit/JITInlineCacheGenerator.h:
+        (JSC::JITGetByIdGenerator::JITGetByIdGenerator):
+        * jit/JITOperations.cpp:
+        * jit/JITOperations.h:
+        * jit/JITPropertyAccess.cpp:
+        (JSC::JIT::emit_op_get_by_id):
+        (JSC::JIT::emit_op_put_by_id):
+        * jit/JITPropertyAccess32_64.cpp:
+        (JSC::JIT::emit_op_get_by_id):
+        (JSC::JIT::emit_op_put_by_id):
+        * jit/Repatch.cpp:
+        (JSC::tryCacheGetByID):
+        (JSC::tryBuildGetByIDList):
+        (JSC::emitCustomSetterStub):
+        (JSC::tryCachePutByID):
+        (JSC::tryBuildPutByIdList):
+        * jit/SpillRegistersMode.h: Added.
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::LLINT_SLOW_PATH_DECL):
+        * runtime/Lookup.h:
+        (JSC::putEntry):
+        * runtime/PutPropertySlot.h:
+        (JSC::PutPropertySlot::setCacheableCustomProperty):
+        (JSC::PutPropertySlot::customSetter):
+        (JSC::PutPropertySlot::isCacheablePut):
+        (JSC::PutPropertySlot::isCacheableCustomProperty):
+        (JSC::PutPropertySlot::cachedOffset):
+
+2014-03-06  Filip Pizlo  <fpizlo@apple.com>
+
+        FTL arity fixup should work on ARM64
+        https://bugs.webkit.org/show_bug.cgi?id=129810
+
+        Reviewed by Michael Saboff.
+        
+        - Using regT5 to pass the thunk return address to arityFixup is shady since that's a
+          callee-save.
+        
+        - The FTL path was assuming X86 conventions for where SP points at the top of the prologue.
+        
+        This makes some more tests pass.
+
+        * dfg/DFGJITCompiler.cpp:
+        (JSC::DFG::JITCompiler::compileFunction):
+        * ftl/FTLLink.cpp:
+        (JSC::FTL::link):
+        * jit/AssemblyHelpers.h:
+        (JSC::AssemblyHelpers::prologueStackPointerDelta):
+        * jit/JIT.cpp:
+        (JSC::JIT::privateCompile):
+        * jit/ThunkGenerators.cpp:
+        (JSC::arityFixup):
+        * llint/LowLevelInterpreter64.asm:
+        * offlineasm/arm64.rb:
+        * offlineasm/x86.rb: In addition to the t7 change, make t6 agree with GPRInfo.h.
+
+2014-03-06  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        Fix write barriers in Repatch.cpp for !ENABLE(DFG_JIT) platforms after r165128
+        https://bugs.webkit.org/show_bug.cgi?id=129760
+
+        Reviewed by Geoffrey Garen.
+
+        r165128 disabled the write barrier fast path for inline caches on !ENABLE(DFG_JIT) platforms. 
+        The fix is to refactor the write barrier code into AssemblyHelpers and use that everywhere.
+
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::writeBarrier):
+        * dfg/DFGSpeculativeJIT.h:
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::writeBarrier):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::writeBarrier):
+        * jit/AssemblyHelpers.h:
+        (JSC::AssemblyHelpers::checkMarkByte):
+        * jit/JIT.h:
+        * jit/JITPropertyAccess.cpp:
+        * jit/Repatch.cpp:
+        (JSC::writeBarrier):
+
+2014-03-06  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Expose the console object in JSContexts to interact with Web Inspector
+        https://bugs.webkit.org/show_bug.cgi?id=127944
+
+        Reviewed by Geoffrey Garen.
+
+        Always expose the Console object in JSContexts, just like we
+        do for web pages. The default behavior will route to an
+        attached JSContext inspector. This can be overriden by
+        setting the ConsoleClient on the JSGlobalObject, which WebCore
+        does to get slightly different behavior.
+
+        * CMakeLists.txt:
+        * GNUmakefile.list.am:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj.filters:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        Update build systems.
+
+        * API/tests/testapi.js:
+        * API/tests/testapi.mm:
+        Test that "console" exists in C and ObjC contexts.
+
+        * runtime/ConsoleClient.cpp: Added.
+        (JSC::ConsoleClient::printURLAndPosition):
+        (JSC::ConsoleClient::printMessagePrefix):
+        (JSC::ConsoleClient::printConsoleMessage):
+        (JSC::ConsoleClient::printConsoleMessageWithArguments):
+        (JSC::ConsoleClient::internalMessageWithTypeAndLevel):
+        (JSC::ConsoleClient::logWithLevel):
+        (JSC::ConsoleClient::clear):
+        (JSC::ConsoleClient::dir):
+        (JSC::ConsoleClient::dirXML):
+        (JSC::ConsoleClient::table):
+        (JSC::ConsoleClient::trace):
+        (JSC::ConsoleClient::assertCondition):
+        (JSC::ConsoleClient::group):
+        (JSC::ConsoleClient::groupCollapsed):
+        (JSC::ConsoleClient::groupEnd):
+        * runtime/ConsoleClient.h: Added.
+        (JSC::ConsoleClient::~ConsoleClient):
+        New private interface for handling the console object's methods.
+        A lot of the methods funnel through messageWithTypeAndLevel.
+
+        * runtime/ConsoleTypes.h: Renamed from Source/JavaScriptCore/inspector/ConsoleTypes.h.
+        Moved to JSC namespace.
+
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::JSGlobalObject):
+        (JSC::JSGlobalObject::init):
+        (JSC::JSGlobalObject::reset):
+        (JSC::JSGlobalObject::visitChildren):
+        Create the "console" object when initializing the environment.
+        Also set the default console client to be the JS context inspector.
+
+        * runtime/JSGlobalObject.h:
+        (JSC::JSGlobalObject::setConsoleClient):
+        (JSC::JSGlobalObject::consoleClient):
+        Ability to change the console client, so WebCore can set a custom client.
+
+        * runtime/ConsolePrototype.cpp: Added.
+        (JSC::ConsolePrototype::finishCreation):
+        (JSC::valueToStringWithUndefinedOrNullCheck):
+        (JSC::consoleLogWithLevel):
+        (JSC::consoleProtoFuncDebug):
+        (JSC::consoleProtoFuncError):
+        (JSC::consoleProtoFuncLog):
+        (JSC::consoleProtoFuncWarn):
+        (JSC::consoleProtoFuncClear):
+        (JSC::consoleProtoFuncDir):
+        (JSC::consoleProtoFuncDirXML):
+        (JSC::consoleProtoFuncTable):
+        (JSC::consoleProtoFuncTrace):
+        (JSC::consoleProtoFuncAssert):
+        (JSC::consoleProtoFuncCount):
+        (JSC::consoleProtoFuncProfile):
+        (JSC::consoleProtoFuncProfileEnd):
+        (JSC::consoleProtoFuncTime):
+        (JSC::consoleProtoFuncTimeEnd):
+        (JSC::consoleProtoFuncTimeStamp):
+        (JSC::consoleProtoFuncGroup):
+        (JSC::consoleProtoFuncGroupCollapsed):
+        (JSC::consoleProtoFuncGroupEnd):
+        * runtime/ConsolePrototype.h: Added.
+        (JSC::ConsolePrototype::create):
+        (JSC::ConsolePrototype::createStructure):
+        (JSC::ConsolePrototype::ConsolePrototype):
+        Define the console object interface. Parse out required / expected
+        arguments and throw expcetions when methods are misused.
+
+        * runtime/JSConsole.cpp: Added.
+        * runtime/JSConsole.h: Added.
+        (JSC::JSConsole::createStructure):
+        (JSC::JSConsole::create):
+        (JSC::JSConsole::JSConsole):
+        Empty "console" object. Everything is in the prototype.
+
+        * inspector/JSConsoleClient.cpp: Added.
+        (Inspector::JSConsoleClient::JSGlobalObjectConsole):
+        (Inspector::JSConsoleClient::count):
+        (Inspector::JSConsoleClient::profile):
+        (Inspector::JSConsoleClient::profileEnd):
+        (Inspector::JSConsoleClient::time):
+        (Inspector::JSConsoleClient::timeEnd):
+        (Inspector::JSConsoleClient::timeStamp):
+        (Inspector::JSConsoleClient::warnUnimplemented):
+        (Inspector::JSConsoleClient::internalAddMessage):
+        * inspector/JSConsoleClient.h: Added.
+        * inspector/JSGlobalObjectInspectorController.cpp:
+        (Inspector::JSGlobalObjectInspectorController::JSGlobalObjectInspectorController):
+        (Inspector::JSGlobalObjectInspectorController::consoleClient):
+        * inspector/JSGlobalObjectInspectorController.h:
+        Default JSContext ConsoleClient implementation. Handle nearly
+        everything exception profile/profileEnd and timeStamp.
+
+2014-03-06  Andreas Kling  <akling@apple.com>
+
+        Drop unlinked function code on memory pressure.
+        <https://webkit.org/b/129789>
+
+        Make VM::discardAllCode() also drop UnlinkedFunctionCodeBlocks that
+        are not currently being compiled.
+
+        4.5 MB progression on Membuster.
+
+        Reviewed by Geoffrey Garen.
+
+        * heap/Heap.cpp:
+        (JSC::Heap::deleteAllUnlinkedFunctionCode):
+        * heap/Heap.h:
+        * runtime/VM.cpp:
+        (JSC::VM::discardAllCode):
+
+2014-03-06  Filip Pizlo  <fpizlo@apple.com>
+
+        Clarify how we deal with "special" registers
+        https://bugs.webkit.org/show_bug.cgi?id=129806
+
+        Reviewed by Michael Saboff.
+        
+        Previously we had two different places that defined what "stack" registers are, a thing
+        called "specialRegisters" that had unclear meaning, and a really weird "firstRealRegister"/
+        "secondRealRegister"/"nextRegister" idiom in MacroAssembler that appeared to only be used by
+        one place and had a baked-in notion of what it meant for a register to be "real" or not.
+        
+        It's not cool to use words like "real" and "special" to describe registers, especially if you
+        fail to qualify what that means. This originally made sense on X86 - "real" registers were
+        the ones that weren't "stack related" (so "real" was the opposite of "stack"). But on ARM64,
+        you also have to worry about the LR register, which we'd want to say is "not real" but it's
+        also not a "stack" register. This got super confusing.
+        
+        So, this patch removes any mention of "real" registers, consolidates the knowledge of what is
+        a "stack" register, and uses the word special only in places where it's clearly defined and
+        where no better word comes to mind.
+        
+        This cleans up the code and fixes what seems like it was probably a harmless ARM64 bug: the
+        Reg and RegisterSet data structures would sometimes think that FP was Q0. Somehow this
+        magically didn't break anything because you never need to save/restore either FP or Q0, but
+        it was still super weird.
+
+        * assembler/ARM64Assembler.h:
+        (JSC::ARM64Assembler::lastRegister):
+        * assembler/MacroAssembler.h:
+        (JSC::MacroAssembler::nextRegister):
+        * ftl/FTLLocation.cpp:
+        (JSC::FTL::Location::restoreInto):
+        * ftl/FTLSaveRestore.cpp:
+        (JSC::FTL::saveAllRegisters):
+        (JSC::FTL::restoreAllRegisters):
+        * ftl/FTLSlowPathCall.cpp:
+        * jit/RegisterSet.cpp:
+        (JSC::RegisterSet::reservedHardwareRegisters):
+        (JSC::RegisterSet::runtimeRegisters):
+        (JSC::RegisterSet::specialRegisters):
+        (JSC::RegisterSet::calleeSaveRegisters):
+        * jit/RegisterSet.h:
+
+2014-03-06  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, fix build.
+
+        * disassembler/ARM64Disassembler.cpp:
+
+2014-03-06  Filip Pizlo  <fpizlo@apple.com>
+
+        Use the LLVM disassembler on ARM64 if we are enabling the FTL
+        https://bugs.webkit.org/show_bug.cgi?id=129785
+
+        Reviewed by Geoffrey Garen.
+        
+        Our disassembler can't handle some of the code sequences that LLVM emits. LLVM's disassembler
+        is strictly more capable at this point. Use it if it's available.
+
+        * disassembler/ARM64Disassembler.cpp:
+        (JSC::tryToDisassemble):
+
 2014-03-05  Joseph Pecoraro  <pecoraro@apple.com>
 
         Web Inspector: Reduce RWI message frequency

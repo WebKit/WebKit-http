@@ -68,7 +68,7 @@ public:
     }
 
 #if CPU(X86_64) || CPU(X86)
-    size_t prologueStackPointerDelta()
+    static size_t prologueStackPointerDelta()
     {
         // Prologue only saves the framePointerRegister
         return sizeof(void*);
@@ -103,7 +103,7 @@ public:
 #endif // CPU(X86_64) || CPU(X86)
 
 #if CPU(ARM) || CPU(ARM64)
-    size_t prologueStackPointerDelta()
+    static size_t prologueStackPointerDelta()
     {
         // Prologue saves the framePointerRegister and linkRegister
         return 2 * sizeof(void*);
@@ -138,7 +138,7 @@ public:
 #endif
 
 #if CPU(MIPS)
-    size_t prologueStackPointerDelta()
+    static size_t prologueStackPointerDelta()
     {
         // Prologue saves the framePointerRegister and returnAddressRegister
         return 2 * sizeof(void*);
@@ -161,7 +161,7 @@ public:
 #endif
 
 #if CPU(SH4)
-    size_t prologueStackPointerDelta()
+    static size_t prologueStackPointerDelta()
     {
         // Prologue saves the framePointerRegister and link register
         return 2 * sizeof(void*);
@@ -386,11 +386,6 @@ public:
     void jitAssertTagsInPlace() { }
     void jitAssertArgumentCountSane() { }
 #endif
-
-    Jump checkMarkByte(GPRReg owner)
-    {
-        return branchTest8(NonZero, Address(owner, JSCell::gcDataOffset()));
-    }
 
     // These methods convert between doubles, and doubles boxed and JSValues.
 #if USE(JSVALUE64)
@@ -620,19 +615,15 @@ public:
 #endif
     }
 
-    void writeBarrier(GPRReg owner, GPRReg scratch1, GPRReg scratch2, WriteBarrierUseKind useKind)
+    Jump checkMarkByte(GPRReg cell)
     {
-        UNUSED_PARAM(owner);
-        UNUSED_PARAM(scratch1);
-        UNUSED_PARAM(scratch2);
-        UNUSED_PARAM(useKind);
-        ASSERT(owner != scratch1);
-        ASSERT(owner != scratch2);
-        ASSERT(scratch1 != scratch2);
-        
-#if ENABLE(WRITE_BARRIER_PROFILING)
-        emitCount(WriteBarrierCounters::jitCounterFor(useKind));
-#endif
+        return branchTest8(MacroAssembler::NonZero, MacroAssembler::Address(cell, JSCell::gcDataOffset()));
+    }
+
+    Jump checkMarkByte(JSCell* cell)
+    {
+        uint8_t* address = reinterpret_cast<uint8_t*>(cell) + JSCell::gcDataOffset();
+        return branchTest8(MacroAssembler::NonZero, MacroAssembler::AbsoluteAddress(address));
     }
 
     Vector<BytecodeAndMachineOffset>& decodedCodeMapFor(CodeBlock*);

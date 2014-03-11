@@ -48,7 +48,6 @@
 
 namespace WebCore {
 
-class MediaConstraints;
 class MediaStreamTrack;
 class RTCConfiguration;
 class RTCDTMFSender;
@@ -64,9 +63,9 @@ public:
     static PassRefPtr<RTCPeerConnection> create(ScriptExecutionContext&, const Dictionary& rtcConfiguration, ExceptionCode&);
     ~RTCPeerConnection();
 
-    void createOffer(PassRefPtr<RTCSessionDescriptionCallback>, PassRefPtr<RTCPeerConnectionErrorCallback>, const Dictionary& mediaConstraints, ExceptionCode&);
+    void createOffer(PassRefPtr<RTCSessionDescriptionCallback>, PassRefPtr<RTCPeerConnectionErrorCallback>, const Dictionary& offerOptions, ExceptionCode&);
 
-    void createAnswer(PassRefPtr<RTCSessionDescriptionCallback>, PassRefPtr<RTCPeerConnectionErrorCallback>, const Dictionary& mediaConstraints, ExceptionCode&);
+    void createAnswer(PassRefPtr<RTCSessionDescriptionCallback>, PassRefPtr<RTCPeerConnectionErrorCallback>, const Dictionary& answerOptions, ExceptionCode&);
 
     void setLocalDescription(PassRefPtr<RTCSessionDescription>, PassRefPtr<VoidCallback>, PassRefPtr<RTCPeerConnectionErrorCallback>, ExceptionCode&);
     PassRefPtr<RTCSessionDescription> localDescription(ExceptionCode&);
@@ -84,6 +83,8 @@ public:
 
     String iceConnectionState() const;
 
+    RTCConfiguration* getConfiguration() const;
+
     MediaStreamVector getLocalStreams() const;
 
     MediaStreamVector getRemoteStreams() const;
@@ -94,7 +95,7 @@ public:
 
     void removeStream(PassRefPtr<MediaStream>, ExceptionCode&);
 
-    void getStats(PassRefPtr<RTCStatsCallback> successCallback, PassRefPtr<MediaStreamTrack> selector);
+    void getStats(PassRefPtr<RTCStatsCallback> successCallback, PassRefPtr<RTCPeerConnectionErrorCallback>, PassRefPtr<MediaStreamTrack> selector);
 
     PassRefPtr<RTCDataChannel> createDataChannel(String label, const Dictionary& dataChannelDict, ExceptionCode&);
 
@@ -165,6 +166,8 @@ private:
 
     Timer<RTCPeerConnection> m_scheduledEventTimer;
     Vector<RefPtr<Event>> m_scheduledEvents;
+
+    RefPtr<RTCConfiguration> m_configuration;
 
     bool m_stopped;
 };

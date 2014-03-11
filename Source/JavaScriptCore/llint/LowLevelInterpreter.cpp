@@ -325,7 +325,7 @@ JSValue CLoop::execute(OpcodeID entryOpcodeID, void* executableAddress, VM* vm, 
     // 2. 32 bit result values will be in the low 32-bit of t0.
     // 3. 64 bit result values will be in t0.
 
-    CLoopRegister t0, t1, t2, t3, t5, sp, cfr, lr, pc;
+    CLoopRegister t0, t1, t2, t3, t5, t7, sp, cfr, lr, pc;
 #if USE(JSVALUE64)
     CLoopRegister pcBase, tagTypeNumber, tagMask;
 #endif
@@ -492,17 +492,8 @@ JSValue CLoop::execute(OpcodeID entryOpcodeID, void* executableAddress, VM* vm, 
 //
 
 // These are for building an interpreter from generated assembly code:
-#if CPU(X86_64) && COMPILER(CLANG)
-#define OFFLINE_ASM_BEGIN   asm (                \
-    ".cfi_startproc\n"
-
-#define OFFLINE_ASM_END                          \
-    ".cfi_endproc\n"                             \
-                            );
-#else
 #define OFFLINE_ASM_BEGIN   asm (
 #define OFFLINE_ASM_END     );
-#endif
 
 #define OFFLINE_ASM_OPCODE_LABEL(__opcode) OFFLINE_ASM_GLOBAL_LABEL(llint_##__opcode)
 #define OFFLINE_ASM_GLUE_LABEL(__opcode)   OFFLINE_ASM_GLOBAL_LABEL(__opcode)
@@ -515,15 +506,6 @@ JSValue CLoop::execute(OpcodeID entryOpcodeID, void* executableAddress, VM* vm, 
     ".thumb\n"                                   \
     ".thumb_func " THUMB_FUNC_PARAM(label) "\n"  \
     SYMBOL_STRING(label) ":\n"
-#elif CPU(XXX86_64) && COMPILER(CLANG)
-#define OFFLINE_ASM_GLOBAL_LABEL(label)         \
-    ".text\n"                                   \
-    ".globl " SYMBOL_STRING(label) "\n"         \
-    HIDE_SYMBOL(label) "\n"                     \
-    SYMBOL_STRING(label) ":\n"                  \
-    ".cfi_def_cfa_offset 16\n"                  \
-    ".cfi_offset %rbp, -16\n"                   \
-    ".cfi_def_cfa_register rbp\n"
 #else
 #define OFFLINE_ASM_GLOBAL_LABEL(label)         \
     ".text\n"                                   \

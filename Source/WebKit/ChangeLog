@@ -1,3 +1,44 @@
+2014-03-07  Alex Christensen  <achristensen@webkit.org>
+
+        [Win] Unreviewed build fix after r165310.
+
+        * WebKit.vcxproj/WebKit/WebKitDirectX.props:
+        Replaced Platform macro, which is either "Win32" or "x64"
+        with PlatformShortName macro, which is either "x86" or "x64".
+        This is correct for finding the DirectX libraries.
+
+2014-03-07  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed gardening (for 64-bit)
+
+        * WebKit.vcxproj/WebKit/WebKitDirectX.props: Use Platform macro, rather than
+        hard-coded path. This allows it to work on 32-bit or 64-bit builds.
+
+2014-03-07  Anders Carlsson  <andersca@apple.com>
+
+        Make it possible to copy WebKit2 headers to WebKit.framework
+        https://bugs.webkit.org/show_bug.cgi?id=129935
+
+        Reviewed by Dan Bernstein.
+
+        * WebKit.xcodeproj/project.pbxproj:
+        Move the migrate headers script out into its own file.
+
+2014-03-07  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Convert WebKit.make to an MSBuild file.
+        https://bugs.webkit.org/show_bug.cgi?id=129888
+
+        Reviewed by Dean Jackson.
+
+        * WebKit.vcxproj/WebKit.proj: Added.
+
+2014-03-06  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Unreviewed follow-up fix for Windows for r165199.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+
 2014-03-05  Martin Hock  <mhock@apple.com>
 
         Add support for sessions to MemoryCache.

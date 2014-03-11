@@ -32,7 +32,7 @@
 #include "SecurityContext.h"
 #include "Supplementable.h"
 #include "URL.h"
-#include <inspector/ConsoleTypes.h>
+#include <runtime/ConsoleTypes.h>
 #include <wtf/HashSet.h>
 
 namespace JSC {
@@ -208,7 +208,7 @@ private:
 
     bool m_inDispatchErrorEvent;
     class PendingException;
-    OwnPtr<Vector<OwnPtr<PendingException>>> m_pendingExceptions;
+    std::unique_ptr<Vector<std::unique_ptr<PendingException>>> m_pendingExceptions;
 
     bool m_activeDOMObjectsAreSuspended;
     ActiveDOMObject::ReasonForSuspension m_reasonForSuspendingActiveDOMObjects;

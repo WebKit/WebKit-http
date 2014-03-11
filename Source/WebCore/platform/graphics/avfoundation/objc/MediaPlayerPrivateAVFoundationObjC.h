@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2012, 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2014 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -116,7 +116,12 @@ public:
 #if ENABLE(IOS_AIRPLAY)
     void playbackTargetIsWirelessDidChange();
 #endif
-
+    
+#if ENABLE(AVF_CAPTIONS)
+    virtual void notifyTrackModeChanged() override;
+    virtual void synchronizeTextTrackState() override;
+#endif
+    
     WeakPtr<MediaPlayerPrivateAVFoundationObjC> createWeakPtr() { return m_weakPtrFactory.createWeakPtr(); }
 
 private:
@@ -143,6 +148,11 @@ private:
     virtual void paint(GraphicsContext*, const IntRect&);
     virtual void paintCurrentFrameInContext(GraphicsContext*, const IntRect&);
     virtual PlatformLayer* platformLayer() const;
+#if PLATFORM(IOS)
+    virtual void setVideoFullscreenLayer(PlatformLayer*);
+    virtual void setVideoFullscreenFrame(FloatRect);
+    virtual void setVideoFullscreenGravity(MediaPlayer::VideoGravity);
+#endif
     virtual bool supportsAcceleratedRendering() const { return true; }
     virtual float mediaTimeForTimeValue(float) const;
     virtual double maximumDurationToCacheMediaTime() const { return 5; }
@@ -240,6 +250,11 @@ private:
     RetainPtr<AVPlayer> m_avPlayer;
     RetainPtr<AVPlayerItem> m_avPlayerItem;
     RetainPtr<AVPlayerLayer> m_videoLayer;
+#if PLATFORM(IOS)
+    RetainPtr<PlatformLayer> m_videoFullscreenLayer;
+    FloatRect m_videoFullscreenFrame;
+    MediaPlayer::VideoGravity m_videoFullscreenGravity;
+#endif
     RetainPtr<WebCoreAVFMovieObserver> m_objcObserver;
     RetainPtr<id> m_timeObserver;
     mutable String m_languageOfPrimaryAudioTrack;

@@ -35,7 +35,6 @@
 #include "CSSRuleList.h"
 #include "Chrome.h"
 #include "ChromeClient.h"
-#include "Console.h"
 #include "Crypto.h"
 #include "DOMApplicationCache.h"
 #include "DOMSelection.h"
@@ -411,7 +410,6 @@ DOMWindow::~DOMWindow()
         ASSERT(!m_scrollbars);
         ASSERT(!m_statusbar);
         ASSERT(!m_toolbar);
-        ASSERT(!m_console);
         ASSERT(!m_navigator);
 #if ENABLE(WEB_TIMING)
         ASSERT(!m_performance);
@@ -558,7 +556,6 @@ void DOMWindow::resetDOMWindowProperties()
     m_scrollbars = 0;
     m_statusbar = 0;
     m_toolbar = 0;
-    m_console = 0;
     m_navigator = 0;
 #if ENABLE(WEB_TIMING)
     m_performance = 0;
@@ -665,15 +662,6 @@ BarProp* DOMWindow::toolbar() const
     if (!m_toolbar)
         m_toolbar = BarProp::create(m_frame, BarProp::Toolbar);
     return m_toolbar.get();
-}
-
-Console* DOMWindow::console() const
-{
-    if (!isCurrentlyDisplayedInFrame())
-        return 0;
-    if (!m_console)
-        m_console = Console::create(m_frame);
-    return m_console.get();
 }
 
 PageConsole* DOMWindow::pageConsole() const
@@ -1204,13 +1192,19 @@ int DOMWindow::scrollX() const
     if (!view)
         return 0;
 
-    if (!view->scrollX())
+    int scrollX;
+#if PLATFORM(IOS)
+    scrollX = view->actualScrollX();
+#else
+    scrollX = view->scrollX();
+#endif
+    if (!scrollX)
         return 0;
 
     m_frame->document()->updateLayoutIgnorePendingStylesheets();
 
 #if PLATFORM(IOS)
-    return static_cast<int>(view->actualScrollX() / (m_frame->pageZoomFactor() * m_frame->frameScaleFactor()));
+    return view->mapFromLayoutToCSSUnits(view->actualScrollX());
 #else
     return view->mapFromLayoutToCSSUnits(view->scrollX());
 #endif
@@ -1225,13 +1219,19 @@ int DOMWindow::scrollY() const
     if (!view)
         return 0;
 
-    if (!view->scrollY())
+    int scrollY;
+#if PLATFORM(IOS)
+    scrollY = view->actualScrollY();
+#else
+    scrollY = view->scrollY();
+#endif
+    if (!scrollY)
         return 0;
 
     m_frame->document()->updateLayoutIgnorePendingStylesheets();
 
 #if PLATFORM(IOS)
-    return static_cast<int>(view->actualScrollY() / (m_frame->pageZoomFactor() * m_frame->frameScaleFactor()));
+    return view->mapFromLayoutToCSSUnits(view->actualScrollY());
 #else
     return view->mapFromLayoutToCSSUnits(view->scrollY());
 #endif

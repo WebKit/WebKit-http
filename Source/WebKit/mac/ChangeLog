@@ -1,3 +1,118 @@
+2014-03-06  Alexey Proskuryakov  <ap@apple.com>
+
+        [Mac] Don't perform a round-trip through WebProcess before interpreting key events
+        https://bugs.webkit.org/show_bug.cgi?id=129812
+
+        Reviewed by Darin Adler.
+
+        * WebCoreSupport/WebEditorClient.mm: (WebEditorClient::handleInputMethodKeydown):
+        Added a FIXME. WebKit1/mac is the only port that uses this roundabout way to
+        interpret events, so it would simplify code if we switched it to WebKit2/mac model.
+
+2014-03-08  Simon Fraser  <simon.fraser@apple.com>
+
+        [iOS Wk2] Can't scroll after going back to page in page cache
+        https://bugs.webkit.org/show_bug.cgi?id=129989
+        <rdar://problem/16217588>
+
+        Reviewed by Dan Bernstein.
+
+        iOS has a special FrameLoader::forceLayoutWithoutRecalculatingStyle()
+        function that is called instead of FrameView::forceLayout(). This was unimplemented
+        for the WK2 FrameLoaderClient, so no layout was forced, with the result
+        that the contentSize was never updated and scrolling was broken.
+        
+        Fix by renaming the client function to forceLayoutOnRestoreFromPageCache()
+        and having it return a bool to say whether the default forceLayout()
+        should be done. WK1 can then continue to have its custom behavior,
+        and Wk2 will simply do a forceLayout().
+        
+        Also remove FrameLaoderClient::forceLayout(), which was never called.
+
+        * WebCoreSupport/WebFrameLoaderClient.h:
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::forceLayoutOnRestoreFromPageCache):
+
+2014-03-07  Anders Carlsson  <andersca@apple.com>
+
+        Add the remaining WebKit2 headers to WEBKIT2_HEADERS
+        https://bugs.webkit.org/show_bug.cgi?id=129942
+        <rdar://problem/15920020>
+
+        Reviewed by Tim Horton.
+
+        * MigrateHeaders.make:
+
+2014-03-07  Anders Carlsson  <andersca@apple.com>
+
+        MigrateHeaders.make should remove C SPI includes from WebKit2 headers
+        https://bugs.webkit.org/show_bug.cgi?id=129937
+        <rdar://problem/15920020>
+
+        Reviewed by Tim Horton.
+
+        * MigrateHeaders.make:
+        Add WKPreferences.h to WEBKIT2_HEADERS. 
+        Add a sed rule that deletes all lines that start with a # and contain <WebKit/*Ref.h>.
+
+2014-03-07  Anders Carlsson  <andersca@apple.com>
+
+        Make it possible to copy WebKit2 headers to WebKit.framework
+        https://bugs.webkit.org/show_bug.cgi?id=129935
+        <rdar://problem/15920020>
+
+        Reviewed by Dan Bernstein.
+
+        * MigrateHeaders.make:
+        Gather a list of public and private WebKit2 headers and filter them against the WEBKIT2_HEADERS list.
+        The matching headers are copied to the respective Headers or PrivateHeaders directories under WebKit.framework,
+        and also have their #imports rewritten to reference WebKit instead of WebKit2.
+
+        * migrate-headers.sh: Added.
+        Set up the WEBKIT2_FRAMEWORKS_DIR if needed.
+
+2014-03-07  Anders Carlsson  <andersca@apple.com>
+
+        Fix a typo
+        <rdar://problem/15920020>
+
+        Rubber-stamped by Dan Bernstein.
+
+        * Configurations/WebKit.xcconfig:
+
+2014-03-07  Anders Carlsson  <andersca@apple.com>
+
+        Tweak the WebKit2 frameworks directories
+        https://bugs.webkit.org/show_bug.cgi?id=129910
+        <rdar://problem/15920020>
+
+        Reviewed by Dan Bernstein.
+
+        Use an SDK relative directory for production builds.
+
+        * Configurations/WebKit.xcconfig:
+
+2014-03-07  Anders Carlsson  <andersca@apple.com>
+
+        Link WebKit.framework against WebKit2.framework and re-export all WebKit2 symbols
+        https://bugs.webkit.org/show_bug.cgi?id=129901
+        <rdar://problem/15920020>
+
+        Reviewed by Andreas Kling.
+
+        * Configurations/WebKit.xcconfig:
+
+2014-03-06  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Expose the console object in JSContexts to interact with Web Inspector
+        https://bugs.webkit.org/show_bug.cgi?id=127944
+
+        Reviewed by Geoffrey Garen.
+
+        * WebCoreSupport/WebChromeClient.h:
+        * WebCoreSupport/WebChromeClient.mm:
+        Update namespaces.
+
 2014-03-05  Eric Carlson  <eric.carlson@apple.com>
 
         [iOS] Show external device name/type in placeholder

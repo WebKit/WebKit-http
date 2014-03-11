@@ -819,7 +819,7 @@ void RenderLayerBacking::updateGraphicsLayerGeometry()
     if (!m_isMainFrameRenderViewLayer) {
         // For non-root layers, background is always painted by the primary graphics layer.
         ASSERT(!m_backgroundLayer);
-        bool hadSubpixelRounding = !m_devicePixelFractionFromRenderer.isEmpty();
+        bool hadSubpixelRounding = !m_devicePixelFractionFromRenderer.isZero();
         m_graphicsLayer->setContentsOpaque(!hadSubpixelRounding && m_owningLayer.backgroundIsKnownToBeOpaqueInRect(localCompositingBounds));
     }
 
@@ -1556,7 +1556,7 @@ void RenderLayerBacking::updateDirectlyCompositedBackgroundColor(bool isSimpleCo
 
     // An unset (invalid) color will remove the solid color.
     m_graphicsLayer->setContentsToSolidColor(backgroundColor);
-    IntRect contentsRect = backgroundBox();
+    FloatRect contentsRect = backgroundBoxForPainting();
     m_graphicsLayer->setContentsRect(contentsRect);
     m_graphicsLayer->setContentsClippingRect(contentsRect);
     didUpdateContentsRect = true;
@@ -1609,7 +1609,7 @@ void RenderLayerBacking::updateDirectlyCompositedBackgroundImage(bool isSimpleCo
         return;
     }
 
-    IntRect destRect = backgroundBox();
+    IntRect destRect = pixelSnappedIntRect(LayoutRect(backgroundBoxForPainting()));
     IntPoint phase;
     IntSize tileSize;
 
@@ -1945,7 +1945,7 @@ FloatPoint RenderLayerBacking::computePerspectiveOrigin(const LayoutRect& border
 // Return the offset from the top-left of this compositing layer at which the renderer's contents are painted.
 LayoutSize RenderLayerBacking::contentOffsetInCompostingLayer() const
 {
-    return LayoutSize(-m_compositedBounds.x(), -m_compositedBounds.y());
+    return LayoutSize(-m_compositedBounds.x(), -m_compositedBounds.y()) + m_devicePixelFractionFromRenderer;
 }
 
 LayoutRect RenderLayerBacking::contentsBox() const
@@ -1987,14 +1987,14 @@ static LayoutRect backgroundRectForBox(const RenderBox& box)
     return LayoutRect();
 }
 
-IntRect RenderLayerBacking::backgroundBox() const
+FloatRect RenderLayerBacking::backgroundBoxForPainting() const
 {
     if (!renderer().isBox())
-        return IntRect();
+        return FloatRect();
 
     LayoutRect backgroundBox = backgroundRectForBox(toRenderBox(renderer()));
     backgroundBox.move(contentOffsetInCompostingLayer());
-    return pixelSnappedIntRect(backgroundBox);
+    return pixelSnappedForPainting(backgroundBox, deviceScaleFactor());
 }
 
 GraphicsLayer* RenderLayerBacking::parentForSublayers() const
@@ -2400,7 +2400,7 @@ bool RenderLayerBacking::startTransition(double timeOffset, CSSPropertyID proper
             opacityVector.insert(FloatAnimationValue::create(0, compositingOpacity(fromStyle->opacity())));
             opacityVector.insert(FloatAnimationValue::create(1, compositingOpacity(toStyle->opacity())));
             // The boxSize param is only used for transform animations (which can only run on RenderBoxes), so we pass an empty size here.
-            if (m_graphicsLayer->addAnimation(opacityVector, IntSize(), opacityAnim, GraphicsLayer::animationNameForTransition(AnimatedPropertyOpacity), timeOffset)) {
+            if (m_graphicsLayer->addAnimation(opacityVector, FloatSize(), opacityAnim, GraphicsLayer::animationNameForTransition(AnimatedPropertyOpacity), timeOffset)) {
                 // To ensure that the correct opacity is visible when the animation ends, also set the final opacity.
                 updateOpacity(toStyle);
                 didAnimate = true;
@@ -2429,7 +2429,7 @@ bool RenderLayerBacking::startTransition(double timeOffset, CSSPropertyID proper
             KeyframeValueList filterVector(AnimatedPropertyWebkitFilter);
             filterVector.insert(FilterAnimationValue::create(0, fromStyle->filter()));
             filterVector.insert(FilterAnimationValue::create(1, toStyle->filter()));
-            if (m_graphicsLayer->addAnimation(filterVector, IntSize(), filterAnim, GraphicsLayer::animationNameForTransition(AnimatedPropertyWebkitFilter), timeOffset)) {
+            if (m_graphicsLayer->addAnimation(filterVector, FloatSize(), filterAnim, GraphicsLayer::animationNameForTransition(AnimatedPropertyWebkitFilter), timeOffset)) {
                 // To ensure that the correct filter is visible when the animation ends, also set the final filter.
                 updateFilters(toStyle);
                 didAnimate = true;

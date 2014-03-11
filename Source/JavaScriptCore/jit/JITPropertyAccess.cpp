@@ -521,7 +521,7 @@ void JIT::emit_op_get_by_id(Instruction* currentInstruction)
 
     JITGetByIdGenerator gen(
         m_codeBlock, CodeOrigin(m_bytecodeOffset), RegisterSet::specialRegisters(),
-        JSValueRegs(regT0), JSValueRegs(regT0), true);
+        JSValueRegs(regT0), JSValueRegs(regT0), DontSpill);
     gen.generateFastPath(*this);
     addSlowCase(gen.slowPathJump());
     m_getByIds.append(gen);
@@ -567,7 +567,7 @@ void JIT::emit_op_put_by_id(Instruction* currentInstruction)
 
     JITPutByIdGenerator gen(
         m_codeBlock, CodeOrigin(m_bytecodeOffset), RegisterSet::specialRegisters(),
-        JSValueRegs(regT0), JSValueRegs(regT1), regT2, true, m_codeBlock->ecmaMode(),
+        JSValueRegs(regT0), JSValueRegs(regT1), regT2, DontSpill, m_codeBlock->ecmaMode(),
         direct ? Direct : NotDirect);
     
     gen.generateFastPath(*this);
@@ -878,17 +878,6 @@ void JIT::emit_op_init_global_const(Instruction* currentInstruction)
 }
 
 #endif // USE(JSVALUE64)
-
-JIT::Jump JIT::checkMarkByte(RegisterID owner)
-{
-    return branchTest8(NonZero, Address(owner, JSCell::gcDataOffset()));
-}
-
-JIT::Jump JIT::checkMarkByte(JSCell* owner)
-{
-    uint8_t* address = reinterpret_cast<uint8_t*>(owner) + JSCell::gcDataOffset();
-    return branchTest8(NonZero, AbsoluteAddress(address));
-}
 
 #if USE(JSVALUE64)
 void JIT::emitWriteBarrier(unsigned owner, unsigned value, WriteBarrierMode mode)

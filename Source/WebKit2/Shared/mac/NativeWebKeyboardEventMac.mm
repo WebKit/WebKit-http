@@ -29,11 +29,14 @@
 #if USE(APPKIT)
 
 #import "WebEventFactory.h"
+#import <WebCore/KeyboardEvent.h>
+
+using namespace WebCore;
 
 namespace WebKit {
 
-NativeWebKeyboardEvent::NativeWebKeyboardEvent(NSEvent *event, NSView *view)
-    : WebKeyboardEvent(WebEventFactory::createWebKeyboardEvent(event, view))
+NativeWebKeyboardEvent::NativeWebKeyboardEvent(NSEvent *event, bool handledByInputMethod, const Vector<KeypressCommand>& commands)
+    : WebKeyboardEvent(WebEventFactory::createWebKeyboardEvent(event, handledByInputMethod, commands))
     , m_nativeEvent(event)
 {
 }

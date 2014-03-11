@@ -237,11 +237,7 @@ public:
     void layoutIfNeeded();
 
     // -- Called from WebCore clients.
-#if PLATFORM(COCOA)
-    bool handleEditingKeyboardEvent(WebCore::KeyboardEvent*, bool saveCommands);
-#elif !PLATFORM(GTK)
     bool handleEditingKeyboardEvent(WebCore::KeyboardEvent*);
-#endif
 
     void didStartPageTransition();
     void didCompletePageTransition();
@@ -625,6 +621,9 @@ public:
 
     void updateMainFrameScrollOffsetPinning();
 
+    bool mainFrameHasCustomContentProvider() const;
+    void addMIMETypeWithCustomContentProvider(const String&);
+
     void mainFrameDidLayout();
 
     bool canRunBeforeUnloadConfirmPanel() const { return m_canRunBeforeUnloadConfirmPanel; }
@@ -679,6 +678,7 @@ public:
     uint64_t nativeWindowHandle() { return m_nativeWindowHandle; }
 #endif
 
+    bool shouldUseCustomContentProviderForResponse(const WebCore::ResourceResponse&);
     bool canPluginHandleResponse(const WebCore::ResourceResponse& response);
 
     bool asynchronousPluginInitializationEnabled() const { return m_asynchronousPluginInitializationEnabled; }
@@ -996,8 +996,6 @@ private:
     
     RetainPtr<WKAccessibilityWebPageObject> m_mockAccessibilityElement;
 
-    WebCore::KeyboardEvent* m_keyboardEventBeingInterpreted;
-
     ViewGestureGeometryCollector m_viewGestureGeometryCollector;
 
 #elif HAVE(ACCESSIBILITY) && (PLATFORM(GTK) || PLATFORM(EFL))
@@ -1100,6 +1098,7 @@ private:
     bool m_shouldReturnWordAtSelection;
 
     WebCore::ViewportConfiguration m_viewportConfiguration;
+    uint64_t m_lastVisibleContentRectUpdateID;
     bool m_scaleWasSetByUIProcess;
     bool m_userHasChangedPageScaleFactor;
     WebCore::IntSize m_blockSelectionDesiredSize;
@@ -1107,6 +1106,7 @@ private:
 
     WebInspectorClient* m_inspectorClient;
 
+    HashSet<String, CaseFoldingHash> m_mimeTypesWithCustomContentProviders;
     WebCore::Color m_backgroundColor;
 
     HashSet<unsigned> m_activeRenderingSuppressionTokens;

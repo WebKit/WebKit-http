@@ -41,16 +41,17 @@ public:
     void setWebFrame(WebFrame* webFrame) { m_frame = webFrame; }
     WebFrame* webFrame() const { return m_frame; }
 
+    bool frameHasCustomContentProvider() const { return m_frameHasCustomContentProvider; }
+
 private:
     virtual void frameLoaderDestroyed() override;
 
-    virtual bool hasHTMLView() const override { return true; }
+    virtual bool hasHTMLView() const override;
     virtual bool hasWebView() const override;
     
     virtual void makeRepresentation(WebCore::DocumentLoader*) override;
-    virtual void forceLayout() override;
 #if PLATFORM(IOS)
-    virtual void forceLayoutWithoutRecalculatingStyles() override;
+    virtual bool forceLayoutOnRestoreFromPageCache() override;
 #endif
     virtual void forceLayoutForNonHTML() override;
     
@@ -175,9 +176,9 @@ private:
 
     virtual void dispatchDidBecomeFrameset(bool) override;
 
-    virtual bool canCachePage() const override { return true; }
+    virtual bool canCachePage() const override;
     virtual void convertMainResourceLoadToDownload(WebCore::DocumentLoader*, const WebCore::ResourceRequest&, const WebCore::ResourceResponse&) override;
-    
+
     virtual PassRefPtr<WebCore::Frame> createFrame(const WebCore::URL& url, const String& name, WebCore::HTMLFrameOwnerElement* ownerElement,
                                           const String& referrer, bool allowsScrolling, int marginWidth, int marginHeight) override;
     
@@ -232,6 +233,7 @@ private:
     RefPtr<PluginView> m_pluginView;
     bool m_hasSentResponseToPluginView;
     bool m_didCompletePageTransitionAlready;
+    bool m_frameHasCustomContentProvider;
     bool m_frameCameFromPageCache;
 };
 

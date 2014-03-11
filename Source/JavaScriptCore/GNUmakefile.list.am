@@ -557,6 +557,8 @@ javascriptcore_sources += \
     Source/JavaScriptCore/heap/DeferGC.cpp \
 	Source/JavaScriptCore/heap/DeferGC.h \
     Source/JavaScriptCore/heap/DelayedReleaseScope.h \
+	Source/JavaScriptCore/heap/GCActivityCallback.cpp \
+	Source/JavaScriptCore/heap/GCActivityCallback.h \
 	Source/JavaScriptCore/heap/GCSegmentedArray.h \
 	Source/JavaScriptCore/heap/GCSegmentedArrayInlines.h \
 	Source/JavaScriptCore/heap/GCAssertions.h \
@@ -677,7 +679,6 @@ javascriptcore_sources += \
 	Source/JavaScriptCore/icu/unicode/uversion.h \
 	Source/JavaScriptCore/inspector/ConsoleMessage.cpp \
 	Source/JavaScriptCore/inspector/ConsoleMessage.h \
-	Source/JavaScriptCore/inspector/ConsoleTypes.h \
 	Source/JavaScriptCore/inspector/ContentSearchUtilities.cpp \
 	Source/JavaScriptCore/inspector/ContentSearchUtilities.h \
 	Source/JavaScriptCore/inspector/IdentifiersFactory.cpp \
@@ -942,6 +943,11 @@ javascriptcore_sources += \
 	Source/JavaScriptCore/runtime/CodeCache.h \
 	Source/JavaScriptCore/runtime/CodeSpecializationKind.cpp \
 	Source/JavaScriptCore/runtime/CodeSpecializationKind.h \
+	Source/JavaScriptCore/runtime/ConsoleClient.cpp \
+	Source/JavaScriptCore/runtime/ConsoleClient.h \
+	Source/JavaScriptCore/runtime/ConsolePrototype.cpp \
+	Source/JavaScriptCore/runtime/ConsolePrototype.h \
+	Source/JavaScriptCore/runtime/ConsoleTypes.h \
 	Source/JavaScriptCore/runtime/CommonIdentifiers.cpp \
 	Source/JavaScriptCore/runtime/CommonIdentifiers.h \
 	Source/JavaScriptCore/runtime/CommonSlowPathsExceptions.cpp \
@@ -991,8 +997,6 @@ javascriptcore_sources += \
 	Source/JavaScriptCore/runtime/FunctionExecutableDump.h \
 	Source/JavaScriptCore/runtime/FunctionPrototype.cpp \
 	Source/JavaScriptCore/runtime/FunctionPrototype.h \
-	Source/JavaScriptCore/runtime/GCActivityCallback.cpp \
-	Source/JavaScriptCore/runtime/GCActivityCallback.h \
 	Source/JavaScriptCore/runtime/GenericTypedArrayView.h \
 	Source/JavaScriptCore/runtime/GenericTypedArrayViewInlines.h \
 	Source/JavaScriptCore/runtime/GetterSetter.cpp \
@@ -1035,6 +1039,8 @@ javascriptcore_sources += \
     Source/JavaScriptCore/runtime/JSArrayIterator.h \
 	Source/JavaScriptCore/runtime/JSCell.cpp \
 	Source/JavaScriptCore/runtime/JSCell.h \
+	Source/JavaScriptCore/runtime/JSConsole.cpp \
+	Source/JavaScriptCore/runtime/JSConsole.h \
 	Source/JavaScriptCore/runtime/JSDataView.cpp \
 	Source/JavaScriptCore/runtime/JSDataView.h \
 	Source/JavaScriptCore/runtime/JSDataViewPrototype.cpp \

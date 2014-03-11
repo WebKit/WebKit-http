@@ -76,7 +76,7 @@ using namespace WebKit;
 
     InitializeWebKit2();
 
-    _pageClient = std::make_unique<PageClientImpl>(self);
+    _pageClient = std::make_unique<PageClientImpl>(self, webView);
 
     _page = context.createWebPage(*_pageClient, std::move(webPageConfiguration));
     _page->initializeWebPage();
@@ -166,24 +166,20 @@ using namespace WebKit;
 - (void)didUpdateVisibleRect:(CGRect)visibleRect unobscuredRect:(CGRect)unobscuredRect scale:(CGFloat)scale inStableState:(BOOL)isStableState
 {
     double scaleNoiseThreshold = 0.0005;
-    if (!isStableState && abs(scale - _page->displayedContentScale()) < scaleNoiseThreshold) {
+    if (!isStableState && fabs(scale - _page->displayedContentScale()) < scaleNoiseThreshold) {
         // Tiny changes of scale during interactive zoom cause content to jump by one pixel, creating
         // visual noise. We filter those useless updates.
         scale = _page->displayedContentScale();
     }
-    
-    _page->updateVisibleContentRects(VisibleContentRectUpdateInfo(visibleRect, unobscuredRect, scale));
+
+    FloatRect fixedPosRect = [self fixedPositionRectFromExposedRect:unobscuredRect scale:scale];
+    _page->updateVisibleContentRects(VisibleContentRectUpdateInfo(_page->nextVisibleContentRectUpdateID(), visibleRect, unobscuredRect, fixedPosRect, scale, isStableState));
 
     RemoteScrollingCoordinatorProxy* scrollingCoordinator = _page->scrollingCoordinatorProxy();
     scrollingCoordinator->scrollPositionChangedViaDelegatedScrolling(scrollingCoordinator->rootScrollingNodeID(), unobscuredRect.origin);
 
-    if (auto drawingArea = _page->drawingArea()) {
-        if (isStableState) {
-            FloatRect fixedPosRect = [self fixedPositionRectFromExposedRect:unobscuredRect scale:scale];
-            drawingArea->setCustomFixedPositionRect(fixedPosRect);
-        }
+    if (auto drawingArea = _page->drawingArea())
         drawingArea->updateDebugIndicator();
-    }
 }
 
 - (void)setMinimumSize:(CGSize)size

@@ -111,8 +111,6 @@ webcore_built_sources += \
 	DerivedSources/WebCore/JSComment.h \
 	DerivedSources/WebCore/JSCompositionEvent.cpp \
 	DerivedSources/WebCore/JSCompositionEvent.h \
-	DerivedSources/WebCore/JSConsole.cpp \
-	DerivedSources/WebCore/JSConsole.h \
 	DerivedSources/WebCore/JSConvolverNode.cpp \
 	DerivedSources/WebCore/JSConvolverNode.h \
 	DerivedSources/WebCore/JSCoordinates.cpp \
@@ -604,6 +602,8 @@ webcore_built_sources += \
 	DerivedSources/WebCore/JSRequestAnimationFrameCallback.h \
 	DerivedSources/WebCore/JSRGBColor.cpp \
 	DerivedSources/WebCore/JSRGBColor.h \
+	DerivedSources/WebCore/JSRTCConfiguration.cpp \
+	DerivedSources/WebCore/JSRTCConfiguration.h \
 	DerivedSources/WebCore/JSRTCDTMFSender.cpp \
 	DerivedSources/WebCore/JSRTCDTMFSender.h \
 	DerivedSources/WebCore/JSRTCDTMFToneChangeEvent.cpp \
@@ -618,6 +618,8 @@ webcore_built_sources += \
 	DerivedSources/WebCore/JSRTCIceCandidate.h \
 	DerivedSources/WebCore/JSRTCIceCandidateEvent.cpp \
 	DerivedSources/WebCore/JSRTCIceCandidateEvent.h \
+	DerivedSources/WebCore/JSRTCIceServer.cpp \
+	DerivedSources/WebCore/JSRTCIceServer.h \
 	DerivedSources/WebCore/JSRTCPeerConnection.cpp \
 	DerivedSources/WebCore/JSRTCPeerConnection.h \
 	DerivedSources/WebCore/JSRTCSessionDescription.cpp \
@@ -1225,6 +1227,7 @@ dom_binding_idls += \
 	$(WebCore)/Modules/mediastream/NavigatorUserMediaError.idl \
 	$(WebCore)/Modules/mediastream/NavigatorUserMediaErrorCallback.idl \
 	$(WebCore)/Modules/mediastream/NavigatorUserMediaSuccessCallback.idl \
+	$(WebCore)/Modules/mediastream/RTCConfiguration.idl \
 	$(WebCore)/Modules/mediastream/RTCDTMFSender.idl \
 	$(WebCore)/Modules/mediastream/RTCDTMFToneChangeEvent.idl \
 	$(WebCore)/Modules/mediastream/RTCDataChannel.idl \
@@ -1232,6 +1235,7 @@ dom_binding_idls += \
 	$(WebCore)/Modules/mediastream/RTCPeerConnectionErrorCallback.idl \
 	$(WebCore)/Modules/mediastream/RTCIceCandidate.idl \
 	$(WebCore)/Modules/mediastream/RTCIceCandidateEvent.idl \
+	$(WebCore)/Modules/mediastream/RTCIceServer.idl \
 	$(WebCore)/Modules/mediastream/RTCPeerConnection.idl \
 	$(WebCore)/Modules/mediastream/RTCSessionDescription.idl \
 	$(WebCore)/Modules/mediastream/RTCSessionDescriptionCallback.idl \
@@ -1556,7 +1560,6 @@ dom_binding_idls += \
 	$(WebCore)/inspector/ScriptProfileNode.idl \
 	$(WebCore)/loader/appcache/DOMApplicationCache.idl \
 	$(WebCore)/page/BarProp.idl \
-	$(WebCore)/page/Console.idl \
 	$(WebCore)/page/Crypto.idl \
 	$(WebCore)/page/DOMSecurityPolicy.idl \
 	$(WebCore)/page/DOMSelection.idl \
@@ -1948,6 +1951,8 @@ webcore_modules_sources += \
 	Source/WebCore/Modules/mediastream/RTCIceCandidate.h \
 	Source/WebCore/Modules/mediastream/RTCIceCandidateEvent.cpp \
 	Source/WebCore/Modules/mediastream/RTCIceCandidateEvent.h \
+	Source/WebCore/Modules/mediastream/RTCOfferAnswerOptions.cpp \
+	Source/WebCore/Modules/mediastream/RTCOfferAnswerOptions.h \
 	Source/WebCore/Modules/mediastream/RTCPeerConnection.cpp \
 	Source/WebCore/Modules/mediastream/RTCPeerConnection.h \
 	Source/WebCore/Modules/mediastream/RTCSessionDescription.cpp \
@@ -4041,8 +4046,6 @@ webcore_sources += \
 	Source/WebCore/page/Chrome.cpp \
 	Source/WebCore/page/Chrome.h \
 	Source/WebCore/page/ChromeClient.h \
-	Source/WebCore/page/Console.cpp \
-	Source/WebCore/page/Console.h \
 	Source/WebCore/page/ContentSecurityPolicy.cpp \
 	Source/WebCore/page/ContentSecurityPolicy.h \
 	Source/WebCore/page/ContextMenuClient.h \
@@ -6004,6 +6007,7 @@ platform_sources += \
 	Source/WebCore/platform/URL.h \
 	Source/WebCore/platform/URLHash.h \
 	Source/WebCore/platform/KeyedCoding.h \
+	Source/WebCore/platform/KeypressCommand.h \
 	Source/WebCore/platform/KillRing.h \
 	Source/WebCore/platform/KillRingNone.cpp \
 	Source/WebCore/platform/Language.cpp \

@@ -276,6 +276,9 @@ HTMLMediaElement::HTMLMediaElement(const QualifiedName& tagName, Document& docum
     , m_clockTimeAtLastUpdateEvent(0)
     , m_lastTimeUpdateEventMovieTime(std::numeric_limits<double>::max())
     , m_loadState(WaitingForSource)
+#if PLATFORM(IOS)
+    , m_videoFullscreenGravity(MediaPlayer::VideoGravityResizeAspect)
+#endif
 #if ENABLE(PLUGIN_PROXY_FOR_VIDEO)
     , m_proxyWidget(0)
 #endif
@@ -319,7 +322,6 @@ HTMLMediaElement::HTMLMediaElement(const QualifiedName& tagName, Document& docum
 #endif
 #if PLATFORM(IOS)
     , m_requestingPlay(false)
-    , m_platformLayerBorrowed(false)
 #endif
 #if ENABLE(VIDEO_TRACK)
     , m_tracksAreReady(true)
@@ -1597,6 +1599,11 @@ void HTMLMediaElement::textTrackModeChanged(TextTrack* track)
 
     if (m_textTracks && m_textTracks->contains(track))
         m_textTracks->scheduleChangeEvent();
+
+#if ENABLE(AVF_CAPTIONS)
+    if (track->trackType() == TextTrack::TrackElement && m_player)
+        m_player->notifyTrackModeChanged();
+#endif
 }
 
 void HTMLMediaElement::videoTrackSelectedChanged(VideoTrack* track)
@@ -4942,29 +4949,35 @@ PlatformMedia HTMLMediaElement::platformMedia() const
 PlatformLayer* HTMLMediaElement::platformLayer() const
 {
 #if PLATFORM(IOS)
-    if (m_platformLayerBorrowed)
+    if (m_videoFullscreenLayer)
         return nullptr;
 #endif
     return m_player ? m_player->platformLayer() : nullptr;
 }
 
 #if PLATFORM(IOS)
-PlatformLayer* HTMLMediaElement::borrowPlatformLayer()
+void HTMLMediaElement::setVideoFullscreenLayer(PlatformLayer* platformLayer)
 {
-    ASSERT(!m_platformLayerBorrowed);
-    m_platformLayerBorrowed = true;
-    if (renderer())
-        renderer()->updateFromElement();
-    return m_player ? m_player->platformLayer() : nullptr;
+    m_videoFullscreenLayer = platformLayer;
+    if (!m_player)
+        return;
+    
+    m_player->setVideoFullscreenLayer(platformLayer);
+    setNeedsStyleRecalc(SyntheticStyleChange);
+}
+    
+void HTMLMediaElement::setVideoFullscreenFrame(FloatRect frame)
+{
+    m_videoFullscreenFrame = frame;
+    if (m_player)
+        m_player->setVideoFullscreenFrame(frame);
 }
 
-void HTMLMediaElement::returnPlatformLayer(PlatformLayer* platformLayer)
+void HTMLMediaElement::setVideoFullscreenGravity(MediaPlayer::VideoGravity gravity)
 {
-    ASSERT_UNUSED(platformLayer, platformLayer == (m_player ? m_player->platformLayer() : nullptr));
-    ASSERT(m_platformLayerBorrowed);
-    m_platformLayerBorrowed = false;
-    if (renderer())
-        renderer()->updateFromElement();
+    m_videoFullscreenGravity = gravity;
+    if (m_player)
+        m_player->setVideoFullscreenGravity(gravity);
 }
 #endif
 
@@ -5344,6 +5357,12 @@ void HTMLMediaElement::createMediaPlayer()
         enqueuePlaybackTargetAvailabilityChangedEvent(); // Ensure the event listener gets at least one event.
     }
 #endif
+    
+#if PLATFORM(IOS)
+    m_player->setVideoFullscreenFrame(m_videoFullscreenFrame);
+    m_player->setVideoFullscreenGravity(m_videoFullscreenGravity);
+    m_player->setVideoFullscreenLayer(m_videoFullscreenLayer.get());
+#endif
 }
 
 #if ENABLE(WEB_AUDIO)
@@ -5538,8 +5557,6 @@ String HTMLMediaElement::mediaPlayerUserAgent() const
 #if ENABLE(AVF_CAPTIONS)
 Vector<RefPtr<PlatformTextTrack>> HTMLMediaElement::outOfBandTrackSources()
 {
-    static int uniqueId = 0;
-
     Vector<RefPtr<PlatformTextTrack>> outOfBandTrackSources;
     for (auto& trackElement : childrenOfType<HTMLTrackElement>(*this)) {
         
@@ -5564,8 +5581,18 @@ Vector<RefPtr<PlatformTextTrack>> HTMLMediaElement::outOfBandTrackSources()
             platformKind = PlatformTextTrack::Forced;
         else
             continue;
-
-        outOfBandTrackSources.append(PlatformTextTrack::createOutOfBand(trackElement.label(), trackElement.srclang(), url.string(), platformKind, ++uniqueId, trackElement.isDefault()));
+        
+        const AtomicString& mode = trackElement.track()->mode();
+        
+        PlatformTextTrack::TrackMode platformMode = PlatformTextTrack::Disabled;
+        if (TextTrack::hiddenKeyword() == mode)
+            platformMode = PlatformTextTrack::Hidden;
+        else if (TextTrack::disabledKeyword() == mode)
+            platformMode = PlatformTextTrack::Disabled;
+        else if (TextTrack::showingKeyword() == mode)
+            platformMode = PlatformTextTrack::Showing;
+        
+        outOfBandTrackSources.append(PlatformTextTrack::createOutOfBand(trackElement.label(), trackElement.srclang(), url.string(), platformMode, platformKind, trackElement.track()->uniqueId(), trackElement.isDefault()));
     }
     
     return outOfBandTrackSources;

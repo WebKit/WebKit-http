@@ -253,7 +253,6 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
 #if PLATFORM(COCOA)
     , m_pdfPluginEnabled(false)
     , m_hasCachedWindowFrame(false)
-    , m_keyboardEventBeingInterpreted(0)
     , m_viewGestureGeometryCollector(*this)
 #elif PLATFORM(GTK) && HAVE(ACCESSIBILITY)
     , m_accessibilityObject(0)
@@ -283,6 +282,7 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
 #endif
 #if PLATFORM(IOS)
     , m_shouldReturnWordAtSelection(false)
+    , m_lastVisibleContentRectUpdateID(0)
     , m_scaleWasSetByUIProcess(false)
     , m_userHasChangedPageScaleFactor(false)
 #endif
@@ -1321,7 +1321,9 @@ void WebPage::setUseFixedLayout(bool fixed)
         return;
     m_useFixedLayout = fixed;
 
+#if !PLATFORM(IOS)
     m_page->settings().setFixedElementsLayoutRelativeToFrame(fixed);
+#endif
 #if USE(COORDINATED_GRAPHICS)
     m_page->settings().setAcceleratedCompositingForFixedPositionEnabled(fixed);
     m_page->settings().setFixedPositionCreatesStackingContext(fixed);
@@ -2632,12 +2634,11 @@ void WebPage::willCommitLayerTree(RemoteLayerTreeTransaction& layerTransaction)
     layerTransaction.setPageScaleFactor(corePage()->pageScaleFactor());
     layerTransaction.setRenderTreeSize(corePage()->renderTreeSize());
 #if PLATFORM(IOS)
+    layerTransaction.setLastVisibleContentRectUpdateID(m_lastVisibleContentRectUpdateID);
     layerTransaction.setScaleWasSetByUIProcess(scaleWasSetByUIProcess());
     layerTransaction.setMinimumScaleFactor(minimumPageScaleFactor());
     layerTransaction.setMaximumScaleFactor(maximumPageScaleFactor());
     layerTransaction.setAllowsUserScaling(allowsUserScaling());
-    if (m_videoFullscreenManager)
-        m_videoFullscreenManager->willCommitLayerTree(layerTransaction);
 #endif
 }
 #endif
@@ -3067,6 +3068,22 @@ void WebPage::clearSelection()
     m_page->focusController().focusedOrMainFrame().selection().clear();
 }
 #endif
+
+bool WebPage::mainFrameHasCustomContentProvider() const
+{
+    if (Frame* frame = mainFrame()) {
+        WebFrameLoaderClient* webFrameLoaderClient = toWebFrameLoaderClient(frame->loader().client());
+        ASSERT(webFrameLoaderClient);
+        return webFrameLoaderClient->frameHasCustomContentProvider();
+    }
+
+    return false;
+}
+
+void WebPage::addMIMETypeWithCustomContentProvider(const String& mimeType)
+{
+    m_mimeTypesWithCustomContentProviders.add(mimeType);
+}
 
 void WebPage::updateMainFrameScrollOffsetPinning()
 {
@@ -3810,6 +3827,12 @@ bool WebPage::canPluginHandleResponse(const ResourceResponse& response)
 #endif
 }
 
+bool WebPage::shouldUseCustomContentProviderForResponse(const ResourceResponse& response)
+{
+    // If a plug-in exists that claims to support this response, it should take precedence over the custom content provider.
+    return m_mimeTypesWithCustomContentProviders.contains(response.mimeType()) && !canPluginHandleResponse(response);
+}
+
 #if PLATFORM(GTK)
 static Frame* targetFrameForEditing(WebPage* page)
 {
@@ -3953,6 +3976,9 @@ void WebPage::setSelectTrailingWhitespaceEnabled(bool enabled)
 bool WebPage::canShowMIMEType(const String& MIMEType) const
 {
     if (MIMETypeRegistry::canShowMIMEType(MIMEType))
+        return true;
+
+    if (m_mimeTypesWithCustomContentProviders.contains(MIMEType))
         return true;
 
     const PluginData& pluginData = m_page->pluginData();

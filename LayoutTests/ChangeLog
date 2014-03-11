@@ -1,3 +1,353 @@
+2014-03-10  Mihnea Ovidenie  <mihnea@adobe.com>
+
+        [CSSRegions] Fix broken paths in some regions tests
+        https://bugs.webkit.org/show_bug.cgi?id=130012
+
+        Reviewed by Andrei Bucur.
+
+        * fast/regions/cssom/offsetLeft-offsetTop-in-multiple-regions.html:
+        * fast/regions/region-styling/region-style-image-background-color-expected.html:
+        * fast/regions/region-styling/region-style-image-background-color.html:
+
+2014-03-09  Alexey Proskuryakov  <ap@apple.com>
+
+        REGRESSION: js/dom/create-lots-of-workers.html frequently crashes
+        (sometimes in js/dom/cross-frame-bad-time.html)
+        https://bugs.webkit.org/show_bug.cgi?id=129758
+
+        * platform/mac/TestExpectations: Skipped the test.
+
+2014-03-09  Oliver Hunt  <oliver@apple.com>
+
+        Skip fast/workers/worker-copy-shared-blob-url.html in webkit2
+
+        * platform/wk2/TestExpectations:
+
+2014-03-08  Zalan Bujtas  <zalan@apple.com>
+
+        Subpixel rendering: Simple compositing container layer (isSimpleContainerCompositingLayer) paints to wrong position.
+        https://bugs.webkit.org/show_bug.cgi?id=129861
+
+        Reviewed by Simon Fraser.
+
+        This patch ensures that both the simple and non-simple cases paint to the same position.
+        Simple compositing container layer codepath needs to take the fractional device pixel offset
+        into account when painting. Without the fractional value, the final paint rounding could push the
+        paint offset to a different position.
+        retina example:
+        compositing top-left: 0px 0px.
+        fractional offset: 0.3px 0.3px
+        painting coords without offseting: 0px 0px
+                           with offseting: 0.5px 0.5px
+
+        * compositing/hidpi-simple-container-layer-on-device-pixel-expected.html: Added.
+        * compositing/hidpi-simple-container-layer-on-device-pixel.html: Added.
+
+2014-03-08  Martin Robinson  <mrobinson@igalia.com>
+
+        Skip tests on GTK+ for unimplemented features
+
+        * platform/gtk/TestExpectations: When a feature is unimplemented, the tests may fail or
+        they may timeout, or perhaps they will crash. We just skip them here, so that we don't
+        have to micromanage expectations for tests against incomplete features.
+
+2014-03-08  Oliver Hunt  <oliver@apple.com>
+
+        SerializedScriptValue may move Identifiers between worlds
+        https://bugs.webkit.org/show_bug.cgi?id=129979
+
+        Reviewed by Andreas Kling.
+
+        Add test cases
+
+        * fast/workers/resources/worker-copy-shared-blob-url-worker.js: Added.
+        (count.0.onmessage):
+        * fast/workers/worker-copy-shared-blob-url-expected.txt: Added.
+        * fast/workers/worker-copy-shared-blob-url.html: Added.
+
+2014-03-08  Martin Robinson  <mrobinson@igalia.com>
+
+        Lots of cleanups for the GTK+ TestExpectations
+
+        Updated TestExpectations, adding bug standins where appropriate, skipping tests that
+        expected to fail and prone to timeout or crash. Removed some unused expectations. Added
+        new baselines for some tests.
+
+        * platform/gtk-wk1/TestExpectations: Updated expectations.
+        * platform/gtk-wk2/TestExpectations: Ditto.
+        * platform/gtk/TestExpectations: Ditto.
+
+2014-03-08  Martin Robinson  <mrobinson@igalia.com>
+
+        Add and update some test expectations for GTK+
+
+        * platform/gtk/TestExpectations: These all seem to be failing because of the same bug.
+
+2014-03-08  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Mountain Lion WK1 test bots are crashing often
+        https://bugs.webkit.org/show_bug.cgi?id=129962
+
+        Marking the following tests as flakey:
+        js/dom/cross-frame-bad-time.html
+        js/dom/create-lots-of-workers.html
+
+        Unreviewed.
+
+        * platform/mac-wk1/TestExpectations:
+
+2014-03-07  Martin Robinson  <mrobinson@igalia.com>
+
+        Mark some more tests as failing on WebKitGTK+ and file bugs for them
+
+        * platform/gtk/TestExpectations: Update test expectations.
+
+2014-03-07  Thiago de Barros Lacerda  <thiago.lacerda@openbossa.org>
+
+        [WebRTC] Throw SYNTAX_ERROR when maxRetransmits and maxRetransmitTime are both set in RTCDataChannelInit
+        https://bugs.webkit.org/show_bug.cgi?id=129894
+
+        Reviewed by Eric Carlson.
+
+        * fast/mediastream/RTCPeerConnection-datachannel-expected.txt:
+        * fast/mediastream/RTCPeerConnection-datachannel.html:
+
+2014-03-07  Martin Robinson  <mrobinson@igalia.com>
+
+        Rebaseline some tests for WebKitGTK+
+
+        * platform/gtk: Rebaseline tests.
+
+2014-03-07  Oliver Hunt  <oliver@apple.com>
+
+        Continue hangs when performing for-of over arguments
+        https://bugs.webkit.org/show_bug.cgi?id=129915
+
+        Reviewed by Geoffrey Garen.
+
+        Add tests
+
+        * js/for-of-arguments-continue-hang-expected.txt: Added.
+        * js/for-of-arguments-continue-hang.html: Added.
+        * js/script-tests/for-of-arguments-continue-hang.js: Added.
+        (test):
+
+2014-03-07  Benjamin Poulain  <benjamin@webkit.org>
+
+        Traversal failure in a direct adjacent chain with tail backtracking lacks the path to clear the tail
+        https://bugs.webkit.org/show_bug.cgi?id=129863
+
+        Reviewed by Gavin Barraclough.
+
+        Test the faulty case.
+
+        * fast/selectors/long-adjacent-backtracking-expected.txt: Added.
+        * fast/selectors/long-adjacent-backtracking.html: Added.
+
+2014-03-07  Bear Travis  <betravis@adobe.com>
+
+        [CSS Shapes] Correctly serialize ellipse positions
+        https://bugs.webkit.org/show_bug.cgi?id=129700
+
+        Reviewed by Dirk Schulze.
+
+        Update tests to use the new position serialization for
+        ellipse.
+
+        * fast/shapes/parsing/parsing-shape-inside-expected.txt:
+        * fast/shapes/parsing/parsing-shape-outside-expected.txt:
+        * fast/shapes/parsing/parsing-test-utils.js:
+
+2014-03-07  Michał Pakuła vel Rutka  <m.pakula@samsung.com>
+
+        Unreviewed EFL gardening
+
+        Clear test expectations for passing tests.
+
+        * platform/efl/TestExpectations:
+
+2014-03-07  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r165262.
+        http://trac.webkit.org/changeset/165262
+        https://bugs.webkit.org/show_bug.cgi?id=129887
+
+        Fix wrong commit message (Requested by mpakula on #webkit).
+
+        * platform/efl/TestExpectations:
+
+2014-03-07  Bem Jones-Bey  <bjonesbe@adobe.com>
+
+        [CSS Shapes] inset does not properly clamp large corner radii
+        https://bugs.webkit.org/show_bug.cgi?id=129726
+
+        Reviewed by Dirk Schulze.
+
+        * fast/shapes/shape-outside-floats/shape-outside-floats-inset-rounded-large-radius-expected.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-inset-rounded-large-radius.html: Added.
+
+2014-03-07  Michał Pakuła vel Rutka  <m.pakula@samsung.com>
+
+        Unreviewed EFL gardening
+
+        Clear test expectations for passing tests.
+
+        * platform/efl/TestExpectations:
+
+2014-03-07  Michał Pakuła vel Rutka  <m.pakula@samsung.com>
+
+        Unreviewed EFL gardening
+
+        Remove wrong test expectations.
+
+        * platform/efl-wk2/TestExpectations:
+        * platform/efl/TestExpectations:
+
+2014-03-07  Thiago de Barros Lacerda  <thiago.lacerda@openbossa.org>
+
+        [WebRTC] Adding getConfiguration method to RTCPeerConnection
+        https://bugs.webkit.org/show_bug.cgi?id=129845
+
+        Reviewed by Eric Carlson.
+
+        * fast/mediastream/RTCPeerConnection-getConfiguration-expected.txt: Added.
+        * fast/mediastream/RTCPeerConnection-getConfiguration.html: Added.
+
+2014-03-06  Thiago de Barros Lacerda  <thiago.lacerda@openbossa.org>
+
+        [WebRTC] Updating RTCPeerConnection.idl
+        https://bugs.webkit.org/show_bug.cgi?id=129804
+
+        Reviewed by Eric Carlson.
+
+        Some methods signatures were wrong, marking some arguments as optional when they are mandatory.
+
+        * fast/mediastream/RTCPeerConnection-stats.html:
+        * fast/mediastream/RTCPeerConnection-statsSelector.html:
+
+2014-03-06  Andy Estes  <aestes@apple.com>
+
+        Test that the screen orientation does not change when focusing a <textarea>
+        https://bugs.webkit.org/show_bug.cgi?id=129847
+
+        Reviewed by Enrica Casucci.
+
+        * fast/css/orientation-changes-on-textarea-focus-expected.html: Added.
+        * fast/css/orientation-changes-on-textarea-focus.html: Added.
+
+2014-03-06  Mark Lam  <mark.lam@apple.com>
+
+        XMLHttpRequest: status and statusText throw DOM Exception 11 when the state is UNSENT or OPENED.
+        https://bugs.webkit.org/show_bug.cgi?id=45994
+
+        Not reviewed.
+
+        Re-landing r161051 (originally by Ryosuke Niwa, reviewed by Alexey Proskuryakov)
+        since https://bugs.webkit.org/show_bug.cgi?id=126219 is no longer an issue.
+
+        * http/tests/xmlhttprequest/exceptions-expected.txt:
+        * http/tests/xmlhttprequest/exceptions.html:
+        * http/tests/xmlhttprequest/status-after-abort-expected.txt:
+        * http/tests/xmlhttprequest/zero-length-response-expected.txt:
+        * js/dom/dfg-custom-getter-throw-expected.txt:
+        * js/dom/script-tests/dfg-custom-getter-throw-inlined.js:
+        (foo):
+        (bar):
+        * js/dom/script-tests/dfg-custom-getter-throw.js:
+        (foo):
+        (bar):
+
+2014-03-06  Thiago de Barros Lacerda  <thiago.lacerda@openbossa.org>
+
+        [WebRTC] Updating createOffer and createAnswer methods to match WebRTC editor's draft of 01/27/2014
+        https://bugs.webkit.org/show_bug.cgi?id=129484
+
+        Reviewed by Eric Carlson.
+
+        According to the spec, createOffer and createAnswer will no longer have MediaConstraints as an argument,
+        instead they will have RTCOfferOptions and RTCOfferAnswerOptions, respectively.
+
+        * fast/mediastream/RTCPeerConnection-createAnswer-expected.txt:
+        * fast/mediastream/RTCPeerConnection-createAnswer.html:
+        * fast/mediastream/RTCPeerConnection-createOffer-expected.txt:
+        * fast/mediastream/RTCPeerConnection-createOffer.html:
+
+2014-03-05  Oliver Hunt  <oliver@apple.com>
+
+        Support caching of custom setters
+        https://bugs.webkit.org/show_bug.cgi?id=129519
+
+        Reviewed by Filip Pizlo.
+
+        Add test cases.
+
+        * js/regress/assign-custom-setter-expected.txt: Added.
+        * js/regress/assign-custom-setter-polymorphic-expected.txt: Added.
+        * js/regress/assign-custom-setter-polymorphic.html: Added.
+        * js/regress/assign-custom-setter.html: Added.
+        * js/regress/script-tests/assign-custom-setter-polymorphic.js: Added.
+        (test):
+        * js/regress/script-tests/assign-custom-setter.js: Added.
+        (test):
+
+2014-03-06  Michał Pakuła vel Rutka  <m.pakula@samsung.com>
+
+        Unreviewed EFL gardening
+
+        Add test expectations for failing tests and remove crash expectations after r164718.
+
+        * platform/efl-wk2/TestExpectations:
+        * platform/efl/TestExpectations:
+        * platform/efl/compositing/layer-creation/overlap-animation-container-expected.txt: Added after r164449.
+        * platform/efl/fast/text/international/unicode-bidi-plaintext-in-textarea-expected.txt: Rebaseline after r164867.
+
+2014-03-06  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Expose the console object in JSContexts to interact with Web Inspector
+        https://bugs.webkit.org/show_bug.cgi?id=127944
+
+        Reviewed by Geoffrey Garen.
+
+        * http/tests/security/cross-frame-access-getOwnPropertyDescriptor-expected.txt:
+
+2014-03-06  Brendan Long  <b.long@cablelabs.com>
+
+        Implement VideoTrackList.selectedIndex
+        https://bugs.webkit.org/show_bug.cgi?id=129770
+
+        Reviewed by Eric Carlson.
+
+        * media/track/video/video-track-mkv-theora-selected-expected.txt:
+        * media/track/video/video-track-mkv-theora-selected.html:
+
+2014-03-06  Gurpreet Kaur  <k.gurpreet@samsung.com>
+
+        REGRESSION (r158254): Rubber-banding at Bing image search causes the toolbar to move up and away
+        https://bugs.webkit.org/show_bug.cgi?id=128873
+
+        Reviewed by Antonio Gomes.
+
+        * fast/css/zoom-body-scroll-expected.txt:
+        * fast/css/zoom-body-scroll.html:
+        * fast/dom/Element/documentElement-scrollLeft-expected.txt:
+        * fast/dom/Element/documentElement-scrollLeft.html:
+        * fast/dom/Element/documentElement-scrollTop-expected.txt:
+        * fast/dom/Element/documentElement-scrollTop.html:
+        * fast/dom/Element/scrollLeft-expected.txt:
+        * fast/dom/Element/scrollLeft.html:
+        * fast/dom/Element/scrollTop-expected.txt:
+        * fast/dom/Element/scrollTop.html:
+        * fast/events/mouse-cursor.html:
+        * fast/multicol/scrolling-overflow.html:
+        * http/tests/navigation/anchor-frames-expected.txt:
+        * http/tests/navigation/anchor-frames-gbk-expected.txt:
+        * http/tests/navigation/resources/frame-with-anchor-gbk.html:
+        * http/tests/navigation/resources/frame-with-anchor-same-origin.html:
+        * http/tests/navigation/resources/frame-with-anchor.html:
+        * platform/mac-wk2/tiled-drawing/resources/scroll-and-load-page.html:
+        * platform/mac-wk2/tiled-drawing/tiled-drawing-scroll-position-page-cache-restoration.html:
+        Reverting changes as it caused regression.
+
 2014-03-05  Jinwoo Song  <jinwoo7.song@samsung.com>
 
         Unreviewed EFL gardening.

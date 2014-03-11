@@ -880,7 +880,7 @@ void SpeculativeJIT::compileIn(Node* node)
             stubInfo->patch.baseGPR = static_cast<int8_t>(baseGPR);
             stubInfo->patch.valueGPR = static_cast<int8_t>(resultGPR);
             stubInfo->patch.usedRegisters = usedRegisters();
-            stubInfo->patch.registersFlushed = false;
+            stubInfo->patch.spillMode = NeedToSpill;
             
             m_jit.addIn(InRecord(jump, done, slowPath.get(), stubInfo));
             addSlowPathGenerator(slowPath.release());
@@ -3640,10 +3640,6 @@ bool SpeculativeJIT::compileStrictEqForConstant(Node* node, Edge value, JSValue 
 {
     JSValueOperand op1(this, value);
     
-    // FIXME: This code is wrong for the case that the constant is null or undefined,
-    // and the value is an object that MasqueradesAsUndefined.
-    // https://bugs.webkit.org/show_bug.cgi?id=109487
-    
     unsigned branchIndexInBlock = detectPeepHoleBranch();
     if (branchIndexInBlock != UINT_MAX) {
         Node* branchNode = m_block->at(branchIndexInBlock);
@@ -5469,17 +5465,6 @@ void SpeculativeJIT::compileStoreBarrier(Node* node)
     noResult(node);
 }
 
-JITCompiler::Jump SpeculativeJIT::checkMarkByte(CCallHelpers& jit, GPRReg owner)
-{
-    return jit.branchTest8(MacroAssembler::NonZero, MacroAssembler::Address(owner, JSCell::gcDataOffset()));
-}
-
-JITCompiler::Jump SpeculativeJIT::checkMarkByte(CCallHelpers& jit, JSCell* owner)
-{
-    uint8_t* address = reinterpret_cast<uint8_t*>(owner) + JSCell::gcDataOffset();
-    return jit.branchTest8(MacroAssembler::NonZero, MacroAssembler::AbsoluteAddress(address));
-}
-
 void SpeculativeJIT::storeToWriteBarrierBuffer(GPRReg cell, GPRReg scratch1, GPRReg scratch2)
 {
     ASSERT(scratch1 != scratch2);
@@ -5536,14 +5521,14 @@ void SpeculativeJIT::writeBarrier(GPRReg ownerGPR, JSCell* value, GPRReg scratch
     if (Heap::isMarked(value))
         return;
 
-    JITCompiler::Jump ownerNotMarkedOrAlreadyRemembered = checkMarkByte(m_jit, ownerGPR);
+    JITCompiler::Jump ownerNotMarkedOrAlreadyRemembered = m_jit.checkMarkByte(ownerGPR);
     storeToWriteBarrierBuffer(ownerGPR, scratch1, scratch2);
     ownerNotMarkedOrAlreadyRemembered.link(&m_jit);
 }
 
 void SpeculativeJIT::writeBarrier(GPRReg ownerGPR, GPRReg scratch1, GPRReg scratch2)
 {
-    JITCompiler::Jump ownerNotMarkedOrAlreadyRemembered = checkMarkByte(m_jit, ownerGPR);
+    JITCompiler::Jump ownerNotMarkedOrAlreadyRemembered = m_jit.checkMarkByte(ownerGPR);
     storeToWriteBarrierBuffer(ownerGPR, scratch1, scratch2);
     ownerNotMarkedOrAlreadyRemembered.link(&m_jit);
 }

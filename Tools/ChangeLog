@@ -1,3 +1,219 @@
+2014-03-09  Martin Robinson  <mrobinson@igalia.com>
+
+        RunGtkWebKitGObjectDOMBindingsAPIBreakTests should be added to the BuildAndTestFactory not the TestFactory
+        https://bugs.webkit.org/show_bug.cgi?id=129980
+
+        Reviewed by Carlos Garcia Campos.
+
+        * BuildSlaveSupport/build.webkit.org-config/master.cfg: Add RunGtkWebKitGObjectDOMBindingsAPIBreakTests to the correct factory.
+
+2014-03-09  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK] Remove the WebView source-mode WebKit1 test
+        https://bugs.webkit.org/show_bug.cgi?id=129976
+
+        Reviewed by Carlos Garcia Campos.
+
+        * TestWebKitAPI/Tests/WebKitGtk/testwebview.c: Remove the source-mode test.
+
+2014-03-08  Martin Robinson  <mrobinson@igalia.com>
+
+        Unreviewed build fix for GTKbuild after the switch to CMake
+
+        * gtk/common.py:
+        (is_cmake_build): Like r165284, we need to assume CMake by default, since the
+        test-only bot doesn't have any build files.
+
+2014-03-07  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK] built-product-archive does not handle GTK+ CMake build
+        https://bugs.webkit.org/show_bug.cgi?id=129941
+
+        * BuildSlaveSupport/built-product-archive:
+        (archiveBuiltProduct): Fix the build by adding support to built-product-archive for
+        the CMake build.
+
+2014-03-07  Lorenzo Tilve  <ltilve@igalia.com>
+
+        [GTK] Include CMake into install-dependencies script
+        https://bugs.webkit.org/show_bug.cgi?id=129909
+
+        Reviewed by Martin Robinson.
+
+        As since r165267 buid-webkit uses CMake by default, the dependency
+        with 'cmake' package should be introduced.
+
+        * gtk/install-dependencies: Ditto.
+
+2014-03-07  Martin Robinson  <mrobinson@igalia.com>
+
+        REGRESSION(165267): Broke a webkitpy unit tests
+        https://bugs.webkit.org/show_bug.cgi?id=129904
+
+        Reviewed by Jon Honeycutt.
+
+        * Scripts/webkitpy/port/gtk.py: Flip the default test to assume CMake by default.
+        (GtkPort._is_cmake_build):
+
+2014-03-07  Andres Gomez  <agomez@igalia.com>
+
+        [GTK] webkit-patch setup-git-clone fails even after running Tools/gtk/install-dependencies
+        https://bugs.webkit.org/show_bug.cgi?id=129893
+
+        Reviewed by Martin Robinson.
+
+        Added "git-svn" as dependency for deb based distros and,
+        additionally, "subversion" for rpm based distros.
+
+        * gtk/install-dependencies:
+
+2014-03-07  Roger Fong  <roger_fong@apple.com>
+
+        Remove dummy setSystemWebGLLoadPolicy client method.
+        https://bugs.webkit.org/show_bug.cgi?id=129873.
+
+        Reviewed by Dean Jackson.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::createWebViewWithOptions):
+
+2014-03-07  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        run-jsc-stress-tests doesn't eagerly report test failures when using the shell runner
+        https://bugs.webkit.org/show_bug.cgi?id=129886
+
+        Reviewed by Mark Lam.
+
+        * Scripts/jsc-stress-test-helpers/shell-runner.sh: Added a "verbose" mode to the shell runner.
+        If we're in verbose mode, then we don't redirect any output when running each test. If we're not
+        in verbose mode then we redirect stdout to /dev/null and allow any stderr output through.
+        * Scripts/run-jsc-stress-tests: Redirect any sort of error output to stderr so that it will 
+        make it through when in non-verbose mode.
+
+2014-03-07  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK] buid-webkit should use CMake by default
+        https://bugs.webkit.org/show_bug.cgi?id=129855
+
+        Reviewed by Carlos Garcia Campos.
+
+        Make the CMake build the default GTK+ build when using build-webkit. This will
+        ensure that all bots are using CMake. We do this by swapping --gtk and --gtkcmake,
+        so that we have --gtk and --gtkautotools.
+
+        * Scripts/webkitdirs.pm: Swap --gtkcmake/--gtk for --gtk/--gtkautotools.
+        * Scripts/webkitpy/port/gtk.py: Ditto.
+
+2014-03-06  Martin Robinson  <mrobinson@igalia.com>
+
+        [CMake] [GTK] Build with ninja when it is available
+        https://bugs.webkit.org/show_bug.cgi?id=129805
+
+        Reviewed by Philippe Normand.
+
+        * Scripts/webkitdirs.pm:
+        (canUseNinja): Added this helper which tries to execute Ninja, in an effort to determine
+        if it's available on the system.
+        (cmakeGeneratedBuildfile): Return the path to the generated build file. Only Unix support ATM.
+        (generateBuildSystemFromCMakeProject): For GTK+ compile with Ninja when possible.
+
+2014-03-06  Filip Pizlo  <fpizlo@apple.com>
+
+        If the FTL is build-time enabled then it should be run-time enabled.
+
+        Rubber stamped by Geoffrey Garen.
+
+        * Scripts/run-jsc-stress-tests:
+
+2014-03-06  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        detectFailures in run-jsc-stress-tests can report everything was ok if too many tests fail
+        https://bugs.webkit.org/show_bug.cgi?id=129837
+
+        Reviewed by Michael Saboff.
+
+        ls test_fail_* can fail if there are too many files that match. We then swallow that error, which makes everything seem ok.
+        The fix is to use find instead of ls like we do in shell-runner.sh.
+
+        * Scripts/run-jsc-stress-tests:
+
+2014-03-06  Joseph Pecoraro  <pecoraro@apple.com>
+
+        filter-build-webkit should not strip .o
+        https://bugs.webkit.org/show_bug.cgi?id=129614
+
+        Reviewed by Dean Jackson.
+
+        This makes it much easier to jump from the failing output at
+        the end back up to the compile errors earlier in the output.
+
+        * Scripts/filter-build-webkit:
+
+2014-03-06  Anders Carlsson  <andersca@apple.com>
+
+        Build WebKit2 before building WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=129831
+        <rdar://problem/15920020>
+
+        Reviewed by Dan Bernstein.
+
+        * Scripts/build-webkit:
+        Always build WebKit2 and make sure to build it before WebKit when building on Mac.
+
+2014-03-06  ChangSeok Oh  <changseok.oh@collabora.com>
+
+        make-3.82 fails to build on ARM/Linux
+        https://bugs.webkit.org/show_bug.cgi?id=107926
+
+        Reviewed by Martin Robinson.
+
+        Some ARM/Linux systems don't support PAGE_SIZE macro so that it causes a build failure.
+        The related bug reporting is here. https://lists.debian.org/debian-kernel/2014/02/msg00274.html
+        To avoid this, I propose to use sysconf(_SC_PAGESIZE) instead of PAGE_SIZE
+        where it is not defined. See more details, http://linux.die.net/man/2/getpagesize
+
+        * gtk/patches/make-3.82-arg-list-length.patch:
+
+2014-03-06  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Close the page when the view is disposed instead of when finalized
+        https://bugs.webkit.org/show_bug.cgi?id=129783
+
+        Reviewed by Sergio Villar Senin.
+
+        Add test case but disabled for now because it's affetected by bug #129684.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestMultiprocess.cpp:
+        (testProcessPerWebView):
+
+2014-03-06  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] MiniBrowser crashes when opening several urls passed as command line options
+        https://bugs.webkit.org/show_bug.cgi?id=129738
+
+        Reviewed by Sergio Villar Senin.
+
+        The problem is that we are calling g_object_unref() for the
+        WebKitWebSettings everytime we set it to a WebKitWebView, but the
+        view only increases the reference counter when the settings is not
+        the same it currently has. We should release our reference once.
+
+        * MiniBrowser/gtk/main.c:
+        (createBrowserWindow):
+        (main):
+
+2014-03-05  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK][CMake] Tarball is created with wrong tarball paths
+        https://bugs.webkit.org/show_bug.cgi?id=129496
+
+        Reviewed by Daniel Bates.
+
+        * gtk/make-dist.py:
+        (Manifest.__init__): I inadvertently inverted the logic of these checks when
+        landing the original patch with some suggestions from the reviewer. With the
+        checks corrected, the tarball path is constructed properly.
+
 2014-03-05  Jae Hyun Park  <jaepark@webkit.org>
 
         Unreviewed. Update my email in contributors.json

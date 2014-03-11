@@ -1,3 +1,56 @@
+2014-03-08  Landry Breuil  <landry@openbsd.org>
+
+        Don't check for shm_open on librt on OpenBSD, lib doesnt exist.
+        https://bugs.webkit.org/show_bug.cgi?id=129973
+
+        Reviewed by Martin Robinson.
+
+        * Source/autotools/FindDependencies.m4:
+
+2014-03-06  Anders Carlsson  <andersca@apple.com>
+
+        Build WebKit2 before building WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=129831
+        <rdar://problem/15920020>
+
+        Reviewed by Dan Bernstein.
+
+        * Source/Makefile:
+        * WebKit.xcworkspace/xcshareddata/xcschemes/All Source (target WebProcess).xcscheme:
+        * WebKit.xcworkspace/xcshareddata/xcschemes/All Source.xcscheme:
+
+2014-03-06  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r165193.
+        http://trac.webkit.org/changeset/165193
+        https://bugs.webkit.org/show_bug.cgi?id=129823
+
+        Not specifying libc++ as the stdlib for Clang through CXXFLAGS
+        env confuses libtool (Requested by zdobersek on #webkit).
+
+        * Source/autotools/SetupCompilerFlags.m4:
+
+2014-03-06  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GTK][Autotools] Default to libc++ when compiling with Clang
+        https://bugs.webkit.org/show_bug.cgi?id=129798
+
+        Reviewed by Anders Carlsson.
+
+        * Source/autotools/SetupCompilerFlags.m4: Default to using libc++ when compiling with the Clang
+        compiler. This is still overridable if -stdlib=* flag was set through CXXFLAGS, in case people
+        would for some reason still prefer libstdc++ (i.e. on setups where a functional libc++ is not yet available).
+
+2014-03-05  Martin Robinson  <mrobinson@igalia.com>
+
+        [CMake] Ninja generator builds fail with "Argument list too long"
+        https://bugs.webkit.org/show_bug.cgi?id=129771
+
+        Reviewed by Daniel Bates.
+
+        * Source/cmake/OptionsCommon.cmake: Work around a bug in the Ninja CMake generator,
+        by forcing the use of response files.
+
 2014-03-05  Ryuan Choi  <ryuan.choi@samsung.com>
 
         [CMake] Use thin archives if building on Linux for non-shared-core debug builds

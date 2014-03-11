@@ -35,10 +35,12 @@
 #include "InspectorAgent.h"
 #include "InspectorBackendDispatcher.h"
 #include "InspectorFrontendChannel.h"
+#include "JSConsoleClient.h"
 #include "JSGlobalObject.h"
 #include "JSGlobalObjectConsoleAgent.h"
 #include "JSGlobalObjectDebuggerAgent.h"
 #include "JSGlobalObjectRuntimeAgent.h"
+#include "ScriptArguments.h"
 #include "ScriptCallStack.h"
 #include "ScriptCallStackFactory.h"
 #include <cxxabi.h>
@@ -59,6 +61,7 @@ JSGlobalObjectInspectorController::JSGlobalObjectInspectorController(JSGlobalObj
     auto debuggerAgent = std::make_unique<JSGlobalObjectDebuggerAgent>(m_injectedScriptManager.get(), m_globalObject, consoleAgent.get());
 
     m_consoleAgent = consoleAgent.get();
+    m_consoleClient = std::make_unique<JSConsoleClient>(m_consoleAgent);
 
     runtimeAgent->setScriptDebugServer(&debuggerAgent->scriptDebugServer());
 
@@ -138,6 +141,9 @@ void JSGlobalObjectInspectorController::appendAPIBacktrace(ScriptCallStack* call
 
 void JSGlobalObjectInspectorController::reportAPIException(ExecState* exec, JSValue exception)
 {
+    if (!m_consoleAgent->enabled())
+        return;
+
     if (isTerminatedExecutionException(exception))
         return;
 
@@ -152,6 +158,11 @@ void JSGlobalObjectInspectorController::reportAPIException(ExecState* exec, JSVa
     exec->clearException();
 
     m_consoleAgent->addMessageToConsole(MessageSource::JS, MessageType::Log, MessageLevel::Error, errorMessage, callStack);
+}
+
+ConsoleClient* JSGlobalObjectInspectorController::consoleClient() const
+{
+    return m_consoleClient.get();
 }
 
 InspectorFunctionCallHandler JSGlobalObjectInspectorController::functionCallHandler() const
