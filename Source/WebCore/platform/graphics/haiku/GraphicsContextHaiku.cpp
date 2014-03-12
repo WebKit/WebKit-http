@@ -220,7 +220,7 @@ public:
     }
 
 
-    void clipToShape(BShape* shape, bool inverse = false)
+    void clipToShape(BShape* shape, bool inverse, WindRule windRule)
     {
         // FIXME calling clipToShape several times without interleaved
         // Push/PopState should still intersect the clipping. In Haiku, it is
@@ -242,6 +242,7 @@ public:
         view->SetHighColor(make_color(0, 0, 0, 255));
         view->SetDrawingMode(B_OP_ALPHA);
 		view->SetBlendingMode(B_PIXEL_ALPHA, B_ALPHA_COMPOSITE);
+        view->SetFillRule(windRule == RULE_EVENODD ? B_EVEN_ODD : B_NONZERO);
 
         view->FillShape(shape);
 
@@ -478,7 +479,7 @@ void GraphicsContext::clipConvexPolygon(size_t numPoints, const FloatPoint* poin
         shape->LineTo(points[i]);
     }
     shape->Close();
-    m_data->clipToShape(shape);
+    m_data->clipToShape(shape, false, fillRule());
 }
 
 void GraphicsContext::fillRect(const FloatRect& rect, const Color& color, ColorSpace /*colorSpace*/)
@@ -583,7 +584,8 @@ void GraphicsContext::fillPath(const Path& path)
     if (paintingDisabled())
         return;
 
-//    m_data->view()->SetFillRule(toHaikuFillRule(fillRule()));
+    m_data->view()->SetFillRule(
+        fillRule() == RULE_NONZERO ? B_NONZERO : B_EVEN_ODD);
     m_data->view()->MovePenTo(B_ORIGIN);
 
     if (m_state.fillPattern || m_state.fillGradient || fillColor().alpha()) {
@@ -599,17 +601,15 @@ void GraphicsContext::fillPath(const Path& path)
             if (m_data->view()->HighColor().alpha < 255)
                 m_data->view()->SetDrawingMode(B_OP_ALPHA);
 
-            // FIXME must use even-odd rule (this is used to make the "hole"
-            // inside a border!)
             m_data->view()->FillShape(path.platformPath());
             m_data->view()->SetDrawingMode(mode);
         }
     }
 }
 
-void GraphicsContext::clipPath(const Path& path, WindRule clipRule)
+void GraphicsContext::clipPath(const Path& path, WindRule windRule)
 {
-    clip(path, clipRule);
+    clip(path, windRule);
 }
 
 void GraphicsContext::clip(const FloatRect& rect)
@@ -635,17 +635,17 @@ IntRect GraphicsContext::clipBounds() const
     return IntRect(r);
 }
 
-void GraphicsContext::clip(const Path& path, WindRule)
+void GraphicsContext::clip(const Path& path, WindRule windRule)
 {
     if (paintingDisabled())
         return;
 
-    m_data->clipToShape(path.platformPath());
+    m_data->clipToShape(path.platformPath(), false, windRule);
 }
 
-void GraphicsContext::canvasClip(const Path& path, WindRule)
+void GraphicsContext::canvasClip(const Path& path, WindRule windRule)
 {
-    clip(path);
+    clip(path, windRule);
 }
 
 void GraphicsContext::clipOut(const Path& path)
@@ -656,7 +656,7 @@ void GraphicsContext::clipOut(const Path& path)
     if (path.isEmpty()) {
         return;
     }
-    m_data->clipToShape(path.platformPath(), true);
+    m_data->clipToShape(path.platformPath(), true, fillRule());
 }
 
 void GraphicsContext::clipOut(const FloatRect& rect)
@@ -877,6 +877,9 @@ AffineTransform GraphicsContext::getCTM(IncludeDeviceScale) const
     BPoint origin = m_data->view()->Origin();
     matrix.translate(origin.x, origin.y);
     matrix.scale(m_data->view()->Scale());
+
+    // TODO also handle view()->Transform()
+
     return matrix;
 }
 
@@ -898,6 +901,7 @@ void GraphicsContext::rotate(float /*radians*/)
     if (paintingDisabled())
         return;
 
+    puts("CTM:rotate");
     notImplemented();
 }
 
@@ -910,20 +914,26 @@ void GraphicsContext::scale(const FloatSize& size)
     m_data->view()->SetScale((size.width() + size.height()) / 2);
 }
 
-void GraphicsContext::concatCTM(const AffineTransform& /*transform*/)
+void GraphicsContext::concatCTM(const AffineTransform& transform)
 {
     if (paintingDisabled())
         return;
 
-    notImplemented();
+#if 0
+    // FIXME get this to work
+    BAffineTransform current = m_data->view()->Transform();
+    current.Multiply(transform);
+        // Should we use PreMultiply? MultiplyInverse?
+    m_data->view()->SetTransform(current);
+#endif
 }
 
-void GraphicsContext::setCTM(const AffineTransform& /*transform*/)
+void GraphicsContext::setCTM(const AffineTransform& transform)
 {
     if (paintingDisabled())
         return;
 
-    notImplemented();
+    m_data->view()->SetTransform(transform);
 }
 
 void GraphicsContext::setPlatformShouldAntialias(bool /*enable*/)
