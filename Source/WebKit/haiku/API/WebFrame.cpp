@@ -96,7 +96,7 @@ bool
 WebFramePrivate::Init(WebCore::Page* page, BWebFrame* frame,
     PassOwnPtr<WebCore::FrameLoaderClientHaiku> frameLoaderClient)
 {
-    if(!frame) {
+    if(!this->frame) {
         loaderClient = frameLoaderClient;
         loaderClient->setFrame(frame);
         this->page = page;
@@ -450,14 +450,14 @@ BWebFrame* BWebFrame::AddChild(BWebPage* page, BString name,
         return nullptr;
     }
 
-    RefPtr<WebCore::Frame> coreFrame = WebCore::Frame::create(data->page,
-        ownerElement, fData->loaderClient.get());
+    RefPtr<WebCore::Frame> coreFrame = WebCore::Frame::create(fData->page,
+        ownerElement, data->loaderClient.get());
     // We don't keep the reference to the Frame, see WebFramePrivate.h.
     data->frame = coreFrame.get();
     coreFrame->tree().setName(name.String());
 
-    if (fData->ownerElement)
-        Frame()->tree().appendChild(coreFrame.release());
+    if (ownerElement)
+        ownerElement->document().frame()->tree().appendChild(coreFrame.release());
     data->frame->init();
     // TODO? evas_object_smart_member_add(frame, ewkFrame);
     
