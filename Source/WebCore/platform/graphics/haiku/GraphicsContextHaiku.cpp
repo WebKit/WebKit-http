@@ -888,6 +888,10 @@ void GraphicsContext::translate(float x, float y)
     if (paintingDisabled())
         return;
 
+    // FIXME this will translate the existing clipping region, but this isn't
+    // what WebKit expects. Find a way to cancel that. See GradientImage.cpp
+    // (GradientImage::draw) for a place where this problem is visible.
+
     m_data->m_currentLayer->accumulatedOrigin.x += x;
     m_data->m_currentLayer->accumulatedOrigin.y += y;
     BPoint origin(m_data->view()->Origin());
@@ -919,13 +923,10 @@ void GraphicsContext::concatCTM(const AffineTransform& transform)
     if (paintingDisabled())
         return;
 
-#if 0
-    // FIXME get this to work
     BAffineTransform current = m_data->view()->Transform();
     current.Multiply(transform);
         // Should we use PreMultiply? MultiplyInverse?
     m_data->view()->SetTransform(current);
-#endif
 }
 
 void GraphicsContext::setCTM(const AffineTransform& transform)
@@ -933,6 +934,7 @@ void GraphicsContext::setCTM(const AffineTransform& transform)
     if (paintingDisabled())
         return;
 
+    puts("SetCTM");
     m_data->view()->SetTransform(transform);
 }
 
