@@ -1585,7 +1585,7 @@ QQuickWebPage* QQuickWebViewExperimental::page()
     QML application.
 
     QML WebView version 3.0 is incompatible with previous QML \l
-    {QtWebKit1::WebView} {WebView} API versions.  It allows an
+    WebView API versions.  It allows an
     application to load pages into the WebView, either by URL or with
     an HTML string, and navigate within session history.  By default,
     links to different pages load within the same WebView, but applications

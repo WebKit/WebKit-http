@@ -147,8 +147,8 @@ void QWebViewPrivate::_q_pageDestroyed()
     if you do not require QWidget attributes. Nevertheless, Qt WebKit depends
     on QtGui, so you should use a QApplication instead of QCoreApplication.
 
-    \sa {Previewer Example}, {Web Browser}, {Form Extractor Example},
-    {Google Chat Example}, {Fancy Browser Example}
+    \sa {Previewer Example}, {Tab Browser}, {Form Extractor Example},
+    {Fancy Browser Example}
 */
 
 #ifndef QT_NO_ACCESSIBILITY

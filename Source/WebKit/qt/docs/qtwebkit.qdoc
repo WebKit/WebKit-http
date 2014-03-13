@@ -58,7 +58,7 @@
     attribute on HTML elements.
 
     QtWebKit has been enhanced to become more attractive on the mobile front as well.
-    For more information see \l{QtWebKit Goes Mobile}.
+    For more information see \l{Qt WebKit Goes Mobile}.
 
     Qt WebKit is based on the Open Source WebKit engine. More information about
     WebKit itself can be found on the \l{WebKit Open Source Project} Web site.
@@ -86,10 +86,6 @@
 
     \note Web site icons, also known as "FavIcons", are currently not supported
     on Windows. We plan to address this in a future release.
-
-    \note WebKit has certain minimum requirements that must be met on
-    Embedded Linux systems. See the \l{Qt for Embedded Linux Requirements}
-    document for more information.
 
     \section1 Architecture
 

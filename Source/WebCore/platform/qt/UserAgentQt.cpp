@@ -45,7 +45,7 @@ namespace WebCore {
     \li %Security% expands to "N; " if SSL is disabled.
     \li %Subplatform% expands to the operating system version (e.g. "Windows NT 6.1" or "Intel Mac OS X 10.5").
     \li %WebKitVersion% is the version of WebKit the application was compiled against.
-    /endlist
+    \endlist
 
     The following value is replaced each time the funciton is called
     \list

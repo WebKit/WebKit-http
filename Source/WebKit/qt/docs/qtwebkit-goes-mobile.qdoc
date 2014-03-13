@@ -155,9 +155,9 @@
     More info can be found in the
     \l{http://developer.apple.com/safari/library/documentation/appleapplications/reference/safariwebcontent/usingtheviewport/usingtheviewport.html}{Safari Developer Library}.
 
-    You must connect the signal \c{QWebPage::viewportChangeRequested(const
-    QWebPage::ViewportHints& hints)} to a slot of your mobile web view and use what
-    is provided by \l{QWebPage::ViewportHints} to update your viewport size, scale
+    You must connect the signal \c{QWebPage::viewportChangeRequested()}
+    to a slot of your mobile web view and use what
+    is provided by \l{QWebPage::ViewportAttributes} to update your viewport size, scale
     range, and so on.
 
 

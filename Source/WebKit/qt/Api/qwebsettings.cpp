@@ -363,7 +363,7 @@ QWebSettings* QWebSettings::globalSettings()
     setOfflineStoragePath() with an appropriate file path, and can limit the quota
     for each application by calling setOfflineStorageDefaultQuota().
 
-    \sa QWebPage::settings(), QWebView::settings(), {Web Browser}
+    \sa QWebPage::settings(), QWebView::settings(), {Tab Browser}
 */
 
 /*!

@@ -1524,6 +1524,7 @@ QWebElementCollectionPrivate* QWebElementCollectionPrivate::create(const PassRef
 
 /*!
     \class QWebElementCollection
+    \inmodule QtWebKit
     \since 4.6
     \brief The QWebElementCollection class represents a collection of web elements.
     \preliminary
@@ -1714,6 +1715,7 @@ QList<QWebElement> QWebElementCollection::toList() const
 
 /*!
     \class QWebElementCollection::const_iterator
+    \inmodule QtWebKit
     \since 4.6
     \brief The QWebElementCollection::const_iterator class provides an STL-style const iterator for QWebElementCollection.
 
@@ -1904,6 +1906,7 @@ QList<QWebElement> QWebElementCollection::toList() const
 
 /*!
     \class QWebElementCollection::iterator
+    \inmodule QtWebKit
     \since 4.6
     \brief The QWebElementCollection::iterator class provides an STL-style iterator for QWebElementCollection.
 
