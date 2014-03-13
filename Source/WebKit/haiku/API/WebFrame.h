@@ -119,8 +119,6 @@ private:
 									WebFramePrivate* data);
 								~BWebFrame();
 
-			void				Shutdown();
-
 			void				LoadURL(WebCore::URL);
 			WebCore::Frame*		Frame() const;
 

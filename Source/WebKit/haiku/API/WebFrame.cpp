@@ -108,16 +108,6 @@ WebFramePrivate::Init(WebCore::Page* page, BWebFrame* frame,
 }
 
 
-void
-BWebFrame::Shutdown()
-{
-	// The private method is only invoked from the FrameLoaderClient, as
-	// no one else keeps track of a BWebFrame object's lifetime, we tie
-	// to the WebCore::Frame/FrameLoader lifetime and shutdown via
-	// the FrameLoaderClient::frameLoaderDestroyed() hook.
-	delete this;
-}
-
 void BWebFrame::SetListener(const BMessenger& listener)
 {
     fData->loaderClient->setDispatchTarget(listener);

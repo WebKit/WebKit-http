@@ -98,6 +98,7 @@ namespace WebCore {
 
 FrameLoaderClientHaiku::FrameLoaderClientHaiku(BWebPage* webPage)
     : m_webPage(webPage)
+    , m_webFrame(nullptr)
     , m_messenger()
     , m_loadingErrorPage(false)
     , m_pluginView(nullptr)
@@ -123,11 +124,9 @@ void FrameLoaderClientHaiku::frameLoaderDestroyed()
     CALLED();
 
     uidna_close(m_uidna_context);
-
-    // No one else feels responsible for the BWebFrame instance that created us.
-    // Through Shutdown(), we initiate the deletion sequence, after this method returns,
-    // this object will be gone.
-    m_webFrame->Shutdown();
+    delete m_webFrame;
+        // The frame takes care of deleting us. When that call returns, the
+        // frame loader object is gone!
 }
 
 bool FrameLoaderClientHaiku::hasWebView() const
@@ -241,11 +240,11 @@ void FrameLoaderClientHaiku::dispatchDidCancelAuthenticationChallenge(DocumentLo
     notImplemented();
 }
 
-void FrameLoaderClientHaiku::dispatchDidReceiveResponse(DocumentLoader* /*loader*/,
+void FrameLoaderClientHaiku::dispatchDidReceiveResponse(DocumentLoader* loader,
                                                         unsigned long identifier,
                                                         const ResourceResponse& coreResponse)
 {
-    m_response = coreResponse;
+    loader->writer().setEncoding(coreResponse.textEncodingName(), false);
 
     BMessage message(RESPONSE_RECEIVED);
     message.AddInt32("status", coreResponse.httpStatusCode());
@@ -469,7 +468,7 @@ void FrameLoaderClientHaiku::dispatchWillSubmitForm(PassRefPtr<FormState>, Frame
     CALLED();
     notImplemented();
     // FIXME: Send an event to allow for alerts and cancellation.
-    callPolicyFunction(function, PolicyUse);
+    function(PolicyUse);
 }
 
 Frame* FrameLoaderClientHaiku::dispatchCreatePage(const NavigationAction& /*action*/)
@@ -491,16 +490,16 @@ void FrameLoaderClientHaiku::dispatchShow()
 void FrameLoaderClientHaiku::dispatchDecidePolicyForResponse(const WebCore::ResourceResponse& response, const WebCore::ResourceRequest& request, FramePolicyFunction function)
 {
     if (request.isNull()) {
-        callPolicyFunction(function, PolicyIgnore);
+        function(PolicyIgnore);
         return;
     }
     // we need to call directly here
     if (canShowMIMEType(response.mimeType())) {
-        callPolicyFunction(function, PolicyUse);
+        function(PolicyUse);
     } else if (!request.url().isLocalFile() && response.mimeType() != "application/x-shockwave-flash") {
-        callPolicyFunction(function, PolicyDownload);
+        function(PolicyDownload);
     } else {
-        callPolicyFunction(function, PolicyIgnore);
+        function(PolicyIgnore);
     }
 }
 
@@ -512,13 +511,13 @@ void FrameLoaderClientHaiku::dispatchDecidePolicyForNewWindowAction(const Naviga
         return;
 
     if (request.isNull()) {
-        callPolicyFunction(function, PolicyIgnore);
+        function(PolicyIgnore);
         return;
     }
 
     if (!m_messenger.IsValid() || !isTertiaryMouseButton(action)) {
         dispatchNavigationRequested(request);
-        callPolicyFunction(function, PolicyUse);
+        function(PolicyUse);
         return;
     }
 
@@ -526,7 +525,7 @@ void FrameLoaderClientHaiku::dispatchDecidePolicyForNewWindowAction(const Naviga
     // current delegation policy is "DelegateExternalLinks". Must be good for something.
     if (WebCore::SchemeRegistry::shouldTreatURLSchemeAsLocal(request.url().protocol())) {
         dispatchNavigationRequested(request);
-        callPolicyFunction(function, PolicyUse);
+        function(PolicyUse);
         return;
     }
 
@@ -555,7 +554,7 @@ void FrameLoaderClientHaiku::dispatchDecidePolicyForNewWindowAction(const Naviga
         m_webFrame->Frame()->loader().activeDocumentLoader()->setLastCheckedRequest(emptyRequest);
     }
 
-    callPolicyFunction(function, PolicyIgnore);
+    function(PolicyIgnore);
 }
 
 void FrameLoaderClientHaiku::dispatchDecidePolicyForNavigationAction(const NavigationAction& action,
@@ -650,14 +649,11 @@ void FrameLoaderClientHaiku::committedLoad(WebCore::DocumentLoader* loader, cons
     }
 }
 
-void FrameLoaderClientHaiku::finishedLoading(DocumentLoader* documentLoader)
+void FrameLoaderClientHaiku::finishedLoading(DocumentLoader* /*documentLoader*/)
 {
     CALLED();
 
-    if (!m_pluginView) {
-        TRACE("!m_pluginView\n");
-        documentLoader->writer().setEncoding(m_response.textEncodingName(), false);
-    } else {
+    if (m_pluginView) {
         TRACE("m_pluginView\n");
         m_pluginView->didFinishLoading();
         m_pluginView = 0;
@@ -884,7 +880,7 @@ void FrameLoaderClientHaiku::transitionToCommittedFromCachedFrame(CachedFrame* c
     // FIXME: I guess we would have to restore platform data from the cachedFrame here,
     // data associated in savePlatformDataToCachedFrame().
 
-    postCommitFrameViewSetup(cachedFrame->view());
+    cachedFrame->view()->setTopLevelPlatformWidget(m_webPage->WebView());
 }
 
 void FrameLoaderClientHaiku::transitionToCommittedForNewPage()
@@ -904,7 +900,7 @@ void FrameLoaderClientHaiku::transitionToCommittedForNewPage()
 
     frame->createView(size, backgroundColor, transparent);
 
-    postCommitFrameViewSetup(frame->view());
+    frame->view()->setTopLevelPlatformWidget(m_webPage->WebView());
 }
 
 String FrameLoaderClientHaiku::userAgent(const URL&)
@@ -1081,16 +1077,6 @@ PassRefPtr<FrameNetworkingContext> FrameLoaderClientHaiku::createNetworkingConte
 }
 
 // #pragma mark - private
-
-void FrameLoaderClientHaiku::callPolicyFunction(FramePolicyFunction function, PolicyAction action)
-{
-    function(action);
-}
-
-void FrameLoaderClientHaiku::postCommitFrameViewSetup(FrameView* view) const
-{
-    view->setTopLevelPlatformWidget(m_webPage->WebView());
-}
 
 bool FrameLoaderClientHaiku::isTertiaryMouseButton(const NavigationAction& action) const
 {
