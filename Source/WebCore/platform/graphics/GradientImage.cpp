@@ -37,11 +37,21 @@ void GradientImage::draw(GraphicsContext* destContext, const FloatRect& destRect
     GraphicsContextStateSaver stateSaver(*destContext);
     destContext->setCompositeOperation(compositeOp, blendMode);
     destContext->clip(destRect);
+#if PLATFORM(HAIKU)
+    // FIXME on Haiku, translate() will also translate the current state
+    // clipping. We push the clipping in another state to avoid that.
+    destContext->platformContext()->PushState();
+#endif
     destContext->translate(destRect.x(), destRect.y());
     if (destRect.size() != srcRect.size())
         destContext->scale(FloatSize(destRect.width() / srcRect.width(), destRect.height() / srcRect.height()));
     destContext->translate(-srcRect.x(), -srcRect.y());
+
     destContext->fillRect(FloatRect(FloatPoint(), size()), *m_gradient.get());
+
+#if PLATFORM(HAIKU)
+    destContext->platformContext()->PopState();
+#endif
 }
 
 void GradientImage::drawPattern(GraphicsContext* destContext, const FloatRect& srcRect, const AffineTransform& patternTransform,
