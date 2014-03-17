@@ -100,7 +100,7 @@ float Font::drawComplexText(GraphicsContext* context, const TextRun& run, const 
     BView* view = context->platformContext();
     view->SetFont(primaryFont()->platformData().font());
 
-    char* string = run.subRun(from,to).string().utf8().data();
+    const char* string = run.subRun(from,to).string().utf8().data();
     view->DrawString(string, point);
 
     return view->StringWidth(string);

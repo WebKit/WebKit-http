@@ -41,6 +41,7 @@ LIST(APPEND WebCore_SOURCES
 
   platform/graphics/WOFFFileFormat.cpp
 
+  platform/graphics/haiku/AffineTransformHaiku.cpp
   platform/graphics/haiku/ColorHaiku.cpp
   platform/graphics/haiku/FontCacheHaiku.cpp
   platform/graphics/haiku/FontCustomPlatformData.cpp
@@ -49,11 +50,13 @@ LIST(APPEND WebCore_SOURCES
   platform/graphics/haiku/FloatRectHaiku.cpp
   platform/graphics/haiku/FloatSizeHaiku.cpp
   platform/graphics/haiku/FontHaiku.cpp
+  platform/graphics/haiku/FontPlatformDataHaiku.cpp
   platform/graphics/haiku/GlyphPageTreeNodeHaiku.cpp
   platform/graphics/haiku/GradientHaiku.cpp
   platform/graphics/haiku/GraphicsContextHaiku.cpp
   platform/graphics/haiku/GraphicsLayerHaiku.cpp
   platform/graphics/haiku/IconHaiku.cpp
+  platform/graphics/haiku/ImageBufferHaiku.cpp
   platform/graphics/haiku/ImageHaiku.cpp
   platform/graphics/haiku/IntPointHaiku.cpp
   platform/graphics/haiku/IntRectHaiku.cpp
@@ -61,8 +64,6 @@ LIST(APPEND WebCore_SOURCES
   platform/graphics/haiku/PathHaiku.cpp
   platform/graphics/haiku/SimpleFontDataHaiku.cpp
   platform/graphics/haiku/StillImageHaiku.cpp
-  platform/graphics/haiku/ImageBufferHaiku.cpp
-  platform/graphics/haiku/FontPlatformDataHaiku.cpp
   
   platform/image-decoders/haiku/ImageDecoderHaiku.cpp
 
