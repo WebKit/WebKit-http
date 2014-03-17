@@ -1035,6 +1035,8 @@
 		2B365C841525119E0091D27B /* RenderSVGEllipse.h in Headers */ = {isa = PBXBuildFile; fileRef = 2B4235A015250F6000DBBCD8 /* RenderSVGEllipse.h */; };
 		2BE8E2C712A589EC00FAD550 /* HTMLMetaCharsetParser.h in Headers */ = {isa = PBXBuildFile; fileRef = 2BE8E2C612A589EC00FAD550 /* HTMLMetaCharsetParser.h */; };
 		2BE8E2C912A58A0100FAD550 /* HTMLMetaCharsetParser.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2BE8E2C812A58A0100FAD550 /* HTMLMetaCharsetParser.cpp */; };
+		2D25396218CE7F6200270222 /* ImageControlsButtonElementMac.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2D25396018CE7F6200270222 /* ImageControlsButtonElementMac.cpp */; };
+		2D25396318CE7F6200270222 /* ImageControlsButtonElementMac.h in Headers */ = {isa = PBXBuildFile; fileRef = 2D25396118CE7F6200270222 /* ImageControlsButtonElementMac.h */; };
 		2D3A0E3613A7D76100E85AF0 /* SVGParsingError.h in Headers */ = {isa = PBXBuildFile; fileRef = 2D3A0E3513A7D76100E85AF0 /* SVGParsingError.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		2D46F04E17B96FBD005647F0 /* IntPoint.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2D46F04D17B96FBD005647F0 /* IntPoint.cpp */; };
 		2D46F05017B96FD2005647F0 /* IntSize.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2D46F04F17B96FD2005647F0 /* IntSize.cpp */; };
@@ -1393,6 +1395,7 @@
 		41FA303E1316C29C00C0BFC5 /* RenderMediaControls.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 41FA303C1316C29C00C0BFC5 /* RenderMediaControls.cpp */; };
 		41FA303F1316C29C00C0BFC5 /* RenderMediaControls.h in Headers */ = {isa = PBXBuildFile; fileRef = 41FA303D1316C29C00C0BFC5 /* RenderMediaControls.h */; };
 		4306E4E614955543007F17AC /* KillRingNone.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4306E4E514955543007F17AC /* KillRingNone.cpp */; };
+		43107BE218CC19DE00CC18E8 /* SelectorPseudoTypeMap.h in Headers */ = {isa = PBXBuildFile; fileRef = 43107BE118CC19DE00CC18E8 /* SelectorPseudoTypeMap.h */; };
 		43142E7A13B1E97700F1C871 /* SVGAnimatedRect.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 43142E7913B1E97700F1C871 /* SVGAnimatedRect.cpp */; };
 		431A2F9C13B6F2B0007791E4 /* SVGAnimatedNumberOptionalNumber.h in Headers */ = {isa = PBXBuildFile; fileRef = 431A2F9A13B6F2B0007791E4 /* SVGAnimatedNumberOptionalNumber.h */; };
 		431A2F9D13B6F2B0007791E4 /* SVGAnimatedNumberOptionalNumber.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 431A2F9B13B6F2B0007791E4 /* SVGAnimatedNumberOptionalNumber.cpp */; };
@@ -1466,6 +1469,7 @@
 		43A625F813B3304000AC94B8 /* SVGAnimatedColor.h in Headers */ = {isa = PBXBuildFile; fileRef = 43A625F613B3304000AC94B8 /* SVGAnimatedColor.h */; };
 		43A625F913B3304000AC94B8 /* SVGAnimatedColor.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 43A625F713B3304000AC94B8 /* SVGAnimatedColor.cpp */; };
 		43A6266713B3D11000AC94B8 /* SVGAnimatedString.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 43A6266613B3D11000AC94B8 /* SVGAnimatedString.cpp */; };
+		43B85ED418CBEC5200E31AF4 /* SelectorPseudoTypeMap.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 43B85ED218CBEC5200E31AF4 /* SelectorPseudoTypeMap.cpp */; };
 		43B9336913B261B1004584BF /* SVGAnimatedPointList.h in Headers */ = {isa = PBXBuildFile; fileRef = 43B9336713B261B1004584BF /* SVGAnimatedPointList.h */; };
 		43B9336A13B261B1004584BF /* SVGAnimatedPointList.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 43B9336813B261B1004584BF /* SVGAnimatedPointList.cpp */; };
 		43C092BC12D9E4EE00A989C3 /* RenderSVGForeignObject.h in Headers */ = {isa = PBXBuildFile; fileRef = 43C092BA12D9E4EE00A989C3 /* RenderSVGForeignObject.h */; };
@@ -2290,6 +2294,14 @@
 		7ACD88D314C08BD60084EDD2 /* InspectorIndexedDBAgent.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7ACD88D114C08BD60084EDD2 /* InspectorIndexedDBAgent.cpp */; };
 		7ACD88D414C08BD60084EDD2 /* InspectorIndexedDBAgent.h in Headers */ = {isa = PBXBuildFile; fileRef = 7ACD88D214C08BD60084EDD2 /* InspectorIndexedDBAgent.h */; };
 		7ADE722610CBBB9B006B3B3A /* ContextMenuProvider.h in Headers */ = {isa = PBXBuildFile; fileRef = 7ADE722510CBBB9B006B3B3A /* ContextMenuProvider.h */; };
+		7AF9B20218CFB2DF00C64BEF /* TextTrackRegion.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7AF9B1FC18CFB2DF00C64BEF /* TextTrackRegion.cpp */; };
+		7AF9B20318CFB2DF00C64BEF /* TextTrackRegion.h in Headers */ = {isa = PBXBuildFile; fileRef = 7AF9B1FD18CFB2DF00C64BEF /* TextTrackRegion.h */; };
+		7AF9B20518CFB2DF00C64BEF /* TextTrackRegionList.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7AF9B1FF18CFB2DF00C64BEF /* TextTrackRegionList.cpp */; };
+		7AF9B20618CFB2DF00C64BEF /* TextTrackRegionList.h in Headers */ = {isa = PBXBuildFile; fileRef = 7AF9B20018CFB2DF00C64BEF /* TextTrackRegionList.h */; };
+		7AF9B20C18CFB5F400C64BEF /* JSTextTrackRegion.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7AF9B20818CFB5F200C64BEF /* JSTextTrackRegion.cpp */; };
+		7AF9B20D18CFB5F400C64BEF /* JSTextTrackRegion.h in Headers */ = {isa = PBXBuildFile; fileRef = 7AF9B20918CFB5F200C64BEF /* JSTextTrackRegion.h */; };
+		7AF9B20E18CFB5F400C64BEF /* JSTextTrackRegionList.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7AF9B20A18CFB5F300C64BEF /* JSTextTrackRegionList.cpp */; };
+		7AF9B20F18CFB5F400C64BEF /* JSTextTrackRegionList.h in Headers */ = {isa = PBXBuildFile; fileRef = 7AF9B20B18CFB5F300C64BEF /* JSTextTrackRegionList.h */; };
 		7BE7427381FA906FBB4F0F2C /* JSSVGGraphicsElement.h in Headers */ = {isa = PBXBuildFile; fileRef = 950C4C02BED8936F818E2F99 /* JSSVGGraphicsElement.h */; };
 		7C2BDD3D17C7F98C0038FF15 /* JSDOMGlobalObjectTask.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7C2BDD3B17C7F98B0038FF15 /* JSDOMGlobalObjectTask.cpp */; };
 		7C2BDD3E17C7F98C0038FF15 /* JSDOMGlobalObjectTask.h in Headers */ = {isa = PBXBuildFile; fileRef = 7C2BDD3C17C7F98B0038FF15 /* JSDOMGlobalObjectTask.h */; };
@@ -3498,6 +3510,8 @@
 		990A1A0518ADA48400183FD1 /* ReplayInputTypes.h in Headers */ = {isa = PBXBuildFile; fileRef = 990A19F518ADA48400183FD1 /* ReplayInputTypes.h */; };
 		9920398218B95BC600B39AF9 /* UserInputBridge.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9920398018B95BC600B39AF9 /* UserInputBridge.cpp */; };
 		9920398318B95BC600B39AF9 /* UserInputBridge.h in Headers */ = {isa = PBXBuildFile; fileRef = 9920398118B95BC600B39AF9 /* UserInputBridge.h */; settings = {ATTRIBUTES = (Private, ); }; };
+		99C7CCB318C663E40032E413 /* MemoizedDOMResult.h in Headers */ = {isa = PBXBuildFile; fileRef = 99C7CCB218C663E40032E413 /* MemoizedDOMResult.h */; };
+		99C7CCB518C6B8990032E413 /* MemoizedDOMResult.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 99C7CCB418C6B8990032E413 /* MemoizedDOMResult.cpp */; };
 		99CC0B4D18BE9849006CEBCC /* AllReplayInputs.h in Headers */ = {isa = PBXBuildFile; fileRef = 99CC0B3818BE9849006CEBCC /* AllReplayInputs.h */; };
 		99CC0B4E18BE9849006CEBCC /* CapturingInputCursor.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 99CC0B3918BE9849006CEBCC /* CapturingInputCursor.cpp */; };
 		99CC0B4F18BE9849006CEBCC /* CapturingInputCursor.h in Headers */ = {isa = PBXBuildFile; fileRef = 99CC0B3A18BE9849006CEBCC /* CapturingInputCursor.h */; };
@@ -7869,6 +7883,8 @@
 		2B4235A015250F6000DBBCD8 /* RenderSVGEllipse.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RenderSVGEllipse.h; sourceTree = "<group>"; };
 		2BE8E2C612A589EC00FAD550 /* HTMLMetaCharsetParser.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = HTMLMetaCharsetParser.h; path = parser/HTMLMetaCharsetParser.h; sourceTree = "<group>"; };
 		2BE8E2C812A58A0100FAD550 /* HTMLMetaCharsetParser.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = HTMLMetaCharsetParser.cpp; path = parser/HTMLMetaCharsetParser.cpp; sourceTree = "<group>"; };
+		2D25396018CE7F6200270222 /* ImageControlsButtonElementMac.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ImageControlsButtonElementMac.cpp; sourceTree = "<group>"; };
+		2D25396118CE7F6200270222 /* ImageControlsButtonElementMac.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ImageControlsButtonElementMac.h; sourceTree = "<group>"; };
 		2D2FC0541460CD6F00263633 /* CrossfadeGeneratedImage.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = CrossfadeGeneratedImage.cpp; sourceTree = "<group>"; };
 		2D2FC0551460CD6F00263633 /* CrossfadeGeneratedImage.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CrossfadeGeneratedImage.h; sourceTree = "<group>"; };
 		2D2FC0561460CD6F00263633 /* GradientImage.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = GradientImage.cpp; sourceTree = "<group>"; };
@@ -8257,6 +8273,7 @@
 		41FA303C1316C29C00C0BFC5 /* RenderMediaControls.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = RenderMediaControls.cpp; sourceTree = "<group>"; };
 		41FA303D1316C29C00C0BFC5 /* RenderMediaControls.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RenderMediaControls.h; sourceTree = "<group>"; };
 		4306E4E514955543007F17AC /* KillRingNone.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = KillRingNone.cpp; sourceTree = "<group>"; };
+		43107BE118CC19DE00CC18E8 /* SelectorPseudoTypeMap.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SelectorPseudoTypeMap.h; sourceTree = "<group>"; };
 		43142E7913B1E97700F1C871 /* SVGAnimatedRect.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SVGAnimatedRect.cpp; sourceTree = "<group>"; };
 		431A2F9A13B6F2B0007791E4 /* SVGAnimatedNumberOptionalNumber.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SVGAnimatedNumberOptionalNumber.h; sourceTree = "<group>"; };
 		431A2F9B13B6F2B0007791E4 /* SVGAnimatedNumberOptionalNumber.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SVGAnimatedNumberOptionalNumber.cpp; sourceTree = "<group>"; };
@@ -8357,6 +8374,10 @@
 		43A625F613B3304000AC94B8 /* SVGAnimatedColor.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SVGAnimatedColor.h; sourceTree = "<group>"; };
 		43A625F713B3304000AC94B8 /* SVGAnimatedColor.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SVGAnimatedColor.cpp; sourceTree = "<group>"; };
 		43A6266613B3D11000AC94B8 /* SVGAnimatedString.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SVGAnimatedString.cpp; sourceTree = "<group>"; };
+		43B85ED018CBEACE00E31AF4 /* makeSelectorPseudoTypeMap.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; path = makeSelectorPseudoTypeMap.py; sourceTree = "<group>"; };
+		43B85ED218CBEC5200E31AF4 /* SelectorPseudoTypeMap.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SelectorPseudoTypeMap.cpp; sourceTree = "<group>"; };
+		43B85ED318CBEC5200E31AF4 /* SelectorPseudoTypeMap.gperf */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = SelectorPseudoTypeMap.gperf; sourceTree = "<group>"; };
+		43B85ED618CBEC9700E31AF4 /* SelectorPseudoTypeMap.in */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = SelectorPseudoTypeMap.in; sourceTree = "<group>"; };
 		43B9336713B261B1004584BF /* SVGAnimatedPointList.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SVGAnimatedPointList.h; sourceTree = "<group>"; };
 		43B9336813B261B1004584BF /* SVGAnimatedPointList.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SVGAnimatedPointList.cpp; sourceTree = "<group>"; };
 		43C092B912D9E4EE00A989C3 /* RenderSVGForeignObject.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = RenderSVGForeignObject.cpp; sourceTree = "<group>"; };
@@ -9261,6 +9282,16 @@
 		7ACD88D114C08BD60084EDD2 /* InspectorIndexedDBAgent.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = InspectorIndexedDBAgent.cpp; sourceTree = "<group>"; };
 		7ACD88D214C08BD60084EDD2 /* InspectorIndexedDBAgent.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = InspectorIndexedDBAgent.h; sourceTree = "<group>"; };
 		7ADE722510CBBB9B006B3B3A /* ContextMenuProvider.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ContextMenuProvider.h; sourceTree = "<group>"; };
+		7AF9B1FC18CFB2DF00C64BEF /* TextTrackRegion.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = TextTrackRegion.cpp; sourceTree = "<group>"; };
+		7AF9B1FD18CFB2DF00C64BEF /* TextTrackRegion.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = TextTrackRegion.h; sourceTree = "<group>"; };
+		7AF9B1FE18CFB2DF00C64BEF /* TextTrackRegion.idl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = TextTrackRegion.idl; sourceTree = "<group>"; };
+		7AF9B1FF18CFB2DF00C64BEF /* TextTrackRegionList.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = TextTrackRegionList.cpp; sourceTree = "<group>"; };
+		7AF9B20018CFB2DF00C64BEF /* TextTrackRegionList.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = TextTrackRegionList.h; sourceTree = "<group>"; };
+		7AF9B20118CFB2DF00C64BEF /* TextTrackRegionList.idl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = TextTrackRegionList.idl; sourceTree = "<group>"; };
+		7AF9B20818CFB5F200C64BEF /* JSTextTrackRegion.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = JSTextTrackRegion.cpp; sourceTree = "<group>"; };
+		7AF9B20918CFB5F200C64BEF /* JSTextTrackRegion.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = JSTextTrackRegion.h; sourceTree = "<group>"; };
+		7AF9B20A18CFB5F300C64BEF /* JSTextTrackRegionList.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = JSTextTrackRegionList.cpp; sourceTree = "<group>"; };
+		7AF9B20B18CFB5F300C64BEF /* JSTextTrackRegionList.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = JSTextTrackRegionList.h; sourceTree = "<group>"; };
 		7C2BDD3B17C7F98B0038FF15 /* JSDOMGlobalObjectTask.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = JSDOMGlobalObjectTask.cpp; sourceTree = "<group>"; };
 		7C2BDD3C17C7F98B0038FF15 /* JSDOMGlobalObjectTask.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = JSDOMGlobalObjectTask.h; sourceTree = "<group>"; };
 		7C522D4915B477E8009B7C95 /* InspectorOverlay.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = InspectorOverlay.cpp; sourceTree = "<group>"; };
@@ -10483,6 +10514,8 @@
 		990A19F518ADA48400183FD1 /* ReplayInputTypes.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ReplayInputTypes.h; sourceTree = "<group>"; };
 		9920398018B95BC600B39AF9 /* UserInputBridge.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = UserInputBridge.cpp; sourceTree = "<group>"; };
 		9920398118B95BC600B39AF9 /* UserInputBridge.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = UserInputBridge.h; sourceTree = "<group>"; };
+		99C7CCB218C663E40032E413 /* MemoizedDOMResult.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MemoizedDOMResult.h; sourceTree = "<group>"; };
+		99C7CCB418C6B8990032E413 /* MemoizedDOMResult.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MemoizedDOMResult.cpp; sourceTree = "<group>"; };
 		99CC0B3818BE9849006CEBCC /* AllReplayInputs.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AllReplayInputs.h; sourceTree = "<group>"; };
 		99CC0B3918BE9849006CEBCC /* CapturingInputCursor.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = CapturingInputCursor.cpp; sourceTree = "<group>"; };
 		99CC0B3A18BE9849006CEBCC /* CapturingInputCursor.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CapturingInputCursor.h; sourceTree = "<group>"; };
@@ -15715,6 +15748,8 @@
 			isa = PBXGroup;
 			children = (
 				510192D818B7D7AB007FC7A1 /* imageControlsMac.css */,
+				2D25396018CE7F6200270222 /* ImageControlsButtonElementMac.cpp */,
+				2D25396118CE7F6200270222 /* ImageControlsButtonElementMac.h */,
 				510192CF18B6B9AB007FC7A1 /* ImageControlsRootElementMac.cpp */,
 				510192D018B6B9AB007FC7A1 /* ImageControlsRootElementMac.h */,
 			);
@@ -15834,6 +15869,8 @@
 				44A28AAE12DFB8BF00AE923B /* MathMLNames.h */,
 				71E2183817359FB8006E6E4D /* PlugInsResources.h */,
 				71E2183917359FB8006E6E4D /* PlugInsResourcesData.cpp */,
+				43B85ED218CBEC5200E31AF4 /* SelectorPseudoTypeMap.cpp */,
+				43B85ED318CBEC5200E31AF4 /* SelectorPseudoTypeMap.gperf */,
 				53EF766A16530A61004CBE49 /* SettingsMacros.h */,
 				656581E609D1508D000E61D7 /* SVGElementFactory.cpp */,
 				656581E709D1508D000E61D7 /* SVGElementFactory.h */,
@@ -17902,6 +17939,8 @@
 				99CC0B3B18BE9849006CEBCC /* EventLoopInputDispatcher.cpp */,
 				99CC0B3C18BE9849006CEBCC /* EventLoopInputDispatcher.h */,
 				99CC0B3D18BE9849006CEBCC /* FunctorInputCursor.h */,
+				99C7CCB418C6B8990032E413 /* MemoizedDOMResult.cpp */,
+				99C7CCB218C663E40032E413 /* MemoizedDOMResult.h */,
 				99CC0B3E18BE9849006CEBCC /* ReplayController.cpp */,
 				99CC0B3F18BE9849006CEBCC /* ReplayController.h */,
 				99CC0B4018BE9849006CEBCC /* ReplayingInputCursor.cpp */,
@@ -18330,6 +18369,10 @@
 				070756DA14239B4E00414161 /* JSTextTrackCueList.h */,
 				07B5A2D91464320A00A81ECE /* JSTextTrackList.cpp */,
 				07B5A2DA1464320A00A81ECE /* JSTextTrackList.h */,
+				7AF9B20818CFB5F200C64BEF /* JSTextTrackRegion.cpp */,
+				7AF9B20918CFB5F200C64BEF /* JSTextTrackRegion.h */,
+				7AF9B20A18CFB5F300C64BEF /* JSTextTrackRegionList.cpp */,
+				7AF9B20B18CFB5F300C64BEF /* JSTextTrackRegionList.h */,
 				E44614120CD6826900FADA75 /* JSTimeRanges.cpp */,
 				E44614130CD6826900FADA75 /* JSTimeRanges.h */,
 				07846340145B151A00A58DF1 /* JSTrackEvent.cpp */,
@@ -19200,6 +19243,12 @@
 				076970841463AD8700F502CF /* TextTrackList.cpp */,
 				076970851463AD8700F502CF /* TextTrackList.h */,
 				07B5A3061468537100A81ECE /* TextTrackList.idl */,
+				7AF9B1FC18CFB2DF00C64BEF /* TextTrackRegion.cpp */,
+				7AF9B1FD18CFB2DF00C64BEF /* TextTrackRegion.h */,
+				7AF9B1FE18CFB2DF00C64BEF /* TextTrackRegion.idl */,
+				7AF9B1FF18CFB2DF00C64BEF /* TextTrackRegionList.cpp */,
+				7AF9B20018CFB2DF00C64BEF /* TextTrackRegionList.h */,
+				7AF9B20118CFB2DF00C64BEF /* TextTrackRegionList.idl */,
 				070334D8145A006F008D8D45 /* TrackBase.cpp */,
 				070334D61459FFD5008D8D45 /* TrackBase.h */,
 				070334D01459FFAC008D8D45 /* TrackEvent.cpp */,
@@ -21546,6 +21595,7 @@
 				4A9CC81F16BF9BB400EC645A /* InspectorCSSOMWrappers.h */,
 				E55F4979151B888000BB67DB /* LengthFunctions.cpp */,
 				E5BA7D62151437CA00FE1E3F /* LengthFunctions.h */,
+				43B85ED018CBEACE00E31AF4 /* makeSelectorPseudoTypeMap.py */,
 				93CA4C9A09DF93FA00DF8677 /* make-css-file-arrays.pl */,
 				93CA4C9B09DF93FA00DF8677 /* makeprop.pl */,
 				93CA4C9D09DF93FA00DF8677 /* makevalues.pl */,
@@ -21592,6 +21642,8 @@
 				432D3FE718A8658400D7DC03 /* SelectorCheckerTestFunctions.h */,
 				415071551685067300C3C7B3 /* SelectorFilter.cpp */,
 				415071561685067300C3C7B3 /* SelectorFilter.h */,
+				43B85ED618CBEC9700E31AF4 /* SelectorPseudoTypeMap.in */,
+				43107BE118CC19DE00CC18E8 /* SelectorPseudoTypeMap.h */,
 				E47A97CE163059FC005DCD99 /* StyleInvalidationAnalysis.cpp */,
 				E47A97CF163059FC005DCD99 /* StyleInvalidationAnalysis.h */,
 				0FF5026E102BA9660066F39A /* StyleMedia.cpp */,
@@ -23049,6 +23101,7 @@
 				BC64B4DC0CB4298A005F2B62 /* CSSFontSelector.h in Headers */,
 				A80E6CED0A1989CA007FB8C5 /* CSSFontValue.h in Headers */,
 				BC02A63C0E09A9CF004B6D2B /* CSSFunctionValue.h in Headers */,
+				7AF9B20318CFB2DF00C64BEF /* TextTrackRegion.h in Headers */,
 				BC53C6920DA591140021EB5D /* CSSGradientValue.h in Headers */,
 				650F53DC09D15DDA00C9B0C8 /* CSSGrammar.h in Headers */,
 				CD3E252418046BCD00E27F56 /* CSSGridTemplateAreasValue.h in Headers */,
@@ -23476,6 +23529,7 @@
 				85E711D70AC5D5350053270F /* DOMStyleSheetListInternal.h in Headers */,
 				BC1A37BD097C715F0019F3D8 /* DOMStylesheets.h in Headers */,
 				85ACA99C0A9B575900671E90 /* DOMText.h in Headers */,
+				7AF9B20618CFB2DF00C64BEF /* TextTrackRegionList.h in Headers */,
 				DDE63ED50B7D45A800226998 /* DOMTextEvent.h in Headers */,
 				85E711D90AC5D5350053270F /* DOMTextInternal.h in Headers */,
 				188604B40F2E654A000B6443 /* DOMTimer.h in Headers */,
@@ -23798,6 +23852,7 @@
 				977B386C122883E900B81FF8 /* HTMLEntitySearch.h in Headers */,
 				977B386D122883E900B81FF8 /* HTMLEntityTable.h in Headers */,
 				A81369D4097374F600D74463 /* HTMLFieldSetElement.h in Headers */,
+				99C7CCB318C663E40032E413 /* MemoizedDOMResult.h in Headers */,
 				A8CFF7A60A156978000A4234 /* HTMLFontElement.h in Headers */,
 				977B386F122883E900B81FF8 /* HTMLFormattingElementList.h in Headers */,
 				A81369CE097374F600D74463 /* HTMLFormControlElement.h in Headers */,
@@ -23871,6 +23926,7 @@
 				A871DB310A150BD600B12A68 /* HTMLTableRowElement.h in Headers */,
 				93442C9E0D2B335C00338FF9 /* HTMLTableRowsCollection.h in Headers */,
 				A871DB250A150BD600B12A68 /* HTMLTableSectionElement.h in Headers */,
+				43107BE218CC19DE00CC18E8 /* SelectorPseudoTypeMap.h in Headers */,
 				D66817FB166FE6D700FA07B4 /* HTMLTemplateElement.h in Headers */,
 				A81369D6097374F600D74463 /* HTMLTextAreaElement.h in Headers */,
 				9BC6C21B13CCC97B008E0337 /* HTMLTextFormControlElement.h in Headers */,
@@ -23998,6 +24054,7 @@
 				7AB0B1C11211A62200A76940 /* InspectorDatabaseAgent.h in Headers */,
 				F3F5CF1312ED81B30084C569 /* InspectorDatabaseInstrumentation.h in Headers */,
 				41F062140F5F192600A07EAC /* InspectorDatabaseResource.h in Headers */,
+				2D25396318CE7F6200270222 /* ImageControlsButtonElementMac.h in Headers */,
 				7A24587C1021EAF4000A00AA /* InspectorDOMAgent.h in Headers */,
 				F3D4C47912E07663003DA150 /* InspectorDOMDebuggerAgent.h in Headers */,
 				7A74ECBB101839A600BF939E /* InspectorDOMStorageAgent.h in Headers */,
@@ -24537,6 +24594,8 @@
 				070756DE14239B4E00414161 /* JSTextTrackCue.h in Headers */,
 				070756E014239B4E00414161 /* JSTextTrackCueList.h in Headers */,
 				07B5A2DC1464320A00A81ECE /* JSTextTrackList.h in Headers */,
+				7AF9B20D18CFB5F400C64BEF /* JSTextTrackRegion.h in Headers */,
+				7AF9B20F18CFB5F400C64BEF /* JSTextTrackRegionList.h in Headers */,
 				E446141B0CD6826900FADA75 /* JSTimeRanges.h in Headers */,
 				0FDA7C17188322EB00C954B5 /* JSTouch.h in Headers */,
 				0FDA7C19188322EB00C954B5 /* JSTouchEvent.h in Headers */,
@@ -26942,6 +27001,7 @@
 				0F54DCD61880F867003EEDBB /* DOMTouch.mm in Sources */,
 				0F54DCD81880F867003EEDBB /* DOMTouchEvent.mm in Sources */,
 				0F54DCDC1880F867003EEDBB /* DOMTouchList.mm in Sources */,
+				7AF9B20518CFB2DF00C64BEF /* TextTrackRegionList.cpp in Sources */,
 				E145349816A9BB6A000F6FD2 /* DOMTransitionEvent.mm in Sources */,
 				85526CD30AB0B7DA000302EA /* DOMTreeWalker.mm in Sources */,
 				85C7F4920AAF79DC004014DD /* DOMUIEvent.mm in Sources */,
@@ -27023,6 +27083,7 @@
 				6E67D2A61280E8A4008758F7 /* Extensions3DOpenGL.cpp in Sources */,
 				44DAB5B115A623580097C1E4 /* Extensions3DOpenGLCommon.cpp in Sources */,
 				7728694E14F8882500F484DC /* EXTTextureFilterAnisotropic.cpp in Sources */,
+				43B85ED418CBEC5200E31AF4 /* SelectorPseudoTypeMap.cpp in Sources */,
 				A75E8B880E1DE2D6007F2481 /* FEBlend.cpp in Sources */,
 				A75E8B8A0E1DE2D6007F2481 /* FEColorMatrix.cpp in Sources */,
 				A75E8B8C0E1DE2D6007F2481 /* FEComponentTransfer.cpp in Sources */,
@@ -27995,6 +28056,8 @@
 				07E116B11489C9A100EC5ACE /* JSTextTrackCustom.cpp in Sources */,
 				07B5A2DB1464320A00A81ECE /* JSTextTrackList.cpp in Sources */,
 				07B5A30D14687D7100A81ECE /* JSTextTrackListCustom.cpp in Sources */,
+				7AF9B20C18CFB5F400C64BEF /* JSTextTrackRegion.cpp in Sources */,
+				7AF9B20E18CFB5F400C64BEF /* JSTextTrackRegionList.cpp in Sources */,
 				E446141A0CD6826900FADA75 /* JSTimeRanges.cpp in Sources */,
 				0FDA7C16188322EB00C954B5 /* JSTouch.cpp in Sources */,
 				0FDA7C18188322EB00C954B5 /* JSTouchEvent.cpp in Sources */,
@@ -28849,6 +28912,7 @@
 				B237C8A70D344D110013F707 /* SVGFontData.cpp in Sources */,
 				B2A1F2AA0CEF0ABF00442F6A /* SVGFontElement.cpp in Sources */,
 				B2227A140D00BF220071B782 /* SVGFontFaceElement.cpp in Sources */,
+				99C7CCB518C6B8990032E413 /* MemoizedDOMResult.cpp in Sources */,
 				B2227A170D00BF220071B782 /* SVGFontFaceFormatElement.cpp in Sources */,
 				B2227A1A0D00BF220071B782 /* SVGFontFaceNameElement.cpp in Sources */,
 				B2227A1D0D00BF220071B782 /* SVGFontFaceSrcElement.cpp in Sources */,
@@ -29140,6 +29204,7 @@
 				01D3CF8614BD0A3000FE9970 /* WebGLSharedObject.cpp in Sources */,
 				49C7B9E51042D32F0009D447 /* WebGLTexture.cpp in Sources */,
 				0C3F1F5A10C8871200D72CE1 /* WebGLUniformLocation.cpp in Sources */,
+				2D25396218CE7F6200270222 /* ImageControlsButtonElementMac.cpp in Sources */,
 				77A17A7712F28642004E02F6 /* WebGLVertexArrayObjectOES.cpp in Sources */,
 				A5840E24187B8AC200843B10 /* WebInjectedScriptHost.cpp in Sources */,
 				A584FE2F1864CB8400843B10 /* WebInjectedScriptManager.cpp in Sources */,
@@ -29222,6 +29287,7 @@
 				A136A00C1134DBD200CC8D50 /* XMLHttpRequestProgressEventThrottle.cpp in Sources */,
 				BCDFD48F0E305290009D10AD /* XMLHttpRequestUpload.cpp in Sources */,
 				A833C80C0A2CF25600D57664 /* XMLNames.cpp in Sources */,
+				7AF9B20218CFB2DF00C64BEF /* TextTrackRegion.cpp in Sources */,
 				E15A36D91104572700B7B639 /* XMLNSNames.cpp in Sources */,
 				1ACE53EA0A8D18E70022947D /* XMLSerializer.cpp in Sources */,
 				5905ADBF1302F3CE00F116DF /* XMLTreeViewer.cpp in Sources */,

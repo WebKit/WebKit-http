@@ -50,6 +50,7 @@
 #include "LLIntEntrypoint.h"
 #include "LowLevelInterpreter.h"
 #include "JSCInlines.h"
+#include "PolymorphicGetByIdList.h"
 #include "PolymorphicPutByIdList.h"
 #include "ReduceWhitespace.h"
 #include "Repatch.h"
@@ -128,13 +129,16 @@ CString CodeBlock::sourceCodeOnOneLine() const
     return reduceWhitespace(sourceCodeForTools());
 }
 
+CString CodeBlock::hashAsStringIfPossible() const
+{
+    if (hasHash() || isSafeToComputeHash())
+        return toCString(hash());
+    return "<no-hash>";
+}
+
 void CodeBlock::dumpAssumingJITType(PrintStream& out, JITCode::JITType jitType) const
 {
-    out.print(inferredName(), "#");
-    if (hasHash() || isSafeToComputeHash())
-        out.print(hash());
-    else
-        out.print("<no-hash>");
+    out.print(inferredName(), "#", hashAsStringIfPossible());
     out.print(":[", RawPointer(this), "->");
     if (!!m_alternative)
         out.print(RawPointer(m_alternative.get()), "->");
@@ -341,8 +345,7 @@ void CodeBlock::printGetByIdCacheStatus(PrintStream& out, ExecState* exec, int l
             Structure* baseStructure = 0;
             Structure* prototypeStructure = 0;
             StructureChain* chain = 0;
-            PolymorphicAccessStructureList* structureList = 0;
-            int listSize = 0;
+            PolymorphicGetByIdList* list = 0;
             
             switch (stubInfo.accessType) {
             case access_get_by_id_self:
@@ -354,10 +357,9 @@ void CodeBlock::printGetByIdCacheStatus(PrintStream& out, ExecState* exec, int l
                 baseStructure = stubInfo.u.getByIdChain.baseObjectStructure.get();
                 chain = stubInfo.u.getByIdChain.chain.get();
                 break;
-            case access_get_by_id_self_list:
-                out.printf("self_list");
-                structureList = stubInfo.u.getByIdSelfList.structureList;
-                listSize = stubInfo.u.getByIdSelfList.listSize;
+            case access_get_by_id_list:
+                out.printf("list");
+                list = stubInfo.u.getByIdList.list;
                 break;
             case access_unset:
                 out.printf("unset");
@@ -382,16 +384,16 @@ void CodeBlock::printGetByIdCacheStatus(PrintStream& out, ExecState* exec, int l
                 dumpChain(out, exec, chain, ident);
             }
             
-            if (structureList) {
-                out.printf(", list = %p: [", structureList);
-                for (int i = 0; i < listSize; ++i) {
+            if (list) {
+                out.printf(", list = %p: [", list);
+                for (unsigned i = 0; i < list->size(); ++i) {
                     if (i)
                         out.printf(", ");
                     out.printf("(");
-                    dumpStructure(out, "base", exec, structureList->list[i].base.get(), ident);
-                    if (structureList->list[i].chain.get()) {
+                    dumpStructure(out, "base", exec, list->at(i).structure(), ident);
+                    if (list->at(i).chain()) {
                         out.printf(", ");
-                        dumpChain(out, exec, structureList->list[i].chain.get(), ident);
+                        dumpChain(out, exec, list->at(i).chain(), ident);
                     }
                     out.printf(")");
                 }

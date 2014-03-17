@@ -1,3 +1,334 @@
+2014-03-12  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Fix GTK+ cmake build after r165488.
+
+        * MiniBrowser/gtk/CMakeLists.txt: Add CMAKE_BINARY_DIR to include dirs.
+
+2014-03-12  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK][CMAKE] Remove compile warnings about GTK+ deprecated API
+        https://bugs.webkit.org/show_bug.cgi?id=130014
+
+        Reviewed by Martin Robinson.
+
+        Include cmake or autotools config header.
+
+        * MiniBrowser/gtk/BrowserDownloadsBar.c:
+        * MiniBrowser/gtk/BrowserSearchBar.c:
+        * MiniBrowser/gtk/BrowserWindow.c:
+        * MiniBrowser/gtk/main.c:
+
+2014-03-12  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r165471.
+        https://bugs.webkit.org/show_bug.cgi?id=130139
+
+        Didn't really fix the issue and broke another bot (Requested
+        by mrobinson on #webkit).
+
+        Reverted changeset:
+
+        "[CMake] Newer versions of CMake cannot find older versions of
+        Freetype"
+        https://bugs.webkit.org/show_bug.cgi?id=130107
+        http://trac.webkit.org/changeset/165471
+
+2014-03-11  Filip Pizlo  <fpizlo@apple.com>
+
+        It should be possible to build WebKit with FTL on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=130116
+
+        Reviewed by Dan Bernstein.
+
+        * Scripts/build-webkit:
+        * Scripts/copy-webkitlibraries-to-product-directory:
+
+2014-03-12  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Remove use of QTSDK
+        https://bugs.webkit.org/show_bug.cgi?id=130049
+
+        Reviewed by Darin Adler.
+
+        * DumpRenderTree/win/DumpRenderTree.cpp:
+        (initialize): Remove QuickTime code.
+        * win/AssembleBuildLogs/AssembleLogs.cmd: Don't grab logs from
+        building QTMovieWin.
+
+2014-03-12  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK][CMAKE] Too verbose build output
+        https://bugs.webkit.org/show_bug.cgi?id=130076
+
+        Reviewed by Carlos Garcia Campos.
+
+        Instead of building with cmake --build which isn't smart about pretty printing and
+        colors, we build with a script which calls the proper build command.
+
+        * Scripts/webkitdirs.pm:
+        (buildCMakeGeneratedProject): For GTK+ call the script that we generate during
+        the CMake configuration pass.
+
+2014-03-11  Martin Robinson  <mrobinson@igalia.com>
+
+        [CMake] Newer versions of CMake cannot find older versions of Freetype
+        https://bugs.webkit.org/show_bug.cgi?id=130107
+
+        Reviewed by Gustavo Noronha Silva.
+
+        * gtk/jhbuildrc: Work around a bug in newer CMakes by giving the FREETYPE_DIR hint
+        to CMake during jhbuild initialization.
+
+2014-03-12  Zalan Bujtas  <zalan@apple.com>
+
+        Add hiDPI support for compositing content in DumpRenderTree/WebKitTestRunner
+        https://bugs.webkit.org/show_bug.cgi?id=129961
+
+        Reviewed by Simon Fraser.
+
+        Now scaled content can go through the window capturing mechanism too for compositing content.
+        AppleMagnifiedMode is redundant.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (setDefaultsToConsistentValuesForTesting):
+        (runTest):
+        * DumpRenderTree/mac/PixelDumpSupportMac.mm:
+        (createBitmapContextFromWebView):
+        * WebKitTestRunner/PlatformWebView.h:
+        * WebKitTestRunner/cg/TestInvocationCG.cpp:
+        (WTR::TestInvocation::dumpPixelsAndCompareWithExpected):
+        * WebKitTestRunner/mac/PlatformWebViewMac.mm:
+        (WTR::PlatformWebView::didInitializeClients):
+        (WTR::PlatformWebView::changeWindowScaleIfNeeded):
+        (WTR::PlatformWebView::forceWindowFramesChanged):
+        * WebKitTestRunner/mac/main.mm:
+        (setDefaultsToConsistentValuesForTesting):
+
+2014-03-12  Anton Obzhirov  <a.obzhirov@samsung.com>
+
+        Unreviewed. Add myself as a committer.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2014-03-12  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        Unreviewed build fix on the EFL port when used lower version of ATK
+
+        * WebKitTestRunner/InjectedBundle/atk/AccessibilityUIElementAtk.cpp:
+        (WTR::AccessibilityUIElement::y): Fixed typo.
+
+2014-03-11  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Some images are blank in the rebaseline server UI
+        https://bugs.webkit.org/show_bug.cgi?id=130104
+
+        Reviewed by Tim Horton.
+
+        Let the server check for images in the 'retries' directory
+        if it can't find an image otherwise.
+
+        * Scripts/webkitpy/tool/servers/rebaselineserver.py:
+        (RebaselineHTTPRequestHandler.test_result):
+
+2014-03-11  Gustavo Noronha Silva  <gustavo.noronha@collabora.com>
+
+        [GTK][CMake] --update-gtk has no effect
+        https://bugs.webkit.org/show_bug.cgi?id=130088
+
+        Reviewed by Philippe Normand.
+
+        * Scripts/webkitdirs.pm:
+        (buildCMakeProjectOrExit): call update-webkitgtk-libs if --update-gtk has been passed
+        as an argument.
+
+2014-03-10  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Add "System Font" to the list of whitelisted DRT fonts
+        https://bugs.webkit.org/show_bug.cgi?id=130046
+
+        Reviewed by Darin Adler.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (allowedFontFamilySet):
+        * WebKitTestRunner/InjectedBundle/mac/ActivateFonts.mm:
+
+2014-03-11  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK] The jhbuild environment should set CMAKE_PREFIX_PATH and CMAKE_LIBRARY_PATH
+        https://bugs.webkit.org/show_bug.cgi?id=130064
+
+        Reviewed by Philippe Normand.
+
+        * efl/jhbuildrc: Remove duplicated code.
+        * gtk/jhbuildrc: Remove duplicated code.
+        * jhbuild/jhbuildrc_common.py:
+        (init): Move duplicated code from jhbuildrc's and extend setting CMake environment variables to
+        GTK+. We always set the CMAKE_LIBRARY_PATH, which should be harmless for EFL 32-bit systems.
+        and is apparently necessary for GTK+.
+
+2014-03-11  László Langó  <llango.u-szeged@partner.samsung.com>
+
+        check-webkit-style failed to complain about missing braces
+        https://bugs.webkit.org/show_bug.cgi?id=34189
+
+        Reviewed by Ryosuke Niwa.
+
+        * Scripts/webkitpy/style/checkers/cpp.py:
+        (check_braces):
+        * Scripts/webkitpy/style/checkers/cpp_unittest.py:
+        (WebKitStyleTest.test_braces):
+
+2014-03-11  László Langó  <llango.u-szeged@partner.samsung.com>
+
+        Remove Qt cruft from style checker.
+        https://bugs.webkit.org/show_bug.cgi?id=130085
+
+        Reviewed by Csaba Osztrogonác.
+
+        There is no 'foreach' keyword in c++. That was a Qt feature
+        added in: http://trac.webkit.org/changeset/46113
+        Qt was removed from WebKit, so we should remove the checks
+        of this keyword from check-webkit-style scripts.
+
+        * Scripts/webkitpy/style/checkers/cpp.py:
+        (check_spacing_for_function_call):
+        (check_spacing):
+        (check_braces):
+        * Scripts/webkitpy/style/checkers/cpp_unittest.py:
+        (CppStyleTest.test_mismatching_spaces_in_parens):
+        (CppStyleTest.test_spacing_for_fncall):
+        (WebKitStyleTest.test_braces):
+
+2014-03-11  Martin Hodovan  <mhodovan@inf.u-szeged.hu>
+
+        [GTK] update-webkitgtk-libs needs itstool
+        https://bugs.webkit.org/show_bug.cgi?id=130082
+
+        After http://trac.webkit.org/changeset/165110 WebKitGTK+ uses gtk-doc 1.20.
+        itstool is a dependency of building gtk-doc from version 1.19, so it should
+        be added to Tools/gtk/install-dependencies script, too.
+
+        Reviewed by Philippe Normand.
+
+        * gtk/install-dependencies:
+
+2014-03-11  Eva Balazsfalvi  <evab.u-szeged@partner.samsung.com>
+
+        webkitbot rollout ChangeLogs should be nicer
+        https://bugs.webkit.org/show_bug.cgi?id=122654
+
+        Reviewed by Csaba Osztrogonác.
+
+        Added bug urls and descriptions of rolled out patches to the rollout changelog
+        if they are present in the original changelog. Additionally removed the list of
+        changed files and functions.
+
+        * Scripts/webkitpy/common/checkout/changelog.py:
+        (ChangeLog.update_with_unreviewed_message): Cut off the list of modified files.
+        * Scripts/webkitpy/common/checkout/checkout.py:
+        (Checkout._changelog_data_for_revision): Store bug description.
+        * Scripts/webkitpy/common/checkout/checkout_mock.py:
+        * Scripts/webkitpy/common/checkout/checkout_unittest.py:
+        (CheckoutTest.test_commit_info_for_revision):
+        * Scripts/webkitpy/common/checkout/commitinfo.py:
+        (CommitInfo.bug_description): Added.
+        (CommitInfo.to_json):
+        * Scripts/webkitpy/common/checkout/commitinfo_unittest.py:
+        (CommitInfoTest.test_commit_info_creation):
+        * Scripts/webkitpy/tool/commands/download.py:
+        (AbstractRolloutPrepCommand._prepare_state): Store bug ids and descriptions of rolled
+        out patches for creating rollout changelog.
+        (CreateRollout._prepare_state): Remove obsolete comments and code, the bug id that
+        caused the regression is stored in state["bug_blocked"] now.
+        * Scripts/webkitpy/tool/commands/download_unittest.py:
+        (test_prepare_rollout):
+        (test_create_rollout_multiple_revision):
+        * Scripts/webkitpy/tool/steps/preparechangelogforrevert.py:
+        (PrepareChangeLogForRevert._message_for_revert): Add bug urls and descriptions of
+        rolled out patches to the changelog.
+        (PrepareChangeLogForRevert.run):
+        * Scripts/webkitpy/tool/steps/preparechangelogforrevert_unittest.py:
+        (UpdateChangeLogsForRevertTest):
+        (test_message_for_revert):
+        * Scripts/webkitpy/tool/steps/reopenbugafterrollout.py:
+        (ReopenBugAfterRollout.run):
+
+2014-03-11  Krzysztof Czech  <k.czech@samsung.com>
+
+        [ATK] Adjust WKTR/DRT to use new API from ATK 2.11.90
+        https://bugs.webkit.org/show_bug.cgi?id=130021
+
+        Reviewed by Mario Sanchez Prada.
+
+        Replace deprecated functions to use new API from ATK 2.11.90.
+
+        * DumpRenderTree/atk/AccessibilityUIElementAtk.cpp:
+        (AccessibilityUIElement::x):
+        (AccessibilityUIElement::y):
+        (AccessibilityUIElement::width):
+        (AccessibilityUIElement::height):
+        (AccessibilityUIElement::clickPointX):
+        (AccessibilityUIElement::clickPointY):
+        * WebKitTestRunner/InjectedBundle/atk/AccessibilityUIElementAtk.cpp:
+        (WTR::AccessibilityUIElement::x):
+        (WTR::AccessibilityUIElement::y):
+        (WTR::AccessibilityUIElement::width):
+        (WTR::AccessibilityUIElement::height):
+        (WTR::AccessibilityUIElement::clickPointX):
+        (WTR::AccessibilityUIElement::clickPointY):
+
+2014-03-11  Krzysztof Czech  <k.czech@samsung.com>
+
+        [ATK] Expose aria-posinset and aria-setsize through object attributes
+        https://bugs.webkit.org/show_bug.cgi?id=130011
+
+        Reviewed by Chris Fleizach.
+
+        Added missing implementation of numberAttributeValue both to WKTR and DRT.
+
+        * DumpRenderTree/atk/AccessibilityUIElementAtk.cpp:
+        (AccessibilityUIElement::numberAttributeValue):
+        * WebKitTestRunner/InjectedBundle/atk/AccessibilityUIElementAtk.cpp:
+        (WTR::AccessibilityUIElement::numberAttributeValue):
+
+2014-03-10  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed build fix.
+
+        Some bad Windows code was committed at some point that prevents the Apple Windows port
+        from finding its runtime dependencies reliably.
+
+        * win/DLLLauncher/DLLLauncherMain.cpp:
+        (appleApplicationSupportDirectory): Restored this function.
+        (modifyPath): Update to use appleApplicationSupportDirectory function.
+
+2014-03-10  Zoltan Horvath  <zoltan@webkit.org>
+
+        Let the user define the full address of the performance-site-server for uploading results
+        https://bugs.webkit.org/show_bug.cgi?id=129819
+
+        Reviewed by Ryosuke Niwa.
+
+        Currently perftestsrunner.py assumes that the server uses https protocol all the time, which
+        can be confusing. It's more straightforward, if you need to define explicitly the server's full
+        address along with the protocol, when you're using this parameter. I added HTTPS as the default
+        protocol for now, in order to avoid breaking the perf bots.
+
+        * Scripts/webkitpy/performance_tests/perftestsrunner.py:
+        (_upload_json):
+        * Scripts/webkitpy/performance_tests/perftestsrunner_unittest.py:
+        (MainTest.test_upload_json):
+
+2014-03-10  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Pass environment to Pre-Build, Pre-Link, and Post-Build Stages.
+        https://bugs.webkit.org/show_bug.cgi?id=130023
+
+        Reviewed by Dean Jackson.
+
+        * DumpRenderTree/DumpRenderTree.vcxproj/DumpRenderTree/DumpRenderTreeLauncher.vcxproj: Add missing
+        /SAFESEH flag to DLL launcher process.
+
 2014-03-09  Martin Robinson  <mrobinson@igalia.com>
 
         RunGtkWebKitGObjectDOMBindingsAPIBreakTests should be added to the BuildAndTestFactory not the TestFactory

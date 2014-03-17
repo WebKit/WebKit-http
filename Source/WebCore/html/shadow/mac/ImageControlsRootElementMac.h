@@ -32,16 +32,15 @@
 
 namespace WebCore {
 
-class ImageControlsRootElementMac : public ImageControlsRootElement {
+class ImageControlsRootElementMac final : public ImageControlsRootElement {
+    friend class ImageControlsRootElement;
 public:
-    ~ImageControlsRootElementMac();
-
-    static PassRefPtr<ImageControlsRootElementMac> maybeCreate(Document&);
+    virtual ~ImageControlsRootElementMac();
 
 private:
     ImageControlsRootElementMac(Document&);
 
-    virtual void defaultEventHandler(Event*) override;
+    virtual RenderPtr<RenderElement> createElementRenderer(PassRef<RenderStyle>) override;
 };
 
 } // namespace WebCore

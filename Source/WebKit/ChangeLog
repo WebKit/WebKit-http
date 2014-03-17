@@ -1,3 +1,60 @@
+2014-03-12  Anders Carlsson  <andersca@apple.com>
+
+        <rdar://problem/16307346> Add new WebKitLegacy.framework.
+
+        Reviewed by Dan Bernstein.
+
+        * WebKit.xcodeproj/project.pbxproj:
+        Add new files.
+
+2014-03-12  Tim Horton  <timothy_horton@apple.com>
+
+        Hook up image controls for WebKit1
+        https://bugs.webkit.org/show_bug.cgi?id=130062
+        <rdar://problem/15964809>
+
+        Reviewed by Brady Eidson.
+
+        * WebKit.xcodeproj/project.pbxproj:
+        Add WebSharingServicePickerController.
+
+2014-03-11  Jae Hyun Park  <jaepark@webkit.org>
+
+        [GTK][CMake] Add HARFBUZZ_INCLUDE_DIRS to WebKit and WebKit2
+        https://bugs.webkit.org/show_bug.cgi?id=130070
+
+        Reviewed by Martin Robinson.
+
+        * PlatformGTK.cmake:
+
+2014-03-10  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed build fix (64-bit).
+
+        * WebKit.vcxproj/WebKit/WebKitCommon.props: Put uuid.lib as the last link library so that
+        the MSIE DOM symbols don't conflict with WebKit's.
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in: Add missing 64-bit symbol definitions.
+
+2014-03-10  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Pass environment to Pre-Build, Pre-Link, and Post-Build Stages.
+        https://bugs.webkit.org/show_bug.cgi?id=130023
+
+        Reviewed by Dean Jackson.
+
+        * WebKit.vcxproj/WebKit.make: Removed.
+        * WebKit.vcxproj/WebKit/WebKitPostBuild.cmd: Use %PlatformArchitecture% rather than
+        hard-coded 32-bit path.
+
+2014-03-10  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK] [CMake] Clean up library linking
+        https://bugs.webkit.org/show_bug.cgi?id=129782
+
+        Reviewed by Philippe Normand.
+
+        * PlatformGTK.cmake: Use the new macro.
+
 2014-03-07  Alex Christensen  <achristensen@webkit.org>
 
         [Win] Unreviewed build fix after r165310.

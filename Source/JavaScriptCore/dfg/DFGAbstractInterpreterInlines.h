@@ -935,8 +935,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         break;
     }
             
-    case CompareStrictEq:
-    case CompareStrictEqConstant: {
+    case CompareStrictEq: {
         Node* leftNode = node->child1().node();
         Node* rightNode = node->child2().node();
         JSValue left = forNode(leftNode).value();
@@ -1844,13 +1843,6 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
     case CheckTierUpInLoop:
     case CheckTierUpAtReturn:
         break;
-
-    case ConditionalStoreBarrier: {
-        if (!needsTypeCheck(node->child2().node(), ~SpecCell))
-            m_state.setFoundConstants(true);
-        filter(node->child1(), SpecCell);
-        break;
-    }
 
     case StoreBarrier: {
         filter(node->child1(), SpecCell);

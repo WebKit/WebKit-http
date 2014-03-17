@@ -345,7 +345,6 @@ private:
         case CompareEq:
         case CompareEqConstant:
         case CompareStrictEq:
-        case CompareStrictEqConstant:
         case InstanceOf:
         case IsUndefined:
         case IsBoolean:
@@ -542,7 +541,6 @@ private:
 #ifndef NDEBUG
         // These get ignored because they don't return anything.
         case StoreBarrier:
-        case ConditionalStoreBarrier:
         case StoreBarrierWithNullCheck:
         case PutByValDirect:
         case PutByVal:

@@ -58,6 +58,8 @@ enum AttributesIndex {
     // Attribute names.
     InvalidNameIndex = 0,
     PlaceholderNameIndex,
+    PosInSetIndex,
+    SetSizeIndex,
     SortNameIndex,
 
     // Attribute values.
@@ -72,6 +74,8 @@ enum AttributesIndex {
 const String attributesMap[][2] = {
     // Attribute names.
     { "AXInvalid", "invalid" },
+    { "AXARIAPosInSet", "posinset" },
+    { "AXARIASetSize", "setsize" },
     { "AXPlaceholderValue", "placeholder-text" } ,
     { "AXSortDirection", "sort" },
 
@@ -870,8 +874,12 @@ double AccessibilityUIElement::x()
     if (!ATK_IS_COMPONENT(m_element))
         return 0;
 
-    int x, y;
-    atk_component_get_position(ATK_COMPONENT(m_element), &x, &y, ATK_XY_SCREEN);
+    int x;
+#if ATK_CHECK_VERSION(2,11,90)
+    atk_component_get_extents(ATK_COMPONENT(m_element), &x, nullptr, nullptr, nullptr, ATK_XY_SCREEN);
+#else
+    atk_component_get_position(ATK_COMPONENT(m_element), &x, nullptr, ATK_XY_SCREEN);
+#endif
 
     return x;
 }
@@ -881,8 +889,12 @@ double AccessibilityUIElement::y()
     if (!ATK_IS_COMPONENT(m_element))
         return 0;
 
-    int x, y;
-    atk_component_get_position(ATK_COMPONENT(m_element), &x, &y, ATK_XY_SCREEN);
+    int y;
+#if ATK_CHECK_VERSION(2,11,90)
+    atk_component_get_extents(ATK_COMPONENT(m_element), nullptr, &y, nullptr, nullptr, ATK_XY_SCREEN);
+#else
+    atk_component_get_position(ATK_COMPONENT(m_element), nullptr, &y, ATK_XY_SCREEN);
+#endif
 
     return y;
 }
@@ -892,8 +904,12 @@ double AccessibilityUIElement::width()
     if (!ATK_IS_COMPONENT(m_element))
         return 0;
 
-    int width, height;
-    atk_component_get_size(ATK_COMPONENT(m_element), &width, &height);
+    int width;
+#if ATK_CHECK_VERSION(2,11,90)
+    atk_component_get_extents(ATK_COMPONENT(m_element), nullptr, nullptr, &width, nullptr, ATK_XY_WINDOW);
+#else
+    atk_component_get_size(ATK_COMPONENT(m_element), &width, nullptr);
+#endif
 
     return width;
 }
@@ -903,8 +919,12 @@ double AccessibilityUIElement::height()
     if (!ATK_IS_COMPONENT(m_element))
         return 0;
 
-    int width, height;
-    atk_component_get_size(ATK_COMPONENT(m_element), &width, &height);
+    int height;
+#if ATK_CHECK_VERSION(2,11,90)
+    atk_component_get_extents(ATK_COMPONENT(m_element), nullptr, nullptr, nullptr, &height, ATK_XY_WINDOW);
+#else
+    atk_component_get_size(ATK_COMPONENT(m_element), nullptr, &height);
+#endif
 
     return height;
 }
@@ -914,11 +934,13 @@ double AccessibilityUIElement::clickPointX()
     if (!ATK_IS_COMPONENT(m_element))
         return 0;
 
-    int x, y;
-    atk_component_get_position(ATK_COMPONENT(m_element), &x, &y, ATK_XY_WINDOW);
-
-    int width, height;
-    atk_component_get_size(ATK_COMPONENT(m_element), &width, &height);
+    int x, width;
+#if ATK_CHECK_VERSION(2,11,90)
+    atk_component_get_extents(ATK_COMPONENT(m_element), &x, nullptr, &width, nullptr, ATK_XY_WINDOW);
+#else
+    atk_component_get_position(ATK_COMPONENT(m_element), &x, nullptr, ATK_XY_WINDOW);
+    atk_component_get_size(ATK_COMPONENT(m_element), &width, nullptr);
+#endif
 
     return x + width / 2.0;
 }
@@ -928,11 +950,13 @@ double AccessibilityUIElement::clickPointY()
     if (!ATK_IS_COMPONENT(m_element))
         return 0;
 
-    int x, y;
-    atk_component_get_position(ATK_COMPONENT(m_element), &x, &y, ATK_XY_WINDOW);
-
-    int width, height;
-    atk_component_get_size(ATK_COMPONENT(m_element), &width, &height);
+    int y, height;
+#if ATK_CHECK_VERSION(2,11,90)
+    atk_component_get_extents(ATK_COMPONENT(m_element), nullptr, &y, nullptr, &height, ATK_XY_WINDOW);
+#else
+    atk_component_get_position(ATK_COMPONENT(m_element), nullptr, &y, ATK_XY_WINDOW);
+    atk_component_get_size(ATK_COMPONENT(m_element), nullptr, &height);
+#endif
 
     return y + height / 2.0;
 }
@@ -1302,7 +1326,19 @@ JSStringRef AccessibilityUIElement::stringAttributeValue(JSStringRef attribute)
 
 double AccessibilityUIElement::numberAttributeValue(JSStringRef attribute)
 {
-    // FIXME: implement
+    if (!ATK_IS_OBJECT(m_element))
+        return 0;
+
+    String atkAttributeName = coreAttributeToAtkAttribute(attribute);
+    if (atkAttributeName.isEmpty())
+        return 0;
+
+    if (atkAttributeName == "setsize" || atkAttributeName == "posinset") {
+        String attributeValue = getAttributeSetValueForId(ATK_OBJECT(m_element), ObjectAttributeType, atkAttributeName);
+        if (!attributeValue.isEmpty())
+            return attributeValue.toDouble();
+    }
+
     return 0;
 }
 

@@ -37,6 +37,7 @@
 #import "VisibleContentRectUpdateInfo.h"
 #import "WebChromeClient.h"
 #import "WebCoreArgumentCoders.h"
+#import "WebKitSystemInterface.h"
 #import "WebKitSystemInterfaceIOS.h"
 #import "WebFrame.h"
 #import "WebPageProxyMessages.h"
@@ -559,7 +560,7 @@ PassRefPtr<Range> WebPage::rangeForWebSelectionAtPosition(const IntPoint& point,
     flags = WKIsBlockSelection;
     range = Range::create(bestChoice->document());
     range->selectNodeContents(bestChoice, ASSERT_NO_EXCEPTION);
-    return range;
+    return range->collapsed(ASSERT_NO_EXCEPTION) ? nullptr : range;
 }
 
 PassRefPtr<Range> WebPage::rangeForBlockAtPoint(const IntPoint& point)
@@ -1488,7 +1489,8 @@ void WebPage::getPositionInformation(const IntPoint& point, InteractionInformati
     if (!elementIsLinkOrImage) {
         HitTestResult result = m_page->mainFrame().eventHandler().hitTestResultAtPoint((point), HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::DisallowShadowContent | HitTestRequest::AllowChildFrameContent);
         hitNode = result.innerNode();
-        if (hitNode) {
+        // Hit test could return HTMLHtmlElement that has no renderer, if the body is smaller than the document.
+        if (hitNode && hitNode->renderer()) {
             m_page->focusController().setFocusedFrame(result.innerNodeFrame());
             info.selectionRects.append(SelectionRect(hitNode->renderer()->absoluteBoundingBoxRect(true), true, 0));
             info.bounds = hitNode->renderer()->absoluteBoundingBoxRect();
@@ -1676,8 +1678,8 @@ void WebPage::getAssistedNodeInformation(AssistedNodeInformation& information)
 
 void WebPage::elementDidFocus(WebCore::Node* node)
 {
-    m_assistedNode = node;
     if (node->hasTagName(WebCore::HTMLNames::selectTag) || node->hasTagName(WebCore::HTMLNames::inputTag) || node->hasTagName(WebCore::HTMLNames::textareaTag) || node->hasEditableStyle()) {
+        m_assistedNode = node;
         AssistedNodeInformation information;
         getAssistedNodeInformation(information);
         send(Messages::WebPageProxy::StartAssistingNode(information));
@@ -1733,7 +1735,8 @@ void WebPage::updateVisibleContentRects(const VisibleContentRectUpdateInfo& visi
     FloatRect exposedRect = visibleContentRectUpdateInfo.exposedRect();
     m_drawingArea->setExposedContentRect(enclosingIntRect(exposedRect));
 
-    IntPoint scrollPosition = roundedIntPoint(visibleContentRectUpdateInfo.unobscuredRect().location());
+    IntRect roundedUnobscuredRect = roundedIntRect(visibleContentRectUpdateInfo.unobscuredRect());
+    IntPoint scrollPosition = roundedUnobscuredRect.location();
 
     double boundedScale = std::min(m_viewportConfiguration.maximumScale(), std::max(m_viewportConfiguration.minimumScale(), visibleContentRectUpdateInfo.scale()));
     float floatBoundedScale = boundedScale;
@@ -1747,17 +1750,28 @@ void WebPage::updateVisibleContentRects(const VisibleContentRectUpdateInfo& visi
     }
 
     m_page->mainFrame().view()->setScrollOffset(scrollPosition);
-    
+    m_page->mainFrame().view()->setUnobscuredContentRect(roundedUnobscuredRect);
+
     if (visibleContentRectUpdateInfo.inStableState())
         m_page->mainFrame().view()->setCustomFixedPositionLayoutRect(enclosingIntRect(visibleContentRectUpdateInfo.customFixedPositionRect()));
-
-    // FIXME: we should also update the frame view from unobscured rect. Altenatively, we can have it pull the values from ScrollView.
 }
 
 void WebPage::willStartUserTriggeredZooming()
 {
     m_userHasChangedPageScaleFactor = true;
 }
+
+#if ENABLE(WEBGL)
+WebCore::WebGLLoadPolicy WebPage::webGLPolicyForURL(WebFrame*, const String&)
+{
+    return WKShouldBlockWebGL() ? WebGLBlockCreation : WebGLAllowCreation;
+}
+
+WebCore::WebGLLoadPolicy WebPage::resolveWebGLPolicyForURL(WebFrame*, const String&)
+{
+    return WKShouldBlockWebGL() ? WebGLBlockCreation : WebGLAllowCreation;
+}
+#endif
 
 } // namespace WebKit
 

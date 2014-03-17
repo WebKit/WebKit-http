@@ -40,7 +40,8 @@ list(APPEND WebCore_SOURCES
     platform/audio/gstreamer/FFTFrameGStreamer.cpp
     platform/audio/gstreamer/WebKitWebAudioSourceGStreamer.cpp
 
-    platform/geoclue/GeolocationProviderGeoclue.cpp
+    platform/geoclue/GeolocationProviderGeoclue1.cpp
+    platform/geoclue/GeolocationProviderGeoclue2.cpp
 
     platform/graphics/GraphicsContext3DPrivate.cpp
     platform/graphics/OpenGLShims.cpp
@@ -111,6 +112,7 @@ list(APPEND WebCore_SOURCES
     platform/mediastream/gstreamer/MediaStreamCenterGStreamer.cpp
 
     platform/network/soup/AuthenticationChallengeSoup.cpp
+    platform/network/soup/CertificateInfo.cpp
     platform/network/soup/CookieJarSoup.cpp
     platform/network/soup/CookieStorageSoup.cpp
     platform/network/soup/CredentialStorageSoup.cpp
@@ -137,6 +139,10 @@ list(APPEND WebCore_SOURCES
     platform/text/TextEncodingDetectorICU.cpp
 
     platform/text/enchant/TextCheckerEnchant.cpp
+
+    platform/text/gtk/TextBreakIteratorInternalICUGtk.cpp
+
+    platform/network/gtk/CredentialBackingStore.cpp
 )
 
 list(APPEND WebCorePlatformGTK_SOURCES
@@ -236,38 +242,18 @@ list(APPEND WebCorePlatformGTK_SOURCES
     platform/gtk/WidgetBackingStoreGtkX11.cpp
     platform/gtk/WidgetGtk.cpp
     platform/gtk/WidgetRenderingContext.cpp
-
-    platform/network/gtk/CredentialBackingStore.cpp
-
-    platform/network/soup/AuthenticationChallengeSoup.cpp
-    platform/network/soup/CertificateInfo.cpp
-    platform/network/soup/CookieJarSoup.cpp
-    platform/network/soup/CookieStorageSoup.cpp
-    platform/network/soup/CredentialStorageSoup.cpp
-    platform/network/soup/DNSSoup.cpp
-    platform/network/soup/NetworkStorageSessionSoup.cpp
-    platform/network/soup/ProxyResolverSoup.cpp
-    platform/network/soup/ProxyServerSoup.cpp
-    platform/network/soup/ResourceErrorSoup.cpp
-    platform/network/soup/ResourceHandleSoup.cpp
-    platform/network/soup/ResourceRequestSoup.cpp
-    platform/network/soup/ResourceResponseSoup.cpp
-    platform/network/soup/SocketStreamHandleSoup.cpp
-    platform/network/soup/SynchronousLoaderClientSoup.cpp
-
-    platform/soup/SharedBufferSoup.cpp
-
-    platform/text/icu/UTextProvider.cpp
-    platform/text/icu/UTextProviderLatin1.cpp
-    platform/text/icu/UTextProviderUTF16.cpp
-    platform/text/LocaleICU.cpp
-    platform/text/TextCodecICU.cpp
-    platform/text/TextEncodingDetectorICU.cpp
-
-    platform/text/enchant/TextCheckerEnchant.cpp
-
-    platform/text/gtk/TextBreakIteratorInternalICUGtk.cpp
 )
+
+if (WTF_USE_GEOCLUE2)
+    list(APPEND WebCore_SOURCES
+        ${DERIVED_SOURCES_WEBCORE_DIR}/Geoclue2Interface.c
+    )
+    execute_process(COMMAND pkg-config --variable dbus_interface geoclue-2.0 OUTPUT_VARIABLE GEOCLUE_DBUS_INTERFACE)
+    add_custom_command(
+         OUTPUT ${DERIVED_SOURCES_WEBCORE_DIR}/Geoclue2Interface.c ${DERIVED_SOURCES_WEBCORE_DIR}/Geoclue2Interface.h
+         COMMAND gdbus-codegen --interface-prefix org.freedesktop.GeoClue2. --c-namespace Geoclue --generate-c-code ${DERIVED_SOURCES_WEBCORE_DIR}/Geoclue2Interface ${GEOCLUE_DBUS_INTERFACE}
+    )
+endif ()
 
 if (ENABLE_NETSCAPE_PLUGIN_API)
     list(APPEND WebCore_SOURCES
@@ -463,7 +449,6 @@ set_property(
         ${GDK_INCLUDE_DIRS}
 )
 target_link_libraries(WebCorePlatformGTK
-    WebCore
     ${WebCore_LIBRARIES}
     ${GTK_LIBRARIES}
     ${GDK_LIBRARIES}

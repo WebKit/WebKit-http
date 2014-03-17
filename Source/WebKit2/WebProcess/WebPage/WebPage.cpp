@@ -619,7 +619,7 @@ PassRefPtr<Plugin> WebPage::createPlugin(WebFrame* frame, HTMLPlugInElement* plu
 
 #endif // ENABLE(NETSCAPE_PLUGIN_API)
 
-#if ENABLE(WEBGL) && !PLATFORM(MAC)
+#if ENABLE(WEBGL) && !PLATFORM(COCOA)
 WebCore::WebGLLoadPolicy WebPage::webGLPolicyForURL(WebFrame* frame, const String& url)
 {
     return WebGLAllowCreation;
@@ -842,6 +842,13 @@ void WebPage::close()
     if (m_activeColorChooser) {
         m_activeColorChooser->disconnectFromPage();
         m_activeColorChooser = 0;
+    }
+#endif
+
+#if PLATFORM(GTK)
+    if (m_printOperation) {
+        m_printOperation->disconnectFromPage();
+        m_printOperation = nullptr;
     }
 #endif
 
@@ -2633,6 +2640,7 @@ void WebPage::willCommitLayerTree(RemoteLayerTreeTransaction& layerTransaction)
     layerTransaction.setContentsSize(corePage()->mainFrame().view()->contentsSize());
     layerTransaction.setPageScaleFactor(corePage()->pageScaleFactor());
     layerTransaction.setRenderTreeSize(corePage()->renderTreeSize());
+    layerTransaction.setPageExtendedBackgroundColor(corePage()->pageExtendedBackgroundColor());
 #if PLATFORM(IOS)
     layerTransaction.setLastVisibleContentRectUpdateID(m_lastVisibleContentRectUpdateID);
     layerTransaction.setScaleWasSetByUIProcess(scaleWasSetByUIProcess());
@@ -3464,9 +3472,6 @@ void WebPage::beginPrinting(uint64_t frameID, const PrintInfo& printInfo)
 void WebPage::endPrinting()
 {
     drawingArea()->setLayerTreeStateIsFrozen(false);
-#if PLATFORM(GTK)
-    m_printOperation = 0;
-#endif
     m_printContext = nullptr;
 }
 
@@ -3592,7 +3597,6 @@ void WebPage::drawPagesToPDF(uint64_t frameID, const PrintInfo& printInfo, uint3
 }
 
 #elif PLATFORM(GTK)
-
 void WebPage::drawPagesForPrinting(uint64_t frameID, const PrintInfo& printInfo, uint64_t callbackID)
 {
     beginPrinting(frameID, printInfo);
@@ -3602,6 +3606,12 @@ void WebPage::drawPagesForPrinting(uint64_t frameID, const PrintInfo& printInfo,
     }
 
     send(Messages::WebPageProxy::VoidCallback(callbackID));
+}
+
+void WebPage::didFinishPrintOperation(const WebCore::ResourceError& error, uint64_t callbackID)
+{
+    send(Messages::WebPageProxy::PrintFinishedCallback(error, callbackID));
+    m_printOperation = nullptr;
 }
 #endif
 

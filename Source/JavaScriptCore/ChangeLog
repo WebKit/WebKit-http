@@ -1,3 +1,731 @@
+2014-03-11  Filip Pizlo  <fpizlo@apple.com>
+
+        ASSERTION FAILED: node->op() == Phi || node->op() == SetArgument
+        https://bugs.webkit.org/show_bug.cgi?id=130069
+
+        Reviewed by Geoffrey Garen.
+        
+        This was a great assertion, and it represents our strictest interpretation of the rules of
+        our intermediate representation. However, fixing DCE to actually preserve the relevant
+        property would be hard, and it wouldn't have an observable effect right now because nobody
+        actually uses the propery of CPS that this assertion is checking for.
+        
+        In particular, we do always require, and rely on, the fact that non-captured variables
+        have variablesAtTail refer to the last interesting use of the variable: a SetLocal if the
+        block assigns to the variable, a GetLocal if it only reads from it, and a Flush,
+        PhantomLocal, or Phi otherwise. We do preserve this property successfully and DCE was not
+        broken in this regard. But, in the strictest sense, CPS also means that for captured
+        variables, variablesAtTail also continues to point to the last relevant use of the
+        variable. In particular, if there are multiple GetLocals, then it should point to the last
+        one. This is hard for DCE to preserve. Also, nobody relies on variablesAtTail for captured
+        variables, except to check the VariableAccessData; but in that case, we don't really need
+        the *last* relevant use of the variable - any node that mentions the same variable will do
+        just fine.
+        
+        So, this change loosens the assertion and adds a detailed FIXME describing what we would
+        have to do if we wanted to preserve the more strict property.
+        
+        This also makes changes to various debug printing paths so that validation doesn't crash
+        during graph dump. This also adds tests for the interesting cases of DCE failing to
+        preserve CPS in the strictest sense. This also attempts to win the record for longest test
+        name.
+
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::hashAsStringIfPossible):
+        (JSC::CodeBlock::dumpAssumingJITType):
+        * bytecode/CodeBlock.h:
+        * bytecode/CodeOrigin.cpp:
+        (JSC::InlineCallFrame::hashAsStringIfPossible):
+        (JSC::InlineCallFrame::dumpBriefFunctionInformation):
+        * bytecode/CodeOrigin.h:
+        * dfg/DFGCPSRethreadingPhase.cpp:
+        (JSC::DFG::CPSRethreadingPhase::run):
+        * dfg/DFGDCEPhase.cpp:
+        (JSC::DFG::DCEPhase::cleanVariables):
+        * dfg/DFGInPlaceAbstractState.cpp:
+        (JSC::DFG::InPlaceAbstractState::mergeStateAtTail):
+        * runtime/FunctionExecutableDump.cpp:
+        (JSC::FunctionExecutableDump::dump):
+        * tests/stress/dead-access-to-captured-variable-preceded-by-a-live-store-in-function-with-multiple-basic-blocks.js: Added.
+        (foo):
+        * tests/stress/dead-access-to-captured-variable-preceded-by-a-live-store.js: Added.
+        (foo):
+
+2014-03-12  Brian Burg  <bburg@apple.com>
+
+        Web Replay: add infrastructure for memoizing nondeterministic DOM APIs
+        https://bugs.webkit.org/show_bug.cgi?id=129445
+
+        Reviewed by Timothy Hatcher.
+
+        There was a bug in the replay inputs code generator that would include
+        headers for definitions of enum classes, even though they can be safely
+        forward-declared.
+
+        * replay/scripts/CodeGeneratorReplayInputs.py:
+        (Generator.generate_includes): Only include for copy constructor if the
+        type is a heavy scalar (i.e., String, URL), not a normal scalar
+        (i.e., int, double, enum classes).
+
+        (Generator.generate_type_forward_declarations): Forward-declare scalars
+        that are enums or enum classes.
+
+2014-03-12  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Disable REMOTE_INSPECTOR in earlier OS X releases
+        https://bugs.webkit.org/show_bug.cgi?id=130118
+
+        Reviewed by Timothy Hatcher.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2014-03-12  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Hang in Remote Inspection triggering breakpoint from console
+        https://bugs.webkit.org/show_bug.cgi?id=130032
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/EventLoop.h:
+        * inspector/EventLoop.cpp:
+        (Inspector::EventLoop::remoteInspectorRunLoopMode):
+        (Inspector::EventLoop::cycle):
+        Expose the run loop mode name so it can be used if needed by others.
+
+        * inspector/remote/RemoteInspectorDebuggableConnection.h:
+        * inspector/remote/RemoteInspectorDebuggableConnection.mm:
+        (Inspector::RemoteInspectorBlock::RemoteInspectorBlock):
+        (Inspector::RemoteInspectorBlock::~RemoteInspectorBlock):
+        (Inspector::RemoteInspectorBlock::operator=):
+        (Inspector::RemoteInspectorBlock::operator()):
+        (Inspector::RemoteInspectorQueueTask):
+        Instead of a dispatch_queue, have our own static Vector of debugger tasks.
+
+        (Inspector::RemoteInspectorHandleRunSource):
+        (Inspector::RemoteInspectorInitializeQueue):
+        Initialize the static queue and run loop source. When the run loop source
+        fires, it will exhaust the queue of debugger messages.
+
+        (Inspector::RemoteInspectorDebuggableConnection::RemoteInspectorDebuggableConnection):
+        (Inspector::RemoteInspectorDebuggableConnection::~RemoteInspectorDebuggableConnection):
+        When we get a debuggable connection add a run loop source for inspector commands.
+
+        (Inspector::RemoteInspectorDebuggableConnection::dispatchAsyncOnDebuggable):
+        (Inspector::RemoteInspectorDebuggableConnection::sendMessageToBackend):
+        Enqueue blocks on our Vector instead of our dispatch_queue.
+
+2014-03-12  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r165482.
+        https://bugs.webkit.org/show_bug.cgi?id=130157
+
+        Broke the windows build; "error C2466: cannot allocate an
+        array of constant size 0" (Requested by jernoble on #webkit).
+
+        Reverted changeset:
+
+        "Reduce memory use for static property maps"
+        https://bugs.webkit.org/show_bug.cgi?id=129986
+        http://trac.webkit.org/changeset/165482
+
+2014-03-12  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        Remove HandleSet::m_nextToFinalize
+        https://bugs.webkit.org/show_bug.cgi?id=130109
+
+        Reviewed by Mark Lam.
+
+        This is a remnant of when HandleSet contained things that needed to be finalized. 
+
+        * heap/HandleSet.cpp:
+        (JSC::HandleSet::HandleSet):
+        (JSC::HandleSet::writeBarrier):
+        * heap/HandleSet.h:
+        (JSC::HandleSet::allocate):
+        (JSC::HandleSet::deallocate):
+
+2014-03-12  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        Layout Test fast/workers/worker-gc.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=130135
+
+        Reviewed by Geoffrey Garen.
+
+        When removing MarkedBlocks, we always expect them to be in the MarkedAllocator's 
+        main list of blocks, i.e. not in the retired list. When shutting down the VM this
+        wasn't always the case which was causing ASSERTs to fire. We should rearrange things 
+        so that allocators are notified with lastChanceToFinalize. This will give them 
+        the chance to move their retired blocks back into the main list before removing them all.
+
+        * heap/MarkedAllocator.cpp:
+        (JSC::LastChanceToFinalize::operator()):
+        (JSC::MarkedAllocator::lastChanceToFinalize):
+        * heap/MarkedAllocator.h:
+        * heap/MarkedSpace.cpp:
+        (JSC::LastChanceToFinalize::operator()):
+        (JSC::MarkedSpace::lastChanceToFinalize):
+
+2014-03-12  Gavin Barraclough  <barraclough@apple.com>
+
+        Reduce memory use for static property maps
+        https://bugs.webkit.org/show_bug.cgi?id=129986
+
+        Reviewed by Andreas Kling.
+
+        Static property tables are currently duplicated on first use from read-only memory into dirty memory
+        in every process, and since the entries are large (48 bytes) and the tables can be unusually sparse
+        (we use a custom hash table without a rehash) a lot of memory may be wasted.
+
+        First, reduce the size of the hashtable. Instead of storing values in the table the hashtable maps
+        from string hashes to indicies into a densely packed array of values. Compute the index table at
+        compile time as a part of the derived sources step, such that this may be read-only data.
+
+        Second, don't copy all data from the HashTableValue array into a HashEntry objects. Instead refer
+        directly to the HashTableValue entries. The only data that needs to be allocated at runtime are the
+        keys, which are Identifiers.
+
+        * create_hash_table:
+            - emit the hash table index into the derived source (we were calculating this already to ensure chaining does not get too deep).
+        * parser/Lexer.cpp:
+        (JSC::Lexer<LChar>::parseIdentifier):
+        (JSC::Lexer<UChar>::parseIdentifier):
+        (JSC::Lexer<T>::parseIdentifierSlowCase):
+            - HashEntry -> HashTableValue.
+        * parser/Lexer.h:
+        (JSC::Keywords::getKeyword):
+            - HashEntry -> HashTableValue.
+        * runtime/ClassInfo.h:
+            - removed HashEntry.
+        * runtime/JSObject.cpp:
+        (JSC::getClassPropertyNames):
+            - use HashTable::ConstIterator.
+        (JSC::JSObject::put):
+        (JSC::JSObject::deleteProperty):
+        (JSC::JSObject::findPropertyHashEntry):
+            - HashEntry -> HashTableValue.
+        (JSC::JSObject::reifyStaticFunctionsForDelete):
+            - changed HashTable::ConstIterator interface.
+        * runtime/JSObject.h:
+            - HashEntry -> HashTableValue.
+        * runtime/Lookup.cpp:
+        (JSC::HashTable::createTable):
+            - table -> keys, keys array is now densely packed.
+        (JSC::HashTable::deleteTable):
+            - table -> keys.
+        (JSC::setUpStaticFunctionSlot):
+            - HashEntry -> HashTableValue.
+        * runtime/Lookup.h:
+        (JSC::HashTableValue::builtinGenerator):
+        (JSC::HashTableValue::function):
+        (JSC::HashTableValue::functionLength):
+        (JSC::HashTableValue::propertyGetter):
+        (JSC::HashTableValue::propertyPutter):
+        (JSC::HashTableValue::lexerValue):
+            - added accessor methods from HashEntry.
+        (JSC::HashTable::copy):
+            - fields changed.
+        (JSC::HashTable::initializeIfNeeded):
+            - table -> keys.
+        (JSC::HashTable::entry):
+            - HashEntry -> HashTableValue.
+        (JSC::HashTable::ConstIterator::ConstIterator):
+            - iterate packed value array, so no need to skipInvalidKeys().
+        (JSC::HashTable::ConstIterator::value):
+        (JSC::HashTable::ConstIterator::key):
+        (JSC::HashTable::ConstIterator::operator->):
+            - accessors now get HashTableValue/StringImpl* separately.
+        (JSC::HashTable::ConstIterator::operator++):
+            - iterate packed value array, so no need to skipInvalidKeys().
+        (JSC::HashTable::end):
+            - end is now size of dense not sparse array.
+        (JSC::getStaticPropertySlot):
+        (JSC::getStaticFunctionSlot):
+        (JSC::getStaticValueSlot):
+        (JSC::putEntry):
+        (JSC::lookupPut):
+            - HashEntry -> HashTableValue.
+
+2014-03-11  Filip Pizlo  <fpizlo@apple.com>
+
+        It should be possible to build WebKit with FTL on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=130116
+
+        Reviewed by Dan Bernstein.
+
+        * Configurations/Base.xcconfig:
+
+2014-03-10  Filip Pizlo  <fpizlo@apple.com>
+
+        GetById list caching should use something object-oriented rather than PolymorphicAccessStructureList
+        https://bugs.webkit.org/show_bug.cgi?id=129778
+
+        Reviewed by Geoffrey Garen.
+        
+        Also deduplicate the GetById getter call caching. Also add some small tests for
+        get stubs.
+        
+        This change reduces the amount of code involved in GetById access caching and it
+        creates data structures that can serve as an elegant scaffold for introducing other
+        kinds of caches or improving current caching styles. It will definitely make getter
+        performance improvements easier to implement.
+
+        * CMakeLists.txt:
+        * GNUmakefile.list.am:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::printGetByIdCacheStatus):
+        * bytecode/GetByIdStatus.cpp:
+        (JSC::GetByIdStatus::computeForStubInfo):
+        * bytecode/PolymorphicGetByIdList.cpp: Added.
+        (JSC::GetByIdAccess::GetByIdAccess):
+        (JSC::GetByIdAccess::~GetByIdAccess):
+        (JSC::GetByIdAccess::fromStructureStubInfo):
+        (JSC::GetByIdAccess::visitWeak):
+        (JSC::PolymorphicGetByIdList::PolymorphicGetByIdList):
+        (JSC::PolymorphicGetByIdList::from):
+        (JSC::PolymorphicGetByIdList::~PolymorphicGetByIdList):
+        (JSC::PolymorphicGetByIdList::currentSlowPathTarget):
+        (JSC::PolymorphicGetByIdList::addAccess):
+        (JSC::PolymorphicGetByIdList::isFull):
+        (JSC::PolymorphicGetByIdList::isAlmostFull):
+        (JSC::PolymorphicGetByIdList::didSelfPatching):
+        (JSC::PolymorphicGetByIdList::visitWeak):
+        * bytecode/PolymorphicGetByIdList.h: Added.
+        (JSC::GetByIdAccess::GetByIdAccess):
+        (JSC::GetByIdAccess::isSet):
+        (JSC::GetByIdAccess::operator!):
+        (JSC::GetByIdAccess::type):
+        (JSC::GetByIdAccess::structure):
+        (JSC::GetByIdAccess::chain):
+        (JSC::GetByIdAccess::chainCount):
+        (JSC::GetByIdAccess::stubRoutine):
+        (JSC::GetByIdAccess::doesCalls):
+        (JSC::PolymorphicGetByIdList::isEmpty):
+        (JSC::PolymorphicGetByIdList::size):
+        (JSC::PolymorphicGetByIdList::at):
+        (JSC::PolymorphicGetByIdList::operator[]):
+        * bytecode/StructureStubInfo.cpp:
+        (JSC::StructureStubInfo::deref):
+        (JSC::StructureStubInfo::visitWeakReferences):
+        * bytecode/StructureStubInfo.h:
+        (JSC::isGetByIdAccess):
+        (JSC::StructureStubInfo::initGetByIdList):
+        * jit/Repatch.cpp:
+        (JSC::generateGetByIdStub):
+        (JSC::tryCacheGetByID):
+        (JSC::patchJumpToGetByIdStub):
+        (JSC::tryBuildGetByIDList):
+        (JSC::tryBuildPutByIdList):
+        * tests/stress/getter.js: Added.
+        (foo):
+        (.o):
+        * tests/stress/polymorphic-prototype-accesses.js: Added.
+        (Foo):
+        (Bar):
+        (foo):
+        * tests/stress/prototype-getter.js: Added.
+        (Foo):
+        (foo):
+        * tests/stress/simple-prototype-accesses.js: Added.
+        (Foo):
+        (foo):
+
+2014-03-11  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        MarkedBlocks that are "full enough" shouldn't be swept after EdenCollections
+        https://bugs.webkit.org/show_bug.cgi?id=129920
+
+        Reviewed by Geoffrey Garen.
+
+        This patch introduces the notion of "retiring" MarkedBlocks. We retire a MarkedBlock
+        when the amount of free space in a MarkedBlock drops below a certain threshold.
+        Retired blocks are not considered for sweeping.
+
+        This is profitable because it reduces churn during sweeping. To build a free list, 
+        we have to scan through each cell in a block. After a collection, all objects that 
+        are live in the block will remain live until the next FullCollection, at which time
+        we un-retire all previously retired blocks. Thus, a small number of objects in a block
+        that die during each EdenCollection could cause us to do a disproportiante amount of 
+        sweeping for how much free memory we get back.
+
+        This patch looks like a consistent ~2% progression on boyer and is neutral everywhere else.
+
+        * heap/Heap.h:
+        (JSC::Heap::didRetireBlockWithFreeListSize):
+        * heap/MarkedAllocator.cpp:
+        (JSC::MarkedAllocator::tryAllocateHelper):
+        (JSC::MarkedAllocator::removeBlock):
+        (JSC::MarkedAllocator::reset):
+        * heap/MarkedAllocator.h:
+        (JSC::MarkedAllocator::MarkedAllocator):
+        (JSC::MarkedAllocator::forEachBlock):
+        * heap/MarkedBlock.cpp:
+        (JSC::MarkedBlock::sweepHelper):
+        (JSC::MarkedBlock::clearMarksWithCollectionType):
+        (JSC::MarkedBlock::didRetireBlock):
+        * heap/MarkedBlock.h:
+        (JSC::MarkedBlock::willRemoveBlock):
+        (JSC::MarkedBlock::isLive):
+        * heap/MarkedSpace.cpp:
+        (JSC::MarkedSpace::clearNewlyAllocated):
+        (JSC::MarkedSpace::clearMarks):
+        * runtime/Options.h:
+
+2014-03-11  Andreas Kling  <akling@apple.com>
+
+        Streamline PropertyTable for lookup-only access.
+        <https://webkit.org/b/130060>
+
+        The PropertyTable lookup algorithm was written to support both read
+        and write access. This wasn't actually needed in most places.
+
+        This change adds a PropertyTable::get() that just returns the value
+        type (instead of an insertion iterator.) It also adds an early return
+        for empty tables.
+
+        Finally, up the minimum table capacity from 8 to 16. It was lowered
+        to 8 in order to save memory, but that was before PropertyTables were
+        GC allocated. Nowadays we don't have nearly as many tables, since all
+        the unpinned transitions die off.
+
+        Reviewed by Darin Adler.
+
+        * runtime/PropertyMapHashTable.h:
+        (JSC::PropertyTable::get):
+        * runtime/Structure.cpp:
+        (JSC::Structure::despecifyDictionaryFunction):
+        (JSC::Structure::attributeChangeTransition):
+        (JSC::Structure::get):
+        (JSC::Structure::despecifyFunction):
+        * runtime/StructureInlines.h:
+        (JSC::Structure::get):
+
+2014-03-10  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        REGRESSION(r165407): DoYouEvenBench crashes in DRT
+        https://bugs.webkit.org/show_bug.cgi?id=130066
+
+        Reviewed by Geoffrey Garen.
+
+        The baseline JIT does a conditional store barrier for the put_by_id, but we need 
+        an unconditional store barrier so that we cover the butterfly case as well in emitPutTransitionStub.
+
+        * jit/JIT.h:
+        * jit/JITPropertyAccess.cpp:
+        (JSC::JIT::emit_op_put_by_id):
+        (JSC::JIT::emitWriteBarrier):
+
+2014-03-10  Mark Lam  <mark.lam@apple.com>
+
+        Resurrect bit-rotted JIT::probe() mechanism.
+        <https://webkit.org/b/130067>
+
+        Reviewed by Geoffrey Garen.
+
+        * jit/JITStubs.cpp:
+        - Added the needed #include <wtf/InlineASM.h>.
+
+2014-03-10  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Fix typo in EXCLUDED_SOURCE_FILE_NAMES_iphoneos.
+
+        Rubber-stamped by Dan Bernstein.
+
+        * Configurations/JavaScriptCore.xcconfig:
+
+2014-03-10  Mark Lam  <mark.lam@apple.com>
+
+        r165414 broke the 32-bit x86 tests: ASSERTION FAILED: result != InvalidIndex @ GPRInfo.h:330.
+        <https://webkit.org/b/130065>
+
+        Reviewed by Michael Saboff.
+
+        There is code in ScratchRegisterAllocator.cpp that is relying on GPRInfo::toIndex()
+        being able to return InvalidIndex.  Hence, the assertion is invalid.  Ditto for
+        FPRInfo::toIndex().
+
+        The fix is to remove the "result != InvalidIndex" assertions.
+
+        * jit/FPRInfo.h:
+        (JSC::FPRInfo::toIndex):
+        * jit/GPRInfo.h:
+        (JSC::GPRInfo::toIndex):
+
+2014-03-10  Mark Lam  <mark.lam@apple.com>
+
+        Crash on a stack overflow on 32-bit x86 in http/tests/websocket/tests/hybi/workers/no-onmessage-in-sync-op.html.
+        <https://webkit.org/b/129955>
+
+        Reviewed by Geoffrey Garen.
+
+        The 32-bit x86 version of getHostCallReturnValue() was leaking 16 bytes
+        stack memory every time it was called.  This is now fixed.
+
+        * jit/JITOperations.cpp:
+
+2014-03-10  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Better JSContext API for named evaluations (other than //# sourceURL)
+        https://bugs.webkit.org/show_bug.cgi?id=129911
+
+        Reviewed by Geoffrey Garen.
+
+        * API/JSBase.h:
+        * API/JSContext.h:
+        * API/JSContext.mm:
+        (-[JSContext evaluateScript:]):
+        (-[JSContext evaluateScript:withSourceURL:]):
+        Add new evaluateScript:withSourceURL:.
+
+        * API/tests/testapi.c:
+        (main):
+        * API/tests/testapi.mm:
+        (testObjectiveCAPI):
+        Add tests for sourceURL in evaluate APIs. It should
+        affect the exception objects.
+
+2014-03-10  Filip Pizlo  <fpizlo@apple.com>
+
+        Repatch should save and restore all used registers - not just temp ones - when making a call
+        https://bugs.webkit.org/show_bug.cgi?id=130041
+
+        Reviewed by Geoffrey Garen and Mark Hahnenberg.
+        
+        The save/restore code was written back when the only client was the DFG, which only uses a
+        subset of hardware registers: the "temp" registers in our lingo. But the FTL may use many
+        other registers, especially on ARM64. The fact that Repatch doesn't know to save those can
+        lead to data corruption on ARM64. 
+
+        * jit/RegisterSet.cpp:
+        (JSC::RegisterSet::calleeSaveRegisters):
+        (JSC::RegisterSet::numberOfSetGPRs):
+        (JSC::RegisterSet::numberOfSetFPRs):
+        * jit/RegisterSet.h:
+        * jit/Repatch.cpp:
+        (JSC::storeToWriteBarrierBuffer):
+        (JSC::emitPutTransitionStub):
+        * jit/ScratchRegisterAllocator.cpp:
+        (JSC::ScratchRegisterAllocator::ScratchRegisterAllocator):
+        (JSC::ScratchRegisterAllocator::preserveReusedRegistersByPushing):
+        (JSC::ScratchRegisterAllocator::restoreReusedRegistersByPopping):
+        (JSC::ScratchRegisterAllocator::usedRegistersForCall):
+        (JSC::ScratchRegisterAllocator::desiredScratchBufferSizeForCall):
+        (JSC::ScratchRegisterAllocator::preserveUsedRegistersToScratchBufferForCall):
+        (JSC::ScratchRegisterAllocator::restoreUsedRegistersFromScratchBufferForCall):
+        * jit/ScratchRegisterAllocator.h:
+
+2014-03-10  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        Remove ConditionalStore barrier
+        https://bugs.webkit.org/show_bug.cgi?id=130040
+
+        Reviewed by Geoffrey Garen.
+
+        ConditionalStoreBarrier was created when barriers were much more expensive. Now that 
+        they're cheap(er), we can get rid of them. This also allows us to get rid of the write 
+        barrier logic in emitPutTransitionStub because we always will have executed a write barrier 
+        on the base object in the case where we are allocating and storing a new Butterfly into it. 
+        Previously, a ConditionalStoreBarrier might or might not have barrier-ed the base object, 
+        so we'd have to emit a write barrier in the transition case.
+
+        This is performance neutral on the benchmarks we track.
+
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGConstantFoldingPhase.cpp:
+        (JSC::DFG::ConstantFoldingPhase::foldConstants):
+        (JSC::DFG::ConstantFoldingPhase::emitPutByOffset):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        (JSC::DFG::FixupPhase::insertStoreBarrier):
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::isStoreBarrier):
+        * dfg/DFGNodeType.h:
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        (JSC::DFG::PredictionPropagationPhase::propagate):
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileStoreBarrier):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::LowerDFGToLLVM::compileNode):
+        * jit/Repatch.cpp:
+        (JSC::emitPutTransitionStub):
+
+2014-03-10  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG and FTL should know that comparing anything to Misc is cheap and easy
+        https://bugs.webkit.org/show_bug.cgi?id=130001
+
+        Reviewed by Geoffrey Garen.
+        
+        - Expand CompareStrictEq(Misc:, Misc:) to work for cases where either side of the
+          comparison is just Untyped:.
+        
+        - This obviates the need for CompareStrictEqConstant, so remove it.
+        
+        - FTL had a thing called "Nully" which is really "Other". Rename it and add
+          OtherUse.
+        
+        9% speed-up on box2d.
+
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::parseBlock):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::isBinaryUseKind):
+        (JSC::DFG::Node::shouldSpeculateOther):
+        * dfg/DFGNodeType.h:
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        (JSC::DFG::PredictionPropagationPhase::propagate):
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compilePeepHoleBranch):
+        (JSC::DFG::SpeculativeJIT::compare):
+        (JSC::DFG::SpeculativeJIT::compileStrictEq):
+        * dfg/DFGSpeculativeJIT.h:
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compileMiscStrictEq):
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compileMiscStrictEq):
+        (JSC::DFG::SpeculativeJIT::compile):
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::LowerDFGToLLVM::compileNode):
+        (JSC::FTL::LowerDFGToLLVM::compileCompareEq):
+        (JSC::FTL::LowerDFGToLLVM::compileCompareStrictEq):
+        (JSC::FTL::LowerDFGToLLVM::compareEqObjectOrOtherToObject):
+        (JSC::FTL::LowerDFGToLLVM::equalNullOrUndefined):
+        (JSC::FTL::LowerDFGToLLVM::isNotOther):
+        (JSC::FTL::LowerDFGToLLVM::isOther):
+        (JSC::FTL::LowerDFGToLLVM::speculate):
+        (JSC::FTL::LowerDFGToLLVM::speculateObjectOrOther):
+        (JSC::FTL::LowerDFGToLLVM::speculateNotCell):
+        (JSC::FTL::LowerDFGToLLVM::speculateOther):
+        (JSC::FTL::LowerDFGToLLVM::speculateMisc):
+        * tests/stress/compare-strict-eq-integer-to-misc.js: Added.
+
+2014-03-10  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, remove unintended change.
+
+        * dfg/DFGDriver.cpp:
+        (JSC::DFG::compileImpl):
+
+2014-03-10  Filip Pizlo  <fpizlo@apple.com>
+
+        jsc commandline shouldn't have a "console" because that confuses some tests into thinking
+        that they're running in the browser.
+
+        Rubber stamped by Mark Hahnenberg.
+
+        * jsc.cpp:
+        (GlobalObject::finishCreation):
+
+2014-03-10  Filip Pizlo  <fpizlo@apple.com>
+
+        Out-line ScratchRegisterAllocator
+
+        Rubber stamped by Mark Hahnenberg.
+
+        * CMakeLists.txt:
+        * GNUmakefile.list.am:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * dfg/DFGDriver.cpp:
+        (JSC::DFG::compileImpl):
+        * jit/ScratchRegisterAllocator.cpp: Added.
+        (JSC::ScratchRegisterAllocator::ScratchRegisterAllocator):
+        (JSC::ScratchRegisterAllocator::~ScratchRegisterAllocator):
+        (JSC::ScratchRegisterAllocator::lock):
+        (JSC::ScratchRegisterAllocator::allocateScratch):
+        (JSC::ScratchRegisterAllocator::allocateScratchGPR):
+        (JSC::ScratchRegisterAllocator::allocateScratchFPR):
+        (JSC::ScratchRegisterAllocator::preserveReusedRegistersByPushing):
+        (JSC::ScratchRegisterAllocator::restoreReusedRegistersByPopping):
+        (JSC::ScratchRegisterAllocator::desiredScratchBufferSize):
+        (JSC::ScratchRegisterAllocator::preserveUsedRegistersToScratchBuffer):
+        (JSC::ScratchRegisterAllocator::restoreUsedRegistersFromScratchBuffer):
+        * jit/ScratchRegisterAllocator.h:
+
+2014-03-10  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Pass environment to Pre-Build, Pre-link, and Post-Build Stages.
+        https://bugs.webkit.org/show_bug.cgi?id=130023
+
+        Reviewed by Dean Jackson.
+
+        * JavaScriptCore.vcxproj/JavaScriptCore.proj: Avoid trailing backslashes in
+        path names to avoid accidental escaping of later string substitutions.
+
+2014-03-10  Andreas Kling  <akling@apple.com>
+
+        [X86_64] Smaller code for testb_i8r when register is accumulator.
+        <https://webkit.org/b/130026>
+
+        Generate the shorthand version of "test al, imm" when possible.
+
+        Reviewed by Michael Saboff.
+
+        * assembler/X86Assembler.h:
+        (JSC::X86Assembler::testb_i8r):
+
+2014-03-10  Andreas Kling  <akling@apple.com>
+
+        [X86_64] Smaller code for sub_ir when register is accumulator.
+        <https://webkit.org/b/130025>
+
+        Generate the shorthand version of "sub eax, imm" when possible.
+
+        Reviewed by Michael Saboff.
+
+        * assembler/X86Assembler.h:
+        (JSC::X86Assembler::subl_ir):
+        (JSC::X86Assembler::subq_ir):
+
+2014-03-10  Andreas Kling  <akling@apple.com>
+
+        [X86_64] Smaller code for add_ir when register is accumulator.
+        <https://webkit.org/b/130024>
+
+        Generate the shorthand version of "add eax, imm" when possible.
+
+        Reviewed by Michael Saboff.
+
+        * assembler/X86Assembler.h:
+        (JSC::X86Assembler::addl_ir):
+        (JSC::X86Assembler::addq_ir):
+
+2014-03-10  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        writeBarrier in emitPutReplaceStub is unnecessary
+        https://bugs.webkit.org/show_bug.cgi?id=130030
+
+        Reviewed by Filip Pizlo.
+
+        We already emit write barriers for each put-by-id when they're first compiled, so it's 
+        redundant to emit a write barrier as part of the repatched code.
+
+        * jit/Repatch.cpp:
+        (JSC::emitPutReplaceStub):
+
 2014-03-10  Andreas Kling  <akling@apple.com>
 
         [X86_64] Smaller code for xor_ir when register is accumulator.

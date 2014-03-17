@@ -108,6 +108,7 @@ if (NOT USE_GTK2)
     set(GTK_API_VERSION 3.0)
     set(ENABLE_PLUGIN_PROCESS ON)
     set(ENABLE_WEBKIT2 ON)
+    set(GDK_VERSION_MIN_REQUIRED GDK_VERSION_3_6)
 else ()
     set(WEBKITGTK_API_VERSION 2.0)
     set(GTK_API_VERSION 2.0)
@@ -204,7 +205,13 @@ endif ()
 find_package(GLIB 2.33.2 REQUIRED COMPONENTS ${glib_components})
 
 if (ENABLE_GEOLOCATION)
-    find_package(GeoClue)
+    find_package(GeoClue2 2.1.5)
+    if (GEOCLUE2_FOUND)
+      set(WTF_USE_GEOCLUE2 1)
+    else ()
+      find_package(GeoClue)
+      set(WTF_USE_GEOCLUE2 0)
+    endif ()
 endif ()
 
 # We don't use find_package for GLX because it is part of -lGL, unlike EGL.
@@ -282,3 +289,24 @@ macro(ADD_TYPELIB typelib)
     list(APPEND GObjectIntrospectionTargets ${target_name}-gir)
     set(GObjectIntrospectionTargets ${GObjectIntrospectionTargets} PARENT_SCOPE)
 endmacro()
+
+# CMake does not automatically add --whole-archive when building shared objects from
+# a list of convenience libraries. This can lead to missing symbols in the final output.
+# We add --whole-archive to all libraries manually to prevent the linker from trimming
+# symbols that we actually need later.
+macro(ADD_WHOLE_ARCHIVE_TO_LIBRARIES _list_name)
+    foreach (library IN LISTS ${_list_name})
+      list(APPEND ${_list_name}_TMP -Wl,--whole-archive ${library} -Wl,--no-whole-archive)
+    endforeach ()
+    set(${_list_name} "${${_list_name}_TMP}")
+endmacro()
+
+build_command(COMMAND_LINE_TO_BUILD)
+file(WRITE
+    ${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/build.sh
+    "#!/bin/sh\n"
+    "${COMMAND_LINE_TO_BUILD} $@"
+)
+file(COPY ${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/build.sh
+  DESTINATION ${CMAKE_BINARY_DIR}
+  FILE_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE)

@@ -1,3 +1,634 @@
+2014-03-12  Zalan Bujtas  <zalan@apple.com>
+
+        Subpixel rendering: LayoutTests/compositing/hidpi-simple-container-layer-on-device-pixel-expected.html fails on Mountain Lion WK2 debug
+        https://bugs.webkit.org/show_bug.cgi?id=130175
+
+        Unreviewed TestExpectations update on ML WK2 debug.
+
+        * platform/mac-wk2/TestExpectations:
+
+2014-03-12  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: convert model tests and inspector-test.js to use Test.html
+        https://bugs.webkit.org/show_bug.cgi?id=129217
+
+        Reviewed by Timothy Hatcher.
+
+        * TestExpectations: Add flaky content-flow and failing shape-outside inspector tests.
+        * inspector-protocol/model/probe-manager-add-remove-actions.html: Removed.
+        * inspector-protocol/resources/shape-info-helper.js: Removed.
+        * inspector/debugger/debugger-test.js: Added.
+        (InspectorTestProxy.registerInitializer.):
+        (InspectorTestProxy.registerInitializer):
+        * inspector/debugger/probe-manager-add-remove-actions-expected.txt: Renamed from LayoutTests/inspector-protocol/model/probe-manager-add-remove-actions-expected.txt.
+        * inspector/debugger/probe-manager-add-remove-actions.html: Added.
+        * inspector/debugger/resources/breakpoint.js: Added. Copied from LayoutTests/inspector-protocol/.
+        (breakpointActions):
+        * inspector/dom/content-flow-content-nodes-expected.txt: Renamed from LayoutTests/inspector-protocol/model/content-flow-content-nodes-expected.txt.
+        * inspector/dom/content-flow-content-nodes.html: Renamed from LayoutTests/inspector-protocol/model/content-flow-content-nodes.html.
+        * inspector/dom/content-flow-content-removal-expected.txt: Renamed from LayoutTests/inspector-protocol/model/content-flow-content-removal-expected.txt.
+        * inspector/dom/content-flow-content-removal.html: Renamed from LayoutTests/inspector-protocol/model/content-flow-content-removal.html.
+        * inspector/dom/content-flow-list-expected.txt: Renamed from LayoutTests/inspector-protocol/model/content-flow-list-expected.txt.
+        * inspector/dom/content-flow-list.html: Renamed from LayoutTests/inspector-protocol/model/content-flow-list.html.
+        * inspector/dom/content-node-region-info-expected.txt: Renamed from LayoutTests/inspector-protocol/model/content-node-region-info-expected.txt.
+        * inspector/dom/content-node-region-info.html: Renamed from LayoutTests/inspector-protocol/model/content-node-region-info.html.
+        * inspector/dom/highlight-shape-outside-expected.txt: Renamed from LayoutTests/inspector-protocol/model/highlight-shape-outside-expected.txt.
+        * inspector/dom/highlight-shape-outside-margin-expected.txt: Renamed from LayoutTests/inspector-protocol/model/highlight-shape-outside-margin-expected.txt.
+        * inspector/dom/highlight-shape-outside-margin.html: Renamed from LayoutTests/inspector-protocol/model/highlight-shape-outside-margin.html.
+        * inspector/dom/highlight-shape-outside.html: Renamed from LayoutTests/inspector-protocol/model/highlight-shape-outside.html.
+        * inspector/dom/shapes-test.js: Added. Refactor existing shape helpers to use model objects
+        where it makes sense, and use easy-to-read assertions.
+        (InspectorTestProxy.registerInitializer.):
+        * inspector/inspector-test.js: Handle reloaded test pages better. Use better names.
+        (InspectorTestProxy.registerInitializer): Renamed from `register`.
+        (runTest.runInitializationMethodsInFrontend):
+        (runTest.runTestMethodInFrontend):
+        (runTest):
+        (InspectorTestProxy.completeTest):
+        * inspector/page/main-frame-resource-expected.txt: Renamed from LayoutTests/inspector-protocol/model/main-frame-resource-expected.txt.
+        * inspector/page/main-frame-resource.html: Renamed from LayoutTests/inspector-protocol/model/main-frame-resource.html.
+        * inspector/page/resources/dummy-page.html: Added.
+        * platform/efl/TestExpectations: Move failing inspector tests to generic expectations.
+        * platform/gtk/TestExpectations: Move failing inspector tests to generic expectations.
+        * platform/win/TestExpectations: Move failing inspector tests to generic expectations.
+
+2014-03-12  Brent Fulgham  <bfulgham@apple.com>
+
+        [WebVTT] HTML5 "space" cahracters around "-->" are not required
+        https://bugs.webkit.org/show_bug.cgi?id=117421
+
+        Reviewed by Eric Carlson.
+
+        Merged from Blink (patch by caitpotter88@gmail.com):
+        https://chromium.googlesource.com/chromium/blink/+/4ef469cd627a13696b88e285ae28a60e38f9c286
+        http://crbug.com/242158
+
+        * media/track/captions-webvtt/tc008-timings-no-hour-errors.vtt:
+        * media/track/captions-webvtt/tc009-timings-hour-error.vtt:
+        * media/track/captions-webvtt/tc029-timings-whitespace.vtt: Added.
+        * media/track/track-webvtt-tc029-timings-whitespace.html: Added.
+        * media/track/track-webvtt-tc029-timings-whitespace-expected.txt: Added.
+
+2014-03-12  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r165482.
+        https://bugs.webkit.org/show_bug.cgi?id=130157
+
+        Broke the windows build; "error C2466: cannot allocate an
+        array of constant size 0" (Requested by jernoble on #webkit).
+
+        Reverted changeset:
+
+        "Reduce memory use for static property maps"
+        https://bugs.webkit.org/show_bug.cgi?id=129986
+        http://trac.webkit.org/changeset/165482
+
+2014-03-12  Simon Fraser  <simon.fraser@apple.com>
+
+        Have the scrolling tree track the viewport size, not the viewport rect
+        https://bugs.webkit.org/show_bug.cgi?id=130141
+
+        Reviewed by Beth Dakin.
+
+        The scrolling tree only needs to know the size of the viewport, not its
+        origin, since the origin is deduced from the updated scroll position.
+        
+        Tests dump a size, not a rect with a 0,0 origin now.
+
+        * platform/mac-wk2/tiled-drawing/clamp-out-of-bounds-scrolls-expected.txt:
+        * platform/mac-wk2/tiled-drawing/fixed/absolute-inside-fixed-expected.txt:
+        * platform/mac-wk2/tiled-drawing/fixed/absolute-inside-out-of-view-fixed-expected.txt:
+        * platform/mac-wk2/tiled-drawing/fixed/fixed-in-overflow-expected.txt:
+        * platform/mac-wk2/tiled-drawing/fixed/fixed-position-out-of-view-expected.txt:
+        * platform/mac-wk2/tiled-drawing/fixed/fixed-position-out-of-view-negative-zindex-expected.txt:
+        * platform/mac-wk2/tiled-drawing/fixed/four-bars-expected.txt:
+        * platform/mac-wk2/tiled-drawing/fixed/four-bars-with-header-and-footer-expected.txt:
+        * platform/mac-wk2/tiled-drawing/fixed/negative-scroll-offset-expected.txt:
+        * platform/mac-wk2/tiled-drawing/fixed/negative-scroll-offset-in-view-expected.txt:
+        * platform/mac-wk2/tiled-drawing/fixed/nested-fixed-expected.txt:
+        * platform/mac-wk2/tiled-drawing/fixed/percentage-inside-fixed-expected.txt:
+        * platform/mac-wk2/tiled-drawing/scrolling-tree-after-scroll-expected.txt:
+        * platform/mac-wk2/tiled-drawing/scrolling-tree-slow-scrolling-expected.txt:
+        * platform/mac-wk2/tiled-drawing/sticky/negative-scroll-offset-expected.txt:
+        * platform/mac-wk2/tiled-drawing/sticky/sticky-horizontal-expected.txt:
+
+2014-03-12  Simon Fraser  <simon.fraser@apple.com>
+
+        Change scrollOffsetForFixedPosition() to do LayoutUnit math
+        https://bugs.webkit.org/show_bug.cgi?id=129981
+
+        Reviewed by Beth Dakin.
+
+        FrameView::scrollOffsetForFixedPosition() returned an IntSize,
+        but to allow subpixel scroll offsets, we need it to return a LayoutSize.
+
+        Update test results for the progression.
+
+        * platform/mac-wk2/tiled-drawing/fixed-background/fixed-body-background-zoomed-expected.png:
+        * platform/mac-wk2/tiled-drawing/fixed-background/fixed-body-background-zoomed-expected.txt:
+
+2014-03-12  Gavin Barraclough  <barraclough@apple.com>
+
+        Reduce memory use for static property maps
+        https://bugs.webkit.org/show_bug.cgi?id=129986
+
+        Reviewed by Andreas Kling.
+
+        Static property tables are currently duplicated on first use from read-only memory into dirty memory
+        in every process, and since the entries are large (48 bytes) and the tables can be unusually sparse
+        (we use a custom hash table without a rehash) a lot of memory may be wasted.
+
+        * inspector-protocol/debugger/setPauseOnExceptions-all-expected.txt:
+        * inspector-protocol/debugger/setPauseOnExceptions-none-expected.txt:
+        * inspector-protocol/debugger/setPauseOnExceptions-uncaught-expected.txt:
+        * js/dom/dom-static-property-for-in-iteration-expected.txt:
+            - Properties now iterated in correct order, not permuted by hash table.
+
+2014-03-12  Frédéric Wang  <fred.wang@free.fr>
+
+        [GTK] Update references for mo-stretch.html.
+        https://bugs.webkit.org/show_bug.cgi?id=129366.
+
+        Reviewed by Chris Fleizach.
+
+        The rendering of mo-stretch has changed after the recent improvements
+        to the <mo> element. This updates the reference for the GTK port.
+
+        * platform/gtk/mathml/presentation/mo-stretch-expected.png:
+        * platform/gtk/mathml/presentation/mo-stretch-expected.txt:
+
+2014-03-12  Bem Jones-Bey  <bjonesbe@adobe.com>
+
+        [CSS Shapes] Remove deprecated shapes
+        https://bugs.webkit.org/show_bug.cgi?id=125235
+
+        Reviewed by Dirk Schulze.
+
+        Remove tests for deprecated shape syntax.
+
+        There are also a few shape-inside tests that have been removed because
+        they were very difficult to make work without the rectangle shape, and
+        the future of the current shape-inside implementation is questionable
+        at best.
+
+        * animations/resources/animation-test-helpers.js:
+        (parseBasicShape):
+        * compositing/contents-opaque/opaque-with-clip-path-expected.html:
+        * compositing/contents-opaque/opaque-with-clip-path.html:
+        * css3/masking/clip-path-animation-expected.txt:
+        * css3/masking/clip-path-animation.html:
+        * css3/masking/clip-path-rectangle-expected.txt: Removed.
+        * css3/masking/clip-path-rectangle.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/resources/rounded-rectangle.js: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/resources/subpixel-utils.js: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/resources/w3c-import.log: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-circle-000-expected.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-circle-000.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-circle-001-expected.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-circle-001.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-clipped-000-expected.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-clipped-000.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-clipped-001-expected.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-clipped-001-ref-expected.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-clipped-001-ref.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-clipped-001.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-clipped-002-expected.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-clipped-002.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-clipped-003-expected.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-clipped-003.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-clipped-004-expected.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-clipped-004.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-clipped-005-expected.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-clipped-005.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-clipped-006-expected.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-clipped-006.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-ellipse-000-expected.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-ellipse-000.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-horizontal-rectangle-000-expected.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-horizontal-rectangle-000.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-horizontal-rectangle-001-expected.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-horizontal-rectangle-001.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-horizontal-rectangle-002-expected.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-horizontal-rectangle-002.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-horizontal-rectangle-003-expected.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-horizontal-rectangle-003.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-horizontal-rectangle-004-expected.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-horizontal-rectangle-004.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-inset-rectangle-000-expected.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-inset-rectangle-000.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-inset-rectangle-001-expected.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-inset-rectangle-001.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-inset-rectangle-002-expected.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-inset-rectangle-002.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-000-expected.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-000.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-001-expected.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-001.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-002-expected.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-002.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-003-expected.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-003.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-004-expected.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-004.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-005-expected.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-005.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-006-expected.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-006.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-007-expected.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-007.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-008-expected.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-008.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-009-expected.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-009.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-010-expected.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-010.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-011-expected.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-011.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-012-expected.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-012.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-013-expected.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-013.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-014-expected.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-014.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-015-expected.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-015.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-016-expected.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-016.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-017-expected.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-017.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-018-expected.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-018.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-019-expected.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-019.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-020-expected.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-020.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-021-expected.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-021.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-padding-000-expected.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-padding-000.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-padding-001-expected.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-padding-001.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-padding-002-expected.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-padding-002.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-padding-003-expected.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-padding-003.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-padding-004-expected.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-padding-004.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-padding-005-expected.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-padding-005.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-padding-006-expected.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-padding-006.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-padding-007-expected.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-padding-007.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-padding-008-expected.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-padding-008.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-padding-009-expected.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-padding-009.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-rounded-rectangle-001-expected.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-rounded-rectangle-001.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-rounded-rectangle-002-expected.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-rounded-rectangle-002.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-rounded-rectangle-003-expected.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-rounded-rectangle-003.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-rounded-rectangle-004-expected.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-rounded-rectangle-004.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-shape-margin-000-expected.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-shape-margin-000.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-shape-margin-001-expected.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-shape-margin-001.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-square-000-expected.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-square-000.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-square-border-000-expected.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-square-border-000.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-stacked-000-expected.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-stacked-000.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-vertical-rectangle-000-expected.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-vertical-rectangle-000.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-vertical-rectangle-001-expected.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-vertical-rectangle-001.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-vertical-rectangle-002-expected.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-vertical-rectangle-002.html: Removed.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/w3c-import.log: Removed.
+        * fast/masking/parsing-clip-path-shape-expected.txt:
+        * fast/masking/parsing-clip-path-shape.html:
+        * fast/regions/shape-inside/shape-inside-on-additional-regions.html:
+        * fast/regions/shape-inside/shape-inside-on-first-region-block-content.html:
+        * fast/regions/shape-inside/shape-inside-on-first-region-inline-content.html:
+        * fast/regions/shape-inside/shape-inside-on-multiple-autoheight-regions.html:
+        * fast/regions/shape-inside/shape-inside-on-multiple-regions-with-negative-shape-top-expected.html: Removed.
+        * fast/regions/shape-inside/shape-inside-on-multiple-regions-with-negative-shape-top.html: Removed.
+        * fast/regions/shape-inside/shape-inside-on-regions-block-content-basic-overflow-shape-top-offset.html:
+        * fast/regions/shape-inside/shape-inside-on-regions-block-content-overflow-bottom-positioned-multiple-shapes.html:
+        * fast/regions/shape-inside/shape-inside-on-regions-block-content-overflow-multiple-shapes.html:
+        * fast/regions/shape-inside/shape-inside-on-regions-expected.html:
+        * fast/regions/shape-inside/shape-inside-on-regions-inline-content-basic-overflow-shape-top-offset.html:
+        * fast/regions/shape-inside/shape-inside-on-regions-inline-content-overflow-bottom-positioned-multiple-shapes.html:
+        * fast/regions/shape-inside/shape-inside-on-regions-inline-content-overflow-multiple-shapes.html:
+        * fast/regions/shape-inside/shape-inside-on-regions-inline-content.html:
+        * fast/regions/shape-inside/shape-inside-on-regions.html:
+        * fast/regions/shape-inside/shape-inside-on-second-region-block-content.html:
+        * fast/regions/shape-inside/shape-inside-on-second-region-inline-content.html:
+        * fast/regions/shape-inside/shape-inside-recursive-layout-expected.html:
+        * fast/regions/shape-inside/shape-inside-recursive-layout.html:
+        * fast/regions/shape-inside/shape-inside-with-region-borders.html:
+        * fast/regions/shape-inside/shape-inside-with-region-padding.html:
+        * fast/shapes/css-shapes-disabled-expected.txt:
+        * fast/shapes/css-shapes-disabled.html:
+        * fast/shapes/css-shapes-enabled-expected.txt:
+        * fast/shapes/css-shapes-enabled.html:
+        * fast/shapes/parsing/parsing-shape-inside-expected.txt:
+        * fast/shapes/parsing/parsing-shape-inside.html:
+        * fast/shapes/parsing/parsing-shape-lengths-expected.txt:
+        * fast/shapes/parsing/parsing-shape-lengths.html:
+        * fast/shapes/parsing/parsing-shape-outside-expected.txt:
+        * fast/shapes/parsing/parsing-shape-outside.html:
+        * fast/shapes/parsing/parsing-test-utils.js:
+        * fast/shapes/resources/simple-rectangle.js:
+        (drawTextRectangle):
+        * fast/shapes/shape-inside/shape-inside-animation-expected.txt:
+        * fast/shapes/shape-inside/shape-inside-animation.html:
+        * fast/shapes/shape-inside/shape-inside-bottom-edge-expected.html:
+        * fast/shapes/shape-inside/shape-inside-bottom-edge.html:
+        * fast/shapes/shape-inside/shape-inside-box-sizing.html:
+        * fast/shapes/shape-inside/shape-inside-dynamic-nested-expected.html:
+        * fast/shapes/shape-inside/shape-inside-dynamic-nested.html:
+        * fast/shapes/shape-inside/shape-inside-dynamic-shape.html:
+        * fast/shapes/shape-inside/shape-inside-dynamic-text.html:
+        * fast/shapes/shape-inside/shape-inside-empty-expected.html:
+        * fast/shapes/shape-inside/shape-inside-empty.html:
+        * fast/shapes/shape-inside/shape-inside-inline-elements-expected.html: Removed.
+        * fast/shapes/shape-inside/shape-inside-inline-elements.html: Removed.
+        * fast/shapes/shape-inside/shape-inside-multiple-blocks-vertical.html:
+        * fast/shapes/shape-inside/shape-inside-multiple-blocks.html:
+        * fast/shapes/shape-inside/shape-inside-on-nested-container-with-unresolved-height.html:
+        * fast/shapes/shape-inside/shape-inside-outside-shape.html:
+        * fast/shapes/shape-inside/shape-inside-overflow-fixed-dimensions-block-content.html:
+        * fast/shapes/shape-inside/shape-inside-overflow-fixed-dimensions.html:
+        * fast/shapes/shape-inside/shape-inside-overflow.html:
+        * fast/shapes/shape-inside/shape-inside-percentage-auto.html:
+        * fast/shapes/shape-inside/shape-inside-percentage.html:
+        * fast/shapes/shape-inside/shape-inside-rectangle-padding-expected.html: Removed.
+        * fast/shapes/shape-inside/shape-inside-rectangle-padding.html: Removed.
+        * fast/shapes/shape-inside/shape-inside-rounded-rectangle-001-expected.html: Removed.
+        * fast/shapes/shape-inside/shape-inside-rounded-rectangle-001.html: Removed.
+        * fast/shapes/shape-inside/shape-inside-rounded-rectangle-002-expected.html: Removed.
+        * fast/shapes/shape-inside/shape-inside-rounded-rectangle-002.html: Removed.
+        * fast/shapes/shape-inside/shape-inside-rounded-rectangle-003-expected.html: Removed.
+        * fast/shapes/shape-inside/shape-inside-rounded-rectangle-003.html: Removed.
+        * fast/shapes/shape-inside/shape-inside-rounded-rectangle-004-expected.html: Removed.
+        * fast/shapes/shape-inside/shape-inside-rounded-rectangle-004.html: Removed.
+        * fast/shapes/shape-inside/shape-inside-rounded-rectangle-fit-001-expected.html: Removed.
+        * fast/shapes/shape-inside/shape-inside-rounded-rectangle-fit-001.html: Removed.
+        * fast/shapes/shape-inside/shape-inside-rounded-rectangle-fit-002-expected.html: Removed.
+        * fast/shapes/shape-inside/shape-inside-rounded-rectangle-fit-002.html: Removed.
+        * fast/shapes/shape-inside/shape-inside-rounded-rectangle-fit-003-expected.html: Removed.
+        * fast/shapes/shape-inside/shape-inside-rounded-rectangle-fit-003.html: Removed.
+        * fast/shapes/shape-inside/shape-inside-rounded-rectangle-large-radius-expected.html: Removed.
+        * fast/shapes/shape-inside/shape-inside-rounded-rectangle-large-radius.html: Removed.
+        * fast/shapes/shape-inside/shape-inside-rounded-rectangle-padding-expected.html: Removed.
+        * fast/shapes/shape-inside/shape-inside-rounded-rectangle-padding.html: Removed.
+        * fast/shapes/shape-inside/shape-inside-subpixel-rectangle-top.html:
+        * fast/shapes/shape-inside/shape-inside-text.html:
+        * fast/shapes/shape-inside/shape-inside-vertical-text.html:
+        * fast/shapes/shape-outside-floats/shape-outside-animation-expected.txt:
+        * fast/shapes/shape-outside-floats/shape-outside-animation.html:
+        * fast/shapes/shape-outside-floats/shape-outside-dynamic-shape-margin.html:
+        * fast/shapes/shape-outside-floats/shape-outside-dynamic-shape-overhang.html:
+        * fast/shapes/shape-outside-floats/shape-outside-dynamic-shape.html:
+        * fast/shapes/shape-outside-floats/shape-outside-floats-different-writing-modes.html:
+        * fast/shapes/shape-outside-floats/shape-outside-floats-ellipse-margin-bottom.html:
+        * fast/shapes/shape-outside-floats/shape-outside-floats-ellipse-margin-left.html:
+        * fast/shapes/shape-outside-floats/shape-outside-floats-ellipse-margin-right.html:
+        * fast/shapes/shape-outside-floats/shape-outside-floats-img-inset-rectangle-negative-width-crash-expected.txt: Removed.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-img-inset-rectangle-negative-width-crash.html: Removed.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-layout-after-initial-layout-pass.html:
+        * fast/shapes/shape-outside-floats/shape-outside-floats-not-a-layer.html:
+        * fast/shapes/shape-outside-floats/shape-outside-floats-outermost.html:
+        * fast/shapes/shape-outside-floats/shape-outside-floats-polygon-000-expected.html: Renamed from LayoutTests/csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-polygon-000-expected.html.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-polygon-000.html: Renamed from LayoutTests/csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-polygon-000.html.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-polygon-001-expected.html: Renamed from LayoutTests/csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-polygon-001-expected.html.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-polygon-001.html: Renamed from LayoutTests/csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-polygon-001.html.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-polygon-002-expected.html: Renamed from LayoutTests/csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-polygon-002-expected.html.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-polygon-002.html: Renamed from LayoutTests/csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-polygon-002.html.
+        * fast/shapes/shape-outside-floats/shape-outside-shape-margin-animation.html:
+        * svg/clip-path/clip-path-shape-rounded-rect-1-expected.svg: Removed.
+        * svg/clip-path/clip-path-shape-rounded-rect-1.svg: Removed.
+        * svg/clip-path/clip-path-shape-rounded-rect-2-expected.svg: Removed.
+        * svg/clip-path/clip-path-shape-rounded-rect-2.svg: Removed.
+
+2014-03-12  Zalan Bujtas  <zalan@apple.com>
+
+        Add hiDPI support for compositing content in DumpRenderTree/WebKitTestRunner
+        https://bugs.webkit.org/show_bug.cgi?id=129961
+
+        Reviewed by Simon Fraser.
+
+        Now scaled content can go through the window capturing mechanism too for compositing content.
+        AppleMagnifiedMode is redundant.
+
+        * compositing/hidpi-compositing-vs-non-compositing-check-on-testing-framework-expected.html: Added.
+        * compositing/hidpi-compositing-vs-non-compositing-check-on-testing-framework.html: Added.
+        * svg/custom/hidpi-masking-clipping-expected.svg: Added.
+        * svg/custom/hidpi-masking-clipping.svg: Renamed from LayoutTests/svg/custom/masking-clipping-hidpi.svg.
+        * svg/custom/masking-clipping-hidpi-expected.svg: Removed.
+
+2014-03-12  Antti Koivisto  <antti@apple.com>
+
+        Update result after https://trac.webkit.org/r165465
+
+        * svg/custom/use-multiple-on-nested-disallowed-font-expected.txt:
+
+2014-03-12  Frédéric Wang  <fred.wang@free.fr>
+
+        Invisible Operators should not add space.
+        https://bugs.webkit.org/show_bug.cgi?id=115786
+
+        Reviewed by Chris Fleizach.
+
+        Add a reftest based on the examples of the MathML specification to verify that invisible operators do not add space.
+
+        * mathml/presentation/mo-invisible-expected.html: Added.
+        * mathml/presentation/mo-invisible.html: Added.
+
+2014-03-11  Frédéric Wang  <fred.wang@free.fr>
+
+        Implement MathML spacing around operators .
+        https://bugs.webkit.org/show_bug.cgi?id=115787
+
+        Reviewed by Chris Fleizach.
+
+        Add many new tests to verify the form/lspace/rspace properties of the
+        <mo> element and that the whitespace of the text content is collapsed.
+        Update fenced-mi now that bug 118843 is fixed.
+
+        * mathml/presentation/dir-mo-expected.html: Added.
+        * mathml/presentation/dir-mo.html: Added.
+        * mathml/presentation/fenced-expected.html:
+        * mathml/presentation/fenced-mi-expected.html:
+        * mathml/presentation/mo-form-dynamic-expected.html: Added.
+        * mathml/presentation/mo-form-dynamic.html: Added.
+        * mathml/presentation/mo-form-expected.html: Added.
+        * mathml/presentation/mo-form-minus-plus-expected.html: Added.
+        * mathml/presentation/mo-form-minus-plus.html: Added.
+        * mathml/presentation/mo-form.html: Added.
+        * mathml/presentation/mo-lspace-rspace-dynamic-expected.html: Added.
+        * mathml/presentation/mo-lspace-rspace-dynamic.html: Added.
+        * mathml/presentation/mo-lspace-rspace-expected.html: Added.
+        * mathml/presentation/mo-lspace-rspace.html: Added.
+        * mathml/presentation/mo-whitespaces-expected.html: Added.
+        * mathml/presentation/mo-whitespaces.html: Added.
+        * platform/mac/mathml/presentation/mo-stretch-expected.txt: update reference.
+
+2014-03-11  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [CSS Grid Layout] Add layout test for anonymous grid items
+        https://bugs.webkit.org/show_bug.cgi?id=130083
+
+        Reviewed by Sergio Villar Senin.
+
+        Add a layout test to prevent regressions supporting anonymous grid items.
+
+        For example, anonymous grid items do not have an associated Node, so trying to access it will make this test
+        crash.
+
+        * fast/css-grid-layout/anonymous-grid-items-expected.html: Added.
+        * fast/css-grid-layout/anonymous-grid-items.html: Added.
+
+2014-03-11  Krzysztof Czech  <k.czech@samsung.com>
+
+        [ATK] Expose aria-posinset and aria-setsize through object attributes
+        https://bugs.webkit.org/show_bug.cgi?id=130011
+
+        Reviewed by Chris Fleizach.
+
+        Test could be shared with other platforms.
+
+        * accessibility/aria-setsize-posinset-expected.txt: Renamed from LayoutTests/platform/mac/accessibility/aria-setsize-posinset-expected.txt.
+        * accessibility/aria-setsize-posinset.html: Renamed from LayoutTests/platform/mac/accessibility/aria-setsize-posinset.html.
+        * platform/win/TestExpectations: Skipping on win port.
+
+2014-03-10  Frédéric Wang  <fred.wang@free.fr>
+
+        Improve renderer classes for MathML Token elements.
+        https://bugs.webkit.org/show_bug.cgi?id=124838
+
+        Reviewed by Chris Fleizach.
+
+        Two tests are added to fenced-mi in order to verify that the open/close
+        attributes of the mfenced element collapse whitespace and accept values
+        with multiple characters.
+
+        * mathml/presentation/fenced-mi-expected.html:
+        * mathml/presentation/fenced-mi.html:
+        * platform/mac/accessibility/mathml-elements.html: fix bad closing tag and disable the test for now.
+        * platform/mac/mathml/presentation/mo-stretch-expected.txt: update text reference.
+
+2014-03-10  James Craig  <jcraig@apple.com>
+
+        Web Inspector: AXI: Expose checked/disabled/expanded/pressed/readonly/selected
+        https://bugs.webkit.org/show_bug.cgi?id=129781
+
+        Reviewed by Joseph Pecoraro.
+
+        Enabling several more properties to be exposed in the Accessibility Node Inspector.
+
+        * inspector-protocol/dom/getAccessibilityPropertiesForNode-expected.txt:
+        * inspector-protocol/dom/getAccessibilityPropertiesForNode.html:
+
+2014-03-10  Bem Jones-Bey  <bjonesbe@adobe.com>
+
+        [CSS Shapes] inset corner radii are not flipped for vertical writing modes
+        https://bugs.webkit.org/show_bug.cgi?id=129918
+
+        Reviewed by Dean Jackson.
+
+        Test both left and right float cases so that we cover all four
+        corners.
+
+        * fast/shapes/shape-outside-floats/shape-outside-floats-inset-rounded-different-writing-modes-left-expected.txt: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-inset-rounded-different-writing-modes-left.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-inset-rounded-different-writing-modes-right-expected.txt: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-inset-rounded-different-writing-modes-right.html: Added.
+
+2014-03-10  Zsolt Borbely  <borbezs@inf.u-szeged.hu>
+
+        ASSERTION FAILED: span >= 1
+        https://bugs.webkit.org/show_bug.cgi?id=129148
+
+        Reviewed by Andreas Kling.
+
+        Added test demonstrates the behavior of colgroup in case of large negative, large positive, zero and null span values.
+
+        * fast/table/incorrect-colgroup-span-values-expected.txt: Added.
+        * fast/table/incorrect-colgroup-span-values.html: Added.
+
+2014-03-10  Radu Stavila  <stavila@adobe.com>
+
+        [CSS Regions] Hit-testing is not working properly inside scrollable regions
+        https://bugs.webkit.org/show_bug.cgi?id=130015
+
+        Reviewed by Antti Koivisto.
+
+        Added test for hit-testing inside scrollable regions.
+
+        * fast/regions/scrollable-regions-hit-testing-inside-expected.html: Added.
+        * fast/regions/scrollable-regions-hit-testing-inside.html: Added.
+
+2014-03-10  Hans Muller  <hmuller@adobe.com>
+
+        [CSS Shapes] SVG Image valued shape fails if root element's size is relative
+        https://bugs.webkit.org/show_bug.cgi?id=128983
+
+        Reviewed by Simon Fraser.
+
+        Verify that an SVG Image valued shape-outside with a relatively sized SVG root element
+        generates a shape with the correct size.
+
+        * fast/shapes/shape-outside-floats/shape-outside-relative-size-svg-expected.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-relative-size-svg.html: Added.
+
+2014-03-10  Darin Adler  <darin@apple.com>
+
+        TextIterator: Use StringView and references rather than pointers
+        https://bugs.webkit.org/show_bug.cgi?id=129975
+
+        Reviewed by Anders Carlsson.
+
+        * dom/xhtml/level3/core/nodelookupnamespaceuri14-expected.txt: Updated to expect
+        the CDATA section to be included in the text output of the test. This changed because
+        TextIterator now treats CDATA sections like other text, just as rendering code does.
+
+2014-03-10  Alexey Proskuryakov  <ap@apple.com>
+
+        REGRESSION: js/dom/create-lots-of-workers.html frequently crashes
+        (sometimes in js/dom/cross-frame-bad-time.html)
+        https://bugs.webkit.org/show_bug.cgi?id=129758
+
+        * platform/mac-wk1/TestExpectations: Removed an older incorrect expectation.
+
+2014-03-10  Radu Stavila  <stavila@adobe.com>
+
+        [CSS Regions] Scrolling regions with the mouse wheel only works properly if hovering over the region's padding
+        https://bugs.webkit.org/show_bug.cgi?id=129485
+
+        Reviewed by Andrei Bucur.
+
+        Added layout tests for scrolling regions using the mouse wheel.
+
+        * fast/regions/wheel-scrollable-single-region-expected.html: Added.
+        * fast/regions/wheel-scrollable-single-region.html: Added.
+
+2014-03-10  Michał Pakuła vel Rutka  <m.pakula@samsung.com>
+
+        Unreviewed EFL gardening
+
+        Add test expectations for failing and crashing tests.
+
+        * platform/efl-wk2/TestExpectations:
+        * platform/efl/TestExpectations:
+        * platform/efl/fast/images/image-controls-basic-expected.txt: Added after r164457.
+        * platform/efl/fast/ruby/ruby-base-merge-block-children-crash-2-expected.txt: Added after r164323.
+
 2014-03-10  Mihnea Ovidenie  <mihnea@adobe.com>
 
         [CSSRegions] Fix broken paths in some regions tests

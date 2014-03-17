@@ -640,7 +640,6 @@ struct Node {
     {
         switch (op()) {
         case StoreBarrier:
-        case ConditionalStoreBarrier:
         case StoreBarrierWithNullCheck:
             return true;
         default:
@@ -1331,9 +1330,14 @@ struct Node {
         return child1().useKind();
     }
     
+    bool isBinaryUseKind(UseKind left, UseKind right)
+    {
+        return child1().useKind() == left && child2().useKind() == right;
+    }
+    
     bool isBinaryUseKind(UseKind useKind)
     {
-        return child1().useKind() == useKind && child2().useKind() == useKind;
+        return isBinaryUseKind(useKind, useKind);
     }
     
     SpeculatedType prediction()
@@ -1399,6 +1403,11 @@ struct Node {
     bool shouldSpeculateBoolean()
     {
         return isBooleanSpeculation(prediction());
+    }
+    
+    bool shouldSpeculateOther()
+    {
+        return isOtherSpeculation(prediction());
     }
     
     bool shouldSpeculateMisc()

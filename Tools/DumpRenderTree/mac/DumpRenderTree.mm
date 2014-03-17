@@ -397,6 +397,7 @@ static NSSet *allowedFontFamilySet()
         @"STKaiti",
         @"STSong",
         @"Symbol",
+        @"System Font",
         @"Tahoma",
         @"Thonburi",
         @"Times New Roman",
@@ -927,7 +928,6 @@ static void setDefaultsToConsistentValuesForTesting()
 
     NSDictionary *dict = @{
         @"AppleKeyboardUIMode": @1,
-        @"AppleMagnifiedMode": @YES,
         @"AppleAntiAliasingThreshold": @4,
         @"AppleFontSmoothing": @(NoFontSmoothing),
         @"AppleAquaColorVariant": @(BlueTintedAppearance),
@@ -1758,10 +1758,10 @@ static void runTest(const string& inputLine)
 
     const char* testURL([[url absoluteString] UTF8String]);
     
+    resetWebViewToConsistentStateBeforeTesting();
 #if !PLATFORM(IOS)
     changeWindowScaleIfNeeded(testURL);
 #endif
-    resetWebViewToConsistentStateBeforeTesting();
 
     gTestRunner = TestRunner::create(testURL, command.expectedPixelHash);
     topLoadingFrame = nil;

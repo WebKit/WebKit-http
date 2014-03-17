@@ -116,7 +116,6 @@ void clobberize(Graph& graph, Node* node, ReadFunctor& read, WriteFunctor& write
     case StringCharCodeAt:
     case StringFromCharCode:
     case CompareEqConstant:
-    case CompareStrictEqConstant:
     case CompareStrictEq:
     case IsUndefined:
     case IsBoolean:
@@ -659,7 +658,6 @@ void clobberize(Graph& graph, Node* node, ReadFunctor& read, WriteFunctor& write
         return;
 
     case StoreBarrier:
-    case ConditionalStoreBarrier:
     case StoreBarrierWithNullCheck:
         read(BarrierState);
         write(BarrierState);

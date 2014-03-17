@@ -888,9 +888,6 @@
     <ClCompile Include="..\loader\PingLoader.cpp">
       <Filter>loader</Filter>
     </ClCompile>
-    <ClCompile Include="..\loader\PlaceholderDocument.cpp">
-      <Filter>loader</Filter>
-    </ClCompile>
     <ClCompile Include="..\loader\PolicyCallback.cpp">
       <Filter>loader</Filter>
     </ClCompile>
@@ -1474,12 +1471,6 @@
       <Filter>platform\graphics\win</Filter>
     </ClCompile>
     <ClCompile Include="..\platform\graphics\win\MediaPlayerPrivateFullscreenWindow.cpp">
-      <Filter>platform\graphics\win</Filter>
-    </ClCompile>
-    <ClCompile Include="..\platform\graphics\win\MediaPlayerPrivateQuickTimeVisualContext.cpp">
-      <Filter>platform\graphics\win</Filter>
-    </ClCompile>
-    <ClCompile Include="..\platform\graphics\win\MediaPlayerPrivateTaskTimer.cpp">
       <Filter>platform\graphics\win</Filter>
     </ClCompile>
     <ClCompile Include="..\platform\graphics\opentype\OpenTypeUtilities.cpp">
@@ -2727,7 +2718,7 @@
     <ClCompile Include="..\rendering\mathml\RenderMathMLMath.cpp">
       <Filter>rendering\mathml</Filter>
     </ClCompile>
-	<ClCompile Include="..\rendering\mathml\RenderMathMLMenclose.cpp">
+    <ClCompile Include="..\rendering\mathml\RenderMathMLMenclose.cpp">
       <Filter>rendering\mathml</Filter>
     </ClCompile>
     <ClCompile Include="..\rendering\mathml\RenderMathMLOperator.cpp">
@@ -4071,9 +4062,6 @@
     <ClCompile Include="..\html\forms\FileIconLoader.cpp">
       <Filter>html\forms</Filter>
     </ClCompile>
-    <ClCompile Include="..\html\parser\CompactHTMLToken.cpp">
-      <Filter>html\parser</Filter>
-    </ClCompile>
     <ClCompile Include="..\html\parser\CSSPreloadScanner.cpp">
       <Filter>html\parser</Filter>
     </ClCompile>
@@ -5150,6 +5138,9 @@
       <Filter>DerivedSources</Filter>
     </ClCompile>
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\CSSValueKeywords.cpp">
+      <Filter>DerivedSources</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\SelectorPseudoTypeMap.cpp">
       <Filter>DerivedSources</Filter>
     </ClCompile>
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\EventFactory.cpp">
@@ -7008,6 +6999,16 @@
     <ClCompile Include="..\rendering\line\LineInfo.cpp" />
     <ClCompile Include="..\rendering\line\TrailingObjects.cpp" />
     <ClCompile Include="..\inspector\InspectorNodeFinder.cpp" />
+    <ClCompile Include="..\Modules\indexeddb\IDBKeyData.cpp" />
+    <ClCompile Include="..\page\ContextMenuContext.cpp" />
+    <ClCompile Include="..\platform\audio\AudioSession.cpp" />
+    <ClCompile Include="..\platform\audio\MediaSession.cpp" />
+    <ClCompile Include="..\platform\audio\MediaSessionManager.cpp" />
+    <ClCompile Include="..\platform\text\icu\UTextProvider.cpp" />
+    <ClCompile Include="..\platform\text\icu\UTextProviderLatin1.cpp" />
+    <ClCompile Include="..\platform\text\icu\UTextProviderUTF16.cpp" />
+    <ClCompile Include="..\dom\CollectionIndexCache.cpp" />
+    <ClCompile Include="..\html\HTMLMediaSession.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Modules\geolocation\Coordinates.h">
@@ -7496,9 +7497,6 @@
     <ClInclude Include="..\page\DOMWindowProperty.h">
       <Filter>page</Filter>
     </ClInclude>
-    <ClCompile Include="..\page\DefaultVisitedLinkStore.h">
-      <Filter>page</Filter>
-    </ClCompile>
     <ClInclude Include="..\page\DragActions.h">
       <Filter>page</Filter>
     </ClInclude>
@@ -7610,9 +7608,6 @@
     <ClInclude Include="..\page\UserStyleSheetTypes.h">
       <Filter>page</Filter>
     </ClInclude>
-    <ClCompile Include="..\page\VisitedLinkStore.h">
-      <Filter>page</Filter>
-    </ClCompile>
     <ClInclude Include="..\fileapi\WebKitBlobBuilder.h">
       <Filter>page</Filter>
     </ClInclude>
@@ -7713,9 +7708,6 @@
       <Filter>loader</Filter>
     </ClInclude>
     <ClInclude Include="..\loader\PingLoader.h">
-      <Filter>loader</Filter>
-    </ClInclude>
-    <ClInclude Include="..\loader\PlaceholderDocument.h">
       <Filter>loader</Filter>
     </ClInclude>
     <ClInclude Include="..\loader\PolicyCallback.h">
@@ -8364,9 +8356,6 @@
       <Filter>platform\graphics\win</Filter>
     </ClInclude>
     <ClInclude Include="..\platform\graphics\win\LocalWindowsContext.h">
-      <Filter>platform\graphics\win</Filter>
-    </ClInclude>
-    <ClInclude Include="..\platform\graphics\win\MediaPlayerPrivateTaskTimer.h">
       <Filter>platform\graphics\win</Filter>
     </ClInclude>
     <ClInclude Include="..\platform\graphics\opentype\OpenTypeTypes.h">
@@ -11048,9 +11037,6 @@
     <ClInclude Include="..\html\URLInputType.h">
       <Filter>html</Filter>
     </ClInclude>
-    <ClCompile Include="..\html\URLUtils.h">
-      <Filter>html</Filter>
-    </ClCompile>
     <ClInclude Include="..\html\ValidationMessage.h">
       <Filter>html</Filter>
     </ClInclude>
@@ -11067,9 +11053,6 @@
       <Filter>html\forms</Filter>
     </ClInclude>
     <ClInclude Include="..\html\parser\AtomicHTMLToken.h">
-      <Filter>html\parser</Filter>
-    </ClInclude>
-    <ClInclude Include="..\html\parser\CompactHTMLToken.h">
       <Filter>html\parser</Filter>
     </ClInclude>
     <ClInclude Include="..\html\parser\CSSPreloadScanner.h">
@@ -14374,18 +14357,6 @@
     <ClInclude Include="..\html\canvas\EXTTextureFilterAnisotropic.h">
       <Filter>html\canvas</Filter>
     </ClInclude>
-    <ClInclude Include="..\platform\audio\AudioSession.h">
-      <Filter>platform\audio</Filter>
-    </ClInclude>
-    <ClInclude Include="..\platform\audio\AudioSessionListener.h">
-      <Filter>platform\audio</Filter>
-    </ClInclude>
-    <ClInclude Include="..\platform\audio\MediaSession.h">
-      <Filter>platform\audio</Filter>
-    </ClInclude>
-    <ClInclude Include="..\platform\audio\MediaSessionManager.h">
-      <Filter>platform\audio</Filter>
-    </ClInclude>
     <ClInclude Include="..\platform\graphics\ANGLEWebKitBridge.h">
       <Filter>platform\graphics</Filter>
     </ClInclude>
@@ -14822,6 +14793,15 @@
     <ClInclude Include="..\rendering\line\LineInlineHeaders.h" />
     <ClInclude Include="..\rendering\line\LineWidth.h" />
     <ClInclude Include="..\rendering\line\TrailingObjects.h" />
+    <ClInclude Include="..\page\ContextMenuContext.h" />
+    <ClInclude Include="..\page\DefaultVisitedLinkStore.h" />
+    <ClInclude Include="..\page\VisitedLinkStore.h" />
+    <ClInclude Include="..\platform\audio\AudioSession.h" />
+    <ClInclude Include="..\platform\audio\AudioSessionListener.h" />
+    <ClInclude Include="..\platform\audio\MediaSession.h" />
+    <ClInclude Include="..\platform\audio\MediaSessionManager.h" />
+    <ClInclude Include="..\html\ElementMediaSession.h" />
+    <ClInclude Include="..\html\URLUtils.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\css\CSSGrammar.y.in">
@@ -14898,9 +14878,6 @@
   </ItemGroup>
   <ItemGroup>
     <CustomBuildStep Include="..\platform\graphics\win\MediaPlayerPrivateFullscreenWindow.h">
-      <Filter>platform\graphics\win</Filter>
-    </CustomBuildStep>
-    <CustomBuildStep Include="..\platform\graphics\win\MediaPlayerPrivateQuickTimeVisualContext.h">
       <Filter>platform\graphics\win</Filter>
     </CustomBuildStep>
     <CustomBuildStep Include="..\platform\graphics\win\WKCAImageQueue.h">

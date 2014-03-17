@@ -70,9 +70,41 @@
 #import <math.h>
 
 #if ENABLE(METER_ELEMENT)
-#include "RenderMeter.h"
-#include "HTMLMeterElement.h"
+#import "RenderMeter.h"
+#import "HTMLMeterElement.h"
 #endif
+
+#if defined(__LP64__) && __LP64__
+#define HAVE_APPKIT_IMAGE_CONTROLS_SUPPORT 1
+#else
+#define HAVE_APPKIT_IMAGE_CONTROLS_SUPPORT 0
+#endif
+
+#if ENABLE(IMAGE_CONTROLS) && HAVE(APPKIT_IMAGE_CONTROLS_SUPPORT)
+
+#if __has_include(<AppKit/AppKitDefines_Private.h>)
+#import <AppKit/AppKitDefines_Private.h>
+#else
+#define APPKIT_PRIVATE_CLASS
+#endif
+
+#if __has_include(<AppKit/NSServicesRolloverButtonCell.h>)
+#import <AppKit/NSServicesRolloverButtonCell.h>
+#endif
+
+@interface NSServicesRolloverButtonCell (Details)
++ (NSServicesRolloverButtonCell *)serviceRolloverButtonCellForStyle:(NSSharingServicePickerStyle)style;
+@end
+
+#if __has_include(<AppKit/NSSharingService_Private.h>)
+#import <AppKit/NSSharingService_Private.h>
+#else
+typedef enum {
+    NSSharingServicePickerStyleRollover = 1
+} NSSharingServicePickerStyle;
+#endif
+
+#endif // ENABLE(IMAGE_CONTROLS)
 
 // The methods in this file are specific to the Mac OS X platform.
 
@@ -1941,6 +1973,55 @@ String RenderThemeMac::fileListNameForWidth(const FileList* fileList, const Font
     return StringTruncator::centerTruncate(strToTruncate, width, font, StringTruncator::EnableRoundingHacks);
 }
 
+#if ENABLE(IMAGE_CONTROLS)
+NSServicesRolloverButtonCell* RenderThemeMac::servicesRolloverButtonCell() const
+{
+#if HAVE(APPKIT_IMAGE_CONTROLS_SUPPORT)
+    if (!m_servicesRolloverButton) {
+        m_servicesRolloverButton = [NSServicesRolloverButtonCell serviceRolloverButtonCellForStyle:NSSharingServicePickerStyleRollover];
+        [m_servicesRolloverButton setBordered:NO];
+    }
+
+    return m_servicesRolloverButton.get();
+#else
+    return nil;
+#endif
+}
+
+bool RenderThemeMac::paintImageControlsButton(RenderObject* renderer, const PaintInfo& paintInfo, const IntRect& rect)
+{
+    if (paintInfo.phase != PaintPhaseBlockBackground)
+        return true;
+
+#if HAVE(APPKIT_IMAGE_CONTROLS_SUPPORT)
+    NSServicesRolloverButtonCell *cell = servicesRolloverButtonCell();
+
+    LocalCurrentGraphicsContext localContext(paintInfo.context);
+    GraphicsContextStateSaver stateSaver(*paintInfo.context);
+
+    paintInfo.context->scale(FloatSize(1, -1));
+    paintInfo.context->translate(rect.x(), -rect.height() - rect.y());
+
+    IntRect innerFrame(IntPoint(), rect.size());
+    [cell drawWithFrame:innerFrame inView:documentViewFor(renderer)];
+    [cell setControlView:nil];
+#else
+    UNUSED_PARAM(renderer);
+    UNUSED_PARAM(rect);
+#endif
+
+    return true;
+}
+
+IntSize RenderThemeMac::imageControlsButtonSize(const RenderObject*) const
+{
+#if HAVE(APPKIT_IMAGE_CONTROLS_SUPPORT)
+    return IntSize(servicesRolloverButtonCell().cellSize);
+#else
+    return IntSize();
+#endif
+}
+#endif
 
 } // namespace WebCore
 

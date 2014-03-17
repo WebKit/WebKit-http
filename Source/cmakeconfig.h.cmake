@@ -123,7 +123,12 @@
 #cmakedefine01 ENABLE_XHR_TIMEOUT
 #cmakedefine01 ENABLE_XSLT
 #cmakedefine01 USE_SYSTEM_MALLOC
+#cmakedefine01 WTF_USE_GEOCLUE2
 #cmakedefine01 WTF_USE_TILED_BACKING_STORE
 #cmakedefine01 HAVE_LLVM
+
+#if defined(BUILDING_GTK__) && !defined(GTK_API_VERSION_2)
+#define GDK_VERSION_MIN_REQUIRED @GDK_VERSION_MIN_REQUIRED@
+#endif
 
 #endif /* CMAKECONFIG_H */

@@ -1,3 +1,25 @@
+2014-03-12  Dean Jackson  <dino@apple.com>
+
+        [WebGL] WebKit1 + WebKit2 iOS clients should check load policy
+        https://bugs.webkit.org/show_bug.cgi?id=130162
+
+        Add iOS implementations of WebGL load policy queries.
+
+        * libWebKitSystemInterfaceLion.a:
+        * libWebKitSystemInterfaceMavericks.a:
+        * libWebKitSystemInterfaceMountainLion.a:
+
+2014-03-10  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Pass environment to Pre-Build, Pre-Link, and Post-Build Stages.
+        https://bugs.webkit.org/show_bug.cgi?id=130023
+
+        Reviewed by Dean Jackson.
+
+        * win/tools/vsprops/common.props: Pass WEBKIT_LIBRARIES value to subprocesses.
+        * win/tools/vsprops/debugsuffix.props: Make sure OFFICIAL_BUILD is set.
+        * win/tools/vsprops/production.props: Ditto.
+
 2014-03-06  Dean Jackson  <dino@apple.com>
 
         Update WebKitSystemInterface.

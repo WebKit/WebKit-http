@@ -51,6 +51,7 @@
 #import "WebCertificateInfo.h"
 #import "WebContext.h"
 #import "WebBackForwardList.h"
+#import "WebPageGroup.h"
 #import "WebPageProxy.h"
 #import "WebProcessProxy.h"
 #import "WKNSURLExtras.h"
@@ -151,6 +152,13 @@
         webPageConfiguration.relatedPage = relatedWebView->_page.get();
 
     webPageConfiguration.visitedLinkProvider = [_configuration visitedLinkProvider]->_visitedLinkProvider.get();
+
+    RefPtr<WebKit::WebPageGroup> pageGroup;
+    NSString *groupIdentifier = configuration._groupIdentifier;
+    if (groupIdentifier.length) {
+        pageGroup = WebKit::WebPageGroup::create(configuration._groupIdentifier);
+        webPageConfiguration.pageGroup = pageGroup.get();
+    }
 
 #if PLATFORM(IOS)
     _scrollView = adoptNS([[WKScrollView alloc] initWithFrame:bounds]);
@@ -367,6 +375,16 @@
     _isWaitingForNewLayerTreeAfterDidCommitLoad = YES;
 }
 
+// This is a convenience method that will convert _page->pageExtendedBackgroundColor() from a WebCore::Color to a UIColor *.
+- (UIColor *)pageExtendedBackgroundColor
+{
+    WebCore::Color color = _page->pageExtendedBackgroundColor();
+    if (!color.isValid())
+        return nil;
+
+    return [UIColor colorWithRed:(color.red() / 255.0) green:(color.green() / 255.0) blue:(color.blue() / 255.0) alpha:(color.alpha() / 255.0)];
+}
+
 - (void)_didCommitLayerTree:(const WebKit::RemoteLayerTreeTransaction&)layerTreeTransaction
 {
     ASSERT(!_customContentView);
@@ -377,6 +395,11 @@
     [_scrollView setZoomEnabled:layerTreeTransaction.allowsUserScaling()];
     if (!layerTreeTransaction.scaleWasSetByUIProcess() && ![_scrollView isZooming] && ![_scrollView isZoomBouncing] && ![_scrollView _isAnimatingZoom])
         [_scrollView setZoomScale:layerTreeTransaction.pageScaleFactor()];
+
+    if (UIColor *pageExtendedBackgroundColor = [self pageExtendedBackgroundColor]) {
+        if ([self _backgroundExtendsBeyondPage])
+            [_scrollView setBackgroundColor:pageExtendedBackgroundColor];
+    }
 
     if (_gestureController)
         _gestureController->setRenderTreeSize(layerTreeTransaction.renderTreeSize());
@@ -822,6 +845,11 @@ static void releaseNSData(unsigned char*, const void* data)
     _page->restoreFromSessionStateData(API::Data::createWithoutCopying((const unsigned char*)sessionState.bytes, sessionState.length, releaseNSData, sessionState).get());
 }
 
+- (void)_close
+{
+    _page->close();
+}
+
 - (BOOL)_privateBrowsingEnabled
 {
     return [_configuration preferences]->_preferences->privateBrowsingEnabled();
@@ -885,11 +913,8 @@ static inline WebCore::LayoutMilestones layoutMilestones(_WKRenderingProgressEve
 
 - (UIColor *)_pageExtendedBackgroundColor
 {
-    WebCore::Color color = _page->pageExtendedBackgroundColor();
-    if (!color.isValid())
-        return nil;
-
-    return [UIColor colorWithRed:(color.red() / 255.0) green:(color.green() / 255.0) blue:(color.blue() / 255.0) alpha:(color.alpha() / 255.0)];
+    // This is deprecated.
+    return nil;
 }
 
 - (void)_setBackgroundExtendsBeyondPage:(BOOL)backgroundExtends

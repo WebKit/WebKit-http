@@ -1,3 +1,373 @@
+2014-03-12  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: [iOS 6] uncaught exception attempting to use CSSAgent.getNamedFlowCollection
+        https://bugs.webkit.org/show_bug.cgi?id=130167
+
+        Reviewed by Timothy Hatcher.
+
+        Feature check the protocol method before using it. It is
+        fine to do nothing if the feature is not supported.
+
+        * UserInterface/Controllers/DOMTreeManager.js:
+
+2014-03-12  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Feature check for accessibility support before using it (DOMAgent.getAccessibilityPropertiesForNode)
+        https://bugs.webkit.org/show_bug.cgi?id=130037
+
+        Reviewed by Timothy Hatcher.
+
+        Feature detect if accessibility information is supported before
+        creating or attempting to update the accessibility section.
+
+        * UserInterface/Views/DOMNodeDetailsSidebarPanel.js:
+        (WebInspector.DOMNodeDetailsSidebarPanel):
+        (WebInspector.DOMNodeDetailsSidebarPanel.prototype._accessibilitySupported):
+        (WebInspector.DOMNodeDetailsSidebarPanel.prototype._refreshAccessibility):
+
+2014-03-12  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Fix multiple console.assert stripping issues
+        https://bugs.webkit.org/show_bug.cgi?id=130166
+
+        Reviewed by Timothy Hatcher.
+
+        There were a couple console.assert stripping issues in production.
+        One line required a semicolon so was avoiding getting stripped.
+        One resulted in a logic change, when stripping the only statement
+        of a control flow block. Add a warning for such cases.
+
+        * Scripts/remove-console-asserts.pl:
+        Add warning for a console.assert being the only statement in a control flow block
+        without braces. When it is stripped it may change the flow of the function.
+
+        * Scripts/remove-console-asserts-dryrun.rb: Added.
+        Add a script to quickly test running remove console asserts on our files, to
+        help catch errors not in a production build and in the original non-combined
+        files, so you can more easily fix issues.
+
+        * UserInterface/Controllers/DOMTreeManager.js:
+        (WebInspector.DOMTreeManager.prototype._updateContentFlowFromPayload):
+        Convert the for loop into a single console.assert statement.
+
+        * UserInterface/Views/DataGrid.js:
+        (WebInspector.DataGrid.prototype.removeChild):
+        Add missing semicolon.        
+
+2014-03-12  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: convert model tests and inspector-test.js to use Test.html
+        https://bugs.webkit.org/show_bug.cgi?id=129217
+
+        Reviewed by Timothy Hatcher.
+
+        Miscellaneous changes to make the inspector model test harness work well in
+        scenarios where the test page must navigate or reload. Also improve reporting
+        test failures so that messages will be dumped correctly even when an exception
+        is thrown in the Inspector or the test times out.
+
+        * UserInterface/Base/Test.js:
+        (WebInspector.loaded): register new managers and observers.
+        (InspectorTest.log): Stringify the argument if it's an object.
+        (InspectorTest.assert): Stringify the argument if it's an object. Don't log
+        unless the condition is false.
+
+        (InspectorTest.expectThat): Added. Like assert(), but always logs.
+        (InspectorTest.debugLog): Escape and unescape the string properly.
+        (InspectorTest.completeTest): Fix teardown so messages are not lost.
+        (InspectorTest.evaluateInPage): Accept a callback argument.
+        (InspectorTest.addResult): Don't rebuild results when adding a new result.
+        (InspectorTest._resendResults.decrementPendingResponseCount): Added.
+
+        (InspectorTest._resendResults): Added. Track the number of pending
+        responses and invoke a given callback when everything has been resent.
+
+        (InspectorTest.testPageDidLoad): Renamed from `pageLoaded`.
+        (InspectorTest.reloadPage): Added.
+        (InspectorTest.reportUncaughtException): Prevent the default handler from running.
+        * UserInterface/Protocol/InspectorBackend.js:
+        (InspectorBackendClass.prototype.dispatch): Report uncaught exceptions when dispatching
+        messages on the inspector page without blowing away the entire call stack.
+
+        * UserInterface/Test.html: Add files used by Network and Timeline domains.
+
+2014-03-11  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: DataGrid should have an API to set sort column and direction
+        https://bugs.webkit.org/show_bug.cgi?id=128783
+
+        Reviewed by Timothy Hatcher.
+
+        Previously there was no way for DataGrid clients to programmatically change
+        the sort order or sort column identifier after the data grid was constructed.
+        This patch modernizes DataGrid sorting by exposing getters and setters for
+        sortOrder and sortColumnIdentifier, which trigger the SortChanged event if
+        the sort settings have changed.
+
+        This patch also modernizes sorting functionality in DataGrid clients, and in
+        a few clients it moves column identifiers from numbers to string identifiers.
+
+        * UserInterface/Main.html:
+        * UserInterface/Views/ApplicationCacheFrameContentView.js: Use string column identifiers
+        instead of numbers. Don't repopulate the entire table when the sort changes, instead
+        call DataGrid.sortNodes from the sorting callback. Explicitly set the sort order.
+
+        (WebInspector.ApplicationCacheFrameContentView.prototype._createDataGrid):
+        (WebInspector.ApplicationCacheFrameContentView.prototype._sortDataGrid):
+        (WebInspector.ApplicationCacheFrameContentView.prototype._sortDataGrid.localeCompare):
+        (WebInspector.ApplicationCacheFrameContentView.prototype._populateDataGrid):
+
+        * UserInterface/Views/CookieStorageContentView.js: Use string column identifiers instead
+        of numbers. Don't sort the cookies themselves, just the data grid nodes representing
+        each cookie. Use DataGrid.sortNodes as the sorting implementation, and provide a
+        comparator. Don't rebuild the entire table when the sort changes.
+
+        (WebInspector.CookieStorageContentView.prototype._rebuildTable):
+        (WebInspector.CookieStorageContentView.prototype._sortDataGrid):
+        (WebInspector.CookieStorageContentView.prototype._sortDataGrid.numberCompare):
+        (WebInspector.CookieStorageContentView.prototype._sortDataGrid.expiresCompare):
+
+        * UserInterface/Views/DataGrid.js: Add the DataGrid.SortOrder enum. Put sortOrder
+        and sortColumnIdentifier behind getters and setters. Pull some hardcoded style
+        class names into constants. Remove the "sort" field on column config objects; instead
+        should use the DataGrid.sortColumnIdentifier setter after construction.
+
+        (WebInspector.DataGrid): Keep sort settings in private variables.
+        (WebInspector.DataGrid.prototype.get sortOrder): Reimplemented.
+        (WebInspector.DataGrid.prototype.get sortColumnIdentifier): Reimplemented.
+        (WebInspector.DataGrid.prototype.moveToNextCell):
+        (WebInspector.DataGrid.prototype._editingCommitted):
+        (WebInspector.DataGrid.prototype.sortNodes): Use requestAnimationFrame to
+        coalesce multiple sort requests within the same draw frame.
+        (WebInspector.DataGrid.prototype._sortNodesCallback):
+        (WebInspector.DataGrid.prototype._headerCellClicked): Use the new sort API.
+        * UserInterface/Views/LayerTreeDataGrid.js: Removed. Unnecessary for performance
+        now that sort requests are coalesced by requestAnimationFrame.
+
+        * UserInterface/Views/LayerTreeSidebarPanel.js: Use DataGrid instead of LayerTreeDataGrid.
+        Hook up the _sortDataGrid method to the built-in DataGrid.sortNodes API.
+
+        (WebInspector.LayerTreeSidebarPanel.prototype._buildDataGridSection):
+        (WebInspector.LayerTreeSidebarPanel.prototype._sortDataGrid.comparator):
+        (WebInspector.LayerTreeSidebarPanel.prototype._sortDataGrid):
+        * UserInterface/Views/LayoutTimelineView.js:
+        * UserInterface/Views/LegacyJavaScriptProfileView.js:
+        (WebInspector.LegacyJavaScriptProfileView.prototype._sortProfile):
+        * UserInterface/Views/NetworkTimelineView.js:
+        * UserInterface/Views/ResourceDetailsSidebarPanel.js: Use the DataGrid.sortNodes API.
+        (WebInspector.ResourceDetailsSidebarPanel.prototype._createNameValueDataGrid.sortDataGrid.comparator):
+        (WebInspector.ResourceDetailsSidebarPanel.prototype._createNameValueDataGrid.sortDataGrid):
+        (WebInspector.ResourceDetailsSidebarPanel.prototype._createNameValueDataGrid):
+        * UserInterface/Views/ScriptTimelineView.js:
+        * UserInterface/Views/TimelineDataGrid.js:
+        (WebInspector.TimelineDataGrid.prototype._sortComparator):
+
+2014-03-10  James Craig  <jcraig@apple.com>
+
+        Web Inspector: AXI: Expose checked/disabled/expanded/pressed/readonly/selected
+        https://bugs.webkit.org/show_bug.cgi?id=129781
+
+        Reviewed by Joseph Pecoraro.
+
+        Enabling several more properties to be exposed in the Accessibility Node Inspector.
+
+        Updated Tests: inspector-protocol/dom/getAccessibilityPropertiesForNode.html
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Models/DOMNode.js:
+        * UserInterface/Protocol/InspectorWebBackendCommands.js:
+        * UserInterface/Views/DOMNodeDetailsSidebarPanel.js:
+
+2014-03-10  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: show a debugging-oriented dashboard when scripts pause
+        https://bugs.webkit.org/show_bug.cgi?id=129913
+
+        Reviewed by Timothy Hatcher.
+
+        Using the dashboard swapping functionality just added, show a debugger dashboard
+        whenever the debugger pauses, and hide it when it resumes. The debugger manager
+        already coalesces pause/resume events across stepping commands.
+
+        The dashboard itself is straightforward, with the exception of how it uses the
+        navigation bar buttons. Since buttons from the same URL can't be reused if they
+        are bezeled, we don't bezel our button, and set the button image as the glyph mask
+        instead of the background image. This lets us easily animate the glyph shape.
+
+        We also have to more forcefully declare a bunch of icon rules that would otherwise
+        be messed up by the toolbar's icon rules (whereas we want to mostly emulate navigation
+        bar icon styles).
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Base/Main.js:
+        (WebInspector.loaded):
+        (WebInspector.contentLoaded):
+        (WebInspector._debuggerDidPause):
+        (WebInspector._debuggerDidResume):
+        * UserInterface/Controllers/DashboardManager.js:
+        (WebInspector.DashboardManager):
+        * UserInterface/Main.html:
+        * UserInterface/Models/DebuggerDashboard.js: Added.
+        (WebInspector.DebuggerDashboard):
+        * UserInterface/Views/ButtonNavigationItem.css:
+        (.navigation-bar .item.button.suppress-emboss > .glyph):
+        * UserInterface/Views/ButtonNavigationItem.js:
+        (WebInspector.ButtonNavigationItem.prototype._updateImage):
+        * UserInterface/Views/DashboardView.js:
+        (WebInspector.DashboardView):
+        * UserInterface/Views/DebuggerDashboardView.css: Added.
+        (.toolbar .dashboard.debugger):
+        (.dashboard.debugger > .message):
+        (.dashboard.debugger .navigation-bar):
+        (.toolbar:not(.small-size) .dashboard.debugger .navigation-bar):
+        (.dashboard.debugger .navigation-bar .item.button):
+        (.dashboard.debugger .navigation-bar .item.button > .glyph):
+        (@-webkit-keyframes pulse-pause-button):
+        (to):
+        (.dashboard.debugger > .divider):
+        (.dashboard.debugger > div):
+        (.dashboard.debugger > .location > :first-child):
+        (.toolbar:not(.small-size) .dashboard.debugger > .location :not(:first-child)):
+        (.dashboard.debugger > .location img.icon):
+        (.dashboard.debugger > .location .function-name):
+        (.dashboard.debugger > .location .function-name::after):
+        (.dashboard.debugger > .location .go-to-link):
+        (.toolbar.collapsed .dashboard.debugger > :not(.message):not(.navigation-bar )):
+        (.toolbar.small-size .dashboard.debugger > .message):
+        (.toolbar.small-size .dashboard.debugger > .location > :first-child):
+        * UserInterface/Views/DebuggerDashboardView.js: Added.
+        (WebInspector.DebuggerDashboardView):
+        (WebInspector.DebuggerDashboardView.prototype._rebuildLocation):
+        (WebInspector.DebuggerDashboardView.prototype._resumeButtonClicked):
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WebInspector.DebuggerSidebarPanel):
+
+2014-03-10  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: convert the dashboard toolbar item to support multiple dashboards
+        https://bugs.webkit.org/show_bug.cgi?id=129898
+
+        Reviewed by Timothy Hatcher.
+
+        We want to ability to swap in and out different dashboard contents depending on
+        circumstances such as debugger activity and page loading. This patch converts the
+        existing hard-coded dashboard implementation to follow the container-based approach
+        used by WebInspector.ContentViewContainer.
+
+        As part of the refactoring, we introduce dashboard model objects to store persistent
+        dashboard data. Some CSS has also been split between the container and specific dashboard.
+
+        * UserInterface/Controllers/DashboardManager.js:
+        (WebInspector.DashboardManager):
+        (WebInspector.DashboardManager.prototype.get toolbarItem):
+        * UserInterface/Main.html:
+        * UserInterface/Models/DefaultDashboard.js: Copied from Source/WebInspectorUI/UserInterface/Controllers/DashboardManager.js.
+        (WebInspector.DefaultDashboard):
+        (WebInspector.DefaultDashboard.prototype.get resourcesCount):
+        (WebInspector.DefaultDashboard.prototype.set resourcesCount):
+        (WebInspector.DefaultDashboard.prototype.get resourcesSize):
+        (WebInspector.DefaultDashboard.prototype.set resourcesSize):
+        (WebInspector.DefaultDashboard.prototype.get time):
+        (WebInspector.DefaultDashboard.prototype.set time):
+        (WebInspector.DefaultDashboard.prototype.get logs):
+        (WebInspector.DefaultDashboard.prototype.set logs):
+        (WebInspector.DefaultDashboard.prototype.get errors):
+        (WebInspector.DefaultDashboard.prototype.set errors):
+        (WebInspector.DefaultDashboard.prototype.get issues):
+        (WebInspector.DefaultDashboard.prototype.set issues):
+        (WebInspector.DefaultDashboard.prototype._dataDidChange):
+        (WebInspector.DefaultDashboard.prototype._mainResourceDidChange):
+        (WebInspector.DefaultDashboard.prototype._recordingStopped):
+        (WebInspector.DefaultDashboard.prototype._resourceWasAdded):
+        (WebInspector.DefaultDashboard.prototype._frameWasAdded):
+        (WebInspector.DefaultDashboard.prototype._resourceSizeDidChange):
+        (WebInspector.DefaultDashboard.prototype._startUpdatingTime):
+        (WebInspector.DefaultDashboard.prototype._stopUpdatingTime):
+        (WebInspector.DefaultDashboard.prototype._updateTime):
+        (WebInspector.DefaultDashboard.prototype._consoleMessageAdded):
+        (WebInspector.DefaultDashboard.prototype._consoleMessageWasRepeated):
+        (WebInspector.DefaultDashboard.prototype._incrementConsoleMessageType):
+        (WebInspector.DefaultDashboard.prototype._consoleWasCleared):
+        * UserInterface/Views/DashboardContainerView.css: Added.
+        (.toolbar .dashboard-container):
+        (body.window-inactive .toolbar .dashboard-container):
+        (body.javascript .toolbar .dashboard-container):
+        (.toolbar.normal-size.icon-and-label-vertical .dashboard-container):
+        (.toolbar.small-size.icon-and-label-horizontal .dashboard-container):
+        (.toolbar.normal-size.icon-and-label-horizontal .dashboard-container):
+        (.toolbar .dashboard-container):
+        (.toolbar .dashboard):
+        (.toolbar .dashboard.visible):
+        (.toolbar .dashboard.slide-out-up):
+        (.toolbar .dashboard.slide-out-down):
+        (.toolbar .dashboard.slide-in-up):
+        (.toolbar .dashboard.slide-in-down):
+        (@-webkit-keyframes slide-top-edge):
+        (to):
+        (@-webkit-keyframes slide-bottom-edge):
+        * UserInterface/Views/DashboardContainerView.js: Added.
+        (WebInspector.DashboardContainerView):
+        (WebInspector.DashboardContainerView.prototype.get toolbarItem):
+        (WebInspector.DashboardContainerView.prototype.get currentDashboardView):
+        (WebInspector.DashboardContainerView.prototype.showDashboardViewForRepresentedObject):
+        (WebInspector.DashboardContainerView.prototype._dashboardViewForRepresentedObject):
+        (WebInspector.DashboardContainerView.prototype._showDashboardView):
+        * UserInterface/Views/DashboardView.css: Removed.
+        * UserInterface/Views/DashboardView.js:
+        (WebInspector.DashboardView):
+        (WebInspector.DashboardView.prototype.get element):
+        (WebInspector.DashboardView.prototype.get parentContainer):
+        (WebInspector.DashboardView.prototype.get representedObject):
+        (WebInspector.DashboardView.prototype.shown):
+        (WebInspector.DashboardView.prototype.hidden):
+        * UserInterface/Views/DefaultDashboardView.css: Added.
+        (body.web .toolbar.collapsed .dashboard.default > .logs):
+        (body.javascript .toolbar .dashboard.default > .resourcesCount):
+        (.toolbar .dashboard.default):
+        (.toolbar .dashboard.default > .item):
+        (.toolbar .dashboard.default > .resourcesSize):
+        (.toolbar .dashboard.default > .item.enabled:hover):
+        (.toolbar .dashboard.default > .item.enabled:active):
+        (.toolbar .dashboard.default > .item > *):
+        (.toolbar .dashboard.default > .item > img):
+        (.toolbar .dashboard.default > .item.enabled > img):
+        (.toolbar .dashboard.default > .item.enabled:hover > img):
+        (.toolbar .dashboard.default > .item > div):
+        (.toolbar .dashboard.default > .item.enabled > div):
+        (.toolbar .dashboard.default > .item.enabled:hover > div):
+        (.toolbar .dashboard.default > .resourcesCount > img):
+        (.toolbar .dashboard.default > .time > img):
+        (.toolbar .dashboard.default > .logs > img):
+        (.toolbar .dashboard.default > .resourcesSize > img):
+        (.toolbar .dashboard.default > .errors > img):
+        (.toolbar .dashboard.default > .errors.enabled > img):
+        (.toolbar .dashboard.default > .errors.enabled:hover > img):
+        (.toolbar .dashboard.default > .errors.enabled > div):
+        (.toolbar .dashboard.default > .errors.enabled:hover > div):
+        (.toolbar .dashboard.default > .issues > img):
+        (.toolbar .dashboard.default > .issues.enabled > img):
+        (.toolbar .dashboard.default > .issues.enabled:hover > img):
+        (.toolbar .dashboard.default > .issues.enabled > div):
+        (.toolbar .dashboard.default > .issues.enabled:hover > div):
+        (.toolbar .dashboard.default > .item.pulsing):
+        (@-webkit-keyframes console-item-pulse):
+        (.toolbar.small-size.icon-and-label-horizontal .dashboard.default > .item):
+        (.toolbar.normal-size.icon-and-label-horizontal .dashboard.default > .item):
+        * UserInterface/Views/DefaultDashboardView.js: Copied from Source/WebInspectorUI/UserInterface/Views/DashboardView.js.
+        (WebInspector.DefaultDashboardView):
+        (WebInspector.DefaultDashboardView.prototype._updateDisplay):
+        (WebInspector.DefaultDashboardView.prototype._formatPossibleLargeNumber):
+        (WebInspector.DefaultDashboardView.prototype._appendElementForNamedItem.):
+        (WebInspector.DefaultDashboardView.prototype._appendElementForNamedItem.set item):
+        (WebInspector.DefaultDashboardView.prototype._appendElementForNamedItem):
+        (WebInspector.DefaultDashboardView.prototype._itemWasClicked):
+        (WebInspector.DefaultDashboardView.prototype._resourcesWasClicked):
+        (WebInspector.DefaultDashboardView.prototype._networkItemWasClicked):
+        (WebInspector.DefaultDashboardView.prototype._consoleItemWasClicked):
+        (WebInspector.DefaultDashboardView.prototype.animationEnded):
+        (WebInspector.DefaultDashboardView.prototype._setConsoleItemValue):
+        (WebInspector.DefaultDashboardView.prototype._setItemEnabled):
+
 2014-03-08  Joseph Pecoraro  <pecoraro@apple.com>
 
         Web Inspector: update-InspectorBackendCommands.rb is putting legacy protocol files in the wrong place

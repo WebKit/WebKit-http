@@ -2067,13 +2067,23 @@ sub buildCMakeGeneratedProject($)
     if (! -d $buildPath) {
         die "Must call generateBuildSystemFromCMakeProject() before building CMake project.";
     }
+
+    my $command = "cmake";
     my @args = ("--build", $buildPath, "--config", $config);
     push @args, ("--", $makeArgs) if $makeArgs;
+
+    # GTK uses a build script to preserve colors and pretty-printing.
+    if (isGtk()) {
+        chdir "$buildPath" or die;
+        $command = "$buildPath/build.sh";
+        @args = ($makeArgs);
+    }
 
     # We call system("cmake @args") instead of system("cmake", @args) so that @args is
     # parsed for shell metacharacters. In particular, $makeArgs may contain such metacharacters.
     my $wrapper = join(" ", jhbuildWrapperPrefixIfNeeded()) . " ";
-    return system($wrapper . "cmake @args");
+    return system($wrapper . "$command @args");
+
 }
 
 sub cleanCMakeGeneratedProject()
@@ -2095,6 +2105,10 @@ sub buildCMakeProjectOrExit($$$$@)
 
     if (isEfl() && checkForArgumentAndRemoveFromARGV("--update-efl")) {
         system("perl", "$sourceDir/Tools/Scripts/update-webkitefl-libs") == 0 or die $!;
+    }
+
+    if (isGtk() && checkForArgumentAndRemoveFromARGV("--update-gtk")) {
+        system("perl", "$sourceDir/Tools/Scripts/update-webkitgtk-libs") == 0 or die $!;
     }
 
     $returnCode = exitStatus(generateBuildSystemFromCMakeProject($port, $prefixPath, @cmakeArgs));

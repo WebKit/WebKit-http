@@ -185,7 +185,6 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case CompareEq:
     case CompareEqConstant:
     case CompareStrictEq:
-    case CompareStrictEqConstant:
     case Call:
     case Construct:
     case NewObject:
@@ -244,7 +243,6 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case Int52ToDouble:
     case Int52ToValue:
     case StoreBarrier:
-    case ConditionalStoreBarrier:
     case StoreBarrierWithNullCheck:
     case InvalidationPoint:
     case NotifyWrite:

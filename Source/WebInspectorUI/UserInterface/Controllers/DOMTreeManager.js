@@ -552,8 +552,7 @@ WebInspector.DOMTreeManager.prototype = {
     _updateContentFlowFromPayload: function(contentFlow, flowPayload)
     {
         console.assert(contentFlow.contentNodes.length === flowPayload.content.length);
-        for (var i = 0; i < contentFlow.contentNodes.length; ++i)
-            console.assert(contentFlow.contentNodes[i].id === flowPayload.content[i]);
+        console.assert(contentFlow.contentNodes.every(function(node, i) { node.id === flowPayload.content[i]; }));
 
         // FIXME: Collect the regions from the payload.
         contentFlow.overset = flowPayload.overset;
@@ -583,7 +582,9 @@ WebInspector.DOMTreeManager.prototype = {
             }
             this.dispatchEventToListeners(WebInspector.DOMTreeManager.Event.ContentFlowListWasUpdated, {documentNodeIdentifier: documentNodeIdentifier, flows: contentFlows});
         }
-        CSSAgent.getNamedFlowCollection(documentNodeIdentifier, onNamedFlowCollectionAvailable.bind(this));
+
+        if (CSSAgent.getNamedFlowCollection)
+            CSSAgent.getNamedFlowCollection(documentNodeIdentifier, onNamedFlowCollectionAvailable.bind(this));
     },
 
     namedFlowCreated: function(flowPayload)

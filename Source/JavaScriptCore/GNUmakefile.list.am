@@ -175,6 +175,8 @@ javascriptcore_sources += \
 	Source/JavaScriptCore/bytecode/Operands.h \
 	Source/JavaScriptCore/bytecode/OperandsInlines.h \
 	Source/JavaScriptCore/bytecode/PolymorphicAccessStructureList.h \
+	Source/JavaScriptCore/bytecode/PolymorphicGetByIdList.cpp \
+	Source/JavaScriptCore/bytecode/PolymorphicGetByIdList.h \
 	Source/JavaScriptCore/bytecode/PolymorphicPutByIdList.cpp \
 	Source/JavaScriptCore/bytecode/PolymorphicPutByIdList.h \
 	Source/JavaScriptCore/bytecode/PreciseJumpTargets.cpp \
@@ -817,6 +819,7 @@ javascriptcore_sources += \
 	Source/JavaScriptCore/jit/Repatch.cpp \
 	Source/JavaScriptCore/jit/Repatch.h \
 	Source/JavaScriptCore/jit/ScratchRegisterAllocator.h \
+	Source/JavaScriptCore/jit/ScratchRegisterAllocator.cpp \
 	Source/JavaScriptCore/jit/SlowPathCall.h \
 	Source/JavaScriptCore/jit/SpecializedThunkJIT.h \
 	Source/JavaScriptCore/jit/TempRegisterSet.cpp \

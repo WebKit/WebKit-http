@@ -1,3 +1,99 @@
+2014-03-12  Dean Jackson  <dino@apple.com>
+
+        [WebGL] WebKit1 + WebKit2 iOS clients should check load policy
+        https://bugs.webkit.org/show_bug.cgi?id=130162
+
+        Reviewed by Simon Fraser.
+
+        Implement the webGLPolicyForURL methods, calling into WebKitSystemInterface.
+
+        * Configurations/WebKit.xcconfig: Add MobileAsset to iOS config.
+        * WebCoreSupport/WebFrameLoaderClient.h:
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+
+2014-03-12  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Disable REMOTE_INSPECTOR in earlier OS X releases
+        https://bugs.webkit.org/show_bug.cgi?id=130118
+
+        Reviewed by Timothy Hatcher.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+        * WebCoreSupport/WebInspectorClient.mm:
+        (WebInspectorClient::indicate):
+        (WebInspectorClient::hideIndication):
+        Properly guard REMOTE_INSPECTOR only calls.
+
+2014-03-12  Tim Horton  <timothy_horton@apple.com>
+
+        Build fix for ENABLE(IMAGE_CONTROLS) after 165479
+
+        * Misc/WebSharingServicePickerController.h:
+        * Misc/WebSharingServicePickerController.mm:
+        Don't use new-runtime features in code that has to build 32-bit.
+
+2014-03-12  Anders Carlsson  <andersca@apple.com>
+
+        <rdar://problem/16307346> Add new WebKitLegacy.framework.
+
+        Reviewed by Dan Bernstein.
+
+        * Configurations/WebKitLegacy.xcconfig:
+        Add xcconfig file for the new framework.
+
+        * WebKitLegacy/Info.plist:
+        Add Info.plist for WebKitLegacy.framework.
+
+        * WebKitLegacy/MigrateHeadersToLegacy.make:
+        Add makefile that copies headers from WebKit to WebKitLegacy and rewrites includes from WebKit/ to WebKitLegacy/
+        * WebKitLegacy/WebKitLegacy.cpp:
+        Add an empty file so we'll have something to link.
+
+2014-03-12  Tim Horton  <timothy_horton@apple.com>
+
+        Hook up image controls for WebKit1
+        https://bugs.webkit.org/show_bug.cgi?id=130062
+        <rdar://problem/15964809>
+
+        Reviewed by Brady Eidson.
+
+        * Misc/WebSharingServicePickerController.h: Added.
+        * Misc/WebSharingServicePickerController.mm: Added.
+        (-[WebSharingServicePickerController initWithImage:menuClient:]):
+        (-[WebSharingServicePickerController menu]):
+        (-[WebSharingServicePickerController sharingServicePicker:delegateForSharingService:]):
+        (-[WebSharingServicePickerController sharingServicePicker:didChooseSharingService:]):
+        (-[WebSharingServicePickerController sharingService:didShareItems:]):
+        (-[WebSharingServicePickerController sharingService:didFailToShareItems:error:]):
+        (-[WebSharingServicePickerController sharingService:sourceWindowForShareItems:sharingContentScope:]):
+        Add a NSSharingServiceDelegate and NSSharingServicePickerDelegate, which will also
+        provide a NSMenu instance for WebContextMenuClient to pop up when image controls are needed.
+        When data is returned from the service, it is re-inserted into the image via replaceControlledImage.
+
+        * WebCoreSupport/WebContextMenuClient.h:
+        * WebCoreSupport/WebContextMenuClient.mm:
+        (WebContextMenuClient::contextMenuForEvent):
+        Factor out code to decide which NSMenu to use, so that we can use early-returns to simplify it.
+        If we hit an image with image controls, use the WebSharingServicePickerController's menu.
+
+        (WebContextMenuClient::showContextMenu):
+        (WebContextMenuClient::clearSharingServicePickerController):
+
+2014-03-10  Jer Noble  <jer.noble@apple.com>
+
+        [iOS][WK1] Crash in HTMLMediaElement::createElementRenderer() - "-[NSSet addObject:]: object cannot be nil"
+        https://bugs.webkit.org/show_bug.cgi?id=129634
+
+        Reviewed by Eric Carlson.
+
+        If a plugin fails to create a NSView, a nil object is inserted into the WebPluginController's
+        pluginViews set. This is an exceptional case, so add an ASSERT so that this error will continue
+        to occur in debug builds, but also add an early return so as not to crash release builds.
+
+        * Plugins/WebPluginController.mm:
+        (+[WebPluginController addPlugInView:]):
+
 2014-03-06  Alexey Proskuryakov  <ap@apple.com>
 
         [Mac] Don't perform a round-trip through WebProcess before interpreting key events

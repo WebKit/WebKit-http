@@ -78,6 +78,7 @@ set(JavaScriptCore_SOURCES
     bytecode/LazyOperandValueProfile.cpp
     bytecode/MethodOfGettingAValueProfile.cpp
     bytecode/Opcode.cpp
+    bytecode/PolymorphicGetByIdList.cpp
     bytecode/PolymorphicPutByIdList.cpp
     bytecode/PreciseJumpTargets.cpp
     bytecode/ProfiledCodeBlockJettisoningWatchpoint.cpp
@@ -302,6 +303,7 @@ set(JavaScriptCore_SOURCES
     jit/RegisterPreservationWrapperGenerator.cpp
     jit/RegisterSet.cpp
     jit/Repatch.cpp
+    jit/ScratchRegisterAllocator.cpp
     jit/TempRegisterSet.cpp
     jit/ThunkGenerators.cpp
 

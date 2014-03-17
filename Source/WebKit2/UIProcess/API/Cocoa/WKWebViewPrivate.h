@@ -63,6 +63,8 @@ typedef NS_OPTIONS(NSUInteger, _WKRenderingProgressEvents) {
 
 @property (nonatomic, setter=_setPrivateBrowsingEnabled:) BOOL _privateBrowsingEnabled;
 
+- (void)_close;
+
 #if TARGET_OS_IPHONE
 @property (nonatomic, setter=_setMinimumLayoutSizeOverride:) CGSize _minimumLayoutSizeOverride;
 
@@ -70,6 +72,8 @@ typedef NS_OPTIONS(NSUInteger, _WKRenderingProgressEvents) {
 @property (nonatomic, setter=_setObscuredInsets:) UIEdgeInsets _obscuredInsets;
 
 @property (nonatomic, setter=_setBackgroundExtendsBeyondPage:) BOOL _backgroundExtendsBeyondPage;
+
+// This is deprecated and should be removed entirely: <rdar://problem/16294704>.
 @property (readonly) UIColor *_pageExtendedBackgroundColor;
 
 - (void)_beginInteractiveObscuredInsetsChange;

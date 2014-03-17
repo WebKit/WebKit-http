@@ -1,3 +1,305 @@
+2014-03-12  Dean Jackson  <dino@apple.com>
+
+        [WebGL] WebKit1 + WebKit2 iOS clients should check load policy
+        https://bugs.webkit.org/show_bug.cgi?id=130162
+
+        Reviewed by Simon Fraser.
+
+        Implement webGLPolicyForURL() methods for iOS.
+
+        * Configurations/WebContent-iOS.entitlements: Add the MobileAsset asset type.
+        * Configurations/WebKit2.xcconfig: Add MobileAsset to iOS link list.
+        * WebProcess/WebPage/WebPage.cpp: Exclude iOS.
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::webGLPolicyForURL): Call into WKSI.
+        (WebKit::WebPage::resolveWebGLPolicyForURL):
+
+2014-03-12  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Disable REMOTE_INSPECTOR in earlier OS X releases
+        https://bugs.webkit.org/show_bug.cgi?id=130118
+
+        Reviewed by Timothy Hatcher.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2014-03-12  Enrica Casucci  <enrica@apple.com>
+
+        [iOS WebKit2] Crash when trying to select inside a video element with longpress..
+        https://bugs.webkit.org/show_bug.cgi?id=130095
+        <rdar://problem/16294534>
+
+        Reviewed by Benjamin Poulain.
+
+        We only need to set the assisted node for nodes that will receive an
+        input peripheral (keyboard, picker, popover, etc.).
+
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::rangeForWebSelectionAtPosition):
+        (WebKit::WebPage::elementDidFocus):
+
+2014-03-12  Simon Fraser  <simon.fraser@apple.com>
+
+        Have the scrolling tree track the viewport size, not the viewport rect
+        https://bugs.webkit.org/show_bug.cgi?id=130141
+
+        Reviewed by Beth Dakin.
+
+        The scrolling tree only needs to know the size of the viewport, not its
+        origin, since the origin is deduced from the updated scroll position.
+
+        * Shared/Scrolling/RemoteScrollingCoordinatorTransaction.cpp:
+        (ArgumentCoder<ScrollingStateScrollingNode>::encode):
+        (ArgumentCoder<ScrollingStateScrollingNode>::decode):
+
+2014-03-12  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r165481.
+        https://bugs.webkit.org/show_bug.cgi?id=130151
+
+        That didn't go well. (Requested by kling on #webkit).
+
+        Reverted changeset:
+
+        https://bugs.webkit.org/show_bug.cgi?id=130140
+        http://trac.webkit.org/changeset/165481
+
+2014-03-12  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Runtime error when page is closed while print operation is in progress
+        https://bugs.webkit.org/show_bug.cgi?id=129869
+
+        Reviewed by Anders Carlsson.
+
+        Sometimes when the page is closed right after printing the web
+        process aborts with the runtime message "pure virtual method
+        called terminate called without an active exception".
+        This happens because the page is closed when the pages have been
+        printed, but print job is still ongoing sending the data to the
+        printer. When print job finishes, we try to notify the UI process
+        sending the print callback message using WebPage::send(), but the
+        web page object has been destroyed. The virtual method it complains
+        about is probably MessageSender::messageSenderDestinationID() used
+        by send(). Since our print operation is always asynchronous, we
+        need a way to notify the web page when the print operation has
+        actually finished to clean it up, but also notify the print
+        operation when the page has been closed to not try to notify the
+        UI process in that case.
+
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::close): Call disconnectFromPage to notify the
+        print operation in case there's an ongoing print job.
+        (WebKit::WebPage::endPrinting): Do not cleanup the print operation
+        here, since the print opertation might not have finished yet.
+        (WebKit::WebPage::didFinishPrintOperation): Send
+        PrintFinishedCallback message to the Ui process and cleanup the
+        print operation.
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/gtk/WebPrintOperationGtk.cpp:
+        (WebKit::WebPrintOperationGtk::disconnectFromPage): Set m_webPage
+        to nullptr.
+        (WebKit::WebPrintOperationGtk::printDone): Call
+        didFinishPrintOperation() is the web page hasn't been closed.
+        * WebProcess/WebPage/gtk/WebPrintOperationGtk.h:
+
+2014-03-12  Andreas Kling  <akling@apple.com>
+
+        BundlePageDiagnosticLoggingClient leaks every string passing through it.
+        <https://webkit.org/b/130140>
+        <rdar://problem/15416838>
+
+        Use toAPI() instead of toCopiedAPI() so the receiving end doesn't need
+        to worry about adopting the WKStringRef.
+
+        Reviewed by Anders Carlsson.
+
+        * WebProcess/InjectedBundle/InjectedBundlePageDiagnosticLoggingClient.cpp:
+        (WebKit::InjectedBundlePageDiagnosticLoggingClient::logDiagnosticMessage):
+
+2014-03-12  Tim Horton  <timothy_horton@apple.com>
+
+        Hook up image controls for WebKit1
+        https://bugs.webkit.org/show_bug.cgi?id=130062
+        <rdar://problem/15964809>
+
+        Reviewed by Brady Eidson.
+
+        * Shared/ContextMenuContextData.cpp:
+        (WebKit::ContextMenuContextData::ContextMenuContextData):
+
+2014-03-11  Alexey Proskuryakov  <ap@apple.com>
+
+        REGRESSION (r165356): [Mac] Multi-part key bindings don't work
+        https://bugs.webkit.org/show_bug.cgi?id=130100
+
+        Reviewed by Darin Adler.
+
+        Restore the previous behavior, where we only interpreted keydowns (including those
+        coming through performKeyEquivalent).
+
+        In the future, we might send all events to input methods, but not to key bindings.
+
+        * UIProcess/API/mac/WKView.mm:
+        (-[WKView keyUp:]):
+        (-[WKView flagsChanged:]):
+
+2014-03-11  Beth Dakin  <bdakin@apple.com>
+
+        _pageExtendedBackgroundColor should not be exposed on WKWebView
+        https://bugs.webkit.org/show_bug.cgi?id=130093
+
+        Reviewed by Simon Fraser.
+
+        Added comment indicating that _pageExtendedBackgroundColor is deprecated.
+        * UIProcess/API/Cocoa/WKViewPrivate.h:
+
+        _pageExtendedBackgroundColor now returns nil, but the conversation functionality 
+        is maintained with a convenience method pageExtendedBackgroundColor.
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView pageExtendedBackgroundColor]):
+        (-[WKWebView _didCommitLayerTree:WebKit::]):
+        (-[WKWebView _pageExtendedBackgroundColor]):
+
+        Added comment indicating that _pageExtendedBackgroundColor is deprecated.
+        * UIProcess/API/Cocoa/WKWebViewPrivate.h:
+
+        Return nil.
+        * UIProcess/API/ios/WKViewIOS.mm:
+        (-[WKView _pageExtendedBackgroundColor]):
+
+2014-03-11  Jae Hyun Park  <jaepark@webkit.org>
+
+        [GTK][CMake] Add HARFBUZZ_INCLUDE_DIRS to WebKit and WebKit2
+        https://bugs.webkit.org/show_bug.cgi?id=130070
+
+        Reviewed by Martin Robinson.
+
+        * PlatformGTK.cmake:
+
+2014-03-10  Dan Bernstein  <mitz@apple.com>
+
+        [Cocoa] Expose WebPageProxy::close
+        https://bugs.webkit.org/show_bug.cgi?id=130068
+
+        Reviewed by Adele Peterson.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _close]):
+        * UIProcess/API/Cocoa/WKWebViewPrivate.h:
+
+2014-03-10  Benjamin Poulain  <bpoulain@apple.com>
+
+        [iOS][WebKit 2] Wire the unobscured rect in the WebProcess
+        https://bugs.webkit.org/show_bug.cgi?id=130058
+
+        Reviewed by Simon Fraser.
+
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::updateVisibleContentRects):
+
+2014-03-10  Simon Fraser  <simon.fraser@apple.com>
+
+        Fix three leaks
+        https://bugs.webkit.org/show_bug.cgi?id=130048
+
+        Reviewed by Anders Carlsson.
+
+        * Shared/API/Cocoa/WKRemoteObjectCoder.mm:
+        (decodeObject): Code is simpler and less leaky without the RetainPtr.
+        * UIProcess/API/Cocoa/WKNavigationAction.mm: Fix _originalURL leak
+        by making it a RetainPtr and implementing the getter and setter.
+        (-[WKNavigationAction _setOriginalURL:]):
+        (-[WKNavigationAction _originalURL]):
+
+2014-03-10  Beth Dakin  <bdakin@apple.com>
+
+        Set background color of WK2's UIScrollView to the pageExtendedBackgroundColor
+        https://bugs.webkit.org/show_bug.cgi?id=129919
+
+        Reviewed by Benjamin Poulain.
+
+        Make the pageExtendedBackgroundColor part of a RemoteLayerTreeTransaction.
+        * Shared/mac/RemoteLayerTreeTransaction.h:
+        (WebKit::RemoteLayerTreeTransaction::pageExtendedBackgroundColor):
+        (WebKit::RemoteLayerTreeTransaction::setPageExtendedBackgroundColor):
+        * Shared/mac/RemoteLayerTreeTransaction.mm:
+        (WebKit::RemoteLayerTreeTransaction::encode):
+        (WebKit::RemoteLayerTreeTransaction::decode):
+
+        Set the background color of the UIScrollView based on the 
+        pageExtendedBackgroundColor.
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _didCommitLayerTree:WebKit::]):
+
+        For the sake of PLATFORM(MAC), continue to support the fact that this color can be 
+        set via a message from the WebProcess or the new RemoteLayerTreeTransaction.
+        * UIProcess/WebPageProxy.h:
+
+        Cache the pageExtendedBackgroundColor as provided by the 
+        RemoteLayerTreeTransaction.
+        * UIProcess/ios/WebPageProxyIOS.mm:
+        (WebKit::WebPageProxy::didCommitLayerTree):
+
+        It’s not necessary to do anything here in non-Mac platforms anymore.
+        * WebProcess/WebCoreSupport/WebChromeClient.cpp:
+        (WebKit::WebChromeClient::pageExtendedBackgroundColorDidChange):
+
+        Include the pageExtendedBackgroundColor in the RemoteLayerTreeTransaction.
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::willCommitLayerTree):
+
+2014-03-10  Benjamin Poulain  <bpoulain@apple.com>
+
+        Generalize unobscured rect to all ports
+        https://bugs.webkit.org/show_bug.cgi?id=130036
+
+        Reviewed by Simon Fraser.
+
+        * WebProcess/WebPage/ViewGestureGeometryCollector.cpp:
+        (WebKit::ViewGestureGeometryCollector::collectGeometryForSmartMagnificationGesture):
+        (WebKit::ViewGestureGeometryCollector::collectGeometryForMagnificationGesture):
+        * WebProcess/WebPage/mac/TiledCoreAnimationDrawingArea.mm:
+        (WebKit::TiledCoreAnimationDrawingArea::applyTransientZoomToPage):
+
+2014-03-10  Dan Bernstein  <mitz@apple.com>
+
+        <rdar://problem/16278716> [Cocoa] Allow setting a custom group identifier on a WKWebView
+        https://bugs.webkit.org/show_bug.cgi?id=130033
+
+        Reviewed by Tim Horton.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView initWithFrame:configuration:]): Create a page group with the group identifier
+        from the configuration, if it’s non-empty.
+        * UIProcess/API/Cocoa/WKWebViewConfiguration.mm:
+        (-[WKWebViewConfiguration _groupIdentifier]): Added this accessor.
+        (-[WKWebViewConfiguration _setGroupIdentifier:]): Ditto.
+        * UIProcess/API/Cocoa/WKWebViewConfigurationPrivate.h: Declared _groupIdentifier property.
+
+2014-03-10  Enrica Casucci  <enrica@apple.com>
+
+        WebKit2: Crash in WebPage::getPositionInformation.
+        https://bugs.webkit.org/show_bug.cgi?id=129936
+        <rdar://problem/16264550>
+ 
+        Reviewed by Eric Carlson.
+ 
+        Missing null check on the node renderer in one code path.
+        If the page body is smaller than the document, hit testing
+        will return HTMLHtmlElement that has no renderer.
+
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::getPositionInformation):
+
+2014-03-10  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK] [CMake] Clean up library linking
+        https://bugs.webkit.org/show_bug.cgi?id=129782
+
+        Reviewed by Philippe Normand.
+
+        * PlatformGTK.cmake: Use the new macro.
+
 2014-03-10  Carlos Garcia Campos  <cgarcia@igalia.com>
 
         [GTK] The web process can finish while a print operation is still ongoing
