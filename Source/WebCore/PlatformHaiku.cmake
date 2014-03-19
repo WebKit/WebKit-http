@@ -9,6 +9,12 @@ LIST(APPEND WebCore_SOURCES
 
   platform/Cursor.cpp
 
+  platform/audio/haiku/AudioBusHaiku.cpp
+  platform/audio/haiku/AudioDestinationHaiku.cpp
+  platform/audio/haiku/AudioFileReaderHaiku.cpp
+
+  platform/audio/ffmpeg/FFTFrameFFMPEG.cpp
+
   page/haiku/DragControllerHaiku.cpp
   page/haiku/EventHandlerHaiku.cpp
 
@@ -119,23 +125,13 @@ LIST(APPEND WebCore_INCLUDE_DIRECTORIES
 )
 
 if (ENABLE_VIDEO OR ENABLE_WEB_AUDIO)
-    list(APPEND WebCore_INCLUDE_DIRECTORIES
-        "${WEBCORE_DIR}/platform/graphics/gstreamer"
-
-        ${GSTREAMER_INCLUDE_DIRS}
-        ${GSTREAMER_BASE_INCLUDE_DIRS}
-        ${GSTREAMER_APP_INCLUDE_DIRS}
-        ${GSTREAMER_PBUTILS_INCLUDE_DIRS}
-    )
+    #    list(APPEND WebCore_INCLUDE_DIRECTORIES
+    #    "${WEBCORE_DIR}/platform/graphics/gstreamer"
+    #)
 
     list(APPEND WebCore_LIBRARIES
-        ${GSTREAMER_LIBRARIES}
-        ${GSTREAMER_BASE_LIBRARIES}
-        ${GSTREAMER_APP_LIBRARIES}
-        ${GSTREAMER_PBUTILS_LIBRARIES}
+        media avcodec
     )
-    # Avoiding a GLib deprecation warning due to GStreamer API using deprecated classes.
-    set_source_files_properties(platform/audio/gstreamer/WebKitWebAudioSourceGStreamer.cpp PROPERTIES COMPILE_DEFINITIONS "GLIB_DISABLE_DEPRECATION_WARNINGS=1")
 endif ()
 
 if (ENABLE_VIDEO)
@@ -209,16 +205,9 @@ if (WTF_USE_3D_GRAPHICS)
 endif ()
 
 if (ENABLE_WEB_AUDIO)
-    list(APPEND WebCore_INCLUDE_DIRECTORIES
-        "${WEBCORE_DIR}/platform/audio/gstreamer"
-
-        ${GSTREAMER_AUDIO_INCLUDE_DIRS}
-        ${GSTREAMER_FFT_INCLUDE_DIRS}
-    )
-    list(APPEND WebCore_LIBRARIES
-        ${GSTREAMER_AUDIO_LIBRARIES}
-        ${GSTREAMER_FFT_LIBRARIES}
-    )
+    #list(APPEND WebCore_INCLUDE_DIRECTORIES
+    #    "${WEBCORE_DIR}/platform/audio/gstreamer"
+    #)
     set(WEB_AUDIO_DIR ${CMAKE_INSTALL_PREFIX}/${DATA_INSTALL_DIR}/webaudio/resources)
     file(GLOB WEB_AUDIO_DATA "${WEBCORE_DIR}/platform/audio/resources/*.wav")
     install(FILES ${WEB_AUDIO_DATA} DESTINATION ${WEB_AUDIO_DIR})

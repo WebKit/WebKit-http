@@ -453,7 +453,7 @@ my @features = (
       define => "ENABLE_WEB_ANIMATION", default => 0, value => \$webAnimationSupport },
 
     { option => "web-audio", desc => "Toggle Web Audio support",
-      define => "ENABLE_WEB_AUDIO", default => (isEfl() || isGtk()), value => \$webAudioSupport },
+      define => "ENABLE_WEB_AUDIO", default => (isEfl() || isGtk() || isHaiku()), value => \$webAudioSupport },
 
     { option => "web-replay", desc => "Toggle Web Replay support",
       define => "ENABLE_WEB_REPLAY", default => 0, value => \$webReplaySupport },
