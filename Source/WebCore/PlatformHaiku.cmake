@@ -91,7 +91,7 @@ list(APPEND WebCore_SOURCES
   platform/network/haiku/ResourceRequestHaiku.cpp
   platform/network/haiku/CookieJarHaiku.cpp
 
-  platform/network/curl/SocketStreamHandleCurl.cpp # not implemented
+  platform/network/haiku/SocketStreamHandleHaiku.cpp
   platform/network/NetworkStorageSessionStub.cpp
   
   platform/posix/FileSystemPOSIX.cpp

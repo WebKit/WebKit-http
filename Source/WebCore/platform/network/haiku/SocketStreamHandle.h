@@ -33,7 +33,7 @@
 #define SocketStreamHandle_h
 
 #include "SocketStreamHandleBase.h"
-
+#include <Socket.h>
 #include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
 
@@ -45,17 +45,24 @@ namespace WebCore {
 
     class SocketStreamHandle : public RefCounted<SocketStreamHandle>, public SocketStreamHandleBase {
     public:
-        static PassRefPtr<SocketStreamHandle> create(const URL& url, SocketStreamHandleClient* client) { return adoptRef(new SocketStreamHandle(url, client)); }
-
-        virtual ~SocketStreamHandle();
+        static 				PassRefPtr<SocketStreamHandle> create(const URL& url, SocketStreamHandleClient* client) { return adoptRef(new SocketStreamHandle(url, client)); }
+        virtual 			~SocketStreamHandle();
+        int32 				AsyncHandleRead(int32 length);
+        int32 				AsyncHandleWrite();
+        int32 				AsyncHandleConnect(int32 error);
+        char*				readBuffer;
+        BSocket* 			socket;
+        BNetworkAddress* 	peer;
 
     protected:
-        virtual int platformSend(const char* data, int length);
-        virtual void platformClose();
+        virtual int 		platformSend(const char* data, int length);
+        virtual void 		platformClose();
 
     private:
-        SocketStreamHandle(const URL&, SocketStreamHandleClient*);
-
+        					SocketStreamHandle(const URL&, SocketStreamHandleClient*);
+        thread_id			fConnectThreadId;
+		thread_id			fReadThreadId;
+		thread_id			fWriteThreadId;
         // No authentication for streams per se, but proxy may ask for credentials.
         void didReceiveAuthenticationChallenge(const AuthenticationChallenge&);
         void receivedCredential(const AuthenticationChallenge&, const Credential&);
