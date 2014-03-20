@@ -3,6 +3,7 @@
     \title Qt WebKit Widgets C++ Classes
     \brief Provides a web browser engine as well as C++ classes to render and
     interact with web content
+    \qtvariable webkitwidgets
 
     To include the definitions of the module's classes, use the
     following directive:
