@@ -22,6 +22,8 @@
 
 #include "AudioDestinationHaiku.h"
 
+#include "Logging.h"
+
 namespace WebCore {
 
 std::unique_ptr<AudioDestination> AudioDestination::create(AudioIOCallback& callback, const String&, unsigned numberOfInputChannels, unsigned numberOfOutputChannels, float sampleRate)

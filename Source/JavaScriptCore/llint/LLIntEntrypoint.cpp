@@ -37,6 +37,8 @@
 #include "StackAlignment.h"
 #include "VM.h"
 
+#include "JSCellInlines.h"
+
 namespace JSC { namespace LLInt {
 
 static void setFunctionEntrypoint(VM& vm, CodeBlock* codeBlock)
