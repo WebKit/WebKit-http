@@ -53,10 +53,6 @@ PageClientImpl::PageClientImpl(GtkWidget* viewWidget)
 {
 }
 
-PageClientImpl::~PageClientImpl()
-{
-}
-
 void PageClientImpl::getEditorCommandsForKeyEvent(const NativeWebKeyboardEvent& event, const AtomicString& eventType, Vector<WTF::String>& commandList)
 {
     ASSERT(eventType == eventNames().keydownEvent || eventType == eventNames().keypressEvent);
@@ -82,7 +78,7 @@ void PageClientImpl::displayView()
     notImplemented();
 }
 
-void PageClientImpl::scrollView(const WebCore::IntRect& scrollRect, const WebCore::IntSize& scrollOffset)
+void PageClientImpl::scrollView(const WebCore::IntRect& scrollRect, const WebCore::IntSize& /* scrollOffset */)
 {
     setViewNeedsDisplay(scrollRect);
 }
@@ -147,7 +143,7 @@ void PageClientImpl::setCursor(const Cursor& cursor)
         gdk_window_set_cursor(window, newCursor);
 }
 
-void PageClientImpl::setCursorHiddenUntilMouseMoves(bool hiddenUntilMouseMoves)
+void PageClientImpl::setCursorHiddenUntilMouseMoves(bool /* hiddenUntilMouseMoves */)
 {
     notImplemented();
 }
@@ -232,7 +228,7 @@ PassRefPtr<WebColorPicker> PageClientImpl::createColorPicker(WebPageProxy*, cons
 }
 #endif
 
-void PageClientImpl::setFindIndicator(PassRefPtr<FindIndicator>, bool fadeOut, bool animate)
+void PageClientImpl::setFindIndicator(PassRefPtr<FindIndicator>, bool /* fadeOut */, bool /* animate */)
 {
     notImplemented();
 }
@@ -315,12 +311,12 @@ void PageClientImpl::exitFullScreen()
     webkitWebViewBaseExitFullScreen(WEBKIT_WEB_VIEW_BASE(m_viewWidget));
 }
 
-void PageClientImpl::beganEnterFullScreen(const IntRect& initialFrame, const IntRect& finalFrame)
+void PageClientImpl::beganEnterFullScreen(const IntRect& /* initialFrame */, const IntRect& /* finalFrame */)
 {
     notImplemented();
 }
 
-void PageClientImpl::beganExitFullScreen(const IntRect& initialFrame, const IntRect& finalFrame)
+void PageClientImpl::beganExitFullScreen(const IntRect& /* initialFrame */, const IntRect& /* finalFrame */)
 {
     notImplemented();
 }

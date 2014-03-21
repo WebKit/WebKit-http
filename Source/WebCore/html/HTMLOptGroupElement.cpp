@@ -62,7 +62,7 @@ bool HTMLOptGroupElement::isFocusable() const
 
 const AtomicString& HTMLOptGroupElement::formControlType() const
 {
-    DEFINE_STATIC_LOCAL(const AtomicString, optgroup, ("optgroup", AtomicString::ConstructFromLiteral));
+    DEPRECATED_DEFINE_STATIC_LOCAL(const AtomicString, optgroup, ("optgroup", AtomicString::ConstructFromLiteral));
     return optgroup;
 }
 
@@ -96,7 +96,7 @@ void HTMLOptGroupElement::didAttachRenderers()
     // manually cache the value. This happens if our parent doesn't have a
     // renderer like <optgroup> or if it doesn't allow children like <select>.
     if (!m_style && parentNode()->renderStyle())
-        updateNonRenderStyle();
+        updateNonRenderStyle(*parentNode()->renderStyle());
 }
 
 void HTMLOptGroupElement::willDetachRenderers()
@@ -104,9 +104,9 @@ void HTMLOptGroupElement::willDetachRenderers()
     m_style.clear();
 }
 
-void HTMLOptGroupElement::updateNonRenderStyle()
+void HTMLOptGroupElement::updateNonRenderStyle(RenderStyle& parentStyle)
 {
-    m_style = document().ensureStyleResolver().styleForElement(this);
+    m_style = document().ensureStyleResolver().styleForElement(this, &parentStyle);
 }
 
 RenderStyle* HTMLOptGroupElement::nonRendererStyle() const
@@ -114,11 +114,11 @@ RenderStyle* HTMLOptGroupElement::nonRendererStyle() const
     return m_style.get();
 }
 
-PassRefPtr<RenderStyle> HTMLOptGroupElement::customStyleForRenderer()
+PassRefPtr<RenderStyle> HTMLOptGroupElement::customStyleForRenderer(RenderStyle& parentStyle)
 {
     // styleForRenderer is called whenever a new style should be associated
     // with an Element so now is a good time to update our cached style.
-    updateNonRenderStyle();
+    updateNonRenderStyle(parentStyle);
     return m_style;
 }
 

@@ -11,10 +11,10 @@
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
  *
- * THIS SOFTWARE IS PROVIDED BY APPLE COMPUTER, INC. ``AS IS'' AND ANY
+ * THIS SOFTWARE IS PROVIDED BY APPLE INC. ``AS IS'' AND ANY
  * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE COMPUTER, INC. OR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE INC. OR
  * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
  * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
  * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
@@ -522,10 +522,18 @@ PassRefPtr<SharedBuffer> utf8Buffer(const String& string)
 
     // Convert to runs of 8-bit characters.
     char* p = buffer.data();
-    const UChar* d = string.deprecatedCharacters();
-    WTF::Unicode::ConversionResult result = WTF::Unicode::convertUTF16ToUTF8(&d, d + length, &p, p + buffer.size(), true);
-    if (result != WTF::Unicode::conversionOK)
-        return 0;
+    WTF::Unicode::ConversionResult result;
+    if (length) {
+        if (string.is8Bit()) {
+            const LChar* d = string.characters8();
+            result = WTF::Unicode::convertLatin1ToUTF8(&d, d + length, &p, p + buffer.size());
+        } else {
+            const UChar* d = string.characters16();
+            result = WTF::Unicode::convertUTF16ToUTF8(&d, d + length, &p, p + buffer.size(), true);
+        }
+        if (result != WTF::Unicode::conversionOK)
+            return nullptr;
+    }
 
     buffer.shrink(p - buffer.data());
     return SharedBuffer::adoptVector(buffer);

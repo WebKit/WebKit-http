@@ -10,7 +10,7 @@
 # 2.  Redistributions in binary form must reproduce the above copyright
 #     notice, this list of conditions and the following disclaimer in the
 #     documentation and/or other materials provided with the distribution. 
-# 3.  Neither the name of Apple Computer, Inc. ("Apple") nor the names of
+# 3.  Neither the name of Apple Inc. ("Apple") nor the names of
 #     its contributors may be used to endorse or promote products derived
 #     from this software without specific prior written permission. 
 #
@@ -272,7 +272,6 @@ WEBKIT2_HEADERS = \
     WKProcessPoolConfiguration.h \
     WKProcessPoolConfigurationPrivate.h \
     WKProcessPoolPrivate.h \
-    WKThumbnailView.h \
     WKUIDelegate.h \
     WKUIDelegatePrivate.h \
     WKVisitedLinkProvider.h \
@@ -283,6 +282,7 @@ WEBKIT2_HEADERS = \
     WKWebViewPrivate.h \
     _WKActivatedElementInfo.h \
     _WKElementAction.h \
+    _WKThumbnailView.h \
 #
 
 WEBKIT2_PUBLIC_HEADERS = $(addprefix $(PUBLIC_HEADERS_DIR)/, $(filter $(WEBKIT2_HEADERS),$(notdir $(wildcard $(WEBKIT2_FRAMEWORKS_DIR)/WebKit2.framework/Headers/*))))

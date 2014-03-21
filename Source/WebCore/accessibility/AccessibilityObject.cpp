@@ -10,7 +10,7 @@
  * 2.  Redistributions in binary form must reproduce the above copyright
  *     notice, this list of conditions and the following disclaimer in the
  *     documentation and/or other materials provided with the distribution.
- * 3.  Neither the name of Apple Computer, Inc. ("Apple") nor the names of
+ * 3.  Neither the name of Apple Inc. ("Apple") nor the names of
  *     its contributors may be used to endorse or promote products derived
  *     from this software without specific prior written permission.
  *
@@ -40,6 +40,7 @@
 #include "FrameLoader.h"
 #include "FrameSelection.h"
 #include "HTMLNames.h"
+#include "HTMLParserIdioms.h"
 #include "LocalizedStrings.h"
 #include "MainFrame.h"
 #include "MathMLNames.h"
@@ -1484,15 +1485,15 @@ const String& AccessibilityObject::actionVerb() const
 {
 #if !PLATFORM(IOS)
     // FIXME: Need to add verbs for select elements.
-    DEFINE_STATIC_LOCAL(const String, buttonAction, (AXButtonActionVerb()));
-    DEFINE_STATIC_LOCAL(const String, textFieldAction, (AXTextFieldActionVerb()));
-    DEFINE_STATIC_LOCAL(const String, radioButtonAction, (AXRadioButtonActionVerb()));
-    DEFINE_STATIC_LOCAL(const String, checkedCheckBoxAction, (AXCheckedCheckBoxActionVerb()));
-    DEFINE_STATIC_LOCAL(const String, uncheckedCheckBoxAction, (AXUncheckedCheckBoxActionVerb()));
-    DEFINE_STATIC_LOCAL(const String, linkAction, (AXLinkActionVerb()));
-    DEFINE_STATIC_LOCAL(const String, menuListAction, (AXMenuListActionVerb()));
-    DEFINE_STATIC_LOCAL(const String, menuListPopupAction, (AXMenuListPopupActionVerb()));
-    DEFINE_STATIC_LOCAL(const String, listItemAction, (AXListItemActionVerb()));
+    DEPRECATED_DEFINE_STATIC_LOCAL(const String, buttonAction, (AXButtonActionVerb()));
+    DEPRECATED_DEFINE_STATIC_LOCAL(const String, textFieldAction, (AXTextFieldActionVerb()));
+    DEPRECATED_DEFINE_STATIC_LOCAL(const String, radioButtonAction, (AXRadioButtonActionVerb()));
+    DEPRECATED_DEFINE_STATIC_LOCAL(const String, checkedCheckBoxAction, (AXCheckedCheckBoxActionVerb()));
+    DEPRECATED_DEFINE_STATIC_LOCAL(const String, uncheckedCheckBoxAction, (AXUncheckedCheckBoxActionVerb()));
+    DEPRECATED_DEFINE_STATIC_LOCAL(const String, linkAction, (AXLinkActionVerb()));
+    DEPRECATED_DEFINE_STATIC_LOCAL(const String, menuListAction, (AXMenuListActionVerb()));
+    DEPRECATED_DEFINE_STATIC_LOCAL(const String, menuListPopupAction, (AXMenuListPopupActionVerb()));
+    DEPRECATED_DEFINE_STATIC_LOCAL(const String, listItemAction, (AXListItemActionVerb()));
 
     switch (roleValue()) {
     case ButtonRole:
@@ -1528,30 +1529,34 @@ bool AccessibilityObject::ariaIsMultiline() const
     return equalIgnoringCase(getAttribute(aria_multilineAttr), "true");
 }
 
-const AtomicString& AccessibilityObject::invalidStatus() const
+String AccessibilityObject::invalidStatus() const
 {
-    DEFINE_STATIC_LOCAL(const AtomicString, invalidStatusFalse, ("false", AtomicString::ConstructFromLiteral));
-    DEFINE_STATIC_LOCAL(const AtomicString, invalidStatusTrue, ("true", AtomicString::ConstructFromLiteral));
+    String grammarValue = ASCIILiteral("grammar");
+    String falseValue = ASCIILiteral("false");
+    String spellingValue = ASCIILiteral("spelling");
+    String trueValue = ASCIILiteral("true");
+    String undefinedValue = ASCIILiteral("undefined");
+
+    // aria-invalid can return false (default), grammar, spelling, or true.
+    String ariaInvalid = stripLeadingAndTrailingHTMLSpaces(getAttribute(aria_invalidAttr));
     
-    // aria-invalid can return false (default), grammer, spelling, or true.
-    const AtomicString& ariaInvalid = getAttribute(aria_invalidAttr);
-    
-    // If 'false', empty or not present, it should return false.
-    if (ariaInvalid.isEmpty() || equalIgnoringCase(ariaInvalid, invalidStatusFalse))
-        return invalidStatusFalse;
-    
-    // Only 'true', 'grammar' and 'spelling' are values recognised by the WAI-ARIA
-    // specification. Any other non empty string should be treated as 'true'.
-    if (equalIgnoringCase(ariaInvalid, "spelling") || equalIgnoringCase(ariaInvalid, "grammar"))
-        return ariaInvalid;
-    return invalidStatusTrue;
+    // If "false", "undefined" [sic, string value], empty, or missing, return "false".
+    if (ariaInvalid.isEmpty() || ariaInvalid == falseValue || ariaInvalid == undefinedValue)
+        return falseValue;
+    // Besides true/false/undefined, the only tokens defined by WAI-ARIA 1.0...
+    // ...for @aria-invalid are "grammar" and "spelling".
+    if (ariaInvalid == grammarValue)
+        return grammarValue;
+    if (ariaInvalid == spellingValue)
+        return spellingValue;
+    // Any other non empty string should be treated as "true".
+    return trueValue;
 }
  
 bool AccessibilityObject::hasTagName(const QualifiedName& tagName) const
 {
-    if (Node* node = this->node())
-        return node->hasTagName(tagName);
-    return false;
+    Node* node = this->node();
+    return node && node->isElementNode() && toElement(*node).hasTagName(tagName);
 }
     
 bool AccessibilityObject::hasAttribute(const QualifiedName& attribute) const

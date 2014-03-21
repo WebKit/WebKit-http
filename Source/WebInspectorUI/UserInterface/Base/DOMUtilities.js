@@ -13,7 +13,7 @@
  * 2.  Redistributions in binary form must reproduce the above copyright
  *     notice, this list of conditions and the following disclaimer in the
  *     documentation and/or other materials provided with the distribution.
- * 3.  Neither the name of Apple Computer, Inc. ("Apple") nor the names of
+ * 3.  Neither the name of Apple Inc. ("Apple") nor the names of
  *     its contributors may be used to endorse or promote products derived
  *     from this software without specific prior written permission.
  *
@@ -59,12 +59,24 @@ WebInspector.displayNameForNode = function(node)
     return title;
 }
 
+WebInspector.roleSelectorForNode = function(node)
+{
+    // This is proposed syntax for CSS 4 computed role selector :role(foo) and subject to change.
+    // See http://lists.w3.org/Archives/Public/www-style/2013Jul/0104.html
+    var title = "";
+    var role = node.computedRole();
+    if (role)
+        title = ":role(" + role + ")";
+    return title;
+}
+
 WebInspector.linkifyNodeReference = function(node)
 {
     var displayName = WebInspector.displayNameForNode(node);
 
     var link = document.createElement("span");
     link.appendChild(document.createTextNode(displayName));
+    link.setAttribute("role", "link");
     link.className = "node-link";
     link.title = displayName;
 

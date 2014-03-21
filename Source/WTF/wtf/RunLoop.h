@@ -37,7 +37,7 @@
 #include <wtf/Threading.h>
 
 #if USE(GLIB)
-#include <wtf/gobject/GRefPtr.h>
+#include <wtf/gobject/GMainLoopSource.h>
 #endif
 
 #if PLATFORM(EFL)
@@ -47,13 +47,14 @@
 namespace WTF {
 
 class RunLoop : public FunctionDispatcher {
+    WTF_MAKE_NONCOPYABLE(RunLoop);
 public:
     // Must be called from the main thread (except for the Mac platform, where it
     // can be called from any thread).
     WTF_EXPORT_PRIVATE static void initializeMainRunLoop();
 
-    WTF_EXPORT_PRIVATE static RunLoop* current();
-    WTF_EXPORT_PRIVATE static RunLoop* main();
+    WTF_EXPORT_PRIVATE static RunLoop& current();
+    WTF_EXPORT_PRIVATE static RunLoop& main();
     WTF_EXPORT_PRIVATE static bool isMain();
     ~RunLoop();
 
@@ -70,7 +71,7 @@ public:
     class TimerBase {
         friend class RunLoop;
     public:
-        WTF_EXPORT_PRIVATE explicit TimerBase(RunLoop*);
+        WTF_EXPORT_PRIVATE explicit TimerBase(RunLoop&);
         WTF_EXPORT_PRIVATE virtual ~TimerBase();
 
         void startRepeating(double repeatInterval) { start(repeatInterval, true); }
@@ -84,7 +85,7 @@ public:
     private:
         WTF_EXPORT_PRIVATE void start(double nextFireInterval, bool repeat);
 
-        RunLoop* m_runLoop;
+        RunLoop& m_runLoop;
 
 #if PLATFORM(WIN)
         static void timerFired(RunLoop*, uint64_t ID);
@@ -98,11 +99,7 @@ public:
         Ecore_Timer* m_timer;
         bool m_isRepeating;
 #elif USE(GLIB)
-        static gboolean timerFiredCallback(RunLoop::TimerBase*);
-        gboolean isRepeating() const { return m_isRepeating; }
-        void clearTimerSource();
-        GRefPtr<GSource> m_timerSource;
-        gboolean m_isRepeating;
+        GMainLoopSource m_timerSource;
 #endif
     };
 
@@ -111,7 +108,7 @@ public:
     public:
         typedef void (TimerFiredClass::*TimerFiredFunction)();
 
-        Timer(RunLoop* runLoop, TimerFiredClass* o, TimerFiredFunction f)
+        Timer(RunLoop& runLoop, TimerFiredClass* o, TimerFiredFunction f)
             : TimerBase(runLoop)
             , m_object(o)
             , m_function(f)

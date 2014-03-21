@@ -37,14 +37,14 @@ namespace WebCore {
 
 const QualifiedName& pseudoElementTagName()
 {
-    DEFINE_STATIC_LOCAL(QualifiedName, name, (nullAtom, "<pseudo>", nullAtom));
+    DEPRECATED_DEFINE_STATIC_LOCAL(QualifiedName, name, (nullAtom, "<pseudo>", nullAtom));
     return name;
 }
 
 String PseudoElement::pseudoElementNameForEvents(PseudoId pseudoId)
 {
-    DEFINE_STATIC_LOCAL(const String, after, (ASCIILiteral("::after")));
-    DEFINE_STATIC_LOCAL(const String, before, (ASCIILiteral("::before")));
+    DEPRECATED_DEFINE_STATIC_LOCAL(const String, after, (ASCIILiteral("::after")));
+    DEPRECATED_DEFINE_STATIC_LOCAL(const String, before, (ASCIILiteral("::before")));
     switch (pseudoId) {
     case AFTER:
         return after;
@@ -70,9 +70,9 @@ PseudoElement::~PseudoElement()
     InspectorInstrumentation::pseudoElementDestroyed(document().page(), this);
 }
 
-PassRefPtr<RenderStyle> PseudoElement::customStyleForRenderer()
+PassRefPtr<RenderStyle> PseudoElement::customStyleForRenderer(RenderStyle& parentStyle)
 {
-    return m_hostElement->renderer()->getCachedPseudoStyle(m_pseudoId);
+    return m_hostElement->renderer()->getCachedPseudoStyle(m_pseudoId, &parentStyle);
 }
 
 void PseudoElement::didAttachRenderers()

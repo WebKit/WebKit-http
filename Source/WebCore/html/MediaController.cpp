@@ -10,10 +10,10 @@
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
  *
- * THIS SOFTWARE IS PROVIDED BY APPLE COMPUTER, INC. ``AS IS'' AND ANY
+ * THIS SOFTWARE IS PROVIDED BY APPLE INC. ``AS IS'' AND ANY
  * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE COMPUTER, INC. OR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE INC. OR
  * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
  * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
  * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
@@ -289,19 +289,19 @@ void MediaController::setMuted(bool flag)
 
 static const AtomicString& playbackStateWaiting()
 {
-    DEFINE_STATIC_LOCAL(AtomicString, waiting, ("waiting", AtomicString::ConstructFromLiteral));
+    DEPRECATED_DEFINE_STATIC_LOCAL(AtomicString, waiting, ("waiting", AtomicString::ConstructFromLiteral));
     return waiting;
 }
 
 static const AtomicString& playbackStatePlaying()
 {
-    DEFINE_STATIC_LOCAL(AtomicString, playing, ("playing", AtomicString::ConstructFromLiteral));
+    DEPRECATED_DEFINE_STATIC_LOCAL(AtomicString, playing, ("playing", AtomicString::ConstructFromLiteral));
     return playing;
 }
 
 static const AtomicString& playbackStateEnded()
 {
-    DEFINE_STATIC_LOCAL(AtomicString, ended, ("ended", AtomicString::ConstructFromLiteral));
+    DEPRECATED_DEFINE_STATIC_LOCAL(AtomicString, ended, ("ended", AtomicString::ConstructFromLiteral));
     return ended;
 }
 
@@ -610,6 +610,18 @@ void MediaController::endScrubbing()
         m_mediaElements[index]->endScrubbing();
     if (m_playbackState == PLAYING)
         m_clock->start();
+}
+
+void MediaController::beginScanning(ScanDirection direction)
+{
+    for (auto& mediaElement : m_mediaElements)
+        mediaElement->beginScanning(direction);
+}
+
+void MediaController::endScanning()
+{
+    for (auto& mediaElement : m_mediaElements)
+        mediaElement->endScanning();
 }
 
 bool MediaController::canPlay() const

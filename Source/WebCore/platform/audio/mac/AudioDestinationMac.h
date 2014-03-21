@@ -10,7 +10,7 @@
  * 2.  Redistributions in binary form must reproduce the above copyright
  *     notice, this list of conditions and the following disclaimer in the
  *     documentation and/or other materials provided with the distribution.
- * 3.  Neither the name of Apple Computer, Inc. ("Apple") nor the names of
+ * 3.  Neither the name of Apple Inc. ("Apple") nor the names of
  *     its contributors may be used to endorse or promote products derived
  *     from this software without specific prior written permission.
  *
@@ -62,6 +62,8 @@ private:
     OSStatus render(UInt32 numberOfFrames, AudioBufferList* ioData);
 
     virtual MediaSession::MediaType mediaType() const { return MediaSession::WebAudio; }
+    virtual bool canReceiveRemoteControlCommands() const { return false; }
+    virtual void didReceiveRemoteControlCommand(MediaSession::RemoteControlCommandType) { }
 
     AudioUnit m_outputUnit;
     AudioIOCallback& m_callback;

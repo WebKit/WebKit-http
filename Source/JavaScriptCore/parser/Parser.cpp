@@ -50,7 +50,7 @@
 #define failWithMessage(...) do { { handleErrorToken(); updateErrorMessage(true, __VA_ARGS__); } return 0; } while (0)
 #define failWithStackOverflow() do { updateErrorMessage(false, "Stack exhausted"); m_hasStackOverflow = true; return 0; } while (0)
 #define failIfFalse(cond, ...) do { if (!(cond)) { handleErrorToken(); internalFailWithMessage(true, __VA_ARGS__); } } while (0)
-#define failIfTrue(cond, ...) do { if ((cond)) { handleErrorToken(); internalFailWithMessage(true, __VA_ARGS__); } } while (0)
+#define failIfTrue(cond, ...) do { if (cond) { handleErrorToken(); internalFailWithMessage(true, __VA_ARGS__); } } while (0)
 #define failIfTrueIfStrict(cond, ...) do { if ((cond) && strictMode()) internalFailWithMessage(false, __VA_ARGS__); } while (0)
 #define failIfFalseIfStrict(cond, ...) do { if ((!(cond)) && strictMode()) internalFailWithMessage(false, __VA_ARGS__); } while (0)
 #define consumeOrFail(tokenType, ...) do { if (!consume(tokenType)) { handleErrorToken(); internalFailWithMessage(true, __VA_ARGS__); } } while (0)
@@ -58,7 +58,7 @@
 #define matchOrFail(tokenType, ...) do { if (!match(tokenType)) { handleErrorToken(); internalFailWithMessage(true, __VA_ARGS__); } } while (0)
 #define failIfStackOverflow() do { if (!canRecurse()) failWithStackOverflow(); } while (0)
 #define semanticFail(...) do { internalFailWithMessage(false, __VA_ARGS__); } while (0)
-#define semanticFailIfTrue(cond, ...) do { if ((cond)) internalFailWithMessage(false, __VA_ARGS__); } while (0)
+#define semanticFailIfTrue(cond, ...) do { if (cond) internalFailWithMessage(false, __VA_ARGS__); } while (0)
 #define semanticFailIfFalse(cond, ...) do { if (!(cond)) internalFailWithMessage(false, __VA_ARGS__); } while (0)
 #define regexFail(failure) do { setErrorMessage(failure); return 0; } while (0)
 #define failDueToUnexpectedToken() do {\
@@ -486,6 +486,7 @@ template <class TreeBuilder> TreeExpression Parser<LexerType>::parseVarDeclarati
                 next(TreeBuilder::DontBuildStrings); // consume '='
                 TreeExpression rhs = parseExpression(context);
                 node = context.createDeconstructingAssignment(location, pattern, rhs);
+                lastInitializer = rhs;
             }
         }
         
@@ -734,18 +735,21 @@ template <class TreeBuilder> TreeStatement Parser<LexerType>::parseForStatement(
         if (match(SEMICOLON))
             goto standardForLoop;
         
-        failIfFalse(declarations == 1, "must declare variables after 'var'");
-        failIfTrue(forInInitializer, "Cannot use initialiser syntax in a for-in loop");
-        
+        failIfFalse(declarations == 1, "can only declare a single variable in an enumeration");
+        failIfTrueIfStrict(forInInitializer, "Cannot use initialiser syntax in a strict mode enumeration");
+
+        if (forInInitializer)
+            failIfFalse(context.isBindingNode(forInTarget), "Cannot use initialiser syntax when binding to a pattern during enumeration");
+
         // Handle for-in with var declaration
         JSTextPosition inLocation = tokenStartPosition();
         bool isOfEnumeration = false;
         if (!consume(INTOKEN)) {
             failIfFalse(match(IDENT) && *m_token.m_data.ident == m_vm->propertyNames->of, "Expected either 'in' or 'of' in enumeration syntax");
             isOfEnumeration = true;
+            failIfTrue(forInInitializer, "Cannot use initialiser syntax in a for-of enumeration");
             next();
         }
-        
         TreeExpression expr = parseExpression(context);
         failIfFalse(expr, "Expected expression to enumerate");
         JSTextPosition exprEnd = lastTokenEndPosition();

@@ -34,6 +34,7 @@
 #include "URL.h"
 #include "PasteboardHelper.h"
 #include "RenderImage.h"
+#include "SVGElement.h"
 #include "SVGNames.h"
 #include "XLinkNames.h"
 #include "markup.h"
@@ -298,7 +299,7 @@ bool Pasteboard::canSmartReplace()
 }
 
 #if ENABLE(DRAG_SUPPORT)
-void Pasteboard::setDragImage(DragImageRef, const IntPoint& hotSpot)
+void Pasteboard::setDragImage(DragImageRef, const IntPoint&)
 {
 }
 #endif

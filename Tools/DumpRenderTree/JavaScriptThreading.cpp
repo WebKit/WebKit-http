@@ -13,7 +13,7 @@
  * 2.  Redistributions in binary form must reproduce the above copyright
  *     notice, this list of conditions and the following disclaimer in the
  *     documentation and/or other materials provided with the distribution. 
- * 3.  Neither the name of Apple Computer, Inc. ("Apple") nor the names of
+ * 3.  Neither the name of Apple Inc. ("Apple") nor the names of
  *     its contributors may be used to endorse or promote products derived
  *     from this software without specific prior written permission. 
  *
@@ -46,14 +46,14 @@ static JSContextGroupRef javaScriptThreadsGroup;
 
 static Mutex& javaScriptThreadsMutex()
 {
-    DEFINE_STATIC_LOCAL(Mutex, staticMutex, ());
+    DEPRECATED_DEFINE_STATIC_LOCAL(Mutex, staticMutex, ());
     return staticMutex;
 }
 
 typedef HashSet<ThreadIdentifier> ThreadSet;
 static ThreadSet& javaScriptThreads()
 {
-    DEFINE_STATIC_LOCAL(ThreadSet, staticJavaScriptThreads, ());
+    DEPRECATED_DEFINE_STATIC_LOCAL(ThreadSet, staticJavaScriptThreads, ());
     ASSERT(!javaScriptThreadsMutex().tryLock());
     return staticJavaScriptThreads;
 }

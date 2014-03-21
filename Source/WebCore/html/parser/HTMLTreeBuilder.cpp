@@ -42,6 +42,7 @@
 #include "XMLNSNames.h"
 #include "XMLNames.h"
 #include <wtf/MainThread.h>
+#include <wtf/NeverDestroyed.h>
 #include <wtf/unicode/CharacterNames.h>
 
 #if ENABLE(TELEPHONE_NUMBER_DETECTION)
@@ -137,17 +138,15 @@ class HTMLTreeBuilder::ExternalCharacterTokenBuffer {
     WTF_MAKE_NONCOPYABLE(ExternalCharacterTokenBuffer);
 public:
     explicit ExternalCharacterTokenBuffer(AtomicHTMLToken* token)
-        : m_current(token->characters())
-        , m_end(m_current + token->charactersLength())
+        : m_text(token->characters(), token->charactersLength())
         , m_isAll8BitData(token->isAll8BitData())
     {
         ASSERT(!isEmpty());
     }
 
     explicit ExternalCharacterTokenBuffer(const String& string)
-        : m_current(string.deprecatedCharacters())
-        , m_end(m_current + string.length())
-        , m_isAll8BitData(string.length() && string.is8Bit())
+        : m_text(string)
+        , m_isAll8BitData(m_text.length() && m_text.is8Bit())
     {
         ASSERT(!isEmpty());
     }
@@ -157,15 +156,15 @@ public:
         ASSERT(isEmpty());
     }
 
-    bool isEmpty() const { return m_current == m_end; }
+    bool isEmpty() const { return m_text.isEmpty(); }
 
     bool isAll8BitData() const { return m_isAll8BitData; }
 
     void skipAtMostOneLeadingNewline()
     {
         ASSERT(!isEmpty());
-        if (*m_current == '\n')
-            ++m_current;
+        if (m_text[0] == '\n')
+            m_text = m_text.substring(1);
     }
 
     void skipLeadingWhitespace()
@@ -185,37 +184,38 @@ public:
 
     String takeRemaining()
     {
-        ASSERT(!isEmpty());
-        const UChar* start = m_current;
-        m_current = m_end;
-        size_t length = m_current - start;
-
-        if (isAll8BitData())
-            return String::make8BitFrom16BitSource(start, length);
-
-        return String(start, length);
+        String result;
+        if (m_text.is8Bit() || !isAll8BitData())
+            result = m_text.toString();
+        else
+            result = String::make8BitFrom16BitSource(m_text.characters16(), m_text.length());
+        m_text = StringView();
+        return result;
     }
 
     void giveRemainingTo(StringBuilder& recipient)
     {
-        recipient.append(m_current, m_end - m_current);
-        m_current = m_end;
+        recipient.append(m_text);
+        m_text = StringView();
     }
 
     String takeRemainingWhitespace()
     {
         ASSERT(!isEmpty());
-        Vector<UChar> whitespace;
+        Vector<LChar, 8> whitespace;
         do {
-            UChar cc = *m_current++;
-            if (isHTMLSpace(cc))
-                whitespace.append(cc);
-        } while (m_current < m_end);
+            UChar character = m_text[0];
+            if (isHTMLSpace(character))
+                whitespace.append(character);
+            m_text = m_text.substring(1);
+        } while (!m_text.isEmpty());
+
         // Returning the null string when there aren't any whitespace
         // characters is slightly cleaner semantically because we don't want
         // to insert a text node (as opposed to inserting an empty text node).
         if (whitespace.isEmpty())
             return String();
+
         return String::adopt(whitespace);
     }
 
@@ -224,8 +224,9 @@ private:
     void skipLeading()
     {
         ASSERT(!isEmpty());
-        while (characterPredicate(*m_current)) {
-            if (++m_current == m_end)
+        while (characterPredicate(m_text[0])) {
+            m_text = m_text.substring(1);
+            if (m_text.isEmpty())
                 return;
         }
     }
@@ -234,17 +235,17 @@ private:
     String takeLeading()
     {
         ASSERT(!isEmpty());
-        const UChar* start = m_current;
+        StringView start = m_text;
         skipLeading<characterPredicate>();
-        if (start == m_current)
+        if (start.length() == m_text.length())
             return String();
-        if (isAll8BitData())
-            return String::make8BitFrom16BitSource(start, m_current - start);
-        return String(start, m_current - start);
+        StringView leading = start.substring(0, start.length() - m_text.length());
+        if (leading.is8Bit() || !isAll8BitData())
+            return leading.toString();
+        return String::make8BitFrom16BitSource(leading.characters16(), leading.length());
     }
 
-    const UChar* m_current;
-    const UChar* m_end;
+    StringView m_text;
     bool m_isAll8BitData;
 };
 
@@ -522,91 +523,81 @@ void HTMLTreeBuilder::processCloseWhenNestedTag(AtomicHTMLToken* token)
     m_tree.insertHTMLElement(token);
 }
 
-typedef HashMap<AtomicString, QualifiedName> PrefixedNameToQualifiedNameMap;
-
-static void mapLoweredLocalNameToName(PrefixedNameToQualifiedNameMap* map, const QualifiedName* const names[], size_t length)
+template <typename TableQualifiedName>
+static HashMap<AtomicString, QualifiedName> createCaseMap(const TableQualifiedName* const names[], unsigned length)
 {
-    for (size_t i = 0; i < length; ++i) {
+    HashMap<AtomicString, QualifiedName> map;
+    for (unsigned i = 0; i < length; ++i) {
         const QualifiedName& name = *names[i];
         const AtomicString& localName = name.localName();
         AtomicString loweredLocalName = localName.lower();
         if (loweredLocalName != localName)
-            map->add(loweredLocalName, name);
+            map.add(loweredLocalName, name);
     }
+    return map;
 }
 
-static void adjustSVGTagNameCase(AtomicHTMLToken* token)
+static void adjustSVGTagNameCase(AtomicHTMLToken& token)
 {
-    static PrefixedNameToQualifiedNameMap* caseMap = 0;
-    if (!caseMap) {
-        caseMap = new PrefixedNameToQualifiedNameMap;
-        mapLoweredLocalNameToName(caseMap, SVGNames::getSVGTags(), SVGNames::SVGTagsCount);
-    }
-
-    const QualifiedName& casedName = caseMap->get(token->name());
+    static NeverDestroyed<HashMap<AtomicString, QualifiedName>> map = createCaseMap(SVGNames::getSVGTags(), SVGNames::SVGTagsCount);
+    const QualifiedName& casedName = map.get().get(token.name());
     if (casedName.localName().isNull())
         return;
-    token->setName(casedName.localName());
+    token.setName(casedName.localName());
 }
 
-template<const QualifiedName* const * getAttrs(), unsigned length>
-static void adjustAttributes(AtomicHTMLToken* token)
+static inline void adjustAttributes(HashMap<AtomicString, QualifiedName>& map, AtomicHTMLToken& token)
 {
-    static PrefixedNameToQualifiedNameMap* caseMap = 0;
-    if (!caseMap) {
-        caseMap = new PrefixedNameToQualifiedNameMap;
-        mapLoweredLocalNameToName(caseMap, getAttrs(), length);
-    }
-
-    for (unsigned i = 0; i < token->attributes().size(); ++i) {
-        Attribute& tokenAttribute = token->attributes().at(i);
-        const QualifiedName& casedName = caseMap->get(tokenAttribute.localName());
+    for (auto& attribute : token.attributes()) {
+        const QualifiedName& casedName = map.get(attribute.localName());
         if (!casedName.localName().isNull())
-            tokenAttribute.parserSetName(casedName);
+            attribute.parserSetName(casedName);
     }
 }
 
-static void adjustSVGAttributes(AtomicHTMLToken* token)
+template<const QualifiedName* const* attributesTable(), unsigned attributesTableLength>
+static void adjustAttributes(AtomicHTMLToken& token)
+{
+    static NeverDestroyed<HashMap<AtomicString, QualifiedName>> map = createCaseMap(attributesTable(), attributesTableLength);
+    adjustAttributes(map, token);
+}
+
+static inline void adjustSVGAttributes(AtomicHTMLToken& token)
 {
     adjustAttributes<SVGNames::getSVGAttrs, SVGNames::SVGAttrsCount>(token);
 }
 
-static void adjustMathMLAttributes(AtomicHTMLToken* token)
+static inline void adjustMathMLAttributes(AtomicHTMLToken& token)
 {
     adjustAttributes<MathMLNames::getMathMLAttrs, MathMLNames::MathMLAttrsCount>(token);
 }
 
-static void addNamesWithPrefix(PrefixedNameToQualifiedNameMap* map, const AtomicString& prefix, const QualifiedName* const names[], size_t length)
+static void addNamesWithPrefix(HashMap<AtomicString, QualifiedName>& map, const AtomicString& prefix, const QualifiedName* const names[], unsigned length)
 {
-    for (size_t i = 0; i < length; ++i) {
+    for (unsigned i = 0; i < length; ++i) {
         const QualifiedName& name = *names[i];
         const AtomicString& localName = name.localName();
-        AtomicString prefixColonLocalName = prefix + ':' + localName;
-        QualifiedName nameWithPrefix(prefix, localName, name.namespaceURI());
-        map->add(prefixColonLocalName, nameWithPrefix);
+        map.add(prefix + ':' + localName, QualifiedName(prefix, localName, name.namespaceURI()));
     }
 }
 
-static void adjustForeignAttributes(AtomicHTMLToken* token)
+static HashMap<AtomicString, QualifiedName> createForeignAttributesMap()
 {
-    static PrefixedNameToQualifiedNameMap* map = 0;
-    if (!map) {
-        map = new PrefixedNameToQualifiedNameMap;
+    HashMap<AtomicString, QualifiedName> map;
 
-        addNamesWithPrefix(map, xlinkAtom, XLinkNames::getXLinkAttrs(), XLinkNames::XLinkAttrsCount);
+    addNamesWithPrefix(map, xlinkAtom, XLinkNames::getXLinkAttrs(), XLinkNames::XLinkAttrsCount);
+    addNamesWithPrefix(map, xmlAtom, XMLNames::getXMLAttrs(), XMLNames::XMLAttrsCount);
 
-        addNamesWithPrefix(map, xmlAtom, XMLNames::getXMLAttrs(), XMLNames::XMLAttrsCount);
+    map.add(WTF::xmlnsAtom, XMLNSNames::xmlnsAttr);
+    map.add("xmlns:xlink", QualifiedName(xmlnsAtom, xlinkAtom, XMLNSNames::xmlnsNamespaceURI));
 
-        map->add(WTF::xmlnsAtom, XMLNSNames::xmlnsAttr);
-        map->add("xmlns:xlink", QualifiedName(xmlnsAtom, xlinkAtom, XMLNSNames::xmlnsNamespaceURI));
-    }
+    return map;
+}
 
-    for (unsigned i = 0; i < token->attributes().size(); ++i) {
-        Attribute& tokenAttribute = token->attributes().at(i);
-        const QualifiedName& name = map->get(tokenAttribute.localName());
-        if (!name.localName().isNull())
-            tokenAttribute.parserSetName(name);
-    }
+static void adjustForeignAttributes(AtomicHTMLToken& token)
+{
+    static NeverDestroyed<HashMap<AtomicString, QualifiedName>> map = createForeignAttributesMap();
+    adjustAttributes(map, token);
 }
 
 void HTMLTreeBuilder::processStartTagForInBody(AtomicHTMLToken* token)
@@ -896,15 +887,15 @@ void HTMLTreeBuilder::processStartTagForInBody(AtomicHTMLToken* token)
     }
     if (token->name() == MathMLNames::mathTag.localName()) {
         m_tree.reconstructTheActiveFormattingElements();
-        adjustMathMLAttributes(token);
-        adjustForeignAttributes(token);
+        adjustMathMLAttributes(*token);
+        adjustForeignAttributes(*token);
         m_tree.insertForeignElement(token, MathMLNames::mathmlNamespaceURI);
         return;
     }
     if (token->name() == SVGNames::svgTag.localName()) {
         m_tree.reconstructTheActiveFormattingElements();
-        adjustSVGAttributes(token);
-        adjustForeignAttributes(token);
+        adjustSVGAttributes(*token);
+        adjustForeignAttributes(*token);
         m_tree.insertForeignElement(token, SVGNames::svgNamespaceURI);
         return;
     }
@@ -2347,8 +2338,10 @@ void HTMLTreeBuilder::linkifyPhoneNumbers(const String& string)
     int relativeStartPosition = 0;
     int relativeEndPosition = 0;
 
+    auto characters = StringView(string).upconvertedCharacters();
+
     // While there's a phone number in the rest of the string...
-    while ((scannerPosition < length) && TelephoneNumberDetector::find(&string.deprecatedCharacters()[scannerPosition], length - scannerPosition, &relativeStartPosition, &relativeEndPosition)) {
+    while (scannerPosition < length && TelephoneNumberDetector::find(&characters[scannerPosition], length - scannerPosition, &relativeStartPosition, &relativeEndPosition)) {
         // The convention in the Data Detectors framework is that the end position is the first character NOT in the phone number
         // (that is, the length of the range is relativeEndPosition - relativeStartPosition). So substract 1 to get the same
         // convention as the old WebCore phone number parser (so that the rest of the code is still valid if we want to go back
@@ -2926,18 +2919,18 @@ void HTMLTreeBuilder::processTokenInForeignContent(AtomicHTMLToken* token)
         }
         const AtomicString& currentNamespace = m_tree.currentStackItem()->namespaceURI();
         if (currentNamespace == MathMLNames::mathmlNamespaceURI)
-            adjustMathMLAttributes(token);
+            adjustMathMLAttributes(*token);
         if (currentNamespace == SVGNames::svgNamespaceURI) {
-            adjustSVGTagNameCase(token);
-            adjustSVGAttributes(token);
+            adjustSVGTagNameCase(*token);
+            adjustSVGAttributes(*token);
         }
-        adjustForeignAttributes(token);
+        adjustForeignAttributes(*token);
         m_tree.insertForeignElement(token, currentNamespace);
         break;
     }
     case HTMLToken::EndTag: {
         if (m_tree.currentStackItem()->namespaceURI() == SVGNames::svgNamespaceURI)
-            adjustSVGTagNameCase(token);
+            adjustSVGTagNameCase(*token);
 
         if (token->name() == SVGNames::scriptTag && m_tree.currentStackItem()->hasTagName(SVGNames::scriptTag)) {
             if (scriptingContentIsAllowed(m_tree.parserContentPolicy()))

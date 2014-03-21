@@ -108,6 +108,10 @@ if (ENABLE_LLINT_C_LOOP)
     WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_FTL_JIT OFF)
 endif ()
 
+if (ENABLE_TOUCH_EVENTS)
+    WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_TOUCH_SLIDER ON)
+endif ()
+
 # FIXME: Perhaps we need a more generic way of defining dependencies between features.
 # VIDEO_TRACK depends on VIDEO.
 if (NOT ENABLE_VIDEO AND ENABLE_VIDEO_TRACK)
@@ -175,7 +179,7 @@ if (ENABLE_VIDEO OR ENABLE_WEB_AUDIO)
     add_definitions(-DWTF_USE_GSTREAMER=1)
 
     if (ENABLE_VIDEO)
-        list(APPEND GSTREAMER_COMPONENTS video)
+        list(APPEND GSTREAMER_COMPONENTS video tag)
     endif ()
 
     if (ENABLE_WEB_AUDIO)

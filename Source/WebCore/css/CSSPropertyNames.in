@@ -157,6 +157,7 @@ page
 page-break-after
 page-break-before
 page-break-inside
+paint-order
 pointer-events [Inherited]
 position
 quotes [Inherited]
@@ -261,6 +262,9 @@ z-index
 -webkit-box-orient
 -webkit-box-pack
 -webkit-box-reflect
+// -webkit-box-shadow differs from box-shadow in its treatement of blur radii > 8px.
+// Let -webkit-box-shadow blur radius be w_r and box-shadow blur radius be b_r. For
+// w_r > 8px, b_r = 8 + 4 * sqrt((w_r - 8) / 2).
 -webkit-box-shadow
 -webkit-color-correction [Inherited]
 -webkit-column-axis

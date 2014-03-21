@@ -343,6 +343,8 @@ static gboolean webKitMediaVideoSrcStart(WebKitMediaSrc* src)
         return FALSE;
     }
 
+    priv->sourceVideo.startId = 0;
+
     GST_OBJECT_UNLOCK(src);
     GST_DEBUG_OBJECT(src, "Started request");
 
@@ -361,6 +363,8 @@ static gboolean webKitMediaAudioSrcStart(WebKitMediaSrc* src)
         webKitMediaAudioSrcStop(src);
         return FALSE;
     }
+
+    priv->sourceAudio.startId = 0;
 
     GST_OBJECT_UNLOCK(src);
     GST_DEBUG_OBJECT(src, "Started request");
@@ -480,7 +484,7 @@ static gchar* webKitMediaSrcGetUri(GstURIHandler* handler)
     return ret;
 }
 
-static gboolean webKitMediaSrcSetUri(GstURIHandler* handler, const gchar* uri, GError** error)
+static gboolean webKitMediaSrcSetUri(GstURIHandler* handler, const gchar* uri, GError**)
 {
     WebKitMediaSrc* src = WEBKIT_MEDIA_SRC(handler);
     WebKitMediaSrcPrivate* priv = src->priv;
@@ -662,12 +666,14 @@ static void webKitMediaAudioSrcEnoughDataCb(GstAppSrc*, gpointer userData)
 static gboolean webKitMediaVideoSrcSeekMainCb(WebKitMediaSrc* src)
 {
     notImplemented();
+    src->priv->sourceVideo.seekId = 0;
     return FALSE;
 }
 
 static gboolean webKitMediaAudioSrcSeekMainCb(WebKitMediaSrc* src)
 {
     notImplemented();
+    src->priv->sourceAudio.seekId = 0;
     return FALSE;
 }
 

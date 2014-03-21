@@ -2848,7 +2848,6 @@ webcore_sources += \
 	Source/WebCore/dom/ElementChildIterator.h \
 	Source/WebCore/dom/ElementData.cpp \
 	Source/WebCore/dom/ElementData.h \
-	Source/WebCore/dom/ElementDescendantIterator.h \
 	Source/WebCore/dom/ElementIterator.h \
 	Source/WebCore/dom/ElementIteratorAssertions.h \
 	Source/WebCore/dom/ElementRareData.cpp \
@@ -3037,6 +3036,7 @@ webcore_sources += \
 	Source/WebCore/dom/TreeScopeAdopter.h \
 	Source/WebCore/dom/TreeWalker.cpp \
 	Source/WebCore/dom/TreeWalker.h \
+	Source/WebCore/dom/TypedElementDescendantIterator.h \
 	Source/WebCore/dom/UIEvent.cpp \
 	Source/WebCore/dom/UIEvent.h \
 	Source/WebCore/dom/UIEventWithKeyState.cpp \
@@ -4260,6 +4260,8 @@ webcore_sources += \
 	Source/WebCore/rendering/AutoTableLayout.h \
 	Source/WebCore/rendering/BidiRun.cpp \
 	Source/WebCore/rendering/BidiRun.h \
+	Source/WebCore/rendering/BorderEdge.cpp \
+	Source/WebCore/rendering/BorderEdge.h \
 	Source/WebCore/rendering/break_lines.cpp \
 	Source/WebCore/rendering/break_lines.h \
 	Source/WebCore/rendering/ClipPathOperation.h \
@@ -5473,6 +5475,8 @@ webcore_platform_sources += \
 	Source/WebCore/platform/network/soup/SoupNetworkSession.h \
 	Source/WebCore/platform/network/soup/SoupNetworkSession.cpp \
 	Source/WebCore/platform/network/soup/SynchronousLoaderClientSoup.cpp \
+	Source/WebCore/platform/RemoteCommandListener.cpp \
+	Source/WebCore/platform/RemoteCommandListener.h \
 	Source/WebCore/platform/ScrollableArea.cpp \
 	Source/WebCore/platform/ScrollableArea.h \
 	Source/WebCore/platform/ScrollbarThemeClient.h \

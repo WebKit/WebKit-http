@@ -10,10 +10,10 @@
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
  *
- * THIS SOFTWARE IS PROVIDED BY APPLE COMPUTER, INC. ``AS IS'' AND ANY
+ * THIS SOFTWARE IS PROVIDED BY APPLE INC. ``AS IS'' AND ANY
  * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE COMPUTER, INC. OR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE INC. OR
  * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
  * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
  * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
@@ -483,7 +483,7 @@ HRESULT STDMETHODCALLTYPE DOMHTMLElement::innerText(
 {
     ASSERT(m_element && m_element->isHTMLElement());
     WTF::String innerTextString = toHTMLElement(m_element)->innerText();
-    *result = BString(innerTextString.deprecatedCharacters(), innerTextString.length()).release();
+    *result = BString(innerTextString).release();
     return S_OK;
 }
         
@@ -561,7 +561,7 @@ HRESULT STDMETHODCALLTYPE DOMHTMLFormElement::action(
 {
     ASSERT(m_element && isHTMLFormElement(m_element));
     WTF::String actionString = toHTMLFormElement(m_element)->action();
-    *result = BString(actionString.deprecatedCharacters(), actionString.length()).release();
+    *result = BString(actionString).release();
     return S_OK;
 }
     
@@ -591,7 +591,7 @@ HRESULT STDMETHODCALLTYPE DOMHTMLFormElement::method(
 {
     ASSERT(m_element && isHTMLFormElement(m_element));
     WTF::String methodString = toHTMLFormElement(m_element)->method();
-    *result = BString(methodString.deprecatedCharacters(), methodString.length()).release();
+    *result = BString(methodString).release();
     return S_OK;
 }
     
@@ -1210,7 +1210,7 @@ HRESULT STDMETHODCALLTYPE DOMHTMLInputElement::value(
     ASSERT(m_element && isHTMLInputElement(m_element));
     HTMLInputElement* inputElement = toHTMLInputElement(m_element);
     WTF::String valueString = inputElement->value();
-    *result = BString(valueString.deprecatedCharacters(), valueString.length()).release();
+    *result = BString(valueString).release();
     if (valueString.length() && !*result)
         return E_OUTOFMEMORY;
     return S_OK;
@@ -1547,7 +1547,7 @@ HRESULT STDMETHODCALLTYPE DOMHTMLTextAreaElement::value(
     ASSERT(m_element && isHTMLTextAreaElement(m_element));
     HTMLTextAreaElement* textareaElement = toHTMLTextAreaElement(m_element);
     WTF::String valueString = textareaElement->value();
-    *result = BString(valueString.deprecatedCharacters(), valueString.length()).release();
+    *result = BString(valueString).release();
     if (valueString.length() && !*result)
         return E_OUTOFMEMORY;
     return S_OK;

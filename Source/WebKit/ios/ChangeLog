@@ -1,3 +1,63 @@
+2014-03-19  Tim Horton  <timothy_horton@apple.com>
+
+        [iOS] WebPDFViewPlaceholder divides-by-zero with an empty document
+        https://bugs.webkit.org/show_bug.cgi?id=130444
+        <rdar://problem/15580682>
+
+        Reviewed by Sam Weinig.
+
+        * WebView/WebPDFViewPlaceholder.h:
+        * WebView/WebPDFViewPlaceholder.mm:
+        (-[WebPDFViewPlaceholder layout]):
+        Get rid of boundingSize, it's never assigned to anything but CGSizeZero,
+        which is confusing.
+
+        Don't divide by zero if we have no pages, instead return an empty bounding size.
+
+        (-[WebPDFViewPlaceholder _computePageRects:]):
+        If we have an empty document, set the background color to white.
+        Otherwise, set it to black. It's not clear that black is the ideal
+        background color, but this retains existing behavior.
+
+2014-03-14  Maciej Stachowiak  <mjs@apple.com>
+
+        Replace "Apple Computer, Inc." with "Apple Inc." in copyright headers
+        https://bugs.webkit.org/show_bug.cgi?id=130276
+        <rdar://problem/16266927>
+        
+        Reviewed by Simon Fraser.
+
+        * WebCoreSupport/WebCaretChangeListener.h:
+        * WebCoreSupport/WebInspectorClientIOS.mm:
+        * WebView/WebPlainWhiteView.h:
+        * WebView/WebPlainWhiteView.mm:
+
+2014-03-12  Sergio Villar Senin  <svillar@igalia.com>
+
+        Rename DEFINE_STATIC_LOCAL to DEPRECATED_DEFINE_STATIC_LOCAL
+        https://bugs.webkit.org/show_bug.cgi?id=129612
+
+        Reviewed by Darin Adler.
+
+        For new code use static NeverDestroyed<T> instead.
+
+        * Misc/EmojiFallbackFontSelector.cpp:
+        (EmojiFallbackFontSelector::getFallbackFontData):
+        * WebCoreSupport/WebFixedPositionContent.mm:
+        (WebFixedPositionContentDataLock):
+
+2014-03-13  Benjamin Poulain  <bpoulain@apple.com>
+
+        The viewport code should not depend on WebKitSystemInterface
+        https://bugs.webkit.org/show_bug.cgi?id=130218
+
+        Reviewed by Tim Horton.
+
+        * WebCoreSupport/WebChromeClientIOS.h:
+        * WebCoreSupport/WebChromeClientIOS.mm:
+        (WebChromeClientIOS::viewportScreenSize):
+        Get the viewport size from WebKitSystemInterface.
+
 2014-03-12  Enrica Casucci  <enrica@apple.com>
 
         Incorrect reference counting of Range in WebFrame.

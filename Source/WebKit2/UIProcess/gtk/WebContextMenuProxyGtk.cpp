@@ -53,7 +53,7 @@ static void contextMenuItemActivatedCallback(GtkAction* action, WebPageProxy* pa
     page->contextMenuItemSelected(item);
 }
 
-static void contextMenuItemVisibilityChanged(GtkAction* action, GParamSpec*, WebContextMenuProxyGtk* contextMenuProxy)
+static void contextMenuItemVisibilityChanged(GtkAction*, GParamSpec*, WebContextMenuProxyGtk* contextMenuProxy)
 {
     GtkMenu* menu = contextMenuProxy->gtkMenu();
     if (!menu)
@@ -138,7 +138,7 @@ void WebContextMenuProxyGtk::populate(const Vector<WebContextMenuItemData>& item
     }
 }
 
-void WebContextMenuProxyGtk::showContextMenu(const WebCore::IntPoint& position, const Vector<WebContextMenuItemData>& items)
+void WebContextMenuProxyGtk::showContextMenu(const WebCore::IntPoint& position, const Vector<WebContextMenuItemData>& items, const ContextMenuContextData&)
 {
     if (!items.isEmpty())
         populate(items);

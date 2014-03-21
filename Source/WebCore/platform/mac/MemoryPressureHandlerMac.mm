@@ -26,19 +26,8 @@
 #import "config.h"
 #import "MemoryPressureHandler.h"
 
-#import <WebCore/CSSValuePool.h>
-#import <WebCore/GCController.h>
-#import <WebCore/FontCache.h>
-#import <WebCore/MemoryCache.h>
-#import <WebCore/Page.h>
-#import <WebCore/PageCache.h>
 #import <WebCore/LayerPool.h>
-#import <WebCore/ScrollingThread.h>
-#import <WebCore/StorageThread.h>
-#import <WebCore/WorkerThread.h>
 #import <wtf/CurrentTime.h>
-#import <wtf/FastMalloc.h>
-#import <wtf/Functional.h>
 #import <malloc/malloc.h>
 
 #if !PLATFORM(IOS)
@@ -81,11 +70,8 @@ void MemoryPressureHandler::install()
     });
 
     // Allow simulation of memory pressure with "notifyutil -p org.WebKit.lowMemory"
-    // Note that we also ask JSC to garbage collect some time soon, unlike the real memory pressure path.
-    // This is to get more stable numbers in memory benchmarks using this mechanism.
     notify_register_dispatch("org.WebKit.lowMemory", &_notifyToken, dispatch_get_main_queue(), ^(int) {
         memoryPressureHandler().respondToMemoryPressure();
-        gcController().garbageCollectSoon();
         malloc_zone_pressure_relief(nullptr, 0);
     });
 
@@ -148,42 +134,12 @@ void MemoryPressureHandler::respondToMemoryPressure()
 
     holdOff(std::max(holdOffTime, s_minimumHoldOffTime));
 }
-#endif // !PLATFORM(IOS)
 
-void MemoryPressureHandler::releaseMemory(bool)
+void MemoryPressureHandler::platformReleaseMemory(bool)
 {
-    int savedPageCacheCapacity = pageCache()->capacity();
-    pageCache()->setCapacity(0);
-    pageCache()->setCapacity(savedPageCacheCapacity);
-
-    NSURLCache *nsurlCache = [NSURLCache sharedURLCache];
-    NSUInteger savedNsurlCacheMemoryCapacity = [nsurlCache memoryCapacity];
-    [nsurlCache setMemoryCapacity:0];
-    [nsurlCache setMemoryCapacity:savedNsurlCacheMemoryCapacity];
-
-    fontCache()->purgeInactiveFontData();
-
-    memoryCache()->pruneToPercentage(0);
-
-#if !PLATFORM(IOS)
     LayerPool::sharedPool()->drain();
-#endif
-
-    cssValuePool().drain();
-
-    clearWidthCaches();
-
-    Page::jettisonStyleResolversInAllDocuments();
-
-    gcController().discardAllCompiledCode();
-
-    // FastMalloc has lock-free thread specific caches that can only be cleared from the thread itself.
-    StorageThread::releaseFastMallocFreeMemoryInAllThreads();
-    WorkerThread::releaseFastMallocFreeMemoryInAllThreads();
-#if ENABLE(ASYNC_SCROLLING)
-    ScrollingThread::dispatch(bind(WTF::releaseFastMallocFreeMemory));
-#endif
-    WTF::releaseFastMallocFreeMemory();
 }
+
+#endif // !PLATFORM(IOS)
 
 } // namespace WebCore

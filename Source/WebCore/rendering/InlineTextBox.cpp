@@ -51,6 +51,7 @@
 #include "TextPaintStyle.h"
 #include "TextPainter.h"
 #include "break_lines.h"
+#include <stdio.h>
 #include <wtf/text/CString.h>
 
 namespace WebCore {
@@ -986,6 +987,10 @@ static void strokeWavyTextDecoration(GraphicsContext& context, FloatPoint& p1, F
 
 void InlineTextBox::paintDecoration(GraphicsContext& context, const FloatPoint& boxOrigin, TextDecoration decoration, TextDecorationStyle decorationStyle, const ShadowData* shadow, TextPainter& textPainter)
 {
+#if !ENABLE(CSS3_TEXT_DECORATION_SKIP_INK)
+    UNUSED_PARAM(textPainter);
+#endif
+
     // FIXME: We should improve this rule and not always just assume 1.
     const float textDecorationThickness = 1.f;
 

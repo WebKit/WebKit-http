@@ -12,7 +12,7 @@
  * 2.  Redistributions in binary form must reproduce the above copyright
  *     notice, this list of conditions and the following disclaimer in the
  *     documentation and/or other materials provided with the distribution. 
- * 3.  Neither the name of Apple Computer, Inc. ("Apple") nor the names of
+ * 3.  Neither the name of Apple Inc. ("Apple") nor the names of
  *     its contributors may be used to endorse or promote products derived
  *     from this software without specific prior written permission. 
  *
@@ -102,7 +102,7 @@ void threadWasJoined(ThreadIdentifier);
 
 static Mutex& threadMapMutex()
 {
-    DEFINE_STATIC_LOCAL(Mutex, mutex, ());
+    DEPRECATED_DEFINE_STATIC_LOCAL(Mutex, mutex, ());
     return mutex;
 }
 
@@ -130,7 +130,7 @@ void initializeThreading()
 
 static ThreadMap& threadMap()
 {
-    DEFINE_STATIC_LOCAL(ThreadMap, map, ());
+    DEPRECATED_DEFINE_STATIC_LOCAL(ThreadMap, map, ());
     return map;
 }
 
@@ -203,7 +203,29 @@ void initializeCurrentThreadInternal(const char* threadName)
     ASSERT(id);
     ThreadIdentifierData::initialize(id);
 }
+    
+void changeThreadPriority(ThreadIdentifier threadID, int delta)
+{
+    pthread_t pthreadHandle;
+    ASSERT(threadID);
 
+    {
+        MutexLocker locker(threadMapMutex());
+        pthreadHandle = pthreadHandleForIdentifierWithLockAlreadyHeld(threadID);
+        ASSERT(pthreadHandle);
+    }
+
+    int policy;
+    struct sched_param param;
+
+    if (pthread_getschedparam(pthreadHandle, &policy, &param))
+        return;
+
+    param.sched_priority += delta;
+
+    pthread_setschedparam(pthreadHandle, policy, &param);
+}
+    
 int waitForThreadCompletion(ThreadIdentifier threadID)
 {
     pthread_t pthreadHandle;

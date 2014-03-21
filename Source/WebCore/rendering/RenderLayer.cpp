@@ -111,6 +111,7 @@
 #include "TextStream.h"
 #include "TransformationMatrix.h"
 #include "TranslateTransformOperation.h"
+#include <stdio.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/text/CString.h>
 
@@ -120,7 +121,6 @@
 #include "FilterEffectRenderer.h"
 #include "RenderLayerFilterInfo.h"
 #endif
-
 
 #define MIN_INTERSECT_FOR_REVEAL 32
 
@@ -3435,12 +3435,12 @@ void RenderLayer::drawPlatformResizerImage(GraphicsContext* context, const Layou
     RefPtr<Image> resizeCornerImage;
     IntSize cornerResizerSize;
     if (renderer().document().deviceScaleFactor() >= 2) {
-        DEFINE_STATIC_LOCAL(Image*, resizeCornerImageHiRes, (Image::loadPlatformResource("textAreaResizeCorner@2x").leakRef()));
+        DEPRECATED_DEFINE_STATIC_LOCAL(Image*, resizeCornerImageHiRes, (Image::loadPlatformResource("textAreaResizeCorner@2x").leakRef()));
         resizeCornerImage = resizeCornerImageHiRes;
         cornerResizerSize = resizeCornerImage->size();
         cornerResizerSize.scale(0.5f);
     } else {
-        DEFINE_STATIC_LOCAL(Image*, resizeCornerImageLoRes, (Image::loadPlatformResource("textAreaResizeCorner").leakRef()));
+        DEPRECATED_DEFINE_STATIC_LOCAL(Image*, resizeCornerImageLoRes, (Image::loadPlatformResource("textAreaResizeCorner").leakRef()));
         resizeCornerImage = resizeCornerImageLoRes;
         cornerResizerSize = resizeCornerImage->size();
     }
@@ -5289,8 +5289,7 @@ void RenderLayer::mapLayerClipRectsToFragmentationLayer(RenderNamedFlowFragment*
 
     LayoutPoint portionLocation = flowThreadPortionRect.location();
     LayoutRect regionContentBox = namedFlowFragment->fragmentContainer().contentBoxRect();
-    IntSize scrolledContentOffset = namedFlowFragment->fragmentContainer().hasOverflowClip() ? namedFlowFragment->fragmentContainer().scrolledContentOffset() : IntSize();
-    LayoutSize moveOffset = portionLocation - regionContentBox.location() + scrolledContentOffset;
+    LayoutSize moveOffset = portionLocation - regionContentBox.location() + namedFlowFragment->fragmentContainer().scrolledContentOffset();
 
     ClipRect newOverflowClipRect = clipRects.overflowClipRect();
     newOverflowClipRect.move(moveOffset);
@@ -6785,10 +6784,8 @@ void RenderLayer::filterNeedsRepaint()
 void RenderLayer::paintNamedFlowThreadInsideRegion(GraphicsContext* context, RenderNamedFlowFragment* region, LayoutRect paintDirtyRect, LayoutPoint paintOffset, PaintBehavior paintBehavior, PaintLayerFlags paintFlags)
 {
     LayoutRect regionContentBox = toRenderBox(region->layerOwner()).contentBoxRect();
-    LayoutSize moveOffset = region->flowThreadPortionLocation() - (paintOffset + regionContentBox.location());
-    if (region->fragmentContainer().hasOverflowClip())
-        moveOffset += region->fragmentContainer().scrolledContentOffset();
-    
+    LayoutSize moveOffset = region->flowThreadPortionLocation() - (paintOffset + regionContentBox.location()) + region->fragmentContainer().scrolledContentOffset();
+
     IntPoint adjustedPaintOffset = roundedIntPoint(-moveOffset);
     paintDirtyRect.move(moveOffset);
 
@@ -6876,7 +6873,6 @@ RenderLayer* RenderLayer::hitTestFlowThreadIfRegionForFragments(const LayerFragm
     }
 
     LayoutRect regionContentBox = toRenderBlockFlow(&renderer())->contentBoxRect();
-    IntSize scrolledContentOffset = region->fragmentContainer().hasOverflowClip() ? region->fragmentContainer().scrolledContentOffset() : IntSize();
 
     RenderLayer* resultLayer = 0;
     for (int i = fragments.size() - 1; i >= 0; --i) {
@@ -6885,7 +6881,7 @@ RenderLayer* RenderLayer::hitTestFlowThreadIfRegionForFragments(const LayerFragm
         if (!fragment.backgroundRect.intersects(hitTestLocation))
             continue;
 
-        LayoutSize hitTestOffset = portionLocation - (fragment.layerBounds.location() + regionContentBox.location()) + scrolledContentOffset;
+        LayoutSize hitTestOffset = portionLocation - (fragment.layerBounds.location() + regionContentBox.location()) + region->fragmentContainer().scrolledContentOffset();
 
         // Always ignore clipping, since the RenderFlowThread has nothing to do with the bounds of the FrameView.
         HitTestRequest newRequest(request.type() | HitTestRequest::IgnoreClipping | HitTestRequest::DisallowShadowContent);

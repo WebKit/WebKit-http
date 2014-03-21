@@ -73,17 +73,17 @@ WebInspector.SourceMapResource.prototype = {
             setTimeout(function() {
                 // FIXME: We don't know the MIME-type for inline content. Guess by analyzing the content?
                 // Guess by using the type of the original resource?
-                sourceMapResourceLoaded.call(this, null, inlineContent, "text/javascript");
+                sourceMapResourceLoaded.call(this, null, inlineContent, "text/javascript", 200);
             }.bind(this));
 
             return true;
         }
 
-        function sourceMapResourceLoaded(error, body, mimeType)
+        function sourceMapResourceLoaded(error, body, mimeType, statusCode)
         {
             const base64encoded = false;
 
-            if (error) {
+            if (error || statusCode >= 400) {
                 this.markAsFailed();
                 callback(error, body, base64encoded);
                 return;

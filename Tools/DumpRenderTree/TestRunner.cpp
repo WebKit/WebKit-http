@@ -11,7 +11,7 @@
  * 2.  Redistributions in binary form must reproduce the above copyright
  *     notice, this list of conditions and the following disclaimer in the
  *     documentation and/or other materials provided with the distribution. 
- * 3.  Neither the name of Apple Computer, Inc. ("Apple") nor the names of
+ * 3.  Neither the name of Apple Inc. ("Apple") nor the names of
  *     its contributors may be used to endorse or promote products derived
  *     from this software without specific prior written permission. 
  *
@@ -1579,12 +1579,10 @@ static JSValueRef closeWebInspectorCallback(JSContextRef context, JSObjectRef fu
 static JSValueRef evaluateInWebInspectorCallback(JSContextRef context, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception)
 {
     TestRunner* controller = static_cast<TestRunner*>(JSObjectGetPrivate(thisObject));
-    double callId = JSValueToNumber(context, arguments[0], exception);
-    ASSERT(!*exception);
-    JSRetainPtr<JSStringRef> script(Adopt, JSValueToStringCopy(context, arguments[1], exception));
+    JSRetainPtr<JSStringRef> script(Adopt, JSValueToStringCopy(context, arguments[0], exception));
     ASSERT(!*exception);
 
-    controller->evaluateInWebInspector(static_cast<long>(callId), script.get());
+    controller->evaluateInWebInspector(script.get());
     return JSValueMakeUndefined(context);
 }
 

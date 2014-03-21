@@ -73,7 +73,6 @@ enum PseudoId {
     NOPSEUDO, FIRST_LINE, FIRST_LETTER, BEFORE, AFTER, SELECTION, FIRST_LINE_INHERITED, SCROLLBAR,
     // Internal IDs follow:
     SCROLLBAR_THUMB, SCROLLBAR_BUTTON, SCROLLBAR_TRACK, SCROLLBAR_TRACK_PIECE, SCROLLBAR_CORNER, RESIZER,
-    INPUT_LIST_BUTTON,
     AFTER_LAST_INTERNAL_PSEUDOID,
     FULL_SCREEN, FULL_SCREEN_DOCUMENT, FULL_SCREEN_ANCESTOR, ANIMATING_FULL_SCREEN_TRANSITION,
     FIRST_PUBLIC_PSEUDOID = FIRST_LINE,
@@ -557,7 +556,7 @@ enum TextIndentType { TextIndentNormal, TextIndentHanging };
 enum Isolation { IsolationAuto, IsolationIsolate };
 
 // Fill, Stroke, ViewBox are just used for SVG.
-enum LayoutBox { BoxMissing = 0, MarginBox, BorderBox, PaddingBox, ContentBox, Fill, Stroke, ViewBox };
+enum CSSBoxType { BoxMissing = 0, MarginBox, BorderBox, PaddingBox, ContentBox, Fill, Stroke, ViewBox };
 
 } // namespace WebCore
 

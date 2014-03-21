@@ -37,7 +37,7 @@ namespace WebCore {
 typedef HashMap<const CSSStyleRule*, String> SelectorTextCache;
 static SelectorTextCache& selectorTextCache()
 {
-    DEFINE_STATIC_LOCAL(SelectorTextCache, cache, ());
+    DEPRECATED_DEFINE_STATIC_LOCAL(SelectorTextCache, cache, ());
     return cache;
 }
 
@@ -93,6 +93,11 @@ String CSSStyleRule::selectorText() const
 
 void CSSStyleRule::setSelectorText(const String& selectorText)
 {
+    // FIXME: getMatchedCSSRules can return CSSStyleRules that are missing parent stylesheet pointer while
+    // referencing StyleRules that are part of stylesheet. Disallow mutations in this case.
+    if (!parentStyleSheet())
+        return;
+
     CSSParser p(parserContext());
     CSSSelectorList selectorList;
     p.parseSelector(selectorText, selectorList);

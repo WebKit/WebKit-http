@@ -33,12 +33,17 @@ namespace WebCore {
 
 /* Hash table for constructor */
 
+static const struct CompactHashIndex JSTestNamedConstructorConstructorTableIndex[1] = {
+    { -1, -1 },
+};
+
+
 static const HashTableValue JSTestNamedConstructorConstructorTableValues[] =
 {
     { 0, 0, NoIntrinsic, 0, 0 }
 };
 
-static const HashTable JSTestNamedConstructorConstructorTable = { 1, 0, false, JSTestNamedConstructorConstructorTableValues, 0 };
+static const HashTable JSTestNamedConstructorConstructorTable = { 0, 0, false, JSTestNamedConstructorConstructorTableValues, 0, JSTestNamedConstructorConstructorTableIndex };
 const ClassInfo JSTestNamedConstructorConstructor::s_info = { "TestNamedConstructorConstructor", &Base::s_info, &JSTestNamedConstructorConstructorTable, 0, CREATE_METHOD_TABLE(JSTestNamedConstructorConstructor) };
 
 JSTestNamedConstructorConstructor::JSTestNamedConstructorConstructor(Structure* structure, JSDOMGlobalObject* globalObject)
@@ -105,13 +110,18 @@ ConstructType JSTestNamedConstructorNamedConstructor::getConstructData(JSCell*, 
 
 /* Hash table for prototype */
 
+static const struct CompactHashIndex JSTestNamedConstructorPrototypeTableIndex[2] = {
+    { -1, -1 },
+    { 0, -1 },
+};
+
+
 static const HashTableValue JSTestNamedConstructorPrototypeTableValues[] =
 {
     { "constructor", DontEnum | ReadOnly, NoIntrinsic, (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestNamedConstructorConstructor), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) },
-    { 0, 0, NoIntrinsic, 0, 0 }
 };
 
-static const HashTable JSTestNamedConstructorPrototypeTable = { 2, 1, true, JSTestNamedConstructorPrototypeTableValues, 0 };
+static const HashTable JSTestNamedConstructorPrototypeTable = { 1, 1, true, JSTestNamedConstructorPrototypeTableValues, 0, JSTestNamedConstructorPrototypeTableIndex };
 const ClassInfo JSTestNamedConstructorPrototype::s_info = { "TestNamedConstructorPrototype", &Base::s_info, &JSTestNamedConstructorPrototypeTable, 0, CREATE_METHOD_TABLE(JSTestNamedConstructorPrototype) };
 
 JSObject* JSTestNamedConstructorPrototype::self(VM& vm, JSGlobalObject* globalObject)
@@ -184,7 +194,7 @@ JSValue JSTestNamedConstructor::getNamedConstructor(VM& vm, JSGlobalObject* glob
 
 bool JSTestNamedConstructorOwner::isReachableFromOpaqueRoots(JSC::Handle<JSC::Unknown> handle, void*, SlotVisitor& visitor)
 {
-    JSTestNamedConstructor* jsTestNamedConstructor = jsCast<JSTestNamedConstructor*>(handle.get().asCell());
+    JSTestNamedConstructor* jsTestNamedConstructor = jsCast<JSTestNamedConstructor*>(handle.slot()->asCell());
     if (jsTestNamedConstructor->impl().hasPendingActivity())
         return true;
     UNUSED_PARAM(visitor);
@@ -193,7 +203,7 @@ bool JSTestNamedConstructorOwner::isReachableFromOpaqueRoots(JSC::Handle<JSC::Un
 
 void JSTestNamedConstructorOwner::finalize(JSC::Handle<JSC::Unknown> handle, void* context)
 {
-    JSTestNamedConstructor* jsTestNamedConstructor = jsCast<JSTestNamedConstructor*>(handle.get().asCell());
+    JSTestNamedConstructor* jsTestNamedConstructor = jsCast<JSTestNamedConstructor*>(handle.slot()->asCell());
     DOMWrapperWorld& world = *static_cast<DOMWrapperWorld*>(context);
     uncacheWrapper(world, &jsTestNamedConstructor->impl(), jsTestNamedConstructor);
     jsTestNamedConstructor->releaseImpl();
@@ -211,7 +221,7 @@ JSC::JSValue toJS(JSC::ExecState* exec, JSDOMGlobalObject* globalObject, TestNam
 {
     if (!impl)
         return jsNull();
-    if (JSValue result = getExistingWrapper<JSTestNamedConstructor>(exec, impl))
+    if (JSValue result = getExistingWrapper<JSTestNamedConstructor>(globalObject, impl))
         return result;
 
 #if ENABLE(BINDING_INTEGRITY)

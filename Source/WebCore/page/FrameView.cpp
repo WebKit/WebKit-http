@@ -1584,6 +1584,53 @@ LayoutSize FrameView::scrollOffsetForFixedPosition() const
     return scrollOffsetForFixedPosition(visibleContentRect, totalContentsSize, scrollPosition, scrollOrigin, frameScaleFactor, fixedElementsLayoutRelativeToFrame(), behaviorForFixed, headerHeight(), footerHeight());
 }
     
+#if PLATFORM(IOS)
+LayoutRect FrameView::rectForViewportConstrainedObjects(const LayoutRect& visibleContentRect, const LayoutSize& totalContentsSize, float frameScaleFactor, bool fixedElementsLayoutRelativeToFrame, ScrollBehaviorForFixedElements scrollBehavior)
+{
+    if (fixedElementsLayoutRelativeToFrame)
+        return visibleContentRect;
+    
+    // We impose an lower limit on the size (so an upper limit on the scale) of
+    // the rect used to position fixed objects so that they don't crowd into the
+    // center of the screen at larger scales.
+    const float constraintThresholdScale = 1.2;
+
+    float maxPostionedObjectsRectScale = std::min(frameScaleFactor, constraintThresholdScale);
+
+    LayoutRect viewportConstrainedObjectsRect = visibleContentRect;
+
+    if (frameScaleFactor > constraintThresholdScale) {
+        FloatRect contentRect(FloatPoint(), totalContentsSize);
+        FloatRect viewportRect = visibleContentRect;
+        
+        // Scale the rect up from a point that is relative to its position in the viewport.
+        FloatSize sizeDelta = contentRect.size() - viewportRect.size();
+
+        FloatPoint scaleOrigin;
+        scaleOrigin.setX(contentRect.x() + sizeDelta.width() > 0 ? contentRect.width() * (viewportRect.x() - contentRect.x()) / sizeDelta.width() : 0);
+        scaleOrigin.setY(contentRect.y() + sizeDelta.height() > 0 ? contentRect.height() * (viewportRect.y() - contentRect.y()) / sizeDelta.height() : 0);
+        
+        AffineTransform rescaleTransform = AffineTransform::translation(scaleOrigin.x(), scaleOrigin.y());
+        rescaleTransform.scale(frameScaleFactor / maxPostionedObjectsRectScale, frameScaleFactor / maxPostionedObjectsRectScale);
+        rescaleTransform = CGAffineTransformTranslate(rescaleTransform, -scaleOrigin.x(), -scaleOrigin.y());
+
+        viewportConstrainedObjectsRect = enclosingLayoutRect(rescaleTransform.mapRect(visibleContentRect));
+    }
+    
+    if (scrollBehavior == StickToDocumentBounds) {
+        LayoutRect documentBounds(LayoutPoint(), totalContentsSize);
+        viewportConstrainedObjectsRect.intersect(documentBounds);
+    }
+
+    return viewportConstrainedObjectsRect;
+}
+    
+LayoutRect FrameView::viewportConstrainedObjectsRect() const
+{
+    return rectForViewportConstrainedObjects(visibleContentRect(), totalContentsSize(), frame().frameScaleFactor(), fixedElementsLayoutRelativeToFrame(), scrollBehaviorForFixedElements());
+}
+#endif
+    
 IntPoint FrameView::minimumScrollPosition() const
 {
     IntPoint minimumPosition(ScrollView::minimumScrollPosition());
@@ -2635,41 +2682,16 @@ void FrameView::performPostLayoutTasks()
     frame().selection().setCaretRectNeedsUpdate();
     frame().selection().updateAndRevealSelection();
 
-    LayoutMilestones requestedMilestones = 0;
-    LayoutMilestones milestonesAchieved = 0;
-    Page* page = frame().page();
-    if (page)
-        requestedMilestones = page->requestedLayoutMilestones();
-
-    if (m_nestedLayoutCount <= 1 && frame().document()->documentElement()) {
-        if (m_firstLayoutCallbackPending) {
-            m_firstLayoutCallbackPending = false;
-            frame().loader().didFirstLayout();
-            if (requestedMilestones & DidFirstLayout)
-                milestonesAchieved |= DidFirstLayout;
-            if (frame().isMainFrame())
-                page->startCountingRelevantRepaintedObjects();
-        }
-        updateIsVisuallyNonEmpty();
-
-        // If the layout was done with pending sheets, we are not in fact visually non-empty yet.
-        if (m_isVisuallyNonEmpty && !frame().document()->didLayoutWithPendingStylesheets() && m_firstVisuallyNonEmptyLayoutCallbackPending) {
-            m_firstVisuallyNonEmptyLayoutCallbackPending = false;
-            if (requestedMilestones & DidFirstVisuallyNonEmptyLayout)
-                milestonesAchieved |= DidFirstVisuallyNonEmptyLayout;
-        }
-    }
+    if (m_nestedLayoutCount <= 1 && frame().document()->documentElement())
+        fireLayoutRelatedMilestonesIfNeeded();
 
 #if PLATFORM(IOS)
     // Only send layout-related delegate callbacks synchronously for the main frame to
     // avoid re-entering layout for the main frame while delivering a layout-related delegate
     // callback for a subframe.
     if (frame().isMainFrame())
-        page->chrome().client().didLayout();
+        frame().page()->chrome().client().didLayout();
 #endif
-
-    if (milestonesAchieved && frame().isMainFrame())
-        frame().loader().didLayout(milestonesAchieved);
 
 #if ENABLE(FONT_LOAD_EVENTS)
     if (RuntimeEnabledFeatures::sharedFeatures().fontLoadEventsEnabled())
@@ -2691,8 +2713,8 @@ void FrameView::performPostLayoutTasks()
             break;
     }
 
-    if (page) {
-        if (ScrollingCoordinator* scrollingCoordinator = page->scrollingCoordinator())
+    if (auto* page = frame().page()) {
+        if (auto* scrollingCoordinator = page->scrollingCoordinator())
             scrollingCoordinator->frameViewLayoutUpdated(this);
     }
 
@@ -2740,7 +2762,7 @@ void FrameView::sendResizeEventIfNeeded()
 #endif
 
     bool isMainFrame = frame().isMainFrame();
-    bool canSendResizeEventSynchronously = isMainFrame && !isInLayout();
+    bool canSendResizeEventSynchronously = !m_shouldAutoSize && isMainFrame && !isInLayout();
 
     // If we resized during layout, queue up a resize event for later, otherwise fire it right away.
     RefPtr<Event> resizeEvent = Event::create(eventNames().resizeEvent, false, false);
@@ -3556,7 +3578,7 @@ void FrameView::paintContents(GraphicsContext* p, const IntRect& rect)
     if (!p->paintingDisabled()) {
         InspectorInstrumentation::didPaint(renderView, p, rect);
         // FIXME: should probably not fire milestones for snapshot painting. https://bugs.webkit.org/show_bug.cgi?id=117623
-        firePaintRelatedMilestones();
+        firePaintRelatedMilestonesIfNeeded();
     }
 }
 
@@ -4147,7 +4169,36 @@ void FrameView::addPaintPendingMilestones(LayoutMilestones milestones)
     m_milestonesPendingPaint |= milestones;
 }
 
-void FrameView::firePaintRelatedMilestones()
+void FrameView::fireLayoutRelatedMilestonesIfNeeded()
+{
+    LayoutMilestones requestedMilestones = 0;
+    LayoutMilestones milestonesAchieved = 0;
+    Page* page = frame().page();
+    if (page)
+        requestedMilestones = page->requestedLayoutMilestones();
+
+    if (m_firstLayoutCallbackPending) {
+        m_firstLayoutCallbackPending = false;
+        frame().loader().didFirstLayout();
+        if (requestedMilestones & DidFirstLayout)
+            milestonesAchieved |= DidFirstLayout;
+        if (frame().isMainFrame())
+            page->startCountingRelevantRepaintedObjects();
+    }
+    updateIsVisuallyNonEmpty();
+
+    // If the layout was done with pending sheets, we are not in fact visually non-empty yet.
+    if (m_isVisuallyNonEmpty && !frame().document()->didLayoutWithPendingStylesheets() && m_firstVisuallyNonEmptyLayoutCallbackPending) {
+        m_firstVisuallyNonEmptyLayoutCallbackPending = false;
+        if (requestedMilestones & DidFirstVisuallyNonEmptyLayout)
+            milestonesAchieved |= DidFirstVisuallyNonEmptyLayout;
+    }
+
+    if (milestonesAchieved && frame().isMainFrame())
+        frame().loader().didLayout(milestonesAchieved);
+}
+
+void FrameView::firePaintRelatedMilestonesIfNeeded()
 {
     Page* page = frame().page();
     if (!page)

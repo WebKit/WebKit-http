@@ -265,7 +265,13 @@ public:
     LayoutSize scrollOffsetForFixedPosition() const;
     // Static function can be called from another thread.
     static LayoutSize scrollOffsetForFixedPosition(const LayoutRect& visibleContentRect, const LayoutSize& totalContentsSize, const LayoutPoint& scrollPosition, const LayoutPoint& scrollOrigin, float frameScaleFactor, bool fixedElementsLayoutRelativeToFrame, ScrollBehaviorForFixedElements, int headerHeight, int footerHeight);
-
+    
+#if PLATFORM(IOS)
+    LayoutRect viewportConstrainedObjectsRect() const;
+    // Static function can be called from another thread.
+    static LayoutRect rectForViewportConstrainedObjects(const LayoutRect& visibleContentRect, const LayoutSize& totalContentsSize, float frameScaleFactor, bool fixedElementsLayoutRelativeToFrame, ScrollBehaviorForFixedElements);
+#endif
+    
     bool fixedElementsLayoutRelativeToFrame() const;
 
     void disableLayerFlushThrottlingTemporarilyForInteraction();
@@ -431,7 +437,8 @@ public:
     virtual void willEndLiveResize() override;
 
     void addPaintPendingMilestones(LayoutMilestones);
-    void firePaintRelatedMilestones();
+    void firePaintRelatedMilestonesIfNeeded();
+    void fireLayoutRelatedMilestonesIfNeeded();
     LayoutMilestones milestonesPendingPaint() const { return m_milestonesPendingPaint; }
 
     bool visualUpdatesAllowedByClient() const { return m_visualUpdatesAllowedByClient; }

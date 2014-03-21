@@ -34,6 +34,7 @@
 #include "DragControllerAction.h"
 #include "DrawingArea.h"
 #include "DrawingAreaMessages.h"
+#include "EditingRange.h"
 #include "EditorState.h"
 #include "EventDispatcher.h"
 #include "InjectedBundle.h"
@@ -285,6 +286,7 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
     , m_lastVisibleContentRectUpdateID(0)
     , m_scaleWasSetByUIProcess(false)
     , m_userHasChangedPageScaleFactor(false)
+    , m_viewportScreenSize(parameters.viewportScreenSize)
 #endif
     , m_inspectorClient(0)
     , m_backgroundColor(Color::white)
@@ -884,7 +886,7 @@ void WebPage::close()
     WebProcess::shared().removeWebPage(m_pageID);
 
     if (isRunningModal)
-        RunLoop::main()->stop();
+        RunLoop::main().stop();
 }
 
 void WebPage::tryClose()
@@ -1512,30 +1514,63 @@ void WebPage::showPageBanners()
 }
 #endif // !PLATFORM(IOS)
 
+void WebPage::takeSnapshot(IntRect snapshotRect, IntSize bitmapSize, uint32_t options, uint64_t callbackID)
+{
+    SnapshotOptions snapshotOptions = static_cast<SnapshotOptions>(options);
+    snapshotOptions |= SnapshotOptionsShareable;
+
+    RefPtr<WebImage> image = snapshotAtSize(snapshotRect, bitmapSize, snapshotOptions);
+
+    ShareableBitmap::Handle handle;
+    if (image)
+        image->bitmap()->createHandle(handle, SharedMemory::ReadOnly);
+
+    send(Messages::WebPageProxy::ImageCallback(handle, callbackID));
+}
+
 PassRefPtr<WebImage> WebPage::scaledSnapshotWithOptions(const IntRect& rect, double scaleFactor, SnapshotOptions options)
+{
+    IntRect snapshotRect = rect;
+    if (options & SnapshotOptionsRespectDrawingAreaTransform)
+        snapshotRect = m_drawingArea->rootLayerTransform().inverse().mapRect(snapshotRect);
+
+    IntSize bitmapSize = snapshotRect.size();
+    bitmapSize.scale(scaleFactor * corePage()->deviceScaleFactor());
+
+    return snapshotAtSize(rect, bitmapSize, options);
+}
+
+PassRefPtr<WebImage> WebPage::snapshotAtSize(const IntRect& rect, const IntSize& bitmapSize, SnapshotOptions options)
 {
     Frame* coreFrame = m_mainFrame->coreFrame();
     if (!coreFrame)
-        return 0;
+        return nullptr;
 
     FrameView* frameView = coreFrame->view();
     if (!frameView)
-        return 0;
+        return nullptr;
 
-    IntSize bitmapSize = rect.size();
-    float combinedScaleFactor = scaleFactor * corePage()->deviceScaleFactor();
-    bitmapSize.scale(combinedScaleFactor);
+    IntRect snapshotRect = rect;
+    if (options & SnapshotOptionsRespectDrawingAreaTransform)
+        snapshotRect = m_drawingArea->rootLayerTransform().inverse().mapRect(snapshotRect);
+
+    float horizontalScaleFactor = static_cast<float>(bitmapSize.width()) / rect.width();
+    float verticalScaleFactor = static_cast<float>(bitmapSize.height()) / rect.height();
+    float scaleFactor = std::min(horizontalScaleFactor, verticalScaleFactor);
 
     RefPtr<WebImage> snapshot = WebImage::create(bitmapSize, snapshotOptionsToImageOptions(options));
     if (!snapshot->bitmap())
-        return 0;
+        return nullptr;
 
     auto graphicsContext = snapshot->bitmap()->createGraphicsContext();
 
-    graphicsContext->clearRect(IntRect(IntPoint(), bitmapSize));
+    graphicsContext->fillRect(IntRect(IntPoint(), bitmapSize), frameView->baseBackgroundColor(), ColorSpaceDeviceRGB);
 
-    graphicsContext->applyDeviceScaleFactor(combinedScaleFactor);
-    graphicsContext->translate(-rect.x(), -rect.y());
+    if (!(options & SnapshotOptionsExcludeDeviceScaleFactor))
+        graphicsContext->applyDeviceScaleFactor(corePage()->deviceScaleFactor());
+
+    graphicsContext->scale(FloatSize(scaleFactor, scaleFactor));
+    graphicsContext->translate(-snapshotRect.x(), -snapshotRect.y());
 
     FrameView::SelectionInSnapshot shouldPaintSelection = FrameView::IncludeSelection;
     if (options & SnapshotOptionsExcludeSelectionHighlighting)
@@ -1545,14 +1580,14 @@ PassRefPtr<WebImage> WebPage::scaledSnapshotWithOptions(const IntRect& rect, dou
     if (options & SnapshotOptionsInViewCoordinates)
         coordinateSpace = FrameView::ViewCoordinates;
 
-    frameView->paintContentsForSnapshot(graphicsContext.get(), rect, shouldPaintSelection, coordinateSpace);
+    frameView->paintContentsForSnapshot(graphicsContext.get(), snapshotRect, shouldPaintSelection, coordinateSpace);
 
     if (options & SnapshotOptionsPaintSelectionRectangle) {
         FloatRect selectionRectangle = m_mainFrame->coreFrame()->selection().selectionBounds();
         graphicsContext->setStrokeColor(Color(0xFF, 0, 0), ColorSpaceDeviceRGB);
         graphicsContext->strokeRect(selectionRectangle, 1);
     }
-
+    
     return snapshot.release();
 }
 
@@ -1956,6 +1991,13 @@ void WebPage::centerSelectionInVisibleArea()
     frame.selection().revealSelection(ScrollAlignment::alignCenterAlways);
     m_findController.showFindIndicatorInSelection();
 }
+
+#if ENABLE(REMOTE_INSPECTOR)
+void WebPage::setAllowsRemoteInspection(bool allow)
+{
+    m_page->setRemoteInspectionAllowed(allow);
+}
+#endif
 
 void WebPage::setDrawsBackground(bool drawsBackground)
 {
@@ -2623,6 +2665,8 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
     settings.setLayoutInterval(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::duration<double>(store.getDoubleValueForKey(WebPreferencesKey::layoutIntervalKey()))));
     settings.setMaxParseDuration(store.getDoubleValueForKey(WebPreferencesKey::maxParseDurationKey()));
 
+    settings.setEnableInheritURIQueryComponent(store.getBoolValueForKey(WebPreferencesKey::enableInheritURIQueryComponentKey()));
+
     if (store.getBoolValueForKey(WebPreferencesKey::pageVisibilityBasedProcessSuppressionEnabledKey()))
         m_processSuppressionDisabledByWebPreference.stop();
     else
@@ -3060,6 +3104,15 @@ void WebPage::didSelectItemFromActiveContextMenu(const WebContextMenuItemData& i
 
     m_contextMenu->itemSelected(item);
     m_contextMenu = 0;
+}
+#endif
+
+#if ENABLE(IMAGE_CONTROLS)
+void WebPage::replaceControlledImage(const ShareableBitmap::Handle& bitmapHandle)
+{
+    RefPtr<ShareableBitmap> bitmap = ShareableBitmap::create(bitmapHandle);
+    if (bitmap)
+        m_contextMenu->replaceControlledImage(bitmap->createImage());
 }
 #endif
 
@@ -3892,7 +3945,7 @@ void WebPage::confirmComposition(const String& compositionString, int64_t select
     send(Messages::WebPageProxy::EditorStateChanged(editorState()));
 }
 
-void WebPage::setComposition(const String& text, Vector<CompositionUnderline> underlines, uint64_t selectionStart, uint64_t selectionEnd, uint64_t replacementStart, uint64_t replacementLength)
+void WebPage::setComposition(const String& text, Vector<CompositionUnderline> underlines, uint64_t selectionStart, uint64_t selectionLength, uint64_t replacementStart, uint64_t replacementLength)
 {
     Frame* targetFrame = targetFrameForEditing(this);
     if (!targetFrame || !targetFrame->selection().selection().isContentEditable()) {
@@ -3911,7 +3964,7 @@ void WebPage::setComposition(const String& text, Vector<CompositionUnderline> un
         targetFrame->editor().setIgnoreCompositionSelectionChange(false);
     }
 
-    targetFrame->editor().setComposition(text, underlines, selectionStart, selectionEnd);
+    targetFrame->editor().setComposition(text, underlines, selectionStart, selectionStart + selectionLength);
     send(Messages::WebPageProxy::EditorStateChanged(editorState()));
 }
 
@@ -4306,7 +4359,7 @@ void WebPage::setThumbnailScale(double thumbnailScale)
     transform.translate((newScrollPosition.x() * inverseScale) - m_scrollPositionIgnoringThumbnailScale.x(), (newScrollPosition.y() * inverseScale) - m_scrollPositionIgnoringThumbnailScale.y());
     transform.scale(inverseScale);
 
-    drawingArea()->setTransform(transform);
+    drawingArea()->setRootLayerTransform(transform);
 }
 
 void WebPage::getBytecodeProfile(uint64_t callbackID)
@@ -4318,5 +4371,28 @@ void WebPage::getBytecodeProfile(uint64_t callbackID)
     ASSERT(result.length());
     send(Messages::WebPageProxy::StringCallback(result, callbackID));
 }
+
+PassRefPtr<WebCore::Range> WebPage::rangeFromEditingRange(WebCore::Frame& frame, const EditingRange& range)
+{
+    ASSERT(range.location != notFound);
+
+    // Sanitize the input, because TextIterator::rangeFromLocationAndLength takes signed integers.
+    if (range.location > INT_MAX)
+        return 0;
+    int length;
+    if (range.length <= INT_MAX && range.location + range.length <= INT_MAX)
+        length = static_cast<int>(range.length);
+    else
+        length = INT_MAX - range.location;
+
+    // Our critical assumption is that we are only called by input methods that
+    // concentrate on a given area containing the selection.
+    // We have to do this because of text fields and textareas. The DOM for those is not
+    // directly in the document DOM, so serialization is problematic. Our solution is
+    // to use the root editable element of the selection start as the positional base.
+    // That fits with AppKit's idea of an input context.
+    return TextIterator::rangeFromLocationAndLength(frame.selection().rootEditableElementOrDocumentElement(), static_cast<int>(range.location), length);
+}
+
 
 } // namespace WebKit

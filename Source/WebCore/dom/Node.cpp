@@ -724,13 +724,12 @@ void Document::invalidateNodeListAndCollectionCaches(const QualifiedName* attrNa
 #if !ASSERT_DISABLED
     m_inInvalidateNodeListAndCollectionCaches = true;
 #endif
-    HashSet<LiveNodeList*> liveNodeLists = std::move(m_listsInvalidatedAtDocument);
-    for (auto it : liveNodeLists)
-        it->invalidateCache(attrName);
-
-    HashSet<HTMLCollection*> collectionLists = std::move(m_collectionsInvalidatedAtDocument);
-    for (auto it : collectionLists)
-        it->invalidateCache(attrName);
+    HashSet<LiveNodeList*> lists = std::move(m_listsInvalidatedAtDocument);
+    for (auto* list : lists)
+        list->invalidateCache(attrName);
+    HashSet<HTMLCollection*> collections = std::move(m_collectionsInvalidatedAtDocument);
+    for (auto* collection : collections)
+        collection->invalidateCache(attrName);
 #if !ASSERT_DISABLED
     m_inInvalidateNodeListAndCollectionCaches = false;
 #endif
@@ -1863,7 +1862,7 @@ typedef HashMap<Node*, OwnPtr<EventTargetData>> EventTargetDataMap;
 
 static EventTargetDataMap& eventTargetDataMap()
 {
-    DEFINE_STATIC_LOCAL(EventTargetDataMap, map, ());
+    DEPRECATED_DEFINE_STATIC_LOCAL(EventTargetDataMap, map, ());
     return map;
 }
 

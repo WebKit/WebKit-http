@@ -10,7 +10,7 @@
  * 2.  Redistributions in binary form must reproduce the above copyright
  *     notice, this list of conditions and the following disclaimer in the
  *     documentation and/or other materials provided with the distribution.
- * 3.  Neither the name of Apple Computer, Inc. ("Apple") nor the names of
+ * 3.  Neither the name of Apple Inc. ("Apple") nor the names of
  *     its contributors may be used to endorse or promote products derived
  *     from this software without specific prior written permission.
  *
@@ -68,7 +68,7 @@ const float ResponseSampleRate = 44100;
 static AudioBus* getConcatenatedImpulseResponsesForSubject(const String& subjectName)
 {
     typedef HashMap<String, AudioBus*> AudioBusMap;
-    DEFINE_STATIC_LOCAL(AudioBusMap, audioBusMap, ());
+    DEPRECATED_DEFINE_STATIC_LOCAL(AudioBusMap, audioBusMap, ());
 
     AudioBus* bus;
     AudioBusMap::iterator iterator = audioBusMap.find(subjectName);

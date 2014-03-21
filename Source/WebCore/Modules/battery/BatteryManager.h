@@ -35,11 +35,11 @@ class ScriptExecutionContext;
 class BatteryManager : public ActiveDOMObject, public RefCounted<BatteryManager>, public EventTarget {
 public:
     virtual ~BatteryManager();
-    static PassRefPtr<BatteryManager> create(Navigator*);
+    static PassRef<BatteryManager> create(Navigator*);
 
     // EventTarget implementation.
-    virtual EventTargetInterface eventTargetInterface() const { return BatteryManagerEventTargetInterfaceType; }
-    virtual ScriptExecutionContext* scriptExecutionContext() const { return ActiveDOMObject::scriptExecutionContext(); }
+    virtual EventTargetInterface eventTargetInterface() const override { return BatteryManagerEventTargetInterfaceType; }
+    virtual ScriptExecutionContext* scriptExecutionContext() const override { return ActiveDOMObject::scriptExecutionContext(); }
 
     bool charging();
     double chargingTime();
@@ -53,27 +53,27 @@ public:
 
     void didChangeBatteryStatus(PassRefPtr<Event>, PassRefPtr<BatteryStatus>);
     void updateBatteryStatus(PassRefPtr<BatteryStatus>);
-    void batteryControllerDestroyed() { m_batteryController = 0; }
+    void batteryControllerDestroyed() { m_batteryController = nullptr; }
 
     using RefCounted<BatteryManager>::ref;
     using RefCounted<BatteryManager>::deref;
 
     // ActiveDOMObject implementation.
-    virtual bool canSuspend() const { return true; }
-    virtual void suspend(ReasonForSuspension);
-    virtual void resume();
-    virtual void stop();
+    virtual bool canSuspend() const override { return true; }
+    virtual void suspend(ReasonForSuspension) override;
+    virtual void resume() override;
+    virtual void stop() override;
 
 protected:
-    virtual EventTargetData* eventTargetData() { return &m_eventTargetData; }
-    virtual EventTargetData& ensureEventTargetData() { return m_eventTargetData; }
+    virtual EventTargetData* eventTargetData() override { return &m_eventTargetData; }
+    virtual EventTargetData& ensureEventTargetData() override { return m_eventTargetData; }
 
 private:
     explicit BatteryManager(Navigator*);
 
     // EventTarget implementation.
-    virtual void refEventTarget() { ref(); }
-    virtual void derefEventTarget() { deref(); }
+    virtual void refEventTarget() override { ref(); }
+    virtual void derefEventTarget() override { deref(); }
 
     BatteryController* m_batteryController;
     EventTargetData m_eventTargetData;

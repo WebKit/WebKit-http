@@ -11,7 +11,7 @@
  * 2.  Redistributions in binary form must reproduce the above copyright
  *     notice, this list of conditions and the following disclaimer in the
  *     documentation and/or other materials provided with the distribution.
- * 3.  Neither the name of Apple Computer, Inc. ("Apple") nor the names of
+ * 3.  Neither the name of Apple Inc. ("Apple") nor the names of
  *     its contributors may be used to endorse or promote products derived
  *     from this software without specific prior written permission.
  *
@@ -52,7 +52,7 @@ const char* InspectorDebuggerAgent::backtraceObjectGroup = "backtrace";
 // create objects in the same group.
 static String objectGroupForBreakpointAction(const ScriptBreakpointAction& action)
 {
-    DEFINE_STATIC_LOCAL(const AtomicString, objectGroup, ("breakpoint-action-", AtomicString::ConstructFromLiteral));
+    DEPRECATED_DEFINE_STATIC_LOCAL(const AtomicString, objectGroup, ("breakpoint-action-", AtomicString::ConstructFromLiteral));
     return makeString(objectGroup, String::number(action.identifier));
 }
 
@@ -341,8 +341,7 @@ void InspectorDebuggerAgent::removeBreakpoint(ErrorString*, const String& breakp
 {
     m_javaScriptBreakpoints.remove(breakpointIdentifier);
 
-    Vector<JSC::BreakpointID> breakpointIDs = m_breakpointIdentifierToDebugServerBreakpointIDs.take(breakpointIdentifier);
-    for (auto breakpointID : breakpointIDs) {
+    for (JSC::BreakpointID breakpointID : m_breakpointIdentifierToDebugServerBreakpointIDs.take(breakpointIdentifier)) {
         const Vector<ScriptBreakpointAction>& breakpointActions = scriptDebugServer().getActionsForBreakpoint(breakpointID);
         for (auto& action : breakpointActions)
             m_injectedScriptManager->releaseObjectGroup(objectGroupForBreakpointAction(action));

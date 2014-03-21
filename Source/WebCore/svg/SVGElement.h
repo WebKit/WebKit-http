@@ -112,7 +112,7 @@ public:
     void synchronizeAnimatedSVGAttribute(const QualifiedName&) const;
     static void synchronizeAllAnimatedSVGAttribute(SVGElement*);
  
-    virtual PassRefPtr<RenderStyle> customStyleForRenderer() override;
+    virtual PassRefPtr<RenderStyle> customStyleForRenderer(RenderStyle& parentStyle) override;
 
     static void synchronizeRequiredFeatures(SVGElement* contextElement);
     static void synchronizeRequiredExtensions(SVGElement* contextElement);
@@ -139,6 +139,8 @@ public:
 #if ENABLE(CSS_REGIONS)
     virtual bool shouldMoveToFlowThread(const RenderStyle&) const override;
 #endif
+
+    bool hasTagName(const SVGQualifiedName& name) const { return hasLocalName(name.localName()); }
 
 protected:
     SVGElement(const QualifiedName&, Document&);
@@ -212,6 +214,11 @@ inline bool isSVGElement(const Node& node) { return node.isSVGElement(); }
 template <> inline bool isElementOfType<const SVGElement>(const Element& element) { return element.isSVGElement(); }
 
 NODE_TYPE_CASTS(SVGElement)
+
+inline bool Node::hasTagName(const SVGQualifiedName& name) const
+{
+    return isSVGElement() && toSVGElement(*this).hasTagName(name);
+}
 
 }
 

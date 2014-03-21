@@ -10,10 +10,10 @@
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
  *
- * THIS SOFTWARE IS PROVIDED BY APPLE COMPUTER, INC. ``AS IS'' AND ANY
+ * THIS SOFTWARE IS PROVIDED BY APPLE INC. ``AS IS'' AND ANY
  * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE COMPUTER, INC. OR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE INC. OR
  * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
  * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
  * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
@@ -27,7 +27,7 @@
 #include "VisibleUnits.h"
 
 #include "Document.h"
-#include "Element.h"
+#include "HTMLElement.h"
 #include "HTMLNames.h"
 #include "InlineTextBox.h"
 #include "NodeTraversal.h"
@@ -936,9 +936,7 @@ bool isEndOfLine(const VisiblePosition& p)
 static inline IntPoint absoluteLineDirectionPointToLocalPointInBlock(RootInlineBox& root, int lineDirectionPoint)
 {
     RenderBlockFlow& containingBlock = root.blockFlow();
-    FloatPoint absoluteBlockPoint = containingBlock.localToAbsolute(FloatPoint());
-    if (containingBlock.hasOverflowClip())
-        absoluteBlockPoint -= containingBlock.scrolledContentOffset();
+    FloatPoint absoluteBlockPoint = containingBlock.localToAbsolute(FloatPoint()) - containingBlock.scrolledContentOffset();
 
     if (containingBlock.isHorizontalWritingMode())
         return IntPoint(lineDirectionPoint - absoluteBlockPoint.x(), root.blockDirectionPointInLine());
@@ -1157,13 +1155,13 @@ VisiblePosition startOfParagraph(const VisiblePosition& c, EditingBoundaryCrossi
             ASSERT_WITH_SECURITY_IMPLICATION(n->isTextNode());
             type = Position::PositionIsOffsetInAnchor;
             if (style.preserveNewline()) {
-                const UChar* chars = toRenderText(r)->deprecatedCharacters();
-                int i = toRenderText(r)->textLength();
+                StringImpl& text = *toRenderText(r)->text();
+                int i = text.length();
                 int o = offset;
                 if (n == startNode && o < i)
                     i = std::max(0, o);
                 while (--i >= 0) {
-                    if (chars[i] == '\n')
+                    if (text[i] == '\n')
                         return VisiblePosition(Position(toText(n), i + 1), DOWNSTREAM);
                 }
             }
@@ -1238,13 +1236,13 @@ VisiblePosition endOfParagraph(const VisiblePosition& c, EditingBoundaryCrossing
         // FIXME: We avoid returning a position where the renderer can't accept the caret.
         if (r->isText() && toRenderText(r)->hasRenderedText()) {
             ASSERT_WITH_SECURITY_IMPLICATION(n->isTextNode());
-            int length = toRenderText(r)->textLength();
             type = Position::PositionIsOffsetInAnchor;
             if (style.preserveNewline()) {
-                const UChar* chars = toRenderText(r)->deprecatedCharacters();
+                StringImpl& text = *toRenderText(r)->text();
                 int o = n == startNode ? offset : 0;
+                int length = text.length();
                 for (int i = o; i < length; ++i) {
-                    if (chars[i] == '\n')
+                    if (text[i] == '\n')
                         return VisiblePosition(Position(toText(n), i), DOWNSTREAM);
                 }
             }

@@ -10,10 +10,10 @@
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
  *
- * THIS SOFTWARE IS PROVIDED BY APPLE COMPUTER, INC. ``AS IS'' AND ANY
+ * THIS SOFTWARE IS PROVIDED BY APPLE INC. ``AS IS'' AND ANY
  * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE COMPUTER, INC. OR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE INC. OR
  * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
  * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
  * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
@@ -616,6 +616,11 @@ void MediaPlayerPrivateAVFoundation::metadataLoaded()
 
 void MediaPlayerPrivateAVFoundation::rateChanged()
 {
+#if ENABLE(IOS_AIRPLAY)
+    if (isCurrentPlaybackTargetWireless())
+        m_player->handlePlaybackCommand(rate() ? MediaSession::PlayCommand : MediaSession::PauseCommand);
+#endif
+
     m_player->rateChanged();
 }
 
@@ -966,11 +971,18 @@ void MediaPlayerPrivateAVFoundation::processNewAndRemovedTextTracks(const Vector
             m_textTracks.remove(i);
         }
     }
-    
+
+    unsigned inBandCount = 0;
     for (unsigned i = 0; i < m_textTracks.size(); ++i) {
         RefPtr<InbandTextTrackPrivateAVF> track = m_textTracks[i];
-        
-        track->setTextTrackIndex(i);
+
+#if ENABLE(AVF_CAPTIONS)
+        if (track->textTrackCategory() == InbandTextTrackPrivateAVF::OutOfBand)
+            continue;
+#endif
+
+        track->setTextTrackIndex(inBandCount);
+        ++inBandCount;
         if (track->hasBeenReported())
             continue;
         

@@ -131,13 +131,14 @@ RenderRegion* RenderBox::clampToStartAndEndRegions(RenderRegion* region) const
     // logical top or logical bottom of the block to size as though the border box in the first and
     // last regions extended infinitely. Otherwise the lines are going to size according to the regions
     // they overflow into, which makes no sense when this block doesn't exist in |region| at all.
-    RenderRegion* startRegion = 0;
-    RenderRegion* endRegion = 0;
-    flowThread->getRegionRangeForBox(this, startRegion, endRegion);
+    RenderRegion* startRegion = nullptr;
+    RenderRegion* endRegion = nullptr;
+    if (!flowThread->getRegionRangeForBox(this, startRegion, endRegion))
+        return region;
 
-    if (startRegion && region->logicalTopForFlowThreadContent() < startRegion->logicalTopForFlowThreadContent())
+    if (region->logicalTopForFlowThreadContent() < startRegion->logicalTopForFlowThreadContent())
         return startRegion;
-    if (endRegion && region->logicalTopForFlowThreadContent() > endRegion->logicalTopForFlowThreadContent())
+    if (region->logicalTopForFlowThreadContent() > endRegion->logicalTopForFlowThreadContent())
         return endRegion;
 
     return region;
@@ -164,14 +165,13 @@ LayoutRect RenderBox::borderBoxRectInRegion(RenderRegion* region, RenderBoxRegio
     if (!flowThread)
         return borderBoxRect();
 
-    RenderRegion* startRegion = 0;
-    RenderRegion* endRegion = 0;
-    flowThread->getRegionRangeForBox(this, startRegion, endRegion);
-    
-    // FIXME: In a perfect world this condition should never happen.
-    if (!startRegion || !endRegion)
+    RenderRegion* startRegion = nullptr;
+    RenderRegion* endRegion = nullptr;
+    if (!flowThread->getRegionRangeForBox(this, startRegion, endRegion)) {
+        // FIXME: In a perfect world this condition should never happen.
         return borderBoxRect();
-
+    }
+    
     ASSERT(flowThread->regionInRange(region, startRegion, endRegion));
 
     // Compute the logical width and placement in this region.
@@ -912,7 +912,9 @@ bool RenderBox::needsPreferredWidthsRecalculation() const
 
 IntSize RenderBox::scrolledContentOffset() const
 {
-    ASSERT(hasOverflowClip());
+    if (!hasOverflowClip())
+        return IntSize();
+
     ASSERT(hasLayer());
     return layer()->scrolledContentOffset();
 }
@@ -1203,7 +1205,7 @@ void RenderBox::paintBoxDecorations(PaintInfo& paintInfo, const LayoutPoint& pai
     // FIXME: Should eventually give the theme control over whether the box shadow should paint, since controls could have
     // custom shadows of their own.
     if (!boxShadowShouldBeAppliedToBackground(bleedAvoidance))
-        paintBoxShadow(paintInfo, paintRect, &style(), Normal);
+        paintBoxShadow(paintInfo, paintRect, style(), Normal);
 
     GraphicsContextStateSaver stateSaver(*paintInfo.context, false);
     if (bleedAvoidance == BackgroundBleedUseTransparencyLayer) {
@@ -1222,18 +1224,18 @@ void RenderBox::paintBoxDecorations(PaintInfo& paintInfo, const LayoutPoint& pai
     bool themePainted = style().hasAppearance() && !theme().paint(this, paintInfo, snappedPaintRect);
     if (!themePainted) {
         if (bleedAvoidance == BackgroundBleedBackgroundOverBorder)
-            paintBorder(paintInfo, paintRect, &style(), bleedAvoidance);
+            paintBorder(paintInfo, paintRect, style(), bleedAvoidance);
 
         paintBackground(paintInfo, paintRect, bleedAvoidance);
 
         if (style().hasAppearance())
             theme().paintDecorations(this, paintInfo, snappedPaintRect);
     }
-    paintBoxShadow(paintInfo, paintRect, &style(), Inset);
+    paintBoxShadow(paintInfo, paintRect, style(), Inset);
 
     // The theme will tell us whether or not we should also paint the CSS border.
     if (bleedAvoidance != BackgroundBleedBackgroundOverBorder && (!style().hasAppearance() || (!themePainted && theme().paintBorderOnly(this, paintInfo, snappedPaintRect))) && style().hasBorder())
-        paintBorder(paintInfo, paintRect, &style(), bleedAvoidance);
+        paintBorder(paintInfo, paintRect, style(), bleedAvoidance);
 
     if (bleedAvoidance == BackgroundBleedUseTransparencyLayer)
         paintInfo.context->endTransparencyLayer();
@@ -1448,7 +1450,7 @@ void RenderBox::paintMaskImages(const PaintInfo& paintInfo, const LayoutRect& pa
 
     if (allMaskImagesLoaded) {
         paintFillLayers(paintInfo, Color(), style().maskLayers(), paintRect, BackgroundBleedNone, compositeOp);
-        paintNinePieceImage(paintInfo.context, paintRect, &style(), style().maskBoxImage(), compositeOp);
+        paintNinePieceImage(paintInfo.context, paintRect, style(), style().maskBoxImage(), compositeOp);
     }
     
     if (pushTransparencyLayer)
@@ -1960,7 +1962,7 @@ LayoutSize RenderBox::offsetFromContainer(RenderObject* o, const LayoutPoint& po
             offset += topLeftLocationOffset();
     }
 
-    if (o->hasOverflowClip())
+    if (o->isBox())
         offset -= toRenderBox(o)->scrolledContentOffset();
 
     if (style().position() == AbsolutePosition && o->isInFlowPositioned() && o->isRenderInline())
@@ -2101,10 +2103,9 @@ void RenderBox::computeRectForRepaint(const RenderLayerModelObject* repaintConta
         return;
 
     if (o->isRenderFlowThread()) {
-        RenderRegion* firstRegion = 0;
-        RenderRegion* lastRegion = 0;
-        toRenderFlowThread(o)->getRegionRangeForBox(this, firstRegion, lastRegion);
-        if (firstRegion)
+        RenderRegion* firstRegion = nullptr;
+        RenderRegion* lastRegion = nullptr;
+        if (toRenderFlowThread(o)->getRegionRangeForBox(this, firstRegion, lastRegion))
             rect.moveBy(firstRegion->flowThreadPortionRect().location());
     }
 
@@ -4534,11 +4535,9 @@ LayoutRect RenderBox::overflowRectForPaintRejection(RenderNamedFlowFragment* nam
     // to the flow thread, not the last region (in which it will end up because of bottom:0px)
     if (namedFlowFragment) {
         if (RenderFlowThread* flowThread = namedFlowFragment->flowThread()) {
-            RenderRegion* startRegion = 0;
-            RenderRegion* endRegion = 0;
-            flowThread->getRegionRangeForBox(this, startRegion, endRegion);
-
-            if (startRegion && endRegion)
+            RenderRegion* startRegion = nullptr;
+            RenderRegion* endRegion = nullptr;
+            if (flowThread->getRegionRangeForBox(this, startRegion, endRegion))
                 overflowRect.unite(namedFlowFragment->visualOverflowRectForBox(this));
         }
     }

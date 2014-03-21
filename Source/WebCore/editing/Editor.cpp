@@ -11,10 +11,10 @@
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
  *
- * THIS SOFTWARE IS PROVIDED BY APPLE COMPUTER, INC. ``AS IS'' AND ANY
+ * THIS SOFTWARE IS PROVIDED BY APPLE INC. ``AS IS'' AND ANY
  * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE COMPUTER, INC. OR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE INC. OR
  * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
  * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
  * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
@@ -797,11 +797,11 @@ bool Editor::hasBidiSelection() const
 TriState Editor::selectionUnorderedListState() const
 {
     if (m_frame.selection().isCaret()) {
-        if (enclosingNodeWithTag(m_frame.selection().selection().start(), ulTag))
+        if (enclosingElementWithTag(m_frame.selection().selection().start(), ulTag))
             return TrueTriState;
     } else if (m_frame.selection().isRange()) {
-        Node* startNode = enclosingNodeWithTag(m_frame.selection().selection().start(), ulTag);
-        Node* endNode = enclosingNodeWithTag(m_frame.selection().selection().end(), ulTag);
+        auto* startNode = enclosingElementWithTag(m_frame.selection().selection().start(), ulTag);
+        auto* endNode = enclosingElementWithTag(m_frame.selection().selection().end(), ulTag);
         if (startNode && endNode && startNode == endNode)
             return TrueTriState;
     }
@@ -812,11 +812,11 @@ TriState Editor::selectionUnorderedListState() const
 TriState Editor::selectionOrderedListState() const
 {
     if (m_frame.selection().isCaret()) {
-        if (enclosingNodeWithTag(m_frame.selection().selection().start(), olTag))
+        if (enclosingElementWithTag(m_frame.selection().selection().start(), olTag))
             return TrueTriState;
     } else if (m_frame.selection().isRange()) {
-        Node* startNode = enclosingNodeWithTag(m_frame.selection().selection().start(), olTag);
-        Node* endNode = enclosingNodeWithTag(m_frame.selection().selection().end(), olTag);
+        auto* startNode = enclosingElementWithTag(m_frame.selection().selection().start(), olTag);
+        auto* endNode = enclosingElementWithTag(m_frame.selection().selection().end(), olTag);
         if (startNode && endNode && startNode == endNode)
             return TrueTriState;
     }

@@ -13,7 +13,7 @@
  * THIS SOFTWARE IS PROVIDED BY APPLE INC. ``AS IS'' AND ANY
  * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE COMPUTER, INC. OR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE INC. OR
  * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
  * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
  * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
@@ -160,7 +160,7 @@ void PlatformCALayerRemote::updateBackingStore()
     if (!m_properties.backingStore)
         return;
 
-    m_properties.backingStore->ensureBackingStore(this, expandedIntSize(m_properties.size), m_properties.contentsScale, m_acceleratesDrawing);
+    m_properties.backingStore->ensureBackingStore(this, expandedIntSize(m_properties.size), m_properties.contentsScale, m_acceleratesDrawing, m_properties.opaque);
 }
 
 void PlatformCALayerRemote::setNeedsDisplay(const FloatRect* rect)
@@ -304,6 +304,8 @@ void PlatformCALayerRemote::setOpaque(bool value)
 {
     m_properties.opaque = value;
     m_properties.notePropertiesChanged(RemoteLayerTreeTransaction::OpaqueChanged);
+
+    updateBackingStore();
 }
 
 FloatRect PlatformCALayerRemote::bounds() const

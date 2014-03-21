@@ -93,14 +93,14 @@ void TextChecker::closeSpellDocumentWithTag(int64_t tag)
     WebTextChecker::shared()->client().closeSpellDocumentWithTag(tag);
 }
 
-void TextChecker::checkSpellingOfString(int64_t spellDocumentTag, const UChar* text, uint32_t length, int32_t& misspellingLocation, int32_t& misspellingLength)
+void TextChecker::checkSpellingOfString(int64_t spellDocumentTag, StringView text, int32_t& misspellingLocation, int32_t& misspellingLength)
 {
-    WebTextChecker::shared()->client().checkSpellingOfString(spellDocumentTag, String(text, length), misspellingLocation, misspellingLength);
+    WebTextChecker::shared()->client().checkSpellingOfString(spellDocumentTag, text.toStringWithoutCopying(), misspellingLocation, misspellingLength);
 }
 
-void TextChecker::checkGrammarOfString(int64_t spellDocumentTag, const UChar* text, uint32_t length, Vector<WebCore::GrammarDetail>& grammarDetails, int32_t& badGrammarLocation, int32_t& badGrammarLength)
+void TextChecker::checkGrammarOfString(int64_t spellDocumentTag, StringView text, Vector<WebCore::GrammarDetail>& grammarDetails, int32_t& badGrammarLocation, int32_t& badGrammarLength)
 {
-    WebTextChecker::shared()->client().checkGrammarOfString(spellDocumentTag, String(text, length), grammarDetails, badGrammarLocation, badGrammarLength);
+    WebTextChecker::shared()->client().checkGrammarOfString(spellDocumentTag, text.toStringWithoutCopying(), grammarDetails, badGrammarLocation, badGrammarLength);
 }
 
 bool TextChecker::spellingUIIsShowing()
@@ -123,7 +123,7 @@ void TextChecker::updateSpellingUIWithGrammarString(int64_t spellDocumentTag, co
     WebTextChecker::shared()->client().updateSpellingUIWithGrammarString(spellDocumentTag, badGrammarPhrase, grammarDetail);
 }
 
-void TextChecker::getGuessesForWord(int64_t spellDocumentTag, const String& word, const String& context, Vector<String>& guesses)
+void TextChecker::getGuessesForWord(int64_t spellDocumentTag, const String& word, const String& /* context */, Vector<String>& guesses)
 {
     WebTextChecker::shared()->client().guessesForWord(spellDocumentTag, word, guesses);
 }

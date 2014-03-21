@@ -12,10 +12,10 @@
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
  *
- * THIS SOFTWARE IS PROVIDED BY APPLE COMPUTER, INC. ``AS IS'' AND ANY
+ * THIS SOFTWARE IS PROVIDED BY APPLE INC. ``AS IS'' AND ANY
  * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE COMPUTER, INC. OR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE INC. OR
  * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
  * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
  * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
@@ -34,7 +34,7 @@
 #include <wtf/OwnPtr.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/text/CString.h>
-#include <wtf/text/WTFString.h>
+#include <wtf/text/StringView.h>
 
 namespace WebCore {
 
@@ -64,20 +64,22 @@ String TextEncoding::decode(const char* data, size_t length, bool stopOnError, b
     return newTextCodec(*this)->decode(data, length, true, stopOnError, sawError);
 }
 
-CString TextEncoding::encode(const UChar* characters, size_t length, UnencodableHandling handling) const
+CString TextEncoding::encode(StringView text, UnencodableHandling handling) const
 {
     if (!m_name)
         return CString();
 
-    if (!length)
+    if (text.isEmpty())
         return "";
 
     // FIXME: What's the right place to do normalization?
     // It's a little strange to do it inside the encode function.
     // Perhaps normalization should be an explicit step done before calling encode.
 
-    const UChar* source = characters;
-    size_t sourceLength = length;
+    auto upconvertedCharacters = text.upconvertedCharacters();
+
+    const UChar* source = upconvertedCharacters;
+    size_t sourceLength = text.length();
 
     Vector<UChar> normalizedCharacters;
 
@@ -85,17 +87,18 @@ CString TextEncoding::encode(const UChar* characters, size_t length, Unencodable
     if (unorm_quickCheck(source, sourceLength, UNORM_NFC, &err) != UNORM_YES) {
         // First try using the length of the original string, since normalization to NFC rarely increases length.
         normalizedCharacters.grow(sourceLength);
-        int32_t normalizedLength = unorm_normalize(source, length, UNORM_NFC, 0, normalizedCharacters.data(), length, &err);
+        int32_t normalizedLength = unorm_normalize(source, sourceLength, UNORM_NFC, 0, normalizedCharacters.data(), sourceLength, &err);
         if (err == U_BUFFER_OVERFLOW_ERROR) {
             err = U_ZERO_ERROR;
             normalizedCharacters.resize(normalizedLength);
-            normalizedLength = unorm_normalize(source, length, UNORM_NFC, 0, normalizedCharacters.data(), normalizedLength, &err);
+            normalizedLength = unorm_normalize(source, sourceLength, UNORM_NFC, 0, normalizedCharacters.data(), normalizedLength, &err);
         }
         ASSERT(U_SUCCESS(err));
 
         source = normalizedCharacters.data();
         sourceLength = normalizedLength;
     }
+
     return newTextCodec(*this)->encode(source, sourceLength, handling);
 }
 

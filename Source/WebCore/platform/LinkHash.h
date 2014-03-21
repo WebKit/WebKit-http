@@ -10,10 +10,10 @@
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
  *
- * THIS SOFTWARE IS PROVIDED BY APPLE COMPUTER, INC. ``AS IS'' AND ANY
+ * THIS SOFTWARE IS PROVIDED BY APPLE INC. ``AS IS'' AND ANY
  * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE COMPUTER, INC. OR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE INC. OR
  * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
  * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
  * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
@@ -62,12 +62,6 @@ LinkHash visitedLinkHash(const UChar* url, unsigned length);
 // link coloring. It will return the special value of 0 if attributeURL does not
 // look like a relative URL.
 LinkHash visitedLinkHash(const URL& base, const AtomicString& attributeURL);
-
-// Resolves the potentially relative URL "attributeURL" relative to the given
-// base URL, and returns the hash of the string that will be used for visited.
-// It will return an empty Vector in case of errors.
-void visitedURL(const URL& base, const AtomicString& attributeURL, Vector<UChar, 512>&);
-
 
 }  // namespace WebCore
 

@@ -38,6 +38,7 @@
 #include "SVGNames.h"
 #include "SVGParserUtilities.h"
 #include <wtf/MathExtras.h>
+#include <wtf/text/StringView.h>
 
 namespace WebCore {
 
@@ -92,7 +93,9 @@ static void parseKeySplines(const String& parse, Vector<UnitBezier>& result)
     result.clear();
     if (parse.isEmpty())
         return;
-    const UChar* cur = parse.deprecatedCharacters();
+
+    auto upconvertedCharacters = StringView(parse).upconvertedCharacters();
+    const UChar* cur = upconvertedCharacters;
     const UChar* end = cur + parse.length();
 
     skipOptionalSVGSpaces(cur, end);
@@ -140,7 +143,7 @@ static void parseKeySplines(const String& parse, Vector<UnitBezier>& result)
 
 bool SVGAnimationElement::isSupportedAttribute(const QualifiedName& attrName)
 {
-    DEFINE_STATIC_LOCAL(HashSet<QualifiedName>, supportedAttributes, ());
+    DEPRECATED_DEFINE_STATIC_LOCAL(HashSet<QualifiedName>, supportedAttributes, ());
     if (supportedAttributes.isEmpty()) {
         SVGTests::addSupportedAttributes(supportedAttributes);
         SVGExternalResourcesRequired::addSupportedAttributes(supportedAttributes);
@@ -291,10 +294,10 @@ void SVGAnimationElement::updateAnimationMode()
 
 void SVGAnimationElement::setCalcMode(const AtomicString& calcMode)
 {
-    DEFINE_STATIC_LOCAL(const AtomicString, discrete, ("discrete", AtomicString::ConstructFromLiteral));
-    DEFINE_STATIC_LOCAL(const AtomicString, linear, ("linear", AtomicString::ConstructFromLiteral));
-    DEFINE_STATIC_LOCAL(const AtomicString, paced, ("paced", AtomicString::ConstructFromLiteral));
-    DEFINE_STATIC_LOCAL(const AtomicString, spline, ("spline", AtomicString::ConstructFromLiteral));
+    DEPRECATED_DEFINE_STATIC_LOCAL(const AtomicString, discrete, ("discrete", AtomicString::ConstructFromLiteral));
+    DEPRECATED_DEFINE_STATIC_LOCAL(const AtomicString, linear, ("linear", AtomicString::ConstructFromLiteral));
+    DEPRECATED_DEFINE_STATIC_LOCAL(const AtomicString, paced, ("paced", AtomicString::ConstructFromLiteral));
+    DEPRECATED_DEFINE_STATIC_LOCAL(const AtomicString, spline, ("spline", AtomicString::ConstructFromLiteral));
     if (calcMode == discrete)
         setCalcMode(CalcModeDiscrete);
     else if (calcMode == linear)
@@ -309,8 +312,8 @@ void SVGAnimationElement::setCalcMode(const AtomicString& calcMode)
 
 void SVGAnimationElement::setAttributeType(const AtomicString& attributeType)
 {
-    DEFINE_STATIC_LOCAL(const AtomicString, css, ("CSS", AtomicString::ConstructFromLiteral));
-    DEFINE_STATIC_LOCAL(const AtomicString, xml, ("XML", AtomicString::ConstructFromLiteral));
+    DEPRECATED_DEFINE_STATIC_LOCAL(const AtomicString, css, ("CSS", AtomicString::ConstructFromLiteral));
+    DEPRECATED_DEFINE_STATIC_LOCAL(const AtomicString, xml, ("XML", AtomicString::ConstructFromLiteral));
     if (attributeType == css)
         m_attributeType = AttributeTypeCSS;
     else if (attributeType == xml)
@@ -337,14 +340,14 @@ String SVGAnimationElement::fromValue() const
 
 bool SVGAnimationElement::isAdditive() const
 {
-    DEFINE_STATIC_LOCAL(const AtomicString, sum, ("sum", AtomicString::ConstructFromLiteral));
+    DEPRECATED_DEFINE_STATIC_LOCAL(const AtomicString, sum, ("sum", AtomicString::ConstructFromLiteral));
     const AtomicString& value = fastGetAttribute(SVGNames::additiveAttr);
     return value == sum || animationMode() == ByAnimation;
 }
 
 bool SVGAnimationElement::isAccumulated() const
 {
-    DEFINE_STATIC_LOCAL(const AtomicString, sum, ("sum", AtomicString::ConstructFromLiteral));
+    DEPRECATED_DEFINE_STATIC_LOCAL(const AtomicString, sum, ("sum", AtomicString::ConstructFromLiteral));
     const AtomicString& value = fastGetAttribute(SVGNames::accumulateAttr);
     return value == sum && animationMode() != ToAnimation;
 }
@@ -653,7 +656,7 @@ void SVGAnimationElement::adjustForInheritance(SVGElement* targetElement, const 
 
 static bool inheritsFromProperty(SVGElement*, const QualifiedName& attributeName, const String& value)
 {
-    DEFINE_STATIC_LOCAL(const AtomicString, inherit, ("inherit", AtomicString::ConstructFromLiteral));
+    DEPRECATED_DEFINE_STATIC_LOCAL(const AtomicString, inherit, ("inherit", AtomicString::ConstructFromLiteral));
     
     if (value.isEmpty() || value != inherit)
         return false;

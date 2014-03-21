@@ -10,10 +10,10 @@
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
  *
- * THIS SOFTWARE IS PROVIDED BY APPLE COMPUTER, INC. ``AS IS'' AND ANY
+ * THIS SOFTWARE IS PROVIDED BY APPLE INC. ``AS IS'' AND ANY
  * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE COMPUTER, INC. OR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE INC. OR
  * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
  * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
  * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
@@ -51,9 +51,9 @@ SpeechSynthesis::SpeechSynthesis()
 {
 }
     
-void SpeechSynthesis::setPlatformSynthesizer(PassOwnPtr<PlatformSpeechSynthesizer> synthesizer)
+void SpeechSynthesis::setPlatformSynthesizer(std::unique_ptr<PlatformSpeechSynthesizer> synthesizer)
 {
-    m_platformSpeechSynthesizer = synthesizer;
+    m_platformSpeechSynthesizer = std::move(synthesizer);
     m_voiceList.clear();
     m_currentSpeechUtterance = 0;
     m_utteranceQueue.clear();
@@ -71,7 +71,7 @@ const Vector<RefPtr<SpeechSynthesisVoice>>& SpeechSynthesis::getVoices()
         return m_voiceList;
 
     if (!m_platformSpeechSynthesizer)
-        m_platformSpeechSynthesizer = PlatformSpeechSynthesizer::create(this);
+        m_platformSpeechSynthesizer = std::make_unique<PlatformSpeechSynthesizer>(this);
 
     // If the voiceList is empty, that's the cue to get the voices from the platform again.
     const Vector<RefPtr<PlatformSpeechSynthesisVoice>>& platformVoices = m_platformSpeechSynthesizer->voiceList();
@@ -115,7 +115,7 @@ void SpeechSynthesis::startSpeakingImmediately(SpeechSynthesisUtterance* utteran
     }
     
     if (!m_platformSpeechSynthesizer)
-        m_platformSpeechSynthesizer = PlatformSpeechSynthesizer::create(this);
+        m_platformSpeechSynthesizer = std::make_unique<PlatformSpeechSynthesizer>(this);
     m_platformSpeechSynthesizer->speak(utterance->platformUtterance());
 }
 
@@ -192,8 +192,8 @@ void SpeechSynthesis::handleSpeakingCompleted(SpeechSynthesisUtterance* utteranc
     
 void SpeechSynthesis::boundaryEventOccurred(PassRefPtr<PlatformSpeechSynthesisUtterance> utterance, SpeechBoundary boundary, unsigned charIndex)
 {
-    DEFINE_STATIC_LOCAL(const String, wordBoundaryString, (ASCIILiteral("word")));
-    DEFINE_STATIC_LOCAL(const String, sentenceBoundaryString, (ASCIILiteral("sentence")));
+    DEPRECATED_DEFINE_STATIC_LOCAL(const String, wordBoundaryString, (ASCIILiteral("word")));
+    DEPRECATED_DEFINE_STATIC_LOCAL(const String, sentenceBoundaryString, (ASCIILiteral("sentence")));
 
     switch (boundary) {
     case SpeechWordBoundary:

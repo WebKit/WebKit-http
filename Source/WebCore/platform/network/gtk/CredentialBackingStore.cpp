@@ -13,7 +13,7 @@
  * THIS SOFTWARE IS PROVIDED BY IGALIA S.L. ``AS IS'' AND ANY
  * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE COMPUTER, INC. OR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE INC. OR
  * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
  * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
  * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
@@ -42,7 +42,7 @@ namespace WebCore {
 
 CredentialBackingStore& credentialBackingStore()
 {
-    DEFINE_STATIC_LOCAL(CredentialBackingStore, backingStore, ());
+    DEPRECATED_DEFINE_STATIC_LOCAL(CredentialBackingStore, backingStore, ());
     return backingStore;
 }
 
@@ -118,6 +118,7 @@ void CredentialBackingStore::credentialForChallenge(const AuthenticationChalleng
         reinterpret_cast<GAsyncReadyCallback>(credentialForChallengeAsyncReadyCallback),
         callbackData);
 #else
+    UNUSED_PARAM(challenge);
     callback(Credential(), data);
 #endif // ENABLE(CREDENTIAL_STORAGE)
 }
@@ -138,6 +139,9 @@ void CredentialBackingStore::storeCredentialsForChallenge(const AuthenticationCh
         0, // cancellable
         0, // callback
         0); // data
+#else
+    UNUSED_PARAM(challenge);
+    UNUSED_PARAM(credential);
 #endif // ENABLE(CREDENTIAL_STORAGE)
 }
 

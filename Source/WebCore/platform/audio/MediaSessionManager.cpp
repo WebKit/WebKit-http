@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2014 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -34,7 +34,7 @@ namespace WebCore {
 #if !PLATFORM(IOS)
 MediaSessionManager& MediaSessionManager::sharedManager()
 {
-    DEFINE_STATIC_LOCAL(MediaSessionManager, manager, ());
+    DEPRECATED_DEFINE_STATIC_LOCAL(MediaSessionManager, manager, ());
     return manager;
 }
 #endif
@@ -67,7 +67,7 @@ bool MediaSessionManager::has(MediaSession::MediaType type) const
 int MediaSessionManager::count(MediaSession::MediaType type) const
 {
     ASSERT(type >= MediaSession::None && type <= MediaSession::WebAudio);
-    
+
     int count = 0;
     for (auto* session : m_sessions) {
         if (session->mediaType() == type)
@@ -82,7 +82,8 @@ void MediaSessionManager::beginInterruption()
     LOG(Media, "MediaSessionManager::beginInterruption");
 
     m_interrupted = true;
-    for (auto* session : m_sessions)
+    Vector<MediaSession*> sessions = m_sessions;
+    for (auto* session : sessions)
         session->beginInterruption();
 }
 
@@ -91,27 +92,50 @@ void MediaSessionManager::endInterruption(MediaSession::EndInterruptionFlags fla
     LOG(Media, "MediaSessionManager::endInterruption");
 
     m_interrupted = false;
-    for (auto* session : m_sessions)
+    Vector<MediaSession*> sessions = m_sessions;
+    for (auto* session : sessions)
         session->endInterruption(flags);
 }
 
 void MediaSessionManager::addSession(MediaSession& session)
 {
+    LOG(Media, "MediaSessionManager::addSession - %p", &session);
+    
     m_sessions.append(&session);
     if (m_interrupted)
         session.setState(MediaSession::Interrupted);
     updateSessionState();
+
+    if (!m_remoteCommandListener)
+        m_remoteCommandListener = RemoteCommandListener::create(*this);
+
+    if (m_clients.isEmpty() || !(session.mediaType() == MediaSession::Video || session.mediaType() == MediaSession::Audio))
+        return;
+
+    for (auto& client : m_clients)
+        client->startListeningForRemoteControlCommands();
 }
 
 void MediaSessionManager::removeSession(MediaSession& session)
 {
+    LOG(Media, "MediaSessionManager::removeSession - %p", &session);
+    
     size_t index = m_sessions.find(&session);
     ASSERT(index != notFound);
     if (index == notFound)
         return;
-
+    
     m_sessions.remove(index);
     updateSessionState();
+
+    if (m_sessions.isEmpty())
+        m_remoteCommandListener = nullptr;
+
+    if (m_clients.isEmpty() || !(session.mediaType() == MediaSession::Video || session.mediaType() == MediaSession::Audio))
+        return;
+
+    for (auto& client : m_clients)
+        client->startListeningForRemoteControlCommands();
 }
 
 void MediaSessionManager::addRestriction(MediaSession::MediaType type, SessionRestrictions restriction)
@@ -132,14 +156,24 @@ MediaSessionManager::SessionRestrictions MediaSessionManager::restrictions(Media
     return m_restrictions[type];
 }
 
-void MediaSessionManager::sessionWillBeginPlayback(const MediaSession& session) const
+void MediaSessionManager::sessionWillBeginPlayback(MediaSession& session)
 {
+    LOG(Media, "MediaSessionManager::sessionWillBeginPlayback - %p", &session);
+    
+    setCurrentSession(session);
+
+    if (!m_clients.isEmpty() && (session.mediaType() == MediaSession::Video || session.mediaType() == MediaSession::Audio)) {
+        for (auto& client : m_clients)
+            client->didBeginPlayback();
+    }
+
     MediaSession::MediaType sessionType = session.mediaType();
     SessionRestrictions restrictions = m_restrictions[sessionType];
     if (!restrictions & ConcurrentPlaybackNotPermitted)
         return;
 
-    for (auto* oneSession : m_sessions) {
+    Vector<MediaSession*> sessions = m_sessions;
+    for (auto* oneSession : sessions) {
         if (oneSession == &session)
             continue;
         if (oneSession->mediaType() != sessionType)
@@ -148,7 +182,68 @@ void MediaSessionManager::sessionWillBeginPlayback(const MediaSession& session) 
             oneSession->pauseSession();
     }
 }
+    
+void MediaSessionManager::sessionWillEndPlayback(MediaSession& session)
+{
+    LOG(Media, "MediaSessionManager::sessionWillEndPlayback - %p", &session);
+    
+    if (m_sessions.size() < 2)
+        return;
+    
+    size_t pausingSessionIndex = notFound;
+    size_t lastPlayingSessionIndex = notFound;
+    for (size_t i = 0; i < m_sessions.size(); ++i) {
+        MediaSession* oneSession = m_sessions[i];
+        
+        if (oneSession == &session) {
+            pausingSessionIndex = i;
+            continue;
+        }
+        if (oneSession->state() == MediaSession::Playing) {
+            lastPlayingSessionIndex = i;
+            continue;
+        }
+        if (oneSession->state() != MediaSession::Playing)
+            break;
+    }
+    if (lastPlayingSessionIndex == notFound || pausingSessionIndex == notFound)
+        return;
+    
+    if (pausingSessionIndex > lastPlayingSessionIndex)
+        return;
+    
+    m_sessions.remove(pausingSessionIndex);
+    m_sessions.insert(lastPlayingSessionIndex, &session);
+    
+    LOG(Media, "MediaSessionManager::sessionWillEndPlayback - session moved from index %zu to %zu", pausingSessionIndex, lastPlayingSessionIndex);
+}
 
+void MediaSessionManager::setCurrentSession(MediaSession& session)
+{
+    LOG(Media, "MediaSessionManager::setCurrentSession - %p", &session);
+    
+    if (m_sessions.size() < 2)
+        return;
+    
+    size_t index = m_sessions.find(&session);
+    ASSERT(index != notFound);
+    if (!index || index == notFound)
+        return;
+
+    m_sessions.remove(index);
+    m_sessions.insert(0, &session);
+    
+    LOG(Media, "MediaSessionManager::setCurrentSession - session moved from index %zu to 0", index);
+}
+    
+MediaSession* MediaSessionManager::currentSession()
+{
+    if (!m_sessions.size())
+        return nullptr;
+
+    return m_sessions[0];
+}
+    
 bool MediaSessionManager::sessionRestrictsInlineVideoPlayback(const MediaSession& session) const
 {
     MediaSession::MediaType sessionType = session.mediaType();
@@ -161,7 +256,8 @@ bool MediaSessionManager::sessionRestrictsInlineVideoPlayback(const MediaSession
 void MediaSessionManager::applicationWillEnterBackground() const
 {
     LOG(Media, "MediaSessionManager::applicationWillEnterBackground");
-    for (auto* session : m_sessions) {
+    Vector<MediaSession*> sessions = m_sessions;
+    for (auto* session : sessions) {
         if (m_restrictions[session->mediaType()] & BackgroundPlaybackNotPermitted)
             session->beginInterruption();
     }
@@ -170,7 +266,8 @@ void MediaSessionManager::applicationWillEnterBackground() const
 void MediaSessionManager::applicationWillEnterForeground() const
 {
     LOG(Media, "MediaSessionManager::applicationWillEnterForeground");
-    for (auto* session : m_sessions) {
+    Vector<MediaSession*> sessions = m_sessions;
+    for (auto* session : sessions) {
         if (m_restrictions[session->mediaType()] & BackgroundPlaybackNotPermitted)
             session->endInterruption(MediaSession::MayResumePlaying);
     }
@@ -181,5 +278,25 @@ void MediaSessionManager::updateSessionState()
 {
 }
 #endif
+
+void MediaSessionManager::didReceiveRemoteControlCommand(MediaSession::RemoteControlCommandType command)
+{
+    MediaSession* activeSession = currentSession();
+    if (!activeSession || !activeSession->canReceiveRemoteControlCommands())
+        return;
+    activeSession->didReceiveRemoteControlCommand(command);
+}
+
+void MediaSessionManager::addClient(MediaSessionManagerClient* client)
+{
+    ASSERT(!m_clients.contains(client));
+    m_clients.append(client);
+}
+
+void MediaSessionManager::removeClient(MediaSessionManagerClient* client)
+{
+    ASSERT(m_clients.contains(client));
+    m_clients.remove(m_clients.find(client));
+}
 
 }

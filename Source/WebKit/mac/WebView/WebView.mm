@@ -12,7 +12,7 @@
  * 2.  Redistributions in binary form must reproduce the above copyright
  *     notice, this list of conditions and the following disclaimer in the
  *     documentation and/or other materials provided with the distribution. 
- * 3.  Neither the name of Apple Computer, Inc. ("Apple") nor the names of
+ * 3.  Neither the name of Apple Inc. ("Apple") nor the names of
  *     its contributors may be used to endorse or promote products derived
  *     from this software without specific prior written permission. 
  *
@@ -2392,6 +2392,8 @@ static bool needsSelfRetainWhileLoadingQuirk()
 
     settings.setShouldConvertPositionStyleOnCopy([preferences shouldConvertPositionStyleOnCopy]);
 
+    settings.setEnableInheritURIQueryComponent([preferences isInheritURIQueryComponentEnabled]);
+
     switch ([preferences storageBlockingPolicy]) {
     case WebAllowAllStorage:
         settings.setStorageBlockingPolicy(SecurityOrigin::AllowAllStorage);
@@ -3605,11 +3607,6 @@ static inline IMP getMethod(id o, SEL s)
 - (BOOL)_allowsMessaging
 {
     return _private->allowsMessaging;
-}
-
-// FIXME: Remove once this is no longer necessary for UIKit binary compatibility.
-- (void)_setNetworkStateIsOnline:(BOOL)isOnLine
-{
 }
 
 - (void)_setFixedLayoutSize:(CGSize)size
@@ -6791,7 +6788,7 @@ static NSAppleEventDescriptor* aeDescFromJSValue(ExecState* exec, JSC::JSValue j
             }
         }
         else if (object->inherits(JSArray::info())) {
-            DEFINE_STATIC_LOCAL(HashSet<JSObject*>, visitedElems, ());
+            DEPRECATED_DEFINE_STATIC_LOCAL(HashSet<JSObject*>, visitedElems, ());
             if (!visitedElems.contains(object)) {
                 visitedElems.add(object);
                 

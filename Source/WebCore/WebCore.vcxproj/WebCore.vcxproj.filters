@@ -2328,6 +2328,9 @@
     <ClCompile Include="..\rendering\BidiRun.cpp">
       <Filter>rendering</Filter>
     </ClCompile>
+    <ClCompile Include="..\rendering\BorderEdge.cpp">
+      <Filter>rendering</Filter>
+    </ClCompile>
     <ClCompile Include="..\rendering\break_lines.cpp">
       <Filter>rendering</Filter>
     </ClCompile>
@@ -7001,6 +7004,7 @@
     <ClCompile Include="..\inspector\InspectorNodeFinder.cpp" />
     <ClCompile Include="..\Modules\indexeddb\IDBKeyData.cpp" />
     <ClCompile Include="..\page\ContextMenuContext.cpp" />
+    <ClCompile Include="..\platform\RemoteCommandListener.cpp" />
     <ClCompile Include="..\platform\audio\AudioSession.cpp" />
     <ClCompile Include="..\platform\audio\MediaSession.cpp" />
     <ClCompile Include="..\platform\audio\MediaSessionManager.cpp" />
@@ -14489,7 +14493,7 @@
     <ClInclude Include="..\dom\ElementData.h">
       <Filter>dom</Filter>
     </ClInclude>
-    <ClInclude Include="..\dom\ElementDescendantIterator.h">
+    <ClInclude Include="..\dom\TypedElementDescendantIterator.h">
       <Filter>dom</Filter>
     </ClInclude>
     <ClInclude Include="..\dom\ElementIterator.h">
@@ -14796,6 +14800,7 @@
     <ClInclude Include="..\page\ContextMenuContext.h" />
     <ClInclude Include="..\page\DefaultVisitedLinkStore.h" />
     <ClInclude Include="..\page\VisitedLinkStore.h" />
+    <ClInclude Include="..\platform\RemoteCommandListener.h" />
     <ClInclude Include="..\platform\audio\AudioSession.h" />
     <ClInclude Include="..\platform\audio\AudioSessionListener.h" />
     <ClInclude Include="..\platform\audio\MediaSession.h" />

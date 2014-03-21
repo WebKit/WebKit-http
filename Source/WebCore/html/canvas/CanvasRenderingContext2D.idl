@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006 Apple Computer, Inc.  All rights reserved.
+ * Copyright (C) 2006 Apple Inc.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -10,10 +10,10 @@
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
  *
- * THIS SOFTWARE IS PROVIDED BY APPLE COMPUTER, INC. ``AS IS'' AND ANY
+ * THIS SOFTWARE IS PROVIDED BY APPLE INC. ``AS IS'' AND ANY
  * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE COMPUTER, INC. OR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE INC. OR
  * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
  * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
  * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
@@ -64,10 +64,6 @@ interface CanvasRenderingContext2D : CanvasRenderingContext {
 
     void beginPath();
 
-#if defined(ENABLE_CANVAS_PATH) && ENABLE_CANVAS_PATH
-    attribute DOMPath currentPath;
-#endif
-
     // FIXME: These methods should be shared with CanvasRenderingContext2D in the CanvasPathMethods interface.
     void closePath();
     void moveTo(float x, float y);
@@ -78,9 +74,21 @@ interface CanvasRenderingContext2D : CanvasRenderingContext {
     void rect(float x, float y, float width, float height);
     [RaisesException] void arc(float x, float y, float radius, float startAngle, float endAngle, [Default=Undefined] optional boolean anticlockwise);
 
+#if defined(ENABLE_CANVAS_PATH) && ENABLE_CANVAS_PATH
+    void fill(DOMPath? path, optional CanvasWindingRule winding);
+    void stroke(DOMPath? path);
+    void clip(DOMPath? path, optional CanvasWindingRule winding);
+#endif
+
     void fill(optional CanvasWindingRule winding);
     void stroke();
     void clip(optional CanvasWindingRule winding);
+
+#if defined(ENABLE_CANVAS_PATH) && ENABLE_CANVAS_PATH
+    boolean isPointInPath(DOMPath path, float x, float y, optional CanvasWindingRule winding);
+    boolean isPointInStroke(DOMPath path, float x, float y);
+#endif
+
     boolean isPointInPath(float x, float y, optional CanvasWindingRule winding);
     boolean isPointInStroke(float x, float y);
 

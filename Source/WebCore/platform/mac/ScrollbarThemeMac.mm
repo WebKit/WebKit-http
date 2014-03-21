@@ -114,7 +114,7 @@ namespace WebCore {
 
 ScrollbarTheme* ScrollbarTheme::nativeTheme()
 {
-    DEFINE_STATIC_LOCAL(ScrollbarThemeMac, theme, ());
+    DEPRECATED_DEFINE_STATIC_LOCAL(ScrollbarThemeMac, theme, ());
     return &theme;
 }
 
@@ -139,21 +139,6 @@ static bool supportsExpandedScrollbars()
     // FIXME: This is temporary until all platforms that support ScrollbarPainter support this part of the API.
     static bool globalSupportsExpandedScrollbars = [NSClassFromString(@"NSScrollerImp") instancesRespondToSelector:@selector(setExpanded:)];
     return globalSupportsExpandedScrollbars;
-}
-
-static void updateArrowPlacement()
-{
-    NSString *buttonPlacement = [[NSUserDefaults standardUserDefaults] objectForKey:@"AppleScrollBarVariant"];
-    if ([buttonPlacement isEqualToString:@"Single"])
-        gButtonPlacement = ScrollbarButtonsSingle;
-    else if ([buttonPlacement isEqualToString:@"DoubleMin"])
-        gButtonPlacement = ScrollbarButtonsDoubleStart;
-    else if ([buttonPlacement isEqualToString:@"DoubleBoth"])
-        gButtonPlacement = ScrollbarButtonsDoubleBoth;
-    else {
-
-        gButtonPlacement = ScrollbarButtonsDoubleEnd;
-    }
 }
 
 static NSControlSize scrollbarControlSizeToNSControlSize(ScrollbarControlSize controlSize)
@@ -226,7 +211,6 @@ void ScrollbarThemeMac::preferencesChanged()
 {
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
     [defaults synchronize];
-    updateArrowPlacement();
     gInitialButtonDelay = [defaults floatForKey:@"NSScrollerButtonDelay"];
     gAutoscrollButtonDelay = [defaults floatForKey:@"NSScrollerButtonPeriod"];
     gJumpOnTrackClick = [defaults boolForKey:@"AppleScrollerPagingBehavior"];

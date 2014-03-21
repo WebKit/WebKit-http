@@ -81,7 +81,7 @@ StyleResolver::MatchResult& ElementRuleCollector::matchedResult()
     return m_result;
 }
 
-const Vector<RefPtr<StyleRuleBase>>& ElementRuleCollector::matchedRuleList() const
+const Vector<RefPtr<StyleRule>>& ElementRuleCollector::matchedRuleList() const
 {
     ASSERT(m_mode == SelectorChecker::CollectingRules);
     return m_matchedRuleList;
@@ -288,10 +288,10 @@ inline bool ElementRuleCollector::ruleMatches(const RuleData& ruleData, PseudoId
 #if ENABLE(CSS_SELECTOR_JIT)
     void* compiledSelectorChecker = ruleData.compiledSelectorCodeRef().code().executableAddress();
     if (!compiledSelectorChecker && ruleData.compilationStatus() == SelectorCompilationStatus::NotCompiled) {
-        JSC::VM* vm = m_element.document().scriptExecutionContext()->vm();
+        JSC::VM& vm = m_element.document().scriptExecutionContext()->vm();
         SelectorCompilationStatus compilationStatus;
         JSC::MacroAssemblerCodeRef compiledSelectorCodeRef;
-        compilationStatus = SelectorCompiler::compileSelector(ruleData.selector(), vm, SelectorCompiler::SelectorContext::RuleCollector, compiledSelectorCodeRef);
+        compilationStatus = SelectorCompiler::compileSelector(ruleData.selector(), &vm, SelectorCompiler::SelectorContext::RuleCollector, compiledSelectorCodeRef);
 
         ruleData.setCompiledSelector(compilationStatus, compiledSelectorCodeRef);
         compiledSelectorChecker = ruleData.compiledSelectorCodeRef().code().executableAddress();

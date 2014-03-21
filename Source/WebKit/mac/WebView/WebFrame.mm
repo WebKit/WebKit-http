@@ -10,7 +10,7 @@
  * 2.  Redistributions in binary form must reproduce the above copyright
  *     notice, this list of conditions and the following disclaimer in the
  *     documentation and/or other materials provided with the distribution. 
- * 3.  Neither the name of Apple Computer, Inc. ("Apple") nor the names of
+ * 3.  Neither the name of Apple Inc. ("Apple") nor the names of
  *     its contributors may be used to endorse or promote products derived
  *     from this software without specific prior written permission. 
  *
@@ -901,10 +901,10 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
 
     RefPtr<DocumentFragment> fragment = document->createDocumentFragment();
 
-    for (auto node : nodesVector) {
+    for (auto* node : nodesVector) {
         RefPtr<Element> element = createDefaultParagraphElement(*document);
-        element->appendChild(node, ASSERT_NO_EXCEPTION);
-        fragment->appendChild(element.release(), ASSERT_NO_EXCEPTION);
+        element->appendChild(node);
+        fragment->appendChild(element.release());
     }
 
     return kit(fragment.release().get());
@@ -2154,6 +2154,22 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
         String strName(name);
         rootObject->setAccessibleName(strName);
     }
+#endif
+}
+
+- (BOOL)enhancedAccessibilityEnabled
+{
+#if HAVE(ACCESSIBILITY)
+    return AXObjectCache::accessibilityEnhancedUserInterfaceEnabled();
+#else
+    return NO;
+#endif
+}
+
+- (void)setEnhancedAccessibility:(BOOL)enable
+{
+#if HAVE(ACCESSIBILITY)
+    AXObjectCache::setEnhancedUserInterfaceAccessibility(enable);
 #endif
 }
 

@@ -10,10 +10,10 @@
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
  *
- * THIS SOFTWARE IS PROVIDED BY APPLE COMPUTER, INC. ``AS IS'' AND ANY
+ * THIS SOFTWARE IS PROVIDED BY APPLE INC. ``AS IS'' AND ANY
  * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE COMPUTER, INC. OR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE INC. OR
  * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
  * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
  * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
@@ -194,7 +194,7 @@ static MediaPlayerFactory* nextMediaEngine(MediaPlayerFactory* current);
 enum RequeryEngineOptions { DoNotResetEngines, ResetEngines };
 static Vector<MediaPlayerFactory*>& installedMediaEngines(RequeryEngineOptions requeryFlags = DoNotResetEngines )
 {
-    DEFINE_STATIC_LOCAL(Vector<MediaPlayerFactory*>, installedEngines, ());
+    DEPRECATED_DEFINE_STATIC_LOCAL(Vector<MediaPlayerFactory*>, installedEngines, ());
     static bool enginesQueried = false;
 
     if (requeryFlags == ResetEngines) {
@@ -250,19 +250,19 @@ static void addMediaEngine(CreateMediaEnginePlayer constructor, MediaEngineSuppo
 
 static const AtomicString& applicationOctetStream()
 {
-    DEFINE_STATIC_LOCAL(const AtomicString, applicationOctetStream, ("application/octet-stream", AtomicString::ConstructFromLiteral));
+    DEPRECATED_DEFINE_STATIC_LOCAL(const AtomicString, applicationOctetStream, ("application/octet-stream", AtomicString::ConstructFromLiteral));
     return applicationOctetStream;
 }
 
 static const AtomicString& textPlain()
 {
-    DEFINE_STATIC_LOCAL(const AtomicString, textPlain, ("text/plain", AtomicString::ConstructFromLiteral));
+    DEPRECATED_DEFINE_STATIC_LOCAL(const AtomicString, textPlain, ("text/plain", AtomicString::ConstructFromLiteral));
     return textPlain;
 }
 
 static const AtomicString& codecs()
 {
-    DEFINE_STATIC_LOCAL(const AtomicString, codecs, ("codecs", AtomicString::ConstructFromLiteral));
+    DEPRECATED_DEFINE_STATIC_LOCAL(const AtomicString, codecs, ("codecs", AtomicString::ConstructFromLiteral));
     return codecs;
 }
 
@@ -1398,10 +1398,26 @@ bool MediaPlayer::shouldWaitForResponseToAuthenticationChallenge(const Authentic
 
     return m_mediaPlayerClient->mediaPlayerShouldWaitForResponseToAuthenticationChallenge(challenge);
 }
+    
+void MediaPlayer::handlePlaybackCommand(MediaSession::RemoteControlCommandType command)
+{
+    if (!m_mediaPlayerClient)
+        return;
+    
+    m_mediaPlayerClient->mediaPlayerHandlePlaybackCommand(command);
+}
 
 void MediaPlayerFactorySupport::callRegisterMediaEngine(MediaEngineRegister registerMediaEngine)
 {
     registerMediaEngine(addMediaEngine);
+}
+
+bool MediaPlayer::doesHaveAttribute(const AtomicString& attribute) const
+{
+    if (!m_mediaPlayerClient)
+        return false;
+    
+    return m_mediaPlayerClient->doesHaveAttribute(attribute);
 }
 
 }

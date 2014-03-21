@@ -12,10 +12,10 @@
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
  *
- * THIS SOFTWARE IS PROVIDED BY APPLE COMPUTER, INC. ``AS IS'' AND ANY
+ * THIS SOFTWARE IS PROVIDED BY APPLE INC. ``AS IS'' AND ANY
  * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE COMPUTER, INC. OR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE INC. OR
  * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
  * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
  * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
@@ -91,6 +91,7 @@
 #include "TextIterator.h"
 #include "UserGestureIndicator.h"
 #include "UserTypingGestureIndicator.h"
+#include "VisibleUnits.h"
 #include "WheelEvent.h"
 #include "WindowsKeyboardCodes.h"
 #include <wtf/Assertions.h>
@@ -394,7 +395,7 @@ EventHandler::~EventHandler()
 #if ENABLE(DRAG_SUPPORT)
 DragState& EventHandler::dragState()
 {
-    DEFINE_STATIC_LOCAL(DragState, state, ());
+    DEPRECATED_DEFINE_STATIC_LOCAL(DragState, state, ());
     return state;
 }
 #endif // ENABLE(DRAG_SUPPORT)
@@ -3026,10 +3027,10 @@ bool EventHandler::keyEvent(const PlatformKeyboardEvent& initialKeyEvent)
 
 static FocusDirection focusDirectionForKey(const AtomicString& keyIdentifier)
 {
-    DEFINE_STATIC_LOCAL(AtomicString, Down, ("Down", AtomicString::ConstructFromLiteral));
-    DEFINE_STATIC_LOCAL(AtomicString, Up, ("Up", AtomicString::ConstructFromLiteral));
-    DEFINE_STATIC_LOCAL(AtomicString, Left, ("Left", AtomicString::ConstructFromLiteral));
-    DEFINE_STATIC_LOCAL(AtomicString, Right, ("Right", AtomicString::ConstructFromLiteral));
+    DEPRECATED_DEFINE_STATIC_LOCAL(AtomicString, Down, ("Down", AtomicString::ConstructFromLiteral));
+    DEPRECATED_DEFINE_STATIC_LOCAL(AtomicString, Up, ("Up", AtomicString::ConstructFromLiteral));
+    DEPRECATED_DEFINE_STATIC_LOCAL(AtomicString, Left, ("Left", AtomicString::ConstructFromLiteral));
+    DEPRECATED_DEFINE_STATIC_LOCAL(AtomicString, Right, ("Right", AtomicString::ConstructFromLiteral));
 
     FocusDirection retVal = FocusDirectionNone;
 
@@ -3045,14 +3046,18 @@ static FocusDirection focusDirectionForKey(const AtomicString& keyIdentifier)
     return retVal;
 }
 
-static void handleKeyboardSelectionMovement(FrameSelection& selection, KeyboardEvent* event)
+static void handleKeyboardSelectionMovement(Frame& frame, KeyboardEvent* event)
 {
     if (!event)
         return;
 
-    bool isOptioned = event->getModifierState("Alt");
-    bool isCommanded = event->getModifierState("Meta");
+    FrameSelection& selection = frame.selection();
 
+    bool isCommanded = event->getModifierState("Meta");
+    bool isOptioned = event->getModifierState("Alt");
+    bool isSelection = !selection.isNone();
+
+    FrameSelection::EAlteration alternation = event->getModifierState("Shift") ? FrameSelection::AlterationExtend : FrameSelection::AlterationMove;
     SelectionDirection direction = DirectionForward;
     TextGranularity granularity = CharacterGranularity;
 
@@ -3081,8 +3086,11 @@ static void handleKeyboardSelectionMovement(FrameSelection& selection, KeyboardE
         break;
     }
 
-    FrameSelection::EAlteration alternation = event->getModifierState("Shift") ? FrameSelection::AlterationExtend : FrameSelection::AlterationMove;
-    selection.modify(alternation, direction, granularity, UserTriggered);
+    if (isSelection)
+        selection.modify(alternation, direction, granularity, UserTriggered);
+    else
+        selection.setSelection(startOfDocument(frame.document()), FrameSelection::defaultSetSelectionOptions(UserTriggered));
+
     event->setDefaultHandled();
 }
 
@@ -3090,7 +3098,7 @@ void EventHandler::handleKeyboardSelectionMovementForAccessibility(KeyboardEvent
 {
     if (event->type() == eventNames().keydownEvent) {
         if (AXObjectCache::accessibilityEnhancedUserInterfaceEnabled())
-            handleKeyboardSelectionMovement(m_frame.selection(), event);
+            handleKeyboardSelectionMovement(m_frame, event);
     }
 }
 

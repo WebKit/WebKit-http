@@ -1169,9 +1169,9 @@ PassRefPtr<Element> Document::createElementNS(const String& namespaceURI, const 
 
 String Document::readyState() const
 {
-    DEFINE_STATIC_LOCAL(const String, loading, (ASCIILiteral("loading")));
-    DEFINE_STATIC_LOCAL(const String, interactive, (ASCIILiteral("interactive")));
-    DEFINE_STATIC_LOCAL(const String, complete, (ASCIILiteral("complete")));
+    DEPRECATED_DEFINE_STATIC_LOCAL(const String, loading, (ASCIILiteral("loading")));
+    DEPRECATED_DEFINE_STATIC_LOCAL(const String, interactive, (ASCIILiteral("interactive")));
+    DEPRECATED_DEFINE_STATIC_LOCAL(const String, complete, (ASCIILiteral("complete")));
 
     switch (m_readyState) {
     case Loading:
@@ -2486,8 +2486,8 @@ void Document::setParsing(bool b)
     if (m_bParsing && !m_sharedObjectPool)
         m_sharedObjectPool = std::make_unique<DocumentSharedObjectPool>();
 
-    if (!m_bParsing && view())
-        view()->scheduleRelayout();
+    if (!m_bParsing && view() && !view()->needsLayout())
+        view()->fireLayoutRelatedMilestonesIfNeeded();
 
 #ifdef INSTRUMENT_LAYOUT_SCHEDULING
     if (!ownerElement() && !m_bParsing)
@@ -2940,7 +2940,8 @@ void Document::processViewport(const String& features, ViewportArguments::Type o
     // Moving to ToT's implementation would mean calling findConfigurationForViewportData, which does
     // bounds checking and determining concrete values for ValueAuto which we already do in UIKit.
     // To maintain old behavior, we just need to update a few values, leaving Auto's for UIKit.
-    finalizeViewportArguments(m_viewportArguments);
+    if (Page* page = this->page())
+        finalizeViewportArguments(m_viewportArguments, page->chrome().client().viewportScreenSize());
 #endif
 
     updateViewportArguments();
@@ -3971,10 +3972,9 @@ bool Document::parseQualifiedName(const String& qualifiedName, String& prefix, S
     bool sawColon = false;
     int colonPos = 0;
 
-    const UChar* s = qualifiedName.deprecatedCharacters();
     for (unsigned i = 0; i < length;) {
         UChar32 c;
-        U16_NEXT(s, i, length, c)
+        U16_NEXT(qualifiedName, i, length, c)
         if (c == ':') {
             if (sawColon) {
                 ec = NAMESPACE_ERR;

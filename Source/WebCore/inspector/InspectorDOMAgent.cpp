@@ -12,7 +12,7 @@
  * 2.  Redistributions in binary form must reproduce the above copyright
  *     notice, this list of conditions and the following disclaimer in the
  *     documentation and/or other materials provided with the distribution.
- * 3.  Neither the name of Apple Computer, Inc. ("Apple") nor the names of
+ * 3.  Neither the name of Apple Inc. ("Apple") nor the names of
  *     its contributors may be used to endorse or promote products derived
  *     from this software without specific prior written permission.
  *
@@ -1314,6 +1314,16 @@ PassRefPtr<Inspector::TypeBuilder::DOM::Node> InspectorDOMAgent::buildObjectForN
         value->setName(attribute->name());
         value->setValue(attribute->value());
     }
+
+    // Need to enable AX to get the computed role.
+    if (!WebCore::AXObjectCache::accessibilityEnabled())
+        WebCore::AXObjectCache::enableAccessibility();
+
+    if (AXObjectCache* axObjectCache = node->document().axObjectCache()) {
+        if (AccessibilityObject* axObject = axObjectCache->getOrCreate(node))
+            value->setRole(axObject->computedRoleString());
+    }
+
     return value.release();
 }
 
@@ -1418,11 +1428,13 @@ PassRefPtr<TypeBuilder::DOM::AccessibilityProperties> InspectorDOMAgent::buildOb
     bool exists = false;
     bool expanded = false;
     bool disabled = false;
+    bool focused = false;
     bool ignored = true;
     bool ignoredByDefault = false;
-    String invalid = "false"; // String values: true, false, spelling, grammar, etc.
+    TypeBuilder::DOM::AccessibilityProperties::Invalid::Enum invalid = TypeBuilder::DOM::AccessibilityProperties::Invalid::False;
     bool hidden = false;
     String label; // FIXME: Waiting on http://webkit.org/b/121134
+    Node* axParentNode = node;
     bool pressed = false;
     bool readonly = false;
     bool required = false;
@@ -1432,10 +1444,14 @@ PassRefPtr<TypeBuilder::DOM::AccessibilityProperties> InspectorDOMAgent::buildOb
     bool supportsExpanded = false;
     bool supportsPressed = false;
     bool supportsRequired = false;
+    bool supportsFocused = false;
 
     if (AXObjectCache* axObjectCache = node->document().axObjectCache()) {
         if (AccessibilityObject* axObject = axObjectCache->getOrCreate(node)) {
 
+            if (AccessibilityObject* parentObject = axObject->parentObjectUnignored())
+                axParentNode = parentObject->node();
+            
             supportsChecked = axObject->supportsChecked();
             if (supportsChecked) {
                 int checkValue = axObject->checkboxOrRadioValue(); // Element using aria-checked.
@@ -1454,9 +1470,22 @@ PassRefPtr<TypeBuilder::DOM::AccessibilityProperties> InspectorDOMAgent::buildOb
             if (supportsExpanded)
                 expanded = axObject->isExpanded();
             
+            supportsFocused = toElement(node)->isFocusable();
+            if (supportsFocused)
+                focused = axObject->isFocused();
+
             ignored = axObject->accessibilityIsIgnored();
             ignoredByDefault = axObject->accessibilityIsIgnoredByDefault();
-            invalid = axObject->invalidStatus();
+            
+            String invalidValue = axObject->invalidStatus();
+            if (invalidValue == "false")
+                invalid = TypeBuilder::DOM::AccessibilityProperties::Invalid::False;
+            else if (invalidValue == "grammar")
+                invalid = TypeBuilder::DOM::AccessibilityProperties::Invalid::Grammar;
+            else if (invalidValue == "spelling")
+                invalid = TypeBuilder::DOM::AccessibilityProperties::Invalid::Spelling;
+            else // Future versions of ARIA may allow additional truthy values. Ex. format, order, or size.
+                invalid = TypeBuilder::DOM::AccessibilityProperties::Invalid::True;
             
             if (axObject->isARIAHidden() || axObject->isDOMHidden())
                 hidden = true;
@@ -1484,17 +1513,21 @@ PassRefPtr<TypeBuilder::DOM::AccessibilityProperties> InspectorDOMAgent::buildOb
         .setNodeId(pushNodePathToFrontend(node));
 
     if (exists) {
+        if (axParentNode && axParentNode != node)
+            value->setAxParentNodeId(pushNodePathToFrontend(axParentNode));
         if (supportsChecked)
             value->setChecked(checked);
         if (disabled)
             value->setDisabled(disabled);
         if (supportsExpanded)
             value->setExpanded(expanded);
+        if (supportsFocused)
+            value->setFocused(focused);
         if (ignored)
             value->setIgnored(ignored);
         if (ignoredByDefault)
             value->setIgnoredByDefault(ignoredByDefault);
-        if (invalid != "false")
+        if (invalid != TypeBuilder::DOM::AccessibilityProperties::Invalid::False)
             value->setInvalid(invalid);
         if (hidden)
             value->setHidden(hidden);

@@ -1,3 +1,989 @@
+2014-03-20  Lorenzo Tilve  <ltilve@igalia.com>
+
+        Dispatch input event for Range element keyboard event
+        https://bugs.webkit.org/show_bug.cgi?id=129929
+
+        Reviewed by Kent Tamura.
+
+        For any value update, dispatch both input and change event.
+        Also removes extra dispatch change event, as event is dispatched
+        from TextFieldInputType:setValue.
+
+        Merged from Blink (patch by Habib Virji):
+        https://src.chromium.org/viewvc/blink?revision=168558&view=revision
+
+        * fast/forms/range/range-keyboard-oninput-event-expected.txt: Added.
+        * fast/forms/range/range-keyboard-oninput-event.html: Added.
+
+2014-03-20  Mihnea Ovidenie  <mihnea@adobe.com>
+
+        [CSSRegions] Content flowed in 0px height region not displayed
+        https://bugs.webkit.org/show_bug.cgi?id=98265
+
+        After the past work on overflow, this looks fixed. Add a test to make sure
+        we are covered for future regressions.
+
+        Reviewed by Andrei Bucur.
+
+        * fast/regions/overflow-content-zero-height-region-expected.html: Added.
+        * fast/regions/overflow-content-zero-height-region.html: Added.
+
+2014-03-19  Brent Fulgham  <bfulgham@apple.com>
+
+        Merge Misc. WebVTT Updates from Blink.
+        https://bugs.webkit.org/show_bug.cgi?id=130491
+
+        Reviewed by Eric Carlson.
+
+        Merged from Blink (patch by vcarbune@chromium.org):
+        https://chromium.googlesource.com/chromium/blink/+/fb62b2b54944bd19026192c049a1db250756fc12
+        http://crbug.com/40323003
+        https://chromium.googlesource.com/chromium/blink/+/29176fb0b394a97e85f4dabc07e18329f3ceae41
+        http://crbug.com/54463002
+        https://chromium.googlesource.com/chromium/blink/+/29476f839a08cb17c5a3fc713f7e454e7cea9c60
+        http://crbug.com/55853002
+        https://chromium.googlesource.com/chromium/blink/+/ba2378ef873e786cf2937034e012669cdd37dfe8
+        http://crbug.com/65343003
+        https://chromium.googlesource.com/chromium/blink/+/1915b9aa1bba45aebf28531b40ae627ecf9a3d59
+        http://crbug.com/62833005
+        https://chromium.googlesource.com/chromium/blink/+/ea46dbd0f1f29779a1cd4f59b19361b803f09a9b
+        http://crbug.com/64273013
+        https://chromium.googlesource.com/chromium/blink/+/9eb4bb6b627357bb94d66386a4123ec004cccfc4
+        http://crbug.com/101513002
+        https://chromium.googlesource.com/chromium/blink/+/192a843b32eafb77bf92c50ec50d334ba935028a
+        http://crbug.com/102403002
+        https://chromium.googlesource.com/chromium/blink/+/15f9efcc952fcf73184e28fb9db79633c1fa6653
+        http://crbug.com/104443002
+        https://chromium.googlesource.com/chromium/blink/+/74fd66b451a464683f7cb748855b1740a54b2c16
+        http://crbug.com/75243004
+
+        * media/track/captions-webvtt/tc030-interspersed-non-cue.vtt: Added.
+        * media/track/track-webvtt-tc027-empty-cue-expected.txt: Mark one test as expected to fail, since
+        the test (incorrectly) expects to fail on empty cues. The test will be updated in a future patch.
+        * media/track/track-webvtt-tc030-interspersed-non-cue-expected.txt: Added.
+        * media/track/track-webvtt-tc030-interspersed-non-cue.html: Added.
+
+2014-03-19  Zalan Bujtas  <zalan@apple.com>
+
+        Generated hidpi- images (actual) on ML WK2 Debug are blurry/color shifted.
+
+        Unreviewed TestExpectations update on ML WK2 debug.
+
+        * platform/mac-wk2/TestExpectations:
+
+2014-03-19  Eric Carlson  <eric.carlson@apple.com>
+
+        media/video-remote-control-playpause.html frequently fails on the bots
+        https://bugs.webkit.org/show_bug.cgi?id=130490
+
+        Unreviewed TestExpectations update.
+
+        * platform/mac/TestExpectations: Mark test as flakey while I try to reproduce it.
+
+2014-03-19  Dirk Schulze  <krit@webkit.org>
+
+        Implement isPointInPath and isPointInStroke with Path2D argument
+        https://bugs.webkit.org/show_bug.cgi?id=130473
+
+        Reviewed by Dean Jackson.
+
+        Test isPointInPath and isPointInStroke with Path2D argument.
+
+        * fast/canvas/canvas-path-isPointInPath-expected.txt: Added.
+        * fast/canvas/canvas-path-isPointInPath.html: Added.
+        * fast/canvas/canvas-path-isPointInStroke-expected.txt: Added.
+        * fast/canvas/canvas-path-isPointInStroke.html: Added.
+        * fast/canvas/script-tests/canvas-path-isPointInPath.js: Added.
+        * fast/canvas/script-tests/canvas-path-isPointInStroke.js: Added.
+
+2014-03-19  Antti Koivisto  <antti@apple.com>
+
+        Crash with long selector list
+        https://bugs.webkit.org/show_bug.cgi?id=123006
+
+        Reviewed by Andreas Kling.
+
+        * fast/css/long-selector-list-crash-expected.txt: Added.
+        * fast/css/long-selector-list-crash.html: Added.
+
+2014-03-19  Eric Carlson  <eric.carlson@apple.com>
+
+        Make Remote Control commands testable
+        https://bugs.webkit.org/show_bug.cgi?id=130358
+
+        Reviewed by Jer Noble.
+
+        * media/video-remote-control-playpause-expected.txt: Added.
+        * media/video-remote-control-playpause.html: Added.
+
+2014-03-19  Thiago de Barros Lacerda  <thiago.lacerda@openbossa.org>
+
+        Improving webkitGetUserMedia error handling and error messages
+        https://bugs.webkit.org/show_bug.cgi?id=130452
+
+        Reviewed by Eric Carlson.
+
+        Checking if first argument of webkitGetUserMedia is a valid Dictionary. If not, throw an exception with a
+        clearer message of the error.
+
+        * fast/mediastream/argument-types-expected.txt:
+        * fast/mediastream/script-tests/argument-types.js:
+
+2014-03-19  Dirk Schulze  <krit@webkit.org>
+
+        Implement method addPath for Path2D
+        https://bugs.webkit.org/show_bug.cgi?id=130461
+
+        Reviewed by Dean Jackson.
+
+        Test the addPath Path2D method.
+
+        * platform/efl/TestExpectations:
+        * platform/gtk/TestExpectations:
+        * fast/canvas/canvas-path-addPath-expected.txt: Added.
+        * fast/canvas/canvas-path-addPath.html: Added.
+
+2014-03-19  Brent Fulgham  <bfulgham@apple.com>
+
+        Fix cue rendering test and include support for left/right alignment
+        https://bugs.webkit.org/show_bug.cgi?id=130406
+
+        Reviewed by Eric Carlson.
+
+        Merged from Blink (patch by vcarbune@chromium.org):
+        https://chromium.googlesource.com/chromium/blink/+/e695703cb603421c741e59a557a7989113c13b94
+        http://crbug.com/25155003
+
+        * media/track/captions-webvtt/captions-snap-to-lines-not-set.vtt: Revised for left/right alignment tags.
+        * media/track/track-cue-rendering-snap-to-lines-not-set-expected.txt: Ditto.
+        * media/track/track-cue-rendering-snap-to-lines-not-set.html: Ditto.
+
+2014-03-19  Brent Fulgham  <bfulgham@apple.com>
+
+        Unreviewed test system fix.
+
+        * TestExpectations: I mistakenly checked in the region-webvtt tests as enabled. This feature is not
+        ready to be turned on for all platforms yet.
+
+2014-03-19  Frédéric Wang  <fred.wang@free.fr>
+
+        Unreviewed gardening.
+
+        * platform/efl/TestExpectations: remove failures for mo/row since they are already in skipped in the main TestExpectations.
+        * platform/gtk/mathml/presentation/mspace-children-expected.png: Move mspace-children-expected.png to platform/gtk.
+        * platform/gtk/mathml/presentation/mspace-children-expected.txt: Move mspace-children-expected.txt to platform/gtk.
+        * platform/win/TestExpectations: remove failures for mo/row/roots since they are already in skipped in the main TestExpectations.
+
+2014-03-19  Zalan Bujtas  <zalan@apple.com>
+
+        Subpixel rendering: Transform origin is miscalculated when RenderLayer's
+        offsetfromRenderer has device pixel fraction value.
+        https://bugs.webkit.org/show_bug.cgi?id=129859
+
+        Reviewed by Simon Fraser.
+
+        We need to calculate the transformed origin using the painting coordinates to produce
+        pixel precise result.
+
+        * compositing/columns/composited-columns-expected.txt:
+        * compositing/geometry/limit-layer-bounds-opacity-transition-expected.txt:
+        * compositing/repaint/resize-repaint-expected.txt:
+        * platform/mac/compositing/repaint/invalidations-on-composited-layers-expected.txt:
+        * platform/mac/compositing/visibility/visibility-image-layers-dynamic-expected.txt:
+
+2014-03-19  Mihnea Ovidenie  <mihnea@adobe.com>
+
+        [CSSRegions] Compute region ranges for children of inline blocks
+        https://bugs.webkit.org/show_bug.cgi?id=130392
+
+        Reviewed by Andrei Bucur.
+
+        * fast/regions/inline-block-inline-children-flowed-in-regions-expected.html: Added.
+        * fast/regions/inline-block-inline-children-flowed-in-regions.html: Added.
+        * fast/regions/inline-blocks-dyn-enlarged-regions-expected.html: Added.
+        * fast/regions/inline-blocks-dyn-enlarged-regions.html: Added.
+        * fast/regions/inline-blocks-dyn-shrunk-regions-expected.html: Added.
+        * fast/regions/inline-blocks-dyn-shrunk-regions.html: Added.
+        * fast/regions/inline-blocks-in-two-regions-expected.html: Added.
+        * fast/regions/inline-blocks-in-two-regions.html: Added.
+
+2014-03-19  Frédéric Wang  <fred.wang@free.fr>
+
+        Fix reftest failure of mathml/presentation/bug95404.html.
+
+        Unreviewed gardering.
+
+        After bug 116600, the test is only failing because of some difference
+        invisible by the naked eye, due to antialiasing of the radical symbol.
+
+        * mathml/presentation/bug95404-expected.html: add a 2px border to prevent antialiasing.
+        * mathml/presentation/bug95404.html: ditto.
+        * platform/efl/TestExpectations: remove test failure.
+        * platform/gtk/TestExpectations: ditto.
+
+2014-03-18  Andrei Bucur  <abucur@adobe.com>
+
+        [CSS Regions] Strange layout for content with region breaks
+        https://bugs.webkit.org/show_bug.cgi?id=121318
+
+        Reviewed by Mihnea Ovidenie.
+
+        The test verifies that elements specifying break-inside: avoid can't
+        be splitted by forced breaks applied inside of them.
+
+        * fast/regions/forced-break-inside-avoid-break-expected.txt: Added.
+        * fast/regions/forced-break-inside-avoid-break.html: Added.
+
+2014-03-18  Samuel White  <samuel_white@apple.com>
+
+        AX: Not able to use arrow keys to read text with VoiceOver before selection is set someplace (anyplace).
+        https://bugs.webkit.org/show_bug.cgi?id=130250
+
+        Reviewed by Chris Fleizach.
+
+        Added test to ensure that initial selection gets set when enhanced accessibility is enabled and an arrow key is pressed.
+
+        * platform/mac/accessibility/selection-initial-expected.txt: Added.
+        * platform/mac/accessibility/selection-initial.html: Added.
+
+2014-03-18  Brent Fulgham  <bfulgham@apple.com>
+
+        TextTrackRegion Not Implemented
+        https://bugs.webkit.org/show_bug.cgi?id=116546
+
+        Reviewed by Eric Carlson.
+
+        Merged from Blink (patch by vcarbune@chromium.org):
+        https://chromium.googlesource.com/chromium/blink/+/4940f89a087fea5b5ea628e98d0b355d398a9eea
+        http://crbug.com/25798003
+
+        * media/track/captions-webvtt/captions-regions.vtt: Added.
+        * media/track/regions-webvtt/text-track-cue-region-attribute-expected.txt: Rebaseline.
+        * media/track/regions-webvtt/text-track-region-display-expected.txt: Added.
+        * media/track/regions-webvtt/text-track-region-display.html: Added.
+        * media/track/regions-webvtt/text-track-region-dom-layout-expected.txt: Added.
+        * media/track/regions-webvtt/text-track-region-dom-layout.html: Added.
+        * media/track/regions-webvtt/text-track-region-list-expected.txt: Rebaseline.
+        * media/track/regions-webvtt/text-track-region-parser-expected.txt: Rebaseline.
+
+2014-03-18  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        Unreviewed GTK Gardening.
+
+        Move expected accesibility results to the right path and update them.
+
+        * platform/gtk/accessibility/aria-help-expected.txt: Renamed from LayoutTests/platform/gtk/accessibility/accessibility/aria-help-expected.txt.
+        * platform/gtk/accessibility/aria-hidden-false-works-in-subtrees-expected.txt: Renamed from LayoutTests/platform/gtk/accessibility/accessibility/aria-hidden-false-works-in-subtrees-expected.txt.
+        * platform/gtk/accessibility/fieldset-element-expected.txt: Renamed from LayoutTests/platform/gtk/accessibility/accessibility/fieldset-element-expected.txt.
+        * platform/gtk/accessibility/meter-element-expected.txt: Renamed from LayoutTests/platform/gtk/accessibility/accessibility/meter-element-expected.txt.
+        * platform/gtk/accessibility/negative-tabindex-does-not-expose-label-expected.txt: Renamed from LayoutTests/platform/gtk/accessibility/accessibility/negative-tabindex-does-not-expose-label-expected.txt.
+
+2014-03-18  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        Unreviewed GTK gardening.
+
+        Test fast/events/touch/touch-target-limited.html crashes.
+
+        Some tests on editing/spelling are timing out, but not longer failing:
+        editing/spelling/spellcheck-paste.html
+        editing/spelling/spelling-changed-text.html
+        editing/spelling/spellcheck-paste-disabled.html
+        editing/spelling/spellcheck-paste-continuous-disabled.html
+
+        * platform/gtk-wk2/TestExpectations:
+        * platform/gtk/TestExpectations:
+
+2014-03-18  Daniel Bates  <dabates@apple.com>
+
+        REGRESSION (r162334): RenderTableCol::styleDidChange uses out-of-date table information
+        https://bugs.webkit.org/show_bug.cgi?id=129561
+
+        Reviewed by Antti Koivisto.
+
+        Add a test to ensure that a table column propagates a style change to applicable
+        table cells.
+
+        * fast/table/update-col-width-and-remove-table-cell-crash-expected.txt: Added.
+        * fast/table/update-col-width-and-remove-table-cell-crash.html: Added.
+
+2014-03-18  Daniel Bates  <dabates@apple.com>
+
+        REGRESSION (r163560): ASSERTION FAILED: childrenInline() in WebCore::RenderSVGText::layout
+        https://bugs.webkit.org/show_bug.cgi?id=130346
+
+        Reviewed by Andreas Kling.
+
+        Added tests to ensure that SVG <a> and <tref> are always treated as inline-level elements.
+
+        * svg/text/a-display-block-expected.txt: Added.
+        * svg/text/a-display-block.html: Added.
+        * svg/text/tref-display-inherit-expected.txt: Added.
+        * svg/text/tref-display-inherit.html: Added.
+
+2014-03-18  Hans Muller  <hmuller@adobe.com>
+
+        [CSS Shapes] shape-outside: ellipse(50% 50% at) causes crash
+        https://bugs.webkit.org/show_bug.cgi?id=130366
+
+        Reviewed by Andreas Kling.
+
+        Added invalid syntax tests for ellipse(.. at), circle(.. at) variations.
+
+        * fast/shapes/parsing/parsing-shape-inside-expected.txt:
+        * fast/shapes/parsing/parsing-shape-outside-expected.txt:
+        * fast/shapes/parsing/parsing-test-utils.js:
+
+2014-03-18  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r165815.
+        https://bugs.webkit.org/show_bug.cgi?id=130410
+
+        Broke many VTT tests (Requested by bfulgham on #webkit).
+
+        Reverted changeset:
+
+        "TextTrackRegion Not Implemented"
+        https://bugs.webkit.org/show_bug.cgi?id=116546
+        http://trac.webkit.org/changeset/165815
+
+2014-03-18  Renata Hodovan  <rhodovan.u-szeged@partner.samsung.com>
+
+        Bad cast with toRenderBox in WebCore::RenderView::repaintViewRectangle
+        https://bugs.webkit.org/show_bug.cgi?id=129104
+
+        Reviewed by Simon Fraser.
+
+        * plugins/crash-invalid-data-reference-expected.txt: Added.
+        * plugins/crash-invalid-data-reference.html: Added.
+
+2014-03-18  Antti Koivisto  <antti@apple.com>
+
+        Mutating rules returned by getMatchedCSSRules can result in crash
+        https://bugs.webkit.org/show_bug.cgi?id=130209
+
+        Reviewed by Andreas Kling.
+
+        * fast/css/getMatchedCSSProperties-rule-mutation-expected.txt: Added.
+        * fast/css/getMatchedCSSProperties-rule-mutation.html: Added.
+        * fast/css/getMatchedCSSRules-crash-expected.txt: Added.
+        * fast/css/getMatchedCSSRules-crash.html: Added.
+
+2014-03-18  Brent Fulgham  <bfulgham@apple.com>
+
+        TextTrackRegion Not Implemented
+        https://bugs.webkit.org/show_bug.cgi?id=116546
+
+        Reviewed by Eric Carlson.
+
+        Merged from Blink (patch by vcarbune@chromium.org):
+        https://chromium.googlesource.com/chromium/blink/+/4940f89a087fea5b5ea628e98d0b355d398a9eea
+        http://crbug.com/25798003
+
+        * media/track/captions-webvtt/captions-regions.vtt: Added.
+        * media/track/regions-webvtt/text-track-cue-region-attribute-expected.txt: Rebaseline.
+        * media/track/regions-webvtt/text-track-region-display-expected.txt: Added.
+        * media/track/regions-webvtt/text-track-region-display.html: Added.
+        * media/track/regions-webvtt/text-track-region-dom-layout-expected.txt: Added.
+        * media/track/regions-webvtt/text-track-region-dom-layout.html: Added.
+        * media/track/regions-webvtt/text-track-region-list-expected.txt: Rebaseline.
+        * media/track/regions-webvtt/text-track-region-parser-expected.txt: Rebaseline.
+
+2014-03-18  Krzysztof Wolanski  <k.wolanski@samsung.com>
+
+        [EFL] Update baselines and test expectations
+        https://bugs.webkit.org/show_bug.cgi?id=130387
+
+        Unreviewed EFL gardening.
+
+        * fast/events/touch/touch-slider-expected.txt:
+        * fast/events/touch/touch-slider-no-js-touch-listener-expected.txt:
+        Update baselines after enabling TOUCH_SLIDER macro (r165722).
+        * platform/efl-wk2/TestExpectations:
+        fast/css/cascade/box-shadow-and-webkit-box-shadow-cascade-order.html
+        is failing after adding in r165587
+        * platform/efl/js/dom/global-constructors-attributes-expected.txt:
+        Update baselines after refactoring Path to Path2D (r165651).
+
+2014-03-18  Ion Rosca  <rosca@adobe.com>
+
+        Add blend mode property to dumped information in GraphicsLayer.
+        https://bugs.webkit.org/show_bug.cgi?id=130331
+
+        Reviewed by Simon Fraser.
+
+        * css3/compositing/blend-mode-blended-element-overlapping-composited-sibling-should-have-compositing-layer-expected.txt:
+        * css3/compositing/blend-mode-parent-of-composited-blended-has-layer-expected.txt:
+        * css3/compositing/blend-mode-with-composited-descendant-should-have-layer-expected.txt:
+
+2014-03-17  Tibor Meszaros  <tmeszaros.u-szeged@partner.samsung.com>
+
+        Implement Math.hypot
+        https://bugs.webkit.org/show_bug.cgi?id=129486
+
+        Reviewed by Darin Adler.
+
+        * js/Object-getOwnPropertyNames-expected.txt:
+        * js/math-expected.txt:
+        * js/script-tests/Object-getOwnPropertyNames.js:
+        * js/script-tests/math.js:
+
+2014-03-17  Jer Noble  <jer.noble@apple.com>
+
+        Layout Test mathml/wbr-in-mroot-crash.html crashes
+        https://bugs.webkit.org/show_bug.cgi?id=130353
+
+        Unreviewed TestExpectations update.
+
+        * platform/efl/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2014-01-29  Sergio Villar Senin  <svillar@igalia.com>
+
+        [CSS Grid Layout] getComputedStyle() not using author's order when showing named grid lines
+        https://bugs.webkit.org/show_bug.cgi?id=127837
+
+        Reviewed by David Hyatt.
+
+        Grid line names are now shown using the exact same order as the one used in the CSS.
+
+        * fast/css-grid-layout/named-grid-line-get-set-expected.txt:
+        * fast/css-grid-layout/named-grid-line-get-set.html:
+        * fast/css-grid-layout/non-named-grid-line-get-set-expected.txt:
+
+2014-03-17  Gurpreet Kaur  <k.gurpreet@samsung.com>
+
+        Safari should not render a cell if the <td> is empty
+        https://bugs.webkit.org/show_bug.cgi?id=15273
+
+        Reviewed by Darin Adler.
+
+        * fast/table/table-cell-border-doctype-expected.html: Added.
+        * fast/table/table-cell-border-doctype.html: Added.
+        * fast/table/table-cell-border-no-doctype-expected.html: Added.
+        * fast/table/table-cell-border-no-doctype.html: Added.
+        Added new test cases to check the behaviour of table cell border when
+        table has doctype/no doctype and table cell has child/nochild.
+
+2014-03-16  Mihnea Ovidenie  <mihnea@adobe.com>
+
+        [CSSRegions]Do not compute region range for a box unless the parent has one
+        https://bugs.webkit.org/show_bug.cgi?id=130249
+
+        Reviewed by Andrei Bucur.
+
+        * fast/regions/inline-block-flowed-in-regions-expected.html: Added.
+        * fast/regions/inline-block-flowed-in-regions.html: Added.
+
+2014-03-16  Frédéric Wang  <fred.wang@free.fr>
+
+        [regression] foreign content not displayed in MathML
+        <https://webkit.org/b/124128>
+
+        Reviewed by Chris Fleizach.
+
+        * mathml/presentation/foreign-mi-dynamic-expected.html: Added.
+        * mathml/presentation/foreign-mi-dynamic.html: Added.
+        * mathml/presentation/foreign-mi-expected-mismatch.html: Added.
+        * mathml/presentation/foreign-mi.html: Added.
+        * mathml/presentation/foreign-mn-expected-mismatch.html: Added.
+        * mathml/presentation/foreign-mn.html: Added.
+        * mathml/presentation/foreign-mtext-expected-mismatch.html: Added.
+        * mathml/presentation/foreign-mtext-rejected-expected.html: Added.
+        * mathml/presentation/foreign-mtext-rejected.html: Added.
+        * mathml/presentation/foreign-mtext.html: Added.
+        * platform/efl/TestExpectations: reenable the test.
+        * platform/gtk/TestExpectations: ditto.
+
+2014-03-14  Oliver Hunt  <oliver@apple.com>
+
+        Reinstate intialiser syntax in for-in loops
+        https://bugs.webkit.org/show_bug.cgi?id=130269
+
+        Reviewed by Michael Saboff.
+
+        Update and add test.
+
+        * js/parser-syntax-check-expected.txt:
+        * js/script-tests/parser-syntax-check.js:
+
+2014-03-14  Mark Lam  <mark.lam@apple.com>
+
+        Accessing __lookupGetter__ and __lookupSetter__ should not crash the VM when undefined.
+        <https://webkit.org/b/130279>
+
+        Reviewed by Filip Pizlo.
+
+        * js/property-getters-and-setters-expected.txt:
+        * js/script-tests/property-getters-and-setters.js:
+        (o11.new.Object.getB):
+        (o12.new.Object.setB):
+
+2014-03-14  Maciej Stachowiak  <mjs@apple.com>
+
+        Replace "Apple Computer, Inc." with "Apple Inc." in copyright headers
+        https://bugs.webkit.org/show_bug.cgi?id=130276
+        <rdar://problem/16266927>
+
+        Reviewed by Simon Fraser.
+
+        * editing/resources/TIFF-pasteboard-data.dat:
+        * fast/backgrounds/repeat/resources/gradient.gif:
+        * fast/forms/resources/apple.gif:
+        * http/tests/webgl/1.0.2/resources/webgl_test_files/conformance/resources/fragmentShader.frag:
+        * http/tests/webgl/1.0.2/resources/webgl_test_files/conformance/resources/vertexShader.vert:
+        * platform/win/TestExpectations:
+        * platform/wincairo/TestExpectations:
+        * platform/wk2/TestExpectations:
+        * webgl/1.0.1/resources/webgl_test_files/conformance/attribs/gl-vertexattribpointer-offsets.html:
+        * webgl/1.0.1/resources/webgl_test_files/conformance/context/context-attribute-preserve-drawing-buffer.html:
+        * webgl/1.0.1/resources/webgl_test_files/conformance/context/incorrect-context-object-behaviour.html:
+        * webgl/1.0.1/resources/webgl_test_files/conformance/misc/bad-arguments-test.html:
+        * webgl/1.0.1/resources/webgl_test_files/conformance/misc/invalid-passed-params.html:
+        * webgl/1.0.1/resources/webgl_test_files/conformance/misc/null-object-behaviour.html:
+        * webgl/1.0.1/resources/webgl_test_files/conformance/misc/type-conversion-test.html:
+        * webgl/1.0.1/resources/webgl_test_files/conformance/programs/get-active-test.html:
+        * webgl/1.0.1/resources/webgl_test_files/conformance/rendering/draw-arrays-out-of-bounds.html:
+        * webgl/1.0.1/resources/webgl_test_files/conformance/rendering/draw-elements-out-of-bounds.html:
+        * webgl/1.0.1/resources/webgl_test_files/conformance/rendering/line-loop-tri-fan.html:
+        * webgl/1.0.1/resources/webgl_test_files/conformance/rendering/triangle.html:
+        * webgl/1.0.1/resources/webgl_test_files/conformance/resources/fragmentShader.frag:
+        * webgl/1.0.1/resources/webgl_test_files/conformance/resources/vertexShader.vert:
+        * webgl/1.0.1/resources/webgl_test_files/conformance/resources/webgl-test.js:
+        * webgl/1.0.1/resources/webgl_test_files/conformance/state/gl-get-calls.html:
+        * webgl/1.0.1/resources/webgl_test_files/conformance/state/gl-object-get-calls.html:
+        * webgl/1.0.1/resources/webgl_test_files/conformance/typedarrays/array-unit-tests.html:
+        * webgl/1.0.1/resources/webgl_test_files/extra/canvas-compositing-test.html:
+        * webgl/1.0.2/resources/webgl_test_files/conformance/resources/fragmentShader.frag:
+        * webgl/1.0.2/resources/webgl_test_files/conformance/resources/vertexShader.vert:
+        * webgl/resources/webgl_test_files/conformance/resources/fragmentShader.frag:
+        * webgl/resources/webgl_test_files/conformance/resources/vertexShader.vert:
+
+2014-03-14  Zalan Bujtas  <zalan@apple.com>
+
+        Subpixel rendering: border-radius painting falls back to rectangle at subpixel positions.
+        https://bugs.webkit.org/show_bug.cgi?id=130272
+
+        Reviewed by Simon Fraser.
+
+        Rounded rectangle's radius needs adjustment after its containing rect gets pixel snapped.
+        Keeping the old radius value could make rounded rectangle non-renderable, because the
+        originally calculated radius length does not fit the snapped rectangle anymore.
+
+        * fast/borders/hidpi-border-radius-outer-border-goes-rectangle-expected-mismatch.html: Added.
+        * fast/borders/hidpi-border-radius-outer-border-goes-rectangle.html: Added.
+
+2014-03-14  Byungseon Shin  <sun.shin@lge.com>
+
+        Incorrect Date returned between March 1, 2034 and February 28, 2100.
+        https://bugs.webkit.org/show_bug.cgi?id=130123
+
+        Reviewed by Mark Lam.
+
+        Fix logic by using predefined Date APIs.
+
+        * js/date-constructor-expected.txt:
+        * js/script-tests/date-constructor.js:
+        (testDate):
+
+2014-03-14  James Craig  <jcraig@apple.com>
+
+        AX: AccessibilityObject::invalidStatus() is incorrect when aria-invalid="undefined" or whitespace
+        https://bugs.webkit.org/show_bug.cgi?id=130071
+
+        Reviewed by Chris Fleizach.
+
+        Accounted for whitespace values and the explicit string, "undefined".
+
+        * accessibility/aria-invalid-expected.txt:
+        * accessibility/aria-invalid.html:
+
+2014-03-14  Bear Travis  <betravis@adobe.com>
+
+        [CSS Shapes] CSS parser accepts trailing position arguments
+        https://bugs.webkit.org/show_bug.cgi?id=129514
+
+        Reviewed by Andreas Kling.
+
+        Add a shape with an additional argument trailing the position
+        in the css shapes functions.
+
+        * fast/shapes/parsing/parsing-shape-inside-expected.txt:
+        * fast/shapes/parsing/parsing-shape-outside-expected.txt:
+        * fast/shapes/parsing/parsing-test-utils.js:
+
+2014-03-14  Dirk Schulze  <krit@webkit.org>
+
+        Refactor Path to Path2D and remove currentPath
+        https://bugs.webkit.org/show_bug.cgi?id=130236
+
+        Reviewed by Dean Jackson.
+
+        Add new tests for Path2D object and new functions fill(),
+        stroke() and clip() with Path2D argument.
+
+        * fast/canvas/canvas-clip-path-expected.txt: Added.
+        * fast/canvas/canvas-clip-path.html: Added.
+        * fast/canvas/canvas-currentPath-crash-expected.txt: Removed.
+        * fast/canvas/canvas-currentPath-crash.html: Removed.
+        * fast/canvas/canvas-currentPath-expected.txt: Removed.
+        * fast/canvas/canvas-currentPath.html: Removed.
+        * fast/canvas/canvas-fill-path-expected.txt: Added.
+        * fast/canvas/canvas-fill-path.html: Added.
+        * fast/canvas/canvas-path-constructors-expected.txt:
+        * fast/canvas/canvas-path-object-expected.txt:
+        * fast/canvas/canvas-stroke-path-expected.txt: Added.
+        * fast/canvas/canvas-stroke-path.html: Added.
+        * fast/canvas/script-tests/canvas-clip-path.js: Added.
+        (areaColor):
+        * fast/canvas/script-tests/canvas-currentPath-crash.js: Removed.
+        * fast/canvas/script-tests/canvas-currentPath.js: Removed.
+        * fast/canvas/script-tests/canvas-fill-path.js: Added.
+        (areaColor):
+        * fast/canvas/script-tests/canvas-path-constructors.js:
+        * fast/canvas/script-tests/canvas-path-object.js:
+        * fast/canvas/script-tests/canvas-stroke-path.js: Added.
+        (areaColor):
+
+2014-03-14  James Craig  <jcraig@apple.com>
+
+        Web Inspector: AXI: Suppress axParentNodeId entirely in getAccessibilityPropertiesForNode.html b/c the int value isn't consistent enough for a layout test.
+        https://bugs.webkit.org/show_bug.cgi?id=130259
+
+        Reviewed by Alexey Proskuryakov.
+
+        Removing flaky nodeId-based output from test.
+
+        * inspector-protocol/dom/getAccessibilityPropertiesForNode-expected.txt:
+        * inspector-protocol/dom/getAccessibilityPropertiesForNode.html:
+
+2014-03-14  Jer Noble  <jer.noble@apple.com>
+
+        [EME] Extend the lifetime of MediaKeySession.
+        https://bugs.webkit.org/show_bug.cgi?id=129841
+
+        Reviewed by Eric Carlson.
+
+        * media/encrypted-media/encrypted-media-session-lifetime-expected.txt: Added.
+        * media/encrypted-media/encrypted-media-session-lifetime.html: Added.
+
+2014-03-11  Oliver Hunt  <oliver@apple.com>
+
+        Improve dom error messages
+        https://bugs.webkit.org/show_bug.cgi?id=130103
+
+        Reviewed by Andreas Kling.
+
+        Update test results for new text.
+
+        * fast/canvas/webgl/bad-arguments-test-expected.txt:
+        * fast/canvas/webgl/null-object-behaviour-expected.txt:
+        * fast/canvas/winding-enumeration-expected.txt:
+        * fast/workers/storage/open-database-inputs-sync-expected.txt:
+        * js/dom/dom-as-prototype-assignment-exception-expected.txt:
+        * js/dom/dom-attributes-on-mismatch-type-expected.txt:
+        * js/dom/toString-and-valueOf-override-expected.txt:
+        * svg/dom/SVGLengthList-basics-expected.txt:
+        * svg/dom/SVGMatrix-expected.txt:
+        * svg/dom/SVGNumberList-basics-expected.txt:
+        * svg/dom/SVGPoint-expected.txt:
+        * svg/dom/SVGPointList-basics-expected.txt:
+        * svg/dom/SVGTransform-expected.txt:
+        * svg/dom/SVGTransformList-basics-expected.txt:
+        * svg/dom/SVGTransformList-expected.txt:
+
+2014-03-14  Bear Travis  <betravis@adobe.com>
+
+        [CSS Shapes] polygon default fill-rule should be omitted from the serialization
+        https://bugs.webkit.org/show_bug.cgi?id=129840
+
+        Reviewed by Dirk Schulze.
+
+        Modifying tests to expect the default fill-rule to be omitted. In addition,
+        animation-test-helpers now parses its arguments as an unbounded list, rather
+        than as a fixed number of capturing parentheses.
+
+        * animations/resources/animation-test-helpers.js:
+        * css3/masking/clip-path-animation-expected.txt:
+        * css3/masking/clip-path-animation.html:
+        * fast/masking/parsing-clip-path-shape-expected.txt:
+        * fast/masking/parsing-clip-path-shape.html:
+        * fast/shapes/parsing/parsing-shape-inside-expected.txt:
+        * fast/shapes/parsing/parsing-shape-lengths-expected.txt:
+        * fast/shapes/parsing/parsing-shape-lengths.html:
+        * fast/shapes/parsing/parsing-shape-outside-expected.txt:
+        * fast/shapes/parsing/parsing-test-utils.js:
+        * fast/shapes/shape-inside/shape-inside-animation-expected.txt:
+        * fast/shapes/shape-inside/shape-inside-animation.html:
+        * fast/shapes/shape-outside-floats/shape-outside-animation-expected.txt:
+        * fast/shapes/shape-outside-floats/shape-outside-animation.html:
+
+2014-03-14  James Craig  <jcraig@apple.com>
+
+        Web Inspector: AXI: Expose Accessibility Tree parent of the selected node
+        https://bugs.webkit.org/show_bug.cgi?id=129943
+
+        Reviewed by Timothy Hatcher.
+
+        Tests: inspector-protocol/dom/getAccessibilityPropertiesForNode.html
+
+        Web Accessibility Node Inspector now displays a link to the AX parent node,
+        because it's not a 1:1 match with the DOMNode parent.
+
+        * inspector-protocol/dom/getAccessibilityPropertiesForNode-expected.txt:
+        * inspector-protocol/dom/getAccessibilityPropertiesForNode.html:
+
+2014-03-14  Zalan Bujtas  <zalan@apple.com>
+
+        Subpixel rendering: LayoutTests/compositing/hidpi-simple-container-layer-on-device-pixel-expected.html fails on Mountain Lion WK2 debug
+        https://bugs.webkit.org/show_bug.cgi?id=130175
+
+        Unreviewed TestExpectations update on ML WK2 debug.
+
+        * platform/mac-wk2/TestExpectations:
+
+2014-03-14  Andres Gomez  <agomez@igalia.com>
+
+        [GStreamer] WebKit gets stalled when trying to play a stream
+        https://bugs.webkit.org/show_bug.cgi?id=125926
+
+        Reviewed by Philippe Normand.
+
+        Added new test for checking the playback on Icecast/Shoutcast
+        streamed media.
+
+        * http/tests/media/media-play-stream-chunked-icy-expected.txt: Added.
+        * http/tests/media/media-play-stream-chunked-icy.html: Added.
+        * http/tests/media/resources/create-id3-db.php: Added.
+        * http/tests/media/resources/serve-video.php: Added support for
+        chunked streams and Icecast/Shoutcast headers.
+        * http/tests/resources/dir-helpers.php: Added.
+        * http/tests/resources/portabilityLayer.php: Added a couple of new
+        fallback functions when they are not available in old PHP
+        versions.
+        * media/content/metadata.db: Added.
+        * media/content/silence.mp3: Added.
+        * platform/mac/TestExpectations: Skipped on Mavericks Mac port.
+
+2014-03-14  Mihnea Ovidenie  <mihnea@adobe.com>
+
+        [CSSRegions] Inline-block child of content node incorrectly clipped
+        https://bugs.webkit.org/show_bug.cgi?id=130229
+
+        Reviewed by Andrei Bucur.
+
+        * fast/regions/inlineblock-child-inlineblock-contentnode-in-region-expected.html: Added.
+        * fast/regions/inlineblock-child-inlineblock-contentnode-in-region.html: Added.
+
+2014-03-14  Sergio Villar Senin  <svillar@igalia.com>
+
+        [CSS Grid layout] Initial position in span not correctly computed sometimes
+        https://bugs.webkit.org/show_bug.cgi?id=130124
+
+        Reviewed by Darin Adler.
+
+        Added the grid positioning example mentioned in the specs which
+        covers this bug and some other cases.
+
+        * fast/css-grid-layout/grid-item-named-grid-line-resolution-expected.txt:
+        * fast/css-grid-layout/grid-item-named-grid-line-resolution.html:
+
+2014-03-12  Gavin Barraclough  <barraclough@apple.com>
+
+        Reduce memory use for static property maps
+        https://bugs.webkit.org/show_bug.cgi?id=129986
+
+        Reviewed by Andreas Kling.
+
+        Static property tables are currently duplicated on first use from read-only memory into dirty memory
+        in every process, and since the entries are large (48 bytes) and the tables can be unusually sparse
+        (we use a custom hash table without a rehash) a lot of memory may be wasted.
+
+        * inspector-protocol/debugger/setPauseOnExceptions-all-expected.txt:
+        * inspector-protocol/debugger/setPauseOnExceptions-none-expected.txt:
+        * inspector-protocol/debugger/setPauseOnExceptions-uncaught-expected.txt:
+        * js/dom/dom-static-property-for-in-iteration-expected.txt:
+            - Properties now iterated in correct order, not permuted by hash table.
+
+2014-03-13  Manish R Gurnaney  <m.gurnaney@samsung.com>
+
+        Scroll size is not recalculated when absolute left of child is updated
+        https://bugs.webkit.org/show_bug.cgi?id=123958
+
+        Reviewed by Simon Fraser.
+
+        * fast/css/display-inline-block-scrollbar-expected.txt: Added.
+        * fast/css/display-inline-block-scrollbar.html: Added.
+        Added test case to check that scroll size is recalculated when absolute
+        left of child is updated.
+
+2014-03-13  Dirk Schulze  <krit@webkit.org>
+
+        [SVG2] support paint-order presentation attribute
+        https://bugs.webkit.org/show_bug.cgi?id=129373
+
+        Reviewed by Dean Jackson.
+
+        Test parsing and bahvior of the paint-order property.
+
+        * svg/paint-order/paint-order-fill-expected.svg: Added.
+        * svg/paint-order/paint-order-fill-markers-expected.svg: Added.
+        * svg/paint-order/paint-order-fill-markers.svg: Added.
+        * svg/paint-order/paint-order-fill.svg: Added.
+        * svg/paint-order/paint-order-markers-expected.svg: Added.
+        * svg/paint-order/paint-order-markers-stroke-expected.svg: Added.
+        * svg/paint-order/paint-order-markers-stroke.svg: Added.
+        * svg/paint-order/paint-order-markers.svg: Added.
+        * svg/paint-order/paint-order-normal-expected.svg: Added.
+        * svg/paint-order/paint-order-normal.svg: Added.
+        * svg/paint-order/paint-order-stroke-expected.svg: Added.
+        * svg/paint-order/paint-order-stroke-marker-expected.svg: Added.
+        * svg/paint-order/paint-order-stroke-marker.svg: Added.
+        * svg/paint-order/paint-order-stroke.svg: Added.
+        * svg/paint-order/paint-order-text-markers-expected.svg: Added.
+        * svg/paint-order/paint-order-text-markers.svg: Added.
+        * svg/paint-order/paint-order-text-normal-expected.svg: Added.
+        * svg/paint-order/paint-order-text-normal.svg: Added.
+        * svg/paint-order/paint-order-text-stroke-expected.svg: Added.
+        * svg/paint-order/paint-order-text-stroke.svg: Added.
+        * svg/paint-order/paint-order-text-tspan-001-expected.svg: Added.
+        * svg/paint-order/paint-order-text-tspan-001.svg: Added.
+        * svg/paint-order/paint-order-text-tspan-002-expected.svg: Added.
+        * svg/paint-order/paint-order-text-tspan-002.svg: Added.
+        * svg/paint-order/parsing-paint-order-expected.txt: Added.
+        * svg/paint-order/parsing-paint-order.html: Added.
+
+2014-03-13  Diego Pino Garcia  <dpino@igalia.com>
+
+        Web Inspector: AXI: Expose focused/focusable state in the Accessibility Node Inspector
+        https://bugs.webkit.org/show_bug.cgi?id=129779
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector-protocol/dom/getAccessibilityPropertiesForNode-expected.txt:
+        Updated test.
+
+2014-03-13  Daniel Bates  <dabates@apple.com>
+
+        REGRESSION (r160806): Incorrect cascade order of prefixed and non-prefixed variants of
+        CSS properties box-shadow and background-{clip, origin, size}
+        https://bugs.webkit.org/show_bug.cgi?id=130102
+        <rdar://problem/16187037>
+
+        Reviewed by Andreas Kling.
+
+        Add tests to ensure that we correctly cascade the prefixed and non-prefixed variants
+        of the CSS properties box-shadow and background-{clip, origin, size}.
+
+        * fast/css/cascade/background-clip-and-webkit-background-clip-cascade-order-expected.html: Added.
+        * fast/css/cascade/background-clip-and-webkit-background-clip-cascade-order.html: Added.
+        * fast/css/cascade/background-origin-and-webkit-background-origin-cascade-order-expected.html: Added.
+        * fast/css/cascade/background-origin-and-webkit-background-origin-cascade-order.html: Added.
+        * fast/css/cascade/background-size-and-webkit-background-size-cascade-order-expected.html: Added.
+        * fast/css/cascade/background-size-and-webkit-background-size-cascade-order.html: Added.
+        * fast/css/cascade/box-shadow-and-webkit-box-shadow-cascade-order-expected.html: Added.
+        * fast/css/cascade/box-shadow-and-webkit-box-shadow-cascade-order.html: Added.
+        * fast/css/resources/green-128x128.png: Added.
+        * fast/css/resources/green-square-above-red-square.png: Added.
+        * fast/css/resources/red-square-above-green-square.png: Added.
+        * fast/css/resources/red-square-in-green-square.png: Added.
+
+2014-03-13  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r165540.
+        https://bugs.webkit.org/show_bug.cgi?id=130199
+
+        caused 1 hidpi test fail (Requested by zalan on #webkit).
+
+        Reverted changeset:
+
+        "Subpixel rendering: Nested layers with subpixel accumulation
+        paint to wrong position."
+        https://bugs.webkit.org/show_bug.cgi?id=130153
+        http://trac.webkit.org/changeset/165540
+
+2014-03-13  Andres Gomez  <agomez@igalia.com>
+
+        Unreviewed, rolling out r165536.
+
+        It breaks http/tests/media/media-play-stream-chunked-icy.html
+
+        Reverted changeset:
+
+        "[GStreamer] WebKit gets stalled when trying to play a stream"
+        https://bugs.webkit.org/show_bug.cgi?id=125926
+        http://trac.webkit.org/changeset/165536
+
+2014-03-13  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: Remove unused callId parameter from evaluateInWebInspector
+        https://bugs.webkit.org/show_bug.cgi?id=129744
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/inspector-test.js:
+        (runTest): Stop passing a dummy argument to TestRunner.evaluateInWebInspector.
+
+2014-03-13  Zalan Bujtas  <zalan@apple.com>
+
+        Subpixel rendering: Nested layers with subpixel accumulation paint to wrong position.
+        https://bugs.webkit.org/show_bug.cgi?id=130153
+
+        Reviewed by Simon Fraser.
+
+        Subpixels (fractional device pixels here) can accumulate through nested layers. Subpixels
+        need to be propagated through the layer tree so that painting coordinates match layout coordinates.
+        
+        Compositing case: (absolute positioning, 2x display)
+        parent layer pos(0.3, 0.3) -> floored painting position (0, 0)
+        child layer pos(10.2, 10.2) -> layout offset from parent (10.2, 10.2), 
+        but the actual painting offset is (10.5, 10.5) as the result of parent flooring.
+        
+        Non-compositing case: (absolute positioning, 2x display)
+        parent layer pos(0.3, 0.3) -> GraphicsContext is translated to (0, 0).
+        child layer pos(10.2, 10.2) -> layout offset from parent (10.2, 10.2)
+        but the GraphicsContext's offset is (10.5, 10.5) as the result of the parent's translate.   
+
+        In both cases, without the subpixel adjustment, we'd paint the current layer at (10.0, 10.0)
+        after flooring, while its painting position is actually (10.5, 10.5).
+        Subpixels do accumulate through nested layers.
+
+        * compositing/hidpi-nested-compositing-layers-with-subpixel-accumulation-expected.html: Added.
+        * compositing/hidpi-nested-compositing-layers-with-subpixel-accumulation.html: Added.
+        * fast/layers/hidpi-nested-layers-with-subpixel-accumulation-expected.html: Added.
+        * fast/layers/hidpi-nested-layers-with-subpixel-accumulation.html: Added.
+
+2014-03-13  Andres Gomez  <agomez@igalia.com>
+
+        [GStreamer] WebKit gets stalled when trying to play a stream
+        https://bugs.webkit.org/show_bug.cgi?id=125926
+
+        Reviewed by Eric Carlson.
+
+        Added new test for checking the playback on Icecast/Shoutcast
+        streamed media.
+
+        * http/tests/media/media-play-stream-chunked-icy-expected.txt: Added.
+        * http/tests/media/media-play-stream-chunked-icy.html: Added.
+        * http/tests/media/resources/create-id3-db.php: Added.
+        * http/tests/media/resources/serve-video.php: Added support for
+        chunked streams and Icecast/Shoutcast headers.
+        * http/tests/resources/dir-helpers.php: Added.
+        * http/tests/resources/portabilityLayer.php: Added a couple of new
+        fallback functions when they are not available in old PHP
+        versions.
+        * media/content/metadata.db: Added.
+        * media/content/silence.mp3: Added.
+
+2014-03-12  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: accessibility data table heuristics fail on this jQuery table
+        https://bugs.webkit.org/show_bug.cgi?id=129369
+
+        Reviewed by Mario Sanchez Prada.
+
+        * accessibility/table-detection.html:
+        * platform/mac/accessibility/table-detection-expected.txt:
+
 2014-03-12  Zalan Bujtas  <zalan@apple.com>
 
         Subpixel rendering: LayoutTests/compositing/hidpi-simple-container-layer-on-device-pixel-expected.html fails on Mountain Lion WK2 debug

@@ -1,3 +1,723 @@
+2014-03-19  Simon Fraser  <simon.fraser@apple.com>
+
+        Expose text and page zoom in WK2 SPI, and hook them up in MiniBrowser
+        https://bugs.webkit.org/show_bug.cgi?id=130476
+
+        Reviewed by Anders Carlsson.
+        
+        Hook up page/text zoom in MiniBrowser, make reload work, remove some logging.
+
+        * MiniBrowser/mac/WK1BrowserWindowController.m:
+        (-[WK1BrowserWindowController webView:decidePolicyForNavigationAction:request:frame:decisionListener:]):
+        Remove log.
+        * MiniBrowser/mac/WK2BrowserWindowController.m:
+        (-[WK2BrowserWindowController awakeFromNib]):
+        (-[WK2BrowserWindowController validateMenuItem:]):
+        (-[WK2BrowserWindowController reload:]):
+        Hook up reload.
+        (-[WK2BrowserWindowController toggleZoomMode:]):
+        (-[WK2BrowserWindowController resetZoom:]):
+        (-[WK2BrowserWindowController canResetZoom]):
+        (-[WK2BrowserWindowController currentZoomFactor]):
+        (-[WK2BrowserWindowController setCurrentZoomFactor:]):
+        (-[WK2BrowserWindowController canZoomIn]):
+        (-[WK2BrowserWindowController canZoomOut]):
+
+2014-03-19  Alexey Proskuryakov  <ap@apple.com>
+
+        REGRESSION (OS X 10.9.2): PageVisibilityStateWithWindowChanges.WebKit2 API test fails
+        https://bugs.webkit.org/show_bug.cgi?id=130463
+
+        * TestWebKitAPI/Tests/mac/PageVisibilityStateWithWindowChanges.mm: Disable the test.
+
+2014-03-18  Samuel White  <samuel_white@apple.com>
+
+        AX: Not able to use arrow keys to read text with VoiceOver before selection is set someplace (anyplace).
+        https://bugs.webkit.org/show_bug.cgi?id=130250
+
+        Reviewed by Chris Fleizach.
+
+        Added ability to toggle enhanced accessibility on and off to support tests that require it.
+
+        * DumpRenderTree/AccessibilityController.cpp:
+        (enableEnhancedAccessibilityCallback):
+        (getEnhancedAccessibilityEnabledCallback):
+        (AccessibilityController::getJSClass):
+        * DumpRenderTree/AccessibilityController.h:
+        * DumpRenderTree/atk/AccessibilityControllerAtk.cpp:
+        (AccessibilityController::enableEnhancedAccessibility):
+        (AccessibilityController::enhancedAccessibilityEnabled):
+        * DumpRenderTree/ios/AccessibilityControllerIOS.mm:
+        (AccessibilityController::enableEnhancedAccessibility):
+        (AccessibilityController::enhancedAccessibilityEnabled):
+        * DumpRenderTree/mac/AccessibilityControllerMac.mm:
+        (AccessibilityController::enableEnhancedAccessibility):
+        (AccessibilityController::enhancedAccessibilityEnabled):
+        * DumpRenderTree/win/AccessibilityControllerWin.cpp:
+        (AccessibilityController::enableEnhancedAccessibility):
+        (AccessibilityController::enhancedAccessibilityEnabled):
+        * WebKitTestRunner/InjectedBundle/AccessibilityController.cpp:
+        (WTR::AccessibilityController::enableEnhancedAccessibility):
+        (WTR::AccessibilityController::enhancedAccessibilityEnabled):
+        * WebKitTestRunner/InjectedBundle/AccessibilityController.h:
+        * WebKitTestRunner/InjectedBundle/Bindings/AccessibilityController.idl:
+
+2014-03-18  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, add some contributors, and fix Nadav's entry (he's not really a reviewer
+        yet).
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2014-03-18  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Remove stale ReportMemoryUsagePlugin
+        https://bugs.webkit.org/show_bug.cgi?id=130405
+
+        Reviewed by Andreas Kling.
+
+        This clang plugin looks like it was used for the old Inspector memory
+        instrumentation that was removed. So the tool can be removed.
+
+        * clang/ReportMemoryUsagePlugin/CMakeLists.txt: Removed.
+        * clang/ReportMemoryUsagePlugin/Makefile: Removed.
+        * clang/ReportMemoryUsagePlugin/ReportMemoryUsage.cpp: Removed.
+        * clang/ReportMemoryUsagePlugin/tests/Source/WebCore/Test.cpp: Removed.
+
+2014-03-18  Eva Balazsfalvi  <evab.u-szeged@partner.samsung.com>
+
+        webkit-patch land shouldn't add a reviewer for unreviewed build fixes
+        https://bugs.webkit.org/show_bug.cgi?id=130220
+
+        Reviewed by Csaba Osztrogonác.
+
+        * Scripts/webkitpy/common/checkout/changelog.py:
+        (ChangeLog.set_reviewer):
+        * Scripts/webkitpy/common/checkout/changelog_unittest.py:
+        (test_set_reviewer):
+
+2014-03-17  Filip Pizlo  <fpizlo@apple.com>
+
+        More FTL enabling.
+
+        Rubber stamped by Dan Bernstein.
+
+        * Tools/Scripts/build-webkit:
+
+2014-03-17  Simon Fraser  <simon.fraser@apple.com>
+
+        Renable pagination mode in WK2 MiniBrowser
+        https://bugs.webkit.org/show_bug.cgi?id=130374
+
+        Reviewed by Anders Carlsson.
+        
+        Put the implementation of togglePaginationMode: back, and correctly
+        enable the menu item.
+
+        * MiniBrowser/mac/WK2BrowserWindowController.m:
+        (-[WK2BrowserWindowController validateMenuItem:]):
+        (-[WK2BrowserWindowController isPaginated]):
+        (-[WK2BrowserWindowController togglePaginationMode:]):
+
+2014-03-18  Eva Balazsfalvi  <evab.u-szeged@partner.samsung.com>
+
+        Add --reset option to Tools/Scripts/set-webkit-configuration script
+        https://bugs.webkit.org/show_bug.cgi?id=130401
+
+        Reviewed by Csaba Osztrogonác.
+
+        * Scripts/set-webkit-configuration:
+
+2014-03-18  Alberto Garcia  <berto@igalia.com>
+
+        [GTK] [CMake] build-webkit-options.txt is not generated during a fresh build
+        https://bugs.webkit.org/show_bug.cgi?id=130388
+
+        Reviewed by Sergio Villar Senin.
+
+        * Scripts/webkitdirs.pm:
+        (shouldRemoveCMakeCache): make sure that the build directory
+        exists before attempting to create a file in it.
+
+2014-03-18  Robert Plociennik  <r.plociennik@samsung.com>
+
+        [EFL] fontconfig-2.8.0 is not compliant with C++11 leading to a build break
+        https://bugs.webkit.org/show_bug.cgi?id=130336
+
+        Reviewed by Gyuyoung Kim.
+
+        Compilation with gcc 4.8.x results in 'invalid suffix on literal; C++11
+        requires a space between literal and string macro [-Wliteral-suffix]'
+        warning treated as error.
+
+        This patch applies a solution from r162448 to the EFL port.
+
+        * efl/patches/fontconfig-C-11-requires-a-space-between-literal-and-identifier.patch: Added.
+        * efl/jhbuild.modules: Added appropriate patch section.
+
+2014-03-17  Ryosuke Niwa  <rniwa@webkit.org>
+
+        webkitpy test rebaseline.
+
+        * Scripts/webkitpy/performance_tests/perftestsrunner_unittest.py:
+        (MainTest.test_default_args):
+
+2014-03-17  Ryosuke Niwa  <rniwa@webkit.org>
+
+        --profile should imply --test-runner-count=1 in run-perf-tests
+        https://bugs.webkit.org/show_bug.cgi?id=130375
+
+        Reviewed by Benjamin Poulain.
+
+        Use the test runner count of 1 when --profile is specified but not --test-runner-count.
+
+        * Scripts/webkitpy/performance_tests/perftestsrunner.py:
+        (PerfTestsRunner._parse_args): Use -1 as the default value.
+        (PerfTestsRunner._collect_tests): If --test-runner-count is set (i.e. it's a positive value),
+        then use that value. Otherwise, if it's never set and --profile is present, test-runner-count
+        should be 1.
+
+2014-03-17  Simon Fraser  <simon.fraser@apple.com>
+
+        Address some style nits.
+
+        * MiniBrowser/mac/WK2BrowserWindowController.m:
+
+2014-03-17  Simon Fraser  <simon.fraser@apple.com>
+
+        Add transparent window support back into MiniBrowser
+        https://bugs.webkit.org/show_bug.cgi?id=130363
+
+        Reviewed by Anders Carlsson.
+        
+        Re-enable transparent window support for WK2.
+
+        * MiniBrowser/mac/WK2BrowserWindowController.m:
+        (-[WK2BrowserWindowController validateMenuItem:]):
+        (-[WK2BrowserWindowController toggleTransparentWindow:]):
+
+2014-03-17  Simon Fraser  <simon.fraser@apple.com>
+
+        Fix the 32-bit build; make the open panel make a WK1 window.
+
+        * MiniBrowser/mac/AppDelegate.m:
+        (-[BrowserAppDelegate openDocument:]):
+
+2014-03-17  Simon Fraser  <simon.fraser@apple.com>
+
+        Convert MiniBrowser to use WKWebView API
+        https://bugs.webkit.org/show_bug.cgi?id=130061
+
+        Reviewed by Anders Carlsson.
+        
+        Convert the MiniBrowser WK2 window to use WebKit2 API as much
+        as possible.
+        
+        Some functionality was removed temporarily:
+            - text zoom, page zoom
+            - reload
+            - pagination mode
+            - transparent window
+            - dumping source
+            - window.open support
+            - beforeUnload panel
+            - find in page
+
+        * MiniBrowser/mac/AppDelegate.h:
+        * MiniBrowser/mac/AppDelegate.m:
+        (-[BrowserAppDelegate init]):
+        (-[BrowserAppDelegate newWindow:]):
+        (-[BrowserAppDelegate applicationWillTerminate:]):
+        (-[BrowserAppDelegate openDocument:]):
+        * MiniBrowser/mac/WK2BrowserWindowController.h:
+        * MiniBrowser/mac/WK2BrowserWindowController.m:
+        (-[WK2BrowserWindowController awakeFromNib]):
+        (-[WK2BrowserWindowController dealloc]):
+        (-[WK2BrowserWindowController fetch:]):
+        (-[WK2BrowserWindowController validateMenuItem:]):
+        (-[WK2BrowserWindowController reload:]):
+        (-[WK2BrowserWindowController goBack:]):
+        (-[WK2BrowserWindowController goForward:]):
+        (-[WK2BrowserWindowController toggleZoomMode:]):
+        (-[WK2BrowserWindowController resetZoom:]):
+        (-[WK2BrowserWindowController canResetZoom]):
+        (-[WK2BrowserWindowController dumpSourceToConsole:]):
+        (-[WK2BrowserWindowController togglePaginationMode:]):
+        (-[WK2BrowserWindowController validateUserInterfaceItem:]):
+        (-[WK2BrowserWindowController windowShouldClose:]):
+        (-[WK2BrowserWindowController applicationTerminating]):
+        (-[WK2BrowserWindowController currentZoomFactor]):
+        (-[WK2BrowserWindowController setCurrentZoomFactor:]):
+        (-[WK2BrowserWindowController toggleTransparentWindow:]):
+        (-[WK2BrowserWindowController observeValueForKeyPath:ofObject:change:context:]):
+        (-[WK2BrowserWindowController webView:runJavaScriptAlertPanelWithMessage:initiatedByFrame:completionHandler:]):
+        (-[WK2BrowserWindowController webView:runJavaScriptConfirmPanelWithMessage:initiatedByFrame:completionHandler:]):
+        (-[WK2BrowserWindowController webView:runJavaScriptTextInputPanelWithPrompt:defaultText:initiatedByFrame:completionHandler:]):
+        (-[WK2BrowserWindowController find:]):
+        (-[WK2BrowserWindowController webView:decidePolicyForNavigationResponse:decisionHandler:]):
+        (-[WK2BrowserWindowController webView:didStartProvisionalNavigation:]):
+        (-[WK2BrowserWindowController webView:didReceiveServerRedirectForProvisionalNavigation:]):
+        (-[WK2BrowserWindowController webView:didFailProvisionalNavigation:withError:]):
+        (-[WK2BrowserWindowController webView:didCommitNavigation:]):
+        (-[WK2BrowserWindowController webView:didFinishLoadingNavigation:]):
+        (-[WK2BrowserWindowController webView:didFailNavigation:withError:]):
+        * WebKitTestRunner/PlatformWebView.h:
+        * WebKitTestRunner/ios/PlatformWebViewIOS.mm:
+        * WebKitTestRunner/mac/PlatformWebViewMac.mm:
+
+2014-03-17  Zan Dobersek  <zdobersek@igalia.com>
+
+        Use RunLoop objects through references instead of pointers
+        https://bugs.webkit.org/show_bug.cgi?id=130313
+
+        Reviewed by Andreas Kling.
+
+        Adjust the code accordingly now that RunLoop::current() and RunLoop::main()
+        return RunLoop reference instead of a pointer.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/DOMDOMWindowTest.cpp:
+        (loadedCallback):
+        (clickedCallback):
+
+2014-03-17  Tim Horton  <timothy_horton@apple.com>
+
+        sort-export-file --help doesn't work (missing 'use')
+        https://bugs.webkit.org/show_bug.cgi?id=130338
+
+        Reviewed by Anders Carlsson.
+
+        * Scripts/sort-export-file:
+        Add a missing 'use', and fix a typo in an error message.
+
+2014-03-17  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK][CMake] Ensure that HAVE_GTK_UNIX_PRINTING is defined when appropriate
+        https://bugs.webkit.org/show_bug.cgi?id=130155
+
+        Reviewed by Philippe Normand.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/CMakeLists.txt: Add GTK_UNIX_PRINT flags to the build.
+
+2014-03-17  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] MiniBrowser fails to load injected bundle lib
+        https://bugs.webkit.org/show_bug.cgi?id=130332
+
+        Reviewed by Anders Carlsson.
+
+        This is because WEBKIT_INJECTED_BUNDLE_PATH env var is set too late.
+
+        * MiniBrowser/gtk/main.c:
+        (main): Make sure WEBKIT_INJECTED_BUNDLE_PATH is set before a web
+        process is spawn.
+
+2014-03-16  Kim Byung Jun  <bj1987.kim@samsung.com>
+
+        [EFL] Enable TOUCH_SLIDER macro
+        https://bugs.webkit.org/show_bug.cgi?id=130185
+
+        Reviewed by Gyuyoung Kim.
+
+        * Scripts/webkitperl/FeatureList.pm:
+
+2014-03-16  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GTK][CMake] Build with -fno-rtti
+        https://bugs.webkit.org/show_bug.cgi?id=130261
+
+        Reviewed by Martin Robinson.
+
+        * TestWebKitAPI/CMakeLists.txt: Build TestWebKitAPI with GTEST_HAS_RTTI macro
+        defined to 0 to prevent typeid use in included GTest headers.
+
+2014-03-16  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: vended backend commands file should be generated as part of the build
+        https://bugs.webkit.org/show_bug.cgi?id=130110
+
+        Reviewed by Timothy Hatcher.
+
+        * Scripts/build-webkit: build WebInspectorUI after WebCore but before WebKit.
+
+2014-03-16  Diego Pino García  <dpino@igalia.com>
+
+        [GTK] Minibrowser: Add shortcuts for reloading page and reloading page ignoring cache
+        https://bugs.webkit.org/show_bug.cgi?id=128999
+
+        Reviewed by Philippe Normand.
+
+        * MiniBrowser/gtk/BrowserWindow.c:
+        (reloadPage):
+        (reloadPageIgnoringCache):
+        (browser_window_init):
+
+2014-03-15  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK] Improve ninja detection in webkitdirs.pm
+        https://bugs.webkit.org/show_bug.cgi?id=129902
+
+        Reviewed by Daniel Bates.
+
+        * Scripts/webkitdirs.pm:
+        (canUseNinja): Use which instead of trying to invoke ninja directly. This also allows
+        us to look for ninja-build as well.
+
+2014-03-14  Maciej Stachowiak  <mjs@apple.com>
+
+        Replace "Apple Computer, Inc." with "Apple Inc." in copyright headers
+        https://bugs.webkit.org/show_bug.cgi?id=130276
+        <rdar://problem/16266927>
+        
+        Reviewed by Simon Fraser.
+
+        * BuildSlaveSupport/build-launcher-app:
+        * BuildSlaveSupport/build-launcher-dmg:
+        * DumpRenderTree/DumpRenderTree.h:
+        * DumpRenderTree/DumpRenderTreePrefix.h:
+        * DumpRenderTree/GCController.cpp:
+        * DumpRenderTree/GCController.h:
+        * DumpRenderTree/JavaScriptThreading.cpp:
+        * DumpRenderTree/JavaScriptThreading.h:
+        * DumpRenderTree/PixelDumpSupport.cpp:
+        * DumpRenderTree/PixelDumpSupport.h:
+        * DumpRenderTree/TestNetscapePlugIn/PluginObjectMac.mm:
+        * DumpRenderTree/TestRunner.cpp:
+        * DumpRenderTree/TestRunner.h:
+        * DumpRenderTree/WorkQueue.cpp:
+        * DumpRenderTree/WorkQueue.h:
+        * DumpRenderTree/WorkQueueItem.h:
+        * DumpRenderTree/atk/AccessibilityCallbacks.h:
+        * DumpRenderTree/atk/AccessibilityCallbacksAtk.cpp:
+        * DumpRenderTree/cairo/PixelDumpSupportCairo.cpp:
+        * DumpRenderTree/cairo/PixelDumpSupportCairo.h:
+        * DumpRenderTree/cg/PixelDumpSupportCG.cpp:
+        * DumpRenderTree/cg/PixelDumpSupportCG.h:
+        * DumpRenderTree/efl/EditingCallbacks.cpp:
+        * DumpRenderTree/efl/EditingCallbacks.h:
+        * DumpRenderTree/efl/EventSender.cpp:
+        * DumpRenderTree/efl/EventSender.h:
+        * DumpRenderTree/efl/GCControllerEfl.cpp:
+        * DumpRenderTree/efl/PixelDumpSupportEfl.cpp:
+        * DumpRenderTree/efl/TestRunnerEfl.cpp:
+        * DumpRenderTree/gtk/DumpRenderTree.cpp:
+        * DumpRenderTree/gtk/DumpRenderTreeGtk.h:
+        * DumpRenderTree/gtk/EditingCallbacks.cpp:
+        * DumpRenderTree/gtk/EditingCallbacks.h:
+        * DumpRenderTree/gtk/EventSender.cpp:
+        * DumpRenderTree/gtk/EventSender.h:
+        * DumpRenderTree/gtk/GCControllerGtk.cpp:
+        * DumpRenderTree/gtk/PixelDumpSupportGtk.cpp:
+        * DumpRenderTree/gtk/SelfScrollingWebKitWebView.cpp:
+        * DumpRenderTree/gtk/SelfScrollingWebKitWebView.h:
+        * DumpRenderTree/gtk/TestRunnerGtk.cpp:
+        * DumpRenderTree/gtk/TextInputController.cpp:
+        * DumpRenderTree/gtk/TextInputController.h:
+        * DumpRenderTree/ios/PerlSupport/IPhoneSimulatorNotification/Makefile.PL:
+        * DumpRenderTree/ios/PerlSupport/IPhoneSimulatorNotification/lib/IPhoneSimulatorNotification.pm:
+        * DumpRenderTree/ios/PixelDumpSupportIOS.mm:
+        * DumpRenderTree/mac/AppleScriptController.h:
+        * DumpRenderTree/mac/AppleScriptController.m:
+        * DumpRenderTree/mac/CheckedMalloc.cpp:
+        * DumpRenderTree/mac/CheckedMalloc.h:
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        * DumpRenderTree/mac/DumpRenderTreeDraggingInfo.h:
+        * DumpRenderTree/mac/DumpRenderTreeDraggingInfo.mm:
+        * DumpRenderTree/mac/DumpRenderTreeMac.h:
+        * DumpRenderTree/mac/DumpRenderTreePasteboard.h:
+        * DumpRenderTree/mac/DumpRenderTreePasteboard.m:
+        * DumpRenderTree/mac/DumpRenderTreeWindow.h:
+        * DumpRenderTree/mac/DumpRenderTreeWindow.mm:
+        * DumpRenderTree/mac/EditingDelegate.h:
+        * DumpRenderTree/mac/EditingDelegate.mm:
+        * DumpRenderTree/mac/EventSendingController.h:
+        * DumpRenderTree/mac/EventSendingController.mm:
+        * DumpRenderTree/mac/FrameLoadDelegate.h:
+        * DumpRenderTree/mac/FrameLoadDelegate.mm:
+        * DumpRenderTree/mac/GCControllerMac.mm:
+        * DumpRenderTree/mac/MockWebNotificationProvider.h:
+        * DumpRenderTree/mac/MockWebNotificationProvider.mm:
+        * DumpRenderTree/mac/NavigationController.h:
+        * DumpRenderTree/mac/NavigationController.m:
+        * DumpRenderTree/mac/ObjCController.h:
+        * DumpRenderTree/mac/ObjCController.m:
+        * DumpRenderTree/mac/ObjCPlugin.h:
+        * DumpRenderTree/mac/ObjCPlugin.m:
+        * DumpRenderTree/mac/ObjCPluginFunction.h:
+        * DumpRenderTree/mac/ObjCPluginFunction.m:
+        * DumpRenderTree/mac/PixelDumpSupportMac.mm:
+        * DumpRenderTree/mac/PolicyDelegate.h:
+        * DumpRenderTree/mac/PolicyDelegate.mm:
+        * DumpRenderTree/mac/ResourceLoadDelegate.h:
+        * DumpRenderTree/mac/ResourceLoadDelegate.mm:
+        * DumpRenderTree/mac/TestRunnerMac.mm:
+        * DumpRenderTree/mac/TextInputController.h:
+        * DumpRenderTree/mac/TextInputController.m:
+        * DumpRenderTree/mac/UIDelegate.h:
+        * DumpRenderTree/mac/UIDelegate.mm:
+        * DumpRenderTree/mac/WorkQueueItemMac.mm:
+        * DumpRenderTree/win/DRTDataObject.cpp:
+        * DumpRenderTree/win/DRTDataObject.h:
+        * DumpRenderTree/win/DRTDesktopNotificationPresenter.h:
+        * DumpRenderTree/win/DRTDropSource.cpp:
+        * DumpRenderTree/win/DRTDropSource.h:
+        * DumpRenderTree/win/DraggingInfo.h:
+        * DumpRenderTree/win/DumpRenderTree.cpp:
+        * DumpRenderTree/win/DumpRenderTreeWin.h:
+        * DumpRenderTree/win/EditingDelegate.cpp:
+        * DumpRenderTree/win/EditingDelegate.h:
+        * DumpRenderTree/win/EventSender.cpp:
+        * DumpRenderTree/win/EventSender.h:
+        * DumpRenderTree/win/FrameLoadDelegate.cpp:
+        * DumpRenderTree/win/FrameLoadDelegate.h:
+        * DumpRenderTree/win/GCControllerWin.cpp:
+        * DumpRenderTree/win/HistoryDelegate.cpp:
+        * DumpRenderTree/win/HistoryDelegate.h:
+        * DumpRenderTree/win/MD5.cpp:
+        * DumpRenderTree/win/MD5.h:
+        * DumpRenderTree/win/PixelDumpSupportWin.cpp:
+        * DumpRenderTree/win/PolicyDelegate.cpp:
+        * DumpRenderTree/win/PolicyDelegate.h:
+        * DumpRenderTree/win/ResourceLoadDelegate.cpp:
+        * DumpRenderTree/win/ResourceLoadDelegate.h:
+        * DumpRenderTree/win/TestRunnerWin.cpp:
+        * DumpRenderTree/win/TextInputController.cpp:
+        * DumpRenderTree/win/TextInputController.h:
+        * DumpRenderTree/win/TextInputControllerWin.cpp:
+        * DumpRenderTree/win/UIDelegate.cpp:
+        * DumpRenderTree/win/UIDelegate.h:
+        * DumpRenderTree/win/WorkQueueItemWin.cpp:
+        * EWebLauncher/main.c:
+        * GtkLauncher/main.c:
+        * ImageDiff/efl/ImageDiff.cpp:
+        * ImageDiff/gtk/ImageDiff.cpp:
+        * MiniBrowser/gtk/main.c:
+        * Scripts/SpacingHeuristics.pm:
+        * Scripts/VCSUtils.pm:
+        * Scripts/bisect-builds:
+        * Scripts/build-dumprendertree:
+        * Scripts/build-jsc:
+        * Scripts/build-webkit:
+        * Scripts/check-dom-results:
+        * Scripts/check-for-exit-time-destructors:
+        * Scripts/check-for-global-initializers:
+        * Scripts/commit-log-editor:
+        * Scripts/compare-timing-files:
+        * Scripts/debug-minibrowser:
+        * Scripts/debug-safari:
+        * Scripts/do-file-rename:
+        * Scripts/find-extra-includes:
+        * Scripts/generate-coverage-data:
+        * Scripts/make-script-test-wrappers:
+        * Scripts/malloc-tree:
+        * Scripts/old-run-webkit-tests:
+        * Scripts/parse-malloc-history:
+        * Scripts/report-include-statistics:
+        * Scripts/resolve-ChangeLogs:
+        * Scripts/run-bindings-tests:
+        * Scripts/run-iexploder-tests:
+        * Scripts/run-javascriptcore-tests:
+        * Scripts/run-jsc:
+        * Scripts/run-launcher:
+        * Scripts/run-leaks:
+        * Scripts/run-mangleme-tests:
+        * Scripts/run-minibrowser:
+        * Scripts/run-pageloadtest:
+        * Scripts/run-regexp-tests:
+        * Scripts/run-safari:
+        * Scripts/run-sunspider:
+        * Scripts/run-webkit-app:
+        * Scripts/sampstat:
+        * Scripts/set-webkit-configuration:
+        * Scripts/sort-Xcode-project-file:
+        * Scripts/sort-export-file:
+        * Scripts/split-file-by-class:
+        * Scripts/sunspider-compare-results:
+        * Scripts/svn-apply:
+        * Scripts/svn-create-patch:
+        * Scripts/svn-unapply:
+        * Scripts/test-webkit-scripts:
+        * Scripts/update-javascriptcore-test-results:
+        * Scripts/update-webkit:
+        * Scripts/update-webkit-auxiliary-libs:
+        * Scripts/update-webkit-dependency:
+        * Scripts/update-webkit-localizable-strings:
+        * Scripts/update-webkit-support-libs:
+        * Scripts/update-webkit-wincairo-libs:
+        * Scripts/webkit-build-directory:
+        * Scripts/webkitdirs.pm:
+        (installedSafariPath):
+        * Scripts/webkitperl/VCSUtils_unittest/parseChunkRange.pl:
+        * Scripts/webkitperl/VCSUtils_unittest/parseDiffHeader.pl:
+        * Scripts/webkitperl/VCSUtils_unittest/parseSvnDiffFooter.pl:
+        * Scripts/webkitperl/VCSUtils_unittest/parseSvnDiffHeader.pl:
+        * Scripts/webkitperl/VCSUtils_unittest/parseSvnProperty.pl:
+        * Scripts/webkitperl/VCSUtils_unittest/parseSvnPropertyValue.pl:
+        * Scripts/webkitperl/features.pm:
+        * Scripts/webkitperl/httpd.pm:
+        * Scripts/webkitpy/bindings/main.py:
+        * Scripts/webkitpy/to_be_moved/update_webgl_conformance_tests.py:
+        * TestWebKitAPI/Tests/WTF/MediaTime.cpp:
+        * TestWebKitAPI/Tests/WTF/MetaAllocator.cpp:
+        * TestWebKitAPI/Tests/WTF/RedBlackTree.cpp:
+        * TestWebKitAPI/Tests/WTF/cf/RetainPtr.cpp:
+        * TestWebKitAPI/Tests/WTF/cf/RetainPtrHashing.cpp:
+        * TestWebKitAPI/Tests/WTF/ns/RetainPtr.mm:
+        * WebKitTestRunner/InjectedBundle/gtk/ActivateFontsGtk.cpp:
+        * WebKitTestRunner/InjectedBundle/gtk/InjectedBundleUtilities.cpp:
+        * WebKitTestRunner/InjectedBundle/gtk/InjectedBundleUtilities.h:
+        * WebKitTestRunner/PixelDumpSupport.cpp:
+        * WebKitTestRunner/PixelDumpSupport.h:
+        * WebKitTestRunner/gtk/EventSenderProxyGtk.cpp:
+        * WinLauncher/WinLauncher.cpp:
+        * WinLauncher/WinLauncher.h:
+        * WinLauncher/stdafx.cpp:
+        * WinLauncher/stdafx.h:
+
+2014-03-14  Filip Pizlo  <fpizlo@apple.com>
+
+        Sometimes we need to be explicit about the SDK when running ranlib on Darwin
+        https://bugs.webkit.org/show_bug.cgi?id=130265
+
+        Reviewed by Michael Saboff.
+
+        * Scripts/build-webkit:
+        * Scripts/copy-webkitlibraries-to-product-directory:
+
+2014-03-14  Landry Breuil  <landry@openbsd.org>
+
+        Recognize openbsd/netbsd and am64 archs in Tools/Scripts.
+        Also allow to set MAKE in the environment.
+        https://bugs.webkit.org/show_bug.cgi?id=129991
+
+        Reviewed by Andreas Kling.
+
+        * Scripts/webkitdirs.pm:
+        (determineArchitecture):
+        (determineNumberOfCPUs):
+        (isBSD):
+        (buildAutotoolsProject):
+        * Scripts/webkitpy/common/system/platforminfo.py:
+        (PlatformInfo.__init__):
+        (PlatformInfo.is_openbsd):
+        (PlatformInfo):
+        (PlatformInfo.is_netbsd):
+        (PlatformInfo._determine_os_name):
+
+2014-03-14  Dean Jackson  <dino@apple.com>
+
+        Remove libWebKitSystemInterfaceLion.a
+        https://bugs.webkit.org/show_bug.cgi?id=130254
+
+        Reviewed by Geoffrey Garen and Andreas Kling.
+
+        No need to copy the Lion libraries into the build.
+
+        * Scripts/copy-webkitlibraries-to-product-directory:
+
+2014-03-14  Jinwoo Song  <jinwoo7.song@samsung.com>
+
+        [EFL][MiniBrowser] Revise help messages of command line parameters
+        https://bugs.webkit.org/show_bug.cgi?id=130222
+
+        Reviewed by Csaba Osztrogonác.
+
+        Correct the default value description and make help messages to be consistent.
+
+        * MiniBrowser/efl/main.c:
+
+2014-03-12  Sergio Villar Senin  <svillar@igalia.com>
+
+        Rename DEFINE_STATIC_LOCAL to DEPRECATED_DEFINE_STATIC_LOCAL
+        https://bugs.webkit.org/show_bug.cgi?id=129612
+
+        Reviewed by Darin Adler.
+
+        For new code use static NeverDestroyed<T> instead.
+
+        * DumpRenderTree/JavaScriptThreading.cpp:
+        (javaScriptThreadsMutex):
+        (javaScriptThreads):
+        * DumpRenderTree/efl/EventSender.cpp:
+        (touchPointList):
+        (delayedEventQueue):
+        * DumpRenderTree/win/FrameLoadDelegate.cpp:
+        (delegatesWithDelayedWork):
+        * Scripts/check-for-exit-time-destructors:
+        * TestWebKitAPI/Tests/WebKit2/SeccompFilters.cpp:
+        * TestWebKitAPI/Tests/WebKit2Gtk/WebProcessTest.cpp:
+        (testsMap):
+
+2014-03-13  Sanghyup Lee  <sh53.lee@samsung.com>
+
+        [EFL][WK2] Fix compilation warning in Minibrowser
+        https://bugs.webkit.org/show_bug.cgi?id=130132
+
+        Reviewed by Csaba Osztrogonác.
+
+        Replace mktemp() with mkstemp() to fix compilation warning in MiniBrowser.
+
+        * MiniBrowser/efl/main.c:
+        (on_download_request):
+
+2014-03-13  Filip Pizlo  <fpizlo@apple.com>
+
+        FTL should support IsBlah
+        https://bugs.webkit.org/show_bug.cgi?id=130202
+
+        Reviewed by Geoffrey Garen.
+        
+        Running existing JSRegress tests with noInline gives us coverage for these
+        changes. Chances are, this will also give coverage for other interesting things
+        as well.
+
+        * Scripts/run-jsc-stress-tests:
+
+2014-03-12  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: Remove unused callId parameter from evaluateInWebInspector
+        https://bugs.webkit.org/show_bug.cgi?id=129744
+
+        Reviewed by Timothy Hatcher.
+
+        * DumpRenderTree/TestRunner.cpp:
+        (evaluateInWebInspectorCallback):
+        * DumpRenderTree/TestRunner.h:
+        * DumpRenderTree/efl/TestRunnerEfl.cpp:
+        (TestRunner::evaluateInWebInspector):
+        * DumpRenderTree/gtk/TestRunnerGtk.cpp:
+        (TestRunner::evaluateInWebInspector):
+        * DumpRenderTree/mac/TestRunnerMac.mm:
+        (TestRunner::evaluateInWebInspector):
+        * DumpRenderTree/win/TestRunnerWin.cpp:
+        (TestRunner::evaluateInWebInspector):
+        * WebKitTestRunner/InjectedBundle/Bindings/TestRunner.idl:
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::evaluateInWebInspector):
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+
+2014-03-13  Jozsef Berta  <jberta.u-szeged@partner.samsung.com>
+
+        [GTK] build-webkit shouldn't show error message when ninja isn't installed
+        https://bugs.webkit.org/show_bug.cgi?id=130129
+
+        Reviewed by Csaba Osztrogonác.
+
+        * Scripts/webkitdirs.pm:
+        (canUseNinja): Redirecting stderr to /dev/null
+
+2014-03-13  Andres Gomez  <agomez@igalia.com>
+
+        [GTK] "Tools/jhbuild/jhbuild-wrapper --gtk" build fails even after running Tools/gtk/install-dependencies due to missing proper libxml2 python bindings
+        https://bugs.webkit.org/show_bug.cgi?id=130092
+
+        Reviewed by Csaba Osztrogonác.
+
+        Added "python-dev" as dependency for deb based distros. It is
+        already present for rpm based distros. This dependency will allow
+        libxml2 to generate its python bindings, needed by gtk-doc.
+
+        * gtk/install-dependencies:
+
 2014-03-12  Carlos Garcia Campos  <cgarcia@igalia.com>
 
         Unreviewed. Fix GTK+ cmake build after r165488.

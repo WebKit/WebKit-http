@@ -1583,22 +1583,22 @@ private:
     }
     static bool getPageSizeFromName(CSSPrimitiveValue* pageSizeName, CSSPrimitiveValue* pageOrientation, Length& width, Length& height)
     {
-        DEFINE_STATIC_LOCAL(Length, a5Width, (mmLength(148)));
-        DEFINE_STATIC_LOCAL(Length, a5Height, (mmLength(210)));
-        DEFINE_STATIC_LOCAL(Length, a4Width, (mmLength(210)));
-        DEFINE_STATIC_LOCAL(Length, a4Height, (mmLength(297)));
-        DEFINE_STATIC_LOCAL(Length, a3Width, (mmLength(297)));
-        DEFINE_STATIC_LOCAL(Length, a3Height, (mmLength(420)));
-        DEFINE_STATIC_LOCAL(Length, b5Width, (mmLength(176)));
-        DEFINE_STATIC_LOCAL(Length, b5Height, (mmLength(250)));
-        DEFINE_STATIC_LOCAL(Length, b4Width, (mmLength(250)));
-        DEFINE_STATIC_LOCAL(Length, b4Height, (mmLength(353)));
-        DEFINE_STATIC_LOCAL(Length, letterWidth, (inchLength(8.5)));
-        DEFINE_STATIC_LOCAL(Length, letterHeight, (inchLength(11)));
-        DEFINE_STATIC_LOCAL(Length, legalWidth, (inchLength(8.5)));
-        DEFINE_STATIC_LOCAL(Length, legalHeight, (inchLength(14)));
-        DEFINE_STATIC_LOCAL(Length, ledgerWidth, (inchLength(11)));
-        DEFINE_STATIC_LOCAL(Length, ledgerHeight, (inchLength(17)));
+        DEPRECATED_DEFINE_STATIC_LOCAL(Length, a5Width, (mmLength(148)));
+        DEPRECATED_DEFINE_STATIC_LOCAL(Length, a5Height, (mmLength(210)));
+        DEPRECATED_DEFINE_STATIC_LOCAL(Length, a4Width, (mmLength(210)));
+        DEPRECATED_DEFINE_STATIC_LOCAL(Length, a4Height, (mmLength(297)));
+        DEPRECATED_DEFINE_STATIC_LOCAL(Length, a3Width, (mmLength(297)));
+        DEPRECATED_DEFINE_STATIC_LOCAL(Length, a3Height, (mmLength(420)));
+        DEPRECATED_DEFINE_STATIC_LOCAL(Length, b5Width, (mmLength(176)));
+        DEPRECATED_DEFINE_STATIC_LOCAL(Length, b5Height, (mmLength(250)));
+        DEPRECATED_DEFINE_STATIC_LOCAL(Length, b4Width, (mmLength(250)));
+        DEPRECATED_DEFINE_STATIC_LOCAL(Length, b4Height, (mmLength(353)));
+        DEPRECATED_DEFINE_STATIC_LOCAL(Length, letterWidth, (inchLength(8.5)));
+        DEPRECATED_DEFINE_STATIC_LOCAL(Length, letterHeight, (inchLength(11)));
+        DEPRECATED_DEFINE_STATIC_LOCAL(Length, legalWidth, (inchLength(8.5)));
+        DEPRECATED_DEFINE_STATIC_LOCAL(Length, legalHeight, (inchLength(14)));
+        DEPRECATED_DEFINE_STATIC_LOCAL(Length, ledgerWidth, (inchLength(11)));
+        DEPRECATED_DEFINE_STATIC_LOCAL(Length, ledgerHeight, (inchLength(17)));
 
         if (!pageSizeName)
             return false;
@@ -2144,7 +2144,7 @@ public:
         }
         if (!value->isValueList())
             return;
-        LayoutBox referenceBox = BoxMissing;
+        CSSBoxType referenceBox = BoxMissing;
         RefPtr<ClipPathOperation> operation;
         auto& valueList = toCSSValueList(*value);
         for (unsigned i = 0; i < valueList.length(); ++i) {
@@ -2159,7 +2159,7 @@ public:
                 || primitiveValue.getValueID() == CSSValueStroke
                 || primitiveValue.getValueID() == CSSValueViewBox)
                 && referenceBox == BoxMissing)
-                referenceBox = LayoutBox(primitiveValue);
+                referenceBox = CSSBoxType(primitiveValue);
             else
                 return;
         }
@@ -2196,7 +2196,7 @@ public:
             setValue(styleResolver->style(), shape.release());
         } else if (value->isValueList()) {
             RefPtr<BasicShape> shape;
-            LayoutBox layoutBox = BoxMissing;
+            CSSBoxType referenceBox = BoxMissing;
             CSSValueList* valueList = toCSSValueList(value);
             for (unsigned i = 0; i < valueList->length(); ++i) {
                 CSSPrimitiveValue* primitiveValue = toCSSPrimitiveValue(valueList->itemWithoutBoundsCheck(i));
@@ -2206,15 +2206,15 @@ public:
                     || primitiveValue->getValueID() == CSSValueBorderBox
                     || primitiveValue->getValueID() == CSSValuePaddingBox
                     || primitiveValue->getValueID() == CSSValueMarginBox)
-                    layoutBox = LayoutBox(*primitiveValue);
+                    referenceBox = CSSBoxType(*primitiveValue);
                 else
                     return;
             }
 
             if (shape)
-                setValue(styleResolver->style(), ShapeValue::createShapeValue(shape.release(), layoutBox));
-            else if (layoutBox != BoxMissing)
-                setValue(styleResolver->style(), ShapeValue::createLayoutBoxValue(layoutBox));
+                setValue(styleResolver->style(), ShapeValue::createShapeValue(shape.release(), referenceBox));
+            else if (referenceBox != BoxMissing)
+                setValue(styleResolver->style(), ShapeValue::createBoxShapeValue(referenceBox));
 
         }
     }
@@ -2339,7 +2339,7 @@ public:
 
 const DeprecatedStyleBuilder& DeprecatedStyleBuilder::sharedStyleBuilder()
 {
-    DEFINE_STATIC_LOCAL(DeprecatedStyleBuilder, styleBuilderInstance, ());
+    DEPRECATED_DEFINE_STATIC_LOCAL(DeprecatedStyleBuilder, styleBuilderInstance, ());
     return styleBuilderInstance;
 }
 

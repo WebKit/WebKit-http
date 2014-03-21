@@ -10,7 +10,7 @@
  * 2.  Redistributions in binary form must reproduce the above copyright
  *     notice, this list of conditions and the following disclaimer in the
  *     documentation and/or other materials provided with the distribution. 
- * 3.  Neither the name of Apple Computer, Inc. ("Apple") nor the names of
+ * 3.  Neither the name of Apple Inc. ("Apple") nor the names of
  *     its contributors may be used to endorse or promote products derived
  *     from this software without specific prior written permission. 
  *
@@ -282,8 +282,10 @@ namespace JSC {
         Strong<Structure> propertyTableStructure;
         Strong<Structure> mapDataStructure;
         Strong<Structure> weakMapDataStructure;
+#if ENABLE(PROMISES)
         Strong<Structure> promiseDeferredStructure;
         Strong<Structure> promiseReactionStructure;
+#endif
         Strong<JSCell> iterationTerminator;
 
         IdentifierTable* identifierTable;
@@ -456,7 +458,7 @@ namespace JSC {
         BumpPointerAllocator m_regExpAllocator;
 
 #if ENABLE(REGEXP_TRACING)
-        typedef ListHashSet<RefPtr<RegExp>> RTTraceList;
+        typedef ListHashSet<RegExp*> RTTraceList;
         RTTraceList* m_rtTraceList;
 #endif
 
@@ -471,7 +473,7 @@ namespace JSC {
         JS_EXPORT_PRIVATE void dumpSampleData(ExecState* exec);
         RegExpCache* regExpCache() { return m_regExpCache; }
 #if ENABLE(REGEXP_TRACING)
-        void addRegExpToTrace(PassRefPtr<RegExp> regExp);
+        void addRegExpToTrace(RegExp*);
 #endif
         JS_EXPORT_PRIVATE void dumpRegExpTrace();
 

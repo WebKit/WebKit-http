@@ -11,10 +11,10 @@
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
  *
- * THIS SOFTWARE IS PROVIDED BY APPLE COMPUTER, INC. ``AS IS'' AND ANY
+ * THIS SOFTWARE IS PROVIDED BY APPLE INC. ``AS IS'' AND ANY
  * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE COMPUTER, INC. OR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE INC. OR
  * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
  * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
  * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
@@ -74,7 +74,7 @@ PassRefPtr<TextControlInnerElement> TextControlInnerElement::create(Document& do
     return adoptRef(new TextControlInnerElement(document));
 }
 
-PassRefPtr<RenderStyle> TextControlInnerElement::customStyleForRenderer()
+PassRefPtr<RenderStyle> TextControlInnerElement::customStyleForRenderer(RenderStyle&)
 {
     RenderTextControlSingleLine* parentRenderer = toRenderTextControlSingleLine(shadowHost()->renderer());
     return parentRenderer->createInnerBlockStyle(&parentRenderer->style());
@@ -122,7 +122,7 @@ RenderTextControlInnerBlock* TextControlInnerTextElement::renderer() const
     return toRenderTextControlInnerBlock(HTMLDivElement::renderer());
 }
 
-PassRefPtr<RenderStyle> TextControlInnerTextElement::customStyleForRenderer()
+PassRefPtr<RenderStyle> TextControlInnerTextElement::customStyleForRenderer(RenderStyle&)
 {
     RenderTextControl* parentRenderer = toRenderTextControl(shadowHost()->renderer());
     return parentRenderer->createInnerTextStyle(&parentRenderer->style());
@@ -142,9 +142,9 @@ PassRefPtr<SearchFieldResultsButtonElement> SearchFieldResultsButtonElement::cre
 
 const AtomicString& SearchFieldResultsButtonElement::shadowPseudoId() const
 {
-    DEFINE_STATIC_LOCAL(AtomicString, resultsId, ("-webkit-search-results-button", AtomicString::ConstructFromLiteral));
-    DEFINE_STATIC_LOCAL(AtomicString, resultsDecorationId, ("-webkit-search-results-decoration", AtomicString::ConstructFromLiteral));
-    DEFINE_STATIC_LOCAL(AtomicString, decorationId, ("-webkit-search-decoration", AtomicString::ConstructFromLiteral));
+    DEPRECATED_DEFINE_STATIC_LOCAL(AtomicString, resultsId, ("-webkit-search-results-button", AtomicString::ConstructFromLiteral));
+    DEPRECATED_DEFINE_STATIC_LOCAL(AtomicString, resultsDecorationId, ("-webkit-search-results-decoration", AtomicString::ConstructFromLiteral));
+    DEPRECATED_DEFINE_STATIC_LOCAL(AtomicString, decorationId, ("-webkit-search-decoration", AtomicString::ConstructFromLiteral));
     Element* host = shadowHost();
     if (!host)
         return resultsId;
@@ -202,7 +202,7 @@ PassRefPtr<SearchFieldCancelButtonElement> SearchFieldCancelButtonElement::creat
 
 const AtomicString& SearchFieldCancelButtonElement::shadowPseudoId() const
 {
-    DEFINE_STATIC_LOCAL(AtomicString, pseudoId, ("-webkit-search-cancel-button", AtomicString::ConstructFromLiteral));
+    DEPRECATED_DEFINE_STATIC_LOCAL(AtomicString, pseudoId, ("-webkit-search-cancel-button", AtomicString::ConstructFromLiteral));
     return pseudoId;
 }
 
@@ -461,7 +461,7 @@ void InputFieldSpeechButtonElement::stopSpeechInput()
 
 const AtomicString& InputFieldSpeechButtonElement::shadowPseudoId() const
 {
-    DEFINE_STATIC_LOCAL(AtomicString, pseudoId, ("-webkit-input-speech-button", AtomicString::ConstructFromLiteral));
+    DEPRECATED_DEFINE_STATIC_LOCAL(AtomicString, pseudoId, ("-webkit-input-speech-button", AtomicString::ConstructFromLiteral));
     return pseudoId;
 }
 

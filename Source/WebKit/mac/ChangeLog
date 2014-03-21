@@ -1,3 +1,534 @@
+2014-03-20  Lucas Forschler  <lforschler@apple.com>
+
+    Rollout r165944.  Build break.
+    
+2014-03-19  Pratik Solanki  <psolanki@apple.com>
+
+        [iOS] Get code to compile on older iOS versions
+        https://bugs.webkit.org/show_bug.cgi?id=130142
+        <rdar://problem/16302908>
+
+        Reviewed by Darin Adler.
+
+        * History/WebHistory.mm:
+        (getDayBoundaries):
+        * Plugins/WebPluginController.h:
+        * Plugins/WebPluginController.mm:
+        (+[WebPluginController plugInViewWithArguments:fromPluginPackage:]):
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (pluginView):
+        * WebView/WebPreferences.mm:
+        (-[WebPreferences _setAllowCompositingLayerVisualDegradation:]):
+        * WebView/WebPreferencesPrivate.h:
+
+2014-03-19  Jer Noble  <jer.noble@apple.com>
+
+        [Mac][EME] Query whether decoder support exists before creating a new MediaKeys object.
+        https://bugs.webkit.org/show_bug.cgi?id=130459
+
+        Reviewed by Eric Carlson.
+
+        * WebCoreSupport/WebSystemInterface.mm:
+        (InitWebCoreSystemInterface): Initialize the new WCSI method.
+
+2014-03-19  Brady Eidson  <beidson@apple.com>
+
+        Filter out editable services from image menu for non-contenteditable images
+        <rdar://problem/16319645> and https://bugs.webkit.org/show_bug.cgi?id=130437
+
+        Reviewed by Tim Horton.
+
+        * Misc/WebSharingServicePickerController.h:
+        * Misc/WebSharingServicePickerController.mm:
+        (-[WebSharingServicePickerController sharingServicePicker:sharingServicesForItems:mask:proposedSharingServices:]):
+          Filter out editing services based on the includeEditorServices flag.
+        * WebCoreSupport/WebContextMenuClient.mm:
+        (WebContextMenuClient::contextMenuForEvent):
+
+2014-03-19  Jer Noble  <jer.noble@apple.com>
+
+        [iOS] Disable the video plugin proxy by default on WK1.
+        https://bugs.webkit.org/show_bug.cgi?id=130460
+
+        Reviewed by Eric Carlson.
+
+        Update the defaults to universally enable the AVFoundationEnabled preference, disable the
+        VideoPluginProxyEnabled preference, and on iOS only enable the AVKitEnabled preference.
+
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+
+2014-03-18  Samuel White  <samuel_white@apple.com>
+
+        AX: Not able to use arrow keys to read text with VoiceOver before selection is set someplace (anyplace).
+        https://bugs.webkit.org/show_bug.cgi?id=130250
+
+        Reviewed by Chris Fleizach.
+
+        Added ability to toggle enhanced accessibility on and off to support tests that require it.
+
+        * WebView/WebFrame.mm:
+        (-[WebFrame enhancedAccessibilityEnabled]):
+        (-[WebFrame setEnhancedAccessibility:]):
+        * WebView/WebFramePrivate.h:
+
+2014-03-17  Filip Pizlo  <fpizlo@apple.com>
+
+        More FTL enabling.
+
+        Rubber stamped by Dan Bernstein.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2014-03-17  Andy Estes  <aestes@apple.com>
+
+        Remove staging code added for <http://webkit.org/b/129358> [iOS] Support network state notification using CPNetworkObserver
+
+        Reviewed by Enrica Casucci.
+
+        * WebView/WebView.mm:
+
+2014-03-17  Anders Carlsson  <andersca@apple.com>
+
+        WebKitLegacy headers should #import the relevant WebKit headers
+        https://bugs.webkit.org/show_bug.cgi?id=130372
+        <rdar://problem/16349094>
+
+        Reviewed by Dan Bernstein.
+
+        Create forwarding headers instead.
+
+        * WebKitLegacy/MigrateHeadersToLegacy.make:
+
+2014-03-17  Tim Horton  <timothy_horton@apple.com>
+
+        Rename WKThumbnailView to _WKThumbnailView
+        https://bugs.webkit.org/show_bug.cgi?id=130361
+
+        Reviewed by Anders Carlsson.
+
+        * MigrateHeaders.make:
+
+2014-03-17  David Farler  <dfarler@apple.com>
+
+        REGRESSION: WebKitLegacy causes ASan build to fail
+        <rdar://problem/16344326>
+
+        Reviewed by David Kilzer.
+
+        * Configurations/DebugRelease.xcconfig: Remove $(inherited) from
+        OTHER_CFLAGS, OTHER_CPLUSPLUSFLAGS, OTHER_LDFLAGS to prevent
+        double complete ASAN flags.
+
+2014-03-16  Brent Fulgham  <bfulgham@apple.com>
+
+        Provide preference to enable additional AVFoundation options
+        https://bugs.webkit.org/show_bug.cgi?id=130275
+
+        Reviewed by Eric Carlson.
+
+        * WebView/WebPreferenceKeysPrivate.h: Added new preference.
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]): Initialize preference to false.
+        (-[WebPreferences isInheritURIQueryComponentEnabled]): Added.
+        (-[WebPreferences setEnableInheritURIQueryComponent:]): Added.
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]): Handle new preference.
+
+2014-03-16  Darin Adler  <darin@apple.com>
+
+        Remove all deprecatedCharacters use from WebKit directory
+        https://bugs.webkit.org/show_bug.cgi?id=130305
+
+        Reviewed by Andreas Kling.
+
+        * History/BinaryPropertyList.cpp:
+        (BinaryPropertyListSerializer::appendStringObject): Use operator[]
+        instead of deprecatedCharacters.
+
+2014-03-14  Mark Rowe  <mrowe@apple.com>
+
+        Fix the production build.
+
+        Don't rely on USE_INTERNAL_SDK being set for the Production configuration since UseInternalSDK.xcconfig won't
+        be at the expected relative path when working from installed source.
+
+        * Configurations/Base.xcconfig:
+
+2014-03-14  Maciej Stachowiak  <mjs@apple.com>
+
+        Replace "Apple Computer, Inc." with "Apple Inc." in copyright headers
+        https://bugs.webkit.org/show_bug.cgi?id=130276
+        <rdar://problem/16266927>
+        
+        Reviewed by Simon Fraser.
+
+        * Carbon/CarbonUtils.h:
+        * Carbon/CarbonUtils.m:
+        * Carbon/CarbonWindowAdapter.h:
+        * Carbon/CarbonWindowAdapter.mm:
+        * Carbon/CarbonWindowContentView.h:
+        * Carbon/CarbonWindowContentView.m:
+        * Carbon/CarbonWindowFrame.h:
+        * Carbon/CarbonWindowFrame.m:
+        * Carbon/HIViewAdapter.h:
+        * Carbon/HIViewAdapter.m:
+        * Carbon/HIWebView.h:
+        * Carbon/HIWebView.mm:
+        * DOM/WebDOMOperations.h:
+        * DOM/WebDOMOperations.mm:
+        * DOM/WebDOMOperationsInternal.h:
+        * DOM/WebDOMOperationsPrivate.h:
+        * DefaultDelegates/WebDefaultContextMenuDelegate.h:
+        * DefaultDelegates/WebDefaultContextMenuDelegate.mm:
+        * DefaultDelegates/WebDefaultEditingDelegate.h:
+        * DefaultDelegates/WebDefaultEditingDelegate.m:
+        * DefaultDelegates/WebDefaultPolicyDelegate.h:
+        * DefaultDelegates/WebDefaultPolicyDelegate.m:
+        * DefaultDelegates/WebDefaultUIDelegate.h:
+        * DefaultDelegates/WebDefaultUIDelegate.m:
+        * History/WebBackForwardList.h:
+        * History/WebBackForwardList.mm:
+        * History/WebBackForwardListInternal.h:
+        * History/WebBackForwardListPrivate.h:
+        * History/WebHistory.h:
+        * History/WebHistory.mm:
+        * History/WebHistoryInternal.h:
+        * History/WebHistoryItem.h:
+        * History/WebHistoryItem.mm:
+        * History/WebHistoryItemInternal.h:
+        * History/WebHistoryItemPrivate.h:
+        * History/WebHistoryPrivate.h:
+        * History/WebURLsWithTitles.h:
+        * History/WebURLsWithTitles.m:
+        * MigrateHeaders.make:
+        * Misc/OldWebAssertions.c:
+        * Misc/WebCache.h:
+        * Misc/WebCache.mm:
+        * Misc/WebCoreStatistics.h:
+        * Misc/WebCoreStatistics.mm:
+        * Misc/WebDownload.h:
+        * Misc/WebDownload.mm:
+        * Misc/WebDownloadInternal.h:
+        * Misc/WebElementDictionary.h:
+        * Misc/WebElementDictionary.mm:
+        * Misc/WebIconDatabase.h:
+        * Misc/WebIconDatabase.mm:
+        * Misc/WebIconDatabaseDelegate.h:
+        * Misc/WebIconDatabaseInternal.h:
+        * Misc/WebIconDatabasePrivate.h:
+        * Misc/WebKit.h:
+        * Misc/WebKitErrors.h:
+        * Misc/WebKitErrors.m:
+        * Misc/WebKitErrorsPrivate.h:
+        * Misc/WebKitLogging.h:
+        * Misc/WebKitLogging.m:
+        * Misc/WebKitNSStringExtras.h:
+        * Misc/WebKitNSStringExtras.mm:
+        * Misc/WebKitStatistics.h:
+        * Misc/WebKitStatistics.m:
+        * Misc/WebKitStatisticsPrivate.h:
+        * Misc/WebKitSystemBits.h:
+        * Misc/WebKitSystemBits.m:
+        * Misc/WebKitVersionChecks.h:
+        * Misc/WebKitVersionChecks.m:
+        * Misc/WebLocalizableStrings.h:
+        * Misc/WebLocalizableStrings.mm:
+        * Misc/WebNSArrayExtras.h:
+        * Misc/WebNSArrayExtras.m:
+        * Misc/WebNSControlExtras.h:
+        * Misc/WebNSControlExtras.m:
+        * Misc/WebNSDataExtras.h:
+        * Misc/WebNSDataExtras.m:
+        * Misc/WebNSDataExtrasPrivate.h:
+        * Misc/WebNSDictionaryExtras.h:
+        * Misc/WebNSDictionaryExtras.m:
+        * Misc/WebNSEventExtras.h:
+        * Misc/WebNSEventExtras.m:
+        * Misc/WebNSFileManagerExtras.h:
+        * Misc/WebNSFileManagerExtras.mm:
+        * Misc/WebNSImageExtras.h:
+        * Misc/WebNSImageExtras.m:
+        * Misc/WebNSObjectExtras.h:
+        * Misc/WebNSObjectExtras.mm:
+        * Misc/WebNSPasteboardExtras.h:
+        * Misc/WebNSPasteboardExtras.mm:
+        * Misc/WebNSPrintOperationExtras.h:
+        * Misc/WebNSPrintOperationExtras.m:
+        * Misc/WebNSURLExtras.h:
+        * Misc/WebNSURLExtras.mm:
+        * Misc/WebNSURLRequestExtras.h:
+        * Misc/WebNSURLRequestExtras.m:
+        * Misc/WebNSUserDefaultsExtras.h:
+        * Misc/WebNSUserDefaultsExtras.mm:
+        * Misc/WebNSViewExtras.h:
+        * Misc/WebNSViewExtras.m:
+        * Misc/WebNSWindowExtras.h:
+        * Misc/WebNSWindowExtras.m:
+        * Misc/WebStringTruncator.h:
+        * Misc/WebStringTruncator.mm:
+        * Misc/WebTypesInternal.h:
+        * Panels/WebAuthenticationPanel.h:
+        * Panels/WebAuthenticationPanel.m:
+        * Panels/WebPanelAuthenticationHandler.h:
+        * Panels/WebPanelAuthenticationHandler.m:
+        * Plugins/Hosted/ProxyRuntimeObject.h:
+        * Plugins/Hosted/ProxyRuntimeObject.mm:
+        * Plugins/WebBaseNetscapePluginView.h:
+        * Plugins/WebBaseNetscapePluginView.mm:
+        * Plugins/WebBasePluginPackage.h:
+        * Plugins/WebBasePluginPackage.mm:
+        * Plugins/WebJavaPlugIn.h:
+        * Plugins/WebNetscapeContainerCheckContextInfo.h:
+        * Plugins/WebNetscapeContainerCheckPrivate.h:
+        * Plugins/WebNetscapeContainerCheckPrivate.mm:
+        * Plugins/WebNetscapePluginPackage.h:
+        * Plugins/WebNetscapePluginPackage.mm:
+        * Plugins/WebNetscapePluginStream.h:
+        * Plugins/WebNetscapePluginStream.mm:
+        * Plugins/WebNetscapePluginView.h:
+        * Plugins/WebNetscapePluginView.mm:
+        * Plugins/WebPlugin.h:
+        * Plugins/WebPluginContainer.h:
+        * Plugins/WebPluginContainerCheck.h:
+        * Plugins/WebPluginContainerCheck.mm:
+        * Plugins/WebPluginContainerPrivate.h:
+        * Plugins/WebPluginController.h:
+        * Plugins/WebPluginController.mm:
+        * Plugins/WebPluginDatabase.h:
+        * Plugins/WebPluginDatabase.mm:
+        * Plugins/WebPluginPackage.h:
+        * Plugins/WebPluginPackage.mm:
+        * Plugins/WebPluginRequest.h:
+        * Plugins/WebPluginRequest.m:
+        * Plugins/WebPluginViewFactory.h:
+        * Plugins/WebPluginViewFactoryPrivate.h:
+        * Plugins/WebPluginsPrivate.h:
+        * Plugins/WebPluginsPrivate.m:
+        * Plugins/npapi.mm:
+        * Storage/WebDatabaseManager.mm:
+        * Storage/WebDatabaseManagerInternal.h:
+        * Storage/WebDatabaseManagerPrivate.h:
+        * WebCoreSupport/SearchPopupMenuMac.mm:
+        * WebCoreSupport/WebAlternativeTextClient.h:
+        * WebCoreSupport/WebAlternativeTextClient.mm:
+        * WebCoreSupport/WebCachedFramePlatformData.h:
+        * WebCoreSupport/WebChromeClient.h:
+        * WebCoreSupport/WebChromeClient.mm:
+        * WebCoreSupport/WebContextMenuClient.h:
+        * WebCoreSupport/WebContextMenuClient.mm:
+        * WebCoreSupport/WebDragClient.h:
+        * WebCoreSupport/WebDragClient.mm:
+        * WebCoreSupport/WebEditorClient.h:
+        * WebCoreSupport/WebEditorClient.mm:
+        * WebCoreSupport/WebFrameLoaderClient.h:
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        * WebCoreSupport/WebIconDatabaseClient.h:
+        * WebCoreSupport/WebIconDatabaseClient.mm:
+        * WebCoreSupport/WebInspectorClient.h:
+        * WebCoreSupport/WebInspectorClient.mm:
+        * WebCoreSupport/WebJavaScriptTextInputPanel.h:
+        * WebCoreSupport/WebJavaScriptTextInputPanel.m:
+        * WebCoreSupport/WebSecurityOrigin.mm:
+        * WebCoreSupport/WebSecurityOriginInternal.h:
+        * WebCoreSupport/WebSecurityOriginPrivate.h:
+        * WebCoreSupport/WebSystemInterface.h:
+        * WebCoreSupport/WebSystemInterface.mm:
+        * WebInspector/WebInspector.h:
+        * WebInspector/WebInspector.mm:
+        * WebInspector/WebInspectorPrivate.h:
+        * WebInspector/WebNodeHighlight.h:
+        * WebInspector/WebNodeHighlight.mm:
+        * WebInspector/WebNodeHighlightView.h:
+        * WebInspector/WebNodeHighlightView.mm:
+        * WebInspector/WebNodeHighlighter.h:
+        * WebInspector/WebNodeHighlighter.mm:
+        * WebKitLegacy/MigrateHeadersToLegacy.make:
+        * WebKitPrefix.h:
+        * WebView/WebArchive.h:
+        * WebView/WebArchive.mm:
+        * WebView/WebArchiveInternal.h:
+        * WebView/WebClipView.h:
+        * WebView/WebClipView.mm:
+        * WebView/WebDashboardRegion.h:
+        * WebView/WebDashboardRegion.mm:
+        * WebView/WebDataSource.h:
+        * WebView/WebDataSource.mm:
+        * WebView/WebDataSourceInternal.h:
+        * WebView/WebDataSourcePrivate.h:
+        * WebView/WebDelegateImplementationCaching.h:
+        * WebView/WebDelegateImplementationCaching.mm:
+        * WebView/WebDocument.h:
+        * WebView/WebDocumentInternal.h:
+        * WebView/WebDocumentLoaderMac.h:
+        * WebView/WebDocumentLoaderMac.mm:
+        * WebView/WebDocumentPrivate.h:
+        * WebView/WebDynamicScrollBarsViewInternal.h:
+        * WebView/WebEditingDelegate.h:
+        * WebView/WebEditingDelegatePrivate.h:
+        * WebView/WebFormDelegate.h:
+        * WebView/WebFormDelegate.m:
+        * WebView/WebFormDelegatePrivate.h:
+        * WebView/WebFrame.h:
+        * WebView/WebFrame.mm:
+        * WebView/WebFrameInternal.h:
+        * WebView/WebFrameLoadDelegate.h:
+        * WebView/WebFrameLoadDelegatePrivate.h:
+        * WebView/WebFramePrivate.h:
+        * WebView/WebFrameView.h:
+        * WebView/WebFrameView.mm:
+        * WebView/WebFrameViewInternal.h:
+        * WebView/WebFrameViewPrivate.h:
+        * WebView/WebHTMLRepresentation.h:
+        * WebView/WebHTMLRepresentation.mm:
+        * WebView/WebHTMLRepresentationPrivate.h:
+        * WebView/WebHTMLView.h:
+        * WebView/WebHTMLView.mm:
+        * WebView/WebHTMLViewInternal.h:
+        * WebView/WebHTMLViewPrivate.h:
+        * WebView/WebNotification.h:
+        * WebView/WebNotification.mm:
+        * WebView/WebNotificationInternal.h:
+        * WebView/WebPDFRepresentation.h:
+        * WebView/WebPDFRepresentation.mm:
+        * WebView/WebPDFView.h:
+        * WebView/WebPDFView.mm:
+        * WebView/WebPolicyDelegate.h:
+        * WebView/WebPolicyDelegate.mm:
+        * WebView/WebPolicyDelegatePrivate.h:
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.h:
+        * WebView/WebPreferences.mm:
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebRenderLayer.h:
+        * WebView/WebRenderLayer.mm:
+        * WebView/WebRenderNode.h:
+        * WebView/WebRenderNode.mm:
+        * WebView/WebResource.h:
+        * WebView/WebResource.mm:
+        * WebView/WebResourceInternal.h:
+        * WebView/WebResourceLoadDelegate.h:
+        * WebView/WebResourceLoadDelegatePrivate.h:
+        * WebView/WebResourcePrivate.h:
+        * WebView/WebScriptDebugDelegate.h:
+        * WebView/WebScriptDebugDelegate.mm:
+        * WebView/WebScriptDebugger.h:
+        * WebView/WebScriptDebugger.mm:
+        * WebView/WebTextCompletionController.mm:
+        * WebView/WebUIDelegate.h:
+        * WebView/WebUIDelegatePrivate.h:
+        * WebView/WebView.h:
+        * WebView/WebView.mm:
+        * WebView/WebViewData.h:
+        * WebView/WebViewData.mm:
+        * WebView/WebViewInternal.h:
+        * WebView/WebViewPrivate.h:
+
+2014-03-14  Ryosuke Niwa  <rniwa@webkit.org>
+
+        REGRESSION(r165385): [WebTextIterator currentRange] crashes
+        https://bugs.webkit.org/show_bug.cgi?id=130271
+
+        Reviewed by Anders Carlsson.
+
+        After r165385, TextIterator::range no longer checked the nullity of m_positionNode. As a result,
+        [WebTextIterator currentRange] which simply calls TextIterator::range crashes when an application
+        that embeds WebKit doesn't check [WebTextIterator atEnd] first.
+
+        Preserve the old public API behavior by checking atEnd in [WebTextIterator currentRange].
+
+        * WebView/WebTextIterator.mm:
+        (-[WebTextIterator currentRange]):
+
+2014-03-12  Sergio Villar Senin  <svillar@igalia.com>
+
+        Rename DEFINE_STATIC_LOCAL to DEPRECATED_DEFINE_STATIC_LOCAL
+        https://bugs.webkit.org/show_bug.cgi?id=129612
+
+        Reviewed by Darin Adler.
+
+        For new code use static NeverDestroyed<T> instead.
+
+        * History/WebBackForwardList.mm:
+        (backForwardLists):
+        * History/WebHistoryItem.mm:
+        (historyItemWrappers):
+        * Misc/WebNSPasteboardExtras.mm:
+        (+[NSPasteboard _web_writableTypesForURL]):
+        (_writableTypesForImageWithoutArchive):
+        (_writableTypesForImageWithArchive):
+        * Misc/WebStringTruncator.mm:
+        (fontFromNSFont):
+        * Plugins/Hosted/NetscapePluginHostManager.mm:
+        (WebKit::NetscapePluginHostManager::shared):
+        * Plugins/Hosted/NetscapePluginHostProxy.mm:
+        (WebKit::pluginProxyMap):
+        * Plugins/Hosted/NetscapePluginInstanceProxy.mm:
+        (WebKit::globalExceptionString):
+        * Plugins/Hosted/ProxyInstance.mm:
+        (WebKit::proxyClass):
+        * Plugins/WebNetscapePluginStream.mm:
+        (streams):
+        * Storage/WebDatabaseManager.mm:
+        (transactionBackgroundTaskIdentifierLock):
+        * WebCoreSupport/WebUserMediaClient.mm:
+        (userMediaRequestsMap):
+        * WebView/WebHTMLRepresentation.mm:
+        (regExpForLabels):
+        * WebView/WebView.mm:
+        (aeDescFromJSValue):
+
+2014-03-13  Tim Horton  <timothy_horton@apple.com>
+
+        Fix relative paths to UseInternalSDK.xcconfig for ANGLE and WebKit/mac
+
+        Rubber-stamped by Mark Rowe.
+
+        One-too-few "..".
+
+        * Configurations/Base.xcconfig:
+
+2014-03-13  Anders Carlsson  <andersca@apple.com>
+
+        Fix build.
+
+        * Misc/WebSharingServicePickerController.mm:
+
+2014-03-13  Radu Stavila  <stavila@adobe.com>
+
+        Webkit not building on XCode 5.1 due to garbage collection no longer being supported
+        https://bugs.webkit.org/show_bug.cgi?id=130087
+
+        Reviewed by Mark Rowe.
+
+        Disable garbage collection on macosx when not using internal SDK.
+
+        * Configurations/Base.xcconfig:
+
+2014-03-10  Darin Adler  <darin@apple.com>
+
+        Avoid copy-prone idiom "for (auto item : collection)"
+        https://bugs.webkit.org/show_bug.cgi?id=129990
+
+        Reviewed by Geoffrey Garen.
+
+        * WebView/WebFrame.mm:
+        (-[WebFrame _documentFragmentWithNodesAsParagraphs:]):
+        Use auto*. Also removed uneeded ASSERT_NO_EXCEPTION, which is already
+        the default without specifying it explicitly.
+
+2014-03-12  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: Remove unused callId parameter from evaluateInWebInspector
+        https://bugs.webkit.org/show_bug.cgi?id=129744
+
+        Reviewed by Timothy Hatcher.
+
+        * WebInspector/WebInspector.mm:
+        (-[WebInspector evaluateInFrontend:script:]):
+        * WebInspector/WebInspectorPrivate.h:
+
 2014-03-12  Dean Jackson  <dino@apple.com>
 
         [WebGL] WebKit1 + WebKit2 iOS clients should check load policy

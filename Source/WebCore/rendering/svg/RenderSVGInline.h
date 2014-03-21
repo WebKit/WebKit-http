@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2006 Oliver Hunt <ojh16@student.canterbury.ac.nz>
- * Copyright (C) 2006 Apple Computer Inc.
+ * Copyright (C) 2006 Apple Inc.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -38,6 +38,8 @@ private:
     virtual const char* renderName() const override { return "RenderSVGInline"; }
     virtual bool requiresLayer() const override final { return false; }
     virtual bool isSVGInline() const override final { return true; }
+
+    virtual void updateFromStyle() override final;
 
     // Chapter 10.4 of the SVG Specification say that we should use the
     // object bounding box of the parent text element.

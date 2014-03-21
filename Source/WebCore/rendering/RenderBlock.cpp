@@ -2330,8 +2330,7 @@ void RenderBlock::paintObject(PaintInfo& paintInfo, const LayoutPoint& paintOffs
 
     // Adjust our painting position if we're inside a scrolled layer (e.g., an overflow:auto div).
     LayoutPoint scrolledOffset = paintOffset;
-    if (hasOverflowClip())
-        scrolledOffset.move(-scrolledContentOffset());
+    scrolledOffset.move(-scrolledContentOffset());
 
     // 2. paint contents
     if (paintPhase != PaintPhaseSelfOutline) {
@@ -2413,7 +2412,7 @@ RenderBlock* RenderBlock::blockElementContinuation() const
     
 static ContinuationOutlineTableMap* continuationOutlineTable()
 {
-    DEFINE_STATIC_LOCAL(ContinuationOutlineTableMap, table, ());
+    DEPRECATED_DEFINE_STATIC_LOCAL(ContinuationOutlineTableMap, table, ());
     return &table;
 }
 
@@ -2510,10 +2509,7 @@ GapRects RenderBlock::selectionGapRectsForRepaint(const RenderLayerModelObject* 
 
     TransformState transformState(TransformState::ApplyTransformDirection, FloatPoint());
     mapLocalToContainer(repaintContainer, transformState, ApplyContainerFlip | UseTransforms);
-    LayoutPoint offsetFromRepaintContainer = roundedLayoutPoint(transformState.mappedPoint());
-
-    if (hasOverflowClip())
-        offsetFromRepaintContainer -= scrolledContentOffset();
+    LayoutPoint offsetFromRepaintContainer = roundedLayoutPoint(transformState.mappedPoint()) - scrolledContentOffset();
 
     LogicalSelectionOffsetCaches cache(*this);
     LayoutUnit lastTop = 0;
@@ -2541,7 +2537,7 @@ void RenderBlock::paintSelection(PaintInfo& paintInfo, const LayoutPoint& paintO
                     LayoutRect localBounds(gapRectsBounds);
                     flipForWritingMode(localBounds);
                     gapRectsBounds = localToContainerQuad(FloatRect(localBounds), &layer->renderer()).enclosingBoundingBox();
-                    if (layer->renderer().hasOverflowClip())
+                    if (layer->renderer().isBox())
                         gapRectsBounds.move(layer->renderBox()->scrolledContentOffset());
                 }
                 layer->addBlockSelectionGapsBounds(gapRectsBounds);
@@ -3175,9 +3171,7 @@ bool RenderBlock::nodeAtPoint(const HitTestRequest& request, HitTestResult& resu
     bool checkChildren = !useClip || (hasControlClip() ? locationInContainer.intersects(controlClipRect(adjustedLocation)) : locationInContainer.intersects(overflowClipRect(adjustedLocation, locationInContainer.region(), IncludeOverlayScrollbarSize)));
     if (checkChildren) {
         // Hit test descendants first.
-        LayoutSize scrolledOffset(localOffset);
-        if (hasOverflowClip())
-            scrolledOffset -= scrolledContentOffset();
+        LayoutSize scrolledOffset(localOffset - scrolledContentOffset());
 
         // Hit test contents if we don't have columns.
         if (!hasColumns()) {
@@ -3453,9 +3447,7 @@ VisiblePosition RenderBlock::positionForPoint(const LayoutPoint& point)
 void RenderBlock::offsetForContents(LayoutPoint& offset) const
 {
     offset = flipForWritingMode(offset);
-
-    if (hasOverflowClip())
-        offset += scrolledContentOffset();
+    offset += scrolledContentOffset();
 
     if (hasColumns())
         adjustPointToColumnContents(offset);
@@ -5045,16 +5037,44 @@ RenderRegion* RenderBlock::regionAtBlockOffset(LayoutUnit blockOffset) const
     return flowThread->regionAtBlockOffset(this, offsetFromLogicalTopOfFirstPage() + blockOffset, true);
 }
 
+static bool canComputeRegionRangeForBox(const RenderBlock* parentBlock, const RenderBox& childBox, const RenderFlowThread* flowThreadContainingBlock)
+{
+    ASSERT(parentBlock);
+    ASSERT(!childBox.isRenderFlowThread());
+
+    if (!flowThreadContainingBlock)
+        return false;
+
+    if (!flowThreadContainingBlock->hasRegions())
+        return false;
+
+    if (!childBox.canHaveOutsideRegionRange())
+        return false;
+
+    return flowThreadContainingBlock->hasRegionRangeForBox(parentBlock);
+}
+
+bool RenderBlock::childBoxIsUnsplittableForFragmentation(const RenderBox& child) const
+{
+    RenderFlowThread* flowThread = flowThreadContainingBlock();
+    bool isInsideMulticolFlowThread = flowThread && !flowThread->isRenderNamedFlowThread();
+    bool checkColumnBreaks = isInsideMulticolFlowThread || view().layoutState()->isPaginatingColumns();
+    bool checkPageBreaks = !checkColumnBreaks && view().layoutState()->m_pageLogicalHeight;
+    bool checkRegionBreaks = flowThread && flowThread->isRenderNamedFlowThread();
+    return child.isUnsplittableForPagination() || (checkColumnBreaks && child.style().columnBreakInside() == PBAVOID)
+        || (checkPageBreaks && child.style().pageBreakInside() == PBAVOID)
+        || (checkRegionBreaks && child.style().regionBreakInside() == PBAVOID);
+}
+
 void RenderBlock::computeRegionRangeForBoxChild(const RenderBox& box) const
 {
     RenderFlowThread* flowThread = flowThreadContainingBlock();
-    if (!flowThread || !flowThread->hasRegions())
-        return;
+    ASSERT(canComputeRegionRangeForBox(this, box, flowThread));
 
     RenderRegion* startRegion;
     RenderRegion* endRegion;
     LayoutUnit offsetFromLogicalTopOfFirstRegion = box.offsetFromLogicalTopOfFirstPage();
-    if (box.isUnsplittableForPagination())
+    if (childBoxIsUnsplittableForFragmentation(box))
         startRegion = endRegion = flowThread->regionAtBlockOffset(this, offsetFromLogicalTopOfFirstRegion, true);
     else {
         startRegion = flowThread->regionAtBlockOffset(this, offsetFromLogicalTopOfFirstRegion, true);
@@ -5067,10 +5087,10 @@ void RenderBlock::computeRegionRangeForBoxChild(const RenderBox& box) const
 void RenderBlock::estimateRegionRangeForBoxChild(const RenderBox& box) const
 {
     RenderFlowThread* flowThread = flowThreadContainingBlock();
-    if (!flowThread || !flowThread->hasRegions() || !box.canHaveOutsideRegionRange())
+    if (!canComputeRegionRangeForBox(this, box, flowThread))
         return;
 
-    if (box.isUnsplittableForPagination()) {
+    if (childBoxIsUnsplittableForFragmentation(box)) {
         computeRegionRangeForBoxChild(box);
         return;
     }
@@ -5088,17 +5108,17 @@ void RenderBlock::estimateRegionRangeForBoxChild(const RenderBox& box) const
 bool RenderBlock::updateRegionRangeForBoxChild(const RenderBox& box) const
 {
     RenderFlowThread* flowThread = flowThreadContainingBlock();
-    if (!flowThread || !flowThread->hasRegions() || !box.canHaveOutsideRegionRange())
+    if (!canComputeRegionRangeForBox(this, box, flowThread))
         return false;
 
-    RenderRegion* startRegion = 0;
-    RenderRegion* endRegion = 0;
+    RenderRegion* startRegion = nullptr;
+    RenderRegion* endRegion = nullptr;
     flowThread->getRegionRangeForBox(&box, startRegion, endRegion);
 
     computeRegionRangeForBoxChild(box);
 
-    RenderRegion* newStartRegion = 0;
-    RenderRegion* newEndRegion = 0;
+    RenderRegion* newStartRegion = nullptr;
+    RenderRegion* newEndRegion = nullptr;
     flowThread->getRegionRangeForBox(&box, newStartRegion, newEndRegion);
 
     // The region range of the box has changed. Some boxes (e.g floats) may have been positioned assuming
@@ -5269,9 +5289,9 @@ TextRun RenderBlock::constructTextRun(RenderObject* context, const Font& font, c
 {
     unsigned length = string.length();
 
-    if (length && string.is8Bit())
+    if (!length || string.is8Bit())
         return constructTextRunInternal(context, font, string.characters8(), length, style, expansion, flags);
-    return constructTextRunInternal(context, font, string.deprecatedCharacters(), length, style, expansion, flags);
+    return constructTextRunInternal(context, font, string.characters16(), length, style, expansion, flags);
 }
 
 RenderBlock* RenderBlock::createAnonymousWithParentRendererAndDisplay(const RenderObject* parent, EDisplay display)

@@ -187,7 +187,7 @@ void GamepadsGtk::updateGamepadList(GamepadList* into)
     }
 }
 
-void GamepadsGtk::onUEventCallback(GUdevClient* udevClient, gchar* action, GUdevDevice* device, gpointer data)
+void GamepadsGtk::onUEventCallback(GUdevClient*, gchar* action, GUdevDevice* device, gpointer data)
 {
     if (!isGamepadDevice(device))
         return;
@@ -216,7 +216,7 @@ gboolean GamepadsGtk::isGamepadDevice(GUdevDevice* device)
 
 void sampleGamepads(GamepadList* into)
 {
-    DEFINE_STATIC_LOCAL(GamepadsGtk, gamepadsGtk, (into->length()));
+    DEPRECATED_DEFINE_STATIC_LOCAL(GamepadsGtk, gamepadsGtk, (into->length()));
     gamepadsGtk.updateGamepadList(into);
 }
 

@@ -25,7 +25,7 @@
 #include "ExceptionCode.h"
 #include "SVGParserUtilities.h"
 #include <wtf/MathExtras.h>
-#include <wtf/text/WTFString.h>
+#include <wtf/text/StringView.h>
 
 namespace WebCore {
 
@@ -112,15 +112,15 @@ String SVGAngle::valueAsString() const
 {
     switch (m_unitType) {
     case SVG_ANGLETYPE_DEG: {
-        DEFINE_STATIC_LOCAL(String, degString, (ASCIILiteral("deg")));
+        DEPRECATED_DEFINE_STATIC_LOCAL(String, degString, (ASCIILiteral("deg")));
         return String::number(m_valueInSpecifiedUnits) + degString;
     }
     case SVG_ANGLETYPE_RAD: {
-        DEFINE_STATIC_LOCAL(String, radString, (ASCIILiteral("rad")));
+        DEPRECATED_DEFINE_STATIC_LOCAL(String, radString, (ASCIILiteral("rad")));
         return String::number(m_valueInSpecifiedUnits) + radString;
     }
     case SVG_ANGLETYPE_GRAD: {
-        DEFINE_STATIC_LOCAL(String, gradString, (ASCIILiteral("grad")));
+        DEPRECATED_DEFINE_STATIC_LOCAL(String, gradString, (ASCIILiteral("grad")));
         return String::number(m_valueInSpecifiedUnits) + gradString;
     }
     case SVG_ANGLETYPE_UNSPECIFIED:
@@ -140,7 +140,8 @@ void SVGAngle::setValueAsString(const String& value, ExceptionCode& ec)
     }
 
     float valueInSpecifiedUnits = 0;
-    const UChar* ptr = value.deprecatedCharacters();
+    auto upconvertedCharacters = StringView(value).upconvertedCharacters();
+    const UChar* ptr = upconvertedCharacters;
     const UChar* end = ptr + value.length();
 
     if (!parseNumber(ptr, end, valueInSpecifiedUnits, false)) {

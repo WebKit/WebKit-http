@@ -158,8 +158,10 @@ typedef OptionRange optionRange;
     v(bool, ftlCrashes, false) /* fool-proof way of checking that you ended up in the FTL. ;-) */\
     \
     v(bool, enableConcurrentJIT, true) \
-    v(unsigned, numberOfDFGCompilerThreads, computeNumberOfWorkerThreads(2) - 1) \
-    v(unsigned, numberOfFTLCompilerThreads, computeNumberOfWorkerThreads(8) - 1) \
+    v(unsigned, numberOfDFGCompilerThreads, computeNumberOfWorkerThreads(2, 2) - 1) \
+    v(unsigned, numberOfFTLCompilerThreads, computeNumberOfWorkerThreads(8, 2) - 1) \
+    v(int32, priorityDeltaOfDFGCompilerThreads, computePriorityDeltaOfWorkerThreads(-1, 0)) \
+    v(int32, priorityDeltaOfFTLCompilerThreads, computePriorityDeltaOfWorkerThreads(-2, 0)) \
     \
     v(bool, enableProfiler, false) \
     \
@@ -239,6 +241,10 @@ typedef OptionRange optionRange;
     v(double, minHeapUtilization, 0.8) \
     v(double, minCopiedBlockUtilization, 0.9) \
     v(double, minMarkedBlockUtilization, 0.9) \
+    \
+    v(double, percentCPUPerMBForFullTimer, 0.0003125) \
+    v(double, percentCPUPerMBForEdenTimer, 0.0025) \
+    v(double, collectionTimerMaxPercentCPU, 0.05) \
     \
     v(bool, forceWeakRandomSeed, false) \
     v(unsigned, forcedWeakRandomSeed, 0) \

@@ -60,9 +60,6 @@ void RenderCombineText::setTextInternal(const String& text)
 
 float RenderCombineText::width(unsigned from, unsigned length, const Font& font, float xPosition, HashSet<const SimpleFontData*>* fallbackFonts, GlyphOverflow* glyphOverflow) const
 {
-    if (!deprecatedCharacters())
-        return 0;
-
     if (m_isCombined)
         return font.size();
 
@@ -139,7 +136,7 @@ void RenderCombineText::combineText()
         m_combineFontStyle->font().update(fontSelector);
 
     if (m_isCombined) {
-        DEFINE_STATIC_LOCAL(String, objectReplacementCharacterString, (&objectReplacementCharacter, 1));
+        DEPRECATED_DEFINE_STATIC_LOCAL(String, objectReplacementCharacterString, (&objectReplacementCharacter, 1));
         RenderText::setTextInternal(objectReplacementCharacterString.impl());
     }
 }

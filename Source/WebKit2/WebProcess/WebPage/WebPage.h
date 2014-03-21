@@ -163,6 +163,7 @@ class WebVideoFullscreenManager;
 class WebWheelEvent;
 struct AssistedNodeInformation;
 struct AttributedString;
+struct EditingRange;
 struct EditorState;
 struct InteractionInformationAtPosition;
 struct PrintInfo;
@@ -421,6 +422,7 @@ public:
     WebCore::IntRect rootViewToScreen(const WebCore::IntRect&);
 
     PassRefPtr<WebImage> scaledSnapshotWithOptions(const WebCore::IntRect&, double scaleFactor, SnapshotOptions);
+    PassRefPtr<WebImage> snapshotAtSize(const WebCore::IntRect&, const WebCore::IntSize& bitmapSize, SnapshotOptions);
 
     static const WebEvent* currentEvent();
 
@@ -431,6 +433,7 @@ public:
 #endif
 
 #if PLATFORM(IOS)
+    WebCore::FloatSize viewportScreenSize() const;
     void viewportPropertiesDidChange(const WebCore::ViewportArguments&);
     void didReceiveMobileDocType(bool);
 
@@ -454,8 +457,8 @@ public:
     void syncApplyAutocorrection(const String& correction, const String& originalText, bool& correctionApplied);
     void requestAutocorrectionContext(uint64_t callbackID);
     void getAutocorrectionContext(String& beforeText, String& markedText, String& selectedText, String& afterText, uint64_t& location, uint64_t& length);
-    void insertText(const String& text, uint64_t replacementRangeStart, uint64_t replacementRangeEnd);
-    void setComposition(const String& text, Vector<WebCore::CompositionUnderline> underlines, uint64_t selectionStart, uint64_t selectionEnd);
+    void insertText(const String& text, const EditingRange& replacementRange);
+    void setComposition(const String& text, Vector<WebCore::CompositionUnderline> underlines, const EditingRange& selectionRange);
     void confirmComposition();
     void getPositionInformation(const WebCore::IntPoint&, InteractionInformationAtPosition&);
     void requestPositionInformation(const WebCore::IntPoint&);
@@ -520,7 +523,7 @@ public:
 #endif
 
 #if PLATFORM(GTK)
-    void setComposition(const String& text, Vector<WebCore::CompositionUnderline> underlines, uint64_t selectionStart, uint64_t selectionEnd, uint64_t replacementRangeStart, uint64_t replacementRangeEnd);
+    void setComposition(const String& text, Vector<WebCore::CompositionUnderline> underlines, uint64_t selectionStart, uint64_t selectionEnd, uint64_t replacementRangeStart, uint64_t replacementRangeLength);
     void confirmComposition(const String& text, int64_t selectionStart, int64_t selectionLength);
     void cancelComposition();
 #endif
@@ -537,15 +540,15 @@ public:
 
     void cancelComposition(EditorState& newState);
 #if !PLATFORM(IOS)
-    void insertText(const String& text, uint64_t replacementRangeStart, uint64_t replacementRangeEnd, bool& handled, EditorState& newState);
-    void setComposition(const String& text, Vector<WebCore::CompositionUnderline> underlines, uint64_t selectionStart, uint64_t selectionEnd, uint64_t replacementRangeStart, uint64_t replacementRangeEnd, EditorState& newState);
+    void insertText(const String& text, const EditingRange& replacementRange, bool& handled, EditorState& newState);
+    void setComposition(const String& text, Vector<WebCore::CompositionUnderline> underlines, const EditingRange& selectionRange, const EditingRange& replacementRange, EditorState& newState);
     void confirmComposition(EditorState& newState);
 #endif
-    void getMarkedRange(uint64_t& location, uint64_t& length);
-    void getSelectedRange(uint64_t& location, uint64_t& length);
-    void getAttributedSubstringFromRange(uint64_t location, uint64_t length, AttributedString&);
+    void getMarkedRange(EditingRange&);
+    void getSelectedRange(EditingRange&);
+    void getAttributedSubstringFromRange(const EditingRange&, AttributedString&);
     void characterIndexForPoint(const WebCore::IntPoint point, uint64_t& result);
-    void firstRectForCharacterRange(uint64_t location, uint64_t length, WebCore::IntRect& resultRect);
+    void firstRectForCharacterRange(const EditingRange&, WebCore::IntRect& resultRect);
     void executeKeypressCommands(const Vector<WebCore::KeypressCommand>&, bool& handled, EditorState& newState);
     void readSelectionFromPasteboard(const WTF::String& pasteboardName, bool& result);
     void getStringSelectionForPasteboard(WTF::String& stringValue);
@@ -553,7 +556,7 @@ public:
     void shouldDelayWindowOrderingEvent(const WebKit::WebMouseEvent&, bool& result);
     void acceptsFirstMouse(int eventNumber, const WebKit::WebMouseEvent&, bool& result);
     bool performNonEditingBehaviorForSelector(const String&, WebCore::KeyboardEvent*);
-    void insertDictatedText(const String& text, uint64_t replacementRangeStart, uint64_t replacementRangeEnd, const Vector<WebCore::DictationAlternative>& dictationAlternativeLocations, bool& handled, EditorState& newState);
+    void insertDictatedText(const String& text, const EditingRange& replacementRange, const Vector<WebCore::DictationAlternative>& dictationAlternativeLocations, bool& handled, EditorState& newState);
 #elif PLATFORM(EFL)
     void confirmComposition(const String& compositionString);
     void setComposition(const WTF::String& compositionString, const WTF::Vector<WebCore::CompositionUnderline>& underlines, uint64_t cursorPosition);
@@ -740,6 +743,10 @@ public:
 
     void getBytecodeProfile(uint64_t callbackID);
 
+#if ENABLE(IMAGE_CONTROLS)
+    void replaceControlledImage(const ShareableBitmap::Handle&);
+#endif
+
 private:
     WebPage(uint64_t pageID, const WebPageCreationParameters&);
 
@@ -826,6 +833,10 @@ private:
 
     void didRemoveBackForwardItem(uint64_t);
 
+#if ENABLE(REMOTE_INSPECTOR)
+    void setAllowsRemoteInspection(bool);
+#endif
+
     void setDrawsBackground(bool);
     void setDrawsTransparentBackground(bool);
 
@@ -845,6 +856,7 @@ private:
     void getWebArchiveOfFrame(uint64_t frameID, uint64_t callbackID);
     void runJavaScriptInMainFrame(const String&, uint64_t callbackID);
     void forceRepaint(uint64_t callbackID);
+    void takeSnapshot(WebCore::IntRect snapshotRect, WebCore::IntSize bitmapSize, uint32_t options, uint64_t callbackID);
 
     void preferencesDidChange(const WebPreferencesStore&);
     void platformPreferencesDidChange(const WebPreferencesStore&);
@@ -924,6 +936,8 @@ private:
 
     static PluginView* focusedPluginViewForFrame(WebCore::Frame&);
     static PluginView* pluginViewForFrame(WebCore::Frame*);
+
+    static PassRefPtr<WebCore::Range> rangeFromEditingRange(WebCore::Frame&, const EditingRange&);
 
     void reportUsedFeatures();
 
@@ -1102,6 +1116,7 @@ private:
     uint64_t m_lastVisibleContentRectUpdateID;
     bool m_scaleWasSetByUIProcess;
     bool m_userHasChangedPageScaleFactor;
+    WebCore::FloatSize m_viewportScreenSize;
     WebCore::IntSize m_blockSelectionDesiredSize;
 #endif
 

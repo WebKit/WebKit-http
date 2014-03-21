@@ -92,16 +92,21 @@ bool overrideOptionWithHeuristic(T& variable, const char* name)
     return false;
 }
 
-static unsigned computeNumberOfWorkerThreads(int maxNumberOfWorkerThreads)
+static unsigned computeNumberOfWorkerThreads(int maxNumberOfWorkerThreads, int minimum = 1)
 {
     int cpusToUse = std::min(WTF::numberOfProcessorCores(), maxNumberOfWorkerThreads);
 
     // Be paranoid, it is the OS we're dealing with, after all.
     ASSERT(cpusToUse >= 1);
-    if (cpusToUse < 1)
-        cpusToUse = 1;
-    
-    return cpusToUse;
+    return std::max(cpusToUse, minimum);
+}
+
+static int32_t computePriorityDeltaOfWorkerThreads(int32_t twoCorePriorityDelta, int32_t multiCorePriorityDelta)
+{
+    if (WTF::numberOfProcessorCores() <= 2)
+        return twoCorePriorityDelta;
+
+    return multiCorePriorityDelta;
 }
 
 static unsigned computeNumberOfGCMarkers(unsigned maxNumberOfGCMarkers)
@@ -237,15 +242,6 @@ void Options::initialize()
     JSC_OPTIONS(FOR_EACH_OPTION)
 #undef FOR_EACH_OPTION
         
-#if USE(CF) || OS(UNIX)
-    objectsAreImmortal() = !!getenv("JSImmortalZombieEnabled");
-    useZombieMode() = !!getenv("JSImmortalZombieEnabled") || !!getenv("JSZombieEnabled");
-
-    gcMaxHeapSize() = getenv("GCMaxHeapSize") ? HeapStatistics::parseMemoryAmount(getenv("GCMaxHeapSize")) : 0;
-    recordGCPauseTimes() = !!getenv("JSRecordGCPauseTimes");
-    logHeapStatisticsAtExit() = gcMaxHeapSize() || recordGCPauseTimes();
-#endif
-
     // Allow environment vars to override options if applicable.
     // The evn var should be the name of the option prefixed with
     // "JSC_".

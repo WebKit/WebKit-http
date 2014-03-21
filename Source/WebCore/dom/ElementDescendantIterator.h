@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2014 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,212 +26,262 @@
 #ifndef ElementDescendantIterator_h
 #define ElementDescendantIterator_h
 
-#include "ElementIterator.h"
+#include "Element.h"
+#include "ElementIteratorAssertions.h"
+#include "ElementTraversal.h"
+#include <wtf/Vector.h>
 
 namespace WebCore {
 
-template <typename ElementType>
-class ElementDescendantIterator : public ElementIterator<ElementType> {
+class ElementDescendantIterator {
 public:
-    ElementDescendantIterator(const ContainerNode& root);
-    ElementDescendantIterator(const ContainerNode& root, ElementType* current);
+    ElementDescendantIterator();
+    explicit ElementDescendantIterator(Element* current);
+
     ElementDescendantIterator& operator++();
+
+    Element& operator*();
+    Element* operator->();
+
+    bool operator==(const ElementDescendantIterator& other) const;
+    bool operator!=(const ElementDescendantIterator& other) const;
+
+private:
+    Element* m_current;
+    Vector<Element*, 16, UnsafeVectorOverflow> m_ancestorSiblingStack;
+
+#if !ASSERT_DISABLED
+    ElementIteratorAssertions m_assertions;
+#endif
 };
 
-template <typename ElementType>
-class ElementDescendantConstIterator : public ElementConstIterator<ElementType>  {
+class ElementDescendantConstIterator {
 public:
-    ElementDescendantConstIterator(const ContainerNode& root);
-    ElementDescendantConstIterator(const ContainerNode& root, const ElementType* current);
+    ElementDescendantConstIterator();
+    explicit ElementDescendantConstIterator(const Element*);
+
     ElementDescendantConstIterator& operator++();
+
+    const Element& operator*() const;
+    const Element* operator->() const;
+
+    bool operator==(const ElementDescendantConstIterator& other) const;
+    bool operator!=(const ElementDescendantConstIterator& other) const;
+
+private:
+    const Element* m_current;
+    Vector<Element*, 16, UnsafeVectorOverflow> m_ancestorSiblingStack;
+
+#if !ASSERT_DISABLED
+    ElementIteratorAssertions m_assertions;
+#endif
 };
 
-template <typename ElementType>
 class ElementDescendantIteratorAdapter {
 public:
     ElementDescendantIteratorAdapter(ContainerNode& root);
-    ElementDescendantIterator<ElementType> begin();
-    ElementDescendantIterator<ElementType> end();
-    ElementDescendantIterator<ElementType> beginAt(ElementType&);
-    ElementDescendantIterator<ElementType> from(Element&);
-
-    ElementType* first();
-    ElementType* last();
+    ElementDescendantIterator begin();
+    ElementDescendantIterator end();
 
 private:
     ContainerNode& m_root;
 };
 
-template <typename ElementType>
 class ElementDescendantConstIteratorAdapter {
 public:
     ElementDescendantConstIteratorAdapter(const ContainerNode& root);
-    ElementDescendantConstIterator<ElementType> begin() const;
-    ElementDescendantConstIterator<ElementType> end() const;
-    ElementDescendantConstIterator<ElementType> beginAt(const ElementType&) const;
-    ElementDescendantConstIterator<ElementType> from(const Element&) const;
-
-    const ElementType* first() const;
-    const ElementType* last() const;
+    ElementDescendantConstIterator begin() const;
+    ElementDescendantConstIterator end() const;
 
 private:
     const ContainerNode& m_root;
 };
 
-template <typename ElementType> ElementDescendantIteratorAdapter<ElementType> descendantsOfType(ContainerNode&);
-template <typename ElementType> ElementDescendantConstIteratorAdapter<ElementType> descendantsOfType(const ContainerNode&);
+ElementDescendantIteratorAdapter elementDescendants(ContainerNode&);
+ElementDescendantConstIteratorAdapter elementDescendants(const ContainerNode&);
 
 // ElementDescendantIterator
 
-template <typename ElementType>
-inline ElementDescendantIterator<ElementType>::ElementDescendantIterator(const ContainerNode& root)
-    : ElementIterator<ElementType>(&root)
+inline ElementDescendantIterator::ElementDescendantIterator()
+    : m_current(nullptr)
 {
 }
 
-template <typename ElementType>
-inline ElementDescendantIterator<ElementType>::ElementDescendantIterator(const ContainerNode& root, ElementType* current)
-    : ElementIterator<ElementType>(&root, current)
+inline ElementDescendantIterator::ElementDescendantIterator(Element* current)
+    : m_current(current)
 {
+    m_ancestorSiblingStack.uncheckedAppend(nullptr);
 }
 
-template <typename ElementType>
-inline ElementDescendantIterator<ElementType>& ElementDescendantIterator<ElementType>::operator++()
+ALWAYS_INLINE ElementDescendantIterator& ElementDescendantIterator::operator++()
 {
-    return static_cast<ElementDescendantIterator<ElementType>&>(ElementIterator<ElementType>::traverseNext());
+    ASSERT(m_current);
+    ASSERT(!m_assertions.domTreeHasMutated());
+
+    Element* firstChild = ElementTraversal::firstChild(m_current);
+    Element* nextSibling = ElementTraversal::nextSibling(m_current);
+
+    if (firstChild) {
+        if (nextSibling)
+            m_ancestorSiblingStack.append(nextSibling);
+        m_current = firstChild;
+        return *this;
+    }
+
+    if (nextSibling) {
+        m_current = nextSibling;
+        return *this;
+    }
+
+    m_current = m_ancestorSiblingStack.takeLast();
+
+#if !ASSERT_DISABLED
+    // Drop the assertion when the iterator reaches the end.
+    if (!m_current)
+        m_assertions.dropEventDispatchAssertion();
+#endif
+
+    return *this;
+}
+
+inline Element& ElementDescendantIterator::operator*()
+{
+    ASSERT(m_current);
+    ASSERT(!m_assertions.domTreeHasMutated());
+    return *m_current;
+}
+
+inline Element* ElementDescendantIterator::operator->()
+{
+    ASSERT(m_current);
+    ASSERT(!m_assertions.domTreeHasMutated());
+    return m_current;
+}
+
+inline bool ElementDescendantIterator::operator==(const ElementDescendantIterator& other) const
+{
+    ASSERT(!m_assertions.domTreeHasMutated());
+    return m_current == other.m_current;
+}
+
+inline bool ElementDescendantIterator::operator!=(const ElementDescendantIterator& other) const
+{
+    return !(*this == other);
 }
 
 // ElementDescendantConstIterator
 
-template <typename ElementType>
-inline ElementDescendantConstIterator<ElementType>::ElementDescendantConstIterator(const ContainerNode& root)
-    : ElementConstIterator<ElementType>(&root)
-
+inline ElementDescendantConstIterator::ElementDescendantConstIterator()
+    : m_current(nullptr)
 {
 }
 
-template <typename ElementType>
-inline ElementDescendantConstIterator<ElementType>::ElementDescendantConstIterator(const ContainerNode& root, const ElementType* current)
-    : ElementConstIterator<ElementType>(&root, current)
+inline ElementDescendantConstIterator::ElementDescendantConstIterator(const Element* current)
+    : m_current(current)
 {
+    m_ancestorSiblingStack.uncheckedAppend(nullptr);
 }
 
-template <typename ElementType>
-inline ElementDescendantConstIterator<ElementType>& ElementDescendantConstIterator<ElementType>::operator++()
+ALWAYS_INLINE ElementDescendantConstIterator& ElementDescendantConstIterator::operator++()
 {
-    return static_cast<ElementDescendantConstIterator<ElementType>&>(ElementConstIterator<ElementType>::traverseNext());
+    ASSERT(m_current);
+    ASSERT(!m_assertions.domTreeHasMutated());
+
+    Element* firstChild = ElementTraversal::firstChild(m_current);
+    Element* nextSibling = ElementTraversal::nextSibling(m_current);
+
+    if (firstChild) {
+        if (nextSibling)
+            m_ancestorSiblingStack.append(nextSibling);
+        m_current = firstChild;
+        return *this;
+    }
+
+    if (nextSibling) {
+        m_current = nextSibling;
+        return *this;
+    }
+
+    m_current = m_ancestorSiblingStack.takeLast();
+
+#if !ASSERT_DISABLED
+    // Drop the assertion when the iterator reaches the end.
+    if (!m_current)
+        m_assertions.dropEventDispatchAssertion();
+#endif
+
+    return *this;
+}
+
+inline const Element& ElementDescendantConstIterator::operator*() const
+{
+    ASSERT(m_current);
+    ASSERT(!m_assertions.domTreeHasMutated());
+    return *m_current;
+}
+
+inline const Element* ElementDescendantConstIterator::operator->() const
+{
+    ASSERT(m_current);
+    ASSERT(!m_assertions.domTreeHasMutated());
+    return m_current;
+}
+
+inline bool ElementDescendantConstIterator::operator==(const ElementDescendantConstIterator& other) const
+{
+    ASSERT(!m_assertions.domTreeHasMutated());
+    return m_current == other.m_current;
+}
+
+inline bool ElementDescendantConstIterator::operator!=(const ElementDescendantConstIterator& other) const
+{
+    return !(*this == other);
 }
 
 // ElementDescendantIteratorAdapter
 
-template <typename ElementType>
-inline ElementDescendantIteratorAdapter<ElementType>::ElementDescendantIteratorAdapter(ContainerNode& root)
+inline ElementDescendantIteratorAdapter::ElementDescendantIteratorAdapter(ContainerNode& root)
     : m_root(root)
 {
 }
 
-template <typename ElementType>
-inline ElementDescendantIterator<ElementType> ElementDescendantIteratorAdapter<ElementType>::begin()
+inline ElementDescendantIterator ElementDescendantIteratorAdapter::begin()
 {
-    return ElementDescendantIterator<ElementType>(m_root, Traversal<ElementType>::firstWithin(&m_root));
+    return ElementDescendantIterator(ElementTraversal::firstChild(&m_root));
 }
 
-template <typename ElementType>
-inline ElementDescendantIterator<ElementType> ElementDescendantIteratorAdapter<ElementType>::end()
+inline ElementDescendantIterator ElementDescendantIteratorAdapter::end()
 {
-    return ElementDescendantIterator<ElementType>(m_root);
-}
-    
-template <typename ElementType>
-inline ElementDescendantIterator<ElementType> ElementDescendantIteratorAdapter<ElementType>::beginAt(ElementType& descendant)
-{
-    ASSERT(descendant.isDescendantOf(&m_root));
-    return ElementDescendantIterator<ElementType>(m_root, &descendant);
-}
-
-template <typename ElementType>
-inline ElementDescendantIterator<ElementType> ElementDescendantIteratorAdapter<ElementType>::from(Element& descendant)
-{
-    ASSERT(descendant.isDescendantOf(&m_root));
-    if (isElementOfType<const ElementType>(descendant))
-        return ElementDescendantIterator<ElementType>(m_root, static_cast<ElementType*>(&descendant));
-    ElementType* next = Traversal<ElementType>::next(&m_root, &descendant);
-    return ElementDescendantIterator<ElementType>(m_root, next);
-}
-
-template <typename ElementType>
-inline ElementType* ElementDescendantIteratorAdapter<ElementType>::first()
-{
-    return Traversal<ElementType>::firstWithin(&m_root);
-}
-
-template <typename ElementType>
-inline ElementType* ElementDescendantIteratorAdapter<ElementType>::last()
-{
-    return Traversal<ElementType>::lastWithin(&m_root);
+    return ElementDescendantIterator();
 }
 
 // ElementDescendantConstIteratorAdapter
 
-template <typename ElementType>
-inline ElementDescendantConstIteratorAdapter<ElementType>::ElementDescendantConstIteratorAdapter(const ContainerNode& root)
+inline ElementDescendantConstIteratorAdapter::ElementDescendantConstIteratorAdapter(const ContainerNode& root)
     : m_root(root)
 {
 }
 
-template <typename ElementType>
-inline ElementDescendantConstIterator<ElementType> ElementDescendantConstIteratorAdapter<ElementType>::begin() const
+inline ElementDescendantConstIterator ElementDescendantConstIteratorAdapter::begin() const
 {
-    return ElementDescendantConstIterator<ElementType>(m_root, Traversal<ElementType>::firstWithin(&m_root));
+    return ElementDescendantConstIterator(ElementTraversal::firstChild(&m_root));
 }
 
-template <typename ElementType>
-inline ElementDescendantConstIterator<ElementType> ElementDescendantConstIteratorAdapter<ElementType>::end() const
+inline ElementDescendantConstIterator ElementDescendantConstIteratorAdapter::end() const
 {
-    return ElementDescendantConstIterator<ElementType>(m_root);
-}
-
-template <typename ElementType>
-inline ElementDescendantConstIterator<ElementType> ElementDescendantConstIteratorAdapter<ElementType>::beginAt(const ElementType& descendant) const
-{
-    ASSERT(descendant.isDescendantOf(&m_root));
-    return ElementDescendantConstIterator<ElementType>(m_root, &descendant);
-}
-
-template <typename ElementType>
-inline ElementDescendantConstIterator<ElementType> ElementDescendantConstIteratorAdapter<ElementType>::from(const Element& descendant) const
-{
-    ASSERT(descendant.isDescendantOf(&m_root));
-    if (isElementOfType<const ElementType>(descendant))
-        return ElementDescendantConstIterator<ElementType>(m_root, static_cast<const ElementType*>(&descendant));
-    const ElementType* next = Traversal<ElementType>::next(&m_root, &descendant);
-    return ElementDescendantConstIterator<ElementType>(m_root, next);
-}
-
-template <typename ElementType>
-inline const ElementType* ElementDescendantConstIteratorAdapter<ElementType>::first() const
-{
-    return Traversal<ElementType>::firstWithin(&m_root);
-}
-
-template <typename ElementType>
-inline const ElementType* ElementDescendantConstIteratorAdapter<ElementType>::last() const
-{
-    return Traversal<ElementType>::lastWithin(&m_root);
+    return ElementDescendantConstIterator();
 }
 
 // Standalone functions
 
-template <typename ElementType>
-inline ElementDescendantIteratorAdapter<ElementType> descendantsOfType(ContainerNode& root)
+inline ElementDescendantIteratorAdapter elementDescendants(ContainerNode& root)
 {
-    return ElementDescendantIteratorAdapter<ElementType>(root);
+    return ElementDescendantIteratorAdapter(root);
 }
 
-template <typename ElementType>
-inline ElementDescendantConstIteratorAdapter<ElementType> descendantsOfType(const ContainerNode& root)
+inline ElementDescendantConstIteratorAdapter elementDescendants(const ContainerNode& root)
 {
-    return ElementDescendantConstIteratorAdapter<ElementType>(root);
+    return ElementDescendantConstIteratorAdapter(root);
 }
 
 }

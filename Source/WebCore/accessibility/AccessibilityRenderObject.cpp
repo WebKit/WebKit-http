@@ -10,7 +10,7 @@
 * 2.  Redistributions in binary form must reproduce the above copyright
 *     notice, this list of conditions and the following disclaimer in the
 *     documentation and/or other materials provided with the distribution.
-* 3.  Neither the name of Apple Computer, Inc. ("Apple") nor the names of
+* 3.  Neither the name of Apple Inc. ("Apple") nor the names of
 *     its contributors may be used to endorse or promote products derived
 *     from this software without specific prior written permission.
 *
@@ -2271,19 +2271,19 @@ bool AccessibilityRenderObject::shouldFocusActiveDescendant() const
 AccessibilityObject* AccessibilityRenderObject::activeDescendant() const
 {
     if (!m_renderer)
-        return 0;
+        return nullptr;
     
-    if (m_renderer->node() && !m_renderer->node()->isElementNode())
-        return 0;
-    Element* element = toElement(m_renderer->node());
-        
-    const AtomicString& activeDescendantAttrStr = element->getAttribute(aria_activedescendantAttr);
+    const AtomicString& activeDescendantAttrStr = getAttribute(aria_activedescendantAttr);
     if (activeDescendantAttrStr.isNull() || activeDescendantAttrStr.isEmpty())
-        return 0;
+        return nullptr;
+    
+    Element* element = this->element();
+    if (!element)
+        return nullptr;
     
     Element* target = element->treeScope().getElementById(activeDescendantAttrStr);
     if (!target)
-        return 0;
+        return nullptr;
     
     if (AXObjectCache* cache = axObjectCache()) {
         AccessibilityObject* obj = cache->getOrCreate(target);
@@ -2292,7 +2292,7 @@ AccessibilityObject* AccessibilityRenderObject::activeDescendant() const
             return obj;
     }
     
-    return 0;
+    return nullptr;
 }
 
 void AccessibilityRenderObject::handleAriaExpandedChanged()
@@ -2415,8 +2415,8 @@ AccessibilityObject* AccessibilityRenderObject::observableObject() const
 
 bool AccessibilityRenderObject::isDescendantOfElementType(const QualifiedName& tagName) const
 {
-    for (RenderObject* parent = m_renderer->parent(); parent; parent = parent->parent()) {
-        if (parent->node() && parent->node()->hasTagName(tagName))
+    for (auto& ancestor : ancestorsOfType<RenderElement>(*m_renderer)) {
+        if (ancestor.element() && ancestor.element()->hasTagName(tagName))
             return true;
     }
     return false;
@@ -2644,7 +2644,7 @@ bool AccessibilityRenderObject::inheritsPresentationalRole() const
     // ARIA spec says that when a parent object is presentational, and it has required child elements,
     // those child elements are also presentational. For example, <li> becomes presentational from <ul>.
     // http://www.w3.org/WAI/PF/aria/complete#presentation
-    DEFINE_STATIC_LOCAL(HashSet<QualifiedName>, listItemParents, ());
+    DEPRECATED_DEFINE_STATIC_LOCAL(HashSet<QualifiedName>, listItemParents, ());
 
     HashSet<QualifiedName>* possibleParentTagNames = 0;
     switch (roleValue()) {
@@ -3027,9 +3027,9 @@ bool AccessibilityRenderObject::canHaveChildren() const
 
 const AtomicString& AccessibilityRenderObject::ariaLiveRegionStatus() const
 {
-    DEFINE_STATIC_LOCAL(const AtomicString, liveRegionStatusAssertive, ("assertive", AtomicString::ConstructFromLiteral));
-    DEFINE_STATIC_LOCAL(const AtomicString, liveRegionStatusPolite, ("polite", AtomicString::ConstructFromLiteral));
-    DEFINE_STATIC_LOCAL(const AtomicString, liveRegionStatusOff, ("off", AtomicString::ConstructFromLiteral));
+    DEPRECATED_DEFINE_STATIC_LOCAL(const AtomicString, liveRegionStatusAssertive, ("assertive", AtomicString::ConstructFromLiteral));
+    DEPRECATED_DEFINE_STATIC_LOCAL(const AtomicString, liveRegionStatusPolite, ("polite", AtomicString::ConstructFromLiteral));
+    DEPRECATED_DEFINE_STATIC_LOCAL(const AtomicString, liveRegionStatusOff, ("off", AtomicString::ConstructFromLiteral));
     
     const AtomicString& liveRegionStatus = getAttribute(aria_liveAttr);
     // These roles have implicit live region status.
@@ -3054,7 +3054,7 @@ const AtomicString& AccessibilityRenderObject::ariaLiveRegionStatus() const
 
 const AtomicString& AccessibilityRenderObject::ariaLiveRegionRelevant() const
 {
-    DEFINE_STATIC_LOCAL(const AtomicString, defaultLiveRegionRelevant, ("additions text", AtomicString::ConstructFromLiteral));
+    DEPRECATED_DEFINE_STATIC_LOCAL(const AtomicString, defaultLiveRegionRelevant, ("additions text", AtomicString::ConstructFromLiteral));
     const AtomicString& relevant = getAttribute(aria_relevantAttr);
 
     // Default aria-relevant = "additions text".
@@ -3166,12 +3166,12 @@ const String& AccessibilityRenderObject::actionVerb() const
 {
 #if !PLATFORM(IOS)
     // FIXME: Need to add verbs for select elements.
-    DEFINE_STATIC_LOCAL(const String, buttonAction, (AXButtonActionVerb()));
-    DEFINE_STATIC_LOCAL(const String, textFieldAction, (AXTextFieldActionVerb()));
-    DEFINE_STATIC_LOCAL(const String, radioButtonAction, (AXRadioButtonActionVerb()));
-    DEFINE_STATIC_LOCAL(const String, checkedCheckBoxAction, (AXCheckedCheckBoxActionVerb()));
-    DEFINE_STATIC_LOCAL(const String, uncheckedCheckBoxAction, (AXUncheckedCheckBoxActionVerb()));
-    DEFINE_STATIC_LOCAL(const String, linkAction, (AXLinkActionVerb()));
+    DEPRECATED_DEFINE_STATIC_LOCAL(const String, buttonAction, (AXButtonActionVerb()));
+    DEPRECATED_DEFINE_STATIC_LOCAL(const String, textFieldAction, (AXTextFieldActionVerb()));
+    DEPRECATED_DEFINE_STATIC_LOCAL(const String, radioButtonAction, (AXRadioButtonActionVerb()));
+    DEPRECATED_DEFINE_STATIC_LOCAL(const String, checkedCheckBoxAction, (AXCheckedCheckBoxActionVerb()));
+    DEPRECATED_DEFINE_STATIC_LOCAL(const String, uncheckedCheckBoxAction, (AXUncheckedCheckBoxActionVerb()));
+    DEPRECATED_DEFINE_STATIC_LOCAL(const String, linkAction, (AXLinkActionVerb()));
 
     switch (roleValue()) {
     case ButtonRole:

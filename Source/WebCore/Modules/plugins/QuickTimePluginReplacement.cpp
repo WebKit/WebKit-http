@@ -10,10 +10,10 @@
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
  *
- * THIS SOFTWARE IS PROVIDED BY APPLE COMPUTER, INC. ``AS IS'' AND ANY
+ * THIS SOFTWARE IS PROVIDED BY APPLE INC. ``AS IS'' AND ANY
  * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE COMPUTER, INC. OR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE INC. OR
  * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
  * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
  * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
@@ -53,7 +53,7 @@ namespace WebCore {
 
 static String quickTimePluginReplacementScript()
 {
-    DEFINE_STATIC_LOCAL(String, script, (QuickTimePluginReplacementJavaScript, sizeof(QuickTimePluginReplacementJavaScript)));
+    DEPRECATED_DEFINE_STATIC_LOCAL(String, script, (QuickTimePluginReplacementJavaScript, sizeof(QuickTimePluginReplacementJavaScript)));
     return script;
 }
 
@@ -76,7 +76,7 @@ bool QuickTimePluginReplacement::supportsMimeType(const String& mimeType)
         "audio/x-m4r", "audio/x-mp3", "audio/x-mpeg", "audio/x-mpeg3", "audio/x-mpegurl", "audio/x-scpls", "audio/x-wav",
         "video/3gpp", "video/3gpp2", "video/mp4", "video/quicktime", "video/x-m4v"
     };
-    DEFINE_STATIC_LOCAL(HashSet<String>, typeHash, ());
+    DEPRECATED_DEFINE_STATIC_LOCAL(HashSet<String>, typeHash, ());
     if (!typeHash.size()) {
         for (size_t i = 0; i < WTF_ARRAY_LENGTH(types); ++i)
             typeHash.add(types[i]);
@@ -92,7 +92,7 @@ bool QuickTimePluginReplacement::supportsFileExtension(const String& extension)
         "m3u8", "m4a", "m4b", "m4p", "m4r", "m4v", "mov", "mp3", "mp3", "mp4", "mpeg", "mpg", "mqv", "pls", "qt",
         "snd", "swa", "ts", "ulw", "wav"
     };
-    DEFINE_STATIC_LOCAL(HashSet<String>, extensionHash, ());
+    DEPRECATED_DEFINE_STATIC_LOCAL(HashSet<String>, extensionHash, ());
     if (!extensionHash.size()) {
         for (size_t i = 0; i < WTF_ARRAY_LENGTH(extensions); ++i)
             extensionHash.add(extensions[i]);

@@ -10,7 +10,7 @@
 # 2.  Redistributions in binary form must reproduce the above copyright
 #     notice, this list of conditions and the following disclaimer in the
 #     documentation and/or other materials provided with the distribution. 
-# 3.  Neither the name of Apple Computer, Inc. ("Apple") nor the names of
+# 3.  Neither the name of Apple Inc. ("Apple") nor the names of
 #     its contributors may be used to endorse or promote products derived
 #     from this software without specific prior written permission. 
 #
@@ -35,8 +35,7 @@ WEBKIT_PRIVATE_HEADERS = $(addprefix $(PRIVATE_HEADERS_DIR)/, $(notdir $(wildcar
 
 all : $(WEBKIT_PUBLIC_HEADERS) $(WEBKIT_PRIVATE_HEADERS)
 
-WEBKIT_HEADER_REPLACE_RULES = -e s/\<WebKit\\//\<WebKitLegacy\\//
-WEBKIT_HEADER_MIGRATE_CMD = sed $(WEBKIT_HEADER_REPLACE_RULES) $< > $@
+WEBKIT_HEADER_MIGRATE_CMD = echo "\#import <WebKit/"`basename $<`">" > $@
 
 $(PUBLIC_HEADERS_DIR)/% : $(BUILT_PRODUCTS_DIR)/WebKit.framework/Headers/% MigrateHeadersToLegacy.make
 	$(WEBKIT_HEADER_MIGRATE_CMD)

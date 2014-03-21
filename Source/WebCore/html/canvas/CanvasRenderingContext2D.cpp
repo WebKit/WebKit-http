@@ -6,7 +6,7 @@
  * Copyright (C) 2008 Dirk Schulze <krit@webkit.org>
  * Copyright (C) 2010 Torch Mobile (Beijing) Co. Ltd. All rights reserved.
  * Copyright (C) 2012 Intel Corporation. All rights reserved.
- * Copyright (C) 2013 Adobe Systems Incorporated. All rights reserved.
+ * Copyright (C) 2013, 2014 Adobe Systems Incorporated. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -17,10 +17,10 @@
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
  *
- * THIS SOFTWARE IS PROVIDED BY APPLE COMPUTER, INC. ``AS IS'' AND ANY
+ * THIS SOFTWARE IS PROVIDED BY APPLE INC. ``AS IS'' AND ANY
  * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE COMPUTER, INC. OR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE INC. OR
  * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
  * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
  * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
@@ -827,22 +827,6 @@ void CanvasRenderingContext2D::beginPath()
     m_path.clear();
 }
 
-#if ENABLE(CANVAS_PATH)
-
-PassRefPtr<DOMPath> CanvasRenderingContext2D::currentPath()
-{
-    return DOMPath::create(m_path);
-}
-
-void CanvasRenderingContext2D::setCurrentPath(DOMPath* path)
-{
-    if (!path)
-        return;
-    m_path = path->path();
-}
-
-#endif
-
 static bool validateRectForCanvas(float& x, float& y, float& width, float& height)
 {
     if (!std::isfinite(x) | !std::isfinite(y) | !std::isfinite(width) | !std::isfinite(height))
@@ -894,6 +878,50 @@ static bool parseWinding(const String& windingRuleString, WindRule& windRule)
 
 void CanvasRenderingContext2D::fill(const String& windingRuleString)
 {
+    fillInternal(m_path, windingRuleString);
+
+#if ENABLE(DASHBOARD_SUPPORT)
+    clearPathForDashboardBackwardCompatibilityMode();
+#endif
+}
+
+void CanvasRenderingContext2D::stroke()
+{
+    strokeInternal(m_path);
+
+#if ENABLE(DASHBOARD_SUPPORT)
+    clearPathForDashboardBackwardCompatibilityMode();
+#endif
+}
+
+void CanvasRenderingContext2D::clip(const String& windingRuleString)
+{
+    clipInternal(m_path, windingRuleString);
+
+#if ENABLE(DASHBOARD_SUPPORT)
+    clearPathForDashboardBackwardCompatibilityMode();
+#endif
+}
+
+#if ENABLE(CANVAS_PATH)
+void CanvasRenderingContext2D::fill(DOMPath* path, const String& windingRuleString)
+{
+    fillInternal(path->path(), windingRuleString);
+}
+
+void CanvasRenderingContext2D::stroke(DOMPath* path)
+{
+    strokeInternal(path->path());
+}
+
+void CanvasRenderingContext2D::clip(DOMPath* path, const String& windingRuleString)
+{
+    clipInternal(path->path(), windingRuleString);
+}
+#endif
+
+void CanvasRenderingContext2D::fillInternal(const Path& path, const String& windingRuleString)
+{
     GraphicsContext* c = drawingContext();
     if (!c)
         return;
@@ -905,7 +933,7 @@ void CanvasRenderingContext2D::fill(const String& windingRuleString)
     if (gradient && gradient->isZeroSize())
         return;
 
-    if (!m_path.isEmpty()) {
+    if (!path.isEmpty()) {
         WindRule windRule = c->fillRule();
         WindRule newWindRule = RULE_NONZERO;
         if (!parseWinding(windingRuleString, newWindRule))
@@ -913,26 +941,22 @@ void CanvasRenderingContext2D::fill(const String& windingRuleString)
         c->setFillRule(newWindRule);
 
         if (isFullCanvasCompositeMode(state().m_globalComposite)) {
-            fullCanvasCompositedFill(m_path);
+            fullCanvasCompositedFill(path);
             didDrawEntireCanvas();
         } else if (state().m_globalComposite == CompositeCopy) {
             clearCanvas();
-            c->fillPath(m_path);
+            c->fillPath(path);
             didDrawEntireCanvas();
         } else {
-            c->fillPath(m_path);
-            didDraw(m_path.fastBoundingRect());
+            c->fillPath(path);
+            didDraw(path.fastBoundingRect());
         }
         
         c->setFillRule(windRule);
     }
-
-#if ENABLE(DASHBOARD_SUPPORT)
-    clearPathForDashboardBackwardCompatibilityMode();
-#endif
 }
 
-void CanvasRenderingContext2D::stroke()
+void CanvasRenderingContext2D::strokeInternal(const Path& path)
 {
     GraphicsContext* c = drawingContext();
     if (!c)
@@ -945,20 +969,16 @@ void CanvasRenderingContext2D::stroke()
     if (gradient && gradient->isZeroSize())
         return;
 
-    if (!m_path.isEmpty()) {
-        FloatRect dirtyRect = m_path.fastBoundingRect();
+    if (!path.isEmpty()) {
+        FloatRect dirtyRect = path.fastBoundingRect();
         inflateStrokeRect(dirtyRect);
 
-        c->strokePath(m_path);
+        c->strokePath(path);
         didDraw(dirtyRect);
     }
-
-#if ENABLE(DASHBOARD_SUPPORT)
-    clearPathForDashboardBackwardCompatibilityMode();
-#endif
 }
 
-void CanvasRenderingContext2D::clip(const String& windingRuleString)
+void CanvasRenderingContext2D::clipInternal(const Path& path, const String& windingRuleString)
 {
     GraphicsContext* c = drawingContext();
     if (!c)
@@ -971,14 +991,32 @@ void CanvasRenderingContext2D::clip(const String& windingRuleString)
         return;
 
     realizeSaves();
-    c->canvasClip(m_path, newWindRule);
-    
-#if ENABLE(DASHBOARD_SUPPORT)
-    clearPathForDashboardBackwardCompatibilityMode();
-#endif
+    c->canvasClip(path, newWindRule);
 }
 
 bool CanvasRenderingContext2D::isPointInPath(const float x, const float y, const String& windingRuleString)
+{
+    return isPointInPathInternal(m_path, x, y, windingRuleString);
+}
+
+bool CanvasRenderingContext2D::isPointInStroke(const float x, const float y)
+{
+    return isPointInStrokeInternal(m_path, x, y);
+}
+
+#if ENABLE(CANVAS_PATH)
+bool CanvasRenderingContext2D::isPointInPath(DOMPath* path, const float x, const float y, const String& windingRuleString)
+{
+    return isPointInPathInternal(path->path(), x, y, windingRuleString);
+}
+
+bool CanvasRenderingContext2D::isPointInStroke(DOMPath* path, const float x, const float y)
+{
+    return isPointInStrokeInternal(path->path(), x, y);
+}
+#endif
+
+bool CanvasRenderingContext2D::isPointInPathInternal(const Path& path, float x, float y, const String& windingRuleString)
 {
     GraphicsContext* c = drawingContext();
     if (!c)
@@ -996,11 +1034,10 @@ bool CanvasRenderingContext2D::isPointInPath(const float x, const float y, const
     if (!parseWinding(windingRuleString, windRule))
         return false;
     
-    return m_path.contains(transformedPoint, windRule);
+    return path.contains(transformedPoint, windRule);
 }
 
-
-bool CanvasRenderingContext2D::isPointInStroke(const float x, const float y)
+bool CanvasRenderingContext2D::isPointInStrokeInternal(const Path& path, float x, float y)
 {
     GraphicsContext* c = drawingContext();
     if (!c)
@@ -1015,7 +1052,7 @@ bool CanvasRenderingContext2D::isPointInStroke(const float x, const float y)
         return false;
 
     CanvasStrokeStyleApplier applier(this);
-    return m_path.strokeContains(&applier, transformedPoint);
+    return path.strokeContains(&applier, transformedPoint);
 }
 
 void CanvasRenderingContext2D::clearRect(float x, float y, float width, float height)
@@ -1858,7 +1895,7 @@ PassRefPtr<ImageData> CanvasRenderingContext2D::webkitGetImageDataHD(float sx, f
 PassRefPtr<ImageData> CanvasRenderingContext2D::getImageData(ImageBuffer::CoordinateSystem coordinateSystem, float sx, float sy, float sw, float sh, ExceptionCode& ec) const
 {
     if (!canvas()->originClean()) {
-        DEFINE_STATIC_LOCAL(String, consoleMessage, (ASCIILiteral("Unable to get image data from canvas because the canvas has been tainted by cross-origin data.")));
+        DEPRECATED_DEFINE_STATIC_LOCAL(String, consoleMessage, (ASCIILiteral("Unable to get image data from canvas because the canvas has been tainted by cross-origin data.")));
         canvas()->document().addConsoleMessage(MessageSource::Security, MessageLevel::Error, consoleMessage);
         ec = SECURITY_ERR;
         return 0;
@@ -2151,7 +2188,7 @@ static void normalizeSpaces(String& text)
 
     unsigned textLength = text.length();
     Vector<UChar> charVector(textLength);
-    memcpy(charVector.data(), text.deprecatedCharacters(), textLength * sizeof(UChar));
+    StringView(text).getCharactersWithUpconvert(charVector.data());
 
     charVector[i++] = ' ';
 

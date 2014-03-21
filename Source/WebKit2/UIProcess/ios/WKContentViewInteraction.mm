@@ -28,6 +28,7 @@
 
 #if PLATFORM(IOS)
 
+#import "EditingRange.h"
 #import "NativeWebKeyboardEvent.h"
 #import "NativeWebTouchEvent.h"
 #import "SmartMagnificationController.h"
@@ -574,9 +575,7 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
 - (BOOL)hasSelectablePositionAtPoint:(CGPoint)point
 {
     [self ensurePositionInformationIsUpToDate:point];
-    // FIXME: This check needs to be extended to include other elements.
-    // FIXME: We need to reject positions that will lead to a very large selection.
-    return _positionInformation.clickableElementName != "IMG" && _positionInformation.clickableElementName != "A" && !_positionInformation.selectionRects.isEmpty();
+    return _positionInformation.isSelectable;
 }
 
 - (BOOL)pointIsInAssistedNode:(CGPoint)point
@@ -1411,7 +1410,7 @@ static void selectionChangedWithTouch(bool error, WKContentView *view, const Web
 - (void)setMarkedText:(NSString *)markedText selectedRange:(NSRange)selectedRange
 {
     _markedText = markedText;
-    _page->setComposition(markedText, Vector<WebCore::CompositionUnderline>(), selectedRange.location, selectedRange.length, 0, 0);
+    _page->setComposition(markedText, Vector<WebCore::CompositionUnderline>(), selectedRange, EditingRange());
 }
 
 - (void)unmarkText
@@ -1508,7 +1507,7 @@ static void selectionChangedWithTouch(bool error, WKContentView *view, const Web
 // Inserts the given string, replacing any selected or marked text.
 - (void)insertText:(NSString *)aStringValue
 {
-    _page->insertText(aStringValue, NSNotFound, 0);
+    _page->insertText(aStringValue, EditingRange());
 }
 
 - (BOOL)hasText

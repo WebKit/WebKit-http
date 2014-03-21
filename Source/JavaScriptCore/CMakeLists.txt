@@ -142,7 +142,6 @@ set(JavaScriptCore_SOURCES
     dfg/DFGFinalizer.cpp
     dfg/DFGFixupPhase.cpp
     dfg/DFGFlushFormat.cpp
-    dfg/DFGFlushLivenessAnalysisPhase.cpp
     dfg/DFGFlushedAt.cpp
     dfg/DFGGraph.cpp
     dfg/DFGGraphSafepoint.cpp
@@ -216,6 +215,8 @@ set(JavaScriptCore_SOURCES
     heap/CopiedSpace.cpp
     heap/CopyVisitor.cpp
     heap/DeferGC.cpp
+    heap/EdenGCActivityCallback.cpp
+    heap/FullGCActivityCallback.cpp
     heap/GCActivityCallback.cpp
     heap/GCThread.cpp
     heap/GCThreadSharedData.cpp
@@ -831,23 +832,23 @@ ADD_SOURCE_DEPENDENCIES(${CMAKE_CURRENT_SOURCE_DIR}/parser/Lexer.cpp ${DERIVED_S
 set(JavaScriptCore_INSPECTOR_SCRIPTS_DIR "${JAVASCRIPTCORE_DIR}/inspector/scripts")
 
 set(JavaScriptCore_INSPECTOR_DOMAINS
-    inspector/protocol/Console.json
-    inspector/protocol/Debugger.json
-    inspector/protocol/GenericTypes.json
-    inspector/protocol/InspectorDomain.json
-    inspector/protocol/Runtime.json
+    ${JAVASCRIPTCORE_DIR}/inspector/protocol/Console.json
+    ${JAVASCRIPTCORE_DIR}/inspector/protocol/Debugger.json
+    ${JAVASCRIPTCORE_DIR}/inspector/protocol/GenericTypes.json
+    ${JAVASCRIPTCORE_DIR}/inspector/protocol/InspectorDomain.json
+    ${JAVASCRIPTCORE_DIR}/inspector/protocol/Runtime.json
 )
 
 add_custom_command(
     OUTPUT ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InspectorJS.json
     MAIN_DEPENDENCY ${JavaScriptCore_INSPECTOR_SCRIPTS_DIR}/generate-combined-inspector-json.py
     DEPENDS ${JavaScriptCore_INSPECTOR_DOMAINS}
-    COMMAND ${PYTHON_EXECUTABLE} ${JavaScriptCore_INSPECTOR_SCRIPTS_DIR}/generate-combined-inspector-json.py ${JAVASCRIPTCORE_DIR}/inspector/protocol > ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InspectorJS.json
+    COMMAND ${PYTHON_EXECUTABLE} ${JavaScriptCore_INSPECTOR_SCRIPTS_DIR}/generate-combined-inspector-json.py ${JavaScriptCore_INSPECTOR_DOMAINS} > ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InspectorJS.json
     VERBATIM)
 
 # Inspector Backend Dispatchers, Frontend Dispatchers, Type Builders
 add_custom_command(
-    OUTPUT ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InspectorJSBackendDispatchers.cpp ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InspectorJSBackendDispatchers.h ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InspectorJSFrontendDispatchers.cpp ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InspectorJSFrontendDispatchers.h ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InspectorJSTypeBuilders.cpp ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InspectorJSTypeBuilders.h
+    OUTPUT ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InspectorJSBackendDispatchers.cpp ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InspectorJSBackendDispatchers.h ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InspectorJSFrontendDispatchers.cpp ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InspectorJSFrontendDispatchers.h ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InspectorJSTypeBuilders.cpp ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InspectorJSTypeBuilders.h ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InspectorJSBackendCommands.js
     MAIN_DEPENDENCY ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InspectorJS.json
     DEPENDS ${JavaScriptCore_INSPECTOR_SCRIPTS_DIR}/CodeGeneratorInspector.py ${JavaScriptCore_INSPECTOR_SCRIPTS_DIR}/CodeGeneratorInspectorStrings.py
     COMMAND ${PYTHON_EXECUTABLE} ${JavaScriptCore_INSPECTOR_SCRIPTS_DIR}/CodeGeneratorInspector.py ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InspectorJS.json --output_h_dir "${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}" --output_cpp_dir "${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}" --output_js_dir "${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}" --output_type JavaScript --write_always && mkdir -p ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/inspector && cp ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InspectorJSBackendDispatchers.h ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InspectorJSFrontendDispatchers.h ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InspectorJSTypeBuilders.h ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/inspector

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007 Apple Inc.  All rights reserved.
+ * Copyright (C) 2007, 2014 Apple Inc.  All rights reserved.
  * Copyright (C) 2010 Patrick Gansterer <paroga@paroga.com>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -11,10 +11,10 @@
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
  *
- * THIS SOFTWARE IS PROVIDED BY APPLE COMPUTER, INC. ``AS IS'' AND ANY
+ * THIS SOFTWARE IS PROVIDED BY APPLE INC. ``AS IS'' AND ANY
  * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE COMPUTER, INC. OR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE INC. OR
  * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
  * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
  * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
@@ -420,10 +420,10 @@ unsigned calculateStringHashAndLengthFromUTF8MaskingTop8Bits(const char* data, c
     return stringHasher.hashWithTop8BitsMasked();
 }
 
-bool equalUTF16WithUTF8(const UChar* a, const UChar* aEnd, const char* b, const char* bEnd)
+bool equalUTF16WithUTF8(const UChar* a, const char* b, const char* bEnd)
 {
     while (b < bEnd) {
-        if (isASCII(*b)) {
+        if (isASCII(*a) || isASCII(*b)) {
             if (*a++ != *b++)
                 return false;
             continue;
@@ -435,7 +435,7 @@ bool equalUTF16WithUTF8(const UChar* a, const UChar* aEnd, const char* b, const 
             return false;
 
         if (!isLegalUTF8(reinterpret_cast<const unsigned char*>(b), utf8SequenceLength))
-            return 0;
+            return false;
 
         UChar32 character = readUTF8Sequence(b, utf8SequenceLength);
         ASSERT(!isASCII(character));
@@ -455,7 +455,33 @@ bool equalUTF16WithUTF8(const UChar* a, const UChar* aEnd, const char* b, const 
             return false;
     }
 
-    return a == aEnd;
+    return true;
+}
+
+bool equalLatin1WithUTF8(const LChar* a, const char* b, const char* bEnd)
+{
+    while (b < bEnd) {
+        if (isASCII(*a) || isASCII(*b)) {
+            if (*a++ != *b++)
+                return false;
+            continue;
+        }
+
+        if (b + 1 == bEnd)
+            return false;
+
+        if ((b[0] & 0xE0) != 0xC0 || (b[1] & 0xC0) != 0x80)
+            return false;
+
+        LChar character = ((b[0] & 0x1F) << 6) | (b[1] & 0x3F);
+
+        b += 2;
+
+        if (*a++ != character)
+            return false;
+    }
+
+    return true;
 }
 
 } // namespace Unicode

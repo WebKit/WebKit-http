@@ -32,6 +32,14 @@ typedef NS_OPTIONS(NSUInteger, _WKRenderingProgressEvents) {
     _WKRenderingProgressEventFirstPaintWithSignificantArea = 1 << 2,
 };
 
+typedef NS_ENUM(NSInteger, _WKPaginationMode) {
+    _WKPaginationModeUnpaginated,
+    _WKPaginationModeLeftToRight,
+    _WKPaginationModeRightToLeft,
+    _WKPaginationModeTopToBottom,
+    _WKPaginationModeBottomToTop,
+};
+
 @class WKBrowsingContextHandle;
 @class WKRemoteObjectRegistry;
 @protocol WKHistoryDelegatePrivate;
@@ -55,6 +63,7 @@ typedef NS_OPTIONS(NSUInteger, _WKRenderingProgressEvents) {
 @property (nonatomic, readonly) NSURL *_committedURL;
 
 @property (copy, setter=_setApplicationNameForUserAgent:) NSString *_applicationNameForUserAgent;
+@property (copy, setter=_setCustomUserAgent:) NSString *_customUserAgent;
 
 @property (nonatomic, readonly) pid_t _webProcessIdentifier;
 
@@ -62,6 +71,8 @@ typedef NS_OPTIONS(NSUInteger, _WKRenderingProgressEvents) {
 - (void)_restoreFromSessionState:(NSData *)sessionState;
 
 @property (nonatomic, setter=_setPrivateBrowsingEnabled:) BOOL _privateBrowsingEnabled;
+
+@property (nonatomic, setter=_setAllowsRemoteInspection:) BOOL _allowsRemoteInspection;
 
 - (void)_close;
 
@@ -78,9 +89,27 @@ typedef NS_OPTIONS(NSUInteger, _WKRenderingProgressEvents) {
 
 - (void)_beginInteractiveObscuredInsetsChange;
 - (void)_endInteractiveObscuredInsetsChange;
+
+- (void)_snapshotRect:(CGRect)rectInViewCoordinates intoImageOfWidth:(CGFloat)imageWidth completionHandler:(void(^)(CGImageRef))completionHandler;
 #else
 @property (readonly) NSColor *_pageExtendedBackgroundColor;
+@property (nonatomic, setter=_setDrawsTransparentBackground:) BOOL _drawsTransparentBackground;
 #endif
+
+- (void)_runJavaScriptInMainFrame:(NSString *)scriptString;
+
+@property (nonatomic, setter=_setPaginationMode:) _WKPaginationMode _paginationMode;
+// Whether the column-break-{before,after} properties are respected instead of the
+// page-break-{before,after} properties.
+@property (nonatomic, setter=_setPaginationBehavesLikeColumns:) BOOL _paginationBehavesLikeColumns;
+// Set to 0 to have the page length equal the view length.
+@property (nonatomic, setter=_setPageLength:) CGFloat _pageLength;
+@property (nonatomic, setter=_setGapBetweenPages:) CGFloat _gapBetweenPages;
+@property (readonly) NSUInteger _pageCount;
+
+@property (nonatomic, readonly) BOOL _supportsTextZoom;
+@property (nonatomic, setter=_setTextZoomFactor:) double _textZoomFactor;
+@property (nonatomic, setter=_setPageZoomFactor:) double _pageZoomFactor;
 
 @end
 

@@ -787,6 +787,11 @@ webkit.org/b/122571 inspector-protocol/css/getSupportedCSSProperties.html [ Time
 
 webkit.org/b/124487 [ Release ] media/video-duration-known-after-eos.html [ Timeout ]
 
+webkit.org/b/130411 editing/spelling/spellcheck-paste.html [ Timeout ]
+webkit.org/b/130411 editing/spelling/spelling-changed-text.html [ Timeout ]
+webkit.org/b/130411 editing/spelling/spellcheck-paste-disabled.html [ Timeout ]
+webkit.org/b/130411 editing/spelling/spellcheck-paste-continuous-disabled.html [ Timeout ]
+
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Tests timing out
 #////////////////////////////////////////////////////////////////////////////////////////
@@ -817,6 +822,9 @@ webkit.org/b/83560 fast/events/drop-with-file-paths.html [ Failure Pass ]
 #////////////////////////////////////////////////////////////////////////////////////////
 # Tests failing
 #////////////////////////////////////////////////////////////////////////////////////////
+
+# Path::addPath needs to be implemented
+webkit.org/b/130464 fast/canvas/canvas-path-addPath.html
 
 webkit.org/b/73766 css3/unicode-bidi-isolate-aharon-failing.html [ ImageOnlyFailure ]
 
@@ -944,9 +952,6 @@ webkit.org/b/40601 fast/events/mouse-click-events.html [ Failure ]
 webkit.org/b/40601 fast/events/mouseup-from-button2.html [ Failure ]
 webkit.org/b/40601 fast/events/right-click-focus.html [ Failure ]
 webkit.org/b/40601 editing/selection/5354455-1.html [ Failure ]
-
-webkit.org/b/122121 editing/spelling/spellcheck-paste.html [ Timeout ]
-webkit.org/b/122121 editing/spelling/spelling-changed-text.html [ Failure Timeout ]
 
 # Tests that fail across all platforms.
 # Even though some platforms don't skip these tests, there are platform-specific
@@ -1275,9 +1280,6 @@ webkit.org/b/118420 [ Release ] fast/dom/gc-dom-tree-lifetime.html [ Failure ]
 # May take too long on the bots.
 Bug(GTK) mathml/very-large-stretchy-operators.html [ Pass Timeout ]
 
-# MathML tests failing after MathML pixel tests were replaced with ref tests
-webkit.org/b/118904 mathml/presentation/bug95404.html [ ImageOnlyFailure ]
-
 webkit.org/b/119840 http/tests/loading/authentication-after-redirect-stores-wrong-credentials/authentication-after-redirect-stores-wrong-credentials.html [ Failure ]
 
 webkit.org/b/119841 fast/sub-pixel/sub-pixel-composited-layers.html [ ImageOnlyFailure ]
@@ -1312,8 +1314,6 @@ webkit.org/b/122147 fast/css/drop-shadow-viewport-vmin.html [ ImageOnlyFailure ]
 webkit.org/b/122147 fast/css/drop-shadow-viewport-width.html [ ImageOnlyFailure ]
 
 webkit.org/b/124360 media/video-canvas-drawing-output.html [ Failure ]
-
-webkit.org/b/124503 mathml/presentation/mspace-units.html [ ImageOnlyFailure ]
 
 webkit.org/b/124504 fast/text/break-word-pre-wrap.html [ ImageOnlyFailure ]
 

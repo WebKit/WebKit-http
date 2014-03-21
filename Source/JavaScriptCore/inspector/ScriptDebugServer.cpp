@@ -12,7 +12,7 @@
  * 2.  Redistributions in binary form must reproduce the above copyright
  *     notice, this list of conditions and the following disclaimer in the
  *     documentation and/or other materials provided with the distribution.
- * 3.  Neither the name of Apple Computer, Inc. ("Apple") nor the names of
+ * 3.  Neither the name of Apple Inc. ("Apple") nor the names of
  *     its contributors may be used to endorse or promote products derived
  *     from this software without specific prior written permission.
  *
@@ -154,7 +154,7 @@ void ScriptDebugServer::dispatchBreakpointActionLog(ExecState* exec, const Strin
 
     Vector<ScriptDebugListener*> listenersCopy;
     copyToVector(*listeners, listenersCopy);
-    for (auto listener : listenersCopy)
+    for (auto* listener : listenersCopy)
         listener->breakpointActionLog(exec, message);
 }
 
@@ -172,7 +172,7 @@ void ScriptDebugServer::dispatchBreakpointActionSound(ExecState* exec, int break
 
     Vector<ScriptDebugListener*> listenersCopy;
     copyToVector(*listeners, listenersCopy);
-    for (auto listener : listenersCopy)
+    for (auto* listener : listenersCopy)
         listener->breakpointActionSound(breakpointActionIdentifier);
 }
 
@@ -190,7 +190,7 @@ void ScriptDebugServer::dispatchBreakpointActionProbe(ExecState* exec, const Scr
 
     Vector<ScriptDebugListener*> listenersCopy;
     copyToVector(*listeners, listenersCopy);
-    for (auto listener : listenersCopy)
+    for (auto* listener : listenersCopy)
         listener->breakpointActionProbe(exec, action, m_hitCount, sample);
 }
 

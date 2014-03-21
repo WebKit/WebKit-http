@@ -10,10 +10,10 @@
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
  *
- * THIS SOFTWARE IS PROVIDED BY APPLE COMPUTER, INC. ``AS IS'' AND ANY
+ * THIS SOFTWARE IS PROVIDED BY APPLE INC. ``AS IS'' AND ANY
  * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE COMPUTER, INC. OR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE INC. OR
  * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
  * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
  * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
@@ -146,6 +146,11 @@
 
 namespace WebCore {
 
+static const double SeekRepeatDelay = 0.1;
+static const double SeekTime = 0.2;
+static const double ScanRepeatDelay = 1.5;
+static const double ScanMaximumRate = 8;
+
 static void setFlags(unsigned& value, unsigned flags)
 {
     value |= flags;
@@ -194,7 +199,7 @@ using namespace HTMLNames;
 typedef HashMap<Document*, HashSet<HTMLMediaElement*>> DocumentElementSetMap;
 static DocumentElementSetMap& documentToElementSetMap()
 {
-    DEFINE_STATIC_LOCAL(DocumentElementSetMap, map, ());
+    DEPRECATED_DEFINE_STATIC_LOCAL(DocumentElementSetMap, map, ());
     return map;
 }
 
@@ -261,6 +266,7 @@ HTMLMediaElement::HTMLMediaElement(const QualifiedName& tagName, Document& docum
     , m_loadTimer(this, &HTMLMediaElement::loadTimerFired)
     , m_progressEventTimer(this, &HTMLMediaElement::progressEventTimerFired)
     , m_playbackProgressTimer(this, &HTMLMediaElement::playbackProgressTimerFired)
+    , m_scanTimer(this, &HTMLMediaElement::scanTimerFired)
     , m_playedTimeRanges()
     , m_asyncEventQueue(*this)
     , m_playbackRate(1.0f)
@@ -294,6 +300,9 @@ HTMLMediaElement::HTMLMediaElement(const QualifiedName& tagName, Document& docum
     , m_fragmentStartTime(MediaPlayer::invalidTime())
     , m_fragmentEndTime(MediaPlayer::invalidTime())
     , m_pendingActionFlags(0)
+    , m_actionAfterScan(Nothing)
+    , m_scanType(Scan)
+    , m_scanDirection(Forward)
     , m_playing(false)
     , m_isWaitingUntilMediaCanStart(false)
     , m_shouldDelayLoadEvent(false)
@@ -352,13 +361,6 @@ HTMLMediaElement::HTMLMediaElement(const QualifiedName& tagName, Document& docum
     // FIXME: We should clean up and look to better merge the iOS and non-iOS code below.
     Settings* settings = document.settings();
 #if !PLATFORM(IOS)
-    document.registerForMediaVolumeCallbacks(this);
-    document.registerForPrivateBrowsingStateChangedCallbacks(this);
-
-#if ENABLE(PAGE_VISIBILITY_API)
-    document.registerForVisibilityStateChangedCallbacks(this);
-#endif
-
     if (settings && settings->mediaPlaybackRequiresUserGesture()) {
         m_mediaSession->addBehaviorRestriction(HTMLMediaSession::RequireUserGestureForRateChange);
         m_mediaSession->addBehaviorRestriction(HTMLMediaSession::RequireUserGestureForLoad);
@@ -373,13 +375,12 @@ HTMLMediaElement::HTMLMediaElement(const QualifiedName& tagName, Document& docum
     }
 #endif // !PLATFORM(IOS)
 
-    addElementToDocumentMap(*this, document);
-
 #if ENABLE(VIDEO_TRACK)
-    document.registerForCaptionPreferencesChangedCallbacks(this);
     if (document.page())
         m_captionDisplayMode = document.page()->group().captionPreferences()->captionDisplayMode();
 #endif
+
+    registerWithDocument(document);
 }
 
 HTMLMediaElement::~HTMLMediaElement()
@@ -388,18 +389,10 @@ HTMLMediaElement::~HTMLMediaElement()
 
     m_asyncEventQueue.close();
 
-    if (m_isWaitingUntilMediaCanStart)
-        document().removeMediaCanStartListener(this);
     setShouldDelayLoadEvent(false);
-    document().unregisterForMediaVolumeCallbacks(this);
-    document().unregisterForPrivateBrowsingStateChangedCallbacks(this);
-
-#if ENABLE(PAGE_VISIBILITY_API)
-    document().unregisterForVisibilityStateChangedCallbacks(this);
-#endif
+    unregisterWithDocument(document());
 
 #if ENABLE(VIDEO_TRACK)
-    document().unregisterForCaptionPreferencesChangedCallbacks(this);
     if (m_audioTracks) {
         m_audioTracks->clearElement();
         for (unsigned i = 0; i < m_audioTracks->length(); ++i)
@@ -436,21 +429,53 @@ HTMLMediaElement::~HTMLMediaElement()
     setMediaKeys(0);
 #endif
 
-    removeElementFromDocumentMap(*this, document());
-
     m_completelyLoaded = true;
     if (m_player)
         m_player->clearMediaPlayerClient();
 }
 
+void HTMLMediaElement::registerWithDocument(Document& document)
+{
+    if (m_isWaitingUntilMediaCanStart)
+        document.addMediaCanStartListener(this);
+
+#if !PLATFORM(IOS)
+    document.registerForMediaVolumeCallbacks(this);
+    document.registerForPrivateBrowsingStateChangedCallbacks(this);
+#if ENABLE(PAGE_VISIBILITY_API)
+    document.registerForVisibilityStateChangedCallbacks(this);
+#endif
+#endif
+
+#if ENABLE(VIDEO_TRACK)
+    document.registerForCaptionPreferencesChangedCallbacks(this);
+#endif
+
+    addElementToDocumentMap(*this, document);
+}
+
+void HTMLMediaElement::unregisterWithDocument(Document& document)
+{
+    if (m_isWaitingUntilMediaCanStart)
+        document.removeMediaCanStartListener(this);
+
+#if !PLATFORM(IOS)
+    document.unregisterForMediaVolumeCallbacks(this);
+    document.unregisterForPrivateBrowsingStateChangedCallbacks(this);
+#if ENABLE(PAGE_VISIBILITY_API)
+    document.unregisterForVisibilityStateChangedCallbacks(this);
+#endif
+#endif
+
+#if ENABLE(VIDEO_TRACK)
+    document.unregisterForCaptionPreferencesChangedCallbacks(this);
+#endif
+
+    removeElementFromDocumentMap(*this, document);
+}
+
 void HTMLMediaElement::didMoveToNewDocument(Document* oldDocument)
 {
-    if (m_isWaitingUntilMediaCanStart) {
-        if (oldDocument)
-            oldDocument->removeMediaCanStartListener(this);
-        document().addMediaCanStartListener(this);
-    }
-
     if (m_shouldDelayLoadEvent) {
         if (oldDocument)
             oldDocument->decrementLoadEventDelayCount();
@@ -458,12 +483,10 @@ void HTMLMediaElement::didMoveToNewDocument(Document* oldDocument)
     }
 
     if (oldDocument) {
-        oldDocument->unregisterForMediaVolumeCallbacks(this);
-        removeElementFromDocumentMap(*this, *oldDocument);
+        unregisterWithDocument(*oldDocument);
     }
 
-    document().registerForMediaVolumeCallbacks(this);
-    addElementToDocumentMap(*this, document());
+    registerWithDocument(document());
 
     HTMLElement::didMoveToNewDocument(oldDocument);
 }
@@ -1674,6 +1697,14 @@ void HTMLMediaElement::textTrackRemoveCue(TextTrack*, PassRefPtr<TextTrackCue> c
     CueInterval interval = m_cueTree.createInterval(cue->startTime(), endTime, cue.get());
     m_cueTree.remove(interval);
 
+#if ENABLE(WEBVTT_REGIONS)
+    // Since the cue will be removed from the media element and likely the
+    // TextTrack might also be destructed, notifying the region of the cue
+    // removal shouldn't be done.
+    if (cue->isRenderable())
+        toVTTCue(cue.get())->notifyRegionWhenRemovingDisplayTree(false);
+#endif
+
     size_t index = m_currentlyActiveCues.find(interval);
     if (index != notFound) {
         cue->setIsActive(false);
@@ -1683,6 +1714,11 @@ void HTMLMediaElement::textTrackRemoveCue(TextTrack*, PassRefPtr<TextTrackCue> c
     if (cue->isRenderable())
         toVTTCue(cue.get())->removeDisplayTree();
     updateActiveTextTrackCues(currentTime());
+
+#if ENABLE(WEBVTT_REGIONS)
+    if (cue->isRenderable())
+        toVTTCue(cue.get())->notifyRegionWhenRemovingDisplayTree(true);
+#endif
 }
 
 #endif
@@ -2684,18 +2720,18 @@ void HTMLMediaElement::play()
     if (ScriptController::processingUserGesture())
         removeBehaviorsRestrictionsAfterFirstUserGesture();
 
-    if (!m_mediaSession->clientWillBeginPlayback()) {
-        LOG(Media, "  returning because of interruption");
-        return;
-    }
-    
     playInternal();
 }
 
 void HTMLMediaElement::playInternal()
 {
     LOG(Media, "HTMLMediaElement::playInternal");
-
+    
+    if (!m_mediaSession->clientWillBeginPlayback()) {
+        LOG(Media, "  returning because of interruption");
+        return;
+    }
+    
     // 4.8.10.9. Playing the media resource
     if (!m_player || m_networkState == NETWORK_EMPTY)
         scheduleDelayedAction(LoadMediaResource);
@@ -2731,11 +2767,6 @@ void HTMLMediaElement::pause()
     if (!m_mediaSession->playbackPermitted(*this))
         return;
 
-    if (!m_mediaSession->clientWillPausePlayback()) {
-        LOG(Media, "  returning because of interruption");
-        return;
-    }
-
     pauseInternal();
 }
 
@@ -2744,6 +2775,11 @@ void HTMLMediaElement::pauseInternal()
 {
     LOG(Media, "HTMLMediaElement::pauseInternal");
 
+    if (!m_mediaSession->clientWillPausePlayback()) {
+        LOG(Media, "  returning because of interruption");
+        return;
+    }
+    
     // 4.8.10.9. Playing the media resource
     if (!m_player || m_networkState == NETWORK_EMPTY) {
 #if PLATFORM(IOS)
@@ -3004,6 +3040,56 @@ void HTMLMediaElement::endScrubbing()
 
     if (m_pausedInternal)
         setPausedInternal(false);
+}
+
+void HTMLMediaElement::beginScanning(ScanDirection direction)
+{
+    m_scanType = supportsScanning() ? Scan : Seek;
+    m_scanDirection = direction;
+
+    if (m_scanType == Seek) {
+        // Scanning by seeking requires the video to be paused during scanning.
+        m_actionAfterScan = paused() ? Nothing : Play;
+        pause();
+    } else {
+        // Scanning by scanning requires the video to be playing during scanninging.
+        m_actionAfterScan = paused() ? Pause : Nothing;
+        play();
+        setPlaybackRate(nextScanRate());
+    }
+
+    m_scanTimer.start(0, m_scanType == Seek ? SeekRepeatDelay : ScanRepeatDelay);
+}
+
+void HTMLMediaElement::endScanning()
+{
+    if (m_scanType == Scan)
+        setPlaybackRate(defaultPlaybackRate());
+
+    if (m_actionAfterScan == Play)
+        play();
+    else if (m_actionAfterScan == Pause)
+        pause();
+
+    if (m_scanTimer.isActive())
+        m_scanTimer.stop();
+}
+
+double HTMLMediaElement::nextScanRate()
+{
+    double rate = std::min(ScanMaximumRate, fabs(playbackRate() * 2));
+    if (m_scanDirection == Backward)
+        rate *= -1;
+    return rate;
+}
+
+void HTMLMediaElement::scanTimerFired(Timer<HTMLMediaElement>&)
+{
+    if (m_scanType == Seek) {
+        double seekTime = m_scanDirection == Forward ? SeekTime : -SeekTime;
+        setCurrentTime(currentTime() + seekTime);
+    } else
+        setPlaybackRate(nextScanRate());
 }
 
 // The spec says to fire periodic timeupdate events (those sent while playing) every
@@ -3910,6 +3996,7 @@ void HTMLMediaElement::mediaPlayerTimeChanged(MediaPlayer*)
                 // changes paused to true and fires a simple event named pause at the media element.
                 m_paused = true;
                 scheduleEvent(eventNames().pauseEvent);
+                m_mediaSession->clientWillPausePlayback();
             }
             // Queue a task to fire a simple event named ended at the media element.
             if (!m_sentEndEvent) {
@@ -5878,7 +5965,58 @@ void HTMLMediaElement::resumePlayback()
     if (paused())
         play();
 }
+    
+String HTMLMediaElement::mediaSessionTitle() const
+{
+    if (fastHasAttribute(titleAttr))
+        return fastGetAttribute(titleAttr);
+    
+    return m_currentSrc;
+}
 
+void HTMLMediaElement::didReceiveRemoteControlCommand(MediaSession::RemoteControlCommandType command)
+{
+    LOG(Media, "HTMLMediaElement::didReceiveRemoteControlCommand(%i)", static_cast<int>(command));
+
+    switch (command) {
+    case MediaSession::PlayCommand:
+        play();
+        break;
+    case MediaSession::PauseCommand:
+        pause();
+        break;
+    case MediaSession::TogglePlayPauseCommand:
+        canPlay() ? play() : pause();
+        break;
+    case MediaSession::BeginSeekingBackwardCommand:
+        beginScanning(Backward);
+        break;
+    case MediaSession::BeginSeekingForwardCommand:
+        beginScanning(Forward);
+        break;
+    case MediaSession::EndSeekingBackwardCommand:
+    case MediaSession::EndSeekingForwardCommand:
+        endScanning();
+        break;
+    default:
+        { } // Do nothing
+    }
+}
+
+bool HTMLMediaElement::doesHaveAttribute(const AtomicString& attribute) const
+{
+    QualifiedName attributeName(nullAtom, attribute, nullAtom);
+    if (!fastHasAttribute(attributeName))
+        return false;
+    
+    if (Settings* settings = document().settings()) {
+        if (attributeName == HTMLNames::x_itunes_inherit_uri_query_componentAttr)
+            return settings->enableInheritURIQueryComponent();
+    }
+    
+    return true;
+}
+    
 }
 
 #endif

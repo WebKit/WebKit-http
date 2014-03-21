@@ -279,7 +279,7 @@ void WebProcess::initializeWebProcess(const WebProcessCreationParameters& parame
         return;
 
     if (!parameters.injectedBundlePath.isEmpty()) {
-        m_injectedBundle = InjectedBundle::create(parameters.injectedBundlePath);
+        m_injectedBundle = InjectedBundle::create(parameters);
         m_injectedBundle->setSandboxExtension(SandboxExtension::create(parameters.injectedBundlePathExtensionHandle));
 
         if (!m_injectedBundle->load(injectedBundleInitializationUserData.get())) {
@@ -499,50 +499,6 @@ PluginProcessConnectionManager& WebProcess::pluginProcessConnectionManager()
     return *m_pluginProcessConnectionManager;
 }
 #endif
-
-void WebProcess::setVisitedLinkTable(const SharedMemory::Handle& handle)
-{
-    RefPtr<SharedMemory> sharedMemory = SharedMemory::create(handle, SharedMemory::ReadOnly);
-    if (!sharedMemory)
-        return;
-
-    m_visitedLinkTable.setSharedMemory(sharedMemory.release());
-}
-
-void WebProcess::visitedLinkStateChanged(const Vector<WebCore::LinkHash>& linkHashes)
-{
-    // FIXME: We may want to track visited links per WebPageGroup rather than per WebContext.
-    for (const auto& webPage : m_pageMap.values()) {
-        if (Page* page = webPage->corePage()) {
-            for (auto linkHash : linkHashes)
-                page->invalidateStylesForLink(linkHash);
-        }
-    }
-
-    pageCache()->markPagesForVistedLinkStyleRecalc();
-}
-
-void WebProcess::allVisitedLinkStateChanged()
-{
-    for (const auto& webPage : m_pageMap.values()) {
-        if (Page* page = webPage->corePage())
-            page->invalidateStylesForAllLinks();
-    }
-
-    pageCache()->markPagesForVistedLinkStyleRecalc();
-}
-
-bool WebProcess::isLinkVisited(LinkHash linkHash) const
-{
-    return m_visitedLinkTable.isLinkVisited(linkHash);
-}
-
-void WebProcess::addVisitedLink(WebCore::LinkHash linkHash)
-{
-    if (isLinkVisited(linkHash) || !m_shouldTrackVisitedLinks)
-        return;
-    parentProcessConnection()->send(Messages::WebContext::AddVisitedLinkHash(linkHash), 0);
-}
 
 void WebProcess::setCacheModel(uint32_t cm)
 {
@@ -990,6 +946,15 @@ void WebProcess::postInjectedBundleMessage(const IPC::DataReference& messageData
         return;
 
     injectedBundle->didReceiveMessage(messageName, messageBody.get());
+}
+
+void WebProcess::setInjectedBundleParameter(const String& key, const IPC::DataReference& value)
+{
+    InjectedBundle* injectedBundle = WebProcess::shared().injectedBundle();
+    if (!injectedBundle)
+        return;
+
+    injectedBundle->setBundleParameter(key, value);
 }
 
 bool WebProcess::usesNetworkProcess() const

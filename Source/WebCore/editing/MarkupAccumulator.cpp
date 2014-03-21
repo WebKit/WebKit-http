@@ -140,8 +140,8 @@ void MarkupAccumulator::serializeNodesWithNamespaces(Node& targetNode, Node* nod
         return;
 
     if (tagNamesToSkip && targetNode.isElementNode()) {
-        for (size_t i = 0; i < tagNamesToSkip->size(); ++i) {
-            if (targetNode.hasTagName(tagNamesToSkip->at(i)))
+        for (auto& name : *tagNamesToSkip) {
+            if (toElement(targetNode).hasTagName(name))
                 return;
         }
     }
@@ -280,7 +280,7 @@ bool MarkupAccumulator::shouldAddNamespaceElement(const Element& element)
     if (prefix.isEmpty())
         return !element.hasAttribute(xmlnsAtom);
 
-    DEFINE_STATIC_LOCAL(String, xmlnsWithColon, (ASCIILiteral("xmlns:")));
+    DEPRECATED_DEFINE_STATIC_LOCAL(String, xmlnsWithColon, (ASCIILiteral("xmlns:")));
     return !element.hasAttribute(xmlnsWithColon + prefix);
 }
 

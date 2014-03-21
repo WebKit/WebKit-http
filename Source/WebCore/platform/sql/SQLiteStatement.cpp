@@ -10,10 +10,10 @@
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
  *
- * THIS SOFTWARE IS PROVIDED BY APPLE COMPUTER, INC. ``AS IS'' AND ANY
+ * THIS SOFTWARE IS PROVIDED BY APPLE INC. ``AS IS'' AND ANY
  * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE COMPUTER, INC. OR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE INC. OR
  * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
  * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
  * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
@@ -30,7 +30,7 @@
 #include "SQLValue.h"
 #include <sqlite3.h>
 #include <wtf/Assertions.h>
-#include <wtf/text/StringImpl.h>
+#include <wtf/text/StringView.h>
 
 // SQLite 3.6.16 makes sqlite3_prepare_v2 automatically retry preparing the statement
 // once if the database scheme has changed. We rely on this behavior.
@@ -177,12 +177,13 @@ int SQLiteStatement::bindBlob(int index, const String& text)
 {
     // String::characters() returns 0 for the empty string, which SQLite
     // treats as a null, so we supply a non-null pointer for that case.
+    auto upconvertedCharacters = StringView(text).upconvertedCharacters();
     UChar anyCharacter = 0;
     const UChar* characters;
     if (text.isEmpty() && !text.isNull())
         characters = &anyCharacter;
     else
-        characters = text.deprecatedCharacters();
+        characters = upconvertedCharacters;
 
     return bindBlob(index, characters, text.length() * sizeof(UChar));
 }
@@ -195,12 +196,13 @@ int SQLiteStatement::bindText(int index, const String& text)
 
     // String::characters() returns 0 for the empty string, which SQLite
     // treats as a null, so we supply a non-null pointer for that case.
+    auto upconvertedCharacters = StringView(text).upconvertedCharacters();
     UChar anyCharacter = 0;
     const UChar* characters;
     if (text.isEmpty() && !text.isNull())
         characters = &anyCharacter;
     else
-        characters = text.deprecatedCharacters();
+        characters = upconvertedCharacters;
 
     return sqlite3_bind_text16(m_statement, index, characters, sizeof(UChar) * text.length(), SQLITE_TRANSIENT);
 }

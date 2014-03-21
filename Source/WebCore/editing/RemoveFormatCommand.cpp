@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007 Apple Computer, Inc.  All rights reserved.
+ * Copyright (C) 2007 Apple Inc.  All rights reserved.
  * Copyright (C) 2010 Google Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -45,7 +45,7 @@ RemoveFormatCommand::RemoveFormatCommand(Document& document)
 
 static bool isElementForRemoveFormatCommand(const Element* element)
 {
-    DEFINE_STATIC_LOCAL(HashSet<QualifiedName>, elements, ());
+    DEPRECATED_DEFINE_STATIC_LOCAL(HashSet<QualifiedName>, elements, ());
     if (elements.isEmpty()) {
         elements.add(acronymTag);
         elements.add(bTag);

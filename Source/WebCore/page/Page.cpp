@@ -433,20 +433,6 @@ void Page::setNeedsRecalcStyleInAllFrames()
     }
 }
 
-void Page::jettisonStyleResolversInAllDocuments()
-{
-    if (!allPages)
-        return;
-
-    for (auto it = allPages->begin(), end = allPages->end(); it != end; ++it) {
-        Page& page = **it;
-        for (Frame* frame = &page.mainFrame(); frame; frame = frame->tree().traverseNext()) {
-            if (Document* document = frame->document())
-                document->clearStyleResolver();
-        }
-    }
-}
-
 void Page::refreshPlugins(bool reload)
 {
     if (!allPages)
@@ -709,10 +695,12 @@ void Page::setPageScaleFactor(float scale, const IntPoint& origin)
     FrameView* view = document->view();
 
     if (scale == m_pageScaleFactor) {
-        if (view && (view->scrollPosition() != origin || view->delegatesScrolling())) {
+        if (view && view->scrollPosition() != origin) {
             if (!m_settings->delegatesPageScaling())
                 document->updateLayoutIgnorePendingStylesheets();
-            view->setScrollPosition(origin);
+
+            if (!view->delegatesScrolling())
+                view->setScrollPosition(origin);
         }
         return;
     }
@@ -737,10 +725,11 @@ void Page::setPageScaleFactor(float scale, const IntPoint& origin)
     if (view && view->scrollPosition() != origin) {
         if (!m_settings->delegatesPageScaling() && document->renderView() && document->renderView()->needsLayout() && view->didFirstLayout())
             view->layout();
-        view->setScrollPosition(origin);
+        
+        if (!view->delegatesScrolling())
+            view->setScrollPosition(origin);
     }
 }
-
 
 void Page::setDeviceScaleFactor(float scaleFactor)
 {

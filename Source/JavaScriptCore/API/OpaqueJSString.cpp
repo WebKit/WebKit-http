@@ -10,10 +10,10 @@
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
  *
- * THIS SOFTWARE IS PROVIDED BY APPLE COMPUTER, INC. ``AS IS'' AND ANY
+ * THIS SOFTWARE IS PROVIDED BY APPLE INC. ``AS IS'' AND ANY
  * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE COMPUTER, INC. OR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE INC. OR
  * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
  * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
  * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
@@ -29,6 +29,7 @@
 #include "CallFrame.h"
 #include "Identifier.h"
 #include "JSGlobalObject.h"
+#include <wtf/text/StringView.h>
 
 using namespace JSC;
 
@@ -47,7 +48,7 @@ OpaqueJSString::~OpaqueJSString()
     if (!characters)
         return;
 
-    if (!m_string.is8Bit() && m_string.deprecatedCharacters() == characters)
+    if (!m_string.is8Bit() && m_string.characters16() == characters)
         return;
 
     fastFree(characters);
@@ -91,12 +92,7 @@ const UChar* OpaqueJSString::characters()
 
     unsigned length = m_string.length();
     UChar* newCharacters = static_cast<UChar*>(fastMalloc(length * sizeof(UChar)));
-
-    if (m_string.is8Bit()) {
-        for (size_t i = 0; i < length; ++i)
-            newCharacters[i] = m_string.characters8()[i];
-    } else
-        memcpy(newCharacters, m_string.characters16(), length * sizeof(UChar));
+    StringView(m_string).getCharactersWithUpconvert(newCharacters);
 
     if (!m_characters.compare_exchange_strong(characters, newCharacters)) {
         fastFree(newCharacters);

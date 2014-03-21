@@ -29,22 +29,32 @@
 #import "ArchiveResource.h"
 #import "CachedImage.h"
 #import "ColorMac.h"
+#import "CSSComputedStyleDeclaration.h"
+#import "CSSParser.h"
+#import "CSSPrimitiveValue.h"
 #import "Document.h"
 #import "DocumentLoader.h"
+#import "DOMCSSPrimitiveValueInternal.h"
 #import "DOMDocumentInternal.h"
 #import "DOMElementInternal.h"
 #import "DOMHTMLTableCellElement.h"
+#import "DOMNodeInternal.h"
 #import "DOMPrivate.h"
+#import "DOMRGBColorInternal.h"
 #import "DOMRangeInternal.h"
 #import "Element.h"
 #import "Font.h"
 #import "Frame.h"
 #import "FrameLoader.h"
+#import "HTMLElement.h"
 #import "HTMLNames.h"
 #import "HTMLParserIdioms.h"
 #import "LoaderNSURLExtras.h"
+#import "RGBColor.h"
 #import "RenderImage.h"
 #import "SoftLinking.h"
+#import "StyleProperties.h"
+#import "StyledElement.h"
 #import "TextIterator.h"
 #import <objc/runtime.h>
 #import <wtf/ASCIICType.h>
@@ -389,6 +399,22 @@ static NSFileWrapper *fileWrapperForElement(Element*);
 // Additional control Unicode characters
 const unichar WebNextLineCharacter = 0x0085;
 
+class HTMLConverterCaches {
+public:
+    String propertyValueForNode(Node&, const String& propertyName);
+    bool floatPropertyValueForNode(Node&, const String& propertyName, float&);
+    Color colorPropertyValueForNode(Node&, const String& propertyName);
+
+    bool isBlockElement(Element&);
+    bool elementHasOwnBackgroundColor(Element&);
+
+    PassRefPtr<CSSValue> computedStylePropertyForElement(Element&, const String&);
+    PassRefPtr<CSSValue> inlineStylePropertyForElement(Element&, const String&);
+
+private:
+    HashMap<Element*, std::unique_ptr<ComputedStyleExtractor>> m_computedStyles;
+};
+
 @interface NSTextList (WebCoreNSTextListDetails)
 + (NSDictionary *)_standardMarkerAttributesForAttributes:(NSDictionary *)attrs;
 @end
@@ -543,272 +569,259 @@ static PlatformFont *_fontForNameAndSize(NSString *fontName, CGFloat size, NSMut
     return array;
 }
 
-- (DOMCSSStyleDeclaration *)_computedStyleForElement:(DOMElement *)element
+PassRefPtr<CSSValue> HTMLConverterCaches::computedStylePropertyForElement(Element& element, const String& propertyName)
 {
-    DOMDocument *document = [element ownerDocument];
-    DOMCSSStyleDeclaration *result = nil;
-    result = [_computedStylesForElements objectForKey:element];
-    if (result) {
-        if ([result isEqual:[NSNull null]])
-            result = nil;
-    } else {
-        result = [document getComputedStyle:element pseudoElement:@""] ;
-        [_computedStylesForElements setObject:(result ? (id)result : (id)[NSNull null]) forKey:element];
-    }
-    return result;
+    CSSPropertyID propetyId = cssPropertyID(propertyName);
+    if (propetyId == CSSPropertyInvalid)
+        return nullptr;
+
+    auto result = m_computedStyles.add(&element, nullptr);
+    if (result.isNewEntry)
+        result.iterator->value = std::make_unique<ComputedStyleExtractor>(&element, true);
+    ComputedStyleExtractor& computedStyle = *result.iterator->value;
+    return computedStyle.propertyValue(propetyId);
 }
 
-- (DOMCSSStyleDeclaration *)_specifiedStyleForElement:(DOMElement *)element
+PassRefPtr<CSSValue> HTMLConverterCaches::inlineStylePropertyForElement(Element& element, const String& propertyName)
 {
-    DOMCSSStyleDeclaration *result = [_specifiedStylesForElements objectForKey:element];
-    if (result) {
-        if ([result isEqual:[NSNull null]])
-            result = nil;
-    } else {
-        result = [element style];
-        [_specifiedStylesForElements setObject:(result ? (id)result : (id)[NSNull null]) forKey:element];
-    }
-    return result;
+    CSSPropertyID propetyId = cssPropertyID(propertyName);
+    if (propetyId == CSSPropertyInvalid || !element.isStyledElement())
+        return nullptr;
+    const StyleProperties* properties = toStyledElement(element).inlineStyle();
+    if (!properties)
+        return nullptr;
+    return properties->getPropertyCSSValue(propetyId);
 }
 
-- (NSString *)_computedStringForNode:(DOMNode *)node property:(NSString *)key
+static bool stringFromCSSValue(CSSValue& value, String& result)
 {
-    NSString *result = nil;
-    BOOL inherit = YES;
-    DOMElement *element = (DOMElement *)node;    
-    if (element && [element nodeType] == DOM_ELEMENT_NODE) {
-        DOMCSSStyleDeclaration *computedStyle;
-        DOMCSSStyleDeclaration *specifiedStyle;
-        inherit = NO;
-        if (!result && (computedStyle = [self _computedStyleForElement:element])) {
-            DOMCSSPrimitiveValue *computedValue = (DOMCSSPrimitiveValue *)[computedStyle getPropertyCSSValue:key];
-            if (computedValue) {
-                unsigned short valueType = [computedValue cssValueType];
-                if (valueType == DOM_CSS_PRIMITIVE_VALUE) {
-                    unsigned short primitiveType = [computedValue primitiveType];
-                    if (primitiveType == DOM_CSS_STRING || primitiveType == DOM_CSS_URI || primitiveType == DOM_CSS_IDENT || primitiveType == DOM_CSS_ATTR) {
-                        result = [computedValue getStringValue];
-                        if (result && ![result length])
-                            result = nil;
-                    }
-                } else if (valueType == DOM_CSS_VALUE_LIST)
-                    result = [computedStyle getPropertyValue:key];
+    if (value.isPrimitiveValue()) {
+        unsigned short primitiveType = toCSSPrimitiveValue(value).primitiveType();
+        if (primitiveType == CSSPrimitiveValue::CSS_STRING || primitiveType == CSSPrimitiveValue::CSS_URI ||
+            primitiveType == CSSPrimitiveValue::CSS_IDENT || primitiveType == CSSPrimitiveValue::CSS_ATTR) {
+            String stringValue = value.cssText();
+            if (stringValue.length()) {
+                result = stringValue;
+                return true;
             }
         }
-        if (!result && (specifiedStyle = [self _specifiedStyleForElement:element])) {
-            DOMCSSPrimitiveValue *specifiedValue = (DOMCSSPrimitiveValue *)[specifiedStyle getPropertyCSSValue:key];
-            if (specifiedValue) {
-                unsigned short valueType = [specifiedValue cssValueType];
-                if (valueType == DOM_CSS_PRIMITIVE_VALUE) {
-                    unsigned short primitiveType = [specifiedValue primitiveType];
-                    if (primitiveType == DOM_CSS_STRING || primitiveType == DOM_CSS_URI || primitiveType == DOM_CSS_IDENT || primitiveType == DOM_CSS_ATTR) {
-                        result = [specifiedValue getStringValue];
-                        if (result && ![result length])
-                            result = nil;
-                        if (!result)
-                            result = [specifiedStyle getPropertyValue:key];
-                    }
-                } else if (valueType == DOM_CSS_INHERIT)
-                    inherit = YES;
-                else if (valueType == DOM_CSS_VALUE_LIST)
-                    result = [specifiedStyle getPropertyValue:key];
-            }
-        }
-        if (!result) {
-            Element* coreElement = core(element);
-            if ([@"display" isEqualToString:key]) {
-                if (coreElement->hasTagName(headTag) || coreElement->hasTagName(scriptTag) || coreElement->hasTagName(appletTag) || coreElement->hasTagName(noframesTag))
-                    result = @"none";
-                else if (coreElement->hasTagName(addressTag) || coreElement->hasTagName(blockquoteTag) || coreElement->hasTagName(bodyTag) || coreElement->hasTagName(centerTag)
-                         || coreElement->hasTagName(ddTag) || coreElement->hasTagName(dirTag) || coreElement->hasTagName(divTag) || coreElement->hasTagName(dlTag)
-                         || coreElement->hasTagName(dtTag) || coreElement->hasTagName(fieldsetTag) || coreElement->hasTagName(formTag) || coreElement->hasTagName(frameTag)
-                         || coreElement->hasTagName(framesetTag) || coreElement->hasTagName(hrTag) || coreElement->hasTagName(htmlTag) || coreElement->hasTagName(h1Tag)
-                         || coreElement->hasTagName(h2Tag) || coreElement->hasTagName(h3Tag) || coreElement->hasTagName(h4Tag) || coreElement->hasTagName(h5Tag)
-                         || coreElement->hasTagName(h6Tag) || coreElement->hasTagName(iframeTag) || coreElement->hasTagName(menuTag) || coreElement->hasTagName(noscriptTag)
-                         || coreElement->hasTagName(olTag) || coreElement->hasTagName(pTag) || coreElement->hasTagName(preTag) || coreElement->hasTagName(ulTag))
-                    result = @"block";
-                else if (coreElement->hasTagName(liTag))
-                    result = @"list-item";
-                else if (coreElement->hasTagName(tableTag))
-                    result = @"table";
-                else if (coreElement->hasTagName(trTag))
-                    result = @"table-row";
-                else if (coreElement->hasTagName(thTag) || coreElement->hasTagName(tdTag))
-                    result = @"table-cell";
-                else if (coreElement->hasTagName(theadTag))
-                    result = @"table-header-group";
-                else if (coreElement->hasTagName(tbodyTag))
-                    result = @"table-row-group";
-                else if (coreElement->hasTagName(tfootTag))
-                    result = @"table-footer-group";
-                else if (coreElement->hasTagName(colTag))
-                    result = @"table-column";
-                else if (coreElement->hasTagName(colgroupTag))
-                    result = @"table-column-group";
-                else if (coreElement->hasTagName(captionTag))
-                    result = @"table-caption";
-            } else if ([@"white-space" isEqualToString:key]) {
-                if (coreElement->hasTagName(preTag))
-                    result = @"pre";
-                else
-                    inherit = YES;
-            } else if ([@"font-style" isEqualToString:key]) {
-                if (coreElement->hasTagName(iTag) || coreElement->hasTagName(citeTag) || coreElement->hasTagName(emTag) || coreElement->hasTagName(varTag) || coreElement->hasTagName(addressTag))
-                    result = @"italic";
-                else
-                    inherit = YES;
-            } else if ([@"font-weight" isEqualToString:key]) {
-                if (coreElement->hasTagName(bTag) || coreElement->hasTagName(strongTag) || coreElement->hasTagName(thTag))
-                    result = @"bolder";
-                else
-                    inherit = YES;
-            } else if ([@"text-decoration" isEqualToString:key]) {
-                if (coreElement->hasTagName(uTag) || coreElement->hasTagName(insTag))
-                    result = @"underline";
-                else if (coreElement->hasTagName(sTag) || coreElement->hasTagName(strikeTag) || coreElement->hasTagName(delTag))
-                    result = @"line-through";
-                else
-                    inherit = YES; // ??? this is not strictly correct
-            } else if ([@"text-align" isEqualToString:key]) {
-                if (coreElement->hasTagName(centerTag) || coreElement->hasTagName(captionTag) || coreElement->hasTagName(thTag))
-                    result = @"center";
-                else
-                    inherit = YES;
-            } else if ([@"vertical-align" isEqualToString:key]) {
-                if (coreElement->hasTagName(supTag))
-                    result = @"super";
-                else if (coreElement->hasTagName(subTag))
-                    result = @"sub";
-                else if (coreElement->hasTagName(theadTag) || coreElement->hasTagName(tbodyTag) || coreElement->hasTagName(tfootTag))
-                    result = @"middle";
-                else if (coreElement->hasTagName(trTag) || coreElement->hasTagName(thTag) || coreElement->hasTagName(tdTag))
-                    inherit = YES;
-            } else if ([@"font-family" isEqualToString:key] || [@"font-variant" isEqualToString:key] || [@"font-effect" isEqualToString:key]
-                       || [@"text-transform" isEqualToString:key] || [@"text-shadow" isEqualToString:key] || [@"visibility" isEqualToString:key]
-                       || [@"border-collapse" isEqualToString:key] || [@"empty-cells" isEqualToString:key] || [@"word-spacing" isEqualToString:key]
-                       || [@"list-style-type" isEqualToString:key] || [@"direction" isEqualToString:key]) {
-                inherit = YES;
-            }
-        }
+    } else if (value.isValueList()) {
+        result = value.cssText();
+        return true;
     }
-    if (!result && inherit) {
-        DOMNode *parentNode = [node parentNode];
-        if (parentNode)
-            result = [self _stringForNode:parentNode property:key];
+    return false;
+}
+
+String HTMLConverterCaches::propertyValueForNode(Node& node, const String& propertyName)
+{
+    if (!node.isElementNode()) {
+        if (Node* parent = node.parentNode())
+            return propertyValueForNode(*parent, propertyName);
+        return String();
     }
-    return result ? [result lowercaseString] : nil;
+
+    bool inherit = false;
+    Element& element = toElement(node);
+    if (RefPtr<CSSValue> value = computedStylePropertyForElement(element, propertyName)) {
+        String result;
+        if (stringFromCSSValue(*value, result))
+            return result;
+    }
+
+    if (RefPtr<CSSValue> value = inlineStylePropertyForElement(element, propertyName)) {
+        String result;
+        if (value->isInheritedValue())
+            inherit = true;
+        else if (stringFromCSSValue(*value, result))
+            return result;
+    }
+
+    switch (cssPropertyID(propertyName)) {
+    case CSSPropertyDisplay:
+        if (element.hasTagName(headTag) || element.hasTagName(scriptTag) || element.hasTagName(appletTag) || element.hasTagName(noframesTag))
+            return "none";
+        else if (element.hasTagName(addressTag) || element.hasTagName(blockquoteTag) || element.hasTagName(bodyTag) || element.hasTagName(centerTag)
+             || element.hasTagName(ddTag) || element.hasTagName(dirTag) || element.hasTagName(divTag) || element.hasTagName(dlTag)
+             || element.hasTagName(dtTag) || element.hasTagName(fieldsetTag) || element.hasTagName(formTag) || element.hasTagName(frameTag)
+             || element.hasTagName(framesetTag) || element.hasTagName(hrTag) || element.hasTagName(htmlTag) || element.hasTagName(h1Tag)
+             || element.hasTagName(h2Tag) || element.hasTagName(h3Tag) || element.hasTagName(h4Tag) || element.hasTagName(h5Tag)
+             || element.hasTagName(h6Tag) || element.hasTagName(iframeTag) || element.hasTagName(menuTag) || element.hasTagName(noscriptTag)
+             || element.hasTagName(olTag) || element.hasTagName(pTag) || element.hasTagName(preTag) || element.hasTagName(ulTag))
+            return "block";
+        else if (element.hasTagName(liTag))
+            return "list-item";
+        else if (element.hasTagName(tableTag))
+            return "table";
+        else if (element.hasTagName(trTag))
+            return "table-row";
+        else if (element.hasTagName(thTag) || element.hasTagName(tdTag))
+            return "table-cell";
+        else if (element.hasTagName(theadTag))
+            return "table-header-group";
+        else if (element.hasTagName(tbodyTag))
+            return "table-row-group";
+        else if (element.hasTagName(tfootTag))
+            return "table-footer-group";
+        else if (element.hasTagName(colTag))
+            return "table-column";
+        else if (element.hasTagName(colgroupTag))
+            return "table-column-group";
+        else if (element.hasTagName(captionTag))
+            return "table-caption";
+        break;
+    case CSSPropertyWhiteSpace:
+        if (element.hasTagName(preTag))
+            return "pre";
+        inherit = true;
+        break;
+    case CSSPropertyFontStyle:
+        if (element.hasTagName(iTag) || element.hasTagName(citeTag) || element.hasTagName(emTag) || element.hasTagName(varTag) || element.hasTagName(addressTag))
+            return "italic";
+        inherit = true;
+        break;
+    case CSSPropertyFontWeight:
+        if (element.hasTagName(bTag) || element.hasTagName(strongTag) || element.hasTagName(thTag))
+            return "bolder";
+        inherit = true;
+        break;
+    case CSSPropertyTextDecoration:
+        if (element.hasTagName(uTag) || element.hasTagName(insTag))
+            return "underline";
+        else if (element.hasTagName(sTag) || element.hasTagName(strikeTag) || element.hasTagName(delTag))
+            return "line-through";
+        inherit = true; // FIXME: This is not strictly correct
+        break;
+    case CSSPropertyTextAlign:
+        if (element.hasTagName(centerTag) || element.hasTagName(captionTag) || element.hasTagName(thTag))
+            return "center";
+        inherit = true;
+        break;
+    case CSSPropertyVerticalAlign:
+        if (element.hasTagName(supTag))
+            return "super";
+        else if (element.hasTagName(subTag))
+            return "sub";
+        else if (element.hasTagName(theadTag) || element.hasTagName(tbodyTag) || element.hasTagName(tfootTag))
+            return "middle";
+        else if (element.hasTagName(trTag) || element.hasTagName(thTag) || element.hasTagName(tdTag))
+            inherit = true;
+        break;
+    case CSSPropertyFontFamily:
+    case CSSPropertyFontVariant:
+    case CSSPropertyTextTransform:
+    case CSSPropertyTextShadow:
+    case CSSPropertyVisibility:
+    case CSSPropertyBorderCollapse:
+    case CSSPropertyEmptyCells:
+    case CSSPropertyWordSpacing:
+    case CSSPropertyListStyleType:
+    case CSSPropertyDirection:
+        inherit = true; // FIXME: Let classes in the css component figure this out.
+        break;
+    default:
+        break;
+    }
+
+    if (inherit) {
+        if (Node* parent = node.parentNode())
+            return propertyValueForNode(*parent, propertyName);
+    }
+    
+    return String();
 }
 
 - (NSString *)_stringForNode:(DOMNode *)node property:(NSString *)key
 {
-    NSString *result = nil;
-    RetainPtr<NSMutableDictionary> attributeDictionary = [_stringsForNodes objectForKey:node];
-    if (!attributeDictionary) {
-        attributeDictionary = adoptNS([[NSMutableDictionary alloc] init]);
-        [_stringsForNodes setObject:attributeDictionary.get() forKey:node];
-    }
-    result = [attributeDictionary objectForKey:key];
-    if (result) {
-        if ([result isEqualToString:@""])
-            result = nil;
-    } else {
-        result = [self _computedStringForNode:node property:key];
-        [attributeDictionary setObject:(result ? result : @"") forKey:key];
-    }
+    Node* coreNode = core(node);
+    if (!coreNode)
+        return nil;
+    String result = _caches->propertyValueForNode(*coreNode, String(key));
+    if (!result.length())
+        return nil;
     return result;
 }
 
-static inline BOOL _getFloat(DOMCSSPrimitiveValue *primitiveValue, CGFloat *val)
+static inline bool floatValueFromPrimitiveValue(CSSPrimitiveValue& primitiveValue, float& result)
 {
-    if (!val)
-        return NO;
-    switch ([primitiveValue primitiveType]) {
-        case DOM_CSS_PX:
-            *val = [primitiveValue getFloatValue:DOM_CSS_PX];
-            return YES;
-        case DOM_CSS_PT:
-            *val = 4 * [primitiveValue getFloatValue:DOM_CSS_PT] / 3;
-            return YES;
-        case DOM_CSS_PC:
-            *val = 16 * [primitiveValue getFloatValue:DOM_CSS_PC];
-            return YES;
-        case DOM_CSS_CM:
-            *val = 96 * [primitiveValue getFloatValue:DOM_CSS_CM] / (CGFloat)2.54;
-            return YES;
-        case DOM_CSS_MM:
-            *val = 96 * [primitiveValue getFloatValue:DOM_CSS_MM] / (CGFloat)25.4;
-            return YES;
-        case DOM_CSS_IN:
-            *val = 96 * [primitiveValue getFloatValue:DOM_CSS_IN];
-            return YES;
-        default:
-            return NO;
+    // FIXME: Use CSSPrimitiveValue::computeValue.
+    switch (primitiveValue.primitiveType()) {
+    case CSSPrimitiveValue::CSS_PX:
+        result = primitiveValue.getFloatValue(CSSPrimitiveValue::CSS_PX);
+        return true;
+    case CSSPrimitiveValue::CSS_PT:
+        result = 4 * primitiveValue.getFloatValue(CSSPrimitiveValue::CSS_PT) / 3;
+        return true;
+    case CSSPrimitiveValue::CSS_PC:
+        result = 16 * primitiveValue.getFloatValue(CSSPrimitiveValue::CSS_PC);
+        return true;
+    case CSSPrimitiveValue::CSS_CM:
+        result = 96 * primitiveValue.getFloatValue(CSSPrimitiveValue::CSS_PC) / 2.54;
+        return true;
+    case CSSPrimitiveValue::CSS_MM:
+        result = 96 * primitiveValue.getFloatValue(CSSPrimitiveValue::CSS_PC) / 25.4;
+        return true;
+    case CSSPrimitiveValue::CSS_IN:
+        result = 96 * primitiveValue.getFloatValue(CSSPrimitiveValue::CSS_IN);
+        return true;
+    default:
+        return false;
     }
 }
 
-- (BOOL)_getComputedFloat:(CGFloat *)val forNode:(DOMNode *)node property:(NSString *)key
+bool HTMLConverterCaches::floatPropertyValueForNode(Node& node, const String& propertyName, float& result)
 {
-    BOOL result = NO;
-    BOOL inherit = YES;
-    CGFloat floatVal = 0;
-    DOMElement *element = (DOMElement *)node;    
-    if (element && [element nodeType] == DOM_ELEMENT_NODE) {
-        DOMCSSStyleDeclaration *computedStyle, *specifiedStyle;
-        inherit = NO;
-        if (!result && (computedStyle = [self _computedStyleForElement:element])) {
-            DOMCSSPrimitiveValue *computedValue = (DOMCSSPrimitiveValue *)[computedStyle getPropertyCSSValue:key];
-            if (computedValue && [computedValue cssValueType] == DOM_CSS_PRIMITIVE_VALUE)
-                result = _getFloat(computedValue, &floatVal);
-        }
-        if (!result && (specifiedStyle = [self _specifiedStyleForElement:element])) {
-            DOMCSSPrimitiveValue *specifiedValue = (DOMCSSPrimitiveValue *)[specifiedStyle getPropertyCSSValue:key];
-            if (specifiedValue) {
-                unsigned short valueType = [specifiedValue cssValueType];
-                if (valueType == DOM_CSS_PRIMITIVE_VALUE)
-                    result = _getFloat(specifiedValue, &floatVal);
-                else if (valueType == DOM_CSS_INHERIT)
-                    inherit = YES;
-            }
-        }
-        if (!result) {
-            if ([@"text-indent" isEqualToString:key] || [@"letter-spacing" isEqualToString:key] || [@"word-spacing" isEqualToString:key]
-                || [@"line-height" isEqualToString:key] || [@"widows" isEqualToString:key] || [@"orphans" isEqualToString:key])
-                inherit = YES;
-        }
+    if (!node.isElementNode()) {
+        if (ContainerNode* parent = node.parentNode())
+            return floatPropertyValueForNode(*parent, propertyName, result);
+        return false;
     }
-    if (!result && inherit) {
-        DOMNode *parentNode = [node parentNode];
-        if (parentNode)
-            result = [self _getFloat:&floatVal forNode:parentNode property:key];
+
+    Element& element = toElement(node);
+    if (RefPtr<CSSValue> value = computedStylePropertyForElement(element, propertyName)) {
+        if (value->isPrimitiveValue() && floatValueFromPrimitiveValue(toCSSPrimitiveValue(*value), result))
+            return true;
     }
-    if (result && val)
-        *val = floatVal;
-    return result;
+
+    bool inherit = false;
+    if (RefPtr<CSSValue> value = inlineStylePropertyForElement(element, propertyName)) {
+        if (value->isPrimitiveValue() && floatValueFromPrimitiveValue(toCSSPrimitiveValue(*value), result))
+            return true;
+        if (value->isInheritedValue())
+            inherit = true;
+    }
+
+    switch (cssPropertyID(propertyName)) {
+    case CSSPropertyTextIndent:
+    case CSSPropertyLetterSpacing:
+    case CSSPropertyWordSpacing:
+    case CSSPropertyLineHeight:
+    case CSSPropertyWidows:
+    case CSSPropertyOrphans:
+        inherit = true;
+        break;
+    default:
+        break;
+    }
+
+    if (inherit) {
+        if (ContainerNode* parent = node.parentNode())
+            return floatPropertyValueForNode(*parent, propertyName, result);
+    }
+
+    return false;
 }
 
 - (BOOL)_getFloat:(CGFloat *)val forNode:(DOMNode *)node property:(NSString *)key
 {
-    BOOL result = NO;
-    CGFloat floatVal = 0;
-    NSNumber *floatNumber;
-    RetainPtr<NSMutableDictionary> attributeDictionary = [_floatsForNodes objectForKey:node];
-    if (!attributeDictionary) {
-        attributeDictionary = adoptNS([[NSMutableDictionary alloc] init]);
-        [_floatsForNodes setObject:attributeDictionary.get() forKey:node];
-    }
-    floatNumber = [attributeDictionary objectForKey:key];
-    if (floatNumber) {
-        if (![[NSNull null] isEqual:floatNumber]) {
-            result = YES;
-            floatVal = [floatNumber floatValue];
-        }
-    } else {
-        result = [self _getComputedFloat:&floatVal forNode:node property:key];
-        [attributeDictionary setObject:(result ? (id)[NSNumber numberWithDouble:floatVal] : (id)[NSNull null]) forKey:key];
-    }
-    if (result && val)
-        *val = floatVal;
-    return result;
+    Node* coreNode = core(node);
+    if (!coreNode)
+        return NO;
+    float result;
+    if (!_caches->floatPropertyValueForNode(*coreNode, String(key), result))
+        return NO;
+    if (val)
+        *val = result;
+    return YES;
 }
 
 static NSString *_NSFirstPathForDirectoriesInDomains(NSSearchPathDirectory directory, NSSearchPathDomainMask domainMask, BOOL expandTilde)
@@ -831,39 +844,14 @@ static NSString *_NSSystemLibraryPath(void)
 }
 
 #if PLATFORM(IOS)
-static inline UIColor *_colorForRGBColor(DOMRGBColor *domRGBColor, BOOL)
+static inline UIColor *_platformColor(Color color)
 {
-    return [getUIColorClass() _disambiguated_due_to_CIImage_colorWithCGColor:[domRGBColor color]];
+    return [getUIColorClass() _disambiguated_due_to_CIImage_colorWithCGColor:cachedCGColor(color, WebCore::ColorSpaceDeviceRGB)];
 }
-
 #else
-static inline NSColor *_colorForRGBColor(DOMRGBColor *domRGBColor, BOOL ignoreBlack)
+static inline NSColor *_platformColor(Color color)
 {
-    NSColor *color = [domRGBColor _color];
-    NSColorSpace *colorSpace = [color colorSpace];
-    const CGFloat ColorEpsilon = 1 / (2 * (CGFloat)255.0);
-    
-    if (color) {
-        if ([colorSpace isEqual:[NSColorSpace genericGrayColorSpace]] || [colorSpace isEqual:[NSColorSpace deviceGrayColorSpace]]) {
-            CGFloat white, alpha;
-            [color getWhite:&white alpha:&alpha];
-            if (white < ColorEpsilon && (ignoreBlack || alpha < ColorEpsilon))
-                color = nil;
-        } else {
-            NSColor *rgbColor = nil;
-            if ([colorSpace isEqual:[NSColorSpace genericRGBColorSpace]] || [colorSpace isEqual:[NSColorSpace deviceRGBColorSpace]])
-                rgbColor = color;
-            if (!rgbColor)
-                rgbColor = [color colorUsingColorSpaceName:NSDeviceRGBColorSpace];
-            if (rgbColor) {
-                CGFloat red, green, blue, alpha;
-                [rgbColor getRed:&red green:&green blue:&blue alpha:&alpha];
-                if (red < ColorEpsilon && green < ColorEpsilon && blue < ColorEpsilon && (ignoreBlack || alpha < ColorEpsilon))
-                    color = nil;
-            }
-        }
-    }
-    return color;
+    return nsColor(color);
 }
 #endif
 
@@ -921,39 +909,36 @@ static inline NSShadow *_shadowForShadowStyle(NSString *shadowStyle)
     return shadow;
 }
 
+bool HTMLConverterCaches::isBlockElement(Element& element)
+{
+    String displayValue = propertyValueForNode(element, "display");
+    if (displayValue == "block" || displayValue == "list-item" || displayValue.startsWith("table"))
+        return true;
+    String floatValue = propertyValueForNode(element, "float");
+    if (floatValue == "left" || floatValue == "right")
+        return true;
+    return false;
+}
+
+bool HTMLConverterCaches::elementHasOwnBackgroundColor(Element& element)
+{
+    if (!isBlockElement(element))
+        return false;
+    // In the text system, text blocks (table elements) and documents (body elements)
+    // have their own background colors, which should not be inherited.
+    return element.hasTagName(htmlTag) || element.hasTagName(bodyTag) || propertyValueForNode(element, "display").startsWith("table");
+}
+
 - (BOOL)_elementIsBlockLevel:(DOMElement *)element
 {
-    BOOL isBlockLevel = NO;
-    NSNumber *val = nil;
-    val = [_elementIsBlockLevel objectForKey:element];
-    if (val)
-        isBlockLevel = [val boolValue];
-    else {
-        NSString *displayVal = [self _stringForNode:element property:@"display"];
-        NSString *floatVal = [self _stringForNode:element property:@"float"];
-        if (floatVal && ([@"left" isEqualToString:floatVal] || [@"right" isEqualToString:floatVal]))
-            isBlockLevel = YES;
-        else if (displayVal)
-            isBlockLevel = ([@"block" isEqualToString:displayVal] || [@"list-item" isEqualToString:displayVal] || [displayVal hasPrefix:@"table"]);
-
-        [_elementIsBlockLevel setObject:[NSNumber numberWithBool:isBlockLevel] forKey:element];
-    }
-    return isBlockLevel;
+    return element && _caches->isBlockElement(*core(element));
 }
 
 - (BOOL)_elementHasOwnBackgroundColor:(DOMElement *)element
 {
-    // In the text system, text blocks (table elements) and documents (body elements)
-    // have their own background colors, which should not be inherited.
-    if ([self _elementIsBlockLevel:element]) {
-        Element* coreElement = core(element);
-        NSString *displayVal = [self _stringForNode:element property:@"display"];
-        if (coreElement->hasTagName(htmlTag) || coreElement->hasTagName(bodyTag) || [displayVal hasPrefix:@"table"])
-            return YES;
-    }
-    return NO;
+    return element && _caches->elementHasOwnBackgroundColor(*core(element));
 }
-    
+
 - (DOMElement *)_blockLevelElementForNode:(DOMNode *)node
 {
     DOMElement *element = (DOMElement *)node;
@@ -964,62 +949,76 @@ static inline NSShadow *_shadowForShadowStyle(NSString *shadowStyle)
     return element;
 }
 
-- (PlatformColor *)_computedColorForNode:(DOMNode *)node property:(NSString *)key
+static Color normalizedColor(Color color, bool ignoreBlack)
 {
-    PlatformColor *result = nil;
-    BOOL inherit = YES;
-    BOOL haveResult = NO;
-    BOOL isColor = [@"color" isEqualToString:key];
-    BOOL isBackgroundColor = [@"background-color" isEqualToString:key];
-    DOMElement *element = (DOMElement *)node;    
-    if (element && [element nodeType] == DOM_ELEMENT_NODE) {
-        DOMCSSStyleDeclaration *computedStyle, *specifiedStyle;
-        inherit = NO;
-        if (!haveResult && (computedStyle = [self _computedStyleForElement:element])) {
-            DOMCSSPrimitiveValue *computedValue = (DOMCSSPrimitiveValue *)[computedStyle getPropertyCSSValue:key];
-            if (computedValue && [computedValue cssValueType] == DOM_CSS_PRIMITIVE_VALUE && [computedValue primitiveType] == DOM_CSS_RGBCOLOR) {
-                result = _colorForRGBColor([computedValue getRGBColorValue], isColor);
-                haveResult = YES;
-            }
-        }
-        if (!haveResult && (specifiedStyle = [self _specifiedStyleForElement:element])) {
-            DOMCSSPrimitiveValue *specifiedValue = (DOMCSSPrimitiveValue *)[specifiedStyle getPropertyCSSValue:key];
-            if (specifiedValue) {
-                unsigned short valueType = [specifiedValue cssValueType];
-                if (valueType == DOM_CSS_PRIMITIVE_VALUE && [specifiedValue primitiveType] == DOM_CSS_RGBCOLOR) {
-                    result = _colorForRGBColor([specifiedValue getRGBColorValue], isColor);
-                    haveResult = YES;
-                } else if (valueType == DOM_CSS_INHERIT)
-                    inherit = YES;
-            }
-        }
-        if (!result) {
-            if ((isColor && !haveResult) || (isBackgroundColor && ![self _elementHasOwnBackgroundColor:element]))
-                inherit = YES;
-        }
-    }
-    if (!result && inherit) {
-        DOMNode *parentNode = [node parentNode];
-        if (parentNode && !(isBackgroundColor && [parentNode nodeType] == DOM_ELEMENT_NODE && [self _elementHasOwnBackgroundColor:(DOMElement *)parentNode]))
-            result = [self _colorForNode:parentNode property:key];
-    }
-    return result;
+    const double ColorEpsilon = 1 / (2 * (double)255.0);
+    
+    double red, green, blue, alpha;
+    color.getRGBA(red, green, blue, alpha);
+    if (red < ColorEpsilon && green < ColorEpsilon && blue < ColorEpsilon && (ignoreBlack || alpha < ColorEpsilon))
+        return Color();
+    
+    return color;
 }
 
-- (PlatformColor *)_colorForNode:(DOMNode *)node property:(NSString *)key {
-    RetainPtr<NSMutableDictionary> attributeDictionary = [_colorsForNodes objectForKey:node];
-    if (!attributeDictionary) {
-        attributeDictionary = adoptNS([[NSMutableDictionary alloc] init]);
-        [_colorsForNodes setObject:attributeDictionary.get() forKey:node];
+Color HTMLConverterCaches::colorPropertyValueForNode(Node& node, const String& propertyName)
+{
+    if (!node.isElementNode()) {
+        if (Node* parent = node.parentNode())
+            return colorPropertyValueForNode(*parent, propertyName);
+        return Color();
     }
-    PlatformColor *result = [attributeDictionary objectForKey:key];
-    if (!result) {
-        result = [self _computedColorForNode:node property:key];
-        [attributeDictionary setObject:(result ? result : [PlatformColorClass clearColor]) forKey:key];
+
+    Element& element = toElement(node);
+    if (RefPtr<CSSValue> value = computedStylePropertyForElement(element, propertyName)) {
+        if (value->isPrimitiveValue() && toCSSPrimitiveValue(*value).isRGBColor())
+            return normalizedColor(Color(toCSSPrimitiveValue(*value).getRGBA32Value()), propertyName == "color");
     }
-    if ([[PlatformColorClass clearColor] isEqual:result] || ([result alphaComponent] == 0.0) )
-        result = nil;
-    return result;
+
+    bool inherit = false;
+    if (RefPtr<CSSValue> value = inlineStylePropertyForElement(element, propertyName)) {
+        if (value->isPrimitiveValue() && toCSSPrimitiveValue(*value).isRGBColor())
+            return normalizedColor(Color(toCSSPrimitiveValue(*value).getRGBA32Value()), propertyName == "color");
+        if (value->isInheritedValue())
+            inherit = true;
+    }
+
+    switch (cssPropertyID(propertyName)) {
+    case CSSPropertyColor:
+        inherit = true;
+        break;
+    case CSSPropertyBackgroundColor:
+        if (!elementHasOwnBackgroundColor(element)) {
+            if (Element* parentElement = node.parentElement()) {
+                if (!elementHasOwnBackgroundColor(*parentElement))
+                    inherit = true;
+            }
+        }
+        break;
+    default:
+        break;
+    }
+
+    if (inherit) {
+        if (Node* parent = node.parentNode())
+            return colorPropertyValueForNode(*parent, propertyName);
+    }
+
+    return Color();
+}
+
+- (PlatformColor *)_colorForNode:(DOMNode *)node property:(NSString *)key
+{
+    Node* coreNode = core(node);
+    if (!coreNode)
+        return nil;
+    Color result = _caches->colorPropertyValueForNode(*coreNode, String(key));
+    if (!result.isValid())
+        return nil;
+    PlatformColor *platformResult = _platformColor(result);
+    if ([[PlatformColorClass clearColor] isEqual:platformResult] || ([platformResult alphaComponent] == 0.0))
+        return nil;
+    return platformResult;
 }
 
 #define UIFloatIsZero(number) (fabs(number - 0) < FLT_EPSILON)
@@ -2271,14 +2270,7 @@ static NSInteger _colCompare(id block1, id block2, void *)
         }
     } else if (nodeType == DOM_ELEMENT_NODE) {
         DOMElement *element = (DOMElement *)node;
-        NSString *tag = [element tagName], *displayVal = [self _stringForNode:element property:@"display"], *floatVal = [self _stringForNode:element property:@"float"];
-        BOOL isBlockLevel = NO;
-        if (floatVal && ([@"left" isEqualToString:floatVal] || [@"right" isEqualToString:floatVal])) {
-            isBlockLevel = YES;
-        } else if (displayVal) {
-            isBlockLevel = ([@"block" isEqualToString:displayVal] || [@"list-item" isEqualToString:displayVal] || [displayVal hasPrefix:@"table"]);
-        }
-        [_elementIsBlockLevel setObject:[NSNumber numberWithBool:isBlockLevel] forKey:element];
+        NSString *tag = [element tagName], *displayVal = [self _stringForNode:element property:@"display"];
         if ([self _enterElement:element tag:tag display:displayVal embedded:embedded]) {
             NSUInteger startIndex = [_attrStr length];
             if ([self _processElement:element tag:tag display:displayVal depth:depth]) {
@@ -2404,13 +2396,7 @@ static NSInteger _colCompare(id block1, id block2, void *)
     [_textTableRows release];
     [_textTableRowArrays release];
     [_textTableRowBackgroundColors release];
-    [_computedStylesForElements release];
-    [_specifiedStylesForElements release];
-    [_stringsForNodes release];
-    [_floatsForNodes release];
-    [_colorsForNodes release];
     [_attributesForElements release];
-    [_elementIsBlockLevel release];
     [_fontCache release];
     [_writingDirectionArray release];
     [super dealloc];
@@ -2434,13 +2420,7 @@ static NSInteger _colCompare(id block1, id block2, void *)
     _textTableRows = [[NSMutableArray alloc] init];
     _textTableRowArrays = [[NSMutableArray alloc] init];
     _textTableRowBackgroundColors = [[NSMutableArray alloc] init];
-    _computedStylesForElements = [[NSMutableDictionary alloc] init];
-    _specifiedStylesForElements = [[NSMutableDictionary alloc] init];
-    _stringsForNodes = [[NSMutableDictionary alloc] init];
-    _floatsForNodes = [[NSMutableDictionary alloc] init];
-    _colorsForNodes = [[NSMutableDictionary alloc] init];
     _attributesForElements = [[NSMutableDictionary alloc] init];
-    _elementIsBlockLevel = [[NSMutableDictionary alloc] init];
     _fontCache = [[NSMutableDictionary alloc] init];
     _writingDirectionArray = [[NSMutableArray alloc] init];
 
@@ -2452,6 +2432,8 @@ static NSInteger _colCompare(id block1, id block2, void *)
     _errorCode = -1;
     _indexingLimit = 0;
     _thumbnailLimit = 0;
+    
+    _caches = std::make_unique<HTMLConverterCaches>();
 
     _flags.isIndexing = (_indexingLimit > 0);
     _flags.isTesting = 0;

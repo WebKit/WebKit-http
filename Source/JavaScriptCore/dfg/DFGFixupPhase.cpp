@@ -418,7 +418,7 @@ private:
                 fixEdge<StringIdentUse>(node->child2());
                 break;
             }
-            if (node->child1()->shouldSpeculateString() && node->child2()->shouldSpeculateString() && GPRInfo::numberOfRegisters >= 7) {
+            if (node->child1()->shouldSpeculateString() && node->child2()->shouldSpeculateString() && (GPRInfo::numberOfRegisters >= 7 || isFTL(m_graph.m_plan.mode))) {
                 fixEdge<StringUse>(node->child1());
                 fixEdge<StringUse>(node->child2());
                 break;
@@ -434,6 +434,26 @@ private:
             }
             if (node->child2()->shouldSpeculateMisc()) {
                 fixEdge<MiscUse>(node->child2());
+                break;
+            }
+            if (node->child1()->shouldSpeculateStringIdent()
+                && node->child2()->shouldSpeculateNotStringVar()) {
+                fixEdge<StringIdentUse>(node->child1());
+                fixEdge<NotStringVarUse>(node->child2());
+                break;
+            }
+            if (node->child2()->shouldSpeculateStringIdent()
+                && node->child1()->shouldSpeculateNotStringVar()) {
+                fixEdge<StringIdentUse>(node->child2());
+                fixEdge<NotStringVarUse>(node->child1());
+                break;
+            }
+            if (node->child1()->shouldSpeculateString() && (GPRInfo::numberOfRegisters >= 8 || isFTL(m_graph.m_plan.mode))) {
+                fixEdge<StringUse>(node->child1());
+                break;
+            }
+            if (node->child2()->shouldSpeculateString() && (GPRInfo::numberOfRegisters >= 8 || isFTL(m_graph.m_plan.mode))) {
+                fixEdge<StringUse>(node->child2());
                 break;
             }
             break;
@@ -903,8 +923,6 @@ private:
         }
             
         case InstanceOf: {
-            // FIXME: This appears broken: CheckHasInstance already does an unconditional cell
-            // check. https://bugs.webkit.org/show_bug.cgi?id=107479
             if (!(node->child1()->prediction() & ~SpecCell))
                 fixEdge<CellUse>(node->child1());
             fixEdge<CellUse>(node->child2());

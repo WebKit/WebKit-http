@@ -33,21 +33,31 @@ namespace WebCore {
 
 /* Hash table */
 
+static const struct CompactHashIndex JSTestExceptionTableIndex[2] = {
+    { -1, -1 },
+    { 0, -1 },
+};
+
+
 static const HashTableValue JSTestExceptionTableValues[] =
 {
     { "name", DontDelete | ReadOnly | CustomAccessor, NoIntrinsic, (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestExceptionName), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) },
-    { 0, 0, NoIntrinsic, 0, 0 }
 };
 
-static const HashTable JSTestExceptionTable = { 2, 1, true, JSTestExceptionTableValues, 0 };
+static const HashTable JSTestExceptionTable = { 1, 1, true, JSTestExceptionTableValues, 0, JSTestExceptionTableIndex };
 /* Hash table for constructor */
+
+static const struct CompactHashIndex JSTestExceptionConstructorTableIndex[1] = {
+    { -1, -1 },
+};
+
 
 static const HashTableValue JSTestExceptionConstructorTableValues[] =
 {
     { 0, 0, NoIntrinsic, 0, 0 }
 };
 
-static const HashTable JSTestExceptionConstructorTable = { 1, 0, false, JSTestExceptionConstructorTableValues, 0 };
+static const HashTable JSTestExceptionConstructorTable = { 0, 0, false, JSTestExceptionConstructorTableValues, 0, JSTestExceptionConstructorTableIndex };
 const ClassInfo JSTestExceptionConstructor::s_info = { "TestExceptionConstructor", &Base::s_info, &JSTestExceptionConstructorTable, 0, CREATE_METHOD_TABLE(JSTestExceptionConstructor) };
 
 JSTestExceptionConstructor::JSTestExceptionConstructor(Structure* structure, JSDOMGlobalObject* globalObject)
@@ -70,13 +80,18 @@ bool JSTestExceptionConstructor::getOwnPropertySlot(JSObject* object, ExecState*
 
 /* Hash table for prototype */
 
+static const struct CompactHashIndex JSTestExceptionPrototypeTableIndex[2] = {
+    { -1, -1 },
+    { 0, -1 },
+};
+
+
 static const HashTableValue JSTestExceptionPrototypeTableValues[] =
 {
     { "constructor", DontEnum | ReadOnly, NoIntrinsic, (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestExceptionConstructor), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) },
-    { 0, 0, NoIntrinsic, 0, 0 }
 };
 
-static const HashTable JSTestExceptionPrototypeTable = { 2, 1, true, JSTestExceptionPrototypeTableValues, 0 };
+static const HashTable JSTestExceptionPrototypeTable = { 1, 1, true, JSTestExceptionPrototypeTableValues, 0, JSTestExceptionPrototypeTableIndex };
 const ClassInfo JSTestExceptionPrototype::s_info = { "TestExceptionPrototype", &Base::s_info, &JSTestExceptionPrototypeTable, 0, CREATE_METHOD_TABLE(JSTestExceptionPrototype) };
 
 JSObject* JSTestExceptionPrototype::self(VM& vm, JSGlobalObject* globalObject)
@@ -137,7 +152,7 @@ EncodedJSValue jsTestExceptionName(ExecState* exec, JSObject* slotBase, EncodedJ
             scriptExecutionContext->addConsoleMessage(MessageSource::JS, MessageLevel::Error, String("Deprecated attempt to access property 'name' on a non-TestException object."));
             return JSValue::encode(jsUndefined());
         }
-        return throwVMTypeError(exec);
+        return throwVMTypeError(exec, makeDOMBindingsTypeErrorString("The ", "TestException", ".", "name", " getter can only be used on instances of ", "TestException"));
     }
     UNUSED_PARAM(exec);
     TestException& impl = castedThis->impl();
@@ -170,7 +185,7 @@ bool JSTestExceptionOwner::isReachableFromOpaqueRoots(JSC::Handle<JSC::Unknown> 
 
 void JSTestExceptionOwner::finalize(JSC::Handle<JSC::Unknown> handle, void* context)
 {
-    JSTestException* jsTestException = jsCast<JSTestException*>(handle.get().asCell());
+    JSTestException* jsTestException = jsCast<JSTestException*>(handle.slot()->asCell());
     DOMWrapperWorld& world = *static_cast<DOMWrapperWorld*>(context);
     uncacheWrapper(world, &jsTestException->impl(), jsTestException);
     jsTestException->releaseImpl();
@@ -188,7 +203,7 @@ JSC::JSValue toJS(JSC::ExecState* exec, JSDOMGlobalObject* globalObject, TestExc
 {
     if (!impl)
         return jsNull();
-    if (JSValue result = getExistingWrapper<JSTestException>(exec, impl))
+    if (JSValue result = getExistingWrapper<JSTestException>(globalObject, impl))
         return result;
 
 #if ENABLE(BINDING_INTEGRITY)

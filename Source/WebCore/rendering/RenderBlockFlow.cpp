@@ -27,6 +27,7 @@
 #include "Editor.h"
 #include "FloatingObjects.h"
 #include "Frame.h"
+#include "HTMLElement.h"
 #include "HitTestLocation.h"
 #include "InlineTextBox.h"
 #include "LayoutRepainter.h"
@@ -44,10 +45,6 @@
 
 #if ENABLE(CSS_SHAPES) && ENABLE(CSS_SHAPE_INSIDE)
 #include "ShapeInsideInfo.h"
-#endif
-
-#if ENABLE(IOS_TEXT_AUTOSIZING)
-#include "HTMLElement.h"
 #endif
 
 namespace WebCore {
@@ -1677,31 +1674,23 @@ bool RenderBlockFlow::hasNextPage(LayoutUnit logicalOffset, PageBoundaryRule pag
     RenderRegion* region = flowThread->regionAtBlockOffset(this, pageOffset, true);
     if (!region)
         return false;
+
     if (region->isLastRegion())
         return region->isRenderRegionSet() || region->style().regionFragment() == BreakRegionFragment
             || (pageBoundaryRule == IncludePageBoundary && pageOffset == region->logicalTopForFlowThreadContent());
 
-    RenderRegion* startRegion = 0;
-    RenderRegion* endRegion = 0;
+    RenderRegion* startRegion = nullptr;
+    RenderRegion* endRegion = nullptr;
     flowThread->getRegionRangeForBox(this, startRegion, endRegion);
-
-    if (region == endRegion)
-        return false;
-    return true;
+    return region != endRegion;
 }
 
 LayoutUnit RenderBlockFlow::adjustForUnsplittableChild(RenderBox& child, LayoutUnit logicalOffset, bool includeMargins)
 {
-    RenderFlowThread* flowThread = flowThreadContainingBlock();
-    bool isInsideMulticolFlowThread = flowThread && !flowThread->isRenderNamedFlowThread();
-    bool checkColumnBreaks = isInsideMulticolFlowThread || view().layoutState()->isPaginatingColumns();
-    bool checkPageBreaks = !checkColumnBreaks && view().layoutState()->m_pageLogicalHeight;
-    bool checkRegionBreaks = flowThread && flowThread->isRenderNamedFlowThread();
-    bool isUnsplittable = child.isUnsplittableForPagination() || (checkColumnBreaks && child.style().columnBreakInside() == PBAVOID)
-        || (checkPageBreaks && child.style().pageBreakInside() == PBAVOID)
-        || (checkRegionBreaks && child.style().regionBreakInside() == PBAVOID);
-    if (!isUnsplittable)
+    if (!childBoxIsUnsplittableForFragmentation(child))
         return logicalOffset;
+
+    RenderFlowThread* flowThread = flowThreadContainingBlock();
     LayoutUnit childLogicalHeight = logicalHeightForChild(child) + (includeMargins ? marginBeforeForChild(child) + marginAfterForChild(child) : LayoutUnit());
     LayoutUnit pageLogicalHeight = pageLogicalHeightForOffset(logicalOffset);
     bool hasUniformPageLogicalHeight = !flowThread || flowThread->regionsHaveUniformLogicalHeight();

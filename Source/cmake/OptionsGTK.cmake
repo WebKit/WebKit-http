@@ -26,6 +26,7 @@ set(WEBKIT_MINOR_VERSION ${PROJECT_VERSION_MINOR})
 set(WEBKIT_MAJOR_VERSION ${PROJECT_VERSION_MAJOR})
 
 set(USE_GTK2 OFF CACHE BOOL "Whether or not to use GTK+ 2. WebKit2 only supports GTK+ 3.")
+set(ENABLE_CREDENTIAL_STORAGE ON CACHE BOOL "Whether or not to enable support for credential storage using libsecret.")
 
 # FIXME: We want to expose fewer options to downstream, but for now everything is public.
 WEBKIT_OPTION_BEGIN()
@@ -149,11 +150,18 @@ add_definitions(-DUSER_AGENT_GTK_MINOR_VERSION=30)
 add_definitions(-DWEBKITGTK_API_VERSION_STRING="${WEBKITGTK_API_VERSION}")
 
 if (ENABLE_VIDEO OR ENABLE_WEB_AUDIO)
+    set(GSTREAMER_COMPONENTS app pbutils)
     add_definitions(-DWTF_USE_GSTREAMER)
-endif ()
+    if (ENABLE_VIDEO)
+        list(APPEND GSTREAMER_COMPONENTS video tag)
+    endif ()
 
-if (ENABLE_WEB_AUDIO)
-    add_definitions(-DWTF_USE_WEBAUDIO_GSTREAMER)
+    if (ENABLE_WEB_AUDIO)
+        list(APPEND GSTREAMER_COMPONENTS audio fft)
+        add_definitions(-DWTF_USE_WEBAUDIO_GSTREAMER)
+    endif ()
+
+    find_package(GStreamer 1.0.3 REQUIRED COMPONENTS ${GSTREAMER_COMPONENTS})
 endif ()
 
 # FIXME: These need to be configurable.
@@ -178,7 +186,6 @@ find_package(ZLIB REQUIRED)
 find_package(Xt REQUIRED)
 find_package(ATK REQUIRED)
 find_package(WebP REQUIRED)
-find_package(GStreamer 1.0.3 REQUIRED COMPONENTS ${GSTREAMER_COMPONENTS})
 find_package(ATSPI 2.5.3)
 find_package(GObjectIntrospection)
 
@@ -212,6 +219,16 @@ if (ENABLE_GEOLOCATION)
       find_package(GeoClue)
       set(WTF_USE_GEOCLUE2 0)
     endif ()
+endif ()
+
+find_package(GTKUnixPrint)
+if (GTK_UNIX_PRINTING_FOUND)
+    set(HAVE_GTK_UNIX_PRINTING)
+endif ()
+
+if (ENABLE_CREDENTIAL_STORAGE)
+    find_package(Libsecret)
+    set(ENABLE_CREDENTIAL_STORAGE 1)
 endif ()
 
 # We don't use find_package for GLX because it is part of -lGL, unlike EGL.

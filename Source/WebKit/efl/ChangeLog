@@ -1,3 +1,52 @@
+2014-03-14  Maciej Stachowiak  <mjs@apple.com>
+
+        Replace "Apple Computer, Inc." with "Apple Inc." in copyright headers
+        https://bugs.webkit.org/show_bug.cgi?id=130276
+        <rdar://problem/16266927>
+
+        Reviewed by Simon Fraser.
+
+        * WebCoreSupport/ChromeClientEfl.cpp:
+        * WebCoreSupport/ContextMenuClientEfl.cpp:
+        * WebCoreSupport/ContextMenuClientEfl.h:
+        * WebCoreSupport/DeviceMotionClientEfl.cpp:
+        * WebCoreSupport/DeviceOrientationClientEfl.cpp:
+        * WebCoreSupport/DragClientEfl.cpp:
+        * WebCoreSupport/EditorClientEfl.h:
+        * WebCoreSupport/FrameLoaderClientEfl.cpp:
+        * WebCoreSupport/FrameLoaderClientEfl.h:
+        * WebCoreSupport/FrameNetworkingContextEfl.cpp:
+        * WebCoreSupport/FrameNetworkingContextEfl.h:
+        * WebCoreSupport/InspectorClientEfl.h:
+        * WebCoreSupport/NavigatorContentUtilsClientEfl.cpp:
+        * WebCoreSupport/NavigatorContentUtilsClientEfl.h:
+        * WebCoreSupport/NetworkInfoClientEfl.cpp:
+
+2014-03-12  Sergio Villar Senin  <svillar@igalia.com>
+
+        Rename DEFINE_STATIC_LOCAL to DEPRECATED_DEFINE_STATIC_LOCAL
+        https://bugs.webkit.org/show_bug.cgi?id=129612
+
+        Reviewed by Darin Adler.
+
+        For new code use static NeverDestroyed<T> instead.
+
+        * WebCoreSupport/PlatformStrategiesEfl.cpp:
+        (PlatformStrategiesEfl::initialize):
+        * ewk/ewk_main.cpp:
+        (trackerClient):
+
+2014-03-12  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: Remove unused callId parameter from evaluateInWebInspector
+        https://bugs.webkit.org/show_bug.cgi?id=129744
+
+        Reviewed by Timothy Hatcher.
+
+        * WebCoreSupport/DumpRenderTreeSupportEfl.cpp:
+        (DumpRenderTreeSupportEfl::evaluateInWebInspector):
+        * WebCoreSupport/DumpRenderTreeSupportEfl.h:
+
 2014-03-12  Hyowon Kim  <hw1008.kim@samsung.com>
 
         [EFL] Revise AcceleratedCompositingEfl implementation.

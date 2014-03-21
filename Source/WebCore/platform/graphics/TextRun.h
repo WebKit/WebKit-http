@@ -116,11 +116,11 @@ public:
         , m_disableSpacing(false)
         , m_tabSize(0)
     {
-        if (m_charactersLength && s.is8Bit()) {
+        if (!m_charactersLength || s.is8Bit()) {
             m_data.characters8 = s.characters8();
             m_is8Bit = true;
         } else {
-            m_data.characters16 = s.deprecatedCharacters();
+            m_data.characters16 = s.characters16();
             m_is8Bit = false;
         }
     }
@@ -189,7 +189,6 @@ public:
 
     class RenderingContext : public RefCounted<RenderingContext> {
     public:
-        virtual std::unique_ptr<GlyphToPathTranslator> createGlyphToPathTranslator(const SimpleFontData&, const GlyphBuffer&, int from, int numGlyphs, const FloatPoint&) const = 0;
         virtual ~RenderingContext() { }
 
 #if ENABLE(SVG_FONTS)
@@ -197,6 +196,7 @@ public:
         virtual void drawSVGGlyphs(GraphicsContext*, const SimpleFontData*, const GlyphBuffer&, int from, int to, const FloatPoint&) const = 0;
         virtual float floatWidthUsingSVGFont(const Font&, const TextRun&, int& charsConsumed, String& glyphName) const = 0;
         virtual bool applySVGKerning(const SimpleFontData*, WidthIterator&, GlyphBuffer*, int from) const = 0;
+        virtual std::unique_ptr<GlyphToPathTranslator> createGlyphToPathTranslator(const SimpleFontData&, const GlyphBuffer&, int from, int numGlyphs, const FloatPoint&) const = 0;
 #endif
     };
 

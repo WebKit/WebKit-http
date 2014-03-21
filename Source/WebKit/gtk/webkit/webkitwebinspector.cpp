@@ -107,7 +107,7 @@ static void webkit_web_inspector_set_property(GObject* object, guint prop_id, co
 
 static void webkit_web_inspector_get_property(GObject* object, guint prop_id, GValue* value, GParamSpec* pspec);
 
-static gboolean webkit_inspect_web_view_request_handled(GSignalInvocationHint* ihint, GValue* returnAccu, const GValue* handlerReturn, gpointer dummy)
+static gboolean webkit_inspect_web_view_request_handled(GSignalInvocationHint*, GValue* returnAccu, const GValue* handlerReturn, gpointer)
 {
     gboolean continueEmission = TRUE;
     gpointer newWebView = g_value_get_object(handlerReturn);
@@ -556,11 +556,11 @@ void webkit_web_inspector_close(WebKitWebInspector* webInspector)
     priv->page->inspectorController().close();
 }
 
-void webkit_web_inspector_execute_script(WebKitWebInspector* webInspector, long callId, const gchar* script)
+void webkit_web_inspector_execute_script(WebKitWebInspector* webInspector, const gchar* script)
 {
     g_return_if_fail(WEBKIT_IS_WEB_INSPECTOR(webInspector));
     g_return_if_fail(script);
 
     WebKitWebInspectorPrivate* priv = webInspector->priv;
-    priv->page->inspectorController().evaluateForTestInFrontend(callId, script);
+    priv->page->inspectorController().evaluateForTestInFrontend(script);
 }

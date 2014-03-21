@@ -61,9 +61,11 @@ WebInspector.DOMNodeDetailsSidebarPanel = function() {
         this._accessibilityNodeCheckedRow = new WebInspector.DetailsSectionSimpleRow(WebInspector.UIString("Checked"));
         this._accessibilityNodeDisabledRow = new WebInspector.DetailsSectionSimpleRow(WebInspector.UIString("Disabled"));
         this._accessibilityNodeExpandedRow = new WebInspector.DetailsSectionSimpleRow(WebInspector.UIString("Expanded"));
+        this._accessibilityNodeFocusedRow = new WebInspector.DetailsSectionSimpleRow(WebInspector.UIString("Focused"));
         this._accessibilityNodeIgnoredRow = new WebInspector.DetailsSectionSimpleRow(WebInspector.UIString("Ignored"));
         this._accessibilityNodeInvalidRow = new WebInspector.DetailsSectionSimpleRow(WebInspector.UIString("Invalid"));
         this._accessibilityNodeLabelRow = new WebInspector.DetailsSectionSimpleRow(WebInspector.UIString("Label"));
+        this._accessibilityNodeParentRow = new WebInspector.DetailsSectionSimpleRow(WebInspector.UIString("Parent"));
         this._accessibilityNodePressedRow = new WebInspector.DetailsSectionSimpleRow(WebInspector.UIString("Pressed"));
         this._accessibilityNodeReadonlyRow = new WebInspector.DetailsSectionSimpleRow(WebInspector.UIString("Readonly"));
         this._accessibilityNodeRequiredRow = new WebInspector.DetailsSectionSimpleRow(WebInspector.UIString("Required"));
@@ -105,7 +107,7 @@ WebInspector.DOMNodeDetailsSidebarPanel.prototype = {
 
     _accessibilitySupported: function()
     {
-        return !!DOMAgent.getAccessibilityPropertiesForNode;
+        return window.DOMAgent && DOMAgent.getAccessibilityPropertiesForNode;
     },
 
     _refreshAttributes: function()
@@ -278,6 +280,14 @@ WebInspector.DOMNodeDetailsSidebarPanel.prototype = {
 
             if (accessibilityProperties && accessibilityProperties.exists) {
 
+                var axParentNodeLink = null;
+                if (accessibilityProperties.axParentNodeId !== undefined) {
+                    var axParentNode = WebInspector.domTreeManager.nodeForId(accessibilityProperties.axParentNodeId);
+                    axParentNodeLink = WebInspector.linkifyNodeReference(axParentNode);
+                    axParentNodeLink.title += WebInspector.roleSelectorForNode(axParentNode);
+                    axParentNodeLink.textContent = axParentNode.computedRole() || axParentNodeLink.title;
+                }
+
                 var checked = "";
                 if (accessibilityProperties.checked !== undefined) {
                     if (accessibilityProperties.checked === DOMAgent.AccessibilityPropertiesChecked.True)
@@ -290,6 +300,7 @@ WebInspector.DOMNodeDetailsSidebarPanel.prototype = {
 
                 var disabled = booleanValueToLocalizedStringIfTrue("disabled");
                 var expanded = booleanValueToLocalizedStringIfPropertyDefined("expanded");
+                var focused = booleanValueToLocalizedStringIfPropertyDefined("focused");
                 
                 var ignored = "";
                 if (accessibilityProperties.ignored) {
@@ -300,7 +311,13 @@ WebInspector.DOMNodeDetailsSidebarPanel.prototype = {
                         ignored = WebInspector.UIString("%s (default)").format(ignored);
                 }
 
-                var invalid = accessibilityProperties.invalid ? accessibilityProperties.invalid : "";
+                var invalid = "";
+                if (accessibilityProperties.invalid === DOMAgent.AccessibilityPropertiesInvalid.True)
+                    invalid = WebInspector.UIString("Yes");
+                else if (accessibilityProperties.invalid === DOMAgent.AccessibilityPropertiesInvalid.Grammar)
+                    invalid = WebInspector.UIString("Grammar");
+                else if (accessibilityProperties.invalid === DOMAgent.AccessibilityPropertiesInvalid.Spelling)
+                    invalid = WebInspector.UIString("Spelling");
 
                 // FIXME: label will always come back as empty. Blocked by http://webkit.org/b/121134
                 var label = accessibilityProperties.label;
@@ -327,9 +344,11 @@ WebInspector.DOMNodeDetailsSidebarPanel.prototype = {
                 this._accessibilityNodeCheckedRow.value = checked;
                 this._accessibilityNodeDisabledRow.value = disabled;
                 this._accessibilityNodeExpandedRow.value = expanded;
+                this._accessibilityNodeFocusedRow.value = focused;
                 this._accessibilityNodeIgnoredRow.value = ignored;
                 this._accessibilityNodeInvalidRow.value = invalid;
                 this._accessibilityNodeLabelRow.value = label;
+                this._accessibilityNodeParentRow.value = axParentNodeLink || "";
                 this._accessibilityNodePressedRow.value = pressed;
                 this._accessibilityNodeReadonlyRow.value = readonly;
                 this._accessibilityNodeRequiredRow.value = required;
@@ -339,9 +358,11 @@ WebInspector.DOMNodeDetailsSidebarPanel.prototype = {
                 // Display order, not alphabetical as above.
                 this._accessibilityGroup.rows = [
                     // Global properties for all elements.
+                    this._accessibilityNodeFocusedRow,
                     this._accessibilityNodeIgnoredRow,
                     this._accessibilityNodeRoleRow,
                     this._accessibilityNodeLabelRow,
+                    this._accessibilityNodeParentRow,
 
                     // Properties exposed for all input-type elements.
                     this._accessibilityNodeDisabledRow,

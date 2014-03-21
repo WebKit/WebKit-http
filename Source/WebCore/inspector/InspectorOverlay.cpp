@@ -10,7 +10,7 @@
  * 2.  Redistributions in binary form must reproduce the above copyright
  *     notice, this list of conditions and the following disclaimer in the
  *     documentation and/or other materials provided with the distribution.
- * 3.  Neither the name of Apple Computer, Inc. ("Apple") nor the names of
+ * 3.  Neither the name of Apple Inc. ("Apple") nor the names of
  *     its contributors may be used to endorse or promote products derived
  *     from this software without specific prior written permission.
  *
@@ -516,11 +516,11 @@ static PassRefPtr<InspectorArray> buildObjectForRendererFragments(RenderObject* 
         RenderBox* enclosingBox = renderer->enclosingBox();
         RenderRegion* startRegion = nullptr;
         RenderRegion* endRegion = nullptr;
-        containingFlowThread->getRegionRangeForBox(enclosingBox, startRegion, endRegion);
-        if (!startRegion) {
+        if (!containingFlowThread->getRegionRangeForBox(enclosingBox, startRegion, endRegion)) {
             // The flow has no visible regions. The renderer is not visible on screen.
             return nullptr;
         }
+
         const RenderRegionList& regionList = containingFlowThread->renderRegionList();
         for (RenderRegionList::const_iterator iter = regionList.find(startRegion); iter != regionList.end(); ++iter) {
             RenderRegion* region = *iter;
@@ -701,6 +701,15 @@ static PassRefPtr<InspectorObject> buildObjectForElementInfo(Node* node)
             elementInfo->setObject("shapeOutsideInfo", shapeObject.release());
     }
 #endif
+
+    // Need to enable AX to get the computed role.
+    if (!WebCore::AXObjectCache::accessibilityEnabled())
+        WebCore::AXObjectCache::enableAccessibility();
+
+    if (AXObjectCache* axObjectCache = node->document().axObjectCache()) {
+        if (AccessibilityObject* axObject = axObjectCache->getOrCreate(node))
+            elementInfo->setString("role", axObject->computedRoleString());
+    }
 
     return elementInfo.release();
 }

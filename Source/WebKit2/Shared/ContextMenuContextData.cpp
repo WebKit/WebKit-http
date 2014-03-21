@@ -13,7 +13,7 @@
  * THIS SOFTWARE IS PROVIDED BY APPLE, INC. ``AS IS'' AND ANY
  * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE COMPUTER, INC. OR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE INC. OR
  * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
  * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
  * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
@@ -31,31 +31,55 @@
 
 #include "WebCoreArgumentCoders.h"
 #include <WebCore/ContextMenuContext.h>
+#include <WebCore/GraphicsContext.h>
 
 using namespace WebCore;
 
 namespace WebKit {
 
 ContextMenuContextData::ContextMenuContextData()
-#if ENABLE(IMAGE_CONTROLS)
-    : m_isImageControl(false)
-#endif
 {
 }
 
 ContextMenuContextData::ContextMenuContextData(const ContextMenuContext& context)
     : m_webHitTestResultData(WebHitTestResult::Data(context.hitTestResult()))
-#if ENABLE(IMAGE_CONTROLS)
-    , m_isImageControl(context.controlledImage())
-#endif
 {
+#if ENABLE(IMAGE_CONTROLS)
+    Image* image = context.controlledImage();
+    if (!image)
+        return;
+
+    RefPtr<ShareableBitmap> bitmap = ShareableBitmap::createShareable(image->size(), ShareableBitmap::SupportsAlpha);
+    bitmap->createGraphicsContext()->drawImage(image, ColorSpaceDeviceRGB, IntPoint());
+    bitmap->createHandle(m_controlledImageHandle);
+#endif
+}
+
+ContextMenuContextData::ContextMenuContextData(const ContextMenuContextData& other)
+{
+    *this = other;
+}
+
+ContextMenuContextData& ContextMenuContextData::operator=(const ContextMenuContextData& other)
+{
+    m_webHitTestResultData = other.m_webHitTestResultData;
+#if ENABLE(IMAGE_CONTROLS)
+    m_controlledImageHandle.clear();
+
+    if (!other.m_controlledImageHandle.isNull()) {
+        RefPtr<ShareableBitmap> bitmap = ShareableBitmap::create(other.m_controlledImageHandle);
+        bitmap->createHandle(m_controlledImageHandle);
+    }
+#endif
+
+    return *this;
 }
 
 void ContextMenuContextData::encode(IPC::ArgumentEncoder& encoder) const
 {
     encoder << m_webHitTestResultData;
 #if ENABLE(IMAGE_CONTROLS)
-    encoder << m_isImageControl;
+    encoder << m_controlledImageHandle;
 #endif
 }
 
@@ -65,7 +89,7 @@ bool ContextMenuContextData::decode(IPC::ArgumentDecoder& decoder, ContextMenuCo
         return false;
         
 #if ENABLE(IMAGE_CONTROLS)
-    if (!decoder.decode(contextMenuContextData.m_isImageControl))
+    if (!decoder.decode(contextMenuContextData.m_controlledImageHandle))
         return false;
 #endif
 

@@ -10,10 +10,10 @@
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
  *
- * THIS SOFTWARE IS PROVIDED BY APPLE COMPUTER, INC. ``AS IS'' AND ANY
+ * THIS SOFTWARE IS PROVIDED BY APPLE INC. ``AS IS'' AND ANY
  * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE COMPUTER, INC. OR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE INC. OR
  * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
  * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
  * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
@@ -122,7 +122,7 @@ HRESULT STDMETHODCALLTYPE DOMNode::nodeValue(
     if (!m_node)
         return E_FAIL;
     WTF::String nodeValueStr = m_node->nodeValue();
-    *result = SysAllocStringLen(nodeValueStr.deprecatedCharacters(), nodeValueStr.length());
+    *result = BString(nodeValueStr).release();
     if (nodeValueStr.length() && !*result)
         return E_OUTOFMEMORY;
     return S_OK;
@@ -1033,7 +1033,7 @@ HRESULT STDMETHODCALLTYPE DOMElement::getAttribute(
         return E_FAIL;
     WTF::String nameString(name, SysStringLen(name));
     WTF::String& attrValueString = (WTF::String&) m_element->getAttribute(nameString);
-    *result = SysAllocStringLen(attrValueString.deprecatedCharacters(), attrValueString.length());
+    *result = BString(attrValueString).release();
     if (attrValueString.length() && !*result)
         return E_OUTOFMEMORY;
     return S_OK;
@@ -1257,7 +1257,12 @@ HRESULT STDMETHODCALLTYPE DOMElement::font(WebFontDescription* webFontDescriptio
 
     FontDescription fontDescription = renderer->style().font().fontDescription();
     AtomicString family = fontDescription.firstFamily();
-    webFontDescription->family = family.string().deprecatedCharacters();
+
+    // FIXME: This leaks. Delete this whole function to get rid of the leak.
+    UChar* familyCharactersBuffer = new UChar[family.length()];
+    StringView(family.string()).getCharactersWithUpconvert(familyCharactersBuffer);
+
+    webFontDescription->family = familyCharactersBuffer;
     webFontDescription->familyLength = family.length();
     webFontDescription->size = fontDescription.computedSize();
     webFontDescription->bold = fontDescription.weight() >= WebCore::FontWeight600;

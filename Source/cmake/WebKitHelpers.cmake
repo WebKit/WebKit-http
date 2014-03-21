@@ -18,12 +18,6 @@ macro(WEBKIT_SET_EXTRA_COMPILER_FLAGS _target)
             EXEC_PROGRAM("${CMAKE_CXX_COMPILER} -E -Wp,-dM - < /dev/null | grep '#define __VERSION__' | grep -E -o '[0-9]+\\.[0-9]+\\.?[0-9]+?'" OUTPUT_VARIABLE COMPILER_VERSION)
         endif ()
 
-        # Disable some optimizations on buggy compiler versions
-        # GCC 4.5.1 does not implement -ftree-sra correctly
-        if (${COMPILER_VERSION} STREQUAL "4.5.1")
-            set(OLD_COMPILE_FLAGS "-fno-tree-sra ${OLD_COMPILE_FLAGS}")
-        endif ()
-
         # For GTK+ we will rely on a linker script to deal with symbol visibility on
         # production builds, we want all symbols visible for development builds.
         if (NOT SHARED_CORE AND NOT ${PORT} STREQUAL "GTK")
@@ -34,8 +28,6 @@ macro(WEBKIT_SET_EXTRA_COMPILER_FLAGS _target)
         if (${TARGET_TYPE} STREQUAL "STATIC_LIBRARY") # -fPIC is automatically added to shared libraries
             set(OLD_COMPILE_FLAGS "-fPIC ${OLD_COMPILE_FLAGS}")
         endif ()
-
-        set(OLD_COMPILE_FLAGS "-fno-exceptions -fno-strict-aliasing ${OLD_COMPILE_FLAGS}")
 
         # Enable warnings by default
         if (NOT ${OPTION_IGNORECXX_WARNINGS})

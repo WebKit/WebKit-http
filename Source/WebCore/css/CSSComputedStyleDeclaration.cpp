@@ -288,6 +288,7 @@ static const CSSPropertyID computedProperties[] = {
     CSSPropertyWebkitGridAutoRows,
     CSSPropertyWebkitGridColumnEnd,
     CSSPropertyWebkitGridColumnStart,
+    CSSPropertyWebkitGridTemplateAreas,
     CSSPropertyWebkitGridTemplateColumns,
     CSSPropertyWebkitGridTemplateRows,
     CSSPropertyWebkitGridRowEnd,
@@ -413,6 +414,7 @@ static const CSSPropertyID computedProperties[] = {
     CSSPropertyMarkerMid,
     CSSPropertyMarkerStart,
     CSSPropertyMaskType,
+    CSSPropertyPaintOrder,
     CSSPropertyShapeRendering,
     CSSPropertyStroke,
     CSSPropertyStrokeDasharray,
@@ -988,32 +990,24 @@ static PassRefPtr<CSSValue> specifiedValueForGridTrackSize(const GridTrackSize& 
     return 0;
 }
 
-static void addValuesForNamedGridLinesAtIndex(const NamedGridLinesMap& namedGridLines, size_t i, CSSValueList& list)
+static void addValuesForNamedGridLinesAtIndex(const OrderedNamedGridLinesMap& orderedNamedGridLines, size_t i, CSSValueList& list)
 {
-    // Note that this won't return the results in the order specified in the style sheet,
-    // which is probably fine as we still *do* return all the expected values.
-    NamedGridLinesMap::const_iterator it = namedGridLines.begin();
-    NamedGridLinesMap::const_iterator end = namedGridLines.end();
-    for (; it != end; ++it) {
-        const Vector<size_t>& linesIndexes = it->value;
-        for (size_t j = 0; j < linesIndexes.size(); ++j) {
-            if (linesIndexes[j] != i)
-                continue;
+    const Vector<String>& namedGridLines = orderedNamedGridLines.get(i);
+    if (namedGridLines.isEmpty())
+        return;
 
-            list.append(cssValuePool().createValue(it->key, CSSPrimitiveValue::CSS_STRING));
-            break;
-        }
-    }
+    for (size_t i = 0; i < namedGridLines.size(); ++i)
+        list.append(cssValuePool().createValue(namedGridLines[i], CSSPrimitiveValue::CSS_STRING));
 }
 
 static PassRef<CSSValue> valueForGridTrackList(GridTrackSizingDirection direction, RenderObject* renderer, const RenderStyle* style, RenderView* renderView)
 {
     const Vector<GridTrackSize>& trackSizes = direction == ForColumns ? style->gridColumns() : style->gridRows();
-    const NamedGridLinesMap& namedGridLines = direction == ForColumns ? style->namedGridColumnLines() : style->namedGridRowLines();
+    const OrderedNamedGridLinesMap& orderedNamedGridLines = direction == ForColumns ? style->orderedNamedGridColumnLines() : style->orderedNamedGridRowLines();
 
     // Handle the 'none' case here.
     if (!trackSizes.size()) {
-        ASSERT(namedGridLines.isEmpty());
+        ASSERT(orderedNamedGridLines.isEmpty());
         return cssValuePool().createIdentifierValue(CSSValueNone);
     }
 
@@ -1025,18 +1019,18 @@ static PassRef<CSSValue> valueForGridTrackList(GridTrackSizingDirection directio
         ASSERT(trackPositions.size() - 1 >= trackSizes.size());
 
         for (unsigned i = 0; i < trackSizes.size(); ++i) {
-            addValuesForNamedGridLinesAtIndex(namedGridLines, i, list.get());
+            addValuesForNamedGridLinesAtIndex(orderedNamedGridLines, i, list.get());
             list.get().append(zoomAdjustedPixelValue(trackPositions[i + 1] - trackPositions[i], style));
         }
     } else {
         for (unsigned i = 0; i < trackSizes.size(); ++i) {
-            addValuesForNamedGridLinesAtIndex(namedGridLines, i, list.get());
+            addValuesForNamedGridLinesAtIndex(orderedNamedGridLines, i, list.get());
             list.get().append(specifiedValueForGridTrackSize(trackSizes[i], style, renderView));
         }
     }
 
     // Those are the trailing <ident>* allowed in the syntax.
-    addValuesForNamedGridLinesAtIndex(namedGridLines, trackSizes.size(), list.get());
+    addValuesForNamedGridLinesAtIndex(orderedNamedGridLines, trackSizes.size(), list.get());
     return std::move(list);
 }
 
@@ -1441,7 +1435,7 @@ static PassRefPtr<CSSValue> counterToCSSValue(const RenderStyle* style, CSSPrope
 
 static void logUnimplementedPropertyID(CSSPropertyID propertyID)
 {
-    DEFINE_STATIC_LOCAL(HashSet<CSSPropertyID>, propertyIDSet, ());
+    DEPRECATED_DEFINE_STATIC_LOCAL(HashSet<CSSPropertyID>, propertyIDSet, ());
     if (!propertyIDSet.add(propertyID).isNewEntry)
         return;
 
@@ -1636,7 +1630,7 @@ static PassRefPtr<CSSValue> shapePropertyValue(const RenderStyle* style, const S
         return cssValuePool().createIdentifierValue(CSSValueOutsideShape);
 
     if (shapeValue->type() == ShapeValue::Box)
-        return cssValuePool().createValue(shapeValue->layoutBox());
+        return cssValuePool().createValue(shapeValue->cssBox());
 
     if (shapeValue->type() == ShapeValue::Image)
         return shapeValue->image() ? shapeValue->image()->cssValue() : cssValuePool().createIdentifierValue(CSSValueNone);
@@ -1645,8 +1639,8 @@ static PassRefPtr<CSSValue> shapePropertyValue(const RenderStyle* style, const S
 
     RefPtr<CSSValueList> list = CSSValueList::createSpaceSeparated();
     list->append(valueForBasicShape(style, shapeValue->shape()));
-    if (shapeValue->layoutBox() != BoxMissing)
-        list->append(cssValuePool().createValue(shapeValue->layoutBox()));
+    if (shapeValue->cssBox() != BoxMissing)
+        list->append(cssValuePool().createValue(shapeValue->cssBox()));
     return list.release();
 }
 #endif
@@ -3012,6 +3006,7 @@ PassRefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propert
         case CSSPropertyMarkerMid:
         case CSSPropertyMarkerStart:
         case CSSPropertyMaskType:
+        case CSSPropertyPaintOrder:
         case CSSPropertyShapeRendering:
         case CSSPropertyStroke:
         case CSSPropertyStrokeDasharray:

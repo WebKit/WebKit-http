@@ -10,10 +10,10 @@
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
  *
- * THIS SOFTWARE IS PROVIDED BY APPLE COMPUTER, INC. ``AS IS'' AND ANY
+ * THIS SOFTWARE IS PROVIDED BY APPLE INC. ``AS IS'' AND ANY
  * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE COMPUTER, INC. OR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE INC. OR
  * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
  * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
  * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
@@ -385,7 +385,7 @@ bool isTableStructureNode(const Node *node)
 
 const String& nonBreakingSpaceString()
 {
-    DEFINE_STATIC_LOCAL(String, nonBreakingSpaceString, (&noBreakSpace, 1));
+    DEPRECATED_DEFINE_STATIC_LOCAL(String, nonBreakingSpaceString, (&noBreakSpace, 1));
     return nonBreakingSpaceString;
 }
 
@@ -542,22 +542,24 @@ bool isListItem(const Node *n)
     return n && (isListElement(n->parentNode()) || (n->renderer() && n->renderer()->isListItem()));
 }
 
-Node* enclosingNodeWithTag(const Position& p, const QualifiedName& tagName)
+Element* enclosingElementWithTag(const Position& position, const QualifiedName& tagName)
 {
-    if (p.isNull())
-        return 0;
-        
-    Node* root = highestEditableRoot(p);
-    for (Node* n = p.deprecatedNode(); n; n = n->parentNode()) {
-        if (root && !n->hasEditableStyle())
+    if (position.isNull())
+        return nullptr;
+
+    Node* root = highestEditableRoot(position);
+    for (Node* node = position.deprecatedNode(); node; node = node->parentNode()) {
+        if (root && !node->hasEditableStyle())
             continue;
-        if (n->hasTagName(tagName))
-            return n;
-        if (n == root)
-            return 0;
+        if (!node->isElementNode())
+            continue;
+        if (toElement(*node).hasTagName(tagName))
+            return toElement(node);
+        if (node == root)
+            return nullptr;
     }
-    
-    return 0;
+
+    return nullptr;
 }
 
 Node* enclosingNodeOfType(const Position& p, bool (*nodeIsOfType)(const Node*), EditingBoundaryCrossingRule rule)

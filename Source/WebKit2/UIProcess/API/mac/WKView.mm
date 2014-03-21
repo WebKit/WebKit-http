@@ -36,6 +36,7 @@
 #import "AttributedString.h"
 #import "ColorSpaceData.h"
 #import "DataReference.h"
+#import "EditingRange.h"
 #import "EditorState.h"
 #import "FindIndicator.h"
 #import "FindIndicatorWindow.h"
@@ -59,8 +60,6 @@
 #import "WKProcessPoolInternal.h"
 #import "WKStringCF.h"
 #import "WKTextInputWindowController.h"
-#import "WKThumbnailView.h"
-#import "WKThumbnailViewInternal.h"
 #import "WKViewInternal.h"
 #import "WKViewPrivate.h"
 #import "WebBackForwardList.h"
@@ -73,6 +72,7 @@
 #import "WebPreferences.h"
 #import "WebProcessProxy.h"
 #import "WebSystemInterface.h"
+#import "_WKThumbnailViewInternal.h"
 #import <QuartzCore/QuartzCore.h>
 #import <WebCore/AXObjectCache.h>
 #import <WebCore/ColorMac.h>
@@ -225,8 +225,10 @@ struct WKViewInterpretKeyEventsParameters {
     BOOL _allowsMagnification;
     BOOL _allowsBackForwardNavigationGestures;
 
+    RetainPtr<CALayer> _rootLayer;
+
 #if WK_API_ENABLED
-    WKThumbnailView *_thumbnailView;
+    _WKThumbnailView *_thumbnailView;
 #endif
 }
 
@@ -1288,9 +1290,9 @@ NATIVE_MOUSE_EVENT_HANDLER(rightMouseUp)
     eventText.replace(NSBackTabCharacter, NSTabCharacter); // same thing is done in KeyEventMac.mm in WebCore
     bool eventHandled;
     if (!dictationAlternatives.isEmpty())
-        eventHandled = _data->_page->insertDictatedText(eventText, replacementRange.location, NSMaxRange(replacementRange), dictationAlternatives);
+        eventHandled = _data->_page->insertDictatedText(eventText, replacementRange, dictationAlternatives);
     else
-        eventHandled = _data->_page->insertText(eventText, replacementRange.location, NSMaxRange(replacementRange));
+        eventHandled = _data->_page->insertText(eventText, replacementRange);
 
     if (parameters)
         parameters->eventInterpretationHadSideEffects |= eventHandled;
@@ -1479,11 +1481,10 @@ NATIVE_MOUSE_EVENT_HANDLER(rightMouseUp)
 {
     [self _executeSavedKeypressCommands];
 
-    uint64_t selectionStart;
-    uint64_t selectionLength;
-    _data->_page->getSelectedRange(selectionStart, selectionLength);
+    EditingRange selectedRange;
+    _data->_page->getSelectedRange(selectedRange);
 
-    NSRange result = NSMakeRange(selectionStart, selectionLength);
+    NSRange result = selectedRange;
     if (result.location == NSNotFound)
         LOG(TextInput, "selectedRange -> (NSNotFound, %u)", result.length);
     else
@@ -1505,10 +1506,9 @@ NATIVE_MOUSE_EVENT_HANDLER(rightMouseUp)
             result = _data->_page->editorState().hasComposition;
         }
     } else {
-        uint64_t location;
-        uint64_t length;
-        _data->_page->getMarkedRange(location, length);
-        result = location != NSNotFound;
+        EditingRange markedRange;
+        _data->_page->getMarkedRange(markedRange);
+        result = markedRange.location != notFound;
     }
 
     LOG(TextInput, "hasMarkedText -> %u", result);
@@ -1574,14 +1574,14 @@ static void extractUnderlines(NSAttributedString *string, Vector<CompositionUnde
     }
 }
 
-- (void)setMarkedText:(id)string selectedRange:(NSRange)newSelRange replacementRange:(NSRange)replacementRange
+- (void)setMarkedText:(id)string selectedRange:(NSRange)newSelectedRange replacementRange:(NSRange)replacementRange
 {
     [self _executeSavedKeypressCommands];
 
     BOOL isAttributedString = [string isKindOfClass:[NSAttributedString class]];
     ASSERT(isAttributedString || [string isKindOfClass:[NSString class]]);
 
-    LOG(TextInput, "setMarkedText:\"%@\" selectedRange:(%u, %u)", isAttributedString ? [string string] : string, newSelRange.location, newSelRange.length);
+    LOG(TextInput, "setMarkedText:\"%@\" selectedRange:(%u, %u)", isAttributedString ? [string string] : string, newSelectedRange.location, newSelectedRange.length);
 
     // Use pointer to get parameters passed to us by the caller of interpretKeyEvents.
     WKViewInterpretKeyEventsParameters* parameters = _data->_interpretKeyEventsParameters;
@@ -1607,25 +1607,29 @@ static void extractUnderlines(NSAttributedString *string, Vector<CompositionUnde
         ASSERT(!_data->_page->editorState().hasComposition);
         [self _notifyInputContextAboutDiscardedComposition];
         if ([text length] == 1 && [[text decomposedStringWithCanonicalMapping] characterAtIndex:0] < 0x80) {
-            _data->_page->insertText(text, replacementRange.location, NSMaxRange(replacementRange));
+            _data->_page->insertText(text, replacementRange);
         } else
             NSBeep();
         return;
     }
 
-    _data->_page->setComposition(text, underlines, newSelRange.location, NSMaxRange(newSelRange), replacementRange.location, NSMaxRange(replacementRange));
+    _data->_page->setComposition(text, underlines, newSelectedRange, replacementRange);
 }
 
 - (NSRange)markedRange
 {
     [self _executeSavedKeypressCommands];
 
-    uint64_t location;
-    uint64_t length;
-    _data->_page->getMarkedRange(location, length);
+    EditingRange markedRange;
+    _data->_page->getMarkedRange(markedRange);
 
-    LOG(TextInput, "markedRange -> (%u, %u)", location, length);
-    return NSMakeRange(location, length);
+    NSRange result = markedRange;
+    if (result.location == NSNotFound)
+        LOG(TextInput, "markedRange -> (NSNotFound, %u)", result.length);
+    else
+        LOG(TextInput, "markedRange -> (%u, %u)", result.location, result.length);
+
+    return result;
 }
 
 - (NSAttributedString *)attributedSubstringForProposedRange:(NSRange)nsRange actualRange:(NSRangePointer)actualRange
@@ -1641,7 +1645,7 @@ static void extractUnderlines(NSAttributedString *string, Vector<CompositionUnde
         return nil;
 
     AttributedString result;
-    _data->_page->getAttributedSubstringFromRange(nsRange.location, NSMaxRange(nsRange), result);
+    _data->_page->getAttributedSubstringFromRange(nsRange, result);
 
     if (actualRange) {
         *actualRange = nsRange;
@@ -1666,6 +1670,8 @@ static void extractUnderlines(NSAttributedString *string, Vector<CompositionUnde
     thePoint = [self convertPoint:thePoint fromView:nil];  // the point is relative to the main frame
     
     uint64_t result = _data->_page->characterIndexForPoint(IntPoint(thePoint));
+    if (result == notFound)
+        result = NSNotFound;
     LOG(TextInput, "characterIndexForPoint:(%f, %f) -> %u", thePoint.x, thePoint.y, result);
     return result;
 }
@@ -1680,7 +1686,7 @@ static void extractUnderlines(NSAttributedString *string, Vector<CompositionUnde
     if ((theRange.location + theRange.length < theRange.location) && (theRange.location + theRange.length != 0))
         theRange.length = 0;
     
-    NSRect resultRect = _data->_page->firstRectForCharacterRange(theRange.location, theRange.length);
+    NSRect resultRect = _data->_page->firstRectForCharacterRange(theRange);
     resultRect = [self convertRect:resultRect toView:nil];
     resultRect = [self.window convertRectToScreen:resultRect];
 
@@ -2498,9 +2504,11 @@ static void createSandboxExtensionsForFileUpload(NSPasteboard *pasteboard, Sandb
 {
     [rootLayer web_disableAllActions];
 
+    _data->_rootLayer = rootLayer;
+
 #if WK_API_ENABLED
     if (_data->_thumbnailView) {
-        _data->_thumbnailView.thumbnailLayer = rootLayer;
+        [self _updateThumbnailViewLayer];
         return;
     }
 #endif
@@ -2544,15 +2552,7 @@ static void createSandboxExtensionsForFileUpload(NSPasteboard *pasteboard, Sandb
 
 - (CALayer *)_acceleratedCompositingModeRootLayer
 {
-    NSView *hostView = _data->_layerHostingView.get();
-
-    if (!hostView)
-        return nullptr;
-
-    if (!hostView.layer.sublayers.count)
-        return nullptr;
-
-    return [hostView.layer.sublayers objectAtIndex:0];
+    return _data->_rootLayer.get();
 }
 
 - (RetainPtr<CGImageRef>)_takeViewSnapshot
@@ -2970,25 +2970,37 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
 }
 
 #if WK_API_ENABLED
-- (void)_setThumbnailView:(WKThumbnailView *)thumbnailView
+- (void)_setThumbnailView:(_WKThumbnailView *)thumbnailView
 {
     ASSERT(!_data->_thumbnailView || !thumbnailView);
-
-    RetainPtr<CALayer> thumbnailLayer = _data->_thumbnailView.thumbnailLayer;
 
     _data->_thumbnailView = thumbnailView;
 
     if (thumbnailView)
-        thumbnailView.thumbnailLayer = [self _acceleratedCompositingModeRootLayer];
+        [self _updateThumbnailViewLayer];
     else
-        [self _setAcceleratedCompositingModeRootLayer:thumbnailLayer.get()];
+        [self _setAcceleratedCompositingModeRootLayer:_data->_rootLayer.get()];
 
     _data->_page->viewStateDidChange(ViewState::WindowIsActive | ViewState::IsInWindow | ViewState::IsVisible);
 }
 
-- (WKThumbnailView *)_thumbnailView
+- (_WKThumbnailView *)_thumbnailView
 {
     return _data->_thumbnailView;
+}
+
+- (void)_updateThumbnailViewLayer
+{
+    _WKThumbnailView *thumbnailView = _data->_thumbnailView;
+    ASSERT(thumbnailView);
+
+    if (!thumbnailView.usesSnapshot || thumbnailView._waitingForSnapshot)
+        [self _reparentLayerTreeInThumbnailView];
+}
+
+- (void)_reparentLayerTreeInThumbnailView
+{
+    _data->_thumbnailView._thumbnailLayer = _data->_rootLayer.get();
 }
 #endif // WK_API_ENABLED
 

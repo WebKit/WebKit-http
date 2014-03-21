@@ -48,6 +48,7 @@
 #include "InspectorCSSAgent.h"
 #include "InspectorPageAgent.h"
 #include "Node.h"
+#include "SVGElement.h"
 #include "SVGNames.h"
 #include "StyleProperties.h"
 #include "StyleResolver.h"
@@ -347,7 +348,7 @@ PassRefPtr<Inspector::TypeBuilder::Array<Inspector::TypeBuilder::CSS::CSSCompute
 bool InspectorStyle::setPropertyText(unsigned index, const String& propertyText, bool overwrite, String* oldText, ExceptionCode& ec)
 {
     ASSERT(m_parentStyleSheet);
-    DEFINE_STATIC_LOCAL(String, bogusPropertyName, (ASCIILiteral("-webkit-boguz-propertee")));
+    DEPRECATED_DEFINE_STATIC_LOCAL(String, bogusPropertyName, (ASCIILiteral("-webkit-boguz-propertee")));
 
     if (!m_parentStyleSheet->ensureParsedDataReady()) {
         ec = NOT_FOUND_ERR;
@@ -684,7 +685,7 @@ Vector<String> InspectorStyle::longhandProperties(const String& shorthandPropert
 
 NewLineAndWhitespace& InspectorStyle::newLineAndWhitespaceDelimiters() const
 {
-    DEFINE_STATIC_LOCAL(String, defaultPrefix, (ASCIILiteral("    ")));
+    DEPRECATED_DEFINE_STATIC_LOCAL(String, defaultPrefix, (ASCIILiteral("    ")));
 
     if (m_formatAcquired)
         return m_format;
@@ -711,14 +712,13 @@ NewLineAndWhitespace& InspectorStyle::newLineAndWhitespaceDelimiters() const
     int propertyIndex = 0;
     bool isFullPrefixScanned = false;
     bool lineFeedTerminated = false;
-    const UChar* characters = text.deprecatedCharacters();
     while (propertyIndex < propertyCount) {
         const WebCore::CSSPropertySourceData& currentProperty = sourcePropertyData->at(propertyIndex++);
 
         bool processNextProperty = false;
         int scanEnd = currentProperty.range.start;
         for (int i = scanStart; i < scanEnd; ++i) {
-            UChar ch = characters[i];
+            UChar ch = text[i];
             bool isLineFeed = isHTMLLineBreak(ch);
             if (isLineFeed) {
                 if (!lineFeedTerminated)
@@ -993,7 +993,7 @@ PassRefPtr<Inspector::TypeBuilder::CSS::CSSStyleSheetHeader> InspectorStyleSheet
 
 static PassRefPtr<Inspector::TypeBuilder::Array<String>> selectorsFromSource(const CSSRuleSourceData* sourceData, const String& sheetText)
 {
-    DEFINE_STATIC_LOCAL(JSC::Yarr::RegularExpression, comment, ("/\\*[^]*?\\*/", TextCaseSensitive, JSC::Yarr::MultilineEnabled));
+    DEPRECATED_DEFINE_STATIC_LOCAL(JSC::Yarr::RegularExpression, comment, ("/\\*[^]*?\\*/", TextCaseSensitive, JSC::Yarr::MultilineEnabled));
     RefPtr<Inspector::TypeBuilder::Array<String>> result = Inspector::TypeBuilder::Array<String>::create();
     const SelectorRangeList& ranges = sourceData->selectorRanges;
     for (size_t i = 0, size = ranges.size(); i < size; ++i) {

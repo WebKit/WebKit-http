@@ -184,7 +184,6 @@ XMLHttpRequest::XMLHttpRequest(ScriptExecutionContext& context)
     , m_uploadEventsAllowed(true)
     , m_uploadComplete(false)
     , m_sameOriginRequest(true)
-    , m_sendingForInspector(false)
     , m_receivedLength(0)
     , m_lastSendLineNumber(0)
     , m_lastSendColumnNumber(0)
@@ -620,7 +619,7 @@ void XMLHttpRequest::send(Document* document, ExceptionCode& ec)
 
         // FIXME: this should use value of document.inputEncoding to determine the encoding to use.
         TextEncoding encoding = UTF8Encoding();
-        m_requestEntityBody = FormData::create(encoding.encode(body.deprecatedCharacters(), body.length(), EntitiesForUnencodables));
+        m_requestEntityBody = FormData::create(encoding.encode(body, EntitiesForUnencodables));
         if (m_upload)
             m_requestEntityBody->setAlwaysStream(true);
     }
@@ -647,7 +646,7 @@ void XMLHttpRequest::send(const String& body, ExceptionCode& ec)
             m_requestHeaders.set("Content-Type", contentType);
         }
 
-        m_requestEntityBody = FormData::create(UTF8Encoding().encode(body.deprecatedCharacters(), body.length(), EntitiesForUnencodables));
+        m_requestEntityBody = FormData::create(UTF8Encoding().encode(body, EntitiesForUnencodables));
         if (m_upload)
             m_requestEntityBody->setAlwaysStream(true);
     }
@@ -738,12 +737,6 @@ void XMLHttpRequest::sendBytesData(const void* data, size_t length, ExceptionCod
     createRequest(ec);
 }
 
-void XMLHttpRequest::sendForInspector(ExceptionCode& ec)
-{
-    m_sendingForInspector = true;
-    send(ec);
-}
-
 void XMLHttpRequest::sendForInspectorXHRReplay(PassRefPtr<FormData> formData, ExceptionCode& ec)
 {
     m_requestEntityBody = formData ? formData->deepCopy() : 0;
@@ -781,9 +774,6 @@ void XMLHttpRequest::createRequest(ExceptionCode& ec)
 
     ResourceRequest request(m_url);
     request.setHTTPMethod(m_method);
-#if ENABLE(INSPECTOR)
-    request.setHiddenFromInspector(m_sendingForInspector);
-#endif
 
     InspectorInstrumentation::willLoadXHR(scriptExecutionContext(), this, m_method, m_url, m_async, m_requestEntityBody ? m_requestEntityBody->deepCopy() : 0, m_requestHeaders, m_includeCredentials);
 
@@ -801,7 +791,7 @@ void XMLHttpRequest::createRequest(ExceptionCode& ec)
     options.sniffContent = DoNotSniffContent;
     options.preflightPolicy = uploadEvents ? ForcePreflight : ConsiderPreflight;
     options.allowCredentials = (m_sameOriginRequest || m_includeCredentials) ? AllowStoredCredentials : DoNotAllowStoredCredentials;
-    options.crossOriginRequestPolicy = m_sendingForInspector ? AllowCrossOriginRequests : UseAccessControl;
+    options.crossOriginRequestPolicy = UseAccessControl;
     options.securityOrigin = securityOrigin();
 #if ENABLE(RESOURCE_TIMING)
     options.initiator = cachedResourceRequestInitiators().xmlhttprequest;
@@ -942,9 +932,9 @@ void XMLHttpRequest::dropProtection()
     // out. But it is protected from GC while loading, so this
     // can't be recouped until the load is done, so only
     // report the extra cost at that point.
-    JSC::VM* vm = scriptExecutionContext()->vm();
+    JSC::VM& vm = scriptExecutionContext()->vm();
     JSC::JSLockHolder lock(vm);
-    vm->heap.reportExtraMemoryCost(m_responseBuilder.length() * 2);
+    vm.heap.reportExtraMemoryCost(m_responseBuilder.length() * 2);
 
     unsetPendingActivity(this);
 }

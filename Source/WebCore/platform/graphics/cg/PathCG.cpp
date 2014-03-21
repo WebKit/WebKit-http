@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2003, 2006 Apple Computer, Inc.  All rights reserved.
+ * Copyright (C) 2003, 2006 Apple Inc.  All rights reserved.
  *                     2006, 2008 Rob Buis <buis@kde.org>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -11,10 +11,10 @@
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
  *
- * THIS SOFTWARE IS PROVIDED BY APPLE COMPUTER, INC. ``AS IS'' AND ANY
+ * THIS SOFTWARE IS PROVIDED BY APPLE INC. ``AS IS'' AND ANY
  * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE COMPUTER, INC. OR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE INC. OR
  * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
  * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
  * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
@@ -298,6 +298,24 @@ void Path::addEllipse(const FloatRect& r)
 {
     CGPathAddEllipseInRect(ensurePlatformPath(), 0, r);
 }
+
+void Path::addPath(const Path& path, const AffineTransform& transform)
+{
+    if (!path.platformPath())
+        return;
+
+    CGAffineTransform transformCG = transform;
+    // CG doesn't allow adding a path to itself. Optimize for the common case
+    // and copy the path for the self referencing case.
+    if (ensurePlatformPath() != path.platformPath()) {
+        CGPathAddPath(ensurePlatformPath(), &transformCG, path.platformPath());
+        return;
+    }
+    CGPathRef pathCopy = CGPathCreateCopy(path.platformPath());
+    CGPathAddPath(ensurePlatformPath(), &transformCG, path.platformPath());
+    CGPathRelease(pathCopy);
+}
+
 
 void Path::clear()
 {

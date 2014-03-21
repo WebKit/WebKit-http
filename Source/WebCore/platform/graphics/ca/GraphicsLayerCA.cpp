@@ -13,7 +13,7 @@
  * THIS SOFTWARE IS PROVIDED BY APPLE INC. ``AS IS'' AND ANY
  * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE COMPUTER, INC. OR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE INC. OR
  * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
  * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
  * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
@@ -284,7 +284,7 @@ static float maxScaleFromTransform(const TransformationMatrix& t)
 
     TransformationMatrix::Decomposed4Type decomposeData;
     t.decompose4(decomposeData);
-    return std::max(fabsf(decomposeData.scaleX), fabsf(decomposeData.scaleY));
+    return std::max(fabsf(narrowPrecisionToFloat(decomposeData.scaleX)), fabsf(narrowPrecisionToFloat(decomposeData.scaleY)));
 }
 
 #if ENABLE(CSS_FILTERS) || !ASSERT_DISABLED
@@ -1655,7 +1655,7 @@ void GraphicsLayerCA::updateContentsOpaque(float pageScaleFactor)
     bool contentsOpaque = m_contentsOpaque;
     if (contentsOpaque) {
         float contentsScale = clampedContentsScaleForScale(m_rootRelativeScaleFactor * pageScaleFactor * deviceScaleFactor());
-        if (!isIntegral(contentsScale))
+        if (!isIntegral(contentsScale) && !m_client->paintsOpaquelyAtNonIntegralScales(this))
             contentsOpaque = false;
     }
     

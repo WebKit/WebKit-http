@@ -305,6 +305,9 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
     , m_pageID(pageID)
     , m_session(*configuration.session)
     , m_isPageSuspended(false)
+#if ENABLE(REMOTE_INSPECTOR)
+    , m_allowsRemoteInspection(true)
+#endif
 #if PLATFORM(COCOA)
     , m_isSmartInsertDeleteEnabled(TextChecker::isSmartInsertDeleteEnabled())
 #endif
@@ -886,6 +889,19 @@ bool WebPageProxy::canShowMIMEType(const String& mimeType)
 
     return false;
 }
+
+#if ENABLE(REMOTE_INSPECTOR)
+void WebPageProxy::setAllowsRemoteInspection(bool allow)
+{
+    if (m_allowsRemoteInspection == allow)
+        return;
+
+    m_allowsRemoteInspection = allow;
+
+    if (isValid())
+        m_process->send(Messages::WebPage::SetAllowsRemoteInspection(allow), m_pageID);
+}
+#endif
 
 void WebPageProxy::setDrawsBackground(bool drawsBackground)
 {
@@ -3293,21 +3309,31 @@ void WebPageProxy::internalShowContextMenu(const IntPoint& menuLocation, const C
     // Unless this is an image control, give the PageContextMenuClient one last swipe at changing the menu.
     Vector<WebContextMenuItemData> items;
     bool useProposedItems = true;
-
+    bool askClientToChangeMenu = true;
 #if ENABLE(IMAGE_CONTROLS)
-    if (!contextMenuContextData.isImageControl() && m_contextMenuClient.getContextMenuFromProposedMenu(this, proposedItems, items, contextMenuContextData.webHitTestResultData(), userData.get())) {
-#else
-    if (m_contextMenuClient.getContextMenuFromProposedMenu(this, proposedItems, items, contextMenuContextData.webHitTestResultData(), userData.get())) {
+    if (!contextMenuContextData.controlledImageHandle().isNull())
+        askClientToChangeMenu = false;
 #endif
+
+    if (askClientToChangeMenu && m_contextMenuClient.getContextMenuFromProposedMenu(this, proposedItems, items, contextMenuContextData.webHitTestResultData(), userData.get()))
         useProposedItems = false;
-    }
     
     const Vector<WebContextMenuItemData>& itemsToShow = useProposedItems ? proposedItems : items;
     if (!m_contextMenuClient.showContextMenu(this, menuLocation, itemsToShow))
-        m_activeContextMenu->showContextMenu(menuLocation, itemsToShow);
-    
+        m_activeContextMenu->showContextMenu(menuLocation, itemsToShow, contextMenuContextData);
+
     m_contextMenuClient.contextMenuDismissed(this);
 }
+
+#if ENABLE(IMAGE_CONTROLS)
+void WebPageProxy::replaceControlledImage(PassRefPtr<ShareableBitmap> newBitmap)
+{
+    RefPtr<ShareableBitmap> bitmap = newBitmap;
+    ShareableBitmap::Handle bitmapHandle;
+    bitmap->createHandle(bitmapHandle);
+    m_process->send(Messages::WebPage::ReplaceControlledImage(bitmapHandle), m_pageID);
+}
+#endif
 
 void WebPageProxy::contextMenuItemSelected(const WebContextMenuItemData& item)
 {
@@ -3469,18 +3495,18 @@ int64_t WebPageProxy::spellDocumentTag()
 #if USE(UNIFIED_TEXT_CHECKING)
 void WebPageProxy::checkTextOfParagraph(const String& text, uint64_t checkingTypes, Vector<TextCheckingResult>& results)
 {
-    results = TextChecker::checkTextOfParagraph(spellDocumentTag(), text.deprecatedCharacters(), text.length(), checkingTypes);
+    results = TextChecker::checkTextOfParagraph(spellDocumentTag(), text, checkingTypes);
 }
 #endif
 
 void WebPageProxy::checkSpellingOfString(const String& text, int32_t& misspellingLocation, int32_t& misspellingLength)
 {
-    TextChecker::checkSpellingOfString(spellDocumentTag(), text.deprecatedCharacters(), text.length(), misspellingLocation, misspellingLength);
+    TextChecker::checkSpellingOfString(spellDocumentTag(), text, misspellingLocation, misspellingLength);
 }
 
 void WebPageProxy::checkGrammarOfString(const String& text, Vector<GrammarDetail>& grammarDetails, int32_t& badGrammarLocation, int32_t& badGrammarLength)
 {
-    TextChecker::checkGrammarOfString(spellDocumentTag(), text.deprecatedCharacters(), text.length(), grammarDetails, badGrammarLocation, badGrammarLength);
+    TextChecker::checkGrammarOfString(spellDocumentTag(), text, grammarDetails, badGrammarLocation, badGrammarLength);
 }
 
 void WebPageProxy::spellingUIIsShowing(bool& isShowing)
@@ -4008,9 +4034,14 @@ WebPageCreationParameters WebPageProxy::creationParameters()
     parameters.scrollPinningBehavior = m_scrollPinningBehavior;
     parameters.backgroundExtendsBeyondPage = m_backgroundExtendsBeyondPage;
     parameters.layerHostingMode = m_layerHostingMode;
-
+#if ENABLE(REMOTE_INSPECTOR)
+    parameters.allowsRemoteInspection = m_allowsRemoteInspection;
+#endif
 #if PLATFORM(MAC)
     parameters.colorSpace = m_pageClient.colorSpace();
+#endif
+#if PLATFORM(IOS)
+    parameters.viewportScreenSize = viewportScreenSize();
 #endif
 
     return parameters;
@@ -4562,6 +4593,21 @@ void WebPageProxy::setThumbnailScale(double scale)
 void WebPageProxy::addMIMETypeWithCustomContentProvider(const String& mimeType)
 {
     m_process->send(Messages::WebPage::AddMIMETypeWithCustomContentProvider(mimeType), m_pageID);
+}
+
+void WebPageProxy::takeSnapshot(IntRect rect, IntSize bitmapSize, SnapshotOptions options, ImageCallback::CallbackFunction callbackFunction)
+{
+    RefPtr<ImageCallback> callback = ImageCallback::create(callbackFunction);
+
+    if (!isValid()) {
+        callback->invalidate();
+        return;
+    }
+
+    uint64_t callbackID = callback->callbackID();
+    m_imageCallbacks.set(callbackID, callback.get());
+
+    m_process->send(Messages::WebPage::TakeSnapshot(rect, bitmapSize, options, callbackID), m_pageID);
 }
 
 } // namespace WebKit

@@ -88,7 +88,6 @@
 #include "MediaList.h"
 #include "MediaQueryEvaluator.h"
 #include "NodeRenderStyle.h"
-#include "NodeRenderingTraversal.h"
 #include "Page.h"
 #include "PageRuleCollector.h"
 #include "Pair.h"
@@ -238,7 +237,6 @@ inline void StyleResolver::State::clear()
     m_element = nullptr;
     m_styledElement = nullptr;
     m_parentStyle = nullptr;
-    m_parentNode = nullptr;
     m_regionForStyling = nullptr;
     m_pendingImageProperties.clear();
 #if ENABLE(CSS_FILTERS)
@@ -285,7 +283,7 @@ StyleResolver::StyleResolver(Document& document, bool matchAuthorAndUserStyles)
         m_medium = std::make_unique<MediaQueryEvaluator>("all");
 
     if (root)
-        m_rootDefaultStyle = styleForElement(root, 0, DisallowStyleSharing, MatchOnlyUserAgentRules);
+        m_rootDefaultStyle = styleForElement(root, m_document.renderStyle(), DisallowStyleSharing, MatchOnlyUserAgentRules);
 
     if (m_rootDefaultStyle && view)
         m_medium = std::make_unique<MediaQueryEvaluator>(view->mediaType(), &view->frame(), m_rootDefaultStyle.get());
@@ -411,15 +409,10 @@ inline void StyleResolver::State::initForStyleResolve(Document& document, Elemen
     m_regionForStyling = regionForStyling;
 
     if (e) {
-        m_parentNode = e->isPseudoElement() ? toPseudoElement(e)->hostElement() : NodeRenderingTraversal::parent(e);
         bool resetStyleInheritance = hasShadowRootParent(*e) && toShadowRoot(e->parentNode())->resetStyleInheritance();
-        m_parentStyle = resetStyleInheritance ? 0 :
-            parentStyle ? parentStyle :
-            m_parentNode ? m_parentNode->renderStyle() : 0;
-    } else {
-        m_parentNode = 0;
+        m_parentStyle = resetStyleInheritance ? nullptr : parentStyle;
+    } else
         m_parentStyle = parentStyle;
-    }
 
     Node* docElement = e ? e->document().documentElement() : 0;
     RenderStyle* docStyle = document.renderStyle();
@@ -899,7 +892,7 @@ void StyleResolver::keyframeStylesForAnimation(Element* e, const RenderStyle* el
     for (unsigned i = 0; i < keyframes.size(); ++i) {
         // Apply the declaration to the style. This is a simplified version of the logic in styleForElement
         initElement(e);
-        m_state.initForStyleResolve(document(), e);
+        m_state.initForStyleResolve(document(), e, nullptr);
 
         const StyleKeyframe* keyframe = keyframes[i].get();
 
@@ -996,7 +989,7 @@ PassRefPtr<RenderStyle> StyleResolver::pseudoStyleForElement(Element* element, c
 
 PassRef<RenderStyle> StyleResolver::styleForPage(int pageIndex)
 {
-    m_state.initForStyleResolve(document(), document().documentElement()); // m_rootElementStyle will be set to the document style.
+    m_state.initForStyleResolve(m_document, m_document.documentElement(), m_document.renderStyle());
 
     m_state.setStyle(RenderStyle::create());
     m_state.style()->inheritFrom(m_state.rootElementStyle());
@@ -1370,10 +1363,6 @@ void StyleResolver::adjustRenderStyle(RenderStyle& style, const RenderStyle& par
         // SVG text layout code expects us to be a block-level style element.
         if ((e->hasTagName(SVGNames::foreignObjectTag) || e->hasTagName(SVGNames::textTag)) && style.isDisplayInlineType())
             style.setDisplay(BLOCK);
-
-        // SVG text layout code expects us to be an inline-level style element.
-        if ((e->hasTagName(SVGNames::tspanTag) || e->hasTagName(SVGNames::textPathTag)) && style.display() != NONE && !style.isDisplayInlineType())
-            style.setDisplay(INLINE);
     }
 }
 
@@ -1549,15 +1538,15 @@ void StyleResolver::updateFont()
     m_state.setFontDirty(false);
 }
 
-Vector<RefPtr<StyleRuleBase>> StyleResolver::styleRulesForElement(Element* e, unsigned rulesToInclude)
+Vector<RefPtr<StyleRule>> StyleResolver::styleRulesForElement(Element* e, unsigned rulesToInclude)
 {
     return pseudoStyleRulesForElement(e, NOPSEUDO, rulesToInclude);
 }
 
-Vector<RefPtr<StyleRuleBase>> StyleResolver::pseudoStyleRulesForElement(Element* element, PseudoId pseudoId, unsigned rulesToInclude)
+Vector<RefPtr<StyleRule>> StyleResolver::pseudoStyleRulesForElement(Element* element, PseudoId pseudoId, unsigned rulesToInclude)
 {
     if (!element || !element->document().haveStylesheetsLoaded())
-        return Vector<RefPtr<StyleRuleBase>>();
+        return Vector<RefPtr<StyleRule>>();
 
     initElement(element);
     m_state.initForStyleResolve(document(), element, 0);
@@ -1602,6 +1591,12 @@ Length StyleResolver::convertToFloatLength(const CSSPrimitiveValue* primitiveVal
 static bool shouldApplyPropertyInParseOrder(CSSPropertyID propertyID)
 {
     switch (propertyID) {
+    case CSSPropertyWebkitBackgroundClip:
+    case CSSPropertyBackgroundClip:
+    case CSSPropertyWebkitBackgroundOrigin:
+    case CSSPropertyBackgroundOrigin:
+    case CSSPropertyWebkitBackgroundSize:
+    case CSSPropertyBackgroundSize:
     case CSSPropertyWebkitBorderImage:
     case CSSPropertyBorderImage:
     case CSSPropertyBorderImageSlice:
@@ -1609,6 +1604,8 @@ static bool shouldApplyPropertyInParseOrder(CSSPropertyID propertyID)
     case CSSPropertyBorderImageOutset:
     case CSSPropertyBorderImageRepeat:
     case CSSPropertyBorderImageWidth:
+    case CSSPropertyWebkitBoxShadow:
+    case CSSPropertyBoxShadow:
     case CSSPropertyWebkitTextDecoration:
     case CSSPropertyWebkitTextDecorationLine:
     case CSSPropertyWebkitTextDecorationStyle:
@@ -1862,7 +1859,7 @@ void StyleResolver::applyMatchedProperties(const MatchResult& matchResult, const
 void StyleResolver::applyPropertyToStyle(CSSPropertyID id, CSSValue* value, RenderStyle* style)
 {
     initElement(0);
-    m_state.initForStyleResolve(document(), 0, style);
+    m_state.initForStyleResolve(document(), nullptr, style);
     m_state.setStyle(*style);
     applyPropertyToCurrentStyle(id, value);
 }
@@ -2022,7 +2019,7 @@ static bool createGridTrackSize(CSSValue* value, GridTrackSize& trackSize, const
     return true;
 }
 
-static bool createGridTrackList(CSSValue* value, Vector<GridTrackSize>& trackSizes, NamedGridLinesMap& namedGridLines, const StyleResolver::State& state)
+static bool createGridTrackList(CSSValue* value, Vector<GridTrackSize>& trackSizes, NamedGridLinesMap& namedGridLines, OrderedNamedGridLinesMap& orderedNamedGridLines, const StyleResolver::State& state)
 {
     // Handle 'none'.
     if (value->isPrimitiveValue()) {
@@ -2039,8 +2036,11 @@ static bool createGridTrackList(CSSValue* value, Vector<GridTrackSize>& trackSiz
         if (currValue->isPrimitiveValue()) {
             CSSPrimitiveValue* primitiveValue = toCSSPrimitiveValue(currValue);
             if (primitiveValue->isString()) {
-                NamedGridLinesMap::AddResult result = namedGridLines.add(primitiveValue->getStringValue(), Vector<size_t>());
+                String namedGridLine = primitiveValue->getStringValue();
+                NamedGridLinesMap::AddResult result = namedGridLines.add(namedGridLine, Vector<size_t>());
                 result.iterator->value.append(currentNamedGridLine);
+                OrderedNamedGridLinesMap::AddResult orderedResult = orderedNamedGridLines.add(currentNamedGridLine, Vector<String>());
+                orderedResult.iterator->value.append(namedGridLine);
                 continue;
             }
         }
@@ -2125,11 +2125,10 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value)
         return applyProperty(newId, value);
     }
 
-    bool isInherit = state.parentNode() && value->isInheritedValue();
-    bool isInitial = value->isInitialValue() || (!state.parentNode() && value->isInheritedValue());
+    bool isInherit = state.parentStyle() && value->isInheritedValue();
+    bool isInitial = value->isInitialValue() || (!state.parentStyle() && value->isInheritedValue());
 
     ASSERT(!isInherit || !isInitial); // isInherit -> !isInitial && isInitial -> !isInherit
-    ASSERT(!isInherit || (state.parentNode() && state.parentStyle())); // isInherit -> (state.parentNode() && state.parentStyle())
 
     if (!state.applyPropertyToRegularStyle() && (!state.applyPropertyToVisitedLinkStyle() || !isValidVisitedLinkProperty(id))) {
         // Limit the properties that can be applied to only the ones honored by :visited.
@@ -2770,38 +2769,46 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value)
         if (isInherit) {
             m_state.style()->setGridColumns(m_state.parentStyle()->gridColumns());
             m_state.style()->setNamedGridColumnLines(m_state.parentStyle()->namedGridColumnLines());
+            m_state.style()->setOrderedNamedGridColumnLines(m_state.parentStyle()->orderedNamedGridColumnLines());
             return;
         }
         if (isInitial) {
             m_state.style()->setGridColumns(RenderStyle::initialGridColumns());
             m_state.style()->setNamedGridColumnLines(RenderStyle::initialNamedGridColumnLines());
+            m_state.style()->setOrderedNamedGridColumnLines(RenderStyle::initialOrderedNamedGridColumnLines());
             return;
         }
         Vector<GridTrackSize> trackSizes;
         NamedGridLinesMap namedGridLines;
-        if (!createGridTrackList(value, trackSizes, namedGridLines, state))
+        OrderedNamedGridLinesMap orderedNamedGridLines;
+        if (!createGridTrackList(value, trackSizes, namedGridLines, orderedNamedGridLines, state))
             return;
         state.style()->setGridColumns(trackSizes);
         state.style()->setNamedGridColumnLines(namedGridLines);
+        state.style()->setOrderedNamedGridColumnLines(orderedNamedGridLines);
         return;
     }
     case CSSPropertyWebkitGridTemplateRows: {
         if (isInherit) {
             m_state.style()->setGridRows(m_state.parentStyle()->gridRows());
             m_state.style()->setNamedGridRowLines(m_state.parentStyle()->namedGridRowLines());
+            m_state.style()->setOrderedNamedGridRowLines(m_state.parentStyle()->orderedNamedGridRowLines());
             return;
         }
         if (isInitial) {
             m_state.style()->setGridRows(RenderStyle::initialGridRows());
             m_state.style()->setNamedGridRowLines(RenderStyle::initialNamedGridRowLines());
+            m_state.style()->setOrderedNamedGridRowLines(RenderStyle::initialOrderedNamedGridRowLines());
             return;
         }
         Vector<GridTrackSize> trackSizes;
         NamedGridLinesMap namedGridLines;
-        if (!createGridTrackList(value, trackSizes, namedGridLines, state))
+        OrderedNamedGridLinesMap orderedNamedGridLines;
+        if (!createGridTrackList(value, trackSizes, namedGridLines, orderedNamedGridLines, state))
             return;
         state.style()->setGridRows(trackSizes);
         state.style()->setNamedGridRowLines(namedGridLines);
+        state.style()->setOrderedNamedGridRowLines(orderedNamedGridLines);
         return;
     }
 

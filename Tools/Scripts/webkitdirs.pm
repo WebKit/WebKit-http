@@ -12,7 +12,7 @@
 # 2.  Redistributions in binary form must reproduce the above copyright
 #     notice, this list of conditions and the following disclaimer in the
 #     documentation and/or other materials provided with the distribution. 
-# 3.  Neither the name of Apple Computer, Inc. ("Apple") nor the names of
+# 3.  Neither the name of Apple Inc. ("Apple") nor the names of
 #     its contributors may be used to endorse or promote products derived
 #     from this software without specific prior written permission. 
 #
@@ -333,6 +333,8 @@ sub determineArchitecture
         $architecture = `uname -m`;
         chomp $architecture;
     }
+
+    $architecture = 'x86_64' if ($architecture =~ /amd64/ && isBSD());
 }
 
 sub determineNumberOfCPUs
@@ -352,7 +354,7 @@ sub determineNumberOfCPUs
     } elsif (isWindows() || isCygwin()) {
         # Assumes cygwin
         $numberOfCPUs = `ls /proc/registry/HKEY_LOCAL_MACHINE/HARDWARE/DESCRIPTION/System/CentralProcessor | wc -w`;
-    } elsif (isDarwin() || isFreeBSD()) {
+    } elsif (isDarwin() || isBSD()) {
         chomp($numberOfCPUs = `sysctl -n hw.ncpu`);
     }
 }
@@ -741,7 +743,7 @@ sub installedSafariPath
     if (isAppleMacWebKit()) {
         $safariBundle = "/Applications/Safari.app";
     } elsif (isAppleWinWebKit()) {
-        $safariBundle = readRegistryString("/HKLM/SOFTWARE/Apple Computer, Inc./Safari/InstallDir");
+        $safariBundle = readRegistryString("/HKLM/SOFTWARE/Apple Inc./Safari/InstallDir");
         $safariBundle =~ s/[\r\n]+$//;
         $safariBundle = `cygpath -u '$safariBundle'` if isCygwin();
         $safariBundle =~ s/[\r\n]+$//;
@@ -1099,9 +1101,9 @@ sub isLinux()
     return ($^O eq "linux") || 0;
 }
 
-sub isFreeBSD()
+sub isBSD()
 {
-    return ($^O eq "freebsd") || 0;
+    return ($^O eq "freebsd") || ($^O eq "openbsd") || ($^O eq "netbsd") || 0;
 }
 
 sub isARM()
@@ -1803,7 +1805,7 @@ sub buildAutotoolsProject($@)
 {
     my ($project, $clean, $prefix, $makeArgs, $noWebKit1, $noWebKit2, @features) = @_;
 
-    my $make = 'make';
+    my $make =  $ENV{'MAKE'} //= 'make';
     my $dir = productDir();
     my $config = passedConfiguration() || configuration();
 
@@ -1952,9 +1954,11 @@ sub shouldRemoveCMakeCache(@)
     }
 
     # We check this first, because we always want to create this file for a fresh build.
-    my $optionsCache = File::Spec->catdir(baseProductDir(), configuration(), "build-webkit-options.txt");
+    my $productDir = File::Spec->catdir(baseProductDir(), configuration());
+    my $optionsCache = File::Spec->catdir($productDir, "build-webkit-options.txt");
     my $joinedBuildArgs = join(" ", @buildArgs);
     if (isCachedArgumentfileOutOfDate($optionsCache, $joinedBuildArgs)) {
+        File::Path::mkpath($productDir) unless -d $productDir;
         open(CACHED_ARGUMENTS, ">", $optionsCache);
         print CACHED_ARGUMENTS $joinedBuildArgs;
         close(CACHED_ARGUMENTS);
@@ -1992,7 +1996,8 @@ sub removeCMakeCache(@)
 
 sub canUseNinja(@)
 {
-    system('ninja --version > /dev/null');
+    # Test both ninja and ninja-build. Fedora uses ninja-build and has patched CMake to also call ninja-build.
+    system('which ninja > /dev/null || which ninja-build > /dev/null');
     return $? == 0;
 }
 

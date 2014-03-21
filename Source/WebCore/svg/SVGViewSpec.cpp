@@ -85,19 +85,19 @@ SVGViewSpec::SVGViewSpec(SVGElement* contextElement)
 
 const AtomicString& SVGViewSpec::viewBoxIdentifier()
 {
-    DEFINE_STATIC_LOCAL(AtomicString, s_identifier, ("SVGViewSpecViewBoxAttribute", AtomicString::ConstructFromLiteral));
+    DEPRECATED_DEFINE_STATIC_LOCAL(AtomicString, s_identifier, ("SVGViewSpecViewBoxAttribute", AtomicString::ConstructFromLiteral));
     return s_identifier;
 }
 
 const AtomicString& SVGViewSpec::preserveAspectRatioIdentifier()
 {
-    DEFINE_STATIC_LOCAL(AtomicString, s_identifier, ("SVGViewSpecPreserveAspectRatioAttribute", AtomicString::ConstructFromLiteral));
+    DEPRECATED_DEFINE_STATIC_LOCAL(AtomicString, s_identifier, ("SVGViewSpecPreserveAspectRatioAttribute", AtomicString::ConstructFromLiteral));
     return s_identifier;
 }
 
 const AtomicString& SVGViewSpec::transformIdentifier()
 {
-    DEFINE_STATIC_LOCAL(AtomicString, s_identifier, ("SVGViewSpecTransformAttribute", AtomicString::ConstructFromLiteral));
+    DEPRECATED_DEFINE_STATIC_LOCAL(AtomicString, s_identifier, ("SVGViewSpecTransformAttribute", AtomicString::ConstructFromLiteral));
     return s_identifier;
 }
 
@@ -207,7 +207,8 @@ static const UChar viewTargetSpec[] =  {'v', 'i', 'e', 'w', 'T', 'a', 'r', 'g', 
 
 bool SVGViewSpec::parseViewSpec(const String& viewSpec)
 {
-    const UChar* currViewSpec = viewSpec.deprecatedCharacters();
+    auto upconvertedCharacters = StringView(viewSpec).upconvertedCharacters();
+    const UChar* currViewSpec = upconvertedCharacters;
     const UChar* end = currViewSpec + viewSpec.length();
 
     if (currViewSpec >= end || !m_contextElement)

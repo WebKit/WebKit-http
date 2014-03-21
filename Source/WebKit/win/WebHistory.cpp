@@ -10,10 +10,10 @@
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
  *
- * THIS SOFTWARE IS PROVIDED BY APPLE COMPUTER, INC. ``AS IS'' AND ANY
+ * THIS SOFTWARE IS PROVIDED BY APPLE INC. ``AS IS'' AND ANY
  * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE COMPUTER, INC. OR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE INC. OR
  * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
  * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
  * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
@@ -238,7 +238,7 @@ ULONG STDMETHODCALLTYPE WebHistory::Release(void)
 
 static inline COMPtr<WebHistory>& sharedHistoryStorage()
 {
-    DEFINE_STATIC_LOCAL(COMPtr<WebHistory>, sharedHistory, ());
+    DEPRECATED_DEFINE_STATIC_LOCAL(COMPtr<WebHistory>, sharedHistory, ());
     return sharedHistory;
 }
 
@@ -565,8 +565,6 @@ COMPtr<IWebHistoryItem> WebHistory::itemForURLString(const String& urlString) co
 
 void WebHistory::addVisitedLinksToPageGroup(PageGroup& group)
 {
-    for (auto it = m_entriesByURL.begin(); it != m_entriesByURL.end(); ++it) {
-        const String& url = it->key;
-        group.addVisitedLink(url.deprecatedCharacters(), url.length());
-    }
+    for (auto& url : m_entriesByURL.keys())
+        group.addVisitedLinkHash(visitedLinkHash(url));
 }

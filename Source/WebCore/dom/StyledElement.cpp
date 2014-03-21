@@ -30,6 +30,7 @@
 #include "CSSValuePool.h"
 #include "ContentSecurityPolicy.h"
 #include "DOMTokenList.h"
+#include "HTMLElement.h"
 #include "HTMLParserIdioms.h"
 #include "InspectorInstrumentation.h"
 #include "PropertySetCSSStyleDeclaration.h"
@@ -69,7 +70,7 @@ static bool operator!=(const PresentationAttributeCacheKey& a, const Presentatio
 
 static PresentationAttributeCache& presentationAttributeCache()
 {
-    DEFINE_STATIC_LOCAL(PresentationAttributeCache, cache, ());
+    DEPRECATED_DEFINE_STATIC_LOCAL(PresentationAttributeCache, cache, ());
     return cache;
 }
 
@@ -114,7 +115,7 @@ private:
 
 static PresentationAttributeCacheCleaner& presentationAttributeCacheCleaner()
 {
-    DEFINE_STATIC_LOCAL(PresentationAttributeCacheCleaner, cleaner, ());
+    DEPRECATED_DEFINE_STATIC_LOCAL(PresentationAttributeCacheCleaner, cleaner, ());
     return cleaner;
 }
 

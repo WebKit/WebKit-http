@@ -10,10 +10,10 @@
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
  *
- * THIS SOFTWARE IS PROVIDED BY APPLE COMPUTER, INC. ``AS IS'' AND ANY
+ * THIS SOFTWARE IS PROVIDED BY APPLE INC. ``AS IS'' AND ANY
  * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE COMPUTER, INC. OR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE INC. OR
  * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
  * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
  * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
@@ -205,13 +205,17 @@ double PlatformTimeRanges::nearest(double time) const
         double endTime = end(ndx, ignoreInvalid);
         if (time >= startTime && time <= endTime)
             return time;
-        if (fabs(startTime - time) < closestDelta) {
+
+        double startTimeDelta = fabs(startTime - time);
+        if (startTimeDelta < closestDelta) {
             closestTime = startTime;
-            closestDelta = fabsf(startTime - time);
+            closestDelta = startTimeDelta;
         }
-        if (fabs(endTime - time) < closestDelta) {
+
+        double endTimeDelta = fabs(endTime - time);
+        if (endTimeDelta < closestDelta) {
             closestTime = endTime;
-            closestDelta = fabsf(endTime - time);
+            closestDelta = endTimeDelta;
         }
     }
     return closestTime;

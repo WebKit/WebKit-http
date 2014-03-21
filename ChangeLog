@@ -1,3 +1,119 @@
+2014-03-17  Brendan Long  <b.long@cablelabs.com>
+
+        [GStreamer] human readable language code for tracks
+        https://bugs.webkit.org/show_bug.cgi?id=124514
+
+        Reviewed by Martin Robinson.
+
+        * Source/autotools/FindDependencies.m4: Add gstreamer-tag-1.0.
+        * Source/cmake/FindGStreamer.cmake: Same.
+        * Source/cmake/OptionsEfl.cmake: Same.
+        * Source/cmake/OptionsGTK.cmake: Same.
+
+2014-03-17  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK][CMake] Credential storage is not enabled
+        https://bugs.webkit.org/show_bug.cgi?id=130149
+
+        Reviewed by Philippe Normand.
+
+        * Source/cmake/OptionsGTK.cmake: Add an ENABLE_CREDENTIAL_STORAGE option to the configuration
+        and look libsecret when it's enabled.
+        * Source/cmakeconfig.h.cmake: Expose the ENABLE_CREDENTIAL_STORAGE option to the build.
+
+2014-03-17  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK][CMake] Ensure that HAVE_GTK_UNIX_PRINTING is defined when appropriate
+        https://bugs.webkit.org/show_bug.cgi?id=130155
+
+        Reviewed by Philippe Normand.
+
+        * Source/cmake/FindGTKUnixPrint.cmake: Added.
+        * Source/cmake/OptionsGTK.cmake: Look for gtk+-unix-print and use it to turn on HAVE_GTK_UNIX_PRINTING.
+        * Source/cmakeconfig.h.cmake: Add the HAVE_GTK_UNIX_PRINTING define.
+
+2014-03-16  Kim Byung Jun  <bj1987.kim@samsung.com>
+
+        [EFL] Enable TOUCH_SLIDER macro.
+        https://bugs.webkit.org/show_bug.cgi?id=130186
+
+        Reviewed by Gyuyoung Kim.
+
+        * Source/cmake/OptionsEfl.cmake:
+
+2014-03-16  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GTK][CMake] Build with -fno-rtti
+        https://bugs.webkit.org/show_bug.cgi?id=130261
+
+        Reviewed by Martin Robinson.
+
+        * Source/cmake/OptionsCommon.cmake: List the -fno-exceptions, -fno-strict-aliasing
+        and -fno-rtti options in the global CMAKE_C_FLAGS and CMAKE_CXX_FLAGS (-fno-rtti
+        is only listed in the latter). Replace -std=gnu++0x with the official -std=c++11 option.
+        * Source/cmake/WebKitHelpers.cmake: Stop -fno-exceptions and -fno-strict-aliasing
+        from being set through the WEBKIT_SET_EXTRA_COMPILER_FLAGS macro, they are now listed
+        in CMAKE_C_FLAGS and CMAKE_CXX_FLAGS.
+        * Source/cmake/gtest/CMakeLists.txt: Build GTest code with GTEST_HAS_RTTI macro defined to 0.
+
+2014-03-16  Brendan Long  <b.long@cablelabs.com>
+
+        [GStreamer] CMake doesn't find the include path for gstreamer-base
+        https://bugs.webkit.org/show_bug.cgi?id=130098
+
+        Reviewed by Philippe Normand.
+
+        * Source/cmake/FindGStreamer.cmake: Look for a header in gstreamer-base instead of looking for gst/gst.h twice.
+
+2014-03-14  Maciej Stachowiak  <mjs@apple.com>
+
+        Replace "Apple Computer, Inc." with "Apple Inc." in copyright headers
+        https://bugs.webkit.org/show_bug.cgi?id=130276
+        <rdar://problem/16266927>
+
+        Reviewed by Simon Fraser.
+
+        * ManualTests/NPN_Invoke/Info.plist:
+        * ManualTests/NPN_Invoke/main.c:
+        * ManualTests/accessibility/resources/AppletTest.java:
+
+2014-03-14  Zan Dobersek  <zdobersek@igalia.com>
+
+        [CMake] Remove -fno-tree-sra workaround for GCC 4.5
+        https://bugs.webkit.org/show_bug.cgi?id=130258
+
+        Reviewed by Martin Robinson.
+
+        GCC compilers 4.7 and later are supported, so there's no need for disabling
+        the -ftree-sra optimization which was causing problems when enabled on GCC 4.5.
+
+        * Source/cmake/WebKitHelpers.cmake:
+
+2014-03-14  Landry Breuil  <landry@openbsd.org>
+
+        Add autotools boilerplate for proper os defines on OpenBSD/NetBSD/DragonFly
+        https://bugs.webkit.org/show_bug.cgi?id=129966
+
+        Reviewed by Andreas Kling.
+
+        * Source/autotools/CheckSystemAndBasicDependencies.m4:
+        * Source/autotools/SetupAutomake.m4:
+
+2014-03-13  Mario Sanchez Prada  <mario.prada@samsung.com>
+
+        [CMake] Failure to link with older installations of WebP
+        https://bugs.webkit.org/show_bug.cgi?id=130195
+
+        Reviewed by Gustavo Noronha Silva.
+
+        Fix the issue by using a temporary variable as the output parameter
+        to check_include_files(), setting WEBP_FOUND accordingly later.
+
+        * Source/cmake/FindWebP.cmake: Avoid reusing the WEBP_FOUND
+        variable in check_include_files(), as it will lead to misleading
+        results (will always be FALSE). Use a temporary variable instead
+        and explicitly set WEBP_FOUND to TRUE later if needed.
+
 2014-03-12  Martin Robinson  <mrobinson@igalia.com>
 
         [CMake] Changes to the bindings generator Perl modules do not trigger regeneration of bindings

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007, 2008, 2009, 2013 Apple Computer, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2013 Apple Inc.
  * Copyright (C) 2010, 2011 Google Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -740,7 +740,7 @@ bool EditingStyle::conflictsWithInlineStyleOfElement(StyledElement* element, Edi
 
 static const Vector<std::unique_ptr<HTMLElementEquivalent>>& htmlElementEquivalents()
 {
-    DEFINE_STATIC_LOCAL(Vector<std::unique_ptr<HTMLElementEquivalent>>, HTMLElementEquivalents, ());
+    DEPRECATED_DEFINE_STATIC_LOCAL(Vector<std::unique_ptr<HTMLElementEquivalent>>, HTMLElementEquivalents, ());
 
     if (!HTMLElementEquivalents.size()) {
         HTMLElementEquivalents.append(std::make_unique<HTMLElementEquivalent>(CSSPropertyFontWeight, CSSValueBold, HTMLNames::bTag));
@@ -779,7 +779,7 @@ bool EditingStyle::conflictsWithImplicitStyleOfElement(HTMLElement* element, Edi
 
 static const Vector<std::unique_ptr<HTMLAttributeEquivalent>>& htmlAttributeEquivalents()
 {
-    DEFINE_STATIC_LOCAL(Vector<std::unique_ptr<HTMLAttributeEquivalent>>, HTMLAttributeEquivalents, ());
+    DEPRECATED_DEFINE_STATIC_LOCAL(Vector<std::unique_ptr<HTMLAttributeEquivalent>>, HTMLAttributeEquivalents, ());
 
     if (!HTMLAttributeEquivalents.size()) {
         // elementIsStyledSpanOrHTMLEquivalent depends on the fact each HTMLAttriuteEquivalent matches exactly one attribute
@@ -1092,7 +1092,7 @@ void EditingStyle::mergeStyle(const StyleProperties* style, CSSPropertyOverrideM
 static PassRefPtr<MutableStyleProperties> styleFromMatchedRulesForElement(Element* element, unsigned rulesToInclude)
 {
     RefPtr<MutableStyleProperties> style = MutableStyleProperties::create();
-    Vector<RefPtr<StyleRuleBase>> matchedRules = element->document().ensureStyleResolver().styleRulesForElement(element, rulesToInclude);
+    auto matchedRules = element->document().ensureStyleResolver().styleRulesForElement(element, rulesToInclude);
     for (unsigned i = 0; i < matchedRules.size(); ++i) {
         if (matchedRules[i]->isStyleRule())
             style->mergeAndOverrideOnConflict(static_pointer_cast<StyleRule>(matchedRules[i])->properties());

@@ -1,6 +1,6 @@
 /*
- * Copyright (C) 2011 Google Inc.  All rights reserved.
- * Copyright (C) 2012, 2013 Apple Inc.  All rights reserved.
+ * Copyright (C) 2011, 2013 Google Inc.  All rights reserved.
+ * Copyright (C) 2012-2014 Apple Inc.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -109,6 +109,7 @@ public:
 #if ENABLE(WEBVTT_REGIONS)
     const String& regionId() const { return m_regionId; }
     void setRegionId(const String&);
+    void notifyRegionWhenRemovingDisplayTree(bool);
 #endif
 
     virtual void setIsActive(bool);
@@ -126,12 +127,13 @@ public:
 
     std::pair<double, double> getCSSPosition() const;
 
+    CSSValueID getCSSAlignment() const;
     int getCSSSize() const;
     CSSValueID getCSSWritingDirection() const;
     CSSValueID getCSSWritingMode() const;
 
     enum WritingDirection {
-        Horizontal,
+        Horizontal = 0,
         VerticalGrowingLeft,
         VerticalGrowingRight,
         NumberOfWritingDirections
@@ -139,9 +141,12 @@ public:
     WritingDirection getWritingDirection() const { return m_writingDirection; }
 
     enum CueAlignment {
-        Start,
+        Start = 0,
         Middle,
-        End
+        End,
+        Left,
+        Right,
+        NumberOfAlignments
     };
     CueAlignment getAlignment() const { return m_cueAlignment; }
 
@@ -207,15 +212,13 @@ private:
 
     CSSValueID m_displayDirection;
 
-    CSSValueID m_displayWritingModeMap[NumberOfWritingDirections];
-    CSSValueID m_displayWritingMode;
-
     int m_displaySize;
 
     std::pair<float, float> m_displayPosition;
 #if ENABLE(WEBVTT_REGIONS)
     String m_regionId;
 #endif
+    bool m_notifyRegion;
 };
 
 VTTCue* toVTTCue(TextTrackCue*);

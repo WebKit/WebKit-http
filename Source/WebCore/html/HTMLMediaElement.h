@@ -10,10 +10,10 @@
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
  *
- * THIS SOFTWARE IS PROVIDED BY APPLE COMPUTER, INC. ``AS IS'' AND ANY
+ * THIS SOFTWARE IS PROVIDED BY APPLE INC. ``AS IS'' AND ANY
  * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE COMPUTER, INC. OR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE INC. OR
  * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
  * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
  * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
@@ -131,6 +131,8 @@ public:
     virtual bool supportsSave() const;
     virtual bool supportsScanning() const override;
     
+    virtual bool doesHaveAttribute(const AtomicString&) const override;
+
     PlatformMedia platformMedia() const;
     PlatformLayer* platformLayer() const;
 #if PLATFORM(IOS)
@@ -249,7 +251,11 @@ public:
     void togglePlayState();
     virtual void beginScrubbing() override;
     virtual void endScrubbing() override;
-    
+
+    virtual void beginScanning(ScanDirection) override;
+    virtual void endScanning() override;
+    double nextScanRate();
+
     virtual bool canPlay() const override;
 
     double percentLoaded() const;
@@ -579,10 +585,12 @@ private:
 #endif
 
     virtual bool mediaPlayerShouldWaitForResponseToAuthenticationChallenge(const AuthenticationChallenge&) override;
+    virtual void mediaPlayerHandlePlaybackCommand(MediaSession::RemoteControlCommandType command) override { didReceiveRemoteControlCommand(command); }
 
     void loadTimerFired(Timer<HTMLMediaElement>&);
     void progressEventTimerFired(Timer<HTMLMediaElement>&);
     void playbackProgressTimerFired(Timer<HTMLMediaElement>&);
+    void scanTimerFired(Timer<HTMLMediaElement>&);
     void startPlaybackProgressTimer();
     void startProgressEventTimer();
     void stopPeriodicTimers();
@@ -690,13 +698,23 @@ private:
     bool ensureMediaControlsInjectedScript();
 #endif
 
+    // MediaSessionClient Overrides
     virtual MediaSession::MediaType mediaType() const override;
     virtual void pausePlayback() override;
     virtual void resumePlayback() override;
+    virtual String mediaSessionTitle() const override;
+    virtual double mediaSessionDuration() const override { return duration(); }
+    virtual double mediaSessionCurrentTime() const override { return currentTime(); }
+    virtual bool canReceiveRemoteControlCommands() const override { return true; }
+    virtual void didReceiveRemoteControlCommand(MediaSession::RemoteControlCommandType) override;
+
+    void registerWithDocument(Document&);
+    void unregisterWithDocument(Document&);
 
     Timer<HTMLMediaElement> m_loadTimer;
     Timer<HTMLMediaElement> m_progressEventTimer;
     Timer<HTMLMediaElement> m_playbackProgressTimer;
+    Timer<HTMLMediaElement> m_scanTimer;
     RefPtr<TimeRanges> m_playedTimeRanges;
     GenericEventQueue m_asyncEventQueue;
 
@@ -762,6 +780,15 @@ private:
 
     typedef unsigned PendingActionFlags;
     PendingActionFlags m_pendingActionFlags;
+
+    enum ActionAfterScanType {
+        Nothing, Play, Pause
+    };
+    ActionAfterScanType m_actionAfterScan;
+
+    enum ScanType { Seek, Scan };
+    ScanType m_scanType;
+    ScanDirection m_scanDirection;
 
     bool m_playing : 1;
     bool m_isWaitingUntilMediaCanStart : 1;

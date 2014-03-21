@@ -1,3 +1,484 @@
+2014-03-18  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GLIB] Add GMainLoopSource class to wrap idle and timeout sources
+        https://bugs.webkit.org/show_bug.cgi?id=130027
+
+        Reviewed by Martin Robinson.
+
+        GLib main loop sources like idle and timeouts are sometimes
+        unconvenient to use and it's very common to forget canceling the
+        source when the object is destroyed or reset the source ID in the
+        callback when called. GMainLoopSource is a wrapper class to make it
+        easier to handle sources and also to avoid those typical mistakes.
+        It forces to create sources with a name and the user doesn't have
+        to deal with the source ID anymore. The source is cancelled when
+        the object is deleted or when a new source is scheduled. It uses
+        std::function for callbacks so that we no longer need to use the
+        "proxy" static callbacks either. We can use std::bind to use a
+        function pointer or a member or even lambda functions. It also handles
+        repeating sources automatically depending on whether the given
+        function returns a bool or not.
+
+        * GNUmakefile.list.am:
+        * wtf/PlatformEfl.cmake:
+        * wtf/PlatformGTK.cmake:
+        * wtf/RunLoop.h:
+        * wtf/gobject/GMainLoopSource.cpp: Added.
+        (WTF::GMainLoopSource::createAndDeleteOnDestroy):
+        (WTF::GMainLoopSource::GMainLoopSource):
+        (WTF::GMainLoopSource::~GMainLoopSource):
+        (WTF::GMainLoopSource::cancel):
+        (WTF::GMainLoopSource::reset):
+        (WTF::GMainLoopSource::scheduleIdleSource):
+        (WTF::GMainLoopSource::schedule):
+        (WTF::GMainLoopSource::scheduleTimeoutSource):
+        (WTF::GMainLoopSource::scheduleAfterDelay):
+        (WTF::GMainLoopSource::voidCallback):
+        (WTF::GMainLoopSource::boolCallback):
+        (WTF::GMainLoopSource::socketCallback):
+        (WTF::GMainLoopSource::destroy):
+        (WTF::GMainLoopSource::voidSourceCallback):
+        (WTF::GMainLoopSource::boolSourceCallback):
+        (WTF::GMainLoopSource::socketSourceCallback):
+        * wtf/gobject/GMainLoopSource.h: Added.
+        (WTF::GMainLoopSource::isScheduled):
+        * wtf/gtk/MainThreadGtk.cpp:
+        (WTF::scheduleDispatchFunctionsOnMainThread):
+        * wtf/gtk/RunLoopGtk.cpp:
+        (WTF::RunLoop::wakeUp):
+        (WTF::RunLoop::TimerBase::TimerBase):
+        (WTF::RunLoop::TimerBase::start):
+        (WTF::RunLoop::TimerBase::stop):
+        (WTF::RunLoop::TimerBase::isActive):
+
+2014-03-19  Gavin Barraclough  <barraclough@apple.com>
+
+        https://bugs.webkit.org/show_bug.cgi?id=130494
+        EmptyUnique strings are Identifiers/Atomic
+
+        Reviewed by Geoff Garen.
+
+        EmptyUnique strings should set the Identifier/Atomic flag.
+
+        * wtf/text/AtomicString.h:
+        (WTF::AtomicString::add):
+            - Previously we assumed the only StringImpl that was validly allowed to claim to be
+              Atomic but not be in a table was the canonical empty string. Now that EmptyUniques
+              are also marked Atomic, all empty strings may pass this condition.
+        * wtf/text/StringImpl.cpp:
+        (WTF::StringImpl::~StringImpl):
+            - EmptyUnique strings are not in the Atomic/Identfiier tabels, so don't need removing.
+        * wtf/text/StringImpl.h:
+        (WTF::StringImpl::StringImpl):
+            - Change EmptyUnique constructor to call hashAndFlagsForEmptyUnique.
+        * wtf/text/StringStatics.cpp:
+        (WTF::StringImpl::hashAndFlagsForEmptyUnique):
+            - Allocate a sequential hash code (this should be just as good for distribution & better
+              for debugging than the random value) and set flags, now including Atomic & Identifier.
+
+2014-03-19  Gavin Barraclough  <barraclough@apple.com>
+
+        Small cleanup of empty string
+        https://bugs.webkit.org/show_bug.cgi?id=130438
+
+        Reviewed by Anders Carlson.
+
+        The empty string is weird becuase it is used as the impl for an AtomicString, but isAtomic()
+        returns false.
+        Also, we set a valid pointer for the characters pointer due to an old PCRE bug; remove this.
+        Also, we currently only create one 'static' string, the empty string. Adding more might break
+        assumtions, inhibit the constructor from being used to create other static strings for now.
+
+        * wtf/text/AtomicString.h:
+        (WTF::AtomicString::add):
+            - update assert.
+        * wtf/text/StringImpl.h:
+        (WTF::StringImpl::StringImpl):
+            - Merge ConstructStaticString constructors, only allow the empty static string to be constructed.
+        * wtf/text/StringStatics.cpp:
+        (WTF::StringImpl::empty):
+            - ConstructStaticString -> ConstructEmptyString, remove arguments, DEPRECATED_DEFINE_STATIC_LOCAL -> NeverDestroyed.
+
+2014-03-18  Darin Adler  <darin@apple.com>
+
+        Reduce use of deprecatedCharacters in WebCore
+        https://bugs.webkit.org/show_bug.cgi?id=130318
+
+        Reviewed by Andreas Kling.
+
+        * wtf/text/WTFString.h: Export another overload of charactersToFloat since it's used
+        in WebCore now.
+
+        * wtf/text/cf/StringViewCF.cpp: Change so this can build on Windows.
+
+        * WTF.vcxproj/WTF.vcxproj: Added StringViewCF.cpp.
+        * WTF.vcxproj/WTF.vcxproj.filters: Added StringViewCF.cpp.
+
+2014-03-18  Filip Pizlo  <fpizlo@apple.com>
+
+        More FTL enabling.
+
+        Rubber stamped by Dan Bernstein and Mark Hahnenberg.
+
+        * wtf/Platform.h:
+
+2014-03-17  Darin Adler  <darin@apple.com>
+
+        Remove most uses of deprecatedCharacter in WTF
+        https://bugs.webkit.org/show_bug.cgi?id=130317
+
+        Reviewed by Andreas Kling.
+
+        Re-landing after fixing the "80 instead of 0x80" typo in equalLatin1WithUTF8.
+
+        * wtf/text/AtomicString.cpp:
+        (WTF::HashAndUTF8CharactersTranslator::equal): Add an 8-bit code path to the
+        non-ASCII path.
+        (WTF::SubstringTranslator8::hash): Added.
+        (WTF::SubstringTranslator8::equal): Added.
+        (WTF::SubstringTranslator16::hash): Renamed class.
+        (WTF::SubstringTranslator16::equal): Ditto.
+        (WTF::AtomicString::add): Added an 8-bit code path to the substring case.
+
+        * wtf/text/Base64.cpp:
+        (WTF::base64Decode): Added an 8 bit code path.
+        (WTF::base64URLDecode): Ditto.
+
+        * wtf/text/StringImpl.cpp:
+        (WTF::StringImpl::find): Fixed a case that was incorrectly using characters16
+        without first using is8Bit. Need to return later to remove use of deprecatedCharacters.
+
+        * wtf/unicode/UTF8.cpp:
+        (WTF::Unicode::equalUTF16WithUTF8): Added a case for when the UTF-16 characters
+        are ASCII. Also removed the aEnd argument, since the caller only calls this when the
+        lengths are equal.
+        (WTF::Unicode::equalLatin1WithUTF8): Added.
+        * wtf/unicode/UTF8.h: Updated as described above.
+
+2014-03-17  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r165721.
+        https://bugs.webkit.org/show_bug.cgi?id=130367
+
+        It makes the debug bots flaky (Requested by benjaminp on
+        #webkit).
+
+        Reverted changeset:
+
+        "Remove most uses of deprecatedCharacter in WTF"
+        https://bugs.webkit.org/show_bug.cgi?id=130317
+        http://trac.webkit.org/changeset/165721
+
+2014-03-17  Zan Dobersek  <zdobersek@igalia.com>
+
+        Use RunLoop objects through references instead of pointers
+        https://bugs.webkit.org/show_bug.cgi?id=130313
+
+        Reviewed by Andreas Kling.
+
+        Make RunLoop::current() and RunLoop::main() return a RunLoop reference instead
+        of a pointer. RunLoop::Holder now uses a Ref<RunLoop> member. Timer and TimerBase
+        constructors take in a RunLoop reference, with TimerBase now storing a RunLoop
+        reference member instead of a pointer. Platform-specific bits of the RunLoop
+        class are updated accordingly.
+
+        * wtf/RunLoop.cpp:
+        (WTF::RunLoop::Holder::Holder):
+        (WTF::RunLoop::Holder::runLoop):
+        (WTF::RunLoop::initializeMainRunLoop):
+        (WTF::RunLoop::current):
+        (WTF::RunLoop::main):
+        (WTF::RunLoop::isMain):
+        * wtf/RunLoop.h:
+        (WTF::RunLoop::Timer::Timer):
+        * wtf/cf/RunLoopCF.cpp:
+        (WTF::RunLoop::run):
+        (WTF::RunLoop::TimerBase::TimerBase):
+        (WTF::RunLoop::TimerBase::start):
+        * wtf/efl/RunLoopEfl.cpp:
+        (WTF::RunLoop::TimerBase::TimerBase):
+        * wtf/gtk/RunLoopGtk.cpp:
+        (WTF::RunLoop::run):
+        (WTF::RunLoop::TimerBase::TimerBase):
+        (WTF::RunLoop::TimerBase::start):
+        * wtf/win/RunLoopWin.cpp:
+        (WTF::RunLoop::TimerBase::TimerBase):
+        (WTF::RunLoop::TimerBase::start):
+        (WTF::RunLoop::TimerBase::stop):
+        (WTF::RunLoop::TimerBase::isActive):
+
+2014-03-17  Tamas Gergely  <tgergely.u-szeged@partner.samsung.com>
+
+        One more fix after r165725.
+
+        Reviewed by Csaba Osztrogonác.
+
+        * wtf/WTFThreadData.h:
+
+2014-03-17  Tamas Gergely  <tgergely.u-szeged@partner.samsung.com>
+
+        Buildfix after r165725 for non Mac platforms.
+
+        Reviewed by Csaba Osztrogonác.
+
+        * wtf/WTFThreadData.h:
+
+2014-03-17  Andreas Kling  <akling@apple.com>
+
+        [Mac] WTFThreadData should use _pthread_getspecific_direct().
+        <https://webkit.org/b/130320>
+
+        Hack WTFThreadData to use a direct key for TLS access when available.
+        This mechanism uses a dedicated segment register and is the same way
+        we implement the fast path in FastMalloc.
+
+        Reviewed by Darin Adler.
+
+        * wtf/FastMalloc.cpp:
+        * wtf/WTFThreadData.cpp:
+        (WTF::WTFThreadData::createAndRegisterForGetspecificDirect):
+        * wtf/WTFThreadData.h:
+        (WTF::wtfThreadData):
+
+2014-03-16  Darin Adler  <darin@apple.com>
+
+        Remove most uses of deprecatedCharacter in WTF
+        https://bugs.webkit.org/show_bug.cgi?id=130317
+
+        Reviewed by Andreas Kling.
+
+        * wtf/text/AtomicString.cpp:
+        (WTF::HashAndUTF8CharactersTranslator::equal): Add an 8-bit code path to the
+        non-ASCII path.
+        (WTF::SubstringTranslator8::hash): Added.
+        (WTF::SubstringTranslator8::equal): Added.
+        (WTF::SubstringTranslator16::hash): Renamed class.
+        (WTF::SubstringTranslator16::equal): Ditto.
+        (WTF::AtomicString::add): Added an 8-bit code path to the substring case.
+
+        * wtf/text/Base64.cpp:
+        (WTF::base64Decode): Added an 8 bit code path.
+        (WTF::base64URLDecode): Ditto.
+
+        * wtf/text/StringImpl.cpp:
+        (WTF::StringImpl::find): Fixed a case that was incorrectly using characters16
+        without first using is8Bit. Need to return later to remove use of deprecatedCharacters.
+
+        * wtf/unicode/UTF8.cpp:
+        (WTF::Unicode::equalUTF16WithUTF8): Added a case for when the UTF-16 characters
+        are ASCII. Also removed the aEnd argument, since the caller only calls this when the
+        lengths are equal.
+        (WTF::Unicode::equalLatin1WithUTF8): Added.
+        * wtf/unicode/UTF8.h: Updated as described above.
+
+2014-03-16  David Kilzer  <ddkilzer@apple.com>
+
+        Follow-up: Fix undefined behavior in WTF::equal() in StringImpl.h for i386/x86_64
+        <http://webkit.org/b/130283>
+        <rdar://problem/16281477>
+
+        Reviewed by Darin Adler.
+
+        * wtf/text/StringImpl.h:
+        (WTF::loadUnaligned): Restore behavior prior to r165681 for
+        compilers other than clang.
+
+2014-03-16  Darin Adler  <darin@apple.com>
+
+        Remove all uses of deprecatedCharacters from JavaScriptCore
+        https://bugs.webkit.org/show_bug.cgi?id=130304
+
+        Reviewed by Anders Carlsson.
+
+        * wtf/dtoa.h:
+        (WTF::parseDouble): Added an overload that takes a StringView.
+
+2014-03-15  Darin Adler  <darin@apple.com>
+
+        Remove all uses of deprecatedCharacters from WebKit2
+        https://bugs.webkit.org/show_bug.cgi?id=130197
+
+        Reviewed by Andreas Kling.
+
+        * wtf/text/StringView.h: Added new getCharactersWithUpconvert and upconvertedCharacters
+        functions. These are useful for callers that need UTF-16.
+
+2014-03-15  Darin Adler  <darin@apple.com>
+
+        Try to fix EFL build.
+
+        * wtf/ThreadingPthreads.cpp: (WTF::changeThreadPriority): Code in this function
+        was setting the priority of the current thread instead of the passed-in thread.
+        That was triggering an unused variable warning in the compiler used to build for
+        EFL. Fixed by using the thread handle instead of pthread_self.
+
+2014-03-15  Michael Saboff  <msaboff@apple.com>
+
+        It should be possible to adjust DFG and FTL compiler thread priorities
+        https://bugs.webkit.org/show_bug.cgi?id=130288
+
+        Reviewed by Filip Pizlo.
+
+        Added ability to change thread priorities relative to its current priority.
+        Created options to adjust the priority of the DFG and FTL compilation work thread
+        pools.  For two core systems, there might be three runnable threads, the main thread,
+        the DFG compilation thread and the FTL compilation thread.  With the same priority,
+        the scheduler is free to schedule whatever thread it wants.  By lowering the
+        compilation threads, the main thread can run.  Further tests may suggest better values
+        for the new options, priorityDeltaOfDFGCompilerThreads and priorityDeltaOfFTLCompilerThreads.
+
+        For a two-core device, this change has a net positive improvement of 1-3% across
+        SunSpider, Octane, Kraken and AsmBench.
+
+        * wtf/Threading.h:
+        * wtf/ThreadingPthreads.cpp:
+        (WTF::changeThreadPriority):
+        * wtf/ThreadingWin.cpp:
+        (WTF::changeThreadPriority):
+
+2014-03-15  David Kilzer  <ddkilzer@apple.com>
+
+        Fix undefined behavior in WTF::equal() in StringImpl.h for i386/x86_64
+        <http://webkit.org/b/130283>
+        <rdar://problem/16281477>
+
+        Reviewed by Geoff Garen.
+
+        * wtf/text/StringImpl.h:
+        (WTF::loadUnaligned): Add template method.
+        (WTF::equal): Switch to using loadUnaligned<>().
+
+2014-03-14  Mark Rowe  <mrowe@apple.com>
+
+        Fix the production build.
+
+        Don't rely on USE_INTERNAL_SDK being set for the Production configuration since UseInternalSDK.xcconfig won't
+        be at the expected relative path when working from installed source.
+
+        * Configurations/Base.xcconfig:
+
+2014-03-14  Maciej Stachowiak  <mjs@apple.com>
+
+        Replace "Apple Computer, Inc." with "Apple Inc." in copyright headers
+        https://bugs.webkit.org/show_bug.cgi?id=130276
+        <rdar://problem/16266927>
+        
+        Reviewed by Simon Fraser.
+
+        * wtf/ASCIICType.h:
+        * wtf/AVLTree.h:
+        * wtf/Assertions.cpp:
+        * wtf/Assertions.h:
+        * wtf/Atomics.cpp:
+        * wtf/Atomics.h:
+        * wtf/AutodrainedPool.h:
+        * wtf/AutodrainedPoolMac.mm:
+        * wtf/BoundsCheckedPointer.h:
+        * wtf/CryptographicUtilities.cpp:
+        * wtf/CryptographicallyRandomNumber.h:
+        * wtf/CurrentTime.h:
+        * wtf/Deque.h:
+        * wtf/DisallowCType.h:
+        * wtf/ExportMacros.h:
+        * wtf/FeatureDefines.h:
+        * wtf/GetPtr.h:
+        * wtf/HashIterators.h:
+        * wtf/Locker.h:
+        * wtf/MainThread.cpp:
+        * wtf/MainThread.h:
+        * wtf/MathExtras.h:
+        * wtf/MediaTime.cpp:
+        * wtf/MediaTime.h:
+        * wtf/MessageQueue.h:
+        * wtf/MetaAllocator.cpp:
+        * wtf/MetaAllocator.h:
+        * wtf/MetaAllocatorHandle.h:
+        * wtf/OSRandomSource.cpp:
+        * wtf/OSRandomSource.h:
+        * wtf/Platform.h:
+        * wtf/RandomNumber.cpp:
+        * wtf/RandomNumber.h:
+        * wtf/RandomNumberSeed.h:
+        * wtf/RedBlackTree.h:
+        * wtf/RunLoopTimer.h:
+        * wtf/RunLoopTimerCF.cpp:
+        * wtf/SchedulePair.h:
+        * wtf/SchedulePairCF.cpp:
+        * wtf/SchedulePairMac.mm:
+        * wtf/SegmentedVector.h:
+        * wtf/StackBounds.h:
+        * wtf/StaticConstructors.h:
+        * wtf/StringExtras.h:
+        * wtf/ThreadFunctionInvocation.h:
+        * wtf/ThreadSafeRefCounted.h:
+        * wtf/ThreadSpecific.h:
+        * wtf/Threading.h:
+        * wtf/ThreadingPrimitives.h:
+        * wtf/ThreadingPthreads.cpp:
+        * wtf/ThreadingWin.cpp:
+        * wtf/WTFThreadData.cpp:
+        * wtf/WTFThreadData.h:
+        * wtf/efl/OwnPtrEfl.cpp:
+        * wtf/mac/MainThreadMac.mm:
+        * wtf/text/AtomicStringHash.h:
+        * wtf/text/AtomicStringImpl.h:
+        * wtf/text/Base64.h:
+        * wtf/text/CString.cpp:
+        * wtf/text/CString.h:
+        * wtf/text/LChar.h:
+        * wtf/text/cf/StringCF.cpp:
+        * wtf/text/mac/StringMac.mm:
+        * wtf/unicode/CharacterNames.h:
+        * wtf/unicode/Collator.h:
+        * wtf/unicode/CollatorDefault.cpp:
+        * wtf/unicode/UTF8.cpp:
+        * wtf/unicode/UTF8.h:
+        * wtf/unicode/icu/CollatorICU.cpp:
+        * wtf/win/MainThreadWin.cpp:
+
+2014-03-14  Byungseon Shin  <sun.shin@lge.com>
+
+        Incorrect Date returned between March 1, 2034 and February 28, 2100.
+        https://bugs.webkit.org/show_bug.cgi?id=130123
+
+        Reviewed by Mark Lam.
+
+        Fix logic by using predefined Date APIs.
+
+        * wtf/DateMath.cpp:
+        (WTF::ymdhmsToSeconds):
+
+2014-03-12  Sergio Villar Senin  <svillar@igalia.com>
+
+        Rename DEFINE_STATIC_LOCAL to DEPRECATED_DEFINE_STATIC_LOCAL
+        https://bugs.webkit.org/show_bug.cgi?id=129612
+
+        Reviewed by Darin Adler.
+
+        For new code use static NeverDestroyed<T> instead.
+
+        * wtf/RunLoop.cpp:
+        (WTF::RunLoop::current):
+        * wtf/StdLibExtras.h:
+        * wtf/ThreadingPthreads.cpp:
+        (WTF::threadMapMutex):
+        (WTF::threadMap):
+        * wtf/efl/MainThreadEfl.cpp:
+        (WTF::pipeObject):
+        * wtf/text/StringStatics.cpp:
+        (WTF::StringImpl::empty):
+
+2014-03-13  Radu Stavila  <stavila@adobe.com>
+
+        Webkit not building on XCode 5.1 due to garbage collection no longer being supported
+        https://bugs.webkit.org/show_bug.cgi?id=130087
+
+        Reviewed by Mark Rowe.
+
+        Disable garbage collection on macosx when not using internal SDK.
+
+        * Configurations/Base.xcconfig:
+
 2014-03-12  Ryuan Choi  <ryuan.choi@samsung.com>
 
         [EFL] Enable Parallel GC

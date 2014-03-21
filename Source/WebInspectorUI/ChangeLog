@@ -1,3 +1,207 @@
+2014-03-18  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Make update-InspectorBackendCommands.rb only update legacy protocol versions
+        https://bugs.webkit.org/show_bug.cgi?id=130412
+
+        Reviewed by Timothy Hatcher.
+
+        Rename the script and simplify to only update Legacy protocol versions.
+
+        * Scripts/update-LegacyInspectorBackendCommands.rb: Renamed from Source/WebInspectorUI/Scripts/update-InspectorBackendCommands.rb.
+
+2014-03-18  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: sourceMapResourceLoaded expects statusCode parameter
+        https://bugs.webkit.org/show_bug.cgi?id=130377
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Models/SourceMapResource.js:
+
+2014-03-17  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Uncaught Exception in JSContext Inspector
+        https://bugs.webkit.org/show_bug.cgi?id=130368
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/DOMNodeDetailsSidebarPanel.js:
+        (WebInspector.DOMNodeDetailsSidebarPanel.prototype._accessibilitySupported):
+        Feature check DOMAgent as well as the function.
+
+2014-03-16  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: vended backend commands file should be generated as part of the build
+        https://bugs.webkit.org/show_bug.cgi?id=130110
+
+        Reviewed by Timothy Hatcher.
+
+        Copy the backend commands generated in other frameworks into our built products directory.
+
+        * Configurations/WebInspectorUIFramework.xcconfig: Set up variables so we can pull backend
+        commands files from the private headers directory of other frameworks.
+        * Scripts/copy-user-interface-resources.sh: Always ditto inspector backend commands.
+        * UserInterface/Protocol/InspectorJSBackendCommands.js: Removed.
+        * UserInterface/Protocol/InspectorWebBackendCommands.js: Removed.
+        * WebInspectorUI.vcxproj/WebInspectorUIPostBuild.cmd: Copy over the generated
+        backend commands files from the other frameworks.
+        * WebInspectorUI.xcodeproj/project.pbxproj: Add JavaScriptCore and WebCore as
+        framework dependencies so Xcode builds them first.
+
+2014-03-15  David Kilzer  <ddkilzer@apple.com>
+
+        [iOS] Define SYSTEM_VERSION_PREFIX consistently
+        <http://webkit.org/b/130293>
+        <rdar://problem/15926359>
+
+        Reviewed by Dan Bernstein.
+
+        * Configurations/Version.xcconfig:
+        (SYSTEM_VERSION_PREFIX): Sync with
+        Source/WebKit/mac/Version.xcconfig.
+
+2014-03-14  Maciej Stachowiak  <mjs@apple.com>
+
+        Replace "Apple Computer, Inc." with "Apple Inc." in copyright headers
+        https://bugs.webkit.org/show_bug.cgi?id=130276
+        <rdar://problem/16266927>
+
+        Reviewed by Simon Fraser.
+
+        * APPLE_IMAGES_LICENSE.rtf:
+        * UserInterface/Base/DOMUtilities.js:
+        * UserInterface/Models/Color.js:
+        * UserInterface/Views/ConsoleCommand.js:
+        * UserInterface/Views/ConsoleCommandResult.js:
+        * UserInterface/Views/ConsoleGroup.js:
+        * UserInterface/Views/ConsoleMessage.js:
+        * UserInterface/Views/ConsoleMessageImpl.js:
+        * UserInterface/Views/DOMTreeElement.js:
+        * UserInterface/Views/DOMTreeOutline.js:
+        * UserInterface/Views/DOMTreeUpdater.js:
+        * UserInterface/Views/GradientSlider.css:
+        * UserInterface/Views/GradientSlider.js:
+        * UserInterface/Views/TreeOutline.js:
+
+2014-03-14  Bem Jones-Bey  <bjonesbe@adobe.com>
+
+        [CSS Shapes] Add autocomplete for -webkit-shape-outside
+        https://bugs.webkit.org/show_bug.cgi?id=130268
+
+        Reviewed by Joseph Pecoraro.
+
+        Add completions for -webkit-shape-outside. Also add the box shapes to
+        the possible completions for clip-path.
+
+        * UserInterface/Models/CSSKeywordCompletions.js:
+
+2014-03-14  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Update shapes autocompletion suggestions
+        https://bugs.webkit.org/show_bug.cgi?id=130255
+
+        Reviewed by Bem Jones-Bey.
+
+        * UserInterface/Models/CSSKeywordCompletions.js:
+
+2014-03-14  James Craig  <jcraig@apple.com>
+
+        Web Inspector: AXI: Expose Accessibility Tree parent of the selected node
+        https://bugs.webkit.org/show_bug.cgi?id=129943
+
+        Reviewed by Timothy Hatcher.
+
+        Tests: inspector-protocol/dom/getAccessibilityPropertiesForNode.html
+
+        Web Accessibility Node Inspector now displays a link to the AX parent node,
+        because it's not a 1:1 match with the DOMNode parent.
+
+        * Localizations/en.lproj/localizedStrings.js: new "Parent" string.
+        * UserInterface/Base/DOMUtilities.js: Updating linkifyNodeReference to include role; adding new roleSelectorForNode method.
+        * UserInterface/Models/DOMNode.js: AX Parent support and adding role to DOMNode (will be exposed as AX Parent link and in overlays).
+        * UserInterface/Views/DOMNodeDetailsSidebarPanel.js: Accessibility parent node.
+
+2014-03-14  Diego Pino Garcia  <dpino@igalia.com>
+
+        Web Inspector: Resource and Frame saveIdentityToCookie should store URL hashes not URLs
+        https://bugs.webkit.org/show_bug.cgi?id=126833
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Models/Frame.js:
+        (WebInspector.Frame.prototype.saveIdentityToCookie):
+        * UserInterface/Models/Resource.js:
+        (WebInspector.Resource.prototype.saveIdentityToCookie):
+
+2014-03-13  James Craig  <jcraig@apple.com>
+
+        Web Inspector: AXI: Use loc strings for known aria-invalid types
+        https://bugs.webkit.org/show_bug.cgi?id=129952
+
+        Reviewed by Joseph Pecoraro.
+
+        Updating inspector-protocol and UI display values for @aria-invalid.
+
+        Test: inspector-protocol/dom/getAccessibilityPropertiesForNode.html
+
+        * Localizations/en.lproj/localizedStrings.js: "Grammar" and "Spelling" value strings.
+        * UserInterface/Protocol/InspectorWebBackendCommands.js: New enum for DOM.AccessibilityPropertiesInvalid
+        * UserInterface/Views/DOMNodeDetailsSidebarPanel.js: Use enum instead of passing value through directly.
+
+2014-03-13  Diego Pino Garcia  <dpino@igalia.com>
+
+        Web Inspector: AXI: Expose focused/focusable state in the Accessibility Node Inspector
+        https://bugs.webkit.org/show_bug.cgi?id=129779
+
+        Reviewed by Timothy Hatcher.
+
+        * Localizations/en.lproj/localizedStrings.js: Add label "Focused".
+        * UserInterface/Models/DOMNode.js: Set property "focused" in
+        accessibilityProperties.
+        (WebInspector.DOMNode.prototype.accessibilityProperties): Add row for
+        property "focused".
+        * UserInterface/Views/DOMNodeDetailsSidebarPanel.js:
+        (WebInspector.DOMNodeDetailsSidebarPanel):
+        (WebInspector.DOMNodeDetailsSidebarPanel.prototype._refreshAccessibility):
+        Refresh value of property "focused" in UI.
+
+2014-03-13  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Remove InspectorFrontendHost.loadResourceSynchronously
+        https://bugs.webkit.org/show_bug.cgi?id=130217
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Protocol/InspectorFrontendHostStub.js:
+
+2014-03-13  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Network.loadResource should include the response status code
+        https://bugs.webkit.org/show_bug.cgi?id=130216
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Controllers/SourceMapManager.js:
+        (WebInspector.SourceMapManager.prototype.sourceMapLoaded):
+        (WebInspector.SourceMapManager.prototype._loadAndParseSourceMap):
+        * UserInterface/Models/SourceMapResource.js:
+        (WebInspector.SourceMapResource.prototype.requestContentFromBackend.sourceMapResourceLoaded):
+        If the response is 400 or larger, treat it as an error / failed load.
+
+        * UserInterface/Protocol/InspectorWebBackendCommands.js:
+        Update protocol to provide status code parameter.
+
+2014-03-12  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: Remove unused callId parameter from evaluateInWebInspector
+        https://bugs.webkit.org/show_bug.cgi?id=129744
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Protocol/InspectorJSBackendCommands.js:
+        * UserInterface/Protocol/InspectorObserver.js:
+        (WebInspector.InspectorObserver.prototype.evaluateForTestInFrontend):
+
 2014-03-12  Joseph Pecoraro  <pecoraro@apple.com>
 
         Web Inspector: [iOS 6] uncaught exception attempting to use CSSAgent.getNamedFlowCollection

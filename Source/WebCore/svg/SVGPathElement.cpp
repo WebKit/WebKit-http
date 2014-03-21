@@ -213,7 +213,7 @@ PassRefPtr<SVGPathSegCurvetoQuadraticSmoothRel> SVGPathElement::createSVGPathSeg
 
 bool SVGPathElement::isSupportedAttribute(const QualifiedName& attrName)
 {
-    DEFINE_STATIC_LOCAL(HashSet<QualifiedName>, supportedAttributes, ());
+    DEPRECATED_DEFINE_STATIC_LOCAL(HashSet<QualifiedName>, supportedAttributes, ());
     if (supportedAttributes.isEmpty()) {
         SVGLangSpace::addSupportedAttributes(supportedAttributes);
         SVGExternalResourcesRequired::addSupportedAttributes(supportedAttributes);
@@ -284,7 +284,7 @@ void SVGPathElement::invalidateMPathDependencies()
     // <mpath> can only reference <path> but this dependency is not handled in
     // markForLayoutAndParentResourceInvalidation so we update any mpath dependencies manually.
     if (HashSet<SVGElement*>* dependencies = document().accessSVGExtensions()->setOfElementsReferencingTarget(this)) {
-        for (auto element : *dependencies) {
+        for (auto* element : *dependencies) {
             if (element->hasTagName(SVGNames::mpathTag))
                 toSVGMPathElement(element)->targetPathChanged();
         }

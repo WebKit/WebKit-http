@@ -13,7 +13,7 @@
  * THIS SOFTWARE IS PROVIDED BY APPLE INC. ``AS IS'' AND ANY
  * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE COMPUTER, INC. OR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE INC. OR
  * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
  * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
  * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
@@ -34,6 +34,8 @@
 #include <IOSurface/IOSurface.h>
 #endif
 
+OBJC_CLASS CALayer;
+
 // FIXME: Make PlatformCALayerRemote.cpp Objective-C so we can include WebLayer.h here and share the typedef.
 namespace WebCore {
 typedef Vector<WebCore::FloatRect, 5> RepaintRectList;
@@ -47,22 +49,21 @@ class RemoteLayerBackingStore {
 public:
     RemoteLayerBackingStore();
 
-    void ensureBackingStore(PlatformCALayerRemote*, WebCore::IntSize, float scale, bool acceleratesDrawing);
+    void ensureBackingStore(PlatformCALayerRemote*, WebCore::IntSize, float scale, bool acceleratesDrawing, bool isOpaque);
 
     void setNeedsDisplay(const WebCore::IntRect);
     void setNeedsDisplay();
 
     bool display();
 
-    RetainPtr<CGImageRef> image() const;
-#if USE(IOSURFACE)
-    RetainPtr<IOSurfaceRef> surface() const { return m_frontSurface; }
-#endif
     WebCore::IntSize size() const { return m_size; }
     float scale() const { return m_scale; }
     bool acceleratesDrawing() const { return m_acceleratesDrawing; }
+    bool isOpaque() const { return m_isOpaque; }
 
     PlatformCALayerRemote* layer() const { return m_layer; }
+
+    void applyBackingStoreToLayer(CALayer *);
 
     void encode(IPC::ArgumentEncoder&) const;
     static bool decode(IPC::ArgumentDecoder&, RemoteLayerBackingStore&);
@@ -78,13 +79,15 @@ public:
         return !!m_frontBuffer;
     }
 private:
-
     void drawInContext(WebCore::GraphicsContext&, CGImageRef frontImage);
+
+    RetainPtr<CGImageRef> createImageForFrontBuffer() const;
 
     PlatformCALayerRemote* m_layer;
 
     WebCore::IntSize m_size;
     float m_scale;
+    bool m_isOpaque;
 
     WebCore::Region m_dirtyRegion;
 

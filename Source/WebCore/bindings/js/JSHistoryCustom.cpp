@@ -10,7 +10,7 @@
  * 2.  Redistributions in binary form must reproduce the above copyright
  *     notice, this list of conditions and the following disclaimer in the
  *     documentation and/or other materials provided with the distribution.
- * 3.  Neither the name of Apple Computer, Inc. ("Apple") nor the names of
+ * 3.  Neither the name of Apple Inc. ("Apple") nor the names of
  *     its contributors may be used to endorse or promote products derived
  *     from this software without specific prior written permission.
  *
@@ -66,7 +66,7 @@ bool JSHistory::getOwnPropertySlotDelegate(ExecState* exec, PropertyName propert
 
     // Check for the few functions that we allow, even when called cross-domain.
     // Make these read-only / non-configurable to prevent writes via defineProperty.
-    const HashEntry* entry = JSHistoryPrototype::info()->propHashTable(exec)->entry(exec, propertyName);
+    const HashTableValue* entry = JSHistoryPrototype::info()->propHashTable(exec)->entry(exec, propertyName);
     if (entry) {
         // Allow access to back(), forward() and go() from any frame.
         if (entry->attributes() & JSC::Function) {

@@ -10,10 +10,10 @@
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
  *
- * THIS SOFTWARE IS PROVIDED BY APPLE COMPUTER, INC. ``AS IS'' AND ANY
+ * THIS SOFTWARE IS PROVIDED BY APPLE INC. ``AS IS'' AND ANY
  * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE COMPUTER, INC. OR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE INC. OR
  * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
  * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
  * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
@@ -58,7 +58,7 @@ public:
     const Vector<RefPtr<SpeechSynthesisVoice>>& getVoices();
     
     // Used in testing to use a mock platform synthesizer
-    void setPlatformSynthesizer(PassOwnPtr<PlatformSpeechSynthesizer>);
+    void setPlatformSynthesizer(std::unique_ptr<PlatformSpeechSynthesizer>);
     
 private:
     SpeechSynthesis();
@@ -87,8 +87,7 @@ private:
     bool userGestureRequiredForSpeechStart() const { return m_restrictions & RequireUserGestureForSpeechStartRestriction; }
     void removeBehaviorRestriction(BehaviorRestrictions restriction) { m_restrictions &= ~restriction; }
 #endif
-    
-    OwnPtr<PlatformSpeechSynthesizer> m_platformSpeechSynthesizer;
+    std::unique_ptr<PlatformSpeechSynthesizer> m_platformSpeechSynthesizer;
     Vector<RefPtr<SpeechSynthesisVoice>> m_voiceList;
     SpeechSynthesisUtterance* m_currentSpeechUtterance;
     Deque<RefPtr<SpeechSynthesisUtterance>> m_utteranceQueue;

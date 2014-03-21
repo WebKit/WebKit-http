@@ -199,11 +199,9 @@ template <typename DOMClass, typename WrapperClass> inline void uncacheWrapper(D
 template<class WrapperClass, class DOMClass> inline JSDOMWrapper* createWrapper(JSC::ExecState* exec, JSDOMGlobalObject* globalObject, DOMClass* node)
 {
     ASSERT(node);
-    ASSERT(!getCachedWrapper(currentWorld(exec), node));
+    ASSERT(!getCachedWrapper(globalObject->world(), node));
     WrapperClass* wrapper = WrapperClass::create(getDOMStructure<WrapperClass>(exec->vm(), globalObject), globalObject, node);
-    // FIXME: The entire function can be removed, once we fix caching.
-    // This function is a one-off hack to make Nodes cache in the right global object.
-    cacheWrapper(currentWorld(exec), node, wrapper);
+    cacheWrapper(globalObject->world(), node, wrapper);
     return wrapper;
 }
 
@@ -211,21 +209,21 @@ template<class WrapperClass, class DOMClass> inline JSC::JSValue wrap(JSC::ExecS
 {
     if (!domObject)
         return JSC::jsNull();
-    if (JSC::JSObject* wrapper = getCachedWrapper(currentWorld(exec), domObject))
+    if (JSC::JSObject* wrapper = getCachedWrapper(globalObject->world(), domObject))
         return wrapper;
     return createWrapper<WrapperClass>(exec, globalObject, domObject);
 }
 
-template<class WrapperClass, class DOMClass> inline JSC::JSValue getExistingWrapper(JSC::ExecState* exec, DOMClass* domObject)
+template<class WrapperClass, class DOMClass> inline JSC::JSValue getExistingWrapper(JSDOMGlobalObject* globalObject, DOMClass* domObject)
 {
     ASSERT(domObject);
-    return getCachedWrapper(currentWorld(exec), domObject);
+    return getCachedWrapper(globalObject->world(), domObject);
 }
 
 template<class WrapperClass, class DOMClass> inline JSC::JSValue createNewWrapper(JSC::ExecState* exec, JSDOMGlobalObject* globalObject, DOMClass* domObject)
 {
     ASSERT(domObject);
-    ASSERT(!getCachedWrapper(currentWorld(exec), domObject));
+    ASSERT(!getCachedWrapper(globalObject->world(), domObject));
     return createWrapper<WrapperClass>(exec, globalObject, domObject);
 }
 
@@ -348,11 +346,11 @@ inline JSC::JSValue toJS(JSC::ExecState* exec, JSDOMGlobalObject* globalObject, 
 {
     if (!buffer)
         return JSC::jsNull();
-    if (JSC::JSValue result = getExistingWrapper<JSC::JSArrayBuffer>(exec, buffer))
+    if (JSC::JSValue result = getExistingWrapper<JSC::JSArrayBuffer>(globalObject, buffer))
         return result;
     buffer->ref();
     JSC::JSArrayBuffer* wrapper = JSC::JSArrayBuffer::create(exec->vm(), globalObject->arrayBufferStructure(), buffer);
-    cacheWrapper(currentWorld(exec), buffer, wrapper);
+    cacheWrapper(globalObject->world(), buffer, wrapper);
     return wrapper;
 }
 
@@ -601,19 +599,19 @@ inline AtomicString propertyNameToAtomicString(JSC::PropertyName propertyName)
 }
 
 template <class ThisImp>
-inline const JSC::HashEntry* getStaticValueSlotEntryWithoutCaching(JSC::ExecState* exec, JSC::PropertyName propertyName)
+inline const JSC::HashTableValue* getStaticValueSlotEntryWithoutCaching(JSC::ExecState* exec, JSC::PropertyName propertyName)
 {
     const JSC::HashTable* table = ThisImp::info()->propHashTable(exec);
     if (!table)
         return getStaticValueSlotEntryWithoutCaching<typename ThisImp::Base>(exec, propertyName);
-    const JSC::HashEntry* entry = table->entry(exec, propertyName);
+    const JSC::HashTableValue* entry = table->entry(exec, propertyName);
     if (!entry) // not found, forward to parent
         return getStaticValueSlotEntryWithoutCaching<typename ThisImp::Base>(exec, propertyName);
     return entry;
 }
 
 template <>
-inline const JSC::HashEntry* getStaticValueSlotEntryWithoutCaching<JSDOMWrapper>(JSC::ExecState*, JSC::PropertyName)
+inline const JSC::HashTableValue* getStaticValueSlotEntryWithoutCaching<JSDOMWrapper>(JSC::ExecState*, JSC::PropertyName)
 {
     return 0;
 }
@@ -646,7 +644,11 @@ public:
     static bool shouldAllowAccessToDOMWindow(JSC::ExecState*, DOMWindow&, SecurityReportingOption = ReportSecurityError);
     static bool shouldAllowAccessToFrame(JSC::ExecState*, Frame*, SecurityReportingOption = ReportSecurityError);
 };
-
+    
+    
+#define makeDOMBindingsTypeErrorString(...) makeDOMBindingsTypeErrorStringInternal(__VA_ARGS__, (const char*)nullptr)
+String makeDOMBindingsTypeErrorStringInternal(const char*, ...);
+    
 } // namespace WebCore
 
 #endif // JSDOMBinding_h

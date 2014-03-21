@@ -12,10 +12,10 @@
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
  *
- * THIS SOFTWARE IS PROVIDED BY APPLE COMPUTER, INC. ``AS IS'' AND ANY
+ * THIS SOFTWARE IS PROVIDED BY APPLE INC. ``AS IS'' AND ANY
  * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE COMPUTER, INC. OR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE INC. OR
  * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
  * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
  * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
@@ -1321,8 +1321,8 @@ bool WebView::canHandleRequest(const WebCore::ResourceRequest& request)
 
 String WebView::standardUserAgentWithApplicationName(const String& applicationName)
 {
-    DEFINE_STATIC_LOCAL(String, osVersion, (windowsVersionForUAString()));
-    DEFINE_STATIC_LOCAL(String, webKitVersion, (webKitVersionString()));
+    DEPRECATED_DEFINE_STATIC_LOCAL(String, osVersion, (windowsVersionForUAString()));
+    DEPRECATED_DEFINE_STATIC_LOCAL(String, webKitVersion, (webKitVersionString()));
 
     return makeString("Mozilla/5.0 (", osVersion, ") AppleWebKit/", webKitVersion, " (KHTML, like Gecko)", applicationName.isEmpty() ? "" : " ", applicationName);
 }
@@ -3178,7 +3178,7 @@ HRESULT STDMETHODCALLTYPE WebView::setApplicationNameForUserAgent(
 HRESULT STDMETHODCALLTYPE WebView::applicationNameForUserAgent( 
     /* [retval][out] */ BSTR* applicationName)
 {
-    *applicationName = SysAllocStringLen(m_applicationName.deprecatedCharacters(), m_applicationName.length());
+    *applicationName = BString(m_applicationName).release();
     if (!*applicationName && m_applicationName.length())
         return E_OUTOFMEMORY;
     return S_OK;
@@ -3198,7 +3198,7 @@ HRESULT STDMETHODCALLTYPE WebView::customUserAgent(
     *userAgentString = 0;
     if (!m_userAgentOverridden)
         return S_OK;
-    *userAgentString = SysAllocStringLen(m_userAgentCustom.deprecatedCharacters(), m_userAgentCustom.length());
+    *userAgentString = BString(m_userAgentCustom).release();
     if (!*userAgentString && m_userAgentCustom.length())
         return E_OUTOFMEMORY;
     return S_OK;
@@ -3646,7 +3646,7 @@ HRESULT STDMETHODCALLTYPE WebView::groupName(
     if (!m_page)
         return S_OK;
     String groupNameString = m_page->groupName();
-    *groupName = SysAllocStringLen(groupNameString.deprecatedCharacters(), groupNameString.length());
+    *groupName = BString(groupNameString).release();
     if (!*groupName && groupNameString.length())
         return E_OUTOFMEMORY;
     return S_OK;
@@ -3756,7 +3756,7 @@ HRESULT STDMETHODCALLTYPE WebView::selectedText(
         return E_FAIL;
 
     String frameSelectedText = focusedFrame->editor().selectedText();
-    *text = SysAllocStringLen(frameSelectedText.deprecatedCharacters(), frameSelectedText.length());
+    *text = BString(frameSelectedText).release();
     if (!*text && frameSelectedText.length())
         return E_OUTOFMEMORY;
     return S_OK;
@@ -5052,6 +5052,11 @@ HRESULT WebView::notifyPreferencesChanged(IWebNotification* notification)
         return hr;
     settings.setMockScrollbarsEnabled(enabled);
 
+    hr = prefsPrivate->isInheritURIQueryComponentEnabled(&enabled);
+    if (FAILED(hr))
+        return hr;
+    settings.setEnableInheritURIQueryComponent(enabled);
+
     hr = prefsPrivate->screenFontSubstitutionEnabled(&enabled);
     if (FAILED(hr))
         return hr;
@@ -5827,7 +5832,7 @@ LRESULT WebView::onIMERequestReconvertString(Frame* targetFrame, RECONVERTSTRING
     reconvertString->dwStrLen = text.length();
     reconvertString->dwTargetStrLen = text.length();
     reconvertString->dwStrOffset = sizeof(RECONVERTSTRING);
-    memcpy(reconvertString + 1, text.deprecatedCharacters(), text.length() * sizeof(UChar));
+    StringView(text).getCharactersWithUpconvert(reinterpret_cast<UChar*>(reconvertString + 1));
     return totalSize;
 }
 

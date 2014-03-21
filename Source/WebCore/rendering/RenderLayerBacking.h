@@ -13,7 +13,7 @@
  * THIS SOFTWARE IS PROVIDED BY APPLE INC. ``AS IS'' AND ANY
  * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE COMPUTER, INC. OR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE INC. OR
  * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
  * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
  * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
@@ -177,6 +177,8 @@ public:
     virtual float deviceScaleFactor() const override;
     virtual float contentsScaleMultiplierForNewTiles(const GraphicsLayer*) const override;
 
+    virtual bool paintsOpaquelyAtNonIntegralScales(const GraphicsLayer*) const override;
+
     virtual float pageScaleFactor() const override;
     virtual void didCommitChangesForLayer(const GraphicsLayer*) const override;
     virtual bool getCurrentTransform(const GraphicsLayer*, TransformationMatrix&) const override;
@@ -248,10 +250,8 @@ private:
     GraphicsLayerPaintingPhase paintingPhaseForPrimaryLayer() const;
     
     LayoutSize contentOffsetInCompostingLayer() const;
-    // Result is transform origin in pixels.
-    FloatPoint3D computeTransformOrigin(const LayoutRect& borderBox) const;
-    // Result is perspective origin in pixels.
-    FloatPoint computePerspectiveOrigin(const LayoutRect& borderBox) const;
+    // Result is transform origin in device pixels.
+    FloatPoint3D computeTransformOriginForPainting(const LayoutRect& borderBox) const;
 
     void updateOpacity(const RenderStyle*);
     void updateTransform(const RenderStyle*);

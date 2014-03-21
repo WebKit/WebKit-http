@@ -293,6 +293,7 @@ void Internals::resetToConsistentState(Page* page)
     MediaSessionManager::sharedManager().resetRestrictions();
 #endif
 #if HAVE(ACCESSIBILITY)
+    AXObjectCache::setEnhancedUserInterfaceAccessibility(false);
     AXObjectCache::disableAccessibility();
 #endif
 }
@@ -667,7 +668,7 @@ void Internals::enableMockSpeechSynthesizer()
     if (!synthesis)
         return;
     
-    synthesis->setPlatformSynthesizer(PlatformSpeechSynthesizerMock::create(synthesis));
+    synthesis->setPlatformSynthesizer(std::make_unique<PlatformSpeechSynthesizerMock>(synthesis));
 }
 #endif
 
@@ -1198,8 +1199,8 @@ private:
 
 String Internals::parserMetaData(Deprecated::ScriptValue value)
 {
-    JSC::VM* vm = contextDocument()->vm();
-    JSC::ExecState* exec = vm->topCallFrame;
+    JSC::VM& vm = contextDocument()->vm();
+    JSC::ExecState* exec = vm.topCallFrame;
     JSC::JSValue code = value.jsValue();
     ScriptExecutable* executable;
 
@@ -2289,5 +2290,33 @@ void Internals::setMediaSessionRestrictions(const String& mediaTypeString, const
 
     MediaSessionManager::sharedManager().addRestriction(mediaType, restrictions);
 }
-
+    
+void Internals::postRemoteControlCommand(const String& commandString, ExceptionCode& ec)
+{
+    MediaSession::RemoteControlCommandType command;
+    
+    if (equalIgnoringCase(commandString, "Play"))
+        command = MediaSession::PlayCommand;
+    else if (equalIgnoringCase(commandString, "Pause"))
+        command = MediaSession::PauseCommand;
+    else if (equalIgnoringCase(commandString, "Stop"))
+        command = MediaSession::StopCommand;
+    else if (equalIgnoringCase(commandString, "TogglePlayPause"))
+        command = MediaSession::TogglePlayPauseCommand;
+    else if (equalIgnoringCase(commandString, "BeginSeekingBackward"))
+        command = MediaSession::BeginSeekingBackwardCommand;
+    else if (equalIgnoringCase(commandString, "EndSeekingBackward"))
+        command = MediaSession::EndSeekingBackwardCommand;
+    else if (equalIgnoringCase(commandString, "BeginSeekingForward"))
+        command = MediaSession::BeginSeekingForwardCommand;
+    else if (equalIgnoringCase(commandString, "EndSeekingForward"))
+        command = MediaSession::EndSeekingForwardCommand;
+    else {
+        ec = INVALID_ACCESS_ERR;
+        return;
+    }
+    
+    MediaSessionManager::sharedManager().didReceiveRemoteControlCommand(command);
+}
+    
 }

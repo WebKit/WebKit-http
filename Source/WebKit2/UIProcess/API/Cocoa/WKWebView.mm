@@ -39,22 +39,22 @@
 #import "WKBrowsingContextHandleInternal.h"
 #import "WKHistoryDelegatePrivate.h"
 #import "WKNSData.h"
+#import "WKNSURLExtras.h"
 #import "WKNavigationDelegate.h"
 #import "WKNavigationInternal.h"
 #import "WKPreferencesInternal.h"
 #import "WKProcessPoolInternal.h"
 #import "WKRemoteObjectRegistryInternal.h"
 #import "WKUIDelegate.h"
-#import "WKVisitedLinkProviderInternal.h"
 #import "WKWebViewConfigurationInternal.h"
 #import "WKWebViewContentProvider.h"
+#import "WebBackForwardList.h"
 #import "WebCertificateInfo.h"
 #import "WebContext.h"
-#import "WebBackForwardList.h"
 #import "WebPageGroup.h"
 #import "WebPageProxy.h"
 #import "WebProcessProxy.h"
-#import "WKNSURLExtras.h"
+#import "_WKVisitedLinkProviderInternal.h"
 #import <wtf/RetainPtr.h>
 
 #if PLATFORM(IOS)
@@ -134,8 +134,8 @@
     if (![_configuration preferences])
         [_configuration setPreferences:adoptNS([[WKPreferences alloc] init]).get()];
 
-    if (![_configuration visitedLinkProvider])
-        [_configuration setVisitedLinkProvider:adoptNS([[WKVisitedLinkProvider alloc] init]).get()];
+    if (![_configuration _visitedLinkProvider])
+        [_configuration _setVisitedLinkProvider:adoptNS([[_WKVisitedLinkProvider alloc] init]).get()];
 
 #if PLATFORM(IOS)
     if (![_configuration _contentProviderRegistry])
@@ -151,7 +151,7 @@
     if (WKWebView *relatedWebView = [_configuration _relatedWebView])
         webPageConfiguration.relatedPage = relatedWebView->_page.get();
 
-    webPageConfiguration.visitedLinkProvider = [_configuration visitedLinkProvider]->_visitedLinkProvider.get();
+    webPageConfiguration.visitedLinkProvider = [_configuration _visitedLinkProvider]->_visitedLinkProvider.get();
 
     RefPtr<WebKit::WebPageGroup> pageGroup;
     NSString *groupIdentifier = configuration._groupIdentifier;
@@ -385,6 +385,19 @@
     return [UIColor colorWithRed:(color.red() / 255.0) green:(color.green() / 255.0) blue:(color.blue() / 255.0) alpha:(color.alpha() / 255.0)];
 }
 
+- (void)_updateScrollViewBackground
+{
+    UIColor *pageExtendedBackgroundColor = [self pageExtendedBackgroundColor];
+
+    if ([_scrollView zoomScale] < [_scrollView minimumZoomScale]) {
+        CGFloat slope = 12;
+        CGFloat opacity = std::max(1 - slope * ([_scrollView minimumZoomScale] - [_scrollView zoomScale]), static_cast<CGFloat>(0));
+        pageExtendedBackgroundColor = [pageExtendedBackgroundColor colorWithAlphaComponent:opacity];
+    }
+
+    [_scrollView setBackgroundColor:pageExtendedBackgroundColor];
+}
+
 - (void)_didCommitLayerTree:(const WebKit::RemoteLayerTreeTransaction&)layerTreeTransaction
 {
     ASSERT(!_customContentView);
@@ -395,11 +408,8 @@
     [_scrollView setZoomEnabled:layerTreeTransaction.allowsUserScaling()];
     if (!layerTreeTransaction.scaleWasSetByUIProcess() && ![_scrollView isZooming] && ![_scrollView isZoomBouncing] && ![_scrollView _isAnimatingZoom])
         [_scrollView setZoomScale:layerTreeTransaction.pageScaleFactor()];
-
-    if (UIColor *pageExtendedBackgroundColor = [self pageExtendedBackgroundColor]) {
-        if ([self _backgroundExtendsBeyondPage])
-            [_scrollView setBackgroundColor:pageExtendedBackgroundColor];
-    }
+    
+    [self _updateScrollViewBackground];
 
     if (_gestureController)
         _gestureController->setRenderTreeSize(layerTreeTransaction.renderTreeSize());
@@ -409,7 +419,7 @@
         [_scrollView setContentOffset:CGPointMake(-inset.left, -inset.top)];
         _isWaitingForNewLayerTreeAfterDidCommitLoad = NO;
     }
-    
+
 }
 
 - (RetainPtr<CGImageRef>)_takeViewSnapshot
@@ -438,7 +448,7 @@
 
 - (void)_zoomToRect:(WebCore::FloatRect)targetRect atScale:(double)scale origin:(WebCore::FloatPoint)origin
 {
-    WebCore::FloatSize unobscuredContentSize = _page->unobscuredContentRect().size();
+    WebCore::FloatSize unobscuredContentSize([self _contentRectForUserInteraction].size);
     WebCore::FloatSize targetRectSizeAfterZoom = targetRect.size();
     targetRectSizeAfterZoom.scale(scale);
 
@@ -464,7 +474,7 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
 
 - (BOOL)_scrollToRect:(WebCore::FloatRect)targetRect origin:(WebCore::FloatPoint)origin minimumScrollDistance:(float)minimumScrollDistance
 {
-    WebCore::FloatRect unobscuredContentRect = _page->unobscuredContentRect();
+    WebCore::FloatRect unobscuredContentRect([self _contentRectForUserInteraction]);
     WebCore::FloatPoint unobscuredContentOffset = unobscuredContentRect.location();
     WebCore::FloatSize contentSize([_contentView bounds].size);
 
@@ -511,7 +521,7 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
 
     double currentScale = [_scrollView zoomScale];
 
-    WebCore::FloatSize unobscuredContentSize = _page->unobscuredContentRect().size();
+    WebCore::FloatSize unobscuredContentSize([self _contentRectForUserInteraction].size);
     double horizontalScale = unobscuredContentSize.width() * currentScale / targetRect.width();
     double verticalScale = unobscuredContentSize.height() * currentScale / targetRect.height();
 
@@ -600,6 +610,7 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
 
 - (void)scrollViewDidZoom:(UIScrollView *)scrollView
 {
+    [self _updateScrollViewBackground];
     [self _updateVisibleContentRects];
 }
 
@@ -622,6 +633,16 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
     [self _updateVisibleContentRects];
 }
 
+// Unobscured content rect where the user can interact. When the keyboard is up, this should be the area above or bellow the keyboard, wherever there is enough space.
+- (CGRect)_contentRectForUserInteraction
+{
+    // FIXME: handle split keyboard.
+    UIEdgeInsets obscuredInsets = _obscuredInsets;
+    obscuredInsets.bottom = std::max(_obscuredInsets.bottom, _keyboardVerticalOverlap);
+    CGRect unobscuredRect = UIEdgeInsetsInsetRect(self.bounds, obscuredInsets);
+    return [self convertRect:unobscuredRect toView:_contentView.get()];
+}
+
 - (void)_updateVisibleContentRects
 {
     if (![self usesStandardContentView])
@@ -630,9 +651,7 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
     CGRect fullViewRect = self.bounds;
     CGRect visibleRectInContentCoordinates = [self convertRect:fullViewRect toView:_contentView.get()];
 
-    UIEdgeInsets obscuredInsets = _obscuredInsets;
-    obscuredInsets.bottom = std::max(_obscuredInsets.bottom, _keyboardVerticalOverlap);
-    CGRect unobscuredRect = UIEdgeInsetsInsetRect(fullViewRect, obscuredInsets);
+    CGRect unobscuredRect = UIEdgeInsetsInsetRect(fullViewRect, _obscuredInsets);
     CGRect unobscuredRectInContentCoordinates = [self convertRect:unobscuredRect toView:_contentView.get()];
 
     CGFloat scaleFactor = [_scrollView zoomScale];
@@ -824,6 +843,16 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
     _page->setApplicationNameForUserAgent(applicationNameForUserAgent);
 }
 
+- (NSString *)_customUserAgent
+{
+    return _page->customUserAgent();
+}
+
+- (void)_setCustomUserAgent:(NSString *)_customUserAgent
+{
+    _page->setCustomUserAgent(_customUserAgent);
+}
+
 - (pid_t)_webProcessIdentifier
 {
     return _page->processIdentifier();
@@ -860,6 +889,22 @@ static void releaseNSData(unsigned char*, const void* data)
     [_configuration preferences]->_preferences->setPrivateBrowsingEnabled(privateBrowsingEnabled);
 }
 
+- (BOOL)_allowsRemoteInspection
+{
+#if ENABLE(REMOTE_INSPECTOR)
+    return _page->allowsRemoteInspection();
+#else
+    return NO;
+#endif
+}
+
+- (void)_setAllowsRemoteInspection:(BOOL)allow
+{
+#if ENABLE(REMOTE_INSPECTOR)
+    _page->setAllowsRemoteInspection(allow);
+#endif
+}
+
 static inline WebCore::LayoutMilestones layoutMilestones(_WKRenderingProgressEvents events)
 {
     WebCore::LayoutMilestones milestones = 0;
@@ -877,6 +922,116 @@ static inline WebCore::LayoutMilestones layoutMilestones(_WKRenderingProgressEve
 {
     _observedRenderingProgressEvents = observedRenderingProgressEvents;
     _page->listenForLayoutMilestones(layoutMilestones(observedRenderingProgressEvents));
+}
+
+- (void)_runJavaScriptInMainFrame:(NSString *)scriptString
+{
+    _page->runJavaScriptInMainFrame(scriptString, WebKit::ScriptValueCallback::create([](bool, WebKit::WebSerializedScriptValue*){}));
+}
+
+- (_WKPaginationMode)_paginationMode
+{
+    switch (_page->paginationMode()) {
+    case WebCore::Pagination::Unpaginated:
+        return _WKPaginationModeUnpaginated;
+    case WebCore::Pagination::LeftToRightPaginated:
+        return _WKPaginationModeLeftToRight;
+    case WebCore::Pagination::RightToLeftPaginated:
+        return _WKPaginationModeRightToLeft;
+    case WebCore::Pagination::TopToBottomPaginated:
+        return _WKPaginationModeTopToBottom;
+    case WebCore::Pagination::BottomToTopPaginated:
+        return _WKPaginationModeBottomToTop;
+    }
+
+    ASSERT_NOT_REACHED();
+    return _WKPaginationModeUnpaginated;
+}
+
+- (void)_setPaginationMode:(_WKPaginationMode)paginationMode
+{
+    WebCore::Pagination::Mode mode;
+    switch (paginationMode) {
+    case _WKPaginationModeUnpaginated:
+        mode = WebCore::Pagination::Unpaginated;
+        break;
+    case _WKPaginationModeLeftToRight:
+        mode = WebCore::Pagination::LeftToRightPaginated;
+        break;
+    case _WKPaginationModeRightToLeft:
+        mode = WebCore::Pagination::RightToLeftPaginated;
+        break;
+    case _WKPaginationModeTopToBottom:
+        mode = WebCore::Pagination::TopToBottomPaginated;
+        break;
+    case _WKPaginationModeBottomToTop:
+        mode = WebCore::Pagination::BottomToTopPaginated;
+        break;
+    default:
+        return;
+    }
+
+    _page->setPaginationMode(mode);
+}
+
+- (BOOL)_paginationBehavesLikeColumns
+{
+    return _page->paginationBehavesLikeColumns();
+}
+
+- (void)_setPaginationBehavesLikeColumns:(BOOL)behavesLikeColumns
+{
+    _page->setPaginationBehavesLikeColumns(behavesLikeColumns);
+}
+
+- (CGFloat)_pageLength
+{
+    return _page->pageLength();
+}
+
+- (void)_setPageLength:(CGFloat)pageLength
+{
+    _page->setPageLength(pageLength);
+}
+
+- (CGFloat)_gapBetweenPages
+{
+    return _page->gapBetweenPages();
+}
+
+- (void)_setGapBetweenPages:(CGFloat)gapBetweenPages
+{
+    _page->setGapBetweenPages(gapBetweenPages);
+}
+
+- (NSUInteger)_pageCount
+{
+    return _page->pageCount();
+}
+
+- (BOOL)_supportsTextZoom
+{
+    return _page->supportsTextZoom();
+}
+
+- (double)_textZoomFactor
+{
+    return _page->textZoomFactor();
+}
+
+- (void)_setTextZoomFactor:(double)zoomFactor
+{
+    _page->setTextZoomFactor(zoomFactor);
+}
+
+- (double)_pageZoomFactor
+{
+    return _page->pageZoomFactor();
+}
+
+- (void)_setPageZoomFactor:(double)zoomFactor
+{
+    _page->setPageZoomFactor(zoomFactor);
 }
 
 #pragma mark iOS-specific methods
@@ -940,6 +1095,35 @@ static inline WebCore::LayoutMilestones layoutMilestones(_WKRenderingProgressEve
     [self _updateVisibleContentRects];
 }
 
+- (void)_snapshotRect:(CGRect)rectInViewCoordinates intoImageOfWidth:(CGFloat)imageWidth completionHandler:(void(^)(CGImageRef))completionHandler
+{
+    CGRect snapshotRectInContentCoordinates = [self convertRect:rectInViewCoordinates toView:_contentView.get()];
+    CGFloat imageHeight = imageWidth / snapshotRectInContentCoordinates.size.width * snapshotRectInContentCoordinates.size.height;
+    CGSize imageSize = CGSizeMake(imageWidth, imageHeight);
+
+    void(^copiedCompletionHandler)(CGImageRef) = [completionHandler copy];
+    _page->takeSnapshot(WebCore::enclosingIntRect(snapshotRectInContentCoordinates), WebCore::expandedIntSize(WebCore::FloatSize(imageSize)), WebKit::SnapshotOptionsExcludeDeviceScaleFactor, [copiedCompletionHandler](bool, const WebKit::ShareableBitmap::Handle& imageHandle) {
+        if (imageHandle.isNull()) {
+            copiedCompletionHandler(nullptr);
+            [copiedCompletionHandler release];
+            return;
+        }
+
+        RefPtr<WebKit::ShareableBitmap> bitmap = WebKit::ShareableBitmap::create(imageHandle, WebKit::SharedMemory::ReadOnly);
+
+        if (!bitmap) {
+            copiedCompletionHandler(nullptr);
+            [copiedCompletionHandler release];
+            return;
+        }
+
+        RetainPtr<CGImageRef> cgImage;
+        cgImage = bitmap->makeCGImage();
+        copiedCompletionHandler(cgImage.get());
+        [copiedCompletionHandler release];
+    });
+}
+
 #else
 
 #pragma mark - OS X-specific methods
@@ -951,6 +1135,16 @@ static inline WebCore::LayoutMilestones layoutMilestones(_WKRenderingProgressEve
         return nil;
 
     return nsColor(color);
+}
+
+- (BOOL)_drawsTransparentBackground
+{
+    return _page->drawsTransparentBackground();
+}
+
+- (void)_setDrawsTransparentBackground:(BOOL)drawsTransparentBackground
+{
+    _page->setDrawsTransparentBackground(drawsTransparentBackground);
 }
 
 #endif

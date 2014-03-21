@@ -13,7 +13,7 @@
  * THIS SOFTWARE IS PROVIDED BY APPLE INC. ``AS IS'' AND ANY
  * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE COMPUTER, INC. OR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE INC. OR
  * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
  * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
  * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
@@ -839,17 +839,15 @@ void RenderLayerBacking::updateGraphicsLayerGeometry()
     }
     
     if (m_owningLayer.hasTransform()) {
-        const LayoutRect borderBox = toRenderBox(renderer()).pixelSnappedBorderBoxRect();
-
+        // Update properties that depend on layer dimensions.
+        FloatPoint3D transformOrigin = computeTransformOriginForPainting(toRenderBox(renderer()).borderBoxRect());
         // Get layout bounds in the coords of compAncestor to match relativeCompositingBounds.
-        LayoutRect layerBounds(offsetFromParent, borderBox.size());
-
-        // Update properties that depend on layer dimensions
-        FloatPoint3D transformOrigin = computeTransformOrigin(borderBox);
+        FloatPoint layerOffset = roundedForPainting(offsetFromParent, deviceScaleFactor);
         // Compute the anchor point, which is in the center of the renderer box unless transform-origin is set.
-        FloatPoint3D anchor(enclosingRelativeCompositingBounds.width() != 0.0f ? ((layerBounds.x() - enclosingRelativeCompositingBounds.x()) + transformOrigin.x())
-            / enclosingRelativeCompositingBounds.width() : 0.5f, enclosingRelativeCompositingBounds.height() != 0.0f ? ((layerBounds.y() - enclosingRelativeCompositingBounds.y())
-            + transformOrigin.y()) / enclosingRelativeCompositingBounds.height() : 0.5f, transformOrigin.z());
+        FloatPoint3D anchor(enclosingRelativeCompositingBounds.width() ? ((layerOffset.x() - enclosingRelativeCompositingBounds.x()) + transformOrigin.x())
+            / enclosingRelativeCompositingBounds.width() : 0.5, enclosingRelativeCompositingBounds.height() ? ((layerOffset.y() - enclosingRelativeCompositingBounds.y())
+            + transformOrigin.y()) / enclosingRelativeCompositingBounds.height() : 0.5, transformOrigin.z());
+
         if (m_contentsContainmentLayer)
             m_contentsContainmentLayer->setAnchorPoint(anchor);
         else
@@ -873,9 +871,9 @@ void RenderLayerBacking::updateGraphicsLayerGeometry()
                 m_graphicsLayer->setChildrenTransform(TransformationMatrix());
         }
     } else {
-        m_graphicsLayer->setAnchorPoint(FloatPoint3D(0.5f, 0.5f, 0));
+        m_graphicsLayer->setAnchorPoint(FloatPoint3D(0.5, 0.5, 0));
         if (m_contentsContainmentLayer)
-            m_contentsContainmentLayer->setAnchorPoint(FloatPoint3D(0.5f, 0.5f, 0));
+            m_contentsContainmentLayer->setAnchorPoint(FloatPoint3D(0.5, 0.5, 0));
     }
 
     if (m_foregroundLayer) {
@@ -1743,7 +1741,7 @@ bool RenderLayerBacking::isSimpleContainerCompositingLayer() const
         
         // Now look at the body's renderer.
         HTMLElement* body = renderer().document().body();
-        RenderObject* bodyObject = (body && body->hasLocalName(bodyTag)) ? body->renderer() : 0;
+        RenderObject* bodyObject = (body && body->hasTagName(bodyTag)) ? body->renderer() : 0;
         if (!bodyObject)
             return false;
         
@@ -1916,28 +1914,15 @@ void RenderLayerBacking::updateImageContents()
     image->startAnimation();
 }
 
-FloatPoint3D RenderLayerBacking::computeTransformOrigin(const LayoutRect& borderBox) const
+FloatPoint3D RenderLayerBacking::computeTransformOriginForPainting(const LayoutRect& borderBox) const
 {
     const RenderStyle& style = renderer().style();
+    float deviceScaleFactor = renderer().document().deviceScaleFactor();
 
     FloatPoint3D origin;
-    origin.setX(floatValueForLength(style.transformOriginX(), borderBox.width()));
-    origin.setY(floatValueForLength(style.transformOriginY(), borderBox.height()));
+    origin.setX(roundToDevicePixel(floatValueForLength(style.transformOriginX(), borderBox.width()), deviceScaleFactor));
+    origin.setY(roundToDevicePixel(floatValueForLength(style.transformOriginY(), borderBox.height()), deviceScaleFactor));
     origin.setZ(style.transformOriginZ());
-
-    return origin;
-}
-
-FloatPoint RenderLayerBacking::computePerspectiveOrigin(const LayoutRect& borderBox) const
-{
-    const RenderStyle& style = renderer().style();
-
-    float boxWidth = borderBox.width();
-    float boxHeight = borderBox.height();
-
-    FloatPoint origin;
-    origin.setX(floatValueForLength(style.perspectiveOriginX(), boxWidth));
-    origin.setY(floatValueForLength(style.perspectiveOriginY(), boxHeight));
 
     return origin;
 }
@@ -2255,6 +2240,11 @@ float RenderLayerBacking::deviceScaleFactor() const
 float RenderLayerBacking::contentsScaleMultiplierForNewTiles(const GraphicsLayer* layer) const
 {
     return compositor().contentsScaleMultiplierForNewTiles(layer);
+}
+
+bool RenderLayerBacking::paintsOpaquelyAtNonIntegralScales(const GraphicsLayer*) const
+{
+    return m_isMainFrameRenderViewLayer;
 }
 
 void RenderLayerBacking::didCommitChangesForLayer(const GraphicsLayer* layer) const

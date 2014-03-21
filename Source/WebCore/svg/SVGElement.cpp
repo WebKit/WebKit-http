@@ -118,6 +118,7 @@ static NEVER_INLINE void populateAttributeNameToCSSPropertyIDMap(HashMap<AtomicS
         &mask_typeAttr,
         &opacityAttr,
         &overflowAttr,
+        &paint_orderAttr,
         &pointer_eventsAttr,
         &shape_renderingAttr,
         &stop_colorAttr,
@@ -195,6 +196,7 @@ static NEVER_INLINE void populateAttributeNameToAnimatedPropertyTypeMap(HashMap<
         { mask_typeAttr, AnimatedString },
         { opacityAttr, AnimatedNumber },
         { overflowAttr, AnimatedString },
+        { paint_orderAttr, AnimatedString },
         { pointer_eventsAttr, AnimatedString },
         { shape_renderingAttr, AnimatedString },
         { stop_colorAttr, AnimatedColor },
@@ -400,7 +402,7 @@ void SVGElement::removeInstanceMapping(SVGElementInstance* instance)
 const HashSet<SVGElementInstance*>& SVGElement::instancesForElement() const
 {
     if (!m_svgRareData) {
-        DEFINE_STATIC_LOCAL(HashSet<SVGElementInstance*>, emptyInstances, ());
+        DEPRECATED_DEFINE_STATIC_LOCAL(HashSet<SVGElementInstance*>, emptyInstances, ());
         return emptyInstances;
     }
     return m_svgRareData->elementInstances();
@@ -696,7 +698,7 @@ void SVGElement::finishParsingChildren()
 
 bool SVGElement::childShouldCreateRenderer(const Node& child) const
 {
-    DEFINE_STATIC_LOCAL(HashSet<QualifiedName>, invalidTextContent, ());
+    DEPRECATED_DEFINE_STATIC_LOCAL(HashSet<QualifiedName>, invalidTextContent, ());
 
     if (invalidTextContent.isEmpty()) {
         invalidTextContent.add(SVGNames::textPathTag);
@@ -768,18 +770,12 @@ void SVGElement::synchronizeSystemLanguage(SVGElement* contextElement)
     contextElement->synchronizeSystemLanguage();
 }
 
-PassRefPtr<RenderStyle> SVGElement::customStyleForRenderer()
+PassRefPtr<RenderStyle> SVGElement::customStyleForRenderer(RenderStyle& parentStyle)
 {
     if (!correspondingElement())
-        return document().ensureStyleResolver().styleForElement(this);
+        return document().ensureStyleResolver().styleForElement(this, &parentStyle);
 
-    RenderStyle* style = 0;
-    if (Element* parent = parentOrShadowHostElement()) {
-        if (auto renderer = parent->renderer())
-            style = &renderer->style();
-    }
-
-    return document().ensureStyleResolver().styleForElement(correspondingElement(), style, DisallowStyleSharing);
+    return document().ensureStyleResolver().styleForElement(correspondingElement(), &parentStyle, DisallowStyleSharing);
 }
 
 MutableStyleProperties* SVGElement::animatedSMILStyleProperties() const

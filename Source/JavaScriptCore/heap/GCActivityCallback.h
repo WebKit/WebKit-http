@@ -10,7 +10,7 @@
  * 2.  Redistributions in binary form must reproduce the above copyright
  *     notice, this list of conditions and the following disclaimer in the
  *     documentation and/or other materials provided with the distribution. 
- * 3.  Neither the name of Apple Computer, Inc. ("Apple") nor the names of
+ * 3.  Neither the name of Apple Inc. ("Apple") nor the names of
  *     its contributors may be used to endorse or promote products derived
  *     from this software without specific prior written permission. 
  *
@@ -31,7 +31,7 @@
 
 #include "HeapTimer.h"
 #include <wtf/OwnPtr.h>
-#include <wtf/PassOwnPtr.h>
+#include <wtf/PassRefPtr.h>
 
 #if USE(CF)
 #include <CoreFoundation/CoreFoundation.h>
@@ -41,28 +41,44 @@ namespace JSC {
 
 class Heap;
 
-class GCActivityCallback : public HeapTimer {
+class JS_EXPORT_PRIVATE GCActivityCallback : public HeapTimer, public ThreadSafeRefCounted<GCActivityCallback> {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    virtual void didAllocate(size_t) { }
-    virtual void willCollect() { }
-    virtual void cancel() { }
+    static PassRefPtr<GCActivityCallback> createFullTimer(Heap*);
+    static PassRefPtr<GCActivityCallback> createEdenTimer(Heap*);
+
+    GCActivityCallback(Heap*);
+
+    virtual void doWork() override;
+
+    virtual void doCollection() = 0;
+
+    virtual void didAllocate(size_t);
+    virtual void willCollect();
+    virtual void cancel();
     bool isEnabled() const { return m_enabled; }
     void setEnabled(bool enabled) { m_enabled = enabled; }
 
     static bool s_shouldCreateGCTimer;
 
 protected:
+    virtual double lastGCLength() = 0;
+    virtual double gcTimeSlice(size_t bytes) = 0;
+    virtual double deathRate() = 0;
+
 #if USE(CF)
     GCActivityCallback(VM* vm, CFRunLoopRef runLoop)
         : HeapTimer(vm, runLoop)
         , m_enabled(true)
+        , m_delay(s_decade)
     {
     }
 #elif PLATFORM(EFL)
+    static constexpr double s_hour = 3600;
     GCActivityCallback(VM* vm, bool flag)
         : HeapTimer(vm)
         , m_enabled(flag)
+        , m_delay(s_hour)
     {
     }
 #else
@@ -74,23 +90,10 @@ protected:
 #endif
 
     bool m_enabled;
-};
-
-class DefaultGCActivityCallback : public GCActivityCallback {
-public:
-    static PassOwnPtr<DefaultGCActivityCallback> create(Heap*);
-
-    DefaultGCActivityCallback(Heap*);
-
-    JS_EXPORT_PRIVATE virtual void didAllocate(size_t) override;
-    JS_EXPORT_PRIVATE virtual void willCollect() override;
-    JS_EXPORT_PRIVATE virtual void cancel() override;
-
-    JS_EXPORT_PRIVATE virtual void doWork() override;
 
 #if USE(CF)
 protected:
-    JS_EXPORT_PRIVATE DefaultGCActivityCallback(Heap*, CFRunLoopRef);
+    GCActivityCallback(Heap*, CFRunLoopRef);
 #endif
 #if USE(CF) || PLATFORM(EFL)
 protected:
@@ -102,11 +105,6 @@ private:
 #endif
 };
 
-inline PassOwnPtr<DefaultGCActivityCallback> DefaultGCActivityCallback::create(Heap* heap)
-{
-    return GCActivityCallback::s_shouldCreateGCTimer ? adoptPtr(new DefaultGCActivityCallback(heap)) : nullptr;
-}
-
-}
+} // namespace JSC
 
 #endif

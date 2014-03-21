@@ -240,7 +240,7 @@ bool RemoteLayerTreeTransaction::LayerProperties::decode(IPC::ArgumentDecoder& d
         if (!decoder.decode(result.children))
             return false;
 
-        for (auto layerID : result.children) {
+        for (auto& layerID : result.children) {
             if (!layerID)
                 return false;
         }
@@ -455,7 +455,7 @@ bool RemoteLayerTreeTransaction::decode(IPC::ArgumentDecoder& decoder, RemoteLay
     if (!decoder.decode(result.m_destroyedLayerIDs))
         return false;
 
-    for (auto layerID : result.m_destroyedLayerIDs) {
+    for (auto& layerID : result.m_destroyedLayerIDs) {
         if (!layerID)
             return false;
     }
@@ -534,6 +534,7 @@ public:
     RemoteLayerTreeTextStream& operator<<(FloatRect);
     RemoteLayerTreeTextStream& operator<<(const Vector<WebCore::GraphicsLayer::PlatformLayerID>& layers);
     RemoteLayerTreeTextStream& operator<<(const FilterOperations&);
+    RemoteLayerTreeTextStream& operator<<(const RemoteLayerBackingStore& backingStore);
 
     void increaseIndent() { ++m_indent; }
     void decreaseIndent() { --m_indent; ASSERT(m_indent >= 0); }
@@ -668,6 +669,18 @@ RemoteLayerTreeTextStream& RemoteLayerTreeTextStream::operator<<(const Vector<Gr
     return ts;
 }
 
+RemoteLayerTreeTextStream& RemoteLayerTreeTextStream::operator<<(const RemoteLayerBackingStore& backingStore)
+{
+    RemoteLayerTreeTextStream& ts = *this;
+    ts << backingStore.size();
+    ts << " scale=" << backingStore.scale();
+    if (backingStore.isOpaque())
+        ts << " opaque";
+    if (backingStore.acceleratesDrawing())
+        ts << " accelerated";
+    return ts;
+}
+
 void RemoteLayerTreeTextStream::writeIndent()
 {
     for (int i = 0; i < m_indent; ++i)
@@ -699,7 +712,7 @@ static void dumpChangedLayers(RemoteLayerTreeTextStream& ts, const RemoteLayerTr
     copyKeysToVector(changedLayerProperties, layerIDs);
     std::sort(layerIDs.begin(), layerIDs.end());
 
-    for (auto layerID : layerIDs) {
+    for (auto& layerID : layerIDs) {
         const RemoteLayerTreeTransaction::LayerProperties& layerProperties = *changedLayerProperties.get(layerID);
 
         ts << "\n";
@@ -776,8 +789,12 @@ static void dumpChangedLayers(RemoteLayerTreeTextStream& ts, const RemoteLayerTr
         if (layerProperties.changedProperties & RemoteLayerTreeTransaction::TimeOffsetChanged)
             dumpProperty<double>(ts, "timeOffset", layerProperties.timeOffset);
 
-        if (layerProperties.changedProperties & RemoteLayerTreeTransaction::BackingStoreChanged)
-            dumpProperty<IntSize>(ts, "backingStore", layerProperties.backingStore ? layerProperties.backingStore->size() : IntSize());
+        if (layerProperties.changedProperties & RemoteLayerTreeTransaction::BackingStoreChanged) {
+            if (const RemoteLayerBackingStore* backingStore = layerProperties.backingStore.get())
+                dumpProperty<RemoteLayerBackingStore>(ts, "backingStore", *backingStore);
+            else
+                dumpProperty<String>(ts, "backingStore", "removed");
+        }
 
         if (layerProperties.changedProperties & RemoteLayerTreeTransaction::FiltersChanged)
             dumpProperty<FilterOperations>(ts, "filters", layerProperties.filters ? *layerProperties.filters : FilterOperations());

@@ -44,7 +44,9 @@
 WK_API_CLASS
 @interface WKWebProcessPlugInController : NSObject
 
-@property(readonly) WKConnection *connection;
+@property (readonly) WKConnection *connection;
+
+@property (readonly) id parameters;
 
 @end
 

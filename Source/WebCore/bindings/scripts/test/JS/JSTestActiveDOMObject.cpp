@@ -35,22 +35,34 @@ namespace WebCore {
 
 /* Hash table */
 
+static const struct CompactHashIndex JSTestActiveDOMObjectTableIndex[4] = {
+    { 1, -1 },
+    { 0, -1 },
+    { -1, -1 },
+    { -1, -1 },
+};
+
+
 static const HashTableValue JSTestActiveDOMObjectTableValues[] =
 {
     { "constructor", DontEnum | ReadOnly, NoIntrinsic, (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestActiveDOMObjectConstructor), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) },
     { "excitingAttr", DontDelete | ReadOnly | CustomAccessor, NoIntrinsic, (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestActiveDOMObjectExcitingAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) },
-    { 0, 0, NoIntrinsic, 0, 0 }
 };
 
-static const HashTable JSTestActiveDOMObjectTable = { 4, 3, true, JSTestActiveDOMObjectTableValues, 0 };
+static const HashTable JSTestActiveDOMObjectTable = { 2, 3, true, JSTestActiveDOMObjectTableValues, 0, JSTestActiveDOMObjectTableIndex };
 /* Hash table for constructor */
+
+static const struct CompactHashIndex JSTestActiveDOMObjectConstructorTableIndex[1] = {
+    { -1, -1 },
+};
+
 
 static const HashTableValue JSTestActiveDOMObjectConstructorTableValues[] =
 {
     { 0, 0, NoIntrinsic, 0, 0 }
 };
 
-static const HashTable JSTestActiveDOMObjectConstructorTable = { 1, 0, false, JSTestActiveDOMObjectConstructorTableValues, 0 };
+static const HashTable JSTestActiveDOMObjectConstructorTable = { 0, 0, false, JSTestActiveDOMObjectConstructorTableValues, 0, JSTestActiveDOMObjectConstructorTableIndex };
 const ClassInfo JSTestActiveDOMObjectConstructor::s_info = { "TestActiveDOMObjectConstructor", &Base::s_info, &JSTestActiveDOMObjectConstructorTable, 0, CREATE_METHOD_TABLE(JSTestActiveDOMObjectConstructor) };
 
 JSTestActiveDOMObjectConstructor::JSTestActiveDOMObjectConstructor(Structure* structure, JSDOMGlobalObject* globalObject)
@@ -73,14 +85,21 @@ bool JSTestActiveDOMObjectConstructor::getOwnPropertySlot(JSObject* object, Exec
 
 /* Hash table for prototype */
 
+static const struct CompactHashIndex JSTestActiveDOMObjectPrototypeTableIndex[4] = {
+    { 0, -1 },
+    { 1, -1 },
+    { -1, -1 },
+    { -1, -1 },
+};
+
+
 static const HashTableValue JSTestActiveDOMObjectPrototypeTableValues[] =
 {
     { "excitingFunction", JSC::Function, NoIntrinsic, (intptr_t)static_cast<NativeFunction>(jsTestActiveDOMObjectPrototypeFunctionExcitingFunction), (intptr_t) (1) },
     { "postMessage", JSC::Function, NoIntrinsic, (intptr_t)static_cast<NativeFunction>(jsTestActiveDOMObjectPrototypeFunctionPostMessage), (intptr_t) (1) },
-    { 0, 0, NoIntrinsic, 0, 0 }
 };
 
-static const HashTable JSTestActiveDOMObjectPrototypeTable = { 4, 3, false, JSTestActiveDOMObjectPrototypeTableValues, 0 };
+static const HashTable JSTestActiveDOMObjectPrototypeTable = { 2, 3, false, JSTestActiveDOMObjectPrototypeTableValues, 0, JSTestActiveDOMObjectPrototypeTableIndex };
 const ClassInfo JSTestActiveDOMObjectPrototype::s_info = { "TestActiveDOMObjectPrototype", &Base::s_info, &JSTestActiveDOMObjectPrototypeTable, 0, CREATE_METHOD_TABLE(JSTestActiveDOMObjectPrototype) };
 
 JSObject* JSTestActiveDOMObjectPrototype::self(VM& vm, JSGlobalObject* globalObject)
@@ -141,7 +160,7 @@ EncodedJSValue jsTestActiveDOMObjectExcitingAttr(ExecState* exec, JSObject* slot
             scriptExecutionContext->addConsoleMessage(MessageSource::JS, MessageLevel::Error, String("Deprecated attempt to access property 'excitingAttr' on a non-TestActiveDOMObject object."));
             return JSValue::encode(jsUndefined());
         }
-        return throwVMTypeError(exec);
+        return throwVMTypeError(exec, makeDOMBindingsTypeErrorString("The ", "TestActiveDOMObject", ".", "excitingAttr", " getter can only be used on instances of ", "TestActiveDOMObject"));
     }
     if (!BindingSecurity::shouldAllowAccessToDOMWindow(exec, castedThis->impl()))
         return JSValue::encode(jsUndefined());
@@ -174,7 +193,7 @@ EncodedJSValue JSC_HOST_CALL jsTestActiveDOMObjectPrototypeFunctionExcitingFunct
     JSValue thisValue = exec->hostThisValue();
     JSTestActiveDOMObject* castedThis = jsDynamicCast<JSTestActiveDOMObject*>(thisValue);
     if (UNLIKELY(!castedThis))
-        return throwVMTypeError(exec);
+        return throwVMTypeError(exec, makeDOMBindingsTypeErrorString("Can only call ", "TestActiveDOMObject", ".", "excitingFunction", " on instances of ", "TestActiveDOMObject"));
     ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestActiveDOMObject::info());
     if (!BindingSecurity::shouldAllowAccessToDOMWindow(exec, castedThis->impl()))
         return JSValue::encode(jsUndefined());
@@ -193,7 +212,7 @@ EncodedJSValue JSC_HOST_CALL jsTestActiveDOMObjectPrototypeFunctionPostMessage(E
     JSValue thisValue = exec->hostThisValue();
     JSTestActiveDOMObject* castedThis = jsDynamicCast<JSTestActiveDOMObject*>(thisValue);
     if (UNLIKELY(!castedThis))
-        return throwVMTypeError(exec);
+        return throwVMTypeError(exec, makeDOMBindingsTypeErrorString("Can only call ", "TestActiveDOMObject", ".", "postMessage", " on instances of ", "TestActiveDOMObject"));
     ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestActiveDOMObject::info());
     TestActiveDOMObject& impl = castedThis->impl();
     if (exec->argumentCount() < 1)
@@ -214,7 +233,7 @@ bool JSTestActiveDOMObjectOwner::isReachableFromOpaqueRoots(JSC::Handle<JSC::Unk
 
 void JSTestActiveDOMObjectOwner::finalize(JSC::Handle<JSC::Unknown> handle, void* context)
 {
-    JSTestActiveDOMObject* jsTestActiveDOMObject = jsCast<JSTestActiveDOMObject*>(handle.get().asCell());
+    JSTestActiveDOMObject* jsTestActiveDOMObject = jsCast<JSTestActiveDOMObject*>(handle.slot()->asCell());
     DOMWrapperWorld& world = *static_cast<DOMWrapperWorld*>(context);
     uncacheWrapper(world, &jsTestActiveDOMObject->impl(), jsTestActiveDOMObject);
     jsTestActiveDOMObject->releaseImpl();
@@ -232,7 +251,7 @@ JSC::JSValue toJS(JSC::ExecState* exec, JSDOMGlobalObject* globalObject, TestAct
 {
     if (!impl)
         return jsNull();
-    if (JSValue result = getExistingWrapper<JSTestActiveDOMObject>(exec, impl))
+    if (JSValue result = getExistingWrapper<JSTestActiveDOMObject>(globalObject, impl))
         return result;
 
 #if ENABLE(BINDING_INTEGRITY)

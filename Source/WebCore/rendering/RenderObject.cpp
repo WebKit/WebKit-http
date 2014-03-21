@@ -63,6 +63,7 @@
 #include "TransformState.h"
 #include "htmlediting.h"
 #include <algorithm>
+#include <stdio.h>
 #include <wtf/RefCountedLeakCounter.h>
 
 #if PLATFORM(IOS)
@@ -525,7 +526,7 @@ RenderFlowThread* RenderObject::locateFlowThreadContainingBlock() const
 
     // See if we have the thread cached because we're in the middle of layout.
     RenderFlowThread* flowThread = view().flowThreadController().currentRenderFlowThread();
-    if (flowThread)
+    if (flowThread && (flowThreadState() == flowThread->flowThreadState()))
         return flowThread;
     
     // Not in the middle of layout so have to find the thread the slow way.
@@ -1618,7 +1619,7 @@ void RenderObject::mapLocalToContainer(const RenderLayerModelObject* repaintCont
     if (!columnOffset.isZero())
         transformState.move(columnOffset);
 
-    if (o->hasOverflowClip())
+    if (o->isBox())
         transformState.move(-toRenderBox(o)->scrolledContentOffset());
 
     o->mapLocalToContainer(repaintContainer, transformState, mode, wasFixed);
@@ -1634,7 +1635,7 @@ const RenderObject* RenderObject::pushMappingToContainer(const RenderLayerModelO
 
     // FIXME: this should call offsetFromContainer to share code, but I'm not sure it's ever called.
     LayoutSize offset;
-    if (container->hasOverflowClip())
+    if (container->isBox())
         offset = -toRenderBox(container)->scrolledContentOffset();
 
     geometryMap.push(this, offset, hasColumns());
@@ -1647,7 +1648,7 @@ void RenderObject::mapAbsoluteToLocalPoint(MapCoordinatesFlags mode, TransformSt
     auto o = parent();
     if (o) {
         o->mapAbsoluteToLocalPoint(mode, transformState);
-        if (o->hasOverflowClip())
+        if (o->isBox())
             transformState.move(toRenderBox(o)->scrolledContentOffset());
     }
 }
@@ -1718,7 +1719,7 @@ LayoutSize RenderObject::offsetFromContainer(RenderObject* o, const LayoutPoint&
 
     o->adjustForColumns(offset, point);
 
-    if (o->hasOverflowClip())
+    if (o->isBox())
         offset -= toRenderBox(o)->scrolledContentOffset();
 
     if (offsetDependsOnPoint)

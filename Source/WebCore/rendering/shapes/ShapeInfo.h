@@ -60,7 +60,7 @@ private:
     typedef HashMap<const KeyType*, std::unique_ptr<InfoType>> InfoMap;
     static InfoMap& infoMap()
     {
-        DEFINE_STATIC_LOCAL(InfoMap, staticInfoMap, ());
+        DEPRECATED_DEFINE_STATIC_LOCAL(InfoMap, staticInfoMap, ());
         return staticInfoMap;
     }
 };
@@ -132,7 +132,7 @@ protected:
     {
     }
 
-    virtual LayoutBox referenceBox() const = 0;
+    virtual CSSBoxType referenceBox() const = 0;
     virtual LayoutRect computedShapeLogicalBoundingBox() const = 0;
     virtual ShapeValue* shapeValue() const = 0;
     virtual void getIntervals(LayoutUnit, LayoutUnit, SegmentList&) const = 0;

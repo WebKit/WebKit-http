@@ -7446,6 +7446,7 @@
     <ClCompile Include="..\platform\NotImplemented.cpp" />
     <ClCompile Include="..\platform\PlatformEvent.cpp" />
     <ClCompile Include="..\platform\PlatformStrategies.cpp" />
+    <ClCompile Include="..\platform\RemoteCommandListener.cpp" />
     <ClCompile Include="..\platform\RuntimeApplicationChecks.cpp" />
     <ClCompile Include="..\platform\SchemeRegistry.cpp" />
     <ClCompile Include="..\platform\ScrollableArea.cpp" />
@@ -9520,6 +9521,20 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="..\rendering\BidiRun.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_WinCairo|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_WinCairo|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\rendering\BorderEdge.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|Win32'">true</ExcludedFromBuild>
@@ -18978,6 +18993,7 @@
     <ClInclude Include="..\platform\PopupMenuStyle.h" />
     <ClInclude Include="..\platform\PurgeableBuffer.h" />
     <ClInclude Include="..\platform\ReferrerPolicy.h" />
+    <ClInclude Include="..\platform\RemoteCommandListener.h" />
     <ClInclude Include="..\platform\RuntimeApplicationChecks.h" />
     <ClInclude Include="..\platform\SchemeRegistry.h" />
     <ClInclude Include="..\platform\ScrollableArea.h" />
@@ -19667,6 +19683,7 @@
     <ClInclude Include="..\cssjit\StackAllocator.h" />
     <ClInclude Include="..\rendering\AutoTableLayout.h" />
     <ClInclude Include="..\rendering\BidiRun.h" />
+    <ClInclude Include="..\rendering\BorderEdge.h" />
     <ClInclude Include="..\rendering\break_lines.h" />
     <ClInclude Include="..\rendering\CounterNode.h" />
     <ClInclude Include="..\rendering\EllipsisBox.h" />
@@ -20004,7 +20021,7 @@
     <ClInclude Include="..\dom\ElementAncestorIterator.h" />
     <ClInclude Include="..\dom\ElementChildIterator.h" />
     <ClInclude Include="..\dom\ElementData.h" />
-    <ClInclude Include="..\dom\ElementDescendantIterator.h" />
+    <ClInclude Include="..\dom\TypedElementDescendantIterator.h" />
     <ClInclude Include="..\dom\ElementIterator.h" />
     <ClInclude Include="..\dom\ElementIteratorAssertions.h" />
     <ClInclude Include="..\dom\ElementTraversal.h" />

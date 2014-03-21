@@ -113,9 +113,9 @@ StringImpl::~StringImpl()
 
     STRING_STATS_REMOVE_STRING(this);
 
-    if (isAtomic())
+    if (isAtomic() && m_length)
         AtomicString::remove(this);
-    if (isIdentifier()) {
+    if (isIdentifier() && m_length) {
         if (!wtfThreadData().currentIdentifierTable()->remove(this))
             CRASH();
     }
@@ -986,7 +986,7 @@ size_t StringImpl::find(const LChar* matchString, unsigned index)
 
     // Optimization 1: fast case for strings of length 1.
     if (matchLength == 1)
-        return WTF::find(characters16(), length(), *matchString, index);
+        return WTF::find(deprecatedCharacters(), length(), *matchString, index);
 
     // Check index & matchLength are in range.
     if (index > length())

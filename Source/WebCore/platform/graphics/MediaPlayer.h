@@ -10,10 +10,10 @@
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
  *
- * THIS SOFTWARE IS PROVIDED BY APPLE COMPUTER, INC. ``AS IS'' AND ANY
+ * THIS SOFTWARE IS PROVIDED BY APPLE INC. ``AS IS'' AND ANY
  * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE COMPUTER, INC. OR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE INC. OR
  * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
  * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
  * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
@@ -38,6 +38,7 @@
 #include "IntRect.h"
 #include "URL.h"
 #include "LayoutRect.h"
+#include "MediaSession.h"
 #include "NativeImagePtr.h"
 #include "PlatformLayer.h"
 #include "Timer.h"
@@ -247,6 +248,7 @@ public:
     virtual HostWindow* mediaPlayerHostWindow() { return 0; }
     virtual IntRect mediaPlayerWindowClipRect() { return IntRect(); }
     virtual CachedResourceLoader* mediaPlayerCachedResourceLoader() { return 0; }
+    virtual bool doesHaveAttribute(const AtomicString&) const { return false; }
 
 #if ENABLE(VIDEO_TRACK)
     virtual void mediaPlayerDidAddAudioTrack(PassRefPtr<AudioTrackPrivate>) { }
@@ -262,8 +264,8 @@ public:
 #endif
 #endif
 
-
     virtual bool mediaPlayerShouldWaitForResponseToAuthenticationChallenge(const AuthenticationChallenge&) { return false; }
+    virtual void mediaPlayerHandlePlaybackCommand(MediaSession::RemoteControlCommandType) { }
 };
 
 class MediaPlayerSupportsTypeClient {
@@ -298,6 +300,7 @@ public:
     bool supportsSave() const;
     bool supportsScanning() const;
     bool requiresImmediateCompositing() const;
+    bool doesHaveAttribute(const AtomicString&) const;
     PlatformMedia platformMedia() const;
     PlatformLayer* platformLayer() const;
 #if PLATFORM(IOS)
@@ -572,6 +575,7 @@ public:
 #endif
 
     bool shouldWaitForResponseToAuthenticationChallenge(const AuthenticationChallenge&);
+    void handlePlaybackCommand(MediaSession::RemoteControlCommandType);
 
 private:
     MediaPlayer(MediaPlayerClient*);

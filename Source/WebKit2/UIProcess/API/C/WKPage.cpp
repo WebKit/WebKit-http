@@ -699,7 +699,7 @@ void WKPageSetPageLoaderClient(WKPageRef pageRef, const WKPageLoaderClientBase* 
         }
 
     private:
-        virtual void didStartProvisionalLoadForFrame(WebPageProxy* page, WebFrameProxy* frame, uint64_t navigationID, API::Object* userData) override
+        virtual void didStartProvisionalLoadForFrame(WebPageProxy* page, WebFrameProxy* frame, uint64_t, API::Object* userData) override
         {
             if (!m_client.didStartProvisionalLoadForFrame)
                 return;
@@ -707,7 +707,7 @@ void WKPageSetPageLoaderClient(WKPageRef pageRef, const WKPageLoaderClientBase* 
             m_client.didStartProvisionalLoadForFrame(toAPI(page), toAPI(frame), toAPI(userData), m_client.base.clientInfo);
         }
 
-        virtual void didReceiveServerRedirectForProvisionalLoadForFrame(WebPageProxy* page, WebFrameProxy* frame, uint64_t navigationID, API::Object* userData) override
+        virtual void didReceiveServerRedirectForProvisionalLoadForFrame(WebPageProxy* page, WebFrameProxy* frame, uint64_t, API::Object* userData) override
         {
             if (!m_client.didReceiveServerRedirectForProvisionalLoadForFrame)
                 return;
@@ -715,7 +715,7 @@ void WKPageSetPageLoaderClient(WKPageRef pageRef, const WKPageLoaderClientBase* 
             m_client.didReceiveServerRedirectForProvisionalLoadForFrame(toAPI(page), toAPI(frame), toAPI(userData), m_client.base.clientInfo);
         }
 
-        virtual void didFailProvisionalLoadWithErrorForFrame(WebPageProxy* page, WebFrameProxy* frame, uint64_t navigationID, const ResourceError& error, API::Object* userData) override
+        virtual void didFailProvisionalLoadWithErrorForFrame(WebPageProxy* page, WebFrameProxy* frame, uint64_t, const ResourceError& error, API::Object* userData) override
         {
             if (!m_client.didFailProvisionalLoadWithErrorForFrame)
                 return;
@@ -723,7 +723,7 @@ void WKPageSetPageLoaderClient(WKPageRef pageRef, const WKPageLoaderClientBase* 
             m_client.didFailProvisionalLoadWithErrorForFrame(toAPI(page), toAPI(frame), toAPI(error), toAPI(userData), m_client.base.clientInfo);
         }
 
-        virtual void didCommitLoadForFrame(WebPageProxy* page, WebFrameProxy* frame, uint64_t navigationID, API::Object* userData) override
+        virtual void didCommitLoadForFrame(WebPageProxy* page, WebFrameProxy* frame, uint64_t, API::Object* userData) override
         {
             if (!m_client.didCommitLoadForFrame)
                 return;
@@ -739,7 +739,7 @@ void WKPageSetPageLoaderClient(WKPageRef pageRef, const WKPageLoaderClientBase* 
             m_client.didFinishDocumentLoadForFrame(toAPI(page), toAPI(frame), toAPI(userData), m_client.base.clientInfo);
         }
 
-        virtual void didFinishLoadForFrame(WebPageProxy* page, WebFrameProxy* frame, uint64_t navigationID, API::Object* userData) override
+        virtual void didFinishLoadForFrame(WebPageProxy* page, WebFrameProxy* frame, uint64_t, API::Object* userData) override
         {
             if (!m_client.didFinishLoadForFrame)
                 return;
@@ -747,7 +747,7 @@ void WKPageSetPageLoaderClient(WKPageRef pageRef, const WKPageLoaderClientBase* 
             m_client.didFinishLoadForFrame(toAPI(page), toAPI(frame), toAPI(userData), m_client.base.clientInfo);
         }
 
-        virtual void didFailLoadWithErrorForFrame(WebPageProxy* page, WebFrameProxy* frame, uint64_t navigationID, const ResourceError& error, API::Object* userData) override
+        virtual void didFailLoadWithErrorForFrame(WebPageProxy* page, WebFrameProxy* frame, uint64_t, const ResourceError& error, API::Object* userData) override
         {
             if (!m_client.didFailLoadWithErrorForFrame)
                 return;
@@ -1639,6 +1639,26 @@ WKImageRef WKPageCreateSnapshotOfVisibleContent(WKPageRef)
 void WKPageSetShouldSendEventsSynchronously(WKPageRef page, bool sync)
 {
     toImpl(page)->setShouldSendEventsSynchronously(sync);
+}
+
+bool WKPageGetAllowsRemoteInspection(WKPageRef page)
+{
+#if ENABLE(REMOTE_INSPECTOR)
+    return toImpl(page)->allowsRemoteInspection();
+#else
+    UNUSED_PARAM(page);
+    return false;
+#endif    
+}
+
+void WKPageSetAllowsRemoteInspection(WKPageRef page, bool allow)
+{
+#if ENABLE(REMOTE_INSPECTOR)
+    toImpl(page)->setAllowsRemoteInspection(allow);
+#else
+    UNUSED_PARAM(page);
+    UNUSED_PARAM(allow);
+#endif
 }
 
 void WKPageSetMediaVolume(WKPageRef page, float volume)

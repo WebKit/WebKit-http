@@ -10,7 +10,7 @@
  * 2.  Redistributions in binary form must reproduce the above copyright
  *     notice, this list of conditions and the following disclaimer in the
  *     documentation and/or other materials provided with the distribution. 
- * 3.  Neither the name of Apple Computer, Inc. ("Apple") nor the names of
+ * 3.  Neither the name of Apple Inc. ("Apple") nor the names of
  *     its contributors may be used to endorse or promote products derived
  *     from this software without specific prior written permission. 
  *
@@ -274,8 +274,10 @@ VM::VM(VMType vmType, HeapType heapType)
     propertyTableStructure.set(*this, PropertyTable::createStructure(*this, 0, jsNull()));
     mapDataStructure.set(*this, MapData::createStructure(*this, 0, jsNull()));
     weakMapDataStructure.set(*this, WeakMapData::createStructure(*this, 0, jsNull()));
+#if ENABLE(PROMISES)
     promiseDeferredStructure.set(*this, JSPromiseDeferred::createStructure(*this, 0, jsNull()));
     promiseReactionStructure.set(*this, JSPromiseReaction::createStructure(*this, 0, jsNull()));
+#endif
     iterationTerminator.set(*this, JSFinalObject::create(*this, JSFinalObject::createStructure(*this, 0, jsNull(), 1)));
     smallStrings.initializeCommonStrings(*this);
 
@@ -524,6 +526,7 @@ void VM::discardAllCode()
 {
     waitForCompilationsToComplete();
     m_codeCache->clear();
+    m_regExpCache->invalidateCode();
     heap.deleteAllCompiledCode();
     heap.deleteAllUnlinkedFunctionCode();
     heap.reportAbandonedObjectGraph();
@@ -846,6 +849,7 @@ void logSanitizeStack(VM* vm)
 #if ENABLE(REGEXP_TRACING)
 void VM::addRegExpToTrace(RegExp* regExp)
 {
+    gcProtect(regExp);
     m_rtTraceList->add(regExp);
 }
 
@@ -856,14 +860,16 @@ void VM::dumpRegExpTrace()
     
     if (iter != m_rtTraceList->end()) {
         dataLogF("\nRegExp Tracing\n");
-        dataLogF("                                                            match()    matches\n");
-        dataLogF("Regular Expression                          JIT Address      calls      found\n");
-        dataLogF("----------------------------------------+----------------+----------+----------\n");
+        dataLogF("Regular Expression                              8 Bit          16 Bit        match()    Matches    Average\n");
+        dataLogF(" <Match only / Match>                         JIT Addr      JIT Address       calls      found   String len\n");
+        dataLogF("----------------------------------------+----------------+----------------+----------+----------+-----------\n");
     
         unsigned reCount = 0;
     
-        for (; iter != m_rtTraceList->end(); ++iter, ++reCount)
+        for (; iter != m_rtTraceList->end(); ++iter, ++reCount) {
             (*iter)->printTraceData();
+            gcUnprotect(*iter);
+        }
 
         dataLogF("%d Regular Expressions\n", reCount);
     }

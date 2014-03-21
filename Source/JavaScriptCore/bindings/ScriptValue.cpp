@@ -11,7 +11,7 @@
  * 2.  Redistributions in binary form must reproduce the above copyright
  *     notice, this list of conditions and the following disclaimer in the
  *     documentation and/or other materials provided with the distribution.
- * 3.  Neither the name of Apple Computer, Inc. ("Apple") nor the names of
+ * 3.  Neither the name of Apple Inc. ("Apple") nor the names of
  *     its contributors may be used to endorse or promote products derived
  *     from this software without specific prior written permission.
  *
@@ -115,10 +115,8 @@ static PassRefPtr<InspectorValue> jsToInspectorValue(ExecState* scriptState, JSV
         return InspectorBasicValue::create(value.asBoolean());
     if (value.isNumber())
         return InspectorBasicValue::create(value.asNumber());
-    if (value.isString()) {
-        String s = value.getString(scriptState);
-        return InspectorString::create(String(s.deprecatedCharacters(), s.length()));
-    }
+    if (value.isString())
+        return InspectorString::create(value.getString(scriptState));
 
     if (value.isObject()) {
         if (isJSArray(value)) {
@@ -139,12 +137,12 @@ static PassRefPtr<InspectorValue> jsToInspectorValue(ExecState* scriptState, JSV
         PropertyNameArray propertyNames(scriptState);
         object->methodTable()->getOwnPropertyNames(object, scriptState, propertyNames, ExcludeDontEnumProperties);
         for (size_t i = 0; i < propertyNames.size(); i++) {
-            const Identifier& name =  propertyNames[i];
+            const Identifier& name = propertyNames[i];
             JSValue propertyValue = object->get(scriptState, name);
             RefPtr<InspectorValue> inspectorValue = jsToInspectorValue(scriptState, propertyValue, maxDepth);
             if (!inspectorValue)
                 return nullptr;
-            inspectorObject->setValue(String(name.deprecatedCharacters(), name.length()), inspectorValue);
+            inspectorObject->setValue(name.string(), inspectorValue);
         }
         return inspectorObject;
     }

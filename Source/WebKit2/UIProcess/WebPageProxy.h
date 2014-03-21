@@ -160,6 +160,7 @@ class WebWheelEvent;
 struct AttributedString;
 struct ColorSpaceData;
 struct DictionaryPopupInfo;
+struct EditingRange;
 struct EditorState;
 struct PlatformPopupMenuData;
 struct PrintInfo;
@@ -359,6 +360,11 @@ public:
     WebInspectorProxy* inspector();
 #endif
 
+#if ENABLE(REMOTE_INSPECTOR)
+    bool allowsRemoteInspection() const { return m_allowsRemoteInspection; }
+    void setAllowsRemoteInspection(bool);
+#endif
+
 #if ENABLE(VIBRATION)
     WebVibrationProxy* vibration() { return m_vibration.get(); }
 #endif
@@ -525,16 +531,16 @@ public:
     void windowAndViewFramesChanged(const WebCore::FloatRect& viewFrameInWindowCoordinates, const WebCore::FloatPoint& accessibilityViewCoordinates);
     void setMainFrameIsScrollable(bool);
 
-    void setComposition(const String& text, Vector<WebCore::CompositionUnderline> underlines, uint64_t selectionStart, uint64_t selectionEnd, uint64_t replacementRangeStart, uint64_t replacementRangeEnd);
+    void setComposition(const String& text, Vector<WebCore::CompositionUnderline> underlines, const EditingRange& selectionRange, const EditingRange& replacementRange);
     void confirmComposition();
     void cancelComposition();
-    bool insertText(const String& text, uint64_t replacementRangeStart, uint64_t replacementRangeEnd);
-    bool insertDictatedText(const String& text, uint64_t replacementRangeStart, uint64_t replacementRangeEnd, const Vector<WebCore::TextAlternativeWithRange>& dictationAlternatives);
-    void getMarkedRange(uint64_t& location, uint64_t& length);
-    void getSelectedRange(uint64_t& location, uint64_t& length);
-    void getAttributedSubstringFromRange(uint64_t location, uint64_t length, AttributedString&);
+    bool insertText(const String& text, const EditingRange& replacementRange);
+    bool insertDictatedText(const String& text, const EditingRange& replacementRange, const Vector<WebCore::TextAlternativeWithRange>& dictationAlternatives);
+    void getMarkedRange(EditingRange&);
+    void getSelectedRange(EditingRange&);
+    void getAttributedSubstringFromRange(const EditingRange&, AttributedString&);
     uint64_t characterIndexForPoint(const WebCore::IntPoint);
-    WebCore::IntRect firstRectForCharacterRange(uint64_t, uint64_t);
+    WebCore::IntRect firstRectForCharacterRange(const EditingRange&);
     bool executeKeypressCommands(const Vector<WebCore::KeypressCommand>&);
 
     void sendComplexTextInputToPlugin(uint64_t pluginComplexTextInputIdentifier, const String& textInput);
@@ -917,6 +923,12 @@ public:
 
     void setThumbnailScale(double);
 
+    void takeSnapshot(WebCore::IntRect, WebCore::IntSize bitmapSize, SnapshotOptions, ImageCallback::CallbackFunction);
+
+#if ENABLE(IMAGE_CONTROLS)
+    void replaceControlledImage(PassRefPtr<ShareableBitmap>);
+#endif
+
 private:
     WebPageProxy(PageClient&, WebProcessProxy&, uint64_t pageID, const WebPageConfiguration&);
     void platformInitialize();
@@ -1184,6 +1196,8 @@ private:
 #endif // PLATFORM(MAC)
 
 #if PLATFORM(IOS)
+    WebCore::FloatSize viewportScreenSize();
+
     void didGetTapHighlightGeometries(uint64_t requestID, const WebCore::Color& color, const Vector<WebCore::FloatQuad>& geometries, const WebCore::IntSize& topLeftRadius, const WebCore::IntSize& topRightRadius, const WebCore::IntSize& bottomLeftRadius, const WebCore::IntSize& bottomRightRadius);
 
     void startAssistingNode(const AssistedNodeInformation&);
@@ -1388,6 +1402,10 @@ private:
     Ref<API::Session> m_session;
 
     bool m_isPageSuspended;
+
+#if ENABLE(REMOTE_INSPECTOR)
+    bool m_allowsRemoteInspection;
+#endif
 
 #if PLATFORM(COCOA)
     bool m_isSmartInsertDeleteEnabled;

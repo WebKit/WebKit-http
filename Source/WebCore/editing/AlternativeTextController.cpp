@@ -11,10 +11,10 @@
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
  *
- * THIS SOFTWARE IS PROVIDED BY APPLE COMPUTER, INC. ``AS IS'' AND ANY
+ * THIS SOFTWARE IS PROVIDED BY APPLE INC. ``AS IS'' AND ANY
  * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE COMPUTER, INC. OR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE INC. OR
  * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
  * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
  * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
@@ -85,7 +85,7 @@ private:
 
 static const Vector<DocumentMarker::MarkerType>& markerTypesForAutocorrection()
 {
-    DEFINE_STATIC_LOCAL(Vector<DocumentMarker::MarkerType>, markerTypesForAutoCorrection, ());
+    DEPRECATED_DEFINE_STATIC_LOCAL(Vector<DocumentMarker::MarkerType>, markerTypesForAutoCorrection, ());
     if (markerTypesForAutoCorrection.isEmpty()) {
         markerTypesForAutoCorrection.append(DocumentMarker::Replacement);
         markerTypesForAutoCorrection.append(DocumentMarker::CorrectionIndicator);
@@ -97,7 +97,7 @@ static const Vector<DocumentMarker::MarkerType>& markerTypesForAutocorrection()
 
 static const Vector<DocumentMarker::MarkerType>& markerTypesForReplacement()
 {
-    DEFINE_STATIC_LOCAL(Vector<DocumentMarker::MarkerType>, markerTypesForReplacement, ());
+    DEPRECATED_DEFINE_STATIC_LOCAL(Vector<DocumentMarker::MarkerType>, markerTypesForReplacement, ());
     if (markerTypesForReplacement.isEmpty()) {
         markerTypesForReplacement.append(DocumentMarker::Replacement);
         markerTypesForReplacement.append(DocumentMarker::SpellCheckingExemption);
@@ -107,7 +107,7 @@ static const Vector<DocumentMarker::MarkerType>& markerTypesForReplacement()
 
 static const Vector<DocumentMarker::MarkerType>& markerTypesForAppliedDictationAlternative()
 {
-    DEFINE_STATIC_LOCAL(Vector<DocumentMarker::MarkerType>, markerTypesForAppliedDictationAlternative, ());
+    DEPRECATED_DEFINE_STATIC_LOCAL(Vector<DocumentMarker::MarkerType>, markerTypesForAppliedDictationAlternative, ());
     if (markerTypesForAppliedDictationAlternative.isEmpty())
         markerTypesForAppliedDictationAlternative.append(DocumentMarker::SpellCheckingExemption);
     return markerTypesForAppliedDictationAlternative;

@@ -10,10 +10,10 @@
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
  *
- * THIS SOFTWARE IS PROVIDED BY APPLE COMPUTER, INC. ``AS IS'' AND ANY
+ * THIS SOFTWARE IS PROVIDED BY APPLE INC. ``AS IS'' AND ANY
  * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE COMPUTER, INC. OR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE INC. OR
  * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
  * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
  * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
@@ -131,17 +131,23 @@ public:
 
     void beginPath();
 
-#if ENABLE(CANVAS_PATH)
-    PassRefPtr<DOMPath> currentPath();
-    void setCurrentPath(DOMPath*);
-#endif
-
     void fill(const String& winding = "nonzero");
     void stroke();
     void clip(const String& winding = "nonzero");
 
+#if ENABLE(CANVAS_PATH)
+    void fill(DOMPath*, const String& winding = "nonzero");
+    void stroke(DOMPath*);
+    void clip(DOMPath*, const String& winding = "nonzero");
+#endif
+
     bool isPointInPath(const float x, const float y, const String& winding = "nonzero");
     bool isPointInStroke(const float x, const float y);
+
+#if ENABLE(CANVAS_PATH)
+    bool isPointInPath(DOMPath*, const float x, const float y, const String& winding = "nonzero");
+    bool isPointInStroke(DOMPath*, const float x, const float y);
+#endif
 
     void clearRect(float x, float y, float width, float height);
     void fillRect(float x, float y, float width, float height);
@@ -297,6 +303,13 @@ private:
 #if ENABLE(DASHBOARD_SUPPORT)
     void clearPathForDashboardBackwardCompatibilityMode();
 #endif
+
+    void fillInternal(const Path&, const String& winding);
+    void strokeInternal(const Path&);
+    void clipInternal(const Path&, const String& winding);
+
+    bool isPointInPathInternal(const Path&, float x, float y, const String& winding);
+    bool isPointInStrokeInternal(const Path&, float x, float y);
 
     void clearCanvas();
     Path transformAreaToDevice(const Path&) const;

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005, 2006, 2007, 2011, 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2005, 2006, 2007, 2011, 2012, 2014 Apple Inc. All rights reserved.
  *           (C) 2006 Graham Dennis (graham.dennis@gmail.com)
  *
  * Redistribution and use in source and binary forms, with or without
@@ -11,7 +11,7 @@
  * 2.  Redistributions in binary form must reproduce the above copyright
  *     notice, this list of conditions and the following disclaimer in the
  *     documentation and/or other materials provided with the distribution. 
- * 3.  Neither the name of Apple Computer, Inc. ("Apple") nor the names of
+ * 3.  Neither the name of Apple Inc. ("Apple") nor the names of
  *     its contributors may be used to endorse or promote products derived
  *     from this software without specific prior written permission. 
  *
@@ -510,8 +510,8 @@ public:
         [NSNumber numberWithBool:NO],   WebKitAsynchronousSpellCheckingEnabledPreferenceKey,
         [NSNumber numberWithBool:YES],  WebKitHyperlinkAuditingEnabledPreferenceKey,
         [NSNumber numberWithBool:NO],   WebKitUsePreHTML5ParserQuirksKey,
-#if !PLATFORM(IOS)
         [NSNumber numberWithBool:YES],  WebKitAVFoundationEnabledKey,
+#if !PLATFORM(IOS)
         [NSNumber numberWithBool:NO],   WebKitMediaPlaybackRequiresUserGesturePreferenceKey,
         [NSNumber numberWithBool:YES],  WebKitMediaPlaybackAllowsInlinePreferenceKey,
         [NSNumber numberWithBool:NO],   WebKitWebAudioEnabledPreferenceKey,
@@ -524,12 +524,11 @@ public:
         [NSNumber numberWithBool:YES],  WebKitNotificationsEnabledKey,
         [NSNumber numberWithBool:NO],   WebKitShouldRespectImageOrientationKey,
 #else
-        [NSNumber numberWithBool:NO],   WebKitAVFoundationEnabledKey,
         [NSNumber numberWithBool:YES],  WebKitMediaPlaybackRequiresUserGesturePreferenceKey,
         [NSNumber numberWithBool:NO],   WebKitMediaPlaybackAllowsInlinePreferenceKey,
         [NSNumber numberWithBool:YES],  WebKitMediaPlaybackAllowsAirPlayPreferenceKey,
         [NSNumber numberWithUnsignedInt:AudioSession::None],  WebKitAudioSessionCategoryOverride,
-        [NSNumber numberWithBool:NO],   WebKitAVKitEnabled,
+        [NSNumber numberWithBool:YES],  WebKitAVKitEnabled,
         [NSNumber numberWithLongLong:WebCore::ApplicationCacheStorage::noQuota()], WebKitApplicationCacheTotalQuota,
 
         // Per-Origin Quota on iOS is 25MB. When the quota is reached for a particular origin
@@ -587,17 +586,14 @@ public:
         
         [NSNumber numberWithBool:NO], WebKitUseLegacyTextAlignPositionedElementBehaviorPreferenceKey,
         
-#if !PLATFORM(IOS)
         [NSNumber numberWithBool:NO],   WebKitVideoPluginProxyEnabledKey,
-#else
-        [NSNumber numberWithBool:YES],   WebKitVideoPluginProxyEnabledKey,
-#endif
 #if ENABLE(MEDIA_SOURCE)
         [NSNumber numberWithBool:NO], WebKitMediaSourceEnabledPreferenceKey,
 #endif
 #if ENABLE(IMAGE_CONTROLS)
         [NSNumber numberWithBool:NO], WebKitImageControlsEnabledPreferenceKey,
 #endif
+        [NSNumber numberWithBool:NO], WebKitEnableInheritURIQueryComponentPreferenceKey,
         nil];
 
 #if !PLATFORM(IOS)
@@ -2154,6 +2150,16 @@ static NSString *classIBCreatorID = nil;
 - (BOOL)isHixie76WebSocketProtocolEnabled
 {
     return false;
+}
+
+- (BOOL)isInheritURIQueryComponentEnabled
+{
+    return [self _boolValueForKey: WebKitEnableInheritURIQueryComponentPreferenceKey];
+}
+
+- (void)setEnableInheritURIQueryComponent:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey: WebKitEnableInheritURIQueryComponentPreferenceKey];
 }
 
 #if PLATFORM(IOS)
