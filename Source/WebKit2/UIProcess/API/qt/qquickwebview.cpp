@@ -2180,6 +2180,10 @@ void QQuickWebView::handleFlickableMouseRelease(const QPointF& position, qint64 
     and that was the base url, then an image referenced with the relative url \c diagram.png
     would be looked for at \c{http://www.example.com/documents/diagram.png}.
 
+    It is important to keep in mind that the \a html string will be converted to UTF-16
+    internally. Textual resources, such as scripts or style sheets, will be treated as
+    UTF-16 as well, unless they have an explicit charset property in their referencing tag.
+
     If an \a unreachableUrl is passed it is used as the url for the loaded
     content. This is typically used to display error pages for a failed
     load.
