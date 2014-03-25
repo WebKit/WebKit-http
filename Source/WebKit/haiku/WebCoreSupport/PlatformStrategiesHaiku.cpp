@@ -37,7 +37,7 @@ using namespace WebCore;
 
 void PlatformStrategiesHaiku::initialize()
 {
-    DEFINE_STATIC_LOCAL(PlatformStrategiesHaiku, platformStrategies, ());
+    DEPRECATED_DEFINE_STATIC_LOCAL(PlatformStrategiesHaiku, platformStrategies, ());
     setPlatformStrategies(&platformStrategies);
 }
 

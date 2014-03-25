@@ -545,7 +545,7 @@ void TestRunner::closeWebInspector()
     notImplemented();
 }
 
-void TestRunner::evaluateInWebInspector(long callId, JSStringRef script)
+void TestRunner::evaluateInWebInspector(JSStringRef script)
 {
     notImplemented();
 }

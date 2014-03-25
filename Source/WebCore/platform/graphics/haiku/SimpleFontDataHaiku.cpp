@@ -41,6 +41,7 @@
 #include <unicode/unistr.h>
 #include <unicode/unorm.h>
 #include <Rect.h>
+#include <UnicodeChar.h>
 
 
 namespace WebCore {
@@ -117,8 +118,10 @@ FloatRect SimpleFontData::platformBoundsForGlyph(Glyph glyph) const
         return FloatRect();
 
     BRect rect;
-    CString encoded = UTF8Encoding().encode((UChar *)&glyph, 1, URLEncodedEntitiesForUnencodables);
-    font->GetBoundingBoxesAsGlyphs(encoded.data(), 1, B_SCREEN_METRIC, &rect);
+    char string[5] = { 0 };
+    char* ptr = string;
+    BUnicodeChar::ToUTF8((uint32)glyph, &ptr);
+    font->GetBoundingBoxesAsGlyphs(string, 1, B_SCREEN_METRIC, &rect);
     return rect;
 }
 
@@ -128,8 +131,10 @@ float SimpleFontData::platformWidthForGlyph(Glyph glyph) const
         return 0;
 
     float escapements[1];
-    CString encoded = UTF8Encoding().encode((UChar *)&glyph, 1, URLEncodedEntitiesForUnencodables);
-    m_platformData.font()->GetEscapements(encoded.data(), 1, escapements);
+    char string[5] = { 0 };
+    char* ptr = string;
+    BUnicodeChar::ToUTF8((uint32)glyph, &ptr);
+    m_platformData.font()->GetEscapements(string, 1, escapements);
     return escapements[0] * m_platformData.font()->Size();
 }
 

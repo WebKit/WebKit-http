@@ -398,6 +398,12 @@ void Path::addArcTo(const FloatPoint& p1, const FloatPoint& p2, float radius)
     addArc(p, radius, sa, ea, anticlockwise);
 }
 
+void Path::addPath(const Path&, const AffineTransform&)
+{
+    // FIXME: This should probably be very similar to Path::transform.
+    notImplemented();
+}
+
 void Path::closeSubpath()
 {
     m_path->Close();

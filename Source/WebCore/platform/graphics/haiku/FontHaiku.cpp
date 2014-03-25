@@ -37,6 +37,7 @@
 #include <wtf/text/CString.h>
 #include <Font.h>
 #include <String.h>
+#include <UnicodeChar.h>
 #include <View.h>
 
 
@@ -67,17 +68,24 @@ void Font::drawGlyphs(GraphicsContext* graphicsContext, const SimpleFontData* fo
     view->SetHighColor(color);
     view->SetFont(font->platformData().font());
 
-    GlyphBufferGlyph* glyphs = const_cast<GlyphBufferGlyph*>(glyphBuffer.glyphs(from));
-    CString converted = UTF8Encoding().encode((const UChar*)glyphs, numGlyphs, URLEncodedEntitiesForUnencodables);
+    const GlyphBufferGlyph* glyphs = glyphBuffer.glyphs(from);
+
+
 	BPoint offsets[numGlyphs];
+    char buffer[4];
+    BString utf8;
 	float offset = point.x();
     for (int i = 0; i < numGlyphs; i++) {
         offsets[i].x = offset;
         offsets[i].y = point.y();
         offset += glyphBuffer.advanceAt(from + i).width();
+
+        char* tmp = buffer;
+        BUnicodeChar::ToUTF8(glyphs[i], &tmp);
+        utf8.Append(buffer, tmp - buffer);
     }
 
-    view->DrawString(converted.data(), converted.length(), offsets, numGlyphs);
+    view->DrawString(utf8, offsets, numGlyphs);
     view->PopState();
 }
 

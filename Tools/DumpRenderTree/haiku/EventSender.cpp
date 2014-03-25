@@ -89,7 +89,7 @@ static unsigned touchModifiers;
 
 WTF::Vector<BMessage*>& delayedEventQueue()
 {
-    DEFINE_STATIC_LOCAL(WTF::Vector<BMessage*>, staticDelayedEventQueue, ());
+    DEPRECATED_DEFINE_STATIC_LOCAL(WTF::Vector<BMessage*>, staticDelayedEventQueue, ());
     return staticDelayedEventQueue;
 }
 
