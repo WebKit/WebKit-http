@@ -7,6 +7,8 @@ LIST(APPEND WebCore_INCLUDE_DIRECTORIES
 LIST(APPEND WebCore_SOURCES
   bindings/js/ScriptControllerHaiku.cpp
 
+  html/shadow/MediaControlsHaiku.cpp
+
   platform/Cursor.cpp
 
   platform/audio/haiku/AudioBusHaiku.cpp
@@ -135,11 +137,8 @@ if (ENABLE_VIDEO OR ENABLE_WEB_AUDIO)
 endif ()
 
 if (ENABLE_VIDEO)
-    list(APPEND WebCore_INCLUDE_DIRECTORIES
-        ${GSTREAMER_VIDEO_INCLUDE_DIRS}
-    )
     list(APPEND WebCore_LIBRARIES
-        ${GSTREAMER_VIDEO_LIBRARIES}
+        media
     )
 endif ()
 
