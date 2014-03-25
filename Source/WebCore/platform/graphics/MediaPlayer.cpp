@@ -72,6 +72,9 @@
 #if USE(AVFOUNDATION)
 #include "MediaPlayerPrivateAVFoundationCF.h"
 #endif // USE(AVFOUNDATION)
+#elif PLATFORM(HAIKU)
+#include "MediaPlayerPrivateHaiku.h"
+#define PlatformMediaEngineClassName MediaPlayerPrivate
 #endif
 
 namespace WebCore {

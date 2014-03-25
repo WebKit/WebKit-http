@@ -7,7 +7,7 @@ LIST(APPEND WebCore_INCLUDE_DIRECTORIES
 LIST(APPEND WebCore_SOURCES
   bindings/js/ScriptControllerHaiku.cpp
 
-  html/shadow/MediaControlsHaiku.cpp
+  html/shadow/MediaControlsApple.cpp
 
   platform/Cursor.cpp
 
@@ -69,6 +69,7 @@ LIST(APPEND WebCore_SOURCES
   platform/graphics/haiku/IntPointHaiku.cpp
   platform/graphics/haiku/IntRectHaiku.cpp
   platform/graphics/haiku/IntSizeHaiku.cpp
+  platform/graphics/haiku/MediaPlayerPrivateHaiku.cpp
   platform/graphics/haiku/PathHaiku.cpp
   platform/graphics/haiku/SimpleFontDataHaiku.cpp
   platform/graphics/haiku/StillImageHaiku.cpp

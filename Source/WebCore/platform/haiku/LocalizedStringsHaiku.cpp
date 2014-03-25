@@ -530,6 +530,16 @@ String validationMessageTypeMismatchForURLText()
     return String();
 }
 
+String mediaElementLoadingStateText()
+{
+    return String::fromUTF8("Loading...");
+}
+
+String mediaElementLiveBroadcastStateText()
+{
+    return String::fromUTF8("Live Broadcast");
+}
+
 String validationMessagePatternMismatchText()
 {
     notImplemented();
