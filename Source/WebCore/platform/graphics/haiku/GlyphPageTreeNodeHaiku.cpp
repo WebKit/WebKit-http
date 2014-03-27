@@ -32,26 +32,22 @@
 #include "GlyphPageTreeNode.h"
 
 #include "SimpleFontData.h"
-#include <wtf/Assertions.h>
+#include "../freetype/UTF16UChar32Iterator.h"
 
 
 namespace WebCore {
 
-bool GlyphPage::fill(unsigned offset, unsigned length, UChar* characterBuffer, unsigned bufferLength, const SimpleFontData* fontData)
+bool GlyphPage::fill(unsigned offset, unsigned length, UChar* buffer, unsigned bufferLength, const SimpleFontData* fontData)
 {
-    bool isUtf16 = bufferLength != GlyphPage::size;
     bool haveGlyphs = false;
+    UTF16UChar32Iterator iterator(buffer, bufferLength);
+    for (unsigned i = 0; i < length; i++) {
+        UChar32 character = iterator.next();
+        if (character == iterator.end())
+            break;
 
-    for (unsigned i = 0; i < GlyphPage::size; i++) {
-        UChar32 character;
-
-        if (isUtf16) {
-            UChar lead = characterBuffer[i * 2];
-            UChar trail = characterBuffer[i * 2 + 1];
-            character = U16_GET_SUPPLEMENTARY(lead, trail);
-        } else
-            character = characterBuffer[i];
-
+        // TODO find the glyph in the given fontData for the character.
+        // (at least check that the font can display it...)
         if (!character)
             setGlyphDataForIndex(offset + i, 0, 0);
         else {
