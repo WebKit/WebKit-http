@@ -75,37 +75,23 @@ inline void* Butterfly::base(Structure* structure)
     return base(indexingHeader()->preCapacity(structure), structure->outOfLineCapacity());
 }
 
-inline Butterfly* Butterfly::growPropertyStorage(
-    VM& vm, JSCell* intendedOwner, size_t preCapacity, size_t oldPropertyCapacity,
-    bool hasIndexingHeader, size_t indexingPayloadSizeInBytes, size_t newPropertyCapacity)
+inline Butterfly* Butterfly::createOrGrowPropertyStorage(
+    Butterfly* oldButterfly, VM& vm, JSCell* intendedOwner, Structure* structure, size_t oldPropertyCapacity, size_t newPropertyCapacity)
 {
     RELEASE_ASSERT(newPropertyCapacity > oldPropertyCapacity);
+    if (!oldButterfly)
+        return create(vm, intendedOwner, 0, newPropertyCapacity, false, IndexingHeader(), 0);
+
+    size_t preCapacity = oldButterfly->indexingHeader()->preCapacity(structure);
+    size_t indexingPayloadSizeInBytes = oldButterfly->indexingHeader()->indexingPayloadSizeInBytes(structure);
+    bool hasIndexingHeader = structure->hasIndexingHeader(intendedOwner);
     Butterfly* result = createUninitialized(
-        vm, intendedOwner, preCapacity, newPropertyCapacity, hasIndexingHeader,
-        indexingPayloadSizeInBytes);
+        vm, intendedOwner, preCapacity, newPropertyCapacity, hasIndexingHeader, indexingPayloadSizeInBytes);
     memcpy(
         result->propertyStorage() - oldPropertyCapacity,
-        propertyStorage() - oldPropertyCapacity,
+        oldButterfly->propertyStorage() - oldPropertyCapacity,
         totalSize(0, oldPropertyCapacity, hasIndexingHeader, indexingPayloadSizeInBytes));
     return result;
-}
-
-inline Butterfly* Butterfly::growPropertyStorage(
-    VM& vm, JSCell* intendedOwner, Structure* structure, size_t oldPropertyCapacity,
-    size_t newPropertyCapacity)
-{
-    return growPropertyStorage(
-        vm, intendedOwner, indexingHeader()->preCapacity(structure), oldPropertyCapacity,
-        structure->hasIndexingHeader(intendedOwner),
-        indexingHeader()->indexingPayloadSizeInBytes(structure), newPropertyCapacity);
-}
-
-inline Butterfly* Butterfly::growPropertyStorage(
-    VM& vm, JSCell* intendedOwner, Structure* oldStructure, size_t newPropertyCapacity)
-{
-    return growPropertyStorage(
-        vm, intendedOwner, oldStructure, oldStructure->outOfLineCapacity(),
-        newPropertyCapacity);
 }
 
 inline Butterfly* Butterfly::createOrGrowArrayRight(
@@ -181,7 +167,7 @@ inline Butterfly* Butterfly::resizeArray(
 
 inline Butterfly* Butterfly::unshift(Structure* structure, size_t numberOfSlots)
 {
-    ASSERT(hasArrayStorage(structure->indexingType()));
+    ASSERT(hasAnyArrayStorage(structure->indexingType()));
     ASSERT(numberOfSlots <= indexingHeader()->preCapacity(structure));
     unsigned propertyCapacity = structure->outOfLineCapacity();
     // FIXME: It would probably be wise to rewrite this as a loop since (1) we know in which
@@ -200,7 +186,7 @@ inline Butterfly* Butterfly::unshift(Structure* structure, size_t numberOfSlots)
 
 inline Butterfly* Butterfly::shift(Structure* structure, size_t numberOfSlots)
 {
-    ASSERT(hasArrayStorage(structure->indexingType()));
+    ASSERT(hasAnyArrayStorage(structure->indexingType()));
     unsigned propertyCapacity = structure->outOfLineCapacity();
     // FIXME: See comment in unshift(), above.
     memmove(

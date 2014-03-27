@@ -331,6 +331,9 @@
     <Filter Include="platform\graphics\gstreamer">
       <UniqueIdentifier>{8178404b-8759-4480-93d4-0217a74ae338}</UniqueIdentifier>
     </Filter>
+    <Filter Include="platform\network\soup">
+      <UniqueIdentifier>{f9947de2-8c4a-4e86-a0db-828f03ada050}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\DerivedSources.cpp">
@@ -4158,6 +4161,9 @@
     <ClCompile Include="..\html\shadow\TextControlInnerElements.cpp">
       <Filter>html\shadow</Filter>
     </ClCompile>
+    <ClCompile Include="..\html\track\BufferedLineReader.cpp">
+      <Filter>html\track</Filter>
+    </ClCompile>
     <ClCompile Include="..\html\track\DataCue.cpp">
       <Filter>html\track</Filter>
     </ClCompile>
@@ -4192,6 +4198,9 @@
       <Filter>html\track</Filter>
     </ClCompile>
     <ClCompile Include="..\html\track\VTTCue.cpp">
+      <Filter>html\track</Filter>
+    </ClCompile>
+    <ClCompile Include="..\html\track\VTTScanner.cpp">
       <Filter>html\track</Filter>
     </ClCompile>
     <ClCompile Include="..\html\track\WebVTTParser.cpp">
@@ -4902,6 +4911,9 @@
     <ClCompile Include="..\platform\graphics\GeneratedImage.cpp">
       <Filter>platform\graphics</Filter>
     </ClCompile>
+    <ClCompile Include="..\platform\graphics\GeometryUtilities.cpp">
+      <Filter>platform\graphics</Filter>
+    </ClCompile>
     <ClCompile Include="..\platform\graphics\FloatRect.cpp">
       <Filter>platform\graphics</Filter>
     </ClCompile>
@@ -5141,6 +5153,9 @@
       <Filter>DerivedSources</Filter>
     </ClCompile>
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\CSSValueKeywords.cpp">
+      <Filter>DerivedSources</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\SelectorPseudoElementTypeMap.cpp">
       <Filter>DerivedSources</Filter>
     </ClCompile>
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\SelectorPseudoTypeMap.cpp">
@@ -7013,6 +7028,60 @@
     <ClCompile Include="..\platform\text\icu\UTextProviderUTF16.cpp" />
     <ClCompile Include="..\dom\CollectionIndexCache.cpp" />
     <ClCompile Include="..\html\HTMLMediaSession.cpp" />
+    <ClCompile Include="..\platform\network\soup\AuthenticationChallengeSoup.cpp">
+      <Filter>platform\network\soup</Filter>
+    </ClCompile>
+    <ClCompile Include="..\platform\network\soup\CertificateInfo.cpp">
+      <Filter>platform\network\soup</Filter>
+    </ClCompile>
+    <ClCompile Include="..\platform\network\soup\CookieJarSoup.cpp">
+      <Filter>platform\network\soup</Filter>
+    </ClCompile>
+    <ClCompile Include="..\platform\network\soup\CookieStorageSoup.cpp">
+      <Filter>platform\network\soup</Filter>
+    </ClCompile>
+    <ClCompile Include="..\platform\network\soup\CredentialStorageSoup.cpp">
+      <Filter>platform\network\soup</Filter>
+    </ClCompile>
+    <ClCompile Include="..\platform\network\soup\DNSSoup.cpp">
+      <Filter>platform\network\soup</Filter>
+    </ClCompile>
+    <ClCompile Include="..\platform\network\soup\NetworkStorageSessionSoup.cpp">
+      <Filter>platform\network\soup</Filter>
+    </ClCompile>
+    <ClCompile Include="..\platform\network\soup\ProxyResolverSoup.cpp">
+      <Filter>platform\network\soup</Filter>
+    </ClCompile>
+    <ClCompile Include="..\platform\network\soup\ProxyServerSoup.cpp">
+      <Filter>platform\network\soup</Filter>
+    </ClCompile>
+    <ClCompile Include="..\platform\network\soup\ResourceErrorSoup.cpp">
+      <Filter>platform\network\soup</Filter>
+    </ClCompile>
+    <ClCompile Include="..\platform\network\soup\ResourceHandleSoup.cpp">
+      <Filter>platform\network\soup</Filter>
+    </ClCompile>
+    <ClCompile Include="..\platform\network\soup\ResourceRequestSoup.cpp">
+      <Filter>platform\network\soup</Filter>
+    </ClCompile>
+    <ClCompile Include="..\platform\network\soup\ResourceResponseSoup.cpp">
+      <Filter>platform\network\soup</Filter>
+    </ClCompile>
+    <ClCompile Include="..\platform\network\soup\SocketStreamHandleSoup.cpp">
+      <Filter>platform\network\soup</Filter>
+    </ClCompile>
+    <ClCompile Include="..\platform\network\soup\SoupNetworkSession.cpp">
+      <Filter>platform\network\soup</Filter>
+    </ClCompile>
+    <ClCompile Include="..\platform\network\soup\SynchronousLoaderClientSoup.cpp">
+      <Filter>platform\network\soup</Filter>
+    </ClCompile>
+    <ClCompile Include="..\html\track\VTTRegion.cpp">
+      <Filter>html\track</Filter>
+    </ClCompile>
+    <ClCompile Include="..\html\track\VTTRegionList.cpp">
+      <Filter>html\track</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Modules\geolocation\Coordinates.h">
@@ -11170,6 +11239,9 @@
     <ClInclude Include="..\html\shadow\TextControlInnerElements.h">
       <Filter>html\shadow</Filter>
     </ClInclude>
+    <ClInclude Include="..\html\track\BufferedLineReader.h">
+      <Filter>html\track</Filter>
+    </ClInclude>
     <ClInclude Include="..\html\track\DataCue.h">
       <Filter>html\track</Filter>
     </ClInclude>
@@ -11183,6 +11255,9 @@
       <Filter>html\track</Filter>
     </ClInclude>
     <ClInclude Include="..\html\track\LoadableTextTrack.h">
+      <Filter>html\track</Filter>
+    </ClInclude>
+    <ClInclude Include="..\html\track\ParsingUtilities.h">
       <Filter>html\track</Filter>
     </ClInclude>
     <ClInclude Include="..\html\track\TextTrack.h">
@@ -11204,6 +11279,9 @@
       <Filter>html\track</Filter>
     </ClInclude>
     <ClInclude Include="..\html\track\VTTCue.h">
+      <Filter>html\track</Filter>
+    </ClInclude>
+    <ClInclude Include="..\html\track\VTTScanner.h">
       <Filter>html\track</Filter>
     </ClInclude>
     <ClInclude Include="..\html\track\WebVTTParser.h">
@@ -14807,6 +14885,61 @@
     <ClInclude Include="..\platform\audio\MediaSessionManager.h" />
     <ClInclude Include="..\html\ElementMediaSession.h" />
     <ClInclude Include="..\html\URLUtils.h" />
+    <ClInclude Include="..\rendering\BorderEdge.h" />
+    <ClInclude Include="..\platform\network\soup\AuthenticationChallenge.h">
+      <Filter>platform\network\soup</Filter>
+    </ClInclude>
+    <ClInclude Include="..\platform\network\soup\CertificateInfo.h">
+      <Filter>platform\network\soup</Filter>
+    </ClInclude>
+    <ClInclude Include="..\platform\network\soup\CookieJarSoup.h">
+      <Filter>platform\network\soup</Filter>
+    </ClInclude>
+    <ClInclude Include="..\platform\network\soup\GUniquePtrSoup.h">
+      <Filter>platform\network\soup</Filter>
+    </ClInclude>
+    <ClInclude Include="..\platform\network\soup\ProxyResolverSoup.h">
+      <Filter>platform\network\soup</Filter>
+    </ClInclude>
+    <ClInclude Include="..\platform\network\soup\ResourceError.h">
+      <Filter>platform\network\soup</Filter>
+    </ClInclude>
+    <ClInclude Include="..\platform\network\soup\ResourceRequest.h">
+      <Filter>platform\network\soup</Filter>
+    </ClInclude>
+    <ClInclude Include="..\platform\network\soup\ResourceResponse.h">
+      <Filter>platform\network\soup</Filter>
+    </ClInclude>
+    <ClInclude Include="..\platform\network\soup\SocketStreamError.h">
+      <Filter>platform\network\soup</Filter>
+    </ClInclude>
+    <ClInclude Include="..\platform\network\soup\SocketStreamHandle.h">
+      <Filter>platform\network\soup</Filter>
+    </ClInclude>
+    <ClInclude Include="..\platform\network\soup\SoupNetworkSession.h">
+      <Filter>platform\network\soup</Filter>
+    </ClInclude>
+    <ClInclude Include="..\platform\graphics\GeometryUtilities.h" />
+    <ClInclude Include="..\html\track\VTTRegion.h">
+      <Filter>html\track</Filter>
+    </ClInclude>
+    <ClInclude Include="..\html\track\VTTRegionList.h">
+      <Filter>html\track</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSTextTrack.cpp" />
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSTextTrack.h" />
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSTextTrackCue.cpp" />
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSTextTrackCue.h" />
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSTextTrackCueList.cpp" />
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSTextTrackCueList.h" />
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSTextTrackList.cpp" />
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSTextTrackList.h" />
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSVTTCue.cpp" />
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSVTTCue.h" />
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSVTTRegion.cpp" />
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSVTTRegion.h" />
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSVTTRegionList.cpp" />
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSVTTRegionList.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\css\CSSGrammar.y.in">

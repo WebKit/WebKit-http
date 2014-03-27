@@ -33,6 +33,7 @@
 #include "CopyWriteBarrier.h"
 #include "DeferGC.h"
 #include "Heap.h"
+#include "HeapInlines.h"
 #include "IndexingHeaderInlines.h"
 #include "JSCell.h"
 #include "PropertySlot.h"
@@ -696,9 +697,9 @@ public:
     // already.
     ArrayStorage* ensureArrayStorage(VM& vm)
     {
-        if (LIKELY(hasArrayStorage(indexingType())))
+        if (LIKELY(hasAnyArrayStorage(indexingType())))
             return m_butterfly->arrayStorage();
-            
+
         return ensureArrayStorageSlow(vm);
     }
         
@@ -744,7 +745,7 @@ protected:
     // storage. This will assert otherwise.
     ArrayStorage* arrayStorage()
     {
-        ASSERT(hasArrayStorage(indexingType()));
+        ASSERT(hasAnyArrayStorage(indexingType()));
         return m_butterfly->arrayStorage();
     }
         

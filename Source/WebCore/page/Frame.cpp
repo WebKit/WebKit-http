@@ -318,7 +318,8 @@ static PassOwnPtr<JSC::Yarr::RegularExpression> createRegExpForLabels(const Vect
     // the same across calls.  We can't do that.
 
     DEPRECATED_DEFINE_STATIC_LOCAL(JSC::Yarr::RegularExpression, wordRegExp, ("\\w", TextCaseSensitive));
-    String pattern("(");
+    StringBuilder pattern;
+    pattern.append('(');
     unsigned int numLabels = labels.size();
     unsigned int i;
     for (i = 0; i < numLabels; i++) {
@@ -332,18 +333,18 @@ static PassOwnPtr<JSC::Yarr::RegularExpression> createRegExpForLabels(const Vect
         }
 
         if (i)
-            pattern.append("|");
+            pattern.append('|');
         // Search for word boundaries only if label starts/ends with "word characters".
         // If we always searched for word boundaries, this wouldn't work for languages
         // such as Japanese.
         if (startsWithWordChar)
-            pattern.append("\\b");
+            pattern.appendLiteral("\\b");
         pattern.append(label);
         if (endsWithWordChar)
-            pattern.append("\\b");
+            pattern.appendLiteral("\\b");
     }
-    pattern.append(")");
-    return adoptPtr(new JSC::Yarr::RegularExpression(pattern, TextCaseInsensitive));
+    pattern.append(')');
+    return adoptPtr(new JSC::Yarr::RegularExpression(pattern.toString(), TextCaseInsensitive));
 }
 
 String Frame::searchForLabelsAboveCell(JSC::Yarr::RegularExpression* regExp, HTMLTableCellElement* cell, size_t* resultDistanceFromStartOfCell)
@@ -484,6 +485,18 @@ String Frame::matchLabelsAgainstElement(const Vector<String>& labels, Element* e
     
     return matchLabelsAgainstString(labels, element->getAttribute(idAttr));
 }
+
+#if ENABLE(IOS_TEXT_AUTOSIZING)
+float Frame::textAutosizingWidth() const
+{
+    return m_textAutosizingWidth;
+}
+
+void Frame::setTextAutosizingWidth(float width)
+{
+    m_textAutosizingWidth = width;
+}
+#endif
 
 #if PLATFORM(IOS)
 void Frame::scrollOverflowLayer(RenderLayer* layer, const IntRect& visibleRect, const IntRect& exposeRect)

@@ -23,25 +23,23 @@
 
 #include <Ecore_IMF.h>
 #include <Evas.h>
-#include <wtf/OwnPtr.h>
-#include <wtf/PassOwnPtr.h>
+#include <wtf/efl/UniquePtrEfl.h>
 
 class EwkView;
 
 namespace WebKit {
 
-class WebPageProxy;
-
 class InputMethodContextEfl {
 public:
-    static PassOwnPtr<InputMethodContextEfl> create(EwkView* viewImpl, Evas* canvas)
+    static std::unique_ptr<InputMethodContextEfl> create(EwkView* viewImpl, Evas* canvas)
     {
-        OwnPtr<Ecore_IMF_Context> context = createIMFContext(canvas);
+        EflUniquePtr<Ecore_IMF_Context> context = createIMFContext(canvas);
         if (!context)
             return nullptr;
 
-        return adoptPtr(new InputMethodContextEfl(viewImpl, context.release()));
+        return std::make_unique<InputMethodContextEfl>(viewImpl, std::move(context));
     }
+    InputMethodContextEfl(EwkView*, EflUniquePtr<Ecore_IMF_Context>);
     ~InputMethodContextEfl();
 
     void handleMouseUpEvent(const Evas_Event_Mouse_Up* upEvent);
@@ -49,14 +47,12 @@ public:
     void updateTextInputState();
 
 private:
-    InputMethodContextEfl(EwkView*, PassOwnPtr<Ecore_IMF_Context>);
-
-    static PassOwnPtr<Ecore_IMF_Context> createIMFContext(Evas* canvas);
+    static EflUniquePtr<Ecore_IMF_Context> createIMFContext(Evas* canvas);
     static void onIMFInputSequenceComplete(void* data, Ecore_IMF_Context*, void* eventInfo);
     static void onIMFPreeditSequenceChanged(void* data, Ecore_IMF_Context*, void* eventInfo);
 
     EwkView* m_view;
-    OwnPtr<Ecore_IMF_Context> m_context;
+    EflUniquePtr<Ecore_IMF_Context> m_context;
     bool m_focused;
 };
 

@@ -35,7 +35,7 @@ namespace WebCore {
 
 class EvasGLSurface {
 public:
-    static PassOwnPtr<EvasGLSurface> create(Evas_GL* evasGL, Evas_GL_Config* cfg, const WebCore::IntSize& size)
+    static std::unique_ptr<EvasGLSurface> create(Evas_GL* evasGL, Evas_GL_Config* cfg, const WebCore::IntSize& size)
     {
         ASSERT(evasGL);
         ASSERT(cfg);
@@ -50,15 +50,15 @@ public:
             return nullptr;
 
         // Ownership of surface is passed to EvasGLSurface.
-        return adoptPtr(new EvasGLSurface(evasGL, surface));
+        return std::make_unique<EvasGLSurface>(evasGL, surface);
     }
+
+    EvasGLSurface(Evas_GL*, Evas_GL_Surface* passSurface);
     ~EvasGLSurface();
 
     Evas_GL_Surface* surface() { return m_surface; }
 
 private:
-    EvasGLSurface(Evas_GL*, Evas_GL_Surface* passSurface);
-
     Evas_GL* m_evasGL;
     Evas_GL_Surface* m_surface;
 };

@@ -54,7 +54,7 @@ private:
     RetainPtr<CALayer> m_layer;
 };
 
-SCROLLING_NODE_TYPE_CASTS(ScrollingTreeStickyNode, nodeType() == StickyNode);
+SCROLLING_NODE_TYPE_CASTS(ScrollingTreeStickyNode, isStickyNode());
 
 } // namespace WebCore
 

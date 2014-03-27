@@ -722,6 +722,8 @@ void SpeculativeJIT::emitCall(Node* node)
         m_jit.move(calleePayloadGPR, GPRInfo::regT0);
         m_jit.move(calleeTagGPR, GPRInfo::regT1);
     }
+    CallLinkInfo* info = m_jit.codeBlock()->addCallLinkInfo();
+    m_jit.move(MacroAssembler::TrustedImmPtr(info), GPRInfo::regT2);
     JITCompiler::Call slowCall = m_jit.nearCall();
 
     done.link(&m_jit);
@@ -730,7 +732,10 @@ void SpeculativeJIT::emitCall(Node* node)
 
     jsValueResult(resultTagGPR, resultPayloadGPR, node, DataFormatJS, UseChildrenCalledExplicitly);
 
-    m_jit.addJSCall(fastCall, slowCall, targetToCheck, callType, calleePayloadGPR, node->origin.semantic);
+    info->callType = callType;
+    info->codeOrigin = node->origin.semantic;
+    info->calleeGPR = calleePayloadGPR;
+    m_jit.addJSCall(fastCall, slowCall, targetToCheck, info);
 }
 
 template<bool strict>
@@ -743,9 +748,15 @@ GPRReg SpeculativeJIT::fillSpeculateInt32Internal(Edge edge, DataFormat& returnF
     VirtualRegister virtualRegister = edge->virtualRegister();
     GenerationInfo& info = generationInfoFromVirtualRegister(virtualRegister);
 
+    if (edge->hasConstant() && !isInt32Constant(edge.node())) {
+        terminateSpeculativeExecution(Uncountable, JSValueRegs(), 0);
+        returnFormat = DataFormatInt32;
+        return allocate();
+    }
+    
     switch (info.registerFormat()) {
     case DataFormatNone: {
-        if ((edge->hasConstant() && !isInt32Constant(edge.node())) || info.spillFormat() == DataFormatDouble) {
+        if (info.spillFormat() == DataFormatDouble) {
             terminateSpeculativeExecution(Uncountable, JSValueRegs(), 0);
             returnFormat = DataFormatInt32;
             return allocate();
@@ -3152,7 +3163,7 @@ void SpeculativeJIT::compile(Node* node)
         
     case NewArray: {
         JSGlobalObject* globalObject = m_jit.graph().globalObjectFor(node->origin.semantic);
-        if (!globalObject->isHavingABadTime() && !hasArrayStorage(node->indexingType())) {
+        if (!globalObject->isHavingABadTime() && !hasAnyArrayStorage(node->indexingType())) {
             Structure* structure = globalObject->arrayStructureForIndexingTypeDuringAllocation(node->indexingType());
             ASSERT(structure->indexingType() == node->indexingType());
             ASSERT(
@@ -3320,7 +3331,7 @@ void SpeculativeJIT::compile(Node* node)
 
     case NewArrayWithSize: {
         JSGlobalObject* globalObject = m_jit.graph().globalObjectFor(node->origin.semantic);
-        if (!globalObject->isHavingABadTime() && !hasArrayStorage(node->indexingType())) {
+        if (!globalObject->isHavingABadTime() && !hasAnyArrayStorage(node->indexingType())) {
             SpeculateStrictInt32Operand size(this, node->child1());
             GPRTemporary result(this);
             GPRTemporary storage(this);
@@ -3394,7 +3405,7 @@ void SpeculativeJIT::compile(Node* node)
     case NewArrayBuffer: {
         JSGlobalObject* globalObject = m_jit.graph().globalObjectFor(node->origin.semantic);
         IndexingType indexingType = node->indexingType();
-        if (!globalObject->isHavingABadTime() && !hasArrayStorage(indexingType)) {
+        if (!globalObject->isHavingABadTime() && !hasAnyArrayStorage(indexingType)) {
             unsigned numElements = node->numConstants();
             
             GPRTemporary result(this);

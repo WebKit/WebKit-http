@@ -30,6 +30,7 @@
 #include "Range.h"
 #include "TextIterator.h"
 #include "WebKitAccessibleWrapperAtk.h"
+#include <wtf/NeverDestroyed.h>
 #include <wtf/gobject/GRefPtr.h>
 #include <wtf/text/CString.h>
 
@@ -119,8 +120,8 @@ static void notifyChildrenSelectionChange(AccessibilityObject* object)
     // focused object and its associated list object, as per previous
     // calls to this function, in order to properly decide whether to
     // emit some signals or not.
-    DEPRECATED_DEFINE_STATIC_LOCAL(RefPtr<AccessibilityObject>, oldListObject, ());
-    DEPRECATED_DEFINE_STATIC_LOCAL(RefPtr<AccessibilityObject>, oldFocusedObject, ());
+    static NeverDestroyed<RefPtr<AccessibilityObject>> oldListObject;
+    static NeverDestroyed<RefPtr<AccessibilityObject>> oldFocusedObject;
 
     // Only list boxes and menu lists supported so far.
     if (!object || !(object->isListBox() || object->isMenuList()))
@@ -142,7 +143,7 @@ static void notifyChildrenSelectionChange(AccessibilityObject* object)
 
     AccessibilityObject* listObject = getListObject(object);
     if (!listObject) {
-        oldListObject = 0;
+        oldListObject.get() = 0;
         return;
     }
 
@@ -154,11 +155,11 @@ static void notifyChildrenSelectionChange(AccessibilityObject* object)
     // Ensure the current list object is the same than the old one so
     // further comparisons make sense. Otherwise, just reset
     // oldFocusedObject so it won't be taken into account.
-    if (oldListObject != listObject)
-        oldFocusedObject = 0;
+    if (oldListObject.get() != listObject)
+        oldFocusedObject.get() = 0;
 
     AtkObject* axItem = item ? item->wrapper() : 0;
-    AtkObject* axOldFocusedObject = oldFocusedObject ? oldFocusedObject->wrapper() : 0;
+    AtkObject* axOldFocusedObject = oldFocusedObject.get() ? oldFocusedObject.get()->wrapper() : 0;
 
     // Old focused object just lost focus, so emit the events.
     if (axOldFocusedObject && axItem != axOldFocusedObject) {
@@ -175,8 +176,8 @@ static void notifyChildrenSelectionChange(AccessibilityObject* object)
     }
 
     // Update pointers to the previously involved objects.
-    oldListObject = listObject;
-    oldFocusedObject = item;
+    oldListObject.get() = listObject;
+    oldFocusedObject.get() = item;
 }
 
 void AXObjectCache::postPlatformNotification(AccessibilityObject* coreObject, AXNotification notification)
@@ -207,7 +208,13 @@ void AXObjectCache::postPlatformNotification(AccessibilityObject* coreObject, AX
             propertyValues.property_name = "accessible-value";
 
             memset(&propertyValues.new_value,  0, sizeof(GValue));
+#if ATK_CHECK_VERSION(2,11,92)
+            double value;
+            atk_value_get_value_and_text(ATK_VALUE(axObject), &value, nullptr);
+            g_value_set_double(g_value_init(&propertyValues.new_value, G_TYPE_DOUBLE), value);
+#else
             atk_value_get_current_value(ATK_VALUE(axObject), &propertyValues.new_value);
+#endif
 
             g_signal_emit_by_name(ATK_OBJECT(axObject), "property-change::accessible-value", &propertyValues, NULL);
         }

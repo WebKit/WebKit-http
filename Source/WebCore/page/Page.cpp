@@ -159,6 +159,7 @@ Page::Page(PageClients& pageClients)
     , m_mediaVolume(1)
     , m_pageScaleFactor(1)
     , m_deviceScaleFactor(1)
+    , m_topContentInset(0)
     , m_suppressScrollbarAnimations(false)
     , m_didLoadUserStyleSheet(false)
     , m_userStyleSheetModificationTime(0)
@@ -733,6 +734,10 @@ void Page::setPageScaleFactor(float scale, const IntPoint& origin)
 
 void Page::setDeviceScaleFactor(float scaleFactor)
 {
+    ASSERT(scaleFactor > 0);
+    if (scaleFactor <= 0)
+        return;
+    
     if (m_deviceScaleFactor == scaleFactor)
         return;
 
@@ -748,7 +753,17 @@ void Page::setDeviceScaleFactor(float scaleFactor)
     pageCache()->markPagesForFullStyleRecalc(this);
     GraphicsContext::updateDocumentMarkerResources();
 }
-
+    
+void Page::setTopContentInset(float contentInset)
+{
+    if (m_topContentInset == contentInset)
+        return;
+    
+    m_topContentInset = contentInset;
+    if (RenderView* renderView = mainFrame().contentRenderer())
+        renderView->setNeedsLayout();
+}
+    
 void Page::setShouldSuppressScrollbarAnimations(bool suppressAnimations)
 {
     if (suppressAnimations == m_suppressScrollbarAnimations)
@@ -913,9 +928,7 @@ const String& Page::userStyleSheet() const
     if (!data)
         return m_userStyleSheet;
 
-    RefPtr<TextResourceDecoder> decoder = TextResourceDecoder::create("text/css");
-    m_userStyleSheet = decoder->decode(data->data(), data->size());
-    m_userStyleSheet.append(decoder->flush());
+    m_userStyleSheet = TextResourceDecoder::create("text/css")->decodeAndFlush(data->data(), data->size());
 
     return m_userStyleSheet;
 }

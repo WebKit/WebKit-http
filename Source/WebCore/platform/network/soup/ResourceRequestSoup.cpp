@@ -18,6 +18,9 @@
  */
 
 #include "config.h"
+
+#if USE(SOUP)
+
 #include "ResourceRequest.h"
 
 #include "GUniquePtrSoup.h"
@@ -174,3 +177,5 @@ GUniquePtr<SoupURI> ResourceRequest::createSoupURI() const
 }
 
 }
+
+#endif

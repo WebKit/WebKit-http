@@ -1,3 +1,256 @@
+2014-03-26  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed. Removing the remaining Automake cruft.
+
+        * GNUmakefile.list.am: Removed.
+
+2014-03-25  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK] Remove the autotools build
+        https://bugs.webkit.org/show_bug.cgi?id=130717
+
+        Reviewed by Anders Carlsson.
+
+        * GNUmakefile.am: Removed.
+        * config.h: Removed references to the autotools configure file.
+
+2014-03-25  Gabor Rapcsanyi  <rgabor@webkit.org>
+
+        [ARM64] GCC generates wrong code with -O2 flag in WTF::weakCompareAndSwap
+        https://bugs.webkit.org/show_bug.cgi?id=130500
+
+        Reviewed by Filip Pizlo.
+
+        Set the first operand to the exact register in the inline assembly with GCC.
+
+        * wtf/Atomics.h:
+        (WTF::weakCompareAndSwap):
+
+2014-03-25  Gabor Rapcsanyi  <rgabor@webkit.org>
+
+        [EFL] Add ARM64 build support
+        https://bugs.webkit.org/show_bug.cgi?id=130506
+
+        Rubber stamped by Gyuyoung Kim.
+
+        * wtf/Platform.h: Set WTF_CPU_ARM64 when __aarch64__ is defined.
+
+2014-03-24  Andy Estes  <aestes@apple.com>
+
+        Fix the iOS build.
+
+        * wtf/ThreadingPthreads.cpp:
+        (WTF::createThreadInternal):
+        (WTF::setCurrentThreadQOSUtility):
+
+2014-03-24  Gavin Barraclough  <barraclough@apple.com>
+
+        Add support for thread QoS
+        https://bugs.webkit.org/show_bug.cgi?id=130688
+
+        Speculative EFL build fix.
+
+        * wtf/ThreadingPthreads.cpp:
+        (WTF::setCurrentThreadQOSUtility):
+
+2014-03-24  Gavin Barraclough  <barraclough@apple.com>
+
+        Add support for thread QoS
+        https://bugs.webkit.org/show_bug.cgi?id=130688
+
+        Reviewed by Andreas Kling.
+
+        * wtf/FastMalloc.cpp:
+        (WTF::TCMalloc_PageHeap::runScavengerThread):
+            - block freeing is a utility activity.
+        * wtf/Threading.h:
+            - declaration.
+        * wtf/ThreadingPthreads.cpp:
+        (WTF::createThreadInternal):
+            - default to interactive.
+        (WTF::setCurrentThreadQOSUtility):
+            - implementation.
+        * wtf/ThreadingWin.cpp:
+        (WTF::setCurrentThreadQOSUtility):
+            - no-op implementation.
+
+2014-03-23  Hyowon Kim  <hw1008.kim@samsung.com>
+
+        Move all EFL typedefs into EflTypedefs.h.
+        https://bugs.webkit.org/show_bug.cgi?id=130511
+
+        Reviewed by Gyuyoung Kim.
+
+        * wtf/Platform.h: include EflTypedefs.h.
+        * wtf/efl/EflTypedefs.h: Added.
+        * wtf/efl/RefPtrEfl.h: Remove EFL typedefs.
+
+2014-03-22  Darin Adler  <darin@apple.com>
+
+        Remove String::deprecatedCharacters
+        https://bugs.webkit.org/show_bug.cgi?id=126854
+
+        Reviewed by Sam Weinig.
+
+        * wtf/text/StringBuilder.cpp:
+        (WTF::StringBuilder::reifyString): Removed code to update 16-bit shadow.
+
+        * wtf/text/StringBuilder.h: Removed deprecatedCharacters.
+        (WTF::StringBuilder::StringBuilder): Removed m_valid16BitShadowLength.
+        (WTF::StringBuilder::clear): Removed code to clear m_valid16BitShadowLength.
+        (WTF::StringBuilder::swap): Removed code to swap m_valid16BitShadowLength.
+
+        * wtf/text/StringImpl.cpp:
+        (WTF::StringImpl::~StringImpl): Removed code to free m_copyData16.
+        (WTF::StringImpl::upper): Use StringView::upconvertedCharacters for slow case.
+        (WTF::StringImpl::lower): Ditto.
+        (WTF::StringImpl::find): Use characters8/16 rather than deprecatedCharacters.
+        Added an 8-bit code path to one of the overloads. Might want to revisit later
+        to decide whether to use templates instead of copy/paste, or even use StringView
+        to cut down on duplicate code paths.
+        (WTF::StringImpl::findIgnoringCase): Ditto.
+        (WTF::StringImpl::sizeInBytes): Remove code to handle has16BitShadow case.
+        (WTF::equalIgnoringNullity): Added. To be called by the Vector template in the header.
+
+        * wtf/text/StringImpl.h: Removed deprecatedCharacters, has16BitShadow,
+        upconvertCharacters, getData16SlowCase, s_hashFlagHas16BitShadow, and m_copyData16.
+        (WTF::equalIgnoringNullity): Changed the template function into an inline that calls
+        a non-inline helper function. The non-inline function handles both 8-bit and 16-bit
+        strings.
+
+        * wtf/text/StringView.h:
+        (WTF::StringView::StringView): Added an overload so we can make one of these directly
+        from a StringImpl without first wrapping it in a string. Added an adapter so we can
+        use StringView as part of string concatenation. Added an append function so we can
+        append to a Vector<UChar>.
+
+        * wtf/text/WTFString.cpp:
+        (WTF::String::append): Use StringView::getCharactersWithUpconvert. Also changed
+        single-character append so it won't always turn an 8-bit string into a 16-bit one.
+        (WTF::String::insert): Removed one insert overload and changed the other to use
+        StringView::getCharactersWithUpconvert.
+        (WTF::String::truncate): Changed to use StringImpl::substring.
+        (WTF::String::percentage): Added characters8/16 paths instead of using
+        deprecatedCharacters.
+
+        * wtf/text/WTFString.h: Removed deprecatedCharacters, getCharactersWithUpconvert,
+        insert(UChar*, unsigned, unsigned), and the append overload for Vector<UChar>.
+
+2014-03-20  Darin Adler  <darin@apple.com>
+
+        Fix a header guard mistake (harmless but clearly wrong)
+        https://bugs.webkit.org/show_bug.cgi?id=130559
+
+        Reviewed by Andreas Kling.
+
+        * wtf/text/StringConcatenate.h: Correct the macro name in the header guard.
+
+2014-03-20  Hyowon Kim  <hw1008.kim@samsung.com>
+
+        Move to using std::unique_ptr for EFL objects.
+        https://bugs.webkit.org/show_bug.cgi?id=129853
+
+        Reviewed by Gyuyoung Kim.
+
+        EflUniquePtr is a template alias of std::unique_ptr
+        with a custom deleter for each Efl Objects, which is motivated by GUniquePtr.
+        This patch replaces uses of OwnPtr and PassOwnPtr for Efl objects with EflUniquePtr.
+
+        * wtf/OwnPtrCommon.h:
+        * wtf/PlatformEfl.cmake:
+        * wtf/RunLoop.h:
+        * wtf/efl/MainThreadEfl.cpp:
+        (WTF::pipeObject):
+        (WTF::initializeMainThreadPlatform):
+        * wtf/efl/OwnPtrEfl.cpp: Removed.
+        * wtf/efl/RunLoopEfl.cpp:
+        (WTF::RunLoop::RunLoop):
+        * wtf/efl/UniquePtrEfl.h: Added.
+        (WTF::EflPtrDeleter::operator()):
+
+2014-03-20  Gavin Barraclough  <barraclough@apple.com>
+
+        Remove IdentifierTable typedef, isIdentifier()
+        https://bugs.webkit.org/show_bug.cgi?id=130533
+
+        Rubber stamped by Geoff Garen.
+
+        Code should use AtomicStringTable, isAtomic() directly.
+
+        * wtf/WTFThreadData.h:
+        (WTF::WTFThreadData::setCurrentAtomicStringTable):
+        (WTF::WTFThreadData::resetCurrentAtomicStringTable):
+            - removed IdentifierTypedef.
+        * wtf/text/StringImpl.h:
+        (WTF::StringImpl::flagIsAtomic):
+            - renamed flagIsIdentfier -> flagIsAtomic.
+
+2014-03-20  Gavin Barraclough  <barraclough@apple.com>
+
+        Merge AtomicString, Identifier
+        https://bugs.webkit.org/show_bug.cgi?id=128624
+
+        Reviewed by Geoff Garen.
+
+        WTF::StringImpl currently supports two uniquing mechanism - AtomicString and
+        Identifer - that is one too many.
+
+        Remove Identifier in favour of AtomicString. Identifier had two interesting
+        mechanisms that we preserve.
+
+        (1) JSC API VMs each get their own string table, switch the string table on
+            API entry/exit.
+        (2) JSC caches a pointer to the string table on the VM to avoid a thread
+            specific access. Adds a new AtomicString::add method to support this.
+
+        * wtf/WTFThreadData.cpp:
+        (WTF::WTFThreadData::WTFThreadData):
+            - remove allocation of IdentifierTable.
+        (WTF::WTFThreadData::~WTFThreadData):
+            - remove deletion of IdentifierTable.
+        * wtf/WTFThreadData.h:
+        (WTF::WTFThreadData::atomicStringTable):
+            - table is now switched by JSC API, return the current table.
+        (WTF::WTFThreadData::currentIdentifierTable):
+            - now returns the current AtomicStringTable.
+        (WTF::WTFThreadData::setCurrentIdentifierTable):
+            - now sets the current AtomicStringTable.
+        (WTF::WTFThreadData::resetCurrentIdentifierTable):
+            - now resets the AtomicStringTable.
+        * wtf/text/AtomicString.cpp:
+        (WTF::AtomicString::addSlowCase):
+            - add without thread-specific access to access string table.
+        * wtf/text/AtomicString.h:
+        (WTF::AtomicString::addWithStringTableProvider):
+            - add without thread-specific access (used by JSC, string table provided by VM or ExecState).
+        * wtf/text/AtomicStringTable.cpp:
+        (WTF::AtomicStringTable::create):
+            - renamed m_atomicStringTable -> m_defaultAtomicStringTable.
+        (WTF::AtomicStringTable::~AtomicStringTable):
+        (WTF::AtomicStringTable::destroy):
+            - clearing of table moved from AtomicStringTable::destroy to destructor.
+        * wtf/text/AtomicStringTable.h:
+            - added destructor.
+        * wtf/text/StringImpl.cpp:
+        (WTF::StringImpl::~StringImpl):
+            - Identifers no longer exist; no need to remove them from IdentifierTable.
+        * wtf/text/StringImpl.h:
+        (WTF::StringImpl::StringImpl):
+            - removed s_hashFlagIsIdentifier.
+        (WTF::StringImpl::flagIsIdentifier):
+            - s_hashFlagIsIdentifier -> s_hashFlagIsAtomic.
+        (WTF::StringImpl::isIdentifier):
+            - now synonymous to isAtomic().
+        * wtf/text/StringStatics.cpp:
+        (WTF::StringImpl::hashAndFlagsForEmptyUnique):
+            - removed s_hashFlagIsIdentifier.
+
+2014-03-20  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed Clang build fix for the GTK port after r165952.
+
+        * wtf/gobject/GMainLoopSource.h: Include the <functional> header for the std::function<> objects.
+
 2014-03-18  Carlos Garcia Campos  <cgarcia@igalia.com>
 
         [GLIB] Add GMainLoopSource class to wrap idle and timeout sources

@@ -41,12 +41,9 @@ ThreadSpecific<WTFThreadData>* WTFThreadData::staticData;
 
 WTFThreadData::WTFThreadData()
     : m_apiData(0)
-    , m_atomicStringTable(0)
+    , m_currentAtomicStringTable(0)
+    , m_defaultAtomicStringTable(0)
     , m_atomicStringTableDestructor(0)
-#if !USE(WEB_THREAD)
-    , m_defaultIdentifierTable(new JSC::IdentifierTable())
-    , m_currentIdentifierTable(m_defaultIdentifierTable)
-#endif
     , m_stackBounds(StackBounds::currentThreadStackBounds())
 #if ENABLE(STACK_STATS)
     , m_stackStats()
@@ -54,23 +51,14 @@ WTFThreadData::WTFThreadData()
     , m_savedStackPointerAtVMEntry(0)
     , m_savedLastStackTop(stack().origin())
 {
-#if USE(WEB_THREAD)
-    static JSC::IdentifierTable* sharedIdentifierTable = new JSC::IdentifierTable();
-    if (pthread_main_np() || isWebThread())
-        m_defaultIdentifierTable = sharedIdentifierTable;
-    else
-        m_defaultIdentifierTable = new JSC::IdentifierTable();
-
-    m_currentIdentifierTable = m_defaultIdentifierTable;
-#endif
     AtomicStringTable::create(*this);
+    m_currentAtomicStringTable = m_defaultAtomicStringTable;
 }
 
 WTFThreadData::~WTFThreadData()
 {
     if (m_atomicStringTableDestructor)
-        m_atomicStringTableDestructor(m_atomicStringTable);
-    delete m_defaultIdentifierTable;
+        m_atomicStringTableDestructor(m_defaultAtomicStringTable);
 }
 
 #if USE(PTHREAD_GETSPECIFIC_DIRECT)
@@ -86,21 +74,3 @@ WTFThreadData& WTFThreadData::createAndRegisterForGetspecificDirect()
 #endif
 
 } // namespace WTF
-
-namespace JSC {
-
-IdentifierTable::~IdentifierTable()
-{
-    HashSet<StringImpl*>::iterator end = m_table.end();
-    for (HashSet<StringImpl*>::iterator iter = m_table.begin(); iter != end; ++iter)
-        (*iter)->setIsIdentifier(false);
-}
-
-HashSet<StringImpl*>::AddResult IdentifierTable::add(StringImpl* value)
-{
-    HashSet<StringImpl*>::AddResult result = m_table.add(value);
-    (*result.iterator)->setIsIdentifier(true);
-    return result;
-}
-
-} // namespace JSC

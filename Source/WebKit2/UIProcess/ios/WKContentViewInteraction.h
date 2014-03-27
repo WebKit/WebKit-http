@@ -60,6 +60,7 @@ class WebPageProxy;
 
 typedef void (^UIWKAutocorrectionCompletionHandler)(UIWKAutocorrectionRects *rectsForInput);
 typedef void (^UIWKAutocorrectionContextHandler)(UIWKAutocorrectionContext *autocorrectionContext);
+typedef void (^UIWKDictationContextHandler)(NSString *selectedText, NSString *beforeText, NSString *afterText);
 
 namespace WebKit {
 struct WKAutoCorrectionData {
@@ -110,6 +111,7 @@ struct WKAutoCorrectionData {
     BOOL _showingTextStyleOptions;
     BOOL _hasValidPositionInformation;
     BOOL _isTapHighlightIDValid;
+    BOOL _selectionNeedsUpdate;
 }
 
 @end
@@ -129,6 +131,7 @@ struct WKAutoCorrectionData {
 - (void)_startAssistingNode:(const WebKit::AssistedNodeInformation&)information;
 - (void)_stopAssistingNode;
 - (void)_selectionChanged;
+- (void)_updateChangedSelection;
 - (BOOL)_interpretKeyEvent:(WebIOSEvent *)theEvent isCharEvent:(BOOL)isCharEvent;
 - (void)_positionInformationDidChange:(const WebKit::InteractionInformationAtPosition&)info;
 - (void)_attemptClickAtLocation:(CGPoint)location;

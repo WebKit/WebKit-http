@@ -89,8 +89,6 @@ WK_API_CLASS
  */
 - (WKNavigation *)goToBackForwardListItem:(WKBackForwardListItem *)item;
 
-- (IBAction)stopLoading:(id)sender;
-
 @property (nonatomic, readonly) NSString *title;
 
 /*! @abstract The active URL. @link WKWebView @/link is KVO-compliant for this property.
@@ -117,8 +115,13 @@ WK_API_CLASS
 @property (readonly) BOOL canGoBack;
 @property (readonly) BOOL canGoForward;
 
-- (void)goBack;
-- (void)goForward;
+- (WKNavigation *)goBack;
+- (WKNavigation *)goForward;
+
+- (void)stopLoading;
+
+// FIXME: Move this to WKIBActions.
+- (IBAction)stopLoading:(id)sender;
 
 @property (nonatomic) BOOL allowsBackForwardNavigationGestures;
 
@@ -132,5 +135,16 @@ WK_API_CLASS
 #endif
 
 @end
+
+#if !TARGET_OS_IPHONE
+
+@interface WKWebView (WKIBActions) <NSUserInterfaceValidations>
+
+- (IBAction)goBack:(id)sender;
+- (IBAction)goForward:(id)sender;
+
+@end
+
+#endif
 
 #endif

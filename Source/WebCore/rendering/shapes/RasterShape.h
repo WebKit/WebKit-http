@@ -50,9 +50,8 @@ public:
     bool isEmpty() const { return m_bounds.isEmpty(); }
     void appendInterval(int y, int x1, int x2);
 
-    void getIncludedIntervals(int y1, int y2, IntShapeIntervals& result) const;
     void getExcludedIntervals(int y1, int y2, IntShapeIntervals& result) const;
-    bool firstIncludedIntervalY(int minY, const IntSize& minSize, LayoutUnit& result) const;
+
     PassOwnPtr<RasterShapeIntervals> computeShapeMarginIntervals(int shapeMargin) const;
 
     void buildBoundsPath(Path&) const;
@@ -92,18 +91,15 @@ private:
 class RasterShape : public Shape {
     WTF_MAKE_NONCOPYABLE(RasterShape);
 public:
-    RasterShape(PassOwnPtr<RasterShapeIntervals> intervals, const IntSize& imageSize)
+    RasterShape(PassOwnPtr<RasterShapeIntervals> intervals, const IntSize& marginRectSize)
         : m_intervals(intervals)
-        , m_imageSize(imageSize)
+        , m_marginRectSize(marginRectSize)
     {
     }
 
     virtual LayoutRect shapeMarginLogicalBoundingBox() const override { return static_cast<LayoutRect>(marginIntervals().bounds()); }
-    virtual LayoutRect shapePaddingLogicalBoundingBox() const override { return static_cast<LayoutRect>(paddingIntervals().bounds()); }
     virtual bool isEmpty() const override { return m_intervals->isEmpty(); }
     virtual void getExcludedIntervals(LayoutUnit logicalTop, LayoutUnit logicalHeight, SegmentList&) const override;
-    virtual void getIncludedIntervals(LayoutUnit logicalTop, LayoutUnit logicalHeight, SegmentList&) const override;
-    virtual bool firstIncludedIntervalLogicalTop(LayoutUnit minLogicalIntervalTop, const FloatSize& minLogicalIntervalSize, LayoutUnit&) const override;
 
     virtual void buildDisplayPaths(DisplayPaths& paths) const override
     {
@@ -114,11 +110,10 @@ public:
 
 private:
     const RasterShapeIntervals& marginIntervals() const;
-    const RasterShapeIntervals& paddingIntervals() const;
 
     OwnPtr<RasterShapeIntervals> m_intervals;
     mutable OwnPtr<RasterShapeIntervals> m_marginIntervals;
-    IntSize m_imageSize;
+    IntSize m_marginRectSize;
 };
 
 } // namespace WebCore

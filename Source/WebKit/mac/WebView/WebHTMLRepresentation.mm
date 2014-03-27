@@ -63,6 +63,7 @@
 #import <yarr/RegularExpression.h>
 #import <wtf/Assertions.h>
 #import <wtf/StdLibExtras.h>
+#import <wtf/text/StringBuilder.h>
 
 using namespace WebCore;
 using namespace HTMLNames;
@@ -276,7 +277,7 @@ static NSMutableArray *newArrayByConcatenatingArrays(NSArray *first, NSArray *se
 
 - (NSAttributedString *)attributedStringFrom:(DOMNode *)startNode startOffset:(int)startOffset to:(DOMNode *)endNode endOffset:(int)endOffset
 {
-    return [WebHTMLConverter editingAttributedStringFromRange:Range::create(core(startNode)->document(), core(startNode), startOffset, core(endNode), endOffset).get()];
+    return editingAttributedStringFromRange(*Range::create(core(startNode)->document(), core(startNode), startOffset, core(endNode), endOffset));
 }
 #endif
 
@@ -373,9 +374,10 @@ static RegularExpression* regExpForLabels(NSArray *labels)
     if (cacheHit != NSNotFound)
         result = regExps.at(cacheHit);
     else {
-        String pattern("(");
-        unsigned int numLabels = [labels count];
-        unsigned int i;
+        StringBuilder pattern;
+        pattern.append('(');
+        unsigned numLabels = [labels count];
+        unsigned i;
         for (i = 0; i < numLabels; i++) {
             String label = [labels objectAtIndex:i];
 
@@ -387,18 +389,18 @@ static RegularExpression* regExpForLabels(NSArray *labels)
             }
             
             if (i != 0)
-                pattern.append("|");
+                pattern.append('|');
             // Search for word boundaries only if label starts/ends with "word characters".
             // If we always searched for word boundaries, this wouldn't work for languages
             // such as Japanese.
             if (startsWithWordChar)
-                pattern.append("\\b");
+                pattern.appendLiteral("\\b");
             pattern.append(label);
             if (endsWithWordChar)
-                pattern.append("\\b");
+                pattern.appendLiteral("\\b");
         }
-        pattern.append(")");
-        result = new RegularExpression(pattern, TextCaseInsensitive);
+        pattern.append(')');
+        result = new RegularExpression(pattern.toString(), TextCaseInsensitive);
     }
 
     // add regexp to the cache, making sure it is at the front for LRU ordering

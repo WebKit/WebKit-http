@@ -333,7 +333,7 @@ void WebProcess::initializeWebProcess(const WebProcessCreationParameters& parame
 
 #if ENABLE(CACHE_PARTITIONING)
     for (auto& scheme : parameters.urlSchemesRegisteredAsCachePartitioned)
-        registerURLSchemeAsCORSEnabled(scheme);
+        registerURLSchemeAsCachePartitioned(scheme);
 #endif
 
     setDefaultRequestTimeoutInterval(parameters.defaultRequestTimeoutInterval);
@@ -985,7 +985,7 @@ NetworkProcessConnection* WebProcess::networkConnection()
 void WebProcess::networkProcessConnectionClosed(NetworkProcessConnection* connection)
 {
     ASSERT(m_networkProcessConnection);
-    ASSERT(m_networkProcessConnection == connection);
+    ASSERT_UNUSED(connection, m_networkProcessConnection == connection);
 
     m_networkProcessConnection = 0;
     

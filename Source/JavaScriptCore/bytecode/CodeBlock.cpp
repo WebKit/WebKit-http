@@ -52,6 +52,7 @@
 #include "JSCInlines.h"
 #include "PolymorphicGetByIdList.h"
 #include "PolymorphicPutByIdList.h"
+#include "ProfilerDatabase.h"
 #include "ReduceWhitespace.h"
 #include "Repatch.h"
 #include "RepatchBuffer.h"
@@ -407,7 +408,7 @@ void CodeBlock::printGetByIdCacheStatus(PrintStream& out, ExecState* exec, int l
 #endif
 }
 
-void CodeBlock::printCallOp(PrintStream& out, ExecState* exec, int location, const Instruction*& it, const char* op, CacheDumpMode cacheDumpMode, bool& hasPrintedProfiling)
+void CodeBlock::printCallOp(PrintStream& out, ExecState* exec, int location, const Instruction*& it, const char* op, CacheDumpMode cacheDumpMode, bool& hasPrintedProfiling, const CallLinkInfoMap& map)
 {
     int dst = (++it)->u.operand;
     int func = (++it)->u.operand;
@@ -426,12 +427,14 @@ void CodeBlock::printCallOp(PrintStream& out, ExecState* exec, int location, con
         }
 #endif
 #if ENABLE(JIT)
-        if (numberOfCallLinkInfos()) {
-            JSFunction* target = getCallLinkInfo(location).lastSeenCallee.get();
+        if (CallLinkInfo* info = map.get(CodeOrigin(location))) {
+            JSFunction* target = info->lastSeenCallee.get();
             if (target)
                 out.printf(" jit(%p, exec %p)", target, target->executable());
         }
-        out.print(" status(", CallLinkStatus::computeFor(this, location), ")");
+        out.print(" status(", CallLinkStatus::computeFor(this, location, map), ")");
+#else
+        UNUSED_PARAM(map);
 #endif
     }
     ++it;
@@ -483,12 +486,14 @@ void CodeBlock::dumpBytecode(PrintStream& out)
     out.printf("\n");
     
     StubInfoMap stubInfos;
+    CallLinkInfoMap callLinkInfos;
     getStubInfoMap(stubInfos);
+    getCallLinkInfoMap(callLinkInfos);
     
     const Instruction* begin = instructions().begin();
     const Instruction* end = instructions().end();
     for (const Instruction* it = begin; it != end; ++it)
-        dumpBytecode(out, exec, begin, it, stubInfos);
+        dumpBytecode(out, exec, begin, it, stubInfos, callLinkInfos);
     
     if (numberOfIdentifiers()) {
         out.printf("\nIdentifiers:\n");
@@ -616,7 +621,9 @@ void CodeBlock::printLocationOpAndRegisterOperand(PrintStream& out, ExecState* e
     out.printf("%s", registerName(operand).data());
 }
 
-void CodeBlock::dumpBytecode(PrintStream& out, ExecState* exec, const Instruction* begin, const Instruction*& it, const StubInfoMap& map)
+void CodeBlock::dumpBytecode(
+    PrintStream& out, ExecState* exec, const Instruction* begin, const Instruction*& it,
+    const StubInfoMap& stubInfos, const CallLinkInfoMap& callLinkInfos)
 {
     int location = it - begin;
     bool hasPrintedProfiling = false;
@@ -913,7 +920,7 @@ void CodeBlock::dumpBytecode(PrintStream& out, ExecState* exec, const Instructio
         case op_get_by_id_out_of_line:
         case op_get_array_length: {
             printGetByIdOp(out, exec, location, it);
-            printGetByIdCacheStatus(out, exec, location, map);
+            printGetByIdCacheStatus(out, exec, location, stubInfos);
             dumpValueProfiling(out, it, hasPrintedProfiling);
             break;
         }
@@ -1174,11 +1181,11 @@ void CodeBlock::dumpBytecode(PrintStream& out, ExecState* exec, const Instructio
             break;
         }
         case op_call: {
-            printCallOp(out, exec, location, it, "call", DumpCaches, hasPrintedProfiling);
+            printCallOp(out, exec, location, it, "call", DumpCaches, hasPrintedProfiling, callLinkInfos);
             break;
         }
         case op_call_eval: {
-            printCallOp(out, exec, location, it, "call_eval", DontDumpCaches, hasPrintedProfiling);
+            printCallOp(out, exec, location, it, "call_eval", DontDumpCaches, hasPrintedProfiling, callLinkInfos);
             break;
         }
         case op_call_varargs: {
@@ -1219,7 +1226,7 @@ void CodeBlock::dumpBytecode(PrintStream& out, ExecState* exec, const Instructio
             break;
         }
         case op_construct: {
-            printCallOp(out, exec, location, it, "construct", DumpCaches, hasPrintedProfiling);
+            printCallOp(out, exec, location, it, "construct", DumpCaches, hasPrintedProfiling, callLinkInfos);
             break;
         }
         case op_strcat: {
@@ -1380,11 +1387,13 @@ void CodeBlock::dumpBytecode(PrintStream& out, ExecState* exec, const Instructio
     out.print("\n");
 }
 
-void CodeBlock::dumpBytecode(PrintStream& out, unsigned bytecodeOffset, const StubInfoMap& map)
+void CodeBlock::dumpBytecode(
+    PrintStream& out, unsigned bytecodeOffset,
+    const StubInfoMap& stubInfos, const CallLinkInfoMap& callLinkInfos)
 {
     ExecState* exec = m_globalObject->globalExec();
     const Instruction* it = instructions().begin() + bytecodeOffset;
-    dumpBytecode(out, exec, instructions().begin(), it, map);
+    dumpBytecode(out, exec, instructions().begin(), it, stubInfos, callLinkInfos);
 }
 
 #define FOR_EACH_MEMBER_VECTOR(macro) \
@@ -2232,39 +2241,14 @@ void CodeBlock::finalizeUnconditionally()
     // Handle inline caches.
     if (!!jitCode()) {
         RepatchBuffer repatchBuffer(this);
-        for (unsigned i = 0; i < numberOfCallLinkInfos(); ++i) {
-            if (callLinkInfo(i).isLinked()) {
-                if (ClosureCallStubRoutine* stub = callLinkInfo(i).stub.get()) {
-                    if (!Heap::isMarked(stub->structure())
-                        || !Heap::isMarked(stub->executable())) {
-                        if (Options::verboseOSR()) {
-                            dataLog(
-                                "Clearing closure call from ", *this, " to ",
-                                stub->executable()->hashFor(callLinkInfo(i).specializationKind()),
-                                ", stub routine ", RawPointer(stub), ".\n");
-                        }
-                        callLinkInfo(i).unlink(*m_vm, repatchBuffer);
-                    }
-                } else if (!Heap::isMarked(callLinkInfo(i).callee.get())) {
-                    if (Options::verboseOSR()) {
-                        dataLog(
-                            "Clearing call from ", *this, " to ",
-                            RawPointer(callLinkInfo(i).callee.get()), " (",
-                            callLinkInfo(i).callee.get()->executable()->hashFor(
-                                callLinkInfo(i).specializationKind()),
-                            ").\n");
-                    }
-                    callLinkInfo(i).unlink(*m_vm, repatchBuffer);
-                }
-            }
-            if (!!callLinkInfo(i).lastSeenCallee
-                && !Heap::isMarked(callLinkInfo(i).lastSeenCallee.get()))
-                callLinkInfo(i).lastSeenCallee.clear();
-        }
+        
+        for (auto iter = callLinkInfosBegin(); !!iter; ++iter)
+            (*iter)->visitWeak(repatchBuffer);
+
         for (Bag<StructureStubInfo>::iterator iter = m_stubInfos.begin(); !!iter; ++iter) {
             StructureStubInfo& stubInfo = **iter;
             
-            if (stubInfo.visitWeakReferences())
+            if (stubInfo.visitWeakReferences(repatchBuffer))
                 continue;
             
             resetStubDuringGCInternal(repatchBuffer, stubInfo);
@@ -2288,11 +2272,32 @@ void CodeBlock::getStubInfoMap(StubInfoMap& result)
     getStubInfoMap(locker, result);
 }
 
+void CodeBlock::getCallLinkInfoMap(const ConcurrentJITLocker&, CallLinkInfoMap& result)
+{
+#if ENABLE(JIT)
+    toHashMap(m_callLinkInfos, getCallLinkInfoCodeOrigin, result);
+#else
+    UNUSED_PARAM(result);
+#endif
+}
+
+void CodeBlock::getCallLinkInfoMap(CallLinkInfoMap& result)
+{
+    ConcurrentJITLocker locker(m_lock);
+    getCallLinkInfoMap(locker, result);
+}
+
 #if ENABLE(JIT)
 StructureStubInfo* CodeBlock::addStubInfo()
 {
     ConcurrentJITLocker locker(m_lock);
     return m_stubInfos.add();
+}
+
+CallLinkInfo* CodeBlock::addCallLinkInfo()
+{
+    ConcurrentJITLocker locker(m_lock);
+    return m_callLinkInfos.add();
 }
 
 void CodeBlock::resetStub(StructureStubInfo& stubInfo)
@@ -2334,6 +2339,15 @@ void CodeBlock::resetStubDuringGCInternal(RepatchBuffer& repatchBuffer, Structur
 {
     resetStubInternal(repatchBuffer, stubInfo);
     stubInfo.resetByGC = true;
+}
+
+CallLinkInfo* CodeBlock::getCallLinkInfoForBytecodeIndex(unsigned index)
+{
+    for (auto iter = m_callLinkInfos.begin(); !!iter; ++iter) {
+        if ((*iter)->codeOrigin == CodeOrigin(index))
+            return *iter;
+    }
+    return nullptr;
 }
 #endif
 
@@ -2439,8 +2453,6 @@ bool CodeBlock::isCaptured(VirtualRegister operand, InlineCallFrame* inlineCallF
     // Ditto for the arguments object.
     if (usesArguments() && operand == argumentsRegister())
         return true;
-
-    // Ditto for the arguments object.
     if (usesArguments() && operand == unmodifiedArgumentsRegister(argumentsRegister()))
         return true;
 
@@ -2593,15 +2605,16 @@ void CodeBlock::unlinkCalls()
             m_llintCallLinkInfos[i].unlink();
     }
 #endif
-    if (!m_callLinkInfos.size())
+    if (m_callLinkInfos.isEmpty())
         return;
     if (!m_vm->canUseJIT())
         return;
     RepatchBuffer repatchBuffer(this);
-    for (size_t i = 0; i < m_callLinkInfos.size(); i++) {
-        if (!m_callLinkInfos[i].isLinked())
+    for (auto iter = m_callLinkInfos.begin(); !!iter; ++iter) {
+        CallLinkInfo& info = **iter;
+        if (!info.isLinked())
             continue;
-        m_callLinkInfos[i].unlink(*m_vm, repatchBuffer);
+        info.unlink(repatchBuffer);
     }
 }
 
@@ -2623,7 +2636,7 @@ void CodeBlock::unlinkIncomingCalls()
         return;
     RepatchBuffer repatchBuffer(this);
     while (m_incomingCalls.begin() != m_incomingCalls.end())
-        m_incomingCalls.begin()->unlink(*m_vm, repatchBuffer);
+        m_incomingCalls.begin()->unlink(repatchBuffer);
 #endif // ENABLE(JIT)
 }
 

@@ -62,6 +62,7 @@ namespace WebCore {
 class AudioSourceProvider;
 class MediaElementAudioSourceNode;
 #endif
+class DisplaySleepDisabler;
 class Event;
 class HTMLSourceElement;
 class HTMLTrackElement;
@@ -74,9 +75,6 @@ class PageActivityAssertionToken;
 class TimeRanges;
 #if ENABLE(PLUGIN_PROXY_FOR_VIDEO)
 class Widget;
-#endif
-#if PLATFORM(COCOA)
-class DisplaySleepDisabler;
 #endif
 #if ENABLE(ENCRYPTED_MEDIA_V2)
 class MediaKeys;
@@ -131,7 +129,7 @@ public:
     virtual bool supportsSave() const;
     virtual bool supportsScanning() const override;
     
-    virtual bool doesHaveAttribute(const AtomicString&) const override;
+    virtual bool doesHaveAttribute(const AtomicString&, AtomicString* value = nullptr) const override;
 
     PlatformMedia platformMedia() const;
     PlatformLayer* platformLayer() const;
@@ -290,9 +288,9 @@ public:
     void addTextTrack(PassRefPtr<TextTrack>);
     void addVideoTrack(PassRefPtr<VideoTrack>);
     void removeAudioTrack(AudioTrack*);
-    void removeTextTrack(TextTrack*);
+    void removeTextTrack(TextTrack*, bool scheduleEvent = true);
     void removeVideoTrack(VideoTrack*);
-    void removeAllInbandTracks();
+    void forgetResourceSpecificTracks();
     void closeCaptionTracksChanged();
     void notifyMediaPlayerOfTextTrackChanges();
 
@@ -688,9 +686,7 @@ private:
     bool isAutoplaying() const { return m_autoplaying; }
 
     void updateSleepDisabling();
-#if PLATFORM(COCOA)
     bool shouldDisableSleep() const;
-#endif
 
 #if ENABLE(MEDIA_CONTROLS_SCRIPT)
     virtual void didAddUserAgentShadowRoot(ShadowRoot*) override;
@@ -864,9 +860,7 @@ private:
     friend class MediaController;
     RefPtr<MediaController> m_mediaController;
 
-#if PLATFORM(COCOA)
-    OwnPtr<DisplaySleepDisabler> m_sleepDisabler;
-#endif
+    std::unique_ptr<DisplaySleepDisabler> m_sleepDisabler;
 
     friend class TrackDisplayUpdateScope;
 

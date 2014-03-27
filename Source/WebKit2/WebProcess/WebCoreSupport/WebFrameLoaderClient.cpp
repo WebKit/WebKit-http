@@ -610,7 +610,7 @@ Frame* WebFrameLoaderClient::dispatchCreatePage(const NavigationAction& navigati
         return 0;
 
     // Just call through to the chrome client.
-    Page* newPage = webPage->corePage()->chrome().createWindow(m_frame->coreFrame(), FrameLoadRequest(m_frame->coreFrame()->document()->securityOrigin()), WindowFeatures(), navigationAction);
+    Page* newPage = webPage->corePage()->chrome().createWindow(m_frame->coreFrame(), FrameLoadRequest(m_frame->coreFrame()->document()->securityOrigin(), navigationAction.resourceRequest()), WindowFeatures(), navigationAction);
     if (!newPage)
         return 0;
     
@@ -728,10 +728,8 @@ void WebFrameLoaderClient::dispatchDecidePolicyForNavigationAction(const Navigat
         break;
     case NavigationTypeFormSubmitted:
     case NavigationTypeFormResubmitted:
-        if (formState) {
-            if (WebFrameLoaderClient* originatingFrameLoaderClient = toWebFrameLoaderClient(formState->sourceDocument()->frame()->loader().client()))
-                originatingFrame = originatingFrameLoaderClient->webFrame();
-        }
+        if (formState)
+            originatingFrame = WebFrame::fromCoreFrame(*formState->sourceDocument()->frame());
         break;
     case NavigationTypeBackForward:
     case NavigationTypeReload:
@@ -782,8 +780,7 @@ void WebFrameLoaderClient::dispatchWillSendSubmitEvent(PassRefPtr<FormState> prp
     RefPtr<FormState> formState = prpFormState;
     HTMLFormElement* form = formState->form();
 
-    WebFrameLoaderClient* webFrameLoaderClient = toWebFrameLoaderClient(formState->sourceDocument()->frame()->loader().client());
-    WebFrame* sourceFrame = webFrameLoaderClient ? webFrameLoaderClient->webFrame() : 0;
+    WebFrame* sourceFrame = WebFrame::fromCoreFrame(*formState->sourceDocument()->frame());
     ASSERT(sourceFrame);
 
     webPage->injectedBundleFormClient().willSendSubmitEvent(webPage, form, m_frame, sourceFrame, formState->textFieldValues());
@@ -800,8 +797,7 @@ void WebFrameLoaderClient::dispatchWillSubmitForm(PassRefPtr<FormState> prpFormS
     
     HTMLFormElement* form = formState->form();
 
-    WebFrameLoaderClient* webFrameLoaderClient = toWebFrameLoaderClient(formState->sourceDocument()->frame()->loader().client());
-    WebFrame* sourceFrame = webFrameLoaderClient ? webFrameLoaderClient->webFrame() : 0;
+    WebFrame* sourceFrame = WebFrame::fromCoreFrame(*formState->sourceDocument()->frame());
     ASSERT(sourceFrame);
 
     const Vector<std::pair<String, String>>& values = formState->textFieldValues();

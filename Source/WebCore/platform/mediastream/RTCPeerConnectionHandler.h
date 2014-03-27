@@ -40,12 +40,12 @@
 namespace WebCore {
 
 class MediaStreamSource;
-class RTCConfiguration;
+class RTCConfigurationPrivate;
 class RTCDTMFSenderHandler;
 class RTCDataChannelHandler;
 class RTCIceCandidateDescriptor;
-class RTCOfferOptions;
-class RTCOfferAnswerOptions;
+class RTCOfferOptionsPrivate;
+class RTCOfferAnswerOptionsPrivate;
 class RTCPeerConnectionHandler;
 class RTCPeerConnectionHandlerClient;
 class RTCSessionDescriptionDescriptor;
@@ -81,15 +81,15 @@ public:
     static const AtomicString& incompatibleSessionDescriptionErrorName();
     static const AtomicString& internalErrorName();
 
-    virtual bool initialize(PassRefPtr<RTCConfiguration>) = 0;
+    virtual bool initialize(PassRefPtr<RTCConfigurationPrivate>) = 0;
 
-    virtual void createOffer(PassRefPtr<RTCSessionDescriptionRequest>, PassRefPtr<RTCOfferOptions>) = 0;
-    virtual void createAnswer(PassRefPtr<RTCSessionDescriptionRequest>, PassRefPtr<RTCOfferAnswerOptions>) = 0;
+    virtual void createOffer(PassRefPtr<RTCSessionDescriptionRequest>, PassRefPtr<RTCOfferOptionsPrivate>) = 0;
+    virtual void createAnswer(PassRefPtr<RTCSessionDescriptionRequest>, PassRefPtr<RTCOfferAnswerOptionsPrivate>) = 0;
     virtual void setLocalDescription(PassRefPtr<RTCVoidRequest>, PassRefPtr<RTCSessionDescriptionDescriptor>) = 0;
     virtual void setRemoteDescription(PassRefPtr<RTCVoidRequest>, PassRefPtr<RTCSessionDescriptionDescriptor>) = 0;
     virtual PassRefPtr<RTCSessionDescriptionDescriptor> localDescription() = 0;
     virtual PassRefPtr<RTCSessionDescriptionDescriptor> remoteDescription() = 0;
-    virtual bool updateIce(PassRefPtr<RTCConfiguration>) = 0;
+    virtual bool updateIce(PassRefPtr<RTCConfigurationPrivate>) = 0;
     virtual bool addIceCandidate(PassRefPtr<RTCVoidRequest>, PassRefPtr<RTCIceCandidateDescriptor>) = 0;
     virtual bool addStream(PassRefPtr<MediaStreamPrivate>) = 0;
     virtual void removeStream(PassRefPtr<MediaStreamPrivate>) = 0;

@@ -450,8 +450,8 @@ NON_SVG_BINDING_IDLS = \
     $(WebCore)/html/track/TextTrackCue.idl \
     $(WebCore)/html/track/TextTrackCueList.idl \
     $(WebCore)/html/track/TextTrackList.idl \
-    $(WebCore)/html/track/TextTrackRegion.idl \
-    $(WebCore)/html/track/TextTrackRegionList.idl \
+    $(WebCore)/html/track/VTTRegion.idl \
+    $(WebCore)/html/track/VTTRegionList.idl \
     $(WebCore)/html/track/TrackEvent.idl \
     $(WebCore)/html/track/VideoTrack.idl \
     $(WebCore)/html/track/VideoTrackList.idl \
@@ -751,8 +751,8 @@ all : \
     PlugInsResources.h \
     SVGElementFactory.cpp \
     SVGNames.cpp \
+    SelectorPseudoElementTypeMap.cpp \
     SelectorPseudoTypeMap.cpp \
-    UserAgentScripts.h \
     UserAgentStyleSheets.h \
     WebKitFontFamilyNames.cpp \
     WebKitFontFamilyNames.h \
@@ -800,6 +800,10 @@ CSSValueKeywords.h : $(WEBCORE_CSS_VALUE_KEYWORDS) css/makevalues.pl bindings/sc
 WEBCORE_CSS_SELECTOR_PSEUDO_TYPE_MAP_KEYWORDS := $(WebCore)/css/SelectorPseudoTypeMap.in
 SelectorPseudoTypeMap.cpp : $(WebCore)/css/makeSelectorPseudoTypeMap.py $(WEBCORE_CSS_SELECTOR_PSEUDO_TYPE_MAP_KEYWORDS)
 	python "$(WebCore)/css/makeSelectorPseudoTypeMap.py" $(WEBCORE_CSS_SELECTOR_PSEUDO_TYPE_MAP_KEYWORDS) "$(FEATURE_DEFINES)"
+
+WEBCORE_CSS_SELECTOR_PSEUDO_ELEMENTS_TYPE_MAP_KEYWORDS := $(WebCore)/css/SelectorPseudoElementTypeMap.in
+SelectorPseudoElementTypeMap.cpp : $(WebCore)/css/makeSelectorPseudoElementsMap.py $(WEBCORE_CSS_SELECTOR_PSEUDO_ELEMENTS_TYPE_MAP_KEYWORDS)
+	python "$(WebCore)/css/makeSelectorPseudoElementsMap.py" $(WEBCORE_CSS_SELECTOR_PSEUDO_ELEMENTS_TYPE_MAP_KEYWORDS) "$(FEATURE_DEFINES)"
 
 # --------
 
@@ -914,6 +918,8 @@ ifeq ($(OS),MACOS)
 endif
 
 ifdef USER_AGENT_SCRIPTS
+all : UserAgentScripts.h
+
 UserAgentScripts.h : Scripts/make-js-file-arrays.py $(USER_AGENT_SCRIPTS)
 	PYTHONPATH=$(InspectorScripts) python $< $@ UserAgentScriptsData.cpp $(USER_AGENT_SCRIPTS)
 endif

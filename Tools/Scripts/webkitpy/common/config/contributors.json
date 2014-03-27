@@ -964,6 +964,15 @@
             "grzegorz"
          ]
       },
+	  "Gurpreet Kaur" : {
+         "emails" : [
+            "k.gurpreet@samsung.com",
+			"k.gurpreet@webkit.org"
+         ],         
+         "nicks" : [
+            "k.gurpreet"
+         ]
+      },
       "Gwang Yoon Hwang" : {
          "emails" : [
             "ryumiel@company100.net",
@@ -3870,7 +3879,7 @@
             "jmalonzo@gmail.com",
             "jmalonzo@webkit.org"
          ],
-         "expertise" : "The WebKitGtk Port, Autotools Build",
+         "expertise" : "The WebKitGtk Port",
          "nicks" : [
             "janm"
          ]

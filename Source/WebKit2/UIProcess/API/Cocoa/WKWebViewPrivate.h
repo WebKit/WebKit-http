@@ -90,10 +90,14 @@ typedef NS_ENUM(NSInteger, _WKPaginationMode) {
 - (void)_beginInteractiveObscuredInsetsChange;
 - (void)_endInteractiveObscuredInsetsChange;
 
+- (void)_showInspectorIndication;
+- (void)_hideInspectorIndication;
+
 - (void)_snapshotRect:(CGRect)rectInViewCoordinates intoImageOfWidth:(CGFloat)imageWidth completionHandler:(void(^)(CGImageRef))completionHandler;
 #else
 @property (readonly) NSColor *_pageExtendedBackgroundColor;
 @property (nonatomic, setter=_setDrawsTransparentBackground:) BOOL _drawsTransparentBackground;
+@property (nonatomic, setter=_setTopContentInset:) CGFloat _topContentInset;
 #endif
 
 - (void)_runJavaScriptInMainFrame:(NSString *)scriptString;

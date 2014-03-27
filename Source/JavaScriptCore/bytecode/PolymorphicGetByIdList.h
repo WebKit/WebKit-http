@@ -46,6 +46,7 @@ public:
         SimpleInline, // This is the patched inline access.
         SimpleStub, // This is a stub.
         Getter,
+        CustomGetter
     };
     
     GetByIdAccess()
@@ -78,9 +79,9 @@ public:
         return m_stubRoutine.get();
     }
     
-    bool doesCalls() const { return type() == Getter; }
+    bool doesCalls() const { return type() == Getter || type() == CustomGetter; }
     
-    bool visitWeak() const;
+    bool visitWeak(RepatchBuffer&) const;
 
 private:
     friend class CodeBlock;
@@ -114,7 +115,7 @@ public:
     
     bool didSelfPatching() const; // Are any of the accesses SimpleInline?
     
-    bool visitWeak() const;
+    bool visitWeak(RepatchBuffer&) const;
 
 private:
     friend class CodeBlock;

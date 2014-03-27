@@ -31,6 +31,7 @@
 #include "HTMLNames.h"
 #include "RegionOversetState.h"
 #include "ScrollTypes.h"
+#include "SimulatedClickOptions.h"
 #include "StyleResolveTree.h"
 
 namespace WebCore {
@@ -796,23 +797,6 @@ inline UniqueElementData& Element::ensureUniqueElementData()
         createUniqueElementData();
     return static_cast<UniqueElementData&>(*m_elementData);
 }
-
-class PostAttachCallbackDisabler {
-public:
-    explicit PostAttachCallbackDisabler(Document& document)
-        : m_document(document)
-    {
-        Element::suspendPostAttachCallbacks(m_document);
-    }
-
-    ~PostAttachCallbackDisabler()
-    {
-        Element::resumePostAttachCallbacks(m_document);
-    }
-
-private:
-    Document& m_document;
-};
 
 } // namespace WebCore
 

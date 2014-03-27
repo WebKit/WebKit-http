@@ -63,18 +63,15 @@ public:
         soup_message_body_complete(message->response_body);
     }
 
-    static void getAcceptPolicyCallback(Ewk_Cookie_Accept_Policy policy, Ewk_Error* error, void* event_info)
+    static void getAcceptPolicyCallback(Ewk_Cookie_Accept_Policy policy, void* event_info)
     {
-        ASSERT_FALSE(error);
         Ewk_Cookie_Accept_Policy* ret = static_cast<Ewk_Cookie_Accept_Policy*>(event_info);
         *ret = policy;
         ecore_main_loop_quit();
     }
 
-    static void getHostnamesWithCookiesCallback(Eina_List* hostnames, Ewk_Error* error, void* event_info)
+    static void getHostnamesWithCookiesCallback(Eina_List* hostnames, void* event_info)
     {
-        ASSERT_FALSE(error);
-
         Eina_List** ret = static_cast<Eina_List**>(event_info);
         Eina_List* l;
         void* data;
@@ -135,9 +132,10 @@ TEST_F(EWK2CookieManagerTest, ewk_cookie_manager_accept_policy)
     Ewk_Cookie_Manager* cookieManager = ewk_context_cookie_manager_get(ewk_view_context_get(webView()));
     ASSERT_TRUE(cookieManager);
 
+    ASSERT_TRUE(loadUrlSync(httpServer->getURLForPath("/index.html").data()));
+
     // Default policy is EWK_COOKIE_ACCEPT_POLICY_NO_THIRD_PARTY.
     ASSERT_EQ(EWK_COOKIE_ACCEPT_POLICY_NO_THIRD_PARTY, getAcceptPolicy(cookieManager));
-    ASSERT_TRUE(loadUrlSync(httpServer->getURLForPath("/index.html").data()));
 
     Eina_List* hostnames = getHostnamesWithCookies(cookieManager);
     ASSERT_EQ(1, eina_list_count(hostnames));
@@ -172,6 +170,9 @@ TEST_F(EWK2CookieManagerTest, ewk_cookie_manager_changes_watch)
 
     Ewk_Cookie_Manager* cookieManager = ewk_context_cookie_manager_get(ewk_view_context_get(webView()));
     ASSERT_TRUE(cookieManager);
+
+    // Load default test page to guarantee that WebProcess or NetworkProcess is launched.
+    ASSERT_TRUE(loadUrlSync(environment->defaultTestPageUrl()));
 
     ewk_cookie_manager_accept_policy_set(cookieManager, EWK_COOKIE_ACCEPT_POLICY_ALWAYS);
     ASSERT_EQ(EWK_COOKIE_ACCEPT_POLICY_ALWAYS, getAcceptPolicy(cookieManager));
@@ -235,6 +236,9 @@ TEST_F(EWK2CookieManagerTest, ewk_cookie_manager_cookies_delete)
     Ewk_Cookie_Manager* cookieManager = ewk_context_cookie_manager_get(ewk_view_context_get(webView()));
     ASSERT_TRUE(cookieManager);
 
+    // Load default test page to guarantee that WebProcess or NetworkProcess is launched.
+    ASSERT_TRUE(loadUrlSync(environment->defaultTestPageUrl()));
+
     ewk_cookie_manager_accept_policy_set(cookieManager, EWK_COOKIE_ACCEPT_POLICY_ALWAYS);
     ASSERT_EQ(EWK_COOKIE_ACCEPT_POLICY_ALWAYS, getAcceptPolicy(cookieManager));
 
@@ -278,6 +282,9 @@ TEST_F(EWK2CookieManagerTest, DISABLED_ewk_cookie_manager_permanent_storage)
 
     Ewk_Cookie_Manager* cookieManager = ewk_context_cookie_manager_get(ewk_view_context_get(webView()));
     ASSERT_TRUE(cookieManager);
+
+    // Load default test page to guarantee that WebProcess or NetworkProcess is launched.
+    ASSERT_TRUE(loadUrlSync(environment->defaultTestPageUrl()));
 
     ewk_cookie_manager_accept_policy_set(cookieManager, EWK_COOKIE_ACCEPT_POLICY_ALWAYS);
     ASSERT_EQ(EWK_COOKIE_ACCEPT_POLICY_ALWAYS, getAcceptPolicy(cookieManager));

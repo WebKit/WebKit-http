@@ -48,7 +48,7 @@ namespace WebCore {
 typedef unsigned SynchronousScrollingReasons;
 typedef uint64_t ScrollingNodeID;
 
-enum ScrollingNodeType { ScrollingNode, FixedNode, StickyNode };
+enum ScrollingNodeType { FrameScrollingNode, OverflowScrollingNode, FixedNode, StickyNode };
 
 class Document;
 class Frame;
@@ -152,7 +152,14 @@ public:
     virtual void detachFromStateTree(ScrollingNodeID) { }
     virtual void clearStateTree() { }
     virtual void updateViewportConstrainedNode(ScrollingNodeID, const ViewportConstraints&, GraphicsLayer*) { }
-    virtual void updateScrollingNode(ScrollingNodeID, GraphicsLayer* /*scrollLayer*/, GraphicsLayer* /*scrolledContentsLayer*/, GraphicsLayer* /*counterScrollingLayer*/) { }
+
+    struct ScrollingGeometry {
+        IntSize contentSize;
+        FloatPoint scrollPosition;
+        IntPoint scrollOrigin;
+    };
+
+    virtual void updateScrollingNode(ScrollingNodeID, GraphicsLayer* /*scrollLayer*/, GraphicsLayer* /*scrolledContentsLayer*/, GraphicsLayer* /*counterScrollingLayer*/, const ScrollingGeometry* = nullptr) { }
     virtual void syncChildPositions(const LayoutRect&) { }
     virtual String scrollingStateTreeAsText() const;
     virtual bool isRubberBandInProgress() const { return false; }

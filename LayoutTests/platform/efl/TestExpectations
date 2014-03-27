@@ -577,6 +577,11 @@ webkit.org/b/128251 media/video-preload.html [ Pass Failure ]
 webkit.org/b/128252 media/track/track-kind.html [ Pass Failure ]
 webkit.org/b/128528 media/media-ended.html [ Pass Failure ]
 
+webkit.org/b/130586 webgl/conformance/uniforms/gl-uniform-arrays.html [ Failure Pass ]
+
+# Tests that sometimes fail on the bot
+webkit.org/b/130581 perf/clone-with-focus.html  [ Pass Failure ]
+
 # Opera-submitted tests to W3C for <track>, a lot of failures still.
 webkit.org/b/103926 media/track/opera/idl/media-idl-tests.html [ Skip ]
 webkit.org/b/103926 media/track/opera/interfaces/HTMLElement/HTMLMediaElement/crossOrigin.html [ Skip ]
@@ -715,6 +720,9 @@ webkit.org/b/84338 fast/forms/plaintext-mode-2.html [ Pass ]
 
 # Controls are not zoomed.
 webkit.org/b/102367 fast/forms/zoomed-controls.html [ Pass ]
+
+# Test marked in TestExpectations as failing on non-retina displays, passing on EFL port
+webkit.org/b/129113 fast/multicol/newmulticol/clipping.html [ Pass ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # FAILING TESTS
@@ -1766,8 +1774,6 @@ webkit.org/b/127476 fast/history/go-back-to-iframe-with-plugin.html [ Failure ]
 
 webkit.org/b/127477 css2.1/t1604-c542-letter-sp-00-b-a.html [ Missing ]
 
-webkit.org/b/127482 mathml/presentation/mo-stretch.html [ Failure ]
-
 webkit.org/b/127489 http/tests/misc/will-send-request-returns-null-on-redirect.html [ Failure ]
 
 webkit.org/b/126619 http/tests/media/video-auth.html [ Failure ]
@@ -1837,3 +1843,10 @@ webkit.org/b/102097 fast/repaint/hidpi-absolute-positioned-element-wrong-cliprec
 webkit.org/b/102097 fast/repaint/hidpi-device-pixel-based-repaint-rect-tracking.html [ Failure ]
 
 webkit.org/b/130353 mathml/wbr-in-mroot-crash.html [ Crash ]
+
+webkit.org/b/130187 accessibility/aria-hidden-false-works-in-subtrees.html [ Missing ]
+
+webkit.org/b/130189 fast/regions/assert-hit-test-image.html [ Failure ]
+
+# ENABLE(WEBVTT_REGIONS) is disabled
+webkit.org/b/109570 media/track/regions-webvtt [ Skip ]

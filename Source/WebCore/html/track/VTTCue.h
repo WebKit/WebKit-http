@@ -45,6 +45,7 @@ class DocumentFragment;
 class HTMLSpanElement;
 class ScriptExecutionContext;
 class VTTCue;
+class VTTScanner;
 
 // ----------------------------
 
@@ -189,7 +190,7 @@ private:
         RegionId
 #endif
     };
-    CueSetting settingName(const String&);
+    CueSetting settingName(VTTScanner&);
 
     String m_content;
     String m_settings;
@@ -200,25 +201,21 @@ private:
 
     WritingDirection m_writingDirection;
     CueAlignment m_cueAlignment;
-
-    RefPtr<DocumentFragment> m_webVTTNodeTree;
-
-    bool m_snapToLines;
-
-    RefPtr<HTMLSpanElement> m_cueBackgroundBox;
-
-    bool m_displayTreeShouldChange;
-    RefPtr<VTTCueBox> m_displayTree;
-
-    CSSValueID m_displayDirection;
-
-    int m_displaySize;
-
-    std::pair<float, float> m_displayPosition;
 #if ENABLE(WEBVTT_REGIONS)
     String m_regionId;
 #endif
-    bool m_notifyRegion;
+
+    RefPtr<DocumentFragment> m_webVTTNodeTree;
+    RefPtr<HTMLSpanElement> m_cueBackgroundBox;
+    RefPtr<VTTCueBox> m_displayTree;
+
+    CSSValueID m_displayDirection;
+    int m_displaySize;
+    std::pair<float, float> m_displayPosition;
+
+    bool m_snapToLines : 1;
+    bool m_displayTreeShouldChange : 1;
+    bool m_notifyRegion : 1;
 };
 
 VTTCue* toVTTCue(TextTrackCue*);

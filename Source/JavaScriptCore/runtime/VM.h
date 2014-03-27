@@ -31,7 +31,6 @@
 
 #include "DateInstanceCache.h"
 #include "ExecutableAllocator.h"
-#include "GPRInfo.h"
 #include "Heap.h"
 #include "Intrinsic.h"
 #include "JITThunks.h"
@@ -40,7 +39,6 @@
 #include "LLIntData.h"
 #include "MacroAssemblerCodeRef.h"
 #include "NumericStrings.h"
-#include "ProfilerDatabase.h"
 #include "PrivateName.h"
 #include "PrototypeMap.h"
 #include "SmallStrings.h"
@@ -77,7 +75,6 @@ namespace JSC {
     class ExecState;
     class HandleStack;
     class Identifier;
-    class IdentifierTable;
     class Interpreter;
     class JSGlobalObject;
     class JSObject;
@@ -115,6 +112,9 @@ namespace JSC {
 #endif // ENABLE(FTL_JIT)
     namespace CommonSlowPaths {
     struct ArityCheckData;
+    }
+    namespace Profiler {
+    class Database;
     }
 
     struct HashTable;
@@ -288,13 +288,15 @@ namespace JSC {
 #endif
         Strong<JSCell> iterationTerminator;
 
-        IdentifierTable* identifierTable;
+        AtomicStringTable* m_atomicStringTable;
         CommonIdentifiers* propertyNames;
         const MarkedArgumentBuffer* emptyList; // Lists are supposed to be allocated on the stack to have their elements properly marked, which is not the case here - but this list has nothing to mark.
         SmallStrings smallStrings;
         NumericStrings numericStrings;
         DateInstanceCache dateInstanceCache;
         WTF::SimpleStats machineCodeBytesPerBytecodeWordForBaselineJIT;
+
+        AtomicStringTable* atomicStringTable() const { return m_atomicStringTable; }
 
         void setInDefineOwnProperty(bool inDefineOwnProperty)
         {

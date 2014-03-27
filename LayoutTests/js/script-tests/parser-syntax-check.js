@@ -241,6 +241,19 @@ invalid("var a = :)");
 valid  ("var a = a in b in c instanceof d");
 invalid("var a = b ? c, b");
 invalid("const a = b : c");
+valid("const a = 7; eval(''); a++");
+valid("const a = 7; eval(''); a--");
+valid("const a = 7; with({}) a++");
+valid("const a = 7; with({}) a--");
+valid("const a = 7; eval(''); a+=1");
+valid("const a = 7; eval(''); a-=1");
+valid("const a = 7; with({}) a+=1");
+valid("const a = 7; with({}) a-=1");
+valid("const a = 7; eval(''); a=1");
+valid("const a = 7; eval(''); a=1");
+valid("const a = 7; with({}) a=1");
+valid("const a = 7; with({}) a=1");
+
 
 debug  ("for statement");
 
@@ -427,10 +440,27 @@ valid("[...bar,,,,]")
 valid("[,,,,...bar]")
 valid("({1: x})")
 valid("({1: x}=1)")
+valid("({1: x}=null)")
+valid("({1: x})")
+valid("({1: x}=1)")
+valid("({1: x}=null)")
+valid("({a: b}=null)")
+valid("'use strict'; ({1: x})")
+valid("'use strict'; ({1: x}=1)")
+valid("'use strict'; ({1: x}=null)")
+valid("'use strict'; ({a: b}=null)")
 valid("var {1:x}=1")
 valid("[x]=1")
 valid("var [x]=1")
 valid("({[x]: 1})")
+valid("delete ({a}=1)")
+valid("delete ({a:a}=1)")
+valid("({a}=1)()")
+valid("({a:a}=1)()")
+valid("({a}=1)=1")
+valid("({a:a}=1)=1")
+valid("({a}=1=1)")
+valid("({a:a}=1=1)")
 invalid("({get [x](){}})")
 invalid("({set [x](){}})")
 invalid("({[...x]: 1})")

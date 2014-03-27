@@ -153,9 +153,11 @@ public:
     void setCanBlitOnScroll(bool);
     bool canBlitOnScroll() const;
 
-    // The visible content rect has a location that is the scrolled offset of the document. The width and height are the viewport width
-    // and height. By default the scrollbars themselves are excluded from this rectangle, but an optional boolean argument allows them to be
-    // included.
+    virtual float topContentInset() const { return 0; }
+
+    // The visible content rect has a location that is the scrolled offset of the document. The width and height are the unobscured viewport
+    // width and height. By default the scrollbars themselves are excluded from this rectangle, but an optional boolean argument allows them
+    // to be included.
     // In the situation the client is responsible for the scrolling (ie. with a tiled backing store) it is possible to use
     // the setFixedVisibleContentRect instead for the mainframe, though this must be updated manually, e.g just before resuming the page
     // which usually will happen when panning, pinching and rotation ends, or when scale or position are changed manually.
@@ -169,11 +171,10 @@ public:
     // Parts of the document can be visible through transparent or blured UI widgets of the chrome. Those parts
     // contribute to painting but not to the scrollable area.
     // The unobscuredContentRect is the area that is not covered by UI elements.
+    IntRect unobscuredContentRect(VisibleContentRectIncludesScrollbars = ExcludeScrollbars) const;
 #if PLATFORM(IOS)
-    IntRect unobscuredContentRect() const;
-    IntRect unobscuredContentRectIncludingScrollbars() const { return unobscuredContentRect(); }
+    IntRect unobscuredContentRectIncludingScrollbars() const { return unobscuredContentRect(IncludeScrollbars); }
 #else
-    IntRect unobscuredContentRect() const { return visibleContentRect(); }
     IntRect unobscuredContentRectIncludingScrollbars() const { return visibleContentRectIncludingScrollbars(); }
 #endif
 
@@ -185,15 +186,20 @@ public:
     void setExposedContentRect(const IntRect&);
     void setUnobscuredContentRect(const IntRect&);
 
+    void setScrollVelocity(double horizontalVelocity, double verticalVelocity, double timestamp);
+    FloatRect computeCoverageRect(double horizontalMargin, double verticalMargin) const;
+
     void setActualScrollPosition(const IntPoint&);
     TileCache* tileCache();
 #endif
 
-    // visibleContentRect().size() is computed from unscaledVisibleContentSize() divided by the value of visibleContentScaleFactor.
+    // visibleContentRect().size() is computed from unscaledUnobscuredVisibleContentSize() divided by the value of visibleContentScaleFactor.
     // visibleContentScaleFactor is usually 1, except when the setting delegatesPageScaling is true and the
     // ScrollView is the main frame; in that case, visibleContentScaleFactor is equal to the page's pageScaleFactor.
-    // Ports that don't use pageScaleFactor can treat unscaledVisibleContentSize and visibleContentRect().size() as equivalent.
-    IntSize unscaledVisibleContentSize(VisibleContentRectIncludesScrollbars = ExcludeScrollbars) const;
+    // Ports that don't use pageScaleFactor can treat unscaledUnobscuredVisibleContentSize and visibleContentRect().size() as equivalent.
+    // unscaledTotalVisibleContentSize() includes areas in the content that might be obscured by UI elements.
+    IntSize unscaledUnobscuredVisibleContentSize(VisibleContentRectIncludesScrollbars = ExcludeScrollbars) const;
+    IntSize unscaledTotalVisibleContentSize(VisibleContentRectIncludesScrollbars = ExcludeScrollbars) const;
     virtual float visibleContentScaleFactor() const { return 1; }
 
     // Functions for getting/setting the size webkit should use to layout the contents. By default this is the same as the visible
@@ -388,6 +394,7 @@ protected:
 
 private:
     virtual IntRect visibleContentRectInternal(VisibleContentRectIncludesScrollbars, VisibleContentRectBehavior) const override;
+    IntRect unobscuredContentRectInternal(VisibleContentRectIncludesScrollbars = ExcludeScrollbars) const;
 
     RefPtr<Scrollbar> m_horizontalScrollbar;
     RefPtr<Scrollbar> m_verticalScrollbar;
@@ -410,6 +417,10 @@ private:
 #if PLATFORM(IOS)
     IntRect m_exposedContentRect;
     IntRect m_unobscuredContentRect;
+
+    double m_horizontalVelocity;
+    double m_verticalVelocity;
+    double m_lastVelocityUpdateTime;
 #else
     IntRect m_fixedVisibleContentRect;
 #endif

@@ -185,8 +185,8 @@ RenderLayer::RenderLayer(RenderLayerModelObject& rendererLayerModelObject)
 #endif
 #if ENABLE(CSS_COMPOSITING)
     , m_blendMode(BlendModeNormal)
-    , m_isolatesBlending(false)
-    , m_updateParentStackingContextShouldIsolateBlendingDirty(false)
+    , m_hasBlendedElementInChildStackingContext(false)
+    , m_hasBlendedElementInChildStackingContextStatusDirty(false)
 #endif
     , m_renderer(rendererLayerModelObject)
     , m_parent(0)
@@ -803,12 +803,15 @@ void RenderLayer::positionNewlyCreatedOverflowControls()
 
 #if ENABLE(CSS_COMPOSITING)
 
-void RenderLayer::updateBlendMode(const RenderStyle* oldStyle)
+void RenderLayer::updateBlendMode()
 {
-    m_updateParentStackingContextShouldIsolateBlendingDirty = false;
-
-    if ((!oldStyle && renderer().style().hasBlendMode()) || (oldStyle && oldStyle->hasBlendMode() != renderer().style().hasBlendMode()))
-        m_updateParentStackingContextShouldIsolateBlendingDirty = true;
+    bool hadBlendMode = m_blendMode != BlendModeNormal;
+    if (hadBlendMode != hasBlendMode()) {
+        if (hasBlendMode())
+            updateNonCompositedParentStackingContextHasBlendedChild(true);
+        else
+            dirtyAncestorParentStackingContextHasBlendedElement();
+    }
 
     BlendMode newBlendMode = renderer().style().blendMode();
     if (newBlendMode != m_blendMode) {
@@ -818,24 +821,37 @@ void RenderLayer::updateBlendMode(const RenderStyle* oldStyle)
     }
 }
 
-void RenderLayer::updateParentStackingContextShouldIsolateBlending()
+void RenderLayer::updateNonCompositedParentStackingContextHasBlendedChild(bool hasBlendedChild)
 {
-    if (!m_updateParentStackingContextShouldIsolateBlendingDirty)
+    if (isComposited())
         return;
 
-    if (isComposited()) {
-        m_updateParentStackingContextShouldIsolateBlendingDirty = false;
-        return;
-    }
+    for (auto ancestor = parent(); ancestor && !ancestor->isComposited() && !ancestor->renderer().isRoot(); ancestor = ancestor->parent()) {
+        ancestor->m_hasBlendedElementInChildStackingContext = hasBlendedChild;
 
-    for (auto ancestor = parent(); ancestor && !ancestor->isComposited() && !ancestor->isRootLayer(); ancestor = ancestor->parent()) {
-        if (ancestor->isStackingContext()) {
-            ancestor->m_isolatesBlending = renderer().style().hasBlendMode();
+        if (ancestor->isStackingContext())
             break;
-        }
+    }
+}
+
+void RenderLayer::dirtyAncestorParentStackingContextHasBlendedElement()
+{
+    for (auto layer = this; layer && !layer->isComposited() && !layer->m_hasBlendedElementInChildStackingContextStatusDirty; layer = layer->parent()) {
+        layer->m_hasBlendedElementInChildStackingContextStatusDirty = true;
+
+        if (layer->isStackingContext())
+            break;
+    }
+}
+
+bool RenderLayer::nonCompositedParentStackingContextHasBlendedChild() const
+{
+    for (auto ancestor = parent(); ancestor && !ancestor->isComposited() && !ancestor->renderer().isRoot(); ancestor = ancestor->parent()) {
+        if (ancestor->isStackingContext())
+            return ancestor->hasBlendedElementInChildStackingContext();
     }
 
-    m_updateParentStackingContextShouldIsolateBlendingDirty = false;
+    return false;
 }
 
 #endif
@@ -862,7 +878,7 @@ void RenderLayer::updateTransform()
         RenderBox* box = renderBox();
         ASSERT(box);
         m_transform->makeIdentity();
-        box->style().applyTransform(*m_transform, box->pixelSnappedBorderBoxRect().size(), RenderStyle::IncludeTransformOrigin);
+        box->style().applyTransform(*m_transform, pixelSnappedForPainting(box->borderBoxRect(), box->document().deviceScaleFactor()), RenderStyle::IncludeTransformOrigin);
         makeMatrixRenderable(*m_transform, canRender3DTransforms());
     }
 
@@ -875,19 +891,21 @@ TransformationMatrix RenderLayer::currentTransform(RenderStyle::ApplyTransformOr
     if (!m_transform)
         return TransformationMatrix();
 
+    RenderBox* box = renderBox();
+    ASSERT(box);
+    FloatRect pixelSnappedBorderRect = pixelSnappedForPainting(box->borderBoxRect(), box->document().deviceScaleFactor());
     if (renderer().style().isRunningAcceleratedAnimation()) {
         TransformationMatrix currTransform;
         RefPtr<RenderStyle> style = renderer().animation().getAnimatedStyleForRenderer(&renderer());
-        style->applyTransform(currTransform, renderBox()->pixelSnappedBorderBoxRect().size(), applyOrigin);
+        style->applyTransform(currTransform, pixelSnappedBorderRect, applyOrigin);
         makeMatrixRenderable(currTransform, canRender3DTransforms());
         return currTransform;
     }
 
     // m_transform includes transform-origin, so we need to recompute the transform here.
     if (applyOrigin == RenderStyle::ExcludeTransformOrigin) {
-        RenderBox* box = renderBox();
         TransformationMatrix currTransform;
-        box->style().applyTransform(currTransform, box->pixelSnappedBorderBoxRect().size(), RenderStyle::ExcludeTransformOrigin);
+        box->style().applyTransform(currTransform, pixelSnappedBorderRect, RenderStyle::ExcludeTransformOrigin);
         makeMatrixRenderable(currTransform, canRender3DTransforms());
         return currTransform;
     }
@@ -1080,10 +1098,11 @@ void RenderLayer::setAncestorChainHasVisibleDescendant()
 
 void RenderLayer::updateDescendantDependentFlags(HashSet<const RenderObject*>* outOfFlowDescendantContainingBlocks)
 {
-    if (m_visibleDescendantStatusDirty || m_hasSelfPaintingLayerDescendantDirty || m_hasOutOfFlowPositionedDescendantDirty) {
+    if (m_visibleDescendantStatusDirty || m_hasSelfPaintingLayerDescendantDirty || m_hasOutOfFlowPositionedDescendantDirty || hasBlendedElementInChildStackingContextStatusDirty()) {
         m_hasVisibleDescendant = false;
         m_hasSelfPaintingLayerDescendant = false;
         m_hasOutOfFlowPositionedDescendant = false;
+        setHasBlendedElementInChildStackingContext(false);
 
         HashSet<const RenderObject*> childOutOfFlowDescendantContainingBlocks;
         for (RenderLayer* child = firstChild(); child; child = child->nextSibling()) {
@@ -1103,12 +1122,14 @@ void RenderLayer::updateDescendantDependentFlags(HashSet<const RenderObject*>* o
             bool hasVisibleDescendant = child->m_hasVisibleContent || child->m_hasVisibleDescendant;
             bool hasSelfPaintingLayerDescendant = child->isSelfPaintingLayer() || child->hasSelfPaintingLayerDescendant();
             bool hasOutOfFlowPositionedDescendant = !childOutOfFlowDescendantContainingBlocks.isEmpty();
+            bool hasBlendedElementInChildStackingContext = child->hasBlendMode() || child->hasBlendedElementInChildStackingContext();
 
             m_hasVisibleDescendant |= hasVisibleDescendant;
             m_hasSelfPaintingLayerDescendant |= hasSelfPaintingLayerDescendant;
             m_hasOutOfFlowPositionedDescendant |= hasOutOfFlowPositionedDescendant;
+            setHasBlendedElementInChildStackingContext(this->hasBlendedElementInChildStackingContext() | hasBlendedElementInChildStackingContext);
 
-            if (m_hasVisibleDescendant && m_hasSelfPaintingLayerDescendant && m_hasOutOfFlowPositionedDescendant)
+            if (m_hasVisibleDescendant && m_hasSelfPaintingLayerDescendant && m_hasOutOfFlowPositionedDescendant && this->hasBlendedElementInChildStackingContext())
                 break;
         }
 
@@ -1122,6 +1143,8 @@ void RenderLayer::updateDescendantDependentFlags(HashSet<const RenderObject*>* o
             updateNeedsCompositedScrolling();
 
         m_hasOutOfFlowPositionedDescendantDirty = false;
+
+        setHasBlendedElementInChildStackingContextStatusDirty(false);
     }
 
     if (m_visibleContentStatusDirty) {
@@ -1777,6 +1800,11 @@ void RenderLayer::addChild(RenderLayer* child, RenderLayer* beforeChild)
     if (child->renderer().isOutOfFlowPositioned() || child->hasOutOfFlowPositionedDescendant())
         setAncestorChainHasOutOfFlowPositionedDescendant(child->renderer().containingBlock());
 
+#if ENABLE(CSS_COMPOSITING)
+    if (child->hasBlendMode() || (!child->isStackingContext() && child->hasBlendedElementInChildStackingContext()))
+        child->updateNonCompositedParentStackingContextHasBlendedChild(true);
+#endif
+
     compositor().layerWasAdded(*this, *child);
 }
 
@@ -1818,6 +1846,11 @@ RenderLayer* RenderLayer::removeChild(RenderLayer* oldChild)
 
     if (oldChild->isSelfPaintingLayer() || oldChild->hasSelfPaintingLayerDescendant())
         dirtyAncestorChainHasSelfPaintingLayerDescendantStatus();
+
+#if ENABLE(CSS_COMPOSITING)
+    if (oldChild->hasBlendMode() || oldChild->isolatesBlending())
+        dirtyAncestorParentStackingContextHasBlendedElement();
+#endif
 
     return oldChild;
 }
@@ -2054,14 +2087,7 @@ bool RenderLayer::hasAcceleratedTouchScrolling() const
     if (!scrollsOverflow())
         return false;
 
-    // Temporary: turn off accelerated scrolling in WK2.
-    if (Page* page = renderer().frame().page()) {
-        if (page->scrollingCoordinator())
-            return false;
-    }
-    
     Settings* settings = renderer().document().settings();
-
     // FIXME: settings should not be null at this point. If you find a reliable way to hit this assertion, please file a bug.
     // See <rdar://problem/10266101>.
     ASSERT(settings);
@@ -3449,12 +3475,12 @@ void RenderLayer::drawPlatformResizerImage(GraphicsContext* context, const Layou
         context->save();
         context->translate(resizerCornerRect.x() + cornerResizerSize.width(), resizerCornerRect.y() + resizerCornerRect.height() - cornerResizerSize.height());
         context->scale(FloatSize(-1.0, 1.0));
-        context->drawImage(resizeCornerImage.get(), renderer().style().colorSpace(), IntRect(IntPoint(), cornerResizerSize));
+        context->drawImage(resizeCornerImage.get(), renderer().style().colorSpace(), FloatRect(FloatPoint(), cornerResizerSize));
         context->restore();
         return;
     }
-    LayoutRect imageRect(resizerCornerRect.maxXMaxYCorner() - cornerResizerSize, cornerResizerSize);
-    context->drawImage(resizeCornerImage.get(), renderer().style().colorSpace(), pixelSnappedIntRect(imageRect));
+    FloatRect imageRect = pixelSnappedForPainting(LayoutRect(resizerCornerRect.maxXMaxYCorner() - cornerResizerSize, cornerResizerSize), renderer().document().deviceScaleFactor());
+    context->drawImage(resizeCornerImage.get(), renderer().style().colorSpace(), imageRect);
 }
 
 void RenderLayer::paintResizer(GraphicsContext* context, const LayoutPoint& paintOffset, const LayoutRect& damageRect)
@@ -4167,14 +4193,18 @@ void RenderLayer::paintLayerByApplyingTransform(GraphicsContext* context, const 
     // This involves subtracting out the position of the layer in our current coordinate space, but preserving
     // the accumulated error for sub-pixel layout.
     float deviceScaleFactor = renderer().document().deviceScaleFactor();
-    LayoutPoint delta;
-    convertToLayerCoords(paintingInfo.rootLayer, delta);
-    delta.moveBy(translationOffset);
+    LayoutPoint offsetFromParent;
+    convertToLayerCoords(paintingInfo.rootLayer, offsetFromParent);
+    offsetFromParent.moveBy(translationOffset);
     TransformationMatrix transform(renderableTransform(paintingInfo.paintBehavior));
-    FloatPoint roundedDelta = roundedForPainting(delta, deviceScaleFactor);
-    transform.translateRight(roundedDelta.x(), roundedDelta.y());
-    LayoutSize adjustedSubPixelAccumulation = paintingInfo.subPixelAccumulation + (delta - LayoutPoint(roundedDelta));
-
+    FloatPoint devicePixelFlooredOffsetFromParent = flooredForPainting(offsetFromParent, deviceScaleFactor);
+    // Translate the graphics context to the snapping position to avoid off-device-pixel positing.
+    transform.translateRight(devicePixelFlooredOffsetFromParent.x(), devicePixelFlooredOffsetFromParent.y());
+    // We handle accumulated subpixels through nested layers here. Since the context gets translated to device pixels,
+    // all we need to do is add the delta to the accumulated pixels coming from ancestor layers. With deep nesting of subpixel positioned
+    // boxes, this could grow to a relatively large number, but the translateRight() balances it.
+    FloatSize delta = offsetFromParent - devicePixelFlooredOffsetFromParent;
+    LayoutSize adjustedSubPixelAccumulation = paintingInfo.subPixelAccumulation + LayoutSize(delta);
     // Apply the transform.
     GraphicsContextStateSaver stateSaver(*context);
     context->concatCTM(transform.toAffineTransform());
@@ -6401,6 +6431,12 @@ void RenderLayer::updateStackingContextsAfterStyleChange(const RenderStyle* oldS
             dirtyZOrderLists();
         else
             clearZOrderLists();
+
+#if ENABLE(CSS_COMPOSITING)
+            m_hasBlendedElementInChildStackingContext = isStackingContext ? nonCompositedParentStackingContextHasBlendedChild() : false;
+            dirtyAncestorParentStackingContextHasBlendedElement();
+#endif
+
         return;
     }
 
@@ -6551,7 +6587,7 @@ void RenderLayer::styleChanged(StyleDifference diff, const RenderStyle* oldStyle
     updateDescendantDependentFlags();
     updateTransform();
 #if ENABLE(CSS_COMPOSITING)
-    updateBlendMode(oldStyle);
+    updateBlendMode();
 #endif
 #if ENABLE(CSS_FILTERS)
     updateOrRemoveFilterClients();

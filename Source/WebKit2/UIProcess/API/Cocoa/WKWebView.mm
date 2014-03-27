@@ -69,7 +69,6 @@
 @interface UIPeripheralHost(UIKitInternal)
 - (CGFloat)getVerticalOverlapForView:(UIView *)view usingKeyboardInfo:(NSDictionary *)info;
 @end
-
 #endif
 
 #if PLATFORM(MAC)
@@ -78,7 +77,6 @@
 #endif
 
 @implementation WKWebView {
-    RetainPtr<WKWebViewConfiguration> _configuration;
     std::unique_ptr<WebKit::NavigationState> _navigationState;
 
     RetainPtr<WKRemoteObjectRegistry> _remoteObjectRegistry;
@@ -256,11 +254,6 @@
     return nil;
 }
 
-- (IBAction)stopLoading:(id)sender
-{
-    _page->stopLoading();
-}
-
 - (NSString *)title
 {
     return _page->pageLoadState().title();
@@ -298,16 +291,30 @@
     return !!_page->backForwardList().forwardItem();
 }
 
-// FIXME: This should return a WKNavigation object.
-- (void)goBack
+- (WKNavigation *)goBack
 {
     _page->goBack();
+
+    // FIXME: Return a navigation object.
+    return nil;
 }
 
-// FIXME: This should return a WKNavigation object.
-- (void)goForward
+- (WKNavigation *)goForward
 {
     _page->goForward();
+
+    // FIXME: Return a navigation object.
+    return nil;
+}
+
+- (void)stopLoading
+{
+    _page->stopLoading();
+}
+
+- (IBAction)stopLoading:(id)sender
+{
+    _page->stopLoading();
 }
 
 #pragma mark iOS-specific methods
@@ -385,13 +392,28 @@
     return [UIColor colorWithRed:(color.red() / 255.0) green:(color.green() / 255.0) blue:(color.blue() / 255.0) alpha:(color.alpha() / 255.0)];
 }
 
+static CGFloat contentZoomScale(WKWebView* webView)
+{
+    UIView *zoomView;
+    if (webView->_customContentView)
+        zoomView = webView->_customContentView.get();
+    else
+        zoomView = webView->_contentView.get();
+
+    CGFloat scale = [[zoomView layer] affineTransform].a;
+    ASSERT(scale == [webView->_scrollView zoomScale]);
+    return scale;
+}
+
 - (void)_updateScrollViewBackground
 {
     UIColor *pageExtendedBackgroundColor = [self pageExtendedBackgroundColor];
 
-    if ([_scrollView zoomScale] < [_scrollView minimumZoomScale]) {
+    CGFloat zoomScale = contentZoomScale(self);
+    CGFloat minimumZoomScale = [_scrollView minimumZoomScale];
+    if (zoomScale < minimumZoomScale) {
         CGFloat slope = 12;
-        CGFloat opacity = std::max(1 - slope * ([_scrollView minimumZoomScale] - [_scrollView zoomScale]), static_cast<CGFloat>(0));
+        CGFloat opacity = std::max(1 - slope * (minimumZoomScale - zoomScale), static_cast<CGFloat>(0));
         pageExtendedBackgroundColor = [pageExtendedBackgroundColor colorWithAlphaComponent:opacity];
     }
 
@@ -438,9 +460,10 @@
     double minimumZoomDuration = 0.1;
     double zoomDurationFactor = 0.3;
 
-    CFTimeInterval duration = std::min(fabs(log([_scrollView zoomScale]) - log(scale)) * zoomDurationFactor + minimumZoomDuration, maximumZoomDuration);
+    CGFloat zoomScale = contentZoomScale(self);
+    CFTimeInterval duration = std::min(fabs(log(zoomScale) - log(scale)) * zoomDurationFactor + minimumZoomDuration, maximumZoomDuration);
 
-    if (scale != [_scrollView zoomScale])
+    if (scale != zoomScale)
         [_contentView willStartUserTriggeredZoom];
 
     [_scrollView _zoomToCenter:point scale:scale duration:duration];
@@ -500,7 +523,7 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
     }
 
     WebCore::FloatSize scrollViewOffsetDelta = newUnobscuredContentOffset - unobscuredContentOffset;
-    scrollViewOffsetDelta.scale([_scrollView zoomScale]);
+    scrollViewOffsetDelta.scale(contentZoomScale(self));
 
     float scrollDistance = scrollViewOffsetDelta.diagonalLength();
     if (scrollDistance < minimumScrollDistance)
@@ -519,7 +542,7 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
 {
     const float maximumScaleFactorDeltaForPanScroll = 0.02;
 
-    double currentScale = [_scrollView zoomScale];
+    double currentScale = contentZoomScale(self);
 
     WebCore::FloatSize unobscuredContentSize([self _contentRectForUserInteraction].size);
     double horizontalScale = unobscuredContentSize.width() * currentScale / targetRect.width();
@@ -654,7 +677,7 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
     CGRect unobscuredRect = UIEdgeInsetsInsetRect(fullViewRect, _obscuredInsets);
     CGRect unobscuredRectInContentCoordinates = [self convertRect:unobscuredRect toView:_contentView.get()];
 
-    CGFloat scaleFactor = [_scrollView zoomScale];
+    CGFloat scaleFactor = contentZoomScale(self);
 
     BOOL isStableState = !(_isChangingObscuredInsetsInteractively || [_scrollView isDragging] || [_scrollView isDecelerating] || [_scrollView isZooming] || [_scrollView isZoomBouncing] || [_scrollView _isAnimatingZoom]);
     [_contentView didUpdateVisibleRect:visibleRectInContentCoordinates unobscuredRect:unobscuredRectInContentCoordinates scale:scaleFactor inStableState:isStableState];
@@ -1095,6 +1118,16 @@ static inline WebCore::LayoutMilestones layoutMilestones(_WKRenderingProgressEve
     [self _updateVisibleContentRects];
 }
 
+- (void)_showInspectorIndication
+{
+    [_contentView setShowingInspectorIndication:YES];
+}
+
+- (void)_hideInspectorIndication
+{
+    [_contentView setShowingInspectorIndication:NO];
+}
+
 - (void)_snapshotRect:(CGRect)rectInViewCoordinates intoImageOfWidth:(CGFloat)imageWidth completionHandler:(void(^)(CGImageRef))completionHandler
 {
     CGRect snapshotRectInContentCoordinates = [self convertRect:rectInViewCoordinates toView:_contentView.get()];
@@ -1147,8 +1180,54 @@ static inline WebCore::LayoutMilestones layoutMilestones(_WKRenderingProgressEve
     _page->setDrawsTransparentBackground(drawsTransparentBackground);
 }
 
+- (void)_setTopContentInset:(CGFloat)contentInset
+{
+    _page->setTopContentInset(contentInset);
+}
+
+- (CGFloat)_topContentInset
+{
+    return _page->topContentInset();
+}
+
 #endif
 
 @end
+
+#if !TARGET_OS_IPHONE
+
+@implementation WKWebView (WKIBActions)
+
+- (BOOL)validateUserInterfaceItem:(id <NSValidatedUserInterfaceItem>)item
+{
+    SEL action = item.action;
+
+    if (action == @selector(goBack:))
+        return !!_page->backForwardList().backItem();
+
+    if (action == @selector(goForward:))
+        return !!_page->backForwardList().forwardItem();
+
+    if (action == @selector(stopLoading:)) {
+        // FIXME: Return no if we're stopped.
+        return YES;
+    }
+
+    return NO;
+}
+
+- (IBAction)goBack:(id)sender
+{
+    [self goBack];
+}
+
+- (IBAction)goForward:(id)sender
+{
+    [self goForward];
+}
+
+@end
+
+#endif
 
 #endif // WK_API_ENABLED

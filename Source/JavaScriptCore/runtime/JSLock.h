@@ -27,6 +27,7 @@
 #include <wtf/Noncopyable.h>
 #include <wtf/RefPtr.h>
 #include <wtf/ThreadSafeRefCounted.h>
+#include <wtf/WTFThreadData.h>
 
 namespace JSC {
 
@@ -49,7 +50,6 @@ namespace JSC {
     // DropAllLocks object takes care to release the JSLock only if your
     // thread acquired it to begin with.
 
-    class IdentifierTable;
     class ExecState;
     class VM;
 
@@ -139,7 +139,7 @@ namespace JSC {
         unsigned m_lockDropDepth;
         bool m_hasExclusiveThread;
         VM* m_vm;
-        IdentifierTable* m_entryIdentifierTable; 
+        AtomicStringTable* m_entryAtomicStringTable; 
     };
 
 } // namespace

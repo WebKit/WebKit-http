@@ -860,7 +860,7 @@ void SpeculativeJIT::compileIn(Node* node)
         JSString* string =
             jsDynamicCast<JSString*>(valueOfJSConstant(node->child1().node()));
         if (string && string->tryGetValueImpl()
-            && string->tryGetValueImpl()->isIdentifier()) {
+            && string->tryGetValueImpl()->isAtomic()) {
             StructureStubInfo* stubInfo = m_jit.codeBlock()->addStubInfo();
             
             GPRTemporary result(this);
@@ -1532,39 +1532,9 @@ void SpeculativeJIT::checkArgumentTypes()
     m_isCheckingArgumentTypes = false;
 }
 
-void SpeculativeJIT::prepareJITCodeForTierUp()
-{
-    unsigned numberOfCalls = 0;
-    
-    for (BlockIndex blockIndex = m_jit.graph().numBlocks(); blockIndex--;) {
-        BasicBlock* block = m_jit.graph().block(blockIndex);
-        if (!block)
-            continue;
-        
-        for (unsigned nodeIndex = block->size(); nodeIndex--;) {
-            Node* node = block->at(nodeIndex);
-            
-            switch (node->op()) {
-            case Call:
-            case Construct:
-                numberOfCalls++;
-                break;
-                
-            default:
-                break;
-            }
-        }
-    }
-    
-    m_jit.jitCode()->slowPathCalls.fill(0, numberOfCalls);
-}
-
 bool SpeculativeJIT::compile()
 {
     checkArgumentTypes();
-    
-    if (m_jit.graph().m_plan.willTryToTierUp)
-        prepareJITCodeForTierUp();
     
     ASSERT(!m_currentNode);
     for (BlockIndex blockIndex = 0; blockIndex < m_jit.graph().numBlocks(); ++blockIndex) {
@@ -4644,7 +4614,7 @@ void SpeculativeJIT::speculateStringIdentAndLoadStorage(Edge edge, GPRReg string
         BadType, JSValueSource::unboxedCell(string), edge, m_jit.branchTest32(
             MacroAssembler::Zero,
             MacroAssembler::Address(storage, StringImpl::flagsOffset()),
-            MacroAssembler::TrustedImm32(StringImpl::flagIsIdentifier())));
+            MacroAssembler::TrustedImm32(StringImpl::flagIsAtomic())));
     
     m_interpreter.filter(edge, SpecStringIdent | ~SpecString);
 }

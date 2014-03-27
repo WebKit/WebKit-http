@@ -35,9 +35,11 @@
 
 #if ENABLE(VIDEO_TRACK)
 
+#include "BufferedLineReader.h"
 #include "DocumentFragment.h"
 #include "HTMLNames.h"
-#include "TextTrackRegion.h"
+#include "TextResourceDecoder.h"
+#include "VTTRegion.h"
 #include "WebVTTTokenizer.h"
 #include <memory>
 #include <wtf/text/StringBuilder.h>
@@ -47,6 +49,7 @@ namespace WebCore {
 using namespace HTMLNames;
 
 class Document;
+class VTTScanner;
 
 class WebVTTParserClient {
 public:
@@ -117,48 +120,51 @@ public:
             || tagName == rtTag;
     }
 
-    static inline bool isASpace(char c)
+    static inline bool isASpace(UChar c)
     {
         // WebVTT space characters are U+0020 SPACE, U+0009 CHARACTER TABULATION (tab), U+000A LINE FEED (LF), U+000C FORM FEED (FF), and U+000D CARRIAGE RETURN    (CR).
         return c == ' ' || c == '\t' || c == '\n' || c == '\f' || c == '\r';
     }
-    static inline bool isValidSettingDelimiter(char c)
+    static inline bool isValidSettingDelimiter(UChar c)
     {
         // ... a WebVTT cue consists of zero or more of the following components, in any order, separated from each other by one or more 
         // U+0020 SPACE characters or U+0009 CHARACTER TABULATION (tab) characters.
         return c == ' ' || c == '\t';
     }
-    static unsigned collectDigitsToInt(const String&, unsigned* position, int& number);
-    static String collectWord(const String&, unsigned*);
-    static double collectTimeStamp(const String&, unsigned*);
+    static bool collectTimeStamp(const String&, double&);
 
 #if ENABLE(WEBVTT_REGIONS)
     // Useful functions for parsing percentage settings.
-    static float parseFloatPercentageValue(const String&, bool&);
-    static FloatPoint parseFloatPercentageValuePair(const String&, char, bool&);
+    static bool parseFloatPercentageValue(VTTScanner& valueScanner, float&);
+    static bool parseFloatPercentageValuePair(VTTScanner& valueScanner, char, FloatPoint&);
 #endif
 
     // Input data to the parser to parse.
     void parseBytes(const char* data, unsigned length);
+    void flush();
     void fileFinished();
 
     // Transfers ownership of last parsed cues to caller.
     void getNewCues(Vector<RefPtr<WebVTTCueData>>&);
 #if ENABLE(WEBVTT_REGIONS)
-    void getNewRegions(Vector<RefPtr<TextTrackRegion>>&);
+    void getNewRegions(Vector<RefPtr<VTTRegion>>&);
 #endif
 
-    PassRefPtr<DocumentFragment> createDocumentFragmentFromCueText(const String&);
+    // Create the DocumentFragment representation of the WebVTT cue text.
+    static PassRefPtr<DocumentFragment> createDocumentFragmentFromCueText(Document&, const String&);
 
 protected:
     ScriptExecutionContext* m_scriptExecutionContext;
     ParseState m_state;
 
 private:
+    void parse();
+    void flushPendingCue();
     bool hasRequiredFileIdentifier(const String&);
     ParseState collectCueId(const String&);
     ParseState collectTimingsAndSettings(const String&);
     ParseState collectCueText(const String&);
+    ParseState recoverCue(const String&);
     ParseState ignoreBadCue(const String&);
 
     void createNewCue();
@@ -169,31 +175,22 @@ private:
     void createNewRegion(const String& headerValue);
 #endif
 
-    static void skipWhiteSpace(const String&, unsigned*);
+    static bool collectTimeStamp(VTTScanner& input, double& timeStamp);
 
-    String collectNextLine(const char* data, unsigned length, unsigned*);
-
-    void constructTreeFromToken(Document*);
-
-    Vector<char> m_buffer;
+    BufferedLineReader m_lineReader;
+    RefPtr<TextResourceDecoder> m_decoder;
     String m_currentId;
     double m_currentStartTime;
     double m_currentEndTime;
     StringBuilder m_currentContent;
     String m_currentSettings;
     
-    WebVTTToken m_token;
-    std::unique_ptr<WebVTTTokenizer> m_tokenizer;
-
-    RefPtr<ContainerNode> m_currentNode;
-
     WebVTTParserClient* m_client;
 
-    Vector<AtomicString> m_languageStack;
     Vector<RefPtr<WebVTTCueData>> m_cuelist;
 
 #if ENABLE(WEBVTT_REGIONS)
-    Vector<RefPtr<TextTrackRegion>> m_regionList;
+    Vector<RefPtr<VTTRegion>> m_regionList;
 #endif
 };
 

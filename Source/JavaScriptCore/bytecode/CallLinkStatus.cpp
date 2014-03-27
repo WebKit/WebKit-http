@@ -115,27 +115,25 @@ CallLinkStatus CallLinkStatus::computeFromLLInt(const ConcurrentJITLocker& locke
 #endif
 }
 
-CallLinkStatus CallLinkStatus::computeFor(CodeBlock* profiledBlock, unsigned bytecodeIndex)
+CallLinkStatus CallLinkStatus::computeFor(
+    CodeBlock* profiledBlock, unsigned bytecodeIndex, const CallLinkInfoMap& map)
 {
     ConcurrentJITLocker locker(profiledBlock->m_lock);
     
     UNUSED_PARAM(profiledBlock);
     UNUSED_PARAM(bytecodeIndex);
+    UNUSED_PARAM(map);
 #if ENABLE(DFG_JIT)
     if (profiledBlock->hasExitSite(locker, DFG::FrequentExitSite(bytecodeIndex, BadCache))
         || profiledBlock->hasExitSite(locker, DFG::FrequentExitSite(bytecodeIndex, BadCacheWatchpoint))
         || profiledBlock->hasExitSite(locker, DFG::FrequentExitSite(bytecodeIndex, BadExecutable)))
         return takesSlowPath();
     
-    if (!profiledBlock->hasBaselineJITProfiling())
+    CallLinkInfo* callLinkInfo = map.get(CodeOrigin(bytecodeIndex));
+    if (!callLinkInfo)
         return computeFromLLInt(locker, profiledBlock, bytecodeIndex);
     
-    if (profiledBlock->couldTakeSlowCase(bytecodeIndex))
-        return takesSlowPath();
-    
-    CallLinkInfo& callLinkInfo = profiledBlock->getCallLinkInfo(bytecodeIndex);
-    
-    CallLinkStatus result = computeFor(locker, callLinkInfo);
+    CallLinkStatus result = computeFor(locker, *callLinkInfo);
     if (!result)
         return computeFromLLInt(locker, profiledBlock, bytecodeIndex);
     
@@ -151,6 +149,9 @@ CallLinkStatus CallLinkStatus::computeFor(CodeBlock* profiledBlock, unsigned byt
 #if ENABLE(JIT)
 CallLinkStatus CallLinkStatus::computeFor(const ConcurrentJITLocker&, CallLinkInfo& callLinkInfo)
 {
+    if (callLinkInfo.slowPathCount >= Options::couldTakeSlowCaseMinimumCount())
+        return takesSlowPath();
+    
     if (callLinkInfo.stub)
         return CallLinkStatus(callLinkInfo.stub->executable(), callLinkInfo.stub->structure());
     
@@ -171,11 +172,8 @@ void CallLinkStatus::computeDFGStatuses(
 #if ENABLE(DFG_JIT)
     RELEASE_ASSERT(dfgCodeBlock->jitType() == JITCode::DFGJIT);
     CodeBlock* baselineCodeBlock = dfgCodeBlock->alternative();
-    DFG::JITCode* jitCode = dfgCodeBlock->jitCode()->dfg();
-    RELEASE_ASSERT(dfgCodeBlock->numberOfCallLinkInfos() <= jitCode->slowPathCalls.size());
-    
-    for (size_t i = dfgCodeBlock->numberOfCallLinkInfos(); i--;) {
-        CallLinkInfo& info = dfgCodeBlock->callLinkInfo(i);
+    for (auto iter = dfgCodeBlock->callLinkInfosBegin(); !!iter; ++iter) {
+        CallLinkInfo& info = **iter;
         CodeOrigin codeOrigin = info.codeOrigin;
         
         bool takeSlowPath;
@@ -202,7 +200,7 @@ void CallLinkStatus::computeDFGStatuses(
         
         {
             ConcurrentJITLocker locker(dfgCodeBlock->m_lock);
-            if (takeSlowPath || jitCode->slowPathCalls[i] >= Options::couldTakeSlowCaseMinimumCount())
+            if (takeSlowPath)
                 map.add(info.codeOrigin, takesSlowPath());
             else {
                 CallLinkStatus status = computeFor(locker, info);
@@ -230,13 +228,14 @@ void CallLinkStatus::computeDFGStatuses(
 }
 
 CallLinkStatus CallLinkStatus::computeFor(
-    CodeBlock* profiledBlock, CodeOrigin codeOrigin, const CallLinkStatus::ContextMap& map)
+    CodeBlock* profiledBlock, CodeOrigin codeOrigin,
+    const CallLinkInfoMap& baselineMap, const CallLinkStatus::ContextMap& dfgMap)
 {
-    ContextMap::const_iterator iter = map.find(codeOrigin);
-    if (iter != map.end())
+    auto iter = dfgMap.find(codeOrigin);
+    if (iter != dfgMap.end())
         return iter->value;
     
-    return computeFor(profiledBlock, codeOrigin.bytecodeIndex);
+    return computeFor(profiledBlock, codeOrigin.bytecodeIndex, baselineMap);
 }
 
 void CallLinkStatus::dump(PrintStream& out) const

@@ -147,6 +147,7 @@
 #include <WebCore/VisibleUnits.h>
 #include <WebCore/markup.h>
 #include <bindings/ScriptValue.h>
+#include <profiler/ProfilerDatabase.h>
 #include <runtime/JSCInlines.h>
 #include <runtime/JSCJSValue.h>
 #include <runtime/JSLock.h>
@@ -284,6 +285,7 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
 #if PLATFORM(IOS)
     , m_shouldReturnWordAtSelection(false)
     , m_lastVisibleContentRectUpdateID(0)
+    , m_hasReceivedVisibleContentRectsAfterDidCommitLoad(false)
     , m_scaleWasSetByUIProcess(false)
     , m_userHasChangedPageScaleFactor(false)
     , m_viewportScreenSize(parameters.viewportScreenSize)
@@ -403,6 +405,8 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
     
     setScrollPinningBehavior(parameters.scrollPinningBehavior);
     setBackgroundExtendsBeyondPage(parameters.backgroundExtendsBeyondPage);
+
+    setTopContentInset(parameters.topContentInset);
 
     m_userAgent = parameters.userAgent;
 
@@ -622,12 +626,12 @@ PassRefPtr<Plugin> WebPage::createPlugin(WebFrame* frame, HTMLPlugInElement* plu
 #endif // ENABLE(NETSCAPE_PLUGIN_API)
 
 #if ENABLE(WEBGL) && !PLATFORM(COCOA)
-WebCore::WebGLLoadPolicy WebPage::webGLPolicyForURL(WebFrame* frame, const String& url)
+WebCore::WebGLLoadPolicy WebPage::webGLPolicyForURL(WebFrame*, const String& /* url */)
 {
     return WebGLAllowCreation;
 }
 
-WebCore::WebGLLoadPolicy WebPage::resolveWebGLPolicyForURL(WebFrame* frame, const String& url)
+WebCore::WebGLLoadPolicy WebPage::resolveWebGLPolicyForURL(WebFrame*, const String& /* url */)
 {
     return WebGLAllowCreation;
 }
@@ -1528,14 +1532,17 @@ void WebPage::takeSnapshot(IntRect snapshotRect, IntSize bitmapSize, uint32_t op
     send(Messages::WebPageProxy::ImageCallback(handle, callbackID));
 }
 
-PassRefPtr<WebImage> WebPage::scaledSnapshotWithOptions(const IntRect& rect, double scaleFactor, SnapshotOptions options)
+PassRefPtr<WebImage> WebPage::scaledSnapshotWithOptions(const IntRect& rect, double additionalScaleFactor, SnapshotOptions options)
 {
     IntRect snapshotRect = rect;
     if (options & SnapshotOptionsRespectDrawingAreaTransform)
         snapshotRect = m_drawingArea->rootLayerTransform().inverse().mapRect(snapshotRect);
 
     IntSize bitmapSize = snapshotRect.size();
-    bitmapSize.scale(scaleFactor * corePage()->deviceScaleFactor());
+    double scaleFactor = additionalScaleFactor;
+    if (!(options & SnapshotOptionsExcludeDeviceScaleFactor))
+        scaleFactor *= corePage()->deviceScaleFactor();
+    bitmapSize.scale(scaleFactor);
 
     return snapshotAtSize(rect, bitmapSize, options);
 }
@@ -1566,8 +1573,11 @@ PassRefPtr<WebImage> WebPage::snapshotAtSize(const IntRect& rect, const IntSize&
 
     graphicsContext->fillRect(IntRect(IntPoint(), bitmapSize), frameView->baseBackgroundColor(), ColorSpaceDeviceRGB);
 
-    if (!(options & SnapshotOptionsExcludeDeviceScaleFactor))
-        graphicsContext->applyDeviceScaleFactor(corePage()->deviceScaleFactor());
+    if (!(options & SnapshotOptionsExcludeDeviceScaleFactor)) {
+        double deviceScaleFactor = corePage()->deviceScaleFactor();
+        graphicsContext->applyDeviceScaleFactor(deviceScaleFactor);
+        scaleFactor /= deviceScaleFactor;
+    }
 
     graphicsContext->scale(FloatSize(scaleFactor, scaleFactor));
     graphicsContext->translate(-snapshotRect.x(), -snapshotRect.y());
@@ -2030,6 +2040,11 @@ void WebPage::setDrawsTransparentBackground(bool drawsTransparentBackground)
 
     m_drawingArea->pageBackgroundTransparencyChanged();
     m_drawingArea->setNeedsDisplay();
+}
+
+void WebPage::setTopContentInset(float contentInset)
+{
+    m_page->setTopContentInset(contentInset);
 }
 
 void WebPage::viewWillStartLiveResize()
@@ -3896,6 +3911,117 @@ bool WebPage::shouldUseCustomContentProviderForResponse(const ResourceResponse& 
     return m_mimeTypesWithCustomContentProviders.contains(response.mimeType()) && !canPluginHandleResponse(response);
 }
 
+#if PLATFORM(COCOA)
+
+void WebPage::insertTextAsync(const String& text, const EditingRange& replacementEditingRange)
+{
+    Frame& frame = m_page->focusController().focusedOrMainFrame();
+
+    if (replacementEditingRange.location != notFound) {
+        RefPtr<Range> replacementRange = rangeFromEditingRange(frame, replacementEditingRange);
+        if (replacementRange)
+            frame.selection().setSelection(VisibleSelection(replacementRange.get(), SEL_DEFAULT_AFFINITY));
+    }
+
+    if (!frame.editor().hasComposition()) {
+        // An insertText: might be handled by other responders in the chain if we don't handle it.
+        // One example is space bar that results in scrolling down the page.
+        frame.editor().insertText(text, nullptr);
+    } else
+        frame.editor().confirmComposition(text);
+}
+
+void WebPage::getMarkedRangeAsync(uint64_t callbackID)
+{
+    Frame& frame = m_page->focusController().focusedOrMainFrame();
+
+    RefPtr<Range> range = frame.editor().compositionRange();
+    size_t location;
+    size_t length;
+    if (!range || !TextIterator::getLocationAndLengthFromRange(frame.selection().rootEditableElementOrDocumentElement(), range.get(), location, length)) {
+        location = notFound;
+        length = 0;
+    }
+
+    send(Messages::WebPageProxy::EditingRangeCallback(EditingRange(location, length), callbackID));
+}
+
+void WebPage::getSelectedRangeAsync(uint64_t callbackID)
+{
+    Frame& frame = m_page->focusController().focusedOrMainFrame();
+
+    size_t location;
+    size_t length;
+    RefPtr<Range> range = frame.selection().toNormalizedRange();
+    if (!range || !TextIterator::getLocationAndLengthFromRange(frame.selection().rootEditableElementOrDocumentElement(), range.get(), location, length)) {
+        location = notFound;
+        length = 0;
+    }
+
+    send(Messages::WebPageProxy::EditingRangeCallback(EditingRange(location, length), callbackID));
+}
+
+void WebPage::characterIndexForPointAsync(const WebCore::IntPoint& point, uint64_t callbackID)
+{
+    uint64_t index = notFound;
+
+    HitTestResult result = m_page->mainFrame().eventHandler().hitTestResultAtPoint(point);
+    Frame* frame = result.innerNonSharedNode() ? result.innerNodeFrame() : &m_page->focusController().focusedOrMainFrame();
+    
+    RefPtr<Range> range = frame->rangeForPoint(result.roundedPointInInnerNodeFrame());
+    if (range) {
+        size_t location;
+        size_t length;
+        if (TextIterator::getLocationAndLengthFromRange(frame->selection().rootEditableElementOrDocumentElement(), range.get(), location, length))
+            index = static_cast<uint64_t>(location);
+    }
+
+    send(Messages::WebPageProxy::UnsignedCallback(index, callbackID));
+}
+
+void WebPage::firstRectForCharacterRangeAsync(const EditingRange& editingRange, uint64_t callbackID)
+{
+    Frame& frame = m_page->focusController().focusedOrMainFrame();
+    IntRect result(IntPoint(0, 0), IntSize(0, 0));
+    
+    RefPtr<Range> range = rangeFromEditingRange(frame, editingRange);
+    if (!range) {
+        send(Messages::WebPageProxy::RectForCharacterRangeCallback(result, EditingRange(notFound, 0), callbackID));
+        return;
+    }
+
+    ASSERT(range->startContainer());
+    ASSERT(range->endContainer());
+
+    result = frame.view()->contentsToWindow(frame.editor().firstRectForRange(range.get()));
+
+    // FIXME: Update actualRange to match the range of first rect.
+    send(Messages::WebPageProxy::RectForCharacterRangeCallback(result, editingRange, callbackID));
+}
+
+void WebPage::setCompositionAsync(const String& text, Vector<CompositionUnderline> underlines, const EditingRange& selection, const EditingRange& replacementEditingRange)
+{
+    Frame& frame = m_page->focusController().focusedOrMainFrame();
+
+    if (frame.selection().selection().isContentEditable()) {
+        RefPtr<Range> replacementRange;
+        if (replacementEditingRange.location != notFound) {
+            replacementRange = rangeFromEditingRange(frame, replacementEditingRange);
+            frame.selection().setSelection(VisibleSelection(replacementRange.get(), SEL_DEFAULT_AFFINITY));
+        }
+
+        frame.editor().setComposition(text, underlines, selection.location, selection.location + selection.length);
+    }
+}
+
+void WebPage::confirmCompositionAsync()
+{
+    Frame& frame = m_page->focusController().focusedOrMainFrame();
+    frame.editor().confirmComposition();
+}
+
+#endif // PLATFORM(COCOA)
+
 #if PLATFORM(GTK)
 static Frame* targetFrameForEditing(WebPage* page)
 {
@@ -3979,6 +4105,9 @@ void WebPage::cancelComposition()
 void WebPage::didChangeSelection()
 {
     send(Messages::WebPageProxy::EditorStateChanged(editorState()));
+#if PLATFORM(IOS)
+    m_drawingArea->scheduleCompositingLayerFlush();
+#endif
 }
 
 void WebPage::setMinimumLayoutSize(const IntSize& minimumLayoutSize)
@@ -4101,6 +4230,7 @@ void WebPage::didCommitLoad(WebFrame* frame)
         }
     }
 #if PLATFORM(IOS)
+    m_hasReceivedVisibleContentRectsAfterDidCommitLoad = false;
     m_userHasChangedPageScaleFactor = false;
 
     Document* document = frame->coreFrame()->document();
@@ -4319,7 +4449,7 @@ PassRefPtr<DocumentLoader> WebPage::createDocumentLoader(Frame& frame, const Res
     RefPtr<WebDocumentLoader> documentLoader = WebDocumentLoader::create(request, substituteData);
 
     if (m_pendingNavigationID) {
-        ASSERT(frame.isMainFrame());
+        ASSERT_UNUSED(frame, frame.isMainFrame());
 
         documentLoader->setNavigationID(m_pendingNavigationID);
         m_pendingNavigationID = 0;

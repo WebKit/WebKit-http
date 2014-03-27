@@ -28,11 +28,6 @@
 #define FloatRect_h
 
 #include "FloatPoint.h"
-#include <wtf/Vector.h>
-
-#if PLATFORM(IOS)
-#include <CoreGraphics/CGGeometry.h>
-#endif
 
 #if USE(CG)
 typedef struct CGRect CGRect;
@@ -190,7 +185,7 @@ public:
     operator cairo_rectangle_t() const;
 #endif
 
-    void dump(PrintStream& out) const;
+    void dump(WTF::PrintStream& out) const;
 
     static FloatRect infiniteRect();
     bool isInfinite() const;
@@ -220,8 +215,6 @@ inline FloatRect unionRect(const FloatRect& a, const FloatRect& b)
     c.unite(b);
     return c;
 }
-
-FloatRect unionRect(const Vector<FloatRect>&);
 
 inline FloatRect& operator+=(FloatRect& a, const FloatRect& b)
 {
@@ -265,9 +258,6 @@ IntRect enclosingIntRect(const FloatRect&);
 IntRect enclosedIntRect(const FloatRect&);
 
 IntRect roundedIntRect(const FloatRect&);
-
-// Map rect r from srcRect to an equivalent rect in destRect.
-FloatRect mapRect(const FloatRect& r, const FloatRect& srcRect, const FloatRect& destRect);
 
 }
 

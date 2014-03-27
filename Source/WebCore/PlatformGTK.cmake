@@ -118,7 +118,6 @@ list(APPEND WebCore_SOURCES
     platform/network/soup/CredentialStorageSoup.cpp
     platform/network/soup/DNSSoup.cpp
     platform/network/soup/NetworkStorageSessionSoup.cpp
-    platform/network/soup/ProxyResolverSoup.cpp
     platform/network/soup/ProxyServerSoup.cpp
     platform/network/soup/ResourceErrorSoup.cpp
     platform/network/soup/ResourceHandleSoup.cpp
@@ -294,7 +293,7 @@ list(APPEND WebCore_LIBRARIES
     ${CAIRO_LIBRARIES}
     ${ENCHANT_LIBRARIES}
     ${FONTCONFIG_LIBRARIES}
-    ${FREETYPE_LIBRARIES}
+    ${FREETYPE2_LIBRARIES}
     ${GEOCLUE_LIBRARIES}
     ${GLIB_GIO_LIBRARIES}
     ${GLIB_GMODULE_LIBRARIES}
@@ -323,7 +322,7 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
     ${ATK_INCLUDE_DIRS}
     ${CAIRO_INCLUDE_DIRS}
     ${ENCHANT_INCLUDE_DIRS}
-    ${FREETYPE_INCLUDE_DIRS}
+    ${FREETYPE2_INCLUDE_DIRS}
     ${GEOCLUE_INCLUDE_DIRS}
     ${GIO_UNIX_INCLUDE_DIRS}
     ${GLIB_INCLUDE_DIRS}

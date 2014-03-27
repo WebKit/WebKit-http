@@ -40,7 +40,6 @@
 #include "CSSFontValue.h"
 #include "CSSFunctionValue.h"
 #include "CSSGradientValue.h"
-#include "CSSGridTemplateAreasValue.h"
 #include "CSSImageValue.h"
 #include "CSSInheritedValue.h"
 #include "CSSInitialValue.h"
@@ -92,6 +91,11 @@
 #include <wtf/text/StringBuffer.h>
 #include <wtf/text/StringBuilder.h>
 #include <wtf/text/StringImpl.h>
+
+#if ENABLE(CSS_GRID_LAYOUT)
+#include "CSSGridLineNamesValue.h"
+#include "CSSGridTemplateAreasValue.h"
+#endif
 
 #if ENABLE(CSS_IMAGE_SET)
 #include "CSSImageSetValue.h"
@@ -558,9 +562,6 @@ static inline bool isSimpleLengthPropertyID(CSSPropertyID propertyId, bool& acce
     case CSSPropertyWebkitPaddingStart:
         acceptsNegativeNumbers = false;
         return true;
-#if ENABLE(CSS_SHAPES) && ENABLE(CSS_SHAPE_INSIDE)
-    case CSSPropertyWebkitShapePadding:
-#endif
 #if ENABLE(CSS_SHAPES)
     case CSSPropertyWebkitShapeMargin:
         acceptsNegativeNumbers = false;
@@ -2909,17 +2910,11 @@ bool CSSParser::parseValue(CSSPropertyID propId, bool important)
     case CSSPropertyWebkitClipPath:
         parsedValue = parseClipPath();
         break;
-#if ENABLE(CSS_SHAPES) && ENABLE(CSS_SHAPE_INSIDE)
-    case CSSPropertyWebkitShapeInside:
-#endif
 #if ENABLE(CSS_SHAPES)
     case CSSPropertyWebkitShapeOutside:
         parsedValue = parseShapeProperty(propId);
         break;
     case CSSPropertyWebkitShapeMargin:
-#if ENABLE(CSS_SHAPE_INSIDE)
-    case CSSPropertyWebkitShapePadding:
-#endif
         validPrimitive = (RuntimeEnabledFeatures::sharedFeatures().cssShapesEnabled() && !id && validUnit(value, FLength | FNonNeg));
         break;
     case CSSPropertyWebkitShapeImageThreshold:
@@ -4871,13 +4866,25 @@ bool CSSParser::parseSingleGridAreaLonghand(RefPtr<CSSValue>& property)
     return true;
 }
 
-void CSSParser::parseGridTrackNames(CSSParserValueList& parserValues, CSSValueList& values)
+void CSSParser::parseGridLineNames(CSSParserValueList& inputList, CSSValueList& valueList)
 {
-    do {
-        RefPtr<CSSPrimitiveValue> name = createPrimitiveStringValue(parserValues.current());
-        values.append(name.release());
-        parserValues.next();
-    } while (parserValues.current() && parserValues.current()->unit == CSSPrimitiveValue::CSS_STRING);
+    ASSERT(inputList.current() && inputList.current()->unit == CSSParserValue::ValueList);
+
+    CSSParserValueList* identList = inputList.current()->valueList;
+    if (!identList->size()) {
+        inputList.next();
+        return;
+    }
+
+    RefPtr<CSSGridLineNamesValue> lineNames = CSSGridLineNamesValue::create();
+    while (CSSParserValue* identValue = identList->current()) {
+        ASSERT(identValue->unit == CSSPrimitiveValue::CSS_IDENT);
+        lineNames->append(createPrimitiveStringValue(identValue));
+        identList->next();
+    }
+    valueList.append(lineNames.release());
+
+    inputList.next();
 }
 
 bool CSSParser::parseGridTrackList(CSSPropertyID propId, bool important)
@@ -4892,9 +4899,10 @@ bool CSSParser::parseGridTrackList(CSSPropertyID propId, bool important)
     }
 
     RefPtr<CSSValueList> values = CSSValueList::createSpaceSeparated();
-    // Handle leading track names
-    if (m_valueList->current() && m_valueList->current()->unit == CSSPrimitiveValue::CSS_STRING)
-        parseGridTrackNames(*m_valueList, *values);
+    // Handle leading  <custom-ident>*.
+    value = m_valueList->current();
+    if (value && value->unit == CSSParserValue::ValueList)
+        parseGridLineNames(*m_valueList, *values);
 
     bool seenTrackSizeOrRepeatFunction = false;
     while (CSSParserValue* currentValue = m_valueList->current()) {
@@ -4909,8 +4917,10 @@ bool CSSParser::parseGridTrackList(CSSPropertyID propId, bool important)
         }
         seenTrackSizeOrRepeatFunction = true;
 
-        if (m_valueList->current() && m_valueList->current()->unit == CSSPrimitiveValue::CSS_STRING)
-            parseGridTrackNames(*m_valueList, *values);
+        // This will handle the trailing <custom-ident>* in the grammar.
+        value = m_valueList->current();
+        if (value && value->unit == CSSParserValue::ValueList)
+            parseGridLineNames(*m_valueList, *values);
     }
 
     if (!seenTrackSizeOrRepeatFunction)
@@ -4932,18 +4942,22 @@ bool CSSParser::parseGridTrackRepeatFunction(CSSValueList& list)
     arguments->next(); // Skip the repetition count.
     arguments->next(); // Skip the comma.
 
+    // Handle leading <custom-ident>*.
+    CSSParserValue* currentValue = arguments->current();
+    if (currentValue && currentValue->unit == CSSParserValue::ValueList)
+        parseGridLineNames(*arguments, *repeatedValues);
+
     while (arguments->current()) {
-        if (arguments->current()->unit == CSSPrimitiveValue::CSS_STRING)
-            parseGridTrackNames(*arguments, *repeatedValues);
-
-        if (!arguments->current())
-            break;
-
         RefPtr<CSSValue> trackSize = parseGridTrackSize(*arguments);
         if (!trackSize)
             return false;
 
         repeatedValues->append(trackSize.release());
+
+        // This takes care of any trailing <custom-ident>* in the grammar.
+        currentValue = arguments->current();
+        if (currentValue && currentValue->unit == CSSParserValue::ValueList)
+            parseGridLineNames(*arguments, *repeatedValues);
     }
 
     for (size_t i = 0; i < repetitions; ++i) {
@@ -5199,7 +5213,7 @@ PassRefPtr<CSSValue> CSSParser::parseGridTemplateAreas()
 
                 // The following checks test that the grid area is a single filled-in rectangle.
                 // 1. The new row is adjacent to the previously parsed row.
-                if (rowCount != gridCoordinate.rows.initialPositionIndex + 1)
+                if (rowCount != gridCoordinate.rows.finalPositionIndex + 1)
                     return 0;
 
                 // 2. The new area starts at the same position as the previously parsed area.
@@ -5683,12 +5697,7 @@ PassRefPtr<CSSValue> CSSParser::parseShapeProperty(CSSPropertyID propId)
     RefPtr<CSSPrimitiveValue> keywordValue;
     RefPtr<CSSPrimitiveValue> shapeValue;
 
-    if (valueId == CSSValueNone
-#if ENABLE(CSS_SHAPE_INSIDE)
-        || (valueId == CSSValueOutsideShape
-            && propId == CSSPropertyWebkitShapeInside)
-#endif
-        ) {
+    if (valueId == CSSValueNone) {
         keywordValue = parseValidPrimitive(valueId, value);
         m_valueList->next();
         return keywordValue.release();

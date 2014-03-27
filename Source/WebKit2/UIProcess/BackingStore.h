@@ -32,6 +32,7 @@
 #if USE(CAIRO)
 #include <RefPtrCairo.h>
 #include <WebCore/WidgetBackingStore.h>
+#include <wtf/OwnPtr.h>
 #endif
 
 namespace WebKit {

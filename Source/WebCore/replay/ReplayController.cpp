@@ -44,6 +44,8 @@
 #include "ReplaySessionSegment.h"
 #include "ReplayingInputCursor.h"
 #include "ScriptController.h"
+#include "Settings.h"
+#include "UserInputBridge.h"
 #include "WebReplayInputs.h"
 #include <replay/EmptyInputCursor.h>
 #include <wtf/text/CString.h>
@@ -62,6 +64,45 @@ ReplayController::ReplayController(Page& page)
     , m_sessionState(SessionState::Inactive)
     , m_dispatchSpeed(DispatchSpeed::FastForward)
 {
+}
+
+void ReplayController::setForceDeterministicSettings(bool shouldForce)
+{
+    ASSERT(shouldForce ^ (m_sessionState == SessionState::Inactive));
+
+    if (shouldForce) {
+        m_savedSettings.usesPageCache = m_page.settings().usesPageCache();
+
+        m_page.settings().setUsesPageCache(false);
+    } else {
+        m_page.settings().setUsesPageCache(m_savedSettings.usesPageCache);
+    }
+}
+
+void ReplayController::setSessionState(SessionState state)
+{
+    ASSERT(state != m_sessionState);
+
+    switch (m_sessionState) {
+    case SessionState::Capturing:
+        ASSERT(state == SessionState::Inactive);
+
+        m_sessionState = state;
+        m_page.userInputBridge().setState(UserInputBridge::State::Open);
+        break;
+
+    case SessionState::Inactive:
+        m_sessionState = state;
+        m_page.userInputBridge().setState(state == SessionState::Capturing ? UserInputBridge::State::Capturing : UserInputBridge::State::Replaying);
+        break;
+
+    case SessionState::Replaying:
+        ASSERT(state == SessionState::Inactive);
+
+        m_sessionState = state;
+        m_page.userInputBridge().setState(UserInputBridge::State::Open);
+        break;
+    }
 }
 
 void ReplayController::switchSession(PassRefPtr<ReplaySession> session)
@@ -120,9 +161,10 @@ void ReplayController::completeSegment()
     InspectorInstrumentation::sessionModified(&m_page, m_loadedSession);
 }
 
-void ReplayController::loadSegment(PassRefPtr<ReplaySessionSegment> prpSegment)
+void ReplayController::loadSegmentAtIndex(size_t segmentIndex)
 {
-    RefPtr<ReplaySessionSegment> segment = prpSegment;
+    ASSERT(segmentIndex < m_loadedSession->size());
+    RefPtr<ReplaySessionSegment> segment = m_loadedSession->at(segmentIndex);
 
     ASSERT(m_sessionState == SessionState::Replaying);
     ASSERT(m_segmentState == SegmentState::Unloaded);
@@ -132,8 +174,10 @@ void ReplayController::loadSegment(PassRefPtr<ReplaySessionSegment> prpSegment)
     m_loadedSegment = segment;
     m_segmentState = SegmentState::Loaded;
 
+    m_currentPosition.segmentOffset = segmentIndex;
+    m_currentPosition.inputOffset = 0;
+
     m_activeCursor = m_loadedSegment->createReplayingCursor(m_page, this);
-    dispatcher().setDispatchSpeed(m_dispatchSpeed);
 
     LOG(WebReplay, "%-20sLoading segment: %p.\n", "ReplayController", segment.get());
     InspectorInstrumentation::segmentLoaded(&m_page, segment);
@@ -168,12 +212,14 @@ void ReplayController::startCapturing()
     ASSERT(m_sessionState == SessionState::Inactive);
     ASSERT(m_segmentState == SegmentState::Unloaded);
 
-    m_sessionState = SessionState::Capturing;
+    setSessionState(SessionState::Capturing);
+    setForceDeterministicSettings(true);
 
     LOG(WebReplay, "%-20s Starting capture.\n", "ReplayController");
     InspectorInstrumentation::captureStarted(&m_page);
 
     m_currentPosition = ReplayPosition(0, 0);
+
     createSegment();
 }
 
@@ -184,7 +230,8 @@ void ReplayController::stopCapturing()
 
     completeSegment();
 
-    m_sessionState = SessionState::Inactive;
+    setSessionState(SessionState::Inactive);
+    setForceDeterministicSettings(false);
 
     LOG(WebReplay, "%-20s Stopping capture.\n", "ReplayController");
     InspectorInstrumentation::captureStopped(&m_page);
@@ -200,6 +247,7 @@ void ReplayController::startPlayback()
     LOG(WebReplay, "%-20s Starting playback to position (segment: %d, input: %d).\n", "ReplayController", m_targetPosition.segmentOffset, m_targetPosition.inputOffset);
     InspectorInstrumentation::playbackStarted(&m_page);
 
+    dispatcher().setDispatchSpeed(m_dispatchSpeed);
     dispatcher().run();
 }
 
@@ -208,9 +256,10 @@ void ReplayController::pausePlayback()
     ASSERT(m_sessionState == SessionState::Replaying);
     ASSERT(m_segmentState == SegmentState::Dispatching);
 
-    m_segmentState = SegmentState::Loaded;
+    if (dispatcher().isRunning())
+        dispatcher().pause();
 
-    dispatcher().pause();
+    m_segmentState = SegmentState::Loaded;
 
     LOG(WebReplay, "%-20s Pausing playback at position (segment: %d, input: %d).\n", "ReplayController", m_currentPosition.segmentOffset, m_currentPosition.inputOffset);
     InspectorInstrumentation::playbackPaused(&m_page, m_currentPosition);
@@ -230,6 +279,8 @@ void ReplayController::cancelPlayback()
     ASSERT(m_segmentState == SegmentState::Loaded);
     unloadSegment();
     m_sessionState = SessionState::Inactive;
+    setForceDeterministicSettings(false);
+    InspectorInstrumentation::playbackFinished(&m_page);
 }
 
 void ReplayController::replayToPosition(const ReplayPosition& position, DispatchSpeed speed)
@@ -240,16 +291,18 @@ void ReplayController::replayToPosition(const ReplayPosition& position, Dispatch
 
     m_dispatchSpeed = speed;
 
-    if (m_sessionState != SessionState::Replaying)
-        m_sessionState = SessionState::Replaying;
+    if (m_sessionState != SessionState::Replaying) {
+        setSessionState(SessionState::Replaying);
+        setForceDeterministicSettings(true);
+    }
 
     if (m_segmentState == SegmentState::Unloaded)
-        loadSegment(m_loadedSession->at(position.segmentOffset));
+        loadSegmentAtIndex(position.segmentOffset);
     else if (position.segmentOffset != m_currentPosition.segmentOffset || m_currentPosition.inputOffset > position.inputOffset) {
         // If the desired segment is not loaded or we have gone past the desired input
         // offset, then unload the current segment and load the appropriate segment.
         unloadSegment();
-        loadSegment(m_loadedSession->at(position.segmentOffset));
+        loadSegmentAtIndex(position.segmentOffset);
     }
 
     ASSERT(m_currentPosition.segmentOffset == position.segmentOffset);
@@ -347,14 +400,18 @@ void ReplayController::didDispatchFinalInput()
 {
     ASSERT(m_segmentState == SegmentState::Dispatching);
 
-    pause();
-    unloadSegment();
-
     // No more segments left to replay; stop.
-    if (++m_currentPosition.segmentOffset == m_loadedSession->size())
-        return;
+    if (m_currentPosition.segmentOffset + 1 == m_loadedSession->size()) {
+        // Normally the position is adjusted when loading the next segment.
+        m_currentPosition.segmentOffset++;
+        m_currentPosition.inputOffset = 0;
 
-    loadSegment(m_loadedSession->at(m_currentPosition.segmentOffset));
+        cancelPlayback();
+        return;
+    }
+
+    unloadSegment();
+    loadSegmentAtIndex(m_currentPosition.segmentOffset + 1);
     startPlayback();
 }
 

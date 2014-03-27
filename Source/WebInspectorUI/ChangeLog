@@ -1,3 +1,236 @@
+2014-03-25  James Craig  <jcraig@apple.com>
+
+        Web Inspector: AXI: add support for aria-activedescendant and reconcile UI/testing with parentNode
+        https://bugs.webkit.org/show_bug.cgi?id=130712
+
+        Reviewed by Timothy Hatcher.
+
+        Support for @aria-activedescendant; code reuse changes w/ parentNode and activeDescendantNode.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Models/DOMNode.js:
+        * UserInterface/Views/DOMNodeDetailsSidebarPanel.js:
+
+2014-03-25  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK] Remove the autotools build
+        https://bugs.webkit.org/show_bug.cgi?id=130717
+
+        Reviewed by Anders Carlsson.
+
+        * GNUmakefile.am: Removed.
+
+2014-03-24  Timothy Hatcher  <timothy@apple.com>
+
+        Lazy load source code referred to from the source map, instead of when
+        the source code is revealed in the Resources sidebar.
+
+        https://bugs.webkit.org/show_bug.cgi?id=130625
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Models/SourceMapResource.js:
+        (WebInspector.SourceMapResource): Set up the type info here so it can be used to
+        dispaly the right icon in the sidebar.
+        (WebInspector.SourceMapResource.prototype.canRequestContentFromBackend): Use _contentRequested.
+        (WebInspector.SourceMapResource.prototype.requestContentFromBackend.sourceMapResourceLoaded):
+        Reset finished and remove the type change dance we had before.
+        * UserInterface/Views/SourceMapResourceTreeElement.js:
+        (WebInspector.SourceMapResourceTreeElement.prototype.onattach): Removed. Don't request content here.
+
+2014-03-23  James Craig  <jcraig@apple.com>
+
+        Web Inspector: AXI: add other ARIA one-to-many relationships: owns, flowto, controls.
+        https://bugs.webkit.org/show_bug.cgi?id=130635
+
+        Reviewed by Timothy Hatcher.
+
+        Support for @aria-owns, @aria-controls, and @aria-flowto.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Models/DOMNode.js:
+        * UserInterface/Views/DOMNodeDetailsSidebarPanel.js:
+
+2014-03-21  James Craig  <jcraig@apple.com>
+
+        Web Inspector: AXI: Expose Accessibility Tree children of the selected node
+        https://bugs.webkit.org/show_bug.cgi?id=130264
+
+        Reviewed by Timothy Hatcher.
+
+        Expose the accessibility tree children (different from DOM children) of the
+        current node in the accessibility node inspector.
+
+        * Localizations/en.lproj/localizedStrings.js: New "Children" string.
+        * UserInterface/Base/DOMUtilities.js: Added linkifyAccessibilityNodeReference.
+        * UserInterface/Models/DOMNode.js: Support for accessibility children.
+        * UserInterface/Views/DOMNodeDetailsSidebarPanel.js: Support for accessibility children.
+        * UserInterface/Views/Main.css: New styles for .node-link-list.
+
+2014-03-20  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: add temporary buttons to capture/play/pause replay recordings
+        https://bugs.webkit.org/show_bug.cgi?id=129692
+
+        Reviewed by Timothy Hatcher.
+
+        If the Replay agent is available, replace the existing ad-hoc navigation bar
+        in the Timelines sidebar panel with a record and pause/play button. This UI
+        is temporary.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Controllers/ReplayManager.js: Turn two segment state assertions into
+        FIXMEs because the assertions are too strong until the public API uses async chains.
+        (WebInspector.ReplayManager.prototype.replayToMarkIndex):
+        (WebInspector.ReplayManager.prototype.replayToCompletion):
+        * UserInterface/Images/Circle.svg: Added.
+        * UserInterface/Views/ActivateButtonNavigationItem.js:
+        (WebInspector.ActivateButtonNavigationItem.prototype.generateStyleText):
+        * UserInterface/Views/ButtonNavigationItem.css: Adjust styles so the default style
+        has opacity:1 and the glyph color is darker.
+        (.navigation-bar .item.button.suppress-emboss > .glyph):
+        (.navigation-bar .item.button.suppress-emboss.disabled > .glyph):
+        * UserInterface/Views/ButtonNavigationItem.js:
+        (WebInspector.ButtonNavigationItem.prototype.generateStyleText): Explicitly
+        generate the width and height properties so that separate button instances do
+        not influence the size of each other.
+
+        * UserInterface/Views/TimelineSidebarPanel.js:
+        (WebInspector.TimelineSidebarPanel.prototype._recordGlyphClicked):
+        (WebInspector.TimelineSidebarPanel.prototype._replayCaptureButtonClicked):
+        (WebInspector.TimelineSidebarPanel.prototype._replayPauseResumeButtonClicked):
+        (WebInspector.TimelineSidebarPanel.prototype._captureStarted):
+        (WebInspector.TimelineSidebarPanel.prototype._captureStopped):
+        (WebInspector.TimelineSidebarPanel.prototype._playbackStarted):
+        (WebInspector.TimelineSidebarPanel.prototype._playbackPaused):
+
+2014-03-20  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: add frontend controller and models for replay sessions
+        https://bugs.webkit.org/show_bug.cgi?id=130145
+
+        Reviewed by Joseph Pecoraro.
+
+        Upstream the frontend models and controller for web replay. The replay manager
+        syncs with the backend controller's replay state and replay sessions by using
+        the same state machines and transitions.
+
+        Session and segment models update their data asynchronously using promises.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.loaded): Add the replay manager.
+        * UserInterface/Base/Test.js:
+        (WebInspector.loaded): Add the replay manager.
+        (InspectorTest.debugLog): Fix a bug in the unescape/escape trick.
+        (InspectorTest.addResult): Don't try to add results until the test page has loaded.
+        (InspectorTest.testPageDidLoad): Clear the isReloading flag.
+        (InspectorTest.reloadPage): Reimplement using promises. Return a promise.
+        * UserInterface/Base/Utilities.js: Implement Map.take in the obvious way.
+        * UserInterface/Controllers/ReplayManager.js: Added.
+        (WebInspector.ReplayManager):
+        (WebInspector):
+        (WebInspector.ReplayManager.prototype.get sessionState):
+        (WebInspector.ReplayManager.prototype.get segmentState):
+        (WebInspector.ReplayManager.prototype.get activeSessionIdentifier):
+        (WebInspector.ReplayManager.prototype.get activeSegmentIdentifier):
+        (WebInspector.ReplayManager.prototype.get playbackSpeed):
+        (WebInspector.ReplayManager.prototype.set playbackSpeed):
+        (WebInspector.ReplayManager.prototype.get currentPosition):
+        (WebInspector.ReplayManager.prototype.getSession.get var):
+        (WebInspector.ReplayManager.prototype.getSegment.get var):
+        (WebInspector.ReplayManager.prototype.captureStarted):
+        (WebInspector.ReplayManager.prototype.captureStopped):
+        (WebInspector.ReplayManager.prototype.playbackStarted):
+        (WebInspector.ReplayManager.prototype.playbackHitPosition):
+        (WebInspector.ReplayManager.prototype.playbackPaused):
+        (WebInspector.ReplayManager.prototype.playbackFinished):
+        (WebInspector.ReplayManager.prototype.sessionCreated.set catch):
+        (WebInspector.ReplayManager.prototype.sessionCreated.this):
+        (WebInspector.ReplayManager.prototype.sessionCreated):
+        (WebInspector.ReplayManager.prototype.sessionModified):
+        (WebInspector.ReplayManager.prototype.sessionRemoved.then):
+        (WebInspector.ReplayManager.prototype.sessionRemoved):
+        (WebInspector.ReplayManager.prototype.segmentCreated.set this):
+        (WebInspector.ReplayManager.prototype.segmentCompleted.set catch):
+        (WebInspector.ReplayManager.prototype.segmentCompleted):
+        (WebInspector.ReplayManager.prototype.segmentRemoved.then):
+        (WebInspector.ReplayManager.prototype.segmentRemoved):
+        (WebInspector.ReplayManager.prototype.segmentLoaded):
+        (WebInspector.ReplayManager.prototype.segmentUnloaded):
+        (WebInspector.ReplayManager.prototype.startCapturing):
+        (WebInspector.ReplayManager.prototype.stopCapturing):
+        (WebInspector.ReplayManager.prototype.replayToMarkIndex):
+        (WebInspector.ReplayManager.prototype.replayToCompletion):
+        (WebInspector.ReplayManager.prototype.pausePlayback):
+        (WebInspector.ReplayManager.prototype.stopPlayback):
+        (WebInspector.ReplayManager.prototype._changeSessionState):
+        (WebInspector.ReplayManager.prototype._changeSegmentState):
+        * UserInterface/Main.html:
+        * UserInterface/Models/ReplaySession.js: Added.
+        (WebInspector.ReplaySession):
+        (WebInspector.ReplaySession.fromPayload):
+        (WebInspector.ReplaySession.prototype.get segments):
+        (WebInspector.ReplaySession.prototype.segmentsChanged):
+        (WebInspector.ReplaySession.prototype._updateFromPayload):
+        * UserInterface/Models/ReplaySessionSegment.js: Added.
+        (WebInspector.IncompleteSessionSegment):
+        (WebInspector.IncompleteSessionSegment.prototype.get isComplete):
+        (WebInspector.ReplaySessionSegment):
+        (WebInspector.ReplaySessionSegment.prototype.get isComplete):
+        * UserInterface/Protocol/InspectorBackend.js:
+        (InspectorBackendClass.prototype.registerCommand):
+        (InspectorBackendClass.prototype._promise): Add a promise-returning method for
+        invoking backend commands that return a result asynchronously.
+        * UserInterface/Protocol/ReplayObserver.js: Added.
+        (WebInspector.ReplayPosition):
+        (WebInspector.ReplayPosition.fromProtocol):
+        (WebInspector.ReplayObserver):
+        (WebInspector.ReplayObserver.prototype.captureStarted):
+        (WebInspector.ReplayObserver.prototype.captureStopped):
+        (WebInspector.ReplayObserver.prototype.playbackStarted):
+        (WebInspector.ReplayObserver.prototype.playbackHitPosition):
+        (WebInspector.ReplayObserver.prototype.playbackPaused):
+        (WebInspector.ReplayObserver.prototype.playbackFinished):
+        (WebInspector.ReplayObserver.prototype.inputSuppressionChanged):
+        (WebInspector.ReplayObserver.prototype.sessionCreated):
+        (WebInspector.ReplayObserver.prototype.sessionModified):
+        (WebInspector.ReplayObserver.prototype.sessionRemoved):
+        (WebInspector.ReplayObserver.prototype.sessionLoaded):
+        (WebInspector.ReplayObserver.prototype.segmentCreated):
+        (WebInspector.ReplayObserver.prototype.segmentRemoved):
+        (WebInspector.ReplayObserver.prototype.segmentCompleted):
+        (WebInspector.ReplayObserver.prototype.segmentLoaded):
+        (WebInspector.ReplayObserver.prototype.segmentUnloaded):
+        * UserInterface/Test.html:
+
+2014-03-20  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: DebuggerDashboardView looks scrunched debugging JSContext
+        https://bugs.webkit.org/show_bug.cgi?id=130527
+
+        Reviewed by Timothy Hatcher.
+
+        Instead of using body.javascript to force a collapsed style,
+        actually use the toolbar's collapsed class.
+
+        * UserInterface/Views/DashboardContainerView.css:
+        (.toolbar.collapsed .dashboard-container):
+        * UserInterface/Views/Toolbar.js:
+
+2014-03-20  Katie Madonna  <madonnk@gmail.com>
+
+        Web Inspector: probe sidebar should use overflow:scroll and split space evenly
+        https://bugs.webkit.org/show_bug.cgi?id=129627
+
+        Reviewed by Timothy Hatcher.
+
+        Use flexbox to split space evenly in the probe sidebar, which required changes to collapse
+        format, remove scrollbar styles from old timelapse branch.
+
+        * UserInterface/Views/ProbeDetailsSidebarPanel.css: Space elements evenly with flexbox
+        and make collapse correctly, remove scrollbar style.
+        * UserInterface/Views/ProbeSetDetailsSection.js: Removed inline style.
+
 2014-03-18  Joseph Pecoraro  <pecoraro@apple.com>
 
         Web Inspector: Make update-InspectorBackendCommands.rb only update legacy protocol versions

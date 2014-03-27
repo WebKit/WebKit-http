@@ -99,6 +99,7 @@
 #include <bytecode/CodeBlock.h>
 #include <inspector/InspectorAgentBase.h>
 #include <inspector/InspectorValues.h>
+#include <runtime/JSCInlines.h>
 #include <runtime/JSCJSValue.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/StringBuffer.h>
@@ -272,6 +273,7 @@ void Internals::resetToConsistentState(Page* page)
     if (mainFrameView) {
         mainFrameView->setHeaderHeight(0);
         mainFrameView->setFooterHeight(0);
+        page->setTopContentInset(0);
     }
 
     TextRun::setAllowsRoundingHacks(false);
@@ -1827,6 +1829,16 @@ void Internals::setFooterHeight(float height)
     FrameView* frameView = document->view();
     frameView->setFooterHeight(height);
 }
+    
+void Internals::setTopContentInset(float contentInset)
+{
+    Document* document = contextDocument();
+    if (!document)
+        return;
+    
+    Page* page = document->page();
+    page->setTopContentInset(contentInset);
+}
 
 #if ENABLE(FULLSCREEN_API)
 void Internals::webkitWillEnterFullScreenForElement(Element* element)
@@ -2233,6 +2245,7 @@ void Internals::initializeMockMediaSource()
 }
 #endif
 
+#if ENABLE(VIDEO)
 void Internals::beginMediaSessionInterruption()
 {
     MediaSessionManager::sharedManager().beginInterruption();
@@ -2318,5 +2331,16 @@ void Internals::postRemoteControlCommand(const String& commandString, ExceptionC
     
     MediaSessionManager::sharedManager().didReceiveRemoteControlCommand(command);
 }
-    
+#endif // ENABLE(VIDEO)
+
+void Internals::simulateSystemSleep() const
+{
+    MediaSessionManager::sharedManager().systemWillSleep();
+}
+
+void Internals::simulateSystemWake() const
+{
+    MediaSessionManager::sharedManager().systemDidWake();
+}
+
 }

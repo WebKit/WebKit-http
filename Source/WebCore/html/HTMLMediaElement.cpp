@@ -38,6 +38,7 @@
 #include "ContentSecurityPolicy.h"
 #include "ContentType.h"
 #include "DiagnosticLoggingKeys.h"
+#include "DisplaySleepDisabler.h"
 #include "DocumentLoader.h"
 #include "ElementIterator.h"
 #include "EventNames.h"
@@ -110,10 +111,6 @@
 
 #if ENABLE(IOS_AIRPLAY)
 #include "WebKitPlaybackTargetAvailabilityEvent.h"
-#endif
-
-#if PLATFORM(COCOA)
-#include "DisplaySleepDisabler.h"
 #endif
 
 #if ENABLE(MEDIA_SOURCE)
@@ -978,14 +975,40 @@ void HTMLMediaElement::prepareForLoad()
 
     // 4 - If the media element's networkState is not set to NETWORK_EMPTY, then run these substeps
     if (m_networkState != NETWORK_EMPTY) {
+        // 4.1 - Queue a task to fire a simple event named emptied at the media element.
+        scheduleEvent(eventNames().emptiedEvent);
+
+        // 4.2 - If a fetching process is in progress for the media element, the user agent should stop it.
         m_networkState = NETWORK_EMPTY;
+
+        // 4.3 - Forget the media element's media-resource-specific tracks.
+        forgetResourceSpecificTracks();
+
+        // 4.4 - If readyState is not set to HAVE_NOTHING, then set it to that state.
         m_readyState = HAVE_NOTHING;
         m_readyStateMaximum = HAVE_NOTHING;
-        refreshCachedTime();
+
+        // 4.5 - If the paused attribute is false, then set it to true.
         m_paused = true;
+
+        // 4.6 - If seeking is true, set it to false.
         m_seeking = false;
+
+        // 4.7 - Set the current playback position to 0.
+        //       Set the official playback position to 0.
+        //       If this changed the official playback position, then queue a task to fire a simple event named timeupdate at the media element.
+        // FIXME: Add support for firing this event. e.g., scheduleEvent(eventNames().timeUpdateEvent);
+
+        // 4.8 - Set the initial playback position to 0.
+        // FIXME: Make this less subtle. The position only becomes 0 because of the createMediaPlayer() call
+        // above.
+        refreshCachedTime();
+
         invalidateCachedTime();
-        scheduleEvent(eventNames().emptiedEvent);
+
+        // 4.9 - Set the timeline offset to Not-a-Number (NaN).
+        // 4.10 - Update the duration attribute to Not-a-Number (NaN).
+
         updateMediaController();
 #if ENABLE(VIDEO_TRACK)
         if (RuntimeEnabledFeatures::sharedFeatures().webkitVideoTrackEnabled())
@@ -1011,6 +1034,9 @@ void HTMLMediaElement::prepareForLoad()
     // 2 - Asynchronously await a stable state.
 
     m_playedTimeRanges = TimeRanges::create();
+
+    // FIXME: Investigate whether these can be moved into m_networkState != NETWORK_EMPTY block above
+    // so they are closer to the relevant spec steps.
     m_lastSeekTime = 0;
 
     // The spec doesn't say to block the load event until we actually run the asynchronous section
@@ -1792,6 +1818,7 @@ void HTMLMediaElement::noneSupported()
     m_error = MediaError::create(MediaError::MEDIA_ERR_SRC_NOT_SUPPORTED);
 
     // 6.2 - Forget the media element's media-resource-specific text tracks.
+    forgetResourceSpecificTracks();
 
     // 6.3 - Set the element's networkState attribute to the NETWORK_NO_SOURCE value.
     m_networkState = NETWORK_NO_SOURCE;
@@ -1849,6 +1876,11 @@ void HTMLMediaElement::mediaLoadingFailedFatally(MediaPlayer::NetworkState error
 
     // 6 - Abort the overall resource selection algorithm.
     m_currentSourceNode = 0;
+
+#if PLATFORM(COCOA)
+    if (document().isMediaDocument())
+        toMediaDocument(document()).mediaElementSawUnsupportedTracks();
+#endif
 }
 
 void HTMLMediaElement::cancelPendingEventsAndCallbacks()
@@ -1917,11 +1949,18 @@ void HTMLMediaElement::mediaLoadingFailed(MediaPlayer::NetworkState error)
     // <source> children, schedule the next one
     if (m_readyState < HAVE_METADATA && m_loadState == LoadingFromSourceElement) {
         
+        // resource selection algorithm
+        // Step 9.Otherwise.9 - Failed with elements: Queue a task, using the DOM manipulation task source, to fire a simple event named error at the candidate element.
         if (m_currentSourceNode)
             m_currentSourceNode->scheduleErrorEvent();
         else
             LOG(Media, "HTMLMediaElement::setNetworkState - error event not sent, <source> was removed");
         
+        // 9.Otherwise.10 - Asynchronously await a stable state. The synchronous section consists of all the remaining steps of this algorithm until the algorithm says the synchronous section has ended.
+        
+        // 9.Otherwise.11 - Forget the media element's media-resource-specific tracks.
+        forgetResourceSpecificTracks();
+
         if (havePotentialSourceChild()) {
             LOG(Media, "HTMLMediaElement::setNetworkState - scheduling next <source>");
             scheduleNextSourceChild();
@@ -2442,11 +2481,6 @@ void HTMLMediaElement::finishSeek()
 {
     LOG(Media, "HTMLMediaElement::finishSeek");
 
-#if ENABLE(MEDIA_SOURCE)
-    if (m_mediaSource)
-        m_mediaSource->monitorSourceBuffers();
-#endif
-
     // 4.8.10.9 Seeking
     // 14 - Set the seeking IDL attribute to false.
     m_seeking = false;
@@ -2459,6 +2493,11 @@ void HTMLMediaElement::finishSeek()
 
     // 17 - Queue a task to fire a simple event named seeked at the element.
     scheduleEvent(eventNames().seekedEvent);
+
+#if ENABLE(MEDIA_SOURCE)
+    if (m_mediaSource)
+        m_mediaSource->monitorSourceBuffers();
+#endif
 }
 
 HTMLMediaElement::ReadyState HTMLMediaElement::readyState() const
@@ -3365,7 +3404,7 @@ void HTMLMediaElement::removeAudioTrack(AudioTrack* track)
     m_audioTracks->remove(track);
 }
 
-void HTMLMediaElement::removeTextTrack(TextTrack* track)
+void HTMLMediaElement::removeTextTrack(TextTrack* track, bool scheduleEvent)
 {
     if (!RuntimeEnabledFeatures::sharedFeatures().webkitVideoTrackEnabled())
         return;
@@ -3375,7 +3414,7 @@ void HTMLMediaElement::removeTextTrack(TextTrack* track)
     if (cues)
         textTrackRemoveCues(track, cues);
     track->clearClient();
-    m_textTracks->remove(track);
+    m_textTracks->remove(track, scheduleEvent);
 
     closeCaptionTracksChanged();
 }
@@ -3388,7 +3427,7 @@ void HTMLMediaElement::removeVideoTrack(VideoTrack* track)
     m_videoTracks->remove(track);
 }
 
-void HTMLMediaElement::removeAllInbandTracks()
+void HTMLMediaElement::forgetResourceSpecificTracks()
 {
     while (m_audioTracks &&  m_audioTracks->length())
         removeAudioTrack(m_audioTracks->lastItem());
@@ -3399,7 +3438,7 @@ void HTMLMediaElement::removeAllInbandTracks()
             TextTrack* track = m_textTracks->item(i);
 
             if (track->trackType() == TextTrack::InBand)
-                removeTextTrack(track);
+                removeTextTrack(track, false);
         }
     }
 
@@ -4395,6 +4434,8 @@ void HTMLMediaElement::updatePlayState()
         invalidateCachedTime();
 
         if (playerPaused) {
+            m_mediaSession->clientWillBeginPlayback();
+
             if (m_mediaSession->requiresFullscreenForVideoPlayback(*this) && !isFullscreen())
                 enterFullscreen();
 
@@ -4519,7 +4560,7 @@ void HTMLMediaElement::clearMediaPlayer(int flags)
 #endif
 
 #if ENABLE(VIDEO_TRACK)
-    removeAllInbandTracks();
+    forgetResourceSpecificTracks();
 #endif
 
 #if ENABLE(MEDIA_SOURCE)
@@ -5424,7 +5465,7 @@ void HTMLMediaElement::createMediaPlayer()
 #endif
 
 #if ENABLE(VIDEO_TRACK)
-    removeAllInbandTracks();
+    forgetResourceSpecificTracks();
 #endif
     m_player = MediaPlayer::create(this);
 
@@ -5602,17 +5643,18 @@ void HTMLMediaElement::applyMediaFragmentURI()
 
 void HTMLMediaElement::updateSleepDisabling()
 {
-#if PLATFORM(COCOA)
     if (!shouldDisableSleep() && m_sleepDisabler)
         m_sleepDisabler = nullptr;
     else if (shouldDisableSleep() && !m_sleepDisabler)
         m_sleepDisabler = DisplaySleepDisabler::create("com.apple.WebCore: HTMLMediaElement playback");
-#endif
 }
 
-#if PLATFORM(COCOA)
 bool HTMLMediaElement::shouldDisableSleep() const
 {
+#if !PLATFORM(COCOA)
+    return false;
+#endif
+
 #if ENABLE(PAGE_VISIBILITY_API)
     if (m_isDisplaySleepDisablingSuspended)
         return false;
@@ -5620,7 +5662,6 @@ bool HTMLMediaElement::shouldDisableSleep() const
 
     return m_player && !m_player->paused() && hasVideo() && hasAudio() && !loop();
 }
-#endif
 
 String HTMLMediaElement::mediaPlayerReferrer() const
 {
@@ -6003,16 +6044,21 @@ void HTMLMediaElement::didReceiveRemoteControlCommand(MediaSession::RemoteContro
     }
 }
 
-bool HTMLMediaElement::doesHaveAttribute(const AtomicString& attribute) const
+bool HTMLMediaElement::doesHaveAttribute(const AtomicString& attribute, AtomicString* value) const
 {
     QualifiedName attributeName(nullAtom, attribute, nullAtom);
-    if (!fastHasAttribute(attributeName))
+
+    AtomicString elementValue = fastGetAttribute(attributeName);
+    if (elementValue.isNull())
         return false;
     
     if (Settings* settings = document().settings()) {
-        if (attributeName == HTMLNames::x_itunes_inherit_uri_query_componentAttr)
-            return settings->enableInheritURIQueryComponent();
+        if (attributeName == HTMLNames::x_itunes_inherit_uri_query_componentAttr && !settings->enableInheritURIQueryComponent())
+            return false;
     }
+
+    if (value)
+        *value = elementValue;
     
     return true;
 }

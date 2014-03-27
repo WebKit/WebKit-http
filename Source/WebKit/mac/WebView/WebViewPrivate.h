@@ -319,11 +319,11 @@ typedef enum {
 - (void)setAllowsRemoteInspection:(BOOL)allow;
 
 /*!
-    @method setIndicatingForRemoteInspector
+    @method setShowingInspectorIndication
     @param enabled Show the indication when true, hide when false.
     @abstract indicate this WebView on screen for a remote inspector.
 */
-- (void)setIndicatingForRemoteInspector:(BOOL)enabled;
+- (void)setShowingInspectorIndication:(BOOL)enabled;
 
 #if TARGET_OS_IPHONE
 /*!
@@ -771,6 +771,7 @@ Could be worth adding to the API.
 - (BOOL)_postsAcceleratedCompositingNotifications;
 - (void)_setPostsAcceleratedCompositingNotifications:(BOOL)flag;
 - (BOOL)_isUsingAcceleratedCompositing;
+- (BOOL)_flushCompositingChanges;
 - (void)_setBaseCTM:(CGAffineTransform)transform forContext:(CGContextRef)context;
 
 // For DumpRenderTree

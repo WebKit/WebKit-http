@@ -50,13 +50,13 @@ static void logThreadedScrollingMode(unsigned synchronousScrollingReasons);
 static void logWheelEventHandlerCountChanged(unsigned);
 
 
-PassOwnPtr<ScrollingTreeScrollingNode> ScrollingTreeScrollingNodeMac::create(ScrollingTree& scrollingTree, ScrollingNodeID nodeID)
+PassOwnPtr<ScrollingTreeScrollingNode> ScrollingTreeScrollingNodeMac::create(ScrollingTree& scrollingTree, ScrollingNodeType nodeType, ScrollingNodeID nodeID)
 {
-    return adoptPtr(new ScrollingTreeScrollingNodeMac(scrollingTree, nodeID));
+    return adoptPtr(new ScrollingTreeScrollingNodeMac(scrollingTree, nodeType, nodeID));
 }
 
-ScrollingTreeScrollingNodeMac::ScrollingTreeScrollingNodeMac(ScrollingTree& scrollingTree, ScrollingNodeID nodeID)
-    : ScrollingTreeScrollingNode(scrollingTree, nodeID)
+ScrollingTreeScrollingNodeMac::ScrollingTreeScrollingNodeMac(ScrollingTree& scrollingTree, ScrollingNodeType nodeType, ScrollingNodeID nodeID)
+    : ScrollingTreeScrollingNode(scrollingTree, nodeType, nodeID)
     , m_scrollElasticityController(this)
     , m_verticalScrollbarPainter(0)
     , m_horizontalScrollbarPainter(0)
@@ -136,7 +136,7 @@ void ScrollingTreeScrollingNodeMac::handleWheelEvent(const PlatformWheelEvent& w
     if (!canHaveScrollbars())
         return;
 
-    if (wheelEvent.phase() == PlatformWheelEventPhaseEnded || wheelEvent.phase() == PlatformWheelEventPhaseCancelled) {
+    if (wheelEvent.momentumPhase() == PlatformWheelEventPhaseEnded || wheelEvent.momentumPhase() == PlatformWheelEventPhaseCancelled) {
         // If the wheel event is ending or cancelled, then we can tell the ScrollbarPainter API that we won't
         // be updating the position from our scrolling thread anymore for the time being.
         if (m_verticalScrollbarPainter)

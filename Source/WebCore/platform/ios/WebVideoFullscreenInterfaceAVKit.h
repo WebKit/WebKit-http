@@ -27,7 +27,7 @@
 #ifndef WebVideoFullscreenInterfaceAVKit_h
 #define WebVideoFullscreenInterfaceAVKit_h
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 80000
 
 #include <WebCore/EventListener.h>
 #include <WebCore/HTMLMediaElement.h>
@@ -80,6 +80,7 @@ public:
     virtual void setCurrentTime(double currentTime, double anchorTime) override;
     virtual void setRate(bool isPlaying, float playbackRate) override;
     virtual void setVideoDimensions(bool hasVideo, float width, float height) override;
+    virtual void setSeekableRanges(const TimeRanges&) override;
 
     virtual void enterFullscreen(PlatformLayer&);
     virtual void exitFullscreen();

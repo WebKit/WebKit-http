@@ -191,7 +191,7 @@ void NetworkResourceLoader::didReceiveResponseAsync(ResourceHandle* handle, cons
     }
 }
 
-void NetworkResourceLoader::didReceiveData(ResourceHandle*, const char* data, unsigned length, int encodedDataLength)
+void NetworkResourceLoader::didReceiveData(ResourceHandle*, const char* /* data */, unsigned /* length */, int /* encodedDataLength */)
 {
     // The NetworkProcess should never get a didReceiveData callback.
     // We should always be using didReceiveBuffer.
@@ -244,10 +244,10 @@ void NetworkResourceLoader::willSendRequestAsync(ResourceHandle* handle, const R
 void NetworkResourceLoader::continueWillSendRequest(const ResourceRequest& newRequest)
 {
 #if PLATFORM(COCOA)
-    m_suggestedRequestForWillSendRequest.updateFromDelegatePreservingOldHTTPBody(newRequest.nsURLRequest(DoNotUpdateHTTPBody));
+    m_suggestedRequestForWillSendRequest.updateFromDelegatePreservingOldProperties(newRequest.nsURLRequest(DoNotUpdateHTTPBody));
 #elif USE(SOUP)
-    // FIXME: Implement ResourceRequest::updateFromDelegatePreservingOldHTTPBody. See https://bugs.webkit.org/show_bug.cgi?id=126127.
-    m_suggestedRequestForWillSendRequest.updateFromDelegatePreservingOldHTTPBody(newRequest);
+    // FIXME: Implement ResourceRequest::updateFromDelegatePreservingOldProperties. See https://bugs.webkit.org/show_bug.cgi?id=126127.
+    m_suggestedRequestForWillSendRequest.updateFromDelegatePreservingOldProperties(newRequest);
 #endif
 
     RunLoop::main().dispatch(bind(&NetworkResourceLoadScheduler::receivedRedirect, &NetworkProcess::shared().networkResourceLoadScheduler(), this, m_suggestedRequestForWillSendRequest.url()));
@@ -328,7 +328,7 @@ void NetworkResourceLoader::didReceiveAuthenticationChallenge(ResourceHandle* ha
     NetworkProcess::shared().authenticationManager().didReceiveAuthenticationChallenge(m_webPageID, m_webFrameID, challenge);
 }
 
-void NetworkResourceLoader::didCancelAuthenticationChallenge(ResourceHandle* handle, const AuthenticationChallenge& challenge)
+void NetworkResourceLoader::didCancelAuthenticationChallenge(ResourceHandle* handle, const AuthenticationChallenge&)
 {
     ASSERT_UNUSED(handle, handle == m_handle);
 
@@ -336,7 +336,7 @@ void NetworkResourceLoader::didCancelAuthenticationChallenge(ResourceHandle* han
     notImplemented();
 }
 
-void NetworkResourceLoader::receivedCancellation(ResourceHandle* handle, const AuthenticationChallenge& challenge)
+void NetworkResourceLoader::receivedCancellation(ResourceHandle* handle, const AuthenticationChallenge&)
 {
     ASSERT_UNUSED(handle, handle == m_handle);
 

@@ -1,3 +1,175 @@
+2014-03-26  Timothy Hatcher  <timothy@apple.com>
+
+        Propagate the hiddenFromInspector flag on ResourceRequest in
+        places when a new request a made or passed between processes.
+
+        https://bugs.webkit.org/show_bug.cgi?id=130741
+
+        Reviewed by Joseph Pecoraro.
+
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::dispatchWillSendRequest): Copy hiddenFromInspector to
+        the new request.
+
+2014-03-26  Zoltan Horvath  <zoltan@webkit.org>
+
+        [CSS Shapes] Remove shape-inside support
+        https://bugs.webkit.org/show_bug.cgi?id=130698
+
+        Reviewed by David Hyatt.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2014-03-25  Joseph Pecoraro  <pecoraro@apple.com>
+
+        [iOS] Inspector View Indication Support
+        https://bugs.webkit.org/show_bug.cgi?id=130709
+
+        Reviewed by Simon Fraser.
+
+        * WebCoreSupport/WebInspectorClient.h:
+        * WebCoreSupport/WebInspectorClient.mm:
+        (WebInspectorClient::didSetSearchingForNode): Deleted.
+        (WebInspectorClient::releaseFrontend): Deleted.
+        * WebView/WebView.mm:
+        (-[WebView setShowingInspectorIndication:]):
+        * WebView/WebViewPrivate.h:
+        Renamed methods.
+
+2014-03-24  Brent Fulgham  <bfulgham@apple.com>
+
+        Activate WebVTT Tests Once Merging is Complete
+        https://bugs.webkit.org/show_bug.cgi?id=130420
+
+        Reviewed by Eric Carlson.
+
+        * Configurations/FeatureDefines.xcconfig: Turn on ENABLE(WEBVTT_REGIONS)
+
+2014-03-24  Andy Estes  <aestes@apple.com>
+
+        [iOS] Download support by CFURLDownloadRef under USE(CFNETWORK).
+        https://bugs.webkit.org/show_bug.cgi?id=129322
+
+        Reviewed by Anders Carlsson.
+
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::convertMainResourceLoadToDownload): Use the
+        RetainPtr returned by releaseConnectionForDownload() rather than
+        manually releasing.
+
+2014-03-24  Jon Lee  <jonlee@apple.com>
+
+        Build fixes.
+
+        Unreviewed.
+
+        * WebInspector/WebNodeHighlightView.mm: Missing include to GeometryUtilities.
+
+2014-03-23  Sam Weinig  <sam@webkit.org>
+
+        Remove some unnecessary .get()s that Darin noticed.
+
+        * WebView/WebHTMLRepresentation.mm:
+        (-[WebHTMLRepresentation attributedStringFrom:startOffset:to:endOffset:]):
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView attributedString]):
+
+2014-03-23  Sam Weinig  <sam@webkit.org>
+
+        Simplify the HTMLConverter interface (Part 2)
+        https://bugs.webkit.org/show_bug.cgi?id=130654
+
+        Reviewed by Darin Adler.
+
+        * WebView/WebHTMLRepresentation.mm:
+        (-[WebHTMLRepresentation attributedStringFrom:startOffset:to:endOffset:]):
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView attributedSubstringFromRange:]):
+        (-[WebHTMLView attributedString]):
+        (-[WebHTMLView selectedAttributedString]):
+
+2014-03-23  Darin Adler  <darin@apple.com>
+
+        Remove code in HTMLObjectElement attribute parsing that forces style resolution and layout
+        https://bugs.webkit.org/show_bug.cgi?id=130653
+
+        Reviewed by Antti Koivisto.
+
+        * WebCoreSupport/WebFrameLoaderClient.mm: Call toHTMLPlugInImageElement instead of
+        doing a static_cast.
+
+2014-03-21  Simon Fraser  <simon.fraser@apple.com>
+
+        Don't flush compositing layers within FrameView::willPaintContents()
+        https://bugs.webkit.org/show_bug.cgi?id=130627
+
+        Reviewed by Sam Weinig.
+        
+        Make _flushCompositingChanges private so DRT can call it;
+        moved it into the Private category.
+
+        * WebView/WebView.mm:
+        (-[WebView _flushCompositingChanges]):
+        * WebView/WebViewPrivate.h:
+
+2014-03-21  Simon Fraser  <simon.fraser@apple.com>
+
+        Remove duplicate line added during merging
+        https://bugs.webkit.org/show_bug.cgi?id=130623
+
+        Reviewed by Beth Dakin.
+        
+        Remove a duplicate call to -_viewWillDrawInternal which
+        was added during merges.
+
+        * WebView/WebView.mm:
+        (LayerFlushController::flushLayers):
+
+2014-03-21  Darin Adler  <darin@apple.com>
+
+        Improve idiom used for string building in a few places
+        https://bugs.webkit.org/show_bug.cgi?id=130561
+
+        Reviewed by Andreas Kling.
+
+        * WebView/WebHTMLRepresentation.mm:
+        (regExpForLabels): Use StringBuilder.
+
+2014-03-21  Darin Adler  <darin@apple.com>
+
+        Add a combined decodeAndFlush to TextResourceDecoder
+        https://bugs.webkit.org/show_bug.cgi?id=130560
+
+        Reviewed by Andreas Kling.
+
+        * WebView/WebView.mm:
+        (+[WebView _decodeData:]): Use decodeAndFlush.
+
+2014-03-20  Anders Carlsson  <andersca@apple.com>
+
+        Fix build.
+
+        * MigrateHeaders.make:
+
+2014-03-20  Pratik Solanki  <psolanki@apple.com>
+
+        [iOS] Get code to compile on older iOS versions
+        https://bugs.webkit.org/show_bug.cgi?id=130142
+        <rdar://problem/16302908>
+
+        Reviewed by Darin Adler.
+
+        * History/WebHistory.mm:
+        (getDayBoundaries):
+        * Plugins/WebPluginController.h:
+        * Plugins/WebPluginController.mm:
+        (+[WebPluginController plugInViewWithArguments:fromPluginPackage:]):
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (pluginView):
+        * WebView/WebPreferences.mm:
+        (-[WebPreferences _setAllowCompositingLayerVisualDegradation:]):
+        * WebView/WebPreferencesPrivate.h:
+
 2014-03-20  Lucas Forschler  <lforschler@apple.com>
 
     Rollout r165944.  Build break.

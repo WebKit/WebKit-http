@@ -300,7 +300,8 @@ static void fixFunctionBasedOnStackMaps(
             for (unsigned i = 0; i < iter->value.size(); ++i) {
                 StackMaps::Record& record = iter->value[i];
             
-                // FIXME: LLVM should tell us which registers are live.
+                // FIXME: Use the liveness information that LLVM gives us.
+                // https://bugs.webkit.org/show_bug.cgi?id=130791
                 RegisterSet usedRegisters = RegisterSet::allRegisters();
                 
                 GPRReg result = record.locations[0].directGPR();
@@ -338,7 +339,8 @@ static void fixFunctionBasedOnStackMaps(
             for (unsigned i = 0; i < iter->value.size(); ++i) {
                 StackMaps::Record& record = iter->value[i];
                 
-                // FIXME: LLVM should tell us which registers are live.
+                // FIXME: Use the liveness information that LLVM gives us.
+                // https://bugs.webkit.org/show_bug.cgi?id=130791
                 RegisterSet usedRegisters = RegisterSet::allRegisters();
                 
                 GPRReg base = record.locations[0].directGPR();
@@ -402,7 +404,6 @@ static void fixFunctionBasedOnStackMaps(
     
     std::sort(state.jsCalls.begin(), state.jsCalls.end());
     
-    codeBlock->setNumberOfCallLinkInfos(state.jsCalls.size());
     for (unsigned i = state.jsCalls.size(); i--;) {
         JSCall& call = state.jsCalls[i];
 
@@ -412,13 +413,15 @@ static void fixFunctionBasedOnStackMaps(
         char* startOfIC = bitwise_cast<char*>(generatedFunction) + call.m_instructionOffset;
         
         LinkBuffer linkBuffer(vm, &fastPathJIT, startOfIC, sizeOfCall());
-        RELEASE_ASSERT(linkBuffer.isValid());
+        if (!linkBuffer.isValid()) {
+            dataLog("Failed to insert inline cache for call because we thought the size would be ", sizeOfCall(), " but it ended up being ", fastPathJIT.m_assembler.codeSize(), " prior to compaction.\n");
+            RELEASE_ASSERT_NOT_REACHED();
+        }
         
         MacroAssembler::AssemblerType_T::fillNops(
             startOfIC + linkBuffer.size(), sizeOfCall() - linkBuffer.size());
         
-        CallLinkInfo& info = codeBlock->callLinkInfo(i);
-        call.link(vm, linkBuffer, info);
+        call.link(vm, linkBuffer);
     }
     
     RepatchBuffer repatchBuffer(codeBlock);

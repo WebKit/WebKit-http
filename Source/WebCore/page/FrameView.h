@@ -297,7 +297,23 @@ public:
     void addEmbeddedObjectToUpdate(RenderEmbeddedObject&);
     void removeEmbeddedObjectToUpdate(RenderEmbeddedObject&);
 
-    virtual void paintContents(GraphicsContext*, const IntRect& damageRect) override;
+    virtual void paintContents(GraphicsContext*, const IntRect& dirtyRect) override;
+
+    struct PaintingState {
+        PaintBehavior paintBehavior;
+        bool isTopLevelPainter;
+        bool isFlatteningPaintOfRootFrame;
+        PaintingState()
+            : paintBehavior()
+            , isTopLevelPainter(false)
+            , isFlatteningPaintOfRootFrame(false)
+        {
+        }
+    };
+
+    void willPaintContents(GraphicsContext*, const IntRect& dirtyRect, PaintingState&);
+    void didPaintContents(GraphicsContext*, const IntRect& dirtyRect, PaintingState&);
+
     void setPaintBehavior(PaintBehavior);
     PaintBehavior paintBehavior() const;
     bool isPainting() const;
@@ -432,6 +448,8 @@ public:
     void setHeaderHeight(int);
     virtual int footerHeight() const override { return m_footerHeight; }
     void setFooterHeight(int);
+
+    virtual float topContentInset() const override;
 
     virtual void willStartLiveResize() override;
     virtual void willEndLiveResize() override;

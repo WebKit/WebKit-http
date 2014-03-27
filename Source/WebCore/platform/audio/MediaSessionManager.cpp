@@ -26,6 +26,8 @@
 #include "config.h"
 #include "MediaSessionManager.h"
 
+#if ENABLE(VIDEO)
+
 #include "Logging.h"
 #include "MediaSession.h"
 
@@ -40,7 +42,8 @@ MediaSessionManager& MediaSessionManager::sharedManager()
 #endif
 
 MediaSessionManager::MediaSessionManager()
-    : m_interrupted(false)
+    : m_systemSleepListener(SystemSleepListener::create(*this))
+    , m_interrupted(false)
 {
     resetRestrictions();
 }
@@ -299,4 +302,24 @@ void MediaSessionManager::removeClient(MediaSessionManagerClient* client)
     m_clients.remove(m_clients.find(client));
 }
 
+void MediaSessionManager::systemWillSleep()
+{
+    if (m_interrupted)
+        return;
+
+    for (auto session : m_sessions)
+        session->beginInterruption();
 }
+
+void MediaSessionManager::systemDidWake()
+{
+    if (m_interrupted)
+        return;
+
+    for (auto session : m_sessions)
+        session->endInterruption(MediaSession::MayResumePlaying);
+}
+
+}
+
+#endif

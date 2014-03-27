@@ -1041,6 +1041,7 @@ set(WebCore_SOURCES
     css/CSSFunctionValue.cpp
     css/CSSGradientValue.cpp
     css/CSSGridTemplateAreasValue.cpp
+    css/CSSGridLineNamesValue.cpp
     css/CSSGroupingRule.cpp
     css/CSSImageGeneratorValue.cpp
     css/CSSImageSetValue.cpp
@@ -1791,6 +1792,7 @@ set(WebCore_SOURCES
     platform/DatabaseStrategy.cpp
     platform/DateComponents.cpp
     platform/Decimal.cpp
+    platform/DisplaySleepDisabler.cpp
     platform/DragData.cpp
     platform/DragImage.cpp
     platform/FileChooser.cpp
@@ -1810,6 +1812,7 @@ set(WebCore_SOURCES
     platform/PlatformEvent.cpp
     platform/PlatformStrategies.cpp
     platform/RemoteCommandListener.cpp
+    platform/SystemSleepListener.cpp
     platform/RuntimeApplicationChecks.cpp
     platform/SchemeRegistry.cpp
     platform/ScrollAnimator.cpp
@@ -1886,6 +1889,7 @@ set(WebCore_SOURCES
     platform/graphics/FontGenericFamilies.cpp
     platform/graphics/FontGlyphs.cpp
     platform/graphics/GeneratedImage.cpp
+    platform/graphics/GeometryUtilities.cpp
     platform/graphics/GlyphPageTreeNode.cpp
     platform/graphics/Gradient.cpp
     platform/graphics/GradientImage.cpp
@@ -2223,7 +2227,6 @@ set(WebCore_SOURCES
     rendering/shapes/RectangleShape.cpp
     rendering/shapes/Shape.cpp
     rendering/shapes/ShapeInfo.cpp
-    rendering/shapes/ShapeInsideInfo.cpp
     rendering/shapes/ShapeOutsideInfo.cpp
 
     rendering/style/BasicShapes.cpp
@@ -2729,6 +2732,7 @@ if (ENABLE_VIDEO_TRACK)
     list(APPEND WebCore_SOURCES
         html/track/AudioTrack.cpp
         html/track/AudioTrackList.cpp
+        html/track/BufferedLineReader.cpp
         html/track/DataCue.cpp
         html/track/InbandGenericTextTrack.cpp
         html/track/InbandTextTrack.cpp
@@ -2745,6 +2749,7 @@ if (ENABLE_VIDEO_TRACK)
         html/track/VideoTrack.cpp
         html/track/VideoTrackList.cpp
         html/track/VTTCue.cpp
+        html/track/VTTScanner.cpp
         html/track/WebVTTElement.cpp
         html/track/WebVTTParser.cpp
         html/track/WebVTTTokenizer.cpp
@@ -3128,7 +3133,7 @@ ADD_SOURCE_WEBCORE_DERIVED_DEPENDENCIES(${WEBCORE_DIR}/css/CSSParser.cpp CSSValu
 ADD_SOURCE_WEBCORE_DERIVED_DEPENDENCIES(${WEBCORE_DIR}/css/CSSPrimitiveValueMappings.h CSSValueKeywords.h)
 ADD_SOURCE_WEBCORE_DERIVED_DEPENDENCIES(${DERIVED_SOURCES_WEBCORE_DIR}/CSSGrammar.cpp CSSValueKeywords.h)
 
-# Generate CSS Selector pseudo type name to value map.
+# Generate CSS Selector pseudo type name to value maps.
 add_custom_command(
     OUTPUT ${DERIVED_SOURCES_WEBCORE_DIR}/SelectorPseudoTypeMap.gperf ${DERIVED_SOURCES_WEBCORE_DIR}/SelectorPseudoTypeMap.cpp
     MAIN_DEPENDENCY ${WEBCORE_DIR}/css/makeSelectorPseudoTypeMap.py
@@ -3136,6 +3141,13 @@ add_custom_command(
     COMMAND ${PYTHON_EXECUTABLE} ${WEBCORE_DIR}/css/makeSelectorPseudoTypeMap.py ${WEBCORE_DIR}/css/SelectorPseudoTypeMap.in "${FEATURE_DEFINES_WITH_SPACE_SEPARATOR}"
     VERBATIM)
 list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/SelectorPseudoTypeMap.cpp)
+add_custom_command(
+    OUTPUT ${DERIVED_SOURCES_WEBCORE_DIR}/SelectorPseudoElementTypeMap.gperf ${DERIVED_SOURCES_WEBCORE_DIR}/SelectorPseudoElementTypeMap.cpp
+    MAIN_DEPENDENCY ${WEBCORE_DIR}/css/makeSelectorPseudoElementsMap.py
+    WORKING_DIRECTORY ${DERIVED_SOURCES_WEBCORE_DIR}
+    COMMAND ${PYTHON_EXECUTABLE} ${WEBCORE_DIR}/css/makeSelectorPseudoElementsMap.py ${WEBCORE_DIR}/css/SelectorPseudoElementTypeMap.in "${FEATURE_DEFINES_WITH_SPACE_SEPARATOR}"
+    VERBATIM)
+list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/SelectorPseudoElementTypeMap.cpp)
 
 # Generate user agent styles
 add_custom_command(

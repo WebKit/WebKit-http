@@ -27,7 +27,6 @@
 #define IntSize_h
 
 #include <algorithm>
-#include <wtf/PrintStream.h>
 
 #if USE(CG)
 typedef struct CGSize CGSize;
@@ -52,6 +51,10 @@ typedef struct tagSIZE SIZE;
 #elif PLATFORM(HAIKU)
 class BSize;
 #endif
+
+namespace WTF {
+class PrintStream;
+}
 
 namespace WebCore {
 
@@ -146,7 +149,7 @@ public:
     operator BSize() const;
 #endif
 
-    void dump(PrintStream& out) const;
+    void dump(WTF::PrintStream& out) const;
 
 private:
     int m_width, m_height;

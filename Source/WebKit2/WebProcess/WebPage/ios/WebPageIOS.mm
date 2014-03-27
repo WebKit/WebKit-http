@@ -110,12 +110,6 @@ void WebPage::platformPreferencesDidChange(const WebPreferencesStore&)
     notImplemented();
 }
 
-bool WebPage::executeKeypressCommandsInternal(const Vector<WebCore::KeypressCommand>&, KeyboardEvent*)
-{
-    notImplemented();
-    return false;
-}
-
 FloatSize WebPage::viewportScreenSize() const
 {
     return m_viewportScreenSize;
@@ -167,78 +161,6 @@ void WebPage::sendComplexTextInputToPlugin(uint64_t, const String&)
     notImplemented();
 }
 
-void WebPage::setComposition(const String& text, Vector<WebCore::CompositionUnderline> underlines, const EditingRange& selectionRange)
-{
-    Frame& frame = m_page->focusController().focusedOrMainFrame();
-
-    if (frame.selection().selection().isContentEditable())
-        frame.editor().setComposition(text, underlines, selectionRange.location, selectionRange.location + selectionRange.length);
-}
-
-void WebPage::confirmComposition()
-{
-    Frame& frame = m_page->focusController().focusedOrMainFrame();
-    frame.editor().confirmComposition();
-}
-
-void WebPage::cancelComposition(EditorState&)
-{
-    notImplemented();
-}
-
-void WebPage::insertText(const String& text, const EditingRange& replacementEditingRange)
-{
-    Frame& frame = m_page->focusController().focusedOrMainFrame();
-    
-    if (replacementEditingRange.location != notFound) {
-        RefPtr<Range> replacementRange = rangeFromEditingRange(frame, replacementEditingRange);
-        if (replacementRange)
-            frame.selection().setSelection(VisibleSelection(replacementRange.get(), SEL_DEFAULT_AFFINITY));
-    }
-    
-    if (!frame.editor().hasComposition()) {
-        // An insertText: might be handled by other responders in the chain if we don't handle it.
-        // One example is space bar that results in scrolling down the page.
-        frame.editor().insertText(text, nullptr);
-    } else
-        frame.editor().confirmComposition(text);
-}
-
-void WebPage::insertDictatedText(const String&, const EditingRange&, const Vector<WebCore::DictationAlternative>&, bool&, EditorState&)
-{
-    notImplemented();
-}
-
-void WebPage::getMarkedRange(EditingRange&)
-{
-    notImplemented();
-}
-
-void WebPage::getSelectedRange(EditingRange&)
-{
-    notImplemented();
-}
-
-void WebPage::getAttributedSubstringFromRange(const EditingRange&, AttributedString&)
-{
-    notImplemented();
-}
-
-void WebPage::characterIndexForPoint(IntPoint, uint64_t&)
-{
-    notImplemented();
-}
-
-void WebPage::firstRectForCharacterRange(const EditingRange&, WebCore::IntRect&)
-{
-    notImplemented();
-}
-
-void WebPage::executeKeypressCommands(const Vector<WebCore::KeypressCommand>&, bool&, EditorState&)
-{
-    notImplemented();
-}
-
 void WebPage::performDictionaryLookupAtLocation(const FloatPoint&)
 {
     notImplemented();
@@ -249,7 +171,7 @@ void WebPage::performDictionaryLookupForSelection(Frame*, const VisibleSelection
     notImplemented();
 }
 
-void WebPage::performDictionaryLookupForRange(Frame*, Range*, NSDictionary *)
+void WebPage::performDictionaryLookupForRange(Frame*, Range&, NSDictionary *)
 {
     notImplemented();
 }
@@ -447,6 +369,18 @@ void WebPage::setAssistedNodeSelectedIndex(uint32_t index, bool allowMultipleSel
     HTMLSelectElement* select = toHTMLSelectElement(m_assistedNode.get());
     select->optionSelectedByUser(index, true, allowMultipleSelection);
 }
+
+#if ENABLE(INSPECTOR)
+void WebPage::showInspectorIndication()
+{
+    send(Messages::WebPageProxy::ShowInspectorIndication());
+}
+
+void WebPage::hideInspectorIndication()
+{
+    send(Messages::WebPageProxy::HideInspectorIndication());
+}
+#endif
 
 static FloatQuad innerFrameQuad(Frame* frame, Node* assistedNode)
 {
@@ -1267,6 +1201,72 @@ void WebPage::convertSelectionRectsToRootView(FrameView* view, Vector<SelectionR
     }
 }
 
+void WebPage::requestDictationContext(uint64_t callbackID)
+{
+    Frame& frame = m_page->focusController().focusedOrMainFrame();
+    VisiblePosition startPosition = frame.selection().selection().start();
+    VisiblePosition endPosition = frame.selection().selection().end();
+    const unsigned dictationContextWordCount = 5;
+
+    String selectedText;
+    if (frame.selection().isRange())
+        selectedText = plainText(frame.selection().selection().toNormalizedRange().get());
+
+    String contextBefore;
+    if (startPosition != startOfEditableContent(startPosition)) {
+        VisiblePosition currentPosition = startPosition;
+        VisiblePosition lastPosition = startPosition;
+        for (unsigned i = 0; i < dictationContextWordCount; ++i) {
+            currentPosition = startOfWord(positionOfNextBoundaryOfGranularity(lastPosition, WordGranularity, DirectionBackward));
+            if (currentPosition.isNull())
+                break;
+            lastPosition = currentPosition;
+        }
+        if (lastPosition.isNotNull() && lastPosition != startPosition)
+            contextBefore = plainText(Range::create(*frame.document(), lastPosition, startPosition).get());
+    }
+
+    String contextAfter;
+    if (endPosition != endOfEditableContent(endPosition)) {
+        VisiblePosition currentPosition = endPosition;
+        VisiblePosition lastPosition = endPosition;
+        for (unsigned i = 0; i < dictationContextWordCount; ++i) {
+            currentPosition = endOfWord(positionOfNextBoundaryOfGranularity(lastPosition, WordGranularity, DirectionForward));
+            if (currentPosition.isNull())
+                break;
+            lastPosition = currentPosition;
+        }
+        if (lastPosition.isNotNull() && lastPosition != endPosition)
+            contextAfter = plainText(Range::create(*frame.document(), endPosition, lastPosition).get());
+    }
+
+    send(Messages::WebPageProxy::DictationContextCallback(selectedText, contextBefore, contextAfter, callbackID));
+}
+
+void WebPage::replaceDictatedText(const String& oldText, const String& newText)
+{
+    Frame& frame = m_page->focusController().focusedOrMainFrame();
+    if (frame.selection().isNone())
+        return;
+    
+    if (frame.selection().isRange()) {
+        frame.editor().deleteSelectionWithSmartDelete(false);
+        return;
+    }
+    VisiblePosition position = frame.selection().selection().start();
+    for (size_t i = 0; i < oldText.length(); ++i)
+        position = position.previous();
+    if (position.isNull())
+        position = startOfDocument(static_cast<Node*>(frame.document()->documentElement()));
+    RefPtr<Range> range = Range::create(*frame.document(), position, frame.selection().selection().start());
+
+    if (plainText(range.get()) != oldText)
+        return;
+
+    frame.selection().setSelectedRange(range.get(), UPSTREAM, true);
+    frame.editor().insertText(newText, 0);
+}
+
 void WebPage::requestAutocorrectionData(const String& textForAutocorrection, uint64_t callbackID)
 {
     RefPtr<Range> range;
@@ -1703,7 +1703,21 @@ void WebPage::viewportConfigurationChanged()
     else
         scale = m_viewportConfiguration.initialScale();
 
-    scalePage(scale, m_page->mainFrame().view()->scrollPosition());
+    FrameView& frameView = *m_page->mainFrame().view();
+    IntPoint scrollPosition = frameView.scrollPosition();
+    if (!m_hasReceivedVisibleContentRectsAfterDidCommitLoad) {
+        IntSize minimumLayoutSizeInDocumentCoordinate = m_viewportConfiguration.minimumLayoutSize();
+        minimumLayoutSizeInDocumentCoordinate.scale(scale);
+
+        IntRect unobscuredContentRect(scrollPosition, minimumLayoutSizeInDocumentCoordinate);
+        frameView.setUnobscuredContentRect(unobscuredContentRect);
+        frameView.setScrollVelocity(0, 0, monotonicallyIncreasingTime());
+
+        // FIXME: We could send down the obscured margins to find a better exposed rect and unobscured rect.
+        // It is not a big deal at the moment because the tile coverage will always extend past the obscured bottom inset.
+        m_drawingArea->setExposedContentRect(unobscuredContentRect);
+    }
+    scalePage(scale, scrollPosition);
 }
 
 void WebPage::applicationWillResignActive()
@@ -1723,6 +1737,7 @@ void WebPage::applicationDidBecomeActive()
 
 void WebPage::updateVisibleContentRects(const VisibleContentRectUpdateInfo& visibleContentRectUpdateInfo)
 {
+    m_hasReceivedVisibleContentRectsAfterDidCommitLoad = true;
     m_lastVisibleContentRectUpdateID = visibleContentRectUpdateInfo.updateID();
 
     FloatRect exposedRect = visibleContentRectUpdateInfo.exposedRect();
@@ -1744,6 +1759,7 @@ void WebPage::updateVisibleContentRects(const VisibleContentRectUpdateInfo& visi
 
     m_page->mainFrame().view()->setScrollOffset(scrollPosition);
     m_page->mainFrame().view()->setUnobscuredContentRect(roundedUnobscuredRect);
+    m_page->mainFrame().view()->setScrollVelocity(visibleContentRectUpdateInfo.m_horizontalVelocity, visibleContentRectUpdateInfo.m_verticalVelocity, visibleContentRectUpdateInfo.m_timestamp);
 
     if (visibleContentRectUpdateInfo.inStableState())
         m_page->mainFrame().view()->setCustomFixedPositionLayoutRect(enclosingIntRect(visibleContentRectUpdateInfo.customFixedPositionRect()));

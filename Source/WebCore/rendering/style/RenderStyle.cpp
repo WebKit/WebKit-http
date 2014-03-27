@@ -414,8 +414,7 @@ bool RenderStyle::changeRequiresLayout(const RenderStyle* other, unsigned& chang
             return true;
 
 #if ENABLE(CSS_SHAPES)
-        if (rareNonInheritedData->m_shapeMargin != other->rareNonInheritedData->m_shapeMargin
-            || rareNonInheritedData->m_shapePadding != other->rareNonInheritedData->m_shapePadding)
+        if (rareNonInheritedData->m_shapeMargin != other->rareNonInheritedData->m_shapeMargin)
             return true;
 #endif
 
@@ -459,11 +458,6 @@ bool RenderStyle::changeRequiresLayout(const RenderStyle* other, unsigned& chang
 #if ENABLE(DASHBOARD_SUPPORT)
         // If regions change, trigger a relayout to re-calc regions.
         if (rareNonInheritedData->m_dashboardRegions != other->rareNonInheritedData->m_dashboardRegions)
-            return true;
-#endif
-
-#if ENABLE(CSS_SHAPES) && ENABLE(CSS_SHAPE_INSIDE)
-        if (rareNonInheritedData->m_shapeInside != other->rareNonInheritedData->m_shapeInside)
             return true;
 #endif
     }
@@ -956,25 +950,6 @@ inline bool requireTransformOrigin(const Vector<RefPtr<TransformOperation>>& tra
     }
     
     return false;
-}
-
-void RenderStyle::applyTransform(TransformationMatrix& transform, const LayoutSize& borderBoxSize, ApplyTransformOrigin applyOrigin) const
-{
-    // FIXME: when subpixel layout is supported (bug 71143) the body of this function could be replaced by
-    // applyTransform(transform, FloatRect(FloatPoint(), borderBoxSize), applyOrigin);
-    
-    const Vector<RefPtr<TransformOperation>>& transformOperations = rareNonInheritedData->m_transform->m_operations.operations();
-    bool applyTransformOrigin = requireTransformOrigin(transformOperations, applyOrigin);
-
-    if (applyTransformOrigin)
-        transform.translate3d(floatValueForLength(transformOriginX(), borderBoxSize.width()), floatValueForLength(transformOriginY(), borderBoxSize.height()), transformOriginZ());
-
-    unsigned size = transformOperations.size();
-    for (unsigned i = 0; i < size; ++i)
-        transformOperations[i]->apply(transform, borderBoxSize);
-
-    if (applyTransformOrigin)
-        transform.translate3d(-floatValueForLength(transformOriginX(), borderBoxSize.width()), -floatValueForLength(transformOriginY(), borderBoxSize.height()), -transformOriginZ()); 
 }
 
 void RenderStyle::applyTransform(TransformationMatrix& transform, const FloatRect& boundingBox, ApplyTransformOrigin applyOrigin) const

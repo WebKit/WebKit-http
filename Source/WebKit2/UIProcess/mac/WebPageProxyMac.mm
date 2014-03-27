@@ -152,6 +152,8 @@ void WebPageProxy::setMainFrameIsScrollable(bool isScrollable)
     process().send(Messages::WebPage::SetMainFrameIsScrollable(isScrollable), m_pageID);
 }
 
+#if !USE(ASYNC_NSTEXTINPUTCLIENT)
+
 void WebPageProxy::setComposition(const String& text, Vector<CompositionUnderline> underlines, const EditingRange& selectionRange, const EditingRange& replacementRange)
 {
     if (!isValid()) {
@@ -169,14 +171,6 @@ void WebPageProxy::confirmComposition()
         return;
 
     process().sendSync(Messages::WebPage::ConfirmComposition(), Messages::WebPage::ConfirmComposition::Reply(m_editorState), m_pageID);
-}
-
-void WebPageProxy::cancelComposition()
-{
-    if (!isValid())
-        return;
-
-    process().sendSync(Messages::WebPage::CancelComposition(), Messages::WebPage::ConfirmComposition::Reply(m_editorState), m_pageID);
 }
 
 bool WebPageProxy::insertText(const String& text, const EditingRange& replacementRange)
@@ -276,7 +270,70 @@ bool WebPageProxy::executeKeypressCommands(const Vector<WebCore::KeypressCommand
 
     bool result = false;
     process().sendSync(Messages::WebPage::ExecuteKeypressCommands(commands), Messages::WebPage::ExecuteKeypressCommands::Reply(result, m_editorState), m_pageID);
+    m_temporarilyClosedComposition = false;
     return result;
+}
+
+#endif // !USE(ASYNC_NSTEXTINPUTCLIENT)
+
+void WebPageProxy::cancelComposition()
+{
+    if (!isValid())
+        return;
+
+    process().sendSync(Messages::WebPage::CancelComposition(), Messages::WebPage::CancelComposition::Reply(m_editorState), m_pageID);
+}
+
+void WebPageProxy::insertDictatedTextAsync(const String& text, const EditingRange& replacementRange, const Vector<TextAlternativeWithRange>& dictationAlternativesWithRange)
+{
+#if USE(DICTATION_ALTERNATIVES)
+    if (!isValid())
+        return;
+
+    Vector<DictationAlternative> dictationAlternatives;
+
+    for (const TextAlternativeWithRange& alternativeWithRange : dictationAlternativesWithRange) {
+        uint64_t dictationContext = m_pageClient.addDictationAlternatives(alternativeWithRange.alternatives);
+        if (dictationContext)
+            dictationAlternatives.append(DictationAlternative(alternativeWithRange.range.location, alternativeWithRange.range.length, dictationContext));
+    }
+
+    if (dictationAlternatives.isEmpty()) {
+        insertTextAsync(text, replacementRange);
+        return;
+    }
+
+    process().send(Messages::WebPage::InsertDictatedTextAsync(text, replacementRange, dictationAlternatives), m_pageID);
+#else
+    insertTextAsync(text, replacementRange);
+#endif
+}
+
+void WebPageProxy::attributedSubstringForCharacterRangeAsync(const EditingRange& range, PassRefPtr<AttributedStringForCharacterRangeCallback> callback)
+{
+    if (!isValid()) {
+        callback->invalidate();
+        return;
+    }
+
+    uint64_t callbackID = callback->callbackID();
+    m_attributedStringForCharacterRangeCallbacks.set(callbackID, callback);
+
+    process().send(Messages::WebPage::AttributedSubstringForCharacterRangeAsync(range, callbackID), m_pageID);
+}
+
+void WebPageProxy::attributedStringForCharacterRangeCallback(const AttributedString& string, const EditingRange& actualRange, uint64_t callbackID)
+{
+    MESSAGE_CHECK(actualRange.isValid());
+
+    RefPtr<AttributedStringForCharacterRangeCallback> callback = m_attributedStringForCharacterRangeCallbacks.take(callbackID);
+    if (!callback) {
+        // FIXME: Log error or assert.
+        // this can validly happen if a load invalidated the callback, though
+        return;
+    }
+
+    callback->performCallbackWithReturnValue(string, actualRange);
 }
 
 String WebPageProxy::stringSelectionForPasteboard()

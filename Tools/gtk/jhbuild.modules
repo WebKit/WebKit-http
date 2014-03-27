@@ -5,7 +5,6 @@
 
   <metamodule id="webkitgtk-testing-dependencies">
     <dependencies>
-      <dep package="make"/>
       <dep package="cairo"/>
       <dep package="fonts"/>
       <dep package="fontconfig"/>
@@ -35,8 +34,6 @@
 
   <include href="jhbuild-optional.modules"/>
 
-  <repository type="tarball" name="ftp.gnu.org"
-      href="ftp://ftp.gnu.org/gnu/"/>
   <repository type="git" name="github.com"
       href="git://github.com"/>
   <repository type="tarball" name="sourceware.org-mirror"
@@ -58,14 +55,6 @@
   <repository type="tarball" name="savannah.gnu.org"
       href="http://download.savannah.gnu.org/releases/"/>
 
-  <autotools id="make" autogen-sh="configure">
-    <branch repo="ftp.gnu.org"
-            module="make/make-3.82.tar.bz2" version="3.82"
-            size="1242186" md5sum="1a11100f3c63fcf5753818e59d63088f">
-      <patch file="make-3.82-arg-list-length.patch" strip="1"/>
-      <patch file="make-3.82-parallel-build.patch" strip="1"/>
-    </branch>
-  </autotools>
 
   <autotools id="cairo" autogen-sh="configure"
              autogenargs="--enable-gl=yes --enable-egl=yes --enable-glx=yes"
@@ -234,9 +223,9 @@
   <autotools id="atk"
              autogen-sh="configure"
              autogenargs="--disable-introspection">
-    <branch module="pub/GNOME/sources/atk/2.11/atk-2.11.90.tar.xz" version="2.11.90"
+    <branch module="pub/GNOME/sources/atk/2.11/atk-2.11.92.tar.xz" version="2.11.92"
             repo="ftp.gnome.org"
-            hash="sha256:44e33abad64419b92fd2ae45fb0d37b9faab6b53640a1a54e068af6fccad4417"/>
+            hash="sha256:71e9880f1b704dfd98806643b8dc66a5df4fcef155cf5944184d8e8f66dac689"/>
   </autotools>
 
   <autotools id="at-spi2-core" 

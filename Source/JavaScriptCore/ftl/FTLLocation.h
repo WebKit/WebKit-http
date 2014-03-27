@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013, 2014 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,6 +29,7 @@
 #if ENABLE(FTL_JIT)
 
 #include "FPRInfo.h"
+#include "FTLDWARFRegister.h"
 #include "FTLStackMaps.h"
 #include "GPRInfo.h"
 #include <wtf/HashMap.h>
@@ -56,20 +57,20 @@ public:
         u.constant = 1;
     }
     
-    static Location forRegister(int16_t dwarfRegNum, int32_t addend)
+    static Location forRegister(DWARFRegister dwarfReg, int32_t addend)
     {
         Location result;
         result.m_kind = Register;
-        result.u.variable.dwarfRegNum = dwarfRegNum;
+        result.u.variable.dwarfRegNum = dwarfReg.dwarfRegNum();
         result.u.variable.offset = addend;
         return result;
     }
     
-    static Location forIndirect(int16_t dwarfRegNum, int32_t offset)
+    static Location forIndirect(DWARFRegister dwarfReg, int32_t offset)
     {
         Location result;
         result.m_kind = Indirect;
-        result.u.variable.dwarfRegNum = dwarfRegNum;
+        result.u.variable.dwarfRegNum = dwarfReg.dwarfRegNum();
         result.u.variable.offset = offset;
         return result;
     }
@@ -94,6 +95,9 @@ public:
         ASSERT(hasDwarfRegNum());
         return u.variable.dwarfRegNum;
     }
+    
+    bool hasDwarfReg() const { return hasDwarfRegNum(); }
+    DWARFRegister dwarfReg() const { return DWARFRegister(dwarfRegNum()); }
     
     bool hasOffset() const { return kind() == Indirect; }
     int32_t offset() const

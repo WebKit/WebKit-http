@@ -19,6 +19,9 @@
  */
 
 #include "config.h"
+
+#if USE(SOUP)
+
 #include "ResourceResponse.h"
 
 #include "HTTPParsers.h"
@@ -98,3 +101,5 @@ void ResourceResponse::updateFromSoupMessageHeaders(const SoupMessageHeaders* me
     setSuggestedFilename(filenameFromHTTPContentDisposition(httpHeaderField("Content-Disposition")));}
 
 }
+
+#endif

@@ -274,6 +274,7 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
     , m_pageScaleFactor(1)
     , m_intrinsicDeviceScaleFactor(1)
     , m_customDeviceScaleFactor(0)
+    , m_topContentInset(0)
     , m_layerHostingMode(LayerHostingMode::InProcess)
     , m_drawsBackground(true)
     , m_drawsTransparentBackground(false)
@@ -626,10 +627,12 @@ bool WebPageProxy::maybeInitializeSandboxExtensionHandle(const URL& url, Sandbox
     if (!url.isLocalFile())
         return false;
 
-#if ENABLE(INSPECTOR)
-    // Don't give the inspector full access to the file system.
-    if (WebInspectorProxy::isInspectorPage(*this))
+    if (m_process->hasAssumedReadAccessToURL(url))
         return false;
+
+#if ENABLE(INSPECTOR)
+    // Inspector resources are in a directory with assumed access.
+    ASSERT_WITH_SECURITY_IMPLICATION(!WebInspectorProxy::isInspectorPage(*this));
 #endif
 
     SandboxExtension::createHandle("/", SandboxExtension::ReadOnly, sandboxExtensionHandle);
@@ -925,6 +928,17 @@ void WebPageProxy::setDrawsTransparentBackground(bool drawsTransparentBackground
         m_process->send(Messages::WebPage::SetDrawsTransparentBackground(drawsTransparentBackground), m_pageID);
 }
 
+void WebPageProxy::setTopContentInset(float contentInset)
+{
+    if (m_topContentInset == contentInset)
+        return;
+
+    m_topContentInset = contentInset;
+
+    if (isValid())
+        m_process->send(Messages::WebPage::SetTopContentInset(contentInset), m_pageID);
+}
+
 void WebPageProxy::setUnderlayColor(const Color& color)
 {
     if (m_underlayColor == color)
@@ -1091,7 +1105,7 @@ void WebPageProxy::validateCommand(const String& commandName, PassRefPtr<Validat
     }
 
     uint64_t callbackID = callback->callbackID();
-    m_validateCommandCallbacks.set(callbackID, callback.get());
+    m_validateCommandCallbacks.set(callbackID, callback);
     m_process->send(Messages::WebPage::ValidateCommand(commandName, callbackID), m_pageID);
 }
 
@@ -1155,6 +1169,9 @@ void WebPageProxy::performDragControllerAction(DragControllerAction action, Drag
     if (!isValid())
         return;
 #if PLATFORM(GTK)
+    UNUSED_PARAM(dragStorageName);
+    UNUSED_PARAM(sandboxExtensionHandle);
+    UNUSED_PARAM(sandboxExtensionsForUpload);
     m_process->send(Messages::WebPage::PerformDragControllerAction(action, dragData), m_pageID);
 #else
     m_process->send(Messages::WebPage::PerformDragControllerAction(action, dragData.clientPosition(), dragData.globalPosition(), dragData.draggingSourceOperationMask(), dragStorageName, dragData.flags(), sandboxExtensionHandle, sandboxExtensionsForUpload), m_pageID);
@@ -1421,6 +1438,8 @@ bool WebPageProxy::shouldStartTrackingTouchEvents(const WebTouchEvent& touchStar
     }
 
     return false;
+#else
+    UNUSED_PARAM(touchStartEvent);
 #endif // ENABLE(ASYNC_SCROLLING)
     return true;
 }
@@ -1941,7 +1960,7 @@ void WebPageProxy::runJavaScriptInMainFrame(const String& script, PassRefPtr<Scr
     }
 
     uint64_t callbackID = callback->callbackID();
-    m_scriptValueCallbacks.set(callbackID, callback.get());
+    m_scriptValueCallbacks.set(callbackID, callback);
     m_process->send(Messages::WebPage::RunJavaScriptInMainFrame(script, callbackID), m_pageID);
 }
 
@@ -1954,7 +1973,7 @@ void WebPageProxy::getRenderTreeExternalRepresentation(PassRefPtr<StringCallback
     }
     
     uint64_t callbackID = callback->callbackID();
-    m_stringCallbacks.set(callbackID, callback.get());
+    m_stringCallbacks.set(callbackID, callback);
     m_process->send(Messages::WebPage::GetRenderTreeExternalRepresentation(callbackID), m_pageID);
 }
 
@@ -1968,7 +1987,7 @@ void WebPageProxy::getSourceForFrame(WebFrameProxy* frame, PassRefPtr<StringCall
     
     uint64_t callbackID = callback->callbackID();
     m_loadDependentStringCallbackIDs.add(callbackID);
-    m_stringCallbacks.set(callbackID, callback.get());
+    m_stringCallbacks.set(callbackID, callback);
     m_process->send(Messages::WebPage::GetSourceForFrame(frame->frameID(), callbackID), m_pageID);
 }
 
@@ -1982,7 +2001,7 @@ void WebPageProxy::getContentsAsString(PassRefPtr<StringCallback> prpCallback)
     
     uint64_t callbackID = callback->callbackID();
     m_loadDependentStringCallbackIDs.add(callbackID);
-    m_stringCallbacks.set(callbackID, callback.get());
+    m_stringCallbacks.set(callbackID, callback);
     m_process->send(Messages::WebPage::GetContentsAsString(callbackID), m_pageID);
 }
 
@@ -1996,7 +2015,7 @@ void WebPageProxy::getBytecodeProfile(PassRefPtr<StringCallback> prpCallback)
     
     uint64_t callbackID = callback->callbackID();
     m_loadDependentStringCallbackIDs.add(callbackID);
-    m_stringCallbacks.set(callbackID, callback.get());
+    m_stringCallbacks.set(callbackID, callback);
     m_process->send(Messages::WebPage::GetBytecodeProfile(callbackID), m_pageID);
 }
     
@@ -2010,7 +2029,7 @@ void WebPageProxy::getContentsAsMHTMLData(PassRefPtr<DataCallback> prpCallback, 
     }
 
     uint64_t callbackID = callback->callbackID();
-    m_dataCallbacks.set(callbackID, callback.get());
+    m_dataCallbacks.set(callbackID, callback);
     m_process->send(Messages::WebPage::GetContentsAsMHTMLData(callbackID, useBinaryEncoding), m_pageID);
 }
 #endif
@@ -2024,7 +2043,7 @@ void WebPageProxy::getSelectionOrContentsAsString(PassRefPtr<StringCallback> prp
     }
     
     uint64_t callbackID = callback->callbackID();
-    m_stringCallbacks.set(callbackID, callback.get());
+    m_stringCallbacks.set(callbackID, callback);
     m_process->send(Messages::WebPage::GetSelectionOrContentsAsString(callbackID), m_pageID);
 }
 
@@ -2037,7 +2056,7 @@ void WebPageProxy::getSelectionAsWebArchiveData(PassRefPtr<DataCallback> prpCall
     }
     
     uint64_t callbackID = callback->callbackID();
-    m_dataCallbacks.set(callbackID, callback.get());
+    m_dataCallbacks.set(callbackID, callback);
     m_process->send(Messages::WebPage::GetSelectionAsWebArchiveData(callbackID), m_pageID);
 }
 
@@ -2050,7 +2069,7 @@ void WebPageProxy::getMainResourceDataOfFrame(WebFrameProxy* frame, PassRefPtr<D
     }
     
     uint64_t callbackID = callback->callbackID();
-    m_dataCallbacks.set(callbackID, callback.get());
+    m_dataCallbacks.set(callbackID, callback);
     m_process->send(Messages::WebPage::GetMainResourceDataOfFrame(frame->frameID(), callbackID), m_pageID);
 }
 
@@ -2063,7 +2082,7 @@ void WebPageProxy::getResourceDataFromFrame(WebFrameProxy* frame, API::URL* reso
     }
     
     uint64_t callbackID = callback->callbackID();
-    m_dataCallbacks.set(callbackID, callback.get());
+    m_dataCallbacks.set(callbackID, callback);
     m_process->send(Messages::WebPage::GetResourceDataFromFrame(frame->frameID(), resourceURL->string(), callbackID), m_pageID);
 }
 
@@ -2076,7 +2095,7 @@ void WebPageProxy::getWebArchiveOfFrame(WebFrameProxy* frame, PassRefPtr<DataCal
     }
     
     uint64_t callbackID = callback->callbackID();
-    m_dataCallbacks.set(callbackID, callback.get());
+    m_dataCallbacks.set(callbackID, callback);
     m_process->send(Messages::WebPage::GetWebArchiveOfFrame(frame->frameID(), callbackID), m_pageID);
 }
 
@@ -2089,7 +2108,7 @@ void WebPageProxy::forceRepaint(PassRefPtr<VoidCallback> prpCallback)
     }
 
     uint64_t callbackID = callback->callbackID();
-    m_voidCallbacks.set(callbackID, callback.get());
+    m_voidCallbacks.set(callbackID, callback);
     m_drawingArea->waitForBackingStoreUpdateOnNextPaint();
     m_process->send(Messages::WebPage::ForceRepaint(callbackID), m_pageID); 
 }
@@ -2639,9 +2658,12 @@ void WebPageProxy::willSubmitForm(uint64_t frameID, uint64_t sourceFrameID, cons
 
 // UIClient
 
-void WebPageProxy::createNewPage(const ResourceRequest& request, const WindowFeatures& windowFeatures, uint32_t opaqueModifiers, int32_t opaqueMouseButton, uint64_t& newPageID, WebPageCreationParameters& newPageParameters)
+void WebPageProxy::createNewPage(uint64_t frameID, const ResourceRequest& request, const WindowFeatures& windowFeatures, uint32_t opaqueModifiers, int32_t opaqueMouseButton, uint64_t& newPageID, WebPageCreationParameters& newPageParameters)
 {
-    RefPtr<WebPageProxy> newPage = m_uiClient->createNewPage(this, request, windowFeatures, static_cast<WebEvent::Modifiers>(opaqueModifiers), static_cast<WebMouseEvent::Button>(opaqueMouseButton));
+    WebFrameProxy* frame = m_process->webFrame(frameID);
+    MESSAGE_CHECK(frame);
+
+    RefPtr<WebPageProxy> newPage = m_uiClient->createNewPage(this, frame, request, windowFeatures, static_cast<WebEvent::Modifiers>(opaqueModifiers), static_cast<WebMouseEvent::Button>(opaqueMouseButton));
     if (!newPage) {
         newPageID = 0;
         return;
@@ -3786,6 +3808,46 @@ void WebPageProxy::validateCommandCallback(const String& commandName, bool isEna
     callback->performCallbackWithReturnValue(commandName.impl(), isEnabled, state);
 }
 
+void WebPageProxy::unsignedCallback(uint64_t result, uint64_t callbackID)
+{
+    RefPtr<UnsignedCallback> callback = m_unsignedCallbacks.take(callbackID);
+    if (!callback) {
+        // FIXME: Log error or assert.
+        // this can validly happen if a load invalidated the callback, though
+        return;
+    }
+
+    callback->performCallbackWithReturnValue(result);
+}
+
+void WebPageProxy::editingRangeCallback(const EditingRange& range, uint64_t callbackID)
+{
+    MESSAGE_CHECK(range.isValid());
+
+    RefPtr<EditingRangeCallback> callback = m_editingRangeCallbacks.take(callbackID);
+    if (!callback) {
+        // FIXME: Log error or assert.
+        // this can validly happen if a load invalidated the callback, though
+        return;
+    }
+
+    callback->performCallbackWithReturnValue(range);
+}
+
+void WebPageProxy::rectForCharacterRangeCallback(const IntRect& rect, const EditingRange& actualRange, uint64_t callbackID)
+{
+    MESSAGE_CHECK(actualRange.isValid());
+
+    RefPtr<RectForCharacterRangeCallback> callback = m_rectForCharacterRangeCallbacks.take(callbackID);
+    if (!callback) {
+        // FIXME: Log error or assert.
+        // this can validly happen if a load invalidated the callback, though
+        return;
+    }
+
+    callback->performCallbackWithReturnValue(rect, actualRange);
+}
+
 #if PLATFORM(GTK)
 void WebPageProxy::printFinishedCallback(const ResourceError& printError, uint64_t callbackID)
 {
@@ -3928,6 +3990,12 @@ void WebPageProxy::resetState()
     invalidateCallbackMap(m_scriptValueCallbacks);
     invalidateCallbackMap(m_computedPagesCallbacks);
     invalidateCallbackMap(m_validateCommandCallbacks);
+    invalidateCallbackMap(m_unsignedCallbacks);
+    invalidateCallbackMap(m_editingRangeCallbacks);
+    invalidateCallbackMap(m_rectForCharacterRangeCallbacks);
+#if PLATFORM(MAC)
+    invalidateCallbackMap(m_attributedStringForCharacterRangeCallbacks);
+#endif
 #if PLATFORM(IOS)
     invalidateCallbackMap(m_gestureCallbacks);
     invalidateCallbackMap(m_touchesCallbacks);
@@ -4027,6 +4095,7 @@ WebPageCreationParameters WebPageProxy::creationParameters()
     parameters.canRunBeforeUnloadConfirmPanel = m_uiClient->canRunBeforeUnloadConfirmPanel();
     parameters.canRunModal = m_canRunModal;
     parameters.deviceScaleFactor = deviceScaleFactor();
+    parameters.topContentInset = m_topContentInset;
     parameters.mediaVolume = m_mediaVolume;
     parameters.mayStartMediaWhenInWindow = m_mayStartMediaWhenInWindow;
     parameters.minimumLayoutSize = m_minimumLayoutSize;
@@ -4335,7 +4404,7 @@ void WebPageProxy::computePagesForPrinting(WebFrameProxy* frame, const PrintInfo
     }
 
     uint64_t callbackID = callback->callbackID();
-    m_computedPagesCallbacks.set(callbackID, callback.get());
+    m_computedPagesCallbacks.set(callbackID, callback);
     m_isInPrintingMode = true;
     m_process->send(Messages::WebPage::ComputePagesForPrinting(frame->frameID(), printInfo, callbackID), m_pageID, m_isPerformingDOMPrintOperation ? IPC::DispatchMessageEvenWhenWaitingForSyncReply : 0);
 }
@@ -4350,7 +4419,7 @@ void WebPageProxy::drawRectToImage(WebFrameProxy* frame, const PrintInfo& printI
     }
     
     uint64_t callbackID = callback->callbackID();
-    m_imageCallbacks.set(callbackID, callback.get());
+    m_imageCallbacks.set(callbackID, callback);
     m_process->send(Messages::WebPage::DrawRectToImage(frame->frameID(), printInfo, rect, imageSize, callbackID), m_pageID, m_isPerformingDOMPrintOperation ? IPC::DispatchMessageEvenWhenWaitingForSyncReply : 0);
 }
 
@@ -4363,7 +4432,7 @@ void WebPageProxy::drawPagesToPDF(WebFrameProxy* frame, const PrintInfo& printIn
     }
     
     uint64_t callbackID = callback->callbackID();
-    m_dataCallbacks.set(callbackID, callback.get());
+    m_dataCallbacks.set(callbackID, callback);
     m_process->send(Messages::WebPage::DrawPagesToPDF(frame->frameID(), printInfo, first, count, callbackID), m_pageID, m_isPerformingDOMPrintOperation ? IPC::DispatchMessageEvenWhenWaitingForSyncReply : 0);
 }
 #elif PLATFORM(GTK)
@@ -4376,7 +4445,7 @@ void WebPageProxy::drawPagesForPrinting(WebFrameProxy* frame, const PrintInfo& p
     }
 
     uint64_t callbackID = callback->callbackID();
-    m_printFinishedCallbacks.set(callbackID, callback.get());
+    m_printFinishedCallbacks.set(callbackID, callback);
     m_isInPrintingMode = true;
     m_process->send(Messages::WebPage::DrawPagesForPrinting(frame->frameID(), printInfo, callbackID), m_pageID, m_isPerformingDOMPrintOperation ? IPC::DispatchMessageEvenWhenWaitingForSyncReply : 0);
 }
@@ -4594,6 +4663,89 @@ void WebPageProxy::addMIMETypeWithCustomContentProvider(const String& mimeType)
 {
     m_process->send(Messages::WebPage::AddMIMETypeWithCustomContentProvider(mimeType), m_pageID);
 }
+
+#if PLATFORM(COCOA)
+
+void WebPageProxy::insertTextAsync(const String& text, const EditingRange& replacementRange)
+{
+    if (!isValid())
+        return;
+
+    process().send(Messages::WebPage::InsertTextAsync(text, replacementRange), m_pageID);
+}
+
+void WebPageProxy::getMarkedRangeAsync(PassRefPtr<EditingRangeCallback> callback)
+{
+    if (!isValid()) {
+        callback->invalidate();
+        return;
+    }
+
+    uint64_t callbackID = callback->callbackID();
+    m_editingRangeCallbacks.set(callbackID, callback);
+
+    process().send(Messages::WebPage::GetMarkedRangeAsync(callbackID), m_pageID);
+}
+
+void WebPageProxy::getSelectedRangeAsync(PassRefPtr<EditingRangeCallback> callback)
+{
+    if (!isValid()) {
+        callback->invalidate();
+        return;
+    }
+
+    uint64_t callbackID = callback->callbackID();
+    m_editingRangeCallbacks.set(callbackID, callback);
+
+    process().send(Messages::WebPage::GetSelectedRangeAsync(callbackID), m_pageID);
+}
+
+void WebPageProxy::characterIndexForPointAsync(const WebCore::IntPoint& point, PassRefPtr<UnsignedCallback> callback)
+{
+    if (!isValid()) {
+        callback->invalidate();
+        return;
+    }
+
+    uint64_t callbackID = callback->callbackID();
+    m_unsignedCallbacks.set(callbackID, callback);
+
+    process().send(Messages::WebPage::CharacterIndexForPointAsync(point, callbackID), m_pageID);
+}
+
+void WebPageProxy::firstRectForCharacterRangeAsync(const EditingRange& range, PassRefPtr<RectForCharacterRangeCallback> callback)
+{
+    if (!isValid()) {
+        callback->invalidate();
+        return;
+    }
+
+    uint64_t callbackID = callback->callbackID();
+    m_rectForCharacterRangeCallbacks.set(callbackID, callback);
+
+    process().send(Messages::WebPage::FirstRectForCharacterRangeAsync(range, callbackID), m_pageID);
+}
+
+void WebPageProxy::setCompositionAsync(const String& text, Vector<CompositionUnderline> underlines, const EditingRange& selectionRange, const EditingRange& replacementRange)
+{
+    if (!isValid()) {
+        // If this fails, we should call -discardMarkedText on input context to notify the input method.
+        // This will happen naturally later, as part of reloading the page.
+        return;
+    }
+
+    process().send(Messages::WebPage::SetCompositionAsync(text, underlines, selectionRange, replacementRange), m_pageID);
+}
+
+void WebPageProxy::confirmCompositionAsync()
+{
+    if (!isValid())
+        return;
+
+    process().send(Messages::WebPage::ConfirmCompositionAsync(), m_pageID);
+}
+
+#endif
 
 void WebPageProxy::takeSnapshot(IntRect rect, IntSize bitmapSize, SnapshotOptions options, ImageCallback::CallbackFunction callbackFunction)
 {

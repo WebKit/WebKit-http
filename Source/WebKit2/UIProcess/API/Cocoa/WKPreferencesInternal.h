@@ -23,7 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#import "WKPreferences.h"
+#import "WKPreferencesPrivate.h"
 
 #if WK_API_ENABLED
 

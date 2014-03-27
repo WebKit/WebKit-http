@@ -44,14 +44,9 @@ typedef const struct __CFString * CFStringRef;
 @class NSString;
 #endif
 
-// FIXME: This is a temporary layering violation while we move string code to WTF.
-// Landing the file moves in one patch, will follow on with patches to change the namespaces.
 namespace JSC {
-struct IdentifierASCIIStringTranslator;
 namespace LLInt { class Data; }
 class LLIntOffsetsExtractor;
-template <typename T> struct IdentifierCharBufferTranslator;
-struct IdentifierLCharFromUCharTranslator;
 }
 
 namespace WTF {
@@ -132,10 +127,6 @@ struct StringStats {
 
 class StringImpl {
     WTF_MAKE_NONCOPYABLE(StringImpl); WTF_MAKE_FAST_ALLOCATED;
-    friend struct JSC::IdentifierASCIIStringTranslator;
-    friend struct JSC::IdentifierCharBufferTranslator<LChar>;
-    friend struct JSC::IdentifierCharBufferTranslator<UChar>;
-    friend struct JSC::IdentifierLCharFromUCharTranslator;
     friend struct WTF::CStringTranslator;
     template<typename CharacterType> friend struct WTF::HashAndCharactersTranslator;
     friend struct WTF::HashAndUTF8CharactersTranslator;
@@ -163,7 +154,7 @@ private:
         : m_refCount(s_refCountFlagIsStaticString)
         , m_length(0)
         , m_data8(reinterpret_cast<const LChar*>(&m_length))
-        , m_hashAndFlags(s_hashFlag8BitBuffer | s_hashFlagIsIdentifier | s_hashFlagIsAtomic | BufferOwned)
+        , m_hashAndFlags(s_hashFlag8BitBuffer | s_hashFlagIsAtomic | BufferOwned)
     {
         // Ensure that the hash is computed so that AtomicStringHash can call existingHash()
         // with impunity. The empty string is special because it is never entered into
@@ -404,7 +395,7 @@ public:
 
     static unsigned flagsOffset() { return OBJECT_OFFSETOF(StringImpl, m_hashAndFlags); }
     static unsigned flagIs8Bit() { return s_hashFlag8BitBuffer; }
-    static unsigned flagIsIdentifier() { return s_hashFlagIsIdentifier; }
+    static unsigned flagIsAtomic() { return s_hashFlagIsAtomic; }
     static unsigned dataOffset() { return OBJECT_OFFSETOF(StringImpl, m_data8); }
 
     template<typename CharType, size_t inlineCapacity, typename OverflowHandler>
@@ -427,13 +418,6 @@ public:
 
     ALWAYS_INLINE const LChar* characters8() const { ASSERT(is8Bit()); return m_data8; }
     ALWAYS_INLINE const UChar* characters16() const { ASSERT(!is8Bit()); return m_data16; }
-    ALWAYS_INLINE const UChar* deprecatedCharacters() const
-    {
-        if (!is8Bit())
-            return m_data16;
-
-        return getData16SlowCase();
-    }
 
     template <typename CharType>
     ALWAYS_INLINE const CharType *characters() const;
@@ -469,20 +453,6 @@ public:
     }
 
     WTF_EXPORT_STRING_API size_t sizeInBytes() const;
-
-    bool has16BitShadow() const { return m_hashAndFlags & s_hashFlagHas16BitShadow; }
-    WTF_EXPORT_STRING_API void upconvertCharacters(unsigned, unsigned) const;
-    bool isIdentifier() const { return m_hashAndFlags & s_hashFlagIsIdentifier; }
-    bool isIdentifierOrUnique() const { return isIdentifier() || isEmptyUnique(); }
-    void setIsIdentifier(bool isIdentifier)
-    {
-        ASSERT(!isStatic());
-        ASSERT(!isEmptyUnique());
-        if (isIdentifier)
-            m_hashAndFlags |= s_hashFlagIsIdentifier;
-        else
-            m_hashAndFlags &= ~s_hashFlagIsIdentifier;
-    }
 
     bool isEmptyUnique() const
     {
@@ -797,7 +767,6 @@ private:
     template <typename CharType> static PassRef<StringImpl> createUninitializedInternalNonEmpty(unsigned, CharType*&);
     template <typename CharType> static PassRef<StringImpl> reallocateInternal(PassRefPtr<StringImpl>, unsigned, CharType*&);
     template <typename CharType> static PassRef<StringImpl> createInternal(const CharType*, unsigned);
-    WTF_EXPORT_STRING_API NEVER_INLINE const UChar* getData16SlowCase() const;
     WTF_EXPORT_PRIVATE NEVER_INLINE unsigned hashSlowCase() const;
     WTF_EXPORT_PRIVATE unsigned hashAndFlagsForEmptyUnique();
 
@@ -805,16 +774,14 @@ private:
     static const unsigned s_refCountFlagIsStaticString = 0x1;
     static const unsigned s_refCountIncrement = 0x2; // This allows us to ref / deref without disturbing the static string flag.
 
-    // The bottom 7 bits in the hash are flags.
-    static const unsigned s_flagCount = 7;
+    // The bottom 6 bits in the hash are flags.
+    static const unsigned s_flagCount = 6;
     static const unsigned s_flagMask = (1u << s_flagCount) - 1;
     COMPILE_ASSERT(s_flagCount <= StringHasher::flagCount, StringHasher_reserves_enough_bits_for_StringImpl_flags);
 
-    static const unsigned s_hashFlagHas16BitShadow = 1u << 6;
     static const unsigned s_hashFlag8BitBuffer = 1u << 5;
     static const unsigned s_hashFlagIsAtomic = 1u << 4;
     static const unsigned s_hashFlagDidReportCost = 1u << 3;
-    static const unsigned s_hashFlagIsIdentifier = 1u << 2;
     static const unsigned s_hashMaskBufferOwnership = 1u | (1u << 1);
 
 #ifdef STRING_STATS
@@ -827,7 +794,6 @@ public:
         unsigned m_refCount;
         unsigned m_length;
         const LChar* m_data8;
-        mutable UChar* m_copyData16;
         unsigned m_hashAndFlags;
 
         // These values mimic ConstructFromLiteral.
@@ -852,7 +818,6 @@ private:
         const LChar* m_data8;
         const UChar* m_data16;
     };
-    mutable UChar* m_copyData16;
     mutable unsigned m_hashAndFlags;
 };
 
@@ -1143,6 +1108,7 @@ inline bool equalIgnoringCase(const UChar* a, const UChar* b, int length)
 WTF_EXPORT_STRING_API bool equalIgnoringCaseNonNull(const StringImpl*, const StringImpl*);
 
 WTF_EXPORT_STRING_API bool equalIgnoringNullity(StringImpl*, StringImpl*);
+WTF_EXPORT_STRING_API bool equalIgnoringNullity(const UChar*, size_t length, StringImpl*);
 
 template<typename CharacterType>
 inline size_t find(const CharacterType* characters, unsigned length, CharacterType matchCharacter, unsigned index = 0)
@@ -1279,14 +1245,9 @@ inline size_t StringImpl::find(UChar character, unsigned start)
     return WTF::find(characters16(), m_length, character, start);
 }
 
-template<size_t inlineCapacity>
-bool equalIgnoringNullity(const Vector<UChar, inlineCapacity>& a, StringImpl* b)
+template<size_t inlineCapacity> inline bool equalIgnoringNullity(const Vector<UChar, inlineCapacity>& a, StringImpl* b)
 {
-    if (!b)
-        return !a.size();
-    if (a.size() != b->length())
-        return false;
-    return !memcmp(a.data(), b->deprecatedCharacters(), b->length() * sizeof(UChar));
+    return equalIgnoringNullity(a.data(), a.size(), b);
 }
 
 template<typename CharacterType1, typename CharacterType2>

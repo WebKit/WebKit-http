@@ -721,14 +721,9 @@ void SpeculativeJIT::emitCall(Node* node)
     
     slowPath.link(&m_jit);
     
-    if (m_jit.graph().m_plan.willTryToTierUp) {
-        m_jit.add32(
-            TrustedImm32(1),
-            MacroAssembler::AbsoluteAddress(
-                m_jit.jitCode()->slowPathCalls.begin() + m_jit.currentJSCallIndex()));
-    }
-    
     m_jit.move(calleeGPR, GPRInfo::regT0); // Callee needs to be in regT0
+    CallLinkInfo* callLinkInfo = m_jit.codeBlock()->addCallLinkInfo();
+    m_jit.move(MacroAssembler::TrustedImmPtr(callLinkInfo), GPRInfo::regT2); // Link info needs to be in regT2
     JITCompiler::Call slowCall = m_jit.nearCall();
     
     done.link(&m_jit);
@@ -737,7 +732,11 @@ void SpeculativeJIT::emitCall(Node* node)
     
     jsValueResult(resultGPR, m_currentNode, DataFormatJS, UseChildrenCalledExplicitly);
     
-    m_jit.addJSCall(fastCall, slowCall, targetToCheck, callType, calleeGPR, m_currentNode->origin.semantic);
+    callLinkInfo->callType = callType;
+    callLinkInfo->codeOrigin = m_currentNode->origin.semantic;
+    callLinkInfo->calleeGPR = calleeGPR;
+    
+    m_jit.addJSCall(fastCall, slowCall, targetToCheck, callLinkInfo);
 }
 
 // Clang should allow unreachable [[clang::fallthrough]] in template functions if any template expansion uses it
@@ -758,9 +757,19 @@ GPRReg SpeculativeJIT::fillSpeculateInt32Internal(Edge edge, DataFormat& returnF
     VirtualRegister virtualRegister = edge->virtualRegister();
     GenerationInfo& info = generationInfoFromVirtualRegister(virtualRegister);
 
+    if (edge->hasConstant() && !isInt32Constant(edge.node())) {
+        // Protect the silent spill/fill logic by failing early. If we "speculate" on
+        // the constant then the silent filler may think that we have an int32 and a
+        // constant, so it will try to fill this as an int32 constant. Bad things will
+        // happen.
+        terminateSpeculativeExecution(Uncountable, JSValueRegs(), 0);
+        returnFormat = DataFormatInt32;
+        return allocate();
+    }
+    
     switch (info.registerFormat()) {
     case DataFormatNone: {
-        if ((edge->hasConstant() && !isInt32Constant(edge.node())) || info.spillFormat() == DataFormatDouble) {
+        if (info.spillFormat() == DataFormatDouble) {
             terminateSpeculativeExecution(Uncountable, JSValueRegs(), 0);
             returnFormat = DataFormatInt32;
             return allocate();
@@ -3476,7 +3485,7 @@ void SpeculativeJIT::compile(Node* node)
         
     case NewArray: {
         JSGlobalObject* globalObject = m_jit.graph().globalObjectFor(node->origin.semantic);
-        if (!globalObject->isHavingABadTime() && !hasArrayStorage(node->indexingType())) {
+        if (!globalObject->isHavingABadTime() && !hasAnyArrayStorage(node->indexingType())) {
             Structure* structure = globalObject->arrayStructureForIndexingTypeDuringAllocation(node->indexingType());
             RELEASE_ASSERT(structure->indexingType() == node->indexingType());
             ASSERT(
@@ -3647,7 +3656,7 @@ void SpeculativeJIT::compile(Node* node)
         
     case NewArrayWithSize: {
         JSGlobalObject* globalObject = m_jit.graph().globalObjectFor(node->origin.semantic);
-        if (!globalObject->isHavingABadTime() && !hasArrayStorage(node->indexingType())) {
+        if (!globalObject->isHavingABadTime() && !hasAnyArrayStorage(node->indexingType())) {
             SpeculateStrictInt32Operand size(this, node->child1());
             GPRTemporary result(this);
             GPRTemporary storage(this);
@@ -3718,7 +3727,7 @@ void SpeculativeJIT::compile(Node* node)
     case NewArrayBuffer: {
         JSGlobalObject* globalObject = m_jit.graph().globalObjectFor(node->origin.semantic);
         IndexingType indexingType = node->indexingType();
-        if (!globalObject->isHavingABadTime() && !hasArrayStorage(indexingType)) {
+        if (!globalObject->isHavingABadTime() && !hasAnyArrayStorage(indexingType)) {
             unsigned numElements = node->numConstants();
             
             GPRTemporary result(this);

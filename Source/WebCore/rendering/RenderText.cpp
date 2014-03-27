@@ -648,7 +648,7 @@ static float maxWordFragmentWidth(RenderText* renderer, const RenderStyle& style
         fragmentWithHyphen.append(word.substring(suffixStart, fragmentLength));
         fragmentWithHyphen.append(style.hyphenString());
 
-        TextRun run = RenderBlock::constructTextRun(renderer, font, fragmentWithHyphen.deprecatedCharacters(), fragmentWithHyphen.length(), style);
+        TextRun run = RenderBlock::constructTextRun(renderer, font, fragmentWithHyphen.toString(), style);
         run.setCharactersLength(fragmentWithHyphen.length());
         run.setCharacterScanForCodePath(!renderer->canUseSimpleFontCodePath());
         float fragmentWidth = font.width(run, &fallbackFonts, &glyphOverflow);
@@ -1088,11 +1088,11 @@ void RenderText::secureText(UChar mask)
 
     int lastTypedCharacterOffsetToReveal = -1;
     String revealedText;
-    SecureTextTimer* secureTextTimer = gSecureTextTimers ? gSecureTextTimers->get(this) : 0;
+    SecureTextTimer* secureTextTimer = gSecureTextTimers ? gSecureTextTimers->get(this) : nullptr;
     if (secureTextTimer && secureTextTimer->isActive()) {
         lastTypedCharacterOffsetToReveal = secureTextTimer->lastTypedCharacterOffset();
         if (lastTypedCharacterOffsetToReveal >= 0)
-            revealedText.append(m_text[lastTypedCharacterOffsetToReveal]);
+            revealedText = m_text.substring(lastTypedCharacterOffsetToReveal, 1);
     }
 
     m_text.fill(mask);

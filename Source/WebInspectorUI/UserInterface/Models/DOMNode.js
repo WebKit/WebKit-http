@@ -456,17 +456,22 @@ WebInspector.DOMNode.prototype = {
         {
             if (!error && callback && accessibilityProperties) {
                 callback({
-                    axParentNodeId: accessibilityProperties.axParentNodeId,
+                    activeDescendantNodeId: accessibilityProperties.activeDescendantNodeId,
                     checked: accessibilityProperties.checked,
+                    childNodeIds: accessibilityProperties.childNodeIds,
+                    controlledNodeIds: accessibilityProperties.controlledNodeIds,
                     disabled: accessibilityProperties.disabled,
                     exists: accessibilityProperties.exists,
                     expanded: accessibilityProperties.expanded,
+                    flowedNodeIds: accessibilityProperties.flowedNodeIds,
                     focused: accessibilityProperties.focused,
                     ignored: accessibilityProperties.ignored,
                     ignoredByDefault: accessibilityProperties.ignoredByDefault,
                     invalid: accessibilityProperties.invalid,
                     hidden: accessibilityProperties.hidden,
                     label: accessibilityProperties.label,
+                    ownedNodeIds: accessibilityProperties.ownedNodeIds,
+                    parentNodeId: accessibilityProperties.parentNodeId,
                     pressed: accessibilityProperties.pressed,
                     readonly: accessibilityProperties.readonly,
                     required: accessibilityProperties.required,

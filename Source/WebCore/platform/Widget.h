@@ -65,11 +65,6 @@ typedef BView* PlatformWidget;
 #endif
 
 #if PLATFORM(EFL)
-#if USE(EO)
-typedef struct _Eo_Opaque Evas_Object;
-#else
-typedef struct _Evas_Object Evas_Object;
-#endif
 typedef Evas_Object* PlatformWidget;
 #endif
 

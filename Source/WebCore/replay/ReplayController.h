@@ -145,10 +145,21 @@ private:
     void createSegment();
     void completeSegment();
 
-    void loadSegment(PassRefPtr<ReplaySessionSegment>);
+    void loadSegmentAtIndex(size_t);
     void unloadSegment(bool suppressNotifications = false);
 
     EventLoopInputDispatcher& dispatcher() const;
+
+    void setSessionState(SessionState);
+    void setForceDeterministicSettings(bool);
+
+    struct SavedSettings {
+        bool usesPageCache;
+
+        SavedSettings()
+            : usesPageCache(false)
+        { }
+    };
 
     Page& m_page;
 
@@ -168,6 +179,7 @@ private:
     SessionState m_sessionState;
 
     DispatchSpeed m_dispatchSpeed;
+    SavedSettings m_savedSettings;
 };
 
 } // namespace WebCore

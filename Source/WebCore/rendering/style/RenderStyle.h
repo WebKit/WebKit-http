@@ -874,7 +874,6 @@ public:
     bool hasTransformRelatedProperty() const { return hasTransform() || preserves3D() || hasPerspective(); }
 
     enum ApplyTransformOrigin { IncludeTransformOrigin, ExcludeTransformOrigin };
-    void applyTransform(TransformationMatrix&, const LayoutSize& borderBoxSize, ApplyTransformOrigin = IncludeTransformOrigin) const;
     void applyTransform(TransformationMatrix&, const FloatRect& boundingBox, ApplyTransformOrigin = IncludeTransformOrigin) const;
     void setPageScaleTransform(float);
 
@@ -1499,24 +1498,6 @@ public:
     SVGLength kerning() const { return svgStyle().kerning(); }
     void setKerning(SVGLength k) { accessSVGStyle().setKerning(k); }
 
-#if ENABLE(CSS_SHAPES) && ENABLE(CSS_SHAPE_INSIDE)
-    void setShapeInside(PassRefPtr<ShapeValue> value)
-    {
-        if (rareNonInheritedData->m_shapeInside == value)
-            return;
-        rareNonInheritedData.access()->m_shapeInside = value;
-    }
-    ShapeValue* shapeInside() const { return rareNonInheritedData->m_shapeInside.get(); }
-    ShapeValue* resolvedShapeInside() const
-    {
-        ShapeValue* shapeInside = this->shapeInside();
-        if (shapeInside && shapeInside->type() == ShapeValue::Outside)
-            return shapeOutside();
-        return shapeInside;
-    }
-
-    static ShapeValue* initialShapeInside() { return 0; }
-#endif
 #if ENABLE(CSS_SHAPES)
     void setShapeOutside(PassRefPtr<ShapeValue> value)
     {
@@ -1527,10 +1508,6 @@ public:
     ShapeValue* shapeOutside() const { return rareNonInheritedData->m_shapeOutside.get(); }
 
     static ShapeValue* initialShapeOutside() { return 0; }
-
-    const Length& shapePadding() const { return rareNonInheritedData->m_shapePadding; }
-    void setShapePadding(Length shapePadding) { SET_VAR(rareNonInheritedData, m_shapePadding, std::move(shapePadding)); }
-    static Length initialShapePadding() { return Length(0, Fixed); }
 
     const Length& shapeMargin() const { return rareNonInheritedData->m_shapeMargin; }
     void setShapeMargin(Length shapeMargin) { SET_VAR(rareNonInheritedData, m_shapeMargin, std::move(shapeMargin)); }

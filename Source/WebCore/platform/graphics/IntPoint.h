@@ -51,8 +51,6 @@ typedef struct tagPOINTS POINTS;
 typedef struct _GdkPoint GdkPoint;
 #elif PLATFORM(HAIKU)
 class BPoint;
-#elif PLATFORM(EFL)
-typedef struct _Evas_Point Evas_Point;
 #endif
 
 namespace WebCore {
@@ -132,7 +130,7 @@ public:
     operator Evas_Point() const;
 #endif
 
-    void dump(PrintStream& out) const;
+    void dump(WTF::PrintStream& out) const;
 
 private:
     int m_x, m_y;

@@ -24,6 +24,9 @@
  */
 
 #include "config.h"
+
+#if USE(SOUP)
+
 #include "AuthenticationChallenge.h"
 
 #include "ResourceError.h"
@@ -84,3 +87,5 @@ bool AuthenticationChallenge::platformCompare(const AuthenticationChallenge& a, 
 }
 
 } // namespace WebCore
+
+#endif

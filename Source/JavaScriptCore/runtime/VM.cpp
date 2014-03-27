@@ -71,6 +71,7 @@
 #include "Nodes.h"
 #include "Parser.h"
 #include "ParserArena.h"
+#include "ProfilerDatabase.h"
 #include "PropertyMapHashTable.h"
 #include "RegExpCache.h"
 #include "RegExpObject.h"
@@ -86,6 +87,7 @@
 #include <wtf/StringPrintStream.h>
 #include <wtf/Threading.h>
 #include <wtf/WTFThreadData.h>
+#include <wtf/text/AtomicStringTable.h>
 
 #if ENABLE(DFG_JIT)
 #include "ConservativeRoots.h"
@@ -194,8 +196,8 @@ VM::VM(VMType vmType, HeapType heapType)
     , promisePrototypeTable(adoptPtr(new HashTable(JSC::promisePrototypeTable)))
     , promiseConstructorTable(adoptPtr(new HashTable(JSC::promiseConstructorTable)))
 #endif
-    , identifierTable(vmType == Default ? wtfThreadData().currentIdentifierTable() : createIdentifierTable())
-    , propertyNames(new CommonIdentifiers(this))
+    , m_atomicStringTable(vmType == Default ? wtfThreadData().atomicStringTable() : new AtomicStringTable)
+    , propertyNames(nullptr)
     , emptyList(new MarkedArgumentBuffer)
     , parserArena(adoptPtr(new ParserArena))
     , keywords(adoptPtr(new Keywords(*this)))
@@ -245,7 +247,8 @@ VM::VM(VMType vmType, HeapType heapType)
 
     // Need to be careful to keep everything consistent here
     JSLockHolder lock(this);
-    IdentifierTable* existingEntryIdentifierTable = wtfThreadData().setCurrentIdentifierTable(identifierTable);
+    AtomicStringTable* existingEntryAtomicStringTable = wtfThreadData().setCurrentAtomicStringTable(m_atomicStringTable);
+    propertyNames = new CommonIdentifiers(this);
     structureStructure.set(*this, Structure::createStructure(*this));
     structureRareDataStructure.set(*this, StructureRareData::createStructure(*this, 0, jsNull()));
     debuggerActivationStructure.set(*this, DebuggerActivation::createStructure(*this, 0, jsNull()));
@@ -281,7 +284,7 @@ VM::VM(VMType vmType, HeapType heapType)
     iterationTerminator.set(*this, JSFinalObject::create(*this, JSFinalObject::createStructure(*this, 0, jsNull(), 1)));
     smallStrings.initializeCommonStrings(*this);
 
-    wtfThreadData().setCurrentIdentifierTable(existingEntryIdentifierTable);
+    wtfThreadData().setCurrentAtomicStringTable(existingEntryAtomicStringTable);
 
 #if ENABLE(JIT)
     jitStubs = adoptPtr(new JITThunks());
@@ -380,7 +383,7 @@ VM::~VM()
 
     delete propertyNames;
     if (vmType != Default)
-        deleteIdentifierTable(identifierTable);
+        delete m_atomicStringTable;
 
     delete clientData;
     delete m_regExpCache;

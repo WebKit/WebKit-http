@@ -37,17 +37,20 @@ namespace WebCore {
 
 class ScrollingTreeScrollingNodeIOS : public ScrollingTreeScrollingNode {
 public:
-    static PassOwnPtr<ScrollingTreeScrollingNode> create(ScrollingTree&, ScrollingNodeID);
+    static PassOwnPtr<ScrollingTreeScrollingNode> create(ScrollingTree&, ScrollingNodeType, ScrollingNodeID);
     virtual ~ScrollingTreeScrollingNodeIOS();
 
-private:
-    ScrollingTreeScrollingNodeIOS(ScrollingTree&, ScrollingNodeID);
+protected:
+    ScrollingTreeScrollingNodeIOS(ScrollingTree&, ScrollingNodeType, ScrollingNodeID);
 
     // ScrollingTreeNode member functions.
     virtual void updateBeforeChildren(const ScrollingStateNode&) override;
     virtual void updateAfterChildren(const ScrollingStateNode&) override;
     virtual void handleWheelEvent(const PlatformWheelEvent&) override { }
 
+    CALayer *scrollLayer() const { return m_scrollLayer.get(); }
+
+private:
     FloatPoint scrollPosition() const;
     virtual void setScrollPosition(const FloatPoint&) override;
     virtual void setScrollPositionWithoutContentEdgeConstraints(const FloatPoint&) override;

@@ -282,7 +282,7 @@ EwkView::EwkView(WKViewRef view, Evas_Object* evasObject)
     , m_vibrationClient(std::make_unique<VibrationClientEfl>(this))
 #endif
     , m_backForwardList(std::make_unique<EwkBackForwardList>(WKPageGetBackForwardList(wkPage())))
-    , m_settings(std::make_unique<EwkSettings>(this))
+    , m_settings(std::make_unique<EwkSettings>(WKPageGroupGetPreferences(WKPageGetPageGroup(wkPage()))))
     , m_useCustomCursor(false)
     , m_userAgent(WKEinaSharedString(AdoptWK, WKPageCopyUserAgent(wkPage())))
     , m_mouseEventsEnabled(false)
@@ -301,7 +301,7 @@ EwkView::EwkView(WKViewRef view, Evas_Object* evasObject)
 
     // FIXME: Remove when possible.
     static_cast<WebViewEfl*>(webView())->setEwkView(this);
-    m_evasGL = adoptPtr(evas_gl_new(evas_object_evas_get(m_evasObject)));
+    m_evasGL = EflUniquePtr<Evas_GL>(evas_gl_new(evas_object_evas_get(m_evasObject)));
     if (m_evasGL)
         m_evasGLContext = EvasGLContext::create(m_evasGL.get());
 

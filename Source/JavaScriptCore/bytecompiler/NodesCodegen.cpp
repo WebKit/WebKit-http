@@ -740,8 +740,7 @@ RegisterID* PostfixNode::emitResolve(BytecodeGenerator& generator, RegisterID* d
         if (local.isReadOnly()) {
             generator.emitReadOnlyExceptionIfNeeded();
             localReg = generator.emitMove(generator.tempDestination(dst), localReg);
-        }
-        if (local.isCaptured()) {
+        } else if (local.isCaptured()) {
             RefPtr<RegisterID> tempDst = generator.finalDestination(dst);
             ASSERT(dst != localReg);
             RefPtr<RegisterID> tempDstSrc = generator.newTemporary();
@@ -916,8 +915,7 @@ RegisterID* PrefixNode::emitResolve(BytecodeGenerator& generator, RegisterID* ds
         if (local.isReadOnly()) {
             generator.emitReadOnlyExceptionIfNeeded();
             localReg = generator.emitMove(generator.tempDestination(dst), localReg);
-        }
-        if (local.isCaptured()) {
+        } else if (local.isCaptured()) {
             RefPtr<RegisterID> tempDst = generator.tempDestination(dst);
             generator.emitMove(tempDst.get(), localReg);
             emitIncOrDec(generator, tempDst.get(), m_operator);
@@ -1807,7 +1805,7 @@ void ForInNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
 {
     LabelScopePtr scope = generator.newLabelScope(LabelScope::Loop);
 
-    if (!m_lexpr->isLocation()) {
+    if (!m_lexpr->isAssignmentLocation()) {
         emitThrowReferenceError(generator, "Left side of for-in statement is not a reference.");
         return;
     }
@@ -1903,7 +1901,7 @@ void ForInNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
 // ------------------------------ ForOfNode ------------------------------------
 void ForOfNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
 {
-    if (!m_lexpr->isLocation()) {
+    if (!m_lexpr->isAssignmentLocation()) {
         emitThrowReferenceError(generator, "Left side of for-of statement is not a reference.");
         return;
     }
@@ -1955,7 +1953,7 @@ Label* ContinueNode::trivialTarget(BytecodeGenerator& generator)
     if (generator.shouldEmitDebugHooks())
         return 0;
 
-    LabelScope* scope = generator.continueTarget(m_ident);
+    LabelScopePtr scope = generator.continueTarget(m_ident);
     ASSERT(scope);
 
     if (generator.scopeDepth() != scope->scopeDepth())
@@ -1968,7 +1966,7 @@ void ContinueNode::emitBytecode(BytecodeGenerator& generator, RegisterID*)
 {
     generator.emitDebugHook(WillExecuteStatement, firstLine(), startOffset(), lineStartOffset());
     
-    LabelScope* scope = generator.continueTarget(m_ident);
+    LabelScopePtr scope = generator.continueTarget(m_ident);
     ASSERT(scope);
 
     generator.emitPopScopes(scope->scopeDepth());
@@ -1982,7 +1980,7 @@ Label* BreakNode::trivialTarget(BytecodeGenerator& generator)
     if (generator.shouldEmitDebugHooks())
         return 0;
 
-    LabelScope* scope = generator.breakTarget(m_ident);
+    LabelScopePtr scope = generator.breakTarget(m_ident);
     ASSERT(scope);
 
     if (generator.scopeDepth() != scope->scopeDepth())
@@ -1995,7 +1993,7 @@ void BreakNode::emitBytecode(BytecodeGenerator& generator, RegisterID*)
 {
     generator.emitDebugHook(WillExecuteStatement, firstLine(), startOffset(), lineStartOffset());
     
-    LabelScope* scope = generator.breakTarget(m_ident);
+    LabelScopePtr scope = generator.breakTarget(m_ident);
     ASSERT(scope);
 
     generator.emitPopScopes(scope->scopeDepth());

@@ -1,3 +1,468 @@
+2014-03-26  Andy Estes  <aestes@apple.com>
+
+        [Cocoa] Expose DownloadClient::didFail() and DownloadClient::didCancel()
+        https://bugs.webkit.org/show_bug.cgi?id=130805
+
+        Reviewed by Dan Bernstein.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/Download.mm:
+        (-[DownloadDelegate _download:didReceiveResponse:]):
+        (-[DownloadDelegate _downloadDidFinish:]):
+        (runTest):
+        (TEST):
+        (-[FailingDownloadDelegate _downloadDidFinish:]):
+        (-[FailingDownloadDelegate _download:didFailWithError:]):
+        (-[FailingDownloadDelegate _downloadDidCancel:]):
+        (-[CancelledDownloadDelegate _downloadDidStart:]):
+        (-[CancelledDownloadDelegate _downloadDidFinish:]):
+        (-[CancelledDownloadDelegate _download:didFailWithError:]):
+        (-[CancelledDownloadDelegate _downloadDidCancel:]):
+        (-[DownloadDelegate initWithSourceURL:]): Deleted.
+        (-[DownloadDelegate sourceURL]): Deleted.
+        (runTestWithNavigationDelegate): Deleted.
+
+2014-03-26  Anders Carlsson  <andersca@apple.com>
+
+        Change MiniBrowser to hold on to window controllers instead of windows
+        https://bugs.webkit.org/show_bug.cgi?id=130797
+
+        Reviewed by Oliver Hunt.
+
+        * MiniBrowser/mac/AppDelegate.h:
+        * MiniBrowser/mac/AppDelegate.m:
+        (-[BrowserAppDelegate init]):
+        (-[BrowserAppDelegate newWindow:]):
+        (-[BrowserAppDelegate browserWindowWillClose:]):
+        (-[BrowserAppDelegate applicationWillTerminate:]):
+        (-[BrowserAppDelegate frontmostBrowserWindowController]):
+
+2014-03-26  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r166264.
+        https://bugs.webkit.org/show_bug.cgi?id=130785
+
+        Broke some window.opener tests for WK2 Mavericks (Requested by
+        brrian__ on #webkit).
+
+        Reverted changeset:
+
+        "Web Replay: resource unique identifiers should be unique-per-
+        frame, not globally"
+        https://bugs.webkit.org/show_bug.cgi?id=130632
+        http://trac.webkit.org/changeset/166264
+
+2014-03-26  Zoltan Horvath  <zoltan@webkit.org>
+
+        [CSS Shapes] Remove shape-inside support
+        https://bugs.webkit.org/show_bug.cgi?id=130698
+
+        Reviewed by David Hyatt.
+
+        * Scripts/webkitperl/FeatureList.pm:
+
+2014-02-27  Gurpreet Kaur  <k.gurpreet@samsung.com>
+
+        Unreviewed. Add myself as a committer.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2014-03-26  Tomas Popela  <tpopela@redhat.com>
+
+        run-launcher is Perl script so use elsif and not elif
+        https://bugs.webkit.org/show_bug.cgi?id=130771
+
+        Reviewed by Carlos Garcia Campos.
+
+        * Scripts/run-launcher:
+
+2014-03-26  Krzysztof Czech  <k.czech@samsung.com>
+
+        [ATK] Utilize new AtkValue interface coming in ATK 2.11.92
+        https://bugs.webkit.org/show_bug.cgi?id=130575
+
+        Reviewed by Mario Sanchez Prada.
+
+        Change ATK version to 2.11.92. Adjust current implementation.
+
+        * DumpRenderTree/atk/AccessibilityUIElementAtk.cpp:
+        (AccessibilityUIElement::intValue):
+        (AccessibilityUIElement::minValue):
+        (AccessibilityUIElement::maxValue):
+        * WebKitTestRunner/InjectedBundle/atk/AccessibilityUIElementAtk.cpp:
+        (WTR::AccessibilityUIElement::intValue):
+        (WTR::AccessibilityUIElement::minValue):
+        (WTR::AccessibilityUIElement::maxValue):
+        * efl/jhbuild.modules:
+        * gtk/jhbuild.modules:
+
+2014-03-12  Philippe Normand  <pnormand@igalia.com>
+
+        [GTK] The gnumake package is no longer needed in jhbuild
+        https://bugs.webkit.org/show_bug.cgi?id=130121
+
+        Reviewed by Martin Robinson.
+
+        For GTK build-webkit now relies on cmake and ninja/gnumake. Even
+        for a debug build cmake/system-gnumake worked just fine for me.
+
+        * gtk/jhbuild.modules: Removed gnumake.
+        * gtk/patches/make-3.82-arg-list-length.patch: Removed.
+        * gtk/patches/make-3.82-parallel-build.patch: Removed.
+
+2014-03-25  Andy Estes  <aestes@apple.com>
+
+        Fix a failing API test on Mountain Lion and remove temporary debug logging.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/Download.mm:
+        (-[DownloadDelegate _download:didReceiveData:]):
+        (-[DownloadDelegate _downloadDidFinish:]):
+
+2014-03-25  Brian Burg  <bburg@apple.com>
+
+        Web Replay: resource unique identifiers should be unique-per-frame, not globally
+        https://bugs.webkit.org/show_bug.cgi?id=130623
+
+        Reviewed by Timothy Hatcher.
+
+        The resource loader callback dumping routines assumed that resource identifiers
+        were globally unique. Its map of resource identifiers to URLs must also track the
+        frame associated with the resource.
+
+        * WebKitTestRunner/InjectedBundle/InjectedBundlePage.cpp:
+        (WTR::dumpResourceURL): Additionally take a WKBundleFrameRef argument, and use the
+        opaque pointer as part of the key for assignedUrlsCache. The frame pointer is
+        stable as long as the frame is valid.
+        (WTR::InjectedBundlePage::didInitiateLoadForResource):
+        (WTR::InjectedBundlePage::willSendRequestForFrame):
+        (WTR::InjectedBundlePage::didReceiveResponseForResource):
+        (WTR::InjectedBundlePage::didFinishLoadForResource):
+        (WTR::InjectedBundlePage::didFailLoadForResource):
+
+2014-03-25  Andy Estes  <aestes@apple.com>
+
+        Fix one API test expectation failure on Mountain Lion, and add additional logging to help diagnose another.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/Download.mm:
+        (-[DownloadDelegate _download:didReceiveResponse:]):
+        (-[DownloadDelegate _download:didReceiveData:]):
+
+2014-03-25  Andy Estes  <aestes@apple.com>
+
+        Add some debug logging to an API test that's failing on Mountain Lion.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/Download.mm:
+        (-[DownloadDelegate _download:didReceiveResponse:]):
+        (-[DownloadDelegate _downloadDidFinish:]):
+
+2014-03-25  Anders Carlsson  <andersca@apple.com>
+
+        Add goBack: and goForward: IBActions and move stopLoading: to a new WKIBActions category on WKWebView
+        https://bugs.webkit.org/show_bug.cgi?id=130732
+
+        Reviewed by Tim Horton.
+
+        * MiniBrowser/mac/WK2BrowserWindowController.m:
+        (-[WK2BrowserWindowController validateUserInterfaceItem:]):
+
+2014-03-25  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK] Remove the autotools build
+        https://bugs.webkit.org/show_bug.cgi?id=130717
+
+        Reviewed by Anders Carlsson.
+
+        * DumpRenderTree/config.h: Remove references to the autotools configure file.
+        * GNUmakefile.am: Removed.
+        * GtkLauncher/GNUmakefile.am: Removed.
+        * GtkLauncher/main.c: Remove references to the autotools configure file.
+        * MiniBrowser/gtk/BrowserDownloadsBar.c: Ditto.
+        * MiniBrowser/gtk/BrowserSearchBar.c: Ditto.
+        * MiniBrowser/gtk/BrowserWindow.c: Ditto.
+        * MiniBrowser/gtk/GNUmakefile.am: Removed.
+        * MiniBrowser/gtk/main.c: Remove references to the autotools configure file.
+        * Scripts/build-webkit: No longer handle autotools.
+        * Scripts/run-gtk-tests: Ditto.
+        (TestRunner._setup_testing_environment):
+        * Scripts/run-launcher: Ditto.
+        * Scripts/webkitdirs.pm: Ditto.
+        * Scripts/webkitpy/common/config/contributionareas.py: Remove autotools as a contribution area.
+        * Scripts/webkitpy/common/config/contributors.json: Ditto.
+        * Scripts/webkitpy/port/gtk.py: No longer handle autotools.
+        * Scripts/webkitpy/style/checker.py:
+        * TestWebKitAPI/GNUmakefile.am: Removed.
+        * TestWebKitAPI/config.h: Remove references to the autotools configure file.
+        * WebKitTestRunner/GNUmakefile.am: Removed.
+        * WebKitTestRunner/WebKitTestRunnerPrefix.h: Ditto.
+        * gtk/GNUmakefile.am: Removed.
+        * gtk/common.py: Remove checks for the autotools build.
+        * gtk/symbols.filter: Renamed from Source/autotools/symbols.filter.
+
+2014-03-25  László Langó  <llango.u-szeged@partner.samsung.com>
+
+        prepare-ChangeLog throws false positive warnings for modified files.
+        https://bugs.webkit.org/show_bug.cgi?id=130687
+
+        Reviewed by Darin Adler.
+
+        * Scripts/prepare-ChangeLog:
+        (originalFile): Ignore git commit paremeter.
+        We don't need this to get the unmodified file.
+        (extractLineRangeBeforeChange):
+        Simplify the if statement. Follow-up after r166189.
+
+2014-03-25  Gabor Rapcsanyi  <rgabor@webkit.org>
+
+        [EFL] Add ARM64 build support
+        https://bugs.webkit.org/show_bug.cgi?id=130506
+
+        Rubber stamped by Gyuyoung Kim.
+
+        * Scripts/webkitdirs.pm:
+        (isARM): Detect aarch64 as ARM.
+
+2014-03-25  Eva Balazsfalvi  <evab.u-szeged@partner.samsung.com>
+
+        [webkitpy] Improve _parse_bug_description to recognize more descriptions
+        https://bugs.webkit.org/show_bug.cgi?id=130137
+
+        Reviewed by Csaba Osztrogonác.
+
+        * Scripts/webkitpy/common/checkout/changelog.py:
+        (ChangeLogEntry._parse_bug_description):
+        * Scripts/webkitpy/common/checkout/changelog_unittest.py:
+        (test_parse_log_entries_from_changelog):
+        * Scripts/webkitpy/common/checkout/checkout_unittest.py:
+        (CheckoutTest.test_commit_info_for_revision):
+
+2014-03-24  Andy Estes  <aestes@apple.com>
+
+        Fix the iOS build of TestWebKitAPI.
+
+        * TestWebKitAPI/Configurations/Base.xcconfig:
+        * TestWebKitAPI/PlatformUtilities.h:
+
+2014-03-24  László Langó  <llango.u-szeged@partner.samsung.com>
+
+        Fix prepare-ChangeLog after r166156.
+        https://bugs.webkit.org/show_bug.cgi?id=130674
+
+        Reviewed by Darin Adler.
+
+        * Scripts/prepare-ChangeLog:
+        (generateFunctionLists):
+        (extractLineRangeBeforeChange):
+
+2014-03-24  Andy Estes  <aestes@apple.com>
+
+        [iOS] Download support by CFURLDownloadRef under USE(CFNETWORK).
+        https://bugs.webkit.org/show_bug.cgi?id=129322
+
+        Reviewed by Anders Carlsson.
+
+        Add an API test suite for _WKDownload.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/Download.mm: Added.
+        (-[DownloadDelegate initWithSourceURL:]):
+        (-[DownloadDelegate sourceURL]):
+        (-[DownloadDelegate _downloadDidStart:]):
+        (-[DownloadDelegate _download:didReceiveResponse:]):
+        (-[DownloadDelegate _download:didReceiveData:]):
+        (-[DownloadDelegate _download:decideDestinationWithSuggestedFilename:allowOverwrite:]):
+        (-[DownloadDelegate _downloadDidFinish:]):
+        (TEST):
+        (runTestWithNavigationDelegate):
+        (-[DownloadNavigationDelegate webView:decidePolicyForNavigationAction:decisionHandler:]):
+        (-[ConvertResponseToDownloadNavigationDelegate webView:decidePolicyForNavigationResponse:decisionHandler:]):
+
+2014-03-24  Joseph Pecoraro  <pecoraro@apple.com>
+
+        filter-build-webkit: reduce unfiltered output
+        https://bugs.webkit.org/show_bug.cgi?id=130485
+
+        Reviewed by Brent Fulgham.
+
+        * Scripts/filter-build-webkit:
+        (shouldIgnoreLine):
+
+2014-03-24  László Langó  <llango.u-szeged@partner.samsung.com>
+
+        prepare-ChangeLog should list functions that have been removed too.
+        https://bugs.webkit.org/show_bug.cgi?id=130508
+
+        Reviewed by Darin Adler.
+
+        The prepare-ChangeLog does not list the deleted functions in the Changelog.
+        We have to read the functions and the line ranges of them from the source
+        before the change, then search for overlaps between them and the changed
+        line ranges from diff.
+
+        * Scripts/prepare-ChangeLog:
+        (originalFile): Get original source command.
+        (generateFunctionLists): Collect deleted functions too.
+        (generateFunctionListsByRanges): Duplicated code is moved to a separate subroutine.
+        (extractLineRangeBeforeChange): Extract line ranges from the original source to get
+        deleted functions ranges too.
+        (extractLineRange): Renamed to extractLineRangeAfterChange.
+
+2014-03-23  Hyowon Kim  <hw1008.kim@samsung.com>
+
+        Move all EFL typedefs into EflTypedefs.h.
+        https://bugs.webkit.org/show_bug.cgi?id=130511
+
+        Reviewed by Gyuyoung Kim.
+
+        * TestWebKitAPI/PlatformWebView.h: Remove EFL typedefs.
+        * WebKitTestRunner/InjectedBundle/TestRunner.h: Ditto.
+        * WebKitTestRunner/PlatformWebView.h: Ditto.
+
+2014-03-21  Simon Fraser  <simon.fraser@apple.com>
+
+        Don't flush compositing layers within FrameView::willPaintContents()
+        https://bugs.webkit.org/show_bug.cgi?id=130627
+        <rdar://problem/16368869>
+
+        Reviewed by Sam Weinig.
+        
+        Fix DRT to correctly render tests with layers now that FrameView::paintContents
+        does not flush.
+        
+        Move the -[WebView displayIfNeeded] from -[FrameLoadDelegate webView:didFinishLoadForFrame:]
+        into an explicit function called before dumping. 
+        
+        Then explicitly call _flushCompositingChanges to ensure that GraphicsLayer changes
+        are flushed to CA. They will be pushed to the window by snapshotting.
+
+        * DumpRenderTree/DumpRenderTree.xcodeproj/project.pbxproj:
+        Fix weird path to IOKit.framework.
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (updateDisplay):
+        (dump):
+        * DumpRenderTree/mac/FrameLoadDelegate.mm:
+        (-[FrameLoadDelegate webView:locationChangeDone:forDataSource:]): Fix parameter name.
+        (-[FrameLoadDelegate webView:didFinishLoadForFrame:]): Remove display call.
+
+2014-03-21  David Kilzer  <ddkilzer@apple.com>
+
+        fix-blink-patch: tool to fix up renamed directory paths in Blink
+        <http://webkit.org/b/130609>
+
+        Reviewed by Ryosuke Niwa.
+
+        Usage: cat blink.patch | fix-blink-patch | svn-apply
+
+        * Scripts/fix-blink-patch: Added.
+
+2014-03-21  Darin Adler  <darin@apple.com>
+
+        Remove use of deprecatedCharacters in WebKit API tests
+        https://bugs.webkit.org/show_bug.cgi?id=130602
+
+        Reviewed by Antti Koivisto.
+
+        * TestWebKitAPI/Tests/WTF/StringBuilder.cpp:
+        (TestWebKitAPI::expectBuilderContent): Use characters8/16 instead of deprecatedCharacters.
+        (TestWebKitAPI::expectEmpty): Use characters8.
+        (TestWebKitAPI::TEST): Use characters8 instead of deprecatedCharacters in most cases.
+
+        * TestWebKitAPI/Tests/WTF/StringImpl.cpp:
+        Removed the test that is entirely about 16-bit conversion since that's basically a test of
+        the deprecatedCharacters function itself, which we are about to delete.
+
+2014-03-21  Eva Balazsfalvi  <evab.u-szeged@partner.samsung.com>
+
+        [webkitpy] Fix has_valid_reviewer()
+        https://bugs.webkit.org/show_bug.cgi?id=130589
+
+        Reviewed by Csaba Osztrogonác.
+
+        * Scripts/webkitpy/common/checkout/changelog.py:
+        (ChangeLogEntry.has_valid_reviewer):
+        * Scripts/webkitpy/common/checkout/changelog_unittest.py:
+        (test_has_valid_reviewer):
+        * Scripts/webkitpy/common/config/committers.py:
+        (CommitterList._reviewer_only):
+        (CommitterList.committer_by_name):
+        (CommitterList.reviewer_by_email):
+        (CommitterList):
+        (CommitterList.reviewer_by_name):
+
+2014-03-21  Jozsef Berta  <jberta.u-szeged@partner.samsung.com>
+
+        Add cache support for jhbuild
+        https://bugs.webkit.org/show_bug.cgi?id=130588
+
+        Reviewed by Csaba Osztrogonác.
+
+        * jhbuild/jhbuildrc_common.py:
+        (init): Jhbuild can now save the dependencies locally, if the JHBUILD_MIRROR environment variable is set.
+
+2014-03-21  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        [CMake] Add support for MAX_CPU_LOAD translated to -l in ninja and make
+        https://bugs.webkit.org/show_bug.cgi?id=130504
+
+        Reviewed by Martin Robinson.
+
+        * Scripts/build-webkit: Add the maxCPULoad() to the makeArgs in
+        CMake if not specified.
+        * Scripts/webkitdirs.pm:
+        (determineMaxCPULoad): Read MAX_CPU_LOAD as maxCPULoad.
+        (maxCPULoad): determineMaxCPULoad and return maxCPULoad.
+
+2014-03-21  Andreas Kling  <akling@apple.com>
+
+        RetainPtr API test should use CFArray instead of CFString for testing.
+        <rdar://problem/16384899>
+
+        Unreviewed bot fix.
+
+        * TestWebKitAPI/Tests/WTF/cf/RetainPtr.cpp:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WTF/cf/RetainPtrHashing.cpp:
+        (TestWebKitAPI::TEST):
+
+2014-03-20  Hyowon Kim  <hw1008.kim@samsung.com>
+
+        Move to using std::unique_ptr for EFL objects.
+        https://bugs.webkit.org/show_bug.cgi?id=129853
+
+        Reviewed by Gyuyoung Kim.
+
+        EflUniquePtr is a template alias of std::unique_ptr
+        with a custom deleter for each Efl Objects, which is motivated by GUniquePtr.
+        This patch replaces uses of OwnPtr and PassOwnPtr for Efl objects with EflUniquePtr.
+
+        * DumpRenderTree/efl/DumpRenderTree.cpp:
+        (main):
+        * ImageDiff/efl/ImageDiff.cpp:
+        (initEfl):
+        (main):
+
+2014-03-20  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        Unreviewed buildfix after r165983 for non Cocoa platforms
+
+        Renamed WKPreferencesPrivate.h to WKPreferencesRefPrivate.h
+
+        * TestWebKitAPI/Tests/WebKit2/ScrollPinningBehaviors.cpp:
+        * TestWebKitAPI/Tests/WebKit2/WKPreferences.cpp:
+        * WebKitTestRunner/TestController.cpp:
+
+2014-03-20  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GTK][CMake] Add support for building with Clang
+        https://bugs.webkit.org/show_bug.cgi?id=130260
+
+        Reviewed by Martin Robinson.
+
+        * TestWebKitAPI/CMakeLists.txt: When building with Clang TestWebKitAPI should be
+        built with GTEST_HAS_TR1_TUPLE defined to 0 to avoid build failures occuring in the
+        included GTest framework headers.
+        * gtk/generate-gtkdoc:
+        (prepare_environment_for_gtkdoc_generation): Don't modify the CFLAGS env anymore
+        in case of using Clang since that is now set by the CMake rule.
+
 2014-03-19  Simon Fraser  <simon.fraser@apple.com>
 
         Expose text and page zoom in WK2 SPI, and hook them up in MiniBrowser

@@ -27,13 +27,22 @@
 
 #if WK_API_ENABLED
 
+@class _WKProcessPoolConfiguration;
+@protocol _WKDownloadDelegate;
+
 @interface WKProcessPool (WKPrivate)
+
+- (instancetype)_initWithConfiguration:(_WKProcessPoolConfiguration *)configuration WK_DESIGNATED_INITIALIZER;
+
+@property (nonatomic, readonly) _WKProcessPoolConfiguration *_configuration;
 
 - (void)_setAllowsSpecificHTTPSCertificate:(NSArray *)certificateChain forHost:(NSString *)host;
 - (void)_setCookieAcceptPolicy:(NSHTTPCookieAcceptPolicy)policy;
 
 - (id)_objectForBundleParameter:(NSString *)parameter;
 - (void)_setObject:(id <NSCopying, NSSecureCoding>)object forBundleParameter:(NSString *)parameter;
+
+@property (nonatomic, weak, setter=_setDownloadDelegate:) id <_WKDownloadDelegate> _downloadDelegate;
 
 @end
 

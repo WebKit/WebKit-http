@@ -43,7 +43,6 @@
 #include <WebCore/Timer.h>
 #include <WebKit2/WKBase.h>
 #include <wtf/HashMap.h>
-#include <wtf/OwnPtr.h>
 #include <wtf/RefPtr.h>
 #include <wtf/text/WTFString.h>
 
@@ -89,9 +88,6 @@ class EwkPageGroup;
 class EwkPopupMenu;
 class EwkSettings;
 class EwkWindowFeatures;
-
-typedef struct _Evas_GL_Context Evas_GL_Context;
-typedef struct _Evas_GL_Surface Evas_GL_Surface;
 
 typedef struct Ewk_View_Smart_Data Ewk_View_Smart_Data;
 typedef struct Ewk_View_Smart_Class Ewk_View_Smart_Class;
@@ -251,9 +247,9 @@ private:
     Evas_Object* m_evasObject;
     RefPtr<EwkContext> m_context;
     RefPtr<EwkPageGroup> m_pageGroup;
-    OwnPtr<Evas_GL> m_evasGL;
-    OwnPtr<WebCore::EvasGLContext> m_evasGLContext;
-    OwnPtr<WebCore::EvasGLSurface> m_evasGLSurface;
+    EflUniquePtr<Evas_GL> m_evasGL;
+    std::unique_ptr<WebCore::EvasGLContext> m_evasGLContext;
+    std::unique_ptr<WebCore::EvasGLSurface> m_evasGLSurface;
     bool m_pendingSurfaceResize;
 
     WebCore::TransformationMatrix m_userViewportTransform;
@@ -293,7 +289,7 @@ private:
     WebCore::Timer<EwkView> m_displayTimer;
     RefPtr<EwkContextMenu> m_contextMenu;
     std::unique_ptr<EwkPopupMenu> m_popupMenu;
-    OwnPtr<WebKit::InputMethodContextEfl> m_inputMethodContext;
+    std::unique_ptr<WebKit::InputMethodContextEfl> m_inputMethodContext;
 #if ENABLE(INPUT_TYPE_COLOR)
     std::unique_ptr<EwkColorPicker> m_colorPicker;
 #endif
