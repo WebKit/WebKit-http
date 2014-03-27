@@ -23,6 +23,11 @@
 #include "AudioFileReader.h"
 
 #include "AudioBus.h"
+#include "NotImplemented.h"
+
+#include <File.h>
+#include <MediaFile.h>
+#include <MediaTrack.h>
 
 namespace WebCore {
 
@@ -35,23 +40,42 @@ public:
     ~AudioFileReader();
 
     PassRefPtr<AudioBus> createBus(float sampleRate, bool mixToMono);
+
+private:
+    BMediaFile* m_file;
 };
 
 AudioFileReader::AudioFileReader(const char* filePath)
 {
+    BFile file(filePath, B_READ_ONLY);
+    m_file = new BMediaFile(&file);
 }
 
 AudioFileReader::AudioFileReader(const void* data, size_t dataSize)
 {
+    BMemoryIO io(data, dataSize);
+    m_file = new BMediaFile(&io);
 }
 
 AudioFileReader::~AudioFileReader()
 {
+    delete m_file;
 }
 
 PassRefPtr<AudioBus> AudioFileReader::createBus(float sampleRate, bool mixToMono)
 {
-    // FIXME implement
+    BMediaTrack* track = m_file->TrackAt(0);
+    
+    unsigned channels = mixToMono ? 1 : 2;
+    RefPtr<AudioBus> audioBus = AudioBus::create(channels, track->CountFrames(), true);
+    audioBus->setSampleRate(sampleRate);
+
+    notImplemented();
+        // TODO fill the audio bus with the frames!
+
+    m_file->ReleaseTrack(track);
+
+    return audioBus;
 }
 
 PassRefPtr<AudioBus> createBusFromAudioFile(const char* filePath, bool mixToMono, float sampleRate)

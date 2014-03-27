@@ -23,9 +23,13 @@
 
 #include "MediaPlayerPrivate.h"
 
+#include <UrlProtocolListener.h>
+
+class BUrlRequest;
+
 namespace WebCore {
 
-class MediaPlayerPrivate : public MediaPlayerPrivateInterface {
+class MediaPlayerPrivate : public MediaPlayerPrivateInterface, BUrlProtocolListener {
     public:
         static void registerMediaEngine(MediaEngineRegistrar);
 
@@ -55,6 +59,8 @@ class MediaPlayerPrivate : public MediaPlayerPrivateInterface {
 
         void paint(GraphicsContext*, const IntRect&) override;
 
+        // BUrlProtocolListener API
+	    void DataReceived(BUrlRequest* caller, const char* data, ssize_t size) override;
     private:
         MediaPlayerPrivate(MediaPlayer*);
         
@@ -62,6 +68,9 @@ class MediaPlayerPrivate : public MediaPlayerPrivateInterface {
         static PassOwnPtr<MediaPlayerPrivateInterface> create(MediaPlayer*);
         static void getSupportedTypes(HashSet<String>& types);
         static MediaPlayer::SupportsType supportsType(const MediaEngineSupportParameters&);
+
+        mutable bool m_didReceiveData;
+        BUrlRequest* m_urlRequest;
 };
 
 }

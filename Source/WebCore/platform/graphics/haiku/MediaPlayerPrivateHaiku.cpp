@@ -23,6 +23,10 @@
 #if ENABLE(VIDEO)
 
 #include "NotImplemented.h"
+#include "wtf/text/CString.h"
+#include <media/MediaDefs.h>
+#include <UrlProtocolRoster.h>
+#include <UrlRequest.h>
 
 namespace WebCore {
 
@@ -37,11 +41,14 @@ void MediaPlayerPrivate::registerMediaEngine(MediaEngineRegistrar registrar)
 }
 
 MediaPlayerPrivate::MediaPlayerPrivate(MediaPlayer* player)
+    : m_didReceiveData(false)
+    , m_urlRequest(nullptr)
 {
 }
 
 MediaPlayerPrivate::~MediaPlayerPrivate()
 {
+    delete m_urlRequest;
 }
 
 IntSize MediaPlayerPrivate::naturalSize() const
@@ -64,12 +71,15 @@ bool MediaPlayerPrivate::hasVideo() const
 
 void MediaPlayerPrivate::load(const String& url)
 {
-    notImplemented();
+    m_urlRequest = BUrlProtocolRoster::MakeRequest(BUrl(url.utf8().data()), this);
+    m_urlRequest->Run();
 }
 
 void MediaPlayerPrivate::cancelLoad()
 {
-    notImplemented();
+    m_urlRequest->Stop();
+    delete m_urlRequest;
+    m_urlRequest = nullptr;
 }
 
 void MediaPlayerPrivate::play()
@@ -113,10 +123,16 @@ std::unique_ptr<PlatformTimeRanges> MediaPlayerPrivate::buffered() const
     return timeRanges;
 }
 
+void MediaPlayerPrivate::DataReceived(BUrlRequest*, const char* data, ssize_t size)
+{
+    m_didReceiveData = true;
+}
+
 bool MediaPlayerPrivate::didLoadingProgress() const
 {
-    notImplemented();
-    return false;
+    bool progress = m_didReceiveData;
+    m_didReceiveData = false;
+    return progress;
 }
 
 void MediaPlayerPrivate::setVisible(bool)
@@ -134,14 +150,41 @@ void MediaPlayerPrivate::paint(GraphicsContext*, const IntRect&)
     notImplemented();
 }
 
+static HashSet<String> mimeTypeCache()
+{
+    DEPRECATED_DEFINE_STATIC_LOCAL(HashSet<String>, cache, ());
+    static bool typeListInitialized = false;
+
+    if (typeListInitialized)
+        return cache;
+
+    int32 cookie = 0;
+    media_file_format mfi;
+
+    // Add the types the Haiku Media Kit add-ons advertise support for
+    while(get_next_file_format(&cookie, &mfi) == B_OK) {
+        cache.add(String(mfi.mime_type));
+    }
+
+    typeListInitialized = true;
+    return cache;
+}
+
 void MediaPlayerPrivate::getSupportedTypes(HashSet<String>& types)
 {
-    notImplemented();
+    types = mimeTypeCache();
 }
 
 MediaPlayer::SupportsType MediaPlayerPrivate::supportsType(const MediaEngineSupportParameters& parameters)
 {
-    notImplemented();
+    if (parameters.type.isNull() || parameters.type.isEmpty())
+        return MediaPlayer::IsNotSupported;
+
+    // spec says we should not return "probably" if the codecs string is empty
+    if (mimeTypeCache().contains(parameters.type))
+        return parameters.codecs.isEmpty() ? MediaPlayer::MayBeSupported : MediaPlayer::IsSupported;
+
+    printf("UNSUPPORTED TYPE: %s\n", parameters.type.utf8().data());
     return MediaPlayer::IsNotSupported;
 }
 
