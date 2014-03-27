@@ -360,7 +360,7 @@ void GraphicsContext::restorePlatformState()
 }
 
 // Draws a filled rectangle with a stroked border.
-void GraphicsContext::drawRect(const FloatRect& rect)
+void GraphicsContext::drawRect(const FloatRect& rect, float borderThickness)
 {
     if (paintingDisabled())
         return;
@@ -375,8 +375,11 @@ void GraphicsContext::drawRect(const FloatRect& rect)
         m_data->view()->FillRect(rect);
 
     // TODO: Support gradients
-    if (strokeStyle() != NoStroke && strokeThickness() > 0.0f && strokeColor().alpha())
+    if (strokeStyle() != NoStroke && borderThickness > 0.0f && strokeColor().alpha())
+    {
+        m_data->view()->SetPenSize(borderThickness);
         m_data->view()->StrokeRect(rect, getHaikuStrokeStyle());
+    }
 }
 
 // This is only used to draw borders.
