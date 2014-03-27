@@ -1,10 +1,10 @@
-LIST(APPEND WebCore_INCLUDE_DIRECTORIES
+list(APPEND WebCore_INCLUDE_DIRECTORIES
   "${WEBCORE_DIR}/platform/haiku"
   "${WEBCORE_DIR}/platform/graphics/haiku"
   "${WEBCORE_DIR}/platform/network/haiku"
 )
 
-LIST(APPEND WebCore_SOURCES
+list(APPEND WebCore_SOURCES
   bindings/js/ScriptControllerHaiku.cpp
 
   html/shadow/MediaControlsApple.cpp
@@ -107,7 +107,7 @@ if (WTF_USE_TEXTURE_MAPPER)
     )
 endif ()
 
-LIST(APPEND WebCore_LIBRARIES
+list(APPEND WebCore_LIBRARIES
   ${ICU_LIBRARIES}
   ${JPEG_LIBRARY}
   ${LIBXML2_LIBRARIES}
@@ -118,7 +118,7 @@ LIST(APPEND WebCore_LIBRARIES
   be bsd network bnetapi textencoding translation
 )
 
-LIST(APPEND WebCore_INCLUDE_DIRECTORIES
+list(APPEND WebCore_INCLUDE_DIRECTORIES
   ${ICU_INCLUDE_DIRS}
   ${LIBXML2_INCLUDE_DIR}
   ${LIBXSLT_INCLUDE_DIR}
@@ -144,9 +144,6 @@ if (ENABLE_VIDEO)
 endif ()
 
 if (WTF_USE_3D_GRAPHICS)
-    set(WTF_USE_OPENGL 1)
-    add_definitions(-DWTF_USE_OPENGL=1)
-
     list(APPEND WebCore_INCLUDE_DIRECTORIES
         "${WEBCORE_DIR}/platform/graphics/opengl"
         "${WEBCORE_DIR}/platform/graphics/surfaces"
@@ -163,15 +160,25 @@ if (WTF_USE_3D_GRAPHICS)
 
     list(APPEND WebCore_SOURCES
         platform/graphics/cairo/DrawingBufferCairo.cpp
+
+        platform/graphics/efl/EvasGLContext.cpp
+        platform/graphics/efl/EvasGLSurface.cpp
         platform/graphics/efl/GraphicsContext3DEfl.cpp
         platform/graphics/efl/GraphicsContext3DPrivate.cpp
+        
         platform/graphics/opengl/Extensions3DOpenGLCommon.cpp
         platform/graphics/opengl/GLPlatformContext.cpp
         platform/graphics/opengl/GLPlatformSurface.cpp
         platform/graphics/opengl/GraphicsContext3DOpenGLCommon.cpp
+        platform/graphics/opengl/TemporaryOpenGLSetting.cpp
+
+        platform/graphics/surfaces/GLTransportSurface.cpp
         platform/graphics/surfaces/GraphicsSurface.cpp
-        platform/graphics/surfaces/glx/GraphicsSurfaceGLX.cpp
-        platform/graphics/surfaces/glx/X11WindowResources.cpp
+
+        platform/graphics/surfaces/efl/GraphicsSurfaceCommon.cpp
+
+        platform/graphics/surfaces/glx/X11Helper.cpp
+
         platform/graphics/texmap/TextureMapperGL.cpp
         platform/graphics/texmap/TextureMapperShaderProgram.cpp
     )
@@ -180,7 +187,14 @@ if (WTF_USE_3D_GRAPHICS)
         list(APPEND WebCore_SOURCES
             platform/graphics/surfaces/egl/EGLConfigSelector.cpp
             platform/graphics/surfaces/egl/EGLContext.cpp
+            platform/graphics/surfaces/egl/EGLHelper.cpp
             platform/graphics/surfaces/egl/EGLSurface.cpp
+            platform/graphics/surfaces/egl/EGLXSurface.cpp
+        )
+    else ()
+        list(APPEND WebCore_SOURCES
+            platform/graphics/surfaces/glx/GLXContext.cpp
+            platform/graphics/surfaces/glx/GLXSurface.cpp
         )
     endif ()
 
@@ -191,9 +205,10 @@ if (WTF_USE_3D_GRAPHICS)
         )
     else ()
         list(APPEND WebCore_SOURCES
+            platform/graphics/OpenGLShims.cpp
+            
             platform/graphics/opengl/Extensions3DOpenGL.cpp
             platform/graphics/opengl/GraphicsContext3DOpenGL.cpp
-            platform/graphics/OpenGLShims.cpp
         )
     endif ()
 
