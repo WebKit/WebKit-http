@@ -72,7 +72,8 @@ bool MediaPlayerPrivate::hasVideo() const
 void MediaPlayerPrivate::load(const String& url)
 {
     m_urlRequest = BUrlProtocolRoster::MakeRequest(BUrl(url.utf8().data()), this);
-    m_urlRequest->Run();
+    if (m_urlRequest)
+        m_urlRequest->Run();
 }
 
 void MediaPlayerPrivate::cancelLoad()
