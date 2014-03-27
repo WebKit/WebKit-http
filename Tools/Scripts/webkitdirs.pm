@@ -547,12 +547,7 @@ sub productDir
 sub jscProductDir
 {
     my $productDir = productDir();
-<<<<<<< HEAD
-    $productDir .= "/bin" if (isEfl() || isGtkCMake() || isHaiku());
-    $productDir .= "/Programs" if isGtkAutotools();
-=======
-    $productDir .= "/bin" if (isEfl() || isGtk());
->>>>>>> b18e0238061e07f399340494da9f8fc7aaf150e2
+    $productDir .= "/bin" if (isEfl() || isGtk() || isHaiku());
 
     return $productDir;
 }
@@ -955,7 +950,6 @@ sub isEfl()
     return $isEfl;
 }
 
-<<<<<<< HEAD
 sub determineIsHaiku()
 {
     return if defined($isHaiku);
@@ -968,22 +962,7 @@ sub isHaiku()
     return $isHaiku;
 }
 
-sub determineIsGtkCMake()
-{
-    return if defined($isGtkCMake);
-    $isGtkCMake = checkForArgumentAndRemoveFromARGV("--gtk");
-}
-
-sub isGtkCMake()
-{
-    determineIsGtkCMake();
-    return $isGtkCMake;
-}
-
-sub isGtkAutotools()
-=======
 sub determineIsGtk()
->>>>>>> b18e0238061e07f399340494da9f8fc7aaf150e2
 {
     return if defined($isGtk);
     $isGtk = checkForArgumentAndRemoveFromARGV("--gtk");
@@ -1956,11 +1935,7 @@ sub cmakeBasedPortName()
 
 sub isCMakeBuild()
 {
-<<<<<<< HEAD
-    return isEfl() || isWinCE() || isGtkCMake() || isHaiku();
-=======
-    return isEfl() || isWinCE() || isGtk();
->>>>>>> b18e0238061e07f399340494da9f8fc7aaf150e2
+    return isEfl() || isWinCE() || isGtk() || isHaiku();
 }
 
 sub promptUser
