@@ -937,7 +937,6 @@ void GraphicsContext::setCTM(const AffineTransform& transform)
     if (paintingDisabled())
         return;
 
-    puts("SetCTM");
     m_data->view()->SetTransform(transform);
 }
 
