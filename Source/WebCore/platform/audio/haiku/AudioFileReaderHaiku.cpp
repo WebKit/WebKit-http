@@ -31,7 +31,6 @@
 
 namespace WebCore {
 
-// TODO should probably use a BDataIO to describe the file...
 class AudioFileReader {
     WTF_MAKE_NONCOPYABLE(AudioFileReader);
 public:
@@ -42,40 +41,49 @@ public:
     PassRefPtr<AudioBus> createBus(float sampleRate, bool mixToMono);
 
 private:
+    BDataIO* m_data;
     BMediaFile* m_file;
 };
 
 AudioFileReader::AudioFileReader(const char* filePath)
 {
-    BFile file(filePath, B_READ_ONLY);
-    m_file = new BMediaFile(&file);
+    m_data = new BFile(filePath, B_READ_ONLY);
+    m_file = new BMediaFile(m_data);
 }
 
 AudioFileReader::AudioFileReader(const void* data, size_t dataSize)
 {
-    BMemoryIO io(data, dataSize);
-    m_file = new BMediaFile(&io);
+    m_data = new BMemoryIO(data, dataSize);
+        // TODO should we take ownership of the data, or copy it?
+    m_file = new BMediaFile(m_data);
 }
 
 AudioFileReader::~AudioFileReader()
 {
     delete m_file;
+    delete m_data;
 }
 
 PassRefPtr<AudioBus> AudioFileReader::createBus(float sampleRate, bool mixToMono)
 {
     BMediaTrack* track = m_file->TrackAt(0);
-    
-    unsigned channels = mixToMono ? 1 : 2;
-    RefPtr<AudioBus> audioBus = AudioBus::create(channels, track->CountFrames(), true);
-    audioBus->setSampleRate(sampleRate);
 
-    notImplemented();
-        // TODO fill the audio bus with the frames!
+    if (track && track->InitCheck() == B_OK) {
+        unsigned channels = mixToMono ? 1 : 2;
+        RefPtr<AudioBus> audioBus = AudioBus::create(channels, track->CountFrames(), true);
+        audioBus->setSampleRate(sampleRate);
 
-    m_file->ReleaseTrack(track);
+        notImplemented();
+            // TODO fill the audio bus with the frames!
 
-    return audioBus;
+        m_file->ReleaseTrack(track);
+        return audioBus;
+    } else {
+        // Reading the file failed, return an empty bus
+        RefPtr<AudioBus> audioBus = AudioBus::create(0, 0, true);
+        m_file->ReleaseTrack(track);
+        return audioBus;
+    }
 }
 
 PassRefPtr<AudioBus> createBusFromAudioFile(const char* filePath, bool mixToMono, float sampleRate)
