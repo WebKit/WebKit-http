@@ -23,30 +23,39 @@
 
 #include "MediaPlayerPrivate.h"
 
-#include <UrlProtocolListener.h>
+#include <UrlProtocolAsynchronousListener.h>
 
+class BDataIO;
+class BMediaFile;
 class BUrlRequest;
 
 namespace WebCore {
 
-class MediaPlayerPrivate : public MediaPlayerPrivateInterface, BUrlProtocolListener {
+class MediaPlayerPrivate : public MediaPlayerPrivateInterface, BUrlProtocolAsynchronousListener {
     public:
         static void registerMediaEngine(MediaEngineRegistrar);
 
         ~MediaPlayerPrivate();
 
-        IntSize naturalSize() const override;
-        bool hasAudio() const override;
-        bool hasVideo() const override;
-
         void load(const String& url) override;
         void cancelLoad() override;
+
+        void prepareToPlay() override;
 
         void play() override;
         void pause() override;
 
-        bool paused() const override;
+        IntSize naturalSize() const override;
+        bool hasAudio() const override;
+        bool hasVideo() const override;
+
+        void setVisible(bool) override;
+
+        float duration() const override;
+        float currentTime() const override;
+
         bool seeking() const override;
+        bool paused() const override;
         
         MediaPlayer::NetworkState networkState() const override;
         MediaPlayer::ReadyState readyState() const override;
@@ -54,13 +63,13 @@ class MediaPlayerPrivate : public MediaPlayerPrivateInterface, BUrlProtocolListe
         std::unique_ptr<PlatformTimeRanges> buffered() const override;
         bool didLoadingProgress() const override;
 
-        void setVisible(bool) override;
         void setSize(const IntSize&) override;
 
         void paint(GraphicsContext*, const IntRect&) override;
 
         // BUrlProtocolListener API
 	    void DataReceived(BUrlRequest* caller, const char* data, ssize_t size) override;
+        void RequestCompleted(BUrlRequest*, bool success) override;
     private:
         MediaPlayerPrivate(MediaPlayer*);
         
@@ -71,6 +80,12 @@ class MediaPlayerPrivate : public MediaPlayerPrivateInterface, BUrlProtocolListe
 
         mutable bool m_didReceiveData;
         BUrlRequest* m_urlRequest;
+        BPositionIO* m_cache;
+        BMediaFile* m_mediaFile;
+
+        MediaPlayer* m_player;
+        MediaPlayer::NetworkState m_networkState;
+        MediaPlayer::ReadyState m_readyState;
 };
 
 }

@@ -22,9 +22,14 @@
 
 #if ENABLE(VIDEO)
 
+#include "GraphicsContext.h"
 #include "NotImplemented.h"
 #include "wtf/text/CString.h"
-#include <media/MediaDefs.h>
+
+#include <DataIO.h>
+#include <MediaDefs.h>
+#include <MediaFile.h>
+#include <MediaTrack.h>
 #include <UrlProtocolRoster.h>
 #include <UrlRequest.h>
 
@@ -43,37 +48,39 @@ void MediaPlayerPrivate::registerMediaEngine(MediaEngineRegistrar registrar)
 MediaPlayerPrivate::MediaPlayerPrivate(MediaPlayer* player)
     : m_didReceiveData(false)
     , m_urlRequest(nullptr)
+    , m_cache(new BMallocIO())
+    , m_mediaFile(nullptr)
+    , m_player(player)
+    , m_networkState(MediaPlayer::Empty)
+    , m_readyState(MediaPlayer::HaveNothing)
 {
 }
 
 MediaPlayerPrivate::~MediaPlayerPrivate()
 {
     delete m_urlRequest;
-}
-
-IntSize MediaPlayerPrivate::naturalSize() const
-{
-    notImplemented();
-    return IntSize(0,0);
-}
-
-bool MediaPlayerPrivate::hasAudio() const
-{
-    notImplemented();
-    return false;
-}
-
-bool MediaPlayerPrivate::hasVideo() const
-{
-    notImplemented();
-    return false;
+    delete m_cache;
+    delete m_mediaFile;
 }
 
 void MediaPlayerPrivate::load(const String& url)
 {
-    m_urlRequest = BUrlProtocolRoster::MakeRequest(BUrl(url.utf8().data()), this);
+    // Cleanup from previous request (can this even happen?)
+    delete m_urlRequest;
+    m_urlRequest = nullptr;
+    delete m_mediaFile;
+    m_mediaFile = nullptr;
+    m_cache->SetSize(0);
+    m_cache->Seek(0, SEEK_SET);
+
+    m_urlRequest = BUrlProtocolRoster::MakeRequest(BUrl(url.utf8().data()),
+        new BUrlProtocolDispatchingListener(this));
+
     if (m_urlRequest)
-        m_urlRequest->Run();
+        m_networkState = MediaPlayer::Idle;
+    else
+        m_networkState = MediaPlayer::FormatError;
+    m_player->networkStateChanged();
 }
 
 void MediaPlayerPrivate::cancelLoad()
@@ -81,6 +88,21 @@ void MediaPlayerPrivate::cancelLoad()
     m_urlRequest->Stop();
     delete m_urlRequest;
     m_urlRequest = nullptr;
+}
+
+void MediaPlayerPrivate::prepareToPlay()
+{
+    if (m_urlRequest) {
+        m_urlRequest->Run();
+
+        m_networkState = MediaPlayer::Loading;
+    } else
+        m_networkState = MediaPlayer::NetworkError;
+
+    m_readyState = MediaPlayer::HaveNothing;
+
+    m_player->networkStateChanged();
+    m_player->readyStateChanged();
 }
 
 void MediaPlayerPrivate::play()
@@ -93,10 +115,93 @@ void MediaPlayerPrivate::pause()
     notImplemented();
 }
 
-bool MediaPlayerPrivate::paused() const
+IntSize MediaPlayerPrivate::naturalSize() const
 {
     notImplemented();
-    return false;
+    return IntSize(0,0);
+}
+
+bool MediaPlayerPrivate::hasAudio() const
+{
+    if(!m_mediaFile)
+        return false;
+
+    int id = -1;
+    for(int i = m_mediaFile->CountTracks() - 1; i >= 0; i--)
+    {
+        BMediaTrack* track = m_mediaFile->TrackAt(i);
+
+        media_format format;
+        track->DecodedFormat(&format);
+
+        if (format.IsAudio()) {
+            id = i;
+
+            // TODO we may want to keep the track around for decoding...
+        }
+
+        m_mediaFile->ReleaseTrack(track);
+    }
+
+    return id != -1;
+}
+
+bool MediaPlayerPrivate::hasVideo() const
+{
+    if(!m_mediaFile)
+        return false;
+
+    int id = -1;
+    for(int i = m_mediaFile->CountTracks() - 1; i >= 0; i--)
+    {
+        BMediaTrack* track = m_mediaFile->TrackAt(i);
+
+        media_format format;
+        track->DecodedFormat(&format);
+
+        if (format.IsVideo()) {
+            id = i;
+
+            // TODO we may want to keep the track around for decoding...
+        }
+
+        m_mediaFile->ReleaseTrack(track);
+    }
+
+    return id != -1;
+}
+
+void MediaPlayerPrivate::setVisible(bool)
+{
+    notImplemented();
+}
+
+float MediaPlayerPrivate::duration() const
+{
+    if (!m_mediaFile)
+        return 0;
+
+    BMediaTrack* track = m_mediaFile->TrackAt(0);
+    if (!track)
+        return 0;
+
+    return track->Duration() / 1000000.f;
+
+    m_mediaFile->ReleaseTrack(track);
+}
+
+float MediaPlayerPrivate::currentTime() const
+{
+    if (!m_mediaFile)
+        return 0;
+
+    BMediaTrack* track = m_mediaFile->TrackAt(0);
+    if (!track)
+        return 0;
+
+    return track->CurrentTime() / 1000000.f;
+
+    m_mediaFile->ReleaseTrack(track);
 }
 
 bool MediaPlayerPrivate::seeking() const
@@ -105,16 +210,20 @@ bool MediaPlayerPrivate::seeking() const
     return false;
 }
  
-MediaPlayer::NetworkState MediaPlayerPrivate::networkState() const
+bool MediaPlayerPrivate::paused() const
 {
     notImplemented();
-    return MediaPlayer::Loaded;
+    return true;
+}
+
+MediaPlayer::NetworkState MediaPlayerPrivate::networkState() const
+{
+    return m_networkState;
 }
 
 MediaPlayer::ReadyState MediaPlayerPrivate::readyState() const
 {
-    notImplemented();
-    return MediaPlayer::HaveNothing;
+    return m_readyState;
 }
         
 std::unique_ptr<PlatformTimeRanges> MediaPlayerPrivate::buffered() const
@@ -127,6 +236,43 @@ std::unique_ptr<PlatformTimeRanges> MediaPlayerPrivate::buffered() const
 void MediaPlayerPrivate::DataReceived(BUrlRequest*, const char* data, ssize_t size)
 {
     m_didReceiveData = true;
+    // Don't use Write(), because the media decoder may use the seek position.
+    off_t position;
+    m_cache->GetSize(&position);
+    m_cache->WriteAt(position, data, size);
+
+    if (!m_mediaFile) {
+        m_mediaFile = new BMediaFile(m_cache);
+        if (m_mediaFile->InitCheck() == B_OK) {
+            m_player->characteristicChanged();
+
+            m_readyState = MediaPlayer::HaveMetadata;
+            m_player->readyStateChanged();
+        } else {
+            // Not enough data to decode the header yet. Try again later!
+            delete m_mediaFile;
+            m_mediaFile = nullptr;
+        }
+    } else {
+        // TODO check if that's true - hard to tell?
+        // we need HaveFutureData so the playing starts, but later on if
+        // the buffer gets empty we can go back to HaveCurrentData.
+        m_readyState = MediaPlayer::HaveFutureData;
+        m_player->readyStateChanged();
+    }
+}
+
+void MediaPlayerPrivate::RequestCompleted(BUrlRequest*, bool success)
+{
+    if(success) {
+puts("success!");
+        m_networkState = MediaPlayer::Loaded;
+        m_readyState = MediaPlayer::HaveEnoughData;
+        m_player->readyStateChanged();
+    } else
+        m_networkState = MediaPlayer::NetworkError;
+
+    m_player->networkStateChanged();
 }
 
 bool MediaPlayerPrivate::didLoadingProgress() const
@@ -136,18 +282,19 @@ bool MediaPlayerPrivate::didLoadingProgress() const
     return progress;
 }
 
-void MediaPlayerPrivate::setVisible(bool)
-{
-    notImplemented();
-}
-
 void MediaPlayerPrivate::setSize(const IntSize&)
 {
     notImplemented();
 }
 
-void MediaPlayerPrivate::paint(GraphicsContext*, const IntRect&)
+void MediaPlayerPrivate::paint(GraphicsContext* context, const IntRect& r)
 {
+    if (context->paintingDisabled())
+        return;
+
+    if (!m_player->visible())
+        return;
+
     notImplemented();
 }
 
@@ -185,7 +332,6 @@ MediaPlayer::SupportsType MediaPlayerPrivate::supportsType(const MediaEngineSupp
     if (mimeTypeCache().contains(parameters.type))
         return parameters.codecs.isEmpty() ? MediaPlayer::MayBeSupported : MediaPlayer::IsSupported;
 
-    printf("UNSUPPORTED TYPE: %s\n", parameters.type.utf8().data());
     return MediaPlayer::IsNotSupported;
 }
 
