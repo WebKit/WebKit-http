@@ -99,11 +99,6 @@ void WebPageProxy::windowAndViewFramesChanged(const FloatRect&, const FloatPoint
     notImplemented();
 }
 
-void WebPageProxy::cancelComposition()
-{
-    notImplemented();
-}
-
 String WebPageProxy::stringSelectionForPasteboard()
 {
     notImplemented();
@@ -532,6 +527,11 @@ void WebPageProxy::openPDFFromTemporaryFolderWithNativeApplication(const String&
 void WebPageProxy::setAcceleratedCompositingRootLayer(LayerOrView* rootLayer)
 {
     m_pageClient.setAcceleratedCompositingRootLayer(rootLayer);
+}
+
+void WebPageProxy::showPlaybackTargetPicker(bool hasVideo, const IntRect& elementRect)
+{
+    m_pageClient.showPlaybackTargetPicker(hasVideo, elementRect);
 }
 
 } // namespace WebKit

@@ -468,6 +468,7 @@ public:
     void setAssistedNodeValue(const String&);
     void setAssistedNodeValueAsNumber(double);
     void setAssistedNodeSelectedIndex(uint32_t index, bool allowMultipleSelection);
+    WebCore::IntRect rectForElementAtInteractionLocation();
 
 #if ENABLE(INSPECTOR)
     void showInspectorIndication();
@@ -551,7 +552,6 @@ public:
     void confirmCompositionAsync();
 
 #if PLATFORM(MAC)
-    void cancelComposition(EditorState& newState);
     void insertDictatedTextAsync(const String& text, const EditingRange& replacementRange, const Vector<WebCore::DictationAlternative>& dictationAlternativeLocations);
     void attributedSubstringForCharacterRangeAsync(const EditingRange&, uint64_t callbackID);
 #if !USE(ASYNC_NSTEXTINPUTCLIENT)
@@ -565,6 +565,7 @@ public:
     void characterIndexForPoint(const WebCore::IntPoint point, uint64_t& result);
     void firstRectForCharacterRange(const EditingRange&, WebCore::IntRect& resultRect);
     void executeKeypressCommands(const Vector<WebCore::KeypressCommand>&, bool& handled, EditorState& newState);
+    void cancelComposition(EditorState& newState);
 #endif
 #endif
 
@@ -1130,6 +1131,7 @@ private:
     RefPtr<WebCore::Range> m_currentWordRange;
     RefPtr<WebCore::Node> m_interactionNode;
     bool m_shouldReturnWordAtSelection;
+    WebCore::IntPoint m_lastInteractionLocation;
 
     WebCore::ViewportConfiguration m_viewportConfiguration;
     uint64_t m_lastVisibleContentRectUpdateID;

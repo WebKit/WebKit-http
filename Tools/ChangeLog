@@ -1,3 +1,145 @@
+2014-03-30  Andy Estes  <aestes@apple.com>
+
+        Fix two failing layout tests on Mountain Lion after r166466.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/Download.mm:
+        (-[DownloadDelegate _downloadDidStart:]):
+
+2014-03-30  Andy Estes  <aestes@apple.com>
+
+        [Cocoa] Add an originatingWebView property to _WKDownload
+        https://bugs.webkit.org/show_bug.cgi?id=130945
+
+        Reviewed by Anders Carlsson.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/Download.mm:
+        (-[DownloadDelegate _downloadDidStart:]):
+        (-[OriginatingWebViewDownloadDelegate initWithWebView:]):
+        (-[OriginatingWebViewDownloadDelegate _downloadDidStart:]):
+        (TEST):
+
+2014-03-28  Filip Pizlo  <fpizlo@apple.com>
+
+        Land the stackmap register liveness glue with the uses of the liveness disabled
+        https://bugs.webkit.org/show_bug.cgi?id=130924
+
+        Reviewed by Oliver Hunt.
+
+        * Scripts/run-jsc-stress-tests:
+
+2014-03-29  Alexey Proskuryakov  <ap@apple.com>
+
+        Update WebKit1.StringTruncator for Mountain Lion.
+
+        * TestWebKitAPI/Tests/mac/StringTruncator.mm: Looks like one subtest was failing
+        due to different font metrics on 10.8.
+
+2014-03-28  Darin Adler  <darin@apple.com>
+
+        Fix recently-introduced off-by-one error in centerTruncateToBuffer
+        https://bugs.webkit.org/show_bug.cgi?id=130889
+
+        Reviewed by Alexey Proskuryakov.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj: Added StringTruncator.mm.
+        * TestWebKitAPI/Tests/mac/StringTruncator.mm: Added. One test for each of the
+        WebStringTruncator methods; should be good for a start. These are dependent on the
+        metrics of Helvetica 12, but I am hoping that will be consistent across OS X machines.
+
+2014-03-28  Martin Hock  <mhock@apple.com>
+
+        Unreviewed. Add myself as a committer.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2014-03-28  Martin Robinson  <mrobinson@igalia.com>
+
+        Remove WebKit1 GTK+ bots
+        https://bugs.webkit.org/show_bug.cgi?id=130904
+
+        Reviewed by Anders Carlsson.
+
+        * BuildSlaveSupport/build.webkit.org-config/config.json: Remove references to GTK+ WebKit1 test bot and ensure
+        all bots are testing WebKit2 only.
+        * Scripts/webkitpy/common/config/ews.json: Remove references to GTK+ WK1 EWS.
+        * Scripts/webkitpy/common/config/ports.py: Remove references to GTK+ WK1 bots.
+        * Scripts/webkitpy/common/config/ports_unittest.py: Ditto.
+        * Scripts/webkitpy/port/builders.py: Ditto.
+        * Scripts/webkitpy/tool/commands/rebaseline_unittest.py: Ditto.
+        * TestResultServer/static-dashboards/builders.jsonp: Ditto.
+
+2014-03-28  Timothy Hatcher  <timothy@apple.com>
+
+        Remove Brian Burg's apple.com email address.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2014-03-28  David Kilzer  <ddkilzer@apple.com>
+
+        bisect-builds should print Trac 'changeset' URL if only one build is detected
+        <http://webkit.org/b/130903>
+
+        Reviewed by Dan Bernstein.
+
+        * Scripts/bisect-builds:
+        (printTracLink): Print a direct link to the Trac 'changeset'
+        URL if there is only one revision in the range.
+
+2014-03-28  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        [EFL] Bump glib version from 2.36 to 2.38 
+        https://bugs.webkit.org/show_bug.cgi?id=130886
+
+        Reviewed by Csaba Osztrogonác.
+
+        There is a build break on EFL port when using glib 2.36 ver. To fix it,
+        we need to bump glib version up to 2.38 as gtk port.
+
+        * efl/jhbuild.modules:
+
+2014-03-27  Mikhail Pozdnyakov  <mikhail.pozdnyakov@intel.com>
+
+        <https://webkit.org/b/42704> WebKitTestRunner needs to print history delegate information
+
+        Provide an implementation of WKContextHistoryClient that logs when called for tests in
+        the globalhistory directory.
+
+        Reviewed by Sam Weinig.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::TestController):
+        (WTR::TestController::initialize): Set the history client.
+        (WTR::TestController::resetStateToConsistentValues): Disable logging of history client callbacks.
+        (WTR::TestController::didNavigateWithNavigationData): Log information about the navigation. Some portions
+        of the output are hard-coded to match WebKit1's results for now since they're fixed in our existing tests
+        and we don't yet have API to access the data in question.
+        (WTR::TestController::didPerformClientRedirect):
+        (WTR::TestController::didPerformServerRedirect):
+        (WTR::TestController::didUpdateHistoryTitle):
+        * WebKitTestRunner/TestController.h:
+        (WTR::TestController::setShouldLogHistoryClientCallbacks):
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::shouldLogHistoryClientCallbacks): Log history client callbacks for tests in a globalhistory directory.
+        (WTR::TestInvocation::invoke):
+
+2014-03-27  Filip Pizlo  <fpizlo@apple.com>
+
+        Revert http://trac.webkit.org/changeset/166386 because it broke builds.
+
+        * Scripts/build-webkit:
+        * Scripts/copy-webkitlibraries-to-product-directory:
+
+2014-03-27  Filip Pizlo  <fpizlo@apple.com>
+
+        Switch the LLVMForJSC target to using the LLVM in /usr/local rather than /usr/local/LLVMForJavaScriptCore on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=130867
+        <rdar://problem/16432456> 
+
+        Reviewed by Mark Hahnenberg.
+
+        * Scripts/build-webkit:
+        * Scripts/copy-webkitlibraries-to-product-directory:
+
 2014-03-26  Andy Estes  <aestes@apple.com>
 
         [Cocoa] Expose DownloadClient::didFail() and DownloadClient::didCancel()

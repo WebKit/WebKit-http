@@ -4,10 +4,18 @@ Checking Web Inspector protocol for the Accessibility Node Inspector.
     exists: true
     label: 
     role: 
-    childNodeIds.length: 19
+    childNodeIds.length: 25
 
 
-Total elements to be tested: 57.
+Total elements to be tested: 63.
+
+<div onclick="void(0);">click</div>
+    exists: true
+    label: 
+    role: 
+    childNodeIds.length: 1
+    mouseEventNodeId: exists
+    parentNodeId: exists
 
 <li role="treeitem" aria-expanded="undefined">expanded</li>
     exists: true
@@ -16,13 +24,14 @@ Total elements to be tested: 57.
     childNodeIds.length: 1
     parentNodeId: exists
 
-<li role="treeitem" aria-expanded="false" id="activedescendant">collapsed</li>
+<li role="treeitem" aria-expanded="false" id="activedescendant" aria-selected="true">collapsed</li>
     exists: true
     label: 
     role: treeitem
     childNodeIds.length: 1
     expanded: false
     parentNodeId: exists
+    selected: true
 
 <li role="treeitem" aria-expanded="true">expanded</li>
     exists: true
@@ -34,7 +43,7 @@ Total elements to be tested: 57.
 
 <ul role="tree" id="flowedTo1" aria-activedescendant="activedescendant">
     <li role="treeitem" aria-expanded="true">expanded</li>
-    <li role="treeitem" aria-expanded="false" id="activedescendant">collapsed</li>
+    <li role="treeitem" aria-expanded="false" id="activedescendant" aria-selected="true">collapsed</li>
     <li role="treeitem" aria-expanded="undefined">expanded</li>
 </ul>
     exists: true
@@ -43,6 +52,20 @@ Total elements to be tested: 57.
     activeDescendantNodeId: exists
     childNodeIds.length: 3
     parentNodeId: exists
+    selectedChildNodeIds.length: 1
+
+<div role="listbox" aria-multiselectable="true">
+    <div role="option" aria-selected="true">selected</div>
+    <div role="option" aria-selected="false">not selected</div>
+    <div role="option" aria-selected="true">selected</div>
+</div>
+    exists: true
+    label: 
+    role: listbox
+    childNodeIds.length: 3
+    parentNodeId: exists
+    required: false
+    selectedChildNodeIds.length: 2
 
 <div role="tab" aria-selected="false">not selected</div>
     exists: true
@@ -91,6 +114,7 @@ Total elements to be tested: 57.
     childNodeIds.length: 2
     parentNodeId: exists
     required: false
+    selectedChildNodeIds.length: 1
 
 <input role="combobox" aria-owns="ownedlistbox invalidIdRef" aria-controls="ownedlistbox invalidIdRef">
     exists: true
@@ -377,6 +401,42 @@ Total elements to be tested: 57.
     role: button
     focused: false
     parentNodeId: exists
+
+<div role="group" aria-live="assertive" aria-atomic="true">assertive (and atomic)</div>
+    exists: true
+    label: 
+    role: group
+    childNodeIds.length: 1
+    liveRegionAtomic: true
+    liveRegionStatus: assertive
+    parentNodeId: exists
+
+<div role="group" aria-live="polite">polite</div>
+    exists: true
+    label: 
+    role: group
+    childNodeIds.length: 1
+    liveRegionAtomic: false
+    liveRegionStatus: polite
+    parentNodeId: exists
+
+<div role="group" aria-live="off">off</div>
+    exists: true
+    label: 
+    role: group
+    childNodeIds.length: 1
+    parentNodeId: exists
+
+<div role="listbox" aria-busy="true">
+    <!-- Despite having no required option children, this is valid because it is marked as busy. -->
+    <!-- For example, waiting for a script to load its contents. -->
+</div>
+    exists: true
+    label: 
+    role: listbox
+    busy: true
+    parentNodeId: exists
+    required: false
 
 <span aria-hidden="true"></span>
     exists: true

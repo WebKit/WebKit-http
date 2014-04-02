@@ -104,6 +104,7 @@
             { "name" : "op_ret", "length" : 2 },
             { "name" : "op_ret_object_or_this", "length" : 3 },
             { "name" : "op_construct", "length" : 9 },
+            { "name" : "op_construct_varargs", "length" : 9 },
             { "name" : "op_strcat", "length" : 4 },
             { "name" : "op_to_primitive", "length" : 3 },
             { "name" : "op_get_pnames", "length" : 6 },
@@ -156,7 +157,8 @@
             { "name" : "llint_cloop_did_return_from_js_4" },
             { "name" : "llint_cloop_did_return_from_js_5" },
             { "name" : "llint_cloop_did_return_from_js_6" },
-            { "name" : "llint_cloop_did_return_from_js_7" }
+            { "name" : "llint_cloop_did_return_from_js_7" },
+            { "name" : "llint_cloop_did_return_from_js_8" }
         ]
     }
 ]

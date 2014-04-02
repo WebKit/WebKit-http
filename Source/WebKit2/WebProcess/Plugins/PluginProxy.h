@@ -139,6 +139,10 @@ private:
 
     virtual String getSelectionString() const override { return String(); }
 
+#if PLATFORM(COCOA)
+    virtual WebCore::AudioHardwareActivityType audioHardwareActivity() const override;
+#endif
+
     float contentsScaleFactor();
     bool needsBackingStore() const;
     bool updateBackingStore();

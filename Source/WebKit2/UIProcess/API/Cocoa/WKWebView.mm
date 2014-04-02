@@ -44,7 +44,6 @@
 #import "WKNavigationInternal.h"
 #import "WKPreferencesInternal.h"
 #import "WKProcessPoolInternal.h"
-#import "WKRemoteObjectRegistryInternal.h"
 #import "WKUIDelegate.h"
 #import "WKWebViewConfigurationInternal.h"
 #import "WKWebViewContentProvider.h"
@@ -54,6 +53,7 @@
 #import "WebPageGroup.h"
 #import "WebPageProxy.h"
 #import "WebProcessProxy.h"
+#import "_WKRemoteObjectRegistryInternal.h"
 #import "_WKVisitedLinkProviderInternal.h"
 #import <wtf/RetainPtr.h>
 
@@ -79,7 +79,7 @@
 @implementation WKWebView {
     std::unique_ptr<WebKit::NavigationState> _navigationState;
 
-    RetainPtr<WKRemoteObjectRegistry> _remoteObjectRegistry;
+    RetainPtr<_WKRemoteObjectRegistry> _remoteObjectRegistry;
     _WKRenderingProgressEvents _observedRenderingProgressEvents;
 
 #if PLATFORM(IOS)
@@ -162,6 +162,7 @@
     _scrollView = adoptNS([[WKScrollView alloc] initWithFrame:bounds]);
     [_scrollView setInternalDelegate:self];
     [_scrollView setBouncesZoom:YES];
+    [_scrollView setBackgroundColor:[UIColor whiteColor]];
 
     [self addSubview:_scrollView.get()];
 
@@ -183,7 +184,7 @@
 #endif
 
 #if PLATFORM(MAC)
-    _wkView = [[WKView alloc] initWithFrame:bounds context:context configuration:std::move(webPageConfiguration)];
+    _wkView = [[WKView alloc] initWithFrame:bounds context:context configuration:std::move(webPageConfiguration) webView:self];
     [self addSubview:_wkView.get()];
     _page = WebKit::toImpl([_wkView pageRef]);
 #endif
@@ -302,6 +303,22 @@
 - (WKNavigation *)goForward
 {
     _page->goForward();
+
+    // FIXME: Return a navigation object.
+    return nil;
+}
+
+- (WKNavigation *)reload
+{
+    _page->reload(false);
+
+    // FIXME: Return a navigation object.
+    return nil;
+}
+
+- (WKNavigation *)reloadFromOrigin
+{
+    _page->reload(true);
 
     // FIXME: Return a navigation object.
     return nil;
@@ -795,10 +812,10 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
 
 @implementation WKWebView (WKPrivate)
 
-- (WKRemoteObjectRegistry *)_remoteObjectRegistry
+- (_WKRemoteObjectRegistry *)_remoteObjectRegistry
 {
     if (!_remoteObjectRegistry) {
-        _remoteObjectRegistry = adoptNS([[WKRemoteObjectRegistry alloc] _initWithMessageSender:*_page]);
+        _remoteObjectRegistry = adoptNS([[_WKRemoteObjectRegistry alloc] _initWithMessageSender:*_page]);
         _page->process().context().addMessageReceiver(Messages::RemoteObjectRegistry::messageReceiverName(), _page->pageID(), [_remoteObjectRegistry remoteObjectRegistry]);
     }
 
@@ -1213,6 +1230,11 @@ static inline WebCore::LayoutMilestones layoutMilestones(_WKRenderingProgressEve
         return YES;
     }
 
+    if (action == @selector(reload:) || action == @selector(reloadFromOrigin:)) {
+        // FIXME: Return no if we're loading.
+        return YES;
+    }
+
     return NO;
 }
 
@@ -1224,6 +1246,16 @@ static inline WebCore::LayoutMilestones layoutMilestones(_WKRenderingProgressEve
 - (IBAction)goForward:(id)sender
 {
     [self goForward];
+}
+
+- (IBAction)reload:(id)sender
+{
+    [self reload];
+}
+
+- (IBAction)reloadFromOrigin:(id)sender
+{
+    [self reloadFromOrigin];
 }
 
 @end

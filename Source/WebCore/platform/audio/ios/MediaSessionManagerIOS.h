@@ -56,7 +56,9 @@ private:
     virtual void resetRestrictions() override;
 
 #if ENABLE(IOS_AIRPLAY)
-    virtual void showPlaybackTargetPicker() override;
+    virtual bool hasWirelessTargetsAvailable() override;
+    virtual void startMonitoringAirPlayRoutes() override;
+    virtual void stopMonitoringAirPlayRoutes() override;
 #endif
 
     MediaSessionManageriOS();

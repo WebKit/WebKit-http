@@ -30,6 +30,16 @@
 <span class="ex"></span>
 <span class="ex" aria-hidden="true"></span>
 
+<div role="listbox" class="ex" aria-busy="true">
+    <!-- Despite having no required option children, this is valid because it is marked as busy. -->
+    <!-- For example, waiting for a script to load its contents. -->
+</div>
+
+<!-- Full coverage of live regions in getAccessibilityPropertiesForNode_liveRegion.html. -->
+<div class="ex" role="group" aria-live="off">off</div>
+<div class="ex" role="group" aria-live="polite">polite</div>
+<div class="ex" role="group" aria-live="assertive" aria-atomic="true">assertive (and atomic)</div>
+
 <div class="ex" role="button" tabindex="0"></div>
 <div class="ex" role="button" tabindex="0" aria-disabled="true">disabled</div>
 <div class="ex" role="button" tabindex="0" aria-pressed="true">FIXME: Pressed is false. Expected true. http://webkit.org/b/129830</div>
@@ -92,11 +102,20 @@
     <div class="ex" role="tab" aria-selected="false">not selected</div>
 </div>
 
+<div role="listbox" class="ex" aria-multiselectable="true">
+    <div role="option" aria-selected="true">selected</div>
+    <div role="option" aria-selected="false">not selected</div>
+    <div role="option" aria-selected="true">selected</div>
+</div>
+
 <ul role="tree" class="ex" id="flowedTo1" aria-activedescendant="activedescendant">
     <li class="ex" role="treeitem" aria-expanded="true">expanded</li>
-    <li class="ex" role="treeitem" aria-expanded="false" id="activedescendant">collapsed</li>
+    <li class="ex" role="treeitem" aria-expanded="false" id="activedescendant" aria-selected="true">collapsed</li>
     <li class="ex" role="treeitem" aria-expanded="undefined">expanded</li>
 </ul>
+
+<!-- Full test of mouseEventNodeId in getAccessibilityPropertiesForNode_mouseEventNodeId.html. -->
+<div class="ex" onclick="void(0);">click</div>
 
 </div>
 
@@ -167,6 +186,7 @@ function test() {
             case "nodeId":
                 continue;
             case "activeDescendantNodeId":
+            case "mouseEventNodeId":
             case "parentNodeId":
                 if (typeof value === "number")
                     InspectorTest.log("    " + key + ": exists");
@@ -175,6 +195,7 @@ function test() {
             case "controlledNodeIds":
             case "flowedNodeIds":
             case "ownedNodeIds":
+            case "selectedChildNodeIds":
                 if (typeof value === "object" && value.length)
                     InspectorTest.log("    " + key + ".length: " + value.length);
                 break;

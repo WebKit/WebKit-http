@@ -165,10 +165,15 @@ void WebProcess::platformInitializeWebProcess(const WebProcessCreationParameters
     // NSURLCache, which it can disable to save memory.
     if (!usesNetworkProcess()) {
         if (!parameters.diskCacheDirectory.isNull()) {
+#if PLATFORM(IOS)
+            NSString *diskCachePath = nil;
+#else
+            NSString *diskCachePath = parameters.diskCacheDirectory;
+#endif
             [NSURLCache setSharedURLCache:adoptNS([[NSURLCache alloc]
                 initWithMemoryCapacity:parameters.nsURLCacheMemoryCapacity
                 diskCapacity:parameters.nsURLCacheDiskCapacity
-                diskPath:parameters.diskCacheDirectory]).get()];
+                diskPath:diskCachePath]).get()];
         }
     }
 
@@ -183,6 +188,8 @@ void WebProcess::platformInitializeWebProcess(const WebProcessCreationParameters
     setEnhancedAccessibility(parameters.accessibilityEnhancedUserInterfaceEnabled);
 
 #if USE(APPKIT)
+    [[NSUserDefaults standardUserDefaults] registerDefaults:@{ @"NSApplicationCrashOnExceptions" : @YES }];
+
     // rdar://9118639 accessibilityFocusedUIElement in NSApplication defaults to use the keyWindow. Since there's
     // no window in WK2, NSApplication needs to use the focused page's focused element.
     Method methodToPatch = class_getInstanceMethod([NSApplication class], @selector(accessibilityFocusedUIElement));

@@ -268,7 +268,9 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
     , m_viewState(ViewState::NoFlags)
     , m_backForwardList(WebBackForwardList::create(*this))
     , m_loadStateAtProcessExit(FrameLoadState::State::Finished)
+#if PLATFORM(MAC) && !USE(ASYNC_NSTEXTINPUTCLIENT)
     , m_temporarilyClosedComposition(false)
+#endif
     , m_textZoomFactor(1)
     , m_pageZoomFactor(1)
     , m_pageScaleFactor(1)
@@ -1054,6 +1056,19 @@ void WebPageProxy::viewStateDidChange(ViewState::Flags mayHaveChanged, WantsRepl
     updateBackingStoreDiscardableState();
 }
 
+void WebPageProxy::layerHostingModeDidChange()
+{
+    if (!isValid())
+        return;
+
+    LayerHostingMode layerHostingMode = m_pageClient.viewLayerHostingMode();
+    if (m_layerHostingMode == layerHostingMode)
+        return;
+
+    m_layerHostingMode = layerHostingMode;
+    m_process->send(Messages::WebPage::SetLayerHostingMode(static_cast<unsigned>(layerHostingMode)), m_pageID);
+}
+
 void WebPageProxy::waitForDidUpdateViewState()
 {
     // If we have previously timed out with no response from the WebProcess, don't block the UIProcess again until it starts responding.
@@ -1515,10 +1530,7 @@ void WebPageProxy::receivedPolicyDecision(PolicyAction action, WebFrameProxy* fr
         // Create a download proxy.
         DownloadProxy* download = m_process->context().createDownloadProxy();
         downloadID = download->downloadID();
-#if PLATFORM(EFL) || PLATFORM(GTK)
-        // Our design does not suppport downloads without a WebPage.
         handleDownloadRequest(download);
-#endif
     }
 
     // If we received a policy decision while in decidePolicyForResponse the decision will
@@ -2973,12 +2985,10 @@ void WebPageProxy::setMayStartMediaWhenInWindow(bool mayStartMedia)
     process().send(Messages::WebPage::SetMayStartMediaWhenInWindow(mayStartMedia), m_pageID);
 }
 
-#if PLATFORM(EFL) || PLATFORM(GTK)
 void WebPageProxy::handleDownloadRequest(DownloadProxy* download)
 {
     m_pageClient.handleDownloadRequest(download);
 }
-#endif // PLATFORM(EFL) || PLATFORM(GTK)
 
 #if PLATFORM(EFL)
 void WebPageProxy::didChangeContentSize(const IntSize& size)
@@ -3107,6 +3117,8 @@ void WebPageProxy::editorStateChanged(const EditorState& editorState)
 {
 #if PLATFORM(COCOA)
     bool couldChangeSecureInputState = m_editorState.isInPasswordField != editorState.isInPasswordField || m_editorState.selectionIsNone;
+#endif
+#if PLATFORM(MAC) && !USE(ASYNC_NSTEXTINPUTCLIENT)
     bool closedComposition = !editorState.shouldIgnoreCompositionSelectionChange && !editorState.hasComposition && (m_editorState.hasComposition || m_temporarilyClosedComposition);
     m_temporarilyClosedComposition = editorState.shouldIgnoreCompositionSelectionChange && (m_temporarilyClosedComposition || m_editorState.hasComposition) && !editorState.hasComposition;
 #endif
@@ -3117,10 +3129,12 @@ void WebPageProxy::editorStateChanged(const EditorState& editorState)
     // Selection being none is a temporary state when editing. Flipping secure input state too quickly was causing trouble (not fully understood).
     if (couldChangeSecureInputState && !editorState.selectionIsNone)
         m_pageClient.updateSecureInputState();
+#endif
 
     if (editorState.shouldIgnoreCompositionSelectionChange)
         return;
 
+#if PLATFORM(MAC) && !USE(ASYNC_NSTEXTINPUTCLIENT)
     if (closedComposition)
         m_pageClient.notifyInputContextAboutDiscardedComposition();
     if (editorState.hasComposition) {
@@ -3129,15 +3143,22 @@ void WebPageProxy::editorStateChanged(const EditorState& editorState)
         cancelComposition();
         m_pageClient.notifyInputContextAboutDiscardedComposition();
     }
-#if PLATFORM(IOS)
-    else {
+#elif PLATFORM(IOS)
+    if (!editorState.hasComposition) {
         // We need to notify the client on iOS to make sure the selection is redrawn.
         notifyRevealedSelection();
     }
-#endif
 #elif PLATFORM(EFL) || PLATFORM(GTK)
     m_pageClient.updateTextInputState();
 #endif
+}
+
+void WebPageProxy::compositionWasCanceled(const EditorState& editorState)
+{
+#if PLATFORM(COCOA)
+    m_pageClient.notifyInputContextAboutDiscardedComposition();
+#endif
+    editorStateChanged(editorState);
 }
 
 // Undo management
@@ -4060,7 +4081,9 @@ void WebPageProxy::resetStateAfterProcessExited()
 
     // FIXME: Reset m_editorState.
     // FIXME: Notify input methods about abandoned composition.
+#if PLATFORM(MAC) && !USE(ASYNC_NSTEXTINPUTCLIENT)
     m_temporarilyClosedComposition = false;
+#endif
 
 #if PLATFORM(MAC)
     dismissCorrectionPanel(ReasonForDismissingAlternativeTextIgnored);

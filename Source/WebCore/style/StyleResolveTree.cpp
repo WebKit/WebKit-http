@@ -259,40 +259,12 @@ static PassRef<RenderStyle> styleForElement(Element& element, ContainerNode& ren
     return element.document().ensureStyleResolver().styleForElement(&element, parentStyle);
 }
 
-// Check the specific case of elements that are children of regions but are flowed into a flow thread themselves.
-static bool elementInsideRegionNeedsRenderer(Element& element, ContainerNode& renderingParentNode, RefPtr<RenderStyle>& style)
-{
-#if ENABLE(CSS_REGIONS)
-    // The parent of a region should always be an element.
-    const RenderElement* parentRenderer = renderingParentNode.renderer();
-
-    bool parentIsRegion = parentRenderer && !parentRenderer->canHaveChildren() && parentRenderer->isRenderNamedFlowFragmentContainer();
-    bool parentIsNonRenderedInsideRegion = !parentRenderer && element.parentElement() && element.parentElement()->isInsideRegion();
-    if (!parentIsRegion && !parentIsNonRenderedInsideRegion)
-        return false;
-
-    if (!style)
-        style = styleForElement(element, renderingParentNode);
-
-    // Children of this element will only be allowed to be flowed into other flow-threads if display is NOT none.
-    if (element.rendererIsNeeded(*style))
-        element.setIsInsideRegion(true);
-
-    if (element.shouldMoveToFlowThread(*style))
-        return true;
-#else
-    UNUSED_PARAM(element);
-    UNUSED_PARAM(renderingParentNode);
-    UNUSED_PARAM(style);
-#endif
-    return false;
-}
-
 #if ENABLE(CSS_REGIONS)
 static RenderNamedFlowThread* moveToFlowThreadIfNeeded(Element& element, const RenderStyle& style)
 {
     if (!element.shouldMoveToFlowThread(style))
         return 0;
+
     FlowThreadController& flowThreadController = element.document().renderView()->flowThreadController();
     RenderNamedFlowThread& parentFlowRenderer = flowThreadController.ensureRenderFlowThreadWithName(style.flowThread());
     flowThreadController.registerNamedFlowContentElement(element, parentFlowRenderer);
@@ -306,9 +278,7 @@ static void createRendererIfNeeded(Element& element, ContainerNode& renderingPar
 
     RefPtr<RenderStyle> style = resolvedStyle;
 
-    element.setIsInsideRegion(false);
-
-    if (!shouldCreateRenderer(element, renderingParentNode) && !elementInsideRegionNeedsRenderer(element, renderingParentNode, style))
+    if (!shouldCreateRenderer(element, renderingParentNode))
         return;
 
     if (!style)
@@ -503,7 +473,7 @@ void updateTextRendererAfterContentChange(Text& textNode, unsigned offsetOfRepla
 static void attachChildren(ContainerNode& current, ContainerNode& renderingParentNode, RenderTreePosition& renderTreePosition)
 {
     for (Node* child = current.firstChild(); child; child = child->nextSibling()) {
-        ASSERT((!child->renderer() || child->inNamedFlow()) || current.shadowRoot());
+        ASSERT((!child->renderer() || child->isNamedFlowContentNode()) || current.shadowRoot());
         if (child->renderer()) {
             renderTreePosition.invalidateNextSibling(*child->renderer());
             continue;
@@ -753,7 +723,7 @@ static Change resolveLocal(Element& current, ContainerNode& renderingParentNode,
         localChange = determineChange(currentStyle.get(), newStyle.get());
     }
     if (localChange == Detach) {
-        if (current.renderer() || current.inNamedFlow())
+        if (current.renderer() || current.isNamedFlowContentNode())
             detachRenderTree(current, ReattachDetach);
         attachRenderTree(current, renderingParentNode, renderTreePosition, newStyle.release());
         invalidateWhitespaceOnlyTextSiblingsAfterAttachIfNeeded(current);

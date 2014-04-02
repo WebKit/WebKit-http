@@ -2,7 +2,7 @@
  * Copyright (C) 1999 Lars Knoll (knoll@kde.org)
  *           (C) 1999 Antti Koivisto (koivisto@kde.org)
  *           (C) 2001 Dirk Mueller (mueller@kde.org)
- * Copyright (C) 2004, 2007 Apple Inc. All rights reserved.
+ * Copyright (C) 2004, 2007, 2014 Apple Inc. All rights reserved.
  * Copyright (C) 2010 Nokia Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
@@ -30,19 +30,19 @@
 
 namespace WebCore {
 
-class LabelsNodeList final : public LiveNodeList {
+class LabelsNodeList final : public CachedLiveNodeList<LabelsNodeList> {
 public:
-    static PassRef<LabelsNodeList> create(LabelableElement& forNode, Type type, const AtomicString&)
+    static PassRef<LabelsNodeList> create(LabelableElement& forNode, const AtomicString&)
     {
-        ASSERT_UNUSED(type, type == Type::LabelsNodeListType);
         return adoptRef(*new LabelsNodeList(forNode));
     }
     ~LabelsNodeList();
 
-protected:
-    explicit LabelsNodeList(LabelableElement& forNode);
-
     virtual bool nodeMatches(Element*) const override;
+    virtual bool isRootedAtDocument() const override { return true; }
+
+private:
+    explicit LabelsNodeList(LabelableElement& forNode);
 };
 
 } // namespace WebCore

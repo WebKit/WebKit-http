@@ -1,3 +1,277 @@
+2014-03-28  Filip Pizlo  <fpizlo@apple.com>
+
+        Land the stackmap register liveness glue with the uses of the liveness disabled
+        https://bugs.webkit.org/show_bug.cgi?id=130924
+
+        Reviewed by Oliver Hunt.
+        
+        Add the liveness and fix other bugs I found.
+
+        * bytecode/PutByIdStatus.cpp:
+        (JSC::PutByIdStatus::computeFor):
+        * ftl/FTLCompile.cpp:
+        (JSC::FTL::usedRegistersFor):
+        (JSC::FTL::fixFunctionBasedOnStackMaps):
+        * ftl/FTLSlowPathCall.cpp:
+        * ftl/FTLSlowPathCallKey.cpp:
+        (JSC::FTL::SlowPathCallKey::dump):
+        * ftl/FTLSlowPathCallKey.h:
+        (JSC::FTL::SlowPathCallKey::SlowPathCallKey):
+        (JSC::FTL::SlowPathCallKey::argumentRegisters):
+        (JSC::FTL::SlowPathCallKey::withCallTarget):
+        * ftl/FTLStackMaps.cpp:
+        (JSC::FTL::StackMaps::Record::locationSet):
+        (JSC::FTL::StackMaps::Record::liveOutsSet):
+        (JSC::FTL::StackMaps::Record::usedRegisterSet):
+        * ftl/FTLStackMaps.h:
+        * ftl/FTLThunks.cpp:
+        (JSC::FTL::registerClobberCheck):
+        (JSC::FTL::slowPathCallThunkGenerator):
+        * jit/RegisterSet.cpp:
+        (JSC::RegisterSet::stackRegisters):
+        (JSC::RegisterSet::reservedHardwareRegisters):
+        (JSC::RegisterSet::runtimeRegisters):
+        (JSC::RegisterSet::specialRegisters):
+        (JSC::RegisterSet::dump):
+        * jit/RegisterSet.h:
+        (JSC::RegisterSet::RegisterSet):
+        (JSC::RegisterSet::setAny):
+        (JSC::RegisterSet::setMany):
+        * jit/Repatch.cpp:
+        (JSC::tryCacheGetByID):
+        (JSC::tryCachePutByID):
+        (JSC::tryRepatchIn):
+        * runtime/Options.cpp:
+        (JSC::recomputeDependentOptions):
+        * runtime/Options.h:
+
+2014-03-28  Mark Lam  <mark.lam@apple.com>
+
+        mandreel throws a checksum error on 32-bit x86.
+        <https://webkit.org/b/125706>
+
+        Reviewed by Filip Pizlo.
+
+        The 32-bit DFG can emit code that loads double constants from its
+        CodeBlock's m_constantRegisters vector.  The emitted instruction will
+        embed the address of the constant from the vector's backing store.
+        Subsequently, while inserting new constants, the DFG may resize the
+        vector, thereby reallocating the backing store.  This renders the
+        previously embedded constant addresses stale.
+
+        The fix is to use a dedicated doubles constant pool stored in the DFG
+        CommonData instead.  This constant pool won't be reallocated, and
+        hence will not manifest this issue.
+
+        * dfg/DFGCommonData.h:
+        * dfg/DFGGraph.h:
+        * dfg/DFGJITCompiler.cpp:
+        (JSC::DFG::JITCompiler::link):
+        (JSC::DFG::JITCompiler::addressOfDoubleConstant):
+        * dfg/DFGJITCompiler.h:
+        (JSC::DFG::JITCompiler::addressOfDoubleConstant): Deleted.
+
+2014-03-28  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: console.warn is showing as error instead of warning
+        https://bugs.webkit.org/show_bug.cgi?id=130921
+
+        Reviewed by Timothy Hatcher.
+
+        * runtime/ConsolePrototype.cpp:
+        (JSC::consoleProtoFuncWarn):
+        console.warn should be MessageLevel Warning, not Error.
+
+2014-03-28  Oliver Hunt  <oliver@apple.com>
+
+        Fix cloop build.
+
+        * bytecode/BytecodeList.json:
+
+2014-03-28  Michael Saboff  <msaboff@apple.com>
+
+        Unreviewed, rolling r166248 back in.
+
+        Turns out r166070 didn't cause a 2% performance loss in page load times
+
+        Reverted changeset:
+
+        Unreviewed, rolling out r166126.
+        Rollout r166126 in prepartion to roll out prerequisite r166070
+
+2014-03-27  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r166376.
+        https://bugs.webkit.org/show_bug.cgi?id=130887
+
+        This was a misguided optimization. (Requested by kling on
+        #webkit).
+
+        Reverted changeset:
+
+        "Avoid fetching JSObject::structure() repeatedly in
+        putDirectInternal."
+        https://bugs.webkit.org/show_bug.cgi?id=130857
+        http://trac.webkit.org/changeset/166376
+
+2014-03-27  Oliver Hunt  <oliver@apple.com>
+
+        Support spread operand in |new| expressions
+        https://bugs.webkit.org/show_bug.cgi?id=130877
+
+        Reviewed by Michael Saboff.
+
+        Add support for the spread operator being applied in
+        |new| expressions.  This required adding support for
+        a new opcode, op_construct_varargs.  This is a relatively
+        simple refactoring of the call_varargs implementation.
+
+        * bytecode/BytecodeList.json:
+        * bytecode/BytecodeUseDef.h:
+        (JSC::computeUsesForBytecodeOffset):
+        (JSC::computeDefsForBytecodeOffset):
+        * bytecode/CallLinkInfo.cpp:
+        (JSC::CallLinkInfo::unlink):
+        * bytecode/CallLinkInfo.h:
+        (JSC::CallLinkInfo::callTypeFor):
+        (JSC::CallLinkInfo::specializationKind):
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::dumpBytecode):
+        (JSC::CodeBlock::CodeBlock):
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::emitCallVarargs):
+        (JSC::BytecodeGenerator::emitConstructVarargs):
+        (JSC::BytecodeGenerator::emitConstruct):
+        * bytecompiler/BytecodeGenerator.h:
+        * jit/JIT.cpp:
+        (JSC::JIT::privateCompileMainPass):
+        (JSC::JIT::privateCompileSlowCases):
+        * jit/JIT.h:
+        * jit/JITCall.cpp:
+        (JSC::JIT::compileOpCall):
+        (JSC::JIT::compileOpCallSlowCase):
+        (JSC::JIT::emit_op_construct_varargs):
+        (JSC::JIT::emitSlow_op_construct_varargs):
+        * jit/JITCall32_64.cpp:
+        (JSC::JIT::emitSlow_op_construct_varargs):
+        (JSC::JIT::emit_op_construct_varargs):
+        (JSC::JIT::compileOpCall):
+        (JSC::JIT::compileOpCallSlowCase):
+        * jit/JITOperations.cpp:
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::LLINT_SLOW_PATH_DECL):
+        * llint/LLIntSlowPaths.h:
+        * llint/LowLevelInterpreter.asm:
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseMemberExpression):
+
+2014-03-27  Filip Pizlo  <fpizlo@apple.com>
+
+        Revert http://trac.webkit.org/changeset/166386 because it broke builds.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/LLVMForJSC.xcconfig:
+
+2014-03-27  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, skip this test for now.
+
+        * tests/stress/recurse-infinitely-on-getter.js:
+
+2014-03-27  Filip Pizlo  <fpizlo@apple.com>
+
+        Switch the LLVMForJSC target to using the LLVM in /usr/local rather than /usr/local/LLVMForJavaScriptCore on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=130867
+        <rdar://problem/16432456> 
+
+        Reviewed by Mark Hahnenberg.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/LLVMForJSC.xcconfig:
+
+2014-03-27  Andreas Kling  <akling@apple.com>
+
+        Avoid fetching JSObject::structure() repeatedly in putDirectInternal.
+        <https://webkit.org/b/130857>
+
+        Use the cached Structure* instead of re-fetching it over and over since
+        that's a non-trivial operation these days.
+
+        Reviewed by Mark Hahnenberg.
+
+        * runtime/JSObject.h:
+        (JSC::JSObject::putDirectInternal):
+
+2014-03-27  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        Check the remembered set bit faster
+        https://bugs.webkit.org/show_bug.cgi?id=130860
+
+        Reviewed by Oliver Hunt.
+
+        Currently we look up the remembered set bit in the MarkedBlock in C++ code, but 
+        that bit is also stored in the object. We should look it up there whenever possible.
+
+        * heap/CopiedBlockInlines.h:
+        (JSC::CopiedBlock::shouldReportLiveBytes):
+        * heap/Heap.cpp:
+        (JSC::Heap::addToRememberedSet):
+        * heap/Heap.h:
+        * heap/HeapInlines.h: Removed.
+        * heap/SlotVisitorInlines.h:
+        (JSC::SlotVisitor::reportExtraMemoryUsage):
+
+2014-03-27  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Provide SPI to disallow remote inspection of a JSContext
+        https://bugs.webkit.org/show_bug.cgi?id=130853
+
+        Reviewed by Timothy Hatcher.
+
+        * API/JSContextPrivate.h: Added.
+        * API/JSContext.mm:
+        (-[JSContext _remoteInspectionEnabled]):
+        (-[JSContext _setRemoteInspectionEnabled:]):
+        ObjC SPI to enable/disable remote inspection.
+
+        * API/JSContextRefPrivate.h:
+        * API/JSContextRef.cpp:
+        (JSGlobalContextGetRemoteInspectionEnabled):
+        (JSGlobalContextSetRemoteInspectionEnabled):
+        C SPI to enable/disable remote inspection.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        Add new private header, and export as a private header.
+
+2014-03-27  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        Clean up questionable style in ScriptExecutable::prepareForExecutionImpl
+        https://bugs.webkit.org/show_bug.cgi?id=130845
+
+        Reviewed by Filip Pizlo.
+
+        There was a hack added to make sure C Loop LLInt worked which included overriding the 
+        global Options::useLLInt setting, which makes no sense to do here. We should put the 
+        update of the global setting in Options::recomputeDependentOptions along with the other 
+        execution engine flags.
+
+        * runtime/Executable.cpp:
+        (JSC::ScriptExecutable::prepareForExecutionImpl):
+        * runtime/Options.cpp:
+        (JSC::recomputeDependentOptions):
+
+2014-03-26  Filip Pizlo  <fpizlo@apple.com>
+
+        Enable LLVM stackmap liveOuts computation
+        https://bugs.webkit.org/show_bug.cgi?id=130821
+
+        Reviewed by Andy Estes and Sam Weinig.
+
+        * ftl/FTLStackMaps.cpp:
+        (JSC::FTL::StackMaps::Record::dump):
+        * llvm/library/LLVMExports.cpp:
+        (initializeAndGetJSCLLVMAPI):
+
 2014-03-26  Filip Pizlo  <fpizlo@apple.com>
 
         Parse stackmaps liveOuts

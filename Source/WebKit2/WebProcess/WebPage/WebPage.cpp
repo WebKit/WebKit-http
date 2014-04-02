@@ -1963,8 +1963,10 @@ static bool handleTouchEvent(const WebTouchEvent& touchEvent, Page* page)
 
 void WebPage::touchEvent(const WebTouchEvent& touchEvent)
 {
+#if PLATFORM(IOS)
+    m_lastInteractionLocation = touchEvent.position();
+#endif
     bool handled = false;
-
     if (canHandleUserEvents()) {
         CurrentEvent currentEvent(touchEvent);
 
@@ -1975,6 +1977,9 @@ void WebPage::touchEvent(const WebTouchEvent& touchEvent)
 
 void WebPage::touchEventSyncForTesting(const WebTouchEvent& touchEvent, bool& handled)
 {
+#if PLATFORM(IOS)
+    m_lastInteractionLocation = touchEvent.position();
+#endif
     CurrentEvent currentEvent(touchEvent);
     handled = handleTouchEvent(touchEvent, m_page.get());
 }
@@ -4104,7 +4109,18 @@ void WebPage::cancelComposition()
 
 void WebPage::didChangeSelection()
 {
-    send(Messages::WebPageProxy::EditorStateChanged(editorState()));
+#if (PLATFORM(MAC) && USE(ASYNC_NSTEXTINPUTCLIENT))
+    Frame& frame = m_page->focusController().focusedOrMainFrame();
+    // Abandon the current inline input session if selection changed for any other reason but an input method direct action.
+    // FIXME: Many changes that affect composition node do not go through didChangeSelection(). We need to do something when DOM manipulation affects the composition, because otherwise input method's idea about it will be different from Editor's.
+    // FIXME: We can't cancel composition when selection changes to NoSelection, but we probably should.
+    if (frame.editor().hasComposition() && !frame.editor().ignoreCompositionSelectionChange() && !frame.selection().isNone()) {
+        frame.editor().cancelComposition();
+        send(Messages::WebPageProxy::CompositionWasCanceled(editorState()));
+    } else
+#endif
+        send(Messages::WebPageProxy::EditorStateChanged(editorState()));
+
 #if PLATFORM(IOS)
     m_drawingArea->scheduleCompositingLayerFlush();
 #endif

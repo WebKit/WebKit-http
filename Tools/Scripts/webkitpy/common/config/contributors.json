@@ -428,7 +428,6 @@
       },
       "Brian Burg" : {
          "emails" : [
-            "bburg@apple.com",
             "burg@cs.washington.edu"
          ],
          "expertise" : "Developer Tools, Web Inspector",
@@ -1705,6 +1704,14 @@
          ],
          "nicks" : [
             "pilgrim_google"
+         ]
+      },
+      "Martin Hock" : {
+         "emails" : [
+            "mhock@apple.com"
+         ],
+         "nicks" : [
+            "mhock"
          ]
       },
       "Mary Wu" : {

@@ -1,3 +1,361 @@
+2014-03-30  Alexey Proskuryakov  <ap@apple.com>
+
+        REGRESSION: compositing/columns/composited-rl-paginated-repaint.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=130953
+
+        * platform/mac/TestExpectations: Marked as such.
+
+2014-03-30  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r166467.
+        https://bugs.webkit.org/show_bug.cgi?id=130952
+
+        The test fails (Requested by ap_ on #webkit).
+
+        Reverted changeset:
+
+        "Web Inspector: Add a new layout test for better coverage of
+        accessibility "focused" in inspector-protocol
+        DOM.getAccessibilityPropertiesForNode"
+        https://bugs.webkit.org/show_bug.cgi?id=130196
+        http://trac.webkit.org/changeset/166467
+
+2014-03-30  Diego Pino Garcia  <dpino@igalia.com>
+
+        Web Inspector: Add a new layout test for better coverage of accessibility "focused" in inspector-protocol DOM.getAccessibilityPropertiesForNode
+        https://bugs.webkit.org/show_bug.cgi?id=130196
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector-protocol/dom/getAccessibilityPropertiesForNode-focused-expected.txt: Added.
+        * inspector-protocol/dom/getAccessibilityPropertiesForNode-focused.html: Added.
+
+2014-03-29  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r166434.
+        https://bugs.webkit.org/show_bug.cgi?id=130938
+
+        Caused crashes and other failures on cache tests (Requested by
+        ap on #webkit).
+
+        Reverted changeset:
+
+        "Web Replay: add page-level setting to bypass the MemoryCache"
+        https://bugs.webkit.org/show_bug.cgi?id=130728
+        http://trac.webkit.org/changeset/166434
+
+2014-03-29  David Kilzer  <ddkilzer@apple.com>
+
+        Preserve selection end positions in directionOfSelection
+        <http://webkit.org/b/104813>
+        <rdar://problem/13666417>
+
+        Reviewed by Brent Fulgham.
+
+        Merged from Blink (patch by kenrb@chromium.org):
+        https://src.chromium.org/viewvc/blink?revision=150621&view=revision
+        http://crbug.com/164263
+
+            VisibleSelection::visibleStart() and VisibleSelection::visibleEnd()
+            can both cause layouts, which has the potential to invalidate any
+            rendertree-based objects. This was causing a problem in
+            FrameSelection::directionOfSelection(), where a reference to a
+            lineBox was being held across a call to visibleEnd().
+
+            This patch ensures that the any layout is completed before linebox
+            references are retrieved.
+
+        * editing/selection/layout-during-move-selection-crash-expected.txt: Added.
+        * editing/selection/layout-during-move-selection-crash.html: Added.
+
+2014-03-29  Zalan Bujtas  <zalan@apple.com>
+
+        Subpixel rendering: Simple line layout should not round to integral position while painting.
+        https://bugs.webkit.org/show_bug.cgi?id=130934
+
+        Reviewed by Simon Fraser.
+
+        Remove rounding to integral position. When RenderLayer is injected and hides subpixel positions,
+        integral rounding produces different paint position.
+
+        * fast/flexbox/hidpi-simple-line-layout-with-flexbox-and-transition-expected.html: Added.
+        * fast/flexbox/hidpi-simple-line-layout-with-flexbox-and-transition.html: Added.
+
+2014-03-28  Javier Fernandez  <jfernandez@igalia.com>
+
+        [CSS Grid Layout] The 'auto' height must be adapted to the item's margin.
+        https://bugs.webkit.org/show_bug.cgi?id=130920
+
+        Reviewed by Darin Adler.
+
+        * fast/css-grid-layout/grid-item-margin-auto-columns-rows-expected.txt: Added.
+        * fast/css-grid-layout/grid-item-margin-auto-columns-rows.html: Added.
+
+2014-03-28  James Craig  <jcraig@apple.com>
+
+        Web Inspector: AXI: support for live regions
+        https://bugs.webkit.org/show_bug.cgi?id=130725
+
+        Reviewed by Timothy Hatcher.
+
+        Initial support for @aria-live, @aria-atomic, and @aria-busy.
+
+        * inspector-protocol/dom/getAccessibilityPropertiesForNode-expected.txt: Updated.
+        * inspector-protocol/dom/getAccessibilityPropertiesForNode.html: Updated.
+        * inspector-protocol/dom/getAccessibilityPropertiesForNode_liveRegion-expected.txt: Added.
+        * inspector-protocol/dom/getAccessibilityPropertiesForNode_liveRegion.html: Added.
+
+2014-03-28  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: console.warn is showing as error instead of warning
+        https://bugs.webkit.org/show_bug.cgi?id=130921
+
+        Reviewed by Timothy Hatcher.
+
+        Add a test for console.log, warn, error, etc to make sure they get
+        to the frontend with the expected source and level.
+
+        * inspector-protocol/console/console-message-expected.txt: Added.
+        * inspector-protocol/console/console-message.html: Added.
+
+2014-03-28  James Craig  <jcraig@apple.com>
+
+        Web Inspector: AXI: expose what elements get generic "clickable" status
+        https://bugs.webkit.org/show_bug.cgi?id=130721
+
+        Reviewed by Timothy Hatcher.
+
+        Expose ancestor element link to "Click Listener" or generic "Clickable: Yes" if current node has mouse handler.
+
+        * inspector-protocol/dom/getAccessibilityPropertiesForNode-expected.txt: 
+        * inspector-protocol/dom/getAccessibilityPropertiesForNode.html: Simple coverage of mouseEventNodeId.
+        * inspector-protocol/dom/getAccessibilityPropertiesForNode_mouseEventNodeId-expected.txt: Added.
+        * inspector-protocol/dom/getAccessibilityPropertiesForNode_mouseEventNodeId.html: Added. Full coverage.
+
+2014-03-28  Brian Burg  <bburg@apple.com>
+
+        Web Replay: add page-level setting to bypass the MemoryCache
+        https://bugs.webkit.org/show_bug.cgi?id=130728
+
+        Reviewed by Timothy Hatcher.
+
+        Mac WebKit2 needs different expectations because of resource load timing characteristics
+        introduced by the interaction of Settings::usesMemoryCache and NetworkProcess.
+
+        * http/tests/cache/bypass-memory-cache-after-reload-expected.txt: Added.
+        * http/tests/cache/bypass-memory-cache-after-reload.html: Added.
+        * platform/mac-wk2/http/tests/cache/bypass-memory-cache-after-reload-expected.txt: Added.
+
+2014-03-28  Radu Stavila  <stavila@adobe.com>
+
+        In some situations, partial layouts of floating elements produce incorrect results.
+        https://bugs.webkit.org/show_bug.cgi?id=122668
+
+        Reviewed by David Hyatt.
+
+        Added test to ensure an assertion is not reached when performing a partial
+        layout of float elements in certain situations.
+
+        * fast/block/float/floats-in-clean-line-crash-expected.txt: Added.
+        * fast/block/float/floats-in-clean-line-crash.html: Added.
+
+2014-03-28  Brent Fulgham  <bfulgham@apple.com>
+
+        Unreviewed gardening. Make WebVTT tests less flaky by ensuring captions are set to display
+        in each test, rather than relying on earlier tests turning captions on. This caused tests to
+        fail if run out of order.
+
+        * media/track/regions-webvtt/vtt-region-display.html: Turn captions on.
+        * media/track/regions-webvtt/vtt-region-dom-layout.html: Ditto.
+
+2014-03-28  Jer Noble  <jer.noble@apple.com>
+
+        [MSE] Implement support for SourceBuffer.remove()
+        https://bugs.webkit.org/show_bug.cgi?id=121562
+
+        Reviewed by Eric Carlson.
+
+        * media/media-source/media-source-remove-expected.txt: Added.
+        * media/media-source/media-source-remove.html: Added.
+
+2014-03-28  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Clear SVGInlineTextBox fragments when the text changes.
+        https://bugs.webkit.org/show_bug.cgi?id=130879
+
+        Reviewed by Darin Adler.
+
+        Ported from Blink: https://src.chromium.org/viewvc/blink?revision=150456&view=revision
+
+        When failing, this test will render garbage characters or crash.
+
+        * svg/custom/unicode-in-tspan-multi-svg-crash-expected.txt: Added.
+        * svg/custom/unicode-in-tspan-multi-svg-crash.html: Added.
+
+2014-03-28  Michael Saboff  <msaboff@apple.com>
+
+        Unreviewed, rolling r166248 back in.
+
+        Turns out r166070 didn't cause a 2% performance loss in page load times
+
+        Reverted changeset:
+
+        Unreviewed, rolling out r166126.
+        Rollout r166126 in prepartion to roll out prerequisite r166070
+
+2014-03-28  Krzysztof Czech  <k.czech@samsung.com>
+
+        [EFL][GTK] Remove expectations after r166194
+        https://bugs.webkit.org/show_bug.cgi?id=130842
+
+        Reviewed by Mario Sanchez Prada.
+
+        r166194 introduces one common expectation for all ports.
+
+        * platform/efl-wk1/accessibility/table-with-aria-role-expected.txt: Removed.
+        * platform/efl-wk2/accessibility/table-with-aria-role-expected.txt: Removed.
+        * platform/gtk/accessibility/table-with-aria-role-expected.txt: Removed.
+
+2014-03-27  James Craig  <jcraig@apple.com>
+
+        Web Inspector: AXI: expose selectedChildNodeIds of list boxes, tree controls, etc., and reconcile UI with childNodeIds
+        https://bugs.webkit.org/show_bug.cgi?id=130827
+
+        Reviewed by Timothy Hatcher.
+
+        Tests selectedChildNodeIds in inspector-protocol: DOM.getAccessibilityPropertiesForNode.
+
+        * inspector-protocol/dom/getAccessibilityPropertiesForNode-expected.txt:
+        * inspector-protocol/dom/getAccessibilityPropertiesForNode.html:
+
+2014-03-27  Mark Rowe  <mrowe@apple.com>
+
+        <https://webkit.org/b/42704> WebKitTestRunner needs to print history delegate information
+
+        Reviewed by Sam Weinig.
+
+        * platform/wk2/TestExpectations: Enable the two layout tests that pass. One test remains disabled
+        due to lack of testRunner API, and another due to an apparent bug in WebKit2's handling of
+        client redirects.
+
+2014-03-27  Oliver Hunt  <oliver@apple.com>
+
+        Support spread operand in |new| expressions
+        https://bugs.webkit.org/show_bug.cgi?id=130877
+
+        Reviewed by Michael Saboff.
+
+        Correctness and performance tests for spread operands
+
+        * js/parser-syntax-check-expected.txt:
+        * js/regress/call-spread-expected.txt: Added.
+        * js/regress/call-spread.html: Added.
+        * js/regress/new-spread-expected.txt: Added.
+        * js/regress/new-spread.html: Added.
+        * js/regress/script-tests/call-spread.js: Added.
+        (testFunction):
+        (test2):
+        (test3):
+        * js/regress/script-tests/new-spread.js: Added.
+        (testFunction):
+        (test2):
+        (test3):
+        * js/script-tests/parser-syntax-check.js:
+
+2014-03-27  Bem Jones-Bey  <bjonesbe@adobe.com>
+
+        [CSS Shapes][css clip-path] rounded corner calculation for box shapes is wrong
+        https://bugs.webkit.org/show_bug.cgi?id=127982
+
+        Reviewed by Simon Fraser.
+
+        * css3/masking/clip-path-border-radius-border-box-000-expected.html: Added.
+        * css3/masking/clip-path-border-radius-border-box-000.html: Added.
+        * css3/masking/clip-path-border-radius-content-box-000-expected.html: Added.
+        * css3/masking/clip-path-border-radius-content-box-000.html: Added.
+        * css3/masking/clip-path-border-radius-content-box-001-expected.html: Added.
+        * css3/masking/clip-path-border-radius-content-box-001.html: Added.
+        * css3/masking/clip-path-border-radius-padding-box-000-expected.html: Added.
+        * css3/masking/clip-path-border-radius-padding-box-000.html: Added.
+        * css3/masking/clip-path-border-radius-padding-box-001-expected.html: Added.
+        * css3/masking/clip-path-border-radius-padding-box-001.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-border-radius-border-box-000-expected.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-border-radius-border-box-000.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-border-radius-border-box-001-expected.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-border-radius-border-box-001.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-border-radius-border-box-002-expected.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-border-radius-border-box-002.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-border-radius-content-box-000-expected.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-border-radius-content-box-000.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-border-radius-content-box-001-expected.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-border-radius-content-box-001.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-border-radius-content-box-002-expected.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-border-radius-content-box-002.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-border-radius-content-box-003-expected.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-border-radius-content-box-003.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-border-radius-margin-box-000-expected.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-border-radius-margin-box-000.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-border-radius-margin-box-001-expected.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-border-radius-margin-box-001.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-border-radius-margin-box-002-expected.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-border-radius-margin-box-002.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-border-radius-margin-box-003-expected.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-border-radius-margin-box-003.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-border-radius-margin-box-004-expected.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-border-radius-margin-box-004.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-border-radius-padding-box-000-expected.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-border-radius-padding-box-000.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-border-radius-padding-box-001-expected.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-border-radius-padding-box-001.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-border-radius-padding-box-002-expected.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-border-radius-padding-box-002.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-border-radius-padding-box-003-expected.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-border-radius-padding-box-003.html: Added.
+
+2014-03-27  Brent Fulgham  <bfulgham@apple.com>
+
+        Fix a crash caused by track insertion after load()
+        https://bugs.webkit.org/show_bug.cgi?id=130777
+
+        Reviewed by Eric Carlson.
+
+        Test: media/track/track-insert-after-load-crash.html
+
+        Based on the Blink change (patch by acolwell@chromium.org):
+        https://codereview.chromium.org/211373009/
+
+        * media/track/track-insert-after-load-crash-expected.txt: Added.
+        * media/track/track-insert-after-load-crash.html: Added.
+
+2014-03-27  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [CSS Grid Layout] Remove unused variable in fast/css-grid-layout/implicit-position-dynamic-change.html
+        https://bugs.webkit.org/show_bug.cgi?id=130833
+
+        Reviewed by Sergio Villar Senin.
+
+        * fast/css-grid-layout/implicit-position-dynamic-change.html: Inside
+        method updateImplicitGridColumn() we define a variable gridItem that
+        is not used. This patch removes it.
+
+2014-03-27  Mihnea Ovidenie  <mihnea@adobe.com>
+
+        [CSSRegions] Crash when cloning a region child with a content node child
+        https://bugs.webkit.org/show_bug.cgi?id=129811
+
+        Reviewed by David Hyatt.
+
+        Collecting the children of a region in another named flow will be supported
+        again in the future and it will be revisited when we will implement the content
+        keyword: http://dev.w3.org/csswg/css-regions-1/#the-flow-into-property.
+        For now, skip the tests for that use case.
+
+        * TestExpectations:
+        * fast/regions/overflow-region-inline-expected.html: Expected file should not be region based.
+        * fast/regions/region-content-node-child-clone-crash-expected.txt: Added.
+        * fast/regions/region-content-node-child-clone-crash.html: Added.
+        * fast/regions/unsplittable-nested-region-expected.html: Expected file should not be region based.
+
 2014-03-26  Myles C. Maxfield  <mmaxfield@apple.com>
 
         Skipping underlines disregard points completely inside the underline rect

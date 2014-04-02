@@ -180,7 +180,9 @@ bool WebPageProxy::insertText(const String& text, const EditingRange& replacemen
 
     bool handled = true;
     process().sendSync(Messages::WebPage::InsertText(text, replacementRange), Messages::WebPage::InsertText::Reply(handled, m_editorState), m_pageID);
+#if PLATFORM(MAC) && !USE(ASYNC_NSTEXTINPUTCLIENT)
     m_temporarilyClosedComposition = false;
+#endif
 
     return handled;
 }
@@ -270,11 +272,11 @@ bool WebPageProxy::executeKeypressCommands(const Vector<WebCore::KeypressCommand
 
     bool result = false;
     process().sendSync(Messages::WebPage::ExecuteKeypressCommands(commands), Messages::WebPage::ExecuteKeypressCommands::Reply(result, m_editorState), m_pageID);
+#if PLATFORM(MAC) && !USE(ASYNC_NSTEXTINPUTCLIENT)
     m_temporarilyClosedComposition = false;
+#endif
     return result;
 }
-
-#endif // !USE(ASYNC_NSTEXTINPUTCLIENT)
 
 void WebPageProxy::cancelComposition()
 {
@@ -283,6 +285,8 @@ void WebPageProxy::cancelComposition()
 
     process().sendSync(Messages::WebPage::CancelComposition(), Messages::WebPage::CancelComposition::Reply(m_editorState), m_pageID);
 }
+
+#endif // !USE(ASYNC_NSTEXTINPUTCLIENT)
 
 void WebPageProxy::insertDictatedTextAsync(const String& text, const EditingRange& replacementRange, const Vector<TextAlternativeWithRange>& dictationAlternativesWithRange)
 {

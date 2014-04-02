@@ -370,8 +370,12 @@ struct WKViewInterpretKeyEventsParameters {
 {
     _data->_inResignFirstResponder = true;
 
+#if USE(ASYNC_NSTEXTINPUTCLIENT)
+    _data->_page->confirmCompositionAsync();
+#else
     if (_data->_page->editorState().hasComposition && !_data->_page->editorState().shouldIgnoreCompositionSelectionChange)
         _data->_page->cancelComposition();
+#endif
 
     [self _notifyInputContextAboutDiscardedComposition];
 
@@ -1343,6 +1347,10 @@ static void extractUnderlines(NSAttributedString *string, Vector<CompositionUnde
         completionHandler(NO, commands);
         return;
     }
+
+    // FIXME: Remove the special case for NSFlagsChanged once <rdar://16393434> is fixed.
+    if ([event type] == NSFlagsChanged)
+        return;
 
     LOG(TextInput, "-> handleEventByInputMethod:%p %@", event, event);
     [[self inputContext] handleEventByInputMethod:event completionHandler:^(BOOL handled) {
@@ -2373,6 +2381,8 @@ static void createSandboxExtensionsForFileUpload(NSPasteboard *pasteboard, Sandb
                                                      name:NSWindowDidChangeBackingPropertiesNotification object:window];
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_windowDidChangeScreen:)
                                                      name:NSWindowDidChangeScreenNotification object:window];
+        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_windowDidChangeLayerHosting:)
+                                                     name:@"_NSWindowDidChangeContentsHostedInLayerSurfaceNotification" object:window];
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_windowDidChangeOcclusionState:)
                                                      name:NSWindowDidChangeOcclusionStateNotification object:window];
@@ -2397,6 +2407,7 @@ static void createSandboxExtensionsForFileUpload(NSPasteboard *pasteboard, Sandb
     [[NSNotificationCenter defaultCenter] removeObserver:self name:@"_NSWindowDidBecomeVisible" object:window];
     [[NSNotificationCenter defaultCenter] removeObserver:self name:NSWindowDidChangeBackingPropertiesNotification object:window];
     [[NSNotificationCenter defaultCenter] removeObserver:self name:NSWindowDidChangeScreenNotification object:window];
+    [[NSNotificationCenter defaultCenter] removeObserver:self name:@"_NSWindowDidChangeContentsHostedInLayerSurfaceNotification" object:window];
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
     [[NSNotificationCenter defaultCenter] removeObserver:self name:NSWindowDidChangeOcclusionStateNotification object:window];
 #endif
@@ -2470,6 +2481,11 @@ static void createSandboxExtensionsForFileUpload(NSPasteboard *pasteboard, Sandb
 - (void)_windowDidChangeScreen:(NSNotification *)notification
 {
     [self doWindowDidChangeScreen];
+}
+
+- (void)_windowDidChangeLayerHosting:(NSNotification *)notification
+{
+    _data->_page->layerHostingModeDidChange();
 }
 
 - (void)_windowDidResignKey:(NSNotification *)notification
@@ -3371,7 +3387,7 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     return _data->_page->suppressVisibilityUpdates();
 }
 
-- (instancetype)initWithFrame:(NSRect)frame context:(WebContext&)context configuration:(WebPageConfiguration)webPageConfiguration
+- (instancetype)initWithFrame:(NSRect)frame context:(WebContext&)context configuration:(WebPageConfiguration)webPageConfiguration webView:(WKWebView *)webView
 {
     self = [super initWithFrame:frame];
     if (!self)
@@ -3396,7 +3412,7 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     [trackingArea release];
 
     _data = [[WKViewData alloc] init];
-    _data->_pageClient = std::make_unique<PageClientImpl>(self);
+    _data->_pageClient = std::make_unique<PageClientImpl>(self, webView);
     _data->_page = context.createWebPage(*_data->_pageClient, std::move(webPageConfiguration));
     _data->_page->setIntrinsicDeviceScaleFactor([self _intrinsicDeviceScaleFactor]);
     _data->_page->initializeWebPage();
@@ -3489,7 +3505,7 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     webPageConfiguration.pageGroup = toImpl(pageGroupRef);
     webPageConfiguration.relatedPage = toImpl(relatedPage);
 
-    return [self initWithFrame:frame context:*toImpl(contextRef) configuration:webPageConfiguration];
+    return [self initWithFrame:frame context:*toImpl(contextRef) configuration:webPageConfiguration webView:nil];
 }
 
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080

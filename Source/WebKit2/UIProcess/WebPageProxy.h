@@ -555,6 +555,8 @@ public:
     bool isInWindow() const { return m_viewState & WebCore::ViewState::IsInWindow; }
     void waitForDidUpdateViewState();
 
+    void layerHostingModeDidChange();
+
     WebCore::IntSize viewSize() const;
     bool isViewVisible() const { return m_viewState & WebCore::ViewState::IsVisible; }
     bool isViewWindowActive() const;
@@ -648,8 +650,6 @@ public:
     void setCompositionAsync(const String& text, Vector<WebCore::CompositionUnderline> underlines, const EditingRange& selectionRange, const EditingRange& replacementRange);
     void confirmCompositionAsync();
 
-    void cancelComposition();
-
 #if PLATFORM(MAC)
     void insertDictatedTextAsync(const String& text, const EditingRange& replacementRange, const Vector<WebCore::TextAlternativeWithRange>& dictationAlternatives);
     void attributedSubstringForCharacterRangeAsync(const EditingRange&, PassRefPtr<AttributedStringForCharacterRangeCallback>);
@@ -665,6 +665,7 @@ public:
     uint64_t characterIndexForPoint(const WebCore::IntPoint);
     WebCore::IntRect firstRectForCharacterRange(const EditingRange&);
     bool executeKeypressCommands(const Vector<WebCore::KeypressCommand>&);
+    void cancelComposition();
 #endif
 
     WKView* wkView() const;
@@ -919,9 +920,7 @@ public:
     void findZoomableAreaForPoint(const WebCore::IntPoint&, const WebCore::IntSize&);
 #endif
 
-#if PLATFORM(EFL) || PLATFORM(GTK)
     void handleDownloadRequest(DownloadProxy*);
-#endif
 
     void advanceToNextMisspelling(bool startBeforeSelection);
     void changeSpellingToWord(const String& word);
@@ -1184,6 +1183,7 @@ private:
 #endif
 
     void editorStateChanged(const EditorState&);
+    void compositionWasCanceled(const EditorState&);
 
     // Back/Forward list management
     void backForwardAddItem(uint64_t itemID);
@@ -1284,6 +1284,7 @@ private:
     void autocorrectionContextCallback(const String&, const String&, const String&, const String&, uint64_t, uint64_t, uint64_t);
     void dictationContextCallback(const String&, const String&, const String&, uint64_t);
     void interpretKeyEvent(const EditorState&, bool isCharEvent, bool& handled);
+    void showPlaybackTargetPicker(bool hasVideo, const WebCore::IntRect& elementRect);
 #endif
 #if PLATFORM(GTK)
     void printFinishedCallback(const WebCore::ResourceError&, uint64_t);
@@ -1467,7 +1468,9 @@ private:
     FrameLoadState::State m_loadStateAtProcessExit;
 
     EditorState m_editorState;
+#if PLATFORM(MAC) && !USE(ASYNC_NSTEXTINPUTCLIENT)
     bool m_temporarilyClosedComposition; // Editor state changed from hasComposition to !hasComposition, but that was only with shouldIgnoreCompositionSelectionChange yet.
+#endif
 
     double m_textZoomFactor;
     double m_pageZoomFactor;

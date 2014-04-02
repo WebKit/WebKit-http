@@ -146,9 +146,7 @@ public:
     virtual void updateTextInputState() = 0;
 #endif // PLATFORM(EFL) || PLATOFRM(GTK)
 
-#if PLATFORM(EFL) || PLATFORM(GTK)
     virtual void handleDownloadRequest(DownloadProxy*) = 0;
-#endif // PLATFORM(EFL) || PLATFORM(GTK)
 
 #if PLATFORM(EFL)
     virtual void didChangeContentSize(const WebCore::IntSize&) = 0;
@@ -249,6 +247,7 @@ public:
     virtual void positionInformationDidChange(const InteractionInformationAtPosition&) = 0;
     virtual void saveImageToLibrary(PassRefPtr<WebCore::SharedBuffer>) = 0;
     virtual void didUpdateBlockSelectionWithTouch(uint32_t touch, uint32_t flags, float growThreshold, float shrinkThreshold) = 0;
+    virtual void showPlaybackTargetPicker(bool hasVideo, const WebCore::IntRect& elementRect) = 0;
 
 #if ENABLE(INSPECTOR)
     virtual void showInspectorIndication() = 0;

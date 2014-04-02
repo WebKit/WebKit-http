@@ -152,6 +152,12 @@ public:
     IntRect pixelSnappedFrameRect() const { return pixelSnappedIntRect(m_frameRect); }
     void setFrameRect(const LayoutRect& rect) { m_frameRect = rect; }
 
+    LayoutRect marginBoxRect() const
+    {
+        LayoutRect box = borderBoxRect();
+        box.expand(m_marginBox);
+        return box;
+    }
     LayoutRect borderBoxRect() const { return LayoutRect(LayoutPoint(), size()); }
     LayoutRect paddingBoxRect() const { return LayoutRect(borderLeft(), borderTop(), contentWidth() + paddingLeft() + paddingRight(), contentHeight() + paddingTop() + paddingBottom()); }
     IntRect pixelSnappedBorderBoxRect() const { return IntRect(IntPoint(), m_frameRect.pixelSnappedSize()); }
@@ -715,8 +721,12 @@ protected:
     RefPtr<RenderOverflow> m_overflow;
 
 private:
+    void repaintTimerFired(Timer<RenderBox>&);
+
     // Used to store state between styleWillChange and styleDidChange
     static bool s_hadOverflowClip;
+
+    Timer<RenderBox> m_repaintTimer;
 };
 
 RENDER_OBJECT_TYPE_CASTS(RenderBox, isBox())

@@ -61,8 +61,10 @@ PluginProcess::PluginProcess()
     , m_compositingRenderServerPort(MACH_PORT_NULL)
 #endif
     , m_connectionActivity("PluginProcess connection activity.")
+    , m_visiblePluginsActivity("Visible plugins from PluginProcess activity.")
 {
     NetscapePlugin::setSetExceptionFunction(WebProcessConnection::setGlobalException);
+    m_audioHardwareListener = AudioHardwareListener::create(*this);
 }
 
 PluginProcess::~PluginProcess()
@@ -160,6 +162,14 @@ void PluginProcess::createWebProcessConnection()
 
     // Create a listening connection.
     RefPtr<WebProcessConnection> connection = WebProcessConnection::create(IPC::Connection::Identifier(listeningPort));
+
+    if (m_audioHardwareListener) {
+        if (m_audioHardwareListener->hardwareActivity() == WebCore::AudioHardwareActivityType::IsActive)
+            connection->audioHardwareDidBecomeActive();
+        else if (m_audioHardwareListener->hardwareActivity() == WebCore::AudioHardwareActivityType::IsInactive)
+            connection->audioHardwareDidBecomeInactive();
+    }
+
     m_webProcessConnections.append(connection.release());
 
     IPC::Attachment clientPort(listeningPort, MACH_MSG_TYPE_MAKE_SEND);
@@ -235,6 +245,28 @@ void PluginProcess::initializeSandbox(const ChildProcessInitializationParameters
 {
 }
 #endif
+
+void PluginProcess::pluginsForWebProcessDidBecomeVisible()
+{
+    m_visiblePluginsActivity.increment();
+}
+
+void PluginProcess::pluginsForWebProcessDidBecomeHidden()
+{
+    m_visiblePluginsActivity.decrement();
+}
+    
+void PluginProcess::audioHardwareDidBecomeActive()
+{
+    for (auto& connection : m_webProcessConnections)
+        connection->audioHardwareDidBecomeActive();
+}
+    
+void PluginProcess::audioHardwareDidBecomeInactive()
+{
+    for (auto& connection : m_webProcessConnections)
+        connection->audioHardwareDidBecomeInactive();
+}
 
 } // namespace WebKit
 

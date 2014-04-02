@@ -59,6 +59,7 @@ WebInspector.DOMNodeDetailsSidebarPanel = function() {
     if (this._accessibilitySupported()) {
         this._accessibilityEmptyRow = new WebInspector.DetailsSectionRow(WebInspector.UIString("No Accessibility Information"));
         this._accessibilityNodeActiveDescendantRow = new WebInspector.DetailsSectionSimpleRow(WebInspector.UIString("Shared Focus"));
+        this._accessibilityNodeBusyRow = new WebInspector.DetailsSectionSimpleRow(WebInspector.UIString("Busy"));
         this._accessibilityNodeCheckedRow = new WebInspector.DetailsSectionSimpleRow(WebInspector.UIString("Checked"));
         this._accessibilityNodeChildrenRow = new WebInspector.DetailsSectionSimpleRow(WebInspector.UIString("Children"));
         this._accessibilityNodeControlsRow = new WebInspector.DetailsSectionSimpleRow(WebInspector.UIString("Controls"));
@@ -68,6 +69,8 @@ WebInspector.DOMNodeDetailsSidebarPanel = function() {
         this._accessibilityNodeFocusedRow = new WebInspector.DetailsSectionSimpleRow(WebInspector.UIString("Focused"));
         this._accessibilityNodeIgnoredRow = new WebInspector.DetailsSectionSimpleRow(WebInspector.UIString("Ignored"));
         this._accessibilityNodeInvalidRow = new WebInspector.DetailsSectionSimpleRow(WebInspector.UIString("Invalid"));
+        this._accessibilityNodeLiveRegionStatusRow = new WebInspector.DetailsSectionSimpleRow(WebInspector.UIString("Live"));
+        this._accessibilityNodeMouseEventRow = new WebInspector.DetailsSectionSimpleRow("");
         this._accessibilityNodeLabelRow = new WebInspector.DetailsSectionSimpleRow(WebInspector.UIString("Label"));
         this._accessibilityNodeOwnsRow = new WebInspector.DetailsSectionSimpleRow(WebInspector.UIString("Owns"));
         this._accessibilityNodeParentRow = new WebInspector.DetailsSectionSimpleRow(WebInspector.UIString("Parent"));
@@ -76,6 +79,7 @@ WebInspector.DOMNodeDetailsSidebarPanel = function() {
         this._accessibilityNodeRequiredRow = new WebInspector.DetailsSectionSimpleRow(WebInspector.UIString("Required"));
         this._accessibilityNodeRoleRow = new WebInspector.DetailsSectionSimpleRow(WebInspector.UIString("Role"));
         this._accessibilityNodeSelectedRow = new WebInspector.DetailsSectionSimpleRow(WebInspector.UIString("Selected"));
+        this._accessibilityNodeSelectedChildrenRow = new WebInspector.DetailsSectionSimpleRow(WebInspector.UIString("Selected Items"));
     
         this._accessibilityGroup = new WebInspector.DetailsSectionGroup([this._accessibilityEmptyRow]);
         var accessibilitySection = new WebInspector.DetailsSection("dom-node-accessibility", WebInspector.UIString("Accessibility"), [this._accessibilityGroup]);    
@@ -318,6 +322,7 @@ WebInspector.DOMNodeDetailsSidebarPanel.prototype = {
             if (accessibilityProperties && accessibilityProperties.exists) {
 
                 var activeDescendantLink = linkForNodeId(accessibilityProperties.activeDescendantNodeId);
+                var busy = booleanValueToLocalizedStringIfPropertyDefined("busy");
 
                 var checked = "";
                 if (accessibilityProperties.checked !== undefined) {
@@ -355,6 +360,40 @@ WebInspector.DOMNodeDetailsSidebarPanel.prototype = {
                 else if (accessibilityProperties.invalid === DOMAgent.AccessibilityPropertiesInvalid.Spelling)
                     invalid = WebInspector.UIString("Spelling");
 
+                var liveRegionStatus = "";
+                var liveRegionStatusNode = null;
+                var liveRegionStatusToken = accessibilityProperties.liveRegionStatus;
+                switch(liveRegionStatusToken) {
+                case DOMAgent.AccessibilityPropertiesLiveRegionStatus.Assertive:
+                    liveRegionStatus = WebInspector.UIString("Assertive");
+                    break;
+                case DOMAgent.AccessibilityPropertiesLiveRegionStatus.Polite:
+                    liveRegionStatus = WebInspector.UIString("Polite");
+                    break;
+                default:
+                    liveRegionStatus = "";
+                }
+                if (liveRegionStatus && accessibilityProperties.liveRegionAtomic === true) {
+                    liveRegionStatusNode = document.createElement("div");
+                    liveRegionStatusNode.className = "value-with-clarification";
+                    liveRegionStatusNode.setAttribute("role", "text");
+                    liveRegionStatusNode.appendChild(document.createTextNode(liveRegionStatus));
+                    var clarificationNode = document.createElement("div");
+                    clarificationNode.className = "clarification";
+                    clarificationNode.appendChild(document.createTextNode(WebInspector.UIString("Region announced in its entirety.")));
+                    liveRegionStatusNode.appendChild(clarificationNode);
+                }
+
+                var mouseEventNodeId = accessibilityProperties.mouseEventNodeId;
+                var mouseEventTextValue = "";
+                var mouseEventNodeLink = null;
+                if (mouseEventNodeId) {
+                    if (mouseEventNodeId === accessibilityProperties.nodeId)
+                        mouseEventTextValue = WebInspector.UIString("Yes");
+                    else
+                        mouseEventNodeLink = linkForNodeId(mouseEventNodeId);
+                }
+
                 // FIXME: label will always come back as empty. Blocked by http://webkit.org/b/121134
                 var label = accessibilityProperties.label;
                 if (label && label !== domNode.getAttribute("aria-label"))
@@ -380,9 +419,11 @@ WebInspector.DOMNodeDetailsSidebarPanel.prototype = {
                 }
 
                 var selected = booleanValueToLocalizedStringIfTrue("selected");
+                var selectedChildNodeLinkList = linkListForNodeIds(accessibilityProperties.selectedChildNodeIds);
 
                 // Assign all the properties to their respective views.
                 this._accessibilityNodeActiveDescendantRow.value = activeDescendantLink || "";
+                this._accessibilityNodeBusyRow.value = busy;
                 this._accessibilityNodeCheckedRow.value = checked;
                 this._accessibilityNodeChildrenRow.value = childNodeLinkList || "";
                 this._accessibilityNodeControlsRow.value = controlledNodeLinkList || "";
@@ -393,6 +434,12 @@ WebInspector.DOMNodeDetailsSidebarPanel.prototype = {
                 this._accessibilityNodeIgnoredRow.value = ignored;
                 this._accessibilityNodeInvalidRow.value = invalid;
                 this._accessibilityNodeLabelRow.value = label;
+                this._accessibilityNodeLiveRegionStatusRow.value = liveRegionStatusNode || liveRegionStatus;
+                
+                // Row label changes based on whether the value is a delegate node link.
+                this._accessibilityNodeMouseEventRow.label = mouseEventNodeLink ? WebInspector.UIString("Click Listener") : WebInspector.UIString("Clickable");
+                this._accessibilityNodeMouseEventRow.value = mouseEventNodeLink || mouseEventTextValue;
+
                 this._accessibilityNodeOwnsRow.value = ownedNodeLinkList || "";
                 this._accessibilityNodeParentRow.value = parentNodeLink || "";
                 this._accessibilityNodePressedRow.value = pressed;
@@ -401,6 +448,11 @@ WebInspector.DOMNodeDetailsSidebarPanel.prototype = {
                 this._accessibilityNodeRoleRow.value = role;
                 this._accessibilityNodeSelectedRow.value = selected;
 
+                this._accessibilityNodeSelectedChildrenRow.label = WebInspector.UIString("Selected Items");
+                this._accessibilityNodeSelectedChildrenRow.value = selectedChildNodeLinkList || "";
+                if (selectedChildNodeLinkList && accessibilityProperties.selectedChildNodeIds.length === 1)
+                    this._accessibilityNodeSelectedChildrenRow.label = WebInspector.UIString("Selected Item");                
+
                 // Display order, not alphabetical as above.
                 this._accessibilityGroup.rows = [
                     // Global properties for all elements.
@@ -408,12 +460,16 @@ WebInspector.DOMNodeDetailsSidebarPanel.prototype = {
                     this._accessibilityNodeRoleRow,
                     this._accessibilityNodeLabelRow,
                     this._accessibilityNodeParentRow,
-                    this._accessibilityNodeChildrenRow,
                     this._accessibilityNodeActiveDescendantRow,
+                    this._accessibilityNodeSelectedChildrenRow,
+                    this._accessibilityNodeChildrenRow,
                     this._accessibilityNodeOwnsRow,
                     this._accessibilityNodeControlsRow,
                     this._accessibilityNodeFlowsRow,
+                    this._accessibilityNodeMouseEventRow,
                     this._accessibilityNodeFocusedRow,
+                    this._accessibilityNodeBusyRow,
+                    this._accessibilityNodeLiveRegionStatusRow,
 
                     // Properties exposed for all input-type elements.
                     this._accessibilityNodeDisabledRow,

@@ -146,8 +146,8 @@ Element::~Element()
     if (document().hasLivingRenderTree()) {
         // When the document is not destroyed, an element that was part of a named flow
         // content nodes should have been removed from the content nodes collection
-        // and the inNamedFlow flag reset.
-        ASSERT(!inNamedFlow());
+        // and the isNamedFlowContentNode flag reset.
+        ASSERT(!isNamedFlowContentNode());
     }
 #endif
 
@@ -487,7 +487,7 @@ void Element::setActive(bool flag, bool pause)
     if (reactsToPress)
         setNeedsStyleRecalc();
 
-    if (renderer()->style().hasAppearance() && renderer()->theme().stateChanged(renderer(), PressedState))
+    if (renderer()->style().hasAppearance() && renderer()->theme().stateChanged(renderer(), ControlStates::PressedState))
         reactsToPress = true;
 
     // The rest of this function implements a feature that only works if the
@@ -553,7 +553,7 @@ void Element::setHovered(bool flag)
         setNeedsStyleRecalc();
 
     if (renderer()->style().hasAppearance())
-        renderer()->theme().stateChanged(renderer(), HoverState);
+        renderer()->theme().stateChanged(renderer(), ControlStates::HoverState);
 }
 
 void Element::scrollIntoView(bool alignToTop) 
@@ -1376,7 +1376,7 @@ void Element::removedFrom(ContainerNode& insertionPoint)
 
 void Element::unregisterNamedFlowContentElement()
 {
-    if (document().cssRegionsEnabled() && inNamedFlow() && document().renderView())
+    if (document().cssRegionsEnabled() && isNamedFlowContentNode() && document().renderView())
         document().renderView()->flowThreadController().unregisterNamedFlowContentElement(*this);
 }
 
@@ -2148,19 +2148,6 @@ bool Element::isInCanvasSubtree() const
     return hasRareData() && elementRareData()->isInCanvasSubtree();
 }
 
-void Element::setIsInsideRegion(bool value)
-{
-    if (value == isInsideRegion())
-        return;
-
-    ensureElementRareData().setIsInsideRegion(value);
-}
-
-bool Element::isInsideRegion() const
-{
-    return hasRareData() ? elementRareData()->isInsideRegion() : false;
-}
-
 void Element::setRegionOversetState(RegionOversetState state)
 {
     ensureElementRareData().setRegionOversetState(state);
@@ -2497,7 +2484,7 @@ bool Element::shouldMoveToFlowThread(const RenderStyle& styleToUse) const
     if (styleToUse.flowThread().isEmpty())
         return false;
 
-    return !document().renderView()->flowThreadController().isContentElementRegisteredWithAnyNamedFlow(*this);
+    return true;
 }
 
 const AtomicString& Element::webkitRegionOverset() const
@@ -2833,7 +2820,6 @@ void Element::clearStyleDerivedDataBeforeDetachingRenderer()
     data->setIsInCanvasSubtree(false);
     data->resetComputedStyle();
     data->resetDynamicRestyleObservations();
-    data->setIsInsideRegion(false);
 }
 
 void Element::clearHoverAndActiveStatusBeforeDetachingRenderer()

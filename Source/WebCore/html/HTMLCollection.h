@@ -86,7 +86,7 @@ private:
 
 class HTMLCollection : public ScriptWrappable, public RefCounted<HTMLCollection> {
 public:
-    static PassRefPtr<HTMLCollection> create(ContainerNode& base, CollectionType);
+    static PassRef<HTMLCollection> create(ContainerNode& base, CollectionType);
     virtual ~HTMLCollection();
 
     // DOM API
@@ -100,7 +100,11 @@ public:
     void namedItems(const AtomicString& name, Vector<Ref<Element>>&) const;
     size_t memoryCost() const { return m_indexCache.memoryCost() + (m_namedElementCache ? m_namedElementCache->memoryCost() : 0); }
 
-    bool isRootedAtDocument() const { return m_rootType == NodeListIsRootedAtDocument; }
+    enum RootType {
+        IsRootedAtNode,
+        IsRootedAtDocument
+    };
+    bool isRootedAtDocument() const { return m_rootType == IsRootedAtDocument; }
     NodeListInvalidationType invalidationType() const { return static_cast<NodeListInvalidationType>(m_invalidationType); }
     CollectionType type() const { return static_cast<CollectionType>(m_collectionType); }
     ContainerNode& ownerNode() const { return const_cast<ContainerNode&>(m_ownerNode.get()); }
@@ -114,10 +118,11 @@ public:
     virtual void invalidateCache(Document&) const;
 
     // For CollectionIndexCache
-    Element* collectionFirst() const;
+    Element* collectionBegin() const;
     Element* collectionLast() const;
-    Element* collectionTraverseForward(Element&, unsigned count, unsigned& traversedCount) const;
-    Element* collectionTraverseBackward(Element&, unsigned count) const;
+    Element* collectionEnd() const { return nullptr; }
+    void collectionTraverseForward(Element*&, unsigned count, unsigned& traversedCount) const;
+    void collectionTraverseBackward(Element*&, unsigned count) const;
     bool collectionCanTraverseBackward() const { return !m_usesCustomForwardOnlyTraversal; }
     void willValidateIndexCache() const { document().registerCollection(const_cast<HTMLCollection&>(*this)); }
 
@@ -133,7 +138,7 @@ protected:
     ContainerNode& rootNode() const;
     bool usesCustomForwardOnlyTraversal() const { return m_usesCustomForwardOnlyTraversal; }
 
-    NodeListRootType rootType() const { return static_cast<NodeListRootType>(m_rootType); }
+    RootType rootType() const { return static_cast<RootType>(m_rootType); }
 
     CollectionNamedElementCache& createNameItemCache() const
     {
@@ -160,7 +165,7 @@ private:
 
     Ref<ContainerNode> m_ownerNode;
 
-    mutable CollectionIndexCache<HTMLCollection, Element> m_indexCache;
+    mutable CollectionIndexCache<HTMLCollection, Element*> m_indexCache;
     mutable std::unique_ptr<CollectionNamedElementCache> m_namedElementCache;
 
     const unsigned m_collectionType : 5;

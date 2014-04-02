@@ -20,7 +20,7 @@
  * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
  * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 #include "config.h"
@@ -129,7 +129,6 @@ JSGlobalContextRef JSGlobalContextCreateInGroup(JSContextGroupRef group, JSClass
 
     if (!globalObjectClass) {
         JSGlobalObject* globalObject = JSGlobalObject::create(*vm, JSGlobalObject::createStructure(*vm, jsNull()));
-        globalObject->setGlobalThis(*vm, JSProxy::create(*vm, JSProxy::createStructure(*vm, globalObject, globalObject->prototype()), globalObject));
         return JSGlobalContextRetain(toGlobalRef(globalObject->globalExec()));
     }
 
@@ -296,4 +295,28 @@ JSStringRef JSContextCreateBacktrace(JSContextRef ctx, unsigned maxStackSize)
     return OpaqueJSString::create(builder.toString()).leakRef();
 }
 
+bool JSGlobalContextGetRemoteInspectionEnabled(JSGlobalContextRef ctx)
+{
+    if (!ctx) {
+        ASSERT_NOT_REACHED();
+        return false;
+    }
 
+    ExecState* exec = toJS(ctx);
+    JSLockHolder lock(exec);
+
+    return exec->vmEntryGlobalObject()->remoteDebuggingEnabled();
+}
+
+void JSGlobalContextSetRemoteInspectionEnabled(JSGlobalContextRef ctx, bool enabled)
+{
+    if (!ctx) {
+        ASSERT_NOT_REACHED();
+        return;
+    }
+
+    ExecState* exec = toJS(ctx);
+    JSLockHolder lock(exec);
+
+    exec->vmEntryGlobalObject()->setRemoteDebuggingEnabled(enabled);
+}

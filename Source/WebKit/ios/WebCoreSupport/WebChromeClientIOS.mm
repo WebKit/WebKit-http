@@ -33,6 +33,7 @@
 #import "WebFixedPositionContent.h"
 #import "WebFixedPositionContentInternal.h"
 #import "WebFormDelegate.h"
+#import "WebFrameIOS.h"
 #import "WebFrameInternal.h"
 #import "WebKitSystemInterface.h"
 #import "WebOpenPanelResultListener.h"
@@ -311,6 +312,13 @@ void WebChromeClientIOS::focusedElementChanged(Element* element)
         return;
 
     CallFormDelegate(webView(), @selector(didFocusTextField:inFrame:), kit(inputElement), kit(inputElement->document().frame()));
+}
+
+void WebChromeClientIOS::showPlaybackTargetPicker(bool hasVideo)
+{
+    CGPoint point = [[webView() _UIKitDelegateForwarder] interactionLocation];
+    CGRect elementRect = [[webView() mainFrame] elementRectAtPoint:point];
+    [[webView() _UIKitDelegateForwarder] showPlaybackTargetPicker:hasVideo fromRect:elementRect];
 }
 
 #endif // PLATFORM(IOS)
