@@ -28,6 +28,7 @@
 class BDataIO;
 class BMediaFile;
 class BMediaTrack;
+class BSoundPlayer;
 class BUrlRequest;
 
 namespace WebCore {
@@ -57,6 +58,8 @@ class MediaPlayerPrivate : public MediaPlayerPrivateInterface, BUrlProtocolAsync
 
         bool seeking() const override;
         bool paused() const override;
+
+        void setVolume(float) override;
         
         MediaPlayer::NetworkState networkState() const override;
         MediaPlayer::ReadyState readyState() const override;
@@ -89,10 +92,14 @@ class MediaPlayerPrivate : public MediaPlayerPrivateInterface, BUrlProtocolAsync
         BMediaFile* m_mediaFile;
         BMediaTrack* m_audioTrack;
         BMediaTrack* m_videoTrack;
+        BSoundPlayer* m_soundPlayer;
 
         MediaPlayer* m_player;
         MediaPlayer::NetworkState m_networkState;
         MediaPlayer::ReadyState m_readyState;
+
+        float m_volume;
+        bool m_paused;
 };
 
 }

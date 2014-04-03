@@ -54,15 +54,19 @@ MediaPlayerPrivate::MediaPlayerPrivate(MediaPlayer* player)
     , m_mediaFile(nullptr)
     , m_audioTrack(nullptr)
     , m_videoTrack(nullptr)
+    , m_soundPlayer(nullptr)
     , m_player(player)
     , m_networkState(MediaPlayer::Empty)
     , m_readyState(MediaPlayer::HaveNothing)
+    , m_volume(1.0)
+    , m_paused(true)
 {
 }
 
 MediaPlayerPrivate::~MediaPlayerPrivate()
 {
     delete m_urlRequest;
+    delete m_soundPlayer;
     delete m_cache;
     if (m_mediaFile) {
         m_mediaFile->ReleaseTrack(m_audioTrack);
@@ -142,19 +146,16 @@ static void playCallback(void* cookie, void* buffer, size_t size,
 
 void MediaPlayerPrivate::play()
 {
-    // TODO this should be moved to prepareForPlaying, we don't want to do it
-    // on resume.
-    media_format format;
-    m_audioTrack->DecodedFormat(&format);
-    BSoundPlayer* player = new BSoundPlayer(&format.u.raw_audio, "HTML5 Audio",
-        playCallback, NULL, m_audioTrack);
-
-    player->Start();
+    if (m_soundPlayer)
+        m_soundPlayer->Start();
+    m_paused = false;
 }
 
 void MediaPlayerPrivate::pause()
 {
-    notImplemented();
+    if (m_soundPlayer)
+        m_soundPlayer->Stop();
+    m_paused = true;
 }
 
 IntSize MediaPlayerPrivate::naturalSize() const
@@ -204,8 +205,14 @@ bool MediaPlayerPrivate::seeking() const
  
 bool MediaPlayerPrivate::paused() const
 {
-    notImplemented();
-    return true;
+    return m_paused;
+}
+
+void MediaPlayerPrivate::setVolume(float volume)
+{
+    m_volume = volume;
+    if (m_soundPlayer)
+        m_soundPlayer->SetVolume(volume);
 }
 
 MediaPlayer::NetworkState MediaPlayerPrivate::networkState() const
@@ -280,6 +287,10 @@ bool MediaPlayerPrivate::didLoadingProgress() const
 
 void MediaPlayerPrivate::IdentifyTracks()
 {
+    // Check if we already did this.
+    if (m_mediaFile)
+        return;
+
     m_mediaFile = new BMediaFile(m_cache);
     if (m_mediaFile->InitCheck() == B_OK) {
         for (int i = m_mediaFile->CountTracks() - 1; i >= 0; i--)
@@ -298,6 +309,12 @@ void MediaPlayerPrivate::IdentifyTracks()
 
             if (format.IsAudio()) {
                 m_audioTrack = track;
+
+                m_soundPlayer = new BSoundPlayer(&format.u.raw_audio,
+                    "HTML5 Audio", playCallback, NULL, m_audioTrack);
+                m_soundPlayer->SetVolume(m_volume);
+                if (!m_paused)
+                    m_soundPlayer->Start();
 
                 if (m_videoTrack)
                     break;
