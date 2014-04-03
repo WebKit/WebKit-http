@@ -58,6 +58,7 @@ class MediaPlayerPrivate : public MediaPlayerPrivateInterface, BUrlProtocolAsync
         float duration() const override;
         float currentTime() const override;
 
+        void seek(float) override;
         bool seeking() const override;
         bool paused() const override;
 

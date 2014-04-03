@@ -70,12 +70,8 @@ MediaPlayerPrivate::~MediaPlayerPrivate()
 {
     delete m_urlRequest;
     delete m_soundPlayer;
-    delete m_cache;
-    if (m_mediaFile) {
-        m_mediaFile->ReleaseTrack(m_audioTrack);
-        m_mediaFile->ReleaseTrack(m_videoTrack);
-    }
     delete m_mediaFile;
+    delete m_cache;
 }
 
 void MediaPlayerPrivate::load(const String& url)
@@ -87,12 +83,10 @@ void MediaPlayerPrivate::load(const String& url)
 
     delete m_urlRequest;
     m_urlRequest = nullptr;
-    if (m_mediaFile) {
-        m_mediaFile->ReleaseTrack(m_audioTrack);
-        m_mediaFile->ReleaseTrack(m_videoTrack);
-        m_audioTrack = nullptr;
-        m_videoTrack = nullptr;
-    }
+
+    // Deleting the BMediaFile release the tracks
+    m_audioTrack = nullptr;
+    m_videoTrack = nullptr;
     delete m_mediaFile;
     m_mediaFile = nullptr;
     
@@ -143,7 +137,8 @@ void MediaPlayerPrivate::playCallback(void* cookie, void* buffer,
 	int64 size64;
 	if (player->m_audioTrack->ReadFrames(buffer, &size64) != B_OK)
     {
-        player->pause();
+        // Notify that we're done playing...
+        BMessenger(player).SendMessage('ends');
         return;
     }
 
@@ -214,6 +209,27 @@ float MediaPlayerPrivate::currentTime() const
         return 0;
 
     return m_audioTrack->CurrentTime() / 1000000.f;
+}
+
+void MediaPlayerPrivate::seek(float time)
+{
+    // TODO we should make sure the cache is ready to serve this. The idea is:
+    // * Seek the tracks using SeekToTime
+    // * The decoder will try to read "somewhere" in the cache. The Read call
+    // should block, and check if the data is already downloaded
+    // * If not, it should wait for it (and a sufficient buffer)
+    //
+    // Generally, we shouldn't let the reads to the cache return uninitialized
+    // data. Note that we will probably need HTTP range requests support.
+
+    bigtime_t newTime = (bigtime_t)(time * 1000000);
+    // Usually, seeking the video is rounded to the nearest keyframe. This
+    // modifies newTime, and we pass the adjusted value to the audio track, to
+    // keep them in sync
+    if (m_videoTrack)
+        m_videoTrack->SeekToTime(&newTime);
+    if (m_audioTrack)
+        m_audioTrack->SeekToTime(&newTime);
 }
 
 bool MediaPlayerPrivate::seeking() const
@@ -315,12 +331,19 @@ void MediaPlayerPrivate::RequestCompleted(BUrlRequest*, bool success)
 
 void MediaPlayerPrivate::MessageReceived(BMessage* message)
 {
-    if (message->what == 'rfsh')
+    switch(message->what)
     {
-        m_player->repaint();
-        return;
+        case 'rfsh':
+            m_player->repaint();
+            return;
+        case 'ends':
+            m_player->timeChanged();
+            m_soundPlayer->Stop();
+            return;
+        default:
+            BUrlProtocolAsynchronousListener::MessageReceived(message);
+            return;
     }
-    BUrlProtocolAsynchronousListener::MessageReceived(message);
 }
 
 // #pragma mark - private methods
