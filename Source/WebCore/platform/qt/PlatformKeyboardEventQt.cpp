@@ -523,9 +523,10 @@ int windowsKeyCodeForKeyEvent(unsigned int keycode, bool isKeypad)
     case Qt::Key_Help:
         return VK_HELP; // (2F) HELP key
     case Qt::Key_0:
-    case Qt::Key_ParenLeft:
+    case Qt::Key_ParenRight:
         return VK_0; // (30) 0) key
     case Qt::Key_1:
+    case Qt::Key_Exclam:
         return VK_1; // (31) 1 ! key
     case Qt::Key_2:
     case Qt::Key_At:
@@ -549,7 +550,7 @@ int windowsKeyCodeForKeyEvent(unsigned int keycode, bool isKeypad)
     case Qt::Key_Asterisk:
         return VK_8; // (38) 8 key  '*'
     case Qt::Key_9:
-    case Qt::Key_ParenRight:
+    case Qt::Key_ParenLeft:
         return VK_9; // (39) 9 key '('
     case Qt::Key_A:
         return VK_A; // (41) A key case 'a': case 'A': return 0x41;
