@@ -267,7 +267,8 @@ void MediaPlayerPrivate::paint(GraphicsContext* context, const IntRect& r)
     if (!m_player->visible())
         return;
 
-    context->platformContext()->DrawBitmap(m_frameBuffer, r);
+    if (m_frameBuffer)
+        context->platformContext()->DrawBitmap(m_frameBuffer, r);
 }
 
 // #pragma mark - BUrlProtocolListener
