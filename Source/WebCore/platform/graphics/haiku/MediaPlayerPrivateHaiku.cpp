@@ -57,6 +57,7 @@ MediaPlayerPrivate::MediaPlayerPrivate(MediaPlayer* player)
     , m_audioTrack(nullptr)
     , m_videoTrack(nullptr)
     , m_soundPlayer(nullptr)
+    , m_frameBuffer(nullptr)
     , m_player(player)
     , m_networkState(MediaPlayer::Empty)
     , m_readyState(MediaPlayer::HaveNothing)
@@ -175,8 +176,11 @@ void MediaPlayerPrivate::pause()
 
 IntSize MediaPlayerPrivate::naturalSize() const
 {
-    notImplemented();
-    return IntSize(0,0);
+    if (!m_frameBuffer)
+        return IntSize(0,0);
+
+    BRect r(m_frameBuffer->Bounds());
+    return IntSize(r.Width() + 1, r.Height() + 1);
 }
 
 bool MediaPlayerPrivate::hasAudio() const
@@ -285,7 +289,7 @@ void MediaPlayerPrivate::DownloadProgress(BUrlRequest*, ssize_t currentSize,
     m_cache->SetSize(totalSize);
     m_didReceiveData = true;
 
-    if (currentSize >= std::min((ssize_t)256*1024, totalSize)) {
+    if (currentSize >= std::min((ssize_t)512*1024, totalSize)) {
         IdentifyTracks();
         // TODO be smarter here. We know the media play time, and we can
         // estimate the download end time. We should not start playing until
@@ -341,7 +345,7 @@ void MediaPlayerPrivate::IdentifyTracks()
 
                 m_frameBuffer = new BBitmap(
                     BRect(0, 0, format.Width() - 1, format.Height() - 1),
-                    format.ColorSpace());
+                    B_RGB32);
 
                 if (m_audioTrack)
                     break;
@@ -362,6 +366,9 @@ void MediaPlayerPrivate::IdentifyTracks()
         }
 
         m_player->characteristicChanged();
+        m_player->durationChanged();
+        m_player->sizeChanged();
+        m_player->firstVideoFrameAvailable();
 
         m_readyState = MediaPlayer::HaveMetadata;
         m_player->readyStateChanged();
