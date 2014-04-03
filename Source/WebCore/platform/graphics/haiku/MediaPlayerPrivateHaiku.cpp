@@ -78,8 +78,18 @@ MediaPlayerPrivate::~MediaPlayerPrivate()
 void MediaPlayerPrivate::load(const String& url)
 {
     // Cleanup from previous request (can this even happen?)
+    if (m_soundPlayer)
+        m_soundPlayer->Stop();
+    delete m_soundPlayer;
+
     delete m_urlRequest;
     m_urlRequest = nullptr;
+    if (m_mediaFile) {
+        m_mediaFile->ReleaseTrack(m_audioTrack);
+        m_mediaFile->ReleaseTrack(m_videoTrack);
+        m_audioTrack = nullptr;
+        m_videoTrack = nullptr;
+    }
     delete m_mediaFile;
     m_mediaFile = nullptr;
     
@@ -95,6 +105,9 @@ void MediaPlayerPrivate::load(const String& url)
     else
         m_networkState = MediaPlayer::FormatError;
     m_player->networkStateChanged();
+
+    m_readyState = MediaPlayer::HaveNothing;
+    m_player->readyStateChanged();
 }
 
 void MediaPlayerPrivate::cancelLoad()
@@ -119,10 +132,10 @@ void MediaPlayerPrivate::prepareToPlay()
     m_player->readyStateChanged();
 }
 
-static void playCallback(void* cookie, void* buffer, size_t size,
-    const media_raw_audio_format& format)
+void MediaPlayerPrivate::playCallback(void* cookie, void* buffer,
+    size_t size, const media_raw_audio_format& format)
 {
-	BMediaTrack* file = (BMediaTrack*) cookie;
+    MediaPlayerPrivate* player = (MediaPlayerPrivate*)cookie;
 
 	int64 size64 = size;
 	switch(format.format)
@@ -141,7 +154,10 @@ static void playCallback(void* cookie, void* buffer, size_t size,
 			size64 /= sizeof(char);
 			break;
 	}
-	file->ReadFrames(buffer, &size64);
+	if (player->m_audioTrack->ReadFrames(buffer, &size64) != B_OK)
+    {
+        player->pause();
+    }
 }
 
 void MediaPlayerPrivate::play()
@@ -261,12 +277,22 @@ void MediaPlayerPrivate::DownloadProgress(BUrlRequest*, ssize_t currentSize,
 {
     m_cache->SetSize(totalSize);
     m_didReceiveData = true;
+
+    if (currentSize >= std::min((ssize_t)256*1024, totalSize)) {
+        IdentifyTracks();
+        // TODO be smarter here. We know the media play time, and we can
+        // estimate the download end time. We should not start playing until
+        // we think the media will finish playing after the download is done.
+        if (m_readyState != MediaPlayer::HaveFutureData) {
+            m_readyState = MediaPlayer::HaveFutureData;
+            m_player->readyStateChanged();
+        }
+    }
 }
 
 void MediaPlayerPrivate::RequestCompleted(BUrlRequest*, bool success)
 {
     if(success) {
-        IdentifyTracks();
         m_networkState = MediaPlayer::Loaded;
         m_readyState = MediaPlayer::HaveEnoughData;
         m_player->readyStateChanged();
@@ -311,7 +337,7 @@ void MediaPlayerPrivate::IdentifyTracks()
                 m_audioTrack = track;
 
                 m_soundPlayer = new BSoundPlayer(&format.u.raw_audio,
-                    "HTML5 Audio", playCallback, NULL, m_audioTrack);
+                    "HTML5 Audio", playCallback, NULL, this);
                 m_soundPlayer->SetVolume(m_volume);
                 if (!m_paused)
                     m_soundPlayer->Start();

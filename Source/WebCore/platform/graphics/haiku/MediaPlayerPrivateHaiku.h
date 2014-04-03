@@ -30,6 +30,7 @@ class BMediaFile;
 class BMediaTrack;
 class BSoundPlayer;
 class BUrlRequest;
+struct media_raw_audio_format;
 
 namespace WebCore {
 
@@ -79,6 +80,9 @@ class MediaPlayerPrivate : public MediaPlayerPrivateInterface, BUrlProtocolAsync
         MediaPlayerPrivate(MediaPlayer*);
         
         void IdentifyTracks();
+
+        static void playCallback(void*, void*, size_t,
+            const media_raw_audio_format&);
 
         // engine support
         static PassOwnPtr<MediaPlayerPrivateInterface> create(MediaPlayer*);
