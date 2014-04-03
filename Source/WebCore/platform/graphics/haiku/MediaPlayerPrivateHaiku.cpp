@@ -26,6 +26,7 @@
 #include "NotImplemented.h"
 #include "wtf/text/CString.h"
 
+#include <Bitmap.h>
 #include <DataIO.h>
 #include <MediaDefs.h>
 #include <MediaFile.h>
@@ -33,6 +34,7 @@
 #include <SoundPlayer.h>
 #include <UrlProtocolRoster.h>
 #include <UrlRequest.h>
+#include <View.h>
 
 namespace WebCore {
 
@@ -137,26 +139,23 @@ void MediaPlayerPrivate::playCallback(void* cookie, void* buffer,
 {
     MediaPlayerPrivate* player = (MediaPlayerPrivate*)cookie;
 
-	int64 size64 = size;
-	switch(format.format)
-	{
-		case format.B_AUDIO_INT:
-			size64 /= sizeof(int);
-			break;
-		case format.B_AUDIO_SHORT:
-			size64 /= sizeof(short);
-			break;
-		case format.B_AUDIO_FLOAT:
-			size64 /= sizeof(float);
-			break;
-		case format.B_AUDIO_CHAR:
-		case format.B_AUDIO_UCHAR:
-			size64 /= sizeof(char);
-			break;
-	}
+	int64 size64;
 	if (player->m_audioTrack->ReadFrames(buffer, &size64) != B_OK)
     {
         player->pause();
+        return;
+    }
+
+    if (player->m_videoTrack) {
+        if (player->m_videoTrack->CurrentTime() 
+            < player->m_audioTrack->CurrentTime())
+        {
+            // Decode a video frame and show it on screen
+            int64 count;
+            player->m_videoTrack->ReadFrames(player->m_frameBuffer->Bits(),
+                &count);
+            BMessenger(player).SendMessage('rfsh');
+        }
     }
 }
 
@@ -248,6 +247,13 @@ std::unique_ptr<PlatformTimeRanges> MediaPlayerPrivate::buffered() const
     return timeRanges;
 }
 
+bool MediaPlayerPrivate::didLoadingProgress() const
+{
+    bool progress = m_didReceiveData;
+    m_didReceiveData = false;
+    return progress;
+}
+
 void MediaPlayerPrivate::setSize(const IntSize&)
 {
     notImplemented();
@@ -261,7 +267,7 @@ void MediaPlayerPrivate::paint(GraphicsContext* context, const IntRect& r)
     if (!m_player->visible())
         return;
 
-    notImplemented();
+    context->platformContext()->DrawBitmap(m_frameBuffer, r);
 }
 
 // #pragma mark - BUrlProtocolListener
@@ -302,11 +308,14 @@ void MediaPlayerPrivate::RequestCompleted(BUrlRequest*, bool success)
     m_player->networkStateChanged();
 }
 
-bool MediaPlayerPrivate::didLoadingProgress() const
+void MediaPlayerPrivate::MessageReceived(BMessage* message)
 {
-    bool progress = m_didReceiveData;
-    m_didReceiveData = false;
-    return progress;
+    if (message->what == 'rfsh')
+    {
+        m_player->repaint();
+        return;
+    }
+    BUrlProtocolAsynchronousListener::MessageReceived(message);
 }
 
 // #pragma mark - private methods
@@ -328,6 +337,10 @@ void MediaPlayerPrivate::IdentifyTracks()
 
             if (format.IsVideo()) {
                 m_videoTrack = track;
+
+                m_frameBuffer = new BBitmap(
+                    BRect(0, 0, format.Width() - 1, format.Height() - 1),
+                    format.ColorSpace());
 
                 if (m_audioTrack)
                     break;

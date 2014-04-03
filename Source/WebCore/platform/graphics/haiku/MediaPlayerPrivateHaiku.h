@@ -25,6 +25,7 @@
 
 #include <UrlProtocolAsynchronousListener.h>
 
+class BBitmap;
 class BDataIO;
 class BMediaFile;
 class BMediaTrack;
@@ -76,6 +77,9 @@ class MediaPlayerPrivate : public MediaPlayerPrivateInterface, BUrlProtocolAsync
 	    void DataReceived(BUrlRequest* caller, const char* data, ssize_t size) override;
         void DownloadProgress(BUrlRequest*, ssize_t, ssize_t) override;
         void RequestCompleted(BUrlRequest*, bool success) override;
+
+        // BHandler API
+	    void MessageReceived(BMessage* message) override;
     private:
         MediaPlayerPrivate(MediaPlayer*);
         
@@ -97,6 +101,7 @@ class MediaPlayerPrivate : public MediaPlayerPrivateInterface, BUrlProtocolAsync
         BMediaTrack* m_audioTrack;
         BMediaTrack* m_videoTrack;
         BSoundPlayer* m_soundPlayer;
+        BBitmap* m_frameBuffer;
 
         MediaPlayer* m_player;
         MediaPlayer::NetworkState m_networkState;
