@@ -27,6 +27,7 @@
 
 class BDataIO;
 class BMediaFile;
+class BMediaTrack;
 class BUrlRequest;
 
 namespace WebCore {
@@ -69,10 +70,13 @@ class MediaPlayerPrivate : public MediaPlayerPrivateInterface, BUrlProtocolAsync
 
         // BUrlProtocolListener API
 	    void DataReceived(BUrlRequest* caller, const char* data, ssize_t size) override;
+        void DownloadProgress(BUrlRequest*, ssize_t, ssize_t) override;
         void RequestCompleted(BUrlRequest*, bool success) override;
     private:
         MediaPlayerPrivate(MediaPlayer*);
         
+        void IdentifyTracks();
+
         // engine support
         static PassOwnPtr<MediaPlayerPrivateInterface> create(MediaPlayer*);
         static void getSupportedTypes(HashSet<String>& types);
@@ -81,7 +85,10 @@ class MediaPlayerPrivate : public MediaPlayerPrivateInterface, BUrlProtocolAsync
         mutable bool m_didReceiveData;
         BUrlRequest* m_urlRequest;
         BPositionIO* m_cache;
+        off_t m_writePos;
         BMediaFile* m_mediaFile;
+        BMediaTrack* m_audioTrack;
+        BMediaTrack* m_videoTrack;
 
         MediaPlayer* m_player;
         MediaPlayer::NetworkState m_networkState;
