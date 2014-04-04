@@ -89,8 +89,11 @@ void ContextMenuClientHaiku::searchWithGoogle(const Frame* frame)
     String url("http://www.google.com/search?q=");
     url.append(encoded);
 
-    if (Page* page = frame->page())
-        page->mainFrame().loader().urlSelected(URL(ParsedURLString, url), String("_blank"), 0, false, false, MaybeSendReferrer);
+    if (Page* page = frame->page()) {
+        page->mainFrame().loader().urlSelected(URL(ParsedURLString, url),
+            String("_blank"), 0, LockHistory::No, LockBackForwardList::No,
+            MaybeSendReferrer);
+    }
 }
 
 void ContextMenuClientHaiku::lookUpInDictionary(Frame*)

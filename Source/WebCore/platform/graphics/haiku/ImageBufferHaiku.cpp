@@ -45,8 +45,8 @@
 
 namespace WebCore {
 
-ImageBufferData::ImageBufferData(const IntSize& size)
-    : m_bitmap(BRect(0, 0, size.width() - 1, size.height() - 1), B_RGBA32, true)
+ImageBufferData::ImageBufferData(const FloatSize& size)
+    : m_bitmap(BRect(0, 0, size.width() - 1., size.height() - 1.), B_RGBA32, true)
     , m_view(NULL)
 {
     if(size.isEmpty())
@@ -79,7 +79,7 @@ ImageBufferData::~ImageBufferData()
         // m_bitmap owns m_view and deletes it when going out of this destructor.
 }
 
-ImageBuffer::ImageBuffer(const IntSize& size, float /* resolutionScale */, ColorSpace, RenderingMode, bool& success)
+ImageBuffer::ImageBuffer(const FloatSize& size, float /* resolutionScale */, ColorSpace, RenderingMode, bool& success)
     : m_data(size)
     , m_size(size)
     , m_logicalSize(size)

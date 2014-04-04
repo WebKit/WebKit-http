@@ -1,6 +1,7 @@
 list(APPEND WebCore_INCLUDE_DIRECTORIES
   "${WEBCORE_DIR}/platform/haiku"
   "${WEBCORE_DIR}/platform/graphics/haiku"
+  "${WEBCORE_DIR}/platform/graphics/opentype"
   "${WEBCORE_DIR}/platform/network/haiku"
 )
 

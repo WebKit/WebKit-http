@@ -5,6 +5,7 @@ LIST(APPEND WebKit_INCLUDE_DIRECTORIES
     "${JAVASCRIPTCORE_DIR}/ForwardingHeaders"
     "${WEBCORE_DIR}/platform/haiku"
     "${WEBCORE_DIR}/platform/graphics/haiku"
+    "${WEBCORE_DIR}/platform/graphics/opentype"
     "${WEBCORE_DIR}/platform/network/haiku"
     "${WEBCORE_DIR}/rendering/svg"
     "${WEBCORE_DIR}/svg"

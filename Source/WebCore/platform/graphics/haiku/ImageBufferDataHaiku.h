@@ -40,7 +40,7 @@ class IntSize;
 
 class ImageBufferData {
 public:
-    ImageBufferData(const IntSize&);
+    ImageBufferData(const FloatSize&);
     ~ImageBufferData();
 
     BBitmap m_bitmap;

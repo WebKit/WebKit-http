@@ -71,9 +71,9 @@ unsigned StillImage::decodedSize() const
     return m_bitmap->BitsLength();
 }
 
-IntSize StillImage::size() const
+FloatSize StillImage::size() const
 {
-    return IntSize(m_bitmap->Bounds().IntegerWidth() + 1, m_bitmap->Bounds().IntegerHeight() + 1);
+    return FloatSize(m_bitmap->Bounds().Width() + 1., m_bitmap->Bounds().Height() + 1.);
 }
 
 NativeImagePtr StillImage::nativeImageForCurrentFrame()

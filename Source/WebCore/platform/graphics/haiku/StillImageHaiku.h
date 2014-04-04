@@ -50,7 +50,7 @@ public:
     virtual void destroyDecodedData(bool = true);
     virtual unsigned decodedSize() const;
 
-    virtual IntSize size() const;
+    virtual FloatSize size() const;
     virtual NativeImagePtr nativeImageForCurrentFrame();
     virtual void draw(GraphicsContext*, const FloatRect& dstRect, const FloatRect& srcRect, ColorSpace styleColorSpace, CompositeOperator, BlendMode, ImageOrientationDescription);
 
