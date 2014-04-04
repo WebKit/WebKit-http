@@ -40,17 +40,17 @@ class ContextMenuClientHaiku : public ContextMenuClient {
 public:
     ContextMenuClientHaiku(BWebPage*);
 
-    virtual void contextMenuDestroyed();
+    virtual void contextMenuDestroyed() override;
 
-    virtual PlatformMenuDescription getCustomMenuFromDefaultItems(ContextMenu*);
-    virtual void contextMenuItemSelected(ContextMenuItem*, const ContextMenu*);
+    virtual PlatformMenuDescription getCustomMenuFromDefaultItems(ContextMenu*) override;
+    virtual void contextMenuItemSelected(ContextMenuItem*, const ContextMenu*) override;
 
-    virtual void downloadURL(const URL& url);
-    virtual void lookUpInDictionary(Frame*);
-    virtual void speak(const String&);
-    virtual bool isSpeaking();
-    virtual void stopSpeaking();
-    virtual void searchWithGoogle(const Frame*);
+    virtual void downloadURL(const URL& url) override;
+    virtual void lookUpInDictionary(Frame*) override;
+    virtual void speak(const String&) override;
+    virtual bool isSpeaking() override;
+    virtual void stopSpeaking() override;
+    virtual void searchWithGoogle(const Frame*) override;
 
 private:
     BWebPage* m_webPage;
