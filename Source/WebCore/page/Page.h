@@ -203,7 +203,7 @@ public:
     InspectorController& inspectorController() const { return *m_inspectorController; }
 #endif
 #if ENABLE(POINTER_LOCK)
-    PointerLockController* pointerLockController() const { return m_pointerLockController.get(); }
+    PointerLockController& pointerLockController() const { return *m_pointerLockController; }
 #endif
     ValidationMessageClient* validationMessageClient() const { return m_validationMessageClient; }
 
@@ -313,7 +313,6 @@ public:
 
     void dnsPrefetchingStateChanged();
     void storageBlockingStateChanged();
-    void privateBrowsingStateChanged();
 
     void setDebugger(JSC::Debugger*);
     JSC::Debugger* debugger() const { return m_debugger; }
@@ -410,7 +409,8 @@ public:
 
     SessionID sessionID() const;
     void setSessionID(SessionID);
-    bool isSessionIDSet() const { return m_sessionID.isValid(); }
+    void enableLegacyPrivateBrowsing(bool privateBrowsingEnabled);
+    bool usesEphemeralSession() const { return m_sessionID.isEphemeral(); }
 
 private:
     void initGroup();
@@ -459,7 +459,7 @@ private:
     const std::unique_ptr<InspectorController> m_inspectorController;
 #endif
 #if ENABLE(POINTER_LOCK)
-    OwnPtr<PointerLockController> m_pointerLockController;
+    const std::unique_ptr<PointerLockController> m_pointerLockController;
 #endif
     RefPtr<ScrollingCoordinator> m_scrollingCoordinator;
 

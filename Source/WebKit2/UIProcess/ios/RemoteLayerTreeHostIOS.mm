@@ -37,10 +37,6 @@
 
 using namespace WebCore;
 
-@interface UIView(WKViewInternals)
-- (void)_createLayerWithFrame:(CGRect)frame;
-@end
-
 @interface CALayer(WKLayerInternal)
 - (void)setContextId:(uint32_t)contextID;
 @end
@@ -110,6 +106,7 @@ LayerOrView *RemoteLayerTreeHost::createLayer(const RemoteLayerTreeTransaction::
 
     // FIXME: Do through the view.
     [[layerOrView layer] web_disableAllActions];
+    setLayerID([layerOrView layer], properties.layerID);
 
     return layerOrView.get();
 }

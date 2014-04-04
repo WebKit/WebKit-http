@@ -66,7 +66,7 @@ public:
 
     bool canRender(const RenderObject* renderer, float multiplier) { return !errorOccurred() && !imageSizeForRenderer(renderer, multiplier).isEmpty(); }
 
-    void setContainerSizeForRenderer(const CachedImageClient*, const IntSize&, float);
+    void setContainerSizeForRenderer(const CachedImageClient*, const LayoutSize&, float);
     bool usesImageContainerSize() const;
     bool imageHasRelativeWidth() const;
     bool imageHasRelativeHeight() const;
@@ -99,7 +99,6 @@ private:
 
     void createImage();
     void clearImage();
-    bool canBeDrawn() const;
     // If not null, changeRect is the changed part of the image.
     void notifyObservers(const IntRect* changeRect = 0);
     virtual PurgePriority purgePriority() const override { return PurgeFirst; }
@@ -132,7 +131,7 @@ private:
 
     void addIncrementalDataBuffer(ResourceBuffer*);
 
-    typedef std::pair<IntSize, float> SizeAndZoom;
+    typedef std::pair<LayoutSize, float> SizeAndZoom;
     typedef HashMap<const CachedImageClient*, SizeAndZoom> ContainerSizeRequests;
     ContainerSizeRequests m_pendingContainerSizeRequests;
 

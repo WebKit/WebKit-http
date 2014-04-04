@@ -56,7 +56,6 @@ my (
     $css4ImagesSupport,
     $cssBoxDecorationBreakSupport,
     $cssDeviceAdaptation,
-    $cssExclusionsSupport,
     $cssFiltersSupport,
     $cssGridLayoutSupport,
     $cssImageOrientationSupport,
@@ -145,7 +144,6 @@ my (
     $videoSupport,
     $videoTrackSupport,
     $webglSupport,
-    $webAnimationSupport,
     $webAudioSupport,
     $webReplaySupport,
     $webSocketsSupport,
@@ -183,9 +181,6 @@ my @features = (
 
     { option => "css-device-adaptation", desc => "Toggle CSS Device Adaptation support",
       define => "ENABLE_CSS_DEVICE_ADAPTATION", default => isEfl(), value => \$cssDeviceAdaptation },
-
-    { option => "css-exclusions", desc => "Toggle CSS Exclusions support",
-      define => "ENABLE_CSS_EXCLUSIONS", default => 1, value => \$cssExclusionsSupport },
 
     { option => "css-shapes", desc => "Toggle CSS Shapes support",
       define => "ENABLE_CSS_SHAPES", default => 1, value => \$cssShapesSupport },
@@ -444,9 +439,6 @@ my @features = (
 
     { option => "webgl", desc => "Toggle WebGL support",
       define => "ENABLE_WEBGL", default => (isAppleMacWebKit() || isIOSWebKit() || isGtk() || isEfl()), value => \$webglSupport },
-
-    { option => "web-animations", desc => "Toggle Web Animation support",
-      define => "ENABLE_WEB_ANIMATION", default => 0, value => \$webAnimationSupport },
 
     { option => "web-audio", desc => "Toggle Web Audio support",
       define => "ENABLE_WEB_AUDIO", default => (isEfl() || isGtk() || isHaiku()), value => \$webAudioSupport },

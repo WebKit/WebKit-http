@@ -308,13 +308,13 @@ namespace WebCore {
 
         void drawImage(Image*, ColorSpace styleColorSpace, const FloatPoint&, CompositeOperator = CompositeSourceOver, ImageOrientationDescription = ImageOrientationDescription());
         void drawImage(Image*, ColorSpace styleColorSpace, const FloatRect&, CompositeOperator = CompositeSourceOver, ImageOrientationDescription = ImageOrientationDescription(), bool useLowQualityScale = false);
-        void drawImage(Image*, ColorSpace styleColorSpace, const FloatPoint& destPoint, const IntRect& srcRect, CompositeOperator = CompositeSourceOver, ImageOrientationDescription = ImageOrientationDescription());
+        void drawImage(Image*, ColorSpace styleColorSpace, const FloatPoint& destPoint, const FloatRect& srcRect, CompositeOperator = CompositeSourceOver, ImageOrientationDescription = ImageOrientationDescription());
         void drawImage(Image*, ColorSpace styleColorSpace, const FloatRect& destRect, const FloatRect& srcRect, CompositeOperator = CompositeSourceOver, ImageOrientationDescription = ImageOrientationDescription(), bool useLowQualityScale = false);
         void drawImage(Image*, ColorSpace styleColorSpace, const FloatRect& destRect, const FloatRect& srcRect, CompositeOperator, BlendMode, ImageOrientationDescription = ImageOrientationDescription(), bool useLowQualityScale = false);
         
-        void drawTiledImage(Image*, ColorSpace styleColorSpace, const IntRect& destRect, const IntPoint& srcPoint, const IntSize& tileSize,
+        void drawTiledImage(Image*, ColorSpace styleColorSpace, const FloatRect& destRect, const FloatPoint& srcPoint, const FloatSize& tileSize,
             CompositeOperator = CompositeSourceOver, bool useLowQualityScale = false, BlendMode = BlendModeNormal);
-        void drawTiledImage(Image*, ColorSpace styleColorSpace, const IntRect& destRect, const IntRect& srcRect,
+        void drawTiledImage(Image*, ColorSpace styleColorSpace, const FloatRect& destRect, const FloatRect& srcRect,
                             const FloatSize& tileScaleFactor, Image::TileRule hRule = Image::StretchTile, Image::TileRule vRule = Image::StretchTile,
                             CompositeOperator = CompositeSourceOver, bool useLowQualityScale = false);
 
@@ -451,7 +451,7 @@ namespace WebCore {
 #endif
         // Create an image buffer compatible with this context, with suitable resolution
         // for drawing into the buffer and then into this context.
-        std::unique_ptr<ImageBuffer> createCompatibleBuffer(const IntSize&, bool hasAlpha = true) const;
+        std::unique_ptr<ImageBuffer> createCompatibleBuffer(const FloatSize&, bool hasAlpha = true) const;
         bool isCompatibleWithBuffer(ImageBuffer*) const;
 
         // This function applies the device scale factor to the context, making the context capable of

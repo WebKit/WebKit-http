@@ -120,6 +120,11 @@ void RenderFlowThread::invalidateRegions()
     m_regionRangeMap.clear();
     m_breakBeforeToRegionMap.clear();
     m_breakAfterToRegionMap.clear();
+    if (m_layerToRegionMap)
+        m_layerToRegionMap->clear();
+    if (m_regionToLayerListMap)
+        m_regionToLayerListMap->clear();
+    m_layersToRegionMappingsDirty = true;
     setNeedsLayout();
 
     m_regionsInvalidated = true;
@@ -273,7 +278,9 @@ RenderNamedFlowFragment* RenderFlowThread::regionForCompositedLayer(RenderLayer&
 RenderNamedFlowFragment* RenderFlowThread::cachedRegionForCompositedLayer(RenderLayer& childLayer) const
 {
     ASSERT(m_layerToRegionMap);
-    return m_layerToRegionMap->get(&childLayer);
+    RenderNamedFlowFragment* namedFlowFragment = m_layerToRegionMap->get(&childLayer);
+    ASSERT(!namedFlowFragment || m_regionList.contains(namedFlowFragment));
+    return namedFlowFragment;
 }
 
 void RenderFlowThread::updateLayerToRegionMappings(RenderLayer& layer, LayerToRegionMap& layerToRegionMap, RegionToLayerListMap& regionToLayerListMap, bool& needsLayerUpdate)
@@ -323,11 +330,11 @@ bool RenderFlowThread::updateAllLayerToRegionMappings()
 
     if (needsLayerUpdate) {
         if (!m_layerToRegionMap)
-            m_layerToRegionMap = adoptPtr(new LayerToRegionMap());
+            m_layerToRegionMap = std::make_unique<LayerToRegionMap>();
         m_layerToRegionMap->swap(layerToRegionMap);
 
         if (!m_regionToLayerListMap)
-            m_regionToLayerListMap = adoptPtr(new RegionToLayerListMap());
+            m_regionToLayerListMap = std::make_unique<RegionToLayerListMap>();
         m_regionToLayerListMap->swap(regionToLayerListMap);
     }
 
@@ -645,7 +652,7 @@ void RenderFlowThread::logicalWidthChangedInRegionsForBlock(const RenderBlock* b
         ASSERT(!region->needsLayout() || region->isRenderRegionSet());
 
         // We have no information computed for this region so we need to do it.
-        OwnPtr<RenderBoxRegionInfo> oldInfo = region->takeRenderBoxRegionInfo(block);
+        std::unique_ptr<RenderBoxRegionInfo> oldInfo = region->takeRenderBoxRegionInfo(block);
         if (!oldInfo) {
             relayoutChildren = rangeInvalidated;
             return;
@@ -1137,6 +1144,8 @@ const RenderBox* RenderFlowThread::currentActiveRenderBox() const
 
 void RenderFlowThread::pushFlowThreadLayoutState(const RenderObject& object)
 {
+    m_activeObjectsStack.add(&object);
+
     if (const RenderBox* currentBoxDescendant = currentActiveRenderBox()) {
         LayoutState* layoutState = currentBoxDescendant->view().layoutState();
         if (layoutState && layoutState->isPaginated()) {
@@ -1145,19 +1154,17 @@ void RenderFlowThread::pushFlowThreadLayoutState(const RenderObject& object)
             setOffsetFromLogicalTopOfFirstRegion(currentBoxDescendant, currentBoxDescendant->isHorizontalWritingMode() ? offsetDelta.height() : offsetDelta.width());
         }
     }
-
-    m_activeObjectsStack.add(&object);
 }
 
 void RenderFlowThread::popFlowThreadLayoutState()
 {
-    m_activeObjectsStack.removeLast();
-
     if (const RenderBox* currentBoxDescendant = currentActiveRenderBox()) {
         LayoutState* layoutState = currentBoxDescendant->view().layoutState();
         if (layoutState && layoutState->isPaginated())
             clearOffsetFromLogicalTopOfFirstRegion(currentBoxDescendant);
     }
+
+    m_activeObjectsStack.removeLast();
 }
 
 LayoutUnit RenderFlowThread::offsetFromLogicalTopOfFirstRegion(const RenderBlock* currentBlock) const
@@ -1166,16 +1173,6 @@ LayoutUnit RenderFlowThread::offsetFromLogicalTopOfFirstRegion(const RenderBlock
     // being currently laid out.
     if (hasCachedOffsetFromLogicalTopOfFirstRegion(currentBlock))
         return cachedOffsetFromLogicalTopOfFirstRegion(currentBlock);
-
-    // If it's the current box being laid out, use the layout state.
-    const RenderBox* currentBoxDescendant = currentActiveRenderBox();
-    if (currentBlock == currentBoxDescendant) {
-        LayoutState* layoutState = view().layoutState();
-        ASSERT(layoutState->m_renderer == currentBlock);
-        ASSERT(layoutState && layoutState->isPaginated());
-        LayoutSize offsetDelta = layoutState->m_layoutOffset - layoutState->m_pageOffset;
-        return currentBoxDescendant->isHorizontalWritingMode() ? offsetDelta.height() : offsetDelta.width();
-    }
 
     // As a last resort, take the slow path.
     LayoutRect blockRect(0, 0, currentBlock->width(), currentBlock->height());

@@ -1,3 +1,57 @@
+2014-04-02  Timothy Hatcher  <timothy@apple.com>
+
+        Remove Input domain from the Web Inspector protocol.
+
+        https://bugs.webkit.org/show_bug.cgi?id=131073
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Protocol/Legacy/7.0/InspectorWebBackendCommands.js: Updated.
+        * Versions/Inspector-iOS-7.0.json: Removed Input domain.
+
+2014-04-01  Timothy Hatcher  <timothy@apple.com>
+
+        Remove HeapProfiler from the Web Inspector protocol.
+
+        https://bugs.webkit.org/show_bug.cgi?id=131070
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Protocol/Legacy/6.0/InspectorWebBackendCommands.js: Updated.
+        * UserInterface/Protocol/Legacy/7.0/InspectorWebBackendCommands.js: Ditto.
+        * Versions/Inspector-iOS-6.0.json: Removed heap related stuff.
+        * Versions/Inspector-iOS-7.0.json: Ditto.
+
+2014-04-01  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Remove stale localStorage deletion transition code
+        https://bugs.webkit.org/show_bug.cgi?id=131061
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Base/ImageUtilities.js:
+        This code has been in for a while. We have transitioned to Web SQL.
+
+2014-04-01  Zoltan Horvath  <zoltan@webkit.org>
+
+        [CSS Exclusions] Remove exclusions parsing support
+        https://bugs.webkit.org/show_bug.cgi?id=131046
+
+        Reviewed by David Hyatt.
+
+        * UserInterface/Models/CSSKeywordCompletions.js:
+
+2014-04-01  Timothy Hatcher  <timothy@apple.com>
+
+        Remove the rest of the old Canvas inspection support.
+
+        https://bugs.webkit.org/show_bug.cgi?id=131066
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Protocol/Legacy/7.0/InspectorWebBackendCommands.js: Updated.
+        * Versions/Inspector-iOS-7.0.json: Removed Canvas domain.
+
 2014-03-28  James Craig  <jcraig@apple.com>
 
         Web Inspector: AXI: support for live regions

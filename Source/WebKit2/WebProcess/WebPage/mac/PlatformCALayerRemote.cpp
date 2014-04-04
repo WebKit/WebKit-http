@@ -42,7 +42,8 @@
 #import <wtf/RetainPtr.h>
 
 using namespace WebCore;
-using namespace WebKit;
+
+namespace WebKit {
 
 PassRefPtr<PlatformCALayerRemote> PlatformCALayerRemote::create(LayerType layerType, PlatformCALayerClient* owner, RemoteLayerTreeContext* context)
 {
@@ -71,7 +72,7 @@ PassRefPtr<PlatformCALayerRemote> PlatformCALayerRemote::create(const PlatformCA
 {
     RefPtr<PlatformCALayerRemote> layer = adoptRef(new PlatformCALayerRemote(other, owner, context));
 
-    context->layerWasCreated(layer.get(), LayerTypeCustom);
+    context->layerWasCreated(layer.get(), other.layerType());
 
     return layer.release();
 }
@@ -124,13 +125,12 @@ void PlatformCALayerRemote::recursiveBuildTransaction(RemoteLayerTreeTransaction
         }
 
         if (m_layerType == LayerTypeCustom) {
-            RemoteLayerTreePropertyApplier::applyProperties(platformLayer(), m_properties, RemoteLayerTreePropertyApplier::RelatedLayerMap());
-            m_properties.changedProperties = RemoteLayerTreeTransaction::NoChange;
+            RemoteLayerTreePropertyApplier::applyProperties(platformLayer(), nullptr, m_properties, RemoteLayerTreePropertyApplier::RelatedLayerMap());
+            m_properties.resetChangedProperties();
             return;
         }
 
         transaction.layerPropertiesChanged(this, m_properties);
-        m_properties.changedProperties = RemoteLayerTreeTransaction::NoChange;
     }
 
     for (size_t i = 0; i < m_children.size(); ++i) {
@@ -145,6 +145,8 @@ void PlatformCALayerRemote::recursiveBuildTransaction(RemoteLayerTreeTransaction
 
 void PlatformCALayerRemote::animationStarted(CFTimeInterval beginTime)
 {
+    if (m_owner)
+        m_owner->platformCALayerAnimationStarted(beginTime);
 }
 
 void PlatformCALayerRemote::ensureBackingStore()
@@ -267,18 +269,22 @@ void PlatformCALayerRemote::adoptSublayers(PlatformCALayer* source)
 
 void PlatformCALayerRemote::addAnimationForKey(const String& key, PlatformCAAnimation* animation)
 {
-    ASSERT_NOT_REACHED();
+    m_properties.addedAnimations.set(key, toPlatformCAAnimationRemote(animation)->properties());
+    m_properties.notePropertiesChanged(RemoteLayerTreeTransaction::AnimationsChanged);
+    
+    m_context->willStartAnimationOnLayer(this);
 }
 
 void PlatformCALayerRemote::removeAnimationForKey(const String& key)
 {
-    ASSERT_NOT_REACHED();
+    // FIXME: remove from m_properties.addedAnimations ?
+    m_properties.keyPathsOfAnimationsToRemove.add(key);
+    m_properties.notePropertiesChanged(RemoteLayerTreeTransaction::AnimationsChanged);
 }
 
 PassRefPtr<PlatformCAAnimation> PlatformCALayerRemote::animationForKey(const String& key)
 {
-    ASSERT_NOT_REACHED();
-
+    // FIXME: implement.
     return nullptr;
 }
 
@@ -589,3 +595,5 @@ uint32_t PlatformCALayerRemote::hostingContextID()
     ASSERT_NOT_REACHED();
     return 0;
 }
+
+} // namespace WebKit

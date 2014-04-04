@@ -72,6 +72,7 @@
 #include "ScriptController.h"
 #include "ScriptSourceCode.h"
 #include "SecurityPolicy.h"
+#include "SessionID.h"
 #include "Settings.h"
 #include "ShadowRoot.h"
 #include "TimeRanges.h"
@@ -1263,8 +1264,7 @@ void HTMLMediaElement::loadResource(const URL& initialURL, ContentType& contentT
     if (m_sendProgressEvents) 
         startProgressEventTimer();
 
-    Settings* settings = document().settings();
-    bool privateMode = !settings || settings->privateBrowsingEnabled();
+    bool privateMode = document().page() && document().page()->usesEphemeralSession();
     m_player->setPrivateBrowsingMode(privateMode);
 
     // Reset display mode to force a recalculation of what to show because we are resetting the player.
@@ -5272,8 +5272,7 @@ void HTMLMediaElement::privateBrowsingStateDidChange()
     if (!m_player)
         return;
 
-    Settings* settings = document().settings();
-    bool privateMode = !settings || settings->privateBrowsingEnabled();
+    bool privateMode = document().page() && document().page()->usesEphemeralSession();
     LOG(Media, "HTMLMediaElement::privateBrowsingStateDidChange(%s)", boolString(privateMode));
     m_player->setPrivateBrowsingMode(privateMode);
 }

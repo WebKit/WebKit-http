@@ -45,6 +45,7 @@
 
 #if PLATFORM(IOS)
 #import <WebCore/WebCoreThreadSystemInterface.h>
+#import "WKGeolocationProviderIOS.h"
 #endif
 
 #if __has_include(<CFNetwork/CFNSURLConnection.h>)
@@ -63,6 +64,10 @@ enum : NSUInteger {
 
 @implementation WKProcessPool {
     WebKit::WeakObjCPtr<id <_WKDownloadDelegate>> _downloadDelegate;
+
+#if PLATFORM(IOS)
+    RetainPtr<WKGeolocationProviderIOS> _geolocationProvider;
+#endif // PLATFORM(IOS)
 }
 
 - (instancetype)init
@@ -91,6 +96,15 @@ enum : NSUInteger {
 {
     return *_context;
 }
+
+#if PLATFORM(IOS)
+- (WKGeolocationProviderIOS *)_geolocationProvider
+{
+    if (!_geolocationProvider)
+        _geolocationProvider = adoptNS([[WKGeolocationProviderIOS alloc] initWithContext:_context.get()]);
+    return _geolocationProvider.get();
+}
+#endif // PLATFORM(IOS)
 
 @end
 

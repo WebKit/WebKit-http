@@ -33,16 +33,14 @@
 #import <wtf/RetainPtr.h>
 
 using namespace WebCore;
-using namespace WebKit;
+
+namespace WebKit {
 
 PlatformCALayerRemoteTiledBacking::PlatformCALayerRemoteTiledBacking(LayerType layerType, PlatformCALayerClient* owner, RemoteLayerTreeContext* context)
     : PlatformCALayerRemote(layerType, owner, context)
 {
     m_tileController = TileController::create(this);
-
-    m_customSublayers = adoptPtr(new PlatformCALayerList(1));
-    PlatformCALayer* tileCacheTileContainerLayer = m_tileController->tileContainerLayer();
-    (*m_customSublayers)[0] = tileCacheTileContainerLayer;
+    m_customSublayers = std::make_unique<PlatformCALayerList>(m_tileController->containerLayers());
 }
 
 PlatformCALayerRemoteTiledBacking::~PlatformCALayerRemoteTiledBacking()
@@ -102,3 +100,5 @@ void PlatformCALayerRemoteTiledBacking::setBorderColor(const WebCore::Color& col
 {
     m_tileController->setTileDebugBorderColor(color);
 }
+
+} // namespace WebKit

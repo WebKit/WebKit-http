@@ -31,17 +31,23 @@
 
 namespace TestWebKitAPI {
 
-static bool testDone;
+static bool didNavigate;
+static bool didSameDocumentNavigation;
 
-static void didNavigateWithNavigationData(WKContextRef context, WKPageRef page, WKNavigationDataRef navigationData, WKFrameRef frame, const void* clientInfo)
+static void didNavigateWithoutNavigationData(WKContextRef context, WKPageRef page, WKNavigationDataRef navigationData, WKFrameRef frame, const void* clientInfo)
 {
     // This should never be called when navigating in Private Browsing.
     FAIL();
 }
 
+static void didNavigateWithNavigationData(WKContextRef context, WKPageRef page, WKNavigationDataRef navigationData, WKFrameRef frame, const void* clientInfo)
+{
+    didNavigate = true;
+}
+
 static void didSameDocumentNavigationForFrame(WKPageRef page, WKFrameRef frame, WKSameDocumentNavigationType type, WKTypeRef userData, const void *clientInfo)
 {
-    testDone = true;
+    didSameDocumentNavigation = true;
 }
 
 TEST(WebKit2, PrivateBrowsingPushStateNoHistoryCallback)
@@ -52,7 +58,7 @@ TEST(WebKit2, PrivateBrowsingPushStateNoHistoryCallback)
     memset(&historyClient, 0, sizeof(historyClient));
 
     historyClient.base.version = 0;
-    historyClient.didNavigateWithNavigationData = didNavigateWithNavigationData;
+    historyClient.didNavigateWithNavigationData = didNavigateWithoutNavigationData;
 
     WKContextSetHistoryClient(context.get(), &historyClient.base);
 
@@ -75,7 +81,16 @@ TEST(WebKit2, PrivateBrowsingPushStateNoHistoryCallback)
     WKRetainPtr<WKURLRef> url(AdoptWK, Util::createURLForResource("push-state", "html"));
     WKPageLoadURL(webView.page(), url.get());
 
-    Util::run(&testDone);
+    Util::run(&didSameDocumentNavigation);
+
+    WKPreferencesSetPrivateBrowsingEnabled(preferences.get(), false);
+
+    historyClient.didNavigateWithNavigationData = didNavigateWithNavigationData;
+    WKContextSetHistoryClient(context.get(), &historyClient.base);
+
+    WKPageLoadURL(webView.page(), url.get());
+
+    Util::run(&didNavigate);
 }
 
 } // namespace TestWebKitAPI

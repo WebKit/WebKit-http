@@ -116,6 +116,9 @@ private:
 
     const Color& shadowColor() const;
     FloatRect addRoundedBorderClip(RenderObject* box, GraphicsContext*, const IntRect&);
+
+    String m_mediaControlsScript;
+    String m_mediaControlsStyleSheet;
 };
 
 }

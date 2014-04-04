@@ -25,6 +25,7 @@
 #include "GraphicsContext.h"
 #include "HTMLImageElement.h"
 #include "ImageBuffer.h"
+#include "LayoutSize.h"
 #include "Page.h"
 #include "RenderSVGRoot.h"
 #include "SVGImage.h"
@@ -50,7 +51,7 @@ void SVGImageCache::removeClientFromCache(const CachedImageClient* client)
     m_imageForContainerMap.remove(client);
 }
 
-void SVGImageCache::setContainerSizeForRenderer(const CachedImageClient* client, const IntSize& containerSize, float containerZoom)
+void SVGImageCache::setContainerSizeForRenderer(const CachedImageClient* client, const LayoutSize& containerSize, float containerZoom)
 {
     ASSERT(client);
     ASSERT(!containerSize.isEmpty());
@@ -62,9 +63,9 @@ void SVGImageCache::setContainerSizeForRenderer(const CachedImageClient* client,
     m_imageForContainerMap.set(client, SVGImageForContainer::create(m_svgImage, containerSizeWithoutZoom, containerZoom));
 }
 
-IntSize SVGImageCache::imageSizeForRenderer(const RenderObject* renderer) const
+FloatSize SVGImageCache::imageSizeForRenderer(const RenderObject* renderer) const
 {
-    IntSize imageSize = m_svgImage->size();
+    FloatSize imageSize = m_svgImage->size();
     if (!renderer)
         return imageSize;
 

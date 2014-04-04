@@ -52,7 +52,7 @@ public:
     virtual ~RemoteScrollingCoordinatorProxy();
     
     // Inform the web process that the scroll position changed (called from the scrolling tree)
-    void scrollPositionChanged(WebCore::ScrollingNodeID, const WebCore::FloatPoint& newScrollPosition);
+    void scrollingTreeNodeDidScroll(WebCore::ScrollingNodeID, const WebCore::FloatPoint& newScrollPosition);
 
     bool isPointInNonFastScrollableRegion(const WebCore::IntPoint&) const;
 
@@ -68,11 +68,15 @@ public:
 
     void updateScrollingTree(const RemoteScrollingCoordinatorTransaction&, bool& fixedOrStickyLayerChanged);
 
+    void setPropagatesMainFrameScrolls(bool propagatesMainFrameScrolls) { m_propagatesMainFrameScrolls = propagatesMainFrameScrolls; }
+    bool propagatesMainFrameScrolls() const { return m_propagatesMainFrameScrolls; }
+
 private:
     void connectStateNodeLayers(WebCore::ScrollingStateTree&, const RemoteLayerTreeHost&, bool& fixedOrStickyLayerChanged);
 
     WebPageProxy& m_webPageProxy;
     RefPtr<RemoteScrollingTree> m_scrollingTree;
+    bool m_propagatesMainFrameScrolls;
 };
 
 } // namespace WebKit

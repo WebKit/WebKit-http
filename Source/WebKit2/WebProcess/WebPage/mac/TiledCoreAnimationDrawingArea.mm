@@ -44,6 +44,7 @@
 #import <WebCore/GraphicsLayerCA.h>
 #import <WebCore/MainFrame.h>
 #import <WebCore/Page.h>
+#import <WebCore/PlatformCAAnimationMac.h>
 #import <WebCore/RenderLayerBacking.h>
 #import <WebCore/RenderLayerCompositor.h>
 #import <WebCore/RenderView.h>
@@ -259,9 +260,6 @@ void TiledCoreAnimationDrawingArea::updatePreferences(const WebPreferencesStore&
         ScrollingThread::dispatch(bind(&ScrollingTree::setScrollingPerformanceLoggingEnabled, scrollingCoordinator->scrollingTree(), scrollingPerformanceLoggingEnabled));
     }
 #endif
-
-    if (TiledBacking* tiledBacking = mainFrameTiledBacking())
-        tiledBacking->setAggressivelyRetainsTiles(settings.aggressiveTileRetentionEnabled());
 
     for (PageOverlayLayerMap::iterator it = m_pageOverlayLayers.begin(), end = m_pageOverlayLayers.end(); it != end; ++it) {
         it->value->setAcceleratesDrawing(settings.acceleratedDrawingEnabled());
@@ -583,9 +581,6 @@ void TiledCoreAnimationDrawingArea::setRootCompositingLayer(CALayer *layer)
     for (PageOverlayLayerMap::iterator it = m_pageOverlayLayers.begin(), end = m_pageOverlayLayers.end(); it != end; ++it)
         [m_hostingLayer addSublayer:it->value->platformLayer()];
 
-    if (TiledBacking* tiledBacking = mainFrameTiledBacking())
-        tiledBacking->setAggressivelyRetainsTiles(m_webPage->corePage()->settings().aggressiveTileRetentionEnabled());
-
     updateDebugInfoLayer(m_webPage->corePage()->settings().showTiledScrollingIndicator());
 
     [CATransaction commit];
@@ -760,7 +755,7 @@ void TiledCoreAnimationDrawingArea::commitTransientZoom(double scale, FloatPoint
     transform.scale(scale);
 
     RetainPtr<CABasicAnimation> renderViewAnimationCA = transientZoomSnapAnimationForKeyPath("transform");
-    RefPtr<PlatformCAAnimation> renderViewAnimation = PlatformCAAnimation::create(renderViewAnimationCA.get());
+    RefPtr<PlatformCAAnimation> renderViewAnimation = PlatformCAAnimationMac::create(renderViewAnimationCA.get());
     renderViewAnimation->setToValue(transform);
 
     RetainPtr<CALayer> shadowLayer;

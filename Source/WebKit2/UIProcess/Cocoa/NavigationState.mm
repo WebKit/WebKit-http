@@ -246,13 +246,13 @@ void NavigationState::PolicyClient::decidePolicyForNavigationAction(WebPageProxy
     auto navigationAction = adoptNS([[WKNavigationAction alloc] init]);
 
     if (destinationFrame)
-        [navigationAction setDestinationFrame:adoptNS([[WKFrameInfo alloc] initWithWebFrameProxy:*destinationFrame]).get()];
+        [navigationAction setTargetFrame:adoptNS([[WKFrameInfo alloc] initWithWebFrameProxy:*destinationFrame]).get()];
 
     if (sourceFrame) {
         if (sourceFrame == destinationFrame)
-            [navigationAction setSourceFrame:[navigationAction destinationFrame]];
+            [navigationAction setSourceFrame:[navigationAction targetFrame]];
         else
-            [navigationAction setDestinationFrame:adoptNS([[WKFrameInfo alloc] initWithWebFrameProxy:*sourceFrame]).get()];
+            [navigationAction setTargetFrame:adoptNS([[WKFrameInfo alloc] initWithWebFrameProxy:*sourceFrame]).get()];
     }
 
     [navigationAction setNavigationType:toWKNavigationType(navigationActionData.navigationType)];
@@ -261,15 +261,15 @@ void NavigationState::PolicyClient::decidePolicyForNavigationAction(WebPageProxy
 
     [navigationDelegate webView:m_navigationState.m_webView decidePolicyForNavigationAction:navigationAction.get() decisionHandler:[listener](WKNavigationPolicyDecision policyDecision) {
         switch (policyDecision) {
-        case WKNavigationPolicyDecisionAllow:
+        case WKNavigationActionPolicyAllow:
             listener->use();
             break;
 
-        case WKNavigationPolicyDecisionCancel:
+        case WKNavigationActionPolicyCancel:
             listener->ignore();
             break;
 
-        case WKNavigationPolicyDecisionDownload:
+        case WKNavigationActionPolicyDownload:
             listener->download();
             break;
         }
@@ -302,15 +302,15 @@ void NavigationState::PolicyClient::decidePolicyForResponse(WebPageProxy*, WebFr
 
     [navigationDelegate webView:m_navigationState.m_webView decidePolicyForNavigationResponse:navigationResponse.get() decisionHandler:[listener](WKNavigationResponsePolicyDecision policyDecision) {
         switch (policyDecision) {
-        case WKNavigationResponsePolicyDecisionAllow:
+        case WKNavigationResponsePolicyAllow:
             listener->use();
             break;
 
-        case WKNavigationResponsePolicyDecisionCancel:
+        case WKNavigationResponsePolicyCancel:
             listener->ignore();
             break;
 
-        case WKNavigationResponsePolicyDecisionBecomeDownload:
+        case WKNavigationResponsePolicyBecomeDownload:
             listener->download();
             break;
         }
@@ -517,22 +517,7 @@ void NavigationState::LoaderClient::processDidCrash(WebKit::WebPageProxy*)
 
 void NavigationState::LoaderClient::didChangeBackForwardList(WebKit::WebPageProxy*, WebKit::WebBackForwardListItem* addedItem, Vector<RefPtr<WebKit::WebBackForwardListItem>> removedItems)
 {
-    auto userInfo = adoptNS([[NSMutableDictionary alloc] init]);
-
-    if (addedItem)
-        [userInfo setObject:wrapper(*addedItem) forKey:WKBackForwardListAddedItemKey];
-
-    if (!removedItems.isEmpty()) {
-        Vector<id> removed;
-        removed.reserveInitialCapacity(removedItems.size());
-
-        for (const auto& removedItem : removedItems)
-            removed.uncheckedAppend(wrapper(*removedItem));
-
-        [userInfo setObject:adoptNS([[NSArray alloc] initWithObjects:removed.data() count:removed.size()]).get() forKey:WKBackForwardListRemovedItemsKey];
-    }
-
-    [[NSNotificationCenter defaultCenter] postNotificationName:WKBackForwardListDidChangeNotification object:wrapper(m_navigationState.m_webView->_page->backForwardList()) userInfo:userInfo.get()];
+    [[NSNotificationCenter defaultCenter] postNotificationName:_WKBackForwardListDidChangeNotification object:wrapper(m_navigationState.m_webView->_page->backForwardList())];
 }
 
 void NavigationState::willChangeIsLoading()
@@ -557,12 +542,12 @@ void NavigationState::didChangeTitle()
 
 void NavigationState::willChangeActiveURL()
 {
-    [m_webView willChangeValueForKey:@"activeURL"];
+    [m_webView willChangeValueForKey:@"URL"];
 }
 
 void NavigationState::didChangeActiveURL()
 {
-    [m_webView didChangeValueForKey:@"activeURL"];
+    [m_webView didChangeValueForKey:@"URL"];
 }
 
 void NavigationState::willChangeHasOnlySecureContent()

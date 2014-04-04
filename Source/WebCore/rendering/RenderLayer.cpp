@@ -186,6 +186,7 @@ RenderLayer::RenderLayer(RenderLayerModelObject& rendererLayerModelObject)
 #endif
 #if ENABLE(CSS_COMPOSITING)
     , m_blendMode(BlendModeNormal)
+    , m_hasUnisolatedCompositedBlendingDescendants(false)
     , m_hasBlendedElementInChildStackingContext(false)
     , m_hasBlendedElementInChildStackingContextStatusDirty(false)
 #endif
@@ -617,8 +618,8 @@ void RenderLayer::updateDescendantsAreContiguousInStackingOrder()
     ASSERT(!m_normalFlowListDirty);
     ASSERT(!m_zOrderListsDirty);
 
-    OwnPtr<Vector<RenderLayer*>> posZOrderList;
-    OwnPtr<Vector<RenderLayer*>> negZOrderList;
+    std::unique_ptr<Vector<RenderLayer*>> posZOrderList;
+    std::unique_ptr<Vector<RenderLayer*>> negZOrderList;
     rebuildZOrderLists(StopAtStackingContexts, posZOrderList, negZOrderList);
 
     // Create a reverse lookup.
@@ -815,11 +816,8 @@ void RenderLayer::updateBlendMode()
     }
 
     BlendMode newBlendMode = renderer().style().blendMode();
-    if (newBlendMode != m_blendMode) {
+    if (newBlendMode != m_blendMode)
         m_blendMode = newBlendMode;
-        if (backing())
-            backing()->setBlendMode(newBlendMode);
-    }
 }
 
 void RenderLayer::updateNonCompositedParentStackingContextHasBlendedChild(bool hasBlendedChild)
@@ -864,12 +862,12 @@ void RenderLayer::updateTransform()
     bool hasTransform = renderer().hasTransform() && renderer().style().hasTransform();
     bool had3DTransform = has3DTransform();
 
-    bool hadTransform = m_transform;
+    bool hadTransform = !!m_transform;
     if (hasTransform != hadTransform) {
         if (hasTransform)
-            m_transform = adoptPtr(new TransformationMatrix);
+            m_transform = std::make_unique<TransformationMatrix>();
         else
-            m_transform.clear();
+            m_transform = nullptr;
         
         // Layers with transforms act as clip rects roots, so clear the cached clip rects here.
         clearClipRectsIncludingDescendants();
@@ -1160,7 +1158,7 @@ void RenderLayer::updateDescendantDependentFlags(HashSet<const RenderObject*>* o
                     m_hasVisibleContent = true;
                     break;
                 }
-                RenderObject* child;
+                RenderObject* child = nullptr;
                 if (!r->hasLayer() && (child = r->firstChildSlow()))
                     r = child;
                 else if (r->nextSibling())
@@ -2310,6 +2308,8 @@ void RenderLayer::scrollTo(int x, int y)
 #endif
         return;
     }
+    
+    IntPoint oldPosition = IntPoint(m_scrollOffset);
     m_scrollOffset = newScrollOffset;
 
     InspectorInstrumentation::willScrollLayer(&renderer().frame());
@@ -2363,9 +2363,11 @@ void RenderLayer::scrollTo(int x, int y)
 #endif
         renderer().repaintUsingContainer(repaintContainer, m_repaintRect);
 
-    // Schedule the scroll DOM event.
-    if (Element* element = renderer().element())
+    // Schedule the scroll and scroll-related DOM events.
+    if (Element* element = renderer().element()) {
         element->document().eventQueue().enqueueOrDispatchScrollEvent(*element);
+        element->document().sendWillRevealEdgeEventsIfNeeded(oldPosition, IntPoint(newScrollOffset), visibleContentRect(), contentsSize(), element);
+    }
 
     InspectorInstrumentation::didScrollLayer(&frame);
     if (scrollsOverflow())
@@ -3460,7 +3462,7 @@ void RenderLayer::paintScrollCorner(GraphicsContext* context, const IntPoint& pa
 void RenderLayer::drawPlatformResizerImage(GraphicsContext* context, const LayoutRect& resizerCornerRect)
 {
     RefPtr<Image> resizeCornerImage;
-    IntSize cornerResizerSize;
+    FloatSize cornerResizerSize;
     if (renderer().document().deviceScaleFactor() >= 2) {
         DEPRECATED_DEFINE_STATIC_LOCAL(Image*, resizeCornerImageHiRes, (Image::loadPlatformResource("textAreaResizeCorner@2x").leakRef()));
         resizeCornerImage = resizeCornerImageHiRes;
@@ -3927,7 +3929,7 @@ bool RenderLayer::setupClipPath(GraphicsContext* context, const LayerPaintingInf
 
 #if ENABLE(CSS_FILTERS)
 
-PassOwnPtr<FilterEffectRendererHelper> RenderLayer::setupFilters(GraphicsContext* context, LayerPaintingInfo& paintingInfo, PaintLayerFlags paintFlags, const LayoutPoint& offsetFromRoot, LayoutRect& rootRelativeBounds, bool& rootRelativeBoundsComputed)
+std::unique_ptr<FilterEffectRendererHelper> RenderLayer::setupFilters(GraphicsContext* context, LayerPaintingInfo& paintingInfo, PaintLayerFlags paintFlags, const LayoutPoint& offsetFromRoot, LayoutRect& rootRelativeBounds, bool& rootRelativeBoundsComputed)
 {
     if (context->paintingDisabled())
         return nullptr;
@@ -3940,7 +3942,7 @@ PassOwnPtr<FilterEffectRendererHelper> RenderLayer::setupFilters(GraphicsContext
     if (!hasPaintedFilter)
         return nullptr;
 
-    OwnPtr<FilterEffectRendererHelper> filterPainter = adoptPtr(new FilterEffectRendererHelper(hasPaintedFilter));
+    auto filterPainter = std::make_unique<FilterEffectRendererHelper>(hasPaintedFilter);
     if (!filterPainter->haveFilterEffect())
         return nullptr;
     
@@ -3967,7 +3969,7 @@ PassOwnPtr<FilterEffectRendererHelper> RenderLayer::setupFilters(GraphicsContext
         // Otherwise, if for example this layer has overflow:hidden, a drop shadow will not compute correctly.
         // Note that we will still apply the clipping on the final rendering of the filter.
         paintingInfo.clipToDirtyRect = !filterInfo->renderer()->hasFilterThatMovesPixels();
-        return filterPainter.release();
+        return std::move(filterPainter);
     }
     return nullptr;
 }
@@ -4072,7 +4074,7 @@ void RenderLayer::paintLayerContents(GraphicsContext* context, const LayerPainti
 
     GraphicsContext* transparencyLayerContext = context;
 #if ENABLE(CSS_FILTERS)
-    OwnPtr<FilterEffectRendererHelper> filterPainter = setupFilters(context, localPaintingInfo, paintFlags, offsetFromRoot, rootRelativeBounds, rootRelativeBoundsComputed);
+    std::unique_ptr<FilterEffectRendererHelper> filterPainter = setupFilters(context, localPaintingInfo, paintFlags, offsetFromRoot, rootRelativeBounds, rootRelativeBoundsComputed);
     if (filterPainter) {
         context = filterPainter->filterContext();
         if (context != transparencyLayerContext && haveTransparency) {
@@ -4160,7 +4162,7 @@ void RenderLayer::paintLayerContents(GraphicsContext* context, const LayerPainti
 #if ENABLE(CSS_FILTERS)
     if (filterPainter) {
         context = applyFilters(filterPainter.get(), transparencyLayerContext, localPaintingInfo, layerFragments);
-        filterPainter.clear();
+        filterPainter = nullptr;
     }
 #endif
     
@@ -4577,16 +4579,16 @@ void RenderLayer::paintChildLayerIntoColumns(RenderLayer* childLayer, GraphicsCo
                 TransformationMatrix newTransform(oldTransform);
                 newTransform.translateRight(roundToInt(offset.width()), roundToInt(offset.height()));
                 
-                childLayer->m_transform = adoptPtr(new TransformationMatrix(newTransform));
+                childLayer->m_transform = std::make_unique<TransformationMatrix>(newTransform);
                 
                 LayerPaintingInfo localPaintingInfo(paintingInfo);
                 localPaintingInfo.paintDirtyRect = localDirtyRect;
                 childLayer->paintLayer(context, localPaintingInfo, paintFlags);
 
                 if (oldHasTransform)
-                    childLayer->m_transform = adoptPtr(new TransformationMatrix(oldTransform));
+                    childLayer->m_transform = std::make_unique<TransformationMatrix>(oldTransform);
                 else
-                    childLayer->m_transform.clear();
+                    childLayer->m_transform = nullptr;
             } else {
                 // Adjust the transform such that the renderer's upper left corner will paint at (0,0) in user space.
                 // This involves subtracting out the position of the layer in our current coordinate space.
@@ -4653,7 +4655,6 @@ Element* RenderLayer::enclosingElement() const
         if (Element* e = r->element())
             return e;
     }
-    ASSERT_NOT_REACHED();
     return 0;
 }
 
@@ -5231,12 +5232,12 @@ RenderLayer* RenderLayer::hitTestChildLayerColumns(RenderLayer* childLayer, Rend
                 TransformationMatrix newTransform(oldTransform);
                 newTransform.translateRight(offset.width(), offset.height());
 
-                childLayer->m_transform = adoptPtr(new TransformationMatrix(newTransform));
+                childLayer->m_transform = std::make_unique<TransformationMatrix>(newTransform);
                 hitLayer = childLayer->hitTestLayer(rootLayer, columnLayers[0], request, result, localClipRect, hitTestLocation, false, transformState, zOffset);
                 if (oldHasTransform)
-                    childLayer->m_transform = adoptPtr(new TransformationMatrix(oldTransform));
+                    childLayer->m_transform = std::make_unique<TransformationMatrix>(oldTransform);
                 else
-                    childLayer->m_transform.clear();
+                    childLayer->m_transform = nullptr;
             } else {
                 // Adjust the transform such that the renderer's upper left corner will be at (0,0) in user space.
                 // This involves subtracting out the position of the layer in our current coordinate space.
@@ -5294,7 +5295,7 @@ void RenderLayer::updateClipRects(const ClipRectsContext& clipRectsContext)
     calculateClipRects(clipRectsContext, clipRects);
 
     if (!m_clipRectsCache)
-        m_clipRectsCache = adoptPtr(new ClipRectsCache);
+        m_clipRectsCache = std::make_unique<ClipRectsCache>();
 
     if (parentLayer && parentLayer->clipRects(clipRectsContext) && clipRects == *parentLayer->clipRects(clipRectsContext))
         m_clipRectsCache->setClipRects(clipRectsType, clipRectsContext.respectOverflowClip, parentLayer->clipRects(clipRectsContext));
@@ -5924,14 +5925,11 @@ void RenderLayer::clearClipRects(ClipRectsType typeToClear)
 RenderLayerBacking* RenderLayer::ensureBacking()
 {
     if (!m_backing) {
-        m_backing = adoptPtr(new RenderLayerBacking(*this));
+        m_backing = std::make_unique<RenderLayerBacking>(*this);
         compositor().layerBecameComposited(*this);
 
 #if ENABLE(CSS_FILTERS)
         updateOrRemoveFilterEffectRenderer();
-#endif
-#if ENABLE(CSS_COMPOSITING)
-        backing()->setBlendMode(m_blendMode);
 #endif
     }
     return m_backing.get();
@@ -5941,7 +5939,7 @@ void RenderLayer::clearBacking(bool layerBeingDestroyed)
 {
     if (m_backing && !renderer().documentBeingDestroyed())
         compositor().layerBecameNonComposited(*this);
-    m_backing.clear();
+    m_backing = nullptr;
 
 #if ENABLE(CSS_FILTERS)
     if (!layerBeingDestroyed)
@@ -6115,7 +6113,7 @@ void RenderLayer::rebuildZOrderLists()
     m_zOrderListsDirty = false;
 }
 
-void RenderLayer::rebuildZOrderLists(CollectLayersBehavior behavior, OwnPtr<Vector<RenderLayer*>>& posZOrderList, OwnPtr<Vector<RenderLayer*>>& negZOrderList)
+void RenderLayer::rebuildZOrderLists(CollectLayersBehavior behavior, std::unique_ptr<Vector<RenderLayer*>>& posZOrderList, std::unique_ptr<Vector<RenderLayer*>>& negZOrderList)
 {
     bool includeHiddenLayers = compositor().inCompositingMode();
     for (RenderLayer* child = firstChild(); child; child = child->nextSibling())
@@ -6141,7 +6139,7 @@ void RenderLayer::updateNormalFlowList()
         // Ignore non-overflow layers and reflections.
         if (child->isNormalFlowOnly() && (!m_reflection || reflectionLayer() != child)) {
             if (!m_normalFlowList)
-                m_normalFlowList = adoptPtr(new Vector<RenderLayer*>);
+                m_normalFlowList = std::make_unique<Vector<RenderLayer*>>();
             m_normalFlowList->append(child);
         }
     }
@@ -6149,7 +6147,7 @@ void RenderLayer::updateNormalFlowList()
     m_normalFlowListDirty = false;
 }
 
-void RenderLayer::collectLayers(bool includeHiddenLayers, CollectLayersBehavior behavior, OwnPtr<Vector<RenderLayer*>>& posBuffer, OwnPtr<Vector<RenderLayer*>>& negBuffer)
+void RenderLayer::collectLayers(bool includeHiddenLayers, CollectLayersBehavior behavior, std::unique_ptr<Vector<RenderLayer*>>& posBuffer, std::unique_ptr<Vector<RenderLayer*>>& negBuffer)
 {
     updateDescendantDependentFlags();
 
@@ -6158,11 +6156,11 @@ void RenderLayer::collectLayers(bool includeHiddenLayers, CollectLayersBehavior 
     bool includeHiddenLayer = includeHiddenLayers || (m_hasVisibleContent || (m_hasVisibleDescendant && isStacking));
     if (includeHiddenLayer && !isNormalFlowOnly()) {
         // Determine which buffer the child should be in.
-        OwnPtr<Vector<RenderLayer*>>& buffer = (zIndex() >= 0) ? posBuffer : negBuffer;
+        std::unique_ptr<Vector<RenderLayer*>>& buffer = (zIndex() >= 0) ? posBuffer : negBuffer;
 
         // Create the buffer if it doesn't exist yet.
         if (!buffer)
-            buffer = adoptPtr(new Vector<RenderLayer*>);
+            buffer = std::make_unique<Vector<RenderLayer*>>();
         
         // Append ourselves at the end of the appropriate buffer.
         buffer->append(this);
@@ -6551,11 +6549,11 @@ void RenderLayer::styleChanged(StyleDifference diff, const RenderStyle* oldStyle
 
     if (renderer().style().overflowX() == OMARQUEE && renderer().style().marqueeBehavior() != MNONE && renderer().isBox()) {
         if (!m_marquee)
-            m_marquee = adoptPtr(new RenderMarquee(this));
+            m_marquee = std::make_unique<RenderMarquee>(this);
         m_marquee->updateMarqueeStyle();
     }
     else if (m_marquee) {
-        m_marquee.clear();
+        m_marquee = nullptr;
     }
 
     updateScrollbarsAfterStyleChange(oldStyle);
@@ -6810,7 +6808,9 @@ void RenderLayer::updateOrRemoveFilterEffectRenderer()
 
 void RenderLayer::filterNeedsRepaint()
 {
-    renderer().element()->setNeedsStyleRecalc(SyntheticStyleChange);
+    // We use the enclosing element so that we recalculate style for the ancestor of an anonymous object.
+    if (Element* element = enclosingElement())
+        element->setNeedsStyleRecalc(SyntheticStyleChange);
     renderer().repaint();
 }
 

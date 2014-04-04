@@ -709,12 +709,6 @@
                     { "name": "nodeId", "$ref": "DOM.NodeId", "description": "DOM node id to be accessible by means of $x command line API." }
                 ],
                 "description": "Enables console to refer to the node with given id via $x (see Command Line API for more details $x functions)."
-            },
-            {
-                "name": "addInspectedHeapObject",
-                "parameters": [
-                    { "name": "heapObjectId", "type": "integer" }
-                ]
             }
         ],
         "events": [
@@ -1693,14 +1687,6 @@
                     { "name": "nodeId", "$ref": "NodeId", "description": "Id of the node to focus." }
                 ],
                 "description": "Focuses the given element."
-            },
-            {
-                "name": "setFileInputFiles",
-                "parameters": [
-                    { "name": "nodeId", "$ref": "NodeId", "description": "Id of the file input node to set files for." },
-                    { "name": "files", "type": "array", "items": { "type": "string" }, "description": "Array of file paths to set." }
-                ],
-                "description": "Sets files for the given file input element."
             }
         ],
         "events": [
@@ -2667,10 +2653,9 @@
                 "type": "object",
                 "description": "Profile header.",
                 "properties": [
-                    { "name": "typeId", "type": "string", "enum": ["CPU", "CSS", "HEAP"], "description": "Profile type name." },
+                    { "name": "typeId", "type": "string", "enum": ["CPU", "CSS"], "description": "Profile type name." },
                     { "name": "title", "type": "string", "description": "Profile title." },
-                    { "name": "uid", "type": "integer", "description": "Unique identifier of the profile." },
-                    { "name": "maxJSObjectId", "type": "integer", "optional": true, "description": "Last seen JS object Id." }
+                    { "name": "uid", "type": "integer", "description": "Unique identifier of the profile." }
                 ]
             },
             {
@@ -2695,29 +2680,11 @@
                 "description": "Profile.",
                 "properties": [
                     { "name": "head", "$ref": "CPUProfileNode", "optional": true },
-                    { "name": "idleTime", "type": "number", "optional": true },
-                    { "name": "samples", "optional": true, "type": "array", "items": { "type": "integer" }, "description": "Ids of samples top nodes." }
+                    { "name": "idleTime", "type": "number", "optional": true }
                 ]
-            },
-            {
-                "id": "HeapSnapshotObjectId",
-                "type": "string",
-                "description": "Heap snashot object id."
             }
         ],
         "commands": [
-            {
-                "name": "isSampling",
-                "returns": [
-                    { "name": "result", "type": "boolean" }
-                ]
-            },
-            {
-                "name": "hasHeapProfiler",
-                "returns": [
-                    { "name": "result", "type": "boolean" }
-                ]
-            },
             {
                 "name": "enable"
             },
@@ -2746,12 +2713,6 @@
                 ]
             },
             {
-                "name": "getHeapSnapshot",
-                "parameters": [
-                    { "name": "uid", "type": "integer" }
-                ]
-            },
-            {
                 "name": "removeProfile",
                 "parameters": [
                     { "name": "type", "type": "string" },
@@ -2760,34 +2721,6 @@
             },
             {
                 "name": "clearProfiles"
-            },
-            {
-                "name": "takeHeapSnapshot",
-                "parameters": [
-                    { "name": "reportProgress", "type": "boolean", "optional": true, "description": "If true 'reportHeapSnapshotProgress' events will be generated while snapshot is being taken." }
-                ]
-            },
-            {
-                "name": "collectGarbage"
-            },
-            {
-                "name": "getObjectByHeapObjectId",
-                "parameters": [
-                    { "name": "objectId", "$ref": "HeapSnapshotObjectId" },
-                    { "name": "objectGroup", "type": "string", "optional": true, "description": "Symbolic group name that can be used to release multiple objects." }
-                ],
-                "returns": [
-                    { "name": "result", "$ref": "Runtime.RemoteObject", "description": "Evaluation result." }
-                ]
-            },
-            {
-                "name": "getHeapObjectId",
-                "parameters": [
-                    { "name": "objectId", "$ref": "Runtime.RemoteObjectId", "description": "Identifier of the object to get heap object id for." }
-                ],
-                "returns": [
-                    { "name": "heapSnapshotObjectId", "$ref": "HeapSnapshotObjectId", "description": "Id of the heap snapshot object corresponding to the passed remote object id." }
-                ]
             }
         ],
         "events": [
@@ -2795,19 +2728,6 @@
                 "name": "addProfileHeader",
                 "parameters": [
                     { "name": "header", "$ref": "ProfileHeader" }
-                ]
-            },
-            {
-                "name": "addHeapSnapshotChunk",
-                "parameters": [
-                    { "name": "uid", "type": "integer" },
-                    { "name": "chunk", "type": "string" }
-                ]
-            },
-            {
-                "name": "finishHeapSnapshot",
-                "parameters": [
-                    { "name": "uid", "type": "integer" }
                 ]
             },
             {
@@ -2818,121 +2738,6 @@
             },
             {
                 "name": "resetProfiles"
-            },
-            {
-                "name": "reportHeapSnapshotProgress",
-                "parameters": [
-                    { "name": "done", "type": "integer" },
-                    { "name": "total", "type": "integer" }
-                ]
-            }
-        ]
-    },
-    {
-        "domain": "HeapProfiler",
-        "types": [
-            {
-                "id": "ProfileHeader",
-                "type": "object",
-                "description": "Profile header.",
-                "properties": [
-                    { "name": "title", "type": "string", "description": "Profile title." },
-                    { "name": "uid", "type": "integer", "description": "Unique identifier of the profile." },
-                    { "name": "maxJSObjectId", "type": "integer", "optional": true, "description": "Last seen JS object Id." }
-                ]
-            },
-            {
-                "id": "HeapSnapshotObjectId",
-                "type": "string",
-                "description": "Heap snashot object id."
-            }
-        ],
-        "commands": [
-            {
-                "name": "hasHeapProfiler",
-                "returns": [
-                    { "name": "result", "type": "boolean" }
-                ]
-            },
-            {
-                "name": "getProfileHeaders",
-                "returns": [
-                    { "name": "headers", "type": "array", "items": { "$ref": "ProfileHeader"} }
-                ]
-            },
-            {
-                "name": "getHeapSnapshot",
-                "parameters": [
-                    { "name": "uid", "type": "integer" }
-                ]
-            },
-            {
-                "name": "removeProfile",
-                "parameters": [
-                    { "name": "uid", "type": "integer" }
-                ]
-            },
-            {
-                "name": "clearProfiles"
-            },
-            {
-                "name": "takeHeapSnapshot",
-                "parameters": [
-                    { "name": "reportProgress", "type": "boolean", "optional": true, "description": "If true 'reportHeapSnapshotProgress' events will be generated while snapshot is being taken." }
-                ]
-            },
-            {
-                "name": "collectGarbage"
-            },
-            {
-                "name": "getObjectByHeapObjectId",
-                "parameters": [
-                    { "name": "objectId", "$ref": "HeapSnapshotObjectId" },
-                    { "name": "objectGroup", "type": "string", "optional": true, "description": "Symbolic group name that can be used to release multiple objects." }
-                ],
-                "returns": [
-                    { "name": "result", "$ref": "Runtime.RemoteObject", "description": "Evaluation result." }
-                ]
-            },
-            {
-                "name": "getHeapObjectId",
-                "parameters": [
-                    { "name": "objectId", "$ref": "Runtime.RemoteObjectId", "description": "Identifier of the object to get heap object id for." }
-                ],
-                "returns": [
-                    { "name": "heapSnapshotObjectId", "$ref": "HeapSnapshotObjectId", "description": "Id of the heap snapshot object corresponding to the passed remote object id." }
-                ]
-            }
-        ],
-        "events": [
-            {
-                "name": "addProfileHeader",
-                "parameters": [
-                    { "name": "header", "$ref": "ProfileHeader" }
-                ]
-            },
-            {
-                "name": "addHeapSnapshotChunk",
-                "parameters": [
-                    { "name": "uid", "type": "integer" },
-                    { "name": "chunk", "type": "string" }
-                ]
-            },
-            {
-                "name": "finishHeapSnapshot",
-                "parameters": [
-                    { "name": "uid", "type": "integer" }
-                ]
-            },
-            {
-                "name": "resetProfiles"
-            },
-            {
-                "name": "reportHeapSnapshotProgress",
-                "parameters": [
-                    { "name": "done", "type": "integer" },
-                    { "name": "total", "type": "integer" }
-                ]
             }
         ]
     },
@@ -3005,217 +2810,6 @@
                 "name": "disconnectedFromWorker"
             }
         ]
-    },
-    {
-        "domain": "Canvas",
-        "types": [
-            {
-                "id": "ResourceId",
-                "type": "string",
-                "description": "Unique resource identifier."
-            },
-            {
-                "id": "ResourceInfo",
-                "type": "object",
-                "properties": [
-                    { "name": "id", "$ref": "ResourceId" },
-                    { "name": "description", "type": "string" }
-                ]
-            },
-            {
-                "id": "ResourceState",
-                "type": "object",
-                "properties": [
-                    { "name": "id", "$ref": "ResourceId" },
-                    { "name": "traceLogId", "$ref": "TraceLogId" },
-                    { "name": "imageURL", "type": "string", "optional": true, "description": "Screenshot image data URL." }
-                ]
-            },
-            {
-                "id": "CallArgument",
-                "type": "object",
-                "properties": [
-                    { "name": "description", "type": "string" }
-                ]
-            },
-            {
-                "id": "Call",
-                "type": "object",
-                "properties": [
-                    { "name": "contextId", "$ref": "ResourceId" },
-                    { "name": "functionName", "type": "string", "optional": true },
-                    { "name": "arguments", "type": "array", "items": { "$ref": "CallArgument" }, "optional": true },
-                    { "name": "result", "$ref": "CallArgument", "optional": true },
-                    { "name": "isDrawingCall", "type": "boolean", "optional": true },
-                    { "name": "isFrameEndCall", "type": "boolean", "optional": true },
-                    { "name": "property", "type": "string", "optional": true },
-                    { "name": "value", "$ref": "CallArgument", "optional": true },
-                    { "name": "sourceURL", "type": "string", "optional": true },
-                    { "name": "lineNumber", "type": "integer", "optional": true },
-                    { "name": "columnNumber", "type": "integer", "optional": true }
-                ]
-            },
-            {
-                "id": "TraceLogId",
-                "type": "string",
-                "description": "Unique trace log identifier."
-            },
-            {
-                "id": "TraceLog",
-                "type": "object",
-                "properties": [
-                    { "name": "id", "$ref": "TraceLogId" },
-                    { "name": "calls", "type": "array", "items": { "$ref": "Call" } },
-                    { "name": "startOffset", "type": "integer" },
-                    { "name": "alive", "type": "boolean" },
-                    { "name": "totalAvailableCalls", "type": "number" }
-                ]
-            }
-        ],
-        "commands": [
-            {
-                "name": "enable",
-                "description": "Enables Canvas inspection."
-            },
-            {
-                "name": "disable",
-                "description": "Disables Canvas inspection."
-            },
-            {
-                "name": "dropTraceLog",
-                "parameters": [
-                    { "name": "traceLogId", "$ref": "TraceLogId" }
-                ]
-            },
-            {
-                "name": "hasUninstrumentedCanvases",
-                "returns": [
-                    { "name": "result", "type": "boolean" }
-                ],
-                "description": "Checks if there is any uninstrumented canvas in the inspected page."
-            },
-            {
-                "name": "captureFrame",
-                "parameters": [
-                    { "name": "frameId", "$ref": "Network.FrameId", "optional": true, "description": "Identifier of the frame containing document whose canvases are to be captured. If omitted, main frame is assumed." }
-                ],
-                "returns": [
-                    { "name": "traceLogId", "$ref": "TraceLogId", "description": "Identifier of the trace log containing captured canvas calls." }
-                ],
-                "description": "Starts (or continues) a canvas frame capturing which will be stopped automatically after the next frame is prepared."
-            },
-            {
-                "name": "startCapturing",
-                "parameters": [
-                    { "name": "frameId", "$ref": "Network.FrameId", "optional": true, "description": "Identifier of the frame containing document whose canvases are to be captured. If omitted, main frame is assumed." }
-                ],
-                "returns": [
-                    { "name": "traceLogId", "$ref": "TraceLogId", "description": "Identifier of the trace log containing captured canvas calls." }
-                ],
-                "description": "Starts (or continues) consecutive canvas frames capturing. The capturing is stopped by the corresponding stopCapturing command."
-            },
-            {
-                "name": "stopCapturing",
-                "parameters": [
-                    { "name": "traceLogId", "$ref": "TraceLogId" }
-                ]
-            },
-            {
-                "name": "getTraceLog",
-                "parameters": [
-                    { "name": "traceLogId", "$ref": "TraceLogId" },
-                    { "name": "startOffset", "type": "integer", "optional": true },
-                    { "name": "maxLength", "type": "integer", "optional": true }
-                ],
-                "returns": [
-                    { "name": "traceLog", "$ref": "TraceLog" }
-                ]
-            },
-            {
-                "name": "replayTraceLog",
-                "parameters": [
-                    { "name": "traceLogId", "$ref": "TraceLogId" },
-                    { "name": "stepNo", "type": "integer" }
-                ],
-                "returns": [
-                    { "name": "resourceState", "$ref": "ResourceState" }
-                ]
-            },
-            {
-                "name": "getResourceInfo",
-                "parameters": [
-                    { "name": "resourceId", "$ref": "ResourceId" }
-                ],
-                "returns": [
-                    { "name": "resourceInfo", "$ref": "ResourceInfo" }
-                ]
-            },
-            {
-                "name": "getResourceState",
-                "parameters": [
-                    { "name": "traceLogId", "$ref": "TraceLogId" },
-                    { "name": "resourceId", "$ref": "ResourceId" }
-                ],
-                "returns": [
-                    { "name": "resourceState", "$ref": "ResourceState" }
-                ]
-            }
-        ],
-        "events": [
-            {
-                "name": "contextCreated",
-                "parameters": [
-                    { "name": "frameId", "$ref": "Network.FrameId", "description": "Identifier of the frame containing a canvas with a context." }
-                ],
-                "description": "Fired when a canvas context has been created in the given frame. The context may not be instrumented (see hasUninstrumentedCanvases command)."
-            },
-            {
-                "name": "traceLogsRemoved",
-                "parameters": [
-                    { "name": "frameId", "$ref": "Network.FrameId", "optional": true, "description": "If given, trace logs from the given frame were removed." },
-                    { "name": "traceLogId", "$ref": "TraceLogId", "optional": true, "description": "If given, trace log with the given ID was removed." }
-                ],
-                "description": "Fired when a set of trace logs were removed from the backend. If no parameters are given, all trace logs were removed."
-            }
-        ]
-    },
-    {
-        "domain": "Input",
-        "types": [],
-        "commands": [
-            {
-                "name": "dispatchKeyEvent",
-                "parameters": [
-                    { "name": "type", "type": "string", "enum": ["keyDown", "keyUp", "rawKeyDown", "char"], "description": "Type of the key event." },
-                    { "name": "modifiers", "type": "integer", "optional": true, "description": "Bit field representing pressed modifier keys. Alt=1, Ctrl=2, Meta/Command=4, Shift=8 (default: 0)." },
-                    { "name": "timestamp", "type": "number", "optional": true, "description": "Time at which the event occurred. Measured in UTC time in seconds since January 1, 1970 (default: current time)." },
-                    { "name": "text", "type": "string", "optional": true, "description": "Text as generated by processing a virtual key code with a keyboard layout. Not needed for for <code>keyUp</code> and <code>rawKeyDown</code> events (default: \"\")" },
-                    { "name": "unmodifiedText", "type": "string", "optional": true, "description": "Text that would have been generated by the keyboard if no modifiers were pressed (except for shift). Useful for shortcut (accelerator) key handling (default: \"\")." },
-                    { "name": "keyIdentifier", "type": "string", "optional": true, "description": "Unique key identifier (e.g., 'U+0041') (default: \"\")." },
-                    { "name": "windowsVirtualKeyCode", "type": "integer", "optional": true, "description": "Windows virtual key code (default: 0)." },
-                    { "name": "nativeVirtualKeyCode", "type": "integer", "optional": true, "description": "Native virtual key code (default: 0)." },
-                    { "name": "macCharCode", "type": "integer", "optional": true, "description": "Mac character code (default: 0)." },
-                    { "name": "autoRepeat", "type": "boolean", "optional": true, "description": "Whether the event was generated from auto repeat (default: false)." },
-                    { "name": "isKeypad", "type": "boolean", "optional": true, "description": "Whether the event was generated from the keypad (default: false)." },
-                    { "name": "isSystemKey", "type": "boolean", "optional": true, "description": "Whether the event was a system key event (default: false)." }
-                ],
-                "description": "Dispatches a key event to the page."
-            },
-            {
-                "name": "dispatchMouseEvent",
-                "parameters": [
-                    { "name": "type", "type": "string", "enum": ["mousePressed", "mouseReleased", "mouseMoved"], "description": "Type of the mouse event." },
-                    { "name": "x", "type": "integer", "description": "X coordinate of the event relative to the main frame's viewport."},
-                    { "name": "y", "type": "integer", "description": "Y coordinate of the event relative to the main frame's viewport. 0 refers to the top of the viewport and Y increases as it proceeds towards the bottom of the viewport."},
-                    { "name": "modifiers", "type": "integer", "optional": true, "description": "Bit field representing pressed modifier keys. Alt=1, Ctrl=2, Meta/Command=4, Shift=8 (default: 0)." },
-                    { "name": "timestamp", "type": "number", "optional": true, "description": "Time at which the event occurred. Measured in UTC time in seconds since January 1, 1970 (default: current time)." },
-                    { "name": "button", "type": "string", "enum": ["none", "left", "middle", "right"], "optional": true, "description": "Mouse button (default: \"none\")." },
-                    { "name": "clickCount", "type": "integer", "optional": true, "description": "Number of times the mouse button was clicked (default: 0)." }
-                ],
-                "description": "Dispatches a mouse event to the page."
-            }
-        ],
-        "events": []
     },
     {
         "domain": "LayerTree",

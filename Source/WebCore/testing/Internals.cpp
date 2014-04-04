@@ -245,6 +245,10 @@ static bool markerTypesFrom(const String& markerType, DocumentMarker::MarkerType
         result =  DocumentMarker::DeletedAutocorrection;
     else if (equalIgnoringCase(markerType, "DictationAlternatives"))
         result =  DocumentMarker::DictationAlternatives;
+#if ENABLE(TELEPHONE_NUMBER_DETECTION)
+    else if (equalIgnoringCase(markerType, "TelephoneNumber"))
+        result =  DocumentMarker::TelephoneNumber;
+#endif
     else
         return false;
 
@@ -2011,7 +2015,7 @@ String Internals::getCurrentCursorInfo(ExceptionCode& ec)
     result.append(",");
     result.appendNumber(cursor.hotSpot().y());
     if (cursor.image()) {
-        IntSize size = cursor.image()->size();
+        FloatSize size = cursor.image()->size();
         result.append(" image=");
         result.appendNumber(size.width());
         result.append("x");
@@ -2335,12 +2339,16 @@ void Internals::postRemoteControlCommand(const String& commandString, ExceptionC
 
 void Internals::simulateSystemSleep() const
 {
+#if ENABLE(VIDEO)
     MediaSessionManager::sharedManager().systemWillSleep();
+#endif
 }
 
 void Internals::simulateSystemWake() const
 {
+#if ENABLE(VIDEO)
     MediaSessionManager::sharedManager().systemDidWake();
+#endif
 }
 
 }

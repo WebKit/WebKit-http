@@ -266,6 +266,8 @@ public:
     GraphicsLayer* updateLayerForFooter(bool wantsLayer);
 #endif
 
+    ScrollableArea* scrollableAreaForScrollLayerID(ScrollingNodeID) const;
+
     void updateScrollCoordinatedStatus(RenderLayer&);
     void removeFromScrollCoordinatedLayers(RenderLayer&);
 
@@ -394,7 +396,7 @@ private:
     bool requiresCompositingForScrollableFrame() const;
     bool requiresCompositingForPosition(RenderLayerModelObject&, const RenderLayer&, RenderLayer::ViewportConstrainedNotCompositedReason* = 0) const;
     bool requiresCompositingForOverflowScrolling(const RenderLayer&) const;
-    bool requiresCompositingForIndirectReason(RenderLayerModelObject&, bool hasCompositedDescendants, bool hasBlendedDescendants, bool has3DTransformedDescendants, RenderLayer::IndirectCompositingReason&) const;
+    bool requiresCompositingForIndirectReason(RenderLayerModelObject&, bool hasCompositedDescendants, bool has3DTransformedDescendants, RenderLayer::IndirectCompositingReason&) const;
 
 #if PLATFORM(IOS)
     bool requiresCompositingForScrolling(const RenderLayer&) const;
@@ -501,7 +503,7 @@ private:
     std::unique_ptr<GraphicsLayer> m_layerForFooter;
 #endif
 
-    OwnPtr<GraphicsLayerUpdater> m_layerUpdater; // Updates tiled layer visible area periodically while animations are running.
+    std::unique_ptr<GraphicsLayerUpdater> m_layerUpdater; // Updates tiled layer visible area periodically while animations are running.
 
     Timer<RenderLayerCompositor> m_layerFlushTimer;
     bool m_layerFlushThrottlingEnabled;
@@ -519,6 +521,8 @@ private:
 #endif
 
     Color m_rootExtendedBackgroundColor;
+
+    HashMap<ScrollingNodeID, RenderLayer*> m_scrollingNodeToLayerMap;
 };
 
 

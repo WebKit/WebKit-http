@@ -71,7 +71,7 @@ struct SameSizeAsRenderStyle : public RefCounted<SameSizeAsRenderStyle> {
     } inherited_flags;
 
     struct NonInheritedFlags {
-        unsigned m_bitfields[2];
+        uint64_t m_flags;
     } noninherited_flags;
 };
 
@@ -260,7 +260,7 @@ RenderStyle* RenderStyle::addCachedPseudoStyle(PassRefPtr<RenderStyle> pseudo)
     RenderStyle* result = pseudo.get();
 
     if (!m_cachedPseudoStyles)
-        m_cachedPseudoStyles = adoptPtr(new PseudoStyleCache);
+        m_cachedPseudoStyles = std::make_unique<PseudoStyleCache>();
 
     m_cachedPseudoStyles->append(pseudo);
 
@@ -413,10 +413,6 @@ bool RenderStyle::changeRequiresLayout(const RenderStyle* other, unsigned& chang
             return true;
 
         if (rareNonInheritedData->m_regionFragment != other->rareNonInheritedData->m_regionFragment)
-            return true;
-
-        if (rareNonInheritedData->m_wrapFlow != other->rareNonInheritedData->m_wrapFlow
-            || rareNonInheritedData->m_wrapThrough != other->rareNonInheritedData->m_wrapThrough)
             return true;
 
 #if ENABLE(CSS_SHAPES)
@@ -1113,9 +1109,9 @@ const CounterDirectiveMap* RenderStyle::counterDirectives() const
 
 CounterDirectiveMap& RenderStyle::accessCounterDirectives()
 {
-    OwnPtr<CounterDirectiveMap>& map = rareNonInheritedData.access()->m_counterDirectives;
+    auto& map = rareNonInheritedData.access()->m_counterDirectives;
     if (!map)
-        map = adoptPtr(new CounterDirectiveMap);
+        map = std::make_unique<CounterDirectiveMap>();
     return *map;
 }
 
@@ -1269,14 +1265,14 @@ void RenderStyle::adjustTransitions()
 AnimationList* RenderStyle::accessAnimations()
 {
     if (!rareNonInheritedData.access()->m_animations)
-        rareNonInheritedData.access()->m_animations = adoptPtr(new AnimationList());
+        rareNonInheritedData.access()->m_animations = std::make_unique<AnimationList>();
     return rareNonInheritedData->m_animations.get();
 }
 
 AnimationList* RenderStyle::accessTransitions()
 {
     if (!rareNonInheritedData.access()->m_transitions)
-        rareNonInheritedData.access()->m_transitions = adoptPtr(new AnimationList());
+        rareNonInheritedData.access()->m_transitions = std::make_unique<AnimationList>();
     return rareNonInheritedData->m_transitions.get();
 }
 

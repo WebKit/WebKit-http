@@ -42,6 +42,7 @@
 #include "HitTestResult.h"
 #include "InspectorInstrumentation.h"
 #include "Logging.h"
+#include "MainFrame.h"
 #include "NodeList.h"
 #include "Page.h"
 #include "ProgressTracker.h"
@@ -66,10 +67,10 @@
 #include <wtf/text/StringBuilder.h>
 
 #if PLATFORM(IOS)
+#include "LegacyTileCache.h"
 #include "MainFrame.h"
 #include "Region.h"
 #include "RenderScrollbar.h"
-#include "TileCache.h"
 #endif
 
 #if ENABLE(PLUGIN_PROXY_FOR_VIDEO)
@@ -194,7 +195,9 @@ struct CompositingState {
         : m_compositingAncestor(compAncestor)
         , m_subtreeIsCompositing(false)
         , m_testingOverlap(testOverlap)
-        , m_subtreeHasBlending(false)
+#if ENABLE(CSS_COMPOSITING)
+        , m_hasUnisolatedCompositedBlendingDescendants(false)
+#endif
 #ifndef NDEBUG
         , m_depth(0)
 #endif
@@ -205,7 +208,9 @@ struct CompositingState {
         : m_compositingAncestor(other.m_compositingAncestor)
         , m_subtreeIsCompositing(other.m_subtreeIsCompositing)
         , m_testingOverlap(other.m_testingOverlap)
-        , m_subtreeHasBlending(other.m_subtreeHasBlending)
+#if ENABLE(CSS_COMPOSITING)
+        , m_hasUnisolatedCompositedBlendingDescendants(other.m_hasUnisolatedCompositedBlendingDescendants)
+#endif
 #ifndef NDEBUG
         , m_depth(other.m_depth + 1)
 #endif
@@ -215,7 +220,9 @@ struct CompositingState {
     RenderLayer* m_compositingAncestor;
     bool m_subtreeIsCompositing;
     bool m_testingOverlap;
-    bool m_subtreeHasBlending;
+#if ENABLE(CSS_COMPOSITING)
+    bool m_hasUnisolatedCompositedBlendingDescendants;
+#endif
 #ifndef NDEBUG
     int m_depth;
 #endif
@@ -536,7 +543,7 @@ void RenderLayerCompositor::notifyFlushBeforeDisplayRefresh(const GraphicsLayer*
         if (Page* page = this->page())
             displayID = page->chrome().displayID();
 
-        m_layerUpdater = adoptPtr(new GraphicsLayerUpdater(this, displayID));
+        m_layerUpdater = std::make_unique<GraphicsLayerUpdater>(this, displayID);
     }
     
     m_layerUpdater->scheduleUpdate();
@@ -1098,6 +1105,9 @@ void RenderLayerCompositor::computeCompositingRequirements(RenderLayer* ancestor
     // ancestor with m_subtreeIsCompositing set to false.
     CompositingState childState(compositingState);
     childState.m_subtreeIsCompositing = false;
+#if ENABLE(CSS_COMPOSITING)
+    childState.m_hasUnisolatedCompositedBlendingDescendants = false;
+#endif
 
     bool willBeComposited = needsToBeComposited(layer);
     if (willBeComposited) {
@@ -1171,10 +1181,6 @@ void RenderLayerCompositor::computeCompositingRequirements(RenderLayer* ancestor
             willBeComposited = true;
     }
     
-    // If the layer composited for other reasons than blending, it is no longer needed to keep track of whether a child was blended.
-    if (compositingState.m_subtreeHasBlending && !layer.hasBlendMode())
-        compositingState.m_subtreeHasBlending = false;
-
     ASSERT(willBeComposited == needsToBeComposited(layer));
 
     // All layers (even ones that aren't being composited) need to get added to
@@ -1183,13 +1189,13 @@ void RenderLayerCompositor::computeCompositingRequirements(RenderLayer* ancestor
     if (overlapMap && childState.m_compositingAncestor && !childState.m_compositingAncestor->isRootLayer())
         addToOverlapMap(*overlapMap, layer, absBounds, haveComputedBounds);
 
-    if (childState.m_subtreeHasBlending || layer.hasBlendMode())
-        compositingState.m_subtreeHasBlending = true;
-
+#if ENABLE(CSS_COMPOSITING)
+    layer.setHasUnisolatedCompositedBlendingDescendants(childState.m_hasUnisolatedCompositedBlendingDescendants);
+#endif
     // Now check for reasons to become composited that depend on the state of descendant layers.
     RenderLayer::IndirectCompositingReason indirectCompositingReason;
     if (!willBeComposited && canBeComposited(layer)
-        && requiresCompositingForIndirectReason(layer.renderer(), childState.m_subtreeIsCompositing, compositingState.m_subtreeHasBlending, anyDescendantHas3DTransform, indirectCompositingReason)) {
+        && requiresCompositingForIndirectReason(layer.renderer(), childState.m_subtreeIsCompositing, anyDescendantHas3DTransform, indirectCompositingReason)) {
         layer.setIndirectCompositingReason(indirectCompositingReason);
         childState.m_compositingAncestor = &layer;
         if (overlapMap) {
@@ -1232,6 +1238,12 @@ void RenderLayerCompositor::computeCompositingRequirements(RenderLayer* ancestor
             willBeComposited = true;
          }
     }
+
+#if ENABLE(CSS_COMPOSITING)
+    if ((willBeComposited && layer.hasBlendMode())
+        || (layer.hasUnisolatedCompositedBlendingDescendants() && !layer.isolatesCompositedBlending()))
+        compositingState.m_hasUnisolatedCompositedBlendingDescendants = true;
+#endif
 
     if (overlapMap && childState.m_compositingAncestor == &layer && !layer.isRootLayer())
         overlapMap->popCompositingContainer();
@@ -2113,8 +2125,10 @@ CompositingReasons RenderLayerCompositor::reasonsForCompositing(const RenderLaye
         if (renderer->hasFilter())
             reasons |= CompositingReasonFilterWithCompositedDescendants;
 
-        if (renderer->hasBlendMode())
+#if ENABLE(CSS_COMPOSITING)
+        if (layer.isolatesCompositedBlending())
             reasons |= CompositingReasonBlendingWithCompositedDescendants;
+#endif
 
     } else if (renderer->layer()->indirectCompositingReason() == RenderLayer::IndirectCompositingForPerspective)
         reasons |= CompositingReasonPerspective;
@@ -2378,13 +2392,13 @@ bool RenderLayerCompositor::requiresCompositingForAnimation(RenderLayerModelObje
             || animController.isRunningAnimationOnRenderer(&renderer, CSSPropertyWebkitTransform, activeAnimationState);
 }
 
-bool RenderLayerCompositor::requiresCompositingForIndirectReason(RenderLayerModelObject& renderer, bool hasCompositedDescendants, bool hasBlendedDescendants, bool has3DTransformedDescendants, RenderLayer::IndirectCompositingReason& reason) const
+bool RenderLayerCompositor::requiresCompositingForIndirectReason(RenderLayerModelObject& renderer, bool hasCompositedDescendants, bool has3DTransformedDescendants, RenderLayer::IndirectCompositingReason& reason) const
 {
     RenderLayer& layer = *toRenderBoxModelObject(renderer).layer();
 
     // When a layer has composited descendants, some effects, like 2d transforms, filters, masks etc must be implemented
     // via compositing so that they also apply to those composited descendants.
-    if (hasCompositedDescendants && (hasBlendedDescendants || layer.transform() || renderer.createsGroup() || renderer.hasReflection() || renderer.isRenderNamedFlowFragmentContainer())) {
+    if (hasCompositedDescendants && (layer.isolatesCompositedBlending() || layer.transform() || renderer.createsGroup() || renderer.hasReflection() || renderer.isRenderNamedFlowFragmentContainer())) {
         reason = RenderLayer::IndirectCompositingForGraphicalEffect;
         return true;
     }
@@ -2681,16 +2695,16 @@ float RenderLayerCompositor::pageScaleFactor() const
 float RenderLayerCompositor::contentsScaleMultiplierForNewTiles(const GraphicsLayer*) const
 {
 #if PLATFORM(IOS)
-    TileCache* tileCache = nullptr;
+    LegacyTileCache* tileCache = nullptr;
     if (Page* page = this->page()) {
         if (FrameView* frameView = page->mainFrame().view())
-            tileCache = frameView->tileCache();
+            tileCache = frameView->legacyTileCache();
     }
 
     if (!tileCache)
         return 1;
 
-    return tileCache->tilingMode() == TileCache::Zooming ? 0.125 : 1;
+    return tileCache->tilingMode() == LegacyTileCache::Zooming ? 0.125 : 1;
 #else
     return 1;
 #endif
@@ -3085,7 +3099,7 @@ void RenderLayerCompositor::ensureRootLayer()
         m_rootContentLayer->setSize(FloatSize(overflowRect.maxX(), overflowRect.maxY()));
         m_rootContentLayer->setPosition(FloatPoint());
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS) || PLATFORM(EFL)
         // Page scale is applied above this on iOS, so we'll just say that our root layer applies it.
         Frame& frame = m_renderView.frameView().frame();
         if (frame.isMainFrame())
@@ -3515,6 +3529,7 @@ void RenderLayerCompositor::updateScrollCoordinatedLayer(RenderLayer& layer, Scr
 
         nodeID = scrollingCoordinator->attachToStateTree(isRootLayer ? FrameScrollingNode : OverflowScrollingNode, nodeID, parentNodeID);
         backing->setScrollingNodeID(nodeID);
+        m_scrollingNodeToLayerMap.add(nodeID, &layer);
 
         GraphicsLayer* scrollingLayer = backing->scrollingLayer();
         GraphicsLayer* scrolledContentsLayer = backing->scrollingContentsLayer();
@@ -3537,12 +3552,26 @@ void RenderLayerCompositor::updateScrollCoordinatedLayer(RenderLayer& layer, Scr
 
 void RenderLayerCompositor::detachScrollCoordinatedLayer(RenderLayer& layer)
 {
-    if (RenderLayerBacking* backing = layer.backing())
-        backing->detachFromScrollingCoordinator();
+    RenderLayerBacking* backing = layer.backing();
+    if (!backing)
+        return;
+
+    backing->detachFromScrollingCoordinator();
+
+    if (ScrollingNodeID nodeID = backing->scrollingNodeID())
+        m_scrollingNodeToLayerMap.remove(nodeID);
+}
+
+ScrollableArea* RenderLayerCompositor::scrollableAreaForScrollLayerID(ScrollingNodeID nodeID) const
+{
+    if (!nodeID)
+        return nullptr;
+
+    return m_scrollingNodeToLayerMap.get(nodeID);
 }
 
 #if PLATFORM(IOS)
-typedef HashMap<PlatformLayer*, OwnPtr<ViewportConstraints>> LayerMap;
+typedef HashMap<PlatformLayer*, std::unique_ptr<ViewportConstraints>> LayerMap;
 typedef HashMap<PlatformLayer*, PlatformLayer*> StickyContainerMap;
 
 void RenderLayerCompositor::registerAllViewportConstrainedLayers()
@@ -3574,7 +3603,7 @@ void RenderLayerCompositor::registerAllViewportConstrainedLayers()
         else
             continue;
 
-        layerMap.add(layer.backing()->graphicsLayer()->platformLayer(), adoptPtr(constraints.release()));
+        layerMap.add(layer.backing()->graphicsLayer()->platformLayer(), std::move(constraints));
     }
     
     if (ChromeClient* client = this->chromeClient())

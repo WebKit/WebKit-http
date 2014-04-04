@@ -29,6 +29,7 @@
 #if USE(IOSURFACE)
 
 #import "GraphicsContextCG.h"
+#import "IOSurfacePool.h"
 #import <IOSurface/IOSurface.h>
 #import <wtf/Assertions.h>
 
@@ -53,6 +54,8 @@ using namespace WebCore;
 
 PassRefPtr<IOSurface> IOSurface::create(IntSize size, ColorSpace colorSpace)
 {
+    if (RefPtr<IOSurface> cachedSurface = IOSurfacePool::sharedPool().takeSurface(size, colorSpace))
+        return cachedSurface.release();
     return adoptRef(new IOSurface(size, colorSpace));
 }
 
@@ -88,7 +91,10 @@ IOSurface::IOSurface(IntSize size, ColorSpace colorSpace)
         (id)kIOSurfacePixelFormat: @(pixelFormat),
         (id)kIOSurfaceBytesPerElement: @(bytesPerElement),
         (id)kIOSurfaceBytesPerRow: @(bytesPerRow),
-        (id)kIOSurfaceAllocSize: @(m_totalBytes)
+        (id)kIOSurfaceAllocSize: @(m_totalBytes),
+#if PLATFORM(IOS)
+        (id)kIOSurfaceCacheMode: @(kIOMapWriteCombineCache)
+#endif
     };
 
     m_surface = adoptCF(IOSurfaceCreate((CFDictionaryRef)options));
@@ -112,12 +118,9 @@ mach_port_t IOSurface::createMachPort() const
     return IOSurfaceCreateMachPort(m_surface.get());
 }
 
-RetainPtr<CGImageRef> IOSurface::createImage() const
+RetainPtr<CGImageRef> IOSurface::createImage()
 {
-    if (!m_cgContext)
-        return nullptr;
-
-    return adoptCF(CGIOSurfaceContextCreateImage(m_cgContext.get()));
+    return adoptCF(CGIOSurfaceContextCreateImage(ensurePlatformContext()));
 }
 
 CGContextRef IOSurface::ensurePlatformContext()
@@ -183,9 +186,15 @@ IOSurface::SurfaceState IOSurface::setIsPurgeable(bool isPurgeable)
     return IOSurface::SurfaceState::Valid;
 }
 
-bool IOSurface::inUse() const
+bool IOSurface::isInUse() const
 {
     return IOSurfaceIsInUse(m_surface.get());
+}
+
+void IOSurface::clearGraphicsContext()
+{
+    m_graphicsContext = nullptr;
+    m_cgContext = nullptr;
 }
 
 #endif // USE(IOSURFACE)

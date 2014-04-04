@@ -43,6 +43,7 @@
 #include "Settings.h"
 #include "SubresourceLoader.h"
 #include <wtf/CurrentTime.h>
+#include <wtf/NeverDestroyed.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/Vector.h>
 
@@ -175,11 +176,11 @@ void CachedImage::allClientsRemoved()
 std::pair<Image*, float> CachedImage::brokenImage(float deviceScaleFactor) const
 {
     if (deviceScaleFactor >= 2) {
-        DEPRECATED_DEFINE_STATIC_LOCAL(Image*, brokenImageHiRes, (Image::loadPlatformResource("missingImage@2x").leakRef()));
+        static NeverDestroyed<Image*> brokenImageHiRes(Image::loadPlatformResource("missingImage@2x").leakRef());
         return std::make_pair(brokenImageHiRes, 2);
     }
 
-    DEPRECATED_DEFINE_STATIC_LOCAL(Image*, brokenImageLoRes, (Image::loadPlatformResource("missingImage").leakRef()));
+    static NeverDestroyed<Image*> brokenImageLoRes(Image::loadPlatformResource("missingImage").leakRef());
     return std::make_pair(brokenImageLoRes, 1);
 }
 
@@ -227,7 +228,7 @@ Image* CachedImage::imageForRenderer(const RenderObject* renderer)
     return m_image.get();
 }
 
-void CachedImage::setContainerSizeForRenderer(const CachedImageClient* renderer, const IntSize& containerSize, float containerZoom)
+void CachedImage::setContainerSizeForRenderer(const CachedImageClient* renderer, const LayoutSize& containerSize, float containerZoom)
 {
     if (containerSize.isEmpty())
         return;
@@ -275,7 +276,7 @@ LayoutSize CachedImage::imageSizeForRenderer(const RenderObject* renderer, float
     ASSERT(!isPurgeable());
 
     if (!m_image)
-        return IntSize();
+        return LayoutSize();
 
     LayoutSize imageSize(m_image->size());
 
@@ -283,24 +284,24 @@ LayoutSize CachedImage::imageSizeForRenderer(const RenderObject* renderer, float
     if (renderer && m_image->isBitmapImage()) {
         ImageOrientationDescription orientationDescription(renderer->shouldRespectImageOrientation(), renderer->style().imageOrientation());
         if (orientationDescription.respectImageOrientation() == RespectImageOrientation)
-            imageSize = toBitmapImage(m_image.get())->sizeRespectingOrientation(orientationDescription);
+            imageSize = LayoutSize(toBitmapImage(m_image.get())->sizeRespectingOrientation(orientationDescription));
     }
 #else
     if (m_image->isBitmapImage() && (renderer && renderer->shouldRespectImageOrientation() == RespectImageOrientation))
 #if !PLATFORM(IOS)
-        imageSize = toBitmapImage(m_image.get())->sizeRespectingOrientation();
+        imageSize = LayoutSize(toBitmapImage(m_image.get())->sizeRespectingOrientation());
 #else
     {
         // On iOS, the image may have been subsampled to accommodate our size restrictions. However
         // we should tell the renderer what the original size was.
-        imageSize = toBitmapImage(m_image.get())->originalSizeRespectingOrientation();
+        imageSize = LayoutSize(toBitmapImage(m_image.get())->originalSizeRespectingOrientation());
     } else if (m_image->isBitmapImage())
-        imageSize = toBitmapImage(m_image.get())->originalSize();
+        imageSize = LayoutSize(toBitmapImage(m_image.get())->originalSize());
 #endif // !PLATFORM(IOS)
 #endif // ENABLE(CSS_IMAGE_ORIENTATION)
 
     else if (m_image->isSVGImage() && sizeType == UsedSize) {
-        imageSize = m_svgImageCache->imageSizeForRenderer(renderer);
+        imageSize = LayoutSize(m_svgImageCache->imageSizeForRenderer(renderer));
     }
 
     if (multiplier == 1.0f)
@@ -380,18 +381,6 @@ inline void CachedImage::clearImage()
     m_image.clear();
 }
 
-bool CachedImage::canBeDrawn() const
-{
-    if (!m_image || m_image->isNull())
-        return false;
-
-    if (!m_loader || m_loader->reachedTerminalState())
-        return true;
-
-    size_t estimatedDecodedImageSize = m_image->width() * m_image->height() * 4; // no overflow check
-    return estimatedDecodedImageSize <= m_loader->frameLoader()->frame().settings().maximumDecodedImageSize();
-}
-
 void CachedImage::addIncrementalDataBuffer(ResourceBuffer* data)
 {
     m_data = data;
@@ -407,8 +396,8 @@ void CachedImage::addIncrementalDataBuffer(ResourceBuffer* data)
     if (!sizeAvailable)
         return;
 
-    if (!canBeDrawn()) {
-        // There's no image to draw or its decoded size is bigger than the maximum allowed.
+    if (m_image->isNull()) {
+        // Image decoding failed. Either we need more image data or the image data is malformed.
         error(errorOccurred() ? status() : DecodeError);
         if (inCache())
             memoryCache()->remove(this);
@@ -446,8 +435,8 @@ void CachedImage::finishLoading(ResourceBuffer* data)
     if (m_image)
         m_image->setData(m_data->sharedBuffer(), true);
 
-    if (!canBeDrawn()) {
-        // There's no image to draw or its decoded size is bigger than the maximum allowed.
+    if (!m_image || m_image->isNull()) {
+        // Image decoding failed; the image data is malformed.
         error(errorOccurred() ? status() : DecodeError);
         if (inCache())
             memoryCache()->remove(this);

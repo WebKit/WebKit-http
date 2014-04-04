@@ -26,6 +26,7 @@
 #import "config.h"
 #import "MemoryPressureHandler.h"
 
+#import "IOSurfacePool.h"
 #import "Logging.h"
 #import "SystemMemory.h"
 #import "WebCoreThread.h"
@@ -102,6 +103,13 @@ void MemoryPressureHandler::respondToMemoryPressureIfNeeded()
         if (m_clearPressureOnMemoryRelease)
             clearMemoryPressure();
     }
+}
+
+void MemoryPressureHandler::platformReleaseMemory(bool)
+{
+#if USE(IOSURFACE)
+    IOSurfacePool::sharedPool().discardAllSurfaces();
+#endif
 }
 
 } // namespace WebCore

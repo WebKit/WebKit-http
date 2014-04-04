@@ -108,6 +108,7 @@ set(WebCore_INCLUDE_DIRECTORIES
     "${JAVASCRIPTCORE_DIR}/runtime"
     "${JAVASCRIPTCORE_DIR}/yarr"
     "${WTF_DIR}"
+    "${DERIVED_SOURCES_DIR}/ForwardingHeaders"
     "${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}"
     "${DERIVED_SOURCES_WEBCORE_DIR}"
     "${CMAKE_SOURCE_DIR}/Source"
@@ -761,13 +762,10 @@ set(WebCore_INSPECTOR_SCRIPTS_DIR "${JAVASCRIPTCORE_DIR}/inspector/scripts")
 set(WebCore_INSPECTOR_DOMAINS
     ${WEBCORE_DIR}/inspector/protocol/ApplicationCache.json
     ${WEBCORE_DIR}/inspector/protocol/CSS.json
-    ${WEBCORE_DIR}/inspector/protocol/Canvas.json
     ${WEBCORE_DIR}/inspector/protocol/DOM.json
     ${WEBCORE_DIR}/inspector/protocol/DOMDebugger.json
     ${WEBCORE_DIR}/inspector/protocol/DOMStorage.json
-    ${WEBCORE_DIR}/inspector/protocol/HeapProfiler.json
     ${WEBCORE_DIR}/inspector/protocol/IndexedDB.json
-    ${WEBCORE_DIR}/inspector/protocol/Input.json
     ${WEBCORE_DIR}/inspector/protocol/LayerTree.json
     ${WEBCORE_DIR}/inspector/protocol/Network.json
     ${WEBCORE_DIR}/inspector/protocol/Page.json
@@ -1580,10 +1578,8 @@ set(WebCore_SOURCES
     inspector/InspectorDatabaseResource.cpp
     inspector/InspectorFrontendClientLocal.cpp
     inspector/InspectorFrontendHost.cpp
-    inspector/InspectorHeapProfilerAgent.cpp
     inspector/InspectorHistory.cpp
     inspector/InspectorIndexedDBAgent.cpp
-    inspector/InspectorInputAgent.cpp
     inspector/InspectorInstrumentation.cpp
     inspector/InspectorInstrumentationCookie.cpp
     inspector/InspectorLayerTreeAgent.cpp
@@ -1953,6 +1949,8 @@ set(WebCore_SOURCES
     platform/graphics/filters/SourceAlpha.cpp
     platform/graphics/filters/SourceGraphic.cpp
     platform/graphics/filters/SpotLightSource.cpp
+
+    platform/graphics/opentype/OpenTypeMathData.cpp
 
     platform/graphics/texmap/TextureMapper.cpp
     platform/graphics/texmap/TextureMapperBackingStore.cpp
@@ -3035,10 +3033,19 @@ add_custom_command(
 
 # All Web Inspector generated files are created with this one call to CodeGeneratorInspector.pm
 add_custom_command(
-    OUTPUT ${DERIVED_SOURCES_WEBCORE_DIR}/InspectorWebBackendDispatchers.cpp ${DERIVED_SOURCES_WEBCORE_DIR}/InspectorWebBackendDispatchers.h ${DERIVED_SOURCES_WEBCORE_DIR}/InspectorWebFrontendDispatchers.cpp ${DERIVED_SOURCES_WEBCORE_DIR}/InspectorWebFrontendDispatchers.h ${DERIVED_SOURCES_WEBCORE_DIR}/InspectorWebTypeBuilders.cpp ${DERIVED_SOURCES_WEBCORE_DIR}/InspectorWebTypeBuilders.h ${DERIVED_SOURCES_WEBCORE_DIR}/InspectorWebBackendCommands.js
+    OUTPUT ${DERIVED_SOURCES_WEBCORE_DIR}/InspectorWebBackendDispatchers.cpp
+           ${DERIVED_SOURCES_WEBCORE_DIR}/InspectorWebBackendDispatchers.h
+           ${DERIVED_SOURCES_WEBCORE_DIR}/InspectorWebFrontendDispatchers.cpp
+           ${DERIVED_SOURCES_WEBCORE_DIR}/InspectorWebFrontendDispatchers.h
+           ${DERIVED_SOURCES_WEBCORE_DIR}/InspectorWebTypeBuilders.cpp
+           ${DERIVED_SOURCES_WEBCORE_DIR}/InspectorWebTypeBuilders.h
+           ${DERIVED_SOURCES_WEBINSPECTORUI_DIR}/UserInterface/Protocol/InspectorWebBackendCommands.js
     MAIN_DEPENDENCY ${DERIVED_SOURCES_WEBCORE_DIR}/InspectorWeb.json
-    DEPENDS ${WebCore_INSPECTOR_SCRIPTS_DIR}/CodeGeneratorInspector.py ${WebCore_INSPECTOR_SCRIPTS_DIR}/CodeGeneratorInspectorStrings.py ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InspectorJS.json ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InspectorJSTypeBuilders.h
-    COMMAND ${PYTHON_EXECUTABLE} ${WebCore_INSPECTOR_SCRIPTS_DIR}/CodeGeneratorInspector.py ${DERIVED_SOURCES_WEBCORE_DIR}/InspectorWeb.json ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InspectorJS.json --output_h_dir "${DERIVED_SOURCES_WEBCORE_DIR}" --output_cpp_dir "${DERIVED_SOURCES_WEBCORE_DIR}" --output_js_dir "${DERIVED_SOURCES_WEBCORE_DIR}" --output_type Web --write_always
+    DEPENDS ${WebCore_INSPECTOR_SCRIPTS_DIR}/CodeGeneratorInspector.py
+            ${WebCore_INSPECTOR_SCRIPTS_DIR}/CodeGeneratorInspectorStrings.py
+            ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InspectorJS.json
+            ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InspectorJSTypeBuilders.h
+    COMMAND ${PYTHON_EXECUTABLE} ${WebCore_INSPECTOR_SCRIPTS_DIR}/CodeGeneratorInspector.py ${DERIVED_SOURCES_WEBCORE_DIR}/InspectorWeb.json ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InspectorJS.json --output_h_dir "${DERIVED_SOURCES_WEBCORE_DIR}" --output_cpp_dir "${DERIVED_SOURCES_WEBCORE_DIR}" --output_js_dir "${DERIVED_SOURCES_WEBINSPECTORUI_DIR}/UserInterface/Protocol" --output_type Web --write_always
     VERBATIM)
 
 list(APPEND WebCore_SOURCES

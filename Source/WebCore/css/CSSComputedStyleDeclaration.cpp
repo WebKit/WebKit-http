@@ -65,6 +65,7 @@
 #include "StyleResolver.h"
 #include "WebKitCSSTransformValue.h"
 #include "WebKitFontFamilyNames.h"
+#include <wtf/NeverDestroyed.h>
 #include <wtf/text/StringBuilder.h>
 
 #if ENABLE(CSS_GRID_LAYOUT)
@@ -383,10 +384,6 @@ static const CSSPropertyID computedProperties[] = {
     CSSPropertyWebkitRegionBreakBefore,
     CSSPropertyWebkitRegionBreakInside,
     CSSPropertyWebkitRegionFragment,
-#endif
-#if ENABLE(CSS_EXCLUSIONS)
-    CSSPropertyWebkitWrapFlow,
-    CSSPropertyWebkitWrapThrough,
 #endif
 #if ENABLE(CSS_SHAPES)
     CSSPropertyWebkitShapeMargin,
@@ -1435,8 +1432,8 @@ static PassRefPtr<CSSValue> counterToCSSValue(const RenderStyle* style, CSSPrope
 
 static void logUnimplementedPropertyID(CSSPropertyID propertyID)
 {
-    DEPRECATED_DEFINE_STATIC_LOCAL(HashSet<CSSPropertyID>, propertyIDSet, ());
-    if (!propertyIDSet.add(propertyID).isNewEntry)
+    static NeverDestroyed<HashSet<CSSPropertyID>> propertyIDSet;
+    if (!propertyIDSet.get().add(propertyID).isNewEntry)
         return;
 
     LOG_ERROR("WebKit does not yet implement getComputedStyle for '%s'.", getPropertyName(propertyID));
@@ -2804,12 +2801,6 @@ PassRefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propert
             return cssValuePool().createValue(style->regionThread(), CSSPrimitiveValue::CSS_STRING);
         case CSSPropertyWebkitRegionFragment:
             return cssValuePool().createValue(style->regionFragment());
-#endif
-#if ENABLE(CSS_EXCLUSIONS)
-        case CSSPropertyWebkitWrapFlow:
-            return cssValuePool().createValue(style->wrapFlow());
-        case CSSPropertyWebkitWrapThrough:
-            return cssValuePool().createValue(style->wrapThrough());
 #endif
 #if ENABLE(CSS_SHAPES)
         case CSSPropertyWebkitShapeMargin:

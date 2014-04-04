@@ -1,3 +1,121 @@
+2014-04-02  Benjamin Poulain  <bpoulain@apple.com>
+
+        [iOS] Remove the legacy string drawing code
+        https://bugs.webkit.org/show_bug.cgi?id=131088
+
+        Reviewed by Sam Weinig.
+
+        * Configurations/WebKit.xcconfig:
+
+2014-04-02  Mark Rowe  <mrowe@apple.com>
+
+        <https://webkit.org/b/131135> Introduce LockHistory and LockBackForwardList enums to use in place of bools.
+
+        These arguments are often passed using literals at the call site, where the use of bools severely hinders
+        the readability of the code.
+
+        Reviewed by Andreas Kling.
+
+        * WebView/WebPDFView.mm:
+        (-[WebPDFView PDFViewWillClickOnLink:withURL:]):
+
+2014-04-02  Stephanie Lewis  <slewis@apple.com>
+
+        Roll out http://trac.webkit.org/changeset/166144
+        <rdar://problem/16481284> PLT stops loading on news.google.com
+        
+        Unreviewed rollout.
+
+        Rollout 166144 since it prevents the PLT from completing.
+
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+
+2014-04-02  Daniel Bates  <dabates@apple.com>
+
+        Remove Settings::maximumDecodedImageSize()
+        https://bugs.webkit.org/show_bug.cgi?id=131057
+        <rdar://problem/15626368>
+
+        Reviewed by Darin Adler. 
+
+        Remove preferences key WebKitMaximumImageSize.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences _maximumImageSize:]): Deleted.
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2014-04-02  Martin Hock  <mhock@apple.com>
+
+        Unify private browsing with sessions.
+        https://bugs.webkit.org/show_bug.cgi?id=130099
+
+        Reviewed by Alexey Proskuryakov.
+
+        * WebCoreSupport/WebFrameLoaderClient.mm: Change WebCore::Settings::privateBrowsingEnabled() to Page::sessionID().isEphemeral().
+        (WebFrameLoaderClient::updateGlobalHistoryItemForPage):
+        * WebCoreSupport/WebFrameNetworkingContext.mm: Ditto.
+        (WebFrameNetworkingContext::storageSession):
+        * WebView/WebView.mm: Change WebCore::Settings::setPrivateBrowsingEnabled() to Page::enableLegacyPrivateBrowsing().
+        (-[WebView _preferencesChanged:]):
+
+2014-04-01  Anders Carlsson  <andersca@apple.com>
+
+        Migrate more headers
+        https://bugs.webkit.org/show_bug.cgi?id=131068
+
+        Reviewed by Tim Horton.
+
+        * MigrateHeaders.make:
+
+2014-04-01  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [CSS Grid Layout] Enable runtime feature if feature flag is enabled
+        https://bugs.webkit.org/show_bug.cgi?id=130013
+
+        Reviewed by Simon Fraser.
+
+        Enable CSS Grid Layout runtime feature when ENABLE_CSS_GRID_LAYOUT flag is true.
+
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+
+2014-03-31  Simon Fraser  <simon.fraser@apple.com>
+
+        Enable WEB_TIMING on Mac and iOS
+        https://bugs.webkit.org/show_bug.cgi?id=128064
+
+        Reviewed by Sam Weinig, Brent Fulgham.
+
+        Enable WEB_TIMING.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2014-03-31  Dean Jackson  <dino@apple.com>
+
+        Remove WEB_ANIMATIONS
+        https://bugs.webkit.org/show_bug.cgi?id=130989
+
+        Reviewed by Simon Fraser.
+
+        Remove this feature flag until we plan to implement.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2014-03-31  Antti Koivisto  <antti@apple.com>
+
+        Rename TileCache to LegacyTileCache
+        https://bugs.webkit.org/show_bug.cgi?id=130986
+
+        Reviewed by Simon Fraser.
+
+        * WebView/WebView.mm:
+        (+[WebView drainLayerPool]):
+        (+[WebView _setTileCacheLayerPoolCapacity:]):
+
 2014-03-28  Darin Adler  <darin@apple.com>
 
         Fix recently-introduced off-by-one error in centerTruncateToBuffer

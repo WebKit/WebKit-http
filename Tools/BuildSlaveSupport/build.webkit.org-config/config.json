@@ -13,6 +13,7 @@
                     { "name": "apple-mini-210", "platform": "mac-mountainlion"},
                     { "name": "apple-mini-218", "platform": "mac-mountainlion"},
                     
+                    { "name": "apple-mac-114",  "platform": "mac-mavericks"},
                     { "name": "apple-mini-129", "platform": "mac-mavericks"},
                     { "name": "apple-mini-130", "platform": "mac-mavericks"},
                     { "name": "apple-mini-137", "platform": "mac-mavericks"},
@@ -99,6 +100,10 @@
                       "platform": "mac-mavericks", "configuration": "debug", "architectures": ["x86_64"],
                       "slavenames": ["apple-mini-180"]
                     },
+                    { "name": "Apple Mavericks 32-bit JSC (BuildAndTest)", "type": "BuildAndTest32bitJSC", "builddir": "mavericks-32bitJSC-debug",
+                      "platform": "mac-mavericks", "configuration": "debug", "architectures": ["x86_64"],
+                      "slavenames": ["apple-mac-114"]
+                    },
                     { "name": "Apple Mavericks Release (Build)", "type": "Build", "builddir": "mavericks-release",
                       "platform": "mac-mavericks", "configuration": "release", "architectures": ["x86_64"],
                       "triggers": ["mavericks-release-tests-wk1", "mavericks-release-tests-wk2", "mavericks-release-perf"],
@@ -153,7 +158,6 @@
                     {
                       "name": "GTK Linux 64-bit Release", "type": "BuildAndTestWebKit2Only", "builddir": "gtk-linux-64-release",
                       "platform": "gtk", "configuration": "release", "architectures": ["x86_64"],
-                      "triggers": ["gtk-linux-64-release-tests-wk1"],
                       "slavenames": ["gtk-linux-slave-2"]
                     },
                     {
@@ -209,7 +213,7 @@
                       "builderNames": ["Apple MountainLion Release (Build)", "Apple MountainLion Debug (Build)", "Apple MountainLion Release (32-bit Build)"]
                     },
                     { "type": "PlatformSpecificScheduler", "platform": "mac-mavericks", "branch": "trunk", "treeStableTimer": 45.0,
-                      "builderNames": ["Apple Mavericks Release (Build)", "Apple Mavericks Debug (Build)", "Apple Mavericks LLINT CLoop (BuildAndTest)"]
+                      "builderNames": ["Apple Mavericks Release (Build)", "Apple Mavericks Debug (Build)", "Apple Mavericks LLINT CLoop (BuildAndTest)", "Apple Mavericks 32-bit JSC (BuildAndTest)"]
                     },
                     { "type": "PlatformSpecificScheduler", "platform": "win", "branch": "trunk", "treeStableTimer": 45.0,
                       "builderNames": ["Apple Win Release (Build)", "Apple Win Debug (Build)"]

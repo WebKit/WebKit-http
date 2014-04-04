@@ -28,6 +28,7 @@
 
 #if WK_API_ENABLED
 
+#import "FindClient.h"
 #import "NavigationState.h"
 #import "RemoteLayerTreeTransaction.h"
 #import "RemoteObjectRegistry.h"
@@ -53,11 +54,14 @@
 #import "WebPageGroup.h"
 #import "WebPageProxy.h"
 #import "WebProcessProxy.h"
+#import "_WKFindDelegate.h"
 #import "_WKRemoteObjectRegistryInternal.h"
+#import "_WKUserContentController.h"
 #import "_WKVisitedLinkProviderInternal.h"
 #import <wtf/RetainPtr.h>
 
 #if PLATFORM(IOS)
+#import "WKPDFView.h"
 #import "WKScrollView.h"
 #import "WKWebViewContentProviderRegistry.h"
 #import <UIKit/UIPeripheralHost_Private.h>
@@ -132,6 +136,9 @@
     if (![_configuration preferences])
         [_configuration setPreferences:adoptNS([[WKPreferences alloc] init]).get()];
 
+    if (![_configuration _userContentController])
+        [_configuration _setUserContentController:adoptNS([[_WKUserContentController alloc] init]).get()];
+
     if (![_configuration _visitedLinkProvider])
         [_configuration _setVisitedLinkProvider:adoptNS([[_WKVisitedLinkProvider alloc] init]).get()];
 
@@ -192,9 +199,8 @@
     _navigationState = std::make_unique<WebKit::NavigationState>(self);
     _page->setPolicyClient(_navigationState->createPolicyClient());
     _page->setLoaderClient(_navigationState->createLoaderClient());
-
     _page->setUIClient(std::make_unique<WebKit::UIClient>(self));
-
+    _page->setFindClient(std::make_unique<WebKit::FindClient>(self));
     return self;
 }
 
@@ -231,11 +237,19 @@
 
 - (id <WKUIDelegate>)UIDelegate
 {
+    // FIXME: A closed page should still have a UI delegate - it should just never be called.
+    if (_page->isClosed())
+        return nil;
+
     return [static_cast<WebKit::UIClient&>(_page->uiClient()).delegate().leakRef() autorelease];
 }
 
 - (void)setUIDelegate:(id<WKUIDelegate>)UIDelegate
 {
+    // FIXME: A closed page should still have a UI delegate - it should just never be called.
+    if (_page->isClosed())
+        return;
+
     static_cast<WebKit::UIClient&>(_page->uiClient()).setDelegate(UIDelegate);
 }
 
@@ -260,7 +274,7 @@
     return _page->pageLoadState().title();
 }
 
-- (NSURL *)activeURL
+- (NSURL *)URL
 {
     return [NSURL _web_URLWithWTFString:_page->pageLoadState().activeURL()];
 }
@@ -325,11 +339,6 @@
 }
 
 - (void)stopLoading
-{
-    _page->stopLoading();
-}
-
-- (IBAction)stopLoading:(id)sender
 {
     _page->stopLoading();
 }
@@ -1074,6 +1083,55 @@ static inline WebCore::LayoutMilestones layoutMilestones(_WKRenderingProgressEve
     _page->setPageZoomFactor(zoomFactor);
 }
 
+- (id <_WKFindDelegate>)_findDelegate
+{
+    return [static_cast<WebKit::FindClient&>(_page->findClient()).delegate().leakRef() autorelease];
+}
+
+- (void)_setFindDelegate:(id<_WKFindDelegate>)findDelegate
+{
+    static_cast<WebKit::FindClient&>(_page->findClient()).setDelegate(findDelegate);
+}
+
+static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
+{
+    unsigned findOptions = 0;
+
+    if (wkFindOptions & _WKFindOptionsCaseInsensitive)
+        findOptions |= WebKit::FindOptionsCaseInsensitive;
+    if (wkFindOptions & _WKFindOptionsAtWordStarts)
+        findOptions |= WebKit::FindOptionsAtWordStarts;
+    if (wkFindOptions & _WKFindOptionsTreatMedialCapitalAsWordStart)
+        findOptions |= WebKit::FindOptionsTreatMedialCapitalAsWordStart;
+    if (wkFindOptions & _WKFindOptionsBackwards)
+        findOptions |= WebKit::FindOptionsBackwards;
+    if (wkFindOptions & _WKFindOptionsWrapAround)
+        findOptions |= WebKit::FindOptionsWrapAround;
+    if (wkFindOptions & _WKFindOptionsShowOverlay)
+        findOptions |= WebKit::FindOptionsShowOverlay;
+    if (wkFindOptions & _WKFindOptionsShowFindIndicator)
+        findOptions |= WebKit::FindOptionsShowFindIndicator;
+    if (wkFindOptions & _WKFindOptionsShowHighlight)
+        findOptions |= WebKit::FindOptionsShowHighlight;
+
+    return static_cast<WebKit::FindOptions>(findOptions);
+}
+
+- (void)_countStringMatches:(NSString *)string options:(_WKFindOptions)options maxCount:(NSUInteger)maxCount
+{
+    _page->countStringMatches(string, toFindOptions(options), maxCount);
+}
+
+- (void)_findString:(NSString *)string options:(_WKFindOptions)options maxCount:(NSUInteger)maxCount
+{
+    _page->findString(string, toFindOptions(options), maxCount);
+}
+
+- (void)_hideFindUI
+{
+    _page->hideFindUI();
+}
+
 #pragma mark iOS-specific methods
 
 #if PLATFORM(IOS)
@@ -1104,12 +1162,6 @@ static inline WebCore::LayoutMilestones layoutMilestones(_WKRenderingProgressEve
     ASSERT(obscuredInsets.right >= 0);
     _obscuredInsets = obscuredInsets;
     [self _updateVisibleContentRects];
-}
-
-- (UIColor *)_pageExtendedBackgroundColor
-{
-    // This is deprecated.
-    return nil;
 }
 
 - (void)_setBackgroundExtendsBeyondPage:(BOOL)backgroundExtends
@@ -1172,6 +1224,22 @@ static inline WebCore::LayoutMilestones layoutMilestones(_WKRenderingProgressEve
         copiedCompletionHandler(cgImage.get());
         [copiedCompletionHandler release];
     });
+}
+
+- (UIView *)_viewForFindUI
+{
+    return [self viewForZoomingInScrollView:[self scrollView]];
+}
+
+- (BOOL)_isDisplayingPDF
+{
+    return [_customContentView isKindOfClass:[WKPDFView class]];
+}
+
+// FIXME: Remove this once nobody uses it.
+- (NSURL *)activeURL
+{
+    return self.URL;
 }
 
 #else
@@ -1256,6 +1324,11 @@ static inline WebCore::LayoutMilestones layoutMilestones(_WKRenderingProgressEve
 - (IBAction)reloadFromOrigin:(id)sender
 {
     [self reloadFromOrigin];
+}
+
+- (IBAction)stopLoading:(id)sender
+{
+    _page->stopLoading();
 }
 
 @end

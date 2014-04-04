@@ -30,6 +30,10 @@
 #import "WKObject.h"
 #import "WebContext.h"
 
+#if TARGET_OS_IPHONE
+@class WKGeolocationProviderIOS;
+#endif
+
 namespace WebKit {
 
 inline WKProcessPool *wrapper(WebContext& context)
@@ -46,6 +50,10 @@ inline WKProcessPool *wrapper(WebContext& context)
 
     API::ObjectStorage<WebKit::WebContext> _context;
 }
+
+#if TARGET_OS_IPHONE
+@property(readonly) WKGeolocationProviderIOS *_geolocationProvider;
+#endif
 @end
 
 #endif // WK_API_ENABLED

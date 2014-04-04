@@ -47,6 +47,7 @@ static int verbose = 1;
 static Eina_List *windows = NULL;
 static char *evas_engine_name = NULL;
 static char *user_agent_string = NULL;
+static char *background_color_string = NULL;
 static Eina_Bool encoding_detector_enabled = EINA_FALSE;
 static Eina_Bool frame_flattening_enabled = EINA_FALSE;
 static Eina_Bool local_storage_enabled = EINA_TRUE;
@@ -54,6 +55,7 @@ static Eina_Bool fullscreen_enabled = EINA_FALSE;
 static Eina_Bool spell_checking_enabled = EINA_FALSE;
 static Eina_Bool touch_events_enabled = EINA_FALSE;
 static Eina_Bool fixed_layout_enabled = EINA_FALSE;
+static Eina_Bool separated_process_enabled = EINA_FALSE;
 static int window_width = 800;
 static int window_height = 600;
 /* Default value of device_pixel_ratio is '0' so that we don't set custom device
@@ -159,6 +161,8 @@ static const Ecore_Getopt options = {
              ecore_getopt_callback_ecore_evas_list_engines, NULL),
         ECORE_GETOPT_STORE_DEF_BOOL
             ('c', "encoding-detector", "Enable/disable encoding detector.", EINA_FALSE),
+        ECORE_GETOPT_STORE_STR
+            ('C', "background-color", "Background color of page. ex) -C=255:255:255:255"),
         ECORE_GETOPT_STORE_DEF_BOOL
             ('f', "flattening", "Enable/disable frame flattening.", EINA_FALSE),
         ECORE_GETOPT_STORE_DEF_BOOL
@@ -173,6 +177,8 @@ static const Ecore_Getopt options = {
             ('L', "fixed-layout", "Enable/disable fixed layout.", EINA_FALSE),
         ECORE_GETOPT_STORE_DEF_STR
             ('p', "policy-cookies", "Cookies policy:\n  always - always accept,\n  never - never accept,\n  no-third-party - don't accept third-party cookies.", "no-third-party"),
+        ECORE_GETOPT_STORE_DEF_BOOL
+            ('S', "separate-process", "Create new window in separated web process.", EINA_TRUE),
         ECORE_GETOPT_VERSION
             ('V', "version"),
         ECORE_GETOPT_COPYRIGHT
@@ -1835,6 +1841,13 @@ static Browser_Window *window_create(Evas_Object *opener, int width, int height)
         ewk_view_mouse_events_enabled_set(window->ewk_view, EINA_FALSE);
     }
 
+    if (background_color_string) {
+        int red, green, blue, alpha;
+
+        if (sscanf(background_color_string, "%d:%d:%d:%d", &red, &green, &blue, &alpha))
+            ewk_view_bg_color_set(window->ewk_view, red, green, blue, alpha);
+    }
+
     /* Set the zoom level to default */
     window->current_zoom_level = DEFAULT_ZOOM_LEVEL;
 
@@ -1939,6 +1952,7 @@ elm_main(int argc, char *argv[])
         ECORE_GETOPT_VALUE_DOUBLE(device_pixel_ratio),
         ECORE_GETOPT_VALUE_BOOL(quitOption),
         ECORE_GETOPT_VALUE_BOOL(encoding_detector_enabled),
+        ECORE_GETOPT_VALUE_STR(background_color_string),
         ECORE_GETOPT_VALUE_BOOL(frame_flattening_enabled),
         ECORE_GETOPT_VALUE_BOOL(local_storage_enabled),
         ECORE_GETOPT_VALUE_BOOL(fullscreen_enabled),
@@ -1946,6 +1960,7 @@ elm_main(int argc, char *argv[])
         ECORE_GETOPT_VALUE_BOOL(touch_events_enabled),
         ECORE_GETOPT_VALUE_BOOL(fixed_layout_enabled),
         ECORE_GETOPT_VALUE_STR(cookies_policy_string),
+        ECORE_GETOPT_VALUE_BOOL(separated_process_enabled),
         ECORE_GETOPT_VALUE_BOOL(quitOption),
         ECORE_GETOPT_VALUE_BOOL(quitOption),
         ECORE_GETOPT_VALUE_BOOL(quitOption),
@@ -1975,8 +1990,12 @@ elm_main(int argc, char *argv[])
     }
 #endif
 
-    // Enable favicon database.
     Ewk_Context *context = ewk_context_default_get();
+
+    if (separated_process_enabled)
+        ewk_context_process_model_set(context, EWK_PROCESS_MODEL_MULTIPLE_SECONDARY);
+
+    // Enable favicon database.
     ewk_context_favicon_database_directory_set(context, NULL);
 
     if (cookies_policy_string)

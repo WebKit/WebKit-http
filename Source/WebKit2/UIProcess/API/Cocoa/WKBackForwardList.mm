@@ -31,9 +31,11 @@
 #import "WKBackForwardListItemInternal.h"
 #import "WKNSArray.h"
 
-NSString * const WKBackForwardListDidChangeNotification = @"WKBackForwardListDidChangeNotification";
-NSString * const WKBackForwardListAddedItemKey = @"WKBackForwardListAddedItemKey";
-NSString * const WKBackForwardListRemovedItemsKey = @"WKBackForwardListRemovedItemsKey";
+// FIXME: Remove this when nobody depends on it.
+WK_EXTERN NSString * const WKBackForwardListDidChangeNotification;
+NSString * const WKBackForwardListDidChangeNotification = @"_WKBackForwardListDidChangeNotification";
+
+NSString * const _WKBackForwardListDidChangeNotification = @"_WKBackForwardListDidChangeNotification";
 
 using namespace WebKit;
 
@@ -76,28 +78,18 @@ static WKBackForwardListItem *toWKBackForwardListItem(WebBackForwardListItem* it
     return toWKBackForwardListItem(_list->itemAtIndex(index));
 }
 
-- (NSUInteger)backListCount
+- (NSArray *)backList
 {
-    return _list->backListCount();
-}
-
-- (NSUInteger)forwardListCount
-{
-    return _list->forwardListCount();
-}
-
-- (NSArray *)backListWithLimit:(NSUInteger)limit
-{
-    RefPtr<API::Array> list = _list->backListAsAPIArrayWithLimit(limit);
+    RefPtr<API::Array> list = _list->backList();
     if (!list)
         return nil;
 
     return [wrapper(*list.release().leakRef()) autorelease];
 }
 
-- (NSArray *)forwardListWithLimit:(NSUInteger)limit
+- (NSArray *)forwardList
 {
-    RefPtr<API::Array> list = _list->forwardListAsAPIArrayWithLimit(limit);
+    RefPtr<API::Array> list = _list->forwardList();
     if (!list)
         return nil;
 

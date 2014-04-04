@@ -882,10 +882,9 @@ ifeq ($(findstring ENABLE_FULLSCREEN_API,$(FEATURE_DEFINES)), ENABLE_FULLSCREEN_
     USER_AGENT_STYLE_SHEETS := $(USER_AGENT_STYLE_SHEETS) $(WebCore)/css/fullscreen.css
 endif
 
+ifeq ($(OS),Windows_NT)
 ifeq ($(findstring ENABLE_MEDIA_CONTROLS_SCRIPT,$(FEATURE_DEFINES)), ENABLE_MEDIA_CONTROLS_SCRIPT)
 	USER_AGENT_STYLE_SHEETS := $(USER_AGENT_STYLE_SHEETS) $(WebCore)/Modules/mediacontrols/mediaControlsApple.css
-ifeq ($(WTF_PLATFORM_IOS), 1)
-    USER_AGENT_STYLE_SHEETS := $(USER_AGENT_STYLE_SHEETS) $(WebCore)/Modules/mediacontrols/mediaControlsiOS.css
 endif
 endif
 
@@ -906,10 +905,9 @@ UserAgentStyleSheets.h : css/make-css-file-arrays.pl bindings/scripts/preprocess
 
 USER_AGENT_SCRIPTS = 
 
+ifeq ($(OS),Windows_NT)
 ifeq ($(findstring ENABLE_MEDIA_CONTROLS_SCRIPT,$(FEATURE_DEFINES)), ENABLE_MEDIA_CONTROLS_SCRIPT)
 	USER_AGENT_SCRIPTS := $(USER_AGENT_SCRIPTS) $(WebCore)/Modules/mediacontrols/mediaControlsApple.js
-ifeq ($(WTF_PLATFORM_IOS), 1)
-	USER_AGENT_SCRIPTS := $(USER_AGENT_SCRIPTS) $(WebCore)/Modules/mediacontrols/mediaControlsiOS.js
 endif
 endif
 
@@ -1117,12 +1115,9 @@ JS%.h : %.idl $(JS_BINDINGS_SCRIPTS) $(IDL_ATTRIBUTES_FILE) $(WINDOW_CONSTRUCTOR
 INSPECTOR_DOMAINS = \
     $(WebCore)/inspector/protocol/ApplicationCache.json \
     $(WebCore)/inspector/protocol/CSS.json \
-    $(WebCore)/inspector/protocol/Canvas.json \
     $(WebCore)/inspector/protocol/DOM.json \
     $(WebCore)/inspector/protocol/DOMDebugger.json \
     $(WebCore)/inspector/protocol/DOMStorage.json \
-    $(WebCore)/inspector/protocol/HeapProfiler.json \
-    $(WebCore)/inspector/protocol/Input.json \
     $(WebCore)/inspector/protocol/LayerTree.json \
     $(WebCore)/inspector/protocol/Network.json \
     $(WebCore)/inspector/protocol/Page.json \

@@ -1064,7 +1064,7 @@ webkit.org/b/121331 http/tests/misc/submit-post-keygen.html [ Pass Failure Timeo
 webkit.org/b/91611 media/media-higher-prio-audio-stream.html [ Skip ]
 
 # isProtocolHandlerRegistered() isn't supported yet.
-webkit.org/b/92749 fast/dom/is-protocol-handler-registered.html [ Skip ]
+webkit.org/b/92749 fast/dom/NavigatorContentUtils/is-protocol-handler-registered.html [ Skip ]
 
 # Snapshotted plugins not enabled on WK1
 plugins/snapshotting [ Skip ]
@@ -1319,9 +1319,6 @@ webkit.org/b/50959 animations/play-state-suspend.html [ Pass Failure ]
 webkit.org/b/122040 animations/combo-transform-translate+scale.html [ Pass Failure ]
 webkit.org/b/128379 animations/suspend-resume-animation.html [ Pass Failure ]
 
-webkit.org/b/119747 [ Debug ] svg/text/text-overflow-ellipsis-svgfont-kerning-ligatures.html [ Skip ]
-webkit.org/b/119747 [ Debug ] svg/css/font-face-crash.html [ Skip ]
-
 # Regressions in svg/clip-path
 webkit.org/b/128499 svg/clip-path/clip-path-content-use-005.svg [ ImageOnlyFailure ]
 webkit.org/b/128499 svg/clip-path/clip-path-precision-001.svg [ ImageOnlyFailure ]
@@ -1345,3 +1342,9 @@ webkit.org/b/130693 mathml/presentation/tokenElements-background-color.html [ Im
 webkit.org/b/130720 [ MountainLion Release ] media/W3C/audio/canPlayType/canPlayType_application_octet_stream.html [ Pass Failure Crash Timeout ]
 
 webkit.org/b/130953 compositing/columns/composited-rl-paginated-repaint.html [ Pass Failure ]
+
+webkit.org/b/130971 media/track/track-remove-track.html [ Pass Crash Failure ]
+
+webkit.org/b/130972 transitions/3d/interrupted-transition.html [ Pass Failure Timeout ]
+
+webkit.org/b/130942 fast/preloader/document-write.html [ Pass Failure ]

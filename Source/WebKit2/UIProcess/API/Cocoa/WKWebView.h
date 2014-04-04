@@ -94,7 +94,7 @@ WK_API_CLASS
 /*! @abstract The active URL. @link WKWebView @/link is KVO-compliant for this property.
  @discussion This is the URL that should be reflected in the user interface.
  */
-@property (nonatomic, readonly) NSURL *activeURL;
+@property (nonatomic, readonly) NSURL *URL;
 
 /*! @abstract Whether the view is loading content. @link WKWebView @/link is KVO-compliant for this
  property. */
@@ -123,9 +123,6 @@ WK_API_CLASS
 
 - (void)stopLoading;
 
-// FIXME: Move this to WKIBActions.
-- (IBAction)stopLoading:(id)sender;
-
 @property (nonatomic) BOOL allowsBackForwardNavigationGestures;
 
 #if TARGET_OS_IPHONE
@@ -148,6 +145,8 @@ WK_API_CLASS
 
 - (IBAction)reload:(id)sender;
 - (IBAction)reloadFromOrigin:(id)sender;
+
+- (IBAction)stopLoading:(id)sender;
 
 @end
 

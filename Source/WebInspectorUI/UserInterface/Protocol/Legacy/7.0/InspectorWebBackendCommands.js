@@ -92,7 +92,6 @@ InspectorBackend.registerCommand("Console.disable", [], []);
 InspectorBackend.registerCommand("Console.clearMessages", [], []);
 InspectorBackend.registerCommand("Console.setMonitoringXHREnabled", [{"name": "enabled", "type": "boolean", "optional": false}], []);
 InspectorBackend.registerCommand("Console.addInspectedNode", [{"name": "nodeId", "type": "number", "optional": false}], []);
-InspectorBackend.registerCommand("Console.addInspectedHeapObject", [{"name": "heapObjectId", "type": "number", "optional": false}], []);
 
 // Network.
 InspectorBackend.registerNetworkDispatcher = InspectorBackend.registerDomainDispatcher.bind(InspectorBackend, "Network");
@@ -197,7 +196,6 @@ InspectorBackend.registerCommand("DOM.undo", [], []);
 InspectorBackend.registerCommand("DOM.redo", [], []);
 InspectorBackend.registerCommand("DOM.markUndoableState", [], []);
 InspectorBackend.registerCommand("DOM.focus", [{"name": "nodeId", "type": "number", "optional": false}], []);
-InspectorBackend.registerCommand("DOM.setFileInputFiles", [{"name": "nodeId", "type": "number", "optional": false}, {"name": "files", "type": "object", "optional": false}], []);
 
 // CSS.
 InspectorBackend.registerCSSDispatcher = InspectorBackend.registerDomainDispatcher.bind(InspectorBackend, "CSS");
@@ -282,45 +280,18 @@ InspectorBackend.registerCommand("DOMDebugger.removeXHRBreakpoint", [{"name": "u
 
 // Profiler.
 InspectorBackend.registerProfilerDispatcher = InspectorBackend.registerDomainDispatcher.bind(InspectorBackend, "Profiler");
-InspectorBackend.registerEnum("Profiler.ProfileHeaderTypeId", {CPU: "CPU", CSS: "CSS", HEAP: "HEAP"});
+InspectorBackend.registerEnum("Profiler.ProfileHeaderTypeId", {CPU: "CPU", CSS: "CSS"});
 InspectorBackend.registerEvent("Profiler.addProfileHeader", ["header"]);
-InspectorBackend.registerEvent("Profiler.addHeapSnapshotChunk", ["uid", "chunk"]);
-InspectorBackend.registerEvent("Profiler.finishHeapSnapshot", ["uid"]);
 InspectorBackend.registerEvent("Profiler.setRecordingProfile", ["isProfiling"]);
 InspectorBackend.registerEvent("Profiler.resetProfiles", []);
-InspectorBackend.registerEvent("Profiler.reportHeapSnapshotProgress", ["done", "total"]);
-InspectorBackend.registerCommand("Profiler.isSampling", [], ["result"]);
-InspectorBackend.registerCommand("Profiler.hasHeapProfiler", [], ["result"]);
 InspectorBackend.registerCommand("Profiler.enable", [], []);
 InspectorBackend.registerCommand("Profiler.disable", [], []);
 InspectorBackend.registerCommand("Profiler.start", [], []);
 InspectorBackend.registerCommand("Profiler.stop", [], []);
 InspectorBackend.registerCommand("Profiler.getProfileHeaders", [], ["headers"]);
 InspectorBackend.registerCommand("Profiler.getCPUProfile", [{"name": "uid", "type": "number", "optional": false}], ["profile"]);
-InspectorBackend.registerCommand("Profiler.getHeapSnapshot", [{"name": "uid", "type": "number", "optional": false}], []);
 InspectorBackend.registerCommand("Profiler.removeProfile", [{"name": "type", "type": "string", "optional": false}, {"name": "uid", "type": "number", "optional": false}], []);
 InspectorBackend.registerCommand("Profiler.clearProfiles", [], []);
-InspectorBackend.registerCommand("Profiler.takeHeapSnapshot", [{"name": "reportProgress", "type": "boolean", "optional": true}], []);
-InspectorBackend.registerCommand("Profiler.collectGarbage", [], []);
-InspectorBackend.registerCommand("Profiler.getObjectByHeapObjectId", [{"name": "objectId", "type": "string", "optional": false}, {"name": "objectGroup", "type": "string", "optional": true}], ["result"]);
-InspectorBackend.registerCommand("Profiler.getHeapObjectId", [{"name": "objectId", "type": "string", "optional": false}], ["heapSnapshotObjectId"]);
-
-// HeapProfiler.
-InspectorBackend.registerHeapProfilerDispatcher = InspectorBackend.registerDomainDispatcher.bind(InspectorBackend, "HeapProfiler");
-InspectorBackend.registerEvent("HeapProfiler.addProfileHeader", ["header"]);
-InspectorBackend.registerEvent("HeapProfiler.addHeapSnapshotChunk", ["uid", "chunk"]);
-InspectorBackend.registerEvent("HeapProfiler.finishHeapSnapshot", ["uid"]);
-InspectorBackend.registerEvent("HeapProfiler.resetProfiles", []);
-InspectorBackend.registerEvent("HeapProfiler.reportHeapSnapshotProgress", ["done", "total"]);
-InspectorBackend.registerCommand("HeapProfiler.hasHeapProfiler", [], ["result"]);
-InspectorBackend.registerCommand("HeapProfiler.getProfileHeaders", [], ["headers"]);
-InspectorBackend.registerCommand("HeapProfiler.getHeapSnapshot", [{"name": "uid", "type": "number", "optional": false}], []);
-InspectorBackend.registerCommand("HeapProfiler.removeProfile", [{"name": "uid", "type": "number", "optional": false}], []);
-InspectorBackend.registerCommand("HeapProfiler.clearProfiles", [], []);
-InspectorBackend.registerCommand("HeapProfiler.takeHeapSnapshot", [{"name": "reportProgress", "type": "boolean", "optional": true}], []);
-InspectorBackend.registerCommand("HeapProfiler.collectGarbage", [], []);
-InspectorBackend.registerCommand("HeapProfiler.getObjectByHeapObjectId", [{"name": "objectId", "type": "string", "optional": false}, {"name": "objectGroup", "type": "string", "optional": true}], ["result"]);
-InspectorBackend.registerCommand("HeapProfiler.getHeapObjectId", [{"name": "objectId", "type": "string", "optional": false}], ["heapSnapshotObjectId"]);
 
 // Worker.
 InspectorBackend.registerWorkerDispatcher = InspectorBackend.registerDomainDispatcher.bind(InspectorBackend, "Worker");
@@ -335,27 +306,6 @@ InspectorBackend.registerCommand("Worker.canInspectWorkers", [], ["result"]);
 InspectorBackend.registerCommand("Worker.connectToWorker", [{"name": "workerId", "type": "number", "optional": false}], []);
 InspectorBackend.registerCommand("Worker.disconnectFromWorker", [{"name": "workerId", "type": "number", "optional": false}], []);
 InspectorBackend.registerCommand("Worker.setAutoconnectToWorkers", [{"name": "value", "type": "boolean", "optional": false}], []);
-
-// Canvas.
-InspectorBackend.registerCanvasDispatcher = InspectorBackend.registerDomainDispatcher.bind(InspectorBackend, "Canvas");
-InspectorBackend.registerEvent("Canvas.contextCreated", ["frameId"]);
-InspectorBackend.registerEvent("Canvas.traceLogsRemoved", ["frameId", "traceLogId"]);
-InspectorBackend.registerCommand("Canvas.enable", [], []);
-InspectorBackend.registerCommand("Canvas.disable", [], []);
-InspectorBackend.registerCommand("Canvas.dropTraceLog", [{"name": "traceLogId", "type": "string", "optional": false}], []);
-InspectorBackend.registerCommand("Canvas.hasUninstrumentedCanvases", [], ["result"]);
-InspectorBackend.registerCommand("Canvas.captureFrame", [{"name": "frameId", "type": "string", "optional": true}], ["traceLogId"]);
-InspectorBackend.registerCommand("Canvas.startCapturing", [{"name": "frameId", "type": "string", "optional": true}], ["traceLogId"]);
-InspectorBackend.registerCommand("Canvas.stopCapturing", [{"name": "traceLogId", "type": "string", "optional": false}], []);
-InspectorBackend.registerCommand("Canvas.getTraceLog", [{"name": "traceLogId", "type": "string", "optional": false}, {"name": "startOffset", "type": "number", "optional": true}, {"name": "maxLength", "type": "number", "optional": true}], ["traceLog"]);
-InspectorBackend.registerCommand("Canvas.replayTraceLog", [{"name": "traceLogId", "type": "string", "optional": false}, {"name": "stepNo", "type": "number", "optional": false}], ["resourceState"]);
-InspectorBackend.registerCommand("Canvas.getResourceInfo", [{"name": "resourceId", "type": "string", "optional": false}], ["resourceInfo"]);
-InspectorBackend.registerCommand("Canvas.getResourceState", [{"name": "traceLogId", "type": "string", "optional": false}, {"name": "resourceId", "type": "string", "optional": false}], ["resourceState"]);
-
-// Input.
-InspectorBackend.registerInputDispatcher = InspectorBackend.registerDomainDispatcher.bind(InspectorBackend, "Input");
-InspectorBackend.registerCommand("Input.dispatchKeyEvent", [{"name": "type", "type": "string", "optional": false}, {"name": "modifiers", "type": "number", "optional": true}, {"name": "timestamp", "type": "number", "optional": true}, {"name": "text", "type": "string", "optional": true}, {"name": "unmodifiedText", "type": "string", "optional": true}, {"name": "keyIdentifier", "type": "string", "optional": true}, {"name": "windowsVirtualKeyCode", "type": "number", "optional": true}, {"name": "nativeVirtualKeyCode", "type": "number", "optional": true}, {"name": "macCharCode", "type": "number", "optional": true}, {"name": "autoRepeat", "type": "boolean", "optional": true}, {"name": "isKeypad", "type": "boolean", "optional": true}, {"name": "isSystemKey", "type": "boolean", "optional": true}], []);
-InspectorBackend.registerCommand("Input.dispatchMouseEvent", [{"name": "type", "type": "string", "optional": false}, {"name": "x", "type": "number", "optional": false}, {"name": "y", "type": "number", "optional": false}, {"name": "modifiers", "type": "number", "optional": true}, {"name": "timestamp", "type": "number", "optional": true}, {"name": "button", "type": "string", "optional": true}, {"name": "clickCount", "type": "number", "optional": true}], []);
 
 // LayerTree.
 InspectorBackend.registerLayerTreeDispatcher = InspectorBackend.registerDomainDispatcher.bind(InspectorBackend, "LayerTree");

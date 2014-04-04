@@ -1,3 +1,31 @@
+2014-04-02  Dean Jackson  <dino@apple.com>
+
+        Update WKSI.
+        <rdar://problem/16321286>
+
+        * libWebKitSystemInterfaceMavericks.a:
+        * libWebKitSystemInterfaceMountainLion.a:
+
+2014-04-02  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Enable the CANVAS_PATH feature.
+        https://bugs.webkit.org/show_bug.cgi?id=131114
+
+        Reviewed by Dean Jackson.
+
+        This code build and runs on Windows just fine. It was overlooked when the feature
+        was activated on other platforms.
+
+        * win/tools/vsprops/FeatureDefines.props: Turn on the feature.
+        * win/tools/vsprops/FeatureDefinesCairo.props: Ditto.
+
+2014-03-31  Alex Christensen  <achristensen@webkit.org>
+
+        [WinCairo] Unreviewed build fix after r166496.
+
+        * win/tools/vsprops/GStreamerCommon.props:
+        Added gio-2.0.lib to list of GStreamer includes.
+
 2014-03-24  Brent Fulgham  <bfulgham@apple.com>
 
         [Win] Enable WebVTT Regions on Windows.

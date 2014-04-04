@@ -29,12 +29,22 @@
 
 #import <Foundation/Foundation.h>
 
+/*! A @link WKBackForwardListItem @/link represents a visited page in a WKWebView's back forward list.
+ */
 WK_API_CLASS
 @interface WKBackForwardListItem : NSObject
 
+/*! @abstract The URL of the page represented by this item.
+ */
 @property (readonly) NSURL *URL;
+
+/*! @abstract The title of the page represented by this item.
+ */
 @property (readonly) NSString *title;
-@property (readonly) NSURL *originalURL;
+
+/*! @abstract The URL of the navigation that created this item.
+ */
+@property (readonly) NSURL *initialURL;
 
 @end
 

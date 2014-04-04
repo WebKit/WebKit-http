@@ -49,6 +49,7 @@
 #include <algorithm>
 #include <wtf/RAMSize.h>
 #include <wtf/CurrentTime.h>
+#include <wtf/ProcessID.h>
 
 using namespace std;
 using namespace JSC;
@@ -77,42 +78,81 @@ static type name arguments;
 
 struct GCTimer {
     GCTimer(const char* name)
-        : m_time(0)
-        , m_min(100000000)
-        , m_max(0)
-        , m_count(0)
-        , m_name(name)
+        : m_name(name)
     {
     }
     ~GCTimer()
     {
-        dataLogF("%s: %.2lfms (avg. %.2lf, min. %.2lf, max. %.2lf)\n", m_name, m_time * 1000, m_time * 1000 / m_count, m_min*1000, m_max*1000);
+        logData(m_allCollectionData, "(All)");
+        logData(m_edenCollectionData, "(Eden)");
+        logData(m_fullCollectionData, "(Full)");
     }
-    double m_time;
-    double m_min;
-    double m_max;
-    size_t m_count;
+
+    struct TimeRecord {
+        TimeRecord()
+            : m_time(0)
+            , m_min(std::numeric_limits<double>::infinity())
+            , m_max(0)
+            , m_count(0)
+        {
+        }
+
+        double m_time;
+        double m_min;
+        double m_max;
+        size_t m_count;
+    };
+
+    void logData(const TimeRecord& data, const char* extra)
+    {
+        dataLogF("[%d] %s %s: %.2lfms (avg. %.2lf, min. %.2lf, max. %.2lf, count %lu)\n", 
+            getCurrentProcessID(),
+            m_name, extra, 
+            data.m_time * 1000, 
+            data.m_time * 1000 / data.m_count, 
+            data.m_min * 1000, 
+            data.m_max * 1000,
+            data.m_count);
+    }
+
+    void updateData(TimeRecord& data, double duration)
+    {
+        if (duration < data.m_min)
+            data.m_min = duration;
+        if (duration > data.m_max)
+            data.m_max = duration;
+        data.m_count++;
+        data.m_time += duration;
+    }
+
+    void didFinishPhase(HeapOperation collectionType, double duration)
+    {
+        TimeRecord& data = collectionType == EdenCollection ? m_edenCollectionData : m_fullCollectionData;
+        updateData(data, duration);
+        updateData(m_allCollectionData, duration);
+    }
+
+    TimeRecord m_allCollectionData;
+    TimeRecord m_fullCollectionData;
+    TimeRecord m_edenCollectionData;
     const char* m_name;
 };
 
 struct GCTimerScope {
-    GCTimerScope(GCTimer* timer)
+    GCTimerScope(GCTimer* timer, HeapOperation collectionType)
         : m_timer(timer)
         , m_start(WTF::monotonicallyIncreasingTime())
+        , m_collectionType(collectionType)
     {
     }
     ~GCTimerScope()
     {
         double delta = WTF::monotonicallyIncreasingTime() - m_start;
-        if (delta < m_timer->m_min)
-            m_timer->m_min = delta;
-        if (delta > m_timer->m_max)
-            m_timer->m_max = delta;
-        m_timer->m_count++;
-        m_timer->m_time += delta;
+        m_timer->didFinishPhase(m_collectionType, delta);
     }
     GCTimer* m_timer;
     double m_start;
+    HeapOperation m_collectionType;
 };
 
 struct GCCounter {
@@ -136,7 +176,7 @@ struct GCCounter {
     }
     ~GCCounter()
     {
-        dataLogF("%s: %zu values (avg. %zu, min. %zu, max. %zu)\n", m_name, m_total, m_total / m_count, m_min, m_max);
+        dataLogF("[%d] %s: %zu values (avg. %zu, min. %zu, max. %zu)\n", getCurrentProcessID(), m_name, m_total, m_total / m_count, m_min, m_max);
     }
     const char* m_name;
     size_t m_count;
@@ -145,14 +185,12 @@ struct GCCounter {
     size_t m_max;
 };
 
-#define GCPHASE(name) DEFINE_GC_LOGGING_GLOBAL(GCTimer, name##Timer, (#name)); GCTimerScope name##TimerScope(&name##Timer)
-#define COND_GCPHASE(cond, name1, name2) DEFINE_GC_LOGGING_GLOBAL(GCTimer, name1##Timer, (#name1)); DEFINE_GC_LOGGING_GLOBAL(GCTimer, name2##Timer, (#name2)); GCTimerScope name1##CondTimerScope(cond ? &name1##Timer : &name2##Timer)
+#define GCPHASE(name) DEFINE_GC_LOGGING_GLOBAL(GCTimer, name##Timer, (#name)); GCTimerScope name##TimerScope(&name##Timer, m_operationInProgress)
 #define GCCOUNTER(name, value) do { DEFINE_GC_LOGGING_GLOBAL(GCCounter, name##Counter, (#name)); name##Counter.count(value); } while (false)
     
 #else
 
 #define GCPHASE(name) do { } while (false)
-#define COND_GCPHASE(cond, name1, name2) do { } while (false)
 #define GCCOUNTER(name, value) do { } while (false)
 #endif
 
@@ -447,7 +485,17 @@ void Heap::markRoots()
     double gcStartTime = WTF::monotonicallyIncreasingTime();
 #endif
 
-    m_codeBlocks.clearMarks();
+#if ENABLE(GGC)
+    Vector<const JSCell*> rememberedSet(m_slotVisitor.markStack().size());
+    m_slotVisitor.markStack().fillVector(rememberedSet);
+#else
+    Vector<const JSCell*> rememberedSet;
+#endif
+
+    if (m_operationInProgress == EdenCollection)
+        m_codeBlocks.clearMarksForEdenCollection(rememberedSet);
+    else
+        m_codeBlocks.clearMarksForFullCollection();
 
     // We gather conservative roots before clearing mark bits because conservative
     // gathering uses the mark bits to determine whether a reference is valid.
@@ -464,13 +512,6 @@ void Heap::markRoots()
     m_sharedData.didStartMarking();
     m_slotVisitor.didStartMarking();
     HeapRootVisitor heapRootVisitor(m_slotVisitor);
-
-#if ENABLE(GGC)
-    Vector<const JSCell*> rememberedSet(m_slotVisitor.markStack().size());
-    m_slotVisitor.markStack().fillVector(rememberedSet);
-#else
-    Vector<const JSCell*> rememberedSet;
-#endif
 
     {
         ParallelModeEnabler enabler(m_slotVisitor);
@@ -814,8 +855,9 @@ void Heap::deleteAllCompiledCode()
         static_cast<FunctionExecutable*>(current)->clearCodeIfNotCompiling();
     }
 
-    m_codeBlocks.clearMarks();
-    m_codeBlocks.deleteUnmarkedAndUnreferenced();
+    ASSERT(m_operationInProgress == FullCollection);
+    m_codeBlocks.clearMarksForFullCollection();
+    m_codeBlocks.deleteUnmarkedAndUnreferenced(FullCollection);
 }
 
 void Heap::deleteAllUnlinkedFunctionCode()
@@ -827,9 +869,9 @@ void Heap::deleteAllUnlinkedFunctionCode()
     }
 }
 
-void Heap::deleteUnmarkedCompiledCode()
+void Heap::clearUnmarkedExecutables()
 {
-    GCPHASE(DeleteCodeBlocks);
+    GCPHASE(ClearUnmarkedExecutables);
     ExecutableBase* next;
     for (ExecutableBase* current = m_compiledCode.head(); current; current = next) {
         next = current->next();
@@ -841,8 +883,13 @@ void Heap::deleteUnmarkedCompiledCode()
         ExecutableBase::clearCodeVirtual(current);
         m_compiledCode.remove(current);
     }
+}
 
-    m_codeBlocks.deleteUnmarkedAndUnreferenced();
+void Heap::deleteUnmarkedCompiledCode()
+{
+    GCPHASE(DeleteCodeBlocks);
+    clearUnmarkedExecutables();
+    m_codeBlocks.deleteUnmarkedAndUnreferenced(m_operationInProgress);
     m_jitStubRoutines.deleteUnmarkedJettisonedStubRoutines();
 }
 
@@ -887,7 +934,6 @@ void Heap::collect(HeapOperation collectionType)
     SamplingRegion samplingRegion("Garbage Collection");
     
     RELEASE_ASSERT(!m_deferralDepth);
-    GCPHASE(Collect);
     ASSERT(vm()->currentThreadIsHoldingAPILock());
     RELEASE_ASSERT(vm()->atomicStringTable() == wtfThreadData().atomicStringTable());
     ASSERT(m_isSafeToCollect);
@@ -896,6 +942,7 @@ void Heap::collect(HeapOperation collectionType)
 
     suspendCompilerThreads();
     willStartCollection(collectionType);
+    GCPHASE(Collect);
 
     double gcStartTime = WTF::monotonicallyIncreasingTime();
 
@@ -973,6 +1020,9 @@ void Heap::willStartCollection(HeapOperation collectionType)
 
 void Heap::deleteOldCode(double gcStartTime)
 {
+    if (m_operationInProgress == EdenCollection)
+        return;
+
     GCPHASE(DeleteOldCode);
     if (gcStartTime - m_lastCodeDiscardTime > minute) {
         deleteAllCompiledCode();

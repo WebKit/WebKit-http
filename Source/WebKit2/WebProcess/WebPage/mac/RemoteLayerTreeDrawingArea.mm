@@ -28,6 +28,7 @@
 
 #import "DrawingAreaProxyMessages.h"
 #import "GraphicsLayerCARemote.h"
+#import "PlatformCALayerRemote.h"
 #import "RemoteLayerTreeContext.h"
 #import "RemoteLayerTreeDrawingAreaProxyMessages.h"
 #import "RemoteScrollingCoordinator.h"
@@ -51,6 +52,8 @@ RemoteLayerTreeDrawingArea::RemoteLayerTreeDrawingArea(WebPage* webPage, const W
     , m_layerFlushTimer(this, &RemoteLayerTreeDrawingArea::layerFlushTimerFired)
     , m_isFlushingSuspended(false)
     , m_hasDeferredFlush(false)
+    , m_waitingForBackingStoreSwap(false)
+    , m_hadFlushDeferredWhileWaitingForBackingStoreSwap(false)
 {
     webPage->corePage()->settings().setForceCompositingMode(true);
 #if PLATFORM(IOS)
@@ -240,6 +243,11 @@ void RemoteLayerTreeDrawingArea::forceRepaint()
     flushLayers();
 }
 
+void RemoteLayerTreeDrawingArea::acceleratedAnimationDidStart(uint64_t layerID, double startTime)
+{
+    m_remoteLayerTreeContext->animationDidStart(layerID, startTime);
+}
+
 void RemoteLayerTreeDrawingArea::setExposedRect(const FloatRect& exposedRect)
 {
     m_exposedRect = exposedRect;
@@ -302,6 +310,17 @@ void RemoteLayerTreeDrawingArea::layerFlushTimerFired(WebCore::Timer<RemoteLayer
     flushLayers();
 }
 
+static void flushBackingStoreChangesInTransaction(RemoteLayerTreeTransaction& transaction)
+{
+    for (RefPtr<PlatformCALayerRemote> layer : transaction.changedLayers()) {
+        if (!layer->properties().changedProperties & RemoteLayerTreeTransaction::BackingStoreChanged)
+            return;
+
+        if (RemoteLayerBackingStore* backingStore = layer->properties().backingStore.get())
+            backingStore->flush();
+    }
+}
+
 void RemoteLayerTreeDrawingArea::flushLayers()
 {
     if (!m_rootLayer)
@@ -312,12 +331,15 @@ void RemoteLayerTreeDrawingArea::flushLayers()
         return;
     }
 
+    if (m_waitingForBackingStoreSwap) {
+        m_hadFlushDeferredWhileWaitingForBackingStoreSwap = true;
+        return;
+    }
+
     m_webPage->layoutIfNeeded();
     m_webPage->corePage()->mainFrame().view()->flushCompositingStateIncludingSubframes();
 
     m_remoteLayerTreeContext->flushOutOfTreeLayers();
-
-    ASSERT(m_rootLayer);
 
     // FIXME: minize these transactions if nothing changed.
     RemoteLayerTreeTransaction layerTransaction;
@@ -330,7 +352,27 @@ void RemoteLayerTreeDrawingArea::flushLayers()
         toRemoteScrollingCoordinator(m_webPage->scrollingCoordinator())->buildTransaction(scrollingTransaction);
 #endif
 
+    // FIXME: Move flushing backing store and sending CommitLayerTree onto a background thread.
+    flushBackingStoreChangesInTransaction(layerTransaction);
+
+    m_waitingForBackingStoreSwap = true;
     m_webPage->send(Messages::RemoteLayerTreeDrawingAreaProxy::CommitLayerTree(layerTransaction, scrollingTransaction));
+
+    for (auto& layer : layerTransaction.changedLayers())
+        layer->properties().resetChangedProperties();
+}
+
+void RemoteLayerTreeDrawingArea::didUpdate()
+{
+    // FIXME: This should use a counted replacement for setLayerTreeStateIsFrozen, but
+    // the callers of that function are not strictly paired.
+
+    m_waitingForBackingStoreSwap = false;
+
+    if (m_hadFlushDeferredWhileWaitingForBackingStoreSwap) {
+        scheduleCompositingLayerFlush();
+        m_hadFlushDeferredWhileWaitingForBackingStoreSwap = false;
+    }
 }
 
 } // namespace WebKit

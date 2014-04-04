@@ -26,6 +26,7 @@
 #ifndef RemoteLayerTreeTransaction_h
 #define RemoteLayerTreeTransaction_h
 
+#include "PlatformCAAnimationRemote.h"
 #include "RemoteLayerBackingStore.h"
 #include <WebCore/Color.h>
 #include <WebCore/FilterOperations.h>
@@ -34,6 +35,7 @@
 #include <WebCore/PlatformCALayer.h>
 #include <WebCore/TransformationMatrix.h>
 #include <wtf/HashMap.h>
+#include <wtf/HashSet.h>
 #include <wtf/text/WTFString.h>
 
 namespace IPC {
@@ -74,9 +76,10 @@ public:
         TimeOffsetChanged = 1 << 23,
         BackingStoreChanged = 1 << 24,
         FiltersChanged = 1 << 25,
-        EdgeAntialiasingMaskChanged = 1 << 26,
-        CustomAppearanceChanged = 1 << 27,
-        CustomBehaviorChanged = 1 << 28
+        AnimationsChanged = 1 << 26,
+        EdgeAntialiasingMaskChanged = 1 << 27,
+        CustomAppearanceChanged = 1 << 28,
+        CustomBehaviorChanged = 1 << 29
     };
     typedef unsigned LayerChange;
 
@@ -105,6 +108,11 @@ public:
             everChangedProperties |= changeFlags;
         }
 
+        void resetChangedProperties()
+        {
+            changedProperties = RemoteLayerTreeTransaction::NoChange;
+        }
+
         LayerChange changedProperties;
         LayerChange everChangedProperties;
 
@@ -112,6 +120,10 @@ public:
         std::unique_ptr<WebCore::TransformationMatrix> transform;
         std::unique_ptr<WebCore::TransformationMatrix> sublayerTransform;
         Vector<WebCore::GraphicsLayer::PlatformLayerID> children;
+
+        HashMap<String, PlatformCAAnimationRemote::Properties> addedAnimations;
+        HashSet<String> keyPathsOfAnimationsToRemove;
+
         WebCore::FloatPoint3D position;
         WebCore::FloatPoint3D anchorPoint;
         WebCore::FloatSize size;
@@ -156,11 +168,14 @@ public:
 #endif
 
     typedef HashMap<WebCore::GraphicsLayer::PlatformLayerID, std::unique_ptr<LayerProperties>> LayerPropertiesMap;
-    
+
     Vector<LayerCreationProperties> createdLayers() const { return m_createdLayers; }
-    const LayerPropertiesMap& changedLayers() const { return m_changedLayerProperties; }
-    LayerPropertiesMap& changedLayers() { return m_changedLayerProperties; }
     Vector<WebCore::GraphicsLayer::PlatformLayerID> destroyedLayers() const { return m_destroyedLayerIDs; }
+
+    Vector<RefPtr<PlatformCALayerRemote>>& changedLayers() { return m_changedLayers; }
+
+    const LayerPropertiesMap& changedLayerProperties() const { return m_changedLayerProperties; }
+    LayerPropertiesMap& changedLayerProperties() { return m_changedLayerProperties; }
 
     WebCore::IntSize contentsSize() const { return m_contentsSize; }
     void setContentsSize(const WebCore::IntSize& size) { m_contentsSize = size; };
@@ -191,7 +206,9 @@ public:
     
 private:
     WebCore::GraphicsLayer::PlatformLayerID m_rootLayerID;
-    LayerPropertiesMap m_changedLayerProperties;
+    Vector<RefPtr<PlatformCALayerRemote>> m_changedLayers; // Only used in the Web process.
+    LayerPropertiesMap m_changedLayerProperties; // Only used in the UI process.
+
     Vector<LayerCreationProperties> m_createdLayers;
     Vector<WebCore::GraphicsLayer::PlatformLayerID> m_destroyedLayerIDs;
     Vector<WebCore::GraphicsLayer::PlatformLayerID> m_videoLayerIDsPendingFullscreen;

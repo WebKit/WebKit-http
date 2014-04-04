@@ -27,7 +27,6 @@
 #define GraphicsLayerCA_h
 
 #include "GraphicsLayer.h"
-#include "Image.h"
 #include "PlatformCAAnimation.h"
 #include "PlatformCALayer.h"
 #include "PlatformCALayerClient.h"
@@ -42,6 +41,7 @@
 
 namespace WebCore {
 
+class Image;
 class TransformState;
 
 class GraphicsLayerCA : public GraphicsLayer, public PlatformCALayerClient {
@@ -170,6 +170,8 @@ public:
 
 protected:
     virtual void setOpacityInternal(float);
+    
+    bool animationCanBeAccelerated(const KeyframeValueList&, const Animation*) const;
 
 private:
     virtual bool isGraphicsLayerCA() const { return true; }
@@ -193,6 +195,8 @@ private:
     virtual void platformCALayerSetNeedsToRevalidateTiles() override;
     virtual float platformCALayerDeviceScaleFactor() const override;
     virtual float platformCALayerContentsScaleMultiplierForNewTiles(PlatformCALayer*) const override;
+    virtual bool platformCALayerShouldAggressivelyRetainTiles(PlatformCALayer*) const override;
+    virtual bool platformCALayerShouldTemporarilyRetainTileCohorts(PlatformCALayer*) const override;
 
     virtual bool isCommittingChanges() const override { return m_isCommittingChanges; }
 
@@ -212,6 +216,7 @@ private:
 
     virtual PassRefPtr<PlatformCALayer> createPlatformCALayer(PlatformCALayer::LayerType, PlatformCALayerClient* owner);
     virtual PassRefPtr<PlatformCALayer> createPlatformCALayer(PlatformLayer*, PlatformCALayerClient* owner);
+    virtual PassRefPtr<PlatformCAAnimation> createPlatformCAAnimation(PlatformCAAnimation::AnimationType, const String& keyPath);
 
     PlatformCALayer* primaryLayer() const { return m_structuralLayer.get() ? m_structuralLayer.get() : m_layer.get(); }
     PlatformCALayer* hostLayerForSublayers() const;

@@ -28,7 +28,7 @@
 #include "FormState.h"
 #include "FormSubmission.h"
 #include "HTMLElement.h"
-#include <wtf/OwnPtr.h>
+#include <memory>
 
 #if ENABLE(IOS_AUTOCORRECT_AND_AUTOCAPITALIZE)
 #include "Autocapitalize.h"
@@ -81,7 +81,7 @@ public:
     void registerImgElement(HTMLImageElement*);
     void removeImgElement(HTMLImageElement*);
 
-    bool prepareForSubmission(Event*);
+    void prepareForSubmission(Event*); // FIXME: This function doesn't only prepare, it sometimes calls sumbit() itself.
     void submit();
     void submitFromJavaScript();
     void reset();
@@ -161,7 +161,7 @@ private:
     typedef HashMap<RefPtr<AtomicStringImpl>, FormNamedItem*> PastNamesMap;
 
     FormSubmission::Attributes m_attributes;
-    OwnPtr<PastNamesMap> m_pastNamesMap;
+    std::unique_ptr<PastNamesMap> m_pastNamesMap;
 
     CheckedRadioButtons m_checkedRadioButtons;
 
@@ -172,7 +172,6 @@ private:
 
     bool m_wasUserSubmitted;
     bool m_isSubmittingOrPreparingForSubmission;
-    bool m_shouldSubmit;
 
     bool m_isInResetFunction;
 

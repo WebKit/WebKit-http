@@ -304,13 +304,13 @@ void RenderLayerBacking::createPrimaryGraphicsLayer()
         m_graphicsLayer->addChild(m_childContainmentLayer.get());
     }
 
+#if !PLATFORM(IOS) && !PLATFORM(EFL)
     if (m_isMainFrameRenderViewLayer) {
-#if !PLATFORM(IOS)
         // Page scale is applied above the RenderView on iOS.
         m_graphicsLayer->setContentsOpaque(true);
         m_graphicsLayer->setAppliesPageScale();
-#endif
     }
+#endif
 
 #if PLATFORM(COCOA) && USE(CA)
     if (!compositor().acceleratedDrawingEnabled() && renderer().isCanvas()) {
@@ -394,9 +394,10 @@ void RenderLayerBacking::updateFilters(const RenderStyle* style)
 #if ENABLE(CSS_COMPOSITING)
 void RenderLayerBacking::updateBlendMode(const RenderStyle* style)
 {
-    if (m_ancestorClippingLayer)
+    if (m_ancestorClippingLayer) {
         m_ancestorClippingLayer->setBlendMode(style->blendMode());
-    else
+        m_graphicsLayer->setBlendMode(BlendModeNormal);
+    } else
         m_graphicsLayer->setBlendMode(style->blendMode());
 }
 #endif
@@ -2047,13 +2048,6 @@ void RenderLayerBacking::setRequiresOwnBackingStore(bool requiresOwnBacking)
     compositor().repaintInCompositedAncestor(m_owningLayer, compositedBounds());
 }
 
-#if ENABLE(CSS_COMPOSITING)
-void RenderLayerBacking::setBlendMode(BlendMode blendMode)
-{
-    m_graphicsLayer->setBlendMode(blendMode);
-}
-#endif
-
 void RenderLayerBacking::setContentsNeedDisplay(GraphicsLayer::ShouldClipToLayer shouldClip)
 {
     ASSERT(!paintsIntoCompositedAncestor());
@@ -2312,6 +2306,25 @@ bool RenderLayerBacking::shouldDumpPropertyForLayer(const GraphicsLayer* layer, 
             return false;
     }
 
+    return true;
+}
+
+bool RenderLayerBacking::shouldAggressivelyRetainTiles(const GraphicsLayer*) const
+{
+    // Only the main frame TileController has enough information about in-window state to
+    // correctly implement aggressive tile retention.
+    if (!m_isMainFrameRenderViewLayer)
+        return false;
+
+    if (Page* page = renderer().frame().page())
+        return page->settings().aggressiveTileRetentionEnabled();
+    return false;
+}
+
+bool RenderLayerBacking::shouldTemporarilyRetainTileCohorts(const GraphicsLayer*) const
+{
+    if (Page* page = renderer().frame().page())
+        return page->settings().temporaryTileCohortRetentionEnabled();
     return true;
 }
 

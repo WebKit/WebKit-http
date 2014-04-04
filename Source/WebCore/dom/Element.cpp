@@ -147,7 +147,7 @@ Element::~Element()
         // When the document is not destroyed, an element that was part of a named flow
         // content nodes should have been removed from the content nodes collection
         // and the isNamedFlowContentNode flag reset.
-        ASSERT(!isNamedFlowContentNode());
+        ASSERT_WITH_SECURITY_IMPLICATION(!isNamedFlowContentNode());
     }
 #endif
 
@@ -1335,7 +1335,7 @@ void Element::removedFrom(ContainerNode& insertionPoint)
 #endif
 #if ENABLE(POINTER_LOCK)
     if (document().page())
-        document().page()->pointerLockController()->elementRemoved(this);
+        document().page()->pointerLockController().elementRemoved(this);
 #endif
 
     setSavedLayerScrollOffset(IntSize());
@@ -2066,6 +2066,11 @@ void Element::setChildrenAffectedByDrag()
     ensureElementRareData().setChildrenAffectedByDrag(true);
 }
 
+void Element::setChildrenAffectedByFirstChildRules(Element* element)
+{
+    element->setChildrenAffectedByFirstChildRules();
+}
+
 void Element::setChildrenAffectedByDirectAdjacentRules(Element* element)
 {
     element->setChildrenAffectedByDirectAdjacentRules();
@@ -2428,7 +2433,7 @@ void Element::setContainsFullScreenElementOnAncestorsCrossingFrameBoundaries(boo
 void Element::webkitRequestPointerLock()
 {
     if (document().page())
-        document().page()->pointerLockController()->requestPointerLock(this);
+        document().page()->pointerLockController().requestPointerLock(this);
 }
 #endif
 

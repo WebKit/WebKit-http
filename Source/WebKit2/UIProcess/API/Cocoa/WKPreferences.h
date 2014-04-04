@@ -35,7 +35,26 @@
 WK_API_CLASS
 @interface WKPreferences : NSObject
 
+- (instancetype)initWithUserDefaultsKeyPrefix:(NSString *)userDefaultsKeyPrefix WK_DESIGNATED_INITIALIZER;
+
+@property (nonatomic, readonly) NSString *userDefaultsKeyPrefix;
+
 @property (nonatomic) CGFloat minimumFontSize;
+
+@property (nonatomic, getter=isJavaScriptEnabled) BOOL javaScriptEnabled;
+@property (nonatomic) BOOL javaScriptCanOpenWindowsAutomatically;
+@property (nonatomic) BOOL suppressesIncrementalRendering;
+
+#if TARGET_OS_IPHONE
+@property (nonatomic) BOOL allowsInlineMediaPlayback;
+@property (nonatomic) BOOL mediaPlaybackRequiresUserAction;
+@property (nonatomic) BOOL mediaPlaybackAllowsAirPlay;
+#endif
+
+#if !TARGET_OS_IPHONE
+@property (nonatomic, getter=isJavaEnabled) BOOL javaEnabled;
+@property (nonatomic, getter=arePlugInsEnabled) BOOL plugInsEnabled;
+#endif
 
 @end
 

@@ -1,3 +1,531 @@
+2014-04-02  Stephanie Lewis  <slewis@apple.com>
+
+        Roll out http://trac.webkit.org/changeset/166144
+        <rdar://problem/16481284> PLT stops loading on news.google.com
+        
+        Unreviewed rollout.
+
+        Rollout 166144 since it prevents the PLT from completing.
+
+        * plugins/plugin-remove-readystatechange-expected.txt:
+        * plugins/plugin-remove-readystatechange.html:
+        * svg/custom/object-no-size-attributes-expected.txt:
+        * svg/custom/object-no-size-attributes.xhtml:
+
+2014-04-02  Zoltan Horvath  <zoltan@webkit.org>
+
+        [WebInspector] inspector-protocol/model/highlight-shape-outside.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=124660
+
+        Reviewed by Timothy Hatcher.
+
+        I updated the tests syntax to CR, CSS Shapes specification. It's also needed to be updated
+        to the latest WebInspector testing methods. I added some addidional test cases for the highlighting,
+        and also fixed some expected test case in the script, and updated the expected file.
+
+        * TestExpectations:
+        * inspector/dom/highlight-shape-outside-expected.txt:
+        * inspector/dom/highlight-shape-outside.html:
+        * inspector/dom/shapes-test.js:
+        (InspectorTestProxy.registerInitializer.):
+
+2014-04-02  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: Improve ARIA live region reliability by sending notifications when live regions are created/shown and hidden/destroyed
+        https://bugs.webkit.org/show_bug.cgi?id=124381
+
+        Unreviewed. Forgot to add test expectation.
+
+        * platform/mac/accessibility/live-region-creation-notification-expected.txt: Added.
+
+2014-04-02  Daniel Bates  <dabates@apple.com>
+
+        Move focus management API from HTMLDocument to Document
+        https://bugs.webkit.org/show_bug.cgi?id=131079
+        <rdar://problem/16220103>
+
+        Reviewed by Timothy Hatcher.
+
+        Derived from a Blink patch by Christophe Dumez:
+        https://src.chromium.org/viewvc/blink?view=rev&revision=165515
+
+        Made the test in <https://src.chromium.org/viewvc/blink?view=rev&revision=165515> a valid XHTML
+        document. Additionally taught LayoutTests/resources/{js-test, js-test-pre}.js to create actual
+        HTML elements so that these scripts can be used to write DRT tests in XML documents.
+
+        * fast/dom/Document/xml-document-focus-expected.txt: Added.
+        * fast/dom/Document/xml-document-focus.xml: Added.
+        * resources/js-test-pre.js: Added function createHTMLElement() and modified code to use it
+        instead of document.createElement() so as to work around <https://bugs.webkit.org/show_bug.cgi?id=131074>.
+        * resources/js-test.js: Ditto.
+
+2014-04-02  Daniel Bates  <dabates@apple.com>
+
+        Remove Settings::maximumDecodedImageSize()
+        https://bugs.webkit.org/show_bug.cgi?id=131057
+        <rdar://problem/15626368>
+
+        Reviewed by Darin Adler.
+
+        Remove test LayoutTests/fast/images/decoded-size-exceeds-max-decoded-size.html as it
+        isn't applicable following the removal of the setting Settings::maximumDecodedImageSize().
+        Additionally update the test fast/images/bag-png.html to ensure that we dispatch
+        a DOM Error event when we fail to decode a malformed image.
+
+        * fast/images/bad-png.html:
+        * fast/images/decoded-size-exceeds-max-decoded-size-expected.txt: Removed.
+        * fast/images/decoded-size-exceeds-max-decoded-size.html: Removed.
+
+2014-04-02  Timothy Hatcher  <timothy@apple.com>
+
+        Remove Input domain from the Web Inspector protocol.
+
+        https://bugs.webkit.org/show_bug.cgi?id=131073
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector-protocol/input/dispatchKeyEvent-expected.txt: Removed.
+        * inspector-protocol/input/dispatchKeyEvent.html: Removed.
+        * inspector-protocol/input/dispatchMouseEvent-expected.txt: Removed.
+        * inspector-protocol/input/dispatchMouseEvent.html: Removed.
+
+2014-04-02  David Kilzer  <ddkilzer@apple.com>
+
+        Use outermost containing isolate when constructing bidi runs
+        <http://webkit.org/b/131107>
+        <rdar://problem/15690021>
+
+        Reviewed by Darin Adler.
+
+        Merged from Blink (patch by jww@chromium.org):
+        https://src.chromium.org/viewvc/blink?revision=157268&view=revision
+        http://crbug.com/279277
+
+            Update containingIsolate to go back all the way to top
+            isolate from current root, rather than stopping at the first
+            isolate it finds. This works because the current root is
+            always updated with each isolate run.
+
+        * fast/text/international/unicode-bidi-isolate-nested-with-removes-expected.txt: Updated.
+        * fast/text/international/unicode-bidi-isolate-nested-with-removes-not-adjacent-expected.txt: Added.
+        * fast/text/international/unicode-bidi-isolate-nested-with-removes-not-adjacent.html: Added.
+        * fast/text/international/unicode-bidi-isolate-nested-with-removes.html: Updated.
+
+2014-04-02  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: Improve ARIA live region reliability by sending notifications when live regions are created/shown and hidden/destroyed
+        https://bugs.webkit.org/show_bug.cgi?id=124381
+
+        Reviewed by Mario Sanchez Prada.
+
+        * platform/mac/accessibility/live-region-creation-notification.html: Added.
+
+2014-04-02  David Kilzer  <ddkilzer@apple.com>
+
+        Add LayoutTest for crash with bidi isolates
+
+        Merged from Blink (patch by jww@chromium.org):
+        https://src.chromium.org/viewvc/blink?revision=156580&view=revision
+        http://crbug.com/265838
+
+        See Bug 120504: Fix nested unicode-bidi: isolate
+        <https://bugs.webkit.org/show_bug.cgi?id=120504>
+        <http://trac.webkit.org/changeset/155554>
+
+        * fast/text/international/unicode-bidi-isolate-nested-with-removes-expected.txt: Added.
+        * fast/text/international/unicode-bidi-isolate-nested-with-removes.html: Added.
+
+2014-04-02  Ion Rosca  <rosca@adobe.com>
+
+        [CSS Blending] Compositing requirements for blending are not computed correctly
+        https://bugs.webkit.org/show_bug.cgi?id=130664
+
+        Reviewed by Dean Jackson.
+
+        * css3/compositing/blend-mode-accelerated-with-multiple-stacking-contexts-expected.txt: Added.
+        * css3/compositing/blend-mode-accelerated-with-multiple-stacking-contexts.html: Added.
+        * css3/compositing/blend-mode-with-accelerated-sibling-expected.txt: Added.
+        * css3/compositing/blend-mode-with-accelerated-sibling.html: Added.
+
+2014-04-01  Mihnea Ovidenie  <mihnea@adobe.com>
+
+        [CSSRegions] Displaying region's children in another region not supported
+        https://bugs.webkit.org/show_bug.cgi?id=130735
+
+        Reviewed by David Hyatt.
+
+        With http://trac.webkit.org/changeset/166353, we disabled the possibility
+        of collecting the region's children into another flow and displaying them
+        in another region. With that change, we also skipped the existing tests.
+
+        Add a dedicated test that passes if a region child cannot be painted in another region,
+        in order to complete the skipped tests. This test should be removed when support for
+        this functionality will be added again.
+
+        * fast/regions/region-child-not-flowed-expected.html: Added.
+        * fast/regions/region-child-not-flowed.html: Added.
+
+2014-04-01  Beth Dakin  <bdakin@apple.com>
+
+        willReveal edge events should be hooked up for overflow:scroll
+        https://bugs.webkit.org/show_bug.cgi?id=131071
+        -and corresponding-
+        <rdar://problem/16190392>
+
+        Reviewed by Sam Weinig.
+
+        * fast/events/will-reveal-edge-on-div-expected.txt: Added.
+        * fast/events/will-reveal-edge-on-div.html: Added.
+
+2014-04-01  Jon Honeycutt  <jhoneycutt@apple.com>
+
+        Crash in WebCore::RenderLayer::FilterInfo::updateReferenceFilterClients
+
+        <https://bugs.webkit.org/show_bug.cgi?id=121887>
+        <rdar://problem/15073043>
+
+        Reviewed by Dean Jackson.
+
+        * svg/filters/first-letter-crash-expected.txt: Added.
+        * svg/filters/first-letter-crash.html: Added.
+
+2014-04-01  Zoltan Horvath  <zoltan@webkit.org>
+
+        [CSS Exclusions] Remove exclusions parsing support
+        https://bugs.webkit.org/show_bug.cgi?id=131046
+
+        Reviewed by David Hyatt.
+
+        * fast/exclusions/css-exclusions-disabled-expected.txt: Removed.
+        * fast/exclusions/css-exclusions-disabled.html: Removed.
+        * fast/exclusions/css-exclusions-enabled-expected.txt: Removed.
+        * fast/exclusions/css-exclusions-enabled.html: Removed.
+        * fast/exclusions/parsing/parsing-wrap-flow-expected.txt: Removed.
+        * fast/exclusions/parsing/parsing-wrap-flow.html: Removed.
+        * fast/exclusions/parsing/parsing-wrap-through-expected.txt: Removed.
+        * fast/exclusions/parsing/parsing-wrap-through.html: Removed.
+        * fast/exclusions/parsing/script-tests/parsing-test-utils.js: Removed.
+        * fast/exclusions/parsing/script-tests/parsing-wrap-flow.js: Removed.
+        * fast/exclusions/parsing/script-tests/parsing-wrap-through.js: Removed.
+        * platform/win/TestExpectations:
+        * platform/wincairo/TestExpectations:
+
+2014-04-01  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [CSS Grid Layout] Enable runtime feature if feature flag is enabled
+        https://bugs.webkit.org/show_bug.cgi?id=130013
+
+        Reviewed by Simon Fraser.
+
+        Modify layout test as feature is not disabled by default in WK2.
+        The test now checks that the runtime feature can be disabled.
+
+        * fast/css-grid-layout/grid-disabled-expected.txt: Renamed from LayoutTests/fast/css-grid-layout/grid-disabled-by-default-expected.txt.
+        * fast/css-grid-layout/grid-disabled.html: Renamed from LayoutTests/fast/css-grid-layout/grid-disabled-by-default.html.
+
+2014-04-01  Javier Fernandez  <jfernandez@igalia.com>
+
+        [CSS Grid Layout] Make the grid-item-margin-auto-columns-rows.html test a reftest
+        https://bugs.webkit.org/show_bug.cgi?id=130935
+
+        Reviewed by Darin Adler.
+
+        Removed the 'checkLayout' script references from the test.
+
+        * fast/css-grid-layout/grid-item-margin-auto-columns-rows-expected.html: Added.
+        * fast/css-grid-layout/grid-item-margin-auto-columns-rows-expected.txt: Removed.
+        * fast/css-grid-layout/grid-item-margin-auto-columns-rows.html:
+
+2014-04-01  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        svg/text/text-overflow-ellipsis-svgfont-kerning-ligatures.html and svg/css/font-face-crash.html frequently assert in ComplexTextController::offsetForPosition
+        https://bugs.webkit.org/show_bug.cgi?id=119747
+
+        Reviewed by Simon Fraser.
+
+        Clicking on SVG text used to cause a ComplexTextController to be built
+        around the SVG text (which is incorrect and would crash). This test
+        does just that and makes sure there is no crash.
+
+        * svg/text/resources/Litherum.svg: Added.
+        * svg/text/svg-font-hittest-expected.txt: Added.
+        * svg/text/svg-font-hittest.html: Added.
+        * LayoutTests/platform/mac/TestExpectations: Unskipped tests
+
+2014-04-01  Daniel Bates  <dabates@apple.com>
+
+        RenderQuote must destroy remaining text renderer before first letter renderer
+        https://bugs.webkit.org/show_bug.cgi?id=78023
+        <rdar://problem/10830009>
+
+        Reviewed by Brent Fulgham.
+
+        Merged from Blink (patch by Abhishek Arya):
+        https://src.chromium.org/viewvc/blink?view=rev&revision=151270
+
+        * fast/css-generated-content/quote-first-letter-crash-expected.txt: Added.
+        * fast/css-generated-content/quote-first-letter-crash.html: Added.
+
+2014-04-01  David Kilzer  <ddkilzer@apple.com>
+
+        Do not allow HTTP refresh headers to refresh to javascript: URLs
+        <http://webkit.org/b/119051>
+        <rdar://problem/14536453>
+
+        Reviewed by Alexey Proskuryakov.
+
+        Merged from Blink (patch by tsepez@chromium.org):
+        https://src.chromium.org/viewvc/blink?revision=153912&view=revision
+        http://crbug.com/258151
+
+            This behaviour has been standard in IE since IE7.  This makes us both
+            more compatible and less vulnerable to XSS.
+
+        * http/tests/security/no-javascript-refresh-expected.txt: Added.
+        * http/tests/security/no-javascript-refresh-static-expected.txt: Added.
+        * http/tests/security/no-javascript-refresh-static.html: Added.
+        * http/tests/security/no-javascript-refresh.php: Added.
+        - Original Blink layout tests with typos fixed and 'PASS:' text
+          added.
+
+        * http/tests/security/no-javascript-location.html: Added.
+        * http/tests/security/no-javascript-location-expected.txt: Added.
+        * http/tests/security/resources/no-javascript-location.php: Copied from LayoutTests/http/tests/security/no-javascript-refresh.php.
+        * http/tests/security/no-javascript-location-percent-escaped.html: Added.
+        * http/tests/security/no-javascript-location-percent-escaped-expected.txt: Added.
+        * http/tests/security/resources/no-javascript-location-percent-escaped.php: Added.
+        - Add tests using a javascript: URL in a Location: header.
+
+        * http/tests/security/no-javascript-refresh-percent-escaped.php: Copied from LayoutTests/http/tests/security/no-javascript-refresh.php.
+        * http/tests/security/no-javascript-refresh-percent-escaped-expected.txt: Added.
+        * http/tests/security/no-javascript-refresh-spaces.php: Copied from LayoutTests/http/tests/security/no-javascript-refresh.php.
+        * http/tests/security/no-javascript-refresh-spaces-expected.txt: Added.
+        - Add tests using a percent-escaped javascript: URL and a
+          javascript: URL with leading spaces in a Refresh: header from
+          a web server.
+
+        * http/tests/security/no-javascript-refresh-static-percent-escaped.html: Added.
+        * http/tests/security/no-javascript-refresh-static-percent-escaped-expected.txt: Added.
+        * http/tests/security/no-javascript-refresh-static-spaces.html: Added.
+        * http/tests/security/no-javascript-refresh-static-spaces-expected.txt: Added.
+        - Add tests using a percent-escaped javascript: URL and a
+          javascript: URL with leading spaces in a meta http-equiv tag.
+
+2014-04-01  James Craig  <jcraig@apple.com>
+
+        AX: AccessibilityRenderObject::ariaLiveRegionAtomic() should default to true if
+        roleValue is ApplicationAlertRole || ApplicationStatusRole
+        https://bugs.webkit.org/show_bug.cgi?id=130907
+
+        Reviewed by Chris Fleizach.
+
+        Updated AccessibilityRenderObject::ariaLiveRegionAtomic() to match ARIA spec.
+
+        * inspector-protocol/dom/getAccessibilityPropertiesForNode_liveRegion-expected.txt:
+        * inspector-protocol/dom/getAccessibilityPropertiesForNode_liveRegion.html:
+        * platform/mac/accessibility/aria-liveregions-attributes-expected.txt:
+        * platform/mac/accessibility/aria-liveregions-attributes.html:
+
+2014-04-01  Zalan Bujtas  <zalan@apple.com>
+
+        Subpixel rendering: Transition class Image (and its dependencies) from int to float to enable subpixel positioned/sized images.
+        https://bugs.webkit.org/show_bug.cgi?id=130643
+
+        Reviewed by Simon Fraser.
+
+        This is in preparation to support subpixel positioned/sized background images. While 1x bitmap images can't take
+        subpixel sizing on hidpi resolutions, both generated and hidpi images can.
+        This patch does not change Image behavior in general as both position and size are still snapped to integral values.  
+
+        No change in behavior.
+
+        * platform/mac/svg/W3C-SVG-1.1-SE/filters-image-03-f-expected.txt:
+        * platform/mac/svg/W3C-SVG-1.1-SE/filters-image-05-f-expected.txt:
+        * platform/mac/svg/W3C-SVG-1.1/filters-composite-02-b-expected.txt:
+        * platform/mac/svg/W3C-SVG-1.1/filters-displace-01-f-expected.txt:
+        * platform/mac/svg/W3C-SVG-1.1/filters-image-01-b-expected.txt:
+        * svg/custom/feDisplacementMap-01-expected.txt:
+        * svg/filters/feImage-change-target-id-expected.txt:
+        * svg/filters/feImage-filterUnits-objectBoundingBox-primitiveUnits-objectBoundingBox-expected.txt:
+        * svg/filters/feImage-filterUnits-objectBoundingBox-primitiveUnits-userSpaceOnUse-expected.txt:
+        * svg/filters/feImage-filterUnits-userSpaceOnUse-primitiveUnits-objectBoundingBox-expected.txt:
+        * svg/filters/feImage-filterUnits-userSpaceOnUse-primitiveUnits-userSpaceOnUse-expected.txt:
+        * svg/filters/feImage-late-indirect-update-expected.txt:
+        * svg/filters/feImage-multiple-targets-id-change-expected.txt:
+        * svg/filters/feImage-position-expected.txt:
+        * svg/filters/feImage-preserveAspectRatio-all-expected.txt:
+        * svg/filters/feImage-preserveAspectratio-expected.txt:
+        * svg/filters/feImage-reference-invalidation-expected.txt:
+        * svg/filters/feImage-reference-svg-primitive-expected.txt:
+        * svg/filters/feImage-remove-target-expected.txt:
+        * svg/filters/feImage-subregions-expected.txt:
+        * svg/filters/feImage-subregions-preseveAspectRatio-none-expected.txt:
+        * svg/filters/feImage-subregions-preseveAspectRatio-none-with-viewBox-expected.txt:
+        * svg/filters/feImage-target-add-to-document-expected.txt:
+        * svg/filters/feImage-target-attribute-change-expected.txt:
+        * svg/filters/feImage-target-attribute-change-with-use-indirection-2-expected.txt:
+        * svg/filters/feImage-target-attribute-change-with-use-indirection-expected.txt:
+        * svg/filters/feImage-target-changes-id-expected.txt:
+        * svg/filters/feImage-target-id-change-expected.txt:
+        * svg/filters/feImage-target-inline-style-change-expected.txt:
+        * svg/filters/feImage-target-property-change-expected.txt:
+        * svg/filters/feImage-target-reappend-to-document-expected.txt:
+        * svg/filters/feImage-target-remove-from-document-expected.txt:
+        * svg/filters/feImage-target-style-change-expected.txt:
+
+2014-03-31  Alexey Proskuryakov  <ap@apple.com>
+
+        Crashes in PageConsole::addMessage
+        https://bugs.webkit.org/show_bug.cgi?id=130991
+        <rdar://problem/14795232>
+
+        Reviewed by Geoffrey Garen.
+
+        * http/tests/misc/detached-frame-console-expected.txt: Added.
+        * http/tests/misc/detached-frame-console.html: Added.
+        * http/tests/misc/resources/detached-frame-console-subframe.html: Added.
+
+2014-03-31  Alexey Proskuryakov  <ap@apple.com>
+
+        REGRESSION (r166144?): fast/preloader/document-write.html is very flaky
+        https://bugs.webkit.org/show_bug.cgi?id=130942
+
+        * platform/mac/TestExpectations: Marking as such.
+
+2014-03-31  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r166536.
+        https://bugs.webkit.org/show_bug.cgi?id=130993
+
+        This is not the correct fix. (Requested by bfulgham on
+        #webkit).
+
+        Reverted changeset:
+
+        "Unreviewed test fix after r166530."
+        http://trac.webkit.org/changeset/166536
+
+2014-03-31  Brent Fulgham  <bfulgham@apple.com>
+
+        Unreviewed test fix after r166530.
+
+        After switching to high-resolution continuous scroll output, forgot to update one test case.
+
+        * fast/events/platform-wheelevent-in-scrolling-div-expected.txt:
+        * fast/events/platform-wheelevent-in-scrolling-div.html:
+
+2014-03-31  Brent Fulgham  <bfulgham@apple.com>
+
+        Reduced Latched Scroll Test Flakiness
+        https://bugs.webkit.org/show_bug.cgi?id=130983
+
+        Reviewed by Darin Adler.
+
+        Rebaseline test output for 'hasPreciseScrollingDeltas' behavior.
+
+        * platform/mac-wk2/tiled-drawing/fast-scroll-div-latched-mainframe-expected.txt:
+        * platform/mac-wk2/tiled-drawing/fast-scroll-div-latched-mainframe-with-handler-expected.txt:
+        * platform/mac-wk2/tiled-drawing/fast-scroll-iframe-latched-iframe-expected.txt:
+        * platform/mac-wk2/tiled-drawing/fast-scroll-iframe-latched-iframe-with-handler-expected.txt:
+        * platform/mac-wk2/tiled-drawing/fast-scroll-iframe-latched-mainframe-expected.txt:
+        * platform/mac-wk2/tiled-drawing/fast-scroll-iframe-latched-mainframe-with-handler-expected.txt:
+        * platform/mac-wk2/tiled-drawing/fast-scroll-select-latched-mainframe-expected.txt:
+        * platform/mac-wk2/tiled-drawing/fast-scroll-select-latched-mainframe-with-handler-expected.txt:
+        * platform/mac-wk2/tiled-drawing/fast-scroll-select-latched-select-expected.txt:
+        * platform/mac-wk2/tiled-drawing/fast-scroll-select-latched-select-with-handler-expected.txt:
+        * platform/mac/fast/scrolling/scroll-div-latched-mainframe-expected.txt:
+        * platform/mac/fast/scrolling/scroll-iframe-latched-mainframe-expected.txt:
+        * platform/mac/fast/scrolling/scroll-select-latched-mainframe-expected.txt:
+        * platform/mac/fast/scrolling/scroll-select-latched-select-expected.txt:
+
+2014-03-31  Ion Rosca  <rosca@adobe.com>
+
+        [CSS Blending] Blend mode property is propagated to multiple GraphicLayers
+        https://bugs.webkit.org/show_bug.cgi?id=130337
+
+        Reviewed by Dean Jackson.
+
+        * css3/compositing/blend-mode-ancestor-clipping-layer-expected.txt: Added.
+        * css3/compositing/blend-mode-ancestor-clipping-layer.html: Added.
+
+2014-03-31  Ion Rosca  <rosca@adobe.com>
+
+        [CSS Blending] showLayerTree should dump layer's blend mode and isolation properties
+        https://bugs.webkit.org/show_bug.cgi?id=130922
+
+        Reviewed by Simon Fraser.
+
+        Tests are adapted after adding blending information to RenderTreeAsText.
+
+        * platform/mac/css3/compositing/blend-mode-background-expected.txt:
+        * platform/mac/css3/compositing/blend-mode-isolated-group-1-expected.txt:
+        * platform/mac/css3/compositing/blend-mode-isolated-group-2-expected.txt:
+        * platform/mac/css3/compositing/blend-mode-isolated-group-3-expected.txt:
+        * platform/mac/css3/compositing/blend-mode-layers-expected.txt:
+        * platform/mac/css3/compositing/blend-mode-reflection-expected.txt:
+        * platform/mac/css3/compositing/blend-mode-simple-composited-expected.txt:
+        * platform/mac/css3/compositing/blend-mode-simple-expected.txt:
+
+2014-03-31  Samuel White  <samuel_white@apple.com>
+
+        AX: Need ability to get line range for text marker.
+        https://bugs.webkit.org/show_bug.cgi?id=130906
+
+        Reviewed by Chris Fleizach.
+
+        Added test to ensure we can get the correct range of a line from a given marker.
+        Also updated existing bounds-for-range test to include new attribute.
+
+        * platform/mac/accessibility/bounds-for-range-expected.txt:
+        * platform/mac/accessibility/line-range-for-text-marker-expected.txt: Added.
+        * platform/mac/accessibility/line-range-for-text-marker.html: Added.
+
+2014-03-31  Alexey Proskuryakov  <ap@apple.com>
+
+        transitions/3d/interrupted-transition.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=130972
+
+        * platform/mac/TestExpectations: Marked as such.
+
+2014-03-31  Alexey Proskuryakov  <ap@apple.com>
+
+        media/track/track-remove-track.html is flaky, crashing and failing
+        https://bugs.webkit.org/show_bug.cgi?id=130971
+
+        * platform/mac/TestExpectations: Marked as such.
+
+2014-03-31  Andrei Bucur  <abucur@adobe.com>
+
+        Wrong layout while animating content in regions
+        https://bugs.webkit.org/show_bug.cgi?id=125086
+
+        Reviewed by David Hyatt.
+
+        Add a test verifying the layout and painting of animated content inside regions
+        is correct.
+
+        * fast/regions/layers/region-removed-during-animation-expected.html: Added.
+        * fast/regions/layers/region-removed-during-animation.html: Added.
+
+2014-03-30  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Move test cases of navigator content utils in own directory
+        https://bugs.webkit.org/show_bug.cgi?id=130927
+
+        Reviewed by Ryosuke Niwa.
+
+        Add NavigatorContentUtils dir to fast/dom in order to manage the test cases well.
+
+        * fast/dom/NavigatorContentUtils/is-protocol-handler-registered-expected.txt: Renamed from LayoutTests/fast/dom/is-protocol-handler-registered-expected.txt.
+        * fast/dom/NavigatorContentUtils/is-protocol-handler-registered.html: Renamed from LayoutTests/fast/dom/is-protocol-handler-registered.html.
+        * fast/dom/NavigatorContentUtils/register-protocol-handler-expected.txt: Renamed from LayoutTests/fast/dom/register-protocol-handler-expected.txt.
+        * fast/dom/NavigatorContentUtils/register-protocol-handler.html: Renamed from LayoutTests/fast/dom/register-protocol-handler.html.
+        * fast/dom/NavigatorContentUtils/unregister-protocol-handler-expected.txt: Renamed from LayoutTests/fast/dom/unregister-protocol-handler-expected.txt.
+        * fast/dom/NavigatorContentUtils/unregister-protocol-handler.html: Renamed from LayoutTests/fast/dom/unregister-protocol-handler.html.
+        * platform/efl-wk2/TestExpectations:
+        * platform/gtk/TestExpectations:
+        * platform/mac/TestExpectations:
+
 2014-03-30  Alexey Proskuryakov  <ap@apple.com>
 
         REGRESSION: compositing/columns/composited-rl-paginated-repaint.html is flaky

@@ -86,6 +86,7 @@
 #include <bitset>
 #include <limits.h>
 #include <wtf/HexNumber.h>
+#include <wtf/NeverDestroyed.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/dtoa.h>
 #include <wtf/text/StringBuffer.h>
@@ -241,7 +242,7 @@ private:
 
 const CSSParserContext& strictCSSParserContext()
 {
-    DEPRECATED_DEFINE_STATIC_LOCAL(CSSParserContext, strictContext, (CSSStrictMode));
+    static NeverDestroyed<CSSParserContext> strictContext(CSSStrictMode);
     return strictContext;
 }
 
@@ -1016,20 +1017,6 @@ static inline bool isValidKeywordPropertyAndValue(CSSPropertyID propertyId, int 
         if (valueID == CSSValueAuto || valueID == CSSValueNone || valueID == CSSValueText || valueID == CSSValueAll)
             return true;
         break;
-#if ENABLE(CSS_EXCLUSIONS)
-    case CSSPropertyWebkitWrapFlow:
-        if (!RuntimeEnabledFeatures::sharedFeatures().cssExclusionsEnabled())
-            return false;
-        if (valueID == CSSValueAuto || valueID == CSSValueBoth || valueID == CSSValueStart || valueID == CSSValueEnd || valueID == CSSValueMaximum || valueID == CSSValueClear)
-            return true;
-        break;
-    case CSSPropertyWebkitWrapThrough:
-        if (!RuntimeEnabledFeatures::sharedFeatures().cssExclusionsEnabled())
-            return false;
-        if (valueID == CSSValueWrap || valueID == CSSValueNone)
-            return true;
-        break;
-#endif
     case CSSPropertyWebkitWritingMode:
         if (valueID >= CSSValueHorizontalTb && valueID <= CSSValueHorizontalBt)
             return true;
@@ -1162,10 +1149,6 @@ static inline bool isKeywordPropertyID(CSSPropertyID propertyId)
     case CSSPropertyWebkitUserDrag:
     case CSSPropertyWebkitUserModify:
     case CSSPropertyWebkitUserSelect:
-#if ENABLE(CSS_EXCLUSIONS)
-    case CSSPropertyWebkitWrapFlow:
-    case CSSPropertyWebkitWrapThrough:
-#endif
     case CSSPropertyWebkitWritingMode:
     case CSSPropertyWhiteSpace:
     case CSSPropertyWordBreak:
@@ -3037,10 +3020,6 @@ bool CSSParser::parseValue(CSSPropertyID propId, bool important)
     case CSSPropertyWebkitUserDrag:
     case CSSPropertyWebkitUserModify:
     case CSSPropertyWebkitUserSelect:
-#if ENABLE(CSS_EXCLUSIONS)
-    case CSSPropertyWebkitWrapFlow:
-    case CSSPropertyWebkitWrapThrough:
-#endif
     case CSSPropertyWebkitWritingMode:
     case CSSPropertyWhiteSpace:
     case CSSPropertyWordBreak:

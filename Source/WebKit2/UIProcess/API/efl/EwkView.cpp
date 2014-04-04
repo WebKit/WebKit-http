@@ -430,7 +430,7 @@ void EwkView::updateCursor()
         if (!cursorObject)
             return;
 
-        IntSize cursorSize = cursorImage->size();
+        IntSize cursorSize = IntSize(cursorImage->size());
         // Resize cursor.
         evas_object_resize(cursorObject.get(), cursorSize.width(), cursorSize.height());
 
@@ -1258,18 +1258,7 @@ void EwkView::handleEvasObjectColorSet(Evas_Object* evasObject, int red, int gre
     Ewk_View_Smart_Data* smartData = toSmartData(evasObject);
     ASSERT(smartData);
 
-    EwkView* view = toEwkView(smartData);
-    ASSERT(view);
-
-    alpha = clampTo(alpha, 0, 255);
-    red = clampTo(red, 0, alpha);
-    green = clampTo(green, 0, alpha);
-    blue = clampTo(blue, 0, alpha);
-
     evas_object_image_alpha_set(smartData->image, alpha < 255);
-    WKViewSetDrawsBackground(view->wkView(), red || green || blue);
-    WKViewSetDrawsTransparentBackground(view->wkView(), alpha < 255);
-
     parentSmartClass.color_set(evasObject, red, green, blue, alpha);
 }
 

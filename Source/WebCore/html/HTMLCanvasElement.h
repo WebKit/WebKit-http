@@ -128,12 +128,6 @@ public:
     void setOriginTainted() { m_originClean = false; }
     bool originClean() const { return m_originClean; }
 
-#if PLATFORM(IOS)
-    // FIXME: Can we use unsigned data types, unsigned or size_t?
-    void setMaximumDecodedImageSize(float maximumDecodedImageSize) { m_maximumDecodedImageSize = maximumDecodedImageSize; }
-    float maximumDecodedImageSize() { return m_maximumDecodedImageSize; }
-#endif
-
     AffineTransform baseTransform() const;
 
     void makeRenderingResultsAvailable();
@@ -182,16 +176,11 @@ private:
     float m_deviceScaleFactor;
     bool m_originClean;
 
-#if PLATFORM(IOS)
-    // FIXME: Can we use a unsigned data type, unsigned or size_t?
-    float m_maximumDecodedImageSize;
-#endif
-
     // m_createdImageBuffer means we tried to malloc the buffer.  We didn't necessarily get it.
     mutable bool m_hasCreatedImageBuffer;
     mutable bool m_didClearImageBuffer;
     mutable std::unique_ptr<ImageBuffer> m_imageBuffer;
-    mutable OwnPtr<GraphicsContextStateSaver> m_contextStateSaver;
+    mutable std::unique_ptr<GraphicsContextStateSaver> m_contextStateSaver;
     
     mutable RefPtr<Image> m_presentedImage;
     mutable RefPtr<Image> m_copiedImage; // FIXME: This is temporary for platforms that have to copy the image buffer to render (and for CSSCanvasValue).

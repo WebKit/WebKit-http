@@ -187,6 +187,9 @@ public:
     virtual bool shouldSkipLayerInDump(const GraphicsLayer*) const override;
     virtual bool shouldDumpPropertyForLayer(const GraphicsLayer*, const char* propertyName) const override;
 
+    virtual bool shouldAggressivelyRetainTiles(const GraphicsLayer*) const override;
+    virtual bool shouldTemporarilyRetainTileCohorts(const GraphicsLayer*) const override;
+
 #if ENABLE(PLUGIN_PROXY_FOR_VIDEO)
     virtual bool mediaLayerMustBeUpdatedOnMainThread() const override;
 #endif
@@ -210,10 +213,6 @@ public:
 
     // Return an estimate of the backing store area (in pixels) allocated by this object's GraphicsLayers.
     double backingStoreMemoryEstimate() const;
-
-#if ENABLE(CSS_COMPOSITING)
-    void setBlendMode(BlendMode);
-#endif
 
     LayoutSize devicePixelFractionFromRenderer() const { return m_devicePixelFractionFromRenderer; }
 

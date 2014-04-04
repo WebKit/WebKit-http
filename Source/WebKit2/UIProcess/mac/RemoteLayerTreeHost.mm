@@ -26,6 +26,7 @@
 #import "config.h"
 #import "RemoteLayerTreeHost.h"
 
+#import "RemoteLayerTreeDrawingAreaProxy.h"
 #import "RemoteLayerTreePropertyApplier.h"
 #import "RemoteLayerTreeTransaction.h"
 #import "ShareableBitmap.h"
@@ -41,8 +42,9 @@ using namespace WebCore;
 
 namespace WebKit {
 
-RemoteLayerTreeHost::RemoteLayerTreeHost()
-    : m_rootLayer(nullptr)
+RemoteLayerTreeHost::RemoteLayerTreeHost(RemoteLayerTreeDrawingAreaProxy& drawingArea)
+    : m_drawingArea(drawingArea)
+    , m_rootLayer(nullptr)
     , m_isDebugLayerTreeHost(false)
 {
 }
@@ -54,7 +56,7 @@ RemoteLayerTreeHost::~RemoteLayerTreeHost()
 bool RemoteLayerTreeHost::updateLayerTree(const RemoteLayerTreeTransaction& transaction, float indicatorScaleFactor)
 {
     for (const auto& createdLayer : transaction.createdLayers()) {
-        const RemoteLayerTreeTransaction::LayerProperties* properties = transaction.changedLayers().get(createdLayer.layerID);
+        const RemoteLayerTreeTransaction::LayerProperties* properties = transaction.changedLayerProperties().get(createdLayer.layerID);
         createLayer(createdLayer, properties);
     }
 
@@ -65,7 +67,7 @@ bool RemoteLayerTreeHost::updateLayerTree(const RemoteLayerTreeTransaction& tran
         rootLayerChanged = true;
     }
 
-    for (auto& changedLayer : transaction.changedLayers()) {
+    for (auto& changedLayer : transaction.changedLayerProperties()) {
         auto layerID = changedLayer.key;
         const RemoteLayerTreeTransaction::LayerProperties& properties = *changedLayer.value;
 
@@ -82,18 +84,17 @@ bool RemoteLayerTreeHost::updateLayerTree(const RemoteLayerTreeTransaction& tran
             relatedLayers.set(properties.maskLayerID, getLayer(properties.maskLayerID));
 
         if (m_isDebugLayerTreeHost) {
-            RemoteLayerTreeTransaction::LayerProperties propertiesCopy(properties);
-            propertiesCopy.masksToBounds = false;
-            if (propertiesCopy.changedProperties & RemoteLayerTreeTransaction::BorderWidthChanged)
-                propertiesCopy.borderWidth *= 1 / indicatorScaleFactor;
-            
-            RemoteLayerTreePropertyApplier::applyProperties(layer, propertiesCopy, relatedLayers);
+            RemoteLayerTreePropertyApplier::applyProperties(layer, this, properties, relatedLayers);
+
+            if (properties.changedProperties & RemoteLayerTreeTransaction::BorderWidthChanged)
+                asLayer(layer).borderWidth = properties.borderWidth / indicatorScaleFactor;
+            asLayer(layer).masksToBounds = false;
         } else
-            RemoteLayerTreePropertyApplier::applyProperties(layer, properties, relatedLayers);
+            RemoteLayerTreePropertyApplier::applyProperties(layer, this, properties, relatedLayers);
     }
 
     for (auto& destroyedLayer : transaction.destroyedLayers())
-        m_layers.remove(destroyedLayer);
+        layerWillBeRemoved(destroyedLayer);
 
     return rootLayerChanged;
 }
@@ -104,6 +105,29 @@ LayerOrView *RemoteLayerTreeHost::getLayer(GraphicsLayer::PlatformLayerID layerI
         return nil;
 
     return m_layers.get(layerID).get();
+}
+
+void RemoteLayerTreeHost::layerWillBeRemoved(WebCore::GraphicsLayer::PlatformLayerID layerID)
+{
+    m_animationDelegates.remove(layerID);
+    m_layers.remove(layerID);
+}
+
+void RemoteLayerTreeHost::animationDidStart(WebCore::GraphicsLayer::PlatformLayerID layerID, double startTime)
+{
+    m_drawingArea.acceleratedAnimationDidStart(layerID, startTime);
+}
+
+static NSString* const WKLayerIDPropertyKey = @"WKLayerID";
+
+void RemoteLayerTreeHost::setLayerID(CALayer *layer, WebCore::GraphicsLayer::PlatformLayerID layerID)
+{
+    [layer setValue:[NSNumber numberWithUnsignedLongLong:layerID] forKey:WKLayerIDPropertyKey];
+}
+
+WebCore::GraphicsLayer::PlatformLayerID RemoteLayerTreeHost::layerID(CALayer* layer)
+{
+    return [[layer valueForKey:WKLayerIDPropertyKey] unsignedLongLongValue];
 }
 
 #if !PLATFORM(IOS)
@@ -137,6 +161,7 @@ LayerOrView *RemoteLayerTreeHost::createLayer(const RemoteLayerTreeTransaction::
     }
 
     [layer web_disableAllActions];
+    setLayerID(layer.get(), properties.layerID);
 
     return layer.get();
 }

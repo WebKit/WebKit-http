@@ -394,9 +394,6 @@ public:
     WTF::initializeMainThreadToProcessMainThread();
     RunLoop::initializeMainRunLoop();
 #endif
-#if PLATFORM(IOS)
-    static unsigned defaultMaximumImageSize = 20 * 1024 * 1024;
-#endif
 
     NSDictionary *dict = [NSDictionary dictionaryWithObjectsAndKeys:
         @"Times",                       WebKitStandardFontPreferenceKey,
@@ -485,7 +482,11 @@ public:
         [NSNumber numberWithBool:YES],  WebKitAcceleratedCompositingEnabledPreferenceKey,
         [NSNumber numberWithBool:YES], WebKitCSSRegionsEnabledPreferenceKey,
         [NSNumber numberWithBool:YES], WebKitCSSCompositingEnabledPreferenceKey,
+#if ENABLE(CSS_GRID_LAYOUT)
+        [NSNumber numberWithBool:YES],  WebKitCSSGridLayoutEnabledPreferenceKey,
+#else
         [NSNumber numberWithBool:NO],  WebKitCSSGridLayoutEnabledPreferenceKey,
+#endif
 #if PLATFORM(IOS) && !PLATFORM(IOS_SIMULATOR)
         [NSNumber numberWithBool:YES],  WebKitAcceleratedDrawingEnabledPreferenceKey,
         [NSNumber numberWithBool:YES],  WebKitCanvasUsesAcceleratedDrawingPreferenceKey,
@@ -553,7 +554,6 @@ public:
         [NSNumber numberWithBool:NO],   WebKitPlugInSnapshottingEnabledPreferenceKey,
 
 #if PLATFORM(IOS)
-        [NSNumber numberWithUnsignedInt:defaultMaximumImageSize], WebKitMaximumImageSizePreferenceKey,
         [NSNumber numberWithBool:NO],   WebKitTelephoneParsingEnabledPreferenceKey,
         [NSNumber numberWithInt:-1],      WebKitLayoutIntervalPreferenceKey,
         [NSNumber numberWithFloat:-1.0f], WebKitMaxParseDurationPreferenceKey,
@@ -1401,11 +1401,6 @@ public:
 }
 
 #if PLATFORM(IOS)
-- (size_t)_maximumImageSize
-{
-    return [[NSUserDefaults standardUserDefaults] integerForKey:WebKitMaximumImageSizePreferenceKey];
-}
-
 - (BOOL)_standalone
 {
     return [self _boolValueForKey:WebKitStandalonePreferenceKey];

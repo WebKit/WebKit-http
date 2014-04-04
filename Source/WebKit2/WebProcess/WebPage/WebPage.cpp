@@ -51,6 +51,7 @@
 #include "PluginView.h"
 #include "PrintInfo.h"
 #include "SessionState.h"
+#include "SessionTracker.h"
 #include "ShareableBitmap.h"
 #include "VisitedLinkTableController.h"
 #include "WKSharedAPICast.h"
@@ -2180,24 +2181,11 @@ void WebPage::setLayerHostingMode(unsigned layerHostingMode)
         pluginView->setLayerHostingMode(m_layerHostingMode);
 }
 
-SessionID WebPage::sessionID() const
-{
-    if (m_page->isSessionIDSet())
-        return m_page->sessionID();
-
-    return m_page->settings().privateBrowsingEnabled() ? SessionID::legacyPrivateSessionID() : SessionID::defaultSessionID();
-}
-
-bool WebPage::isUsingEphemeralSession() const
-{
-    return sessionID().isEphemeral();
-}
-
 void WebPage::setSessionID(SessionID sessionID)
 {
-    m_page->setSessionID(sessionID);
     if (sessionID.isEphemeral())
         WebProcess::shared().ensurePrivateBrowsingSession(sessionID);
+    m_page->setSessionID(sessionID);
 }
 
 void WebPage::didReceivePolicyDecision(uint64_t frameID, uint64_t listenerID, uint32_t policyAction, uint64_t downloadID)
@@ -2502,10 +2490,10 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
     settings.setLocalStorageEnabled(store.getBoolValueForKey(WebPreferencesKey::localStorageEnabledKey()));
     settings.setXSSAuditorEnabled(store.getBoolValueForKey(WebPreferencesKey::xssAuditorEnabledKey()));
     settings.setFrameFlatteningEnabled(store.getBoolValueForKey(WebPreferencesKey::frameFlatteningEnabledKey()));
-    if (m_page->isSessionIDSet())
-        settings.setPrivateBrowsingEnabled(m_page->sessionID().isEphemeral());
-    else
-        settings.setPrivateBrowsingEnabled(store.getBoolValueForKey(WebPreferencesKey::privateBrowsingEnabledKey()));
+    if (store.getBoolValueForKey(WebPreferencesKey::privateBrowsingEnabledKey()) && !usesEphemeralSession())
+        setSessionID(SessionID::legacyPrivateSessionID());
+    else if (!store.getBoolValueForKey(WebPreferencesKey::privateBrowsingEnabledKey()) && sessionID() == SessionID::legacyPrivateSessionID())
+        setSessionID(SessionID::defaultSessionID());
     settings.setDeveloperExtrasEnabled(store.getBoolValueForKey(WebPreferencesKey::developerExtrasEnabledKey()));
     settings.setJavaScriptExperimentsEnabled(store.getBoolValueForKey(WebPreferencesKey::javaScriptExperimentsEnabledKey()));
     settings.setTextAreasAreResizable(store.getBoolValueForKey(WebPreferencesKey::textAreasAreResizableKey()));
@@ -2551,6 +2539,7 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
     settings.setShowRepaintCounter(store.getBoolValueForKey(WebPreferencesKey::compositingRepaintCountersVisibleKey()));
     settings.setShowTiledScrollingIndicator(store.getBoolValueForKey(WebPreferencesKey::tiledScrollingIndicatorVisibleKey()));
     settings.setAggressiveTileRetentionEnabled(store.getBoolValueForKey(WebPreferencesKey::aggressiveTileRetentionEnabledKey()));
+    settings.setTemporaryTileCohortRetentionEnabled(store.getBoolValueForKey(WebPreferencesKey::temporaryTileCohortRetentionEnabledKey()));
     RuntimeEnabledFeatures::sharedFeatures().setCSSRegionsEnabled(store.getBoolValueForKey(WebPreferencesKey::cssRegionsEnabledKey()));
     RuntimeEnabledFeatures::sharedFeatures().setCSSCompositingEnabled(store.getBoolValueForKey(WebPreferencesKey::cssCompositingEnabledKey()));
 #if ENABLE(CSS_GRID_LAYOUT)
@@ -2610,6 +2599,10 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
 
 #if ENABLE(IMAGE_CONTROLS)
     settings.setImageControlsEnabled(store.getBoolValueForKey(WebPreferencesKey::imageControlsEnabledKey()));
+#endif
+
+#if ENABLE(IOS_AIRPLAY)
+    settings.setMediaPlaybackAllowsAirPlay(store.getBoolValueForKey(WebPreferencesKey::mediaPlaybackAllowsAirPlayKey()));
 #endif
 
     settings.setApplicationChromeMode(store.getBoolValueForKey(WebPreferencesKey::applicationChromeModeKey()));

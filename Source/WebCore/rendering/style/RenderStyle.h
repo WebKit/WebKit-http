@@ -68,8 +68,8 @@
 #include "ThemeTypes.h"
 #include "TransformOperations.h"
 #include "UnicodeBidi.h"
+#include <memory>
 #include <wtf/Forward.h>
-#include <wtf/OwnPtr.h>
 #include <wtf/RefCounted.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/Vector.h>
@@ -91,7 +91,7 @@
 #include "TextSizeAdjustment.h"
 #endif
 
-template<typename T, typename U> inline bool compareEqual(const T& t, const U& u) { return t == static_cast<T>(u); }
+template<typename T, typename U> inline bool compareEqual(const T& t, const U& u) { return t == static_cast<const T&>(u); }
 
 #define SET_VAR(group, variable, value) \
     if (!compareEqual(group->variable, value)) \
@@ -278,13 +278,12 @@ public:
         static ETableLayout initialTableLayout() { return TAUTO; }
 
         static ptrdiff_t flagsMemoryOffset() { return OBJECT_OFFSETOF(NonInheritedFlags, m_flags); }
-        static uint8_t flagIsUnique() { return isUniqueOffset; }
-        static uint8_t flagEmptyState() { return emptyStateOffset; }
-        static uint8_t flagFirstChildState() { return firstChildStateOffset; }
-        static uint8_t flagLastChildState() { return lastChildStateOffset; }
-        static uint8_t flagAffectedByHover() { return affectedByHoverOffset; }
-        static uint8_t flagAffectedByActive() { return affectedByActiveOffset; }
-        static uint8_t flagAffectedByDrag() { return affectedByDragOffset; }
+        static uint64_t flagEmptyState() { return oneBitMask << emptyStateOffset; }
+        static uint64_t setFirstChildStateFlags() { return flagFirstChildState() | flagIsUnique(); }
+        static uint64_t flagLastChildState() { return oneBitMask << lastChildStateOffset; }
+        static uint64_t flagAffectedByHover() { return oneBitMask << affectedByHoverOffset; }
+        static uint64_t flagAffectedByActive() { return oneBitMask << affectedByActiveOffset; }
+        static uint64_t flagAffectedByDrag() { return oneBitMask << affectedByDragOffset; }
     private:
         void updateBoolean(bool isSet, uint64_t offset)
         {
@@ -310,6 +309,9 @@ public:
         {
             return static_cast<unsigned>((m_flags >> offset) & positionIndependentMask);
         }
+
+        static uint64_t flagIsUnique() { return oneBitMask << isUniqueOffset; }
+        static uint64_t flagFirstChildState() { return oneBitMask << firstChildStateOffset; }
 
         // To type the bit mask properly on 64bits.
         static const uint64_t oneBitMask = 0x1;
@@ -402,7 +404,7 @@ protected:
     DataRef<StyleInheritedData> inherited;
 
     // list of associated pseudo styles
-    OwnPtr<PseudoStyleCache> m_cachedPseudoStyles;
+    std::unique_ptr<PseudoStyleCache> m_cachedPseudoStyles;
 
     DataRef<SVGRenderStyle> m_svgStyle;
 
@@ -1029,9 +1031,6 @@ public:
     LineSnap lineSnap() const { return static_cast<LineSnap>(rareInheritedData->m_lineSnap); }
     LineAlign lineAlign() const { return static_cast<LineAlign>(rareInheritedData->m_lineAlign); }
 
-    WrapFlow wrapFlow() const { return static_cast<WrapFlow>(rareNonInheritedData->m_wrapFlow); }
-    WrapThrough wrapThrough() const { return static_cast<WrapThrough>(rareNonInheritedData->m_wrapThrough); }
-
     // Apple-specific property getter methods
     EPointerEvents pointerEvents() const { return static_cast<EPointerEvents>(inherited_flags._pointerEvents); }
     const AnimationList* animations() const { return rareNonInheritedData->m_animations.get(); }
@@ -1545,24 +1544,21 @@ public:
     void setRegionThread(const AtomicString& regionThread) { SET_VAR(rareNonInheritedData, m_regionThread, regionThread); }
     void setRegionFragment(RegionFragment regionFragment) { SET_VAR(rareNonInheritedData, m_regionFragment, regionFragment); }
 
-    void setWrapFlow(WrapFlow wrapFlow) { SET_VAR(rareNonInheritedData, m_wrapFlow, wrapFlow); }
-    void setWrapThrough(WrapThrough wrapThrough) { SET_VAR(rareNonInheritedData, m_wrapThrough, wrapThrough); }
-
     // Apple-specific property setters
     void setPointerEvents(EPointerEvents p) { inherited_flags._pointerEvents = p; }
 
     void clearAnimations()
     {
-        rareNonInheritedData.access()->m_animations.clear();
+        rareNonInheritedData.access()->m_animations = nullptr;
     }
 
     void clearTransitions()
     {
-        rareNonInheritedData.access()->m_transitions.clear();
+        rareNonInheritedData.access()->m_transitions = nullptr;
     }
 
-    void inheritAnimations(const AnimationList* parent) { rareNonInheritedData.access()->m_animations = parent ? adoptPtr(new AnimationList(*parent)) : nullptr; }
-    void inheritTransitions(const AnimationList* parent) { rareNonInheritedData.access()->m_transitions = parent ? adoptPtr(new AnimationList(*parent)) : nullptr; }
+    void inheritAnimations(const AnimationList* parent) { rareNonInheritedData.access()->m_animations = parent ? std::make_unique<AnimationList>(*parent) : nullptr; }
+    void inheritTransitions(const AnimationList* parent) { rareNonInheritedData.access()->m_transitions = parent ? std::make_unique<AnimationList>(*parent) : nullptr; }
     void adjustAnimations();
     void adjustTransitions();
 
@@ -1911,9 +1907,6 @@ public:
     static const AtomicString& initialRegionThread() { return nullAtom; }
     static RegionFragment initialRegionFragment() { return AutoRegionFragment; }
 
-    static WrapFlow initialWrapFlow() { return WrapFlowAuto; }
-    static WrapThrough initialWrapThrough() { return WrapThroughWrap; }
-
     // Keep these at the end.
     static LineClampValue initialLineClamp() { return LineClampValue(); }
     static ETextSecurity initialTextSecurity() { return TSNONE; }
@@ -1941,6 +1934,8 @@ public:
     static BlendMode initialBlendMode() { return BlendModeNormal; }
     static Isolation initialIsolation() { return IsolationAuto; }
 #endif
+
+    static ptrdiff_t noninheritedFlagsMemoryOffset() { return OBJECT_OFFSETOF(RenderStyle, noninherited_flags); }
 
 private:
     bool changeRequiresLayout(const RenderStyle*, unsigned& changedContextSensitiveProperties) const;
@@ -2025,8 +2020,6 @@ private:
     Color lightingColor() const { return svgStyle().lightingColor(); }
 
     void appendContent(std::unique_ptr<ContentData>);
-
-    static ptrdiff_t noninheritedFlagsMemoryOffset() { return OBJECT_OFFSETOF(RenderStyle, noninherited_flags); }
 };
 
 inline int adjustForAbsoluteZoom(int value, const RenderStyle& style)

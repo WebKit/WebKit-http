@@ -1,3 +1,1291 @@
+2014-04-02  Jinwoo Song  <jinwoo7.song@samsung.com>
+
+        [WK2][EFL] Remove unnecessary reinterpret_cast<> in unit testcase
+        https://bugs.webkit.org/show_bug.cgi?id=131143
+
+        Reviewed by Gyuyoung Kim.
+
+        Ecore_Timer callback requires *Eina_Bool* return type instead of *bool*.
+        Also, WebKit/EFL port coding style recommends to use *Eina_Bool* in the
+        callback function for EFL event handler. Additionally, replaced 0 to nullptr.
+
+        * UIProcess/API/efl/tests/UnitTestUtils/EWK2UnitTestBase.cpp:
+        (EWK2UnitTest::CallbackDataTimer::CallbackDataTimer):
+        (EWK2UnitTest::CallbackDataTimer::setDone):
+        (EWK2UnitTest::CallbackDataTimer::timeOutCallback):
+        (EWK2UnitTest::CallbackDataTimer::setTimedOut):
+        * UIProcess/API/efl/tests/test_ewk2_storage_manager.cpp:
+        (EWK2StorageManagerTest::timerCallback):
+        (TEST_F):
+
+2014-04-02  Tim Horton  <timothy_horton@apple.com>
+
+        Remove a FIXME that happened.
+
+        * Shared/mac/RemoteLayerBackingStore.mm:
+        (WebKit::RemoteLayerBackingStore::display):
+
+2014-04-02  Tim Horton  <timothy_horton@apple.com>
+
+        Fix the !USE(IOSURFACE) build... again.
+
+        * UIProcess/mac/RemoteLayerTreeDrawingAreaProxy.mm:
+        (WebKit::RemoteLayerTreeDrawingAreaProxy::RemoteLayerTreeDrawingAreaProxy):
+
+2014-04-02  Mark Rowe  <mrowe@apple.com>
+
+        <https://webkit.org/b/131135> Introduce LockHistory and LockBackForwardList enums to use in place of bools.
+
+        These arguments are often passed using literals at the call site, where the use of bools severely hinders
+        the readability of the code.
+
+        Reviewed by Andreas Kling.
+
+        * WebProcess/Plugins/PDF/PDFPlugin.mm:
+        (WebKit::PDFPlugin::clickedLink):
+
+2014-04-02  Tim Horton  <timothy_horton@apple.com>
+
+        Pool IOSurfaces to help with allocation cost
+        https://bugs.webkit.org/show_bug.cgi?id=131096
+        <rdar://problem/15373942>
+
+        Reviewed by Simon Fraser.
+
+        * Shared/mac/RemoteLayerBackingStore.h:
+        * Shared/mac/RemoteLayerBackingStore.mm:
+        (WebKit::RemoteLayerBackingStore::~RemoteLayerBackingStore):
+        (WebKit::RemoteLayerBackingStore::clearBackingStore):
+        (WebKit::RemoteLayerBackingStore::display):
+        When RemoteLayerBackingStore discards a layer, throw it into the pool.
+
+        * UIProcess/mac/RemoteLayerTreeDrawingAreaProxy.mm:
+        (WebKit::RemoteLayerTreeDrawingAreaProxy::RemoteLayerTreeDrawingAreaProxy):
+        Disable the pool in the UI process.
+
+2014-04-02  Alice Barraclough  <alice.barraclough@apple.com>
+
+        Fix a typo causing TestWebKitAPI to timeout when testing Find.
+
+        Reviewed by Dan Bernstein.
+
+        * UIProcess/API/C/WKPage.cpp:
+        (WKPageSetPageFindClient): Test for !functionPointer like
+        all the other implementations do.
+
+2014-04-02  Dean Jackson  <dino@apple.com>
+
+        [iOS] Expose geolocation provider on the process pool
+        https://bugs.webkit.org/show_bug.cgi?id=131125
+
+        Reviewed by Dan Bernstein.
+
+        Followup comments from Dan Bernstein. Use a class
+        extension rather than a new category.
+
+        * UIProcess/API/Cocoa/WKProcessPool.mm:
+        (-[WKProcessPool _geolocationProvider]):
+        * UIProcess/API/Cocoa/WKProcessPoolInternal.h:
+
+2014-04-02  Tim Horton  <timothy_horton@apple.com>
+
+        RemoteLayerBackingStore doesn't need to clear opaque layers
+        https://bugs.webkit.org/show_bug.cgi?id=131134
+
+        Reviewed by Simon Fraser.
+
+        * Shared/mac/RemoteLayerBackingStore.mm:
+        (WebKit::RemoteLayerBackingStore::display):
+        We don't need to clear opaque layers, because we'll paint
+        over the whole area. In addition, we should fill opaque layers
+        with a bright color in debug builds to make it very clear
+        that we've made a mistake (similar to what FrameView does).
+
+2014-04-02  Anders Carlsson  <andersca@apple.com>
+
+        Document WKBackForwardList, WKBackForwardListItem and WKWebViewConfiguration
+        https://bugs.webkit.org/show_bug.cgi?id=131131
+
+        Reviewed by Dan Bernstein.
+
+        * UIProcess/API/Cocoa/WKBackForwardList.h:
+        * UIProcess/API/Cocoa/WKBackForwardListItem.h:
+        * UIProcess/API/Cocoa/WKWebViewConfiguration.h:
+
+2014-04-02  Anders Carlsson  <andersca@apple.com>
+
+        Document WKUIDelegate and WKWindowFeatures
+        https://bugs.webkit.org/show_bug.cgi?id=131124
+
+        Reviewed by Dan Bernstein.
+
+        * UIProcess/API/Cocoa/WKProcessPool.h:
+        * UIProcess/API/Cocoa/WKUIDelegate.h:
+        * UIProcess/API/Cocoa/WKWindowFeatures.h:
+
+2014-04-02  Dean Jackson  <dino@apple.com>
+
+        [iOS] Expose geolocation provider on the process pool
+        https://bugs.webkit.org/show_bug.cgi?id=131125
+
+        Patch by Sam Weinig.
+        Reviewed by Dean Jackson.
+
+        * UIProcess/API/Cocoa/WKProcessPool.mm:
+        (-[WKProcessPool _geolocationProvider]): Create and initialize WKGeolocationProviderIOS if necessary.
+        * UIProcess/API/Cocoa/WKProcessPoolInternal.h: Expose _geolocationProvider.
+        * UIProcess/ios/WKContentView.mm:
+        (-[WKContentView _decidePolicyForGeolocationRequestFromOrigin:frame:request:]): Call into WKProcessPool.
+
+2014-04-02  Martin Hock  <mhock@apple.com>
+
+        Unify private browsing with sessions.
+        https://bugs.webkit.org/show_bug.cgi?id=130099
+
+        Reviewed by Alexey Proskuryakov.
+
+        * WebProcess/InjectedBundle/API/c/WKBundlePage.cpp: Change WebPage::isUsingEphemeralSession() to WebPage::usesEphemeralSession().
+        (WKBundlePageIsUsingEphemeralSession):
+        * WebProcess/InjectedBundle/InjectedBundle.cpp: Change Settings::setPrivateBrowsingEnabled() to Page::enableLegacyPrivateBrowsing().
+        (WebKit::InjectedBundle::setPrivateBrowsingEnabled):
+        * WebProcess/Plugins/PluginView.cpp: Change Settings::privateBrowsingEnabled() to Page::usesEphemeralSession().
+        (WebKit::PluginView::isPrivateBrowsingEnabled):
+        * WebProcess/WebCoreSupport/soup/WebFrameNetworkingContext.cpp: Ditto.
+        (WebKit::WebFrameNetworkingContext::storageSession):
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::usesEphemeralSession): Renamed from isUsingEphemeralSession.
+        (WebKit::WebPage::setSessionID): Ensure session before setting.
+        (WebKit::WebPage::updatePreferences): Set session to legacy private session if needed.
+        (WebKit::WebPage::sessionID): Moved to header.
+        (WebKit::WebPage::isUsingEphemeralSession): Renamed to usesEphemeralSession.
+        * WebProcess/WebPage/WebPage.h:
+        (WebKit::WebPage::sessionID): Just call down to m_page.
+
+2014-04-02  Alice Barraclough  <alice.liu@apple.com>
+
+        Adding Objective-C SPI for Find in Page.
+        https://bugs.webkit.org/show_bug.cgi?id=131000 Need an Objective-C API or SPI for Find in Page
+
+        Reviewed by Dan Bernstein.
+
+        Find-on-page SPI added to WKWebView, which funnels the messages through the WebPageProxy.
+        Returning messages are designated by _WKFindDelegate protocol.
+        Also provide FindDelegate access on WKWebView.
+        WebPageProxy gets a new-style API::FindClient.
+        Also had to replicate WKFindOptions as _WKFindOptions in Cocoa SPI. This is unfortunate, but it 
+        does follow the pattern of other options & enums related to classes that are SPI-for-now.
+        
+        PageClientImplIOS handles setFindIndicator function by forwarding to its WKContentView, 
+        but WKContentView _setFindIndicator remains unimplemented for now.
+        
+        * UIProcess/API/APIFindClient.h: Added.
+        (API::FindClient::~FindClient):
+        (API::FindClient::didCountStringMatches):
+        (API::FindClient::didFindString):
+        (API::FindClient::didFailToFindString):
+        * UIProcess/API/C/WKPage.cpp:
+        (WKPageSetPageFindClient):
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView initWithFrame:configuration:]):
+        (-[WKWebView _findDelegate]):
+        (-[WKWebView _setFindDelegate:]):
+        (toFindOptions):
+        (-[WKWebView _countStringMatches:options:maxCount:]):
+        (-[WKWebView _findString:options:maxCount:]):
+        (-[WKWebView _hideFindUI]):
+        (-[WKWebView _hostForFindUI]):
+        * UIProcess/API/Cocoa/WKWebViewPrivate.h:
+        (NS_OPTIONS):
+        * UIProcess/API/Cocoa/_WKFindDelegate.h: Added.
+        * UIProcess/Cocoa/FindClient.h: Added.
+        * UIProcess/Cocoa/FindClient.mm: Added.
+        (WebKit::FindClient::FindClient):
+        (WebKit::FindClient::delegate):
+        (WebKit::FindClient::setDelegate):
+        (WebKit::FindClient::didCountStringMatches):
+        (WebKit::FindClient::didFindString):
+        (WebKit::FindClient::didFailToFindString):
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::WebPageProxy):
+        (WebKit::WebPageProxy::setFindClient):
+        (WebKit::WebPageProxy::close):
+        (WebKit::WebPageProxy::didCountStringMatches):
+        (WebKit::WebPageProxy::didFindString):
+        (WebKit::WebPageProxy::didFailToFindString):
+        (WebKit::WebPageProxy::initializeFindClient): Deleted.
+        * UIProcess/WebPageProxy.h:
+        (WebKit::WebPageProxy::findClient):
+        * UIProcess/ios/PageClientImplIOS.mm:
+        (WebKit::PageClientImpl::setFindIndicator):
+        * UIProcess/ios/WKContentView.h:
+        * UIProcess/ios/WKContentView.mm:
+        (-[WKContentView _setFindIndicator:WebKit::fadeOut:animate:]):
+        * WebKit2.xcodeproj/project.pbxproj:
+
+2014-04-02  Anders Carlsson  <andersca@apple.com>
+
+        Rename -[WKBackForwardListItem originalURL] to -[WKBackForwardListItem initialURL]
+        https://bugs.webkit.org/show_bug.cgi?id=131116
+
+        Reviewed by Antti Koivisto.
+
+        * UIProcess/API/Cocoa/WKBackForwardListItem.h:
+        * UIProcess/API/Cocoa/WKBackForwardListItem.mm:
+        (-[WKBackForwardListItem initialURL]):
+        (-[WKBackForwardListItem originalURL]): Deleted.
+
+2014-04-02  Antti Koivisto  <antti@apple.com>
+
+        Split tile grid out from TileController
+        https://bugs.webkit.org/show_bug.cgi?id=131102
+
+        Reviewed by Simon Fraser.
+
+        * WebProcess/WebPage/mac/PlatformCALayerRemoteTiledBacking.cpp:
+        (WebKit::PlatformCALayerRemoteTiledBacking::PlatformCALayerRemoteTiledBacking):
+        * WebProcess/WebPage/mac/PlatformCALayerRemoteTiledBacking.h:
+
+2014-04-02  Anders Carlsson  <andersca@apple.com>
+
+        Try a workaround for a crash
+        https://bugs.webkit.org/show_bug.cgi?id=131112
+
+        Reviewed by Sam Weinig.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView UIDelegate]):
+        (-[WKWebView setUIDelegate:]):
+
+2014-04-02  Martin Robinson  <mrobinson@igalia.com>
+
+        REGRESSION(r165704): [GTK] Inspector resources not correctly generated
+        https://bugs.webkit.org/show_bug.cgi?id=130343
+
+        Reviewed by Gustavo Noronha Silva.
+
+        * PlatformGTK.cmake: Pass all appropriate directories to the
+        GResources XML generation script.
+
+2014-04-02  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Move NEWS file to a new location
+        https://bugs.webkit.org/show_bug.cgi?id=130901
+
+        Reviewed by Brent Fulgham.
+
+        * gtk/NEWS: Renamed from Source/WebKit/gtk/NEWS.
+
+2014-04-01  Benjamin Poulain  <bpoulain@apple.com>
+
+        <rdar://problem/16294704> Remove _pageExtendedBackgroundColor entirely
+        https://bugs.webkit.org/show_bug.cgi?id=131075
+
+        Reviewed by Beth Dakin.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _pageExtendedBackgroundColor]): Deleted.
+        * UIProcess/API/Cocoa/WKWebViewPrivate.h:
+
+2014-04-01  Anders Carlsson  <andersca@apple.com>
+
+        Stub out more WKNavigation properties
+        https://bugs.webkit.org/show_bug.cgi?id=131080
+
+        Reviewed by Tim Horton.
+
+        * UIProcess/API/Cocoa/WKNavigation.h:
+        * UIProcess/API/Cocoa/WKNavigation.mm:
+        (-[WKNavigation initialRequest]):
+        (-[WKNavigation response]):
+        (-[WKNavigation error]):
+
+2014-04-01  Anders Carlsson  <andersca@apple.com>
+
+        Rename -[WKWebView activeURL] to -[WKWebView URL]
+        https://bugs.webkit.org/show_bug.cgi?id=131077
+
+        Reviewed by Tim Horton.
+
+        Keep -[WKWebView activeURL] as SPI until no clients depend on it.
+
+        * UIProcess/API/Cocoa/WKWebView.h:
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView URL]):
+        (-[WKWebView activeURL]):
+        * UIProcess/API/Cocoa/WKWebViewPrivate.h:
+        * UIProcess/Cocoa/NavigationState.mm:
+        (WebKit::NavigationState::willChangeActiveURL):
+        (WebKit::NavigationState::didChangeActiveURL):
+
+2014-04-01  Anders Carlsson  <andersca@apple.com>
+
+        Move -[WKWebView stopLoading:] back to WKIBActions
+        https://bugs.webkit.org/show_bug.cgi?id=131072
+
+        Reviewed by Tim Horton.
+
+        * UIProcess/API/Cocoa/WKWebView.h:
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView stopLoading:]):
+
+2014-04-01  Anders Carlsson  <andersca@apple.com>
+
+        Migrate more headers
+        https://bugs.webkit.org/show_bug.cgi?id=131068
+
+        Reviewed by Tim Horton.
+
+        * UIProcess/API/Cocoa/WKBackForwardList.h:
+        Remove a newline.
+
+        * WebKit2.xcodeproj/project.pbxproj:
+        Move files from the "Deprecated" group.
+
+2014-04-01  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [CSS Grid Layout] Enable runtime feature if feature flag is enabled
+        https://bugs.webkit.org/show_bug.cgi?id=130013
+
+        Reviewed by Simon Fraser.
+
+        Enable CSS Grid Layout runtime feature when ENABLE_CSS_GRID_LAYOUT flag is true.
+
+        * Shared/WebPreferencesStore.h:
+
+2014-04-01  Anders Carlsson  <andersca@apple.com>
+
+        Demote WKBackForwardListDidChangeNotification to SPI
+        https://bugs.webkit.org/show_bug.cgi?id=131059
+
+        Reviewed by Dan Bernstein.
+
+        * UIProcess/API/Cocoa/WKBackForwardList.h:
+        * UIProcess/API/Cocoa/WKBackForwardList.mm:
+        * UIProcess/API/Cocoa/WKBackForwardListInternal.h:
+        * UIProcess/API/Cocoa/WKBackForwardListPrivate.h: Copied from Source/WebKit2/UIProcess/API/Cocoa/WKBackForwardListInternal.h.
+        * UIProcess/Cocoa/NavigationState.mm:
+        (WebKit::NavigationState::LoaderClient::didChangeBackForwardList):
+        * WebKit2.xcodeproj/project.pbxproj:
+
+2014-04-01  Andy Estes  <aestes@apple.com>
+
+        [Cocoa] Add SPI to determine if a WKWebView is displaying a PDF
+        https://bugs.webkit.org/show_bug.cgi?id=131063
+
+        Reviewed by Tim Horton.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _isDisplayingPDF]):
+        * UIProcess/API/Cocoa/WKWebViewPrivate.h:
+
+2014-04-01  Simon Fraser  <simon.fraser@apple.com>
+
+        Remove some explicit template instantiations from logging code
+        https://bugs.webkit.org/show_bug.cgi?id=131065
+
+        Reviewed by Tim Horton.
+        
+        No need to explicitly state template types.
+
+        * Shared/mac/RemoteLayerTreeTransaction.mm:
+        (WebKit::dumpChangedLayers):
+
+2014-04-01  Tim Horton  <timothy_horton@apple.com>
+
+        [iOS WebKit2] Partial repaint is broken
+        https://bugs.webkit.org/show_bug.cgi?id=131056
+
+        Reviewed by Dean Jackson.
+
+        * Shared/mac/RemoteLayerBackingStore.mm:
+        (WebKit::RemoteLayerBackingStore::display):
+        We need to check if the repaint rects themselves cover the whole
+        layer's surface, not just their bounds. Otherwise, we'll optimize
+        out the back->front copy and end up not painting the whole layer.
+
+2014-04-01  Anders Carlsson  <andersca@apple.com>
+
+        Pass a WKNavigationAction to the create UIDelegate method
+        https://bugs.webkit.org/show_bug.cgi?id=131053
+
+        Reviewed by Sam Weinig.
+
+        * UIProcess/API/Cocoa/WKUIDelegate.h:
+        * UIProcess/Cocoa/UIClient.h:
+        * UIProcess/Cocoa/UIClient.mm:
+        (WebKit::UIClient::setDelegate):
+        (WebKit::UIClient::createNewPage):
+
+2014-04-01  Benjamin Poulain  <bpoulain@apple.com>
+
+        [iOS][WK2] Remove the two finger pan gesture recognizer until it is actually implemented
+        https://bugs.webkit.org/show_bug.cgi?id=131009
+
+        Reviewed by Sam Weinig.
+
+        The two finger pan should not block the pinch gesture recognizer.
+
+        * UIProcess/ios/WKContentViewInteraction.h:
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView setupInteraction]):
+        (-[WKContentView cleanupInteraction]):
+        (-[WKContentView gestureRecognizerShouldBegin:]):
+        (-[WKContentView _twoFingerPanRecognized:]): Deleted.
+
+2014-04-01  Anders Carlsson  <andersca@apple.com>
+
+        Remove limits from WKBackForwardList getters
+        https://bugs.webkit.org/show_bug.cgi?id=131052
+
+        Reviewed by Beth Dakin.
+
+        * UIProcess/API/Cocoa/WKBackForwardList.h:
+        * UIProcess/API/Cocoa/WKBackForwardList.mm:
+        (-[WKBackForwardList backList]):
+        (-[WKBackForwardList forwardList]):
+        (-[WKBackForwardList backListCount]): Deleted.
+        (-[WKBackForwardList forwardListCount]): Deleted.
+        (-[WKBackForwardList backListWithLimit:]): Deleted.
+        (-[WKBackForwardList forwardListWithLimit:]): Deleted.
+        * UIProcess/WebBackForwardList.cpp:
+        (WebKit::WebBackForwardList::backList):
+        (WebKit::WebBackForwardList::forwardList):
+        * UIProcess/WebBackForwardList.h:
+
+2014-04-01  Anders Carlsson  <andersca@apple.com>
+
+        Stub out the web process -> UI process message SPI
+        https://bugs.webkit.org/show_bug.cgi?id=131048
+
+        Reviewed by Sam Weinig.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView initWithFrame:configuration:]):
+        * UIProcess/API/Cocoa/WKWebViewConfiguration.mm:
+        (-[WKWebViewConfiguration copyWithZone:]):
+        (-[WKWebViewConfiguration _userContentController]):
+        (-[WKWebViewConfiguration _setUserContentController:]):
+        * UIProcess/API/Cocoa/WKWebViewConfigurationPrivate.h:
+        * UIProcess/API/Cocoa/WKWebViewPrivate.h:
+        * UIProcess/API/Cocoa/_WKScriptMessage.h: Copied from Source/WebKit2/UIProcess/API/Cocoa/_WKScriptWorld.h.
+        * UIProcess/API/Cocoa/_WKScriptMessage.mm: Copied from Source/WebKit2/UIProcess/API/Cocoa/_WKScriptWorld.h.
+        (-[_WKScriptMessage body]):
+        (-[_WKScriptMessage originatingWebView]):
+        * UIProcess/API/Cocoa/_WKScriptMessageHandler.h: Copied from Source/WebKit2/UIProcess/API/Cocoa/_WKScriptWorld.h.
+        * UIProcess/API/Cocoa/_WKScriptWorld.h:
+        * UIProcess/API/Cocoa/_WKUserContentController.h: Copied from Source/WebKit2/UIProcess/API/Cocoa/_WKScriptWorld.h.
+        * UIProcess/API/Cocoa/_WKUserContentController.mm: Copied from Source/WebKit2/UIProcess/API/Cocoa/WKWebViewConfigurationPrivate.h.
+        (-[_WKUserContentController addScriptMessageHandler:name:world:]):
+        (-[_WKUserContentController removeScriptMessageHandler:]):
+        * WebKit2.xcodeproj/project.pbxproj:
+
+2014-04-01  Andreas Kling  <akling@apple.com>
+
+        Invalidate CFNetwork connection cache on memory pressure.
+        <https://webkit.org/b/131038>
+
+        Stop holding on to cached HTTP connections if we come under memory pressure.
+
+        Reviewed by Geoff Malloc-Garen.
+
+        * NetworkProcess/cocoa/NetworkProcessCocoa.mm:
+        (WebKit::NetworkProcess::platformLowMemoryHandler):
+
+2014-04-01  Anders Carlsson  <andersca@apple.com>
+
+        Tweak WKPreferences API
+        https://bugs.webkit.org/show_bug.cgi?id=131047
+
+        Reviewed by Simon Fraser.
+
+        * UIProcess/API/Cocoa/WKPreferences.h:
+        * UIProcess/API/Cocoa/WKPreferences.mm:
+        (-[WKPreferences init]):
+        (-[WKPreferences initWithUserDefaultsKeyPrefix:]):
+        (-[WKPreferences userDefaultsKeyPrefix]):
+        (-[WKPreferences initWithUserDefaultsPrefixKey:]): Deleted.
+        (-[WKPreferences userDefaultsPrefixKey]): Deleted.
+
+2014-03-31  Simon Fraser  <simon.fraser@apple.com>
+
+        Enable WEB_TIMING on Mac and iOS
+        https://bugs.webkit.org/show_bug.cgi?id=128064
+
+        Reviewed by Sam Weinig, Brent Fulgham.
+        
+        Enable WEB_TIMING.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2014-03-31  Simon Fraser  <simon.fraser@apple.com>
+
+        [UI-side compositing] Fix animations, and add logging
+        https://bugs.webkit.org/show_bug.cgi?id=131011
+
+        Reviewed by Tim Horton.
+        
+        UI-side animations were broken because GraphicsLayerCARemote::addAnimation()
+        never called the superclass, so fix.
+        
+        Add logging for animations to the layer tree commit output.
+
+        * Shared/mac/RemoteLayerTreeTransaction.mm:
+        (WebKit::dumpProperty):
+        (WebKit::RemoteLayerTreeTextStream::operator<<):
+        (WebKit::dumpChangedLayers):
+        * WebProcess/WebPage/mac/GraphicsLayerCARemote.cpp:
+        (WebKit::GraphicsLayerCARemote::addAnimation):
+
+2014-04-01  Zalan Bujtas  <zalan@apple.com>
+
+        Build fix after r166582.
+
+        * Shared/ContextMenuContextData.cpp:
+        (WebKit::ContextMenuContextData::ContextMenuContextData):
+
+2014-04-01  Zalan Bujtas  <zalan@apple.com>
+
+        Subpixel rendering: Transition class Image (and its dependencies) from int to float to enable subpixel positioned/sized images.
+        https://bugs.webkit.org/show_bug.cgi?id=130643
+
+        Reviewed by Simon Fraser.
+
+        This is in preparation to support subpixel positioned/sized background images. While 1x bitmap images can't take
+        subpixel sizing on hidpi resolutions, both generated and hidpi images can.
+        This patch does not change Image behavior in general as both position and size are still snapped to integral values.  
+
+        No change in behavior.
+
+        * Shared/WebCoreArgumentCoders.cpp:
+        (IPC::encodeImage):
+        * UIProcess/API/efl/EwkView.cpp:
+        (EwkView::updateCursor):
+
+2014-04-01  Joonghun Park  <jh718.park@samsung.com>
+
+        [EFL][WK2] Fix and update the existing test case for ewk_database_manager_origins_async_get API
+        https://bugs.webkit.org/show_bug.cgi?id=131017
+
+        Reviewed by Gyuyoung Kim.
+
+        * UIProcess/API/efl/tests/test_ewk2_database_manager.cpp:
+        Fix memory leaks and errors caused by duplication of Ecore_Timer deletion
+        as well as update a naming style of local variable.
+        (EWK2DatabaseManagerTest::databaseOriginsCallback):
+        (TEST_F):
+
+2014-04-01  Zan Dobersek  <zdobersek@igalia.com>
+
+        Don't copy the children map in webkitWebViewBaseContainerForall
+        https://bugs.webkit.org/show_bug.cgi?id=131016
+
+        Reviewed by Carlos Garcia Campos.
+
+        * UIProcess/API/gtk/WebKitWebViewBase.cpp:
+        (webkitWebViewBaseContainerForall): Avoid copying the GtkWidget-to-IntRect HashMap object
+        by transforming the iteration to a range-based for-loop over that HashMap's keys.
+
+2014-04-01  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GTK] Don't copy the ResourceResponse object in webkitWebViewDecidePolicy
+        https://bugs.webkit.org/show_bug.cgi?id=131015
+
+        Reviewed by Carlos Garcia Campos.
+
+        * UIProcess/API/gtk/WebKitWebView.cpp:
+        (webkitWebViewDecidePolicy): Avoid copying the ResourceResponce object returned by webkitURIResponseGetResourceResponse.
+        That function already returns a reference, so the return value should be stored accordingly.
+
+2014-04-01  Eunmi Lee  <eunmi15.lee@samsung.com>
+
+        [CoordinatedGraphics] Content scale factor should not be applied to draw contents when fixed layout is not used.
+        https://bugs.webkit.org/show_bug.cgi?id=130962
+
+        Reviewed by Gyuyoung Kim.
+
+        Delegating scaling is turned off when fixed layout is not used in the
+        coordinated graphics, so page scale factor is applied to the contents
+        directly.
+        In that case, we should not apply page scale factor to coordinated
+        graphics to draw contents and calculate visible content rect.
+
+        Currently, page scale factor is applied twice to the coordinated
+        graphics and contents, so result of scaling is abnormal.
+
+        * UIProcess/CoordinatedGraphics/WebView.cpp:
+        (WebKit::WebView::transformToScene):
+        (WebKit::WebView::visibleContentsSize):
+
+2014-04-01  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [EFL][WK2] Rename ewk_application_cache_manager_delete{_all}
+        https://bugs.webkit.org/show_bug.cgi?id=131012
+
+        Reviewed by Gyuyoung Kim.
+
+        While discussing Bug 130577, we resulted that _clear and _xxx_del is better name for the EFL.
+        This patch will rename similar API in ewk_application_cache_manager.
+
+        In addition, fixed some typos in doxygen.
+
+        * UIProcess/API/efl/ewk_application_cache_manager.cpp:
+        (ewk_application_cache_manager_clear): Renamed from ewk_application_cache_manager_delete_all
+        (ewk_application_cache_manager_entries_for_origin_del): Renamed from ewk_application_cache_manager_delete
+        (ewk_application_cache_manager_delete_all): Deleted.
+        (ewk_application_cache_manager_delete): Deleted.
+        * UIProcess/API/efl/ewk_application_cache_manager.h:
+        * UIProcess/API/efl/tests/test_ewk2_application_cache_manager.cpp:
+        (TEST_F):
+
+2014-03-31  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed GTK build fix after r166553.
+
+        * UIProcess/API/gtk/WebKitSettings.cpp:
+        (_WebKitSettingsPrivate::_WebKitSettingsPrivate): Pass 'WebKit2.' as the second argument to WebPreferences::create().
+
+2014-03-31  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [EFL][WK2] Extract the control of page background out of color_set
+        https://bugs.webkit.org/show_bug.cgi?id=127539
+
+        Reviewed by Gyuyoung Kim.
+
+        EFL have a way to change the color using evas_object_color_set and we used it to change background.
+        But, We should not use it because the alpha value of color_set is used
+        for the transparancy of object itself including background and contents.
+
+        This patch added ewk_view_bg_color_{get|set} to change the background color.
+
+        * UIProcess/API/C/efl/WKViewEfl.cpp:
+        Extracted controls of page background out of color_set.
+        color_set will be only used for the opacity of whole contents.
+        (WKViewSetBackgroundColor): Added to share page background color.
+        (WKViewGetBackgroundColor):
+        * UIProcess/API/C/efl/WKViewEfl.h:
+        * UIProcess/API/efl/EwkView.cpp:
+        (EwkView::handleEvasObjectColorSet):
+        * UIProcess/API/efl/ewk_view.cpp:
+        Removed ewk_view_draws_page_background_set which just control whether to draw background.
+        ewk_view_bg_color_set will conver it.
+        (ewk_view_bg_color_set):
+        (ewk_view_bg_color_get):
+        * UIProcess/API/efl/ewk_view.h:
+        * UIProcess/API/efl/tests/test_ewk2_view.cpp: Added simple test case.
+        * UIProcess/efl/WebViewEfl.cpp:
+        (WebKit::WebViewEfl::setViewBackgroundColor):
+        (WebKit::WebViewEfl::viewBackgroundColor):
+        * UIProcess/efl/WebViewEfl.h:
+
+2014-03-31  Joonghun Park  <jh718.park@samsung.com>
+
+        [EFL][WK2]Implement ewk APIs of web local storage which have deletion functions of the local storage entries
+        https://bugs.webkit.org/show_bug.cgi?id=130577
+
+        Reviewed by Gyuyoung Kim.
+
+        * UIProcess/API/efl/ewk_storage_manager.cpp:
+        (ewk_storage_manager_entries_clear):
+        (ewk_storage_manager_entries_for_origin_del):
+        * UIProcess/API/efl/ewk_storage_manager.h:
+        * UIProcess/API/efl/ewk_storage_manager_private.h:
+        (EwkStorageManager::wkStorageManager):
+        * UIProcess/API/efl/tests/test_ewk2_storage_manager.cpp:
+        adding and updating API unittest and fixing memory leak of the existing test case
+        (EWK2StorageManagerTest::getStorageOriginsCallback):
+        (EWK2StorageManagerTest::checkOrigin):
+        (EWK2StorageManagerTest::getOrigin):
+        (TEST_F):
+
+2014-03-31  Anders Carlsson  <andersca@apple.com>
+
+        Rename policy enums to match the delegate methods
+        https://bugs.webkit.org/show_bug.cgi?id=131002
+
+        Reviewed by Tim Horton.
+
+        * UIProcess/API/Cocoa/WKNavigationDelegate.h:
+        (NS_ENUM):
+        * UIProcess/Cocoa/NavigationState.mm:
+        (WebKit::NavigationState::PolicyClient::decidePolicyForNavigationAction):
+        (WebKit::NavigationState::PolicyClient::decidePolicyForResponse):
+
+2014-03-31  Anders Carlsson  <andersca@apple.com>
+
+        Add more preferences
+        https://bugs.webkit.org/show_bug.cgi?id=131001
+
+        Reviewed by Simon Fraser.
+
+        * UIProcess/API/Cocoa/WKPreferences.h:
+        * UIProcess/API/Cocoa/WKPreferences.mm:
+        (-[WKPreferences isJavaScriptEnabled]):
+        (-[WKPreferences setJavaScriptEnabled:]):
+        (-[WKPreferences javaScriptCanOpenWindowsAutomatically]):
+        (-[WKPreferences setJavaScriptCanOpenWindowsAutomatically:]):
+        (-[WKPreferences suppressesIncrementalRendering]):
+        (-[WKPreferences setSuppressesIncrementalRendering:]):
+        (-[WKPreferences isJavaEnabled]):
+        (-[WKPreferences setJavaEnabled:]):
+        (-[WKPreferences arePlugInsEnabled]):
+        (-[WKPreferences setPlugInsEnabled:]):
+
+2014-03-31  Tim Horton  <timothy_horton@apple.com>
+
+        Fix the build.
+
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::updatePreferences):
+
+2014-03-31  Simon Fraser  <simon.fraser@apple.com>
+
+        Fix the iOS build.
+
+        * UIProcess/ios/RemoteLayerTreeHostIOS.mm:
+        (WebKit::RemoteLayerTreeHost::createLayer):
+        * UIProcess/mac/RemoteLayerTreeHost.h:
+        * UIProcess/mac/RemoteLayerTreeHost.mm:
+        (WebKit::RemoteLayerTreeHost::setLayerID):
+        (WebKit::RemoteLayerTreeHost::layerID):
+        (WebKit::RemoteLayerTreeHost::createLayer):
+
+2014-03-31  Anders Carlsson  <andersca@apple.com>
+
+        Add a couple of iOS specific preferences
+        https://bugs.webkit.org/show_bug.cgi?id=130999
+
+        Reviewed by Simon Fraser.
+
+        * Shared/WebPreferencesStore.h:
+        * UIProcess/API/Cocoa/WKPreferences.h:
+        * UIProcess/API/Cocoa/WKPreferences.mm:
+        (-[WKPreferences allowsInlineMediaPlayback]):
+        (-[WKPreferences setAllowsInlineMediaPlayback:]):
+        (-[WKPreferences mediaPlaybackRequiresUserAction]):
+        (-[WKPreferences setMediaPlaybackRequiresUserAction:]):
+        (-[WKPreferences mediaPlaybackAllowsAirPlay]):
+        (-[WKPreferences setMediaPlaybackAllowsAirPlay:]):
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::updatePreferences):
+
+2014-03-31  Anders Carlsson  <andersca@apple.com>
+
+        Add a new -[WKPreferences initWithUserDefaultsPrefixKey:] initializer
+        https://bugs.webkit.org/show_bug.cgi?id=130996
+
+        Reviewed by Simon Fraser.
+
+        Add a "key prefix" to the WebKit::WebPreferences create function, so we can use a different
+        key prefix ("WebKit") for the modern API and not pollute the user defaults namespace with
+        the old key prefix ("WebKit2.").
+        
+        * UIProcess/API/C/WKPreferences.cpp:
+        (WKPreferencesCreate):
+        (WKPreferencesCreateWithIdentifier):
+        * UIProcess/API/Cocoa/WKPreferences.h:
+        * UIProcess/API/Cocoa/WKPreferences.mm:
+        (-[WKPreferences init]):
+        (-[WKPreferences initWithUserDefaultsPrefixKey:]):
+        (-[WKPreferences userDefaultsPrefixKey]):
+        * UIProcess/WebPageGroup.cpp:
+        (WebKit::WebPageGroup::WebPageGroup):
+        * UIProcess/WebPreferences.cpp:
+        (WebKit::WebPreferences::WebPreferences):
+        * UIProcess/WebPreferences.h:
+        (WebKit::WebPreferences::create):
+        * UIProcess/mac/WebPreferencesMac.mm:
+        (WebKit::makeKey):
+        (WebKit::setStringValueIfInUserDefaults):
+        (WebKit::setBoolValueIfInUserDefaults):
+        (WebKit::setUInt32ValueIfInUserDefaults):
+        (WebKit::setDoubleValueIfInUserDefaults):
+        (WebKit::WebPreferences::platformInitializeStore):
+        (WebKit::WebPreferences::platformUpdateStringValueForKey):
+        (WebKit::WebPreferences::platformUpdateBoolValueForKey):
+        (WebKit::WebPreferences::platformUpdateUInt32ValueForKey):
+        (WebKit::WebPreferences::platformUpdateDoubleValueForKey):
+        (WebKit::WebPreferences::platformUpdateFloatValueForKey):
+
+2014-03-31  Pratik Solanki  <psolanki@apple.com>
+
+        Remove duplicate entries in Derived Sources.
+
+        Rubber-stamped by Anders Carlsson.
+
+        * WebKit2.xcodeproj/project.pbxproj:
+
+2014-03-31  Tim Horton  <timothy_horton@apple.com>
+
+        Fix the build.
+
+        * UIProcess/mac/RemoteLayerTreeHost.mm:
+        (WebKit::RemoteLayerTreeHost::updateLayerTree):
+
+2014-03-31  Tim Horton  <timothy_horton@apple.com>
+
+        Fix the build.
+
+        * UIProcess/mac/RemoteLayerTreeHost.mm:
+        (WebKit::RemoteLayerTreeHost::updateLayerTree):
+
+2014-03-31  Anders Carlsson  <andersca@apple.com>
+
+        Rename -[WKNavigationAction destinationFrame] to -[WKNavigationAction targetFrame]
+        https://bugs.webkit.org/show_bug.cgi?id=130994
+
+        Reviewed by Dan Bernstein.
+
+        * UIProcess/API/Cocoa/WKNavigationAction.h:
+        * UIProcess/API/Cocoa/WKNavigationAction.mm:
+        (-[WKNavigationAction description]):
+        (-[WKNavigationAction targetFrame]):
+        (-[WKNavigationAction setTargetFrame:]):
+        (-[WKNavigationAction destinationFrame]): Deleted.
+        (-[WKNavigationAction setDestinationFrame:]): Deleted.
+        * UIProcess/API/Cocoa/WKNavigationActionInternal.h:
+        * UIProcess/Cocoa/NavigationState.mm:
+        (WebKit::NavigationState::PolicyClient::decidePolicyForNavigationAction):
+
+2014-03-31  Tim Horton  <timothy_horton@apple.com>
+
+        [iOS WebKit2] Flush all surfaces after painting into all of them, instead of after painting into each one
+        https://bugs.webkit.org/show_bug.cgi?id=130768
+        <rdar://problem/16421471>
+
+        Reviewed by Benjamin Poulain.
+
+        * Shared/mac/RemoteLayerBackingStore.h:
+        Make RemoteLayerBackingStore noncopyable.
+        Add flush(), which synchronously flushes painting operations on the underlying backing store.
+        Add storage for the CGContext that needs to be flushed, and ensure that it is flushed before we paint again.
+
+        * Shared/mac/RemoteLayerBackingStore.mm:
+        (RemoteLayerBackingStore::display):
+
+        (RemoteLayerBackingStore::drawInContext):
+        Don't flush the context immediately after painting.
+
+        (RemoteLayerBackingStore::flush):
+        Flush the current front surface/buffer's context.
+        Clear the new pending-flush members.
+
+        * WebProcess/WebPage/mac/RemoteLayerTreeDrawingArea.mm:
+        (WebKit::flushBackingStoreChangesInTransaction):
+        (WebKit::RemoteLayerTreeDrawingArea::flushLayers):
+        Crawl through all of the valid changed backing stores in the transaction and flush them.
+        Reset changed properties after encoding the commit.
+
+        * Shared/mac/RemoteLayerTreeTransaction.h:
+        (WebKit::RemoteLayerTreeTransaction::LayerProperties::resetChangedProperties):
+        (WebKit::RemoteLayerTreeTransaction::changedLayers):
+        (WebKit::RemoteLayerTreeTransaction::changedLayerProperties):
+        * Shared/mac/RemoteLayerTreeTransaction.mm:
+        (WebKit::RemoteLayerTreeTransaction::LayerProperties::LayerProperties):
+        (WebKit::RemoteLayerTreeTransaction::LayerProperties::decode):
+        (WebKit::RemoteLayerTreeTransaction::encode):
+        (WebKit::RemoteLayerTreeTransaction::decode):
+        (WebKit::RemoteLayerTreeTransaction::layerPropertiesChanged):
+        (WebKit::dumpChangedLayers):
+        Instead of storing a copy of the LayerProperties struct for each changed layer
+        while building the transaction in the Web process, store a list of changed layers,
+        and directly encode the commit from those layers' LayerProperties. This provides a few benefits:
+                - We avoid copying LayerProperties for every changed layer, every commit
+                - We can make RemoteLayerBackingStore noncopyable
+                - We can walk the changed layers after building the transaction
+                in order to flush backing store, and actually affect the layers'
+                own RemoteLayerBackingStore instead of a copy.
+        The UI process will still generate a LayerPropertiesMap at decode time.
+        
+        * UIProcess/mac/RemoteLayerTreeHost.mm:
+        (WebKit::RemoteLayerTreeHost::updateLayerTree):
+        Don't copy the LayerProperties struct for the debug overlay. Instead,
+        adjust the properties which the debug overlay whacks directly on the layer,
+        after applying the normal LayerProperties.
+
+        * WebProcess/WebPage/mac/PlatformCALayerRemote.cpp:
+        (PlatformCALayerRemote::recursiveBuildTransaction):
+        Don't reset changed layer properties in the middle of building a transaction. Instead,
+        RemoteLayerTreeDrawingArea::flushLayers() will reset all the flags on all changed layers
+        after the commit is encoded.
+
+        * WebProcess/WebPage/mac/PlatformCALayerRemote.h:
+        (WebKit::PlatformCALayerRemote::properties):
+
+2014-03-31  Simon Fraser  <simon.fraser@apple.com>
+
+        [UI-side compositing] Proxy animations to the UI process
+        https://bugs.webkit.org/show_bug.cgi?id=130946
+
+        Reviewed by Tim Horton.
+        
+        Add encoding/decoding of TimingFunctions. Add encoding support
+        for HashSet.
+        
+        Add PlatformCAAnimationRemote and have PlatformCALayerRemote allow
+        animations now. PlatformCALayerRemote's properties are defined in the class,
+        as is the encoding/decoding (much cleaner than having them in the transaction
+        class I think).
+        
+        Add support for the "animationDidStart" callback and sending this back to the
+        web process. This involves a HashMap of layerID->WKAnimationDelegate stored
+        on the RemoteLayerTreeHost, and a message send via the DrawingArea. On the
+        other side, RemoteLayerTreeContext stores a HashMap of layerID->PlatformCALayerRemote*
+        for layers which have just started animations, which is used to get the
+        PlatformCALayer* to call animationDidStart() on.
+        
+        This requires that the RemoteLayerTreeHost* be passed down into property application,
+        and that the RemoteLayerTreeHost have a reference to the drawing area.
+        
+        To every CALayer in the UI process we -setValue:forKey: to track the PlatformLayerID,
+        so we can get back to it in order to dispatch "animationDidStart".
+        
+        Replace some "using namespace WebKit" with "namespace WebKit { }".
+
+        * Platform/IPC/ArgumentCoders.h:
+        * Shared/WebCoreArgumentCoders.cpp:
+        (IPC::ArgumentCoder<LinearTimingFunction>::encode):
+        (IPC::ArgumentCoder<LinearTimingFunction>::decode):
+        (IPC::ArgumentCoder<CubicBezierTimingFunction>::encode):
+        (IPC::ArgumentCoder<CubicBezierTimingFunction>::decode):
+        (IPC::ArgumentCoder<StepsTimingFunction>::encode):
+        (IPC::ArgumentCoder<StepsTimingFunction>::decode):
+        * Shared/WebCoreArgumentCoders.h:
+        * Shared/mac/RemoteLayerBackingStore.mm:
+        * Shared/mac/RemoteLayerTreePropertyApplier.h:
+        * Shared/mac/RemoteLayerTreePropertyApplier.mm:
+        (WebKit::applyPropertiesToLayer):
+        (WebKit::RemoteLayerTreePropertyApplier::applyProperties):
+        * Shared/mac/RemoteLayerTreeTransaction.h:
+        * Shared/mac/RemoteLayerTreeTransaction.mm:
+        (WebKit::RemoteLayerTreeTransaction::LayerProperties::LayerProperties):
+        (WebKit::RemoteLayerTreeTransaction::LayerProperties::encode):
+        (WebKit::RemoteLayerTreeTransaction::LayerProperties::decode):
+        (WebKit::dumpChangedLayers):
+        * UIProcess/ios/RemoteLayerTreeHostIOS.mm:
+        (WebKit::RemoteLayerTreeHost::layerID):
+        (WebKit::RemoteLayerTreeHost::createLayer):
+        * UIProcess/mac/RemoteLayerTreeDrawingAreaProxy.h:
+        * UIProcess/mac/RemoteLayerTreeDrawingAreaProxy.mm:
+        (WebKit::RemoteLayerTreeDrawingAreaProxy::RemoteLayerTreeDrawingAreaProxy):
+        (WebKit::RemoteLayerTreeDrawingAreaProxy::acceleratedAnimationDidStart):
+        (WebKit::RemoteLayerTreeDrawingAreaProxy::showDebugIndicator):
+        * UIProcess/mac/RemoteLayerTreeHost.h:
+        (WebKit::RemoteLayerTreeHost::animationDelegates):
+        * UIProcess/mac/RemoteLayerTreeHost.mm:
+        (WebKit::RemoteLayerTreeHost::RemoteLayerTreeHost):
+        (WebKit::RemoteLayerTreeHost::updateLayerTree):
+        (WebKit::RemoteLayerTreeHost::layerWillBeRemoved):
+        (WebKit::RemoteLayerTreeHost::animationDidStart):
+        (WebKit::RemoteLayerTreeHost::layerID):
+        (WebKit::RemoteLayerTreeHost::createLayer):
+        * WebKit2.xcodeproj/project.pbxproj:
+        * WebProcess/WebPage/DrawingArea.h:
+        (WebKit::DrawingArea::acceleratedAnimationDidStart):
+        * WebProcess/WebPage/DrawingArea.messages.in:
+        * WebProcess/WebPage/mac/GraphicsLayerCARemote.cpp:
+        (WebKit::GraphicsLayerCARemote::createPlatformCAAnimation):
+        * WebProcess/WebPage/mac/GraphicsLayerCARemote.h:
+        * WebProcess/WebPage/mac/PlatformCAAnimationRemote.h: Added.
+        * WebProcess/WebPage/mac/PlatformCAAnimationRemote.mm: Added.
+        * WebProcess/WebPage/mac/PlatformCALayerRemote.cpp:
+        (WebKit::PlatformCALayerRemote::recursiveBuildTransaction):
+        (WebKit::PlatformCALayerRemote::animationStarted):
+        (WebKit::PlatformCALayerRemote::addAnimationForKey):
+        (WebKit::PlatformCALayerRemote::removeAnimationForKey):
+        (WebKit::PlatformCALayerRemote::animationForKey):
+        (PlatformCALayerRemote::recursiveBuildTransaction): Deleted.
+        (PlatformCALayerRemote::addAnimationForKey): Deleted.
+        (PlatformCALayerRemote::removeAnimationForKey): Deleted.
+        (PlatformCALayerRemote::animationForKey): Deleted.
+        * WebProcess/WebPage/mac/PlatformCALayerRemoteCustom.mm:
+        * WebProcess/WebPage/mac/PlatformCALayerRemoteTiledBacking.cpp:
+        * WebProcess/WebPage/mac/RemoteLayerTreeContext.h:
+        * WebProcess/WebPage/mac/RemoteLayerTreeContext.mm:
+        (WebKit::RemoteLayerTreeContext::layerWillBeDestroyed):
+        (WebKit::RemoteLayerTreeContext::willStartAnimationOnLayer):
+        (WebKit::RemoteLayerTreeContext::animationDidStart):
+        * WebProcess/WebPage/mac/RemoteLayerTreeDrawingArea.h:
+        * WebProcess/WebPage/mac/RemoteLayerTreeDrawingArea.mm:
+        (WebKit::RemoteLayerTreeDrawingArea::acceleratedAnimationDidStart):
+        * WebProcess/WebPage/mac/TiledCoreAnimationDrawingArea.mm:
+        (WebKit::TiledCoreAnimationDrawingArea::commitTransientZoom):
+
+2014-03-31  Tim Horton  <timothy_horton@apple.com>
+
+        Double-buffer RemoteLayerBackingStore
+        https://bugs.webkit.org/show_bug.cgi?id=130990
+
+        Reviewed by Simon Fraser.
+
+        We'll keep a front and back buffer for each surface; the front is generally currently
+        being displayed in the UI process, and the back is the one we'll paint into.
+
+        Swap the two surfaces each time we paint; since we synchronize with the UI process,
+        the old front surface will generally be out-of-use by the render server by the time
+        we paint again. However, since render server commits are asynchronous and we have 
+        no way to syncronize with them yet, we have to check if the (swapped to front) back buffer is in use,
+        and create a new front buffer if it is.
+
+        Triple-buffering would solve this problem, as would synchronization with the render server,
+        as would a pool of surfaces - we will revisit these solutions in future patches.
+
+        * Shared/mac/RemoteLayerBackingStore.h:
+        * Shared/mac/RemoteLayerBackingStore.mm:
+        (RemoteLayerBackingStore::ensureBackingStore):
+        (RemoteLayerBackingStore::clearBackingStore):
+        Factor clearBackingStore() out of ensureBackingStore() and display().
+
+        (RemoteLayerBackingStore::display):
+        Swap buffers. Since m_backSurface will hold on to the back surface's CGContext,
+        we don't need to worry about tearing down the image first anymore.
+        Don't worry about creating a back image (nor copying it into the front image)
+        if we're going to paint the whole layer.
+
+        (RemoteLayerBackingStore::drawInContext):
+        Fix some names.
+
+        (RemoteLayerBackingStore::applyBackingStoreToLayer):
+        Reduce duplication.
+
+        (RemoteLayerBackingStore::createImageForFrontBuffer): Deleted.
+
+2014-03-31  Tim Horton  <timothy_horton@apple.com>
+
+        Synchronize Web process remote layer tree commits with CoreAnimation commits in the UI process
+        https://bugs.webkit.org/show_bug.cgi?id=130984
+
+        Reviewed by Simon Fraser.
+
+        There's no reason for the Web process to paint faster than the UI process
+        can apply to and commit the CoreAnimation layer tree.
+
+        Also, once we get proper double-buffering and purgeable back buffers, we
+        will need the ability to make some assumptions about in-use surfaces.
+
+        Unfortunately, we can't actually tell when the render server commits, 
+        as this is an asynchronous operation in a process we don't control, so
+        for now, this is only an approximation.
+
+        This also means that the assumptions we would like to make won't be
+        strong guarantees yet.
+
+        * UIProcess/mac/RemoteLayerTreeDrawingAreaProxy.h:
+        * UIProcess/mac/RemoteLayerTreeDrawingAreaProxy.mm:
+        (WebKit::RemoteLayerTreeDrawingAreaProxy::commitLayerTree):
+        When we commit, install a run loop observer to fire immediately after CoreAnimation commits.
+
+        (WebKit::RemoteLayerTreeDrawingAreaProxy::showDebugIndicator):
+        Fix a typo ('cmponents').
+
+        (WebKit::coreAnimationDidCommitLayersCallback):
+        (WebKit::RemoteLayerTreeDrawingAreaProxy::scheduleCoreAnimationLayerCommitObserver):
+        (WebKit::RemoteLayerTreeDrawingAreaProxy::coreAnimationDidCommitLayers):
+        When CA commits, send a message to the Web process letting it know that we
+        swapped to the new backing store.
+
+        * WebProcess/WebPage/mac/RemoteLayerTreeDrawingArea.h:
+        * WebProcess/WebPage/mac/RemoteLayerTreeDrawingArea.mm:
+        (WebKit::RemoteLayerTreeDrawingArea::RemoteLayerTreeDrawingArea):
+        (WebKit::RemoteLayerTreeDrawingArea::flushLayers):
+        (WebKit::RemoteLayerTreeDrawingArea::didUpdate):
+        Defer remote layer tree commits until we get didUpdate() from the UI process.
+
+2014-03-31  Dean Jackson  <dino@apple.com>
+
+        Remove WEB_ANIMATIONS
+        https://bugs.webkit.org/show_bug.cgi?id=130989
+
+        Reviewed by Simon Fraser.
+
+        Remove this feature flag until we plan to implement.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2014-03-31  Simon Fraser  <simon.fraser@apple.com>
+
+        [iOS WK2] Hook up scroll events for accelerated overflow:scroll
+        https://bugs.webkit.org/show_bug.cgi?id=130976
+
+        Reviewed by Tim Horton.
+        
+        When an accelerated overflow:scroll is scrolled in the UI process,
+        tell the WebProcess that the scroll happened to update RenderLayer
+        state and fire events.
+        
+        Add a WKOverflowScrollViewDelegate which is set as the delegate of
+        UIScrollViews, owned by ScrollingTreeOverflowScrollingNodeIOS, and propagates
+        -scrollViewDidScroll: messages to ScrollingTree::scrollPositionChangedViaDelegatedScrolling(),
+        which updates child layers and then, via RemoteScrollingTree::scrollingTreeNodeDidScroll,
+        tells the RemoteScrollingCoordinator which sends a message to the WebProcess.
+        
+        * UIProcess/Scrolling/RemoteScrollingCoordinatorProxy.cpp:
+        (WebKit::RemoteScrollingCoordinatorProxy::scrollingTreeNodeDidScroll): Name change
+        to try to reduce confusion.
+        (WebKit::RemoteScrollingCoordinatorProxy::scrollPositionChanged): Deleted.
+        * UIProcess/Scrolling/RemoteScrollingCoordinatorProxy.h:
+        * UIProcess/Scrolling/RemoteScrollingTree.cpp:
+        (WebKit::RemoteScrollingTree::scrollingTreeNodeDidScroll):
+        * UIProcess/Scrolling/RemoteScrollingTree.h:
+        * UIProcess/Scrolling/ios/ScrollingTreeOverflowScrollingNodeIOS.h:
+        * UIProcess/Scrolling/ios/ScrollingTreeOverflowScrollingNodeIOS.mm:
+        (-[WKOverflowScrollViewDelegate initWithScrollingTreeNode:WebKit::]):
+        (-[WKOverflowScrollViewDelegate scrollViewDidScroll:]):
+        (-[WKOverflowScrollViewDelegate scrollViewWillBeginDragging:]):
+        (-[WKOverflowScrollViewDelegate scrollViewDidEndDragging:willDecelerate:]):
+        (-[WKOverflowScrollViewDelegate scrollViewDidEndScrollingAnimation:]):
+        (WebKit::ScrollingTreeOverflowScrollingNodeIOS::~ScrollingTreeOverflowScrollingNodeIOS):
+        (WebKit::ScrollingTreeOverflowScrollingNodeIOS::updateBeforeChildren):
+        (WebKit::ScrollingTreeOverflowScrollingNodeIOS::updateAfterChildren):
+        (WebKit::ScrollingTreeOverflowScrollingNodeIOS::scrollViewDidScroll):
+        * WebProcess/Scrolling/RemoteScrollingCoordinator.mm:
+        (WebKit::RemoteScrollingCoordinator::scrollPositionChangedForNode): No need for
+        rounding.
+
+2014-03-29  Simon Fraser  <simon.fraser@apple.com>
+
+        Fix scrolling on OS X with UI-side compositing
+        https://bugs.webkit.org/show_bug.cgi?id=130930
+
+        Reviewed by Tim Horton.
+        
+        On iOS, we rely on visible rect updates to propagate scroll offset
+        changes to the WebProcess. RemoteScrollingCoordinatorProxy was thus hardcoded
+        to bail from scrollPositionChanged() when the scrolled node was the root node,
+        but this broke OS X. Fix by adding a behavior flag to RemoteScrollingCoordinatorProxy.
+
+        * UIProcess/Scrolling/RemoteScrollingCoordinatorProxy.cpp:
+        (WebKit::RemoteScrollingCoordinatorProxy::RemoteScrollingCoordinatorProxy):
+        (WebKit::RemoteScrollingCoordinatorProxy::scrollPositionChanged):
+        * UIProcess/Scrolling/RemoteScrollingCoordinatorProxy.h:
+        (WebKit::RemoteScrollingCoordinatorProxy::setPropagatesMainFrameScrolls):
+        (WebKit::RemoteScrollingCoordinatorProxy::propagatesMainFrameScrolls):
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::initializeWebPage):
+
+2014-03-31  Tim Horton  <timothy_horton@apple.com>
+
+        [iOS WebKit2] Disable tile cohort retention for now
+        https://bugs.webkit.org/show_bug.cgi?id=130926
+        <rdar://problem/16465413>
+
+        Reviewed by Simon Fraser.
+
+        * Shared/WebPreferencesStore.h:
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::updatePreferences):
+        Add a preference for temporary tile cohort retention (essentially, provide a setting
+        that means that we will never retain tiles at all once they leave the tile coverage rect).
+        Defaults to true to maintain existing behavior, except for iOS WebKit2, where
+        it defaults to false because we don't have the requisite support for purgeable tiles yet.
+
+        * WebProcess/WebPage/mac/TiledCoreAnimationDrawingArea.mm:
+        (WebKit::TiledCoreAnimationDrawingArea::updatePreferences):
+        (WebKit::TiledCoreAnimationDrawingArea::setRootCompositingLayer):
+
+2014-03-31  Peter Molnar  <pmolnar.u-szeged@partner.samsung.com>
+
+        Buildfix after r166497.
+
+        Reviewed by Csaba Osztrogonác.
+
+        * UIProcess/API/efl/ewk_context.h: Missing EAPI added.
+
+2014-03-31  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK] Use PROJECT_VERSION_* instead of WEBKIT_*_VERSION
+        https://bugs.webkit.org/show_bug.cgi?id=130936
+
+        Reviewed by Carlos Garcia Campos.
+
+        * UIProcess/API/gtk/WebKitVersion.h.in: Use PROJECT_VERSION_* macros instead of the Autotools ones.
+
+2014-03-31  Peter Molnar  <pmolnar.u-szeged@partner.samsung.com>
+
+        [EFL][WK2] Add ewk APIs to control TLS error policy on WebContext.
+        https://bugs.webkit.org/show_bug.cgi?id=129740
+
+        Reviewed by Gyuyoung Kim.
+
+        * PlatformEfl.cmake:
+        Added the new SSL test.
+
+        * UIProcess/API/efl/ewk_context.cpp:
+        (EwkContext::ignoreTLSErrors):
+        (EwkContext::setIgnoreTLSErrors):
+        (ewk_context_ignore_tls_errors_get):
+        (ewk_context_ignore_tls_errors_set):
+        * UIProcess/API/efl/ewk_context.h:
+        * UIProcess/API/efl/ewk_context_private.h:
+        Added the API functions.
+
+        * UIProcess/API/efl/tests/UnitTestUtils/EWK2UnitTestServer.cpp:
+        (EWK2UnitTestServer::EWK2UnitTestServer):
+        * UIProcess/API/efl/tests/UnitTestUtils/EWK2UnitTestServer.h:
+        Extended the unit test server to handle TLS.
+
+        * UIProcess/API/efl/tests/test_ewk2_ssl.cpp:
+        Added tests to check the TLS policy API.
+
+2014-03-31  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Fix GTK2 plugin process binary name after r166492.
+
+        * PlatformGTK.cmake: Fix typo.
+
+2014-03-31  Dániel Bátyai  <dbatyai.u-szeged@partner.samsung.com>
+
+        Remove hostThisRegister() and hostThisValue()
+        https://bugs.webkit.org/show_bug.cgi?id=130895
+
+        Reviewed by Geoffrey Garen.
+
+        Removed hostThisRegister() and hostThisValue() and instead use thisArgumentOffset() and thisValue() respectively.
+
+        * WebProcess/Plugins/Netscape/JSNPMethod.cpp:
+        (WebKit::callMethod):
+
+2014-03-31  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Add support for GTK3 plugins
+        https://bugs.webkit.org/show_bug.cgi?id=130599
+
+        Reviewed by Martin Robinson.
+
+        We currently have a gtk2 based plugin process mainly for flash
+        and a few other plugins that use GTK2, but many other plugins
+        don't even use gtk at all. This patch builds a lighter plugin
+        process based on GTK3, used by default for all the plugins expect
+        the ones requiring GTK2. And of course the default plugin process
+        supports GTK3 plugins.
+
+        * CMakeLists.txt: Add common rules to build the default plugin process.
+        * PlatformEfl.cmake: Remove common cmake code that is now in CMakeLists.txt.
+        * PlatformGTK.cmake: Rename WebKitPluginProcess to
+        WebKitPluginProcess2 and add the platform specific rules to build
+        the default plugin process.
+        * Shared/Plugins/Netscape/x11/NetscapePluginModuleX11.cpp:
+        (WebKit::NetscapePluginModule::getPluginInfoForLoadedPlugin):
+        Check if the loaded plugin module uses GTK2.
+        (WebKit::NetscapePluginModule::getPluginInfo): Set requiresGtk2 accordingly.
+        (WebKit::NetscapePluginModule::scanPlugin): Write "requires-gtk2"
+        line to stdout if the plugin requires GTK2.
+        * Shared/Plugins/PluginModuleInfo.h: Add requiresGtk2 boolean member.
+        * UIProcess/Launcher/gtk/ProcessLauncherGtk.cpp:
+        (WebKit::ProcessLauncher::launchProcess): Use the
+        WebKitPluginProcess2 executable when the plugin requires GTK2.
+        * UIProcess/Plugins/PluginProcessProxy.h: Add requiresGtk2 boolean
+        member to RawPluginMetaData struct.
+        * UIProcess/Plugins/gtk/PluginInfoCache.cpp: Bump the cache schema version.
+        (WebKit::PluginInfoCache::getPluginInfo): Read also requires-gtk2
+        key from the cache.
+        (WebKit::PluginInfoCache::updatePluginInfo): Save also
+        requires-gtk2 key in the cache.
+        * UIProcess/Plugins/unix/PluginProcessProxyUnix.cpp:
+        (WebKit::PluginProcessProxy::platformGetLaunchOptions): Add an
+        extra initialization data parameter if the plugin requires GTK2.
+        (WebKit::PluginProcessProxy::scanPlugin): Check if "requires-gtk2"
+        was written to stdout.
+
 2014-03-30  Andy Estes  <aestes@apple.com>
 
         [Cocoa] Add an originatingWebView property to _WKDownload

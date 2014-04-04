@@ -74,6 +74,7 @@ namespace WebKit {
 #define DEFAULT_PASSWORD_ECHO_ENABLED true
 #define DEFAULT_MEDIA_PLAYBACK_ALLOWS_INLINE false
 #define DEFAULT_MEDIA_PLAYBACK_REQUIRES_USER_GESTURE true
+#define DEFAULT_TEMPORARY_TILE_COHORT_RETENTION_ENABLED false
 #else
 #define DEFAULT_FRAME_FLATTENING_ENABLED false
 #define DEFAULT_SHOULD_PRINT_BACKGROUNDS false
@@ -84,6 +85,7 @@ namespace WebKit {
 #define DEFAULT_PASSWORD_ECHO_ENABLED false
 #define DEFAULT_MEDIA_PLAYBACK_ALLOWS_INLINE true
 #define DEFAULT_MEDIA_PLAYBACK_REQUIRES_USER_GESTURE false
+#define DEFAULT_TEMPORARY_TILE_COHORT_RETENTION_ENABLED true
 #endif
 
 #if PLATFORM(IOS) && !PLATFORM(IOS_SIMULATOR)
@@ -96,6 +98,12 @@ namespace WebKit {
 #define DEFAULT_CANVAS_USES_ACCELERATED_DRAWING false
 #else
 #define DEFAULT_CANVAS_USES_ACCELERATED_DRAWING true
+#endif
+
+#if ENABLE(CSS_GRID_LAYOUT)
+#define DEFAULT_CSS_GRID_LAYOUT_ENABLED true
+#else
+#define DEFAULT_CSS_GRID_LAYOUT_ENABLED false
 #endif
 
 #define FOR_EACH_WEBKIT_BOOL_PREFERENCE(macro) \
@@ -131,7 +139,7 @@ namespace WebKit {
     macro(Accelerated2dCanvasEnabled, accelerated2dCanvasEnabled, Bool, bool, false) \
     macro(CSSRegionsEnabled, cssRegionsEnabled, Bool, bool, true) \
     macro(CSSCompositingEnabled, cssCompositingEnabled, Bool, bool, true) \
-    macro(CSSGridLayoutEnabled, cssGridLayoutEnabled, Bool, bool, false) \
+    macro(CSSGridLayoutEnabled, cssGridLayoutEnabled, Bool, bool, DEFAULT_CSS_GRID_LAYOUT_ENABLED) \
     macro(RegionBasedColumnsEnabled, regionBasedColumnsEnabled, Bool, bool, false) \
     macro(ForceFTPDirectoryListings, forceFTPDirectoryListings, Bool, bool, false) \
     macro(TabsToLinks, tabsToLinks, Bool, bool, DEFAULT_WEBKIT_TABSTOLINKS_ENABLED) \
@@ -153,6 +161,7 @@ namespace WebKit {
     macro(AVFoundationEnabled, isAVFoundationEnabled, Bool, bool, true) \
     macro(MediaPlaybackRequiresUserGesture, mediaPlaybackRequiresUserGesture, Bool, bool, DEFAULT_MEDIA_PLAYBACK_REQUIRES_USER_GESTURE) \
     macro(MediaPlaybackAllowsInline, mediaPlaybackAllowsInline, Bool, bool, DEFAULT_MEDIA_PLAYBACK_ALLOWS_INLINE) \
+    macro(MediaPlaybackAllowsAirPlay, mediaPlaybackAllowsAirPlay, Bool, bool, true) \
     macro(InspectorStartsAttached, inspectorStartsAttached, Bool, bool, true) \
     macro(ShowsToolTipOverTruncatedText, showsToolTipOverTruncatedText, Bool, bool, false) \
     macro(MockScrollbarsEnabled, mockScrollbarsEnabled, Bool, bool, false) \
@@ -187,6 +196,7 @@ namespace WebKit {
     macro(UsesEncodingDetector, usesEncodingDetector, Bool, bool, false) \
     macro(TextAutosizingEnabled, textAutosizingEnabled, Bool, bool, false) \
     macro(AggressiveTileRetentionEnabled, aggressiveTileRetentionEnabled, Bool, bool, false) \
+    macro(TemporaryTileCohortRetentionEnabled, temporaryTileCohortRetentionEnabled, Bool, bool, DEFAULT_TEMPORARY_TILE_COHORT_RETENTION_ENABLED) \
     macro(QTKitEnabled, isQTKitEnabled, Bool, bool, true) \
     macro(LogsPageMessagesToSystemConsoleEnabled, logsPageMessagesToSystemConsoleEnabled, Bool, bool, false) \
     macro(PageVisibilityBasedProcessSuppressionEnabled, pageVisibilityBasedProcessSuppressionEnabled, Bool, bool, true) \

@@ -171,7 +171,6 @@ Settings::Settings(Page* page)
     , m_isJavaEnabled(false)
     , m_isJavaEnabledForLocalFiles(true)
     , m_loadsImagesAutomatically(false)
-    , m_privateBrowsingEnabled(false)
     , m_areImagesEnabled(true)
     , m_arePluginsEnabled(false)
     , m_isScriptEnabled(false)
@@ -186,7 +185,6 @@ Settings::Settings(Page* page)
     , m_touchEventEmulationEnabled(false)
 #endif
     , m_scrollingPerformanceLoggingEnabled(false)
-    , m_aggressiveTileRetentionEnabled(false)
     , m_timeWithoutMouseMovementBeforeHidingControls(3)
     , m_setImageLoadingSettingsTimer(this, &Settings::imageLoadingSettingsTimerFired)
 #if ENABLE(HIDDEN_PAGE_DOM_TIMER_THROTTLING)
@@ -427,15 +425,6 @@ void Settings::setPluginsEnabled(bool arePluginsEnabled)
     Page::refreshPlugins(false);
 }
 
-void Settings::setPrivateBrowsingEnabled(bool privateBrowsingEnabled)
-{
-    if (m_privateBrowsingEnabled == privateBrowsingEnabled)
-        return;
-
-    m_privateBrowsingEnabled = privateBrowsingEnabled;
-    m_page->privateBrowsingStateChanged();
-}
-
 void Settings::setUserStyleSheetLocation(const URL& userStyleSheetLocation)
 {
     if (m_userStyleSheetLocation == userStyleSheetLocation)
@@ -627,11 +616,6 @@ void Settings::setScrollingPerformanceLoggingEnabled(bool enabled)
 
     if (m_page->mainFrame().view())
         m_page->mainFrame().view()->setScrollingPerformanceLoggingEnabled(enabled);
-}
-    
-void Settings::setAggressiveTileRetentionEnabled(bool enabled)
-{
-    m_aggressiveTileRetentionEnabled = enabled;
 }
 
 void Settings::setMockScrollbarsEnabled(bool flag)

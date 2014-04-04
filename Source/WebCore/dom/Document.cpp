@@ -55,6 +55,7 @@
 #include "EntityReference.h"
 #include "EventFactory.h"
 #include "EventHandler.h"
+#include "FocusController.h"
 #include "FontLoader.h"
 #include "FormController.h"
 #include "FrameLoader.h"
@@ -1756,7 +1757,7 @@ void Document::recalcStyle(Style::Change change)
 
     m_inStyleRecalc = true;
     {
-        Style::PostResolutionCallbackDisabler disabler(*this);
+        PostAttachCallbackDisabler disabler(*this);
         WidgetHierarchyUpdatesSuspensionScope suspendWidgetHierarchyUpdates;
 
         if (m_pendingStyleRecalcShouldForce)
@@ -2087,7 +2088,7 @@ void Document::prepareForDestruction()
 
 #if ENABLE(POINTER_LOCK)
     if (page())
-        page()->pointerLockController()->documentDetached(this);
+        page()->pointerLockController().documentDetached(this);
 #endif
 
     stopActiveDOMObjects();
@@ -2830,7 +2831,12 @@ void Document::processHttpEquiv(const String& equiv, const String& content)
                 url = m_url.string();
             else
                 url = completeURL(url).string();
-            frame->navigationScheduler().scheduleRedirect(delay, url);
+            if (!protocolIsJavaScript(url))
+                frame->navigationScheduler().scheduleRedirect(delay, url);
+            else {
+                String message = "Refused to refresh " + m_url.stringCenterEllipsizedToLength() + " to a javascript: URL";
+                addConsoleMessage(MessageSource::Security, MessageLevel::Error, message);
+            }
         }
     } else if (equalIgnoringCase(equiv, "set-cookie")) {
         // FIXME: make setCookie work on XML documents too; e.g. in case of <html:meta .....>
@@ -5537,19 +5543,19 @@ void Document::webkitExitPointerLock()
 {
     if (!page())
         return;
-    if (Element* target = page()->pointerLockController()->element()) {
-        if (target->document() != this)
+    if (Element* target = page()->pointerLockController().element()) {
+        if (&target->document() != this)
             return;
     }
-    page()->pointerLockController()->requestPointerUnlock();
+    page()->pointerLockController().requestPointerUnlock();
 }
 
 Element* Document::webkitPointerLockElement() const
 {
-    if (!page() || page()->pointerLockController()->lockPending())
+    if (!page() || page()->pointerLockController().lockPending())
         return nullptr;
-    if (Element* element = page()->pointerLockController()->element()) {
-        if (element->document() == this)
+    if (Element* element = page()->pointerLockController().element()) {
+        if (&element->document() == this)
             return element;
     }
     return nullptr;
@@ -5612,6 +5618,77 @@ void Document::clearScriptedAnimationController()
     m_scriptedAnimationController.clear();
 }
 #endif
+    
+void Document::sendWillRevealEdgeEventsIfNeeded(const IntPoint& oldPosition, const IntPoint& newPosition, const IntRect& visibleRect, const IntSize& contentsSize, Element* target)
+{
+    // For each edge (top, bottom, left and right), send the will reveal edge event for that direction
+    // if newPosition is at or beyond the notification point, if the scroll direction is heading in the
+    // direction of that edge point, and if oldPosition is before the notification point (which indicates
+    // that this is the first moment that we know we crossed the magic line).
+    
+#if ENABLE(WILL_REVEAL_EDGE_EVENTS)
+    
+    int willRevealBottomNotificationPoint = std::max(0, contentsSize.height() - 2 *  visibleRect.height());
+    int willRevealTopNotificationPoint = visibleRect.height();
+
+    // Bottom edge.
+    if (newPosition.y() >= willRevealBottomNotificationPoint && newPosition.y() > oldPosition.y()
+        && willRevealBottomNotificationPoint >= oldPosition.y()) {
+        RefPtr<Event> willRevealEvent = Event::create(eventNames().webkitwillrevealbottomEvent, false, false);
+        if (!target)
+            enqueueWindowEvent(willRevealEvent.release());
+        else {
+            willRevealEvent->setTarget(target);
+            m_eventQueue.enqueueEvent(willRevealEvent.release());
+        }
+    }
+
+    // Top edge.
+    if (newPosition.y() <= willRevealTopNotificationPoint && newPosition.y() < oldPosition.y()
+        && willRevealTopNotificationPoint <= oldPosition.y()) {
+        RefPtr<Event> willRevealEvent = Event::create(eventNames().webkitwillrevealtopEvent, false, false);
+        if (!target)
+            enqueueWindowEvent(willRevealEvent.release());
+        else {
+            willRevealEvent->setTarget(target);
+            m_eventQueue.enqueueEvent(willRevealEvent.release());
+        }
+    }
+
+    int willRevealRightNotificationPoint = std::max(0, contentsSize.width() - 2 * visibleRect.width());
+    int willRevealLeftNotificationPoint = visibleRect.width();
+
+    // Right edge.
+    if (newPosition.x() >= willRevealRightNotificationPoint && newPosition.x() > oldPosition.x()
+        && willRevealRightNotificationPoint >= oldPosition.x()) {
+        RefPtr<Event> willRevealEvent = Event::create(eventNames().webkitwillrevealrightEvent, false, false);
+        if (!target)
+            enqueueWindowEvent(willRevealEvent.release());
+        else {
+            willRevealEvent->setTarget(target);
+            m_eventQueue.enqueueEvent(willRevealEvent.release());
+        }
+    }
+
+    // Left edge.
+    if (newPosition.x() <= willRevealLeftNotificationPoint && newPosition.x() < oldPosition.x()
+        && willRevealLeftNotificationPoint <= oldPosition.x()) {
+        RefPtr<Event> willRevealEvent = Event::create(eventNames().webkitwillrevealleftEvent, false, false);
+        if (!target)
+            enqueueWindowEvent(willRevealEvent.release());
+        else {
+            willRevealEvent->setTarget(target);
+            m_eventQueue.enqueueEvent(willRevealEvent.release());
+        }
+    }
+#else
+    UNUSED_PARAM(oldPosition);
+    UNUSED_PARAM(newPosition);
+    UNUSED_PARAM(visibleRect);
+    UNUSED_PARAM(contentsSize);
+    UNUSED_PARAM(target);
+#endif
+}
 
 #if !PLATFORM(IOS)
 #if ENABLE(TOUCH_EVENTS)
@@ -6075,6 +6152,26 @@ bool Document::updateStyleIfNeededForNode(const Node& node)
         return false;
     updateStyleIfNeeded();
     return true;
+}
+
+Element* Document::activeElement()
+{
+    updateStyleIfNeeded();
+    if (Element* element = treeScope().focusedElement())
+        return element;
+    return body();
+}
+
+bool Document::hasFocus() const
+{
+    Page* page = this->page();
+    if (!page || !page->focusController().isActive())
+        return false;
+    if (Frame* focusedFrame = page->focusController().focusedFrame()) {
+        if (focusedFrame->tree().isDescendantOf(frame()))
+            return true;
+    }
+    return false;
 }
 
 } // namespace WebCore

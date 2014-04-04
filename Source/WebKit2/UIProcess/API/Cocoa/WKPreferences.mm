@@ -29,17 +29,32 @@
 #if WK_API_ENABLED
 
 #import "WebPreferences.h"
+#import <wtf/RetainPtr.h>
 
 @implementation WKPreferences
+{
+    RetainPtr<NSString> _userDefaultsKeyPrefix;
+}
 
 - (instancetype)init
+{
+    return [self initWithUserDefaultsKeyPrefix:nil];
+}
+
+- (instancetype)initWithUserDefaultsKeyPrefix:(NSString *)userDefaultsKeyPrefix
 {
     if (!(self = [super init]))
         return nil;
 
-    _preferences = WebKit::WebPreferences::create(String());
+    _userDefaultsKeyPrefix = adoptNS([userDefaultsKeyPrefix copy]);
 
+    _preferences = WebKit::WebPreferences::create(_userDefaultsKeyPrefix.get(), "WebKit");
     return self;
+}
+
+- (NSString *)userDefaultsKeyPrefix
+{
+    return _userDefaultsKeyPrefix.get();
 }
 
 - (CGFloat)minimumFontSize
@@ -47,10 +62,102 @@
     return _preferences->minimumFontSize();
 }
 
+- (BOOL)isJavaScriptEnabled
+{
+    return _preferences->javaScriptEnabled();
+}
+
+- (void)setJavaScriptEnabled:(BOOL)javaScriptEnabled
+{
+    _preferences->setJavaScriptEnabled(javaScriptEnabled);
+}
+
+- (BOOL)javaScriptCanOpenWindowsAutomatically
+{
+    return _preferences->javaScriptCanOpenWindowsAutomatically();
+}
+
+- (void)setJavaScriptCanOpenWindowsAutomatically:(BOOL)javaScriptCanOpenWindowsAutomatically
+{
+    _preferences->setJavaScriptCanOpenWindowsAutomatically(javaScriptCanOpenWindowsAutomatically);
+}
+
+- (BOOL)suppressesIncrementalRendering
+{
+    return _preferences->suppressesIncrementalRendering();
+}
+
+- (void)setSuppressesIncrementalRendering:(BOOL)suppressesIncrementalRendering
+{
+    _preferences->setSuppressesIncrementalRendering(suppressesIncrementalRendering);
+}
+
 - (void)setMinimumFontSize:(CGFloat)minimumFontSize
 {
     _preferences->setMinimumFontSize(minimumFontSize);
 }
+
+#pragma mark iOS-specific methods
+
+#if PLATFORM(IOS)
+
+- (BOOL)allowsInlineMediaPlayback
+{
+    return _preferences->mediaPlaybackAllowsInline();
+}
+
+- (void)setAllowsInlineMediaPlayback:(BOOL)allowsInlineMediaPlayback
+{
+    _preferences->setMediaPlaybackAllowsInline(allowsInlineMediaPlayback);
+}
+
+- (BOOL)mediaPlaybackRequiresUserAction
+{
+    return _preferences->mediaPlaybackRequiresUserGesture();
+}
+
+- (void)setMediaPlaybackRequiresUserAction:(BOOL)mediaPlaybackRequiresUserAction
+{
+    _preferences->setMediaPlaybackRequiresUserGesture(mediaPlaybackRequiresUserAction);
+}
+
+- (BOOL)mediaPlaybackAllowsAirPlay
+{
+    return _preferences->mediaPlaybackAllowsAirPlay();
+}
+
+- (void)setMediaPlaybackAllowsAirPlay:(BOOL)mediaPlaybackAllowsAirPlay
+{
+    _preferences->setMediaPlaybackAllowsAirPlay(mediaPlaybackAllowsAirPlay);
+}
+
+#endif
+
+#pragma mark OS X-specific methods
+
+#if PLATFORM(MAC)
+
+- (BOOL)isJavaEnabled
+{
+    return _preferences->javaEnabled();
+}
+
+- (void)setJavaEnabled:(BOOL)javaEnabled
+{
+    _preferences->setJavaEnabled(javaEnabled);
+}
+
+- (BOOL)arePlugInsEnabled
+{
+    return _preferences->pluginsEnabled();
+}
+
+- (void)setPlugInsEnabled:(BOOL)plugInsEnabled
+{
+    _preferences->setPluginsEnabled(plugInsEnabled);
+}
+
+#endif
 
 @end
 

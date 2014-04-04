@@ -95,11 +95,11 @@
 
 #if PLATFORM(IOS)
 #include "DocumentLoader.h"
+#include "LegacyTileCache.h"
 #include "Logging.h"
 #include "MemoryCache.h"
 #include "MemoryPressureHandler.h"
 #include "SystemMemory.h"
-#include "TileCache.h"
 #endif
 
 #if ENABLE(PLUGIN_PROXY_FOR_VIDEO)
@@ -378,8 +378,8 @@ void FrameView::clear()
 #if PLATFORM(IOS)
     // To avoid flashes of white, disable tile updates immediately when view is cleared at the beginning of a page load.
     // Tiling will be re-enabled from UIKit via [WAKWindow setTilingMode:] when we have content to draw.
-    if (TileCache* tileCache = this->tileCache())
-        tileCache->setTilingMode(TileCache::Disabled);
+    if (LegacyTileCache* tileCache = legacyTileCache())
+        tileCache->setTilingMode(LegacyTileCache::Disabled);
 #endif
 }
 
@@ -817,6 +817,15 @@ uint64_t FrameView::scrollLayerID() const
     return backing->scrollingNodeID();
 }
 
+ScrollableArea* FrameView::scrollableAreaForScrollLayerID(uint64_t nodeID) const
+{
+    RenderView* renderView = this->renderView();
+    if (!renderView)
+        return nullptr;
+
+    return renderView->compositor().scrollableAreaForScrollLayerID(nodeID);
+}
+
 #if ENABLE(RUBBER_BANDING)
 GraphicsLayer* FrameView::layerForOverhangAreas() const
 {
@@ -860,7 +869,7 @@ bool FrameView::flushCompositingStateForThisFrame(Frame* rootFrameForFlush)
         return false;
 
 #if PLATFORM(IOS)
-    if (TileCache* tileCache = this->tileCache())
+    if (LegacyTileCache* tileCache = legacyTileCache())
         tileCache->doPendingRepaints();
 #endif
 
@@ -2000,8 +2009,9 @@ void FrameView::scrollPositionChanged(const IntPoint& oldPosition, const IntPoin
 {
     frame().eventHandler().sendScrollEvent();
     frame().eventHandler().dispatchFakeMouseMoveEventSoon();
-
-    sendWillRevealEdgeEventsIfNeeded(oldPosition, newPosition);
+    
+    if (Document* document = frame().document())
+        document->sendWillRevealEdgeEventsIfNeeded(oldPosition, newPosition, visibleContentRect(), contentsSize());
 
     if (RenderView* renderView = this->renderView()) {
         renderView->resumePausedImageAnimationsIfNeeded();
@@ -2243,7 +2253,7 @@ void FrameView::adjustTiledBackingCoverage()
     if (renderView && renderView->layer()->backing())
         renderView->layer()->backing()->adjustTiledBackingCoverage();
 #if PLATFORM(IOS)
-    if (TileCache* tileCache = this->tileCache())
+    if (LegacyTileCache* tileCache = legacyTileCache())
         tileCache->setSpeculativeTileCreationEnabled(m_speculativeTilingEnabled);
 #endif
 }
@@ -2786,59 +2796,6 @@ void FrameView::sendResizeEventIfNeeded()
         if (InspectorClient* inspectorClient = page ? page->inspectorController().inspectorClient() : nullptr)
             inspectorClient->didResizeMainFrame(&frame());
     }
-#endif
-}
-
-void FrameView::sendWillRevealEdgeEventsIfNeeded(const IntPoint& oldPosition, const IntPoint& newPosition)
-{
-    // For each edge (top, bottom, left and right), send the will reveal edge event for that direction
-    // if newPosition is at or beyond the notification point, if the scroll direction is heading in the
-    // direction of that edge point, and if oldPosition is before the notification point (which indicates
-    // that this is the first moment that we know we crossed the magic line).
-
-#if ENABLE(WILL_REVEAL_EDGE_EVENTS)
-    Document* document = frame().document();
-    if (!document)
-        return;
-
-    IntRect visibleRect = visibleContentRect();
-
-    int willRevealBottomNotificationPoint = std::max(0, contentsHeight() - 2 *  visibleRect.height());
-    int willRevealTopNotificationPoint = visibleRect.height();
-
-    // Bottom edge.
-    if (newPosition.y() >= willRevealBottomNotificationPoint && newPosition.y() > oldPosition.y()
-        && willRevealBottomNotificationPoint >= oldPosition.y()) {
-        RefPtr<Event> willRevealEvent = Event::create(eventNames().webkitwillrevealbottomEvent, false, false);
-        document->enqueueWindowEvent(willRevealEvent.release());
-    }
-
-    // Top edge.
-    if (newPosition.y() <= willRevealTopNotificationPoint && newPosition.y() < oldPosition.y()
-        && willRevealTopNotificationPoint <= oldPosition.y()) {
-        RefPtr<Event> willRevealEvent = Event::create(eventNames().webkitwillrevealtopEvent, false, false);
-        document->enqueueWindowEvent(willRevealEvent.release());
-    }
-
-    int willRevealRightNotificationPoint = std::max(0, contentsWidth() - 2 * visibleRect.width());
-    int willRevealLeftNotificationPoint = visibleRect.width();
-
-    // Right edge.
-    if (newPosition.x() >= willRevealRightNotificationPoint && newPosition.x() > oldPosition.x()
-        && willRevealRightNotificationPoint >= oldPosition.x()) {
-        RefPtr<Event> willRevealEvent = Event::create(eventNames().webkitwillrevealrightEvent, false, false);
-        document->enqueueWindowEvent(willRevealEvent.release());
-    }
-
-    // Left edge.
-    if (newPosition.x() <= willRevealLeftNotificationPoint && newPosition.x() < oldPosition.x()
-        && willRevealLeftNotificationPoint <= oldPosition.x()) {
-        RefPtr<Event> willRevealEvent = Event::create(eventNames().webkitwillrevealleftEvent, false, false);
-        document->enqueueWindowEvent(willRevealEvent.release());
-    }
-#else
-    UNUSED_PARAM(oldPosition);
-    UNUSED_PARAM(newPosition);
 #endif
 }
 

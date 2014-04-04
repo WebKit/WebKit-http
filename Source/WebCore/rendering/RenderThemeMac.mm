@@ -165,6 +165,12 @@ const double progressAnimationNumFrames = 256;
 }
 @end
 
+@interface WebCoreRenderThemeBundle : NSObject
+@end
+
+@implementation WebCoreRenderThemeBundle
+@end
+
 namespace WebCore {
 
 using namespace HTMLNames;
@@ -220,7 +226,9 @@ NSView* RenderThemeMac::documentViewFor(RenderObject* o) const
 String RenderThemeMac::mediaControlsStyleSheet()
 {
 #if ENABLE(MEDIA_CONTROLS_SCRIPT)
-    return String(mediaControlsAppleUserAgentStyleSheet, sizeof(mediaControlsAppleUserAgentStyleSheet));
+    if (m_mediaControlsStyleSheet.isEmpty())
+        m_mediaControlsStyleSheet = [NSString stringWithContentsOfFile:[[NSBundle bundleForClass:[WebCoreRenderThemeBundle class]] pathForResource:@"mediaControlsApple" ofType:@"css"] encoding:NSUTF8StringEncoding error:nil];
+    return m_mediaControlsStyleSheet;
 #else
     return emptyString();
 #endif
@@ -229,7 +237,9 @@ String RenderThemeMac::mediaControlsStyleSheet()
 String RenderThemeMac::mediaControlsScript()
 {
 #if ENABLE(MEDIA_CONTROLS_SCRIPT)
-    return String(mediaControlsAppleJavaScript, sizeof(mediaControlsAppleJavaScript));
+    if (m_mediaControlsScript.isEmpty())
+        m_mediaControlsScript = [NSString stringWithContentsOfFile:[[NSBundle bundleForClass:[WebCoreRenderThemeBundle class]] pathForResource:@"mediaControlsApple" ofType:@"js"] encoding:NSUTF8StringEncoding error:nil];
+    return m_mediaControlsScript;
 #else
     return emptyString();
 #endif

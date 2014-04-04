@@ -67,9 +67,11 @@ static const int DefaultHeight = 150;
 
 // Firefox limits width/height to 32767 pixels, but slows down dramatically before it
 // reaches that limit. We limit by area instead, giving us larger maximum dimensions,
-// in exchange for a smaller maximum canvas size.
-#if !PLATFORM(IOS)
-static const float MaxCanvasArea = 32768 * 8192; // Maximum canvas area in CSS pixels
+// in exchange for a smaller maximum canvas size. The maximum canvas size is in CSS pixels.
+#if PLATFORM(IOS)
+static const float MaxCanvasArea = 4580 * 1145; // 20 MB assuming 4 bytes per pixel
+#else
+static const float MaxCanvasArea = 32768 * 8192;
 #endif
 
 HTMLCanvasElement::HTMLCanvasElement(const QualifiedName& tagName, Document& document)
@@ -79,10 +81,6 @@ HTMLCanvasElement::HTMLCanvasElement(const QualifiedName& tagName, Document& doc
     , m_ignoreReset(false)
     , m_deviceScaleFactor(targetDeviceScaleFactor())
     , m_originClean(true)
-#if PLATFORM(IOS)
-    // FIXME: We should look to reconcile usage of MaxCanvasArea and m_maximumDecodedImageSize.
-    , m_maximumDecodedImageSize(document.settings() ? document.settings()->maximumDecodedImageSize() : 0)
-#endif
     , m_hasCreatedImageBuffer(false)
     , m_didClearImageBuffer(false)
 {
@@ -447,7 +445,7 @@ void HTMLCanvasElement::setSurfaceSize(const IntSize& size)
 {
     m_size = size;
     m_hasCreatedImageBuffer = false;
-    m_contextStateSaver.clear();
+    m_contextStateSaver = nullptr;
     m_imageBuffer.reset();
     clearCopiedImage();
 }
@@ -574,13 +572,8 @@ void HTMLCanvasElement::createImageBuffer() const
     if (!deviceSize.isExpressibleAsIntSize())
         return;
 
-#if PLATFORM(IOS)
-    if (deviceSize.width() * deviceSize.height() * 4 > m_maximumDecodedImageSize)
-        return;
-#else
     if (deviceSize.width() * deviceSize.height() > MaxCanvasArea)
         return;
-#endif
 
     IntSize bufferSize(deviceSize.width(), deviceSize.height());
     if (!bufferSize.width() || !bufferSize.height())
@@ -595,7 +588,7 @@ void HTMLCanvasElement::createImageBuffer() const
     if (document().settings() && !document().settings()->antialiased2dCanvasEnabled())
         m_imageBuffer->context()->setShouldAntialias(false);
     m_imageBuffer->context()->setStrokeThickness(1);
-    m_contextStateSaver = adoptPtr(new GraphicsContextStateSaver(*m_imageBuffer->context()));
+    m_contextStateSaver = std::make_unique<GraphicsContextStateSaver>(*m_imageBuffer->context());
 
     JSC::JSLockHolder lock(scriptExecutionContext()->vm());
     size_t numBytes = 4 * m_imageBuffer->internalSize().width() * m_imageBuffer->internalSize().height();
