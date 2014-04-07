@@ -539,7 +539,7 @@ void FrameLoaderClientHaiku::dispatchDecidePolicyForNewWindowAction(const Naviga
 
     // Switch to the new tab, when shift is pressed.
     if (action.event() && action.event()->isMouseEvent()) {
-        const MouseEvent* mouseEvent = dynamic_cast<const MouseEvent*>(action.event());
+        const MouseEvent* mouseEvent = static_cast<const MouseEvent*>(action.event());
         switchTab = (mouseEvent && mouseEvent->shiftKey());
     }
 
@@ -776,7 +776,7 @@ bool FrameLoaderClientHaiku::shouldFallBack(const WebCore::ResourceError& error)
 
 bool FrameLoaderClientHaiku::canHandleRequest(const WebCore::ResourceRequest&) const
 {
-    notImplemented();
+    // notImplemented();
     return true;
 }
 
@@ -848,7 +848,7 @@ void FrameLoaderClientHaiku::didFinishLoad()
 
 void FrameLoaderClientHaiku::prepareForDataSourceReplacement()
 {
-    notImplemented();
+    // notImplemented(); // Nor does any port except Apple one.
 }
 
 WTF::PassRefPtr<DocumentLoader> FrameLoaderClientHaiku::createDocumentLoader(const ResourceRequest& request, const SubstituteData& substituteData)
@@ -937,7 +937,7 @@ PassRefPtr<Frame> FrameLoaderClientHaiku::createFrame(const URL& url,
     if (!subFrame)
         return nullptr;
 
-    WebCore::Frame* coreSubFrame = subFrame->Frame();
+    RefPtr<WebCore::Frame> coreSubFrame = subFrame->Frame();
     ASSERT(coreSubFrame);
 
     // The creation of the frame may have run arbitrary JavaScript that removed
@@ -948,15 +948,16 @@ PassRefPtr<Frame> FrameLoaderClientHaiku::createFrame(const URL& url,
     }
 
     subFrame->SetListener(m_messenger);
-    m_webFrame->Frame()->loader().loadURLIntoChildFrame(url, referrer, coreSubFrame);
+    m_webFrame->Frame()->loader().loadURLIntoChildFrame(url, referrer, coreSubFrame.get());
 
     // The frame's onload handler may have removed it from the document.
+    // See fast/dom/null-page-show-modal-dialog-crash.html for an example.
     if (!coreSubFrame->tree().parent()) {
-        delete subFrame;
+        // The subframe will be deleted when coreSubFrame is dereferenced.
         return nullptr;
     }
 
-    return coreSubFrame;
+    return coreSubFrame.release();
 }
 
 ObjectContentType FrameLoaderClientHaiku::objectContentType(const URL& url, const String& originalMimeType, bool /*shouldPreferPlugInsForImages*/)
@@ -1080,7 +1081,7 @@ PassRefPtr<FrameNetworkingContext> FrameLoaderClientHaiku::createNetworkingConte
 bool FrameLoaderClientHaiku::isTertiaryMouseButton(const NavigationAction& action) const
 {
     if (action.event() && action.event()->isMouseEvent()) {
-        const MouseEvent* mouseEvent = dynamic_cast<const MouseEvent*>(action.event());
+        const MouseEvent* mouseEvent = static_cast<const MouseEvent*>(action.event());
         return (mouseEvent && mouseEvent->button() == 1);
     }
     return false;
