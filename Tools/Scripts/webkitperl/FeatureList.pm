@@ -333,7 +333,7 @@ my @features = (
       define => "ENABLE_METER_ELEMENT", default => !isAppleWinWebKit(), value => \$meterElementSupport },
 
     { option => "mhtml", desc => "Toggle MHTML support",
-      define => "ENABLE_MHTML", default => (isGtk() || isEfl()), value => \$mhtmlSupport },
+      define => "ENABLE_MHTML", default => (isGtk() || isEfl() || isHaiku()), value => \$mhtmlSupport },
 
     { option => "mouse-cursor-scale", desc => "Toggle Scaled mouse cursor support",
       define => "ENABLE_MOUSE_CURSOR_SCALE", default => isEfl(), value => \$mouseCursorScaleSupport },
