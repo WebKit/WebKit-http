@@ -183,7 +183,8 @@ BFormDataIO::_ParseCurrentElement()
 }
 
 
-BUrlProtocolHandler::BUrlProtocolHandler(NetworkingContext* context, ResourceHandle* handle, bool synchronous)
+BUrlProtocolHandler::BUrlProtocolHandler(NetworkingContext* context,
+        ResourceHandle* handle, BUrlRequest* request, bool synchronous)
     : BUrlProtocolAsynchronousListener(!synchronous)
     , m_resourceHandle(handle)
     , m_redirected(false)
@@ -481,17 +482,10 @@ void BUrlProtocolHandler::start()
         return;
 
     m_shouldStart = false;
-
-    if (m_request == NULL) {
-        ResourceHandleClient* client = m_resourceHandle->client();
-        if (!client)
-            return;
-
-        client->cannotShowURL(m_resourceHandle);
-        return;
-    }
-
     m_postData = NULL;
+
+    if (m_request == NULL)
+        return;
 
     BHttpRequest* httpRequest = dynamic_cast<BHttpRequest*>(m_request);
     if(httpRequest) {

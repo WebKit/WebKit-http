@@ -60,7 +60,8 @@ private:
 class BUrlProtocolHandler : public BUrlProtocolAsynchronousListener
 {
 public:
-    BUrlProtocolHandler(NetworkingContext* context, ResourceHandle *handle, bool synchronous);
+    BUrlProtocolHandler(NetworkingContext* context, ResourceHandle *handle, 
+        BUrlRequest* request, bool synchronous);
     virtual ~BUrlProtocolHandler();
     void abort();
 
