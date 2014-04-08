@@ -50,7 +50,7 @@ accessibility/table-attributes.html [ Pass ]
 accessibility/table-one-cell.html [ Pass ]
 accessibility/table-remove-cell-crash.html [ Pass ]
 accessibility/table-sections.html [ Pass ]
-accessibility/table-with-aria-role.html [ Pass ]
+#accessibility/table-with-aria-role.html [ Pass ]
 accessibility/table-with-empty-thead-causes-crash.html [ Pass ]
 accessibility/table-with-rules.html [ Pass ]
 accessibility/table-destroyed-crash.html [ Pass ]
@@ -68,7 +68,7 @@ animations/additive-transform-animations.html [ Pass ]
 animations/animation-add-events-in-handler.html [ Pass ]
 animations/animation-controller-drt-api.html [ Pass ]
 animations/animation-css-rule-types.html [ Pass ]
-animations/animation-delay-changed.html [ Failure ]
+#animations/animation-delay-changed.html [ Failure ]
 #animations/animation-direction-normal.html [ Failure ]
 #animations/animation-direction-reverse-fill-mode-hardware.html [ Failure ]
 #animations/animation-direction-reverse-hardware-opacity.html [ Failure ]
@@ -670,6 +670,8 @@ fast/multicol/newmulticol/clipping.html [ Pass ]
 fast/notifications/ [ Failure ]
 fast/notifications/notifications-window-close-crash.html [ Pass ]
 
+#fast/regions/ [ Failure ImageOnlyFailure ] # TODO List specific tests
+
 fast/xsl/xslt_unicode.xml [ Failure ] # Font metrics
 
 # Fonts - works ok, but metrics are not right.
@@ -811,7 +813,9 @@ media/controls-without-preload.html [ Pass ]
 media/encrypted-media/encrypted-media-can-play-type.html [ Pass ]
 media/encrypted-media/encrypted-media-events.html [ Pass ]
 media/encrypted-media/encrypted-media-not-loaded.html [ Pass ]
+media/event-queue-crash.html [ Pass ]
 media/fallback.html [ Pass ]
+media/media-can-display-type.html [ Pass ]
 #media/media-can-play-mpeg4-video.html [ Pass ]
 media/media-can-play-octet-stream.html [ Pass ]
 #media/media-can-play-type.html [ Pass ]
@@ -824,36 +828,50 @@ media/media-controls-clone-crash.html [ Pass ]
 media/media-reparent.html [ Pass ]
 media/network-no-source-const-shadow.html [ Pass ]
 media/remove-from-document-before-load.html [ Pass ]
+media/remove-from-document-no-load.html [ Pass ]
 media/svg-as-image-with-media-blocked.html [ Pass ]
 media/timeranges-nearest.html [ Pass ]
 media/track/add-and-remove-track.html [ Pass ]
 media/track/opera/ [ Pass ] # list passing tests explicitly
 media/track/getCueAsHTMLCrash.html
+media/unsupported-rtsp.html
 media/video-aspect-ratio.html [ Pass ]
-media/video-bufferred-too-few-arguments.html [ Pass ]
+media/video-beforeload-remove-source.html [ Pass ]
+media/video-buffered-too-few-arguments.html [ Pass ]
 media/video-controls-captions-trackmenu.html [ Pass ]
 media/video-controls-captions-trackmenu-hide-on-click.html [ Pass ]
 media/video-controls-captions-trackmenu-localized.html [ Pass ]
 media/video-controls-captions-trackmenu-sorted.html [ Pass ]
 media/video-controls-rendering.html [ Pass ]
 media/video-controls-with-mutation-event-handler.html [ Pass ]
+media/video-display-none-crash.html [ Pass ]
 media/video-dom-preload.html [ Pass ]
 media/video-dom-src.html [ Pass ]
 media/video-display-toggle.html [ Pass ]
 media/video-empty-source.html [ Pass ]
 media/video-intrinsic-width-height.html [ Pass ]
 media/video-layer-crash.html [ Pass ]
+media/video-load-require-user-gesture.html [ Pass ]
 media/video-mouse-focus.html [ Pass ]
 media/video-muted.html [ Pass ]
 media/video-no-audio.html [ Pass ]
+media/video-no-default-poster.html [ Pass ]
 media/video-object-fit-change.html [ Pass ]
 media/video-playing-and-pause.html [ Pass ]
 media/video-poster.html [ Pass ]
 media/video-poster-background.html [ Pass ]
 media/video-poster-scale.html [ Pass ]
 media/video-rtl.html [ Pass ]
+media/video-src.html [ Pass ]
+media/video-src-invalid-poster.html [ Pass ]
 media/video-src-none.html [ Pass ]
+media/video-src-set.html [ Pass ]
+media/video-src-source.html [ Pass ]
+media/video-source.html [ Pass ]
 media/video-source-inserted.html [ Pass ]
+media/video-source-media.html [ Pass ]
+media/video-source-removed.html [ Pass ]
+media/video-source-type-params.html [ Pass ]
 media/video-transformed.html [ Pass ]
 media/video-volume-slider.html [ Pass ]
 media/video-width-height.html [ Pass ]
@@ -1083,6 +1101,18 @@ tables/mozilla_expected_failures/marvin/x_table_rules_all.xml [ Pass ]
 tables/mozilla_expected_failures/marvin/x_table_rules_cols.xml [ Pass ]
 tables/mozilla_expected_failures/marvin/x_table_rules_rows.xml [ Pass ]
 
+# Traversal
+traversal/hixie-node-iterator/001.xml [ Failure ] # CDATA parse error?
+traversal/hixie-node-iterator/002.xml [ Failure ] # CDATA parse error?
+traversal/hixie-node-iterator/003.xml [ Failure ] # CDATA parse error?
+traversal/hixie-node-iterator/004.xml [ Failure ] # CDATA parse error?
+traversal/hixie-node-iterator/005.xml [ Failure ] # CDATA parse error?
+traversal/hixie-node-iterator/006.xml [ Failure ] # CDATA parse error?
+traversal/hixie-node-iterator/007.xml [ Failure ] # CDATA parse error?
+traversal/hixie-node-iterator/008.xml [ Failure ] # CDATA parse error?
+traversal/hixie-node-iterator/009.xml [ Failure ] # CDATA parse error?
+traversal/hixie-node-iterator/010.xml [ Failure ] # CDATA parse error?
+#traversal/node-iterator-prototype.html [ Failure ] # Documented failure
 
 # User scripts
 
@@ -1133,9 +1163,25 @@ webaudio/codec-tests/vorbis/vbr-70kbps-44khz.html [ Pass Failure ]
 webaudio/codec-tests/vorbis/vbr-96kbps-44khz.html [ Pass Failure ]
 webaudio/codec-tests/vorbis/vbr-128kbps-44khz.html [ Pass Failure ]
 
+webaudio/audiobuffersource-exception.html [ Pass ]
+webaudio/audiochannelsplitter.html [ Pass ]
+webaudio/audionode-channel-rules.html [ Pass ]
+webaudio/audioparam-linearRampToValueAtTime.html [ Pass ]
+webaudio/audioparam-setTargetAtTime.html [ Pass ]
+webaudio/biquad-bandpass.html [ Pass ]
+webaudio/biquad-lowpass.html [ Pass ]
+webaudio/biquad-lowshelf.html [ Pass ]
+webaudio/biquad-notch.html [ Pass ]
+webaudio/biquad-peaking.html [ Pass ]
+webaudio/delaynode.html [ Pass ]
+webaudio/distance-inverse.html [ Pass ]
+webaudio/distance-linear.html [ Pass ]
+webaudio/javascriptaudionode.html [ Pass ]
 webaudio/mediaelementaudiosource-gc.html [ Pass ]
 webaudio/oscillator-basic.html [ Pass ]
+webaudio/panner-equalpower.html [ Pass ]
 webaudio/realtimeanaluzer-fft-sizing.html [ Pass ]
+webaudio/stereo2mono-down-mixing.html [ Pass ]
 webaudio/test-basic.html [ Pass ]
 
 
@@ -1306,7 +1352,7 @@ svg/masking/mask-type-luminance.svg [ Pass ]
 svg/masking/mask-type-not-set.svg [ Pass ]
 
 svg/stroke/non-scaling-stroke-pattern.svg [ ImageOnlyFailure ]
-svg/text/add-tspan-position-bug.html [ ImageOnlyFailure ]
+#svg/text/add-tspan-position-bug.html [ ImageOnlyFailure ]
 svg/text/modify-tspan-position-bug.html [ ImageOnlyFailure ]
 svg/transforms/change-transform-origin-css.xhtml [ ImageOnlyFailure ]
 svg/transforms/change-transform-origin-presentation-attribute.xhtml [ ImageOnlyFailure ]
@@ -1343,6 +1389,7 @@ svg/filters/feSpecularLight-premultiplied.svg [ Pass ]
 svg/filters/filter-after-transform-crash.svg [ Pass ]
 svg/filters/filter-cycle.html [ Pass ]
 svg/filters/filter-reference-crash.html [ Pass ]
+svg/filters/first-letter-crash.html [ Pass ]
 svg/filters/svg-gaussianblur-edgeMode-duplicate.svg [ Pass ]
 svg/filters/svg-transform-blur-crash.svg [ Pass ]
 
@@ -1357,8 +1404,8 @@ svg/hittest/svg-small-viewbox.xhtml [ Pass ]
 svg/hittest/svg-use-element-from-point.html [ Pass ]
 svg/hittest/zero-length-butt-cap-path.xhtml [ Pass ]
 
-svg/paint-order/paint-order-text-span-001.html [ Pass ]
-svg/paint-order/paint-order-text-stroke.html [ Pass ]
+svg/paint-order/paint-order-text-tspan-001.svg [ Pass ]
+svg/paint-order/paint-order-text-stroke.svg [ Pass ]
 svg/paint-order/parsing-paint-order.html [ Pass ]
 
 svg/path-arc-invalid.html [ Pass ]
