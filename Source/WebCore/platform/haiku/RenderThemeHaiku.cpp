@@ -32,6 +32,8 @@
 #include "GraphicsContext.h"
 #include "NotImplemented.h"
 #include "PaintInfo.h"
+#include "UserAgentScripts.h"
+#include "UserAgentStyleSheets.h"
 #include <ControlLook.h>
 #include <View.h>
 
@@ -57,9 +59,9 @@ RenderThemeHaiku::~RenderThemeHaiku()
 {
 }
 
-static bool supportsFocus(ControlPart appearance)
+bool RenderThemeHaiku::supportsFocusRing(const RenderStyle* style) const
 {
-    switch (appearance) {
+    switch (style->appearance()) {
     case PushButtonPart:
     case ButtonPart:
     case TextFieldPart:
@@ -72,11 +74,6 @@ static bool supportsFocus(ControlPart appearance)
     default:
         return false;
     }
-}
-
-bool RenderThemeHaiku::supportsFocusRing(const RenderStyle* style) const
-{
-    return supportsFocus(style->appearance());
 }
 
 Color RenderThemeHaiku::platformActiveSelectionBackgroundColor() const
@@ -99,14 +96,19 @@ Color RenderThemeHaiku::platformInactiveSelectionForegroundColor() const
     return Color(0, 0, 0, 255);
 }
 
-Color RenderThemeHaiku::platformTextSearchHighlightColor() const
-{
-    return Color(255, 80, 40, 200);
-}
-
 void RenderThemeHaiku::systemFont(CSSValueID propId, FontDescription&) const
 {
     notImplemented();
+}
+
+String RenderThemeHaiku::mediaControlsStyleSheet()
+{
+    return ASCIILiteral(mediaControlsAppleUserAgentStyleSheet);
+}
+
+String RenderThemeHaiku::mediaControlsScript()
+{
+    return ASCIILiteral(mediaControlsAppleJavaScript);
 }
 
 bool RenderThemeHaiku::paintCheckbox(RenderObject* object, const PaintInfo& info, const IntRect& intRect)
@@ -170,12 +172,6 @@ void RenderThemeHaiku::setRadioSize(RenderStyle* style) const
     setCheckboxSize(style);
 }
 
-void RenderThemeHaiku::adjustButtonStyle(StyleResolver* selector, RenderStyle* style, Element* element) const
-{
-	// TODO: If this is the default button, extend the size.
-	RenderTheme::adjustButtonStyle(selector, style, element);
-}
-
 bool RenderThemeHaiku::paintButton(RenderObject* object, const PaintInfo& info, const IntRect& intRect)
 {
     if (info.context->paintingDisabled())
@@ -202,18 +198,9 @@ bool RenderThemeHaiku::paintButton(RenderObject* object, const PaintInfo& info, 
     return false;
 }
 
-void RenderThemeHaiku::setButtonSize(RenderStyle* style) const
-{
-	RenderTheme::setButtonSize(style);
-}
-
 void RenderThemeHaiku::adjustTextFieldStyle(StyleResolver* selector, RenderStyle* style, Element* element) const
 {
-#if 0
-	RenderTheme::adjustTextFieldStyle(selector, style, element);
-#else
     style->setBackgroundColor(Color::transparent);
-#endif
 }
 
 bool RenderThemeHaiku::paintTextField(RenderObject* object, const PaintInfo& info, const IntRect& intRect)
@@ -243,11 +230,7 @@ bool RenderThemeHaiku::paintTextField(RenderObject* object, const PaintInfo& inf
 
 void RenderThemeHaiku::adjustTextAreaStyle(StyleResolver* selector, RenderStyle* style, Element* element) const
 {
-#if 0
-	RenderTheme::adjustTextAreaStyle(selector, style, element);
-#else
 	adjustTextFieldStyle(selector, style, element);
-#endif
 }
 
 bool RenderThemeHaiku::paintTextArea(RenderObject* object, const PaintInfo& info, const IntRect& intRect)
@@ -258,11 +241,6 @@ bool RenderThemeHaiku::paintTextArea(RenderObject* object, const PaintInfo& info
 void RenderThemeHaiku::adjustMenuListStyle(StyleResolver* selector, RenderStyle* style, Element* element) const
 {
     adjustMenuListButtonStyle(selector, style, element);
-}
-
-bool RenderThemeHaiku::paintMenuList(RenderObject* object, const PaintInfo& info, const IntRect& intRect)
-{
-    return paintMenuListButton(object, info, intRect);
 }
 
 void RenderThemeHaiku::adjustMenuListButtonStyle(StyleResolver* selector, RenderStyle* style, Element* element) const
@@ -288,7 +266,7 @@ void RenderThemeHaiku::adjustMenuListButtonStyle(StyleResolver* selector, Render
     style->setMinHeight(Length(minHeight, Fixed));
 }
 
-bool RenderThemeHaiku::paintMenuListButton(RenderObject* object, const PaintInfo& info, const IntRect& intRect)
+bool RenderThemeHaiku::paintMenuList(RenderObject* object, const PaintInfo& info, const IntRect& intRect)
 {
     if (info.context->paintingDisabled())
         return true;

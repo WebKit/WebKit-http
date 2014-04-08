@@ -39,45 +39,41 @@ private:
 public:
     static PassRefPtr<RenderTheme> create();
 
-    // A method asking if the theme's controls actually care about redrawing when hovered.
-    virtual bool supportsHover(const RenderStyle* style) const { return false; }
-
     // A method asking if the theme is able to draw the focus ring.
-    virtual bool supportsFocusRing(const RenderStyle*) const;
+    bool supportsFocusRing(const RenderStyle*) const override;
 
     // The platform selection color.
-    virtual Color platformActiveSelectionBackgroundColor() const;
-    virtual Color platformInactiveSelectionBackgroundColor() const;
-    virtual Color platformActiveSelectionForegroundColor() const;
-    virtual Color platformInactiveSelectionForegroundColor() const;
-
-    virtual Color platformTextSearchHighlightColor() const;
+    Color platformActiveSelectionBackgroundColor() const override;
+    Color platformInactiveSelectionBackgroundColor() const override;
+    Color platformActiveSelectionForegroundColor() const override;
+    Color platformInactiveSelectionForegroundColor() const override;
 
     // System fonts.
-    virtual void systemFont(CSSValueID propId, FontDescription&) const;
+    void systemFont(CSSValueID propId, FontDescription&) const override;
 
+#if ENABLE(VIDEO)
+    String mediaControlsStyleSheet() override;
+    String mediaControlsScript() override;
+#endif
 protected:
-    virtual bool paintCheckbox(RenderObject*, const PaintInfo&, const IntRect&);
-    virtual void setCheckboxSize(RenderStyle*) const;
+    bool paintCheckbox(RenderObject*, const PaintInfo&, const IntRect&) override;
+    void setCheckboxSize(RenderStyle*) const override;
 
-    virtual bool paintRadio(RenderObject*, const PaintInfo&, const IntRect&);
-    virtual void setRadioSize(RenderStyle*) const;
+    bool paintRadio(RenderObject*, const PaintInfo&, const IntRect&) override;
+    void setRadioSize(RenderStyle*) const override;
 
-    virtual void adjustButtonStyle(StyleResolver*, RenderStyle*, Element*) const;
-    virtual bool paintButton(RenderObject*, const PaintInfo&, const IntRect&);
-    virtual void setButtonSize(RenderStyle*) const;
+    bool paintButton(RenderObject*, const PaintInfo&, const IntRect&) override;
 
-    virtual void adjustTextFieldStyle(StyleResolver*, RenderStyle*, Element*) const;
-    virtual bool paintTextField(RenderObject*, const PaintInfo&, const IntRect&);
+    void adjustTextFieldStyle(StyleResolver*, RenderStyle*, Element*) const override;
+    bool paintTextField(RenderObject*, const PaintInfo&, const IntRect&) override;
 
-    virtual void adjustTextAreaStyle(StyleResolver*, RenderStyle*, Element*) const;
-    virtual bool paintTextArea(RenderObject*, const PaintInfo&, const IntRect&);
+    void adjustTextAreaStyle(StyleResolver*, RenderStyle*, Element*) const override;
+    bool paintTextArea(RenderObject*, const PaintInfo&, const IntRect&) override;
 
-    virtual void adjustMenuListStyle(StyleResolver*, RenderStyle*, Element*) const;
-    virtual bool paintMenuList(RenderObject*, const PaintInfo&, const IntRect&);
+    void adjustMenuListStyle(StyleResolver*, RenderStyle*, Element*) const override;
+    bool paintMenuList(RenderObject*, const PaintInfo&, const IntRect&) override;
 
-    virtual void adjustMenuListButtonStyle(StyleResolver*, RenderStyle*, Element*) const;
-    virtual bool paintMenuListButton(RenderObject*, const PaintInfo&, const IntRect&);
+    void adjustMenuListButtonStyle(StyleResolver*, RenderStyle*, Element*) const override;
 
 private:
 	unsigned flagsForObject(RenderObject*) const;

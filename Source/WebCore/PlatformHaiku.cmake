@@ -108,6 +108,16 @@ if (WTF_USE_TEXTURE_MAPPER)
     )
 endif ()
 
+list(APPEND WebCore_USER_AGENT_STYLE_SHEETS
+    ${WEBCORE_DIR}/Modules/mediacontrols/mediaControlsApple.css
+)
+
+set(WebCore_USER_AGENT_SCRIPTS 
+    ${WEBCORE_DIR}/Modules/mediacontrols/mediaControlsApple.js
+)
+
+set(WebCore_USER_AGENT_SCRIPTS_DEPENDENCIES ${WEBCORE_DIR}/platform/haiku/RenderThemeHaiku.cpp)
+
 list(APPEND WebCore_LIBRARIES
   ${ICU_LIBRARIES}
   ${JPEG_LIBRARY}
