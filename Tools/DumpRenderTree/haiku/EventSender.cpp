@@ -334,33 +334,46 @@ static JSValueRef continuousMouseScrollByCallback(JSContextRef context, JSObject
     return JSValueMakeUndefined(context);
 }
 
+struct mapping {
+    const char* name;
+    uint32_t code;
+    char byte;
+};
+
 static BMessage* keyPadNameFromJSValue(JSStringRef character, unsigned modifiers)
 {
     BMessage* message = new BMessage(B_KEY_DOWN);
     message->AddInt32("modifiers", modifiers);
-    if (equals(character, "leftArrow"))
-        message->AddInt32("key", B_LEFT_ARROW);
-    else if (equals(character, "rightArrow"))
-        message->AddInt32("key", B_RIGHT_ARROW);
-    else if (equals(character, "upArrow"))
-        message->AddInt32("key", B_UP_ARROW);
-    else if (equals(character, "downArrow"))
-        message->AddInt32("key", B_DOWN_ARROW);
-    else if (equals(character, "pageUp"))
-        message->AddInt32("key", B_PAGE_UP);
-    else if (equals(character, "pageDown"))
-        message->AddInt32("key", B_PAGE_DOWN);
-    else if (equals(character, "home"))
-        message->AddInt32("key", B_HOME);
-    else if (equals(character, "end"))
-        message->AddInt32("key", B_END);
-    else if (equals(character, "insert"))
-        message->AddInt32("key", B_INSERT);
-    else if (equals(character, "delete"))
-        message->AddInt32("key", B_DELETE);
-    else
-        message->AddString("bytes", character->string());
 
+    static const mapping keys [] = {
+        {"leftArrow",  0x48, B_LEFT_ARROW},
+        {"rightArrow", 0x4a, B_RIGHT_ARROW},
+        {"upArrow",    0x38, B_UP_ARROW},
+        {"downArrow",  0x59, B_DOWN_ARROW},
+        {"pageUp",     0x39, B_PAGE_UP},
+        {"pageDown",   0x5a, B_PAGE_DOWN},
+        {"home",       0x37, B_HOME},
+        {"end",        0x58, B_END},
+        {"insert",     0x64, B_INSERT},
+        {"delete",     0x65, B_DELETE},
+    };
+
+    bool special = false;
+    for(int i = 0; i < sizeof(keys)/sizeof(mapping); i++)
+    {
+        if (equals(character, keys[i].name)) {
+            message->AddInt32("key", keys[i].code);
+            message->AddData("bytes", B_STRING_TYPE, &keys[i].byte, 1);
+            special = true;
+        }
+    }
+
+    if(!special) {
+        BString bytes(character->string());
+        message->AddString("bytes", bytes);
+        if ((character->length() == 1) && (bytes[0] >= 'A' && bytes[0] <= 'Z'))
+            modifiers |= B_SHIFT_KEY;
+    }
     return message;
 }
 
@@ -370,54 +383,42 @@ static BMessage* keyNameFromJSValue(JSStringRef character, unsigned modifiers)
 
     message->AddInt32("modifiers", modifiers);
 
-    if (equals(character, "leftArrow"))
-        message->AddInt32("key", B_LEFT_ARROW);
-    else if (equals(character, "rightArrow"))
-        message->AddInt32("key", B_RIGHT_ARROW);
-    else if (equals(character, "upArrow"))
-        message->AddInt32("key", B_UP_ARROW);
-    else if (equals(character, "downArrow"))
-        message->AddInt32("key", B_DOWN_ARROW);
-    else if (equals(character, "pageUp"))
-        message->AddInt32("key", B_PAGE_UP);
-    else if (equals(character, "pageDown"))
-        message->AddInt32("key", B_PAGE_DOWN);
-    else if (equals(character, "home"))
-        message->AddInt32("key", B_HOME);
-    else if (equals(character, "end"))
-        message->AddInt32("key", B_END);
-    else if (equals(character, "insert"))
-        message->AddInt32("key", B_INSERT);
-    else if (equals(character, "delete"))
-        message->AddInt32("key", B_DELETE);
+    static const mapping keys [] = {
+        {"leftArrow",  0x61, B_LEFT_ARROW},
+        {"rightArrow", 0x63, B_RIGHT_ARROW},
+        {"upArrow",    0x57, B_UP_ARROW},
+        {"downArrow",  0x62, B_DOWN_ARROW},
+        {"pageUp",     0x21, B_PAGE_UP},
+        {"pageDown",   0x36, B_PAGE_DOWN},
+        {"home",       0x20, B_HOME},
+        {"end",        0x35, B_END},
+        {"insert",     0x1f, B_INSERT},
+        {"delete",     0x34, B_DELETE},
 
-    // Function keys
-    else if (equals(character, "printScreen"))
-        message->AddInt32("key", B_PRINT_KEY);
-    else if (equals(character, "F1"))
-        message->AddInt32("key", B_F1_KEY);
-    else if (equals(character, "F2"))
-        message->AddInt32("key", B_F2_KEY);
-    else if (equals(character, "F3"))
-        message->AddInt32("key", B_F3_KEY);
-    else if (equals(character, "F4"))
-        message->AddInt32("key", B_F4_KEY);
-    else if (equals(character, "F5"))
-        message->AddInt32("key", B_F5_KEY);
-    else if (equals(character, "F6"))
-        message->AddInt32("key", B_F6_KEY);
-    else if (equals(character, "F7"))
-        message->AddInt32("key", B_F7_KEY);
-    else if (equals(character, "F8"))
-        message->AddInt32("key", B_F8_KEY);
-    else if (equals(character, "F9"))
-        message->AddInt32("key", B_F9_KEY);
-    else if (equals(character, "F10"))
-        message->AddInt32("key", B_F10_KEY);
-    else if (equals(character, "F11"))
-        message->AddInt32("key", B_F11_KEY);
-    else if (equals(character, "F12"))
-        message->AddInt32("key", B_F12_KEY);
+        {"printScreen",B_PRINT_KEY, B_FUNCTION_KEY},
+        {"F1",         B_F1_KEY, B_FUNCTION_KEY},
+        {"F2",         B_F2_KEY, B_FUNCTION_KEY},
+        {"F3",         B_F3_KEY, B_FUNCTION_KEY},
+        {"F4",         B_F4_KEY, B_FUNCTION_KEY},
+        {"F5",         B_F5_KEY, B_FUNCTION_KEY},
+        {"F6",         B_F6_KEY, B_FUNCTION_KEY},
+        {"F7",         B_F7_KEY, B_FUNCTION_KEY},
+        {"F8",         B_F8_KEY, B_FUNCTION_KEY},
+        {"F9",         B_F9_KEY, B_FUNCTION_KEY},
+        {"F10",        B_F10_KEY, B_FUNCTION_KEY},
+        {"F11",        B_F11_KEY, B_FUNCTION_KEY},
+        {"F12",        B_F12_KEY, B_FUNCTION_KEY}
+    };
+
+    bool special = false;
+    for(int i = 0; i < sizeof(keys)/sizeof(mapping); i++)
+    {
+        if (equals(character, keys[i].name)) {
+            message->AddInt32("key", keys[i].code);
+            message->AddData("bytes", B_STRING_TYPE, &keys[i].byte, 1);
+            special = true;
+        }
+    }
 
 #if 0
     // Modifiers
@@ -437,7 +438,7 @@ static BMessage* keyNameFromJSValue(JSStringRef character, unsigned modifiers)
         return new KeyEventInfo("Alt_R", modifiers);
 #endif
 
-    else {
+    if(!special) {
         BString bytes(character->string());
         message->AddString("bytes", bytes);
         if ((character->length() == 1) && (bytes[0] >= 'A' && bytes[0] <= 'Z'))
