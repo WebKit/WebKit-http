@@ -903,13 +903,14 @@ void GraphicsContext::translate(float x, float y)
     // TODO: currentPath needs to be translated along, according to Qt implementation
 }
 
-void GraphicsContext::rotate(float /*radians*/)
+void GraphicsContext::rotate(float radians)
 {
     if (paintingDisabled())
         return;
 
-    puts("CTM:rotate");
-    notImplemented();
+    BAffineTransform current = m_data->view()->Transform();
+    current.RotateBy(radians);
+    m_data->view()->SetTransform(current);
 }
 
 void GraphicsContext::scale(const FloatSize& size)
