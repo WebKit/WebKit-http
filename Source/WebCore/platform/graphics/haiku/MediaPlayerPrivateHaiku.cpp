@@ -42,12 +42,14 @@ namespace WebCore {
 class MediaBuffer: public BMallocIO {
     public:
         MediaBuffer();
-        ssize_t Write(const void* buffer, size_t size) override;
+        ssize_t WriteAt(off_t position, const void* buffer, size_t size) override;
 	    ssize_t ReadAt(off_t position, void* buffer, size_t size) override;
 
         off_t fInvalidRead;
 
     private:
+        // TODO this is not enough, as we run multiple requests and they each
+        // have a write position.
         off_t fWritePointer;
 };
 
@@ -60,11 +62,12 @@ MediaBuffer::MediaBuffer()
 }
 
 
-ssize_t MediaBuffer::Write(const void* buffer, size_t size)
+ssize_t MediaBuffer::WriteAt(off_t position, const void* buffer, size_t size)
 {
-    ssize_t written = WriteAt(fWritePointer, buffer, size);
+    ASSERT(fWritePointer == position);
+    ssize_t written = BMallocIO::WriteAt(fWritePointer, buffer, size);
     if (written > 0)
-        fWritePointer += written;
+        fWritePointer = std::max(fWritePointer, position + written);
     return written;
 }
 
@@ -337,9 +340,9 @@ void MediaPlayerPrivate::paint(GraphicsContext* context, const IntRect& r)
 
 // #pragma mark - BUrlProtocolListener
 
-void MediaPlayerPrivate::DataReceived(BUrlRequest*, const char* data, ssize_t size)
+void MediaPlayerPrivate::DataReceived(BUrlRequest*, const char* data, off_t position, ssize_t size)
 {
-    m_cache->Write(data, size);
+    m_cache->WriteAt(position, data, size);
 }
 
 void MediaPlayerPrivate::DownloadProgress(BUrlRequest*, ssize_t currentSize,

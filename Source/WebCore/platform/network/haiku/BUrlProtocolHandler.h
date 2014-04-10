@@ -67,12 +67,13 @@ public:
 
 private:
     void sendResponseIfNeeded();
-    
-	void HeadersReceived(BUrlRequest* caller);
-	void DataReceived(BUrlRequest* caller, const char* data, ssize_t size);
-	void UploadProgress(BUrlRequest* caller, ssize_t bytesSent, ssize_t bytesTotal);
-	void RequestCompleted(BUrlRequest* caller, bool success);
     void AuthenticationNeeded(BHttpRequest* caller, ResourceResponse& response);
+    
+    // BUrlListener hooks
+	void HeadersReceived(BUrlRequest* caller) override;
+	void DataReceived(BUrlRequest* caller, const char* data, off_t position, ssize_t size) override;
+	void UploadProgress(BUrlRequest* caller, ssize_t bytesSent, ssize_t bytesTotal) override;
+	void RequestCompleted(BUrlRequest* caller, bool success) override;
 
 private:
     void start();

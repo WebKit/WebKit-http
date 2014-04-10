@@ -443,7 +443,7 @@ void BUrlProtocolHandler::HeadersReceived(BUrlRequest* /*caller*/)
     sendResponseIfNeeded();
 }
 
-void BUrlProtocolHandler::DataReceived(BUrlRequest* /*caller*/, const char* data, ssize_t size)
+void BUrlProtocolHandler::DataReceived(BUrlRequest* /*caller*/, const char* data, off_t position, ssize_t size)
 {
     sendResponseIfNeeded();
 

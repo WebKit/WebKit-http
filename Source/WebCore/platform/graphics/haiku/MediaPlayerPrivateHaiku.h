@@ -76,7 +76,7 @@ class MediaPlayerPrivate : public MediaPlayerPrivateInterface, BUrlProtocolAsync
         void paint(GraphicsContext*, const IntRect&) override;
 
         // BUrlProtocolListener API
-	    void DataReceived(BUrlRequest* caller, const char* data, ssize_t size) override;
+	    void DataReceived(BUrlRequest* caller, const char* data, off_t position, ssize_t size) override;
         void DownloadProgress(BUrlRequest*, ssize_t, ssize_t) override;
         void RequestCompleted(BUrlRequest*, bool success) override;
 
