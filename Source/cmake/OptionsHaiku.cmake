@@ -33,8 +33,6 @@ set(WTF_USE_UDIS86 1)
 add_definitions(-DWTF_USE_PTHREADS=1)
 add_definitions(-DWTF_USE_ICU_UNICODE=1)
 
-SET(JSC_EXECUTABLE_NAME jsc)
-
 set(DATA_INSTALL_DIR "data/WebKit" CACHE PATH "Installation path for data")
 add_definitions(-DDATA_DIR="${CMAKE_INSTALL_PREFIX}/${DATA_INSTALL_DIR}")
 
@@ -232,6 +230,8 @@ if (ENABLE_INDEXED_DATABASE)
     set(WTF_USE_LEVELDB 1)
     add_definitions(-DWTF_USE_LEVELDB=1)
 endif ()
+
+set(SHOULD_INSTALL_JS_SHELL ON)
 
 set(WEBKIT_CPACK_ALL_PORTS 1) # Until we can safely extract only the sources used by Haiku
 set(WEBKIT_CPACK_ADD_TOOLS 1) # Mainly for generate_webkit_info.sh
