@@ -23,6 +23,7 @@
 
 #include "MediaPlayerPrivate.h"
 
+#include <ObjectList.h>
 #include <UrlProtocolAsynchronousListener.h>
 
 class BBitmap;
@@ -95,9 +96,8 @@ class MediaPlayerPrivate : public MediaPlayerPrivateInterface, BUrlProtocolAsync
         static MediaPlayer::SupportsType supportsType(const MediaEngineSupportParameters&);
 
         mutable bool m_didReceiveData;
-        BUrlRequest* m_urlRequest;
+        BObjectList<BUrlRequest> m_requests;
         BPositionIO* m_cache;
-        off_t m_writePos;
         BMediaFile* m_mediaFile;
         BMediaTrack* m_audioTrack;
         BMediaTrack* m_videoTrack;
@@ -109,6 +109,7 @@ class MediaPlayerPrivate : public MediaPlayerPrivateInterface, BUrlProtocolAsync
         MediaPlayer::ReadyState m_readyState;
 
         float m_volume;
+        float m_currentTime;
         bool m_paused;
 };
 
