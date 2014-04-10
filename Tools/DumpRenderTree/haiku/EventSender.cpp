@@ -591,6 +591,8 @@ void DumpRenderTreeClient::injectKeyEvent(BWebPage* target, BMessage* event)
     // expect this to be synchronous (the event must be processed when the
     // method returns)
     target->handleKeyEvent(event);
+    event->what = B_KEY_UP;
+    target->handleKeyEvent(event);
     delete event;
 }
 }
