@@ -307,8 +307,10 @@ static void resetDefaultsToConsistentValues()
     ewk_view_font_family_name_set(mainView(), EWK_FONT_FAMILY_SANS_SERIF, "Helvetica");
     ewk_view_font_family_name_set(mainView(), EWK_FONT_FAMILY_CURSIVE, "cursive");
     ewk_view_font_family_name_set(mainView(), EWK_FONT_FAMILY_FANTASY, "fantasy");
-    ewk_view_setting_font_default_size_set(mainView(), 16);
-    ewk_view_setting_font_monospace_size_set(mainView(), 13);
+#endif
+    webView->WebPage()->Settings()->SetDefaultStandardFontSize(16);
+    webView->WebPage()->Settings()->SetDefaultFixedFontSize(13);
+#if 0
     ewk_view_setting_font_minimum_size_set(mainView(), 0);
     ewk_view_setting_caret_browsing_set(mainView(), EINA_FALSE);
     ewk_view_setting_page_cache_set(mainView(), EINA_FALSE);
@@ -327,9 +329,9 @@ static void resetDefaultsToConsistentValues()
     ewk_view_setting_allow_file_access_from_file_urls_set(mainView(), EINA_TRUE);
     ewk_view_setting_resizable_textareas_set(mainView(), EINA_TRUE);
 
-    ewk_view_zoom_set(mainView(), 1.0, 0, 0);
-    ewk_view_scale_set(mainView(), 1.0, 0, 0);
-    ewk_view_text_zoom_set(mainView(), 1.0);
+#endif
+    webView->ResetZoomFactor();
+#if 0
     ewk_view_visibility_state_set(mainView(), EWK_PAGE_VISIBILITY_STATE_VISIBLE, true);
     ewk_view_text_direction_set(mainView(), EWK_TEXT_DIRECTION_DEFAULT);
 
@@ -504,7 +506,7 @@ void DumpRenderTreeApp::ReadyToRun()
     webView->WebPage()->SetListener(this);
     Register(webView->WebPage());
     webView->WebPage()->Settings()->SetDefaultStandardFontSize(16);
-    webView->WebPage()->Settings()->SetDefaultFixedFontSize(16);
+    webView->WebPage()->Settings()->SetDefaultFixedFontSize(13);
         // Make sure we use the same metrics are others for the tests.
     webView->WebPage()->Settings()->Apply();
 
