@@ -34,13 +34,13 @@ namespace WebCore {
     public:
         DragClientHaiku(BWebView*);
         virtual void willPerformDragDestinationAction(DragDestinationAction, DragData&);
-        virtual void willPerformDragSourceAction(DragSourceAction, const IntPoint&, Clipboard&);
+        virtual void willPerformDragSourceAction(DragSourceAction, const IntPoint&, DataTransfer&);
         virtual DragDestinationAction actionMaskForDrag(DragData&);
 
         virtual DragSourceAction dragSourceActionMaskForPoint(const IntPoint&);
 
         virtual void startDrag(DragImageRef dragImage, const IntPoint& dragImageOrigin,
-                               const IntPoint& eventPos, Clipboard&, Frame&, bool linkDrag = false);
+                               const IntPoint& eventPos, DataTransfer&, Frame&, bool linkDrag = false);
 
         virtual void dragControllerDestroyed();
     private:

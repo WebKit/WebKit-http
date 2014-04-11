@@ -59,12 +59,12 @@ DragSourceAction DragClientHaiku::dragSourceActionMaskForPoint(const IntPoint&)
     return DragSourceActionAny;
 }
 
-void DragClientHaiku::willPerformDragSourceAction(DragSourceAction, const IntPoint&, Clipboard&)
+void DragClientHaiku::willPerformDragSourceAction(DragSourceAction, const IntPoint&, DataTransfer&)
 {
     notImplemented();
 }
 
-void DragClientHaiku::startDrag(DragImageRef dragImage, const IntPoint&, const IntPoint&, Clipboard&, Frame&, bool)
+void DragClientHaiku::startDrag(DragImageRef dragImage, const IntPoint&, const IntPoint&, DataTransfer&, Frame&, bool)
 {
     notImplemented();
 }

@@ -29,7 +29,7 @@
 #include "config.h"
 #include "EventHandler.h"
 
-#include "Clipboard.h"
+#include "DataTransfer.h"
 #include "EventNames.h"
 #include "FocusController.h"
 #include "Frame.h"
@@ -117,9 +117,9 @@ bool EventHandler::passWheelEventToWidget(const PlatformWheelEvent& event, Widge
     return static_cast<FrameView*>(widget)->frame().eventHandler().handleWheelEvent(event);
 }
 
-PassRefPtr<Clipboard> EventHandler::createDraggingClipboard() const
+PassRefPtr<DataTransfer> EventHandler::createDraggingDataTransfer() const
 {
-    return Clipboard::createForDragAndDrop();
+    return DataTransfer::createForDragAndDrop();
 }
 
 bool EventHandler::passMousePressEventToSubframe(MouseEventWithHitTestResults& mev, Frame* subframe)

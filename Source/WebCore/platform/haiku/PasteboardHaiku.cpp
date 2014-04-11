@@ -121,7 +121,7 @@ bool Pasteboard::writeString(const String& type, const String& data)
     return result;
 }
 
-void Pasteboard::writeSelection(Range& selectedRange, bool canSmartCopyOrDelete, Frame& frame, ShouldSerializeSelectedTextForClipboard)
+void Pasteboard::writeSelection(Range& selectedRange, bool canSmartCopyOrDelete, Frame& frame, ShouldSerializeSelectedTextForDataTransfer)
 {
     AutoClipboardLocker locker(be_clipboard);
     if (!locker.isLocked())
