@@ -379,6 +379,12 @@ String missingPluginText()
     return "Missing Plug-in";
 }
 
+String multipleFileUploadText(unsigned numberOfFiles)
+{
+    return String::number(numberOfFiles) + String::fromUTF8(" files");
+}
+
+
 String crashedPluginText()
 {
     return "Plug-in Failure";
@@ -401,13 +407,32 @@ String inactivePluginText()
     return String();
 }
 
-String multipleFileUploadText(unsigned)
+#if ENABLE(VIDEO_TRACK)
+String textTrackClosedCaptionsText()
 {
-    // FIXME:
-    notImplemented();
-    return String();
+    return String::fromUTF8("Closed Captions");
 }
 
+String textTrackSubtitlesText()
+{
+    return String::fromUTF8("Subtitles");
+}
+
+String textTrackOffMenuItemText()
+{
+    return String::fromUTF8("Off");
+}
+
+String textTrackAutomaticMenuItemText()
+{
+    return String::fromUTF8("Auto");
+}
+
+String textTrackNoLabelText()
+{
+    return String::fromUTF8("No label");
+}
+#endif
 
 String imageTitle(const String& filename, const IntSize& size)
 {
