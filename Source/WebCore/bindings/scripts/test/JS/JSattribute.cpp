@@ -55,7 +55,7 @@ void JSattributeConstructor::finishCreation(VM& vm, JSDOMGlobalObject* globalObj
 {
     Base::finishCreation(vm);
     ASSERT(inherits(info()));
-    putDirect(vm, vm.propertyNames->prototype, JSattributePrototype::self(vm, globalObject), DontDelete | ReadOnly);
+    putDirectPrototypeProperty(vm, JSattributePrototype::self(vm, globalObject), DontDelete | ReadOnly);
     putDirect(vm, vm.propertyNames->length, jsNumber(0), ReadOnly | DontDelete | DontEnum);
 }
 
@@ -128,26 +128,19 @@ bool JSattribute::getOwnPropertySlot(JSObject* object, ExecState* exec, Property
 EncodedJSValue jsattributeReadonly(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
 {
     JSattribute* castedThis = jsDynamicCast<JSattribute*>(JSValue::decode(thisValue));
-    UNUSED_PARAM(slotBase);
     if (UNLIKELY(!castedThis)) {
-        if (jsDynamicCast<JSattributePrototype*>(slotBase)) {
-            ScriptExecutionContext* scriptExecutionContext = jsCast<JSDOMGlobalObject*>(exec->lexicalGlobalObject())->scriptExecutionContext();
-            scriptExecutionContext->addConsoleMessage(MessageSource::JS, MessageLevel::Error, String("Deprecated attempt to access property 'readonly' on a non-attribute object."));
-            return JSValue::encode(jsUndefined());
-        }
-        return throwVMTypeError(exec, makeDOMBindingsTypeErrorString("The ", "attribute", ".", "readonly", " getter can only be used on instances of ", "attribute"));
+        if (jsDynamicCast<JSattributePrototype*>(slotBase))
+            return reportDeprecatedGetterError(*exec, "attribute", "readonly");
+        return throwGetterTypeError(*exec, "attribute", "readonly");
     }
-    UNUSED_PARAM(exec);
     attribute& impl = castedThis->impl();
     JSValue result = jsStringWithCache(exec, impl.readonly());
     return JSValue::encode(result);
 }
 
 
-EncodedJSValue jsattributeConstructor(ExecState* exec, JSObject* baseValue, EncodedJSValue thisValue, PropertyName)
+EncodedJSValue jsattributeConstructor(ExecState* exec, JSObject* baseValue, EncodedJSValue, PropertyName)
 {
-    UNUSED_PARAM(baseValue);
-    UNUSED_PARAM(thisValue);
     JSattributePrototype* domObject = jsDynamicCast<JSattributePrototype*>(baseValue);
     if (!domObject)
         return throwVMTypeError(exec);
@@ -212,7 +205,9 @@ JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject* globalObject, attribute* i
 
 attribute* toattribute(JSC::JSValue value)
 {
-    return value.inherits(JSattribute::info()) ? &jsCast<JSattribute*>(value)->impl() : 0;
+    if (auto* wrapper = jsDynamicCast<JSattribute*>(value))
+        return &wrapper->impl();
+    return nullptr;
 }
 
 }

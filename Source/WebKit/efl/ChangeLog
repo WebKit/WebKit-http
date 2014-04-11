@@ -1,3 +1,108 @@
+2014-04-08  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        Unreviewed EFL build fix attempt since r166956
+
+        * WebCoreSupport/DragClientEfl.cpp: Rename Clipboard to DataTransfer.
+        (WebCore::DragClientEfl::willPerformDragSourceAction):
+        (WebCore::DragClientEfl::startDrag): Ditto.
+        * WebCoreSupport/DragClientEfl.h:
+
+2014-04-08  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Change NavigatorContentUtils client ownership from port side to NavigatorContentUtils
+        https://bugs.webkit.org/show_bug.cgi?id=131299
+
+        Reviewed by Darin Adler.
+
+        EFL and GTK ports have managed own client of NavigatorContentUtils though it is only passed to
+        NavigatorContentUtils. The NavigatorContentUtils has used the client to call port functions. So,
+        there is no reason port implementation needs to manage the ownership. To manage the client is
+        unnecessary work in current implementation.
+
+        * ewk/ewk_view.cpp:
+        (_ewk_view_priv_new):
+
+2014-04-07  Hyowon Kim  <hw1008.kim@samsung.com>
+
+        Move to using std::unique_ptr for opengl, texmap, transforms and efl in WebCore/platform/graphics.
+        https://bugs.webkit.org/show_bug.cgi?id=131276
+
+        Reviewed by Darin Adler.
+
+        Replace uses of OwnPtr for TextureMapper in AcceleratedCompositingContextEfl with std::unique_ptr.
+
+        * WebCoreSupport/AcceleratedCompositingContextEfl.h:
+
+2014-04-06  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        [EFL][WK1] Apply std::unique_ptr<> to NavigatorContentUtilsClientEfl
+        https://bugs.webkit.org/show_bug.cgi?id=130958
+
+        Reviewed by Darin Adler.
+
+        As a step of replacing OwnPtr with std::unique_ptr, this patch replaces
+        OwnPtr with the std::unique_ptr for NavigatorContentUtilsClientEfl.
+
+        * WebCoreSupport/NavigatorContentUtilsClientEfl.cpp:
+        (WebCore::NavigatorContentUtilsClientEfl::create): Deleted.
+        * WebCoreSupport/NavigatorContentUtilsClientEfl.h:
+        * ewk/ewk_view.cpp:
+        (_ewk_view_priv_new):
+
+2014-04-05  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [EFL][WK1] Apply override and final keyword for ChromeClientEfl
+        https://bugs.webkit.org/show_bug.cgi?id=131261
+
+        Reviewed by Gyuyoung Kim.
+
+        There are unnecessary virtual methods in ChromeClientEfl.
+        Almost methods are already removed from parent class and
+        the others does not need to be virtual method.
+
+        This patch removed them and applied override and final.
+
+        * WebCoreSupport/ChromeClientEfl.cpp:
+        (WebCore::ChromeClientEfl::scheduleAnimation):
+        (WebCore::ChromeClientEfl::serviceScriptedAnimations): Deleted.
+        (WebCore::ChromeClientEfl::cancelGeolocationPermissionForFrame): Deleted.
+        (WebCore::ChromeClientEfl::invalidateContents): Deleted.
+        (WebCore::ChromeClientEfl::cancelGeolocationPermissionRequestForFrame): Deleted.
+        (WebCore::ChromeClientEfl::iconForFiles): Deleted.
+        * WebCoreSupport/ChromeClientEfl.h:
+        (WebCore::ChromeClientEfl::scrollRectIntoView): Deleted.
+        (WebCore::ChromeClientEfl::numWheelEventHandlersChanged): Deleted.
+
+2014-04-03  Hyowon Kim  <hw1008.kim@samsung.com>
+
+        [EFL] Should flush and render layers after the root layer is changed.
+        https://bugs.webkit.org/show_bug.cgi?id=131108
+
+        Reviewed by Gyuyoung Kim.
+
+        If there is no update event after root layer is changed, old webview can be shown.
+        Because the syncTimer is not being triggered by root layer change.
+        We should flush and render layers by starting syncTimer when the root layer is changed.
+
+        * WebCoreSupport/AcceleratedCompositingContextEfl.cpp:
+        (WebCore::AcceleratedCompositingContext::setRootGraphicsLayer): Add m_syncTimer.startOneShot(0);
+        * WebCoreSupport/AcceleratedCompositingContextEfl.h:
+        (WebCore::AcceleratedCompositingContext::setRootGraphicsLayer): Move implementation from header to source.
+
+2014-04-02  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [EFL][WK1] Use Evas_Touch_Point_State instead of Ewk_Touch_Point_Type
+        https://bugs.webkit.org/show_bug.cgi?id=131151
+
+        Reviewed by Gyuyoung Kim.
+
+        Like ewebkit2, we'd beter to use EFL type instead of WebKit specific type
+        In addition, changed type of id as int to match with ewebkit2.
+
+        * ewk/ewk_frame.h: Replace Ewk_Touch_Point_Type to Evas_Touch_Point_State.
+        * ewk/ewk_touch_event.cpp:
+        (toPlatformTouchPointState):
+
 2014-04-02  Martin Hock  <mhock@apple.com>
 
         Unify private browsing with sessions.

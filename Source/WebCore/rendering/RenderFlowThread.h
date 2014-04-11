@@ -138,6 +138,7 @@ public:
     virtual bool addForcedRegionBreak(const RenderBlock*, LayoutUnit, RenderBox* breakChild, bool isBefore, LayoutUnit* offsetBreakAdjustment = 0);
     void applyBreakAfterContent(LayoutUnit);
 
+    virtual bool isPageLogicalHeightKnown() const { return true; }
     bool pageLogicalSizeChanged() const { return m_pageLogicalSizeChanged; }
 
     bool hasAutoLogicalHeightRegions() const { ASSERT(isAutoLogicalHeightRegionsCountConsistent()); return m_autoLogicalHeightRegionsCount; }
@@ -346,6 +347,16 @@ public:
 private:
     RenderFlowThread* m_renderFlowThread;
     RenderFlowThread* m_previousRenderFlowThread;
+};
+
+class CurrentRenderFlowThreadDisabler {
+    WTF_MAKE_NONCOPYABLE(CurrentRenderFlowThreadDisabler);
+public:
+    CurrentRenderFlowThreadDisabler(RenderView*);
+    ~CurrentRenderFlowThreadDisabler();
+private:
+    RenderView* m_view;
+    RenderFlowThread* m_renderFlowThread;
 };
 
 // This structure is used by PODIntervalTree for debugging.

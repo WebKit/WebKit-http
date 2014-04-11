@@ -1,5 +1,6 @@
 /*
 * Copyright (C) 2012 Google Inc. All rights reserved.
+* Copyright (C) 2014 University of Washington.
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are
@@ -38,6 +39,7 @@
 #include "InspectorWebFrontendDispatchers.h"
 #include "LayoutRect.h"
 #include <inspector/InspectorValues.h>
+#include <inspector/ScriptDebugListener.h>
 #include <wtf/Vector.h>
 #include <wtf/WeakPtr.h>
 
@@ -60,7 +62,6 @@ typedef String ErrorString;
 
 enum class TimelineRecordType {
     EventDispatch,
-    BeginFrame,
     ScheduleStyleRecalculation,
     RecalculateStyles,
     InvalidateLayout,
@@ -68,7 +69,6 @@ enum class TimelineRecordType {
     Paint,
     ScrollLayer,
     ResizeImage,
-    CompositeLayers,
 
     ParseHTML,
 
@@ -95,6 +95,7 @@ enum class TimelineRecordType {
     XHRLoad,
 
     FunctionCall,
+    ProbeSample,
 
     RequestAnimationFrame,
     CancelAnimationFrame,
@@ -121,7 +122,8 @@ private:
 
 class InspectorTimelineAgent
     : public InspectorAgentBase
-    , public Inspector::InspectorTimelineBackendDispatcherHandler {
+    , public Inspector::InspectorTimelineBackendDispatcherHandler
+    , public Inspector::ScriptDebugListener {
     WTF_MAKE_NONCOPYABLE(InspectorTimelineAgent);
 public:
     enum InspectorType { PageInspector, WorkerInspector };
@@ -134,8 +136,6 @@ public:
 
     virtual void start(ErrorString*, const int* maxCallStackDepth) override;
     virtual void stop(ErrorString*) override;
-    virtual void canMonitorMainThread(ErrorString*, bool*) override;
-    virtual void supportsFrameInstrumentation(ErrorString*, bool*) override;
 
     int id() const { return m_id; }
 
@@ -147,9 +147,6 @@ public:
 
     void willDispatchEvent(const Event&, Frame*);
     void didDispatchEvent();
-
-    void didBeginFrame();
-    void didCancelFrame();
 
     void didInvalidateLayout(Frame*);
     void willLayout(Frame*);
@@ -164,9 +161,6 @@ public:
 
     void willScroll(Frame*);
     void didScroll();
-
-    void willComposite();
-    void didComposite();
 
     void willWriteHTML(unsigned startLine, Frame*);
     void didWriteHTML(unsigned endLine);
@@ -211,19 +205,29 @@ public:
     void didDestroyWebSocket(unsigned long identifier, Frame*);
 #endif
 
+protected:
+    // ScriptDebugListener. This is only used to create records for probe samples.
+    virtual void didParseSource(JSC::SourceID, const Script&) override { }
+    virtual void failedToParseSource(const String&, const String&, int, int, const String&) override { }
+    virtual void didPause(JSC::ExecState*, const Deprecated::ScriptValue&, const Deprecated::ScriptValue&) override { }
+    virtual void didContinue() override { }
+
+    virtual void breakpointActionLog(JSC::ExecState*, const String&) override { }
+    virtual void breakpointActionSound(int) override { }
+    virtual void breakpointActionProbe(JSC::ExecState*, const Inspector::ScriptBreakpointAction&, int hitCount, const Deprecated::ScriptValue& result) override;
+
 private:
     friend class TimelineRecordStack;
 
     struct TimelineRecordEntry {
-        TimelineRecordEntry(PassRefPtr<Inspector::InspectorObject> record, PassRefPtr<Inspector::InspectorObject> data, PassRefPtr<Inspector::InspectorArray> children, TimelineRecordType type, size_t usedHeapSizeAtStart)
-            : record(record), data(data), children(children), type(type), usedHeapSizeAtStart(usedHeapSizeAtStart)
+        TimelineRecordEntry(PassRefPtr<Inspector::InspectorObject> record, PassRefPtr<Inspector::InspectorObject> data, PassRefPtr<Inspector::InspectorArray> children, TimelineRecordType type)
+            : record(record), data(data), children(children), type(type)
         {
         }
         RefPtr<Inspector::InspectorObject> record;
         RefPtr<Inspector::InspectorObject> data;
         RefPtr<Inspector::InspectorArray> children;
         TimelineRecordType type;
-        size_t usedHeapSizeAtStart;
     };
 
     void sendEvent(PassRefPtr<Inspector::InspectorObject>);
@@ -234,11 +238,7 @@ private:
 
     void didCompleteCurrentRecord(TimelineRecordType);
 
-    void setHeapSizeStatistics(Inspector::InspectorObject* record);
-    void commitFrameRecord();
-
     void addRecordToTimeline(PassRefPtr<Inspector::InspectorObject>, TimelineRecordType);
-    void innerAddRecordToTimeline(PassRefPtr<Inspector::InspectorObject>, TimelineRecordType);
     void clearRecordStack();
 
     void localToPageQuad(const RenderObject&, const LayoutRect&, FloatQuad*);
@@ -257,7 +257,6 @@ private:
 
     int m_id;
     int m_maxCallStackDepth;
-    RefPtr<Inspector::InspectorObject> m_pendingFrameRecord;
     InspectorType m_inspectorType;
     InspectorClient* m_client;
     WeakPtrFactory<InspectorTimelineAgent> m_weakFactory;

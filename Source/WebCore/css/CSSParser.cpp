@@ -2898,7 +2898,7 @@ bool CSSParser::parseValue(CSSPropertyID propId, bool important)
         parsedValue = parseShapeProperty(propId);
         break;
     case CSSPropertyWebkitShapeMargin:
-        validPrimitive = (RuntimeEnabledFeatures::sharedFeatures().cssShapesEnabled() && !id && validUnit(value, FLength | FNonNeg));
+        validPrimitive = (RuntimeEnabledFeatures::sharedFeatures().cssShapesEnabled() && !id && validUnit(value, FLength | FPercent | FNonNeg));
         break;
     case CSSPropertyWebkitShapeImageThreshold:
         validPrimitive = (RuntimeEnabledFeatures::sharedFeatures().cssShapesEnabled() && !id && validUnit(value, FNumber));
@@ -4674,21 +4674,26 @@ bool CSSParser::parseAnimationProperty(CSSPropertyID propId, RefPtr<CSSValue>& r
 }
 
 #if ENABLE(CSS_GRID_LAYOUT)
-// The function parses [ <integer> || <string> ] in <grid-line> (which can be stand alone or with 'span').
-bool CSSParser::parseIntegerOrStringFromGridPosition(RefPtr<CSSPrimitiveValue>& numericValue, RefPtr<CSSPrimitiveValue>& gridLineName)
+static inline bool isValidCustomIdent(const CSSParserValue& value)
+{
+    return value.unit == CSSPrimitiveValue::CSS_IDENT && value.id != CSSValueSpan && value.id != CSSValueAuto;
+}
+
+// The function parses [ <integer> || <custom-ident> ] in <grid-line> (which can be stand alone or with 'span').
+bool CSSParser::parseIntegerOrCustomIdentFromGridPosition(RefPtr<CSSPrimitiveValue>& numericValue, RefPtr<CSSPrimitiveValue>& gridLineName)
 {
     CSSParserValue* value = m_valueList->current();
     if (validUnit(value, FInteger) && value->fValue) {
         numericValue = createPrimitiveNumericValue(value);
         value = m_valueList->next();
-        if (value && value->unit == CSSPrimitiveValue::CSS_STRING) {
+        if (value && isValidCustomIdent(*value)) {
             gridLineName = createPrimitiveStringValue(m_valueList->current());
             m_valueList->next();
         }
         return true;
     }
 
-    if (value->unit == CSSPrimitiveValue::CSS_STRING) {
+    if (isValidCustomIdent(*value)) {
         gridLineName = createPrimitiveStringValue(m_valueList->current());
         value = m_valueList->next();
         if (value && validUnit(value, FInteger) && value->fValue) {
@@ -4709,39 +4714,40 @@ PassRefPtr<CSSValue> CSSParser::parseGridPosition()
         return cssValuePool().createIdentifierValue(CSSValueAuto);
     }
 
-    if (value->id != CSSValueSpan && value->unit == CSSPrimitiveValue::CSS_IDENT) {
-        m_valueList->next();
-        return cssValuePool().createValue(value->string, CSSPrimitiveValue::CSS_STRING);
-    }
-
     RefPtr<CSSPrimitiveValue> numericValue;
     RefPtr<CSSPrimitiveValue> gridLineName;
     bool hasSeenSpanKeyword = false;
 
-    if (parseIntegerOrStringFromGridPosition(numericValue, gridLineName)) {
+    if (value->id == CSSValueSpan) {
+        hasSeenSpanKeyword = true;
+        if (auto* nextValue = m_valueList->next()) {
+            if (!isForwardSlashOperator(nextValue) && !parseIntegerOrCustomIdentFromGridPosition(numericValue, gridLineName))
+                    return nullptr;
+        }
+    } else if (parseIntegerOrCustomIdentFromGridPosition(numericValue, gridLineName)) {
         value = m_valueList->current();
         if (value && value->id == CSSValueSpan) {
             hasSeenSpanKeyword = true;
             m_valueList->next();
         }
-    } else if (value->id == CSSValueSpan) {
-        hasSeenSpanKeyword = true;
-        if (m_valueList->next())
-            parseIntegerOrStringFromGridPosition(numericValue, gridLineName);
     }
 
     // Check that we have consumed all the value list. For shorthands, the parser will pass
     // the whole value list (including the opposite position).
     if (m_valueList->current() && !isForwardSlashOperator(m_valueList->current()))
-        return 0;
+        return nullptr;
 
     // If we didn't parse anything, this is not a valid grid position.
     if (!hasSeenSpanKeyword && !gridLineName && !numericValue)
-        return 0;
+        return nullptr;
 
     // Negative numbers are not allowed for span (but are for <integer>).
     if (hasSeenSpanKeyword && numericValue && numericValue->getIntValue() < 0)
-        return 0;
+        return nullptr;
+
+    // For the <custom-ident> case.
+    if (gridLineName && !numericValue && !hasSeenSpanKeyword)
+        return cssValuePool().createValue(gridLineName->getStringValue(), CSSPrimitiveValue::CSS_STRING);
 
     RefPtr<CSSValueList> values = CSSValueList::createSpaceSeparated();
     if (hasSeenSpanKeyword)
@@ -5341,13 +5347,13 @@ PassRefPtr<CSSBasicShape> CSSParser::parseInsetRoundedCorners(PassRefPtr<CSSBasi
     if (!argument)
         return nullptr;
 
-    std::unique_ptr<CSSParserValueList> radiusArguments(new CSSParserValueList);
+    Vector<CSSParserValue*> radiusArguments;
     while (argument) {
-        radiusArguments->addValue(*argument);
+        radiusArguments.append(argument);
         argument = args->next();
     }
 
-    unsigned num = radiusArguments->size();
+    unsigned num = radiusArguments.size();
     if (!num || num > 9)
         return nullptr;
 
@@ -5355,7 +5361,7 @@ PassRefPtr<CSSBasicShape> CSSParser::parseInsetRoundedCorners(PassRefPtr<CSSBasi
 
     unsigned indexAfterSlash = 0;
     for (unsigned i = 0; i < num; ++i) {
-        CSSParserValue* value = radiusArguments->valueAt(i);
+        CSSParserValue* value = radiusArguments.at(i);
         if (value->unit == CSSParserValue::Operator) {
             if (value->iValue != '/')
                 return nullptr;
@@ -5422,31 +5428,19 @@ PassRefPtr<CSSBasicShape> CSSParser::parseBasicShapeInset(CSSParserValueList* ar
 
     switch (widthArguments.size()) {
     case 1: {
-        shape->setTop(widthArguments[0]);
-        shape->setRight(widthArguments[0]);
-        shape->setBottom(widthArguments[0]);
-        shape->setLeft(widthArguments[0]);
+        shape->updateShapeSize1Value(widthArguments[0].get());
         break;
     }
     case 2: {
-        shape->setTop(widthArguments[0]);
-        shape->setRight(widthArguments[1]);
-        shape->setBottom(widthArguments[0]);
-        shape->setLeft(widthArguments[1]);
+        shape->updateShapeSize2Values(widthArguments[0].get(), widthArguments[1].get());
         break;
         }
     case 3: {
-        shape->setTop(widthArguments[0]);
-        shape->setRight(widthArguments[1]);
-        shape->setBottom(widthArguments[2]);
-        shape->setLeft(widthArguments[1]);
+        shape->updateShapeSize3Values(widthArguments[0].get(), widthArguments[1].get(), widthArguments[2].get());
         break;
     }
     case 4: {
-        shape->setTop(widthArguments[0]);
-        shape->setRight(widthArguments[1]);
-        shape->setBottom(widthArguments[2]);
-        shape->setLeft(widthArguments[3]);
+        shape->updateShapeSize4Values(widthArguments[0].get(), widthArguments[1].get(), widthArguments[2].get(), widthArguments[3].get());
         break;
     }
     default:
@@ -5589,14 +5583,14 @@ PassRefPtr<CSSBasicShape> CSSParser::parseBasicShapePolygon(CSSParserValueList* 
 
     CSSParserValue* argumentX = argument;
     while (argumentX) {
+
         if (!validUnit(argumentX, FLength | FPercent))
             return 0;
+        RefPtr<CSSPrimitiveValue> xLength = createPrimitiveNumericValue(argumentX);
 
         CSSParserValue* argumentY = args->next();
         if (!argumentY || !validUnit(argumentY, FLength | FPercent))
             return 0;
-
-        RefPtr<CSSPrimitiveValue> xLength = createPrimitiveNumericValue(argumentX);
         RefPtr<CSSPrimitiveValue> yLength = createPrimitiveNumericValue(argumentY);
 
         shape->appendPoint(xLength.release(), yLength.release());
@@ -9563,7 +9557,7 @@ bool CSSParser::parseCalculation(CSSParserValue* value, CalculationPermittedValu
         return false;
 
     ASSERT(!m_parsedCalculation);
-    m_parsedCalculation = CSSCalcValue::create(value->function->name, args, range);
+    m_parsedCalculation = CSSCalcValue::create(value->function->name, *args, range);
     
     if (!m_parsedCalculation)
         return false;
@@ -11337,9 +11331,7 @@ void CSSParser::rewriteSpecifiersWithElementName(const AtomicString& namespacePr
     if (!specifiers.isCustomPseudoElement()) {
         if (tag == anyQName())
             return;
-#if ENABLE(VIDEO_TRACK)
-        if (specifiers.pseudoType() != CSSSelector::PseudoCue)
-#endif
+        if (!specifiers.isPseudoElementCueFunction())
             specifiers.prependTagSelector(tag, tagIsForNamespaceRule);
         return;
     }
@@ -11366,11 +11358,7 @@ void CSSParser::rewriteSpecifiersWithElementName(const AtomicString& namespacePr
 
 std::unique_ptr<CSSParserSelector> CSSParser::rewriteSpecifiers(std::unique_ptr<CSSParserSelector> specifiers, std::unique_ptr<CSSParserSelector> newSpecifier)
 {
-#if ENABLE(VIDEO_TRACK)
-    if (newSpecifier->isCustomPseudoElement() || newSpecifier->pseudoType() == CSSSelector::PseudoCue) {
-#else
-    if (newSpecifier->isCustomPseudoElement()) {
-#endif
+    if (newSpecifier->isCustomPseudoElement() || newSpecifier->isPseudoElementCueFunction()) {
         // Unknown pseudo element always goes at the top of selector chain.
         newSpecifier->appendTagHistory(CSSSelector::ShadowDescendant, std::move(specifiers));
         return newSpecifier;

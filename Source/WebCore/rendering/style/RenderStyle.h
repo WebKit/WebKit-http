@@ -278,12 +278,8 @@ public:
         static ETableLayout initialTableLayout() { return TAUTO; }
 
         static ptrdiff_t flagsMemoryOffset() { return OBJECT_OFFSETOF(NonInheritedFlags, m_flags); }
-        static uint64_t flagEmptyState() { return oneBitMask << emptyStateOffset; }
         static uint64_t setFirstChildStateFlags() { return flagFirstChildState() | flagIsUnique(); }
-        static uint64_t flagLastChildState() { return oneBitMask << lastChildStateOffset; }
-        static uint64_t flagAffectedByHover() { return oneBitMask << affectedByHoverOffset; }
-        static uint64_t flagAffectedByActive() { return oneBitMask << affectedByActiveOffset; }
-        static uint64_t flagAffectedByDrag() { return oneBitMask << affectedByDragOffset; }
+        static uint64_t setLastChildStateFlags() { return flagLastChildState() | flagIsUnique(); }
     private:
         void updateBoolean(bool isSet, uint64_t offset)
         {
@@ -312,6 +308,7 @@ public:
 
         static uint64_t flagIsUnique() { return oneBitMask << isUniqueOffset; }
         static uint64_t flagFirstChildState() { return oneBitMask << firstChildStateOffset; }
+        static uint64_t flagLastChildState() { return oneBitMask << lastChildStateOffset; }
 
         // To type the bit mask properly on 64bits.
         static const uint64_t oneBitMask = 0x1;
@@ -522,8 +519,8 @@ public:
     bool hasBorder() const { return surround->border.hasBorder(); }
     bool hasPadding() const { return surround->padding.nonZero(); }
     bool hasOffset() const { return surround->offset.nonZero(); }
-    bool hasMarginBeforeQuirk() const { return marginBefore().quirk(); }
-    bool hasMarginAfterQuirk() const { return marginAfter().quirk(); }
+    bool hasMarginBeforeQuirk() const { return marginBefore().hasQuirk(); }
+    bool hasMarginAfterQuirk() const { return marginAfter().hasQuirk(); }
 
     bool hasBackgroundImage() const { return m_background->background().hasImage(); }
     bool hasFixedBackgroundImage() const { return m_background->background().hasFixedImage(); }
@@ -1022,6 +1019,7 @@ public:
 
     // End CSS3 Getters
 
+    bool hasFlowInto() const { return !rareNonInheritedData->m_flowThread.isNull(); }
     const AtomicString& flowThread() const { return rareNonInheritedData->m_flowThread; }
     bool hasFlowFrom() const { return !rareNonInheritedData->m_regionThread.isNull(); }
     const AtomicString& regionThread() const { return rareNonInheritedData->m_regionThread; }
@@ -1774,9 +1772,9 @@ public:
 #endif
     static short initialWidows() { return 2; }
     static short initialOrphans() { return 2; }
-    static Length initialLineHeight() { return Length(-100.0, Percent); }
+    static Length initialLineHeight() { return Length(-100.0f, Percent); }
 #if ENABLE(IOS_TEXT_AUTOSIZING)
-    static Length initialSpecifiedLineHeight() { return Length(-100, Percent); }
+    static Length initialSpecifiedLineHeight() { return Length(-100.0f, Percent); }
 #endif
     static ETextAlign initialTextAlign() { return TASTART; }
     static TextDecoration initialTextDecoration() { return TextDecorationNone; }
@@ -1845,15 +1843,15 @@ public:
     static ColumnFill initialColumnFill() { return ColumnFillBalance; }
     static ColumnSpan initialColumnSpan() { return ColumnSpanNone; }
     static const TransformOperations& initialTransform() { DEPRECATED_DEFINE_STATIC_LOCAL(TransformOperations, ops, ()); return ops; }
-    static Length initialTransformOriginX() { return Length(50.0, Percent); }
-    static Length initialTransformOriginY() { return Length(50.0, Percent); }
+    static Length initialTransformOriginX() { return Length(50.0f, Percent); }
+    static Length initialTransformOriginY() { return Length(50.0f, Percent); }
     static EPointerEvents initialPointerEvents() { return PE_AUTO; }
     static float initialTransformOriginZ() { return 0; }
     static ETransformStyle3D initialTransformStyle3D() { return TransformStyle3DFlat; }
     static EBackfaceVisibility initialBackfaceVisibility() { return BackfaceVisibilityVisible; }
     static float initialPerspective() { return 0; }
-    static Length initialPerspectiveOriginX() { return Length(50.0, Percent); }
-    static Length initialPerspectiveOriginY() { return Length(50.0, Percent); }
+    static Length initialPerspectiveOriginX() { return Length(50.0f, Percent); }
+    static Length initialPerspectiveOriginY() { return Length(50.0f, Percent); }
     static Color initialBackgroundColor() { return Color::transparent; }
     static Color initialTextEmphasisColor() { return TextEmphasisFillFilled; }
     static TextEmphasisFill initialTextEmphasisFill() { return TextEmphasisFillFilled; }

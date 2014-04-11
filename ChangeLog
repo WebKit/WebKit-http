@@ -1,3 +1,131 @@
+2014-04-09  Brendan Long  <b.long@cablelabs.com>
+
+        [GStreamer] Expose MPEG-TS metadata
+        https://bugs.webkit.org/show_bug.cgi?id=122001
+
+        Reviewed by Eric Carlson.
+
+        * Source/cmake/FindGStreamer.cmake: Look for gstreamer-mpegts >= 1.3.0.
+        * Source/cmake/OptionsEfl.cmake: Same.
+        * Source/cmake/OptionsGTK.cmake: Same.
+
+2014-04-08  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Replay: memoize nondeterministic attributes of the Screen interface
+        https://bugs.webkit.org/show_bug.cgi?id=131339
+
+        Reviewed by Timothy Hatcher.
+
+        * ManualTests/inspector/replay-window-screen.html: Added.
+
+2014-04-08  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK] Remove the WebKitGTK+ WebKit 1 code
+        https://bugs.webkit.org/show_bug.cgi?id=131399
+
+        Reviewed by Anders Carlsson.
+
+        * Source/PlatformGTK.cmake: Remove WebKit1 dependency from dist target.
+        * Source/cmake/OptionsGTK.cmake: Remove option to compile with GTK+2 or with WebKit2 disabled.
+
+2014-04-08  Dan Bernstein  <mitz@apple.com>
+
+        Added bmalloc to the WebKit workspace.
+        https://bugs.webkit.org/show_bug.cgi?id=131362
+
+        Reviewed by Geoff Garen.
+
+        * WebKit.xcworkspace/contents.xcworkspacedata:
+        * WebKit.xcworkspace/xcshareddata/xcschemes/All Source (target WebProcess).xcscheme:
+        * WebKit.xcworkspace/xcshareddata/xcschemes/All Source.xcscheme:
+
+2014-04-08  Geoffrey Garen  <ggaren@apple.com>
+
+        Build bmalloc on iOS too
+        https://bugs.webkit.org/show_bug.cgi?id=131381
+
+        Reviewed by Andreas Kling.
+
+        * Source/Makefile: Build it.
+
+2014-04-07  Geoffrey Garen  <ggaren@apple.com>
+
+        Build bmalloc on Mac
+        https://bugs.webkit.org/show_bug.cgi?id=131333
+
+        Reviewed by Mark Rowe.
+
+        * Source/Makefile:
+        * WebKitBuild: Added.
+        * WebKitBuild/Debug: Added.
+
+2014-04-07  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [EFL] Turn on ENABLE_MEDIA_CONTROLS_SCRIPT
+        https://bugs.webkit.org/show_bug.cgi?id=131257
+
+        Reviewed by Gyuyoung Kim.
+
+        * Source/cmake/OptionsEfl.cmake: Enable MEDIA_CONTROLS_SCRIPT
+
+2014-04-06  Raphael Kubo da Costa  <raphael.kubo.da.costa@intel.com>
+
+        [GTK] Stop trying to install WebKit1 documentation
+        https://bugs.webkit.org/show_bug.cgi?id=131278
+
+        Reviewed by Martin Robinson.
+
+        * Source/PlatformGTK.cmake: Remove install() call since the WebKit1 documentation is not
+        built anymore since r166584. This fixes `make install'.
+
+2014-04-04  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Replay: capture and replay wheel events and scroll commands
+        https://bugs.webkit.org/show_bug.cgi?id=129402
+
+        Reviewed by Timothy Hatcher.
+
+        * ManualTests/inspector/replay-wheel-events.html: Added.
+
+2014-04-04  Raphael Kubo da Costa  <raphael.kubo.da.costa@intel.com>
+
+        [GTK][CMake] Remove FindXt.cmake.
+        https://bugs.webkit.org/show_bug.cgi?id=131227
+
+        Reviewed by Anders Carlsson.
+
+        Xt is already detected by CMake's own FindX11.cmake, so there is no need to keep a custom FindXt.cmake around.
+
+        * Source/cmake/FindXt.cmake: Removed.
+        * Source/cmake/OptionsGTK.cmake:
+
+2014-04-04  Tamas Gergely  <tgergely.u-szeged@partner.samsung.com>
+
+        [EFL] Build error due to changed path of generated js files.
+        https://bugs.webkit.org/show_bug.cgi?id=131215
+
+        Reviewed by Gyuyoung Kim.
+
+        r166648 fixed the generation of some .js files on GTK. Due to some
+        changes in the paths it causes a build error on EFL.
+
+        * Source/PlatformEfl.cmake:
+          Replaced path for two derived source files.
+
+2014-04-02  Raphael Kubo da Costa  <raphael.kubo.da.costa@intel.com>
+
+        [GTK][CMake] Look for glx.h in OPENGL_INCLUDE_DIR.
+        https://bugs.webkit.org/show_bug.cgi?id=131095
+
+        Reviewed by Martin Robinson.
+
+        One needs to take into account OpenGL's include directory found via
+        find_package() when looking for glx.h, since if the former is a
+        non-standard location the latter will also be. If this is not it is
+        possible that OpenGL is found but GLX support is not properly detected.
+
+        * Source/cmake/OptionsGTK.cmake:
+
 2014-04-02  Martin Robinson  <mrobinson@igalia.com>
 
         REGRESSION(r165704): [GTK] Inspector resources not correctly generated

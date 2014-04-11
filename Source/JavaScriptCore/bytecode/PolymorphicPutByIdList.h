@@ -47,6 +47,7 @@ public:
         Invalid,
         Transition,
         Replace,
+        Setter,
         CustomSetter
     };
     
@@ -88,17 +89,19 @@ public:
     }
 
 
-    static PutByIdAccess customSetter(
+    static PutByIdAccess setter(
         VM& vm,
         JSCell* owner,
+        AccessType accessType,
         Structure* structure,
         StructureChain* chain,
         PutPropertySlot::PutValueFunc customSetter,
         PassRefPtr<JITStubRoutine> stubRoutine)
     {
+        RELEASE_ASSERT(accessType == Setter || accessType == CustomSetter);
         PutByIdAccess result;
         result.m_oldStructure.set(vm, owner, structure);
-        result.m_type = CustomSetter;
+        result.m_type = accessType;
         if (chain)
             result.m_chain.set(vm, owner, chain);
         result.m_customSetter = customSetter;
@@ -115,13 +118,14 @@ public:
     
     bool isTransition() const { return m_type == Transition; }
     bool isReplace() const { return m_type == Replace; }
+    bool isSetter() const { return m_type == Setter; }
     bool isCustom() const { return m_type == CustomSetter; }
     
     Structure* oldStructure() const
     {
         // Using this instead of isSet() to make this assertion robust against the possibility
         // of additional access types being added.
-        ASSERT(isTransition() || isReplace() || isCustom());
+        ASSERT(isTransition() || isReplace() || isSetter() || isCustom());
         
         return m_oldStructure.get();
     }
@@ -140,17 +144,21 @@ public:
     
     StructureChain* chain() const
     {
-        ASSERT(isTransition() || isCustom());
+        ASSERT(isTransition() || isSetter() || isCustom());
         return m_chain.get();
     }
     
     JITStubRoutine* stubRoutine() const
     {
-        ASSERT(isTransition() || isReplace() || isCustom());
+        ASSERT(isTransition() || isReplace() || isSetter() || isCustom());
         return m_stubRoutine.get();
     }
 
-    PutPropertySlot::PutValueFunc customSetter() const { ASSERT(isCustom()); return m_customSetter; }
+    PutPropertySlot::PutValueFunc customSetter() const
+    {
+        ASSERT(isCustom());
+        return m_customSetter;
+    }
 
     bool visitWeak(RepatchBuffer&) const;
     

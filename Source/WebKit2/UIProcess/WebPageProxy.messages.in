@@ -22,7 +22,7 @@
 
 messages -> WebPageProxy {
     # UI messages
-    CreateNewPage(uint64_t frameID, WebCore::ResourceRequest request, WebCore::WindowFeatures windowFeatures, uint32_t modifiers, int32_t mouseButton) -> (uint64_t newPageID, WebKit::WebPageCreationParameters newPageParameters)
+    CreateNewPage(uint64_t frameID, WebCore::ResourceRequest request, WebCore::WindowFeatures windowFeatures, WebKit::NavigationActionData navigationActionData) -> (uint64_t newPageID, WebKit::WebPageCreationParameters newPageParameters)
     ShowPage()
     ClosePage(bool stopResponsivenessTimer)
     RunJavaScriptAlert(uint64_t frameID, String message) -> () Delayed
@@ -316,9 +316,10 @@ messages -> WebPageProxy {
 #endif
 
 #if PLATFORM(IOS)
+    DynamicViewportUpdateChangedTarget(double newTargetScale, WebCore::FloatPoint newScrollPosition)
     DidGetTapHighlightGeometries(uint64_t requestID, WebCore::Color color, Vector<WebCore::FloatQuad> geometries, WebCore::IntSize topLeftRadius, WebCore::IntSize topRightRadius, WebCore::IntSize bottomLeftRadius, WebCore::IntSize bottomRightRadius)
 
-    StartAssistingNode(WebKit::AssistedNodeInformation information)
+    StartAssistingNode(WebKit::AssistedNodeInformation information, WebKit::InjectedBundleUserMessageEncoder userData) Variadic
     StopAssistingNode()
     NotifyRevealedSelection()
 
@@ -357,5 +358,12 @@ messages -> WebPageProxy {
 #if ENABLE(SUBTLE_CRYPTO)
     WrapCryptoKey(Vector<uint8_t> key) -> (bool succeeded, Vector<uint8_t> wrappedKey)
     UnwrapCryptoKey(Vector<uint8_t> wrappedKey) -> (bool succeeded, Vector<uint8_t> key)
+#endif
+
+
+#if ENABLE(TELEPHONE_NUMBER_DETECTION)
+#if PLATFORM(MAC)
+    ShowTelephoneNumberMenu(String telephoneNumber, WebCore::IntPoint point)
+#endif
 #endif
 }

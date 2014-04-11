@@ -80,10 +80,12 @@ bool UserInputBridge::handleMousePressEvent(const PlatformMouseEvent& mouseEvent
 #if ENABLE(WEB_REPLAY)
     EARLY_RETURN_IF_SHOULD_IGNORE_INPUT;
 
-    if (activeCursor().isCapturing()) {
+    InputCursor& cursor = activeCursor();
+    if (cursor.isCapturing()) {
         std::unique_ptr<PlatformMouseEvent> ownedEvent = std::make_unique<PlatformMouseEvent>(mouseEvent);
-        activeCursor().appendInput<HandleMousePress>(std::move(ownedEvent));
+        cursor.appendInput<HandleMousePress>(std::move(ownedEvent));
     }
+    EventLoopInputExtent extent(cursor);
 #else
     UNUSED_PARAM(inputSource);
 #endif
@@ -96,10 +98,12 @@ bool UserInputBridge::handleMouseReleaseEvent(const PlatformMouseEvent& mouseEve
 #if ENABLE(WEB_REPLAY)
     EARLY_RETURN_IF_SHOULD_IGNORE_INPUT;
 
-    if (activeCursor().isCapturing()) {
+    InputCursor& cursor = activeCursor();
+    if (cursor.isCapturing()) {
         std::unique_ptr<PlatformMouseEvent> ownedEvent = std::make_unique<PlatformMouseEvent>(mouseEvent);
-        activeCursor().appendInput<HandleMouseRelease>(std::move(ownedEvent));
+        cursor.appendInput<HandleMouseRelease>(std::move(ownedEvent));
     }
+    EventLoopInputExtent extent(cursor);
 #else
     UNUSED_PARAM(inputSource);
 #endif
@@ -112,10 +116,12 @@ bool UserInputBridge::handleMouseMoveEvent(const PlatformMouseEvent& mouseEvent,
 #if ENABLE(WEB_REPLAY)
     EARLY_RETURN_IF_SHOULD_IGNORE_INPUT;
 
-    if (activeCursor().isCapturing()) {
+    InputCursor& cursor = activeCursor();
+    if (cursor.isCapturing()) {
         std::unique_ptr<PlatformMouseEvent> ownedEvent = std::make_unique<PlatformMouseEvent>(mouseEvent);
-        activeCursor().appendInput<HandleMouseMove>(std::move(ownedEvent), false);
+        cursor.appendInput<HandleMouseMove>(std::move(ownedEvent), false);
     }
+    EventLoopInputExtent extent(cursor);
 #else
     UNUSED_PARAM(inputSource);
 #endif
@@ -128,10 +134,12 @@ bool UserInputBridge::handleMouseMoveOnScrollbarEvent(const PlatformMouseEvent& 
 #if ENABLE(WEB_REPLAY)
     EARLY_RETURN_IF_SHOULD_IGNORE_INPUT;
 
-    if (activeCursor().isCapturing()) {
+    InputCursor& cursor = activeCursor();
+    if (cursor.isCapturing()) {
         std::unique_ptr<PlatformMouseEvent> ownedEvent = std::make_unique<PlatformMouseEvent>(mouseEvent);
-        activeCursor().appendInput<HandleMouseMove>(std::move(ownedEvent), true);
+        cursor.appendInput<HandleMouseMove>(std::move(ownedEvent), true);
     }
+    EventLoopInputExtent extent(cursor);
 #else
     UNUSED_PARAM(inputSource);
 #endif
@@ -144,10 +152,12 @@ bool UserInputBridge::handleKeyEvent(const PlatformKeyboardEvent& keyEvent, Inpu
 #if ENABLE(WEB_REPLAY)
     EARLY_RETURN_IF_SHOULD_IGNORE_INPUT;
 
-    if (activeCursor().isCapturing()) {
+    InputCursor& cursor = activeCursor();
+    if (cursor.isCapturing()) {
         std::unique_ptr<PlatformKeyboardEvent> ownedEvent = std::make_unique<PlatformKeyboardEvent>(keyEvent);
-        activeCursor().appendInput<HandleKeyPress>(std::move(ownedEvent));
+        cursor.appendInput<HandleKeyPress>(std::move(ownedEvent));
     }
+    EventLoopInputExtent extent(cursor);
 #else
     UNUSED_PARAM(inputSource);
 #endif
@@ -160,8 +170,21 @@ bool UserInputBridge::handleAccessKeyEvent(const PlatformKeyboardEvent& keyEvent
     return m_page.focusController().focusedOrMainFrame().eventHandler().handleAccessKey(keyEvent);
 }
 
-bool UserInputBridge::handleWheelEvent(const PlatformWheelEvent& wheelEvent, InputSource)
+bool UserInputBridge::handleWheelEvent(const PlatformWheelEvent& wheelEvent, InputSource inputSource)
 {
+#if ENABLE(WEB_REPLAY)
+    EARLY_RETURN_IF_SHOULD_IGNORE_INPUT;
+
+    InputCursor& cursor = activeCursor();
+    if (cursor.isCapturing()) {
+        std::unique_ptr<PlatformWheelEvent> ownedEvent = std::make_unique<PlatformWheelEvent>(wheelEvent);
+        cursor.appendInput<HandleWheelEvent>(std::move(ownedEvent));
+    }
+    EventLoopInputExtent extent(cursor);
+#else
+    UNUSED_PARAM(inputSource);
+#endif
+
     return m_page.mainFrame().eventHandler().handleWheelEvent(wheelEvent);
 }
 
@@ -175,13 +198,37 @@ void UserInputBridge::focusSetFocused(bool focused, InputSource)
     m_page.focusController().setFocused(focused);
 }
 
-bool UserInputBridge::scrollRecursively(ScrollDirection direction, ScrollGranularity granularity, InputSource)
+bool UserInputBridge::scrollRecursively(ScrollDirection direction, ScrollGranularity granularity, InputSource inputSource)
 {
+#if ENABLE(WEB_REPLAY)
+    EARLY_RETURN_IF_SHOULD_IGNORE_INPUT;
+
+    InputCursor& cursor = activeCursor();
+    if (cursor.isCapturing())
+        cursor.appendInput<ScrollPage>(direction, granularity);
+
+    EventLoopInputExtent extent(cursor);
+#else
+    UNUSED_PARAM(inputSource);
+#endif
+
     return m_page.focusController().focusedOrMainFrame().eventHandler().scrollRecursively(direction, granularity, nullptr);
 }
 
-bool UserInputBridge::logicalScrollRecursively(ScrollLogicalDirection direction, ScrollGranularity granularity, InputSource)
+bool UserInputBridge::logicalScrollRecursively(ScrollLogicalDirection direction, ScrollGranularity granularity, InputSource inputSource)
 {
+#if ENABLE(WEB_REPLAY)
+    EARLY_RETURN_IF_SHOULD_IGNORE_INPUT;
+
+    InputCursor& cursor = activeCursor();
+    if (cursor.isCapturing())
+        cursor.appendInput<LogicalScrollPage>(direction, granularity);
+
+    EventLoopInputExtent extent(cursor);
+#else
+    UNUSED_PARAM(inputSource);
+#endif
+
     return m_page.focusController().focusedOrMainFrame().eventHandler().logicalScrollRecursively(direction, granularity, nullptr);
 }
 

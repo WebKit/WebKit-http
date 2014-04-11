@@ -388,12 +388,12 @@ public:
             setValue(styleResolver->style(), Length());
         else if (primitiveValue->isLength()) {
             Length length = primitiveValue->computeLength<Length>(styleResolver->style(), styleResolver->rootElementStyle(), styleResolver->style()->effectiveZoom());
-            length.setQuirk(primitiveValue->isQuirkValue());
+            length.setHasQuirk(primitiveValue->isQuirkValue());
             setValue(styleResolver->style(), length);
         } else if (primitiveValue->isPercentage())
             setValue(styleResolver->style(), Length(primitiveValue->getDoubleValue(), Percent));
         else if (primitiveValue->isCalculatedPercentageWithLength())
-            setValue(styleResolver->style(), Length(primitiveValue->cssCalcValue()->toCalcValue(styleResolver->style(), styleResolver->rootElementStyle(), styleResolver->style()->effectiveZoom())));
+            setValue(styleResolver->style(), Length(primitiveValue->cssCalcValue()->createCalculationValue(styleResolver->style(), styleResolver->rootElementStyle(), styleResolver->style()->effectiveZoom())));
         else if (primitiveValue->isViewportPercentageLength())
             setValue(styleResolver->style(), primitiveValue->viewportPercentageLength());
     }
@@ -443,34 +443,34 @@ public:
             return;
 
         Length radiusWidth;
-        Length radiusHeight;
         if (pair->first()->isPercentage())
             radiusWidth = Length(pair->first()->getDoubleValue(), Percent);
         else if (pair->first()->isViewportPercentageLength())
             radiusWidth = Length(styleResolver->viewportPercentageValue(*pair->first(), pair->first()->getIntValue()), Fixed);
         else if (pair->first()->isCalculatedPercentageWithLength())
-            radiusWidth = Length((pair->first()->cssCalcValue()->toCalcValue(styleResolver->style(), styleResolver->rootElementStyle(), styleResolver->style()->effectiveZoom())));
+            radiusWidth = Length(pair->first()->cssCalcValue()->createCalculationValue(styleResolver->style(), styleResolver->rootElementStyle(), styleResolver->style()->effectiveZoom()));
         else
             radiusWidth = pair->first()->computeLength<Length>(styleResolver->style(), styleResolver->rootElementStyle(), styleResolver->style()->effectiveZoom());
+
+        Length radiusHeight;
         if (pair->second()->isPercentage())
             radiusHeight = Length(pair->second()->getDoubleValue(), Percent);
         else if (pair->second()->isViewportPercentageLength())
             radiusHeight = Length(styleResolver->viewportPercentageValue(*pair->second(), pair->second()->getIntValue()), Fixed);
         else if (pair->second()->isCalculatedPercentageWithLength())
-            radiusHeight = Length((pair->second()->cssCalcValue()->toCalcValue(styleResolver->style(), styleResolver->rootElementStyle(), styleResolver->style()->effectiveZoom())));
+            radiusHeight = Length(pair->second()->cssCalcValue()->createCalculationValue(styleResolver->style(), styleResolver->rootElementStyle(), styleResolver->style()->effectiveZoom()));
         else
             radiusHeight = pair->second()->computeLength<Length>(styleResolver->style(), styleResolver->rootElementStyle(), styleResolver->style()->effectiveZoom());
-        int width = radiusWidth.value();
-        int height = radiusHeight.value();
-        if (width < 0 || height < 0)
-            return;
-        if (!width)
-            radiusHeight = radiusWidth; // Null out the other value.
-        else if (!height)
-            radiusWidth = radiusHeight; // Null out the other value.
 
-        LengthSize size(radiusWidth, radiusHeight);
-        setValue(styleResolver->style(), size);
+        if (radiusWidth.isNegative() || radiusHeight.isNegative())
+            return;
+
+        if (radiusWidth.isZero() || radiusHeight.isZero()) {
+            radiusWidth.setValue(Fixed, 0);
+            radiusHeight.setValue(Fixed, 0);
+        }
+
+        setValue(styleResolver->style(), LengthSize(radiusWidth, radiusHeight));
     }
     static PropertyHandler createHandler()
     {
@@ -883,9 +883,10 @@ public:
                 size = primitiveValue->computeLength<float>(styleResolver->parentStyle(), styleResolver->rootElementStyle(), 1.0, true);
             else if (primitiveValue->isPercentage())
                 size = (primitiveValue->getFloatValue() * parentSize) / 100.0f;
-            else if (primitiveValue->isCalculatedPercentageWithLength())
-                size = primitiveValue->cssCalcValue()->toCalcValue(styleResolver->parentStyle(), styleResolver->rootElementStyle())->evaluate(parentSize);
-            else if (primitiveValue->isViewportPercentageLength())
+            else if (primitiveValue->isCalculatedPercentageWithLength()) {
+                Ref<CalculationValue> calculationValue { primitiveValue->cssCalcValue()->createCalculationValue(styleResolver->parentStyle(), styleResolver->rootElementStyle()) };
+                size = calculationValue->evaluate(parentSize);
+            } else if (primitiveValue->isViewportPercentageLength())
                 size = valueForLength(primitiveValue->viewportPercentageLength(), 0, styleResolver->document().renderView());
             else
                 return;
@@ -2189,8 +2190,6 @@ public:
             CSSPrimitiveValue* primitiveValue = toCSSPrimitiveValue(value);
             if (primitiveValue->getValueID() == CSSValueAuto)
                 setValue(styleResolver->style(), 0);
-            else if (primitiveValue->getValueID() == CSSValueOutsideShape)
-                setValue(styleResolver->style(), ShapeValue::createOutsideValue());
         } else if (value->isImageValue() || value->isImageSetValue()) {
             RefPtr<ShapeValue> shape = ShapeValue::createImageValue(styleResolver->styleImage(property, value));
             setValue(styleResolver->style(), shape.release());

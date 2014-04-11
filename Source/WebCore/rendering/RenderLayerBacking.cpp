@@ -136,10 +136,8 @@ RenderLayerBacking::RenderLayerBacking(RenderLayer& layer)
 
         tiledBacking->setIsInWindow(page->isInWindow());
 
-        if (m_isMainFrameRenderViewLayer) {
-            tiledBacking->setExposedRect(renderer().frame().view()->exposedRect());
+        if (m_isMainFrameRenderViewLayer)
             tiledBacking->setUnparentsOffscreenTiles(true);
-        }
 
         tiledBacking->setScrollingPerformanceLoggingEnabled(page->settings().scrollingPerformanceLoggingEnabled());
         adjustTiledBackingCoverage();
@@ -1615,9 +1613,9 @@ void RenderLayerBacking::updateDirectlyCompositedBackgroundImage(bool isSimpleCo
         return;
     }
 
-    IntRect destRect = pixelSnappedIntRect(LayoutRect(backgroundBoxForPainting()));
-    IntPoint phase;
-    IntSize tileSize;
+    FloatRect destRect = backgroundBoxForPainting();
+    FloatPoint phase;
+    FloatSize tileSize;
 
     RefPtr<Image> image = style.backgroundLayers()->image()->cachedImage()->image();
     toRenderBox(renderer()).getGeometryForBackgroundImage(&m_owningLayer.renderer(), destRect, phase, tileSize);

@@ -43,6 +43,11 @@ public:
         return adoptRef(new DataCue(context, start, end, data, ec));
     }
 
+    static PassRefPtr<DataCue> create(ScriptExecutionContext& context, double start, double end, const void* data, unsigned length)
+    {
+        return adoptRef(new DataCue(context, start, end, data, length));
+    }
+
     virtual ~DataCue();
     virtual CueType cueType() const { return Data; }
 
@@ -52,6 +57,7 @@ public:
 
 protected:
     DataCue(ScriptExecutionContext&, double start, double end, ArrayBuffer*, ExceptionCode&);
+    DataCue(ScriptExecutionContext&, double start, double end, const void* data, unsigned length);
 
 private:
     RefPtr<ArrayBuffer> m_data;

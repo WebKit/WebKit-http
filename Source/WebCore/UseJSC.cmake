@@ -34,7 +34,7 @@ list(APPEND WebCore_SOURCES
     bindings/js/JSCallbackData.cpp
     bindings/js/JSCanvasRenderingContext2DCustom.cpp
     bindings/js/JSCanvasRenderingContextCustom.cpp
-    bindings/js/JSClipboardCustom.cpp
+    bindings/js/JSDataTransferCustom.cpp
     bindings/js/JSCommandLineAPIHostCustom.cpp
     bindings/js/JSCryptoAlgorithmBuilder.cpp
     bindings/js/JSCryptoAlgorithmDictionary.cpp
@@ -190,92 +190,6 @@ list(APPEND WebCore_SOURCES
 list(APPEND WebCoreTestSupport_SOURCES
     testing/js/WebCoreTestSupport.cpp
 )
-
-if (ENABLE_BLOB)
-    list(APPEND WebCore_SOURCES
-        bindings/js/JSFileReaderCustom.cpp
-    )
-endif ()
-
-if (ENABLE_REQUEST_ANIMATION_FRAME)
-    list(APPEND WebCore_SOURCES
-        bindings/js/JSRequestAnimationFrameCallbackCustom.cpp
-    )
-endif ()
-
-if (ENABLE_SQL_DATABASE)
-    list(APPEND WebCore_SOURCES
-        bindings/js/JSCustomSQLStatementErrorCallback.cpp
-        bindings/js/JSSQLResultSetRowListCustom.cpp
-        bindings/js/JSSQLTransactionCustom.cpp
-        bindings/js/JSSQLTransactionSyncCustom.cpp
-    )
-endif ()
-
-if (ENABLE_INDEXED_DATABASE)
-    list(APPEND WebCore_SOURCES
-        bindings/js/IDBBindingUtilities.cpp
-        bindings/js/JSIDBAnyCustom.cpp
-        bindings/js/JSIDBDatabaseCustom.cpp
-        bindings/js/JSIDBObjectStoreCustom.cpp
-    )
-endif ()
-
-    list(APPEND WebCore_SOURCES
-        bindings/js/JSDedicatedWorkerGlobalScopeCustom.cpp
-        bindings/js/JSWorkerGlobalScopeBase.cpp
-        bindings/js/JSWorkerGlobalScopeCustom.cpp
-        bindings/js/JSWorkerCustom.cpp
-        bindings/js/WorkerScriptController.cpp
-        bindings/js/WorkerScriptDebugServer.cpp
-    )
-
-if (ENABLE_VIDEO_TRACK)
-    list(APPEND WebCore_SOURCES
-        bindings/js/JSAudioTrackCustom.cpp
-        bindings/js/JSAudioTrackListCustom.cpp
-        bindings/js/JSTextTrackCueCustom.cpp
-        bindings/js/JSTextTrackCustom.cpp
-        bindings/js/JSTextTrackListCustom.cpp
-        bindings/js/JSTrackCustom.cpp
-        bindings/js/JSTrackEventCustom.cpp
-        bindings/js/JSVideoTrackCustom.cpp
-        bindings/js/JSVideoTrackListCustom.cpp
-    )
-endif ()
-
-if (ENABLE_SHARED_WORKERS)
-    list(APPEND WebCore_SOURCES
-        bindings/js/JSSharedWorkerCustom.cpp
-    )
-endif ()
-
-if (ENABLE_WEBGL)
-    list(APPEND WebCore_SOURCES
-        bindings/js/JSWebGLRenderingContextCustom.cpp
-    )
-endif ()
-
-if (ENABLE_WEB_AUDIO)
-    list(APPEND WebCore_SOURCES
-        bindings/js/JSAudioBufferSourceNodeCustom.cpp
-        bindings/js/JSAudioContextCustom.cpp
-        bindings/js/JSBiquadFilterNodeCustom.cpp
-        bindings/js/JSOscillatorNodeCustom.cpp
-        bindings/js/JSPannerNodeCustom.cpp
-    )
-endif ()
-
-if (ENABLE_MEDIA_STREAM)
-    list(APPEND WebCore_SOURCES
-        bindings/js/JSMediaSourceStatesCustom.cpp
-        bindings/js/JSMediaStreamCapabilitiesCustom.cpp
-        bindings/js/JSRTCIceCandidateCustom.cpp
-        bindings/js/JSRTCPeerConnectionCustom.cpp
-        bindings/js/JSRTCSessionDescriptionCustom.cpp
-        bindings/js/JSRTCStatsResponseCustom.cpp
-    )
-endif ()
 
 list(APPEND SCRIPTS_BINDINGS
     ${WEBCORE_DIR}/bindings/scripts/CodeGenerator.pm

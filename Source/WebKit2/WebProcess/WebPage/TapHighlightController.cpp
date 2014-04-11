@@ -35,8 +35,7 @@
 #include <WebCore/GestureTapHighlighter.h>
 #include <WebCore/GraphicsContext.h>
 #include <WebCore/Page.h>
-
-#include <WebCore/RenderObject.h>
+#include <WebCore/RenderElement.h>
 
 using namespace std;
 using namespace WebCore;
@@ -71,7 +70,7 @@ void TapHighlightController::highlight(Node* node)
 void TapHighlightController::hideHighlight()
 {
     if (m_overlay)
-        m_webPage->uninstallPageOverlay(m_overlay, /* fadeout */ true);
+        m_webPage->uninstallPageOverlay(m_overlay, PageOverlay::FadeMode::Fade);
 }
 
 void TapHighlightController::pageOverlayDestroyed(PageOverlay*)

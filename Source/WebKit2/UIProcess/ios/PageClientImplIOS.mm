@@ -28,7 +28,7 @@
 
 #if PLATFORM(IOS)
 
-#import "_WKDownloadInternal.h"
+#import "APIData.h"
 #import "DataReference.h"
 #import "DownloadProxy.h"
 #import "FindIndicator.h"
@@ -39,11 +39,15 @@
 #import "WKWebViewInternal.h"
 #import "WebContextMenuProxy.h"
 #import "WebEditCommandProxy.h"
+#import "WebProcessProxy.h"
+#import "_WKDownloadInternal.h"
 #import <UIKit/UIImagePickerController_Private.h>
 #import <UIKit/UIWebTouchEventsGestureRecognizer.h>
 #import <WebCore/NotImplemented.h>
 #import <WebCore/PlatformScreen.h>
 #import <WebCore/SharedBuffer.h>
+
+#define MESSAGE_CHECK(assertion) MESSAGE_CHECK_BASE(assertion, m_webView->_page->process().connection())
 
 @interface UIView (IPI)
 - (UIScrollView *)_scroller;
@@ -358,9 +362,28 @@ void PageClientImpl::didCommitLayerTree(const RemoteLayerTreeTransaction& layerT
     [m_contentView _didCommitLayerTree:layerTreeTransaction];
 }
 
-void PageClientImpl::startAssistingNode(const AssistedNodeInformation& nodeInformation)
+void PageClientImpl::dynamicViewportUpdateChangedTarget(double newScale, const WebCore::FloatPoint& newScrollPosition)
 {
-    [m_contentView _startAssistingNode:nodeInformation];
+    [m_webView _dynamicViewportUpdateChangedTargetToScale:newScale position:newScrollPosition];
+}
+
+void PageClientImpl::startAssistingNode(const AssistedNodeInformation& nodeInformation, API::Object* userData)
+{
+    MESSAGE_CHECK(!userData || userData->type() == API::Object::Type::Data);
+
+    NSObject <NSSecureCoding> *userObject = nil;
+    if (API::Data* data = static_cast<API::Data*>(userData)) {
+        auto nsData = adoptNS([[NSData alloc] initWithBytesNoCopy:const_cast<void*>(static_cast<const void*>(data->bytes())) length:data->size() freeWhenDone:NO]);
+        auto unarchiver = adoptNS([[NSKeyedUnarchiver alloc] initForReadingWithData:nsData.get()]);
+        [unarchiver setRequiresSecureCoding:YES];
+        @try {
+            userObject = [unarchiver decodeObjectOfClass:[NSObject class] forKey:@"userObject"];
+        } @catch (NSException *exception) {
+            LOG_ERROR("Failed to decode user data: %@", exception);
+        }
+    }
+
+    [m_contentView _startAssistingNode:nodeInformation userObject:userObject];
 }
 
 void PageClientImpl::stopAssistingNode()
@@ -370,7 +393,7 @@ void PageClientImpl::stopAssistingNode()
 
 void PageClientImpl::didUpdateBlockSelectionWithTouch(uint32_t touch, uint32_t flags, float growThreshold, float shrinkThreshold)
 {
-    [m_contentView _didUpdateBlockSelectionWithTouch:(WKSelectionTouch)touch withFlags:(WKSelectionFlags)flags growThreshold:growThreshold shrinkThreshold:shrinkThreshold];
+    [m_contentView _didUpdateBlockSelectionWithTouch:(SelectionTouch)touch withFlags:(SelectionFlags)flags growThreshold:growThreshold shrinkThreshold:shrinkThreshold];
 }
 
 void PageClientImpl::showPlaybackTargetPicker(bool hasVideo, const IntRect& elementRect)

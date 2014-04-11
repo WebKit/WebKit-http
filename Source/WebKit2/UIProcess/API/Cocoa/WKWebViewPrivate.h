@@ -56,7 +56,7 @@ typedef NS_OPTIONS(NSUInteger, _WKFindOptions) {
 
 @protocol WKHistoryDelegatePrivate;
 @protocol _WKFindDelegate;
-@protocol _WKScriptMessageHandler;
+@protocol _WKFormDelegate;
 
 @interface WKWebView (WKPrivate)
 
@@ -99,10 +99,17 @@ typedef NS_OPTIONS(NSUInteger, _WKFindOptions) {
 
 @property (nonatomic, setter=_setBackgroundExtendsBeyondPage:) BOOL _backgroundExtendsBeyondPage;
 
+// FIXME: Remove these three properties once we expose WKWebViewContentProvider as API.
 @property (nonatomic, readonly, getter=_isDisplayingPDF) BOOL _displayingPDF;
+@property (nonatomic, readonly) NSData *_dataForDisplayedPDF;
+// FIXME: This can be removed once WKNavigation's response property is implemented.
+@property (nonatomic, readonly) NSString *_suggestedFilenameForDisplayedPDF;
 
 - (void)_beginInteractiveObscuredInsetsChange;
 - (void)_endInteractiveObscuredInsetsChange;
+
+- (void)_beginAnimatedResizeToSize:(CGSize)futureSize obscuredInsets:(UIEdgeInsets)futureObscuredInsets minimumLayoutSizeOverride:(CGSize)futureMinimumLayoutSize;
+- (void)_endAnimatedResize;
 
 - (void)_showInspectorIndication;
 - (void)_hideInspectorIndication;
@@ -139,6 +146,8 @@ typedef NS_OPTIONS(NSUInteger, _WKFindOptions) {
 - (void)_findString:(NSString *)string options:(_WKFindOptions)options maxCount:(NSUInteger)maxCount;
 - (void)_countStringMatches:(NSString *)string options:(_WKFindOptions)options maxCount:(NSUInteger)maxCount;
 - (void)_hideFindUI;
+
+@property (nonatomic, weak, setter=_setFormDelegate:) id <_WKFormDelegate> _formDelegate;
 
 @end
 

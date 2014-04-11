@@ -348,7 +348,6 @@ set(WebCore_IDL_FILES
     dom/ChildNode.idl
     dom/ClientRect.idl
     dom/ClientRectList.idl
-    dom/Clipboard.idl
     dom/Comment.idl
     dom/CompositionEvent.idl
     dom/CustomEvent.idl
@@ -358,6 +357,7 @@ set(WebCore_IDL_FILES
     dom/DOMNamedFlowCollection.idl
     dom/DOMStringList.idl
     dom/DOMStringMap.idl
+    dom/DataTransfer.idl
     dom/DataTransferItem.idl
     dom/DataTransferItemList.idl
     dom/DeviceMotionEvent.idl
@@ -1131,7 +1131,6 @@ set(WebCore_SOURCES
     dom/ClassNodeList.cpp
     dom/ClientRect.cpp
     dom/ClientRectList.cpp
-    dom/Clipboard.cpp
     dom/ClipboardEvent.cpp
     dom/CollectionIndexCache.cpp
     dom/Comment.cpp
@@ -1145,6 +1144,7 @@ set(WebCore_SOURCES
     dom/DOMImplementation.cpp
     dom/DOMNamedFlowCollection.cpp
     dom/DOMStringList.cpp
+    dom/DataTransfer.cpp
     dom/DataTransferItem.cpp
     dom/DatasetDOMStringMap.cpp
     dom/DecodedDataDocumentParser.cpp
@@ -2085,7 +2085,6 @@ set(WebCore_SOURCES
     plugins/PluginDebug.cpp
     plugins/PluginMainThreadScheduler.cpp
     plugins/PluginStream.cpp
-    plugins/PluginView.cpp
 
     rendering/AutoTableLayout.cpp
     rendering/BidiRun.cpp
@@ -2225,7 +2224,6 @@ set(WebCore_SOURCES
     rendering/shapes/RasterShape.cpp
     rendering/shapes/RectangleShape.cpp
     rendering/shapes/Shape.cpp
-    rendering/shapes/ShapeInfo.cpp
     rendering/shapes/ShapeOutsideInfo.cpp
 
     rendering/style/BasicShapes.cpp
@@ -2613,12 +2611,7 @@ if (ENABLE_SQL_DATABASE)
     )
 endif ()
 
-if (ENABLE_NETSCAPE_PLUGIN_API)
-    list(APPEND WebCore_SOURCES
-        plugins/PluginPackage.cpp
-        plugins/npapi.cpp
-    )
-else ()
+if (NOT ENABLE_NETSCAPE_PLUGIN_API)
     list(APPEND WebCore_SOURCES
         plugins/PluginPackageNone.cpp
         plugins/PluginViewNone.cpp
@@ -2733,6 +2726,7 @@ if (ENABLE_VIDEO_TRACK)
         html/track/AudioTrackList.cpp
         html/track/BufferedLineReader.cpp
         html/track/DataCue.cpp
+        html/track/InbandDataTextTrack.cpp
         html/track/InbandGenericTextTrack.cpp
         html/track/InbandTextTrack.cpp
         html/track/InbandWebVTTTextTrack.cpp

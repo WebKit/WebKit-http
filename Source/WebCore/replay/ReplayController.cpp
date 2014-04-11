@@ -37,6 +37,7 @@
 #include "Frame.h"
 #include "FrameTree.h"
 #include "InspectorInstrumentation.h"
+#include "Location.h"
 #include "Logging.h"
 #include "MainFrame.h"
 #include "Page.h"
@@ -44,13 +45,47 @@
 #include "ReplaySessionSegment.h"
 #include "ReplayingInputCursor.h"
 #include "ScriptController.h"
+#include "SerializationMethods.h"
 #include "Settings.h"
 #include "UserInputBridge.h"
 #include "WebReplayInputs.h"
 #include <replay/EmptyInputCursor.h>
 #include <wtf/text/CString.h>
 
+#if ENABLE(ASYNC_SCROLLING)
+#include "ScrollingCoordinator.h"
+#endif
+
 namespace WebCore {
+
+static void logDispatchedDOMEvent(const Event& event, bool eventIsUnrelated)
+{
+#if !LOG_DISABLED
+    EventTarget* target = event.target();
+    if (!target)
+        return;
+
+    // A DOM event is unrelated if it is being dispatched to a document that is neither capturing nor replaying.
+    if (Node* node = target->toNode()) {
+        LOG(WebReplay, "%-20s --->%s DOM event: type=%s, target=%lu/node[%p] %s\n", "ReplayEvents",
+            (eventIsUnrelated) ? "Unrelated" : "Dispatching",
+            event.type().string().utf8().data(),
+            frameIndexFromDocument((node->inDocument()) ? &node->document() : node->ownerDocument()),
+            node,
+            node->nodeName().utf8().data());
+    } else if (DOMWindow* window = target->toDOMWindow()) {
+        LOG(WebReplay, "%-20s --->%s DOM event: type=%s, target=%lu/window[%p] %s\n", "ReplayEvents",
+            (eventIsUnrelated) ? "Unrelated" : "Dispatching",
+            event.type().string().utf8().data(),
+            frameIndexFromDocument(window->document()),
+            window,
+            window->location()->href().utf8().data());
+    }
+#else
+    UNUSED_PARAM(event);
+    UNUSED_PARAM(eventIsUnrelated);
+#endif
+}
 
 ReplayController::ReplayController(Page& page)
     : m_page(page)
@@ -66,17 +101,20 @@ ReplayController::ReplayController(Page& page)
 {
 }
 
-void ReplayController::setForceDeterministicSettings(bool shouldForce)
+void ReplayController::setForceDeterministicSettings(bool shouldForceDeterministicBehavior)
 {
-    ASSERT(shouldForce ^ (m_sessionState == SessionState::Inactive));
+    ASSERT(shouldForceDeterministicBehavior ^ (m_sessionState == SessionState::Inactive));
 
-    if (shouldForce) {
+    if (shouldForceDeterministicBehavior) {
         m_savedSettings.usesPageCache = m_page.settings().usesPageCache();
 
         m_page.settings().setUsesPageCache(false);
     } else {
         m_page.settings().setUsesPageCache(m_savedSettings.usesPageCache);
     }
+
+    if (ScrollingCoordinator* scrollingCoordinator = m_page.scrollingCoordinator())
+        scrollingCoordinator->replaySessionStateDidChange();
 }
 
 void ReplayController::setSessionState(SessionState state)
@@ -351,6 +389,36 @@ void ReplayController::frameDetached(Frame* frame)
 
     // During playback, the segments are unloaded and loaded when the final
     // input has been dispatched. So, nothing needs to be done here.
+}
+
+void ReplayController::willDispatchEvent(const Event& event, Frame* frame)
+{
+    EventTarget* target = event.target();
+    if (!target && !frame)
+        return;
+
+    Document* document = frame ? frame->document() : nullptr;
+    // Fetch the document from the event target, because the target could be detached.
+    if (Node* node = target->toNode())
+        document = node->inDocument() ? &node->document() : node->ownerDocument();
+    else if (DOMWindow* window = target->toDOMWindow())
+        document = window->document();
+
+    ASSERT(document);
+
+    InputCursor& cursor = document->inputCursor();
+    bool eventIsUnrelated = !cursor.isCapturing() && !cursor.isReplaying();
+    logDispatchedDOMEvent(event, eventIsUnrelated);
+
+#if ENABLE_AGGRESSIVE_DETERMINISM_CHECKS
+    // To ensure deterministic JS execution, all DOM events must be dispatched deterministically.
+    // If these assertions fail, then this DOM event is being dispatched by a nondeterministic EventLoop
+    // cycle, and may cause program execution to diverge if any JS code runs because of the DOM event.
+    if (cursor.isCapturing())
+        ASSERT(static_cast<CapturingInputCursor&>(cursor).withinEventLoopInputExtent());
+    else if (cursor.isReplaying())
+        ASSERT(dispatcher().isDispatching());
+#endif
 }
 
 PassRefPtr<ReplaySession> ReplayController::loadedSession() const

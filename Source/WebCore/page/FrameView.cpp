@@ -2575,8 +2575,18 @@ IntRect FrameView::extendedBackgroundRectForPainting() const
     TiledBacking* tiledBacking = this->tiledBacking();
     if (!tiledBacking)
         return IntRect();
-
-    return tiledBacking->bounds();
+    
+    RenderView* renderView = this->renderView();
+    if (!renderView)
+        return IntRect();
+    
+    LayoutRect extendedRect = renderView->unextendedBackgroundRect(renderView);
+    if (!tiledBacking->hasMargins())
+        return pixelSnappedIntRect(extendedRect);
+    
+    extendedRect.moveBy(LayoutPoint(-tiledBacking->leftMarginWidth(), -tiledBacking->topMarginHeight()));
+    extendedRect.expand(LayoutSize(tiledBacking->leftMarginWidth() + tiledBacking->rightMarginWidth(), tiledBacking->topMarginHeight() + tiledBacking->bottomMarginHeight()));
+    return pixelSnappedIntRect(extendedRect);
 }
 
 bool FrameView::shouldUpdateWhileOffscreen() const
@@ -4280,14 +4290,16 @@ void FrameView::setExposedRect(FloatRect exposedRect)
 {
     if (m_exposedRect == exposedRect)
         return;
-
     m_exposedRect = exposedRect;
 
     // FIXME: We should support clipping to the exposed rect for subframes as well.
-    if (m_frame->isMainFrame()) {
-        if (TiledBacking* tiledBacking = this->tiledBacking())
-            tiledBacking->setExposedRect(exposedRect);
-    }
+    if (!m_frame->isMainFrame())
+        return;
+    if (TiledBacking* tiledBacking = this->tiledBacking())
+        tiledBacking->setTiledScrollingIndicatorPosition(exposedRect.location());
+
+    if (auto* view = renderView())
+        view->compositor().scheduleLayerFlush(false /* canThrottle */);
 }
 
 } // namespace WebCore

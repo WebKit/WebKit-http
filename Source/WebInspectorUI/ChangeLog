@@ -1,3 +1,134 @@
+2014-04-08  Brent Fulgham  <bfulgham@apple.com>
+
+        [Windows] Generate Optimized WebInspectorUI in Release Build
+        https://bugs.webkit.org/show_bug.cgi?id=120120
+
+        Reviewed by Timothy Hatcher.
+
+        * Scripts/copy-user-interface-resources.pl: Copied from Scripts/copy-user-interface-resources.sh.
+        * Scripts/copy-user-interface-resources.sh: Removed.
+        * Scripts/remove-console-asserts.pl:
+        * WebInspectorUI.vcxproj/WebInspectorUI.make: Added.
+        * WebInspectorUI.vcxproj/WebInspectorUI.vcxproj: Switch to Makefile style.
+        * WebInspectorUI.vcxproj/WebInspectorUI.vcxproj.filters: Ditto.
+        * WebInspectorUI.vcxproj/WebInspectorUIPostBuild.cmd: More work should
+        be done in the new build-webinspectorui.sh file.
+        * WebInspectorUI.vcxproj/build-webinspectorui.sh: Added.
+        * WebInspectorUI.xcodeproj/project.pbxproj:
+
+2014-04-08  Timothy Hatcher  <timothy@apple.com>
+
+        Fix corrupt APPLE_IMAGES_LICENSE.rtf after r165676.
+        https://bugs.webkit.org/show_bug.cgi?id=131384
+
+        Reviewed by Joseph Pecoraro.
+
+        * APPLE_IMAGES_LICENSE.rtf:
+
+2014-04-08  Timothy Hatcher  <timothy@apple.com>
+
+        Clean up old protocol JSON files to better match the latest
+        https://bugs.webkit.org/show_bug.cgi?id=131308
+
+        Reviewed by Joseph Pecoraro.
+
+        * Versions/Inspector-iOS-6.0.json:
+        * Versions/Inspector-iOS-7.0.json:
+
+2014-04-05  Brian J. Burg  <burg@cs.washington.edu>
+
+        Enable WEB_REPLAY for PLATFORM(MAC)
+        https://bugs.webkit.org/show_bug.cgi?id=130700
+
+        Reviewed by Timothy Hatcher.
+
+        If the ReplayAgent is available, then add an option to toggle between the
+        replay interface and normal Timeline interface from the timeline
+        sidebar panel. The option is available through a context menu item on the
+        sidebar panel's top navigation bar.
+
+        If web replay not available, just show the non-replay interface.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Base/Main.js: Add WebInspector.showReplayInterfaceSetting.
+        (WebInspector.loaded):
+
+        * UserInterface/Views/TimelineSidebarPanel.js: Unconditionally create the replay
+        interface elements, but only show them if showReplayInterfaceSetting is enabled.
+        (WebInspector.TimelineSidebarPanel.prototype._updateReplayInterfaceVisibility): Added
+        (WebInspector.TimelineSidebarPanel.prototype._contextMenuNavigationBarOrStatusBar.toggleReplayInterface): Added.
+        (WebInspector.TimelineSidebarPanel.prototype._contextMenuNavigationBarOrStatusBar): Added.
+
+2014-04-05  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Inspector: remove unused metrics and commands from the Timeline agent
+        https://bugs.webkit.org/show_bug.cgi?id=131184
+
+        Reviewed by Timothy Hatcher.
+
+        Remove the Memory domain from old protocol versions. Remove enum values
+        BeginFrame and CompositeLayers. Remove arguments to Timeline.start.
+        Remove miscellaneous Timeline commands that no longer exist and were never used.
+
+        * UserInterface/Protocol/Legacy/6.0/InspectorWebBackendCommands.js:
+        * UserInterface/Protocol/Legacy/7.0/InspectorWebBackendCommands.js:
+        * Versions/Inspector-iOS-6.0.json:
+        * Versions/Inspector-iOS-7.0.json:
+
+2014-04-03  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Inspector: hook up probe samples to TimelineAgent's records
+        https://bugs.webkit.org/show_bug.cgi?id=131127
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Controllers/TimelineManager.js: Stub out a case for the ProbeSample record type.
+        (WebInspector.TimelineManager.prototype.eventRecorded.processRecord):
+        (WebInspector.TimelineManager.prototype.eventRecorded):
+
+2014-04-04  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: JSContext inspection Resource search throws exception
+        https://bugs.webkit.org/show_bug.cgi?id=131253
+
+        Reviewed by Timothy Hatcher.
+
+        Fail gracefully when none of the supported search backends are available.
+        In JSContext inspection the DOM and Page agents are unavailable.
+
+        * UserInterface/Views/ResourceSidebarPanel.js:
+        (WebInspector.ResourceSidebarPanel.prototype.performSearch):
+
+2014-04-04  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: JSContext inspection - TypeError: null is not an object (evaluating 'contentView.showSourceCode')
+        https://bugs.webkit.org/show_bug.cgi?id=129857
+
+        Reviewed by Timothy Hatcher.
+
+        When inspecting a JSContext, there is no main frame resource, so
+        attempting to show it was resulting in a runtime error.
+        Instead, check to see if there is a main frame resource, fallback
+        to selecting the first tree element.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.toggleConsoleView):
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WebInspector.DebuggerSidebarPanel.prototype.showDefaultContentView):
+        * UserInterface/Views/ResourceSidebarPanel.js:
+        (WebInspector.ResourceSidebarPanel.prototype.showDefaultContentView):
+
+2014-04-04  Ion Rosca  <rosca@adobe.com>
+
+        [CSS Blending] Add compositing reason for isolation.
+        https://bugs.webkit.org/show_bug.cgi?id=131153
+
+        Reviewed by Joseph Pecoraro.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Views/LayerTreeSidebarPanel.js:
+        (WebInspector.LayerTreeSidebarPanel.prototype._populateListOfCompositingReasons):
+
 2014-04-02  Timothy Hatcher  <timothy@apple.com>
 
         Remove Input domain from the Web Inspector protocol.

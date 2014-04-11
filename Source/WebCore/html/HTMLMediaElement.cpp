@@ -330,6 +330,9 @@ HTMLMediaElement::HTMLMediaElement(const QualifiedName& tagName, Document& docum
 #if PLATFORM(IOS)
     , m_requestingPlay(false)
 #endif
+#if ENABLE(MEDIA_CONTROLS_SCRIPT)
+    , m_mediaControlsDependOnPageScaleFactor(false)
+#endif
 #if ENABLE(VIDEO_TRACK)
     , m_tracksAreReady(true)
     , m_haveVisibleTextTrack(false)
@@ -366,7 +369,9 @@ HTMLMediaElement::HTMLMediaElement(const QualifiedName& tagName, Document& docum
 #else
     m_sendProgressEvents = false;
     if (!settings || settings->mediaPlaybackRequiresUserGesture()) {
-        m_mediaSession->addBehaviorRestriction(HTMLMediaSession::RequireUserGestureForRateChange);
+        // Allow autoplay in a MediaDocument that is not in an iframe.
+        if (document.ownerElement() || !document.isMediaDocument())
+            m_mediaSession->addBehaviorRestriction(HTMLMediaSession::RequireUserGestureForRateChange);
 #if ENABLE(IOS_AIRPLAY)
         m_mediaSession->addBehaviorRestriction(HTMLMediaSession::RequireUserGestureToShowPlaybackTargetPicker);
 #endif
@@ -449,6 +454,11 @@ void HTMLMediaElement::registerWithDocument(Document& document)
     document.registerForCaptionPreferencesChangedCallbacks(this);
 #endif
 
+#if ENABLE(MEDIA_CONTROLS_SCRIPT)
+    if (m_mediaControlsDependOnPageScaleFactor)
+        document.registerForPageScaleFactorChangedCallbacks(this);
+#endif
+
     addElementToDocumentMap(*this, document);
 }
 
@@ -467,6 +477,11 @@ void HTMLMediaElement::unregisterWithDocument(Document& document)
 
 #if ENABLE(VIDEO_TRACK)
     document.unregisterForCaptionPreferencesChangedCallbacks(this);
+#endif
+
+#if ENABLE(MEDIA_CONTROLS_SCRIPT)
+    if (m_mediaControlsDependOnPageScaleFactor)
+        document.unregisterForPageScaleFactorChangedCallbacks(this);
 #endif
 
     removeElementFromDocumentMap(*this, document);
@@ -3676,8 +3691,14 @@ void HTMLMediaElement::configureTextTrackGroup(const TrackGroup& group)
         }
     }
 
-    if (trackToEnable)
+    if (trackToEnable) {
         trackToEnable->setMode(TextTrack::showingKeyword());
+
+        // If user preferences indicate we should always display captions, make sure we reflect the
+        // proper status via the webkitClosedCaptionsVisible API call:
+        if (!webkitClosedCaptionsVisible() && closedCaptionsVisible() && displayMode == CaptionUserPreferences::AlwaysOn)
+            m_webkitLegacyClosedCaptionOverride = true;
+    }
 
     m_processingPreferenceChange = false;
 }
@@ -3714,9 +3735,6 @@ void HTMLMediaElement::setSelectedTextTrack(TextTrack* trackToSelect)
         displayMode = CaptionUserPreferences::AlwaysOn;
         if (trackToSelect->language().length())
             captionPreferences->setPreferredLanguage(trackToSelect->language());
-        
-        // Set m_captionDisplayMode here so we don't reconfigure again when the preference changed notification comes through.
-        m_captionDisplayMode = displayMode;
     }
 
     captionPreferences->setCaptionDisplayMode(displayMode);
@@ -4218,6 +4236,14 @@ void HTMLMediaElement::mediaPlayerEngineUpdated(MediaPlayer*)
 #if ENABLE(MEDIA_SOURCE)
     m_droppedVideoFrames = 0;
 #endif
+
+#if PLATFORM(IOS)
+    if (!m_player)
+        return;
+    m_player->setVideoFullscreenFrame(m_videoFullscreenFrame);
+    m_player->setVideoFullscreenGravity(m_videoFullscreenGravity);
+    m_player->setVideoFullscreenLayer(m_videoFullscreenLayer.get());
+#endif
 }
 
 void HTMLMediaElement::mediaPlayerFirstVideoFrameAvailable(MediaPlayer*)
@@ -4606,12 +4632,13 @@ void HTMLMediaElement::stop()
         exitFullscreen();
     
     m_inActiveDocument = false;
-    userCancelledLoad();
-    
+
     // Stop the playback without generating events
     m_playing = false;
     setPausedInternal(true);
-    
+
+    userCancelledLoad();
+
     if (renderer())
         renderer()->updateFromElement();
     
@@ -5425,7 +5452,7 @@ void HTMLMediaElement::captionPreferencesChanged()
         return;
 
     m_captionDisplayMode = displayMode;
-    setClosedCaptionsVisible(m_captionDisplayMode == CaptionUserPreferences::AlwaysOn);
+    setWebkitClosedCaptionsVisible(m_captionDisplayMode == CaptionUserPreferences::AlwaysOn);
 }
 
 void HTMLMediaElement::markCaptionAndSubtitleTracksAsUnconfigured(ReconfigureMode mode)
@@ -5491,12 +5518,6 @@ void HTMLMediaElement::createMediaPlayer()
         m_mediaSession->setHasPlaybackTargetAvailabilityListeners(*this, true);
         enqueuePlaybackTargetAvailabilityChangedEvent(); // Ensure the event listener gets at least one event.
     }
-#endif
-    
-#if PLATFORM(IOS)
-    m_player->setVideoFullscreenFrame(m_videoFullscreenFrame);
-    m_player->setVideoFullscreenGravity(m_videoFullscreenGravity);
-    m_player->setVideoFullscreenLayer(m_videoFullscreenLayer.get());
 #endif
 }
 
@@ -5903,6 +5924,7 @@ DOMWrapperWorld& HTMLMediaElement::ensureIsolatedWorld()
 
 bool HTMLMediaElement::ensureMediaControlsInjectedScript()
 {
+    LOG(Media, "HTMLMediaElement::ensureMediaControlsInjectedScript");
     Page* page = document().page();
     if (!page)
         return false;
@@ -5916,8 +5938,8 @@ bool HTMLMediaElement::ensureMediaControlsInjectedScript()
     JSDOMGlobalObject* globalObject = JSC::jsCast<JSDOMGlobalObject*>(scriptController.globalObject(world));
     JSC::ExecState* exec = globalObject->globalExec();
 
-    JSC::JSValue overlayValue = globalObject->get(exec, JSC::Identifier(exec, "createControls"));
-    if (overlayValue.isFunction())
+    JSC::JSValue functionValue = globalObject->get(exec, JSC::Identifier(exec, "createControls"));
+    if (functionValue.isFunction())
         return true;
 
 #ifndef NDEBUG
@@ -5935,8 +5957,16 @@ bool HTMLMediaElement::ensureMediaControlsInjectedScript()
     return true;
 }
 
+static void setPageScaleFactorProperty(JSC::ExecState* exec, JSC::JSValue controllerValue, float pageScaleFactor)
+{
+    JSC::PutPropertySlot propertySlot(controllerValue);
+    JSC::JSObject* controllerObject = controllerValue.toObject(exec);
+    controllerObject->methodTable()->put(controllerObject, exec, JSC::Identifier(exec, "pageScaleFactor"), JSC::jsNumber(pageScaleFactor), propertySlot);
+}
+
 void HTMLMediaElement::didAddUserAgentShadowRoot(ShadowRoot* root)
 {
+    LOG(Media, "HTMLMediaElement::didAddUserAgentShadowRoot");
 #if ENABLE(PLUGIN_PROXY_FOR_VIDEO)
     // JavaScript controls are not enabled with the video plugin proxy.
     if (shouldUseVideoPluginProxy())
@@ -5956,9 +5986,17 @@ void HTMLMediaElement::didAddUserAgentShadowRoot(ShadowRoot* root)
     JSC::ExecState* exec = globalObject->globalExec();
     JSC::JSLockHolder lock(exec);
 
-    // It is expected the JS file provides a createControls(shadowRoot, video, mediaControlsHost) function.
-    JSC::JSValue overlayValue = globalObject->get(exec, JSC::Identifier(exec, "createControls"));
-    if (overlayValue.isUndefinedOrNull())
+    // The media controls script must provide a method with the following details.
+    // Name: createControls
+    // Parameters:
+    //     1. The ShadowRoot element that will hold the controls.
+    //     2. This object (and HTMLMediaElement).
+    //     3. The MediaControlsHost object.
+    // Return value:
+    //     A reference to the created media controller instance.
+
+    JSC::JSValue functionValue = globalObject->get(exec, JSC::Identifier(exec, "createControls"));
+    if (functionValue.isUndefinedOrNull())
         return;
 
     if (!m_mediaControlsHost)
@@ -5969,15 +6007,51 @@ void HTMLMediaElement::didAddUserAgentShadowRoot(ShadowRoot* root)
     argList.append(toJS(exec, globalObject, this));
     argList.append(toJS(exec, globalObject, m_mediaControlsHost.get()));
 
-    JSC::JSObject* overlay = overlayValue.toObject(exec);
+    JSC::JSObject* function = functionValue.toObject(exec);
     JSC::CallData callData;
-    JSC::CallType callType = overlay->methodTable()->getCallData(overlay, callData);
+    JSC::CallType callType = function->methodTable()->getCallData(function, callData);
     if (callType == JSC::CallTypeNone)
         return;
 
-    JSC::call(exec, overlay, callType, callData, globalObject, argList);
+    JSC::JSValue controllerValue = JSC::call(exec, function, callType, callData, globalObject, argList);
+    m_mediaControlsHost->setControllerJSValue(controllerValue);
+
+    setPageScaleFactorProperty(exec, controllerValue, page->pageScaleFactor());
+
     if (exec->hadException())
         exec->clearException();
+}
+
+void HTMLMediaElement::setMediaControlsDependOnPageScaleFactor(bool dependsOnPageScale)
+{
+    LOG(Media, "MediaElement::setMediaControlsDependPageScaleFactor = %s", boolString(dependsOnPageScale));
+    if (m_mediaControlsDependOnPageScaleFactor == dependsOnPageScale)
+        return;
+
+    m_mediaControlsDependOnPageScaleFactor = dependsOnPageScale;
+
+    if (m_mediaControlsDependOnPageScaleFactor)
+        document().registerForPageScaleFactorChangedCallbacks(this);
+    else
+        document().unregisterForPageScaleFactorChangedCallbacks(this);
+}
+
+void HTMLMediaElement::pageScaleFactorChanged()
+{
+    Page* page = document().page();
+    if (!page)
+        return;
+
+    LOG(Media, "HTMLMediaElement::pageScaleFactorChanged = %f", page->pageScaleFactor());
+    DOMWrapperWorld& world = ensureIsolatedWorld();
+    ScriptController& scriptController = page->mainFrame().script();
+    JSDOMGlobalObject* globalObject = JSC::jsCast<JSDOMGlobalObject*>(scriptController.globalObject(world));
+    JSC::ExecState* exec = globalObject->globalExec();
+    JSC::JSLockHolder lock(exec);
+
+    JSC::JSValue controllerValue = m_mediaControlsHost->controllerJSValue();
+
+    setPageScaleFactorProperty(exec, controllerValue, page->pageScaleFactor());
 }
 #endif // ENABLE(MEDIA_CONTROLS_SCRIPT)
 

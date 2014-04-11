@@ -28,19 +28,19 @@
 #import "WKContentView.h"
 
 #import "AssistedNodeInformation.h"
+#import "GestureTypes.h"
 #import "InteractionInformationAtPosition.h"
 #import "WKAirPlayRoutePicker.h"
 #import "WKFormPeripheral.h"
-#import "WKGestureTypes.h"
 #import <UIKit/UITextInput_Private.h>
 #import <UIKit/UIView.h>
-#import <UIKit/UIWebFormAccessory.h>
-#import <UIKit/UIWebTouchEventsGestureRecognizer.h>
 #import <UIKit/UIWKSelectionAssistant.h>
 #import <UIKit/UIWKTextInteractionAssistant.h>
+#import <UIKit/UIWebFormAccessory.h>
+#import <UIKit/UIWebTouchEventsGestureRecognizer.h>
 #import <wtf/Forward.h>
-#import <wtf/text/WTFString.h>
 #import <wtf/Vector.h>
+#import <wtf/text/WTFString.h>
 
 namespace WebCore {
 class Color;
@@ -58,6 +58,7 @@ class WebPageProxy;
 @class _UIHighlightView;
 @class WebIOSEvent;
 @class WKActionSheetAssistant;
+@class WKFormInputSession;
 
 typedef void (^UIWKAutocorrectionCompletionHandler)(UIWKAutocorrectionRects *rectsForInput);
 typedef void (^UIWKAutocorrectionContextHandler)(UIWKAutocorrectionContext *autocorrectionContext);
@@ -96,6 +97,7 @@ struct WKAutoCorrectionData {
     RetainPtr<NSString> _markedText;
     RetainPtr<WKActionSheetAssistant> _actionSheetAssistant;
     RetainPtr<WKAirPlayRoutePicker> _airPlayRoutePicker;
+    RetainPtr<WKFormInputSession> _formInputSession;
 
     std::unique_ptr<WebKit::SmartMagnificationController> _smartMagnificationController;
 
@@ -123,13 +125,15 @@ struct WKAutoCorrectionData {
 @property (nonatomic, readonly) const WebKit::InteractionInformationAtPosition& positionInformation;
 @property (nonatomic, readonly) const WebKit::WKAutoCorrectionData& autocorrectionData;
 @property (nonatomic, readonly) const WebKit::AssistedNodeInformation& assistedNodeInformation;
+@property (nonatomic, readonly) UIWebFormAccessory *formAccessoryView;
+
 - (void)setupInteraction;
 - (void)cleanupInteraction;
 
 - (void)_webTouchEvent:(const WebKit::NativeWebTouchEvent&)touchEvent preventsNativeGestures:(BOOL)preventsDefault;
 - (void)_didGetTapHighlightForRequest:(uint64_t)requestID color:(const WebCore::Color&)color quads:(const Vector<WebCore::FloatQuad>&)highlightedQuads topLeftRadius:(const WebCore::IntSize&)topLeftRadius topRightRadius:(const WebCore::IntSize&)topRightRadius bottomLeftRadius:(const WebCore::IntSize&)bottomLeftRadius bottomRightRadius:(const WebCore::IntSize&)bottomRightRadius;
 
-- (void)_startAssistingNode:(const WebKit::AssistedNodeInformation&)information;
+- (void)_startAssistingNode:(const WebKit::AssistedNodeInformation&)information userObject:(NSObject <NSSecureCoding> *)userObject;
 - (void)_stopAssistingNode;
 - (void)_selectionChanged;
 - (void)_updateChangedSelection;
@@ -137,11 +141,11 @@ struct WKAutoCorrectionData {
 - (void)_positionInformationDidChange:(const WebKit::InteractionInformationAtPosition&)info;
 - (void)_attemptClickAtLocation:(CGPoint)location;
 - (void)_updatePositionInformation;
-- (void)_performAction:(WebKit::WKSheetActions)action;
+- (void)_performAction:(WebKit::SheetAction)action;
 - (void)_willStartScrollingOrZooming;
 - (void)_willStartUserTriggeredScrollingOrZooming;
 - (void)_didEndScrollingOrZooming;
-- (void)_didUpdateBlockSelectionWithTouch:(WebKit::WKSelectionTouch)touch withFlags:(WebKit::WKSelectionFlags)flags growThreshold:(CGFloat)growThreshold shrinkThreshold:(CGFloat)shrinkThreshold;
+- (void)_didUpdateBlockSelectionWithTouch:(WebKit::SelectionTouch)touch withFlags:(WebKit::SelectionFlags)flags growThreshold:(CGFloat)growThreshold shrinkThreshold:(CGFloat)shrinkThreshold;
 - (void)_showPlaybackTargetPicker:(BOOL)hasVideo fromRect:(const WebCore::IntRect&)elementRect;
 - (void)accessoryDone;
 - (Vector<WebKit::WKOptionItem>&) assistedNodeSelectOptions;

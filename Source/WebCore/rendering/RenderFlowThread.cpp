@@ -130,27 +130,6 @@ void RenderFlowThread::invalidateRegions()
     m_regionsInvalidated = true;
 }
 
-class CurrentRenderFlowThreadDisabler {
-    WTF_MAKE_NONCOPYABLE(CurrentRenderFlowThreadDisabler);
-public:
-    CurrentRenderFlowThreadDisabler(RenderView* view)
-        : m_view(view)
-        , m_renderFlowThread(0)
-    {
-        m_renderFlowThread = m_view->flowThreadController().currentRenderFlowThread();
-        if (m_renderFlowThread)
-            view->flowThreadController().setCurrentRenderFlowThread(0);
-    }
-    ~CurrentRenderFlowThreadDisabler()
-    {
-        if (m_renderFlowThread)
-            m_view->flowThreadController().setCurrentRenderFlowThread(m_renderFlowThread);
-    }
-private:
-    RenderView* m_view;
-    RenderFlowThread* m_renderFlowThread;
-};
-
 void RenderFlowThread::validateRegions()
 {
     if (m_regionsInvalidated) {
@@ -800,7 +779,9 @@ bool RenderFlowThread::getRegionRangeForBox(const RenderBox* box, RenderRegion*&
     do {
         if (cb->isUnsplittableForPagination())
             topMostUnsplittable = cb;
+        ASSERT(cb->parent());
         cb = cb->parent()->enclosingBox();
+        ASSERT(cb);
     } while (!cb->isRenderFlowThread());
 
     if (topMostUnsplittable) {
@@ -1456,6 +1437,21 @@ CurrentRenderFlowThreadMaintainer::~CurrentRenderFlowThreadMaintainer()
     FlowThreadController& controller = m_renderFlowThread->view().flowThreadController();
     ASSERT(controller.currentRenderFlowThread() == m_renderFlowThread);
     controller.setCurrentRenderFlowThread(m_previousRenderFlowThread);
+}
+
+CurrentRenderFlowThreadDisabler::CurrentRenderFlowThreadDisabler(RenderView* view)
+    : m_view(view)
+    , m_renderFlowThread(0)
+{
+    m_renderFlowThread = m_view->flowThreadController().currentRenderFlowThread();
+    if (m_renderFlowThread)
+        view->flowThreadController().setCurrentRenderFlowThread(0);
+}
+
+CurrentRenderFlowThreadDisabler::~CurrentRenderFlowThreadDisabler()
+{
+    if (m_renderFlowThread)
+        m_view->flowThreadController().setCurrentRenderFlowThread(m_renderFlowThread);
 }
 
 

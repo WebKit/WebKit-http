@@ -109,6 +109,7 @@ class HTMLHeadElement;
 class HTMLIFrameElement;
 class HTMLImageElement;
 class HTMLMapElement;
+class HTMLMediaElement;
 class HTMLNameCollection;
 class HTMLScriptElement;
 class HitTestRequest;
@@ -559,8 +560,6 @@ public:
     void styleResolverChanged(StyleResolverUpdateFlag);
 
     void scheduleOptimizedStyleSheetUpdate();
-
-    void didAccessStyleResolver();
 
     void evaluateMediaQueryList();
 
@@ -1042,6 +1041,12 @@ public:
     void captionPreferencesChanged();
 #endif
 
+#if ENABLE(MEDIA_CONTROLS_SCRIPT)
+    void registerForPageScaleFactorChangedCallbacks(HTMLMediaElement*);
+    void unregisterForPageScaleFactorChangedCallbacks(HTMLMediaElement*);
+    void pageScaleFactorChanged();
+#endif
+
 #if ENABLE(PAGE_VISIBILITY_API)
     void registerForVisibilityStateChangedCallbacks(Element*);
     void unregisterForVisibilityStateChangedCallbacks(Element*);
@@ -1355,11 +1360,7 @@ private:
 
     void didAssociateFormControlsTimerFired(Timer<Document>&);
 
-    void styleResolverThrowawayTimerFired(DeferrableOneShotTimer<Document>&);
-
     unsigned m_referencingNodeCount;
-
-    DeferrableOneShotTimer<Document> m_styleResolverThrowawayTimer;
 
     std::unique_ptr<StyleResolver> m_styleResolver;
     bool m_didCalculateStyleResolver;
@@ -1535,6 +1536,10 @@ private:
     HashSet<Element*> m_privateBrowsingStateChangedElements;
 #if ENABLE(VIDEO_TRACK)
     HashSet<Element*> m_captionPreferencesChangedElements;
+#endif
+
+#if ENABLE(MEDIA_CONTROLS_SCRIPT)
+    HashSet<HTMLMediaElement*> m_pageScaleFactorChangedElements;
 #endif
 
 #if ENABLE(PAGE_VISIBILITY_API)

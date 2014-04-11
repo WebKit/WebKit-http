@@ -1,3 +1,113 @@
+2014-04-08  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Build fix after r166479. 'bytes' is now abbreviated as 'B'.
+
+        * public/js/helper-classes.js:
+        (PerfTestRuns.smallerIsBetter):
+
+2014-04-08  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Some CSS teaks.
+
+        * public/common.css:
+        (#title):
+        * public/index.html:
+        (#charts .pane):
+        (#charts .arrow):
+
+2014-04-03  Ryosuke Niwa  <rniwa@webkit.org>
+
+        WebKitPerfMonitor: There should be a way to add all metrics of a suite without also adding subtests
+        https://bugs.webkit.org/show_bug.cgi?id=131157
+
+        Reviewed by Andreas Kling.
+
+        Split "all metrics" into all metrics of a test suite and all subtests of the suite.
+        This allows, for example, adding all metrics such as Arithmetic and Geometric for
+        a given test suite without also adding its subtests.
+
+        * public/index.html:
+        (init.showCharts):
+        (init):
+
+2014-04-03  Ryosuke Niwa  <rniwa@webkit.org>
+
+        WebKitPerfMonitor: Tooltips cannot be pinned after using browser's back button
+        https://bugs.webkit.org/show_bug.cgi?id=131155
+
+        Reviewed by Andreas Kling.
+
+        The bug was caused by Chart.attach binding event listeners on plot container on each call.
+        This resulted in the click event handler toggling the visiblity of the tooltip twice upon
+        click when attach() has been called even number of times, keeping the tooltip invisible.
+
+        Fixed the bug by extracting the code to bind event listeners outside of Chart.attach as
+        a separate function, bindPlotEventHandlers, and calling it exactly once when Chart.attach
+        is called for the first time.
+
+        * public/index.html:
+        (Chart.attach):
+        (Chart..bindPlotEventHandlers):
+
+2014-04-03  Ryosuke Niwa  <rniwa@webkit.org>
+
+        WebKitPerfMonitor: Tooltips can be cut off at the top
+        https://bugs.webkit.org/show_bug.cgi?id=130960
+
+        Reviewed by Andreas Kling.
+
+        * public/common.css:
+        (#title): Removed the gradients, box shadows, and border from the header.
+        (#title h1): Reduce the font size.
+        (#title ul): Use line-height to vertically align the navigation bar instead of specifying a padding atop.
+        * public/index.html:
+        (.tooltop:before): Added. Identical to .tooltop:after except it's upside down (arrow facing up).
+        (.tooltip.inverted:before): Show the arrow facing up when .inverted is set.
+        (.tooltip.inverted:before): Hide the arrow facing down when .inverted is set.
+        * public/js/helper-classes.js:
+        (Tooltip.show): Show the tooltip below the point if placing it above the point results in the top of the
+        tooltip extending above y=0.
+
+2014-04-03  Ryosuke Niwa  <rniwa@webkit.org>
+
+        WebKitPerfMonitor: Y-axis adjustment is too aggressive
+        https://bugs.webkit.org/show_bug.cgi?id=130937
+
+        Reviewed by Andreas Kling.
+
+        Previously, adjusted min. and max. were defined as the two standards deviations away from EWMA of measured
+        results. This had two major problems:
+        1. Two standard deviations can be too small to show the confidence interval for results.
+        2. Sometimes baseline and target can be more than two standards deviations away.
+
+        Fixed the bug by completely rewriting the algorithm to compute the interval. Instead of blindly using two
+        standard deviations as margins, we keep adding quarter the standard deviation on each side until more than 90%
+        of points lie in the interval or we've expanded 4 standard deviations. Once this condition is met, we reduce
+        the margin on each side separately to reduce the empty space on either side.
+
+        A more rigorous approach would involve computing least squared value of results with respect to intervals
+        but that seems like an overkill for a simple UI problem; it's also computationally expensive.
+
+        * public/index.html:
+        (Chart..adjustedIntervalForRun): Extracted from computeYAxisBoundsToFitLines.
+        (Chart..computeYAxisBoundsToFitLines): Compute the min. and max. adjusted intervals out of adjusted intervals
+        for each runs (current, baseline, and target) so that at least one point from each set of results is shown.
+        We wouldn't see the difference between measured values versus baseline and target values otherwise.
+        * public/js/helper-classes.js:
+        (PerfTestResult.unscaledConfidenceIntervalDelta): Returns the default value if the confidence
+        interval delta cannot be computed.
+        (PerfTestResult.isInUnscaledInterval): Added. Returns true iff the confidence intervals lies
+        within the given interval.
+        (PerfTestRuns..filteredResults): Extracted from unscaledMeansForAllResults now that PerfTestRuns.min and
+        PerfTestRuns.max need to use both mean and confidence interval delta for each result.
+        (PerfTestRuns..unscaledMeansForAllResults):
+        (PerfTestRuns.min): Take the confidence interval delta into account.
+        (PerfTestRuns.max): Ditto.
+        (PerfTestRuns.countResults): Returns the number of results in the given time frame (> minTime).
+        (PerfTestRuns.countResultsInInterval): Returns the number of results whose confidence interval lie within the
+        given interval.
+        (PerfTestRuns.exponentialMovingArithmeticMean): Fixed the typo so that it actually computes the EWMA.
+
 2014-03-31  Ryosuke Niwa  <rniwa@webkit.org>
 
         Some CSS tweaks after r166477 and r166479,

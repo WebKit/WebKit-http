@@ -26,6 +26,8 @@
 #ifndef WebPage_h
 #define WebPage_h
 
+#include "APIInjectedBundleFormClient.h"
+#include "APIInjectedBundlePageUIClient.h"
 #include "APIObject.h"
 #include "DrawingArea.h"
 #include "FindController.h"
@@ -33,19 +35,19 @@
 #include "ImageOptions.h"
 #include "InjectedBundlePageDiagnosticLoggingClient.h"
 #include "InjectedBundlePageEditorClient.h"
-#include "InjectedBundlePageFormClient.h"
 #include "InjectedBundlePageFullScreenClient.h"
 #include "InjectedBundlePageLoaderClient.h"
 #include "InjectedBundlePagePolicyClient.h"
 #include "InjectedBundlePageResourceLoadClient.h"
-#include "InjectedBundlePageUIClient.h"
 #include "MessageReceiver.h"
 #include "MessageSender.h"
-#include "TapHighlightController.h"
+#include "PageOverlayController.h"
 #include "Plugin.h"
 #include "SandboxExtension.h"
 #include "ShareableBitmap.h"
+#include "TapHighlightController.h"
 #include "WebUndoStep.h"
+#include <WebCore/ContextMenuItem.h>
 #include <WebCore/DictationAlternative.h>
 #include <WebCore/DragData.h>
 #include <WebCore/Editor.h>
@@ -77,7 +79,7 @@
 #endif
 
 #if PLATFORM(IOS)
-#include "WKGestureTypes.h"
+#include "GestureTypes.h"
 #endif
 
 #if ENABLE(TOUCH_EVENTS)
@@ -115,6 +117,7 @@ namespace IPC {
 }
 
 namespace WebCore {
+    class DocumentLoader;
     class GraphicsContext;
     class Frame;
     class FrameView;
@@ -178,7 +181,9 @@ class RemoteLayerTreeTransaction;
 class WebTouchEvent;
 #endif
 
-typedef Vector<RefPtr<PageOverlay>> PageOverlayList;
+#if ENABLE(TELEPHONE_NUMBER_DETECTION)
+class TelephoneNumberOverlayController;
+#endif
 
 class WebPage : public API::ObjectImpl<API::Object::Type::BundlePage>, public IPC::MessageReceiver, public IPC::MessageSender {
 public:
@@ -204,6 +209,8 @@ public:
     
     InjectedBundleBackForwardList* backForwardList();
     DrawingArea* drawingArea() const { return m_drawingArea.get(); }
+    const PageOverlayController& pageOverlayController() const { return m_pageOverlayController; }
+    PageOverlayController& pageOverlayController() { return m_pageOverlayController; }
 #if ENABLE(ASYNC_SCROLLING)
     WebCore::ScrollingCoordinator* scrollingCoordinator() const;
 #endif
@@ -235,7 +242,6 @@ public:
     // -- Called by the DrawingArea.
     // FIXME: We could genericize these into a DrawingArea client interface. Would that be beneficial?
     void drawRect(WebCore::GraphicsContext&, const WebCore::IntRect&);
-    void drawPageOverlay(PageOverlay*, WebCore::GraphicsContext&, const WebCore::IntRect&);
     void layoutIfNeeded();
 
     // -- Called from WebCore clients.
@@ -275,11 +281,11 @@ public:
     void initializeInjectedBundleContextMenuClient(WKBundlePageContextMenuClientBase*);
 #endif
     void initializeInjectedBundleEditorClient(WKBundlePageEditorClientBase*);
-    void initializeInjectedBundleFormClient(WKBundlePageFormClientBase*);
+    void setInjectedBundleFormClient(std::unique_ptr<API::InjectedBundle::FormClient>);
     void initializeInjectedBundleLoaderClient(WKBundlePageLoaderClientBase*);
     void initializeInjectedBundlePolicyClient(WKBundlePagePolicyClientBase*);
     void initializeInjectedBundleResourceLoadClient(WKBundlePageResourceLoadClientBase*);
-    void initializeInjectedBundleUIClient(WKBundlePageUIClientBase*);
+    void setInjectedBundleUIClient(std::unique_ptr<API::InjectedBundle::PageUIClient>);
 #if ENABLE(FULLSCREEN_API)
     void initializeInjectedBundleFullScreenClient(WKBundlePageFullScreenClientBase*);
 #endif
@@ -289,11 +295,11 @@ public:
     InjectedBundlePageContextMenuClient& injectedBundleContextMenuClient() { return m_contextMenuClient; }
 #endif
     InjectedBundlePageEditorClient& injectedBundleEditorClient() { return m_editorClient; }
-    InjectedBundlePageFormClient& injectedBundleFormClient() { return m_formClient; }
+    API::InjectedBundle::FormClient& injectedBundleFormClient() { return *m_formClient.get(); }
     InjectedBundlePageLoaderClient& injectedBundleLoaderClient() { return m_loaderClient; }
     InjectedBundlePagePolicyClient& injectedBundlePolicyClient() { return m_policyClient; }
     InjectedBundlePageResourceLoadClient& injectedBundleResourceLoadClient() { return m_resourceLoadClient; }
-    InjectedBundlePageUIClient& injectedBundleUIClient() { return m_uiClient; }
+    API::InjectedBundle::PageUIClient& injectedBundleUIClient() { return *m_uiClient.get(); }
     InjectedBundlePageDiagnosticLoggingClient& injectedBundleDiagnosticLoggingClient() { return m_logDiagnosticMessageClient; }
 #if ENABLE(FULLSCREEN_API)
     InjectedBundlePageFullScreenClient& injectedBundleFullScreenClient() { return m_fullScreenClient; }
@@ -404,10 +410,8 @@ public:
 
     bool windowIsFocused() const;
     bool windowAndWebPageAreFocused() const;
-    void installPageOverlay(PassRefPtr<PageOverlay>, bool shouldFadeIn = false);
-    void uninstallPageOverlay(PageOverlay*, bool shouldFadeOut = false);
-    bool hasPageOverlay() const { return m_pageOverlays.size(); }
-    PageOverlayList& pageOverlays() { return m_pageOverlays; }
+    void installPageOverlay(PassRefPtr<PageOverlay>, PageOverlay::FadeMode = PageOverlay::FadeMode::DoNotFade);
+    void uninstallPageOverlay(PageOverlay*, PageOverlay::FadeMode = PageOverlay::FadeMode::DoNotFade);
 
 #if !PLATFORM(IOS)
     void setHeaderPageBanner(PassRefPtr<PageBanner>);
@@ -688,6 +692,7 @@ public:
 
 #if PLATFORM(IOS)
     void setViewportConfigurationMinimumLayoutSize(const WebCore::IntSize&);
+    void dynamicViewportSizeUpdate(const WebCore::IntSize& minimumLayoutSize, const WebCore::FloatRect& targetExposedContentRect, const WebCore::FloatRect& targetUnobscuredRect, double scale);
     void viewportConfigurationChanged();
     void updateVisibleContentRects(const VisibleContentRectUpdateInfo&);
     bool scaleWasSetByUIProcess() const { return m_scaleWasSetByUIProcess; }
@@ -765,6 +770,17 @@ public:
 #if ENABLE(IMAGE_CONTROLS)
     void replaceControlledImage(const ShareableBitmap::Handle&);
 #endif
+    
+    // Some platforms require accessibility-enabled processes to spin the run loop so that the WebProcess doesn't hang.
+    // While this is not ideal, it does not have to be applied to every platform at the moment.
+    static bool synchronousMessagesShouldSpinRunLoop();
+    
+#if ENABLE(TELEPHONE_NUMBER_DETECTION)
+    TelephoneNumberOverlayController& telephoneNumberOverlayController();
+    void handleTelephoneNumberClick(const String& number, const WebCore::IntPoint&);
+#endif
+
+    void didChangeScrollOffsetForAnyFrame();
 
 private:
     WebPage(uint64_t pageID, const WebPageCreationParameters&);
@@ -780,12 +796,12 @@ private:
 
 #if PLATFORM(IOS)
     static void convertSelectionRectsToRootView(WebCore::FrameView*, Vector<WebCore::SelectionRect>&);
-    PassRefPtr<WebCore::Range> rangeForWebSelectionAtPosition(const WebCore::IntPoint&, const WebCore::VisiblePosition&, WKSelectionFlags&);
+    PassRefPtr<WebCore::Range> rangeForWebSelectionAtPosition(const WebCore::IntPoint&, const WebCore::VisiblePosition&, SelectionFlags&);
     PassRefPtr<WebCore::Range> rangeForBlockAtPoint(const WebCore::IntPoint&);
-    void computeExpandAndShrinkThresholdsForHandle(const WebCore::IntPoint&, WKHandlePosition, float& growThreshold, float& shrinkThreshold);
-    PassRefPtr<WebCore::Range> changeBlockSelection(const WebCore::IntPoint&, WKHandlePosition, float& growThreshold, float& shrinkThreshold, WKSelectionFlags&);
-    PassRefPtr<WebCore::Range> expandedRangeFromHandle(WebCore::Range*, WKHandlePosition);
-    PassRefPtr<WebCore::Range> contractedRangeFromHandle(WebCore::Range* currentRange, WKHandlePosition, WKSelectionFlags&);
+    void computeExpandAndShrinkThresholdsForHandle(const WebCore::IntPoint&, SelectionHandlePosition, float& growThreshold, float& shrinkThreshold);
+    PassRefPtr<WebCore::Range> changeBlockSelection(const WebCore::IntPoint&, SelectionHandlePosition, float& growThreshold, float& shrinkThreshold, SelectionFlags&);
+    PassRefPtr<WebCore::Range> expandedRangeFromHandle(WebCore::Range*, SelectionHandlePosition);
+    PassRefPtr<WebCore::Range> contractedRangeFromHandle(WebCore::Range* currentRange, SelectionHandlePosition, SelectionFlags&);
     void getAssistedNodeInformation(AssistedNodeInformation&);
     void platformInitializeAccessibility();
     RefPtr<WebCore::Range> m_currentBlockSelection;
@@ -1060,18 +1076,17 @@ private:
     InjectedBundlePageContextMenuClient m_contextMenuClient;
 #endif
     InjectedBundlePageEditorClient m_editorClient;
-    InjectedBundlePageFormClient m_formClient;
+    std::unique_ptr<API::InjectedBundle::FormClient> m_formClient;
     InjectedBundlePageLoaderClient m_loaderClient;
     InjectedBundlePagePolicyClient m_policyClient;
     InjectedBundlePageResourceLoadClient m_resourceLoadClient;
-    InjectedBundlePageUIClient m_uiClient;
+    std::unique_ptr<API::InjectedBundle::PageUIClient> m_uiClient;
 #if ENABLE(FULLSCREEN_API)
     InjectedBundlePageFullScreenClient m_fullScreenClient;
 #endif
     InjectedBundlePageDiagnosticLoggingClient m_logDiagnosticMessageClient;
 
     FindController m_findController;
-    PageOverlayList m_pageOverlays;
 
 #if ENABLE(INSPECTOR)
     RefPtr<WebInspector> m_inspector;
@@ -1168,6 +1183,12 @@ private:
 #if ENABLE(WEBGL)
     WebCore::WebGLLoadPolicy m_systemWebGLPolicy;
 #endif
+
+#if ENABLE(TELEPHONE_NUMBER_DETECTION)
+    RefPtr<TelephoneNumberOverlayController> m_telephoneNumberOverlayController;
+#endif
+
+    PageOverlayController m_pageOverlayController;
 };
 
 } // namespace WebKit

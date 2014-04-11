@@ -29,6 +29,7 @@
 #import "GenericCallback.h"
 #import "GraphicsLayerCARemote.h"
 #import "PlatformCALayerRemote.h"
+#import "RemoteLayerBackingStoreCollection.h"
 #import "RemoteLayerTreeTransaction.h"
 #import "WebPage.h"
 #import <WebCore/FrameView.h>
@@ -42,6 +43,7 @@ namespace WebKit {
 
 RemoteLayerTreeContext::RemoteLayerTreeContext(WebPage* webPage)
     : m_webPage(webPage)
+    , m_backingStoreCollection(this)
 {
 }
 
@@ -69,28 +71,19 @@ void RemoteLayerTreeContext::layerWillBeDestroyed(PlatformCALayerRemote* layer)
     m_layersAwaitingAnimationStart.remove(layer->layerID());
 }
 
-void RemoteLayerTreeContext::outOfTreeLayerWasAdded(GraphicsLayer* layer)
+void RemoteLayerTreeContext::backingStoreWasCreated(RemoteLayerBackingStore* backingStore)
 {
-    ASSERT(!m_outOfTreeLayers.contains(layer));
-    m_outOfTreeLayers.append(layer);
+    m_backingStoreCollection.backingStoreWasCreated(backingStore);
 }
 
-void RemoteLayerTreeContext::outOfTreeLayerWillBeRemoved(GraphicsLayer* layer)
+void RemoteLayerTreeContext::backingStoreWillBeDestroyed(RemoteLayerBackingStore* backingStore)
 {
-    size_t layerIndex = m_outOfTreeLayers.find(layer);
-    ASSERT(layerIndex != notFound);
-    m_outOfTreeLayers.remove(layerIndex);
+    m_backingStoreCollection.backingStoreWillBeDestroyed(backingStore);
 }
 
 std::unique_ptr<GraphicsLayer> RemoteLayerTreeContext::createGraphicsLayer(GraphicsLayerClient* client)
 {
     return std::make_unique<GraphicsLayerCARemote>(client, this);
-}
-
-void RemoteLayerTreeContext::flushOutOfTreeLayers()
-{
-    for (const auto& layer : m_outOfTreeLayers)
-        layer->flushCompositingStateForThisLayerOnly();
 }
 
 void RemoteLayerTreeContext::buildTransaction(RemoteLayerTreeTransaction& transaction, PlatformCALayer& rootLayer)

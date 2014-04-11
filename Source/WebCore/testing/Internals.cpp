@@ -1164,20 +1164,6 @@ PassRefPtr<NodeList> Internals::nodesFromRect(Document* document, int centerX, i
     return StaticNodeList::adopt(matches);
 }
 
-void Internals::emitInspectorDidBeginFrame()
-{
-#if ENABLE(INSPECTOR)
-    contextDocument()->frame()->page()->inspectorController().didBeginFrame();
-#endif
-}
-
-void Internals::emitInspectorDidCancelFrame()
-{
-#if ENABLE(INSPECTOR)
-    contextDocument()->frame()->page()->inspectorController().didCancelFrame();
-#endif
-}
-
 class GetCallerCodeBlockFunctor {
 public:
     GetCallerCodeBlockFunctor()
@@ -1529,16 +1515,6 @@ void Internals::closeDummyInspectorFrontend()
 
     m_frontendWindow->close(m_frontendWindow->scriptExecutionContext());
     m_frontendWindow.release();
-}
-
-void Internals::setInspectorResourcesDataSizeLimits(int maximumResourcesContentSize, int maximumSingleResourceContentSize, ExceptionCode& ec)
-{
-    Page* page = contextDocument()->frame()->page();
-    if (!page) {
-        ec = INVALID_ACCESS_ERR;
-        return;
-    }
-    page->inspectorController().setResourcesDataSizeLimitsFromInternals(maximumResourcesContentSize, maximumSingleResourceContentSize);
 }
 
 void Internals::setJavaScriptProfilingEnabled(bool enabled, ExceptionCode& ec)

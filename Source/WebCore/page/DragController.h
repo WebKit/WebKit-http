@@ -33,7 +33,7 @@
 
 namespace WebCore {
 
-    class Clipboard;
+    class DataTransfer;
     class Document;
     class DragClient;
     class DragData;
@@ -61,7 +61,7 @@ namespace WebCore {
         DragSession dragEntered(DragData&);
         void dragExited(DragData&);
         DragSession dragUpdated(DragData&);
-        bool performDrag(DragData&);
+        bool performDragOperation(DragData&);
         
         // FIXME: It should be possible to remove a number of these accessors once all
         // drag logic is in WebCore.
@@ -106,10 +106,10 @@ namespace WebCore {
 
         void mouseMovedIntoDocument(Document*);
 
-        void doImageDrag(Element&, const IntPoint&, const IntRect&, Clipboard&, Frame&, IntPoint&);
-        void doSystemDrag(DragImageRef, const IntPoint&, const IntPoint&, Clipboard&, Frame&, bool forLink);
+        void doImageDrag(Element&, const IntPoint&, const IntRect&, DataTransfer&, Frame&, IntPoint&);
+        void doSystemDrag(DragImageRef, const IntPoint&, const IntPoint&, DataTransfer&, Frame&, bool forLink);
         void cleanupAfterSystemDrag();
-        void declareAndWriteDragImage(Clipboard&, Element&, const URL&, const String& label);
+        void declareAndWriteDragImage(DataTransfer&, Element&, const URL&, const String& label);
 
         Page& m_page;
         DragClient& m_client;

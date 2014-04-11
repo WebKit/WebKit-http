@@ -265,7 +265,7 @@ static AccessibilityObjectWrapper* AccessibilityUnignoredAncestor(AccessibilityO
 - (BOOL)accessibilityCanFuzzyHitTest
 {
     if (![self _prepareAccessibilityCall])
-        return nil;
+        return false;
     
     AccessibilityRole role = m_object->roleValue();
     // Elements that can be returned when performing fuzzy hit testing.
@@ -335,7 +335,7 @@ static AccessibilityObjectWrapper* AccessibilityUnignoredAncestor(AccessibilityO
 - (NSInteger)accessibilityElementCount
 {
     if (![self _prepareAccessibilityCall])
-        return nil;
+        return 0;
 
     AXAttributeCacheEnabler enableCache(m_object->axObjectCache());
     if ([self isAttachment])
@@ -2065,7 +2065,7 @@ static void AXAttributedStringAppendText(NSMutableAttributedString* attrString, 
 - (BOOL)accessibilityARIAIsBusy
 {
     if (![self _prepareAccessibilityCall])
-        return nil;
+        return NO;
 
     return m_object->ariaLiveRegionBusy();
 }
@@ -2089,7 +2089,7 @@ static void AXAttributedStringAppendText(NSMutableAttributedString* attrString, 
 - (BOOL)accessibilityARIALiveRegionIsAtomic
 {
     if (![self _prepareAccessibilityCall])
-        return nil;
+        return NO;
     
     return m_object->ariaLiveRegionAtomic();
 }

@@ -176,8 +176,6 @@ private:
     RetainPtr<UIView> _rootContentView;
     RetainPtr<WKInspectorIndicationView> _inspectorIndicationView;
 
-    WKWebView *_webView;
-
     HistoricalVelocityData _historicalKinematicData;
 }
 
@@ -329,11 +327,6 @@ static inline FloatRect fixedPositionRectFromExposedRect(CGRect unobscuredRect, 
 - (void)setMinimumSize:(CGSize)size
 {
     _page->drawingArea()->setSize(IntSize(size), IntSize(), IntSize());
-}
-
-- (void)setMinimumLayoutSize:(CGSize)size
-{
-    _page->setViewportConfigurationMinimumLayoutSize(IntSize(CGCeiling(size.width), CGCeiling(size.height)));
 }
 
 - (void)didFinishScrolling

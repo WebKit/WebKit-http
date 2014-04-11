@@ -31,6 +31,7 @@
 #include "InjectedBundleNavigationAction.h"
 #include "InjectedBundleUserMessageCoders.h"
 #include "LayerTreeHost.h"
+#include "NavigationActionData.h"
 #include "PageBanner.h"
 #include "WebColorChooser.h"
 #include "WebCoreArgumentCoders.h"
@@ -66,6 +67,7 @@
 #include <WebCore/MainFrame.h>
 #include <WebCore/NotImplemented.h>
 #include <WebCore/Page.h>
+#include <WebCore/ScriptController.h>
 #include <WebCore/SecurityOrigin.h>
 #include <WebCore/Settings.h>
 
@@ -197,9 +199,6 @@ void WebChromeClient::focusedFrameChanged(Frame* frame)
 
 Page* WebChromeClient::createWindow(Frame* frame, const FrameLoadRequest& request, const WindowFeatures& windowFeatures, const NavigationAction& navigationAction)
 {
-    uint32_t modifiers = static_cast<uint32_t>(InjectedBundleNavigationAction::modifiersForNavigationAction(navigationAction));
-    int32_t mouseButton = static_cast<int32_t>(InjectedBundleNavigationAction::mouseButtonForNavigationAction(navigationAction));
-
 #if ENABLE(FULLSCREEN_API)
     if (frame->document() && frame->document()->webkitCurrentFullScreenElement())
         frame->document()->webkitCancelFullScreen();
@@ -207,9 +206,15 @@ Page* WebChromeClient::createWindow(Frame* frame, const FrameLoadRequest& reques
 
     WebFrame* webFrame = WebFrame::fromCoreFrame(*frame);
 
+    NavigationActionData navigationActionData;
+    navigationActionData.navigationType = navigationAction.type();
+    navigationActionData.modifiers = InjectedBundleNavigationAction::modifiersForNavigationAction(navigationAction);
+    navigationActionData.mouseButton = InjectedBundleNavigationAction::mouseButtonForNavigationAction(navigationAction);
+    navigationActionData.isProcessingUserGesture = ScriptController::processingUserGesture();
+
     uint64_t newPageID = 0;
     WebPageCreationParameters parameters;
-    if (!WebProcess::shared().parentProcessConnection()->sendSync(Messages::WebPageProxy::CreateNewPage(webFrame->frameID(), request.resourceRequest(), windowFeatures, modifiers, mouseButton), Messages::WebPageProxy::CreateNewPage::Reply(newPageID, parameters), m_page->pageID()))
+    if (!WebProcess::shared().parentProcessConnection()->sendSync(Messages::WebPageProxy::CreateNewPage(webFrame->frameID(), request.resourceRequest(), windowFeatures, navigationActionData), Messages::WebPageProxy::CreateNewPage::Reply(newPageID, parameters), m_page->pageID()))
         return 0;
 
     if (!newPageID)
@@ -241,9 +246,9 @@ void WebChromeClient::setToolbarsVisible(bool toolbarsAreVisible)
 
 bool WebChromeClient::toolbarsVisible()
 {
-    WKBundlePageUIElementVisibility toolbarsVisibility = m_page->injectedBundleUIClient().toolbarsAreVisible(m_page);
-    if (toolbarsVisibility != WKBundlePageUIElementVisibilityUnknown)
-        return toolbarsVisibility == WKBundlePageUIElementVisible;
+    API::InjectedBundle::PageUIClient::UIElementVisibility toolbarsVisibility = m_page->injectedBundleUIClient().toolbarsAreVisible(m_page);
+    if (toolbarsVisibility != API::InjectedBundle::PageUIClient::UIElementVisibility::Unknown)
+        return toolbarsVisibility == API::InjectedBundle::PageUIClient::UIElementVisibility::Visible;
     
     bool toolbarsAreVisible = true;
     if (!WebProcess::shared().parentProcessConnection()->sendSync(Messages::WebPageProxy::GetToolbarsAreVisible(), Messages::WebPageProxy::GetToolbarsAreVisible::Reply(toolbarsAreVisible), m_page->pageID()))
@@ -259,9 +264,9 @@ void WebChromeClient::setStatusbarVisible(bool statusBarIsVisible)
 
 bool WebChromeClient::statusbarVisible()
 {
-    WKBundlePageUIElementVisibility statusbarVisibility = m_page->injectedBundleUIClient().statusBarIsVisible(m_page);
-    if (statusbarVisibility != WKBundlePageUIElementVisibilityUnknown)
-        return statusbarVisibility == WKBundlePageUIElementVisible;
+    API::InjectedBundle::PageUIClient::UIElementVisibility statusbarVisibility = m_page->injectedBundleUIClient().statusBarIsVisible(m_page);
+    if (statusbarVisibility != API::InjectedBundle::PageUIClient::UIElementVisibility::Unknown)
+        return statusbarVisibility == API::InjectedBundle::PageUIClient::UIElementVisibility::Visible;
 
     bool statusBarIsVisible = true;
     if (!WebProcess::shared().parentProcessConnection()->sendSync(Messages::WebPageProxy::GetStatusBarIsVisible(), Messages::WebPageProxy::GetStatusBarIsVisible::Reply(statusBarIsVisible), m_page->pageID()))
@@ -288,9 +293,9 @@ void WebChromeClient::setMenubarVisible(bool menuBarVisible)
 
 bool WebChromeClient::menubarVisible()
 {
-    WKBundlePageUIElementVisibility menubarVisibility = m_page->injectedBundleUIClient().menuBarIsVisible(m_page);
-    if (menubarVisibility != WKBundlePageUIElementVisibilityUnknown)
-        return menubarVisibility == WKBundlePageUIElementVisible;
+    API::InjectedBundle::PageUIClient::UIElementVisibility menubarVisibility = m_page->injectedBundleUIClient().menuBarIsVisible(m_page);
+    if (menubarVisibility != API::InjectedBundle::PageUIClient::UIElementVisibility::Unknown)
+        return menubarVisibility == API::InjectedBundle::PageUIClient::UIElementVisibility::Visible;
     
     bool menuBarIsVisible = true;
     if (!WebProcess::shared().parentProcessConnection()->sendSync(Messages::WebPageProxy::GetMenuBarIsVisible(), Messages::WebPageProxy::GetMenuBarIsVisible::Reply(menuBarIsVisible), m_page->pageID()))
@@ -356,7 +361,7 @@ void WebChromeClient::runJavaScriptAlert(Frame* frame, const String& alertText)
     m_page->injectedBundleUIClient().willRunJavaScriptAlert(m_page, alertText, webFrame);
 
     // FIXME (126021): It is not good to change IPC behavior conditionally, and SpinRunLoopWhileWaitingForReply was known to cause trouble in other similar cases.
-    unsigned syncSendFlags = (WebCore::AXObjectCache::accessibilityEnabled()) ? IPC::SpinRunLoopWhileWaitingForReply : 0;
+    unsigned syncSendFlags = WebPage::synchronousMessagesShouldSpinRunLoop() ? IPC::SpinRunLoopWhileWaitingForReply : 0;
     WebProcess::shared().parentProcessConnection()->sendSync(Messages::WebPageProxy::RunJavaScriptAlert(webFrame->frameID(), alertText), Messages::WebPageProxy::RunJavaScriptAlert::Reply(), m_page->pageID(), std::chrono::milliseconds::max(), syncSendFlags);
 }
 
@@ -369,7 +374,7 @@ bool WebChromeClient::runJavaScriptConfirm(Frame* frame, const String& message)
     m_page->injectedBundleUIClient().willRunJavaScriptConfirm(m_page, message, webFrame);
 
     // FIXME (126021): It is not good to change IPC behavior conditionally, and SpinRunLoopWhileWaitingForReply was known to cause trouble in other similar cases.
-    unsigned syncSendFlags = (WebCore::AXObjectCache::accessibilityEnabled()) ? IPC::SpinRunLoopWhileWaitingForReply : 0;
+    unsigned syncSendFlags = WebPage::synchronousMessagesShouldSpinRunLoop() ? IPC::SpinRunLoopWhileWaitingForReply : 0;
     bool result = false;
     if (!WebProcess::shared().parentProcessConnection()->sendSync(Messages::WebPageProxy::RunJavaScriptConfirm(webFrame->frameID(), message), Messages::WebPageProxy::RunJavaScriptConfirm::Reply(result), m_page->pageID(), std::chrono::milliseconds::max(), syncSendFlags))
         return false;
@@ -386,7 +391,7 @@ bool WebChromeClient::runJavaScriptPrompt(Frame* frame, const String& message, c
     m_page->injectedBundleUIClient().willRunJavaScriptPrompt(m_page, message, defaultValue, webFrame);
 
     // FIXME (126021): It is not good to change IPC behavior conditionally, and SpinRunLoopWhileWaitingForReply was known to cause trouble in other similar cases.
-    unsigned syncSendFlags = (WebCore::AXObjectCache::accessibilityEnabled()) ? IPC::SpinRunLoopWhileWaitingForReply : 0;
+    unsigned syncSendFlags = WebPage::synchronousMessagesShouldSpinRunLoop() ? IPC::SpinRunLoopWhileWaitingForReply : 0;
     if (!WebProcess::shared().parentProcessConnection()->sendSync(Messages::WebPageProxy::RunJavaScriptPrompt(webFrame->frameID(), message, defaultValue), Messages::WebPageProxy::RunJavaScriptPrompt::Reply(result), m_page->pageID(), std::chrono::milliseconds::max(), syncSendFlags))
         return false;
 
@@ -593,7 +598,7 @@ void WebChromeClient::print(Frame* frame)
     WebFrame* webFrame = WebFrame::fromCoreFrame(*frame);
     ASSERT(webFrame);
 
-#if PLATFORM(GTK) && defined(HAVE_GTK_UNIX_PRINTING)
+#if PLATFORM(GTK) && HAVE(GTK_UNIX_PRINTING)
     // When printing synchronously in GTK+ we need to make sure that we have a list of Printers before starting the print operation.
     // Getting the list of printers is done synchronously by GTK+, but using a nested main loop that might process IPC messages
     // comming from the UI process like EndPrinting. When the EndPriting message is received while the printer list is being populated,

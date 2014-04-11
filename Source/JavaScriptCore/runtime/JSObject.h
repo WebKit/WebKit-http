@@ -932,6 +932,9 @@ protected:
         }
     }
 
+    JS_EXPORT_PRIVATE void putDirectPrototypeProperty(VM&, JSValue, int);
+    void putDirectPrototypePropertyWithoutTransitions(VM&, JSValue, int);
+    
 private:
     friend class LLIntOffsetsExtractor;
         
@@ -1122,9 +1125,8 @@ inline bool JSObject::isGlobalObject() const
 
 inline bool JSObject::isVariableObject() const
 {
-    return type() >= VariableObjectType;
+    return type() == GlobalObjectType || type() == ActivationObjectType;
 }
-
 
 inline bool JSObject::isStaticScopeObject() const
 {

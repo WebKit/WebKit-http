@@ -237,7 +237,6 @@ http/tests/security/redirect-BLOCKED-to-localURL.html
 http/tests/security/xss-DENIED-xsl-document-redirect.xml
 http/tests/security/xss-DENIED-xsl-external-entity-redirect.xml
 http/tests/xmlhttprequest/access-control-basic-whitelist-request-headers.html
-http/tests/xmlhttprequest/cross-origin-cookie-storage.html
 http/tests/xmlhttprequest/cross-origin-no-authorization.html
 http/tests/xmlhttprequest/logout.html
 http/tests/xmlhttprequest/redirect-cross-origin-tripmine.html
@@ -1266,9 +1265,6 @@ webkit.org/b/84037 fast/text/international/spaces-combined-in-vertical-text.html
 # Failed table/mozilla test, fields are not on the same line
 webkit.org/b/97109 tables/mozilla/bugs/bug99948.html [ Pass ]
 
-# Fails after r126350
-webkit.org/b/94788 media/track/track-cue-rendering-snap-to-lines-not-set.html [ Failure ]
-
 # Asserts in MessagePort::contextDestroyed, but the assert usually gets attributed to later tests. 
 webkit.org/b/94458 fast/events/message-port-constructor-for-deleted-document.html
 
@@ -1551,9 +1547,6 @@ webkit.org/b/114739 compositing/patterns/direct-pattern-compositing-position.htm
 webkit.org/b/114739 compositing/patterns/direct-pattern-compositing-size.html [ ImageOnlyFailure Crash ]
 webkit.org/b/114739 compositing/patterns/direct-pattern-compositing-contain-no-repeat.html [ ImageOnlyFailure Crash ]
 
-# Newly added test in r148131 is failing.
-webkit.org/b/114876 media/click-volume-bar-not-pausing.html [ Failure ]
-
 # Unidentified failing media tests
 webkit.org/b/115419 media/media-can-play-ogg.html [ Failure ]
 webkit.org/b/115419 media/track/track-automatic-subtitles.html [ Failure ]
@@ -1762,8 +1755,6 @@ webkit.org/b/127106 media/video-canvas-drawing-output.html [ Failure ]
 
 webkit.org/b/127107 media/volume-bar-empty-when-muted.html [ Failure ]
 
-webkit.org/b/127108 media/media-document-audio-controls-visible.html [ Failure ]
-
 webkit.org/b/127282 fast/css3-text/css3-text-decoration/text-decoration-skip/text-decoration-skip-tall-underlines.html [ ImageOnlyFailure ]
 
 # Failing after r159674
@@ -1850,3 +1841,4 @@ webkit.org/b/130189 fast/regions/assert-hit-test-image.html [ Failure ]
 
 # ENABLE(WEBVTT_REGIONS) is disabled
 webkit.org/b/109570 media/track/regions-webvtt [ Skip ]
+webkit.org/b/109570 media/track/w3c [ Skip ]

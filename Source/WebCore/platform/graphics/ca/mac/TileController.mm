@@ -26,15 +26,15 @@
 #import "config.h"
 #import "TileController.h"
 
-#import "GraphicsContext.h"
 #import "IntRect.h"
 #import "PlatformCALayer.h"
 #import "Region.h"
+#import "TileCoverageMap.h"
 #import "TileGrid.h"
+#import "WebLayer.h"
 #if !PLATFORM(IOS)
 #import "LayerPool.h"
 #endif
-#import "WebLayer.h"
 #import <wtf/MainThread.h>
 #import <utility>
 
@@ -58,8 +58,8 @@ TileController::TileController(PlatformCALayer* rootPlatformLayer)
     : m_tileCacheLayer(rootPlatformLayer)
     , m_tileGrid(std::make_unique<TileGrid>(*this))
     , m_tileSize(defaultTileWidth, defaultTileHeight)
-    , m_exposedRect(FloatRect::infiniteRect())
     , m_tileRevalidationTimer(this, &TileController::tileRevalidationTimerFired)
+    , m_contentsScale(1)
     , m_deviceScaleFactor(1)
     , m_tileCoverage(CoverageForVisibleArea)
     , m_marginTop(0)
@@ -84,9 +84,6 @@ TileController::~TileController()
 #if PLATFORM(IOS)
     tileControllerMemoryHandler().removeTileController(this);
 #endif
-
-    if (m_tiledScrollingIndicatorLayer)
-        m_tiledScrollingIndicatorLayer->setOwner(nullptr);
 }
 
 void TileController::tileCacheLayerBoundsChanged()
@@ -105,67 +102,13 @@ void TileController::setNeedsDisplayInRect(const IntRect& rect)
     tileGrid().setNeedsDisplayInRect(rect);
 }
 
-void TileController::platformCALayerPaintContents(PlatformCALayer* platformCALayer, GraphicsContext& context, const FloatRect&)
+void TileController::setContentsScale(float scale)
 {
-#if PLATFORM(IOS)
-    if (pthread_main_np())
-        WebThreadLock();
-#endif
-
-    if (platformCALayer == m_tiledScrollingIndicatorLayer.get()) {
-        tileGrid().drawTileMapContents(context.platformContext(), m_tiledScrollingIndicatorLayer->bounds());
-        return;
-    }
-
-    {
-        GraphicsContextStateSaver stateSaver(context);
-
-        FloatPoint3D layerOrigin = platformCALayer->position();
-        context.translate(-layerOrigin.x(), -layerOrigin.y());
-        context.scale(FloatSize(tileGrid().scale(), tileGrid().scale()));
-
-        RepaintRectList dirtyRects = collectRectsToPaint(context.platformContext(), platformCALayer);
-        drawLayerContents(context.platformContext(), m_tileCacheLayer, dirtyRects);
-    }
-
-    int repaintCount = platformCALayerIncrementRepaintCount(platformCALayer);
-    if (owningGraphicsLayer()->platformCALayerShowRepaintCounter(0))
-        drawRepaintIndicator(context.platformContext(), platformCALayer, repaintCount, cachedCGColor(m_tileDebugBorderColor, ColorSpaceDeviceRGB));
-
-    if (scrollingPerformanceLoggingEnabled()) {
-        FloatRect visiblePart(platformCALayer->position().x(), platformCALayer->position().y(), platformCALayer->bounds().size().width(), platformCALayer->bounds().size().height());
-        visiblePart.intersect(visibleRect());
-
-        if (repaintCount == 1 && !visiblePart.isEmpty())
-            WTFLogAlways("SCROLLING: Filled visible fresh tile. Time: %f Unfilled Pixels: %u\n", WTF::monotonicallyIncreasingTime(), blankPixelCount());
-    }
-}
-
-float TileController::platformCALayerDeviceScaleFactor() const
-{
-    return owningGraphicsLayer()->platformCALayerDeviceScaleFactor();
-}
-
-bool TileController::platformCALayerShowDebugBorders() const
-{
-    return owningGraphicsLayer()->platformCALayerShowDebugBorders();
-}
-
-bool TileController::platformCALayerShowRepaintCounter(PlatformCALayer*) const
-{
-    return owningGraphicsLayer()->platformCALayerShowRepaintCounter(0);
-}
-
-float TileController::scale() const
-{
-    return tileGrid().scale();
-}
-
-void TileController::setScale(float scale)
-{
+    m_contentsScale = scale;
+    
     ASSERT(owningGraphicsLayer()->isCommittingChanges());
 
-    float deviceScaleFactor = platformCALayerDeviceScaleFactor();
+    float deviceScaleFactor = owningGraphicsLayer()->platformCALayerDeviceScaleFactor();
 
     // The scale we get is the product of the page scale factor and device scale factor.
     // Divide by the device scale factor so we'll get the page scale factor.
@@ -215,13 +158,12 @@ bool TileController::tilesWouldChangeForVisibleRect(const FloatRect& newVisibleR
     return tileGrid().tilesWouldChangeForVisibleRect(newVisibleRect, m_visibleRect);
 }
 
-void TileController::setExposedRect(const FloatRect& exposedRect)
+void TileController::setTiledScrollingIndicatorPosition(const FloatPoint& position)
 {
-    if (m_exposedRect == exposedRect)
+    if (!m_coverageMap)
         return;
-
-    m_exposedRect = exposedRect;
-    setNeedsRevalidateTiles();
+    m_coverageMap->setPosition(position);
+    m_coverageMap->update();
 }
 
 void TileController::prepopulateRect(const FloatRect& rect)
@@ -416,52 +358,8 @@ void TileController::setNeedsRevalidateTiles()
 
 void TileController::updateTileCoverageMap()
 {
-    if (!m_tiledScrollingIndicatorLayer)
-        return;
-    FloatRect containerBounds = bounds();
-    FloatRect visibleRect = this->visibleRect();
-
-    visibleRect.intersect(tileGrid().scaledExposedRect());
-    visibleRect.contract(4, 4); // Layer is positioned 2px from top and left edges.
-
-    float widthScale = 1;
-    float scale = 1;
-    if (!containerBounds.isEmpty()) {
-        widthScale = std::min<float>(visibleRect.width() / containerBounds.width(), 0.1);
-        scale = std::min(widthScale, visibleRect.height() / containerBounds.height());
-    }
-    
-    float indicatorScale = scale * tileGrid().scale();
-    FloatRect mapBounds = containerBounds;
-    mapBounds.scale(indicatorScale, indicatorScale);
-
-    if (!m_exposedRect.isInfinite())
-        m_tiledScrollingIndicatorLayer->setPosition(m_exposedRect.location() + FloatPoint(2, 2));
-    else
-        m_tiledScrollingIndicatorLayer->setPosition(FloatPoint(2, 2));
-
-    m_tiledScrollingIndicatorLayer->setBounds(mapBounds);
-    m_tiledScrollingIndicatorLayer->setNeedsDisplay();
-
-    visibleRect.scale(indicatorScale, indicatorScale);
-    visibleRect.expand(2, 2);
-    m_visibleRectIndicatorLayer->setPosition(visibleRect.location());
-    m_visibleRectIndicatorLayer->setBounds(FloatRect(FloatPoint(), visibleRect.size()));
-
-    Color visibleRectIndicatorColor;
-    switch (m_indicatorMode) {
-    case SynchronousScrollingBecauseOfStyleIndication:
-        visibleRectIndicatorColor = Color(255, 0, 0);
-        break;
-    case SynchronousScrollingBecauseOfEventHandlersIndication:
-        visibleRectIndicatorColor = Color(255, 255, 0);
-        break;
-    case AsyncScrollingIndication:
-        visibleRectIndicatorColor = Color(0, 200, 0);
-        break;
-    }
-
-    m_visibleRectIndicatorLayer->setBorderColor(visibleRectIndicatorColor);
+    if (m_coverageMap)
+        m_coverageMap->update();
 }
 
 IntRect TileController::tileGridExtent() const
@@ -482,25 +380,10 @@ IntRect TileController::tileCoverageRect() const
 
 PlatformCALayer* TileController::tiledScrollingIndicatorLayer()
 {
-    if (!m_tiledScrollingIndicatorLayer) {
-        m_tiledScrollingIndicatorLayer = m_tileCacheLayer->createCompatibleLayer(PlatformCALayer::LayerTypeSimpleLayer, this);
-        m_tiledScrollingIndicatorLayer->setOpacity(0.75);
-        m_tiledScrollingIndicatorLayer->setAnchorPoint(FloatPoint3D());
-        m_tiledScrollingIndicatorLayer->setBorderColor(Color::black);
-        m_tiledScrollingIndicatorLayer->setBorderWidth(1);
-        m_tiledScrollingIndicatorLayer->setPosition(FloatPoint(2, 2));
+    if (!m_coverageMap)
+        m_coverageMap = std::make_unique<TileCoverageMap>(*this);
 
-        m_visibleRectIndicatorLayer = m_tileCacheLayer->createCompatibleLayer(PlatformCALayer::LayerTypeLayer, nullptr);
-        m_visibleRectIndicatorLayer->setBorderWidth(2);
-        m_visibleRectIndicatorLayer->setAnchorPoint(FloatPoint3D());
-        m_visibleRectIndicatorLayer->setBorderColor(Color(255, 0, 0));
-
-        m_tiledScrollingIndicatorLayer->appendSublayer(m_visibleRectIndicatorLayer.get());
-
-        updateTileCoverageMap();
-    }
-
-    return m_tiledScrollingIndicatorLayer.get();
+    return &m_coverageMap->layer();
 }
 
 void TileController::setScrollingModeIndication(ScrollingModeIndication scrollingMode)
@@ -548,7 +431,7 @@ int TileController::rightMarginWidth() const
     return m_marginRight;
 }
 
-RefPtr<PlatformCALayer> TileController::createTileLayer(const IntRect& tileRect)
+RefPtr<PlatformCALayer> TileController::createTileLayer(const IntRect& tileRect, TileGrid& grid)
 {
 #if PLATFORM(IOS)
     RefPtr<PlatformCALayer> layer;
@@ -556,11 +439,10 @@ RefPtr<PlatformCALayer> TileController::createTileLayer(const IntRect& tileRect)
     RefPtr<PlatformCALayer> layer = LayerPool::sharedPool()->takeLayerWithSize(tileRect.size());
 #endif
 
-    if (layer) {
-        m_tileRepaintCounts.remove(layer.get());
-        layer->setOwner(this);
-    } else
-        layer = m_tileCacheLayer->createCompatibleLayer(PlatformCALayer::LayerTypeTiledBackingTileLayer, this);
+    if (layer)
+        layer->setOwner(&grid);
+    else
+        layer = m_tileCacheLayer->createCompatibleLayer(PlatformCALayer::LayerTypeTiledBackingTileLayer, &grid);
 
     layer->setAnchorPoint(FloatPoint3D());
     layer->setBounds(FloatRect(FloatPoint(), tileRect.size()));
@@ -582,18 +464,6 @@ RefPtr<PlatformCALayer> TileController::createTileLayer(const IntRect& tileRect)
     layer->setNeedsDisplay();
 
     return layer;
-}
-
-int TileController::platformCALayerIncrementRepaintCount(PlatformCALayer* platformCALayer)
-{
-    int repaintCount = 0;
-
-    if (m_tileRepaintCounts.contains(platformCALayer))
-        repaintCount = m_tileRepaintCounts.get(platformCALayer);
-
-    m_tileRepaintCounts.set(platformCALayer, ++repaintCount);
-
-    return repaintCount;
 }
 
 Vector<RefPtr<PlatformCALayer>> TileController::containerLayers()

@@ -35,17 +35,25 @@
 #include <wtf/Vector.h>
 
 namespace WebCore {
+
 class Document;
 class Frame;
 class Page;
 class PlatformKeyboardEvent;
 class PlatformMouseEvent;
+class PlatformWheelEvent;
 class SecurityOrigin;
 class URL;
 
 #if USE(APPKIT)
 struct KeypressCommand;
 #endif
+
+unsigned long frameIndexFromDocument(const Document*);
+unsigned long frameIndexFromFrame(const Frame*);
+Document* documentFromFrameIndex(Page*, unsigned long frameIndex);
+Frame* frameFromFrameIndex(Page*, unsigned long frameIndex);
+
 } // namespace WebCore
 
 // Template specializations must be defined in the same namespace as the template declaration.
@@ -79,6 +87,13 @@ template<> struct EncodingTraits<WebCore::PlatformMouseEvent> {
 
     static EncodedValue encodeValue(const WebCore::PlatformMouseEvent& value);
     static bool decodeValue(EncodedValue&, std::unique_ptr<WebCore::PlatformMouseEvent>& value);
+};
+
+template<> struct EncodingTraits<WebCore::PlatformWheelEvent> {
+    typedef WebCore::PlatformWheelEvent DecodedType;
+
+    static EncodedValue encodeValue(const WebCore::PlatformWheelEvent& value);
+    static bool decodeValue(EncodedValue&, std::unique_ptr<WebCore::PlatformWheelEvent>& value);
 };
 
 template<> struct EncodingTraits<WebCore::URL> {

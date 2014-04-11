@@ -60,7 +60,6 @@
 #include "JSArrayBufferConstructor.h"
 #include "JSArrayBufferPrototype.h"
 #include "JSArrayIterator.h"
-#include "JSBoundFunction.h"
 #include "JSCInlines.h"
 #include "JSCallbackConstructor.h"
 #include "JSCallbackFunction.h"
@@ -278,7 +277,6 @@ void JSGlobalObject::reset(JSValue prototype)
 
     m_functionPrototype.set(vm, this, FunctionPrototype::create(vm, FunctionPrototype::createStructure(vm, this, jsNull()))); // The real prototype will be set once ObjectPrototype is created.
     m_functionStructure.set(vm, this, JSFunction::createStructure(vm, this, m_functionPrototype.get()));
-    m_boundFunctionStructure.set(vm, this, JSBoundFunction::createStructure(vm, this, m_functionPrototype.get()));
     m_namedFunctionStructure.set(vm, this, Structure::addPropertyTransition(vm, m_functionStructure.get(), vm.propertyNames->name, DontDelete | ReadOnly | DontEnum, 0, m_functionNameOffset));
     m_internalFunctionStructure.set(vm, this, InternalFunction::createStructure(vm, this, m_functionPrototype.get()));
     JSFunction* callFunction = 0;
@@ -451,14 +449,16 @@ void JSGlobalObject::reset(JSValue prototype)
         m_typedArrays[typedArrayIndex].prototype->putDirectWithoutTransition(vm, vm.propertyNames->constructor, typedArrayConstructors[typedArrayIndex], DontEnum);
         putDirectWithoutTransition(vm, Identifier(exec, typedArrayConstructors[typedArrayIndex]->name(exec)), typedArrayConstructors[typedArrayIndex], DontEnum);
     }
-
+    
+    JSFunction* setTypeErrorAccessor = JSFunction::create(vm, this, 2, vm.propertyNames->emptyIdentifier.string(), globalFuncSetTypeErrorAccessor);
     GlobalPropertyInfo staticGlobals[] = {
         GlobalPropertyInfo(vm.propertyNames->NaN, jsNaN(), DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->Infinity, jsNumber(std::numeric_limits<double>::infinity()), DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->undefinedKeyword, jsUndefined(), DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->undefinedPrivateName, jsUndefined(), DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->ObjectPrivateName, objectConstructor, DontEnum | DontDelete | ReadOnly),
-        GlobalPropertyInfo(vm.propertyNames->TypeErrorPrivateName, m_typeErrorConstructor.get(), DontEnum | DontDelete | ReadOnly)
+        GlobalPropertyInfo(vm.propertyNames->TypeErrorPrivateName, m_typeErrorConstructor.get(), DontEnum | DontDelete | ReadOnly),
+        GlobalPropertyInfo(vm.propertyNames->SetTypeErrorAccessorPrivateName, setTypeErrorAccessor, DontEnum | DontDelete | ReadOnly)
     };
     addStaticGlobals(staticGlobals, WTF_ARRAY_LENGTH(staticGlobals));
     
@@ -507,7 +507,7 @@ ObjectsWithBrokenIndexingFinder::ObjectsWithBrokenIndexingFinder(
 inline bool hasBrokenIndexing(JSObject* object)
 {
     // This will change if we have more indexing types.
-    IndexingType type = object->structure()->indexingType();
+    IndexingType type = object->indexingType();
     // This could be made obviously more efficient, but isn't made so right now, because
     // we expect this to be an unlikely slow path anyway.
     return hasUndecided(type) || hasInt32(type) || hasDouble(type) || hasContiguous(type) || hasArrayStorage(type);
@@ -583,20 +583,20 @@ void JSGlobalObject::haveABadTime(VM& vm)
 
 bool JSGlobalObject::objectPrototypeIsSane()
 {
-    return !hasIndexedProperties(m_objectPrototype->structure()->indexingType())
+    return !hasIndexedProperties(m_objectPrototype->indexingType())
         && m_objectPrototype->prototype().isNull();
 }
 
 bool JSGlobalObject::arrayPrototypeChainIsSane()
 {
-    return !hasIndexedProperties(m_arrayPrototype->structure()->indexingType())
+    return !hasIndexedProperties(m_arrayPrototype->indexingType())
         && m_arrayPrototype->prototype() == m_objectPrototype.get()
         && objectPrototypeIsSane();
 }
 
 bool JSGlobalObject::stringPrototypeChainIsSane()
 {
-    return !hasIndexedProperties(m_stringPrototype->structure()->indexingType())
+    return !hasIndexedProperties(m_stringPrototype->indexingType())
         && m_stringPrototype->prototype() == m_objectPrototype.get()
         && objectPrototypeIsSane();
 }
@@ -818,7 +818,7 @@ void JSGlobalObject::setInputCursor(PassRefPtr<InputCursor> prpCursor)
         cursor.appendInput<SetRandomSeed>(m_weakRandom.seedUnsafe());
     else if (cursor.isReplaying()) {
         if (SetRandomSeed* input = cursor.fetchInput<SetRandomSeed>())
-            m_weakRandom.initializeSeed(input->randomSeed());
+            m_weakRandom.initializeSeed(static_cast<unsigned>(input->randomSeed()));
     }
 }
 #endif

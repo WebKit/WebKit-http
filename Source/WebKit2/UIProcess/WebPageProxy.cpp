@@ -1186,9 +1186,9 @@ void WebPageProxy::dragExited(DragData& dragData, const String& dragStorageName)
     performDragControllerAction(DragControllerActionExited, dragData, dragStorageName, sandboxExtensionHandle, sandboxExtensionHandleEmptyArray);
 }
 
-void WebPageProxy::performDrag(DragData& dragData, const String& dragStorageName, const SandboxExtension::Handle& sandboxExtensionHandle, const SandboxExtension::HandleArray& sandboxExtensionsForUpload)
+void WebPageProxy::performDragOperation(DragData& dragData, const String& dragStorageName, const SandboxExtension::Handle& sandboxExtensionHandle, const SandboxExtension::HandleArray& sandboxExtensionsForUpload)
 {
-    performDragControllerAction(DragControllerActionPerformDrag, dragData, dragStorageName, sandboxExtensionHandle, sandboxExtensionsForUpload);
+    performDragControllerAction(DragControllerActionPerformDragOperation, dragData, dragStorageName, sandboxExtensionHandle, sandboxExtensionsForUpload);
 }
 
 void WebPageProxy::performDragControllerAction(DragControllerAction action, DragData& dragData, const String& dragStorageName, const SandboxExtension::Handle& sandboxExtensionHandle, const SandboxExtension::HandleArray& sandboxExtensionsForUpload)
@@ -2682,12 +2682,12 @@ void WebPageProxy::willSubmitForm(uint64_t frameID, uint64_t sourceFrameID, cons
 
 // UIClient
 
-void WebPageProxy::createNewPage(uint64_t frameID, const ResourceRequest& request, const WindowFeatures& windowFeatures, uint32_t opaqueModifiers, int32_t opaqueMouseButton, uint64_t& newPageID, WebPageCreationParameters& newPageParameters)
+void WebPageProxy::createNewPage(uint64_t frameID, const ResourceRequest& request, const WindowFeatures& windowFeatures, const NavigationActionData& navigationActionData, uint64_t& newPageID, WebPageCreationParameters& newPageParameters)
 {
     WebFrameProxy* frame = m_process->webFrame(frameID);
     MESSAGE_CHECK(frame);
 
-    RefPtr<WebPageProxy> newPage = m_uiClient->createNewPage(this, frame, request, windowFeatures, static_cast<WebEvent::Modifiers>(opaqueModifiers), static_cast<WebMouseEvent::Button>(opaqueMouseButton));
+    RefPtr<WebPageProxy> newPage = m_uiClient->createNewPage(this, frame, request, windowFeatures, navigationActionData);
     if (!newPage) {
         newPageID = 0;
         return;
@@ -3334,17 +3334,17 @@ void WebPageProxy::hidePopupMenu()
 #if ENABLE(CONTEXT_MENUS)
 void WebPageProxy::showContextMenu(const IntPoint& menuLocation, const ContextMenuContextData& contextMenuContextData, const Vector<WebContextMenuItemData>& proposedItems, IPC::MessageDecoder& decoder)
 {
-    internalShowContextMenu(menuLocation, contextMenuContextData, proposedItems, decoder);
+    internalShowContextMenu(menuLocation, contextMenuContextData, proposedItems, ContextMenuClientEligibility::EligibleForClient, &decoder);
     
     // No matter the result of internalShowContextMenu, always notify the WebProcess that the menu is hidden so it starts handling mouse events again.
     m_process->send(Messages::WebPage::ContextMenuHidden(), m_pageID);
 }
 
-void WebPageProxy::internalShowContextMenu(const IntPoint& menuLocation, const ContextMenuContextData& contextMenuContextData, const Vector<WebContextMenuItemData>& proposedItems, IPC::MessageDecoder& decoder)
+void WebPageProxy::internalShowContextMenu(const IntPoint& menuLocation, const ContextMenuContextData& contextMenuContextData, const Vector<WebContextMenuItemData>& proposedItems, ContextMenuClientEligibility clientEligibility, IPC::MessageDecoder* decoder)
 {
     RefPtr<API::Object> userData;
     WebContextUserMessageDecoder messageDecoder(userData, process());
-    if (!decoder.decode(messageDecoder))
+    if (decoder && !decoder->decode(messageDecoder))
         return;
 
     m_activeContextMenuContextData = contextMenuContextData;
@@ -3364,7 +3364,7 @@ void WebPageProxy::internalShowContextMenu(const IntPoint& menuLocation, const C
     // Unless this is an image control, give the PageContextMenuClient one last swipe at changing the menu.
     Vector<WebContextMenuItemData> items;
     bool useProposedItems = true;
-    bool askClientToChangeMenu = true;
+    bool askClientToChangeMenu = clientEligibility == ContextMenuClientEligibility::EligibleForClient;
 #if ENABLE(IMAGE_CONTROLS)
     if (!contextMenuContextData.controlledImageHandle().isNull())
         askClientToChangeMenu = false;
@@ -3372,7 +3372,7 @@ void WebPageProxy::internalShowContextMenu(const IntPoint& menuLocation, const C
 
     if (askClientToChangeMenu && m_contextMenuClient.getContextMenuFromProposedMenu(this, proposedItems, items, contextMenuContextData.webHitTestResultData(), userData.get()))
         useProposedItems = false;
-    
+
     const Vector<WebContextMenuItemData>& itemsToShow = useProposedItems ? proposedItems : items;
     if (!m_contextMenuClient.showContextMenu(this, menuLocation, itemsToShow))
         m_activeContextMenu->showContextMenu(menuLocation, itemsToShow, contextMenuContextData);
@@ -3692,7 +3692,7 @@ void WebPageProxy::didReceiveEvent(uint32_t opaqueType, bool handled)
         break;
 
     case WebEvent::Wheel: {
-        ASSERT(!m_currentlyProcessedWheelEvents.isEmpty());
+        MESSAGE_CHECK(!m_currentlyProcessedWheelEvents.isEmpty());
 
         OwnPtr<Vector<NativeWebWheelEvent>> oldestCoalescedEvent = m_currentlyProcessedWheelEvents.takeFirst();
 
@@ -3716,10 +3716,10 @@ void WebPageProxy::didReceiveEvent(uint32_t opaqueType, bool handled)
     case WebEvent::Char: {
         LOG(KeyHandling, "WebPageProxy::didReceiveEvent: %s", webKeyboardEventTypeString(type));
 
-        NativeWebKeyboardEvent event = m_keyEventQueue.first();
-        MESSAGE_CHECK(type == event.type());
+        MESSAGE_CHECK(!m_keyEventQueue.isEmpty());
+        NativeWebKeyboardEvent event = m_keyEventQueue.takeFirst();
 
-        m_keyEventQueue.removeFirst();
+        MESSAGE_CHECK(type == event.type());
 
         if (!m_keyEventQueue.isEmpty())
             m_process->send(Messages::WebPage::KeyEvent(m_keyEventQueue.first()), m_pageID);
@@ -3737,9 +3737,10 @@ void WebPageProxy::didReceiveEvent(uint32_t opaqueType, bool handled)
     case WebEvent::TouchMove:
     case WebEvent::TouchEnd:
     case WebEvent::TouchCancel: {
-        QueuedTouchEvents queuedEvents = m_touchEventQueue.first();
+        MESSAGE_CHECK(!m_touchEventQueue.isEmpty());
+        QueuedTouchEvents queuedEvents = m_touchEventQueue.takeFirst();
+
         MESSAGE_CHECK(type == queuedEvents.forwardedEvent.type());
-        m_touchEventQueue.removeFirst();
 
         m_pageClient.doneWithTouchEvent(queuedEvents.forwardedEvent, handled);
         for (size_t i = 0; i < queuedEvents.deferredTouchEvents.size(); ++i) {
@@ -4125,6 +4126,7 @@ WebPageCreationParameters WebPageProxy::creationParameters()
     parameters.gapBetweenPages = m_gapBetweenPages;
     parameters.userAgent = userAgent();
     parameters.sessionState = SessionState(m_backForwardList->entries(), m_backForwardList->currentIndex());
+    parameters.sessionID = m_session->getID();
     parameters.highestUsedBackForwardItemID = WebBackForwardListItem::highedUsedItemID();
     parameters.visitedLinkTableID = m_visitedLinkProvider->identifier();
     parameters.canRunBeforeUnloadConfirmPanel = m_uiClient->canRunBeforeUnloadConfirmPanel();

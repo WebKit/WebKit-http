@@ -55,7 +55,7 @@ void JSTestNamedConstructorConstructor::finishCreation(VM& vm, JSDOMGlobalObject
 {
     Base::finishCreation(vm);
     ASSERT(inherits(info()));
-    putDirect(vm, vm.propertyNames->prototype, JSTestNamedConstructorPrototype::self(vm, globalObject), DontDelete | ReadOnly);
+    putDirectPrototypeProperty(vm, JSTestNamedConstructorPrototype::self(vm, globalObject), DontDelete | ReadOnly);
     putDirect(vm, vm.propertyNames->length, jsNumber(0), ReadOnly | DontDelete | DontEnum);
 }
 
@@ -98,7 +98,7 @@ void JSTestNamedConstructorNamedConstructor::finishCreation(VM& vm, JSDOMGlobalO
 {
     Base::finishCreation(globalObject);
     ASSERT(inherits(info()));
-    putDirect(vm, vm.propertyNames->prototype, JSTestNamedConstructorPrototype::self(vm, globalObject), None);
+    putDirectPrototypeProperty(vm, JSTestNamedConstructorPrototype::self(vm, globalObject), None);
     putDirect(vm, vm.propertyNames->length, jsNumber(0), ReadOnly | DontDelete | DontEnum);
 }
 
@@ -166,10 +166,8 @@ bool JSTestNamedConstructor::getOwnPropertySlot(JSObject* object, ExecState* exe
     return Base::getOwnPropertySlot(thisObject, exec, propertyName, slot);
 }
 
-EncodedJSValue jsTestNamedConstructorConstructor(ExecState* exec, JSObject* baseValue, EncodedJSValue thisValue, PropertyName)
+EncodedJSValue jsTestNamedConstructorConstructor(ExecState* exec, JSObject* baseValue, EncodedJSValue, PropertyName)
 {
-    UNUSED_PARAM(baseValue);
-    UNUSED_PARAM(thisValue);
     JSTestNamedConstructorPrototype* domObject = jsDynamicCast<JSTestNamedConstructorPrototype*>(baseValue);
     if (!domObject)
         return throwVMTypeError(exec);
@@ -241,7 +239,9 @@ JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject* globalObject, TestNamedCon
 
 TestNamedConstructor* toTestNamedConstructor(JSC::JSValue value)
 {
-    return value.inherits(JSTestNamedConstructor::info()) ? &jsCast<JSTestNamedConstructor*>(value)->impl() : 0;
+    if (auto* wrapper = jsDynamicCast<JSTestNamedConstructor*>(value))
+        return &wrapper->impl();
+    return nullptr;
 }
 
 }

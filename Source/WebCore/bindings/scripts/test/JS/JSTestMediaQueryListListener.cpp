@@ -56,7 +56,7 @@ void JSTestMediaQueryListListenerConstructor::finishCreation(VM& vm, JSDOMGlobal
 {
     Base::finishCreation(vm);
     ASSERT(inherits(info()));
-    putDirect(vm, vm.propertyNames->prototype, JSTestMediaQueryListListenerPrototype::self(vm, globalObject), DontDelete | ReadOnly);
+    putDirectPrototypeProperty(vm, JSTestMediaQueryListListenerPrototype::self(vm, globalObject), DontDelete | ReadOnly);
     putDirect(vm, vm.propertyNames->length, jsNumber(0), ReadOnly | DontDelete | DontEnum);
 }
 
@@ -126,10 +126,8 @@ bool JSTestMediaQueryListListener::getOwnPropertySlot(JSObject* object, ExecStat
     return Base::getOwnPropertySlot(thisObject, exec, propertyName, slot);
 }
 
-EncodedJSValue jsTestMediaQueryListListenerConstructor(ExecState* exec, JSObject* baseValue, EncodedJSValue thisValue, PropertyName)
+EncodedJSValue jsTestMediaQueryListListenerConstructor(ExecState* exec, JSObject* baseValue, EncodedJSValue, PropertyName)
 {
-    UNUSED_PARAM(baseValue);
-    UNUSED_PARAM(thisValue);
     JSTestMediaQueryListListenerPrototype* domObject = jsDynamicCast<JSTestMediaQueryListListenerPrototype*>(baseValue);
     if (!domObject)
         return throwVMTypeError(exec);
@@ -146,13 +144,13 @@ EncodedJSValue JSC_HOST_CALL jsTestMediaQueryListListenerPrototypeFunctionMethod
     JSValue thisValue = exec->thisValue();
     JSTestMediaQueryListListener* castedThis = jsDynamicCast<JSTestMediaQueryListListener*>(thisValue);
     if (UNLIKELY(!castedThis))
-        return throwVMTypeError(exec, makeDOMBindingsTypeErrorString("Can only call ", "TestMediaQueryListListener", ".", "method", " on instances of ", "TestMediaQueryListListener"));
+        return throwThisTypeError(*exec, "TestMediaQueryListListener", "method");
     ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestMediaQueryListListener::info());
     TestMediaQueryListListener& impl = castedThis->impl();
     if (exec->argumentCount() < 1)
         return throwVMError(exec, createNotEnoughArgumentsError(exec));
     if (!exec->argument(0).isFunction())
-        return throwVMTypeError(exec, makeDOMBindingsTypeErrorString("Argument ", "1", " ('", "listener", "') to ", "TestMediaQueryListListener", ".", "method", " must be a function"));
+        return throwArgumentMustBeFunctionError(*exec, 0, "listener", "TestMediaQueryListListener", "method");
     RefPtr<MediaQueryListListener> listener = JSMediaQueryListListener::create(asObject(exec->uncheckedArgument(0)), castedThis->globalObject());
     impl.method(listener);
     return JSValue::encode(jsUndefined());
@@ -211,7 +209,9 @@ JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject* globalObject, TestMediaQue
 
 TestMediaQueryListListener* toTestMediaQueryListListener(JSC::JSValue value)
 {
-    return value.inherits(JSTestMediaQueryListListener::info()) ? &jsCast<JSTestMediaQueryListListener*>(value)->impl() : 0;
+    if (auto* wrapper = jsDynamicCast<JSTestMediaQueryListListener*>(value))
+        return &wrapper->impl();
+    return nullptr;
 }
 
 }

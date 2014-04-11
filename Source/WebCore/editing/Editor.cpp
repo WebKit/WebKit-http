@@ -33,10 +33,10 @@
 #include "CSSComputedStyleDeclaration.h"
 #include "CSSPropertyNames.h"
 #include "CachedResourceLoader.h"
-#include "Clipboard.h"
 #include "ClipboardEvent.h"
 #include "CompositionEvent.h"
 #include "CreateLinkCommand.h"
+#include "DataTransfer.h"
 #include "DeleteSelectionCommand.h"
 #include "DictationAlternative.h"
 #include "DictationCommand.h"
@@ -302,17 +302,17 @@ bool Editor::canEditRichly() const
 
 bool Editor::canDHTMLCut()
 {
-    return !m_frame.selection().selection().isInPasswordField() && !dispatchCPPEvent(eventNames().beforecutEvent, ClipboardNumb);
+    return !m_frame.selection().selection().isInPasswordField() && !dispatchCPPEvent(eventNames().beforecutEvent, DataTransferAccessPolicy::Numb);
 }
 
 bool Editor::canDHTMLCopy()
 {
-    return !m_frame.selection().selection().isInPasswordField() && !dispatchCPPEvent(eventNames().beforecopyEvent, ClipboardNumb);
+    return !m_frame.selection().selection().isInPasswordField() && !dispatchCPPEvent(eventNames().beforecopyEvent, DataTransferAccessPolicy::Numb);
 }
 
 bool Editor::canDHTMLPaste()
 {
-    return !dispatchCPPEvent(eventNames().beforepasteEvent, ClipboardNumb);
+    return !dispatchCPPEvent(eventNames().beforepasteEvent, DataTransferAccessPolicy::Numb);
 }
 
 bool Editor::canCut() const
@@ -734,7 +734,7 @@ bool Editor::tryDHTMLCopy()
     if (m_frame.selection().selection().isInPasswordField())
         return false;
 
-    return !dispatchCPPEvent(eventNames().copyEvent, ClipboardWritable);
+    return !dispatchCPPEvent(eventNames().copyEvent, DataTransferAccessPolicy::Writable);
 }
 
 bool Editor::tryDHTMLCut()
@@ -742,12 +742,12 @@ bool Editor::tryDHTMLCut()
     if (m_frame.selection().selection().isInPasswordField())
         return false;
     
-    return !dispatchCPPEvent(eventNames().cutEvent, ClipboardWritable);
+    return !dispatchCPPEvent(eventNames().cutEvent, DataTransferAccessPolicy::Writable);
 }
 
 bool Editor::tryDHTMLPaste()
 {
-    return !dispatchCPPEvent(eventNames().pasteEvent, ClipboardReadable);
+    return !dispatchCPPEvent(eventNames().pasteEvent, DataTransferAccessPolicy::Readable);
 }
 
 bool Editor::shouldInsertText(const String& text, Range* range, EditorInsertAction action) const
@@ -915,25 +915,25 @@ void Editor::ensureLastEditCommandHasCurrentSelectionIfOpenForMoreTyping()
 
 // Returns whether caller should continue with "the default processing", which is the same as 
 // the event handler NOT setting the return value to false
-bool Editor::dispatchCPPEvent(const AtomicString& eventType, ClipboardAccessPolicy policy)
+bool Editor::dispatchCPPEvent(const AtomicString& eventType, DataTransferAccessPolicy policy)
 {
     Node* target = findEventTargetFromSelection();
     if (!target)
         return true;
 
-    RefPtr<Clipboard> clipboard = Clipboard::createForCopyAndPaste(policy);
+    RefPtr<DataTransfer> dataTransfer = DataTransfer::createForCopyAndPaste(policy);
 
-    RefPtr<Event> event = ClipboardEvent::create(eventType, true, true, clipboard);
+    RefPtr<Event> event = ClipboardEvent::create(eventType, true, true, dataTransfer);
     target->dispatchEvent(event, IGNORE_EXCEPTION);
     bool noDefaultProcessing = event->defaultPrevented();
-    if (noDefaultProcessing && policy == ClipboardWritable) {
+    if (noDefaultProcessing && policy == DataTransferAccessPolicy::Writable) {
         OwnPtr<Pasteboard> pasteboard = Pasteboard::createForCopyAndPaste();
         pasteboard->clear();
-        pasteboard->writePasteboard(clipboard->pasteboard());
+        pasteboard->writePasteboard(dataTransfer->pasteboard());
     }
 
-    // invalidate clipboard here for security
-    clipboard->setAccessPolicy(ClipboardNumb);
+    // invalidate dataTransfer here for security
+    dataTransfer->setAccessPolicy(DataTransferAccessPolicy::Numb);
     
     return !noDefaultProcessing;
 }
@@ -1313,7 +1313,7 @@ void Editor::performCutOrCopy(EditorActionSpecifier action)
     }
 
     if (enclosingTextFormControl(m_frame.selection().selection().start()))
-        Pasteboard::createForCopyAndPaste()->writePlainText(selectedTextForClipboard(), canSmartCopyOrDelete() ? Pasteboard::CanSmartReplace : Pasteboard::CannotSmartReplace);
+        Pasteboard::createForCopyAndPaste()->writePlainText(selectedTextForDataTransfer(), canSmartCopyOrDelete() ? Pasteboard::CanSmartReplace : Pasteboard::CannotSmartReplace);
     else {
         HTMLImageElement* imageElement = nullptr;
         if (action == CopyAction)
@@ -1330,7 +1330,7 @@ void Editor::performCutOrCopy(EditorActionSpecifier action)
             writeSelectionToPasteboard(*Pasteboard::createForCopyAndPaste());
 #else
             // FIXME: Convert all other platforms to match Mac and delete this.
-            Pasteboard::createForCopyAndPaste()->writeSelection(*selection, canSmartCopyOrDelete(), m_frame, IncludeImageAltTextForClipboard);
+            Pasteboard::createForCopyAndPaste()->writeSelection(*selection, canSmartCopyOrDelete(), m_frame, IncludeImageAltTextForDataTransfer);
 #endif
         }
     }
@@ -2957,7 +2957,7 @@ String Editor::selectedText() const
     return selectedText(TextIteratorDefaultBehavior);
 }
 
-String Editor::selectedTextForClipboard() const
+String Editor::selectedTextForDataTransfer() const
 {
     if (m_frame.settings().selectionIncludesAltImageText())
         return selectedText(TextIteratorEmitsImageAltText);
@@ -3318,7 +3318,10 @@ void Editor::respondToChangedSelection(const VisibleSelection&, FrameSelection::
         client()->respondToChangedSelection(&m_frame);
 
 #if ENABLE(TELEPHONE_NUMBER_DETECTION) && !PLATFORM(IOS)
-    scanSelectionForTelephoneNumbers();
+    Vector<RefPtr<Range>> markedRanges;
+    scanSelectionForTelephoneNumbers(markedRanges);
+    if (client())
+        client()->selectedTelephoneNumberRangesChanged(markedRanges);
 #endif
 
     setStartNewKillRingSequence(true);
@@ -3334,7 +3337,7 @@ void Editor::respondToChangedSelection(const VisibleSelection&, FrameSelection::
 }
 
 #if ENABLE(TELEPHONE_NUMBER_DETECTION) && !PLATFORM(IOS)
-void Editor::scanSelectionForTelephoneNumbers()
+void Editor::scanSelectionForTelephoneNumbers(Vector<RefPtr<Range>>& markedRanges)
 {
     if (!TelephoneNumberDetector::isSupported())
         return;
@@ -3345,21 +3348,21 @@ void Editor::scanSelectionForTelephoneNumbers()
     clearDataDetectedTelephoneNumbers();
 
     RefPtr<Range> selectedRange = m_frame.selection().toNormalizedRange();
-    if (!selectedRange || selectedRange->startOffset() == selectedRange->endOffset())
+    if (!selectedRange || (selectedRange->startContainer() == selectedRange->endContainer() && selectedRange->startOffset() == selectedRange->endOffset()))
         return;
 
     // FIXME: This won't work if a phone number spans multiple chunks of text from the perspective of the TextIterator
     // (By a style change, image, line break, etc.)
-    // On idea to handle this would be a model like text search that uses a rotating window.
+    // One idea to handle this would be a model like text search that uses a rotating window.
     for (TextIterator textChunk(selectedRange.get()); !textChunk.atEnd(); textChunk.advance()) {
         // TextIterator is supposed to never returns a Range that spans multiple Nodes.
         ASSERT(textChunk.range()->startContainer() == textChunk.range()->endContainer());
 
-        scanRangeForTelephoneNumbers(*textChunk.range(), textChunk.text());
+        scanRangeForTelephoneNumbers(*textChunk.range(), textChunk.text(), markedRanges);
     }
 }
 
-void Editor::scanRangeForTelephoneNumbers(Range& range, const StringView& stringView)
+void Editor::scanRangeForTelephoneNumbers(Range& range, const StringView& stringView, Vector<RefPtr<Range>>& markedRanges)
 {
     // relativeStartPosition and relativeEndPosition are the endpoints of the phone number range,
     // relative to the scannerPosition
@@ -3383,7 +3386,11 @@ void Editor::scanRangeForTelephoneNumbers(Range& range, const StringView& string
         if (!range.startContainer()->isTextNode())
             continue;
 
-        range.ownerDocument().markers().addMarkerToNode(range.startContainer(), range.startOffset() + scannerPosition + relativeStartPosition, relativeEndPosition - relativeStartPosition + 1, DocumentMarker::TelephoneNumber);
+        unsigned startOffset = range.startOffset() + scannerPosition + relativeStartPosition;
+        unsigned length = relativeEndPosition - relativeStartPosition + 1;
+
+        markedRanges.append(Range::create(range.ownerDocument(), range.startContainer(), startOffset, range.startContainer(), startOffset + length));
+        range.ownerDocument().markers().addMarkerToNode(range.startContainer(), startOffset, length, DocumentMarker::TelephoneNumber);
 
         scannerPosition += relativeEndPosition + 1;
     }

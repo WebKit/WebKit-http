@@ -29,6 +29,9 @@ namespace WebCore {
 
 class ScriptExecutionContext;
 
+static const uint8_t JSNodeType = JSC::LastJSCObjectType + 1;
+static const uint8_t JSElementType = JSC::LastJSCObjectType + 2;
+
 class JSDOMWrapper : public JSC::JSDestructibleObject {
 public:
     typedef JSC::JSDestructibleObject Base;

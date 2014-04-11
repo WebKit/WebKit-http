@@ -1116,6 +1116,7 @@ static NSToolbarItem *toolbarItem(id <NSValidatedUserInterfaceItem> item)
                     _data->_page->handleMouseEvent(webEvent); \
                 } \
             }]; \
+            return; \
         } \
         NativeWebMouseEvent webEvent(theEvent, self); \
         _data->_page->handleMouseEvent(webEvent); \
@@ -1347,10 +1348,6 @@ static void extractUnderlines(NSAttributedString *string, Vector<CompositionUnde
         completionHandler(NO, commands);
         return;
     }
-
-    // FIXME: Remove the special case for NSFlagsChanged once <rdar://16393434> is fixed.
-    if ([event type] == NSFlagsChanged)
-        return;
 
     LOG(TextInput, "-> handleEventByInputMethod:%p %@", event, event);
     [[self inputContext] handleEventByInputMethod:event completionHandler:^(BOOL handled) {
@@ -2240,7 +2237,7 @@ static void extractUnderlines(NSAttributedString *string, Vector<CompositionUnde
     IntPoint global(globalPoint([draggingInfo draggingLocation], [self window]));
     DragData dragData(draggingInfo, client, global, static_cast<DragOperation>([draggingInfo draggingSourceOperationMask]), [self applicationFlags:draggingInfo]);
 
-    _data->_page->resetDragOperation();
+    _data->_page->resetDragSession();
     _data->_page->dragEntered(dragData, [[draggingInfo draggingPasteboard] name]);
     return NSDragOperationCopy;
 }
@@ -2272,7 +2269,7 @@ static void extractUnderlines(NSAttributedString *string, Vector<CompositionUnde
     IntPoint global(globalPoint([draggingInfo draggingLocation], [self window]));
     DragData dragData(draggingInfo, client, global, static_cast<DragOperation>([draggingInfo draggingSourceOperationMask]), [self applicationFlags:draggingInfo]);
     _data->_page->dragExited(dragData, [[draggingInfo draggingPasteboard] name]);
-    _data->_page->resetDragOperation();
+    _data->_page->resetDragSession();
 }
 
 - (BOOL)prepareForDragOperation:(id <NSDraggingInfo>)draggingInfo
@@ -2335,7 +2332,7 @@ static void createSandboxExtensionsForFileUpload(NSPasteboard *pasteboard, Sandb
     SandboxExtension::HandleArray sandboxExtensionForUpload;
     createSandboxExtensionsForFileUpload([draggingInfo draggingPasteboard], sandboxExtensionForUpload);
 
-    _data->_page->performDrag(dragData, [[draggingInfo draggingPasteboard] name], sandboxExtensionHandle, sandboxExtensionForUpload);
+    _data->_page->performDragOperation(dragData, [[draggingInfo draggingPasteboard] name], sandboxExtensionHandle, sandboxExtensionForUpload);
 
     return YES;
 }

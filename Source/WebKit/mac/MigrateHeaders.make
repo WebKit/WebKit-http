@@ -274,15 +274,23 @@ WEBKIT2_HEADERS = \
     WKPreferences.h \
     WKProcessPool.h \
     WKProcessPoolPrivate.h \
+    WKScriptMessage.h \
+    WKScriptMessageHandler.h \
+    WKScriptMessagePrivate.h \
     WKUIDelegate.h \
     WKUIDelegatePrivate.h \
+    WKUserContentController.h \
+    WKUserContentControllerPrivate.h \
     WKWebView.h \
     WKWebViewConfiguration.h \
     WKWebViewConfigurationPrivate.h \
     WKWebViewPrivate.h \
     _WKActivatedElementInfo.h \
     _WKElementAction.h \
+    _WKFormDelegate.h \
+    _WKFormInputSession.h \
     _WKProcessPoolConfiguration.h \
+    _WKScriptWorld.h \
     _WKThumbnailView.h \
     _WKVisitedLinkProvider.h \
     _WKVisitedLinkProviderPrivate.h \

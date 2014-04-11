@@ -588,8 +588,8 @@ void WebGLRenderingContext::initializeNewContext()
     m_context->viewport(0, 0, canvasSize.width(), canvasSize.height());
     m_context->scissor(0, 0, canvasSize.width(), canvasSize.height());
 
-    m_context->setContextLostCallback(adoptPtr(new WebGLRenderingContextLostCallback(this)));
-    m_context->setErrorMessageCallback(adoptPtr(new WebGLRenderingContextErrorMessageCallback(this)));
+    m_context->setContextLostCallback(std::make_unique<WebGLRenderingContextLostCallback>(this));
+    m_context->setErrorMessageCallback(std::make_unique<WebGLRenderingContextErrorMessageCallback>(this));
 }
 
 void WebGLRenderingContext::setupFlags()
@@ -3212,7 +3212,7 @@ PassRefPtr<WebGLUniformLocation> WebGLRenderingContext::getUniformLocation(WebGL
         return nullptr;
 
     GC3Dint activeUniforms = 0;
-    m_context->getProgramiv(objectOrZero(program), GraphicsContext3D::ACTIVE_UNIFORMS, &activeUniforms);
+    m_context->getNonBuiltInActiveSymbolCount(objectOrZero(program), GraphicsContext3D::ACTIVE_UNIFORMS, &activeUniforms);
     for (GC3Dint i = 0; i < activeUniforms; i++) {
         ActiveInfo info;
         if (!m_context->getActiveUniform(objectOrZero(program), i, info))

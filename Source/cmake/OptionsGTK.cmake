@@ -8,6 +8,7 @@ set(PROJECT_VERSION_MAJOR 2)
 set(PROJECT_VERSION_MINOR 3)
 set(PROJECT_VERSION_PATCH 3)
 set(PROJECT_VERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH})
+set(WEBKITGTK_API_VERSION 3.0)
 
 # Libtool library version, not to be confused with API version.
 # See http://www.gnu.org/software/libtool/manual/html_node/Libtool-versioning.html
@@ -15,7 +16,6 @@ CALCULATE_LIBRARY_VERSIONS_FROM_LIBTOOL_TRIPLE(WEBKIT 22 0 22)
 CALCULATE_LIBRARY_VERSIONS_FROM_LIBTOOL_TRIPLE(WEBKIT2 32 0 7)
 CALCULATE_LIBRARY_VERSIONS_FROM_LIBTOOL_TRIPLE(JAVASCRIPTCORE 16 2 16)
 
-set(USE_GTK2 OFF CACHE BOOL "Whether or not to use GTK+ 2. WebKit2 only supports GTK+ 3.")
 set(ENABLE_CREDENTIAL_STORAGE ON CACHE BOOL "Whether or not to enable support for credential storage using libsecret.")
 
 # FIXME: We want to expose fewer options to downstream, but for now everything is public.
@@ -93,19 +93,12 @@ WEBKIT_OPTION_END()
 
 set(ENABLE_WEBCORE ON)
 set(ENABLE_INSPECTOR ON)
-set(ENABLE_WEBKIT ON)
-if (NOT USE_GTK2)
-    set(WEBKITGTK_API_VERSION 3.0)
-    set(GTK_API_VERSION 3.0)
-    set(ENABLE_PLUGIN_PROCESS ON)
-    set(ENABLE_WEBKIT2 ON)
-    set(GDK_VERSION_MIN_REQUIRED GDK_VERSION_3_6)
-else ()
-    set(WEBKITGTK_API_VERSION 2.0)
-    set(GTK_API_VERSION 2.0)
-    set(ENABLE_PLUGIN_PROCESS OFF)
-    set(ENABLE_WEBKIT2 OFF)
-endif ()
+set(ENABLE_WEBKIT OFF)
+set(ENABLE_WEBKIT2 ON)
+set(ENABLE_PLUGIN_PROCESS ON)
+
+set(GDK_VERSION_MIN_REQUIRED GDK_VERSION_3_6)
+set(GTK_API_VERSION 3.0)
 
 # These are used to generate the pkg-config files.
 set(prefix ${CMAKE_INSTALL_PREFIX})
@@ -144,7 +137,7 @@ if (ENABLE_VIDEO OR ENABLE_WEB_AUDIO)
     set(GSTREAMER_COMPONENTS app pbutils)
     add_definitions(-DWTF_USE_GSTREAMER)
     if (ENABLE_VIDEO)
-        list(APPEND GSTREAMER_COMPONENTS video tag)
+        list(APPEND GSTREAMER_COMPONENTS video mpegts tag)
     endif ()
 
     if (ENABLE_WEB_AUDIO)
@@ -153,6 +146,11 @@ if (ENABLE_VIDEO OR ENABLE_WEB_AUDIO)
     endif ()
 
     find_package(GStreamer 1.0.3 REQUIRED COMPONENTS ${GSTREAMER_COMPONENTS})
+
+    if (PC_GSTREAMER_MPEGTS_FOUND)
+        add_definitions(-DWTF_USE_GSTREAMER_MPEGTS)
+        set(USE_GSTREAMER_MPEGTS TRUE)
+    endif ()
 endif ()
 
 # FIXME: These need to be configurable.
@@ -174,7 +172,6 @@ find_package(PNG REQUIRED)
 find_package(Sqlite REQUIRED)
 find_package(Threads REQUIRED)
 find_package(ZLIB REQUIRED)
-find_package(Xt REQUIRED)
 find_package(ATK REQUIRED)
 find_package(WebP REQUIRED)
 find_package(ATSPI 2.5.3)
@@ -222,11 +219,19 @@ if (ENABLE_CREDENTIAL_STORAGE)
     set(ENABLE_CREDENTIAL_STORAGE 1)
 endif ()
 
-# We don't use find_package for GLX because it is part of -lGL, unlike EGL.
 find_package(OpenGL)
-check_include_files("GL/glx.h" GLX_FOUND)
-find_package(EGL)
 
+# This part can be simplified once CMake 2.8.6 is required and
+# CMakePushCheckState can be used. We need to have OPENGL_INCLUDE_DIR as part
+# of the directories check_include_files() looks for in case OpenGL is
+# installed into a non-standard location.
+set(REQUIRED_INCLUDES_OLD ${CMAKE_REQUIRED_INCLUDES})
+set(CMAKE_REQUIRED_INCLUDES ${CMAKE_REQUIRED_INCLUDES} ${OPENGL_INCLUDE_DIR})
+# We don't use find_package for GLX because it is part of -lGL, unlike EGL.
+check_include_files("GL/glx.h" GLX_FOUND)
+set(CMAKE_REQUIRED_INCLUDES ${REQUIRED_INCLUDES_OLD})
+
+find_package(EGL)
 if (EGL_FOUND)
     set(WTF_USE_EGL 1)
 endif ()

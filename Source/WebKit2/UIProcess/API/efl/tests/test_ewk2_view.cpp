@@ -1099,3 +1099,49 @@ TEST_F(EWK2ViewTest, ewk_view_bg_color)
     ASSERT_EQ(0, blue);
     ASSERT_EQ(255, red);
 }
+
+TEST_F(EWK2ViewTest, ewk_view_page_zoom_set)
+{
+    ASSERT_TRUE(loadUrlSync(environment->defaultTestPageUrl()));
+
+    // Default zoom factor is 1.0
+    ASSERT_FLOAT_EQ(1, ewk_view_page_zoom_get(webView()));
+
+    ASSERT_TRUE(ewk_view_page_zoom_set(webView(), 0.67));
+    ASSERT_FLOAT_EQ(0.67, ewk_view_page_zoom_get(webView()));
+
+    ASSERT_TRUE(ewk_view_page_zoom_set(webView(), 1));
+    ASSERT_FLOAT_EQ(1, ewk_view_page_zoom_get(webView()));
+}
+
+TEST_F(EWK2ViewTest, ewk_view_contents_size_get)
+{
+    int contentsWidth, contentsHeight;
+    ewk_view_contents_size_get(0, &contentsWidth, &contentsHeight);
+
+    EXPECT_EQ(0, contentsWidth);
+    EXPECT_EQ(0, contentsHeight);
+
+    ASSERT_TRUE(loadUrlSync(environment->defaultTestPageUrl()));
+    ewk_view_contents_size_get(webView(), &contentsWidth, &contentsHeight);
+
+    EXPECT_EQ(environment->defaultWidth(), contentsWidth);
+    EXPECT_EQ(environment->defaultHeight(), contentsHeight);
+
+    ewk_view_device_pixel_ratio_set(webView(), 2);
+    ASSERT_TRUE(loadUrlSync(environment->defaultTestPageUrl()));
+    ewk_view_contents_size_get(webView(), &contentsWidth, &contentsHeight);
+
+    EXPECT_EQ(environment->defaultWidth() / 2, contentsWidth);
+    EXPECT_EQ(environment->defaultHeight() / 2, contentsHeight);
+
+    const char fixedContentsSize[] =
+        "<!DOCTYPE html>"
+        "<body style=\"margin:0px;width:2000px;height:3000px\"></body>";
+    ewk_view_html_string_load(webView(), fixedContentsSize, 0, 0);
+    ASSERT_TRUE(waitUntilLoadFinished());
+    ewk_view_contents_size_get(webView(), &contentsWidth, &contentsHeight);
+
+    EXPECT_EQ(2000, contentsWidth);
+    EXPECT_EQ(3000, contentsHeight);
+}

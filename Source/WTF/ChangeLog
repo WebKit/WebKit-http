@@ -1,3 +1,163 @@
+2014-04-09  Geoffrey Garen  <ggaren@apple.com>
+
+        Rolled back in r166972.
+
+        This time, we conditionally exclude linking against bmalloc in Production
+        builds. Production builds will not be able to link against bmalloc
+        until the Production build system has been updated to build bmalloc.
+
+            WTF should link against bmalloc
+            https://bugs.webkit.org/show_bug.cgi?id=131403
+
+            Reviewed by Mark Rowe.
+
+            * Configurations/WTF.xcconfig:
+            * WTF.xcodeproj/project.pbxproj:
+
+2014-04-09  Geoffrey Garen  <ggaren@apple.com>
+
+        Put bmalloc headers in the right place
+        https://bugs.webkit.org/show_bug.cgi?id=131464
+
+        Reviewed by Mark Rowe.
+
+        * wtf/FastMalloc.cpp: Use "<bmalloc/...>" syntax so we can find our
+        headers in <header-root>/usr/local/include/bmalloc/.
+
+2014-04-09  Geoffrey Garen  <ggaren@apple.com>
+
+        Rolled back out r166972.
+
+        The production buildbots are still broken because the build-root script
+        doesn't build bmalloc.
+
+        * WTF.xcodeproj/project.pbxproj:
+
+2014-04-09  Geoffrey Garen  <ggaren@apple.com>
+
+        Rolled back in r166972.
+
+        The iOS buildbot's scripts have been updated to build bmalloc, so the
+        build should now succeed on the bot.
+
+        Also renamed "Frameworks" to "Libraries" as suggested in a review comment.
+
+            WTF should link against bmalloc
+            https://bugs.webkit.org/show_bug.cgi?id=131403
+
+            Reviewed by Michael Saboff.
+
+            This is required to build successfullly with bmalloc enabled.
+
+            * WTF.xcodeproj/project.pbxproj:
+
+2014-04-08  Geoffrey Garen  <ggaren@apple.com>
+
+        Stop linking WTF against bmalloc.
+
+        Reviewed by Enrica Casucci.
+
+        This seems to have broken an iOS buildbot script. Disable it for now
+        until we can fix the script.
+
+        * WTF.xcodeproj/project.pbxproj:
+
+2014-04-08  Geoffrey Garen  <ggaren@apple.com>
+
+        WTF should link against bmalloc
+        https://bugs.webkit.org/show_bug.cgi?id=131403
+
+        Reviewed by Michael Saboff.
+
+        This is required to build successfullly with bmalloc enabled.
+
+        * WTF.xcodeproj/project.pbxproj:
+
+2014-04-08  Geoffrey Garen  <ggaren@apple.com>
+
+        Added a bmalloc back-end for FastMalloc
+        https://bugs.webkit.org/show_bug.cgi?id=131387
+
+        Reviewed by Andreas Kling.
+
+        We'll need to rethink some things if we adopt this back-end. For example,
+        fastMallocSize() and fastMallocGoodSize() are no longer real things. But,
+        this is enough to test for now.
+
+        * wtf/FastMalloc.cpp:
+        (WTF::fastMalloc):
+        (WTF::fastCalloc):
+        (WTF::fastRealloc):
+        (WTF::fastFree):
+        (WTF::fastMallocSize):
+        (WTF::fastMallocGoodSize):
+        (WTF::tryFastMalloc):
+        (WTF::tryFastRealloc):
+        (WTF::tryFastCalloc):
+        (WTF::releaseFastMallocFreeMemory):
+        (WTF::fastMallocStatistics):
+
+2014-04-08  Andres Gomez  <agomez@igalia.com>
+
+        [GTK] [EFL] Build fails with GCC < 4.8.x
+        https://bugs.webkit.org/show_bug.cgi?id=130585
+
+        Reviewed by Martin Robinson.
+
+        The behavior in lower versions of GCC seem to be related to
+        http://www.open-std.org/jtc1/sc22/wg21/docs/lwg-active.html#2132.
+
+        Provided explicit casts for the failing ambiguous overloads.
+
+        * wtf/gtk/MainThreadGtk.cpp:
+        (WTF::scheduleDispatchFunctionsOnMainThread):
+        * wtf/gtk/RunLoopGtk.cpp:
+        (WTF::RunLoop::wakeUp): Provided lambda with a RefPtr instead of
+        ref and de-referring.
+
+2014-04-04  Mark Lam  <mark.lam@apple.com>
+
+        Date object needs to check for ES5 15.9.1.14 TimeClip limit.
+        <https://webkit.org/b/131248>
+
+        Reviewed by Mark Hahnenberg.
+
+        * wtf/DateMath.cpp:
+        - Moved the definition of maxECMAScriptTime to the .h file so that we
+          can use it in other files as well.
+        (WTF::msToYear):
+        - Removed a stale comment for parseDateFromNullTerminatedCharacters().
+        * wtf/DateMath.h:
+
+2014-04-04  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        Enhanced GC logging
+        https://bugs.webkit.org/show_bug.cgi?id=131246
+
+        Reviewed by Geoff Garen.
+
+        Remove OBJECT_MARK_LOGGING
+
+        * wtf/FeatureDefines.h:
+        * wtf/Platform.h:
+
+2014-04-03  Zsolt Borbely  <zsborbely.u-szeged@partner.samsung.com>
+
+        [EFL] Enable CSS JIT again, it works fine after r166666.
+
+        Reviewed by Csaba Osztrogonác.
+
+        * wtf/Platform.h:
+
+2014-04-03  Javier Fernandez  <jfernandez@igalia.com>
+
+        [GTK][Cmake] Enable CSS JIT
+        https://bugs.webkit.org/show_bug.cgi?id=131022
+
+        Reviewed by Martin Robinson.
+
+        * wtf/Platform.h: Enable CSS JIT for GTK port.
+
 2014-04-02  Frédéric Wang  <fred.wang@free.fr>
 
         Operator stretching: read the Open Type MATH table

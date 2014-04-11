@@ -35,6 +35,7 @@
 #import "RemoteLayerTreeTransaction.h"
 #import "ViewUpdateDispatcherMessages.h"
 #import "WKBrowsingContextControllerInternal.h"
+#import "WebContextUserMessageCoders.h"
 #import "WebKitSystemInterfaceIOS.h"
 #import "WebPageMessages.h"
 #import "WebProcessProxy.h"
@@ -185,6 +186,11 @@ bool WebPageProxy::updateVisibleContentRects(const VisibleContentRectUpdateInfo&
     m_lastVisibleContentRectUpdate = visibleContentRectUpdateInfo;
     m_process->send(Messages::ViewUpdateDispatcher::VisibleContentRectUpdate(m_pageID, visibleContentRectUpdateInfo), 0);
     return true;
+}
+
+void WebPageProxy::dynamicViewportSizeUpdate(const IntSize& minimumLayoutSize, const FloatRect& targetExposedContentRect, const FloatRect& targetUnobscuredRect, double targetScale)
+{
+    m_process->send(Messages::WebPage::DynamicViewportSizeUpdate(minimumLayoutSize, targetExposedContentRect, targetUnobscuredRect, targetScale), m_pageID);
 }
 
 void WebPageProxy::setViewportConfigurationMinimumLayoutSize(const WebCore::IntSize& size)
@@ -457,14 +463,24 @@ FloatSize WebPageProxy::viewportScreenSize()
     return FloatSize(WKGetViewportScreenSize());
 }
 
+void WebPageProxy::dynamicViewportUpdateChangedTarget(double newScale, const WebCore::FloatPoint& newScrollPosition)
+{
+    m_pageClient.dynamicViewportUpdateChangedTarget(newScale, newScrollPosition);
+}
+
 void WebPageProxy::didGetTapHighlightGeometries(uint64_t requestID, const WebCore::Color& color, const Vector<WebCore::FloatQuad>& highlightedQuads, const WebCore::IntSize& topLeftRadius, const WebCore::IntSize& topRightRadius, const WebCore::IntSize& bottomLeftRadius, const WebCore::IntSize& bottomRightRadius)
 {
     m_pageClient.didGetTapHighlightGeometries(requestID, color, highlightedQuads, topLeftRadius, topRightRadius, bottomLeftRadius, bottomRightRadius);
 }
 
-void WebPageProxy::startAssistingNode(const AssistedNodeInformation& information)
+void WebPageProxy::startAssistingNode(const AssistedNodeInformation& information, IPC::MessageDecoder& decoder)
 {
-    m_pageClient.startAssistingNode(information);
+    RefPtr<API::Object> userData;
+    WebContextUserMessageDecoder messageDecoder(userData, process());
+    if (!decoder.decode(messageDecoder))
+        return;
+
+    m_pageClient.startAssistingNode(information, userData.get());
 }
 
 void WebPageProxy::stopAssistingNode()

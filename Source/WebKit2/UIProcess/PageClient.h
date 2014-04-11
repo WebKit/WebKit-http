@@ -239,8 +239,9 @@ public:
     virtual void didGetTapHighlightGeometries(uint64_t requestID, const WebCore::Color&, const Vector<WebCore::FloatQuad>& highlightedQuads, const WebCore::IntSize& topLeftRadius, const WebCore::IntSize& topRightRadius, const WebCore::IntSize& bottomLeftRadius, const WebCore::IntSize& bottomRightRadius) = 0;
 
     virtual void didCommitLayerTree(const RemoteLayerTreeTransaction&) = 0;
+    virtual void dynamicViewportUpdateChangedTarget(double newScale, const WebCore::FloatPoint& newScrollPosition) = 0;
 
-    virtual void startAssistingNode(const AssistedNodeInformation&) = 0;
+    virtual void startAssistingNode(const AssistedNodeInformation&, API::Object* userData) = 0;
     virtual void stopAssistingNode() = 0;
     virtual void selectionDidChange() = 0;
     virtual bool interpretKeyEvent(const NativeWebKeyboardEvent&, bool isCharEvent) = 0;

@@ -32,12 +32,13 @@
 @class NSData;
 @class UIScrollView;
 @protocol NSObject;
+@protocol UIScrollViewDelegate;
 struct CGSize;
 
-// FIXME: This should be API.
-@protocol WKWebViewContentProvider <NSObject>
+// FIXME: This should be API (and probably should not be a UIScrollViewDelegate).
+@protocol WKWebViewContentProvider <NSObject, UIScrollViewDelegate>
 
-- (void)web_setContentProviderData:(NSData *)data;
+- (void)web_setContentProviderData:(NSData *)data suggestedFilename:(NSString *)filename;
 - (void)web_setMinimumSize:(CGSize)size;
 - (void)web_setScrollView:(UIScrollView *)scrollView;
 

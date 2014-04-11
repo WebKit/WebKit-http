@@ -219,6 +219,7 @@ set(JavaScriptCore_SOURCES
     heap/EdenGCActivityCallback.cpp
     heap/FullGCActivityCallback.cpp
     heap/GCActivityCallback.cpp
+    heap/GCLogging.cpp
     heap/GCThread.cpp
     heap/GCThreadSharedData.cpp
     heap/HandleSet.cpp
@@ -393,7 +394,6 @@ set(JavaScriptCore_SOURCES
     runtime/JSArrayBufferPrototype.cpp
     runtime/JSArrayBufferView.cpp
     runtime/JSArrayIterator.cpp
-    runtime/JSBoundFunction.cpp
     runtime/JSCJSValue.cpp
     runtime/JSCell.cpp
     runtime/JSConsole.cpp

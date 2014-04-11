@@ -2066,16 +2066,6 @@ void Element::setChildrenAffectedByDrag()
     ensureElementRareData().setChildrenAffectedByDrag(true);
 }
 
-void Element::setChildrenAffectedByFirstChildRules(Element* element)
-{
-    element->setChildrenAffectedByFirstChildRules();
-}
-
-void Element::setChildrenAffectedByDirectAdjacentRules(Element* element)
-{
-    element->setChildrenAffectedByDirectAdjacentRules();
-}
-
 void Element::setChildrenAffectedByForwardPositionalRules(Element* element)
 {
     element->ensureElementRareData().setChildrenAffectedByForwardPositionalRules(true);
@@ -2486,7 +2476,7 @@ bool Element::shouldMoveToFlowThread(const RenderStyle& styleToUse) const
     if (isInShadowTree())
         return false;
 
-    if (styleToUse.flowThread().isEmpty())
+    if (!styleToUse.hasFlowInto())
         return false;
 
     return true;

@@ -237,6 +237,9 @@
     <ClCompile Include="..\heap\GCActivityCallback.cpp">
       <Filter>heap</Filter>
     </ClCompile>
+    <ClCompile Include="..\heap\GCLogging.cpp">
+      <Filter>heap</Filter>
+    </ClCompile>
     <ClCompile Include="..\heap\GCThread.cpp">
       <Filter>heap</Filter>
     </ClCompile>
@@ -601,9 +604,6 @@
       <Filter>runtime</Filter>
     </ClCompile>
     <ClCompile Include="..\runtime\JSArray.cpp">
-      <Filter>runtime</Filter>
-    </ClCompile>
-    <ClCompile Include="..\runtime\JSBoundFunction.cpp">
       <Filter>runtime</Filter>
     </ClCompile>
     <ClCompile Include="..\runtime\JSCell.cpp">
@@ -1700,6 +1700,9 @@
     <ClInclude Include="..\heap\GCActivityCallback.h">
       <Filter>heap</Filter>
     </ClInclude>
+    <ClInclude Include="..\heap\GCLogging.h">
+      <Filter>heap</Filter>
+    </ClInclude>
     <ClInclude Include="..\heap\GCSegmentedArray.h">
       <Filter>heap</Filter>
     </ClInclude>
@@ -2247,9 +2250,6 @@
       <Filter>runtime</Filter>
     </ClInclude>
     <ClInclude Include="..\runtime\JSArray.h">
-      <Filter>runtime</Filter>
-    </ClInclude>
-    <ClInclude Include="..\runtime\JSBoundFunction.h">
       <Filter>runtime</Filter>
     </ClInclude>
     <ClInclude Include="..\runtime\JSCell.h">
@@ -3302,9 +3302,6 @@
     </ClInclude>
     <ClInclude Include="..\bytecode\InlineCallFrameSet.h">
       <Filter>bytecode</Filter>
-    </ClInclude>
-    <ClInclude Include="..\jit\JITOperationWrappers.h">
-      <Filter>jit</Filter>
     </ClInclude>
     <ClInclude Include="..\jit\JITOperations.h">
       <Filter>jit</Filter>

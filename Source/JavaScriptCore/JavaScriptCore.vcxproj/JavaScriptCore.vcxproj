@@ -466,6 +466,7 @@
     <ClCompile Include="..\heap\EdenGCActivityCallback.cpp" />
     <ClCompile Include="..\heap\FullGCActivityCallback.cpp" />
     <ClCompile Include="..\heap\GCActivityCallback.cpp" />
+    <ClCompile Include="..\heap\GCLogging.cpp" />
     <ClCompile Include="..\heap\GCThread.cpp" />
     <ClCompile Include="..\heap\GCThreadSharedData.cpp" />
     <ClCompile Include="..\heap\HandleSet.cpp" />
@@ -639,7 +640,6 @@
     <ClCompile Include="..\runtime\JSArrayBufferConstructor.cpp" />
     <ClCompile Include="..\runtime\JSArrayBufferPrototype.cpp" />
     <ClCompile Include="..\runtime\JSArrayBufferView.cpp" />
-    <ClCompile Include="..\runtime\JSBoundFunction.cpp" />
     <ClCompile Include="..\runtime\JSCJSValue.cpp" />
     <ClCompile Include="..\runtime\JSCell.cpp" />
     <ClCompile Include="..\runtime\JSConsole.cpp" />
@@ -1050,6 +1050,7 @@
     <ClInclude Include="..\heap\EdenGCActivityCallback.h" />
     <ClInclude Include="..\heap\FullGCActivityCallback.h" />
     <ClInclude Include="..\heap\GCActivityCallback.h" />
+    <ClCompile Include="..\heap\GCLogging.cpp" />
     <ClInclude Include="..\heap\GCSegmentedArray.h" />
     <ClInclude Include="..\heap\GCSegmentedArrayInlines.h" />
     <ClInclude Include="..\heap\GCAssertions.h" />
@@ -1159,7 +1160,6 @@
     <ClInclude Include="..\jit\JITInlineCacheGenerator.h" />
     <ClInclude Include="..\jit\JITInlines.h" />
     <ClInclude Include="..\jit\JITOperations.h" />
-    <ClInclude Include="..\jit\JITOperationWrappers.h" />
     <ClInclude Include="..\jit\JITStubRoutine.h" />
     <ClInclude Include="..\jit\JITStubs.h" />
     <ClInclude Include="..\jit\JITStubsX86.h" />
@@ -1300,7 +1300,6 @@
     <ClInclude Include="..\runtime\JSArrayBufferView.h" />
     <ClInclude Include="..\runtime\JSArrayBufferViewInlines.h" />
     <ClInclude Include="..\runtime\JSArrayIterator.h" />
-    <ClInclude Include="..\runtime\JSBoundFunction.h" />
     <ClInclude Include="..\runtime\JSCInlines.h" />
     <ClInclude Include="..\runtime\JSCJSValue.h" />
     <ClInclude Include="..\runtime\JSCJSValueInlines.h" />

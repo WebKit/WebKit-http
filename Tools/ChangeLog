@@ -1,3 +1,588 @@
+2014-04-09  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Remove "System Font" from whitelisted DRT fonts and char width calculations
+        https://bugs.webkit.org/show_bug.cgi?id=131411
+
+        Reviewed by Tim Horton.
+
+        Covered by existing tests.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (allowedFontFamilySet):
+
+2014-04-09  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        systemHiddenFontFamilySet in DRT is unnecessary
+        https://bugs.webkit.org/show_bug.cgi?id=131414
+
+        Reviewed by Tim Horton.
+
+        It doesn't seem to affect test results on my machine.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (drt_NSFontManager_availableFonts):
+        (systemHiddenFontFamilySet): Deleted.
+
+2014-04-09  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed test fix: Don't double-release BSTR.
+
+        * DumpRenderTree/win/DumpRenderTree.cpp:
+        (dump): Remove unneeded call to SysFreeString now that we are
+        using _bstr_t for this variable.
+
+2014-04-09  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Various DumpRenderTree Fixes.
+        https://bugs.webkit.org/show_bug.cgi?id=131446.
+
+        Reviewed by Tim Horton.
+
+        * DumpRenderTree/win/AccessibilityUIElementWin.cpp:
+        (AccessibilityUIElement::title): Switch to _bstr_t. Use JSStringCreateWithBSTR.
+        (AccessibilityUIElement::description): Ditto.
+        (AccessibilityUIElement::helpText): Ditto.
+        (AccessibilityUIElement::intValue): Ditto.
+        (AccessibilityUIElement::isPressActionSupported): Ditto.
+        (AccessibilityUIElement::accessibilityValue): Ditto.
+        * DumpRenderTree/win/DRTDesktopNotificationPresenter.cpp:
+        (DRTDesktopNotificationPresenter::QueryInterface): Get rid of uneeded STDMETHODCALLTYPE declaration.
+        (DRTDesktopNotificationPresenter::AddRef): Ditto.
+        (DRTDesktopNotificationPresenter::Release): Ditto.
+        (DRTDesktopNotificationPresenter::showDesktopNotification): Switch to _bstr_t. Use JSStringCreateWithBSTR.
+        (DRTDesktopNotificationPresenter::cancelDesktopNotification): Ditto.
+        (DRTDesktopNotificationPresenter::notificationDestroyed): Ditto.
+        (DRTDesktopNotificationPresenter::checkNotificationPermission): Ditto.
+        (DRTDesktopNotificationPresenter::requestNotificationPermission): Ditto.
+        * DumpRenderTree/win/DRTDesktopNotificationPresenter.h:
+        * DumpRenderTree/win/DumpRenderTree.cpp:
+        (dumpFrameScrollPosition): Ditto.
+        (dumpFramesAsText): Ditto.
+        (compareHistoryItems): Ditto.
+        (dumpHistoryItem): Ditto.
+        (dump): Ditto.
+        (resetDefaultsToConsistentValues): Ditto.
+        (resetWebViewToConsistentStateBeforeTesting): Ditto.
+        (runTest): Ditto.
+        (createWebViewAndOffscreenWindow): Ditto.
+        * DumpRenderTree/win/EditingDelegate.cpp:
+        (EditingDelegate::QueryInterface): Get rid of uneeded STDMETHODCALLTYPE declaration.
+        (EditingDelegate::AddRef): Ditto.
+        (EditingDelegate::Release): Ditto.
+        (dumpPath): Switch to _bstr_t. Use JSStringCreateWithBSTR
+        (EditingDelegate::shouldBeginEditingInDOMRange): Get rid of uneeded STDMETHODCALLTYPE declaration.
+        (EditingDelegate::shouldEndEditingInDOMRange): Ditto.
+        (EditingDelegate::shouldInsertNode): Ditto.
+        (EditingDelegate::shouldInsertText): Ditto.
+        (EditingDelegate::shouldDeleteDOMRange): Ditto.
+        (EditingDelegate::shouldChangeSelectedDOMRange): Ditto.
+        (EditingDelegate::shouldApplyStyle): Ditto.
+        (EditingDelegate::shouldChangeTypingStyle): Ditto.
+        (EditingDelegate::doPlatformCommand): Ditto.
+        (EditingDelegate::webViewDidBeginEditing): Switch to _bstr_t. Use JSStringCreateWithBSTR.
+        (EditingDelegate::webViewDidChange): Ditto.
+        (EditingDelegate::webViewDidEndEditing): Ditto.
+        (EditingDelegate::webViewDidChangeTypingStyle): Ditto.
+        (EditingDelegate::webViewDidChangeSelection): Ditto.
+        (EditingDelegate::checkSpellingOfString): Ditto.
+        * DumpRenderTree/win/FrameLoadDelegate.cpp:
+        (descriptionSuitableForTestResult): Switch to _bstr_t. Use JSStringCreateWithBSTR.
+        (FrameLoadDelegate::FrameLoadDelegate): Ditto.
+        (FrameLoadDelegate::QueryInterface): Get rid of uneeded STDMETHODCALLTYPE declaration.
+        (FrameLoadDelegate::AddRef): Ditto.
+        (FrameLoadDelegate::Release): Ditto.
+        (FrameLoadDelegate::didStartProvisionalLoadForFrame): Switch to _bstr_t. Use JSStringCreateWithBSTR.
+        (FrameLoadDelegate::didReceiveServerRedirectForProvisionalLoadForFrame): Ditto.
+        (FrameLoadDelegate::didFailProvisionalLoadWithError): Ditto.
+        (FrameLoadDelegate::didCommitLoadForFrame): Ditto.
+        (FrameLoadDelegate::didReceiveTitle): Ditto.
+        (FrameLoadDelegate::didChangeIcons): Ditto.
+        (delegatesWithDelayedWork): Ditto.
+        (FrameLoadDelegate::didFinishLoadForFrame): Ditto.
+        (FrameLoadDelegate::didFailLoadWithError): Ditto.
+        (FrameLoadDelegate::willPerformClientRedirectToURL): Ditto.
+        (FrameLoadDelegate::didCancelClientRedirectForFrame): Ditto.
+        (FrameLoadDelegate::willCloseFrame): Ditto.
+        (FrameLoadDelegate::didFinishDocumentLoadForFrame): Ditto.
+        (FrameLoadDelegate::didHandleOnloadEventsForFrame): Ditto.
+        (FrameLoadDelegate::didFirstVisuallyNonEmptyLayoutInFrame): Ditto.
+        (FrameLoadDelegate::didDisplayInsecureContent): Ditto.
+        (FrameLoadDelegate::didRunInsecureContent): Ditto.
+        * DumpRenderTree/win/FrameLoadDelegate.h:
+        * DumpRenderTree/win/HistoryDelegate.cpp:
+        (HistoryDelegate::didNavigateWithNavigationData): Switch to _bstr_t. Use JSStringCreateWithBSTR.
+        (HistoryDelegate::updateHistoryTitle): Ditto.
+        (HistoryDelegate::populateVisitedLinksForWebView): Ditto.
+        * DumpRenderTree/win/PolicyDelegate.cpp:
+        (dumpPath):
+        (PolicyDelegate::QueryInterface): Get rid of uneeded STDMETHODCALLTYPE declaration.
+        (PolicyDelegate::AddRef): Ditto.
+        (PolicyDelegate::Release): Ditto.
+        (PolicyDelegate::decidePolicyForNavigationAction): Switch to _bstr_t. Use JSStringCreateWithBSTR.
+        (PolicyDelegate::unableToImplementPolicyWithError): Ditto.
+        * DumpRenderTree/win/ResourceLoadDelegate.cpp:
+        (ResourceLoadDelegate::descriptionSuitableForTestResult): Switch to _bstr_t. Use JSStringCreateWithBSTR.
+        (ResourceLoadDelegate::QueryInterface): Get rid of uneeded STDMETHODCALLTYPE declaration.
+        (ResourceLoadDelegate::AddRef): Ditto.
+        (ResourceLoadDelegate::Release): Ditto.
+        (ResourceLoadDelegate::identifierForInitialRequest): Switch to _bstr_t. Use JSStringCreateWithBSTR.
+        (ResourceLoadDelegate::removeIdentifierForRequest): Ditto.
+        (ResourceLoadDelegate::willSendRequest): Ditto.
+        (ResourceLoadDelegate::didReceiveAuthenticationChallenge): Ditto.
+        (ResourceLoadDelegate::didReceiveResponse): Ditto.
+        (ResourceLoadDelegate::didFinishLoadingFromDataSource): Ditto.
+        (ResourceLoadDelegate::didFailLoadingWithError): Ditto.
+        * DumpRenderTree/win/TestRunnerWin.cpp: Ditto.
+        (TestRunner::queueLoad): Switch to _bstr_t. Use JSStringCreateWithBSTR.
+        (TestRunner::setUserStyleSheetLocation): Ditto.
+        (TestRunner::execCommand): Ditto.
+        (TestRunner::overridePreference): Ditto.
+        (TestRunner::evaluateScriptInIsolatedWorld): Ditto.
+        * DumpRenderTree/win/TextInputControllerWin.cpp: Ditto.
+        (TextInputController::setMarkedText): Switch to _bstr_t. Use JSStringCreateWithBSTR.
+        (TextInputController::insertText): Ditto.
+        * DumpRenderTree/win/UIDelegate.cpp:
+        (UIDelegate::QueryInterface): Get rid of uneeded STDMETHODCALLTYPE declaration.
+        (UIDelegate::AddRef): Ditto.
+        (UIDelegate::Release): Ditto.
+        (UIDelegate::hasCustomMenuImplementation): Switch to _bstr_t. Use JSStringCreateWithBSTR.
+        (UIDelegate::trackCustomPopupMenu): Ditto.
+        (UIDelegate::registerUndoWithTarget): Ditto.
+        (UIDelegate::removeAllActionsWithTarget): Ditto.
+        (UIDelegate::setActionTitle): Ditto.
+        (UIDelegate::undo): Ditto.
+        (UIDelegate::redo): Ditto.
+        (UIDelegate::canUndo): Ditto.
+        (UIDelegate::canRedo): Ditto.
+        (UIDelegate::printFrame): Ditto.
+        (UIDelegate::ftpDirectoryTemplatePath): Ditto.
+        (UIDelegate::webViewHeaderHeight): Ditto.
+        (UIDelegate::webViewFooterHeight): Ditto.
+        (UIDelegate::drawHeaderInRect): Ditto.
+        (UIDelegate::drawFooterInRect): Ditto.
+        (UIDelegate::webViewPrintingMarginRect): Ditto.
+        (UIDelegate::canRunModal): Ditto.
+        (UIDelegate::createModalDialog): Ditto.
+        (UIDelegate::runModal): Ditto.
+        (UIDelegate::isMenuBarVisible): Ditto.
+        (UIDelegate::setMenuBarVisible): Ditto.
+        (UIDelegate::runDatabaseSizeLimitPrompt): Ditto.
+        (UIDelegate::paintCustomScrollbar): Ditto.
+        (UIDelegate::paintCustomScrollCorner): Ditto.
+        (UIDelegate::setFrame): Ditto.
+        (UIDelegate::webViewFrame): Ditto.
+        (UIDelegate::runJavaScriptAlertPanelWithMessage): Ditto.
+        (UIDelegate::runJavaScriptConfirmPanelWithMessage): Ditto.
+        (UIDelegate::runJavaScriptTextInputPanelWithPrompt): Ditto.
+        (UIDelegate::runBeforeUnloadConfirmPanelWithMessage): Ditto.
+        (UIDelegate::webViewAddMessageToConsole): Ditto.
+        (UIDelegate::doDragDrop): Ditto.
+        (UIDelegate::webViewGetDlgCode): Ditto.
+        (UIDelegate::createWebViewWithRequest): Ditto.
+        (UIDelegate::webViewClose): Ditto.
+        (UIDelegate::webViewFocus): Ditto.
+        (UIDelegate::webViewUnfocus): Ditto.
+        (UIDelegate::webViewPainted): Ditto.
+        (UIDelegate::exceededDatabaseQuota): Ditto.
+        (UIDelegate::embeddedViewWithArguments): Ditto.
+        (UIDelegate::webViewClosing): Ditto.
+        (UIDelegate::webViewSetCursor): Ditto.
+        (UIDelegate::webViewDidInvalidate): Ditto.
+        (UIDelegate::setStatusText): Ditto.
+        (UIDelegate::desktopNotificationsDelegate): Ditto.
+        (UIDelegate::drawBackground): Ditto.
+        (UIDelegate::decidePolicyForGeolocationRequest): Ditto.
+        (UIDelegate::didPressMissingPluginButton): Ditto.
+        * DumpRenderTree/win/WorkQueueItemWin.cpp: Ditto.
+        (LoadItem::invoke):  Switch to _bstr_t. Use JSStringCreateWithBSTR.
+        (LoadHTMLStringItem::invoke): Ditto.
+        (ScriptItem::invoke): Ditto.
+
+2014-04-09  Gergo Balogh  <gbalogh.u-szeged@partner.samsung.com>
+
+        Stylechecker: False positive on inline asm code.
+        https://bugs.webkit.org/show_bug.cgi?id=130570
+
+        Reviewed by Csaba Osztrogonác.
+
+        Disable stylechecking in asm blocks.
+
+        * Scripts/webkitpy/style/checkers/cpp.py:
+        (process_line):
+        (_InlineASMState):
+        (_InlineASMState.__init__):
+        (_InlineASMState.process_line):
+        (_InlineASMState.isInside):
+        (_process_lines):
+        * Scripts/webkitpy/style/checkers/cpp_unittest.py:
+        (WebKitStyleTest.test_member_initialization_list):
+
+2014-04-09  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Move WebKit1 unit tests resources used by WebKit2 unit tests to WebKit2 resources dir
+        https://bugs.webkit.org/show_bug.cgi?id=131029
+
+        Reviewed by Philippe Normand.
+
+        Add blank.ico and test.pdf to resources dir of WebKit2Gtk unit
+        tests and remove the getWebKit1TestResoucesDir() method.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestDownloads.cpp:
+        (testDownloadLocalFile): Use Test::getResourcesDir().
+        (testDownloadLocalFileError): Ditto.
+        (serverCallback): Ditto.
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestResources.cpp:
+        (serverCallback): Ditto.
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestSSL.cpp:
+        (httpServerCallback): Ditto.
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestWebKitFaviconDatabase.cpp:
+        (serverCallback): Ditto.
+        * TestWebKitAPI/Tests/WebKit2Gtk/resources/blank.ico: Added.
+        * TestWebKitAPI/Tests/WebKit2Gtk/resources/test.pdf: Added.
+        * TestWebKitAPI/gtk/WebKit2Gtk/TestMain.h:
+        (Test::getWebKit1TestResoucesDir): Deleted.
+
+2014-04-09  Alexey Proskuryakov  <ap@apple.com>
+
+        [WK2] HTTP authentication regression tests fail
+        https://bugs.webkit.org/show_bug.cgi?id=81627
+        <rdar://problem/11079296>
+
+        Reviewed by Anders Carlsson.
+
+        * WebKitTestRunner/TestController.h:
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::createWebViewWithOptions): Added canAuthenticateAgainstProtectionSpaceInFrame
+        to pageLoaderClient structure.
+        (WTR::TestController::canAuthenticateAgainstProtectionSpaceInFrame): Return true
+        for password based authentication (we do get server trust challenges on some tests,
+        which WKTR can't handle).
+        When this client call is not implemented or returns false, didReceiveAuthenticationChallengeInFrame
+        calls won't be made, at least on CFNetwork based platforms.
+        (WTR::TestController::didReceiveAuthenticationChallengeInFrame): Changed the output
+        to omit <unknown>. The resource is always unknown with WK2, and it doesn't really
+        make sense to associate auth requests with individual resources - there can be
+        multiple resources loading at once from the same protection space, so WebKit1 API
+        that had a resource identifier was inherently racy.
+
+2014-04-09  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [EFL] Change font path for DumpRenderTree and WebKitTestRunner
+        https://bugs.webkit.org/show_bug.cgi?id=131427
+
+        Reviewed by Gyuyoung Kim.
+
+        Since r166973, font path was changed.
+
+        * DumpRenderTree/PlatformEfl.cmake:
+        * WebKitTestRunner/PlatformEfl.cmake:
+
+2014-04-08  Geoffrey Garen  <ggaren@apple.com>
+
+        Fix the build-jsc build
+        https://bugs.webkit.org/show_bug.cgi?id=131410
+
+        Reviewed by Michael Saboff.
+
+        * Scripts/build-jsc: Make sure to build bmalloc before WTF, since
+        WTF depends on it.
+
+2014-04-08  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK] Remove WebKit1 unit tests
+        https://bugs.webkit.org/show_bug.cgi?id=131359
+
+        Reviewed by Anders Carlsson.
+
+        Remove all WebKit1 GTK+ unit tests, in preparation for removing the WebKit1 port
+        entirely. We also remove the list of skipped WebKi1 tests from run-gtk-tests, as
+        they were inadvertently left in http://trac.webkit.org/changeset/166504.
+
+        * CMakeLists.txt: No longer load the WebKit1 unit test CMakeLists.txt file.
+        * Scripts/run-gtk-tests: Remove skipped WebKit1 unit tests.
+        * TestWebKitAPI/Tests/WebKitGtk/CMakeLists.txt: Removed.
+        * TestWebKitAPI/Tests/WebKitGtk/resources/blank.ico: Removed.
+        * TestWebKitAPI/Tests/WebKitGtk/resources/test.html: Removed.
+        * TestWebKitAPI/Tests/WebKitGtk/resources/test.ogg: Removed.
+        * TestWebKitAPI/Tests/WebKitGtk/resources/test.pdf: Removed.
+        * TestWebKitAPI/Tests/WebKitGtk/resources/test.txt: Removed.
+        * TestWebKitAPI/Tests/WebKitGtk/test_utils.c: Removed.
+        * TestWebKitAPI/Tests/WebKitGtk/test_utils.h: Removed.
+        * TestWebKitAPI/Tests/WebKitGtk/testapplicationcache.c: Removed.
+        * TestWebKitAPI/Tests/WebKitGtk/testatk.c: Removed.
+        * TestWebKitAPI/Tests/WebKitGtk/testatkroles.c: Removed.
+        * TestWebKitAPI/Tests/WebKitGtk/testcontextmenu.c: Removed.
+        * TestWebKitAPI/Tests/WebKitGtk/testcopyandpaste.c: Removed.
+        * TestWebKitAPI/Tests/WebKitGtk/testdomdocument.c: Removed.
+        * TestWebKitAPI/Tests/WebKitGtk/testdomdomwindow.c: Removed.
+        * TestWebKitAPI/Tests/WebKitGtk/testdomnode.c: Removed.
+        * TestWebKitAPI/Tests/WebKitGtk/testdownload.c: Removed.
+        * TestWebKitAPI/Tests/WebKitGtk/testfavicondatabase.c: Removed.
+        * TestWebKitAPI/Tests/WebKitGtk/testglobals.c: Removed.
+        * TestWebKitAPI/Tests/WebKitGtk/testhittestresult.c: Removed.
+        * TestWebKitAPI/Tests/WebKitGtk/testhttpbackend.c: Removed.
+        * TestWebKitAPI/Tests/WebKitGtk/testkeyevents.c: Removed.
+        * TestWebKitAPI/Tests/WebKitGtk/testloading.c: Removed.
+        * TestWebKitAPI/Tests/WebKitGtk/testmimehandling.c: Removed.
+        * TestWebKitAPI/Tests/WebKitGtk/testnetworkrequest.c: Removed.
+        * TestWebKitAPI/Tests/WebKitGtk/testnetworkresponse.c: Removed.
+        * TestWebKitAPI/Tests/WebKitGtk/testwebbackforwardlist.c: Removed.
+        * TestWebKitAPI/Tests/WebKitGtk/testwebdatasource.c: Removed.
+        * TestWebKitAPI/Tests/WebKitGtk/testwebframe.c: Removed.
+        * TestWebKitAPI/Tests/WebKitGtk/testwebhistoryitem.c: Removed.
+        * TestWebKitAPI/Tests/WebKitGtk/testwebinspector.c: Removed.
+        * TestWebKitAPI/Tests/WebKitGtk/testwebplugindatabase.c: Removed.
+        * TestWebKitAPI/Tests/WebKitGtk/testwebresource.c: Removed.
+        * TestWebKitAPI/Tests/WebKitGtk/testwebsettings.c: Removed.
+        * TestWebKitAPI/Tests/WebKitGtk/testwebview.c: Removed.
+        * TestWebKitAPI/Tests/WebKitGtk/testwindow.c: Removed.
+
+2014-04-08  Brent Fulgham  <bfulgham@apple.com>
+
+        Unreviewed gardening (Take 2): Prevent users from attempting
+        to build with known invalid cURL. 
+
+        * Scripts/webkitdirs.pm:
+        (checkInstalledTools): Check for 7.34.0 (the broken version), not
+        7.33.0 (the known good version).
+
+2014-04-08  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK] Remove DumpRenderTree and GtkLauncher
+        https://bugs.webkit.org/show_bug.cgi?id=131373
+
+        Reviewed by Andreas Kling.
+
+        Remove the GTK+ port of DumpRenderTree and GtkLauncher. These tools are
+        no longer necessary now that WebKit1 GTK+ will be removed.
+
+        * CMakeLists.txt:
+        * DumpRenderTree/PlatformGTK.cmake: Removed.
+        * DumpRenderTree/gtk/AccessibilityControllerGtk.cpp: Removed.
+        * DumpRenderTree/gtk/DumpRenderTree.cpp: Removed.
+        * DumpRenderTree/gtk/DumpRenderTreeGtk.h: Removed.
+        * DumpRenderTree/gtk/EditingCallbacks.cpp: Removed.
+        * DumpRenderTree/gtk/EditingCallbacks.h: Removed.
+        * DumpRenderTree/gtk/EventSender.cpp: Removed.
+        * DumpRenderTree/gtk/EventSender.h: Removed.
+        * DumpRenderTree/gtk/GCControllerGtk.cpp: Removed.
+        * DumpRenderTree/gtk/PixelDumpSupportGtk.cpp: Removed.
+        * DumpRenderTree/gtk/SelfScrollingWebKitWebView.cpp: Removed.
+        * DumpRenderTree/gtk/SelfScrollingWebKitWebView.h: Removed.
+        * DumpRenderTree/gtk/TestRunnerGtk.cpp: Removed.
+        * DumpRenderTree/gtk/TextInputController.cpp: Removed.
+        * DumpRenderTree/gtk/TextInputController.h: Removed.
+        * DumpRenderTree/gtk/WorkQueueItemGtk.cpp: Removed.
+        * GtkLauncher/CMakeLists.txt: Removed.
+        * GtkLauncher/LauncherInspectorWindow.c: Removed.
+        * GtkLauncher/LauncherInspectorWindow.h: Removed.
+        * GtkLauncher/main.c: Removed.
+        * GtkLauncher/simple.svg: Removed.
+        * GtkLauncher/text.html: Removed.
+        * WebKitTestRunner/PlatformGTK.cmake:
+        * WebKitTestRunner/gtk/fonts/AHEM____.TTF: Renamed from Tools/DumpRenderTree/gtk/fonts/AHEM____.TTF.
+        * WebKitTestRunner/gtk/fonts/FontWithNoValidEncoding.fon: Renamed from Tools/DumpRenderTree/gtk/fonts/FontWithNoValidEncoding.fon.
+        * WebKitTestRunner/gtk/fonts/fonts.conf: Renamed from Tools/DumpRenderTree/gtk/fonts/fonts.conf.
+
+2014-04-08  Mark Rowe  <mrowe@apple.com>
+
+        XPC services launched by Safari have wrong DYLD_FRAMEWORK_PATH set when launched via run-safari / debug-safari
+        <https://webkit.org/b/131388> / <rdar://problem/16291687>
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/webkitdirs.pm:
+        (runMacWebKitApp): Set __XPC_DYLD_FRAMEWORK_PATH to the absolute path to the built products directory.
+        (execMacWebKitAppForDebugging): Ditto.
+
+2014-04-08  Geoffrey Garen  <ggaren@apple.com>
+
+        Build bmalloc on iOS too
+        https://bugs.webkit.org/show_bug.cgi?id=131381
+
+        Reviewed by Andreas Kling.
+
+        * Scripts/build-webkit:
+
+2014-04-08  Brent Fulgham  <bfulgham@apple.com>
+
+        Unreviewed gardening: Prevent users from attempting
+        to build with known invalid cURL.
+
+        * Scripts/webkitdirs.pm:
+        (checkInstalledTools): Block build attempts with bad
+        Cygwin tool set.
+
+2014-04-07  Geoffrey Garen  <ggaren@apple.com>
+
+        Build bmalloc on Mac
+        https://bugs.webkit.org/show_bug.cgi?id=131333
+
+        Reviewed by Mark Rowe.
+
+        * Scripts/build-webkit: Add the bmalloc target if we're on Mac.
+        (Note: Just testing Mac is not good enough because in this
+        script 'Mac' means 'Mac or iOS'.)
+
+2014-03-30  Filip Pizlo  <fpizlo@apple.com>
+
+        Move slow JSRegress tests out of the way so that they don't show up in run-jsc-benchmarks runs and also skip tests that are extremely long-running
+        https://bugs.webkit.org/show_bug.cgi?id=130951
+
+        Reviewed by Geoffrey Garen.
+
+        * Scripts/run-javascriptcore-tests:
+
+2014-04-06  Darin Adler  <darin@apple.com>
+
+        Rework CSS calc logic, fixing some reference count mistakes in Length
+        https://bugs.webkit.org/show_bug.cgi?id=131280
+
+        Reviewed by Andreas Kling.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj: Added CalculationValue.cpp.
+        * TestWebKitAPI/Tests/WebCore/CalculationValue.cpp: Added.
+
+2014-04-04  Brian J. Burg  <burg@cs.washington.edu>
+
+        Enable WEB_REPLAY for PLATFORM(MAC)
+        https://bugs.webkit.org/show_bug.cgi?id=130700
+
+        Reviewed by Timothy Hatcher.
+
+        * Scripts/webkitperl/FeatureList.pm: Set the default for WEB_REPLAY for OS X engineering builds.
+
+2014-04-05  Raphael Kubo da Costa  <raphael.kubo.da.costa@intel.com>
+
+        [CMake] Include X11's include dirs in TestNetscapePlugin
+        https://bugs.webkit.org/show_bug.cgi?id=131270
+
+        Reviewed by Martin Robinson.
+
+        * DumpRenderTree/TestNetscapePlugIn/CMakeLists.txt: Include X11_INCLUDE_DIR since
+        TestNetscapePlugin includes WebCore code that includes X headers.
+
+2014-04-05  David Kilzer  <ddkilzer@apple.com>
+
+        REGRESSION (r166529): Fix build after renaming TileCache to LegacyTileCache
+        <http://webkit.org/b/130986>
+
+        * Scripts/check-for-inappropriate-objc-class-names: Add 'Legacy'
+        prefix to TileCache class names in exception list.
+
+2014-04-04  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] kill-old-processes should kill dbus-daemon processes
+        https://bugs.webkit.org/show_bug.cgi?id=127352
+
+        Reviewed by Martin Robinson.
+
+        * BuildSlaveSupport/kill-old-processes:
+        (main):
+
+2014-04-04  Andres Gomez  <agomez@igalia.com>
+
+        [Win] Update obsolete packages in cygwin
+        https://bugs.webkit.org/show_bug.cgi?id=126264
+
+        Reviewed by Brent Fulgham.
+
+        Removed "apache" and "minires" as the first has been replaced by
+        "lighttpd" and the second is now integrated into
+        "cygwin". Replaced the transitional and now obsolete "gcc" package
+        with "gcc-g++" and ensure that "python" stays at version "2.6.8"
+        since the newer version available is "2.7.3" which breaks the
+        build due to some funniness with environment variable handling.
+
+        * CygwinDownloader/cygwin-downloader.py:
+        * CygwinDownloader/cygwin-downloader.zip:
+
+2014-04-03  Joseph Pecoraro  <pecoraro@apple.com>
+
+        check-webkit-style: Improve warnings on Objective-C @property syntax
+        https://bugs.webkit.org/show_bug.cgi?id=131200
+
+        Reviewed by Dan Bernstein.
+
+        * Scripts/webkitpy/style/checkers/cpp.py:
+        (check_spacing):
+        (CppChecker):
+        * Scripts/webkitpy/style/checkers/cpp_unittest.py:
+        (CppStyleTest.test_spacing_in_objective_c_properties):
+
+2014-04-03  Santosh Mahto  <santoshbit2007@gmail.com>
+
+        Unreviewed. Moving my name to commiter section
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2014-04-03  Santosh Mahto  <santoshbit2007@gmail.com>
+
+        Unreviewed. Add myself as a committer.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2014-04-03  Andrzej Badowski  <a.badowski@samsung.com>
+
+        [EFL][WK2] Replacing zoom functionality of MiniBrowser from scale_set to page_zoom_set.
+        https://bugs.webkit.org/show_bug.cgi?id=130391
+
+        Reviewed by Gyuyoung Kim.
+
+        Change the implementation of the zoom functionality from ewk_view_scale_set
+        to ewk_view_page_zoom_set.
+
+        * MiniBrowser/efl/main.c:
+
+2014-04-03  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [webkitpy] perf profiler does not understand --call-graph argument
+        https://bugs.webkit.org/show_bug.cgi?id=131132
+
+        Reviewed by Ryosuke Niwa.
+
+        New versions of perf profiler have changed the argument from --call-graph to -g.
+
+        * Scripts/webkitpy/common/system/profiler.py:
+        (Perf.wrapper_arguments): Use -g instead of --call-graph.
+        * Scripts/webkitpy/port/driver_unittest.py:
+        (DriverTest.test_profiler_as_wrapper): Update test accordingly.
+
+2014-04-03  Zsolt Borbely  <zsborbely.u-szeged@partner.samsung.com>
+
+        Add EFL WK2 performance bot to build.webkit.org
+        https://bugs.webkit.org/show_bug.cgi?id=131034
+
+        Fix after r166707, use "Perf" instead of "perf" for consistency.
+
+        Reviewed by Csaba Osztrogonác.
+
+        * BuildSlaveSupport/build.webkit.org-config/config.json:
+
+2014-04-03  Zsolt Borbely  <zsborbely.u-szeged@partner.samsung.com>
+
+        Add EFL WK2 performance bot to build.webkit.org
+        https://bugs.webkit.org/show_bug.cgi?id=131034
+
+        Reviewed by Csaba Osztrogonác.
+
+        * BuildSlaveSupport/build.webkit.org-config/config.json:
+
+2014-04-02  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [EFL][WK1] Use Evas_Touch_Point_State instead of Ewk_Touch_Point_Type
+        https://bugs.webkit.org/show_bug.cgi?id=131151
+
+        Reviewed by Gyuyoung Kim.
+
+        * DumpRenderTree/efl/EventSender.cpp: Replace Ewk_Touch_Point_Type to Evas_Touch_Point_State.
+        (TouchEventInfo::TouchEventInfo):
+        (sendTouchEvent):
+        (addTouchPointCallback):
+        (updateTouchPointCallback):
+        (cancelTouchPointCallback):
+        (releaseTouchPointCallback):
+
 2014-04-02  David Kilzer  <ddkilzer@apple.com>
 
         filter-build-webkit: Ignore xcodebuild warnings when compiling with newer builds of clang

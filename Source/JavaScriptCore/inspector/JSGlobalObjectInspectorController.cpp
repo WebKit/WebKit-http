@@ -55,6 +55,7 @@ JSGlobalObjectInspectorController::JSGlobalObjectInspectorController(JSGlobalObj
     : m_globalObject(globalObject)
     , m_injectedScriptManager(std::make_unique<InjectedScriptManager>(*this, InjectedScriptHost::create()))
     , m_inspectorFrontendChannel(nullptr)
+    , m_includeNativeCallStackWithExceptions(true)
 {
     auto runtimeAgent = std::make_unique<JSGlobalObjectRuntimeAgent>(m_injectedScriptManager.get(), m_globalObject);
     auto consoleAgent = std::make_unique<JSGlobalObjectConsoleAgent>(m_injectedScriptManager.get());
@@ -147,12 +148,21 @@ void JSGlobalObjectInspectorController::reportAPIException(ExecState* exec, JSVa
     ErrorHandlingScope errorScope(exec->vm());
 
     RefPtr<ScriptCallStack> callStack = createScriptCallStackFromException(exec, exception, ScriptCallStack::maxCallStackSizeToCapture);
-    appendAPIBacktrace(callStack.get());
+    if (includesNativeCallStackWhenReportingExceptions())
+        appendAPIBacktrace(callStack.get());
 
     // FIXME: <http://webkit.org/b/115087> Web Inspector: Should not evaluate JavaScript handling exceptions
     // If this is a custom exception object, call toString on it to try and get a nice string representation for the exception.
     String errorMessage = exception.toString(exec)->value(exec);
     exec->clearException();
+
+    if (JSConsoleClient::logToSystemConsole()) {
+        if (callStack->size()) {
+            const ScriptCallFrame& callFrame = callStack->at(0);
+            ConsoleClient::printConsoleMessage(MessageSource::JS, MessageType::Log, MessageLevel::Error, errorMessage, callFrame.sourceURL(), callFrame.lineNumber(), callFrame.columnNumber());
+        } else
+            ConsoleClient::printConsoleMessage(MessageSource::JS, MessageType::Log, MessageLevel::Error, errorMessage, String(), 0, 0);
+    }
 
     m_consoleAgent->addMessageToConsole(MessageSource::JS, MessageType::Log, MessageLevel::Error, errorMessage, callStack);
 }

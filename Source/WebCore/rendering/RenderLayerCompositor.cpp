@@ -433,6 +433,8 @@ void RenderLayerCompositor::flushPendingLayerChanges(bool isFlushRoot)
 #else
         // Having a m_clipLayer indicates that we're doing scrolling via GraphicsLayers.
         IntRect visibleRect = m_clipLayer ? IntRect(IntPoint(), frameView.contentsSize()) : frameView.visibleContentRect();
+        if (!frameView.exposedRect().isInfinite())
+            visibleRect.intersect(IntRect(frameView.exposedRect()));
         rootLayer->flushCompositingState(visibleRect);
 #endif
     }
@@ -2127,6 +2129,9 @@ CompositingReasons RenderLayerCompositor::reasonsForCompositing(const RenderLaye
 
 #if ENABLE(CSS_COMPOSITING)
         if (layer.isolatesCompositedBlending())
+            reasons |= CompositingReasonIsolatesCompositedBlendingDescendants;
+
+        if (layer.hasBlendMode())
             reasons |= CompositingReasonBlendingWithCompositedDescendants;
 #endif
 
@@ -2202,9 +2207,14 @@ const char* RenderLayerCompositor::logReasonsForCompositing(const RenderLayer& l
 
     if (reasons & CompositingReasonFilterWithCompositedDescendants)
         return "filter with composited descendants";
-            
+
+#if ENABLE(CSS_COMPOSITING)
     if (reasons & CompositingReasonBlendingWithCompositedDescendants)
         return "blending with composited descendants";
+
+    if (reasons & CompositingReasonIsolatesCompositedBlendingDescendants)
+        return "isolates composited blending descendants";
+#endif
 
     if (reasons & CompositingReasonPerspective)
         return "perspective";
@@ -3352,12 +3362,10 @@ bool RenderLayerCompositor::layerHas3DContent(const RenderLayer& layer) const
 
 void RenderLayerCompositor::deviceOrPageScaleFactorChanged()
 {
-    // Start at the RenderView's layer, since that's where the scale is applied.
-    RenderLayer* viewLayer = m_renderView.layer();
-    if (!viewLayer->isComposited())
-        return;
-
-    if (GraphicsLayer* rootLayer = viewLayer->backing()->childForSuperlayers())
+    // Page scale will only be applied at to the RenderView and sublayers, but the device scale factor
+    // needs to be applied at the level of rootGraphicsLayer().
+    GraphicsLayer* rootLayer = rootGraphicsLayer();
+    if (rootLayer)
         rootLayer->noteDeviceOrPageScaleFactorChangedIncludingDescendants();
 }
 
@@ -3505,6 +3513,9 @@ void RenderLayerCompositor::updateScrollCoordinatedLayer(RenderLayer& layer, Scr
             ASSERT_NOT_REACHED();
 
         nodeID = scrollingCoordinator->attachToStateTree(nodeType, nodeID, parentNodeID);
+        if (!nodeID)
+            return;
+
         backing->setViewportConstrainedNodeID(nodeID);
 
         switch (nodeType) {
@@ -3528,6 +3539,9 @@ void RenderLayerCompositor::updateScrollCoordinatedLayer(RenderLayer& layer, Scr
             nodeID = scrollingCoordinator->uniqueScrollLayerID();
 
         nodeID = scrollingCoordinator->attachToStateTree(isRootLayer ? FrameScrollingNode : OverflowScrollingNode, nodeID, parentNodeID);
+        if (!nodeID)
+            return;
+
         backing->setScrollingNodeID(nodeID);
         m_scrollingNodeToLayerMap.add(nodeID, &layer);
 

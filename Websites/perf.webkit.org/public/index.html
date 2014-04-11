@@ -59,7 +59,7 @@ td, th {
     position: absolute;
     left: 10px;
     top: 10px;
-    width: 220px;
+    width: 230px;
 }
 
 .chart header {
@@ -206,7 +206,7 @@ td, th {
     height: 40px;
     position: absolute;
     top: 10px;
-    left: 220px;
+    left: 240px;
 }
 
 .chart svg {
@@ -249,6 +249,28 @@ td, th {
     font-size: small;
     line-height: 130%;
     white-space: nowrap;
+}
+
+.tooltip:before {
+    position: absolute;
+    width: 0;
+    height: 0;
+    left: 50%;
+    margin-left: -9px;
+    top: -19px;
+    content: "";
+    display: none;
+    border-style: solid;
+    border-width: 10px;
+    border-color: transparent transparent #333 transparent;
+}
+
+.tooltip.inverted:before {
+    display: block;
+}
+
+.tooltip.inverted:after {
+    display: none;
 }
 
 .tooltip:after {
@@ -314,25 +336,58 @@ td, th {
         }
     };
 
-    function computeYAxisBoundsToFitLines(minTime, results, baseline, target) {
-        var stdevOfAllRuns = results.sampleStandardDeviation(minTime);
-        var movingAverage = results.exponentialMovingArithmeticMean(minTime, /* alpha, the degree of weighting decrease */ 0.3);
-        var min = results.min(minTime);
-        var max = results.max(minTime);
+    function adjustedIntervalForRun(results, minTime, minRatioToFitInAdjustedInterval) {
+        if (!results)
+            return {min: Number.MAX_VALUE, max: Number.MIN_VALUE};
+        var degreeOfWeightingDecrease = 0.2;
+        var movingAverage = results.exponentialMovingArithmeticMean(minTime, degreeOfWeightingDecrease);
+        var resultsCount = results.countResults(minTime);
+        var adjustmentDelta = results.sampleStandardDeviation(minTime) / 4;
+        var adjustedMin = movingAverage;
+        var adjustedMax = movingAverage;
+        var adjustmentCount;
+        for (adjustmentCount = 0; adjustmentCount < 4 * 4; adjustmentCount++) { // Don't expand beyond 4 standard deviations.
+            adjustedMin -= adjustmentDelta;
+            adjustedMax += adjustmentDelta;
+            if (results.countResultsInInterval(minTime, adjustedMin, adjustedMax) / resultsCount >= minRatioToFitInAdjustedInterval)
+                break;
+        }
+        for (var i = 0; i < adjustmentCount; i++) {
+            if (results.countResultsInInterval(minTime, adjustedMin + adjustmentDelta, adjustedMax) / resultsCount < minRatioToFitInAdjustedInterval)
+                break;
+            adjustedMin += adjustmentDelta;
+        }
+        for (var i = 0; i < adjustmentCount; i++) {
+            if (results.countResultsInInterval(minTime, adjustedMin, adjustedMax - adjustmentDelta) / resultsCount < minRatioToFitInAdjustedInterval)
+                break;
+            adjustedMax -= adjustmentDelta;
+        }
+        return {min: adjustedMin, max: adjustedMax};
+    }
 
+    function computeYAxisBoundsToFitLines(minTime, results, baseline, target) {
+        var minOfAllRuns = results.min(minTime);
+        var maxOfAllRuns = results.max(minTime);
         if (baseline) {
-            min = Math.min(min, baseline.min(minTime));
-            max = Math.max(max, baseline.max(minTime));
+            minOfAllRuns = Math.min(minOfAllRuns, baseline.min(minTime));
+            maxOfAllRuns = Math.max(maxOfAllRuns, baseline.max(minTime));
         }
         if (target) {
-            min = Math.min(min, target.min(minTime));
-            max = Math.max(max, target.max(minTime));
+            minOfAllRuns = Math.min(minOfAllRuns, target.min(minTime));
+            maxOfAllRuns = Math.max(maxOfAllRuns, target.max(minTime));
         }
+        var marginSize = (maxOfAllRuns - minOfAllRuns) * 0.1;
 
-        var marginSize = (max - min) * 0.1;
-        return {min: min - marginSize, max: max + marginSize,
-            adjustedMin: Math.min(results.lastResult().mean() - marginSize, Math.max(movingAverage - stdevOfAllRuns * 2, min) - marginSize),
-            adjustedMax: Math.max(results.lastResult().mean() + marginSize, Math.min(movingAverage + stdevOfAllRuns * 2, max) + marginSize) };
+        var minRatioToFitInAdjustedInterval = 0.9;
+        var intervalForResults = adjustedIntervalForRun(results, minTime, minRatioToFitInAdjustedInterval);
+        var intervalForBaseline = adjustedIntervalForRun(baseline, minTime, minRatioToFitInAdjustedInterval);
+        var intervalForTarget = adjustedIntervalForRun(target, minTime, minRatioToFitInAdjustedInterval);
+        var adjustedMin = Math.min(intervalForResults.min, intervalForBaseline.min, intervalForTarget.min);
+        var adjustedMax = Math.max(intervalForResults.max, intervalForBaseline.max, intervalForTarget.max);
+        var adjsutedMarginSize = (adjustedMax - adjustedMin) * 0.1;
+        return {min: minOfAllRuns - marginSize, max: maxOfAllRuns + marginSize,
+            adjustedMin: Math.max(minOfAllRuns - marginSize, adjustedMin - adjsutedMarginSize),
+            adjustedMax: Math.min(maxOfAllRuns + marginSize, adjustedMax + adjsutedMarginSize)};
     }
 
     function computeStatus(smallerIsBetter, lastResult, baseline, target) {
@@ -684,12 +739,16 @@ td, th {
             else
                 this.attachMainPlot(minTime);
 
-            var self = this;
+            if (bindPlotEventHandlers)
+                bindPlotEventHandlers(this);
+            bindPlotEventHandlers = null;
+        };
 
+        function bindPlotEventHandlers(chart) {
             // FIXME: Crosshair should stay where it was between charts.
             $(plotContainer).bind("plothover", function (event, pos, item) {
                 for (var i = 0; i < charts.length; i++) {
-                    if (charts[i] !== self) {
+                    if (charts[i] !== chart) {
                         charts[i].setCrosshair(pos);
                         charts[i].hideTooltip();
                     }
@@ -727,8 +786,8 @@ td, th {
                         toggleClickTooltip(tooltip.currentItem.dataIndex, tooltip.currentItem.pageX, tooltip.currentItem.pageY);
                 });
             }
-        };
-        
+        }
+
         charts.push(this);
     }
 
@@ -895,15 +954,33 @@ function init() {
             while (metricList.firstChild)
                 metricList.removeChild(metricList.firstChild);
 
-            addOption(metricList, 'All metrics', OPTION_VALUE_FOR_ALL);
+            var metricsGroup = document.createElement('optgroup');
+            metricsGroup.label = 'Metrics';
+            metricList.appendChild(metricsGroup);
+            addOption(metricsGroup, 'All metrics', OPTION_VALUE_FOR_ALL);
             for (var i = 0; i < tests.length; ++i) {
-                if (tests[i].id != testList.value && (!tests[i].parentTest || tests[i].parentTest.id != testList.value))
+                if (tests[i].id == testList.value) {
+                    var selectedTest = tests[i];
+                    for (var j = 0; j < selectedTest.metrics.length; ++j) {
+                        var fullName = selectedTest.metrics[j].fullName;
+                        var relativeName = fullName.replace(selectedTest.fullName, '').replace(/^[:/]/, '');
+                        addOption(metricsGroup, relativeName, fullName);
+                    }
+                }
+            }
+            var subtestsGroup = document.createElement('optgroup');
+            subtestsGroup.label = 'Tests';
+            metricList.appendChild(subtestsGroup);
+            addOption(subtestsGroup, 'All subtests', OPTION_VALUE_FOR_ALL);
+            for (var i = 0; i < tests.length; ++i) {
+                if (!tests[i].parentTest || tests[i].parentTest.id != testList.value)
                     continue;
-                var selectedTest = tests[i].id == testList.value ? tests[i] : tests[i].parentTest;
-                for (var j = 0; j < tests[i].metrics.length; ++j) {
-                    var fullName = tests[i].metrics[j].fullName;
+                var subtest = tests[i];
+                var selectedTest = subtest.parentTest;
+                for (var j = 0; j < subtest.metrics.length; ++j) {
+                    var fullName = subtest.metrics[j].fullName;
                     var relativeName = fullName.replace(selectedTest.fullName, '').replace(/^[:/]/, '');
-                    addOption(metricList, relativeName, fullName);
+                    addOption(subtestsGroup, relativeName, fullName);
                 }
             }
         }
@@ -959,13 +1036,14 @@ function init() {
                     newChartList.push([allPlatforms[i].name, metricList.value]);
                 }
             } else if (metricList.value === OPTION_VALUE_FOR_ALL) {
-                for (var i = 0; i < tests.length; ++i) {
-                    if (tests[i].id != testList.value && (!tests[i].parentTest || tests[i].parentTest.id != testList.value))
+                var group = metricList.selectedOptions[0].parentNode;
+                var metricsToAdd = [];
+                for (var i = 0; i < group.children.length; i++) {
+                    var metric = group.children[i].value;
+                    if (metric == OPTION_VALUE_FOR_ALL)
                         continue;
-                    for (var j = 0; j < tests[i].metrics.length; ++j) {
-                        createChartFromListPair(platformList.value, tests[i].metrics[j].fullName);
-                        newChartList.push([platformList.value, tests[i].metrics[j].fullName]);
-                    }
+                    createChartFromListPair(platformList.value, metric);
+                    newChartList.push([platformList.value, metric]);
                 }
             } else {
                 createChartFromListPair(platformList.value, metricList.value);

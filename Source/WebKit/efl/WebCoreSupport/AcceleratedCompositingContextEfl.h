@@ -26,7 +26,6 @@
 #include "TextureMapperFPSCounter.h"
 #include "Timer.h"
 #include <wtf/Noncopyable.h>
-#include <wtf/OwnPtr.h>
 #include <wtf/efl/UniquePtrEfl.h>
 
 namespace WebCore {
@@ -42,7 +41,7 @@ public:
     AcceleratedCompositingContext(Evas_Object* ewkView, Evas_Object* compositingObject);
     ~AcceleratedCompositingContext();
 
-    void setRootGraphicsLayer(GraphicsLayer* rootLayer) { m_rootLayer = rootLayer; }
+    void setRootGraphicsLayer(GraphicsLayer* rootLayer);
     void resize(const IntSize&);
     void flushAndRenderLayers();
 
@@ -57,7 +56,7 @@ private:
     Evas_Object* m_view;
     Evas_Object* m_compositingObject;
 
-    OwnPtr<TextureMapper> m_textureMapper;
+    std::unique_ptr<TextureMapper> m_textureMapper;
     GraphicsLayer* m_rootLayer;
     Timer<AcceleratedCompositingContext> m_syncTimer;
 

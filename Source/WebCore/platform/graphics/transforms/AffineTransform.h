@@ -27,7 +27,7 @@
 #ifndef AffineTransform_h
 #define AffineTransform_h
 
-#include <string.h> // for memcpy
+#include <array>
 #include <wtf/FastMalloc.h>
 
 #if USE(CG)
@@ -52,8 +52,6 @@ class TransformationMatrix;
 class AffineTransform {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    typedef double Transform[6];
-
     AffineTransform();
     AffineTransform(double a, double b, double c, double d, double e, double f);
 
@@ -191,13 +189,7 @@ public:
     void recompose(const DecomposedType&);
 
 private:
-    void setMatrix(const Transform m)
-    {
-        if (m && m != m_transform)
-            memcpy(m_transform, m, sizeof(Transform));
-    }
-
-    Transform m_transform;
+    std::array<double, 6> m_transform;
 };
 
 AffineTransform makeMapBetweenRects(const FloatRect& source, const FloatRect& dest);

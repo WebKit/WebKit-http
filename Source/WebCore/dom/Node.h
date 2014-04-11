@@ -175,6 +175,7 @@ public:
     Node* previousSibling() const { return m_previous; }
     static ptrdiff_t previousSiblingMemoryOffset() { return OBJECT_OFFSETOF(Node, m_previous); }
     Node* nextSibling() const { return m_next; }
+    static ptrdiff_t nextSiblingMemoryOffset() { return OBJECT_OFFSETOF(Node, m_next); }
     PassRefPtr<NodeList> childNodes();
     Node* firstChild() const;
     Node* lastChild() const;
@@ -573,6 +574,10 @@ public:
     static int32_t flagIsElement() { return IsElementFlag; }
     static int32_t flagIsHTML() { return IsHTMLFlag; }
     static int32_t flagIsLink() { return IsLinkFlag; }
+    static int32_t flagIsParsingChildrenFinished() { return IsParsingChildrenFinishedFlag; }
+    static int32_t flagChildrenAffectedByFirstChildRulesFlag() { return ChildrenAffectedByFirstChildRulesFlag; }
+    static int32_t flagChildrenAffectedByLastChildRulesFlag() { return ChildrenAffectedByLastChildRulesFlag; }
+    static int32_t flagChildrenAffectedByDirectAdjacentRulesFlag() { return ChildrenAffectedByDirectAdjacentRulesFlag; }
 #endif // ENABLE(CSS_SELECTOR_JIT)
 
 protected:
@@ -611,6 +616,8 @@ protected:
 
         SelfOrAncestorHasDirAutoFlag = 1 << 29,
 
+        IsHTMLUnknownElementFlag = 1 << 30,
+
         DefaultNodeFlags = IsParsingChildrenFinishedFlag
     };
 
@@ -634,6 +641,7 @@ protected:
         CreateInsertionPoint = CreateHTMLElement | NeedsNodeRenderingTraversalSlowPathFlag,
         CreateEditingText = CreateText | IsEditingTextFlag,
         CreateMathMLElement = CreateStyledElement | IsMathMLFlag,
+        CreateHTMLUnknownElement = CreateHTMLElement | IsHTMLUnknownElementFlag,
     };
     Node(Document&, ConstructionType);
 

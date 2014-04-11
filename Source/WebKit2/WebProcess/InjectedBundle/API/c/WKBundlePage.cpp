@@ -33,6 +33,8 @@
 #include "APIURLRequest.h"
 #include "InjectedBundleBackForwardList.h"
 #include "InjectedBundleNodeHandle.h"
+#include "InjectedBundlePageFormClient.h"
+#include "InjectedBundlePageUIClient.h"
 #include "PageBanner.h"
 #include "WKAPICast.h"
 #include "WKArray.h"
@@ -78,7 +80,7 @@ void WKBundlePageSetEditorClient(WKBundlePageRef pageRef, WKBundlePageEditorClie
 
 void WKBundlePageSetFormClient(WKBundlePageRef pageRef, WKBundlePageFormClientBase* wkClient)
 {
-    toImpl(pageRef)->initializeInjectedBundleFormClient(wkClient);
+    toImpl(pageRef)->setInjectedBundleFormClient(std::make_unique<InjectedBundlePageFormClient>(wkClient));
 }
 
 void WKBundlePageSetPageLoaderClient(WKBundlePageRef pageRef, WKBundlePageLoaderClientBase* wkClient)
@@ -98,7 +100,7 @@ void WKBundlePageSetPolicyClient(WKBundlePageRef pageRef, WKBundlePagePolicyClie
 
 void WKBundlePageSetUIClient(WKBundlePageRef pageRef, WKBundlePageUIClientBase* wkClient)
 {
-    toImpl(pageRef)->initializeInjectedBundleUIClient(wkClient);
+    toImpl(pageRef)->setInjectedBundleUIClient(std::make_unique<InjectedBundlePageUIClient>(wkClient));
 }
 
 void WKBundlePageSetFullScreenClient(WKBundlePageRef pageRef, WKBundlePageFullScreenClientBase* wkClient)
@@ -362,12 +364,12 @@ void WKBundlePageUninstallPageOverlay(WKBundlePageRef pageRef, WKBundlePageOverl
 
 void WKBundlePageInstallPageOverlayWithAnimation(WKBundlePageRef pageRef, WKBundlePageOverlayRef pageOverlayRef)
 {
-    toImpl(pageRef)->installPageOverlay(toImpl(pageOverlayRef), true);
+    toImpl(pageRef)->installPageOverlay(toImpl(pageOverlayRef), PageOverlay::FadeMode::Fade);
 }
 
 void WKBundlePageUninstallPageOverlayWithAnimation(WKBundlePageRef pageRef, WKBundlePageOverlayRef pageOverlayRef)
 {
-    toImpl(pageRef)->uninstallPageOverlay(toImpl(pageOverlayRef), true);
+    toImpl(pageRef)->uninstallPageOverlay(toImpl(pageOverlayRef), PageOverlay::FadeMode::Fade);
 }
 
 void WKBundlePageSetTopOverhangImage(WKBundlePageRef pageRef, WKImageRef imageRef)

@@ -397,7 +397,6 @@ static NSSet *allowedFontFamilySet()
         @"STKaiti",
         @"STSong",
         @"Symbol",
-        @"System Font",
         @"Tahoma",
         @"Thonburi",
         @"Times New Roman",
@@ -413,15 +412,6 @@ static NSSet *allowedFontFamilySet()
         @"Zapfino",
         nil] retain];
     
-    return fontFamilySet;
-}
-
-static NSSet *systemHiddenFontFamilySet()
-{
-    static NSSet *fontFamilySet = [[NSSet setWithObjects:
-        @".LucidaGrandeUI",
-        nil] retain];
-
     return fontFamilySet;
 }
 
@@ -457,10 +447,6 @@ static NSArray *drt_NSFontManager_availableFonts(id self, SEL _cmd)
             // Font name is the first entry in the array.
             [availableFontList addObject:[fontInfo objectAtIndex:0]];
         }
-    }
-
-    for (NSString *hiddenFontFamily in systemHiddenFontFamilySet()) {
-        [availableFontList addObject:hiddenFontFamily];
     }
 
     availableFonts = availableFontList;

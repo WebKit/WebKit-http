@@ -106,8 +106,9 @@ private:
     virtual void didGetTapHighlightGeometries(uint64_t requestID, const WebCore::Color&, const Vector<WebCore::FloatQuad>& highlightedQuads, const WebCore::IntSize& topLeftRadius, const WebCore::IntSize& topRightRadius, const WebCore::IntSize& bottomLeftRadius, const WebCore::IntSize& bottomRightRadius) override;
 
     virtual void didCommitLayerTree(const RemoteLayerTreeTransaction&) override;
+    virtual void dynamicViewportUpdateChangedTarget(double newScale, const WebCore::FloatPoint& newScrollPosition) override;
 
-    virtual void startAssistingNode(const AssistedNodeInformation&) override;
+    virtual void startAssistingNode(const AssistedNodeInformation&, API::Object* userData) override;
     virtual void stopAssistingNode() override;
     virtual void selectionDidChange() override;
     virtual bool interpretKeyEvent(const NativeWebKeyboardEvent&, bool isCharEvent) override;

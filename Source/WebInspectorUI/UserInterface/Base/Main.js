@@ -159,6 +159,7 @@ WebInspector.loaded = function()
     this._dockButtonToggledSetting = new WebInspector.Setting("dock-button-toggled", false);
 
     this.showShadowDOMSetting = new WebInspector.Setting("show-shadow-dom", false);
+    this.showReplayInterfaceSetting = new WebInspector.Setting("show-web-replay", false);
 
     this.mouseCoords = {
         x: 0,
@@ -666,7 +667,7 @@ WebInspector.toggleConsoleView = function()
         if (this.contentBrowser.canGoBack())
             this.contentBrowser.goBack();
         else
-            this.resourceSidebarPanel.showMainFrameSourceCode();
+            this.resourceSidebarPanel.showDefaultContentView();
 
         if (this._wasShowingNavigationSidebarBeforeFullHeightConsole)
             this.navigationSidebar.collapsed = false;

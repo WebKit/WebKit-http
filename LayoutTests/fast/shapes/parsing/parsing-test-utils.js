@@ -33,6 +33,8 @@ var validShapeValues = [
     ["inset(10px 20px 30px 40px round 5px 6px)", "inset(10px 20px 30px 40px round 5px 6px 5px 6px / 5px 6px 5px 6px)", "inset(10px 20px 30px 40px round 5px 6px 5px 6px / 5px 6px 5px 6px)"],
     "inset(10px 20px 30px 40px round 5px 6px 7px 8px / 50px 60px 70px 80px)",
 
+    ["inset(calc(25%*3 - 10in) 0 0 0)", "inset(calc(75% - 10in) 0px 0px 0px)", "inset(calc(75% - 960px) 0px 0px 0px round 0px 0px 0px 0px / 0px 0px 0px 0px)"],
+
     ["circle()", "circle(at 50% 50%)", "circle(closest-side at 50% 50%)"],
     ["circle(farthest-side)", "circle(farthest-side at 50% 50%)", "circle(farthest-side at 50% 50%)"],
     ["circle(closest-side)", "circle(closest-side at 50% 50%)", "circle(closest-side at 50% 50%)"],
@@ -71,6 +73,8 @@ var validShapeValues = [
     ["polygon(10px 20px, 30px 40px, 40px 50px)", "polygon(10px 20px, 30px 40px, 40px 50px)"],
     ["polygon(evenodd, 10px 20px, 30px 40px, 40px 50px)", "polygon(evenodd, 10px 20px, 30px 40px, 40px 50px)"],
     ["polygon(nonzero, 10px 20px, 30px 40px, 40px 50px)", "polygon(10px 20px, 30px 40px, 40px 50px)"],
+    ["polygon(10px calc(10in))", "polygon(10px calc(10in))", "polygon(10px 960px)"],
+    ["polygon(calc(10in) 10px)", "polygon(calc(10in) 10px)", "polygon(960px 10px)"],
 
     "content-box",
     "padding-box",
@@ -161,14 +165,14 @@ var validShapeLengths = [
     "3.5mm",
     "4pt",
     "4.5pc",
-    "5px"
+    "5px",
+    "120%"
 ];
 
 // Invalid length values for shape-margin and shape-padding.
 var invalidShapeLengths = [
     "-5px",
     "none",
-    "120%",
     "\'string\'"
 ];
 

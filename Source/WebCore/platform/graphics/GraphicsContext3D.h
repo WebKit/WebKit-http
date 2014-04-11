@@ -477,8 +477,8 @@ public:
         virtual ~ErrorMessageCallback() { }
     };
 
-    void setContextLostCallback(PassOwnPtr<ContextLostCallback>);
-    void setErrorMessageCallback(PassOwnPtr<ErrorMessageCallback>);
+    void setContextLostCallback(std::unique_ptr<ContextLostCallback>);
+    void setErrorMessageCallback(std::unique_ptr<ErrorMessageCallback>);
 
     static PassRefPtr<GraphicsContext3D> create(Attributes, HostWindow*, RenderStyle = RenderOffscreen);
     static PassRefPtr<GraphicsContext3D> createForCurrentGLContext();
@@ -1085,8 +1085,9 @@ private:
             return filteredToActualUniformIndexMap.size();
         }
     };
-    std::unique_ptr<ActiveShaderSymbolCounts> m_shaderSymbolCount;
-
+    typedef HashMap<Platform3DObject, ActiveShaderSymbolCounts> ShaderProgramSymbolCountMap;
+    ShaderProgramSymbolCountMap m_shaderProgramSymbolCountMap;
+    
     String mappedSymbolName(Platform3DObject program, ANGLEShaderSymbolType, const String& name);
     String mappedSymbolName(Platform3DObject shaders[2], size_t count, const String& name);
     String originalSymbolName(Platform3DObject program, ANGLEShaderSymbolType, const String& name);
@@ -1142,7 +1143,7 @@ private:
     ListHashSet<GC3Denum> m_syntheticErrors;
 
     friend class GraphicsContext3DPrivate;
-    OwnPtr<GraphicsContext3DPrivate> m_private;
+    std::unique_ptr<GraphicsContext3DPrivate> m_private;
 };
 
 } // namespace WebCore

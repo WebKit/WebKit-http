@@ -1,3 +1,55 @@
+2014-04-08  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK] Remove the WebKitGTK+ WebKit 1 code
+        https://bugs.webkit.org/show_bug.cgi?id=131399
+
+        Reviewed by Anders Carlsson.
+
+        * PlatformGTK.cmake: Removed.
+        * gtk: Remove this entire directory.
+
+2014-04-06  Darin Adler  <darin@apple.com>
+
+        Make some bindings improvements, with smaller code size for error message generation
+        https://bugs.webkit.org/show_bug.cgi?id=131285
+
+        Reviewed by Andreas Kling.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in: Updated for
+        changes in JavaScript binding functions.
+
+2014-04-05  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Inspector: remove unused test hook setInspectorResourcesDataSizeLimits
+        https://bugs.webkit.org/show_bug.cgi?id=131268
+
+        Reviewed by Timothy Hatcher.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in: Remove symbols.
+
+2014-04-05  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Inspector: remove unused metrics and commands from the Timeline agent
+        https://bugs.webkit.org/show_bug.cgi?id=131184
+
+        Reviewed by Timothy Hatcher.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in: Remove symbols.
+
+2014-04-04  Brent Fulgham  <bfulgham@apple.com>
+
+        Unreviewed build fix.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in: Add missing
+        symbol export.
+
+2014-04-03  Brent Fulgham  <bfulgham@apple.com>
+
+        Unreviewed build fix.
+
+        * WebKit.vcxproj/WebKit.sln: Make sure we don't generate the
+        WebInspectorUI before the generated JS is ready.
+
 2014-04-02  Benjamin Poulain  <bpoulain@apple.com>
 
         [iOS] Remove the legacy string drawing code

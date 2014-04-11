@@ -576,6 +576,8 @@ public:
     bool updateVisibleContentRects(const VisibleContentRectUpdateInfo&);
     uint64_t nextVisibleContentRectUpdateID() const { return m_lastVisibleContentRectUpdate.updateID() + 1; }
     uint64_t lastVisibleContentRectUpdateID() const { return m_lastVisibleContentRectUpdate.updateID(); }
+
+    void dynamicViewportSizeUpdate(const WebCore::IntSize& minimumLayoutSize, const WebCore::FloatRect& targetExposedContentRect, const WebCore::FloatRect& targetUnobscuredRect, double targetScale);
     
     void setViewportConfigurationMinimumLayoutSize(const WebCore::IntSize&);
     void didCommitLayerTree(const WebKit::RemoteLayerTreeTransaction&);
@@ -849,7 +851,7 @@ public:
     void dragEntered(WebCore::DragData&, const String& dragStorageName = String());
     void dragUpdated(WebCore::DragData&, const String& dragStorageName = String());
     void dragExited(WebCore::DragData&, const String& dragStorageName = String());
-    void performDrag(WebCore::DragData&, const String& dragStorageName, const SandboxExtension::Handle&, const SandboxExtension::HandleArray&);
+    void performDragOperation(WebCore::DragData&, const String& dragStorageName, const SandboxExtension::Handle&, const SandboxExtension::HandleArray&);
 
     void didPerformDragControllerAction(WebCore::DragSession);
     void dragEnded(const WebCore::IntPoint& clientPosition, const WebCore::IntPoint& globalPosition, uint64_t operation);
@@ -902,7 +904,7 @@ public:
 
 #if ENABLE(DRAG_SUPPORT)
     WebCore::DragSession dragSession() const { return m_currentDragSession; }
-    void resetDragOperation() { m_currentDragSession = WebCore::DragSession(); }
+    void resetDragSession() { m_currentDragSession = WebCore::DragSession(); }
 #endif
 
     void preferencesDidChange();
@@ -1110,7 +1112,7 @@ private:
     void willSubmitForm(uint64_t frameID, uint64_t sourceFrameID, const Vector<std::pair<String, String>>& textFieldValues, uint64_t listenerID, IPC::MessageDecoder&);
 
     // UI client
-    void createNewPage(uint64_t frameID, const WebCore::ResourceRequest&, const WebCore::WindowFeatures&, uint32_t modifiers, int32_t mouseButton, uint64_t& newPageID, WebPageCreationParameters&);
+    void createNewPage(uint64_t frameID, const WebCore::ResourceRequest&, const WebCore::WindowFeatures&, const NavigationActionData&, uint64_t& newPageID, WebPageCreationParameters&);
     void showPage();
     void closePage(bool stopResponsivenessTimer);
     void runJavaScriptAlert(uint64_t frameID, const String&, RefPtr<Messages::WebPageProxy::RunJavaScriptAlert::DelayedReply>);
@@ -1219,9 +1221,18 @@ private:
     void hidePopupMenu();
 
 #if ENABLE(CONTEXT_MENUS)
-    // Context Menu.
+    enum class ContextMenuClientEligibility {
+        EligibleForClient,
+        NotEligibleForClient
+    };
     void showContextMenu(const WebCore::IntPoint& menuLocation, const ContextMenuContextData&, const Vector<WebContextMenuItemData>&, IPC::MessageDecoder&);
-    void internalShowContextMenu(const WebCore::IntPoint& menuLocation, const ContextMenuContextData&, const Vector<WebContextMenuItemData>&, IPC::MessageDecoder&);
+    void internalShowContextMenu(const WebCore::IntPoint& menuLocation, const ContextMenuContextData&, const Vector<WebContextMenuItemData>&, ContextMenuClientEligibility, IPC::MessageDecoder*);
+#endif
+
+#if ENABLE(TELEPHONE_NUMBER_DETECTION)
+#if PLATFORM(MAC)
+    void showTelephoneNumberMenu(const String& telephoneNumber, const WebCore::IntPoint&);
+#endif
 #endif
 
     // Search popup results
@@ -1324,9 +1335,10 @@ private:
 #if PLATFORM(IOS)
     WebCore::FloatSize viewportScreenSize();
 
+    void dynamicViewportUpdateChangedTarget(double newTargetScale, const WebCore::FloatPoint& newScrollPosition);
     void didGetTapHighlightGeometries(uint64_t requestID, const WebCore::Color& color, const Vector<WebCore::FloatQuad>& geometries, const WebCore::IntSize& topLeftRadius, const WebCore::IntSize& topRightRadius, const WebCore::IntSize& bottomLeftRadius, const WebCore::IntSize& bottomRightRadius);
 
-    void startAssistingNode(const AssistedNodeInformation&);
+    void startAssistingNode(const AssistedNodeInformation&, IPC::MessageDecoder&);
     void stopAssistingNode();
 
 #if ENABLE(INSPECTOR)

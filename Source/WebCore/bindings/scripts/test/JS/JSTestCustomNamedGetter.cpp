@@ -70,7 +70,7 @@ void JSTestCustomNamedGetterConstructor::finishCreation(VM& vm, JSDOMGlobalObjec
 {
     Base::finishCreation(vm);
     ASSERT(inherits(info()));
-    putDirect(vm, vm.propertyNames->prototype, JSTestCustomNamedGetterPrototype::self(vm, globalObject), DontDelete | ReadOnly);
+    putDirectPrototypeProperty(vm, JSTestCustomNamedGetterPrototype::self(vm, globalObject), DontDelete | ReadOnly);
     putDirect(vm, vm.propertyNames->length, jsNumber(0), ReadOnly | DontDelete | DontEnum);
 }
 
@@ -153,10 +153,8 @@ bool JSTestCustomNamedGetter::getOwnPropertySlotByIndex(JSObject* object, ExecSt
     return Base::getOwnPropertySlotByIndex(thisObject, exec, index, slot);
 }
 
-EncodedJSValue jsTestCustomNamedGetterConstructor(ExecState* exec, JSObject* baseValue, EncodedJSValue thisValue, PropertyName)
+EncodedJSValue jsTestCustomNamedGetterConstructor(ExecState* exec, JSObject*, EncodedJSValue thisValue, PropertyName)
 {
-    UNUSED_PARAM(baseValue);
-    UNUSED_PARAM(thisValue);
     JSTestCustomNamedGetter* domObject = jsDynamicCast<JSTestCustomNamedGetter*>(JSValue::decode(thisValue));
     if (!domObject)
         return throwVMTypeError(exec);
@@ -173,7 +171,7 @@ EncodedJSValue JSC_HOST_CALL jsTestCustomNamedGetterPrototypeFunctionAnotherFunc
     JSValue thisValue = exec->thisValue();
     JSTestCustomNamedGetter* castedThis = jsDynamicCast<JSTestCustomNamedGetter*>(thisValue);
     if (UNLIKELY(!castedThis))
-        return throwVMTypeError(exec, makeDOMBindingsTypeErrorString("Can only call ", "TestCustomNamedGetter", ".", "anotherFunction", " on instances of ", "TestCustomNamedGetter"));
+        return throwThisTypeError(*exec, "TestCustomNamedGetter", "anotherFunction");
     ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestCustomNamedGetter::info());
     TestCustomNamedGetter& impl = castedThis->impl();
     if (exec->argumentCount() < 1)
@@ -238,7 +236,9 @@ JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject* globalObject, TestCustomNa
 
 TestCustomNamedGetter* toTestCustomNamedGetter(JSC::JSValue value)
 {
-    return value.inherits(JSTestCustomNamedGetter::info()) ? &jsCast<JSTestCustomNamedGetter*>(value)->impl() : 0;
+    if (auto* wrapper = jsDynamicCast<JSTestCustomNamedGetter*>(value))
+        return &wrapper->impl();
+    return nullptr;
 }
 
 }

@@ -196,6 +196,11 @@ void RemoteInspector::stop()
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 
+    stopInternal(StopSource::API);
+}
+
+void RemoteInspector::stopInternal(StopSource source)
+{
     if (!m_enabled)
         return;
 
@@ -210,7 +215,15 @@ void RemoteInspector::stop()
     updateHasActiveDebugSession();
 
     if (m_xpcConnection) {
-        m_xpcConnection->close();
+        switch (source) {
+        case StopSource::API:
+            m_xpcConnection->close();
+            break;
+        case StopSource::XPCMessage:
+            m_xpcConnection->closeFromMessage();
+            break;
+        }
+
         m_xpcConnection = nullptr;
     }
 
@@ -242,7 +255,7 @@ void RemoteInspector::xpcConnectionReceivedMessage(RemoteInspectorXPCConnection*
     std::lock_guard<std::mutex> lock(m_mutex);
 
     if ([messageName isEqualToString:WIRPermissionDenied]) {
-        stop();
+        stopInternal(StopSource::XPCMessage);
         return;
     }
 

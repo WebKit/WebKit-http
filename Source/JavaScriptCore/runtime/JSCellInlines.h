@@ -106,8 +106,6 @@ inline Structure* JSCell::structure(VM& vm) const
 
 inline void JSCell::visitChildren(JSCell* cell, SlotVisitor& visitor)
 {
-    MARK_LOG_PARENT(visitor, cell);
-
     Structure* structure = cell->structure(visitor.vm());
     visitor.appendUnbarrieredPointer(&structure);
 }
@@ -240,22 +238,6 @@ inline TriState JSCell::pureToBoolean() const
     if (isString()) 
         return static_cast<const JSString*>(this)->toBoolean() ? TrueTriState : FalseTriState;
     return MixedTriState;
-}
-
-inline void Heap::writeBarrier(const JSCell* from, JSCell* to)
-{
-#if ENABLE(WRITE_BARRIER_PROFILING)
-    WriteBarrierCounters::countWriteBarrier();
-#endif
-    if (!from || !from->isMarked()) {
-        ASSERT(!from || !isMarked(from));
-        return;
-    }
-    if (!to || to->isMarked()) {
-        ASSERT(!to || isMarked(to));
-        return;
-    }
-    addToRememberedSet(from);
 }
 
 } // namespace JSC

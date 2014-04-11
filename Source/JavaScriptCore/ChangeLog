@@ -1,3 +1,746 @@
+2014-04-09  Mark Lam  <mark.lam@apple.com>
+
+        Temporarily disable the JIT for the Windows port.
+        <https://webkit.org/b/131470>
+
+        Reviewed by Brent Fulgham.
+
+        This is a temporary stop gap measure to green the Windows bots until
+        we have a fix for https://webkit.org/b/131182.
+
+        * runtime/Options.cpp:
+        (JSC::recomputeDependentOptions):
+
+2014-04-09  Juergen Ributzka  <juergen@apple.com>
+
+        [FTL] Emit multibyte NOPs on X86-64
+        https://bugs.webkit.org/show_bug.cgi?id=131394
+
+        Reviewed by Michael Saboff.
+
+        * assembler/X86Assembler.h:
+        (JSC::X86Assembler::fillNops):
+
+2014-04-09  Julien Brianceau  <jbriance@cisco.com>
+
+        Get rid of JITOperationWrappers.h header file.
+        https://bugs.webkit.org/show_bug.cgi?id=131450
+
+        Reviewed by Michael Saboff.
+
+        JITOperationWrappers header file contains architecture specific code that is
+        not needed anymore, so get rid of it.
+
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj.filters:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * dfg/DFGOperations.cpp:
+        * jit/JITOperationWrappers.h: Removed.
+        * jit/JITOperations.cpp:
+
+2014-04-09  Mark Lam  <mark.lam@apple.com>
+
+        Ensure that LLINT accessing of the ProtoCallFrame is big endian friendly.
+        <https://webkit.org/b/131449>
+
+        Reviewed by Mark Hahnenberg.
+
+        Change ProtoCallFrame::paddedArgCount to be of type uint32_t.  The argCount
+        that it pads is of type int anyway.  It doesn't need to be 64 bit.  This
+        also makes it work with the LLINT which is loading it with a loadi
+        instruction.
+
+        We should add the PayLoadOffset to ProtoCallFrame::argCountAndCodeOriginValue
+        when loading the argCount.
+
+        The paddedArgCount issue was causing failures when running the JSC tests on a
+        64-bit big endian machine.  In this case, the paddedArgCount in the
+        ProtoCallFrame has the value 2.  However, because the paddedArgCount was stored
+        as a 64-bit size_t and the LLINT was loading only the low address 32-bits of
+        that field, the LLINT got a value of 0 instead of the expected 2.  With this
+        patch, we now have a matching store and load of a 32-bit value, and endianness
+        no longer comes into play.
+
+        As for ProtoCallFrame::argCountAndCodeOriginValue, the argCount is stored in
+        the payload field of the Register.  In the definition of EncodedValueDescriptor,
+        We already ensure that that the payload is in the least significant 32-bits for
+        little endian machines, and in the most significant 32-bits for big endian
+        machines.  This means that there is no endianness bug when loading this value
+        using loadi.  However, adding the PayLoadOffset clarifies the intent of the
+        code to load the payload part of the Register value.
+
+        * interpreter/ProtoCallFrame.h:
+        (JSC::ProtoCallFrame::setPaddedArgCount):
+        * llint/LowLevelInterpreter32_64.asm:
+        * llint/LowLevelInterpreter64.asm:
+
+2014-04-08  Oliver Hunt  <oliver@apple.com>
+
+        Rewrite Function.bind as a builtin
+        https://bugs.webkit.org/show_bug.cgi?id=131083
+
+        Reviewed by Geoffrey Garen.
+
+        This change removes the existing function.bind implementation
+        entirely so JSBoundFunction is no more.
+
+        Instead we just return a regular JS closure with a few
+        private properties hanging off it that allow us to perform
+        the necessary bound function fakery.  While most of this is
+        simple, a couple of key changes:
+
+        - The parser and lexer now directly track whether they're
+          parsing code for call or construct and convert the private
+          name @IsConstructor into TRUETOK or FALSETOK as appropriate.
+          This automatically gives us the ability to vary behaviour
+          from within the builtin. It also leaves a lot of headroom
+          for trivial future improvements.
+        - The instanceof operator now uses the prototypeForHasInstance
+          private name, and we have a helper function to ensure that
+          all objects that need to can update their magical 'prototype'
+          property pair correctly.
+
+        * API/JSScriptRef.cpp:
+        (parseScript):
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * builtins/BuiltinExecutables.cpp:
+        (JSC::BuiltinExecutables::createBuiltinExecutable):
+        * builtins/Function.prototype.js:
+        (bind.bindingFunction):
+        (bind.else.bindingFunction):
+        (bind):
+        * bytecode/UnlinkedCodeBlock.cpp:
+        (JSC::generateFunctionCodeBlock):
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::InstanceOfNode::emitBytecode):
+        * interpreter/Interpreter.cpp:
+        * parser/Lexer.cpp:
+        (JSC::Lexer<T>::Lexer):
+        (JSC::Lexer<LChar>::parseIdentifier):
+        (JSC::Lexer<UChar>::parseIdentifier):
+        * parser/Lexer.h:
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::Parser):
+        (JSC::Parser<LexerType>::parseInner):
+        * parser/Parser.h:
+        (JSC::parse):
+        * parser/ParserModes.h:
+        * runtime/CodeCache.cpp:
+        (JSC::CodeCache::getGlobalCodeBlock):
+        (JSC::CodeCache::getFunctionExecutableFromGlobalCode):
+        * runtime/CommonIdentifiers.h:
+        * runtime/Completion.cpp:
+        (JSC::checkSyntax):
+        * runtime/Executable.cpp:
+        (JSC::ProgramExecutable::checkSyntax):
+        * runtime/FunctionPrototype.cpp:
+        (JSC::FunctionPrototype::addFunctionProperties):
+        (JSC::functionProtoFuncBind): Deleted.
+        * runtime/JSBoundFunction.cpp: Removed.
+        * runtime/JSBoundFunction.h: Removed.
+        * runtime/JSFunction.cpp:
+        (JSC::RetrieveCallerFunctionFunctor::RetrieveCallerFunctionFunctor):
+        (JSC::RetrieveCallerFunctionFunctor::operator()):
+        (JSC::retrieveCallerFunction):
+        (JSC::JSFunction::getOwnPropertySlot):
+        (JSC::JSFunction::defineOwnProperty):
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::reset):
+        * runtime/JSGlobalObjectFunctions.cpp:
+        (JSC::globalFuncSetTypeErrorAccessor):
+        * runtime/JSGlobalObjectFunctions.h:
+        * runtime/JSObject.h:
+        (JSC::JSObject::inlineGetOwnPropertySlot):
+
+2014-04-08  Jon Lee  <jonlee@apple.com>
+
+        Turn MSE on by default
+        https://bugs.webkit.org/show_bug.cgi?id=131313
+        <rdar://problem/16525223>
+
+        Reviewed by Jer Noble.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2014-04-08  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Prevent deadlocks receiving WIRPermissionDenied message
+        https://bugs.webkit.org/show_bug.cgi?id=131406
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/remote/RemoteInspector.h:
+        * inspector/remote/RemoteInspector.mm:
+        (Inspector::RemoteInspector::stop):
+        (Inspector::RemoteInspector::stopInternal):
+        (Inspector::RemoteInspector::xpcConnectionReceivedMessage):
+        Provide a way to stop externally and a path to stop when in
+        the middle of handling a message already with the locked mutex.
+
+        * inspector/remote/RemoteInspectorXPCConnection.h:
+        * inspector/remote/RemoteInspectorXPCConnection.mm:
+        (Inspector::RemoteInspectorXPCConnection::close):
+        (Inspector::RemoteInspectorXPCConnection::closeFromMessage):
+        Provide a way to close externally and a path to close when in
+        the middle of handling a message already with a mutex.
+
+2014-04-08  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Address stale FIXMEs concerning console in JSContext inspection
+        https://bugs.webkit.org/show_bug.cgi?id=131398
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/InjectedScriptSource.js:
+        The console object can be deleted from a page or JSContext,
+        so keep code that expects that it could have been deleted
+        to be resilient in those cases.
+
+        * inspector/JSGlobalObjectScriptDebugServer.h:
+        * inspector/agents/JSGlobalObjectDebuggerAgent.h:
+        * inspector/agents/JSGlobalObjectRuntimeAgent.h:
+        Change the FIXMEs to NOTEs that explain why these functions
+        have empty implementations for JSContext inspection.
+
+2014-04-08  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, fix a goofy assertion to fix debug.
+
+        * bytecode/PolymorphicPutByIdList.h:
+        (JSC::PutByIdAccess::isSetter):
+        (JSC::PutByIdAccess::oldStructure):
+        (JSC::PutByIdAccess::chain):
+        (JSC::PutByIdAccess::stubRoutine):
+        (JSC::PutByIdAccess::customSetter):
+
+2014-04-08  Filip Pizlo  <fpizlo@apple.com>
+
+        Fail silently if the LLVM dylib isn't found
+        https://bugs.webkit.org/show_bug.cgi?id=131385
+
+        Reviewed by Mark Hahnenberg.
+
+        * dfg/DFGPlan.cpp:
+        (JSC::DFG::Plan::compileInThreadImpl):
+        * llvm/InitializeLLVM.cpp:
+        (JSC::initializeLLVM):
+        * llvm/InitializeLLVM.h:
+        * llvm/InitializeLLVMPOSIX.cpp:
+        (JSC::initializeLLVMPOSIX):
+
+2014-04-07  Filip Pizlo  <fpizlo@apple.com>
+
+        Repatch should support setters and plant calls to them directly
+        https://bugs.webkit.org/show_bug.cgi?id=130750
+
+        Reviewed by Geoffrey Garen.
+        
+        All of the infrastructure was in place so this just enables setter optimization.
+        
+        This is a 12x speed-up on setter microbenchmarks. This is a 1% speed-up on Octane.
+
+        * bytecode/PolymorphicPutByIdList.cpp:
+        (JSC::PutByIdAccess::visitWeak):
+        * bytecode/PolymorphicPutByIdList.h:
+        (JSC::PutByIdAccess::setter):
+        (JSC::PutByIdAccess::customSetter): Deleted.
+        * bytecode/PutByIdStatus.cpp:
+        (JSC::PutByIdStatus::computeForStubInfo):
+        * jit/Repatch.cpp:
+        (JSC::toString):
+        (JSC::kindFor):
+        (JSC::customFor):
+        (JSC::generateByIdStub):
+        (JSC::tryCachePutByID):
+        (JSC::tryBuildPutByIdList):
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::put):
+        * runtime/Lookup.h:
+        (JSC::putEntry):
+        * runtime/PutPropertySlot.h:
+        (JSC::PutPropertySlot::setCacheableSetter):
+        (JSC::PutPropertySlot::isCacheableSetter):
+        (JSC::PutPropertySlot::isCacheableCustom):
+        (JSC::PutPropertySlot::setCacheableCustomProperty): Deleted.
+        (JSC::PutPropertySlot::isCacheableCustomProperty): Deleted.
+        * tests/stress/setter.js: Added.
+        (foo):
+
+2014-04-07  Filip Pizlo  <fpizlo@apple.com>
+
+        Setters are just getters that take an extra argument and don't return a value
+        https://bugs.webkit.org/show_bug.cgi?id=131336
+
+        Reviewed by Geoffrey Garen.
+        
+        Other than that, they're totally the same thing.
+        
+        This isn't as dumb as it sounds.        
+
+        Most of the work in calling an accessor has to do with emitting the necessary checks for
+        figuring out whether we're calling the accessor we expected, followed by the boilerplate
+        needed for setting up a call inside of a stub. It makes sense for the code to be totally
+        common.
+
+        * jit/AssemblyHelpers.h:
+        (JSC::AssemblyHelpers::storeValue):
+        (JSC::AssemblyHelpers::moveTrustedValue):
+        * jit/CCallHelpers.h:
+        (JSC::CCallHelpers::setupResults):
+        * jit/Repatch.cpp:
+        (JSC::kindFor):
+        (JSC::customFor):
+        (JSC::generateByIdStub):
+        (JSC::tryCacheGetByID):
+        (JSC::tryBuildGetByIDList):
+        (JSC::tryCachePutByID):
+        (JSC::tryBuildPutByIdList):
+        (JSC::generateGetByIdStub): Deleted.
+        (JSC::emitCustomSetterStub): Deleted.
+        * runtime/JSCJSValue.h:
+        (JSC::JSValue::asValue):
+        * runtime/PutPropertySlot.h:
+        (JSC::PutPropertySlot::cachedOffset):
+
+2014-04-07  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Hang in debuggable application after receiving WIRPermissionDenied
+        https://bugs.webkit.org/show_bug.cgi?id=131321
+
+        Reviewed by Mark Rowe.
+
+        * inspector/remote/RemoteInspector.mm:
+        (Inspector::RemoteInspector::xpcConnectionReceivedMessage):
+        Avoid attempting to take the same lock twice. Move the received message
+        lock grab after the WIRPermissionDenied branch, which takes the lock
+        inside RemoteInspector::stop.
+
+2014-04-07  Filip Pizlo  <fpizlo@apple.com>
+
+        Make it possible to disable some of the FTL's more interesting features
+        https://bugs.webkit.org/show_bug.cgi?id=131312
+
+        Reviewed by Mark Hahnenberg.
+
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::handleGetById):
+        (JSC::DFG::ByteCodeParser::handlePutById):
+        (JSC::DFG::ByteCodeParser::parse):
+        * runtime/Options.h:
+
+2014-04-04  Mark Lam  <mark.lam@apple.com>
+
+        Date object needs to check for ES5 15.9.1.14 TimeClip limit.
+        <https://webkit.org/b/131248>
+
+        Reviewed by Mark Hahnenberg.
+
+        The current Date object code does not adequately check for the ES5
+        15.9.1.14 TimeClip limit.  As a result, some calculations can underflow
+        / overflow and produce unexpected results.
+
+        For example, we were getting an assertion failure in
+        WTF::equivalentYearForDST() due int underflows in this function, which
+        in turn were due to an int overflow in WTF::msToYear().
+
+        This patch adds the needed checks, and adds some assertions to ensure
+        that the used values are sane.
+
+        The changes have no noticeable impact on benchmark results.
+
+        * runtime/DateConstructor.cpp:
+        (JSC::callDate):
+        * runtime/JSDateMath.cpp:
+        (JSC::localTimeOffset):
+        (JSC::gregorianDateTimeToMS):
+        (JSC::msToGregorianDateTime):
+        (JSC::parseDateFromNullTerminatedCharacters):
+        (JSC::parseDate):
+        * runtime/JSDateMath.h:
+        - parseDateFromNullTerminatedCharacters() does not need to be public.
+          Made it a static function.
+        * runtime/VM.cpp:
+        (JSC::VM::resetDateCache):
+        - Changed cachedDateStringValue to use std::numeric_limits<double>::quiet_NaN()
+          to be consistent with other Date code.
+
+2014-04-06  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Unreviewed speculative 32-bit buildfix after r166837.
+
+        * heap/Heap.cpp:
+        (JSC::Heap::updateObjectCounts):
+
+2014-04-06  Dan Bernstein  <mitz@apple.com>
+
+        32-bit build fix.
+
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::setInputCursor):
+
+2014-04-04  Brian J. Burg  <burg@cs.washington.edu>
+
+        Enable WEB_REPLAY for PLATFORM(MAC)
+        https://bugs.webkit.org/show_bug.cgi?id=130700
+
+        Reviewed by Timothy Hatcher.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2014-04-05  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        Add missing files from r166837
+
+        * heap/GCLogging.cpp: Added.
+        (JSC::GCLogging::levelAsString):
+        (JSC::LoggingFunctor::LoggingFunctor):
+        (JSC::LoggingFunctor::~LoggingFunctor):
+        (JSC::LoggingFunctor::operator()):
+        (JSC::LoggingFunctor::log):
+        (JSC::LoggingFunctor::reviveCells):
+        (JSC::LoggingFunctor::returnValue):
+        (JSC::GCLogging::dumpObjectGraph):
+        * heap/GCLogging.h: Added.
+
+2014-04-04  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        Enhanced GC logging
+        https://bugs.webkit.org/show_bug.cgi?id=131246
+
+        Reviewed by Geoff Garen.
+
+        Getting data on the state of the JSC Heap at runtime is currently in a sad state. 
+        The OBJECT_MARK_LOGGING macro enables some basic GC logging, but it requires a full 
+        recompile to turn it on. It would be nice if we could runtime enable our GC logging 
+        infrastructure while incurring minimal cost when it is disabled. 
+
+        It would also be nice to get a complete view of the Heap. Currently OBJECT_MARK_LOGGING 
+        provides us with the discovered roots along with parent-child relationships as objects 
+        are scanned. However, once an object is scanned it will never be declared as the child 
+        of another object during that collection. This gives us a tree-like view of the 
+        Heap (i.e. each scanned node only reports having a single parent), where the actual 
+        Heap can be an arbitrary graph.
+
+        This patch replaces OBJECT_MARK_LOGGING and gives us these nice to haves. First it enhances 
+        our logGC() runtime Option by changing it to be a tri-state value of None, Basic, or Verbose 
+        logging levels. None means no logging is done, Basic is what logGC() = true would have done 
+        prior to this patch, and Verbose logs all object relationships.
+
+        JSCell has new dump/dumpToStream methods, the latter of which is "virtual" to allow 
+        subclasses to override the default string representation that will be dumped. These 
+        methods allow JSCells to be dumped using the standard dataLog() calls similar to much of
+        the logging infrastructure in our compilers.
+
+        This patch also adds a GCLogging class that handles dumping the relationships between objects.
+        It does this by using the pre-existing visitChildren virtual methods to obtain the immediate
+        children of each live cell at the end of garbage collection.
+
+        This change meets our goal of being neutral on the benchmarks we track.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * heap/GCLogging.cpp: Added.
+        (JSC::GCLogging::levelAsString):
+        (JSC::LoggingFunctor::LoggingFunctor):
+        (JSC::LoggingFunctor::operator()):
+        (JSC::LoggingFunctor::log):
+        (JSC::LoggingFunctor::reviveCells):
+        (JSC::LoggingFunctor::returnValue):
+        (JSC::GCLogging::dumpObjectGraph):
+        * heap/GCLogging.h: Added.
+        * heap/GCSegmentedArray.h:
+        (JSC::GCSegmentedArray::begin):
+        (JSC::GCSegmentedArray::end):
+        * heap/Heap.cpp:
+        (JSC::Heap::markRoots):
+        (JSC::Heap::visitSmallStrings):
+        (JSC::Heap::visitConservativeRoots):
+        (JSC::Heap::visitCompilerWorklists):
+        (JSC::Heap::visitProtectedObjects):
+        (JSC::Heap::visitTempSortVectors):
+        (JSC::Heap::visitArgumentBuffers):
+        (JSC::Heap::visitException):
+        (JSC::Heap::visitStrongHandles):
+        (JSC::Heap::visitHandleStack):
+        (JSC::Heap::traceCodeBlocksAndJITStubRoutines):
+        (JSC::Heap::visitWeakHandles):
+        (JSC::Heap::updateObjectCounts):
+        (JSC::Heap::collect):
+        (JSC::Heap::didFinishCollection):
+        * heap/Heap.h:
+        * heap/MarkStack.h:
+        * heap/SlotVisitor.cpp:
+        (JSC::SlotVisitor::dump):
+        * heap/SlotVisitor.h:
+        (JSC::SlotVisitor::markStack):
+        * heap/SlotVisitorInlines.h:
+        (JSC::SlotVisitor::internalAppend):
+        * runtime/ClassInfo.h:
+        * runtime/JSCell.cpp:
+        (JSC::JSCell::dump):
+        (JSC::JSCell::dumpToStream):
+        (JSC::JSCell::className):
+        * runtime/JSCell.h:
+        * runtime/JSCellInlines.h:
+        (JSC::JSCell::visitChildren):
+        * runtime/JSString.cpp:
+        (JSC::JSString::dumpToStream):
+        (JSC::JSString::visitChildren):
+        * runtime/JSString.h:
+        (JSC::JSString::length):
+        (JSC::JSRopeString::RopeBuilder::length):
+        * runtime/Options.cpp:
+        (JSC::parse):
+        (JSC::Options::setOption):
+        (JSC::Options::dumpOption):
+        * runtime/Options.h:
+
+2014-04-05  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        Remove bogus ASSERT in -JSVirtualMachine scanObjectGraph
+        https://bugs.webkit.org/show_bug.cgi?id=131251
+
+        Reviewed by Geoffrey Garen.
+
+        * API/JSVirtualMachine.mm:
+        (scanExternalObjectGraph):
+        * API/tests/testapi.mm:
+
+2014-04-03  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Inspector: hook up probe samples to TimelineAgent's records
+        https://bugs.webkit.org/show_bug.cgi?id=131127
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/ScriptDebugListener.h: Add a proper forward declaration for ScriptBreakpointAction.
+
+2014-04-04  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r166820.
+        https://bugs.webkit.org/show_bug.cgi?id=131256
+
+        Broke builds. (Requested by bdash on #webkit).
+
+        Reverted changeset:
+
+        "WIP for inlining C++.  Added a build target to produce llvm
+        ir."
+        https://bugs.webkit.org/show_bug.cgi?id=130523
+        http://trac.webkit.org/changeset/166820
+
+2014-04-04  Matthew Mirman  <mmirman@apple.com>
+
+        WIP for inlining C++.  Added a build target to produce llvm ir.
+        https://bugs.webkit.org/show_bug.cgi?id=130523
+
+        Reviewed by Filip Pizlo.
+
+        The llvm ir gets placed JavaScriptCoreRuntimeToLLVMir.build with the extension .o
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * build_index.py: Added.
+        * Configurations/CompileRuntimeToLLVMir.xcconfig: Added.
+
+2014-04-04  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Log JS Exceptions to System Console if JavaScriptCoreOutputConsoleMessagesToSystemConsole enabled
+        https://bugs.webkit.org/show_bug.cgi?id=131241
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/JSGlobalObjectInspectorController.cpp:
+        (Inspector::JSGlobalObjectInspectorController::reportAPIException):
+        Log the exception to the system console if system console output is enabled.
+
+2014-04-04  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Provide a way for JSContext console to log to system console
+        https://bugs.webkit.org/show_bug.cgi?id=131050
+
+        Reviewed by Timothy Hatcher.
+
+        Applications often re-expose some log -> NSLog functionality.
+        We already have the capability ourselves, which includes extra
+        information such as sourceURL:line:column, all arguments instead
+        of just one argument, and backtrace information on console.trace.
+        Therefore it would be convenient if developers could just use
+        the built-in console.log and get rich output in both the inspector
+        and the console, without writing their own logger.
+
+        The logging will be enabled in debug builds by default, and can be enabled
+        otherwise by setting a user default before creating the first context.
+        
+        For example, in the application itself:
+
+            [[NSUserDefaults standardUserDefaults] setBool:YES forKey:@"JavaScriptCoreOutputConsoleMessagesToSystemConsole"];
+
+        Or from outside the application:
+        
+            shell> defaults write <app-bundle-identifier> JavaScriptCoreOutputConsoleMessagesToSystemConsole -bool YES
+
+        * inspector/JSConsoleClient.h:
+        * inspector/JSConsoleClient.cpp:
+        (Inspector::JSConsoleClient::logToSystemConsole):
+        (Inspector::JSConsoleClient::setLogToSystemConsole):
+        (Inspector::JSConsoleClient::initializeLogToSystemConsole):
+        (Inspector::JSConsoleClient::JSConsoleClient):
+        Global setting for logging to system console. Enabled on
+        debug builds, and by a user default on supported platforms.
+
+        (Inspector::JSConsoleClient::messageWithTypeAndLevel):
+        Log to system console when the static setting is enabled.
+
+        * runtime/ConsoleClient.h:
+        * runtime/ConsoleClient.cpp:
+        (JSC::appendURLAndPosition):
+        (JSC::appendMessagePrefix):
+        (JSC::ConsoleClient::printConsoleMessage):
+        (JSC::ConsoleClient::printConsoleMessageWithArguments):
+        Clean up printing. Build strings and use WTFLogAlways instead of printf
+        for consistant logging.
+
+        * runtime/ConsoleClient.cpp:
+        (JSC::ConsoleClient::printConsoleMessageWithArguments):
+        Clean up printing. If there is no source URL, don't print a leading colon.
+
+2014-04-04  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        Use JSCell::indexingType instead of Structure::indexingType wherever possible
+        https://bugs.webkit.org/show_bug.cgi?id=131230
+
+        Reviewed by Mark Lam.
+
+        Avoid the indirection through the Structure.
+
+        * bytecode/ArrayAllocationProfile.cpp:
+        (JSC::ArrayAllocationProfile::updateIndexingType):
+        * bytecode/ArrayAllocationProfile.h:
+        (JSC::ArrayAllocationProfile::selectIndexingType):
+        * heap/HeapStatistics.cpp:
+        (JSC::StorageStatistics::operator()):
+        * runtime/ArrayPrototype.cpp:
+        (JSC::attemptFastSort):
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::objectPrototypeIsSane):
+        (JSC::JSGlobalObject::arrayPrototypeChainIsSane):
+        (JSC::JSGlobalObject::stringPrototypeChainIsSane):
+        * runtime/JSPropertyNameIterator.cpp:
+        (JSC::JSPropertyNameIterator::create):
+
+2014-04-04  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        Use JSCell::type instead of TypeInfo::type wherever possible
+        https://bugs.webkit.org/show_bug.cgi?id=131229
+
+        Reviewed by Michael Saboff.
+
+        Avoid going through the Structure and reifying the TypeInfo.
+
+        * runtime/Executable.h:
+        (JSC::ExecutableBase::isEvalExecutable):
+        (JSC::ExecutableBase::isProgramExecutable):
+
+2014-04-03  Andreas Kling  <akling@apple.com>
+
+        Fast-path for casting JS wrappers to JSNode.
+        <https://webkit.org/b/131196>
+
+        Allow code outside of JSC (well, WebCore) to extend the JSType spectrum
+        a little bit. We do this by exposing a LastJSCObjectType constant so
+        WebCore can encode its own wrapper types after that.
+
+        Reviewed by Mark Hahnenberg and Geoff Garen.
+
+        * runtime/JSType.h:
+
+            Added LastJSCObjectType for use by WebCore.
+
+        * runtime/JSObject.h:
+        (JSC::JSObject::isVariableObject):
+
+            Updated since this can no longer assume that types >= VariableObjectType
+            are all variable objects.
+
+2014-04-03  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        All Heap::writeBarriers should be inline
+        https://bugs.webkit.org/show_bug.cgi?id=131197
+
+        Reviewed by Mark Lam.
+
+        One is in a JSCellInlines.h, another is in Heap.cpp. These are all critical 
+        enough and small enough to belong in HeapInlines.h. Also added the proper 
+        ENABLE(GGC) ifdefs to minimize the cost of C++ barriers for !ENABLE(GGC) builds.
+
+        * heap/Heap.cpp:
+        (JSC::Heap::writeBarrier): Deleted.
+        * heap/Heap.h:
+        * heap/HeapInlines.h:
+        (JSC::Heap::writeBarrier):
+        * runtime/JSCellInlines.h:
+        (JSC::Heap::writeBarrier): Deleted.
+
+2014-04-03  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: JSContext inspection provide a way to opt-out of including Native Call Stacks in Exception traces reported to Web Inspector
+        https://bugs.webkit.org/show_bug.cgi?id=131186
+
+        Reviewed by Geoffrey Garen.
+
+        * API/JSContextPrivate.h:
+        * API/JSContext.mm:
+        (-[JSContext _includesNativeCallStackWhenReportingExceptions]):
+        (-[JSContext _setIncludesNativeCallStackWhenReportingExceptions:]):
+        JSContext ObjC SPI to opt-out of including native call stacks in exceptions.
+
+        * API/JSContextRefPrivate.h:
+        * API/JSContextRef.cpp:
+        (JSGlobalContextGetIncludesNativeCallStackWhenReportingExceptions):
+        (JSGlobalContextSetIncludesNativeCallStackWhenReportingExceptions):
+        JSContext C SPI to opt-out of including native call stacks in exceptions.
+
+        * inspector/JSGlobalObjectInspectorController.h:
+        * inspector/JSGlobalObjectInspectorController.cpp:
+        (Inspector::JSGlobalObjectInspectorController::JSGlobalObjectInspectorController):
+        (Inspector::JSGlobalObjectInspectorController::reportAPIException):
+        Only include the native call stack if the setting is enabled. It is enabled by default.
+
+2014-04-03  Mark Lam  <mark.lam@apple.com>
+
+        Fix bit rot in ARMv7 JIT probe mechanism.
+        <https://webkit.org/b/131167>
+
+        Reviewed by Geoffrey Garen.
+
+        1. The macro assembler does not support pushing the SP register.  Worked
+           around this by pushing the LR register as a placeholder, and then
+           writing the original SP value to that slot.
+        2. The CPUState field in the ProbeContext needs to be aligned on a 4
+           byte boundary, not an 8 byte boundary.
+
+        * assembler/MacroAssemblerARMv7.cpp:
+        (JSC::MacroAssemblerARMv7::probe):
+        * jit/JITStubsARMv7.h:
+
+2014-04-02  Mark Lam  <mark.lam@apple.com>
+
+        ARMv7 compare32() should not use TST to do CMP's job.
+        <https://webkit.org/b/131146>
+
+        Reviewed by Geoffrey Garen.
+
+        The ARMv7 implementation of "compare32(RegisterID left, TrustedImm32 right)"
+        was using "tst reg, reg" to implement "cmp reg, #0".  Unfortunately, the tst
+        instruction doesn't set the Overflow (V) flag and this results in random
+        results depending on whether there was a preceeding instruction that did set
+        the Overflow (V) flag.  This issue was causing emscripten-cube2hash to run
+        with a lot of OSR exits where not expected as well as producing wrong results.
+
+        The fix is to use "cmp reg, #0" to do the job properly.
+
+        * assembler/MacroAssemblerARMv7.h:
+        (JSC::MacroAssemblerARMv7::compare32):
+
 2014-04-02  Mark Hahnenberg  <mhahnenberg@apple.com>
 
         CodeBlockSet should be generational

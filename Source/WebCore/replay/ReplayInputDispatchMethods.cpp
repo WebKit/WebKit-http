@@ -50,7 +50,7 @@ void EndSegmentSentinel::dispatch(ReplayController&)
 // Navigation inputs.
 void InitialNavigation::dispatch(ReplayController& controller)
 {
-    controller.page().mainFrame().navigationScheduler().scheduleLocationChange(m_securityOrigin.get(), m_url, m_referrer, true, true);
+    controller.page().mainFrame().navigationScheduler().scheduleLocationChange(m_securityOrigin.get(), m_url, m_referrer);
 }
 
 void HandleKeyPress::dispatch(ReplayController& controller)
@@ -75,6 +75,21 @@ void HandleMousePress::dispatch(ReplayController& controller)
 void HandleMouseRelease::dispatch(ReplayController& controller)
 {
     controller.page().userInputBridge().handleMouseReleaseEvent(platformEvent(), InputSource::Synthetic);
+}
+
+void HandleWheelEvent::dispatch(ReplayController& controller)
+{
+    controller.page().userInputBridge().handleWheelEvent(platformEvent(), InputSource::Synthetic);
+}
+
+void LogicalScrollPage::dispatch(ReplayController& controller)
+{
+    controller.page().userInputBridge().logicalScrollRecursively(direction(), granularity(), InputSource::Synthetic);
+}
+
+void ScrollPage::dispatch(ReplayController& controller)
+{
+    controller.page().userInputBridge().scrollRecursively(direction(), granularity(), InputSource::Synthetic);
 }
 
 } // namespace WebCore

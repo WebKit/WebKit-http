@@ -573,6 +573,28 @@ EAPI Eina_Bool ewk_view_scale_set(Evas_Object *o, double scaleFactor, int x, int
 EAPI double ewk_view_scale_get(const Evas_Object *o);
 
 /**
+ * Sets zoom of the current page.
+ *
+ * @param o view object to set the zoom level
+ * @param zoom_factor a new level to set
+ *
+ * @return @c EINA_TRUE on success or @c EINA_FALSE otherwise
+ */
+EAPI Eina_Bool ewk_view_page_zoom_set(Evas_Object *o, double zoom_factor);
+
+/**
+ * Queries the current zoom factor of the page.
+ *
+ * It returns previous zoom factor after ewk_view_page_zoom_factor_set is called immediately
+ * until zoom factor of page is really changed.
+ *
+ * @param o view object to get the zoom factor
+ *
+ * @return current zoom factor in use on success or @c -1.0 on failure
+ */
+EAPI double ewk_view_page_zoom_get(const Evas_Object *o);
+
+/**
  * Queries the ratio between the CSS units and device pixels when the content is unscaled.
  *
  * When designing touch-friendly contents, knowing the approximated target size on a device
@@ -908,6 +930,19 @@ EAPI void ewk_view_bg_color_set(Evas_Object *o, int r, int g, int b, int a);
  * @param a the pointer to store alpha value
  */
 EAPI void ewk_view_bg_color_get(const Evas_Object *o, int *r, int *g, int *b, int *a);
+
+/**
+ * Get contents size of current web page.
+ *
+ * If it fails to get the content size, the width and height will be set to 0.
+ *
+ * @param o view object to get contents size
+ * @param width pointer to an integer in which to store the width of contents.
+ * @param height pointer to an integer in which to store the height of contents.
+ *
+ * @return @c EINA_TRUE on success or @c EINA_FALSE otherwise
+ */
+EAPI Eina_Bool ewk_view_contents_size_get(const Evas_Object *o, Evas_Coord *width, Evas_Coord *height);
 
 #ifdef __cplusplus
 }

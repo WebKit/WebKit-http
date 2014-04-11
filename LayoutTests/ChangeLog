@@ -1,3 +1,1545 @@
+2014-04-09  Alexey Proskuryakov  <ap@apple.com>
+
+        WebVTT tests don't work because of a 800x600 snapshot (but are very flaky anyway)
+        https://bugs.webkit.org/show_bug.cgi?id=131476
+
+        * platform/mac/TestExpectations: Skip them.
+
+2014-04-09  James Craig  <jcraig@apple.com>
+
+        AX: Bug in AccessibilityNodeObject::helpText
+        https://bugs.webkit.org/show_bug.cgi?id=130386
+
+        Reviewed by Chris Fleizach.
+
+        Tests accessibility help text in a variety of examples.
+
+        * accessibility/help-text-expected.txt: Added.
+        * accessibility/help-text.html: Added.
+
+2014-04-09  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed bot maintenance. Re-add a number of passing
+        tests, and turn off a few failures.
+
+        * platform/win/TestExpectations:
+
+2014-04-09  Chris Fleizach  <cfleizach@apple.com>
+
+        Regression: AX: list heuristics sometimes determined as presentational even when explicit roles applied
+        https://bugs.webkit.org/show_bug.cgi?id=131041
+
+        Reviewed by Mario Sanchez Prada.
+
+        * accessibility/list-detection-expected.txt:
+        * accessibility/list-detection.html:
+
+2014-04-09  Martin Robinson  <mrobinson@igalia.com>
+
+        Rebaseline some tests for GTK+
+
+        * platform/gtk/editing/input/scroll-viewport-page-up-down-expected.txt:
+        * platform/gtk/fast/text/international/cjk-segmentation-expected.txt: Added.
+        * platform/gtk/http/tests/xmlhttprequest/cache-override-expected.txt: Added.
+        * platform/gtk/inspector-protocol/dom/getAccessibilityPropertiesForNode-expected.txt: Added.
+        * platform/gtk/js/dom/dom-static-property-for-in-iteration-expected.txt:
+        * platform/gtk/plugins/nested-plugin-objects-expected.txt: Added.
+        * platform/gtk/plugins/netscape-destroy-plugin-script-objects-expected.txt: Added.
+        * platform/gtk/sputnik/Unicode/Unicode_320/S7.6_A2.2_T2-expected.txt: Added.
+        * platform/gtk/sputnik/Unicode/Unicode_320/S7.6_A5.2_T8-expected.txt: Added.
+        * platform/gtk/svg/W3C-SVG-1.1-SE/filters-image-03-f-expected.txt: Added.
+        * platform/gtk/svg/W3C-SVG-1.1-SE/filters-image-05-f-expected.txt: Added.
+        * platform/gtk/svg/W3C-SVG-1.1/filters-composite-02-b-expected.txt: Added.
+        * platform/gtk/svg/W3C-SVG-1.1/filters-displace-01-f-expected.txt: Added.
+        * platform/gtk/svg/W3C-SVG-1.1/filters-image-01-b-expected.txt: Added.
+        * platform/gtk/svg/custom/object-no-size-attributes-expected.txt:
+        * platform/gtk/svg/zoom/page/zoom-replaced-intrinsic-ratio-001-expected.txt: Added.
+
+2014-04-08  Samuel White  <samuel_white@apple.com>
+
+        AX: Initial text selection point should respect element focus.
+        https://bugs.webkit.org/show_bug.cgi?id=131402
+
+        Reviewed by Chris Fleizach.
+
+        Updating test to make sure initial selection respects the focused element when necessary. Now, if a VoiceOver user attempts to use
+        arrow keys to read text and selection isn't set, we will set initial selection before/after the focused element if one is present.
+
+        * platform/mac/accessibility/selection-initial-expected.txt:
+        * platform/mac/accessibility/selection-initial.html:
+
+2014-04-09  Brendan Long  <b.long@cablelabs.com>
+
+        [GStreamer] Expose MPEG-TS metadata
+        https://bugs.webkit.org/show_bug.cgi?id=122001
+
+        Reviewed by Eric Carlson.
+
+        * media/content/user-private-streams.ts: Added.
+        * media/track/in-band/track-in-band-mpegts-metadata-expected.txt: Added.
+        * media/track/in-band/track-in-band-mpegts-metadata.html: Added.
+
+2014-04-08  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: Make AXPress much more reliable on the Web
+        https://bugs.webkit.org/show_bug.cgi?id=131426
+
+        Reviewed by Mario Sanchez Prada.
+
+        * accessibility/press-works-on-control-types-expected.txt:
+        * accessibility/press-works-on-control-types.html:
+
+2014-04-08  Oliver Hunt  <oliver@apple.com>
+
+        Rewrite Function.bind as a builtin
+        https://bugs.webkit.org/show_bug.cgi?id=131083
+
+        Reviewed by Geoffrey Garen.
+
+        Testing.
+
+        * js/dom/function-bind-expected.txt:
+        * js/regress/function-bind-expected.txt: Added.
+        * js/regress/function-bind.html: Added.
+        * js/regress/script-tests/function-bind.js: Added.
+        (foo):
+
+2014-04-09  Radu Stavila  <stavila@adobe.com>
+
+        [CSS Regions] Monolithic elements should not affect the layout of the content outside its region
+        https://bugs.webkit.org/show_bug.cgi?id=130499
+
+        Reviewed by David Hyatt.
+
+        Added tests for different types of fragmentation following monolithic content
+        overflowing its region.
+        Rebased the webkit-flow-float-unable-to-push test as its expected result was not the correct one.
+
+        * fast/regions/webkit-flow-float-unable-to-push-expected.html:
+        * fast/regions/fragmentation-after-float-overflow-single-region-expected.html: Added.
+        * fast/regions/fragmentation-after-float-overflow-single-region.html: Added.
+        * fast/regions/fragmentation-after-monolithic-overflow-expected.html: Added.
+        * fast/regions/fragmentation-after-monolithic-overflow-self-collapsed-expected.html: Added.
+        * fast/regions/fragmentation-after-monolithic-overflow-self-collapsed.html: Added.
+        * fast/regions/fragmentation-after-monolithic-overflow-single-region-expected.html: Added.
+        * fast/regions/fragmentation-after-monolithic-overflow-single-region.html: Added.
+        * fast/regions/fragmentation-after-monolithic-overflow.html: Added.
+
+2014-04-09  Alexey Proskuryakov  <ap@apple.com>
+
+        REGRESSION (r166853): fast/preloader/document-write.html is very flaky
+        https://bugs.webkit.org/show_bug.cgi?id=130942
+
+        * platform/mac/TestExpectations: The offending code was re-landed, marking as
+        flaky again.
+
+2014-04-09  Mario Sanchez Prada  <mario.prada@samsung.com>
+
+        [GTK] Layout tests accessibility/children-changed-sends-notification.html and accessibility/notification-listeners.html fails
+        https://bugs.webkit.org/show_bug.cgi?id=131380
+
+        Reviewed by Chris Fleizach.
+
+        Updated TestExpectations file and update layout test that was not
+        correctly written, and expecting the signals in the wrong order.
+
+        * platform/gtk/TestExpectations: Removed failure expectations.
+
+        * accessibility/children-changed-sends-notification.html: Updated
+        test to make sure we touch the accessibility tree after adding a
+        <button> so we get the 'add' signal at the right moment.
+
+        * accessibility/children-changed-sends-notification-expected.txt:
+        Updated expectations to expect the 'add' and 'remove' signals in
+        the right order.
+
+2014-04-09  Mario Sanchez Prada  <mario.prada@samsung.com>
+
+        [AX][GTK] No new lines in some AX tests output
+        https://bugs.webkit.org/show_bug.cgi?id=131294
+
+        Reviewed by Martin Robinson.
+
+        Removed failure expectations for tests now passing.
+
+        * platform/gtk/TestExpectations: Updated.
+
+2014-04-09  Mario Sanchez Prada  <mario.prada@samsung.com>
+
+        Unreviewed gardening for GTK.
+
+        Updated test expectations after r166175, which removed an <hr>
+        from the original test accessibility/lists.html.
+
+        * platform/gtk/accessibility/lists-expected.txt: Updated
+
+2014-04-09  Alexey Proskuryakov  <ap@apple.com>
+
+        [WK2] HTTP authentication regression tests fail
+        https://bugs.webkit.org/show_bug.cgi?id=81627
+        <rdar://problem/11079296>
+
+        Reviewed by Anders Carlsson.
+
+        * platform/mac-wk2/TestExpectations: Unskipped tests that now pass. Marked three
+        tests as failing, because enabling auth uncovered that they are failing
+        (in browser as well).
+
+        * platform/wk2/http: Added.
+        * platform/wk2/http/tests: Added.
+        * platform/wk2/http/tests/loading: Added.
+        * platform/wk2/http/tests/loading/authentication-after-redirect-stores-wrong-credentials: Added.
+        * platform/wk2/http/tests/loading/authentication-after-redirect-stores-wrong-credentials/authentication-after-redirect-stores-wrong-credentials-expected.txt: Copied from LayoutTests/http/tests/loading/authentication-after-redirect-stores-wrong-credentials/authentication-after-redirect-stores-wrong-credentials-expected.txt.
+        * platform/wk2/http/tests/loading/basic-auth-resend-wrong-credentials-expected.txt: Copied from LayoutTests/http/tests/loading/basic-auth-resend-wrong-credentials-expected.txt.
+        * platform/wk2/http/tests/loading/basic-credentials-sent-automatically-expected.txt: Copied from LayoutTests/http/tests/loading/basic-credentials-sent-automatically-expected.txt.
+        * platform/wk2/http/tests/misc: Added.
+        * platform/wk2/http/tests/misc/401-alternative-content-expected.txt: Copied from LayoutTests/http/tests/misc/401-alternative-content-expected.txt.
+        * platform/wk2/http/tests/misc/authentication-redirect-1: Added.
+        * platform/wk2/http/tests/misc/authentication-redirect-1/authentication-sent-to-redirect-cross-origin-expected.txt: Copied from LayoutTests/http/tests/misc/authentication-redirect-1/authentication-sent-to-redirect-cross-origin-expected.txt.
+        * platform/wk2/http/tests/misc/authentication-redirect-2: Added.
+        * platform/wk2/http/tests/misc/authentication-redirect-2/authentication-sent-to-redirect-same-origin-expected.txt: Copied from LayoutTests/http/tests/misc/authentication-redirect-2/authentication-sent-to-redirect-same-origin-expected.txt.
+        * platform/wk2/http/tests/misc/authentication-redirect-4: Added.
+        * platform/wk2/http/tests/misc/authentication-redirect-4/authentication-sent-to-redirect-same-origin-url-expected.txt: Copied from LayoutTests/http/tests/misc/authentication-redirect-4/authentication-sent-to-redirect-same-origin-url-expected.txt.
+        * platform/wk2/http/tests/security: Added.
+        * platform/wk2/http/tests/security/401-logout: Added.
+        * platform/wk2/http/tests/security/401-logout/401-logout-expected.txt: Copied from LayoutTests/http/tests/security/401-logout/401-logout-expected.txt.
+        * platform/wk2/http/tests/xmlhttprequest: Added.
+        * platform/wk2/http/tests/xmlhttprequest/failed-auth-expected.txt: Copied from LayoutTests/http/tests/xmlhttprequest/failed-auth-expected.txt.
+        * platform/wk2/http/tests/xmlhttprequest/remember-bad-password-expected.txt: Copied from LayoutTests/http/tests/xmlhttprequest/remember-bad-password-expected.txt.
+        WebKit2 results are the same as WebKit1, except that they lack resource URL. That
+        is expected with WebKit2 API.
+
+2014-04-08  Mihnea Ovidenie  <mihnea@adobe.com>
+
+        [CSSRegions] Crash when video in region exits fullscreen
+        https://bugs.webkit.org/show_bug.cgi?id=131366
+
+        Reviewed by Andrei Bucur.
+
+        * fast/regions/full-screen-video-in-region-crash-expected.txt: Added.
+        * fast/regions/full-screen-video-in-region-crash.html: Added.
+
+2014-04-08  Alexey Proskuryakov  <ap@apple.com>
+
+        Trying to unbreak flakiness dashboard after Gtk TextExpectations reshuffling.
+
+        * platform/gtk-wk2/TestExpectations: Added.
+
+2014-04-08  Zalan Bujtas  <zalan@apple.com>
+
+        Subpixel rendering: Clip outer rounded border rect on device pixel boundaries.
+        https://bugs.webkit.org/show_bug.cgi?id=131404
+
+        Reviewed by Simon Fraser.
+
+        Use device pixel snapped rectangle to clip out rounded rects, when not all sides are solid/double.
+        Snapping it to device pixel boundaries ensures that when we call drawRect(devicePixelSnappedRect) later,
+        it leaves no cruft behind.
+
+        * fast/borders/hidpi-rounded-border-on-subpixel-position-expected.html: Added.
+        * fast/borders/hidpi-rounded-border-on-subpixel-position.html: Added.
+
+2014-04-08  Simon Fraser  <simon.fraser@apple.com>
+
+        REGRESSION (r155998): Elements render at very low resolution with some 3d transforms
+        https://bugs.webkit.org/show_bug.cgi?id=131412
+
+        Reviewed by Tim Horton.
+        
+        Test that makes an incremental change to a layer property in a tree with
+        interesting 3d transforms.
+
+        * compositing/contents-scale/incremental-change-expected.html: Added.
+        * compositing/contents-scale/incremental-change.html: Added.
+
+2014-04-08  Adenilson Cavalcanti  <cavalcantii@gmail.com>
+
+        [SVG] Fix CSS transform handling when zoomed
+        https://bugs.webkit.org/show_bug.cgi?id=125836
+
+        Reviewed by Tim Horton.
+
+        Adjusts CSS transforms when used in SVG to account for unexpected
+        translation scale. Backport from Chromium #174910.
+
+        * svg/zoom/page/zoom-css-transforms-expected.svg: Added.
+        * svg/zoom/page/zoom-css-transforms.svg: Added.
+
+2014-04-08  Hans Muller  <hmuller@adobe.com>
+
+        [CSS Shapes] large corner radius combined with 0 radius does not wrap properly
+        https://bugs.webkit.org/show_bug.cgi?id=129739
+
+        Reviewed by Bem Jones-Bey.
+
+        * fast/shapes/shape-outside-floats/shape-outside-big-box-border-radius-001-expected.txt: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-big-box-border-radius-001.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-big-box-border-radius-002-expected.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-big-box-border-radius-002.html: Added.
+
+2014-04-08  Alexey Proskuryakov  <ap@apple.com>
+
+        Rename Clipboard to DataTransfer
+        https://bugs.webkit.org/show_bug.cgi?id=131371
+
+        Reviewed by Anders Carlsson.
+
+        * fast/dom/dom-constructors-expected.txt:
+        * fast/dom/dom-constructors.html:
+        * js/dom/global-constructors-attributes-expected.txt:
+        * platform/efl/js/dom/global-constructors-attributes-expected.txt:
+        * platform/gtk-wk1/js/dom/global-constructors-attributes-expected.txt:
+        * platform/gtk-wk2/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac-mountainlion/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac/js/dom/global-constructors-attributes-expected.txt:
+        * platform/win/js/dom/global-constructors-attributes-expected.txt:
+
+2014-04-08  Brent Fulgham  <bfulgham@apple.com>
+
+        [Mac] Unreviewed test gardening.
+
+        Rebaseline scrolling tests to remove flakiness introduced by slight differences in
+        pixel scroll counts between WK1 and WK2 test runners.
+
+        * platform/mac/fast/scrolling/scroll-div-latched-div-expected.txt:
+        * platform/mac/fast/scrolling/scroll-div-latched-div.html:
+        * platform/mac/fast/scrolling/scroll-div-latched-mainframe-expected.txt:
+        * platform/mac/fast/scrolling/scroll-div-latched-mainframe.html:
+        * platform/mac/fast/scrolling/scroll-iframe-latched-iframe-expected.txt:
+        * platform/mac/fast/scrolling/scroll-iframe-latched-iframe.html:
+        * platform/mac/fast/scrolling/scroll-iframe-latched-mainframe-expected.txt:
+        * platform/mac/fast/scrolling/scroll-iframe-latched-mainframe.html:
+        * platform/mac/fast/scrolling/scroll-select-latched-mainframe-expected.txt:
+        * platform/mac/fast/scrolling/scroll-select-latched-mainframe.html:
+        * platform/mac/fast/scrolling/scroll-select-latched-select-expected.txt:
+        * platform/mac/fast/scrolling/scroll-select-latched-select.html:
+
+2014-04-08  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] Unreviewed GTK gardening.
+
+        Update text expectations for failing tests:
+          accessibility/children-changed-sends-notification.html
+          accessibility/notification-listeners.html
+          fast/repaint/blend-mode-isolate-stacking-context.html
+          fast/repaint/hidpi-absolute-positioned-element-wrong-cliprect-after-move.html
+
+        Rebaseline fast/multicol/client-rects-expected.txt after r165991
+
+        * platform/gtk/TestExpectations:
+        * platform/gtk/fast/multicol/client-rects-expected.txt:
+
+2014-04-07  Filip Pizlo  <fpizlo@apple.com>
+
+        Repatch should support setters and plant calls to them directly
+        https://bugs.webkit.org/show_bug.cgi?id=130750
+
+        Reviewed by Geoffrey Garen.
+
+        * js/regress/script-tests/setter.js: Added.
+        * js/regress/setter-expected.txt: Added.
+        * js/regress/setter.html: Added.
+
+2014-04-08  Morten Stenshorne  <mstensho@opera.com>
+
+        [New Multicolumn] Child top margin sometimes ignored for column balancing
+        https://bugs.webkit.org/show_bug.cgi?id=122754
+
+        Reviewed by David Hyatt.
+
+        * fast/multicol/break-in-scrollable-expected.html: Added.
+        * fast/multicol/break-in-scrollable.html: Added.
+        * fast/multicol/newmulticol/leading-and-trailing-margin-expected.html: Added.
+        * fast/multicol/newmulticol/leading-and-trailing-margin.html: Added.
+        * fast/multicol/newmulticol/leading-margin-expected.html: Added.
+        * fast/multicol/newmulticol/leading-margin.html: Added.
+
+2014-04-07  Brent Fulgham  <bfulgham@apple.com>
+
+        [WebVTT] Begin Enabling W3C VTT Tests
+        https://bugs.webkit.org/show_bug.cgi?id=131345
+
+        Reviewed by Darin Adler.
+
+        Move a number of tests out of 'opera' into a new 'w3c' folder.
+
+        * media/track/opera/interfaces/HTMLElement/HTMLMediaElement/addTextTrack-expected.txt: Removed.
+        * media/track/opera/interfaces/HTMLElement/HTMLMediaElement/addTextTrack.html: Removed.
+        * media/track/opera/interfaces/HTMLElement/HTMLMediaElement/textTracks-expected.txt: Removed.
+        * media/track/opera/interfaces/HTMLElement/HTMLMediaElement/textTracks.html: Removed.
+        * media/track/opera/interfaces/HTMLElement/HTMLTrackElement/default-expected.txt: Removed.
+        * media/track/opera/interfaces/HTMLElement/HTMLTrackElement/default.html: Removed.
+        * media/track/opera/interfaces/HTMLElement/HTMLTrackElement/label-expected.txt: Removed.
+        * media/track/opera/interfaces/HTMLElement/HTMLTrackElement/label.html: Removed.
+        * media/track/opera/interfaces/HTMLElement/HTMLTrackElement/readyState-expected.txt: Removed.
+        * media/track/opera/interfaces/HTMLElement/HTMLTrackElement/readyState.html: Removed.
+        * media/track/opera/interfaces/HTMLElement/HTMLTrackElement/srclang-expected.txt: Removed.
+        * media/track/opera/interfaces/HTMLElement/HTMLTrackElement/srclang.html: Removed.
+        * media/track/opera/interfaces/HTMLElement/HTMLTrackElement/track-expected.txt: Removed.
+        * media/track/opera/interfaces/HTMLElement/HTMLTrackElement/track.html: Removed.
+        * media/track/opera/interfaces/TextTrack/addCue-expected.txt: Removed.
+        * media/track/opera/interfaces/TextTrack/addCue.html: Removed.
+        * media/track/opera/interfaces/TextTrack/constants-expected.txt: Removed.
+        * media/track/opera/interfaces/TextTrack/constants.html: Removed.
+        * media/track/opera/interfaces/TextTrack/cues-expected.txt: Removed.
+        * media/track/opera/interfaces/TextTrack/cues.html: Removed.
+        * media/track/opera/interfaces/TextTrack/kind-expected.txt: Removed.
+        * media/track/opera/interfaces/TextTrack/kind.html: Removed.
+        * media/track/opera/interfaces/TextTrack/label-expected.txt: Removed.
+        * media/track/opera/interfaces/TextTrack/label.html: Removed.
+        * media/track/opera/interfaces/TextTrack/language-expected.txt: Removed.
+        * media/track/opera/interfaces/TextTrack/language.html: Removed.
+        * media/track/opera/interfaces/TextTrack/mode-expected.txt: Removed.
+        * media/track/opera/interfaces/TextTrack/mode.html: Removed.
+        * media/track/opera/interfaces/TextTrack/oncuechange-expected.txt: Removed.
+        * media/track/opera/interfaces/TextTrack/oncuechange.html: Removed.
+        * media/track/opera/interfaces/TextTrack/removeCue-expected.txt: Removed.
+        * media/track/opera/interfaces/TextTrack/removeCue.html: Removed.
+        * media/track/opera/interfaces/TextTrackCue/align-expected.txt: Removed.
+        * media/track/opera/interfaces/TextTrackCue/align.html: Removed.
+        * media/track/opera/interfaces/TextTrackCue/endTime-expected.txt: Removed.
+        * media/track/opera/interfaces/TextTrackCue/endTime.html: Removed.
+        * media/track/opera/interfaces/TextTrackCue/id-expected.txt: Removed.
+        * media/track/opera/interfaces/TextTrackCue/id.html: Removed.
+        * media/track/opera/interfaces/TextTrackCue/pauseOnExit-expected.txt: Removed.
+        * media/track/opera/interfaces/TextTrackCue/pauseOnExit.html: Removed.
+        * media/track/opera/interfaces/TextTrackCue/startTime-expected.txt: Removed.
+        * media/track/opera/interfaces/TextTrackCue/startTime.html: Removed.
+        * media/track/opera/interfaces/TextTrackCue/track-expected.txt: Removed.
+        * media/track/opera/interfaces/TextTrackCue/track.html: Removed.
+        * media/track/opera/interfaces/TextTrackCueList/getCueById-expected.txt: Removed.
+        * media/track/opera/interfaces/TextTrackCueList/getCueById.html: Removed.
+        * media/track/opera/interfaces/TextTrackCueList/length-expected.txt: Removed.
+        * media/track/opera/interfaces/TextTrackCueList/length.html: Removed.
+        * media/track/opera/interfaces/TextTrackList/length-expected.txt: Removed.
+        * media/track/opera/interfaces/TextTrackList/length.html: Removed.
+        * media/track/opera/interfaces/TextTrackList/onaddtrack-expected.txt: Removed.
+        * media/track/opera/interfaces/TextTrackList/onaddtrack.html: Removed.
+        * media/track/opera/interfaces/TextTrackList/onremovetrack-expected.txt: Removed.
+        * media/track/opera/interfaces/TextTrackList/onremovetrack.html: Removed.
+        * media/track/opera/track/webvtt/rendering/reftest/2_tracks-ref.html: Removed.
+        * media/track/opera/track/webvtt/rendering/reftest/2_tracks.html: Removed.
+        * media/track/opera/track/webvtt/rendering/reftest/align_end-ref.html: Removed.
+        * media/track/opera/track/webvtt/rendering/reftest/align_end.html: Removed.
+        * media/track/opera/track/webvtt/rendering/reftest/align_middle-ref.html: Removed.
+        * media/track/opera/track/webvtt/rendering/reftest/align_middle.html: Removed.
+        * media/track/opera/track/webvtt/rendering/reftest/align_middle_position_50-ref.html: Removed.
+        * media/track/opera/track/webvtt/rendering/reftest/align_middle_position_50.html: Removed.
+        * media/track/opera/track/webvtt/rendering/reftest/align_middle_position_gt_50-ref.html: Removed.
+        * media/track/opera/track/webvtt/rendering/reftest/align_middle_position_gt_50.html: Removed.
+        * media/track/opera/track/webvtt/rendering/reftest/align_middle_position_lt_50-ref.html: Removed.
+        * media/track/opera/track/webvtt/rendering/reftest/align_middle_position_lt_50.html: Removed.
+        * media/track/opera/track/webvtt/rendering/reftest/align_middle_position_lt_50_size_gt_maximum_size-ref.html: Removed.
+        * media/track/opera/track/webvtt/rendering/reftest/align_middle_position_lt_50_size_gt_maximum_size.html: Removed.
+        * media/track/opera/track/webvtt/rendering/reftest/align_start-ref.html: Removed.
+        * media/track/opera/track/webvtt/rendering/reftest/align_start.html: Removed.
+        * media/track/opera/track/webvtt/rendering/reftest/audio_has_no_subtitles-ref.html: Removed.
+        * media/track/opera/track/webvtt/rendering/reftest/audio_has_no_subtitles.html: Removed.
+        * media/track/opera/track/webvtt/rendering/reftest/basic-ref.html: Removed.
+        * media/track/opera/track/webvtt/rendering/reftest/basic.html: Removed.
+        * media/track/opera/track/webvtt/rendering/reftest/decode_escaped_entities-ref.html: Removed.
+        * media/track/opera/track/webvtt/rendering/reftest/decode_escaped_entities.html: Removed.
+        * media/track/opera/track/webvtt/rendering/reftest/dom_override_cue_align_position_line_size-ref.html: Removed.
+        * media/track/opera/track/webvtt/rendering/reftest/dom_override_cue_align_position_line_size.html: Removed.
+        * media/track/opera/track/webvtt/rendering/reftest/dom_override_cue_align_position_line_size_while_paused-ref.html: Removed.
+        * media/track/opera/track/webvtt/rendering/reftest/dom_override_cue_align_position_line_size_while_paused.html: Removed.
+        * media/track/opera/track/webvtt/rendering/reftest/dom_override_cue_text-ref.html: Removed.
+        * media/track/opera/track/webvtt/rendering/reftest/dom_override_cue_text.html: Removed.
+        * media/track/opera/track/webvtt/rendering/reftest/dom_override_cue_text_while_paused-ref.html: Removed.
+        * media/track/opera/track/webvtt/rendering/reftest/dom_override_cue_text_while_paused.html: Removed.
+        * media/track/opera/track/webvtt/rendering/reftest/dom_override_remove_cue_while_paused-ref.html: Removed.
+        * media/track/opera/track/webvtt/rendering/reftest/dom_override_remove_cue_while_paused.html: Removed.
+        * media/track/opera/track/webvtt/rendering/reftest/media/background.gif: Removed.
+        * media/track/opera/track/webvtt/rendering/reftest/media/white.mp4: Removed.
+        * media/track/opera/track/webvtt/rendering/reftest/media/white.webm: Removed.
+        * media/track/opera/track/webvtt/rendering/reftest/one_line_cue_plus_wrapped_cue-ref.html: Removed.
+        * media/track/opera/track/webvtt/rendering/reftest/one_line_cue_plus_wrapped_cue.html: Removed.
+        * media/track/opera/track/webvtt/rendering/reftest/size_50-ref.html: Removed.
+        * media/track/opera/track/webvtt/rendering/reftest/size_50.html: Removed.
+        * media/track/opera/track/webvtt/rendering/reftest/support/2_cues_overlapping_completely_move_up.vtt: Removed.
+        * media/track/opera/track/webvtt/rendering/reftest/support/align_end_long.vtt: Removed.
+        * media/track/opera/track/webvtt/rendering/reftest/support/foo.vtt: Removed.
+        * media/track/opera/track/webvtt/rendering/reftest/support/refTestWait.js: Removed.
+        * media/track/w3c: Added.
+        * media/track/w3c/interfaces: Added.
+        * media/track/w3c/interfaces/HTMLMediaElement: Added.
+        * media/track/w3c/interfaces/HTMLMediaElement/addTextTrack-expected.txt: Copied from media/track/opera/interfaces/HTMLElement/HTMLMediaElement/addTextTrack-expected.txt.
+        * media/track/w3c/interfaces/HTMLMediaElement/addTextTrack.html: Copied from media/track/opera/interfaces/HTMLElement/HTMLMediaElement/addTextTrack.html.
+        * media/track/w3c/interfaces/HTMLMediaElement/textTracks-expected.txt: Copied from media/track/opera/interfaces/HTMLElement/HTMLMediaElement/textTracks-expected.txt.
+        * media/track/w3c/interfaces/HTMLMediaElement/textTracks.html: Copied from media/track/opera/interfaces/HTMLElement/HTMLMediaElement/textTracks.html.
+        * media/track/w3c/interfaces/HTMLTrackElement: Added.
+        * media/track/w3c/interfaces/HTMLTrackElement/default-expected.txt: Copied from media/track/opera/interfaces/HTMLElement/HTMLTrackElement/default-expected.txt.
+        * media/track/w3c/interfaces/HTMLTrackElement/default.html: Copied from media/track/opera/interfaces/HTMLElement/HTMLTrackElement/default.html.
+        * media/track/w3c/interfaces/HTMLTrackElement/label-expected.txt: Copied from media/track/opera/interfaces/HTMLElement/HTMLTrackElement/label-expected.txt.
+        * media/track/w3c/interfaces/HTMLTrackElement/label.html: Copied from media/track/opera/interfaces/HTMLElement/HTMLTrackElement/label.html.
+        * media/track/w3c/interfaces/HTMLTrackElement/readyState-expected.txt: Copied from media/track/opera/interfaces/HTMLElement/HTMLTrackElement/readyState-expected.txt.
+        * media/track/w3c/interfaces/HTMLTrackElement/readyState.html: Copied from media/track/opera/interfaces/HTMLElement/HTMLTrackElement/readyState.html.
+        * media/track/w3c/interfaces/HTMLTrackElement/srclang-expected.txt: Copied from media/track/opera/interfaces/HTMLElement/HTMLTrackElement/srclang-expected.txt.
+        * media/track/w3c/interfaces/HTMLTrackElement/srclang.html: Copied from media/track/opera/interfaces/HTMLElement/HTMLTrackElement/srclang.html.
+        * media/track/w3c/interfaces/HTMLTrackElement/track-expected.txt: Copied from media/track/opera/interfaces/HTMLElement/HTMLTrackElement/track-expected.txt.
+        * media/track/w3c/interfaces/HTMLTrackElement/track.html: Copied from media/track/opera/interfaces/HTMLElement/HTMLTrackElement/track.html.
+        * media/track/w3c/interfaces/TextTrack: Added.
+        * media/track/w3c/interfaces/TextTrack/addCue-expected.txt: Copied from media/track/opera/interfaces/TextTrack/addCue-expected.txt.
+        * media/track/w3c/interfaces/TextTrack/addCue.html: Copied from media/track/opera/interfaces/TextTrack/addCue.html.
+        * media/track/w3c/interfaces/TextTrack/constants-expected.txt: Copied from media/track/opera/interfaces/TextTrack/constants-expected.txt.
+        * media/track/w3c/interfaces/TextTrack/constants.html: Copied from media/track/opera/interfaces/TextTrack/constants.html.
+        * media/track/w3c/interfaces/TextTrack/cues-expected.txt: Copied from media/track/opera/interfaces/TextTrack/cues-expected.txt.
+        * media/track/w3c/interfaces/TextTrack/cues.html: Copied from media/track/opera/interfaces/TextTrack/cues.html.
+        * media/track/w3c/interfaces/TextTrack/kind-expected.txt: Copied from media/track/opera/interfaces/TextTrack/kind-expected.txt.
+        * media/track/w3c/interfaces/TextTrack/kind.html: Copied from media/track/opera/interfaces/TextTrack/kind.html.
+        * media/track/w3c/interfaces/TextTrack/label-expected.txt: Copied from media/track/opera/interfaces/TextTrack/label-expected.txt.
+        * media/track/w3c/interfaces/TextTrack/label.html: Copied from media/track/opera/interfaces/TextTrack/label.html.
+        * media/track/w3c/interfaces/TextTrack/language-expected.txt: Copied from media/track/opera/interfaces/TextTrack/language-expected.txt.
+        * media/track/w3c/interfaces/TextTrack/language.html: Copied from media/track/opera/interfaces/TextTrack/language.html.
+        * media/track/w3c/interfaces/TextTrack/mode-expected.txt: Copied from media/track/opera/interfaces/TextTrack/mode-expected.txt.
+        * media/track/w3c/interfaces/TextTrack/mode.html: Copied from media/track/opera/interfaces/TextTrack/mode.html.
+        * media/track/w3c/interfaces/TextTrack/oncuechange-expected.txt: Copied from media/track/opera/interfaces/TextTrack/oncuechange-expected.txt.
+        * media/track/w3c/interfaces/TextTrack/oncuechange.html: Copied from media/track/opera/interfaces/TextTrack/oncuechange.html.
+        * media/track/w3c/interfaces/TextTrack/removeCue-expected.txt: Copied from media/track/opera/interfaces/TextTrack/removeCue-expected.txt.
+        * media/track/w3c/interfaces/TextTrack/removeCue.html: Copied from media/track/opera/interfaces/TextTrack/removeCue.html.
+        * media/track/w3c/interfaces/TextTrackCue: Added.
+        * media/track/w3c/interfaces/TextTrackCue/align-expected.txt: Copied from media/track/opera/interfaces/TextTrackCue/align-expected.txt.
+        * media/track/w3c/interfaces/TextTrackCue/align.html: Copied from media/track/opera/interfaces/TextTrackCue/align.html.
+        * media/track/w3c/interfaces/TextTrackCue/endTime-expected.txt: Copied from media/track/opera/interfaces/TextTrackCue/endTime-expected.txt.
+        * media/track/w3c/interfaces/TextTrackCue/endTime.html: Copied from media/track/opera/interfaces/TextTrackCue/endTime.html.
+        * media/track/w3c/interfaces/TextTrackCue/id-expected.txt: Copied from media/track/opera/interfaces/TextTrackCue/id-expected.txt.
+        * media/track/w3c/interfaces/TextTrackCue/id.html: Copied from media/track/opera/interfaces/TextTrackCue/id.html.
+        * media/track/w3c/interfaces/TextTrackCue/pauseOnExit-expected.txt: Copied from media/track/opera/interfaces/TextTrackCue/pauseOnExit-expected.txt.
+        * media/track/w3c/interfaces/TextTrackCue/pauseOnExit.html: Copied from media/track/opera/interfaces/TextTrackCue/pauseOnExit.html.
+        * media/track/w3c/interfaces/TextTrackCue/startTime-expected.txt: Copied from media/track/opera/interfaces/TextTrackCue/startTime-expected.txt.
+        * media/track/w3c/interfaces/TextTrackCue/startTime.html: Copied from media/track/opera/interfaces/TextTrackCue/startTime.html.
+        * media/track/w3c/interfaces/TextTrackCue/track-expected.txt: Copied from media/track/opera/interfaces/TextTrackCue/track-expected.txt.
+        * media/track/w3c/interfaces/TextTrackCue/track.html: Copied from media/track/opera/interfaces/TextTrackCue/track.html.
+        * media/track/w3c/interfaces/TextTrackCueList: Added.
+        * media/track/w3c/interfaces/TextTrackCueList/getCueById-expected.txt: Copied from media/track/opera/interfaces/TextTrackCueList/getCueById-expected.txt.
+        * media/track/w3c/interfaces/TextTrackCueList/getCueById.html: Copied from media/track/opera/interfaces/TextTrackCueList/getCueById.html.
+        * media/track/w3c/interfaces/TextTrackCueList/length-expected.txt: Copied from media/track/opera/interfaces/TextTrackCueList/length-expected.txt.
+        * media/track/w3c/interfaces/TextTrackCueList/length.html: Copied from media/track/opera/interfaces/TextTrackCueList/length.html.
+        * media/track/w3c/interfaces/TextTrackList: Added.
+        * media/track/w3c/interfaces/TextTrackList/length-expected.txt: Copied from media/track/opera/interfaces/TextTrackList/length-expected.txt.
+        * media/track/w3c/interfaces/TextTrackList/length.html: Copied from media/track/opera/interfaces/TextTrackList/length.html.
+        * media/track/w3c/interfaces/TextTrackList/onaddtrack-expected.txt: Copied from media/track/opera/interfaces/TextTrackList/onaddtrack-expected.txt.
+        * media/track/w3c/interfaces/TextTrackList/onaddtrack.html: Copied from media/track/opera/interfaces/TextTrackList/onaddtrack.html.
+        * media/track/w3c/interfaces/TextTrackList/onremovetrack-expected.txt: Copied from media/track/opera/interfaces/TextTrackList/onremovetrack-expected.txt.
+        * media/track/w3c/interfaces/TextTrackList/onremovetrack.html: Copied from media/track/opera/interfaces/TextTrackList/onremovetrack.html.
+        * media/track/w3c/track: Added.
+        * media/track/w3c/track/webvtt: Added.
+        * media/track/w3c/track/webvtt/2_tracks-expected.html: Copied from media/track/opera/track/webvtt/rendering/reftest/2_tracks-ref.html.
+        * media/track/w3c/track/webvtt/2_tracks.html: Copied from media/track/opera/track/webvtt/rendering/reftest/2_tracks.html.
+        * media/track/w3c/track/webvtt/align_end-expected.html: Copied from media/track/opera/track/webvtt/rendering/reftest/align_end-ref.html.
+        * media/track/w3c/track/webvtt/align_end.html: Copied from media/track/opera/track/webvtt/rendering/reftest/align_end.html.
+        * media/track/w3c/track/webvtt/align_middle-expected.html: Copied from media/track/opera/track/webvtt/rendering/reftest/align_middle-ref.html.
+        * media/track/w3c/track/webvtt/align_middle.html: Copied from media/track/opera/track/webvtt/rendering/reftest/align_middle.html.
+        * media/track/w3c/track/webvtt/align_middle_position_50-expected.html: Copied from media/track/opera/track/webvtt/rendering/reftest/align_middle_position_50-ref.html.
+        * media/track/w3c/track/webvtt/align_middle_position_50.html: Copied from media/track/opera/track/webvtt/rendering/reftest/align_middle_position_50.html.
+        * media/track/w3c/track/webvtt/align_middle_position_gt_50-expected.html: Copied from media/track/opera/track/webvtt/rendering/reftest/align_middle_position_gt_50-ref.html.
+        * media/track/w3c/track/webvtt/align_middle_position_gt_50.html: Copied from media/track/opera/track/webvtt/rendering/reftest/align_middle_position_gt_50.html.
+        * media/track/w3c/track/webvtt/align_middle_position_lt_50-expected.html: Copied from media/track/opera/track/webvtt/rendering/reftest/align_middle_position_lt_50-ref.html.
+        * media/track/w3c/track/webvtt/align_middle_position_lt_50.html: Copied from media/track/opera/track/webvtt/rendering/reftest/align_middle_position_lt_50.html.
+        * media/track/w3c/track/webvtt/align_middle_position_lt_50_size_gt_maximum_size-expected.html: Copied from media/track/opera/track/webvtt/rendering/reftest/align_middle_position_lt_50_size_gt_maximum_size-ref.html.
+        * media/track/w3c/track/webvtt/align_middle_position_lt_50_size_gt_maximum_size.html: Copied from media/track/opera/track/webvtt/rendering/reftest/align_middle_position_lt_50_size_gt_maximum_size.html.
+        * media/track/w3c/track/webvtt/align_start-expected.html: Copied from media/track/opera/track/webvtt/rendering/reftest/align_start-ref.html.
+        * media/track/w3c/track/webvtt/align_start.html: Copied from media/track/opera/track/webvtt/rendering/reftest/align_start.html.
+        * media/track/w3c/track/webvtt/audio_has_no_subtitles-expected.html: Copied from media/track/opera/track/webvtt/rendering/reftest/audio_has_no_subtitles-ref.html.
+        * media/track/w3c/track/webvtt/audio_has_no_subtitles.html: Copied from media/track/opera/track/webvtt/rendering/reftest/audio_has_no_subtitles.html.
+        * media/track/w3c/track/webvtt/background.gif: Copied from media/track/opera/track/webvtt/rendering/reftest/media/background.gif.
+        * media/track/w3c/track/webvtt/basic-expected.html: Copied from media/track/opera/track/webvtt/rendering/reftest/basic-ref.html.
+        * media/track/w3c/track/webvtt/basic.html: Copied from media/track/opera/track/webvtt/rendering/reftest/basic.html.
+        * media/track/w3c/track/webvtt/decode_escaped_entities-expected.html: Copied from media/track/opera/track/webvtt/rendering/reftest/decode_escaped_entities-ref.html.
+        * media/track/w3c/track/webvtt/decode_escaped_entities.html: Copied from media/track/opera/track/webvtt/rendering/reftest/decode_escaped_entities.html.
+        * media/track/w3c/track/webvtt/dom_override_cue_align_position_line_size-expected.html: Copied from media/track/opera/track/webvtt/rendering/reftest/dom_override_cue_align_position_line_size-ref.html.
+        * media/track/w3c/track/webvtt/dom_override_cue_align_position_line_size.html: Copied from media/track/opera/track/webvtt/rendering/reftest/dom_override_cue_align_position_line_size.html.
+        * media/track/w3c/track/webvtt/dom_override_cue_align_position_line_size_while_paused-expected.html: Copied from media/track/opera/track/webvtt/rendering/reftest/dom_override_cue_align_position_line_size_while_paused-ref.html.
+        * media/track/w3c/track/webvtt/dom_override_cue_align_position_line_size_while_paused.html: Copied from media/track/opera/track/webvtt/rendering/reftest/dom_override_cue_align_position_line_size_while_paused.html.
+        * media/track/w3c/track/webvtt/dom_override_cue_text-expected.html: Copied from media/track/opera/track/webvtt/rendering/reftest/dom_override_cue_text-ref.html.
+        * media/track/w3c/track/webvtt/dom_override_cue_text.html: Copied from media/track/opera/track/webvtt/rendering/reftest/dom_override_cue_text.html.
+        * media/track/w3c/track/webvtt/dom_override_cue_text_while_paused-expected.html: Copied from media/track/opera/track/webvtt/rendering/reftest/dom_override_cue_text_while_paused-ref.html.
+        * media/track/w3c/track/webvtt/dom_override_cue_text_while_paused.html: Copied from media/track/opera/track/webvtt/rendering/reftest/dom_override_cue_text_while_paused.html.
+        * media/track/w3c/track/webvtt/dom_override_remove_cue_while_paused-expected.html: Copied from media/track/opera/track/webvtt/rendering/reftest/dom_override_remove_cue_while_paused-ref.html.
+        * media/track/w3c/track/webvtt/dom_override_remove_cue_while_paused.html: Copied from media/track/opera/track/webvtt/rendering/reftest/dom_override_remove_cue_while_paused.html.
+        * media/track/w3c/track/webvtt/media: Added.
+        * media/track/w3c/track/webvtt/media/white.mp4: Copied from media/track/opera/track/webvtt/rendering/reftest/media/white.mp4.
+        * media/track/w3c/track/webvtt/media/white.webm: Copied from media/track/opera/track/webvtt/rendering/reftest/media/white.webm.
+        * media/track/w3c/track/webvtt/one_line_cue_plus_wrapped_cue-expected.html: Copied from media/track/opera/track/webvtt/rendering/reftest/one_line_cue_plus_wrapped_cue-ref.html.
+        * media/track/w3c/track/webvtt/one_line_cue_plus_wrapped_cue.html: Copied from media/track/opera/track/webvtt/rendering/reftest/one_line_cue_plus_wrapped_cue.html.
+        * media/track/w3c/track/webvtt/size_50-expected.html: Copied from media/track/opera/track/webvtt/rendering/reftest/size_50-ref.html.
+        * media/track/w3c/track/webvtt/size_50.html: Copied from media/track/opera/track/webvtt/rendering/reftest/size_50.html.
+        * media/track/w3c/track/webvtt/support: Added.
+        * media/track/w3c/track/webvtt/support/2_cues_overlapping_completely_move_up.vtt: Copied from media/track/opera/track/webvtt/rendering/reftest/support/2_cues_overlapping_completely_move_up.vtt.
+        * media/track/w3c/track/webvtt/support/align_end_long.vtt: Copied from media/track/opera/track/webvtt/rendering/reftest/support/align_end_long.vtt.
+        * media/track/w3c/track/webvtt/support/foo.vtt: Copied from media/track/opera/track/webvtt/rendering/reftest/support/foo.vtt.
+        * media/track/w3c/track/webvtt/support/refTestWait.js: Copied from media/track/opera/track/webvtt/rendering/reftest/support/refTestWait.js.
+		* platform/eft/TestExpectations: Skip w3c tests.
+		* platform/gtk/TestExpectations: Skip w3c tests.
+
+2014-04-08  Zalan Bujtas  <zalan@apple.com>
+
+        Subpixel rendering: Slow paint path for inlines should snap to device pixels.
+        https://bugs.webkit.org/show_bug.cgi?id=131259
+
+        Reviewed by Simon Fraser.
+
+        InlineTextBox::paint needs to round to the same device pixel position as SimpleLineLayout does.
+
+        * fast/inline/hidpi-slow-path-text-on-subpixel-position-expected.html: Added.
+        * fast/inline/hidpi-slow-path-text-on-subpixel-position.html: Added.
+
+2014-04-08  Zalan Bujtas  <zalan@apple.com>
+
+        Subpixel rendering: Paint the filter effect result image on device pixel position.
+        https://bugs.webkit.org/show_bug.cgi?id=131255
+
+        Reviewed by Simon Fraser.
+
+        This patch moves filter effect images from integral to device pixel position. However,
+        result images are still integral based.
+
+        * css3/filters/hidpi-filter-is-on-subpixel-position-expected.html: Added.
+        * css3/filters/hidpi-filter-is-on-subpixel-position.html: Added.
+
+2014-04-08  Zalan Bujtas  <zalan@apple.com>
+
+        Subpixel rendering: Make border images device pixel aware.
+        https://bugs.webkit.org/show_bug.cgi?id=131209
+
+        Reviewed by Simon Fraser.
+
+        Snap border-image size and position to device pixels. It works both on generated and bitmap images.
+
+        * fast/borders/hidpi-border-image-gradient-on-subpixels-expected.html: Added.
+        * fast/borders/hidpi-border-image-gradient-on-subpixels.html: Added.
+
+2014-04-08  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        [SOUP] Control cookie management according ResourceRequest.allowCookies()
+        https://bugs.webkit.org/show_bug.cgi?id=131026
+
+        Reviewed by Sergio Villar Senin.
+
+        * platform/efl/TestExpectations: Unskipped test http/tests/xmlhttprequest/cross-origin-cookie-storage.html.
+        * platform/gtk/TestExpectations: Ditto.
+
+2014-04-08  Sergio Villar Senin  <svillar@igalia.com>
+
+        [CSS Grid Layout] Handle min/max height in the grid element
+        https://bugs.webkit.org/show_bug.cgi?id=131302
+
+        Reviewed by Darin Adler.
+
+        Added test coverage for min/max height handling in the grid
+        item. Also added other test to cover a blind spot in our testing,
+        resizing of content sized columns with flexible breadths.
+
+        Merged from Blink r161876 by <jchaffraix@chromium.org> and r166914 by <rego@igalia.com>.
+
+        * fast/css-grid-layout/flex-content-sized-columns-resize-expected.html: Added.
+        * fast/css-grid-layout/flex-content-sized-columns-resize.html: Added.
+        * fast/css-grid-layout/grid-element-min-max-height-expected.txt: Added.
+        * fast/css-grid-layout/grid-element-min-max-height.html: Added.
+
+2014-04-08  Mihnea Ovidenie  <mihnea@adobe.com>
+
+        [CSSRegions] Fixed positioned elements in named flows have fragmented content
+        https://bugs.webkit.org/show_bug.cgi?id=130595
+
+        Reviewed by Darin Adler.
+
+        * fast/regions/fixed-pos-content-fragmented-expected.html: Added.
+        * fast/regions/fixed-pos-content-fragmented.html: Added.
+
+2014-04-07  Chris Fleizach  <cfleizach@apple.com>
+
+        Regression: AX: image labels no longer exposed to AX API in SVG test case
+        https://bugs.webkit.org/show_bug.cgi?id=131208
+
+        Reviewed by Daniel Bates.
+
+        * accessibility/svg-labelledby-expected.txt: Added.
+        * accessibility/svg-labelledby.html: Added.
+
+2014-04-07  Martin Robinson  <mrobinson@igalia.com>
+
+        Skipped some HighDPI tests for GTK+
+
+        * platform/gtk/TestExpectations: GTK+ does not yet have HighDPI support.
+
+2014-04-07  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK] Remove WebKit1 test results and merge TestExpectations files
+        https://bugs.webkit.org/show_bug.cgi?id=131342
+
+        Merge all WebKit1 test expectations into the gtk directory and also merge the WebKit2
+        test expectations files into the GTK+ one, removing duplicate lines.
+
+        * http/tests/security/resources/drag-drop-allowed-expected.txt: Added.
+        * platform/gtk-wk1: Removed.
+        * platform/gtk-wk2: Removed.
+        * platform/gtk/TestExpectations: Merged in WebKit2 expectations.
+        * platform/gtk/accessibility/file-upload-button-stringvalue-expected.txt: Renamed from LayoutTests/platform/gtk-wk2/accessibility/file-upload-button-stringvalue-expected.txt.
+        * platform/gtk/fast/events/wheelevent-in-horizontal-scrollbar-in-rtl-expected.txt:
+        * platform/gtk/fast/events/wheelevent-in-vertical-scrollbar-in-rtl-expected.txt:
+        * platform/gtk/http/tests/loading/basic-auth-resend-wrong-credentials-expected.txt: Renamed from LayoutTests/platform/gtk-wk2/http/tests/loading/basic-auth-resend-wrong-credentials-expected.txt.
+        * platform/gtk/http/tests/loading/basic-credentials-sent-automatically-expected.txt: Renamed from LayoutTests/platform/gtk-wk2/http/tests/loading/basic-credentials-sent-automatically-expected.txt.
+        * platform/gtk/http/tests/misc/401-alternative-content-expected.txt: Renamed from LayoutTests/platform/gtk-wk2/http/tests/misc/401-alternative-content-expected.txt.
+        * platform/gtk/http/tests/misc/authentication-redirect-1/authentication-sent-to-redirect-cross-origin-expected.txt: Renamed from LayoutTests/platform/gtk-wk2/http/tests/misc/authentication-redirect-1/authentication-sent-to-redirect-cross-origin-expected.txt.
+        * platform/gtk/http/tests/misc/authentication-redirect-2/authentication-sent-to-redirect-same-origin-expected.txt: Renamed from LayoutTests/platform/gtk-wk2/http/tests/misc/authentication-redirect-2/authentication-sent-to-redirect-same-origin-expected.txt.
+        * platform/gtk/http/tests/misc/authentication-redirect-4/authentication-sent-to-redirect-same-origin-url-expected.txt: Renamed from LayoutTests/platform/gtk-wk2/http/tests/misc/authentication-redirect-4/authentication-sent-to-redirect-same-origin-url-expected.txt.
+        * platform/gtk/http/tests/security/401-logout/401-logout-expected.txt: Renamed from LayoutTests/platform/gtk-wk2/http/tests/security/401-logout/401-logout-expected.txt.
+        * platform/gtk/http/tests/xmlhttprequest/failed-auth-expected.txt: Renamed from LayoutTests/platform/gtk-wk2/http/tests/xmlhttprequest/failed-auth-expected.txt.
+        * platform/gtk/http/tests/xmlhttprequest/remember-bad-password-expected.txt: Renamed from LayoutTests/platform/gtk-wk2/http/tests/xmlhttprequest/remember-bad-password-expected.txt.
+        * platform/gtk/js/dom/global-constructors-attributes-expected.txt: Renamed from LayoutTests/platform/gtk-wk2/js/dom/global-constructors-attributes-expected.txt.
+        * platform/gtk/plugins/npruntime/object-from-destroyed-plugin-expected.txt:
+        * platform/gtk/plugins/npruntime/object-from-destroyed-plugin-in-subframe-expected.txt:
+        * platform/gtk/plugins/plugin-clip-subframe-expected.txt:
+
+2014-04-07  Martin Robinson  <mrobinson@igalia.com>
+
+        fast/css3-text/css3-text-decoration/text-decoration-thickness.html fails on GTK
+        https://bugs.webkit.org/show_bug.cgi?id=129957
+
+        Reviewed by Dean Jackson.
+
+        Unskipped tests and modified one test to use the platform-independent Ahem font.
+
+        * fast/css3-text/css3-text-decoration/text-decoration-skip/text-decoration-skip-tall-underlines.html: We
+        need to use Ahem because Helvetica is not a platform-independent font.
+        * platform/gtk/TestExpectations: Unskipped tests.
+
+2014-04-07  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Inspector: test helper files should be under LayoutTests/http/tests/inspector/
+        https://bugs.webkit.org/show_bug.cgi?id=131324
+
+        Reviewed by Joseph Pecoraro.
+
+        Rearrange helper files used by full inspector tests. In their previous placement,
+        they were outside the http server root and couldn't be loaded from http tests.
+
+        * http/tests/inspector/debugger/debugger-test.js: Renamed from LayoutTests/inspector/debugger/debugger-test.js.
+        * http/tests/inspector/dom/shapes-test.js: Renamed from LayoutTests/inspector/dom/shapes-test.js.
+        * http/tests/inspector/inspector-test.js: Renamed from LayoutTests/inspector/inspector-test.js.
+        * http/tests/inspector/replay/replay-test.js: Renamed from LayoutTests/inspector/replay/replay-test.js.
+        * inspector/debugger/probe-manager-add-remove-actions.html:
+        * inspector/dom/content-flow-content-nodes.html:
+        * inspector/dom/content-flow-content-removal.html:
+        * inspector/dom/content-flow-list.html:
+        * inspector/dom/content-node-region-info.html:
+        * inspector/dom/highlight-shape-outside-margin.html:
+        * inspector/dom/highlight-shape-outside.html:
+        * inspector/page/main-frame-resource.html:
+        * inspector/replay/javascript-date-now.html:
+        * inspector/replay/javascript-random-seed.html:
+        * inspector/test-harness-trivially-works.html:
+
+2014-04-07  Zoltan Horvath  <zoltan@webkit.org>
+
+        [CSS Shapes] inset complex calc() args vanish in serialized computed style
+        https://bugs.webkit.org/show_bug.cgi?id=129838
+
+        Reviewed by Bem Jones-Bey.
+
+        * fast/shapes/parsing/parsing-shape-outside-expected.txt:
+        * fast/shapes/parsing/parsing-test-utils.js:
+
+2014-03-30  Filip Pizlo  <fpizlo@apple.com>
+
+        Move slow JSRegress tests out of the way so that they don't show up in run-jsc-benchmarks runs and also skip tests that are extremely long-running
+        https://bugs.webkit.org/show_bug.cgi?id=130951
+
+        Reviewed by Geoffrey Garen.
+
+        * js/regress/ArrayBuffer-DataView-alloc-large-long-lived.html:
+        * js/regress/ArrayBuffer-DataView-alloc-long-lived.html:
+        * js/regress/ArrayBuffer-Int32Array-byteOffset.html:
+        * js/regress/ArrayBuffer-Int8Array-alloc-huge-long-lived-expected.txt: Removed.
+        * js/regress/ArrayBuffer-Int8Array-alloc-huge-long-lived.html: Removed.
+        * js/regress/ArrayBuffer-Int8Array-alloc-large-long-lived-fragmented-expected.txt: Removed.
+        * js/regress/ArrayBuffer-Int8Array-alloc-large-long-lived-fragmented.html: Removed.
+        * js/regress/ArrayBuffer-Int8Array-alloc-large-long-lived.html:
+        * js/regress/ArrayBuffer-Int8Array-alloc-long-lived-buffer.html:
+        * js/regress/ArrayBuffer-Int8Array-alloc-long-lived.html:
+        * js/regress/ArrayBuffer-Int8Array-alloc.html:
+        * js/regress/DataView-custom-properties.html:
+        * js/regress/Float32Array-matrix-mult.html:
+        * js/regress/Float32Array-to-Float64Array-set.html:
+        * js/regress/Float64Array-alloc-long-lived.html:
+        * js/regress/Float64Array-to-Int16Array-set.html:
+        * js/regress/HashMap-put-get-iterate-keys.html:
+        * js/regress/HashMap-put-get-iterate.html:
+        * js/regress/HashMap-string-put-get-iterate.html:
+        * js/regress/Int16Array-alloc-long-lived.html:
+        * js/regress/Int16Array-bubble-sort-with-byteLength.html:
+        * js/regress/Int16Array-bubble-sort.html:
+        * js/regress/Int16Array-load-int-mul.html:
+        * js/regress/Int16Array-to-Int32Array-set.html:
+        * js/regress/Int32Array-Int8Array-view-alloc.html:
+        * js/regress/Int32Array-alloc-huge-expected.txt: Removed.
+        * js/regress/Int32Array-alloc-huge-long-lived-expected.txt: Removed.
+        * js/regress/Int32Array-alloc-huge-long-lived.html: Removed.
+        * js/regress/Int32Array-alloc-huge.html: Removed.
+        * js/regress/Int32Array-alloc-large-long-lived-expected.txt: Removed.
+        * js/regress/Int32Array-alloc-large-long-lived.html: Removed.
+        * js/regress/Int32Array-alloc-large.html:
+        * js/regress/Int32Array-alloc-long-lived.html:
+        * js/regress/Int32Array-alloc.html:
+        * js/regress/Int8Array-alloc-long-lived.html:
+        * js/regress/Int8Array-load-with-byteLength.html:
+        * js/regress/Int8Array-load.html:
+        * js/regress/adapt-to-double-divide.html:
+        * js/regress/aliased-arguments-getbyval.html:
+        * js/regress/allocate-big-object.html:
+        * js/regress/arity-mismatch-inlining.html:
+        * js/regress/array-access-polymorphic-structure.html:
+        * js/regress/array-nonarray-polymorhpic-access.html:
+        * js/regress/array-nonarray-polymorphic-access.html:
+        * js/regress/array-prototype-every.html:
+        * js/regress/array-prototype-filter-expected.txt: Removed.
+        * js/regress/array-prototype-filter.html: Removed.
+        * js/regress/array-prototype-forEach.html:
+        * js/regress/array-prototype-map.html:
+        * js/regress/array-prototype-some.html:
+        * js/regress/array-with-double-add.html:
+        * js/regress/array-with-double-increment.html:
+        * js/regress/array-with-double-mul-add.html:
+        * js/regress/array-with-double-sum.html:
+        * js/regress/array-with-int32-add-sub.html:
+        * js/regress/array-with-int32-or-double-sum.html:
+        * js/regress/asmjs_bool_bug.html:
+        * js/regress/assign-custom-setter-polymorphic.html:
+        * js/regress/assign-custom-setter.html:
+        * js/regress/basic-set.html:
+        * js/regress/big-int-mul.html:
+        * js/regress/boolean-test.html:
+        * js/regress/branch-fold.html:
+        * js/regress/by-val-generic.html:
+        * js/regress/call-spread-apply.html:
+        * js/regress/call-spread-call.html:
+        * js/regress/call-spread-expected.txt: Removed.
+        * js/regress/call-spread.html: Removed.
+        * js/regress/captured-assignments.html:
+        * js/regress/cast-int-to-double.html:
+        * js/regress/cell-argument.html:
+        * js/regress/cfg-simplify.html:
+        * js/regress/chain-custom-getter-expected.txt: Removed.
+        * js/regress/chain-custom-getter.html: Removed.
+        * js/regress/chain-getter-access.html:
+        * js/regress/cmpeq-obj-to-obj-other.html:
+        * js/regress/constant-test.html:
+        * js/regress/delay-tear-off-arguments-strictmode.html:
+        * js/regress/destructuring-arguments-length-expected.txt: Removed.
+        * js/regress/destructuring-arguments-length.html: Removed.
+        * js/regress/destructuring-arguments.html:
+        * js/regress/destructuring-swap.html:
+        * js/regress/direct-arguments-getbyval.html:
+        * js/regress/double-get-by-val-out-of-bounds.html:
+        * js/regress/double-pollution-getbyval.html:
+        * js/regress/double-pollution-putbyoffset.html:
+        * js/regress/double-to-int32-typed-array-no-inline.html:
+        * js/regress/double-to-int32-typed-array.html:
+        * js/regress/double-to-uint32-typed-array-no-inline.html:
+        * js/regress/double-to-uint32-typed-array.html:
+        * js/regress/empty-string-plus-int.html:
+        * js/regress/emscripten-cube2hash.html:
+        * js/regress/emscripten-memops-expected.txt: Removed.
+        * js/regress/emscripten-memops.html: Removed.
+        * js/regress/external-arguments-getbyval.html:
+        * js/regress/external-arguments-putbyval.html:
+        * js/regress/fixed-typed-array-storage-var-index.html:
+        * js/regress/fixed-typed-array-storage.html:
+        * js/regress/fold-double-to-int.html:
+        * js/regress/fold-strict-eq-expected.txt: Removed.
+        * js/regress/fold-strict-eq.html: Removed.
+        * js/regress/for-of-iterate-array-entries.html:
+        * js/regress/for-of-iterate-array-keys.html:
+        * js/regress/for-of-iterate-array-values.html:
+        * js/regress/function-dot-apply.html:
+        * js/regress/function-test.html:
+        * js/regress/function-with-eval.html:
+        * js/regress/get-by-id-chain-from-try-block.html:
+        * js/regress/get-by-id-proto-or-self.html:
+        * js/regress/get-by-id-self-or-proto.html:
+        * js/regress/get-by-val-out-of-bounds.html:
+        * js/regress/get_callee_monomorphic.html:
+        * js/regress/get_callee_polymorphic.html:
+        * js/regress/getter.html:
+        * js/regress/global-var-const-infer-fire-from-opt.html:
+        * js/regress/global-var-const-infer.html:
+        * js/regress/imul-double-only.html:
+        * js/regress/imul-int-only.html:
+        * js/regress/imul-mixed.html:
+        * js/regress/in-four-cases.html:
+        * js/regress/in-one-case-false.html:
+        * js/regress/in-one-case-true.html:
+        * js/regress/in-two-cases.html:
+        * js/regress/indexed-properties-in-objects.html:
+        * js/regress/infer-closure-const-then-mov-no-inline.html:
+        * js/regress/infer-closure-const-then-mov.html:
+        * js/regress/infer-closure-const-then-put-to-scope-no-inline.html:
+        * js/regress/infer-closure-const-then-put-to-scope.html:
+        * js/regress/infer-closure-const-then-reenter-no-inline.html:
+        * js/regress/infer-closure-const-then-reenter.html:
+        * js/regress/infer-one-time-closure-ten-vars.html:
+        * js/regress/infer-one-time-closure-two-vars.html:
+        * js/regress/infer-one-time-closure.html:
+        * js/regress/infer-one-time-deep-closure.html:
+        * js/regress/inline-arguments-access.html:
+        * js/regress/inline-arguments-aliased-access.html:
+        * js/regress/inline-arguments-local-escape.html:
+        * js/regress/inline-get-scoped-var.html:
+        * js/regress/inlined-put-by-id-transition.html:
+        * js/regress/int-or-other-abs-then-get-by-val.html:
+        * js/regress/int-or-other-abs-zero-then-get-by-val.html:
+        * js/regress/int-or-other-add-then-get-by-val.html:
+        * js/regress/int-or-other-add.html:
+        * js/regress/int-or-other-div-then-get-by-val.html:
+        * js/regress/int-or-other-max-then-get-by-val.html:
+        * js/regress/int-or-other-min-then-get-by-val.html:
+        * js/regress/int-or-other-mod-then-get-by-val.html:
+        * js/regress/int-or-other-mul-then-get-by-val.html:
+        * js/regress/int-or-other-neg-then-get-by-val.html:
+        * js/regress/int-or-other-neg-zero-then-get-by-val.html:
+        * js/regress/int-or-other-sub-then-get-by-val.html:
+        * js/regress/int-or-other-sub.html:
+        * js/regress/int-overflow-local.html:
+        * js/regress/int52-spill.html:
+        * js/regress/integer-divide.html:
+        * js/regress/integer-modulo.html:
+        * js/regress/large-int-captured.html:
+        * js/regress/large-int-neg.html:
+        * js/regress/large-int.html:
+        * js/regress/logical-not.html:
+        * js/regress/lots-of-fields.html:
+        * js/regress/make-indexed-storage.html:
+        * js/regress/make-rope-cse.html:
+        * js/regress/marsaglia-expected.txt: Removed.
+        * js/regress/marsaglia-larger-ints.html:
+        * js/regress/marsaglia-osr-entry.html:
+        * js/regress/marsaglia.html: Removed.
+        * js/regress/method-on-number.html:
+        * js/regress/misc-strict-eq.html:
+        * js/regress/negative-zero-divide.html:
+        * js/regress/negative-zero-modulo.html:
+        * js/regress/negative-zero-negate.html:
+        * js/regress/nested-function-parsing-random-expected.txt: Removed.
+        * js/regress/nested-function-parsing-random.html: Removed.
+        * js/regress/nested-function-parsing.html:
+        * js/regress/new-array-buffer-dead.html:
+        * js/regress/new-array-buffer-push.html:
+        * js/regress/new-array-dead.html:
+        * js/regress/new-array-push.html:
+        * js/regress/new-spread-expected.txt: Removed.
+        * js/regress/new-spread.html: Removed.
+        * js/regress/number-test.html:
+        * js/regress/object-closure-call.html:
+        * js/regress/object-test.html:
+        * js/regress/poly-stricteq.html:
+        * js/regress/polymorphic-get-by-id.html:
+        * js/regress/polymorphic-put-by-id.html:
+        * js/regress/polymorphic-structure.html:
+        * js/regress/polyvariant-monomorphic-get-by-id.html:
+        * js/regress/proto-custom-getter-expected.txt: Removed.
+        * js/regress/proto-custom-getter.html: Removed.
+        * js/regress/proto-getter-access.html:
+        * js/regress/put-by-id.html:
+        * js/regress/put-by-val-large-index-blank-indexing-type.html:
+        * js/regress/put-by-val-machine-int.html:
+        * js/regress/rare-osr-exit-on-local.html:
+        * js/regress/register-pressure-from-osr.html:
+        * js/regress/resources/regress-post.js: Removed.
+        * js/regress/resources/regress-pre.js: Removed.
+        * js/regress/script-tests/ArrayBuffer-Int8Array-alloc-huge-long-lived.js: Removed.
+        * js/regress/script-tests/ArrayBuffer-Int8Array-alloc-large-long-lived-fragmented.js: Removed.
+        * js/regress/script-tests/Int32Array-alloc-huge-long-lived.js: Removed.
+        * js/regress/script-tests/Int32Array-alloc-huge.js: Removed.
+        * js/regress/script-tests/Int32Array-alloc-large-long-lived.js: Removed.
+        * js/regress/script-tests/array-prototype-filter.js: Removed.
+        * js/regress/script-tests/call-spread.js: Removed.
+        * js/regress/script-tests/chain-custom-getter.js: Removed.
+        * js/regress/script-tests/destructuring-arguments-length.js: Removed.
+        * js/regress/script-tests/emscripten-memops.js: Removed.
+        * js/regress/script-tests/fold-strict-eq.js: Removed.
+        * js/regress/script-tests/marsaglia.js: Removed.
+        * js/regress/script-tests/nested-function-parsing-random.js: Removed.
+        * js/regress/script-tests/new-spread.js: Removed.
+        * js/regress/script-tests/proto-custom-getter.js: Removed.
+        * js/regress/script-tests/simple-custom-getter.js: Removed.
+        * js/regress/script-tests/variadic-closure-call.js: Removed.
+        * js/regress/simple-activation-demo.html:
+        * js/regress/simple-custom-getter-expected.txt: Removed.
+        * js/regress/simple-custom-getter.html: Removed.
+        * js/regress/simple-getter-access.html:
+        * js/regress/slow-array-profile-convergence.html:
+        * js/regress/slow-convergence.html:
+        * js/regress/sparse-conditional.html:
+        * js/regress/splice-to-remove.html:
+        * js/regress/string-char-code-at.html:
+        * js/regress/string-concat-object.html:
+        * js/regress/string-concat-pair-object.html:
+        * js/regress/string-concat-pair-simple.html:
+        * js/regress/string-concat-simple.html:
+        * js/regress/string-cons-repeat.html:
+        * js/regress/string-cons-tower.html:
+        * js/regress/string-equality.html:
+        * js/regress/string-get-by-val-big-char.html:
+        * js/regress/string-get-by-val-out-of-bounds-insane.html:
+        * js/regress/string-get-by-val-out-of-bounds.html:
+        * js/regress/string-get-by-val.html:
+        * js/regress/string-hash.html:
+        * js/regress/string-long-ident-equality.html:
+        * js/regress/string-repeat-arith.html:
+        * js/regress/string-sub.html:
+        * js/regress/string-test.html:
+        * js/regress/string-var-equality.html:
+        * js/regress/structure-hoist-over-transitions.html:
+        * js/regress/switch-char-constant.html:
+        * js/regress/switch-char.html:
+        * js/regress/switch-constant.html:
+        * js/regress/switch-string-basic-big-var.html:
+        * js/regress/switch-string-basic-big.html:
+        * js/regress/switch-string-basic-var.html:
+        * js/regress/switch-string-basic.html:
+        * js/regress/switch-string-big-length-tower-var.html:
+        * js/regress/switch-string-length-tower-var.html:
+        * js/regress/switch-string-length-tower.html:
+        * js/regress/switch-string-short.html:
+        * js/regress/switch.html:
+        * js/regress/tear-off-arguments-simple.html:
+        * js/regress/tear-off-arguments.html:
+        * js/regress/temporal-structure.html:
+        * js/regress/to-int32-boolean.html:
+        * js/regress/undefined-test.html:
+        * js/regress/unprofiled-licm.html:
+        * js/regress/variadic-closure-call-expected.txt: Removed.
+        * js/regress/variadic-closure-call.html: Removed.
+        * js/regress/weird-inlining-const-prop.html:
+        * js/slow-stress: Added.
+        * js/slow-stress/ArrayBuffer-Int8Array-alloc-huge-long-lived-expected.txt: Copied from LayoutTests/js/regress/ArrayBuffer-Int8Array-alloc-huge-long-lived-expected.txt.
+        * js/slow-stress/ArrayBuffer-Int8Array-alloc-huge-long-lived.html: Copied from LayoutTests/js/regress/ArrayBuffer-Int8Array-alloc-huge-long-lived.html.
+        * js/slow-stress/ArrayBuffer-Int8Array-alloc-large-long-lived-fragmented-expected.txt: Copied from LayoutTests/js/regress/ArrayBuffer-Int8Array-alloc-large-long-lived-fragmented-expected.txt.
+        * js/slow-stress/ArrayBuffer-Int8Array-alloc-large-long-lived-fragmented.html: Copied from LayoutTests/js/regress/ArrayBuffer-Int8Array-alloc-large-long-lived-fragmented.html.
+        * js/slow-stress/Int32Array-alloc-huge-expected.txt: Copied from LayoutTests/js/regress/Int32Array-alloc-huge-expected.txt.
+        * js/slow-stress/Int32Array-alloc-huge-long-lived-expected.txt: Copied from LayoutTests/js/regress/Int32Array-alloc-huge-long-lived-expected.txt.
+        * js/slow-stress/Int32Array-alloc-huge-long-lived.html: Copied from LayoutTests/js/regress/Int32Array-alloc-huge-long-lived.html.
+        * js/slow-stress/Int32Array-alloc-huge.html: Copied from LayoutTests/js/regress/Int32Array-alloc-huge.html.
+        * js/slow-stress/Int32Array-alloc-large-long-lived-expected.txt: Copied from LayoutTests/js/regress/Int32Array-alloc-large-long-lived-expected.txt.
+        * js/slow-stress/Int32Array-alloc-large-long-lived.html: Copied from LayoutTests/js/regress/Int32Array-alloc-large-long-lived.html.
+        * js/slow-stress/array-prototype-filter-expected.txt: Copied from LayoutTests/js/regress/array-prototype-filter-expected.txt.
+        * js/slow-stress/array-prototype-filter.html: Copied from LayoutTests/js/regress/array-prototype-filter.html.
+        * js/slow-stress/call-spread-expected.txt: Copied from LayoutTests/js/regress/call-spread-expected.txt.
+        * js/slow-stress/call-spread.html: Copied from LayoutTests/js/regress/call-spread.html.
+        * js/slow-stress/chain-custom-getter-expected.txt: Copied from LayoutTests/js/regress/chain-custom-getter-expected.txt.
+        * js/slow-stress/chain-custom-getter.html: Copied from LayoutTests/js/regress/chain-custom-getter.html.
+        * js/slow-stress/destructuring-arguments-length-expected.txt: Copied from LayoutTests/js/regress/destructuring-arguments-length-expected.txt.
+        * js/slow-stress/destructuring-arguments-length.html: Copied from LayoutTests/js/regress/destructuring-arguments-length.html.
+        * js/slow-stress/emscripten-memops-expected.txt: Copied from LayoutTests/js/regress/emscripten-memops-expected.txt.
+        * js/slow-stress/emscripten-memops.html: Copied from LayoutTests/js/regress/emscripten-memops.html.
+        * js/slow-stress/fold-strict-eq-expected.txt: Copied from LayoutTests/js/regress/fold-strict-eq-expected.txt.
+        * js/slow-stress/fold-strict-eq.html: Copied from LayoutTests/js/regress/fold-strict-eq.html.
+        * js/slow-stress/marsaglia-expected.txt: Copied from LayoutTests/js/regress/marsaglia-expected.txt.
+        * js/slow-stress/marsaglia.html: Copied from LayoutTests/js/regress/marsaglia.html.
+        * js/slow-stress/nested-function-parsing-random-expected.txt: Copied from LayoutTests/js/regress/nested-function-parsing-random-expected.txt.
+        * js/slow-stress/nested-function-parsing-random.html: Copied from LayoutTests/js/regress/nested-function-parsing-random.html.
+        * js/slow-stress/new-spread-expected.txt: Copied from LayoutTests/js/regress/new-spread-expected.txt.
+        * js/slow-stress/new-spread.html: Copied from LayoutTests/js/regress/new-spread.html.
+        * js/slow-stress/proto-custom-getter-expected.txt: Copied from LayoutTests/js/regress/proto-custom-getter-expected.txt.
+        * js/slow-stress/proto-custom-getter.html: Copied from LayoutTests/js/regress/proto-custom-getter.html.
+        * js/slow-stress/script-tests: Added.
+        * js/slow-stress/script-tests/ArrayBuffer-Int8Array-alloc-huge-long-lived.js: Copied from LayoutTests/js/regress/script-tests/ArrayBuffer-Int8Array-alloc-huge-long-lived.js.
+        * js/slow-stress/script-tests/ArrayBuffer-Int8Array-alloc-large-long-lived-fragmented.js: Copied from LayoutTests/js/regress/script-tests/ArrayBuffer-Int8Array-alloc-large-long-lived-fragmented.js.
+        * js/slow-stress/script-tests/Int32Array-alloc-huge-long-lived.js: Copied from LayoutTests/js/regress/script-tests/Int32Array-alloc-huge-long-lived.js.
+        * js/slow-stress/script-tests/Int32Array-alloc-huge.js: Copied from LayoutTests/js/regress/script-tests/Int32Array-alloc-huge.js.
+        * js/slow-stress/script-tests/Int32Array-alloc-large-long-lived.js: Copied from LayoutTests/js/regress/script-tests/Int32Array-alloc-large-long-lived.js.
+        * js/slow-stress/script-tests/array-prototype-filter.js: Copied from LayoutTests/js/regress/script-tests/array-prototype-filter.js.
+        * js/slow-stress/script-tests/call-spread.js: Copied from LayoutTests/js/regress/script-tests/call-spread.js.
+        * js/slow-stress/script-tests/chain-custom-getter.js: Copied from LayoutTests/js/regress/script-tests/chain-custom-getter.js.
+        * js/slow-stress/script-tests/destructuring-arguments-length.js: Copied from LayoutTests/js/regress/script-tests/destructuring-arguments-length.js.
+        * js/slow-stress/script-tests/emscripten-memops.js: Copied from LayoutTests/js/regress/script-tests/emscripten-memops.js.
+        * js/slow-stress/script-tests/fold-strict-eq.js: Copied from LayoutTests/js/regress/script-tests/fold-strict-eq.js.
+        * js/slow-stress/script-tests/marsaglia.js: Copied from LayoutTests/js/regress/script-tests/marsaglia.js.
+        * js/slow-stress/script-tests/nested-function-parsing-random.js: Copied from LayoutTests/js/regress/script-tests/nested-function-parsing-random.js.
+        * js/slow-stress/script-tests/new-spread.js: Copied from LayoutTests/js/regress/script-tests/new-spread.js.
+        * js/slow-stress/script-tests/proto-custom-getter.js: Copied from LayoutTests/js/regress/script-tests/proto-custom-getter.js.
+        * js/slow-stress/script-tests/simple-custom-getter.js: Copied from LayoutTests/js/regress/script-tests/simple-custom-getter.js.
+        * js/slow-stress/script-tests/variadic-closure-call.js: Copied from LayoutTests/js/regress/script-tests/variadic-closure-call.js.
+        * js/slow-stress/simple-custom-getter-expected.txt: Copied from LayoutTests/js/regress/simple-custom-getter-expected.txt.
+        * js/slow-stress/simple-custom-getter.html: Copied from LayoutTests/js/regress/simple-custom-getter.html.
+        * js/slow-stress/variadic-closure-call-expected.txt: Copied from LayoutTests/js/regress/variadic-closure-call-expected.txt.
+        * js/slow-stress/variadic-closure-call.html: Copied from LayoutTests/js/regress/variadic-closure-call.html.
+        * resources/regress-post.js: Copied from LayoutTests/js/regress/resources/regress-post.js.
+        * resources/regress-pre.js: Copied from LayoutTests/js/regress/resources/regress-pre.js.
+
+2014-04-04  Mark Lam  <mark.lam@apple.com>
+
+        Date object needs to check for ES5 15.9.1.14 TimeClip limit.
+        <https://webkit.org/b/131248>
+
+        Reviewed by Mark Hahnenberg.
+
+        * js/regress-131248-expected.txt: Added.
+        * js/regress-131248.html: Added.
+        * js/script-tests/regress-131248.js: Added.
+        (testDateFromSetDateAdjustement):
+        (testDateFromSetTimeWithMilliseconds):
+        (testDateFromString):
+
+2014-04-07  Sergio Villar Senin  <svillar@igalia.com>
+
+        Unreviewed gardening for GTK.
+
+        Removed tests that have been actually passing in both release and
+        debug bots for some time.
+
+        * platform/gtk-wk2/TestExpectations:
+        * platform/gtk/TestExpectations:
+
+2014-04-07  Sergio Villar Senin  <svillar@igalia.com>
+
+        Unreviewed update of GTK expectations.
+
+        Canvas composite tests with alpha are not working.
+
+        * platform/gtk/TestExpectations:
+
+2014-04-07  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [EFL] Turn on ENABLE_MEDIA_CONTROLS_SCRIPT
+        https://bugs.webkit.org/show_bug.cgi?id=131257
+
+        Reviewed by Gyuyoung Kim.
+
+        Rebased tests.
+
+        * platform/efl/TestExpectations:
+        * platform/efl/media/audio-controls-rendering-expected.png:
+        * platform/efl/media/audio-controls-rendering-expected.txt:
+        * platform/efl/media/controls-after-reload-expected.png:
+        * platform/efl/media/controls-after-reload-expected.txt:
+        * platform/efl/media/controls-strict-expected.png:
+        * platform/efl/media/controls-strict-expected.txt:
+        * platform/efl/media/controls-styling-expected.png:
+        * platform/efl/media/controls-styling-expected.txt:
+        * platform/efl/media/controls-without-preload-expected.png:
+        * platform/efl/media/controls-without-preload-expected.txt:
+
+2014-04-07  Sergio Villar Senin  <svillar@igalia.com>
+
+        Unreviewed gardening.
+
+        Updated expectations for GTK. Added some more failing AX tests.
+
+        * platform/gtk-wk2/TestExpectations:
+
+2014-04-07  Sergio Villar Senin  <svillar@igalia.com>
+
+        Unreviewed gardening.
+
+        Updated expectations for GTK. Added some failing AX tests.
+
+        * platform/gtk-wk2/TestExpectations:
+
+2014-04-06  Mihnea Ovidenie  <mihnea@adobe.com>
+
+        [CSSRegions] Use RenderRegion::isValid() before using a region
+        https://bugs.webkit.org/show_bug.cgi?id=131232
+
+        Reviewed by Andreas Kling.
+
+        Adjust test expectation now that an invalid region is not unnecessary repainted.
+
+        * fast/regions/repaint/invalid-region-repaint-crash-expected.txt:
+
+2014-04-06  Darin Adler  <darin@apple.com>
+
+        Refactor post-attach and HTMLObjectElement-related code
+        https://bugs.webkit.org/show_bug.cgi?id=131282
+
+        Reviewed by Antti Koivisto.
+
+        * svg/custom/object-no-size-attributes-expected.txt: Removed expectation of an empty text
+        renderer from the render tree.
+        * svg/custom/object-no-size-attributes.xhtml: Restructured the source so there is no text
+        to render. Without this, we were seeing two text renderers due to the loading timing change.
+
+2014-04-05  Dirk Schulze  <krit@webkit.org>
+
+        Canvas strokeText and fillText with SourceIn, DestinationIn, SourceOut, DestinationAtop and Copy have errors
+        https://bugs.webkit.org/show_bug.cgi?id=66766
+
+        Reviewed by Andreas Kling.
+
+        330 tests check compositing on Canvas with text.
+
+        * fast/canvas/canvas-composite-text-alpha-expected.txt: Added.
+        * fast/canvas/canvas-composite-text-alpha.html: Added.
+
+2014-04-05  Dirk Schulze  <krit@webkit.org>
+
+        Canvas stroke and strokeRect with SourceIn, DestinationIn, SourceOut, DestinationAtop and Copy have errors
+        https://bugs.webkit.org/show_bug.cgi?id=66762
+
+        Reviewed by Andreas Kling.
+
+        330 tests based on canvas-composite-alpha to test correct compositing behavior with
+        strokeRect() and stroke().
+
+        * fast/canvas/canvas-composite-stroke-alpha-expected.txt: Added.
+        * fast/canvas/canvas-composite-stroke-alpha.html: Added.
+
+2014-04-05  Jeongeun Kim  <je_julie.kim@samsung.com>
+
+        bad values from HTMLImageElement x and y attributes (CSSOM-View)
+        https://bugs.webkit.org/show_bug.cgi?id=130308
+
+        Reviewed by Simon Fraser.
+
+        According to CSSOM-View, ‘interface HTMLImageElement’,
+        The x attribute must return the x-coordinate.
+        If style is not updated when x() is called, it can’t return anything.
+        Style and layout should be done before getting value for x() and y(). 
+
+        * cssom/cssom-view-img-attributes-001-expected.txt: Added.
+        * cssom/cssom-view-img-attributes-001.html: Added.
+
+2014-04-05  Alexey Proskuryakov  <ap@apple.com>
+
+        WebProcess freezes after fast/forms/form-associated-element-crash3.html test
+        https://bugs.webkit.org/show_bug.cgi?id=122130
+
+        fast/forms/form-associated-element-crash.html often times out on Mavericks WK1
+        https://bugs.webkit.org/show_bug.cgi?id=124593
+
+        With underlying bug having been fixed in OS X 10.9.2, removing expectations
+        for form-associated-element tests that were affected by it.
+
+        I'm not sure if Mountain Lion was affected, let's see if tests start to fail there.
+
+        * platform/mac-wk2/TestExpectations:
+        * platform/mac/TestExpectations:
+        * platform/wk2/TestExpectations:
+
+2014-04-04  James Craig  <jcraig@apple.com>
+
+        AX: supportsARIAExpanded should always return true for a few roles: combobox, disclosure.
+        https://bugs.webkit.org/show_bug.cgi?id=129787
+
+        Reviewed by Chris Fleizach.
+
+        * inspector-protocol/dom/getAccessibilityPropertiesForNode-expected.txt:
+        * inspector-protocol/dom/getAccessibilityPropertiesForNode.html:
+
+2014-04-04  Zoltan Horvath  <zoltan@webkit.org>
+
+        [CSS Shapes] polygon y-value calc() args serialize incorrectly
+        https://bugs.webkit.org/show_bug.cgi?id=129842
+
+        Reviewed by Bem Jones-Bey.
+
+        * fast/shapes/parsing/parsing-shape-outside-expected.txt:
+        * fast/shapes/parsing/parsing-test-utils.js:
+
+2014-04-04  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Unreviewed gardening. Mark a flakey test that is failing intermittenly in pixel tests.
+
+        * platform/mac/TestExpectations:
+        Mark svg/as-image/svg-as-image-canvas.html as flakey.
+
+2014-04-04  Ion Rosca  <rosca@adobe.com>
+
+        [CSS Blending] Add compositing reason for isolation.
+        https://bugs.webkit.org/show_bug.cgi?id=131153
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector-protocol/layers/layers-blending-compositing-reasons-expected.txt: Added.
+        * inspector-protocol/layers/layers-blending-compositing-reasons.html: Added.
+
+2014-04-04  Alexey Proskuryakov  <ap@apple.com>
+
+        REGRESSION (r166615): Pressing return doesn’t submit search term at bing.com
+        https://bugs.webkit.org/show_bug.cgi?id=131212
+        <rdar://problem/16521788>
+
+        Reviewed by Dan Bernstein.
+
+        * fast/forms/submit-while-you-submit-expected.txt: Added.
+        * fast/forms/submit-while-you-submit.html: Added.
+
+2014-04-04  Brent Fulgham  <bfulgham@apple.com>
+
+        Unreviewed test fix. Rebaseline Mountain Lion scrolling tests
+        after switching to high-resolution continuous scroll output.
+
+        * platform/mac-mountainlion/fast/scrolling: Added.
+        * platform/mac-mountainlion/fast/scrolling/scroll-div-latched-mainframe-expected.txt: Added.
+        * platform/mac-mountainlion/fast/scrolling/scroll-iframe-latched-mainframe-expected.txt: Added.
+        * platform/mac-mountainlion/fast/scrolling/scroll-select-latched-mainframe-expected.txt: Added.
+
+2014-04-04  Bem Jones-Bey  <bjonesbe@adobe.com>
+
+        [CSS Shapes] shape-margin in percentage units always computes to 0px
+        https://bugs.webkit.org/show_bug.cgi?id=130369
+
+        Reviewed by Andreas Kling.
+
+        Fix parsing test to understand that percentages are allowed for
+        shape-margin. Also add the layout test from Rebecca Hauck.
+
+        * fast/shapes/parsing/parsing-shape-margin-expected.txt:
+        * fast/shapes/parsing/parsing-test-utils.js:
+        * fast/shapes/shape-outside-floats/shape-outside-floats-shape-margin-percent-expected.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-shape-margin-percent.html: Added.
+
+2014-04-04  Zoltan Horvath  <zoltan@webkit.org>
+
+        [CSS Shapes] Remove outside-shape CSS value
+        https://bugs.webkit.org/show_bug.cgi?id=131201
+
+        Reviewed by Bem Jones-Bey.
+
+        * fast/shapes/parsing/parsing-shape-outside-expected.txt:
+        * fast/shapes/parsing/parsing-shape-outside.html:
+
+2014-04-04  Dirk Schulze  <krit@webkit.org>
+
+        Gradient offsets are off if compositing operator != source-over
+        https://bugs.webkit.org/show_bug.cgi?id=129791
+
+        Reviewed by Andreas Kling.
+
+        Test that the gradient space maps correctly to context space after
+        applying compositing mode.
+
+        * fast/canvas/canvas-gradient-on-compositing-expected.txt: Added.
+        * fast/canvas/canvas-gradient-on-compositing.html: Added.
+        * fast/canvas/script-tests/canvas-gradient-on-compositing.js: Added.
+        (dataToArray):
+        (getPixel):
+        (pixelShouldBe):
+
+2014-04-04  Zalan Bujtas  <zalan@apple.com>
+
+        Subpixel rendering: Move background images to device pixel boundaries.
+        https://bugs.webkit.org/show_bug.cgi?id=131144
+
+        Reviewed by Simon Fraser.
+
+        Replace integral snapping with device pixel snapping.
+        Background image geometry calculation uses LayoutUnits and we snap to device pixels right before painting.
+
+        * css3/background/background-repeat-round-auto1-expected.html:
+        * css3/background/background-repeat-round-auto1.html:
+        * css3/background/background-repeat-round-auto2-expected.html:
+        * css3/background/background-repeat-round-auto2.html:
+        * css3/background/background-repeat-round-border-expected.html:
+        * css3/background/background-repeat-round-border.html:
+        * css3/background/background-repeat-round-content-expected.html:
+        * css3/background/background-repeat-round-content.html:
+        * css3/background/background-repeat-space-content-expected.html:
+        * css3/background/background-repeat-space-content.html:
+        * css3/background/background-repeat-space-padding-expected.html:
+        * css3/background/background-repeat-space-padding.html:
+        * css3/masking/mask-repeat-round-auto1-expected.html:
+        * css3/masking/mask-repeat-round-auto1.html:
+        * css3/masking/mask-repeat-round-auto2-expected.html:
+        * css3/masking/mask-repeat-round-auto2.html:
+        * css3/masking/mask-repeat-round-border-expected.html:
+        * css3/masking/mask-repeat-round-border.html:
+        * css3/masking/mask-repeat-round-content-expected.html:
+        * css3/masking/mask-repeat-round-content.html:
+        * css3/masking/mask-repeat-space-content-expected.html:
+        * css3/masking/mask-repeat-space-content.html:
+        * css3/masking/mask-repeat-space-padding-expected.html:
+        * css3/masking/mask-repeat-space-padding.html:
+        * fast/backgrounds/hidpi-bitmap-background-on-subpixel-position-expected.html: Added.
+        * fast/backgrounds/hidpi-bitmap-background-on-subpixel-position.html: Added.
+        * fast/backgrounds/hidpi-bitmap-background-origin-on-subpixel-position-expected.html: Added.
+        * fast/backgrounds/hidpi-bitmap-background-origin-on-subpixel-position.html: Added.
+        * fast/backgrounds/hidpi-bitmap-background-repeat-on-subpixel-position-expected.html: Added.
+        * fast/backgrounds/hidpi-bitmap-background-repeat-on-subpixel-position.html: Added.
+        * fast/backgrounds/hidpi-generated-gradient-background-on-subpixel-position-expected.html: Added.
+        * fast/backgrounds/hidpi-generated-gradient-background-on-subpixel-position.html: Added.
+        * fast/backgrounds/resources/black25x25.png: Added.
+
+2014-04-04  Mihnea Ovidenie  <mihnea@adobe.com>
+
+        [CSSRegions] Region's behaviour not updated when becoming valid from invalid
+        https://bugs.webkit.org/show_bug.cgi?id=131211
+
+        Reviewed by Andrei Bucur.
+
+        Add tests for auto-height and region styling behaviour.
+
+        * fast/regions/auto-size/autoheight-region-valid-from-invalid-expected.html: Added.
+        * fast/regions/auto-size/autoheight-region-valid-from-invalid.html: Added.
+        * fast/regions/region-styling/region-withstyling-valid-from-invalid-expected.html: Added.
+        * fast/regions/region-styling/region-withstyling-valid-from-invalid.html: Added.
+
+2014-04-04  Sergio Villar Senin  <svillar@igalia.com>
+
+        Unreviewed GTK gardening.
+
+        Updated expectations for tests crashing in Debug bots.
+
+        * platform/gtk-wk1/TestExpectations:
+        * platform/gtk-wk2/TestExpectations:
+        * platform/gtk/TestExpectations:
+
+2014-04-03  Joseph Pecoraro  <pecoraro@apple.com>
+
+        compositing/tiling/rotated-tiled-* tests failing on bots
+        https://bugs.webkit.org/show_bug.cgi?id=131207
+
+        Unreviewed rebaseline of tests after r166748.
+
+        * platform/mac/compositing/tiling/rotated-tiled-clamped-expected.txt:
+        * platform/mac/compositing/tiling/rotated-tiled-preserve3d-clamped-expected.txt:
+
+2014-04-03  Simon Fraser  <simon.fraser@apple.com>
+
+        Rebaseline some tests after r166748. These tests now correctly
+        report a contentsScale.
+
+        * platform/mac-wk2/compositing/tiling/rotated-tiled-clamped-expected.txt:
+        * platform/mac-wk2/compositing/tiling/rotated-tiled-preserve3d-clamped-expected.txt:
+        * platform/mac-wk2/compositing/tiling/tile-cache-zoomed-expected.txt:
+        * platform/mac-wk2/tiled-drawing/tile-size-slow-zoomed-expected.txt:
+        * platform/mac-wk2/tiled-drawing/tiled-drawing-zoom-expected.txt:
+        * platform/mac-wk2/tiled-drawing/tiled-drawing-zoom-scrolled-expected.txt:
+
+2014-04-03  Dirk Schulze  <krit@webkit.org>
+
+        [CG] Canvas lineDashOffset does not handle negative numbers correctly
+        https://bugs.webkit.org/show_bug.cgi?id=80560
+
+        Reviewed by Dean Jackson.
+
+        Test correct rendering of negative offset for Canvas dash arrays.
+
+        * fast/canvas/canvas-negative-lineDashOffset-expected.txt: Added.
+        * fast/canvas/canvas-negative-lineDashOffset.html: Added.
+        * fast/canvas/script-tests/canvas-negative-lineDashOffset.js: Added.
+        (dataToArray):
+        (getPixel):
+        (pixelShouldBe):
+
+2014-04-03  David Hyatt  <hyatt@apple.com>
+
+        Continuations casting issue.
+        https://bugs.webkit.org/show_bug.cgi?id=130057
+        <rdar://problem/16283406>
+
+        Reviewed by Simon Fraser.
+
+        * fast/block/continuation-crash-expected.txt: Added.
+        * fast/block/continuation-crash.html: Added.
+
+2014-04-03  Zoltan Horvath  <zoltan@webkit.org>
+
+        [WebInspector] inspector/dom/highlight-shape-outside-margin.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=131126
+
+        Reviewed by Timothy Hatcher.
+
+        I updated the test, so it works with the new testing framework. I included the shape path results in the test,
+        so we won't run into rounding problems, and we don't have that big test set, which would require an expected
+        result generation. We can add it later, if we extend the test set. The logic is similar to the non margin test case.
+
+        * TestExpectations:
+        * inspector/dom/highlight-shape-outside-margin-expected.txt:
+        * inspector/dom/highlight-shape-outside-margin.html:
+
+2014-04-03  Bem Jones-Bey  <bjonesbe@adobe.com>
+
+        [CSS Shapes] CRASH with calc() value args in inset round
+        https://bugs.webkit.org/show_bug.cgi?id=129816
+
+        Reviewed by Andreas Kling.
+
+        Simple test to make sure that using calc in the round argument of an
+        inset doesn't cause a crash.
+
+        * fast/shapes/shape-outside-floats/shape-outside-inset-round-calc-crash-expected.txt: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-inset-round-calc-crash.html: Added.
+
+2014-04-03  Javier Fernandez  <jfernandez@igalia.com>
+
+        [CSS Grid Layout] Make sure grid element's shrink-to-fit behavior is correct
+        https://bugs.webkit.org/show_bug.cgi?id=103473
+
+        Reviewed by Sergio Villar Senin.
+
+        Added a new Layout Test to verify the shrink-to-fit behavior works as expected
+        for out-of-flow positioned grid elements.
+
+        * fast/css-grid-layout/grid-element-shrink-to-fit-expected.html: Added.
+        * fast/css-grid-layout/grid-element-shrink-to-fit.html: Added.
+
+2014-03-27  Sergio Villar Senin  <svillar@igalia.com>
+
+        [CSS Grid Layout] <string> not allowed in grid-{area | row | column} syntax
+        https://bugs.webkit.org/show_bug.cgi?id=129713
+
+        Reviewed by Darin Adler.
+
+        Replaced <string> by <custom-ident> in the tests. Also added a new
+        one to check that children are properly layed out after changes in
+        the grid line names.
+
+        * fast/css-grid-layout/grid-container-change-named-grid-lines-recompute-child-expected.txt: Added.
+        * fast/css-grid-layout/grid-container-change-named-grid-lines-recompute-child.html: Added.
+        * fast/css-grid-layout/grid-item-area-get-set.html:
+        * fast/css-grid-layout/grid-item-bad-named-area-auto-placement.html:
+        * fast/css-grid-layout/grid-item-bad-resolution-double-span.html:
+        * fast/css-grid-layout/grid-item-column-row-get-set-expected.txt:
+        * fast/css-grid-layout/grid-item-column-row-get-set.html:
+        * fast/css-grid-layout/grid-item-end-after-get-set-expected.txt:
+        * fast/css-grid-layout/grid-item-end-after-get-set.html:
+        * fast/css-grid-layout/grid-item-named-grid-area-resolution.html:
+        * fast/css-grid-layout/grid-item-named-grid-line-resolution-expected.txt:
+        * fast/css-grid-layout/grid-item-named-grid-line-resolution.html:
+        * fast/css-grid-layout/grid-item-negative-position-resolution.html:
+        * fast/css-grid-layout/grid-item-position-changed-dynamic.html:
+        * fast/css-grid-layout/grid-item-start-before-get-set-expected.txt:
+        * fast/css-grid-layout/grid-item-start-before-get-set.html:
+
+2014-04-03  Antti Koivisto  <antti@apple.com>
+
+        Crash after mutating after pseudo style
+        https://bugs.webkit.org/show_bug.cgi?id=130881
+
+        Reviewed by Andreas Kling.
+
+        * fast/css/pseudo-after-crash-expected.txt: Added.
+        * fast/css/pseudo-after-crash.html: Added.
+
+2014-04-02  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: AccessibilityObject::children() returns invalid results sometimes
+        https://bugs.webkit.org/show_bug.cgi?id=130563
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector-protocol/dom/getAccessibilityPropertiesForNode-expected.txt:
+
+2014-04-02  Alexey Proskuryakov  <ap@apple.com>
+
+        REGRESSION (r166144): fast/preloader/document-write.html is very flaky
+        https://bugs.webkit.org/show_bug.cgi?id=130942
+
+        * platform/mac/TestExpectations: Removing test expectation, because the offending
+        revision was rolled out.
+
+2014-04-02  Benjamin Poulain  <benjamin@webkit.org>
+
+        CSS JIT: the adjacent position is never reset
+        https://bugs.webkit.org/show_bug.cgi?id=131145
+
+        Reviewed by Andreas Kling.
+
+        * fast/selectors/multiple-adjacent-chain-without-adjacent-tail-expected.txt: Added.
+        * fast/selectors/multiple-adjacent-chain-without-adjacent-tail.html: Added.
+
 2014-04-02  Stephanie Lewis  <slewis@apple.com>
 
         Roll out http://trac.webkit.org/changeset/166144
@@ -1854,7 +3396,7 @@
         Crash in RenderBlock::addChildIgnoringAnonymousColumnBlocks.
         https://bugs.webkit.org/show_bug.cgi?id=129948
         <rdar://problem/16074072>
-        
+
         Reviewed by Simon Fraser.
 
         * fast/multicol/multicol-li-crash-expected.txt: Added.

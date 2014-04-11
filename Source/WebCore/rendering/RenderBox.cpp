@@ -210,16 +210,6 @@ LayoutRect RenderBox::borderBoxRectInRegion(RenderRegion* region, RenderBoxRegio
     return LayoutRect(0, logicalLeft, width(), logicalWidth);
 }
 
-void RenderBox::clearRenderBoxRegionInfo()
-{
-    if (isRenderFlowThread())
-        return;
-
-    RenderFlowThread* flowThread = flowThreadContainingBlock();
-    if (flowThread)
-        flowThread->removeRenderBoxRegionInfo(this);
-}
-
 void RenderBox::willBeDestroyed()
 {
     if (frame().eventHandler().autoscrollRenderer() == this)
@@ -1623,7 +1613,7 @@ bool RenderBox::repaintLayerRectsForImage(WrappedImagePtr image, const FillLayer
                 return true;
             }
             
-            IntRect rectToRepaint = geometry.destRect();
+            LayoutRect rectToRepaint = geometry.destRect();
             bool shouldClipToLayer = true;
 
             // If this is the root background layer, we may need to extend the repaintRect if the FrameView has an
@@ -4437,7 +4427,11 @@ bool RenderBox::hasUnsplittableScrollingOverflow() const
 
 bool RenderBox::isUnsplittableForPagination() const
 {
-    return isReplaced() || hasUnsplittableScrollingOverflow() || (parent() && isWritingModeRoot()) || isRenderNamedFlowFragmentContainer();
+    return isReplaced()
+        || hasUnsplittableScrollingOverflow()
+        || (parent() && isWritingModeRoot())
+        || isRenderNamedFlowFragmentContainer()
+        || fixedPositionedWithNamedFlowContainingBlock();
 }
 
 LayoutUnit RenderBox::lineHeight(bool /*firstLine*/, LineDirectionMode direction, LinePositionMode /*linePositionMode*/) const
@@ -4553,13 +4547,12 @@ LayoutRect RenderBox::overflowRectForPaintRejection(RenderNamedFlowFragment* nam
     // cause the paint rejection algorithm to prevent them from painting when using different width regions.
     // e.g. an absolutely positioned box with bottom:0px and right:0px would have it's frameRect.x relative
     // to the flow thread, not the last region (in which it will end up because of bottom:0px)
-    if (namedFlowFragment) {
-        if (RenderFlowThread* flowThread = namedFlowFragment->flowThread()) {
-            RenderRegion* startRegion = nullptr;
-            RenderRegion* endRegion = nullptr;
-            if (flowThread->getRegionRangeForBox(this, startRegion, endRegion))
-                overflowRect.unite(namedFlowFragment->visualOverflowRectForBox(this));
-        }
+    if (namedFlowFragment && namedFlowFragment->isValid()) {
+        RenderFlowThread* flowThread = namedFlowFragment->flowThread();
+        RenderRegion* startRegion = nullptr;
+        RenderRegion* endRegion = nullptr;
+        if (flowThread->getRegionRangeForBox(this, startRegion, endRegion))
+            overflowRect.unite(namedFlowFragment->visualOverflowRectForBox(this));
     }
     
     if (!m_overflow || !usesCompositedScrolling())

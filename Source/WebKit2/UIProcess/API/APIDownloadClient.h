@@ -48,10 +48,10 @@ public:
     virtual void didStart(WebKit::WebContext*, WebKit::DownloadProxy*) { }
     virtual void didReceiveAuthenticationChallenge(WebKit::WebContext*, WebKit::DownloadProxy*, WebKit::AuthenticationChallengeProxy*) { }
     virtual void didReceiveResponse(WebKit::WebContext*, WebKit::DownloadProxy*, const WebCore::ResourceResponse&) { }
-    virtual void didReceiveData(WebKit::WebContext*, WebKit::DownloadProxy*, uint64_t length) { }
-    virtual bool shouldDecodeSourceDataOfMIMEType(WebKit::WebContext*, WebKit::DownloadProxy*, const WTF::String& mimeType) { return true; }
-    virtual WTF::String decideDestinationWithSuggestedFilename(WebKit::WebContext*, WebKit::DownloadProxy*, const WTF::String& filename, bool& allowOverwrite) { return {}; }
-    virtual void didCreateDestination(WebKit::WebContext*, WebKit::DownloadProxy*, const WTF::String& path) { }
+    virtual void didReceiveData(WebKit::WebContext*, WebKit::DownloadProxy*, uint64_t) { }
+    virtual bool shouldDecodeSourceDataOfMIMEType(WebKit::WebContext*, WebKit::DownloadProxy*, const WTF::String&) { return true; }
+    virtual WTF::String decideDestinationWithSuggestedFilename(WebKit::WebContext*, WebKit::DownloadProxy*, const WTF::String&, bool&) { return { }; }
+    virtual void didCreateDestination(WebKit::WebContext*, WebKit::DownloadProxy*, const WTF::String&) { }
     virtual void didFinish(WebKit::WebContext*, WebKit::DownloadProxy*) { }
     virtual void didFail(WebKit::WebContext*, WebKit::DownloadProxy*, const WebCore::ResourceError&) { }
     virtual void didCancel(WebKit::WebContext*, WebKit::DownloadProxy*) { }
