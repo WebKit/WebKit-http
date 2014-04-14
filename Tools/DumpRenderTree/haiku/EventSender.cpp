@@ -253,6 +253,8 @@ static JSValueRef mouseUpCallback(JSContextRef context, JSObjectRef function, JS
             return JSValueMakeUndefined(context);
     }
 
+    button = translateMouseButtonNumber(button);
+
     gLastClickPositionX = gLastMousePositionX;
     gLastClickPositionY = gLastMousePositionY;
     gLastClickButton = gButtonCurrentlyDown;
@@ -262,7 +264,7 @@ static JSValueRef mouseUpCallback(JSContextRef context, JSObjectRef function, JS
     unsigned modifiers = argumentCount >= 2 ? modifiersFromJSValue(context, arguments[1]) : 0;
     BMessage* eventInfo = new BMessage(B_MOUSE_UP);
     eventInfo->AddInt32("modifiers", modifiers);
-    eventInfo->AddInt32("previous buttons", gLastClickButton);
+    eventInfo->AddInt32("previous buttons", button);
     eventInfo->AddPoint("where", BPoint(gLastMousePositionX, gLastMousePositionY));
     eventInfo->AddPoint("be:view_where", BPoint(gLastMousePositionX, gLastMousePositionY));
     feedOrQueueMouseEvent(eventInfo, FeedQueuedEvents);
