@@ -64,8 +64,7 @@ MediaBuffer::MediaBuffer()
 
 ssize_t MediaBuffer::WriteAt(off_t position, const void* buffer, size_t size)
 {
-    ASSERT(fWritePointer == position);
-    ssize_t written = BMallocIO::WriteAt(fWritePointer, buffer, size);
+    ssize_t written = BMallocIO::WriteAt(position, buffer, size);
     if (written > 0)
         fWritePointer = std::max(fWritePointer, position + written);
     return written;
@@ -190,8 +189,7 @@ void MediaPlayerPrivate::playCallback(void* cookie, void* buffer,
         // Notify that we're done playing...
         BMessenger(player).SendMessage('ends');
         return;
-    } else
-        BMessenger(player).SendMessage('prog');
+    }
 
     if (player->m_videoTrack) {
         if (player->m_videoTrack->CurrentTime() 
@@ -334,13 +332,15 @@ void MediaPlayerPrivate::paint(GraphicsContext* context, const IntRect& r)
     if (!m_player->visible())
         return;
 
-    if (m_frameBuffer)
+    if (m_frameBuffer) {
+        context->platformContext()->SetDrawingMode(B_OP_OVER);
         context->platformContext()->DrawBitmap(m_frameBuffer, r);
+    }
 }
 
 // #pragma mark - BUrlProtocolListener
 
-void MediaPlayerPrivate::DataReceived(BUrlRequest*, const char* data, off_t position, ssize_t size)
+void MediaPlayerPrivate::DataReceived(BUrlRequest* r, const char* data, off_t position, ssize_t size)
 {
     m_cache->WriteAt(position, data, size);
 }
