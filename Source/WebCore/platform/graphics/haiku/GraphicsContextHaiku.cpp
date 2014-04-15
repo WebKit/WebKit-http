@@ -100,7 +100,6 @@ public:
             accumulatedOrigin.x = -frameInParent.left;
             accumulatedOrigin.y = -frameInParent.top;
             view->SetOrigin(previous->accumulatedOrigin + accumulatedOrigin);
-            view->SetScale(previous->view->Scale());
             view->SetPenSize(previous->view->PenSize());
         }
         ~Layer()
@@ -876,12 +875,12 @@ void GraphicsContext::setPlatformCompositeOperation(CompositeOperator op, BlendM
 AffineTransform GraphicsContext::getCTM(IncludeDeviceScale) const
 {
     // TODO: Maybe this needs to use the accumulated transform?
-    AffineTransform matrix;
+    BAffineTransform t = m_data->view()->Transform();
+    AffineTransform matrix(t.sx, t.shy, t.shx, t.sy, t.tx, t.ty);
+    
+    // TODO the translation would better be handled directly in the matrix?
     BPoint origin = m_data->view()->Origin();
     matrix.translate(origin.x, origin.y);
-    matrix.scale(m_data->view()->Scale());
-
-    // TODO also handle view()->Transform()
 
     return matrix;
 }
@@ -895,6 +894,7 @@ void GraphicsContext::translate(float x, float y)
     // what WebKit expects. Find a way to cancel that. See GradientImage.cpp
     // (GradientImage::draw) for a place where this problem is visible.
 
+    // TODO the translation would better be handled directly in the matrix?
     m_data->m_currentLayer->accumulatedOrigin.x += x;
     m_data->m_currentLayer->accumulatedOrigin.y += y;
     BPoint origin(m_data->view()->Origin());
@@ -918,8 +918,9 @@ void GraphicsContext::scale(const FloatSize& size)
     if (paintingDisabled())
         return;
 
-    // NOTE: Non-uniform scaling not supported on Haiku, yet.
-    m_data->view()->SetScale((size.width() + size.height()) / 2);
+    BAffineTransform current = m_data->view()->Transform();
+    current.ScaleBy(size.width(), size.height());
+    m_data->view()->SetTransform(current);
 }
 
 void GraphicsContext::concatCTM(const AffineTransform& transform)
