@@ -222,7 +222,7 @@ public:
     bool scrollBy(uint32_t scrollDirection, uint32_t scrollGranularity);
 
     void centerSelectionInVisibleArea();
-    
+
 #if PLATFORM(COCOA)
     void willCommitLayerTree(RemoteLayerTreeTransaction&);
 #endif
@@ -349,6 +349,7 @@ public:
     void windowScreenDidChange(uint64_t);
 
     void scalePage(double scale, const WebCore::IntPoint& origin);
+    void scalePageInViewCoordinates(double scale, WebCore::IntPoint centerInViewCoordinates);
     double pageScaleFactor() const;
 
     void setUseFixedLayout(bool);
@@ -358,7 +359,10 @@ public:
     void listenForLayoutMilestones(uint32_t /* LayoutMilestones */);
 
     void setSuppressScrollbarAnimations(bool);
-
+    
+    void setEnableVerticalRubberBanding(bool);
+    void setEnableHorizontalRubberBanding(bool);
+    
     void setBackgroundExtendsBeyondPage(bool);
 
     void setPaginationMode(uint32_t /* WebCore::Pagination::Mode */);
@@ -700,6 +704,7 @@ public:
     void applicationWillResignActive();
     void applicationWillEnterForeground();
     void applicationDidBecomeActive();
+    void zoomToRect(WebCore::FloatRect, double minimumScale, double maximumScale);
 #endif
 
 #if PLATFORM(GTK) && USE(TEXTURE_MAPPER_GL)
@@ -780,7 +785,7 @@ public:
     void handleTelephoneNumberClick(const String& number, const WebCore::IntPoint&);
 #endif
 
-    void didChangeScrollOffsetForAnyFrame();
+    void didChangeScrollOffsetForFrame(WebCore::Frame*);
 
 private:
     WebPage(uint64_t pageID, const WebPageCreationParameters&);

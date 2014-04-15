@@ -34,13 +34,6 @@
 #include "InternalNamespaceHeaderIncludeDummy.h"
 #include <platform/ExternalNamespaceHeaderIncludeDummy.h>
 
-namespace WebCore {
-class WebThing;
-}
-
-namespace JSC {
-class JSThing;
-}
 
 
 namespace Test {

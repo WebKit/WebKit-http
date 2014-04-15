@@ -57,7 +57,6 @@ class BUrlProtocolHandler;
 #include "GUniquePtrSoup.h"
 #include <libsoup/soup.h>
 #include <wtf/gobject/GRefPtr.h>
-class Frame;
 #endif
 
 #if PLATFORM(COCOA)
@@ -74,6 +73,7 @@ typedef const struct __CFURLStorageSession* CFURLStorageSessionRef;
 // WebCoreResourceLoaderImp which avoids doing work in dealloc).
 
 namespace WebCore {
+
     class ResourceHandleClient;
 
     class ResourceHandleInternal {
@@ -88,7 +88,6 @@ namespace WebCore {
             , m_defersLoading(defersLoading)
             , m_shouldContentSniff(shouldContentSniff)
 #if USE(CFNETWORK)
-            , m_connection(0)
             , m_currentRequest(request)
 #endif
 #if USE(WININET)
@@ -119,6 +118,7 @@ namespace WebCore {
             , m_bodyDataSent(0)
             , m_redirectCount(0)
             , m_previousPosition(0)
+            , m_useAuthenticationManager(true)
 #endif
 #if PLATFORM(COCOA)
             , m_startWhenScheduled(false)
@@ -215,6 +215,7 @@ namespace WebCore {
         SoupSession* soupSession();
         int m_redirectCount;
         size_t m_previousPosition;
+        bool m_useAuthenticationManager;
 #endif
 #if PLATFORM(GTK)
         struct {
@@ -228,6 +229,7 @@ namespace WebCore {
         // It is almost identical to m_currentWebChallenge.nsURLAuthenticationChallenge(), but has a different sender.
         NSURLAuthenticationChallenge *m_currentMacChallenge;
 #endif
+
         AuthenticationChallenge m_currentWebChallenge;
         ResourceHandle::FailureType m_scheduledFailureType;
         Timer<ResourceHandle> m_failureTimer;

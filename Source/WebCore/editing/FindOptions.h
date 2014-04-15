@@ -36,7 +36,8 @@ enum FindOptionFlag {
     TreatMedialCapitalAsWordStart = 1 << 2,
     Backwards = 1 << 3,
     WrapAround = 1 << 4,
-    StartInSelection = 1 << 5
+    StartInSelection = 1 << 5,
+    DoNotRevealSelection = 1 << 6
 };
 
 typedef unsigned char FindOptions;

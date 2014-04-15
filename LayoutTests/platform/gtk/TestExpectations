@@ -215,10 +215,6 @@ webkit.org/b/98942 fast/workers/shared-worker-storagequota-query-usage.html [ Fa
 # GTK doesn't support smart replace.
 webkit.org/b/61661 editing/pasteboard/drag-drop-list.html [ Failure ]
 
-# GStreamer support for audio and video tracks does not exist yet
-webkit.org/b/117039 media/track/audio-track.html [ Skip ]
-webkit.org/b/117039 media/track/video-track.html [ Skip ]
-
 # isProtocolHandlerRegistered() isn't supported yet.
 webkit.org/b/92749 fast/dom/NavigatorContentUtils/is-protocol-handler-registered.html [ Skip ]
 
@@ -304,9 +300,6 @@ webkit.org/b/79203 fast/events/constructors/media-stream-event-constructor.html 
 webkit.org/b/79203 webaudio/mediastreamaudiodestinationnode.html [ Skip ]
 webkit.org/b/79203 webaudio/mediastreamaudiosourcenode.html [ Skip ]
 
-# No CORS support for media elements is implemented yet.
-webkit.org/b/99037 http/tests/security/video-cross-origin-readback.html [ Failure ]
-
 # New test infrastructure required -- need isolated worlds
 webkit.org/b/31508 http/tests/security/isolatedWorld [ Skip ]
 webkit.org/b/31508 plugins/npruntime/overrides-all-properties.html [ Skip ]
@@ -341,13 +334,13 @@ webkit.org/b/100137 fast/media/mq-resolution-dpi-dpcm-warning.html [ Failure ]
 # CSS Device Adaptation is not enabled.
 webkit.org/b/95959 css3/device-adapt [ Skip ]
 
-# No support for exposing in-band text tracks
-webkit.org/b/103771 media/track/track-forced-subtitles-in-band.html [ Timeout Failure ]
-webkit.org/b/103771 media/track/track-in-band.html [ Failure ]
-webkit.org/b/103771 media/track/track-in-band-cues-added-once.html [ Timeout ]
-webkit.org/b/103771 media/track/track-in-band-style.html [ Timeout ]
-webkit.org/b/103771 media/track/track-in-band-legacy-api.html [ Failure ]
-webkit.org/b/103771 media/track/track-in-band-mode.html [ Skip ]
+# No support for MPEG-4 caption support
+webkit.org/b/131546 media/track/track-forced-subtitles-in-band.html [ Timeout Failure ]
+webkit.org/b/131546 media/track/track-in-band.html [ Failure ]
+webkit.org/b/131546 media/track/track-in-band-cues-added-once.html [ Timeout ]
+webkit.org/b/131546 media/track/track-in-band-style.html [ Timeout ]
+webkit.org/b/131546 media/track/track-in-band-legacy-api.html [ Failure ]
+webkit.org/b/131546 media/track/track-in-band-mode.html [ Skip ]
 
 # Require ENABLE(CUSTOM_ELEMENTS) support
 webkit.org/b/110735 fast/dom/custom [ Skip ]
@@ -408,7 +401,9 @@ webkit.org/b/131347 fast/borders/hidpi-simple-hairline-border-painting.html [ Im
 webkit.org/b/131347 fast/layers/hidpi-box-positioned-off-by-one-when-transform-is-present.html [ ImageOnlyFailure ]
 webkit.org/b/131347 fast/repaint/hidpi-absolute-positioned-element-wrong-cliprect-after-move.html [ Failure ]
 webkit.org/b/131347 fast/repaint/hidpi-device-pixel-based-repaint-rect-tracking.html [ Failure ]
-webkit.org/b/131347 svg/custom/hidpi-masking-clipping.svg [ Failure ]
+webkit.org/b/131347 svg/custom/hidpi-masking-clipping.svg [ Failure ImageOnlyFailure Timeout ]
+webkit.org/b/131347 fast/borders/hidpi-border-image-gradient-on-subpixels.html [ ImageOnlyFailure ]
+webkit.org/b/131347 fast/borders/hidpi-rounded-border-on-subpixel-position.html [ ImageOnlyFailure ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Expected failures
@@ -767,7 +762,9 @@ Bug(GTK) fast/workers/storage/transaction-in-transaction-sync.html [ Failure Pas
 Bug(GTK) http/tests/w3c/webperf/approved/navigation-timing/html/test_performance_attributes_exist_in_object.html [ Failure Pass ]
 Bug(GTK) media/video-transformed.html [ Failure Pass ]
 Bug(GTK) media/W3C/audio/networkState/networkState_during_loadstart.html [ Failure Pass ]
-
+webkit.org/b/131533 media/track/track-remove-active-cue-crash.html [ Timeout Pass ]
+webkit.org/b/131534 media/media-ended.html [ Timeout Pass ]
+webkit.org/b/131535 media/audio-mpeg-supported.html [ Timeout Pass ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Flaky tests
@@ -915,6 +912,7 @@ Bug(GTK) fast/forms/select/optgroup-clicking.html [ Timeout ]
 
 Bug(GTK) fast/media/media-query-list-04.html [ Timeout ]
 
+webkit.org/b/131545 media/media-event-listeners.html [ Timeout ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Tests timing out
@@ -1245,8 +1243,6 @@ Bug(GTK) http/tests/misc/redirect-to-external-url.html [ Failure ]
 
 Bug(GTK) http/tests/xmlhttprequest/logout.html [ Failure ]
 
-Bug(GTK) http/tests/xmlhttprequest/cross-origin-no-authorization.html [ Failure ]
-
 Bug(GTK) media/video-size-intrinsic-scale.html [ Failure ]
 
 # eventSender.keyDown call does not get executed from the TestNetscapePlugin
@@ -1488,7 +1484,7 @@ webkit.org/b/80129 fast/frames/flattening/frameset-flattening-advanced.html [ Fa
 webkit.org/b/89663 editing/deleting/delete-3800834-fix.html [ Failure ]
 
 # GTK is moving from the simple toggle button to a menu of tracks
-webkit.org/b/95428 media/video-controls-captions.html [ Failure ]
+webkit.org/b/95428 media/video-controls-captions.html [ Failure Timeout ]
 
 webkit.org/b/98613 css3/masking/clip-path-reference-userSpaceOnUse.html [ ImageOnlyFailure ]
 webkit.org/b/98613 css3/masking/clip-path-reference.html [ ImageOnlyFailure ]
@@ -1779,7 +1775,6 @@ webkit.org/b/103926 media/track/opera/interfaces/TextTrackCue/text.html [ Skip ]
 webkit.org/b/103926 media/track/opera/interfaces/TextTrackCue/vertical.html [ Skip ]
 webkit.org/b/103926 media/track/opera/interfaces/TextTrackCueList/getter.html [ Skip ]
 webkit.org/b/103926 media/track/opera/interfaces/TextTrackList/getter.html [ Skip ]
-webkit.org/b/103926 media/track/opera/interfaces/TextTrackList/onremovetrack.html [ Skip ]
 webkit.org/b/103926 media/track/opera/track/track-element/cloneNode.html [ Skip ]
 webkit.org/b/103926 media/track/opera/track/track-element/src-clear-cues.html [ Skip ]
 webkit.org/b/103926 media/track/opera/track/webvtt/parsing/001.html [ Skip ]
@@ -1810,10 +1805,6 @@ webkit.org/b/107194 http/tests/security/no-indexeddb-from-sandbox.html [ Skip ]
 webkit.org/b/107194 crypto/subtle/rsa-indexeddb.html [ Skip ]
 webkit.org/b/107194 inspector-protocol/indexeddb/basics.html [ Skip ]
 
-# Composite canvas tests with alpha failing.
-webkit.org/b/131303 fast/canvas/canvas-composite-stroke-alpha.html [ Failure ]
-webkit.org/b/131303 fast/canvas/canvas-composite-text-alpha.html [ Failure ]
-
 # Test marked in TestExpectations as failing on non-retina displays, passing on GTK port
 webkit.org/b/129113 fast/multicol/newmulticol/clipping.html [ Pass ]
 
@@ -1821,6 +1812,16 @@ webkit.org/b/129113 fast/multicol/newmulticol/clipping.html [ Pass ]
 webkit.org/b/124349 fast/hidpi/image-srcset-relative-svg-canvas.html [ Pass ]
 
 webkit.org/b/131377 fast/repaint/blend-mode-isolate-stacking-context.html [ Failure Timeout ]
+
+webkit.org/b/131496 accessibility/help-text.html [ Failure ]
+
+webkit.org/b/131498 fast/css/cascade/box-shadow-and-webkit-box-shadow-cascade-order.html [ ImageOnlyFailure ]
+
+webkit.org/b/131501 fast/css3-text/css3-text-decoration/text-decoration-skip/glyph-inside-underline.html [ ImageOnlyFailure ]
+
+webkit.org/b/131540 fast/css3-text/css3-text-decoration/text-decoration-skip/text-decoration-skip-ink-svg.html [ ImageOnlyFailure ]
+
+webkit.org/b/130971 media/track/track-remove-track.html [ Failure Timeout  ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Tests failing

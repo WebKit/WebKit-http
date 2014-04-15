@@ -1152,6 +1152,9 @@ Editor::Editor(Frame& frame)
     , m_editorUIUpdateTimer(this, &Editor::editorUIUpdateTimerFired)
     , m_editorUIUpdateTimerShouldCheckSpellingAndGrammar(false)
     , m_editorUIUpdateTimerWasTriggeredByDictation(false)
+#if ENABLE(TELEPHONE_NUMBER_DETECTION) && !PLATFORM(IOS)
+    , m_telephoneNumberDetectionUpdateTimer(this, &Editor::scanSelectionForTelephoneNumbers)
+#endif
 {
 }
 
@@ -3124,7 +3127,10 @@ bool Editor::findString(const String& target, FindOptions options)
         return false;
 
     m_frame.selection().setSelection(VisibleSelection(resultRange.get(), DOWNSTREAM));
-    m_frame.selection().revealSelection();
+
+    if (!(options & DoNotRevealSelection))
+        m_frame.selection().revealSelection();
+
     return true;
 }
 
@@ -3318,10 +3324,7 @@ void Editor::respondToChangedSelection(const VisibleSelection&, FrameSelection::
         client()->respondToChangedSelection(&m_frame);
 
 #if ENABLE(TELEPHONE_NUMBER_DETECTION) && !PLATFORM(IOS)
-    Vector<RefPtr<Range>> markedRanges;
-    scanSelectionForTelephoneNumbers(markedRanges);
-    if (client())
-        client()->selectedTelephoneNumberRangesChanged(markedRanges);
+    m_telephoneNumberDetectionUpdateTimer.startOneShot(0);
 #endif
 
     setStartNewKillRingSequence(true);
@@ -3337,7 +3340,7 @@ void Editor::respondToChangedSelection(const VisibleSelection&, FrameSelection::
 }
 
 #if ENABLE(TELEPHONE_NUMBER_DETECTION) && !PLATFORM(IOS)
-void Editor::scanSelectionForTelephoneNumbers(Vector<RefPtr<Range>>& markedRanges)
+void Editor::scanSelectionForTelephoneNumbers(Timer<Editor>&)
 {
     if (!TelephoneNumberDetector::isSupported())
         return;
@@ -3347,9 +3350,14 @@ void Editor::scanSelectionForTelephoneNumbers(Vector<RefPtr<Range>>& markedRange
 
     clearDataDetectedTelephoneNumbers();
 
+    Vector<RefPtr<Range>> markedRanges;
+
     RefPtr<Range> selectedRange = m_frame.selection().toNormalizedRange();
-    if (!selectedRange || (selectedRange->startContainer() == selectedRange->endContainer() && selectedRange->startOffset() == selectedRange->endOffset()))
+    if (!selectedRange || (selectedRange->startContainer() == selectedRange->endContainer() && selectedRange->startOffset() == selectedRange->endOffset())) {
+        if (client())
+            client()->selectedTelephoneNumberRangesChanged(markedRanges);
         return;
+    }
 
     // FIXME: This won't work if a phone number spans multiple chunks of text from the perspective of the TextIterator
     // (By a style change, image, line break, etc.)
@@ -3360,6 +3368,9 @@ void Editor::scanSelectionForTelephoneNumbers(Vector<RefPtr<Range>>& markedRange
 
         scanRangeForTelephoneNumbers(*textChunk.range(), textChunk.text(), markedRanges);
     }
+
+    if (client())
+        client()->selectedTelephoneNumberRangesChanged(markedRanges);
 }
 
 void Editor::scanRangeForTelephoneNumbers(Range& range, const StringView& stringView, Vector<RefPtr<Range>>& markedRanges)

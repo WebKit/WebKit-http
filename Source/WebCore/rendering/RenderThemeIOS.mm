@@ -82,6 +82,14 @@ SOFT_LINK_CONSTANT(UIKit, UIContentSizeCategoryDidChangeNotification, CFStringRe
 @implementation WebCoreRenderThemeBundle
 @end
 
+// This is a temporary hack to build on iOS. Should be removed as soon as CT fixes the header files.
+extern const CFStringRef kCTUIFontTextStyleShortHeadline CT_AVAILABLE(10_10, 7_0);
+extern const CFStringRef kCTUIFontTextStyleShortBody CT_AVAILABLE(10_10, 7_0);
+extern const CFStringRef kCTUIFontTextStyleShortSubhead CT_AVAILABLE(10_10, 7_0);
+extern const CFStringRef kCTUIFontTextStyleShortFootnote CT_AVAILABLE(10_10, 7_0);
+extern const CFStringRef kCTUIFontTextStyleShortCaption1 CT_AVAILABLE(10_10, 7_0);
+extern const CFStringRef kCTUIFontTextStyleTallBody CT_AVAILABLE(10_10, 7_0);
+
 namespace WebCore {
 
 const float ControlBaseHeight = 20;
@@ -1216,7 +1224,9 @@ String RenderThemeIOS::mediaControlsScript()
 #if ENABLE(MEDIA_CONTROLS_SCRIPT)
     if (m_mediaControlsScript.isEmpty()) {
         StringBuilder scriptBuilder;
+        scriptBuilder.append([NSString stringWithContentsOfFile:[[NSBundle bundleForClass:[WebCoreRenderThemeBundle class]] pathForResource:@"mediaControlsLocalizedStrings" ofType:@"js"] encoding:NSUTF8StringEncoding error:nil]);
         scriptBuilder.append([NSString stringWithContentsOfFile:[[NSBundle bundleForClass:[WebCoreRenderThemeBundle class]] pathForResource:@"mediaControlsApple" ofType:@"js"] encoding:NSUTF8StringEncoding error:nil]);
+        scriptBuilder.append([NSString stringWithContentsOfFile:[[NSBundle bundleForClass:[WebCoreRenderThemeBundle class]] pathForResource:@"mediaControlsLocalizedStringsiOS" ofType:@"js"] encoding:NSUTF8StringEncoding error:nil]);
         scriptBuilder.append([NSString stringWithContentsOfFile:[[NSBundle bundleForClass:[WebCoreRenderThemeBundle class]] pathForResource:@"mediaControlsiOS" ofType:@"js"] encoding:NSUTF8StringEncoding error:nil]);
         m_mediaControlsScript = scriptBuilder.toString();
     }

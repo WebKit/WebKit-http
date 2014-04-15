@@ -392,7 +392,6 @@ sub GenerateGetOwnPropertySlotBody
     my $namespaceMaybe = ($inlined ? "JSC::" : "");
     my $namedGetterFunction = GetNamedGetterFunction($interface);
     my $indexedGetterFunction = GetIndexedGetterFunction($interface);
-    my $hasNumericIndexedGetter = $indexedGetterFunction ? $codeGenerator->IsNumericType($indexedGetterFunction->signature->type) : 0;
 
     my @getOwnPropertySlotImpl = ();
 
@@ -403,11 +402,11 @@ sub GenerateGetOwnPropertySlotBody
     }
 
     my $manualLookupGetterGeneration = sub {
-        my $requiresManualLookup = ($indexedGetterFunction && !$hasNumericIndexedGetter) || $namedGetterFunction;
+        my $requiresManualLookup = $indexedGetterFunction || $namedGetterFunction;
         if ($requiresManualLookup) {
             push(@getOwnPropertySlotImpl, "    const ${namespaceMaybe}HashTableValue* entry = getStaticValueSlotEntryWithoutCaching<$className>(exec, propertyName);\n");
             push(@getOwnPropertySlotImpl, "    if (entry) {\n");
-            push(@getOwnPropertySlotImpl, "        slot.setCustom(thisObject, entry->attributes(), entry->propertyGetter());\n");
+            push(@getOwnPropertySlotImpl, "        slot.setCacheableCustom(thisObject, entry->attributes(), entry->propertyGetter());\n");
             push(@getOwnPropertySlotImpl, "        return true;\n");
             push(@getOwnPropertySlotImpl, "    }\n");
         }
@@ -433,11 +432,7 @@ sub GenerateGetOwnPropertySlotBody
         } else {
             push(@getOwnPropertySlotImpl, "        unsigned attributes = ${namespaceMaybe}DontDelete | ${namespaceMaybe}ReadOnly;\n");
         }
-        if ($hasNumericIndexedGetter) {
-            push(@getOwnPropertySlotImpl, "        slot.setValue(thisObject, attributes, thisObject->getByIndex(exec, index));\n");
-        } else {
-            push(@getOwnPropertySlotImpl, "        slot.setCustomIndex(thisObject, attributes, index, indexGetter);\n");
-        }
+        push(@getOwnPropertySlotImpl, "        slot.setCustomIndex(thisObject, attributes, index, indexGetter);\n");
         push(@getOwnPropertySlotImpl, "        return true;\n");
         push(@getOwnPropertySlotImpl, "    }\n");
     }
@@ -592,7 +587,6 @@ sub HasComplexGetOwnProperty
 
     my $namedGetterFunction = GetNamedGetterFunction($interface);
     my $indexedGetterFunction = GetIndexedGetterFunction($interface);
-    my $hasNumericIndexedGetter = $indexedGetterFunction ? $codeGenerator->IsNumericType($indexedGetterFunction->signature->type) : 0;
 
     my $hasImpureNamedGetter = $namedGetterFunction
         || $interface->extendedAttributes->{"CustomNamedGetter"}
@@ -614,7 +608,6 @@ sub InterfaceRequiresAttributesOnInstance
     my $interfaceName = $interface->name;
     my $namedGetterFunction = GetNamedGetterFunction($interface);
     my $indexedGetterFunction = GetIndexedGetterFunction($interface);
-    my $hasNumericIndexedGetter = $indexedGetterFunction ? $codeGenerator->IsNumericType($indexedGetterFunction->signature->type) : 0;
 
     # FIXME: All these return 1 if ... should ideally be removed.
     # Some of them are unavoidable due to DOM weirdness, in which case we should
@@ -732,7 +725,6 @@ sub InstanceOverridesGetOwnPropertySlot
 
     my $namedGetterFunction = GetNamedGetterFunction($interface);
     my $indexedGetterFunction = GetIndexedGetterFunction($interface);
-    my $hasNumericIndexedGetter = $indexedGetterFunction ? $codeGenerator->IsNumericType($indexedGetterFunction->signature->type) : 0;
 
     my $hasImpureNamedGetter = $namedGetterFunction
         || $interface->extendedAttributes->{"CustomNamedGetter"}
@@ -898,7 +890,6 @@ sub GenerateHeader
 
     my $namedGetterFunction = GetNamedGetterFunction($interface);
     my $indexedGetterFunction = GetIndexedGetterFunction($interface);
-    my $hasNumericIndexedGetter = $indexedGetterFunction ? $codeGenerator->IsNumericType($indexedGetterFunction->signature->type) : 0;
 
     my $hasImpureNamedGetter =
         $namedGetterFunction
@@ -1124,11 +1115,7 @@ sub GenerateHeader
 
     # Index getter
     if ($indexedGetterFunction) {
-        if ($hasNumericIndexedGetter) {
-            push(@headerContent, "    JSC::JSValue getByIndex(JSC::ExecState*, unsigned index);\n");
-        } else {
-            push(@headerContent, "    static JSC::EncodedJSValue indexGetter(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, unsigned);\n");
-        }
+        push(@headerContent, "    static JSC::EncodedJSValue indexGetter(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, unsigned);\n");
     }
 
     # Index setter
@@ -1725,7 +1712,6 @@ sub GenerateImplementation
 
     my $namedGetterFunction = GetNamedGetterFunction($interface);
     my $indexedGetterFunction = GetIndexedGetterFunction($interface);
-    my $hasNumericIndexedGetter = $indexedGetterFunction ? $codeGenerator->IsNumericType($indexedGetterFunction->signature->type) : 0;
 
     # - Add default header template
     push(@implContentHeader, GenerateImplementationContentHeader($interface));
@@ -2095,11 +2081,7 @@ sub GenerateImplementation
                 } else {
                     push(@implContent, "        unsigned attributes = DontDelete | ReadOnly;\n");
                 }
-                if ($hasNumericIndexedGetter) {
-                    push(@implContent, "        slot.setValue(thisObject, attributes, thisObject->getByIndex(exec, index));\n");
-                } else {
-                    push(@implContent, "        slot.setCustomIndex(thisObject, attributes, index, thisObject->indexGetter);\n");
-                }
+                push(@implContent, "        slot.setCustomIndex(thisObject, attributes, index, thisObject->indexGetter);\n");
                 push(@implContent, "        return true;\n");
                 push(@implContent, "    }\n");
             }
@@ -2196,25 +2178,27 @@ sub GenerateImplementation
             }
 
             if ($attribute->signature->extendedAttributes->{"Nondeterministic"}) {
-                $implIncludes{"<replay/InputCursor.h>"} = 1;
+                AddToImplIncludes("MemoizedDOMResult.h", "WEB_REPLAY");
+                AddToImplIncludes("<replay/InputCursor.h>", "WEB_REPLAY");
+                AddToImplIncludes("<wtf/NeverDestroyed.h>", "WEB_REPLAY");
+
                 push(@implContent, "#if ENABLE(WEB_REPLAY)\n");
                 push(@implContent, "    JSGlobalObject* globalObject = exec->lexicalGlobalObject();\n");
                 push(@implContent, "    InputCursor& cursor = globalObject->inputCursor();\n");
 
-                $implIncludes{"MemoizedDOMResult.h"} = 1;
                 my $nativeType = GetNativeType($type);
                 my $memoizedType = GetNativeTypeForMemoization($type);
                 my $exceptionCode = $getterExceptions ? "ec" : "0";
-                push(@implContent, "    DEPRECATED_DEFINE_STATIC_LOCAL(const AtomicString, bindingName, (\"$interfaceName.$name\", AtomicString::ConstructFromLiteral));\n");
+                push(@implContent, "    static NeverDestroyed<const AtomicString> bindingName(\"$interfaceName.$name\", AtomicString::ConstructFromLiteral);\n");
                 push(@implContent, "    if (cursor.isCapturing()) {\n");
                 push(@implContent, "        $memoizedType memoizedResult = castedThis->impl().$implGetterFunctionName(" . join(", ", @arguments) . ");\n");
-                push(@implContent, "        cursor.appendInput<MemoizedDOMResult<$memoizedType>>(bindingName, memoizedResult, $exceptionCode);\n");
+                push(@implContent, "        cursor.appendInput<MemoizedDOMResult<$memoizedType>>(bindingName.get().string(), memoizedResult, $exceptionCode);\n");
                 push(@implContent, "        JSValue result = " . NativeToJSValue($attribute->signature, 0, $interfaceName, "memoizedResult", "castedThis") . ";\n");
                 push(@implContent, "        setDOMException(exec, ec);\n") if $getterExceptions;
                 push(@implContent, "        return JSValue::encode(result);\n");
-                push(@implContent, "     }\n");
+                push(@implContent, "    }\n");
                 push(@implContent, "\n");
-                push(@implContent, "     if (cursor.isReplaying()) {\n");
+                push(@implContent, "    if (cursor.isReplaying()) {\n");
                 push(@implContent, "        $memoizedType memoizedResult;\n");
                 push(@implContent, "        MemoizedDOMResultBase* input = cursor.fetchInput<MemoizedDOMResultBase>();\n");
                 push(@implContent, "        if (input && input->convertTo<$memoizedType>(memoizedResult)) {\n");
@@ -2848,7 +2832,7 @@ sub GenerateImplementation
         }
     }
 
-    if ($indexedGetterFunction && !$hasNumericIndexedGetter) {
+    if ($indexedGetterFunction) {
         push(@implContent, "\nEncodedJSValue ${className}::indexGetter(ExecState* exec, JSObject* slotBase, EncodedJSValue, unsigned index)\n");
         push(@implContent, "{\n");
         push(@implContent, "    ${className}* thisObj = jsCast<$className*>(slotBase);\n");
@@ -2861,22 +2845,6 @@ sub GenerateImplementation
         }
         push(@implContent, "}\n\n");
         if ($interfaceName =~ /^HTML\w*Collection$/ or $interfaceName eq "RadioNodeList") {
-            $implIncludes{"JSNode.h"} = 1;
-            $implIncludes{"Node.h"} = 1;
-        }
-    }
-
-    if ($hasNumericIndexedGetter) {
-        push(@implContent, "\nJSValue ${className}::getByIndex(ExecState*, unsigned index)\n");
-        push(@implContent, "{\n");
-        push(@implContent, "    ASSERT_GC_OBJECT_INHERITS(this, info());\n");
-        push(@implContent, "    double result = impl().item(index);\n");
-        # jsNumber conversion doesn't suppress signalling NaNs, so enforce that here.
-        push(@implContent, "    if (std::isnan(result))\n");
-        push(@implContent, "        return jsNaN();\n");
-        push(@implContent, "    return JSValue(result);\n");
-        push(@implContent, "}\n\n");
-        if ($interfaceName =~ /^HTML\w*Collection$/) {
             $implIncludes{"JSNode.h"} = 1;
             $implIncludes{"Node.h"} = 1;
         }
@@ -3555,7 +3523,7 @@ sub GenerateImplementationFunctionCall()
 
     if ($function->signature->type eq "void") {
         if ($nondeterministic) {
-            $implIncludes{"<replay/InputCursor.h>"} = 1;
+            AddToImplIncludes("<replay/InputCursor.h>", "WEB_REPLAY");
             push(@implContent, "#if ENABLE(WEB_REPLAY)\n");
             push(@implContent, $indent . "InputCursor& cursor = exec->lexicalGlobalObject()->inputCursor();\n");
             push(@implContent, $indent . "if (!cursor.isReplaying()) {\n");
@@ -3584,19 +3552,21 @@ sub GenerateImplementationFunctionCall()
     } else {
         my $thisObject = $function->isStatic ? 0 : "castedThis";
         if ($nondeterministic) {
-            $implIncludes{"MemoizedDOMResult.h"} = 1;
-            $implIncludes{"<replay/InputCursor.h>"} = 1;
+            AddToImplIncludes("MemoizedDOMResult.h", "WEB_REPLAY");
+            AddToImplIncludes("<replay/InputCursor.h>", "WEB_REPLAY");
+            AddToImplIncludes("<wtf/NeverDestroyed.h>", "WEB_REPLAY");
+
             my $nativeType = GetNativeTypeFromSignature($function->signature);
             my $memoizedType = GetNativeTypeForMemoization($function->signature->type);
             my $bindingName = $interfaceName . "." . $function->signature->name;
             push(@implContent, $indent . "JSValue result;\n");
             push(@implContent, "#if ENABLE(WEB_REPLAY)\n");
             push(@implContent, $indent . "InputCursor& cursor = exec->lexicalGlobalObject()->inputCursor();\n");
-            push(@implContent, $indent . "DEFINE_STATIC_LOCAL(const AtomicString, bindingName, (\"$bindingName\", AtomicString::ConstructFromLiteral));\n");
+            push(@implContent, $indent . "static NeverDestroyed<const AtomicString> bindingName(\"$bindingName\", AtomicString::ConstructFromLiteral);\n");
             push(@implContent, $indent . "if (cursor.isCapturing()) {\n");
             push(@implContent, $indent . "    $nativeType memoizedResult = $functionString;\n");
             my $exceptionCode = $raisesException ? "ec" : "0";
-            push(@implContent, $indent . "    cursor.appendInput<MemoizedDOMResult<$memoizedType>>(bindingName, memoizedResult, $exceptionCode);\n");
+            push(@implContent, $indent . "    cursor.appendInput<MemoizedDOMResult<$memoizedType>>(bindingName.get().string(), memoizedResult, $exceptionCode);\n");
             push(@implContent, $indent . "    result = " . NativeToJSValue($function->signature, 1, $interfaceName, "memoizedResult", $thisObject) . ";\n");
             push(@implContent, $indent . "} else if (cursor.isReplaying()) {\n");
             push(@implContent, $indent . "    MemoizedDOMResultBase* input = cursor.fetchInput<MemoizedDOMResultBase>();\n");

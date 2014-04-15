@@ -312,7 +312,7 @@ std::unique_ptr<GraphicsLayer> GraphicsLayer::create(GraphicsLayerFactory* facto
 
     graphicsLayer->initialize();
 
-    return std::move(graphicsLayer);
+    return graphicsLayer;
 }
 
 #if ENABLE(CSS_FILTERS)
@@ -2982,10 +2982,24 @@ GraphicsLayerCA::LayerMap* GraphicsLayerCA::animatedLayerClones(AnimatedProperty
 void GraphicsLayerCA::updateContentsScale(float pageScaleFactor)
 {
     float contentsScale = clampedContentsScaleForScale(m_rootRelativeScaleFactor * pageScaleFactor * deviceScaleFactor());
+
+    if (m_isPageTiledBackingLayer && tiledBacking()) {
+        float zoomedOutScale = m_client->zoomedOutPageScaleFactor() * deviceScaleFactor();
+        tiledBacking()->setZoomedOutContentsScale(zoomedOutScale);
+    }
+
     if (contentsScale == m_layer->contentsScale())
         return;
 
     m_layer->setContentsScale(contentsScale);
+
+    if (tiledBacking()) {
+        // Scale change may swap in a different set of tiles changing the custom child layers.
+        if (m_isPageTiledBackingLayer)
+            m_uncommittedChanges |= ChildrenChanged;
+        // Tiled backing repaints automatically on scale change.
+        return;
+    }
     if (drawsContent())
         m_layer->setNeedsDisplay();
 }

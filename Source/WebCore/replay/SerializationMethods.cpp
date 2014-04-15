@@ -39,6 +39,7 @@
 #include "PlatformKeyboardEvent.h"
 #include "PlatformMouseEvent.h"
 #include "PlatformWheelEvent.h"
+#include "PluginData.h"
 #include "ReplayInputTypes.h"
 #include "SecurityOrigin.h"
 #include "URL.h"
@@ -46,12 +47,15 @@
 
 using WebCore::KeypressCommand;
 using WebCore::IntPoint;
+using WebCore::MimeClassInfo;
 using WebCore::MouseButton;
 using WebCore::PlatformEvent;
 using WebCore::PlatformKeyboardEvent;
 using WebCore::PlatformMouseEvent;
 using WebCore::PlatformWheelEvent;
 using WebCore::PlatformWheelEventGranularity;
+using WebCore::PluginData;
+using WebCore::PluginInfo;
 using WebCore::SecurityOrigin;
 using WebCore::URL;
 using WebCore::inputTypes;
@@ -122,30 +126,43 @@ Frame* frameFromFrameIndex(Page* page, unsigned long frameIndex)
     if (!_encodedValue.get<_type>(ASCIILiteral(#_key), _lvalue)) \
         return false
 
+#define DECODE_TYPE_WITH_KEY(_encodedValue, _type, _key) \
+    EncodingTraits<_type>::DecodedType _key; \
+    DECODE_TYPE_WITH_KEY_TO_LVALUE(_encodedValue, _type, _key, _key)
+
 #define DECODE_OPTIONAL_TYPE_WITH_KEY_TO_LVALUE(_encodedValue, _type, _key, _lvalue) \
     bool _key ## WasDecoded = _encodedValue.get<_type>(ASCIILiteral(#_key), _lvalue)
 
-#define DECODE_REFCOUNTED_TYPE_WITH_KEY(_encodedValue, _type, _key) \
-    RefPtr<_type> _key; \
-    DECODE_TYPE_WITH_KEY_TO_LVALUE(_encodedValue, _type, _key, _key)
-
-#define DECODE_UNIQUE_TYPE_WITH_KEY(_encodedValue, _type, _key) \
-    std::unique_ptr<_type> _key; \
-    DECODE_TYPE_WITH_KEY_TO_LVALUE(_encodedValue, _type, _key, _key)
-
-#define DECODE_SCALAR_TYPE_WITH_KEY(_encodedValue, _type, _key) \
-    _type _key; \
-    DECODE_TYPE_WITH_KEY_TO_LVALUE(_encodedValue, _type, _key, _key)
-
-#define DECODE_OPTIONAL_SCALAR_TYPE_WITH_KEY(_encodedValue, _type, _key) \
-    _type _key; \
-    DECODE_OPTIONAL_TYPE_WITH_KEY_TO_LVALUE(_encodedValue, _type, _key, _key)
-
-#define DECODE_OPTIONAL_REFCOUNTED_TYPE_WITH_KEY(_encodedValue, _type, _key) \
-    RefPtr<_type> _key; \
+#define DECODE_OPTIONAL_TYPE_WITH_KEY(_encodedValue, _type, _key) \
+    EncodingTraits<_type>::DecodedType _key; \
     DECODE_OPTIONAL_TYPE_WITH_KEY_TO_LVALUE(_encodedValue, _type, _key, _key)
 
 namespace JSC {
+
+template<>
+EncodedValue EncodingTraits<MimeClassInfo>::encodeValue(const MimeClassInfo& input)
+{
+    EncodedValue encodedData = EncodedValue::createObject();
+
+    ENCODE_TYPE_WITH_KEY(encodedData, String, type, input.type);
+    ENCODE_TYPE_WITH_KEY(encodedData, String, desc, input.desc);
+    ENCODE_TYPE_WITH_KEY(encodedData, Vector<String>, extensions, input.extensions);
+
+    return encodedData;
+}
+
+template<>
+bool EncodingTraits<MimeClassInfo>::decodeValue(EncodedValue& encodedData, MimeClassInfo& input)
+{
+    MimeClassInfo info;
+
+    DECODE_TYPE_WITH_KEY_TO_LVALUE(encodedData, String, type, info.type);
+    DECODE_TYPE_WITH_KEY_TO_LVALUE(encodedData, String, desc, info.desc);
+    DECODE_TYPE_WITH_KEY_TO_LVALUE(encodedData, Vector<String>, extensions, info.extensions);
+
+    input = info;
+    return true;
+}
 
 EncodedValue EncodingTraits<NondeterministicInputBase>::encodeValue(const NondeterministicInputBase& input)
 {
@@ -176,7 +193,7 @@ EncodedValue EncodingTraits<NondeterministicInputBase>::encodeValue(const Nondet
 
 bool EncodingTraits<NondeterministicInputBase>::decodeValue(EncodedValue& encodedValue, std::unique_ptr<NondeterministicInputBase>& input)
 {
-    DECODE_SCALAR_TYPE_WITH_KEY(encodedValue, String, type);
+    DECODE_TYPE_WITH_KEY(encodedValue, String, type);
 
 #define DECODE_IF_TYPE_TAG_MATCHES(name) \
     if (type == inputTypes().name) { \
@@ -217,8 +234,8 @@ EncodedValue EncodingTraits<KeypressCommand>::encodeValue(const KeypressCommand&
 
 bool EncodingTraits<KeypressCommand>::decodeValue(EncodedValue& encodedValue, KeypressCommand& decodedValue)
 {
-    DECODE_SCALAR_TYPE_WITH_KEY(encodedValue, String, commandName);
-    DECODE_OPTIONAL_SCALAR_TYPE_WITH_KEY(encodedValue, String, text);
+    DECODE_TYPE_WITH_KEY(encodedValue, String, commandName);
+    DECODE_OPTIONAL_TYPE_WITH_KEY(encodedValue, String, text);
 
     decodedValue = textWasDecoded ? KeypressCommand(commandName, text) : KeypressCommand(commandName);
     return true;
@@ -260,21 +277,21 @@ EncodedValue EncodingTraits<PlatformKeyboardEvent>::encodeValue(const PlatformKe
 
 bool EncodingTraits<PlatformKeyboardEvent>::decodeValue(EncodedValue& encodedValue, std::unique_ptr<PlatformKeyboardEvent>& input)
 {
-    DECODE_SCALAR_TYPE_WITH_KEY(encodedValue, double, timestamp);
-    DECODE_SCALAR_TYPE_WITH_KEY(encodedValue, PlatformEvent::Type, type);
-    DECODE_SCALAR_TYPE_WITH_KEY(encodedValue, PlatformEvent::Modifiers, modifiers);
-    DECODE_SCALAR_TYPE_WITH_KEY(encodedValue, String, text);
-    DECODE_SCALAR_TYPE_WITH_KEY(encodedValue, String, unmodifiedText);
-    DECODE_SCALAR_TYPE_WITH_KEY(encodedValue, String, keyIdentifier);
-    DECODE_SCALAR_TYPE_WITH_KEY(encodedValue, int, windowsVirtualKeyCode);
-    DECODE_SCALAR_TYPE_WITH_KEY(encodedValue, int, nativeVirtualKeyCode);
-    DECODE_SCALAR_TYPE_WITH_KEY(encodedValue, int, macCharCode);
-    DECODE_SCALAR_TYPE_WITH_KEY(encodedValue, bool, autoRepeat);
-    DECODE_SCALAR_TYPE_WITH_KEY(encodedValue, bool, keypad);
-    DECODE_SCALAR_TYPE_WITH_KEY(encodedValue, bool, systemKey);
+    DECODE_TYPE_WITH_KEY(encodedValue, double, timestamp);
+    DECODE_TYPE_WITH_KEY(encodedValue, PlatformEvent::Type, type);
+    DECODE_TYPE_WITH_KEY(encodedValue, PlatformEvent::Modifiers, modifiers);
+    DECODE_TYPE_WITH_KEY(encodedValue, String, text);
+    DECODE_TYPE_WITH_KEY(encodedValue, String, unmodifiedText);
+    DECODE_TYPE_WITH_KEY(encodedValue, String, keyIdentifier);
+    DECODE_TYPE_WITH_KEY(encodedValue, int, windowsVirtualKeyCode);
+    DECODE_TYPE_WITH_KEY(encodedValue, int, nativeVirtualKeyCode);
+    DECODE_TYPE_WITH_KEY(encodedValue, int, macCharCode);
+    DECODE_TYPE_WITH_KEY(encodedValue, bool, autoRepeat);
+    DECODE_TYPE_WITH_KEY(encodedValue, bool, keypad);
+    DECODE_TYPE_WITH_KEY(encodedValue, bool, systemKey);
 #if USE(APPKIT)
-    DECODE_SCALAR_TYPE_WITH_KEY(encodedValue, bool, handledByInputMethod);
-    DECODE_SCALAR_TYPE_WITH_KEY(encodedValue, Vector<KeypressCommand>, commands);
+    DECODE_TYPE_WITH_KEY(encodedValue, bool, handledByInputMethod);
+    DECODE_TYPE_WITH_KEY(encodedValue, Vector<KeypressCommand>, commands);
 #endif
 
     PlatformKeyboardEvent platformEvent = PlatformKeyboardEvent(type, text, unmodifiedText, keyIdentifier, windowsVirtualKeyCode, nativeVirtualKeyCode, macCharCode, autoRepeat, keypad, systemKey, modifiers, timestamp);
@@ -308,18 +325,18 @@ EncodedValue EncodingTraits<PlatformMouseEvent>::encodeValue(const PlatformMouse
 
 bool EncodingTraits<PlatformMouseEvent>::decodeValue(EncodedValue& encodedValue, std::unique_ptr<PlatformMouseEvent>& input)
 {
-    DECODE_SCALAR_TYPE_WITH_KEY(encodedValue, int, positionX);
-    DECODE_SCALAR_TYPE_WITH_KEY(encodedValue, int, positionY);
-    DECODE_SCALAR_TYPE_WITH_KEY(encodedValue, int, globalPositionX);
-    DECODE_SCALAR_TYPE_WITH_KEY(encodedValue, int, globalPositionY);
-    DECODE_SCALAR_TYPE_WITH_KEY(encodedValue, MouseButton, button);
-    DECODE_SCALAR_TYPE_WITH_KEY(encodedValue, PlatformEvent::Type, type);
-    DECODE_SCALAR_TYPE_WITH_KEY(encodedValue, int, clickCount);
-    DECODE_SCALAR_TYPE_WITH_KEY(encodedValue, bool, shiftKey);
-    DECODE_SCALAR_TYPE_WITH_KEY(encodedValue, bool, ctrlKey);
-    DECODE_SCALAR_TYPE_WITH_KEY(encodedValue, bool, altKey);
-    DECODE_SCALAR_TYPE_WITH_KEY(encodedValue, bool, metaKey);
-    DECODE_SCALAR_TYPE_WITH_KEY(encodedValue, int, timestamp);
+    DECODE_TYPE_WITH_KEY(encodedValue, int, positionX);
+    DECODE_TYPE_WITH_KEY(encodedValue, int, positionY);
+    DECODE_TYPE_WITH_KEY(encodedValue, int, globalPositionX);
+    DECODE_TYPE_WITH_KEY(encodedValue, int, globalPositionY);
+    DECODE_TYPE_WITH_KEY(encodedValue, MouseButton, button);
+    DECODE_TYPE_WITH_KEY(encodedValue, PlatformEvent::Type, type);
+    DECODE_TYPE_WITH_KEY(encodedValue, int, clickCount);
+    DECODE_TYPE_WITH_KEY(encodedValue, bool, shiftKey);
+    DECODE_TYPE_WITH_KEY(encodedValue, bool, ctrlKey);
+    DECODE_TYPE_WITH_KEY(encodedValue, bool, altKey);
+    DECODE_TYPE_WITH_KEY(encodedValue, bool, metaKey);
+    DECODE_TYPE_WITH_KEY(encodedValue, int, timestamp);
 
     input = std::make_unique<PlatformMouseEvent>(IntPoint(positionX, positionY),
         IntPoint(globalPositionX, globalPositionY),
@@ -388,19 +405,19 @@ EncodedValue EncodingTraits<PlatformWheelEvent>::encodeValue(const PlatformWheel
 
 bool EncodingTraits<PlatformWheelEvent>::decodeValue(EncodedValue& encodedData, std::unique_ptr<PlatformWheelEvent>& input)
 {
-    DECODE_SCALAR_TYPE_WITH_KEY(encodedData, int, positionX);
-    DECODE_SCALAR_TYPE_WITH_KEY(encodedData, int, positionY);
-    DECODE_SCALAR_TYPE_WITH_KEY(encodedData, int, globalPositionX);
-    DECODE_SCALAR_TYPE_WITH_KEY(encodedData, int, globalPositionY);
-    DECODE_SCALAR_TYPE_WITH_KEY(encodedData, bool, shiftKey);
-    DECODE_SCALAR_TYPE_WITH_KEY(encodedData, bool, ctrlKey);
-    DECODE_SCALAR_TYPE_WITH_KEY(encodedData, bool, altKey);
-    DECODE_SCALAR_TYPE_WITH_KEY(encodedData, bool, metaKey);
-    DECODE_SCALAR_TYPE_WITH_KEY(encodedData, float, deltaX);
-    DECODE_SCALAR_TYPE_WITH_KEY(encodedData, float, deltaY);
-    DECODE_SCALAR_TYPE_WITH_KEY(encodedData, float, wheelTicksX);
-    DECODE_SCALAR_TYPE_WITH_KEY(encodedData, float, wheelTicksY);
-    DECODE_SCALAR_TYPE_WITH_KEY(encodedData, PlatformWheelEventGranularity, granularity);
+    DECODE_TYPE_WITH_KEY(encodedData, int, positionX);
+    DECODE_TYPE_WITH_KEY(encodedData, int, positionY);
+    DECODE_TYPE_WITH_KEY(encodedData, int, globalPositionX);
+    DECODE_TYPE_WITH_KEY(encodedData, int, globalPositionY);
+    DECODE_TYPE_WITH_KEY(encodedData, bool, shiftKey);
+    DECODE_TYPE_WITH_KEY(encodedData, bool, ctrlKey);
+    DECODE_TYPE_WITH_KEY(encodedData, bool, altKey);
+    DECODE_TYPE_WITH_KEY(encodedData, bool, metaKey);
+    DECODE_TYPE_WITH_KEY(encodedData, float, deltaX);
+    DECODE_TYPE_WITH_KEY(encodedData, float, deltaY);
+    DECODE_TYPE_WITH_KEY(encodedData, float, wheelTicksX);
+    DECODE_TYPE_WITH_KEY(encodedData, float, wheelTicksY);
+    DECODE_TYPE_WITH_KEY(encodedData, PlatformWheelEventGranularity, granularity);
 
 #if PLATFORM(COCOA)
     PlatformWheelEventCocoaArguments arguments;
@@ -421,6 +438,65 @@ bool EncodingTraits<PlatformWheelEvent>::decodeValue(EncodedValue& encodedData, 
 #else
     input = std::make_unique<PlatformWheelEvent>(event);
 #endif
+    return true;
+}
+
+EncodedValue EncodingTraits<PluginData>::encodeValue(RefPtr<PluginData> input)
+{
+    EncodedValue encodedData = EncodedValue::createObject();
+
+    ENCODE_TYPE_WITH_KEY(encodedData, Vector<PluginInfo>, plugins, input->plugins());
+    ENCODE_TYPE_WITH_KEY(encodedData, Vector<MimeClassInfo>, mimes, input->mimes());
+    ENCODE_TYPE_WITH_KEY(encodedData, Vector<size_t>, mimePluginIndices, input->mimePluginIndices());
+
+    return encodedData;
+}
+
+class DeserializedPluginData : public PluginData {
+public:
+    DeserializedPluginData(Vector<PluginInfo> plugins, Vector<MimeClassInfo> mimes, Vector<size_t> indices)
+        : PluginData(plugins, mimes, indices)
+    {
+    }
+};
+
+bool EncodingTraits<PluginData>::decodeValue(EncodedValue& encodedData, RefPtr<PluginData>& input)
+{
+    DECODE_TYPE_WITH_KEY(encodedData, Vector<PluginInfo>, plugins);
+    DECODE_TYPE_WITH_KEY(encodedData, Vector<MimeClassInfo>, mimes);
+    DECODE_TYPE_WITH_KEY(encodedData, Vector<size_t>, mimePluginIndices);
+
+    input = adoptRef(new DeserializedPluginData(plugins, mimes, mimePluginIndices));
+
+    return true;
+}
+
+template<>
+EncodedValue EncodingTraits<PluginInfo>::encodeValue(const PluginInfo& input)
+{
+    EncodedValue encodedData = EncodedValue::createObject();
+
+    ENCODE_TYPE_WITH_KEY(encodedData, String, name, input.name);
+    ENCODE_TYPE_WITH_KEY(encodedData, String, file, input.file);
+    ENCODE_TYPE_WITH_KEY(encodedData, String, desc, input.desc);
+    ENCODE_TYPE_WITH_KEY(encodedData, Vector<MimeClassInfo>, mimes, input.mimes);
+    ENCODE_TYPE_WITH_KEY(encodedData, bool, isApplicationPlugin, input.isApplicationPlugin);
+
+    return encodedData;
+}
+
+template<>
+bool EncodingTraits<PluginInfo>::decodeValue(EncodedValue& encodedData, PluginInfo& input)
+{
+    PluginInfo info;
+
+    DECODE_TYPE_WITH_KEY_TO_LVALUE(encodedData, String, name, info.name);
+    DECODE_TYPE_WITH_KEY_TO_LVALUE(encodedData, String, file, info.file);
+    DECODE_TYPE_WITH_KEY_TO_LVALUE(encodedData, String, desc, info.desc);
+    DECODE_TYPE_WITH_KEY_TO_LVALUE(encodedData, Vector<MimeClassInfo>, mimes, info.mimes);
+    DECODE_TYPE_WITH_KEY_TO_LVALUE(encodedData, bool, isApplicationPlugin, info.isApplicationPlugin);
+
+    input = info;
     return true;
 }
 

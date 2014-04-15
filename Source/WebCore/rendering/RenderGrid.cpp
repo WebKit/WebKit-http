@@ -130,7 +130,7 @@ public:
                 std::unique_ptr<GridCoordinate> result = std::make_unique<GridCoordinate>(GridSpan(m_rowIndex, m_rowIndex), GridSpan(m_columnIndex, m_columnIndex));
                 // Advance the iterator to avoid an infinite loop where we would return the same grid area over and over.
                 ++varyingTrackIndex;
-                return std::move(result);
+                return result;
             }
         }
         return nullptr;
@@ -730,27 +730,27 @@ void RenderGrid::populateExplicitGridAndOrderIterator()
     m_orderIterator.setOrderValues(std::move(orderValues));
 }
 
-void RenderGrid::placeSpecifiedMajorAxisItemsOnGrid(Vector<RenderBox*> autoGridItems)
+void RenderGrid::placeSpecifiedMajorAxisItemsOnGrid(const Vector<RenderBox*>& autoGridItems)
 {
-    for (size_t i = 0; i < autoGridItems.size(); ++i) {
-        std::unique_ptr<GridSpan> majorAxisPositions = resolveGridPositionsFromStyle(autoGridItems[i], autoPlacementMajorAxisDirection());
+    for (auto& autoGridItem : autoGridItems) {
+        std::unique_ptr<GridSpan> majorAxisPositions = resolveGridPositionsFromStyle(autoGridItem, autoPlacementMajorAxisDirection());
         GridIterator iterator(m_grid, autoPlacementMajorAxisDirection(), majorAxisPositions->initialPositionIndex);
         if (std::unique_ptr<GridCoordinate> emptyGridArea = iterator.nextEmptyGridArea()) {
-            insertItemIntoGrid(autoGridItems[i], emptyGridArea->rows.initialPositionIndex, emptyGridArea->columns.initialPositionIndex);
+            insertItemIntoGrid(autoGridItem, emptyGridArea->rows.initialPositionIndex, emptyGridArea->columns.initialPositionIndex);
             continue;
         }
 
         growGrid(autoPlacementMinorAxisDirection());
         std::unique_ptr<GridCoordinate> emptyGridArea = iterator.nextEmptyGridArea();
         ASSERT(emptyGridArea);
-        insertItemIntoGrid(autoGridItems[i], emptyGridArea->rows.initialPositionIndex, emptyGridArea->columns.initialPositionIndex);
+        insertItemIntoGrid(autoGridItem, emptyGridArea->rows.initialPositionIndex, emptyGridArea->columns.initialPositionIndex);
     }
 }
 
-void RenderGrid::placeAutoMajorAxisItemsOnGrid(Vector<RenderBox*> autoGridItems)
+void RenderGrid::placeAutoMajorAxisItemsOnGrid(const Vector<RenderBox*>& autoGridItems)
 {
-    for (size_t i = 0; i < autoGridItems.size(); ++i)
-        placeAutoMajorAxisItemOnGrid(autoGridItems[i]);
+    for (auto& autoGridItem : autoGridItems)
+        placeAutoMajorAxisItemOnGrid(autoGridItem);
 }
 
 void RenderGrid::placeAutoMajorAxisItemOnGrid(RenderBox* gridItem)

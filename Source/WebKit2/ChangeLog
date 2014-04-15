@@ -1,3 +1,779 @@
+2014-04-12  Antti Koivisto  <antti@apple.com>
+
+        Keep secondary tile grid for zoomed-out scale
+        https://bugs.webkit.org/show_bug.cgi?id=131586
+
+        Reviewed by Darin Adler.
+
+        * WebProcess/WebPage/mac/PlatformCALayerRemoteTiledBacking.cpp:
+        (WebKit::PlatformCALayerRemoteTiledBacking::PlatformCALayerRemoteTiledBacking):
+        (WebKit::PlatformCALayerRemoteTiledBacking::customSublayers):
+        
+            Always request new sublayer list from tile controller.
+
+        * WebProcess/WebPage/mac/PlatformCALayerRemoteTiledBacking.h:
+
+2014-04-14  Tim Horton  <timothy_horton@apple.com>
+
+        Make WK(Web)View magnification setters actually use view-relative positions
+        https://bugs.webkit.org/show_bug.cgi?id=131611
+        <rdar://problem/15965239>
+
+        Reviewed by Darin Adler.
+
+        * UIProcess/API/mac/WKView.mm:
+        (-[WKView setMagnification:centeredAtPoint:]):
+        (-[WKView setMagnification:]):
+        Use scalePageInViewCoordinates instead.
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::scalePageInViewCoordinates):
+        * UIProcess/WebPageProxy.h:
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::scalePageInViewCoordinates):
+        (WebKit::WebPage::pageScaleFactor):
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/WebPage.messages.in:
+        Add scalePageInViewCoordinates, which turns the scale centerpoint within the view
+        into what scalePage expects: a post-scale scroll offset.
+
+2014-04-14  Tim Horton  <timothy_horton@apple.com>
+
+        Support setting a background color on page overlays
+        https://bugs.webkit.org/show_bug.cgi?id=131600
+
+        Reviewed by Darin Adler.
+
+        * WebProcess/WebPage/PageOverlay.cpp:
+        (WebKit::PageOverlay::PageOverlay):
+        (WebKit::PageOverlay::bounds):
+        (WebKit::PageOverlay::startFadeInAnimation):
+        (WebKit::PageOverlay::startFadeOutAnimation):
+        (WebKit::PageOverlay::startFadeAnimation):
+        (WebKit::PageOverlay::fadeAnimationTimerFired):
+        Minor style adjustments.
+        Use more references everywhere.
+
+        (WebKit::PageOverlay::setBackgroundColor):
+        (WebKit::PageOverlay::setNeedsDisplay):
+        * WebProcess/WebPage/PageOverlay.h:
+        (WebKit::PageOverlay::backgroundColor):
+        Keep track of our background color, and push it down to the page overlay controller if we have one.
+
+        * WebProcess/WebPage/PageOverlayController.cpp:
+        (WebKit::updateOverlayGeometry):
+        (WebKit::PageOverlayController::clearPageOverlay):
+        Page overlays will always have the right size, and just use drawsContents to determine
+        whether or not they should tile/have backing store/etc.
+
+        (WebKit::PageOverlayController::installPageOverlay):
+        (WebKit::PageOverlayController::didChangeOverlayBackgroundColor):
+        Set the background color of the layer.
+
+        * WebProcess/WebPage/PageOverlayController.h:
+
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::WebPage):
+        References!
+
+2014-04-13  Andy Estes  <aestes@apple.com>
+
+        [QuickLook] Move file system-related code into WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=131597
+
+        Reviewed by Dan Bernstein.
+
+        * WebProcess/Network/WebResourceLoader.h: Made m_quickLookHandle a unique_ptr.
+        * WebProcess/ios/WebResourceLoaderIOS.mm:
+        (WebKit::WebResourceLoader::setUpQuickLookHandleIfNeeded):
+
+2014-04-13  Andy Estes  <aestes@apple.com>
+
+        REGRESSION (r167164): -[WKNSURLSessionLocal _getCookieHeadersForTask:completionHandler:] _block_invoke can access a deallocated completionHandler
+        https://bugs.webkit.org/show_bug.cgi?id=131595
+
+        Reviewed by Dan Bernstein.
+
+        Make a copy of completionHandler and release it after we're done with it.
+
+        * Shared/mac/CookieStorageShim.mm:
+        (-[WKNSURLSessionLocal _getCookieHeadersForTask:completionHandler:]):
+
+2014-04-13  Pratik Solanki  <psolanki@apple.com>
+
+        Don't use ImportanceAssertion on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=131481
+        <rdar://problem/16575830>
+
+        Reviewed by Darin Adler.
+
+        We have other API to mark processes as being in use on iOS. No need to use ImportanceAssertion.
+
+        * Platform/IPC/MessageDecoder.cpp:
+        * Platform/IPC/MessageDecoder.h:
+        * Platform/IPC/mac/ConnectionMac.cpp:
+        (IPC::Connection::receiveSourceEventHandler):
+        * Platform/IPC/mac/ImportanceAssertion.h:
+
+2014-04-13  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r167168 and r167194.
+        https://bugs.webkit.org/show_bug.cgi?id=131589
+
+        Caused massive ASSERTION failures on the GTK Debug bot
+        (Requested by philn on #webkit).
+
+        Reverted changesets:
+
+        "[GTK] Add HighDPI support for non-accelerated compositing
+        contents"
+        https://bugs.webkit.org/show_bug.cgi?id=131562
+        http://trac.webkit.org/changeset/167168
+
+        "Unreviewed. Fix GTK+ build with recent cairo and GTK+ after
+        r167168."
+        http://trac.webkit.org/changeset/167194
+
+2014-04-13  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Fix GTK+ build with recent cairo and GTK+ after r167168.
+
+        * UIProcess/API/gtk/WebKitWebViewBase.cpp:
+        (webkitWebViewBaseCreateWebPage):
+
+2014-04-12  Andy Estes  <aestes@apple.com>
+
+        [iOS] Move QuickLookHandle from ResourceLoader to WebResourceLoader
+        https://bugs.webkit.org/show_bug.cgi?id=131580
+
+        Reviewed by Darin Adler.
+
+        There's no need to bloat WebKit1's ResourceLoader with a pointer that
+        only WebKit2's WebResourceLoader cares about.
+
+        * WebProcess/Network/WebResourceLoader.cpp:
+        (WebKit::WebResourceLoader::didReceiveResponseWithCertificateInfo):
+        (WebKit::WebResourceLoader::didReceiveData):
+        (WebKit::WebResourceLoader::didFinishResourceLoad):
+        (WebKit::WebResourceLoader::didFailResourceLoad):
+        * WebProcess/Network/WebResourceLoader.h:
+        * WebProcess/ios/WebResourceLoaderIOS.mm:
+        (WebKit::WebResourceLoader::setUpQuickLookHandleIfNeeded):
+
+2014-04-11  Alexey Proskuryakov  <ap@apple.com>
+
+        [Mac] Crashes when copying or pasting huge images
+        https://bugs.webkit.org/show_bug.cgi?id=131576
+        <rdar://problem/12131833>
+        <rdar://problem/14427398>
+
+        Reviewed by Darin Adler.
+
+        Added a few null checks for SharedMemory::create() return value in pasteboard code.
+        Error handling feels a bit sketchy, but
+        - I'm not sure what it should look like ideally;
+        - it matches the kind of error handling we already have in these functions;
+        - it appears to work reasonably well in practice. We get empty content, which
+        is not nice, but not particularly problematic either. When copying an animated GIF,
+        we also get the GIF in RTFD flavor, so even pasting into NSTextViews works!
+
+        * Platform/mac/SharedMemoryMac.cpp:
+        (WebKit::SharedMemory::createFromVMBuffer):
+        * UIProcess/mac/WebContextMac.mm:
+        (WebKit::WebContext::getPasteboardBufferForType):
+        (WebKit::WebContext::readBufferFromPasteboard):
+        * WebProcess/WebCoreSupport/WebPlatformStrategies.cpp:
+        (WebKit::WebPlatformStrategies::setBufferForType):
+
+        * WebProcess/WebCoreSupport/mac/WebDragClientMac.mm: (WebKit::WebDragClient::declareAndWriteDragImage):
+        Also renamed some variables to prevent name collisions with with nested scope.
+
+2014-04-11  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        Unreviewed build fix on the EFL port after r167152
+
+        * WebProcess/WebPage/PageOverlay.cpp:
+        (WebKit::PageOverlay::bounds):
+
+2014-04-11  Hyowon Kim  <hw1008.kim@samsung.com>
+
+        [WK2] WebProcess crashes, when closing window after opening page by means of context menu
+        https://bugs.webkit.org/show_bug.cgi?id=131439
+
+        Reviewed by Tim Horton.
+
+        CoordinatedGraphicsLayer calls notifyFlushRequired() through its client when destroyed.
+        When PageOverlayController::notifyFlushRequired() is called, the DrawingArea could be null
+        because it's destoryed in WebPage::close().
+
+        * WebProcess/WebPage/PageOverlayController.cpp:
+        (WebKit::PageOverlayController::notifyFlushRequired): Add null check of m_webPage->drawingArea().
+
+2014-04-11  Tim Horton  <timothy_horton@apple.com>
+
+        Lots of compositing test failures after r167152
+        https://bugs.webkit.org/show_bug.cgi?id=131574
+
+        Reviewed by Simon Fraser.
+
+        * WebProcess/WebPage/PageOverlayController.h:
+        Skip page overlay layers in layer tree dumps, for consistency between platforms.
+
+2014-04-11  Beth Dakin  <bdakin@apple.com>
+
+        Need WK2 API to disable rubber-banding
+        https://bugs.webkit.org/show_bug.cgi?id=131567
+
+        Reviewed by Simon Fraser.
+
+        New API allows the client to enable/disable horizontal or vertical rubber-banding. 
+        By default, rubber-banding is enabled.
+        * UIProcess/API/C/WKPage.cpp:
+        (WKPageVerticalRubberBandingIsEnabled):
+        (WKPageSetEnableVerticalRubberBanding):
+        (WKPageHorizontalRubberBandingIsEnabled):
+        (WKPageSetEnableHorizontalRubberBanding):
+        * UIProcess/API/C/WKPage.h:
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::WebPageProxy):
+        (WebKit::WebPageProxy::setEnableVerticalRubberBanding):
+        (WebKit::WebPageProxy::verticalRubberBandingIsEnabled):
+        (WebKit::WebPageProxy::setEnableHorizontalRubberBanding):
+        (WebKit::WebPageProxy::horizontalRubberBandingIsEnabled):
+        * UIProcess/WebPageProxy.h:
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::setEnableVerticalRubberBanding):
+        (WebKit::WebPage::setEnableHorizontalRubberBanding):
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/WebPage.messages.in:
+
+2014-04-11  Tim Horton  <timothy_horton@apple.com>
+
+        Fix the Mac build.
+
+        * WebProcess/WebPage/FindController.cpp:
+        (WebKit::FindController::updateFindIndicator):
+
+2014-04-11  Tim Horton  <timothy_horton@apple.com>
+
+        [iOS WebKit2] Find-in-page indicator
+        https://bugs.webkit.org/show_bug.cgi?id=131510
+        <rdar://problem/16547777>
+
+        Reviewed by Simon Fraser and Enrica Casucci.
+
+        * WebKit2.xcodeproj/project.pbxproj:
+        * WebProcess/WebPage/FindController.cpp:
+        (WebKit::FindController::updateFindUIAfterPageScroll):
+        WebKit2 will clear the selection if we reveal it while not enabling selection painting.
+        So, avoid revealing it.
+
+        (WebKit::FindController::findString):
+        (WebKit::FindController::hideFindIndicator):
+        (WebKit::FindController::willFindString):
+        (WebKit::FindController::didFailToFindString):
+        (WebKit::FindController::didHideFindIndicator):
+        #if out the cross-platform find indicator code on iOS; it will be replaced
+        by the code in FindControllerIOS.
+
+        * WebProcess/WebPage/FindController.h:
+
+        * WebProcess/WebPage/ios/FindControllerIOS.mm: Added.
+        (highlightColor):
+        (WebKit::FindIndicatorOverlayClientIOS::drawRect):
+        Paint the selection (with black text forced on), and the yellow rounded rect
+        into the indicator page overlay.
+
+        (WebKit::FindController::updateFindIndicator):
+        Create or update a small document-relative page overlay in the selection rect.
+
+        (WebKit::FindController::hideFindIndicator):
+        (WebKit::FindController::willFindString):
+        (WebKit::FindController::didFailToFindString):
+        (WebKit::FindController::didHideFindIndicator):
+        Add willFindString, didFailToFindString, and didHideFindIndicator functions.
+        They do nothing, except on iOS where they are used to prevent selection change
+        messages from being dispatched while using find-in-page, and to force
+        WebCore to compute a selection rect (via updateAppearance) despite the selection not being painted.
+
+        * WebProcess/WebPage/ios/FindIndicatorOverlayClientIOS.h:
+        (WebKit::FindIndicatorOverlayClientIOS::setFrame):
+
+2014-04-11  Owen Taylor  <otaylor@redhat.com>
+
+        [GTK] Add HighDPI support for non-accelerated compositing contents
+        https://bugs.webkit.org/show_bug.cgi?id=131562
+
+        Reviewed by Martin Robinson.
+
+        * UIProcess/API/gtk/WebKitWebViewBase.cpp:
+        (scaleFactorChanged): Added this callback to pass scale changes to the page proxy.
+        (webkitWebViewBaseCreateWebPage): Attach the callback to the notify signal.
+        * UIProcess/cairo/BackingStoreCairo.cpp:
+        (WebKit::createBackingStoreForGTK): Pass the scale factor to the WebCore backing store.
+        (WebKit::BackingStore::incorporateUpdate): Ditto.
+
+2014-04-10  Jer Noble  <jer.noble@apple.com>
+
+        [WK2] Dispatch to main thread's run loop to handle cookie requests.
+        https://bugs.webkit.org/show_bug.cgi?id=131524
+
+        Reviewed by Brady Eidson.
+
+        When using synchronous network APIs from the main thread (e.g., -[NSImage
+        initWithContentsOfURL:]) our cookie shim would attempt to dispath_async
+        to the main thread to handle the cookie request, and block against the original
+        request. CFNetwork is still servicing the run loop however, so rather than
+        dispatch_async to the main queue, use the RunLoop to dispatch to the main thread.
+
+        * Shared/mac/CookieStorageShim.mm:
+        (-[WKNSURLSessionLocal _getCookieHeadersForTask:completionHandler:]):
+
+2014-04-11  Tim Horton  <timothy_horton@apple.com>
+
+        Make the stylebot happier with r167154.
+
+        * UIProcess/PageClient.h:
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/ios/PageClientImplIOS.h:
+
+2014-04-11  Tim Horton  <timothy_horton@apple.com>
+
+        [iOS WebKit2] Expose a simplified zoom-to-rect to the WebProcess
+        https://bugs.webkit.org/show_bug.cgi?id=131563
+
+        Reviewed by Simon Fraser.
+
+        * UIProcess/PageClient.h:
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/WebPageProxy.messages.in:
+        * UIProcess/ios/PageClientImplIOS.h:
+        * UIProcess/ios/PageClientImplIOS.mm:
+        (WebKit::PageClientImpl::zoomToRect):
+        * UIProcess/ios/WebPageProxyIOS.mm:
+        (WebKit::WebPageProxy::zoomToRect):
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::zoomToRect):
+        Add a simple message that calls WKContentView's zoom-to-rect code given just a rect and min/max scale.
+        We will use the center of the rect as the zoom origin, and will try to show the whole rect.
+
+2014-04-10  Jer Noble  <jer.noble@apple.com>
+
+        [iOS][WK2] Videos should animate into and out of fullscreen.
+        https://bugs.webkit.org/show_bug.cgi?id=131497
+
+        Reviewed by Simon Fraser.
+
+        Pass a starting rect for the enterFullscreen animation and an ending rect
+        for the exitFullscreen animation.
+
+        * UIProcess/ios/WebVideoFullscreenManagerProxy.h:
+        * UIProcess/ios/WebVideoFullscreenManagerProxy.messages.in:
+        * UIProcess/ios/WebVideoFullscreenManagerProxy.mm:
+        (WebKit::WebVideoFullscreenManagerProxy::enterFullscreenWithID): Pass initialFrame.
+        * WebProcess/ios/WebVideoFullscreenManager.mm:
+        (WebKit::screenRectOfContents): Casts node -> element and returns its screenRect().
+        (WebKit::WebVideoFullscreenManager::enterFullscreenForNode): Pass initialFrame.
+        (WebKit::WebVideoFullscreenManager::exitFullscreenForNode): Pass finalFrame.
+
+2014-04-11  Tim Horton  <timothy_horton@apple.com>
+
+        Support document-relative and custom-frame page overlays
+        https://bugs.webkit.org/show_bug.cgi?id=131560
+        <rdar://problem/16595556>
+
+        Reviewed by Simon Fraser.
+
+        Add "document-relative" overlays, which attach to (and scroll with) the document,
+        and can be given a frame rect within the document to avoid overallocation of backing store.
+
+        * WebProcess/WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebKit::WebFrameLoaderClient::didChangeScrollOffset):
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::mainFrame):
+        (WebKit::WebPage::mainFrameView):
+        (WebKit::WebPage::didChangeScrollOffsetForFrame):
+        * WebProcess/WebPage/WebPage.h:
+        Let the PageOverlayController know *which* frame scrolled, instead of "any frame".
+
+        * WebProcess/WebPage/FindController.cpp:
+        (WebKit::FindController::updateFindUIAfterPageScroll):
+        Factor out shared code.
+
+        (WebKit::FindController::willMoveToWebPage):
+        (WebKit::FindController::drawRect):
+        We can use clearRect() instead of a transparency layer and fillRect().
+        I've looked through all the other overlay clients I know of and none of them
+        depend on having a transparency layer at the overlay level.
+
+        * WebProcess/WebPage/PageOverlay.cpp:
+        (WebKit::PageOverlay::create):
+        (WebKit::PageOverlay::PageOverlay):
+        (WebKit::PageOverlay::bounds):
+        (WebKit::PageOverlay::frame):
+        (WebKit::PageOverlay::setFrame):
+        (WebKit::PageOverlay::drawRect):
+        Add OverlayType, which allows creation of Document or View relative overlays.
+        All overlays up to this point are View relative, so we default to that.
+        Document-relative overlays scroll with the page instead of repainting as
+        the page scrolls. They can also be given an explicit frame, allowing them
+        to be smaller than the entire document.
+
+        * WebProcess/WebPage/PageOverlay.h:
+        (WebKit::PageOverlay::overlayType):
+        (WebKit::PageOverlay::webPage):
+        (WebKit::PageOverlay::client): Deleted.
+        * WebProcess/WebPage/PageOverlayController.cpp:
+        (WebKit::PageOverlayController::initialize):
+        (WebKit::PageOverlayController::installPageOverlay):
+        (WebKit::PageOverlayController::uninstallPageOverlay):
+        (WebKit::PageOverlayController::updateForceSynchronousScrollLayerPositionUpdates):
+        (WebKit::updateOverlayGeometry):
+        (WebKit::PageOverlayController::setPageOverlayNeedsDisplay):
+        (WebKit::PageOverlayController::didChangeViewSize):
+        (WebKit::PageOverlayController::didChangeDocumentSize):
+        (WebKit::PageOverlayController::didChangeDeviceScaleFactor):
+        (WebKit::PageOverlayController::didScrollFrame):
+        (WebKit::PageOverlayController::flushPageOverlayLayers):
+        (WebKit::PageOverlayController::didChangeOverlayFrame):
+        Keep two overlay root layers - one for view-relative
+        and one for document-relative overlays.
+        Don't force synchronous scrolling if we only have document-relative overlays.
+        Update the overlay's position as well as its size whenever necessary.
+        Update document-relative overlay geometry when the document size changes.
+        Only explicitly flush view-relative overlays; document-relative ones
+        are plugged into the WebCore layer tree and flushed along with the page.
+
+        * WebProcess/WebPage/PageOverlayController.h:
+        (WebKit::PageOverlayController::documentOverlayRootLayer):
+        (WebKit::PageOverlayController::viewOverlayRootLayer):
+        * WebProcess/WebPage/mac/RemoteLayerTreeDrawingArea.h:
+        * WebProcess/WebPage/mac/RemoteLayerTreeDrawingArea.mm:
+        (WebKit::RemoteLayerTreeDrawingArea::setRootCompositingLayer):
+        (WebKit::RemoteLayerTreeDrawingArea::mainFrameContentSizeChanged):
+        * WebProcess/WebPage/mac/TiledCoreAnimationDrawingArea.mm:
+        (WebKit::TiledCoreAnimationDrawingArea::mainFrameContentSizeChanged):
+        (WebKit::TiledCoreAnimationDrawingArea::setRootCompositingLayer):
+        Let the PageOverlay controller know when the document size changes.
+        When we set up compositing, push the document overlay root layer
+        down into WebCore.
+
+2014-04-11  Pratik Solanki  <psolanki@apple.com>
+
+        [iOS WebKit2]: Share NSURLCache directory for webkit processes
+        https://bugs.webkit.org/show_bug.cgi?id=131513
+        <rdar://problem/16420859>
+
+        Reviewed by Alexey Proskuryakov.
+
+        Use iOS specific NSURLCache API to share the cache directory used by the networking process,
+        web process and Safari.
+
+        * NetworkProcess/cocoa/NetworkProcessCocoa.mm:
+        (WebKit::NetworkProcess::platformInitializeNetworkProcessCocoa):
+        * WebProcess/cocoa/WebProcessCocoa.mm:
+        (WebKit::WebProcess::platformInitializeWebProcess):
+
+2014-04-11  Alexey Proskuryakov  <ap@apple.com>
+
+        [Mac] Add IconServices to WebProcess sandbox profile
+        https://bugs.webkit.org/show_bug.cgi?id=131558
+        <rdar://problem/16552397>
+
+        Reviewed by Brady Eidson.
+
+        * WebProcess/com.apple.WebProcess.sb.in:
+
+2014-04-11  Antti Koivisto  <antti@apple.com>
+
+        Pipe initial scale factor to TileController
+        https://bugs.webkit.org/show_bug.cgi?id=131521
+
+        Reviewed by Tim Horton.
+
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::viewportConfigurationChanged):
+
+2014-04-10  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: WebProcess at com.apple.WebCore: WebCore::AXObjectCache::rootObject + 18
+        https://bugs.webkit.org/show_bug.cgi?id=131522
+
+        Reviewed by Anders Carlsson.
+
+        Protect against documents that have had their render tree destroyed, and no longer return a valid cache.
+
+        * WebProcess/WebPage/mac/WKAccessibilityWebPageObjectBase.mm:
+
+2014-04-11  Brent Fulgham  <bfulgham@apple.com>
+
+        [Mac] Prevent crash when exiting fullscreen mode
+        https://bugs.webkit.org/show_bug.cgi?id=131528
+
+        Reviewed by Jer Noble.
+
+        * UIProcess/mac/WKFullScreenWindowController.mm:
+        (-[WKFullScreenWindowController finishedExitFullScreenAnimation:]):
+        Clean up the _scaleAnimation controller, not just the _fadeAnimation controller.
+        (-[WKFullScreenWindowController close]): If we are doing an immediate
+        close of the view, we need to stop animations so we avoid any
+        final timer events from interacting with invalid window handles.
+
+2014-04-11  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        wk2-gtk does not display anything
+        https://bugs.webkit.org/show_bug.cgi?id=125558
+
+        Reviewed by Martin Robinson.
+
+        Remove fcntl call to set access mode flags on the duplicated files
+        descriptor. Those flags are ignored in Linux and make fcntl to
+        fail in FreeBSD. We should handle the case where the passed
+        protection is ReadOnly.
+        Thanks to Raphael Kubo da Costa who proposed the solution.
+
+        * Platform/unix/SharedMemoryUnix.cpp:
+        (WebKit::SharedMemory::createHandle):
+        (WebKit::accessModeFile): Deleted.
+
+2014-04-11  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GTK][WK2] Move Vector objects into WebEditorClient::executePendingEditorCommands() invocations
+        https://bugs.webkit.org/show_bug.cgi?id=131454
+
+        Reviewed by Carlos Garcia Campos.
+
+        * WebProcess/WebCoreSupport/WebEditorClient.h:
+        * WebProcess/WebCoreSupport/gtk/WebEditorClientGtk.cpp:
+        (WebKit::WebEditorClient::executePendingEditorCommands): Take a const reference of the Vector
+        object to avoid unnecessary copies. Also deploy two range-based for loops and efficiently move
+        the Editor::Command objects into the other Vector.
+
+2014-04-10  Dan Bernstein  <mitz@apple.com>
+
+        <rdar://problem/16582465> [Cocoa] Avoid casts from CF types to unrelated Objective-C types
+        https://bugs.webkit.org/show_bug.cgi?id=131529
+
+        Reviewed by Mark Rowe.
+
+        * Shared/API/c/cf/WKStringCF.mm:
+        (WKStringCreateWithCFString): Cast the CFStringRef into its toll-free-bridged counterpart,
+        NSString, then cast the NSString into a WKNSString.
+        * Shared/API/c/cf/WKURLCF.mm:
+        (WKURLCreateWithCFURL): Cast the CFURLRef into its toll-free-bridged counterpart, NSURL,
+        then cast the NSURL into a WKNSURL.
+
+2014-04-10  Dan Bernstein  <mitz@apple.com>
+
+        BundlePageDiagnosticLoggingClient leaks every string passing through it.
+        https://bugs.webkit.org/show_bug.cgi?id=130140
+
+        Reviewed by Brent Fulgham.
+
+        * WebProcess/InjectedBundle/InjectedBundlePageDiagnosticLoggingClient.cpp:
+        (WebKit::InjectedBundlePageDiagnosticLoggingClient::logDiagnosticMessage): Don’t copy the
+        strings passed into the bundle client.
+
+2014-04-10  Benjamin Poulain  <bpoulain@apple.com>
+
+        Try to fix the debug bots after r167102
+
+        * WebProcess/cocoa/WebProcessCocoa.mm:
+        (WebKit::WebProcess::platformInitializeWebProcess):
+
+2014-04-10  Gavin Barraclough  <barraclough@apple.com>
+
+        Add user default for FTL JIT
+        https://bugs.webkit.org/show_bug.cgi?id=131520
+
+        Reviewed by Benjamin Poulain.
+
+        * Shared/WebProcessCreationParameters.cpp:
+        (WebKit::WebProcessCreationParameters::decode):
+        * UIProcess/mac/WebContextMac.mm:
+        (WebKit::registerUserDefaultsIfNeeded):
+        (WebKit::WebContext::platformInitializeWebProcess):
+            - D'oh, whitespace.
+
+2014-04-10  Gavin Barraclough  <barraclough@apple.com>
+
+        Add user default for FTL JIT
+        https://bugs.webkit.org/show_bug.cgi?id=131520
+
+        Reviewed by Benjamin Poulain.
+
+        * Shared/WebProcessCreationParameters.cpp:
+        (WebKit::WebProcessCreationParameters::WebProcessCreationParameters):
+        (WebKit::WebProcessCreationParameters::encode):
+        (WebKit::WebProcessCreationParameters::decode):
+        * Shared/WebProcessCreationParameters.h:
+            - pass setting to WebContent process.
+        * UIProcess/mac/WebContextMac.mm:
+        (WebKit::registerUserDefaultsIfNeeded):
+        (WebKit::WebContext::platformInitializeWebProcess):
+            - read user default.
+        * WebProcess/cocoa/WebProcessCocoa.mm:
+        (WebKit::WebProcess::platformInitializeWebProcess):
+            - set JSC::Option.
+
+2014-04-10  Dan Bernstein  <mitz@apple.com>
+
+        [Cocoa] Notify the form delegate when the custom button in the form accessory view is tapped
+        https://bugs.webkit.org/show_bug.cgi?id=131518
+
+        Reviewed by Tim Horton.
+
+        * UIProcess/API/Cocoa/_WKFormDelegate.h: Declared new delegate method.
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView accessoryAutoFill]): Call the new delegate method.
+
+2014-04-10  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r167097.
+        https://bugs.webkit.org/show_bug.cgi?id=131519
+
+        there was already a mechanism for this, and this was
+        incomplete anyway (Requested by thorton on #webkit).
+
+        Reverted changeset:
+
+        "[iOS WebKit2] Disable the find overlay for now"
+        https://bugs.webkit.org/show_bug.cgi?id=131509
+        http://trac.webkit.org/changeset/167097
+
+2014-04-10  Tim Horton  <timothy_horton@apple.com>
+
+        [iOS WebKit2] Disable the find overlay for now
+        https://bugs.webkit.org/show_bug.cgi?id=131509
+
+        Reviewed by Adele Peterson.
+
+        * Shared/WebPreferencesStore.h:
+        * WebProcess/WebPage/FindController.cpp:
+        (WebKit::FindController::FindController):
+        (WebKit::FindController::hideFindOverlay):
+        (WebKit::FindController::hideFindUI):
+        (WebKit::FindController::setShouldShowOverlay):
+        * WebProcess/WebPage/FindController.h:
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::updatePreferences):
+        Add a setting allowing us to turn off the find-in-page overlay on iOS.
+
+2014-04-10  Sergio Villar Senin  <svillar@igalia.com>
+
+        Unreviewed GTK build fix after r167074.
+
+        This involves replacing resetDragSession() by
+        resetCurrentDragInformation() and dragSession().operation by
+        currentDragOperation().
+
+        * UIProcess/API/gtk/WebKitWebViewBase.cpp:
+        (webkitWebViewBaseDragDataReceived):
+        (webkitWebViewBaseDragMotion):
+        (dragExitedCallback):
+
+2014-04-10  Owen Taylor  <otaylor@redhat.com>
+
+        [Cairo] Implement ShareableBitmap::paint() with scale factor
+        https://bugs.webkit.org/show_bug.cgi?id=64665
+
+        Reviewed by Martin Robinson.
+
+        * Shared/cairo/ShareableBitmapCairo.cpp (WebKit::ShareableBitmap::paint):
+
+2014-04-10  Enrica Casucci  <enrica@apple.com>
+
+        [iOS WebKit2] Support phraseboundary gesture recognizer for CJK.
+        https://bugs.webkit.org/show_bug.cgi?id=131493
+        <rdar://problem/16319583>
+
+        Reviewed by Benjamin Poulain.
+
+        On iOS it is possible with a gesture to change the selection
+        within the marked text.
+        Changing the selection triggers also the update of the inline candidates
+        over the keyboard area.
+        The patch adds the logic to decide whether the gesture can begin
+        as well as the code for the movement of
+        the selection within the marked range.
+        The gesture is allowed to start within a given radius from the marked
+        area.
+
+        * Shared/InteractionInformationAtPosition.cpp:
+        (WebKit::InteractionInformationAtPosition::encode):
+        (WebKit::InteractionInformationAtPosition::decode):
+        * Shared/InteractionInformationAtPosition.h:
+        (WebKit::InteractionInformationAtPosition::InteractionInformationAtPosition):
+        * Shared/ios/GestureTypes.h:
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::editorStateChanged):
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView pointIsNearMarkedText:]):
+        (toGestureType):
+        (toUIWKGestureType):
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::selectWithGesture):
+        (WebKit::WebPage::getPositionInformation):
+
+2014-04-10  Enrica Casucci  <enrica@apple.com>
+
+        Unreviewed iOS build fix after http://trac.webkit.org/changeset/167074
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::WebPageProxy):
+
+2014-04-10  Alexey Proskuryakov  <ap@apple.com>
+
+        Gtk build fix.
+
+        * WebProcess/WebPage/WebPage.cpp: (WebKit::WebPage::performDragControllerAction):
+
+2014-04-09  Alexey Proskuryakov  <ap@apple.com>
+
+        Eliminate DragSession structure
+        https://bugs.webkit.org/show_bug.cgi?id=131465
+
+        Reviewed by Benjamin Poulain.
+
+        * Scripts/webkit2/messages.py:
+        (struct_or_class):
+        * Shared/WebCoreArgumentCoders.cpp:
+        (IPC::ArgumentCoder<DragSession>::encode): Deleted.
+        (IPC::ArgumentCoder<DragSession>::decode): Deleted.
+        * Shared/WebCoreArgumentCoders.h:
+        * UIProcess/API/mac/WKView.mm:
+        (-[WKView draggingEntered:]):
+        (-[WKView draggingUpdated:]):
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::WebPageProxy):
+        (WebKit::WebPageProxy::didPerformDragControllerAction):
+        * UIProcess/WebPageProxy.h:
+        (WebKit::WebPageProxy::currentDragOperation):
+        (WebKit::WebPageProxy::currentDragIsOverFileInput):
+        (WebKit::WebPageProxy::currentDragNumberOfFilesToBeAccepted):
+        (WebKit::WebPageProxy::resetCurrentDragInformation):
+        (WebKit::WebPageProxy::dragSession): Deleted.
+        (WebKit::WebPageProxy::resetDragSession): Deleted.
+        * UIProcess/WebPageProxy.messages.in:
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::performDragControllerAction):
+
+2014-04-10  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK] LayerTreeHostGtk is creating a software scene graph
+        https://bugs.webkit.org/show_bug.cgi?id=131471
+
+        Reviewed by Sergio Villar Senin.
+
+        At some point, a regression was introduced that sent the GTK+ WebKit2 scenegraph down the
+        software route. The rest of the file depends on the fact that the TextureMapper is the OpenGL
+        variety, so we should force that explicitly. This is causing crashes locally and soon we
+        should be able to test this directly.
+
+        * WebProcess/WebPage/gtk/LayerTreeHostGtk.cpp:
+        (WebKit::LayerTreeHostGtk::initialize): Force the use of the OpenGL scenegraph.
+
 2014-04-09  Jeremy Jones  <jeremyj@apple.com>
 
         Fix build failure when #if USE(XPC_SERVICES) is false.

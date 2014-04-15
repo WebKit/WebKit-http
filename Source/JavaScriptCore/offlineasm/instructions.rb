@@ -266,6 +266,7 @@ ARM_INSTRUCTIONS =
 
 ARM64_INSTRUCTIONS =
     [
+     "pcrtoaddr",    # Address from PC relative offset - adr instruction
      "popLRAndFP",   # ARM64 requires registers to be pushed and popped in pairs,
      "pushLRAndFP"   # therefore we do LR (link register) and FP (frame pointer) together.
     ]
@@ -291,6 +292,9 @@ MIPS_INSTRUCTIONS =
 
 SH4_INSTRUCTIONS =
     [
+    "flushcp",
+    "alignformova",
+    "mova",
     "shllx",
     "shlrx",
     "shld",

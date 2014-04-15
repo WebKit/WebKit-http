@@ -89,7 +89,6 @@
 #include "WebSecurityOrigin.h"
 #include <WebCore/DragController.h>
 #include <WebCore/DragData.h>
-#include <WebCore/DragSession.h>
 #include <WebCore/FloatRect.h>
 #include <WebCore/FocusDirection.h>
 #include <WebCore/MIMETypeRegistry.h>
@@ -320,6 +319,11 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
     , m_hasSpellDocumentTag(false)
     , m_pendingLearnOrIgnoreWordMessageCount(0)
     , m_mainFrameHasCustomContentProvider(false)
+#if ENABLE(DRAG_SUPPORT)
+    , m_currentDragOperation(DragOperationNone)
+    , m_currentDragIsOverFileInput(false)
+    , m_currentDragNumberOfFilesToBeAccepted(0)
+#endif
     , m_delegatesScrolling(false)
     , m_mainFrameHasHorizontalScrollbar(false)
     , m_mainFrameHasVerticalScrollbar(false)
@@ -333,6 +337,8 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
     , m_rubberBandsAtRight(true)
     , m_rubberBandsAtTop(true)
     , m_rubberBandsAtBottom(true)
+    , m_enableVerticalRubberBanding(true)
+    , m_enableHorizontalRubberBanding(true)
     , m_backgroundExtendsBeyondPage(false)
     , m_shouldRecordNavigationSnapshots(false)
     , m_pageCount(0)
@@ -1205,9 +1211,13 @@ void WebPageProxy::performDragControllerAction(DragControllerAction action, Drag
 #endif
 }
 
-void WebPageProxy::didPerformDragControllerAction(WebCore::DragSession dragSession)
+void WebPageProxy::didPerformDragControllerAction(uint64_t dragOperation, bool mouseIsOverFileInput, unsigned numberOfItemsToBeAccepted)
 {
-    m_currentDragSession = dragSession;
+    MESSAGE_CHECK(dragOperation <= DragOperationDelete);
+
+    m_currentDragOperation = static_cast<DragOperation>(dragOperation);
+    m_currentDragIsOverFileInput = mouseIsOverFileInput;
+    m_currentDragNumberOfFilesToBeAccepted = numberOfItemsToBeAccepted;
 }
 
 #if PLATFORM(GTK)
@@ -1720,6 +1730,15 @@ void WebPageProxy::scalePage(double scale, const IntPoint& origin)
     m_process->send(Messages::WebPage::ScalePage(scale, origin), m_pageID);
 }
 
+void WebPageProxy::scalePageInViewCoordinates(double scale, const IntPoint& centerInViewCoordinates)
+{
+    if (!isValid())
+        return;
+
+    m_pageScaleFactor = scale;
+    m_process->send(Messages::WebPage::ScalePageInViewCoordinates(scale, centerInViewCoordinates), m_pageID);
+}
+
 void WebPageProxy::setIntrinsicDeviceScaleFactor(float scaleFactor)
 {
     if (m_intrinsicDeviceScaleFactor == scaleFactor)
@@ -1848,6 +1867,40 @@ bool WebPageProxy::rubberBandsAtBottom() const
 void WebPageProxy::setRubberBandsAtBottom(bool rubberBandsAtBottom)
 {
     m_rubberBandsAtBottom = rubberBandsAtBottom;
+}
+    
+void WebPageProxy::setEnableVerticalRubberBanding(bool enableVerticalRubberBanding)
+{
+    if (enableVerticalRubberBanding == m_enableVerticalRubberBanding)
+        return;
+
+    m_enableVerticalRubberBanding = enableVerticalRubberBanding;
+
+    if (!isValid())
+        return;
+    m_process->send(Messages::WebPage::SetEnableVerticalRubberBanding(enableVerticalRubberBanding), m_pageID);
+}
+    
+bool WebPageProxy::verticalRubberBandingIsEnabled() const
+{
+    return m_enableVerticalRubberBanding;
+}
+    
+void WebPageProxy::setEnableHorizontalRubberBanding(bool enableHorizontalRubberBanding)
+{
+    if (enableHorizontalRubberBanding == m_enableHorizontalRubberBanding)
+        return;
+
+    m_enableHorizontalRubberBanding = enableHorizontalRubberBanding;
+
+    if (!isValid())
+        return;
+    m_process->send(Messages::WebPage::SetEnableHorizontalRubberBanding(enableHorizontalRubberBanding), m_pageID);
+}
+    
+bool WebPageProxy::horizontalRubberBandingIsEnabled() const
+{
+    return m_enableHorizontalRubberBanding;
 }
 
 void WebPageProxy::setBackgroundExtendsBeyondPage(bool backgroundExtendsBeyondPage)
@@ -3156,10 +3209,9 @@ void WebPageProxy::editorStateChanged(const EditorState& editorState)
         m_pageClient.notifyInputContextAboutDiscardedComposition();
     }
 #elif PLATFORM(IOS)
-    if (!editorState.hasComposition) {
-        // We need to notify the client on iOS to make sure the selection is redrawn.
-        notifyRevealedSelection();
-    }
+    // We always need to notify the client on iOS to make sure the selection is redrawn,
+    // even during composition to support phrase boundary gesture.
+    notifyRevealedSelection();
 #elif PLATFORM(EFL) || PLATFORM(GTK)
     m_pageClient.updateTextInputState();
 #endif

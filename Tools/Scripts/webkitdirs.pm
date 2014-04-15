@@ -1338,7 +1338,7 @@ sub launcherPath()
 sub launcherName()
 {
     if (isGtk()) {
-        return "GtkLauncher";
+        return "MiniBrowser";
     } elsif (isAppleMacWebKit()) {
         return "Safari";
     } elsif (isAppleWinWebKit()) {

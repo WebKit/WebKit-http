@@ -1,3 +1,671 @@
+2014-04-14  Andreas Kling  <akling@apple.com>
+
+        Array.prototype.concat should allocate output storage only once.
+        <https://webkit.org/b/131609>
+
+        Do a first pass across 'this' and any arguments to compute the
+        final size of the resulting array from Array.prototype.concat.
+        This avoids having to grow the output incrementally as we go.
+
+        This also includes two other micro-optimizations:
+
+        - Mark getProperty() with ALWAYS_INLINE.
+
+        - Use JSArray::length() instead of taking the generic property
+          lookup path when we know an argument is an Array.
+
+        My MBP says ~3% progression on Dromaeo/jslib-traverse-jquery.
+
+        Reviewed by Oliver & Darin.
+
+        * runtime/ArrayPrototype.cpp:
+        (JSC::getProperty):
+        (JSC::arrayProtoFuncConcat):
+
+2014-04-14  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r167249.
+        https://bugs.webkit.org/show_bug.cgi?id=131621
+
+        broke 3 tests on cloop (Requested by kling on #webkit).
+
+        Reverted changeset:
+
+        "Array.prototype.concat should allocate output storage only
+        once."
+        https://bugs.webkit.org/show_bug.cgi?id=131609
+        http://trac.webkit.org/changeset/167249
+
+2014-04-14  Alex Christensen  <achristensen@webkit.org>
+
+        Fixed potential integer truncation.
+        https://bugs.webkit.org/show_bug.cgi?id=131615
+
+        Reviewed by Darin Adler.
+
+        * assembler/X86Assembler.h:
+        (JSC::X86Assembler::fillNops):
+        Truncate the size_t to an unsigned after it is limited to 15 instead of before.
+
+2014-04-14  Andreas Kling  <akling@apple.com>
+
+        Array.prototype.concat should allocate output storage only once.
+        <https://webkit.org/b/131609>
+
+        Do a first pass across 'this' and any arguments to compute the
+        final size of the resulting array from Array.prototype.concat.
+        This avoids having to grow the output incrementally as we go.
+
+        This also includes two other micro-optimizations:
+
+        - Mark getProperty() with ALWAYS_INLINE.
+
+        - Use JSArray::length() instead of taking the generic property
+          lookup path when we know an argument is an Array.
+
+        My MBP says ~3% progression on Dromaeo/jslib-traverse-jquery.
+
+        Reviewed by Darin Adler.
+
+        * runtime/ArrayPrototype.cpp:
+        (JSC::getProperty):
+        (JSC::arrayProtoFuncConcat):
+
+2014-04-14  Benjamin Poulain  <benjamin@webkit.org>
+
+        [JSC] Improve the call site of string comparison in some hot path
+        https://bugs.webkit.org/show_bug.cgi?id=131605
+
+        Reviewed by Darin Adler.
+
+        When resolved, the String of a JSString is never null. It can be empty but not null.
+        The null value is reserved for ropes but those would be resolved when getting the value.
+
+        Consequently, we should use the equal() operation that do not handle null values.
+        Using the StringImpl directly is already common in StringPrototype but it was not used here for some reason.
+
+        * jit/JITOperations.cpp:
+        * runtime/JSCJSValueInlines.h:
+        (JSC::JSValue::equalSlowCaseInline):
+        (JSC::JSValue::strictEqualSlowCaseInline):
+        (JSC::JSValue::pureStrictEqual):
+
+2014-04-08  Oliver Hunt  <oliver@apple.com>
+
+        Rewrite Function.bind as a builtin
+        https://bugs.webkit.org/show_bug.cgi?id=131083
+
+        Reviewed by Geoffrey Garen.
+
+        This change removes the existing function.bind implementation
+        entirely so JSBoundFunction is no more.
+
+        Instead we just return a regular JS closure with a few
+        private properties hanging off it that allow us to perform
+        the necessary bound function fakery.  While most of this is
+        simple, a couple of key changes:
+
+        - The parser and lexer now directly track whether they're
+          parsing code for call or construct and convert the private
+          name @IsConstructor into TRUETOK or FALSETOK as appropriate.
+          This automatically gives us the ability to vary behaviour
+          from within the builtin. It also leaves a lot of headroom
+          for trivial future improvements.
+        - The instanceof operator now uses the prototypeForHasInstance
+          private name, and we have a helper function to ensure that
+          all objects that need to can update their magical 'prototype'
+          property pair correctly.
+
+        * API/JSScriptRef.cpp:
+        (parseScript):
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * builtins/BuiltinExecutables.cpp:
+        (JSC::BuiltinExecutables::createBuiltinExecutable):
+        * builtins/Function.prototype.js:
+        (bind.bindingFunction):
+        (bind.else.bindingFunction):
+        (bind):
+        * bytecode/UnlinkedCodeBlock.cpp:
+        (JSC::generateFunctionCodeBlock):
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::InstanceOfNode::emitBytecode):
+        * interpreter/Interpreter.cpp:
+        * parser/Lexer.cpp:
+        (JSC::Lexer<T>::Lexer):
+        (JSC::Lexer<LChar>::parseIdentifier):
+        (JSC::Lexer<UChar>::parseIdentifier):
+        * parser/Lexer.h:
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::Parser):
+        (JSC::Parser<LexerType>::parseInner):
+        * parser/Parser.h:
+        (JSC::parse):
+        * parser/ParserModes.h:
+        * runtime/CodeCache.cpp:
+        (JSC::CodeCache::getGlobalCodeBlock):
+        (JSC::CodeCache::getFunctionExecutableFromGlobalCode):
+        * runtime/CommonIdentifiers.h:
+        * runtime/Completion.cpp:
+        (JSC::checkSyntax):
+        * runtime/Executable.cpp:
+        (JSC::ProgramExecutable::checkSyntax):
+        * runtime/FunctionPrototype.cpp:
+        (JSC::FunctionPrototype::addFunctionProperties):
+        (JSC::functionProtoFuncBind): Deleted.
+        * runtime/JSBoundFunction.cpp: Removed.
+        * runtime/JSBoundFunction.h: Removed.
+        * runtime/JSFunction.cpp:
+        (JSC::RetrieveCallerFunctionFunctor::RetrieveCallerFunctionFunctor):
+        (JSC::RetrieveCallerFunctionFunctor::operator()):
+        (JSC::retrieveCallerFunction):
+        (JSC::JSFunction::getOwnPropertySlot):
+        (JSC::JSFunction::defineOwnProperty):
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::reset):
+        * runtime/JSGlobalObjectFunctions.cpp:
+        (JSC::globalFuncSetTypeErrorAccessor):
+        * runtime/JSGlobalObjectFunctions.h:
+        * runtime/JSObject.h:
+        (JSC::JSObject::inlineGetOwnPropertySlot):
+
+2014-04-12  Filip Pizlo  <fpizlo@apple.com>
+
+        Math.fround() should be an intrinsic
+        https://bugs.webkit.org/show_bug.cgi?id=131583
+
+        Reviewed by Geoffrey Garen.
+        
+        Makes programs that use Math.fround() run up to 6x faster.
+
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::handleIntrinsic):
+        * dfg/DFGCSEPhase.cpp:
+        (JSC::DFG::CSEPhase::performNodeCSE):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGNodeType.h:
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        (JSC::DFG::PredictionPropagationPhase::propagate):
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::LowerDFGToLLVM::compileNode):
+        (JSC::FTL::LowerDFGToLLVM::compileArithFRound):
+        * runtime/Intrinsic.h:
+        * runtime/MathObject.cpp:
+        (JSC::MathObject::finishCreation):
+
+2014-04-12  Filip Pizlo  <fpizlo@apple.com>
+
+        FTL should use stackmap register liveness
+        https://bugs.webkit.org/show_bug.cgi?id=130791
+
+        Reviewed by Goeffrey Garen.
+        
+        Enable the stackmap register liveness support by fixing the two last bugs:
+        
+        - If everything is dead after the patchpoint - a good possibility for a put_by_id -
+          then we shouldn't crash due to a null scratch buffer.
+        
+        - Always consider callee-saves as if they were live. More precisely, we should
+          consider those callee-saves that are not saved by the enclosing function to be live.
+          For now we do the much simpler thing and consider callee-saves to be always live
+          since it has minimal impact on the scratch register allocator. It will know not to
+          preserve those for calls, anyway.
+        
+        I tried writing a test for the null scratch buffer thing, but failed. I will land the
+        test anyway since it seems useful.
+
+        * ftl/FTLCompile.cpp:
+        (JSC::FTL::usedRegistersFor):
+        * jit/ScratchRegisterAllocator.cpp:
+        (JSC::ScratchRegisterAllocator::preserveUsedRegistersToScratchBufferForCall):
+        (JSC::ScratchRegisterAllocator::restoreUsedRegistersFromScratchBufferForCall):
+        * runtime/Options.h:
+        * tests/stress/repeated-put-by-id-reallocating-transition.js: Added.
+        (foo):
+
+2014-04-11  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG::FixupPhase should insert conversion nodes after the rest of fixup so that we know how the types settled
+        https://bugs.webkit.org/show_bug.cgi?id=131424
+
+        Reviewed by Geoffrey Garen.
+        
+        This defers type conversion injection until we've decided on types. This makes the
+        process of deciding types a bit more flexible - for example we can naturally fixpoint
+        and change our minds. Only when things are settled do we actually insert conversions.
+        
+        This is a necessary prerequisite for keeping double, int52, and JSValue data flow
+        separate. A SetLocal/GetLocal will appear to be JSValue until we fixpoint and realize
+        that there are typed uses. If we were eagerly inserting type conversions then we would
+        first insert a to/from-JSValue conversion in some cases only to then replace it by
+        the other conversions. It's probably trivial to remove those redundant conversions later
+        but I think it's better if we don't insert them to begin with.
+
+        * bytecode/CodeOrigin.h:
+        (JSC::CodeOrigin::operator!):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::run):
+        (JSC::DFG::FixupPhase::fixupBlock):
+        (JSC::DFG::FixupPhase::fixupNode):
+        (JSC::DFG::FixupPhase::fixupSetLocalsInBlock):
+        (JSC::DFG::FixupPhase::fixEdge):
+        (JSC::DFG::FixupPhase::fixIntEdge):
+        (JSC::DFG::FixupPhase::injectTypeConversionsInBlock):
+        (JSC::DFG::FixupPhase::injectTypeConversionsForEdge):
+        (JSC::DFG::FixupPhase::addRequiredPhantom):
+        (JSC::DFG::FixupPhase::addPhantomsIfNecessary):
+        (JSC::DFG::FixupPhase::clearPhantomsAtEnd):
+        (JSC::DFG::FixupPhase::observeUntypedEdge): Deleted.
+        (JSC::DFG::FixupPhase::fixupUntypedSetLocalsInBlock): Deleted.
+        (JSC::DFG::FixupPhase::injectInt32ToDoubleNode): Deleted.
+
+2014-04-11  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Replay: code generator should consider enclosing class when computing duplicate type names
+        https://bugs.webkit.org/show_bug.cgi?id=131554
+
+        Reviewed by Timothy Hatcher.
+
+        We need to prepend an enum's enclosing class, if any, so that multiple enums with the same name
+        can coexist without triggering a "duplicate types" error. Now, such enums must be referenced
+        by the enclosing class and enum name.
+
+        Added tests for the new syntax, and rebaselined one test to reflect a previous patch's change.
+
+        * replay/scripts/CodeGeneratorReplayInputs.py:
+        (Type.type_name): Prepend the enclosing class name.
+        (Type.type_name.is):
+        * replay/scripts/tests/expected/fail-on-duplicate-enum-type.json-error: Added.
+        * replay/scripts/tests/expected/generate-enums-with-same-base-name.json-TestReplayInputs.cpp: Added.
+        * replay/scripts/tests/expected/generate-enums-with-same-base-name.json-TestReplayInputs.h: Added.
+        * replay/scripts/tests/expected/generate-input-with-vector-members.json-TestReplayInputs.h: Rebaseline.
+        * replay/scripts/tests/fail-on-duplicate-enum-type.json: Added.
+        * replay/scripts/tests/generate-enums-with-same-base-name.json: Added.
+
+2014-04-11  Gavin Barraclough  <baraclough@apple.com>
+
+        Rollout - Rewrite Function.bind as a builtin
+        https://bugs.webkit.org/show_bug.cgi?id=131083
+
+        Unreviewed.
+
+        Rolling out r167020 while investigating a performance regression.
+
+        * API/JSObjectRef.cpp:
+        (JSObjectMakeConstructor):
+        * API/JSScriptRef.cpp:
+        (parseScript):
+        * CMakeLists.txt:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj.filters:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * builtins/BuiltinExecutables.cpp:
+        (JSC::BuiltinExecutables::createBuiltinExecutable):
+        * builtins/Function.prototype.js:
+        (apply):
+        (bind.bindingFunction): Deleted.
+        (bind.else.bindingFunction): Deleted.
+        (bind): Deleted.
+        * bytecode/UnlinkedCodeBlock.cpp:
+        (JSC::generateFunctionCodeBlock):
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::InstanceOfNode::emitBytecode):
+        * interpreter/Interpreter.cpp:
+        * parser/Lexer.cpp:
+        (JSC::Lexer<T>::Lexer):
+        (JSC::Lexer<LChar>::parseIdentifier):
+        (JSC::Lexer<UChar>::parseIdentifier):
+        * parser/Lexer.h:
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::Parser):
+        (JSC::Parser<LexerType>::parseInner):
+        * parser/Parser.h:
+        (JSC::parse):
+        * parser/ParserModes.h:
+        * runtime/ArgumentsIteratorConstructor.cpp:
+        (JSC::ArgumentsIteratorConstructor::finishCreation):
+        * runtime/ArrayConstructor.cpp:
+        (JSC::ArrayConstructor::finishCreation):
+        * runtime/BooleanConstructor.cpp:
+        (JSC::BooleanConstructor::finishCreation):
+        * runtime/CodeCache.cpp:
+        (JSC::CodeCache::getGlobalCodeBlock):
+        (JSC::CodeCache::getFunctionExecutableFromGlobalCode):
+        * runtime/CommonIdentifiers.h:
+        * runtime/Completion.cpp:
+        (JSC::checkSyntax):
+        * runtime/DateConstructor.cpp:
+        (JSC::DateConstructor::finishCreation):
+        * runtime/ErrorConstructor.cpp:
+        (JSC::ErrorConstructor::finishCreation):
+        * runtime/Executable.cpp:
+        (JSC::ProgramExecutable::checkSyntax):
+        * runtime/FunctionConstructor.cpp:
+        (JSC::FunctionConstructor::finishCreation):
+        * runtime/FunctionPrototype.cpp:
+        (JSC::FunctionPrototype::addFunctionProperties):
+        (JSC::functionProtoFuncBind):
+        * runtime/JSArrayBufferConstructor.cpp:
+        (JSC::JSArrayBufferConstructor::finishCreation):
+        * runtime/JSBoundFunction.cpp: Added.
+        (JSC::boundFunctionCall):
+        (JSC::boundFunctionConstruct):
+        (JSC::JSBoundFunction::create):
+        (JSC::JSBoundFunction::destroy):
+        (JSC::JSBoundFunction::customHasInstance):
+        (JSC::JSBoundFunction::JSBoundFunction):
+        (JSC::JSBoundFunction::finishCreation):
+        (JSC::JSBoundFunction::visitChildren):
+        * runtime/JSBoundFunction.h: Added.
+        (JSC::JSBoundFunction::targetFunction):
+        (JSC::JSBoundFunction::boundThis):
+        (JSC::JSBoundFunction::boundArgs):
+        (JSC::JSBoundFunction::createStructure):
+        * runtime/JSFunction.cpp:
+        (JSC::RetrieveCallerFunctionFunctor::RetrieveCallerFunctionFunctor):
+        (JSC::RetrieveCallerFunctionFunctor::operator()):
+        (JSC::retrieveCallerFunction):
+        (JSC::JSFunction::getOwnPropertySlot):
+        (JSC::JSFunction::getOwnNonIndexPropertyNames):
+        (JSC::JSFunction::put):
+        (JSC::JSFunction::defineOwnProperty):
+        * runtime/JSGenericTypedArrayViewConstructorInlines.h:
+        (JSC::JSGenericTypedArrayViewConstructor<ViewClass>::finishCreation):
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::reset):
+        * runtime/JSGlobalObjectFunctions.cpp:
+        (JSC::globalFuncSetTypeErrorAccessor): Deleted.
+        * runtime/JSGlobalObjectFunctions.h:
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::putDirectPrototypeProperty): Deleted.
+        (JSC::JSObject::putDirectPrototypePropertyWithoutTransitions): Deleted.
+        * runtime/JSObject.h:
+        * runtime/JSPromiseConstructor.cpp:
+        (JSC::JSPromiseConstructor::finishCreation):
+        * runtime/MapConstructor.cpp:
+        (JSC::MapConstructor::finishCreation):
+        * runtime/MapIteratorConstructor.cpp:
+        (JSC::MapIteratorConstructor::finishCreation):
+        * runtime/NameConstructor.cpp:
+        (JSC::NameConstructor::finishCreation):
+        * runtime/NativeErrorConstructor.cpp:
+        (JSC::NativeErrorConstructor::finishCreation):
+        * runtime/NumberConstructor.cpp:
+        (JSC::NumberConstructor::finishCreation):
+        * runtime/ObjectConstructor.cpp:
+        (JSC::ObjectConstructor::finishCreation):
+        * runtime/RegExpConstructor.cpp:
+        (JSC::RegExpConstructor::finishCreation):
+        * runtime/SetConstructor.cpp:
+        (JSC::SetConstructor::finishCreation):
+        * runtime/SetIteratorConstructor.cpp:
+        (JSC::SetIteratorConstructor::finishCreation):
+        * runtime/StringConstructor.cpp:
+        (JSC::StringConstructor::finishCreation):
+        * runtime/WeakMapConstructor.cpp:
+        (JSC::WeakMapConstructor::finishCreation):
+
+2014-04-11  David Kilzer  <ddkilzer@apple.com>
+
+        [ASan] Build broke because libCompileRuntimeToLLVMIR.a links to libclang_rt.asan_osx_dynamic.dylib
+        <http://webkit.org/b/131556>
+        <rdar://problem/16591856>
+
+        Reviewed by Brent Fulgham.
+
+        * Configurations/CompileRuntimeToLLVMIR.xcconfig: Clear
+        OTHER_LDFLAGS so the ASan build does not try to link to
+        libclang_rt.asan_osx_dynamic.dylib.
+
+2014-04-11  Mark Lam  <mark.lam@apple.com>
+
+        JSMainThreadExecState::call() should clear exceptions before returning.
+        <https://webkit.org/b/131530>
+
+        Reviewed by Geoffrey Garen.
+
+        Added a version of JSC::call() that return any uncaught exception instead
+        of leaving it pending in the VM.
+
+        As part of this change, I updated various parts of the code base to use the
+        new API as needed.
+
+        * bindings/ScriptFunctionCall.cpp:
+        (Deprecated::ScriptFunctionCall::call):
+        - ScriptFunctionCall::call() is only used by the inspector to inject scripts.
+          The injected scripts that will include Inspector scripts that should catch
+          and handle any exceptions that were thrown.  We should not be seeing any
+          exceptions returned from this call.  However, we do have checks for
+          exceptions in case there are bugs in the Inspector scripts which allowed
+          the exception to leak through.  Hence, it is proper to clear the exception
+          here, and only record the fact that an exception was seen (if present).
+
+        * bindings/ScriptFunctionCall.h:
+        * inspector/InspectorEnvironment.h:
+        * runtime/CallData.cpp:
+        (JSC::call):
+        * runtime/CallData.h:
+
+2014-04-11  Oliver Hunt  <oliver@apple.com>
+
+        Add BuiltinLog function to make debugging builtins easier
+        https://bugs.webkit.org/show_bug.cgi?id=131550
+
+        Reviewed by Andreas Kling.
+
+        Add a logging function that builtins can use for debugging.
+
+        * runtime/CommonIdentifiers.h:
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::reset):
+        * runtime/JSGlobalObjectFunctions.cpp:
+        (JSC::globalFuncBuiltinLog):
+        * runtime/JSGlobalObjectFunctions.h:
+
+2014-04-11  Julien Brianceau  <jbriance@cisco.com>
+
+        Fix LLInt for sh4 architecture (broken since C stack merge).
+        https://bugs.webkit.org/show_bug.cgi?id=131532
+
+        Reviewed by Mark Lam.
+
+        This patch fixes build and also implements sh4 parts for initPCRelative and
+        setEntryAddress macros introduced in http://trac.webkit.org/changeset/167094.
+
+        * llint/LowLevelInterpreter.asm:
+        * llint/LowLevelInterpreter32_64.asm:
+        * offlineasm/instructions.rb:
+        * offlineasm/sh4.rb:
+
+2014-04-10  Michael Saboff  <msaboff@apple.com>
+
+        Crash beneath DFG JIT code @ video.disney.com
+        https://bugs.webkit.org/show_bug.cgi?id=131447
+
+        Reviewed by Geoffrey Garen.
+
+        The 32-bit path of speculateMisc() uses an 'is not int32' check followed by
+        'tag not less than Undefined' check.  The first check was incorrectly elided if we
+        knew that the value *was* an int32, when it should have been elided if we already
+        knew that the value *was not* an int32.
+
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::speculateMisc):
+        * tests/stress/test-spec-misc.js: Added test.
+        (getX):
+        (foo):
+        (bar):
+
+2014-04-08  Filip Pizlo  <fpizlo@apple.com>
+
+        Make room for additional types in SpeculatedType.h
+        https://bugs.webkit.org/show_bug.cgi?id=131422
+
+        Reviewed by Sam Weinig.
+        
+        This'll make it easier to add DoubleHeavyNaN and DoubleEmptyNaN.
+
+        * bytecode/SpeculatedType.h:
+
+2014-04-10  Alex Christensen  <achristensen@webkit.org>
+
+        Compile fix for Win64.
+        https://bugs.webkit.org/show_bug.cgi?id=131508
+
+        Reviewed by Geoffrey Garen.
+
+        * assembler/X86Assembler.h:
+        (JSC::X86Assembler::fillNops):
+        Added unsigned template parameter to distinguish between size_t and unsigned long.
+
+2014-04-10  Michael Saboff  <msaboff@apple.com>
+
+        LLInt interpreter code should be generated as part of one function
+        https://bugs.webkit.org/show_bug.cgi?id=131205
+
+        Reviewed by Mark Lam.
+
+        Changed the generation of llint opcodes so that they are all part of the same
+        global function, llint_entry.  That function is used to fill in an entry point
+        table that includes each of the opcodes and helpers.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.vcxproj/LLInt/LLIntAssembly/build-LLIntAssembly.sh:
+        * JavaScriptCore.vcxproj/LLInt/LLIntDesiredOffsets/build-LLIntDesiredOffsets.sh:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        Added appropriate use of new -I option to offline assembler and offset
+        generator scripts.
+
+        * llint/LowLevelInterpreter.asm:
+        * llint/LowLevelInterpreter.cpp:
+        * llint/LowLevelInterpreter.h:
+        * offlineasm/arm.rb:
+        * offlineasm/arm64.rb:
+        * offlineasm/asm.rb:
+        * offlineasm/ast.rb:
+        * offlineasm/backends.rb:
+        * offlineasm/cloop.rb:
+        * offlineasm/generate_offset_extractor.rb:
+        * offlineasm/instructions.rb:
+        * offlineasm/parser.rb:
+        * offlineasm/registers.rb:
+        * offlineasm/self_hash.rb:
+        * offlineasm/settings.rb:
+        * offlineasm/transform.rb:
+        * offlineasm/x86.rb:
+        Added a new "global" keyword to the offline assembler that denotes a label that
+        should be exported.  Added opcode and operand support to get the absolute
+        address of a local label using position independent calculations.  Updated the
+        offline assembler to handle included files, both when generating the checksum
+        as well as including files from other than the local directory via a newly
+        added -I option.  The offline assembler now automatically determines external
+        functions by keeping track of referenced functions that are defined within the
+        assembly source.  This is used both for choosing the correct macro for external
+        references as well as generating the needed EXTERN directives for masm.
+        Updated the generation of the masm only .sym file to be written once at the end
+        of the offline assembler.
+
+        * assembler/MacroAssemblerCodeRef.h:
+        (JSC::MacroAssemblerCodePtr::createLLIntCodePtr):
+        (JSC::MacroAssemblerCodeRef::createLLIntCodeRef):
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::dumpBytecode):
+        (JSC::CodeBlock::CodeBlock):
+        * bytecode/GetByIdStatus.cpp:
+        (JSC::GetByIdStatus::computeFromLLInt):
+        * bytecode/Opcode.h:
+        (JSC::padOpcodeName):
+        * bytecode/PutByIdStatus.cpp:
+        (JSC::PutByIdStatus::computeFromLLInt):
+        * jit/JIT.cpp:
+        (JSC::JIT::privateCompileMainPass):
+        * jit/JITStubs.h:
+        * llint/LLIntCLoop.cpp:
+        (JSC::LLInt::initialize):
+        * llint/LLIntData.h:
+        (JSC::LLInt::getCodeFunctionPtr):
+        (JSC::LLInt::getOpcode): Deleted.
+        (JSC::LLInt::getCodePtr): Deleted.
+        * llint/LLIntOpcode.h:
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::LLINT_SLOW_PATH_DECL):
+        * llint/LLIntThunks.cpp:
+        (JSC::LLInt::functionForCallEntryThunkGenerator):
+        (JSC::LLInt::functionForConstructEntryThunkGenerator):
+        (JSC::LLInt::functionForCallArityCheckThunkGenerator):
+        (JSC::LLInt::functionForConstructArityCheckThunkGenerator):
+        (JSC::LLInt::evalEntryThunkGenerator):
+        (JSC::LLInt::programEntryThunkGenerator):
+        * llint/LLIntThunks.h:
+        Changed references to llint helpers to go through the entry point table populated
+        by llint_entry.  Added helpers to OpcodeID enum for all builds.
+
+        * bytecode/BytecodeList.json:
+        * generate-bytecode-files:
+        * llint/LLIntCLoop.cpp:
+        (JSC::LLInt::CLoop::initialize):
+        Reordered sections to match the order that the functions are added to the entry point
+        table.  Added new "asmPrefix" property for symbols that have one name but are generated
+        with a prefix, e.g. op_enter -> llint_op_enter.  Eliminated the "emitDefineID" property
+        as we are using enums for all bytecode references.  Changed the C Loop only
+        llint_c_loop_init to llint_entry.
+
+2014-04-10  Matthew Mirman  <mmirman@apple.com>
+
+        WIP for inlining C++.  Added a build target to produce LLVM IR.
+        https://bugs.webkit.org/show_bug.cgi?id=130523
+
+        Reviewed by Mark Rowe.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * build-symbol-table-index.py: Added.
+        * build-symbol-table-index.sh: Added.
+        * Configurations/CompileRuntimeToLLVMIR.xcconfig: Added.
+        * copy-llvm-ir-to-derived-sources.sh: Added.
+
+2014-04-10  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Replay: memoize plugin data for navigator.mimeTypes and navigator.plugins
+        https://bugs.webkit.org/show_bug.cgi?id=131341
+
+        Reviewed by Timothy Hatcher.
+
+        Add support for encoding/decoding unsigned long with EncodedValue.
+        It is a distinct type from uint32_t and uint64_t.
+
+        * replay/EncodedValue.cpp:
+        (JSC::EncodedValue::convertTo<unsigned long>):
+        * replay/EncodedValue.h:
+
+2014-04-10  Mark Lam  <mark.lam@apple.com>
+
+        LLINT loadisFromInstruction should handle the big endian case.
+        <https://webkit.org/b/131495>
+
+        Reviewed by Mark Hahnenberg.
+
+        The LLINT loadisFromInstruction macro aims to load the least significant
+        32-bit word from the 64-bit bytecode instruction stream and sign extend
+        it.  For big endian machines, the current implementation would load the
+        wrong 32-bit word.
+
+        Without this fix, the JSC tests will crash on big endian machines.
+        Thanks to Tomas Popela for diagnosing this issue.
+
+        * llint/LowLevelInterpreter.asm:
+
 2014-04-09  Mark Lam  <mark.lam@apple.com>
 
         Temporarily disable the JIT for the Windows port.

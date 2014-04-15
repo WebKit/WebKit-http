@@ -62,7 +62,6 @@
 #include "WebPopupMenuProxy.h"
 #include <WebCore/Color.h>
 #include <WebCore/DragActions.h>
-#include <WebCore/DragSession.h>
 #include <WebCore/HitTestResult.h>
 #include <WebCore/Page.h>
 #include <WebCore/PlatformScreen.h>
@@ -82,7 +81,6 @@
 
 #if ENABLE(DRAG_SUPPORT)
 #include <WebCore/DragActions.h>
-#include <WebCore/DragSession.h>
 #endif
 
 #if ENABLE(TOUCH_EVENTS)
@@ -609,6 +607,7 @@ public:
     void applicationWillEnterForeground();
     void applicationWillResignActive();
     void applicationDidBecomeActive();
+    void zoomToRect(WebCore::FloatRect, double minimumScale, double maximumScale);
 #endif
 
     const EditorState& editorState() const { return m_editorState; }
@@ -732,6 +731,7 @@ public:
     void setPageAndTextZoomFactors(double pageZoomFactor, double textZoomFactor);
 
     void scalePage(double scale, const WebCore::IntPoint& origin);
+    void scalePageInViewCoordinates(double scale, const WebCore::IntPoint& centerInViewCoordinates);
     double pageScaleFactor() const { return m_pageScaleFactor; }
 
     float deviceScaleFactor() const;
@@ -770,7 +770,12 @@ public:
 
     void setShouldUseImplicitRubberBandControl(bool shouldUseImplicitRubberBandControl) { m_shouldUseImplicitRubberBandControl = shouldUseImplicitRubberBandControl; }
     bool shouldUseImplicitRubberBandControl() const { return m_shouldUseImplicitRubberBandControl; }
-
+        
+    void setEnableVerticalRubberBanding(bool);
+    bool verticalRubberBandingIsEnabled() const;
+    void setEnableHorizontalRubberBanding(bool);
+    bool horizontalRubberBandingIsEnabled() const;
+        
     void setBackgroundExtendsBeyondPage(bool);
     bool backgroundExtendsBeyondPage() const;
 
@@ -853,7 +858,7 @@ public:
     void dragExited(WebCore::DragData&, const String& dragStorageName = String());
     void performDragOperation(WebCore::DragData&, const String& dragStorageName, const SandboxExtension::Handle&, const SandboxExtension::HandleArray&);
 
-    void didPerformDragControllerAction(WebCore::DragSession);
+    void didPerformDragControllerAction(uint64_t dragOperation, bool mouseIsOverFileInput, unsigned numberOfItemsToBeAccepted);
     void dragEnded(const WebCore::IntPoint& clientPosition, const WebCore::IntPoint& globalPosition, uint64_t operation);
 #if PLATFORM(COCOA)
     void setDragImage(const WebCore::IntPoint& clientPosition, const ShareableBitmap::Handle& dragImageHandle, bool isLinkDrag);
@@ -903,8 +908,15 @@ public:
     FrameLoadState::State loadStateAtProcessExit() const { return m_loadStateAtProcessExit; }
 
 #if ENABLE(DRAG_SUPPORT)
-    WebCore::DragSession dragSession() const { return m_currentDragSession; }
-    void resetDragSession() { m_currentDragSession = WebCore::DragSession(); }
+    WebCore::DragOperation currentDragOperation() const { return m_currentDragOperation; }
+    bool currentDragIsOverFileInput() const { return m_currentDragIsOverFileInput; }
+    unsigned currentDragNumberOfFilesToBeAccepted() const { return m_currentDragNumberOfFilesToBeAccepted; }
+    void resetCurrentDragInformation()
+    {
+        m_currentDragOperation = WebCore::DragOperationNone;
+        m_currentDragIsOverFileInput = false;
+        m_currentDragNumberOfFilesToBeAccepted = 0;
+    }
 #endif
 
     void preferencesDidChange();
@@ -1576,7 +1588,11 @@ private:
     bool m_mainFrameHasCustomContentProvider;
 
 #if ENABLE(DRAG_SUPPORT)
-    WebCore::DragSession m_currentDragSession;
+    // Current drag destination details are delivered as an asynchronous response,
+    // so we preserve them to be used when the next dragging delegate call is made.
+    WebCore::DragOperation m_currentDragOperation;
+    bool m_currentDragIsOverFileInput;
+    unsigned m_currentDragNumberOfFilesToBeAccepted;
 #endif
 
     PageLoadState m_pageLoadState;
@@ -1599,6 +1615,9 @@ private:
     bool m_rubberBandsAtRight;
     bool m_rubberBandsAtTop;
     bool m_rubberBandsAtBottom;
+        
+    bool m_enableVerticalRubberBanding;
+    bool m_enableHorizontalRubberBanding;
 
     bool m_backgroundExtendsBeyondPage;
 

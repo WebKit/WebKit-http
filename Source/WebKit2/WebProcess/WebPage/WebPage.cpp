@@ -100,7 +100,6 @@
 #include <WebCore/DocumentMarkerController.h>
 #include <WebCore/DragController.h>
 #include <WebCore/DragData.h>
-#include <WebCore/DragSession.h>
 #include <WebCore/ElementIterator.h>
 #include <WebCore/EventHandler.h>
 #include <WebCore/FocusController.h>
@@ -306,7 +305,7 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
 #if ENABLE(WEBGL)
     , m_systemWebGLPolicy(WebGLAllowCreation)
 #endif
-    , m_pageOverlayController(this)
+    , m_pageOverlayController(*this)
 {
     ASSERT(m_pageID);
     // FIXME: This is a non-ideal location for this Setting and
@@ -1299,12 +1298,23 @@ void WebPage::scalePage(double scale, const IntPoint& origin)
     send(Messages::WebPageProxy::PageScaleFactorDidChange(scale));
 }
 
+void WebPage::scalePageInViewCoordinates(double scale, IntPoint centerInViewCoordinates)
+{
+    if (scale == pageScaleFactor())
+        return;
+
+    IntPoint scrollPositionAtNewScale = mainFrameView()->rootViewToContents(-centerInViewCoordinates);
+    double scaleRatio = scale / pageScaleFactor();
+    scrollPositionAtNewScale.scale(scaleRatio, scaleRatio);
+    scalePage(scale, scrollPositionAtNewScale);
+}
+
 double WebPage::pageScaleFactor() const
 {
     PluginView* pluginView = pluginViewForFrame(&m_page->mainFrame());
     if (pluginView && pluginView->handlesPageScaleFactor())
         return pluginView->pageScaleFactor();
-    
+
     return m_page->pageScaleFactor();
 }
 
@@ -1398,6 +1408,16 @@ void WebPage::listenForLayoutMilestones(uint32_t milestones)
 void WebPage::setSuppressScrollbarAnimations(bool suppressAnimations)
 {
     m_page->setShouldSuppressScrollbarAnimations(suppressAnimations);
+}
+    
+void WebPage::setEnableVerticalRubberBanding(bool enableVerticalRubberBanding)
+{
+    m_page->setVerticalScrollElasticity(enableVerticalRubberBanding ? ScrollElasticityAllowed : ScrollElasticityNone);
+}
+    
+void WebPage::setEnableHorizontalRubberBanding(bool enableHorizontalRubberBanding)
+{
+    m_page->setHorizontalScrollElasticity(enableHorizontalRubberBanding ? ScrollElasticityAllowed : ScrollElasticityNone);
 }
 
 void WebPage::setBackgroundExtendsBeyondPage(bool backgroundExtendsBeyondPage)
@@ -2740,21 +2760,23 @@ bool WebPage::handleEditingKeyboardEvent(KeyboardEvent* evt)
 void WebPage::performDragControllerAction(uint64_t action, WebCore::DragData dragData)
 {
     if (!m_page) {
-        send(Messages::WebPageProxy::DidPerformDragControllerAction(WebCore::DragSession()));
+        send(Messages::WebPageProxy::DidPerformDragControllerAction(DragOperationNone, false, 0));
         DataObjectGtk* data = const_cast<DataObjectGtk*>(dragData.platformData());
         data->deref();
         return;
     }
 
     switch (action) {
-    case DragControllerActionEntered:
-        send(Messages::WebPageProxy::DidPerformDragControllerAction(m_page->dragController().dragEntered(dragData)));
+    case DragControllerActionEntered: {
+        DragOperation resolvedDragOperation = m_page->dragController().dragEntered(dragData);
+        send(Messages::WebPageProxy::DidPerformDragControllerAction(resolvedDragOperation, m_page->dragController().mouseIsOverFileInput(), m_page->dragController().numberOfItemsToBeAccepted()));
         break;
-
-    case DragControllerActionUpdated:
-        send(Messages::WebPageProxy::DidPerformDragControllerAction(m_page->dragController().dragUpdated(dragData)));
+    }
+    case DragControllerActionUpdated: {
+        DragOperation resolvedDragOperation = m_page->dragController().dragEntered(dragData);
+        send(Messages::WebPageProxy::DidPerformDragControllerAction(resolvedDragOperation, m_page->dragController().mouseIsOverFileInput(), m_page->dragController().numberOfItemsToBeAccepted()));
         break;
-
+    }
     case DragControllerActionExited:
         m_page->dragController().dragExited(dragData);
         break;
@@ -2776,20 +2798,23 @@ void WebPage::performDragControllerAction(uint64_t action, WebCore::DragData dra
 void WebPage::performDragControllerAction(uint64_t action, WebCore::IntPoint clientPosition, WebCore::IntPoint globalPosition, uint64_t draggingSourceOperationMask, const String& dragStorageName, uint32_t flags, const SandboxExtension::Handle& sandboxExtensionHandle, const SandboxExtension::HandleArray& sandboxExtensionsHandleArray)
 {
     if (!m_page) {
-        send(Messages::WebPageProxy::DidPerformDragControllerAction(WebCore::DragSession()));
+        send(Messages::WebPageProxy::DidPerformDragControllerAction(DragOperationNone, false, 0));
         return;
     }
 
     DragData dragData(dragStorageName, clientPosition, globalPosition, static_cast<DragOperation>(draggingSourceOperationMask), static_cast<DragApplicationFlags>(flags));
     switch (action) {
-    case DragControllerActionEntered:
-        send(Messages::WebPageProxy::DidPerformDragControllerAction(m_page->dragController().dragEntered(dragData)));
+    case DragControllerActionEntered: {
+        DragOperation resolvedDragOperation = m_page->dragController().dragEntered(dragData);
+        send(Messages::WebPageProxy::DidPerformDragControllerAction(resolvedDragOperation, m_page->dragController().mouseIsOverFileInput(), m_page->dragController().numberOfItemsToBeAccepted()));
         break;
 
-    case DragControllerActionUpdated:
-        send(Messages::WebPageProxy::DidPerformDragControllerAction(m_page->dragController().dragUpdated(dragData)));
+    }
+    case DragControllerActionUpdated: {
+        DragOperation resolvedDragOperation = m_page->dragController().dragUpdated(dragData);
+        send(Messages::WebPageProxy::DidPerformDragControllerAction(resolvedDragOperation, m_page->dragController().mouseIsOverFileInput(), m_page->dragController().numberOfItemsToBeAccepted()));
         break;
-        
+    }
     case DragControllerActionExited:
         m_page->dragController().dragExited(dragData);
         break;
@@ -3813,7 +3838,7 @@ void WebPage::recomputeShortCircuitHorizontalWheelEventsState()
 
 Frame* WebPage::mainFrame() const
 {
-    return m_page ? &m_page->mainFrame() : 0;
+    return m_page ? &m_page->mainFrame() : nullptr;
 }
 
 FrameView* WebPage::mainFrameView() const
@@ -3821,7 +3846,7 @@ FrameView* WebPage::mainFrameView() const
     if (Frame* frame = mainFrame())
         return frame->view();
     
-    return 0;
+    return nullptr;
 }
 
 void WebPage::setScrollingPerformanceLoggingEnabled(bool enabled)
@@ -4502,9 +4527,19 @@ TelephoneNumberOverlayController& WebPage::telephoneNumberOverlayController()
 }
 #endif
 
-void WebPage::didChangeScrollOffsetForAnyFrame()
+void WebPage::didChangeScrollOffsetForFrame(Frame* frame)
 {
-    m_pageOverlayController.didScrollAnyFrame();
+    m_pageOverlayController.didScrollFrame(frame);
+
+    if (!frame->isMainFrame())
+        return;
+
+    // If this is called when tearing down a FrameView, the WebCore::Frame's
+    // current FrameView will be null.
+    if (!frame->view())
+        return;
+
+    updateMainFrameScrollOffsetPinning();
 }
 
 } // namespace WebKit

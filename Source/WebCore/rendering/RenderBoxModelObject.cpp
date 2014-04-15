@@ -774,7 +774,7 @@ void RenderBoxModelObject::paintFillLayerExtended(const PaintInfo& paintInfo, co
     if (!bgLayer->next()) {
         LayoutRect backgroundRect(scrolledPaintRect);
         bool boxShadowShouldBeAppliedToBackground = this->boxShadowShouldBeAppliedToBackground(bleedAvoidance, box);
-        if (boxShadowShouldBeAppliedToBackground || !shouldPaintBackgroundImage || !bgLayer->hasOpaqueImage(this) || !bgLayer->hasRepeatXY()) {
+        if (boxShadowShouldBeAppliedToBackground || !shouldPaintBackgroundImage || !bgLayer->hasOpaqueImage(*this) || !bgLayer->hasRepeatXY()) {
             if (!boxShadowShouldBeAppliedToBackground)
                 backgroundRect.intersect(paintInfo.rect);
 
@@ -1348,8 +1348,8 @@ bool RenderBoxModelObject::paintNinePieceImage(GraphicsContext* graphicsContext,
 
         // Paint the right edge.
         if (sourceHeight > 0)
-            graphicsContext->drawTiledImage(image.get(), colorSpace, pixelSnappedForPainting(borderImageRect.maxX() - rightWidth, y + topWidth, rightWidth, deviceScaleFactor,
-                destinationHeight), pixelSnappedForPainting(imageWidth - rightSlice, topSlice, rightSlice, sourceHeight, deviceScaleFactor), FloatSize(rightSideScale, rightSideScale),
+            graphicsContext->drawTiledImage(image.get(), colorSpace, pixelSnappedForPainting(borderImageRect.maxX() - rightWidth, y + topWidth, rightWidth, destinationHeight, deviceScaleFactor),
+                pixelSnappedForPainting(imageWidth - rightSlice, topSlice, rightSlice, sourceHeight, deviceScaleFactor), FloatSize(rightSideScale, rightSideScale),
                 Image::StretchTile, (Image::TileRule)vRule, op);
     }
 

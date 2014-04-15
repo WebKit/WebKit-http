@@ -33,6 +33,10 @@
 #include <wtf/RefPtr.h>
 #include <wtf/Vector.h>
 
+namespace WebCore {
+class Frame;
+}
+
 namespace WebKit {
 
 class WebMouseEvent;
@@ -40,24 +44,29 @@ class WebPage;
 
 class PageOverlayController : public WebCore::GraphicsLayerClient {
 public:
-    PageOverlayController(WebPage*);
+    PageOverlayController(WebPage&);
 
     void initialize();
 
-    WebCore::GraphicsLayer* rootLayer() const { return m_rootLayer.get(); }
+    WebCore::GraphicsLayer* documentOverlayRootLayer() const { return m_documentOverlayRootLayer.get(); }
+    WebCore::GraphicsLayer* viewOverlayRootLayer() const { return m_viewOverlayRootLayer.get(); }
 
     void installPageOverlay(PassRefPtr<PageOverlay>, PageOverlay::FadeMode);
     void uninstallPageOverlay(PageOverlay*, PageOverlay::FadeMode);
 
-    void setPageOverlayNeedsDisplay(PageOverlay*, const WebCore::IntRect&);
-    void setPageOverlayOpacity(PageOverlay*, float);
-    void clearPageOverlay(PageOverlay*);
+    void setPageOverlayNeedsDisplay(PageOverlay&, const WebCore::IntRect&);
+    void setPageOverlayOpacity(PageOverlay&, float);
+    void clearPageOverlay(PageOverlay&);
 
     void didChangeViewSize();
+    void didChangeDocumentSize();
     void didChangePreferences();
     void didChangeDeviceScaleFactor();
     void didChangeExposedRect();
-    void didScrollAnyFrame();
+    void didScrollFrame(WebCore::Frame*);
+
+    void didChangeOverlayFrame(PageOverlay&);
+    void didChangeOverlayBackgroundColor(PageOverlay&);
 
     void flushPageOverlayLayers(WebCore::FloatRect);
 
@@ -68,8 +77,8 @@ public:
     WKArrayRef copyAccessibilityAttributesNames(bool parameterizedNames);
 
 private:
-    void updateSettingsForLayer(WebCore::GraphicsLayer*);
-    void invalidateAllPageOverlayLayers();
+    void updateSettingsForLayer(WebCore::GraphicsLayer&);
+    void updateForceSynchronousScrollLayerPositionUpdates();
 
     // WebCore::GraphicsLayerClient
     virtual void notifyAnimationStarted(const WebCore::GraphicsLayer*, double) override { }
@@ -77,11 +86,13 @@ private:
     virtual void paintContents(const WebCore::GraphicsLayer*, WebCore::GraphicsContext&, WebCore::GraphicsLayerPaintingPhase, const WebCore::FloatRect& clipRect) override;
     virtual float deviceScaleFactor() const override;
     virtual void didCommitChangesForLayer(const WebCore::GraphicsLayer*) const override { }
+    virtual bool shouldSkipLayerInDump(const WebCore::GraphicsLayer*) const override { return true; }
 
-    std::unique_ptr<WebCore::GraphicsLayer> m_rootLayer;
+    std::unique_ptr<WebCore::GraphicsLayer> m_documentOverlayRootLayer;
+    std::unique_ptr<WebCore::GraphicsLayer> m_viewOverlayRootLayer;
     HashMap<PageOverlay*, std::unique_ptr<WebCore::GraphicsLayer>> m_overlayGraphicsLayers;
     Vector<RefPtr<PageOverlay>> m_pageOverlays;
-    WebPage* m_webPage;
+    WebPage& m_webPage;
 };
 
 } // namespace WebKit

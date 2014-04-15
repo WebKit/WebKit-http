@@ -68,6 +68,7 @@ NSString *WebKitLocalCacheDefaultsKey = @"WebKitLocalCache";
 NSString *WebStorageDirectoryDefaultsKey = @"WebKitLocalStorageDatabasePathPreferenceKey";
 NSString *WebKitKerningAndLigaturesEnabledByDefaultDefaultsKey = @"WebKitKerningAndLigaturesEnabledByDefault";
 NSString *WebKitJSCJITEnabledDefaultsKey = @"WebKitJSCJITEnabledDefaultsKey";
+NSString *WebKitJSCFTLJITEnabledDefaultsKey = @"WebKitJSCFTLJITEnabledDefaultsKey";
 
 #if !PLATFORM(IOS)
 static NSString *WebKitApplicationDidChangeAccessibilityEnhancedUserInterfaceNotification = @"NSApplicationDidChangeAccessibilityEnhancedUserInterfaceNotification";
@@ -96,6 +97,7 @@ static void registerUserDefaultsIfNeeded()
     NSMutableDictionary *registrationDictionary = [NSMutableDictionary dictionary];
     
     [registrationDictionary setObject:[NSNumber numberWithBool:YES] forKey:WebKitJSCJITEnabledDefaultsKey];
+    [registrationDictionary setObject:[NSNumber numberWithBool:YES] forKey:WebKitJSCFTLJITEnabledDefaultsKey];
 
 #if PLATFORM(IOS) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
     [registrationDictionary setObject:[NSNumber numberWithBool:YES] forKey:WebKitKerningAndLigaturesEnabledByDefaultDefaultsKey];
@@ -165,6 +167,7 @@ void WebContext::platformInitializeWebProcess(WebProcessCreationParameters& para
 #endif
     parameters.shouldEnableKerningAndLigaturesByDefault = [[NSUserDefaults standardUserDefaults] boolForKey:WebKitKerningAndLigaturesEnabledByDefaultDefaultsKey];
     parameters.shouldEnableJIT = [[NSUserDefaults standardUserDefaults] boolForKey:WebKitJSCJITEnabledDefaultsKey];
+    parameters.shouldEnableFTLJIT = [[NSUserDefaults standardUserDefaults] boolForKey:WebKitJSCFTLJITEnabledDefaultsKey];
 
 #if HAVE(HOSTED_CORE_ANIMATION)
 #if !PLATFORM(IOS)
@@ -303,6 +306,8 @@ void WebContext::getPasteboardBufferForType(const String& pasteboardName, const 
         return;
     size = buffer->size();
     RefPtr<SharedMemory> sharedMemoryBuffer = SharedMemory::create(size);
+    if (!sharedMemoryBuffer)
+        return;
     memcpy(sharedMemoryBuffer->data(), buffer->data(), size);
     sharedMemoryBuffer->createHandle(handle, SharedMemory::ReadOnly);
 }
@@ -396,6 +401,8 @@ void WebContext::readBufferFromPasteboard(uint64_t index, const String& pasteboa
         return;
     size = buffer->size();
     RefPtr<SharedMemory> sharedMemoryBuffer = SharedMemory::create(size);
+    if (!sharedMemoryBuffer)
+        return;
     memcpy(sharedMemoryBuffer->data(), buffer->data(), size);
     sharedMemoryBuffer->createHandle(handle, SharedMemory::ReadOnly);
 }

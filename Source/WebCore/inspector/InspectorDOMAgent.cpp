@@ -1043,9 +1043,6 @@ std::unique_ptr<HighlightConfig> InspectorDOMAgent::highlightConfigFromInspector
     bool showInfo = false; // Default: false (do not show a tooltip).
     highlightInspectorObject->getBoolean("showInfo", &showInfo);
     highlightConfig->showInfo = showInfo;
-    bool showRulers = false; // Default: false (do not show rulers).
-    highlightInspectorObject->getBoolean("showRulers", &showRulers);
-    highlightConfig->showRulers = showRulers;
     highlightConfig->content = parseConfigColor("contentColor", highlightInspectorObject);
     highlightConfig->contentOutline = parseConfigColor("contentOutlineColor", highlightInspectorObject);
     highlightConfig->padding = parseConfigColor("paddingColor", highlightInspectorObject);
@@ -1481,7 +1478,12 @@ PassRefPtr<TypeBuilder::DOM::AccessibilityProperties> InspectorDOMAgent::buildOb
             if (AccessibilityObject* activeDescendant = axObject->activeDescendant())
                 activeDescendantNode = activeDescendant->node();
 
-            busy = axObject->ariaLiveRegionBusy();
+            // An AX object is "busy" if it or any ancestor has aria-busy="true" set.
+            AccessibilityObject* current = axObject;
+            while (!busy && current) {
+                busy = current->ariaLiveRegionBusy();
+                current = current->parentObject();
+            }
 
             supportsChecked = axObject->supportsChecked();
             if (supportsChecked) {

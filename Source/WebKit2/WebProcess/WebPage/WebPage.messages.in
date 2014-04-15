@@ -167,11 +167,15 @@ messages -> WebPage LegacyReceiver {
     WindowScreenDidChange(uint64_t displayID)
 
     ScalePage(double scale, WebCore::IntPoint origin)
+    ScalePageInViewCoordinates(double scale, WebCore::IntPoint centerInViewCoordinates)
 
     SetUseFixedLayout(bool fixed)
     SetFixedLayoutSize(WebCore::IntSize size)
     ListenForLayoutMilestones(uint32_t milestones)
     SetSuppressScrollbarAnimations(bool suppressAnimations)
+
+    SetEnableVerticalRubberBanding(bool enableVerticalRubberBanding)
+    SetEnableHorizontalRubberBanding(bool enableHorizontalRubberBanding)
 
     SetBackgroundExtendsBeyondPage(bool backgroundExtendsBeyondPage)
 

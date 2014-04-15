@@ -1,3 +1,76 @@
+2014-04-13  Geoffrey Garen  <ggaren@apple.com>
+
+        Added some website recordings to MallocBench -- taken from Membuster
+        https://bugs.webkit.org/show_bug.cgi?id=131601
+
+        Reviewed by Ryosuke Niwa.
+
+        Added flickr, reddit, and theverge -- each recorded from Membuster's
+        cache, with and without sending Safari a low memory warning.
+
+        * MallocBench/MallocBench.xcodeproj/project.pbxproj:
+        * MallocBench/MallocBench/Benchmark.cpp:
+        * MallocBench/MallocBench/flickr.cpp: Added.
+        (benchmark_flickr):
+        (benchmark_flickr_memory_warning):
+        * MallocBench/MallocBench/flickr.h: Added.
+        * MallocBench/MallocBench/flickr.ops: Added.
+        * MallocBench/MallocBench/flickr_memory_warning.ops: Added.
+        * MallocBench/MallocBench/reddit.cpp: Added.
+        (benchmark_reddit):
+        (benchmark_reddit_memory_warning):
+        * MallocBench/MallocBench/reddit.h: Added.
+        * MallocBench/MallocBench/reddit.ops: Added.
+        * MallocBench/MallocBench/reddit_memory_warning.ops: Added.
+        * MallocBench/MallocBench/theverge.cpp: Added.
+        (benchmark_theverge):
+        (benchmark_theverge_memory_warning):
+        * MallocBench/MallocBench/theverge.h: Added.
+        * MallocBench/MallocBench/theverge.ops: Added.
+        * MallocBench/MallocBench/theverge_memory_warning.ops: Added.
+
+2014-04-13  Geoffrey Garen  <ggaren@apple.com>
+
+        MallocBench record/replay should support realloc
+        https://bugs.webkit.org/show_bug.cgi?id=131598
+
+        Reviewed by Ryosuke Niwa.
+
+        * MallocBench/MallocBench.xcodeproj/project.pbxproj: Fixed some linkage
+        issues that caused us not to fully link to system malloc in the default
+        case. Also marked mbmalloc.dylib as required so the error message will
+        be clearer if we mess up.
+
+        * MallocBench/MallocBench/Interpreter.cpp:
+        (Interpreter::run):
+        * MallocBench/MallocBench/Interpreter.h: Added the realloc case, and
+        upgraded one-letter names to full words.
+
+2014-04-11  Dirk Schulze  <krit@webkit.org>
+
+        Optimize Canvas fill and drawImage with SourceIn, DestinationIn, SourceOut, and DestinationAtop using transparencyLayer.
+        https://bugs.webkit.org/show_bug.cgi?id=79659
+
+        Reviewed by Andreas Kling.
+
+        Add performance tests for real this time.
+
+        * Canvas/compositing-drawimage.html: Added.
+        * Canvas/compositing-fillRect.html: Added.
+
+
+2014-04-11  Dirk Schulze  <krit@webkit.org>
+
+        Optimize Canvas fill and drawImage with SourceIn, DestinationIn, SourceOut, and DestinationAtop using transparencyLayer.
+        https://bugs.webkit.org/show_bug.cgi?id=79659
+
+        Reviewed by Andreas Kling.
+
+        Add performance tests for fillRect() and drawImage() on composited contexts.
+
+        * Canvas/compositing-drawimage.html: Added.
+        * Canvas/compositing-fillRect.html: Added.
+
 2014-04-09  Zoltan Horvath  <zoltan@webkit.org>
 
         [CSS Shapes] Add no shapes version of RegionsShapes performance test

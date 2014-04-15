@@ -1696,7 +1696,14 @@ bool IfElseNode::tryFoldBreakAndContinue(BytecodeGenerator& generator, Statement
 void IfElseNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
 {
     generator.emitDebugHook(WillExecuteStatement, firstLine(), startOffset(), lineStartOffset());
-    
+    bool constantBranch = false;
+    if (m_condition->getBooleanConstant(constantBranch)) {
+        if (constantBranch)
+            generator.emitNode(dst, m_ifBlock);
+        else if (m_elseBlock)
+            generator.emitNode(dst, m_elseBlock);
+        return;
+    }
     RefPtr<Label> beforeThen = generator.newLabel();
     RefPtr<Label> beforeElse = generator.newLabel();
     RefPtr<Label> afterElse = generator.newLabel();

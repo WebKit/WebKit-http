@@ -1,3 +1,89 @@
+2014-04-14  Jozsef Berta  <jberta.u-szeged@partner.samsung.com>
+
+        Fix commit-log-editor bug revealed by r165447
+        https://bugs.webkit.org/show_bug.cgi?id=130676
+
+        Reviewed by Csaba Osztrogonác.
+
+        * Scripts/commit-log-editor:
+        (createCommitMessage): Omitting empty Source/JavaScriptCore:... blocks.
+        Add \n before the first block too, because the longest common prefix now ends with only one newline.
+        (removeLongestCommonPrefixEndingInNewline): The longest common prefix ends with only one newline,
+        now the last block of the common prefix isn't duplicated below. Changing the function name accordingly.
+
+2014-04-13  Darin Adler  <darin@apple.com>
+
+        userVisibleString should not try to "encode" host names
+        https://bugs.webkit.org/show_bug.cgi?id=131587
+        rdar://problem/14686849
+
+        Reviewed by Alexey Proskuryakov.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj: Added URLExtras.mm.
+
+        * TestWebKitAPI/Tests/mac/URLExtras.mm: Added. A few tests for WebCoreNSURLExtras.
+        Coverage is tiny at this point; we could add a lot more cases!
+
+2014-04-13  Jaehun Lim  <ljaehun.lim@samsung.com>
+
+        Use #include instead of #import
+        https://bugs.webkit.org/show_bug.cgi?id=131604
+
+        Reviewed by Darin Adler.
+
+        Fix "warning: #import is a deprecated GCC extension [-Wdeprecated]".
+
+        * TestWebKitAPI/Tests/WTF/StringView.cpp:
+
+2014-04-12  Filip Pizlo  <fpizlo@apple.com>
+
+        Make slow-stress tests run faster by running fewer VM variants.
+
+        Rubber stamped by Geoffrey Garen.
+
+        * Scripts/run-javascriptcore-tests:
+        * Scripts/run-jsc-stress-tests:
+
+2014-04-10  Zan Dobersek  <zdobersek@igalia.com>
+
+        [CMake] Add missing WTF unit tests
+        https://bugs.webkit.org/show_bug.cgi?id=131459
+
+        Reviewed by Martin Robinson.
+
+        * TestWebKitAPI/CMakeLists.txt: Add a few missing source files
+        that should be compiled into the TestWTF binary.
+
+2014-04-10  Brendan Long  <b.long@cablelabs.com>
+
+        [Gtk] run-launcher doesn't work by default
+        https://bugs.webkit.org/show_bug.cgi?id=131494
+
+        Reviewed by Philippe Normand.
+
+        * Scripts/run-launcher: Always use MiniBrowser for WebKitGTK.
+        * Scripts/webkitdirs.pm:
+        (launcherName): Same.
+        * Scripts/webkitpy/style/checker.py: Remove reference to GtkLauncher.
+        * gtk/common.py:
+        (get_build_path.is_valid_build_directory): Same.
+        * gtk/manifest.txt: Same.
+
+2014-04-09  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r167046.
+        https://bugs.webkit.org/show_bug.cgi?id=131479
+
+        Caused 300+ failures on Mavericks WK1 tester (Requested by ap
+        on #webkit).
+
+        Reverted changeset:
+
+        "Remove "System Font" from whitelisted DRT fonts and char
+        width calculations"
+        https://bugs.webkit.org/show_bug.cgi?id=131411
+        http://trac.webkit.org/changeset/167046
+
 2014-04-09  Myles C. Maxfield  <mmaxfield@apple.com>
 
         Remove "System Font" from whitelisted DRT fonts and char width calculations

@@ -158,9 +158,12 @@ Page::Page(PageClients& pageClients)
     , m_areMemoryCacheClientCallsEnabled(true)
     , m_mediaVolume(1)
     , m_pageScaleFactor(1)
+    , m_zoomedOutPageScaleFactor(0)
     , m_deviceScaleFactor(1)
     , m_topContentInset(0)
     , m_suppressScrollbarAnimations(false)
+    , m_verticalScrollElasticity(ScrollElasticityAllowed)
+    , m_horizontalScrollElasticity(ScrollElasticityAllowed)
     , m_didLoadUserStyleSheet(false)
     , m_userStyleSheetModificationTime(0)
     , m_group(0)
@@ -690,6 +693,15 @@ void Page::setMediaVolume(float volume)
     }
 }
 
+void Page::setZoomedOutPageScaleFactor(float scale)
+{
+    if (m_zoomedOutPageScaleFactor == scale)
+        return;
+    m_zoomedOutPageScaleFactor = scale;
+
+    mainFrame().deviceOrPageScaleFactorChanged();
+}
+
 void Page::setPageScaleFactor(float scale, const IntPoint& origin)
 {
     Document* document = mainFrame().document();
@@ -800,6 +812,28 @@ void Page::lockAllOverlayScrollbarsToHidden(bool lockOverlayScrollbars)
             scrollableArea->lockOverlayScrollbarStateToHidden(lockOverlayScrollbars);
         }
     }
+}
+    
+void Page::setVerticalScrollElasticity(ScrollElasticity elasticity)
+{
+    if (m_verticalScrollElasticity == elasticity)
+        return;
+    
+    m_verticalScrollElasticity = elasticity;
+    
+    if (FrameView* view = mainFrame().view())
+        view->setVerticalScrollElasticity(elasticity);
+}
+    
+void Page::setHorizontalScrollElasticity(ScrollElasticity elasticity)
+{
+    if (m_horizontalScrollElasticity == elasticity)
+        return;
+    
+    m_horizontalScrollElasticity = elasticity;
+    
+    if (FrameView* view = mainFrame().view())
+        view->setHorizontalScrollElasticity(elasticity);
 }
 
 void Page::setPagination(const Pagination& pagination)

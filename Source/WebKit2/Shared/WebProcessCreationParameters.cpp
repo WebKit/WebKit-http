@@ -42,6 +42,7 @@ WebProcessCreationParameters::WebProcessCreationParameters()
     , shouldForceScreenFontSubstitution(false)
     , shouldEnableKerningAndLigaturesByDefault(false)
     , shouldEnableJIT(false)
+    , shouldEnableFTLJIT(false)
 #endif
 #if ENABLE(NETWORK_PROCESS)
     , usesNetworkProcess(false)
@@ -111,6 +112,7 @@ void WebProcessCreationParameters::encode(IPC::ArgumentEncoder& encoder) const
     encoder << shouldForceScreenFontSubstitution;
     encoder << shouldEnableKerningAndLigaturesByDefault;
     encoder << shouldEnableJIT;
+    encoder << shouldEnableFTLJIT;
     encoder << !!bundleParameterData;
     if (bundleParameterData)
         encoder << bundleParameterData->dataReference();
@@ -238,6 +240,8 @@ bool WebProcessCreationParameters::decode(IPC::ArgumentDecoder& decoder, WebProc
     if (!decoder.decode(parameters.shouldEnableKerningAndLigaturesByDefault))
         return false;
     if (!decoder.decode(parameters.shouldEnableJIT))
+        return false;
+    if (!decoder.decode(parameters.shouldEnableFTLJIT))
         return false;
 
     bool hasBundleParameterData;

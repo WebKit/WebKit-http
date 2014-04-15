@@ -242,6 +242,8 @@ public:
     virtual float deviceScaleFactor() const override;
     virtual float contentsScaleMultiplierForNewTiles(const GraphicsLayer*) const override;
     virtual float pageScaleFactor() const override;
+    virtual float zoomedOutPageScaleFactor() const override;
+
     virtual void didCommitChangesForLayer(const GraphicsLayer*) const override;
     virtual void notifyFlushBeforeDisplayRefresh(const GraphicsLayer*) override;
 
@@ -301,6 +303,8 @@ public:
 
     void setRootExtendedBackgroundColor(const Color&);
     Color rootExtendedBackgroundColor() const { return m_rootExtendedBackgroundColor; }
+
+    void setDocumentOverlayRootLayer(GraphicsLayer*);
 
 private:
     class OverlapMap;
@@ -503,6 +507,8 @@ private:
     std::unique_ptr<GraphicsLayer> m_layerForHeader;
     std::unique_ptr<GraphicsLayer> m_layerForFooter;
 #endif
+
+    GraphicsLayer* m_documentOverlayRootLayer;
 
     std::unique_ptr<GraphicsLayerUpdater> m_layerUpdater; // Updates tiled layer visible area periodically while animations are running.
 

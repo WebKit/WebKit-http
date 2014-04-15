@@ -1,3 +1,514 @@
+2014-04-14  Dirk Schulze  <krit@webkit.org>
+
+        Optimize Canvas fill and drawImage with SourceIn, DestinationIn, SourceOut, and DestinationAtop using transparencyLayer.
+        https://bugs.webkit.org/show_bug.cgi?id=79659
+
+        Reviewed by Darin Adler.
+
+        Unskip previously failing tests.
+
+        * platform/gtk/TestExpectations:
+
+2014-04-14  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [JSC] CSSStyleDeclaration report incorrect descriptor
+        https://bugs.webkit.org/show_bug.cgi?id=89697
+
+        Reviewed by Benjamin Poulain.
+
+        Add new test to check the descriptor of CSSStyleDeclaration properties.
+
+        * fast/dom/CSSStyleDeclaration/cssstyledeclaration-properties-descriptor-expected.txt: Added.
+        * fast/dom/CSSStyleDeclaration/cssstyledeclaration-properties-descriptor.html: Added.
+
+2014-04-14  Benjamin Poulain  <benjamin@webkit.org>
+
+        CSS JIT: compile the :nth-child() pseudo class
+        https://bugs.webkit.org/show_bug.cgi?id=131602
+
+        Reviewed by Andreas Kling.
+
+        Add a couple of test for the new code:
+        -nth-child-with-backtracking tests the register pressure with backtracking.
+        -nth-child-bounds tests invalid selectors do not cause problems.
+
+        * fast/selectors/nth-child-bounds-expected.txt: Added.
+        * fast/selectors/nth-child-bounds.html: Added.
+        * fast/selectors/nth-child-with-backtracking-expected.txt: Added.
+        * fast/selectors/nth-child-with-backtracking.html: Added.
+
+        * http/tests/security/video-poster-cross-origin-crash.html:
+        Now that CSSSelector filters out ridiculously bad values, the pseudo class in this test
+        was no longer executed.
+        The particular value of nth-child is irrelevant for this test, all it needs it the tree marking
+        while not matching.
+
+2014-04-14  Mihnea Ovidenie  <mihnea@adobe.com>
+
+        [CSS Regions] Hit testing doesn't work in video
+        https://bugs.webkit.org/show_bug.cgi?id=131485
+
+        Reviewed by Andrei Bucur.
+
+        * fast/regions/hit-test-region-preserve3d-container-expected.txt: Added.
+        * fast/regions/hit-test-region-preserve3d-container.html: Added.
+
+2014-04-14  Koji Ishii  <kojishi@gmail.com>
+
+        Update html5lib test data to latest version
+        https://bugs.webkit.org/show_bug.cgi?id=131588
+
+        Reviewed by Darin Adler.
+
+        This patch imports the latest version of the "dat" files from
+        https://github.com/html5lib/html5lib-tests
+        Also updated expected files for failures of new tests.
+
+        * html5lib/generated/run-adoption01-data-expected.txt: Passes now as a bug in the test was fixed.
+        * html5lib/generated/run-adoption01-write-expected.txt: Supressed new failures.
+        * html5lib/generated/run-inbody01-data-expected.txt: Added.
+        * html5lib/generated/run-inbody01-data.html: Added.
+        * html5lib/generated/run-inbody01-write-expected.txt: Added.
+        * html5lib/generated/run-inbody01-write.html: Added.
+        * html5lib/generated/run-main-element-data-expected.txt: Added.
+        * html5lib/generated/run-main-element-data.html: Added.
+        * html5lib/generated/run-main-element-write-expected.txt: Added.
+        * html5lib/generated/run-main-element-write.html: Added.
+        * html5lib/generated/run-template-data-expected.txt: Supressed new failures.
+        * html5lib/generated/run-template-write-expected.txt: Supressed new failures.
+        * html5lib/generated/run-tests21-data-expected.txt: Supressed new failures.
+        * html5lib/generated/run-tests21-write-expected.txt: Supressed new failures.
+        * html5lib/generated/run-tests25-data-expected.txt: Supressed new failures.
+        * html5lib/generated/run-tests25-write-expected.txt: Supressed new failures.
+        * html5lib/resources/adoption01.dat:
+        * html5lib/resources/adoption02.dat:
+        * html5lib/resources/comments01.dat:
+        * html5lib/resources/doctype01.dat:
+        * html5lib/resources/domjs-unsafe.dat:
+        * html5lib/resources/entities01.dat:
+        * html5lib/resources/entities02.dat:
+        * html5lib/resources/html5test-com.dat:
+        * html5lib/resources/inbody01.dat:
+        * html5lib/resources/isindex.dat:
+        * html5lib/resources/main-element.dat: Added.
+        * html5lib/resources/pending-spec-changes-plain-text-unsafe.dat:
+        * html5lib/resources/pending-spec-changes.dat:
+        * html5lib/resources/plain-text-unsafe.dat:
+        * html5lib/resources/scriptdata01.dat:
+        * html5lib/resources/tables01.dat:
+        * html5lib/resources/template.dat:
+        * html5lib/resources/tests1.dat:
+        * html5lib/resources/tests10.dat:
+        * html5lib/resources/tests14.dat:
+        * html5lib/resources/tests15.dat:
+        * html5lib/resources/tests16.dat:
+        * html5lib/resources/tests17.dat:
+        * html5lib/resources/tests18.dat:
+        * html5lib/resources/tests19.dat:
+        * html5lib/resources/tests2.dat:
+        * html5lib/resources/tests20.dat:
+        * html5lib/resources/tests21.dat:
+        * html5lib/resources/tests22.dat:
+        * html5lib/resources/tests23.dat:
+        * html5lib/resources/tests25.dat:
+        * html5lib/resources/tests26.dat:
+        * html5lib/resources/tests3.dat:
+        * html5lib/resources/tests4.dat:
+        * html5lib/resources/tests5.dat:
+        * html5lib/resources/tests6.dat:
+        * html5lib/resources/tests7.dat:
+        * html5lib/resources/tests8.dat:
+        * html5lib/resources/tests9.dat:
+        * html5lib/resources/tests_innerHTML_1.dat:
+        * html5lib/resources/tricky01.dat:
+        * html5lib/resources/webkit01.dat:
+        * html5lib/resources/webkit02.dat:
+
+2014-04-13  Darin Adler  <darin@apple.com>
+
+        REGRESSION (r158617): Find on Page can get stuck in a loop when the search string occurs in an <input> in a <fieldset>
+        https://bugs.webkit.org/show_bug.cgi?id=126322
+
+        Reviewed by Ryosuke Niwa.
+
+        * editing/text-iterator/count-matches-in-form-expected.txt: Added.
+        * editing/text-iterator/count-matches-in-form.html: Added.
+
+        * fast/text/window-find.html: Tweaked the test a bit, making it a little easier to
+        see if the test hasn't even run.
+
+2014-04-08  Oliver Hunt  <oliver@apple.com>
+
+        Rewrite Function.bind as a builtin
+        https://bugs.webkit.org/show_bug.cgi?id=131083
+
+        Reviewed by Geoffrey Garen.
+
+        Testing.
+
+        * js/dom/function-bind-expected.txt:
+        * js/regress/function-bind-expected.txt: Added.
+        * js/regress/function-bind.html: Added.
+        * js/regress/script-tests/function-bind.js: Added.
+        (foo):
+
+2014-04-13  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        [GStreamer] No CORS support for media elements
+        https://bugs.webkit.org/show_bug.cgi?id=99037
+
+        Reviewed by Philippe Normand.
+
+        http/tests/security/video-cross-origin-accessfailure.html verifies that cross-origin streams that fail CORS check
+        are not played when crossorigin attribute is set.
+         http/tests/security/video-cross-origin-accesssameorigin.html verifies that access to same-origin streams
+        are played when crossorigin attribute is set.
+
+        * http/tests/security/video-cross-origin-accessfailure-expected.txt: Added.
+        * http/tests/security/video-cross-origin-accessfailure.html: Added.
+        * http/tests/security/video-cross-origin-accesssameorigin-expected.txt: Added.
+        * http/tests/security/video-cross-origin-accesssameorigin.html: Added.
+        * platform/efl/TestExpectations: Enabled http/tests/security/video-cross-origin-readback.html.
+        * platform/gtk/TestExpectations: Ditto.
+        * platform/mac/TestExpectations: Disabled http/tests/security/video-cross-origin-accessfailure.html.
+
+2014-04-13  Darin Adler  <darin@apple.com>
+
+        REGRESSION (r166860): ASSERTION FAILED: !isCalculated() on fast/css/image-set-value-not-removed-crash.html
+        https://bugs.webkit.org/show_bug.cgi?id=131480
+
+        Reviewed by Andreas Kling.
+
+        * platform/mac/TestExpectations: Unskip the test now that the assertion is fixed.
+
+2014-04-12  Filip Pizlo  <fpizlo@apple.com>
+
+        Make slow-stress tests run faster by running fewer VM variants.
+
+        Rubber stamped by Geoffrey Garen.
+
+        * jsc-layout-tests.yaml:
+
+2014-04-12  Filip Pizlo  <fpizlo@apple.com>
+
+        Math.fround() should be an intrinsic
+        https://bugs.webkit.org/show_bug.cgi?id=131583
+
+        Reviewed by Geoffrey Garen.
+        
+        This test runs 4.4635x faster with the intrinsic.
+
+        * js/regress/fround-expected.txt: Added.
+        * js/regress/fround.html: Added.
+        * js/regress/script-tests/fround.js: Added.
+
+2014-04-12  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        [SOUP] Libsoup internal credential setting should be controlled by loader decision
+        https://bugs.webkit.org/show_bug.cgi?id=130963
+
+        Reviewed by Darin Adler.
+
+        * platform/efl/TestExpectations: Unskipped http/tests/xmlhttprequest/cross-origin-no-authorization.html.
+        * platform/gtk/TestExpectations: Ditto.
+
+2014-04-12  Tibor Meszaros  <tmeszaros.u-szeged@partner.samsung.com>
+
+        (before-mar-1-1000) In correct date creation prior to 1 Mar 1000 
+        https://bugs.webkit.org/show_bug.cgi?id=129308
+
+        Reviewed by Darin Adler.
+
+        * js/date-constructor-expected.txt:
+        * js/script-tests/date-constructor.js:
+
+2014-04-11  Jon Honeycutt  <jhoneycutt@apple.com>
+
+        Assertion failure changing select element size during focus event
+        dispatch
+        <https://bugs.webkit.org/show_bug.cgi?id=131566>
+        <rdar://problem/16400735>
+
+        Reviewed by Andy Estes.
+
+        * fast/forms/select-change-size-during-focus-expected.txt: Added.
+        * fast/forms/select-change-size-during-focus.html: Added.
+
+2014-04-11  Bem Jones-Bey  <bjonesbe@adobe.com>
+
+        Clear sibling floats while splitting inline flow
+        https://bugs.webkit.org/show_bug.cgi?id=130905
+
+        Reviewed by David Hyatt.
+
+        This test will only crash if run with Address Sanitizer or some other
+        address checking tool.
+
+        * fast/block/float/split-inline-sibling-of-float-crash-expected.txt: Added.
+        * fast/block/float/split-inline-sibling-of-float-crash.html: Added.
+
+2014-04-11  Gavin Barraclough  <baraclough@apple.com>
+
+        Rollout - Rewrite Function.bind as a builtin
+        https://bugs.webkit.org/show_bug.cgi?id=131083
+
+        Unreviewed.
+
+        Rolling out r167020 while investigating a performance regression.
+
+        * js/dom/function-bind-expected.txt:
+        * js/regress/function-bind-expected.txt: Removed.
+        * js/regress/function-bind.html: Removed.
+        * js/regress/script-tests/function-bind.js: Removed.
+
+2014-04-11  Hans Muller  <hmuller@adobe.com>
+
+        [CSS Shapes] shape-outside from image doesn't load properly
+        https://bugs.webkit.org/show_bug.cgi?id=131491
+
+        Reviewed by Bem Jones-Bey.
+
+        * http/tests/css/shape-image-file-expected.html: Added.
+        * http/tests/css/shape-image-file.html: Added.
+
+2014-04-11  Mark Lam  <mark.lam@apple.com>
+
+        JSMainThreadExecState::call() should clear exceptions before returning.
+        <https://webkit.org/b/131530>
+
+        Reviewed by Geoffrey Garen.
+
+        * fast/dom/regress-131530-expected.txt: Added.
+        * fast/dom/regress-131530.html: Added.
+
+2014-04-11  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] Unreviewed GTK gardening.
+
+        Support for audio and video tracks was added on r158436. Stop skipping the following tests:
+          media/track/audio-track.html
+          media/track/video-track.html
+
+        Update bug number for media/track/track*in-band*.html tests
+
+        Report and update text expectations for new failing tests:
+          media/track/track-remove-track.html
+          fast/css3-text/css3-text-decoration/text-decoration-skip/text-decoration-skip-ink-svg.html
+          media/media-event-listeners.html
+
+        Update timeout expectation for media/video-controls-captions.html
+
+        * platform/gtk/TestExpectations:
+
+2014-04-10  Chris Fleizach  <cfleizach@apple.com>
+
+        Heap-use-after-free in WebCore::SpeechSynthesisUtterance::startTime
+        https://bugs.webkit.org/show_bug.cgi?id=131482
+
+        Reviewed by David Kilzer.
+
+        * platform/mac/fast/speechsynthesis/speech-synthesis-gc-utterance-crash-expected.txt: Added.
+        * platform/mac/fast/speechsynthesis/speech-synthesis-gc-utterance-crash.html: Added.
+
+2014-04-11  Bear Travis  <betravis@adobe.com>
+
+        [CSS Shapes] inset args and radial args should serialize to the simplest form
+        https://bugs.webkit.org/show_bug.cgi?id=129825
+
+        Reviewed by Dirk Schulze.
+
+        Modify tests to use the shortened inset serialization.
+
+        * animations/resources/animation-test-helpers.js: Accept shortened inset forms.
+        * css3/masking/clip-path-animation-expected.txt:
+        * css3/masking/clip-path-animation.html:
+        * fast/masking/parsing-clip-path-shape-expected.txt:
+        * fast/masking/parsing-clip-path-shape.html:
+        * fast/shapes/parsing/parsing-shape-lengths-expected.txt:
+        * fast/shapes/parsing/parsing-shape-lengths.html:
+        * fast/shapes/parsing/parsing-shape-outside-expected.txt:
+        * fast/shapes/parsing/parsing-test-utils.js:
+        * fast/shapes/shape-outside-floats/shape-outside-animation-expected.txt:
+        * fast/shapes/shape-outside-floats/shape-outside-animation.html:
+
+2014-04-11  Praveen R Jadhav  <praveen.j@samsung.com>
+
+        "playbackTime" parameter is not present in AudioProcessingEvent Interface as per W3C spec
+        https://bugs.webkit.org/show_bug.cgi?id=105518
+
+        Reviewed by Jer Noble.
+
+        Test case added to check AudioProcessingEvent attributes.
+
+        * webaudio/audioprocessingevent-expected.txt: Added.
+        * webaudio/audioprocessingevent.html: Added.
+
+2014-04-11  Zalan Bujtas  <zalan@apple.com>
+
+        Subpixel rendering: WK1: Trail of cruft in redraw during animations.
+        https://bugs.webkit.org/show_bug.cgi?id=131525
+
+        Reviewed by Simon Fraser.
+
+        Use enclosing rect instead of snapping to make sure the repaint rect always
+        covers the dirty area when painting is requested in a non-compositing RenderView.
+        This only applies to WK1 as WK2 has compositing RenderView and the repainting 
+        is managed by RenderLayerBacking.
+
+        This is a temporary solution until after ScrollView/FrameView/RenderView
+        is transitioned to device pixels. (tracked here: webkit.org/b/131526).
+
+        * fast/repaint/hidpi-block-width-change-leaves-cruft-expected.html: Added.
+        * fast/repaint/hidpi-block-width-change-leaves-cruft.html: Added.
+
+2014-04-11  Enrique Ocaña González  <eocanha@igalia.com>
+
+        [GTK] Unreviewed GTK gardening.
+
+        Update test expectations for flaky tests timing out:
+          media/track/track-remove-active-cue-crash.html
+          media/media-ended.html
+          media/audio-mpeg-supported.html
+
+        * platform/gtk/TestExpectations:
+
+2014-04-10  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r167073.
+        https://bugs.webkit.org/show_bug.cgi?id=131516
+
+        This patch caused crashes in video tests. (Requested by
+        mrobinson on #webkit).
+
+        Reverted changeset:
+
+        "[GStreamer] No CORS support for media elements"
+        https://bugs.webkit.org/show_bug.cgi?id=99037
+        http://trac.webkit.org/changeset/167073
+
+2014-04-10  Jon Honeycutt  <jhoneycutt@apple.com>
+
+        Assertion failure in WebCore::FlexBoxIterator::next()
+        <https://bugs.webkit.org/show_bug.cgi?id=117176>
+        <rdar://problem/14054549>
+
+        Reviewed by Tim Horton.
+
+        * fast/flexbox/collapse-anonymous-wrappers-assertion-expected.txt: Added.
+        * fast/flexbox/collapse-anonymous-wrappers-assertion.html: Added.
+
+2014-04-07  Jon Honeycutt  <jhoneycutt@apple.com>
+
+        Assertion failure, !node || node->isElementNode(), in
+        WebCore::RenderBlock::clone()
+        <https://bugs.webkit.org/show_bug.cgi?id=110489>
+        <rdar://problem/13666425>
+
+        Reviewed by Antti Koivisto.
+
+        * fast/multicol/fuzzed-test-case-expected.txt: Added.
+        * fast/multicol/fuzzed-test-case.html: Added.
+
+2014-04-10  Zalan Bujtas  <zalan@apple.com>
+
+        Web Inspector: Breakpoint in gutter has clipped / broken border image.
+        https://bugs.webkit.org/show_bug.cgi?id=131500
+
+        Reviewed by Joseph Pecoraro.
+
+        Typo in r166925.
+
+        * fast/borders/border-image-slice-missing-right-expected.html: Added.
+        * fast/borders/border-image-slice-missing-right.html: Added.
+
+2014-04-10  James Craig  <jcraig@apple.com>
+
+        Web Inspector: AXI: expose aria-busy state of current and ancestor nodes
+        https://bugs.webkit.org/show_bug.cgi?id=130826
+
+        Reviewed by Timothy Hatcher.
+
+        Expose if node is contained by any "busy" ancestor nodes, too.
+
+        * inspector-protocol/dom/getAccessibilityPropertiesForNode-expected.txt:
+        * inspector-protocol/dom/getAccessibilityPropertiesForNode.html:
+
+2014-04-10  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Replay: memoize plugin data for navigator.mimeTypes and navigator.plugins
+        https://bugs.webkit.org/show_bug.cgi?id=131341
+
+        Reviewed by Timothy Hatcher.
+
+        Add support for different setup methods before the initial navigation of
+        capture and replay. This is necessary to test that the value of
+        navigator.plugins is the same on replay even if the underlying data changed.
+
+        * http/tests/inspector/replay/replay-test.js:
+        (InspectorTestProxy.runSingleSegmentRefTest): Add calls to optional setup
+        functions in the test page called setupPreCapture and setupPreReplay.
+
+2014-04-10  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] Unreviewed GTK gardening.
+
+        Update text expectations for new failing tests:
+          accessibility/help-text.html
+          fast/css/cascade/box-shadow-and-webkit-box-shadow-cascade-order.html
+          fast/css3-text/css3-text-decoration/text-decoration-skip/glyph-inside-underline.html
+
+        Update test expectations related with highdpi still not supported.
+
+        On r166930 test media/track/opera/interfaces/TextTrackList/onremovetrack.html
+        was moved to media/track/w3c/interfaces/TextTrackList/onremovetrack.html.
+        Now it passes. Remove the expectation.
+
+        * platform/gtk/TestExpectations:
+
+2014-04-10  Bem Jones-Bey  <bjonesbe@adobe.com>
+
+        Invalid cast in WebCore::RenderLayer::setupClipPath
+        https://bugs.webkit.org/show_bug.cgi?id=131368
+
+        Reviewed by Dirk Schulze.
+
+        * css3/masking/clip-path-box-shape-on-inline-crash-expected.txt: Added.
+        * css3/masking/clip-path-box-shape-on-inline-crash.html: Added.
+
+2014-04-10  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        [GStreamer] No CORS support for media elements
+        https://bugs.webkit.org/show_bug.cgi?id=99037
+
+        Reviewed by Philippe Normand.
+
+        http/tests/security/video-cross-origin-accessfailure.html verifies that cross-origin streams that fail CORS check
+        are not played when crossorigin attribute is set.
+         http/tests/security/video-cross-origin-accesssameorigin.html verifies that access to same-origin streams
+        are played when crossorigin attribute is set.
+
+        * http/tests/security/video-cross-origin-accessfailure-expected.txt: Added.
+        * http/tests/security/video-cross-origin-accessfailure.html: Added.
+        * http/tests/security/video-cross-origin-accesssameorigin-expected.txt: Added.
+        * http/tests/security/video-cross-origin-accesssameorigin.html: Added.
+        * platform/efl/TestExpectations: Enabled http/tests/security/video-cross-origin-readback.html.
+        * platform/gtk/TestExpectations: Ditto.
+        * platform/mac/TestExpectations: Disabled http/tests/security/video-cross-origin-accessfailure.html.
+
+2014-04-09  Alexey Proskuryakov  <ap@apple.com>
+
+        REGRESSION (r166860): ASSERTION FAILED: !isCalculated() on fast/css/image-set-value-not-removed-crash.html
+        https://bugs.webkit.org/show_bug.cgi?id=131480
+
+        * platform/mac/TestExpectations: Skipped the test in debug builds.
+
+2014-04-09  Alexey Proskuryakov  <ap@apple.com>
+
+        [WK2] fast/repaint/obscured-background-no-repaint.html is very flaky
+        https://bugs.webkit.org/show_bug.cgi?id=131477
+
+        * platform/mac-wk2/TestExpectations: Marked it as such.
+
 2014-04-09  Alexey Proskuryakov  <ap@apple.com>
 
         WebVTT tests don't work because of a 800x600 snapshot (but are very flaky anyway)
