@@ -138,8 +138,7 @@ void BWebView::Draw(BRect rect)
 #endif
 
     fOffscreenView->Sync();
-    DrawBitmap(fOffscreenBitmap, fOffscreenView->Bounds(),
-        fOffscreenView->Bounds());
+    DrawBitmap(fOffscreenBitmap, rect, rect);
 
 #if ENABLE(INSPECTOR)
     if (fWebPage) {
@@ -169,9 +168,9 @@ void BWebView::GetPreferredSize(float* width, float* height)
 	// is to return the current width/height of the view. The default
 	// implementations for Min/Max/PreferredSize() will then work for us.
 	if (width)
-		*width = 100;
+		*width = 800;
 	if (height)
-		*height = 100;
+		*height = 600;
 }
 
 void BWebView::MessageReceived(BMessage* message)
@@ -183,15 +182,6 @@ void BWebView::MessageReceived(BMessage* message)
         GetMouse(&where, &buttons);
         BPoint screenWhere = ConvertToScreen(where);
         fWebPage->mouseWheelChanged(message, where, screenWhere);
-//        // NOTE: This solves a bug in WebKit itself, it should issue a mouse
-//        // event when scrolling by wheel event. The effects of the this bug
-//        // can be witnessed in Safari as well.
-//        BMessage mouseMessage(B_MOUSE_MOVED);
-//        mouseMessage.AddPoint("be:view_where", where);
-//        mouseMessage.AddPoint("screen_where", screenWhere);
-//        mouseMessage.AddInt32("buttons", buttons);
-//        mouseMessage.AddInt32("modifiers", modifiers());
-//        fWebPage->mouseEvent(&mouseMessage, where, screenWhere);
         break;
     }
 
