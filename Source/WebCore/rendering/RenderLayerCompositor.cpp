@@ -105,6 +105,38 @@ static const double throttledLayerFlushDelay = .5;
 
 using namespace HTMLNames;
 
+class OverlapMapContainer {
+public:
+    void add(const IntRect& bounds)
+    {
+        m_layerRects.append(bounds);
+        m_boundingBox.unite(bounds);
+    }
+
+    bool overlapsLayers(const IntRect& bounds) const
+    {
+        // Checking with the bounding box will quickly reject cases when
+        // layers are created for lists of items going in one direction and
+        // never overlap with each other.
+        if (!bounds.intersects(m_boundingBox))
+            return false;
+        for (unsigned i = 0; i < m_layerRects.size(); i++) {
+            if (m_layerRects[i].intersects(bounds))
+                return true;
+        }
+        return false;
+    }
+
+    void unite(const OverlapMapContainer& otherContainer)
+    {
+        m_layerRects.appendVector(otherContainer.m_layerRects);
+        m_boundingBox.unite(otherContainer.m_boundingBox);
+    }
+private:
+    Vector<IntRect> m_layerRects;
+    IntRect m_boundingBox;
+};
+
 class RenderLayerCompositor::OverlapMap {
     WTF_MAKE_NONCOPYABLE(OverlapMap);
 public:
@@ -123,7 +155,7 @@ public:
         // contribute to overlap as soon as their composited ancestor has been
         // recursively processed and popped off the stack.
         ASSERT(m_overlapStack.size() >= 2);
-        m_overlapStack[m_overlapStack.size() - 2].append(bounds);
+        m_overlapStack[m_overlapStack.size() - 2].add(bounds);
         m_layers.add(layer);
     }
 
@@ -134,7 +166,7 @@ public:
 
     bool overlapsLayers(const IntRect& bounds) const
     {
-        return m_overlapStack.last().intersects(bounds);
+        return m_overlapStack.last().overlapsLayers(bounds);
     }
 
     bool isEmpty()
@@ -144,12 +176,12 @@ public:
 
     void pushCompositingContainer()
     {
-        m_overlapStack.append(RectList());
+        m_overlapStack.append(OverlapMapContainer());
     }
 
     void popCompositingContainer()
     {
-        m_overlapStack[m_overlapStack.size() - 2].append(m_overlapStack.last());
+        m_overlapStack[m_overlapStack.size() - 2].unite(m_overlapStack.last());
         m_overlapStack.removeLast();
     }
 
@@ -185,7 +217,7 @@ private:
         }
     };
 
-    Vector<RectList> m_overlapStack;
+    Vector<OverlapMapContainer> m_overlapStack;
     HashSet<const RenderLayer*> m_layers;
     RenderGeometryMap m_geometryMap;
 };
@@ -255,7 +287,6 @@ RenderLayerCompositor::RenderLayerCompositor(RenderView& renderView)
     , m_isTrackingRepaints(false)
     , m_layersWithTiledBackingCount(0)
     , m_rootLayerAttachment(RootLayerUnattached)
-    , m_documentOverlayRootLayer(nullptr)
     , m_layerFlushTimer(this, &RenderLayerCompositor::layerFlushTimerFired)
     , m_layerFlushThrottlingEnabled(page() && page()->progress().isMainLoadProgressing())
     , m_layerFlushThrottlingTemporarilyDisabledForInteraction(false)
@@ -430,7 +461,8 @@ void RenderLayerCompositor::flushPendingLayerChanges(bool isFlushRoot)
 #if PLATFORM(IOS)
         double horizontalMargin = defaultTileWidth / pageScaleFactor();
         double verticalMargin = defaultTileHeight / pageScaleFactor();
-        rootLayer->flushCompositingState(frameView.computeCoverageRect(horizontalMargin, verticalMargin));
+        FloatRect visibleRect = frameView.computeCoverageRect(horizontalMargin, verticalMargin);
+        rootLayer->flushCompositingState(visibleRect);
 #else
         // Having a m_clipLayer indicates that we're doing scrolling via GraphicsLayers.
         IntRect visibleRect = m_clipLayer ? IntRect(IntPoint(), frameView.contentsSize()) : frameView.visibleContentRect();
@@ -597,6 +629,8 @@ bool RenderLayerCompositor::hasAnyAdditionalCompositedLayers(const RenderLayer& 
 void RenderLayerCompositor::updateCompositingLayers(CompositingUpdateType updateType, RenderLayer* updateRoot)
 {
     m_updateCompositingLayersTimer.stop();
+
+    ASSERT(!m_renderView.document().inPageCache());
     
     // Compositing layers will be updated in Document::implicitClose() if suppressed here.
     if (!m_renderView.document().visualUpdatesAllowed())
@@ -689,11 +723,12 @@ void RenderLayerCompositor::updateCompositingLayers(CompositingUpdateType update
 
         // Host the document layer in the RenderView's root layer.
         if (isFullUpdate) {
+            appendOverlayLayers(childList);
             // Even when childList is empty, don't drop out of compositing mode if there are
             // composited layers that we didn't hit in our traversal (e.g. because of visibility:hidden).
             if (childList.isEmpty() && !hasAnyAdditionalCompositedLayers(*updateRoot))
                 destroyRootLayer();
-            else
+            else if (m_rootContentLayer)
                 m_rootContentLayer->setChildren(childList);
         }
     } else if (needGeometryUpdate) {
@@ -719,6 +754,17 @@ void RenderLayerCompositor::updateCompositingLayers(CompositingUpdateType update
 
     // Inform the inspector that the layer tree has changed.
     InspectorInstrumentation::layerTreeDidChange(page());
+}
+
+void RenderLayerCompositor::appendOverlayLayers(Vector<GraphicsLayer*>& childList)
+{
+    Frame& frame = m_renderView.frameView().frame();
+    Page* page = frame.page();
+    if (!page)
+        return;
+
+    if (GraphicsLayer* overlayLayer = page->chrome().client().documentOverlayLayerForFrame(frame))
+        childList.append(overlayLayer);
 }
 
 void RenderLayerCompositor::layerBecameNonComposited(const RenderLayer& layer)
@@ -1076,12 +1122,19 @@ void RenderLayerCompositor::computeCompositingRequirements(RenderLayer* ancestor
     
     // Clear the flag
     layer.setHasCompositingDescendant(false);
+    layer.setIndirectCompositingReason(RenderLayer::NoIndirectCompositingReason);
+
+    // Check if the layer needs to be composited for non-indirect reasons (ex. 3D transform).
+    // We use this value to avoid checking the overlap-map, if we know for sure the layer
+    // is already going to be composited for other reasons.
+    bool willBeComposited = needsToBeComposited(layer);
 
     RenderLayer::IndirectCompositingReason compositingReason = compositingState.m_subtreeIsCompositing ? RenderLayer::IndirectCompositingForStacking : RenderLayer::NoIndirectCompositingReason;
-
     bool haveComputedBounds = false;
     IntRect absBounds;
-    if (overlapMap && !overlapMap->isEmpty() && compositingState.m_testingOverlap) {
+
+    // If we know for sure the layer is going to be composited, don't bother looking it up in the overlap map
+    if (!willBeComposited && overlapMap && !overlapMap->isEmpty() && compositingState.m_testingOverlap) {
         // If we're testing for overlap, we only need to composite if we overlap something that is already composited.
         absBounds = enclosingIntRect(overlapMap->geometryMap().absoluteRect(layer.overlapBounds()));
 
@@ -1103,6 +1156,11 @@ void RenderLayerCompositor::computeCompositingRequirements(RenderLayer* ancestor
 
     layer.setIndirectCompositingReason(compositingReason);
 
+    // Check if the computed indirect reason will force the layer to become composited.
+    if (!willBeComposited && layer.mustCompositeForIndirectReasons() && canBeComposited(layer))
+        willBeComposited = true;
+    ASSERT(willBeComposited == needsToBeComposited(layer));
+
     // The children of this layer don't need to composite, unless there is
     // a compositing layer among them, so start by inheriting the compositing
     // ancestor with m_subtreeIsCompositing set to false.
@@ -1112,7 +1170,6 @@ void RenderLayerCompositor::computeCompositingRequirements(RenderLayer* ancestor
     childState.m_hasUnisolatedCompositedBlendingDescendants = false;
 #endif
 
-    bool willBeComposited = needsToBeComposited(layer);
     if (willBeComposited) {
         // Tell the parent it has compositing descendants.
         compositingState.m_subtreeIsCompositing = true;
@@ -1461,9 +1518,6 @@ void RenderLayerCompositor::rebuildCompositingLayerTree(RenderLayer& layer, Vect
 
         childLayersOfEnclosingLayer.append(layerBacking->childForSuperlayers());
     }
-
-    if (m_documentOverlayRootLayer)
-        childLayersOfEnclosingLayer.append(m_documentOverlayRootLayer);
 }
 
 void RenderLayerCompositor::rebuildRegionCompositingLayerTree(RenderNamedFlowFragment* region, Vector<GraphicsLayer*>& childList, int depth)
@@ -3003,7 +3057,12 @@ void RenderLayerCompositor::updateOverflowControlsLayers()
             m_layerForOverhangAreas->setName("overhang areas");
 #endif
             m_layerForOverhangAreas->setDrawsContent(false);
-            m_layerForOverhangAreas->setSize(m_renderView.frameView().frameRect().size());
+            
+            float topContentInset = m_renderView.frameView().topContentInset();
+            IntSize overhangAreaSize = m_renderView.frameView().frameRect().size();
+            overhangAreaSize.setHeight(overhangAreaSize.height() - topContentInset);
+            m_layerForOverhangAreas->setSize(overhangAreaSize);
+            m_layerForOverhangAreas->setPosition(FloatPoint(0, topContentInset));
 
             if (m_renderView.frameView().frame().settings().backgroundShouldExtendBeyondPage())
                 m_layerForOverhangAreas->setBackgroundColor(m_renderView.frameView().documentBackgroundColor());
@@ -3812,15 +3871,6 @@ void RenderLayerCompositor::paintRelatedMilestonesTimerFired(Timer<RenderLayerCo
         return;
 
     m_renderView.frameView().firePaintRelatedMilestonesIfNeeded();
-}
-
-void RenderLayerCompositor::setDocumentOverlayRootLayer(GraphicsLayer* documentOverlayRootLayer)
-{
-    if (m_documentOverlayRootLayer)
-        m_documentOverlayRootLayer->removeFromParent();
-    m_documentOverlayRootLayer = documentOverlayRootLayer;
-    setCompositingLayersNeedRebuild(true);
-    scheduleCompositingLayerUpdate();
 }
 
 } // namespace WebCore

@@ -113,11 +113,14 @@ private:
     
     SpeculatedType speculatedDoubleTypeForPrediction(SpeculatedType value)
     {
+        SpeculatedType result = SpecDoubleReal;
+        if (value & SpecDoubleImpureNaN)
+            result |= SpecDoubleImpureNaN;
+        if (value & SpecDoublePureNaN)
+            result |= SpecDoublePureNaN;
         if (!isFullNumberSpeculation(value))
-            return SpecDouble;
-        if (value & SpecDoubleNaN)
-            return SpecDouble;
-        return SpecDoubleReal;
+            result |= SpecDoublePureNaN;
+        return result;
     }
 
     SpeculatedType speculatedDoubleTypeForPredictions(SpeculatedType left, SpeculatedType right)
@@ -216,7 +219,7 @@ private:
                     // left or right is definitely something other than a number.
                     changed |= mergePrediction(SpecString);
                 } else
-                    changed |= mergePrediction(SpecString | SpecInt32 | SpecDouble);
+                    changed |= mergePrediction(SpecString | SpecInt32 | SpecBytecodeDouble);
             }
             break;
         }
@@ -301,7 +304,7 @@ private:
                     && nodeCanSpeculateInt32(node->arithNodeFlags()))
                     changed |= mergePrediction(SpecInt32);
                 else
-                    changed |= mergePrediction(SpecDouble);
+                    changed |= mergePrediction(SpecBytecodeDouble);
             }
             break;
         }
@@ -315,7 +318,7 @@ private:
                     && nodeCanSpeculateInt32(node->arithNodeFlags()))
                     changed |= mergePrediction(SpecInt32);
                 else
-                    changed |= mergePrediction(SpecDouble);
+                    changed |= mergePrediction(SpecBytecodeDouble);
             }
             break;
         }
@@ -324,7 +327,7 @@ private:
         case ArithFRound:
         case ArithSin:
         case ArithCos: {
-            changed |= setPrediction(SpecDouble);
+            changed |= setPrediction(SpecBytecodeDouble);
             break;
         }
             
@@ -490,7 +493,6 @@ private:
         case PutByValAlias:
         case GetArrayLength:
         case GetTypedArrayByteOffset:
-        case Int32ToDouble:
         case DoubleAsInt32:
         case GetLocalUnlinked:
         case GetMyArgumentsLength:
@@ -504,11 +506,15 @@ private:
         case CheckTierUpAtReturn:
         case CheckTierUpAndOSREnter:
         case InvalidationPoint:
-        case Int52ToValue:
-        case Int52ToDouble:
         case CheckInBounds:
         case ValueToInt32:
-        case HardPhantom: {
+        case HardPhantom:
+        case DoubleRep:
+        case Int52Rep:
+        case ValueRep:
+        case DoubleConstant:
+        case Int52Constant:
+        case Identity: {
             // This node should never be visible at this stage of compilation. It is
             // inserted by fixup(), which follows this phase.
             RELEASE_ASSERT_NOT_REACHED();
@@ -533,10 +539,6 @@ private:
             
         case In:
             changed |= setPrediction(SpecBoolean);
-            break;
-
-        case Identity:
-            changed |= mergePrediction(node->child1()->prediction());
             break;
 
 #ifndef NDEBUG

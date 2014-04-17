@@ -1,3 +1,660 @@
+2014-04-16  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Replay: memoize fallback time values for document.lastModified
+        https://bugs.webkit.org/show_bug.cgi?id=131318
+
+        Reviewed by Joseph Pecoraro.
+
+        Mark the new test as skipped until dependent functionality is landed.
+
+        * http/tests/inspector/replay/document-last-modified-fallback-value.html: Added.
+
+2014-04-16  Dean Jackson  <dino@apple.com>
+
+        MediaDocument on iOS should be full page
+        https://bugs.webkit.org/show_bug.cgi?id=131774
+
+        Reviewed by Jer Noble.
+
+        * platform/iphone-simulator/media/media-document-controls-size-expected.txt: Added.
+        * platform/iphone-simulator/media/media-document-controls-size.html: Added.
+
+2014-04-16  Roger Fong  <roger_fong@apple.com>
+
+        Add a way for layout tests to determine whether or not a plugin is snapshotted.
+        https://bugs.webkit.org/show_bug.cgi?id=131650.
+        <rdar://problem/16615528>
+
+        Reviewed by Dean Jackson.
+
+        Adjust simple.html accordingly, more snapshotting test changes to come.
+        * platform/mac-wk2/plugins/snapshotting/simple-expected.txt:
+        * plugins/snapshotting/simple.html: 
+
+2014-04-16  Oliver Hunt  <oliver@apple.com>
+
+        Simple ES6 feature:Array.prototype.fill
+        https://bugs.webkit.org/show_bug.cgi?id=131703
+
+        Reviewed by David Hyatt.
+
+        Add tests.
+
+        * js/Object-getOwnPropertyNames-expected.txt:
+        * js/array-fill-expected.txt: Added.
+        * js/array-fill.html: Added.
+        * js/script-tests/Object-getOwnPropertyNames.js:
+        * js/script-tests/array-fill.js: Added.
+
+2014-04-16  David Kilzer  <ddkilzer@apple.com>
+
+        Remove test results that match platform/mac results
+
+        Found using this shell script:
+
+        $ for F in `find LayoutTests/platform/ios-sim -name \*-expected.txt`; do \
+        T=`echo $F | sed -e 's#platform/ios-sim/##'`; \
+        M=`echo $F | sed -e 's#platform/ios-sim/#platform/mac/#'`; \
+        ML=`echo $F | sed -e 's#platform/ios-sim/#platform/mac-mountainlion/#'`; \
+        if [ -f $M -a ! -f $ML -a -z "`diff -u $F $M 2> /dev/null`" ]; then echo $F; fi; \
+        done
+
+        * platform/ios-sim/fast/block/positioning/016-expected.txt: Removed.
+        * platform/ios-sim/fast/block/positioning/025-expected.txt: Removed.
+        * platform/ios-sim/fast/dom/icon-url-property-expected.txt: Removed.
+        * platform/ios-sim/fast/hidpi/focus-rings-expected.txt: Removed.
+        * platform/ios-sim/fast/multicol/shrink-to-column-height-for-pagination-expected.txt: Removed.
+        * platform/ios-sim/fast/preloader/document-write-2-expected.txt: Removed.
+        * platform/ios-sim/fast/preloader/script-expected.txt: Removed.
+        * platform/ios-sim/fast/writing-mode/broken-ideograph-small-caps-expected.txt: Removed.
+        * platform/ios-sim/fast/xsl/sort-locale-expected.txt: Removed.
+        * platform/ios-sim/http/tests/security/mixedContent/insecure-audio-video-in-main-frame-expected.txt: Removed.
+        * platform/ios-sim/sputnik/Unicode/Unicode_320/S7.6_A2.2_T2-expected.txt: Removed.
+        * platform/ios-sim/sputnik/Unicode/Unicode_320/S7.6_A5.2_T8-expected.txt: Removed.
+        * platform/ios-sim/webarchive/loading/mainresource-null-mimetype-crash-expected.txt: Removed.
+
+2014-04-16  David Kilzer  <ddkilzer@apple.com>
+
+        Remove test results that match top-level results
+
+        Found using this shell script:
+
+        $ for F in `find LayoutTests/platform/ios-sim -name \*-expected.txt`; do \
+        T=`echo $F | sed -e 's#platform/ios-sim/##'`; \
+        M=`echo $F | sed -e 's#platform/ios-sim/#platform/mac/#'`; \
+        ML=`echo $F | sed -e 's#platform/ios-sim/#platform/mac-mountainlion/#'`; \
+        if [ ! -f $M -a ! -f $ML -a -f $T -a -z "`diff -u $F $T 2> /dev/null`" ]; then echo $F; fi; \
+        done
+
+        * platform/ios-sim/compositing/layer-creation/no-compositing-for-sticky-expected.txt: Removed.
+        * platform/ios-sim/editing/inserting/insert-3786362-fix-expected.txt: Removed.
+        * platform/ios-sim/editing/inserting/insert-3907422-fix-expected.txt: Removed.
+        * platform/ios-sim/editing/unsupported-content/table-delete-001-expected.txt: Removed.
+        * platform/ios-sim/editing/unsupported-content/table-delete-003-expected.txt: Removed.
+        * platform/ios-sim/fast/block/positioning/move-with-auto-width-expected.txt: Removed.
+        * platform/ios-sim/fast/canvas/2d.backingStorePixelRatio-expected.txt: Removed.
+        * platform/ios-sim/fast/canvas/2d.imageDataHD-expected.txt: Removed.
+        * platform/ios-sim/fast/canvas/canvas-fillPath-shadow-expected.txt: Removed.
+        * platform/ios-sim/fast/canvas/webgl/texture-npot-expected.txt: Removed.
+        * platform/ios-sim/fast/css/MarqueeLayoutTest-expected.txt: Removed.
+        * platform/ios-sim/fast/css/color-leakage-expected.txt: Removed.
+        * platform/ios-sim/fast/css/font-face-multiple-remote-sources-expected.txt: Removed.
+        * platform/ios-sim/fast/css/font-face-remote-expected.txt: Removed.
+        * platform/ios-sim/fast/css/getComputedStyle/computed-style-expected.txt: Removed.
+        * platform/ios-sim/fast/css/getComputedStyle/computed-style-without-renderer-expected.txt: Removed.
+        * platform/ios-sim/fast/css/nested-layers-with-hover-expected.txt: Removed.
+        * platform/ios-sim/fast/dom/HTMLFormElement/associated-elements-after-index-assertion-fail1-expected.txt: Removed.
+        * platform/ios-sim/fast/dom/Window/window-postmessage-arrays-expected.txt: Removed.
+        * platform/ios-sim/fast/dom/constructed-objects-prototypes-expected.txt: Removed.
+        * platform/ios-sim/fast/dom/gc-10-expected.txt: Removed.
+        * platform/ios-sim/fast/dom/tabindex-clamp-expected.txt: Removed.
+        * platform/ios-sim/fast/dynamic/dirty-float-in-clean-line-expected.txt: Removed.
+        * platform/ios-sim/fast/events/pageshow-pagehide-on-back-cached-with-frames-expected.txt: Removed.
+        * platform/ios-sim/fast/forms/mailto/advanced-get-expected.txt: Removed.
+        * platform/ios-sim/fast/forms/mailto/advanced-put-expected.txt: Removed.
+        * platform/ios-sim/fast/forms/radio/indeterminate-radio-expected.txt: Removed.
+        * platform/ios-sim/fast/forms/select-script-onchange-expected.txt: Removed.
+        * platform/ios-sim/fast/forms/suggested-value-expected.txt: Removed.
+        * platform/ios-sim/fast/history/timed-refresh-in-cached-frame-expected.txt: Removed.
+        * platform/ios-sim/fast/lists/inline-before-content-after-list-marker-expected.txt: Removed.
+        * platform/ios-sim/fast/media/media-query-list-07-expected.txt: Removed.
+        * platform/ios-sim/fast/media/print-restores-previous-mediatype-expected.txt: Removed.
+        * platform/ios-sim/fast/multicol/span/before-child-anonymous-column-block-expected.txt: Removed.
+        * platform/ios-sim/fast/overflow/horizontal-scroll-after-back-expected.txt: Removed.
+        * platform/ios-sim/fast/overflow/scrollbar-restored-expected.txt: Removed.
+        * platform/ios-sim/fast/repaint/table-hover-on-link-expected.txt: Removed.
+        * platform/ios-sim/fast/repaint/table-section-repaint-expected.txt: Removed.
+        * platform/ios-sim/fast/ruby/floating-ruby-text-expected.txt: Removed.
+        * platform/ios-sim/fast/ruby/overhang-horizontal-expected.txt: Removed.
+        * platform/ios-sim/fast/ruby/overhang-horizontal-no-overlap1-expected.txt: Removed.
+        * platform/ios-sim/fast/ruby/overhang-horizontal-no-overlap2-expected.txt: Removed.
+        * platform/ios-sim/fast/ruby/positioned-ruby-text-expected.txt: Removed.
+        * platform/ios-sim/fast/ruby/ruby-text-before-child-split-expected.txt: Removed.
+        * platform/ios-sim/fast/table/empty-row-crash-expected.txt: Removed.
+        * platform/ios-sim/fast/table/empty-section-crash-expected.txt: Removed.
+        * platform/ios-sim/fast/table/inline-form-assert-expected.txt: Removed.
+        * platform/ios-sim/fast/table/max-width-integer-overflow-expected.txt: Removed.
+        * platform/ios-sim/fast/table/table-row-split2-expected.txt: Removed.
+        * platform/ios-sim/fast/table/table-section-split2-expected.txt: Removed.
+        * platform/ios-sim/fast/table/table-split-expected.txt: Removed.
+        * platform/ios-sim/fast/table/table-split2-expected.txt: Removed.
+        * platform/ios-sim/fast/text/apply-start-width-after-skipped-text-expected.txt: Removed.
+        * platform/ios-sim/fast/text/justify-padding-distribution-expected.txt: Removed.
+        * platform/ios-sim/fast/text/selection-painted-separately-expected.txt: Removed.
+        * platform/ios-sim/fast/text/setData-dirty-lines-expected.txt: Removed.
+        * platform/ios-sim/fast/text/soft-hyphen-2-expected.txt: Removed.
+        * platform/ios-sim/fast/text/splitText-dirty-lines-expected.txt: Removed.
+        * platform/ios-sim/fast/transforms/shadows-expected.txt: Removed.
+        * platform/ios-sim/fast/workers/worker-close-more-expected.txt: Removed.
+        * platform/ios-sim/fast/writing-mode/table-percent-width-quirk-expected.txt: Removed.
+        * platform/ios-sim/fast/xmlhttprequest/xmlhttprequest-recursive-sync-event-expected.txt: Removed.
+        * platform/ios-sim/http/tests/appcache/abort-cache-onchecking-manifest-404-expected.txt: Removed.
+        * platform/ios-sim/http/tests/cookies/simple-cookies-expired-expected.txt: Removed.
+        * platform/ios-sim/http/tests/cookies/simple-cookies-max-age-expected.txt: Removed.
+        * platform/ios-sim/http/tests/cookies/single-quoted-value-expected.txt: Removed.
+        * platform/ios-sim/http/tests/misc/empty-urls-expected.txt: Removed.
+        * platform/ios-sim/http/tests/multipart/load-last-non-html-frame-expected.txt: Removed.
+        * platform/ios-sim/http/tests/navigation/post-goback1-expected.txt: Removed.
+        * platform/ios-sim/http/tests/security/contentSecurityPolicy/connect-src-websocket-blocked-expected.txt: Removed.
+        * platform/ios-sim/http/tests/security/contentSecurityPolicy/media-src-blocked-expected.txt: Removed.
+        * platform/ios-sim/http/tests/security/local-video-poster-from-remote-expected.txt: Removed.
+        * platform/ios-sim/http/tests/security/sandboxed-iframe-modify-self-expected.txt: Removed.
+        * platform/ios-sim/http/tests/security/video-poster-cross-origin-crash-expected.txt: Removed.
+        * platform/ios-sim/http/tests/xmlhttprequest/chunked-progress-event-expectedLength-expected.txt: Removed.
+        * platform/ios-sim/http/tests/xmlhttprequest/request-encoding2-expected.txt: Removed.
+        * platform/ios-sim/http/tests/xmlhttprequest/upload-onloadend-event-after-load-expected.txt: Removed.
+        * platform/ios-sim/http/tests/xmlhttprequest/upload-onprogress-event-expected.txt: Removed.
+        * platform/ios-sim/http/tests/xmlhttprequest/upload-progress-events-expected.txt: Removed.
+        * platform/ios-sim/media/csp-blocks-video-expected.txt: Removed.
+        * platform/ios-sim/sputnik/Unicode/Unicode_510/S7.6_A3.1-expected.txt: Removed.
+        * platform/ios-sim/sputnik/Unicode/Unicode_510/S7.6_A3.2-expected.txt: Removed.
+        * platform/ios-sim/sputnik/Unicode/Unicode_510/S7.6_A5.3_T1-expected.txt: Removed.
+        * platform/ios-sim/sputnik/Unicode/Unicode_510/S7.6_A5.3_T2-expected.txt: Removed.
+        * platform/ios-sim/svg/as-image/image-respects-pageScaleFactor-change-expected.txt: Removed.
+        * platform/ios-sim/svg/css/getComputedStyle-basic-expected.txt: Removed.
+        * platform/ios-sim/svg/custom/baseval-animval-equality-expected.txt: Removed.
+        * platform/ios-sim/svg/custom/dasharrayOrigin-expected.txt: Removed.
+        * platform/ios-sim/svg/custom/getSubStringLength-expected.txt: Removed.
+        * platform/ios-sim/svg/custom/pattern-scaling-expected.txt: Removed.
+        * platform/ios-sim/svg/custom/svg-features-expected.txt: Removed.
+        * platform/ios-sim/svg/dom/altGlyph-dom-expected.txt: Removed.
+        * platform/ios-sim/svg/foreignObject/fO-parent-display-none-expected.txt: Removed.
+        * platform/ios-sim/svg/foreignObject/fO-parent-display-none-with-relative-pos-content-expected.txt: Removed.
+        * platform/ios-sim/svg/foreignObject/fO-parent-of-parent-display-none-expected.txt: Removed.
+        * platform/ios-sim/svg/foreignObject/fO-parent-of-parent-display-none-with-relative-pos-content-expected.txt: Removed.
+        * platform/ios-sim/svg/hittest/svg-ellipse-non-scale-stroke-expected.txt: Removed.
+
+2014-04-16  David Kilzer  <ddkilzer@apple.com>
+
+        <http://webkit.org/b/129171> Rebaseline LayoutTests for iOS
+
+        3206 files changed, 65535 insertions(+), 39972 deletions(-)
+
+        * platform/ios-sim/Skipped: Clean up old items.  Skip tests that
+        time out due to notifyDone() not being called.
+
+2014-04-16  David Kilzer  <ddkilzer@apple.com>
+
+        Upstream iOS layout test results
+
+        7354 files changed, 367781 insertions(+)
+
+        * platform/ios-sim: Add.
+
+2014-04-16  David Kilzer  <ddkilzer@apple.com>
+
+        Rename LayoutTests/platformm/iphone-simulator => ios-sim
+
+        * platform/ios-sim: Renamed from LayoutTests/platform/iphone-simulator.
+
+2014-04-16  Alexey Proskuryakov  <ap@apple.com>
+
+        DataTransfer should cache its FileList
+        https://bugs.webkit.org/show_bug.cgi?id=131694
+
+        Reviewed by Darin Adler.
+
+        * fast/events/data-transfer-files-attribute-identity-expected.txt: Added.
+        * fast/events/data-transfer-files-attribute-identity.html: Added.
+
+        * platform/wk2/TestExpectations: Skipped the test, because WKTR doesn't support
+        file dragging yet.
+
+2014-04-16  Zoltan Horvath  <zoltan@webkit.org>
+
+        Remove fast/parser/parser-yield-timing.html from skipped list
+        https://bugs.webkit.org/show_bug.cgi?id=131749
+
+        Reviewed by Darin Adler.
+
+        The test was originally skipped in Bug 89812 due to flakiness on Chromium
+        debug bots. I run the tests with huge iterations and I don't see
+        flakiness on Mavericks release/debug. Let's remove from skipped for now.
+
+        * platform/mac/TestExpectations:
+
+2014-04-16  Bem Jones-Bey  <bjonesbe@adobe.com>
+
+        Remove references to Leopard and Snow Leopard from Windows TestExpectations
+
+        Filed new bugs to track each of these tests, so someone with a windows
+        build can try and see if the tests still fail.
+
+        Unreviewed.
+
+        * platform/win/TestExpectations:
+        * platform/wincairo/TestExpectations:
+
+2014-04-16  David Hyatt  <hyatt@apple.com>
+
+        Make sure to skip the RenderMultiColumnFlowThread when resolving percentage heights inside columns against
+        containing blocks. The flow thread's auto height should not interfere if a fixed height is specified on
+        an ancestor.
+
+        https://bugs.webkit.org/show_bug.cgi?id=131741
+
+        Reviewed by Simon Fraser.
+
+        * fast/multicol/percent-height-expected.html: Added.
+        * fast/multicol/percent-height.html: Added.
+
+2014-04-16  Martin Hodovan  <mhodovan@inf.u-szeged.hu>
+
+        ASSERTION FAILED: x2 >= x1 in WebCore::RenderObject::drawLineForBoxSide
+        https://bugs.webkit.org/show_bug.cgi?id=127835
+
+        Added test demonstrates four cases:
+        Test #1: Negative upper margin + positive upper padding
+        Test #2: Negative right margin + positive right padding (used to fail)
+        Test #3: Negative bottom margin + positive bottom padding
+        Test #4: Negative left margin + positive left padding (used to fail)
+
+        Reviewed by Darin Adler.
+
+        * fast/css/padding-margin-negative-border-expected.html: Added.
+        * fast/css/padding-margin-negative-border.html: Added.
+
+2014-04-16  Jer Noble  <jer.noble@apple.com>
+
+        [MSE] Seeks into buffered ranges will never complete.
+        https://bugs.webkit.org/show_bug.cgi?id=131717
+
+        Reviewed by Eric Carlson.
+
+        * media/media-source/media-source-seek-complete-expected.txt: Added.
+        * media/media-source/media-source-seek-complete.html: Added.
+
+2014-04-16  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Unreviewed EFL gardening. Some test modules come to crash since buildbot uses
+        Ubuntu 13.10. Skip those crash modules for now. 
+
+        * platform/efl-wk2/TestExpectations:
+
+2014-04-14  Roger Fong  <roger_fong@apple.com>
+
+        Snapshotted plugins may need to be restarted if style properties are changed after initial load of plugin.
+        https://bugs.webkit.org/show_bug.cgi?id=131553.
+        <rdar://problem/15443375>
+
+        Reviewed by Timothy Horton.
+
+        * platform/mac-wk2/plugins/snapshotting/set-plugin-size-to-tiny-expected.txt: Added.
+        * plugins/snapshotting/set-plugin-size-to-tiny.html: Added.
+
+2014-04-14  Morten Stenshorne  <mstensho@opera.com>
+
+        [New Multicolumn] Add support for column-span:all
+        https://bugs.webkit.org/show_bug.cgi?id=129330
+
+        Reviewed by Dave Hyatt.
+
+        Wrote a bunch of tests. A few of the tests were copied from existing
+        (old-impl) tests and put in a separate directory. That directory can
+        be wiped when we turn on the new multicol implementation by default.
+
+        * fast/multicol/newmulticol/adjacent-spanners-expected.html: Added.
+        * fast/multicol/newmulticol/adjacent-spanners.html: Added.
+        * fast/multicol/newmulticol/block-becomes-spanner-expected.html: Added.
+        * fast/multicol/newmulticol/block-becomes-spanner.html: Added.
+        * fast/multicol/newmulticol/change-spanner-display-expected.html: Added.
+        * fast/multicol/newmulticol/change-spanner-display.html: Added.
+        * fast/multicol/newmulticol/change-spanner-parent-display-expected.html: Added.
+        * fast/multicol/newmulticol/change-spanner-parent-display.html: Added.
+        * fast/multicol/newmulticol/compare-with-old-impl/anonymous-block-split-crash-expected.txt: Added.
+        * fast/multicol/newmulticol/compare-with-old-impl/anonymous-block-split-crash.html: Added.
+        * fast/multicol/newmulticol/compare-with-old-impl/before-child-anonymous-column-block-expected.html: Added.
+        * fast/multicol/newmulticol/compare-with-old-impl/before-child-anonymous-column-block.html: Added.
+        * fast/multicol/newmulticol/compare-with-old-impl/clone-before-after-content-crash-expected.txt: Added.
+        * fast/multicol/newmulticol/compare-with-old-impl/clone-before-after-content-crash.html: Added.
+        * fast/multicol/newmulticol/compare-with-old-impl/clone-block-children-inline-mismatch-crash-expected.txt: Added.
+        * fast/multicol/newmulticol/compare-with-old-impl/clone-block-children-inline-mismatch-crash.html: Added.
+        * fast/multicol/newmulticol/compare-with-old-impl/clone-flexbox-expected.txt: Added.
+        * fast/multicol/newmulticol/compare-with-old-impl/clone-flexbox.html: Added.
+        * fast/multicol/newmulticol/compare-with-old-impl/clone-summary-expected.html: Added.
+        * fast/multicol/newmulticol/compare-with-old-impl/clone-summary.html: Added.
+        * fast/multicol/newmulticol/compare-with-old-impl/column-span-inside-multicol-webkit-box-expected.txt: Added.
+        * fast/multicol/newmulticol/compare-with-old-impl/column-span-inside-multicol-webkit-box.html: Added.
+        * fast/multicol/newmulticol/compare-with-old-impl/continuation-crash-expected.txt: Added.
+        * fast/multicol/newmulticol/compare-with-old-impl/continuation-crash.html: Added.
+        * fast/multicol/newmulticol/compare-with-old-impl/double-merge-anonymous-block-crash-expected.txt: Added.
+        * fast/multicol/newmulticol/compare-with-old-impl/double-merge-anonymous-block-crash.html: Added.
+        * fast/multicol/newmulticol/compare-with-old-impl/empty-anonymous-block-split-crash-expected.txt: Added.
+        * fast/multicol/newmulticol/compare-with-old-impl/empty-anonymous-block-split-crash.html: Added.
+        * fast/multicol/newmulticol/compare-with-old-impl/float-not-removed-crash-expected.txt: Added.
+        * fast/multicol/newmulticol/compare-with-old-impl/float-not-removed-crash.html: Added.
+        * fast/multicol/newmulticol/compare-with-old-impl/list-multi-column-crash-expected.txt: Added.
+        * fast/multicol/newmulticol/compare-with-old-impl/list-multi-column-crash.html: Added.
+        * fast/multicol/newmulticol/compare-with-old-impl/positioned-child-not-removed-crash-expected.txt: Added.
+        * fast/multicol/newmulticol/compare-with-old-impl/positioned-child-not-removed-crash.html: Added.
+        * fast/multicol/newmulticol/compare-with-old-impl/positioned-objects-not-removed-crash-expected.txt: Added.
+        * fast/multicol/newmulticol/compare-with-old-impl/positioned-objects-not-removed-crash.html: Added.
+        * fast/multicol/newmulticol/compare-with-old-impl/recursive-split-flow-crash-expected.txt: Added.
+        * fast/multicol/newmulticol/compare-with-old-impl/recursive-split-flow-crash.html: Added.
+        * fast/multicol/newmulticol/compare-with-old-impl/removal-of-multicol-span-crash-expected.txt: Added.
+        * fast/multicol/newmulticol/compare-with-old-impl/removal-of-multicol-span-crash.html: Added.
+        * fast/multicol/newmulticol/compare-with-old-impl/remove-child-split-flow-crash-expected.txt: Added.
+        * fast/multicol/newmulticol/compare-with-old-impl/remove-child-split-flow-crash.html: Added.
+        * fast/multicol/newmulticol/compare-with-old-impl/runin-continuation-crash-expected.txt: Added.
+        * fast/multicol/newmulticol/compare-with-old-impl/runin-continuation-crash.html: Added.
+        * fast/multicol/newmulticol/compare-with-old-impl/span-as-immediate-child-complex-splitting-expected.html: Added.
+        * fast/multicol/newmulticol/compare-with-old-impl/span-as-immediate-child-complex-splitting.html: Added.
+        * fast/multicol/newmulticol/compare-with-old-impl/span-as-nested-inline-block-child-expected.html: Added.
+        * fast/multicol/newmulticol/compare-with-old-impl/span-as-nested-inline-block-child.html: Added.
+        * fast/multicol/newmulticol/compare-with-old-impl/split-flow-anonymous-wrapper-crash-expected.txt: Added.
+        * fast/multicol/newmulticol/compare-with-old-impl/split-flow-anonymous-wrapper-crash.html: Added.
+        * fast/multicol/newmulticol/compare-with-old-impl/split-inline-wrong-post-block-crash-expected.txt: Added.
+        * fast/multicol/newmulticol/compare-with-old-impl/split-inline-wrong-post-block-crash.html: Added.
+        * fast/multicol/newmulticol/compare-with-old-impl/table-multi-column-crash-expected.txt: Added.
+        * fast/multicol/newmulticol/compare-with-old-impl/table-multi-column-crash.html: Added.
+        * fast/multicol/newmulticol/compare-with-old-impl/textbox-not-removed-crash-expected.txt: Added.
+        * fast/multicol/newmulticol/compare-with-old-impl/textbox-not-removed-crash.html: Added.
+        * fast/multicol/newmulticol/compare-with-old-impl/update-after-content-before-child-crash-expected.txt: Added.
+        * fast/multicol/newmulticol/compare-with-old-impl/update-after-content-before-child-crash.html: Added.
+        * fast/multicol/newmulticol/insert-row-content1-expected.html: Added.
+        * fast/multicol/newmulticol/insert-row-content1.html: Added.
+        * fast/multicol/newmulticol/insert-row-content2-expected.html: Added.
+        * fast/multicol/newmulticol/insert-row-content2.html: Added.
+        * fast/multicol/newmulticol/insert-row-content3-expected.html: Added.
+        * fast/multicol/newmulticol/insert-row-content3.html: Added.
+        * fast/multicol/newmulticol/insert-row-content4-expected.html: Added.
+        * fast/multicol/newmulticol/insert-row-content4.html: Added.
+        * fast/multicol/newmulticol/insert-row-content5-expected.html: Added.
+        * fast/multicol/newmulticol/insert-row-content5.html: Added.
+        * fast/multicol/newmulticol/insert-row-content6-expected.html: Added.
+        * fast/multicol/newmulticol/insert-row-content6.html: Added.
+        * fast/multicol/newmulticol/insert-row-content7-expected.html: Added.
+        * fast/multicol/newmulticol/insert-row-content7.html: Added.
+        * fast/multicol/newmulticol/insert-row-content8-expected.html: Added.
+        * fast/multicol/newmulticol/insert-row-content8.html: Added.
+        * fast/multicol/newmulticol/insert-row-content9-expected.html: Added.
+        * fast/multicol/newmulticol/insert-row-content9.html: Added.
+        * fast/multicol/newmulticol/insert-spanner-child1-expected.html: Added.
+        * fast/multicol/newmulticol/insert-spanner-child1.html: Added.
+        * fast/multicol/newmulticol/insert-spanner-child2-expected.html: Added.
+        * fast/multicol/newmulticol/insert-spanner-child2.html: Added.
+        * fast/multicol/newmulticol/insert-spanner-child3-expected.html: Added.
+        * fast/multicol/newmulticol/insert-spanner-child3.html: Added.
+        * fast/multicol/newmulticol/insert-spanner1-expected.html: Added.
+        * fast/multicol/newmulticol/insert-spanner1.html: Added.
+        * fast/multicol/newmulticol/insert-spanner2-expected.html: Added.
+        * fast/multicol/newmulticol/insert-spanner2.html: Added.
+        * fast/multicol/newmulticol/insert-spanner3-expected.html: Added.
+        * fast/multicol/newmulticol/insert-spanner3.html: Added.
+        * fast/multicol/newmulticol/insert-spanner4-expected.html: Added.
+        * fast/multicol/newmulticol/insert-spanner4.html: Added.
+        * fast/multicol/newmulticol/insert-spanner5-expected.html: Added.
+        * fast/multicol/newmulticol/insert-spanner5.html: Added.
+        * fast/multicol/newmulticol/insert-spanner6-expected.html: Added.
+        * fast/multicol/newmulticol/insert-spanner6.html: Added.
+        * fast/multicol/newmulticol/insert-spanner7-expected.html: Added.
+        * fast/multicol/newmulticol/insert-spanner7.html: Added.
+        * fast/multicol/newmulticol/insert-spanner8-expected.html: Added.
+        * fast/multicol/newmulticol/insert-spanner8.html: Added.
+        * fast/multicol/newmulticol/multicol-with-spanner-becomes-regular-block-expected.html: Added.
+        * fast/multicol/newmulticol/multicol-with-spanner-becomes-regular-block.html: Added.
+        * fast/multicol/newmulticol/remove-row-content1-expected.html: Added.
+        * fast/multicol/newmulticol/remove-row-content1.html: Added.
+        * fast/multicol/newmulticol/remove-row-content2-expected.html: Added.
+        * fast/multicol/newmulticol/remove-row-content2.html: Added.
+        * fast/multicol/newmulticol/remove-row-content3-expected.html: Added.
+        * fast/multicol/newmulticol/remove-row-content3.html: Added.
+        * fast/multicol/newmulticol/remove-row-content4-expected.html: Added.
+        * fast/multicol/newmulticol/remove-row-content4.html: Added.
+        * fast/multicol/newmulticol/remove-row-content5-expected.html: Added.
+        * fast/multicol/newmulticol/remove-row-content5.html: Added.
+        * fast/multicol/newmulticol/remove-row-content6-expected.html: Added.
+        * fast/multicol/newmulticol/remove-row-content6.html: Added.
+        * fast/multicol/newmulticol/remove-row-content7-expected.html: Added.
+        * fast/multicol/newmulticol/remove-row-content7.html: Added.
+        * fast/multicol/newmulticol/remove-row-content8-expected.html: Added.
+        * fast/multicol/newmulticol/remove-row-content8.html: Added.
+        * fast/multicol/newmulticol/remove-row-content9-expected.html: Added.
+        * fast/multicol/newmulticol/remove-row-content9.html: Added.
+        * fast/multicol/newmulticol/remove-spanner1-expected.html: Added.
+        * fast/multicol/newmulticol/remove-spanner1.html: Added.
+        * fast/multicol/newmulticol/remove-spanner2-expected.html: Added.
+        * fast/multicol/newmulticol/remove-spanner2.html: Added.
+        * fast/multicol/newmulticol/remove-spanner3-expected.html: Added.
+        * fast/multicol/newmulticol/remove-spanner3.html: Added.
+        * fast/multicol/newmulticol/remove-spanner4-expected.html: Added.
+        * fast/multicol/newmulticol/remove-spanner4.html: Added.
+        * fast/multicol/newmulticol/remove-spanner5-expected.html: Added.
+        * fast/multicol/newmulticol/remove-spanner5.html: Added.
+        * fast/multicol/newmulticol/remove-spanner6-expected.html: Added.
+        * fast/multicol/newmulticol/remove-spanner6.html: Added.
+        * fast/multicol/newmulticol/sole-spanner-expected.html: Added.
+        * fast/multicol/newmulticol/sole-spanner.html: Added.
+        * fast/multicol/newmulticol/span-between-text-expected.html: Added.
+        * fast/multicol/newmulticol/span-between-text.html: Added.
+        * fast/multicol/newmulticol/spanner-becomes-regular-block-expected.html: Added.
+        * fast/multicol/newmulticol/spanner-becomes-regular-block.html: Added.
+        * fast/multicol/newmulticol/spanner-first-expected.html: Added.
+        * fast/multicol/newmulticol/spanner-first.html: Added.
+        * fast/multicol/newmulticol/spanner-img-expected.html: Added.
+        * fast/multicol/newmulticol/spanner-img.html: Added.
+        * fast/multicol/newmulticol/spanner-inline-block-expected.html: Added.
+        * fast/multicol/newmulticol/spanner-inline-block.html: Added.
+        * fast/multicol/newmulticol/spanner-last-expected.html: Added.
+        * fast/multicol/newmulticol/spanner-last.html: Added.
+        * fast/multicol/newmulticol/spanner-nested-dynamic-expected.html: Added.
+        * fast/multicol/newmulticol/spanner-nested-dynamic.html: Added.
+        * fast/multicol/newmulticol/spanner-nested-expected.html: Added.
+        * fast/multicol/newmulticol/spanner-nested.html: Added.
+        * fast/multicol/newmulticol/spanner-pseudo-after1-expected.html: Added.
+        * fast/multicol/newmulticol/spanner-pseudo-after1.html: Added.
+        * fast/multicol/newmulticol/spanner-pseudo-after2-expected.html: Added.
+        * fast/multicol/newmulticol/spanner-pseudo-after2.html: Added.
+        * fast/multicol/newmulticol/spanner-pseudo-after3-expected.html: Added.
+        * fast/multicol/newmulticol/spanner-pseudo-after3.html: Added.
+        * fast/multicol/newmulticol/spanner-pseudo-after4-expected.html: Added.
+        * fast/multicol/newmulticol/spanner-pseudo-after4.html: Added.
+        * fast/multicol/newmulticol/spanner-pseudo-before-after1-expected.html: Added.
+        * fast/multicol/newmulticol/spanner-pseudo-before-after1.html: Added.
+        * fast/multicol/newmulticol/spanner-pseudo-before-after2-expected.html: Added.
+        * fast/multicol/newmulticol/spanner-pseudo-before-after2.html: Added.
+        * fast/multicol/newmulticol/spanner-pseudo-before-after3-expected.html: Added.
+        * fast/multicol/newmulticol/spanner-pseudo-before-after3.html: Added.
+        * fast/multicol/newmulticol/spanner-pseudo-before-after4-expected.html: Added.
+        * fast/multicol/newmulticol/spanner-pseudo-before-after4.html: Added.
+        * fast/multicol/newmulticol/spanner-pseudo-before1-expected.html: Added.
+        * fast/multicol/newmulticol/spanner-pseudo-before1.html: Added.
+        * fast/multicol/newmulticol/spanner-pseudo-before2-expected.html: Added.
+        * fast/multicol/newmulticol/spanner-pseudo-before2.html: Added.
+        * fast/multicol/newmulticol/spanner-pseudo-before3-expected.html: Added.
+        * fast/multicol/newmulticol/spanner-pseudo-before3.html: Added.
+        * fast/multicol/newmulticol/spanner-pseudo-before4-expected.html: Added.
+        * fast/multicol/newmulticol/spanner-pseudo-before4.html: Added.
+        * fast/multicol/newmulticol/spanner-table-expected.html: Added.
+        * fast/multicol/newmulticol/spanner-table.html: Added.
+        * fast/multicol/newmulticol/spanner-with-margin-expected.html: Added.
+        * fast/multicol/newmulticol/spanner-with-margin.html: Added.
+        * fast/multicol/newmulticol/spanner1-expected.html: Added.
+        * fast/multicol/newmulticol/spanner1.html: Added.
+        * fast/multicol/newmulticol/spanner2-expected.html: Added.
+        * fast/multicol/newmulticol/spanner2.html: Added.
+        * fast/multicol/newmulticol/spanner3-expected.html: Added.
+        * fast/multicol/newmulticol/spanner3.html: Added.
+        * fast/multicol/newmulticol/spanner4-expected.html: Added.
+        * fast/multicol/newmulticol/spanner4.html: Added.
+        * fast/multicol/newmulticol/spanner5-expected.html: Added.
+        * fast/multicol/newmulticol/spanner5.html: Added.
+        * fast/multicol/newmulticol/spanner6-expected.html: Added.
+        * fast/multicol/newmulticol/spanner6.html: Added.
+        * fast/multicol/newmulticol/spanner7-expected.html: Added.
+        * fast/multicol/newmulticol/spanner7.html: Added.
+        * fast/multicol/newmulticol/spanner8-expected.html: Added.
+        * fast/multicol/newmulticol/spanner8.html: Added.
+        * fast/multicol/newmulticol/spanner9-expected.html: Added.
+        * fast/multicol/newmulticol/spanner9.html: Added.
+        * fast/multicol/newmulticol/trailing-margin-with-spanner-expected.html: Added.
+        * fast/multicol/newmulticol/trailing-margin-with-spanner.html: Added.
+        * fast/multicol/newmulticol/trailing-margin-with-spanner2-expected.html: Added.
+        * fast/multicol/newmulticol/trailing-margin-with-spanner2.html: Added.
+        * platform/gtk/fast/multicol/newmulticol/client-rects-expected.txt: Added.
+
+2014-04-15  Alexey Proskuryakov  <ap@apple.com>
+
+        http/tests/websocket/tests/hybi/workers/close.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=131716
+
+        * platform/mac/TestExpectations: Marking as such.
+
+2014-04-15  Alexey Proskuryakov  <ap@apple.com>
+
+        transitions/cancel-transition.html is very flaky on Mac
+        https://bugs.webkit.org/show_bug.cgi?id=131715
+
+        * platform/mac/TestExpectations: Marking as such.
+
+2014-04-15  Lorenzo Tilve  <ltilve@igalia.com>
+
+        Unreviewed gardening.
+
+        * TestExpectations:
+        Corrected wrong js/regress/ path for js/slow-stress/emscripten-memops.html
+        * platform/gtk/TestExpectations:
+        Updated expectation for passing on Release plugins/unavailable-plugin-indicator-obscurity.html
+
+2014-04-15  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r167199 and r167251.
+        https://bugs.webkit.org/show_bug.cgi?id=131678
+
+        Caused a DYEBench regression and does not seem to improve perf
+        on relevant websites (Requested by rniwa on #webkit).
+
+        Reverted changesets:
+
+        "Rewrite Function.bind as a builtin"
+        https://bugs.webkit.org/show_bug.cgi?id=131083
+        http://trac.webkit.org/changeset/167199
+
+        "Update test result"
+        http://trac.webkit.org/changeset/167251
+
+2014-04-15  Alexey Proskuryakov  <ap@apple.com>
+
+        inspector/dom/content-flow-list.html and inspector/dom/content-flow-content-removal.html
+        flakily fail and assert
+        https://bugs.webkit.org/show_bug.cgi?id=131679
+
+        * TestExpectations: This one, too.
+
+2014-04-15  Alexey Proskuryakov  <ap@apple.com>
+
+        inspector/dom/content-flow-list.html is flakily failing and asserting
+        https://bugs.webkit.org/show_bug.cgi?id=131679
+
+        * TestExpectations: Skip the test, it fails or asserts most of the time.
+
+2014-04-15  Alexey Proskuryakov  <ap@apple.com>
+
+        ScriptProcessorNode is garbage collected while still active if unreachable (breaks multiple webaudio test)
+        https://bugs.webkit.org/show_bug.cgi?id=112521
+
+        * TestExpectations: Updated bug number, added webaudio/audioprocessingevent.html,
+        and removed a spurious additional webaudio/javascriptaudionode-downmix8-2channel-input.html line.
+
+2014-04-15  Alexey Proskuryakov  <ap@apple.com>
+
+        [Mac] compositing/repaint/positioned-movement.html flaky, missing repaint
+        https://bugs.webkit.org/show_bug.cgi?id=118153
+
+        * platform/mac-wk2/TestExpectations:
+        * platform/mac/TestExpectations:
+        Moved the flaky expectation to also apply to WebKit1.
+
+2014-04-14  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r167261.
+        https://bugs.webkit.org/show_bug.cgi?id=131667
+
+        broke many navigation tests (Requested by ap on #webkit).
+
+        Reverted changeset:
+
+        "Web Replay: memoize fallback time values for
+        document.lastModified"
+        https://bugs.webkit.org/show_bug.cgi?id=131318
+        http://trac.webkit.org/changeset/167261
+
+2014-04-14  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r167272.
+        https://bugs.webkit.org/show_bug.cgi?id=131666
+
+        Broke multiple tests (Requested by ap on #webkit).
+
+        Reverted changeset:
+
+        "Function.bind itself is too slow"
+        https://bugs.webkit.org/show_bug.cgi?id=131636
+        http://trac.webkit.org/changeset/167272
+
+2014-04-14  Jon Honeycutt  <jhoneycutt@apple.com>
+
+        Assertion failure under FEImage::determineAbsolutePaintRect()
+
+        <https://bugs.webkit.org/show_bug.cgi?id=131660>
+        <rdar://problem/15669294>
+
+        Reviewed by Geoffrey Garen.
+
+        * svg/filters/feImage-filter-assertion-expected.txt: Added.
+        * svg/filters/feImage-filter-assertion.html: Added.
+
+2014-04-14  Oliver Hunt  <oliver@apple.com>
+
+        Function.bind itself is too slow
+        https://bugs.webkit.org/show_bug.cgi?id=131636
+
+        Reviewed by Geoffrey Garen.
+
+        New test, and fix bogus log in old one
+
+        * js/regress/function-bind-create-expected.html: Added.
+        * js/regress/function-bind-create.html: Added.
+        * js/regress/script-tests/function-bind-create.js: Added.
+        (test):
+        * js/regress/script-tests/function-bind.js:
+
+2014-04-14  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Replay: memoize fallback time values for document.lastModified
+        https://bugs.webkit.org/show_bug.cgi?id=131318
+
+        Reviewed by Joseph Pecoraro.
+
+        * http/tests/inspector/replay/document-last-modified-fallback-value.html: Added.
+
+2014-04-14  Eduardo Lima Mitev  <elima@igalia.com>
+
+        [GTK] Unreviewed GTK gardening.
+
+        * platform/gtk/TestExpectations: Update test expectations for new failing test 'editing/editability/ignored-content.html'.
+        * platform/gtk/inspector-protocol/dom/getAccessibilityPropertiesForNode-expected.txt: Rebaselined.
+
 2014-04-14  Dirk Schulze  <krit@webkit.org>
 
         Optimize Canvas fill and drawImage with SourceIn, DestinationIn, SourceOut, and DestinationAtop using transparencyLayer.

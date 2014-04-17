@@ -21,24 +21,24 @@ webkit.org/b/118301 fast/dom/timer-throttling-hidden-page.html [ Skip ]
 webkit.org/b/119094 fast/forms/color/input-color-onchange-event.html [ Crash Pass ]
 
 # This test will run slowly in debug mode, but is plenty fast in release.
-[ Debug ] js/regress/emscripten-memops.html [ Skip ]
+[ Debug ] js/slow-stress/emscripten-memops.html [ Skip ]
 
 # Skip tests for the old inspector UI that will be ported or removed soon.
 inspector-obsolete [ Skip ]
 
 webkit.org/b/112521 [ Release ] webaudio/javascriptaudionode.html [ Pass Failure ]
-webkit.org/b/112521 [ Debug ] webaudio/javascriptaudionode.html [ Pass Crash ]
-webkit.org/b/120148 [ Release ] webaudio/javascriptaudionode-upmix2-8channel-input.html [ Pass Failure ]
-webkit.org/b/120148 [ Debug ] webaudio/javascriptaudionode-upmix2-8channel-input.html [ Pass Crash ]
-webkit.org/b/120148 [ Release ] webaudio/javascriptaudionode-downmix8-2channel-input.html [ Pass Failure ]
-webkit.org/b/120148 [ Debug ] webaudio/javascriptaudionode-downmix8-2channel-input.html [ Pass Crash ]
+webkit.org/b/112521 [ Debug ] webaudio/javascriptaudionode.html [ Skip ]
+webkit.org/b/112521 [ Release ] webaudio/javascriptaudionode-upmix2-8channel-input.html [ Pass Failure ]
+webkit.org/b/112521 [ Debug ] webaudio/javascriptaudionode-upmix2-8channel-input.html [ Skip ]
+webkit.org/b/112521 [ Release ] webaudio/javascriptaudionode-downmix8-2channel-input.html [ Pass Failure ]
+webkit.org/b/112521 [ Debug ] webaudio/javascriptaudionode-downmix8-2channel-input.html [ Skip ]
+webkit.org/b/112521 [ Release ] webaudio/audioprocessingevent.html [ Pass Failure ]
+webkit.org/b/112521 [ Debug ] webaudio/audioprocessingevent.html [ Skip ]
 
 webkit.org/b/124342 fast/hidpi/image-srcset-svg-canvas.html [ ImageOnlyFailure ]
 webkit.org/b/124342 fast/hidpi/image-srcset-svg-canvas-2x.html [ ImageOnlyFailure ]
 webkit.org/b/124349 fast/hidpi/image-srcset-relative-svg-canvas-2x.html [ ImageOnlyFailure ]
 webkit.org/b/124349 fast/hidpi/image-srcset-relative-svg-canvas.html [ ImageOnlyFailure ]
-
-webaudio/javascriptaudionode-downmix8-2channel-input.html
 
 # The test frequently times out, and is just unsuccessful at detecting incorrect behavior when it passes.
 webkit.org/b/72698 media/audio-garbage-collect.html [ Skip ]
@@ -95,3 +95,10 @@ webkit.org/b/129817 inspector/dom/content-flow-content-removal.html [ Pass Failu
 webkit.org/b/74144 fast/regions/flow-body-in-html.html [ Skip ]
 webkit.org/b/74144 fast/regions/universal-selector-children-to-the-same-region.html [ Skip ]
 webkit.org/b/74144 fast/regions/region-content-flown-into-region.html [ Skip ]
+
+# Fails or asserts on most runs.
+webkit.org/b/131679 inspector/dom/content-flow-list.html [ Skip ]
+webkit.org/b/131679 inspector/dom/content-flow-content-removal.html [ Skip ]
+
+# Doesn't work yet, relies on network replay functionality (webkit.org/b/130728, webkit.org/b/129391)
+webkit.org/b/131318 http/tests/inspector/replay/document-last-modified-fallback-value.html [ Skip ]

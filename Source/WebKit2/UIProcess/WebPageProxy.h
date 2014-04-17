@@ -52,7 +52,6 @@
 #include "WebContextMenuItemData.h"
 #include "WebCoreArgumentCoders.h"
 #include "WebFindClient.h"
-#include "WebFormClient.h"
 #include "WebFrameProxy.h"
 #include "WebPageContextMenuClient.h"
 #include "WebPageCreationParameters.h"
@@ -103,6 +102,7 @@
 
 namespace API {
 class FindClient;
+class FormClient;
 class LoaderClient;
 class PolicyClient;
 class UIClient;
@@ -478,7 +478,7 @@ public:
     API::FindClient& findClient() { return *m_findClient; }
     void setFindClient(std::unique_ptr<API::FindClient>);
     void initializeFindMatchesClient(const WKPageFindMatchesClientBase*);
-    void initializeFormClient(const WKPageFormClientBase*);
+    void setFormClient(std::unique_ptr<API::FormClient>);
     void setLoaderClient(std::unique_ptr<API::LoaderClient>);
     void setPolicyClient(std::unique_ptr<API::PolicyClient>);
 
@@ -545,7 +545,8 @@ public:
     void setViewNeedsDisplay(const WebCore::IntRect&);
     void displayView();
     bool canScrollView();
-    void scrollView(const WebCore::IntRect& scrollRect, const WebCore::IntSize& scrollOffset);
+    void scrollView(const WebCore::IntRect& scrollRect, const WebCore::IntSize& scrollOffset); // FIXME: CoordinatedGraphics should use requestScroll().
+    void requestScroll(const WebCore::FloatPoint& scrollPosition, bool isProgrammaticScroll);
     
     void setDelegatesScrolling(bool delegatesScrolling) { m_delegatesScrolling = delegatesScrolling; }
     bool delegatesScrolling() const { return m_delegatesScrolling; }
@@ -1394,7 +1395,7 @@ private:
     PageClient& m_pageClient;
     std::unique_ptr<API::LoaderClient> m_loaderClient;
     std::unique_ptr<API::PolicyClient> m_policyClient;
-    WebFormClient m_formClient;
+    std::unique_ptr<API::FormClient> m_formClient;
     std::unique_ptr<API::UIClient> m_uiClient;
 #if PLATFORM(EFL)
     WebUIPopupMenuClient m_uiPopupMenuClient;

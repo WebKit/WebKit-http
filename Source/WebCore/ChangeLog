@@ -1,3 +1,1272 @@
+2014-04-16  Benjamin Poulain  <bpoulain@apple.com>
+
+        [iOS][WK2] Fix annoying scrolling bugs
+        https://bugs.webkit.org/show_bug.cgi?id=131722
+
+        Reviewed by Simon Fraser.
+
+        * platform/ScrollView.cpp:
+        (WebCore::ScrollView::updateScrollbars):
+        Since ScrollingStateScrollingNode::setRequestedScrollPosition() was added, we see ScrollView::updateScrollbars()
+        keep changing the scroll position to incorrect values.
+
+        On iOS, the scrollbars are handled by the native UI, the code just compute incorrect scroll position. On WebKit1,
+        the code does not run because there is a platformWidget().
+
+        Just #ifdef the whole useless code.
+
+2014-04-16  Alexandru Chiculita  <achicu@adobe.com>
+
+        Improve performance of the RenderLayerCompositor::OverlapMap
+        https://bugs.webkit.org/show_bug.cgi?id=115063
+
+        Reviewed by Simon Fraser.
+
+        No new tests, no new functionality or behavior.
+
+        Do not use the OverlapMap in RenderLayerCompositor::computeCompositingRequirements if the layer already
+        has a 3D transform. This way we can avoid a potential expensive lookups when we know for sure the layer
+        is already supposed to be composited. 
+
+        Also, added a bounding box of the overlap map, so that it can catch cases when the new layer is not overlapping
+        any of the previous layers. This is pretty common when having composited layers laid out in a vertical/horizontal list.
+
+
+        * rendering/RenderLayerCompositor.cpp:
+        (OverlapMapContainer):
+        (WebCore::OverlapMapContainer::add):
+        (WebCore::OverlapMapContainer::overlapsLayers):
+        (WebCore::OverlapMapContainer::unite):
+        (WebCore):
+        (WebCore::RenderLayerCompositor::OverlapMap::add):
+        (WebCore::RenderLayerCompositor::OverlapMap::overlapsLayers):
+        (WebCore::RenderLayerCompositor::OverlapMap::pushCompositingContainer):
+        (WebCore::RenderLayerCompositor::OverlapMap::popCompositingContainer):
+        (RenderLayerCompositor::OverlapMap):
+        (WebCore::RenderLayerCompositor::computeCompositingRequirements):
+
+2014-04-16  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Replay: memoize fallback time values for document.lastModified
+        https://bugs.webkit.org/show_bug.cgi?id=131318
+
+        Reviewed by Joseph Pecoraro.
+
+        If a document's Last-Modified header can't be found or used, then 
+        document.lastModified is derived from the current system time or
+        from filesystem data, which is obviously nondeterministic.
+
+        It's better to handle this inside Document::lastModified rather than using
+        MemoizedDOMResult, because only the fallback case is nondeterministic.
+
+        Test: http/tests/inspector/replay/document-last-modified-fallback-value.html
+
+        The test is skipped for now, as it will be very flaky without the
+        functionality introduced by bugs 130728 and 129391.
+
+        * dom/Document.cpp:
+        (WebCore::Document::lastModified): Save or reuse memoized fallback value.
+        * replay/WebInputs.json: Add input DocumentLastModifiedDate.
+
+2014-04-16  David Hyatt  <hyatt@apple.com>
+
+        [New Multicolumn] Selection gets confused when the mouse is in the column gaps.
+        https://bugs.webkit.org/show_bug.cgi?id=131739
+
+        Reviewed by Enrica Casucci.
+
+        * rendering/RenderBlock.cpp:
+        (WebCore::RenderBlock::selectionGaps):
+        Make sure not to paint selection gaps. This matches the old multi-column behavior. Even though
+        selection gaps *nearly* work with the new multi-column code, I am disabling them so that we
+        can turn them on without visual regressions.
+        
+        (WebCore::isChildHitTestCandidate):
+        Don't allow in-flow RenderFlowThreads to be descended into from positionForPoint. We always want
+        to look only at the spanners and at the sets.
+
+        * rendering/RenderMultiColumnFlowThread.cpp:
+        (WebCore::RenderMultiColumnFlowThread::nodeAtPoint):
+        * rendering/RenderMultiColumnFlowThread.h:
+        Override nodeAtPoint to disallow the RenderMultiColumnFlowThread from being considered for hit
+        testing when no DOM node is found. It's better to just let RenderBlock's positionForPoint run
+        to drill back down into the appropriate column set.
+
+        * rendering/RenderMultiColumnSet.cpp:
+        (WebCore::RenderMultiColumnSet::positionForPoint):
+        Implement positionForPoint for RenderMultiColumnSets. This is a straight-up port of the
+        old multi-column code's adjustPointToColumnContents function.
+
+        * rendering/RenderMultiColumnSet.h:
+        Add override of positionForPoint.
+
+2014-04-16  Dean Jackson  <dino@apple.com>
+
+        MediaDocument on iOS should be full page
+        https://bugs.webkit.org/show_bug.cgi?id=131774
+
+        Reviewed by Jer Noble.
+
+        A MediaDocument on iOS has two problems. It can't rely
+        on intrinsic size, since it doesn't load the content until
+        a user gesture. Secondly, on a small screen you want the
+        media to fill the page.
+
+        Add width/height 100% for iOS documents.
+
+        Test: platform/iphone-simulator/media/media-document-controls-size.html
+
+        * html/MediaDocument.cpp:
+        (WebCore::MediaDocumentParser::createDocumentStructure):
+
+2014-04-16  Roger Fong  <roger_fong@apple.com>
+
+        Add a way for layout tests to determine whether or not a plugin is snapshotted.
+        https://bugs.webkit.org/show_bug.cgi?id=131650.
+        <rdar://problem/16615528>
+
+        Reviewed by Dean Jackson.
+
+        * testing/Internals.cpp:
+        (WebCore::Internals::isPluginSnapshotted):
+        * testing/Internals.h:
+        * testing/Internals.idl:
+
+2014-04-16  Zoltan Horvath  <zoltan@webkit.org>
+
+        Vanish unnecessary includes from Shapes.{h|cpp}
+        https://bugs.webkit.org/show_bug.cgi?id=131762
+
+        Reviewed by Andreas Kling.
+
+        No new tests, no behavior change.
+
+        * rendering/shapes/BoxShape.h:
+        * rendering/shapes/Shape.cpp:
+        * rendering/shapes/Shape.h:
+        * rendering/shapes/ShapeOutsideInfo.h:
+
+2014-04-16  Andreas Kling  <akling@apple.com>
+
+        Revert direct caching of tagName and nodeName from r167383.
+
+        Ryosuke tells me this is not entirely safe, will need to rethink.
+
+        * dom/Element.idl:
+        * dom/Node.idl:
+
+2014-04-16  Peter Molnar  <pmolnar.u-szeged@partner.samsung.com>
+
+        Improve security mitigation added in webkit r94001.
+        We missed the case where attachLine was called when we already had an inline box wrapper.
+        https://bugs.webkit.org/show_bug.cgi?id=127285
+
+        Reviewed by Brent Fulgham.
+
+        Merged from Blink: https://src.chromium.org/viewvc/blink?revision=150697&view=revision
+
+        * rendering/RenderBox.cpp:
+        (WebCore::RenderBox::positionLineBox):
+        * rendering/RenderBox.h:
+        (WebCore::RenderBox::setInlineBoxWrapper):
+
+2014-04-16  Bem Jones-Bey  <bjonesbe@adobe.com>
+
+        Fix CodeGenerator.pm to only write files if the generated content has changed
+        https://bugs.webkit.org/show_bug.cgi?id=131756
+
+        Reviewed by Sam Weinig.
+
+        To improve build speed, don't touch generated files unless the newly
+        generated content is actually different.
+
+        * bindings/scripts/CodeGenerator.pm:
+        (UpdateFile):
+
+2014-04-16  Andreas Kling  <akling@apple.com>
+
+        Add a way to cache never-changing IDL attributes in the wrapper.
+        <https://webkit.org/b/131759>
+
+        Some IDL attributes will always return the same value when queried
+        on an object, so let's have a way to avoid calling into C++ code
+        every time they are queried.
+
+        This patch adds a custom IDL thingy called "ReturnsCacheableValue"
+        which causes the code generator to emit code to cache the returned
+        value directly in the JS wrapper object.
+
+        Reviewed by Oliver Hunt.
+
+        * bindings/scripts/IDLAttributes.txt:
+        * bindings/scripts/CodeGeneratorJS.pm:
+        (GenerateImplementation):
+
+            Add ReturnsCacheableValue custom attribute.
+
+        * dom/Element.idl:
+        * dom/Node.idl:
+
+            Annotate some attributes that return fully cacheable values.
+
+        * bindings/scripts/test/*:
+
+            Rebaseline.
+
+2014-04-16  Noel Gordon  <noel.gordon@gmail.com>
+
+        Progressive JPEG outputScanlines() calls should handle failure
+        https://bugs.webkit.org/show_bug.cgi?id=116701
+
+        Reviewed by Brent Fulgham.
+
+        outputScanlines() can fail and delete |this|. Copy the decoder pointer
+        member and use that copy to detect and handle the failure case.
+
+        * platform/image-decoders/jpeg/JPEGImageDecoder.cpp:
+        (WebCore::JPEGImageReader::decode):
+
+2014-04-16  Robert Sipka  <sipka@inf.u-szeged.hu>
+
+        [curl] Add WEB_TIMING support
+        https://bugs.webkit.org/show_bug.cgi?id=127555
+
+        Reviewed by Brent Fulgham.
+
+        Access timing information related to navigation.
+
+        * platform/network/curl/ResourceHandleManager.cpp:
+        (WebCore::milisecondsSinceRequest):
+        (WebCore::calculateWebTimingInformations):
+        (WebCore::sockoptfunction):
+        (WebCore::headerCallback):
+        (WebCore::ResourceHandleManager::downloadTimerCallback):
+        (WebCore::ResourceHandleManager::dispatchSynchronousJob):
+        (WebCore::ResourceHandleManager::initializeHandle):
+
+2014-04-16  Zoltan Horvath  <zoltan@webkit.org>
+
+        Cleanup header includes in ShapeOutsideInfo.h
+        https://bugs.webkit.org/show_bug.cgi?id=131750
+
+        Reviewed by Antti Koivisto.
+
+        Make the build faster by removing unnecessary header includes.
+
+        No new tests, no behavior change.
+
+        * rendering/shapes/ShapeOutsideInfo.h:
+
+2014-04-16  Simon Fraser  <simon.fraser@apple.com>
+
+        Fix the iOS build.
+
+        * platform/graphics/cg/BitmapImageCG.cpp:
+        (WebCore::BitmapImage::draw):
+
+2014-04-16  Alexey Proskuryakov  <ap@apple.com>
+
+        DataTransfer should cache its FileList
+        https://bugs.webkit.org/show_bug.cgi?id=131694
+
+        Reviewed by Darin Adler.
+
+        Test: fast/events/data-transfer-files-attribute-identity.html
+
+        * bindings/js/SerializedScriptValue.cpp: (WebCore::CloneDeserializer::readTerminal):
+        Switched to a new FileList constructor, CloneDeserializer doesn't really need to modify
+        the FileList with append().
+
+        * dom/DataTransfer.h:
+        * dom/DataTransfer.cpp:
+        (WebCore::DataTransfer::types): Added a FIXME.
+        (WebCore::DataTransfer::files): Changed to reuse a cached FileList. It's currently
+        easy, because we don't support DataTransferItemList. Once we do, making any changes
+        through it will also require updating the FileList in a way that doesn't replace
+        File objects for unchanged files.
+
+        * fileapi/FileList.h:
+        (WebCore::FileList::create):
+        (WebCore::FileList::isEmpty):
+        (WebCore::FileList::FileList):
+        (WebCore::FileList::append):
+        (WebCore::FileList::clear):
+        Made non-const functions private, because neither DataTransfer nor FileInputType
+        expect the list to be modified without their knowledge. Added a new Vector based
+        constructor so that a FileList could be created without the use of append().
+
+        * html/FileInputType.cpp: (WebCore::FileInputType::createFileList): Simplified
+        the code a little bit. FileInputType still needs to modify the list for clear(),
+        but doesn't need to add to it dynamically - unlike with DataTransfer, it's expected
+        to create a new FileList when it's modified.
+
+2014-04-15  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Eliminate use of deleteAllValues in Windows Files
+        https://bugs.webkit.org/show_bug.cgi?id=131631
+
+        Reviewed by Darin Adler.
+
+        Update to use std::unique_ptr for object lifetime. Get rid of
+        deleteAllValues now that it is no loner needed. Use ranged for
+        loops where possible.
+
+        * platform/win/WCDataObject.cpp:
+        (WebCore::WCEnumFormatEtc::WCEnumFormatEtc):
+        (WebCore::WCDataObject::~WCDataObject):
+        (WebCore::WCDataObject::GetData):
+        (WebCore::WCDataObject::QueryGetData):
+        (WebCore::WCDataObject::SetData):
+        (WebCore::WCDataObject::clearData):
+        * platform/win/WCDataObject.h:
+
+2014-04-16  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: Accessing a table cell with an invalid column header crashes
+        https://bugs.webkit.org/show_bug.cgi?id=131719
+
+        Reviewed by Darin Adler.
+
+        If no tableCell is available as a column/row header, then do not continue processing.
+
+        Test: accessibility/table-missing-column-header-crash.html
+
+        * accessibility/AccessibilityTableCell.cpp:
+        (WebCore::AccessibilityTableCell::columnHeaders):
+        (WebCore::AccessibilityTableCell::rowHeaders):
+
+2014-04-16  Brendan Long  <b.long@cablelabs.com>
+
+        [GTK] Fix unused parameter warnings
+        https://bugs.webkit.org/show_bug.cgi?id=131721
+
+        Reviewed by Darin Adler.
+
+        * bindings/js/JSMediaStreamCapabilitiesCustom.cpp:
+        (WebCore::toJS): Remove unused 'exec' parameter.
+
+2014-04-16  Simon Fraser  <simon.fraser@apple.com>
+
+        Convert the boolean param of Image::startAnimation() to an enum
+        https://bugs.webkit.org/show_bug.cgi?id=131742
+
+        Reviewed by Tim Horton.
+
+        Use an enum to make the code more readable.
+
+        * platform/graphics/BitmapImage.cpp:
+        (WebCore::BitmapImage::startAnimation):
+        * platform/graphics/BitmapImage.h:
+        * platform/graphics/Image.cpp:
+        (WebCore::Image::drawTiled):
+        * platform/graphics/Image.h:
+        (WebCore::Image::startAnimation):
+        * svg/graphics/SVGImage.cpp:
+        (WebCore::SVGImage::startAnimation):
+        * svg/graphics/SVGImage.h:
+
+2014-04-16  David Hyatt  <hyatt@apple.com>
+
+        Make sure to skip the RenderMultiColumnFlowThread when resolving percentage heights inside columns against
+        containing blocks. The flow thread's auto height should not interfere if a fixed height is specified on
+        an ancestor.
+
+        https://bugs.webkit.org/show_bug.cgi?id=131741
+
+        Reviewed by Simon Fraser.
+
+        Added fast/multicol/percent-height.html.
+
+        * rendering/RenderBox.cpp:
+        (WebCore::RenderBox::skipContainingBlockForPercentHeightCalculation):
+        Add an isInFlowRenderFlowThread check so that we skip those blocks and don't consider them at all
+        when resolving percentage heights.
+
+2014-04-16  Daewoong Jang  <daewoong.jang@navercorp.com>
+
+        [WinCairo][cURL] Build fix for WinCairo build with USE(CURL).
+        https://bugs.webkit.org/show_bug.cgi?id=131614
+
+        Reviewed by Brent Fulgham.
+
+        Build fix, no new tests needed.
+
+        * platform/network/curl/CurlCacheEntry.cpp:
+        (WebCore::CurlCacheEntry::loadResponseHeaders):
+        * platform/network/curl/CurlCacheManager.cpp:
+        (WebCore::CurlCacheManager::loadIndex):
+        * platform/network/soup/ResourceError.h:
+        * platform/network/soup/SocketStreamHandle.h:
+
+2014-04-16  Martin Hodovan  <mhodovan@inf.u-szeged.hu>
+
+        ASSERTION FAILED: x2 >= x1 in WebCore::RenderObject::drawLineForBoxSide
+        https://bugs.webkit.org/show_bug.cgi?id=127835
+
+        In some cases when a negative margin and a positive padding are applied
+        together to the right and/or left side of the box, the logical width of
+        the borders can be set to a negative value, making the assertion fire.
+        The fix checks if the width or height of the box is negative, and if so,
+        it will not display the borders and shadows of the box.
+
+        Reviewed by Darin Adler.
+
+        Test: fast/css/padding-margin-negative-border.html
+
+        * rendering/RenderBoxModelObject.cpp:
+        (WebCore::RenderBoxModelObject::paintBorder):
+
+2014-04-16  Jer Noble  <jer.noble@apple.com>
+
+        [MSE] Seeks into buffered ranges will never complete.
+        https://bugs.webkit.org/show_bug.cgi?id=131717
+
+        Reviewed by Eric Carlson.
+
+        Test: media/media-source/media-source-seek-complete.html
+
+        Run the SourceBuffer Monitoring step after initiating a seek.
+
+        * Modules/mediasource/SourceBuffer.cpp:
+        (WebCore::SourceBuffer::sourceBufferPrivateSeekToTime):
+
+2014-04-15  Hyowon Kim  <hw1008.kim@samsung.com>
+
+        [EFL] Fix problems with the pixel dump.
+        https://bugs.webkit.org/show_bug.cgi?id=131265
+
+        Reviewed by Gyuyoung Kim.
+
+        Painting and compositing paths of WebKit-EFL were totally modified from r166768.
+        However pixel dump codes still call deprecated functions like ewk_view_paint(),
+        which causes that nothing is drawn.
+
+        This patch adds new member functions to AcceleratedCompositingContext to support pixel dump.
+        One of new functions is AcceleratedCompositingContext::extractImageData(),
+        which replaces deprecated function calls. Besides the extractImageData() is invoked by
+        ewk_view_screenshot_contents_get() in order to take the visible content displayed on the EFL webview.
+
+        * platform/graphics/cairo/CairoUtilities.cpp:
+        (WebCore::flipImageSurfaceVertically): Flip pixel data of given cairo_surface_t vertically up/down.
+        Whereas Cairo uses the top-left corner as being 0,0 of the coordinate system,
+        OpenGL uses the bottom-left corner being 0,0.
+        So we need to vertically flip resultant images taken by glReadPixels().
+        * platform/graphics/cairo/CairoUtilities.h:
+
+2014-04-15  Hyowon Kim  <hw1008.kim@samsung.com>
+
+        Make page overlay functionality working on coordinated graphics.
+        https://bugs.webkit.org/show_bug.cgi?id=131425
+
+        Reviewed by Darin Adler.
+
+        Page overlay functionality did not work on coordinated graphics since r166975.
+        This patch removes deprecated code related to the PageOverlay GraphicsLayer management.
+        and makes CoordinatedLayerTreeHost use PageOverlayController.
+
+        * platform/graphics/texmap/coordinated/CompositingCoordinator.cpp:
+        (WebCore::CompositingCoordinator::setRootCompositingLayer):
+        (WebCore::CompositingCoordinator::flushPendingLayerChanges):
+        * platform/graphics/texmap/coordinated/CompositingCoordinator.h:
+
+2014-04-10  Roger Fong  <roger_fong@apple.com>
+
+        Snapshotted plugins may need to be restarted if style properties are changed after initial load of plugin.
+        https://bugs.webkit.org/show_bug.cgi?id=131553.
+        <rdar://problem/15443375>
+
+        Reviewed by Timothy Horton.
+
+        Test: plugins/snapshotting/set-plugin-size-to-tiny.html
+
+        When updating embedded objects during our post layout checks, check for certain style changes
+        that may result in the plugin needing to be restarted.
+
+        * html/HTMLPlugInImageElement.h: 
+        Add m_plugInDimensionsSpecified field to keep track of whether or not dimensions on the plugin’s renderer have been specified.
+        * html/HTMLPlugInImageElement.cpp:
+        (WebCore::HTMLPlugInImageElement::HTMLPlugInImageElement):
+        Initialize m_plugInDimensionsSpecified.
+        (WebCore::isSmallerThanTinySizingThreshold):
+        Refactoring, move check for whether or not plugin is smaller than the tiny plugin size threshold to this method.
+        (WebCore::HTMLPlugInImageElement::isTopLevelFullPage): 
+        Refactoring, move check for whether or not plugin is top level full page to this method.
+        (WebCore::HTMLPlugInImageElement::checkSnapshotStatus): 
+        Use refactored checks here as well to determine whether or not we need to restart the snapshotted plugin.
+        (WebCore::HTMLPlugInImageElement::subframeLoaderWillCreatePlugIn): Use refactored checks.
+        If plugin dimensions were specified, set m_plugInDimensionsSpecified to true.
+
+2014-04-15  Andreas Kling  <akling@apple.com>
+
+        [iOS WebKit2] Listen for system memory pressure notifications.
+        <https://webkit.org/b/131653>
+        <rdar://problem/16208123>
+
+        Reviewed by Antti Koivisto.
+
+        * platform/cocoa/MemoryPressureHandlerCocoa.mm:
+        (WebCore::MemoryPressureHandler::install):
+
+            Use the right invocation to summon the memory pressure handler.
+
+        (WebCore::MemoryPressureHandler::install):
+        (WebCore::MemoryPressureHandler::uninstall):
+        (WebCore::MemoryPressureHandler::holdOff):
+        (WebCore::MemoryPressureHandler::respondToMemoryPressure):
+
+            Make stubbed out functions !PLATFORM(COCOA)
+
+2014-04-14  Morten Stenshorne  <mstensho@opera.com>
+
+        [New Multicolumn] Add support for column-span:all
+        https://bugs.webkit.org/show_bug.cgi?id=129330
+
+        Reviewed by Dave Hyatt.
+
+        Column spanners are implemented as siblings of RenderMultiColumnSet
+        objects (i.e. the regions for the column rows). This means that they
+        are pulled out from the flow thread tree where they would otherwise
+        live. This causes some complexity, most of which is contained within
+        the multicol code.
+
+        A placeholder is put in the flow thread tree where the spanner's
+        renderer would otherwise live. This is needed in order make sure that
+        we interrupt line layout before after the spanner. We also need this
+        to be able to switch from one multicol set to the next.
+
+        Some extra logic is required when dynamically inserting and removing
+        flow thread descendants now, because we need to figure out if the
+        renderer added should trigger creation of new multi column sets. If
+        a spanner is inserted in the middle of a multi column set, we need to
+        detect this, split the set and put the spanner in the middle.
+
+        Wrote a bunch of tests. A few of the tests were copied from existing
+        (old-impl) tests and put in a separate directory. That directory can
+        be wiped when we turn on the new multicol implementation by default.
+
+        Tests: fast/multicol/newmulticol/adjacent-spanners.html
+               fast/multicol/newmulticol/block-becomes-spanner.html
+               fast/multicol/newmulticol/change-spanner-display.html
+               fast/multicol/newmulticol/change-spanner-parent-display.html
+               fast/multicol/newmulticol/compare-with-old-impl/anonymous-block-split-crash.html
+               fast/multicol/newmulticol/compare-with-old-impl/before-child-anonymous-column-block.html
+               fast/multicol/newmulticol/compare-with-old-impl/clone-before-after-content-crash.html
+               fast/multicol/newmulticol/compare-with-old-impl/clone-block-children-inline-mismatch-crash.html
+               fast/multicol/newmulticol/compare-with-old-impl/clone-flexbox.html
+               fast/multicol/newmulticol/compare-with-old-impl/clone-summary.html
+               fast/multicol/newmulticol/compare-with-old-impl/column-span-inside-multicol-webkit-box.html
+               fast/multicol/newmulticol/compare-with-old-impl/continuation-crash.html
+               fast/multicol/newmulticol/compare-with-old-impl/double-merge-anonymous-block-crash.html
+               fast/multicol/newmulticol/compare-with-old-impl/empty-anonymous-block-split-crash.html
+               fast/multicol/newmulticol/compare-with-old-impl/float-not-removed-crash.html
+               fast/multicol/newmulticol/compare-with-old-impl/list-multi-column-crash.html
+               fast/multicol/newmulticol/compare-with-old-impl/positioned-child-not-removed-crash.html
+               fast/multicol/newmulticol/compare-with-old-impl/positioned-objects-not-removed-crash.html
+               fast/multicol/newmulticol/compare-with-old-impl/recursive-split-flow-crash.html
+               fast/multicol/newmulticol/compare-with-old-impl/removal-of-multicol-span-crash.html
+               fast/multicol/newmulticol/compare-with-old-impl/remove-child-split-flow-crash.html
+               fast/multicol/newmulticol/compare-with-old-impl/runin-continuation-crash.html
+               fast/multicol/newmulticol/compare-with-old-impl/span-as-immediate-child-complex-splitting.html
+               fast/multicol/newmulticol/compare-with-old-impl/span-as-nested-inline-block-child.html
+               fast/multicol/newmulticol/compare-with-old-impl/split-flow-anonymous-wrapper-crash.html
+               fast/multicol/newmulticol/compare-with-old-impl/split-inline-wrong-post-block-crash.html
+               fast/multicol/newmulticol/compare-with-old-impl/table-multi-column-crash.html
+               fast/multicol/newmulticol/compare-with-old-impl/textbox-not-removed-crash.html
+               fast/multicol/newmulticol/compare-with-old-impl/update-after-content-before-child-crash.html
+               fast/multicol/newmulticol/insert-row-content1.html
+               fast/multicol/newmulticol/insert-row-content2.html
+               fast/multicol/newmulticol/insert-row-content3.html
+               fast/multicol/newmulticol/insert-row-content4.html
+               fast/multicol/newmulticol/insert-row-content5.html
+               fast/multicol/newmulticol/insert-row-content6.html
+               fast/multicol/newmulticol/insert-row-content7.html
+               fast/multicol/newmulticol/insert-row-content8.html
+               fast/multicol/newmulticol/insert-row-content9.html
+               fast/multicol/newmulticol/insert-spanner-child1.html
+               fast/multicol/newmulticol/insert-spanner-child2.html
+               fast/multicol/newmulticol/insert-spanner-child3.html
+               fast/multicol/newmulticol/insert-spanner1.html
+               fast/multicol/newmulticol/insert-spanner2.html
+               fast/multicol/newmulticol/insert-spanner3.html
+               fast/multicol/newmulticol/insert-spanner4.html
+               fast/multicol/newmulticol/insert-spanner5.html
+               fast/multicol/newmulticol/insert-spanner6.html
+               fast/multicol/newmulticol/insert-spanner7.html
+               fast/multicol/newmulticol/insert-spanner8.html
+               fast/multicol/newmulticol/multicol-with-spanner-becomes-regular-block.html
+               fast/multicol/newmulticol/remove-row-content1.html
+               fast/multicol/newmulticol/remove-row-content2.html
+               fast/multicol/newmulticol/remove-row-content3.html
+               fast/multicol/newmulticol/remove-row-content4.html
+               fast/multicol/newmulticol/remove-row-content5.html
+               fast/multicol/newmulticol/remove-row-content6.html
+               fast/multicol/newmulticol/remove-row-content7.html
+               fast/multicol/newmulticol/remove-row-content8.html
+               fast/multicol/newmulticol/remove-row-content9.html
+               fast/multicol/newmulticol/remove-spanner1.html
+               fast/multicol/newmulticol/remove-spanner2.html
+               fast/multicol/newmulticol/remove-spanner3.html
+               fast/multicol/newmulticol/remove-spanner4.html
+               fast/multicol/newmulticol/remove-spanner5.html
+               fast/multicol/newmulticol/remove-spanner6.html
+               fast/multicol/newmulticol/sole-spanner.html
+               fast/multicol/newmulticol/span-between-text.html
+               fast/multicol/newmulticol/spanner-becomes-regular-block.html
+               fast/multicol/newmulticol/spanner-first.html
+               fast/multicol/newmulticol/spanner-img.html
+               fast/multicol/newmulticol/spanner-inline-block.html
+               fast/multicol/newmulticol/spanner-last.html
+               fast/multicol/newmulticol/spanner-nested-dynamic.html
+               fast/multicol/newmulticol/spanner-nested.html
+               fast/multicol/newmulticol/spanner-pseudo-after1.html
+               fast/multicol/newmulticol/spanner-pseudo-after2.html
+               fast/multicol/newmulticol/spanner-pseudo-after3.html
+               fast/multicol/newmulticol/spanner-pseudo-after4.html
+               fast/multicol/newmulticol/spanner-pseudo-before-after1.html
+               fast/multicol/newmulticol/spanner-pseudo-before-after2.html
+               fast/multicol/newmulticol/spanner-pseudo-before-after3.html
+               fast/multicol/newmulticol/spanner-pseudo-before-after4.html
+               fast/multicol/newmulticol/spanner-pseudo-before1.html
+               fast/multicol/newmulticol/spanner-pseudo-before2.html
+               fast/multicol/newmulticol/spanner-pseudo-before3.html
+               fast/multicol/newmulticol/spanner-pseudo-before4.html
+               fast/multicol/newmulticol/spanner-table.html
+               fast/multicol/newmulticol/spanner-with-margin.html
+               fast/multicol/newmulticol/spanner1.html
+               fast/multicol/newmulticol/spanner2.html
+               fast/multicol/newmulticol/spanner3.html
+               fast/multicol/newmulticol/spanner4.html
+               fast/multicol/newmulticol/spanner5.html
+               fast/multicol/newmulticol/spanner6.html
+               fast/multicol/newmulticol/spanner7.html
+               fast/multicol/newmulticol/spanner8.html
+               fast/multicol/newmulticol/spanner9.html
+               fast/multicol/newmulticol/trailing-margin-with-spanner.html
+               fast/multicol/newmulticol/trailing-margin-with-spanner2.html
+
+        * CMakeLists.txt:
+        * WebCore.vcxproj/WebCore.vcxproj:
+        * WebCore.vcxproj/WebCore.vcxproj.filters:
+        * rendering/RenderBlock.cpp:
+        (WebCore::RenderBlock::addChildIgnoringAnonymousColumnBlocks):
+        Disable the old anonymous multicol container and spanner anonymous
+        block generation machinery when the new multicol implementation is
+        enabled.
+        * rendering/RenderBlockFlow.cpp:
+        (WebCore::RenderBlockFlow::createMultiColumnFlowThread):
+        (WebCore::RenderBlockFlow::destroyMultiColumnFlowThread):
+        (WebCore::RenderBlockFlow::layoutBlockChild): Need to notify the
+        flow thread when a descendant's final position is known. Spanner
+        placeholders need to know where to terminate the column set that
+        it follows.
+        (WebCore::RenderBlockFlow::styleDidChange): Remove old code that
+        isn't needed anymore. The renderers in question (flow thread and
+        column sets) set display:block on themselves already. This code
+        caused problems for spanners, which got all their style wiped.
+        (WebCore::RenderBlockFlow::setMultiColumnFlowThread): If setting
+        the flow thread to nullptr, there's no need to create the "rare
+        data" structure.
+        (WebCore::RenderBlockFlow::relayoutForPagination):
+        (WebCore::RenderBlockFlow::layoutSpecialExcludedChild):
+        (WebCore::RenderBlockFlow::addChild): beforeChild is retrieved via
+        the DOM. If it is a spanner, we need to locate the placeholder
+        here, because that's the correct location to insert siblings,
+        DOM-wise.
+        (WebCore::RenderBlockFlow::removeChild): The multicol flow thread
+        needs to know when children disappear.
+        (WebCore::RenderBlockFlow::checkForPaginationLogicalHeightChange):
+        Don't modify the height back and forth when calculating the
+        multicol container's final height, as that messes up balancing.
+        (WebCore::RenderBlockFlow::insertedIntoTree): Deleted.
+        (WebCore::RenderBlockFlow::willBeDestroyed): Deleted.
+        (WebCore::RenderBlockFlow::styleWillChange): Deleted.
+        (WebCore::RenderBlockFlow::lineAtIndex): Deleted.
+        * rendering/RenderBlockFlow.h:
+        * rendering/RenderElement.cpp:
+        (WebCore::RenderElement::insertedIntoTree): Set up an element's
+        layer before notifying the flow thread. The multicol flow thread
+        may decide to move the element (if it's a spanner), which may
+        involve re-insertion of layers.  Calling
+        RenderObject::insertedIntoTree() last instead of first also better
+        matches the order we used to have prior to the introduction of
+        RenderElement, FWIW.
+        * rendering/RenderFlowThread.cpp:
+        (WebCore::RenderFlowThread::layout):
+        (WebCore::RenderFlowThread::removeRegionFromThread): Deleted.
+        (WebCore::RenderFlowThread::invalidateRegions): Deleted.
+        * rendering/RenderFlowThread.h:
+        * rendering/RenderMultiColumnFlowThread.cpp:
+        (WebCore::RenderMultiColumnFlowThread::RenderMultiColumnFlowThread):
+        (WebCore::RenderMultiColumnFlowThread::removeFlowChildInfo): When
+        a flow thread descendant is inserted, the multicol flow thread
+        needs to be notified.
+        (WebCore::RenderMultiColumnFlowThread::firstMultiColumnSet):
+        (WebCore::RenderMultiColumnFlowThread::lastMultiColumnSet):
+        (WebCore::RenderMultiColumnFlowThread::firstColumnSetOrSpanner):
+        (WebCore::RenderMultiColumnFlowThread::nextColumnSetOrSpannerSiblingOf):
+        (WebCore::RenderMultiColumnFlowThread::previousColumnSetOrSpannerSiblingOf):
+        (WebCore::RenderMultiColumnFlowThread::layout):
+        (WebCore::RenderMultiColumnFlowThread::findSetRendering):
+        (WebCore::RenderMultiColumnFlowThread::populate):
+        (WebCore::RenderMultiColumnFlowThread::evacuateAndDestroy):
+        (WebCore::RenderMultiColumnFlowThread::addRegionToThread):
+        (WebCore::RenderMultiColumnFlowThread::willBeRemovedFromTree):
+        Need to detach column sets here, since they have pointers to their
+        flow thread.
+        (WebCore::RenderMultiColumnFlowThread::resolveMovedChild):
+        (WebCore::isValidColumnSpanner):
+        (WebCore::RenderMultiColumnFlowThread::flowThreadDescendantInserted):
+        (WebCore::RenderMultiColumnFlowThread::flowThreadRelativeWillBeRemoved):
+        (WebCore::RenderMultiColumnFlowThread::flowThreadDescendantBoxLaidOut):
+        (WebCore::RenderMultiColumnFlowThread::autoGenerateRegionsToBlockOffset):
+        Nothing to be done here for the time being. Column sets are now
+        created during box creation. We are going to need to add some code
+        here again once multicol properly supports nested fragmentation
+        contexts (and you get adjacent column rows because of that).
+        (WebCore::RenderMultiColumnFlowThread::regionAtBlockOffset):
+        During layout, don't trust the region interval tree, as that one
+        depends on the resulting layout.
+        (WebCore::RenderMultiColumnFlowThread::setRegionRangeForBox): With
+        a convenience method to get the last column set, and column sets
+        now being created during normal box creation, this young method
+        needs an overhaul.
+        (WebCore::RenderMultiColumnFlowThread::setRegionRangeForBox):
+        (WebCore::RenderMultiColumnFlowThread::isPageLogicalHeightKnown):
+        * rendering/RenderMultiColumnFlowThread.h:
+        * rendering/RenderMultiColumnSet.cpp:
+        (WebCore::RenderMultiColumnSet::nextSiblingMultiColumnSet):
+        (WebCore::RenderMultiColumnSet::previousSiblingMultiColumnSet):
+        (WebCore::RenderMultiColumnSet::firstRendererInFlowThread):
+        (WebCore::RenderMultiColumnSet::lastRendererInFlowThread):
+        (WebCore::precedesRenderer):
+        (WebCore::RenderMultiColumnSet::containsRendererInFlowThread):
+        (WebCore::RenderMultiColumnSet::setLogicalTopInFlowThread):
+        (WebCore::RenderMultiColumnSet::setLogicalBottomInFlowThread):
+        (WebCore::RenderMultiColumnSet::pageLogicalTopForOffset):
+        (WebCore::RenderMultiColumnSet::distributeImplicitBreaks):
+        (WebCore::RenderMultiColumnSet::calculateBalancedHeight):
+        (WebCore::RenderMultiColumnSet::addForcedBreak):
+        (WebCore::RenderMultiColumnSet::recalculateColumnHeight):
+        Previously only needed if columns were to be balanced, now it's
+        also needed when not balancing.
+        (WebCore::RenderMultiColumnSet::recordSpaceShortage): Some layout
+        elements actually have 0 height. Skip them, since they're not
+        taking us anywhere.
+        (WebCore::RenderMultiColumnSet::updateLogicalWidth):
+        (WebCore::RenderMultiColumnSet::requiresBalancing): Column sets
+        now have individual balancing needs. If they precede a spanner,
+        they must always be balanced. For the last column set, see if
+        height is unspecified or column-fill is 'balance' (like before).
+        (WebCore::RenderMultiColumnSet::prepareForLayout):
+        (WebCore::RenderMultiColumnSet::beginFlow):
+        (WebCore::RenderMultiColumnSet::endFlow):
+        (WebCore::RenderMultiColumnSet::layout):
+        (WebCore::RenderMultiColumnSet::calculateMaxColumnHeight):
+        (WebCore::RenderMultiColumnSet::columnRectAt):
+        (WebCore::RenderMultiColumnSet::flowThreadPortionOverflowRect):
+        (WebCore::RenderMultiColumnSet::paintColumnRules):
+        (WebCore::RenderMultiColumnSet::initialBlockOffsetForPainting):
+        (WebCore::RenderMultiColumnSet::collectLayerFragments):
+        (WebCore::RenderMultiColumnSet::columnTranslationForOffset):
+        (WebCore::RenderMultiColumnSet::setAndConstrainColumnHeight): Deleted.
+        (WebCore::RenderMultiColumnSet::findRunWithTallestColumns): Deleted.
+        (WebCore::RenderMultiColumnSet::clearForcedBreaks): Deleted.
+        (WebCore::RenderMultiColumnSet::repaintFlowThreadContent): Deleted.
+        * rendering/RenderMultiColumnSet.h:
+        * rendering/RenderMultiColumnSpannerPlaceholder.cpp: Added.
+        (WebCore::RenderMultiColumnSpannerPlaceholder::createAnonymous):
+        (WebCore::RenderMultiColumnSpannerPlaceholder::RenderMultiColumnSpannerPlaceholder):
+        (WebCore::RenderMultiColumnSpannerPlaceholder::renderName):
+        * rendering/RenderMultiColumnSpannerPlaceholder.h: Added.
+        * rendering/RenderObject.cpp:
+        (WebCore::RenderObject::insertedIntoTree): Need to notify the
+        multicol flow thread when descendants are inserted. That may
+        trigger insertion of column sets, or, in the case of spanners,
+        they need to be moved out from the flow thread.
+        * rendering/RenderObject.h:
+        (WebCore::RenderObject::isRenderMultiColumnSpannerPlaceholder):
+        (WebCore::RenderObject::isAnonymousBlock): Exclude column sets
+        here, so that they don't get involved in anonymous block merging
+        and other kinds of fun.
+        * rendering/RenderRegion.h:
+        * rendering/RenderRegionSet.h:
+
+2014-04-15  Simon Fraser  <simon.fraser@apple.com>
+
+        LayerTreeAsTextBehavior should be in the WebCore namespace
+        https://bugs.webkit.org/show_bug.cgi?id=131683
+
+        Reviewed by Andrei Bucur.
+
+        Move LayerTreeAsTextBehavior and the bit flags into the WebCore namespace.
+
+        * platform/graphics/GraphicsLayer.cpp:
+        (showGraphicsLayerTree):
+        * platform/graphics/GraphicsLayer.h:
+
+2014-04-15  Benjamin Poulain  <bpoulain@apple.com>
+
+        ViewportConfiguration handles userZoom incorrectly
+        https://bugs.webkit.org/show_bug.cgi?id=131657
+
+        Reviewed by Darin Adler.
+
+        * page/ViewportConfiguration.cpp:
+        (WebCore::viewportArgumentUserZoomIsSet):
+        (WebCore::ViewportConfiguration::updateConfiguration):
+        The other viewport values must be strictly positive, userZoom is always either zero, one or minus one.
+        As a result, the value zero was never set.
+
+2014-04-15  Simon Fraser  <simon.fraser@apple.com>
+
+        [iOS WK2] Pages often blank on first load if page loaded by typing the URL
+        https://bugs.webkit.org/show_bug.cgi?id=131665
+
+        Reviewed by Tim Horton.
+
+        The document overlay-related code in RemoteLayerTreeDrawingArea::setRootCompositingLayer()
+        was triggering a compositing layer flush when called with a null rootLayer, which happens
+        for pages going into the page cache. This would trigger a layer flush that would clobber
+        the root layer for the visible page, resulting in missing content.
+        
+        Also, rebuildCompositingLayerTree() is called recursively and the m_documentOverlayRootLayer
+        was being added to (and then removed from) every single compositing layers.
+        
+        Fix both these by changing to a pull model, where RenderLayerCompositor requests
+        the overlay layer via ChromeClient, and gets it at the end of every flush,
+        adding to the children of the root layer.
+
+        * WebCore.exp.in:
+        * page/ChromeClient.h:
+        (WebCore::ChromeClient::documentOverlayLayerForFrame):
+        * rendering/RenderLayerCompositor.cpp:
+        (WebCore::RenderLayerCompositor::RenderLayerCompositor):
+        (WebCore::RenderLayerCompositor::flushPendingLayerChanges): Put visibleRect
+        into a variable for ease of debugging.
+        (WebCore::RenderLayerCompositor::updateCompositingLayers): Asser
+        that we're not in the page cache (this would have caught the bug).
+        (WebCore::RenderLayerCompositor::appendOverlayLayers):
+        (WebCore::RenderLayerCompositor::rebuildCompositingLayerTree):
+        (WebCore::RenderLayerCompositor::setDocumentOverlayRootLayer): Deleted.
+        * rendering/RenderLayerCompositor.h:
+
+2014-04-15  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r167199 and r167251.
+        https://bugs.webkit.org/show_bug.cgi?id=131678
+
+        Caused a DYEBench regression and does not seem to improve perf
+        on relevant websites (Requested by rniwa on #webkit).
+
+        Reverted changesets:
+
+        "Rewrite Function.bind as a builtin"
+        https://bugs.webkit.org/show_bug.cgi?id=131083
+        http://trac.webkit.org/changeset/167199
+
+        "Update test result"
+        http://trac.webkit.org/changeset/167251
+
+2014-04-15  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Remove unnecessary null checking in NavigatorContentUtils
+        https://bugs.webkit.org/show_bug.cgi?id=131652
+
+        Reviewed by Darin Adler.
+
+        Some functions have checked if document is null. However, document is always not
+        null when frame is existed.
+
+        No new tests, no behavior changes.
+
+        * Modules/navigatorcontentutils/NavigatorContentUtils.cpp:
+        (WebCore::NavigatorContentUtils::registerProtocolHandler):
+        (WebCore::NavigatorContentUtils::isProtocolHandlerRegistered):
+        (WebCore::NavigatorContentUtils::unregisterProtocolHandler):
+
+2014-04-15  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r167298.
+        https://bugs.webkit.org/show_bug.cgi?id=131670
+
+        Broke CSS filters (17 test crashes) (Requested by ap on
+        #webkit).
+
+        Reverted changeset:
+
+        "[iOS WK2] Pages often blank on first load if page loaded by
+        typing the URL"
+        https://bugs.webkit.org/show_bug.cgi?id=131665
+        http://trac.webkit.org/changeset/167298
+
+2014-04-14  Pratik Solanki  <psolanki@apple.com>
+
+        Unreviewed. Attempt to fix Windows build after r167277.
+
+        * page/FrameView.cpp:
+        (WebCore::FrameView::willPaintContents):
+
+2014-04-14  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r167261.
+        https://bugs.webkit.org/show_bug.cgi?id=131667
+
+        broke many navigation tests (Requested by ap on #webkit).
+
+        Reverted changeset:
+
+        "Web Replay: memoize fallback time values for
+        document.lastModified"
+        https://bugs.webkit.org/show_bug.cgi?id=131318
+        http://trac.webkit.org/changeset/167261
+
+2014-04-14  Simon Fraser  <simon.fraser@apple.com>
+
+        [iOS WK2] Pages often blank on first load if page loaded by typing the URL
+        https://bugs.webkit.org/show_bug.cgi?id=131665
+
+        Reviewed by Tim Horton.
+
+        The document overlay-related code in RemoteLayerTreeDrawingArea::setRootCompositingLayer()
+        was triggering a compositing layer flush when called with a null rootLayer, which happens
+        for pages going into the page cache. This would trigger a layer flush that would clobber
+        the root layer for the visible page, resulting in missing content.
+        
+        Also, rebuildCompositingLayerTree() is called recursively and the m_documentOverlayRootLayer
+        was being added to (and then removed from) every single compositing layers.
+        
+        Fix both these by changing to a pull model, where RenderLayerCompositor requests
+        the overlay layer via ChromeClient, and gets it at the end of every flush,
+        adding to the children of the root layer.
+
+        * WebCore.exp.in:
+        * page/ChromeClient.h:
+        (WebCore::ChromeClient::documentOverlayLayerForFrame):
+        * rendering/RenderLayerCompositor.cpp:
+        (WebCore::RenderLayerCompositor::RenderLayerCompositor):
+        (WebCore::RenderLayerCompositor::flushPendingLayerChanges): Put visibleRect
+        into a variable for ease of debugging.
+        (WebCore::RenderLayerCompositor::updateCompositingLayers): Asser
+        that we're not in the page cache (this would have caught the bug).
+        (WebCore::RenderLayerCompositor::appendOverlayLayers):
+        (WebCore::RenderLayerCompositor::rebuildCompositingLayerTree):
+        (WebCore::RenderLayerCompositor::setDocumentOverlayRootLayer): Deleted.
+        * rendering/RenderLayerCompositor.h:
+
+2014-04-14  Jon Honeycutt  <jhoneycutt@apple.com>
+
+        Assertion failure under FEImage::determineAbsolutePaintRect()
+
+        <https://bugs.webkit.org/show_bug.cgi?id=131660>
+        <rdar://problem/15669294>
+
+        This patch merges Chromium r149536 (see
+        <https://chromiumcodereview.appspot.com/14701012>), which moves
+        m_absoluteTransform out of SVGFilter and into the base Filter class, so
+        that it isn't necessary to cast a Filter to SVGFilter to get the
+        absolute transform.
+
+        Reviewed by Geoffrey Garen.
+
+        Test: svg/filters/feImage-filter-assertion.html
+
+        * platform/graphics/filters/Filter.h:
+        (WebCore::Filter::Filter):
+        Changed to take the absolute transform.
+        (WebCore::Filter::absoluteTransform):
+        Moved from SVGFilter.
+        (WebCore::Filter::mapAbsolutePointToLocalPoint):
+        Ditto.
+
+        * rendering/FilterEffectRenderer.cpp:
+        (WebCore::FilterEffectRenderer::FilterEffectRenderer):
+        Pass a default AffineTransform() to the Filter base class.
+
+        * svg/graphics/filters/SVGFEImage.cpp:
+        (WebCore::FEImage::determineAbsolutePaintRect):
+        Use the Filter without casting it to SVGFilter.
+        (WebCore::FEImage::platformApplySoftware):
+        Ditto.
+
+        * svg/graphics/filters/SVGFilter.cpp:
+        (WebCore::SVGFilter::SVGFilter):
+        Pass the transform to the base class, and remove initialization of a
+        removed member var.
+
+        * svg/graphics/filters/SVGFilter.h:
+        Member var moved to Filter.h.
+
+2014-04-14  Darin Adler  <darin@apple.com>
+
+        REGRESSION (r158617): Find on Page can get stuck in a loop when the search string occurs in an <input> in a <fieldset>
+        https://bugs.webkit.org/show_bug.cgi?id=126322
+
+        Reviewed by Ryosuke Niwa.
+
+        One additional tweak to the fix for the bug above.
+        Fixes crash in editing/editability/ignored-content.html test.
+
+        * html/HTMLObjectElement.cpp:
+        (WebCore::HTMLObjectElement::canContainRangeEndPoint): Call through to
+        HTMLElement::canContainRangeEndPoint, bypassing HTMLPlugInElement override
+        that always returns false. Without this change, this function was always
+        returning false.
+
+2014-04-14  Simon Fraser  <simon.fraser@apple.com>
+
+        Crash in TileController::tileRevalidationTimerFired
+        https://bugs.webkit.org/show_bug.cgi?id=131656
+        <rdar://problem/16583166>
+
+        Reviewed by Sam Weinig.
+
+        It's possible for the TileController revalidation timer to fire after
+        the GraphicsLayer has been destroyed, so the PlatformCALayer no longer
+        has an owningGraphicsLayer.
+        
+        Bail from the timer callback if owningGraphicsLayer() is null.
+        
+        Also some drive-by 0 -> nullptr changes.
+
+        * platform/graphics/ca/GraphicsLayerCA.cpp:
+        (WebCore::GraphicsLayerCA::willBeDestroyed):
+        * platform/graphics/ca/PlatformCALayer.cpp:
+        (WebCore::PlatformCALayer::~PlatformCALayer):
+        * platform/graphics/ca/mac/TileController.mm:
+        (WebCore::TileController::tileRevalidationTimerFired):
+
+2014-04-14  Bem Jones-Bey  <bjonesbe@adobe.com>
+
+        [CSS Shapes] Remove some leftover shape-inside code
+        https://bugs.webkit.org/show_bug.cgi?id=131641
+
+        Reviewed by Dean Jackson.
+
+        I discovered that some code had been leftover from the shape-inside
+        removal. This removes that leftover code.
+
+        No new tests, no behavior change.
+
+        * platform/text/BidiResolver.h:
+        * rendering/BidiRun.cpp:
+        (WebCore::BidiRun::BidiRun):
+        * rendering/RenderBlockFlow.h:
+        * rendering/RenderBlockLineLayout.cpp:
+        (WebCore::RenderBlockFlow::createLineBoxes):
+        (WebCore::RenderBlockFlow::constructLine):
+        (WebCore::computeExpansionForJustifiedText):
+        (WebCore::RenderBlockFlow::computeInlineDirectionPositionsForSegment):
+
+2014-04-14  Jer Noble  <jer.noble@apple.com>
+
+        [MSE][Mac] video.currentTime is sometimes negative.
+        https://bugs.webkit.org/show_bug.cgi?id=131644
+
+        Reviewed by Eric Carlson.
+
+        AVSampleBufferRenderSynchronizer will occasionally return slightly negative values
+        when beginning playback. Clamp the return value to 0.
+
+        * platform/graphics/avfoundation/objc/MediaPlayerPrivateMediaSourceAVFObjC.mm:
+        (WebCore::MediaPlayerPrivateMediaSourceAVFObjC::currentTimeDouble):
+
+2014-04-14  Bem Jones-Bey  <bjonesbe@adobe.com>
+
+        [CSSExclusions] Remove FIXME referencing closed bug
+        https://bugs.webkit.org/show_bug.cgi?id=131645
+
+        Reviewed by Dean Jackson.
+
+        This is silly, but the comment is really confusing as it's entirely
+        wrong now.
+
+        No new tests, no behavior change.
+
+        * rendering/style/RenderStyle.cpp:
+        (WebCore::RenderStyle::changeRequiresRepaint):
+
+2014-04-14  Andreas Kling  <akling@apple.com>
+
+        Build fixage.
+
+        * page/FrameView.cpp:
+
+2014-04-14  Jon Honeycutt  <jhoneycutt@apple.com>
+
+        Assertion failure !node || node->isElementNode() in
+        WebCore::RenderBlock::inlineElementContinuation
+  
+        https://bugs.webkit.org/show_bug.cgi?id=108829
+        <rdar://problem/13666405>
+  
+        I can't reproduce this assertion failure, but there seems to be an
+        invalid assumption in RenderBlock::inlineElementContinuation() that
+        anything with the "isInline()" bit set is a RenderInline.
+        
+        No new test because the test case in the bug does not repro for me.
+
+        Reviewed by Brent Fulgham.
+
+        * rendering/RenderBlock.cpp:
+        (WebCore::RenderBlock::inlineElementContinuation):
+        Dave Hyatt says that this function should only return RenderInline
+        objects (not non-RenderInline inline objects), so update the checks
+        from isInline() to isRenderInline() before casting with
+        toRenderInline().
+
+        * rendering/RenderInline.cpp:
+        (WebCore::RenderInline::inlineElementContinuation):
+        Ditto.
+
+2014-04-14  Andreas Kling  <akling@apple.com>
+
+        Do more things under memory pressure on non-iOS platforms.
+        <https://webkit.org/b/131625>
+
+        Reviewed by Antti Koivisto.
+
+        Rename hasReceivedMemoryPressure() to isUnderMemoryPressure() and
+        make it use std::atomic<bool> instead of OSAtomic primitives.
+
+        Unmask most of the PLATFORM(IOS) blocks so all platforms can take
+        advantage of optimizations done while under pressure. Note that
+        isUnderMemoryPressure() will still always return false on platforms
+        other than iOS/WK1, but this will change soon.
+
+        * history/PageCache.cpp:
+        (WebCore::PageCache::canCache):
+        * loader/FrameLoader.cpp:
+        (WebCore::FrameLoader::commitProvisionalLoad):
+        * page/FrameView.cpp:
+        (WebCore::FrameView::willPaintContents):
+        (WebCore::FrameView::didPaintContents):
+        * platform/MemoryPressureHandler.cpp:
+        (WebCore::MemoryPressureHandler::MemoryPressureHandler):
+        * platform/MemoryPressureHandler.h:
+        (WebCore::MemoryPressureHandler::isUnderMemoryPressure):
+        * platform/cocoa/MemoryPressureHandlerCocoa.mm:
+        (WebCore::MemoryPressureHandler::setReceivedMemoryPressure):
+        (WebCore::MemoryPressureHandler::clearMemoryPressure):
+        (WebCore::MemoryPressureHandler::respondToMemoryPressureIfNeeded):
+        (WebCore::MemoryPressureHandler::hasReceivedMemoryPressure): Deleted.
+        * platform/graphics/FontCache.cpp:
+        (WebCore::FontCache::purgeInactiveFontDataIfNeeded):
+        * platform/ios/LegacyTileCache.mm:
+        (WebCore::LegacyTileCache::createTilesInActiveGrid):
+        * platform/ios/LegacyTileGrid.mm:
+        (WebCore::LegacyTileGrid::shouldUseMinimalTileCoverage):
+        * platform/ios/LegacyTileLayerPool.mm:
+        (WebCore::LegacyTileLayerPool::addLayer):
+        * platform/ios/TileControllerMemoryHandlerIOS.cpp:
+        (WebCore::TileControllerMemoryHandler::tileControllerGainedUnparentedTiles):
+
+2014-04-14  Beth Dakin  <bdakin@apple.com>
+
+        RenderLayerCompositor's m_layerForOverhangAreas should be offset by the 
+        topContentInset
+        https://bugs.webkit.org/show_bug.cgi?id=131632
+        -and corresponding-
+        <rdar://problem/16609602>
+
+        Reviewed by Tim Horton.
+
+        Offset m_layerForOverhangAreas by the topContentInset. 
+        * rendering/RenderLayerCompositor.cpp:
+        (WebCore::RenderLayerCompositor::updateOverflowControlsLayers):
+
+2014-04-14  Alexey Proskuryakov  <ap@apple.com>
+
+        Eliminate CachedFrame::m_mousePressNode
+        https://bugs.webkit.org/show_bug.cgi?id=131626
+
+        Reviewed by Brady Eidson.
+
+        I couldn't find any observable effect of this change.
+
+        * history/CachedFrame.cpp:
+        (WebCore::CachedFrameBase::CachedFrameBase):
+        (WebCore::CachedFrameBase::restore):
+        (WebCore::CachedFrame::clear):
+        * history/CachedFrame.h:
+        (WebCore::CachedFrame::documentLoader):
+        (WebCore::CachedFrame::mousePressNode): Deleted.
+        Eliminated m_mousePressNode, accessor, and code that reached out to EventHandler.
+
+        * page/EventHandler.cpp:
+        (WebCore::EventHandler::mousePressNode): Deleted.
+        (WebCore::EventHandler::setMousePressNode): Deleted.
+        * page/EventHandler.h:
+        (WebCore::EventHandler::setMousePressed): Deleted. This function was already unused.
+
+2014-04-14  Simon Fraser  <simon.fraser@apple.com>
+
+        Run filter animations in the UI process with UI-side compositing
+        https://bugs.webkit.org/show_bug.cgi?id=131199
+        <rdar://problem/16479487>
+
+        Reviewed by Sam Weinig.
+
+        Add FilterOperation::clone() which is used during decoding.
+        Export some things.
+
+        * WebCore.exp.in:
+        * platform/graphics/filters/FilterOperation.h:
+
+2014-04-14  Jer Noble  <jer.noble@apple.com>
+
+        Use after free in WebCore::CachedResourceHandleBase::~CachedResourceHandleBase / WebCore::removeDetachedChildrenInContainer
+        https://bugs.webkit.org/show_bug.cgi?id=131169
+
+        Reviewed by Eric Carlson.
+
+        Invalidate the WebCoreAVFResourceLoader owned by MediaPlayerPrivateAVFoundationObjC
+        in its destructor, to prevent a private function being called in response to the
+        WebCoreAVFResourceLoader being stopped.
+
+        * platform/graphics/avfoundation/objc/MediaPlayerPrivateAVFoundationObjC.mm:
+        (WebCore::MediaPlayerPrivateAVFoundationObjC::~MediaPlayerPrivateAVFoundationObjC):
+        * platform/graphics/avfoundation/objc/WebCoreAVFResourceLoader.h:
+        * platform/graphics/avfoundation/objc/WebCoreAVFResourceLoader.mm:
+        (WebCore::WebCoreAVFResourceLoader::invalidate):
+
+2014-04-14  Simon Fraser  <simon.fraser@apple.com>
+
+        [WK2 iOS] Scrolling to anchor links is broken
+        https://bugs.webkit.org/show_bug.cgi?id=131618
+        <rdar://problem/16599144>
+
+        Reviewed by Tim Horton.
+
+        Have ScrollingTreeScrollingNode pass RequestedScrollPosition updates
+        to the scrolling tree, so that the scrolling tree can have custom behavior
+        for them if necessary.
+
+        * page/scrolling/ScrollingTree.h:
+        (WebCore::ScrollingTree::scrollingTreeNodeRequestsScroll):
+        * page/scrolling/ScrollingTreeScrollingNode.cpp:
+        (WebCore::ScrollingTreeScrollingNode::updateAfterChildren):
+        * page/scrolling/ScrollingTreeScrollingNode.h:
+
+2014-04-14  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Replay: memoize fallback time values for document.lastModified
+        https://bugs.webkit.org/show_bug.cgi?id=131318
+
+        Reviewed by Joseph Pecoraro.
+
+        If a document's Last-Modified header can't be found or used, then 
+        document.lastModified is derived from the current system time or
+        from filesystem data, which is obviously nondeterministic.
+
+        It's better to handle this inside Document::lastModified rather than using
+        MemoizedDOMResult, because only the fallback case is nondeterministic.
+
+        Test: http/tests/inspector/replay/document-last-modified-fallback-value.html
+
+        * dom/Document.cpp:
+        (WebCore::Document::lastModified): Save or reuse memoized fallback value.
+        * replay/WebInputs.json: Add input DocumentLastModifiedDate.
+
 2014-04-12  Antti Koivisto  <antti@apple.com>
 
         Keep secondary tile grid for zoomed-out scale
@@ -14326,7 +15595,6 @@
         * platform/ios/WebSafeGCActivityCallbackIOS.h: Update WebSafeGCActivityCallback
         appropriately for the introduction of another type of GCActivityCallback.
 
-<<<<<<< .mine
 2014-03-18  Mark Hahnenberg  <mhahnenberg@apple.com>
 
         GC timer should intelligently choose between EdenCollections and FullCollections
@@ -15437,7 +16705,6 @@
         (WebCore::RTCPeerConnection::hasLocalStreamWithTrackId):
         * Modules/mediastream/RTCPeerConnection.h:
 
->>>>>>> .r165925
 2014-03-18  Commit Queue  <commit-queue@webkit.org>
 
         Unreviewed, rolling out r165815.

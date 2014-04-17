@@ -2,8 +2,6 @@
 #
 # See http://trac.webkit.org/wiki/TestExpectations for more information on this file.
 
-webkit.org/b/89812 fast/parser/parser-yield-timing.html [ Pass Failure ]
-
 # <rdar://problem/5647952> fast/events/mouseout-on-window.html needs mac DRT to issue mouse out events
 fast/events/mouseout-on-window.html [ Failure ]
 
@@ -1353,3 +1351,9 @@ webkit.org/b/130971 media/track/track-remove-track.html [ Pass Crash Failure ]
 webkit.org/b/130972 transitions/3d/interrupted-transition.html [ Pass Failure Timeout ]
 
 webkit.org/b/130942 fast/preloader/document-write.html [ Pass Failure ]
+
+webkit.org/b/118153 compositing/repaint/positioned-movement.html [ Pass Failure ]
+
+webkit.org/b/131715 transitions/cancel-transition.html [ Pass Failure ]
+
+webkit.org/b/89153 http/tests/websocket/tests/hybi/workers/close.html [ Pass Failure ]

@@ -108,7 +108,7 @@ DateConstructor::DateConstructor(VM& vm, Structure* structure)
 void DateConstructor::finishCreation(VM& vm, DatePrototype* datePrototype)
 {
     Base::finishCreation(vm, datePrototype->classInfo()->className);
-    putDirectPrototypePropertyWithoutTransitions(vm, datePrototype, DontEnum | DontDelete | ReadOnly);
+    putDirectWithoutTransition(vm, vm.propertyNames->prototype, datePrototype, DontEnum | DontDelete | ReadOnly);
     putDirectWithoutTransition(vm, vm.propertyNames->length, jsNumber(7), ReadOnly | DontEnum | DontDelete);
 }
 
@@ -154,7 +154,7 @@ JSObject* constructDate(ExecState* exec, JSGlobalObject* globalObject, const Arg
             || (numArgs >= 5 && (!std::isfinite(doubleArguments[4]) || (doubleArguments[4] > INT_MAX) || (doubleArguments[4] < INT_MIN)))
             || (numArgs >= 6 && (!std::isfinite(doubleArguments[5]) || (doubleArguments[5] > INT_MAX) || (doubleArguments[5] < INT_MIN)))
             || (numArgs >= 7 && (!std::isfinite(doubleArguments[6]) || (doubleArguments[6] > INT_MAX) || (doubleArguments[6] < INT_MIN))))
-            value = QNaN;
+            value = PNaN;
         else {
             GregorianDateTime t;
             int year = JSC::toInt32(doubleArguments[0]);

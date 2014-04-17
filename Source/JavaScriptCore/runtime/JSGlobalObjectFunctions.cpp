@@ -26,7 +26,6 @@
 #include "JSGlobalObjectFunctions.h"
 
 #include "CallFrame.h"
-#include "GetterSetter.h"
 #include "Interpreter.h"
 #include "JSFunction.h"
 #include "JSGlobalObject.h"
@@ -283,7 +282,7 @@ static double parseInt(const String& s, const CharType* data, int radix)
 
     // 8.a If R < 2 or R > 36, then return NaN.
     if (radix < 2 || radix > 36)
-        return QNaN;
+        return PNaN;
 
     // 13. Let mathInt be the mathematical integer value that is represented by Z in radix-R notation, using the letters
     //     A-Z and a-z for digits with values 10 through 35. (However, if R is 10 and Z contains more than 20 significant
@@ -306,7 +305,7 @@ static double parseInt(const String& s, const CharType* data, int radix)
 
     // 12. If Z is empty, return NaN.
     if (!sawDigit)
-        return QNaN;
+        return PNaN;
 
     // Alternate code path for certain large numbers.
     if (number >= mantissaOverflowLowerBound) {
@@ -404,7 +403,7 @@ static double jsStrDecimalLiteral(const CharType*& data, const CharType* end)
     }
 
     // Not a number.
-    return QNaN;
+    return PNaN;
 }
 
 template <typename CharType>
@@ -434,7 +433,7 @@ static double toDouble(const CharType* characters, unsigned size)
             break;
     }
     if (characters != endCharacters)
-        return QNaN;
+        return PNaN;
     
     return number;
 }
@@ -450,7 +449,7 @@ double jsToNumber(const String& s)
             return c - '0';
         if (isStrWhiteSpace(c))
             return 0;
-        return QNaN;
+        return PNaN;
     }
 
     if (s.is8Bit())
@@ -466,7 +465,7 @@ static double parseFloat(const String& s)
         UChar c = s[0];
         if (isASCIIDigit(c))
             return c - '0';
-        return QNaN;
+        return PNaN;
     }
 
     if (s.is8Bit()) {
@@ -481,7 +480,7 @@ static double parseFloat(const String& s)
 
         // Empty string.
         if (data == end)
-            return QNaN;
+            return PNaN;
 
         return jsStrDecimalLiteral(data, end);
     }
@@ -497,7 +496,7 @@ static double parseFloat(const String& s)
 
     // Empty string.
     if (data == end)
-        return QNaN;
+        return PNaN;
 
     return jsStrDecimalLiteral(data, end);
 }
@@ -813,19 +812,4 @@ EncodedJSValue JSC_HOST_CALL globalFuncBuiltinLog(ExecState* exec)
     return JSValue::encode(jsUndefined());
 }
 
-    
-EncodedJSValue JSC_HOST_CALL globalFuncSetTypeErrorAccessor(ExecState* exec)
-{
-    JSObject* target = jsDynamicCast<JSObject*>(exec->argument(0));
-    JSValue propertyName = exec->argument(1);
-    
-    // Setting __proto__ of a primitive should have no effect.
-    if (!target || !propertyName.isString())
-        return JSValue::encode(jsUndefined());
-    VM& vm = exec->vm();
-    Identifier property(exec, asString(propertyName)->getString(exec));
-    target->putDirectNonIndexAccessor(vm, vm.propertyNames->arguments, target->globalObject()->throwTypeErrorGetterSetter(vm), DontDelete | DontEnum | Accessor);
-    return JSValue::encode(jsUndefined());
-}
-    
 } // namespace JSC

@@ -54,9 +54,9 @@ MemoryPressureHandler::MemoryPressureHandler()
     : m_installed(false)
     , m_lastRespondTime(0)
     , m_lowMemoryHandler(releaseMemory)
+    , m_underMemoryPressure(false)
 #if PLATFORM(IOS)
     // FIXME: Can we share more of this with OpenSource?
-    , m_receivedMemoryPressure(0)
     , m_memoryPressureReason(MemoryPressureReasonNone)
     , m_clearPressureOnMemoryRelease(true)
     , m_releaseMemoryBlock(0)
@@ -95,14 +95,11 @@ void MemoryPressureHandler::releaseMemory(bool critical)
     WTF::releaseFastMallocFreeMemory();
 }
 
-#if !PLATFORM(MAC)
+#if !PLATFORM(COCOA)
 void MemoryPressureHandler::install() { }
 void MemoryPressureHandler::uninstall() { }
 void MemoryPressureHandler::holdOff(unsigned) { }
 void MemoryPressureHandler::respondToMemoryPressure() { }
-#endif
-
-#if !PLATFORM(COCOA)
 void MemoryPressureHandler::platformReleaseMemory(bool) { }
 #endif
 

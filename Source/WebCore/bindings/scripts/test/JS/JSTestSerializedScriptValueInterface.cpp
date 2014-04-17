@@ -60,7 +60,7 @@ void JSTestSerializedScriptValueInterfaceConstructor::finishCreation(VM& vm, JSD
 {
     Base::finishCreation(vm);
     ASSERT(inherits(info()));
-    putDirectPrototypeProperty(vm, JSTestSerializedScriptValueInterfacePrototype::self(vm, globalObject), DontDelete | ReadOnly);
+    putDirect(vm, vm.propertyNames->prototype, JSTestSerializedScriptValueInterfacePrototype::self(vm, globalObject), DontDelete | ReadOnly);
     putDirect(vm, vm.propertyNames->length, jsNumber(0), ReadOnly | DontDelete | DontEnum);
 }
 
@@ -147,8 +147,9 @@ bool JSTestSerializedScriptValueInterface::getOwnPropertySlot(JSObject* object, 
     return Base::getOwnPropertySlot(thisObject, exec, propertyName, slot);
 }
 
-EncodedJSValue jsTestSerializedScriptValueInterfaceValue(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
+EncodedJSValue jsTestSerializedScriptValueInterfaceValue(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName propertyName)
 {
+    UNUSED_PARAM(propertyName);
     JSTestSerializedScriptValueInterface* castedThis = jsDynamicCast<JSTestSerializedScriptValueInterface*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestSerializedScriptValueInterfacePrototype*>(slotBase))
@@ -161,8 +162,9 @@ EncodedJSValue jsTestSerializedScriptValueInterfaceValue(ExecState* exec, JSObje
 }
 
 
-EncodedJSValue jsTestSerializedScriptValueInterfaceReadonlyValue(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
+EncodedJSValue jsTestSerializedScriptValueInterfaceReadonlyValue(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName propertyName)
 {
+    UNUSED_PARAM(propertyName);
     JSTestSerializedScriptValueInterface* castedThis = jsDynamicCast<JSTestSerializedScriptValueInterface*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestSerializedScriptValueInterfacePrototype*>(slotBase))
@@ -175,8 +177,9 @@ EncodedJSValue jsTestSerializedScriptValueInterfaceReadonlyValue(ExecState* exec
 }
 
 
-EncodedJSValue jsTestSerializedScriptValueInterfaceCachedValue(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
+EncodedJSValue jsTestSerializedScriptValueInterfaceCachedValue(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName propertyName)
 {
+    UNUSED_PARAM(propertyName);
     JSTestSerializedScriptValueInterface* castedThis = jsDynamicCast<JSTestSerializedScriptValueInterface*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestSerializedScriptValueInterfacePrototype*>(slotBase))
@@ -192,8 +195,9 @@ EncodedJSValue jsTestSerializedScriptValueInterfaceCachedValue(ExecState* exec, 
 }
 
 
-EncodedJSValue jsTestSerializedScriptValueInterfacePorts(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
+EncodedJSValue jsTestSerializedScriptValueInterfacePorts(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName propertyName)
 {
+    UNUSED_PARAM(propertyName);
     JSTestSerializedScriptValueInterface* castedThis = jsDynamicCast<JSTestSerializedScriptValueInterface*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestSerializedScriptValueInterfacePrototype*>(slotBase))
@@ -206,8 +210,9 @@ EncodedJSValue jsTestSerializedScriptValueInterfacePorts(ExecState* exec, JSObje
 }
 
 
-EncodedJSValue jsTestSerializedScriptValueInterfaceCachedReadonlyValue(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
+EncodedJSValue jsTestSerializedScriptValueInterfaceCachedReadonlyValue(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName propertyName)
 {
+    UNUSED_PARAM(propertyName);
     JSTestSerializedScriptValueInterface* castedThis = jsDynamicCast<JSTestSerializedScriptValueInterface*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestSerializedScriptValueInterfacePrototype*>(slotBase))

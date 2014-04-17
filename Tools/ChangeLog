@@ -1,3 +1,194 @@
+2014-04-16  peavo@outlook.com  <peavo@outlook.com>
+
+        [Win] run-javascriptcore-tests fails to run.
+        https://bugs.webkit.org/show_bug.cgi?id=131761
+
+        Reviewed by Brent Fulgham.
+
+        * Scripts/build-jsc: For now, don't try to build bmalloc on Windows.
+
+2014-04-16  Andres Gomez  <agomez@igalia.com>
+
+        [Win] Pass default parameters to cygwin setup wizard
+        https://bugs.webkit.org/show_bug.cgi?id=131361
+
+        Reviewed by Brent Fulgham.
+
+        Added some parameters to the cygwin setup wizard so the user
+        doesn't really have to do any interaction.
+
+        * CygwinDownloader/cygwin-downloader.py:
+        * CygwinDownloader/cygwin-downloader.zip:
+
+2014-04-15  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Eliminate use of deleteAllValues in Windows Files
+        https://bugs.webkit.org/show_bug.cgi?id=131631
+
+        Reviewed by Darin Adler.
+
+        Switch to std::unique_ptr for memory lifetime. Get rid of
+        deleteAllValues now that it is no longer needed. Use ranged
+        for loops where possible.
+
+        * DumpRenderTree/win/DRTDataObject.cpp:
+        (WCEnumFormatEtc::WCEnumFormatEtc):
+        (DRTDataObject::~DRTDataObject):
+        (DRTDataObject::GetData):
+        (DRTDataObject::QueryGetData):
+        (DRTDataObject::SetData):
+        (DRTDataObject::clearData):
+        * DumpRenderTree/win/DRTDataObject.h:
+        * DumpRenderTree/win/UIDelegate.cpp:
+        (DRTUndoObject::DRTUndoObject):
+        (DRTUndoObject::~DRTUndoObject):
+        (DRTUndoStack::~DRTUndoStack):
+        (DRTUndoStack::clear):
+        (DRTUndoStack::pop):
+        (DRTUndoManager::DRTUndoManager):
+        (DRTUndoManager::redo):
+        (DRTUndoManager::undo):
+        (UIDelegate::UIDelegate):
+        (UIDelegate::resetUndoManager):
+        * DumpRenderTree/win/UIDelegate.h:
+
+2014-04-16  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] Unreviewed GTK gardening.
+
+        Update list of skipped unit tests:
+
+          Skip test: WebKit2Gtk/TestWebKitWebView:/webkit2/WebKitWebView/page-visibility
+
+          Unskip tests: WebKit2/TestWebKit2:WebKit2.ResizeReversePaginatedWebView
+          and WebKit2/TestWebKit2:WebKit2.ScrollPinningBehaviors
+
+        * Scripts/run-gtk-tests:
+        (TestRunner):
+
+2014-04-16  Tim Horton  <timothy_horton@apple.com>
+
+        check-webkit-style doesn't check code style in .mm or .m files
+        https://bugs.webkit.org/show_bug.cgi?id=131708
+
+        Reviewed by Darin Adler.
+
+        * Scripts/webkitpy/style/checker.py:
+        * Scripts/webkitpy/style/checker_unittest.py:
+        (CheckerDispatcherDispatchTest.test_cpp_paths):
+        (CheckerDispatcherDispatchTest.test_text_paths):
+        Check .mm and .m files as C++.
+
+        * Scripts/webkitpy/style/checkers/cpp.py:
+        (check_spacing):
+        Add an override for our ordinary "missing spaces around =" for @synthesize,
+        which should look like "@synthesize propertyName=_varName;"
+
+        Add an override for "missing space before {" for blocks' "^{".
+
+        Don't follow the "extra space before [" rule for Objective-C, because
+        it breaks this rule in a multitude of ways because of method calls.
+
+        (check_braces):
+        Don't complain about { not being on the end of the previous line if
+        the previous line starts with "- (" or "+ (", which would indicate a
+        Objective-C method definition.
+
+2014-04-16  Darin Adler  <darin@apple.com>
+
+        Make Vector::takeLast work with move-only types (and optimize for types where move is faster)
+        https://bugs.webkit.org/show_bug.cgi?id=131735
+
+        Reviewed by Alexey Proskuryakov.
+
+        * TestWebKitAPI/Tests/WTF/Vector.cpp: Added a test for Vector::takeLast with move only types.
+        Fixed invocations of EXPECT macros so the expected value is on the left, and the test result
+        is on the right. This can be confusing since our JavaScript test framework does it the opposite
+        way, but gtest works better this way.
+
+2014-04-15  Hyowon Kim  <hw1008.kim@samsung.com>
+
+        [EFL] Fix problems with the pixel dump.
+        https://bugs.webkit.org/show_bug.cgi?id=131265
+
+        Reviewed by Gyuyoung Kim.
+
+        Painting and compositing paths of WebKit-EFL were totally modified from r166768.
+        However pixel dump codes still call deprecated functions like ewk_view_paint(),
+        which causes that nothing is drawn.
+
+        This patch adds new member functions to AcceleratedCompositingContext to support pixel dump.
+        One of new functions is AcceleratedCompositingContext::extractImageData(),
+        which replaces deprecated function calls. Besides the extractImageData() is invoked by
+        ewk_view_screenshot_contents_get() in order to take the visible content displayed on the EFL webview.
+
+        * DumpRenderTree/efl/PixelDumpSupportEfl.cpp:
+        (createBitmapContextFromWebView): Add to call DumpRenderTreeSupportEfl::forcePaint().
+
+2014-04-15  Filip Pizlo  <fpizlo@apple.com>
+
+        Update LLVM export scrpt to handle the build directory being different from the
+        source directory.
+
+        Rubber stamped by Geoffrey Garen.
+
+        * Scripts/export-llvm-build:
+
+2014-04-15  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Update the hyperlink to waterfall views of perf bots on build.webkit.org
+        https://bugs.webkit.org/show_bug.cgi?id=131695
+
+        Reviewed by Antti Koivisto.
+
+        Updated.
+
+        * BuildSlaveSupport/build.webkit.org-config/templates/root.html:
+
+2014-04-15  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Reduce the binary size by compressing the text based web inspector resources
+        https://bugs.webkit.org/show_bug.cgi?id=121545
+
+        Reviewed by Gustavo Noronha Silva.
+
+        Compress text based files when compiling inspector resources. It
+        reduces the binary size in 3MB.
+
+        * gtk/generate-inspector-gresource-manifest.py:
+        (find_all_files_in_directory):
+        (is_compressible):
+
+2014-04-14  Alexey Proskuryakov  <ap@apple.com>
+
+        Remove Gtk WebKit1 tester.
+
+        Gtk WebKit1 port no longer exists, and dashboard was trying to load its tester
+        results over and over as fast as it could.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/WebKitBuildbot.js:
+        (WebKitBuildbot):
+
+2014-04-14  Alexey Proskuryakov  <ap@apple.com>
+
+        Wrong link for webkitpy tests results in dashboard popover
+        https://bugs.webkit.org/show_bug.cgi?id=131664
+
+        Reviewed by Timothy Hatcher.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotTesterQueueView.js:
+        (BuildbotTesterQueueView.prototype._presentPopoverForMultipleFailureKinds):
+        Use a correct link.
+
+2014-04-14  Alexey Proskuryakov  <ap@apple.com>
+
+        Update webkitpy regression test result that started to fail after http://trac.webkit.org/r167243
+
+        I'm not sure whether the changes are desirable, but am not suspicious enough to roll out.
+
+        * Scripts/webkitpy/common/checkout/checkout_unittest.py:
+        (CommitMessageForThisCommitTest):
+
 2014-04-14  Jozsef Berta  <jberta.u-szeged@partner.samsung.com>
 
         Fix commit-log-editor bug revealed by r165447

@@ -155,14 +155,23 @@ void InPlaceAbstractState::initialize()
             block->valuesAtHead.local(i).clear();
             block->valuesAtTail.local(i).clear();
         }
+        if (m_graph.m_form == SSA)
+            continue;
         if (!block->isOSRTarget)
             continue;
         if (block->bytecodeBegin != m_graph.m_plan.osrEntryBytecodeIndex)
             continue;
         for (size_t i = 0; i < m_graph.m_mustHandleAbstractValues.size(); ++i) {
-            AbstractValue value = m_graph.m_mustHandleAbstractValues[i];
             int operand = m_graph.m_mustHandleAbstractValues.operandForIndex(i);
-            block->valuesAtHead.operand(operand).merge(value);
+            Node* node = block->variablesAtHead.operand(operand);
+            if (!node)
+                continue;
+            AbstractValue value = m_graph.m_mustHandleAbstractValues[i];
+            AbstractValue& abstractValue = block->valuesAtHead.operand(operand);
+            VariableAccessData* variable = node->variableAccessData();
+            FlushFormat format = variable->flushFormat();
+            abstractValue.merge(value);
+            abstractValue.fixTypeForRepresentation(resultFor(format));
         }
         block->cfaShouldRevisit = true;
     }
@@ -277,14 +286,8 @@ bool InPlaceAbstractState::mergeStateAtTail(AbstractValue& destination, Abstract
             // The block sets the variable, and potentially refines it, both
             // before and after setting it.
             source = forNode(node->child1());
-            if (node->variableAccessData()->flushFormat() == FlushedDouble) {
-                ASSERT(!(source.m_type & ~SpecFullNumber));
-                ASSERT(!!(source.m_type & ~SpecDouble) == !!(source.m_type & SpecMachineInt));
-                if (!(source.m_type & ~SpecDouble)) {
-                    source.merge(SpecInt52AsDouble);
-                    source.filter(SpecDouble);
-                }
-            }
+            if (node->variableAccessData()->flushFormat() == FlushedDouble)
+                RELEASE_ASSERT(!(source.m_type & ~SpecDouble));
             break;
         
         default:

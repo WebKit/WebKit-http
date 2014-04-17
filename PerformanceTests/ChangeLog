@@ -1,3 +1,75 @@
+2014-04-16  Alexandru Chiculita  <achicu@adobe.com>
+
+        Improve performance of the RenderLayerCompositor::OverlapMap
+        https://bugs.webkit.org/show_bug.cgi?id=115063
+
+        Reviewed by Simon Fraser.
+
+        Testing the performance of computing the overlap of 5000 layers.
+
+        * Layout/layers_overlap_2d.html: Added. Using non-composited layers, to check
+        that the performance on the non-composited path is not changing with this patch.
+        * Layout/layers_overlap_3d.html: Added. Records the time to do the layout of 5000
+        non-overlapping 3D layers.
+
+2014-04-15  Zoltan Horvath  <zoltan@webkit.org>
+
+        [CSS Shapes] Linking stylesheet instead of inline style definition has ruined ShapesRegions test
+        https://bugs.webkit.org/show_bug.cgi?id=131572
+
+        Reviewed by Rob Buis.
+
+        In r167022 I moved the common CSS selectors into RegionsShapes.css, then I linked it into the perf test
+        files, but the measurement results dropped down from about 400ms to 10ms. I realized it's caused by the
+        linked css rule, so I've put the selectors back into every test case, which fixes the test measurements.
+
+        * Layout/Shapes/resources/RegionsShapes.css: Removed.
+        * Layout/Shapes/resources/RegionsShapesContent.html:
+        * Layout/Shapes/resources/RegionsShapesContentNoRegionsWidth400.html:
+        * Layout/Shapes/resources/RegionsShapesContentNoRegionsWidth600.html:
+        * Layout/Shapes/resources/RegionsShapesContentNoRegionsWidth800.html:
+        * Layout/Shapes/resources/RegionsShapesContentNoShapes.html:
+
+2014-04-14  Geoffrey Garen  <ggaren@apple.com>
+
+        MallocBench should scavenge explicitly instead of waiting
+        https://bugs.webkit.org/show_bug.cgi?id=131661
+
+        Reviewed by Andreas Kling.
+
+        * MallocBench/MallocBench.xcodeproj/project.pbxproj: Don't build mbmalloc
+        by default because it will overwrite any other mbmalloc you're working
+        with in the WebKitBuild directory.
+
+        * MallocBench/MallocBench/Benchmark.cpp:
+        (Benchmark::run): Scavenge explicitly instead of waiting. This is faster,
+        and it's the only way to get FastMalloc to scavenge. (That's a bug in
+        FastMalloc, but we don't want it to interfere with broader testing.)
+
+        * MallocBench/MallocBench/mbmalloc.cpp:
+        * MallocBench/MallocBench/mbmalloc.h: Added a scavenge implementation
+        for system malloc.
+
+2014-04-14  Geoffrey Garen  <ggaren@apple.com>
+
+        A few MallocBench record/replay fixes
+        https://bugs.webkit.org/show_bug.cgi?id=131627
+
+        Reviewed by Andreas Kling.
+
+        * MallocBench/MallocBench/Interpreter.cpp:
+        (Interpreter::run): Accept 0-sized allocations without asserting because
+        WebKit does that sometimes.
+
+        * MallocBench/MallocBench/flickr.ops:
+        * MallocBench/MallocBench/flickr_memory_warning.ops:
+        * MallocBench/MallocBench/reddit.ops:
+        * MallocBench/MallocBench/reddit_memory_warning.ops:
+        * MallocBench/MallocBench/theverge.ops:
+        * MallocBench/MallocBench/theverge_memory_warning.ops: Updated these
+        recordings because a bug in the recording mechanism caused one out of
+        every few thousand slot values to be bogus.
+
 2014-04-13  Geoffrey Garen  <ggaren@apple.com>
 
         Added some website recordings to MallocBench -- taken from Membuster

@@ -90,6 +90,7 @@
 #include "WebProcess.h"
 #include "WebProcessProxyMessages.h"
 #include "WebProgressTrackerClient.h"
+#include "WebUndoStep.h"
 #include <JavaScriptCore/APICast.h>
 #include <WebCore/ArchiveResource.h>
 #include <WebCore/Chrome.h>
@@ -1573,7 +1574,7 @@ PassRefPtr<WebImage> WebPage::snapshotAtSize(const IntRect& rect, const IntSize&
 
     float horizontalScaleFactor = static_cast<float>(bitmapSize.width()) / rect.width();
     float verticalScaleFactor = static_cast<float>(bitmapSize.height()) / rect.height();
-    float scaleFactor = std::min(horizontalScaleFactor, verticalScaleFactor);
+    float scaleFactor = std::max(horizontalScaleFactor, verticalScaleFactor);
 
     RefPtr<WebImage> snapshot = WebImage::create(bitmapSize, snapshotOptionsToImageOptions(options));
     if (!snapshot->bitmap())
@@ -2501,9 +2502,9 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
     settings.setShowsToolTipOverTruncatedText(store.getBoolValueForKey(WebPreferencesKey::showsToolTipOverTruncatedTextKey()));
 
     settings.setAcceleratedCompositingForOverflowScrollEnabled(store.getBoolValueForKey(WebPreferencesKey::acceleratedCompositingForOverflowScrollEnabledKey()));
-    settings.setAcceleratedCompositingEnabled(store.getBoolValueForKey(WebPreferencesKey::acceleratedCompositingEnabledKey()) && LayerTreeHost::supportsAcceleratedCompositing());
-    settings.setAcceleratedDrawingEnabled(store.getBoolValueForKey(WebPreferencesKey::acceleratedDrawingEnabledKey()) && LayerTreeHost::supportsAcceleratedCompositing());
-    settings.setCanvasUsesAcceleratedDrawing(store.getBoolValueForKey(WebPreferencesKey::canvasUsesAcceleratedDrawingKey()) && LayerTreeHost::supportsAcceleratedCompositing());
+    settings.setAcceleratedCompositingEnabled(store.getBoolValueForKey(WebPreferencesKey::acceleratedCompositingEnabledKey()));
+    settings.setAcceleratedDrawingEnabled(store.getBoolValueForKey(WebPreferencesKey::acceleratedDrawingEnabledKey()));
+    settings.setCanvasUsesAcceleratedDrawing(store.getBoolValueForKey(WebPreferencesKey::canvasUsesAcceleratedDrawingKey()));
     settings.setShowDebugBorders(store.getBoolValueForKey(WebPreferencesKey::compositingBordersVisibleKey()));
     settings.setShowRepaintCounter(store.getBoolValueForKey(WebPreferencesKey::compositingRepaintCountersVisibleKey()));
     settings.setShowTiledScrollingIndicator(store.getBoolValueForKey(WebPreferencesKey::tiledScrollingIndicatorVisibleKey()));

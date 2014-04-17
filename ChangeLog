@@ -1,3 +1,23 @@
+2014-04-16  Brendan Long  <b.long@cablelabs.com>
+
+        [GTK][CMAKE] build-webkit doesn't detect when the build fails
+        https://bugs.webkit.org/show_bug.cgi?id=130148
+
+        Reviewed by Martin Robinson.
+
+        * Source/cmake/OptionsGTK.cmake: Replace CMake's automatic make -i with make -k, which still continues after errors, but correctly reports tha the build failed.
+
+2014-04-16  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        REGRESSION(r166779): [GTK] Printing doesn't work since r166779
+        https://bugs.webkit.org/show_bug.cgi?id=131725
+
+        Reviewed by Philippe Normand.
+
+        * Source/cmake/OptionsGTK.cmake: Check GTK_UNIX_PRINT_FOUND
+        instead of GTK_UNIX_PRINTING_FOUND and set the macro
+        HAVE_GTK_UNIX_PRINTING to 1 when found.
+
 2014-04-11  Brian J. Burg  <burg@cs.washington.edu>
 
         Web Replay: memoize nondeterministic attributes of the Navigator interface

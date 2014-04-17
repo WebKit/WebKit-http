@@ -32,13 +32,9 @@
 
 #if ENABLE(CSS_SHAPES)
 
-#include "FloatRect.h"
 #include "LayoutSize.h"
-#include "LayoutUnit.h"
-#include "RenderStyle.h"
 #include "Shape.h"
-#include "ShapeValue.h"
-#include <memory>
+#include <wtf/HashMap.h>
 
 namespace WebCore {
 

@@ -32,6 +32,11 @@
 
 namespace WebKit {
 
+WebFormClient::WebFormClient(const WKPageFormClientBase* wkClient)
+{
+    initialize(wkClient);
+}
+
 bool WebFormClient::willSubmitForm(WebPageProxy* page, WebFrameProxy* frame, WebFrameProxy* sourceFrame, const Vector<std::pair<String, String>>& textFieldValues, API::Object* userData, WebFormSubmissionListenerProxy* listener)
 {
     if (!m_client.willSubmitForm)

@@ -56,8 +56,6 @@ public:
     static PassRefPtr<LayerTreeHost> create(WebPage*);
     virtual ~LayerTreeHost();
 
-    static bool supportsAcceleratedCompositing();
-
     virtual const LayerTreeContext& layerTreeContext() = 0;
     virtual void scheduleLayerFlush() = 0;
     virtual void setLayerFlushSchedulingEnabled(bool) = 0;
@@ -74,9 +72,9 @@ public:
     virtual void deviceOrPageScaleFactorChanged() = 0;
     virtual void pageBackgroundTransparencyChanged() = 0;
 
-    virtual void didInstallPageOverlay(PageOverlay*) = 0;
-    virtual void didUninstallPageOverlay(PageOverlay*) = 0;
-    virtual void setPageOverlayNeedsDisplay(PageOverlay*, const WebCore::IntRect&) = 0;
+    virtual void didInstallPageOverlay(PageOverlay*) { }
+    virtual void didUninstallPageOverlay(PageOverlay*) { }
+    virtual void setPageOverlayNeedsDisplay(PageOverlay*, const WebCore::IntRect&) { }
     virtual void setPageOverlayOpacity(PageOverlay*, float) { }
 
     virtual void pauseRendering() { }
@@ -89,10 +87,6 @@ public:
     virtual void didReceiveCoordinatedLayerTreeHostMessage(IPC::Connection*, IPC::MessageDecoder&) = 0;
 #endif
 
-#if PLATFORM(COCOA)
-    virtual void setLayerHostingMode(LayerHostingMode) { }
-#endif
-
 #if USE(COORDINATED_GRAPHICS) && ENABLE(REQUEST_ANIMATION_FRAME)
     virtual void scheduleAnimation() = 0;
 #endif
@@ -102,11 +96,6 @@ protected:
 
     WebPage* m_webPage;
 };
-
-inline bool LayerTreeHost::supportsAcceleratedCompositing()
-{
-    return true;
-}
 
 } // namespace WebKit
 

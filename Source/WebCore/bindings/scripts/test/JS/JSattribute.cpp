@@ -55,7 +55,7 @@ void JSattributeConstructor::finishCreation(VM& vm, JSDOMGlobalObject* globalObj
 {
     Base::finishCreation(vm);
     ASSERT(inherits(info()));
-    putDirectPrototypeProperty(vm, JSattributePrototype::self(vm, globalObject), DontDelete | ReadOnly);
+    putDirect(vm, vm.propertyNames->prototype, JSattributePrototype::self(vm, globalObject), DontDelete | ReadOnly);
     putDirect(vm, vm.propertyNames->length, jsNumber(0), ReadOnly | DontDelete | DontEnum);
 }
 
@@ -125,8 +125,9 @@ bool JSattribute::getOwnPropertySlot(JSObject* object, ExecState* exec, Property
     return Base::getOwnPropertySlot(thisObject, exec, propertyName, slot);
 }
 
-EncodedJSValue jsattributeReadonly(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
+EncodedJSValue jsattributeReadonly(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName propertyName)
 {
+    UNUSED_PARAM(propertyName);
     JSattribute* castedThis = jsDynamicCast<JSattribute*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSattributePrototype*>(slotBase))

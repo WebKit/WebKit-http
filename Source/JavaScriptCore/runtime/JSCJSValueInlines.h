@@ -66,7 +66,7 @@ inline double JSValue::asNumber() const
 
 inline JSValue jsNaN()
 {
-    return JSValue(QNaN);
+    return JSValue(PNaN);
 }
 
 inline JSValue::JSValue(char i)
@@ -302,6 +302,7 @@ ALWAYS_INLINE JSCell* JSValue::asCell() const
 
 ALWAYS_INLINE JSValue::JSValue(EncodeAsDoubleTag, double d)
 {
+    ASSERT(!isImpureNaN(d));
     u.asDouble = d;
 }
 
@@ -468,6 +469,7 @@ inline double reinterpretInt64ToDouble(int64_t value)
 
 ALWAYS_INLINE JSValue::JSValue(EncodeAsDoubleTag, double d)
 {
+    ASSERT(!isImpureNaN(d));
     u.asInt64 = reinterpretDoubleToInt64(d) + DoubleEncodeOffset;
 }
 
@@ -504,6 +506,15 @@ inline bool JSValue::isMachineInt() const
     double number = asDouble();
     if (number != number)
         return false;
+#if OS(WINDOWS) && CPU(X86)
+    // The VS Compiler for 32-bit builds generates a floating point error when attempting to cast
+    // from an infinity to a 64-bit integer. We leave this routine with the floating point error
+    // left in a register, causing undefined behavior in later floating point operations.
+    //
+    // To avoid this issue, we check for infinity here, and return false in that case.
+    if (std::isinf(number))
+        return false;
+#endif
     int64_t asInt64 = static_cast<int64_t>(number);
     if (asInt64 != number)
         return false;
@@ -609,7 +620,7 @@ inline bool JSValue::getPrimitiveNumber(ExecState* exec, double& number, JSValue
         return true;
     }
     ASSERT(isUndefined());
-    number = QNaN;
+    number = PNaN;
     value = *this;
     return true;
 }

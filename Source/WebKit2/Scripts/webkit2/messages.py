@@ -93,22 +93,12 @@ def reply_parameter_type(type):
     return '%s&' % type
 
 
-def arguments_type_old(parameters, parameter_type_function):
-    arguments_type = 'IPC::Arguments%d' % len(parameters)
-    if len(parameters):
-        arguments_type = '%s<%s>' % (arguments_type, ', '.join(parameter_type_function(parameter.type) for parameter in parameters))
-    return arguments_type
-
-
 def arguments_type(message):
     return 'std::tuple<%s>' % ', '.join(function_parameter_type(parameter.type) for parameter in message.parameters)
 
-def base_class(message):
-    return arguments_type(message.parameters, function_parameter_type)
-
 
 def reply_type(message):
-    return arguments_type_old(message.reply_parameters, reply_parameter_type)
+    return 'IPC::Arguments<%s>' % (', '.join(reply_parameter_type(parameter.type) for parameter in message.reply_parameters))
 
 
 def decode_type(message):
@@ -118,9 +108,6 @@ def decode_type(message):
         parameters = parameters[:-1]
 
     return 'std::tuple<%s>' % ', '.join(parameter.type for parameter in parameters)
-
-def delayed_reply_type(message):
-    return arguments_type_old(message.reply_parameters, function_parameter_type)
 
 
 def message_to_struct_declaration(message):
@@ -609,6 +596,7 @@ def generate_message_handler(file):
         else:
             if not receiver.has_attribute(LEGACY_RECEIVER_ATTRIBUTE):
                 result.append('    UNUSED_PARAM(connection);\n')
+            result.append('    UNUSED_PARAM(decoder);\n')
             result.append('    ASSERT_NOT_REACHED();\n')
         result.append('}\n')
 
@@ -622,6 +610,8 @@ def generate_message_handler(file):
         result += [sync_message_statement(receiver, message) for message in sync_messages]
         if not receiver.has_attribute(LEGACY_RECEIVER_ATTRIBUTE):
             result.append('    UNUSED_PARAM(connection);\n')
+        result.append('    UNUSED_PARAM(decoder);\n')
+        result.append('    UNUSED_PARAM(replyEncoder);\n')
         result.append('    ASSERT_NOT_REACHED();\n')
         result.append('}\n')
 

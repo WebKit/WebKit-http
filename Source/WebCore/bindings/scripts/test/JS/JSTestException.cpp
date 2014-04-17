@@ -69,7 +69,7 @@ void JSTestExceptionConstructor::finishCreation(VM& vm, JSDOMGlobalObject* globa
 {
     Base::finishCreation(vm);
     ASSERT(inherits(info()));
-    putDirectPrototypeProperty(vm, JSTestExceptionPrototype::self(vm, globalObject), DontDelete | ReadOnly);
+    putDirect(vm, vm.propertyNames->prototype, JSTestExceptionPrototype::self(vm, globalObject), DontDelete | ReadOnly);
     putDirect(vm, vm.propertyNames->length, jsNumber(0), ReadOnly | DontDelete | DontEnum);
 }
 
@@ -136,8 +136,9 @@ bool JSTestException::getOwnPropertySlot(JSObject* object, ExecState* exec, Prop
     return getStaticValueSlot<JSTestException, Base>(exec, JSTestExceptionTable, thisObject, propertyName, slot);
 }
 
-EncodedJSValue jsTestExceptionName(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
+EncodedJSValue jsTestExceptionName(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName propertyName)
 {
+    UNUSED_PARAM(propertyName);
     JSTestException* castedThis = jsDynamicCast<JSTestException*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestExceptionPrototype*>(slotBase))

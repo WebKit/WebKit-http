@@ -1,3 +1,55 @@
+2014-04-16  Simon Fraser  <simon.fraser@apple.com>
+
+        Don't include CryptographicallyRandomNumber.h in StringImpl.h
+        https://bugs.webkit.org/show_bug.cgi?id=131772
+
+        Reviewed by Sam Weinig.
+
+        * wtf/text/StringImpl.h:
+
+2014-04-16  Gavin Barraclough  <barraclough@apple.com>
+
+        Update to pthread QoS SPI
+        https://bugs.webkit.org/show_bug.cgi?id=131753
+
+        Rubber stamped by Benjamin Poulain
+
+        * wtf/ThreadingPthreads.cpp:
+        (WTF::setCurrentThreadQOSUtility):
+
+2014-04-14  Geoffrey Garen  <ggaren@apple.com>
+
+        WTF should have an optional mbmalloc target so we can benchmark FastMalloc
+        https://bugs.webkit.org/show_bug.cgi?id=131662
+
+        Reviewed by Darin Adler.
+
+        * WTF.xcodeproj/project.pbxproj: Added the target.
+        * wtf/mbmalloc.cpp: Added. Implements the libmbmalloc.dylib API required
+        by MallocBench.
+
+2014-04-16  Darin Adler  <darin@apple.com>
+
+        Make Vector::takeLast work with move-only types (and optimize for types where move is faster)
+        https://bugs.webkit.org/show_bug.cgi?id=131735
+
+        Reviewed by Alexey Proskuryakov.
+
+        * wtf/Vector.h:
+        (WTF::Vector::takeLast): Added a missing std::move. All the other take functions have it.
+
+2014-04-14  Mark Lam  <mark.lam@apple.com>
+
+        monotonicallyIncreasingTime() should only initialize its static timebaseInfo once.
+        <https://webkit.org/b/131630>
+
+        Reviewed by Filip Pizlo.
+
+        The current initialization of the static field is not thread safe.
+
+        * wtf/CurrentTime.cpp:
+        (WTF::monotonicallyIncreasingTime):
+
 2014-04-14  Benjamin Poulain  <benjamin@webkit.org>
 
         [JSC] Improve the call site of string comparison in some hot path

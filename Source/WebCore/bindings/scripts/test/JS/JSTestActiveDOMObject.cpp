@@ -74,7 +74,7 @@ void JSTestActiveDOMObjectConstructor::finishCreation(VM& vm, JSDOMGlobalObject*
 {
     Base::finishCreation(vm);
     ASSERT(inherits(info()));
-    putDirectPrototypeProperty(vm, JSTestActiveDOMObjectPrototype::self(vm, globalObject), DontDelete | ReadOnly);
+    putDirect(vm, vm.propertyNames->prototype, JSTestActiveDOMObjectPrototype::self(vm, globalObject), DontDelete | ReadOnly);
     putDirect(vm, vm.propertyNames->length, jsNumber(0), ReadOnly | DontDelete | DontEnum);
 }
 
@@ -144,8 +144,9 @@ bool JSTestActiveDOMObject::getOwnPropertySlot(JSObject* object, ExecState* exec
     return getStaticValueSlot<JSTestActiveDOMObject, Base>(exec, JSTestActiveDOMObjectTable, thisObject, propertyName, slot);
 }
 
-EncodedJSValue jsTestActiveDOMObjectExcitingAttr(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
+EncodedJSValue jsTestActiveDOMObjectExcitingAttr(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName propertyName)
 {
+    UNUSED_PARAM(propertyName);
     JSTestActiveDOMObject* castedThis = jsDynamicCast<JSTestActiveDOMObject*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestActiveDOMObjectPrototype*>(slotBase))

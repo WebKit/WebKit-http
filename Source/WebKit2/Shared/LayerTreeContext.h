@@ -29,8 +29,8 @@
 #include <stdint.h>
 
 namespace IPC {
-    class ArgumentDecoder;
-    class ArgumentEncoder;
+class ArgumentDecoder;
+class ArgumentEncoder;
 }
 
 namespace WebKit {
@@ -52,13 +52,7 @@ public:
 
     bool isEmpty() const;
 
-#if PLATFORM(COCOA)
-    uint32_t contextID;
-#elif PLATFORM(GTK)
-    uint64_t windowHandle;
-#elif PLATFORM(EFL)
-    uint32_t coordinatedLayerID;
-#endif
+    uint64_t contextID;
 };
 
 bool operator==(const LayerTreeContext&, const LayerTreeContext&);

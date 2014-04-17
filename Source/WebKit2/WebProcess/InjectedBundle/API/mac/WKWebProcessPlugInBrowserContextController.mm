@@ -393,40 +393,22 @@ static void setUpResourceLoadClient(WKWebProcessPlugInBrowserContextController *
                 [formDelegate _webProcessPlugInBrowserContextController:m_controller didFocusTextField:wrapper(*InjectedBundleNodeHandle::getOrCreate(inputElement).get()) inFrame:wrapper(*frame)];
         }
 
-        virtual void willSubmitForm(WebPage*, HTMLFormElement* formElement, WebFrame* frame, WebFrame* sourceFrame, const Vector<std::pair<WTF::String, WTF::String>>& values, RefPtr<API::Object>& userData) override
+        virtual void willSendSubmitEvent(WebPage*, HTMLFormElement* formElement, WebFrame* targetFrame, WebFrame* sourceFrame, const Vector<std::pair<String, String>>& values) override
         {
             auto formDelegate = m_controller->_formDelegate.get();
 
-            if ([formDelegate respondsToSelector:@selector(_webProcessPlugInBrowserContextController:willSubmitForm:toFrame:fromFrame:withValues:)]) {
+            if ([formDelegate respondsToSelector:@selector(_webProcessPlugInBrowserContextController:willSendSubmitEventToForm:inFrame:targetFrame:values:)]) {
                 auto valueMap = adoptNS([[NSMutableDictionary alloc] initWithCapacity:values.size()]);
                 for (const auto& pair : values)
                     [valueMap setObject:pair.second forKey:pair.first];
 
-                [formDelegate _webProcessPlugInBrowserContextController:m_controller willSubmitForm:wrapper(*InjectedBundleNodeHandle::getOrCreate(formElement).get()) toFrame:wrapper(*frame) fromFrame:wrapper(*sourceFrame) withValues:valueMap.get()];
+                [formDelegate _webProcessPlugInBrowserContextController:m_controller willSendSubmitEventToForm:wrapper(*InjectedBundleNodeHandle::getOrCreate(formElement).get())
+                    inFrame:wrapper(*sourceFrame) targetFrame:wrapper(*targetFrame) values:valueMap.get()];
             }
         }
 
-        virtual void textDidChangeInTextField(WebPage*, HTMLInputElement* inputElement, WebFrame* frame) override
+        static void encodeUserObject(NSObject <NSSecureCoding> *userObject, RefPtr<API::Object>& userData)
         {
-            auto formDelegate = m_controller->_formDelegate.get();
-
-            if ([formDelegate respondsToSelector:@selector(_webProcessPlugInBrowserContextController:textDidChangeInTextField:inFrame:)])
-                [formDelegate _webProcessPlugInBrowserContextController:m_controller textDidChangeInTextField:wrapper(*WebKit::InjectedBundleNodeHandle::getOrCreate(inputElement)) inFrame:wrapper(*frame)];
-        }
-
-        static void releaseNSData(unsigned char*, const void* untypedData)
-        {
-            [(NSData *)untypedData release];
-        }
-
-        virtual void willBeginInputSession(WebPage*, Element* element, WebFrame* frame, RefPtr<API::Object>& userData) override
-        {
-            auto formDelegate = m_controller->_formDelegate.get();
-
-            if (![formDelegate respondsToSelector:@selector(_webProcessPlugInBrowserContextController:willBeginInputSessionForElement:inFrame:)])
-                return;
-
-            NSObject <NSSecureCoding> *userObject = [formDelegate _webProcessPlugInBrowserContextController:m_controller willBeginInputSessionForElement:wrapper(*WebKit::InjectedBundleNodeHandle::getOrCreate(element)) inFrame:wrapper(*frame)];
             if (!userObject)
                 return;
 
@@ -442,6 +424,50 @@ static void setUpResourceLoadClient(WKWebProcessPlugInBrowserContextController *
             [archiver finishEncoding];
 
             userData = API::Data::createWithoutCopying((const unsigned char*)[data bytes], [data length], releaseNSData, data.leakRef()).leakRef();
+        }
+
+        virtual void willSubmitForm(WebPage*, HTMLFormElement* formElement, WebFrame* frame, WebFrame* sourceFrame, const Vector<std::pair<WTF::String, WTF::String>>& values, RefPtr<API::Object>& userData) override
+        {
+            auto formDelegate = m_controller->_formDelegate.get();
+
+            if ([formDelegate respondsToSelector:@selector(_webProcessPlugInBrowserContextController:newWillSubmitForm:toFrame:fromFrame:withValues:)]) {
+                auto valueMap = adoptNS([[NSMutableDictionary alloc] initWithCapacity:values.size()]);
+                for (const auto& pair : values)
+                    [valueMap setObject:pair.second forKey:pair.first];
+
+                NSObject <NSSecureCoding> *userObject = [formDelegate _webProcessPlugInBrowserContextController:m_controller newWillSubmitForm:wrapper(*InjectedBundleNodeHandle::getOrCreate(formElement).get()) toFrame:wrapper(*frame) fromFrame:wrapper(*sourceFrame) withValues:valueMap.get()];
+                encodeUserObject(userObject, userData);
+            } else if ([formDelegate respondsToSelector:@selector(_webProcessPlugInBrowserContextController:willSubmitForm:toFrame:fromFrame:withValues:)]) {
+                auto valueMap = adoptNS([[NSMutableDictionary alloc] initWithCapacity:values.size()]);
+                for (const auto& pair : values)
+                    [valueMap setObject:pair.second forKey:pair.first];
+
+                [formDelegate _webProcessPlugInBrowserContextController:m_controller willSubmitForm:wrapper(*InjectedBundleNodeHandle::getOrCreate(formElement).get()) toFrame:wrapper(*frame) fromFrame:wrapper(*sourceFrame) withValues:valueMap.get()];
+            }
+        }
+
+        virtual void textDidChangeInTextField(WebPage*, HTMLInputElement* inputElement, WebFrame* frame, bool initiatedByUserTyping) override
+        {
+            auto formDelegate = m_controller->_formDelegate.get();
+
+            if ([formDelegate respondsToSelector:@selector(_webProcessPlugInBrowserContextController:textDidChangeInTextField:inFrame:initiatedByUserTyping:)])
+                [formDelegate _webProcessPlugInBrowserContextController:m_controller textDidChangeInTextField:wrapper(*WebKit::InjectedBundleNodeHandle::getOrCreate(inputElement)) inFrame:wrapper(*frame) initiatedByUserTyping:initiatedByUserTyping];
+        }
+
+        static void releaseNSData(unsigned char*, const void* untypedData)
+        {
+            [(NSData *)untypedData release];
+        }
+
+        virtual void willBeginInputSession(WebPage*, Element* element, WebFrame* frame, RefPtr<API::Object>& userData) override
+        {
+            auto formDelegate = m_controller->_formDelegate.get();
+
+            if (![formDelegate respondsToSelector:@selector(_webProcessPlugInBrowserContextController:willBeginInputSessionForElement:inFrame:)])
+                return;
+
+            NSObject <NSSecureCoding> *userObject = [formDelegate _webProcessPlugInBrowserContextController:m_controller willBeginInputSessionForElement:wrapper(*WebKit::InjectedBundleNodeHandle::getOrCreate(element)) inFrame:wrapper(*frame)];
+            encodeUserObject(userObject, userData);
         }
 
     private:
