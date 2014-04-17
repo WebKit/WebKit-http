@@ -113,6 +113,7 @@ list(APPEND WebCore_USER_AGENT_STYLE_SHEETS
 )
 
 set(WebCore_USER_AGENT_SCRIPTS 
+    ${WEBCORE_DIR}/English.lproj/mediaControlsLocalizedStrings.js
     ${WEBCORE_DIR}/Modules/mediacontrols/mediaControlsApple.js
 )
 
@@ -126,7 +127,7 @@ list(APPEND WebCore_LIBRARIES
   ${PNG_LIBRARY}
   ${SQLITE_LIBRARIES}
   ${ZLIB_LIBRARIES}
-  be bsd network bnetapi textencoding translation
+  be bsd network bnetapi textencoding translation execinfo
 )
 
 list(APPEND WebCore_INCLUDE_DIRECTORIES

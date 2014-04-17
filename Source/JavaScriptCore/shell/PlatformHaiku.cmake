@@ -1,4 +1,4 @@
 LIST(APPEND JSC_LIBRARIES
     ${CMAKE_DL_LIBS}
-    be
+    be execinfo
 )
