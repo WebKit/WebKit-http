@@ -250,6 +250,7 @@ void TestRunner::setWaitToDump(bool waitUntilDone)
 int TestRunner::windowCount()
 {
     notImplemented();
+    return 1;
 }
 
 void TestRunner::setPrivateBrowsingEnabled(bool flag)
