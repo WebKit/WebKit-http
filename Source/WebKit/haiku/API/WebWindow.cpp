@@ -400,6 +400,7 @@ void BWebWindow::MainDocumentError(const BString& failingURL,
     errorString << localizedDescription;
     BAlert* alert = new BAlert("Main document error", errorString.String(),
         "OK");
+    alert->SetFlags(alert->Flags() | B_CLOSE_ON_ESCAPE);
     alert->Go(NULL);
 }
 
