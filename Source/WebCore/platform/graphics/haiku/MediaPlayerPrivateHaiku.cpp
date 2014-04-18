@@ -333,7 +333,7 @@ void MediaPlayerPrivate::paint(GraphicsContext* context, const IntRect& r)
         return;
 
     if (m_frameBuffer) {
-        context->platformContext()->SetDrawingMode(B_OP_OVER);
+        context->platformContext()->SetDrawingMode(B_OP_COPY);
         context->platformContext()->DrawBitmap(m_frameBuffer, r);
     }
 }
