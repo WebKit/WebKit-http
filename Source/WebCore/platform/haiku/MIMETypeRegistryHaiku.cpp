@@ -41,9 +41,9 @@ struct ExtensionMap {
 };
 
 static const ExtensionMap extensionMap[] = {
-    { "aspx", "text/html" },
     { "bmp", "image/bmp" },
     { "gif", "image/gif" },
+    { "hpkg", "application/x-vnd.haiku-package" },
     { "html", "text/html" },
     { "ico", "image/x-icon" },
     { "jpeg", "image/jpeg" },
