@@ -132,6 +132,7 @@ void HeapStatistics::logStatistics()
 
 void HeapStatistics::exitWithFailure()
 {
+    exit(-1);
 }
 
 void HeapStatistics::reportSuccess()
