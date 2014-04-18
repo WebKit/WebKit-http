@@ -34,6 +34,7 @@
 
 #include "SocketStreamHandleBase.h"
 #include <Socket.h>
+#include <set>
 #include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
 
@@ -47,27 +48,30 @@ namespace WebCore {
     public:
         static 				PassRefPtr<SocketStreamHandle> create(const URL& url, SocketStreamHandleClient* client) { return adoptRef(new SocketStreamHandle(url, client)); }
         virtual 			~SocketStreamHandle();
-        int32 				AsyncHandleRead(int32 length);
-        int32 				AsyncHandleWrite();
-        int32 				AsyncHandleConnect(int32 error);
-        char*				readBuffer;
-        BSocket* 			socket;
-        BNetworkAddress* 	peer;
 
     protected:
-        virtual int 		platformSend(const char* data, int length);
-        virtual void 		platformClose();
+        virtual int 		platformSend(const char* data, int length) override;
+        virtual void 		platformClose() override;
 
     private:
         					SocketStreamHandle(const URL&, SocketStreamHandleClient*);
-        thread_id			fConnectThreadId;
-		thread_id			fReadThreadId;
-		thread_id			fWriteThreadId;
         // No authentication for streams per se, but proxy may ask for credentials.
         void didReceiveAuthenticationChallenge(const AuthenticationChallenge&);
         void receivedCredential(const AuthenticationChallenge&, const Credential&);
         void receivedRequestToContinueWithoutCredential(const AuthenticationChallenge&);
         void receivedCancellation(const AuthenticationChallenge&);
+
+        static void 		AsyncHandleRead(void* object);
+
+        static int32        AsyncReadThread(void* object);
+        static int32        AsyncWriteThread(void* object);
+
+		thread_id			fReadThreadId;
+		thread_id			fWriteThreadId;
+
+        BSocket* 			socket;
+
+        static std::set<void*> liveObjects;
     };
 
 }  // namespace WebCore

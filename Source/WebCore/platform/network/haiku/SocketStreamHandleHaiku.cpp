@@ -40,138 +40,6 @@ namespace WebCore {
 
 static const int kReadBufferSize = 1024;
 
-int32 SocketStreamHandle::AsyncHandleRead(int32 length)
-{
-	if(length<0)
-	{
-		m_client->didFailSocketStream(this,SocketStreamError(length));
-	}
-	else
-	{
-		m_client->didReceiveSocketStreamData(this,readBuffer,length);
-	}
-	return 0;
-}
-
-
-int32 SocketStreamHandle::AsyncHandleWrite()
-{
-	sendPendingData();
-	return 0;
-}
-
-
-void CallOnMainThreadAndWaitRead(SocketStreamHandle* handle, int32 length)
-{
-	if(isMainThread())
-	{
-		handle->AsyncHandleRead(length);
-		return;
-	}
-	sem_id sem;
-	sem = create_sem(1,"AsyncHandleRead");
-	acquire_sem(sem);
-	callOnMainThread([&]{
-		handle->AsyncHandleRead(length);		
-		release_sem(sem);
-		});
-	acquire_sem(sem);
-	release_sem(sem);		
-}
-
-
-void CallOnMainThreadAndWaitConnect(SocketStreamHandle* handle, int32 error)
-{
-	if(isMainThread())
-	{
-		handle->AsyncHandleConnect(error);
-		return;
-	}
-	sem_id sem;
-	sem = create_sem(1,"AsyncHandleConnect");
-	acquire_sem(sem);
-	callOnMainThread([&]{
-		handle->AsyncHandleConnect(error);
-		release_sem(sem);
-		});
-	acquire_sem(sem);
-	release_sem(sem);		
-}
-
-
-void CallOnMainThreadAndWaitWrite(SocketStreamHandle* handle)
-{
-	if(isMainThread())
-	{
-		handle->AsyncHandleWrite();
-		return;
-	}
-	sem_id sem;
-	sem = create_sem(1,"AsyncHandleWrite");
-	acquire_sem(sem);
-	callOnMainThread([&]{
-		handle->AsyncHandleWrite();
-		release_sem(sem);
-		});
-	acquire_sem(sem);
-	release_sem(sem);		
-}
-
-
-int32 AsyncReadThread(void* data)
-{
-	thread_id sender;
-	int32 code;
-	SocketStreamHandle* handle = (SocketStreamHandle*)data;
-	while(true)
-	{
-		if(has_data(find_thread(NULL)))
-		{
-			code = receive_data(&sender,NULL,0);
-			if(code==1)
-				exit_thread(0);
-		}
-    	int32 numberReadBytes = (handle->socket)->Read(handle->readBuffer,kReadBufferSize);   	
-    	CallOnMainThreadAndWaitRead(handle,numberReadBytes);    	
-	}
-	return 0;
-}
-
-
-int32 SocketStreamHandle::AsyncHandleConnect(int32 error)
-{
-	if(error != B_OK)
-	{
-		m_client->didFailSocketStream(this,SocketStreamError(error));
-	}
-	else
-	{
-		fReadThreadId = spawn_thread(AsyncReadThread,"AsyncReadThread",63,(void*)this);
-    	resume_thread(fReadThreadId);
-    	m_state = Open;
-    	m_client->didOpenSocketStream(this);
-	}
-	return error;
-}
-
-
-int32 AsyncWriteThread(void* data)
-{
-	SocketStreamHandle* handle = (SocketStreamHandle*)data;
-	status_t response=(handle->socket)->WaitForWritable(B_INFINITE_TIMEOUT);
-	CallOnMainThreadAndWaitWrite(handle);
-	return response;
-}
-
-
-int32 AsyncConnectThread(void* data)
-{
-	SocketStreamHandle* handle = (SocketStreamHandle*)data;
-	status_t error=(handle->socket)->Connect(*(handle->peer));
-	CallOnMainThreadAndWaitConnect(handle, error);
-	return 0;
-}
-
 SocketStreamHandle::SocketStreamHandle(const URL& url, SocketStreamHandleClient* client)
     : 
     SocketStreamHandleBase(url, client)
@@ -179,23 +47,34 @@ SocketStreamHandle::SocketStreamHandle(const URL& url, SocketStreamHandleClient*
     LOG(Network, "SocketStreamHandle %p new client %p", this, m_client);
 	fReadThreadId = 0;
 	fWriteThreadId = 0;
-	fConnectThreadId=0;
-	readBuffer = new char[kReadBufferSize];
     unsigned int port = url.hasPort() ? url.port() : (url.protocolIs("wss") ? 443 : 80);    
-    peer = new BNetworkAddress(url.host().utf8().data(),port);
+    BNetworkAddress peer(url.host().utf8().data(),port);
     socket = new BSocket();
-    fConnectThreadId = spawn_thread(AsyncConnectThread,"AsyncConnectThread",63,(void*)this);
-    resume_thread(fConnectThreadId);
+    status_t error = socket->Connect(peer);
+    
+    liveObjects.insert(this);
+
+	if(error != B_OK)
+		m_client->didFailSocketStream(this,SocketStreamError(error));
+	else {
+		fReadThreadId = spawn_thread(AsyncReadThread, "AsyncReadThread",
+            B_NORMAL_PRIORITY, (void*)this);
+    	resume_thread(fReadThreadId);
+    	m_state = Open;
+    	m_client->didOpenSocketStream(this);
+	}
 }
 
 
 SocketStreamHandle::~SocketStreamHandle()
 {
+    liveObjects.erase(this);
     LOG(Network, "SocketStreamHandle %p delete", this);
-    delete readBuffer;
-    delete peer;
-    delete socket;
+
     setClient(0);
+    socket->Disconnect();
+
+    delete socket;
 }
 
 
@@ -205,24 +84,18 @@ int SocketStreamHandle::platformSend(const char* buffer, int length)
 	bool flagForPending = false;
     LOG(Network, "SocketStreamHandle %p platformSend", this);
     status_t response=socket->WaitForWritable(0);
-    if(response == B_OK)
-    {
+    if(response == B_OK) {
     	writtenLength=socket->Write(buffer,length);
     	if(writtenLength < length)
     		flagForPending = true;
-    }
-    else if(response == B_TIMED_OUT
-    			|| response == B_WOULD_BLOCK)
-    {
+    } else if(response == B_TIMED_OUT || response == B_WOULD_BLOCK)
     	flagForPending = true;
-    }
     else
-    {
     	m_client->didFailSocketStream(this,SocketStreamError(response));
-    }
-    if(flagForPending)
-    {
-    	fWriteThreadId = spawn_thread(AsyncWriteThread,"AsyncWriteThread",63,(void*)this);
+    
+    if(flagForPending) {
+    	fWriteThreadId = spawn_thread(AsyncWriteThread, "AsyncWriteThread",
+            B_NORMAL_PRIORITY, (void*)this);
     	resume_thread(fWriteThreadId);
     }
     return writtenLength;
@@ -232,9 +105,9 @@ int SocketStreamHandle::platformSend(const char* buffer, int length)
 void SocketStreamHandle::platformClose()
 {
     LOG(Network, "SocketStreamHandle %p platformClose", this);
-    send_data(fReadThreadId,1,NULL,0);
     socket->Disconnect();
 	m_client->didCloseSocketStream(this);
+    setClient(0);
 }
 
 
@@ -259,6 +132,95 @@ void SocketStreamHandle::receivedRequestToContinueWithoutCredential(const Authen
 void SocketStreamHandle::receivedCancellation(const AuthenticationChallenge&)
 {
     notImplemented();
+}
+
+
+// #pragma mark - Private static methods
+
+
+std::set<void*> SocketStreamHandle::liveObjects;
+
+
+int32 SocketStreamHandle::AsyncWriteThread(void* object)
+{
+	SocketStreamHandle* handle = (SocketStreamHandle*)object;
+	status_t response = handle->socket->WaitForWritable(B_INFINITE_TIMEOUT);
+	if(isMainThread())
+	{
+	    handle->sendPendingData();
+		return response;
+	}
+	sem_id sem;
+	sem = create_sem(0,"AsyncHandleWrite");
+	callOnMainThread([&]{
+		handle->sendPendingData();
+		release_sem(sem);
+		});
+	acquire_sem(sem);
+	delete_sem(sem);
+
+    return response;    
+}
+
+
+struct Packet {
+    SocketStreamHandle* handle;
+    char*				readBuffer;
+    ssize_t             length;
+    sem_id              sem;
+};
+
+
+void SocketStreamHandle::AsyncHandleRead(void* object)
+{
+    Packet* packet = (Packet*)object;
+    if (liveObjects.find(packet->handle) == liveObjects.end()) {
+        release_sem(packet->sem);
+        return;
+    }
+
+    SocketStreamHandle* handle = packet->handle;
+
+    if(!handle->m_client) {
+        release_sem(packet->sem);
+        return;
+    }
+
+	if (packet->length < 0) {
+		handle->m_client->didFailSocketStream(handle,
+            SocketStreamError(packet->length));
+    } else {
+		handle->m_client->didReceiveSocketStreamData(handle,
+            packet->readBuffer, packet->length);
+    }
+
+    release_sem(packet->sem);
+}
+
+
+int32 SocketStreamHandle::AsyncReadThread(void* data)
+{
+    Packet p;
+	p.handle = (SocketStreamHandle*)data;
+	p.readBuffer = new char[kReadBufferSize];
+    
+    p.sem = create_sem(0, "AsyncRead");
+	while(liveObjects.find(p.handle) != liveObjects.end()
+        && p.handle->socket->IsConnected())
+	{
+        p.length = p.handle->socket->Read(p.readBuffer,kReadBufferSize);
+
+	    if(isMainThread())
+	    {
+		    AsyncHandleRead(&p);
+	    } else {
+	        callOnMainThread(AsyncHandleRead, &p);
+            acquire_sem(p.sem);
+        }
+	}
+    delete_sem(p.sem);
+    delete p.readBuffer;
+	return 0;
 }
 
 
