@@ -497,6 +497,7 @@ void DumpRenderTreeApp::ReadyToRun()
     m_webWindow->SetSizeLimits(0, maxViewWidth - 1, 0, maxViewHeight - 1);
     m_webWindow->ResizeTo(maxViewWidth - 1, maxViewHeight - 1);
 
+    DumpRenderTreeClient::setMockScrollbarsEnabled(true);
 
     webView = new BWebView("DumpRenderTree");
     m_webWindow->AddChild(webView);

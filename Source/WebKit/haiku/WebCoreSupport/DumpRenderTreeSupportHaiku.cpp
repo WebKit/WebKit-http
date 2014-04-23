@@ -45,6 +45,7 @@
 #include "NotImplemented.h"
 #include <Page.h>
 #include <PageGroup.h>
+#include <Settings.h>
 #include <UserContentTypes.h>
 
 namespace WebCore {
@@ -171,6 +172,12 @@ void
 DumpRenderTreeClient::setSerializeHTTPLoads(bool)
 {
     notImplemented();
+}
+
+void
+DumpRenderTreeClient::setMockScrollbarsEnabled(bool enable)
+{
+    WebCore::Settings::setMockScrollbarsEnabled(enable);
 }
 
 }
