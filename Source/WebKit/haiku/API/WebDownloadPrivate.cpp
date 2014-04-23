@@ -35,6 +35,7 @@
 #include "ResourceResponse.h"
 #include "WebDownload.h"
 #include "WebPage.h"
+#include <Directory.h>
 #include <Entry.h>
 #include <Message.h>
 #include <Messenger.h>
@@ -221,6 +222,12 @@ void WebDownloadPrivate::findAvailableFilename()
     BString fileName = m_filename;
     filePath.Append(fileName.String());
 
+    // Make sure the parent directory exists.
+    BPath parent;
+    if (filePath.GetParent(&parent) == B_OK)
+        create_directory(parent.Path(), 0755);
+
+    // Find a name that doesn't exists in the directoy yet
     BEntry entry(filePath.Path());
     for (int32 i = 0; entry.InitCheck() == B_OK && entry.Exists(); i++) {
         // Use original file name in each iteration
