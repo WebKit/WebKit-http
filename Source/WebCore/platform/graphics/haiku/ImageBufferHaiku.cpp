@@ -284,6 +284,10 @@ static PassRefPtr<Uint8ClampedArray> getImageData(const IntRect& rect, const Ima
 {
     RefPtr<Uint8ClampedArray> result = Uint8ClampedArray::createUninitialized(rect.width() * rect.height() * 4);
     unsigned char* data = result->data();
+    printf("getImgeData (%d %d - %d %d) from %p (%dx%d)\n",
+        rect.x(), rect.y(), rect.maxX(), rect.maxY(),
+        data, size.width(), size.height()
+    );
 
     // If the destination image is larger than the source image, the outside
     // regions need to be transparent. This way is simply, although with a
@@ -296,6 +300,28 @@ static PassRefPtr<Uint8ClampedArray> getImageData(const IntRect& rect, const Ima
     if (rect.x() > size.width() || rect.y() > size.height() || rect.maxX() < 0 || rect.maxY() < 0)
         return result;
 
+    // Normalize the dest rectangle to not write before the allocated space,
+    // when there are negative coordinates
+    int originx = rect.x();
+    int destx = 0;
+    if (originx < 0) {
+        destx = -originx;
+        originx = 0;
+    }
+    int endx = rect.maxX();
+    if (endx > size.width())
+        endx = size.width();
+
+    int originy = rect.y();
+    int desty = 0;
+    if (originy < 0) {
+        desty = -originy;
+        originy = 0;
+    }
+    int endy = rect.maxY();
+    if (endy > size.height())
+        endy = size.height();
+
     // Now we know there must be an intersection rect which we need to extract.
     BRect sourceRect(0, 0, size.width() - 1, size.height() - 1);
     sourceRect = BRect(rect) & sourceRect;
@@ -304,7 +330,7 @@ static PassRefPtr<Uint8ClampedArray> getImageData(const IntRect& rect, const Ima
     unsigned char* destRows = data;
     // Offset the destination pointer to point at the first pixel of the
     // intersection rect.
-    destRows += (rect.x() - (int)sourceRect.left) * 4 + (rect.y() - (int)sourceRect.top) * destBytesPerRow;
+    destRows += destx * 4 + desty * destBytesPerRow;
 
     const uint8* sourceRows = reinterpret_cast<const uint8*>(imageData.m_bitmap.Bits());
     uint32 sourceBytesPerRow = imageData.m_bitmap.BytesPerRow();
