@@ -26,6 +26,7 @@
 #include <UrlProtocolRoster.h>
 #include <UrlRequest.h>
 #include <HttpRequest.h>
+#include <LocaleRoster.h>
 #include <wtf/text/CString.h>
 
 namespace WebCore {
@@ -54,10 +55,28 @@ BUrlRequest* ResourceRequest::toNetworkRequest(BUrlContext* context)
                 it->value.utf8().data());
         }
 
-        if(!fUsername.IsEmpty()) {
+        if (!fUsername.IsEmpty()) {
             httpRequest->SetUserName(fUsername);
             httpRequest->SetPassword(fPassword);
         }
+
+        if (!requestHeaders->HasHeader("Accept-Language") >= 0) {
+            // Add the default languages
+            BMessage message;
+            BLocaleRoster::Default()->GetPreferredLanguages(&message);
+
+            BString languages;
+            BString language;
+            for(int i = 0; message.FindString("language", i, &language) == B_OK; i++) {
+                if (i != 0)
+                    languages << ',';
+                languages << language;
+                languages << ";q=";
+                languages << 1 - (i / 10.f);
+            }
+
+            requestHeaders->AddHeader("Accept-Language", languages);
+         }
 
         httpRequest->AdoptHeaders(requestHeaders);
     }
