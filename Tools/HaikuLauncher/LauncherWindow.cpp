@@ -38,6 +38,7 @@
 #include "WebViewConstants.h"
 #include <Button.h>
 #include <Entry.h>
+#include <FilePanel.h>
 #include <GridLayoutBuilder.h>
 #include <GroupLayout.h>
 #include <GroupLayoutBuilder.h>
@@ -55,6 +56,7 @@
 enum {
 	OPEN_LOCATION = 'open',
 	OPEN_INSPECTOR = 'insp',
+	SAVE_PAGE = 'save',
     GO_BACK = 'goba',
     GO_FORWARD = 'gofo',
     STOP = 'stop',
@@ -119,16 +121,26 @@ void LauncherWindow::MessageReceived(BMessage* message)
         	    m_url->MakeFocus(true);
         }
     	break;
-    case OPEN_INSPECTOR:
-        {
-            BRect frame = Frame();
-            frame.OffsetBy(20, 20);
-            LauncherWindow* inspectorWindow = new LauncherWindow(frame);
-            inspectorWindow->Show();
+    case OPEN_INSPECTOR: {
+        // FIXME: wouldn't the view better be in the same window?
+        BRect frame = Frame();
+        frame.OffsetBy(20, 20);
+        LauncherWindow* inspectorWindow = new LauncherWindow(frame);
+        inspectorWindow->Show();
 
-            CurrentWebView()->SetInspectorView(inspectorWindow->CurrentWebView());
-        }
+        CurrentWebView()->SetInspectorView(inspectorWindow->CurrentWebView());
         break;
+    }
+	case SAVE_PAGE: {
+		BMessage* message = new BMessage(B_SAVE_REQUESTED);
+		message->AddPointer("page", CurrentWebView()->WebPage());
+        
+        m_saveFilePanel->SetSaveText(CurrentWebView()->WebPage()->MainFrameTitle());
+        m_saveFilePanel->SetMessage(message);
+		m_saveFilePanel->Show();
+		break;
+	}
+
     case RELOAD:
         CurrentWebView()->Reload();
         break;
@@ -326,6 +338,7 @@ void LauncherWindow::init(BWebView* webView, ToolbarPolicy toolbarPolicy)
         newItem->SetTarget(be_app);
         menu->AddItem(new BMenuItem("Open location", new BMessage(OPEN_LOCATION), 'L'));
         menu->AddItem(new BMenuItem("Inspect page", new BMessage(OPEN_INSPECTOR), 'I'));
+	    menu->AddItem(new BMenuItem("Save page", new BMessage(SAVE_PAGE), 'S'));
         menu->AddSeparatorItem();
         menu->AddItem(new BMenuItem("Close", new BMessage(B_QUIT_REQUESTED), 'W', B_SHIFT_KEY));
         BMenuItem* quitItem = new BMenuItem("Quit", new BMessage(B_QUIT_REQUESTED), 'Q');
@@ -408,6 +421,9 @@ void LauncherWindow::init(BWebView* webView, ToolbarPolicy toolbarPolicy)
     }
 
     AddShortcut('R', B_COMMAND_KEY, new BMessage(RELOAD));
+
+	m_saveFilePanel = new BFilePanel(B_SAVE_PANEL, NULL, NULL,
+        B_DIRECTORY_NODE, false);
 
     be_app->PostMessage(WINDOW_OPENED);
 }

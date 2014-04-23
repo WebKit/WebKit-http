@@ -55,6 +55,7 @@
 #include "InspectorClientHaiku.h"
 #include "Logging.h"
 #include "MemoryCache.h"
+#include "loader/archive/mhtml/MHTMLArchive.h"
 #include "Page.h"
 #include "PageCache.h"
 #include "PageGroup.h"
@@ -382,6 +383,17 @@ BString BWebPage::MainFrameRequestedURL() const
 BString BWebPage::MainFrameURL() const
 {
     return fMainFrame->URL();
+}
+
+status_t BWebPage::GetContentsAsMHTML(BDataIO& output)
+{
+    RefPtr<SharedBuffer> buffer = MHTMLArchive::generateMHTMLDataUsingBinaryEncoding(fPage);
+    ssize_t size = output.Write(buffer->data(), buffer->size());
+    if (size < 0)
+        return size;
+    if ((size_t)size == buffer->size())
+        return B_OK;
+    return B_ERROR;
 }
 
 // #pragma mark - BWebView API

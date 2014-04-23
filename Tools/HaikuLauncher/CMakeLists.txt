@@ -12,7 +12,7 @@ SET(HaikuLauncher_LIBRARIES
     ${SQLITE_LIBRARIES}
     ${ICU_I18N_LIBRARIES}
     ${ICU_LIBRARIES}
-    be bsd network stdc++ translation
+    be bsd network stdc++ translation tracker
 )
 
 INCLUDE_DIRECTORIES("${WEBKIT_DIR}/haiku/API")

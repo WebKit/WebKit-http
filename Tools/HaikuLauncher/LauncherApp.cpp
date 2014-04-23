@@ -34,6 +34,7 @@
 #include "WebViewConstants.h"
 #include <Alert.h>
 #include <Autolock.h>
+#include <Directory.h>
 #include <Entry.h>
 #include <File.h>
 #include <FindDirectory.h>
@@ -168,6 +169,22 @@ void LauncherApp::MessageReceived(BMessage* message)
     		PostMessage(B_QUIT_REQUESTED);
     	break;
 
+	case B_SAVE_REQUESTED:
+	{
+		entry_ref dir;
+		message->FindRef("directory", &dir);
+		BString name = message->FindString("name");
+
+        BDirectory saveTo(&dir);
+		BFile file(&saveTo, name,
+			B_WRITE_ONLY | B_CREATE_FILE | B_ERASE_FILE);
+
+		BWebPage* page = NULL;
+        message->FindPointer("page", (void**)&page);
+
+        page->GetContentsAsMHTML(file);
+		break;
+	}
     default:
         BApplication::MessageReceived(message);
         break;

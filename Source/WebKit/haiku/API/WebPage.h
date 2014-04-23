@@ -104,6 +104,8 @@ public:
 			BString				MainFrameRequestedURL() const;
 			BString				MainFrameURL() const;
 
+            status_t            GetContentsAsMHTML(BDataIO& output);
+
 			void				ChangeZoomFactor(float increment,
 									bool textOnly);
 			void				FindString(const char* string,
