@@ -427,8 +427,8 @@ String ImageBuffer::toDataURL(const String& mimeType, const double* /*quality*/,
     base64Encode(reinterpret_cast<const char*>(translatedStream.Buffer()),
                  translatedStream.BufferLength(), encodedBuffer);
 
-    return String::format("data:%s;base64,%s", mimeType.utf8().data(),
-                          encodedBuffer.data());
+    return String::format("data:%s;base64,%.*s", mimeType.utf8().data(),
+        (int)encodedBuffer.size(), encodedBuffer.data());
 }
 
 } // namespace WebCore
