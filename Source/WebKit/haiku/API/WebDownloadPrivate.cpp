@@ -92,7 +92,7 @@ void WebDownloadPrivate::didReceiveResponse(ResourceHandle*, const ResourceRespo
     m_url = response.url().string();
 }
 
-void WebDownloadPrivate::didReceiveData(ResourceHandle*, const char* data, unsigned length, int lengthReceived)
+void WebDownloadPrivate::didReceiveData(ResourceHandle*, const char* data, unsigned length, int /*lengthReceived*/)
 {
 	if (m_file.InitCheck() != B_OK)
 		createFile();
@@ -133,7 +133,7 @@ void WebDownloadPrivate::didFinishLoading(ResourceHandle* handle, double /*finis
     handleFinished(handle, B_DOWNLOAD_FINISHED);
 }
 
-void WebDownloadPrivate::didFail(ResourceHandle* handle, const ResourceError& error)
+void WebDownloadPrivate::didFail(ResourceHandle* handle, const ResourceError& /*error*/)
 {
     handleFinished(handle, B_DOWNLOAD_FAILED);
 }
@@ -180,7 +180,7 @@ void WebDownloadPrivate::setProgressListener(const BMessenger& listener)
 
 // #pragma mark - private
 
-void WebDownloadPrivate::handleFinished(WebCore::ResourceHandle* handle, uint32 status)
+void WebDownloadPrivate::handleFinished(WebCore::ResourceHandle* handle, uint32 /*status*/)
 {
     if (m_mimeTypeGuessTries != -1 && m_mimeType.Length() > 0) {
     	// In last resort, use the MIME type provided
