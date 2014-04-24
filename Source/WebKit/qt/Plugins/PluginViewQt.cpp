@@ -144,14 +144,20 @@ void PluginView::updatePluginWidget()
     // The plugin had a zero width or height before but was resized, we need to show it again.
     if (oldWindowRect.isEmpty())
         show();
+    if (m_windowRect.isEmpty())
+        hide();
 
     if (!m_isWindowed && m_windowRect.size() != oldWindowRect.size()) {
-        if (m_drawable)
+        if (m_drawable) {
             XFreePixmap(x11Display(), m_drawable);
+            m_drawable = 0;
+        }
 
-        m_drawable = XCreatePixmap(x11Display(), rootWindowID(), m_windowRect.width(), m_windowRect.height(),
-                                   ((NPSetWindowCallbackStruct*)m_npWindow.ws_info)->depth);
-        syncX(); // make sure that the server knows about the Drawable
+        if (!m_windowRect.isEmpty()) {
+            m_drawable = XCreatePixmap(x11Display(), rootWindowID(), m_windowRect.width(), m_windowRect.height(),
+                                       ((NPSetWindowCallbackStruct*)m_npWindow.ws_info)->depth);
+            syncX(); // make sure that the server knows about the Drawable
+        }
     }
 
     // do not call setNPWindowIfNeeded immediately, will be called on paint()
