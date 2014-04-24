@@ -330,6 +330,7 @@ static void resetDefaultsToConsistentValues()
     ewk_view_setting_resizable_textareas_set(mainView(), EINA_TRUE);
 
 #endif
+    // This resets both the "text" and "page" zooms.
     webView->ResetZoomFactor();
 #if 0
     ewk_view_visibility_state_set(mainView(), EWK_PAGE_VISIBILITY_STATE_VISIBLE, true);
@@ -724,12 +725,14 @@ void DumpRenderTreeApp::MessageReceived(BMessage* message)
         //browser->clearExtraViews();
 
         // FIXME: Move to DRTChrome::resetDefaultsToConsistentValues() after bug 85209 lands.
-        //WebCoreTestSupport::resetInternalsObject(DumpRenderTreeSupportEfl::globalContextRefForFrame(browser->mainFrame()));
+        WebCoreTestSupport::resetInternalsObject(
+            DumpRenderTreeClient::globalContextRefForFrame(
+                webView->WebPage()->MainFrame()));
 
         // TODO efl goes to "about:blank" here. But this triggers an extra
         // dump for us, confusing the test system.
 
-        //gTestRunner->clear();
+        gTestRunner.clear();
         sendPixelResultsEOF();
 
         if (m_fromStdin) {

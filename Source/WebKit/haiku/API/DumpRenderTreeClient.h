@@ -78,6 +78,8 @@ public:
 
     static void setDeadDecodedDataDeletionInterval(double);
 
+    static JSGlobalContextRef globalContextRefForFrame(const BWebFrame* frame);
+
     static void setMockScrollbarsEnabled(bool);
 
     static void deliverAllMutationsIfNecessary();

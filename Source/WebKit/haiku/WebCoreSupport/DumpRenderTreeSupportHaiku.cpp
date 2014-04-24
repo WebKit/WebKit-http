@@ -45,6 +45,7 @@
 #include "NotImplemented.h"
 #include <Page.h>
 #include <PageGroup.h>
+#include <ScriptController.h>
 #include <Settings.h>
 #include <UserContentTypes.h>
 
@@ -172,6 +173,11 @@ void
 DumpRenderTreeClient::setSerializeHTTPLoads(bool)
 {
     notImplemented();
+}
+
+JSGlobalContextRef DumpRenderTreeClient::globalContextRefForFrame(const BWebFrame* frame)
+{
+    return toGlobalRef(frame->Frame()->script().globalObject(WebCore::mainThreadNormalWorld())->globalExec());
 }
 
 void

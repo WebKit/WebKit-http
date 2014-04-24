@@ -249,8 +249,7 @@ void TestRunner::setWaitToDump(bool waitUntilDone)
 
 int TestRunner::windowCount()
 {
-    notImplemented();
-    return 1;
+    return be_app->CountWindows();
 }
 
 void TestRunner::setPrivateBrowsingEnabled(bool flag)
