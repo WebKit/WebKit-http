@@ -284,10 +284,6 @@ static PassRefPtr<Uint8ClampedArray> getImageData(const IntRect& rect, const Ima
 {
     RefPtr<Uint8ClampedArray> result = Uint8ClampedArray::createUninitialized(rect.width() * rect.height() * 4);
     unsigned char* data = result->data();
-    printf("getImgeData (%d %d - %d %d) from %p (%dx%d)\n",
-        rect.x(), rect.y(), rect.maxX(), rect.maxY(),
-        data, size.width(), size.height()
-    );
 
     // If the destination image is larger than the source image, the outside
     // regions need to be transparent. This way is simply, although with a
