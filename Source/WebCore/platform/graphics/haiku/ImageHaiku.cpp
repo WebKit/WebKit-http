@@ -37,6 +37,7 @@
 #include "FloatRect.h"
 #include "GraphicsContext.h"
 #include "ImageObserver.h"
+#include "IntRect.h"
 #include "NotImplemented.h"
 #include "SharedBuffer.h"
 #include "TransformationMatrix.h"

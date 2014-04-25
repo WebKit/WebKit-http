@@ -28,6 +28,8 @@
 #ifndef ImageBufferData_h
 #define ImageBufferData_h
 
+#include "Image.h"
+
 #include <Bitmap.h>
 #include <View.h>
 

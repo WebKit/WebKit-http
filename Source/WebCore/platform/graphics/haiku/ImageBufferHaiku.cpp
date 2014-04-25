@@ -28,6 +28,7 @@
 
 #include "GraphicsContext.h"
 #include "ImageData.h"
+#include "IntRect.h"
 #include "JSCellInlines.h"
 #include "MIMETypeRegistry.h"
 #include "NotImplemented.h"
