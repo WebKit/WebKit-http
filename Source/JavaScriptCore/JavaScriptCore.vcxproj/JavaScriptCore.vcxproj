@@ -450,6 +450,7 @@
     <ClCompile Include="..\dfg\DFGUseKind.cpp" />
     <ClCompile Include="..\dfg\DFGValidate.cpp" />
     <ClCompile Include="..\dfg\DFGValueSource.cpp" />
+    <ClCompile Include="..\dfg\DFGVariableAccessData.cpp" />
     <ClCompile Include="..\dfg\DFGVariableAccessDataDump.cpp" />
     <ClCompile Include="..\dfg\DFGVariableEvent.cpp" />
     <ClCompile Include="..\dfg\DFGVariableEventStream.cpp" />
@@ -513,6 +514,7 @@
     <ClCompile Include="..\inspector\agents\InspectorAgent.cpp" />
     <ClCompile Include="..\inspector\agents\InspectorConsoleAgent.cpp" />
     <ClCompile Include="..\inspector\agents\InspectorDebuggerAgent.cpp" />
+    <ClCompile Include="..\inspector\agents\InspectorProfilerAgent.cpp" />
     <ClCompile Include="..\inspector\agents\InspectorRuntimeAgent.cpp" />
     <ClCompile Include="..\interpreter\AbstractPC.cpp" />
     <ClCompile Include="..\interpreter\CallFrame.cpp" />
@@ -1051,7 +1053,7 @@
     <ClInclude Include="..\heap\EdenGCActivityCallback.h" />
     <ClInclude Include="..\heap\FullGCActivityCallback.h" />
     <ClInclude Include="..\heap\GCActivityCallback.h" />
-    <ClCompile Include="..\heap\GCLogging.cpp" />
+    <ClInclude Include="..\heap\GCLogging.h" />
     <ClInclude Include="..\heap\GCSegmentedArray.h" />
     <ClInclude Include="..\heap\GCSegmentedArrayInlines.h" />
     <ClInclude Include="..\heap\GCAssertions.h" />
@@ -1129,6 +1131,7 @@
     <ClInclude Include="..\inspector\agents\InspectorAgent.h" />
     <ClInclude Include="..\inspector\agents\InspectorConsoleAgent.h" />
     <ClInclude Include="..\inspector\agents\InspectorDebuggerAgent.h" />
+    <ClInclude Include="..\inspector\agents\InspectorProfilerAgent.h" />
     <ClInclude Include="..\inspector\agents\InspectorRuntimeAgent.h" />
     <ClInclude Include="..\interpreter\AbstractPC.h" />
     <ClInclude Include="..\interpreter\CachedCall.h" />

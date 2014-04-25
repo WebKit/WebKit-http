@@ -27,8 +27,10 @@
 #include "PODFreeListArena.h"
 #include "Region.h"
 #include "RenderBlockFlow.h"
+#include "SelectionSubtreeRoot.h"
 #include <memory>
 #include <wtf/HashSet.h>
+#include <wtf/OwnPtr.h>
 
 namespace WebCore {
 
@@ -37,7 +39,7 @@ class ImageQualityController;
 class RenderLayerCompositor;
 class RenderQuote;
 
-class RenderView final : public RenderBlockFlow {
+class RenderView final : public RenderBlockFlow, public SelectionSubtreeRoot {
 public:
     RenderView(Document&, PassRef<RenderStyle>);
     virtual ~RenderView();
@@ -86,7 +88,6 @@ public:
     RenderObject* selectionStart() const { return m_selectionStart; }
     RenderObject* selectionEnd() const { return m_selectionEnd; }
     IntRect selectionBounds(bool clipToVisibleContent = true) const;
-    void selectionStartEnd(int& startPos, int& endPos) const;
     void repaintSelection() const;
 
     bool printing() const;
@@ -153,6 +154,14 @@ public:
         }
     }
     LayoutUnit pageOrViewLogicalHeight() const;
+
+    // This method is used to assign a page number only when pagination modes have
+    // a block progression. This happens with vertical-rl books for example, but it
+    // doesn't happen for normal horizontal-tb books. This is a very specialized
+    // function and should not be mistaken for a general page number API.
+    unsigned pageNumberForBlockProgressionOffset(int offset) const;
+
+    unsigned pageCount() const;
 
     // FIXME: These functions are deprecated. No code should be added that uses these.
     int bestTruncatedAt() const { return m_legacyPrinting.m_bestTruncatedAt; }
@@ -238,7 +247,7 @@ protected:
     virtual const RenderObject* pushMappingToContainer(const RenderLayerModelObject* ancestorToStopAt, RenderGeometryMap&) const override;
     virtual void mapAbsoluteToLocalPoint(MapCoordinatesFlags, TransformState&) const override;
     virtual bool requiresColumns(int desiredColumnCount) const override;
-    
+
 private:
     void initializeLayoutState(LayoutState&);
 
@@ -287,6 +296,11 @@ private:
     
     friend class LayoutStateMaintainer;
     friend class LayoutStateDisabler;
+
+    void splitSelectionBetweenSubtrees(RenderObject* start, int startPos, RenderObject* end, int endPos, SelectionRepaintMode blockRepaintMode);
+    void setSubtreeSelection(SelectionSubtreeRoot&, RenderObject* start, int startPos, RenderObject* end, int endPos, SelectionRepaintMode);
+    LayoutRect subtreeSelectionBounds(const SelectionSubtreeRoot&, bool clipToVisibleContent = true) const;
+    void repaintSubtreeSelection(const SelectionSubtreeRoot&) const;
 
 private:
     FrameView& m_frameView;

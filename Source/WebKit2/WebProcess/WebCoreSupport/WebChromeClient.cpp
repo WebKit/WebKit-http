@@ -210,7 +210,7 @@ Page* WebChromeClient::createWindow(Frame* frame, const FrameLoadRequest& reques
     navigationActionData.navigationType = navigationAction.type();
     navigationActionData.modifiers = InjectedBundleNavigationAction::modifiersForNavigationAction(navigationAction);
     navigationActionData.mouseButton = InjectedBundleNavigationAction::mouseButtonForNavigationAction(navigationAction);
-    navigationActionData.isProcessingUserGesture = ScriptController::processingUserGesture();
+    navigationActionData.isProcessingUserGesture = navigationAction.processingUserGesture();
 
     uint64_t newPageID = 0;
     WebPageCreationParameters parameters;
@@ -845,9 +845,14 @@ void WebChromeClient::exitFullScreenForElement(WebCore::Element* element)
 #endif
 
 #if PLATFORM(IOS)
-FloatSize WebChromeClient::viewportScreenSize() const
+FloatSize WebChromeClient::screenSize() const
 {
-    return m_page->viewportScreenSize();
+    return m_page->screenSize();
+}
+
+FloatSize WebChromeClient::availableScreenSize() const
+{
+    return m_page->availableScreenSize();
 }
 #endif
 

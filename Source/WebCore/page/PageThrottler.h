@@ -31,8 +31,6 @@
 #include "UserActivity.h"
 #include "ViewState.h"
 #include <wtf/HashSet.h>
-#include <wtf/OwnPtr.h>
-#include <wtf/PassOwnPtr.h>
 #include <wtf/WeakPtr.h>
 
 namespace WebCore {
@@ -41,6 +39,7 @@ class Page;
 class PageActivityAssertionToken;
 
 class PageThrottler {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     PageThrottler(Page&, ViewState::Flags);
 
@@ -50,8 +49,6 @@ public:
     void pluginDidEvaluateWhileAudioIsPlaying() { m_hysteresis.impulse(); }
     std::unique_ptr<PageActivityAssertionToken> mediaActivityToken();
     std::unique_ptr<PageActivityAssertionToken> pageLoadActivityToken();
-
-    void hiddenPageDOMTimerThrottlingStateChanged();
 
 private:
     friend class PageActivityAssertionToken;

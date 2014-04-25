@@ -68,7 +68,8 @@ void (*wkSetCookieStoragePrivateBrowsingEnabled)(BOOL);
 CFHTTPMessageRef (*wkCopyCONNECTProxyResponse)(CFReadStreamRef, CFURLRef responseURL, CFStringRef proxyHost, CFNumberRef proxyPort);
 bool (*wkExecutableWasLinkedOnOrAfterIOSVersion)(int);
 int (*wkGetDeviceClass)(void);
-CGSize (*wkGetViewportScreenSize)(void);
+CGSize (*wkGetScreenSize)(void);
+CGSize (*wkGetAvailableScreenSize)(void);
 void (*wkSetLayerContentsScale)(CALayer *);
 float (*wkGetScreenScaleFactor)(void);
 bool (*wkIsGB18030ComplianceRequired)(void);
@@ -80,8 +81,6 @@ CFArrayRef (*wkCopyNSURLResponseCertificateChain)(NSURLResponse*);
 CFHTTPCookieStorageRef (*wkGetDefaultHTTPCookieStorage)();
 WKCFURLCredentialRef (*wkCopyCredentialFromCFPersistentStorage)(CFURLProtectionSpaceRef protectionSpace);
 void (*wkSetCFURLRequestShouldContentSniff)(CFMutableURLRequestRef, bool);
-CFArrayRef (*wkCFURLRequestCopyHTTPRequestBodyParts)(CFURLRequestRef);
-void (*wkCFURLRequestSetHTTPRequestBodyParts)(CFMutableURLRequestRef, CFArrayRef bodyParts);
 void (*wkSetRequestStorageSession)(CFURLStorageSessionRef, CFMutableURLRequestRef);
 #endif
 

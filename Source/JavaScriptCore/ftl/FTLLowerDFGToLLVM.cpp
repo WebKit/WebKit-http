@@ -628,10 +628,12 @@ private:
         case TypedArrayWatchpoint:
         case AllocationProfileWatchpoint:
             break;
-        case Unreachable:
-            RELEASE_ASSERT_NOT_REACHED();
-            break;
         default:
+            dataLog("Unrecognized node in FTL backend:\n");
+            m_graph.dump(WTF::dataFile(), "    ", m_node);
+            dataLog("\n");
+            dataLog("Full graph dump:\n");
+            m_graph.dump();
             RELEASE_ASSERT_NOT_REACHED();
             break;
         }
@@ -743,7 +745,14 @@ private:
     {
         switch (m_node->child1().useKind()) {
         case DoubleRepUse: {
-            setJSValue(boxDouble(lowDouble(m_node->child1())));
+            LValue value = lowDouble(m_node->child1());
+            
+            if (m_interpreter.needsTypeCheck(m_node->child1(), ~SpecDoubleImpureNaN)) {
+                value = m_out.select(
+                    m_out.doubleEqual(value, value), value, m_out.constDouble(PNaN));
+            }
+            
+            setJSValue(boxDouble(value));
             return;
         }
             
@@ -2127,8 +2136,6 @@ private:
                     RELEASE_ASSERT_NOT_REACHED();
                 }
                 
-                result = m_out.select(
-                    m_out.doubleEqual(result, result), result, m_out.constDouble(PNaN));
                 setDouble(result);
                 return;
             }
@@ -5884,6 +5891,8 @@ private:
         
         switch (node->op()) {
         case JSConstant:
+        case Int52Constant:
+        case DoubleConstant:
         case WeakJSConstant:
             exit.m_values[index] = ExitValue::constant(m_graph.valueOfJSConstant(node));
             return true;

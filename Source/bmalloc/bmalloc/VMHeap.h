@@ -49,9 +49,9 @@ public:
     MediumPage* allocateMediumPage();
     Range allocateLargeRange(size_t);
 
-    void deallocateSmallPage(std::unique_lock<Mutex>&, SmallPage*);
-    void deallocateMediumPage(std::unique_lock<Mutex>&, MediumPage*);
-    void deallocateLargeRange(std::unique_lock<Mutex>&, Range);
+    void deallocateSmallPage(std::unique_lock<StaticMutex>&, SmallPage*);
+    void deallocateMediumPage(std::unique_lock<StaticMutex>&, MediumPage*);
+    void deallocateLargeRange(std::unique_lock<StaticMutex>&, Range);
 
 private:
     void allocateSmallChunk();
@@ -87,7 +87,7 @@ inline Range VMHeap::allocateLargeRange(size_t size)
     return range;
 }
 
-inline void VMHeap::deallocateSmallPage(std::unique_lock<Mutex>& lock, SmallPage* page)
+inline void VMHeap::deallocateSmallPage(std::unique_lock<StaticMutex>& lock, SmallPage* page)
 {
     lock.unlock();
     vmDeallocatePhysicalPages(page->begin()->begin(), vmPageSize);
@@ -96,7 +96,7 @@ inline void VMHeap::deallocateSmallPage(std::unique_lock<Mutex>& lock, SmallPage
     m_smallPages.push(page);
 }
 
-inline void VMHeap::deallocateMediumPage(std::unique_lock<Mutex>& lock, MediumPage* page)
+inline void VMHeap::deallocateMediumPage(std::unique_lock<StaticMutex>& lock, MediumPage* page)
 {
     lock.unlock();
     vmDeallocatePhysicalPages(page->begin()->begin(), vmPageSize);
@@ -105,7 +105,7 @@ inline void VMHeap::deallocateMediumPage(std::unique_lock<Mutex>& lock, MediumPa
     m_mediumPages.push(page);
 }
 
-inline void VMHeap::deallocateLargeRange(std::unique_lock<Mutex>& lock, Range range)
+inline void VMHeap::deallocateLargeRange(std::unique_lock<StaticMutex>& lock, Range range)
 {
     BeginTag* beginTag = LargeChunk::beginTag(range.begin());
     EndTag* endTag = LargeChunk::endTag(range.begin(), range.size());

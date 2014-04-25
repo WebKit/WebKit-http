@@ -11,7 +11,6 @@ set(WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/Modules/mediasource"
     "${WEBCORE_DIR}/Modules/mediastream"
     "${WEBCORE_DIR}/Modules/navigatorcontentutils"
-    "${WEBCORE_DIR}/Modules/networkinfo"
     "${WEBCORE_DIR}/Modules/notifications"
     "${WEBCORE_DIR}/Modules/plugins"
     "${WEBCORE_DIR}/Modules/proximity"
@@ -50,7 +49,6 @@ set(WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/page"
     "${WEBCORE_DIR}/page/animation"
     "${WEBCORE_DIR}/page/scrolling"
-    "${WEBCORE_DIR}/page/scrolling/coordinatedgraphics"
     "${WEBCORE_DIR}/platform/animation"
     "${WEBCORE_DIR}/platform/audio"
     "${WEBCORE_DIR}/platform/graphics/cpu/arm"
@@ -61,7 +59,6 @@ set(WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/graphics/harfbuzz/ng"
     "${WEBCORE_DIR}/platform/graphics/opentype"
     "${WEBCORE_DIR}/platform/graphics/texmap"
-    "${WEBCORE_DIR}/platform/graphics/texmap/coordinated"
     "${WEBCORE_DIR}/platform/image-decoders"
     "${WEBCORE_DIR}/platform/image-decoders/bmp"
     "${WEBCORE_DIR}/platform/image-decoders/gif"
@@ -138,7 +135,6 @@ set(WebCore_IDL_INCLUDES
     Modules/indexeddb
     Modules/indieui
     Modules/mediastream
-    Modules/networkinfo
     Modules/notifications
     Modules/proximity
     Modules/quota
@@ -244,9 +240,6 @@ set(WebCore_IDL_FILES
     Modules/mediastream/VideoStreamTrack.idl
 
     Modules/navigatorcontentutils/NavigatorContentUtils.idl
-
-    Modules/networkinfo/NavigatorNetworkInfoConnection.idl
-    Modules/networkinfo/NetworkInfoConnection.idl
 
     Modules/notifications/DOMWindowNotifications.idl
     Modules/notifications/Notification.idl
@@ -772,7 +765,6 @@ set(WebCore_INSPECTOR_DOMAINS
     ${WEBCORE_DIR}/inspector/protocol/LayerTree.json
     ${WEBCORE_DIR}/inspector/protocol/Network.json
     ${WEBCORE_DIR}/inspector/protocol/Page.json
-    ${WEBCORE_DIR}/inspector/protocol/Profiler.json
     ${WEBCORE_DIR}/inspector/protocol/Timeline.json
     ${WEBCORE_DIR}/inspector/protocol/Worker.json
 )
@@ -880,11 +872,6 @@ set(WebCore_SOURCES
     Modules/mediastream/VideoStreamTrack.cpp
 
     Modules/navigatorcontentutils/NavigatorContentUtils.cpp
-
-    Modules/networkinfo/NavigatorNetworkInfoConnection.cpp
-    Modules/networkinfo/NetworkInfo.cpp
-    Modules/networkinfo/NetworkInfoConnection.cpp
-    Modules/networkinfo/NetworkInfoController.cpp
 
     Modules/notifications/DOMWindowNotifications.cpp
     Modules/notifications/Notification.cpp
@@ -1040,6 +1027,7 @@ set(WebCore_SOURCES
     bindings/js/JSCallbackData.cpp
     bindings/js/JSCanvasRenderingContext2DCustom.cpp
     bindings/js/JSCanvasRenderingContextCustom.cpp
+    bindings/js/JSDataCueCustom.cpp
     bindings/js/JSDataTransferCustom.cpp
     bindings/js/JSCommandLineAPIHostCustom.cpp
     bindings/js/JSCryptoAlgorithmBuilder.cpp
@@ -1167,8 +1155,6 @@ set(WebCore_SOURCES
     bindings/js/ScriptCachedFrameData.cpp
     bindings/js/ScriptController.cpp
     bindings/js/ScriptGlobalObject.cpp
-    bindings/js/ScriptProfile.cpp
-    bindings/js/ScriptProfiler.cpp
     bindings/js/ScriptState.cpp
     bindings/js/SerializedScriptValue.cpp
     bindings/js/WebCoreTypedArrayController.cpp
@@ -1762,7 +1748,6 @@ set(WebCore_SOURCES
     inspector/InspectorNodeFinder.cpp
     inspector/InspectorOverlay.cpp
     inspector/InspectorPageAgent.cpp
-    inspector/InspectorProfilerAgent.cpp
     inspector/InspectorResourceAgent.cpp
     inspector/InspectorStyleSheet.cpp
     inspector/InspectorStyleTextEditor.cpp
@@ -1772,6 +1757,7 @@ set(WebCore_SOURCES
     inspector/NetworkResourcesData.cpp
     inspector/PageConsoleAgent.cpp
     inspector/PageDebuggerAgent.cpp
+    inspector/PageProfilerAgent.cpp
     inspector/PageRuntimeAgent.cpp
     inspector/PageScriptDebugServer.cpp
     inspector/TimelineRecordFactory.cpp
@@ -1779,9 +1765,11 @@ set(WebCore_SOURCES
     inspector/WebDebuggerAgent.cpp
     inspector/WebInjectedScriptHost.cpp
     inspector/WebInjectedScriptManager.cpp
+    inspector/WebProfilerAgent.cpp
     inspector/WorkerConsoleAgent.cpp
     inspector/WorkerDebuggerAgent.cpp
     inspector/WorkerInspectorController.cpp
+    inspector/WorkerProfilerAgent.cpp
     inspector/WorkerRuntimeAgent.cpp
 
     loader/CookieJar.cpp
@@ -1950,10 +1938,6 @@ set(WebCore_SOURCES
     page/scrolling/ScrollingStateScrollingNode.cpp
     page/scrolling/ScrollingStateStickyNode.cpp
     page/scrolling/ScrollingStateTree.cpp
-
-    page/scrolling/coordinatedgraphics/ScrollingCoordinatorCoordinatedGraphics.cpp
-    page/scrolling/coordinatedgraphics/ScrollingStateNodeCoordinatedGraphics.cpp
-    page/scrolling/coordinatedgraphics/ScrollingStateScrollingNodeCoordinatedGraphics.cpp
 
     platform/CalculationValue.cpp
     platform/Clock.cpp
@@ -2137,16 +2121,6 @@ set(WebCore_SOURCES
     platform/graphics/texmap/TextureMapperSurfaceBackingStore.cpp
     platform/graphics/texmap/TextureMapperTile.cpp
     platform/graphics/texmap/TextureMapperTiledBackingStore.cpp
-
-    platform/graphics/texmap/coordinated/AreaAllocator.cpp
-    platform/graphics/texmap/coordinated/CompositingCoordinator.cpp
-    platform/graphics/texmap/coordinated/CoordinatedBackingStore.cpp
-    platform/graphics/texmap/coordinated/CoordinatedGraphicsLayer.cpp
-    platform/graphics/texmap/coordinated/CoordinatedGraphicsScene.cpp
-    platform/graphics/texmap/coordinated/CoordinatedImageBacking.cpp
-    platform/graphics/texmap/coordinated/CoordinatedSurface.cpp
-    platform/graphics/texmap/coordinated/CoordinatedTile.cpp
-    platform/graphics/texmap/coordinated/UpdateAtlas.cpp
 
     platform/graphics/transforms/AffineTransform.cpp
     platform/graphics/transforms/Matrix3DTransformOperation.cpp
@@ -2370,6 +2344,7 @@ set(WebCore_SOURCES
     rendering/RenderVTTCue.cpp
     rendering/RenderWidget.cpp
     rendering/RootInlineBox.cpp
+    rendering/SelectionSubtreeRoot.cpp
     rendering/ScrollBehavior.cpp
     rendering/SimpleLineLayout.cpp
     rendering/SimpleLineLayoutFunctions.cpp

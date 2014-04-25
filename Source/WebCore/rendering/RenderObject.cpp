@@ -1086,26 +1086,6 @@ void RenderObject::paintOutline(PaintInfo& paintInfo, const LayoutRect& paintRec
         graphicsContext->endTransparencyLayer();
 }
 
-// FIXME: Make this return an unsigned integer?
-int RenderObject::columnNumberForOffset(int offset)
-{
-    int columnNumber = 0;
-    RenderBlock* containingBlock = this->containingBlock();
-    RenderView& view = containingBlock->view();
-    const Pagination& pagination = view.frameView().frame().page()->pagination();
-    if (pagination.mode == Pagination::Unpaginated)
-        return columnNumber;
-
-    ColumnInfo* columnInfo = view.columnInfo();
-    if (columnInfo && !columnInfo->progressionIsInline()) {
-        if (!columnInfo->progressionIsReversed())
-            columnNumber = (pagination.pageLength + pagination.gap - offset) / (pagination.pageLength + pagination.gap);
-        else
-            columnNumber = offset / (pagination.pageLength + pagination.gap);
-    }
-    return columnNumber;
-}
-
 #if PLATFORM(IOS)
 // This function is similar in spirit to RenderText::absoluteRectsForRange, but returns rectangles
 // which are annotated with additional state which helps iOS draw selections in its unique way.
@@ -1133,7 +1113,7 @@ void RenderObject::collectSelectionRects(Vector<SelectionRect>& rects, unsigned 
 
     unsigned numberOfQuads = quads.size();
     for (unsigned i = 0; i < numberOfQuads; ++i)
-        rects.append(SelectionRect(quads[i].enclosingBoundingBox(), isHorizontalWritingMode(), columnNumberForOffset(quads[i].enclosingBoundingBox().x())));
+        rects.append(SelectionRect(quads[i].enclosingBoundingBox(), isHorizontalWritingMode(), view().pageNumberForBlockProgressionOffset(quads[i].enclosingBoundingBox().x())));
 }
 #endif
 
@@ -1286,7 +1266,7 @@ void RenderObject::repaintUsingContainer(const RenderLayerModelObject* repaintCo
         ASSERT(repaintContainer == &v);
         bool viewHasCompositedLayer = v.hasLayer() && v.layer()->isComposited();
         if (!viewHasCompositedLayer || v.layer()->backing()->paintsIntoWindow()) {
-            v.repaintViewRectangle(viewHasCompositedLayer && v.layer()->transform() ? v.layer()->transform()->mapRect(r) : r);
+            v.repaintViewRectangle(viewHasCompositedLayer && v.layer()->transform() ? LayoutRect(v.layer()->transform()->mapRect(pixelSnappedForPainting(r, document().deviceScaleFactor()))) : r);
             return;
         }
     }
@@ -1446,7 +1426,7 @@ void RenderObject::showRegionsInformation(int& printedCharacters) const
             RenderRegion* startRegion = nullptr;
             RenderRegion* endRegion = nullptr;
             flowThread->getRegionRangeForBox(box, startRegion, endRegion);
-            printedCharacters += fprintf(stderr, " Rs:%p Re:%p", startRegion, endRegion);
+            printedCharacters += fprintf(stderr, " [Rs:%p Re:%p]", startRegion, endRegion);
         }
     }
 }
@@ -1540,9 +1520,18 @@ Color RenderObject::selectionEmphasisMarkColor() const
     return selectionColor(CSSPropertyWebkitTextEmphasisColor);
 }
 
+SelectionSubtreeRoot& RenderObject::selectionRoot() const
+{
+    RenderFlowThread* flowThread = flowThreadContainingBlock();
+    if (flowThread && flowThread->isRenderNamedFlowThread())
+        return *toRenderNamedFlowThread(flowThread);
+
+    return view();
+}
+
 void RenderObject::selectionStartEnd(int& spos, int& epos) const
 {
-    view().selectionStartEnd(spos, epos);
+    selectionRoot().selectionStartEndPositions(spos, epos);
 }
 
 void RenderObject::handleDynamicFloatPositionChange()
@@ -1935,8 +1924,10 @@ void RenderObject::insertedIntoTree()
 
     if (!isFloating() && parent()->childrenInline())
         parent()->dirtyLinesFromChangedChild(this);
-
-    if (RenderFlowThread* flowThread = parent()->flowThreadContainingBlock())
+    
+    if (parent()->isRenderFlowThread())
+        toRenderFlowThread(parent())->flowThreadDescendantInserted(this);
+    else if (RenderFlowThread* flowThread = parent()->flowThreadContainingBlock())
         flowThread->flowThreadDescendantInserted(this);
 }
 

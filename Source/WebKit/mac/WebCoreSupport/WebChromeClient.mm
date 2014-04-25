@@ -761,14 +761,25 @@ void WebChromeClient::loadIconForFiles(const Vector<String>& filenames, FileIcon
 }
 
 #if !PLATFORM(IOS)
+
 void WebChromeClient::setCursor(const WebCore::Cursor& cursor)
 {
+    // FIXME: Would be nice to share this code with WebKit2's PageClientImpl.
+
     if ([NSApp _cursorRectCursor])
+        return;
+
+    if (!m_webView)
+        return;
+
+    NSWindow *window = [m_webView window];
+    if (!window || ![window isKeyWindow])
         return;
 
     NSCursor *platformCursor = cursor.platformCursor();
     if ([NSCursor currentCursor] == platformCursor)
         return;
+
     [platformCursor set];
 }
 
@@ -776,6 +787,7 @@ void WebChromeClient::setCursorHiddenUntilMouseMoves(bool hiddenUntilMouseMoves)
 {
     [NSCursor setHiddenUntilMouseMoves:hiddenUntilMouseMoves];
 }
+
 #endif
 
 KeyboardUIMode WebChromeClient::keyboardUIMode()

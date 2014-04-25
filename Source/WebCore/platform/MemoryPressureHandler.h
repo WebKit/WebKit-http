@@ -70,6 +70,29 @@ public:
     void respondToMemoryPressureIfNeeded();
 #endif
 
+    class ReliefLogger {
+    public:
+        explicit ReliefLogger(const char *log)
+            : m_logString(log)
+            , m_initialMemory(platformMemoryUsage())
+        {
+        }
+
+        ~ReliefLogger()
+        {
+            platformLog();
+        }
+
+        const char* logString() const { return m_logString; }
+
+    private:
+        size_t platformMemoryUsage();
+        void platformLog();
+
+        const char* m_logString;
+        size_t m_initialMemory;
+};
+
 private:
     void uninstall();
 

@@ -1484,9 +1484,6 @@ webkit.org/b/78801 touchadjustment
 # Needs BatteryClient implementation.
 webkit.org/b/62698 batterystatus/
 
-#Network Information is not supported yet.
-webkit.org/b/73528 networkinformation
-
 # Proximity Events is not supported.
 proximity
 fast/events/constructors/device-proximity-event-constructor.html
@@ -1938,6 +1935,7 @@ svg/css/shadow-changes.svg [ Failure ]
 webkit.org/b/108370 editing/spelling/design-mode-spellcheck-off.html [ Failure ]
 webkit.org/b/108370 editing/spelling/context-menu-suggestions-multiword-selection.html [ Failure ]
 webkit.org/b/108370 editing/spelling/context-menu-suggestions-subword-selection.html [ Failure ]
+webkit.org/b/108370 editing/spelling/spelling-backward.html [ Failure ]
 webkit.org/b/108370 editing/spelling/spelling-double-clicked-word.html [ Failure ]
 webkit.org/b/108370 editing/spelling/spelling-exactly-selected-word.html [ Failure ]
 webkit.org/b/108370 editing/spelling/spelling-with-punctuation-selection.html [ Failure ]
@@ -2299,9 +2297,6 @@ webkit.org/b/126900 svg/zoom/page/zoom-zoom-coords.xhtml [ Failure ]
 
 # Subpixel: incorrect caret position
 webkit.org/b/126283 editing/selection/mixed-editability-10.html [ Failure ]
-
-# Expando properties on attribute nodes disappear
-webkit.org/b/127480 fast/dom/gc-attribute-node.html [ Failure ]
 
 # REGRESSION (r159892): Failing JavaScript test
 webkit.org/b/127492 js/dom/date-big-constructor.html [ Failure ]
@@ -2736,6 +2731,10 @@ webkit.org/b/129180 svg/clip-path/clip-path-on-svg-002.svg [ ImageOnlyFailure ]
 media [ Skip ]
 
 platform/win/plugins/iframe-inside-overflow.html [ Failure ]
+
+# DataCue.value not enabled
+http/tests/media/track-in-band-hls-metadata.html [ Skip ]
+media/track/track-datacue-value.html [ Skip ]
 
 # CRASHES
 ietestcenter/Javascript/15.2.3.3-4-18.html [ Crash ]

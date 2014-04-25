@@ -88,11 +88,6 @@
 #include <wtf/RunLoop.h>
 #include <wtf/text/StringHash.h>
 
-#if ENABLE(NETWORK_INFO)
-#include "WebNetworkInfoManager.h"
-#include "WebNetworkInfoManagerMessages.h"
-#endif
-
 #if ENABLE(NETWORK_PROCESS)
 #if PLATFORM(COCOA)
 #include "CookieStorageShim.h"
@@ -198,9 +193,6 @@ WebProcess::WebProcess()
 #endif
 #if ENABLE(BATTERY_STATUS)
     addSupplement<WebBatteryManager>();
-#endif
-#if ENABLE(NETWORK_INFO)
-    addSupplement<WebNetworkInfoManager>();
 #endif
 #if USE(SOUP) && !ENABLE(CUSTOM_PROTOCOLS)
     addSupplement<WebSoupRequestManager>();
@@ -744,7 +736,7 @@ bool WebProcess::isPlugInAutoStartOriginHash(unsigned plugInOriginHash)
 
 bool WebProcess::shouldPlugInAutoStartFromOrigin(const WebPage* page, const String& pageOrigin, const String& pluginOrigin, const String& mimeType)
 {
-    if (m_plugInAutoStartOrigins.contains(pluginOrigin))
+    if (!pluginOrigin.isEmpty() && m_plugInAutoStartOrigins.contains(pluginOrigin))
         return true;
 
 #ifdef ENABLE_PRIMARY_SNAPSHOTTED_PLUGIN_HEURISTIC

@@ -1,3 +1,1184 @@
+2014-04-23  Alexey Proskuryakov  <ap@apple.com>
+
+        Eliminate internals.setMockScrollbarsEnabled()
+        https://bugs.webkit.org/show_bug.cgi?id=132085
+
+        Reviewed by Tim Horton.
+
+        Remove calls, all of which were resetting it to true (which is the default, and
+        the only value that makes sense).
+
+        * compositing/geometry/fixed-position.html:
+        * compositing/geometry/horizontal-scroll-composited.html:
+        * compositing/geometry/vertical-scroll-composited.html:
+        * compositing/iframes/resources/scrollgrandchild-inner.html:
+        * compositing/overflow/fixed-position-ancestor-clip.html:
+        * compositing/resources/mock_scrollbars.js: Removed.
+        * css3/filters/blur-filter-page-scroll-parents.html:
+        * css3/filters/blur-filter-page-scroll-self.html:
+        * css3/filters/blur-filter-page-scroll.html:
+        * fast/dom/window-scroll-scaling.html:
+        * fast/events/touch/gesture/gesture-scrollbar.html:
+        * fast/sub-pixel/sub-pixel-iframe-copy-on-scroll.html:
+        * fast/sub-pixel/transformed-iframe-copy-on-scroll.html:
+        * media/video-controls-rendering.html:
+        * media/video-zoom.html:
+        * scrollingcoordinator/resources/non-fast-scrollable-region-testing.js:
+
+2014-04-23  David Hyatt  <hyatt@apple.com>
+
+        [New Multicolumn] Crasher when clearing out a flow thread in multicolumn layout.
+        https://bugs.webkit.org/show_bug.cgi?id=132069
+
+        Reviewed by Dean Jackson.
+
+        * fast/multicol/inline-children-crash-expected.txt: Added.
+        * fast/multicol/inline-children-crash.html: Added.
+
+2014-04-23  Morten Stenshorne  <mstensho@opera.com>
+
+        REGRESSION (Safari 6 - ToT): Incorrectly assumes that RenderStyle data can be shared
+        https://bugs.webkit.org/show_bug.cgi?id=113058
+
+        Reviewed by David Hyatt.
+
+        * fast/css/identical-logical-height-decl-expected.html: Added.
+        * fast/css/identical-logical-height-decl.html: Added.
+
+2014-04-23  Lorenzo Tilve  <ltilve@igalia.com>
+
+        [GTK] Unreviewed GTK gardening
+        https://bugs.webkit.org/show_bug.cgi?id=132058
+
+        * platform/gtk/TestExpectations:
+
+2014-04-23  Morten Stenshorne  <mstensho@opera.com>
+
+        [New Multicolumn] fast/multicol/overflow-content.html displays red
+        https://bugs.webkit.org/show_bug.cgi?id=131809
+
+        Reviewed by David Hyatt.
+
+        * fast/multicol/break-in-columns-before-spanner-expected.html: Added.
+        * fast/multicol/break-in-columns-before-spanner.html: Added.
+        * fast/multicol/newmulticol/compare-with-old-impl/overflow-content-expected.html: Added.
+        * fast/multicol/newmulticol/compare-with-old-impl/overflow-content.html: Added.
+
+2014-04-23  Morten Stenshorne  <mstensho@opera.com>
+
+        Overflow propagation broken in BTT and RTL writing-modes
+        https://bugs.webkit.org/show_bug.cgi?id=113781
+
+        Reviewed by David Hyatt.
+
+        * fast/css/overflow-btt-border-after-expected.txt: Added.
+        * fast/css/overflow-btt-border-after.html: Added.
+        * fast/css/overflow-rtl-border-after-expected.txt: Added.
+        * fast/css/overflow-rtl-border-after.html: Added.
+        * fast/multicol/vertical-rl/rules-with-border-before-expected.png: Removed.
+        * platform/gtk/fast/multicol/vertical-rl/rules-with-border-before-expected.png: Removed.
+        * platform/mac/fast/multicol/vertical-rl/rules-with-border-before-expected.png: Removed.
+        Removed incorrect screenshots that now differ from the actual (correct) rendering.
+
+2014-04-23  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        Unreviewed EFL gardening.
+
+        * platform/efl-wk1/css3/flexbox/flexbox-baseline-expected.png: Removed.
+        * platform/efl-wk1/css3/flexbox/flexbox-baseline-expected.txt: Removed.
+        * platform/efl-wk1/editing/input/reveal-caret-of-multiline-contenteditable-expected.txt: Removed.
+        * platform/efl-wk1/fast/block/basic/020-expected.txt: Removed.
+        * platform/efl-wk2/TestExpectations:
+        * platform/efl/TestExpectations:
+        * platform/efl/css3/flexbox/flexbox-baseline-expected.png: Renamed from LayoutTests/platform/efl-wk2/css3/flexbox/flexbox-baseline-expected.png.
+        * platform/efl/css3/flexbox/flexbox-baseline-expected.txt: Renamed from LayoutTests/platform/efl-wk2/css3/flexbox/flexbox-baseline-expected.txt.
+        * platform/efl/editing/input/reveal-caret-of-multiline-contenteditable-expected.txt: Renamed from LayoutTests/platform/efl-wk2/editing/input/reveal-caret-of-multiline-contenteditable-expected.txt.
+
+2014-04-23  Krzysztof Wolanski  <k.wolanski@samsung.com>
+
+        [EFL] Add expectations of new added tests.
+        https://bugs.webkit.org/show_bug.cgi?id=132052
+
+        Unreviewed EFL gardening.
+
+        * platform/efl-wk2/TestExpectations:
+        * platform/efl/fast/repaint/spanner-with-margin-expected.txt: Added. Rebaseline after r167439
+
+2014-04-22  Grzegorz Czajkowski  <g.czajkowski@samsung.com>
+
+        Refactoring editing/selection/13804.html
+        https://bugs.webkit.org/show_bug.cgi?id=131986
+
+        Reviewed by Darin Adler.
+
+        This test does not need pixel baselines (MAC, EFL, GTK) to just
+        check whether spelling marker appears on 'adf'.
+
+        According to bug 125688, the test starts using asynchronous
+        spellchecking.
+
+        Since the test mostly verifies spelling behaviour, it was moved
+        to editing/spelling directory.
+        Its name was changed to spelling-backward.html.
+
+        * editing/selection/13804.html: Removed.
+        * editing/spelling/spelling-backward-expected.txt: Added, renamed from editing/selection/13804.html.
+        * editing/spelling/spelling-backward.html: Added.
+
+        * platform/efl/editing/selection/13804-expected.png: Removed.
+        * platform/efl/editing/selection/13804-expected.txt: Removed.
+        * platform/gtk/editing/selection/13804-expected.png: Removed.
+        * platform/gtk/editing/selection/13804-expected.txt: Removed.
+        * platform/mac/editing/selection/13804-expected.png: Removed.
+        * platform/mac/editing/selection/13804-expected.txt: Removed.
+        Get rid of platform specific expectation.
+
+        * platform/gtk/TestExpectations:
+        * platform/mac-wk2/TestExpectations:
+        * platform/win/TestExpectations:
+        Mark spelling-backward.html as failure due to missing asynchronous spellchecking.
+
+2014-04-22  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Unreviewed EFL gardening. media tests has been broken since r166395 on both EFL wk1 and wk2.
+
+        * platform/efl-wk2/TestExpectations:
+        * platform/efl/TestExpectations:
+
+2014-04-22  Andreas Kling  <akling@apple.com>
+
+        Skip fast/events/ghostly-mousemoves-in-subframe.html on Mac/WK1.
+
+        * platform/mac-wk1/TestExpectations:
+
+2014-04-22  Zalan Bujtas  <zalan@apple.com>
+
+        Do not paint border image when the border rect is empty.
+        https://bugs.webkit.org/show_bug.cgi?id=131988
+
+        Reviewed by Darin Adler.
+
+        http://trac.webkit.org/changeset/167351 introduced an early return when border
+        rect is empty. This patch ensures that border image is not painted either in that case.
+
+        * fast/css/padding-margin-negative-border-expected.html: Borders in -expected.html does not get painted either, just
+        ensure that they are explicitly different colors.
+        * fast/css/padding-margin-negative-border.html:
+
+2014-04-22  Ryosuke Niwa  <rniwa@webkit.org>
+
+        REGRESSION (r157328): popover to check into flight ba.com dismisses instantly when focusing form
+        https://bugs.webkit.org/show_bug.cgi?id=131949
+
+        Reviewed by Darin Adler.
+
+        Add a test that dumps the event target and the related target of every mouse event
+        when dispatched inside an input element inside a details element.
+
+        This catches the regression as well as other bugs I encountered while fixing the bug.
+
+        We need a WK2 specific results because WK1 mac results contain an extra fake mouse move event.
+
+        * fast/events/shadow-event-path-expected.txt: Added.
+        * fast/events/shadow-event-path.html: Added.
+        * platform/mac-wk2/fast/events/shadow-event-expected.txt: Added.
+
+2014-04-22  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Rollout r156635 since the old behavior was intentional.
+
+        * editing/caret/selection-with-caret-type-progress-expected.txt: Removed.
+        * editing/caret/selection-with-caret-type-progress.html: Removed.
+
+2014-04-22  Andreas Kling  <akling@apple.com>
+
+        REGRESSION (r151839): Subframe keeps getting mousemove events with the same coordinates after hiding a hovered element.
+        <https://webkit.org/b/131974>
+        <rdar://problem/15907469>
+
+        Add a test that triggers the weirdness where removing the renderer from
+        a hovered element in a subframe would leave the subframe's EventHandler
+        in a state where it could dispatch fake mousemove events with stale
+        coordinates in response to style recalc.
+
+        Note that the final 500ms delay is because fake mousemove events are
+        sent on 250ms delay timers so we need to give it some time to catch up.
+
+        Reviewed by Benjamin Poulain.
+
+        * fast/events/ghostly-mousemoves-in-subframe-expected.txt: Added.
+        * fast/events/ghostly-mousemoves-in-subframe.html: Added.
+        * platform/mac-wk2/fast/events/resources/ghostly-mousemoves-in-subframe-the-actual-subframe.html: Added.
+
+2014-04-22  Tim Horton  <timothy_horton@apple.com>
+
+        REGRESSION: JSRegress's js/slow-stress/new-spread.html fails sometimes
+        https://bugs.webkit.org/show_bug.cgi?id=132022
+        <rdar://problem/16690671>
+
+        * TestExpectations:
+        Mark the test as flaky pass/fail/timeout, because that's what it is.
+
+2014-04-21  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [OS X] Glyph spacing for system fonts may be incorrect
+        https://bugs.webkit.org/show_bug.cgi?id=131967
+
+        Reviewed by Simon Fraser.
+
+        Updating test to be more robust.
+
+        * fast/forms/search/intrinsic-search-width-with-decoration-border-padding-expected.txt:
+        * fast/forms/search/intrinsic-search-width-with-decoration-border-padding.html:
+
+2014-04-22  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        REGRESSION (r167652): Broke fast/regions/cssom/region-range-for-box-crash.html in debug mode
+        https://bugs.webkit.org/show_bug.cgi?id=131982
+
+        Reviewed by David Hyatt.
+
+        * TestExpectations: Unskip fast/regions/cssom/region-range-for-box-crash.html.
+
+2014-04-22  Brent Fulgham  <bfulgham@apple.com>
+
+        Check (rather than assume) element is a RenderTableSection before using it
+        https://bugs.webkit.org/show_bug.cgi?id=121858
+
+        Reviewed by David Kilzer.
+
+        * fast/table/table-insert-object-before-td-crash-expected.txt: Added.
+        * fast/table/table-insert-object-before-td-crash.html: Added.
+
+2014-04-22  David Hyatt  <hyatt@apple.com>
+
+        [New Multicolumn] fast/multicol/multicol-with-child-renderLayer-for-input.html puts the textfield in the wrong place
+        https://bugs.webkit.org/show_bug.cgi?id=131808
+
+        Reviewed by Brady Eidson.
+
+        * fast/multicol/newmulticol/compare-with-old-impl/multicol-with-child-renderLayer-for-input-expected.html: Added.
+        * fast/multicol/newmulticol/compare-with-old-impl/multicol-with-child-renderLayer-for-input.html: Added.
+
+2014-04-22  Zalan Bujtas  <zalan@apple.com>
+
+        border-style: double rendered as solid when combined with border-radius
+        https://bugs.webkit.org/show_bug.cgi?id=131927
+
+        Reviewed by Simon Fraser.
+
+        BorderEdge::getDoubleBorderStripeWidths() should return the calculated inner, outer border widths. 
+
+        * fast/borders/hidpi-double-border-with-border-radius-always-produce-solid-line-expected.html: Added.
+        * fast/borders/hidpi-double-border-with-border-radius-always-produce-solid-line.html: Added.
+
+2014-04-22  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        Unreviewed gardening.
+
+        * TestExpectations: fast/regions/cssom/region-range-for-box-crash.html is crashing on debug mode after r167652.
+
+2014-04-22  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [CSS Regions] Selection highlight doesn't match DOM selection
+        https://bugs.webkit.org/show_bug.cgi?id=131511
+
+        Reviewed by David Hyatt.
+
+        Add new test to check highlight of render objects moved under RenderNamedFlowThread in the render tree.
+
+        Updated some tests to avoid issues with selection gap filling in the new implementation.
+
+        * fast/regions/selection/selecting-text-including-region-expected.html: Added.
+        * fast/regions/selection/selecting-text-including-region.html: Added.
+        * fast/regions/selection/selecting-text-through-different-region-flows-2-expected.html: Updated.
+        * fast/regions/selection/selecting-text-through-different-region-flows-2.html: Updated.
+        * fast/regions/selection/selection-direction-expected.html: Updated.
+        * fast/regions/selection/selection-direction.html: Updated.
+
+2014-04-21  Brent Fulgham  <bfulgham@apple.com>
+
+        [Mac] After a horizontal overflow scroll with a mechanical wheel mouse, vertical scrolling no longer works
+        https://bugs.webkit.org/show_bug.cgi?id=131960
+        <rdar://problem/16142100>
+
+        Reviewed by Darin Adler.
+
+        * platform/mac/fast/scrolling/scroll-div-no-latching-expected.txt: Added.
+        * platform/mac/fast/scrolling/scroll-div-no-latching.html: Added.
+
+2014-04-21  Zalan Bujtas  <zalan@apple.com>
+
+        REGRESSION (r166784): Gradient at background of iCloud login page doesn’t go all the way to the bottom
+        https://bugs.webkit.org/show_bug.cgi?id=131924
+
+        Computing tile dimension for contain/cover requires higher precision than what LayoutUnit has. Switching to floats.
+
+        Reviewed by Simon Fraser.
+
+        * fast/backgrounds/hidpi-background-image-contain-cover-scale-needs-more-precision-expected.html: Added.
+        * fast/backgrounds/hidpi-background-image-contain-cover-scale-needs-more-precision.html: Added.
+
+2014-04-21  Eric Carlson  <eric.carlson@apple.com>
+
+        [Mac] implement WebKitDataCue
+        https://bugs.webkit.org/show_bug.cgi?id=131799
+
+        Reviewed by Dean Jackson.
+
+        * http/tests/media/resources/hls: Added.
+        * http/tests/media/resources/hls/metadata: Added.
+        * http/tests/media/resources/hls/metadata/fileSequence0.ts: Added.
+        * http/tests/media/resources/hls/metadata/fileSequence1.ts: Added.
+        * http/tests/media/resources/hls/metadata/fileSequence2.ts: Added.
+        * http/tests/media/resources/hls/metadata/fileSequence3.ts: Added.
+        * http/tests/media/resources/hls/metadata/prog_index.m3u8: Added.
+        * http/tests/media/track-in-band-hls-metadata-expected.txt: Added.
+        * http/tests/media/track-in-band-hls-metadata.html: Added.
+        * media/track/track-datacue-value-expected.txt: Added.
+        * media/track/track-datacue-value.html: Added.
+        * platform/efl/TestExpectations: Skip the new tests.
+        * platform/gtk/TestExpectations: Ditto.
+        * platform/mac/js/dom/global-constructors-attributes-expected.txt: Update.
+        * platform/mac-mountainlion/js/dom/global-constructors-attributes-expected.txt: Update.
+        * platform/mac/TestExpectations: Skip DataCue test on all Mac versions. Skip HLS test on 
+            Mountain Lion.
+        * platform/win/TestExpectations: Skip the new tests.
+
+2014-04-21  Benjamin Poulain  <benjamin@webkit.org>
+
+        Add Element.matches, the standard name for webkitMatchesSelector
+        https://bugs.webkit.org/show_bug.cgi?id=131922
+
+        Reviewed by Andreas Kling.
+
+        Update the tests to verify both Element.matches and Element.webkitMatchesSelector
+
+        * fast/dom/SelectorAPI/attrname-case-insensitive-expected.txt:
+        * fast/dom/SelectorAPI/attrname-case-insensitive.html:
+        * fast/dom/SelectorAPI/attrname-case-sensitive-expected.txt:
+        * fast/dom/SelectorAPI/attrname-case-sensitive.xhtml:
+        * fast/dom/SelectorAPI/caseID-almost-strict-expected.txt:
+        * fast/dom/SelectorAPI/caseID-almost-strict.html:
+        * fast/dom/SelectorAPI/caseID-expected.txt:
+        * fast/dom/SelectorAPI/caseID-strict-expected.txt:
+        * fast/dom/SelectorAPI/caseID-strict.html:
+        * fast/dom/SelectorAPI/caseID.html:
+        * fast/dom/SelectorAPI/caseTag-expected.txt:
+        * fast/dom/SelectorAPI/caseTag.html:
+        * fast/dom/SelectorAPI/caseTagX-expected.txt:
+        * fast/dom/SelectorAPI/caseTagX.xhtml:
+        * fast/dom/SelectorAPI/detached-element-expected.txt:
+        * fast/dom/SelectorAPI/not-supported-namespace-in-selector-expected.txt:
+        * fast/dom/SelectorAPI/not-supported-namespace-in-selector.html:
+        * fast/dom/SelectorAPI/script-tests/detached-element.js:
+        * fast/dom/SelectorAPI/script-tests/undefined-null-stringify.js:
+        * fast/dom/SelectorAPI/script-tests/viewless-document.js:
+        * fast/dom/SelectorAPI/undefined-null-stringify-expected.txt:
+        * fast/dom/SelectorAPI/viewless-document-expected.txt:
+        * fast/forms/radio/radio-live-validation-style-expected.txt:
+        * fast/forms/radio/radio-live-validation-style.html:
+        * fast/harness/results.html:
+
+2014-04-21  Rik Cabanier  <cabanier@adobe.com>
+
+        [CSS Blending] Remove support for non-separable blend modes from mix-blend-mode
+        https://bugs.webkit.org/show_bug.cgi?id=131824
+
+        Reviewed by Dean Jackson.
+
+        Removed or updated tests that used non-separable blend modes in combination
+        with mix-blend-mode.
+
+        * css3/compositing/blend-mode-property-expected.txt:
+        * css3/compositing/blend-mode-property-parsing-expected.txt:
+        * css3/compositing/blend-mode-simple-composited.html:
+        * css3/compositing/blend-mode-simple.html:
+        * css3/compositing/script-tests/blend-mode-property-parsing.js:
+        * css3/compositing/script-tests/blend-mode-property.js:
+        * css3/compositing/svg-blend-color.html: Removed.
+        * css3/compositing/svg-blend-hue.html: Removed.
+        * css3/compositing/svg-blend-luminosity.html: Removed.
+        * css3/compositing/svg-blend-saturation.html: Removed.
+        * platform/mac/css3/compositing/blend-mode-simple-composited-expected.txt:
+        * platform/mac/css3/compositing/blend-mode-simple-expected.txt:
+
+2014-04-21  David Hyatt  <hyatt@apple.com>
+
+        [New Multicolumn] vertical-rl/unsplittable-inline-block misrenders the column rule.
+        https://bugs.webkit.org/show_bug.cgi?id=131818
+
+        Reviewed by Anders Carlsson.
+        
+        Patch the test to be column-fill:auto, since the other versions
+        of the test all had that specified already.
+
+        * fast/multicol/vertical-rl/unsplittable-inline-block.html:
+
+2014-04-21  David Hyatt  <hyatt@apple.com>
+
+        [New Multicolumn] Column set drawing under horizontal scrollbar.
+        https://bugs.webkit.org/show_bug.cgi?id=131812.
+
+        Reviewed by Sam Weinig.
+
+        * fast/multicol/newmulticol/compare-with-old-impl/LeftToRight-tb-expected.html: Added.
+        * fast/multicol/newmulticol/compare-with-old-impl/LeftToRight-tb.html: Added.
+
+2014-04-21  Alexey Proskuryakov  <ap@apple.com>
+
+        Update results of fast/images/image-controls-basic.html
+
+        * platform/mac/TestExpectations:
+        * platform/mac/fast/images/image-controls-basic-expected.png:
+        * platform/mac/fast/images/image-controls-basic-expected.txt:
+
+2014-04-21  David Hyatt  <hyatt@apple.com>
+
+        [New Multicolumn] Add test case for shrink-to-column-height now that
+        it passes in the new impl.
+        https://bugs.webkit.org/show_bug.cgi?id=131814
+
+        Reviewed by Dean Jackson.
+
+        * fast/multicol/newmulticol/compare-with-old-impl/shrink-to-column-height-for-pagination-expected.html: Added.
+        * fast/multicol/newmulticol/compare-with-old-impl/shrink-to-column-height-for-pagination.html: Added.
+
+2014-04-21  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] Unreviewed GTK gardening
+
+        Update gtk/TestExpectations and rebaseline some gtk test results.
+
+        * platform/gtk/TestExpectations: Mark fast/repaint/hidpi-wrong-repaint-rect-when-parent-has-noncompositing-transform.html
+        as failure and fast/dom/Window/mozilla-focus-blur.html as flaky.
+        * platform/gtk/fast/multicol/newmulticol/client-rects-expected.txt: Rebaseline after r167335.
+        * platform/gtk/fast/repaint/reflection-redraw-expected.txt: Rebaseline after r167568.
+        * platform/gtk/fast/table/dynamic-caption-add-remove-before-child-expected.txt: Rebaseline after r167568.
+        * platform/gtk/fast/table/multiple-captions-display-expected.txt: Rebaseline after r167568.
+        * platform/gtk/tables/mozilla/marvin/body_col-expected.txt: Rebaseline after r167568.
+        * platform/gtk/tables/mozilla/marvin/x_th_valign_baseline-expected.txt: Rebaseline after r167568.
+        * platform/gtk/tables/mozilla/other/body_col-expected.txt: Rebaseline after r167568.
+        * platform/gtk/tables/mozilla_expected_failures/bugs/bug10140-expected.txt: Rebaseline after r167568.
+        * platform/gtk/tables/mozilla_expected_failures/bugs/bug10216-expected.txt: Rebaseline after r167568.
+        * platform/gtk/tables/mozilla_expected_failures/core/captions3-expected.txt: Rebaseline after r167568.
+        * platform/gtk/tables/mozilla_expected_failures/other/test4-expected.txt: Rebaseline after r167568.
+        * platform/gtk/fast/repaint/spanner-with-margin-expected.txt: Added. Rebaseline after r167439.
+
+2014-04-21  Alexey Proskuryakov  <ap@apple.com>
+
+        http/tests/cache/subresource-failover-to-network.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=131936
+
+        Reviewed by Brady Eidson.
+
+        The test was racy, because it was unintentionally queuing TestRunner operations
+        twice. Also, it failed to clean up its cookie.
+
+        Rewrote to not use TestRunner queuing, making the test work in browser.
+
+        * http/tests/cache/resources/subresource-failover-to-network.cgi:
+        * http/tests/cache/subresource-failover-to-network.html:
+
+2014-04-21  David Hyatt  <hyatt@apple.com>
+
+        [New Multicolumn] Column balancing is slow on float-multicol.html
+        https://bugs.webkit.org/show_bug.cgi?id=131801
+
+        Reviewed by Enrica Casucci.
+
+        * fast/multicol/tall-float-expected.html: Added.
+        * fast/multicol/tall-float.html: Added.
+
+2014-04-21  David Hyatt  <hyatt@apple.com>
+
+        [New Multicolumn] Pagination mode messed up with non-inline axis and reversed direction.
+        https://bugs.webkit.org/show_bug.cgi?id=131811
+
+        Reviewed by Dean Jackson.
+
+        * fast/multicol/newmulticol/compare-with-old-impl/BottomToTop-tb-expected.html: Added.
+        * fast/multicol/newmulticol/compare-with-old-impl/BottomToTop-tb.html: Added.
+
+2014-04-21  Alexey Proskuryakov  <ap@apple.com>
+
+        REGRESSION (r167530): ASSERT(m_selfTime <= m_totalTime) on tests that run after certain Inspector tests
+        https://bugs.webkit.org/show_bug.cgi?id=131919
+
+        * TestExpectations: Skipping some Inspector tests, hopefully these are the ones that
+        cause trouble later.
+
+2014-04-21  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r167584.
+        https://bugs.webkit.org/show_bug.cgi?id=131929
+
+        Broke Objective-C bindings test (Requested by ap on #webkit).
+
+        Reverted changeset:
+
+        "Add Element.matches, the standard name for
+        webkitMatchesSelector"
+        https://bugs.webkit.org/show_bug.cgi?id=131922
+        http://trac.webkit.org/changeset/167584
+
+2014-04-20  Benjamin Poulain  <benjamin@webkit.org>
+
+        Compile the :root pseudo class and fix a related issue with :nth-child()
+        https://bugs.webkit.org/show_bug.cgi?id=131926
+
+        Reviewed by Andreas Kling.
+
+        Add more test coverage that would have caught the bug with :nth-child(n).
+
+        * fast/selectors/nth-child-on-root-expected.txt: Added.
+        * fast/selectors/nth-child-on-root.html: Added.
+
+2014-04-20  Benjamin Poulain  <benjamin@webkit.org>
+
+        Add Element.matches, the standard name for webkitMatchesSelector
+        https://bugs.webkit.org/show_bug.cgi?id=131922
+
+        Reviewed by Andreas Kling.
+
+        Update the tests to verify both Element.matches and Element.webkitMatchesSelector
+
+        * fast/dom/SelectorAPI/attrname-case-insensitive-expected.txt:
+        * fast/dom/SelectorAPI/attrname-case-insensitive.html:
+        * fast/dom/SelectorAPI/attrname-case-sensitive-expected.txt:
+        * fast/dom/SelectorAPI/attrname-case-sensitive.xhtml:
+        * fast/dom/SelectorAPI/caseID-almost-strict-expected.txt:
+        * fast/dom/SelectorAPI/caseID-almost-strict.html:
+        * fast/dom/SelectorAPI/caseID-expected.txt:
+        * fast/dom/SelectorAPI/caseID-strict-expected.txt:
+        * fast/dom/SelectorAPI/caseID-strict.html:
+        * fast/dom/SelectorAPI/caseID.html:
+        * fast/dom/SelectorAPI/caseTag-expected.txt:
+        * fast/dom/SelectorAPI/caseTag.html:
+        * fast/dom/SelectorAPI/caseTagX-expected.txt:
+        * fast/dom/SelectorAPI/caseTagX.xhtml:
+        * fast/dom/SelectorAPI/detached-element-expected.txt:
+        * fast/dom/SelectorAPI/not-supported-namespace-in-selector-expected.txt:
+        * fast/dom/SelectorAPI/not-supported-namespace-in-selector.html:
+        * fast/dom/SelectorAPI/script-tests/detached-element.js:
+        * fast/dom/SelectorAPI/script-tests/undefined-null-stringify.js:
+        * fast/dom/SelectorAPI/script-tests/viewless-document.js:
+        * fast/dom/SelectorAPI/undefined-null-stringify-expected.txt:
+        * fast/dom/SelectorAPI/viewless-document-expected.txt:
+        * fast/forms/radio/radio-live-validation-style-expected.txt:
+        * fast/forms/radio/radio-live-validation-style.html:
+        * fast/harness/results.html:
+
+2014-04-20  Alexey Proskuryakov  <ap@apple.com>
+
+        Expando properties on attribute nodes disappear
+        https://bugs.webkit.org/show_bug.cgi?id=88045
+
+        * TestExpectations:
+        * platform/efl/TestExpectations:
+        * platform/mac/TestExpectations:
+        * platform/win/TestExpectations:
+        Consolidated test expectations, because all ports are equally affected. Some
+        platforms accidentally start to pass this test sometimes, but there is no real fix yet.
+
+2014-04-20  Zalan Bujtas  <zalan@apple.com>
+
+        Subpixel rendering: RenderLayer's size is set using enclosingRect() which can result in cruft.
+        https://bugs.webkit.org/show_bug.cgi?id=131468
+
+        Reviewed by Darin Adler.
+
+        Layers marked opaque may not paint edge pixels, when RenderLayer bounds are non-integral and
+        get device pixel snapped.
+        For details see this: https://trac.webkit.org/r159463
+
+        * compositing/hidpi-non-simple-compositing-layer-with-fractional-size-and-background-expected.html: Added.
+        * compositing/hidpi-non-simple-compositing-layer-with-fractional-size-and-background.html: Added.
+
+2014-04-19  Darin Adler  <darin@apple.com>
+
+        Simple layout can get confused by coordinate overflow
+        https://bugs.webkit.org/show_bug.cgi?id=131890
+        rdar://problem/15558510
+
+        Reviewed by Andreas Kling.
+
+        * fast/css/simple-layout-overflow-expected.txt: Added.
+        * fast/css/simple-layout-overflow.html: Added.
+
+2014-04-19  Alexey Proskuryakov  <ap@apple.com>
+
+        Crashes in HTMLFormElement::submit.
+        https://bugs.webkit.org/show_bug.cgi?id=131910
+        <rdar://problem/15661790>
+
+        Reviewed by Anders Carlsson.
+
+        * fast/forms/form-submission-crash-2-expected.txt: Added.
+        * fast/forms/form-submission-crash-2.html: Added.
+        * fast/forms/form-submission-crash-expected.txt: Added.
+        * fast/forms/form-submission-crash.html: Added.
+
+2014-04-20  Antti Koivisto  <antti@apple.com>
+
+        Text bounding box computation for simple line layout is wrong
+        https://bugs.webkit.org/show_bug.cgi?id=131912
+
+        Reviewed by Andreas Kling.
+        
+        Some dumped RenderText sizes change in table related test. These are progressions,
+        the new results match the contained lines. There are no visual changes.
+
+        * platform/mac/fast/table/dynamic-caption-add-remove-before-child-expected.txt:
+        * platform/mac/fast/table/multiple-captions-display-expected.txt:
+        * platform/mac/tables/mozilla/marvin/body_col-expected.txt:
+        * platform/mac/tables/mozilla/marvin/x_th_valign_baseline-expected.txt:
+        * platform/mac/tables/mozilla/other/body_col-expected.txt:
+        * platform/mac/tables/mozilla_expected_failures/bugs/bug10140-expected.txt:
+        * platform/mac/tables/mozilla_expected_failures/bugs/bug10216-expected.txt:
+        * platform/mac/tables/mozilla_expected_failures/core/captions3-expected.txt:
+        * platform/mac/tables/mozilla_expected_failures/other/test4-expected.txt:
+
+2014-04-20  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r167501.
+        https://bugs.webkit.org/show_bug.cgi?id=131913
+
+        It broke DYEBench (Requested by mhahnenberg on #webkit).
+
+        Reverted changeset:
+
+        "Deleting properties poisons objects"
+        https://bugs.webkit.org/show_bug.cgi?id=131551
+        http://trac.webkit.org/changeset/167501
+
+2014-04-19  Zalan Bujtas  <zalan@apple.com>
+
+        Subpixel rendering: RenderLayer's clipping should snap to device pixel boundaries.
+        https://bugs.webkit.org/show_bug.cgi?id=131466
+
+        Reviewed by Simon Fraser.
+
+        Fractional pixel clipping can produce cruft on RenderLayers. Since RenderLayer
+        sizing and painting are snapped, painting clip rect needs to be snapped the same way.
+
+        * fast/clip/clip-when-rect-has-fractional-pixel-value-expected.html: Added.
+        * fast/clip/clip-when-rect-has-fractional-pixel-value.html: Added.
+
+2014-04-19  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: grid rows are not recognized do to lack of explicit role="row", role="gridcell"
+        https://bugs.webkit.org/show_bug.cgi?id=131819
+
+        Reviewed by Darin Adler.
+
+        * accessibility/table-with-missing-aria-role-rows-expected.txt: Added.
+        * accessibility/table-with-missing-aria-role-rows.html: Added.
+
+2014-04-19  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: Malformed tables exposing incorrect col and colSpans
+        https://bugs.webkit.org/show_bug.cgi?id=131796
+
+        Reviewed by Darin Adler.
+
+        * accessibility/table-incorrect-colspan-cell-expected.txt: Added.
+        * accessibility/table-incorrect-colspan-cell.html: Added.
+
+2014-04-19  Zalan Bujtas  <zalan@apple.com>
+
+       [Mac] Unreviewed gardening.
+
+        repaintRectsAsText() reports wrong subpixel dirty rects on hidpi.
+
+        * platform/mac/TestExpectations:
+
+2014-04-19  Andrei Bucur  <abucur@adobe.com>
+
+        [CSS Regions] Harden the layout in case there are no regions
+        https://bugs.webkit.org/show_bug.cgi?id=131517
+
+        Reviewed by Mihnea Ovidenie.
+
+        Add a test that verifies the content of a flow thread is updated when all
+        the regions are removed.
+
+        * fast/regions/simplified-layout-no-regions-expected.txt: Added.
+        * fast/regions/simplified-layout-no-regions.html: Added.
+
+2014-04-19  Darin Adler  <darin@apple.com>
+
+        Cleared executable bits on many .html and .txt files.
+
+2014-04-19  Zalan Bujtas  <zalan@apple.com>
+
+        https://bugs.webkit.org/show_bug.cgi?id=131594
+        Subpixel rendering: WK1: Wrong repaint rect is calculated when layer has non-compositing transform.
+
+        Reviewed by Simon Fraser.
+
+        We need to snap the repaint rect for transformed object the same way when we paint them.
+
+        Test: fast/repaint/hidpi-wrong-repaint-rect-when-parent-has-noncompositing-transform.html
+
+        * fast/repaint/hidpi-wrong-repaint-rect-when-parent-has-noncompositing-transform-expected.txt: Added.
+        * fast/repaint/hidpi-wrong-repaint-rect-when-parent-has-noncompositing-transform.html: Added.
+
+2014-04-18  Dean Jackson  <dino@apple.com>
+
+        [WebGL] Two tests failing on Mountain Lion after r167520
+        https://bugs.webkit.org/show_bug.cgi?id=131886
+
+        Skip two failing tests.
+
+        * platform/mac/TestExpectations:
+
+2014-04-18  Timothy Hatcher  <timothy@apple.com>
+
+        Skip fast/dom/gc-attribute-node.html which is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=131885
+
+        * platform/mac/TestExpectations:
+
+2014-04-18  Simon Fraser  <simon.fraser@apple.com>
+
+        Contents of directly composited image layers are sometimes missing
+        https://bugs.webkit.org/show_bug.cgi?id=131880
+
+        Reviewed by Tim Horton.
+        
+        Test that that shows the issue in Safari, but not in the test
+        runner because of timing issues, but maybe it will some day.
+
+        * compositing/images/update-content-rect-expected.html: Added.
+        * compositing/images/update-content-rect.html: Added.
+
+2014-04-18  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r167527.
+        https://bugs.webkit.org/show_bug.cgi?id=131883
+
+        Broke 32-bit build (Requested by ap on #webkit).
+
+        Reverted changeset:
+
+        "[Mac] implement WebKitDataCue"
+        https://bugs.webkit.org/show_bug.cgi?id=131799
+        http://trac.webkit.org/changeset/167527
+
+2014-04-18  Eric Carlson  <eric.carlson@apple.com>
+
+        [Mac] implement WebKitDataCue
+        https://bugs.webkit.org/show_bug.cgi?id=131799
+
+        Reviewed by Dean Jackson.
+
+        * http/tests/media/resources/hls: Added.
+        * http/tests/media/resources/hls/metadata: Added.
+        * http/tests/media/resources/hls/metadata/fileSequence0.ts: Added.
+        * http/tests/media/resources/hls/metadata/fileSequence1.ts: Added.
+        * http/tests/media/resources/hls/metadata/fileSequence2.ts: Added.
+        * http/tests/media/resources/hls/metadata/fileSequence3.ts: Added.
+        * http/tests/media/resources/hls/metadata/prog_index.m3u8: Added.
+        * http/tests/media/track-in-band-hls-metadata-expected.txt: Added.
+        * http/tests/media/track-in-band-hls-metadata.html: Added.
+        * media/track/track-datacue-value-expected.txt: Added.
+        * media/track/track-datacue-value.html: Added.
+        * platform/efl/TestExpectations: Skip the new tests.
+        * platform/gtk/TestExpectations: Ditto.
+        * platform/mac/js/dom/global-constructors-attributes-expected.txt: Update.
+        * platform/mac-mountainlion/js/dom/global-constructors-attributes-expected.txt: Update.
+        * platform/mac/TestExpectations: Skip DataCue test on all Mac versions. Skip HLS test on 
+            Mountain Lion.
+        * platform/win/TestExpectations: Skip the new tests.
+
+2014-04-18  Hans Muller  <hmuller@adobe.com>
+
+        [CSS Shapes] Add parsing support for gradients
+        https://bugs.webkit.org/show_bug.cgi?id=131444
+
+        Reviewed by Bem Jones-Bey.
+
+        * fast/shapes/parsing/parsing-shape-outside-expected.txt:
+        * fast/shapes/parsing/parsing-test-utils.js:
+        * fast/shapes/shape-outside-floats/shape-outside-linear-gradient-expected.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-linear-gradient.html: Added.
+
+2014-04-18  Alexey Proskuryakov  <ap@apple.com>
+
+        [WK1] media/event-attributes.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=131855
+
+        * platform/mac/TestExpectations: Marking as such.
+
+2014-04-17  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        Deleting properties poisons objects
+        https://bugs.webkit.org/show_bug.cgi?id=131551
+
+        Reviewed by Geoffrey Garen.
+
+        New JS regress test. We're ~3.5x faster on this microbenchmark now.
+
+        * js/regress/delete-a-few-properties-then-get-by-id-expected.txt: Added.
+        * js/regress/delete-a-few-properties-then-get-by-id.html: Added.
+        * js/regress/script-tests/delete-a-few-properties-then-get-by-id.js: Added.
+        (MyObject):
+        (foo):
+
+2014-04-18  Alexey Proskuryakov  <ap@apple.com>
+
+        http/tests/multipart/policy-ignore-crash.php erroneously depends on http stack quirks
+        https://bugs.webkit.org/show_bug.cgi?id=131853
+
+        Reviewed by Brady Eidson.
+
+        * http/tests/multipart/policy-ignore-crash.php: Produce a nice multipart response
+        with boundaries on their own lines.
+
+2014-04-18  Simon Fraser  <simon.fraser@apple.com>
+
+        Worse animation performance on pages with 3D transforms
+        https://bugs.webkit.org/show_bug.cgi?id=131838
+        <rdar://problem/16428630&15705876>
+
+        Reviewed by Dean Jackson.
+        
+        Testcase having layers at various z translates which shows the bucketing
+        of contentsScale, and fix results affected by the patch.
+
+        * compositing/contents-scale/rounded-contents-scale-expected.txt: Added.
+        * compositing/contents-scale/rounded-contents-scale.html: Added.
+        * compositing/contents-scale/z-translate-expected.txt:
+        * platform/mac-wk2/compositing/tiling/rotated-tiled-clamped-expected.txt:
+        * platform/mac-wk2/compositing/tiling/rotated-tiled-preserve3d-clamped-expected.txt:
+        * platform/mac/compositing/overflow/composited-scrolling-paint-phases-expected.txt:
+        * platform/mac/compositing/tiling/rotated-tiled-clamped-expected.txt:
+        * platform/mac/compositing/tiling/rotated-tiled-preserve3d-clamped-expected.txt:
+        * platform/mac/compositing/visible-rect/3d-transform-style-expected.txt:
+        * platform/mac/compositing/visible-rect/3d-transformed-expected.txt:
+        * platform/mac/compositing/visible-rect/nested-transform-expected.txt:
+
+2014-04-18  Radu Stavila  <stavila@adobe.com>
+
+        [CSS Regions] Content overflowing a transformed region is clipped
+        https://bugs.webkit.org/show_bug.cgi?id=116833
+
+        Reviewed by Mihnea Ovidenie.
+
+        Added test for overflow of content in 3d transformed regions.
+
+        * fast/regions/overflow-3dtransformed-region-expected.txt: Added.
+        * fast/regions/overflow-3dtransformed-region.html: Added.
+
+2014-04-18  Radu Stavila  <stavila@adobe.com>
+
+        [CSSRegions] Incorrect background paint on positioned element hover
+        https://bugs.webkit.org/show_bug.cgi?id=131617
+
+        Reviewed by Andrei Bucur.
+
+        Added test for the proper repainting of absolute positioned elements in regions when the
+        absolute top of the elements causes it to be pushed to the next region.
+
+        * fast/regions/repaint/repaint-absolute-pushed-to-next-region-expected.txt: Added.
+        * fast/regions/repaint/repaint-absolute-pushed-to-next-region.html: Added.
+
+2014-04-18  Philippe Normand  <pnormand@igalia.com>
+
+        Remove NETWORK_INFO support
+        https://bugs.webkit.org/show_bug.cgi?id=131841
+
+        Reviewed by Gyuyoung Kim.
+
+        * networkinformation/add-listener-from-callback-expected.txt: Removed.
+        * networkinformation/add-listener-from-callback.html: Removed.
+        * networkinformation/basic-all-types-of-events-expected.txt: Removed.
+        * networkinformation/basic-all-types-of-events.html: Removed.
+        * networkinformation/basic-operation-expected.txt: Removed.
+        * networkinformation/basic-operation.html: Removed.
+        * networkinformation/event-after-navigation-expected.txt: Removed.
+        * networkinformation/event-after-navigation.html: Removed.
+        * networkinformation/multiple-frames-expected.txt: Removed.
+        * networkinformation/multiple-frames.html: Removed.
+        * networkinformation/resources/event-after-navigation-new.html: Removed.
+        * networkinformation/script-tests/add-listener-from-callback.js: Removed.
+        * networkinformation/script-tests/basic-all-types-of-events.js: Removed.
+        * networkinformation/script-tests/basic-operation.js: Removed.
+        * networkinformation/script-tests/event-after-navigation.js: Removed.
+        * networkinformation/script-tests/multiple-frames.js: Removed.
+        * networkinformation/script-tests/updates.js: Removed.
+        * networkinformation/script-tests/window-property.js: Removed.
+        * networkinformation/updates-expected.txt: Removed.
+        * networkinformation/updates.html: Removed.
+        * networkinformation/window-property-expected.txt: Removed.
+        * networkinformation/window-property.html: Removed.
+
+2014-04-17  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r167478.
+        https://bugs.webkit.org/show_bug.cgi?id=131840
+
+        Broke multicol tests (Requested by ap on #webkit).
+
+        Reverted changeset:
+
+        "[New Multicolumn] Pagination mode messed up with non-inline
+        axis and reversed direction."
+        https://bugs.webkit.org/show_bug.cgi?id=131811
+        http://trac.webkit.org/changeset/167478
+
+2014-04-17  Darin Adler  <darin@apple.com>
+
+        hostname extraction from a URL should not decode percent-escape sequences
+        https://bugs.webkit.org/show_bug.cgi?id=131837
+        rdar://problem/15211936
+
+        Reviewed by Anders Carlsson and Dave Hyatt.
+
+        * fast/dom/DOMURL/parsing-expected.txt: Added.
+        * fast/dom/DOMURL/parsing.html: Added.
+        * fast/dom/HTMLAnchorElement/anchor-element-href-parsing-expected.txt: Added.
+        * fast/dom/HTMLAnchorElement/anchor-element-href-parsing.html: Added.
+
+2014-04-17  David Hyatt  <hyatt@apple.com>
+
+        [New Multicolumn] Pagination mode messed up with non-inline axis and reversed direction.
+        https://bugs.webkit.org/show_bug.cgi?id=131811
+
+        Reviewed by Dean Jackson.
+
+        * fast/multicol/newmulticol/compare-with-old-impl/BottomToTop-tb-expected.html: Added.
+        * fast/multicol/newmulticol/compare-with-old-impl/BottomToTop-tb.html: Added.
+
+2014-04-16  Huang Dongsung  <luxtella@company100.net>
+
+        Make RenderLayerBacking get the timingFunction of the correct animation.
+        https://bugs.webkit.org/show_bug.cgi?id=100632
+
+        Reviewed by Simon Fraser.
+
+        When an element on a compositing layer has multiple animations that have
+        different timingFunctions, the progress of each animation should be
+        calculated using its respective timingFunction in Accelerated
+        Compositing.
+
+        * animations/keyframe-multiple-timing-functions-transform-expected.txt: Added.
+        * animations/keyframe-multiple-timing-functions-transform.html: Added.
+
+2014-04-17  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Unreviewed, EFL gardening. Remove duplicated test case in EFL WK2 TestExpectations.
+
+        * platform/efl-wk2/TestExpectations:
+
+2014-04-17  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Unreviewed, fix a test case path, which was moved to different folder.
+
+        * platform/efl/TestExpectations:
+
+2014-04-17  David Hyatt  <hyatt@apple.com>
+
+        [New Multicolumn] Column rules don't respect the specified stacking order.
+        https://bugs.webkit.org/show_bug.cgi?id=131804
+
+        Reviewed by Beth Dakin.
+
+        * fast/multicol/newmulticol/compare-with-old-impl/column-rules-stacking-expected.html: Added.
+        * fast/multicol/newmulticol/compare-with-old-impl/column-rules-stacking.html: Added.
+
+2014-04-17  Rik Cabanier  <cabanier@adobe.com>
+
+        [CSS Blending] Remove the -webkit- prefix for mix-blend-mode and isolation CSS properties
+        https://bugs.webkit.org/show_bug.cgi?id=131355
+
+        Reviewed by Dean Jackson.
+
+        Removed prefix from mix-blend-mode and isolation in layout tests.
+
+        * css3/compositing/blend-mode-accelerated-with-multiple-stacking-contexts.html:
+        * css3/compositing/blend-mode-ancestor-clipping-layer.html:
+        * css3/compositing/blend-mode-background.html:
+        * css3/compositing/blend-mode-blended-element-overlapping-composited-sibling-should-have-compositing-layer.html:
+        * css3/compositing/blend-mode-isolated-group-1.html:
+        * css3/compositing/blend-mode-isolated-group-2.html:
+        * css3/compositing/blend-mode-isolated-group-3.html:
+        * css3/compositing/blend-mode-layers.html:
+        * css3/compositing/blend-mode-parent-of-composited-blended-has-layer.html:
+        * css3/compositing/blend-mode-property-expected.txt:
+        * css3/compositing/blend-mode-property-parsing-expected.txt:
+        * css3/compositing/blend-mode-property-parsing-invalid-expected.txt:
+        * css3/compositing/blend-mode-reflection.html:
+        * css3/compositing/blend-mode-simple-composited.html:
+        * css3/compositing/blend-mode-simple.html:
+        * css3/compositing/blend-mode-transform-style-expected.txt:
+        * css3/compositing/blend-mode-transform-style.html:
+        * css3/compositing/blend-mode-with-accelerated-sibling.html:
+        * css3/compositing/blend-mode-with-composited-descendant-should-have-layer.html:
+        * css3/compositing/isolation-isolate-blended-child-expected.html:
+        * css3/compositing/isolation-isolate-blended-child.html:
+        * css3/compositing/isolation-parsing.html:
+        * css3/compositing/script-tests/blend-mode-property-parsing-invalid.js:
+        (testInvalidFilterRule):
+        * css3/compositing/script-tests/blend-mode-property-parsing.js:
+        (testBlendModeRule):
+        * css3/compositing/script-tests/blend-mode-property.js:
+        (testblendmode):
+        * css3/compositing/svg-blend-color-dodge.html:
+        * css3/compositing/svg-blend-color.html:
+        * css3/compositing/svg-blend-hard-light.html:
+        * css3/compositing/svg-blend-hue.html:
+        * css3/compositing/svg-blend-layer-blend.html:
+        * css3/compositing/svg-blend-layer-clip-path.html:
+        * css3/compositing/svg-blend-layer-filter.html:
+        * css3/compositing/svg-blend-layer-opacity.html:
+        * css3/compositing/svg-blend-layer-shadow.html:
+        * css3/compositing/svg-blend-luminosity.html:
+        * css3/compositing/svg-blend-multiply-alpha.html:
+        * css3/compositing/svg-blend-multiply.html:
+        * css3/compositing/svg-blend-saturation.html:
+        * css3/compositing/svg-blend-screen.html:
+        * css3/compositing/svg-blend-soft-light.html:
+        * css3/compositing/svg-isolation-default-expected.html:
+        * css3/compositing/svg-isolation-default.html:
+        * css3/compositing/svg-isolation-isolated-group-expected.html:
+        * css3/compositing/svg-isolation-isolated-group.html:
+        * fast/repaint/blend-mode-isolate-stacking-context.html:
+        * inspector-protocol/layers/layers-blending-compositing-reasons.html:
+        * transitions/blendmode-transitions-expected.txt:
+        * transitions/blendmode-transitions.html:
+
+2014-04-16  Jer Noble  <jer.noble@apple.com>
+
+        Fullscreen media controls are unusable in pagination mode
+        https://bugs.webkit.org/show_bug.cgi?id=131705
+
+        Reviewed by Darin Adler.
+
+        * fullscreen/full-screen-no-style-sharing-expected.txt: Rebaselined.
+        * fullscreen/video-cursor-auto-hide.html: Corrected test to move cursor
+            to the middle of the video element.
+
+2014-04-16  Jer Noble  <jer.noble@apple.com>
+
+        [MSE] Multiple initialization segments with same codecs in tracks fail validation.
+        https://bugs.webkit.org/show_bug.cgi?id=131768
+
+        Reviewed by Eric Carlson.
+
+        * media/media-source/media-source-multiple-initialization-segments-expected.txt: Added.
+        * media/media-source/media-source-multiple-initialization-segments.html: Added.
+
+2014-04-17  David Hyatt  <hyatt@apple.com>
+
+        [New Multicolumn] Column sets below spanners don't repaint properly.
+        https://bugs.webkit.org/show_bug.cgi?id=131778
+
+        Reviewed by Beth Dakin.
+
+        * fast/repaint/spanner-with-margin-expected.txt: Added.
+        * fast/repaint/spanner-with-margin.html: Added.
+
+2014-04-17  Eduardo Lima Mitev  <elima@igalia.com>
+
+        [GTK] [Gardening] Updates GTK test expectations
+
+        * platform/gtk/TestExpectations:
+          - Marked as flaky
+            - fast/frames/frame-programmatic-noresize.html
+            - fast/frames/frame-with-noresize-can-be-resized-after-removal-of-noresize.html
+            - fast/frames/frame-with-noresize-can-be-resized-after-setting-noResize-to-false.html
+          - Removed because are passing now
+            - fast/dom/gc-dom-tree-lifetime.html
+            - http/tests/loading/authentication-after-redirect-stores-wrong-credentials/authentication-after-redirect-stores-wrong-credentials.html
+            - editing/editability/ignored-content.html
+
+2014-04-17  Koji Ishii  <kojishi@gmail.com>
+
+        Catch up ruby and its tag omission rule changes in HTML5 CR Feb 2014
+        https://bugs.webkit.org/show_bug.cgi?id=131175
+
+        Reviewed by Darin Adler.
+
+        25 new test cases in 2 test files imported from pull requests to html5lib-tests,
+        with run- and expected-files generated.
+        All new tests pass with the changes included in this patch.
+
+        * html5lib/generated/run-ruby-data-expected.txt: Added.
+        * html5lib/generated/run-ruby-data.html: Added (generated by generate-test-wrappers.py)
+        * html5lib/generated/run-ruby-write-expected.txt: Added.
+        * html5lib/generated/run-ruby-write.html: Added (generated by generate-test-wrappers.py)
+        * html5lib/resources/ruby.dat: Added from https://github.com/darobin/html5lib-tests/pull/1
+        * html5lib/resources/tests19.dat: Updated from https://github.com/html5lib/html5lib-tests/pull/27
+
+2014-04-17  Alexey Proskuryakov  <ap@apple.com>
+
+        Don't skip inspector/dom/content-flow-list.html and inspector/dom/content-flow-content-removal.html.
+
+        First, they no longer crash/assert. They fail most of the time, but that's tracked as bug 129817.
+
+        Second, skipping was ineffective anyway, because we had a preceding [ Pass Failure ]
+        entry for the same files.
+
+        * TestExpectations:
+
+2014-04-17  David Hyatt  <hyatt@apple.com>
+
+        [New Multicolumn] REGRESSION: Column set styles don't update when zooming etc.
+        https://bugs.webkit.org/show_bug.cgi?id=131777
+
+        Reviewed by Enrica Casucci.
+
+        * fast/multicol/zoom-test-expected.html: Added.
+        * fast/multicol/zoom-test.html: Added.
+
+2014-04-17  Darin Adler  <darin@apple.com>
+
+        Add separate flag for IndexedDatabase in workers since the current implementation is not threadsafe
+        https://bugs.webkit.org/show_bug.cgi?id=131785
+        rdar://problem/16003108
+
+        Reviewed by Brady Eidson.
+
+        * js/dom/global-constructors-attributes-dedicated-worker-expected.txt:
+        * js/dom/global-constructors-attributes-shared-worker-expected.txt:
+        Updated results since indexed database features are not on by default any more.
+
+2014-04-17  Ion Rosca  <rosca@adobe.com>
+
+        [CSS Blending] Isolation descendant dependent flags are not updated correctly
+        https://bugs.webkit.org/show_bug.cgi?id=130892
+
+        Reviewed by Dean Jackson.
+
+        * css3/compositing/blend-mode-isolation-flags-append-non-stacking-context-blending.html: Added.
+        * css3/compositing/blend-mode-isolation-flags-append-stacking-context-blending.html: Added.
+        * css3/compositing/blend-mode-isolation-flags-remove-non-stacking-context-blending.html: Added.
+        * css3/compositing/blend-mode-isolation-flags-remove-stacking-context-blending.html: Added.
+        * css3/compositing/blend-mode-isolation-flags-turn-off-blending-no-isolation.html: Added.
+        * css3/compositing/blend-mode-isolation-flags-turn-off-blending.html: Added.
+        * css3/compositing/blend-mode-isolation-flags-turn-off-stacking-context.html: Added.
+        * css3/compositing/blend-mode-isolation-flags-turn-on-blending.html: Added.
+        * css3/compositing/blend-mode-isolation-flags-turn-on-stacking-context.html: Added.
+        * platform/mac/css3/compositing/blend-mode-background-expected.txt:
+        * platform/mac/css3/compositing/blend-mode-isolated-group-1-expected.txt:
+        * platform/mac/css3/compositing/blend-mode-isolated-group-2-expected.txt:
+        * platform/mac/css3/compositing/blend-mode-isolated-group-3-expected.txt:
+        * platform/mac/css3/compositing/blend-mode-isolation-flags-append-non-stacking-context-blending-expected.txt: Added.
+        * platform/mac/css3/compositing/blend-mode-isolation-flags-append-stacking-context-blending-expected.txt: Added.
+        * platform/mac/css3/compositing/blend-mode-isolation-flags-remove-non-stacking-context-blending-expected.txt: Added.
+        * platform/mac/css3/compositing/blend-mode-isolation-flags-remove-stacking-context-blending-expected.txt: Added.
+        * platform/mac/css3/compositing/blend-mode-isolation-flags-turn-off-blending-expected.txt: Added.
+        * platform/mac/css3/compositing/blend-mode-isolation-flags-turn-off-blending-no-isolation-expected.txt: Added.
+        * platform/mac/css3/compositing/blend-mode-isolation-flags-turn-off-stacking-context-expected.txt: Added.
+        * platform/mac/css3/compositing/blend-mode-isolation-flags-turn-on-blending-expected.txt: Added.
+        * platform/mac/css3/compositing/blend-mode-isolation-flags-turn-on-stacking-context-expected.txt: Added.
+        * platform/mac/css3/compositing/blend-mode-layers-expected.txt:
+        * platform/mac/css3/compositing/blend-mode-reflection-expected.txt:
+        * platform/mac/css3/compositing/blend-mode-simple-composited-expected.txt:
+        * platform/mac/css3/compositing/blend-mode-simple-expected.txt:
+
 2014-04-16  Brian J. Burg  <burg@cs.washington.edu>
 
         Web Replay: memoize fallback time values for document.lastModified

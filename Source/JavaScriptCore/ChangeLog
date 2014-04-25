@@ -1,3 +1,897 @@
+2014-04-23  Mark Lam  <mark.lam@apple.com>
+
+        The GC should only resume compiler threads that it suspended in the same GC pass.
+        <https://webkit.org/b/132088>
+
+        Reviewed by Mark Hahnenberg.
+
+        Previously, this scenario can occur:
+        1. Thread 1 starts a GC and tries to suspend DFG worklist threads.  However,
+           no worklists were created yet at the that time.
+        2. Thread 2 starts to compile some functions and creates a DFG worklist, and
+           acquires the worklist thread's lock.
+        3. Thread 1's GC completes and tries to resume suspended DFG worklist thread.
+           This time, it sees the worklist created by Thread 2 and ends up unlocking
+           the worklist thread's lock that is supposedly held by Thread 2.
+        Thereafter, chaos ensues.
+
+        The fix is to cache the worklists that were actually suspended by each GC pass,
+        and only resume those when the GC is done.
+
+        This issue was discovered by enabling COLLECT_ON_EVERY_ALLOCATION and running
+        the fast/workers layout tests.
+
+        * heap/Heap.cpp:
+        (JSC::Heap::visitCompilerWorklists):
+        (JSC::Heap::deleteAllCompiledCode):
+        (JSC::Heap::suspendCompilerThreads):
+        (JSC::Heap::resumeCompilerThreads):
+        * heap/Heap.h:
+
+2014-04-23  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        Arguments::copyBackingStore needs to update m_registers in tandem with m_registerArray
+        https://bugs.webkit.org/show_bug.cgi?id=132079
+
+        Reviewed by Michael Saboff.
+
+        Since we're moving the register backing store, we don't want to leave a dangling pointer into a random CopiedBlock.
+
+        Also added a test that previously triggered this bug.
+
+        * runtime/Arguments.cpp:
+        (JSC::Arguments::copyBackingStore): D'oh!
+        * tests/stress/arguments-copy-register-array-backing-store.js: Added.
+        (foo):
+        (bar):
+
+2014-04-23  Mark Rowe  <mrowe@apple.com>
+
+        [Mac] REGRESSION (r164823): Building JavaScriptCore creates files under /tmp/JavaScriptCore.dst
+        <https://webkit.org/b/132053>
+
+        Reviewed by Dan Bernstein.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj: Don't try to create a symlink at /usr/local/bin/jsc inside
+        the DSTROOT unless we're building to the deployment location. Also remove the unnecessary -x argument
+        from /bin/sh since that generates unnecessary output.
+
+2014-04-22  Mark Lam  <mark.lam@apple.com>
+
+        DFG::Worklist should acquire the m_lock before iterating DFG plans.
+        <https://webkit.org/b/132032>
+
+        Reviewed by Filip Pizlo.
+
+        Currently, there's a rightToRun mechanism that ensures that no compilation
+        threads are running when the GC is iterating through the DFG worklists.
+        However, this does not prevent a Worker thread from doing a DFG compilation
+        and modifying the plans in the worklists thereby invalidating the plan
+        iterator that the GC is using.  This patch fixes the issue by acquiring
+        the worklist m_lock before iterating the worklist plans.
+
+        This issue was uncovered by running the fast/workers layout tests with
+        COLLECT_ON_EVERY_ALLOCATION enabled.
+
+        * dfg/DFGWorklist.cpp:
+        (JSC::DFG::Worklist::isActiveForVM):
+        (JSC::DFG::Worklist::visitChildren):
+
+2014-04-22  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Support Python 2.7 in Cygwin
+        https://bugs.webkit.org/show_bug.cgi?id=132023
+
+        Reviewed by Michael Saboff.
+
+        * DerivedSources.make: Use a conditional variable to define
+        the path to Python/Perl.
+
+2014-04-22  Filip Pizlo  <fpizlo@apple.com>
+
+        Switch the LLVMForJSC target to using the LLVM in /usr/local rather than /usr/local/LLVMForJavaScriptCore on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=130867
+        <rdar://problem/16432456> 
+
+        Reviewed by Mark Hahnenberg.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/LLVMForJSC.xcconfig:
+
+2014-04-22  Alex Christensen  <achristensen@webkit.org>
+
+        [Win] Unreviewed build fix after my r167666.
+
+        * JavaScriptCore.vcxproj/LLInt/LLIntOffsetsExtractor/LLIntOffsetsExtractorCommon.props:
+        Added ../../../ again to include headers in Source/JavaScriptCore.
+
+2014-04-22  Alex Christensen  <achristensen@webkit.org>
+
+        Removed old stdbool and inttypes headers.
+        https://bugs.webkit.org/show_bug.cgi?id=131966
+
+        Reviewed by Brent Fulgham.
+
+        * JavaScriptCore.vcxproj/LLInt/LLIntOffsetsExtractor/LLIntOffsetsExtractorCommon.props:
+        * JavaScriptCore.vcxproj/testRegExp/testRegExpCommon.props:
+        Removed references to os-win32 directory.
+        * os-win32: Removed.
+        * os-win32/inttypes.h: Removed.
+        * os-win32/stdbool.h: Removed.
+
+2014-04-21  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG::clobberize() should honestly admit that profiler and debugger nodes are effectful
+        https://bugs.webkit.org/show_bug.cgi?id=131971
+        <rdar://problem/16676511>
+
+        Reviewed by Mark Lam.
+
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+
+2014-04-21  Filip Pizlo  <fpizlo@apple.com>
+
+        Switch statements that skip the baseline JIT should work
+        https://bugs.webkit.org/show_bug.cgi?id=131965
+
+        Reviewed by Mark Hahnenberg.
+
+        * bytecode/JumpTable.h:
+        (JSC::SimpleJumpTable::ensureCTITable):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::emitSwitchIntJump):
+        * jit/JITOpcodes.cpp:
+        (JSC::JIT::emit_op_switch_imm):
+        (JSC::JIT::emit_op_switch_char):
+        * jit/JITOpcodes32_64.cpp:
+        (JSC::JIT::emit_op_switch_imm):
+        (JSC::JIT::emit_op_switch_char):
+        * tests/stress/inline-llint-with-switch.js: Added.
+        (foo):
+        (bar):
+        (test):
+
+2014-04-21  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        Arguments objects shouldn't need a destructor
+        https://bugs.webkit.org/show_bug.cgi?id=131899
+
+        Reviewed by Oliver Hunt.
+
+        This patch rids Arguments objects of their destructors. It does this by 
+        switching their backing stores to use CopiedSpace rather than malloc memory.
+
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::emitAllocateArguments): Fix the code emitted for inline
+        Arguments allocation so that it only emits an extra write for strict mode code rather
+        than unconditionally.
+        * heap/CopyToken.h: New CopyTokens for the two different types of Arguments backing stores.
+        * runtime/Arguments.cpp:
+        (JSC::Arguments::visitChildren): We need to tell the collector to copy the back stores now.
+        (JSC::Arguments::copyBackingStore): Do the actual copying of the backing stores.
+        (JSC::Arguments::deletePropertyByIndex): Update all the accesses to SlowArgumentData and m_registerArray.
+        (JSC::Arguments::deleteProperty):
+        (JSC::Arguments::defineOwnProperty):
+        (JSC::Arguments::allocateRegisterArray):
+        (JSC::Arguments::tearOff):
+        (JSC::Arguments::destroy): Deleted. We don't need the destructor any more.
+        * runtime/Arguments.h:
+        (JSC::Arguments::registerArraySizeInBytes):
+        (JSC::Arguments::SlowArgumentData::SlowArgumentData): Switch SlowArgumentData to being allocated
+        in CopiedSpace. Now the SlowArgumentData and its backing store are a single contiguous CopiedSpace
+        allocation.
+        (JSC::Arguments::SlowArgumentData::slowArguments):
+        (JSC::Arguments::SlowArgumentData::bytecodeToMachineCaptureOffset):
+        (JSC::Arguments::SlowArgumentData::setBytecodeToMachineCaptureOffset):
+        (JSC::Arguments::SlowArgumentData::sizeForNumArguments):
+        (JSC::Arguments::Arguments):
+        (JSC::Arguments::allocateSlowArguments):
+        (JSC::Arguments::tryDeleteArgument):
+        (JSC::Arguments::isDeletedArgument):
+        (JSC::Arguments::isArgument):
+        (JSC::Arguments::argument):
+        (JSC::Arguments::finishCreation):
+        * runtime/SymbolTable.h:
+
+2014-04-21  Eric Carlson  <eric.carlson@apple.com>
+
+        [Mac] implement WebKitDataCue
+        https://bugs.webkit.org/show_bug.cgi?id=131799
+
+        Reviewed by Dean Jackson.
+
+        * Configurations/FeatureDefines.xcconfig: Define ENABLE_DATACUE_VALUE.
+
+2014-04-21  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed test gardening, run the repeat-out-of-bounds tests again.
+
+        * tests/stress/float32-repeat-out-of-bounds.js:
+        * tests/stress/int8-repeat-out-of-bounds.js:
+
+2014-04-21  Filip Pizlo  <fpizlo@apple.com>
+
+        OSR exit should know about Int52 and Double constants
+        https://bugs.webkit.org/show_bug.cgi?id=131945
+
+        Reviewed by Oliver Hunt.
+        
+        The DFG OSR exit machinery's ignorance would lead to some constants becoming
+        jsUndefined() after OSR exit.
+        
+        The FTL OSR exit machinery's ignorance just meant that we would sometimes use a
+        stackmap constant rather than baking the constant into the OSRExit data structure.
+        So, not a big deal, but worth fixing.
+        
+        Also added some helpful hacks to jsc.cpp for testing such OSR exit pathologies.
+
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::handleIntrinsic):
+        * dfg/DFGMinifiedNode.h:
+        (JSC::DFG::belongsInMinifiedGraph):
+        (JSC::DFG::MinifiedNode::hasConstantNumber):
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::LowerDFGToLLVM::tryToSetConstantExitArgument):
+        * jsc.cpp:
+        (GlobalObject::finishCreation):
+        (functionOtherFalse):
+        (functionUndefined):
+        * runtime/Intrinsic.h:
+        * tests/stress/fold-to-double-constant-then-exit.js: Added.
+        (foo):
+        * tests/stress/fold-to-int52-constant-then-exit.js: Added.
+        (foo):
+
+2014-04-21  Filip Pizlo  <fpizlo@apple.com>
+
+        Provide feedback when we encounter an unrecognied node in the FTL backend.
+
+        Rubber stamped by Alexey Proskuryakov.
+
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::LowerDFGToLLVM::compileNode):
+
+2014-04-21  Andreas Kling  <akling@apple.com>
+
+        Move the JSString cache from DOMWrapperWorld to VM.
+        <https://webkit.org/b/131940>
+
+        Reviewed by Geoff Garen.
+
+        * runtime/VM.h:
+
+2014-04-19  Filip Pizlo  <fpizlo@apple.com>
+
+        Take block execution count estimates into account when voting double
+        https://bugs.webkit.org/show_bug.cgi?id=131906
+
+        Reviewed by Geoffrey Garen.
+        
+        This was a drama in three acts.
+        
+        Act I: Slurp in BasicBlock::executionCount and use it as a weight when counting the
+            number of uses of a variable that want double or non-double. Easy as pie. This
+            gave me a huge speed-up on FloatMM and a huge slow-down on basically everything
+            else.
+        
+        Act II: Realize that there were some programs where our previous double voting was
+            just on the edge of disaster and making it more precise tipped it over. In
+            particular, if you had an integer variable that would infrequently be used in a
+            computation that resulted in a variable that was frequently used as an array index,
+            the outer infrequentness would be the thing we'd use in the vote. So, an array
+            index would become double. We fix this by reviving global backwards propagation
+            and introducing the concept of ReallyWantsInt, which is used just for array
+            indices. Any variable transitively flagged as ReallyWantsInt will never be forced
+            double. We need that flag to be separate from UsedAsInt, since UsedAsInt needs to
+            be set in bitops for RageConversion but using it for double forcing is too much.
+            Basically, it's cheaper to have to convert a double to an int for a bitop than it
+            is to convert a double to an int for an array index; also a variable being used as
+            an array index is a much stronger hint that it ought to be an int. This recovered
+            performance on everything except programs that used FTL OSR entry.
+        
+        Act III: Realize that OSR entrypoint creation creates blocks that have NaN execution
+            count, which then completely pollutes the weighting - essentially all votes go
+            NaN. Fix this with some surgical defenses. Basically, any client of execution
+            counts should allow for them to be NaN and shouldn't completely fall off a cliff
+            when it happens.
+        
+        This is awesome. 75% speed-up on FloatMM. 11% speed-up on audio-dft. This leads to
+        7% speed-up on AsmBench and 2% speed-up on Kraken.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * dfg/DFGBackwardsPropagationPhase.cpp:
+        (JSC::DFG::BackwardsPropagationPhase::run):
+        (JSC::DFG::BackwardsPropagationPhase::propagate):
+        * dfg/DFGGraph.cpp:
+        (JSC::DFG::Graph::dumpBlockHeader):
+        * dfg/DFGGraph.h:
+        (JSC::DFG::Graph::voteNode):
+        (JSC::DFG::Graph::voteChildren):
+        * dfg/DFGNodeFlags.cpp:
+        (JSC::DFG::dumpNodeFlags):
+        * dfg/DFGNodeFlags.h:
+        * dfg/DFGOSREntrypointCreationPhase.cpp:
+        (JSC::DFG::OSREntrypointCreationPhase::run):
+        * dfg/DFGPlan.cpp:
+        (JSC::DFG::Plan::compileInThreadImpl):
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        (JSC::DFG::PredictionPropagationPhase::doDoubleVoting):
+        (JSC::DFG::PredictionPropagationPhase::doRoundOfDoubleVoting):
+        * dfg/DFGVariableAccessData.cpp: Added.
+        (JSC::DFG::VariableAccessData::VariableAccessData):
+        (JSC::DFG::VariableAccessData::mergeIsCaptured):
+        (JSC::DFG::VariableAccessData::mergeShouldNeverUnbox):
+        (JSC::DFG::VariableAccessData::predict):
+        (JSC::DFG::VariableAccessData::mergeArgumentAwarePrediction):
+        (JSC::DFG::VariableAccessData::shouldUseDoubleFormatAccordingToVote):
+        (JSC::DFG::VariableAccessData::tallyVotesForShouldUseDoubleFormat):
+        (JSC::DFG::VariableAccessData::mergeDoubleFormatState):
+        (JSC::DFG::VariableAccessData::makePredictionForDoubleFormat):
+        (JSC::DFG::VariableAccessData::flushFormat):
+        * dfg/DFGVariableAccessData.h:
+        (JSC::DFG::VariableAccessData::vote):
+        (JSC::DFG::VariableAccessData::VariableAccessData): Deleted.
+        (JSC::DFG::VariableAccessData::mergeIsCaptured): Deleted.
+        (JSC::DFG::VariableAccessData::mergeShouldNeverUnbox): Deleted.
+        (JSC::DFG::VariableAccessData::predict): Deleted.
+        (JSC::DFG::VariableAccessData::mergeArgumentAwarePrediction): Deleted.
+        (JSC::DFG::VariableAccessData::shouldUseDoubleFormatAccordingToVote): Deleted.
+        (JSC::DFG::VariableAccessData::tallyVotesForShouldUseDoubleFormat): Deleted.
+        (JSC::DFG::VariableAccessData::mergeDoubleFormatState): Deleted.
+        (JSC::DFG::VariableAccessData::makePredictionForDoubleFormat): Deleted.
+        (JSC::DFG::VariableAccessData::flushFormat): Deleted.
+
+2014-04-21  Michael Saboff  <msaboff@apple.com>
+
+        REGRESSION(r167591): ARM64 and ARM traditional builds broken
+        https://bugs.webkit.org/show_bug.cgi?id=131935
+
+        Reviewed by Mark Hahnenberg.
+
+        Added store8(TrustedImm32, MacroAssembler::Address) to the ARM traditional and ARM64
+        macro assemblers.  Added a new test for the original patch.
+
+        * assembler/MacroAssemblerARM.h:
+        (JSC::MacroAssemblerARM::store8):
+        * assembler/MacroAssemblerARM64.h:
+        (JSC::MacroAssemblerARM64::store8):
+        * tests/stress/dfg-create-arguments-inline-alloc.js: New test.
+
+2014-04-21  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        Inline allocate Arguments objects in the DFG
+        https://bugs.webkit.org/show_bug.cgi?id=131897
+
+        Reviewed by Geoffrey Garen.
+
+        Many libraries/frameworks depend on the arguments object for overloaded API entry points. 
+        This is the first step to making Arguments fast(er). We'll duplicate the logic in Arguments::create 
+        for now and take the slow path for complicated cases like slow arguments, tearing off for strict mode, etc.
+
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::emitAllocateArguments):
+        * dfg/DFGSpeculativeJIT.h:
+        (JSC::DFG::SpeculativeJIT::emitAllocateDestructibleObject):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * runtime/Arguments.h:
+        (JSC::Arguments::offsetOfActivation):
+        (JSC::Arguments::offsetOfOverrodeLength):
+        (JSC::Arguments::offsetOfIsStrictMode):
+        (JSC::Arguments::offsetOfRegisterArray):
+        (JSC::Arguments::offsetOfCallee):
+        (JSC::Arguments::allocationSize):
+
+2014-04-20  Andreas Kling  <akling@apple.com>
+
+        Speed up jsStringWithCache() through WeakGCMap inlining.
+        <https://webkit.org/b/131923>
+
+        Always inline WeakGCMap::add() but move the slow garbage collecting
+        path out-of-line.
+
+        Reviewed by Darin Adler.
+
+        * runtime/WeakGCMap.h:
+        (JSC::WeakGCMap::add):
+        (JSC::WeakGCMap::gcMap):
+
+2014-04-20  László Langó  <llango.u-szeged@partner.samsung.com>
+
+        JavaScriptCore: ARM build fix after r167094.
+        https://bugs.webkit.org/show_bug.cgi?id=131612
+
+        Reviewed by Michael Saboff.
+
+        After r167094 there are many build errors on ARM like these:
+
+            /tmp/ccgtHRno.s:370: Error: invalid constant (425a) after fixup
+            /tmp/ccgtHRno.s:374: Error: invalid constant (426e) after fixup
+            /tmp/ccgtHRno.s:378: Error: invalid constant (4282) after fixup
+            /tmp/ccgtHRno.s:382: Error: invalid constant (4296) after fixup
+
+        Problem is caused by the wrong generated assembly like:
+            "\tmov r2, (" LOCAL_LABEL_STRING(llint_op_strcat) " - " LOCAL_LABEL_STRING(relativePCBase) ")\n" // /home/webkit/WebKit/Source/JavaScriptCore/llint/LowLevelInterpreter.asm:741
+
+        `mov` can only move 8 bit immediate, but not every constant fit into 8 bit. Clang converts
+        the mov to a single movw or a movw and a movt, depending on the immediate, but binutils doesn't.
+        Add a new ARM specific offline assembler instruction (`mvlbl`) for the following llint_entry
+        use case: move rn, (label1-label2) which is translated to movw and movt.
+
+        * llint/LowLevelInterpreter.asm:
+        * offlineasm/arm.rb:
+        * offlineasm/instructions.rb:
+
+2014-04-20  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [ARM] Unreviewed build fix after r167336.
+
+        * assembler/MacroAssemblerARM.h:
+        (JSC::MacroAssemblerARM::branchAdd32):
+
+2014-04-20  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r167501.
+        https://bugs.webkit.org/show_bug.cgi?id=131913
+
+        It broke DYEBench (Requested by mhahnenberg on #webkit).
+
+        Reverted changeset:
+
+        "Deleting properties poisons objects"
+        https://bugs.webkit.org/show_bug.cgi?id=131551
+        http://trac.webkit.org/changeset/167501
+
+2014-04-19  Filip Pizlo  <fpizlo@apple.com>
+
+        It should be OK to store new fields into objects that have no prototypes
+        https://bugs.webkit.org/show_bug.cgi?id=131905
+
+        Reviewed by Mark Hahnenberg.
+
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::emitPrototypeChecks):
+        * tests/stress/put-by-id-transition-null-prototype.js: Added.
+        (foo):
+
+2014-04-19  Benjamin Poulain  <bpoulain@apple.com>
+
+        Make the CSS JIT compile for ARM64
+        https://bugs.webkit.org/show_bug.cgi?id=131834
+
+        Reviewed by Gavin Barraclough.
+
+        Extend the ARM64 MacroAssembler to support the code generation required by
+        the CSS JIT.
+
+        * assembler/MacroAssembler.h:
+        * assembler/MacroAssemblerARM64.h:
+        (JSC::MacroAssemblerARM64::addPtrNoFlags):
+        (JSC::MacroAssemblerARM64::or32):
+        (JSC::MacroAssemblerARM64::branchPtr):
+        (JSC::MacroAssemblerARM64::test32):
+        (JSC::MacroAssemblerARM64::branch):
+        * assembler/MacroAssemblerX86Common.h:
+        (JSC::MacroAssemblerX86Common::test32):
+
+2014-04-19  Andreas Kling  <akling@apple.com>
+
+        Two little shortcuts to the JSType.
+        <https://webkit.org/b/131896>
+
+        Tweak two sites that take the long road through JSCell::structure()->typeInfo()
+        to look at data that's already in JSCell::type().
+
+        Reviewed by Darin Adler.
+
+        * runtime/NameInstance.h:
+        (JSC::isName):
+        * runtime/NumberPrototype.cpp:
+        (JSC::toThisNumber):
+
+2014-04-19  Filip Pizlo  <fpizlo@apple.com>
+
+        Make it easier to check if an integer sum would overflow
+        https://bugs.webkit.org/show_bug.cgi?id=131900
+
+        Reviewed by Darin Adler.
+
+        * dfg/DFGOperations.cpp:
+        * runtime/Operations.h:
+        (JSC::jsString):
+
+2014-04-19  Filip Pizlo  <fpizlo@apple.com>
+
+        Address some feedback on https://bugs.webkit.org/show_bug.cgi?id=130684.
+
+        * dfg/DFGOperations.cpp:
+        * runtime/JSString.h:
+        (JSC::JSRopeString::RopeBuilder::append):
+
+2014-04-18  Mark Lam  <mark.lam@apple.com>
+
+        REGRESSION(r164205): WebKit crash @StructureIDTable::get.
+        <https://webkit.org/b/130539>
+
+        Reviewed by Geoffrey Garen.
+
+        prepareOSREntry() prepares for OSR entry by first copying the local var
+        values from the baseline frame to a scartch buffer, which is then used
+        to fill in the locals in their new position in the DFG frame.  Unfortunately,
+        prepareOSREntry() was using the DFG frame's frameRegisterCount as the frame
+        size of the baseline frame.  As a result, some values of locals in the
+        baseline frame were not saved off, and the DFG frame may get initialized
+        with random content that happened to be in the uninitialized (and possibly
+        unallocated) portions of the scratch buffer.
+
+        The fix is to use OSREntryData::m_expectedValues.numberOfLocals() as the
+        number of locals in the baseline frame that we want to copy to the scratch
+        buffer.
+
+        Note: osrEntryThunkGenerator() is expecting the DFG frameRegisterCount
+        at offset 0 in the scratch buffer.  So, we continue to write that value
+        there, not the baseline frame size.
+
+        * dfg/DFGOSREntry.cpp:
+        (JSC::DFG::prepareOSREntry):
+
+2014-04-18  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Move InspectorProfilerAgent to JavaScriptCore
+        https://bugs.webkit.org/show_bug.cgi?id=131673
+
+        Passes existing profiler and inspector tests.
+
+        Reviewed by Joseph Pecoraro.
+
+        * CMakeLists.txt:
+        * DerivedSources.make:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj.filters:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * inspector/JSConsoleClient.cpp:
+        (Inspector::JSConsoleClient::JSConsoleClient):
+        (Inspector::JSConsoleClient::profile):
+        (Inspector::JSConsoleClient::profileEnd):
+        (Inspector::JSConsoleClient::count): Deleted.
+        * inspector/JSConsoleClient.h:
+        * inspector/JSGlobalObjectInspectorController.cpp:
+        (Inspector::JSGlobalObjectInspectorController::JSGlobalObjectInspectorController):
+        * inspector/agents/InspectorProfilerAgent.cpp: Added.
+        (Inspector::InspectorProfilerAgent::InspectorProfilerAgent):
+        (Inspector::InspectorProfilerAgent::~InspectorProfilerAgent):
+        (Inspector::InspectorProfilerAgent::addProfile):
+        (Inspector::InspectorProfilerAgent::createProfileHeader):
+        (Inspector::InspectorProfilerAgent::enable):
+        (Inspector::InspectorProfilerAgent::disable):
+        (Inspector::InspectorProfilerAgent::getUserInitiatedProfileName):
+        (Inspector::InspectorProfilerAgent::getProfileHeaders):
+        (Inspector::buildInspectorObject):
+        (Inspector::InspectorProfilerAgent::buildProfileInspectorObject):
+        (Inspector::InspectorProfilerAgent::getCPUProfile):
+        (Inspector::InspectorProfilerAgent::removeProfile):
+        (Inspector::InspectorProfilerAgent::reset):
+        (Inspector::InspectorProfilerAgent::didCreateFrontendAndBackend):
+        (Inspector::InspectorProfilerAgent::willDestroyFrontendAndBackend):
+        (Inspector::InspectorProfilerAgent::start):
+        (Inspector::InspectorProfilerAgent::stop):
+        (Inspector::InspectorProfilerAgent::setRecordingProfile):
+        (Inspector::InspectorProfilerAgent::startProfiling):
+        (Inspector::InspectorProfilerAgent::stopProfiling):
+        * inspector/agents/InspectorProfilerAgent.h: Added.
+        * inspector/agents/JSGlobalObjectProfilerAgent.cpp: Copied from Source/WebCore/inspector/ScriptProfile.idl.
+        (Inspector::JSGlobalObjectProfilerAgent::JSGlobalObjectProfilerAgent):
+        (Inspector::JSGlobalObjectProfilerAgent::profilingGlobalExecState):
+        * inspector/agents/JSGlobalObjectProfilerAgent.h: Copied from Source/WebCore/inspector/ScriptProfile.idl.
+        * inspector/protocol/Profiler.json: Renamed from Source/WebCore/inspector/protocol/Profiler.json.
+        * profiler/Profile.h:
+        * runtime/ConsoleClient.h:
+
+2014-04-18  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r167527.
+        https://bugs.webkit.org/show_bug.cgi?id=131883
+
+        Broke 32-bit build (Requested by ap on #webkit).
+
+        Reverted changeset:
+
+        "[Mac] implement WebKitDataCue"
+        https://bugs.webkit.org/show_bug.cgi?id=131799
+        http://trac.webkit.org/changeset/167527
+
+2014-04-18  Eric Carlson  <eric.carlson@apple.com>
+
+        [Mac] implement WebKitDataCue
+        https://bugs.webkit.org/show_bug.cgi?id=131799
+
+        Reviewed by Dean Jackson.
+
+        * Configurations/FeatureDefines.xcconfig: Define ENABLE_DATACUE_VALUE.
+
+2014-04-18  Filip Pizlo  <fpizlo@apple.com>
+
+        Actually address Mark's review feedback.
+
+        * dfg/DFGOSRExitCompilerCommon.cpp:
+        (JSC::DFG::handleExitCounts):
+
+2014-04-18  Filip Pizlo  <fpizlo@apple.com>
+
+        Options::maximumExecutionCountsBetweenCheckpoints() should be higher for DFG->FTL tier-up but the same for other tier-ups
+        https://bugs.webkit.org/show_bug.cgi?id=131850
+
+        Reviewed by Mark Hahnenberg.
+        
+        Templatize ExecutionCounter to allow for two different styles of calculating the
+        checkpoint threshold.
+        
+        Appears to be a slight speed-up on DYEBench.
+
+        * bytecode/CodeBlock.h:
+        (JSC::CodeBlock::llintExecuteCounter):
+        (JSC::CodeBlock::offsetOfJITExecuteCounter):
+        (JSC::CodeBlock::offsetOfJITExecutionActiveThreshold):
+        (JSC::CodeBlock::offsetOfJITExecutionTotalCount):
+        (JSC::CodeBlock::jitExecuteCounter):
+        * bytecode/ExecutionCounter.cpp:
+        (JSC::ExecutionCounter<countingVariant>::ExecutionCounter):
+        (JSC::ExecutionCounter<countingVariant>::forceSlowPathConcurrently):
+        (JSC::ExecutionCounter<countingVariant>::checkIfThresholdCrossedAndSet):
+        (JSC::ExecutionCounter<countingVariant>::setNewThreshold):
+        (JSC::ExecutionCounter<countingVariant>::deferIndefinitely):
+        (JSC::applyMemoryUsageHeuristics):
+        (JSC::applyMemoryUsageHeuristicsAndConvertToInt):
+        (JSC::ExecutionCounter<countingVariant>::hasCrossedThreshold):
+        (JSC::ExecutionCounter<countingVariant>::setThreshold):
+        (JSC::ExecutionCounter<countingVariant>::reset):
+        (JSC::ExecutionCounter<countingVariant>::dump):
+        (JSC::ExecutionCounter::ExecutionCounter): Deleted.
+        (JSC::ExecutionCounter::forceSlowPathConcurrently): Deleted.
+        (JSC::ExecutionCounter::checkIfThresholdCrossedAndSet): Deleted.
+        (JSC::ExecutionCounter::setNewThreshold): Deleted.
+        (JSC::ExecutionCounter::deferIndefinitely): Deleted.
+        (JSC::ExecutionCounter::applyMemoryUsageHeuristics): Deleted.
+        (JSC::ExecutionCounter::applyMemoryUsageHeuristicsAndConvertToInt): Deleted.
+        (JSC::ExecutionCounter::hasCrossedThreshold): Deleted.
+        (JSC::ExecutionCounter::setThreshold): Deleted.
+        (JSC::ExecutionCounter::reset): Deleted.
+        (JSC::ExecutionCounter::dump): Deleted.
+        * bytecode/ExecutionCounter.h:
+        (JSC::formattedTotalExecutionCount):
+        (JSC::ExecutionCounter::maximumExecutionCountsBetweenCheckpoints):
+        (JSC::ExecutionCounter::clippedThreshold):
+        (JSC::ExecutionCounter::formattedTotalCount): Deleted.
+        * dfg/DFGJITCode.h:
+        * dfg/DFGOSRExitCompilerCommon.cpp:
+        (JSC::DFG::handleExitCounts):
+        * llint/LowLevelInterpreter.asm:
+        * runtime/Options.h:
+
+2014-04-17  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        Deleting properties poisons objects
+        https://bugs.webkit.org/show_bug.cgi?id=131551
+
+        Reviewed by Geoffrey Garen.
+
+        This is ~3% progression on Dromaeo with a ~6% progression on the jslib portion of Dromaeo in particular.
+
+        * runtime/Structure.cpp:
+        (JSC::Structure::Structure):
+        (JSC::Structure::materializePropertyMap): We now re-use deleted properties when materializing the property map.
+        (JSC::Structure::removePropertyTransition): We allow up to 5 deletes for a particular path through the tree of 
+        Structure transitions. After that, we convert to an uncacheable dictionary like we used to. We don't cache 
+        delete transitions, but we allow transitioning from them.
+        (JSC::Structure::changePrototypeTransition):
+        (JSC::Structure::despecifyFunctionTransition):
+        (JSC::Structure::attributeChangeTransition):
+        (JSC::Structure::toDictionaryTransition):
+        (JSC::Structure::preventExtensionsTransition):
+        (JSC::Structure::addPropertyWithoutTransition):
+        (JSC::Structure::removePropertyWithoutTransition):
+        (JSC::Structure::pin): Now does only what it says it does--marks the property table as pinned.
+        (JSC::Structure::pinAndPreventTransitions): More descriptive version of what the old pin() was doing.
+        * runtime/Structure.h:
+        * runtime/StructureInlines.h:
+        (JSC::Structure::checkOffsetConsistency): Rearranged variables to be more sensible.
+
+2014-04-17  Filip Pizlo  <fpizlo@apple.com>
+
+        InlineCallFrameSet should be refcounted
+        https://bugs.webkit.org/show_bug.cgi?id=131829
+
+        Reviewed by Geoffrey Garen.
+        
+        And DFG::Plan should hold a ref to it. Previously it was owned by Graph until it
+        became owned by JITCode. Except that if we're "failing" to compile, JITCode may die.
+        Even as it dies, the GC may still want to scan the DFG::Plan, which leads to scanning
+        the DesiredWriteBarriers, which leads to scanning the InlineCallFrameSet.
+        
+        So, just make the darn thing refcounted.
+
+        * bytecode/InlineCallFrameSet.h:
+        * dfg/DFGArgumentsSimplificationPhase.cpp:
+        (JSC::DFG::ArgumentsSimplificationPhase::run):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::InlineStackEntry::InlineStackEntry):
+        * dfg/DFGCommonData.h:
+        * dfg/DFGGraph.cpp:
+        (JSC::DFG::Graph::Graph):
+        (JSC::DFG::Graph::requiredRegisterCountForExit):
+        * dfg/DFGGraph.h:
+        * dfg/DFGJITCompiler.cpp:
+        (JSC::DFG::JITCompiler::link):
+        * dfg/DFGPlan.cpp:
+        (JSC::DFG::Plan::Plan):
+        * dfg/DFGPlan.h:
+        * dfg/DFGStackLayoutPhase.cpp:
+        (JSC::DFG::StackLayoutPhase::run):
+        * ftl/FTLFail.cpp:
+        (JSC::FTL::fail):
+        * ftl/FTLLink.cpp:
+        (JSC::FTL::link):
+
+2014-04-17  Filip Pizlo  <fpizlo@apple.com>
+
+        FTL::fail() should manage memory "correctly"
+        https://bugs.webkit.org/show_bug.cgi?id=131823
+        <rdar://problem/16384297>
+
+        Reviewed by Oliver Hunt.
+
+        * ftl/FTLFail.cpp:
+        (JSC::FTL::fail):
+
+2014-04-17  Filip Pizlo  <fpizlo@apple.com>
+
+        Prediction propagator should correctly model Int52s flowing through arguments
+        https://bugs.webkit.org/show_bug.cgi?id=131822
+        <rdar://problem/16641408>
+
+        Reviewed by Oliver Hunt.
+
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        (JSC::DFG::PredictionPropagationPhase::propagate):
+        * tests/stress/int52-argument.js: Added.
+        (foo):
+        * tests/stress/int52-variable.js: Added.
+        (foo):
+
+2014-04-17  Filip Pizlo  <fpizlo@apple.com>
+
+        REGRESSION: ASSERT(!typeInfo().hasImpureGetOwnPropertySlot() || typeInfo().newImpurePropertyFiresWatchpoints()) on jquery tests
+        https://bugs.webkit.org/show_bug.cgi?id=131798
+
+        Reviewed by Alexey Proskuryakov.
+        
+        Some day, we will fix https://bugs.webkit.org/show_bug.cgi?id=131810 and some version
+        of this assertion can return. For now, it's not clear that the assertion is guarding
+        any truly undesirable behavior - so it should just go away and be replaced with a
+        FIXME.
+
+        * bytecode/GetByIdStatus.cpp:
+        (JSC::GetByIdStatus::computeForStubInfo):
+        * runtime/Structure.h:
+        (JSC::Structure::takesSlowPathInDFGForImpureProperty):
+
+2014-04-17  David Kilzer  <ddkilzer@apple.com>
+
+        Blind attempt to fix Windows build after r166837
+        <http://webkit.org/b/131246>
+
+        Hoping to fix this build error:
+
+            warning MSB8027: Two or more files with the name of GCLogging.cpp will produce outputs to the same location. This can lead to an incorrect build result.  The files involved are ..\heap\GCLogging.cpp, ..\heap\GCLogging.cpp.
+
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj: Fix copy-paste
+        boo-boo by changing the GCLogging.cpp ClCompile entry to a
+        GCLogging.h ClInclude entry.
+
+2014-04-16  Filip Pizlo  <fpizlo@apple.com>
+
+        AI for GetLocal should match the DFG backend, and in this case, the best way to do that is to get rid of the "exit if empty prediction" thing since it's a vestige of a time long gone
+        https://bugs.webkit.org/show_bug.cgi?id=131764
+
+        Reviewed by Geoffrey Garen.
+        
+        The attached test case can be made to not crash by deleting old code. It used to be
+        the case that the DFG needed empty prediction guards, for shady reasons. We fixed that
+        long ago. At this point, these guards just make life difficult. So get rid of them.
+
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * tests/stress/bug-131764.js: Added.
+        (test1):
+        (test2):
+
+2014-04-17  Darin Adler  <darin@apple.com>
+
+        Add separate flag for IndexedDatabase in workers since the current implementation is not threadsafe
+        https://bugs.webkit.org/show_bug.cgi?id=131785
+        rdar://problem/16003108
+
+        Reviewed by Brady Eidson.
+
+        * Configurations/FeatureDefines.xcconfig: Added INDEXED_DATABASE_IN_WORKERS.
+
+2014-04-16  Alexey Proskuryakov  <ap@apple.com>
+
+        Build fix after http://trac.webkit.org/changeset/167416 (Sink NaN sanitization)
+
+        * dfg/DFGSpeculativeJIT.cpp: (JSC::DFG::SpeculativeJIT::speculate):
+
+2014-04-16  Filip Pizlo  <fpizlo@apple.com>
+
+        Extra error reporting for invalid value conversions
+        https://bugs.webkit.org/show_bug.cgi?id=131786
+
+        Rubber stamped by Ryosuke Niwa.
+
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::injectTypeConversionsForEdge):
+
+2014-04-16  Filip Pizlo  <fpizlo@apple.com>
+
+        Sink NaN sanitization to uses and remove it when it's unnecessary
+        https://bugs.webkit.org/show_bug.cgi?id=131419
+
+        Reviewed by Oliver Hunt.
+        
+        This moves NaN purification to stores that could see an impure NaN.
+        
+        5% speed-up on AsmBench, 50% speed-up on AsmBench/n-body. It is a regression on FloatMM
+        though, because of the other bug that causes that benchmark to box doubles in a loop.
+
+        * bytecode/SpeculatedType.h:
+        (JSC::isInt32SpeculationForArithmetic):
+        (JSC::isMachineIntSpeculationForArithmetic):
+        (JSC::isDoubleSpeculation):
+        (JSC::isDoubleSpeculationForArithmetic):
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGAbstractValue.cpp:
+        (JSC::DFG::AbstractValue::fixTypeForRepresentation):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        (JSC::DFG::FixupPhase::injectTypeConversionsForEdge):
+        * dfg/DFGInPlaceAbstractState.cpp:
+        (JSC::DFG::InPlaceAbstractState::mergeStateAtTail):
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        (JSC::DFG::PredictionPropagationPhase::propagate):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileValueRep):
+        (JSC::DFG::SpeculativeJIT::compileGetByValOnFloatTypedArray):
+        * dfg/DFGUseKind.h:
+        (JSC::DFG::typeFilterFor):
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::LowerDFGToLLVM::compileValueRep):
+        (JSC::FTL::LowerDFGToLLVM::compileGetByVal):
+        * runtime/PureNaN.h:
+        * tests/stress/float32-array-nan-inlined.js: Added.
+        (foo):
+        (test):
+        * tests/stress/float32-array-nan.js: Added.
+        (foo):
+        (test):
+        * tests/stress/float64-array-nan-inlined.js: Added.
+        (foo):
+        (isBigEndian):
+        (test):
+        * tests/stress/float64-array-nan.js: Added.
+        (foo):
+        (isBigEndian):
+        (test):
+
 2014-04-16  Brent Fulgham  <bfulgham@apple.com>
 
         [Win] Unreviewed Windows gardening. Restrict our new 'isinf' check

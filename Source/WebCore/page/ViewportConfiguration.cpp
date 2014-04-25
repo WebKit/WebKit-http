@@ -43,8 +43,7 @@ static bool constraintsAreAllRelative(const ViewportConfiguration::Parameters& c
 #endif
 
 ViewportConfiguration::ViewportConfiguration()
-    : m_contentSize(1024, 768)
-    , m_minimumLayoutSize(m_contentSize)
+    : m_minimumLayoutSize(1024, 768)
 {
     // Setup a reasonable default configuration to avoid computing infinite scale/sizes.
     // Those are the original iPhone configuration.
@@ -72,7 +71,7 @@ void ViewportConfiguration::setContentsSize(const IntSize& contentSize)
     updateConfiguration();
 }
 
-void ViewportConfiguration::setMinimumLayoutSize(const IntSize& minimumLayoutSize)
+void ViewportConfiguration::setMinimumLayoutSize(const FloatSize& minimumLayoutSize)
 {
     if (m_minimumLayoutSize == minimumLayoutSize)
         return;
@@ -156,7 +155,7 @@ ViewportConfiguration::Parameters ViewportConfiguration::textDocumentParameters(
     Parameters parameters;
 
 #if PLATFORM(IOS)
-    parameters.width = static_cast<int>(wkGetViewportScreenSize().width);
+    parameters.width = static_cast<int>(wkGetScreenSize().width);
 #else
     // FIXME: this needs to be unified with ViewportArguments on all ports.
     parameters.width = 320;

@@ -53,6 +53,11 @@
 #define PlatformMediaEngineClassName MediaPlayerPrivateGStreamer
 #endif
 
+#if USE(MEDIA_FOUNDATION)
+#include "MediaPlayerPrivateMediaFoundation.h"
+#define PlatformMediaEngineClassName MediaPlayerPrivateMediaFoundation
+#endif
+
 #if PLATFORM(COCOA)
 #if PLATFORM(IOS)
 #include "MediaPlayerPrivateIOS.h"
@@ -509,6 +514,11 @@ void MediaPlayer::play()
 void MediaPlayer::pause()
 {
     m_private->pause();
+}
+
+void MediaPlayer::setShouldBufferData(bool shouldBuffer)
+{
+    m_private->setShouldBufferData(shouldBuffer);
 }
 
 #if ENABLE(ENCRYPTED_MEDIA)

@@ -120,6 +120,7 @@ Plan::Plan(PassRefPtr<CodeBlock> passedCodeBlock, CodeBlock* profiledDFGCodeBloc
     , osrEntryBytecodeIndex(osrEntryBytecodeIndex)
     , mustHandleValues(mustHandleValues)
     , compilation(codeBlock->vm()->m_perBytecodeProfiler ? adoptRef(new Profiler::Compilation(codeBlock->vm()->m_perBytecodeProfiler->ensureBytecodesFor(codeBlock.get()), profilerCompilationKindForMode(mode))) : 0)
+    , inlineCallFrames(adoptRef(new InlineCallFrameSet()))
     , identifiers(codeBlock.get())
     , weakReferences(codeBlock.get())
     , willTryToTierUp(false)
@@ -208,8 +209,7 @@ Plan::CompilationPath Plan::compileInThreadImpl(LongLivedState& longLivedState)
     performUnification(dfg);
     performPredictionInjection(dfg);
     
-    if (isFTL(mode))
-        performStaticExecutionCountEstimation(dfg);
+    performStaticExecutionCountEstimation(dfg);
     
     if (mode == FTLForOSREntryMode) {
         bool result = performOSREntrypointCreation(dfg);

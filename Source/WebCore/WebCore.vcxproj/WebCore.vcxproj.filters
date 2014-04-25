@@ -1482,6 +1482,9 @@
     <ClCompile Include="..\platform\graphics\win\MediaPlayerPrivateFullscreenWindow.cpp">
       <Filter>platform\graphics\win</Filter>
     </ClCompile>
+    <ClCompile Include="..\platform\graphics\win\MediaPlayerPrivateMediaFoundation.cpp">
+      <Filter>platform\graphics\win</Filter>
+    </ClCompile>
     <ClCompile Include="..\platform\graphics\opentype\OpenTypeMathData.cpp">
       <Filter>platform\graphics\win</Filter>
     </ClCompile>
@@ -4515,12 +4518,6 @@
     <ClCompile Include="..\bindings\js\ScriptGlobalObject.cpp">
       <Filter>bindings\js</Filter>
     </ClCompile>
-    <ClCompile Include="..\bindings\js\ScriptProfile.cpp">
-      <Filter>bindings\js</Filter>
-    </ClCompile>
-    <ClCompile Include="..\bindings\js\ScriptProfiler.cpp">
-      <Filter>bindings\js</Filter>
-    </ClCompile>
     <ClCompile Include="..\bindings\js\ScriptState.cpp">
       <Filter>bindings\js</Filter>
     </ClCompile>
@@ -4800,9 +4797,6 @@
     <ClCompile Include="..\inspector\InspectorPageAgent.cpp">
       <Filter>inspector</Filter>
     </ClCompile>
-    <ClCompile Include="..\inspector\InspectorProfilerAgent.cpp">
-      <Filter>inspector</Filter>
-    </ClCompile>
     <ClCompile Include="..\inspector\InspectorResourceAgent.cpp">
       <Filter>inspector</Filter>
     </ClCompile>
@@ -4830,6 +4824,9 @@
     <ClCompile Include="..\inspector\PageDebuggerAgent.cpp">
       <Filter>inspector</Filter>
     </ClCompile>
+    <ClCompile Include="..\inspector\PageProfilerAgent.cpp">
+      <Filter>inspector</Filter>
+    </ClCompile>
     <ClCompile Include="..\inspector\PageRuntimeAgent.cpp">
       <Filter>inspector</Filter>
     </ClCompile>
@@ -4845,6 +4842,9 @@
     <ClCompile Include="..\inspector\WebDebuggerAgent.cpp">
       <Filter>inspector</Filter>
     </ClCompile>
+    <ClCompile Include="..\inspector\WebProfilerAgent.cpp">
+      <Filter>inspector</Filter>
+    </ClCompile>
     <ClCompile Include="..\inspector\WebInjectedScriptHost.cpp">
       <Filter>inspector</Filter>
     </ClCompile>
@@ -4858,6 +4858,9 @@
       <Filter>inspector</Filter>
     </ClCompile>
     <ClCompile Include="..\inspector\WorkerInspectorController.cpp">
+      <Filter>inspector</Filter>
+    </ClCompile>
+    <ClCompile Include="..\inspector\WorkerProfilerAgent.cpp">
       <Filter>inspector</Filter>
     </ClCompile>
     <ClCompile Include="..\inspector\WorkerRuntimeAgent.cpp">
@@ -6952,6 +6955,9 @@
     <ClCompile Include="..\platform\graphics\cairo\TiledBackingStoreBackendCairo.cpp">
       <Filter>platform\graphics\cairo</Filter>
     </ClCompile>
+    <ClCompile Include="..\rendering\SelectionSubtreeRoot.cpp">
+      <Filter>rendering</Filter>
+    </ClCompile>
     <ClCompile Include="..\rendering\SimpleLineLayout.cpp">
       <Filter>rendering</Filter>
     </ClCompile>
@@ -8629,6 +8635,9 @@
     <ClInclude Include="..\platform\graphics\avfoundation\MediaPlayerPrivateAVFoundation.h">
       <Filter>platform\graphics\avfoundation</Filter>
     </ClInclude>
+    <ClCompile Include="..\platform\graphics\win\MediaPlayerPrivateMediaFoundation.h">
+      <Filter>platform\graphics\win</Filter>
+    </ClCompile>
     <ClInclude Include="..\platform\graphics\avfoundation\cf\AVFoundationCFSoftLinking.h">
       <Filter>platform\graphics\avfoundation\cf</Filter>
     </ClInclude>
@@ -11431,9 +11440,6 @@
     <ClInclude Include="..\bindings\js\ScriptProfileNode.h">
       <Filter>bindings\js</Filter>
     </ClInclude>
-    <ClInclude Include="..\bindings\js\ScriptProfiler.h">
-      <Filter>bindings\js</Filter>
-    </ClInclude>
     <ClInclude Include="..\bindings\js\ScriptSourceCode.h">
       <Filter>bindings\js</Filter>
     </ClInclude>
@@ -12418,9 +12424,6 @@
     <ClInclude Include="..\inspector\InspectorPageAgent.h">
       <Filter>inspector</Filter>
     </ClInclude>
-    <ClInclude Include="..\inspector\InspectorProfilerAgent.h">
-      <Filter>inspector</Filter>
-    </ClInclude>
     <ClInclude Include="..\inspector\InspectorResourceAgent.h">
       <Filter>inspector</Filter>
     </ClInclude>
@@ -12454,6 +12457,9 @@
     <ClInclude Include="..\inspector\PageDebuggerAgent.h">
       <Filter>inspector</Filter>
     </ClInclude>
+    <ClInclude Include="..\inspector\PageProfilerAgent.h">
+      <Filter>inspector</Filter>
+    </ClInclude>
     <ClInclude Include="..\inspector\PageRuntimeAgent.h">
       <Filter>inspector</Filter>
     </ClInclude>
@@ -12469,6 +12475,9 @@
     <ClInclude Include="..\inspector\WebDebuggerAgent.h">
       <Filter>inspector</Filter>
     </ClInclude>
+    <ClInclude Include="..\inspector\WebProfilerAgent.h">
+      <Filter>inspector</Filter>
+    </ClInclude>
     <ClInclude Include="..\inspector\WebInjectedScriptHost.h">
       <Filter>inspector</Filter>
     </ClInclude>
@@ -12482,6 +12491,9 @@
       <Filter>inspector</Filter>
     </ClInclude>
     <ClInclude Include="..\inspector\WorkerInspectorController.h">
+      <Filter>inspector</Filter>
+    </ClInclude>
+    <ClInclude Include="..\inspector\WorkerProfilerAgent.h">
       <Filter>inspector</Filter>
     </ClInclude>
     <ClInclude Include="..\inspector\WorkerRuntimeAgent.h">
@@ -14803,6 +14815,9 @@
       <Filter>platform\graphics\cairo</Filter>
     </ClInclude>
     <ClInclude Include="..\rendering\SimpleLineLayoutResolver.h">
+      <Filter>rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="..\rendering\SelectionSubtreeRoot.h">
       <Filter>rendering</Filter>
     </ClInclude>
     <ClInclude Include="..\rendering\SimpleLineLayout.h">

@@ -378,6 +378,7 @@ void FrameLoader::submitForm(PassRefPtr<FormSubmission> submission)
         if (!m_frame.document()->contentSecurityPolicy()->allowFormAction(URL(submission->action())))
             return;
         m_isExecutingJavaScriptFormAction = true;
+        Ref<Frame> protect(m_frame);
         m_frame.script().executeIfJavaScriptURL(submission->action(), DoNotReplaceDocumentIfJavaScriptURL);
         m_isExecutingJavaScriptFormAction = false;
         return;
@@ -1145,8 +1146,8 @@ void FrameLoader::completed()
 
 void FrameLoader::started()
 {
-    if (m_frame.page())
-        m_activityAssertion = m_frame.page()->pageThrottler().pageLoadActivityToken();
+    if (m_frame.page() && m_frame.page()->pageThrottler())
+        m_activityAssertion = m_frame.page()->pageThrottler()->pageLoadActivityToken();
     for (Frame* frame = &m_frame; frame; frame = frame->tree().parent())
         frame->loader().m_isComplete = false;
 }

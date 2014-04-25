@@ -112,7 +112,7 @@ public:
     void addCue(PassRefPtr<TextTrackCue>, ExceptionCode&);
     virtual void removeCue(TextTrackCue*, ExceptionCode&);
 
-    bool hasCue(VTTCue*, VTTCue::CueMatchRules = VTTCue::MatchAllFields);
+    bool hasCue(TextTrackCue*, TextTrackCue::CueMatchRules = TextTrackCue::MatchAllFields);
 
 #if ENABLE(VIDEO_TRACK) && ENABLE(WEBVTT_REGIONS)
     VTTRegionList* regions();
@@ -155,6 +155,8 @@ public:
 #if ENABLE(MEDIA_SOURCE)
     virtual void setLanguage(const AtomicString&) override;
 #endif
+
+    virtual bool isInband() const { return false; }
 
     using RefCounted<TrackBase>::ref;
     using RefCounted<TrackBase>::deref;

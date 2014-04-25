@@ -49,6 +49,7 @@ typedef NS_OPTIONS(NSUInteger, _WKFindOptions) {
     _WKFindOptionsShowOverlay = 1 << 5,
     _WKFindOptionsShowFindIndicator = 1 << 6,
     _WKFindOptionsShowHighlight = 1 << 7,
+    _WKFindOptionsDetermineMatchIndex = 1 << 8,
 };
 
 @class WKBrowsingContextHandle;
@@ -93,6 +94,7 @@ typedef NS_OPTIONS(NSUInteger, _WKFindOptions) {
 
 #if TARGET_OS_IPHONE
 @property (nonatomic, setter=_setMinimumLayoutSizeOverride:) CGSize _minimumLayoutSizeOverride;
+@property (nonatomic, setter=_setMinimumLayoutSizeOverrideForMinimalUI:) CGSize _minimumLayoutSizeOverrideForMinimalUI;
 
 // Define the inset of the scrollview unusable by the web page.
 @property (nonatomic, setter=_setObscuredInsets:) UIEdgeInsets _obscuredInsets;

@@ -45,36 +45,34 @@ public:
     
     static Page* get(Line*);
 
-    void ref(std::lock_guard<Mutex>&);
-    bool deref(std::lock_guard<Mutex>&);
-    unsigned refCount(std::lock_guard<Mutex>&);
+    void ref(std::lock_guard<StaticMutex>&);
+    bool deref(std::lock_guard<StaticMutex>&);
+    unsigned refCount(std::lock_guard<StaticMutex>&) { return m_refCount; }
+    
+    size_t smallSizeClass() { return m_smallSizeClass; }
+    void setSmallSizeClass(size_t smallSizeClass) { m_smallSizeClass = smallSizeClass; }
     
     Line* begin();
     Line* end();
 
 private:
     unsigned char m_refCount;
+    unsigned char m_smallSizeClass;
 };
 
 template<typename Traits>
-inline void Page<Traits>::ref(std::lock_guard<Mutex>&)
+inline void Page<Traits>::ref(std::lock_guard<StaticMutex>&)
 {
     BASSERT(m_refCount < maxRefCount);
     ++m_refCount;
 }
 
 template<typename Traits>
-inline bool Page<Traits>::deref(std::lock_guard<Mutex>&)
+inline bool Page<Traits>::deref(std::lock_guard<StaticMutex>&)
 {
     BASSERT(m_refCount);
     --m_refCount;
     return !m_refCount;
-}
-
-template<typename Traits>
-inline unsigned Page<Traits>::refCount(std::lock_guard<Mutex>&)
-{
-    return m_refCount;
 }
 
 template<typename Traits>

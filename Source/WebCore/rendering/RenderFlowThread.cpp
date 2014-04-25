@@ -590,8 +590,13 @@ void RenderFlowThread::removeRenderBoxRegionInfo(RenderBox* box)
 
 void RenderFlowThread::logicalWidthChangedInRegionsForBlock(const RenderBlock* block, bool& relayoutChildren)
 {
-    if (!hasValidRegionInfo())
+    if (!hasValidRegionInfo()) {
+        // FIXME: Remove once we stop laying out flow threads without regions.
+        // If we had regions but don't any more, relayout the children because the code below
+        // can't properly detect this scenario.
+        relayoutChildren |= previousRegionCountChanged();
         return;
+    }
 
     auto it = m_regionRangeMap.find(block);
     if (it == m_regionRangeMap.end())
@@ -766,13 +771,13 @@ bool RenderFlowThread::getRegionRangeForBox(const RenderBox* box, RenderRegion*&
     // should be equal with the region for the unsplittable box if any.
     RenderBox* topMostUnsplittable = nullptr;
     RenderBox* cb = const_cast<RenderBox*>(box);
-    do {
+    while (!cb->isRenderFlowThread()) {
         if (cb->isUnsplittableForPagination())
             topMostUnsplittable = cb;
         ASSERT(cb->parent());
         cb = cb->parent()->enclosingBox();
         ASSERT(cb);
-    } while (!cb->isRenderFlowThread());
+    }
 
     if (topMostUnsplittable) {
         if (getRegionRangeForBoxFromCachedInfo(topMostUnsplittable, startRegion, endRegion)) {
@@ -782,13 +787,6 @@ bool RenderFlowThread::getRegionRangeForBox(const RenderBox* box, RenderRegion*&
     }
 
     return false;
-}
-
-void RenderFlowThread::applyBreakAfterContent(LayoutUnit clientHeight)
-{
-    // Simulate a region break at height. If it points inside an auto logical height region,
-    // then it may determine the region computed autoheight.
-    addForcedRegionBreak(this, clientHeight, this, false);
 }
 
 bool RenderFlowThread::regionInRange(const RenderRegion* targetRegion, const RenderRegion* startRegion, const RenderRegion* endRegion) const

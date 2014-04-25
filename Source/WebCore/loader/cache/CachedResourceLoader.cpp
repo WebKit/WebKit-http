@@ -347,11 +347,8 @@ bool CachedResourceLoader::canRequest(CachedResource::Type type, const URL& url,
     case CachedResource::Script:
         if (!shouldBypassMainWorldContentSecurityPolicy && !m_document->contentSecurityPolicy()->allowScriptFromSource(url))
             return false;
-
-        if (frame()) {
-            if (!frame()->loader().client().allowScriptFromSource(frame()->settings().isScriptEnabled(), url))
-                return false;
-        }
+        if (frame() && !frame()->settings().isScriptEnabled())
+            return false;
         break;
     case CachedResource::CSSStyleSheet:
         if (!shouldBypassMainWorldContentSecurityPolicy && !m_document->contentSecurityPolicy()->allowStyleFromSource(url))
@@ -480,12 +477,17 @@ CachedResourceHandle<CachedResource> CachedResourceLoader::requestResource(Cache
         }
     }
 
-    if (!request.resourceRequest().url().protocolIsData())
+    if (document() && !document()->loadEventFinished() && !request.resourceRequest().url().protocolIsData())
         m_validatedURLs.add(request.resourceRequest().url());
 
     ASSERT(resource->url() == url.string());
     m_documentResources.set(resource->url(), resource);
     return resource;
+}
+
+void CachedResourceLoader::documentDidFinishLoadEvent()
+{
+    m_validatedURLs.clear();
 }
 
 CachedResourceHandle<CachedResource> CachedResourceLoader::revalidateResource(const CachedResourceRequest& request, CachedResource* resource)
@@ -678,9 +680,9 @@ void CachedResourceLoader::setImagesEnabled(bool enable)
     reloadImagesIfNotDeferred();
 }
 
-bool CachedResourceLoader::clientDefersImage(const URL& url) const
+bool CachedResourceLoader::clientDefersImage(const URL&) const
 {
-    return frame() && !frame()->loader().client().allowImage(m_imagesEnabled, url);
+    return !m_imagesEnabled;
 }
 
 bool CachedResourceLoader::shouldDeferImageLoad(const URL& url) const

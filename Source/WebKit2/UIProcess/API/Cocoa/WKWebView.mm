@@ -100,6 +100,7 @@
     BOOL _isWaitingForNewLayerTreeAfterDidCommitLoad;
     BOOL _hasStaticMinimumLayoutSize;
     CGSize _minimumLayoutSizeOverride;
+    CGSize _minimumLayoutSizeOverrideForMinimalUI;
 
     UIEdgeInsets _obscuredInsets;
     bool _isChangingObscuredInsetsInteractively;
@@ -453,7 +454,8 @@ static CGFloat contentZoomScale(WKWebView* webView)
 
 - (void)_didCommitLayerTree:(const WebKit::RemoteLayerTreeTransaction&)layerTreeTransaction
 {
-    ASSERT(!_customContentView);
+    if (_customContentView)
+        return;
 
     if (_isAnimatingResize) {
         [_contentView layer].sublayerTransform = _resizeAnimationTransformAdjustments;
@@ -627,6 +629,11 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
     return false;
 }
 
+- (void)didMoveToWindow
+{
+    _page->viewStateDidChange(WebCore::ViewState::IsInWindow);
+}
+
 #pragma mark - UIScrollViewDelegate
 
 - (BOOL)usesStandardContentView
@@ -713,7 +720,7 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
 
 static inline void setViewportConfigurationMinimumLayoutSize(WebKit::WebPageProxy& page, const CGSize& size)
 {
-    page.setViewportConfigurationMinimumLayoutSize(WebCore::IntSize(CGCeiling(size.width), CGCeiling(size.height)));
+    page.setViewportConfigurationMinimumLayoutSize(WebCore::FloatSize(size));
 }
 
 - (void)_frameOrBoundsChanged
@@ -952,7 +959,7 @@ static inline void setViewportConfigurationMinimumLayoutSize(WebKit::WebPageProx
 
 - (pid_t)_webProcessIdentifier
 {
-    return _page->processIdentifier();
+    return _page->isValid() ? _page->processIdentifier() : 0;
 }
 
 - (NSData *)_sessionState
@@ -1161,6 +1168,8 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
         findOptions |= WebKit::FindOptionsShowFindIndicator;
     if (wkFindOptions & _WKFindOptionsShowHighlight)
         findOptions |= WebKit::FindOptionsShowHighlight;
+    if (wkFindOptions & _WKFindOptionsDetermineMatchIndex)
+        findOptions |= WebKit::FindOptionsDetermineMatchIndex;
 
     return static_cast<WebKit::FindOptions>(findOptions);
 }
@@ -1261,6 +1270,18 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
         setViewportConfigurationMinimumLayoutSize(*_page, minimumLayoutSizeOverride);
 }
 
+- (CGSize)_minimumLayoutSizeOverrideForMinimalUI
+{
+    return _minimumLayoutSizeOverrideForMinimalUI;
+}
+
+- (void)_setMinimumLayoutSizeOverrideForMinimalUI:(CGSize)size
+{
+    _minimumLayoutSizeOverrideForMinimalUI = size;
+    if (!_isAnimatingResize)
+        _page->setMinimumLayoutSizeForMinimalUI(WebCore::FloatSize(size));
+}
+
 - (UIEdgeInsets)_obscuredInsets
 {
     return _obscuredInsets;
@@ -1329,6 +1350,7 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
 
     CGSize contentSizeInContentViewCoordinates = [_contentView bounds].size;
     [_scrollView setMinimumZoomScale:std::min(newBounds.size.width / contentSizeInContentViewCoordinates.width, [_scrollView minimumZoomScale])];
+    [_scrollView setMaximumZoomScale:std::max(newBounds.size.width / contentSizeInContentViewCoordinates.width, [_scrollView maximumZoomScale])];
 
     // Compute the new scale to keep the current content width in the scrollview.
     CGFloat oldWebViewWidthInContentViewCoordinates = oldBounds.size.width / contentZoomScale(self);
@@ -1371,7 +1393,7 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
     CGRect unobscuredRect = UIEdgeInsetsInsetRect(newBounds, _obscuredInsets);
     CGRect unobscuredRectInContentCoordinates = [self convertRect:unobscuredRect toView:_contentView.get()];
 
-    _page->dynamicViewportSizeUpdate(WebCore::IntSize(CGCeiling(newMinimumLayoutSize.width), CGCeiling(newMinimumLayoutSize.height)), visibleRectInContentCoordinates, unobscuredRectInContentCoordinates, targetScale);
+    _page->dynamicViewportSizeUpdate(WebCore::FloatSize(newMinimumLayoutSize.width, newMinimumLayoutSize.height), visibleRectInContentCoordinates, unobscuredRectInContentCoordinates, targetScale);
 }
 
 - (void)_endAnimatedResize

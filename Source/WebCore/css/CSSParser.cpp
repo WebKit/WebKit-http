@@ -812,15 +812,14 @@ static inline bool isValidKeywordPropertyAndValue(CSSPropertyID propertyId, int 
             return true;
         break;
 #if ENABLE(CSS_COMPOSITING)
-    case CSSPropertyWebkitMixBlendMode:
+    case CSSPropertyMixBlendMode:
         if (parserContext.isCSSCompositingEnabled && (valueID == CSSValueNormal || valueID == CSSValueMultiply || valueID == CSSValueScreen
             || valueID == CSSValueOverlay || valueID == CSSValueDarken || valueID == CSSValueLighten ||  valueID == CSSValueColorDodge
             || valueID == CSSValueColorBurn || valueID == CSSValueHardLight || valueID == CSSValueSoftLight || valueID == CSSValueDifference
-            || valueID == CSSValueExclusion || valueID == CSSValueHue || valueID == CSSValueSaturation || valueID == CSSValueColor
-            || valueID == CSSValueLuminosity))
+            || valueID == CSSValueExclusion))
             return true;
         break;
-    case CSSPropertyWebkitIsolation:
+    case CSSPropertyIsolation:
         if (parserContext.isCSSCompositingEnabled && (valueID == CSSValueAuto || valueID == CSSValueIsolate))
             return true;
         break;
@@ -1080,8 +1079,8 @@ static inline bool isKeywordPropertyID(CSSPropertyID propertyId)
     case CSSPropertyVisibility:
     case CSSPropertyWebkitAppearance:
 #if ENABLE(CSS_COMPOSITING)
-    case CSSPropertyWebkitMixBlendMode:
-    case CSSPropertyWebkitIsolation:
+    case CSSPropertyMixBlendMode:
+    case CSSPropertyIsolation:
 #endif
     case CSSPropertyWebkitBackfaceVisibility:
     case CSSPropertyWebkitBorderAfterStyle:
@@ -2412,11 +2411,11 @@ bool CSSParser::parseValue(CSSPropertyID propId, bool important)
         break;
 #endif
 #if ENABLE(CSS_COMPOSITING)
-    case CSSPropertyWebkitMixBlendMode:
+    case CSSPropertyMixBlendMode:
         if (cssCompositingEnabled())
             validPrimitive = true;
         break;
-    case CSSPropertyWebkitIsolation:
+    case CSSPropertyIsolation:
         if (cssCompositingEnabled())
             validPrimitive = true;
         break;

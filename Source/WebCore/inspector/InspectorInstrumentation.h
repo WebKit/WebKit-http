@@ -61,6 +61,10 @@ class ScriptArguments;
 class ScriptCallStack;
 }
 
+namespace JSC {
+class Profile;
+}
+
 namespace WebCore {
 
 class CSSRule;
@@ -89,7 +93,6 @@ class RenderObject;
 class ResourceRequest;
 class ResourceResponse;
 class ScriptExecutionContext;
-class ScriptProfile;
 class SecurityOrigin;
 class ShadowRoot;
 class StorageArea;
@@ -132,7 +135,7 @@ public:
     static void mouseDidMoveOverElement(Page*, const HitTestResult&, unsigned modifierFlags);
     static bool handleMousePress(Page*);
     static bool handleTouchEvent(Page*, Node*);
-    static bool forcePseudoState(Element*, CSSSelector::PseudoType);
+    static bool forcePseudoState(Element*, CSSSelector::PseudoClassType);
 
     static void willSendXMLHttpRequest(ScriptExecutionContext*, const String& url);
     static void didScheduleResourceRequest(Document*, const String& url);
@@ -230,10 +233,8 @@ public:
     static InspectorInstrumentationCookie willFireAnimationFrame(Document*, int callbackId);
     static void didFireAnimationFrame(const InspectorInstrumentationCookie&);
 
-    static void addStartProfilingMessageToConsole(Page*, const String& title, unsigned lineNumber, unsigned columnNumber, const String& sourceURL);
-    static void addProfile(Page*, PassRefPtr<ScriptProfile>, PassRefPtr<Inspector::ScriptCallStack>);
-    static String getCurrentUserInitiatedProfileName(Page*, bool incrementProfileNumber);
-    static bool profilerEnabled(Page*);
+    static void startProfiling(Page*, JSC::ExecState*, const String& title);
+    static PassRefPtr<JSC::Profile> stopProfiling(Page*, JSC::ExecState*, const String& title);
 
 #if ENABLE(SQL_DATABASE)
     static void didOpenDatabase(ScriptExecutionContext*, PassRefPtr<Database>, const String& domain, const String& name, const String& version);
@@ -333,7 +334,7 @@ private:
     static void mouseDidMoveOverElementImpl(InstrumentingAgents*, const HitTestResult&, unsigned modifierFlags);
     static bool handleTouchEventImpl(InstrumentingAgents*, Node*);
     static bool handleMousePressImpl(InstrumentingAgents*);
-    static bool forcePseudoStateImpl(InstrumentingAgents*, Element*, CSSSelector::PseudoType);
+    static bool forcePseudoStateImpl(InstrumentingAgents*, Element*, CSSSelector::PseudoClassType);
 
     static void willSendXMLHttpRequestImpl(InstrumentingAgents*, const String& url);
     static void didScheduleResourceRequestImpl(InstrumentingAgents*, const String& url, Frame*);
@@ -429,10 +430,8 @@ private:
     static InspectorInstrumentationCookie willFireAnimationFrameImpl(InstrumentingAgents*, int callbackId, Frame*);
     static void didFireAnimationFrameImpl(const InspectorInstrumentationCookie&);
 
-    static void addStartProfilingMessageToConsoleImpl(InstrumentingAgents*, const String& title, unsigned lineNumber, unsigned columnNumber, const String& sourceURL);
-    static void addProfileImpl(InstrumentingAgents*, RefPtr<ScriptProfile>, PassRefPtr<Inspector::ScriptCallStack>);
-    static String getCurrentUserInitiatedProfileNameImpl(InstrumentingAgents*, bool incrementProfileNumber);
-    static bool profilerEnabledImpl(InstrumentingAgents*);
+    static void startProfilingImpl(InstrumentingAgents*, JSC::ExecState*, const String& title);
+    static PassRefPtr<JSC::Profile> stopProfilingImpl(InstrumentingAgents*, JSC::ExecState*, const String& title);
 
 #if ENABLE(SQL_DATABASE)
     static void didOpenDatabaseImpl(InstrumentingAgents*, PassRefPtr<Database>, const String& domain, const String& name, const String& version);
@@ -780,7 +779,7 @@ inline bool InspectorInstrumentation::handleMousePress(Page* page)
     return false;
 }
 
-inline bool InspectorInstrumentation::forcePseudoState(Element* element, CSSSelector::PseudoType pseudoState)
+inline bool InspectorInstrumentation::forcePseudoState(Element* element, CSSSelector::PseudoClassType pseudoState)
 {
 #if ENABLE(INSPECTOR)
     FAST_RETURN_IF_NO_FRONTENDS(false);

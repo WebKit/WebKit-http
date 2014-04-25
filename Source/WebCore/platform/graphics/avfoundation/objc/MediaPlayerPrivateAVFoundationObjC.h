@@ -60,6 +60,7 @@ typedef struct OpaqueVTPixelTransferSession* VTPixelTransferSessionRef;
 namespace WebCore {
 
 class WebCoreAVFResourceLoader;
+class InbandMetadataTextTrackPrivateAVF;
 class InbandTextTrackPrivateAVFObjC;
 class AudioTrackPrivateAVFObjC;
 class VideoTrackPrivateAVFObjC;
@@ -108,7 +109,9 @@ public:
     void presentationSizeDidChange(FloatSize);
     void durationDidChange(double);
     void rateDidChange(double);
-    void metadataDidArrive(RetainPtr<NSArray>);
+    void metadataDidArrive(RetainPtr<NSArray>, double);
+
+    virtual void setShouldBufferData(bool);
 
 #if HAVE(AVFOUNDATION_VIDEO_OUTPUT)
     void outputMediaDataWillChange(AVPlayerItemVideoOutput*);
@@ -235,8 +238,12 @@ private:
     AVMediaSelectionGroup* safeMediaSelectionGroupForLegibleMedia();
 #endif
 
-    virtual void setCurrentTrack(InbandTextTrackPrivateAVF*) override;
-    virtual InbandTextTrackPrivateAVF* currentTrack() const override { return m_currentTrack; }
+#if ENABLE(DATACUE_VALUE)
+    void processMetadataTrack();
+#endif
+
+    virtual void setCurrentTextTrack(InbandTextTrackPrivateAVF*) override;
+    virtual InbandTextTrackPrivateAVF* currentTextTrack() const override { return m_currentTextTrack; }
 
 #if !HAVE(AVFOUNDATION_LEGIBLE_OUTPUT_SUPPORT)
     void processLegacyClosedCaptionsTracks();
@@ -302,7 +309,11 @@ private:
     Vector<RefPtr<VideoTrackPrivateAVFObjC>> m_videoTracks;
 #endif
 
-    InbandTextTrackPrivateAVF* m_currentTrack;
+    InbandTextTrackPrivateAVF* m_currentTextTrack;
+
+#if ENABLE(DATACUE_VALUE)
+    RefPtr<InbandMetadataTextTrackPrivateAVF> m_metadataTrack;
+#endif
 
     mutable RetainPtr<NSArray> m_cachedSeekableRanges;
     mutable RetainPtr<NSArray> m_cachedLoadedRanges;
@@ -317,6 +328,7 @@ private:
     bool m_cachedBufferEmpty;
     bool m_cachedBufferFull;
     bool m_cachedHasEnabledAudio;
+    bool m_shouldBufferData;
 #if ENABLE(IOS_AIRPLAY)
     mutable bool m_allowsWirelessVideoPlayback;
 #endif

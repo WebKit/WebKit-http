@@ -300,7 +300,8 @@ extern AXUIElementRef (*wkCreateAXUIElementRef)(id element);
 #endif // !PLATFORM(IOS)
 
 #if PLATFORM(IOS)
-extern CGSize (*wkGetViewportScreenSize)(void);
+extern CGSize (*wkGetScreenSize)(void);
+extern CGSize (*wkGetAvailableScreenSize)(void);
 extern void (*wkSetLayerContentsScale)(CALayer *);
 extern float (*wkGetScreenScaleFactor)(void);
 #endif
@@ -331,8 +332,6 @@ extern void(*wkDestroyRenderingResources)(void);
 extern CFHTTPCookieStorageRef (*wkGetDefaultHTTPCookieStorage)();
 extern WKCFURLCredentialRef (*wkCopyCredentialFromCFPersistentStorage)(CFURLProtectionSpaceRef protectionSpace);
 extern void (*wkSetCFURLRequestShouldContentSniff)(CFMutableURLRequestRef, bool);
-extern CFArrayRef (*wkCFURLRequestCopyHTTPRequestBodyParts)(CFURLRequestRef);
-extern void (*wkCFURLRequestSetHTTPRequestBodyParts)(CFMutableURLRequestRef, CFArrayRef bodyParts);
 extern void (*wkSetRequestStorageSession)(CFURLStorageSessionRef, CFMutableURLRequestRef);
 #endif
 #if !PLATFORM(IOS)

@@ -1714,8 +1714,20 @@ bool ByteCodeParser::handleIntrinsic(int resultOperand, Intrinsic intrinsic, int
         return true;
     }
         
-    case DFGTrue: {
+    case DFGTrueIntrinsic: {
         set(VirtualRegister(resultOperand), getJSConstantForValue(jsBoolean(true)));
+        return true;
+    }
+        
+    case OSRExitIntrinsic: {
+        addToGraph(ForceOSRExit);
+        set(VirtualRegister(resultOperand), constantUndefined());
+        return true;
+    }
+        
+    case IsFinalTierIntrinsic: {
+        set(VirtualRegister(resultOperand),
+            getJSConstantForValue(jsBoolean(Options::useFTLJIT() ? isFTL(m_graph.m_plan.mode) : true)));
         return true;
     }
         
@@ -1885,7 +1897,6 @@ Node* ByteCodeParser::emitPrototypeChecks(
         currentStructure = chain->at(i);
         base = cellConstantWithStructureCheck(currentObject, currentStructure);
     }
-    RELEASE_ASSERT(base);
     return base;
 }
 
@@ -3400,7 +3411,7 @@ ByteCodeParser::InlineStackEntry::InlineStackEntry(
         ASSERT(inlineCallFrameStart.isValid());
         ASSERT(callsiteBlockHead);
         
-        m_inlineCallFrame = byteCodeParser->m_graph.m_inlineCallFrames->add();
+        m_inlineCallFrame = byteCodeParser->m_graph.m_plan.inlineCallFrames->add();
         initializeLazyWriteBarrierForInlineCallFrameExecutable(
             byteCodeParser->m_graph.m_plan.writeBarriers,
             m_inlineCallFrame->executable,

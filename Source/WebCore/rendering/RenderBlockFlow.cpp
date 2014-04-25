@@ -343,7 +343,7 @@ void RenderBlockFlow::layoutBlock(bool relayoutChildren, LayoutUnit pageLogicalH
 
     bool pageLogicalHeightChanged = false;
     bool hasSpecifiedPageLogicalHeight = false;
-    checkForPaginationLogicalHeightChange(pageLogicalHeight, pageLogicalHeightChanged, hasSpecifiedPageLogicalHeight);
+    checkForPaginationLogicalHeightChange(relayoutChildren, pageLogicalHeight, pageLogicalHeightChanged, hasSpecifiedPageLogicalHeight);
 
     const RenderStyle& styleToUse = style();
     LayoutStateMaintainer statePusher(view(), *this, locationOffset(), hasColumns() || hasTransform() || hasReflection() || styleToUse.isFlippedBlocksWritingMode(), pageLogicalHeight, pageLogicalHeightChanged, columnInfo());
@@ -1868,6 +1868,13 @@ void RenderBlockFlow::styleDidChange(StyleDifference diff, const RenderStyle* ol
 
     if (diff >= StyleDifferenceRepaint)
         invalidateLineLayoutPath();
+    
+    if (multiColumnFlowThread()) {
+        for (auto child = firstChildBox();
+             child && (child->isInFlowRenderFlowThread() || child->isRenderMultiColumnSet());
+             child = child->nextSiblingBox())
+            child->setStyle(RenderStyle::createAnonymousStyleWithDisplay(&style(), BLOCK));
+    }
 }
 
 void RenderBlockFlow::styleWillChange(StyleDifference diff, const RenderStyle& newStyle)
@@ -1960,7 +1967,7 @@ void RenderBlockFlow::computeOverflow(LayoutUnit oldClientAfterEdge, bool recomp
 {
     RenderBlock::computeOverflow(oldClientAfterEdge, recomputeFloats);
 
-    if (!hasColumns() && (recomputeFloats || isRoot() || expandsToEncloseOverhangingFloats() || hasSelfPaintingLayer()))
+    if (!hasColumns() && !multiColumnFlowThread() && (recomputeFloats || isRoot() || expandsToEncloseOverhangingFloats() || hasSelfPaintingLayer()))
         addOverflowFromFloats();
 }
 
@@ -1987,6 +1994,20 @@ void RenderBlockFlow::repaintOverhangingFloats(bool paintAllDescendants)
             floatingObject->renderer().repaint();
             floatingObject->renderer().repaintOverhangingFloats(false);
         }
+    }
+}
+
+void RenderBlockFlow::paintBoxDecorations(PaintInfo& paintInfo, const LayoutPoint& point)
+{
+    RenderBlock::paintBoxDecorations(paintInfo, point);
+    
+    if (!multiColumnFlowThread() || !paintInfo.shouldPaintWithinRoot(*this))
+        return;
+    
+    // Iterate over our children and paint the column rules as needed.
+    for (auto& columnSet : childrenOfType<RenderMultiColumnSet>(*this)) {
+        LayoutPoint childPoint = columnSet.location() + flipForWritingModeForChild(&columnSet, point);
+        columnSet.paintColumnRules(paintInfo, childPoint);
     }
 }
 
@@ -2401,7 +2422,7 @@ LayoutUnit RenderBlockFlow::lowestFloatLogicalBottom(FloatingObject::Type floatT
 LayoutUnit RenderBlockFlow::addOverhangingFloats(RenderBlockFlow& child, bool makeChildPaintOtherFloats)
 {
     // Prevent floats from being added to the canvas by the root element, e.g., <html>.
-    if (child.hasOverflowClip() || !child.containsFloats() || child.isRoot() || child.hasColumns() || child.isWritingModeRoot())
+    if (child.hasOverflowClip() || !child.containsFloats() || child.isRoot() || child.hasColumns() || child.isWritingModeRoot() || child.isRenderFlowThread() || child.isRenderRegion())
         return 0;
 
     LayoutUnit childLogicalTop = child.logicalTop();
@@ -3536,7 +3557,7 @@ void RenderBlockFlow::removeChild(RenderObject& oldChild)
     RenderBlock::removeChild(oldChild);
 }
 
-void RenderBlockFlow::checkForPaginationLogicalHeightChange(LayoutUnit& pageLogicalHeight, bool& pageLogicalHeightChanged, bool& hasSpecifiedPageLogicalHeight)
+void RenderBlockFlow::checkForPaginationLogicalHeightChange(bool& relayoutChildren, LayoutUnit& pageLogicalHeight, bool& pageLogicalHeightChanged, bool& hasSpecifiedPageLogicalHeight)
 {
     // If we don't use either of the two column implementations or a flow thread, then bail.
     if (!isRenderFlowThread() && !multiColumnFlowThread() && !hasColumns())
@@ -3547,7 +3568,10 @@ void RenderBlockFlow::checkForPaginationLogicalHeightChange(LayoutUnit& pageLogi
         LogicalExtentComputedValues computedValues;
         computeLogicalHeight(LayoutUnit(), logicalTop(), computedValues);
         LayoutUnit columnHeight = computedValues.m_extent - borderAndPaddingLogicalHeight() - scrollbarLogicalHeight();
+        LayoutUnit oldHeightAvailable = flowThread->columnHeightAvailable();
         flowThread->setColumnHeightAvailable(std::max<LayoutUnit>(columnHeight, 0));
+        if (oldHeightAvailable != flowThread->columnHeightAvailable())
+            relayoutChildren = true;
     } else if (hasColumns()) {
         ColumnInfo* colInfo = columnInfo();
     

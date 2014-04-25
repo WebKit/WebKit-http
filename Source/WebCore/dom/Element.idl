@@ -38,7 +38,7 @@
 
 #if !defined(LANGUAGE_OBJECTIVE_C)
     // For ObjC this is defined on Node for legacy support.
-    [ReturnsCacheableValue] readonly attribute NamedNodeMap     attributes;
+    readonly attribute NamedNodeMap     attributes;
     boolean            hasAttributes();
 #endif
 
@@ -107,8 +107,8 @@
     [RaisesException] Element querySelector(DOMString selectors);
     [RaisesException] NodeList querySelectorAll(DOMString selectors);
 
-    // WebKit extension, pending specification.
-    [RaisesException] boolean webkitMatchesSelector([Default=Undefined] optional DOMString selectors);
+    [RaisesException] boolean matches([Default=Undefined] optional DOMString selectors);
+    [ImplementedAs=matches, RaisesException] boolean webkitMatchesSelector([Default=Undefined] optional DOMString selectors);
 
     // ElementTraversal API
     readonly attribute Element firstElementChild;

@@ -1,3 +1,135 @@
+2014-04-22  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Support Python 2.7 in Cygwin
+        https://bugs.webkit.org/show_bug.cgi?id=132023
+
+        Reviewed by Michael Saboff.
+
+        * WTF.vcxproj/WTFGenerated.make: Use proper path to Python.
+
+2014-04-21  Eric Carlson  <eric.carlson@apple.com>
+
+        [Mac] implement WebKitDataCue
+        https://bugs.webkit.org/show_bug.cgi?id=131799
+
+        Reviewed by Dean Jackson.
+
+        * wtf/FeatureDefines.h: Define ENABLE_DATACUE_VALUE.
+
+2014-04-21  Darin Adler  <darin@apple.com>
+
+        Add HashSet::takeAny
+        https://bugs.webkit.org/show_bug.cgi?id=131928
+
+        Reviewed by Benjamin Poulain.
+
+        * wtf/HashSet.h: Added an overload of take that takes an iterator,
+        and used it to implement both the existing take and new takeAny functions.
+
+2014-04-20  Andreas Kling  <akling@apple.com>
+
+        Speed up jsStringWithCache() through WeakGCMap inlining.
+        <https://webkit.org/b/131923>
+
+        Add HashMap::fastAdd(), which is the same as add() except we'll tell
+        the compiler to aggressively inline it.
+
+        Reviewed by Darin Adler.
+
+        * wtf/HashMap.h:
+        * wtf/HashTable.h:
+
+2014-04-19  Filip Pizlo  <fpizlo@apple.com>
+
+        Make it easier to check if an integer sum would overflow
+        https://bugs.webkit.org/show_bug.cgi?id=131900
+
+        Reviewed by Darin Adler.
+
+        * wtf/CheckedArithmetic.h:
+        (WTF::checkedSum):
+        (WTF::sumOverflows):
+
+2014-04-18  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r167527.
+        https://bugs.webkit.org/show_bug.cgi?id=131883
+
+        Broke 32-bit build (Requested by ap on #webkit).
+
+        Reverted changeset:
+
+        "[Mac] implement WebKitDataCue"
+        https://bugs.webkit.org/show_bug.cgi?id=131799
+        http://trac.webkit.org/changeset/167527
+
+2014-04-18  Eric Carlson  <eric.carlson@apple.com>
+
+        [Mac] implement WebKitDataCue
+        https://bugs.webkit.org/show_bug.cgi?id=131799
+
+        Reviewed by Dean Jackson.
+
+        * wtf/FeatureDefines.h: Define ENABLE_DATACUE_VALUE.
+
+2014-04-18  Martin Robinson  <mrobinson@igalia.com>
+
+        Remove DynamicAnnotations.h?
+        https://bugs.webkit.org/show_bug.cgi?id=131754
+
+        Reviewed by Simon Fraser.
+
+        This file, which helped support tools like Valgrind was unused.
+
+        * WTF.vcxproj/WTF.vcxproj: Remove references to the files.
+        * WTF.vcxproj/WTF.vcxproj.filters: Remove references to the files.
+        * WTF.xcodeproj/project.pbxproj: Remove references to the files.
+        * wtf/CMakeLists.txt: Remove references to the files.
+        * wtf/DynamicAnnotations.cpp: Removed.
+        * wtf/DynamicAnnotations.h: Removed.
+        * wtf/ThreadSafeRefCounted.h: Remove references to the files.
+        * wtf/text/StringStatics.cpp: Remove references to the files.
+
+2014-04-18  Philippe Normand  <pnormand@igalia.com>
+
+        Remove NETWORK_INFO support
+        https://bugs.webkit.org/show_bug.cgi?id=131841
+
+        Reviewed by Gyuyoung Kim.
+
+        * wtf/FeatureDefines.h:
+
+2014-04-17  Filip Pizlo  <fpizlo@apple.com>
+
+        Don't include CompilationThread.h from StringImpl.h
+        https://bugs.webkit.org/show_bug.cgi?id=131817
+
+        Reviewed by Simon Fraser.
+
+        * wtf/CompilationThread.h:
+        * wtf/StdLibExtras.h:
+        * wtf/text/StringImpl.h:
+
+2014-04-17  Darin Adler  <darin@apple.com>
+
+        Use HashMap<unique_ptr> and Vector<unique_ptr> instead of deprecatedDeleteAllValues
+        https://bugs.webkit.org/show_bug.cgi?id=73757
+
+        Reviewed by Brent Fulgham.
+
+        * wtf/Vector.h:
+        (WTF::deprecatedDeleteAllValues): Deleted.
+
+2014-04-17  Darin Adler  <darin@apple.com>
+
+        Add separate flag for IndexedDatabase in workers since the current implementation is not threadsafe
+        https://bugs.webkit.org/show_bug.cgi?id=131785
+        rdar://problem/16003108
+
+        Reviewed by Brady Eidson.
+
+        * wtf/FeatureDefines.h: Added INDEXED_DATABASE_IN_WORKERS.
+
 2014-04-16  Simon Fraser  <simon.fraser@apple.com>
 
         Don't include CryptographicallyRandomNumber.h in StringImpl.h

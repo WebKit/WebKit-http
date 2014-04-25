@@ -41,7 +41,6 @@ void WebPageCreationParameters::encode(IPC::ArgumentEncoder& encoder) const
     encoder << drawsBackground;
     encoder << drawsTransparentBackground;
     encoder << underlayColor;
-    encoder << areMemoryCacheClientCallsEnabled;
     encoder << useFixedLayout;
     encoder << fixedLayoutSize;
     encoder.encodeEnum(paginationMode);
@@ -72,7 +71,8 @@ void WebPageCreationParameters::encode(IPC::ArgumentEncoder& encoder) const
     encoder << colorSpace;
 #endif
 #if PLATFORM(IOS)
-    encoder << viewportScreenSize;
+    encoder << screenSize;
+    encoder << availableScreenSize;
 #endif
 }
 
@@ -93,8 +93,6 @@ bool WebPageCreationParameters::decode(IPC::ArgumentDecoder& decoder, WebPageCre
     if (!decoder.decode(parameters.drawsTransparentBackground))
         return false;
     if (!decoder.decode(parameters.underlayColor))
-        return false;
-    if (!decoder.decode(parameters.areMemoryCacheClientCallsEnabled))
         return false;
     if (!decoder.decode(parameters.useFixedLayout))
         return false;
@@ -152,7 +150,9 @@ bool WebPageCreationParameters::decode(IPC::ArgumentDecoder& decoder, WebPageCre
 #endif
 
 #if PLATFORM(IOS)
-    if (!decoder.decode(parameters.viewportScreenSize))
+    if (!decoder.decode(parameters.screenSize))
+        return false;
+    if (!decoder.decode(parameters.availableScreenSize))
         return false;
 #endif
 

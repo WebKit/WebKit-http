@@ -133,6 +133,10 @@ static const float tapAndHoldDelay  = 0.75;
 - (void)selectWord;
 @end
 
+@interface UITextInteractionAssistant (StagingToRemove)
+- (void)scheduleReplacementsForText:(NSString *)text;
+@end
+
 @interface WKFormInputSession : NSObject <_WKFormInputSession>
 
 - (instancetype)initWithContentView:(WKContentView *)view userObject:(NSObject <NSSecureCoding> *)userObject;
@@ -287,16 +291,13 @@ static const float tapAndHoldDelay  = 0.75;
 - (void)_webTouchEventsRecognized:(UIWebTouchEventsGestureRecognizer *)gestureRecognizer
 {
     NativeWebTouchEvent nativeWebTouchEvent(gestureRecognizer);
-
     if (nativeWebTouchEvent.type() == WebKit::WebEvent::TouchStart)
         _canSendTouchEventsAsynchronously = NO;
 
-    if (!_canSendTouchEventsAsynchronously)
-        _nativeWebTouchEventUniqueIdBeingSentSynchronously = nativeWebTouchEvent.uniqueId();
-
-    _page->setShouldSendEventsSynchronously(!_canSendTouchEventsAsynchronously);
-    _page->handleTouchEvent(nativeWebTouchEvent);
-    _page->setShouldSendEventsSynchronously(false);
+    if (_canSendTouchEventsAsynchronously)
+        _page->handleTouchEventAsynchronously(nativeWebTouchEvent);
+    else
+        _page->handleTouchEventSynchronously(nativeWebTouchEvent);
 }
 
 static FloatQuad inflateQuad(const FloatQuad& quad, float inflateSize)
@@ -339,12 +340,6 @@ static FloatQuad inflateQuad(const FloatQuad& quad, float inflateSize)
 - (void)_webTouchEvent:(const WebKit::NativeWebTouchEvent&)touchEvent preventsNativeGestures:(BOOL)preventsNativeGesture
 {
     if (preventsNativeGesture) {
-        // If we are dispatching events synchronously and the event coming back is not the one we are sending, it is a callback
-        // from an event sent asynchronously prior to the synchronous event. In that case, it should not use that information
-        // to update UIWebTouchEventsGestureRecognizer.
-        if (!_canSendTouchEventsAsynchronously && _nativeWebTouchEventUniqueIdBeingSentSynchronously != touchEvent.uniqueId())
-            return;
-
         _canSendTouchEventsAsynchronously = YES;
         [_touchEventGestureRecognizer setDefaultPrevented:YES];
     }
@@ -851,14 +846,33 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
     // FIXME: To be implemented.
 }
 
+- (NSString *)selectedText
+{
+    return (NSString *)_page->editorState().wordAtSelection;
+}
+
+- (BOOL)isReplaceAllowed
+{
+    return _page->editorState().isReplaceAllowed;
+}
+
+- (void)replaceText:(NSString *)text withText:(NSString *)word
+{
+    _page->replaceSelectedText(text, word);
+}
+
 - (void)_promptForReplace:(id)sender
 {
-    // FIXME: To be implemented.
+    if (_page->editorState().wordAtSelection.isEmpty())
+        return;
+
+    if ([_textSelectionAssistant respondsToSelector:@selector(scheduleReplacementsForText:)])
+        [_textSelectionAssistant scheduleReplacementsForText:_page->editorState().wordAtSelection];
 }
 
 - (void)replace:(id)sender
 {
-    // FIXME: To be implemented.
+    [[UIKeyboardImpl sharedInstance] replaceText:sender];
 }
 
 - (BOOL)canPerformAction:(SEL)action withSender:(id)sender
@@ -908,10 +922,8 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
         return NO;
     }
 
-    if (action == @selector(_promptForReplace:)) {
-        // FIXME: need to implement
-        return NO;
-    }
+    if (action == @selector(_promptForReplace:))
+        return _page->editorState().selectionIsRange && _page->editorState().isReplaceAllowed && [[UIKeyboardImpl activeInstance] autocorrectSpellingEnabled];
 
     if (action == @selector(select:)) {
         // Disable select in password fields so that you can't see word boundaries.
@@ -1313,6 +1325,11 @@ static void selectionChangedWithTouch(bool error, WKContentView *view, const Web
         [_autocorrectionData.autocorrectionHandler release];
         _autocorrectionData.autocorrectionHandler = nil;
     }));
+}
+
+- (UTF32Char)_characterBeforeCaretSelection
+{
+    return _page->editorState().characterBeforeSelection;
 }
 
 - (CGRect)textFirstRect
@@ -2017,6 +2034,11 @@ static UITextAutocapitalizationType toUITextAutocapitalize(WebAutocapitalizeType
     // to wait to paint the selection.
     if (_usingGestureForSelection)
         [self _updateChangedSelection];
+}
+
+- (void)selectWordForReplacement
+{
+    _page->extendSelection(WordGranularity);
 }
 
 - (void)_updateChangedSelection

@@ -106,6 +106,29 @@ void SpeculativeJIT::emitAllocateJSArray(GPRReg resultGPR, Structure* structure,
             structure, numElements)));
 }
 
+void SpeculativeJIT::emitAllocateArguments(GPRReg resultGPR, GPRReg scratchGPR1, GPRReg scratchGPR2, MacroAssembler::JumpList& slowPath)
+{
+    Structure* structure = m_jit.graph().globalObjectFor(m_currentNode->origin.semantic)->argumentsStructure();
+    emitAllocateDestructibleObject<Arguments>(resultGPR, structure, scratchGPR1, scratchGPR2, slowPath);
+
+    m_jit.storePtr(TrustedImmPtr(0), MacroAssembler::Address(resultGPR, Arguments::offsetOfActivation()));
+
+    m_jit.load32(JITCompiler::payloadFor(JSStack::ArgumentCount), scratchGPR1);
+    m_jit.sub32(TrustedImm32(1), scratchGPR1);
+    m_jit.store32(scratchGPR1, MacroAssembler::Address(resultGPR, Arguments::offsetOfNumArguments()));
+
+    m_jit.store32(TrustedImm32(0), MacroAssembler::Address(resultGPR, Arguments::offsetOfOverrodeLength()));
+    if (m_jit.isStrictModeFor(m_currentNode->origin.semantic))
+        m_jit.store8(TrustedImm32(1), MacroAssembler::Address(resultGPR, Arguments::offsetOfIsStrictMode()));
+
+    m_jit.storePtr(GPRInfo::callFrameRegister, MacroAssembler::Address(resultGPR, Arguments::offsetOfRegisters()));
+    m_jit.storePtr(TrustedImmPtr(0), MacroAssembler::Address(resultGPR, Arguments::offsetOfRegisterArray()));
+    m_jit.storePtr(TrustedImmPtr(0), MacroAssembler::Address(resultGPR, Arguments::offsetOfSlowArgumentData()));
+
+    m_jit.loadPtr(JITCompiler::addressFor(JSStack::Callee), scratchGPR1);
+    m_jit.storePtr(scratchGPR1, MacroAssembler::Address(resultGPR, Arguments::offsetOfCallee()));
+}
+
 void SpeculativeJIT::speculationCheck(ExitKind kind, JSValueSource jsValueSource, Node* node, MacroAssembler::Jump jumpToFail)
 {
     if (!m_compileOkay)
@@ -2163,6 +2186,13 @@ void SpeculativeJIT::compileValueRep(Node* node)
         
         FPRReg valueFPR = value.fpr();
         JSValueRegs resultRegs = result.regs();
+        
+        // It's very tempting to in-place filter the value to indicate that it's not impure NaN
+        // anymore. Unfortunately, this would be unsound. If it's a GetLocal or if the value was
+        // subject to a prior SetLocal, filtering the value would imply that the corresponding
+        // local was purified.
+        if (needsTypeCheck(node->child1(), ~SpecDoubleImpureNaN))
+            m_jit.purifyNaN(valueFPR);
 
 #if CPU(X86)
         // boxDouble() on X86 clobbers the source, so we need to copy.
@@ -2506,8 +2536,6 @@ void SpeculativeJIT::compileGetByValOnFloatTypedArray(Node* node, TypedArrayType
     default:
         RELEASE_ASSERT_NOT_REACHED();
     }
-    
-    m_jit.purifyNaN(resultReg);
     
     doubleResult(resultReg, node);
 }
@@ -4850,7 +4878,7 @@ void SpeculativeJIT::speculate(Node*, Edge edge)
         ASSERT(!needsTypeCheck(edge, SpecInt32));
         break;
     case DoubleRepUse:
-        ASSERT(!needsTypeCheck(edge, SpecDouble));
+        ASSERT(!needsTypeCheck(edge, SpecFullDouble));
         break;
     case Int52RepUse:
         ASSERT(!needsTypeCheck(edge, SpecMachineInt));
@@ -4919,6 +4947,7 @@ void SpeculativeJIT::emitSwitchIntJump(
     SwitchData* data, GPRReg value, GPRReg scratch)
 {
     SimpleJumpTable& table = m_jit.codeBlock()->switchJumpTable(data->switchTableIndex);
+    table.ensureCTITable();
     m_jit.sub32(Imm32(table.min), value);
     addBranch(
         m_jit.branch32(JITCompiler::AboveOrEqual, value, Imm32(table.ctiOffsets.size())),

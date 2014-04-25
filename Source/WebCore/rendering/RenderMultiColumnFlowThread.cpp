@@ -30,6 +30,7 @@
 #include "LayoutState.h"
 #include "RenderMultiColumnSet.h"
 #include "RenderMultiColumnSpannerPlaceholder.h"
+#include "RenderView.h"
 #include "TransformState.h"
 
 namespace WebCore {
@@ -161,6 +162,11 @@ void RenderMultiColumnFlowThread::evacuateAndDestroy()
 {
     RenderBlockFlow* multicolContainer = multiColumnBlockFlow();
     m_beingEvacuated = true;
+    
+    // Delete the line box tree.
+    deleteLines();
+    
+    LayoutStateDisabler layoutStateDisabler(&view());
 
     // First promote all children of the flow thread. Before we move them to the flow thread's
     // container, we need to unregister the flow thread, so that they aren't just re-added again to
@@ -183,7 +189,7 @@ void RenderMultiColumnFlowThread::evacuateAndDestroy()
     // Remove all sets.
     while (RenderMultiColumnSet* columnSet = firstMultiColumnSet())
         columnSet->destroy();
-
+    
     destroy();
 }
 
@@ -266,7 +272,7 @@ static bool isValidColumnSpanner(RenderMultiColumnFlowThread* flowThread, Render
 
 void RenderMultiColumnFlowThread::flowThreadDescendantInserted(RenderObject* descendant)
 {
-    if (m_beingEvacuated)
+    if (m_beingEvacuated || descendant->isInFlowRenderFlowThread())
         return;
     RenderObject* subtreeRoot = descendant;
     for (; descendant; descendant = descendant->nextInPreOrder(subtreeRoot)) {

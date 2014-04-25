@@ -2081,7 +2081,7 @@ void RenderBox::computeRectForRepaint(const RenderLayerModelObject* repaintConta
         LayoutState* layoutState = view().layoutState();
 
         if (layer() && layer()->transform())
-            rect = layer()->transform()->mapRect(pixelSnappedIntRect(rect));
+            rect = LayoutRect(layer()->transform()->mapRect(pixelSnappedForPainting(rect, document().deviceScaleFactor())));
 
         // We can't trust the bits on RenderObject, because this might be called while re-resolving style.
         if (styleToUse.hasInFlowPosition() && layer())
@@ -2107,8 +2107,15 @@ void RenderBox::computeRectForRepaint(const RenderLayerModelObject* repaintConta
     auto o = container(repaintContainer, &containerSkipped);
     if (!o)
         return;
+    
+    EPosition position = styleToUse.position();
 
-    if (o->isRenderFlowThread()) {
+    // This code isn't necessary for in-flow RenderFlowThreads.
+    // Don't add the location of the region in the flow thread for absolute positioned
+    // elements because their absolute position already pushes them down through
+    // the regions so adding this here and then adding the topLeft again would cause
+    // us to add the height twice.
+    if (o->isOutOfFlowRenderFlowThread() && position != AbsolutePosition) {
         RenderRegion* firstRegion = nullptr;
         RenderRegion* lastRegion = nullptr;
         if (toRenderFlowThread(o)->getRegionRangeForBox(this, firstRegion, lastRegion))
@@ -2121,13 +2128,11 @@ void RenderBox::computeRectForRepaint(const RenderLayerModelObject* repaintConta
     LayoutPoint topLeft = rect.location();
     topLeft.move(locationOffset());
 
-    EPosition position = styleToUse.position();
-
     // We are now in our parent container's coordinate space.  Apply our transform to obtain a bounding box
     // in the parent's coordinate space that encloses us.
     if (hasLayer() && layer()->transform()) {
         fixed = position == FixedPosition;
-        rect = layer()->transform()->mapRect(pixelSnappedIntRect(rect));
+        rect = LayoutRect(layer()->transform()->mapRect(pixelSnappedForPainting(rect, document().deviceScaleFactor())));
         topLeft = rect.location();
         topLeft.move(locationOffset());
     } else if (position == FixedPosition)
@@ -2707,11 +2712,11 @@ LayoutUnit RenderBox::computeContentAndScrollbarLogicalHeightUsing(const Length&
     return -1;
 }
 
-bool RenderBox::skipContainingBlockForPercentHeightCalculation(const RenderBox* containingBlock) const
+bool RenderBox::skipContainingBlockForPercentHeightCalculation(const RenderBox* containingBlock, bool isPerpendicularWritingMode) const
 {
     // Flow threads for multicol or paged overflow should be skipped. They are invisible to the DOM,
     // and percent heights of children should be resolved against the multicol or paged container.
-    if (containingBlock->isInFlowRenderFlowThread())
+    if (containingBlock->isInFlowRenderFlowThread() && !isPerpendicularWritingMode)
         return true;
 
     // For quirks mode and anonymous blocks, we skip auto-height containingBlocks when computing percentages.
@@ -2729,7 +2734,8 @@ LayoutUnit RenderBox::computePercentageLogicalHeight(const Length& height) const
     RenderBlock* cb = containingBlock();
     const RenderBox* containingBlockChild = this;
     LayoutUnit rootMarginBorderPaddingHeight = 0;
-    while (!cb->isRenderView() && skipContainingBlockForPercentHeightCalculation(cb)) {
+    bool isHorizontal = isHorizontalWritingMode();
+    while (!cb->isRenderView() && skipContainingBlockForPercentHeightCalculation(cb, isHorizontal != cb->isHorizontalWritingMode())) {
         if (cb->isBody() || cb->isRoot())
             rootMarginBorderPaddingHeight += cb->marginBefore() + cb->marginAfter() + cb->borderAndPaddingLogicalHeight();
         skippedAutoHeightContainingBlock = true;
@@ -2746,7 +2752,7 @@ LayoutUnit RenderBox::computePercentageLogicalHeight(const Length& height) const
 
     bool includeBorderPadding = isTable();
 
-    if (isHorizontalWritingMode() != cb->isHorizontalWritingMode())
+    if (isHorizontal != cb->isHorizontalWritingMode())
         availableHeight = containingBlockChild->containingBlockLogicalWidthForContent();
     else if (hasOverrideContainingBlockLogicalHeight())
         availableHeight = overrideContainingBlockContentLogicalHeight();
@@ -4306,7 +4312,7 @@ void RenderBox::addOverflowFromChild(RenderBox* child, const LayoutSize& delta)
 
 void RenderBox::addLayoutOverflow(const LayoutRect& rect)
 {
-    LayoutRect clientBox = clientBoxRect();
+    LayoutRect clientBox = flippedClientBoxRect();
     if (clientBox.contains(rect) || rect.isEmpty())
         return;
     
@@ -4347,7 +4353,7 @@ void RenderBox::addVisualOverflow(const LayoutRect& rect)
         return;
         
     if (!m_overflow)
-        m_overflow = adoptRef(new RenderOverflow(clientBoxRect(), borderBox));
+        m_overflow = adoptRef(new RenderOverflow(flippedClientBoxRect(), borderBox));
     
     m_overflow->addVisualOverflow(rect);
 }
@@ -4537,6 +4543,26 @@ LayoutRect RenderBox::layoutOverflowRectForPropagation(RenderStyle* parentStyle)
     else if (style().writingMode() == BottomToTopWritingMode || parentStyle->writingMode() == BottomToTopWritingMode)
         rect.setY(height() - rect.maxY());
 
+    return rect;
+}
+
+LayoutRect RenderBox::flippedClientBoxRect() const
+{
+    // Because of the special coodinate system used for overflow rectangles (not quite logical, not
+    // quite physical), we need to flip the block progression coordinate in vertical-rl and
+    // horizontal-bt writing modes. Apart from that, this method does the same as clientBoxRect().
+
+    LayoutUnit left = borderLeft();
+    LayoutUnit top = borderTop();
+    LayoutUnit right = borderRight();
+    LayoutUnit bottom = borderBottom();
+    // Calculate physical padding box.
+    LayoutRect rect(left, top, width() - left - right, height() - top - bottom);
+    // Flip block progression axis if writing mode is vertical-rl or horizontal-bt.
+    flipForWritingMode(rect);
+    // Subtract space occupied by scrollbars. They are at their physical edge in this coordinate
+    // system, so order is important here: first flip, then subtract scrollbars.
+    rect.contract(verticalScrollbarWidth(), horizontalScrollbarHeight());
     return rect;
 }
 

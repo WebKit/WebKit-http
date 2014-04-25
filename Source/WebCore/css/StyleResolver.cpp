@@ -780,7 +780,7 @@ PassRef<RenderStyle> StyleResolver::styleForElement(Element* element, RenderStyl
         state.style()->setIsLink(true);
         EInsideLink linkState = state.elementLinkState();
         if (linkState != NotInsideLink) {
-            bool forceVisited = InspectorInstrumentation::forcePseudoState(element, CSSSelector::PseudoVisited);
+            bool forceVisited = InspectorInstrumentation::forcePseudoState(element, CSSSelector::PseudoClassVisited);
             if (forceVisited)
                 linkState = InsideVisitedLink;
         }
@@ -1637,7 +1637,8 @@ void StyleResolver::applyMatchedProperties(const MatchResult& matchResult, const
     unsigned cacheHash = shouldUseMatchedPropertiesCache && matchResult.isCacheable ? computeMatchedPropertiesHash(matchResult.matchedProperties.data(), matchResult.matchedProperties.size()) : 0;
     bool applyInheritedOnly = false;
     const MatchedPropertiesCacheItem* cacheItem = 0;
-    if (cacheHash && (cacheItem = findFromMatchedPropertiesCache(cacheHash, matchResult))) {
+    if (cacheHash && (cacheItem = findFromMatchedPropertiesCache(cacheHash, matchResult))
+        && isCacheableInMatchedPropertiesCache(element, state.style(), state.parentStyle())) {
         // We can build up the style by copying non-inherited properties from an earlier style object built using the same exact
         // style declarations. We then only need to apply the inherited properties, if any, as their values can depend on the 
         // element context. This is fast and saves memory by reusing the style data structures.

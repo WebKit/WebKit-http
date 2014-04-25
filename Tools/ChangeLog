@@ -1,3 +1,353 @@
+2014-04-23  Anders Carlsson  <andersca@apple.com>
+
+        Try to fix iOS build.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+
+2014-04-23  Alexey Proskuryakov  <ap@apple.com>
+
+        Eliminate internals.setMockScrollbarsEnabled()
+        https://bugs.webkit.org/show_bug.cgi?id=132085
+
+        Reviewed by Tim Horton.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm: (resetWebPreferencesToConsistentValues):
+        No need to reset the preference, there is no way it can change.
+
+2014-04-23  James Craig  <jcraig@apple.com>
+
+        Unreviewed. Moving myself from Contributors to Committers list.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2014-04-23  Tim Horton  <timothy_horton@apple.com>
+
+        Mock scrollbars don't always work in DumpRenderTree
+        https://bugs.webkit.org/show_bug.cgi?id=132082
+
+        Reviewed by Alexey Proskuryakov.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (prepareConsistentTestingEnvironment):
+        Set the mock scrollbar setting before creating the WebView, as this setting
+        cannot be dynamically changed, so any scrollbars that are created during
+        WebView initialization and are not replaced before snapshotting will end
+        up being platform scrollbars instead of mock ones.
+        WebKitTestRunner already sets this preference before creating WKViews,
+        so we're just matching its behavior.
+
+2014-04-23  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] ShadowRoot API was removed in r164131
+        https://bugs.webkit.org/show_bug.cgi?id=132059
+
+        Reviewed by Gustavo Noronha Silva.
+
+        Add WebKitDOMShadowRoot to the list of deleted classes to generate
+        the API docs.
+
+        * gtk/webkitdom.py:
+        (WebKitDOMDocGenerator):
+
+2014-04-23  Lorenzo Tilve  <ltilve@igalia.com>
+
+        [GTK] run-webkit-tests script is failing to invoke run-launcher
+        https://bugs.webkit.org/show_bug.cgi?id=132051
+
+        Reviewed by Philippe Normand.
+
+        After the WK1 support was dropped, if run-webkit-tests is executed
+        without --no-show-results parameter, the launcher is being called
+        using a -2 parameter that is it causing the run-launcher to break.
+
+        * Scripts/webkitpy/port/gtk.py:
+        (GtkPort.show_results_html_file):
+
+2014-04-22  Tim Horton  <timothy_horton@apple.com>
+
+        DumpRenderTree generates black snapshots on some platforms
+        https://bugs.webkit.org/show_bug.cgi?id=132029
+        <rdar://problem/16679363>
+
+        Reviewed by Simon Fraser.
+
+        * DumpRenderTree/mac/PixelDumpSupportMac.mm:
+        (createBitmapContextFromWebView):
+        DRT checks with the WebView to determine whether it can use the window's
+        backing store directly or (because of compositing) needs to take a WindowServer
+        snapshot. However, on some platforms and in some situations, the window can
+        be layer backed without the WebView necessarily currently being composited.
+        We should check with the window in addition to the WebView before going
+        ahead and using its backing store.
+
+2014-04-22  Tim Horton  <timothy_horton@apple.com>
+
+        DumpRenderTree generates white snapshots on some platforms
+        https://bugs.webkit.org/show_bug.cgi?id=132026
+        <rdar://problem/16679363>
+
+        Reviewed by Simon Fraser.
+
+        * DumpRenderTree/mac/Configurations/DumpRenderTree.xcconfig:
+        Link DRT against QuartzCore.
+
+        * DumpRenderTree/mac/PixelDumpSupportMac.mm:
+        (createBitmapContextFromWebView):
+        Force CoreAnimation to synchronously update layers in a more explicit
+        way that doesn't depend on AppKit behavior. This is very similar to what
+        WebKitTestRunner does (indirectly) during its force repaint.
+
+2014-04-22  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Support Python 2.7 in Cygwin
+        https://bugs.webkit.org/show_bug.cgi?id=132023
+
+        Reviewed by Michael Saboff.
+
+        * Scripts/webkitdirs.pm:
+        (checkInstalledTools): Remove check for Python 2.7, since
+        it now works properly.
+
+2014-04-22  Filip Pizlo  <fpizlo@apple.com>
+
+        Switch the LLVMForJSC target to using the LLVM in /usr/local rather than /usr/local/LLVMForJavaScriptCore on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=130867
+        <rdar://problem/16432456> 
+
+        Reviewed by Mark Hahnenberg.
+
+        * Scripts/build-webkit:
+        * Scripts/copy-webkitlibraries-to-product-directory:
+
+2014-04-22  Gustavo Noronha Silva  <gns@gnome.org>
+
+        [GTK] Fails to build documentation when output is redirected
+        https://bugs.webkit.org/show_bug.cgi?id=131178
+
+        Reviewed by Martin Robinson.
+
+        * gtk/generate-gtkdoc: set the output for stdout and stderr to UTF-8
+        explicitly to avoid encoding issues when they are redirected.
+
+2014-04-22  ChangSeok Oh  <changseok.oh@collabora.com>
+
+        [GTK] YCM choose a newer compile_commands.json in between Release or Debug
+        https://bugs.webkit.org/show_bug.cgi?id=131911
+
+        Reviewed by Martin Robinson.
+
+        common.get_build_path returns release path even though Debug configuration
+        is newer than Release. So YouCompleteMe is used to refer old build setup inadvertently.
+
+        * gtk/ycm_extra_conf.py:
+        (get_build_path): Compare modified time of Release and Debug. And return a recent modified path.
+        (FlagsForFile):
+
+2014-04-21  Brent Fulgham  <bfulgham@apple.com>
+
+        Unreviewed build fix.
+
+        * DumpRenderTree/mac/EventSendingController.mm:
+        (-[EventSendingController mouseScrollByX:andY:withWheel:andMomentumPhases:]):
+        Correct a typo that prevented tests from working properly.
+
+2014-04-21  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK] Should have the ability to output composited contents during layout testing
+        https://bugs.webkit.org/show_bug.cgi?id=131864
+
+        Reviewed by Philippe Normand.
+
+        * WebKitTestRunner/cairo/TestInvocationCairo.cpp:
+        (WTR::TestInvocation::dumpPixelsAndCompareWithExpected): Add a path that paints the widget contents
+        to an image surface. We run the main loop a bit to match the implementation from WebKit1 and EFL.
+        * WebKitTestRunner/gtk/PlatformWebViewGtk.cpp:
+        (WTR::PlatformWebView::windowSnapshotImage): Use the new UI-process path on GTK+.
+
+2014-04-21  Sam Weinig  <sam@webkit.org>
+
+        Attempt to fix the tests.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/Navigation.mm:
+        (-[DidFailProvisionalNavigationDelegate webView:decidePolicyForNavigationAction:decisionHandler:]):
+        Add policy handler to override the new default of denying loads that NSURLConnection cannot handle.
+
+2014-04-21  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed test gardening, make no-eager runs run everything except eager (as opposed to
+        being the same as a "quick run", which is meant for genuinely slow tests).
+
+        * Scripts/run-jsc-stress-tests:
+
+2014-04-21  Darin Adler  <darin@apple.com>
+
+        Add HashSet::takeAny
+        https://bugs.webkit.org/show_bug.cgi?id=131928
+
+        Reviewed by Benjamin Poulain.
+
+        * TestWebKitAPI/Tests/WTF/HashSet.cpp: Added a test for takeAny.
+
+2014-04-20  Dan Bernstein  <mitz@apple.com>
+
+        Fixed a test timing out after r167572.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/Navigation.mm:
+        (-[NavigationDelegate webView:didFinishNavigation:]): Renamed from
+        -webView:didFinishLoadingNavigation:.
+
+2014-04-20  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r167510.
+        https://bugs.webkit.org/show_bug.cgi?id=131915
+
+        broke GTK Debug bot (Requested by philn on #webkit).
+
+        Reverted changeset:
+
+        "[GTK] Add llvmpipe (Mesa) to the JHBuild moduleset and force
+        it when running layout tests"
+        https://bugs.webkit.org/show_bug.cgi?id=131472
+        http://trac.webkit.org/changeset/167510
+
+2014-04-18  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK] Add llvmpipe (Mesa) to the JHBuild moduleset and force it when running layout tests
+        https://bugs.webkit.org/show_bug.cgi?id=131472
+
+        Reviewed by Philippe Normand.
+
+        * Scripts/webkitpy/port/gtk.py:
+        (GtkPort.setup_environ_for_server): Use the LLVMPIPE_LIBGL_PATH to set the LD_LIBRARY_PATH
+        when running WebKitTestRunner with run-webkit-tests.
+        * gtk/jhbuild.modules: Add Mesa to the modulelist so that the llvmpipe libGL is build, but not
+        installed.
+        * gtk/jhbuildrc: Set the LLVMPIPE_LIBGL_PATH environment variable so that the test driver knows
+        how to properly set the LD_LIBRARY_PATH variable. We do this because it is much easier to
+        calculate the path in the jhbuildrc than in the test driver code. This simplifies things a great
+        deal.
+
+2014-04-18  Alexey Proskuryakov  <ap@apple.com>
+
+        DownloadDecideDestinationCrash API test uses an incorrect value for path
+        https://bugs.webkit.org/show_bug.cgi?id=131845
+        <rdar://problem/15925560>
+
+        Reviewed by Enrica Casucci.
+
+        * TestWebKitAPI/Tests/WebKit2/DownloadDecideDestinationCrash.cpp:
+        (TestWebKitAPI::decideDestinationWithSuggestedFilename):
+
+2014-04-17  Alexey Proskuryakov  <ap@apple.com>
+
+        [Mac] AttributedStringTest API tests fail with async text input
+        https://bugs.webkit.org/show_bug.cgi?id=131833
+
+        Reviewed by Enrica Casucci.
+
+        Don't run sync NSTextInputClient tests where we don't implement these calls.
+
+        * TestWebKitAPI/Tests/mac/AttributedString.mm:
+        (TestWebKitAPI::AttributedStringTest_CustomFont::didLoadURL):
+        (TestWebKitAPI::AttributedStringTest_CustomFont::runSyncTest):
+        (TestWebKitAPI::AttributedStringTest_Strikethrough::didLoadURL):
+        (TestWebKitAPI::AttributedStringTest_Strikethrough::runSyncTest):
+        (TestWebKitAPI::AttributedStringTest_CustomFont::runTest): Deleted.
+        (TestWebKitAPI::AttributedStringTest_Strikethrough::runTest): Deleted.
+
+2014-04-18  Philippe Normand  <pnormand@igalia.com>
+
+        Remove NETWORK_INFO support
+        https://bugs.webkit.org/show_bug.cgi?id=131841
+
+        Reviewed by Gyuyoung Kim.
+
+        * Scripts/webkitperl/FeatureList.pm:
+
+2014-04-17  ChangSeok Oh  <changseok.oh@collabora.com>
+
+        [GTK] YouCompleteMe doesn't work for cmake build system.
+        https://bugs.webkit.org/show_bug.cgi?id=131591
+
+        Reviewed by Martin Robinson.
+
+        Add cmake build system support for YouCompleteMe. It should work regardless of
+        using make or ninja. In addition, autotools related code is removed since it's
+        not used anymore in WebKit.
+
+        * Scripts/webkitdirs.pm:
+        (generateBuildSystemFromCMakeProject):
+        * gtk/ycm_extra_conf.py:
+        (transform_relative_paths_to_absolute_paths):
+        (FlagsForFile):
+
+2014-04-17  Anders Carlsson  <andersca@apple.com>
+
+        Fix build.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/Download.mm:
+        (-[DownloadNavigationDelegate webView:decidePolicyForNavigationAction:decisionHandler:]):
+        (-[ConvertResponseToDownloadNavigationDelegate webView:decidePolicyForNavigationResponse:decisionHandler:]):
+
+2014-04-17  Anders Carlsson  <andersca@apple.com>
+
+        Remove unused API enums
+        https://bugs.webkit.org/show_bug.cgi?id=131836
+
+        Reviewed by Tim Horton.
+
+        * MiniBrowser/mac/WK2BrowserWindowController.m:
+        (-[WK2BrowserWindowController webView:decidePolicyForNavigationResponse:decisionHandler:]):
+
+2014-04-16  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] A few final cleanups to the DataObject classes.
+        https://bugs.webkit.org/show_bug.cgi?id=131784
+
+        Reviewed by Anders Carlsson.
+
+        * DumpRenderTree/win/DRTDataObject.cpp:
+        (DRTDataObject::clearData): Use 'last()' method.
+        * DumpRenderTree/win/UIDelegate.cpp:
+        (DRTUndoStack::pop): Use 'takeLast()' method.
+
+2014-04-17  Andres Gomez  <agomez@igalia.com>
+
+        [Win] cygwin to keep installing curl 7.33.0-1 and subversion 1.7.14-1
+        https://bugs.webkit.org/show_bug.cgi?id=131365
+
+        Reviewed by Brent Fulgham.
+
+        The cygwin installer is now downloading the wanted versions for
+        the local installation given to the setup wizard.
+
+        * CygwinDownloader/cygwin-downloader.py:
+        * CygwinDownloader/cygwin-downloader.zip:
+
+2014-04-17  Adrian Perez de Castro  <aperez@igalia.com>
+
+        [GTK] Make run-webkit-tests always use WKTR
+        https://bugs.webkit.org/show_bug.cgi?id=131737
+
+        Reviewed by Darin Adler.
+
+        Now that the GTK+ port only has support for WebKit2, instruct
+        run-webkit-tests to always use WKTR. This avoids needing to pass
+        flag "-2" every time.
+
+        * Scripts/webkitpy/layout_tests/run_webkit_tests.py: 
+        (_set_up_derived_options): Always set webkit_test_runner when
+        the platform is GTK+.
+
+2014-04-17  Brendan Long  <b.long@cablelabs.com>
+
+        [Gtk] Install ninja-build in Tools/gtk/install-dependencies
+        https://bugs.webkit.org/show_bug.cgi?id=131760
+
+        Reviewed by Philippe Normand.
+
+        * gtk/install-dependencies: Install ninja-build when it's available.
+
 2014-04-16  peavo@outlook.com  <peavo@outlook.com>
 
         [Win] run-javascriptcore-tests fails to run.

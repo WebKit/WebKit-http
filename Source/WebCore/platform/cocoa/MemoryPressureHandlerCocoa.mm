@@ -31,6 +31,8 @@
 #import "LayerPool.h"
 #import "Logging.h"
 #import "WebCoreSystemInterface.h"
+#import <mach/mach.h>
+#import <mach/task_info.h>
 #import <malloc/malloc.h>
 #import <notify.h>
 #import <wtf/CurrentTime.h>
@@ -46,10 +48,16 @@ namespace WebCore {
 void MemoryPressureHandler::platformReleaseMemory(bool)
 {
 #if PLATFORM(MAC)
-    LayerPool::sharedPool()->drain();
+    {
+        ReliefLogger log("Drain LayerPool");
+        LayerPool::sharedPool()->drain();
+    }
 #endif
 #if USE(IOSURFACE)
-    IOSurfacePool::sharedPool().discardAllSurfaces();
+    {
+        ReliefLogger log("Drain IOSurfacePool");
+        IOSurfacePool::sharedPool().discardAllSurfaces();
+    }
 #endif
 }
 
@@ -73,7 +81,7 @@ void MemoryPressureHandler::install()
 
     dispatch_async(dispatch_get_main_queue(), ^{
 #if PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 80000
-        _cache_event_source = dispatch_source_create(DISPATCH_SOURCE_TYPE_MEMORYSTATUS, 0, DISPATCH_MEMORYSTATUS_PRESSURE_WARN, dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0));
+        _cache_event_source = dispatch_source_create(DISPATCH_SOURCE_TYPE_MEMORYSTATUS, 0, DISPATCH_MEMORYSTATUS_PRESSURE_WARN, dispatch_get_main_queue());
 #elif PLATFORM(MAC) && MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
         _cache_event_source = wkCreateMemoryStatusPressureCriticalDispatchOnMainQueue();
 #else
@@ -158,6 +166,39 @@ void MemoryPressureHandler::respondToMemoryPressure()
 
     holdOff(std::max(holdOffTime, s_minimumHoldOffTime));
 }
+
+#if PLATFORM(IOS) || (PLATFORM(MAC) && MAC_OS_X_VERSION_MIN_REQUIRED >= 1090)
+size_t MemoryPressureHandler::ReliefLogger::platformMemoryUsage()
+{
+    task_vm_info_data_t vmInfo;
+    mach_msg_type_number_t count = TASK_VM_INFO_COUNT;
+    kern_return_t err = task_info(mach_task_self(), TASK_VM_INFO, (task_info_t) &vmInfo, &count);
+    if (err != KERN_SUCCESS)
+        return static_cast<size_t>(-1);
+
+    return static_cast<size_t>(vmInfo.internal);
+}
+
+void MemoryPressureHandler::ReliefLogger::platformLog()
+{
+    size_t currentMemory = platformMemoryUsage();
+    if (currentMemory == static_cast<size_t>(-1) || m_initialMemory == static_cast<size_t>(-1)) {
+        NSLog(@"%s (Unable to get dirty memory information for process)\n", m_logString);
+        return;
+    }
+
+    ssize_t memoryDiff = currentMemory - m_initialMemory;
+    if (memoryDiff < 0)
+        NSLog(@"Pressure relief: %s: -dirty %ld bytes (from %ld to %ld)\n", m_logString, (memoryDiff * -1), m_initialMemory, currentMemory);
+    else if (memoryDiff > 0)
+        NSLog(@"Pressure relief: %s: +dirty %ld bytes (from %ld to %ld)\n", m_logString, memoryDiff, m_initialMemory, currentMemory);
+    else
+        NSLog(@"Pressure relief: %s: =dirty (at %ld bytes)\n", m_logString, currentMemory);
+}
+#else
+void MemoryPressureHandler::ReliefLogger::platformLog() { }
+size_t MemoryPressureHandler::ReliefLogger::platformMemoryUsage() { return 0; }
+#endif
 
 #if PLATFORM(IOS)
 static void respondToMemoryPressureCallback(CFRunLoopObserverRef observer, CFRunLoopActivity /*activity*/, void* /*info*/)

@@ -26,39 +26,20 @@
 #ifndef Mutex_h
 #define Mutex_h
 
-#include "BAssert.h"
-#include <atomic>
+#include "StaticMutex.h"
 
-// A replacement for std::mutex that does not require an exit-time destructor.
+// A fast replacement for std::mutex.
 
 namespace bmalloc {
 
-class Mutex {
+class Mutex : public StaticMutex {
 public:
-    void lock();
-    bool try_lock();
-    void unlock();
-    
-private:
-    void lockSlowCase();
-
-    std::atomic_flag m_flag;
+    Mutex();
 };
 
-inline bool Mutex::try_lock()
+inline Mutex::Mutex()
 {
-    return !m_flag.test_and_set(std::memory_order_acquire);
-}
-
-inline void Mutex::lock()
-{
-    if (!try_lock())
-        lockSlowCase();
-}
-
-inline void Mutex::unlock()
-{
-    m_flag.clear(std::memory_order_release);
+    init();
 }
 
 } // namespace bmalloc

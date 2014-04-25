@@ -124,7 +124,7 @@ static RenderLayer::UpdateLayerPositionsFlags updateLayerPositionFlags(RenderLay
         flags &= ~RenderLayer::CheckForRepaint;
         flags |= RenderLayer::NeedsFullRepaintInBacking;
     }
-    if (isRelayoutingSubtree && layer->isPaginated())
+    if (isRelayoutingSubtree && (layer->isPaginated() || layer->enclosingPaginationLayer()))
         flags |= RenderLayer::UpdatePagination;
     return flags;
 }
@@ -182,6 +182,7 @@ FrameView::FrameView(Frame& frame)
 #if PLATFORM(IOS)
     , m_useCustomFixedPositionLayoutRect(false)
 #endif
+    , m_hasOverrideViewportSize(false)
     , m_shouldAutoSize(false)
     , m_inAutoSize(false)
     , m_didRunAutosize(false)
@@ -949,6 +950,18 @@ float FrameView::topContentInset() const
     return page ? page->topContentInset() : 0;
 }
     
+void FrameView::topContentInsetDidChange()
+{
+    RenderView* renderView = this->renderView();
+    if (!renderView)
+        return;
+    
+    // FIXME: <rdar://problem/16642232> This call to updateScrollbars() is not actually sufficient to fix
+    // the scrollbars if the contentInset changes dynamically. 
+    layout();
+    updateScrollbars(scrollOffset());
+}
+    
 bool FrameView::hasCompositedContent() const
 {
     if (RenderView* renderView = this->renderView())
@@ -1382,7 +1395,7 @@ RenderBox* FrameView::embeddedContentBox() const
 void FrameView::addEmbeddedObjectToUpdate(RenderEmbeddedObject& embeddedObject)
 {
     if (!m_embeddedObjectsToUpdate)
-        m_embeddedObjectsToUpdate = adoptPtr(new ListHashSet<RenderEmbeddedObject*>);
+        m_embeddedObjectsToUpdate = std::make_unique<ListHashSet<RenderEmbeddedObject*>>();
 
     HTMLFrameOwnerElement& element = embeddedObject.frameOwnerElement();
     if (isHTMLObjectElement(element) || isHTMLEmbedElement(element)) {
@@ -1489,7 +1502,7 @@ void FrameView::addSlowRepaintObject(RenderElement* o)
     bool hadSlowRepaintObjects = hasSlowRepaintObjects();
 
     if (!m_slowRepaintObjects)
-        m_slowRepaintObjects = adoptPtr(new HashSet<RenderElement*>);
+        m_slowRepaintObjects = std::make_unique<HashSet<RenderElement*>>();
 
     m_slowRepaintObjects->add(o);
 
@@ -1523,7 +1536,7 @@ void FrameView::removeSlowRepaintObject(RenderElement* o)
 void FrameView::addViewportConstrainedObject(RenderElement* object)
 {
     if (!m_viewportConstrainedObjects)
-        m_viewportConstrainedObjects = adoptPtr(new ViewportConstrainedObjectSet);
+        m_viewportConstrainedObjects = std::make_unique<ViewportConstrainedObjectSet>();
 
     if (!m_viewportConstrainedObjects->contains(object)) {
         m_viewportConstrainedObjects->add(object);
@@ -3808,7 +3821,7 @@ IntRect FrameView::convertFromRenderer(const RenderElement* renderer, const IntR
 
     // Convert from page ("absolute") to FrameView coordinates.
     if (!delegatesScrolling())
-        rect.moveBy(-scrollPosition() + IntPoint(0, headerHeight()));
+        rect.moveBy(-scrollPosition() + IntPoint(0, headerHeight() + topContentInset()));
 
     return rect;
 }
@@ -3833,7 +3846,7 @@ IntPoint FrameView::convertFromRenderer(const RenderElement* renderer, const Int
 
     // Convert from page ("absolute") to FrameView coordinates.
     if (!delegatesScrolling())
-        point.moveBy(-scrollPosition() + IntPoint(0, headerHeight()));
+        point.moveBy(-scrollPosition() + IntPoint(0, headerHeight() + topContentInset()));
     return point;
 }
 
@@ -3989,7 +4002,7 @@ String FrameView::trackedRepaintRectsAsText() const
 bool FrameView::addScrollableArea(ScrollableArea* scrollableArea)
 {
     if (!m_scrollableAreas)
-        m_scrollableAreas = adoptPtr(new ScrollableAreaSet);
+        m_scrollableAreas = std::make_unique<ScrollableAreaSet>();
     return m_scrollableAreas->add(scrollableArea).isNewEntry;
 }
 
@@ -4298,5 +4311,25 @@ void FrameView::setExposedRect(FloatRect exposedRect)
     if (auto* view = renderView())
         view->compositor().scheduleLayerFlush(false /* canThrottle */);
 }
-
+    
+void FrameView::setViewportSize(IntSize size)
+{
+    if (m_hasOverrideViewportSize && m_overrideViewportSize == size)
+        return;
+    
+    m_overrideViewportSize = size;
+    m_hasOverrideViewportSize = true;
+    
+    if (Document* document = m_frame->document())
+        document->styleResolverChanged(DeferRecalcStyle);
+}
+    
+IntSize FrameView::viewportSize() const
+{
+    if (m_hasOverrideViewportSize)
+        return m_overrideViewportSize;
+    
+    return visibleContentRectIncludingScrollbars(ScrollableArea::LegacyIOSDocumentVisibleRect).size();
+}
+    
 } // namespace WebCore

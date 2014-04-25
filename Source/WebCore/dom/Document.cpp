@@ -222,6 +222,7 @@
 #if ENABLE(WEB_REPLAY)
 #include "WebReplayInputs.h"
 #include <replay/EmptyInputCursor.h>
+#include <replay/InputCursor.h>
 #endif
 
 using namespace WTF;
@@ -1793,7 +1794,7 @@ void Document::recalcStyle(Style::Change change)
     // detached (for example, by setting display:none in the :hover style), schedule another mouseMove event
     // to check if any other elements ended up under the mouse pointer due to re-layout.
     if (m_hoveredElement && !m_hoveredElement->renderer())
-        frameView.frame().eventHandler().dispatchFakeMouseMoveEventSoon();
+        frameView.frame().mainFrame().eventHandler().dispatchFakeMouseMoveEventSoon();
 
     // Style change may reset the focus, e.g. display: none, visibility: hidden.
     resetHiddenFocusElementSoon();
@@ -2945,7 +2946,7 @@ void Document::processViewport(const String& features, ViewportArguments::Type o
     // bounds checking and determining concrete values for ValueAuto which we already do in UIKit.
     // To maintain old behavior, we just need to update a few values, leaving Auto's for UIKit.
     if (Page* page = this->page())
-        finalizeViewportArguments(m_viewportArguments, page->chrome().client().viewportScreenSize());
+        finalizeViewportArguments(m_viewportArguments, page->chrome().screenSize());
 #endif
 
     updateViewportArguments();
@@ -3696,6 +3697,8 @@ void Document::dispatchWindowLoadEvent()
         return;
     m_domWindow->dispatchLoadEvent();
     m_loadEventFinished = true;
+    if (m_cachedResourceLoader)
+        m_cachedResourceLoader->documentDidFinishLoadEvent();
 }
 
 void Document::enqueueWindowEvent(PassRefPtr<Event> event)
@@ -4618,7 +4621,7 @@ void Document::initSecurityContext()
         // This can occur via document.implementation.createDocument().
         m_cookieURL = URL(ParsedURLString, emptyString());
         setSecurityOrigin(SecurityOrigin::createUnique());
-        setContentSecurityPolicy(ContentSecurityPolicy::create(this));
+        setContentSecurityPolicy(std::make_unique<ContentSecurityPolicy>(this));
         return;
     }
 
@@ -4638,7 +4641,7 @@ void Document::initSecurityContext()
 #endif
 
     setSecurityOrigin(isSandboxed(SandboxOrigin) ? SecurityOrigin::createUnique() : SecurityOrigin::create(m_url));
-    setContentSecurityPolicy(ContentSecurityPolicy::create(this));
+    setContentSecurityPolicy(std::make_unique<ContentSecurityPolicy>(this));
 
     if (Settings* settings = this->settings()) {
         if (!settings->webSecurityEnabled()) {
@@ -5084,12 +5087,7 @@ void Document::removeMediaCanStartListener(MediaCanStartListener* listener)
 
 MediaCanStartListener* Document::takeAnyMediaCanStartListener()
 {
-    HashSet<MediaCanStartListener*>::iterator slot = m_mediaCanStartListeners.begin();
-    if (slot == m_mediaCanStartListeners.end())
-        return nullptr;
-    MediaCanStartListener* listener = *slot;
-    m_mediaCanStartListeners.remove(slot);
-    return listener;
+    return m_mediaCanStartListeners.takeAny();
 }
 
 #if ENABLE(DEVICE_ORIENTATION) && PLATFORM(IOS)
@@ -5365,9 +5363,6 @@ void Document::webkitWillEnterFullScreenForElement(Element* element)
         m_savedPlaceholderRenderStyle = RenderStyle::clone(&renderer->style());
     }
 
-    if (m_fullScreenElement != documentElement())
-        RenderFullScreen::wrapRenderer(renderer, renderer ? renderer->parent() : nullptr, *this);
-
     m_fullScreenElement->setContainsFullScreenElementOnAncestorsCrossingFrameBoundaries(true);
     
     recalcStyle(Style::Force);
@@ -5432,10 +5427,10 @@ void Document::setFullScreenRenderer(RenderFullScreen* renderer)
         return;
 
     if (renderer && m_savedPlaceholderRenderStyle) 
-        renderer->createPlaceholder(m_savedPlaceholderRenderStyle.releaseNonNull(), m_savedPlaceholderFrameRect);
+        renderer->setPlaceholderStyle(m_savedPlaceholderRenderStyle.releaseNonNull(), m_savedPlaceholderFrameRect);
     else if (renderer && m_fullScreenRenderer && m_fullScreenRenderer->placeholder()) {
         RenderBlock* placeholder = m_fullScreenRenderer->placeholder();
-        renderer->createPlaceholder(RenderStyle::clone(&placeholder->style()), placeholder->frameRect());
+        renderer->setPlaceholderStyle(RenderStyle::clone(&placeholder->style()), placeholder->frameRect());
     }
 
     if (m_fullScreenRenderer)
@@ -6190,5 +6185,12 @@ bool Document::hasFocus() const
     }
     return false;
 }
+
+#if ENABLE(WEB_REPLAY)
+void Document::setInputCursor(PassRefPtr<InputCursor> cursor)
+{
+    m_inputCursor = cursor;
+}
+#endif
 
 } // namespace WebCore

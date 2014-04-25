@@ -50,8 +50,15 @@ public:
 
     virtual AtomicString inBandMetadataTrackDispatchType() const;
 
+    void setPrivate(PassRefPtr<InbandTextTrackPrivate>);
+
+    virtual bool isInband() const override { return true; }
+
 protected:
     InbandTextTrack(ScriptExecutionContext*, TextTrackClient*, PassRefPtr<InbandTextTrackPrivate>);
+
+    void setModeInternal(const AtomicString&);
+    void updateKindFromPrivate();
 
     RefPtr<InbandTextTrackPrivate> m_private;
 
@@ -64,6 +71,12 @@ private:
 
     virtual void addDataCue(InbandTextTrackPrivate*, double, double, const void*, unsigned) override { ASSERT_NOT_REACHED(); }
 
+#if ENABLE(DATACUE_VALUE)
+    virtual void addDataCue(InbandTextTrackPrivate*, double, double, PassRefPtr<SerializedPlatformRepresentation>, const String&) override { ASSERT_NOT_REACHED(); }
+    virtual void updateDataCue(InbandTextTrackPrivate*, double, double, PassRefPtr<SerializedPlatformRepresentation>) override  { ASSERT_NOT_REACHED(); }
+    virtual void removeDataCue(InbandTextTrackPrivate*, double, double, PassRefPtr<SerializedPlatformRepresentation>) override  { ASSERT_NOT_REACHED(); }
+#endif
+
     virtual void addGenericCue(InbandTextTrackPrivate*, PassRefPtr<GenericCueData>) override { ASSERT_NOT_REACHED(); }
     virtual void updateGenericCue(InbandTextTrackPrivate*, GenericCueData*) override { ASSERT_NOT_REACHED(); }
     virtual void removeGenericCue(InbandTextTrackPrivate*, GenericCueData*) override { ASSERT_NOT_REACHED(); }
@@ -74,6 +87,8 @@ private:
     virtual InbandTextTrackPrivate* privateTrack() override { return m_private.get(); }
 #endif
 };
+
+TYPE_CASTS_BASE(InbandTextTrack, TextTrack, track, track->isInband(), track.isInband());
 
 } // namespace WebCore
 

@@ -74,7 +74,6 @@
 #include "MemoryCache.h"
 #include "MemoryInfo.h"
 #include "Page.h"
-#include "PageConsole.h"
 #include "PrintContext.h"
 #include "PseudoElement.h"
 #include "Range.h"
@@ -111,11 +110,6 @@
 
 #if ENABLE(BATTERY_STATUS)
 #include "BatteryController.h"
-#endif
-
-#if ENABLE(NETWORK_INFO)
-#include "NetworkInfo.h"
-#include "NetworkInfoController.h"
 #endif
 
 #if ENABLE(PROXIMITY_EVENTS)
@@ -1257,23 +1251,6 @@ void Internals::setBatteryStatus(const String& eventType, bool charging, double 
     UNUSED_PARAM(chargingTime);
     UNUSED_PARAM(dischargingTime);
     UNUSED_PARAM(level);
-#endif
-}
-
-void Internals::setNetworkInformation(const String& eventType, double bandwidth, bool metered, ExceptionCode& ec)
-{
-    Document* document = contextDocument();
-    if (!document || !document->page()) {
-        ec = INVALID_ACCESS_ERR;
-        return;
-    }
-
-#if ENABLE(NETWORK_INFO)
-    NetworkInfoController::from(document->page())->didChangeNetworkInformation(eventType, NetworkInfo::create(bandwidth, metered));
-#else
-    UNUSED_PARAM(eventType);
-    UNUSED_PARAM(bandwidth);
-    UNUSED_PARAM(metered);
 #endif
 }
 

@@ -162,10 +162,6 @@
 #include "WebBatteryClient.h"
 #endif
 
-#if ENABLE(NETWORK_INFO)
-#include "WebNetworkInfoClient.h"
-#endif
-
 #if ENABLE(VIBRATION)
 #include "WebVibrationClient.h"
 #endif
@@ -286,12 +282,13 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
     , m_isShowingContextMenu(false)
 #endif
 #if PLATFORM(IOS)
-    , m_shouldReturnWordAtSelection(false)
     , m_lastVisibleContentRectUpdateID(0)
     , m_hasReceivedVisibleContentRectsAfterDidCommitLoad(false)
     , m_scaleWasSetByUIProcess(false)
     , m_userHasChangedPageScaleFactor(false)
-    , m_viewportScreenSize(parameters.viewportScreenSize)
+    , m_screenSize(parameters.screenSize)
+    , m_availableScreenSize(parameters.availableScreenSize)
+    , m_inDynamicSizeUpdate(false)
 #endif
     , m_inspectorClient(0)
     , m_backgroundColor(Color::white)
@@ -357,9 +354,6 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
 #if ENABLE(GEOLOCATION)
     WebCore::provideGeolocationTo(m_page.get(), new WebGeolocationClient(this));
 #endif
-#if ENABLE(NETWORK_INFO)
-    WebCore::provideNetworkInfoTo(m_page.get(), new WebNetworkInfoClient(this));
-#endif
 #if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
     WebCore::provideNotification(m_page.get(), new WebNotificationClient(this));
 #endif
@@ -396,12 +390,11 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
     setPageLength(parameters.pageLength);
     setGapBetweenPages(parameters.gapBetweenPages);
 
-    setMemoryCacheMessagesEnabled(parameters.areMemoryCacheClientCallsEnabled);
-
     // If the page is created off-screen, its visibilityState should be prerender.
     m_page->setViewState(m_viewState);
     if (!isVisible())
         m_page->setIsPrerender();
+    m_page->createPageThrottler();
 
     updateIsInWindow(true);
 
@@ -697,15 +690,23 @@ EditorState WebPage::editorState() const
     if (selection.isCaret()) {
         result.caretRectAtStart = view->contentsToRootView(frame.selection().absoluteCaretBounds());
         result.caretRectAtEnd = result.caretRectAtStart;
-        if (m_shouldReturnWordAtSelection)
-            result.wordAtSelection = plainText(wordRangeFromPosition(selection.start()).get());
+        // FIXME: The following check should take into account writing direction.
+        result.isReplaceAllowed = result.isContentEditable && atBoundaryOfGranularity(selection.start(), WordGranularity, DirectionForward);
+        result.wordAtSelection = plainText(wordRangeFromPosition(selection.start()).get());
+        result.characterBeforeSelection = characterBeforePosition(selection.start());
     } else if (selection.isRange()) {
         result.caretRectAtStart = view->contentsToRootView(VisiblePosition(selection.start()).absoluteCaretBounds());
         result.caretRectAtEnd = view->contentsToRootView(VisiblePosition(selection.end()).absoluteCaretBounds());
         RefPtr<Range> selectedRange = selection.toNormalizedRange();
         selectedRange->collectSelectionRects(result.selectionRects);
         convertSelectionRectsToRootView(view, result.selectionRects);
-        result.selectedTextLength = plainText(selectedRange.get(), TextIteratorDefaultBehavior, true).length();
+        String selectedText = plainText(selectedRange.get(), TextIteratorDefaultBehavior, true);
+        // FIXME: We should disallow replace when the string contains only CJ characters.
+        result.isReplaceAllowed = result.isContentEditable && !result.isInPasswordField && !selectedText.containsOnlyWhitespace();
+        result.selectedTextLength = selectedText.length();
+        const int maxSelectedTextLength = 200;
+        if (selectedText.length() <= maxSelectedTextLength)
+            result.wordAtSelection = selectedText;
     }
 #endif
 
@@ -1039,6 +1040,11 @@ void WebPage::stopLoading()
     corePage()->userInputBridge().stopLoadingFrame(m_mainFrame->coreFrame());
 }
 
+bool WebPage::defersLoading() const
+{
+    return m_page->defersLoading();
+}
+
 void WebPage::setDefersLoading(bool defersLoading)
 {
     m_page->setDefersLoading(defersLoading);
@@ -1280,6 +1286,8 @@ void WebPage::scalePage(double scale, const IntPoint& origin)
         return;
 
 #if PLATFORM(IOS)
+    if (!m_inDynamicSizeUpdate)
+        m_dynamicSizeUpdateHistory.clear();
     m_scaleWasSetByUIProcess = false;
 #endif
     PluginView* pluginView = pluginViewForFrame(&m_page->mainFrame());
@@ -1614,6 +1622,10 @@ PassRefPtr<WebImage> WebPage::snapshotAtSize(const IntRect& rect, const IntSize&
 
 void WebPage::pageDidScroll()
 {
+#if PLATFORM(IOS)
+    if (!m_inDynamicSizeUpdate)
+        m_dynamicSizeUpdateHistory.clear();
+#endif
     m_uiClient->pageDidScroll(this);
 
     send(Messages::WebPageProxy::PageDidScroll());
@@ -1746,7 +1758,8 @@ static bool handleMouseEvent(const WebMouseEvent& mouseEvent, WebPage* page, boo
 
 void WebPage::mouseEvent(const WebMouseEvent& mouseEvent)
 {
-    m_page->pageThrottler().didReceiveUserInput();
+    ASSERT(m_page->pageThrottler());
+    m_page->pageThrottler()->didReceiveUserInput();
 
 #if ENABLE(CONTEXT_MENUS)
     // Don't try to handle any pending mouse events if a context menu is showing.
@@ -1814,7 +1827,8 @@ static bool handleWheelEvent(const WebWheelEvent& wheelEvent, Page* page)
 
 void WebPage::wheelEvent(const WebWheelEvent& wheelEvent)
 {
-    m_page->pageThrottler().didReceiveUserInput();
+    ASSERT(m_page->pageThrottler());
+    m_page->pageThrottler()->didReceiveUserInput();
 
     bool handled = false;
 
@@ -1845,7 +1859,8 @@ static bool handleKeyEvent(const WebKeyboardEvent& keyboardEvent, Page* page)
 
 void WebPage::keyEvent(const WebKeyboardEvent& keyboardEvent)
 {
-    m_page->pageThrottler().didReceiveUserInput();
+    ASSERT(m_page->pageThrottler());
+    m_page->pageThrottler()->didReceiveUserInput();
 
     bool handled = false;
 
@@ -1931,12 +1946,28 @@ static bool handleTouchEvent(const WebTouchEvent& touchEvent, Page* page)
 
     return page->mainFrame().eventHandler().handleTouchEvent(platform(touchEvent));
 }
+#endif
 
+#if ENABLE(IOS_TOUCH_EVENTS)
+void WebPage::dispatchTouchEvent(const WebTouchEvent& touchEvent, bool& handled)
+{
+    m_lastInteractionLocation = touchEvent.position();
+    CurrentEvent currentEvent(touchEvent);
+    handled = handleTouchEvent(touchEvent, m_page.get());
+}
+
+void WebPage::touchEventSync(const WebTouchEvent& touchEvent, bool& handled)
+{
+    EventDispatcher::TouchEventQueue queuedEvents;
+    WebProcess::shared().eventDispatcher().getQueuedTouchEventsForPage(*this, queuedEvents);
+    dispatchAsynchronousTouchEvents(queuedEvents);
+
+    dispatchTouchEvent(touchEvent, handled);
+}
+#elif ENABLE(TOUCH_EVENTS)
 void WebPage::touchEvent(const WebTouchEvent& touchEvent)
 {
-#if PLATFORM(IOS)
-    m_lastInteractionLocation = touchEvent.position();
-#endif
+
     bool handled = false;
     if (canHandleUserEvents()) {
         CurrentEvent currentEvent(touchEvent);
@@ -1948,9 +1979,6 @@ void WebPage::touchEvent(const WebTouchEvent& touchEvent)
 
 void WebPage::touchEventSyncForTesting(const WebTouchEvent& touchEvent, bool& handled)
 {
-#if PLATFORM(IOS)
-    m_lastInteractionLocation = touchEvent.position();
-#endif
     CurrentEvent currentEvent(touchEvent);
     handled = handleTouchEvent(touchEvent, m_page.get());
 }
@@ -3694,13 +3722,11 @@ void WebPage::runModal()
 
     m_isRunningModal = true;
     send(Messages::WebPageProxy::RunModal());
+#if !ASSERT_DISABLED
+    Ref<WebPage> protector(*this);
+#endif
     RunLoop::run();
     ASSERT(!m_isRunningModal);
-}
-
-void WebPage::setMemoryCacheMessagesEnabled(bool memoryCacheMessagesEnabled)
-{
-    m_page->setMemoryCacheClientCallsEnabled(memoryCacheMessagesEnabled);
 }
 
 bool WebPage::canHandleRequest(const WebCore::ResourceRequest& request)
@@ -4219,16 +4245,11 @@ void WebPage::didCommitLoad(WebFrame* frame)
     m_hasReceivedVisibleContentRectsAfterDidCommitLoad = false;
     m_userHasChangedPageScaleFactor = false;
 
-    Document* document = frame->coreFrame()->document();
-    if (document->isImageDocument())
-        m_viewportConfiguration.setDefaultConfiguration(ViewportConfiguration::imageDocumentParameters());
-    else if (document->isTextDocument())
-        m_viewportConfiguration.setDefaultConfiguration(ViewportConfiguration::textDocumentParameters());
-    else
-        m_viewportConfiguration.setDefaultConfiguration(ViewportConfiguration::webpageParameters());
+    WebProcess::shared().eventDispatcher().clearQueuedTouchEventsForPage(*this);
 
+    resetViewportDefaultConfiguration(frame);
     m_viewportConfiguration.setViewportArguments(ViewportArguments());
-    m_viewportConfiguration.setContentsSize(m_viewportConfiguration.minimumLayoutSize());
+    m_viewportConfiguration.setContentsSize(IntSize());
     viewportConfigurationChanged();
 #endif
 

@@ -144,11 +144,9 @@ public:
     SelectorCompilationStatus compile(JSC::VM*, JSC::MacroAssemblerCodeRef&);
 
 private:
-#if CPU(X86_64)
-    static const Assembler::RegisterID returnRegister = JSC::X86Registers::eax;
-    static const Assembler::RegisterID elementAddressRegister = JSC::X86Registers::edi;
-    static const Assembler::RegisterID checkingContextRegister = JSC::X86Registers::esi;
-#endif
+    static const Assembler::RegisterID returnRegister = JSC::GPRInfo::returnValueGPR;
+    static const Assembler::RegisterID elementAddressRegister = JSC::GPRInfo::argumentGPR0;
+    static const Assembler::RegisterID checkingContextRegister = JSC::GPRInfo::argumentGPR1;
 
     void computeBacktrackingInformation();
     void generateSelectorChecker();
@@ -192,6 +190,8 @@ private:
     void generateElementHasClasses(Assembler::JumpList& failureCases, const LocalRegister& elementDataAddress, const Vector<const AtomicStringImpl*>& classNames);
     void generateElementIsLink(Assembler::JumpList& failureCases);
     void generateElementIsNthChild(Assembler::JumpList& failureCases, const SelectorFragment&);
+    void generateElementIsRoot(Assembler::JumpList& failureCases);
+    void generateElementIsTarget(Assembler::JumpList& failureCases);
 
     // Helpers.
     Assembler::Jump jumpIfNotResolvingStyle(Assembler::RegisterID checkingContextRegister);
@@ -256,82 +256,84 @@ static inline FunctionType mostRestrictiveFunctionType(FunctionType a, FunctionT
     return std::max(a, b);
 }
 
-static inline FunctionType addPseudoType(const CSSSelector& selector, SelectorFragment& fragment, SelectorContext selectorContext)
+static inline FunctionType addPseudoClassType(const CSSSelector& selector, SelectorFragment& fragment, SelectorContext selectorContext)
 {
-    CSSSelector::PseudoType type = selector.pseudoType();
+    CSSSelector::PseudoClassType type = selector.pseudoClassType();
     switch (type) {
     // Unoptimized pseudo selector. They are just function call to a simple testing function.
-    case CSSSelector::PseudoAutofill:
+    case CSSSelector::PseudoClassAutofill:
         fragment.unoptimizedPseudoClasses.append(JSC::FunctionPtr(isAutofilled));
         return FunctionType::SimpleSelectorChecker;
-    case CSSSelector::PseudoChecked:
+    case CSSSelector::PseudoClassChecked:
         fragment.unoptimizedPseudoClasses.append(JSC::FunctionPtr(isChecked));
         return FunctionType::SimpleSelectorChecker;
-    case CSSSelector::PseudoDefault:
+    case CSSSelector::PseudoClassDefault:
         fragment.unoptimizedPseudoClasses.append(JSC::FunctionPtr(isDefaultButtonForForm));
         return FunctionType::SimpleSelectorChecker;
-    case CSSSelector::PseudoDisabled:
+    case CSSSelector::PseudoClassDisabled:
         fragment.unoptimizedPseudoClasses.append(JSC::FunctionPtr(isDisabled));
         return FunctionType::SimpleSelectorChecker;
-    case CSSSelector::PseudoEnabled:
+    case CSSSelector::PseudoClassEnabled:
         fragment.unoptimizedPseudoClasses.append(JSC::FunctionPtr(isEnabled));
         return FunctionType::SimpleSelectorChecker;
-    case CSSSelector::PseudoFocus:
+    case CSSSelector::PseudoClassFocus:
         fragment.unoptimizedPseudoClasses.append(JSC::FunctionPtr(SelectorChecker::matchesFocusPseudoClass));
         return FunctionType::SimpleSelectorChecker;
-    case CSSSelector::PseudoIndeterminate:
+    case CSSSelector::PseudoClassIndeterminate:
         fragment.unoptimizedPseudoClasses.append(JSC::FunctionPtr(shouldAppearIndeterminate));
         return FunctionType::SimpleSelectorChecker;
-    case CSSSelector::PseudoInvalid:
+    case CSSSelector::PseudoClassInvalid:
         fragment.unoptimizedPseudoClasses.append(JSC::FunctionPtr(isInvalid));
         return FunctionType::SimpleSelectorChecker;
-    case CSSSelector::PseudoOptional:
+    case CSSSelector::PseudoClassOptional:
         fragment.unoptimizedPseudoClasses.append(JSC::FunctionPtr(isOptionalFormControl));
         return FunctionType::SimpleSelectorChecker;
-    case CSSSelector::PseudoReadOnly:
+    case CSSSelector::PseudoClassReadOnly:
         fragment.unoptimizedPseudoClasses.append(JSC::FunctionPtr(matchesReadOnlyPseudoClass));
         return FunctionType::SimpleSelectorChecker;
-    case CSSSelector::PseudoReadWrite:
+    case CSSSelector::PseudoClassReadWrite:
         fragment.unoptimizedPseudoClasses.append(JSC::FunctionPtr(matchesReadWritePseudoClass));
         return FunctionType::SimpleSelectorChecker;
-    case CSSSelector::PseudoRequired:
+    case CSSSelector::PseudoClassRequired:
         fragment.unoptimizedPseudoClasses.append(JSC::FunctionPtr(isRequiredFormControl));
         return FunctionType::SimpleSelectorChecker;
-    case CSSSelector::PseudoValid:
+    case CSSSelector::PseudoClassValid:
         fragment.unoptimizedPseudoClasses.append(JSC::FunctionPtr(isValid));
         return FunctionType::SimpleSelectorChecker;
 #if ENABLE(FULLSCREEN_API)
-    case CSSSelector::PseudoFullScreen:
+    case CSSSelector::PseudoClassFullScreen:
         fragment.unoptimizedPseudoClasses.append(JSC::FunctionPtr(matchesFullScreenPseudoClass));
         return FunctionType::SimpleSelectorChecker;
 #endif
 #if ENABLE(VIDEO_TRACK)
-    case CSSSelector::PseudoFuture:
+    case CSSSelector::PseudoClassFuture:
         fragment.unoptimizedPseudoClasses.append(JSC::FunctionPtr(matchesFutureCuePseudoClass));
         return FunctionType::SimpleSelectorChecker;
-    case CSSSelector::PseudoPast:
+    case CSSSelector::PseudoClassPast:
         fragment.unoptimizedPseudoClasses.append(JSC::FunctionPtr(matchesPastCuePseudoClass));
         return FunctionType::SimpleSelectorChecker;
 #endif
 
     // Optimized pseudo selectors.
-    case CSSSelector::PseudoAnyLink:
-        fragment.pseudoClasses.add(CSSSelector::PseudoLink);
+    case CSSSelector::PseudoClassAnyLink:
+        fragment.pseudoClasses.add(CSSSelector::PseudoClassLink);
         return FunctionType::SimpleSelectorChecker;
 
-    case CSSSelector::PseudoLink:
+    case CSSSelector::PseudoClassLink:
+    case CSSSelector::PseudoClassRoot:
+    case CSSSelector::PseudoClassTarget:
         fragment.pseudoClasses.add(type);
         return FunctionType::SimpleSelectorChecker;
 
-    case CSSSelector::PseudoFirstChild:
-    case CSSSelector::PseudoLastChild:
-    case CSSSelector::PseudoOnlyChild:
+    case CSSSelector::PseudoClassFirstChild:
+    case CSSSelector::PseudoClassLastChild:
+    case CSSSelector::PseudoClassOnlyChild:
         fragment.pseudoClasses.add(type);
         if (selectorContext == SelectorContext::QuerySelector)
             return FunctionType::SimpleSelectorChecker;
         return FunctionType::SelectorCheckerWithCheckingContext;
 
-    case CSSSelector::PseudoNthChild:
+    case CSSSelector::PseudoClassNthChild:
         {
             if (!selector.parseNth())
                 return FunctionType::CannotMatchAnything;
@@ -342,10 +344,6 @@ static inline FunctionType addPseudoType(const CSSSelector& selector, SelectorFr
             // The element count is always positive.
             if (a <= 0 && b < 1)
                 return FunctionType::CannotMatchAnything;
-
-            // Anything modulo 1 is zero. Unless b restrict the range, this does not filter anything out.
-            if (a == 1 && (!b || (b == 1)))
-                return FunctionType::SimpleSelectorChecker;
 
             fragment.nthChildfilters.append(std::pair<int, int>(a, b));
             if (selectorContext == SelectorContext::QuerySelector)
@@ -394,7 +392,7 @@ inline SelectorCodeGenerator::SelectorCodeGenerator(const CSSSelector* rootSelec
             fragment.classNames.append(selector->value().impl());
             break;
         case CSSSelector::PseudoClass:
-            m_functionType = mostRestrictiveFunctionType(m_functionType, addPseudoType(*selector, fragment, m_selectorContext));
+            m_functionType = mostRestrictiveFunctionType(m_functionType, addPseudoClassType(*selector, fragment, m_selectorContext));
             if (m_functionType == FunctionType::CannotCompile || m_functionType == FunctionType::CannotMatchAnything)
                 return;
             break;
@@ -928,7 +926,15 @@ Assembler::Jump SelectorCodeGenerator::jumpIfNotResolvingStyle(Assembler::Regist
 Assembler::Jump SelectorCodeGenerator::modulo(Assembler::ResultCondition condition, Assembler::RegisterID inputDividend, int divisor)
 {
     RELEASE_ASSERT(divisor);
-#if CPU(X86_64)
+#if CPU(ARM64)
+    LocalRegister divisorRegister(m_registerAllocator);
+    m_assembler.move(Assembler::TrustedImm32(divisor), divisorRegister);
+
+    LocalRegister resultRegister(m_registerAllocator);
+    m_assembler.m_assembler.sdiv<32>(resultRegister, inputDividend, divisorRegister);
+    m_assembler.mul32(divisorRegister, resultRegister);
+    return m_assembler.branchSub32(condition, inputDividend, resultRegister, resultRegister);
+#elif CPU(X86_64)
     // idiv takes RAX + an arbitrary register, and return RAX + RDX. Most of this code is about doing
     // an efficient allocation of those registers. If a register is already in use and is not the inputDividend,
     // we first try to copy it to a temporary register, it that is not possible we fall back to the stack.
@@ -990,7 +996,7 @@ Assembler::Jump SelectorCodeGenerator::modulo(Assembler::ResultCondition conditi
         LocalRegister divisorRegister(m_registerAllocator);
         m_assembler.move(Assembler::TrustedImm64(divisor), divisorRegister);
         m_assembler.m_assembler.idivl_r(divisorRegister);
-        m_assembler.test32(remainder);
+        m_assembler.test32(condition, remainder);
     }
 
     // 3) Return RAX and RDX.
@@ -1157,8 +1163,14 @@ void SelectorCodeGenerator::generateBacktrackingTailsIfNeeded(Assembler::JumpLis
 
 void SelectorCodeGenerator::generateElementMatching(Assembler::JumpList& failureCases, const SelectorFragment& fragment)
 {
-    if (fragment.pseudoClasses.contains(CSSSelector::PseudoLink))
+    if (fragment.pseudoClasses.contains(CSSSelector::PseudoClassLink))
         generateElementIsLink(failureCases);
+
+    if (fragment.pseudoClasses.contains(CSSSelector::PseudoClassRoot))
+        generateElementIsRoot(failureCases);
+
+    if (fragment.pseudoClasses.contains(CSSSelector::PseudoClassTarget))
+        generateElementIsTarget(failureCases);
 
     if (fragment.tagName)
         generateElementHasTagName(failureCases, *(fragment.tagName));
@@ -1168,11 +1180,11 @@ void SelectorCodeGenerator::generateElementMatching(Assembler::JumpList& failure
 
     generateElementDataMatching(failureCases, fragment);
 
-    if (fragment.pseudoClasses.contains(CSSSelector::PseudoOnlyChild))
+    if (fragment.pseudoClasses.contains(CSSSelector::PseudoClassOnlyChild))
         generateElementIsOnlyChild(failureCases, fragment);
-    if (fragment.pseudoClasses.contains(CSSSelector::PseudoFirstChild))
+    if (fragment.pseudoClasses.contains(CSSSelector::PseudoClassFirstChild))
         generateElementIsFirstChild(failureCases, fragment);
-    if (fragment.pseudoClasses.contains(CSSSelector::PseudoLastChild))
+    if (fragment.pseudoClasses.contains(CSSSelector::PseudoClassLastChild))
         generateElementIsLastChild(failureCases, fragment);
     if (!fragment.nthChildfilters.isEmpty())
         generateElementIsNthChild(failureCases, fragment);
@@ -1506,6 +1518,12 @@ static inline Assembler::Jump testIsHTMLClassOnDocument(Assembler::ResultConditi
     return assembler.branchTest32(condition, Assembler::Address(documentAddress, Document::documentClassesMemoryOffset()), Assembler::TrustedImm32(Document::isHTMLDocumentClassFlag()));
 }
 
+static void getDocument(Assembler& assembler, Assembler::RegisterID element, Assembler::RegisterID output)
+{
+    assembler.loadPtr(Assembler::Address(element, Node::treeScopeMemoryOffset()), output);
+    assembler.loadPtr(Assembler::Address(output, TreeScope::documentScopeMemoryOffset()), output);
+}
+
 void SelectorCodeGenerator::generateElementAttributeValueExactMatching(Assembler::JumpList& failureCases, Assembler::RegisterID currentAttributeAddress, const AtomicString& expectedValue, bool canDefaultToCaseSensitiveValueMatch)
 {
     LocalRegister expectedValueRegister(m_registerAllocator);
@@ -1522,12 +1540,9 @@ void SelectorCodeGenerator::generateElementAttributeValueExactMatching(Assembler
         failureCases.append(testIsHTMLFlagOnNode(Assembler::Zero, m_assembler, elementAddressRegister));
 
         {
-            LocalRegister scratchRegister(m_registerAllocator);
-            // scratchRegister = pointer to treeScope.
-            m_assembler.loadPtr(Assembler::Address(elementAddressRegister, Node::treeScopeMemoryOffset()), scratchRegister);
-            // scratchRegister = pointer to document.
-            m_assembler.loadPtr(Assembler::Address(scratchRegister, TreeScope::documentScopeMemoryOffset()), scratchRegister);
-            failureCases.append(testIsHTMLClassOnDocument(Assembler::Zero, m_assembler, scratchRegister));
+            LocalRegister document(m_registerAllocator);
+            getDocument(m_assembler, elementAddressRegister, document);
+            failureCases.append(testIsHTMLClassOnDocument(Assembler::Zero, m_assembler, document));
         }
 
         LocalRegister valueStringImpl(m_registerAllocator);
@@ -1928,6 +1943,20 @@ void SelectorCodeGenerator::generateElementIsNthChild(Assembler::JumpList& failu
     Assembler::RegisterID parentElement = m_registerAllocator.allocateRegister();
     generateWalkToParentElement(failureCases, parentElement);
 
+    Vector<std::pair<int, int>> validSubsetFilters;
+    validSubsetFilters.reserveInitialCapacity(fragment.nthChildfilters.size());
+    for (const auto& slot : fragment.nthChildfilters) {
+        int a = slot.first;
+        int b = slot.second;
+
+        // Anything modulo 1 is zero. Unless b restricts the range, this does not filter anything out.
+        if (a == 1 && (!b || (b == 1)))
+            continue;
+        validSubsetFilters.uncheckedAppend(slot);
+    }
+    if (validSubsetFilters.isEmpty())
+        return;
+
     // Setup the counter at 1.
     LocalRegister elementCounter(m_registerAllocator);
     m_assembler.move(Assembler::TrustedImm32(1), elementCounter);
@@ -2004,7 +2033,7 @@ void SelectorCodeGenerator::generateElementIsNthChild(Assembler::JumpList& failu
     }
 
     // Test every the nth-child filter.
-    for (const auto& slot : fragment.nthChildfilters) {
+    for (const auto& slot : validSubsetFilters) {
         int a = slot.first;
         int b = slot.second;
 
@@ -2027,6 +2056,20 @@ void SelectorCodeGenerator::generateElementIsNthChild(Assembler::JumpList& failu
             moduloIsZero(failureCases, bRegister, a);
         }
     }
+}
+
+void SelectorCodeGenerator::generateElementIsRoot(Assembler::JumpList& failureCases)
+{
+    LocalRegister document(m_registerAllocator);
+    getDocument(m_assembler, elementAddressRegister, document);
+    failureCases.append(m_assembler.branchPtr(Assembler::NotEqual, Assembler::Address(document, Document::documentElementMemoryOffset()), elementAddressRegister));
+}
+
+void SelectorCodeGenerator::generateElementIsTarget(Assembler::JumpList& failureCases)
+{
+    LocalRegister document(m_registerAllocator);
+    getDocument(m_assembler, elementAddressRegister, document);
+    failureCases.append(m_assembler.branchPtr(Assembler::NotEqual, Assembler::Address(document, Document::cssTargetMemoryOffset()), elementAddressRegister));
 }
 
 }; // namespace SelectorCompiler.

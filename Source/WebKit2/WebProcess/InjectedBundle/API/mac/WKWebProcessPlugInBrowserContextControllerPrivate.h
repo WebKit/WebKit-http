@@ -43,17 +43,10 @@
 
 @property (weak, setter=_setFormDelegate:) id <WKWebProcessPlugInFormDelegatePrivate> _formDelegate;
 
+@property (nonatomic, setter=_setDefersLoading:) BOOL _defersLoading;
+
 + (instancetype)lookUpBrowsingContextFromHandle:(WKBrowsingContextHandle *)handle;
 
 @end
-
-@class WKRemoteObjectRegistry;
-
-@interface WKWebProcessPlugInBrowserContextController (WKToBeRemoved)
-
-@property (nonatomic, readonly) WKRemoteObjectRegistry *remoteObjectRegistry;
-@end;
-
-
 
 #endif // WK_API_ENABLED

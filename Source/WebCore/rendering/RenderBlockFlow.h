@@ -82,6 +82,8 @@ protected:
     virtual void dirtyLinesFromChangedChild(RenderObject* child) override final { lineBoxes().dirtyLinesFromChangedChild(this, child); }
     virtual void updateLogicalHeight() override;
 
+    virtual void paintBoxDecorations(PaintInfo&, const LayoutPoint&) override;
+
 public:
     class MarginValues {
     public:
@@ -455,7 +457,7 @@ private:
     // the flow thread child.
     virtual RenderObject* layoutSpecialExcludedChild(bool /*relayoutChildren*/);
 
-    void checkForPaginationLogicalHeightChange(LayoutUnit& pageLogicalHeight, bool& pageLogicalHeightChanged, bool& hasSpecifiedPageLogicalHeight);
+    void checkForPaginationLogicalHeightChange(bool& relayoutChildren, LayoutUnit& pageLogicalHeight, bool& pageLogicalHeightChanged, bool& hasSpecifiedPageLogicalHeight);
     
     virtual void paintInlineChildren(PaintInfo&, const LayoutPoint&) override;
     virtual void paintFloats(PaintInfo&, const LayoutPoint&, bool preservePhase = false) override;

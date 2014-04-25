@@ -1,3 +1,164 @@
+2014-04-23  Andreas Kling  <akling@apple.com>
+
+        Remove Apple Dictionary workaround in WebFrameLoaderClient.
+        <https://webkit.org/b/132095>
+
+        Kill a hack to work around a WK1 client bug that got fixed years ago.
+        See <rdar://problem/6471058> for backstory.
+
+        Reviewed by Darin Adler.
+
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::dispatchDidLoadResourceFromMemoryCache):
+        (WebFrameLoaderClient::dispatchWillSendRequest):
+        (applyAppleDictionaryApplicationQuirkNonInlinePart): Deleted.
+        (applyAppleDictionaryApplicationQuirk): Deleted.
+
+2014-04-23  Anders Carlsson  <andersca@apple.com>
+
+        Don't migrate the WKView.h header from WebCore to WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=132086
+
+        Reviewed by Dan Bernstein.
+
+        * MigrateHeaders.make:
+        Remove WKView.h from the list of headers to migrate.
+
+        * WebView/WebView.mm:
+        Import WKView.h.
+
+2014-04-22  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Cursor doesn't change back to pointer when leaving the Safari window
+        https://bugs.webkit.org/show_bug.cgi?id=132038
+
+        Reviewed by Alexey Proskuryakov.
+
+        Since the cursor type is now updated asynchronously after r147739,
+        [window windowNumber] != [NSWindow windowNumberAtPoint:[NSEvent mouseLocation] belowWindowWithWindowNumber:0]
+        evalutes to false depending on how fast cursor is moving.
+
+        Instead, check whether the NSWindow of the WebView is the key window or not since
+        key window appears to control the cursor style in Cocoa as far as I've tested:
+        https://developer.apple.com/library/mac/documentation/Cocoa/Conceptual/WinPanel/Concepts/ChangingMainKeyWindow.html
+
+        * WebCoreSupport/WebChromeClient.mm:
+        (WebChromeClient::setCursor):
+
+2014-04-22  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r167674.
+        https://bugs.webkit.org/show_bug.cgi?id=132025
+
+        Going a different way with this (Requested by bradee-oh on
+        #webkit).
+
+        Reverted changeset:
+
+        "Change Image Controls replacement to use selection and paste"
+        https://bugs.webkit.org/show_bug.cgi?id=131992
+        http://trac.webkit.org/changeset/167674
+
+2014-04-22  Brady Eidson  <beidson@apple.com>
+
+        Change Image Controls replacement to use selection and paste
+        <rdar://problem/16302722> and https://bugs.webkit.org/show_bug.cgi?id=131992
+
+        Reviewed by Tim Horton.
+
+        * Misc/WebSharingServicePickerController.mm:
+        (-[WebSharingServicePickerController sharingService:didShareItems:]): Write the
+          replacement data to a special pasteboard, then replace the current selection from
+          that pasteboard.
+
+2014-04-21  Eric Carlson  <eric.carlson@apple.com>
+
+        [Mac] implement WebKitDataCue
+        https://bugs.webkit.org/show_bug.cgi?id=131799
+
+        Reviewed by Dean Jackson.
+
+        * Configurations/FeatureDefines.xcconfig: Define ENABLE_DATACUE_VALUE.
+
+2014-04-21  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Remove unused WebKitSystemInterface functions
+        https://bugs.webkit.org/show_bug.cgi?id=131938
+
+        Reviewed by Alexey Proskuryakov.
+
+        * WebCoreSupport/WebSystemInterface.mm:
+        (InitWebCoreSystemInterface):
+
+2014-04-21  Zan Dobersek  <zdobersek@igalia.com>
+
+        Move cross-port Source/WebCore/page/ code to std::unique_ptr
+        https://bugs.webkit.org/show_bug.cgi?id=130534
+
+        Reviewed by Darin Adler.
+
+        * WebView/WebHTMLRepresentation.mm:
+        (searchForLabelsBeforeElement): Pass a RegExp reference to Frame::searchForLabelsAboveCell().
+
+2014-04-19  Darin Adler  <darin@apple.com>
+
+        [Mac] WebView adjusts the cursor even when another window is in front
+        https://bugs.webkit.org/show_bug.cgi?id=131898
+        rdar://problem/14619911
+
+        Reviewed by Dan Bernstein.
+
+        * WebCoreSupport/WebChromeClient.mm:
+        (WebChromeClient::setCursor): Added a check that the window is under the cursor
+        and do nothing if it's not.
+
+2014-04-18  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r167527.
+        https://bugs.webkit.org/show_bug.cgi?id=131883
+
+        Broke 32-bit build (Requested by ap on #webkit).
+
+        Reverted changeset:
+
+        "[Mac] implement WebKitDataCue"
+        https://bugs.webkit.org/show_bug.cgi?id=131799
+        http://trac.webkit.org/changeset/167527
+
+2014-04-18  Eric Carlson  <eric.carlson@apple.com>
+
+        [Mac] implement WebKitDataCue
+        https://bugs.webkit.org/show_bug.cgi?id=131799
+
+        Reviewed by Dean Jackson.
+
+        * Configurations/FeatureDefines.xcconfig: Define ENABLE_DATACUE_VALUE.
+
+2014-04-17  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Hook up screen.{availHeight, availWidth, height, width}
+        https://bugs.webkit.org/show_bug.cgi?id=131821
+        <rdar://problem/16413795>
+
+        Reviewed by Benjamin Poulain and Tim Horton.
+
+        Add declaration for WKGetViewportAvailableScreenSize() to return the available screen size.
+
+        Additionally substitute "ScreenSize" for "ViewportScreenSize" to make the code more understandable.
+
+        * WebCoreSupport/WebSystemInterface.mm:
+        (InitWebCoreSystemInterface):
+
+2014-04-17  Darin Adler  <darin@apple.com>
+
+        Add separate flag for IndexedDatabase in workers since the current implementation is not threadsafe
+        https://bugs.webkit.org/show_bug.cgi?id=131785
+        rdar://problem/16003108
+
+        Reviewed by Brady Eidson.
+        
+        * Configurations/FeatureDefines.xcconfig: Added INDEXED_DATABASE_IN_WORKERS.
+
 2014-04-16  Tim Horton  <timothy_horton@apple.com>
 
         Images dragged from WebKit1 on 2x displays are too big

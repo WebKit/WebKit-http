@@ -147,7 +147,8 @@ private:
         case GetLocal: {
             VariableAccessData* variable = node->variableAccessData();
             SpeculatedType prediction = variable->prediction();
-            if (variable->shouldNeverUnbox() && (prediction & SpecInt52))
+            if ((variable->shouldNeverUnbox() || variable->local().isArgument())
+                && (prediction & SpecInt52))
                 prediction = (prediction | SpecInt52AsDouble) & ~SpecInt52;
             if (prediction)
                 changed |= mergePrediction(prediction);
@@ -373,7 +374,7 @@ private:
             
             if (node->child1()->shouldSpeculateFloat32Array()
                 || node->child1()->shouldSpeculateFloat64Array())
-                changed |= mergePrediction(SpecDouble);
+                changed |= mergePrediction(SpecFullDouble);
             else if (node->child1()->shouldSpeculateUint32Array()) {
                 if (isInt32Speculation(node->getHeapPrediction()))
                     changed |= mergePrediction(SpecInt32);
@@ -640,8 +641,14 @@ private:
         }
     }
     
-    void doDoubleVoting(Node* node)
+    void doDoubleVoting(Node* node, float weight)
     {
+        // Loop pre-headers created by OSR entrypoint creation may have NaN weight to indicate
+        // that we actually don't know they weight. Assume that they execute once. This turns
+        // out to be an OK assumption since the pre-header doesn't have any meaningful code.
+        if (weight != weight)
+            weight = 1;
+        
         switch (node->op()) {
         case ValueAdd:
         case ArithAdd:
@@ -658,8 +665,8 @@ private:
             else
                 ballot = VoteValue;
                 
-            m_graph.voteNode(node->child1(), ballot);
-            m_graph.voteNode(node->child2(), ballot);
+            m_graph.voteNode(node->child1(), ballot, weight);
+            m_graph.voteNode(node->child2(), ballot, weight);
             break;
         }
                 
@@ -676,8 +683,8 @@ private:
             else
                 ballot = VoteValue;
                 
-            m_graph.voteNode(node->child1(), ballot);
-            m_graph.voteNode(node->child2(), ballot);
+            m_graph.voteNode(node->child1(), ballot, weight);
+            m_graph.voteNode(node->child2(), ballot, weight);
             break;
         }
 
@@ -696,8 +703,8 @@ private:
             else
                 ballot = VoteValue;
                 
-            m_graph.voteNode(node->child1(), ballot);
-            m_graph.voteNode(node->child2(), ballot);
+            m_graph.voteNode(node->child1(), ballot, weight);
+            m_graph.voteNode(node->child2(), ballot, weight);
             break;
         }
                 
@@ -708,23 +715,23 @@ private:
             else
                 ballot = VoteValue;
                 
-            m_graph.voteNode(node->child1(), ballot);
+            m_graph.voteNode(node->child1(), ballot, weight);
             break;
                 
         case ArithSqrt:
         case ArithCos:
         case ArithSin:
-            m_graph.voteNode(node->child1(), VoteDouble);
+            m_graph.voteNode(node->child1(), VoteDouble, weight);
             break;
                 
         case SetLocal: {
             SpeculatedType prediction = node->child1()->prediction();
             if (isDoubleSpeculation(prediction))
-                node->variableAccessData()->vote(VoteDouble);
+                node->variableAccessData()->vote(VoteDouble, weight);
             else if (
                 !isFullNumberSpeculation(prediction)
                 || isInt32Speculation(prediction) || isMachineIntSpeculation(prediction))
-                node->variableAccessData()->vote(VoteValue);
+                node->variableAccessData()->vote(VoteValue, weight);
             break;
         }
 
@@ -734,14 +741,14 @@ private:
             Edge child1 = m_graph.varArgChild(node, 0);
             Edge child2 = m_graph.varArgChild(node, 1);
             Edge child3 = m_graph.varArgChild(node, 2);
-            m_graph.voteNode(child1, VoteValue);
-            m_graph.voteNode(child2, VoteValue);
+            m_graph.voteNode(child1, VoteValue, weight);
+            m_graph.voteNode(child2, VoteValue, weight);
             switch (node->arrayMode().type()) {
             case Array::Double:
-                m_graph.voteNode(child3, VoteDouble);
+                m_graph.voteNode(child3, VoteDouble, weight);
                 break;
             default:
-                m_graph.voteNode(child3, VoteValue);
+                m_graph.voteNode(child3, VoteValue, weight);
                 break;
             }
             break;
@@ -752,7 +759,7 @@ private:
             break;
             
         default:
-            m_graph.voteChildren(node, VoteValue);
+            m_graph.voteChildren(node, VoteValue, weight);
             break;
         }
     }
@@ -768,7 +775,7 @@ private:
             ASSERT(block->isReachable);
             for (unsigned i = 0; i < block->size(); ++i) {
                 m_currentNode = block->at(i);
-                doDoubleVoting(m_currentNode);
+                doDoubleVoting(m_currentNode, block->executionCount);
             }
         }
         for (unsigned i = 0; i < m_graph.m_variableAccessData.size(); ++i) {

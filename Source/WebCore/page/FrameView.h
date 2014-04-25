@@ -33,9 +33,9 @@
 #include "PaintPhase.h"
 #include "RenderPtr.h"
 #include "ScrollView.h"
+#include <memory>
 #include <wtf/Forward.h>
 #include <wtf/ListHashSet.h>
-#include <wtf/OwnPtr.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
@@ -212,6 +212,9 @@ public:
     bool shouldUpdate() const;
 
     void adjustViewSize();
+    
+    void setViewportSize(IntSize);
+    IntSize viewportSize() const;
     
     virtual IntRect windowClipRect(bool clipToContents = true) const override;
     IntRect windowClipRectForFrameOwner(const HTMLFrameOwnerElement*, bool clipToLayerContents) const;
@@ -451,6 +454,7 @@ public:
     void setFooterHeight(int);
 
     virtual float topContentInset() const override;
+    void topContentInsetDidChange();
 
     virtual void willStartLiveResize() override;
     virtual void willEndLiveResize() override;
@@ -602,10 +606,10 @@ private:
     LayoutSize m_size;
     LayoutSize m_margins;
 
-    OwnPtr<ListHashSet<RenderEmbeddedObject*>> m_embeddedObjectsToUpdate;
+    std::unique_ptr<ListHashSet<RenderEmbeddedObject*>> m_embeddedObjectsToUpdate;
     const RefPtr<Frame> m_frame;
 
-    OwnPtr<HashSet<RenderElement*>> m_slowRepaintObjects;
+    std::unique_ptr<HashSet<RenderElement*>> m_slowRepaintObjects;
 
     bool m_needsFullRepaint;
     
@@ -683,6 +687,9 @@ private:
     IntRect m_customFixedPositionLayoutRect;
 #endif
 
+    IntSize m_overrideViewportSize;
+    bool m_hasOverrideViewportSize;
+
     // If true, automatically resize the frame view around its content.
     bool m_shouldAutoSize;
     bool m_inAutoSize;
@@ -697,8 +704,8 @@ private:
     // The intrinsic content size decided by autosizing.
     IntSize m_autoSizeContentSize;
 
-    OwnPtr<ScrollableAreaSet> m_scrollableAreas;
-    OwnPtr<ViewportConstrainedObjectSet> m_viewportConstrainedObjects;
+    std::unique_ptr<ScrollableAreaSet> m_scrollableAreas;
+    std::unique_ptr<ViewportConstrainedObjectSet> m_viewportConstrainedObjects;
 
     int m_headerHeight;
     int m_footerHeight;

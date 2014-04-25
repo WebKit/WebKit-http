@@ -31,10 +31,11 @@
 namespace Inspector {
 
 class InspectorConsoleAgent;
+class InspectorProfilerAgent;
 
 class JSConsoleClient final : public JSC::ConsoleClient {
 public:
-    explicit JSConsoleClient(InspectorConsoleAgent*);
+    explicit JSConsoleClient(InspectorConsoleAgent*, InspectorProfilerAgent*);
     virtual ~JSConsoleClient() { }
 
     static bool logToSystemConsole();
@@ -55,6 +56,7 @@ private:
     void internalAddMessage(MessageType, MessageLevel, JSC::ExecState*, PassRefPtr<ScriptArguments>);
 
     InspectorConsoleAgent* m_consoleAgent;
+    InspectorProfilerAgent* m_profilerAgent;
 };
 
 }

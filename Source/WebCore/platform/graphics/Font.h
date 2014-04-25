@@ -34,7 +34,6 @@
 #include "TypesettingFeatures.h"
 #include <wtf/HashMap.h>
 #include <wtf/HashSet.h>
-#include <wtf/MathExtras.h>
 #include <wtf/unicode/CharacterNames.h>
 
 // "X11/X.h" defines Complex to 0 and conflicts
@@ -189,6 +188,8 @@ public:
     CodePath codePath(const TextRun&) const;
     static CodePath characterRangeCodePath(const LChar*, unsigned) { return Simple; }
     static CodePath characterRangeCodePath(const UChar*, unsigned len);
+
+    bool primaryFontDataIsSystemFont() const;
 
 private:
     enum ForTextEmphasisOrNot { NotForTextEmphasis, ForTextEmphasis };

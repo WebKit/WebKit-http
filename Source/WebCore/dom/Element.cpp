@@ -61,6 +61,7 @@
 #include "NodeRenderStyle.h"
 #include "PlatformWheelEvent.h"
 #include "PointerLockController.h"
+#include "RenderLayer.h"
 #include "RenderNamedFlowFragment.h"
 #include "RenderRegion.h"
 #include "RenderTheme.h"
@@ -377,7 +378,7 @@ void Element::synchronizeAllAttributes() const
     }
 }
 
-inline void Element::synchronizeAttribute(const QualifiedName& name) const
+ALWAYS_INLINE void Element::synchronizeAttribute(const QualifiedName& name) const
 {
     if (!elementData())
         return;
@@ -393,7 +394,7 @@ inline void Element::synchronizeAttribute(const QualifiedName& name) const
     }
 }
 
-inline void Element::synchronizeAttribute(const AtomicString& localName) const
+ALWAYS_INLINE void Element::synchronizeAttribute(const AtomicString& localName) const
 {
     // This version of synchronizeAttribute() is streamlined for the case where you don't have a full QualifiedName,
     // e.g when called from DOM API.
@@ -798,16 +799,22 @@ void Element::setScrollLeft(int newLeft)
 {
     document().updateLayoutIgnorePendingStylesheets();
 
-    if (RenderBox* rend = renderBox())
-        rend->setScrollLeft(static_cast<int>(newLeft * rend->style().effectiveZoom()));
+    if (RenderBox* renderer = renderBox()) {
+        renderer->setScrollLeft(static_cast<int>(newLeft * renderer->style().effectiveZoom()));
+        if (auto* scrollableArea = renderer->layer())
+            scrollableArea->setScrolledProgrammatically(true);
+    }
 }
 
 void Element::setScrollTop(int newTop)
 {
     document().updateLayoutIgnorePendingStylesheets();
 
-    if (RenderBox* rend = renderBox())
-        rend->setScrollTop(static_cast<int>(newTop * rend->style().effectiveZoom()));
+    if (RenderBox* renderer = renderBox()) {
+        renderer->setScrollTop(static_cast<int>(newTop * renderer->style().effectiveZoom()));
+        if (auto* scrollableArea = renderer->layer())
+            scrollableArea->setScrolledProgrammatically(true);
+    }
 }
 
 int Element::scrollWidth()
@@ -2289,7 +2296,7 @@ bool Element::matchesReadWritePseudoClass() const
     return false;
 }
 
-bool Element::webkitMatchesSelector(const String& selector, ExceptionCode& ec)
+bool Element::matches(const String& selector, ExceptionCode& ec)
 {
     SelectorQuery* selectorQuery = document().selectorQueryForString(selector, ec);
     return selectorQuery && selectorQuery->matches(*this);

@@ -35,6 +35,7 @@
 #include "Supplementable.h"
 #include "ViewState.h"
 #include "ViewportArguments.h"
+#include <memory>
 #include <wtf/Forward.h>
 #include <wtf/HashMap.h>
 #include <wtf/HashSet.h>
@@ -257,7 +258,7 @@ public:
     void removeSchedulePair(PassRefPtr<SchedulePair>);
     SchedulePairHashSet* scheduledRunLoopPairs() { return m_scheduledRunLoopPairs.get(); }
 
-    OwnPtr<SchedulePairHashSet> m_scheduledRunLoopPairs;
+    std::unique_ptr<SchedulePairHashSet> m_scheduledRunLoopPairs;
 #endif
 
     const VisibleSelection& selection() const;
@@ -394,7 +395,8 @@ public:
     void sawMediaEngine(const String& engineName);
     void resetSeenMediaEngines();
 
-    PageThrottler& pageThrottler() { return m_pageThrottler; }
+    PageThrottler* pageThrottler() { return m_pageThrottler.get(); }
+    void createPageThrottler();
 
     PageConsole& console() { return *m_console; }
 
@@ -449,6 +451,7 @@ private:
 
     Vector<Ref<PluginViewBase>> pluginViews();
 
+    void hiddenPageDOMTimerThrottlingStateChanged();
     void setTimerThrottlingEnabled(bool);
 
     const std::unique_ptr<Chrome> m_chrome;
@@ -555,7 +558,7 @@ private:
     AlternativeTextClient* m_alternativeTextClient;
 
     bool m_scriptedAnimationsSuspended;
-    PageThrottler m_pageThrottler;
+    std::unique_ptr<PageThrottler> m_pageThrottler;
     const std::unique_ptr<PageConsole> m_console;
 
 #if ENABLE(REMOTE_INSPECTOR)

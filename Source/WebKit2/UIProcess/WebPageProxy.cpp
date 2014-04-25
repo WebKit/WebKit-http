@@ -283,7 +283,6 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
     , m_layerHostingMode(LayerHostingMode::InProcess)
     , m_drawsBackground(true)
     , m_drawsTransparentBackground(false)
-    , m_areMemoryCacheClientCallsEnabled(true)
     , m_useFixedLayout(false)
     , m_suppressScrollbarAnimations(false)
     , m_paginationMode(Pagination::Unpaginated)
@@ -326,6 +325,7 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
     , m_currentDragIsOverFileInput(false)
     , m_currentDragNumberOfFilesToBeAccepted(0)
 #endif
+    , m_pageLoadState(*this)
     , m_delegatesScrolling(false)
     , m_mainFrameHasHorizontalScrollbar(false)
     , m_mainFrameHasVerticalScrollbar(false)
@@ -1492,7 +1492,48 @@ bool WebPageProxy::shouldStartTrackingTouchEvents(const WebTouchEvent& touchStar
 #endif // ENABLE(ASYNC_SCROLLING)
     return true;
 }
+#endif
 
+#if ENABLE(IOS_TOUCH_EVENTS)
+void WebPageProxy::handleTouchEventSynchronously(const NativeWebTouchEvent& event)
+{
+    if (!isValid())
+        return;
+
+    if (event.type() == WebEvent::TouchStart)
+        m_isTrackingTouchEvents = shouldStartTrackingTouchEvents(event);
+
+    if (!m_isTrackingTouchEvents)
+        return;
+
+    m_process->responsivenessTimer()->start();
+    bool handled = false;
+    m_process->sendSync(Messages::WebPage::TouchEventSync(event), Messages::WebPage::TouchEventSync::Reply(handled), m_pageID);
+    didReceiveEvent(event.type(), handled);
+    m_pageClient.doneWithTouchEvent(event, handled);
+    m_process->responsivenessTimer()->stop();
+
+    if (event.type() == WebEvent::TouchEnd || event.type() == WebEvent::TouchCancel)
+        m_isTrackingTouchEvents = false;
+}
+
+void WebPageProxy::handleTouchEventAsynchronously(const NativeWebTouchEvent& event)
+{
+    if (!isValid())
+        return;
+
+    ASSERT(event.type() != WebEvent::TouchStart);
+
+    if (!m_isTrackingTouchEvents)
+        return;
+
+    m_process->send(Messages::EventDispatcher::TouchEvent(m_pageID, event), 0);
+
+    if (event.type() == WebEvent::TouchEnd || event.type() == WebEvent::TouchCancel)
+        m_isTrackingTouchEvents = false;
+}
+
+#elif ENABLE(TOUCH_EVENTS)
 void WebPageProxy::handleTouchEvent(const NativeWebTouchEvent& event)
 {
     if (!isValid())
@@ -1990,18 +2031,6 @@ void WebPageProxy::pageZoomFactorDidChange(double zoomFactor)
     m_pageZoomFactor = zoomFactor;
 }
 
-void WebPageProxy::setMemoryCacheClientCallsEnabled(bool memoryCacheClientCallsEnabled)
-{
-    if (!isValid())
-        return;
-
-    if (m_areMemoryCacheClientCallsEnabled == memoryCacheClientCallsEnabled)
-        return;
-
-    m_areMemoryCacheClientCallsEnabled = memoryCacheClientCallsEnabled;
-    m_process->send(Messages::WebPage::SetMemoryCacheMessagesEnabled(memoryCacheClientCallsEnabled), m_pageID);
-}
-
 void WebPageProxy::findStringMatches(const String& string, FindOptions options, unsigned maxMatchCount)
 {
     if (string.isEmpty()) {
@@ -2413,7 +2442,7 @@ void WebPageProxy::didCommitLoadForFrame(uint64_t frameID, uint64_t navigationID
     m_loaderClient->didCommitLoadForFrame(this, frame, navigationID, userData.get());
 }
 
-void WebPageProxy::didFinishDocumentLoadForFrame(uint64_t frameID, IPC::MessageDecoder& decoder)
+void WebPageProxy::didFinishDocumentLoadForFrame(uint64_t frameID, uint64_t navigationID, IPC::MessageDecoder& decoder)
 {
     RefPtr<API::Object> userData;
     WebContextUserMessageDecoder messageDecoder(userData, process());
@@ -2423,7 +2452,7 @@ void WebPageProxy::didFinishDocumentLoadForFrame(uint64_t frameID, IPC::MessageD
     WebFrameProxy* frame = m_process->webFrame(frameID);
     MESSAGE_CHECK(frame);
 
-    m_loaderClient->didFinishDocumentLoadForFrame(this, frame, userData.get());
+    m_loaderClient->didFinishDocumentLoadForFrame(this, frame, navigationID, userData.get());
 }
 
 void WebPageProxy::didFinishLoadForFrame(uint64_t frameID, uint64_t navigationID, IPC::MessageDecoder& decoder)
@@ -3276,9 +3305,9 @@ void WebPageProxy::setFindIndicator(const FloatRect& selectionRectInWindowCoordi
     m_pageClient.setFindIndicator(findIndicator.release(), fadeOut, animate);
 }
 
-void WebPageProxy::didFindString(const String& string, uint32_t matchCount)
+void WebPageProxy::didFindString(const String& string, uint32_t matchCount, int32_t matchIndex)
 {
-    m_findClient->didFindString(this, string, matchCount);
+    m_findClient->didFindString(this, string, matchCount, matchIndex);
 }
 
 void WebPageProxy::didFindStringMatches(const String& string, Vector<Vector<WebCore::IntRect>> matchRects, int32_t firstIndexAfterSelection)
@@ -3796,7 +3825,13 @@ void WebPageProxy::didReceiveEvent(uint32_t opaqueType, bool handled)
             m_uiClient->didNotHandleKeyEvent(this, event);
         break;
     }
-#if ENABLE(TOUCH_EVENTS)
+#if ENABLE(IOS_TOUCH_EVENTS)
+    case WebEvent::TouchStart:
+    case WebEvent::TouchMove:
+    case WebEvent::TouchEnd:
+    case WebEvent::TouchCancel:
+        break;
+#elif ENABLE(TOUCH_EVENTS)
     case WebEvent::TouchStart:
     case WebEvent::TouchMove:
     case WebEvent::TouchEnd:
@@ -4152,7 +4187,7 @@ void WebPageProxy::resetStateAfterProcessExited()
 
     m_processingMouseMoveEvent = false;
 
-#if ENABLE(TOUCH_EVENTS)
+#if ENABLE(TOUCH_EVENTS) && !ENABLE(IOS_TOUCH_EVENTS)
     m_touchEventQueue.clear();
 #endif
 
@@ -4180,7 +4215,6 @@ WebPageCreationParameters WebPageProxy::creationParameters()
     parameters.drawsBackground = m_drawsBackground;
     parameters.drawsTransparentBackground = m_drawsTransparentBackground;
     parameters.underlayColor = m_underlayColor;
-    parameters.areMemoryCacheClientCallsEnabled = m_areMemoryCacheClientCallsEnabled;
     parameters.useFixedLayout = m_useFixedLayout;
     parameters.fixedLayoutSize = m_fixedLayoutSize;
     parameters.suppressScrollbarAnimations = m_suppressScrollbarAnimations;
@@ -4211,7 +4245,8 @@ WebPageCreationParameters WebPageProxy::creationParameters()
     parameters.colorSpace = m_pageClient.colorSpace();
 #endif
 #if PLATFORM(IOS)
-    parameters.viewportScreenSize = viewportScreenSize();
+    parameters.screenSize = screenSize();
+    parameters.availableScreenSize = availableScreenSize();
 #endif
 
     return parameters;

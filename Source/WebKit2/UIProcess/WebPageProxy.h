@@ -576,9 +576,10 @@ public:
     uint64_t nextVisibleContentRectUpdateID() const { return m_lastVisibleContentRectUpdate.updateID() + 1; }
     uint64_t lastVisibleContentRectUpdateID() const { return m_lastVisibleContentRectUpdate.updateID(); }
 
-    void dynamicViewportSizeUpdate(const WebCore::IntSize& minimumLayoutSize, const WebCore::FloatRect& targetExposedContentRect, const WebCore::FloatRect& targetUnobscuredRect, double targetScale);
+    void dynamicViewportSizeUpdate(const WebCore::FloatSize& minimumLayoutSize, const WebCore::FloatRect& targetExposedContentRect, const WebCore::FloatRect& targetUnobscuredRect, double targetScale);
     
-    void setViewportConfigurationMinimumLayoutSize(const WebCore::IntSize&);
+    void setViewportConfigurationMinimumLayoutSize(const WebCore::FloatSize&);
+    void setMinimumLayoutSizeForMinimalUI(const WebCore::FloatSize&);
     void didCommitLayerTree(const WebKit::RemoteLayerTreeTransaction&);
 
     void selectWithGesture(const WebCore::IntPoint, WebCore::TextGranularity, uint32_t gestureType, uint32_t gestureState, PassRefPtr<GestureCallback>);
@@ -593,6 +594,7 @@ public:
     void getAutocorrectionContext(String& contextBefore, String& markedText, String& selectedText, String& contextAfter, uint64_t& location, uint64_t& length);
     void requestDictationContext(PassRefPtr<DictationContextCallback>);
     void replaceDictatedText(const String& oldText, const String& newText);
+    void replaceSelectedText(const String& oldText, const String& newText);
     void didReceivePositionInformation(const InteractionInformationAtPosition&);
     void getPositionInformation(const WebCore::IntPoint&, InteractionInformationAtPosition&);
     void requestPositionInformation(const WebCore::IntPoint&);
@@ -692,7 +694,10 @@ public:
     void handleMouseEvent(const NativeWebMouseEvent&);
     void handleWheelEvent(const NativeWebWheelEvent&);
     void handleKeyboardEvent(const NativeWebKeyboardEvent&);
-#if ENABLE(TOUCH_EVENTS)
+#if ENABLE(IOS_TOUCH_EVENTS)
+    void handleTouchEventSynchronously(const NativeWebTouchEvent&);
+    void handleTouchEventAsynchronously(const NativeWebTouchEvent&);
+#elif ENABLE(TOUCH_EVENTS)
     void handleTouchEvent(const NativeWebTouchEvent&);
 #endif
 
@@ -806,8 +811,6 @@ public:
     void pageScaleFactorDidChange(double);
     void pageZoomFactorDidChange(double);
 
-    void setMemoryCacheClientCallsEnabled(bool);
-
     // Find.
     void findString(const String&, FindOptions, unsigned maxMatchCount);
     void findStringMatches(const String&, FindOptions, unsigned maxMatchCount);
@@ -818,7 +821,7 @@ public:
     void countStringMatches(const String&, FindOptions, unsigned maxMatchCount);
     void didCountStringMatches(const String&, uint32_t matchCount);
     void setFindIndicator(const WebCore::FloatRect& selectionRectInWindowCoordinates, const Vector<WebCore::FloatRect>& textRectsInSelectionRectCoordinates, float contentImageScaleFactor, const ShareableBitmap::Handle& contentImageHandle, bool fadeOut, bool animate);
-    void didFindString(const String&, uint32_t matchCount);
+    void didFindString(const String&, uint32_t matchCount, int32_t matchIndex);
     void didFailToFindString(const String&);
     void didFindStringMatches(const String&, Vector<Vector<WebCore::IntRect>> matchRects, int32_t firstIndexAfterSelection);
 
@@ -1099,7 +1102,7 @@ private:
     void didReceiveServerRedirectForProvisionalLoadForFrame(uint64_t frameID, uint64_t navigationID, const String&, IPC::MessageDecoder&);
     void didFailProvisionalLoadForFrame(uint64_t frameID, uint64_t navigationID, const WebCore::ResourceError&, IPC::MessageDecoder&);
     void didCommitLoadForFrame(uint64_t frameID, uint64_t navigationID, const String& mimeType, bool frameHasCustomContentProvider, uint32_t frameLoadType, const WebCore::CertificateInfo&, IPC::MessageDecoder&);
-    void didFinishDocumentLoadForFrame(uint64_t frameID, IPC::MessageDecoder&);
+    void didFinishDocumentLoadForFrame(uint64_t frameID, uint64_t navigationID, IPC::MessageDecoder&);
     void didFinishLoadForFrame(uint64_t frameID, uint64_t navigationID, IPC::MessageDecoder&);
     void didFailLoadForFrame(uint64_t frameID, uint64_t navigationID, const WebCore::ResourceError&, IPC::MessageDecoder&);
     void didSameDocumentNavigationForFrame(uint64_t frameID, uint32_t sameDocumentNavigationType, const String&, IPC::MessageDecoder&);
@@ -1346,7 +1349,9 @@ private:
 #endif // PLATFORM(MAC)
 
 #if PLATFORM(IOS)
-    WebCore::FloatSize viewportScreenSize();
+    WebCore::FloatSize screenSize();
+    WebCore::FloatSize availableScreenSize();
+
 
     void dynamicViewportUpdateChangedTarget(double newTargetScale, const WebCore::FloatPoint& newScrollPosition);
     void didGetTapHighlightGeometries(uint64_t requestID, const WebCore::Color& color, const Vector<WebCore::FloatQuad>& geometries, const WebCore::IntSize& topLeftRadius, const WebCore::IntSize& topRightRadius, const WebCore::IntSize& bottomLeftRadius, const WebCore::IntSize& bottomRightRadius);
@@ -1514,8 +1519,6 @@ private:
     WebCore::Color m_underlayColor;
     WebCore::Color m_pageExtendedBackgroundColor;
 
-    bool m_areMemoryCacheClientCallsEnabled;
-
     bool m_useFixedLayout;
     WebCore::IntSize m_fixedLayoutSize;
 
@@ -1559,8 +1562,11 @@ private:
 
 #if ENABLE(TOUCH_EVENTS)
     bool m_isTrackingTouchEvents;
+#endif
+#if ENABLE(TOUCH_EVENTS) && !ENABLE(IOS_TOUCH_EVENTS)
     Deque<QueuedTouchEvents> m_touchEventQueue;
 #endif
+
 #if ENABLE(INPUT_TYPE_COLOR)
     RefPtr<WebColorPicker> m_colorPicker;
 #endif

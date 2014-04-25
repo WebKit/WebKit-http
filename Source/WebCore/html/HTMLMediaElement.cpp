@@ -325,7 +325,7 @@ HTMLMediaElement::HTMLMediaElement(const QualifiedName& tagName, Document& docum
     , m_havePreparedToPlay(false)
     , m_parsingInProgress(createdByParser)
 #if ENABLE(PAGE_VISIBILITY_API)
-    , m_isDisplaySleepDisablingSuspended(document.hidden())
+    , m_elementIsHidden(document.hidden())
 #endif
 #if PLATFORM(IOS)
     , m_requestingPlay(false)
@@ -1382,7 +1382,8 @@ void HTMLMediaElement::updateActiveTextTrackCues(double movieTime)
     // whenever ... the media element's readyState is changed back to HAVE_NOTHING.
     if (m_readyState != HAVE_NOTHING && m_player) {
         currentCues = m_cueTree.allOverlaps(m_cueTree.createInterval(movieTime, movieTime));
-        std::sort(currentCues.begin(), currentCues.end(), &compareCueInterval);
+        if (currentCues.size() > 1)
+            std::sort(currentCues.begin(), currentCues.end(), &compareCueInterval);
     }
 
     CueList previousCues;
@@ -1428,7 +1429,7 @@ void HTMLMediaElement::updateActiveTextTrackCues(double movieTime)
     // element. (In the other cases, such as explicit seeks, relevant events get
     // fired as part of the overall process of changing the current playback
     // position.)
-    if (m_lastSeekTime <= lastTime)
+    if (!m_paused && m_lastSeekTime <= lastTime)
         scheduleTimeupdateEvent(false);
 
     // Explicitly cache vector sizes, as their content is constant from here.
@@ -3720,6 +3721,9 @@ void HTMLMediaElement::setSelectedTextTrack(TextTrack* trackToSelect)
             else
                 track->setMode(TextTrack::showingKeyword());
         }
+    } else if (trackToSelect == TextTrack::captionMenuOffItem()) {
+        for (int i = 0, length = trackList->length(); i < length; ++i)
+            trackList->item(i)->setMode(TextTrack::disabledKeyword());
     }
 
     CaptionUserPreferences* captionPreferences = document().page() ? document().page()->group().captionPreferences() : 0;
@@ -4483,8 +4487,8 @@ void HTMLMediaElement::updatePlayState()
 
         if (hasMediaControls())
             mediaControls()->playbackStarted();
-        if (document().page())
-            m_activityToken = document().page()->pageThrottler().mediaActivityToken();
+        if (document().page() && document().page()->pageThrottler())
+            m_activityToken = document().page()->pageThrottler()->mediaActivityToken();
 
         startPlaybackProgressTimer();
         m_playing = true;
@@ -4718,8 +4722,9 @@ void HTMLMediaElement::mediaVolumeDidChange()
 void HTMLMediaElement::visibilityStateChanged()
 {
     LOG(Media, "HTMLMediaElement::visibilityStateChanged");
-    m_isDisplaySleepDisablingSuspended = document().hidden();
+    m_elementIsHidden = document().hidden();
     updateSleepDisabling();
+    m_mediaSession->visibilityChanged();
 }
 #endif
 
@@ -5684,7 +5689,7 @@ bool HTMLMediaElement::shouldDisableSleep() const
 #endif
 
 #if ENABLE(PAGE_VISIBILITY_API)
-    if (m_isDisplaySleepDisablingSuspended)
+    if (m_elementIsHidden)
         return false;
 #endif
 
@@ -5937,6 +5942,7 @@ bool HTMLMediaElement::ensureMediaControlsInjectedScript()
     ScriptController& scriptController = page->mainFrame().script();
     JSDOMGlobalObject* globalObject = JSC::jsCast<JSDOMGlobalObject*>(scriptController.globalObject(world));
     JSC::ExecState* exec = globalObject->globalExec();
+    JSC::JSLockHolder lock(exec);
 
     JSC::JSValue functionValue = globalObject->get(exec, JSC::Identifier(exec, "createControls"));
     if (functionValue.isFunction())
@@ -6142,6 +6148,12 @@ bool HTMLMediaElement::doesHaveAttribute(const AtomicString& attribute, AtomicSt
         *value = elementValue;
     
     return true;
+}
+
+void HTMLMediaElement::setShouldBufferData(bool shouldBuffer)
+{
+    if (m_player)
+        return m_player->setShouldBufferData(shouldBuffer);
 }
     
 }

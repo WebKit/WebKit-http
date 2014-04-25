@@ -336,7 +336,7 @@ EventHandler::EventHandler(Frame& frame)
 #if ENABLE(CURSOR_SUPPORT)
     , m_cursorUpdateTimer(this, &EventHandler::cursorUpdateTimerFired)
 #endif
-    , m_autoscrollController(adoptPtr(new AutoscrollController))
+    , m_autoscrollController(std::make_unique<AutoscrollController>())
     , m_mouseDownMayStartAutoscroll(false)
     , m_mouseDownWasInSubframe(false)
 #if !ENABLE(IOS_TOUCH_EVENTS)
@@ -357,7 +357,7 @@ EventHandler::EventHandler(Frame& frame)
 #endif
     , m_mousePositionIsUnknown(true)
     , m_mouseDownTimestamp(0)
-    , m_recentWheelEventDeltaTracker(adoptPtr(new WheelEventDeltaTracker))
+    , m_recentWheelEventDeltaTracker(std::make_unique<WheelEventDeltaTracker>())
     , m_widgetIsLatched(false)
 #if PLATFORM(COCOA)
     , m_mouseDownView(nil)
@@ -1311,10 +1311,7 @@ OptionalCursor EventHandler::selectCursor(const HitTestResult& result, bool shif
 #endif
 
     Node* node = result.targetNode();
-    if (!node)
-        return NoCursorChange;
-
-    auto renderer = node->renderer();
+    auto renderer = node ? node->renderer() : 0;
     RenderStyle* style = renderer ? &renderer->style() : nullptr;
     bool horizontalText = !style || style->isHorizontalWritingMode();
     const Cursor& iBeam = horizontalText ? iBeamCursor() : verticalTextCursor();
@@ -1373,9 +1370,20 @@ OptionalCursor EventHandler::selectCursor(const HitTestResult& result, bool shif
         }
     }
 
+    // During selection, use an I-beam regardless of the content beneath the cursor.
+    // If a drag may be starting or we're capturing mouse events for a particular node, don't treat this as a selection.
+    if (m_mousePressed
+        && m_mouseDownMayStartSelect
+#if ENABLE(DRAG_SUPPORT)
+        && !m_mouseDownMayStartDrag
+#endif
+        && m_frame.selection().isCaretOrRange()
+        && !m_capturingMouseEventsElement)
+        return iBeam;
+
     switch (style ? style->cursor() : CURSOR_AUTO) {
     case CURSOR_AUTO: {
-        bool editable = node->hasEditableStyle();
+        bool editable = node && node->hasEditableStyle();
 
         if (useHandCursor(node, result.isOverLink(), shiftKey))
             return handCursor();
@@ -1386,17 +1394,6 @@ OptionalCursor EventHandler::selectCursor(const HitTestResult& result, bool shif
                 if (FrameView* view = m_frame.view())
                     inResizer = layer->isPointInResizeControl(view->windowToContents(roundedIntPoint(result.localPoint())));
             }
-        }
-
-        // During selection, use an I-beam regardless of the content beneath the cursor when cursor style is not explicitly specified.
-        // If a drag may be starting or we're capturing mouse events for a particular node, don't treat this as a selection.
-        if (m_mousePressed && m_mouseDownMayStartSelect
-#if ENABLE(DRAG_SUPPORT)
-            && !m_mouseDownMayStartDrag
-#endif
-            && m_frame.selection().isCaretOrRange()
-            && !m_capturingMouseEventsElement) {
-            return iBeam;
         }
 
         if ((editable || (renderer && renderer->isText() && node->canStartSelection())) && !inResizer && !result.scrollbar())
@@ -2576,6 +2573,15 @@ bool EventHandler::handleWheelEvent(const PlatformWheelEvent& e)
     ScrollableArea* scrollableArea = nullptr;
     platformPrepareForWheelEvents(e, result, element, scrollableContainer, scrollableArea, isOverWidget);
 
+#if PLATFORM(COCOA)
+    if (e.phase() == PlatformWheelEventPhaseNone && e.momentumPhase() == PlatformWheelEventPhaseNone) {
+#else
+    if (!e.useLatchedEventElement()) {
+#endif
+        m_latchedWheelEventElement = nullptr;
+        m_previousWheelScrolledElement = nullptr;
+    }
+
     // FIXME: It should not be necessary to do this mutation here.
     // Instead, the handlers should know convert vertical scrolls
     // appropriately.
@@ -2593,17 +2599,39 @@ bool EventHandler::handleWheelEvent(const PlatformWheelEvent& e)
             Widget* widget = toRenderWidget(target)->widget();
             if (widget && passWheelEventToWidget(e, widget)) {
                 m_isHandlingWheelEvent = false;
+                if (scrollableArea)
+                    scrollableArea->setScrolledProgrammatically(false);
                 return true;
             }
         }
 
         if (!element->dispatchWheelEvent(event)) {
             m_isHandlingWheelEvent = false;
+
+            if (scrollableArea && scrollableArea->isScrolledProgrammatically()) {
+                // Web developer is controlling scrolling. Don't attempt to latch ourselves:
+                clearLatchedState();
+                scrollableArea->setScrolledProgrammatically(false);
+            }
+
             return true;
         }
     }
 
+    if (scrollableArea)
+        scrollableArea->setScrolledProgrammatically(false);
+
     return platformCompleteWheelEvent(e, scrollableContainer, scrollableArea);
+}
+
+void EventHandler::clearLatchedState()
+{
+    m_latchedWheelEventElement = nullptr;
+#if PLATFORM(COCOA)
+    m_latchedScrollableContainer = nullptr;
+#endif
+    m_widgetIsLatched = false;
+    m_previousWheelScrolledElement = nullptr;
 }
 
 void EventHandler::defaultWheelEventHandler(Node* startNode, WheelEvent* wheelEvent)

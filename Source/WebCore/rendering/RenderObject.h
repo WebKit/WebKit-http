@@ -60,6 +60,7 @@ class RenderLayer;
 class RenderLayerModelObject;
 class RenderNamedFlowThread;
 class RenderTheme;
+class SelectionSubtreeRoot;
 class TransformState;
 class VisiblePosition;
 #if PLATFORM(IOS)
@@ -850,6 +851,7 @@ public:
     virtual void imageChanged(CachedImage*, const IntRect* = 0) override;
     virtual void imageChanged(WrappedImagePtr, const IntRect* = 0) { }
 
+    SelectionSubtreeRoot& selectionRoot() const;
     void selectionStartEnd(int& spos, int& epos) const;
     
     void removeFromParent();
@@ -879,8 +881,6 @@ public:
 
     void drawLineForBoxSide(GraphicsContext*, float x1, float y1, float x2, float y2, BoxSide, Color, EBorderStyle, float adjbw1, float adjbw2, bool antialias = false);
 protected:
-    int columnNumberForOffset(int offset);
-
     void paintFocusRing(PaintInfo&, const LayoutPoint&, RenderStyle*);
     void paintOutline(PaintInfo&, const LayoutRect&);
     void addPDFURLRect(GraphicsContext*, const LayoutRect&);

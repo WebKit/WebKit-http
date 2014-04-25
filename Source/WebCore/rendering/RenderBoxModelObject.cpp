@@ -977,12 +977,16 @@ LayoutSize RenderBoxModelObject::calculateFillTileSize(const FillLayer* fillLaye
         FALLTHROUGH;
         case Contain:
         case Cover: {
-            float horizontalScaleFactor = imageIntrinsicSize.width() ? (positioningAreaSize.width() / imageIntrinsicSize.width()).toFloat() : 1;
-            float verticalScaleFactor = imageIntrinsicSize.height() ? (positioningAreaSize.height() / imageIntrinsicSize.height()).toFloat() : 1;
+            // Scale computation needs higher precision than what LayoutUnit can offer.
+            FloatSize localImageIntrinsicSize = imageIntrinsicSize;
+            FloatSize localPositioningAreaSize = positioningAreaSize;
+
+            float horizontalScaleFactor = localImageIntrinsicSize.width() ? (localPositioningAreaSize.width() / localImageIntrinsicSize.width()) : 1;
+            float verticalScaleFactor = localImageIntrinsicSize.height() ? (localPositioningAreaSize.height() / localImageIntrinsicSize.height()) : 1;
             float scaleFactor = type == Contain ? std::min(horizontalScaleFactor, verticalScaleFactor) : std::max(horizontalScaleFactor, verticalScaleFactor);
             float deviceScaleFactor = document().deviceScaleFactor();
-            return LayoutSize(std::max<LayoutUnit>(1 / deviceScaleFactor, imageIntrinsicSize.width() * scaleFactor),
-                std::max<LayoutUnit>(1 / deviceScaleFactor, imageIntrinsicSize.height() * scaleFactor));
+            return LayoutSize(std::max<LayoutUnit>(1 / deviceScaleFactor, localImageIntrinsicSize.width() * scaleFactor),
+                std::max<LayoutUnit>(1 / deviceScaleFactor, localImageIntrinsicSize.height() * scaleFactor));
        }
     }
 
@@ -1707,20 +1711,21 @@ void RenderBoxModelObject::paintBorder(const PaintInfo& info, const LayoutRect& 
                                        BackgroundBleedAvoidance bleedAvoidance, bool includeLogicalLeftEdge, bool includeLogicalRightEdge)
 {
     GraphicsContext* graphicsContext = info.context;
-    // border-image is not affected by border-radius.
-    if (paintNinePieceImage(graphicsContext, rect, style, style.borderImage()))
-        return;
 
     if (graphicsContext->paintingDisabled())
+        return;
+
+    if (rect.isEmpty())
+        return;
+
+    // border-image is not affected by border-radius.
+    if (paintNinePieceImage(graphicsContext, rect, style, style.borderImage()))
         return;
 
     BorderEdge edges[4];
     BorderEdge::getBorderEdgeInfo(edges, style, document().deviceScaleFactor(), includeLogicalLeftEdge, includeLogicalRightEdge);
     RoundedRect outerBorder = style.getRoundedBorderFor(rect, &view(), includeLogicalLeftEdge, includeLogicalRightEdge);
     RoundedRect innerBorder = style.getRoundedInnerBorderFor(borderInnerRectAdjustedForBleedAvoidance(*graphicsContext, rect, bleedAvoidance), includeLogicalLeftEdge, includeLogicalRightEdge);
-
-    if (outerBorder.rect().isEmpty())
-        return;
 
     bool haveAlphaColor = false;
     bool haveAllSolidEdges = true;

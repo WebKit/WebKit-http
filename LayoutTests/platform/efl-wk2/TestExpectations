@@ -50,13 +50,6 @@ webkit.org/b/98747 plugins/document-open.html [ Crash Failure ]
 webkit.org/b/102200 fast/dom/HTMLAnchorElement/anchor-download.html [ Crash Failure ]
 webkit.org/b/102200 fast/dom/HTMLAnchorElement/anchor-nodownload-set.html [ Crash Failure ]
 
-# Hitting !decoder.destinationID() assertion.
-webkit.org/b/102651 [ Debug ] networkinformation/multiple-frames.html [ Crash ]
-webkit.org/b/102651 [ Debug ] networkinformation/basic-all-types-of-events.html [ Crash ]
-webkit.org/b/102651 [ Debug ] networkinformation/updates.html [ Crash ]
-webkit.org/b/102651 [ Debug ] networkinformation/add-listener-from-callback.html [ Crash ]
-webkit.org/b/102651 [ Debug ] networkinformation/basic-operation.html [ Crash ]
-
 # WebGL test cases crashing in WebCore::GraphicsContext3D::readPixels().
 webkit.org/b/109417 webgl/conformance/textures/texture-attachment-formats.html [ Crash Failure ]
 webkit.org/b/109945 webgl/conformance/glsl/misc/shader-uniform-packing-restrictions.html [ Crash ]
@@ -119,10 +112,6 @@ webkit.org/b/116587 http/tests/websocket/tests/hybi/workers/close-in-onmessage-c
 webkit.org/b/116587 http/tests/websocket/tests/hybi/workers/close-in-worker.html [ Skip ]
 webkit.org/b/116587 http/tests/websocket/tests/hybi/workers/multiple-subprotocols.html [ Skip ]
 webkit.org/b/116587 http/tests/websocket/tests/hybi/zero-length-text.html [ Skip ]
-
-webkit.org/b/128906 fast/events/touch/basic-single-touch-events.html [ Crash ]
-
-webkit.org/b/131044 media [ Skip ]
 
 # A lot of crash happen since buildbot bagan to use Ubuntu 13.10.
 webkit.org/b/131729 batterystatus [ Skip ]
@@ -540,8 +529,6 @@ webkit.org/b/128737 fast/events/touch/basic-multi-touch-events.html [ Failure ]
 
 webkit.org/b/129731 css3/masking/clip-path-filter.html [ ImageOnlyFailure ]
 
-webkit.org/b/129733 fast/borders/hidpi-simple-hairline-border-painting.html [ ImageOnlyFailure ]
-
 webkit.org/b/129734 fast/css3-text/css3-text-decoration/text-decoration-style-double-space-scales.html [ ImageOnlyFailure ]
 
 webkit.org/b/129735 fast/regions/box-decorations-over-region-padding.html [ ImageOnlyFailure ]
@@ -565,3 +552,15 @@ webkit.org/b/129821 svg/css/svg-resource-fragment-identifier-img-src.html [ Imag
 webkit.org/b/130020 webaudio/codec-tests/wav/24bit-22khz-resample.html [ Failure ]
 
 webkit.org/b/130340 fast/css/cascade/box-shadow-and-webkit-box-shadow-cascade-order.html [ ImageOnlyFailure ]
+
+# Need HighDPI support
+webkit.org/b/131987 fast/backgrounds/hidpi-bitmap-background-repeat-on-subpixel-position.html [ ImageOnlyFailure ]
+webkit.org/b/131987 fast/borders/hidpi-border-image-gradient-on-subpixels.html [ ImageOnlyFailure ]
+webkit.org/b/131987 fast/borders/hidpi-rounded-border-on-subpixel-position.html [ ImageOnlyFailure ]
+webkit.org/b/129733 fast/borders/hidpi-simple-hairline-border-painting.html [ ImageOnlyFailure ]
+webkit.org/b/131987 fast/layers/hidpi-box-positioned-off-by-one-when-transform-is-present.html [ ImageOnlyFailure ]
+webkit.org/b/131987 fast/repaint/hidpi-absolute-positioned-element-wrong-cliprect-after-move.html [ Failure ]
+
+webkit.org/b/131377 fast/repaint/blend-mode-isolate-stacking-context.html [ Failure Timeout ]
+
+webkit.org/b/132049 fast/css3-text/css3-text-decoration/text-decoration-skip/glyph-inside-underline.html [ ImageOnlyFailure ]

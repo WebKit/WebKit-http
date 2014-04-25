@@ -88,17 +88,23 @@ webkit.org/b/129331 inspector-protocol/page/deny-X-FrameOption.html [ Pass Failu
 
 webkit.org/b/129639 inspector-protocol/dom/dom-search-crash.html [ Skip ]
 webkit.org/b/129642 inspector [ Skip ]
-webkit.org/b/129817 inspector/dom/content-flow-list.html [ Pass Failure ]
-webkit.org/b/129817 inspector/dom/content-flow-content-removal.html [ Pass Failure ]
+
+# These tests cause assertion failures in subsequent tests
+webkit.org/b/131919 inspector/dom [ Skip ]
+
+# Disabled the expectations because these tests are also skipped above.
+# webkit.org/b/129817 inspector/dom/content-flow-list.html [ Pass Failure ]
+# webkit.org/b/129817 inspector/dom/content-flow-content-removal.html [ Pass Failure ]
 
 # Collecting region's children in a named flow not supported yet
 webkit.org/b/74144 fast/regions/flow-body-in-html.html [ Skip ]
 webkit.org/b/74144 fast/regions/universal-selector-children-to-the-same-region.html [ Skip ]
 webkit.org/b/74144 fast/regions/region-content-flown-into-region.html [ Skip ]
 
-# Fails or asserts on most runs.
-webkit.org/b/131679 inspector/dom/content-flow-list.html [ Skip ]
-webkit.org/b/131679 inspector/dom/content-flow-content-removal.html [ Skip ]
-
 # Doesn't work yet, relies on network replay functionality (webkit.org/b/130728, webkit.org/b/129391)
 webkit.org/b/131318 http/tests/inspector/replay/document-last-modified-fallback-value.html [ Skip ]
+
+# Expando properties on attribute nodes disappear
+webkit.org/b/88045 fast/dom/gc-attribute-node.html [ Failure Pass ]
+
+webkit.org/b/132022 js/slow-stress/new-spread.html [ Failure Pass Timeout ]

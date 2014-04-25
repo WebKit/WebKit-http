@@ -41,14 +41,7 @@
 typedef NS_ENUM(NSInteger, WKNavigationActionPolicy) {
     WKNavigationActionPolicyCancel,
     WKNavigationActionPolicyAllow,
-
-    // FIXME: Remove this.
-    WKNavigationPolicyDecisionCancel = WKNavigationActionPolicyCancel,
-    WKNavigationPolicyDecisionAllow = WKNavigationActionPolicyAllow,
 };
-
-// FIXME: Remove this.
-typedef WKNavigationActionPolicy WKNavigationPolicyDecision;
 
 /*! @enum WKNavigationResponsePolicy
  @abstract the policy to pass back to the decision handler in webView:decidePolicyForNavigationResponse:decisionHandler:.
@@ -58,14 +51,7 @@ typedef WKNavigationActionPolicy WKNavigationPolicyDecision;
 typedef NS_ENUM(NSInteger, WKNavigationResponsePolicy) {
     WKNavigationResponsePolicyCancel,
     WKNavigationResponsePolicyAllow,
-
-    // FIXME: Remove this.
-    WKNavigationResponsePolicyDecisionCancel = WKNavigationResponsePolicyCancel,
-    WKNavigationResponsePolicyDecisionAllow = WKNavigationResponsePolicyAllow,
 };
-
-// FIXME: Remove this.
-typedef WKNavigationResponsePolicy WKNavigationResponsePolicyDecision;
 
 /*! A class that conforms to WKNavigationDelegate can provide methods for deciding load policy for main frame and subframe loads
  and track load progress for main frame loads.
@@ -84,7 +70,7 @@ typedef WKNavigationResponsePolicy WKNavigationResponsePolicyDecision;
 /*! @abstract Decides whether a navigation should be allowed or cancelled once its response is known.
  @param webView The WKWebView invoking the delegate method.
  @param navigationResponse A description of the navigation response.
- @param decisionHandler The decision handler that should be call to allow or cancel the load.
+ @param decisionHandler The decision handler that should be called to allow or cancel the load.
  */
 - (void)webView:(WKWebView *)webView decidePolicyForNavigationResponse:(WKNavigationResponse *)navigationResponse decisionHandler:(void (^)(WKNavigationResponsePolicy))decisionHandler;
 

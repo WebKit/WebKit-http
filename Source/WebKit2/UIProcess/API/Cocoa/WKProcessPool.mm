@@ -28,18 +28,18 @@
 
 #if WK_API_ENABLED
 
-#import "_WKDownloadDelegate.h"
 #import "CacheModel.h"
 #import "DownloadClient.h"
 #import "HistoryClient.h"
 #import "ProcessModel.h"
 #import "WKObject.h"
-#import "WKProcessPoolConfigurationPrivate.h"
 #import "WeakObjCPtr.h"
 #import "WebCertificateInfo.h"
 #import "WebContext.h"
 #import "WebCookieManagerProxy.h"
 #import "WebProcessMessages.h"
+#import "_WKDownloadDelegate.h"
+#import "_WKProcessPoolConfiguration.h"
 #import <WebCore/CertificateInfo.h>
 #import <wtf/RetainPtr.h>
 
@@ -182,7 +182,11 @@ static WebKit::HTTPCookieAcceptPolicy toHTTPCookieAcceptPolicy(NSHTTPCookieAccep
         LOG_ERROR("Failed to encode bundle parameter: %@", exception);
     }
 
-    [_context->ensureBundleParameters() setObject:copy.get() forKey:parameter];
+    if (copy)
+        [_context->ensureBundleParameters() setObject:copy.get() forKey:parameter];
+    else
+        [_context->ensureBundleParameters() removeObjectForKey:parameter];
+
     _context->sendToAllProcesses(Messages::WebProcess::SetInjectedBundleParameter(parameter, IPC::DataReference(static_cast<const uint8_t*>([data bytes]), [data length])));
 }
 

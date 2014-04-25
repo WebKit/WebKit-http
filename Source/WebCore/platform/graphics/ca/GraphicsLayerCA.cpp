@@ -87,12 +87,19 @@ static inline bool isIntegral(float value)
     return static_cast<int>(value) == value;
 }
 
-static float clampedContentsScaleForScale(float scale)
+static float clampedContentsScaleForScale(float rootRelativeScale, float fixedScale)
 {
-    // Define some limits as a sanity check for the incoming scale value
-    // those too small to see.
-    const float maxScale = 10.0f;
+    // To avoid too many repaints when the root-relative scale of layers changes, round
+    // the scale to the nearest 0.25.
+    const float roundingFactor = 4;
+    float scale = roundf(rootRelativeScale * roundingFactor) / roundingFactor;
+
+    scale *= fixedScale;
+    
+    // Define some reasonable limits.
+    const float maxScale = 8;
     const float minScale = 0.01f;
+
     return std::max(minScale, std::min(scale, maxScale));
 }
 
@@ -356,7 +363,6 @@ PassRefPtr<PlatformCAAnimation> GraphicsLayerCA::createPlatformCAAnimation(Platf
 GraphicsLayerCA::GraphicsLayerCA(GraphicsLayerClient* client)
     : GraphicsLayer(client)
     , m_contentsLayerPurpose(NoContentsLayer)
-    , m_allowTiledLayer(true)
     , m_isPageTiledBackingLayer(false)
     , m_rootRelativeScaleFactor(1)
     , m_uncommittedChanges(0)
@@ -649,17 +655,6 @@ void GraphicsLayerCA::setAcceleratesDrawing(bool acceleratesDrawing)
 
     GraphicsLayer::setAcceleratesDrawing(acceleratesDrawing);
     noteLayerPropertyChanged(AcceleratesDrawingChanged);
-}
-
-void GraphicsLayerCA::setAllowTiledLayer(bool allowTiledLayer)
-{
-    if (allowTiledLayer == m_allowTiledLayer)
-        return;
-
-    m_allowTiledLayer = allowTiledLayer;
-    
-    // Handling this as a BoundsChanged will cause use to switch in or out of tiled layer as needed
-    noteLayerPropertyChanged(GeometryChanged);
 }
 
 void GraphicsLayerCA::setBackgroundColor(const Color& color)
@@ -1691,7 +1686,7 @@ void GraphicsLayerCA::updateContentsOpaque(float pageScaleFactor)
 {
     bool contentsOpaque = m_contentsOpaque;
     if (contentsOpaque) {
-        float contentsScale = clampedContentsScaleForScale(m_rootRelativeScaleFactor * pageScaleFactor * deviceScaleFactor());
+        float contentsScale = clampedContentsScaleForScale(m_rootRelativeScaleFactor, pageScaleFactor * deviceScaleFactor());
         if (!isIntegral(contentsScale) && !m_client->paintsOpaquelyAtNonIntegralScales(this))
             contentsOpaque = false;
     }
@@ -2981,7 +2976,7 @@ GraphicsLayerCA::LayerMap* GraphicsLayerCA::animatedLayerClones(AnimatedProperty
 
 void GraphicsLayerCA::updateContentsScale(float pageScaleFactor)
 {
-    float contentsScale = clampedContentsScaleForScale(m_rootRelativeScaleFactor * pageScaleFactor * deviceScaleFactor());
+    float contentsScale = clampedContentsScaleForScale(m_rootRelativeScaleFactor, pageScaleFactor * deviceScaleFactor());
 
     if (m_isPageTiledBackingLayer && tiledBacking()) {
         float zoomedOutScale = m_client->zoomedOutPageScaleFactor() * deviceScaleFactor();
@@ -3126,7 +3121,7 @@ void GraphicsLayerCA::setCustomBehavior(CustomBehavior customBehavior)
 
 bool GraphicsLayerCA::requiresTiledLayer(float pageScaleFactor) const
 {
-    if (!m_drawsContent || !m_allowTiledLayer || m_isPageTiledBackingLayer)
+    if (!m_drawsContent || m_isPageTiledBackingLayer)
         return false;
 
     // FIXME: catch zero-size height or width here (or earlier)?

@@ -391,7 +391,7 @@ void RenderText::collectSelectionRects(Vector<SelectionRect>& rects, unsigned st
             }
         }
 
-        rects.append(SelectionRect(absRect, box->direction(), extentsRect.x(), extentsRect.maxX(), extentsRect.maxY(), 0, box->isLineBreak(), isFirstOnLine, isLastOnLine, containsStart, containsEnd, boxIsHorizontal, isFixed, containingBlock->isRubyText(), columnNumberForOffset(absRect.x())));
+        rects.append(SelectionRect(absRect, box->direction(), extentsRect.x(), extentsRect.maxX(), extentsRect.maxY(), 0, box->isLineBreak(), isFirstOnLine, isLastOnLine, containsStart, containsEnd, boxIsHorizontal, isFixed, containingBlock->isRubyText(), view().pageNumberForBlockProgressionOffset(absRect.x())));
     }
 }
 #endif
@@ -937,21 +937,14 @@ bool RenderText::containsOnlyWhitespace(unsigned from, unsigned len) const
     return currPos >= (from + len);
 }
 
-FloatPoint RenderText::firstRunOrigin() const
+IntPoint RenderText::firstRunLocation() const
 {
-    return IntPoint(firstRunX(), firstRunY());
+    if (auto* layout = simpleLineLayout())
+        return SimpleLineLayout::computeTextFirstRunLocation(*this, *layout);
+
+    return m_lineBoxes.firstRunLocation();
 }
 
-float RenderText::firstRunX() const
-{
-    return firstTextBox() ? firstTextBox()->x() : 0;
-}
-
-float RenderText::firstRunY() const
-{
-    return firstTextBox() ? firstTextBox()->y() : 0;
-}
-    
 void RenderText::setSelectionState(SelectionState state)
 {
     if (state != SelectionNone)

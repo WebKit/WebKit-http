@@ -160,8 +160,6 @@ void InitWebCoreSystemInterface(void)
         INIT(GetDefaultHTTPCookieStorage);
         INIT(CopyCredentialFromCFPersistentStorage);
         INIT(SetCFURLRequestShouldContentSniff);
-        INIT(CFURLRequestCopyHTTPRequestBodyParts);
-        INIT(CFURLRequestSetHTTPRequestBodyParts);
         INIT(SetRequestStorageSession);
 #endif
 
@@ -219,7 +217,8 @@ void InitWebCoreSystemInterface(void)
 #if PLATFORM(IOS)
         INIT(ExecutableWasLinkedOnOrAfterIOSVersion);
         INIT(GetDeviceClass);
-        INIT(GetViewportScreenSize);
+        INIT(GetScreenSize);
+        INIT(GetAvailableScreenSize);
         INIT(GetScreenScaleFactor);
         INIT(IsGB18030ComplianceRequired);
 #endif

@@ -102,6 +102,7 @@
 #include <algorithm>
 #include <inspector/ScriptCallStack.h>
 #include <inspector/ScriptCallStackFactory.h>
+#include <memory>
 #include <wtf/CurrentTime.h>
 #include <wtf/MainThread.h>
 #include <wtf/MathExtras.h>
@@ -152,8 +153,9 @@ public:
 private:
     virtual void fired()
     {
-        m_window->postMessageTimerFired(adoptPtr(this));
-        // This object is deleted now.
+        // This object gets deleted when std::unique_ptr falls out of scope..
+        std::unique_ptr<PostMessageTimer> timer(this);
+        m_window->postMessageTimerFired(*timer);
     }
 
     RefPtr<DOMWindow> m_window;
@@ -841,14 +843,12 @@ void DOMWindow::postMessage(PassRefPtr<SerializedScriptValue> message, const Mes
     timer->startOneShot(0);
 }
 
-void DOMWindow::postMessageTimerFired(PassOwnPtr<PostMessageTimer> t)
+void DOMWindow::postMessageTimerFired(PostMessageTimer& timer)
 {
-    OwnPtr<PostMessageTimer> timer(t);
-
     if (!document() || !isCurrentlyDisplayedInFrame())
         return;
 
-    dispatchMessageEventWithOriginCheck(timer->targetOrigin(), timer->event(document()), timer->stackTrace());
+    dispatchMessageEventWithOriginCheck(timer.targetOrigin(), timer.event(document()), timer.stackTrace());
 }
 
 void DOMWindow::dispatchMessageEventWithOriginCheck(SecurityOrigin* intendedTargetOrigin, PassRefPtr<Event> event, PassRefPtr<ScriptCallStack> stackTrace)
@@ -1192,22 +1192,13 @@ int DOMWindow::scrollX() const
     if (!view)
         return 0;
 
-    int scrollX;
-#if PLATFORM(IOS)
-    scrollX = view->actualScrollX();
-#else
-    scrollX = view->scrollX();
-#endif
+    int scrollX = view->contentsScrollPosition().x();
     if (!scrollX)
         return 0;
 
     m_frame->document()->updateLayoutIgnorePendingStylesheets();
 
-#if PLATFORM(IOS)
-    return view->mapFromLayoutToCSSUnits(view->actualScrollX());
-#else
-    return view->mapFromLayoutToCSSUnits(view->scrollX());
-#endif
+    return view->mapFromLayoutToCSSUnits(view->contentsScrollPosition().x());
 }
 
 int DOMWindow::scrollY() const
@@ -1219,22 +1210,13 @@ int DOMWindow::scrollY() const
     if (!view)
         return 0;
 
-    int scrollY;
-#if PLATFORM(IOS)
-    scrollY = view->actualScrollY();
-#else
-    scrollY = view->scrollY();
-#endif
+    int scrollY = view->contentsScrollPosition().y();
     if (!scrollY)
         return 0;
 
     m_frame->document()->updateLayoutIgnorePendingStylesheets();
 
-#if PLATFORM(IOS)
-    return view->mapFromLayoutToCSSUnits(view->actualScrollY());
-#else
-    return view->mapFromLayoutToCSSUnits(view->scrollY());
-#endif
+    return view->mapFromLayoutToCSSUnits(view->contentsScrollPosition().y());
 }
 
 bool DOMWindow::closed() const
@@ -1446,11 +1428,7 @@ void DOMWindow::scrollBy(int x, int y) const
         return;
 
     IntSize scaledOffset(view->mapFromCSSToLayoutUnits(x), view->mapFromCSSToLayoutUnits(y));
-#if PLATFORM(IOS)
-    view->setActualScrollPosition(view->actualScrollPosition() + scaledOffset);
-#else
-    view->scrollBy(scaledOffset);
-#endif
+    view->setContentsScrollPosition(view->contentsScrollPosition() + scaledOffset);
 }
 
 void DOMWindow::scrollTo(int x, int y) const
@@ -1464,15 +1442,8 @@ void DOMWindow::scrollTo(int x, int y) const
     if (!view)
         return;
 
-
-#if PLATFORM(IOS)
-    int zoomedX = static_cast<int>(x * m_frame->pageZoomFactor() * m_frame->frameScaleFactor());
-    int zoomedY = static_cast<int>(y * m_frame->pageZoomFactor() * m_frame->frameScaleFactor());
-    view->setActualScrollPosition(IntPoint(zoomedX, zoomedY));
-#else
     IntPoint layoutPos(view->mapFromCSSToLayoutUnits(x), view->mapFromCSSToLayoutUnits(y));
-    view->setScrollPosition(layoutPos);
-#endif
+    view->setContentsScrollPosition(layoutPos);
 }
 
 bool DOMWindow::allowedToChangeWindowGeometry() const

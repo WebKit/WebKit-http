@@ -42,12 +42,19 @@ public:
 
     virtual ~XPCServiceInitializerDelegate();
 
+#if PLATFORM(MAC)
+    virtual bool checkEntitlements();
+#endif
+
     virtual bool getConnectionIdentifier(IPC::Connection::Identifier& identifier);
     virtual bool getClientIdentifier(String& clientIdentifier);
     virtual bool getClientProcessName(String& clientProcessName);
     virtual bool getExtraInitializationData(HashMap<String, String>& extraInitializationData);
 
 protected:
+    bool hasEntitlement(const char* entitlement);
+    bool isClientSandboxed();
+
     xpc_connection_t m_connection;
     xpc_object_t m_initializerMessage;
 };
@@ -62,6 +69,11 @@ void XPCServiceInitializer(xpc_connection_t connection, xpc_object_t initializer
     xpc_transaction_begin();
 
     InitializeWebKit2();
+
+#if PLATFORM(MAC)
+    if (!delegate.checkEntitlements())
+        exit(EXIT_FAILURE);
+#endif
 
     ChildProcessInitializationParameters parameters;
     if (!delegate.getConnectionIdentifier(parameters.connectionIdentifier))

@@ -1,13 +1,13 @@
 set(_WEBKIT_AVAILABLE_OPTIONS "")
 
 macro(WEBKIT_OPTION_DEFINE _name _description _initialvalue)
-    set(_WEBKIT_AVAILABLE_OPTIONS_INITALVALUE_${_name} ${_initialvalue})
+    set(_WEBKIT_AVAILABLE_OPTIONS_INITIALVALUE_${_name} ${_initialvalue})
     set(_WEBKIT_AVAILABLE_OPTIONS_DESCRIPTION_${_name} ${_description})
     list(APPEND _WEBKIT_AVAILABLE_OPTIONS ${_name})
 endmacro()
 
 macro(WEBKIT_OPTION_DEFAULT_PORT_VALUE _name _value)
-    set(_WEBKIT_AVAILABLE_OPTIONS_INITALVALUE_${_name} ${_value})
+    set(_WEBKIT_AVAILABLE_OPTIONS_INITIALVALUE_${_name} ${_value})
 endmacro()
 
 macro(WEBKIT_OPTION_BEGIN)
@@ -90,7 +90,6 @@ macro(WEBKIT_OPTION_BEGIN)
     WEBKIT_OPTION_DEFINE(ENABLE_NAVIGATOR_CONTENT_UTILS "Toggle Navigator Content Utils support" OFF)
     WEBKIT_OPTION_DEFINE(ENABLE_NOSNIFF "Toggle support for 'X-Content-Type-Options: nosniff'" OFF)
     WEBKIT_OPTION_DEFINE(ENABLE_NETSCAPE_PLUGIN_API "Toggle Netscape Plugin support" ON)
-    WEBKIT_OPTION_DEFINE(ENABLE_NETWORK_INFO "Toggle Network Information API support" OFF)
     WEBKIT_OPTION_DEFINE(ENABLE_NETWORK_PROCESS "Toggle dedicated network process support in WebKit2" OFF)
     WEBKIT_OPTION_DEFINE(ENABLE_NOTIFICATIONS "Toggle Desktop Notifications Support" OFF)
     WEBKIT_OPTION_DEFINE(ENABLE_ORIENTATION_EVENTS "Toggle Orientation Events support" OFF)
@@ -133,7 +132,7 @@ endmacro()
 
 macro(WEBKIT_OPTION_END)
     foreach (_name ${_WEBKIT_AVAILABLE_OPTIONS})
-        option(${_name} "${_WEBKIT_AVAILABLE_OPTIONS_DESCRIPTION_${_name}}" ${_WEBKIT_AVAILABLE_OPTIONS_INITALVALUE_${_name}})
+        option(${_name} "${_WEBKIT_AVAILABLE_OPTIONS_DESCRIPTION_${_name}}" ${_WEBKIT_AVAILABLE_OPTIONS_INITIALVALUE_${_name}})
     endforeach ()
 
 

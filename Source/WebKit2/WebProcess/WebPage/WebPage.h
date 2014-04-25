@@ -50,6 +50,7 @@
 #include <WebCore/Editor.h>
 #include <WebCore/FrameLoaderTypes.h>
 #include <WebCore/IntRect.h>
+#include <WebCore/IntSizeHash.h>
 #include <WebCore/Page.h>
 #include <WebCore/PageVisibilityState.h>
 #include <WebCore/ScrollTypes.h>
@@ -375,6 +376,7 @@ public:
 
     void stopLoading();
     void stopLoadingFrame(uint64_t frameID);
+    bool defersLoading() const;
     void setDefersLoading(bool deferLoading);
 
     void enterAcceleratedCompositingMode(WebCore::GraphicsLayer*);
@@ -437,7 +439,8 @@ public:
 #endif
 
 #if PLATFORM(IOS)
-    WebCore::FloatSize viewportScreenSize() const;
+    WebCore::FloatSize screenSize() const;
+    WebCore::FloatSize availableScreenSize() const;
     void viewportPropertiesDidChange(const WebCore::ViewportArguments&);
     void didReceiveMobileDocType(bool);
 
@@ -458,6 +461,7 @@ public:
     void elementDidBlur(WebCore::Node*);
     void requestDictationContext(uint64_t callbackID);
     void replaceDictatedText(const String& oldText, const String& newText);
+    void replaceSelectedText(const String& oldText, const String& newText);
     void requestAutocorrectionData(const String& textForAutocorrection, uint64_t callbackID);
     void applyAutocorrection(const String& correction, const String& originalText, uint64_t callbackID);
     void syncApplyAutocorrection(const String& correction, const String& originalText, bool& correctionApplied);
@@ -474,6 +478,7 @@ public:
     void setAssistedNodeSelectedIndex(uint32_t index, bool allowMultipleSelection);
     WebCore::IntRect rectForElementAtInteractionLocation();
 
+    void dispatchAsynchronousTouchEvents(const Vector<WebTouchEvent, 1>& queue);
 #if ENABLE(INSPECTOR)
     void showInspectorIndication();
     void hideInspectorIndication();
@@ -663,8 +668,6 @@ public:
     void setDeviceScaleFactor(float);
     float deviceScaleFactor() const;
 
-    void setMemoryCacheMessagesEnabled(bool);
-
     void forceRepaintWithoutCallback();
 
     void unmarkAllMisspellings();
@@ -690,9 +693,9 @@ public:
     void updateVisibilityState(bool isInitialState = false);
 
 #if PLATFORM(IOS)
-    void setViewportConfigurationMinimumLayoutSize(const WebCore::IntSize&);
-    void dynamicViewportSizeUpdate(const WebCore::IntSize& minimumLayoutSize, const WebCore::FloatRect& targetExposedContentRect, const WebCore::FloatRect& targetUnobscuredRect, double scale);
-    void viewportConfigurationChanged();
+    void setViewportConfigurationMinimumLayoutSize(const WebCore::FloatSize&);
+    void setMinimumLayoutSizeForMinimalUI(const WebCore::FloatSize&);
+    void dynamicViewportSizeUpdate(const WebCore::FloatSize& minimumLayoutSize, const WebCore::FloatRect& targetExposedContentRect, const WebCore::FloatRect& targetUnobscuredRect, double scale);
     void updateVisibleContentRects(const VisibleContentRectUpdateInfo&);
     bool scaleWasSetByUIProcess() const { return m_scaleWasSetByUIProcess; }
     void willStartUserTriggeredZooming();
@@ -700,6 +703,7 @@ public:
     void applicationWillEnterForeground();
     void applicationDidBecomeActive();
     void zoomToRect(WebCore::FloatRect, double minimumScale, double maximumScale);
+    void dispatchTouchEvent(const WebTouchEvent&, bool& handled);
 #endif
 
 #if PLATFORM(GTK) && USE(TEXTURE_MAPPER_GL)
@@ -795,6 +799,9 @@ private:
     void didReceiveSyncWebPageMessage(IPC::Connection*, IPC::MessageDecoder&, std::unique_ptr<IPC::MessageEncoder>&);
 
 #if PLATFORM(IOS)
+    void resetViewportDefaultConfiguration(WebFrame* mainFrame);
+    void viewportConfigurationChanged();
+
     static void convertSelectionRectsToRootView(WebCore::FrameView*, Vector<WebCore::SelectionRect>&);
     PassRefPtr<WebCore::Range> rangeForWebSelectionAtPosition(const WebCore::IntPoint&, const WebCore::VisiblePosition&, SelectionFlags&);
     PassRefPtr<WebCore::Range> rangeForBlockAtPoint(const WebCore::IntPoint&);
@@ -850,7 +857,9 @@ private:
     void wheelEventSyncForTesting(const WebWheelEvent&, bool&);
     void keyEvent(const WebKeyboardEvent&);
     void keyEventSyncForTesting(const WebKeyboardEvent&, bool&);
-#if ENABLE(TOUCH_EVENTS)
+#if ENABLE(IOS_TOUCH_EVENTS)
+    void touchEventSync(const WebTouchEvent&, bool& handled);
+#elif ENABLE(TOUCH_EVENTS)
     void touchEvent(const WebTouchEvent&);
     void touchEventSyncForTesting(const WebTouchEvent&, bool& handled);
 #endif
@@ -1146,7 +1155,6 @@ private:
     RefPtr<WebCore::Node> m_assistedNode;
     RefPtr<WebCore::Range> m_currentWordRange;
     RefPtr<WebCore::Node> m_interactionNode;
-    bool m_shouldReturnWordAtSelection;
     WebCore::IntPoint m_lastInteractionLocation;
 
     WebCore::ViewportConfiguration m_viewportConfiguration;
@@ -1154,8 +1162,12 @@ private:
     bool m_hasReceivedVisibleContentRectsAfterDidCommitLoad;
     bool m_scaleWasSetByUIProcess;
     bool m_userHasChangedPageScaleFactor;
-    WebCore::FloatSize m_viewportScreenSize;
+    WebCore::FloatSize m_screenSize;
+    WebCore::FloatSize m_availableScreenSize;
     WebCore::IntSize m_blockSelectionDesiredSize;
+    WebCore::FloatSize m_minimumLayoutSizeForMinimalUI;
+    bool m_inDynamicSizeUpdate;
+    HashMap<std::pair<WebCore::IntSize, double>, WebCore::IntPoint> m_dynamicSizeUpdateHistory;
 #endif
 
     WebInspectorClient* m_inspectorClient;

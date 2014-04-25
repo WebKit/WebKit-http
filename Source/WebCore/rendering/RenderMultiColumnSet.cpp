@@ -26,10 +26,12 @@
 #include "config.h"
 #include "RenderMultiColumnSet.h"
 
+#include "FrameView.h"
 #include "PaintInfo.h"
 #include "RenderLayer.h"
 #include "RenderMultiColumnFlowThread.h"
 #include "RenderMultiColumnSpannerPlaceholder.h"
+#include "RenderView.h"
 
 namespace WebCore {
 
@@ -38,6 +40,7 @@ RenderMultiColumnSet::RenderMultiColumnSet(RenderFlowThread& flowThread, PassRef
     , m_computedColumnCount(1)
     , m_computedColumnWidth(0)
     , m_computedColumnHeight(0)
+    , m_availableColumnHeight(0)
     , m_maxColumnHeight(RenderFlowThread::maxLogicalHeight())
     , m_minSpaceShortage(RenderFlowThread::maxLogicalHeight())
     , m_minimumColumnHeight(0)
@@ -151,6 +154,19 @@ void RenderMultiColumnSet::setAndConstrainColumnHeight(LayoutUnit newHeight)
     m_computedColumnHeight = newHeight;
     if (m_computedColumnHeight > m_maxColumnHeight)
         m_computedColumnHeight = m_maxColumnHeight;
+    
+    // FIXME: The available column height is not the same as the constrained height specified
+    // by the pagination API. The column set in this case is allowed to be bigger than the
+    // height of a single column. We cache available column height in order to use it
+    // in computeLogicalHeight later. This is pretty gross, and maybe there's a better way
+    // to formalize the idea of clamped column heights without having a view dependency
+    // here.
+    m_availableColumnHeight = m_computedColumnHeight;
+    if (multiColumnFlowThread() && !multiColumnFlowThread()->progressionIsInline() && parent()->isRenderView()) {
+        int pageLength = view().frameView().pagination().pageLength;
+        if (pageLength)
+            m_computedColumnHeight = pageLength;
+    }
     // FIXME: the height may also be affected by the enclosing pagination context, if any.
 }
 
@@ -175,20 +191,16 @@ unsigned RenderMultiColumnSet::findRunWithTallestColumns() const
 
 void RenderMultiColumnSet::distributeImplicitBreaks()
 {
-    unsigned breakCount = forcedBreaksCount();
-
 #ifndef NDEBUG
     // There should be no implicit breaks assumed at this point.
-    for (unsigned i = 0; i < breakCount; i++)
+    for (unsigned i = 0; i < forcedBreaksCount(); i++)
         ASSERT(!m_contentRuns[i].assumedImplicitBreaks());
 #endif // NDEBUG
 
-    if (!breakCount) {
-        // The flow thread would normally insert a forced break at end of content, but if this set
-        // isn't last in the multicol container, we have to do it ourselves.
-        addForcedBreak(logicalBottomInFlowThread());
-        breakCount = 1;
-    }
+    // Insert a final content run to encompass all content. This will include overflow if this is
+    // the last set.
+    addForcedBreak(logicalBottomInFlowThread());
+    unsigned breakCount = forcedBreaksCount();
 
     // If there is room for more breaks (to reach the used value of column-count), imagine that we
     // insert implicit breaks at suitable locations. At any given time, the content run with the
@@ -285,8 +297,6 @@ void RenderMultiColumnSet::recordSpaceShortage(LayoutUnit spaceShortage)
     // order to get anywhere. Some lines actually have zero height. Ignore them.
     if (spaceShortage > 0)
         m_minSpaceShortage = spaceShortage;
-
-    m_minSpaceShortage = spaceShortage;
 }
 
 void RenderMultiColumnSet::updateLogicalWidth()
@@ -327,8 +337,10 @@ void RenderMultiColumnSet::prepareForLayout(bool initial)
     if (initial)
         m_maxColumnHeight = calculateMaxColumnHeight();
     if (requiresBalancing()) {
-        if (initial)
+        if (initial) {
             m_computedColumnHeight = 0;
+            m_availableColumnHeight = 0;
+        }
     } else
         setAndConstrainColumnHeight(heightAdjustedForSetOffset(multiColumnFlowThread()->columnHeightAvailable()));
 
@@ -396,7 +408,7 @@ void RenderMultiColumnSet::layout()
 
 void RenderMultiColumnSet::computeLogicalHeight(LayoutUnit, LayoutUnit logicalTop, LogicalExtentComputedValues& computedValues) const
 {
-    computedValues.m_extent = m_computedColumnHeight;
+    computedValues.m_extent = m_availableColumnHeight;
     computedValues.m_position = logicalTop;
 }
 
@@ -537,24 +549,6 @@ LayoutRect RenderMultiColumnSet::flowThreadPortionOverflowRect(const LayoutRect&
             overflowRect.shiftMaxYEdgeTo(portionRect.maxY() + colGap - colGap / 2);
     }
     return overflowRect;
-}
-
-void RenderMultiColumnSet::paintObject(PaintInfo& paintInfo, const LayoutPoint& paintOffset)
-{
-    if (style().visibility() != VISIBLE)
-        return;
-
-    RenderBlock::paintObject(paintInfo, paintOffset);
-
-    // FIXME: Right now we're only painting in the foreground phase.
-    // Columns should technically respect phases and allow for background/float/foreground overlap etc., just like
-    // RenderBlocks do. Note this is a pretty minor issue, since the old column implementation clipped columns
-    // anyway, thus making it impossible for them to overlap one another. It's also really unlikely that the columns
-    // would overlap another block.
-    if (!m_flowThread || !isValid() || (paintInfo.phase != PaintPhaseForeground && paintInfo.phase != PaintPhaseSelection))
-        return;
-
-    paintColumnRules(paintInfo, paintOffset);
 }
 
 void RenderMultiColumnSet::paintColumnRules(PaintInfo& paintInfo, const LayoutPoint& paintOffset)
@@ -790,9 +784,7 @@ void RenderMultiColumnSet::collectLayerFragments(LayerFragments& fragments, cons
         translationOffset.setY(blockOffset);
         if (!isHorizontalWritingMode())
             translationOffset = translationOffset.transposedPoint();
-        // FIXME: The translation needs to include the multicolumn set's content offset within the
-        // multicolumn block as well. This won't be an issue until we start creating multiple multicolumn sets.
-
+        
         // Shift the dirty rect to be in flow thread coordinates with this translation applied.
         LayoutRect translatedDirtyRect(dirtyRect);
         translatedDirtyRect.moveBy(-translationOffset);
@@ -840,7 +832,7 @@ LayoutPoint RenderMultiColumnSet::columnTranslationForOffset(const LayoutUnit& o
             inlineOffset += contentLogicalWidth() - colLogicalWidth;
     }
     translationOffset.setX(inlineOffset);
-    LayoutUnit blockOffset = initialBlockOffset + (isHorizontalWritingMode() ? -flowThreadPortion.y() : -flowThreadPortion.x());
+    LayoutUnit blockOffset = initialBlockOffset + logicalTop() - flowThread()->logicalTop() + (isHorizontalWritingMode() ? -flowThreadPortion.y() : -flowThreadPortion.x());
     if (!progressionIsInline) {
         if (!progressionReversed)
             blockOffset = startColumn * colGap;
@@ -854,8 +846,6 @@ LayoutPoint RenderMultiColumnSet::columnTranslationForOffset(const LayoutUnit& o
     if (!isHorizontalWritingMode())
         translationOffset = translationOffset.transposedPoint();
     
-    // FIXME: The translation needs to include the multicolumn set's content offset within the
-    // multicolumn block as well. This won't be an issue until we start creating multiple multicolumn sets.
     return translationOffset;
 }
 

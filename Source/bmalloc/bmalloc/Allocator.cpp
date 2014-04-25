@@ -77,7 +77,7 @@ void Allocator::log(SmallAllocator& allocator)
 
 void Allocator::processSmallAllocatorLog()
 {
-    std::lock_guard<Mutex> lock(PerProcess<Heap>::mutex());
+    std::lock_guard<StaticMutex> lock(PerProcess<Heap>::mutex());
 
     for (auto& logEntry : m_smallAllocatorLog) {
         if (!logEntry.first->deref(lock, logEntry.second))
@@ -100,7 +100,7 @@ void Allocator::log(MediumAllocator& allocator)
 
 void Allocator::processMediumAllocatorLog()
 {
-    std::lock_guard<Mutex> lock(PerProcess<Heap>::mutex());
+    std::lock_guard<StaticMutex> lock(PerProcess<Heap>::mutex());
 
     for (auto& logEntry : m_mediumAllocatorLog) {
         if (!logEntry.first->deref(lock, logEntry.second))
@@ -113,14 +113,14 @@ void Allocator::processMediumAllocatorLog()
 void* Allocator::allocateLarge(size_t size)
 {
     size = roundUpToMultipleOf<largeAlignment>(size);
-    std::lock_guard<Mutex> lock(PerProcess<Heap>::mutex());
+    std::lock_guard<StaticMutex> lock(PerProcess<Heap>::mutex());
     return PerProcess<Heap>::getFastCase()->allocateLarge(lock, size);
 }
 
 void* Allocator::allocateXLarge(size_t size)
 {
     size = roundUpToMultipleOf<largeAlignment>(size);
-    std::lock_guard<Mutex> lock(PerProcess<Heap>::mutex());
+    std::lock_guard<StaticMutex> lock(PerProcess<Heap>::mutex());
     return PerProcess<Heap>::getFastCase()->allocateXLarge(lock, size);
 }
 
@@ -145,9 +145,10 @@ IF_DEBUG(
     BASSERT(!allocateFastCase(size, dummy));
 )
     if (size <= smallMax) {
-        SmallAllocator& allocator = smallAllocatorFor(size);
+        size_t smallSizeClass = smallSizeClassFor(size);
+        SmallAllocator& allocator = m_smallAllocators[smallSizeClass];
         log(allocator);
-        allocator.refill(m_deallocator.allocateSmallLine());
+        allocator.refill(m_deallocator.allocateSmallLine(smallSizeClass));
         return allocator.allocate();
     }
 

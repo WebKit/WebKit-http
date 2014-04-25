@@ -107,7 +107,6 @@ list(APPEND WebKit_SOURCES
     efl/WebCoreSupport/IconDatabaseClientEfl.cpp
     efl/WebCoreSupport/InspectorClientEfl.cpp
     efl/WebCoreSupport/NavigatorContentUtilsClientEfl.cpp
-    efl/WebCoreSupport/NetworkInfoClientEfl.cpp
     efl/WebCoreSupport/NotificationPresenterClientEfl.cpp
     efl/WebCoreSupport/PlatformStrategiesEfl.cpp
     efl/WebCoreSupport/ProgressTrackerClientEfl.cpp
@@ -127,7 +126,6 @@ list(APPEND WebKit_SOURCES
     efl/ewk/ewk_js.cpp
     efl/ewk/ewk_main.cpp
     efl/ewk/ewk_network.cpp
-    efl/ewk/ewk_paint_context.cpp
     efl/ewk/ewk_security_origin.cpp
     efl/ewk/ewk_security_policy.cpp
     efl/ewk/ewk_settings.cpp

@@ -44,22 +44,25 @@ public:
     bool deallocateFastCase(void*);
     void deallocateSlowCase(void*);
 
-    void deallocateSmallLine(std::lock_guard<Mutex>&, SmallLine*);
-    SmallLine* allocateSmallLine();
+    void deallocateSmallLine(std::lock_guard<StaticMutex>&, SmallLine*);
+    SmallLine* allocateSmallLine(size_t smallSizeClass);
 
-    void deallocateMediumLine(std::lock_guard<Mutex>&, MediumLine*);
+    void deallocateMediumLine(std::lock_guard<StaticMutex>&, MediumLine*);
     MediumLine* allocateMediumLine();
     
     void scavenge();
     
 private:
+    typedef FixedVector<SmallLine*, smallLineCacheCapacity> SmallLineCache;
+    typedef FixedVector<MediumLine*, mediumLineCacheCapacity> MediumLineCache;
+
     void deallocateLarge(void*);
     void deallocateXLarge(void*);
     void processObjectLog();
 
     FixedVector<void*, deallocatorLogCapacity> m_objectLog;
-    FixedVector<SmallLine*, smallLineCacheCapacity> m_smallLineCache;
-    FixedVector<MediumLine*, mediumLineCacheCapacity> m_mediumLineCache;
+    std::array<SmallLineCache, smallMax / alignment> m_smallLineCaches;
+    MediumLineCache m_mediumLineCache;
 };
 
 inline bool Deallocator::deallocateFastCase(void* object)

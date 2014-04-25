@@ -1,6 +1,7 @@
 list(APPEND WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/editing/atk"
     "${WEBCORE_DIR}/page/efl"
+    "${WEBCORE_DIR}/page/scrolling/coordinatedgraphics"
     "${WEBCORE_DIR}/platform/cairo"
     "${WEBCORE_DIR}/platform/efl"
     "${WEBCORE_DIR}/platform/graphics/cairo"
@@ -9,6 +10,7 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/graphics/harfbuzz/"
     "${WEBCORE_DIR}/platform/graphics/harfbuzz/ng"
     "${WEBCORE_DIR}/platform/graphics/opentype"
+    "${WEBCORE_DIR}/platform/graphics/texmap/coordinated"
     "${WEBCORE_DIR}/platform/linux"
     "${WEBCORE_DIR}/platform/mediastream/gstreamer"
     "${WEBCORE_DIR}/platform/network/soup"
@@ -49,6 +51,10 @@ list(APPEND WebCore_SOURCES
     page/efl/DragControllerEfl.cpp
     page/efl/EventHandlerEfl.cpp
 
+    page/scrolling/coordinatedgraphics/ScrollingCoordinatorCoordinatedGraphics.cpp
+    page/scrolling/coordinatedgraphics/ScrollingStateNodeCoordinatedGraphics.cpp
+    page/scrolling/coordinatedgraphics/ScrollingStateScrollingNodeCoordinatedGraphics.cpp
+
     platform/ContextMenuItemNone.cpp
     platform/ContextMenuNone.cpp
     platform/Cursor.cpp
@@ -77,7 +83,6 @@ list(APPEND WebCore_SOURCES
     platform/efl/LocalizedStringsEfl.cpp
     platform/efl/LoggingEfl.cpp
     platform/efl/MIMETypeRegistryEfl.cpp
-    platform/efl/NetworkInfoProviderEfl.cpp
     platform/efl/PasteboardEfl.cpp
     platform/efl/PlatformKeyboardEventEfl.cpp
     platform/efl/PlatformMouseEventEfl.cpp
@@ -143,6 +148,16 @@ list(APPEND WebCore_SOURCES
     platform/graphics/harfbuzz/HarfBuzzShaper.cpp
 
     platform/graphics/opentype/OpenTypeVerticalData.cpp
+
+    platform/graphics/texmap/coordinated/AreaAllocator.cpp
+    platform/graphics/texmap/coordinated/CompositingCoordinator.cpp
+    platform/graphics/texmap/coordinated/CoordinatedBackingStore.cpp
+    platform/graphics/texmap/coordinated/CoordinatedGraphicsLayer.cpp
+    platform/graphics/texmap/coordinated/CoordinatedGraphicsScene.cpp
+    platform/graphics/texmap/coordinated/CoordinatedImageBacking.cpp
+    platform/graphics/texmap/coordinated/CoordinatedSurface.cpp
+    platform/graphics/texmap/coordinated/CoordinatedTile.cpp
+    platform/graphics/texmap/coordinated/UpdateAtlas.cpp
 
     platform/image-decoders/cairo/ImageDecoderCairo.cpp
 

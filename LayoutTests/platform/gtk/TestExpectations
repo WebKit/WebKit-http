@@ -283,9 +283,6 @@ webkit.org/b/99036 http/tests/pointer-lock [ Skip ]
 webkit.org/b/95582 batterystatus [ Failure ]
 webkit.org/b/95582 batterystatus/event-after-navigation.html [ Timeout ]
 
-# Network Information API support not yet.
-webkit.org/b/99052 networkinformation [ Skip ]
-
 # Touch adjustment not enabled
 webkit.org/b/99054 touchadjustment [ Failure ]
 webkit.org/b/99054 touchadjustment/iframe.html [ Timeout ]
@@ -341,6 +338,10 @@ webkit.org/b/131546 media/track/track-in-band-cues-added-once.html [ Timeout ]
 webkit.org/b/131546 media/track/track-in-band-style.html [ Timeout ]
 webkit.org/b/131546 media/track/track-in-band-legacy-api.html [ Failure ]
 webkit.org/b/131546 media/track/track-in-band-mode.html [ Skip ]
+
+# DataCue.value not enabled
+Bug(GTK) http/tests/media/track-in-band-hls-metadata.html [ Skip ]
+Bug(GTK) media/track/track-datacue-value.html [ Skip ]
 
 # Require ENABLE(CUSTOM_ELEMENTS) support
 webkit.org/b/110735 fast/dom/custom [ Skip ]
@@ -401,6 +402,7 @@ webkit.org/b/131347 fast/borders/hidpi-simple-hairline-border-painting.html [ Im
 webkit.org/b/131347 fast/layers/hidpi-box-positioned-off-by-one-when-transform-is-present.html [ ImageOnlyFailure ]
 webkit.org/b/131347 fast/repaint/hidpi-absolute-positioned-element-wrong-cliprect-after-move.html [ Failure ]
 webkit.org/b/131347 fast/repaint/hidpi-device-pixel-based-repaint-rect-tracking.html [ Failure ]
+webkit.org/b/131347 fast/repaint/hidpi-wrong-repaint-rect-when-parent-has-noncompositing-transform.html [ Failure ]
 webkit.org/b/131347 svg/custom/hidpi-masking-clipping.svg [ Failure ImageOnlyFailure Timeout ]
 webkit.org/b/131347 fast/borders/hidpi-border-image-gradient-on-subpixels.html [ ImageOnlyFailure ]
 webkit.org/b/131347 fast/borders/hidpi-rounded-border-on-subpixel-position.html [ ImageOnlyFailure ]
@@ -766,6 +768,8 @@ webkit.org/b/131533 media/track/track-remove-active-cue-crash.html [ Timeout Pas
 webkit.org/b/131534 media/media-ended.html [ Timeout Pass ]
 webkit.org/b/131535 media/audio-mpeg-supported.html [ Timeout Pass ]
 
+webkit.org/b/131934 fast/dom/Window/mozilla-focus-blur.html [ Failure Timeout Pass ]
+
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Flaky tests
 #////////////////////////////////////////////////////////////////////////////////////////
@@ -1040,6 +1044,7 @@ webkit.org/b/73003 editing/spelling/spellcheck-async-remove-frame.html [ Skip ]
 webkit.org/b/73003 editing/spelling/spellcheck-async.html [ Skip ]
 webkit.org/b/73003 editing/spelling/spellcheck-queue.html [ Skip ]
 webkit.org/b/73003 editing/spelling/spellcheck-sequencenum.html [ Skip ]
+webkit.org/b/73003 editing/spelling/spelling-backward.html [ Skip ]
 webkit.org/b/73003 editing/spelling/spelling-marker-description.html [ Skip ]
 
 # Spellcheck tests don't seem to work.
@@ -1480,6 +1485,9 @@ webkit.org/b/77631 fast/multicol/span/span-as-immediate-child-property-removal.h
 webkit.org/b/77631 fast/multicol/span/span-as-immediate-columns-child-removal.html [ Failure ]
 
 webkit.org/b/80129 fast/frames/flattening/frameset-flattening-advanced.html [ Failure ]
+webkit.org/b/131793 fast/frames/frame-programmatic-noresize.html [ Failure Pass ]
+webkit.org/b/131794 fast/frames/frame-with-noresize-can-be-resized-after-removal-of-noresize.html [ Failure Pass ]
+webkit.org/b/131794 fast/frames/frame-with-noresize-can-be-resized-after-setting-noResize-to-false.html [ Failure Pass ]
 
 webkit.org/b/89663 editing/deleting/delete-3800834-fix.html [ Failure ]
 
@@ -1613,12 +1621,8 @@ webkit.org/b/118222 fast/text/international/synthesized-italic-vertical.html [ I
 
 webkit.org/b/118416 storage/websql/sql-error-codes.html [ Failure ]
 
-webkit.org/b/118420 [ Release ] fast/dom/gc-dom-tree-lifetime.html [ Failure ]
-
 # May take too long on the bots.
 Bug(GTK) mathml/very-large-stretchy-operators.html [ Pass Timeout ]
-
-webkit.org/b/119840 http/tests/loading/authentication-after-redirect-stores-wrong-credentials/authentication-after-redirect-stores-wrong-credentials.html [ Failure ]
 
 webkit.org/b/119841 fast/sub-pixel/sub-pixel-composited-layers.html [ ImageOnlyFailure ]
 
@@ -1758,8 +1762,6 @@ webkit.org/b/122511 webkit.org/b/120401 fast/regions/selection/selecting-text-in
 # PasteBoard::plainText() does not support file names.
 webkit.org/b/99070 editing/pasteboard/drag-files-to-editable-element.html [ Failure ]
 
-webkit.org/b/131619 editing/editability/ignored-content.html [ Failure ]
-
 # Opera-submitted tests to W3C for <track>, a lot of failures still.
 webkit.org/b/103926 media/track/opera/idl/media-idl-tests.html [ Skip ]
 webkit.org/b/103926 media/track/opera/interfaces/HTMLElement/HTMLMediaElement/crossOrigin.html [ Skip ]
@@ -1824,6 +1826,14 @@ webkit.org/b/131501 fast/css3-text/css3-text-decoration/text-decoration-skip/gly
 webkit.org/b/131540 fast/css3-text/css3-text-decoration/text-decoration-skip/text-decoration-skip-ink-svg.html [ ImageOnlyFailure ]
 
 webkit.org/b/130971 media/track/track-remove-track.html [ Failure Timeout  ]
+
+webkit.org/b/132046 svg/css/svg-resource-fragment-identifier-img-src.html  [ ImageOnlyFailure ]
+
+webkit.org/b/132054 js/dom/global-constructors-attributes.html  [ Failure ]
+
+webkit.org/b/132055 media/track/track-datacue.html  [ Timeout ]
+
+webkit.org/b/132056 webaudio/codec-tests/mp3/128kbps-44khz.html  [ Failure ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Tests failing

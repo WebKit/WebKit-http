@@ -105,7 +105,6 @@
 #import <UIKit/UIMath.h>
 #import <UIKit/UIWebBrowserView.h>
 #import <UIKit/UIWebScrollView.h>
-#import <WebKit/WAKViewPrivate.h>
 #import <WebKit/WAKWindow.h>
 #import <WebKit/WebCoreThread.h>
 #import <WebKit/WebCoreThreadRun.h>
@@ -881,7 +880,7 @@ static void resetWebPreferencesToConsistentValues()
     [preferences setCSSGridLayoutEnabled:NO];
     [preferences setUsePreHTML5ParserQuirks:NO];
     [preferences setAsynchronousSpellCheckingEnabled:NO];
-    [preferences setMockScrollbarsEnabled:YES];
+    ASSERT([preferences mockScrollbarsEnabled]);
 
 #if ENABLE(WEB_AUDIO)
     [preferences setWebAudioEnabled:YES];
@@ -1098,6 +1097,9 @@ static void prepareConsistentTestingEnvironment()
 
     adjustFonts();
     registerMockScrollbars();
+
+    // The mock scrollbars setting cannot be modified after creating a view, so we have to do it now.
+    [[WebPreferences standardPreferences] setMockScrollbarsEnabled:YES];
 #else
     activateFontsIOS();
 #endif

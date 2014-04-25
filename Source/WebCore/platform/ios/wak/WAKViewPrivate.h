@@ -29,6 +29,7 @@
 #if TARGET_OS_IPHONE
 
 #import "WAKView.h"
+#import "WKViewPrivate.h"
 
 @interface WAKView (WAKPrivate)
 - (WKViewRef)_viewRef;

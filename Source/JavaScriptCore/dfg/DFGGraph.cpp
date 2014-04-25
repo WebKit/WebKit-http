@@ -61,7 +61,6 @@ Graph::Graph(VM& vm, Plan& plan, LongLivedState& longLivedState)
     , m_profiledBlock(m_codeBlock->alternative())
     , m_allocator(longLivedState.m_allocator)
     , m_mustHandleAbstractValues(OperandsLike, plan.mustHandleValues)
-    , m_inlineCallFrames(adoptPtr(new InlineCallFrameSet()))
     , m_hasArguments(false)
     , m_nextMachineLocal(0)
     , m_machineCaptureStart(std::numeric_limits<int>::max())
@@ -358,6 +357,8 @@ void Graph::dump(PrintStream& out, const char* prefix, Node* node, DumpContext* 
 void Graph::dumpBlockHeader(PrintStream& out, const char* prefix, BasicBlock* block, PhiNodeDumpMode phiNodeDumpMode, DumpContext* context)
 {
     out.print(prefix, "Block ", *block, " (", inContext(block->at(0)->origin.semantic, context), "): ", block->isReachable ? "" : "(skipped)", block->isOSRTarget ? " (OSR target)" : "", "\n");
+    if (block->executionCount == block->executionCount)
+        out.print(prefix, "  Execution count: ", block->executionCount, "\n");
     out.print(prefix, "  Predecessors:");
     for (size_t i = 0; i < block->predecessors.size(); ++i)
         out.print(" ", *block->predecessors[i]);
@@ -761,7 +762,7 @@ unsigned Graph::stackPointerOffset()
 unsigned Graph::requiredRegisterCountForExit()
 {
     unsigned count = JIT::frameRegisterCountFor(m_profiledBlock);
-    for (InlineCallFrameSet::iterator iter = m_inlineCallFrames->begin(); !!iter; ++iter) {
+    for (InlineCallFrameSet::iterator iter = m_plan.inlineCallFrames->begin(); !!iter; ++iter) {
         InlineCallFrame* inlineCallFrame = *iter;
         CodeBlock* codeBlock = baselineCodeBlockForInlineCallFrame(inlineCallFrame);
         unsigned requiredCount = VirtualRegister(inlineCallFrame->stackOffset).toLocal() + 1 + JIT::frameRegisterCountFor(codeBlock);

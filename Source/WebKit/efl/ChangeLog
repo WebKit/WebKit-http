@@ -1,3 +1,113 @@
+2014-04-23  Hyowon Kim  <hw1008.kim@samsung.com>
+
+        [EFL][WK1] Add *const* keyword to _get() APIs
+        https://bugs.webkit.org/show_bug.cgi?id=132094
+
+        Reviewed by Gyuyoung Kim.
+
+        Some _get() EFL APIs don't have *const* keyword though the _get() APIs don't modify passed argument.
+        We need to add *const* keyword to those APIs.
+
+        * ewk/ewk_history.cpp:
+        (ewk_history_limit_get):
+        * ewk/ewk_history.h:
+        * ewk/ewk_js.cpp:
+        (ewk_js_object_type_get):
+        * ewk/ewk_js.h:
+
+2014-04-22  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [EFL][WK1] There are many failures in fast/forms since r163033
+        https://bugs.webkit.org/show_bug.cgi?id=132039
+
+        Reviewed by Gyuyoung Kim.
+
+        * ewk/ewk_view.cpp: Added break statements which is missing while remove COMPILE_ASSERT_MATCHING_ENUM
+        (ewk_view_navigation_policy_decision):
+
+2014-04-22  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [EFL][WK1] There are many warnings in layout test since r167428
+        https://bugs.webkit.org/show_bug.cgi?id=131985
+
+        Reviewed by Gyuyoung Kim.
+
+        Since r167428, implementation of flush method was removed, but ewk_view_frame_main_cleared
+        still checked and generated many warnings.
+
+        Now, ewk_view_frame_main_cleared is not required because flush is already
+        meaningless and others are covered by ewk_frame_view_create_for_view.
+        So, this patch removed ewk_view_frame_main_cleared and related code which is already dead.
+
+        * WebCoreSupport/FrameLoaderClientEfl.cpp:
+        (WebCore::FrameLoaderClientEfl::transitionToCommittedForNewPage):
+        * ewk/ewk_view.cpp:
+        (ewk_view_frame_main_cleared): Deleted.
+        (ewk_view_did_first_visually_nonempty_layout): Deleted.
+        (ewk_view_dispatch_did_finish_loading): Deleted.
+        * ewk/ewk_view.h: Removed flush smart method.
+
+2014-04-18  Philippe Normand  <pnormand@igalia.com>
+
+        Remove NETWORK_INFO support
+        https://bugs.webkit.org/show_bug.cgi?id=131841
+
+        Reviewed by Gyuyoung Kim.
+
+        * WebCoreSupport/NetworkInfoClientEfl.cpp: Removed.
+        * WebCoreSupport/NetworkInfoClientEfl.h: Removed.
+        * ewk/ewk_view.cpp:
+        (_ewk_view_priv_new):
+
+2014-04-17  Jeongeun Kim  <je_julie.kim@samsung.com>
+
+        [EFL][WK1] SSL Strict is set according to input parameter.
+        https://bugs.webkit.org/show_bug.cgi?id=131734.
+
+        Reviewed by Gyuyoung Kim.
+
+        The param, 'enable', should be used for setting SSL-Strict.
+        If it is true, SSLStrict is set. Otherwise, SSLStrict is unset.
+
+        * ewk/ewk_network.cpp:
+        (ewk_network_tls_certificate_check_set):
+
+2014-04-17  Hyowon Kim  <hw1008.kim@samsung.com>
+
+        [EFL] Remove deprecated ewk_paint code.
+        https://bugs.webkit.org/show_bug.cgi?id=131266
+
+        Reviewed by Gyuyoung Kim.
+
+        ewk_paint related code was deprecated since r166637.
+
+        * WebCoreSupport/AcceleratedCompositingContextEfl.cpp:
+        * WebCoreSupport/ChromeClientEfl.cpp:
+        (WebCore::ChromeClientEfl::invalidateRootView): Deleted.
+        (WebCore::ChromeClientEfl::invalidateContentsAndRootView): Deleted.
+        (WebCore::ChromeClientEfl::invalidateContentsForSlowScroll): Deleted.
+        (WebCore::ChromeClientEfl::scroll): Deleted.
+        * WebCoreSupport/ChromeClientEfl.h:
+        * WebCoreSupport/InspectorClientEfl.cpp:
+        * ewk/ewk_paint_context.cpp: Removed.
+        * ewk/ewk_paint_context_private.h: Removed.
+        * ewk/ewk_view.cpp:
+        (_ewk_view_priv_del):
+        (_ewk_view_smart_calculate):
+        (ewk_view_smart_set):
+        (_ewk_view_repaints_resize): Deleted.
+        (_ewk_view_repaint_add): Deleted.
+        (_ewk_view_repaints_flush): Deleted.
+        (_ewk_view_smart_flush): Deleted.
+        (ewk_view_repaints_pop): Deleted.
+        (ewk_view_repaint_add): Deleted.
+        (ewk_view_paint): Deleted.
+        (ewk_view_paint_contents): Deleted.
+        (ewk_view_repaint): Deleted.
+        (ewk_view_scroll): Deleted.
+        (ewk_view_tiled_backing_store_invalidate): Deleted.
+        * ewk/ewk_view_private.h:
+
 2014-04-16  Jeongeun Kim  <je_julie.kim@samsung.com>
 
         [EFL] Cleanup the build from unused parameters in WebKit-efl.

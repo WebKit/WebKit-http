@@ -109,7 +109,7 @@ WorkerGlobalScope::~WorkerGlobalScope()
 
 void WorkerGlobalScope::applyContentSecurityPolicyFromString(const String& policy, ContentSecurityPolicy::HeaderType contentSecurityPolicyType)
 {
-    setContentSecurityPolicy(ContentSecurityPolicy::create(this));
+    setContentSecurityPolicy(std::make_unique<ContentSecurityPolicy>(this));
     contentSecurityPolicy()->didReceiveHeader(policy, contentSecurityPolicyType);
 }
 
@@ -157,23 +157,6 @@ WorkerNavigator* WorkerGlobalScope::navigator() const
     if (!m_navigator)
         m_navigator = WorkerNavigator::create(m_userAgent);
     return m_navigator.get();
-}
-
-bool WorkerGlobalScope::hasPendingActivity() const
-{
-    ActiveDOMObjectsSet::const_iterator activeObjectsEnd = activeDOMObjects().end();
-    for (ActiveDOMObjectsSet::const_iterator iter = activeDOMObjects().begin(); iter != activeObjectsEnd; ++iter) {
-        if ((*iter)->hasPendingActivity())
-            return true;
-    }
-
-    HashSet<MessagePort*>::const_iterator messagePortsEnd = messagePorts().end();
-    for (HashSet<MessagePort*>::const_iterator iter = messagePorts().begin(); iter != messagePortsEnd; ++iter) {
-        if ((*iter)->hasPendingActivity())
-            return true;
-    }
-
-    return false;
 }
 
 void WorkerGlobalScope::postTask(PassOwnPtr<Task> task)

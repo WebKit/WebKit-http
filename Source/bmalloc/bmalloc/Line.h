@@ -46,7 +46,8 @@ public:
     static Line* get(void*);
 
     void concurrentRef(unsigned char = 1);
-    bool deref(std::lock_guard<Mutex>&, unsigned char = 1);
+    bool deref(std::lock_guard<StaticMutex>&, unsigned char = 1);
+    unsigned refCount(std::lock_guard<StaticMutex>&) { return m_refCount; }
     
     char* begin();
     char* end();
@@ -88,7 +89,7 @@ inline void Line<Traits>::concurrentRef(unsigned char count)
 }
 
 template<class Traits>
-inline bool Line<Traits>::deref(std::lock_guard<Mutex>&, unsigned char count)
+inline bool Line<Traits>::deref(std::lock_guard<StaticMutex>&, unsigned char count)
 {
     BASSERT(count <= m_refCount);
     m_refCount -= count;

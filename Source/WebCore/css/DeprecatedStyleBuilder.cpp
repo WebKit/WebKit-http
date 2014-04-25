@@ -2178,7 +2178,7 @@ public:
             CSSPrimitiveValue* primitiveValue = toCSSPrimitiveValue(value);
             if (primitiveValue->getValueID() == CSSValueAuto)
                 setValue(styleResolver->style(), 0);
-        } else if (value->isImageValue() || value->isImageSetValue()) {
+        } else if (value->isImageValue() || value->isImageGeneratorValue() || value->isImageSetValue()) {
             RefPtr<ShapeValue> shape = ShapeValue::createImageValue(styleResolver->styleImage(property, value));
             setValue(styleResolver->style(), shape.release());
         } else if (value->isValueList()) {
@@ -2474,8 +2474,8 @@ DeprecatedStyleBuilder::DeprecatedStyleBuilder()
     setPropertyHandler(CSSPropertyWebkitBackgroundOrigin, CSSPropertyBackgroundOrigin);
     setPropertyHandler(CSSPropertyWebkitBackgroundSize, CSSPropertyBackgroundSize);
 #if ENABLE(CSS_COMPOSITING)
-    setPropertyHandler(CSSPropertyWebkitMixBlendMode, ApplyPropertyDefault<BlendMode, &RenderStyle::blendMode, BlendMode, &RenderStyle::setBlendMode, BlendMode, &RenderStyle::initialBlendMode>::createHandler());
-    setPropertyHandler(CSSPropertyWebkitIsolation, ApplyPropertyDefault<Isolation, &RenderStyle::isolation, Isolation, &RenderStyle::setIsolation, Isolation, &RenderStyle::initialIsolation>::createHandler());
+    setPropertyHandler(CSSPropertyMixBlendMode, ApplyPropertyDefault<BlendMode, &RenderStyle::blendMode, BlendMode, &RenderStyle::setBlendMode, BlendMode, &RenderStyle::initialBlendMode>::createHandler());
+    setPropertyHandler(CSSPropertyIsolation, ApplyPropertyDefault<Isolation, &RenderStyle::isolation, Isolation, &RenderStyle::setIsolation, Isolation, &RenderStyle::initialIsolation>::createHandler());
 #endif
     setPropertyHandler(CSSPropertyWebkitBorderFit, ApplyPropertyDefault<EBorderFit, &RenderStyle::borderFit, EBorderFit, &RenderStyle::setBorderFit, EBorderFit, &RenderStyle::initialBorderFit>::createHandler());
     setPropertyHandler(CSSPropertyWebkitBorderHorizontalSpacing, ApplyPropertyComputeLength<short, &RenderStyle::horizontalBorderSpacing, &RenderStyle::setHorizontalBorderSpacing, &RenderStyle::initialHorizontalBorderSpacing>::createHandler());

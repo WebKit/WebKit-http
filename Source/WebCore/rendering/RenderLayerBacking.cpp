@@ -712,7 +712,7 @@ void RenderLayerBacking::updateGraphicsLayerGeometry()
     }
 
     /*
-    * GraphicsLayer: device pixel positioned. Floored, enclosing rect.
+    * GraphicsLayer: device pixel positioned, enclosing rect.
     * RenderLayer: subpixel positioned.
     * Offset from renderer (GraphicsLayer <-> RenderLayer::renderer()): subpixel based offset.
     *
@@ -730,7 +730,7 @@ void RenderLayerBacking::updateGraphicsLayerGeometry()
     *
     * localCompositingBounds: this RenderLayer relative to its renderer().
     * relativeCompositingBounds: this RenderLayer relative to its parent compositing layer.
-    * enclosingRelativeCompositingBounds: this RenderLayer relative to its parent but floored to device pixel position.
+    * enclosingRelativeCompositingBounds: this RenderLayer relative to its parent, device pixel enclosing.
     * rendererOffsetFromGraphicsLayer: RenderLayer::renderer()'s offset from its enclosing GraphicsLayer.
     * devicePixelOffsetFromRenderer: rendererOffsetFromGraphicsLayer's device pixel part. (6.9px -> 6.5px in case of 2x display)
     * devicePixelFractionFromRenderer: rendererOffsetFromGraphicsLayer's fractional part (6.9px -> 0.4px in case of 2x display)
@@ -823,7 +823,7 @@ void RenderLayerBacking::updateGraphicsLayerGeometry()
     if (!m_isMainFrameRenderViewLayer) {
         // For non-root layers, background is always painted by the primary graphics layer.
         ASSERT(!m_backgroundLayer);
-        bool hadSubpixelRounding = !m_devicePixelFractionFromRenderer.isZero();
+        bool hadSubpixelRounding = enclosingRelativeCompositingBounds != relativeCompositingBounds;
         m_graphicsLayer->setContentsOpaque(!hadSubpixelRounding && m_owningLayer.backgroundIsKnownToBeOpaqueInRect(localCompositingBounds));
     }
 
@@ -987,7 +987,7 @@ void RenderLayerBacking::updateGraphicsLayerGeometry()
 
     bool didUpdateContentsRect = false;
     updateDirectlyCompositedContents(isSimpleContainer, didUpdateContentsRect);
-    if (!didUpdateContentsRect && m_graphicsLayer->hasContentsLayer())
+    if (!didUpdateContentsRect && m_graphicsLayer->usesContentsLayer())
         resetContentsRect();
 
     updateDrawsContent(isSimpleContainer);
@@ -1275,24 +1275,24 @@ void RenderLayerBacking::positionOverflowControlsLayers()
         IntRect hBarRect = m_owningLayer.rectForHorizontalScrollbar(borderBox);
         layer->setPosition(hBarRect.location() - offsetFromRenderer);
         layer->setSize(hBarRect.size());
-        if (layer->hasContentsLayer()) {
+        if (layer->usesContentsLayer()) {
             IntRect barRect = IntRect(IntPoint(), hBarRect.size());
             layer->setContentsRect(barRect);
             layer->setContentsClippingRect(barRect);
         }
-        layer->setDrawsContent(m_owningLayer.horizontalScrollbar() && !layer->hasContentsLayer());
+        layer->setDrawsContent(m_owningLayer.horizontalScrollbar() && !layer->usesContentsLayer());
     }
     
     if (GraphicsLayer* layer = layerForVerticalScrollbar()) {
         IntRect vBarRect = m_owningLayer.rectForVerticalScrollbar(borderBox);
         layer->setPosition(vBarRect.location() - offsetFromRenderer);
         layer->setSize(vBarRect.size());
-        if (layer->hasContentsLayer()) {
+        if (layer->usesContentsLayer()) {
             IntRect barRect = IntRect(IntPoint(), vBarRect.size());
             layer->setContentsRect(barRect);
             layer->setContentsClippingRect(barRect);
         }
-        layer->setDrawsContent(m_owningLayer.verticalScrollbar() && !layer->hasContentsLayer());
+        layer->setDrawsContent(m_owningLayer.verticalScrollbar() && !layer->usesContentsLayer());
     }
 
     if (GraphicsLayer* layer = layerForScrollCorner()) {
@@ -2366,8 +2366,7 @@ bool RenderLayerBacking::startAnimation(double timeOffset, const Animation* anim
         if (!keyframeStyle)
             continue;
             
-        // Get timing function.
-        RefPtr<TimingFunction> tf = keyframeStyle->hasAnimations() ? (*keyframeStyle->animations()).animation(0).timingFunction() : 0;
+        TimingFunction* tf = currentKeyframe.timingFunction(keyframes.animationName());
         
         bool isFirstOrLastKeyframe = key == 0 || key == 1;
         if ((hasTransform && isFirstOrLastKeyframe) || currentKeyframe.containsProperty(CSSPropertyWebkitTransform))
@@ -2581,7 +2580,7 @@ AnimatedPropertyID RenderLayerBacking::cssToGraphicsLayerProperty(CSSPropertyID 
 
 CompositingLayerType RenderLayerBacking::compositingLayerType() const
 {
-    if (m_graphicsLayer->hasContentsLayer())
+    if (m_graphicsLayer->usesContentsLayer())
         return MediaCompositingLayer;
 
     if (m_graphicsLayer->drawsContent())
