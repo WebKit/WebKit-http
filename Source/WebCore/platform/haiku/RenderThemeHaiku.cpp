@@ -111,7 +111,7 @@ String RenderThemeHaiku::mediaControlsScript()
     return ASCIILiteral(mediaControlsAppleJavaScript);
 }
 
-bool RenderThemeHaiku::paintCheckbox(RenderObject* object, const PaintInfo& info, const IntRect& intRect)
+bool RenderThemeHaiku::paintCheckbox(const RenderObject& object, const PaintInfo& info, const IntRect& intRect)
 {
     if (info.context->paintingDisabled())
         return true;
@@ -146,7 +146,7 @@ void RenderThemeHaiku::setCheckboxSize(RenderStyle* style) const
         style->setHeight(Length(size, Fixed));
 }
 
-bool RenderThemeHaiku::paintRadio(RenderObject* object, const PaintInfo& info,
+bool RenderThemeHaiku::paintRadio(const RenderObject& object, const PaintInfo& info,
 	const IntRect& intRect)
 {
     if (info.context->paintingDisabled())
@@ -172,7 +172,7 @@ void RenderThemeHaiku::setRadioSize(RenderStyle* style) const
     setCheckboxSize(style);
 }
 
-bool RenderThemeHaiku::paintButton(RenderObject* object, const PaintInfo& info, const IntRect& intRect)
+bool RenderThemeHaiku::paintButton(const RenderObject& object, const PaintInfo& info, const IntRect& intRect)
 {
     if (info.context->paintingDisabled())
         return true;
@@ -203,7 +203,7 @@ void RenderThemeHaiku::adjustTextFieldStyle(StyleResolver* selector, RenderStyle
     style->setBackgroundColor(Color::transparent);
 }
 
-bool RenderThemeHaiku::paintTextField(RenderObject* object, const PaintInfo& info, const IntRect& intRect)
+bool RenderThemeHaiku::paintTextField(const RenderObject& object, const PaintInfo& info, const FloatRect& intRect)
 {
     if (info.context->paintingDisabled())
         return true;
@@ -233,7 +233,7 @@ void RenderThemeHaiku::adjustTextAreaStyle(StyleResolver* selector, RenderStyle*
 	adjustTextFieldStyle(selector, style, element);
 }
 
-bool RenderThemeHaiku::paintTextArea(RenderObject* object, const PaintInfo& info, const IntRect& intRect)
+bool RenderThemeHaiku::paintTextArea(const RenderObject& object, const PaintInfo& info, const FloatRect& intRect)
 {
     return paintTextField(object, info, intRect);
 }
@@ -266,7 +266,7 @@ void RenderThemeHaiku::adjustMenuListButtonStyle(StyleResolver* selector, Render
     style->setMinHeight(Length(minHeight, Fixed));
 }
 
-bool RenderThemeHaiku::paintMenuList(RenderObject* object, const PaintInfo& info, const IntRect& intRect)
+bool RenderThemeHaiku::paintMenuList(const RenderObject& object, const PaintInfo& info, const IntRect& intRect)
 {
     if (info.context->paintingDisabled())
         return true;
@@ -288,7 +288,7 @@ bool RenderThemeHaiku::paintMenuList(RenderObject* object, const PaintInfo& info
     return false;
 }
 
-unsigned RenderThemeHaiku::flagsForObject(RenderObject* object) const
+unsigned RenderThemeHaiku::flagsForObject(const RenderObject& object) const
 {
     unsigned flags = BControlLook::B_BLEND_FRAME;
     if (!isEnabled(object))

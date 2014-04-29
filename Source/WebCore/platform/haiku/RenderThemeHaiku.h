@@ -56,27 +56,27 @@ public:
     String mediaControlsScript() override;
 #endif
 protected:
-    bool paintCheckbox(RenderObject*, const PaintInfo&, const IntRect&) override;
+    bool paintCheckbox(const RenderObject&, const PaintInfo&, const IntRect&) override;
     void setCheckboxSize(RenderStyle*) const override;
 
-    bool paintRadio(RenderObject*, const PaintInfo&, const IntRect&) override;
+    bool paintRadio(const RenderObject&, const PaintInfo&, const IntRect&) override;
     void setRadioSize(RenderStyle*) const override;
 
-    bool paintButton(RenderObject*, const PaintInfo&, const IntRect&) override;
+    bool paintButton(const RenderObject&, const PaintInfo&, const IntRect&) override;
 
     void adjustTextFieldStyle(StyleResolver*, RenderStyle*, Element*) const override;
-    bool paintTextField(RenderObject*, const PaintInfo&, const IntRect&) override;
+    bool paintTextField(const RenderObject&, const PaintInfo&, const FloatRect&) override;
 
     void adjustTextAreaStyle(StyleResolver*, RenderStyle*, Element*) const override;
-    bool paintTextArea(RenderObject*, const PaintInfo&, const IntRect&) override;
+    bool paintTextArea(const RenderObject&, const PaintInfo&, const FloatRect&) override;
 
     void adjustMenuListStyle(StyleResolver*, RenderStyle*, Element*) const override;
-    bool paintMenuList(RenderObject*, const PaintInfo&, const IntRect&) override;
+    bool paintMenuList(const RenderObject&, const PaintInfo&, const IntRect&) override;
 
     void adjustMenuListButtonStyle(StyleResolver*, RenderStyle*, Element*) const override;
 
 private:
-	unsigned flagsForObject(RenderObject*) const;
+	unsigned flagsForObject(const RenderObject&) const;
 };
 
 } // namespace WebCore
