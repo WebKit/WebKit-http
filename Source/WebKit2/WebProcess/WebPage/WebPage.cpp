@@ -49,6 +49,7 @@
 #include "PluginProxy.h"
 #include "PluginView.h"
 #include "PrintInfo.h"
+#include "SelectionOverlayController.h"
 #include "SessionState.h"
 #include "SessionTracker.h"
 #include "ShareableBitmap.h"
@@ -248,6 +249,9 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
     , m_numberOfPrimarySnapshotDetectionAttempts(0)
     , m_determinePrimarySnapshottedPlugInTimer(RunLoop::main(), this, &WebPage::determinePrimarySnapshottedPlugInTimerFired)
 #endif
+#if ENABLE(SERVICE_CONTROLS)
+    , m_serviceControlsEnabled(false)
+#endif
     , m_layerHostingMode(parameters.layerHostingMode)
 #if PLATFORM(COCOA)
     , m_pdfPluginEnabled(false)
@@ -286,6 +290,7 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
     , m_hasReceivedVisibleContentRectsAfterDidCommitLoad(false)
     , m_scaleWasSetByUIProcess(false)
     , m_userHasChangedPageScaleFactor(false)
+    , m_userIsInteracting(false)
     , m_screenSize(parameters.screenSize)
     , m_availableScreenSize(parameters.availableScreenSize)
     , m_inDynamicSizeUpdate(false)
@@ -310,6 +315,10 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
     // 4ms should be adopted project-wide now, https://bugs.webkit.org/show_bug.cgi?id=61214
     Settings::setDefaultMinDOMTimerInterval(0.004);
 
+#if PLATFORM(IOS)
+    Settings::setShouldManageAudioSession(true);
+#endif
+
     Page::PageClients pageClients;
     pageClients.chromeClient = new WebChromeClient(this);
 #if ENABLE(CONTEXT_MENUS)
@@ -333,7 +342,7 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
 
     pageClients.visitedLinkStore = VisitedLinkTableController::getOrCreate(parameters.visitedLinkTableID);
 
-    m_page = adoptPtr(new Page(pageClients));
+    m_page = std::make_unique<Page>(pageClients);
 
     m_drawingArea = DrawingArea::create(this, parameters);
     m_drawingArea->setPaintingEnabled(false);
@@ -374,6 +383,9 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
     m_pageGroup = WebProcess::shared().webPageGroup(parameters.pageGroupData);
     m_page->setGroupName(m_pageGroup->identifier());
     m_page->setDeviceScaleFactor(parameters.deviceScaleFactor);
+#if PLATFORM(IOS)
+    m_page->setTextAutosizingWidth(parameters.textAutosizingWidth);
+#endif
 
     updatePreferences(parameters.store);
     platformInitialize();
@@ -1282,13 +1294,14 @@ void WebPage::windowScreenDidChange(uint64_t displayID)
 
 void WebPage::scalePage(double scale, const IntPoint& origin)
 {
-    if (scale == pageScaleFactor())
-        return;
+    bool willChangeScaleFactor = scale != pageScaleFactor();
 
 #if PLATFORM(IOS)
-    if (!m_inDynamicSizeUpdate)
-        m_dynamicSizeUpdateHistory.clear();
-    m_scaleWasSetByUIProcess = false;
+    if (willChangeScaleFactor) {
+        if (!m_inDynamicSizeUpdate)
+            m_dynamicSizeUpdateHistory.clear();
+        m_scaleWasSetByUIProcess = false;
+    }
 #endif
     PluginView* pluginView = pluginViewForFrame(&m_page->mainFrame());
     if (pluginView && pluginView->handlesPageScaleFactor()) {
@@ -1297,6 +1310,10 @@ void WebPage::scalePage(double scale, const IntPoint& origin)
     }
 
     m_page->setPageScaleFactor(scale, origin);
+
+    // We can't early return before setPageScaleFactor because the origin might be different.
+    if (!willChangeScaleFactor)
+        return;
 
     for (auto* pluginView : m_pluginViews)
         pluginView->pageScaleFactorDidChange();
@@ -1951,9 +1968,25 @@ static bool handleTouchEvent(const WebTouchEvent& touchEvent, Page* page)
 #if ENABLE(IOS_TOUCH_EVENTS)
 void WebPage::dispatchTouchEvent(const WebTouchEvent& touchEvent, bool& handled)
 {
+    RefPtr<Frame> oldFocusedFrame = m_page->focusController().focusedFrame();
+    RefPtr<Element> oldFocusedElement = oldFocusedFrame ? oldFocusedFrame->document()->focusedElement() : nullptr;
+    m_userIsInteracting = true;
+
     m_lastInteractionLocation = touchEvent.position();
     CurrentEvent currentEvent(touchEvent);
     handled = handleTouchEvent(touchEvent, m_page.get());
+
+    RefPtr<Frame> newFocusedFrame = m_page->focusController().focusedFrame();
+    RefPtr<Element> newFocusedElement = newFocusedFrame ? newFocusedFrame->document()->focusedElement() : nullptr;
+
+    // If the focus has not changed, we need to notify the client anyway, since it might be
+    // necessary to start assisting the node.
+    // If the node has been focused by JavaScript without user interaction, the
+    // keyboard is not on screen.
+    if (newFocusedElement && newFocusedElement == oldFocusedElement)
+        elementDidFocus(newFocusedElement.get());
+
+    m_userIsInteracting = false;
 }
 
 void WebPage::touchEventSync(const WebTouchEvent& touchEvent, bool& handled)
@@ -2467,6 +2500,10 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
     m_pdfPluginEnabled = store.getBoolValueForKey(WebPreferencesKey::pdfPluginEnabledKey());
 #endif
 
+#if ENABLE(SERVICE_CONTROLS)
+    m_serviceControlsEnabled = store.getBoolValueForKey(WebPreferencesKey::serviceControlsEnabledKey());
+#endif
+
     // FIXME: This should be generated from macro expansion for all preferences,
     // but we currently don't match the naming of WebCore exactly so we are
     // handrolling the boolean and integer preferences until that is fixed.
@@ -2595,7 +2632,7 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
     settings.setMediaStreamEnabled(store.getBoolValueForKey(WebPreferencesKey::mediaStreamEnabledKey()));
 #endif
 
-#if ENABLE(IMAGE_CONTROLS)
+#if ENABLE(SERVICE_CONTROLS)
     settings.setImageControlsEnabled(store.getBoolValueForKey(WebPreferencesKey::imageControlsEnabledKey()));
 #endif
 
@@ -3125,7 +3162,7 @@ void WebPage::didSelectItemFromActiveContextMenu(const WebContextMenuItemData& i
 }
 #endif
 
-#if ENABLE(IMAGE_CONTROLS)
+#if ENABLE(SERVICE_CONTROLS)
 void WebPage::replaceControlledImage(const ShareableBitmap::Handle& bitmapHandle)
 {
     RefPtr<ShareableBitmap> bitmap = ShareableBitmap::create(bitmapHandle);
@@ -3526,7 +3563,7 @@ void WebPage::beginPrinting(uint64_t frameID, const PrintInfo& printInfo)
 #endif // PLATFORM(MAC)
 
     if (!m_printContext)
-        m_printContext = adoptPtr(new PrintContext(coreFrame));
+        m_printContext = std::make_unique<PrintContext>(coreFrame);
 
     drawingArea()->setLayerTreeStateIsFrozen(true);
     m_printContext->begin(printInfo.availablePaperWidth, printInfo.availablePaperHeight);
@@ -4546,6 +4583,16 @@ TelephoneNumberOverlayController& WebPage::telephoneNumberOverlayController()
         m_telephoneNumberOverlayController = TelephoneNumberOverlayController::create(this);
 
     return *m_telephoneNumberOverlayController;
+}
+#endif
+
+#if ENABLE(SERVICE_CONTROLS)
+SelectionOverlayController& WebPage::selectionOverlayController()
+{
+    if (!m_selectionOverlayController)
+        m_selectionOverlayController = SelectionOverlayController::create(this);
+
+    return *m_selectionOverlayController;
 }
 #endif
 

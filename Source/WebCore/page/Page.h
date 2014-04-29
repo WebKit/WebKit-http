@@ -67,7 +67,6 @@ class ClientRectList;
 class Color;
 class ContextMenuClient;
 class ContextMenuController;
-class Document;
 class DragCaretController;
 class DragClient;
 class DragController;
@@ -75,15 +74,12 @@ class EditorClient;
 class FocusController;
 class Frame;
 class FrameLoaderClient;
-class FrameSelection;
-class HaltablePlugin;
 class HistoryItem;
 class UserInputBridge;
 class InspectorClient;
 class InspectorController;
 class MainFrame;
 class MediaCanStartListener;
-class Node;
 class PageActivityAssertionToken;
 class PageConsole;
 class PageDebuggable;
@@ -114,6 +110,7 @@ enum FindDirection { FindDirectionForward, FindDirectionBackward };
 
 class Page : public Supplementable<Page> {
     WTF_MAKE_NONCOPYABLE(Page);
+    WTF_MAKE_FAST_ALLOCATED;
     friend class Settings;
     friend class PageThrottler;
 
@@ -285,7 +282,12 @@ public:
 
     float topContentInset() const { return m_topContentInset; }
     void setTopContentInset(float);
-
+    
+#if ENABLE(IOS_TEXT_AUTOSIZING)
+    float textAutosizingWidth() const { return m_textAutosizingWidth; }
+    void setTextAutosizingWidth(float textAutosizingWidth) { m_textAutosizingWidth = textAutosizingWidth; }
+#endif
+    
     bool shouldSuppressScrollbarAnimations() const { return m_suppressScrollbarAnimations; }
     void setShouldSuppressScrollbarAnimations(bool suppressAnimations);
     void lockAllOverlayScrollbarsToHidden(bool lockOverlayScrollbars);
@@ -507,7 +509,11 @@ private:
     float m_deviceScaleFactor;
 
     float m_topContentInset;
-
+    
+#if ENABLE(IOS_TEXT_AUTOSIZING)
+    float m_textAutosizingWidth;
+#endif
+    
     bool m_suppressScrollbarAnimations;
     
     unsigned m_verticalScrollElasticity : 2; // ScrollElasticity

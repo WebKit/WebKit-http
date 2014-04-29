@@ -1438,7 +1438,7 @@ void RenderBlock::addVisualOverflowFromTheme()
         return;
 
     IntRect inflatedRect = pixelSnappedBorderBoxRect();
-    theme().adjustRepaintRect(this, inflatedRect);
+    theme().adjustRepaintRect(*this, inflatedRect);
     addVisualOverflow(inflatedRect);
 
     if (RenderFlowThread* flowThread = flowThreadContainingBlock())
@@ -1792,7 +1792,7 @@ void RenderBlock::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffset)
     PaintPhase phase = paintInfo.phase;
 
     // Check our region range to make sure we need to be painting in this region.
-    if (paintInfo.renderNamedFlowFragment && !paintInfo.renderNamedFlowFragment->flowThread()->objectShouldPaintInFlowRegion(this, paintInfo.renderNamedFlowFragment))
+    if (paintInfo.renderNamedFlowFragment && !paintInfo.renderNamedFlowFragment->flowThread()->objectShouldFragmentInFlowRegion(this, paintInfo.renderNamedFlowFragment))
         return;
 
     // Check if we need to do anything at all.
@@ -1826,7 +1826,7 @@ void RenderBlock::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffset)
 
 void RenderBlock::paintColumnRules(PaintInfo& paintInfo, const LayoutPoint& paintOffset)
 {
-    if (paintInfo.context->paintingDisabled())
+    if (!hasColumns() || paintInfo.context->paintingDisabled())
         return;
 
     const Color& ruleColor = style().visitedDependentColor(CSSPropertyWebkitColumnRuleColor);
@@ -2113,8 +2113,6 @@ void RenderBlock::paintObject(PaintInfo& paintInfo, const LayoutPoint& paintOffs
             if (didClipToRegion)
                 paintInfo.context->restore();
         }
-        if (hasColumns() && !paintInfo.paintRootBackgroundOnly())
-            paintColumnRules(paintInfo, paintOffset);
     }
 
     if (paintPhase == PaintPhaseMask && style().visibility() == VISIBLE) {
@@ -2122,14 +2120,24 @@ void RenderBlock::paintObject(PaintInfo& paintInfo, const LayoutPoint& paintOffs
         return;
     }
 
-    // We're done.  We don't bother painting any children.
-    if (paintPhase == PaintPhaseBlockBackground || paintInfo.paintRootBackgroundOnly())
+    // If just painting the root background, then return.
+    if (paintInfo.paintRootBackgroundOnly())
         return;
 
     // Adjust our painting position if we're inside a scrolled layer (e.g., an overflow:auto div).
     LayoutPoint scrolledOffset = paintOffset;
     scrolledOffset.move(-scrolledContentOffset());
 
+    // Column rules need to account for scrolling and clipping.
+    // FIXME: Clipping of column rules does not work. We will need a separate paint phase for column rules I suspect in order to get
+    // clipping correct (since it has to paint as background but is still considered "contents").
+    if ((paintPhase == PaintPhaseBlockBackground || paintPhase == PaintPhaseChildBlockBackground) && style().visibility() == VISIBLE)
+        paintColumnRules(paintInfo, scrolledOffset);
+
+    // Done with backgrounds, borders and column rules.
+    if (paintPhase == PaintPhaseBlockBackground)
+        return;
+    
     // 2. paint contents
     if (paintPhase != PaintPhaseSelfOutline) {
         if (hasColumns())
@@ -2411,6 +2419,12 @@ GapRects RenderBlock::selectionGaps(RenderBlock& rootBlock, const LayoutPoint& r
         lastLogicalLeft = logicalLeftSelectionOffset(rootBlock, logicalHeight(), cache);
         lastLogicalRight = logicalRightSelectionOffset(rootBlock, logicalHeight(), cache);
         return result;
+    }
+    
+    if (paintInfo && paintInfo->renderNamedFlowFragment && paintInfo->paintContainer->isRenderFlowThread()) {
+        // Make sure the current object is actually flowed into the region being painted.
+        if (!toRenderFlowThread(paintInfo->paintContainer)->objectShouldFragmentInFlowRegion(this, paintInfo->renderNamedFlowFragment))
+            return result;
     }
 
     if (childrenInline())
@@ -2947,6 +2961,15 @@ bool RenderBlock::nodeAtPoint(const HitTestRequest& request, HitTestResult& resu
     LayoutPoint adjustedLocation(accumulatedOffset + location());
     LayoutSize localOffset = toLayoutSize(adjustedLocation);
 
+    // If we are now searching inside a region, make sure this element
+    // is being fragmented into this region.
+    if (locationInContainer.region()) {
+        RenderFlowThread* flowThread = flowThreadContainingBlock();
+        ASSERT(flowThread);
+        if (!flowThread->objectShouldFragmentInFlowRegion(this, locationInContainer.region()))
+            return false;
+    }
+
     if (!isRenderView()) {
         // Check if we need to do anything at all.
         LayoutRect overflowBox = visualOverflowRect();
@@ -3140,7 +3163,7 @@ VisiblePosition positionForPointRespectingEditingBoundaries(RenderBlock& parent,
     // If this is an anonymous renderer, we just recur normally
     Element* childElement= child.nonPseudoElement();
     if (!childElement)
-        return child.positionForPoint(pointInChildCoordinates);
+        return child.positionForPoint(pointInChildCoordinates, nullptr);
 
     // Otherwise, first make sure that the editability of the parent and child agree.
     // If they don't agree, then we return a visible position just before or after the child
@@ -3150,15 +3173,15 @@ VisiblePosition positionForPointRespectingEditingBoundaries(RenderBlock& parent,
 
     // If we can't find an ancestor to check editability on, or editability is unchanged, we recur like normal
     if (isEditingBoundary(ancestor, child))
-        return child.positionForPoint(pointInChildCoordinates);
+        return child.positionForPoint(pointInChildCoordinates, nullptr);
     
 #if PLATFORM(IOS)
     // On iOS we want to constrain VisiblePositions to the editable region closest to the input position, so
-    // we will allow descent from non-edtiable to editable content.
+    // we will allow descent from non-editable to editable content.
     // FIXME: This constraining must be done at a higher level once we implement contentEditable. For now, if something
     // is editable, the whole document will be.
     if (childElement->isContentEditable() && !ancestor->element()->isContentEditable())
-        return child.positionForPoint(pointInChildCoordinates);
+        return child.positionForPoint(pointInChildCoordinates, nullptr);
 #endif
 
     // Otherwise return before or after the child, depending on if the click was to the logical left or logical right of the child
@@ -3169,7 +3192,7 @@ VisiblePosition positionForPointRespectingEditingBoundaries(RenderBlock& parent,
     return ancestor->createVisiblePosition(childElement->nodeIndex() + 1, UPSTREAM);
 }
 
-VisiblePosition RenderBlock::positionForPointWithInlineChildren(const LayoutPoint&)
+VisiblePosition RenderBlock::positionForPointWithInlineChildren(const LayoutPoint&, const RenderRegion*)
 {
     ASSERT_NOT_REACHED();
     return VisiblePosition();
@@ -3181,7 +3204,7 @@ static inline bool isChildHitTestCandidate(const RenderBox& box)
 }
 
 // Valid candidates in a FlowThread must be rendered by the region.
-static inline bool isChildHitTestCandidate(const RenderBox& box, RenderRegion* region, const LayoutPoint& point)
+static inline bool isChildHitTestCandidate(const RenderBox& box, const RenderRegion* region, const LayoutPoint& point)
 {
     if (!isChildHitTestCandidate(box))
         return false;
@@ -3191,10 +3214,10 @@ static inline bool isChildHitTestCandidate(const RenderBox& box, RenderRegion* r
     return block.regionAtBlockOffset(point.y()) == region;
 }
 
-VisiblePosition RenderBlock::positionForPoint(const LayoutPoint& point)
+VisiblePosition RenderBlock::positionForPoint(const LayoutPoint& point, const RenderRegion* region)
 {
     if (isTable())
-        return RenderBox::positionForPoint(point);
+        return RenderBox::positionForPoint(point, region);
 
     if (isReplaced()) {
         // FIXME: This seems wrong when the object's writing-mode doesn't match the line's writing-mode.
@@ -3214,10 +3237,13 @@ VisiblePosition RenderBlock::positionForPoint(const LayoutPoint& point)
         pointInLogicalContents = pointInLogicalContents.transposedPoint();
 
     if (childrenInline())
-        return positionForPointWithInlineChildren(pointInLogicalContents);
+        return positionForPointWithInlineChildren(pointInLogicalContents, region);
 
-    RenderRegion* region = regionAtBlockOffset(pointInLogicalContents.y());
     RenderBox* lastCandidateBox = lastChildBox();
+
+    if (!region)
+        region = regionAtBlockOffset(pointInLogicalContents.y());
+
     while (lastCandidateBox && !isChildHitTestCandidate(*lastCandidateBox, region, pointInLogicalContents))
         lastCandidateBox = lastCandidateBox->previousSiblingBox();
 
@@ -3239,7 +3265,7 @@ VisiblePosition RenderBlock::positionForPoint(const LayoutPoint& point)
     }
 
     // We only get here if there are no hit test candidate children below the click.
-    return RenderBox::positionForPoint(point);
+    return RenderBox::positionForPoint(point, region);
 }
 
 void RenderBlock::offsetForContents(LayoutPoint& offset) const
@@ -4294,7 +4320,7 @@ int RenderBlock::baselinePosition(FontBaseline baselineType, bool firstLine, Lin
         // is turned off, checkboxes/radios will still have decent baselines.
         // FIXME: Need to patch form controls to deal with vertical lines.
         if (style().hasAppearance() && !theme().isControlContainer(style().appearance()))
-            return theme().baselinePosition(this);
+            return theme().baselinePosition(*this);
             
         // CSS2.1 states that the baseline of an inline block is the baseline of the last line box in
         // the normal flow.  We make an exception for marquees, since their baselines are meaningless

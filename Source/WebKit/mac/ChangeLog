@@ -1,3 +1,111 @@
+2014-04-27  Sam Weinig  <sam@webkit.org>
+
+        [iOS WebKit2] Add support for text autosizing
+        <rdar://problem/16545245>
+        https://bugs.webkit.org/show_bug.cgi?id=132237
+
+        Reviewed by Tim Horton.
+
+        * WebView/WebFrame.mm:
+        (-[WebFrame _setTextAutosizingWidth:]):
+        Forward setting of the text autosizing width to the Page.
+
+2014-04-25  Dean Jackson  <dino@apple.com>
+
+        Allow a platform-specific size enumeration to be passed into popup-menu display
+        https://bugs.webkit.org/show_bug.cgi?id=132195
+
+        Reviewed by Brent Fulgham. With some in-person review comments from Sam Weinig.
+
+        Platforms like OS X use a set of predefined sizes for built-in controls
+        used for <select>: normal, small and mini. Expose that information to
+        the PopupMenuClient via the PopupMenuStyle, allowing it to be passed
+        into the platform code in WebKitSystemInterface.
+
+        * WebCoreSupport/PopupMenuMac.mm:
+        (PopupMenuMac::show): Convert the WebCore menu size type into the
+        WebCoreSystemInterface type.
+
+2014-04-24  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r167700.
+        https://bugs.webkit.org/show_bug.cgi?id=132142
+
+        Incorrectly reverted the change in r167547 for
+        webkit.org/b/131898 (Requested by rniwa on #webkit).
+
+        Reverted changeset:
+
+        "Cursor doesn't change back to pointer when leaving the Safari
+        window"
+        https://bugs.webkit.org/show_bug.cgi?id=132038
+        http://trac.webkit.org/changeset/167700
+
+2014-04-24  Brady Eidson  <beidson@apple.com>
+
+        Rename "IMAGE_CONTROLS" feature to "SERVICE_CONTROLS"
+        https://bugs.webkit.org/show_bug.cgi?id=132155
+
+        Reviewed by Tim Horton.
+
+        * Configurations/FeatureDefines.xcconfig:
+        * Misc/WebSharingServicePickerController.h:
+        * Misc/WebSharingServicePickerController.mm:
+        * WebCoreSupport/WebContextMenuClient.h:
+        * WebCoreSupport/WebContextMenuClient.mm:
+        (WebContextMenuClient::contextMenuForEvent):
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2014-04-24  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Text caret disappears in Mail after returning from another application
+        https://bugs.webkit.org/show_bug.cgi?id=132111
+
+        Reviewed by Darin Adler.
+
+        The bug was caused by our SPI _windowChangedKeyState not getting called upon deminiaturization.
+
+        Fixed the bug by using the standard NSWindowDidBecomeKeyNotification and NSWindowDidResignKeyNotification
+        notifications as done in WebKit2 since they DO get called upon deminiaturization.
+
+        * WebView/WebView.mm:
+        (-[WebView addWindowObserversForWindow:]):
+        (-[WebView removeWindowObservers]):
+        (-[WebView _windowKeyStateChanged:]):
+        (-[WebView _windowChangedKeyState]): Deleted.
+
+2014-04-24  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        FontCache::fontCache() never returns nullptr so it can be made to return a reference instead
+        https://bugs.webkit.org/show_bug.cgi?id=132110
+
+        Reviewed by Tim Horton.
+
+        Updates callers to use '.' instead of '->'.
+
+        No new tests are necessary because there should be no behavior change.
+
+        * Misc/WebCoreStatistics.mm:
+        (+[WebCoreStatistics cachedFontDataCount]):
+        (+[WebCoreStatistics cachedFontDataInactiveCount]):
+        (+[WebCoreStatistics purgeInactiveFontData]):
+        * WebView/WebView.mm:
+        (+[WebView purgeInactiveFontData]):
+
+2014-04-24  Eric Carlson  <eric.carlson@apple.com>
+
+        [iOS] Manage AudioSession category according to media type
+        https://bugs.webkit.org/show_bug.cgi?id=132096
+
+        Reviewed by Jer Noble.
+
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]): Tell 
+            WebCore to manage the AudioSession when running in MobileSafari.
+
 2014-04-23  Andreas Kling  <akling@apple.com>
 
         Remove Apple Dictionary workaround in WebFrameLoaderClient.

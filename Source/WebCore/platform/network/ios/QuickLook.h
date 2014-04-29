@@ -86,7 +86,7 @@ public:
 #if USE(CFNETWORK)
     static std::unique_ptr<QuickLookHandle> create(ResourceHandle*, SynchronousResourceHandleCFURLConnectionDelegate*, CFURLResponseRef);
 #endif
-    static std::unique_ptr<QuickLookHandle> create(ResourceLoader*, NSURLResponse *, id delegate);
+    static std::unique_ptr<QuickLookHandle> create(ResourceLoader*, NSURLResponse *);
     ~QuickLookHandle();
 
     bool didReceiveDataArray(CFArrayRef);
@@ -101,7 +101,8 @@ public:
 
     void setClient(PassRefPtr<QuickLookHandleClient> client) { m_client = client; }
 
-    NSString *previewFileName() const;
+    String previewFileName() const;
+    String previewUTI() const;
     NSURL *firstRequestURL() const { return m_firstRequestURL.get(); }
     NSURL *previewRequestURL() const;
     QLPreviewConverter *converter() const { return m_converter.get(); }

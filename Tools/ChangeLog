@@ -1,3 +1,123 @@
+2014-04-28  Michael Saboff  <msaboff@apple.com>
+
+        Crash in platform/mac/accessibility/table-visible-rows.html
+        https://bugs.webkit.org/show_bug.cgi?id=132146
+
+        Reviewed by Filip Pizlo.
+
+        Instead of creating a local JSValueRef array on the stack and passing that to
+        JSObjectMakeArray(), changed to create an empty JSArray and then populate the
+        values using the JSObjectSetPropertyAtIndex() API.
+
+        * DumpRenderTree/AccessibilityUIElement.cpp:
+        (elementsForRangeCallback):
+        (convertElementsToObjectArray):
+        * DumpRenderTree/mac/TestRunnerMac.mm:
+        (originsArrayToJS):
+        * WebKitTestRunner/InjectedBundle/EventSendingController.cpp:
+        (WTR::EventSendingController::contextClick):
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::stringArrayToJS):
+        * WebKitTestRunner/InjectedBundle/mac/AccessibilityUIElementMac.mm:
+        (WTR::convertElementsToObjectArray):
+
+2014-04-28  Filip Pizlo  <fpizlo@apple.com>
+
+        Make sure that the coverage of our tests doesn't change much if we change the thresholds now and in the future, but making
+        "no-cjit" runs force the old-school threshold.
+
+        Rubber stamped by Mark Hahnenberg.
+
+        * Scripts/run-jsc-stress-tests:
+
+2014-04-28  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] install-dependencies should also install ruby-json and ruby-highline
+        https://bugs.webkit.org/show_bug.cgi?id=132292
+
+        Reviewed by Philippe Normand.
+
+        * gtk/install-dependencies: Install ruby json and highline packages.
+
+2014-04-27  Joonghun Park  <jh718.park@samsung.com>
+
+        [EFL] Remove indexedDB's dependency on leveldb and disable indexedDB
+        https://bugs.webkit.org/show_bug.cgi?id=132176
+
+        Reviewed by Gyuyoung Kim.
+
+        EFL port will use sqlite to support indexedDB. So, this patch removes levelDB dependency
+        and turn off indexedDB feature until the sqlite implementation is introduced.
+
+        * Scripts/webkitperl/FeatureList.pm:
+
+2014-04-25  James Craig  <jcraig@apple.com>
+
+        Set prepare-Changelog flag so that it no longer runs check-webkit-style by default
+        https://bugs.webkit.org/show_bug.cgi?id=132209
+
+        Reviewed by Daniel Bates.
+
+        Set default to --no-style to avoid additional spew from false positives in check-webkit-style.
+        Run check-webkit-style before generating changelogs to avoid additional spurious errors.
+
+        * Scripts/prepare-ChangeLog:
+        (main): 
+
+2014-04-25  Michael Saboff  <msaboff@apple.com>
+
+        Crash in platform/mac/accessibility/table-visible-rows.html
+        https://bugs.webkit.org/show_bug.cgi?id=132146
+
+        Reviewed by Mark Lam.
+
+        Changed to use a local JSValueRef array temporary instead of a
+        std::make_unique<JSValueRef[]> when making an array of JSValues so that the temporary
+        JSValues are visited during garbage collection when the stack is scanned.  Otherwise,
+        the temporary values could be collected.
+
+        * DumpRenderTree/AccessibilityUIElement.cpp:
+        (convertElementsToObjectArray):
+        * WebKitTestRunner/InjectedBundle/EventSendingController.cpp:
+        (WTR::EventSendingController::contextClick):
+        * WebKitTestRunner/InjectedBundle/mac/AccessibilityUIElementMac.mm:
+        (WTR::convertElementsToObjectArray):
+
+2014-04-24  Eduardo Lima Mitev  <elima@igalia.com>
+
+        Unreviewed GTK gardening
+
+        * Scripts/run-gtk-tests: Skips one flaky accesibility test in WK2API suite
+        (TestRunner):
+
+2014-04-24  László Langó  <llango.u-szeged@partner.samsung.com>
+
+        prepare-ChangeLog reports as deleted methods that has not been removed.
+        https://bugs.webkit.org/show_bug.cgi?id=131733
+
+        Reviewed by Ryosuke Niwa.
+
+        * Scripts/prepare-ChangeLog:
+        (originalFile): Set merge base to origin/master by default.
+
+2014-04-23  James Craig  <jcraig@apple.com>
+
+        prepare-Changelog and svn-create-patch should optionally run check-webkit-style.
+        https://bugs.webkit.org/show_bug.cgi?id=131115
+
+        Reviewed by Daniel Bates.
+
+        Added [--[no-]style] param to run check-webkit-style as part of prepare-Changelog and svn-create-patch.
+
+        * Scripts/commit-log-editor: Added --no-style.
+        * Scripts/prepare-ChangeLog: Primary patch.
+        (main): Primary patch.
+        (createPatchCommand): Added --no-style.
+        * Scripts/svn-create-patch: Primary patch.
+        * Scripts/webkit-tools-completion.sh: Added --style and --no-style.
+        * Scripts/webkitpy/common/checkout/scm/svn.py: Added --no-style.
+        (SVN.create_patch): Added --no-style.
+
 2014-04-23  Anders Carlsson  <andersca@apple.com>
 
         Try to fix iOS build.

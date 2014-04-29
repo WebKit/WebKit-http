@@ -597,6 +597,10 @@ void WebFrameLoaderClient::dispatchDidLayout()
 
     webPage->recomputeShortCircuitHorizontalWheelEventsState();
 
+#if PLATFORM(IOS)
+    webPage->updateSelectionAppearance();
+#endif
+
     // NOTE: Unlike the other layout notifications, this does not notify the
     // the UIProcess for every call.
 
@@ -1113,6 +1117,7 @@ void WebFrameLoaderClient::saveViewStateToItem(HistoryItem*)
     notImplemented();
 }
 
+#if !PLATFORM(IOS)
 void WebFrameLoaderClient::restoreViewState()
 {
     // Inform the UI process of the scale factor.
@@ -1127,6 +1132,7 @@ void WebFrameLoaderClient::restoreViewState()
     if (m_frame == m_frame->page()->mainWebFrame())
         m_frame->page()->drawingArea()->setNeedsDisplay();
 }
+#endif
 
 void WebFrameLoaderClient::provisionalLoadStarted()
 {
@@ -1319,23 +1325,6 @@ PassRefPtr<Widget> WebFrameLoaderClient::createPlugin(const IntSize&, HTMLPlugIn
     parameters.shouldUseManualLoader = parameters.isFullFramePlugin && !m_frameCameFromPageCache;
 #if PLATFORM(COCOA)
     parameters.layerHostingMode = m_frame->page()->layerHostingMode();
-#endif
-
-#if PLUGIN_ARCHITECTURE(X11)
-    // FIXME: This should really be X11-specific plug-in quirks.
-    if (equalIgnoringCase(mimeType, "application/x-shockwave-flash")) {
-        // Currently we don't support transparency and windowed mode.
-        // Inject wmode=opaque to make Flash work in these conditions.
-        size_t wmodeIndex = parameters.names.find("wmode");
-        if (wmodeIndex == notFound) {
-            parameters.names.append("wmode");
-            parameters.values.append("opaque");
-        } else if (equalIgnoringCase(parameters.values[wmodeIndex], "window"))
-            parameters.values[wmodeIndex] = "opaque";
-    } else if (equalIgnoringCase(mimeType, "application/x-webkit-test-netscape")) {
-        parameters.names.append("windowedPlugin");
-        parameters.values.append("false");
-    }
 #endif
 
 #if ENABLE(NETSCAPE_PLUGIN_API)

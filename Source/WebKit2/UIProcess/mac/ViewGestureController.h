@@ -94,9 +94,13 @@ public:
     void wheelEventWasNotHandledByWebCore(NSEvent *);
 
     void setCustomSwipeViews(Vector<RetainPtr<NSView>> views) { m_customSwipeViews = std::move(views); }
+    void setCustomSwipeViewsTopContentInset(float topContentInset) { m_customSwipeViewsTopContentInset = topContentInset; }
     WebCore::FloatRect windowRelativeBoundsForCustomSwipeViews() const;
 
     void endActiveGesture();
+
+    bool shouldIgnorePinnedState() { return m_shouldIgnorePinnedState; }
+    void setShouldIgnorePinnedState(bool ignore) { m_shouldIgnorePinnedState = ignore; }
 #else
     void installSwipeHandler(UIView *gestureRecognizerView, UIView *swipingView);
     bool canSwipeInDirection(SwipeDirection);
@@ -126,6 +130,12 @@ private:
     void handleSwipeGesture(WebBackForwardListItem* targetItem, double progress, SwipeDirection);
     void endSwipeGesture(WebBackForwardListItem* targetItem, bool cancelled);
     bool deltaIsSufficientToBeginSwipe(NSEvent *);
+    bool scrollEventCanBecomeSwipe(NSEvent *, SwipeDirection&);
+    WebCore::IOSurface* retrieveSnapshotForItem(WebBackForwardListItem*, WebCore::FloatSize swipeLayerSize, float topContentInset);
+
+    CALayer *determineSnapshotLayerParent() const;
+    CALayer *determineLayerAdjacentToSnapshotForParent(SwipeDirection, CALayer *snapshotLayerParent) const;
+    void applyDebuggingPropertiesToSwipeViews();
 #endif
     
     WebPageProxy& m_webPageProxy;
@@ -150,11 +160,13 @@ private:
     bool m_frameHandlesMagnificationGesture;
 
     RetainPtr<WKSwipeCancellationTracker> m_swipeCancellationTracker;
+    RetainPtr<CALayer> m_swipeLayer;
     RetainPtr<CALayer> m_swipeSnapshotLayer;
     Vector<RetainPtr<CALayer>> m_currentSwipeLiveLayers;
 
     SwipeTransitionStyle m_swipeTransitionStyle;
     Vector<RetainPtr<NSView>> m_customSwipeViews;
+    float m_customSwipeViewsTopContentInset;
     WebCore::FloatRect m_currentSwipeCustomViewBounds;
 
     // If we need to wait for content to decide if it is going to consume
@@ -162,6 +174,8 @@ private:
     PendingSwipeReason m_pendingSwipeReason;
     SwipeDirection m_pendingSwipeDirection;
     WebCore::FloatSize m_cumulativeDeltaForPendingSwipe;
+
+    bool m_shouldIgnorePinnedState;
 #else    
     UIView *m_liveSwipeView;
     RetainPtr<UIView> m_snapshotView;

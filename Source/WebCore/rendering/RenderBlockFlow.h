@@ -82,7 +82,7 @@ protected:
     virtual void dirtyLinesFromChangedChild(RenderObject* child) override final { lineBoxes().dirtyLinesFromChangedChild(this, child); }
     virtual void updateLogicalHeight() override;
 
-    virtual void paintBoxDecorations(PaintInfo&, const LayoutPoint&) override;
+    virtual void paintColumnRules(PaintInfo&, const LayoutPoint&) override;
 
 public:
     class MarginValues {
@@ -285,7 +285,7 @@ public:
 
     virtual void deleteLines() override;
     virtual void computeOverflow(LayoutUnit oldClientAfterEdge, bool recomputeFloats = false) override;
-    virtual VisiblePosition positionForPoint(const LayoutPoint&) override;
+    virtual VisiblePosition positionForPoint(const LayoutPoint&, const RenderRegion*) override;
 
     void removeFloatingObjects();
     void markAllDescendantsWithFloatsForLayout(RenderBox* floatToRemove = nullptr, bool inLayout = true);
@@ -357,7 +357,7 @@ public:
 
     bool containsNonZeroBidiLevel() const;
 
-    const SimpleLineLayout::Layout* simpleLineLayout() const { return m_simpleLineLayout.get(); }
+    const SimpleLineLayout::Layout* simpleLineLayout() const;
     void deleteLineBoxesBeforeSimpleLineLayout();
     void ensureLineBoxes();
 
@@ -510,8 +510,10 @@ private:
         LayoutUnit& lastLogicalTop, LayoutUnit& lastLogicalLeft, LayoutUnit& lastLogicalRight, const LogicalSelectionOffsetCaches&, const PaintInfo*) override;
     
     Position positionForBox(InlineBox*, bool start = true) const;
-    virtual VisiblePosition positionForPointWithInlineChildren(const LayoutPoint& pointInLogicalContents) override;
+    virtual VisiblePosition positionForPointWithInlineChildren(const LayoutPoint& pointInLogicalContents, const RenderRegion*) override;
     virtual void addFocusRingRectsForInlineChildren(Vector<IntRect>& rects, const LayoutPoint& additionalOffset, const RenderLayerModelObject*) override;
+
+    void createLineBoxes();
 
 // FIXME-BLOCKFLOW: These methods have implementations in
 // RenderBlockLineLayout. They should be moved to the proper header once the

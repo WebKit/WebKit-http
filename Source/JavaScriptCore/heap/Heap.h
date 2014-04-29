@@ -45,8 +45,6 @@
 #include <wtf/HashCountedSet.h>
 #include <wtf/HashSet.h>
 
-#define COLLECT_ON_EVERY_ALLOCATION 0
-
 namespace JSC {
 
 class CopiedSpace;
@@ -276,7 +274,8 @@ private:
     void visitExternalRememberedSet();
     void visitSmallStrings();
     void visitConservativeRoots(ConservativeRoots&);
-    void visitCompilerWorklists();
+    void visitCompilerWorklistWeakReferences();
+    void removeDeadCompilerWorklistEntries();
     void visitProtectedObjects(HeapRootVisitor&);
     void visitTempSortVectors(HeapRootVisitor&);
     void visitArgumentBuffers(HeapRootVisitor&);

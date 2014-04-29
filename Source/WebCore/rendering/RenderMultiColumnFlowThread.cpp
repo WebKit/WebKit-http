@@ -28,6 +28,7 @@
 
 #include "HitTestResult.h"
 #include "LayoutState.h"
+#include "RenderIterator.h"
 #include "RenderMultiColumnSet.h"
 #include "RenderMultiColumnSpannerPlaceholder.h"
 #include "RenderView.h"
@@ -155,6 +156,7 @@ void RenderMultiColumnFlowThread::populate()
     // Reparent children preceding the flow thread into the flow thread. It's multicol content
     // now. At this point there's obviously nothing after the flow thread, but renderers (column
     // sets and spanners) will be inserted there as we insert elements into the flow thread.
+    LayoutStateDisabler layoutStateDisabler(&view());
     multicolContainer->moveChildrenTo(this, multicolContainer->firstChild(), this, true);
 }
 
@@ -581,6 +583,49 @@ void RenderMultiColumnFlowThread::computeLineGridPaginationOrigin(LayoutState& l
     }
 }
 
+void RenderMultiColumnFlowThread::mapAbsoluteToLocalPoint(MapCoordinatesFlags mode, TransformState& transformState) const
+{
+    // First get the transform state's point into the block flow thread's physical coordinate space.
+    parent()->mapAbsoluteToLocalPoint(mode, transformState);
+    LayoutPoint transformPoint = roundedLayoutPoint(transformState.mappedPoint());
+    
+    // Now walk through each region.
+    const RenderMultiColumnSet* candidateColumnSet = nullptr;
+    LayoutPoint candidatePoint;
+    
+    for (const auto& columnSet : childrenOfType<RenderMultiColumnSet>(*parent())) {
+        LayoutSize containerOffset = columnSet.offsetFromContainer(parent(), LayoutPoint());
+        
+        candidatePoint = transformPoint - containerOffset;
+        candidateColumnSet = &columnSet;
+        
+        // We really have no clue what to do with overflow. We'll just use the closest region to the point in that case.
+        LayoutUnit pointOffset = isHorizontalWritingMode() ? candidatePoint.y() : candidatePoint.x();
+        LayoutUnit regionOffset = isHorizontalWritingMode() ? columnSet.topLeftLocation().y() : columnSet.topLeftLocation().x();
+        if (pointOffset < regionOffset + columnSet.logicalHeight())
+            break;
+    }
+    
+    // Once we have a good guess as to which region we hit tested through (and yes, this was just a heuristic, but it's
+    // the best we could do), then we can map from the region into the flow thread.
+    LayoutSize translationOffset = physicalTranslationFromRegionToFlow(candidateColumnSet, candidatePoint);
+    bool preserve3D = mode & UseTransforms && (parent()->style().preserves3D() || style().preserves3D());
+    if (mode & UseTransforms && shouldUseTransformFromContainer(parent())) {
+        TransformationMatrix t;
+        getTransformFromContainer(parent(), translationOffset, t);
+        transformState.applyTransform(t, preserve3D ? TransformState::AccumulateTransform : TransformState::FlattenTransform);
+    } else
+        transformState.move(translationOffset.width(), translationOffset.height(), preserve3D ? TransformState::AccumulateTransform : TransformState::FlattenTransform);
+}
+
+LayoutSize RenderMultiColumnFlowThread::physicalTranslationFromRegionToFlow(const RenderMultiColumnSet* columnSet, const LayoutPoint& physicalPoint) const
+{
+    LayoutPoint logicalPoint = columnSet->flipForWritingMode(physicalPoint);
+    LayoutPoint translatedPoint = columnSet->translateRegionPointToFlowThread(logicalPoint);
+    LayoutPoint physicalTranslatedPoint = columnSet->flipForWritingMode(translatedPoint);
+    return physicalPoint - physicalTranslatedPoint;
+}
+
 RenderRegion* RenderMultiColumnFlowThread::mapFromFlowToRegion(TransformState& transformState) const
 {
     if (!hasValidRegionInfo())
@@ -592,17 +637,23 @@ RenderRegion* RenderMultiColumnFlowThread::mapFromFlowToRegion(TransformState& t
 
     // FIXME: We need to refactor RenderObject::absoluteQuads to be able to split the quads across regions,
     // for now we just take the center of the mapped enclosing box and map it to a column.
-    LayoutPoint center = boxRect.center();
-    LayoutUnit centerOffset = isHorizontalWritingMode() ? center.y() : center.x();
-    RenderRegion* renderRegion = const_cast<RenderMultiColumnFlowThread*>(this)->regionAtBlockOffset(this, centerOffset, true, DisallowRegionAutoGeneration);
+    LayoutPoint centerPoint = boxRect.center();
+    LayoutUnit centerLogicalOffset = isHorizontalWritingMode() ? centerPoint.y() : centerPoint.x();
+    RenderRegion* renderRegion = const_cast<RenderMultiColumnFlowThread*>(this)->regionAtBlockOffset(this, centerLogicalOffset, true, DisallowRegionAutoGeneration);
     if (!renderRegion)
         return nullptr;
+    transformState.move(physicalTranslationOffsetFromFlowToRegion(renderRegion, centerLogicalOffset));
+    return renderRegion;
+}
 
+LayoutSize RenderMultiColumnFlowThread::physicalTranslationOffsetFromFlowToRegion(const RenderRegion* renderRegion, const LayoutUnit logicalOffset) const
+{
     // Now that we know which multicolumn set we hit, we need to get the appropriate translation offset for the column.
-    RenderMultiColumnSet* columnSet = toRenderMultiColumnSet(renderRegion);
-    LayoutPoint translationOffset = columnSet->columnTranslationForOffset(centerOffset);
+    const RenderMultiColumnSet* columnSet = toRenderMultiColumnSet(renderRegion);
+    LayoutPoint translationOffset = columnSet->columnTranslationForOffset(logicalOffset);
     
-    // Now we know how we want the rect to be translated into the region.
+    // Now we know how we want the rect to be translated into the region. At this point we're converting
+    // back to physical coordinates.
     LayoutRect flippedRegionRect(renderRegion->flowThreadPortionRect());
     if (isHorizontalWritingMode())
         flippedRegionRect.setHeight(columnSet->computedColumnHeight());
@@ -612,9 +663,29 @@ RenderRegion* RenderMultiColumnFlowThread::mapFromFlowToRegion(TransformState& t
     
     flippedRegionRect.moveBy(-translationOffset);
     
-    // There is an additional offset to apply, which is the offset of the region within the multi-column space.
-    transformState.move(renderRegion->contentBoxRect().location() - flippedRegionRect.location());
+    return renderRegion->contentBoxRect().location() - flippedRegionRect.location();
+}
 
+RenderRegion* RenderMultiColumnFlowThread::physicalTranslationFromFlowToRegion(LayoutPoint& physicalPoint) const
+{
+    if (!hasValidRegionInfo())
+        return nullptr;
+    
+    // Put the physical point into the flow thread's coordinate space.
+    LayoutPoint logicalPoint = flipForWritingMode(physicalPoint);
+    
+    // Now get the region that we are in.
+    LayoutUnit logicalOffset = isHorizontalWritingMode() ? logicalPoint.y() : logicalPoint.x();
+    RenderRegion* renderRegion = const_cast<RenderMultiColumnFlowThread*>(this)->regionAtBlockOffset(this, logicalOffset, true, DisallowRegionAutoGeneration);
+    if (!renderRegion)
+        return nullptr;
+    
+    // Translate to the coordinate space of the region.
+    LayoutSize translationOffset = physicalTranslationOffsetFromFlowToRegion(renderRegion, logicalOffset);
+    
+    // Now shift the physical point into the region's coordinate space.
+    physicalPoint += translationOffset;
+    
     return renderRegion;
 }
 

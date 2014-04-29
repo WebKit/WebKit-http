@@ -1,3 +1,513 @@
+2014-04-28  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        Unreviewed EFL gardening.
+
+        Skip editing/pasteboard which EFL port does not support.
+
+        * platform/efl-wk1/TestExpectations:
+        * platform/efl-wk2/TestExpectations:
+        * platform/efl/TestExpectations:
+
+2014-04-28  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Layout Test fast/events/shadow-event-path[-2].html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=132238
+
+        Add the file that was supposed to be committed in r167840.
+
+        * TestExpectations:
+        * fast/events/resources/shadow-event-path-shared.js: Added.
+
+2014-04-28  Tim Horton  <timothy_horton@apple.com>
+
+        REGRESSION (r167845): ASSERT(!m_renderView.needsLayout()) in svg/custom/bug79798.html
+        https://bugs.webkit.org/show_bug.cgi?id=132297
+
+        * platform/wk2/TestExpectations:
+        Skip the test.
+
+2014-04-28  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r167871.
+        https://bugs.webkit.org/show_bug.cgi?id=132290
+
+        broke a newmulticol test (spanner-nested-dynamic) (Requested
+        by thorton on #webkit).
+
+        Reverted changeset:
+
+        "Store the containing region map inside the flow thread"
+        https://bugs.webkit.org/show_bug.cgi?id=131647
+        http://trac.webkit.org/changeset/167871
+
+2014-04-28  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        Deleting properties poisons objects
+        https://bugs.webkit.org/show_bug.cgi?id=131551
+
+        Reviewed by Oliver Hunt.
+
+        New JS regress test. We're ~3.5x faster on this microbenchmark now.
+
+        * js/regress/delete-a-few-properties-then-get-by-id-expected.txt: Added.
+        * js/regress/delete-a-few-properties-then-get-by-id.html: Added.
+        * js/regress/script-tests/delete-a-few-properties-then-get-by-id.js: Added.
+        (MyObject):
+        (foo):
+
+2014-04-28  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        Unreviewed GTK gardening.
+
+        * platform/gtk/TestExpectations: Flagged some tests.
+
+2014-04-28  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        Unreviewed GTK gardening.
+
+        * platform/gtk/TestExpectations: Flagged some tests.
+
+2014-04-28  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        Unreviewed GTK gardening. Adding failure expectations for 6
+        failing and flaky tests. Removed 1.
+
+        * platform/gtk/TestExpectations:
+
+2014-04-28  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        [GTK] Review media bugs flags
+        https://bugs.webkit.org/show_bug.cgi?id=132246
+
+        Reviewed by Philippe Normand.
+
+        * platform/gtk/TestExpectations: Review flags of the GTK media
+        bugs.
+
+2014-04-27  Andrei Bucur  <abucur@adobe.com>
+
+        Store the containing region map inside the flow thread
+        https://bugs.webkit.org/show_bug.cgi?id=131647
+
+        Reviewed by Mihnea Ovidenie.
+
+        Add a test that verifies the containing region map is properly cleared
+        when the region chain changes.
+
+        * fast/regions/inline-strike-through-expected.txt: Added.
+        * fast/regions/inline-strike-through.html: Added.
+
+2014-04-27  Darin Adler  <darin@apple.com>
+
+        REGRESSION (r159345): The hover state for links in the top navigation of Yahoo.com doesn't work
+        https://bugs.webkit.org/show_bug.cgi?id=132241
+        rdar://problem/16501924
+
+        Reviewed by Andreas Kling.
+
+        * fast/text/simple-lines-hover-underline-expected.html: Added.
+        * fast/text/simple-lines-hover-underline.html: Added.
+
+        * fast/text/simple-lines-hover.html: Removed an unneeded style element with a style rule that
+        does nothing.
+
+2014-04-27  Praveen R Jadhav  <praveen.j@samsung.com>
+
+        [MediaStream] .ended shouldn't be part of MediaStream IDL
+        https://bugs.webkit.org/show_bug.cgi?id=132104
+
+        Reviewed by Eric Carlson.
+
+        .ended is not part of MediaStream IDL. Updated test case.
+
+        * fast/mediastream/MediaStream-add-remove-tracks-expected.txt:
+        * fast/mediastream/MediaStream-add-remove-tracks.html:
+
+2014-04-27  Tim Horton  <timothy_horton@apple.com>
+
+        REGRESSION (167840): Layout Test fast/events/shadow-event-path[-2].html is failing
+
+        * TestExpectations:
+        Mark as failing until the shared JS file can be recovered.
+
+2014-04-27  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed GTK gardening. Adding failure expectations for 6 failing reference tests.
+
+        * platform/gtk/TestExpectations:
+
+2014-04-26  Alexey Proskuryakov  <ap@apple.com>
+
+        Local files should not be allowed to read pasteboard data during drag
+        https://bugs.webkit.org/show_bug.cgi?id=131767
+
+        Reviewed by Sam Weinig.
+
+        * fast/files/local-file-drag-security-expected.txt: Added.
+        * fast/files/local-file-drag-security.html: Added.
+        * platform/wk2/TestExpectations:
+
+2014-04-24  Darin Adler  <darin@apple.com>
+
+        REGRESSION (r164133): Selection doesn't paint when scrolling some pages
+        https://bugs.webkit.org/show_bug.cgi?id=132172
+
+        Reviewed by Brent Fulgham.
+
+        * fast/dynamic/remove-invisible-node-inside-selection-expected.html: Added.
+        * fast/dynamic/remove-invisible-node-inside-selection.html: Added.
+        * fast/dynamic/remove-node-inside-selection-expected.html: Added.
+        * fast/dynamic/remove-node-inside-selection.html: Added.
+
+2014-04-25  Ryosuke Niwa  <rniwa@webkit.org>
+
+        REGRESSION (r167689): Hovering file name in a file input causes a crash
+        https://bugs.webkit.org/show_bug.cgi?id=132214
+
+        Reviewed by Andreas Kling.
+
+        Add a regression test.
+
+        * fast/events/shadow-event-path-2-expected.txt: Added.
+        * fast/events/shadow-event-path-2.html: Added.
+        * fast/events/shadow-event-path.html:
+
+2014-04-25  Oliver Hunt  <oliver@apple.com>
+
+        Need earlier cell test
+        https://bugs.webkit.org/show_bug.cgi?id=132211
+
+        Reviewed by Mark Lam.
+
+        Tests
+
+        * js/regress/polymorphic-array-call-expected.txt: Added.
+        * js/regress/polymorphic-array-call.html: Added.
+        * js/regress/script-tests/polymorphic-array-call.js: Added.
+        (func.C.this.m):
+        (func.C):
+        (func):
+
+2014-04-11  Jer Noble  <jer.noble@apple.com>
+
+        Support "Live" streams in media controls.
+        https://bugs.webkit.org/show_bug.cgi?id=131390
+
+        Reviewed by Brent Fulgham.
+
+        * http/tests/media/hls/video-controls-live-stream-expected.txt: Added.
+        * http/tests/media/hls/video-controls-live-stream.html: Added.
+        * http/tests/media/resources/hls/test-live.php: Added.
+        * http/tests/media/resources/hls/test-vod.m3u8: Added.
+        * http/tests/media/resources/hls/test.ts: Added.
+        * platform/efl/TestExpectations:
+        * platform/gtk/TestExpectations:
+        * platform/mac/fast/hidpi/video-controls-in-hidpi-expected.txt:
+        * platform/mac/fast/layers/video-layer-expected.txt:
+        * platform/mac/media/media-controls-clone-expected.txt:
+        * platform/wincairo/TestExpectations:
+
+2014-04-25  Tim Horton  <timothy_horton@apple.com>
+
+        REGRESSION (r167818): editing/inserting/typing-space-to-trigger-smart-link.html fails on WebKit1 bots
+        https://bugs.webkit.org/show_bug.cgi?id=132207
+
+        * platform/mac-wk1/TestExpectations:
+        Mark as failing in WebKit1.
+
+2014-04-25  Javier Fernandez  <jfernandez@igalia.com>
+
+        REGRESSION(r167799): ASSERTION in parseGridTemplateShorthand in fast/css-grid-layout/grid-template-shorthand-get-set.html
+        https://bugs.webkit.org/show_bug.cgi?id=132194
+
+        Reviewed by Martin Robinson.
+
+        * TestExpectations: Unskip fast/css-grid-layout/grid-template-shorthand-get-set.html.
+
+2014-04-25  David Hyatt  <hyatt@apple.com>
+
+        Column rules not respecting scroll offsets.
+        https://bugs.webkit.org/show_bug.cgi?id=109683
+
+        Reviewed by Dean Jackson.
+
+        * fast/multicol/scrolling-column-rules.html: Added.
+        * platform/mac/fast/multicol/scrolling-column-rules-expected.png: Added.
+        * platform/mac/fast/multicol/scrolling-column-rules-expected.txt: Added.
+
+2014-04-23  Jon Honeycutt  <jhoneycutt@apple.com>
+
+        Crash applying editing commands from iframe onload event
+
+        <https://bugs.webkit.org/show_bug.cgi?id=132103>
+        <rdar://problem/15696351>
+
+        Reviewed by Darin Adler.
+
+        * editing/apply-style-iframe-crash-expected.txt: Added.
+        * editing/apply-style-iframe-crash.html: Added.
+
+2014-04-25  David Hyatt  <hyatt@apple.com>
+
+        [New Multicolumn] fast/multicol/hit-test-* layout tests all fail
+        https://bugs.webkit.org/show_bug.cgi?id=132081
+
+        Reviewed by Dean Jackson.
+
+        * fast/multicol/newmulticol/compare-with-old-impl/hit-test-above-or-below-expected.txt: Added.
+        * fast/multicol/newmulticol/compare-with-old-impl/hit-test-above-or-below.html: Added.
+        * fast/multicol/newmulticol/compare-with-old-impl/hit-test-block-axis-flipped-expected.txt: Added.
+        * fast/multicol/newmulticol/compare-with-old-impl/hit-test-block-axis-flipped.html: Added.
+        * fast/multicol/newmulticol/compare-with-old-impl/hit-test-end-of-column-expected.txt: Added.
+        * fast/multicol/newmulticol/compare-with-old-impl/hit-test-end-of-column-with-line-height-expected.txt: Added.
+        * fast/multicol/newmulticol/compare-with-old-impl/hit-test-end-of-column-with-line-height.html: Added.
+        * fast/multicol/newmulticol/compare-with-old-impl/hit-test-end-of-column.html: Added.
+        * fast/multicol/newmulticol/compare-with-old-impl/hit-test-float-expected.txt: Added.
+        * fast/multicol/newmulticol/compare-with-old-impl/hit-test-float.html: Added.
+        * fast/multicol/newmulticol/compare-with-old-impl/hit-test-gap-between-pages-expected.txt: Added.
+        * fast/multicol/newmulticol/compare-with-old-impl/hit-test-gap-between-pages-flipped-expected.txt: Added.
+        * fast/multicol/newmulticol/compare-with-old-impl/hit-test-gap-between-pages-flipped.html: Added.
+        * fast/multicol/newmulticol/compare-with-old-impl/hit-test-gap-between-pages.html: Added.
+        * fast/multicol/newmulticol/compare-with-old-impl/hit-test-gap-block-axis-expected.txt: Added.
+        * fast/multicol/newmulticol/compare-with-old-impl/hit-test-gap-block-axis.html: Added.
+
+2014-04-25  Tim Horton  <timothy_horton@apple.com>
+
+        REGRESSION(r167799): ASSERTION in parseGridTemplateShorthand in fast/css-grid-layout/grid-template-shorthand-get-set.html
+        https://bugs.webkit.org/show_bug.cgi?id=132194
+
+        * TestExpectations:
+        Skip the test on debug testers.
+        Also unmark js/slow-stress/new-spread.html because it is fixed (https://bugs.webkit.org/show_bug.cgi?id=132022)
+
+2014-04-24  David Hyatt  <hyatt@apple.com>
+
+        [New Multicolumn] Add support for offsetLeft and offsetTop.
+        https://bugs.webkit.org/show_bug.cgi?id=132080
+
+        Reviewed by Andrei Bucur.
+
+        * fast/multicol/client-rects-spanners-complex.html: Added.
+        * fast/multicol/client-rects-spanners.html:
+        * fast/multicol/offset-top-left-expected.txt: Added.
+        * fast/multicol/offset-top-left.html: Added.
+        * platform/mac/fast/multicol/client-rects-spanners-complex-expected.png: Added.
+        * platform/mac/fast/multicol/client-rects-spanners-complex-expected.txt: Added.
+
+2014-04-25  Brent Fulgham  <bfulgham@apple.com>
+
+        ScrollingCoordinator is unaware of topContentInset
+        https://bugs.webkit.org/show_bug.cgi?id=132158
+        <rdar://problem/16706152>
+
+        Reviewed by Darin Adler.
+
+        * platform/mac/fast/scrolling/scroll-select-bottom-test-expected.txt: Added.
+        * platform/mac/fast/scrolling/scroll-select-bottom-test.html: Added.
+
+2014-04-25  Miyoung Shin  <myid.shin@samsung.com>
+
+        Web process is crashed during dispatching touchEvent created by JS.
+        https://bugs.webkit.org/show_bug.cgi?id=113225
+
+        Reviewed by Benjamin Poulain.
+
+        TouchEvent created by JS should have the necessary attributes
+        of touches, targetTouches and changedTouches.
+        It should be verified weather there are touchLists before dispatching touch event.
+
+        * fast/events/touch/create-touch-event-without-touchList-expected.txt: Added.
+        * fast/events/touch/create-touch-event-without-touchList.html: Added.
+
+2014-04-25  Radu Stavila  <stavila@adobe.com>
+
+        [CSS Regions] Overflow selection doesn't work properly
+        https://bugs.webkit.org/show_bug.cgi?id=130715
+
+        Reviewed by David Hyatt.
+
+        Added tests for hit-testing and painting selection gaps in the region's overflow area.
+
+        * fast/regions/selection-in-overflow-expected.html: Added.
+        * fast/regions/selection-in-overflow-hit-testing-expected.html: Added.
+        * fast/regions/selection-in-overflow-hit-testing.html: Added.
+        * fast/regions/selection-in-overflow.html: Added.
+        * fast/regions/selection-in-text-after-overflow-hit-testing-expected.html: Added.
+        * fast/regions/selection-in-text-after-overflow-hit-testing.html: Added.
+
+2014-04-25  Enrique Ocaña González  <eocanha@igalia.com>
+
+        Unreviewed GTK gardening.
+
+        Added test expectations for the following flaky tests:
+
+        * platform/gtk/TestExpectations:
+            fast/loader/submit-form-while-parsing-2.html
+            css3/calc/transitions-dependent.html
+            fast/dom/adopt-node-crash-2.html
+            fast/multicol/span/span-as-immediate-columns-child-dynamic.html
+            platform/gtk/editing/pasteboard/middle-button-paste.html
+
+2014-04-25  Javier Fernandez  <jfernandez@igalia.com>
+
+        [CSS Grid Layout] Implementation of the grid-template shorthand.
+        https://bugs.webkit.org/show_bug.cgi?id=128980
+
+        Reviewed by Darin Adler.
+
+        Layout Test for the basic functionality of the grid-template shorthand. It was
+        also added a new javascript file with some utility functions.
+
+        This shorthand sets the values for the grid-template-columns,
+        grid-template-rows and grid-template-areas, so the implementation
+        tries to reuse as much available parsing functions as possible.
+
+        * fast/css-grid-layout/grid-template-shorthand-get-set-expected.txt: Added.
+        * fast/css-grid-layout/grid-template-shorthand-get-set.html: Added.
+        * fast/css-grid-layout/resources/grid-template-shorthand-parsing-utils.js: Added.
+        (testGridDefinitionsValues):
+        (testGridDefinitionsSetJSValues):
+        (testNonGridDefinitionsSetJSValues):
+        (checkGridDefinitionsSetJSValues):
+        (testGridDefinitionsSetBadJSValues):
+
+2014-04-25  Antoine Quint  <graouts@webkit.org>
+
+        Implement Array.prototype.find()
+        https://bugs.webkit.org/show_bug.cgi?id=130966
+
+        Reviewed by Oliver Hunt.
+
+        * js/Object-getOwnPropertyNames-expected.txt:
+        * js/array-find-expected.txt: Added.
+        * js/array-find.html: Added.
+        * js/array-findIndex-expected.txt: Added.
+        * js/array-findIndex.html: Added.
+        * js/script-tests/Object-getOwnPropertyNames.js:
+        * js/script-tests/array-find.js: Added.
+        * js/script-tests/array-findIndex.js: Added.
+
+2014-04-25  Ion Rosca  <rosca@adobe.com>
+
+        Incomplete body painting when using blend modes
+        https://bugs.webkit.org/show_bug.cgi?id=131889
+
+        Reviewed by Simon Fraser.
+
+        * css3/compositing/blend-mode-with-body-expected.html: Added.
+        * css3/compositing/blend-mode-with-body.html: Added.
+
+2014-04-24  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r167441.
+        https://bugs.webkit.org/show_bug.cgi?id=132152
+
+        Caused full screen regressions on vimeo, youtube, and others.
+        (Requested by jernoble on #webkit).
+
+        Reverted changeset:
+
+        "Fullscreen media controls are unusable in pagination mode"
+        https://bugs.webkit.org/show_bug.cgi?id=131705
+        http://trac.webkit.org/changeset/167441
+
+2014-04-24  Zalan Bujtas  <zalan@apple.com>
+
+        Subpixel rendering: Clipping on text areas when shifted by one device pixel.
+        https://bugs.webkit.org/show_bug.cgi?id=132008
+
+        Reviewed by Darin Adler.
+
+        Make RenderTheme paint* functions LayoutRect aware. Textarea is device pixel snapped, while
+        other theme controls are still on integral size/positions.
+
+        * fast/forms/hidpi-textarea-on-subpixel-position-expected.html: Added.
+        * fast/forms/hidpi-textarea-on-subpixel-position.html: Added.
+        * platform/mac-wk2/TestExpectations: Due to defective RenderLayer cliprect calculation (WK2 only): webkit.org/b/132100
+
+2014-04-24  Eduardo Lima Mitev  <elima@igalia.com>
+
+        Unreviewed GTK gardening
+
+        * platform/gtk/TestExpectations: Updated a few expectations entries
+
+2014-04-24  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] Unreviewed GTK gardening.
+        Update expectations after removal of environment variable
+        XVFB_SCREEN_DEPTH=8 from the GTK Release bot.
+
+        * platform/gtk/TestExpectations:
+
+2014-04-24  David Hyatt  <hyatt@apple.com>
+
+        [New Multicolumn] Client rects don't work with column spans.
+        https://bugs.webkit.org/show_bug.cgi?id=132131
+
+        Reviewed by Dean Jackson.
+
+        * fast/multicol/client-rects-spanners.html: Added.
+        * platform/mac/fast/multicol/client-rects-spanners-expected.png: Added.
+        * platform/mac/fast/multicol/client-rects-spanners-expected.txt: Added.
+
+2014-04-24  Alexey Proskuryakov  <ap@apple.com>
+
+        Test that we correctly process ArrayBufferView slices in WebCrypto
+        https://bugs.webkit.org/show_bug.cgi?id=132087
+
+        Reviewed by Brent Fulgham.
+
+        * crypto/subtle/array-buffer-view-offset-expected.txt: Added.
+        * crypto/subtle/array-buffer-view-offset.html: Added.
+
+2014-04-24  Tamas Gergely  <tgergely.u-szeged@partner.samsung.com>
+
+        ASSERTION FAILED: !begin.isIndefinite() in WebCore::SVGSMILElement::resolveFirstInterval.
+        https://bugs.webkit.org/show_bug.cgi?id=131097
+
+        Reviewed by Darin Adler.
+
+        Test added.
+
+        * svg/animations/smil-animation-max-attribute-zero-crash-expected.txt: Added.
+        * svg/animations/smil-animation-max-attribute-zero-crash.svg: Added.
+
+2014-04-24  Krzysztof Wolanski  <k.wolanski@samsung.com>
+
+        [EFL] Update baselines after r167568
+        https://bugs.webkit.org/show_bug.cgi?id=132125
+
+        Unreviewed EFL gardening.
+
+        * platform/efl-wk2/inspector-protocol/debugger/setBreakpoint-dfg-and-modify-local-expected.txt: Added.
+        * platform/efl/fast/repaint/reflection-redraw-expected.txt: Rebaseline after r167568.
+        * platform/efl/fast/table/multiple-captions-display-expected.txt: Rebaseline after r167568.
+        * platform/efl/svg/W3C-SVG-1.1-SE/filters-image-03-f-expected.txt: Added.
+        * platform/efl/svg/W3C-SVG-1.1-SE/filters-image-05-f-expected.txt: Added.
+        * platform/efl/svg/W3C-SVG-1.1/filters-composite-02-b-expected.txt: Added.
+        * platform/efl/svg/W3C-SVG-1.1/filters-displace-01-f-expected.txt: Added.
+        * platform/efl/svg/W3C-SVG-1.1/filters-image-01-b-expected.txt: Added.
+        * platform/efl/tables/mozilla/marvin/body_col-expected.txt: Rebaseline after r167568.
+        * platform/efl/tables/mozilla/marvin/x_th_valign_baseline-expected.txt: Rebaseline after r167568.
+        * platform/efl/tables/mozilla/other/body_col-expected.txt: Rebaseline after r167568.
+        * platform/efl/tables/mozilla_expected_failures/bugs/bug10140-expected.txt: Rebaseline after r167568.
+        * platform/efl/tables/mozilla_expected_failures/bugs/bug10216-expected.txt: Rebaseline after r167568.
+        * platform/efl/tables/mozilla_expected_failures/core/captions3-expected.txt: Rebaseline after r167568.
+        * platform/efl/tables/mozilla_expected_failures/other/test4-expected.txt: Rebaseline after r167568.
+
+2014-04-23  Praveen R Jadhav  <praveen.j@samsung.com>
+
+        [MediaStream] Implement MediaStream active attribute
+        https://bugs.webkit.org/show_bug.cgi?id=131973
+
+        Reviewed by Eric Carlson.
+
+        MediaStream .onended attribute will be replaced with .active attribute.
+        Patch updates the test case to verify the .active attribute.
+
+        * fast/mediastream/MediaStream-add-remove-tracks-expected.txt:
+        * fast/mediastream/MediaStream-add-remove-tracks.html:
+
 2014-04-23  Alexey Proskuryakov  <ap@apple.com>
 
         Eliminate internals.setMockScrollbarsEnabled()

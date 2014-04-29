@@ -485,18 +485,6 @@ String Frame::matchLabelsAgainstElement(const Vector<String>& labels, Element* e
     return matchLabelsAgainstString(labels, element->getAttribute(idAttr));
 }
 
-#if ENABLE(IOS_TEXT_AUTOSIZING)
-float Frame::textAutosizingWidth() const
-{
-    return m_textAutosizingWidth;
-}
-
-void Frame::setTextAutosizingWidth(float width)
-{
-    m_textAutosizingWidth = width;
-}
-#endif
-
 #if PLATFORM(IOS)
 void Frame::scrollOverflowLayer(RenderLayer* layer, const IntRect& visibleRect, const IntRect& exposeRect)
 {
@@ -625,7 +613,7 @@ int Frame::checkOverflowScroll(OverflowScrollAction action)
         layer->scrollToOffset(IntSize(layer->scrollXOffset() + deltaX, layer->scrollYOffset() + deltaY));
 
         // Handle making selection.
-        VisiblePosition visiblePosition(renderer->positionForPoint(selectionPosition));
+        VisiblePosition visiblePosition(renderer->positionForPoint(selectionPosition, nullptr));
         if (visiblePosition.isNotNull()) {
             VisibleSelection visibleSelection = selection().selection();
             visibleSelection.setExtent(visiblePosition);
@@ -853,7 +841,7 @@ VisiblePosition Frame::visiblePositionForPoint(const IntPoint& framePoint)
     auto renderer = node->renderer();
     if (!renderer)
         return VisiblePosition();
-    VisiblePosition visiblePos = renderer->positionForPoint(result.localPoint());
+    VisiblePosition visiblePos = renderer->positionForPoint(result.localPoint(), nullptr);
     if (visiblePos.isNull())
         visiblePos = firstPositionInOrBeforeNode(node);
     return visiblePos;

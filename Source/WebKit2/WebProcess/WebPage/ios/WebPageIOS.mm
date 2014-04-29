@@ -137,6 +137,15 @@ void WebPage::didReceiveMobileDocType(bool isMobileDoctype)
         resetViewportDefaultConfiguration(m_mainFrame.get());
 }
 
+void WebPage::restorePageState(double scale, const IntPoint& scrollPosition)
+{
+    scalePage(scale, scrollPosition);
+    m_page->mainFrame().view()->setScrollPosition(scrollPosition);
+
+    // FIXME: we should get the value of userHasChangedPageScaleFactor from the history.
+    m_userHasChangedPageScaleFactor = true;
+}
+
 double WebPage::minimumPageScaleFactor() const
 {
     return m_viewportConfiguration.minimumScale();
@@ -154,9 +163,13 @@ bool WebPage::allowsUserScaling() const
 
 bool WebPage::handleEditingKeyboardEvent(KeyboardEvent* event)
 {
+    const PlatformKeyboardEvent* platformEvent = event->keyEvent();
+    if (!platformEvent)
+        return false;
+
     // FIXME: Interpret the event immediately upon receiving it in UI process, without sending to WebProcess first.
     bool eventWasHandled = false;
-    bool sendResult = WebProcess::shared().parentProcessConnection()->sendSync(Messages::WebPageProxy::InterpretKeyEvent(editorState(), event->keyEvent()->type() == PlatformKeyboardEvent::Char),
+    bool sendResult = WebProcess::shared().parentProcessConnection()->sendSync(Messages::WebPageProxy::InterpretKeyEvent(editorState(), platformEvent->type() == PlatformKeyboardEvent::Char),
                                                                                Messages::WebPageProxy::InterpretKeyEvent::Reply(eventWasHandled), m_pageID);
     if (!sendResult)
         return false;
@@ -298,6 +311,13 @@ IntRect WebPage::rectForElementAtInteractionLocation()
     return result.innerNodeFrame()->view()->contentsToRootView(hitNode->renderer()->absoluteBoundingBoxRect(true));
 }
 
+void WebPage::updateSelectionAppearance()
+{
+    Frame& frame = m_page->focusController().focusedOrMainFrame();
+    if (!frame.editor().ignoreCompositionSelectionChange() && (frame.editor().hasComposition() || !frame.selection().selection().isNone()))
+        didChangeSelection();
+}
+
 void WebPage::handleTap(const IntPoint& point)
 {
     Frame& mainframe = m_page->mainFrame();
@@ -312,9 +332,25 @@ void WebPage::handleTap(const IntPoint& point)
     if (WKObservedContentChange() != WKContentNoChange)
         return;
 
+    RefPtr<Frame> oldFocusedFrame = m_page->focusController().focusedFrame();
+    RefPtr<Element> oldFocusedElement = oldFocusedFrame ? oldFocusedFrame->document()->focusedElement() : nullptr;
+    m_userIsInteracting = true;
+
     m_lastInteractionLocation = roundedAdjustedPoint;
     mainframe.eventHandler().handleMousePressEvent(PlatformMouseEvent(roundedAdjustedPoint, roundedAdjustedPoint, LeftButton, PlatformEvent::MousePressed, 1, false, false, false, false, 0));
     mainframe.eventHandler().handleMouseReleaseEvent(PlatformMouseEvent(roundedAdjustedPoint, roundedAdjustedPoint, LeftButton, PlatformEvent::MouseReleased, 1, false, false, false, false, 0));
+
+    RefPtr<Frame> newFocusedFrame = m_page->focusController().focusedFrame();
+    RefPtr<Element> newFocusedElement = newFocusedFrame ? newFocusedFrame->document()->focusedElement() : nullptr;
+
+    // If the focus has not changed, we need to notify the client anyway, since it might be
+    // necessary to start assisting the node.
+    // If the node has been focused by JavaScript without user interaction, the
+    // keyboard is not on screen.
+    if (newFocusedElement && newFocusedElement == oldFocusedElement)
+        elementDidFocus(newFocusedElement.get());
+
+    m_userIsInteracting = false;
 }
 
 void WebPage::tapHighlightAtPosition(uint64_t requestID, const FloatPoint& position)
@@ -1659,7 +1695,10 @@ void WebPage::focusNextAssistedNode(bool isForward)
 
 void WebPage::getAssistedNodeInformation(AssistedNodeInformation& information)
 {
-    information.elementRect = m_page->focusController().focusedOrMainFrame().view()->contentsToRootView(m_assistedNode->renderer()->absoluteBoundingBoxRect());
+    if (RenderObject* renderer = m_assistedNode->renderer())
+        information.elementRect = m_page->focusController().focusedOrMainFrame().view()->contentsToRootView(renderer->absoluteBoundingBoxRect());
+    else
+        information.elementRect = IntRect();
     information.minimumScaleFactor = m_viewportConfiguration.minimumScale();
     information.maximumScaleFactor = m_viewportConfiguration.maximumScale();
     information.hasNextNode = hasFocusableElement(m_assistedNode.get(), m_page.get(), true);
@@ -1747,7 +1786,7 @@ void WebPage::elementDidFocus(WebCore::Node* node)
         getAssistedNodeInformation(information);
         RefPtr<API::Object> userData;
         m_formClient->willBeginInputSession(this, toElement(node), WebFrame::fromCoreFrame(*node->document().frame()), userData);
-        send(Messages::WebPageProxy::StartAssistingNode(information, InjectedBundleUserMessageEncoder(userData.get())));
+        send(Messages::WebPageProxy::StartAssistingNode(information, m_userIsInteracting, InjectedBundleUserMessageEncoder(userData.get())));
     }
 }
 

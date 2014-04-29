@@ -59,6 +59,7 @@ class RenderGeometryMap;
 class RenderLayer;
 class RenderLayerModelObject;
 class RenderNamedFlowThread;
+class RenderRegion;
 class RenderTheme;
 class SelectionSubtreeRoot;
 class TransformState;
@@ -361,6 +362,7 @@ public:
 
     virtual bool isMultiColumnBlockFlow() const { return false; }
     virtual bool isRenderMultiColumnSet() const { return false; }
+    virtual bool isRenderMultiColumnFlowThread() const { return false; }
     virtual bool isRenderMultiColumnSpannerPlaceholder() const { return false; }
 
     virtual bool isRenderScrollbarPart() const { return false; }
@@ -648,7 +650,7 @@ public:
     virtual void updateHitTestResult(HitTestResult&, const LayoutPoint&);
     virtual bool nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction);
 
-    virtual VisiblePosition positionForPoint(const LayoutPoint&);
+    virtual VisiblePosition positionForPoint(const LayoutPoint&, const RenderRegion*);
     VisiblePosition createVisiblePosition(int offset, EAffinity) const;
     VisiblePosition createVisiblePosition(const Position&) const;
 
@@ -879,7 +881,7 @@ public:
 
     RespectImageOrientationEnum shouldRespectImageOrientation() const;
 
-    void drawLineForBoxSide(GraphicsContext*, float x1, float y1, float x2, float y2, BoxSide, Color, EBorderStyle, float adjbw1, float adjbw2, bool antialias = false);
+    void drawLineForBoxSide(GraphicsContext*, float x1, float y1, float x2, float y2, BoxSide, Color, EBorderStyle, float adjbw1, float adjbw2, bool antialias = false) const;
 protected:
     void paintFocusRing(PaintInfo&, const LayoutPoint&, RenderStyle*);
     void paintOutline(PaintInfo&, const LayoutRect&);

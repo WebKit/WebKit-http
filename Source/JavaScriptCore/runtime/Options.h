@@ -204,7 +204,7 @@ typedef OptionRange optionRange;
     v(unsigned, maximumBinaryStringSwitchCaseLength, 50) \
     v(unsigned, maximumBinaryStringSwitchTotalLength, 2000) \
     \
-    v(int32, thresholdForJITAfterWarmUp, 100) \
+    v(int32, thresholdForJITAfterWarmUp, 500) \
     v(int32, thresholdForJITSoon, 100) \
     \
     v(int32, thresholdForOptimizeAfterWarmUp, 1000) \
@@ -250,6 +250,7 @@ typedef OptionRange optionRange;
     v(double, minHeapUtilization, 0.8) \
     v(double, minCopiedBlockUtilization, 0.9) \
     v(double, minMarkedBlockUtilization, 0.9) \
+    v(unsigned, slowPathAllocsBetweenGCs, 0) \
     \
     v(double, percentCPUPerMBForFullTimer, 0.0003125) \
     v(double, percentCPUPerMBForEdenTimer, 0.0025) \

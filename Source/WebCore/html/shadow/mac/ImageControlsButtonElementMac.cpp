@@ -26,7 +26,7 @@
 #include "config.h"
 #include "ImageControlsButtonElementMac.h"
 
-#if ENABLE(IMAGE_CONTROLS)
+#if ENABLE(SERVICE_CONTROLS)
 
 #include "ContextMenuController.h"
 #include "Event.h"
@@ -64,7 +64,7 @@ void RenderImageControlsButton::updateLogicalWidth()
 {
     RenderBox::updateLogicalWidth();
 
-    IntSize frameSize = theme().imageControlsButtonSize(this);
+    IntSize frameSize = theme().imageControlsButtonSize(*this);
     setLogicalWidth(isHorizontalWritingMode() ? frameSize.width() : frameSize.height());
 }
 
@@ -72,7 +72,7 @@ void RenderImageControlsButton::computeLogicalHeight(LayoutUnit logicalHeight, L
 {
     RenderBox::computeLogicalHeight(logicalHeight, logicalTop, computedValues);
 
-    IntSize frameSize = theme().imageControlsButtonSize(this);
+    IntSize frameSize = theme().imageControlsButtonSize(*this);
     computedValues.m_extent = isHorizontalWritingMode() ? frameSize.height() : frameSize.width();
 }
 
@@ -115,4 +115,4 @@ RenderPtr<RenderElement> ImageControlsButtonElementMac::createElementRenderer(Pa
 
 } // namespace WebCore
 
-#endif // ENABLE(IMAGE_CONTROLS)
+#endif // ENABLE(SERVICE_CONTROLS)

@@ -43,7 +43,7 @@ my %baseTypeHash = ("Object" => 1, "Node" => 1, "NodeList" => 1, "NamedNodeMap" 
                     "Event" => 1, "CSSRule" => 1, "CSSValue" => 1, "StyleSheet" => 1, "MediaList" => 1,
                     "Counter" => 1, "Rect" => 1, "RGBColor" => 1, "XPathExpression" => 1, "XPathResult" => 1,
                     "NodeIterator" => 1, "TreeWalker" => 1, "AbstractView" => 1, "Blob" => 1, "DOMTokenList" => 1,
-                    "HTMLCollection" => 1);
+                    "HTMLCollection" => 1, "TextTrackCue" => 1);
 
 # List of function parameters that are allowed to be NULL
 my $canBeNullParams = {
@@ -930,6 +930,27 @@ sub GetFunctionDeprecationInformation {
     return ($version, $replacement);
 }
 
+sub GetEffectiveFunctionName {
+    my $functionName = shift;
+
+    # Rename webkit_dom_html_input_element_[set|get]_capture functions since they were changed to set/receive a
+    # boolean instead of a string in r163958. The old methods are now manually added as deprecated.
+    if ($functionName eq "webkit_dom_html_input_element_set_capture") {
+        return "webkit_dom_html_input_element_set_capture_enabled";
+    }
+    if ($functionName eq "webkit_dom_html_input_element_get_capture") {
+        return "webkit_dom_html_input_element_get_capture_enabled";
+    }
+
+    # webkit_dom_text_track_add_cue raises an exception since r163974. We need to add a with_error version to
+    # keep API backwards compatibility.
+    if ($functionName eq "webkit_dom_text_track_add_cue") {
+        return "webkit_dom_text_track_add_cue_with_error";
+    }
+
+    return $functionName;
+}
+
 sub GenerateFunction {
     my ($object, $interfaceName, $function, $prefix, $parentNode) = @_;
 
@@ -941,7 +962,7 @@ sub GenerateFunction {
 
     my ($deprecationVersion, $deprecationReplacement) = GetFunctionDeprecationInformation($function, $parentNode);
     my $functionSigType = $prefix eq "set_" ? "void" : $function->signature->type;
-    my $functionName = "webkit_dom_" . $decamelize . "_" . $prefix . decamelize($function->signature->name);
+    my $functionName = GetEffectiveFunctionName("webkit_dom_" . $decamelize . "_" . $prefix . decamelize($function->signature->name));
     my $returnType = GetGlibTypeName($functionSigType);
     my $returnValueIsGDOMType = IsGDOMClassType($functionSigType);
     my $raisesException = $function->signature->extendedAttributes->{"RaisesException"};
@@ -1445,7 +1466,7 @@ sub GenerateEndHeader {
 sub IsPolymorphic {
     my $type = shift;
 
-    return scalar(grep {$_ eq $type} qw(Blob Event HTMLCollection Node StyleSheet));
+    return scalar(grep {$_ eq $type} qw(Blob Event HTMLCollection Node StyleSheet TextTrackCue));
 }
 
 sub GenerateEventTargetIface {

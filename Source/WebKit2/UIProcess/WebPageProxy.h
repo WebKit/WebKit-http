@@ -68,10 +68,9 @@
 #include <WebCore/TextChecking.h>
 #include <WebCore/TextGranularity.h>
 #include <WebCore/ViewState.h>
+#include <memory>
 #include <wtf/HashMap.h>
 #include <wtf/HashSet.h>
-#include <wtf/OwnPtr.h>
-#include <wtf/PassOwnPtr.h>
 #include <wtf/PassRefPtr.h>
 #include <wtf/Ref.h>
 #include <wtf/RefPtr.h>
@@ -172,6 +171,10 @@ struct WebPopupItem;
 
 #if ENABLE(VIBRATION)
 class WebVibrationProxy;
+#endif
+
+#if USE(QUICK_LOOK)
+class QuickLookDocumentData;
 #endif
 
 typedef GenericCallback<uint64_t> UnsignedCallback;
@@ -1060,7 +1063,7 @@ public:
 
     void takeSnapshot(WebCore::IntRect, WebCore::IntSize bitmapSize, SnapshotOptions, ImageCallback::CallbackFunction);
 
-#if ENABLE(IMAGE_CONTROLS)
+#if ENABLE(SERVICE_CONTROLS)
     void replaceControlledImage(PassRefPtr<ShareableBitmap>);
 #endif
 
@@ -1351,12 +1354,12 @@ private:
 #if PLATFORM(IOS)
     WebCore::FloatSize screenSize();
     WebCore::FloatSize availableScreenSize();
-
+    float textAutosizingWidth();
 
     void dynamicViewportUpdateChangedTarget(double newTargetScale, const WebCore::FloatPoint& newScrollPosition);
     void didGetTapHighlightGeometries(uint64_t requestID, const WebCore::Color& color, const Vector<WebCore::FloatQuad>& geometries, const WebCore::IntSize& topLeftRadius, const WebCore::IntSize& topRightRadius, const WebCore::IntSize& bottomLeftRadius, const WebCore::IntSize& bottomRightRadius);
 
-    void startAssistingNode(const AssistedNodeInformation&, IPC::MessageDecoder&);
+    void startAssistingNode(const AssistedNodeInformation&, bool userIsInteracting, IPC::MessageDecoder&);
     void stopAssistingNode();
 
 #if ENABLE(INSPECTOR)
@@ -1393,6 +1396,11 @@ private:
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
     void findPlugin(const String& mimeType, uint32_t processType, const String& urlString, const String& frameURLString, const String& pageURLString, bool allowOnlyApplicationPlugins, uint64_t& pluginProcessToken, String& newMIMEType, uint32_t& pluginLoadPolicy, String& unavailabilityDescription);
+#endif
+
+#if USE(QUICK_LOOK)
+    void didStartLoadForQuickLookDocumentInMainFrame(const String& fileName, const String& uti);
+    void didFinishLoadForQuickLookDocumentInMainFrame(const QuickLookDocumentData&);
 #endif
 
     uint64_t generateNavigationID();
@@ -1554,11 +1562,11 @@ private:
 
     Deque<NativeWebKeyboardEvent> m_keyEventQueue;
     Deque<NativeWebWheelEvent> m_wheelEventQueue;
-    Deque<OwnPtr<Vector<NativeWebWheelEvent>>> m_currentlyProcessedWheelEvents;
+    Deque<std::unique_ptr<Vector<NativeWebWheelEvent>>> m_currentlyProcessedWheelEvents;
 
     bool m_processingMouseMoveEvent;
-    OwnPtr<NativeWebMouseEvent> m_nextMouseMoveEvent;
-    OwnPtr<NativeWebMouseEvent> m_currentlyProcessedMouseDownEvent;
+    std::unique_ptr<NativeWebMouseEvent> m_nextMouseMoveEvent;
+    std::unique_ptr<NativeWebMouseEvent> m_currentlyProcessedMouseDownEvent;
 
 #if ENABLE(TOUCH_EVENTS)
     bool m_isTrackingTouchEvents;

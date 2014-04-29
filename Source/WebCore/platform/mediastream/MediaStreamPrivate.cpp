@@ -128,7 +128,7 @@ void MediaStreamPrivate::removeRemoteTrack(MediaStreamTrackPrivate* track)
 MediaStreamPrivate::MediaStreamPrivate(const String& id, const Vector<RefPtr<MediaStreamSource>>& audioSources, const Vector<RefPtr<MediaStreamSource>>& videoSources)
     : m_client(0)
     , m_id(id)
-    , m_ended(false)
+    , m_isActive(false)
 {
     ASSERT(m_id.length());
     for (size_t i = 0; i < audioSources.size(); i++)
@@ -139,16 +139,15 @@ MediaStreamPrivate::MediaStreamPrivate(const String& id, const Vector<RefPtr<Med
 
     unsigned providedSourcesSize = audioSources.size() + videoSources.size();
     unsigned tracksSize = m_audioPrivateTracks.size() + m_videoPrivateTracks.size();
-    // If sources were provided and no track was added to the MediaStreamPrivate's tracks, this means
-    // that the tracks were all ended
-    if (providedSourcesSize > 0 && !tracksSize)
-        m_ended = true;
+
+    if (providedSourcesSize > 0 && tracksSize > 0)
+        m_isActive = true;
 }
 
 MediaStreamPrivate::MediaStreamPrivate(const String& id, const Vector<RefPtr<MediaStreamTrackPrivate>>& audioPrivateTracks, const Vector<RefPtr<MediaStreamTrackPrivate>>& videoPrivateTracks)
     : m_client(0)
     , m_id(id)
-    , m_ended(false)
+    , m_isActive(false)
 {
     ASSERT(m_id.length());
     for (size_t i = 0; i < audioPrivateTracks.size(); i++)
@@ -159,18 +158,20 @@ MediaStreamPrivate::MediaStreamPrivate(const String& id, const Vector<RefPtr<Med
 
     unsigned providedTracksSize = audioPrivateTracks.size() + videoPrivateTracks.size();
     unsigned tracksSize = m_audioPrivateTracks.size() + m_videoPrivateTracks.size();
-    // If tracks were provided and no one was added to the MediaStreamPrivate's tracks, this means
-    // that the tracks were all ended
-    if (providedTracksSize > 0 && !tracksSize)
-        m_ended = true;
+
+    if (providedTracksSize > 0 && tracksSize > 0)
+        m_isActive = true;
 }
 
-void MediaStreamPrivate::setEnded()
+void MediaStreamPrivate::setActive(bool active)
 {
-    if (m_client)
-        m_client->streamDidEnd();
+    if (m_isActive == active)
+        return;
 
-    m_ended = true;
+    m_isActive = active;
+
+    if (m_client)
+        m_client->setStreamIsActive(active);
 }
 
 void MediaStreamPrivate::addTrack(PassRefPtr<MediaStreamTrackPrivate> prpTrack)

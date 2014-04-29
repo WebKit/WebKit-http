@@ -43,6 +43,7 @@
 #include "RenderLayer.h"
 #include "RenderLayerBacking.h"
 #include "RenderLayerCompositor.h"
+#include "RenderMultiColumnFlowThread.h"
 #include "RenderNamedFlowFragment.h"
 #include "RenderNamedFlowThread.h"
 #include "RenderRegion.h"
@@ -315,11 +316,18 @@ LayoutPoint RenderBoxModelObject::adjustedPositionRelativeToOffsetParent(const L
             auto curr = parent();
             while (curr != offsetParent && !curr->isRenderNamedFlowThread()) {
                 // FIXME: What are we supposed to do inside SVG content?
-                if (!isOutOfFlowPositioned()) {
+                
+                if (curr->isInFlowRenderFlowThread()) {
+                    // We need to apply a translation based off what region we are inside.
+                    RenderRegion* region = toRenderMultiColumnFlowThread(curr)->physicalTranslationFromFlowToRegion(referencePoint);
+                    if (region)
+                        referencePoint.moveBy(region->topLeftLocation());
+                } else if (!isOutOfFlowPositioned()) {
                     if (curr->isBox() && !curr->isTableRow())
                         referencePoint.moveBy(toRenderBox(curr)->topLeftLocation());
                     referencePoint.move(curr->parent()->offsetForColumns(referencePoint));
                 }
+                
                 curr = curr->parent();
             }
             
@@ -2629,10 +2637,13 @@ void RenderBoxModelObject::mapAbsoluteToLocalPoint(MapCoordinatesFlags mode, Tra
     auto o = container();
     if (!o)
         return;
-
+    
+    // FIXME: This code is wrong for named flow threads since it only works for content in the first region.
+    // We also don't want to run it for multicolumn flow threads, since we can use our knowledge of column
+    // geometry to actually get a better result.
     // The point inside a box that's inside a region has its coordinates relative to the region,
     // not the FlowThread that is its container in the RenderObject tree.
-    if (o->isRenderFlowThread() && isBox()) {
+    if (isBox() && o->isOutOfFlowRenderFlowThread()) {
         RenderRegion* startRegion = nullptr;
         RenderRegion* endRegion = nullptr;
         if (toRenderFlowThread(o)->getRegionRangeForBox(toRenderBox(this), startRegion, endRegion))

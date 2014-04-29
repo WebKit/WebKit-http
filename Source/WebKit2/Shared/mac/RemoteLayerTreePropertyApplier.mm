@@ -53,13 +53,31 @@
 
 @implementation UIView (WKUIViewUtilities)
 
-- (void)_web_setSubviews:(NSArray *)subviews
+- (void)_web_setSubviews:(NSArray *)newSubviews
 {
-    for (UIView* subview in self.subviews)
-        [subview removeFromSuperview];
+    NSUInteger numOldSubviews = self.subviews.count;
+    NSUInteger numNewSubviews = newSubviews.count;
 
-    for (UIView* view in subviews)
-        [self addSubview:view];
+    NSUInteger currIndex = 0;
+    for (currIndex = 0; currIndex < numNewSubviews; ++currIndex) {
+        UIView *currNewSubview = [newSubviews objectAtIndex:currIndex];
+
+        if (currIndex < numOldSubviews) {
+            UIView *existingSubview = [self.subviews objectAtIndex:currIndex];
+            if (existingSubview == currNewSubview)
+                continue;
+        }
+
+        // New or moved subview.
+        [self insertSubview:currNewSubview atIndex:currIndex];
+    }
+
+    // Remove views at the end.
+    NSUInteger remainingSubviews = self.subviews.count;
+    for (NSUInteger i = currIndex; i < remainingSubviews; ++i)
+        [[self.subviews objectAtIndex:currIndex] removeFromSuperview];
+
+    ASSERT([self.subviews isEqualToArray:newSubviews]);
 }
 
 @end
@@ -128,8 +146,8 @@ static void applyPropertiesToLayer(CALayer *layer, RemoteLayerTreeHost* layerTre
         layer.anchorPointZ = properties.anchorPoint.z();
     }
 
-    if (properties.changedProperties & RemoteLayerTreeTransaction::SizeChanged)
-        layer.bounds = FloatRect(FloatPoint(), properties.size);
+    if (properties.changedProperties & RemoteLayerTreeTransaction::BoundsChanged)
+        layer.bounds = properties.bounds;
     
     if (properties.changedProperties & RemoteLayerTreeTransaction::BackgroundColorChanged)
         layer.backgroundColor = cgColorFromColor(properties.backgroundColor).get();

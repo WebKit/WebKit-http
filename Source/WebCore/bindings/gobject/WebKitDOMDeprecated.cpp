@@ -29,6 +29,8 @@
 #include "WebKitDOMObject.h"
 #include "WebKitDOMPrivate.h"
 #include "WebKitDOMProcessingInstruction.h"
+#include "WebKitDOMTextTrack.h"
+#include "WebKitDOMVTTCue.h"
 #include "WebKitDOMWebKitNamedFlow.h"
 
 using namespace WebKit;
@@ -68,6 +70,17 @@ WebKitDOMDOMTokenList* webkit_dom_html_element_get_class_list(WebKitDOMHTMLEleme
 WebKitDOMElement* webkit_dom_html_document_get_active_element(WebKitDOMHTMLDocument* document)
 {
     return webkit_dom_document_get_active_element(WEBKIT_DOM_DOCUMENT(document));
+}
+
+gboolean webkit_dom_html_input_element_get_webkitdirectory(WebKitDOMHTMLInputElement*)
+{
+    g_warning("%s: this functionality has been removed from WebKit, this function does nothing.", __func__);
+    return FALSE;
+}
+
+void webkit_dom_html_input_element_set_webkitdirectory(WebKitDOMHTMLInputElement*, gboolean)
+{
+    g_warning("%s: this functionality has been removed from WebKit, this function does nothing.", __func__);
 }
 
 gboolean webkit_dom_html_document_has_focus(WebKitDOMHTMLDocument* document)
@@ -563,6 +576,27 @@ void webkit_dom_processing_instruction_set_data(WebKitDOMProcessingInstruction*,
     g_warning("%s: this functionality has been removed from WebKit, this function does nothing.", __func__);
 }
 
+// WebKitDOMFile
+
+gchar* webkit_dom_file_get_webkit_relative_path(WebKitDOMFile*)
+{
+    g_warning("%s: this functionality has been removed from WebKit, this function does nothing.", __func__);
+    return g_strdup("");
+}
+
+// WebKitDOMHTMLIFrameElement
+
+gboolean webkit_dom_html_iframe_element_get_seamless(WebKitDOMHTMLIFrameElement*)
+{
+    g_warning("%s: this functionality has been removed from WebKit, this function does nothing.", __func__);
+    return FALSE;
+}
+
+void webkit_dom_html_iframe_element_set_seamless(WebKitDOMHTMLIFrameElement*, gboolean)
+{
+    g_warning("%s: this functionality has been removed from WebKit, this function does nothing.", __func__);
+}
+
 // WebKitDOMShadowRoot
 
 typedef struct _WebKitDOMShadowRoot {
@@ -656,4 +690,116 @@ void webkit_dom_shadow_root_set_inner_html(WebKitDOMShadowRoot*, const gchar*, G
 void webkit_dom_shadow_root_set_reset_style_inheritance(WebKitDOMShadowRoot*, gboolean)
 {
     g_warning("%s: Access to the DOM Shadow Root has been removed from WebKit, this function does nothing.", __func__);
+}
+
+// WebKitDOMHTMLInputElement
+
+gchar* webkit_dom_html_input_element_get_capture(WebKitDOMHTMLInputElement*)
+{
+    g_warning("The WebKitDOMHTMLInputElement:capture property has converted to a boolean according to the specification. This method will always return NULL. Use webkit_dom_html_input_element_get_capture_enabled() instead.");
+    return nullptr;
+}
+
+void webkit_dom_html_input_element_set_capture(WebKitDOMHTMLInputElement*, const gchar*)
+{
+    g_warning("The WebKitDOMHTMLInputElement:capture property has converted to a boolean according to the specification. This method does nothing. Use webkit_dom_html_input_element_set_capture_enabled() instead.");
+}
+
+// WebKitDOMTextTrackCue
+
+WebKitDOMDocumentFragment* webkit_dom_text_track_cue_get_cue_as_html(WebKitDOMTextTrackCue* self)
+{
+    g_return_val_if_fail(WEBKIT_DOM_IS_VTT_CUE(self), nullptr);
+    return webkit_dom_vtt_cue_get_cue_as_html(WEBKIT_DOM_VTT_CUE(self));
+}
+
+gchar* webkit_dom_text_track_cue_get_vertical(WebKitDOMTextTrackCue* self)
+{
+    g_return_val_if_fail(WEBKIT_DOM_IS_VTT_CUE(self), nullptr);
+    return webkit_dom_vtt_cue_get_vertical(WEBKIT_DOM_VTT_CUE(self));
+}
+
+void webkit_dom_text_track_cue_set_vertical(WebKitDOMTextTrackCue* self, const gchar* value, GError** error)
+{
+    g_return_if_fail(WEBKIT_DOM_IS_VTT_CUE(self));
+    webkit_dom_vtt_cue_set_vertical(WEBKIT_DOM_VTT_CUE(self), value, error);
+}
+
+gboolean webkit_dom_text_track_cue_get_snap_to_lines(WebKitDOMTextTrackCue* self)
+{
+    g_return_val_if_fail(WEBKIT_DOM_IS_VTT_CUE(self), FALSE);
+    return webkit_dom_vtt_cue_get_snap_to_lines(WEBKIT_DOM_VTT_CUE(self));
+}
+
+void webkit_dom_text_track_cue_set_snap_to_lines(WebKitDOMTextTrackCue* self, gboolean value)
+{
+    g_return_if_fail(WEBKIT_DOM_IS_VTT_CUE(self));
+    webkit_dom_vtt_cue_set_snap_to_lines(WEBKIT_DOM_VTT_CUE(self), value);
+}
+
+glong webkit_dom_text_track_cue_get_line(WebKitDOMTextTrackCue* self)
+{
+    g_return_val_if_fail(WEBKIT_DOM_IS_VTT_CUE(self), -1);
+    return webkit_dom_vtt_cue_get_line(WEBKIT_DOM_VTT_CUE(self));
+}
+
+void webkit_dom_text_track_cue_set_line(WebKitDOMTextTrackCue* self, glong value, GError** error)
+{
+    g_return_if_fail(WEBKIT_DOM_IS_VTT_CUE(self));
+    webkit_dom_vtt_cue_set_line(WEBKIT_DOM_VTT_CUE(self), value, error);
+}
+
+glong webkit_dom_text_track_cue_get_position(WebKitDOMTextTrackCue* self)
+{
+    g_return_val_if_fail(WEBKIT_DOM_IS_VTT_CUE(self), -1);
+    return webkit_dom_vtt_cue_get_position(WEBKIT_DOM_VTT_CUE(self));
+}
+
+void webkit_dom_text_track_cue_set_position(WebKitDOMTextTrackCue* self, glong value, GError** error)
+{
+    g_return_if_fail(WEBKIT_DOM_IS_VTT_CUE(self));
+    webkit_dom_vtt_cue_set_position(WEBKIT_DOM_VTT_CUE(self), value, error);
+}
+
+glong webkit_dom_text_track_cue_get_size(WebKitDOMTextTrackCue* self)
+{
+    g_return_val_if_fail(WEBKIT_DOM_IS_VTT_CUE(self), -1);
+    return webkit_dom_vtt_cue_get_size(WEBKIT_DOM_VTT_CUE(self));
+}
+
+void webkit_dom_text_track_cue_set_size(WebKitDOMTextTrackCue* self, glong value, GError** error)
+{
+    g_return_if_fail(WEBKIT_DOM_IS_VTT_CUE(self));
+    webkit_dom_vtt_cue_set_size(WEBKIT_DOM_VTT_CUE(self), value, error);
+}
+
+gchar* webkit_dom_text_track_cue_get_align(WebKitDOMTextTrackCue* self)
+{
+    g_return_val_if_fail(WEBKIT_DOM_IS_VTT_CUE(self), nullptr);
+    return webkit_dom_vtt_cue_get_align(WEBKIT_DOM_VTT_CUE(self));
+}
+
+void webkit_dom_text_track_cue_set_align(WebKitDOMTextTrackCue* self, const gchar* value, GError** error)
+{
+    g_return_if_fail(WEBKIT_DOM_IS_VTT_CUE(self));
+    webkit_dom_vtt_cue_set_align(WEBKIT_DOM_VTT_CUE(self), value, error);
+}
+
+gchar* webkit_dom_text_track_cue_get_text(WebKitDOMTextTrackCue* self)
+{
+    g_return_val_if_fail(WEBKIT_DOM_IS_VTT_CUE(self), nullptr);
+    return webkit_dom_vtt_cue_get_text(WEBKIT_DOM_VTT_CUE(self));
+}
+
+void webkit_dom_text_track_cue_set_text(WebKitDOMTextTrackCue* self, const gchar* value)
+{
+    g_return_if_fail(WEBKIT_DOM_IS_VTT_CUE(self));
+    webkit_dom_vtt_cue_set_text(WEBKIT_DOM_VTT_CUE(self), value);
+}
+
+// WebKitDOMTextTrack
+
+void webkit_dom_text_track_add_cue(WebKitDOMTextTrack* self, WebKitDOMTextTrackCue* cue)
+{
+    return webkit_dom_text_track_add_cue_with_error(self, cue, nullptr);
 }

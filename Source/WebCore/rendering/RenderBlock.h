@@ -183,7 +183,7 @@ public:
 
     LayoutUnit textIndentOffset() const;
 
-    virtual VisiblePosition positionForPoint(const LayoutPoint&) override;
+    virtual VisiblePosition positionForPoint(const LayoutPoint&, const RenderRegion*) override;
     
     // Block flows subclass availableWidth to handle multi column layout (shrinking the width available to children when laying out.)
     virtual LayoutUnit availableLogicalWidth() const override final;
@@ -418,6 +418,9 @@ public:
 
     // FIXME: Can devirtualize once old column code is gone.
     virtual void computeLineGridPaginationOrigin(LayoutState&) const;
+    
+    // Adjust from painting offsets to the local coords of this renderer
+    void offsetForContents(LayoutPoint&) const;
 
 protected:
     virtual void addOverflowFromChildren();
@@ -480,7 +483,7 @@ private:
     virtual void paintInlineChildren(PaintInfo&, const LayoutPoint&) { }
     void paintContents(PaintInfo&, const LayoutPoint&);
     void paintColumnContents(PaintInfo&, const LayoutPoint&, bool paintFloats = false);
-    void paintColumnRules(PaintInfo&, const LayoutPoint&);
+    virtual void paintColumnRules(PaintInfo&, const LayoutPoint&);
     void paintSelection(PaintInfo&, const LayoutPoint&);
     void paintCaret(PaintInfo&, const LayoutPoint&, CaretType);
 
@@ -543,7 +546,7 @@ private:
     void adjustPointToColumnContents(LayoutPoint&) const;
     
     // FIXME-BLOCKFLOW: Remove virtualizaion when all callers have moved to RenderBlockFlow
-    virtual VisiblePosition positionForPointWithInlineChildren(const LayoutPoint&);
+    virtual VisiblePosition positionForPointWithInlineChildren(const LayoutPoint&, const RenderRegion*);
 
     virtual void computeColumnCountAndWidth();
     void makeChildrenAnonymousColumnBlocks(RenderObject* beforeChild, RenderBlock* newBlockBox, RenderObject* newChild);
@@ -568,9 +571,6 @@ protected:
     virtual ColumnInfo::PaginationUnit paginationUnit() const;
 
 protected:
-    // Adjust from painting offsets to the local coords of this renderer
-    void offsetForContents(LayoutPoint&) const;
-
     virtual bool requiresColumns(int computedColumnCount) const;
 
     bool updateLogicalWidthAndColumnWidth();

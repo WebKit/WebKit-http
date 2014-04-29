@@ -207,7 +207,7 @@ bool RenderReplaced::shouldPaint(PaintInfo& paintInfo, const LayoutPoint& paintO
         return false;
     
     // Check our region range to make sure we need to be painting in this region.
-    if (paintInfo.renderNamedFlowFragment && !paintInfo.renderNamedFlowFragment->flowThread()->objectShouldPaintInFlowRegion(this, paintInfo.renderNamedFlowFragment))
+    if (paintInfo.renderNamedFlowFragment && !paintInfo.renderNamedFlowFragment->flowThread()->objectShouldFragmentInFlowRegion(this, paintInfo.renderNamedFlowFragment))
         return false;
 
     LayoutPoint adjustedPaintOffset = paintOffset + location();
@@ -517,7 +517,7 @@ void RenderReplaced::computePreferredLogicalWidths()
     setPreferredLogicalWidthsDirty(false);
 }
 
-VisiblePosition RenderReplaced::positionForPoint(const LayoutPoint& point)
+VisiblePosition RenderReplaced::positionForPoint(const LayoutPoint& point, const RenderRegion* region)
 {
     // FIXME: This code is buggy if the replaced element is relative positioned.
     InlineBox* box = inlineBoxWrapper();
@@ -541,7 +541,7 @@ VisiblePosition RenderReplaced::positionForPoint(const LayoutPoint& point)
         return createVisiblePosition(1, DOWNSTREAM);
     }
 
-    return RenderBox::positionForPoint(point);
+    return RenderBox::positionForPoint(point, region);
 }
 
 LayoutRect RenderReplaced::selectionRectForRepaint(const RenderLayerModelObject* repaintContainer, bool clipToVisibleContent)

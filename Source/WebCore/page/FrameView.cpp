@@ -956,10 +956,11 @@ void FrameView::topContentInsetDidChange()
     if (!renderView)
         return;
     
-    // FIXME: <rdar://problem/16642232> This call to updateScrollbars() is not actually sufficient to fix
-    // the scrollbars if the contentInset changes dynamically. 
     layout();
+
     updateScrollbars(scrollOffset());
+    if (renderView->usesCompositing())
+        renderView->compositor().frameViewDidChangeSize();
 }
     
 bool FrameView::hasCompositedContent() const
@@ -1285,7 +1286,7 @@ void FrameView::layout(bool allowSubtree)
         root->layout();
 #if ENABLE(IOS_TEXT_AUTOSIZING)
         float minZoomFontSize = frame().settings().minimumZoomFontSize();
-        float visWidth = frame().page()->mainFrame().textAutosizingWidth();
+        float visWidth = frame().page()->textAutosizingWidth();
         if (minZoomFontSize && visWidth && !root->view().printing()) {
             root->adjustComputedFontSizesOnBlocks(minZoomFontSize, visWidth);    
             bool needsLayout = root->needsLayout();

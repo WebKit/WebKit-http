@@ -44,6 +44,11 @@
 #import <WebCore/SharedBuffer.h>
 #import <WebCore/UserAgent.h>
 
+#if USE(QUICK_LOOK)
+#import "APILoaderClient.h"
+#import <wtf/text/WTFString.h>
+#endif
+
 using namespace WebCore;
 
 namespace WebKit {
@@ -477,7 +482,12 @@ FloatSize WebPageProxy::availableScreenSize()
 {
     return FloatSize(WKGetAvailableScreenSize());
 }
-
+    
+float WebPageProxy::textAutosizingWidth()
+{
+    return WKGetScreenSize().width;
+}
+    
 void WebPageProxy::dynamicViewportUpdateChangedTarget(double newScale, const WebCore::FloatPoint& newScrollPosition)
 {
     m_pageClient.dynamicViewportUpdateChangedTarget(newScale, newScrollPosition);
@@ -488,14 +498,14 @@ void WebPageProxy::didGetTapHighlightGeometries(uint64_t requestID, const WebCor
     m_pageClient.didGetTapHighlightGeometries(requestID, color, highlightedQuads, topLeftRadius, topRightRadius, bottomLeftRadius, bottomRightRadius);
 }
 
-void WebPageProxy::startAssistingNode(const AssistedNodeInformation& information, IPC::MessageDecoder& decoder)
+void WebPageProxy::startAssistingNode(const AssistedNodeInformation& information, bool userIsInteracting, IPC::MessageDecoder& decoder)
 {
     RefPtr<API::Object> userData;
     WebContextUserMessageDecoder messageDecoder(userData, process());
     if (!decoder.decode(messageDecoder))
         return;
 
-    m_pageClient.startAssistingNode(information, userData.get());
+    m_pageClient.startAssistingNode(information, userIsInteracting, userData.get());
 }
 
 void WebPageProxy::stopAssistingNode()
@@ -569,6 +579,21 @@ void WebPageProxy::zoomToRect(FloatRect rect, double minimumScale, double maximu
 {
     m_pageClient.zoomToRect(rect, minimumScale, maximumScale);
 }
+
+#if USE(QUICK_LOOK)
+    
+void WebPageProxy::didStartLoadForQuickLookDocumentInMainFrame(const String& fileName, const String& uti)
+{
+    // Ensure that fileName isn't really a path name
+    static_assert(notFound + 1 == 0, "The following line assumes WTF::notFound equals -1");
+    m_loaderClient->didStartLoadForQuickLookDocumentInMainFrame(fileName.substring(fileName.reverseFind('/') + 1), uti);
+}
+
+void WebPageProxy::didFinishLoadForQuickLookDocumentInMainFrame(const QuickLookDocumentData& data)
+{
+    m_loaderClient->didFinishLoadForQuickLookDocumentInMainFrame(data);
+}
+#endif
 
 } // namespace WebKit
 

@@ -291,7 +291,6 @@
 - (NSView *)_hitTest:(NSPoint *)aPoint dragTypes:(NSSet *)types;
 - (void)_autoscrollForDraggingInfo:(id)dragInfo timeDelta:(NSTimeInterval)repeatDelta;
 - (BOOL)_shouldAutoscrollForDraggingInfo:(id)dragInfo;
-- (void)_windowChangedKeyState;
 @end
 
 @interface NSWindow (WebNSWindowDetails)
@@ -902,6 +901,11 @@ static bool shouldUseLegacyBackgroundSizeShorthandBehavior()
         
         Settings::setShouldRespectPriorityInCSSAttributeSetters(shouldRespectPriorityInCSSAttributeSetters());
 
+#if PLATFORM(IOS)
+        if (applicationIsMobileSafari())
+            Settings::setShouldManageAudioSession(true);
+#endif
+
         didOneTimeInitialization = true;
     }
 
@@ -1323,7 +1327,7 @@ static bool shouldUseLegacyBackgroundSizeShorthandBehavior()
 {
     ASSERT(WebThreadIsCurrent());
     WebKit::MemoryMeasure measurer("Memory warning: Purging inactive font data.");
-    fontCache()->purgeInactiveFontData();
+    fontCache().purgeInactiveFontData();
 }
 
 + (void)drainLayerPool
@@ -2385,7 +2389,7 @@ static bool needsSelfRetainWhileLoadingQuirk()
     settings.setMediaSourceEnabled([preferences mediaSourceEnabled]);
 #endif
 
-#if ENABLE(IMAGE_CONTROLS)
+#if ENABLE(SERVICE_CONTROLS)
     settings.setImageControlsEnabled([preferences imageControlsEnabled]);
 #endif
 
@@ -5222,6 +5226,10 @@ static NSString * const backingPropertyOldScaleFactorKey = @"NSBackingPropertyOl
 - (void)addWindowObserversForWindow:(NSWindow *)window
 {
     if (window) {
+        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(windowKeyStateChanged:)
+            name:NSWindowDidBecomeKeyNotification object:window];
+        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(windowKeyStateChanged:)
+            name:NSWindowDidResignKeyNotification object:window];
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_windowWillOrderOnScreen:)
             name:WKWindowWillOrderOnScreenNotification() object:window];
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_windowWillOrderOffScreen:)
@@ -5245,6 +5253,10 @@ static NSString * const backingPropertyOldScaleFactorKey = @"NSBackingPropertyOl
 {
     NSWindow *window = [self window];
     if (window) {
+        [[NSNotificationCenter defaultCenter] removeObserver:self
+            name:NSWindowDidBecomeKeyNotification object:window];
+        [[NSNotificationCenter defaultCenter] removeObserver:self
+            name:NSWindowDidResignKeyNotification object:window];
         [[NSNotificationCenter defaultCenter] removeObserver:self
             name:WKWindowWillOrderOnScreenNotification() object:window];
         [[NSNotificationCenter defaultCenter] removeObserver:self
@@ -5332,11 +5344,9 @@ static NSString * const backingPropertyOldScaleFactorKey = @"NSBackingPropertyOl
         _private->page->chrome().windowScreenDidChange((PlatformDisplayID)[[[[[self window] screen] deviceDescription] objectForKey:@"NSScreenNumber"] intValue]);
 }
 
-- (void)_windowChangedKeyState
+- (void)windowKeyStateChanged:(NSNotification *)notification
 {
     [self _updateActiveState];
-
-    [super _windowChangedKeyState];
 }
 
 - (void)_windowWillOrderOnScreen:(NSNotification *)notification

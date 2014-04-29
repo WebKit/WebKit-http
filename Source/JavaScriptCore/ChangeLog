@@ -1,3 +1,340 @@
+2014-04-28  Michael Saboff  <msaboff@apple.com>
+
+        REGRESSION(r153142) ASSERT from CodeBlock::dumpBytecode dumping String Switch Jump Tables
+        https://bugs.webkit.org/show_bug.cgi?id=132315
+
+        Reviewed by Mark Hahnenberg.
+
+        Used the StringImpl version of utf8() instead of creating a String first.
+
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::dumpBytecode):
+
+2014-04-28  Filip Pizlo  <fpizlo@apple.com>
+
+        The LLInt is awesome and it should get more of the action.
+
+        Rubber stamped by Geoffrey Garen.
+        
+        5% speed-up on JSBench and no meaningful regressions.  Should be a PLT/DYE speed-up also.
+
+        * runtime/Options.h:
+
+2014-04-27  Filip Pizlo  <fpizlo@apple.com>
+
+        GC should be able to remove things from the DFG worklist and cancel on-going compilations if it knows that the compilation would already be invalidated
+        https://bugs.webkit.org/show_bug.cgi?id=132166
+
+        Reviewed by Oliver Hunt and Mark Hahnenberg.
+        
+        The GC can aid type inference by removing structures that are dead and jettisoning
+        code that relies on those structures. This can dramatically accelerate type inference
+        for some tricky programs.
+        
+        Unfortunately, we previously pinned any structures that enqueued compilations depended
+        on. This means that if you're on a machine that only runs a single compilation thread
+        and where compilations are relatively slow, you have a high chance of large numbers of
+        structures being pinned during any GC since the compilation queue is likely to be full
+        of random stuff.
+        
+        This comprehensively fixes this issue by allowing the GC to remove compilation plans
+        if the things they depend on are dead, and to even cancel safepointed compilations.
+        
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::shouldImmediatelyAssumeLivenessDuringScan):
+        (JSC::CodeBlock::isKnownToBeLiveDuringGC):
+        (JSC::CodeBlock::finalizeUnconditionally):
+        * bytecode/CodeBlock.h:
+        (JSC::CodeBlock::shouldImmediatelyAssumeLivenessDuringScan): Deleted.
+        * dfg/DFGDesiredIdentifiers.cpp:
+        (JSC::DFG::DesiredIdentifiers::DesiredIdentifiers):
+        * dfg/DFGDesiredIdentifiers.h:
+        * dfg/DFGDesiredWatchpoints.h:
+        * dfg/DFGDesiredWeakReferences.cpp:
+        (JSC::DFG::DesiredWeakReferences::DesiredWeakReferences):
+        * dfg/DFGDesiredWeakReferences.h:
+        * dfg/DFGGraphSafepoint.cpp:
+        (JSC::DFG::GraphSafepoint::GraphSafepoint):
+        * dfg/DFGGraphSafepoint.h:
+        * dfg/DFGPlan.cpp:
+        (JSC::DFG::Plan::Plan):
+        (JSC::DFG::Plan::compileInThread):
+        (JSC::DFG::Plan::compileInThreadImpl):
+        (JSC::DFG::Plan::notifyCompiling):
+        (JSC::DFG::Plan::notifyCompiled):
+        (JSC::DFG::Plan::notifyReady):
+        (JSC::DFG::Plan::checkLivenessAndVisitChildren):
+        (JSC::DFG::Plan::isKnownToBeLiveDuringGC):
+        (JSC::DFG::Plan::cancel):
+        (JSC::DFG::Plan::visitChildren): Deleted.
+        * dfg/DFGPlan.h:
+        * dfg/DFGSafepoint.cpp:
+        (JSC::DFG::Safepoint::Result::~Result):
+        (JSC::DFG::Safepoint::Result::didGetCancelled):
+        (JSC::DFG::Safepoint::Safepoint):
+        (JSC::DFG::Safepoint::~Safepoint):
+        (JSC::DFG::Safepoint::checkLivenessAndVisitChildren):
+        (JSC::DFG::Safepoint::isKnownToBeLiveDuringGC):
+        (JSC::DFG::Safepoint::cancel):
+        (JSC::DFG::Safepoint::visitChildren): Deleted.
+        * dfg/DFGSafepoint.h:
+        (JSC::DFG::Safepoint::Result::Result):
+        * dfg/DFGWorklist.cpp:
+        (JSC::DFG::Worklist::compilationState):
+        (JSC::DFG::Worklist::waitUntilAllPlansForVMAreReady):
+        (JSC::DFG::Worklist::removeAllReadyPlansForVM):
+        (JSC::DFG::Worklist::completeAllReadyPlansForVM):
+        (JSC::DFG::Worklist::visitWeakReferences):
+        (JSC::DFG::Worklist::removeDeadPlans):
+        (JSC::DFG::Worklist::runThread):
+        (JSC::DFG::Worklist::visitChildren): Deleted.
+        * dfg/DFGWorklist.h:
+        * ftl/FTLCompile.cpp:
+        (JSC::FTL::compile):
+        * ftl/FTLCompile.h:
+        * heap/CodeBlockSet.cpp:
+        (JSC::CodeBlockSet::rememberCurrentlyExecutingCodeBlocks):
+        * heap/Heap.cpp:
+        (JSC::Heap::markRoots):
+        (JSC::Heap::visitCompilerWorklistWeakReferences):
+        (JSC::Heap::removeDeadCompilerWorklistEntries):
+        (JSC::Heap::visitWeakHandles):
+        (JSC::Heap::collect):
+        (JSC::Heap::visitCompilerWorklists): Deleted.
+        * heap/Heap.h:
+
+2014-04-28  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        Deleting properties poisons objects
+        https://bugs.webkit.org/show_bug.cgi?id=131551
+
+        Reviewed by Oliver Hunt.
+
+        This is ~3% progression on Dromaeo with a ~6% progression on the jslib portion of Dromaeo in particular.
+
+        * runtime/JSPropertyNameIterator.cpp:
+        (JSC::JSPropertyNameIterator::create):
+        * runtime/PropertyMapHashTable.h:
+        (JSC::PropertyTable::hasDeletedOffset):
+        (JSC::PropertyTable::hadDeletedOffset): If we ever had deleted properties we can no longer cache offsets when 
+        iterating properties because we're required to iterate properties in insertion order.
+        * runtime/Structure.cpp:
+        (JSC::Structure::Structure):
+        (JSC::Structure::materializePropertyMap): We now re-use deleted properties when materializing the property map.
+        (JSC::Structure::removePropertyTransition): We allow up to 5 deletes for a particular path through the tree of 
+        Structure transitions. After that, we convert to an uncacheable dictionary like we used to. We don't cache 
+        delete transitions, but we allow transitioning from them.
+        (JSC::Structure::changePrototypeTransition):
+        (JSC::Structure::despecifyFunctionTransition):
+        (JSC::Structure::attributeChangeTransition):
+        (JSC::Structure::toDictionaryTransition):
+        (JSC::Structure::preventExtensionsTransition):
+        (JSC::Structure::addPropertyWithoutTransition):
+        (JSC::Structure::removePropertyWithoutTransition):
+        (JSC::Structure::pin): Now does only what it says it does--marks the property table as pinned.
+        (JSC::Structure::pinAndPreventTransitions): More descriptive version of what the old pin() was doing.
+        * runtime/Structure.h:
+        * runtime/StructureInlines.h:
+        (JSC::Structure::setEnumerationCache):
+        (JSC::Structure::hadDeletedOffsets):
+        (JSC::Structure::propertyTable):
+        (JSC::Structure::checkOffsetConsistency): Rearranged variables to be more sensible.
+        * tests/stress/for-in-after-delete.js: Added.
+        (foo):
+
+2014-04-25  Andreas Kling  <akling@apple.com>
+
+        Inline (C++) GetByVal with numeric indices more aggressively.
+        <https://webkit.org/b/132218>
+
+        We were already inlining the string indexed GetByVal path pretty well,
+        while the path for numeric indices got neglected. No more!
+
+        ~9.5% improvement on Dromaeo/dom-traverse.html on my MBP:
+
+            Before: 199.50 runs/s
+             After: 218.58 runs/s
+
+        Reviewed by Phil Pizlo.
+
+        * dfg/DFGOperations.cpp:
+        * runtime/JSCJSValueInlines.h:
+        (JSC::JSValue::get):
+
+            ALWAYS_INLINE all the things.
+
+        * runtime/JSObject.h:
+        (JSC::JSObject::getPropertySlot):
+
+            Avoid fetching the Structure more than once. We have the same
+            optimization in the string-indexed code path.
+
+2014-04-25  Oliver Hunt  <oliver@apple.com>
+
+        Need earlier cell test
+        https://bugs.webkit.org/show_bug.cgi?id=132211
+
+        Reviewed by Mark Lam.
+
+        Move cell test to before the function call repatch
+        location, as the repatch logic for 32bit assumes that the
+        caller will already have performed a cell check.
+
+        * jit/JITCall32_64.cpp:
+        (JSC::JIT::compileOpCall):
+
+2014-04-25  Andreas Kling  <akling@apple.com>
+
+        Un-fast-allocate JSGlobalObjectRareData because Windows doesn't build and I'm not in the mood.
+
+        * runtime/JSGlobalObject.h:
+        (JSC::JSGlobalObject::JSGlobalObjectRareData::JSGlobalObjectRareData):
+        (JSC::JSGlobalObject::JSGlobalObjectRareData::~JSGlobalObjectRareData): Deleted.
+
+2014-04-25  Andreas Kling  <akling@apple.com>
+
+        Windows build fix attempt.
+
+        * runtime/JSGlobalObject.h:
+        (JSC::JSGlobalObject::JSGlobalObjectRareData::~JSGlobalObjectRareData):
+
+2014-04-25  Mark Lam  <mark.lam@apple.com>
+
+        Refactor debugging code to use BreakpointActions instead of Vector<ScriptBreakpointAction>.
+        <https://webkit.org/b/132201>
+
+        Reviewed by Joseph Pecoraro.
+
+        BreakpointActions is Vector<ScriptBreakpointAction>.  Let's just consistently use
+        BreakpointActions everywhere.
+
+        * inspector/ScriptBreakpoint.h:
+        (Inspector::ScriptBreakpoint::ScriptBreakpoint):
+        * inspector/ScriptDebugServer.cpp:
+        (Inspector::ScriptDebugServer::setBreakpoint):
+        (Inspector::ScriptDebugServer::getActionsForBreakpoint):
+        * inspector/ScriptDebugServer.h:
+        * inspector/agents/InspectorDebuggerAgent.cpp:
+        (Inspector::InspectorDebuggerAgent::breakpointActionsFromProtocol):
+        (Inspector::InspectorDebuggerAgent::setBreakpointByUrl):
+        (Inspector::InspectorDebuggerAgent::setBreakpoint):
+        (Inspector::InspectorDebuggerAgent::removeBreakpoint):
+        * inspector/agents/InspectorDebuggerAgent.h:
+
+2014-04-24  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG worklist scanning should not treat the key as a separate entity
+        https://bugs.webkit.org/show_bug.cgi?id=132167
+
+        Reviewed by Mark Hahnenberg.
+        
+        This simplifies the interface to the GC and will enable more optimizations.
+
+        * dfg/DFGCompilationKey.cpp:
+        (JSC::DFG::CompilationKey::visitChildren): Deleted.
+        * dfg/DFGCompilationKey.h:
+        * dfg/DFGPlan.cpp:
+        (JSC::DFG::Plan::visitChildren):
+        * dfg/DFGWorklist.cpp:
+        (JSC::DFG::Worklist::visitChildren):
+
+2014-04-25  Oliver Hunt  <oliver@apple.com>
+
+        Remove unused parameter from codeblock linking function
+        https://bugs.webkit.org/show_bug.cgi?id=132199
+
+        Reviewed by Anders Carlsson.
+
+        No change in behaviour. This is just a small change to make it
+        slightly easier to reason about what the offsets in UnlinkedFunctionExecutable
+        actually mean.
+
+        * bytecode/UnlinkedCodeBlock.cpp:
+        (JSC::UnlinkedFunctionExecutable::link):
+        * bytecode/UnlinkedCodeBlock.h:
+        * runtime/Executable.cpp:
+        (JSC::ProgramExecutable::initializeGlobalProperties):
+
+2014-04-25  Andreas Kling  <akling@apple.com>
+
+        Mark some things with WTF_MAKE_FAST_ALLOCATED.
+        <https://webkit.org/b/132198>
+
+        Use FastMalloc for more things.
+
+        Reviewed by Anders Carlsson.
+
+        * builtins/BuiltinExecutables.h:
+        * heap/GCThreadSharedData.h:
+        * inspector/JSConsoleClient.h:
+        * inspector/agents/InspectorAgent.h:
+        * runtime/CodeCache.h:
+        * runtime/JSGlobalObject.h:
+        * runtime/Lookup.cpp:
+        (JSC::HashTable::createTable):
+        (JSC::HashTable::deleteTable):
+        * runtime/WeakGCMap.h:
+
+2014-04-25  Antoine Quint  <graouts@webkit.org>
+
+        Implement Array.prototype.find()
+        https://bugs.webkit.org/show_bug.cgi?id=130966
+
+        Reviewed by Oliver Hunt.
+
+        Implement Array.prototype.find() and Array.prototype.findIndex() as proposed in the Harmony spec.
+
+        * builtins/Array.prototype.js:
+        (find):
+        (findIndex):
+        * runtime/ArrayPrototype.cpp:
+
+2014-04-24  Brady Eidson  <beidson@apple.com>
+
+        Rename "IMAGE_CONTROLS" feature to "SERVICE_CONTROLS"
+        https://bugs.webkit.org/show_bug.cgi?id=132155
+
+        Reviewed by Tim Horton.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2014-04-24  Michael Saboff  <msaboff@apple.com>
+
+        REGRESSION: Apparent hang of PCE.js Mac OS System 7.0.1 on ARM64 devices
+        https://bugs.webkit.org/show_bug.cgi?id=132147
+
+        Reviewed by Mark Lam.
+
+        Fixed or64(), eor32( ) and eor64() to use "src" register when we have a valid logicalImm.
+
+        * assembler/MacroAssemblerARM64.h:
+        (JSC::MacroAssemblerARM64::or64):
+        (JSC::MacroAssemblerARM64::xor32):
+        (JSC::MacroAssemblerARM64::xor64):
+        * tests/stress/regress-132147.js: Added test.
+
+2014-04-24  Mark Lam  <mark.lam@apple.com>
+
+        Make slowPathAllocsBetweenGCs a runtime option.
+        <https://webkit.org/b/132137>
+
+        Reviewed by Mark Hahnenberg.
+
+        This will make it easier to more casually run tests with this configuration
+        as well as to reproduce issues (instead of requiring a code mod and rebuild).
+        We will now take --slowPathAllocsBetweenGCs=N where N is the number of
+        slow path allocations before we trigger a collection.
+
+        The option defaults to 0, which is reserved to mean that we will not trigger
+        any collections there.
+
+        * heap/Heap.h:
+        * heap/MarkedAllocator.cpp:
+        (JSC::MarkedAllocator::doTestCollectionsIfNeeded):
+        (JSC::MarkedAllocator::allocateSlowCase):
+        * heap/MarkedAllocator.h:
+        * runtime/Options.h:
+
 2014-04-23  Mark Lam  <mark.lam@apple.com>
 
         The GC should only resume compiler threads that it suspended in the same GC pass.

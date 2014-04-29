@@ -1421,7 +1421,7 @@ PassRefPtr<Range> Document::caretRangeFromPoint(int x, int y)
     RenderObject* renderer = node->renderer();
     if (!renderer)
         return nullptr;
-    VisiblePosition visiblePosition = renderer->positionForPoint(localPoint);
+    VisiblePosition visiblePosition = renderer->positionForPoint(localPoint, nullptr);
     if (visiblePosition.isNull())
         return nullptr;
 
@@ -2824,14 +2824,15 @@ void Document::processHttpEquiv(const String& equiv, const String& content)
         styleResolverChanged(DeferRecalcStyle);
     } else if (equalIgnoringCase(equiv, "refresh")) {
         double delay;
-        String url;
-        if (frame && parseHTTPRefresh(content, true, delay, url)) {
-            if (url.isEmpty())
-                url = m_url.string();
+        String urlString;
+        if (frame && parseHTTPRefresh(content, true, delay, urlString)) {
+            URL completedURL;
+            if (urlString.isEmpty())
+                completedURL = m_url;
             else
-                url = completeURL(url).string();
-            if (!protocolIsJavaScript(url))
-                frame->navigationScheduler().scheduleRedirect(delay, url);
+                completedURL = completeURL(urlString);
+            if (!protocolIsJavaScript(completedURL))
+                frame->navigationScheduler().scheduleRedirect(delay, completedURL);
             else {
                 String message = "Refused to refresh " + m_url.stringCenterEllipsizedToLength() + " to a javascript: URL";
                 addConsoleMessage(MessageSource::Security, MessageLevel::Error, message);
@@ -5363,6 +5364,9 @@ void Document::webkitWillEnterFullScreenForElement(Element* element)
         m_savedPlaceholderRenderStyle = RenderStyle::clone(&renderer->style());
     }
 
+    if (m_fullScreenElement != documentElement())
+        RenderFullScreen::wrapRenderer(renderer, renderer ? renderer->parent() : nullptr, *this);
+
     m_fullScreenElement->setContainsFullScreenElementOnAncestorsCrossingFrameBoundaries(true);
     
     recalcStyle(Style::Force);
@@ -5427,10 +5431,10 @@ void Document::setFullScreenRenderer(RenderFullScreen* renderer)
         return;
 
     if (renderer && m_savedPlaceholderRenderStyle) 
-        renderer->setPlaceholderStyle(m_savedPlaceholderRenderStyle.releaseNonNull(), m_savedPlaceholderFrameRect);
+        renderer->createPlaceholder(m_savedPlaceholderRenderStyle.releaseNonNull(), m_savedPlaceholderFrameRect);
     else if (renderer && m_fullScreenRenderer && m_fullScreenRenderer->placeholder()) {
         RenderBlock* placeholder = m_fullScreenRenderer->placeholder();
-        renderer->setPlaceholderStyle(RenderStyle::clone(&placeholder->style()), placeholder->frameRect());
+        renderer->createPlaceholder(RenderStyle::clone(&placeholder->style()), placeholder->frameRect());
     }
 
     if (m_fullScreenRenderer)

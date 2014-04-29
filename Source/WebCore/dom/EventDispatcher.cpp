@@ -88,7 +88,7 @@ public:
     EventContext& contextAt(size_t i) { return *m_path[i]; }
 
 #if ENABLE(TOUCH_EVENTS)
-    void updateTouchLists(const TouchEvent&);
+    bool updateTouchLists(const TouchEvent&);
 #endif
     void setRelatedTarget(Node& origin, EventTarget&);
 
@@ -262,6 +262,9 @@ void EventDispatcher::dispatchSimulatedClick(Element* element, Event* underlying
 
 static void callDefaultEventHandlersInTheBubblingOrder(Event& event, const EventPath& path)
 {
+    if (path.isEmpty())
+        return;
+
     // Non-bubbling events call only one default event handler, the one for the target.
     path.contextAt(0).node()->defaultEventHandler(&event);
     ASSERT(!event.defaultPrevented());
@@ -339,8 +342,10 @@ bool EventDispatcher::dispatchEvent(Node* origin, PassRefPtr<Event> prpEvent)
     if (EventTarget* relatedTarget = event->relatedTarget())
         eventPath.setRelatedTarget(*node, *relatedTarget);
 #if ENABLE(TOUCH_EVENTS) && !PLATFORM(IOS)
-    if (event->isTouchEvent())
-        eventPath.updateTouchLists(*toTouchEvent(event.get()));
+    if (event->isTouchEvent()) {
+        if (!eventPath.updateTouchLists(*toTouchEvent(event.get())))
+            return true;
+    }
 #endif
 
     ChildNodesLazySnapshot::takeChildNodesLazySnapshot();
@@ -459,8 +464,11 @@ static void addRelatedNodeResolversForTouchList(Vector<EventRelatedNodeResolver,
         touchTargetResolvers.append(EventRelatedNodeResolver(*touchList->item(i), type));
 }
 
-void EventPath::updateTouchLists(const TouchEvent& touchEvent)
+bool EventPath::updateTouchLists(const TouchEvent& touchEvent)
 {
+    if (!touchEvent.touches() || !touchEvent.targetTouches() || !touchEvent.changedTouches())
+        return false;
+    
     Vector<EventRelatedNodeResolver, 16> touchTargetResolvers;
     const size_t touchNodeCount = touchEvent.touches()->length() + touchEvent.targetTouches()->length() + touchEvent.changedTouches()->length();
     touchTargetResolvers.reserveInitialCapacity(touchNodeCount);
@@ -481,6 +489,7 @@ void EventPath::updateTouchLists(const TouchEvent& touchEvent)
             context.touchList(currentResolver.touchListType())->append(currentResolver.touch()->cloneWithNewTarget(nodeInCurrentTreeScope));
         }
     }
+    return true;
 }
 #endif
 

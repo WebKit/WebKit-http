@@ -119,6 +119,14 @@ public:
     
     void paintColumnRules(PaintInfo&, const LayoutPoint& paintOffset);
 
+    enum ColumnHitTestTranslationMode {
+        ClampHitTestTranslationToColumns,
+        DoNotClampHitTestTranslationToColumns
+    };
+    LayoutPoint translateRegionPointToFlowThread(const LayoutPoint & logicalPoint, ColumnHitTestTranslationMode = DoNotClampHitTestTranslationToColumns) const;
+
+    virtual void updateHitTestResult(HitTestResult&, const LayoutPoint&) override;
+    
 protected:
     void addOverflowFromChildren() override;
     
@@ -142,7 +150,7 @@ private:
 
     virtual void adjustRegionBoundsFromFlowThreadPortionRect(const LayoutPoint& layerOffset, LayoutRect& regionBounds) override;
 
-    virtual VisiblePosition positionForPoint(const LayoutPoint&) override;
+    virtual VisiblePosition positionForPoint(const LayoutPoint&, const RenderRegion*) override;
 
     virtual const char* renderName() const;
 

@@ -59,8 +59,8 @@
 #include <WebCore/ViewState.h>
 #include <WebCore/ViewportConfiguration.h>
 #include <WebCore/WebCoreKeyboardUIMode.h>
+#include <memory>
 #include <wtf/HashMap.h>
-#include <wtf/OwnPtr.h>
 #include <wtf/PassRefPtr.h>
 #include <wtf/RefPtr.h>
 #include <wtf/text/WTFString.h>
@@ -140,6 +140,7 @@ class NotificationPermissionRequestManager;
 class PageBanner;
 class PageOverlay;
 class PluginView;
+class SelectionOverlayController;
 class SessionState;
 class VisibleContentRectUpdateInfo;
 class WebColorChooser;
@@ -443,6 +444,7 @@ public:
     WebCore::FloatSize availableScreenSize() const;
     void viewportPropertiesDidChange(const WebCore::ViewportArguments&);
     void didReceiveMobileDocType(bool);
+    void restorePageState(double scale, const WebCore::IntPoint& origin);
 
     double minimumPageScaleFactor() const;
     double maximumPageScaleFactor() const;
@@ -477,6 +479,7 @@ public:
     void setAssistedNodeValueAsNumber(double);
     void setAssistedNodeSelectedIndex(uint32_t index, bool allowMultipleSelection);
     WebCore::IntRect rectForElementAtInteractionLocation();
+    void updateSelectionAppearance();
 
     void dispatchAsynchronousTouchEvents(const Vector<WebTouchEvent, 1>& queue);
 #if ENABLE(INSPECTOR)
@@ -771,7 +774,7 @@ public:
 
     void getBytecodeProfile(uint64_t callbackID);
 
-#if ENABLE(IMAGE_CONTROLS)
+#if ENABLE(SERVICE_CONTROLS)
     void replaceControlledImage(const ShareableBitmap::Handle&);
 #endif
     
@@ -782,6 +785,10 @@ public:
 #if ENABLE(TELEPHONE_NUMBER_DETECTION)
     TelephoneNumberOverlayController& telephoneNumberOverlayController();
     void handleTelephoneNumberClick(const String& number, const WebCore::IntPoint&);
+#endif
+#if ENABLE(SERVICE_CONTROLS)
+    SelectionOverlayController& selectionOverlayController();
+    bool serviceControlsEnabled() const { return m_serviceControlsEnabled; }
 #endif
 
     void didChangeScrollOffsetForFrame(WebCore::Frame*);
@@ -989,7 +996,7 @@ private:
 
     uint64_t m_pageID;
 
-    OwnPtr<WebCore::Page> m_page;
+    std::unique_ptr<WebCore::Page> m_page;
     RefPtr<WebFrame> m_mainFrame;
     RefPtr<InjectedBundleBackForwardList> m_backForwardList;
 
@@ -1033,6 +1040,10 @@ private:
     String m_primaryPlugInOrigin;
     String m_primaryPlugInMimeType;
     RunLoop::Timer<WebPage> m_determinePrimarySnapshottedPlugInTimer;
+#endif
+
+#if ENABLE(SERVICE_CONTROLS)
+    bool m_serviceControlsEnabled;
 #endif
 
     // The layer hosting mode.
@@ -1120,7 +1131,7 @@ private:
     GeolocationPermissionRequestManager m_geolocationPermissionRequestManager;
 #endif
 
-    OwnPtr<WebCore::PrintContext> m_printContext;
+    std::unique_ptr<WebCore::PrintContext> m_printContext;
 #if PLATFORM(GTK)
     RefPtr<WebPrintOperationGtk> m_printOperation;
 #endif
@@ -1162,6 +1173,7 @@ private:
     bool m_hasReceivedVisibleContentRectsAfterDidCommitLoad;
     bool m_scaleWasSetByUIProcess;
     bool m_userHasChangedPageScaleFactor;
+    bool m_userIsInteracting;
     WebCore::FloatSize m_screenSize;
     WebCore::FloatSize m_availableScreenSize;
     WebCore::IntSize m_blockSelectionDesiredSize;
@@ -1198,6 +1210,9 @@ private:
 
 #if ENABLE(TELEPHONE_NUMBER_DETECTION)
     RefPtr<TelephoneNumberOverlayController> m_telephoneNumberOverlayController;
+#endif
+#if ENABLE(SERVICE_CONTROLS)
+    RefPtr<SelectionOverlayController> m_selectionOverlayController;
 #endif
 
     PageOverlayController m_pageOverlayController;

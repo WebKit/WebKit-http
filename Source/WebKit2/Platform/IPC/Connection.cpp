@@ -26,6 +26,7 @@
 #include "config.h"
 #include "Connection.h"
 
+#include <memory>
 #include <wtf/CurrentTime.h>
 #include <wtf/HashSet.h>
 #include <wtf/NeverDestroyed.h>
@@ -277,7 +278,7 @@ void Connection::removeWorkQueueMessageReceiver(StringReference messageReceiverN
 
 void Connection::dispatchWorkQueueMessageReceiverMessage(WorkQueueMessageReceiver* workQueueMessageReceiver, MessageDecoder* incomingMessageDecoder)
 {
-    OwnPtr<MessageDecoder> decoder = adoptPtr(incomingMessageDecoder);
+    std::unique_ptr<MessageDecoder> decoder(incomingMessageDecoder);
 
     if (!decoder->isSyncMessage()) {
         workQueueMessageReceiver->didReceiveMessage(this, *decoder);
@@ -793,6 +794,8 @@ void Connection::dispatchMessage(std::unique_ptr<MessageDecoder> message)
     m_didReceiveInvalidMessage |= message->isInvalid();
     m_inDispatchMessageCount--;
 
+    // FIXME: For Delayed synchronous messages, we should not decrement the counter until we send a response.
+    // Otherwise, we would deadlock if processing the message results in a sync message back after we exit this function.
     if (message->shouldDispatchMessageWhenWaitingForSyncReply())
         m_inDispatchMessageMarkedDispatchWhenWaitingForSyncReplyCount--;
 

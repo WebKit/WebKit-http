@@ -108,22 +108,11 @@ static const float tapAndHoldDelay  = 0.75;
 
 @end
 
-@interface WKAutocorrectionRects : UIWKAutocorrectionRects {
-    CGRect _firstRect;
-    CGRect _lastRect;
-}
+@interface WKAutocorrectionRects : UIWKAutocorrectionRects
 + (WKAutocorrectionRects *)autocorrectionRectsWithRects:(CGRect)firstRect lastRect:(CGRect)lastRect;
-
 @end
 
-@interface WKAutocorrectionContext : UIWKAutocorrectionContext {
-    NSString *_contextBeforeSelection;
-    NSString *_selectedText;
-    NSString *_markedText;
-    NSString *_contextAfterSelection;
-    NSRange _rangeInMarkedText;
-}
-
+@interface WKAutocorrectionContext : UIWKAutocorrectionContext
 + (WKAutocorrectionContext *)autocorrectionContextWithData:(NSString *)beforeText markedText:(NSString *)markedText selectedText:(NSString *)selectedText afterText:(NSString *)afterText selectedRangeInMarkedText:(NSRange)range;
 @end
 
@@ -1979,8 +1968,11 @@ static UITextAutocapitalizationType toUITextAutocapitalize(WebAutocapitalizeType
     return _formAccessoryView.get();
 }
 
-- (void)_startAssistingNode:(const AssistedNodeInformation&)information userObject:(NSObject <NSSecureCoding> *)userObject
+- (void)_startAssistingNode:(const AssistedNodeInformation&)information userIsInteracting:(BOOL)userIsInteracting userObject:(NSObject <NSSecureCoding> *)userObject
 {
+    if (!userIsInteracting && !_textSelectionAssistant)
+        return;
+
     _isEditable = YES;
     _assistedNodeInformation = information;
     _inputPeripheral = nil;

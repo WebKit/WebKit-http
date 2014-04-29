@@ -40,6 +40,7 @@ namespace WebKit {
 
 ViewSnapshotStore::ViewSnapshotStore()
     : m_enabled(true)
+    , m_snapshotsWithImagesCount(0)
 {
 }
 
@@ -55,12 +56,12 @@ ViewSnapshotStore& ViewSnapshotStore::shared()
 
 void ViewSnapshotStore::pruneSnapshots(WebPageProxy& webPageProxy)
 {
-    if (m_snapshotMap.size() <= maximumSnapshotCount)
+    if (m_snapshotsWithImagesCount <= maximumSnapshotCount)
         return;
 
     uint32_t currentIndex = webPageProxy.backForwardList().currentIndex();
     uint32_t maxDistance = 0;
-    WebBackForwardListItem* mostDistantSnapshottedItem = nullptr;
+    auto mostDistantSnapshotIter = m_snapshotMap.end();
     auto backForwardEntries = webPageProxy.backForwardList().entries();
 
     // First, try to evict the snapshot for the page farthest from the current back-forward item.
@@ -72,14 +73,24 @@ void ViewSnapshotStore::pruneSnapshots(WebPageProxy& webPageProxy)
 
         WebBackForwardListItem* item = backForwardEntries[i].get();
         String snapshotUUID = item->snapshotUUID();
-        if (!snapshotUUID.isEmpty() && m_snapshotMap.contains(snapshotUUID)) {
-            mostDistantSnapshottedItem = item;
-            maxDistance = distance;
-        }
+        if (snapshotUUID.isEmpty())
+            continue;
+
+        const auto& snapshotIter = m_snapshotMap.find(snapshotUUID);
+        if (snapshotIter == m_snapshotMap.end())
+            continue;
+
+        // We're only interested in evicting snapshots that still have images.
+        if (!snapshotIter->value.hasImage())
+            continue;
+
+        mostDistantSnapshotIter = snapshotIter;
+        maxDistance = distance;
     }
 
-    if (mostDistantSnapshottedItem) {
-        m_snapshotMap.remove(mostDistantSnapshottedItem->snapshotUUID());
+    if (mostDistantSnapshotIter != m_snapshotMap.end()) {
+        mostDistantSnapshotIter->value.clearImage();
+        m_snapshotsWithImagesCount--;
         return;
     }
 
@@ -89,13 +100,15 @@ void ViewSnapshotStore::pruneSnapshots(WebPageProxy& webPageProxy)
     String oldestSnapshotUUID;
 
     for (const auto& uuidAndSnapshot : m_snapshotMap) {
-        if (uuidAndSnapshot.value.creationTime < oldestSnapshotTime) {
+        if (uuidAndSnapshot.value.creationTime < oldestSnapshotTime && uuidAndSnapshot.value.hasImage()) {
             oldestSnapshotTime = uuidAndSnapshot.value.creationTime;
             oldestSnapshotUUID = uuidAndSnapshot.key;
         }
     }
 
-    m_snapshotMap.remove(oldestSnapshotUUID);
+    const auto& snapshotIter = m_snapshotMap.find(oldestSnapshotUUID);
+    snapshotIter->value.clearImage();
+    m_snapshotsWithImagesCount--;
 }
 
 #if USE(IOSURFACE)
@@ -131,14 +144,20 @@ void ViewSnapshotStore::recordSnapshot(WebPageProxy& webPageProxy)
 
     String oldSnapshotUUID = item->snapshotUUID();
     if (!oldSnapshotUUID.isEmpty()) {
-        m_snapshotMap.remove(oldSnapshotUUID);
-        m_renderTreeSizeMap.remove(oldSnapshotUUID);
+        const auto& oldSnapshotIter = m_snapshotMap.find(oldSnapshotUUID);
+        if (oldSnapshotIter != m_snapshotMap.end()) {
+            if (oldSnapshotIter->value.hasImage())
+                m_snapshotsWithImagesCount--;
+            m_snapshotMap.remove(oldSnapshotIter);
+        }
     }
 
     item->setSnapshotUUID(createCanonicalUUIDString());
     
     Snapshot snapshot;
     snapshot.creationTime = std::chrono::steady_clock::now();
+    snapshot.renderTreeSize = webPageProxy.renderTreeSize();
+    snapshot.deviceScaleFactor = webPageProxy.deviceScaleFactor();
 
 #if USE(IOSURFACE)
     snapshot.surface = createIOSurfaceFromImage(snapshotImage.get());
@@ -148,31 +167,38 @@ void ViewSnapshotStore::recordSnapshot(WebPageProxy& webPageProxy)
 #endif
 
     m_snapshotMap.add(item->snapshotUUID(), snapshot);
-    m_renderTreeSizeMap.add(item->snapshotUUID(), webPageProxy.renderTreeSize());
+
+    if (snapshot.hasImage())
+        m_snapshotsWithImagesCount++;
 }
 
-#if USE(IOSURFACE)
-std::pair<RefPtr<IOSurface>, uint64_t> ViewSnapshotStore::snapshotAndRenderTreeSize(WebBackForwardListItem* item)
-#else
-std::pair<RetainPtr<CGImageRef>, uint64_t> ViewSnapshotStore::snapshotAndRenderTreeSize(WebBackForwardListItem* item)
-#endif
+bool ViewSnapshotStore::getSnapshot(WebBackForwardListItem* item, ViewSnapshotStore::Snapshot& snapshot)
 {
     if (item->snapshotUUID().isEmpty())
-        return std::make_pair(nullptr, 0);
+        return false;
 
-    const auto& renderTreeSize = m_renderTreeSizeMap.find(item->snapshotUUID());
-    if (renderTreeSize == m_renderTreeSizeMap.end())
-        return std::make_pair(nullptr, 0);
+    const auto& snapshotIterator = m_snapshotMap.find(item->snapshotUUID());
+    if (snapshotIterator == m_snapshotMap.end())
+        return false;
+    snapshot = snapshotIterator->value;
+    return true;
+}
 
-    const auto& snapshot = m_snapshotMap.find(item->snapshotUUID());
-
-    if (snapshot == m_snapshotMap.end())
-        return std::make_pair(nullptr, renderTreeSize->value);
-    
+void ViewSnapshotStore::Snapshot::clearImage()
+{
 #if USE(IOSURFACE)
-    return std::make_pair(snapshot->value.surface, renderTreeSize->value);
+    surface = nullptr;
 #else
-    return std::make_pair(snapshot->value.image, renderTreeSize->value);
+    image = nullptr;
+#endif
+}
+
+bool ViewSnapshotStore::Snapshot::hasImage() const
+{
+#if USE(IOSURFACE)
+    return surface;
+#else
+    return image;
 #endif
 }
 
