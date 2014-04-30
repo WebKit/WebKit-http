@@ -151,7 +151,7 @@ endif ()
 # -----------------------------------------------------------------------------
 # Install JavaScript shell
 # -----------------------------------------------------------------------------
-option(SHOULD_INSTALL_JS_SHELL "generate an installation rule to install the built JavaScript shell")
+option(SHOULD_INSTALL_JS_SHELL "generate an installation rule to install the built JavaScript shell" ${SHOULD_INSTALL_JSC_SHELL})
 
 # -----------------------------------------------------------------------------
 # Add module directories
