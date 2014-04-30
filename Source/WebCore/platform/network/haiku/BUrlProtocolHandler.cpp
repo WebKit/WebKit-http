@@ -206,15 +206,15 @@ BUrlProtocolHandler::BUrlProtocolHandler(NetworkingContext* context,
 
 BUrlProtocolHandler::~BUrlProtocolHandler()
 {
+    abort();
     delete m_request;
 }
 
 void BUrlProtocolHandler::abort()
 {
-    if (m_resourceHandle == NULL || m_request == NULL)
-        return;
+    if (m_resourceHandle != NULL && m_request != NULL)
+        m_request->Stop();
 
-    m_request->Stop();
     m_resourceHandle = NULL;
 }
 
@@ -445,8 +445,6 @@ void BUrlProtocolHandler::HeadersReceived(BUrlRequest* /*caller*/)
 
 void BUrlProtocolHandler::DataReceived(BUrlRequest* /*caller*/, const char* data, off_t position, ssize_t size)
 {
-    sendResponseIfNeeded();
-
     // don't emit the "Document has moved here" type of HTML
     if (m_redirected)
         return;
@@ -457,6 +455,8 @@ void BUrlProtocolHandler::DataReceived(BUrlRequest* /*caller*/, const char* data
     ResourceHandleClient* client = m_resourceHandle->client();
     if (!client)
         return;
+
+    sendResponseIfNeeded();
 
     if (size > 0) {
         m_responseDataSent = true;
