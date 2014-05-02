@@ -733,7 +733,12 @@ void WebFrameLoaderClient::dispatchDecidePolicyForNavigationAction(const Navigat
     RefPtr<WebFrame> originatingFrame;
     switch (action->navigationType()) {
     case NavigationTypeLinkClicked:
-        originatingFrame = action->hitTestResult()->frame();
+        if (EventTarget* target = navigationAction.event()->target()) {
+            if (Node* node = target->toNode()) {
+                if (Frame* frame = node->document().frame())
+                    originatingFrame = WebFrame::fromCoreFrame(*frame);
+            }
+        }
         break;
     case NavigationTypeFormSubmitted:
     case NavigationTypeFormResubmitted:
@@ -1398,24 +1403,6 @@ PassRefPtr<Widget> WebFrameLoaderClient::createJavaAppletWidget(const IntSize& p
     return 0;
 #endif
 }
-
-#if ENABLE(PLUGIN_PROXY_FOR_VIDEO)
-PassRefPtr<Widget> WebFrameLoaderClient::createMediaPlayerProxyPlugin(const IntSize&, HTMLMediaElement*, const URL&, const Vector<String>&, const Vector<String>&, const String&)
-{
-    notImplemented();
-    return 0;
-}
-
-void WebFrameLoaderClient::hideMediaPlayerProxyPlugin(Widget*)
-{
-    notImplemented();
-}
-
-void WebFrameLoaderClient::showMediaPlayerProxyPlugin(Widget*)
-{
-    notImplemented();
-}
-#endif
 
 static bool pluginSupportsExtension(const PluginData& pluginData, const String& extension)
 {

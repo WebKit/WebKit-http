@@ -59,11 +59,7 @@
 #endif
 
 #if PLATFORM(COCOA)
-#if PLATFORM(IOS)
-#include "MediaPlayerPrivateIOS.h"
-#else
 #include "MediaPlayerPrivateQTKit.h"
-#endif
 #if USE(AVFOUNDATION)
 #include "MediaPlayerPrivateAVFoundationObjC.h"
 #if ENABLE(MEDIA_SOURCE)
@@ -147,12 +143,6 @@ public:
     virtual bool canLoadPoster() const { return false; }
     virtual void setPoster(const String&) { }
 
-#if ENABLE(PLUGIN_PROXY_FOR_VIDEO)
-    virtual void deliverNotification(MediaPlayerProxyNotificationType) { }
-    virtual void setMediaPlayerProxy(WebMediaPlayerProxy*) { }
-    virtual void setControls(bool) { }
-#endif
-
     virtual bool hasSingleSecurityOrigin() const { return true; }
 
 #if ENABLE(ENCRYPTED_MEDIA)
@@ -215,11 +205,6 @@ static Vector<MediaPlayerFactory*>& installedMediaEngines(RequeryEngineOptions r
         return installedEngines;
 
     enginesQueried = true;
-
-#if ENABLE(PLUGIN_PROXY_FOR_VIDEO)
-    if (Settings::isVideoPluginProxyEnabled())
-        MediaPlayerPrivateIOS::registerMediaEngine(addMediaEngine);
-#endif
 
 #if USE(AVFOUNDATION)
     if (Settings::isAVFoundationEnabled()) {
@@ -343,19 +328,7 @@ MediaPlayer::MediaPlayer(MediaPlayerClient* client)
     , m_privateBrowsing(false)
     , m_shouldPrepareToRender(false)
     , m_contentMIMETypeWasInferredFromExtension(false)
-#if ENABLE(PLUGIN_PROXY_FOR_VIDEO)
-    , m_playerProxy(0)
-#endif
 {
-#if ENABLE(PLUGIN_PROXY_FOR_VIDEO)
-    Vector<MediaPlayerFactory*>& engines = installedMediaEngines();
-    if (Settings::isVideoPluginProxyEnabled() && !engines.isEmpty()) {
-        m_currentMediaEngine = engines[0];
-        m_private = engines[0]->constructor(this);
-        if (m_mediaPlayerClient)
-            m_mediaPlayerClient->mediaPlayerEngineUpdated(this);
-    }
-#endif
 }
 
 MediaPlayer::~MediaPlayer()
@@ -449,9 +422,6 @@ void MediaPlayer::loadWithNextMediaEngine(MediaPlayerFactory* current)
         m_private = engine->constructor(this);
         if (m_mediaPlayerClient)
             m_mediaPlayerClient->mediaPlayerEngineUpdated(this);
-#if ENABLE(PLUGIN_PROXY_FOR_VIDEO)
-        m_private->setMediaPlayerProxy(m_playerProxy);
-#endif
         m_private->setPrivateBrowsingMode(m_privateBrowsing);
         m_private->setPreload(m_preload);
         m_private->setPreservesPitch(preservesPitch());
@@ -860,25 +830,7 @@ bool MediaPlayer::isAvailable()
     return !installedMediaEngines().isEmpty();
 } 
 
-#if ENABLE(PLUGIN_PROXY_FOR_VIDEO)
-void MediaPlayer::deliverNotification(MediaPlayerProxyNotificationType notification)
-{
-    m_private->deliverNotification(notification);
-}
-
-void MediaPlayer::setMediaPlayerProxy(WebMediaPlayerProxy* proxy)
-{
-    m_playerProxy = proxy;
-    m_private->setMediaPlayerProxy(proxy);
-}
-
-void MediaPlayer::setControls(bool controls)
-{
-    m_private->setControls(controls);
-}
-#endif
-
-#if ENABLE(PLUGIN_PROXY_FOR_VIDEO) || USE(NATIVE_FULLSCREEN_VIDEO)
+#if USE(NATIVE_FULLSCREEN_VIDEO)
 void MediaPlayer::enterFullscreen()
 {
     m_private->enterFullscreen();

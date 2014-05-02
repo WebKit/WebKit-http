@@ -73,11 +73,6 @@
 #include "RenderScrollbar.h"
 #endif
 
-#if ENABLE(PLUGIN_PROXY_FOR_VIDEO)
-#include "HTMLAudioElement.h"
-#include "HTMLMediaElement.h"
-#endif
-
 #ifndef NDEBUG
 #include "RenderTreeAsText.h"
 #endif
@@ -1572,12 +1567,6 @@ void RenderLayerCompositor::updateScrollLayerPosition()
     FrameView& frameView = m_renderView.frameView();
     IntPoint scrollPosition = frameView.scrollPosition();
 
-    const Settings& settings = m_renderView.frameView().frame().settings();
-    if (settings.compositedScrollingForFramesEnabled()) {
-        if (ScrollingCoordinator* scrollingCoordinator = this->scrollingCoordinator())
-            scrollingCoordinator->scrollableAreaScrollLayerDidChange(&frameView);
-    }
-
     m_scrollLayer->setPosition(FloatPoint(-scrollPosition.x(), -scrollPosition.y()));
 
     if (GraphicsLayer* fixedBackgroundLayer = fixedRootBackgroundLayer())
@@ -2065,8 +2054,7 @@ bool RenderLayerCompositor::canBeComposited(const RenderLayer& layer) const
         if (layer.isRenderFlowThread())
             return false;
 
-        // A faster way of saying layer.enclosingFlowThreadLayer()->isFlowThreadCollectingGraphicsLayersUnderRegions()
-        return layer.isInsideOutOfFlowThread();
+        return true;
     }
     return false;
 }
@@ -2363,19 +2351,6 @@ bool RenderLayerCompositor::requiresCompositingForVideo(RenderLayerModelObject& 
         RenderVideo& video = toRenderVideo(renderer);
         return (video.requiresImmediateCompositing() || video.shouldDisplayVideo()) && canAccelerateVideoRendering(video);
     }
-#if ENABLE(PLUGIN_PROXY_FOR_VIDEO)
-    if (renderer.isWidget()) {
-        if (!m_hasAcceleratedCompositing)
-            return false;
-
-        Element* element = renderer.element();
-        if (!element || (!isHTMLVideoElement(element) && !isHTMLAudioElement(element)))
-            return false;
-
-        HTMLMediaElement* mediaElement = toHTMLMediaElement(element);
-        return mediaElement->player() ? mediaElement->player()->supportsAcceleratedRendering() : false;
-    }
-#endif // ENABLE(PLUGIN_PROXY_FOR_VIDEO)
 #else
     UNUSED_PARAM(renderer);
 #endif

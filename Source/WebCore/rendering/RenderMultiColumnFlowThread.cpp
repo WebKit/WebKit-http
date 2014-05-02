@@ -36,6 +36,8 @@
 
 namespace WebCore {
 
+bool RenderMultiColumnFlowThread::gShiftingSpanner = false;
+
 RenderMultiColumnFlowThread::RenderMultiColumnFlowThread(Document& document, PassRef<RenderStyle> style)
     : RenderFlowThread(document, std::move(style))
     , m_lastSetWorkedOn(nullptr)
@@ -274,7 +276,7 @@ static bool isValidColumnSpanner(RenderMultiColumnFlowThread* flowThread, Render
 
 void RenderMultiColumnFlowThread::flowThreadDescendantInserted(RenderObject* descendant)
 {
-    if (m_beingEvacuated || descendant->isInFlowRenderFlowThread())
+    if (gShiftingSpanner || m_beingEvacuated || descendant->isInFlowRenderFlowThread())
         return;
     RenderObject* subtreeRoot = descendant;
     for (; descendant; descendant = descendant->nextInPreOrder(subtreeRoot)) {
@@ -283,6 +285,41 @@ void RenderMultiColumnFlowThread::flowThreadDescendantInserted(RenderObject* des
             // where it would otherwise occur (if it weren't a spanner) to becoming a sibling of the
             // column sets.
             RenderMultiColumnSpannerPlaceholder* placeholder = toRenderMultiColumnSpannerPlaceholder(descendant);
+            if (placeholder->flowThread() != this) {
+                // This isn't our spanner! It shifted here from an ancestor multicolumn block. It's going to end up
+                // becoming our spanner instead, but for it to do that we first have to nuke the original spanner,
+                // and get the spanner content back into this flow thread.
+                RenderBox* spanner = placeholder->spanner();
+
+                // Advance, since we're about to delete the descendant.
+                descendant = descendant->nextInPreOrder(subtreeRoot);
+                
+                // Get info for the move of the original content back into our flow thread.
+                RenderBoxModelObject* placeholderParent = toRenderBoxModelObject(placeholder->parent());
+                RenderObject* placeholderNextSibling = placeholder->nextSibling();
+            
+                // We have to nuke the placeholder, since the ancestor already lost the mapping to it when
+                // we shifted the placeholder down into this flow thread.
+                placeholder->parent()->removeChild(*placeholder);
+
+                // Get the ancestor multicolumn flow thread to clean up its mess.
+                RenderBlockFlow* ancestorBlock = toRenderBlockFlow(spanner->parent());
+                ancestorBlock->multiColumnFlowThread()->flowThreadRelativeWillBeRemoved(spanner);
+                
+                // Now move the original content into our flow thread. It will end up calling flowThreadDescendantInserted
+                // on the new content only, and everything will get set up properly.
+                ancestorBlock->moveChildTo(placeholderParent, spanner, placeholderNextSibling, true);
+                
+                // If the spanner was the subtree root, then we're done, since there is nothing else left to insert.
+                if (!descendant)
+                    return;
+                
+                // Now that we have done this, we can continue past the spanning content, since we advanced
+                // descendant already.
+                descendant = descendant->previousInPreOrder(subtreeRoot);
+                continue;
+            }
+            
             ASSERT(!m_spannerMap.get(placeholder->spanner()));
             m_spannerMap.add(placeholder->spanner(), placeholder);
             ASSERT(!placeholder->firstChild()); // There should be no children here, but if there are, we ought to skip them.
@@ -315,8 +352,12 @@ void RenderMultiColumnFlowThread::flowThreadDescendantInserted(RenderObject* des
             RenderMultiColumnSpannerPlaceholder* placeholder = RenderMultiColumnSpannerPlaceholder::createAnonymous(this, toRenderBox(descendant), &container->style());
             container->addChild(placeholder, descendant->nextSibling());
             container->removeChild(*descendant);
+            
+            // This is a guard to stop an ancestor flow thread from processing the spanner.
+            gShiftingSpanner = true;
             multicolContainer->RenderBlock::addChild(descendant, insertBeforeMulticolChild);
-
+            gShiftingSpanner = false;
+            
             // The spanner has now been moved out from the flow thread, but we don't want to
             // examine its children anyway. They are all part of the spanner and shouldn't trigger
             // creation of column sets or anything like that. Continue at its original position in
@@ -379,7 +420,7 @@ void RenderMultiColumnFlowThread::flowThreadRelativeWillBeRemoved(RenderObject* 
 
         // The placeholder may already have been removed, but if it hasn't, do so now.
         if (RenderMultiColumnSpannerPlaceholder* placeholder = m_spannerMap.get(toRenderBox(relative))) {
-            placeholder->containingBlock()->RenderBlock::removeChild(*placeholder);
+            placeholder->parent()->removeChild(*placeholder);
             m_spannerMap.remove(toRenderBox(relative));
         }
 
@@ -583,6 +624,24 @@ void RenderMultiColumnFlowThread::computeLineGridPaginationOrigin(LayoutState& l
     }
 }
 
+LayoutSize RenderMultiColumnFlowThread::offsetFromContainer(RenderObject* enclosingContainer, const LayoutPoint& physicalPoint, bool* offsetDependsOnPoint) const
+{
+    ASSERT(enclosingContainer == container());
+
+    if (offsetDependsOnPoint)
+        *offsetDependsOnPoint = true;
+    
+    LayoutPoint translatedPhysicalPoint(physicalPoint);
+    RenderRegion* region = physicalTranslationFromFlowToRegion(translatedPhysicalPoint);
+    if (region)
+        translatedPhysicalPoint.moveBy(region->topLeftLocation());
+    
+    LayoutSize offset(translatedPhysicalPoint.x(), translatedPhysicalPoint.y());
+    if (enclosingContainer->isBox())
+        offset -= toRenderBox(enclosingContainer)->scrolledContentOffset();
+    return offset;
+}
+    
 void RenderMultiColumnFlowThread::mapAbsoluteToLocalPoint(MapCoordinatesFlags mode, TransformState& transformState) const
 {
     // First get the transform state's point into the block flow thread's physical coordinate space.
@@ -592,11 +651,12 @@ void RenderMultiColumnFlowThread::mapAbsoluteToLocalPoint(MapCoordinatesFlags mo
     // Now walk through each region.
     const RenderMultiColumnSet* candidateColumnSet = nullptr;
     LayoutPoint candidatePoint;
+    LayoutSize candidateContainerOffset;
     
     for (const auto& columnSet : childrenOfType<RenderMultiColumnSet>(*parent())) {
-        LayoutSize containerOffset = columnSet.offsetFromContainer(parent(), LayoutPoint());
+        candidateContainerOffset = columnSet.offsetFromContainer(parent(), LayoutPoint());
         
-        candidatePoint = transformPoint - containerOffset;
+        candidatePoint = transformPoint - candidateContainerOffset;
         candidateColumnSet = &columnSet;
         
         // We really have no clue what to do with overflow. We'll just use the closest region to the point in that case.
@@ -608,7 +668,7 @@ void RenderMultiColumnFlowThread::mapAbsoluteToLocalPoint(MapCoordinatesFlags mo
     
     // Once we have a good guess as to which region we hit tested through (and yes, this was just a heuristic, but it's
     // the best we could do), then we can map from the region into the flow thread.
-    LayoutSize translationOffset = physicalTranslationFromRegionToFlow(candidateColumnSet, candidatePoint);
+    LayoutSize translationOffset = physicalTranslationFromRegionToFlow(candidateColumnSet, candidatePoint) + candidateContainerOffset;
     bool preserve3D = mode & UseTransforms && (parent()->style().preserves3D() || style().preserves3D());
     if (mode & UseTransforms && shouldUseTransformFromContainer(parent())) {
         TransformationMatrix t;
@@ -654,16 +714,22 @@ LayoutSize RenderMultiColumnFlowThread::physicalTranslationOffsetFromFlowToRegio
     
     // Now we know how we want the rect to be translated into the region. At this point we're converting
     // back to physical coordinates.
-    LayoutRect flippedRegionRect(renderRegion->flowThreadPortionRect());
-    if (isHorizontalWritingMode())
-        flippedRegionRect.setHeight(columnSet->computedColumnHeight());
-    else
-        flippedRegionRect.setWidth(columnSet->computedColumnHeight());
-    flipForWritingMode(flippedRegionRect);
+    if (style().isFlippedBlocksWritingMode()) {
+        LayoutRect portionRect(columnSet->flowThreadPortionRect());
+        LayoutRect columnRect = columnSet->columnRectAt(0);
+        LayoutUnit physicalDeltaFromPortionBottom = logicalHeight() - columnSet->logicalBottomInFlowThread();
+        if (isHorizontalWritingMode())
+            columnRect.setHeight(portionRect.height());
+        else
+            columnRect.setWidth(portionRect.width());
+        columnSet->flipForWritingMode(columnRect);
+        if (isHorizontalWritingMode())
+            translationOffset.move(0, columnRect.y() - portionRect.y() - physicalDeltaFromPortionBottom);
+        else
+            translationOffset.move(columnRect.x() - portionRect.x() - physicalDeltaFromPortionBottom, 0);
+    }
     
-    flippedRegionRect.moveBy(-translationOffset);
-    
-    return renderRegion->contentBoxRect().location() - flippedRegionRect.location();
+    return LayoutSize(translationOffset.x(), translationOffset.y());
 }
 
 RenderRegion* RenderMultiColumnFlowThread::physicalTranslationFromFlowToRegion(LayoutPoint& physicalPoint) const

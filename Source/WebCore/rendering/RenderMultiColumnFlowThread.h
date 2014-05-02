@@ -109,6 +109,7 @@ public:
     virtual bool nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction) override;
     
     virtual void mapAbsoluteToLocalPoint(MapCoordinatesFlags, TransformState&) const override;
+    virtual LayoutSize offsetFromContainer(RenderObject*, const LayoutPoint&, bool* offsetDependsOnPoint = nullptr) const override;
     
 private:
     virtual const char* renderName() const override;
@@ -148,6 +149,8 @@ private:
     bool m_progressionIsInline;
     bool m_progressionIsReversed;
     bool m_beingEvacuated;
+    
+    static bool gShiftingSpanner;
 };
 
 RENDER_OBJECT_TYPE_CASTS(RenderMultiColumnFlowThread, isRenderMultiColumnFlowThread())

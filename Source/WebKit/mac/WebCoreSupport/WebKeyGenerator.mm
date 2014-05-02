@@ -25,7 +25,7 @@
 
 #if !PLATFORM(IOS)
 
-#import <WebKit/WebKeyGenerator.h>
+#import <WebKitLegacy/WebKeyGenerator.h>
 
 #import <WebKitSystemInterface.h>
 #import <wtf/Assertions.h>

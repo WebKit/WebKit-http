@@ -395,6 +395,13 @@ bool WebPageProxy::readSelectionFromPasteboard(const String& pasteboardName)
     return result;
 }
 
+#if ENABLE(SERVICE_CONTROLS)
+void WebPageProxy::replaceSelectionWithPasteboardData(const Vector<String>& types, const IPC::DataReference& data)
+{
+    process().send(Messages::WebPage::ReplaceSelectionWithPasteboardData(types, data), m_pageID);
+}
+#endif
+
 #if ENABLE(DRAG_SUPPORT)
 void WebPageProxy::setDragImage(const WebCore::IntPoint& clientPosition, const ShareableBitmap::Handle& dragImageHandle, bool isLinkDrag)
 {
@@ -685,6 +692,16 @@ void WebPageProxy::showTelephoneNumberMenu(const String& telephoneNumber, const 
     }
     
     ContextMenuContextData contextData;
+    internalShowContextMenu(point, contextData, items, ContextMenuClientEligibility::NotEligibleForClient, nullptr);
+}
+#endif
+
+#if ENABLE(SERVICE_CONTROLS)
+void WebPageProxy::showSelectionServiceMenu(const IPC::DataReference& selectionAsRTFD, bool isEditable, const IntPoint& point)
+{
+    Vector<WebContextMenuItemData> items;
+    ContextMenuContextData contextData(selectionAsRTFD.vector(), isEditable);
+
     internalShowContextMenu(point, contextData, items, ContextMenuClientEligibility::NotEligibleForClient, nullptr);
 }
 #endif

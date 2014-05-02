@@ -400,37 +400,23 @@ void RenderLayerBacking::updateBlendMode(const RenderStyle* style)
 }
 #endif
 
-static bool hasNonZeroTransformOrigin(const RenderObject& renderer)
-{
-    const RenderStyle& style = renderer.style();
-    return (style.transformOriginX().type() == Fixed && style.transformOriginX().value())
-        || (style.transformOriginY().type() == Fixed && style.transformOriginY().value());
-}
-
-#if PLATFORM(IOS)
-// FIXME: We should merge the concept of RenderLayer::{hasAcceleratedTouchScrolling, needsCompositedScrolling}()
-// so that we can remove this iOS-specific variant.
-static bool layerOrAncestorIsTransformedOrScrolling(RenderLayer& layer)
-{
-    for (RenderLayer* curr = &layer; curr; curr = curr->parent()) {
-        if (curr->hasTransform() || curr->hasAcceleratedTouchScrolling())
-            return true;
-    }
-
-    return false;
-}
-#else
+// FIXME: the hasAcceleratedTouchScrolling()/needsCompositedScrolling() concepts need to be merged.
 static bool layerOrAncestorIsTransformedOrUsingCompositedScrolling(RenderLayer& layer)
 {
     for (RenderLayer* curr = &layer; curr; curr = curr->parent()) {
-        if (curr->hasTransform() || curr->needsCompositedScrolling())
+        if (curr->hasTransform()
+#if PLATFORM(IOS)
+            || curr->hasAcceleratedTouchScrolling()
+#else
+            || curr->needsCompositedScrolling()
+#endif
+            )
             return true;
     }
 
     return false;
 }
-#endif
-    
+
 bool RenderLayerBacking::shouldClipCompositedBounds() const
 {
 #if !PLATFORM(IOS)
@@ -442,18 +428,20 @@ bool RenderLayerBacking::shouldClipCompositedBounds() const
     if (m_usingTiledCacheLayer)
         return false;
 
-#if !PLATFORM(IOS)
     if (layerOrAncestorIsTransformedOrUsingCompositedScrolling(m_owningLayer))
         return false;
-#else
-    if (layerOrAncestorIsTransformedOrScrolling(m_owningLayer))
-        return false;
-#endif
 
     if (m_owningLayer.isFlowThreadCollectingGraphicsLayersUnderRegions())
         return false;
 
     return true;
+}
+
+static bool hasNonZeroTransformOrigin(const RenderObject& renderer)
+{
+    const RenderStyle& style = renderer.style();
+    return (style.transformOriginX().type() == Fixed && style.transformOriginX().value())
+        || (style.transformOriginY().type() == Fixed && style.transformOriginY().value());
 }
 
 void RenderLayerBacking::updateCompositedBounds()
@@ -548,16 +536,16 @@ bool RenderLayerBacking::updateGraphicsLayerConfiguration()
         layerConfigChanged = true;
     
     bool needsDescendentsClippingLayer = compositor().clipsCompositingDescendants(m_owningLayer);
-
+    bool usesCompositedScrolling;
 #if PLATFORM(IOS)
-    // Our scrolling layer will clip.
-    if (m_owningLayer.hasAcceleratedTouchScrolling())
-        needsDescendentsClippingLayer = false;
+    usesCompositedScrolling = m_owningLayer.hasAcceleratedTouchScrolling();
 #else
+    usesCompositedScrolling = m_owningLayer.needsCompositedScrolling();
+#endif
+
     // Our scrolling layer will clip.
-    if (m_owningLayer.needsCompositedScrolling())
+    if (usesCompositedScrolling)
         needsDescendentsClippingLayer = false;
-#endif // PLATFORM(IOS)
 
     if (updateAncestorClippingLayer(compositor().clippedByAncestor(m_owningLayer)))
         layerConfigChanged = true;
@@ -568,13 +556,8 @@ bool RenderLayerBacking::updateGraphicsLayerConfiguration()
     if (updateOverflowControlsLayers(requiresHorizontalScrollbarLayer(), requiresVerticalScrollbarLayer(), requiresScrollCornerLayer()))
         layerConfigChanged = true;
 
-#if PLATFORM(IOS)
-    if (updateScrollingLayers(m_owningLayer.hasAcceleratedTouchScrolling()))
+    if (updateScrollingLayers(usesCompositedScrolling))
         layerConfigChanged = true;
-#else
-    if (updateScrollingLayers(m_owningLayer.needsCompositedScrolling()))
-        layerConfigChanged = true;
-#endif // PLATFORM(IOS)
 
     if (layerConfigChanged)
         updateInternalHierarchy();
@@ -760,6 +743,7 @@ void RenderLayerBacking::updateGraphicsLayerGeometry()
     if (compAncestor && compAncestor->backing()->hasClippingLayer()) {
         // If the compositing ancestor has a layer to clip children, we parent in that, and therefore
         // position relative to it.
+        // FIXME: need to do some pixel snapping here.
         LayoutRect clippingBox = clipBox(toRenderBox(compAncestor->renderer()));
         graphicsLayerParentLocation = clippingBox.location();
     } else if (compAncestor)
@@ -774,18 +758,19 @@ void RenderLayerBacking::updateGraphicsLayerGeometry()
             renderBox->width() - renderBox->borderLeft() - renderBox->borderRight(),
             renderBox->height() - renderBox->borderTop() - renderBox->borderBottom());
 
-        LayoutSize scrollOffset = compAncestor->scrolledContentOffset();
+        IntSize scrollOffset = compAncestor->scrolledContentOffset();
+        // FIXME: pixel snap the padding box.
         graphicsLayerParentLocation = paddingBox.location() - scrollOffset;
     }
-#endif
-
+#else
     if (compAncestor && compAncestor->needsCompositedScrolling()) {
         RenderBox& renderBox = toRenderBox(compAncestor->renderer());
         LayoutSize scrollOffset = compAncestor->scrolledContentOffset();
         LayoutPoint scrollOrigin(renderBox.borderLeft(), renderBox.borderTop());
         graphicsLayerParentLocation = scrollOrigin - scrollOffset;
     }
-    
+#endif
+
     if (compAncestor && m_ancestorClippingLayer) {
         // Call calculateRects to get the backgroundRect which is what is used to clip the contents of this
         // layer. Note that we call it with temporaryClipRects = true because normally when computing clip rects
@@ -830,6 +815,7 @@ void RenderLayerBacking::updateGraphicsLayerGeometry()
     // If we have a layer that clips children, position it.
     LayoutRect clippingBox;
     if (GraphicsLayer* clipLayer = clippingLayer()) {
+        // FIXME: need to do some pixel snapping here.
         clippingBox = clipBox(toRenderBox(renderer()));
         clipLayer->setPosition(FloatPoint(clippingBox.location() - localCompositingBounds.location()));
         clipLayer->setSize(clippingBox.size());
@@ -926,9 +912,11 @@ void RenderLayerBacking::updateGraphicsLayerGeometry()
         LayoutRect paddingBox(renderBox.borderLeft(), renderBox.borderTop(), renderBox.width() - renderBox.borderLeft() - renderBox.borderRight(), renderBox.height() - renderBox.borderTop() - renderBox.borderBottom());
         LayoutSize scrollOffset = m_owningLayer.scrollOffset();
 
+        // FIXME: need to do some pixel snapping here.
         m_scrollingLayer->setPosition(FloatPoint(paddingBox.location() - localCompositingBounds.location()));
 
-        m_scrollingLayer->setSize(paddingBox.size());
+        IntSize pixelSnappedClientSize(renderBox.pixelSnappedClientWidth(), renderBox.pixelSnappedClientHeight());
+        m_scrollingLayer->setSize(pixelSnappedClientSize);
 #if PLATFORM(IOS)
         FloatSize oldScrollingLayerOffset = m_scrollingLayer->offsetFromRenderer();
         m_scrollingLayer->setOffsetFromRenderer(FloatPoint() - paddingBox.location());
@@ -1001,7 +989,7 @@ void RenderLayerBacking::adjustAncestorCompositingBoundsForFlowThread(LayoutRect
     if (!m_owningLayer.isInsideFlowThread())
         return;
 
-    RenderLayer* flowThreadLayer = m_owningLayer.isInsideOutOfFlowThread() ? m_owningLayer.stackingContainer() : m_owningLayer.enclosingFlowThreadAncestor();
+    RenderLayer* flowThreadLayer = m_owningLayer.isInsideOutOfFlowThread() ? m_owningLayer.stackingContainer() : nullptr;
     if (flowThreadLayer && flowThreadLayer->isRenderFlowThread()) {
         if (m_owningLayer.isFlowThreadCollectingGraphicsLayersUnderRegions()) {
             // The RenderNamedFlowThread is not composited, as we need it to paint the 
@@ -2616,12 +2604,5 @@ double RenderLayerBacking::backingStoreMemoryEstimate() const
     
     return backingMemory;
 }
-
-#if ENABLE(PLUGIN_PROXY_FOR_VIDEO)
-bool RenderLayerBacking::mediaLayerMustBeUpdatedOnMainThread() const
-{
-    return renderer().frame().page() && renderer().frame().page()->settings().isVideoPluginProxyEnabled();
-}
-#endif
 
 } // namespace WebCore

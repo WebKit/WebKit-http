@@ -1,3 +1,168 @@
+2014-04-30  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        Kernel sysctl interface hw.activecpu don't exists on Linux.
+        https://bugs.webkit.org/show_bug.cgi?id=132286
+
+        Reviewed by Filip Pizlo.
+
+        * Scripts/run-jsc-stress-tests: Redirect stderr to null when
+        calling sysctl over hw.activecpu
+
+2014-04-30  Anders Carlsson  <andersca@apple.com>
+
+        Move the legacy WebKit API into WebKitLegacy.framework and move it inside WebKit.framework
+        https://bugs.webkit.org/show_bug.cgi?id=132399
+        <rdar://problem/15920046>
+
+        Reviewed by Dan Bernstein.
+
+        * Scripts/check-for-webkit-framework-include-consistency:
+        Allos WAK headers in WebKitLegacy as well as WebKit.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/Download.mm:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/Navigation.mm:
+        Update header imports.
+
+2014-04-30  Simon Fraser  <simon.fraser@apple.com>
+
+        [iOS WK2] Add test URL to crash reports for the UI process, clean up project
+        https://bugs.webkit.org/show_bug.cgi?id=131954
+
+        Reviewed by Darin Adler.
+        
+        WebKitTestRunner was adding application-specific information to crash reports
+        to log the test path, but only in the web process. Fix it to also do this
+        for the UI process, for both iOS and OS X.
+        
+        Moved InjectedBundlePageMac.mm to InjectedBundlePageCocoa.mm and compile it for
+        both iOS and OS X.
+        
+        Factored crash reprorter-related code into CrashReporterInfo, and call it from
+        a new TestController::platformWillRunTest() function on Mac and iOS.
+        
+        Also remove Xcode-added unit test junk from the project.
+
+        * WebKitTestRunner/InjectedBundle/cocoa/InjectedBundlePageCocoa.mm: Copied from Tools/WebKitTestRunner/InjectedBundle/ios/InjectedBundlePageIOS.mm.
+        (WTR::InjectedBundlePage::platformDidStartProvisionalLoadForFrame):
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::runTest):
+        * WebKitTestRunner/TestController.h:
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::url):
+        * WebKitTestRunner/TestInvocation.h:
+        * WebKitTestRunner/WebKitTestRunner.xcodeproj/project.pbxproj:
+        * WebKitTestRunner/WebKitTestRunnerAppTests/WebKitTestRunnerAppTests-Info.plist: Removed.
+        * WebKitTestRunner/WebKitTestRunnerAppTests/WebKitTestRunnerAppTests.m: Removed.
+        * WebKitTestRunner/WebKitTestRunnerAppTests/en.lproj/InfoPlist.strings: Removed.
+        * WebKitTestRunner/cocoa/CrashReporterInfo.h: Renamed from Tools/WebKitTestRunner/InjectedBundle/ios/InjectedBundlePageIOS.mm.
+        * WebKitTestRunner/cocoa/CrashReporterInfo.mm: Renamed from Tools/WebKitTestRunner/InjectedBundle/mac/InjectedBundlePageMac.mm.
+        (WTR::testPathFromURL):
+        (WTR::setCrashReportApplicationSpecificInformationToURL):
+        * WebKitTestRunner/efl/TestControllerEfl.cpp:
+        (WTR::TestController::platformWillRunTest):
+        * WebKitTestRunner/gtk/TestControllerGtk.cpp:
+        (WTR::TestController::platformWillRunTest):
+        * WebKitTestRunner/ios/TestControllerIOS.mm:
+        (WTR::TestController::platformWillRunTest):
+        (WTR::TestController::setHidden):
+        * WebKitTestRunner/mac/TestControllerMac.mm:
+        (WTR::TestController::platformWillRunTest):
+
+2014-04-30  Simon Fraser  <simon.fraser@apple.com>
+
+        Fix DRT assertion about mock scrollbars, which doesn't apply to iOS.
+
+        Reviewed by Tim Horton.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (resetWebPreferencesToConsistentValues):
+        (prepareConsistentTestingEnvironment):
+
+2014-04-30  Anders Carlsson  <andersca@apple.com>
+
+        check-for-inappropriate-macros-in-external-headers should get the product name, not the project name
+        https://bugs.webkit.org/show_bug.cgi?id=132397
+
+        Reviewed by Dan Bernstein.
+
+        * Scripts/check-for-inappropriate-macros-in-external-headers:
+
+2014-04-29  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK] Make it easier to run CMake for downstreams
+        https://bugs.webkit.org/show_bug.cgi?id=132370
+
+        Reviewed by Carlos Garcia Campos.
+
+        * Scripts/webkitdirs.pm:
+        (generateBuildSystemFromCMakeProject): Pass -DDEVELOPER_MODE when building
+        the GTK+ port.
+
+2014-04-29  Stephanie Lewis  <slewis@apple.com>
+
+        <rdar://problem/16765765> Use JSON::PP in perl scripts instead of JSON.
+        
+        Rubber stamped by Jessie Berlin.
+
+        JSON.pm was removed from our tools setup.
+
+        * Scripts/generate-coverage-data:
+
+2014-04-29  Filip Pizlo  <fpizlo@apple.com>
+
+        Use LLVM as a backend for the fourth-tier DFG JIT (a.k.a. the FTL JIT)
+        https://bugs.webkit.org/show_bug.cgi?id=112840
+
+        Rubber stamped by Geoffrey Garen.
+
+        * Scripts/build-jsc: Enable it on Mac.
+        * Scripts/build-webkit: Enable it on Mac.
+        * Scripts/export-llvm-build: Make it slightly easier to export the build if you've done a "make install".
+
+2014-04-28  Sam Weinig  <sam@webkit.org>
+
+        REGRESSION (r167751): svn-create-patch is very slow
+        https://bugs.webkit.org/show_bug.cgi?id=132300
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/svn-create-patch:
+        Change default behavior of svn-create-patch to no longer run the style checker. It can still be run
+        by calling `svn-create-patch --style`.
+
+2014-04-29  Enrique Ocaña González  <eocanha@igalia.com>
+
+        Generate Eclipse project + ninja build for GTK+ if Eclipse in available in the PATH
+        https://bugs.webkit.org/show_bug.cgi?id=132190
+
+        Reviewed by Gustavo Noronha Silva.
+
+        * Scripts/webkitdirs.pm:
+        (canUseEclipse): Test if Eclipse is in the path. This is the same method used to test
+            if ninja is in the path.
+        (generateBuildSystemFromCMakeProject): Use the eclipse generator if possible, fallback
+            to the previous ninja generator if not.
+
+2014-04-29  Jozsef Berta  <jberta.u-szeged@partner.samsung.com>
+
+        check-webkit-style should understand --git-index
+        https://bugs.webkit.org/show_bug.cgi?id=125364
+
+        Reviewed by Csaba Osztrogonác.
+
+        * Scripts/webkitpy/common/checkout/scm/git.py:
+        (Git.create_patch): The command now supports the --cached option.
+        * Scripts/webkitpy/style/main.py:
+        (CheckWebKitStyle.main): Passing the --git-index option.
+        * Scripts/webkitpy/style/optparser.py:
+        (CommandOptionValues.__init__): The git-index option is switched off by default.
+        (CommandOptionValues.__eq__): Equality check for the new option.
+        (ArgumentParser._create_option_parser):Adding the --git-index option
+        (ArgumentParser.parse):
+        * Scripts/webkitpy/style/optparser_unittest.py: New tests for the --git-index option
+        (CommandOptionValuesTest.test_init): 
+        (CommandOptionValuesTest.test_eq):
+
 2014-04-28  Michael Saboff  <msaboff@apple.com>
 
         Crash in platform/mac/accessibility/table-visible-rows.html

@@ -55,13 +55,15 @@ public:
     PassRefPtr<ResourceHandle> createResourceHandle(const ResourceRequest&, ResourceHandleClient*);
 
 private:
-    void appendStorageItems(BlobStorageData*, const BlobDataItemList&);
     void appendStorageItems(BlobStorageData*, const BlobDataItemList&, long long offset, long long length);
 
     virtual void registerBlobURL(const URL&, std::unique_ptr<BlobData>) override;
     virtual void registerBlobURL(const URL&, const URL& srcURL) override;
+    virtual unsigned long long registerBlobURLForSlice(const URL&, const URL& srcURL, long long start, long long end) override;
     virtual void unregisterBlobURL(const URL&) override;
     virtual bool isBlobRegistryImpl() const override { return true; }
+
+    unsigned long long blobSize(const URL&);
 
     HashMap<String, RefPtr<BlobStorageData>> m_blobs;
 };

@@ -28,6 +28,7 @@
 #if PLATFORM(IOS)
 
 #import "CSSPrimitiveValue.h"
+#import "CSSToLengthConversionData.h"
 #import "CSSValueKeywords.h"
 #import "DateComponents.h"
 #import "Document.h"
@@ -526,7 +527,7 @@ static void applyCommonButtonPaddingToStyle(RenderStyle* style, Element* element
 {
     Document& document = element->document();
     RefPtr<CSSPrimitiveValue> emSize = CSSPrimitiveValue::create(0.5, CSSPrimitiveValue::CSS_EMS);
-    int pixels = emSize->computeLength<int>(style, document.renderStyle(), document.frame()->pageZoomFactor());
+    int pixels = emSize->computeLength<int>(CSSToLengthConversionData(style, document.renderStyle(), document.frame()->pageZoomFactor()));
     style->setPaddingBox(LengthBox(0, pixels, 0, pixels));
 }
 
@@ -934,7 +935,7 @@ void RenderThemeIOS::adjustButtonStyle(StyleResolver* selector, RenderStyle* sty
     // CSSPrimitiveValue::computeLengthInt only needs the element's style to calculate em lengths.
     // Since the element might not be in a document, just pass nullptr for the root element style.
     RefPtr<CSSPrimitiveValue> emSize = CSSPrimitiveValue::create(1.0, CSSPrimitiveValue::CSS_EMS);
-    int pixels = emSize->computeLength<int>(style, nullptr);
+    int pixels = emSize->computeLength<int>(CSSToLengthConversionData(style, nullptr, 1.0, false));
     style->setPaddingBox(LengthBox(0, pixels, 0, pixels));
 
     if (!element)

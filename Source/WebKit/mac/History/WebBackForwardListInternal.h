@@ -26,11 +26,11 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#import <WebKit/WebBackForwardList.h>
+#import <WebKitLegacy/WebBackForwardList.h>
 #import <wtf/PassRefPtr.h>
 
 namespace WebCore {
-    class BackForwardList;
+class BackForwardList;
 }
 
 WebCore::BackForwardList* core(WebBackForwardList *);

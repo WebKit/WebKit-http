@@ -38,17 +38,20 @@
 
 namespace WebCore {
 
+class CurrentRenderRegionMaintainer;
 struct LayerFragment;
 typedef Vector<LayerFragment, 1> LayerFragments;
 class RenderFlowThread;
 class RenderNamedFlowFragment;
 class RenderStyle;
 class RenderRegion;
+class RootInlineBox;
 
 typedef ListHashSet<RenderRegion*> RenderRegionList;
 typedef Vector<RenderLayer*> RenderLayerList;
 typedef HashMap<RenderNamedFlowFragment*, RenderLayerList> RegionToLayerListMap;
 typedef HashMap<RenderLayer*, RenderNamedFlowFragment*> LayerToRegionMap;
+typedef HashMap<const RootInlineBox*, RenderRegion*> ContainingRegionMap;
 
 // RenderFlowThread is used to collect all the render objects that participate in a
 // flow thread. It will also help in doing the layout. However, it will not render
@@ -63,6 +66,10 @@ public:
     virtual void removeFlowChildInfo(RenderObject*);
 #ifndef NDEBUG
     bool hasChildInfo(RenderObject* child) const { return child && child->isBox() && m_regionRangeMap.contains(toRenderBox(child)); }
+#endif
+
+#if !ASSERT_WITH_SECURITY_IMPLICATION_DISABLED
+    bool checkLinesConsistency(const RenderBlockFlow*) const;
 #endif
 
     virtual void addRegionToThread(RenderRegion*) = 0;
@@ -120,7 +127,6 @@ public:
 
     virtual RenderRegion* mapFromFlowToRegion(TransformState&) const;
 
-    void removeRenderBoxRegionInfo(RenderBox*);
     void logicalWidthChangedInRegionsForBlock(const RenderBlock*, bool&);
 
     LayoutUnit contentLogicalWidthOfFirstRegion() const;
@@ -215,10 +221,17 @@ public:
 
     // Used to estimate the maximum height of the flow thread.
     static LayoutUnit maxLogicalHeight() { return LayoutUnit::max() / 2; }
-    
+
     bool regionInRange(const RenderRegion* targetRegion, const RenderRegion* startRegion, const RenderRegion* endRegion) const;
 
+    virtual bool absoluteQuadsForBox(Vector<FloatQuad>&, bool*, const RenderBox*, float, float) const { return false; }
+
     virtual void layout() override;
+
+    void setCurrentRegionMaintainer(CurrentRenderRegionMaintainer* currentRegionMaintainer) { m_currentRegionMaintainer = currentRegionMaintainer; }
+    RenderRegion* currentRegion() const;
+
+    ContainingRegionMap& containingRegionMap();
 
 private:
     virtual bool isRenderFlowThread() const override final { return true; }
@@ -259,6 +272,9 @@ protected:
     inline const RenderBox* currentActiveRenderBox() const;
 
     bool getRegionRangeForBoxFromCachedInfo(const RenderBox*, RenderRegion*& startRegion, RenderRegion*& endRegion) const;
+
+    void removeRenderBoxRegionInfo(RenderBox*);
+    void removeLineRegionInfo(const RenderBlockFlow*);
 
     RenderRegionList m_regionList;
     unsigned short m_previousRegionCount;
@@ -321,6 +337,9 @@ protected:
     // Map a region to the list of layers that paint in that region.
     std::unique_ptr<RegionToLayerListMap> m_regionToLayerListMap;
 
+    // Map a line to its containing region.
+    std::unique_ptr<ContainingRegionMap> m_lineToRegionMap;
+
     // Map a box to the list of regions in which the box is rendered.
     typedef HashMap<const RenderBox*, RenderRegionRange> RenderRegionRangeMap;
     RenderRegionRangeMap m_regionRangeMap;
@@ -339,6 +358,8 @@ protected:
     unsigned m_autoLogicalHeightRegionsCount;
 
     RegionIntervalTree m_regionIntervalTree;
+
+    CurrentRenderRegionMaintainer* m_currentRegionMaintainer;
 
     bool m_regionsInvalidated : 1;
     bool m_regionsHaveUniformLogicalWidth : 1;

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#import <WebKit/WebPreferences.h>
+#import <WebKitLegacy/WebPreferences.h>
 
 #if !TARGET_OS_IPHONE
 #import <Quartz/Quartz.h>
@@ -363,8 +363,7 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 - (void)setQTKitEnabled:(BOOL)flag;
 - (BOOL)isQTKitEnabled;
 
-// VideoPluginProxy support is dependent on WebCore/WebKit being
-// compiled with ENABLE_PLUGIN_PROXY_FOR_VIDEO.
+// Deprecated, has no effect.
 - (void)setVideoPluginProxyEnabled:(BOOL)flag;
 - (BOOL)isVideoPluginProxyEnabled;
 

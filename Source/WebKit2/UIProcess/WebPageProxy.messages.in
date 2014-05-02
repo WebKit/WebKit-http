@@ -169,6 +169,7 @@ messages -> WebPageProxy {
     DidUpdateBlockSelectionWithTouch(uint32_t touch, uint32_t flags, float growThreshold, float shrinkThreshold)
     ShowPlaybackTargetPicker(bool hasVideo, WebCore::IntRect elementRect)
     ZoomToRect(WebCore::FloatRect rect, double minimumScale, double maximumScale)
+    DidNotHandleTapAsClick(WebCore::IntPoint point)
 #endif
 #if PLATFORM(GTK)
     PrintFinishedCallback(WebCore::ResourceError error, uint64_t callbackID)
@@ -366,6 +367,10 @@ messages -> WebPageProxy {
 #if PLATFORM(MAC)
     ShowTelephoneNumberMenu(String telephoneNumber, WebCore::IntPoint point)
 #endif
+#endif
+
+#if ENABLE(SERVICE_CONTROLS)
+    ShowSelectionServiceMenu(IPC::DataReference selectionAsRTFD, bool isEditable, WebCore::IntPoint point)
 #endif
 
 #if USE(QUICK_LOOK)

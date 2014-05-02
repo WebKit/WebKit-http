@@ -29,6 +29,7 @@
 #if ENABLE(SERVICE_CONTROLS)
 
 #include "WebPage.h"
+#include "WebProcess.h"
 #include <WebCore/NotImplemented.h>
 
 using namespace WebCore;
@@ -40,6 +41,9 @@ SelectionOverlayController::SelectionOverlayController(WebPage* webPage)
     , m_selectionOverlay(nullptr)
     , m_mouseIsDownOnButton(false)
     , m_mouseIsOverHighlight(false)
+    , m_visible(false)
+    , m_hoverTimer(RunLoop::main(), this, &SelectionOverlayController::hoverTimerFired)
+    , m_currentHighlightIsDirty(false)
 {
 }
 
@@ -60,6 +64,9 @@ void SelectionOverlayController::destroyOverlay()
 {
     if (!m_selectionOverlay)
         return;
+
+    m_mouseIsOverHighlight = false;
+    mouseHoverStateChanged();
 
     m_webPage->uninstallPageOverlay(m_selectionOverlay, PageOverlay::FadeMode::DoNotFade);
 }
@@ -87,17 +94,28 @@ void SelectionOverlayController::didMoveToWebPage(PageOverlay*, WebPage*)
 void SelectionOverlayController::selectionRectsDidChange(const Vector<LayoutRect>& rects)
 {
 #if __MAC_OS_X_VERSION_MIN_REQUIRED > 1090
-    clearHighlight();
-
+    m_currentHighlightIsDirty = true;
     m_currentSelectionRects = rects;
 
-    if (m_currentSelectionRects.isEmpty())
-        destroyOverlay();
-    else
+    if (WebProcess::shared().hasSelectionServices() && !m_currentSelectionRects.isEmpty())
         createOverlayIfNeeded();
+    else
+        destroyOverlay();
+
 #else
     UNUSED_PARAM(rects);
 #endif
+}
+
+void SelectionOverlayController::hoverTimerFired()
+{
+    if (!m_mouseIsOverHighlight)
+        return;
+
+    m_visible = true;
+
+    ASSERT(m_selectionOverlay);
+    m_selectionOverlay->setNeedsDisplay();
 }
 
 #if !PLATFORM(MAC)

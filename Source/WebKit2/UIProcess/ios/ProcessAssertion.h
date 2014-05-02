@@ -28,13 +28,14 @@
 
 #include <wtf/RetainPtr.h>
 
-#if PLATFORM(IOS) && USE(XPC_SERVICES)
+#if PLATFORM(IOS)
 
 OBJC_CLASS BKSProcessAssertion;
 
 namespace WebKit {
     
 enum class AssertionState {
+    Suspended,
     Background,
     Foreground
 };
@@ -45,11 +46,11 @@ public:
     
     void setState(AssertionState);
     
-#if !PLATFORM(IOS_SIMULATOR)
 private:
+#if !PLATFORM(IOS_SIMULATOR)
     RetainPtr<BKSProcessAssertion> m_assertion;
-    AssertionState m_assertionState;
 #endif
+    AssertionState m_assertionState;
 };
     
 }

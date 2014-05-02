@@ -482,11 +482,7 @@ public:
         [NSNumber numberWithBool:YES],  WebKitAcceleratedCompositingEnabledPreferenceKey,
         [NSNumber numberWithBool:YES], WebKitCSSRegionsEnabledPreferenceKey,
         [NSNumber numberWithBool:YES], WebKitCSSCompositingEnabledPreferenceKey,
-#if ENABLE(CSS_GRID_LAYOUT)
         [NSNumber numberWithBool:YES],  WebKitCSSGridLayoutEnabledPreferenceKey,
-#else
-        [NSNumber numberWithBool:NO],  WebKitCSSGridLayoutEnabledPreferenceKey,
-#endif
 #if PLATFORM(IOS) && !PLATFORM(IOS_SIMULATOR)
         [NSNumber numberWithBool:YES],  WebKitAcceleratedDrawingEnabledPreferenceKey,
         [NSNumber numberWithBool:YES],  WebKitCanvasUsesAcceleratedDrawingPreferenceKey,
@@ -517,7 +513,7 @@ public:
         [NSNumber numberWithBool:YES],  WebKitMediaPlaybackAllowsInlinePreferenceKey,
         [NSNumber numberWithBool:NO],   WebKitWebAudioEnabledPreferenceKey,
         [NSNumber numberWithBool:NO],   WebKitSuppressesIncrementalRenderingKey,
-        [NSNumber numberWithBool:NO],   WebKitRegionBasedColumnsEnabledKey,
+        [NSNumber numberWithBool:YES],  WebKitRegionBasedColumnsEnabledKey,
         [NSNumber numberWithBool:YES],  WebKitBackspaceKeyNavigationEnabledKey,
         [NSNumber numberWithBool:NO],   WebKitShouldDisplaySubtitlesPreferenceKey,
         [NSNumber numberWithBool:NO],   WebKitShouldDisplayCaptionsPreferenceKey,
@@ -585,8 +581,6 @@ public:
         [NSNumber numberWithBool:NO], WebKitLowPowerVideoAudioBufferSizeEnabledPreferenceKey,
         
         [NSNumber numberWithBool:NO], WebKitUseLegacyTextAlignPositionedElementBehaviorPreferenceKey,
-        
-        [NSNumber numberWithBool:NO],   WebKitVideoPluginProxyEnabledKey,
 #if ENABLE(MEDIA_SOURCE)
         [NSNumber numberWithBool:YES], WebKitMediaSourceEnabledPreferenceKey,
 #endif
@@ -2136,12 +2130,12 @@ static NSString *classIBCreatorID = nil;
 
 - (void)setVideoPluginProxyEnabled:(BOOL)flag
 {
-    [self _setBoolValue:flag forKey:WebKitVideoPluginProxyEnabledKey];
+    // No-op, left for SPI compatibility.
 }
 
 - (BOOL)isVideoPluginProxyEnabled
 {
-    return [self _boolValueForKey:WebKitVideoPluginProxyEnabledKey];
+    return NO;
 }
 
 - (void)setHixie76WebSocketProtocolEnabled:(BOOL)flag

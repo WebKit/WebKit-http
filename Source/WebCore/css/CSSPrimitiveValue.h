@@ -33,6 +33,7 @@
 namespace WebCore {
 
 class CSSCalcValue;
+class CSSToLengthConversionData;
 class Counter;
 class DashboardRegion;
 class Pair;
@@ -214,7 +215,7 @@ public:
     static PassRef<CSSPrimitiveValue> create(double value, UnitTypes type) { return adoptRef(*new CSSPrimitiveValue(value, type)); }
     static PassRef<CSSPrimitiveValue> create(const String& value, UnitTypes type) { return adoptRef(*new CSSPrimitiveValue(value, type)); }
     static PassRef<CSSPrimitiveValue> create(const Length& value, const RenderStyle* style) { return adoptRef(*new CSSPrimitiveValue(value, style)); }
-    static PassRef<CSSPrimitiveValue> create(const LengthSize& value) { return adoptRef(*new CSSPrimitiveValue(value)); }
+    static PassRef<CSSPrimitiveValue> create(const LengthSize& value, const RenderStyle* style) { return adoptRef(*new CSSPrimitiveValue(value, style)); }
 
     template<typename T> static PassRef<CSSPrimitiveValue> create(T value)
     {
@@ -265,10 +266,10 @@ public:
      * this is screen/printer dependent, so we probably need a config option for this,
      * and some tool to calibrate.
      */
-    template<typename T> T computeLength(const RenderStyle* currStyle, const RenderStyle* rootStyle, float multiplier = 1.0f, bool computingFontSize = false) const;
+    template<typename T> T computeLength(const CSSToLengthConversionData&) const;
 
     // Converts to a Length, mapping various unit types appropriately.
-    template<int> Length convertToLength(const RenderStyle* currStyle, const RenderStyle* rootStyle, double multiplier = 1.0, bool computingFontSize = false) const;
+    template<int> Length convertToLength(const CSSToLengthConversionData&) const;
 
     // use with care!!!
     void setPrimitiveType(unsigned short type) { m_primitiveUnitType = type; }
@@ -346,7 +347,7 @@ private:
     CSSPrimitiveValue(unsigned color); // RGB value
     CSSPrimitiveValue(const Length&);
     CSSPrimitiveValue(const Length&, const RenderStyle*);
-    CSSPrimitiveValue(const LengthSize&);
+    CSSPrimitiveValue(const LengthSize&, const RenderStyle*);
     CSSPrimitiveValue(const String&, UnitTypes);
     CSSPrimitiveValue(double, UnitTypes);
 
@@ -368,7 +369,7 @@ private:
     template<typename T> operator T*(); // compile-time guard
 
     void init(const Length&);
-    void init(const LengthSize&);
+    void init(const LengthSize&, const RenderStyle*);
     void init(PassRefPtr<Counter>);
     void init(PassRefPtr<Rect>);
     void init(PassRefPtr<Pair>);
@@ -378,7 +379,7 @@ private:
     void init(PassRefPtr<CSSCalcValue>);
     bool getDoubleValueInternal(UnitTypes targetUnitType, double* result) const;
 
-    double computeLengthDouble(const RenderStyle* currentStyle, const RenderStyle* rootStyle, float multiplier, bool computingFontSize) const;
+    double computeLengthDouble(const CSSToLengthConversionData&) const;
 
     union {
         CSSPropertyID propertyID;

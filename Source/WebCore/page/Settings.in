@@ -85,7 +85,7 @@ canvasUsesAcceleratedDrawing initial=false
 acceleratedDrawingEnabled initial=false
 acceleratedFiltersEnabled initial=false
 regionBasedColumnsEnabled initial=false
-cssGridLayoutEnabled initial=false
+cssGridLayoutEnabled initial=true
 useLegacyTextAlignPositionedElementBehavior initial=false
 
 # FIXME: This should really be disabled by default as it makes platforms that don't support the feature download files
@@ -96,9 +96,6 @@ xssAuditorEnabled initial=false
 unsafePluginPastingEnabled initial=true
 acceleratedCompositingForFixedPositionEnabled initial=defaultAcceleratedCompositingForFixedPositionEnabled
 acceleratedCompositingForOverflowScrollEnabled initial=false
-
-# Works only in conjunction with forceCompositingMode.
-compositedScrollingForFramesEnabled initial=false
 
 experimentalNotificationsEnabled initial=false
 webGLEnabled initial=false

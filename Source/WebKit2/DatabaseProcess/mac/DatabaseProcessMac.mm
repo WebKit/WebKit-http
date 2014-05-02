@@ -24,13 +24,15 @@
  */
 
 #import "config.h"
+
+#if PLATFORM(MAC) && ENABLE(DATABASE_PROCESS)
+
 #import "DatabaseProcess.h"
 
 #import "SandboxInitializationParameters.h"
+#import <WebCore/FileSystem.h>
 #import <WebCore/LocalizedStrings.h>
 #import <WebKitSystemInterface.h>
-
-#if ENABLE(DATABASE_PROCESS)
 
 using namespace WebCore;
 
@@ -44,10 +46,8 @@ void DatabaseProcess::initializeProcess(const ChildProcessInitializationParamete
 
 void DatabaseProcess::initializeProcessName(const ChildProcessInitializationParameters& parameters)
 {
-#if !PLATFORM(IOS)
     NSString *applicationName = [NSString stringWithFormat:WEB_UI_STRING("%@ Database Storage", "visible name of the database process. The argument is the application name."), (NSString *)parameters.uiProcessName];
     WKSetVisibleApplicationName((CFStringRef)applicationName);
-#endif
 }
 
 void DatabaseProcess::initializeSandbox(const ChildProcessInitializationParameters& parameters, SandboxInitializationParameters& sandboxParameters)
@@ -61,4 +61,4 @@ void DatabaseProcess::initializeSandbox(const ChildProcessInitializationParamete
 
 } // namespace WebKit
 
-#endif // ENABLE(DATABASE_PROCESS)
+#endif // PLATFORM(MAC) && ENABLE(DATABASE_PROCESS)

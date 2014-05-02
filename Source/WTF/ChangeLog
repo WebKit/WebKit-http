@@ -1,3 +1,62 @@
+2014-04-30  Simon Fraser  <simon.fraser@apple.com>
+
+        Remove ENABLE_PLUGIN_PROXY_FOR_VIDEO
+        https://bugs.webkit.org/show_bug.cgi?id=132396
+
+        Reviewed by Eric Carlson.
+
+        Remove ENABLE_PLUGIN_PROXY_FOR_VIDEO and related code.
+
+        * wtf/FeatureDefines.h:
+
+2014-04-30  Víctor Manuel Jáquez Leal  <vjaquez@igalia.com>
+
+        [GTK][GStreamer] Remove unnecessary GLIB_CHECK_VERSION #ifdefs
+        https://bugs.webkit.org/show_bug.cgi?id=132390
+
+        Reviewed by Philippe Normand.
+
+        Since EFL port use GLib 2.38 and GTK+, 2.33.2, I assume it is OK
+        remove, in GTK+ and GST, the existing glib version guards.
+
+        This code was rollback from r149879 because Qt MIPS used it. But since
+        Qt is gone, it is safe to remove now.
+
+        * wtf/gobject/GRefPtr.cpp:
+        (WTF::refGPtr): Deleted.
+        (WTF::derefGPtr): Deleted.
+
+2014-04-29  Alex Christensen  <achristensen@webkit.org>
+
+        [WinCairo] Switch video from GStreamer to Media Foundation.
+        https://bugs.webkit.org/show_bug.cgi?id=132358
+
+        Reviewed by Brent Fulgham.
+
+        * WTF.vcxproj/WTF.vcxproj:
+        Removed dependencies on GStreamer.
+        * wtf/Platform.h:
+        Use Media Foundation instead of GStreamer and GLib.
+
+2014-04-29  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, fix cloop build.
+
+        * wtf/Platform.h:
+
+2014-04-29  Michael Saboff  <msaboff@apple.com>
+
+        For DARWIN platforms, use system temporary directory for DataLog output
+        https://bugs.webkit.org/show_bug.cgi?id=132346
+
+        Reviewed by Geoffrey Garen.
+
+        Added code to call confstr() to access the process's temporary directory to use that
+        location instead of /tmp/.  Put the code behind #ifdef DATA_LOG_TO_DARWIN_TEMP_DIR.
+
+        * wtf/DataLog.cpp:
+        (WTF::initializeLogFileOnce):
+
 2014-04-25  Filip Pizlo  <fpizlo@apple.com>
 
         Figure out how many cores are available for realsies.

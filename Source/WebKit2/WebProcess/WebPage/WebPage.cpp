@@ -2612,10 +2612,6 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
     settings.setQTKitEnabled(store.getBoolValueForKey(WebPreferencesKey::isQTKitEnabledKey()));
 #endif
 
-#if ENABLE(PLUGIN_PROXY_FOR_VIDEO)
-    settings.setVideoPluginProxyEnabled(false);
-#endif
-
 #if PLATFORM(IOS)
     settings.setAVKitEnabled(true);
 #endif
@@ -3159,15 +3155,6 @@ void WebPage::didSelectItemFromActiveContextMenu(const WebContextMenuItemData& i
 
     m_contextMenu->itemSelected(item);
     m_contextMenu = 0;
-}
-#endif
-
-#if ENABLE(SERVICE_CONTROLS)
-void WebPage::replaceControlledImage(const ShareableBitmap::Handle& bitmapHandle)
-{
-    RefPtr<ShareableBitmap> bitmap = ShareableBitmap::create(bitmapHandle);
-    if (bitmap)
-        m_contextMenu->replaceControlledImage(bitmap->createImage());
 }
 #endif
 
@@ -4320,6 +4307,8 @@ static int primarySnapshottedPlugInMinimumWidth = 400;
 static int primarySnapshottedPlugInMinimumHeight = 300;
 static unsigned maxPrimarySnapshottedPlugInDetectionAttempts = 2;
 static int deferredPrimarySnapshottedPlugInDetectionDelay = 3;
+static float overlappingImageBoundsScale = 1.1;
+static float minimumOverlappingImageToPluginDimensionScale = .9;
 
 #if ENABLE(PRIMARY_SNAPSHOTTED_PLUGIN_HEURISTIC)
 void WebPage::determinePrimarySnapshottedPlugInTimerFired()
@@ -4381,6 +4370,10 @@ void WebPage::determinePrimarySnapshottedPlugIn()
             if (plugInImageElement.displayState() == HTMLPlugInElement::Playing)
                 continue;
 
+            auto pluginRenderer = plugInImageElement.renderer();
+            if (!pluginRenderer || !pluginRenderer->isBox())
+                continue;
+            auto& pluginRenderBox = toRenderBox(*pluginRenderer);
             IntRect plugInRectRelativeToView = plugInImageElement.clientRect();
             if (plugInRectRelativeToView.isEmpty())
                 continue;
@@ -4393,17 +4386,30 @@ void WebPage::determinePrimarySnapshottedPlugIn()
             mainRenderView.hitTest(request, hitTestResult);
 
             Element* element = hitTestResult.innerElement();
-            if (element != &plugInImageElement)
+            if (!element)
                 continue;
 
-            auto renderer = plugInImageElement.renderer();
-            if (!renderer || !renderer->isBox())
-                continue;
-            auto& renderBox = toRenderBox(*renderer);
-            if (renderBox.contentWidth() < primarySnapshottedPlugInMinimumWidth || renderBox.contentHeight() < primarySnapshottedPlugInMinimumHeight)
+            IntRect elementRectRelativeToView = element->clientRect();
+            IntRect elementRectRelativeToTopDocument(elementRectRelativeToView.location() + scrollOffset, elementRectRelativeToView.size());
+            LayoutRect inflatedPluginRect = plugInRectRelativeToTopDocument;
+            LayoutUnit xOffset = (inflatedPluginRect.width() * overlappingImageBoundsScale - inflatedPluginRect.width()) / 2;
+            LayoutUnit yOffset = (inflatedPluginRect.height() * overlappingImageBoundsScale - inflatedPluginRect.height()) / 2;
+            inflatedPluginRect.inflateX(xOffset);
+            inflatedPluginRect.inflateY(yOffset);
+
+            if (element != &plugInImageElement) {
+                if (!(isHTMLImageElement(element)
+                    && inflatedPluginRect.contains(elementRectRelativeToTopDocument)
+                    && elementRectRelativeToTopDocument.width() > pluginRenderBox.width() * minimumOverlappingImageToPluginDimensionScale
+                    && elementRectRelativeToTopDocument.height() > pluginRenderBox.height() * minimumOverlappingImageToPluginDimensionScale))
+                    continue;
+                LOG(Plugins, "Primary Plug-In Detection: Plug-in is hidden by an image that is roughly aligned with it, autoplaying regardless of whether or not it's actually the primary plug-in.");
+                plugInImageElement.restartSnapshottedPlugIn();
+            }
+            if (pluginRenderBox.contentWidth() < primarySnapshottedPlugInMinimumWidth || pluginRenderBox.contentHeight() < primarySnapshottedPlugInMinimumHeight)
                 continue;
 
-            LayoutUnit contentArea = renderBox.contentWidth() * renderBox.contentHeight();
+            LayoutUnit contentArea = pluginRenderBox.contentWidth() * pluginRenderBox.contentHeight();
             if (contentArea > candidatePlugInArea * primarySnapshottedPlugInSearchBucketSize) {
                 candidatePlugIn = &plugInImageElement;
                 candidatePlugInArea = contentArea;

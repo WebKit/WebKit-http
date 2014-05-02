@@ -1,3 +1,314 @@
+2014-04-30  Alexey Proskuryakov  <ap@apple.com>
+
+        Roll out fix for https://bugs.webkit.org/show_bug.cgi?id=131637:
+        Clean up unnecessary methods in the BackForwardClient interface
+
+        It broke a regression test and an API test.
+
+        * History/WebBackForwardList.mm:
+        (-[WebBackForwardList initWithBackForwardList:]):
+        (-[WebBackForwardList init]):
+        (-[WebBackForwardList dealloc]):
+        (-[WebBackForwardList finalize]):
+        (-[WebBackForwardList setPageCacheSize:]):
+        (-[WebBackForwardList pageCacheSize]):
+        * History/WebBackForwardListInternal.h:
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::canCachePage):
+        * WebView/WebFrameView.mm:
+        (-[WebFrameView keyDown:keyDown:]):
+        * WebView/WebView.mm:
+        (-[WebView _loadBackForwardListFromOtherView:]):
+        (-[WebView initWithCoder:]):
+        (-[WebView encodeWithCoder:]):
+        (-[WebView backForwardList]):
+        (-[WebView setMaintainsBackForwardList:]):
+
+2014-04-30  Simon Fraser  <simon.fraser@apple.com>
+
+        Remove ENABLE_PLUGIN_PROXY_FOR_VIDEO
+        https://bugs.webkit.org/show_bug.cgi?id=132396
+
+        Reviewed by Eric Carlson.
+
+        Remove ENABLE_PLUGIN_PROXY_FOR_VIDEO and related code.
+
+        * Configurations/FeatureDefines.xcconfig:
+        * Plugins/WebPluginContainerPrivate.h:
+        * Plugins/WebPluginController.h:
+        * Plugins/WebPluginController.mm:
+        (-[WebPluginController dealloc]):
+        (-[WebPluginController plugInsAreRunning]):
+        (-[WebPluginController stopAllPlugins]):
+        (-[WebPluginController stopPluginsForPageCache]):
+        (-[WebPluginController restorePluginsFromCache]):
+        (-[WebPluginController addPlugin:]):
+        (-[WebPluginController destroyPlugin:]):
+        (-[WebPluginController destroyAllPlugins]):
+        (-[NSView isMediaPlugInProxyView]): Deleted.
+        (-[NSView setIsMediaPlugInProxyView:]): Deleted.
+        (-[WebPluginController mediaPlugInProxyViewCreated:]): Deleted.
+        (+[WebPluginController pluginViewHidden:]): Deleted.
+        (mediaProxyClient): Deleted.
+        (-[WebPluginController _webPluginContainerSetMediaPlayerProxy:forElement:]): Deleted.
+        (-[WebPluginController _webPluginContainerPostMediaPlayerNotification:forElement:]): Deleted.
+        * WebCoreSupport/WebFrameLoaderClient.h:
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (pluginView):
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+        (-[WebView _videoProxyPluginForMIMEType:]): Deleted.
+        * WebView/WebViewInternal.h:
+
+2014-04-30  Anders Carlsson  <andersca@apple.com>
+
+        Move the legacy WebKit API into WebKitLegacy.framework and move it inside WebKit.framework
+        https://bugs.webkit.org/show_bug.cgi?id=132399
+        <rdar://problem/15920046>
+
+        Reviewed by Dan Bernstein.
+
+        * Carbon/CarbonUtils.h:
+        * Carbon/HIViewAdapter.h:
+        * Carbon/HIWebView.h:
+        Import WebKitLegacy headers instead of WebKit headers.
+
+        * Configurations/WebKit.xcconfig:
+        Move the definitions needed for building WebKitLegacy.framework to WebKitLegacy.xcconfig and
+        add the relevant definitions needed for re-exporting WebKitLegacy.framework.
+
+        * Configurations/WebKitLegacy.xcconfig:
+        Add definitions needed for building the "old" WebKit API as WebKitLegacy.framework.
+
+        * DOM/WebDOMOperations.h:
+        * DOM/WebDOMOperations.mm:
+        * DOM/WebDOMOperationsInternal.h:
+        * DOM/WebDOMOperationsPrivate.h:
+        * DefaultDelegates/WebDefaultContextMenuDelegate.h:
+        * DefaultDelegates/WebDefaultContextMenuDelegate.mm:
+        * DefaultDelegates/WebDefaultEditingDelegate.m:
+        * History/WebBackForwardListInternal.h:
+        * History/WebBackForwardListPrivate.h:
+        * History/WebHistoryItemPrivate.h:
+        * History/WebHistoryPrivate.h:
+        * History/WebURLsWithTitles.m:
+        Import WebKitLegacy headers instead of WebKit headers.
+
+        * MigrateHeaders.make:
+        Update header paths now that all WebKitLegacy headers are private.
+        Remove migration of WebKit2 headers, that is done by MigrateHeadersFromWebKitLegacy.make now.
+        
+        * Misc/WebCoreStatistics.h:
+        * Misc/WebDownload.h:
+        * Misc/WebDownload.mm:
+        * Misc/WebDownloadInternal.h:
+        * Misc/WebElementDictionary.mm:
+        * Misc/WebIconDatabasePrivate.h:
+        * Misc/WebKit.h:
+        * Misc/WebKitErrors.m:
+        * Misc/WebKitErrorsPrivate.h:
+        * Misc/WebKitNSStringExtras.mm:
+        * Misc/WebLocalizableStrings.mm:
+        * Misc/WebNSDataExtras.m:
+        * Misc/WebNSDictionaryExtras.m:
+        * Misc/WebNSEventExtras.m:
+        * Misc/WebNSFileManagerExtras.mm:
+        * Misc/WebNSImageExtras.m:
+        * Misc/WebNSPasteboardExtras.mm:
+        * Misc/WebNSViewExtras.h:
+        * Misc/WebNSViewExtras.m:
+        * Panels/WebAuthenticationPanel.m:
+        * Panels/WebPanelAuthenticationHandler.m:
+        * Plugins/Hosted/HostedNetscapePluginStream.h:
+        * Plugins/Hosted/NetscapePluginInstanceProxy.h:
+        * Plugins/Hosted/WebKitPluginAgent.defs:
+        * Plugins/Hosted/WebKitPluginAgentReply.defs:
+        * Plugins/Hosted/WebKitPluginClient.defs:
+        * Plugins/Hosted/WebKitPluginHost.defs:
+        * Plugins/Hosted/WebKitPluginHostTypes.defs:
+        * Plugins/WebBaseNetscapePluginView.mm:
+        * Plugins/WebBasePluginPackage.h:
+        * Plugins/WebBasePluginPackage.mm:
+        * Plugins/WebNetscapeContainerCheckPrivate.h:
+        * Plugins/WebNetscapePluginEventHandlerCocoa.h:
+        * Plugins/WebNetscapePluginStream.h:
+        * Plugins/WebNetscapePluginView.h:
+        * Plugins/WebNetscapePluginView.mm:
+        * Plugins/WebPlugin.h:
+        * Plugins/WebPluginController.h:
+        * Plugins/WebPluginDatabase.h:
+        * Plugins/WebPluginPackage.h:
+        * Plugins/WebPluginPackage.mm:
+        * Plugins/WebPluginViewFactory.h:
+        * Plugins/WebPluginViewFactoryPrivate.h:
+        * Plugins/npapi.mm:
+        * Storage/WebDatabaseManagerPrivate.h:
+        * WebCoreSupport/WebContextMenuClient.mm:
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        * WebCoreSupport/WebFrameNetworkingContext.mm:
+        * WebCoreSupport/WebGeolocationClient.mm:
+        * WebCoreSupport/WebInspectorClient.mm:
+        * WebCoreSupport/WebJavaScriptTextInputPanel.m:
+        * WebCoreSupport/WebKeyGenerator.mm:
+        * WebInspector/WebInspectorPrivate.h:
+        * WebInspector/WebNodeHighlight.h:
+        * WebInspector/WebNodeHighlightView.h:
+        Import WebKitLegacy headers instead of WebKit headers.
+        
+        * WebKitLegacy/MigrateHeadersFromWebKitLegacy.make: Added.
+        New makefile that handles copying WebKitLegacy headers to the WebKit framework, rewriting WebKitLegacy
+        imports to WebKit imports. (On iOS the WebKit headers just forward to the relevant WebKitLegacy headers).
+        On OS X, this also handles copying WebKit2 headers to the WebKit framework, rewriting WebKit2 imports to WebKit imports
+        and getting rid of C SPI imports.
+        
+        * WebKitLegacy/MigrateHeadersToLegacy.make: Removed.
+        This is no longer needed.
+        
+        * WebKitLegacy/WebKit.h: Added.
+        New umbrella header that imports the modern API if available, as well as the legacy API (using WebKit/WebKitLegacy.h).
+
+        * WebKitLegacy/WebKit.m:
+        This is an empty file so we'll have something to link.
+
+        * WebKitLegacy/WebKitPrivate.h:
+        New SPI header that imports the private headers of the modern API.
+
+        * WebView/WebDataSource.h:
+        * WebView/WebDataSource.mm:
+        * WebView/WebDataSourcePrivate.h:
+        * WebView/WebDelegateImplementationCaching.h:
+        * WebView/WebDocument.h:
+        * WebView/WebDocumentInternal.h:
+        * WebView/WebDocumentPrivate.h:
+        * WebView/WebEditingDelegate.h:
+        * WebView/WebEditingDelegatePrivate.h:
+        * WebView/WebFrameLoadDelegate.h:
+        * WebView/WebFrameLoadDelegatePrivate.h:
+        * WebView/WebFramePrivate.h:
+        * WebView/WebFrameView.h:
+        * WebView/WebFrameViewInternal.h:
+        * WebView/WebFrameViewPrivate.h:
+        * WebView/WebHTMLRepresentation.h:
+        * WebView/WebHTMLRepresentation.mm:
+        * WebView/WebHTMLRepresentationPrivate.h:
+        * WebView/WebHTMLView.h:
+        * WebView/WebHTMLView.mm:
+        * WebView/WebHTMLViewPrivate.h:
+        * WebView/WebPDFView.h:
+        * WebView/WebPolicyDelegatePrivate.h:
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebResourcePrivate.h:
+        * WebView/WebUIDelegate.h:
+        * WebView/WebUIDelegatePrivate.h:
+        * WebView/WebView.h:
+        * WebView/WebView.mm:
+        * WebView/WebViewPrivate.h:
+        Import WebKitLegacy headers instead of WebKit headers.
+
+        * migrate-headers.sh:
+        Derived sources are put in DerivedSources/WebKitLegacy now.
+
+2014-04-30  David Hyatt  <hyatt@apple.com>
+
+        [New Multicolumn] Enable new multi-column mode
+        https://bugs.webkit.org/show_bug.cgi?id=131825
+
+        Reviewed by Simon Fraser.
+
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+
+2014-04-30  Brian J. Burg  <burg@cs.washington.edu>
+
+        Clean up unnecessary methods in the BackForwardClient interface
+        https://bugs.webkit.org/show_bug.cgi?id=131637
+
+        Reviewed by Andreas Kling.
+
+        BackForwardClient instances now have ownership lifetime semantics, so
+        WebBackForwardList now explicitly deletes its inner BackForwardList.
+
+        Convert uses of WebCore::BackForwardList through backForward().client() to
+        accept references instead of pointers.
+
+        Use BackForwardController methods rather than directly operating with the
+        BackForwardClient where possible.
+
+        Remove page cache-related methods that are not used anywhere and that call
+        BackForwardClient::page(), which is removed by this change.
+
+        * History/WebBackForwardList.mm:
+        (-[WebBackForwardList initWithBackForwardList:]):
+        (-[WebBackForwardList init]):
+        (-[WebBackForwardList dealloc]):
+        (-[WebBackForwardList finalize]):
+        (-[WebBackForwardList setPageCacheSize]): Deleted.
+        (-[WebBackForwardList pageCacheSize]): Deleted.
+        (-[WebBackForwardList itemAtIndex:]): Deleted.
+        * History/WebBackForwardListInternal.h:
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::canCachePage):
+        * WebView/WebFrameView.mm:
+        (-[WebFrameView keyDown:keyDown:]):
+        * WebView/WebView.mm:
+        (-[WebView _loadBackForwardListFromOtherView:]):
+        (-[WebView initWithCoder:]):
+        (-[WebView encodeWithCoder:]):
+        (-[WebView backForwardList]):
+        (-[WebView setMaintainsBackForwardList:]):
+
+2014-04-29  Sam Weinig  <sam@webkit.org>
+
+        [iOS] -[WebHTMLView selectionImageForcingBlackText:] returns blank image on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=132359
+
+        Reviewed by Darin Adler.
+
+        * WebView/WebHTMLView.mm:
+        (imageFromRect):
+        (selectionImage):
+        (-[WebHTMLView selectionImageForcingBlackText:selectionImageForcingBlackText:]):
+        Bring back the old FrameSnapshottingMac code for drawing the selection image as drag code for this
+        is still unimplemented on iOS.
+
+        * WebView/WebView.mm:
+        (-[WebView initSimpleHTMLDocumentWithStyle:frame:preferences:groupName:]):
+        Set the page scale for "simple HTML documents" (this is already done for the all other documents), 
+        to ensure that the snapshot is the correct size.
+
+2014-04-30  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [CSS Grid Layout] Enable runtime feature by default
+        https://bugs.webkit.org/show_bug.cgi?id=132189
+
+        Reviewed by Benjamin Poulain.
+
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]): Remove unneeded changes that
+        enable/disable the runtime feature depending on the compilation flag.
+        And set it to true by default.
+
+2014-04-29  Filip Pizlo  <fpizlo@apple.com>
+
+        Use LLVM as a backend for the fourth-tier DFG JIT (a.k.a. the FTL JIT)
+        https://bugs.webkit.org/show_bug.cgi?id=112840
+
+        Rubber stamped by Geoffrey Garen.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2014-04-29  Brady Eidson  <beidson@apple.com>
+
+        Change Image Controls replacement to use selection and paste
+        <rdar://problem/16302722> and https://bugs.webkit.org/show_bug.cgi?id=131992
+
+        Reviewed by Tim Horton.
+
+        * Misc/WebSharingServicePickerController.mm:
+        (-[WebSharingServicePickerController sharingService:didShareItems:]): Write the
+          replacement data to a special pasteboard, then replace the current selection from
+          that pasteboard.
+
 2014-04-27  Sam Weinig  <sam@webkit.org>
 
         [iOS WebKit2] Add support for text autosizing

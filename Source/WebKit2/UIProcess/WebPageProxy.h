@@ -99,6 +99,10 @@
 #include "AttributedString.h"
 #endif
 
+#if PLATFORM(IOS)
+#include "ProcessThrottler.h"
+#endif
+
 namespace API {
 class FindClient;
 class FormClient;
@@ -614,6 +618,7 @@ public:
     void applicationWillResignActive();
     void applicationDidBecomeActive();
     void zoomToRect(WebCore::FloatRect, double minimumScale, double maximumScale);
+    void didNotHandleTapAsClick(const WebCore::IntPoint&);
 #endif
 
     const EditorState& editorState() const { return m_editorState; }
@@ -755,7 +760,7 @@ public:
 
     void listenForLayoutMilestones(WebCore::LayoutMilestones);
 
-    void didUpdateViewState() { m_waitingForDidUpdateViewState = false; }
+    void didUpdateViewState();
 
     bool hasHorizontalScrollbar() const { return m_mainFrameHasHorizontalScrollbar; }
     bool hasVerticalScrollbar() const { return m_mainFrameHasVerticalScrollbar; }
@@ -809,6 +814,10 @@ public:
     void makeFirstResponder();
 
     ColorSpaceData colorSpace();
+#endif
+
+#if ENABLE(SERVICE_CONTROLS)
+    void replaceSelectionWithPasteboardData(const Vector<String>& types, const IPC::DataReference&);
 #endif
 
     void pageScaleFactorDidChange(double);
@@ -1000,7 +1009,7 @@ public:
     void setMediaVolume(float);
     void setMayStartMediaWhenInWindow(bool);
     bool mayStartMediaWhenInWindow() const { return m_mayStartMediaWhenInWindow; }
-
+        
     // WebPopupMenuProxy::Client
     virtual NativeWebMouseEvent* currentlyProcessedMouseDownEvent();
 
@@ -1063,16 +1072,13 @@ public:
 
     void takeSnapshot(WebCore::IntRect, WebCore::IntSize bitmapSize, SnapshotOptions, ImageCallback::CallbackFunction);
 
-#if ENABLE(SERVICE_CONTROLS)
-    void replaceControlledImage(PassRefPtr<ShareableBitmap>);
-#endif
-
 private:
     WebPageProxy(PageClient&, WebProcessProxy&, uint64_t pageID, const WebPageConfiguration&);
     void platformInitialize();
 
     void updateViewState(WebCore::ViewState::Flags flagsToUpdate = WebCore::ViewState::AllFlags);
-
+    void updateVisibilityToken();
+        
     void resetState();
     void resetStateAfterProcessExited();
 
@@ -1252,6 +1258,10 @@ private:
 #if PLATFORM(MAC)
     void showTelephoneNumberMenu(const String& telephoneNumber, const WebCore::IntPoint&);
 #endif
+#endif
+
+#if ENABLE(SERVICE_CONTROLS)
+    void showSelectionServiceMenu(const IPC::DataReference& selectionAsRTFD, bool isEditable, const WebCore::IntPoint&);
 #endif
 
     // Search popup results
@@ -1496,10 +1506,14 @@ private:
 
     WebCore::ViewState::Flags m_viewState;
 
+#if PLATFORM(IOS)
+    std::unique_ptr<ProcessThrottler::VisibilityToken> m_visibilityToken;
+#endif
+        
     bool m_canGoBack;
     bool m_canGoForward;
     Ref<WebBackForwardList> m_backForwardList;
-    
+        
     bool m_maintainsInactiveSelection;
 
     String m_toolTip;
@@ -1654,7 +1668,8 @@ private:
     bool m_mayStartMediaWhenInWindow;
 
     bool m_waitingForDidUpdateViewState;
-
+    unsigned m_pendingViewStateUpdates;
+        
 #if PLATFORM(COCOA)
     HashMap<String, String> m_temporaryPDFFiles;
 #endif

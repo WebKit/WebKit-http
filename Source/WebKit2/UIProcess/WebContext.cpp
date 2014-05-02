@@ -85,8 +85,16 @@
 #include "NetworkProcessProxy.h"
 #endif
 
+#if ENABLE(SERVICE_CONTROLS)
+#include "ServicesController.h"
+#endif
+
 #if ENABLE(CUSTOM_PROTOCOLS)
 #include "CustomProtocolManagerMessages.h"
+#endif
+
+#if ENABLE(REMOTE_INSPECTOR)
+#include <JavaScriptCore/RemoteInspector.h>
 #endif
 
 #if USE(SOUP)
@@ -443,6 +451,7 @@ void WebContext::ensureDatabaseProcess()
     // We should fix this, and move WebSQL into a subdirectory (https://bugs.webkit.org/show_bug.cgi?id=124807)
     // In the meantime, an entity name prefixed with three underscores will not conflict with any WebSQL entities.
     parameters.indexedDatabaseDirectory = pathByAppendingComponent(databaseDirectory(), "___IndexedDB");
+    SandboxExtension::createHandleForReadWriteDirectory(parameters.indexedDatabaseDirectory, parameters.indexedDatabaseDirectoryExtensionHandle);
 
     m_databaseProcess->send(Messages::DatabaseProcess::InitializeDatabaseProcess(parameters), 0);
 }
@@ -611,6 +620,12 @@ WebProcessProxy& WebContext::createNewWebProcess()
 
     parameters.memoryCacheDisabled = m_memoryCacheDisabled;
 
+#if ENABLE(SERVICE_CONTROLS)
+    parameters.hasImageServices = ServicesController::shared().hasImageServices();
+    parameters.hasSelectionServices = ServicesController::shared().hasSelectionServices();
+    ServicesController::shared().refreshExistingServices(this);
+#endif
+
     // Add any platform specific parameters
     platformInitializeWebProcess(parameters);
 
@@ -641,6 +656,11 @@ WebProcessProxy& WebContext::createNewWebProcess()
         m_messagesToInjectedBundlePostedToEmptyContext.clear();
     } else
         ASSERT(m_messagesToInjectedBundlePostedToEmptyContext.isEmpty());
+
+#if ENABLE(REMOTE_INSPECTOR)
+    // Initialize remote inspector connection now that we have a sub-process that is hosting one of our web views.
+    Inspector::RemoteInspector::shared(); 
+#endif
 
     return *process;
 }
@@ -1282,6 +1302,14 @@ void WebContext::didGetStatistics(const StatisticsData& statisticsData, uint64_t
 
     request->completedRequest(requestID, statisticsData);
 }
+
+#if ENABLE(SERVICE_CONTROLS)
+void WebContext::refreshExistingServices()
+{
+    ServicesController::shared().refreshExistingServices(this);
+}
+#endif
+
     
 void WebContext::garbageCollectJavaScriptObjects()
 {

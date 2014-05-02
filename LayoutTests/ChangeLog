@@ -1,3 +1,657 @@
+2014-04-30  Simon Fraser  <simon.fraser@apple.com>
+
+        [iOS WK2] Some accerated overflow-scroll doesn't scroll correctly
+        https://bugs.webkit.org/show_bug.cgi?id=132375
+
+        Reviewed by Tim Horton.
+        
+        New test that dumps compositing layers on iOS so we can see the sizes of the
+        scroll layers that get created.
+        
+        * compositing/overflow/subpixel-overflow-expected.txt: Added.
+        * compositing/overflow/subpixel-overflow.html: Added.
+        * platform/ios-sim/compositing/overflow/subpixel-overflow-expected.txt: Added.
+        * platform/mac/compositing/overflow/composited-scrolling-creates-a-stacking-container-expected.txt:
+        This is a progression; the old code failed to take the scrollbar width into
+        account, and the new code does.
+
+
+2014-04-30  Simon Fraser  <simon.fraser@apple.com>
+
+        Rebaseline compositing/overflow tests for iOS.
+
+        * platform/ios-sim/compositing/overflow/composited-scrolling-creates-a-stacking-container-expected.txt:
+        * platform/ios-sim/compositing/overflow/composited-scrolling-paint-phases-expected.txt:
+        * platform/ios-sim/compositing/overflow/content-gains-scrollbars-expected.txt:
+        * platform/ios-sim/compositing/overflow/fixed-position-ancestor-clip-expected.txt:
+        * platform/ios-sim/compositing/overflow/overflow-scroll-expected.txt:
+        * platform/ios-sim/compositing/overflow/overflow-scrollbar-layers-expected.txt:
+        * platform/ios-sim/compositing/overflow/remove-overflow-crash2-expected.txt:
+        * platform/ios-sim/compositing/overflow/scrollbar-painting-expected.txt:
+        * platform/ios-sim/compositing/overflow/scrolling-content-clip-to-viewport-expected.txt:
+        * platform/ios-sim/compositing/overflow/scrolling-without-painting-expected.txt:
+        * platform/ios-sim/compositing/overflow/textarea-scroll-touch-expected.txt:
+        * platform/ios-sim/compositing/overflow/updating-scrolling-content-expected.txt:
+
+2014-04-30  David Hyatt  <hyatt@apple.com>
+
+        REGRESSION (r168046): [New Multicolumn] Painting order is wrong for columns and fixed positioned elements
+        https://bugs.webkit.org/show_bug.cgi?id=132377
+
+        Reviewed by Simon Fraser.
+
+        * compositing/columns/composited-nested-columns-expected.txt:
+        * fast/multicol/fixed-stack-expected.html: Added.
+        * fast/multicol/fixed-stack.html: Added.
+        * fast/multicol/flipped-blocks-border-after-expected.txt:
+        * fast/multicol/progression-reverse-expected.txt:
+        * fast/multicol/single-line-expected.txt:
+        * fast/multicol/vertical-lr/rules-with-border-before-expected.txt:
+        * fast/multicol/vertical-rl/rule-style-expected.txt:
+        * fast/multicol/vertical-rl/rules-with-border-before-expected.txt:
+        * platform/mac/fast/multicol/client-rects-expected.txt:
+        * platform/mac/fast/multicol/client-rects-spanners-complex-expected.txt:
+        * platform/mac/fast/multicol/client-rects-spanners-expected.txt:
+        * platform/mac/fast/multicol/column-break-with-balancing-expected.txt:
+        * platform/mac/fast/multicol/column-count-with-rules-expected.txt:
+        * platform/mac/fast/multicol/float-paginate-complex-expected.txt:
+        * platform/mac/fast/multicol/layers-in-multicol-expected.txt:
+        * platform/mac/fast/multicol/layers-split-across-columns-expected.txt:
+        * platform/mac/fast/multicol/newmulticol/client-rects-expected.txt:
+        * platform/mac/fast/multicol/span/span-as-immediate-child-complex-splitting-expected.txt:
+        * platform/mac/fast/multicol/span/span-as-immediate-child-generated-content-expected.txt:
+        * platform/mac/fast/multicol/span/span-as-immediate-child-property-removal-expected.txt:
+        * platform/mac/fast/multicol/span/span-as-immediate-columns-child-dynamic-expected.txt:
+        * platform/mac/fast/multicol/span/span-as-immediate-columns-child-expected.txt:
+        * platform/mac/fast/multicol/span/span-as-immediate-columns-child-removal-expected.txt:
+        * platform/mac/fast/multicol/span/span-as-nested-columns-child-dynamic-expected.txt:
+        * platform/mac/fast/multicol/span/span-as-nested-columns-child-expected.txt:
+        * platform/mac/fast/multicol/span/span-margin-collapsing-expected.txt:
+        * platform/mac/fast/multicol/table-vertical-align-expected.txt:
+        * platform/mac/fast/multicol/vertical-lr/column-break-with-balancing-expected.txt:
+        * platform/mac/fast/multicol/vertical-lr/column-count-with-rules-expected.txt:
+        * platform/mac/fast/multicol/vertical-lr/float-paginate-complex-expected.txt:
+        * platform/mac/fast/multicol/vertical-rl/column-break-with-balancing-expected.txt:
+        * platform/mac/fast/multicol/vertical-rl/column-count-with-rules-expected.txt:
+        * platform/mac/fast/multicol/vertical-rl/float-paginate-complex-expected.txt:
+
+2014-04-30  Roger Fong  <roger_fong@apple.com>
+
+        Enable snapshot tests on mac wk2.
+        https://bugs.webkit.org/show_bug.cgi?id=131871.
+
+        Reviewed by Darin Adler.
+
+        * platform/mac-wk2/TestExpectations:
+        * platform/mac-wk2/plugins/snapshotting/autoplay-dominant-expected.txt:
+        * platform/mac-wk2/plugins/snapshotting/autoplay-plugin-blocked-by-image-expected.txt:
+        * platform/mac-wk2/plugins/snapshotting/autoplay-plugin-blocked-by-image-expected.txt:
+        * platform/mac-wk2/plugins/snapshotting/autoplay-similar-to-dominant-after-delay-expected.txt:
+        * platform/mac-wk2/plugins/snapshotting/autoplay-similar-to-dominant-expected.txt:
+        * platform/mac-wk2/plugins/snapshotting/quicktime-plugin-snapshotted-expected.txt:
+        * platform/mac-wk2/plugins/snapshotting/restart-expected.txt:
+        * platform/mac-wk2/plugins/snapshotting/set-plugin-size-to-tiny-expected.txt:
+        * platform/mac-wk2/plugins/snapshotting/simple-expected.txt:
+        * platform/mac-wk2/plugins/snapshotting/snapshot-plugin-not-quite-blocked-by-image-expected.txt:
+        * plugins/snapshotting/autoplay-dominant.html:
+        * plugins/snapshotting/autoplay-plugin-blocked-by-image.html:
+        * plugins/snapshotting/autoplay-plugin-mostly-blocked-by-image.html:
+        * plugins/snapshotting/autoplay-similar-to-dominant-after-delay.html:
+        * plugins/snapshotting/autoplay-similar-to-dominant.html:
+        * plugins/snapshotting/quicktime-plugin-snapshotted.html:
+        * plugins/snapshotting/restart.html:
+        * plugins/snapshotting/set-plugin-size-to-tiny.html:
+        * plugins/snapshotting/simple.html:
+        * plugins/snapshotting/snapshot-plugin-not-quite-blocked-by-image.html:
+
+2014-04-30  David Hyatt  <hyatt@apple.com>
+
+        [New Multicolumn] Enable new multi-column mode
+        https://bugs.webkit.org/show_bug.cgi?id=131825
+
+        Reviewed by Simon Fraser.
+
+        * compositing/columns/composited-columns-expected.txt:
+        * compositing/columns/composited-in-paginated-writing-mode-rl-expected.txt:
+        * compositing/columns/composited-nested-columns-expected.txt:
+        * compositing/columns/hittest-composited-in-paginated-expected.txt:
+        * fast/dom/Element/getBoundingClientRect-expected.txt:
+        * fast/dom/Element/getBoundingClientRect.html:
+        * fast/multicol/flipped-blocks-border-after-expected.txt:
+        * fast/multicol/pagination-h-horizontal-bt-expected.txt:
+        * fast/multicol/pagination-h-horizontal-tb-expected.txt:
+        * fast/multicol/pagination-h-vertical-lr-expected.txt:
+        * fast/multicol/pagination-h-vertical-rl-expected.txt:
+        * fast/multicol/pagination-v-horizontal-bt-expected.txt:
+        * fast/multicol/pagination-v-horizontal-tb-expected.txt:
+        * fast/multicol/pagination-v-vertical-lr-expected.txt:
+        * fast/multicol/pagination-v-vertical-rl-expected.txt:
+        * fast/multicol/progression-reverse-expected.txt:
+        * fast/multicol/single-line-expected.txt:
+        * fast/multicol/span/before-child-anonymous-column-block-expected.txt:
+        * fast/multicol/span/generated-child-split-flow-crash-expected.txt:
+        * fast/multicol/vertical-lr/rules-with-border-before-expected.txt:
+        * fast/multicol/vertical-rl/rule-style-expected.txt:
+        * fast/multicol/vertical-rl/rules-with-border-before-expected.txt:
+        * platform/mac/css3/unicode-bidi-isolate-basic-expected.png:
+        * platform/mac/css3/unicode-bidi-isolate-basic-expected.txt:
+        * platform/mac/fast/block/float/float-not-removed-from-next-sibling4-expected.png:
+        * platform/mac/fast/block/float/float-not-removed-from-next-sibling4-expected.txt:
+        * platform/mac/fast/borders/border-antialiasing-expected.png:
+        * platform/mac/fast/borders/border-antialiasing-expected.txt:
+        * platform/mac/fast/line-grid/line-align-left-edges-expected.png:
+        * platform/mac/fast/line-grid/line-align-right-edges-expected.png:
+        * platform/mac/fast/line-grid/line-grid-contains-value-expected.png:
+        * platform/mac/fast/line-grid/line-grid-floating-expected.png:
+        * platform/mac/fast/line-grid/line-grid-inside-columns-expected.png:
+        * platform/mac/fast/line-grid/line-grid-inside-columns-expected.txt:
+        * platform/mac/fast/line-grid/line-grid-into-columns-expected.png:
+        * platform/mac/fast/line-grid/line-grid-into-columns-expected.txt:
+        * platform/mac/fast/line-grid/line-grid-into-floats-expected.png:
+        * platform/mac/fast/line-grid/line-grid-positioned-expected.png:
+        * platform/mac/fast/multicol/block-axis-horizontal-bt-expected.txt:
+        * platform/mac/fast/multicol/block-axis-horizontal-tb-expected.txt:
+        * platform/mac/fast/multicol/block-axis-vertical-lr-expected.txt:
+        * platform/mac/fast/multicol/block-axis-vertical-rl-expected.txt:
+        * platform/mac/fast/multicol/border-padding-pagination-expected.png:
+        * platform/mac/fast/multicol/border-padding-pagination-expected.txt:
+        * platform/mac/fast/multicol/client-rects-expected.png:
+        * platform/mac/fast/multicol/client-rects-expected.txt:
+        * platform/mac/fast/multicol/column-break-with-balancing-expected.txt:
+        * platform/mac/fast/multicol/column-count-with-rules-expected.txt:
+        * platform/mac/fast/multicol/column-rules-expected.png:
+        * platform/mac/fast/multicol/column-rules-expected.txt:
+        * platform/mac/fast/multicol/column-rules-stacking-expected.txt:
+        * platform/mac/fast/multicol/columns-shorthand-parsing-expected.txt:
+        * platform/mac/fast/multicol/float-avoidance-expected.txt:
+        * platform/mac/fast/multicol/float-multicol-expected.txt:
+        * platform/mac/fast/multicol/float-paginate-complex-expected.txt:
+        * platform/mac/fast/multicol/float-paginate-empty-lines-expected.txt:
+        * platform/mac/fast/multicol/float-paginate-expected.txt:
+        * platform/mac/fast/multicol/layers-in-multicol-expected.png:
+        * platform/mac/fast/multicol/layers-in-multicol-expected.txt:
+        * platform/mac/fast/multicol/layers-split-across-columns-expected.txt:
+        * platform/mac/fast/multicol/margin-collapse-expected.txt:
+        * platform/mac/fast/multicol/max-height-columns-block-expected.png:
+        * platform/mac/fast/multicol/max-height-columns-block-expected.txt:
+        * platform/mac/fast/multicol/nested-columns-expected.png:
+        * platform/mac/fast/multicol/nested-columns-expected.txt:
+        * platform/mac/fast/multicol/overflow-across-columns-expected.txt:
+        * platform/mac/fast/multicol/overflow-across-columns-percent-height-expected.txt:
+        * platform/mac/fast/multicol/overflow-unsplittable-expected.txt:
+        * platform/mac/fast/multicol/paginate-block-replaced-expected.txt:
+        * platform/mac/fast/multicol/pagination/BottomToTop-bt-expected.txt:
+        * platform/mac/fast/multicol/pagination/BottomToTop-lr-expected.txt:
+        * platform/mac/fast/multicol/pagination/BottomToTop-rl-expected.txt:
+        * platform/mac/fast/multicol/pagination/BottomToTop-tb-expected.txt:
+        * platform/mac/fast/multicol/pagination/LeftToRight-bt-expected.txt:
+        * platform/mac/fast/multicol/pagination/LeftToRight-lr-expected.txt:
+        * platform/mac/fast/multicol/pagination/LeftToRight-rl-expected.png:
+        * platform/mac/fast/multicol/pagination/LeftToRight-rl-expected.txt:
+        * platform/mac/fast/multicol/pagination/LeftToRight-tb-expected.txt:
+        * platform/mac/fast/multicol/pagination/RightToLeft-bt-expected.txt:
+        * platform/mac/fast/multicol/pagination/RightToLeft-lr-expected.txt:
+        * platform/mac/fast/multicol/pagination/RightToLeft-rl-expected.txt:
+        * platform/mac/fast/multicol/pagination/RightToLeft-tb-expected.txt:
+        * platform/mac/fast/multicol/pagination/TopToBottom-bt-expected.png:
+        * platform/mac/fast/multicol/pagination/TopToBottom-bt-expected.txt:
+        * platform/mac/fast/multicol/pagination/TopToBottom-lr-expected.txt:
+        * platform/mac/fast/multicol/pagination/TopToBottom-rl-expected.txt:
+        * platform/mac/fast/multicol/pagination/TopToBottom-tb-expected.txt:
+        * platform/mac/fast/multicol/positioned-split-expected.txt:
+        * platform/mac/fast/multicol/positive-leading-expected.txt:
+        * platform/mac/fast/multicol/scrolling-overflow-expected.png:
+        * platform/mac/fast/multicol/scrolling-overflow-expected.txt:
+        * platform/mac/fast/multicol/shadow-breaking-expected.png:
+        * platform/mac/fast/multicol/shadow-breaking-expected.txt:
+        * platform/mac/fast/multicol/shrink-to-column-height-for-pagination-expected.txt:
+        * platform/mac/fast/multicol/span/anonymous-before-child-parent-crash-expected.png:
+        * platform/mac/fast/multicol/span/anonymous-before-child-parent-crash-expected.txt:
+        * platform/mac/fast/multicol/span/anonymous-split-block-crash-expected.png:
+        * platform/mac/fast/multicol/span/anonymous-split-block-crash-expected.txt:
+        * platform/mac/fast/multicol/span/anonymous-style-inheritance-expected.txt:
+        * platform/mac/fast/multicol/span/clone-anonymous-block-non-inline-child-crash-expected.png:
+        * platform/mac/fast/multicol/span/clone-anonymous-block-non-inline-child-crash-expected.txt:
+        * platform/mac/fast/multicol/span/clone-flexbox-expected.txt:
+        * platform/mac/fast/multicol/span/clone-summary-expected.txt:
+        * platform/mac/fast/multicol/span/generated-child-split-flow-crash-expected.png:
+        * platform/mac/fast/multicol/span/span-as-immediate-child-complex-splitting-expected.png:
+        * platform/mac/fast/multicol/span/span-as-immediate-child-complex-splitting-expected.txt:
+        * platform/mac/fast/multicol/span/span-as-immediate-child-generated-content-expected.png:
+        * platform/mac/fast/multicol/span/span-as-immediate-child-generated-content-expected.txt:
+        * platform/mac/fast/multicol/span/span-as-immediate-child-property-removal-expected.png:
+        * platform/mac/fast/multicol/span/span-as-immediate-child-property-removal-expected.txt:
+        * platform/mac/fast/multicol/span/span-as-immediate-columns-child-dynamic-expected.png:
+        * platform/mac/fast/multicol/span/span-as-immediate-columns-child-dynamic-expected.txt:
+        * platform/mac/fast/multicol/span/span-as-immediate-columns-child-expected.txt:
+        * platform/mac/fast/multicol/span/span-as-immediate-columns-child-removal-expected.png:
+        * platform/mac/fast/multicol/span/span-as-immediate-columns-child-removal-expected.txt:
+        * platform/mac/fast/multicol/span/span-as-nested-columns-child-dynamic-expected.png:
+        * platform/mac/fast/multicol/span/span-as-nested-columns-child-dynamic-expected.txt:
+        * platform/mac/fast/multicol/span/span-as-nested-columns-child-expected.png:
+        * platform/mac/fast/multicol/span/span-as-nested-columns-child-expected.txt:
+        * platform/mac/fast/multicol/span/span-as-nested-inline-block-child-expected.txt:
+        * platform/mac/fast/multicol/span/span-margin-collapsing-expected.txt:
+        * platform/mac/fast/multicol/table-margin-collapse-expected.txt:
+        * platform/mac/fast/multicol/table-vertical-align-expected.txt:
+        * platform/mac/fast/multicol/unsplittable-inline-block-expected.txt:
+        * platform/mac/fast/multicol/vertical-lr/border-padding-pagination-expected.png:
+        * platform/mac/fast/multicol/vertical-lr/border-padding-pagination-expected.txt:
+        * platform/mac/fast/multicol/vertical-lr/column-break-with-balancing-expected.txt:
+        * platform/mac/fast/multicol/vertical-lr/column-count-with-rules-expected.png:
+        * platform/mac/fast/multicol/vertical-lr/column-count-with-rules-expected.txt:
+        * platform/mac/fast/multicol/vertical-lr/column-rules-expected.png:
+        * platform/mac/fast/multicol/vertical-lr/column-rules-expected.txt:
+        * platform/mac/fast/multicol/vertical-lr/float-avoidance-expected.txt:
+        * platform/mac/fast/multicol/vertical-lr/float-multicol-expected.txt:
+        * platform/mac/fast/multicol/vertical-lr/float-paginate-complex-expected.txt:
+        * platform/mac/fast/multicol/vertical-lr/float-paginate-expected.txt:
+        * platform/mac/fast/multicol/vertical-lr/nested-columns-expected.png:
+        * platform/mac/fast/multicol/vertical-lr/nested-columns-expected.txt:
+        * platform/mac/fast/multicol/vertical-lr/unsplittable-inline-block-expected.txt:
+        * platform/mac/fast/multicol/vertical-rl/border-padding-pagination-expected.png:
+        * platform/mac/fast/multicol/vertical-rl/border-padding-pagination-expected.txt:
+        * platform/mac/fast/multicol/vertical-rl/column-break-with-balancing-expected.txt:
+        * platform/mac/fast/multicol/vertical-rl/column-count-with-rules-expected.png:
+        * platform/mac/fast/multicol/vertical-rl/column-count-with-rules-expected.txt:
+        * platform/mac/fast/multicol/vertical-rl/column-rules-expected.png:
+        * platform/mac/fast/multicol/vertical-rl/column-rules-expected.txt:
+        * platform/mac/fast/multicol/vertical-rl/float-avoidance-expected.txt:
+        * platform/mac/fast/multicol/vertical-rl/float-multicol-expected.txt:
+        * platform/mac/fast/multicol/vertical-rl/float-paginate-complex-expected.txt:
+        * platform/mac/fast/multicol/vertical-rl/float-paginate-expected.txt:
+        * platform/mac/fast/multicol/vertical-rl/nested-columns-expected.png:
+        * platform/mac/fast/multicol/vertical-rl/nested-columns-expected.txt:
+        * platform/mac/fast/multicol/vertical-rl/unsplittable-inline-block-expected.txt:
+        * platform/mac/fast/overflow/paged-x-div-expected.png:
+        * platform/mac/fast/overflow/paged-x-div-expected.txt:
+        * platform/mac/fast/overflow/paged-x-div-with-column-gap-expected.png:
+        * platform/mac/fast/overflow/paged-x-div-with-column-gap-expected.txt:
+        * platform/mac/fast/overflow/paged-x-on-root-expected.png:
+        * platform/mac/fast/overflow/paged-x-on-root-expected.txt:
+        * platform/mac/fast/overflow/paged-x-with-column-gap-expected.png:
+        * platform/mac/fast/overflow/paged-x-with-column-gap-expected.txt:
+        * platform/mac/fast/overflow/paged-y-div-expected.png:
+        * platform/mac/fast/overflow/paged-y-div-expected.txt:
+        * platform/mac/fast/overflow/paged-y-on-root-expected.png:
+        * platform/mac/fast/overflow/paged-y-on-root-expected.txt:
+        * platform/mac/fast/repaint/multicol-repaint-expected.png:
+        * platform/mac/fast/repaint/multicol-repaint-expected.txt:
+
+2014-04-30  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: Make "contenteditable" regions into AXTextAreas
+        https://bugs.webkit.org/show_bug.cgi?id=132379
+
+        Reviewed by Mario Sanchez Prada.
+
+        * accessibility/content-editable-as-textarea.html: Added.
+        * platform/mac-mountainlion/accessibility/content-editable-as-textarea-expected.txt: Added.
+        * platform/mac/accessibility/content-editable-as-textarea-expected.txt: Added.
+
+2014-04-30  David Kilzer  <ddkilzer@apple.com>
+
+        Move iphone-simulator test results landed in r167402 to the correct directory
+
+        * platform/ios-sim/media/media-document-controls-size-expected.txt: Renamed from LayoutTests/platform/iphone-simulator/media/media-document-controls-size-expected.txt.
+        * platform/ios-sim/media/media-document-controls-size.html: Renamed from LayoutTests/platform/iphone-simulator/media/media-document-controls-size.html.
+
+2014-04-30  Alexey Proskuryakov  <ap@apple.com>
+
+        compositing/repaint/repaint-on-layer-grouping-change.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=132385
+
+        * platform/mac/TestExpectations: Marked as such.
+
+2014-04-29  David Hyatt  <hyatt@apple.com>
+
+        Fix test up so that it looks the same as it did before my landing in r167965.
+
+        * fast/multicol/mixed-positioning-stacking-order.html:
+
+2014-04-29  Simon Fraser  <simon.fraser@apple.com>
+
+        Remove Settings::compositedScrollingForFramesEnabled
+        https://bugs.webkit.org/show_bug.cgi?id=132352
+
+        Reviewed by Andreas Kling.
+
+        * compositing/iframes/iframe-composited-scrolling-expected.txt: Removed.
+        * compositing/iframes/iframe-composited-scrolling.html: Removed.
+
+2014-04-29  David Hyatt  <hyatt@apple.com>
+
+        [New Multicolumn] Implement support for compositing
+        https://bugs.webkit.org/show_bug.cgi?id=132298
+        
+        Reviewed by Simon Fraser.
+    
+        Minor pixel test changes based off how we flip now.
+
+        * platform/mac/fast/multicol/block-axis-horizontal-bt-expected.png:
+        * platform/mac/fast/multicol/block-axis-horizontal-tb-expected.png:
+        * platform/mac/fast/multicol/block-axis-vertical-lr-expected.png:
+        * platform/mac/fast/multicol/block-axis-vertical-rl-expected.png:
+        * platform/mac/fast/multicol/border-padding-pagination-expected.png:
+        * platform/mac/fast/multicol/client-rects-spanners-complex-expected.txt:
+        * platform/mac/fast/multicol/client-rects-spanners-expected.txt:
+        * platform/mac/fast/multicol/column-break-with-balancing-expected.png:
+        * platform/mac/fast/multicol/column-count-with-rules-expected.png:
+        * platform/mac/fast/multicol/column-rules-expected.png:
+        * platform/mac/fast/multicol/column-rules-stacking-expected.png:
+        * platform/mac/fast/multicol/columns-shorthand-parsing-expected.png:
+        * platform/mac/fast/multicol/float-avoidance-expected.png:
+        * platform/mac/fast/multicol/float-multicol-expected.png:
+        * platform/mac/fast/multicol/float-paginate-complex-expected.png:
+        * platform/mac/fast/multicol/float-paginate-empty-lines-expected.png:
+        * platform/mac/fast/multicol/float-paginate-expected.png:
+        * platform/mac/fast/multicol/layers-in-multicol-expected.png:
+        * platform/mac/fast/multicol/layers-split-across-columns-expected.png:
+        * platform/mac/fast/multicol/margin-collapse-expected.png:
+        * platform/mac/fast/multicol/max-height-columns-block-expected.png:
+        * platform/mac/fast/multicol/nested-columns-expected.png:
+        * platform/mac/fast/multicol/newmulticol/client-rects-expected.txt:
+        * platform/mac/fast/multicol/overflow-across-columns-expected.png:
+        * platform/mac/fast/multicol/overflow-across-columns-percent-height-expected.png:
+        * platform/mac/fast/multicol/overflow-unsplittable-expected.png:
+        * platform/mac/fast/multicol/paginate-block-replaced-expected.png:
+        * platform/mac/fast/multicol/pagination/BottomToTop-bt-expected.png:
+        * platform/mac/fast/multicol/pagination/BottomToTop-lr-expected.png:
+        * platform/mac/fast/multicol/pagination/BottomToTop-rl-expected.png:
+        * platform/mac/fast/multicol/pagination/BottomToTop-tb-expected.png:
+        * platform/mac/fast/multicol/pagination/LeftToRight-bt-expected.png:
+        * platform/mac/fast/multicol/pagination/LeftToRight-lr-expected.png:
+        * platform/mac/fast/multicol/pagination/LeftToRight-rl-expected.png:
+        * platform/mac/fast/multicol/pagination/LeftToRight-tb-expected.png:
+        * platform/mac/fast/multicol/pagination/RightToLeft-bt-expected.png:
+        * platform/mac/fast/multicol/pagination/RightToLeft-lr-expected.png:
+        * platform/mac/fast/multicol/pagination/RightToLeft-rl-expected.png:
+        * platform/mac/fast/multicol/pagination/RightToLeft-tb-expected.png:
+        * platform/mac/fast/multicol/pagination/TopToBottom-bt-expected.png:
+        * platform/mac/fast/multicol/pagination/TopToBottom-lr-expected.png:
+        * platform/mac/fast/multicol/pagination/TopToBottom-rl-expected.png:
+        * platform/mac/fast/multicol/pagination/TopToBottom-tb-expected.png:
+        * platform/mac/fast/multicol/positioned-split-expected.png:
+        * platform/mac/fast/multicol/positive-leading-expected.png:
+        * platform/mac/fast/multicol/scrolling-overflow-expected.png:
+        * platform/mac/fast/multicol/shadow-breaking-expected.png:
+        * platform/mac/fast/multicol/single-line-expected.png:
+        * platform/mac/fast/multicol/span/anonymous-before-child-parent-crash-expected.png:
+        * platform/mac/fast/multicol/span/anonymous-split-block-crash-expected.png:
+        * platform/mac/fast/multicol/span/anonymous-style-inheritance-expected.png:
+        * platform/mac/fast/multicol/span/anonymous-style-inheritance-expected.txt:
+        * platform/mac/fast/multicol/span/clone-anonymous-block-non-inline-child-crash-expected.png:
+        * platform/mac/fast/multicol/span/span-as-immediate-child-complex-splitting-expected.png:
+        * platform/mac/fast/multicol/span/span-as-immediate-child-generated-content-expected.png:
+        * platform/mac/fast/multicol/span/span-as-immediate-child-property-removal-expected.png:
+        * platform/mac/fast/multicol/span/span-as-immediate-columns-child-dynamic-expected.png:
+        * platform/mac/fast/multicol/span/span-as-immediate-columns-child-expected.png:
+        * platform/mac/fast/multicol/span/span-as-immediate-columns-child-removal-expected.png:
+        * platform/mac/fast/multicol/span/span-as-nested-columns-child-dynamic-expected.png:
+        * platform/mac/fast/multicol/span/span-as-nested-columns-child-expected.png:
+        * platform/mac/fast/multicol/span/span-as-nested-inline-block-child-expected.png:
+        * platform/mac/fast/multicol/span/span-margin-collapsing-expected.png:
+        * platform/mac/fast/multicol/table-margin-collapse-expected.png:
+        * platform/mac/fast/multicol/table-vertical-align-expected.png:
+        * platform/mac/fast/multicol/unsplittable-inline-block-expected.png:
+        * platform/mac/fast/multicol/vertical-lr/border-padding-pagination-expected.png:
+        * platform/mac/fast/multicol/vertical-lr/column-break-with-balancing-expected.png:
+        * platform/mac/fast/multicol/vertical-lr/column-count-with-rules-expected.png:
+        * platform/mac/fast/multicol/vertical-lr/column-rules-expected.png:
+        * platform/mac/fast/multicol/vertical-lr/float-avoidance-expected.png:
+        * platform/mac/fast/multicol/vertical-lr/float-multicol-expected.png:
+        * platform/mac/fast/multicol/vertical-lr/float-paginate-complex-expected.png:
+        * platform/mac/fast/multicol/vertical-lr/float-paginate-expected.png:
+        * platform/mac/fast/multicol/vertical-lr/nested-columns-expected.png:
+        * platform/mac/fast/multicol/vertical-lr/unsplittable-inline-block-expected.png:
+        * platform/mac/fast/multicol/vertical-rl/border-padding-pagination-expected.png:
+        * platform/mac/fast/multicol/vertical-rl/column-break-with-balancing-expected.png:
+        * platform/mac/fast/multicol/vertical-rl/column-count-with-rules-expected.png:
+        * platform/mac/fast/multicol/vertical-rl/column-rules-expected.png:
+        * platform/mac/fast/multicol/vertical-rl/float-avoidance-expected.png:
+        * platform/mac/fast/multicol/vertical-rl/float-multicol-expected.png:
+        * platform/mac/fast/multicol/vertical-rl/float-paginate-complex-expected.png:
+        * platform/mac/fast/multicol/vertical-rl/float-paginate-expected.png:
+        * platform/mac/fast/multicol/vertical-rl/nested-columns-expected.png:
+        * platform/mac/fast/multicol/vertical-rl/unsplittable-inline-block-expected.png:
+
+2014-04-29  Oliver Hunt  <oliver@apple.com>
+
+        Don't hold on to parameter BindingNodes forever
+        https://bugs.webkit.org/show_bug.cgi?id=132360
+
+        Reviewed by Geoffrey Garen.
+
+        We don't regenerate the parameter string anymore, so these tests now
+        match the original input.
+
+        * js/destructuring-assignment-expected.txt:
+
+2014-04-28  Roger Fong  <roger_fong@apple.com>
+
+        Plugins hidden by images should autoplay.
+        https://bugs.webkit.org/show_bug.cgi?id=132222.
+        <rdar://problem/16653536>
+
+        Reviewed by Jon Lee and Darin Adler.
+
+        * platform/mac-wk2/plugins/snapshotting/autoplay-plugin-blocked-by-image-expected.txt: Added.
+        * platform/mac-wk2/plugins/snapshotting/autoplay-plugin-mostly-blocked-by-image-expected.txt: Added.
+        * platform/mac-wk2/plugins/snapshotting/snapshot-plugin-not-quite-blocked-by-image-expected.txt: Added.
+        * plugins/snapshotting/autoplay-plugin-blocked-by-image.html: Added.
+        * plugins/snapshotting/autoplay-plugin-mostly-blocked-by-image.html: Added.
+        * plugins/snapshotting/snapshot-plugin-not-quite-blocked-by-image.html: Added.
+
+2014-04-29  Andreas Kling  <akling@apple.com>
+
+        REGRESSION (r167906?): js/dom/basic-weakmap.html is much more flaky than before
+        <https://webkit.org/b/132322>
+
+        Remove the part of js/dom/basic-weakmap.html that expects deterministic behavior
+        from our non-deterministic GC.
+
+        Rubber-stamped by Phil Pizlo.
+
+        * TestExpectations:
+        * js/dom/basic-weakmap-expected.txt:
+        * js/dom/script-tests/basic-weakmap.js:
+
+2014-04-29  Geoffrey Garen  <ggaren@apple.com>
+
+        String.prototype.trim removes U+200B from strings.
+        https://bugs.webkit.org/show_bug.cgi?id=130184
+
+        Reviewed by Michael Saboff.
+
+        * js/script-tests/string-trim.js:
+        * js/string-trim-expected.txt:
+
+2014-04-29  Alexey Proskuryakov  <ap@apple.com>
+
+        REGRESSION: Intermittent crash in SpeechSynthesis::didFinishSpeaking
+        https://bugs.webkit.org/show_bug.cgi?id=111613
+        <rdar://problem/13407093>
+
+        * platform/mac/TestExpectations: Remove test expectation, now that the bug is fixed.
+
+2014-04-29  Tim Horton  <timothy_horton@apple.com>
+
+        REGRESSION (r167906?): js/dom/basic-weakmap.html is much more flaky than before
+        https://bugs.webkit.org/show_bug.cgi?id=132322
+
+        * TestExpectations:
+        Mark the test as flaky.
+
+2014-04-29  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        REGRESSION (r167879): Heap-use-after-free in WebCore::RenderFlexibleBox
+        https://bugs.webkit.org/show_bug.cgi?id=132337
+
+        Reviewed by Simon Fraser.
+
+        From Blink r154582 by <jchaffraix@chromium.org>
+
+        Add new layout test to check that removing a child doesn't cause a crash
+        in OrderIterator.
+
+        * fast/flexbox/order-iterator-crash-expected.txt: Added.
+        * fast/flexbox/order-iterator-crash.html: Added.
+
+2014-04-29  Hans Muller  <hmuller@adobe.com>
+
+        [CSS Shapes] off-by-one error in Shape::createRasterShape()
+        https://bugs.webkit.org/show_bug.cgi?id=132154
+
+        Reviewed by Bem Jones-Bey.
+
+        Change two tests that had incorrect X values to account for the off-by-one
+        in Shape::createRasterShape().
+
+        * fast/shapes/shape-outside-floats/shape-outside-insert-svg-shape.html:
+        * fast/shapes/shape-outside-floats/shape-outside-linear-gradient-expected.html:
+
+2014-04-29  Zoltan Horvath  <zoltan@webkit.org>
+
+        [CSS Shapes] complex calc args for inset round vanish
+        https://bugs.webkit.org/show_bug.cgi?id=132293
+
+        Reviewed by Bem Jones-Bey.
+
+        * fast/shapes/parsing/parsing-shape-outside-expected.txt:
+        * fast/shapes/parsing/parsing-test-utils.js:
+
+2014-04-29  Zoltan Horvath  <zoltan@webkit.org>
+
+        [CSS Shapes] complex calc values for shape-margin return null for computed style
+        https://bugs.webkit.org/show_bug.cgi?id=132313
+
+        Reviewed by Bem Jones-Bey.
+
+        * fast/shapes/parsing/parsing-shape-margin.html:
+
+2014-04-29  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: Row span info is wrong for table cells when a footer section is placed above a body section
+        https://bugs.webkit.org/show_bug.cgi?id=131832
+
+        Reviewed by Mario Sanchez Prada.
+
+        * accessibility/table-with-footer-section-above-body-expected.txt: Added.
+        * accessibility/table-with-footer-section-above-body.html: Added.
+
+2014-04-29  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: SpeechSynthesisUtterance cannot addEventListener
+        https://bugs.webkit.org/show_bug.cgi?id=132321
+
+        Reviewed by Mario Sanchez Prada.
+
+        * platform/mac/fast/speechsynthesis/speech-synthesis-speak.html:
+
+2014-04-29  Hans Muller  <hmuller@adobe.com>
+
+        [CSS Shapes] shape-outside polygon fails when first vertex is 0,0
+        https://bugs.webkit.org/show_bug.cgi?id=132132
+
+        Reviewed by Bem Jones-Bey.
+
+        * fast/shapes/shape-outside-floats/shape-outside-polygon-zero-vertex-expected.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-polygon-zero-vertex.html: Added.
+
+2014-04-29  Andrei Bucur  <abucur@adobe.com>
+
+        [CSS Regions] Fix getClientRects() for content nodes
+        https://bugs.webkit.org/show_bug.cgi?id=117407
+
+        Reviewed by David Hyatt.
+
+        Tests verifying getClientRects works correctly in different situations.
+
+        * fast/regions/cssom/client-rects-fixed-content-expected.txt: Added.
+        * fast/regions/cssom/client-rects-fixed-content.html: Added.
+        * fast/regions/cssom/client-rects-forced-breaks-expected.txt: Added.
+        * fast/regions/cssom/client-rects-forced-breaks.html: Added.
+        * fast/regions/cssom/client-rects-inline-complex-expected.txt: Added.
+        * fast/regions/cssom/client-rects-inline-complex.html: Added.
+        * fast/regions/cssom/client-rects-inline-expected.txt: Added.
+        * fast/regions/cssom/client-rects-inline.html: Added.
+        * fast/regions/cssom/client-rects-nested-regions-expected.txt: Added.
+        * fast/regions/cssom/client-rects-nested-regions.html: Added.
+        * fast/regions/cssom/client-rects-positioned-expected.txt: Added.
+        * fast/regions/cssom/client-rects-positioned.html: Added.
+        * fast/regions/cssom/client-rects-relative-position-expected.txt: Added.
+        * fast/regions/cssom/client-rects-relative-position.html: Added.
+        * fast/regions/cssom/client-rects-simple-block-expected.txt: Added.
+        * fast/regions/cssom/client-rects-simple-block.html: Added.
+        * fast/regions/cssom/client-rects-transforms-expected.txt: Added.
+        * fast/regions/cssom/client-rects-transforms.html: Added.
+        * fast/regions/cssom/client-rects-unsplittable-float-expected.txt: Added.
+        * fast/regions/cssom/client-rects-unsplittable-float.html: Added.
+        * fast/regions/resources/helper.js: 
+        (testClientRects): Function that compares the actual client rects for an
+        element to a list of expected client rects.
+
+2014-04-29  Andrei Bucur  <abucur@adobe.com>
+
+        Store the containing region map inside the flow thread
+        https://bugs.webkit.org/show_bug.cgi?id=131647
+
+        Reviewed by Mihnea Ovidenie.
+
+        Add a test that verifies the containing region map is properly cleared
+        when the region chain changes.
+
+        * fast/regions/inline-strike-through-expected.txt: Added.
+        * fast/regions/inline-strike-through.html: Added.
+
+2014-04-29  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        Unreviewed EFL gardening.
+
+        Removed remaining editing/pasteboard which are already skipped.
+
+        * platform/efl/TestExpectations:
+
+2014-04-29  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        Unreviewed GTK gardening.
+
+        * platform/gtk/TestExpectations: Flagged some tests.
+
+2014-04-28  Benjamin Poulain  <benjamin@webkit.org>
+
+        SelectorCodeGenerator::generateElementIsNthChild() leaks the parent register :nth-child() is non-filtering
+        https://bugs.webkit.org/show_bug.cgi?id=132311
+
+        Reviewed by Andreas Kling.
+
+        * fast/selectors/several-nth-child-expected.txt: Added.
+        * fast/selectors/several-nth-child.html: Added.
+
+2014-04-28  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        CSS JIT: backtracking with current / parent element for child
+        https://bugs.webkit.org/show_bug.cgi?id=132057
+
+        Reviewed by Benjamin Poulain.
+
+        Calculate appropriate backtracking start height from the closest
+        descendant. And at first, we use it for a simple optimization.
+
+        1. When backtracking start height equals to current height, we
+        can simply jump to a descendant element check phase.
+        2. When backtracking start height equals to current height + 1, we
+        can simply jump to a descendant element traversing phase.
+
+        We can apply this optimization to fragments with adjacent combinators.
+        But, in the meantime, we start to implement it for a fragment with
+        child combinator.
+
+        * fast/selectors/backtracking-child-combinator-with-tail-expected.txt: Added.
+        * fast/selectors/backtracking-child-combinator-with-tail.html: Added.
+        * fast/selectors/backtracking-child-combinator-without-tail-expected.txt: Added.
+        * fast/selectors/backtracking-child-combinator-without-tail.html: Added.
+
 2014-04-28  Ryuan Choi  <ryuan.choi@samsung.com>
 
         Unreviewed EFL gardening.

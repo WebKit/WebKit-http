@@ -660,6 +660,9 @@
 #if defined(ENABLE_LLINT_C_LOOP) && ENABLE_LLINT_C_LOOP
 #define ENABLE_JIT 0
 #define ENABLE_DFG_JIT 0
+#ifdef ENABLE_FTL_JIT
+#undef ENABLE_FTL_JIT
+#endif
 #define ENABLE_FTL_JIT 0
 #endif
 
@@ -888,9 +891,7 @@
 #endif
 
 #if ENABLE(VIDEO) && PLATFORM(WIN_CAIRO)
-#define WTF_USE_GLIB 1
-#define WTF_USE_GSTREAMER 1
-#define GST_API_VERSION_1 1
+#define WTF_USE_MEDIA_FOUNDATION 1
 #endif
 
 #if PLATFORM(WIN_CAIRO)

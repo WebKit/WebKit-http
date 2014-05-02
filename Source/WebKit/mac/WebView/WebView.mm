@@ -175,9 +175,9 @@
 #import <WebCore/WebCoreObjCExtras.h>
 #import <WebCore/WebCoreView.h>
 #import <WebCore/Widget.h>
-#import <WebKit/DOM.h>
-#import <WebKit/DOMExtensions.h>
-#import <WebKit/DOMPrivate.h>
+#import <WebKitLegacy/DOM.h>
+#import <WebKitLegacy/DOMExtensions.h>
+#import <WebKitLegacy/DOMPrivate.h>
 #import <WebKitSystemInterface.h>
 #import <bindings/ScriptValue.h>
 #import <mach-o/dyld.h>
@@ -250,7 +250,7 @@
 #endif // !PLATFORM(IOS)
 
 #if ENABLE(DASHBOARD_SUPPORT)
-#import <WebKit/WebDashboardRegion.h>
+#import <WebKitLegacy/WebDashboardRegion.h>
 #endif
 
 #if ENABLE(DISK_IMAGE_CACHE) && PLATFORM(IOS)
@@ -1198,6 +1198,10 @@ static bool shouldUseLegacyBackgroundSizeShorthandBehavior()
         _private->page->setRemoteInspectionAllowed(textFieldInspectionEnabled);
     }
 #endif
+    
+    [self _updateScreenScaleFromWindow];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_wakWindowScreenScaleChanged:) name:WAKWindowScreenScaleDidChangeNotification object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_wakWindowVisibilityChanged:) name:WAKWindowVisibilityDidChangeNotification object:nil];
 
     [WebFrame _createMainFrameWithSimpleHTMLDocumentWithPage:_private->page frameView:frameView style:style];
     
@@ -2380,10 +2384,6 @@ static bool needsSelfRetainWhileLoadingQuirk()
     settings.setLowPowerVideoAudioBufferSizeEnabled([preferences lowPowerVideoAudioBufferSizeEnabled]);
 
     settings.setUseLegacyTextAlignPositionedElementBehavior([preferences useLegacyTextAlignPositionedElementBehavior]);
-
-#if ENABLE(PLUGIN_PROXY_FOR_VIDEO)
-    settings.setVideoPluginProxyEnabled([preferences isVideoPluginProxyEnabled]);
-#endif
 
 #if ENABLE(MEDIA_SOURCE)
     settings.setMediaSourceEnabled([preferences mediaSourceEnabled]);
@@ -4855,22 +4855,6 @@ static Vector<String> toStringVector(NSArray* patterns)
     
     return nil;
 }
-
-#if ENABLE(PLUGIN_PROXY_FOR_VIDEO)
-- (WebBasePluginPackage *)_videoProxyPluginForMIMEType:(NSString *)MIMEType
-{
-    WebBasePluginPackage *pluginPackage = [[WebPluginDatabase sharedDatabase] pluginForMIMEType:MIMEType];
-    if (pluginPackage)
-        return pluginPackage;
-
-#if !PLATFORM(IOS)
-    if (_private->pluginDatabase)
-        return [_private->pluginDatabase pluginForMIMEType:MIMEType];
-#endif
-
-    return nil;
-}
-#endif
 
 - (WebBasePluginPackage *)_pluginForExtension:(NSString *)extension
 {
