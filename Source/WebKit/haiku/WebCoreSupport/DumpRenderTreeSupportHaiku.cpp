@@ -118,7 +118,7 @@ String DumpRenderTreeClient::responseMimeType(const BWebFrame* frame)
 // Compare with "WebKit/Tools/DumpRenderTree/mac/FrameLoadDelegate.mm
 String DumpRenderTreeClient::suitableDRTFrameName(const BWebFrame* frame)
 {
-    const String frameName(frame->Name());
+    const String frameName(frame->Frame()->tree().uniqueName());
 
     if (frame->Frame() == &frame->fData->page->mainFrame()) {
         if (!frameName.isEmpty())
