@@ -149,6 +149,9 @@ namespace WebCore {
 
         virtual void numWheelEventHandlersChanged(unsigned) override { }
 
+#if USE(TILED_BACKING_STORE)
+        virtual void delegatedScrollRequested(const WebCore::IntPoint&) override {}
+#endif
     private:
         BWebPage* m_webPage;
         BWebView* m_webView;
