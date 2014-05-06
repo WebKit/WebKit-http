@@ -346,6 +346,9 @@ void BUrlProtocolHandler::sendResponseIfNeeded()
     WTF::String contentType;
     int contentLength = 0;
 
+    if(!m_request || !m_resourceHandle)
+        return;
+
     BHttpRequest* httpRequest = dynamic_cast<BHttpRequest*>(m_request);
     if(httpRequest)
     {
@@ -355,9 +358,6 @@ void BUrlProtocolHandler::sendResponseIfNeeded()
             return;
     }
 
-    contentType = m_request->Result().ContentType();
-    contentLength = m_request->Result().Length();
-
     if (m_responseSent || !m_resourceHandle)
         return;
     m_responseSent = true;
@@ -365,6 +365,9 @@ void BUrlProtocolHandler::sendResponseIfNeeded()
     ResourceHandleClient* client = m_resourceHandle->client();
     if (!client)
         return;
+
+    contentType = m_request->Result().ContentType();
+    contentLength = m_request->Result().Length();
 
     WTF::String encoding = extractCharsetFromMediaType(contentType);
     WTF::String mimeType = extractMIMETypeFromMediaType(contentType);
@@ -433,6 +436,7 @@ void BUrlProtocolHandler::sendResponseIfNeeded()
         }
 
         client->willSendRequest(m_resourceHandle, m_nextRequest, response);
+        return;
     }
 
     client->didReceiveResponse(m_resourceHandle, response);
