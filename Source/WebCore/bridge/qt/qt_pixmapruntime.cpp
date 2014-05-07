@@ -150,10 +150,13 @@ static JSValueRef pixmapToImageData(JSContextRef context, JSObjectRef function, 
     int width = image.width();
     int height = image.height();
 
+    JSC::ExecState* exec = ::toJS(context);
+    JSLockHolder locker(exec);
+
     RefPtr<ImageData> imageData = ImageData::create(IntSize(width, height));
     copyPixelsInto(image, width, height, imageData->data()->data());
-    JSDOMGlobalObject* globalObject = static_cast<JSDOMGlobalObject*>(::toJS(JSContextGetGlobalObject(context)));
-    JSC::ExecState* exec = ::toJS(context);
+
+    JSDOMGlobalObject* globalObject = static_cast<JSDOMGlobalObject*>(exec->lexicalGlobalObject());
     return ::toRef(exec, toJS(exec, globalObject, imageData.get()));
 }
 
