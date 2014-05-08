@@ -42,10 +42,10 @@ ScrollingTree::ScrollingTree()
     , m_rubberBandsAtRight(true)
     , m_rubberBandsAtTop(true)
     , m_rubberBandsAtBottom(true)
-    , m_mainFramePinnedToTheLeft(false)
-    , m_mainFramePinnedToTheRight(false)
-    , m_mainFramePinnedToTheTop(false)
-    , m_mainFramePinnedToTheBottom(false)
+    , m_mainFramePinnedToTheLeft(true)
+    , m_mainFramePinnedToTheRight(true)
+    , m_mainFramePinnedToTheTop(true)
+    , m_mainFramePinnedToTheBottom(true)
     , m_mainFrameIsRubberBanding(false)
     , m_scrollPinningBehavior(DoNotPin)
     , m_latchedNode(0)
@@ -110,7 +110,7 @@ void ScrollingTree::viewportChangedViaDelegatedScrolling(ScrollingNodeID nodeID,
     toScrollingTreeScrollingNode(node)->updateLayersAfterViewportChange(viewportRect, scale);
 }
 
-void ScrollingTree::scrollPositionChangedViaDelegatedScrolling(ScrollingNodeID nodeID, const WebCore::FloatPoint& scrollPosition)
+void ScrollingTree::scrollPositionChangedViaDelegatedScrolling(ScrollingNodeID nodeID, const WebCore::FloatPoint& scrollPosition, bool inUserInteration)
 {
     ScrollingTreeNode* node = nodeForID(nodeID);
     if (!node)
@@ -123,7 +123,7 @@ void ScrollingTree::scrollPositionChangedViaDelegatedScrolling(ScrollingNodeID n
     toScrollingTreeScrollingNode(node)->updateLayersAfterDelegatedScroll(scrollPosition);
 
     // Update GraphicsLayers and scroll state.
-    scrollingTreeNodeDidScroll(nodeID, scrollPosition);
+    scrollingTreeNodeDidScroll(nodeID, scrollPosition, inUserInteration ? SyncScrollingLayerPosition : SetScrollingLayerPosition);
 }
 
 void ScrollingTree::commitNewTreeState(PassOwnPtr<ScrollingStateTree> scrollingStateTree)

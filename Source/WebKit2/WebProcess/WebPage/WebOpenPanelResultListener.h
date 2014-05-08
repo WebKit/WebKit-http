@@ -29,6 +29,10 @@
 #include <wtf/RefCounted.h>
 #include <WebCore/FileChooser.h>
 
+namespace WebCore {
+class Icon;
+}
+
 namespace WebKit {
 
 class WebPage;
@@ -40,6 +44,9 @@ public:
 
     void disconnectFromPage() { m_page = 0; }
     void didChooseFiles(const Vector<String>&);
+#if PLATFORM(IOS)
+    void didChooseFilesWithDisplayStringAndIcon(const Vector<String>&, const String& displayString, WebCore::Icon*);
+#endif
 
 private:
     WebOpenPanelResultListener(WebPage*, PassRefPtr<WebCore::FileChooser>);

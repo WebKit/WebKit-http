@@ -33,6 +33,7 @@
 #import <AppKit/NSAttributedString.h>
 #endif
 
+#import "APIHistoryClient.h"
 #import "AttributedString.h"
 #import "ColorSpaceData.h"
 #import "DataReference.h"
@@ -89,6 +90,7 @@
 #import <WebCore/Region.h>
 #import <WebCore/SharedBuffer.h>
 #import <WebCore/TextAlternativeWithRange.h>
+#import <WebCore/WebActionDisablingCALayerDelegate.h>
 #import <WebCore/WebCoreCALayerExtras.h>
 #import <WebCore/WebCoreFullScreenPlaceholderView.h>
 #import <WebCore/WebCoreFullScreenWindow.h>
@@ -2996,7 +2998,7 @@ static void createSandboxExtensionsForFileUpload(NSPasteboard *pasteboard, Sandb
 
             // Create a root layer that will back the NSView.
             RetainPtr<CALayer> layer = adoptNS([[CALayer alloc] init]);
-            [layer web_disableAllActions];
+            [layer setDelegate:[WebActionDisablingCALayerDelegate shared]];
 #ifndef NDEBUG
             [layer setName:@"Hosting root layer"];
 #endif
@@ -3024,12 +3026,27 @@ static void createSandboxExtensionsForFileUpload(NSPasteboard *pasteboard, Sandb
     return _data->_rootLayer.get();
 }
 
-- (RetainPtr<CGImageRef>)_takeViewSnapshot
+static RefPtr<IOSurface> createIOSurfaceFromImage(CGImageRef image)
+{
+    size_t width = CGImageGetWidth(image);
+    size_t height = CGImageGetHeight(image);
+
+    RefPtr<IOSurface> surface = IOSurface::create(IntSize(width, height), ColorSpaceDeviceRGB);
+    RetainPtr<CGContextRef> surfaceContext = surface->ensurePlatformContext();
+    CGContextDrawImage(surfaceContext.get(), CGRectMake(0, 0, width, height), image);
+    CGContextFlush(surfaceContext.get());
+
+    return surface;
+}
+
+- (ViewSnapshot)_takeViewSnapshot
 {
     NSWindow *window = self.window;
 
+    ViewSnapshot snapshot;
+
     if (![window windowNumber])
-        return nullptr;
+        return snapshot;
 
     // FIXME: This should use CGWindowListCreateImage once <rdar://problem/15709646> is resolved.
     CGSWindowID windowID = [window windowNumber];
@@ -3058,7 +3075,11 @@ static void createSandboxExtensionsForFileUpload(NSPasteboard *pasteboard, Sandb
     NSRect croppedImageRect = windowCaptureRect;
     croppedImageRect.origin.y = windowScreenRect.size.height - windowCaptureScreenRect.size.height - NSMinY(windowCaptureRect);
 
-    return adoptCF(CGImageCreateWithImageInRect(windowSnapshotImage.get(), NSRectToCGRect([window convertRectToBacking:croppedImageRect])));
+    auto croppedSnapshotImage = adoptCF(CGImageCreateWithImageInRect(windowSnapshotImage.get(), NSRectToCGRect([window convertRectToBacking:croppedImageRect])));
+
+    snapshot.surface = createIOSurfaceFromImage(croppedSnapshotImage.get());
+    snapshot.imageSizeInBytes = snapshot.surface->totalBytes();
+    return snapshot;
 }
 
 - (void)_wheelEventWasNotHandledByWebCore:(NSEvent *)event
@@ -3407,6 +3428,8 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     _data = [[WKViewData alloc] init];
     _data->_pageClient = std::make_unique<PageClientImpl>(self, webView);
     _data->_page = context.createWebPage(*_data->_pageClient, std::move(webPageConfiguration));
+    _data->_page->setAddsVisitedLinks(context.historyClient().addsVisitedLinks());
+
     _data->_page->setIntrinsicDeviceScaleFactor([self _intrinsicDeviceScaleFactor]);
     _data->_page->initializeWebPage();
 

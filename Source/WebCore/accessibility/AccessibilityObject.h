@@ -86,6 +86,7 @@ class Page;
 class RenderObject;
 class RenderListItem;
 class ScrollableArea;
+class ScrollView;
 class Widget;
 
 typedef unsigned AXID;
@@ -709,6 +710,7 @@ public:
     Frame* frame() const;
     MainFrame* mainFrame() const;
     Document* topDocument() const;
+    ScrollView* scrollViewAncestor() const;
     String language() const;
     // 1-based, to match the aria-level spec.
     virtual unsigned hierarchicalLevel() const { return 0; }
@@ -844,6 +846,7 @@ public:
     static const String defaultLiveRegionStatusForRole(AccessibilityRole);
     static bool liveRegionStatusIsEnabled(const AtomicString&);
     static bool contentEditableAttributeIsEnabled(Element*);
+    bool hasContentEditableAttributeSet() const;
     
     bool supportsARIAAttributes() const;
     

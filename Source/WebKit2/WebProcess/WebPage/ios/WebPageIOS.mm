@@ -48,6 +48,7 @@
 #import "WebProcess.h"
 #import <CoreText/CTFont.h>
 #import <WebCore/Chrome.h>
+#import <WebCore/DNS.h>
 #import <WebCore/Element.h>
 #import <WebCore/EventHandler.h>
 #import <WebCore/FloatQuad.h>
@@ -318,12 +319,10 @@ void WebPage::updateSelectionAppearance()
         didChangeSelection();
 }
 
-void WebPage::handleTap(const IntPoint& point)
+void WebPage::handleSyntheticClick(Node* nodeRespondingToClick, const WebCore::FloatPoint& location)
 {
+    IntPoint roundedAdjustedPoint = roundedIntPoint(location);
     Frame& mainframe = m_page->mainFrame();
-    FloatPoint adjustedPoint;
-    Node* nodeRespondingToClick = mainframe.nodeRespondingToClickEvents(point, adjustedPoint);
-    IntPoint roundedAdjustedPoint = roundedIntPoint(adjustedPoint);
 
     WKBeginObservingContentChanges(true);
     mainframe.eventHandler().mouseMoved(PlatformMouseEvent(roundedAdjustedPoint, roundedAdjustedPoint, NoButton, PlatformEvent::MouseMoved, 0, false, false, false, false, 0));
@@ -354,22 +353,26 @@ void WebPage::handleTap(const IntPoint& point)
     m_userIsInteracting = false;
 
     if (!tapWasHandled || !nodeRespondingToClick || !nodeRespondingToClick->isElementNode())
-        send(Messages::WebPageProxy::DidNotHandleTapAsClick(point));
+        send(Messages::WebPageProxy::DidNotHandleTapAsClick(roundedIntPoint(location)));
 }
 
-void WebPage::tapHighlightAtPosition(uint64_t requestID, const FloatPoint& position)
+void WebPage::handleTap(const IntPoint& point)
 {
-    Frame& mainframe = m_page->mainFrame();
     FloatPoint adjustedPoint;
-    Node* node = mainframe.nodeRespondingToClickEvents(position, adjustedPoint);
+    Node* nodeRespondingToClick = m_page->mainFrame().nodeRespondingToClickEvents(point, adjustedPoint);
+    handleSyntheticClick(nodeRespondingToClick, adjustedPoint);
+}
 
+void WebPage::sendTapHighlightForNodeIfNecessary(uint64_t requestID, Node* node)
+{
     if (!node)
         return;
 
-    RenderObject *renderer = node->renderer();
+    if (isElement(*node))
+        prefetchDNS(toElement(*node).absoluteLinkURL().host());
 
     Vector<FloatQuad> quads;
-    if (renderer) {
+    if (RenderObject *renderer = node->renderer()) {
         renderer->absoluteQuads(quads);
         Color highlightColor = renderer->style().tapHighlightColor();
         if (!node->document().frame()->isMainFrame()) {
@@ -391,6 +394,42 @@ void WebPage::tapHighlightAtPosition(uint64_t requestID, const FloatPoint& posit
 
         send(Messages::WebPageProxy::DidGetTapHighlightGeometries(requestID, highlightColor, quads, roundedIntSize(borderRadii.topLeft()), roundedIntSize(borderRadii.topRight()), roundedIntSize(borderRadii.bottomLeft()), roundedIntSize(borderRadii.bottomRight())));
     }
+}
+
+void WebPage::potentialTapAtPosition(uint64_t requestID, const WebCore::FloatPoint& position)
+{
+    m_potentialTapNode = m_page->mainFrame().nodeRespondingToClickEvents(position, m_potentialTapLocation);
+    sendTapHighlightForNodeIfNecessary(requestID, m_potentialTapNode.get());
+}
+
+void WebPage::commitPotentialTap()
+{
+    if (!m_potentialTapNode || !m_potentialTapNode->renderer())
+        return;
+
+    FloatPoint adjustedPoint;
+    Node* nodeRespondingToClick = m_page->mainFrame().nodeRespondingToClickEvents(m_potentialTapLocation, adjustedPoint);
+
+    if (m_potentialTapNode == nodeRespondingToClick)
+        handleSyntheticClick(nodeRespondingToClick, adjustedPoint);
+    else
+        send(Messages::WebPageProxy::CommitPotentialTapFailed());
+
+    m_potentialTapNode = nullptr;
+    m_potentialTapLocation = FloatPoint();
+}
+
+void WebPage::cancelPotentialTap()
+{
+    m_potentialTapNode = nullptr;
+    m_potentialTapLocation = FloatPoint();
+}
+
+void WebPage::tapHighlightAtPosition(uint64_t requestID, const FloatPoint& position)
+{
+    Frame& mainframe = m_page->mainFrame();
+    FloatPoint adjustedPoint;
+    sendTapHighlightForNodeIfNecessary(requestID, mainframe.nodeRespondingToClickEvents(position, adjustedPoint));
 }
 
 void WebPage::blurAssistedNode()

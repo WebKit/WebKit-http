@@ -33,10 +33,29 @@
 #include <wtf/RetainPtr.h>
 #include <wtf/text/WTFString.h>
 
+OBJC_CLASS CAContext;
+
 namespace WebKit {
 
 class WebBackForwardListItem;
 class WebPageProxy;
+
+struct ViewSnapshot {
+#if PLATFORM(MAC)
+    RefPtr<WebCore::IOSurface> surface;
+#endif
+#if PLATFORM(IOS)
+    uint32_t slotID = 0;
+#endif
+
+    std::chrono::steady_clock::time_point creationTime;
+    uint64_t renderTreeSize;
+    float deviceScaleFactor;
+    size_t imageSizeInBytes = 0;
+
+    void clearImage();
+    bool hasImage() const;
+};
 
 class ViewSnapshotStore {
     WTF_MAKE_NONCOPYABLE(ViewSnapshotStore);
@@ -46,34 +65,26 @@ public:
 
     static ViewSnapshotStore& shared();
 
-    struct Snapshot {
-#if USE(IOSURFACE)
-        RefPtr<WebCore::IOSurface> surface;
-#else
-        RetainPtr<CGImageRef> image;
-#endif
-
-        std::chrono::steady_clock::time_point creationTime;
-        uint64_t renderTreeSize;
-        float deviceScaleFactor;
-
-        void clearImage();
-        bool hasImage() const;
-    };
-
     void recordSnapshot(WebPageProxy&);
-    bool getSnapshot(WebBackForwardListItem*, Snapshot&);
+    bool getSnapshot(WebBackForwardListItem*, ViewSnapshot&);
 
     void disableSnapshotting() { m_enabled = false; }
     void enableSnapshotting() { m_enabled = true; }
 
+    void discardSnapshots();
+
+#if PLATFORM(IOS)
+    static CAContext *snapshottingContext();
+#endif
+
 private:
     void pruneSnapshots(WebPageProxy&);
+    void removeSnapshotImage(ViewSnapshot&);
 
-    HashMap<String, Snapshot> m_snapshotMap;
+    HashMap<String, ViewSnapshot> m_snapshotMap;
 
     bool m_enabled;
-    unsigned m_snapshotsWithImagesCount;
+    size_t m_snapshotCacheSize;
 };
 
 } // namespace WebKit

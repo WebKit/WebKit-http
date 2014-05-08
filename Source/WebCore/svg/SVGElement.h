@@ -96,6 +96,7 @@ public:
     virtual AffineTransform* supplementalTransform() { return 0; }
 
     void invalidateSVGAttributes() { ensureUniqueElementData().setAnimatedSVGAttributesAreDirty(true); }
+    void invalidateSVGPresentationAttributeStyle() { ensureUniqueElementData().setPresentationAttributeStyleIsDirty(true); }
 
     const HashSet<SVGElementInstance*>& instancesForElement() const;
 
@@ -135,16 +136,21 @@ public:
 
     virtual bool addEventListener(const AtomicString& eventType, PassRefPtr<EventListener>, bool useCapture) override;
     virtual bool removeEventListener(const AtomicString& eventType, EventListener*, bool useCapture) override;
+    bool hasFocusEventListeners() const;
 
 #if ENABLE(CSS_REGIONS)
     virtual bool shouldMoveToFlowThread(const RenderStyle&) const override;
 #endif
 
     bool hasTagName(const SVGQualifiedName& name) const { return hasLocalName(name.localName()); }
+    virtual short tabIndex() const override;
 
 protected:
     SVGElement(const QualifiedName&, Document&);
     virtual ~SVGElement();
+
+    virtual bool isMouseFocusable() const override;
+    virtual bool supportsFocus() const override { return false; }
 
     virtual bool rendererIsNeeded(const RenderStyle&) override;
     virtual void parseAttribute(const QualifiedName&, const AtomicString&) override;
@@ -179,8 +185,6 @@ private:
     void removeInstanceMapping(SVGElementInstance*);
 
     void buildPendingResourcesIfNeeded();
-    virtual bool isKeyboardFocusable(KeyboardEvent*) const override;
-    virtual bool isMouseFocusable() const override;
     virtual void accessKeyAction(bool sendMouseEvents) override;
 
 #ifndef NDEBUG

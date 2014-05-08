@@ -32,29 +32,30 @@
 #import "NativeWebKeyboardEvent.h"
 #import "NativeWebTouchEvent.h"
 #import "SmartMagnificationController.h"
-#import "WebEvent.h"
-#import "WebIOSEventFactory.h"
-#import "WebPageMessages.h"
-#import "WebProcessProxy.h"
 #import "WKActionSheetAssistant.h"
 #import "WKFormInputControl.h"
 #import "WKFormSelectControl.h"
 #import "WKWebViewPrivate.h"
+#import "WebEvent.h"
+#import "WebIOSEventFactory.h"
+#import "WebPageMessages.h"
+#import "WebProcessProxy.h"
 #import "_WKFormDelegate.h"
 #import "_WKFormInputSession.h"
 #import <DataDetectorsUI/DDDetectionController.h>
-#import <UIKit/_UIHighlightView.h>
-#import <UIKit/_UIWebHighlightLongPressGestureRecognizer.h>
+#import <TextInput/TI_NSStringExtras.h>
 #import <UIKit/UIFont_Private.h>
 #import <UIKit/UIGestureRecognizer_Private.h>
 #import <UIKit/UIKeyboardImpl.h>
+#import <UIKit/UIKeyboardIntl.h>
 #import <UIKit/UILongPressGestureRecognizer_Private.h>
 #import <UIKit/UITapGestureRecognizer_Private.h>
 #import <UIKit/UITextInteractionAssistant_Private.h>
 #import <UIKit/UIWebDocumentView.h> // FIXME: should not include this header.
+#import <UIKit/_UIHighlightView.h>
+#import <UIKit/_UIWebHighlightLongPressGestureRecognizer.h>
 #import <WebCore/Color.h>
 #import <WebCore/FloatQuad.h>
-#import <WebCore/NotImplemented.h>
 #import <WebCore/SoftLinking.h>
 #import <WebCore/WebEvent.h>
 #import <WebKit/WebSelectionRect.h> // FIXME: WK2 should not include WebKit headers!
@@ -120,10 +121,13 @@ static const float tapAndHoldDelay  = 0.75;
 // FIXME: this needs to be moved from the internal header to the private.
 - (id)initWithView:(UIResponder <UITextInput> *)view;
 - (void)selectWord;
+- (void)scheduleReanalysis;
 @end
 
 @interface UITextInteractionAssistant (StagingToRemove)
 - (void)scheduleReplacementsForText:(NSString *)text;
+- (void)showTextServiceFor:(NSString *)selectedTerm fromRect:(CGRect)presentationRect;
+- (void)scheduleChineseTransliterationForText:(NSString *)text;
 @end
 
 @interface WKFormInputSession : NSObject <_WKFormInputSession>
@@ -187,8 +191,10 @@ static const float tapAndHoldDelay  = 0.75;
     [_touchEventGestureRecognizer setDelegate:self];
     [self addGestureRecognizer:_touchEventGestureRecognizer.get()];
 
-    _singleTapGestureRecognizer = adoptNS([[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(_singleTapRecognized:)]);
+    _singleTapGestureRecognizer = adoptNS([[WKSyntheticClickTapGestureRecognizer alloc] initWithTarget:self action:@selector(_singleTapCommited:)]);
     [_singleTapGestureRecognizer setDelegate:self];
+    [_singleTapGestureRecognizer setGestureRecognizedTarget:self action:@selector(_singleTapRecognized:)];
+    [_singleTapGestureRecognizer setResetTarget:self action:@selector(_singleTapDidReset:)];
     [self addGestureRecognizer:_singleTapGestureRecognizer.get()];
 
     _doubleTapGestureRecognizer = adoptNS([[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(_doubleTapRecognized:)]);
@@ -230,11 +236,18 @@ static const float tapAndHoldDelay  = 0.75;
     _actionSheetAssistant = nil;
     [_formInputSession invalidate];
     _formInputSession = nil;
+    [_highlightView removeFromSuperview];
+    [_highlightRootView removeFromSuperview];
     [_touchEventGestureRecognizer setDelegate:nil];
     [_singleTapGestureRecognizer setDelegate:nil];
     [_doubleTapGestureRecognizer setDelegate:nil];
     [_highlightLongPressGestureRecognizer setDelegate:nil];
     [_longPressGestureRecognizer setDelegate:nil];
+
+    if (_fileUploadPanel) {
+        [_fileUploadPanel setDelegate:nil];
+        [_fileUploadPanel dismiss];
+    }
 }
 
 - (const InteractionInformationAtPosition&)positionInformation
@@ -250,6 +263,11 @@ static const float tapAndHoldDelay  = 0.75;
 - (id <UITextInputDelegate>)inputDelegate
 {
     return _inputDelegate;
+}
+
+- (CGPoint)lastInteractionLocation
+{
+    return _lastInteractionLocation;
 }
 
 - (BOOL)isEditable
@@ -280,13 +298,17 @@ static const float tapAndHoldDelay  = 0.75;
 - (void)_webTouchEventsRecognized:(UIWebTouchEventsGestureRecognizer *)gestureRecognizer
 {
     NativeWebTouchEvent nativeWebTouchEvent(gestureRecognizer);
-    if (nativeWebTouchEvent.type() == WebKit::WebEvent::TouchStart)
-        _canSendTouchEventsAsynchronously = NO;
+
+    _lastInteractionLocation = gestureRecognizer.locationInWindow;
+    nativeWebTouchEvent.setCanPreventNativeGestures(!_canSendTouchEventsAsynchronously || [_touchEventGestureRecognizer isDefaultPrevented]);
 
     if (_canSendTouchEventsAsynchronously)
         _page->handleTouchEventAsynchronously(nativeWebTouchEvent);
     else
         _page->handleTouchEventSynchronously(nativeWebTouchEvent);
+
+    if (nativeWebTouchEvent.allTouchPointsAreReleased())
+        _canSendTouchEventsAsynchronously = NO;
 }
 
 static FloatQuad inflateQuad(const FloatQuad& quad, float inflateSize)
@@ -344,24 +366,32 @@ static inline bool highlightedQuadsAreSmallerThanRect(const Vector<FloatQuad>& q
     return true;
 }
 
-- (void)_didGetTapHighlightForRequest:(uint64_t)requestID color:(const WebCore::Color&)color quads:(const Vector<WebCore::FloatQuad>&)highlightedQuads topLeftRadius:(const WebCore::IntSize&)topLeftRadius topRightRadius:(const WebCore::IntSize&)topRightRadius bottomLeftRadius:(const WebCore::IntSize&)bottomLeftRadius bottomRightRadius:(const WebCore::IntSize&)bottomRightRadius
+- (void)_showTapHighlightWithColor:(const WebCore::Color&)color quads:(const Vector<WebCore::FloatQuad>&)highlightedQuads topLeftRadius:(const WebCore::IntSize&)topLeftRadius topRightRadius:(const WebCore::IntSize&)topRightRadius bottomLeftRadius:(const WebCore::IntSize&)bottomLeftRadius bottomRightRadius:(const WebCore::IntSize&)bottomRightRadius
 {
-    if (!_isTapHighlightIDValid || _latestTapHighlightID != requestID)
-        return;
-
     if (!highlightedQuadsAreSmallerThanRect(highlightedQuads, _page->unobscuredContentRect()))
         return;
 
     const CGFloat UIWebViewMinimumHighlightRadius = 2.0;
-    if (!_highlightView) {
+
+    if (!_highlightRootView) {
+        _highlightRootView = adoptNS([[UIView alloc] init]);
+        [_highlightRootView setOpaque:NO];
+        [_highlightRootView layer].anchorPoint = CGPointMake(0, 0);
+
         _highlightView = adoptNS([[_UIHighlightView alloc] initWithFrame:CGRectZero]);
         [_highlightView setOpaque:NO];
         [_highlightView setCornerRadius:UIWebViewMinimumHighlightRadius];
+        [_highlightRootView addSubview:_highlightView.get()];
     }
-    [self addSubview:_highlightView.get()];
+    [self addSubview:_highlightRootView.get()];
+    CGFloat selfScale = [[self layer] transform].m11;
+    CGFloat highlightViewScale = 1 / selfScale;
+    [_highlightRootView setTransform:CGAffineTransformMakeScale(highlightViewScale, highlightViewScale)];
 
-    RetainPtr<UIColor> highlightUIKitColor = adoptNS([[UIColor alloc] initWithRed:(color.red() / 255.0) green:(color.green() / 255.0) blue:(color.blue() / 255.0) alpha:(color.alpha() / 255.0)]);
-    [_highlightView setColor:highlightUIKitColor.get()];
+    {
+        RetainPtr<UIColor> highlightUIKitColor = adoptNS([[UIColor alloc] initWithRed:(color.red() / 255.0) green:(color.green() / 255.0) blue:(color.blue() / 255.0) alpha:(color.alpha() / 255.0)]);
+        [_highlightView setColor:highlightUIKitColor.get()];
+    }
 
     bool allHighlightRectsAreRectilinear = true;
     const size_t quadCount = highlightedQuads.size();
@@ -369,7 +399,9 @@ static inline bool highlightedQuadsAreSmallerThanRect(const Vector<FloatQuad>& q
     for (size_t i = 0; i < quadCount; ++i) {
         const FloatQuad& quad = highlightedQuads[i];
         if (quad.isRectilinear()) {
-            CGRect rect = CGRectInset(quad.boundingBox(), -UIWebViewMinimumHighlightRadius, -UIWebViewMinimumHighlightRadius);
+            FloatRect boundingBox = quad.boundingBox();
+            boundingBox.scale(selfScale);
+            CGRect rect = CGRectInset(boundingBox, -UIWebViewMinimumHighlightRadius, -UIWebViewMinimumHighlightRadius);
             [rects addObject:[NSValue valueWithCGRect:rect]];
         } else {
             allHighlightRectsAreRectilinear = false;
@@ -383,7 +415,8 @@ static inline bool highlightedQuadsAreSmallerThanRect(const Vector<FloatQuad>& q
     else {
         RetainPtr<NSMutableArray> quads = adoptNS([[NSMutableArray alloc] initWithCapacity:static_cast<const NSUInteger>(quadCount)]);
         for (size_t i = 0; i < quadCount; ++i) {
-            const FloatQuad& quad = highlightedQuads[i];
+            FloatQuad quad = highlightedQuads[i];
+            quad.scale(selfScale, selfScale);
             FloatQuad extendedQuad = inflateQuad(quad, UIWebViewMinimumHighlightRadius);
             [quads addObject:[NSValue valueWithCGPoint:extendedQuad.p1()]];
             [quads addObject:[NSValue valueWithCGPoint:extendedQuad.p2()]];
@@ -399,6 +432,30 @@ static inline bool highlightedQuadsAreSmallerThanRect(const Vector<FloatQuad>& q
     [borderRadii addObject:[NSValue valueWithCGSize:CGSizeMake(bottomLeftRadius.width() + UIWebViewMinimumHighlightRadius, bottomLeftRadius.height() + UIWebViewMinimumHighlightRadius)]];
     [borderRadii addObject:[NSValue valueWithCGSize:CGSizeMake(bottomRightRadius.width() + UIWebViewMinimumHighlightRadius, bottomRightRadius.height() + UIWebViewMinimumHighlightRadius)]];
     [_highlightView setCornerRadii:borderRadii.get()];
+}
+
+- (void)_didGetTapHighlightForRequest:(uint64_t)requestID color:(const WebCore::Color&)color quads:(const Vector<WebCore::FloatQuad>&)highlightedQuads topLeftRadius:(const WebCore::IntSize&)topLeftRadius topRightRadius:(const WebCore::IntSize&)topRightRadius bottomLeftRadius:(const WebCore::IntSize&)bottomLeftRadius bottomRightRadius:(const WebCore::IntSize&)bottomRightRadius
+{
+    if (!_isTapHighlightIDValid || _latestTapHighlightID != requestID)
+        return;
+
+    if (_potentialTapInProgress) {
+        _potentialTapHighlightInformation = std::make_unique<TapHighlightInformation>();
+        _potentialTapHighlightInformation->color = color;
+        _potentialTapHighlightInformation->quads = highlightedQuads;
+        _potentialTapHighlightInformation->topLeftRadius = topLeftRadius;
+        _potentialTapHighlightInformation->topRightRadius = topRightRadius;
+        _potentialTapHighlightInformation->bottomLeftRadius = bottomLeftRadius;
+        _potentialTapHighlightInformation->bottomRightRadius = bottomRightRadius;
+        return;
+    }
+
+    [self _showTapHighlightWithColor:color
+                               quads:highlightedQuads
+                       topLeftRadius:topLeftRadius
+                      topRightRadius:topRightRadius
+                    bottomLeftRadius:bottomLeftRadius
+                   bottomRightRadius:bottomRightRadius];
 }
 
 - (void)_cancelLongPressGestureRecognizer
@@ -600,7 +657,20 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
 - (void)_cancelInteraction
 {
     _isTapHighlightIDValid = NO;
-    [_highlightView removeFromSuperview];
+    [_highlightRootView removeFromSuperview];
+}
+
+- (void)_finishInteraction
+{
+    [UIView animateWithDuration:0.1
+                     animations:^{
+                         [[_highlightRootView layer] setOpacity:0];
+                     }
+                     completion:^(BOOL){
+                         _isTapHighlightIDValid = NO;
+                         [_highlightRootView removeFromSuperview];
+                         [[_highlightRootView layer] setOpacity:1];
+                     }];
 }
 
 - (BOOL)hasSelectablePositionAtPoint:(CGPoint)point
@@ -650,14 +720,19 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
 {
     ASSERT(gestureRecognizer == _highlightLongPressGestureRecognizer);
 
+    _lastInteractionLocation = gestureRecognizer.startPoint;
+
     switch ([gestureRecognizer state]) {
     case UIGestureRecognizerStateBegan:
-        _page->tapHighlightAtPosition([gestureRecognizer startPoint], _latestTapHighlightID);
+        _page->tapHighlightAtPosition([gestureRecognizer startPoint], ++_latestTapHighlightID);
         _isTapHighlightIDValid = YES;
         break;
     case UIGestureRecognizerStateEnded:
-        if (!_positionInformation.clickableElementName.isEmpty())
+        if (!_positionInformation.clickableElementName.isEmpty()) {
             [self _attemptClickAtLocation:[gestureRecognizer startPoint]];
+            [self _finishInteraction];
+        } else
+            [self _cancelInteraction];
         break;
     case UIGestureRecognizerStateCancelled:
         [self _cancelInteraction];
@@ -671,6 +746,8 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
 {
     ASSERT(gestureRecognizer == _longPressGestureRecognizer);
 
+    _lastInteractionLocation = gestureRecognizer.startPoint;
+
     if ([gestureRecognizer state] == UIGestureRecognizerStateBegan) {
         SEL action = [self _actionForLongPress];
         if (action)
@@ -681,31 +758,77 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
 - (void)_singleTapRecognized:(UITapGestureRecognizer *)gestureRecognizer
 {
     ASSERT(gestureRecognizer == _singleTapGestureRecognizer);
+    ASSERT(!_potentialTapInProgress);
 
-    if (_webSelectionAssistant && ![_webSelectionAssistant shouldHandleSingleTapAtPoint:gestureRecognizer.location])
+    _page->potentialTapAtPosition(gestureRecognizer.location, ++_latestTapHighlightID);
+    _potentialTapInProgress = YES;
+    _isTapHighlightIDValid = YES;
+}
+
+- (void)_singleTapDidReset:(UITapGestureRecognizer *)gestureRecognizer
+{
+    ASSERT(gestureRecognizer == _singleTapGestureRecognizer);
+    if (_potentialTapInProgress) {
+        _potentialTapInProgress = NO;
+        _potentialTapHighlightInformation = nullptr;
+        [self _cancelInteraction];
+        _page->cancelPotentialTap();
+    }
+}
+
+- (void)_commitPotentialTapFailed
+{
+    [self _cancelInteraction];
+}
+
+- (void)_singleTapCommited:(UITapGestureRecognizer *)gestureRecognizer
+{
+    ASSERT(gestureRecognizer == _singleTapGestureRecognizer);
+
+    if (_webSelectionAssistant && ![_webSelectionAssistant shouldHandleSingleTapAtPoint:gestureRecognizer.location]) {
+        [self _singleTapDidReset:gestureRecognizer];
         return;
+    }
+
+    ASSERT(_potentialTapInProgress);
 
     [_webSelectionAssistant clearSelection];
 
-    [self _attemptClickAtLocation:[gestureRecognizer location]];
+    _lastInteractionLocation = gestureRecognizer.location;
+
+    _potentialTapInProgress = NO;
+
+    if (_potentialTapHighlightInformation) {
+        [self _showTapHighlightWithColor:_potentialTapHighlightInformation->color
+                                   quads:_potentialTapHighlightInformation->quads
+                           topLeftRadius:_potentialTapHighlightInformation->topLeftRadius
+                          topRightRadius:_potentialTapHighlightInformation->topRightRadius
+                        bottomLeftRadius:_potentialTapHighlightInformation->bottomLeftRadius
+                       bottomRightRadius:_potentialTapHighlightInformation->bottomRightRadius];
+        _potentialTapHighlightInformation = nullptr;
+    }
+
+    _page->commitPotentialTap();
+
+    [self _finishInteraction];
 }
 
 - (void)_doubleTapRecognized:(UITapGestureRecognizer *)gestureRecognizer
 {
+    _lastInteractionLocation = gestureRecognizer.location;
+
     _smartMagnificationController->handleSmartMagnificationGesture(gestureRecognizer.location);
 }
 
 - (void)_twoFingerDoubleTapRecognized:(UITapGestureRecognizer *)gestureRecognizer
 {
+    _lastInteractionLocation = gestureRecognizer.location;
+
     _smartMagnificationController->handleResetMagnificationGesture(gestureRecognizer.location);
 }
 
 - (void)_attemptClickAtLocation:(CGPoint)location
 {
-    // FIXME: Ideally, we should always provide some visual feedback on click. If a short tap did not trigger the
-    // tap highlight, we should show one based on a timer if we commit the synthetic mouse events.
-    [self _cancelInteraction];
-
     if (![self isFirstResponder])
         [self becomeFirstResponder];
 
@@ -832,7 +955,8 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
 
 - (void)_addShortcut:(id)sender
 {
-    // FIXME: To be implemented.
+    if (_textSelectionAssistant && [_textSelectionAssistant respondsToSelector:@selector(showTextServiceFor:fromRect:)])
+        [_textSelectionAssistant showTextServiceFor:[self selectedText] fromRect:_page->editorState().selectionRects[0].rect()];
 }
 
 - (NSString *)selectedText
@@ -857,6 +981,17 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
 
     if ([_textSelectionAssistant respondsToSelector:@selector(scheduleReplacementsForText:)])
         [_textSelectionAssistant scheduleReplacementsForText:_page->editorState().wordAtSelection];
+}
+
+- (void)_transliterateChinese:(id)sender
+{
+    if ([_textSelectionAssistant respondsToSelector:@selector(scheduleChineseTransliterationForText:)])
+        [_textSelectionAssistant scheduleChineseTransliterationForText:_page->editorState().wordAtSelection];
+}
+
+- (void)_reanalyze:(id)sender
+{
+    [_textSelectionAssistant scheduleReanalysis];
 }
 
 - (void)replace:(id)sender
@@ -907,12 +1042,37 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
     if (action == @selector(_addShortcut:)) {
         if (_page->editorState().isInPasswordField || !(hasWebSelection || _page->editorState().selectionIsRange))
             return NO;
-        // FIXME: need to implement, returning NO always for now.
-        return NO;
+
+        NSString *selectedText = [self selectedText];
+        if (![selectedText length])
+            return NO;
+
+        if (!UIKeyboardEnabledInputModesAllowOneToManyShortcuts())
+            return NO;
+        if (![selectedText _containsCJScripts])
+            return NO;
+        return YES;
     }
 
-    if (action == @selector(_promptForReplace:))
-        return _page->editorState().selectionIsRange && _page->editorState().isReplaceAllowed && [[UIKeyboardImpl activeInstance] autocorrectSpellingEnabled];
+    if (action == @selector(_promptForReplace:)) {
+        if (!_page->editorState().selectionIsRange || !_page->editorState().isReplaceAllowed || ![[UIKeyboardImpl activeInstance] autocorrectSpellingEnabled])
+            return NO;
+        if ([[self selectedText] _containsCJScriptsOnly])
+            return NO;
+        return YES;
+    }
+
+    if (action == @selector(_transliterateChinese:)) {
+        if (!_page->editorState().selectionIsRange || !_page->editorState().isReplaceAllowed || ![[UIKeyboardImpl activeInstance] autocorrectSpellingEnabled])
+            return NO;
+        return UIKeyboardEnabledInputModesAllowChineseTransliterationForText([self selectedText]);
+    }
+
+    if (action == @selector(_reanalyze:)) {
+        if (!_page->editorState().selectionIsRange || !_page->editorState().isReplaceAllowed || ![[UIKeyboardImpl activeInstance] autocorrectSpellingEnabled])
+            return NO;
+        return UIKeyboardCurrentInputModeAllowsChineseOrJapaneseReanalysisForText([self selectedText]);
+    }
 
     if (action == @selector(select:)) {
         // Disable select in password fields so that you can't see word boundaries.
@@ -2053,6 +2213,26 @@ static UITextAutocapitalizationType toUITextAutocapitalize(WebAutocapitalizeType
     if (!_airPlayRoutePicker)
         _airPlayRoutePicker = adoptNS([[WKAirPlayRoutePicker alloc] initWithView:self]);
     [_airPlayRoutePicker show:hasVideo fromRect:elementRect];
+}
+
+- (void)_showRunOpenPanel:(WebOpenPanelParameters*)parameters resultListener:(WebOpenPanelResultListenerProxy*)listener
+{
+    ASSERT(!_fileUploadPanel);
+    if (_fileUploadPanel)
+        return;
+
+    _fileUploadPanel = adoptNS([[WKFileUploadPanel alloc] initWithView:self]);
+    [_fileUploadPanel setDelegate:self];
+    [_fileUploadPanel presentWithParameters:parameters resultListener:listener];
+}
+
+- (void)fileUploadPanelDidDismiss:(WKFileUploadPanel *)fileUploadPanel
+{
+    ASSERT(_fileUploadPanel.get() == fileUploadPanel);
+
+    [_fileUploadPanel setDelegate:nil];
+    [_fileUploadPanel release];
+    _fileUploadPanel = nil;
 }
 
 #pragma mark - Implementation of UIWebTouchEventsGestureRecognizerDelegate.

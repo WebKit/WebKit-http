@@ -176,8 +176,6 @@ std::unique_ptr<GraphicsLayer> RenderLayerBacking::createGraphicsLayer(const Str
 #else
     UNUSED_PARAM(name);
 #endif
-    graphicsLayer->setMaintainsPixelAlignment(compositor().keepLayersPixelAligned());
-
 #if PLATFORM(COCOA) && USE(CA)
     graphicsLayer->setAcceleratesDrawing(compositor().acceleratedDrawingEnabled());
 #endif    
@@ -227,13 +225,13 @@ void RenderLayerBacking::adjustTiledBackingCoverage()
     tiledBacking()->setTileCoverage(tileCoverage);
 }
 
-void RenderLayerBacking::setTiledBackingHasMargins(bool hasExtendedBackgroundRect)
+void RenderLayerBacking::setTiledBackingHasMargins(bool hasExtendedBackgroundOnLeftAndRight, bool hasExtendedBackgroundOnTopAndBottom)
 {
     if (!m_usingTiledCacheLayer)
         return;
 
-    int marginLeftAndRightSize = hasExtendedBackgroundRect ? defaultTileWidth : 0;
-    int marginTopAndBottomSize = hasExtendedBackgroundRect ? defaultTileHeight : 0;
+    int marginLeftAndRightSize = hasExtendedBackgroundOnLeftAndRight ? defaultTileWidth : 0;
+    int marginTopAndBottomSize = hasExtendedBackgroundOnTopAndBottom ? defaultTileHeight : 0;
     tiledBacking()->setTileMargins(marginTopAndBottomSize, marginTopAndBottomSize, marginLeftAndRightSize, marginLeftAndRightSize);
 }
 
@@ -406,7 +404,7 @@ static bool layerOrAncestorIsTransformedOrUsingCompositedScrolling(RenderLayer& 
     for (RenderLayer* curr = &layer; curr; curr = curr->parent()) {
         if (curr->hasTransform()
 #if PLATFORM(IOS)
-            || curr->hasAcceleratedTouchScrolling()
+            || curr->hasTouchScrollableOverflow()
 #else
             || curr->needsCompositedScrolling()
 #endif
@@ -536,27 +534,29 @@ bool RenderLayerBacking::updateGraphicsLayerConfiguration()
         layerConfigChanged = true;
     
     bool needsDescendentsClippingLayer = compositor().clipsCompositingDescendants(m_owningLayer);
-    bool usesCompositedScrolling;
-#if PLATFORM(IOS)
-    usesCompositedScrolling = m_owningLayer.hasAcceleratedTouchScrolling();
-#else
-    usesCompositedScrolling = m_owningLayer.needsCompositedScrolling();
-#endif
 
-    // Our scrolling layer will clip.
-    if (usesCompositedScrolling)
-        needsDescendentsClippingLayer = false;
+    if (!renderer().view().needsLayout()) {
+        bool usesCompositedScrolling;
+#if PLATFORM(IOS)
+        usesCompositedScrolling = m_owningLayer.hasTouchScrollableOverflow();
+#else
+        usesCompositedScrolling = m_owningLayer.needsCompositedScrolling();
+#endif
+        // Our scrolling layer will clip.
+        if (usesCompositedScrolling)
+            needsDescendentsClippingLayer = false;
+
+        if (updateScrollingLayers(usesCompositedScrolling))
+            layerConfigChanged = true;
+
+        if (updateDescendantClippingLayer(needsDescendentsClippingLayer))
+            layerConfigChanged = true;
+    }
 
     if (updateAncestorClippingLayer(compositor().clippedByAncestor(m_owningLayer)))
         layerConfigChanged = true;
 
-    if (updateDescendantClippingLayer(needsDescendentsClippingLayer))
-        layerConfigChanged = true;
-
     if (updateOverflowControlsLayers(requiresHorizontalScrollbarLayer(), requiresVerticalScrollbarLayer(), requiresScrollCornerLayer()))
-        layerConfigChanged = true;
-
-    if (updateScrollingLayers(usesCompositedScrolling))
         layerConfigChanged = true;
 
     if (layerConfigChanged)
@@ -752,7 +752,7 @@ void RenderLayerBacking::updateGraphicsLayerGeometry()
         graphicsLayerParentLocation = renderer().view().documentRect().location();
 
 #if PLATFORM(IOS)
-    if (compAncestor && compAncestor->hasAcceleratedTouchScrolling()) {
+    if (compAncestor && compAncestor->hasTouchScrollableOverflow()) {
         RenderBox* renderBox = toRenderBox(&compAncestor->renderer());
         LayoutRect paddingBox(renderBox->borderLeft(), renderBox->borderTop(),
             renderBox->width() - renderBox->borderLeft() - renderBox->borderRight(),
@@ -775,7 +775,8 @@ void RenderLayerBacking::updateGraphicsLayerGeometry()
         // Call calculateRects to get the backgroundRect which is what is used to clip the contents of this
         // layer. Note that we call it with temporaryClipRects = true because normally when computing clip rects
         // for a compositing layer, rootLayer is the layer itself.
-        RenderLayer::ClipRectsContext clipRectsContext(compAncestor, 0, TemporaryClipRects, IgnoreOverlayScrollbarSize, IgnoreOverflowClip);
+        ShouldRespectOverflowClip shouldRespectOverflowClip = compAncestor->isolatesCompositedBlending() ? RespectOverflowClip : IgnoreOverflowClip;
+        RenderLayer::ClipRectsContext clipRectsContext(compAncestor, 0, TemporaryClipRects, IgnoreOverlayScrollbarSize, shouldRespectOverflowClip);
         LayoutRect parentClipRect = m_owningLayer.backgroundClipRect(clipRectsContext).rect(); // FIXME: Incorrect for CSS regions.
         ASSERT(parentClipRect != LayoutRect::infiniteRect());
         m_ancestorClippingLayer->setPosition(FloatPoint(parentClipRect.location() - graphicsLayerParentLocation));
@@ -923,8 +924,8 @@ void RenderLayerBacking::updateGraphicsLayerGeometry()
         bool paddingBoxOffsetChanged = oldScrollingLayerOffset != m_scrollingLayer->offsetFromRenderer();
 
         if (m_owningLayer.isInUserScroll()) {
-            // If scrolling is happening externally, we don't want to touch the layer bounds origin here because that will cause
-            // jitter. Set a flag to ensure that we sync up later.
+            // If scrolling is happening externally, we don't want to touch the layer bounds origin here because that will cause jitter.
+            m_scrollingLayer->syncBoundsOrigin(FloatPoint(scrollOffset.width(), scrollOffset.height()));
             m_owningLayer.setRequiresScrollBoundsOriginUpdate(true);
         } else {
             // Note that we implement the contents offset via the bounds origin on this layer, rather than a position on the sublayer.
@@ -1440,7 +1441,6 @@ bool RenderLayerBacking::updateScrollingLayers(bool needsScrollingLayers)
         m_scrollingContentsLayer = nullptr;
     }
 
-    updateInternalHierarchy();
     m_graphicsLayer->setPaintingPhase(paintingPhaseForPrimaryLayer());
     m_graphicsLayer->setNeedsDisplay(); // Because painting phases changed.
 

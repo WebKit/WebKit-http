@@ -43,6 +43,7 @@
 #include "WKPagePolicyClientInternal.h"
 #include "WKPluginInformation.h"
 #include "WebBackForwardList.h"
+#include "WebContext.h"
 #include "WebFormClient.h"
 #include "WebPageMessages.h"
 #include "WebPageProxy.h"
@@ -71,7 +72,7 @@ template<> struct ClientTraits<WKPagePolicyClientBase> {
 };
 
 template<> struct ClientTraits<WKPageUIClientBase> {
-    typedef std::tuple<WKPageUIClientV0, WKPageUIClientV1, WKPageUIClientV2> Versions;
+    typedef std::tuple<WKPageUIClientV0, WKPageUIClientV1, WKPageUIClientV2, WKPageUIClientV3> Versions;
 };
 
 }
@@ -967,10 +968,23 @@ void WKPageSetPageLoaderClient(WKPageRef pageRef, const WKPageLoaderClientBase* 
             m_client.didChangeBackForwardList(toAPI(page), toAPI(addedItem), toAPI(removedItemsArray.get()), m_client.base.clientInfo);
         }
 
+        virtual bool shouldKeepCurrentBackForwardListItemInList(WebKit::WebPageProxy* page, WebKit::WebBackForwardListItem* item) override
+        {
+            if (!m_client.shouldKeepCurrentBackForwardListItemInList)
+                return false;
+
+            return m_client.shouldKeepCurrentBackForwardListItemInList(toAPI(page), toAPI(item));
+        }
+
         virtual void willGoToBackForwardListItem(WebPageProxy* page, WebBackForwardListItem* item, API::Object* userData) override
         {
             if (m_client.willGoToBackForwardListItem)
                 m_client.willGoToBackForwardListItem(toAPI(page), toAPI(item), toAPI(userData), m_client.base.clientInfo);
+        }
+
+        virtual PassRefPtr<API::Data> webCryptoMasterKey(WebPageProxy& page) override
+        {
+            return page.process().context().client().copyWebCryptoMasterKey(&page.process().context());
         }
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
@@ -1532,6 +1546,14 @@ void WKPageSetPageUIClient(WKPageRef pageRef, const WKPageUIClientBase* wkClient
 
             return m_client.shouldInterruptJavaScript(toAPI(page), m_client.base.clientInfo);
         }
+
+        virtual void pinnedStateDidChange(WebPageProxy& page) override
+        {
+            if (!m_client.pinnedStateDidChange)
+                return;
+
+            m_client.pinnedStateDidChange(toAPI(&page), m_client.base.clientInfo);
+        }
     };
 
     toImpl(pageRef)->setUIClient(std::make_unique<UIClient>(wkClient));
@@ -1785,6 +1807,16 @@ void WKPageSetScrollPinningBehavior(WKPageRef page, WKScrollPinningBehavior pinn
     }
     
     toImpl(page)->setScrollPinningBehavior(corePinning);
+}
+
+bool WKPageGetAddsVisitedLinks(WKPageRef page)
+{
+    return toImpl(page)->addsVisitedLinks();
+}
+
+void WKPageSetAddsVisitedLinks(WKPageRef page, bool addsVisitedLinks)
+{
+    toImpl(page)->setAddsVisitedLinks(addsVisitedLinks);
 }
 
 void WKPageSetInvalidMessageFunction(WKPageInvalidMessageFunction)

@@ -31,6 +31,7 @@
 #import "WebViewInternal.h"
 #import <AppKit/NSSharingService.h>
 #import <WebCore/BitmapImage.h>
+#import <WebCore/Document.h>
 #import <WebCore/Editor.h>
 #import <WebCore/FocusController.h>
 #import <WebCore/Frame.h>
@@ -49,8 +50,15 @@ typedef enum {
 @property NSSharingServicePickerStyle style;
 - (NSMenu *)menu;
 @end
-
 #endif
+
+// FIXME: We should import the private header if we have it.
+// FIXME: We should properly disable code that interacts with NSItemProvider/NSSharingServicePicker in 32-bit.
+@interface NSItemProvider : NSObject
+@property (copy, readonly) NSArray *registeredTypeIdentifiers;
+- (instancetype)initWithItem:(id <NSSecureCoding>)item typeIdentifier:(NSString *)typeIdentifier;
+- (void)loadItemForTypeIdentifier:(NSString *)typeIdentifier options:(NSDictionary *)options completionHandler:(void (^)(id <NSSecureCoding> item, NSError *error))completionHandler;
+@end
 
 static NSString *serviceControlsPasteboardName = @"WebKitServiceControlsPasteboard";
 
@@ -58,12 +66,17 @@ using namespace WebCore;
 
 @implementation WebSharingServicePickerController
 
-- (instancetype)initWithImage:(NSImage *)image includeEditorServices:(BOOL)includeEditorServices menuClient:(WebContextMenuClient*)menuClient
+- (instancetype)initWithData:(NSData *)data includeEditorServices:(BOOL)includeEditorServices menuClient:(WebContextMenuClient*)menuClient
 {
+#ifndef __LP64__
+    return nil;
+#else
     if (!(self = [super init]))
         return nil;
 
-    _picker = adoptNS([[NSSharingServicePicker alloc] initWithItems:@[ image ]]);
+    RetainPtr<NSItemProvider> itemProvider = adoptNS([[NSItemProvider alloc] initWithItem:data typeIdentifier:@"public.data"]);
+
+    _picker = adoptNS([[NSSharingServicePicker alloc] initWithItems:@[ itemProvider.get() ]]);
     [_picker setStyle:NSSharingServicePickerStyleRollover];
     [_picker setDelegate:self];
 
@@ -71,11 +84,13 @@ using namespace WebCore;
     _menuClient = menuClient;
 
     return self;
+#endif
 }
 
 - (void)clear
 {
-    _menuClient->clearSharingServicePickerController();
+    if (_menuClient)
+        _menuClient->clearSharingServicePickerController();
 
     _picker = nullptr;
     _menuClient = nullptr;
@@ -86,8 +101,35 @@ using namespace WebCore;
     return [_picker menu];
 }
 
-#pragma mark NSSharingServicePickerDelegate methods
+- (void)didShareImageData:(NSData *)data confirmDataIsValidTIFFData:(BOOL)confirmData
+{
+    Page* page = [_menuClient->webView() page];
+    if (!page)
+        return;
 
+    if (confirmData) {
+        RetainPtr<NSImage> nsImage = adoptNS([[NSImage alloc] initWithData:data]);
+        if (!nsImage) {
+            LOG_ERROR("Shared image data cannot create a valid NSImage");
+            return;
+        }
+
+        data = [nsImage TIFFRepresentation];
+    }
+
+    NSPasteboard *pasteboard = [NSPasteboard pasteboardWithName:serviceControlsPasteboardName];
+    [pasteboard declareTypes:@[ NSPasteboardTypeTIFF ] owner:nil];
+    [pasteboard setData:data forType:NSPasteboardTypeTIFF];
+
+    if (Node* node = page->contextMenuController().context().hitTestResult().innerNode()) {
+        if (Frame* frame = node->document().frame())
+            frame->editor().replaceNodeFromPasteboard(node, serviceControlsPasteboardName);
+    }
+
+    [self clear];
+}
+
+#pragma mark NSSharingServicePickerDelegate methods
 
 - (NSArray *)sharingServicePicker:(NSSharingServicePicker *)sharingServicePicker sharingServicesForItems:(NSArray *)items mask:(NSSharingServiceMask)mask proposedSharingServices:(NSArray *)proposedServices
 {
@@ -123,30 +165,48 @@ using namespace WebCore;
     if ([items count] != 1)
         return;
 
-    RetainPtr<CGImageSourceRef> source = adoptCF(CGImageSourceCreateWithData((CFDataRef)[items objectAtIndex:0], NULL));
-    RetainPtr<CGImageRef> cgImage = adoptCF(CGImageSourceCreateImageAtIndex(source.get(), 0, NULL));
+    id item = [items objectAtIndex:0];
 
-    if (!cgImage)
-        return;
+    if ([item isKindOfClass:[NSImage class]])
+        [self didShareImageData:[item TIFFRepresentation] confirmDataIsValidTIFFData:NO];
+#ifdef __LP64__
+    else if ([item isKindOfClass:[NSItemProvider class]]) {
+        NSItemProvider *itemProvider = (NSItemProvider *)item;
+        NSString *itemUTI = itemProvider.registeredTypeIdentifiers.firstObject;
+        
+        [itemProvider loadItemForTypeIdentifier:itemUTI options:nil completionHandler:^(id receivedData, NSError *dataError) {
+            if (!receivedData) {
+                LOG_ERROR("Did not receive data from NSItemProvider");
+                return;
+            }
 
-    Page* page = [_menuClient->webView() page];
-    if (!page)
-        return;
+            if (![receivedData isKindOfClass:[NSData class]]) {
+                LOG_ERROR("Data received from NSItemProvider is not of type NSData");
+                return;
+            }
 
-    NSPasteboard *pasteboard = [NSPasteboard pasteboardWithName:serviceControlsPasteboardName];
-    [pasteboard declareTypes:@[ NSPasteboardTypeTIFF ] owner:nil];
-    [pasteboard setData:[items objectAtIndex:0] forType:NSPasteboardTypeTIFF];
+            [[NSOperationQueue mainQueue] addOperationWithBlock:^{
+                [self didShareImageData:receivedData confirmDataIsValidTIFFData:YES];
+            }];
 
-    Frame& frame = page->focusController().focusedOrMainFrame();
-    if (!frame.selection().isNone())
-        frame.editor().readSelectionFromPasteboard(serviceControlsPasteboardName);
-
-    [self clear];
+        }];
+    }
+#endif
+    else
+        LOG_ERROR("sharingService:didShareItems: - Unknown item type returned");
 }
 
 - (void)sharingService:(NSSharingService *)sharingService didFailToShareItems:(NSArray *)items error:(NSError *)error
 {
     [self clear];
+}
+
+- (NSRect)sharingService:(NSSharingService *)sharingService sourceFrameOnScreenForShareItem:(id <NSPasteboardWriting>)item
+{
+    if (!_menuClient)
+        return NSRect();
+
+    return (NSRect)_menuClient->screenRectForHitTestNode();
 }
 
 - (NSWindow *)sharingService:(NSSharingService *)sharingService sourceWindowForShareItems:(NSArray *)items sharingContentScope:(NSSharingContentScope *)sharingContentScope

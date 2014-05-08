@@ -94,7 +94,6 @@ public:
     virtual void wasBlocked(WebCore::ResourceHandle*) override;
     virtual void cannotShowURL(WebCore::ResourceHandle*) override;
     virtual bool shouldUseCredentialStorage(WebCore::ResourceHandle*) override;
-    virtual void shouldUseCredentialStorageAsync(WebCore::ResourceHandle*) override;
     virtual void didReceiveAuthenticationChallenge(WebCore::ResourceHandle*, const WebCore::AuthenticationChallenge&) override;
     virtual void didCancelAuthenticationChallenge(WebCore::ResourceHandle*, const WebCore::AuthenticationChallenge&) override;
     virtual void receivedCancellation(WebCore::ResourceHandle*, const WebCore::AuthenticationChallenge&) override;
@@ -124,6 +123,7 @@ public:
 
 #if PLATFORM(IOS) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090)
     static void tryGetShareableHandleFromCFURLCachedResponse(ShareableResource::Handle&, CFCachedURLResponseRef);
+    static void tryGetShareableHandleFromSharedBuffer(ShareableResource::Handle&, WebCore::SharedBuffer*);
 #endif
 
     bool isSynchronous() const;
@@ -141,15 +141,10 @@ public:
         return result;
     }
 
-
 #if USE(PROTECTION_SPACE_AUTH_CALLBACK)
     void continueCanAuthenticateAgainstProtectionSpace(bool);
 #endif
     void continueWillSendRequest(const WebCore::ResourceRequest& newRequest);
-
-#if PLATFORM(IOS) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090)
-    static void tryGetShareableHandleFromSharedBuffer(ShareableResource::Handle&, WebCore::SharedBuffer*);
-#endif
 
 private:
     NetworkResourceLoader(const NetworkResourceLoadParameters&, NetworkConnectionToWebProcess*, PassRefPtr<Messages::NetworkConnectionToWebProcess::PerformSynchronousLoad::DelayedReply>);

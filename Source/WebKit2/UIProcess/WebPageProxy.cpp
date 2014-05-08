@@ -270,7 +270,7 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
     , m_notificationPermissionRequestManager(*this)
     , m_viewState(ViewState::NoFlags)
 #if PLATFORM(IOS)
-    , m_visibilityToken(process.throttler().visibilityToken(ProcessThrottler::Visibility::Hidden))
+    , m_activityToken(nullptr)
 #endif
     , m_backForwardList(WebBackForwardList::create(*this))
     , m_loadStateAtProcessExit(FrameLoadState::State::Finished)
@@ -313,6 +313,7 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
     , m_pageID(pageID)
     , m_session(*configuration.session)
     , m_isPageSuspended(false)
+    , m_addsVisitedLinks(true)
 #if ENABLE(REMOTE_INSPECTOR)
     , m_allowsRemoteInspection(true)
 #endif
@@ -333,10 +334,10 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
     , m_mainFrameHasHorizontalScrollbar(false)
     , m_mainFrameHasVerticalScrollbar(false)
     , m_canShortCircuitHorizontalWheelEvents(true)
-    , m_mainFrameIsPinnedToLeftSide(false)
-    , m_mainFrameIsPinnedToRightSide(false)
-    , m_mainFrameIsPinnedToTopSide(false)
-    , m_mainFrameIsPinnedToBottomSide(false)
+    , m_mainFrameIsPinnedToLeftSide(true)
+    , m_mainFrameIsPinnedToRightSide(true)
+    , m_mainFrameIsPinnedToTopSide(true)
+    , m_mainFrameIsPinnedToBottomSide(true)
     , m_shouldUseImplicitRubberBandControl(false)
     , m_rubberBandsAtLeft(true)
     , m_rubberBandsAtRight(true)
@@ -354,7 +355,6 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
     , m_mediaVolume(1)
     , m_mayStartMediaWhenInWindow(true)
     , m_waitingForDidUpdateViewState(false)
-    , m_pendingViewStateUpdates(0)
     , m_scrollPinningBehavior(DoNotPin)
     , m_navigationID(0)
 {
@@ -362,7 +362,7 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
         m_visitedLinkProvider->addProcess(m_process.get());
 
     updateViewState();
-    updateVisibilityToken();
+    updateActivityToken();
     
 #if HAVE(OUT_OF_PROCESS_LAYER_HOSTING)
     m_layerHostingMode = m_viewState & ViewState::IsInWindow ? m_pageClient.viewLayerHostingMode() : LayerHostingMode::OutOfProcess;
@@ -521,7 +521,7 @@ void WebPageProxy::reattachToWebProcess()
     ASSERT(m_process->state() == WebProcessProxy::State::Terminated);
 
     updateViewState();
-    updateVisibilityToken();
+    updateActivityToken();
     
     m_isValid = true;
 
@@ -537,6 +537,9 @@ void WebPageProxy::reattachToWebProcess()
 #endif
 #if ENABLE(FULLSCREEN_API)
     m_fullScreenManager = WebFullScreenManagerProxy::create(*this, m_pageClient.fullScreenManagerProxyClient());
+#endif
+#if PLATFORM(IOS)
+    m_videoFullscreenManager = WebVideoFullscreenManagerProxy::create(*this);
 #endif
 
     initializeWebPage();
@@ -905,6 +908,11 @@ void WebPageProxy::willGoToBackForwardListItem(uint64_t itemID, IPC::MessageDeco
         m_loaderClient->willGoToBackForwardListItem(this, item, userData.get());
 }
 
+bool WebPageProxy::shouldKeepCurrentBackForwardListItemInList(WebBackForwardListItem* item)
+{
+    return m_loaderClient->shouldKeepCurrentBackForwardListItemInList(this, item);
+}
+
 bool WebPageProxy::canShowMIMEType(const String& mimeType)
 {
     if (MIMETypeRegistry::canShowMIMEType(mimeType))
@@ -1058,16 +1066,12 @@ void WebPageProxy::viewStateDidChange(ViewState::Flags mayHaveChanged, WantsRepl
     updateViewState(mayHaveChanged);
     ViewState::Flags changed = m_viewState ^ previousViewState;
 
-    if (changed) {
-        bool requestReply = wantsReply == WantsReplyOrNot::DoesWantReply;
-        if (requestReply)
-            ++m_pendingViewStateUpdates;
+    if (changed)
+        m_process->send(Messages::WebPage::SetViewState(m_viewState, wantsReply == WantsReplyOrNot::DoesWantReply), m_pageID);
     
-        updateVisibilityToken();
-        
-        m_process->send(Messages::WebPage::SetViewState(m_viewState, requestReply), m_pageID);
-    }
-
+    // This must happen after the SetViewState message is sent, to ensure the page visibility event can fire.
+    updateActivityToken();
+    
     if (changed & ViewState::IsVisuallyIdle)
         m_process->pageSuppressibilityChanged(this);
 
@@ -1096,25 +1100,16 @@ void WebPageProxy::viewStateDidChange(ViewState::Flags mayHaveChanged, WantsRepl
     updateBackingStoreDiscardableState();
 }
     
-void WebPageProxy::updateVisibilityToken()
+void WebPageProxy::updateActivityToken()
 {
 #if PLATFORM(IOS)
-    if (isViewVisible())
-        m_visibilityToken->setVisibility(ProcessThrottler::Visibility::Visible);
-    else if (m_visibilityToken->visibility() != ProcessThrottler::Visibility::Hidden && m_pendingViewStateUpdates)
-        m_visibilityToken->setVisibility(ProcessThrottler::Visibility::Hiding);
-    else
-        m_visibilityToken->setVisibility(ProcessThrottler::Visibility::Hidden);
+    if (!isViewVisible())
+        m_activityToken = nullptr;
+    else if (!m_activityToken)
+        m_activityToken = std::make_unique<ProcessThrottler::ForegroundActivityToken>(m_process->throttler());
 #endif
 }
 
-void WebPageProxy::didUpdateViewState()
-{
-    m_waitingForDidUpdateViewState = false;
-    --m_pendingViewStateUpdates;
-    updateVisibilityToken();
-}
-    
 void WebPageProxy::layerHostingModeDidChange()
 {
     if (!isValid())
@@ -1522,16 +1517,6 @@ bool WebPageProxy::shouldStartTrackingTouchEvents(const WebTouchEvent& touchStar
     return true;
 }
 
-static bool areAllTouchPointsReleased(const WebTouchEvent& event)
-{
-    for (const auto& touchPoint : event.touchPoints()) {
-        if (touchPoint.state() != WebPlatformTouchPoint::TouchReleased && touchPoint.state() != WebPlatformTouchPoint::TouchCancelled)
-            return false;
-    }
-
-    return true;
-}
-
 #endif
 
 #if ENABLE(IOS_TOUCH_EVENTS)
@@ -1553,7 +1538,7 @@ void WebPageProxy::handleTouchEventSynchronously(const NativeWebTouchEvent& even
     m_pageClient.doneWithTouchEvent(event, handled);
     m_process->responsivenessTimer()->stop();
 
-    if (areAllTouchPointsReleased(event))
+    if (event.allTouchPointsAreReleased())
         m_isTrackingTouchEvents = false;
 }
 
@@ -1569,7 +1554,7 @@ void WebPageProxy::handleTouchEventAsynchronously(const NativeWebTouchEvent& eve
 
     m_process->send(Messages::EventDispatcher::TouchEvent(m_pageID, event), 0);
 
-    if (areAllTouchPointsReleased(event))
+    if (event.allTouchPointsAreReleased())
         m_isTrackingTouchEvents = false;
 }
 
@@ -1609,7 +1594,7 @@ void WebPageProxy::handleTouchEvent(const NativeWebTouchEvent& event)
         }
     }
 
-    if (areAllTouchPointsReleased(event))
+    if (event.allTouchPointsAreReleased())
         m_isTrackingTouchEvents = false;
 }
 #endif // ENABLE(TOUCH_EVENTS)
@@ -2467,6 +2452,8 @@ void WebPageProxy::didCommitLoadForFrame(uint64_t frameID, uint64_t navigationID
             m_mainFrameIsPinnedToRightSide = true;
             m_mainFrameIsPinnedToTopSide = true;
             m_mainFrameIsPinnedToBottomSide = true;
+
+            m_uiClient->pinnedStateDidChange(*this);
         }
         m_pageClient.didCommitLoadForMainFrame(mimeType, frameHasCustomContentProvider);
     }
@@ -3082,8 +3069,10 @@ void WebPageProxy::runOpenPanel(uint64_t frameID, const FileChooserSettings& set
     // Since runOpenPanel() can spin a nested run loop we need to turn off the responsiveness timer.
     m_process->responsivenessTimer()->stop();
 
-    if (!m_uiClient->runOpenPanel(this, frame, parameters.get(), m_openPanelResultListener.get()))
-        didCancelForOpenPanel();
+    if (!m_uiClient->runOpenPanel(this, frame, parameters.get(), m_openPanelResultListener.get())) {
+        if (!m_pageClient.handleRunOpenPanel(this, frame, parameters.get(), m_openPanelResultListener.get()))
+            didCancelForOpenPanel();
+    }
 }
 
 void WebPageProxy::printFrame(uint64_t frameID)
@@ -3590,6 +3579,19 @@ void WebPageProxy::contextMenuItemSelected(const WebContextMenuItemData& item)
     m_process->send(Messages::WebPage::DidSelectItemFromActiveContextMenu(item), m_pageID);
 }
 #endif // ENABLE(CONTEXT_MENUS)
+
+#if PLATFORM(IOS)
+void WebPageProxy::didChooseFilesForOpenPanelWithDisplayStringAndIcon(const Vector<String>& fileURLs, const String& displayString, const API::Data* iconData)
+{
+    if (!isValid())
+        return;
+
+    m_process->send(Messages::WebPage::DidChooseFilesForOpenPanelWithDisplayStringAndIcon(fileURLs, displayString, iconData ? iconData->dataReference() : IPC::DataReference()), m_pageID);
+
+    m_openPanelResultListener->invalidate();
+    m_openPanelResultListener = nullptr;
+}
+#endif
 
 void WebPageProxy::didChooseFilesForOpenPanel(const Vector<String>& fileURLs)
 {
@@ -4111,6 +4113,13 @@ void WebPageProxy::resetState()
     }
 #endif
 
+#if PLATFORM(IOS)
+    if (m_videoFullscreenManager) {
+        m_videoFullscreenManager->invalidate();
+        m_videoFullscreenManager = nullptr;
+    }
+#endif
+
 #if ENABLE(VIBRATION)
     m_vibration->invalidate();
 #endif
@@ -4138,10 +4147,10 @@ void WebPageProxy::resetState()
     m_mainFrameHasHorizontalScrollbar = false;
     m_mainFrameHasVerticalScrollbar = false;
 
-    m_mainFrameIsPinnedToLeftSide = false;
-    m_mainFrameIsPinnedToRightSide = false;
-    m_mainFrameIsPinnedToTopSide = false;
-    m_mainFrameIsPinnedToBottomSide = false;
+    m_mainFrameIsPinnedToLeftSide = true;
+    m_mainFrameIsPinnedToRightSide = true;
+    m_mainFrameIsPinnedToTopSide = true;
+    m_mainFrameIsPinnedToBottomSide = true;
 
     m_visibleScrollerThumbRect = IntRect();
 
@@ -4474,6 +4483,8 @@ void WebPageProxy::didChangeScrollOffsetPinningForMainFrame(bool pinnedToLeftSid
     m_mainFrameIsPinnedToRightSide = pinnedToRightSide;
     m_mainFrameIsPinnedToTopSide = pinnedToTopSide;
     m_mainFrameIsPinnedToBottomSide = pinnedToBottomSide;
+
+    m_uiClient->pinnedStateDidChange(*this);
 }
 
 void WebPageProxy::didChangePageCount(unsigned pageCount)
@@ -4732,7 +4743,7 @@ void WebPageProxy::dictationAlternatives(uint64_t dictationContext, Vector<Strin
 #endif // PLATFORM(MAC)
 
 #if PLATFORM(COCOA)
-RetainPtr<CGImageRef> WebPageProxy::takeViewSnapshot()
+ViewSnapshot WebPageProxy::takeViewSnapshot()
 {
     return m_pageClient.takeViewSnapshot();
 }
@@ -4792,8 +4803,8 @@ void WebPageProxy::setScrollPinningBehavior(ScrollPinningBehavior pinning)
 void WebPageProxy::wrapCryptoKey(const Vector<uint8_t>& key, bool& succeeded, Vector<uint8_t>& wrappedKey)
 {
     Vector<uint8_t> masterKey;
-    RefPtr<API::Data> keyData = m_process->context().client().copyWebCryptoMasterKey(&m_process->context());
-    if (keyData)
+
+    if (RefPtr<API::Data> keyData = m_loaderClient->webCryptoMasterKey(*this))
         masterKey = keyData->dataReference().vector();
     else if (!getDefaultWebCryptoMasterKey(masterKey)) {
         succeeded = false;

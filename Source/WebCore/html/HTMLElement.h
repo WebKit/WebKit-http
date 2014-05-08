@@ -47,7 +47,6 @@ public:
     virtual String title() const override final;
 
     virtual short tabIndex() const override;
-    void setTabIndex(int);
 
     String innerHTML() const;
     String outerHTML() const;
@@ -98,6 +97,8 @@ public:
 
     virtual bool isLabelable() const { return false; }
     virtual FormNamedItem* asFormNamedItem() { return 0; }
+
+    static void populateEventNameForAttributeLocalNameMap(HashMap<AtomicStringImpl*, AtomicString>&);
 
     bool hasTagName(const HTMLQualifiedName& name) const { return hasLocalName(name.localName()); }
 

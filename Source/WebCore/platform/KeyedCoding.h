@@ -39,6 +39,7 @@ protected:
     virtual ~KeyedDecoder() { }
 
 public:
+    virtual bool decodeBytes(const String& key, const uint8_t*&, size_t&) = 0;
     virtual bool decodeBool(const String& key, bool&) = 0;
     virtual bool decodeUInt32(const String& key, uint32_t&) = 0;
     virtual bool decodeInt32(const String& key, int32_t&) = 0;
@@ -46,6 +47,21 @@ public:
     virtual bool decodeFloat(const String& key, float&) = 0;
     virtual bool decodeDouble(const String& key, double&) = 0;
     virtual bool decodeString(const String& key, String&) = 0;
+
+    template<typename T>
+    bool decodeBytes(const String& key, Vector<T>& vector)
+    {
+        static_assert(sizeof(T) == 1, "");
+
+        size_t size;
+        const uint8_t* bytes;
+        if (!decodeBytes(key, bytes, size))
+            return false;
+
+        vector.resize(size);
+        std::copy(bytes, bytes + size, vector.data());
+        return true;
+    }
 
     template<typename T, typename F>
     bool decodeEnum(const String& key, T& value, F&& isValidEnumFunction)
@@ -56,7 +72,7 @@ public:
         if (!decodeInt64(key, intValue))
             return false;
 
-        if (!isValidEnumFunction(intValue))
+        if (!isValidEnumFunction(static_cast<T>(intValue)))
             return false;
 
         value = static_cast<T>(intValue);

@@ -185,6 +185,8 @@
 
 #if PLATFORM(IOS)
 #include "WebVideoFullscreenManager.h"
+#include <CoreGraphics/CoreGraphics.h>
+#include <WebCore/Icon.h>
 #endif
 
 #ifndef NDEBUG
@@ -274,10 +276,10 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
     , m_canRunBeforeUnloadConfirmPanel(parameters.canRunBeforeUnloadConfirmPanel)
     , m_canRunModal(parameters.canRunModal)
     , m_isRunningModal(false)
-    , m_cachedMainFrameIsPinnedToLeftSide(false)
-    , m_cachedMainFrameIsPinnedToRightSide(false)
-    , m_cachedMainFrameIsPinnedToTopSide(false)
-    , m_cachedMainFrameIsPinnedToBottomSide(false)
+    , m_cachedMainFrameIsPinnedToLeftSide(true)
+    , m_cachedMainFrameIsPinnedToRightSide(true)
+    , m_cachedMainFrameIsPinnedToTopSide(true)
+    , m_cachedMainFrameIsPinnedToBottomSide(true)
     , m_canShortCircuitHorizontalWheelEvents(false)
     , m_numWheelEventHandlers(0)
     , m_cachedPageCount(0)
@@ -3049,6 +3051,25 @@ void WebPage::changeSelectedIndex(int32_t index)
 
     m_activePopupMenu->didChangeSelectedIndex(index);
 }
+
+#if PLATFORM(IOS)
+void WebPage::didChooseFilesForOpenPanelWithDisplayStringAndIcon(const Vector<String>& files, const String& displayString, const IPC::DataReference& iconData)
+{
+    if (!m_activeOpenPanelResultListener)
+        return;
+
+    RefPtr<Icon> icon;
+    if (!iconData.isEmpty()) {
+        RetainPtr<CFDataRef> dataRef = adoptCF(CFDataCreate(nullptr, iconData.data(), iconData.size()));
+        RetainPtr<CGDataProviderRef> imageProviderRef = adoptCF(CGDataProviderCreateWithCFData(dataRef.get()));
+        RetainPtr<CGImageRef> imageRef = adoptCF(CGImageCreateWithJPEGDataProvider(imageProviderRef.get(), nullptr, true, kCGRenderingIntentDefault));
+        icon = Icon::createIconForImage(imageRef.get());
+    }
+
+    m_activeOpenPanelResultListener->didChooseFilesWithDisplayStringAndIcon(files, displayString, icon.get());
+    m_activeOpenPanelResultListener = nullptr;
+}
+#endif
 
 void WebPage::didChooseFilesForOpenPanel(const Vector<String>& files)
 {

@@ -1956,7 +1956,6 @@ set(WebCore_SOURCES
     platform/FileChooser.cpp
     platform/FileStream.cpp
     platform/FileSystem.cpp
-    platform/HistogramSupport.cpp
     platform/URL.cpp
     platform/KillRingNone.cpp
     platform/Language.cpp
@@ -2176,6 +2175,7 @@ set(WebCore_SOURCES
 
     platform/network/AuthenticationChallengeBase.cpp
     platform/network/BlobData.cpp
+    platform/network/BlobDataFileReference.cpp
     platform/network/BlobRegistry.cpp
     platform/network/BlobRegistryImpl.cpp
     platform/network/BlobResourceHandle.cpp
@@ -3066,7 +3066,6 @@ if (WTF_USE_3D_GRAPHICS)
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/TranslatorHLSL.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/UnfoldShortCircuit.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/UnfoldShortCircuitAST.cpp
-        ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/Uniform.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/ValidateOutputs.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/ValidateLimitations.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/VariableInfo.cpp

@@ -35,7 +35,6 @@
 #include "Document.h"
 #include "ExceptionCode.h"
 #include "File.h"
-#include "HistogramSupport.h"
 #include "LineEnding.h"
 #include "TextEncoding.h"
 #include <runtime/ArrayBuffer.h>
@@ -55,7 +54,6 @@ enum BlobConstructorArrayBufferOrView {
 };
 
 BlobBuilder::BlobBuilder()
-    : m_size(0)
 {
 }
 
@@ -63,36 +61,29 @@ void BlobBuilder::append(const String& text, const String& endingType)
 {
     CString utf8Text = UTF8Encoding().encode(text, EntitiesForUnencodables);
 
-    size_t oldSize = m_appendableData.size();
-
     if (endingType == "native")
         normalizeLineEndingsToNative(utf8Text, m_appendableData);
     else {
         ASSERT(endingType == "transparent");
         m_appendableData.append(utf8Text.data(), utf8Text.length());
     }
-    m_size += m_appendableData.size() - oldSize;
 }
 
 #if ENABLE(BLOB)
 void BlobBuilder::append(ArrayBuffer* arrayBuffer)
 {
-    HistogramSupport::histogramEnumeration("WebCore.Blob.constructor.ArrayBufferOrView", BlobConstructorArrayBuffer, BlobConstructorArrayBufferOrViewMax);
-
     if (!arrayBuffer)
         return;
 
-    appendBytesData(arrayBuffer->data(), arrayBuffer->byteLength());
+    m_appendableData.append(static_cast<const char*>(arrayBuffer->data()), arrayBuffer->byteLength());
 }
 
 void BlobBuilder::append(PassRefPtr<ArrayBufferView> arrayBufferView)
 {
-    HistogramSupport::histogramEnumeration("WebCore.Blob.constructor.ArrayBufferOrView", BlobConstructorArrayBufferView, BlobConstructorArrayBufferOrViewMax);
-
     if (!arrayBufferView)
         return;
 
-    appendBytesData(arrayBufferView->baseAddress(), arrayBufferView->byteLength());
+    m_appendableData.append(static_cast<const char*>(arrayBufferView->baseAddress()), arrayBufferView->byteLength());
 }
 #endif
 
@@ -101,47 +92,15 @@ void BlobBuilder::append(Blob* blob)
     if (!blob)
         return;
     if (!m_appendableData.isEmpty())
-        m_items.append(BlobDataItem(RawData::create(std::move(m_appendableData))));
-    if (blob->isFile()) {
-        File* file = toFile(blob);
-        // If the blob is file that is not snapshoted, capture the snapshot now.
-        // FIXME: This involves synchronous file operation. We need to figure out how to make it asynchronous.
-        long long snapshotSize;
-        double snapshotModificationTime;
-        file->captureSnapshot(snapshotSize, snapshotModificationTime);
-
-        m_size += snapshotSize;
-        m_items.append(BlobDataItem(file->path(), 0, snapshotSize, snapshotModificationTime));
-    } else {
-        long long blobSize = static_cast<long long>(blob->size());
-        m_size += blobSize;
-        m_items.append(BlobDataItem(blob->url(), 0, blobSize));
-    }
+        m_items.append(BlobPart(std::move(m_appendableData)));
+    m_items.append(BlobPart(blob->url()));
 }
 
-void BlobBuilder::appendBytesData(const void* data, size_t length)
-{
-    size_t oldSize = m_appendableData.size();
-    m_appendableData.append(static_cast<const char*>(data), length);
-    m_size += m_appendableData.size() - oldSize;
-}
-
-PassRefPtr<Blob> BlobBuilder::getBlob(const String& contentType)
+Vector<BlobPart> BlobBuilder::finalize()
 {
     if (!m_appendableData.isEmpty())
-        m_items.append(BlobDataItem(RawData::create(std::move(m_appendableData))));
-
-    auto blobData = std::make_unique<BlobData>();
-    blobData->setContentType(Blob::normalizedContentType(contentType));
-    blobData->swapItems(m_items);
-
-    RefPtr<Blob> blob = Blob::create(std::move(blobData), m_size);
-
-    // After creating a blob from the current blob data, we do not need to keep the data around any more. Instead, we only
-    // need to keep a reference to the URL of the blob just created.
-    m_items.append(BlobDataItem(blob->url(), 0, m_size));
-
-    return blob;
+        m_items.append(BlobPart(std::move(m_appendableData)));
+    return std::move(m_items);
 }
 
 } // namespace WebCore

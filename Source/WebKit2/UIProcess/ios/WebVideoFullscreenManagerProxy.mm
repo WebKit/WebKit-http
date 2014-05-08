@@ -55,7 +55,20 @@ WebVideoFullscreenManagerProxy::WebVideoFullscreenManagerProxy(WebPageProxy& pag
 
 WebVideoFullscreenManagerProxy::~WebVideoFullscreenManagerProxy()
 {
+    if (!m_page)
+        return;
     m_page->process().removeMessageReceiver(Messages::WebVideoFullscreenManagerProxy::messageReceiverName(), m_page->pageID());
+}
+
+void WebVideoFullscreenManagerProxy::invalidate()
+{
+    WebVideoFullscreenInterfaceAVKit::invalidate();
+
+    m_page->process().removeMessageReceiver(Messages::WebVideoFullscreenManagerProxy::messageReceiverName(), m_page->pageID());
+    m_page = nullptr;
+
+    [m_layerHost removeFromSuperlayer];
+    m_layerHost.clear();
 }
 
 void WebVideoFullscreenManagerProxy::enterFullscreenWithID(uint32_t videoLayerID, WebCore::IntRect initialRect)
@@ -111,9 +124,39 @@ void WebVideoFullscreenManagerProxy::togglePlayState()
     m_page->send(Messages::WebVideoFullscreenManager::TogglePlayState(), m_page->pageID());
 }
     
+void WebVideoFullscreenManagerProxy::beginScrubbing()
+{
+    m_page->send(Messages::WebVideoFullscreenManager::BeginScrubbing(), m_page->pageID());
+}
+
+void WebVideoFullscreenManagerProxy::endScrubbing()
+{
+    m_page->send(Messages::WebVideoFullscreenManager::EndScrubbing(), m_page->pageID());
+}
+
 void WebVideoFullscreenManagerProxy::seekToTime(double time)
 {
     m_page->send(Messages::WebVideoFullscreenManager::SeekToTime(time), m_page->pageID());
+}
+
+void WebVideoFullscreenManagerProxy::fastSeek(double time)
+{
+    m_page->send(Messages::WebVideoFullscreenManager::FastSeek(time), m_page->pageID());
+}
+
+void WebVideoFullscreenManagerProxy::beginScanningForward()
+{
+    m_page->send(Messages::WebVideoFullscreenManager::BeginScanningForward(), m_page->pageID());
+}
+
+void WebVideoFullscreenManagerProxy::beginScanningBackward()
+{
+    m_page->send(Messages::WebVideoFullscreenManager::BeginScanningBackward(), m_page->pageID());
+}
+
+void WebVideoFullscreenManagerProxy::endScanning()
+{
+    m_page->send(Messages::WebVideoFullscreenManager::EndScanning(), m_page->pageID());
 }
 
 void WebVideoFullscreenManagerProxy::setVideoLayerFrame(WebCore::FloatRect frame)

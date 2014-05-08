@@ -44,9 +44,8 @@ class Page;
 class GeolocationController : public Supplement<Page> {
     WTF_MAKE_NONCOPYABLE(GeolocationController);
 public:
+    explicit GeolocationController(GeolocationClient*);
     ~GeolocationController();
-
-    static PassOwnPtr<GeolocationController> create(GeolocationClient*);
 
     void addObserver(Geolocation*, bool enableHighAccuracy);
     void removeObserver(Geolocation*);
@@ -65,8 +64,6 @@ public:
     static GeolocationController* from(Page* page) { return static_cast<GeolocationController*>(Supplement<Page>::from(page, supplementName())); }
 
 private:
-    GeolocationController(GeolocationClient*);
-
     GeolocationClient* m_client;
 
     RefPtr<GeolocationPosition> m_lastPosition;

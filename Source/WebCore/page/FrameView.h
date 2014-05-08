@@ -129,6 +129,9 @@ public:
     IntRect customFixedPositionLayoutRect() const { return m_customFixedPositionLayoutRect; }
     void setCustomFixedPositionLayoutRect(const IntRect&);
     bool updateFixedPositionLayoutRect();
+
+    void setScrollVelocity(double horizontalVelocity, double verticalVelocity, double scaleChangeRate, double timestamp);
+    FloatRect computeCoverageRect(double horizontalMargin, double verticalMargin) const;
 #else
     bool useCustomFixedPositionLayoutRect() const { return false; }
 #endif
@@ -194,16 +197,18 @@ public:
     void setBaseBackgroundColor(const Color&);
     void updateBackgroundRecursively(const Color&, bool);
 
-    // setBackgroundExtendsBeyondPage() is controlled by Settings::setBackgroundShouldExtendBeyondPage(). Some
-    // extended backgrounds require an extended background rect for painting, (at this time, that corresponds
-    // to documents with background images) and needsExtendedBackgroundRectForPainting() determines if this
-    // FrameView is one of those special FrameViews that does require an extended rect for painting. Since
-    // needing an extended background rect for painting is something that can change in the course of a FrameView's
-    // life, the extended rect is set and unset using setHasExtendedBackgroundRectForPainting(). The
-    // extendedBackgroundRectForPainting() is in the viewport's coordinate space.
-    void setBackgroundExtendsBeyondPage(bool);
-    bool needsExtendedBackgroundRectForPainting() const;
-    void setHasExtendedBackgroundRectForPainting(bool shouldHaveExtendedBackgroundRect);
+    enum ExtendedBackgroundModeFlags {
+        ExtendedBackgroundModeNone          = 0,
+        ExtendedBackgroundModeVertical      = 1 << 0,
+        ExtendedBackgroundModeHorizontal    = 1 << 1,
+        ExtendedBackgroundModeAll           = ExtendedBackgroundModeVertical | ExtendedBackgroundModeHorizontal,
+    };
+    typedef unsigned ExtendedBackgroundMode;
+
+    void updateExtendBackgroundIfNecessary();
+    void updateTilesForExtendedBackgroundMode(ExtendedBackgroundMode);
+    ExtendedBackgroundMode calculateExtendedBackgroundMode() const;
+
     bool hasExtendedBackgroundRectForPainting() const;
     IntRect extendedBackgroundRectForPainting() const;
 
@@ -269,7 +274,12 @@ public:
     LayoutSize scrollOffsetForFixedPosition() const;
     // Static function can be called from another thread.
     static LayoutSize scrollOffsetForFixedPosition(const LayoutRect& visibleContentRect, const LayoutSize& totalContentsSize, const LayoutPoint& scrollPosition, const LayoutPoint& scrollOrigin, float frameScaleFactor, bool fixedElementsLayoutRelativeToFrame, ScrollBehaviorForFixedElements, int headerHeight, int footerHeight);
-    
+
+    // These layers are positioned differently when there is a topContentInset. These value need to be computed
+    // on both the main thread and the scrolling thread.
+    static float yPositionForInsetClipLayer(const FloatPoint& scrollPosition, float topContentInset);
+    static float yPositionForRootContentLayer(const FloatPoint& scrollPosition, float topContentInset);
+
 #if PLATFORM(IOS)
     LayoutRect viewportConstrainedObjectsRect() const;
     // Static function can be called from another thread.
@@ -684,6 +694,11 @@ private:
 #if PLATFORM(IOS)
     bool m_useCustomFixedPositionLayoutRect;
     IntRect m_customFixedPositionLayoutRect;
+
+    double m_horizontalVelocity;
+    double m_verticalVelocity;
+    double m_scaleChangeRate;
+    double m_lastVelocityUpdateTime;
 #endif
 
     IntSize m_overrideViewportSize;

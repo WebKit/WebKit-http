@@ -107,12 +107,12 @@ void InfoLog::append(const char *format, ...)
     {
         mInfoLog = new char[infoLength + 2];
         logPointer = mInfoLog;
-        logLength = infoLenfth + 2;
+        logLength = infoLength + 2;
     }
     else
     {
         size_t currentlogLength = strlen(mInfoLog);
-        size_t newInfoLogLength = currentlogLength + infoLength + 2; 
+        size_t newInfoLogLength = currentlogLength + infoLength + 2;
         char *newLog = new char[newInfoLogLength];
         strncpy(newLog, mInfoLog, newInfoLogLength);
         newLog[newInfoLogLength - 1] = '\0';

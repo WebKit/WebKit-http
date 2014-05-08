@@ -31,6 +31,7 @@
 
 #include "AXObjectCache.h"
 #include "AccessibilityRenderObject.h"
+#include "AccessibilityScrollView.h"
 #include "AccessibilityTable.h"
 #include "DOMTokenList.h"
 #include "Editor.h"
@@ -47,7 +48,6 @@
 #include "MathMLNames.h"
 #include "NodeList.h"
 #include "NodeTraversal.h"
-#include "NotImplemented.h"
 #include "Page.h"
 #include "RenderImage.h"
 #include "RenderLayer.h"
@@ -1315,6 +1315,13 @@ AccessibilityObject* AccessibilityObject::accessibilityObjectForPosition(const V
     return obj->document().axObjectCache()->getOrCreate(obj);
 }
     
+// If you call node->hasEditableStyle() since that will return true if an ancestor is editable.
+// This only returns true if this is the element that actually has the contentEditable attribute set.
+bool AccessibilityObject::hasContentEditableAttributeSet() const
+{
+    return contentEditableAttributeIsEnabled(element());
+}
+
 bool AccessibilityObject::contentEditableAttributeIsEnabled(Element* element)
 {
     if (!element)
@@ -1408,7 +1415,17 @@ void AccessibilityObject::updateBackingStore()
     updateChildrenIfNecessary();
 }
 #endif
-
+    
+ScrollView* AccessibilityObject::scrollViewAncestor() const
+{
+    for (const AccessibilityObject* scrollParent = this; scrollParent; scrollParent = scrollParent->parentObject()) {
+        if (scrollParent->isAccessibilityScrollView())
+            return toAccessibilityScrollView(scrollParent)->scrollView();
+    }
+    
+    return nullptr;
+}
+    
 Document* AccessibilityObject::document() const
 {
     FrameView* frameView = documentFrameView();

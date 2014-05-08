@@ -1268,6 +1268,11 @@ void MediaPlayer::setTextTrackRepresentation(TextTrackRepresentation* representa
     m_private->setTextTrackRepresentation(representation);
 }
 
+void MediaPlayer::syncTextTrackBounds()
+{
+    m_private->syncTextTrackBounds();
+}
+
 #if ENABLE(AVF_CAPTIONS)
 void MediaPlayer::notifyTrackModeChanged()
 {

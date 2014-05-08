@@ -1,3 +1,147 @@
+2014-05-06  Dean Jackson  <dino@apple.com>
+
+        [Mac] Allow focus rings to redraw themselves if necessary
+        https://bugs.webkit.org/show_bug.cgi?id=132593
+
+        Reviewed by Simon Fraser.
+
+        * WebCoreSupport/WebSystemInterface.mm:
+        (InitWebCoreSystemInterface): Add DrawFocusRingAtTime and DrawCellFocusRingWithFrameAtTime.
+
+2014-05-06  Brady Eidson  <beidson@apple.com>
+
+        Don't select an image that is about to have its menu shown.
+        <rdar://problem/16807845> and https://bugs.webkit.org/show_bug.cgi?id=132579
+
+        Reviewed by Tim Horton.
+
+        * Misc/WebSharingServicePickerController.mm:
+        (-[WebSharingServicePickerController didShareImageData:confirmDataIsValidTIFFData:]):
+          Call the new replaceNodeFromPasteboard API instead of readSelectionFromPasteboard.
+
+2014-05-06  Anders Carlsson  <andersca@apple.com>
+
+        Move the WebKitLegacy header check to the right file
+        https://bugs.webkit.org/show_bug.cgi?id=132620
+        <rdar://problem/16815716>
+
+        Reviewed by Dan Bernstein.
+
+        * WebKitLegacy/MigrateHeadersFromWebKitLegacy.make:
+        * WebKitLegacy/WebKit.h:
+
+2014-05-06  Anders Carlsson  <andersca@apple.com>
+
+        Put WebKitPluginHost.app in WebKitLegacy.framework
+        https://bugs.webkit.org/show_bug.cgi?id=132592
+        <rdar://problem/15920046>
+
+        Reviewed by Dan Bernstein.
+
+        * Plugins/Hosted/NetscapePluginHostManager.mm:
+        (WebKit::NetscapePluginHostManager::spawnPluginHost):
+
+2014-05-06  Darin Adler  <darin@apple.com>
+
+        [iOS] Fix two more AdoptCF I missed in my last patch.
+
+        * WebView/WebHTMLView.mm:
+        (imageFromRect): Use adoptCF instead of AdoptCF.
+
+2014-05-05  Andreas Kling  <akling@apple.com>
+
+        Unreviewed, rolling out r168334.
+
+        Broke builds.
+
+        Reverted changeset:
+
+        "Put WebKitPluginHost.app in WebKitLegacy.framework"
+        https://bugs.webkit.org/show_bug.cgi?id=132592
+        http://trac.webkit.org/changeset/168334
+
+2014-05-05  Anders Carlsson  <andersca@apple.com>
+
+        Put WebKitPluginHost.app in WebKitLegacy.framework
+        https://bugs.webkit.org/show_bug.cgi?id=132592
+        <rdar://problem/15920046>
+
+        Reviewed by Dan Bernstein.
+
+        * Plugins/Hosted/NetscapePluginHostManager.mm:
+        (WebKit::NetscapePluginHostManager::spawnPluginHost):
+
+2014-05-02  Brady Eidson  <beidson@apple.com>
+
+        Implement new delegate method -sharingService:sourceFrameOnScreenForShareItem:.
+        <rdar://problem/16797425> and https://bugs.webkit.org/show_bug.cgi?id=132484
+
+        Reviewed by Tim Horton.
+
+        * Misc/WebSharingServicePickerController.mm:
+        (-[WebSharingServicePickerController sharingService:sourceFrameOnScreenForShareItem:]):
+
+        * WebCoreSupport/WebContextMenuClient.h:
+        * WebCoreSupport/WebContextMenuClient.mm:
+        (WebContextMenuClient::screenRectForHitTestNode):
+
+2014-05-02  Brady Eidson  <beidson@apple.com>
+
+        Crash inside [WebSharingServicePickerController clear]
+        <rdar://problem/16791944> and https://bugs.webkit.org/show_bug.cgi?id=132477
+
+        Reviewed by Tim Horton.
+
+        * Misc/WebSharingServicePickerController.h:
+        * Misc/WebSharingServicePickerController.mm:
+        (-[WebSharingServicePickerController clear]): clear can be called twice, so null check _menuClient.
+
+        * WebCoreSupport/WebContextMenuClient.h:
+        * WebCoreSupport/WebContextMenuClient.mm:
+        (WebContextMenuClient::~WebContextMenuClient): For a sanity check, call clear on the picker here.
+
+2014-05-01  Tim Horton  <timothy_horton@apple.com>
+
+        More 32-bit build fixes.
+
+        * Misc/WebSharingServicePickerController.mm:
+        (-[WebSharingServicePickerController sharingService:didShareItems:]):
+
+2014-05-01  Tim Horton  <timothy_horton@apple.com>
+
+        Temporarily "fix" the 32-bit build.
+
+        * Misc/WebSharingServicePickerController.mm:
+        This will fail miserably at runtime, but we shouldn't ever get here in a 32-bit process.
+
+2014-05-01  Brady Eidson  <beidson@apple.com>
+
+        Update service picker API usage.
+        <rdar://problem/16772674> and https://bugs.webkit.org/show_bug.cgi?id=132452
+
+        Reviewed by Tim Horton.
+
+        * Misc/WebSharingServicePickerController.h:
+        * Misc/WebSharingServicePickerController.mm:
+        (-[WebSharingServicePickerController didShareImageData:confirmDataIsValidTIFFData:]):
+          Factor out a common "didShare" handler that optionally validates whether the data represents an image.
+        (-[WebSharingServicePickerController sharingService:didShareItems:]): Update API usage, including marshalling
+          on off-main thread call back to the main thread.
+
+        * WebCoreSupport/WebContextMenuClient.mm:
+        (WebContextMenuClient::contextMenuForEvent): Update API usage.
+
+2014-05-01  Anders Carlsson  <andersca@apple.com>
+
+        Support OS-version-specific install paths for WebKit.framework
+        https://bugs.webkit.org/show_bug.cgi?id=132448
+        <rdar://problem/16784932>
+
+        Reviewed by Dan Bernstein.
+
+        * WebKitLegacy/WebKit.m:
+        Add version specific install names.
+
 2014-04-30  Alexey Proskuryakov  <ap@apple.com>
 
         Roll out fix for https://bugs.webkit.org/show_bug.cgi?id=131637:

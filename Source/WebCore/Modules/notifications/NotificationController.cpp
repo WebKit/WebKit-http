@@ -29,7 +29,6 @@
 #if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
 
 #include "NotificationClient.h"
-#include <wtf/PassOwnPtr.h>
 
 namespace WebCore {
 
@@ -42,11 +41,6 @@ NotificationController::~NotificationController()
 {
     if (m_client)
         m_client->notificationControllerDestroyed();
-}
-
-PassOwnPtr<NotificationController> NotificationController::create(NotificationClient* client)
-{
-    return adoptPtr(new NotificationController(client));
 }
 
 NotificationClient* NotificationController::clientFrom(Page* page)
@@ -63,7 +57,7 @@ const char* NotificationController::supplementName()
 
 void provideNotification(Page* page, NotificationClient* client)
 {
-    NotificationController::provideTo(page, NotificationController::supplementName(), NotificationController::create(client));
+    NotificationController::provideTo(page, NotificationController::supplementName(), std::make_unique<NotificationController>(client));
 }
 
 } // namespace WebCore

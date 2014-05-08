@@ -1,3 +1,87 @@
+2014-05-06  Alberto Garcia  <berto@igalia.com>
+
+        There is no HW_AVAILCPU on FreeBSD, NetBSD, and OpenBSD
+        https://bugs.webkit.org/show_bug.cgi?id=132542
+
+        Reviewed by Michael Saboff.
+
+        Use sysconf() to get the number of processor cores.
+
+        * wtf/NumberOfCores.cpp:
+        (WTF::numberOfProcessorCores):
+
+2014-05-04  Darin Adler  <darin@apple.com>
+
+        RetainPtr: Use adoptCF function instead of AdoptCF constructor argument
+        https://bugs.webkit.org/show_bug.cgi?id=80222
+
+        Reviewed by Alexey Proskuryakov.
+
+        All the clients are gone, so we can now remove AdoptCF and AdoptNS.
+
+        * wtf/RetainPtr.h: Removed the public constructors that let you specify AdoptCF
+        and AdoptNS. Instead, made the adoptCF and adoptNS functions be friends and use
+        a private constructor that takes an Adopt argument.
+        (WTF::adoptCF): Moved the Objective-C class check in here.
+        (WTF::adoptNS): Moved the code to deal with the CFRetain for garbage collection
+        in here; it used to be spread across the constructor and adoptNSReference.
+
+2014-05-04  Andreas Kling  <akling@apple.com>
+
+        Optimize JSRopeString for resolving directly to AtomicString.
+        <https://webkit.org/b/132548>
+
+        Add AtomicString::find([LU]Char*, unsigned length) helpers for finding
+        an existing AtomicString without a StringImpl on hand.
+
+        Reviewed by Filip Pizlo.
+
+        * wtf/text/AtomicString.h:
+        * wtf/text/AtomicString.cpp:
+        (WTF::AtomicString::find):
+
+2014-05-01  Brent Fulgham  <bfulgham@apple.com>
+
+        Fix handling of attributes prior to compiling shader
+        https://bugs.webkit.org/show_bug.cgi?id=132430
+
+        Reviewed by Dean Jackson.
+
+        WebGL programs that called bindAttribLocations prior to compiling shader sources
+        would perform the bind using the non-hashed symbol name, but would later create
+        the attributes as hashed names. Consequently, the program would refer to
+        attributes that were never actually part of any shader, resulting in some amazing
+        display artifacts.
+
+        This patch adds a dictionary of hashed symbol names so that we can tell the WebGL
+        program the proper name that will be used when the shader is eventually compiled,
+        allowing the WebGL program to link against the proper symbol after compiling and
+        linking completes.
+
+        * wtf/HexNumber.h:
+        (WTF::appendUnsigned64AsHex): Add uint64_t-compatible hex->string converter.
+
+2014-04-30  Geoffrey Garen  <ggaren@apple.com>
+
+        Link against bmalloc in production builds
+        https://bugs.webkit.org/show_bug.cgi?id=132413
+
+        Reviewed by Sam Weinig.
+
+        Production builders have been configured to handle this, so let's build
+        it.
+
+        * Configurations/WTF.xcconfig:
+
+2014-05-01  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [EFL] There are many warnings with software backend
+        https://bugs.webkit.org/show_bug.cgi?id=132422
+
+        Reviewed by Gyuyoung Kim.
+
+        * wtf/efl/EflTypedefs.h: Added Ecore_X_Window typedef
+
 2014-04-30  Simon Fraser  <simon.fraser@apple.com>
 
         Remove ENABLE_PLUGIN_PROXY_FOR_VIDEO

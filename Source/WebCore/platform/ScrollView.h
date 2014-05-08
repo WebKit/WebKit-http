@@ -144,6 +144,8 @@ public:
     // Overridden by FrameView to create custom CSS scrollbars if applicable.
     virtual PassRefPtr<Scrollbar> createScrollbar(ScrollbarOrientation);
 
+    void styleDidChange();
+
     // If the prohibits scrolling flag is set, then all scrolling in the view (even programmatic scrolling) is turned off.
     void setProhibitsScrolling(bool b) { m_prohibitsScrolling = b; }
     bool prohibitsScrolling() const { return m_prohibitsScrolling; }
@@ -185,9 +187,6 @@ public:
     // The given rects are only used if there is no platform widget.
     void setExposedContentRect(const IntRect&);
     void setUnobscuredContentRect(const IntRect&);
-
-    void setScrollVelocity(double horizontalVelocity, double verticalVelocity, double scaleChangeRate, double timestamp);
-    FloatRect computeCoverageRect(double horizontalMargin, double verticalMargin) const;
 
     void setActualScrollPosition(const IntPoint&);
     LegacyTileCache* legacyTileCache();
@@ -421,11 +420,6 @@ private:
 #if PLATFORM(IOS)
     IntRect m_exposedContentRect;
     IntRect m_unobscuredContentRect;
-
-    double m_horizontalVelocity;
-    double m_verticalVelocity;
-    double m_scaleChangeRate;
-    double m_lastVelocityUpdateTime;
 #else
     IntRect m_fixedVisibleContentRect;
 #endif

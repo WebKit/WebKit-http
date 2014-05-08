@@ -32,10 +32,9 @@
 
 namespace WebCore {
 
-struct FileMetadata;
 class URL;
 
-class File : public Blob {
+class File final : public Blob {
 public:
     // AllContentTypes should only be used when the full path/name are trusted; otherwise, it could
     // allow arbitrary pages to determine what applications an user has installed.
@@ -49,10 +48,9 @@ public:
         return adoptRef(new File(path, policy));
     }
 
-    // For deserialization.
-    static PassRefPtr<File> create(const String& path, const URL& srcURL, const String& type)
+    static PassRefPtr<File> deserialize(const String& path, const URL& srcURL, const String& type)
     {
-        return adoptRef(new File(path, srcURL, type));
+        return adoptRef(new File(deserializationContructor, path, srcURL, type));
     }
 
     // Create a file with a name exposed to the author (via File.name and associated DOM properties) that differs from the one provided in the path.
@@ -72,17 +70,13 @@ public:
     // This returns the current date and time if the file's last modifiecation date is not known (per spec: http://www.w3.org/TR/FileAPI/#dfn-lastModifiedDate).
     double lastModifiedDate() const;
 
-    // Note that this involves synchronous file operation. Think twice before calling this function.
-    void captureSnapshot(long long& snapshotSize, double& snapshotModificationTime) const;
-
-    static String contentTypeFromFilePath(const String&, ContentTypeLookupPolicy);
+    static String contentTypeFromFilePathOrName(const String&, ContentTypeLookupPolicy);
 
 private:
     File(const String& path, ContentTypeLookupPolicy);
-
-    // For deserialization.
-    File(const String& path, const URL& srcURL, const String& type);
     File(const String& path, const String& name, ContentTypeLookupPolicy);
+
+    File(DeserializationContructor, const String& path, const URL& srcURL, const String& type);
 
     String m_path;
     String m_name;

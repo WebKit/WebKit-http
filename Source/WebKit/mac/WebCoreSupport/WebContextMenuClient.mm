@@ -50,6 +50,8 @@
 #import <WebCore/URL.h>
 #import <WebCore/LocalizedStrings.h>
 #import <WebCore/Page.h>
+#import <WebCore/RenderObject.h>
+#import <WebCore/SharedBuffer.h>
 #import <WebCore/Frame.h>
 #import <WebCore/FrameView.h>
 #import <WebCore/RuntimeApplicationChecks.h>
@@ -64,6 +66,14 @@ using namespace WebCore;
 WebContextMenuClient::WebContextMenuClient(WebView *webView) 
     : m_webView(webView)
 {
+}
+
+WebContextMenuClient::~WebContextMenuClient()
+{
+#if ENABLE(SERVICE_CONTROLS)
+    if (m_sharingServicePickerController)
+        [m_sharingServicePickerController clear];
+#endif
 }
 
 void WebContextMenuClient::contextMenuDestroyed()
@@ -354,6 +364,34 @@ void WebContextMenuClient::stopSpeaking()
     [NSApp stopSpeaking:nil];
 }
 
+IntRect WebContextMenuClient::screenRectForHitTestNode() const
+{
+    Page* page = [m_webView page];
+    if (!page)
+        return IntRect();
+
+    Node* node = page->contextMenuController().context().hitTestResult().innerNode();
+    if (!node)
+        return IntRect();
+
+    RenderObject* renderer = node->renderer();
+    if (!renderer) {
+        // This method shouldn't be called in cases where the controlled node hasn't rendered.
+        ASSERT_NOT_REACHED();
+        return IntRect();
+    }
+
+    IntRect rect = renderer->absoluteBoundingBoxRect();
+    FrameView* frameView = node->document().view();
+    if (!frameView) {
+        // This method shouldn't be called in cases where the controlled node isn't in a rendered view.
+        ASSERT_NOT_REACHED();
+        return IntRect();
+    }
+
+    return frameView->contentsToScreen(rect);
+}
+
 NSMenu *WebContextMenuClient::contextMenuForEvent(NSEvent *event, NSView *view)
 {
     Page* page = [m_webView page];
@@ -363,8 +401,13 @@ NSMenu *WebContextMenuClient::contextMenuForEvent(NSEvent *event, NSView *view)
 #if ENABLE(SERVICE_CONTROLS)
     if (Image* image = page->contextMenuController().context().controlledImage()) {
         ASSERT(page->contextMenuController().context().hitTestResult().innerNode());
+
+        RefPtr<SharedBuffer> data = image->data();
+        ASSERT(data);
+        RetainPtr<CFDataRef> cfData = data->createCFData();
+
         bool isContentEditable = page->contextMenuController().context().hitTestResult().innerNode()->isContentEditable();
-        m_sharingServicePickerController = adoptNS([[WebSharingServicePickerController alloc] initWithImage:image->getNSImage() includeEditorServices:isContentEditable menuClient:this]);
+        m_sharingServicePickerController = adoptNS([[WebSharingServicePickerController alloc] initWithData:(NSData *)cfData.get() includeEditorServices:isContentEditable menuClient:this]);
         
         return [m_sharingServicePickerController menu];
     }

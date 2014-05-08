@@ -30,24 +30,20 @@
 #include "Page.h"
 #include "UserMediaClient.h"
 #include "UserMediaRequest.h"
-#include <wtf/PassOwnPtr.h>
 
 namespace WebCore {
 
 class UserMediaController : public Supplement<Page> {
 public:
+    explicit UserMediaController(UserMediaClient*);
     ~UserMediaController();
 
     UserMediaClient* client() const { return m_client; }
     void requestPermission(PassRefPtr<UserMediaRequest>);
     void cancelRequest(UserMediaRequest*);
 
-    static PassOwnPtr<UserMediaController> create(UserMediaClient*);
     static const char* supplementName();
     static UserMediaController* from(Page* page) { return static_cast<UserMediaController*>(Supplement<Page>::from(page, supplementName())); }
-
-protected:
-    explicit UserMediaController(UserMediaClient*);
 
 private:
     UserMediaClient* m_client;

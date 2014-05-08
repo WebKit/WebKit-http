@@ -35,18 +35,14 @@
 #include <WebCore/WebVideoFullscreenModel.h>
 #include <wtf/RefPtr.h>
 #include <wtf/RetainPtr.h>
+#include <wtf/Vector.h>
 
 namespace WebCore {
 class HTMLMediaElement;
+class TextTrack;
 class WebVideoFullscreenInterface;
 
 class WebVideoFullscreenModelMediaElement : public WebVideoFullscreenModel, public EventListener {
-    RefPtr<HTMLMediaElement> m_mediaElement;
-    RetainPtr<PlatformLayer> m_videoFullscreenLayer;
-    bool m_isListening;
-    WebVideoFullscreenInterface* m_videoFullscreenInterface;
-    FloatRect m_videoFrame;
-    
 public:
     WebVideoFullscreenModelMediaElement();
     virtual ~WebVideoFullscreenModelMediaElement();
@@ -61,12 +57,28 @@ public:
     virtual void play() override;
     virtual void pause() override;
     virtual void togglePlayState() override;
+    virtual void beginScrubbing() override;
+    virtual void endScrubbing() override;
     virtual void seekToTime(double time) override;
+    virtual void fastSeek(double time) override;
+    virtual void beginScanningForward() override;
+    virtual void beginScanningBackward() override;
+    virtual void endScanning() override;
     virtual void requestExitFullscreen() override;
     virtual void setVideoLayerFrame(FloatRect) override;
     virtual void setVideoLayerGravity(WebVideoFullscreenModel::VideoGravity) override;
     virtual void selectAudioMediaOption(uint64_t index) override;
     virtual void selectLegibleMediaOption(uint64_t index) override;
+
+private:
+    RefPtr<HTMLMediaElement> m_mediaElement;
+    RetainPtr<PlatformLayer> m_videoFullscreenLayer;
+    bool m_isListening;
+    WebVideoFullscreenInterface* m_videoFullscreenInterface;
+    FloatRect m_videoFrame;
+    Vector<RefPtr<TextTrack>> m_legibleTracksForMenu;
+
+    void updateLegibleOptions();
 };
 
 }

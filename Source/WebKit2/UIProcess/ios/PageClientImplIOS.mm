@@ -34,6 +34,7 @@
 #import "FindIndicator.h"
 #import "NativeWebKeyboardEvent.h"
 #import "InteractionInformationAtPosition.h"
+#import "ViewSnapshotStore.h"
 #import "WKContentView.h"
 #import "WKContentViewInteraction.h"
 #import "WKWebViewInternal.h"
@@ -350,9 +351,9 @@ LayerOrView *PageClientImpl::acceleratedCompositingRootLayer() const
     return nullptr;
 }
 
-RetainPtr<CGImageRef> PageClientImpl::takeViewSnapshot()
+ViewSnapshot PageClientImpl::takeViewSnapshot()
 {
-    return [m_contentView _takeViewSnapshot];
+    return [m_webView _takeViewSnapshot];
 }
 
 void PageClientImpl::wheelEventWasNotHandledByWebCore(const NativeWebWheelEvent& event)
@@ -363,6 +364,11 @@ void PageClientImpl::wheelEventWasNotHandledByWebCore(const NativeWebWheelEvent&
 void PageClientImpl::clearCustomSwipeViews()
 {
     notImplemented();
+}
+
+void PageClientImpl::commitPotentialTapFailed()
+{
+    [m_contentView _commitPotentialTapFailed];
 }
 
 void PageClientImpl::didGetTapHighlightGeometries(uint64_t requestID, const WebCore::Color& color, const Vector<WebCore::FloatQuad>& highlightedQuads, const WebCore::IntSize& topLeftRadius, const WebCore::IntSize& topRightRadius, const WebCore::IntSize& bottomLeftRadius, const WebCore::IntSize& bottomRightRadius)
@@ -412,6 +418,12 @@ void PageClientImpl::didUpdateBlockSelectionWithTouch(uint32_t touch, uint32_t f
 void PageClientImpl::showPlaybackTargetPicker(bool hasVideo, const IntRect& elementRect)
 {
     [m_contentView _showPlaybackTargetPicker:hasVideo fromRect:elementRect];
+}
+
+bool PageClientImpl::handleRunOpenPanel(WebPageProxy*, WebFrameProxy*, WebOpenPanelParameters* parameters, WebOpenPanelResultListenerProxy* listener)
+{
+    [m_contentView _showRunOpenPanel:parameters resultListener:listener];
+    return true;
 }
 
 #if ENABLE(INSPECTOR)

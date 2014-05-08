@@ -85,7 +85,6 @@
 #include "HTMLTitleElement.h"
 #include "HTTPParsers.h"
 #include "HashChangeEvent.h"
-#include "HistogramSupport.h"
 #include "History.h"
 #include "HitTestResult.h"
 #include "IconController.h"
@@ -488,10 +487,10 @@ Document::Document(Frame* frame, const URL& url, unsigned documentClasses, unsig
     , m_lastHandledUserGestureTimestamp(0)
 #if PLATFORM(IOS)
 #if ENABLE(DEVICE_ORIENTATION)
-    , m_deviceMotionClient(DeviceMotionClientIOS::create())
-    , m_deviceMotionController(DeviceMotionController::create(m_deviceMotionClient.get()))
-    , m_deviceOrientationClient(DeviceOrientationClientIOS::create())
-    , m_deviceOrientationController(DeviceOrientationController::create(m_deviceOrientationClient.get()))
+    , m_deviceMotionClient(std::make_unique<DeviceMotionClientIOS>())
+    , m_deviceMotionController(std::make_unique<DeviceMotionController>(m_deviceMotionClient.get()))
+    , m_deviceOrientationClient(std::make_unique<DeviceOrientationClientIOS>())
+    , m_deviceOrientationController(std::make_unique<DeviceOrientationController>(m_deviceOrientationClient.get()))
 #endif
 #endif
 #if ENABLE(TELEPHONE_NUMBER_DETECTION)
@@ -547,16 +546,6 @@ Document::Document(Frame* frame, const URL& url, unsigned documentClasses, unsig
         m_nodeListAndCollectionCounts[i] = 0;
 }
 
-static void histogramMutationEventUsage(const unsigned short& listenerTypes)
-{
-    HistogramSupport::histogramEnumeration("DOMAPI.PerDocumentMutationEventUsage.DOMSubtreeModified", static_cast<bool>(listenerTypes & Document::DOMSUBTREEMODIFIED_LISTENER), 2);
-    HistogramSupport::histogramEnumeration("DOMAPI.PerDocumentMutationEventUsage.DOMNodeInserted", static_cast<bool>(listenerTypes & Document::DOMNODEINSERTED_LISTENER), 2);
-    HistogramSupport::histogramEnumeration("DOMAPI.PerDocumentMutationEventUsage.DOMNodeRemoved", static_cast<bool>(listenerTypes & Document::DOMNODEREMOVED_LISTENER), 2);
-    HistogramSupport::histogramEnumeration("DOMAPI.PerDocumentMutationEventUsage.DOMNodeRemovedFromDocument", static_cast<bool>(listenerTypes & Document::DOMNODEREMOVEDFROMDOCUMENT_LISTENER), 2);
-    HistogramSupport::histogramEnumeration("DOMAPI.PerDocumentMutationEventUsage.DOMNodeInsertedIntoDocument", static_cast<bool>(listenerTypes & Document::DOMNODEINSERTEDINTODOCUMENT_LISTENER), 2);
-    HistogramSupport::histogramEnumeration("DOMAPI.PerDocumentMutationEventUsage.DOMCharacterDataModified", static_cast<bool>(listenerTypes & Document::DOMCHARACTERDATAMODIFIED_LISTENER), 2);
-}
-
 #if ENABLE(FULLSCREEN_API)
 static bool isAttributeOnAllOwners(const WebCore::QualifiedName& attribute, const WebCore::QualifiedName& prefixedAttribute, const HTMLFrameOwnerElement* owner)
 {
@@ -602,8 +591,6 @@ Document::~Document()
         m_domWindow->resetUnlessSuspendedForPageCache();
 
     m_scriptRunner = nullptr;
-
-    histogramMutationEventUsage(m_listenerTypes);
 
     removeAllEventListeners();
 
@@ -766,6 +753,11 @@ SelectorQuery* Document::selectorQueryForString(const String& selectorString, Ex
     return m_selectorQueryCache->add(selectorString, *this, ec);
 }
 
+void Document::clearSelectorQueryCache()
+{
+    m_selectorQueryCache = nullptr;
+}
+
 MediaQueryMatcher& Document::mediaQueryMatcher()
 {
     if (!m_mediaQueryMatcher)
@@ -780,8 +772,7 @@ void Document::setCompatibilityMode(CompatibilityMode mode)
     bool wasInQuirksMode = inQuirksMode();
     m_compatibilityMode = mode;
 
-    if (m_selectorQueryCache)
-        m_selectorQueryCache->invalidate();
+    clearSelectorQueryCache();
 
     if (inQuirksMode() != wasInQuirksMode) {
         // All user stylesheets have to reparse using the different mode.
@@ -1106,11 +1097,6 @@ PassRefPtr<Element> Document::createElement(const QualifiedName& name, bool crea
     ASSERT((name.matches(imageTag) && element->tagQName().matches(imgTag) && element->tagQName().prefix() == name.prefix()) || name == element->tagQName());
 
     return element.release();
-}
-
-bool Document::regionBasedColumnsEnabled() const
-{
-    return settings() && settings()->regionBasedColumnsEnabled(); 
 }
 
 bool Document::cssRegionsEnabled() const
@@ -2627,8 +2613,7 @@ void Document::updateBaseURL()
         m_baseURL = URL(ParsedURLString, documentURI());
     }
 
-    if (m_selectorQueryCache)
-        m_selectorQueryCache->invalidate();
+    clearSelectorQueryCache();
 
     if (!m_baseURL.isValid())
         m_baseURL = URL();

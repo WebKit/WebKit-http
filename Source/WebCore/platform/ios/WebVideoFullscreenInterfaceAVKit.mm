@@ -31,6 +31,7 @@
 #import "WebVideoFullscreenInterfaceAVKit.h"
 
 #import "Logging.h"
+#import "GeometryUtilities.h"
 #import "WebVideoFullscreenModel.h"
 #import <AVFoundation/AVTime.h>
 #import <AVKit/AVKit.h>
@@ -72,6 +73,11 @@ SOFT_LINK(CoreMedia, CMTimeRangeContainsTime, Boolean, (CMTimeRange range, CMTim
 SOFT_LINK(CoreMedia, CMTimeRangeGetEnd, CMTime, (CMTimeRange range), (range))
 SOFT_LINK(CoreMedia, CMTimeRangeMake, CMTimeRange, (CMTime start, CMTime duration), (start, duration))
 SOFT_LINK(CoreMedia, CMTimeSubtract, CMTime, (CMTime minuend, CMTime subtrahend), (minuend, subtrahend))
+SOFT_LINK(CoreMedia, CMTimeMaximum, CMTime, (CMTime time1, CMTime time2), (time1, time2))
+SOFT_LINK(CoreMedia, CMTimeMinimum, CMTime, (CMTime time1, CMTime time2), (time1, time2))
+SOFT_LINK_CONSTANT(CoreMedia, kCMTimeIndefinite, CMTime)
+
+#define kCMTimeIndefinite getkCMTimeIndefinite()
 
 @class WebAVMediaSelectionOption;
 
@@ -83,6 +89,11 @@ SOFT_LINK(CoreMedia, CMTimeSubtract, CMTime, (CMTime minuend, CMTime subtrahend)
 
 @property(retain) AVPlayerController* playerControllerProxy;
 @property(assign) WebVideoFullscreenModel* delegate;
+
+@property (readonly) BOOL canScanForward;
+@property (readonly) BOOL canScanBackward;
+@property (readonly) BOOL canSeekToBeginning;
+@property (readonly) BOOL canSeekToEnd;
 
 @property BOOL canPlay;
 @property(getter=isPlaying) BOOL playing;
@@ -195,10 +206,24 @@ SOFT_LINK(CoreMedia, CMTimeSubtract, CMTime, (CMTime minuend, CMTime subtrahend)
     return [NSSet setWithObject:@"rate"];
 }
 
+- (void)beginScrubbing:(id)sender
+{
+    UNUSED_PARAM(sender);
+    ASSERT(self.delegate);
+    self.delegate->beginScrubbing();
+}
+
+- (void)endScrubbing:(id)sender
+{
+    UNUSED_PARAM(sender);
+    ASSERT(self.delegate);
+    self.delegate->endScrubbing();
+}
+
 - (void)seekToTime:(NSTimeInterval)time
 {
     ASSERT(self.delegate);
-    self.delegate->seekToTime(time);
+    self.delegate->fastSeek(time);
 }
 
 - (BOOL)hasLiveStreamingContent
@@ -245,6 +270,100 @@ SOFT_LINK(CoreMedia, CMTimeSubtract, CMTime, (CMTime minuend, CMTime subtrahend)
     
     if (!isnan(timeAtEndOfSeekableTimeRanges))
         [self seekToTime:timeAtEndOfSeekableTimeRanges];
+}
+
+- (BOOL)canScanForward
+{
+    return [self canPlay];
+}
+
++ (NSSet *)keyPathsForValuesAffectingCanScanForward
+{
+    return [NSSet setWithObject:@"canPlay"];
+}
+
+- (void)beginScanningForward:(id)sender
+{
+    UNUSED_PARAM(sender);
+    ASSERT(self.delegate);
+    self.delegate->beginScanningForward();
+}
+
+- (void)endScanningForward:(id)sender
+{
+    UNUSED_PARAM(sender);
+    ASSERT(self.delegate);
+    self.delegate->endScanning();
+}
+
+- (BOOL)canScanBackward
+{
+    return [self canPlay];
+}
+
++ (NSSet *)keyPathsForValuesAffectingCanScanBackward
+{
+    return [NSSet setWithObject:@"canPlay"];
+}
+
+- (void)beginScanningBackward:(id)sender
+{
+    UNUSED_PARAM(sender);
+    ASSERT(self.delegate);
+    self.delegate->beginScanningBackward();
+}
+
+- (void)endScanningBackward:(id)sender
+{
+    UNUSED_PARAM(sender);
+    ASSERT(self.delegate);
+    self.delegate->endScanning();
+}
+
+- (BOOL)canSeekToBeginning
+{
+    CMTime minimumTime = kCMTimeIndefinite;
+
+    for (NSValue *value in [self seekableTimeRanges])
+        minimumTime = CMTimeMinimum([value CMTimeRangeValue].start, minimumTime);
+
+    return CMTIME_IS_NUMERIC(minimumTime);
+}
+
++ (NSSet *)keyPathsForValuesAffectingCanSeekToBeginning
+{
+    return [NSSet setWithObject:@"seekableTimeRanges"];
+}
+
+- (void)seekToBeginning:(id)sender
+{
+    UNUSED_PARAM(sender);
+    ASSERT(self.delegate);
+
+    self.delegate->seekToTime(-INFINITY);
+}
+
+- (BOOL)canSeekToEnd
+{
+    CMTime maximumTime = kCMTimeIndefinite;
+
+    for (NSValue *value in [self seekableTimeRanges])
+        maximumTime = CMTimeMaximum(CMTimeRangeGetEnd([value CMTimeRangeValue]), maximumTime);
+
+    return CMTIME_IS_NUMERIC(maximumTime);
+}
+
++ (NSSet *)keyPathsForValuesAffectingCanSeekToEnd
+{
+    return [NSSet setWithObject:@"seekableTimeRanges"];
+}
+
+- (void)seekToEnd:(id)sender
+{
+    UNUSED_PARAM(sender);
+    ASSERT(self.delegate);
+
+    self.delegate->seekToTime(INFINITY);
 }
 
 - (BOOL)hasMediaSelectionOptions
@@ -337,12 +456,14 @@ SOFT_LINK(CoreMedia, CMTimeSubtract, CMTime, (CMTime minuend, CMTime subtrahend)
 @property (nonatomic) AVVideoLayerGravity videoLayerGravity;
 @property (nonatomic, getter = isReadyForDisplay) BOOL readyForDisplay;
 @property (nonatomic) CGRect videoRect;
+- (void)setPlayerViewController:(AVPlayerViewController *)playerViewController;
 - (void)setPlayerController:(AVPlayerController *)playerController;
 @end
 
 @implementation WebAVVideoLayer
 {
     RetainPtr<WebAVPlayerController> _avPlayerController;
+    RetainPtr<AVPlayerViewController> _avPlayerViewController;
     AVVideoLayerGravity _videoLayerGravity;
 }
 
@@ -351,17 +472,45 @@ SOFT_LINK(CoreMedia, CMTimeSubtract, CMTime, (CMTime minuend, CMTime subtrahend)
     return [[[WebAVVideoLayer alloc] init] autorelease];
 }
 
+- (instancetype)init
+{
+    self = [super init];
+    if (self) {
+        [self setMasksToBounds:YES];
+        [self setVideoLayerGravity:AVVideoLayerGravityResizeAspect];
+    }
+    return self;
+}
+
 - (void)setPlayerController:(AVPlayerController *)playerController
 {
     ASSERT(!playerController || [playerController isKindOfClass:[WebAVPlayerController class]]);
     _avPlayerController = (WebAVPlayerController *)playerController;
 }
 
+- (void)setPlayerViewController:(AVPlayerViewController *)playerViewController
+{
+    _avPlayerViewController = playerViewController;
+}
+
 - (void)setBounds:(CGRect)bounds
 {
     [super setBounds:bounds];
-    if ([_avPlayerController delegate])
-        [_avPlayerController delegate]->setVideoLayerFrame(FloatRect(0, 0, bounds.size.width, bounds.size.height));
+
+    if (![_avPlayerController delegate] || !_avPlayerViewController)
+        return;
+
+    UIView* rootView = [[_avPlayerViewController parentViewController] view];
+    if (!rootView)
+        return;
+
+    FloatRect rootBounds = [rootView bounds];
+    [_avPlayerController delegate]->setVideoLayerFrame(rootBounds);
+
+    FloatRect sourceBounds = largestRectWithAspectRatioInsideRect(CGRectGetWidth(bounds) / CGRectGetHeight(bounds), rootBounds);
+    CATransform3D transform = CATransform3DMakeScale(bounds.size.width / sourceBounds.width(), bounds.size.height / sourceBounds.height(), 1);
+    transform = CATransform3DTranslate(transform, bounds.origin.x - sourceBounds.x(), bounds.origin.y - sourceBounds.y(), 0);
+    [self setSublayerTransform:transform];
 }
 
 - (void)setVideoLayerGravity:(AVVideoLayerGravity)videoLayerGravity
@@ -517,6 +666,10 @@ void WebVideoFullscreenInterfaceAVKit::enterFullscreen(PlatformLayer& videoLayer
     m_videoLayer = &videoLayer;
     
     dispatch_async(dispatch_get_main_queue(), ^{
+
+        [CATransaction begin];
+        [CATransaction setDisableActions:YES];
+
         [m_videoLayer removeFromSuperlayer];
         
         m_videoLayerContainer = [WebAVVideoLayer videoLayer];
@@ -529,6 +682,7 @@ void WebVideoFullscreenInterfaceAVKit::enterFullscreen(PlatformLayer& videoLayer
         m_playerViewController = adoptNS([[classAVPlayerViewController alloc] initWithVideoLayer:m_videoLayerContainer.get()]);
         [m_playerViewController setPlayerController:(AVPlayerController *)playerController()];
         [m_playerViewController setDelegate:playerController()];
+        [m_videoLayerContainer setPlayerViewController:m_playerViewController.get()];
         
         m_viewController = adoptNS([[classUIViewController alloc] init]);
 
@@ -553,6 +707,8 @@ void WebVideoFullscreenInterfaceAVKit::enterFullscreen(PlatformLayer& videoLayer
             }];
         });
 
+        [CATransaction commit];
+
         protect.clear();
     });
 }
@@ -565,6 +721,8 @@ void WebVideoFullscreenInterfaceAVKit::exitFullscreen(WebCore::IntRect finalRect
     
     dispatch_async(dispatch_get_main_queue(), ^{
         [m_playerViewController view].frame = finalRect;
+        if ([m_videoLayerContainer videoLayerGravity] != AVVideoLayerGravityResizeAspect)
+            [m_videoLayerContainer setVideoLayerGravity:AVVideoLayerGravityResizeAspect];
         [m_playerViewController exitFullScreenWithCompletionHandler:^(BOOL, NSError*){
             [m_window setHidden:YES];
             [m_window setRootViewController:nil];
@@ -576,6 +734,7 @@ void WebVideoFullscreenInterfaceAVKit::exitFullscreen(WebCore::IntRect finalRect
             [m_videoLayer removeFromSuperlayer];
             m_videoLayer = nil;
             [m_videoLayerContainer removeFromSuperlayer];
+            [m_videoLayerContainer setPlayerViewController:nil];
             m_videoLayerContainer = nil;
 
             if (m_fullscreenChangeObserver)
@@ -583,6 +742,22 @@ void WebVideoFullscreenInterfaceAVKit::exitFullscreen(WebCore::IntRect finalRect
             protect.clear();
         }];
     });
+}
+
+void WebVideoFullscreenInterfaceAVKit::invalidate()
+{
+    m_playerController.clear();
+    [m_window setHidden:YES];
+    [m_window setRootViewController:nil];
+    [m_playerViewController setDelegate:nil];
+    [m_playerViewController setPlayerController:nil];
+    m_playerViewController = nil;
+    m_viewController = nil;
+    m_window = nil;
+    [m_videoLayer removeFromSuperlayer];
+    m_videoLayer = nil;
+    [m_videoLayerContainer removeFromSuperlayer];
+    m_videoLayerContainer = nil;
 }
 
 #endif

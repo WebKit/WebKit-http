@@ -28,7 +28,6 @@ messages -> WebProcess LegacyReceiver {
     CreateWebPage(uint64_t newPageID, WebKit::WebPageCreationParameters pageCreationParameters)
 
     # Global preferences.
-    SetShouldTrackVisitedLinks(bool shouldTrackVisitedLinks)
     SetCacheModel(uint32_t cacheModel)
     RegisterURLSchemeAsEmptyDocument(String scheme)
     RegisterURLSchemeAsSecure(String scheme)
@@ -54,8 +53,9 @@ messages -> WebProcess LegacyReceiver {
     DestroyPrivateBrowsingSession(WebCore::SessionID sessionID)
 
     # Plug-ins.
-    DidAddPlugInAutoStartOriginHash(uint32_t hash, double expirationTime)
-    ResetPlugInAutoStartOriginHashes(HashMap<uint32_t,double> hashes)
+    DidAddPlugInAutoStartOriginHash(uint32_t hash, double expirationTime, WebCore::SessionID sessionID)
+    ResetPlugInAutoStartOriginDefaultHashes(HashMap<uint32_t,double> hashes)
+    ResetPlugInAutoStartOriginHashes(HashMap<WebCore::SessionID, HashMap<uint32_t,double>> hashes)
 
     void StartMemorySampler(WebKit::SandboxExtension::Handle sampleLogFileHandle, String sampleLogFilePath, double interval);
     void StopMemorySampler();
@@ -91,5 +91,9 @@ messages -> WebProcess LegacyReceiver {
 
 #if ENABLE(SERVICE_CONTROLS)
     SetEnabledServices(bool hasImageServices, bool hasSelectionServices)
+#endif
+
+#if PLATFORM(IOS)
+    ProcessWillSuspend()
 #endif
 }

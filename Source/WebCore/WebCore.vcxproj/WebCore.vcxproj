@@ -7434,7 +7434,6 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_WinCairo|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\platform\HistogramSupport.cpp" />
     <ClCompile Include="..\platform\graphics\win\MediaPlayerPrivateMediaFoundation.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
@@ -8374,6 +8373,7 @@
     <ClCompile Include="..\platform\graphics\avfoundation\cf\MediaPlayerPrivateAVFoundationCF.cpp" />
     <ClCompile Include="..\platform\network\AuthenticationChallengeBase.cpp" />
     <ClCompile Include="..\platform\network\BlobData.cpp" />
+    <ClCompile Include="..\platform\network\BlobDataFileReference.cpp" />
     <ClCompile Include="..\platform\network\BlobResourceHandle.cpp" />
     <ClCompile Include="..\platform\network\Credential.cpp" />
     <ClCompile Include="..\platform\network\CredentialStorage.cpp" />
@@ -19218,7 +19218,6 @@
     <ClInclude Include="..\platform\graphics\VideoTrackPrivate.h" />
     <ClInclude Include="..\platform\graphics\win\MediaPlayerPrivateMediaFoundation.h" />
     <ClInclude Include="..\platform\graphics\win\SharedGDIObject.h" />
-    <ClInclude Include="..\platform\HistogramSupport.h" />
     <ClInclude Include="..\platform\HostWindow.h" />
     <ClInclude Include="..\platform\KeypressCommand.h" />
     <ClInclude Include="..\platform\KillRing.h" />
@@ -19566,10 +19565,10 @@
     <ClInclude Include="..\platform\network\AuthenticationChallengeBase.h" />
     <ClInclude Include="..\platform\network\AuthenticationClient.h" />
     <ClInclude Include="..\platform\network\BlobData.h" />
+    <ClInclude Include="..\platform\network\BlobDataFileReference.h" />
     <ClInclude Include="..\platform\network\BlobRegistry.h" />
     <ClInclude Include="..\platform\network\BlobRegistryImpl.h" />
     <ClInclude Include="..\platform\network\BlobResourceHandle.h" />
-    <ClInclude Include="..\platform\network\BlobStorageData.h" />
     <ClInclude Include="..\platform\network\CookieStorage.h" />
     <ClInclude Include="..\platform\network\Credential.h" />
     <ClInclude Include="..\platform\network\CredentialStorage.h" />

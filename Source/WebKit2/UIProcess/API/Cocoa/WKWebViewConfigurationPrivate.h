@@ -29,6 +29,7 @@
 
 @class WKWebView;
 @class _WKVisitedLinkProvider;
+@class _WKWebsiteDataStore;
 
 @interface WKWebViewConfiguration (WKPrivate)
 
@@ -36,6 +37,8 @@
 @property (nonatomic, copy, setter=_setGroupIdentifier:) NSString *_groupIdentifier;
 
 @property (nonatomic, strong, setter=_setVisitedLinkProvider:) _WKVisitedLinkProvider *_visitedLinkProvider;
+
+@property (nonatomic, strong, setter=_setWebsiteDataStore:) _WKWebsiteDataStore *_websiteDataStore;
 
 @end
 

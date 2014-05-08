@@ -44,9 +44,10 @@ fi
 OUTPUT_FILE=$(cygpath -u "$1")/include/autoversion.h
 mkdir -p "$(dirname "$OUTPUT_FILE")"
 
-# Take the initial version number from RC_PROJECTSOURCEVERSION if it
+# Take the initial version number from RC_ProjectSourceVersion if it
 # exists, otherwise fall back to the version number stored in the source.
-ENVIRONMENT_VERSION="$RC_PROJECTSOURCEVERSION";
+ENVIRONMENT_VERSION=${RC_ProjectSourceVersion:-$RC_PROJECTSOURCEVERSION};
+
 PROPOSED_VERSION=${ENVIRONMENT_VERSION:-$FALLBACK_VERSION}
 chomp PROPOSED_VERSION
 

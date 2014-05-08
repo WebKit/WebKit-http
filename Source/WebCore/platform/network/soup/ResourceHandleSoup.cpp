@@ -66,7 +66,6 @@
 #if ENABLE(BLOB)
 #include "BlobData.h"
 #include "BlobRegistryImpl.h"
-#include "BlobStorageData.h"
 #endif
 
 #if PLATFORM(GTK)
@@ -798,7 +797,7 @@ static void addEncodedBlobItemToSoupMessageBody(SoupMessage* message, const Blob
 
 static void addEncodedBlobToSoupMessageBody(SoupMessage* message, const FormDataElement& element, unsigned long& totalBodySize)
 {
-    RefPtr<BlobStorageData> blobData = static_cast<BlobRegistryImpl&>(blobRegistry()).getBlobDataFromURL(URL(ParsedURLString, element.m_url));
+    RefPtr<BlobData> blobData = static_cast<BlobRegistryImpl&>(blobRegistry()).getBlobDataFromURL(URL(ParsedURLString, element.m_url));
     if (!blobData)
         return;
 
@@ -814,14 +813,14 @@ static bool addFormElementsToSoupMessage(SoupMessage* message, const char*, Form
     for (size_t i = 0; i < numElements; i++) {
         const FormDataElement& element = httpBody->elements()[i];
 
-        if (element.m_type == FormDataElement::data) {
+        if (element.m_type == FormDataElement::Type::Data) {
             totalBodySize += element.m_data.size();
             soup_message_body_append(message->request_body, SOUP_MEMORY_TEMPORARY,
                                      element.m_data.data(), element.m_data.size());
             continue;
         }
 
-        if (element.m_type == FormDataElement::encodedFile) {
+        if (element.m_type == FormDataElement::Type::EncodedFile) {
             if (!addFileToSoupMessageBody(message ,
                                          element.m_filename,
                                          0 /* offset */,
@@ -832,7 +831,7 @@ static bool addFormElementsToSoupMessage(SoupMessage* message, const char*, Form
         }
 
 #if ENABLE(BLOB)
-        ASSERT(element.m_type == FormDataElement::encodedBlob);
+        ASSERT(element.m_type == FormDataElement::Type::EncodedBlob);
         addEncodedBlobToSoupMessageBody(message, element, totalBodySize);
 #endif
     }
@@ -1377,13 +1376,6 @@ void ResourceHandle::continueDidReceiveResponse()
     ASSERT(client());
     ASSERT(client()->usesAsyncCallbacks());
     continueAfterDidReceiveResponse(this);
-}
-
-void ResourceHandle::continueShouldUseCredentialStorage(bool)
-{
-    ASSERT(client());
-    ASSERT(client()->usesAsyncCallbacks());
-    // FIXME: Implement this method if needed: https://bugs.webkit.org/show_bug.cgi?id=126114.
 }
 
 static gboolean requestTimeoutCallback(gpointer data)

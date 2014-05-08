@@ -589,9 +589,9 @@ compositing/overflow/updating-scrolling-content.html
 compositing/overflow/scrolling-without-painting.html
 
 # Blend mode result is slightly different than the applied formula.
-css3/compositing/background-blend-mode-data-uri-svg-image.html [ ImageOnlyFailure Pass ]
-css3/compositing/background-blend-mode-tiled-layers.html [ ImageOnlyFailure Pass ]
-css3/compositing/background-blend-mode-crossfade-image.html [ ImageOnlyFailure Pass ]
+css3/blending/background-blend-mode-data-uri-svg-image.html [ ImageOnlyFailure Pass ]
+css3/blending/background-blend-mode-tiled-layers.html [ ImageOnlyFailure Pass ]
+css3/blending/background-blend-mode-crossfade-image.html [ ImageOnlyFailure Pass ]
 
 # https://bugs.webkit.org/show_bug.cgi?id=110871
 compositing/overlap-blending/reflection-opacity-huge.html
@@ -1305,6 +1305,8 @@ webkit.org/b/128283 [ Debug ] transitions/shorthand-border-transitions.html [ Sk
 webkit.org/b/128081 fast/events/page-scaled-mouse-click-iframe.html
 # repaintRectsAsText reports different repaintrects on ML
 webkit.org/b/131887 fast/repaint/hidpi-wrong-repaint-rect-when-parent-has-noncompositing-transform.html [ Failure ]
+# cliprect fails to cover textarea.
+webkit.org/b/132515 fast/forms/hidpi-textarea-on-subpixel-position.html [ ImageOnlyFailure ]
 # End of subpixel failures.
 
 webkit.org/b/35297 media/video-display-aspect-ratio.html [ Pass Failure ]
@@ -1369,3 +1371,5 @@ webkit.org/b/131886 [ MountainLion ] webgl/1.0.2/conformance/textures/texture-si
 webkit.org/b/131886 [ MountainLion ] fast/canvas/webgl/webgl-compressed-texture-size-limit.html [ Failure ]
 
 webkit.org/b/132385 compositing/repaint/repaint-on-layer-grouping-change.html [ Pass Failure ]
+
+webkit.org/b/132491 [ MountainLion ] http/tests/media/hls/video-controls-live-stream.html [ WontFix ]

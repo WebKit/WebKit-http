@@ -171,6 +171,7 @@ struct EditingRange;
 struct EditorState;
 struct PlatformPopupMenuData;
 struct PrintInfo;
+struct ViewSnapshot;
 struct WebPopupItem;
 
 #if ENABLE(VIBRATION)
@@ -459,6 +460,9 @@ public:
 
     WebBackForwardList& backForwardList() { return m_backForwardList.get(); }
 
+    bool addsVisitedLinks() const { return m_addsVisitedLinks; }
+    void setAddsVisitedLinks(bool addsVisitedLinks) { m_addsVisitedLinks = addsVisitedLinks; }
+
 #if ENABLE(INSPECTOR)
     WebInspectorProxy* inspector();
 #endif
@@ -519,6 +523,8 @@ public:
     void tryRestoreScrollPosition();
     void didChangeBackForwardList(WebBackForwardListItem* addedItem, Vector<RefPtr<WebBackForwardListItem>> removed);
     void willGoToBackForwardListItem(uint64_t itemID, IPC::MessageDecoder&);
+
+    bool shouldKeepCurrentBackForwardListItemInList(WebBackForwardListItem*);
 
     bool willHandleHorizontalScrollEvents() const;
 
@@ -618,6 +624,7 @@ public:
     void applicationWillResignActive();
     void applicationDidBecomeActive();
     void zoomToRect(WebCore::FloatRect, double minimumScale, double maximumScale);
+    void commitPotentialTapFailed();
     void didNotHandleTapAsClick(const WebCore::IntPoint&);
 #endif
 
@@ -760,7 +767,7 @@ public:
 
     void listenForLayoutMilestones(WebCore::LayoutMilestones);
 
-    void didUpdateViewState();
+    void didUpdateViewState() { m_waitingForDidUpdateViewState = false; }
 
     bool hasHorizontalScrollbar() const { return m_mainFrameHasHorizontalScrollbar; }
     bool hasVerticalScrollbar() const { return m_mainFrameHasVerticalScrollbar; }
@@ -943,6 +950,9 @@ public:
 #endif
 
     // Called by the WebOpenPanelResultListenerProxy.
+#if PLATFORM(IOS)
+    void didChooseFilesForOpenPanelWithDisplayStringAndIcon(const Vector<String>&, const String& displayString, const API::Data* iconData);
+#endif
     void didChooseFilesForOpenPanel(const Vector<String>&);
     void didCancelForOpenPanel();
 
@@ -1023,6 +1033,9 @@ public:
 #if PLATFORM(IOS)
     void willStartUserTriggeredZooming();
 
+    void potentialTapAtPosition(const WebCore::FloatPoint&, uint64_t& requestID);
+    void commitPotentialTap();
+    void cancelPotentialTap();
     void tapHighlightAtPosition(const WebCore::FloatPoint&, uint64_t& requestID);
 
     void blurAssistedNode();
@@ -1060,7 +1073,7 @@ public:
     void recordNavigationSnapshot();
 
 #if PLATFORM(COCOA)
-    RetainPtr<CGImageRef> takeViewSnapshot();
+    ViewSnapshot takeViewSnapshot();
 #endif
 
 #if ENABLE(SUBTLE_CRYPTO)
@@ -1077,7 +1090,7 @@ private:
     void platformInitialize();
 
     void updateViewState(WebCore::ViewState::Flags flagsToUpdate = WebCore::ViewState::AllFlags);
-    void updateVisibilityToken();
+    void updateActivityToken();
         
     void resetState();
     void resetStateAfterProcessExited();
@@ -1507,7 +1520,7 @@ private:
     WebCore::ViewState::Flags m_viewState;
 
 #if PLATFORM(IOS)
-    std::unique_ptr<ProcessThrottler::VisibilityToken> m_visibilityToken;
+    std::unique_ptr<ProcessThrottler::ForegroundActivityToken> m_activityToken;
 #endif
         
     bool m_canGoBack;
@@ -1597,6 +1610,7 @@ private:
     Ref<API::Session> m_session;
 
     bool m_isPageSuspended;
+    bool m_addsVisitedLinks;
 
 #if ENABLE(REMOTE_INSPECTOR)
     bool m_allowsRemoteInspection;
@@ -1668,7 +1682,6 @@ private:
     bool m_mayStartMediaWhenInWindow;
 
     bool m_waitingForDidUpdateViewState;
-    unsigned m_pendingViewStateUpdates;
         
 #if PLATFORM(COCOA)
     HashMap<String, String> m_temporaryPDFFiles;

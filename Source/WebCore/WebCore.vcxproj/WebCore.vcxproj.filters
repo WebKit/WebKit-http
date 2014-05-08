@@ -1089,9 +1089,6 @@
     <ClCompile Include="..\platform\FileSystem.cpp">
       <Filter>platform</Filter>
     </ClCompile>
-    <ClCompile Include="..\platform\HistogramSupport.cpp">
-      <Filter>platform</Filter>
-    </ClCompile>
     <ClCompile Include="..\platform\KillRingNone.cpp">
       <Filter>platform</Filter>
     </ClCompile>
@@ -1765,6 +1762,9 @@
       <Filter>platform\network</Filter>
     </ClCompile>
     <ClCompile Include="..\platform\network\BlobData.cpp">
+      <Filter>platform\network</Filter>
+    </ClCompile>
+    <ClCompile Include="..\platform\network\BlobDataFileReference.cpp">
       <Filter>platform\network</Filter>
     </ClCompile>
     <ClCompile Include="..\platform\network\BlobResourceHandle.cpp">
@@ -8038,9 +8038,6 @@
     <ClInclude Include="..\platform\FloatConversion.h">
       <Filter>platform</Filter>
     </ClInclude>
-    <ClInclude Include="..\platform\HistogramSupport.h">
-      <Filter>platform</Filter>
-    </ClInclude>
     <ClInclude Include="..\platform\HostWindow.h">
       <Filter>platform</Filter>
     </ClInclude>
@@ -8656,6 +8653,9 @@
     <ClInclude Include="..\platform\network\BlobData.h">
       <Filter>platform\network</Filter>
     </ClInclude>
+    <ClInclude Include="..\platform\network\BlobDataFileReference.h">
+      <Filter>platform\network</Filter>
+    </ClInclude>
     <ClInclude Include="..\platform\network\BlobRegistry.h">
       <Filter>platform\network</Filter>
     </ClInclude>
@@ -8663,9 +8663,6 @@
       <Filter>platform\network</Filter>
     </ClInclude>
     <ClInclude Include="..\platform\network\BlobResourceHandle.h">
-      <Filter>platform\network</Filter>
-    </ClInclude>
-    <ClInclude Include="..\platform\network\BlobStorageData.h">
       <Filter>platform\network</Filter>
     </ClInclude>
     <ClInclude Include="..\platform\network\CookieStorage.h">

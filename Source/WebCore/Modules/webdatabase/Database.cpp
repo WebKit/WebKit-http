@@ -43,7 +43,6 @@
 #include "Document.h"
 #include "JSDOMWindow.h"
 #include "Logging.h"
-#include "NotImplemented.h"
 #include "Page.h"
 #include "SQLError.h"
 #include "SQLTransaction.h"
@@ -53,7 +52,6 @@
 #include "ScriptExecutionContext.h"
 #include "SecurityOrigin.h"
 #include "VoidCallback.h"
-#include <wtf/PassOwnPtr.h>
 #include <wtf/PassRefPtr.h>
 #include <wtf/RefPtr.h>
 #include <wtf/StdLibExtras.h>

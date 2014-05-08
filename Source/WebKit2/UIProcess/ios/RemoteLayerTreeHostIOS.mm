@@ -28,12 +28,9 @@
 #if PLATFORM(IOS)
 
 #import "RemoteLayerTreeHost.h"
-
-#import <WebCore/WebCoreCALayerExtras.h>
-#import <WebKitSystemInterface.h>
-
-#import <UIKit/UIScrollView.h>
 #import <QuartzCore/QuartzCore.h>
+#import <UIKit/UIScrollView.h>
+#import <WebKitSystemInterface.h>
 
 using namespace WebCore;
 
@@ -49,7 +46,8 @@ using namespace WebCore;
 
 // UIView hit testing assumes that views should only hit test subviews that are entirely contained
 // in the view. This is not true of web content.
-- (UIView *)_recursiveFindDescendantViewAtPoint:(CGPoint)point withEvent:(UIEvent *)event
+// We only want to find UIScrollViews here. Other views are ignored.
+- (UIView *)_recursiveFindDescendantScrollViewAtPoint:(CGPoint)point withEvent:(UIEvent *)event
 {
     if (self.clipsToBounds && ![self pointInside:point withEvent:event])
         return nil;
@@ -58,13 +56,13 @@ using namespace WebCore;
     [[self subviews] enumerateObjectsUsingBlock:^(UIView *view, NSUInteger idx, BOOL *stop) {
         CGPoint subviewPoint = [view convertPoint:point fromView:self];
 
-        if ([view pointInside:subviewPoint withEvent:event])
+        if ([view pointInside:subviewPoint withEvent:event] && [view isKindOfClass:[UIScrollView class]])
             foundView = view;
 
         if (![view subviews])
             return;
 
-        if (UIView *hitView = [view _recursiveFindDescendantViewAtPoint:subviewPoint withEvent:event])
+        if (UIView *hitView = [view _recursiveFindDescendantScrollViewAtPoint:subviewPoint withEvent:event])
             foundView = hitView;
     }];
 
@@ -73,7 +71,7 @@ using namespace WebCore;
 
 - (UIView *)_findDescendantViewAtPoint:(CGPoint)point withEvent:(UIEvent *)event
 {
-    return [self _recursiveFindDescendantViewAtPoint:point withEvent:event];
+    return [self _recursiveFindDescendantScrollViewAtPoint:point withEvent:event];
 }
 
 @end
@@ -132,9 +130,9 @@ namespace WebKit {
 
 LayerOrView *RemoteLayerTreeHost::createLayer(const RemoteLayerTreeTransaction::LayerCreationProperties& properties, const RemoteLayerTreeTransaction::LayerProperties* layerProperties)
 {
-    RetainPtr<LayerOrView>& layerOrView = m_layers.add(properties.layerID, nullptr).iterator->value;
+    RetainPtr<LayerOrView>& view = m_layers.add(properties.layerID, nullptr).iterator->value;
 
-    ASSERT(!layerOrView);
+    ASSERT(!view);
 
     switch (properties.type) {
     case PlatformCALayer::LayerTypeLayer:
@@ -145,28 +143,26 @@ LayerOrView *RemoteLayerTreeHost::createLayer(const RemoteLayerTreeTransaction::
     case PlatformCALayer::LayerTypePageTiledBackingLayer:
     case PlatformCALayer::LayerTypeTiledBackingTileLayer:
         if (layerProperties && layerProperties->customBehavior == GraphicsLayer::CustomScrollingBehavior)
-            layerOrView = adoptNS([[UIScrollView alloc] init]);
+            view = adoptNS([[UIScrollView alloc] init]);
         else
-            layerOrView = adoptNS([[WKCompositingView alloc] init]);
+            view = adoptNS([[WKCompositingView alloc] init]);
         break;
     case PlatformCALayer::LayerTypeTransformLayer:
-        layerOrView = adoptNS([[WKTransformView alloc] init]);
+        view = adoptNS([[WKTransformView alloc] init]);
         break;
     case PlatformCALayer::LayerTypeCustom:
         if (!m_isDebugLayerTreeHost)
-            layerOrView = adoptNS([[WKRemoteView alloc] initWithFrame:CGRectZero contextID:properties.hostingContextID]);
+            view = adoptNS([[WKRemoteView alloc] initWithFrame:CGRectZero contextID:properties.hostingContextID]);
         else
-            layerOrView = adoptNS([[WKCompositingView alloc] init]);
+            view = adoptNS([[WKCompositingView alloc] init]);
         break;
     default:
         ASSERT_NOT_REACHED();
     }
 
-    // FIXME: Do through the view.
-    [[layerOrView layer] web_disableAllActions];
-    setLayerID([layerOrView layer], properties.layerID);
+    setLayerID([view layer], properties.layerID);
 
-    return layerOrView.get();
+    return view.get();
 }
 
 } // namespace WebKit

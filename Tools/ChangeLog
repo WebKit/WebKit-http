@@ -1,3 +1,225 @@
+2014-05-06  Brady Eidson  <beidson@apple.com>
+
+        Add WK2 SPI to prevent the previous back/forward item from remaining in the list
+        <rdar://problem/16248710> and https://bugs.webkit.org/show_bug.cgi?id=132636
+
+        Reviewed by Sam Weinig.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+
+        * TestWebKitAPI/Tests/WebKit2/ShouldKeepCurrentBackForwardListItemInList.cpp: Added.
+        (TestWebKitAPI::itemURLLastComponentIsString):
+        (TestWebKitAPI::didFinishLoadForFrame):
+        (TestWebKitAPI::willGoToBackForwardListItem):
+        (TestWebKitAPI::shouldKeepCurrentBackForwardListItemInList):
+        (TestWebKitAPI::setPageLoaderClient):
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WebKit2/simple2.html: Added.
+        * TestWebKitAPI/Tests/WebKit2/simple3.html: Added.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::createWebViewWithOptions): Update for new client layout.
+
+2014-05-06  Darin Adler  <darin@apple.com>
+
+        Try to fix iOS build.
+
+        * DumpRenderTree/mac/TestRunnerMac.mm:
+        (-[APITestDelegateIPhone initWithTestRunner:utf8Data:baseURL:]):
+        Updated since I changed testRunner into a pointer instead of a reference.
+        Updated argument names to avoid conflict with field names.
+        (-[APITestDelegateIPhone run]): Ditto.
+        (-[APITestDelegateIPhone _cleanUp]): Ditto.
+
+2014-05-06  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r168304.
+        https://bugs.webkit.org/show_bug.cgi?id=132607
+
+        Broke the build (Requested by KaL on #webkit).
+
+        Reverted changeset:
+
+        "[GTK][CMake] Unable to do make install"
+        https://bugs.webkit.org/show_bug.cgi?id=130188
+        http://trac.webkit.org/changeset/168304
+
+2014-05-04  Darin Adler  <darin@apple.com>
+
+        RetainPtr: Use adoptCF function instead of AdoptCF constructor argument
+        https://bugs.webkit.org/show_bug.cgi?id=80222
+
+        Reviewed by Alexey Proskuryakov.
+
+        * DumpRenderTree/mac/TestRunnerMac.mm:
+        (-[APITestDelegateIPhone initWithTestRunner:utf8Data:baseURL:]): Updated to
+        do more work here so we don't use RetainPtr local variables.
+        (-[APITestDelegateIPhone dealloc]): Added.
+        (-[APITestDelegateIPhone run]): Added an early exit if the web view is already
+        created. Updated for changes to member names and types.
+        (-[APITestDelegateIPhone _cleanUp]): Added code to set webView to nil and
+        updated for changes to member names and types. Changed to two word spelling.
+        (-[APITestDelegateIPhone webView:didFailLoadWithError:forFrame:]): Updated
+        name of _cleanUp method.
+        (-[APITestDelegateIPhone webView:didFailProvisionalLoadWithError:forFrame:]):
+        Ditto.
+        (-[APITestDelegateIPhone webView:didFinishLoadForFrame:]): Ditto.
+
+2014-05-05  Benjamin Poulain  <benjamin@webkit.org>
+
+        Clean up Image Document and tweak the layout and viewport
+        https://bugs.webkit.org/show_bug.cgi?id=132552
+
+        Reviewed by Anders Carlsson.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (resetWebPreferencesToConsistentValues):
+        Update the default settings to have something consistent with WebKit2.
+
+2014-05-05  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK][CMake] Unable to do make install
+        https://bugs.webkit.org/show_bug.cgi?id=130188
+
+        Reviewed by Carlos Garcia Campos.
+
+        * Scripts/webkitdirs.pm:
+        (buildCMakeGeneratedProject): Always build gtkdoc-no-html for WebKitGTK+. This
+        will give an early signal that a change has broken the documentation.
+
+2014-05-05  Pratik Solanki  <psolanki@apple.com>
+
+        Update framework locations in package-root
+        https://bugs.webkit.org/show_bug.cgi?id=132571
+
+        Reviewed by Simon Fraser.
+
+        * Scripts/package-root:
+
+2014-05-05  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [EFL][WK2] Refactor favicon database APIs
+        https://bugs.webkit.org/show_bug.cgi?id=132519
+
+        Reviewed by Gyuyoung Kim.
+
+        * MiniBrowser/efl/main.c: Use ewk_favicon_database_icon_get instead of ewk_view_favicon_get.
+        (update_view_favicon):
+        (on_icon_changed_cb):
+        (window_free):
+        (on_url_changed):
+        (window_create):
+        (on_view_favicon_changed): Deleted.
+
+2014-05-02  Mark Rowe  <mrowe@apple.com>
+
+        <https://webkit.org/b/132505> Make it possible to tell copy-webkitlibraries-to-product-directory which OS X version to copy for
+
+        Reviewed by Dan Bernstein.
+
+        * Scripts/copy-webkitlibraries-to-product-directory: Add an --osx-version argument and use the passed value
+        when determining which LLVM archive to extract.
+
+2014-05-02  Jeremy Jones  <jeremyj@apple.com>
+
+        Add Jeremy as a committer.
+        https://bugs.webkit.org/show_bug.cgi?id=132492
+
+        Reviewed by Jer Noble.
+
+        Add myself as a committer.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2014-05-02  Jeremy Jones  <jeremyj@apple.com>
+
+        Add Jeremy as a committer.
+        https://bugs.webkit.org/show_bug.cgi?id=132492
+
+        Reviewed by Jer Noble.
+
+        Add Jeremy Jones to the committers file.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2014-05-02  Brian J. Burg  <burg@cs.washington.edu>
+
+        Hard to figure out how to run a single test with run-api-tests
+        https://bugs.webkit.org/show_bug.cgi?id=116332
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/run-api-tests: add two examples to the help message.
+
+2014-05-02  Simon Fraser  <simon.fraser@apple.com>
+
+        Fix several memory leaks found by code inspection
+        https://bugs.webkit.org/show_bug.cgi?id=132472
+
+        Reviewed by Geoffrey Garen.
+        
+        Fix memory leaks.
+
+        * TestWebKitAPI/Tests/mac/WillSendSubmitEvent.mm:
+        (TestWebKitAPI::TEST):
+        * WebKitTestRunner/InjectedBundle/InjectedBundlePage.cpp:
+        (WTR::InjectedBundlePage::willSendRequestForFrame):
+        * WebKitTestRunner/mac/PlatformWebViewMac.mm:
+        (WTR::PlatformWebView::changeWindowScaleIfNeeded):
+
+2014-05-02  Filip Pizlo  <fpizlo@apple.com>
+
+        DFGAbstractInterpreter should not claim Int52 arithmetic creates Int52s
+        https://bugs.webkit.org/show_bug.cgi?id=132446
+
+        Reviewed by Mark Hahnenberg.
+        
+        Test the FTL by default now that it's enabled by default.
+
+        * Scripts/run-javascriptcore-tests:
+
+2014-05-01  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [EFL][WK1] Drop ewk_view_setting_tiled_backingstore APIs
+        https://bugs.webkit.org/show_bug.cgi?id=132240
+
+        Reviewed by Anders Carlsson.
+
+        Removed ewk_view_setting_tiled_backingstore related code.
+
+        * DumpRenderTree/efl/DumpRenderTreeChrome.cpp:
+        (DumpRenderTreeChrome::createView):
+        (shouldUseTiledBackingStore): Deleted.
+        * EWebLauncher/main.c:
+        (windowCreate):
+        (parseUserArguments):
+
+2014-05-01  Anders Carlsson  <andersca@apple.com>
+
+        window.testRunner.keepWebHistory() should update the UI process state
+        https://bugs.webkit.org/show_bug.cgi?id=132440
+
+        Reviewed by Dan Bernstein.
+
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp:
+        (WTR::InjectedBundle::postSetAddsVisitedLinks):
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.h:
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::keepWebHistory):
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::invoke):
+        (WTR::TestInvocation::didReceiveMessageFromInjectedBundle):
+
+2014-05-01  David Kilzer  <ddkilzer@apple.com>
+
+        Really remove ENABLE_PLUGIN_PROXY_FOR_VIDEO
+        <http://webkit.org/b/132432>
+
+        Reviewed by Tim Horton.
+
+        * Scripts/webkitperl/FeatureList.pm: Remove support for
+        --plugin-proxy-for-video switch.
+
 2014-04-30  Carlos Alberto Lopez Perez  <clopez@igalia.com>
 
         Kernel sysctl interface hw.activecpu don't exists on Linux.

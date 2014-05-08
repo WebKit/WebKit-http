@@ -293,7 +293,9 @@ static float maxScaleFromTransform(const TransformationMatrix& t)
         return 1;
 
     TransformationMatrix::Decomposed4Type decomposeData;
-    t.decompose4(decomposeData);
+    if (!t.decompose4(decomposeData))
+        return 1;
+
     return std::max(fabsf(narrowPrecisionToFloat(decomposeData.scaleX)), fabsf(narrowPrecisionToFloat(decomposeData.scaleY)));
 }
 
@@ -1145,8 +1147,9 @@ FloatRect GraphicsLayerCA::computeVisibleRect(TransformState& state, ComputeVisi
     FloatRect clipRectForChildren = state.mappedQuad(&mapWasClamped).boundingBox();
     FloatPoint boundsOrigin = m_boundsOrigin;
 #if PLATFORM(IOS)
-    // UIKit may be changing layer bounds behind our back in overflow-scroll layers, so use the layer's origin.
-    boundsOrigin = m_layer->bounds().location();
+    // In WK1, UIKit may be changing layer bounds behind our back in overflow-scroll layers, so use the layer's origin.
+    if (m_layer->isPlatformCALayerMac())
+        boundsOrigin = m_layer->bounds().location();
 #endif
     clipRectForChildren.move(boundsOrigin.x(), boundsOrigin.y());
     
@@ -1538,10 +1541,6 @@ void GraphicsLayerCA::updateGeometry(float pageScaleFactor, const FloatPoint& po
     FloatSize scaledSize;
     FloatSize pixelAlignmentOffset;
     computePixelAlignment(pageScaleFactor, positionRelativeToBase, scaledPosition, scaledSize, scaledAnchorPoint, pixelAlignmentOffset);
-
-#if PLATFORM(IOS)
-    m_pixelAlignmentOffset = pixelAlignmentOffset;
-#endif
 
     FloatRect adjustedBounds(m_boundsOrigin - pixelAlignmentOffset, scaledSize);
 
@@ -3428,15 +3427,6 @@ void GraphicsLayerCA::updateOpacityOnLayer()
     }
 }
 
-void GraphicsLayerCA::setMaintainsPixelAlignment(bool maintainsAlignment)
-{
-    if (maintainsAlignment == m_maintainsPixelAlignment)
-        return;
-
-    GraphicsLayer::setMaintainsPixelAlignment(maintainsAlignment);
-    noteChangesForScaleSensitiveProperties();
-}
-
 void GraphicsLayerCA::deviceOrPageScaleFactorChanged()
 {
     noteChangesForScaleSensitiveProperties();
@@ -3450,7 +3440,7 @@ void GraphicsLayerCA::noteChangesForScaleSensitiveProperties()
 void GraphicsLayerCA::computePixelAlignment(float pageScaleFactor, const FloatPoint& positionRelativeToBase,
     FloatPoint& position, FloatSize& size, FloatPoint3D& anchorPoint, FloatSize& alignmentOffset) const
 {
-    if (!m_maintainsPixelAlignment || isIntegral(pageScaleFactor) || !m_drawsContent || m_masksToBounds) {
+    if (isIntegral(pageScaleFactor) || !m_drawsContent || m_masksToBounds) {
         position = m_position;
         size = m_size;
         anchorPoint = m_anchorPoint;

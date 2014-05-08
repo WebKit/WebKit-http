@@ -83,10 +83,12 @@ void IOSurfacePool::willAddSurface(IOSurface* surface, bool inUse)
     surface->clearGraphicsContext();
 
     size_t surfaceBytes = surface->totalBytes();
+
+    evict(surfaceBytes);
+
     m_bytesCached += surfaceBytes;
     if (inUse)
         m_inUseBytesCached += surfaceBytes;
-    evict(surface->totalBytes());
 }
 
 void IOSurfacePool::didRemoveSurface(IOSurface* surface, bool inUse)
@@ -224,6 +226,11 @@ void IOSurfacePool::tryEvictOldestCachedSurface()
 
 void IOSurfacePool::evict(size_t additionalSize)
 {
+    if (additionalSize >= m_maximumBytesCached) {
+        discardAllSurfaces();
+        return;
+    }
+
     // FIXME: Perhaps purgeable surfaces should count less against the cap?
     // We don't want to end up with a ton of empty (purged) surfaces, though, as that would defeat the purpose of the pool.
     size_t targetSize = m_maximumBytesCached - additionalSize;
@@ -234,11 +241,11 @@ void IOSurfacePool::evict(size_t additionalSize)
     while (m_bytesCached > targetSize) {
         tryEvictOldestCachedSurface();
 
-        if (m_inUseBytesCached > maximumInUseBytes)
+        if (m_inUseBytesCached > maximumInUseBytes || m_bytesCached > targetSize)
             tryEvictInUseSurface();
     }
 
-    while (m_inUseBytesCached > maximumInUseBytes)
+    while (m_inUseBytesCached > maximumInUseBytes || m_bytesCached > targetSize)
         tryEvictInUseSurface();
 }
 

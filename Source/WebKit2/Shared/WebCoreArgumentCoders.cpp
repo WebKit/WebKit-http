@@ -29,6 +29,7 @@
 #include "DataReference.h"
 #include "ShareableBitmap.h"
 #include <WebCore/AuthenticationChallenge.h>
+#include <WebCore/BlobPart.h>
 #include <WebCore/CertificateInfo.h>
 #include <WebCore/Cookie.h>
 #include <WebCore/Credential.h>
@@ -1561,10 +1562,10 @@ void ArgumentCoder<FilterOperation>::encode(ArgumentEncoder& encoder, const Filt
     encoder.encodeEnum(filter.type());
 
     switch (filter.type()) {
-    case FilterOperation::REFERENCE: {
+    case FilterOperation::NONE:
+    case FilterOperation::REFERENCE:
         ASSERT_NOT_REACHED();
         break;
-    }
     case FilterOperation::GRAYSCALE:
     case FilterOperation::SEPIA:
     case FilterOperation::SATURATE:
@@ -1591,7 +1592,6 @@ void ArgumentCoder<FilterOperation>::encode(ArgumentEncoder& encoder, const Filt
         encoder.encodeEnum(toDefaultFilterOperation(filter).representedType());
         break;
     case FilterOperation::PASSTHROUGH:
-    case FilterOperation::NONE:
         break;
     }
 }
@@ -1603,11 +1603,11 @@ bool decodeFilterOperation(ArgumentDecoder& decoder, RefPtr<FilterOperation>& fi
         return false;
 
     switch (type) {
-    case FilterOperation::PASSTHROUGH:
     case FilterOperation::NONE:
     case FilterOperation::REFERENCE:
         ASSERT_NOT_REACHED();
-        break;
+        decoder.markInvalid();
+        return false;
     case FilterOperation::GRAYSCALE:
     case FilterOperation::SEPIA:
     case FilterOperation::SATURATE:
@@ -1655,6 +1655,9 @@ bool decodeFilterOperation(ArgumentDecoder& decoder, RefPtr<FilterOperation>& fi
         filter = DefaultFilterOperation::create(representedType);
         break;
     }
+    case FilterOperation::PASSTHROUGH:
+        filter = PassthroughFilterOperation::create();
+        break;
     }
             
     return true;
@@ -1835,6 +1838,7 @@ bool ArgumentCoder<IDBKeyData>::decode(ArgumentDecoder& decoder, IDBKeyData& key
         // MaxType and MinType are only used for comparison to other keys.
         // They should never be sent across the wire.
         ASSERT_NOT_REACHED();
+        decoder.markInvalid();
         return false;
     }
 
@@ -1965,6 +1969,47 @@ bool ArgumentCoder<SessionID>::decode(ArgumentDecoder& decoder, SessionID& sessi
         return false;
 
     sessionID = SessionID(session);
+
+    return true;
+}
+
+void ArgumentCoder<BlobPart>::encode(ArgumentEncoder& encoder, const BlobPart& blobPart)
+{
+    encoder << static_cast<uint32_t>(blobPart.type());
+    switch (blobPart.type()) {
+    case BlobPart::Data:
+        encoder << blobPart.data();
+        break;
+    case BlobPart::Blob:
+        encoder << blobPart.url();
+        break;
+    }
+}
+
+bool ArgumentCoder<BlobPart>::decode(ArgumentDecoder& decoder, BlobPart& blobPart)
+{
+    uint32_t type;
+    if (!decoder.decode(type))
+        return false;
+
+    switch (type) {
+    case BlobPart::Data: {
+        Vector<char> data;
+        if (!decoder.decode(data))
+            return false;
+        blobPart = BlobPart(std::move(data));
+        break;
+    }
+    case BlobPart::Blob: {
+        String url;
+        if (!decoder.decode(url))
+            return false;
+        blobPart = BlobPart(URL(URL(), url));
+        break;
+    }
+    default:
+        return false;
+    }
 
     return true;
 }

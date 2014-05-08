@@ -83,6 +83,18 @@ JSValue setNeverInline(JSValue theFunctionValue)
     return jsUndefined();
 }
 
+JSValue optimizeNextInvocation(JSValue theFunctionValue)
+{
+#if ENABLE(JIT)
+    if (CodeBlock* baselineCodeBlock = getSomeBaselineCodeBlockForFunction(theFunctionValue))
+        baselineCodeBlock->optimizeNextInvocation();
+#else
+    UNUSED_PARAM(theFunctionValue);
+#endif
+
+    return jsUndefined();
+}
+
 JSValue numberOfDFGCompiles(ExecState* exec)
 {
     if (exec->argumentCount() < 1)
@@ -95,6 +107,13 @@ JSValue setNeverInline(ExecState* exec)
     if (exec->argumentCount() < 1)
         return jsUndefined();
     return setNeverInline(exec->uncheckedArgument(0));
+}
+
+JSValue optimizeNextInvocation(ExecState* exec)
+{
+    if (exec->argumentCount() < 1)
+        return jsUndefined();
+    return optimizeNextInvocation(exec->uncheckedArgument(0));
 }
 
 } // namespace JSC

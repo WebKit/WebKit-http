@@ -1753,7 +1753,12 @@ PassRefPtr<CanvasPattern> CanvasRenderingContext2D::createPattern(HTMLImageEleme
         return 0;
 
     CachedImage* cachedImage = image->cachedImage();
-    if (!cachedImage || !image->cachedImage()->imageForRenderer(image->renderer()))
+    if (!cachedImage || cachedImage->status() == CachedResource::LoadError) {
+        ec = INVALID_STATE_ERR;
+        return 0;
+    }
+
+    if (!image->cachedImage()->imageForRenderer(image->renderer()))
         return CanvasPattern::create(Image::nullImage(), repeatX, repeatY, true);
 
     bool originClean = cachedImage->isOriginClean(canvas()->securityOrigin());
@@ -1862,7 +1867,7 @@ PassRefPtr<ImageData> CanvasRenderingContext2D::createImageData(float sw, float 
         return 0;
     }
     if (!std::isfinite(sw) || !std::isfinite(sh)) {
-        ec = NOT_SUPPORTED_ERR;
+        ec = TypeError;
         return 0;
     }
 

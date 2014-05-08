@@ -2483,7 +2483,10 @@ sub GenerateImplementation
                         push(@implContent, "    ${className}* castedThis = " . GetCastingHelperForThisObject($interface) . "(JSValue::decode(thisValue));\n");
                     }
                     push(@implContent, "    if (UNLIKELY(!castedThis)) {\n");
-                    push(@implContent, "        throwSetterTypeError(*exec, \"$interfaceName\", \"$name\");\n");
+                    push(@implContent, "        if (jsDynamicCast<${className}Prototype*>(JSValue::decode(thisValue)))\n");
+                    push(@implContent, "            reportDeprecatedSetterError(*exec, \"$interfaceName\", \"$name\");\n");
+                    push(@implContent, "        else\n");
+                    push(@implContent, "            throwSetterTypeError(*exec, \"$interfaceName\", \"$name\");\n");
                     push(@implContent, "        return;\n");
                     push(@implContent, "    }\n");
                 }
@@ -2561,6 +2564,13 @@ sub GenerateImplementation
                         }
                         push (@implContent, "    if (" . join(" && ", @enumChecks) . ")\n");
                         push (@implContent, "        return;\n");
+                    }
+
+                    if ($attribute->signature->type eq "double" or $attribute->signature->type eq "float") {
+                        push(@implContent, "    if (!std::isfinite(nativeValue)) {\n");
+                        push(@implContent, "        setDOMException(exec, TypeError);\n");
+                        push(@implContent, "        return;\n");
+                        push(@implContent, "    }\n");
                     }
 
                     if ($svgPropertyOrListPropertyType) {
@@ -3283,7 +3293,14 @@ sub GenerateParametersCheck
                 }
             }
 
-            push(@$outputArray, "    " . GetNativeTypeFromSignature($parameter) . " $name(" . JSValueToNative($parameter, $optional && $defaultAttribute && $defaultAttribute eq "NullString" ? "argumentOrNull(exec, $argsIndex)" : "exec->argument($argsIndex)") . ");\n");
+            if ($parameter->extendedAttributes->{"RequiresExistingAtomicString"}) {
+                push(@$outputArray, "    AtomicStringImpl* existing_$name = exec->argument($argsIndex).isEmpty() ? nullptr : exec->argument($argsIndex).toString(exec)->toExistingAtomicString(exec);\n");
+                push(@$outputArray, "    if (!existing_$name)\n");
+                push(@$outputArray, "        return JSValue::encode(jsNull());\n");
+                push(@$outputArray, "    const AtomicString& $name(existing_$name);\n");
+            } else {
+                push(@$outputArray, "    " . GetNativeTypeFromSignature($parameter) . " $name(" . JSValueToNative($parameter, $optional && $defaultAttribute && $defaultAttribute eq "NullString" ? "argumentOrNull(exec, $argsIndex)" : "exec->argument($argsIndex)") . ");\n");
+            }
 
             # If a parameter is "an index" and it's negative it should throw an INDEX_SIZE_ERR exception.
             # But this needs to be done in the bindings, because the type is unsigned and the fact that it
@@ -3302,6 +3319,13 @@ sub GenerateParametersCheck
             if ($codeGenerator->IsSVGTypeNeedingTearOff($argType) and not $interfaceName =~ /List$/) {
                 push(@$outputArray, "    if (!$name) {\n");
                 push(@$outputArray, "        setDOMException(exec, TYPE_MISMATCH_ERR);\n");
+                push(@$outputArray, "        return JSValue::encode(jsUndefined());\n");
+                push(@$outputArray, "    }\n");
+            }
+
+            if ($parameter->type eq "double" or $parameter->type eq "float") {
+                push(@$outputArray, "    if (!std::isfinite($name)) {\n");
+                push(@$outputArray, "        setDOMException(exec, TypeError);\n");
                 push(@$outputArray, "        return JSValue::encode(jsUndefined());\n");
                 push(@$outputArray, "    }\n");
             }
@@ -3623,6 +3647,8 @@ my %nativeType = (
     "boolean" => "bool",
     "double" => "double",
     "float" => "float",
+    "unrestricted double" => "double",
+    "unrestricted float" => "float",
     "short" => "int16_t",
     "long" => "int",
     "unsigned long" => "unsigned",
@@ -3736,8 +3762,8 @@ sub JSValueToNative
     my $type = $signature->type;
 
     return "$value.toBoolean(exec)" if $type eq "boolean";
-    return "$value.toNumber(exec)" if $type eq "double";
-    return "$value.toFloat(exec)" if $type eq "float";
+    return "$value.toNumber(exec)" if $type eq "double" or $type eq "unrestricted double" ;
+    return "$value.toFloat(exec)" if $type eq "float" or $type eq "unrestricted float" ;
 
     my $intConversion = $signature->extendedAttributes->{"EnforceRange"} ? "EnforceRange" : "NormalConversion";
     return "toInt8(exec, $value, $intConversion)" if $type eq "byte";
@@ -3760,6 +3786,9 @@ sub JSValueToNative
         }
         if (($signature->extendedAttributes->{"TreatNullAs"} and $signature->extendedAttributes->{"TreatNullAs"} eq "NullString") or $signature->extendedAttributes->{"Reflect"}) {
             return "valueToStringWithNullCheck(exec, $value)"
+        }
+        if ($signature->extendedAttributes->{"AtomicString"}) {
+            return "$value.isEmpty() ? AtomicString() : $value.toString(exec)->toAtomicString(exec)";
         }
         # FIXME: Add the case for 'if ($signature->extendedAttributes->{"TreatUndefinedAs"} and $signature->extendedAttributes->{"TreatUndefinedAs"} eq "NullString"))'.
         return "$value.isEmpty() ? String() : $value.toString(exec)->value(exec)";

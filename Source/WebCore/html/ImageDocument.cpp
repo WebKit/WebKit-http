@@ -26,6 +26,7 @@
 #include "ImageDocument.h"
 
 #include "CachedImage.h"
+#include "Chrome.h"
 #include "DocumentLoader.h"
 #include "EventListener.h"
 #include "EventNames.h"
@@ -39,7 +40,6 @@
 #include "LocalizedStrings.h"
 #include "MainFrame.h"
 #include "MouseEvent.h"
-#include "NotImplemented.h"
 #include "Page.h"
 #include "RawDataDocumentParser.h"
 #include "RenderElement.h"
@@ -50,6 +50,7 @@ namespace WebCore {
 
 using namespace HTMLNames;
 
+#if !PLATFORM(IOS)
 class ImageEventListener final : public EventListener {
 public:
     static PassRefPtr<ImageEventListener> create(ImageDocument& document) { return adoptRef(new ImageEventListener(document)); }
@@ -66,7 +67,8 @@ private:
 
     ImageDocument& m_document;
 };
-    
+#endif
+
 class ImageDocumentParser final : public RawDataDocumentParser {
 public:
     static PassRefPtr<ImageDocumentParser> create(ImageDocument& document)
@@ -109,6 +111,11 @@ inline PassRefPtr<ImageDocumentElement> ImageDocumentElement::create(ImageDocume
 }
 
 // --------
+
+HTMLImageElement* ImageDocument::imageElement() const
+{
+    return m_imageElement;
+}
 
 LayoutSize ImageDocument::imageSize()
 {
@@ -186,7 +193,9 @@ ImageDocument::ImageDocument(Frame& frame, const URL& url)
     : HTMLDocument(&frame, url, ImageDocumentClass)
     , m_imageElement(nullptr)
     , m_imageSizeIsKnown(false)
+#if !PLATFORM(IOS)
     , m_didShrinkImage(false)
+#endif
     , m_shouldShrinkImage(frame.settings().shrinksStandaloneImagesToFit() && frame.isMainFrame())
 {
     setCompatibilityMode(QuirksMode);
@@ -211,32 +220,57 @@ void ImageDocument::createDocumentStructure()
     rootElement->appendChild(body);
     
     RefPtr<ImageDocumentElement> imageElement = ImageDocumentElement::create(*this);
-    imageElement->setAttribute(styleAttr, "-webkit-user-select: none");        
+    if (m_shouldShrinkImage)
+        imageElement->setAttribute(styleAttr, "-webkit-user-select:none; display:block; margin:auto;");
+    else
+        imageElement->setAttribute(styleAttr, "-webkit-user-select:none;");
     imageElement->setLoadManually(true);
     imageElement->setSrc(url().string());
     body->appendChild(imageElement);
     
     if (m_shouldShrinkImage) {
+#if PLATFORM(IOS)
+        // Set the viewport to be in device pixels (rather than the default of 980).
+        processViewport(ASCIILiteral("width=device-width"), ViewportArguments::ImageDocument);
+#else
         RefPtr<EventListener> listener = ImageEventListener::create(*this);
         if (DOMWindow* window = this->domWindow())
             window->addEventListener("resize", listener, false);
         imageElement->addEventListener("click", listener.release(), false);
-
-#if PLATFORM(IOS)
-        // Set the viewport to be in device pixels (rather than the default of 980).
-        processViewport(ASCIILiteral("width=device-width"), ViewportArguments::ImageDocument);
 #endif
     }
 
     m_imageElement = imageElement.get();
 }
 
+void ImageDocument::imageUpdated()
+{
+    ASSERT(m_imageElement);
+
+    if (m_imageSizeIsKnown)
+        return;
+
+    LayoutSize imageSize = this->imageSize();
+    if (imageSize.isEmpty())
+        return;
+
+    m_imageSizeIsKnown = true;
+
+    if (m_shouldShrinkImage) {
+#if PLATFORM(IOS)
+        FloatSize screenSize = page()->chrome().screenSize();
+        if (imageSize.width() > screenSize.width())
+            processViewport(String::format("width=%u", static_cast<unsigned>(imageSize.width().toInt())), ViewportArguments::ImageDocument);
+#else
+        // Call windowSizeChanged for its side effect of sizing the image.
+        windowSizeChanged();
+#endif
+    }
+}
+
+#if !PLATFORM(IOS)
 float ImageDocument::scale()
 {
-#if PLATFORM(IOS)
-    // On iOS big images are subsampled to make them smaller. So, don't resize them.
-    return 1;
-#else
     if (!m_imageElement)
         return 1;
 
@@ -250,14 +284,10 @@ float ImageDocument::scale()
     float heightScale = view->height() / imageSize.height().toFloat();
 
     return std::min(widthScale, heightScale);
-#endif
 }
 
 void ImageDocument::resizeImageToFit()
 {
-#if PLATFORM(IOS)
-    // On iOS big images are subsampled to make them smaller. So, don't resize them.
-#else
     if (!m_imageElement)
         return;
 
@@ -268,55 +298,6 @@ void ImageDocument::resizeImageToFit()
     m_imageElement->setHeight(static_cast<int>(imageSize.height() * scale));
 
     m_imageElement->setInlineStyleProperty(CSSPropertyCursor, CSSValueWebkitZoomIn);
-#endif
-}
-
-void ImageDocument::imageClicked(int x, int y)
-{
-#if PLATFORM(IOS)
-    // On iOS big images are subsampled to make them smaller. So, don't resize them.
-    UNUSED_PARAM(x);
-    UNUSED_PARAM(y);
-#else
-    if (!m_imageSizeIsKnown || imageFitsInWindow())
-        return;
-
-    m_shouldShrinkImage = !m_shouldShrinkImage;
-
-    if (m_shouldShrinkImage) {
-        // Call windowSizeChanged for its side effect of sizing the image.
-        windowSizeChanged();
-    } else {
-        restoreImageSize();
-
-        updateLayout();
-
-        float scale = this->scale();
-
-        int scrollX = static_cast<int>(x / scale - view()->width() / 2.0f);
-        int scrollY = static_cast<int>(y / scale - view()->height() / 2.0f);
-
-        view()->setScrollPosition(IntPoint(scrollX, scrollY));
-    }
-#endif
-}
-
-void ImageDocument::imageUpdated()
-{
-    ASSERT(m_imageElement);
-    
-    if (m_imageSizeIsKnown)
-        return;
-
-    if (imageSize().isEmpty())
-        return;
-    
-    m_imageSizeIsKnown = true;
-
-    if (m_shouldShrinkImage) {
-        // Call windowSizeChanged for its side effect of sizing the image.
-        windowSizeChanged();
-    }
 }
 
 void ImageDocument::restoreImageSize()
@@ -346,13 +327,10 @@ bool ImageDocument::imageFitsInWindow()
         return true;
 
     LayoutSize imageSize = this->imageSize();
-#if PLATFORM(IOS)
-    LayoutSize windowSize = view->contentsToScreen(view->visibleContentRect()).size();
-#else
     LayoutSize windowSize = LayoutSize(view->width(), view->height());
-#endif
     return imageSize.width() <= windowSize.width() && imageSize.height() <= windowSize.height();
 }
+
 
 void ImageDocument::windowSizeChanged()
 {
@@ -361,20 +339,6 @@ void ImageDocument::windowSizeChanged()
 
     bool fitsInWindow = imageFitsInWindow();
 
-#if PLATFORM(IOS)
-    if (fitsInWindow)
-        return;
-
-    LayoutSize imageSize = this->imageSize();
-    LayoutRect visibleScreenSize = view()->contentsToScreen(view()->visibleContentRect());
-
-    float widthScale = static_cast<float>(visibleScreenSize.width()) / imageSize.width();
-    float heightScale = static_cast<float>(visibleScreenSize.height()) / imageSize.height();
-    if (widthScale < heightScale)
-        processViewport(String::format("width=%d", imageSize.width().toInt()), ViewportArguments::ImageDocument);
-    else
-        processViewport(String::format("width=%d", static_cast<int>(1.0f + (1.0f - heightScale)) * imageSize.width().toInt()), ViewportArguments::ImageDocument);
-#else
     // If the image has been explicitly zoomed in, restore the cursor if the image fits
     // and set it to a zoom out cursor if the image doesn't fit
     if (!m_shouldShrinkImage) {
@@ -399,7 +363,30 @@ void ImageDocument::windowSizeChanged()
             m_didShrinkImage = true;
         }
     }
-#endif
+}
+
+void ImageDocument::imageClicked(int x, int y)
+{
+    if (!m_imageSizeIsKnown || imageFitsInWindow())
+        return;
+
+    m_shouldShrinkImage = !m_shouldShrinkImage;
+
+    if (m_shouldShrinkImage) {
+        // Call windowSizeChanged for its side effect of sizing the image.
+        windowSizeChanged();
+    } else {
+        restoreImageSize();
+
+        updateLayout();
+
+        float scale = this->scale();
+
+        int scrollX = static_cast<int>(x / scale - view()->width() / 2.0f);
+        int scrollY = static_cast<int>(y / scale - view()->height() / 2.0f);
+
+        view()->setScrollPosition(IntPoint(scrollX, scrollY));
+    }
 }
 
 void ImageEventListener::handleEvent(ScriptExecutionContext*, Event* event)
@@ -417,6 +404,7 @@ bool ImageEventListener::operator==(const EventListener& other)
     // All ImageEventListener objects compare as equal; OK since there is only one per document.
     return other.type() == ImageEventListenerType;
 }
+#endif
 
 // --------
 

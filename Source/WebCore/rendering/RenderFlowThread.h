@@ -141,7 +141,7 @@ public:
 
     virtual void setRegionRangeForBox(const RenderBox*, RenderRegion*, RenderRegion*);
     bool getRegionRangeForBox(const RenderBox*, RenderRegion*& startRegion, RenderRegion*& endRegion) const;
-    bool hasRegionRangeForBox(const RenderBox* box) const { ASSERT(box); return m_regionRangeMap.contains(box); }
+    bool hasRegionRangeForBox(const RenderBox*) const;
 
     // Check if the object is in region and the region is part of this flow thread.
     bool objectInFlowRegion(const RenderObject*, const RenderRegion*) const;
@@ -232,6 +232,9 @@ public:
     RenderRegion* currentRegion() const;
 
     ContainingRegionMap& containingRegionMap();
+
+    // FIXME: Eventually as column and region flow threads start nesting, this may end up changing.
+    virtual bool shouldCheckColumnBreaks() const { return false; }
 
 private:
     virtual bool isRenderFlowThread() const override final { return true; }

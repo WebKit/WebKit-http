@@ -341,9 +341,6 @@ struct _Ewk_View_Private_Data {
 #if ENABLE(INSPECTOR)
     Evas_Object* inspectorView;
 #endif
-#ifdef HAVE_ECORE_X
-    bool isUsingEcoreX;
-#endif
 #if ENABLE(CONTEXT_MENUS)
     Ewk_Context_Menu* contextMenu;
 #endif
@@ -753,10 +750,6 @@ static Ewk_View_Private_Data* _ewk_view_priv_new(Ewk_View_Smart_Data* smartData)
     priv->settings.allowFileAccessFromFileURLs = pageSettings.allowFileAccessFromFileURLs();
 
     priv->history = ewk_history_new(static_cast<WebCore::BackForwardList*>(priv->page->backForward().client()));
-
-#ifdef HAVE_ECORE_X
-    priv->isUsingEcoreX = WebCore::isUsingEcoreX(smartData->base.evas);
-#endif
 
 #if ENABLE(CONTEXT_MENUS)
     priv->contextMenu = 0;
@@ -4183,8 +4176,7 @@ void ewk_view_cursor_set(Evas_Object* ewkView, const WebCore::Cursor& cursor)
 
         ecore_evas_object_cursor_set(ecoreEvas, 0, 0, 0, 0);
 #ifdef HAVE_ECORE_X
-        if (priv->isUsingEcoreX)
-            WebCore::applyFallbackCursor(ecoreEvas, group);
+        WebCore::applyFallbackCursor(ecoreEvas, group);
 #endif
     } else {
         Evas_Coord width, height;
@@ -4307,35 +4299,6 @@ Evas_Object* ewk_view_screenshot_contents_get(const Evas_Object* ewkView, const 
     priv->acceleratedCompositingContext->extractImageData(screenshotImage, WebCore::IntRect(*area));
 
     return screenshotImage;
-}
-
-Eina_Bool ewk_view_setting_tiled_backing_store_enabled_set(Evas_Object* ewkView, Eina_Bool enable)
-{
-#if USE(TILED_BACKING_STORE)
-    EWK_VIEW_SD_GET_OR_RETURN(ewkView, smartData, false);
-    EWK_VIEW_PRIV_GET_OR_RETURN(smartData, priv, false);
-
-    priv->page->settings().setTiledBackingStoreEnabled(enable);
-
-    return true;
-#else
-    UNUSED_PARAM(ewkView);
-    UNUSED_PARAM(enable);
-    return false;
-#endif
-}
-
-Eina_Bool ewk_view_setting_tiled_backing_store_enabled_get(Evas_Object* ewkView)
-{
-#if USE(TILED_BACKING_STORE)
-    EWK_VIEW_SD_GET_OR_RETURN(ewkView, smartData, false);
-    EWK_VIEW_PRIV_GET_OR_RETURN(smartData, priv, false);
-
-    return priv->page->settings().tiledBackingStoreEnabled();
-#else
-    UNUSED_PARAM(ewkView);
-    return false;
-#endif
 }
 
 namespace EWKPrivate {

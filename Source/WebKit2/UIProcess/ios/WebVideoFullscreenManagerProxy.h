@@ -47,6 +47,8 @@ public:
     static PassRefPtr<WebVideoFullscreenManagerProxy> create(WebPageProxy&);
     virtual ~WebVideoFullscreenManagerProxy();
 
+    virtual void invalidate() override;
+
 private:
     explicit WebVideoFullscreenManagerProxy(WebPageProxy&);
     virtual void didReceiveMessage(IPC::Connection*, IPC::MessageDecoder&) override;
@@ -64,7 +66,13 @@ private:
     virtual void play() override;
     virtual void pause() override;
     virtual void togglePlayState() override;
+    virtual void beginScrubbing() override;
+    virtual void endScrubbing() override;
     virtual void seekToTime(double) override;
+    virtual void fastSeek(double time) override;
+    virtual void beginScanningForward() override;
+    virtual void beginScanningBackward() override;
+    virtual void endScanning() override;
     virtual void setVideoLayerFrame(WebCore::FloatRect) override;
     virtual void setVideoLayerGravity(WebCore::WebVideoFullscreenModel::VideoGravity) override;
     virtual void selectAudioMediaOption(uint64_t) override;

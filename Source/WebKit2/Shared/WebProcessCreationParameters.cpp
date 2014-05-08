@@ -27,13 +27,12 @@
 #include "WebProcessCreationParameters.h"
 
 #include "APIData.h"
-#include "ArgumentCoders.h"
+#include "WebCoreArgumentCoders.h"
 
 namespace WebKit {
 
 WebProcessCreationParameters::WebProcessCreationParameters()
-    : shouldTrackVisitedLinks(false)
-    , shouldAlwaysUseComplexTextCodePath(false)
+    : shouldAlwaysUseComplexTextCodePath(false)
     , shouldUseFontSmoothing(true)
     , defaultRequestTimeoutInterval(INT_MAX)
 #if PLATFORM(COCOA)
@@ -93,7 +92,6 @@ void WebProcessCreationParameters::encode(IPC::ArgumentEncoder& encoder) const
     encoder << ignoreTLSErrors;
 #endif
     encoder.encodeEnum(cacheModel);
-    encoder << shouldTrackVisitedLinks;
     encoder << shouldAlwaysUseComplexTextCodePath;
     encoder << shouldUseFontSmoothing;
     encoder << iconDatabaseEnabled;
@@ -206,8 +204,6 @@ bool WebProcessCreationParameters::decode(IPC::ArgumentDecoder& decoder, WebProc
 #endif
     if (!decoder.decodeEnum(parameters.cacheModel))
         return false;
-    if (!decoder.decode(parameters.shouldTrackVisitedLinks))
-        return false;
     if (!decoder.decode(parameters.shouldAlwaysUseComplexTextCodePath))
         return false;
     if (!decoder.decode(parameters.shouldUseFontSmoothing))
@@ -252,7 +248,7 @@ bool WebProcessCreationParameters::decode(IPC::ArgumentDecoder& decoder, WebProc
         return false;
     if (!decoder.decode(parameters.shouldEnableFTLJIT))
         return false;
-
+    
     bool hasBundleParameterData;
     if (!decoder.decode(hasBundleParameterData))
         return false;

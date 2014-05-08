@@ -31,8 +31,7 @@
 #ifndef WebKitBlobBuilder_h
 #define WebKitBlobBuilder_h
 
-#include "BlobData.h"
-#include <wtf/Forward.h>
+#include "BlobPart.h"
 
 namespace JSC {
 class ArrayBuffer;
@@ -42,9 +41,6 @@ class ArrayBufferView;
 namespace WebCore {
 
 class Blob;
-class TextEncoding;
-
-typedef int ExceptionCode;
 
 class BlobBuilder {
 public:
@@ -57,13 +53,10 @@ public:
     void append(PassRefPtr<JSC::ArrayBufferView>);
 #endif
 
-    PassRefPtr<Blob> getBlob(const String& contentType);
+    Vector<BlobPart> finalize();
 
 private:
-    void appendBytesData(const void*, size_t);
-
-    long long m_size;
-    BlobDataItemList m_items;
+    Vector<BlobPart> m_items;
     Vector<char> m_appendableData;
 };
 

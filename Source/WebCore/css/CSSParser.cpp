@@ -62,7 +62,6 @@
 #include "FloatConversion.h"
 #include "HTMLParserIdioms.h"
 #include "HashTools.h"
-#include "HistogramSupport.h"
 #include "MediaList.h"
 #include "MediaQueryExp.h"
 #include "Page.h"
@@ -150,6 +149,7 @@ namespace WebCore {
 
 static const unsigned INVALID_NUM_PARSED_PROPERTIES = UINT_MAX;
 static const double MAX_SCALE = 1000000;
+static const unsigned MAX_GRID_TRACK_REPETITIONS = 10000;
 
 template <unsigned N>
 static bool equal(const CSSParserString& a, const char (&b)[N])
@@ -4306,8 +4306,7 @@ bool CSSParser::parseFillProperty(CSSPropertyID propId, CSSPropertyID& propId1, 
                         || val->id == CSSValueScreen || val->id == CSSValueOverlay || val->id == CSSValueDarken
                         || val->id == CSSValueLighten ||  val->id == CSSValueColorDodge || val->id == CSSValueColorBurn
                         || val->id == CSSValueHardLight || val->id == CSSValueSoftLight || val->id == CSSValueDifference
-                        || val->id == CSSValueExclusion || val->id == CSSValueHue || val->id == CSSValueSaturation
-                        || val->id == CSSValueColor || val->id == CSSValueLuminosity)) {
+                        || val->id == CSSValueExclusion)) {
                         currValue = cssValuePool().createIdentifierValue(val->id);
                         m_valueList->next();
                     }
@@ -5037,6 +5036,10 @@ bool CSSParser::parseGridTrackRepeatFunction(CSSValueList& list)
 
     ASSERT_WITH_SECURITY_IMPLICATION(arguments->valueAt(0)->fValue > 0);
     size_t repetitions = arguments->valueAt(0)->fValue;
+    // Clamp repetitions at MAX_GRID_TRACK_REPETITIONS.
+    // http://www.w3.org/TR/css-grid-1/#repeat-notation
+    if (repetitions > MAX_GRID_TRACK_REPETITIONS)
+        repetitions = MAX_GRID_TRACK_REPETITIONS;
     RefPtr<CSSValueList> repeatedValues = CSSValueList::createSpaceSeparated();
     arguments->next(); // Skip the repetition count.
     arguments->next(); // Skip the comma.
@@ -11938,16 +11941,7 @@ static CSSPropertyID cssPropertyID(const CharacterType* propertyName, unsigned l
     }
 
     const Property* hashTableEntry = findProperty(name, length);
-    const CSSPropertyID propertyID = hashTableEntry ? static_cast<CSSPropertyID>(hashTableEntry->id) : CSSPropertyInvalid;
-
-    static const int cssPropertyHistogramSize = numCSSProperties;
-    if (hasPrefix(buffer, length, "-webkit-") && propertyID != CSSPropertyInvalid) {
-        int histogramValue = propertyID - firstCSSProperty;
-        ASSERT(0 <= histogramValue && histogramValue < cssPropertyHistogramSize);
-        HistogramSupport::histogramEnumeration("CSS.PrefixUsage", histogramValue, cssPropertyHistogramSize);
-    }
-
-    return propertyID;
+    return hashTableEntry ? static_cast<CSSPropertyID>(hashTableEntry->id) : CSSPropertyInvalid;
 }
 
 CSSPropertyID cssPropertyID(const String& string)

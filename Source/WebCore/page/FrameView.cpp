@@ -120,7 +120,7 @@ static RenderLayer::UpdateLayerPositionsFlags updateLayerPositionFlags(RenderLay
         flags &= ~RenderLayer::CheckForRepaint;
         flags |= RenderLayer::NeedsFullRepaintInBacking;
     }
-    if (isRelayoutingSubtree && (layer->isPaginated() || layer->enclosingPaginationLayer()))
+    if (isRelayoutingSubtree && layer->enclosingPaginationLayer())
         flags |= RenderLayer::UpdatePagination;
     return flags;
 }
@@ -1603,6 +1603,34 @@ LayoutSize FrameView::scrollOffsetForFixedPosition() const
     ScrollBehaviorForFixedElements behaviorForFixed = scrollBehaviorForFixedElements();
     return scrollOffsetForFixedPosition(visibleContentRect, totalContentsSize, scrollPosition, scrollOrigin, frameScaleFactor, fixedElementsLayoutRelativeToFrame(), behaviorForFixed, headerHeight(), footerHeight());
 }
+
+float FrameView::yPositionForInsetClipLayer(const FloatPoint& scrollPosition, float topContentInset)
+{
+    if (!topContentInset)
+        return 0;
+
+    // The insetClipLayer should not move for negative scroll values.
+    float scrollY = std::max<float>(0, scrollPosition.y());
+
+    if (scrollY >= topContentInset)
+        return 0;
+
+    return topContentInset - scrollY;
+}
+
+float FrameView::yPositionForRootContentLayer(const FloatPoint& scrollPosition, float topContentInset)
+{
+    if (!topContentInset)
+        return 0;
+
+    // The rootContentLayer should not move for negative scroll values.
+    float scrollY = std::max<float>(0, scrollPosition.y());
+
+    if (scrollY >= topContentInset)
+        return topContentInset;
+
+    return scrollY;
+}
     
 #if PLATFORM(IOS)
 LayoutRect FrameView::rectForViewportConstrainedObjects(const LayoutRect& visibleContentRect, const LayoutSize& totalContentsSize, float frameScaleFactor, bool fixedElementsLayoutRelativeToFrame, ScrollBehaviorForFixedElements scrollBehavior)
@@ -2143,12 +2171,6 @@ void FrameView::repaintContentRectangle(const IntRect& r)
     if (!shouldUpdate())
         return;
 
-#if USE(TILED_BACKING_STORE)
-    if (frame().tiledBackingStore()) {
-        frame().tiledBackingStore()->invalidate(r);
-        return;
-    }
-#endif
     ScrollView::repaintContentRectangle(r);
 }
 
@@ -2501,16 +2523,6 @@ void FrameView::updateBackgroundRecursively(const Color& backgroundColor, bool t
     }
 }
 
-void FrameView::setBackgroundExtendsBeyondPage(bool extendBackground)
-{
-    RenderView* renderView = this->renderView();
-    if (!renderView)
-        return;
-
-    renderView->compositor().setRootExtendedBackgroundColor(extendBackground ? documentBackgroundColor() : Color());
-    setHasExtendedBackgroundRectForPainting(needsExtendedBackgroundRectForPainting());
-}
-
 bool FrameView::hasExtendedBackgroundRectForPainting() const
 {
     if (!frame().settings().backgroundShouldExtendBeyondPage())
@@ -2523,7 +2535,16 @@ bool FrameView::hasExtendedBackgroundRectForPainting() const
     return tiledBacking->hasMargins();
 }
 
-bool FrameView::needsExtendedBackgroundRectForPainting() const
+void FrameView::updateExtendBackgroundIfNecessary()
+{
+    ExtendedBackgroundMode mode = calculateExtendedBackgroundMode();
+    if (mode == ExtendedBackgroundModeNone)
+        return;
+
+    updateTilesForExtendedBackgroundMode(mode);
+}
+
+FrameView::ExtendedBackgroundMode FrameView::calculateExtendedBackgroundMode() const
 {
     // Just because Settings::backgroundShouldExtendBeyondPage() is true does not necessarily mean
     // that the background rect needs to be extended for painting. Simple backgrounds can be extended
@@ -2533,32 +2554,41 @@ bool FrameView::needsExtendedBackgroundRectForPainting() const
 
 #if PLATFORM(IOS)
     // <rdar://problem/16201373>
-    return false;
+    return ExtendedBackgroundModeNone;
 #endif
 
     if (!frame().settings().backgroundShouldExtendBeyondPage())
-        return false;
+        return ExtendedBackgroundModeNone;
 
     if (!frame().isMainFrame())
-        return false;
+        return ExtendedBackgroundModeNone;
 
     Document* document = frame().document();
     if (!document)
-        return false;
+        return ExtendedBackgroundModeNone;
 
     auto documentElement = document->documentElement();
-    auto bodyElement = document->body();
     auto documentElementRenderer = documentElement ? documentElement->renderer() : nullptr;
-    auto bodyRenderer = bodyElement ? bodyElement->renderer() : nullptr;
-    bool rootBackgroundHasImage = (documentElementRenderer && documentElementRenderer->style().hasBackgroundImage())
-        || (bodyRenderer && bodyRenderer->style().hasBackgroundImage());
+    if (!documentElementRenderer)
+        return ExtendedBackgroundModeNone;
 
-    return rootBackgroundHasImage;
+    auto& renderer = documentElementRenderer->rendererForRootBackground();
+    if (!renderer.style().hasBackgroundImage())
+        return ExtendedBackgroundModeNone;
+
+    ExtendedBackgroundMode mode = ExtendedBackgroundModeNone;
+
+    if (renderer.style().backgroundRepeatX() == RepeatFill)
+        mode |= ExtendedBackgroundModeHorizontal;
+    if (renderer.style().backgroundRepeatY() == RepeatFill)
+        mode |= ExtendedBackgroundModeVertical;
+
+    return mode;
 }
 
-void FrameView::setHasExtendedBackgroundRectForPainting(bool shouldHaveExtendedBackgroundRect)
+void FrameView::updateTilesForExtendedBackgroundMode(ExtendedBackgroundMode mode)
 {
-    if (shouldHaveExtendedBackgroundRect == hasExtendedBackgroundRectForPainting())
+    if (!frame().settings().backgroundShouldExtendBeyondPage())
         return;
 
     RenderView* renderView = this->renderView();
@@ -2569,7 +2599,21 @@ void FrameView::setHasExtendedBackgroundRectForPainting(bool shouldHaveExtendedB
     if (!backing)
         return;
 
-    backing->setTiledBackingHasMargins(frame().settings().backgroundShouldExtendBeyondPage() && shouldHaveExtendedBackgroundRect);
+    TiledBacking* tiledBacking = backing->graphicsLayer()->tiledBacking();
+    if (!tiledBacking)
+        return;
+
+    ExtendedBackgroundMode existingMode = ExtendedBackgroundModeNone;
+    if (tiledBacking->hasVerticalMargins())
+        existingMode |= ExtendedBackgroundModeVertical;
+    if (tiledBacking->hasHorizontalMargins())
+        existingMode |= ExtendedBackgroundModeHorizontal;
+
+    if (existingMode == mode)
+        return;
+
+    renderView->compositor().setRootExtendedBackgroundColor(mode == ExtendedBackgroundModeAll ? Color() : documentBackgroundColor());
+    backing->setTiledBackingHasMargins(mode & ExtendedBackgroundModeHorizontal, mode & ExtendedBackgroundModeVertical);
 }
 
 IntRect FrameView::extendedBackgroundRectForPainting() const
@@ -4112,6 +4156,58 @@ bool FrameView::updateFixedPositionLayoutRect()
         return true;
     }
     return false;
+}
+
+void FrameView::setScrollVelocity(double horizontalVelocity, double verticalVelocity, double scaleChangeRate, double timestamp)
+{
+    m_horizontalVelocity = horizontalVelocity;
+    m_verticalVelocity = verticalVelocity;
+    m_scaleChangeRate = scaleChangeRate;
+    m_lastVelocityUpdateTime = timestamp;
+}
+
+FloatRect FrameView::computeCoverageRect(double horizontalMargin, double verticalMargin) const
+{
+    FloatRect exposedContentRect = this->exposedContentRect();
+    if (!m_speculativeTilingEnabled)
+        return exposedContentRect;
+
+    double currentTime = monotonicallyIncreasingTime();
+    double timeDelta = currentTime - m_lastVelocityUpdateTime;
+
+    FloatRect futureRect = exposedContentRect;
+    futureRect.setLocation(FloatPoint(futureRect.location().x() + timeDelta * m_horizontalVelocity, futureRect.location().y() + timeDelta * m_verticalVelocity));
+
+    if (m_horizontalVelocity) {
+        futureRect.setWidth(futureRect.width() + horizontalMargin);
+        if (m_horizontalVelocity < 0)
+            futureRect.setX(futureRect.x() - horizontalMargin);
+    }
+
+    if (m_verticalVelocity) {
+        futureRect.setHeight(futureRect.height() + verticalMargin);
+        if (m_verticalVelocity < 0)
+            futureRect.setY(futureRect.y() - verticalMargin);
+    }
+
+    if (m_scaleChangeRate <= 0 && !m_horizontalVelocity && !m_verticalVelocity) {
+        futureRect.setWidth(futureRect.width() + horizontalMargin);
+        futureRect.setHeight(futureRect.height() + verticalMargin);
+        futureRect.setX(futureRect.x() - horizontalMargin / 2);
+        futureRect.setY(futureRect.y() - verticalMargin / 2);
+    }
+
+    IntSize contentSize = contentsSize();
+    if (futureRect.maxX() > contentSize.width())
+        futureRect.setX(contentSize.width() - futureRect.width());
+    if (futureRect.maxY() > contentSize.height())
+        futureRect.setY(contentSize.height() - futureRect.height());
+    if (futureRect.x() < 0)
+        futureRect.setX(0);
+    if (futureRect.y() < 0)
+        futureRect.setY(0);
+
+    return futureRect;
 }
 #endif // PLATFORM(IOS)
 

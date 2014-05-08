@@ -47,11 +47,6 @@ GeolocationController::~GeolocationController()
         m_client->geolocationDestroyed();
 }
 
-PassOwnPtr<GeolocationController> GeolocationController::create(GeolocationClient* client)
-{
-    return adoptPtr(new GeolocationController(client));
-}
-
 void GeolocationController::addObserver(Geolocation* observer, bool enableHighAccuracy)
 {
     // This may be called multiple times with the same observer, though removeObserver()
@@ -132,7 +127,7 @@ const char* GeolocationController::supplementName()
 
 void provideGeolocationTo(Page* page, GeolocationClient* client)
 {
-    Supplement<Page>::provideTo(page, GeolocationController::supplementName(), GeolocationController::create(client));
+    Supplement<Page>::provideTo(page, GeolocationController::supplementName(), std::make_unique<GeolocationController>(client));
 }
     
 } // namespace WebCore

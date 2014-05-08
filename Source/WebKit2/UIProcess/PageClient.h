@@ -46,8 +46,8 @@ OBJC_CLASS NSTextAlternatives;
 #endif
 
 namespace WebCore {
-    class Cursor;
-    struct ViewportAttributes;
+class Cursor;
+struct ViewportAttributes;
 }
 
 namespace WebKit {
@@ -59,6 +59,7 @@ class RemoteLayerTreeTransaction;
 class WebContextMenuProxy;
 class WebEditCommandProxy;
 class WebPopupMenuProxy;
+struct ViewSnapshot;
 
 #if ENABLE(TOUCH_EVENTS)
 class NativeWebTouchEvent;
@@ -150,6 +151,8 @@ public:
 
     virtual void handleDownloadRequest(DownloadProxy*) = 0;
 
+    virtual bool handleRunOpenPanel(WebPageProxy*, WebFrameProxy*, WebOpenPanelParameters*, WebOpenPanelResultListenerProxy*) { return false; }
+
 #if PLATFORM(EFL)
     virtual void didChangeContentSize(const WebCore::IntSize&) = 0;
 #endif
@@ -176,7 +179,7 @@ public:
     virtual void makeFirstResponder() = 0;
     virtual void setAcceleratedCompositingRootLayer(LayerOrView *) = 0;
     virtual LayerOrView *acceleratedCompositingRootLayer() const = 0;
-    virtual RetainPtr<CGImageRef> takeViewSnapshot() = 0;
+    virtual ViewSnapshot takeViewSnapshot() = 0;
     virtual void wheelEventWasNotHandledByWebCore(const NativeWebWheelEvent&) = 0;
     virtual void clearCustomSwipeViews() = 0;
 #endif
@@ -238,6 +241,7 @@ public:
 #endif // PLATFORM(MAC)
 
 #if PLATFORM(IOS)
+    virtual void commitPotentialTapFailed() = 0;
     virtual void didGetTapHighlightGeometries(uint64_t requestID, const WebCore::Color&, const Vector<WebCore::FloatQuad>& highlightedQuads, const WebCore::IntSize& topLeftRadius, const WebCore::IntSize& topRightRadius, const WebCore::IntSize& bottomLeftRadius, const WebCore::IntSize& bottomRightRadius) = 0;
 
     virtual void didCommitLayerTree(const RemoteLayerTreeTransaction&) = 0;

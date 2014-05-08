@@ -1,3 +1,55 @@
+2014-05-06  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r168304.
+        https://bugs.webkit.org/show_bug.cgi?id=132607
+
+        Broke the build (Requested by KaL on #webkit).
+
+        Reverted changeset:
+
+        "[GTK][CMake] Unable to do make install"
+        https://bugs.webkit.org/show_bug.cgi?id=130188
+        http://trac.webkit.org/changeset/168304
+
+2014-05-05  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK][CMake] Unable to do make install
+        https://bugs.webkit.org/show_bug.cgi?id=130188
+
+        Reviewed by Carlos Garcia Campos.
+
+        Only try to install the HTML documentation if the build is configured to generate it via
+        the new ENABLE_GTKDOC option. We cannot conditionally install something, so this allows us
+        to keep the HTML documentation directory as an installation source.
+
+        * Source/PlatformGTK.cmake: The gtkdoc target now always builds HTML documentation, but
+        is only added to the default target when ENABLE_GTKDOC is turned on. gtkdoc-no-html is
+        never added to the default target, but will be triggered by build-webkit, so that
+        when ENABLE_GTKDOC is off and build-webkit isn't used, documentation isn't built at all.
+        * Source/cmake/OptionsGTK.cmake: Add an ENABLE_GTKDOC option to the build.
+
+2014-05-03  Raphael Kubo da Costa  <raphael.kubo.da.costa@intel.com>
+
+        [CMake] Define SHOULD_INSTALL_JS_SHELL before including ports Options files.
+        https://bugs.webkit.org/show_bug.cgi?id=132525
+
+        Reviewed by Martin Robinson.
+
+        * CMakeLists.txt: If OPTION() is called after Options${PORT}.cmake is included, it will
+        override whatever value a port may have set for it. The GTK+ port, for example, tries to set
+        it to SHOULD_INSTALL_JS_SHELL to ON by default, even though it did not happen before.
+
+2014-05-01  David Kilzer  <ddkilzer@apple.com>
+
+        Really remove ENABLE_PLUGIN_PROXY_FOR_VIDEO
+        <http://webkit.org/b/132432>
+
+        Reviewed by Tim Horton.
+
+        * Source/cmake/WebKitFeatures.cmake:
+        * Source/cmakeconfig.h.cmake:
+        - Remove ENABLE_PLUGIN_PROXY_FOR_VIDEO as build option.
+
 2014-04-30  Simon Fraser  <simon.fraser@apple.com>
 
         Make sure the "All" targets build WebKitLegacy, rather than WebKit.

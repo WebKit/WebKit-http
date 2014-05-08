@@ -28,6 +28,7 @@
 
 #include "VisitedLinkProviderMessages.h"
 #include "VisitedLinkTableControllerMessages.h"
+#include "WebPage.h"
 #include "WebProcess.h"
 #include <WebCore/PageCache.h>
 #include <wtf/NeverDestroyed.h>
@@ -75,15 +76,16 @@ bool VisitedLinkTableController::isLinkVisited(Page&, LinkHash linkHash, const U
     return m_visitedLinkTable.isLinkVisited(linkHash);
 }
 
-void VisitedLinkTableController::addVisitedLink(Page&, LinkHash linkHash)
+void VisitedLinkTableController::addVisitedLink(Page& page, LinkHash linkHash)
 {
     if (m_visitedLinkTable.isLinkVisited(linkHash))
         return;
 
-    if (!WebProcess::shared().shouldTrackVisitedLinks())
+    WebPage* webPage = WebPage::fromCorePage(&page);
+    if (!webPage)
         return;
 
-    WebProcess::shared().parentProcessConnection()->send(Messages::VisitedLinkProvider::AddVisitedLinkHash(linkHash), m_identifier);
+    WebProcess::shared().parentProcessConnection()->send(Messages::VisitedLinkProvider::AddVisitedLinkHashFromPage(webPage->pageID(), linkHash), m_identifier);
 }
 
 void VisitedLinkTableController::setVisitedLinkTable(const SharedMemory::Handle& handle)
@@ -107,6 +109,14 @@ void VisitedLinkTableController::visitedLinkStateChanged(const Vector<WebCore::L
 
 void VisitedLinkTableController::allVisitedLinkStateChanged()
 {
+    invalidateStylesForAllLinks();
+    pageCache()->markPagesForVistedLinkStyleRecalc();
+}
+
+void VisitedLinkTableController::removeAllVisitedLinks()
+{
+    m_visitedLinkTable.clear();
+
     invalidateStylesForAllLinks();
     pageCache()->markPagesForVistedLinkStyleRecalc();
 }

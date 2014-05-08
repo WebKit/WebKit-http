@@ -251,7 +251,7 @@ private:
 {
     if (self.window)
         [self _updateForScreen:self.window.screen];
-    _page->viewStateDidChange(ViewState::AllFlags, self.window ? WebPageProxy::WantsReplyOrNot::DoesNotWantReply : WebPageProxy::WantsReplyOrNot::DoesWantReply);
+    _page->viewStateDidChange(ViewState::AllFlags);
 }
 
 - (WKBrowsingContextController *)browsingContextController
@@ -438,11 +438,6 @@ static inline FloatRect fixedPositionRectFromExposedRect(CGRect unobscuredRect, 
 - (void)_decidePolicyForGeolocationRequestFromOrigin:(WebSecurityOrigin&)origin frame:(WebFrameProxy&)frame request:(GeolocationPermissionRequestProxy&)permissionRequest
 {
     [[wrapper(_page->process().context()) _geolocationProvider] decidePolicyForGeolocationRequestFromOrigin:toAPI(&origin) frame:toAPI(&frame) request:toAPI(&permissionRequest) window:[self window]];
-}
-
-- (RetainPtr<CGImageRef>)_takeViewSnapshot
-{
-    return [_webView _takeViewSnapshot];
 }
 
 - (BOOL)_scrollToRect:(CGRect)targetRect withOrigin:(CGPoint)origin minimumScrollDistance:(CGFloat)minimumScrollDistance

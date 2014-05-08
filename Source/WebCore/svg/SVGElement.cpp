@@ -5,6 +5,7 @@
  * Copyright (C) 2008 Alp Toker <alp@atoker.com>
  * Copyright (C) 2009 Cameron McCormack <cam@mcc.id.au>
  * Copyright (C) 2013 Samsung Electronics. All rights reserved.
+ * Copyright (C) 2014 Adobe Systems Incorporated. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -33,7 +34,9 @@
 #include "ElementIterator.h"
 #include "Event.h"
 #include "EventNames.h"
+#include "HTMLElement.h"
 #include "HTMLNames.h"
+#include "HTMLParserIdioms.h"
 #include "RenderObject.h"
 #include "RenderSVGResource.h"
 #include "RenderSVGResourceClipper.h"
@@ -250,6 +253,13 @@ SVGElement::~SVGElement()
     document().accessSVGExtensions()->removeAllElementReferencesForTarget(this);
 }
 
+short SVGElement::tabIndex() const
+{
+    if (supportsFocus())
+        return Element::tabIndex();
+    return -1;
+}
+
 bool SVGElement::willRecalcStyle(Style::Change change)
 {
     if (!m_svgRareData || styleChangeType() == SyntheticStyleChange)
@@ -311,7 +321,6 @@ void SVGElement::reportAttributeParsingError(SVGParsingError error, const Qualif
 
     ASSERT_NOT_REACHED();
 }
-
 
 bool SVGElement::isSupported(StringImpl* feature, StringImpl* version) const
 {
@@ -464,54 +473,31 @@ void SVGElement::setCorrespondingElement(SVGElement* correspondingElement)
 
 void SVGElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
 {
-    // standard events
-    if (name == onloadAttr)
-        setAttributeEventListener(eventNames().loadEvent, name, value);
-    else if (name == onclickAttr)
-        setAttributeEventListener(eventNames().clickEvent, name, value);
-    else if (name == onmousedownAttr)
-        setAttributeEventListener(eventNames().mousedownEvent, name, value);
-    else if (name == onmouseenterAttr)
-        setAttributeEventListener(eventNames().mouseenterEvent, name, value);
-    else if (name == onmouseleaveAttr)
-        setAttributeEventListener(eventNames().mouseleaveEvent, name, value);
-    else if (name == onmousemoveAttr)
-        setAttributeEventListener(eventNames().mousemoveEvent, name, value);
-    else if (name == onmouseoutAttr)
-        setAttributeEventListener(eventNames().mouseoutEvent, name, value);
-    else if (name == onmouseoverAttr)
-        setAttributeEventListener(eventNames().mouseoverEvent, name, value);
-    else if (name == onmouseupAttr)
-        setAttributeEventListener(eventNames().mouseupEvent, name, value);
-    else if (name == SVGNames::onfocusinAttr)
-        setAttributeEventListener(eventNames().focusinEvent, name, value);
-    else if (name == SVGNames::onfocusoutAttr)
-        setAttributeEventListener(eventNames().focusoutEvent, name, value);
-    else if (name == SVGNames::onactivateAttr)
-        setAttributeEventListener(eventNames().DOMActivateEvent, name, value);
-    else if (name == HTMLNames::classAttr)
+    if (name == HTMLNames::classAttr)
         setClassNameBaseValue(value);
-#if ENABLE(TOUCH_EVENTS)
-    else if (name == ontouchstartAttr)
-        setAttributeEventListener(eventNames().touchstartEvent, name, value);
-    else if (name == ontouchmoveAttr)
-        setAttributeEventListener(eventNames().touchmoveEvent, name, value);
-    else if (name == ontouchendAttr)
-        setAttributeEventListener(eventNames().touchendEvent, name, value);
-    else if (name == ontouchcancelAttr)
-        setAttributeEventListener(eventNames().touchcancelEvent, name, value);
-#endif
-#if ENABLE(IOS_GESTURE_EVENTS)
-    else if (name == ongesturestartAttr)
-        setAttributeEventListener(eventNames().gesturestartEvent, name, value);
-    else if (name == ongesturechangeAttr)
-        setAttributeEventListener(eventNames().gesturechangeEvent, name, value);
-    else if (name == ongestureendAttr)
-        setAttributeEventListener(eventNames().gestureendEvent, name, value);
-#endif
-    else if (SVGLangSpace::parseAttribute(name, value)) {
-    } else
-        StyledElement::parseAttribute(name, value);
+    else if (name == tabindexAttr) {
+        int tabindex = 0;
+        if (value.isEmpty())
+            clearTabIndexExplicitlyIfNeeded();
+        else if (parseHTMLInteger(value, tabindex)) {
+            // Clamp tabindex to the range of 'short' to match Firefox's behavior.
+            setTabIndexExplicitly(std::max(static_cast<int>(std::numeric_limits<short>::min()), std::min(tabindex, static_cast<int>(std::numeric_limits<short>::max()))));
+        }
+    } else if (SVGLangSpace::parseAttribute(name, value))
+        return;
+    else {
+        // FIXME: Can we do this even faster by checking the local name "on" prefix before we do anything with the map?
+        // See HTMLElement::parseAttribute().
+        static NeverDestroyed<HashMap<AtomicStringImpl*, AtomicString>> eventNamesGlobal;
+        auto& eventNames = eventNamesGlobal.get();
+        if (eventNames.isEmpty())
+            HTMLElement::populateEventNameForAttributeLocalNameMap(eventNames);
+        const AtomicString& eventName = eventNames.get(name.localName().impl());
+        if (!eventName.isNull())
+            setAttributeEventListener(eventName, name, value);
+        else
+            StyledElement::parseAttribute(name, value);
+    }
 }
 
 void SVGElement::animatedPropertyTypeForAttribute(const QualifiedName& attributeName, Vector<AnimatedPropertyType>& propertyTypes)
@@ -1137,17 +1123,24 @@ void SVGElement::updateRelativeLengthsInformation(bool hasRelativeLengths, SVGEl
     }
 }
 
+bool SVGElement::hasFocusEventListeners() const
+{
+    Element* eventTarget = const_cast<SVGElement*>(this);
+    return eventTarget->hasEventListeners(eventNames().focusinEvent)
+        || eventTarget->hasEventListeners(eventNames().focusoutEvent)
+        || eventTarget->hasEventListeners(eventNames().focusEvent)
+        || eventTarget->hasEventListeners(eventNames().blurEvent);
+}
+
 bool SVGElement::isMouseFocusable() const
 {
     if (!isFocusable())
         return false;
     Element* eventTarget = const_cast<SVGElement*>(this);
-    return eventTarget->hasEventListeners(eventNames().focusinEvent) || eventTarget->hasEventListeners(eventNames().focusoutEvent);
-}
-
-bool SVGElement::isKeyboardFocusable(KeyboardEvent*) const
-{
-    return isMouseFocusable();
+    return hasFocusEventListeners()
+        || eventTarget->hasEventListeners(eventNames().keydownEvent)
+        || eventTarget->hasEventListeners(eventNames().keyupEvent)
+        || eventTarget->hasEventListeners(eventNames().keypressEvent);
 }
     
 void SVGElement::accessKeyAction(bool sendMouseEvents)

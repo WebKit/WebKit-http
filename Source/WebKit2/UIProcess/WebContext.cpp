@@ -281,8 +281,6 @@ void WebContext::setHistoryClient(std::unique_ptr<API::HistoryClient> historyCli
         m_historyClient = std::make_unique<API::HistoryClient>();
     else
         m_historyClient = std::move(historyClient);
-
-    sendToAllProcesses(Messages::WebProcess::SetShouldTrackVisitedLinks(m_historyClient->shouldTrackVisitedLinks()));
 }
 
 void WebContext::setDownloadClient(std::unique_ptr<API::DownloadClient> downloadClient)
@@ -578,7 +576,6 @@ WebProcessProxy& WebContext::createNewWebProcess()
 
     parameters.shouldUseTestingNetworkSession = m_shouldUseTestingNetworkSession;
 
-    parameters.shouldTrackVisitedLinks = m_historyClient->shouldTrackVisitedLinks();
     parameters.cacheModel = m_cacheModel;
     parameters.languages = userPreferredLanguages();
 
@@ -1321,14 +1318,14 @@ void WebContext::setJavaScriptGarbageCollectorTimerEnabled(bool flag)
     sendToAllProcesses(Messages::WebProcess::SetJavaScriptGarbageCollectorTimerEnabled(flag));
 }
 
-void WebContext::addPlugInAutoStartOriginHash(const String& pageOrigin, unsigned plugInOriginHash)
+void WebContext::addPlugInAutoStartOriginHash(const String& pageOrigin, unsigned plugInOriginHash, SessionID sessionID)
 {
-    m_plugInAutoStartProvider.addAutoStartOriginHash(pageOrigin, plugInOriginHash);
+    m_plugInAutoStartProvider.addAutoStartOriginHash(pageOrigin, plugInOriginHash, sessionID);
 }
 
-void WebContext::plugInDidReceiveUserInteraction(unsigned plugInOriginHash)
+void WebContext::plugInDidReceiveUserInteraction(unsigned plugInOriginHash, SessionID sessionID)
 {
-    m_plugInAutoStartProvider.didReceiveUserInteraction(plugInOriginHash);
+    m_plugInAutoStartProvider.didReceiveUserInteraction(plugInOriginHash, sessionID);
 }
 
 PassRefPtr<ImmutableDictionary> WebContext::plugInAutoStartOriginHashes() const

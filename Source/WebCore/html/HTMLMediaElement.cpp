@@ -4705,18 +4705,6 @@ void HTMLMediaElement::visibilityStateChanged()
 }
 #endif
 
-void HTMLMediaElement::defaultEventHandler(Event* event)
-{
-    HTMLElement::defaultEventHandler(event);
-}
-
-#if !PLATFORM(IOS)
-bool HTMLMediaElement::willRespondToMouseClickEvents()
-{
-    return HTMLElement::willRespondToMouseClickEvents();
-}
-#endif // !PLATFORM(IOS)
-
 #if ENABLE(VIDEO_TRACK)
 bool HTMLMediaElement::requiresTextTrackRepresentation() const
 {
@@ -4727,6 +4715,12 @@ void HTMLMediaElement::setTextTrackRepresentation(TextTrackRepresentation* repre
 {
     if (m_player)
         m_player->setTextTrackRepresentation(representation);
+}
+
+void HTMLMediaElement::syncTextTrackBounds()
+{
+    if (m_player)
+        m_player->syncTextTrackBounds();
 }
 #endif // ENABLE(VIDEO_TRACK)
 
@@ -4857,7 +4851,7 @@ void HTMLMediaElement::exitFullscreen()
     if (hasMediaControls())
         mediaControls()->exitedFullscreen();
     if (document().page()) {
-        if (document().page()->chrome().requiresFullscreenForVideoPlayback())
+        if (m_mediaSession->requiresFullscreenForVideoPlayback(*this))
             pauseInternal();
 
         if (document().page()->chrome().client().supportsFullscreenForNode(this)) {

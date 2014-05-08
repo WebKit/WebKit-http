@@ -31,13 +31,11 @@
 #import "WKBrowsingContextControllerInternal.h"
 #import "WKBrowsingContextControllerInternal.h"
 #import "WebKitSystemInterface.h"
+#import "WebMemoryPressureHandlerIOS.h"
 #import "WebPageGroup.h"
 #import "WebProcessCreationParameters.h"
 #import "WebProcessMessages.h"
 #import "WindowServerConnection.h"
-#if !PLATFORM(IOS)
-#import <QuartzCore/CARemoteLayerServer.h>
-#endif
 #import <WebCore/Color.h>
 #import <WebCore/FileSystem.h>
 #import <WebCore/NotImplemented.h>
@@ -48,6 +46,10 @@
 #if ENABLE(NETWORK_PROCESS)
 #import "NetworkProcessCreationParameters.h"
 #import "NetworkProcessProxy.h"
+#endif
+
+#if !PLATFORM(IOS)
+#import <QuartzCore/CARemoteLayerServer.h>
 #endif
 
 #if PLATFORM(IOS) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
@@ -98,7 +100,7 @@ static void registerUserDefaultsIfNeeded()
     
     [registrationDictionary setObject:[NSNumber numberWithBool:YES] forKey:WebKitJSCJITEnabledDefaultsKey];
     [registrationDictionary setObject:[NSNumber numberWithBool:YES] forKey:WebKitJSCFTLJITEnabledDefaultsKey];
-
+    
 #if PLATFORM(IOS) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
     [registrationDictionary setObject:[NSNumber numberWithBool:YES] forKey:WebKitKerningAndLigaturesEnabledByDefaultDefaultsKey];
 #endif
@@ -129,6 +131,10 @@ void WebContext::platformInitialize()
 {
     registerUserDefaultsIfNeeded();
     registerNotificationObservers();
+
+#if PLATFORM(IOS)
+    WebKit::WebMemoryPressureHandler::shared();
+#endif
 }
 
 String WebContext::platformDefaultApplicationCacheDirectory() const
@@ -168,7 +174,7 @@ void WebContext::platformInitializeWebProcess(WebProcessCreationParameters& para
     parameters.shouldEnableKerningAndLigaturesByDefault = [[NSUserDefaults standardUserDefaults] boolForKey:WebKitKerningAndLigaturesEnabledByDefaultDefaultsKey];
     parameters.shouldEnableJIT = [[NSUserDefaults standardUserDefaults] boolForKey:WebKitJSCJITEnabledDefaultsKey];
     parameters.shouldEnableFTLJIT = [[NSUserDefaults standardUserDefaults] boolForKey:WebKitJSCFTLJITEnabledDefaultsKey];
-
+    
 #if HAVE(HOSTED_CORE_ANIMATION)
 #if !PLATFORM(IOS)
     mach_port_t renderServerPort = [[CARemoteLayerServer sharedServer] serverPort];

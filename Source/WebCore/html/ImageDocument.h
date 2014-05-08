@@ -30,6 +30,7 @@
 namespace WebCore {
 
 class ImageDocumentElement;
+class HTMLImageElement;
 
 class ImageDocument final : public HTMLDocument {
 public:
@@ -38,13 +39,17 @@ public:
         return adoptRef(new ImageDocument(frame, url));
     }
 
+    HTMLImageElement* imageElement() const;
+
     void updateDuringParsing();
     void finishedParsing();
 
     void disconnectImageElement() { m_imageElement = nullptr; }
 
+#if !PLATFORM(IOS)
     void windowSizeChanged();
     void imageClicked(int x, int y);
+#endif
 
 private:
     ImageDocument(Frame&, const URL&);
@@ -54,10 +59,12 @@ private:
     LayoutSize imageSize();
 
     void createDocumentStructure();
+#if !PLATFORM(IOS)
     void resizeImageToFit();
     void restoreImageSize();
     bool imageFitsInWindow();
     float scale();
+#endif
 
     void imageUpdated();
 
@@ -66,8 +73,10 @@ private:
     // Whether enough of the image has been loaded to determine its size.
     bool m_imageSizeIsKnown;
 
+#if !PLATFORM(IOS)
     // Whether the image is shrunk to fit or not.
     bool m_didShrinkImage;
+#endif
 
     // Whether the image should be shrunk or not.
     bool m_shouldShrinkImage;

@@ -102,10 +102,11 @@ private:
     virtual LayerOrView *acceleratedCompositingRootLayer() const override;
     virtual LayerHostingMode viewLayerHostingMode() override { return LayerHostingMode::OutOfProcess; }
 
-    virtual RetainPtr<CGImageRef> takeViewSnapshot() override;
+    virtual ViewSnapshot takeViewSnapshot() override;
     virtual void wheelEventWasNotHandledByWebCore(const NativeWebWheelEvent&) override;
     virtual void clearCustomSwipeViews() override;
 
+    virtual void commitPotentialTapFailed() override;
     virtual void didGetTapHighlightGeometries(uint64_t requestID, const WebCore::Color&, const Vector<WebCore::FloatQuad>& highlightedQuads, const WebCore::IntSize& topLeftRadius, const WebCore::IntSize& topRightRadius, const WebCore::IntSize& bottomLeftRadius, const WebCore::IntSize& bottomRightRadius) override;
 
     virtual void didCommitLayerTree(const RemoteLayerTreeTransaction&) override;
@@ -119,6 +120,8 @@ private:
     virtual void saveImageToLibrary(PassRefPtr<WebCore::SharedBuffer>) override;
     virtual void didUpdateBlockSelectionWithTouch(uint32_t touch, uint32_t flags, float growThreshold, float shrinkThreshold) override;
     virtual void showPlaybackTargetPicker(bool hasVideo, const WebCore::IntRect& elementRect) override;
+
+    virtual bool handleRunOpenPanel(WebPageProxy*, WebFrameProxy*, WebOpenPanelParameters*, WebOpenPanelResultListenerProxy*) override;
 
 #if ENABLE(INSPECTOR)
     virtual void showInspectorIndication() override;

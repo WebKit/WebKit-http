@@ -46,7 +46,6 @@
 
 #include "AnimationController.h"
 #include "BoxShape.h"
-#include "ColumnInfo.h"
 #include "CSSPropertyNames.h"
 #include "Chrome.h"
 #include "Document.h"
@@ -70,7 +69,6 @@
 #include "HTMLFrameElement.h"
 #include "HTMLFrameOwnerElement.h"
 #include "HTMLNames.h"
-#include "HistogramSupport.h"
 #include "HitTestingTransformState.h"
 #include "HitTestRequest.h"
 #include "HitTestResult.h"
@@ -165,10 +163,11 @@ RenderLayer::RenderLayer(RenderLayerModelObject& rendererLayerModelObject)
     , m_hasVisibleContent(false)
     , m_visibleDescendantStatusDirty(false)
     , m_hasVisibleDescendant(false)
-    , m_isPaginated(false)
     , m_3DTransformedDescendantStatusDirty(true)
     , m_has3DTransformedDescendant(false)
     , m_hasCompositingDescendant(false)
+    , m_hasTransformedAncestor(false)
+    , m_has3DTransformedAncestor(false)
     , m_indirectCompositingReason(NoIndirectCompositingReason)
     , m_viewportConstrainedNotCompositedReason(NoNotCompositedReason)
 #if PLATFORM(IOS)
@@ -404,10 +403,8 @@ void RenderLayer::updateLayerPositions(RenderGeometryMap* geometryMap, UpdateLay
 
     if (flags & UpdatePagination)
         updatePagination();
-    else {
-        m_isPaginated = false;
+    else
         m_enclosingPaginationLayer = 0;
-    }
 
     if (m_hasVisibleContent) {
         // FIXME: LayoutState does not work with RenderLayers as there is not a 1-to-1
@@ -449,6 +446,8 @@ void RenderLayer::updateLayerPositions(RenderGeometryMap* geometryMap, UpdateLay
         clearRepaintRects();
 
     m_repaintStatus = NeedsNormalRepaint;
+    m_hasTransformedAncestor = flags & SeenTransformedLayer;
+    m_has3DTransformedAncestor = flags & Seen3DTransformedLayer;
 
     // Go ahead and update the reflection's position and size.
     if (m_reflection)
@@ -459,13 +458,16 @@ void RenderLayer::updateLayerPositions(RenderGeometryMap* geometryMap, UpdateLay
     if (isComposited())
         flags &= ~IsCompositingUpdateRoot;
 
-    if (useRegionBasedColumns() && renderer().isInFlowRenderFlowThread()) {
+    if (renderer().isInFlowRenderFlowThread()) {
         updatePagination();
         flags |= UpdatePagination;
     }
-    
-    if (renderer().hasColumns())
-        flags |= UpdatePagination;
+
+    if (transform()) {
+        flags |= SeenTransformedLayer;
+        if (!transform()->isAffine())
+            flags |= Seen3DTransformedLayer;
+    }
 
     for (RenderLayer* child = firstChild(); child; child = child->nextSibling())
         child->updateLayerPositions(geometryMap, flags);
@@ -931,99 +933,47 @@ RenderLayer* RenderLayer::enclosingOverflowClipLayer(IncludeSelfOrNot includeSel
     return 0;
 }
 
-static bool checkContainingBlockChainForPagination(RenderLayerModelObject* renderer, RenderBox* ancestorColumnsRenderer)
-{
-    RenderLayerModelObject* prevBlock = renderer;
-    RenderBlock* containingBlock;
-    for (containingBlock = renderer->containingBlock();
-        containingBlock && containingBlock != &renderer->view() && containingBlock != ancestorColumnsRenderer;
-        containingBlock = containingBlock->containingBlock()) {
-        prevBlock = containingBlock;
-    }
-    
-    // If the columns block wasn't in our containing block chain, then we aren't paginated by it.
-    if (containingBlock != ancestorColumnsRenderer)
-        return false;
-        
-    // If the previous block is absolutely positioned, then we can't be paginated by the columns block.
-    if (prevBlock->isOutOfFlowPositioned())
-        return false;
-        
-    // Otherwise we are paginated by the columns block.
-    return true;
-}
-
-bool RenderLayer::useRegionBasedColumns() const
-{
-    const Settings& settings = renderer().frame().settings();
-    return settings.regionBasedColumnsEnabled();
-}
-
 void RenderLayer::updatePagination()
 {
-    m_isPaginated = false;
     m_enclosingPaginationLayer = 0;
 
     if (isComposited() || !parent())
         return; // FIXME: We will have to deal with paginated compositing layers someday.
                 // FIXME: For now the RenderView can't be paginated.  Eventually printing will move to a model where it is though.
 
-    // The main difference between the paginated booleans for the old column code and the new column code
-    // is that each paginated layer has to paint on its own with the new code. There is no
-    // recurring into child layers. This means that the m_isPaginated bits for the new column code can't just be set on
-    // "roots" that get split and paint all their descendants. Instead each layer has to be checked individually and
+    // Each layer that is inside a multicolumn flow thread has to be checked individually and
     // genuinely know if it is going to have to split itself up when painting only its contents (and not any other descendant
     // layers). We track an enclosingPaginationLayer instead of using a simple bit, since we want to be able to get back
     // to that layer easily.
-    bool regionBasedColumnsUsed = useRegionBasedColumns();
-    if (regionBasedColumnsUsed && renderer().isInFlowRenderFlowThread()) {
+    if (renderer().isInFlowRenderFlowThread()) {
         m_enclosingPaginationLayer = this;
         return;
     }
 
     if (isNormalFlowOnly()) {
-        if (regionBasedColumnsUsed) {
-            // Content inside a transform is not considered to be paginated, since we simply
-            // paint the transform multiple times in each column, so we don't have to use
-            // fragments for the transformed content.
-            m_enclosingPaginationLayer = parent()->enclosingPaginationLayer();
-            if (m_enclosingPaginationLayer && m_enclosingPaginationLayer->hasTransform())
-                m_enclosingPaginationLayer = 0;
-        } else
-            m_isPaginated = parent()->renderer().hasColumns();
+        // Content inside a transform is not considered to be paginated, since we simply
+        // paint the transform multiple times in each column, so we don't have to use
+        // fragments for the transformed content.
+        m_enclosingPaginationLayer = parent()->enclosingPaginationLayer();
+        if (m_enclosingPaginationLayer && m_enclosingPaginationLayer->hasTransform())
+            m_enclosingPaginationLayer = 0;
         return;
     }
 
     // For the new columns code, we want to walk up our containing block chain looking for an enclosing layer. Once
     // we find one, then we just check its pagination status.
-    if (regionBasedColumnsUsed) {
-        RenderView* renderView = &renderer().view();
-        RenderBlock* containingBlock;
-        for (containingBlock = renderer().containingBlock();
-            containingBlock && containingBlock != renderView;
-            containingBlock = containingBlock->containingBlock()) {
-            if (containingBlock->hasLayer()) {
-                // Content inside a transform is not considered to be paginated, since we simply
-                // paint the transform multiple times in each column, so we don't have to use
-                // fragments for the transformed content.
-                m_enclosingPaginationLayer = containingBlock->layer()->enclosingPaginationLayer();
-                if (m_enclosingPaginationLayer && m_enclosingPaginationLayer->hasTransform())
-                    m_enclosingPaginationLayer = 0;
-                return;
-            }
-        }
-        return;
-    }
-
-    // If we're not normal flow, then we need to look for a multi-column object between us and our stacking container.
-    RenderLayer* ancestorStackingContainer = stackingContainer();
-    for (RenderLayer* curr = parent(); curr; curr = curr->parent()) {
-        if (curr->renderer().hasColumns()) {
-            m_isPaginated = checkContainingBlockChainForPagination(&renderer(), curr->renderBox());
+    RenderView* renderView = &renderer().view();
+    RenderBlock* containingBlock;
+    for (containingBlock = renderer().containingBlock(); containingBlock && containingBlock != renderView; containingBlock = containingBlock->containingBlock()) {
+        if (containingBlock->hasLayer()) {
+            // Content inside a transform is not considered to be paginated, since we simply
+            // paint the transform multiple times in each column, so we don't have to use
+            // fragments for the transformed content.
+            m_enclosingPaginationLayer = containingBlock->layer()->enclosingPaginationLayer();
+            if (m_enclosingPaginationLayer && m_enclosingPaginationLayer->hasTransform())
+                m_enclosingPaginationLayer = 0;
             return;
         }
-        if (curr == ancestorStackingContainer)
-            return;
     }
 }
 
@@ -2055,10 +2005,6 @@ static inline const RenderLayer* accumulateOffsetTowardsAncestor(const RenderLay
 
     if (adjustForColumns == RenderLayer::AdjustForColumns) {
         if (RenderLayer* parentLayer = layer->parent()) {
-            LayoutSize layerColumnOffset;
-            parentLayer->renderer().adjustForColumns(layerColumnOffset, location);
-            location += layerColumnOffset;
-            
             if (parentLayer->renderer().isRenderMultiColumnFlowThread()) {
                 RenderRegion* region = toRenderMultiColumnFlowThread(parentLayer->renderer()).physicalTranslationFromFlowToRegion(location);
                 if (region)
@@ -2105,11 +2051,16 @@ bool RenderLayer::hasAcceleratedTouchScrolling() const
 #endif
 }
 
-#if PLATFORM(IOS) && ENABLE(TOUCH_EVENTS)
+bool RenderLayer::hasTouchScrollableOverflow() const
+{
+    return hasAcceleratedTouchScrolling() && (hasScrollableHorizontalOverflow() || hasScrollableVerticalOverflow());
+}
+
+#if ENABLE(TOUCH_EVENTS)
 bool RenderLayer::handleTouchEvent(const PlatformTouchEvent& touchEvent)
 {
     // If we have accelerated scrolling, let the scrolling be handled outside of WebKit.
-    if (hasAcceleratedTouchScrolling())
+    if (hasTouchScrollableOverflow())
         return false;
 
     return ScrollableArea::handleTouchEvent(touchEvent);
@@ -2163,12 +2114,6 @@ void RenderLayer::updateNeedsCompositedScrolling()
         // layers in WebCore, because we use UIKit to composite our scroll bars.
         m_needsCompositedScrolling = forceUseCompositedScrolling;
 #endif
-        // We gather a boolean value for use with Google UMA histograms to
-        // quantify the actual effects of a set of patches attempting to
-        // relax composited scrolling requirements, thereby increasing the
-        // number of composited overflow divs.
-        if (acceleratedCompositingForOverflowScrollEnabled())
-            HistogramSupport::histogramEnumeration("Renderer.NeedsCompositedScrolling", m_needsCompositedScrolling, 2);
     }
 
     if (oldNeedsCompositedScrolling != m_needsCompositedScrolling) {
@@ -4224,11 +4169,7 @@ void RenderLayer::paintList(Vector<RenderLayer*>* list, GraphicsContext* context
         RenderLayer* childLayer = list->at(i);
         if (childLayer->isFlowThreadCollectingGraphicsLayersUnderRegions())
             continue;
-
-        if (!childLayer->isPaginated())
-            childLayer->paintLayer(context, paintingInfo, paintFlags);
-        else
-            paintPaginatedChildLayer(childLayer, context, paintingInfo, paintFlags);
+        childLayer->paintLayer(context, paintingInfo, paintFlags);
     }
 }
 
@@ -4588,108 +4529,6 @@ void RenderLayer::paintOverflowControlsForFragments(const LayerFragments& layerF
     }
 }
 
-void RenderLayer::paintPaginatedChildLayer(RenderLayer* childLayer, GraphicsContext* context, const LayerPaintingInfo& paintingInfo, PaintLayerFlags paintFlags)
-{
-    // We need to do multiple passes, breaking up our child layer into strips.
-    Vector<RenderLayer*> columnLayers;
-    RenderLayer* ancestorLayer = isNormalFlowOnly() ? parent() : stackingContainer();
-    for (RenderLayer* curr = childLayer->parent(); curr; curr = curr->parent()) {
-        if (curr->renderer().hasColumns() && checkContainingBlockChainForPagination(&childLayer->renderer(), curr->renderBox()))
-            columnLayers.append(curr);
-        if (curr == ancestorLayer)
-            break;
-    }
-
-    // It is possible for paintLayer() to be called after the child layer ceases to be paginated but before
-    // updateLayerPositions() is called and resets the isPaginated() flag, see <rdar://problem/10098679>.
-    // If this is the case, just bail out, since the upcoming call to updateLayerPositions() will repaint the layer.
-    if (!columnLayers.size())
-        return;
-
-    paintChildLayerIntoColumns(childLayer, context, paintingInfo, paintFlags, columnLayers, columnLayers.size() - 1);
-}
-
-void RenderLayer::paintChildLayerIntoColumns(RenderLayer* childLayer, GraphicsContext* context, const LayerPaintingInfo& paintingInfo,
-    PaintLayerFlags paintFlags, const Vector<RenderLayer*>& columnLayers, size_t colIndex)
-{
-    RenderBlock& columnBlock = toRenderBlock(columnLayers[colIndex]->renderer());
-
-    ASSERT(columnBlock.hasColumns());
-    if (!columnBlock.hasColumns())
-        return;
-    
-    LayoutPoint layerOffset;
-    // FIXME: It looks suspicious to call convertToLayerCoords here
-    // as canUseConvertToLayerCoords is true for this layer.
-    columnBlock.layer()->convertToLayerCoords(paintingInfo.rootLayer, layerOffset);
-    
-    bool isHorizontal = columnBlock.style().isHorizontalWritingMode();
-
-    ColumnInfo* colInfo = columnBlock.columnInfo();
-    unsigned colCount = columnBlock.columnCount(colInfo);
-    LayoutUnit currLogicalTopOffset = columnBlock.initialBlockOffsetForPainting();
-    LayoutUnit blockDelta = columnBlock.blockDeltaForPaintingNextColumn();
-    for (unsigned i = 0; i < colCount; i++) {
-        // For each rect, we clip to the rect, and then we adjust our coords.
-        LayoutRect colRect = columnBlock.columnRectAt(colInfo, i);
-        columnBlock.flipForWritingMode(colRect);
-
-        LayoutUnit logicalLeftOffset = (isHorizontal ? colRect.x() : colRect.y()) - columnBlock.logicalLeftOffsetForContent();
-        LayoutSize offset = isHorizontal ? LayoutSize(logicalLeftOffset, currLogicalTopOffset) : LayoutSize(currLogicalTopOffset, logicalLeftOffset);
-        colRect.moveBy(layerOffset);
-        
-        LayoutRect localDirtyRect(paintingInfo.paintDirtyRect);
-        localDirtyRect.intersect(colRect);
-        if (!localDirtyRect.isEmpty()) {
-            GraphicsContextStateSaver stateSaver(*context);
-            
-            // Each strip pushes a clip, since column boxes are specified as being
-            // like overflow:hidden.
-            context->clip(pixelSnappedIntRect(colRect));
-
-            if (!colIndex) {
-                // Apply a translation transform to change where the layer paints.
-                TransformationMatrix oldTransform;
-                bool oldHasTransform = childLayer->transform();
-                if (oldHasTransform)
-                    oldTransform = *childLayer->transform();
-                TransformationMatrix newTransform(oldTransform);
-                newTransform.translateRight(roundToInt(offset.width()), roundToInt(offset.height()));
-                
-                childLayer->m_transform = std::make_unique<TransformationMatrix>(newTransform);
-                
-                LayerPaintingInfo localPaintingInfo(paintingInfo);
-                localPaintingInfo.paintDirtyRect = localDirtyRect;
-                childLayer->paintLayer(context, localPaintingInfo, paintFlags);
-
-                if (oldHasTransform)
-                    childLayer->m_transform = std::make_unique<TransformationMatrix>(oldTransform);
-                else
-                    childLayer->m_transform = nullptr;
-            } else {
-                // Adjust the transform such that the renderer's upper left corner will paint at (0,0) in user space.
-                // This involves subtracting out the position of the layer in our current coordinate space.
-                LayoutPoint childOffset;
-                columnLayers[colIndex - 1]->convertToLayerCoords(paintingInfo.rootLayer, childOffset);
-                TransformationMatrix transform;
-                transform.translateRight(roundToInt(childOffset.x() + offset.width()), roundToInt(childOffset.y() + offset.height()));
-                
-                // Apply the transform.
-                context->concatCTM(transform.toAffineTransform());
-
-                // Now do a paint with the root layer shifted to be the next multicol block.
-                LayerPaintingInfo columnPaintingInfo(paintingInfo);
-                columnPaintingInfo.rootLayer = columnLayers[colIndex - 1];
-                columnPaintingInfo.paintDirtyRect = transform.inverse().mapRect(localDirtyRect);
-                paintChildLayerIntoColumns(childLayer, context, columnPaintingInfo, paintFlags, columnLayers, colIndex - 1);
-            }
-        }
-
-        // Move to the next position.
-        currLogicalTopOffset += blockDelta;
-    }
-}
-
 bool RenderLayer::hitTest(const HitTestRequest& request, HitTestResult& result)
 {
     return hitTest(request, result.hitTestLocation(), result);
@@ -4931,7 +4770,7 @@ RenderLayer* RenderLayer::hitTestLayer(RenderLayer* rootLayer, RenderLayer* cont
         // We computed the correct state in the caller (above code), so just reference it.
         ASSERT(transformState);
         localTransformState = const_cast<HitTestingTransformState*>(transformState);
-    } else if (transformState || m_has3DTransformedDescendant || preserves3D()) {
+    } else if (transformState || has3DTransformedDescendant() || preserves3D()) {
         // We need transform state for the first time, or to offset the container state, so create it here.
         localTransformState = createLocalTransformState(rootLayer, containerLayer, hitTestRect, hitTestLocation, transformState);
     }
@@ -5223,10 +5062,7 @@ RenderLayer* RenderLayer::hitTestList(Vector<RenderLayer*>* list, RenderLayer* r
             continue;
         RenderLayer* hitLayer = 0;
         HitTestResult tempResult(result.hitTestLocation());
-        if (childLayer->isPaginated())
-            hitLayer = hitTestPaginatedChildLayer(childLayer, rootLayer, request, tempResult, hitTestRect, hitTestLocation, transformState, zOffsetForDescendants);
-        else
-            hitLayer = childLayer->hitTestLayer(rootLayer, this, request, tempResult, hitTestRect, hitTestLocation, false, transformState, zOffsetForDescendants);
+        hitLayer = childLayer->hitTestLayer(rootLayer, this, request, tempResult, hitTestRect, hitTestLocation, false, transformState, zOffsetForDescendants);
 
         // If it a rect-based test, we can safely append the temporary result since it might had hit
         // nodes but not necesserily had hitLayer set.
@@ -5243,104 +5079,6 @@ RenderLayer* RenderLayer::hitTestList(Vector<RenderLayer*>* list, RenderLayer* r
     }
 
     return resultLayer;
-}
-
-RenderLayer* RenderLayer::hitTestPaginatedChildLayer(RenderLayer* childLayer, RenderLayer* rootLayer, const HitTestRequest& request, HitTestResult& result,
-                                                     const LayoutRect& hitTestRect, const HitTestLocation& hitTestLocation, const HitTestingTransformState* transformState, double* zOffset)
-{
-    Vector<RenderLayer*> columnLayers;
-    RenderLayer* ancestorLayer = isNormalFlowOnly() ? parent() : stackingContainer();
-    for (RenderLayer* curr = childLayer->parent(); curr; curr = curr->parent()) {
-        if (curr->renderer().hasColumns() && checkContainingBlockChainForPagination(&childLayer->renderer(), curr->renderBox()))
-            columnLayers.append(curr);
-        if (curr == ancestorLayer)
-            break;
-    }
-
-    ASSERT(columnLayers.size());
-    return hitTestChildLayerColumns(childLayer, rootLayer, request, result, hitTestRect, hitTestLocation, transformState, zOffset,
-                                    columnLayers, columnLayers.size() - 1);
-}
-
-RenderLayer* RenderLayer::hitTestChildLayerColumns(RenderLayer* childLayer, RenderLayer* rootLayer, const HitTestRequest& request, HitTestResult& result,
-                                                   const LayoutRect& hitTestRect, const HitTestLocation& hitTestLocation, const HitTestingTransformState* transformState, double* zOffset,
-                                                   const Vector<RenderLayer*>& columnLayers, size_t columnIndex)
-{
-    RenderBlock& columnBlock = toRenderBlock(columnLayers[columnIndex]->renderer());
-
-    ASSERT(columnBlock.hasColumns());
-    if (!columnBlock.hasColumns())
-        return 0;
-
-    LayoutPoint layerOffset;
-    columnBlock.layer()->convertToLayerCoords(rootLayer, layerOffset);
-
-    ColumnInfo* colInfo = columnBlock.columnInfo();
-    int colCount = columnBlock.columnCount(colInfo);
-
-    // We have to go backwards from the last column to the first.
-    bool isHorizontal = columnBlock.style().isHorizontalWritingMode();
-    LayoutUnit logicalLeft = columnBlock.logicalLeftOffsetForContent();
-    LayoutUnit currLogicalTopOffset = columnBlock.initialBlockOffsetForPainting();
-    LayoutUnit blockDelta = columnBlock.blockDeltaForPaintingNextColumn();
-    currLogicalTopOffset += colCount * blockDelta;
-    for (int i = colCount - 1; i >= 0; i--) {
-        // For each rect, we clip to the rect, and then we adjust our coords.
-        LayoutRect colRect = columnBlock.columnRectAt(colInfo, i);
-        columnBlock.flipForWritingMode(colRect);
-        LayoutUnit currLogicalLeftOffset = (isHorizontal ? colRect.x() : colRect.y()) - logicalLeft;
-        currLogicalTopOffset -= blockDelta;
-
-        LayoutSize offset = isHorizontal ? LayoutSize(currLogicalLeftOffset, currLogicalTopOffset) : LayoutSize(currLogicalTopOffset, currLogicalLeftOffset);
-
-        colRect.moveBy(layerOffset);
-
-        LayoutRect localClipRect(hitTestRect);
-        localClipRect.intersect(colRect);
-
-        if (!localClipRect.isEmpty() && hitTestLocation.intersects(localClipRect)) {
-            RenderLayer* hitLayer = 0;
-            if (!columnIndex) {
-                // Apply a translation transform to change where the layer paints.
-                TransformationMatrix oldTransform;
-                bool oldHasTransform = childLayer->transform();
-                if (oldHasTransform)
-                    oldTransform = *childLayer->transform();
-                TransformationMatrix newTransform(oldTransform);
-                newTransform.translateRight(offset.width(), offset.height());
-
-                childLayer->m_transform = std::make_unique<TransformationMatrix>(newTransform);
-                hitLayer = childLayer->hitTestLayer(rootLayer, columnLayers[0], request, result, localClipRect, hitTestLocation, false, transformState, zOffset);
-                if (oldHasTransform)
-                    childLayer->m_transform = std::make_unique<TransformationMatrix>(oldTransform);
-                else
-                    childLayer->m_transform = nullptr;
-            } else {
-                // Adjust the transform such that the renderer's upper left corner will be at (0,0) in user space.
-                // This involves subtracting out the position of the layer in our current coordinate space.
-                RenderLayer* nextLayer = columnLayers[columnIndex - 1];
-                RefPtr<HitTestingTransformState> newTransformState = nextLayer->createLocalTransformState(rootLayer, nextLayer, localClipRect, hitTestLocation, transformState);
-                newTransformState->translate(offset.width(), offset.height(), HitTestingTransformState::AccumulateTransform);
-                FloatPoint localPoint = newTransformState->mappedPoint();
-                FloatQuad localPointQuad = newTransformState->mappedQuad();
-                LayoutRect localHitTestRect = newTransformState->mappedArea().enclosingBoundingBox();
-                HitTestLocation newHitTestLocation;
-                if (hitTestLocation.isRectBasedTest())
-                    newHitTestLocation = HitTestLocation(localPoint, localPointQuad);
-                else
-                    newHitTestLocation = HitTestLocation(localPoint);
-                newTransformState->flatten();
-
-                hitLayer = hitTestChildLayerColumns(childLayer, columnLayers[columnIndex - 1], request, result, localHitTestRect, newHitTestLocation,
-                                                    newTransformState.get(), zOffset, columnLayers, columnIndex - 1);
-            }
-
-            if (hitLayer)
-                return hitLayer;
-        }
-    }
-
-    return 0;
 }
 
 void RenderLayer::updateClipRects(const ClipRectsContext& clipRectsContext)
@@ -5635,6 +5373,18 @@ void RenderLayer::calculateRects(const ClipRectsContext& clipRectsContext, const
             bounds.moveBy(offset);
             if (this != clipRectsContext.rootLayer || clipRectsContext.respectOverflowClip == RespectOverflowClip)
                 backgroundRect.intersect(bounds);
+            
+            // Boxes inside flow threads don't have their logical left computed to avoid
+            // floats. Instead, that information is kept in their RenderBoxRegionInfo structure.
+            // As such, the layer bounds must be enlarged to encompass their background rect
+            // to ensure intersecting them won't result in an empty rect, which would eventually
+            // cause paint rejection.
+            if (flowThread && flowThread->isRenderNamedFlowThread()) {
+                if (flowThread->style().isHorizontalWritingMode())
+                    layerBounds.shiftMaxXEdgeTo(std::max(layerBounds.maxX(), backgroundRect.rect().maxX()));
+                else
+                    layerBounds.shiftMaxYEdgeTo(std::max(layerBounds.maxY(), backgroundRect.rect().maxY()));
+            }
         }
     }
 }

@@ -21,7 +21,6 @@
 #include "config.h"
 #include "RenderView.h"
 
-#include "ColumnInfo.h"
 #include "Document.h"
 #include "Element.h"
 #include "FloatQuad.h"
@@ -43,6 +42,8 @@
 #include "RenderLayerBacking.h"
 #include "RenderLayerCompositor.h"
 #include "RenderMultiColumnFlowThread.h"
+#include "RenderMultiColumnSet.h"
+#include "RenderMultiColumnSpannerPlaceholder.h"
 #include "RenderNamedFlowThread.h"
 #include "RenderSelectionInfo.h"
 #include "RenderWidget.h"
@@ -52,6 +53,45 @@
 #include <wtf/StackStats.h>
 
 namespace WebCore {
+
+struct SelectionIterator {
+    RenderObject* m_current;
+    Vector<RenderMultiColumnSpannerPlaceholder*> m_spannerStack;
+    
+    SelectionIterator(RenderObject* o)
+    {
+        m_current = o;
+        checkForSpanner();
+    }
+    
+    void checkForSpanner()
+    {
+        if (!m_current || !m_current->isRenderMultiColumnSpannerPlaceholder())
+            return;
+        RenderMultiColumnSpannerPlaceholder* placeholder = toRenderMultiColumnSpannerPlaceholder(m_current);
+        m_spannerStack.append(placeholder);
+        m_current = placeholder->spanner();
+    }
+    
+    RenderObject* current()
+    {
+        return m_current;
+    }
+    
+    RenderObject* next()
+    {
+        RenderObject* currentSpan = m_spannerStack.isEmpty() ? 0 : m_spannerStack.last()->spanner();
+        m_current = m_current->nextInPreOrder(currentSpan);
+        checkForSpanner();
+        if (!m_current && currentSpan) {
+            RenderObject* placeholder = m_spannerStack.last();
+            m_spannerStack.removeLast();
+            m_current = placeholder->nextInPreOrder();
+            checkForSpanner();
+        }
+        return m_current;
+    }
+};
 
 RenderView::RenderView(Document& document, PassRef<RenderStyle> style)
     : RenderBlockFlow(document, std::move(style))
@@ -133,9 +173,8 @@ void RenderView::updateLogicalWidth()
 
 LayoutUnit RenderView::availableLogicalHeight(AvailableLogicalHeightType) const
 {
-    // If we have columns, then the available logical height is reduced to the column height.
-    if (hasColumns())
-        return columnInfo()->columnHeight();
+    // FIXME: Need to patch for new columns?
+
 #if PLATFORM(IOS)
     // Workaround for <rdar://problem/7166808>.
     if (document().isPluginDocument() && frameView().useFixedLayout())
@@ -299,7 +338,7 @@ LayoutUnit RenderView::pageOrViewLogicalHeight() const
     if (document().printing())
         return pageLogicalHeight();
     
-    if ((hasColumns() || multiColumnFlowThread()) && !style().hasInlineColumnAxis()) {
+    if (multiColumnFlowThread() && !style().hasInlineColumnAxis()) {
         if (int pageLength = frameView().pagination().pageLength)
             return pageLength;
     }
@@ -414,11 +453,6 @@ void RenderView::computeColumnCountAndWidth()
             columnWidth = pageLength;
     }
     setComputedColumnCountAndWidth(1, columnWidth);
-}
-
-ColumnInfo::PaginationUnit RenderView::paginationUnit() const
-{
-    return frameView().pagination().behavesLikeColumns ? ColumnInfo::Column : ColumnInfo::Page;
 }
 
 void RenderView::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffset)
@@ -683,6 +717,7 @@ LayoutRect RenderView::subtreeSelectionBounds(const SelectionSubtreeRoot& root, 
 
     RenderObject* os = root.selectionStart();
     RenderObject* stop = rendererAfterPosition(root.selectionEnd(), root.selectionEndPos());
+    SelectionIterator selectionIterator(os);
     while (os && os != stop) {
         if ((os->canBeSelectionLeaf() || os == root.selectionStart() || os == root.selectionEnd()) && os->selectionState() != SelectionNone) {
             // Blocks are responsible for painting line gaps and margin gaps. They must be examined as well.
@@ -697,7 +732,7 @@ LayoutRect RenderView::subtreeSelectionBounds(const SelectionSubtreeRoot& root, 
             }
         }
 
-        os = os->nextInPreOrder();
+        os = selectionIterator.next();
     }
 
     // Now create a single bounding box rect that encloses the whole selection.
@@ -731,7 +766,8 @@ void RenderView::repaintSubtreeSelection(const SelectionSubtreeRoot& root) const
     HashSet<RenderBlock*> processedBlocks;
 
     RenderObject* end = rendererAfterPosition(root.selectionEnd(), root.selectionEndPos());
-    for (RenderObject* o = root.selectionStart(); o && o != end; o = o->nextInPreOrder()) {
+    SelectionIterator selectionIterator(root.selectionStart());
+    for (RenderObject* o = selectionIterator.current(); o && o != end; o = selectionIterator.next()) {
         if (!o->canBeSelectionLeaf() && o != root.selectionStart() && o != root.selectionEnd())
             continue;
         if (o->selectionState() == SelectionNone)
@@ -884,6 +920,7 @@ void RenderView::setSubtreeSelection(SelectionSubtreeRoot& root, RenderObject* s
 
     RenderObject* os = root.selectionStart();
     RenderObject* stop = rendererAfterPosition(root.selectionEnd(), root.selectionEndPos());
+    SelectionIterator selectionIterator(os);
     while (os && os != stop) {
         if ((os->canBeSelectionLeaf() || os == root.selectionStart() || os == root.selectionEnd())
             && os->selectionState() != SelectionNone) {
@@ -901,7 +938,7 @@ void RenderView::setSubtreeSelection(SelectionSubtreeRoot& root, RenderObject* s
             }
         }
 
-        os = os->nextInPreOrder();
+        os = selectionIterator.next();
     }
 
     // Now clear the selection.
@@ -927,11 +964,12 @@ void RenderView::setSubtreeSelection(SelectionSubtreeRoot& root, RenderObject* s
 
     RenderObject* o = start;
     stop = rendererAfterPosition(end, endPos);
-
+    selectionIterator = SelectionIterator(o);
+    
     while (o && o != stop) {
         if (o != start && o != end && o->canBeSelectionLeaf())
             o->setSelectionStateIfNeeded(SelectionInside);
-        o = o->nextInPreOrder();
+        o = selectionIterator.next();
     }
 
     if (blockRepaintMode != RepaintNothing)
@@ -940,6 +978,7 @@ void RenderView::setSubtreeSelection(SelectionSubtreeRoot& root, RenderObject* s
     // Now that the selection state has been updated for the new objects, walk them again and
     // put them in the new objects list.
     o = start;
+    selectionIterator = SelectionIterator(o);
     while (o && o != stop) {
         if ((o->canBeSelectionLeaf() || o == start || o == end) && o->selectionState() != SelectionNone) {
             std::unique_ptr<RenderSelectionInfo> selectionInfo = std::make_unique<RenderSelectionInfo>(o, true);
@@ -964,7 +1003,7 @@ void RenderView::setSubtreeSelection(SelectionSubtreeRoot& root, RenderObject* s
             }
         }
 
-        o = o->nextInPreOrder();
+        o = selectionIterator.next();
     }
 
     if (blockRepaintMode == RepaintNothing)
@@ -1061,23 +1100,16 @@ bool RenderView::rootBackgroundIsEntirelyFixed() const
     return rootObject->rendererForRootBackground().hasEntirelyFixedBackground();
 }
     
-LayoutRect RenderView::unextendedBackgroundRect(RenderBox* backgroundRenderer) const
+LayoutRect RenderView::unextendedBackgroundRect(RenderBox*) const
 {
-    if (!hasColumns())
-        return unscaledDocumentRect();
-
-    ColumnInfo* columnInfo = this->columnInfo();
-    LayoutRect backgroundRect(0, 0, columnInfo->desiredColumnWidth(), columnInfo->columnHeight() * columnInfo->columnCount());
-    if (!isHorizontalWritingMode())
-        backgroundRect = backgroundRect.transposedRect();
-    backgroundRenderer->flipForWritingMode(backgroundRect);
-
-    return backgroundRect;
+    // FIXME: What is this? Need to patch for new columns?
+    return unscaledDocumentRect();
 }
     
 LayoutRect RenderView::backgroundRect(RenderBox* backgroundRenderer) const
 {
-    if (!hasColumns() && frameView().hasExtendedBackgroundRectForPainting())
+    // FIXME: New columns care about this?
+    if (frameView().hasExtendedBackgroundRectForPainting())
         return frameView().extendedBackgroundRectForPainting();
 
     return unextendedBackgroundRect(backgroundRenderer);
@@ -1135,7 +1167,7 @@ bool RenderView::shouldDisableLayoutStateForSubtree(RenderObject* renderer) cons
 {
     RenderObject* o = renderer;
     while (o) {
-        if (o->hasColumns() || o->hasTransform() || o->hasReflection())
+        if (o->hasTransform() || o->hasReflection())
             return true;
         o = o->container();
     }
@@ -1214,6 +1246,8 @@ void RenderView::styleDidChange(StyleDifference diff, const RenderStyle* oldStyl
     RenderBlockFlow::styleDidChange(diff, oldStyle);
     if (hasRenderNamedFlowThreads())
         flowThreadController().styleDidChange();
+
+    frameView().styleDidChange();
 }
 
 bool RenderView::hasRenderNamedFlowThreads() const
@@ -1332,13 +1366,7 @@ unsigned RenderView::pageNumberForBlockProgressionOffset(int offset) const
     bool progressionIsInline = false;
     bool progressionIsReversed = false;
     
-    if (hasColumns()) {
-        ColumnInfo* colInfo = columnInfo();
-        if (!colInfo)
-            return columnNumber;
-        progressionIsInline = colInfo->progressionIsInline();
-        progressionIsReversed = colInfo->progressionIsReversed();
-    } else if (multiColumnFlowThread()) {
+    if (multiColumnFlowThread()) {
         progressionIsInline = multiColumnFlowThread()->progressionIsInline();
         progressionIsReversed = multiColumnFlowThread()->progressionIsReversed();
     } else
@@ -1360,10 +1388,8 @@ unsigned RenderView::pageCount() const
     if (pagination.mode == Pagination::Unpaginated)
         return 0;
     
-    if (hasColumns())
-        return columnCount(columnInfo());
-    if (multiColumnFlowThread())
-        return multiColumnFlowThread()->columnCount();
+    if (multiColumnFlowThread() && multiColumnFlowThread()->firstMultiColumnSet())
+        return multiColumnFlowThread()->firstMultiColumnSet()->columnCount();
 
     return 0;
 }

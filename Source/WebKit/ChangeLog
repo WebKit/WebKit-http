@@ -1,3 +1,68 @@
+2014-05-06  Anders Carlsson  <andersca@apple.com>
+
+        Put the symlink in the right place.
+
+        * WebKit.xcodeproj/project.pbxproj:
+
+2014-05-06  Anders Carlsson  <andersca@apple.com>
+
+        Put WebKitPluginHost.app in WebKitLegacy.framework
+        https://bugs.webkit.org/show_bug.cgi?id=132592
+        <rdar://problem/15920046>
+
+        Reviewed by Dan Bernstein.
+
+        * WebKit.xcodeproj/project.pbxproj:
+
+2014-05-05  Andreas Kling  <akling@apple.com>
+
+        Unreviewed, rolling out r168334.
+
+        Broke builds.
+
+        Reverted changeset:
+
+        "Put WebKitPluginHost.app in WebKitLegacy.framework"
+        https://bugs.webkit.org/show_bug.cgi?id=132592
+        http://trac.webkit.org/changeset/168334
+
+2014-05-05  Anders Carlsson  <andersca@apple.com>
+
+        Put WebKitPluginHost.app in WebKitLegacy.framework
+        https://bugs.webkit.org/show_bug.cgi?id=132592
+        <rdar://problem/15920046>
+
+        Reviewed by Dan Bernstein.
+
+        * WebKit.xcodeproj/project.pbxproj:
+
+2014-05-02  Anders Carlsson  <andersca@apple.com>
+
+        Remove unsuccessful build fix attempts
+        https://bugs.webkit.org/show_bug.cgi?id=132476
+
+        Reviewed by Dan Bernstein.
+
+        * WebKit.xcodeproj/project.pbxproj:
+
+2014-05-01  Anders Carlsson  <andersca@apple.com>
+
+        Support OS-version-specific install paths for WebKit.framework
+        https://bugs.webkit.org/show_bug.cgi?id=132448
+        <rdar://problem/16784932>
+
+        Reviewed by Dan Bernstein.
+
+        * WebKit.xcodeproj/project.pbxproj:
+        Add a build step to put a symlink in place from PrivateFrameworks to Frameworks.
+
+2014-05-01  Dan Bernstein  <mitz@apple.com>
+
+        <rdar://problem/16780403> REGRESSION: Plugin tests failing on Mac/WebKit1.
+
+        * WebKit.xcodeproj/project.pbxproj: Keep the WebKitPluginHost.app symlink in
+        WebKit.framework for now.
+
 2014-04-30  Eric Carlson  <eric.carlson@apple.com>
 
         [iOS] do not pause video when entering background while playing to external device

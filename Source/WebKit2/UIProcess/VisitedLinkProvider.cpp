@@ -89,12 +89,34 @@ void VisitedLinkProvider::removeProcess(WebProcessProxy& process)
         process.removeMessageReceiver(Messages::VisitedLinkProvider::messageReceiverName(), m_identifier);
 }
 
+void VisitedLinkProvider::removeAll()
+{
+    m_pendingVisitedLinksTimer.stop();
+    m_pendingVisitedLinks.clear();
+    m_keyCount = 0;
+    m_tableSize = 0;
+    m_table.clear();
+
+    for (auto& processAndCount : m_processes)
+        processAndCount.key->connection()->send(Messages::VisitedLinkTableController::RemoveAllVisitedLinks(), m_identifier);
+}
+
 void VisitedLinkProvider::addVisitedLinkHash(LinkHash linkHash)
 {
     m_pendingVisitedLinks.add(linkHash);
 
     if (!m_pendingVisitedLinksTimer.isActive())
         m_pendingVisitedLinksTimer.startOneShot(0);
+}
+
+void VisitedLinkProvider::addVisitedLinkHashFromPage(uint64_t pageID, LinkHash linkHash)
+{
+    if (WebPageProxy* webPageProxy = WebProcessProxy::webPage(pageID)) {
+        if (!webPageProxy->addsVisitedLinks())
+            return;
+    }
+
+    addVisitedLinkHash(linkHash);
 }
 
 static unsigned nextPowerOf2(unsigned v)

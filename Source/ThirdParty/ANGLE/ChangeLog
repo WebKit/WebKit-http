@@ -1,3 +1,43 @@
+2014-05-02  Alex Christensen  <achristensen@webkit.org>
+
+        Update ANGLE Windows build.
+        https://bugs.webkit.org/show_bug.cgi?id=132456
+
+        Reviewed by Brent Fulgham.
+
+        * ANGLE.vcxproj/libEGLCommon.props:
+        * ANGLE.vcxproj/libGLESv2.vcxproj:
+        * ANGLE.vcxproj/libGLESv2.vcxproj.filters:
+        * ANGLE.vcxproj/libGLESv2Common.props:
+        * ANGLE.vcxproj/translator_common.vcxproj:
+        * ANGLE.vcxproj/translator_common.vcxproj.filters:
+        * ANGLE.vcxproj/translator_glsl.vcxproj:
+        * ANGLE.vcxproj/translator_glsl.vcxproj.filters:
+        * ANGLE.vcxproj/translator_hlsl.vcxproj:
+        * ANGLE.vcxproj/translator_hlsl.vcxproj.filters:
+        Updated ANGLE build.
+        * src/ANGLE.sln: Removed.
+        * src/build_angle.gyp: Removed.
+        * src/commit.h: Added.
+        * changes.diff:
+        * src/libGLESv2/Program.cpp:
+        (gl::InfoLog::append):
+        Fixed typo.
+
+2014-05-01  Alex Christensen  <achristensen@webkit.org>
+
+        Finish updating ANGLE.
+        https://bugs.webkit.org/show_bug.cgi?id=132434
+
+        Reviewed by Dean Jackson.
+
+        * ANGLE.xcodeproj/project.pbxproj:
+        Removed Uniform.cpp which is no longer in ANGLE.
+        * changes.diff:
+        Added more changes from ANGLE which are already included in WebKit.
+
+        Updated ANGLE source files to e7a453a5bd76705ccb151117fa844846d4aa90af.  Long list of changes omitted.
+
 2014-04-30  Alex Christensen  <achristensen@webkit.org>
 
         Updated ANGLE.

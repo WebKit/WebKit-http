@@ -1,3 +1,379 @@
+2014-05-06  Michael Saboff  <msaboff@apple.com>
+
+        Unreviewd build fix for C-LOOP after r168396.
+
+        * runtime/TestRunnerUtils.cpp:
+        (JSC::optimizeNextInvocation): Wrapped actual call inside #if ENABLE(JIT)
+
+2014-05-06  Michael Saboff  <msaboff@apple.com>
+
+        Add test for deleteAllCompiledCode
+        https://bugs.webkit.org/show_bug.cgi?id=132632
+
+        Reviewed by Phil Pizlo.
+
+        Added two new hooks to jsc, one to call Heap::deleteAllCompiledCode() and
+        the other to call CodeBlock::optimizeNextInvocation().  Used these two hooks
+        to write a test that will queue up loads of DFG compiles and then call
+        Heap::deleteAllCompiledCode() to make sure that it can handle compiled
+        code as well as code being compiled.
+
+        * jsc.cpp:
+        (GlobalObject::finishCreation):
+        (functionDeleteAllCompiledCode):
+        (functionOptimizeNextInvocation):
+        * runtime/TestRunnerUtils.cpp:
+        (JSC::optimizeNextInvocation):
+        * runtime/TestRunnerUtils.h:
+        * tests/stress/deleteAllCompiledCode.js: Added.
+        (functionList):
+        (runTest):
+
+2014-05-06  Andreas Kling  <akling@apple.com>
+
+        JSString::toAtomicString() should return AtomicString.
+        <https://webkit.org/b/132627>
+
+        Remove premature optimization where I was trying to avoid refcount
+        churn when returning an already atomicized String.
+
+        Instead of using reinterpret_cast to mangle the String member into
+        a const AtomicString& return value, just return AtomicString.
+
+        Reviewed by Geoff Garen.
+
+        * runtime/JSString.h:
+        (JSC::JSString::toAtomicString):
+
+2014-05-06  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        Roll out r167889
+
+        Rubber stamped by Geoff Garen.
+
+        It broke some websites.
+
+        * runtime/JSPropertyNameIterator.cpp:
+        (JSC::JSPropertyNameIterator::create):
+        * runtime/PropertyMapHashTable.h:
+        (JSC::PropertyTable::hasDeletedOffset):
+        (JSC::PropertyTable::hadDeletedOffset): Deleted.
+        * runtime/Structure.cpp:
+        (JSC::Structure::Structure):
+        (JSC::Structure::materializePropertyMap):
+        (JSC::Structure::removePropertyTransition):
+        (JSC::Structure::changePrototypeTransition):
+        (JSC::Structure::despecifyFunctionTransition):
+        (JSC::Structure::attributeChangeTransition):
+        (JSC::Structure::toDictionaryTransition):
+        (JSC::Structure::preventExtensionsTransition):
+        (JSC::Structure::addPropertyWithoutTransition):
+        (JSC::Structure::removePropertyWithoutTransition):
+        (JSC::Structure::pin):
+        (JSC::Structure::pinAndPreventTransitions): Deleted.
+        * runtime/Structure.h:
+        * runtime/StructureInlines.h:
+        (JSC::Structure::setEnumerationCache):
+        (JSC::Structure::propertyTable):
+        (JSC::Structure::checkOffsetConsistency):
+        (JSC::Structure::hadDeletedOffsets): Deleted.
+        * tests/stress/for-in-after-delete.js:
+        (foo): Deleted.
+
+2014-05-05  Andreas Kling  <akling@apple.com>
+
+        Fix debug build.
+
+        * runtime/JSCellInlines.h:
+        (JSC::JSCell::fastGetOwnProperty):
+
+2014-05-05  Andreas Kling  <akling@apple.com>
+
+        Optimize GetByVal when subscript is a rope string.
+        <https://webkit.org/b/132590>
+
+        Use JSString::toIdentifier() in the various GetByVal implementations
+        to try and avoid allocating extra strings.
+
+        Added canUseFastGetOwnProperty() and wrap calls to fastGetOwnProperty()
+        in that, to avoid calling JSString::value() which always resolves ropes
+        into new strings and de-optimizes subsequent toIdentifier() calls.
+
+        My iMac says ~9% progression on Dromaeo/dom-attr.html
+
+        Reviewed by Phil Pizlo.
+
+        * dfg/DFGOperations.cpp:
+        * jit/JITOperations.cpp:
+        (JSC::getByVal):
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::getByVal):
+        * runtime/JSCell.h:
+        * runtime/JSCellInlines.h:
+        (JSC::JSCell::fastGetOwnProperty):
+        (JSC::JSCell::canUseFastGetOwnProperty):
+
+2014-05-05  Andreas Kling  <akling@apple.com>
+
+        REGRESSION (r168256): ASSERTION FAILED: (buffer + m_length) == position loading vanityfair.com article.
+        <https://webkit.org/b/168256>
+        <rdar://problem/16816316>
+
+        Make resolveRopeSlowCase8() behave like its 16-bit counterpart and not
+        clear the fibers. The caller takes care of this.
+
+        Test: fast/dom/getElementById-with-rope-string-arg.html
+
+        Reviewed by Geoffrey Garen.
+
+        * runtime/JSString.cpp:
+        (JSC::JSRopeString::resolveRopeSlowCase8):
+
+2014-05-05  Michael Saboff  <msaboff@apple.com>
+
+        REGRESSION: RELEASE_ASSERT in CodeBlock::baselineVersion @ cnn.com
+        https://bugs.webkit.org/show_bug.cgi?id=132581
+
+        Reviewed by Filip Pizlo.
+
+        * dfg/DFGPlan.cpp:
+        (JSC::DFG::Plan::isStillValid): Check that the alternative codeBlock we
+        started compiling for is still the same at the end of compilation.
+        Also did some minor restructuring.
+
+2014-05-05  Andreas Kling  <akling@apple.com>
+
+        Optimize PutByVal when subscript is a rope string.
+        <https://webkit.org/b/132572>
+
+        Add a JSString::toIdentifier() that is smarter when the JSString is
+        really a rope string. Use this in baseline & DFG's PutByVal to avoid
+        allocating new StringImpls that we immediately deduplicate anyway.
+
+        Reviewed by Antti Koivisto.
+
+        * dfg/DFGOperations.cpp:
+        (JSC::DFG::operationPutByValInternal):
+        * jit/JITOperations.cpp:
+        * runtime/JSString.h:
+        (JSC::JSString::toIdentifier):
+
+2014-05-05  Andreas Kling  <akling@apple.com>
+
+        Remove two now-incorrect assertions after r168256.
+
+        * runtime/JSString.cpp:
+        (JSC::JSRopeString::resolveRopeSlowCase8):
+        (JSC::JSRopeString::resolveRopeSlowCase):
+
+2014-05-04  Andreas Kling  <akling@apple.com>
+
+        Optimize JSRopeString for resolving directly to AtomicString.
+        <https://webkit.org/b/132548>
+
+        If we know that the JSRopeString we are resolving is going to be used
+        as an AtomicString, we can try to avoid creating a new string.
+
+        We do this by first resolving the rope into a stack buffer, and using
+        that buffer as a key into the AtomicString table. If there is already
+        an AtomicString with the same characters, we reuse that instead of
+        constructing a new StringImpl.
+
+        JSString gains these two public functions:
+
+        - AtomicString toAtomicString()
+
+            Returns an AtomicString, tries to avoid allocating a new string
+            if possible.
+
+        - AtomicStringImpl* toExistingAtomicString()
+
+            Returns a non-null AtomicStringImpl* if one already exists in the
+            AtomicString table. If none is found, the rope is left unresolved.
+
+        Reviewed by Filip Pizlo.
+
+        * runtime/JSString.cpp:
+        (JSC::JSRopeString::resolveRopeInternal8):
+        (JSC::JSRopeString::resolveRopeInternal16):
+        (JSC::JSRopeString::resolveRopeToAtomicString):
+        (JSC::JSRopeString::clearFibers):
+        (JSC::JSRopeString::resolveRopeToExistingAtomicString):
+        (JSC::JSRopeString::resolveRope):
+        (JSC::JSRopeString::outOfMemory):
+        * runtime/JSString.h:
+        (JSC::JSString::toAtomicString):
+        (JSC::JSString::toExistingAtomicString):
+
+2014-05-04  Andreas Kling  <akling@apple.com>
+
+        Unreviewed, rolling out r168254.
+
+        Very crashy on debug JSC tests.
+
+        Reverted changeset:
+
+        "jsSubstring() should be lazy"
+        https://bugs.webkit.org/show_bug.cgi?id=132556
+        http://trac.webkit.org/changeset/168254
+
+2014-05-04  Filip Pizlo  <fpizlo@apple.com>
+
+        jsSubstring() should be lazy
+        https://bugs.webkit.org/show_bug.cgi?id=132556
+
+        Reviewed by Andreas Kling.
+        
+        jsSubstring() is now lazy by using a special rope that is a substring instead of a
+        concatenation. To make this patch super simple, we require that a substring's base is
+        never a rope. Hence, when resolving a rope, we either go down a non-recursive substring
+        path, or we go down a concatenation path which may see exactly one level of substrings in
+        its fibers.
+        
+        This is up to a 50% speed-up on microbenchmarks and a 10% speed-up on Octane/regexp.
+
+        * heap/MarkedBlock.cpp:
+        (JSC::MarkedBlock::specializedSweep):
+        * runtime/JSString.cpp:
+        (JSC::JSRopeString::visitFibers):
+        (JSC::JSRopeString::resolveRope):
+        (JSC::JSRopeString::resolveRopeSlowCase8):
+        (JSC::JSRopeString::resolveRopeSlowCase):
+        (JSC::JSRopeString::outOfMemory):
+        * runtime/JSString.h:
+        (JSC::JSRopeString::finishCreation):
+        (JSC::JSRopeString::append):
+        (JSC::JSRopeString::create):
+        (JSC::JSRopeString::offsetOfFibers):
+        (JSC::JSRopeString::fiber):
+        (JSC::JSRopeString::substringBase):
+        (JSC::JSRopeString::substringOffset):
+        (JSC::JSRopeString::substringSentinel):
+        (JSC::JSRopeString::isSubstring):
+        (JSC::jsSubstring):
+        * runtime/RegExpMatchesArray.cpp:
+        (JSC::RegExpMatchesArray::reifyAllProperties):
+        * runtime/StringPrototype.cpp:
+        (JSC::stringProtoFuncSubstring):
+
+2014-05-02  Michael Saboff  <msaboff@apple.com>
+
+        "arm64 function not 4-byte aligned" warnings when building JSC
+        https://bugs.webkit.org/show_bug.cgi?id=132495
+
+        Reviewed by Geoffrey Garen.
+
+        Added ".align 4" for both ARM Thumb2 and ARM 64 to silence the linker.
+
+        * llint/LowLevelInterpreter.cpp:
+
+2014-05-02  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        Fix cloop build after r168178
+
+        * bytecode/CodeBlock.cpp:
+
+2014-05-01  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        Add a DFG function whitelist
+        https://bugs.webkit.org/show_bug.cgi?id=132437
+
+        Reviewed by Geoffrey Garen.
+
+        Often times when debugging, using bytecode ranges isn't enough to narrow down to the 
+        particular DFG block that's causing issues. This patch adds the ability to whitelist 
+        specific functions specified in a file to enable further filtering without having to recompile.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj.filters:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * dfg/DFGCapabilities.cpp:
+        (JSC::DFG::isSupported):
+        (JSC::DFG::mightInlineFunctionForCall):
+        (JSC::DFG::mightInlineFunctionForClosureCall):
+        (JSC::DFG::mightInlineFunctionForConstruct):
+        * dfg/DFGFunctionWhitelist.cpp: Added.
+        (JSC::DFG::FunctionWhitelist::ensureGlobalWhitelist):
+        (JSC::DFG::FunctionWhitelist::FunctionWhitelist):
+        (JSC::DFG::FunctionWhitelist::parseFunctionNamesInFile):
+        (JSC::DFG::FunctionWhitelist::contains):
+        * dfg/DFGFunctionWhitelist.h: Added.
+        * runtime/Options.cpp:
+        (JSC::parse):
+        (JSC::Options::dumpOption):
+        * runtime/Options.h:
+
+2014-05-02  Filip Pizlo  <fpizlo@apple.com>
+
+        DFGAbstractInterpreter should not claim Int52 arithmetic creates Int52s
+        https://bugs.webkit.org/show_bug.cgi?id=132446
+
+        Reviewed by Mark Hahnenberg.
+        
+        Basically any arithmetic operation can turn an Int52 into an Int32 or vice-versa, and
+        our modeling of Int52Rep nodes is such that they can have either Int32 or Int52 type
+        to indicate a bound on the value. This is useful for knowing, for example, that
+        Int52Rep(Int32:) returns a value that cannot be outside the Int32 range. Also,
+        ValueRep(Int52Rep:) uses this to determine whether it may return a double or an int.
+        But this means that all arithmetic operations must be careful to note that they may
+        turn Int32 inputs into an Int52 output or vice-versa, as these new tests show.
+
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::makeSafe):
+        * tests/stress/int52-ai-add-then-filter-int32.js: Added.
+        (foo):
+        * tests/stress/int52-ai-mul-and-clean-neg-zero-then-filter-int32.js: Added.
+        (foo):
+        * tests/stress/int52-ai-mul-then-filter-int32-directly.js: Added.
+        (foo):
+        * tests/stress/int52-ai-mul-then-filter-int32.js: Added.
+        (foo):
+        * tests/stress/int52-ai-neg-then-filter-int32.js: Added.
+        (foo):
+        * tests/stress/int52-ai-sub-then-filter-int32.js: Added.
+        (foo):
+
+2014-05-01  Geoffrey Garen  <ggaren@apple.com>
+
+        JavaScriptCore fails to build with some versions of clang
+        https://bugs.webkit.org/show_bug.cgi?id=132436
+
+        Reviewed by Anders Carlsson.
+
+        * runtime/ArgumentsIteratorConstructor.cpp: Since we call
+        putDirectWithoutTransition, and it calls putWillGrowOutOfLineStorage,
+        and both are marked inline, it's valid for the compiler to decide
+        to inline both and emit neither in the binary. Therefore, we need
+        both inline definitions to be available in the translation unit at
+        compile time, or we'll try to link against a function that doesn't exist.
+
+2014-05-01  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r167964.
+        https://bugs.webkit.org/show_bug.cgi?id=132431
+
+        Memory improvements should not regress memory usage (Requested
+        by olliej on #webkit).
+
+        Reverted changeset:
+
+        "Don't hold on to parameter BindingNodes forever"
+        https://bugs.webkit.org/show_bug.cgi?id=132360
+        http://trac.webkit.org/changeset/167964
+
+2014-05-01  Filip Pizlo  <fpizlo@apple.com>
+
+        Fix trivial debug-only race-that-crashes in CallLinkStatus and explain why the remaining races are totally awesome
+        https://bugs.webkit.org/show_bug.cgi?id=132427
+
+        Reviewed by Mark Hahnenberg.
+
+        * bytecode/CallLinkStatus.cpp:
+        (JSC::CallLinkStatus::computeFor):
+
 2014-04-30  Simon Fraser  <simon.fraser@apple.com>
 
         Remove ENABLE_PLUGIN_PROXY_FOR_VIDEO

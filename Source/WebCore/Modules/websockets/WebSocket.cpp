@@ -35,7 +35,6 @@
 #include "WebSocket.h"
 
 #include "Blob.h"
-#include "BlobData.h"
 #include "CloseEvent.h"
 #include "ContentSecurityPolicy.h"
 #include "DOMWindow.h"
@@ -57,7 +56,6 @@
 #include <runtime/ArrayBuffer.h>
 #include <runtime/ArrayBufferView.h>
 #include <wtf/HashSet.h>
-#include <wtf/OwnPtr.h>
 #include <wtf/PassOwnPtr.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/text/CString.h>
@@ -351,7 +349,6 @@ void WebSocket::send(ArrayBufferView* arrayBufferView, ExceptionCode& ec)
 void WebSocket::send(Blob* binaryData, ExceptionCode& ec)
 {
     LOG(Network, "WebSocket %p send() Sending Blob '%s'", this, binaryData->url().stringCenterEllipsizedToLength().utf8().data());
-    ASSERT(binaryData);
     if (m_state == CONNECTING) {
         ec = INVALID_STATE_ERR;
         return;
@@ -521,10 +518,8 @@ void WebSocket::didReceiveBinaryData(PassOwnPtr<Vector<char>> binaryData)
     LOG(Network, "WebSocket %p didReceiveBinaryData() %lu byte binary message", this, static_cast<unsigned long>(binaryData->size()));
     switch (m_binaryType) {
     case BinaryTypeBlob: {
-        size_t size = binaryData->size();
-        auto blobData = std::make_unique<BlobData>();
-        blobData->appendData(RawData::create(std::move(*binaryData)), 0, BlobDataItem::toEndOfFile);
-        RefPtr<Blob> blob = Blob::create(std::move(blobData), size);
+        // FIXME: We just received the data from NetworkProcess, and are sending it back. This is inefficient.
+        RefPtr<Blob> blob = Blob::create(std::move(*binaryData), emptyString());
         dispatchEvent(MessageEvent::create(blob.release(), SecurityOrigin::create(m_url)->toString()));
         break;
     }

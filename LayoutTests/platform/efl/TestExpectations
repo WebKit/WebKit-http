@@ -432,13 +432,6 @@ webkit.org/b/100519 fast/images/paletted-png-with-color-profile.html [ Skip ]
 # The following test fail because blending is not yet implemented
 webkit.org/b/105542 fast/canvas/canvas-blend-image.html [ Skip ]
 webkit.org/b/105542 fast/canvas/canvas-blend-solid.html [ Skip ]
-webkit.org/b/126887 css3/compositing/background-blend-mode-crossfade-image.html [ Skip ]
-webkit.org/b/99200 css3/compositing/blend-mode-layers.html [ Skip ]
-webkit.org/b/99200 css3/compositing/blend-mode-overflow.html [ Skip ]
-webkit.org/b/99200 css3/compositing/blend-mode-reflection.html [ Skip ]
-webkit.org/b/99200 css3/compositing/blend-mode-simple.html [ Skip ]
-webkit.org/b/118894 css3/compositing/background-blend-mode-data-uri-svg-image.html [ Skip ]
-webkit.org/b/126888 css3/compositing/background-blend-mode-tiled-layers.html [ Skip ]
 
 # No concept of secure text input
 editing/secure-input [ Failure ]
@@ -1053,7 +1046,7 @@ webkit.org/b/93976 fast/css-generated-content/quotes-lang.html [ ImageOnlyFailur
 webkit.org/b/94009 css2.1/20110323/c541-word-sp-000.htm [ ImageOnlyFailure ]
 
 # Requires CSS_COMPOSITING to be turned on
-webkit.org/b/94024 css3/compositing [ Skip ]
+webkit.org/b/94024 css3/blending [ Skip ]
 
 # Fails because Blend Mode is not enabled yet.
 webkit.org/b/91908 transitions/blendmode-transitions.html [ Skip ]

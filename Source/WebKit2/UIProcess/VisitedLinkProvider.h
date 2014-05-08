@@ -52,12 +52,15 @@ public:
     void removeProcess(WebProcessProxy&);
 
     void addVisitedLinkHash(WebCore::LinkHash);
+    void removeAll();
 
 private:
     VisitedLinkProvider();
 
     // IPC::MessageReceiver
     virtual void didReceiveMessage(IPC::Connection*, IPC::MessageDecoder&) override;
+
+    void addVisitedLinkHashFromPage(uint64_t pageID, WebCore::LinkHash);
 
     void pendingVisitedLinksTimerFired();
 

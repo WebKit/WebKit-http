@@ -56,7 +56,6 @@
 #include "ewk_context_menu_item_private.h"
 #include "ewk_context_menu_private.h"
 #include "ewk_context_private.h"
-#include "ewk_favicon_database_private.h"
 #include "ewk_page_group_private.h"
 #include "ewk_popup_menu_item_private.h"
 #include "ewk_popup_menu_private.h"
@@ -327,24 +326,12 @@ EwkView::EwkView(WKViewRef view, Evas_Object* evasObject)
     // Enable mouse events by default
     setMouseEventsEnabled(true);
 
-    // Listen for favicon changes.
-    EwkFaviconDatabase* iconDatabase = m_context->faviconDatabase();
-    ASSERT(iconDatabase);
-
-    iconDatabase->watchChanges(IconChangeCallbackData(EwkView::handleFaviconChanged, this));
-
     WKPageToEvasObjectMap::AddResult result = wkPageToEvasObjectMap().add(wkPage(), m_evasObject);
     ASSERT_UNUSED(result, result.isNewEntry);
 }
 
 EwkView::~EwkView()
 {
-    // Unregister icon change callback.
-    EwkFaviconDatabase* iconDatabase = m_context->faviconDatabase();
-    ASSERT(iconDatabase);
-
-    iconDatabase->unwatchChanges(EwkView::handleFaviconChanged);
-
     ASSERT(wkPageToEvasObjectMap().get(wkPage()) == m_evasObject);
     wkPageToEvasObjectMap().remove(wkPage());
 }
@@ -454,8 +441,7 @@ void EwkView::updateCursor()
     if (!m_theme || !edje_object_file_set(cursorObject.get(), m_theme, group)) {
         ecore_evas_object_cursor_set(ecoreEvas, 0, 0, 0, 0);
 #ifdef HAVE_ECORE_X
-        if (WebCore::isUsingEcoreX(sd->base.evas))
-            WebCore::applyFallbackCursor(ecoreEvas, group);
+        WebCore::applyFallbackCursor(ecoreEvas, group);
 #endif
         return;
     }
@@ -535,11 +521,7 @@ AffineTransform EwkView::transformToScreen() const
 #ifdef HAVE_ECORE_X
     Ecore_Evas* ecoreEvas = ecore_evas_ecore_evas_get(sd->base.evas);
 
-    Ecore_X_Window window;
-    window = ecore_evas_gl_x11_window_get(ecoreEvas);
-    // Fallback to software mode if necessary.
-    if (!window)
-        window = ecore_evas_software_x11_window_get(ecoreEvas); // Returns 0 if none.
+    Ecore_X_Window window = getEcoreXWindow(ecoreEvas);
 
     int x, y; // x, y are relative to parent (in a reparenting window manager).
     while (window) {
@@ -1076,17 +1058,6 @@ void EwkView::informURLChange()
 
     m_url = WKEinaSharedString(wkURLString.get());
     smartCallback<URLChanged>().call(m_url);
-
-    // Update the view's favicon.
-    smartCallback<FaviconChanged>().call();
-}
-
-Evas_Object* EwkView::createFavicon() const
-{
-    EwkFaviconDatabase* iconDatabase = m_context->faviconDatabase();
-    ASSERT(iconDatabase);
-
-    return ewk_favicon_database_icon_get(iconDatabase, m_url, smartData()->base.evas);
 }
 
 EwkWindowFeatures* EwkView::windowFeatures()
@@ -1383,8 +1354,6 @@ void EwkView::handleFaviconChanged(const char* pageURL, void* eventInfo)
 
     if (!view->url() || strcasecmp(view->url(), pageURL))
         return;
-
-    view->smartCallback<FaviconChanged>().call();
 }
 
 PassRefPtr<cairo_surface_t> EwkView::takeSnapshot()

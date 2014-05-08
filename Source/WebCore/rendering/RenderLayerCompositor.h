@@ -185,6 +185,8 @@ public:
     RenderLayer& rootRenderLayer() const;
     GraphicsLayer* rootGraphicsLayer() const;
     GraphicsLayer* scrollLayer() const;
+    GraphicsLayer* clipLayer() const;
+    GraphicsLayer* rootContentLayer() const;
 
 #if ENABLE(RUBBER_BANDING)
     GraphicsLayer* headerLayer() const;
@@ -249,7 +251,6 @@ public:
 
     void layerTiledBackingUsageChanged(const GraphicsLayer*, bool /*usingTiledBacking*/);
     
-    bool keepLayersPixelAligned() const;
     bool acceleratedDrawingEnabled() const { return m_acceleratedDrawingEnabled; }
 
     void deviceOrPageScaleFactorChanged();
@@ -311,13 +312,12 @@ private:
     virtual void notifyAnimationStarted(const GraphicsLayer*, double) override { }
     virtual void notifyFlushRequired(const GraphicsLayer*) override;
     virtual void paintContents(const GraphicsLayer*, GraphicsContext&, GraphicsLayerPaintingPhase, const FloatRect&) override;
-
+    virtual void customPositionForVisibleRectComputation(const GraphicsLayer*, FloatPoint&) const override;
     virtual bool isTrackingRepaints() const override;
     
     // GraphicsLayerUpdaterClient implementation
-    virtual void flushLayers(GraphicsLayerUpdater*) override;
-    virtual void customPositionForVisibleRectComputation(const GraphicsLayer*, FloatPoint&) const override;
-    
+    virtual void flushLayersSoon(GraphicsLayerUpdater*) override;
+
     // Whether the given RL needs a compositing layer.
     bool needsToBeComposited(const RenderLayer&, RenderLayer::ViewportConstrainedNotCompositedReason* = 0) const;
     // Whether the layer has an intrinsic need for compositing layer.
@@ -379,6 +379,8 @@ private:
 
     void updateScrollLayerPosition();
 
+    FloatPoint positionForClipLayer() const;
+
     void notifyIFramesOfCompositingChange();
 
     bool isFlushingLayers() const { return m_flushingLayers; }
@@ -392,6 +394,7 @@ private:
     // Whether a running transition or animation enforces the need for a compositing layer.
     bool requiresCompositingForAnimation(RenderLayerModelObject&) const;
     bool requiresCompositingForTransform(RenderLayerModelObject&) const;
+    bool requiresCompositingForBackfaceVisibility(RenderLayerModelObject&) const;
     bool requiresCompositingForVideo(RenderLayerModelObject&) const;
     bool requiresCompositingForCanvas(RenderLayerModelObject&) const;
     bool requiresCompositingForPlugin(RenderLayerModelObject&) const;

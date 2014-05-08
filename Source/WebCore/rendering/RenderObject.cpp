@@ -32,6 +32,7 @@
 #include "EventHandler.h"
 #include "FloatQuad.h"
 #include "FlowThreadController.h"
+#include "FocusController.h"
 #include "Frame.h"
 #include "FrameSelection.h"
 #include "FrameView.h"
@@ -998,16 +999,26 @@ void RenderObject::drawLineForBoxSide(GraphicsContext* graphicsContext, float x1
 
 void RenderObject::paintFocusRing(PaintInfo& paintInfo, const LayoutPoint& paintOffset, RenderStyle* style)
 {
-    Vector<IntRect> focusRingRects;
-    addFocusRingRects(focusRingRects, paintOffset, paintInfo.paintContainer);
-    if (style->outlineStyleIsAuto())
+    if (style->outlineStyleIsAuto()) {
+        Vector<IntRect> focusRingRects;
+        addFocusRingRects(focusRingRects, paintOffset, paintInfo.paintContainer);
+#if PLATFORM(MAC)
+        bool needsRepaint;
+        paintInfo.context->drawFocusRing(focusRingRects, style->outlineWidth(), style->outlineOffset(), document().page()->focusController().timeSinceFocusWasSet(), needsRepaint);
+        if (needsRepaint)
+            document().page()->focusController().setFocusedElementNeedsRepaint();
+#else
         paintInfo.context->drawFocusRing(focusRingRects, style->outlineWidth(), style->outlineOffset(), style->visitedDependentColor(CSSPropertyOutlineColor));
-    else
-        addPDFURLRect(paintInfo.context, unionRect(focusRingRects));
+#endif
+    }
 }
 
-void RenderObject::addPDFURLRect(GraphicsContext* context, const LayoutRect& rect)
+void RenderObject::addPDFURLRect(PaintInfo& paintInfo, const LayoutPoint& paintOffset)
 {
+    Vector<IntRect> focusRingRects;
+    addFocusRingRects(focusRingRects, paintOffset, paintInfo.paintContainer);
+    IntRect rect = unionRect(focusRingRects);
+
     if (rect.isEmpty())
         return;
     Node* n = node();
@@ -1016,7 +1027,7 @@ void RenderObject::addPDFURLRect(GraphicsContext* context, const LayoutRect& rec
     const AtomicString& href = toElement(n)->getAttribute(hrefAttr);
     if (href.isNull())
         return;
-    context->setURLForRect(n->document().completeURL(href), pixelSnappedIntRect(rect));
+    paintInfo.context->setURLForRect(n->document().completeURL(href), pixelSnappedIntRect(rect));
 }
 
 void RenderObject::paintOutline(PaintInfo& paintInfo, const LayoutRect& paintRect)
@@ -1029,12 +1040,11 @@ void RenderObject::paintOutline(PaintInfo& paintInfo, const LayoutRect& paintRec
 
     int outlineOffset = styleToUse.outlineOffset();
 
-    if (styleToUse.outlineStyleIsAuto() || hasOutlineAnnotation()) {
-        if (!theme().supportsFocusRing(&styleToUse)) {
-            // Only paint the focus ring by hand if the theme isn't able to draw the focus ring.
-            paintFocusRing(paintInfo, paintRect.location(), &styleToUse);
-        }
-    }
+    // Only paint the focus ring by hand if the theme isn't able to draw it.
+    if (styleToUse.outlineStyleIsAuto() && !theme().supportsFocusRing(&styleToUse))
+        paintFocusRing(paintInfo, paintRect.location(), &styleToUse);
+    else if (hasOutlineAnnotation() && !theme().supportsFocusRing(&styleToUse))
+        addPDFURLRect(paintInfo, paintRect.location());
 
     if (styleToUse.outlineStyleIsAuto() || styleToUse.outlineStyle() == BNONE)
         return;
@@ -1370,12 +1380,6 @@ void RenderObject::computeRectForRepaint(const RenderLayerModelObject* repaintCo
         return;
 
     if (auto o = parent()) {
-        if (o->isRenderBlockFlow()) {
-            RenderBlock* cb = toRenderBlock(o);
-            if (cb->hasColumns())
-                cb->adjustRectForColumns(rect);
-        }
-
         if (o->hasOverflowClip()) {
             RenderBox* boxParent = toRenderBox(o);
             boxParent->applyCachedClipAndScrollOffsetForRepaint(rect);
@@ -1619,14 +1623,9 @@ void RenderObject::mapLocalToContainer(const RenderLayerModelObject* repaintCont
     LayoutPoint centerPoint = roundedLayoutPoint(transformState.mappedPoint());
     if (mode & ApplyContainerFlip && o->isBox()) {
         if (o->style().isFlippedBlocksWritingMode())
-            transformState.move(toRenderBox(o)->flipForWritingModeIncludingColumns(roundedLayoutPoint(transformState.mappedPoint())) - centerPoint);
+            transformState.move(toRenderBox(o)->flipForWritingMode(roundedLayoutPoint(transformState.mappedPoint())) - centerPoint);
         mode &= ~ApplyContainerFlip;
     }
-
-    LayoutSize columnOffset;
-    o->adjustForColumns(columnOffset, roundedLayoutPoint(transformState.mappedPoint()));
-    if (!columnOffset.isZero())
-        transformState.move(columnOffset);
 
     if (o->isBox())
         transformState.move(-toRenderBox(o)->scrolledContentOffset());
@@ -1647,7 +1646,7 @@ const RenderObject* RenderObject::pushMappingToContainer(const RenderLayerModelO
     if (container->isBox())
         offset = -toRenderBox(container)->scrolledContentOffset();
 
-    geometryMap.push(this, offset, hasColumns());
+    geometryMap.push(this, offset, false);
     
     return container;
 }
@@ -1720,19 +1719,16 @@ FloatPoint RenderObject::localToContainerPoint(const FloatPoint& localPoint, con
     return transformState.lastPlanarPoint();
 }
 
-LayoutSize RenderObject::offsetFromContainer(RenderObject* o, const LayoutPoint& point, bool* offsetDependsOnPoint) const
+LayoutSize RenderObject::offsetFromContainer(RenderObject* o, const LayoutPoint&, bool* offsetDependsOnPoint) const
 {
     ASSERT(o == container());
 
     LayoutSize offset;
-
-    o->adjustForColumns(offset, point);
-
     if (o->isBox())
         offset -= toRenderBox(o)->scrolledContentOffset();
 
     if (offsetDependsOnPoint)
-        *offsetDependsOnPoint = hasColumns() || o->isRenderFlowThread();
+        *offsetDependsOnPoint = o->isRenderFlowThread();
 
     return offset;
 }
