@@ -27,23 +27,23 @@
 #ifndef WKBase_h
 #define WKBase_h
 
-#include <WebKit2/WKDeclarationSpecifiers.h>
+#include <WebKit/WKDeclarationSpecifiers.h>
 #include <stdint.h>
 
 #if defined(BUILDING_GTK__)
-#include <WebKit2/WKBaseGtk.h>
+#include <WebKit/WKBaseGtk.h>
 #endif
 
 #if defined(WTF_USE_SOUP)
-#include <WebKit2/WKBaseSoup.h>
+#include <WebKit/WKBaseSoup.h>
 #endif
 
 #if defined(BUILDING_EFL__)
-#include <WebKit2/WKBaseEfl.h>
+#include <WebKit/WKBaseEfl.h>
 #endif
 
 #if defined(__APPLE__)
-#include <WebKit2/WKBaseMac.h>
+#include <WebKit/WKBaseMac.h>
 #endif
 
 /* WebKit2 shared types */
@@ -94,6 +94,7 @@ typedef const struct OpaqueWKBatteryStatus* WKBatteryStatusRef;
 typedef const struct OpaqueWKResourceCacheManager* WKResourceCacheManagerRef;
 typedef const struct OpaqueWKColorPickerResultListener* WKColorPickerResultListenerRef;
 typedef const struct OpaqueWKContext* WKContextRef;
+typedef const struct OpaqueWKContextConfiguration* WKContextConfigurationRef;
 typedef const struct OpaqueWKCookieManager* WKCookieManagerRef;
 typedef const struct OpaqueWKCredential* WKCredentialRef;
 typedef const struct OpaqueWKDatabaseManager* WKDatabaseManagerRef;

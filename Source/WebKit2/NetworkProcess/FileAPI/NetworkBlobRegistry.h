@@ -33,6 +33,7 @@
 #include <wtf/HashSet.h>
 
 namespace WebCore {
+class BlobDataFileReference;
 class BlobPart;
 }
 
@@ -48,20 +49,18 @@ public:
     static NetworkBlobRegistry& shared();
 
     void registerFileBlobURL(NetworkConnectionToWebProcess*, const WebCore::URL&, const String& path, PassRefPtr<SandboxExtension>, const String& contentType);
-    uint64_t registerBlobURL(NetworkConnectionToWebProcess*, const WebCore::URL&, Vector<WebCore::BlobPart>, const String& contentType);
+    void registerBlobURL(NetworkConnectionToWebProcess*, const WebCore::URL&, Vector<WebCore::BlobPart>, const String& contentType);
     void registerBlobURL(NetworkConnectionToWebProcess*, const WebCore::URL&, const WebCore::URL& srcURL);
-    uint64_t registerBlobURLForSlice(NetworkConnectionToWebProcess*, const WebCore::URL&, const WebCore::URL& srcURL, int64_t start, int64_t end);
+    void registerBlobURLForSlice(NetworkConnectionToWebProcess*, const WebCore::URL&, const WebCore::URL& srcURL, int64_t start, int64_t end);
     void unregisterBlobURL(NetworkConnectionToWebProcess*, const WebCore::URL&);
+    uint64_t blobSize(NetworkConnectionToWebProcess*, const WebCore::URL&);
 
     void connectionToWebProcessDidClose(NetworkConnectionToWebProcess*);
 
-    const Vector<RefPtr<SandboxExtension>> sandboxExtensions(const WebCore::URL&);
+    Vector<RefPtr<WebCore::BlobDataFileReference>> filesInBlob(NetworkConnectionToWebProcess*, const WebCore::URL&);
 
 private:
     ~NetworkBlobRegistry();
-
-    typedef HashMap<String, Vector<RefPtr<SandboxExtension>>> SandboxExtensionMap;
-    SandboxExtensionMap m_sandboxExtensions;
 
     typedef HashMap<NetworkConnectionToWebProcess*, HashSet<WebCore::URL>> BlobForConnectionMap;
     BlobForConnectionMap m_blobsForConnection;

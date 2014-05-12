@@ -886,9 +886,11 @@ void Heap::deleteAllCompiledCode()
     // means that we are running some hot JS code right now. Maybe causing
     // recompilations isn't a good idea.
 #if ENABLE(DFG_JIT)
-    for (auto worklist : m_suspendedCompilerWorklists) {
-        if (worklist->isActiveForVM(*vm()))
-            return;
+    for (unsigned i = DFG::numberOfWorklists(); i--;) {
+        if (DFG::Worklist* worklist = DFG::worklistForIndexOrNull(i)) {
+            if (worklist->isActiveForVM(*vm()))
+                return;
+        }
     }
 #endif // ENABLE(DFG_JIT)
 
@@ -1333,7 +1335,7 @@ public:
 
         void* limit = static_cast<void*>(reinterpret_cast<char*>(cell) + MarkedBlock::blockFor(cell)->cellSize());
         for (; current < limit; current++)
-            *current = reinterpret_cast<void*>(0xbbadbeef);
+            *current = zombifiedBits;
     }
 };
 

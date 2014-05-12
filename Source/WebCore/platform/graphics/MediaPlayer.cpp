@@ -1392,6 +1392,14 @@ void MediaPlayer::handlePlaybackCommand(MediaSession::RemoteControlCommandType c
     m_mediaPlayerClient->mediaPlayerHandlePlaybackCommand(command);
 }
 
+String MediaPlayer::sourceApplicationIdentifier() const
+{
+    if (!m_mediaPlayerClient)
+        return emptyString();
+
+    return m_mediaPlayerClient->mediaPlayerSourceApplicationIdentifier();
+}
+
 void MediaPlayerFactorySupport::callRegisterMediaEngine(MediaEngineRegister registerMediaEngine)
 {
     registerMediaEngine(addMediaEngine);

@@ -23,10 +23,10 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#import <WebKit2/WKBackForwardList.h>
+#import <WebKit/WKBackForwardList.h>
 
 #if WK_API_ENABLED
 
-WK_EXTERN NSString * const _WKBackForwardListDidChangeNotification;
+WK_EXTERN NSString * const _WKBackForwardListDidChangeNotification WK_AVAILABLE(10_0, 8_0);
 
 #endif

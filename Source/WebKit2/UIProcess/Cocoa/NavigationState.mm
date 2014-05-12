@@ -51,6 +51,7 @@
 #import "WKWebViewInternal.h"
 #import "WebFrameProxy.h"
 #import "WebPageProxy.h"
+#import "WebProcessProxy.h"
 #import <wtf/NeverDestroyed.h>
 
 #if USE(QUICK_LOOK)
@@ -319,7 +320,7 @@ void NavigationState::PolicyClient::decidePolicyForResponse(WebPageProxy*, WebFr
 
     auto navigationResponse = adoptNS([[WKNavigationResponse alloc] init]);
 
-    [navigationResponse setFrame:adoptNS([[WKFrameInfo alloc] initWithWebFrameProxy:*frame]).get()];
+    navigationResponse->_frame = adoptNS([[WKFrameInfo alloc] initWithWebFrameProxy:*frame]);
     [navigationResponse setResponse:resourceResponse.nsURLResponse()];
     [navigationResponse setCanShowMIMEType:canShowMIMEType];
 
@@ -625,6 +626,13 @@ void NavigationState::willChangeIsLoading()
 
 void NavigationState::didChangeIsLoading()
 {
+#if PLATFORM(IOS)
+    if (m_webView->_page->pageLoadState().isLoading())
+        m_activityToken = std::make_unique<ProcessThrottler::BackgroundActivityToken>(m_webView->_page->process().throttler());
+    else
+        m_activityToken = nullptr;
+#endif
+
     [m_webView didChangeValueForKey:@"loading"];
 }
 

@@ -1590,12 +1590,7 @@ static NSMutableSet *knownPluginMIMETypes()
 
 + (void)_setAcceleratedImageDecoding:(BOOL)enabled
 {
-    ImageSource::setAcceleratedImageDecodingEnabled(enabled);
-}
-
-+ (BOOL)_acceleratedImageDecoding
-{
-    return ImageSource::acceleratedImageDecodingEnabled();
+    UNUSED_PARAM(enabled);
 }
 
 + (void)_setAllowCookies:(BOOL)allow
@@ -1923,29 +1918,10 @@ static bool fastDocumentTeardownEnabled()
 }
 
 #if PLATFORM(IOS)
-- (void)setHostApplicationBundleId:(NSString *)bundleId name:(NSString *)name
+- (void)_setHostApplicationProcessIdentifier:(pid_t)pid auditToken:(audit_token_t)auditToken
 {
-    if (![_private->hostApplicationBundleId isEqualToString:bundleId]) {
-        [_private->hostApplicationBundleId release];
-        _private->hostApplicationBundleId = [bundleId copy];
-    }
-
-    if (![_private->hostApplicationName isEqualToString:name]) {
-        [_private->hostApplicationName release];
-        _private->hostApplicationName = [name copy];
-    }
-
-    // FIXME: This has not yet been ported to Inspector::RemoteInspectorServer.
-}
-
-- (NSString *)hostApplicationBundleId
-{
-    return _private->hostApplicationBundleId;
-}
-
-- (NSString *)hostApplicationName
-{
-    return _private->hostApplicationName;
+    RetainPtr<CFDataRef> auditData = adoptCF(CFDataCreate(nullptr, (const UInt8*)&auditToken, sizeof(auditToken)));
+    RemoteInspector::shared().setParentProcessInformation(pid, auditData);
 }
 #endif // PLATFORM(IOS)
 #endif // ENABLE(REMOTE_INSPECTOR)
@@ -2338,7 +2314,6 @@ static bool needsSelfRetainWhileLoadingQuirk()
 #if ENABLE(WEB_AUDIO)
     settings.setWebAudioEnabled([preferences webAudioEnabled]);
 #endif
-    settings.setCSSGridLayoutEnabled([preferences cssGridLayoutEnabled]);
 #if ENABLE(FULLSCREEN_API)
     settings.setFullScreenEnabled([preferences fullScreenEnabled]);
 #endif
@@ -3871,15 +3846,6 @@ static inline IMP getMethod(id o, SEL s)
     return NO;
 }
 
-- (BOOL)_flushCompositingChanges
-{
-    Frame* frame = [self _mainCoreFrame];
-    if (frame && frame->view())
-        return frame->view()->flushCompositingStateIncludingSubframes();
-
-    return YES;
-}
-
 - (void)_setBaseCTM:(CGAffineTransform)transform forContext:(CGContextRef)context
 {
     WKSetBaseCTM(context, transform);
@@ -5312,7 +5278,11 @@ static NSString * const backingPropertyOldScaleFactorKey = @"NSBackingPropertyOl
         [window setAcceleratedDrawingEnabled:[preferences acceleratedDrawingEnabled]];
 #endif
     }
-    
+#if PLATFORM(IOS)
+    else
+        [_private->fullscreenController requestExitFullscreen];
+#endif
+
 #if !PLATFORM(IOS)
     _private->page->setDeviceScaleFactor([self _deviceScaleFactor]);
 #endif
@@ -8419,6 +8389,15 @@ bool LayerFlushController::flushLayers()
     if (!_private->layerFlushController)
         _private->layerFlushController = LayerFlushController::create(self);
     _private->layerFlushController->scheduleLayerFlush();
+}
+
+- (BOOL)_flushCompositingChanges
+{
+    Frame* frame = [self _mainCoreFrame];
+    if (frame && frame->view())
+        return frame->view()->flushCompositingStateIncludingSubframes();
+
+    return YES;
 }
 
 #if PLATFORM(IOS)

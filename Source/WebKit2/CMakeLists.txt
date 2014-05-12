@@ -185,6 +185,7 @@ set(WebKit2_SOURCES
     Shared/APIURLRequest.cpp
     Shared/APIURLResponse.cpp
     Shared/ActivityAssertion.cpp
+    Shared/BlobDataFileReferenceWithSandboxExtension.cpp
     Shared/CacheModel.cpp
     Shared/ChildProcess.cpp
     Shared/ChildProcessProxy.cpp
@@ -284,6 +285,7 @@ set(WebKit2_SOURCES
     Shared/Plugins/Netscape/NetscapePluginModuleNone.cpp
     Shared/Plugins/Netscape/PluginInformation.cpp
 
+    UIProcess/APIContextConfiguration.cpp
     UIProcess/APINavigationData.cpp
     UIProcess/APISession.cpp
     UIProcess/BackingStore.cpp
@@ -351,6 +353,7 @@ set(WebKit2_SOURCES
     UIProcess/API/C/WKBatteryManager.cpp
     UIProcess/API/C/WKBatteryStatus.cpp
     UIProcess/API/C/WKContext.cpp
+    UIProcess/API/C/WKContextConfigurationRef.cpp
     UIProcess/API/C/WKCookieManager.cpp
     UIProcess/API/C/WKCredential.cpp
     UIProcess/API/C/WKDatabaseManager.cpp

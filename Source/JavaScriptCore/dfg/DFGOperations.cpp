@@ -1018,12 +1018,13 @@ char* JIT_OPERATION operationSwitchString(ExecState* exec, size_t tableIndex, JS
     return static_cast<char*>(exec->codeBlock()->stringSwitchJumpTable(tableIndex).ctiForValue(string->value(exec).impl()).executableAddress());
 }
 
-void JIT_OPERATION operationInvalidate(ExecState* exec, VariableWatchpointSet* set)
+void JIT_OPERATION operationNotifyWrite(ExecState* exec, VariableWatchpointSet* set, EncodedJSValue encodedValue)
 {
     VM& vm = exec->vm();
     NativeCallFrameTracer tracer(&vm, exec);
+    JSValue value = JSValue::decode(encodedValue);
 
-    set->invalidate();
+    set->notifyWrite(vm, value);
 }
 
 double JIT_OPERATION operationFModOnInts(int32_t a, int32_t b)
@@ -1284,46 +1285,6 @@ char* JIT_OPERATION triggerOSREntryNow(
     void* address = FTL::prepareOSREntry(
         exec, codeBlock, jitCode->osrEntryBlock.get(), bytecodeIndex, streamIndex);
     return static_cast<char*>(address);
-}
-
-// FIXME: Make calls work well. Currently they're a pure regression.
-// https://bugs.webkit.org/show_bug.cgi?id=113621
-EncodedJSValue JIT_OPERATION operationFTLCall(ExecState* exec)
-{
-    ExecState* callerExec = exec->callerFrame();
-    
-    VM* vm = &callerExec->vm();
-    NativeCallFrameTracer tracer(vm, callerExec);
-    
-    JSValue callee = exec->calleeAsValue();
-    CallData callData;
-    CallType callType = getCallData(callee, callData);
-    if (callType == CallTypeNone) {
-        vm->throwException(callerExec, createNotAFunctionError(callerExec, callee));
-        return JSValue::encode(jsUndefined());
-    }
-    
-    return JSValue::encode(call(callerExec, callee, callType, callData, exec->thisValue(), exec));
-}
-
-// FIXME: Make calls work well. Currently they're a pure regression.
-// https://bugs.webkit.org/show_bug.cgi?id=113621
-EncodedJSValue JIT_OPERATION operationFTLConstruct(ExecState* exec)
-{
-    ExecState* callerExec = exec->callerFrame();
-    
-    VM* vm = &callerExec->vm();
-    NativeCallFrameTracer tracer(vm, callerExec);
-    
-    JSValue callee = exec->calleeAsValue();
-    ConstructData constructData;
-    ConstructType constructType = getConstructData(callee, constructData);
-    if (constructType == ConstructTypeNone) {
-        vm->throwException(callerExec, createNotAFunctionError(callerExec, callee));
-        return JSValue::encode(jsUndefined());
-    }
-    
-    return JSValue::encode(construct(callerExec, callee, constructType, constructData, exec));
 }
 #endif // ENABLE(FTL_JIT)
 

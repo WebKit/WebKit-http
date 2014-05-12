@@ -2482,6 +2482,42 @@ bool RenderBlock::nodeAtPoint(const HitTestRequest& request, HitTestResult& resu
            return true;
     }
 
+    if (style().clipPath()) {
+        switch (style().clipPath()->type()) {
+        case ClipPathOperation::Shape: {
+            ShapeClipPathOperation* clipPath = toShapeClipPathOperation(style().clipPath());
+
+            LayoutRect referenceBoxRect;
+            switch (clipPath->referenceBox()) {
+            case CSSBoxType::MarginBox:
+                referenceBoxRect = marginBoxRect();
+                break;
+            case CSSBoxType::BorderBox:
+                referenceBoxRect = borderBoxRect();
+                break;
+            case CSSBoxType::PaddingBox:
+                referenceBoxRect = paddingBoxRect();
+                break;
+            case CSSBoxType::ContentBox:
+                referenceBoxRect = contentBoxRect();
+                break;
+            case CSSBoxType::BoxMissing:
+            case CSSBoxType::Fill:
+            case CSSBoxType::Stroke:
+            case CSSBoxType::ViewBox:
+                referenceBoxRect = borderBoxRect();
+            }
+            if (!clipPath->pathForReferenceRect(referenceBoxRect, &view()).contains(locationInContainer.point() - localOffset, clipPath->windRule()))
+                return false;
+            break;
+        }
+        // FIXME: handle Reference/Box
+        case ClipPathOperation::Reference:
+        case ClipPathOperation::Box:
+            break;
+        }
+    }
+
     // If we have clipping, then we can't have any spillout.
     bool useOverflowClip = hasOverflowClip() && !hasSelfPaintingLayer();
     bool useClip = (hasControlClip() || useOverflowClip);
@@ -3555,63 +3591,84 @@ void RenderBlock::createFirstLetterRenderer(RenderObject* firstLetterBlock, Rend
         currentTextChild->destroy();
     }
 }
-
-void RenderBlock::updateFirstLetter()
+    
+void RenderBlock::getFirstLetter(RenderObject*& firstLetter, RenderElement*& firstLetterContainer, RenderObject* skipObject)
 {
+    firstLetter = nullptr;
+    firstLetterContainer = nullptr;
+
     if (!document().styleSheetCollection().usesFirstLetterRules())
         return;
+
     // Don't recur
     if (style().styleType() == FIRST_LETTER)
         return;
-
+    
     // FIXME: We need to destroy the first-letter object if it is no longer the first child. Need to find
     // an efficient way to check for that situation though before implementing anything.
-    RenderElement* firstLetterBlock = findFirstLetterBlock(this);
-    if (!firstLetterBlock)
+    firstLetterContainer = findFirstLetterBlock(this);
+    if (!firstLetterContainer)
         return;
-
+    
     // Drill into inlines looking for our first text descendant.
-    RenderObject* descendant = firstLetterBlock->firstChild();
-    while (descendant) {
-        if (descendant->isText())
+    firstLetter = firstLetterContainer->firstChild();
+    while (firstLetter) {
+        if (firstLetter->isText()) {
+            if (firstLetter == skipObject) {
+                firstLetter = firstLetter->nextSibling();
+                continue;
+            }
+            
             break;
-        RenderElement& current = toRenderElement(*descendant);
+        }
+
+        RenderElement& current = toRenderElement(*firstLetter);
         if (current.isListMarker())
-            descendant = current.nextSibling();
+            firstLetter = current.nextSibling();
         else if (current.isFloatingOrOutOfFlowPositioned()) {
             if (current.style().styleType() == FIRST_LETTER) {
-                descendant = current.firstChild();
+                firstLetter = current.firstChild();
                 break;
             }
-            descendant = current.nextSibling();
+            firstLetter = current.nextSibling();
         } else if (current.isReplaced() || current.isRenderButton() || current.isMenuList())
             break;
         else if (current.style().hasPseudoStyle(FIRST_LETTER) && current.canHaveGeneratedChildren())  {
             // We found a lower-level node with first-letter, which supersedes the higher-level style
-            firstLetterBlock = &current;
-            descendant = current.firstChild();
+            firstLetterContainer = &current;
+            firstLetter = current.firstChild();
         } else
-            descendant = current.firstChild();
+            firstLetter = current.firstChild();
     }
+    
+    if (!firstLetter)
+        firstLetterContainer = nullptr;
+}
 
-    if (!descendant)
+void RenderBlock::updateFirstLetter()
+{
+    RenderObject* firstLetterObj;
+    RenderElement* firstLetterContainer;
+    getFirstLetter(firstLetterObj, firstLetterContainer);
+
+    if (!firstLetterObj)
         return;
 
     // If the child already has style, then it has already been created, so we just want
     // to update it.
-    if (descendant->parent()->style().styleType() == FIRST_LETTER) {
-        updateFirstLetterStyle(firstLetterBlock, descendant);
+    if (firstLetterObj->parent()->style().styleType() == FIRST_LETTER) {
+        updateFirstLetterStyle(firstLetterContainer, firstLetterObj);
         return;
     }
 
-    if (!descendant->isText())
+    if (!firstLetterObj->isText())
         return;
 
     // Our layout state is not valid for the repaints we are going to trigger by
     // adding and removing children of firstLetterContainer.
     LayoutStateDisabler layoutStateDisabler(&view());
 
-    createFirstLetterRenderer(firstLetterBlock, toRenderText(descendant));
+    createFirstLetterRenderer(firstLetterContainer, toRenderText(firstLetterObj));
 }
 
 LayoutUnit RenderBlock::paginationStrut() const
@@ -3840,7 +3897,7 @@ static bool canComputeRegionRangeForBox(const RenderBlock* parentBlock, const Re
     if (!childBox.canHaveOutsideRegionRange())
         return false;
 
-    return flowThreadContainingBlock->hasRegionRangeForBox(parentBlock);
+    return flowThreadContainingBlock->hasCachedRegionRangeForBox(parentBlock);
 }
 
 bool RenderBlock::childBoxIsUnsplittableForFragmentation(const RenderBox& child) const

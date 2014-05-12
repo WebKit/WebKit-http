@@ -45,6 +45,7 @@ public:
     static void registerPluginReplacement(PluginReplacementRegistrar);
     static bool supportsMimeType(const String&);
     static bool supportsFileExtension(const String&);
+    static bool supportsURL(const URL&) { return true; }
     
     static PassRefPtr<PluginReplacement> create(HTMLPlugInElement&, const Vector<String>& paramNames, const Vector<String>& paramValues);
     ~QuickTimePluginReplacement();

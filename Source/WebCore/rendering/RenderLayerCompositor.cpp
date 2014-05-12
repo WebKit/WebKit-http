@@ -223,7 +223,7 @@ struct CompositingState {
         , m_subtreeIsCompositing(false)
         , m_testingOverlap(testOverlap)
 #if ENABLE(CSS_COMPOSITING)
-        , m_hasUnisolatedCompositedBlendingDescendants(false)
+        , m_hasNotIsolatedCompositedBlendingDescendants(false)
 #endif
 #ifndef NDEBUG
         , m_depth(0)
@@ -236,7 +236,7 @@ struct CompositingState {
         , m_subtreeIsCompositing(other.m_subtreeIsCompositing)
         , m_testingOverlap(other.m_testingOverlap)
 #if ENABLE(CSS_COMPOSITING)
-        , m_hasUnisolatedCompositedBlendingDescendants(other.m_hasUnisolatedCompositedBlendingDescendants)
+        , m_hasNotIsolatedCompositedBlendingDescendants(other.m_hasNotIsolatedCompositedBlendingDescendants)
 #endif
 #ifndef NDEBUG
         , m_depth(other.m_depth + 1)
@@ -248,7 +248,7 @@ struct CompositingState {
     bool m_subtreeIsCompositing;
     bool m_testingOverlap;
 #if ENABLE(CSS_COMPOSITING)
-    bool m_hasUnisolatedCompositedBlendingDescendants;
+    bool m_hasNotIsolatedCompositedBlendingDescendants;
 #endif
 #ifndef NDEBUG
     int m_depth;
@@ -1162,7 +1162,7 @@ void RenderLayerCompositor::computeCompositingRequirements(RenderLayer* ancestor
     CompositingState childState(compositingState);
     childState.m_subtreeIsCompositing = false;
 #if ENABLE(CSS_COMPOSITING)
-    childState.m_hasUnisolatedCompositedBlendingDescendants = false;
+    childState.m_hasNotIsolatedCompositedBlendingDescendants = false;
 #endif
 
     if (willBeComposited) {
@@ -1245,8 +1245,8 @@ void RenderLayerCompositor::computeCompositingRequirements(RenderLayer* ancestor
         addToOverlapMap(*overlapMap, layer, absBounds, haveComputedBounds);
 
 #if ENABLE(CSS_COMPOSITING)
-    layer.setHasUnisolatedCompositedBlendingDescendants(childState.m_hasUnisolatedCompositedBlendingDescendants);
-    ASSERT(!layer.hasUnisolatedCompositedBlendingDescendants() || layer.hasUnisolatedBlendingDescendants());
+    layer.setHasNotIsolatedCompositedBlendingDescendants(childState.m_hasNotIsolatedCompositedBlendingDescendants);
+    ASSERT(!layer.hasNotIsolatedCompositedBlendingDescendants() || layer.hasNotIsolatedBlendingDescendants());
 #endif
     // Now check for reasons to become composited that depend on the state of descendant layers.
     RenderLayer::IndirectCompositingReason indirectCompositingReason;
@@ -1297,8 +1297,8 @@ void RenderLayerCompositor::computeCompositingRequirements(RenderLayer* ancestor
 
 #if ENABLE(CSS_COMPOSITING)
     if ((willBeComposited && layer.hasBlendMode())
-        || (layer.hasUnisolatedCompositedBlendingDescendants() && !layer.isolatesCompositedBlending()))
-        compositingState.m_hasUnisolatedCompositedBlendingDescendants = true;
+        || (layer.hasNotIsolatedCompositedBlendingDescendants() && !layer.isolatesCompositedBlending()))
+        compositingState.m_hasNotIsolatedCompositedBlendingDescendants = true;
 #endif
 
     if (overlapMap && childState.m_compositingAncestor == &layer && !layer.isRootLayer())
@@ -1953,8 +1953,8 @@ void RenderLayerCompositor::updateRootLayerPosition()
     if (m_rootContentLayer) {
         const IntRect& documentRect = m_renderView.documentRect();
         m_rootContentLayer->setSize(documentRect.size());        
-        m_rootContentLayer->setPosition(FloatPoint(documentRect.x(), documentRect.y() + m_renderView.frameView().headerHeight()
-            + FrameView::yPositionForRootContentLayer(m_renderView.frameView().scrollPosition(), m_renderView.frameView().topContentInset())));
+        m_rootContentLayer->setPosition(FloatPoint(documentRect.x(), documentRect.y()
+            + FrameView::yPositionForRootContentLayer(m_renderView.frameView().scrollPosition(), m_renderView.frameView().topContentInset(), m_renderView.frameView().headerHeight())));
         m_rootContentLayer->setAnchorPoint(FloatPoint3D());
     }
     if (m_clipLayer) {
@@ -2904,7 +2904,7 @@ GraphicsLayer* RenderLayerCompositor::updateLayerForTopOverhangArea(bool wantsLa
     }
 
     if (!m_layerForTopOverhangArea) {
-        m_layerForTopOverhangArea = GraphicsLayer::create(graphicsLayerFactory(), this);
+        m_layerForTopOverhangArea = GraphicsLayer::create(graphicsLayerFactory(), *this);
 #ifndef NDEBUG
         m_layerForTopOverhangArea->setName("top overhang area");
 #endif
@@ -2928,7 +2928,7 @@ GraphicsLayer* RenderLayerCompositor::updateLayerForBottomOverhangArea(bool want
     }
 
     if (!m_layerForBottomOverhangArea) {
-        m_layerForBottomOverhangArea = GraphicsLayer::create(graphicsLayerFactory(), this);
+        m_layerForBottomOverhangArea = GraphicsLayer::create(graphicsLayerFactory(), *this);
 #ifndef NDEBUG
         m_layerForBottomOverhangArea->setName("bottom overhang area");
 #endif
@@ -2958,7 +2958,7 @@ GraphicsLayer* RenderLayerCompositor::updateLayerForHeader(bool wantsLayer)
     }
 
     if (!m_layerForHeader) {
-        m_layerForHeader = GraphicsLayer::create(graphicsLayerFactory(), this);
+        m_layerForHeader = GraphicsLayer::create(graphicsLayerFactory(), *this);
 #ifndef NDEBUG
         m_layerForHeader->setName("header");
 #endif
@@ -2966,7 +2966,8 @@ GraphicsLayer* RenderLayerCompositor::updateLayerForHeader(bool wantsLayer)
         m_renderView.frameView().addPaintPendingMilestones(DidFirstFlushForHeaderLayer);
     }
 
-    m_layerForHeader->setPosition(FloatPoint());
+    m_layerForHeader->setPosition(FloatPoint(0,
+        FrameView::yPositionForHeaderLayer(m_renderView.frameView().scrollPosition(), m_renderView.frameView().topContentInset())));
     m_layerForHeader->setAnchorPoint(FloatPoint3D());
     m_layerForHeader->setSize(FloatSize(m_renderView.frameView().visibleWidth(), m_renderView.frameView().headerHeight()));
 
@@ -2998,14 +2999,16 @@ GraphicsLayer* RenderLayerCompositor::updateLayerForFooter(bool wantsLayer)
     }
 
     if (!m_layerForFooter) {
-        m_layerForFooter = GraphicsLayer::create(graphicsLayerFactory(), this);
+        m_layerForFooter = GraphicsLayer::create(graphicsLayerFactory(), *this);
 #ifndef NDEBUG
         m_layerForFooter->setName("footer");
 #endif
         m_scrollLayer->addChildBelow(m_layerForFooter.get(), m_rootContentLayer.get());
     }
 
-    m_layerForFooter->setPosition(FloatPoint(0, m_rootContentLayer->size().height() + m_renderView.frameView().headerHeight()));
+    float totalContentHeight = m_rootContentLayer->size().height() + m_renderView.frameView().headerHeight() + m_renderView.frameView().footerHeight();
+    m_layerForFooter->setPosition(FloatPoint(0, FrameView::yPositionForFooterLayer(m_renderView.frameView().scrollPosition(),
+        m_renderView.frameView().topContentInset(), totalContentHeight, m_renderView.frameView().footerHeight())));
     m_layerForFooter->setAnchorPoint(FloatPoint3D());
     m_layerForFooter->setSize(FloatSize(m_renderView.frameView().visibleWidth(), m_renderView.frameView().footerHeight()));
 
@@ -3064,7 +3067,7 @@ void RenderLayerCompositor::updateOverflowControlsLayers()
 #if ENABLE(RUBBER_BANDING)
     if (requiresOverhangAreasLayer()) {
         if (!m_layerForOverhangAreas) {
-            m_layerForOverhangAreas = GraphicsLayer::create(graphicsLayerFactory(), this);
+            m_layerForOverhangAreas = GraphicsLayer::create(graphicsLayerFactory(), *this);
 #ifndef NDEBUG
             m_layerForOverhangAreas->setName("overhang areas");
 #endif
@@ -3092,7 +3095,7 @@ void RenderLayerCompositor::updateOverflowControlsLayers()
 
     if (requiresContentShadowLayer()) {
         if (!m_contentShadowLayer) {
-            m_contentShadowLayer = GraphicsLayer::create(graphicsLayerFactory(), this);
+            m_contentShadowLayer = GraphicsLayer::create(graphicsLayerFactory(), *this);
 #ifndef NDEBUG
             m_contentShadowLayer->setName("content shadow");
 #endif
@@ -3110,7 +3113,7 @@ void RenderLayerCompositor::updateOverflowControlsLayers()
 
     if (requiresHorizontalScrollbarLayer()) {
         if (!m_layerForHorizontalScrollbar) {
-            m_layerForHorizontalScrollbar = GraphicsLayer::create(graphicsLayerFactory(), this);
+            m_layerForHorizontalScrollbar = GraphicsLayer::create(graphicsLayerFactory(), *this);
             m_layerForHorizontalScrollbar->setShowDebugBorder(m_showDebugBorders);
 #ifndef NDEBUG
             m_layerForHorizontalScrollbar->setName("horizontal scrollbar container");
@@ -3134,7 +3137,7 @@ void RenderLayerCompositor::updateOverflowControlsLayers()
 
     if (requiresVerticalScrollbarLayer()) {
         if (!m_layerForVerticalScrollbar) {
-            m_layerForVerticalScrollbar = GraphicsLayer::create(graphicsLayerFactory(), this);
+            m_layerForVerticalScrollbar = GraphicsLayer::create(graphicsLayerFactory(), *this);
             m_layerForVerticalScrollbar->setShowDebugBorder(m_showDebugBorders);
 #ifndef NDEBUG
             m_layerForVerticalScrollbar->setName("vertical scrollbar container");
@@ -3157,7 +3160,7 @@ void RenderLayerCompositor::updateOverflowControlsLayers()
 
     if (requiresScrollCornerLayer()) {
         if (!m_layerForScrollCorner) {
-            m_layerForScrollCorner = GraphicsLayer::create(graphicsLayerFactory(), this);
+            m_layerForScrollCorner = GraphicsLayer::create(graphicsLayerFactory(), *this);
             m_layerForScrollCorner->setShowDebugBorder(m_showDebugBorders);
 #ifndef NDEBUG
             m_layerForScrollCorner->setName("scroll corner");
@@ -3182,7 +3185,7 @@ void RenderLayerCompositor::ensureRootLayer()
          return;
 
     if (!m_rootContentLayer) {
-        m_rootContentLayer = GraphicsLayer::create(graphicsLayerFactory(), this);
+        m_rootContentLayer = GraphicsLayer::create(graphicsLayerFactory(), *this);
 #ifndef NDEBUG
         m_rootContentLayer->setName("content root");
 #endif
@@ -3207,19 +3210,19 @@ void RenderLayerCompositor::ensureRootLayer()
             ASSERT(!m_clipLayer);
 
             // Create a layer to host the clipping layer and the overflow controls layers.
-            m_overflowControlsHostLayer = GraphicsLayer::create(graphicsLayerFactory(), this);
+            m_overflowControlsHostLayer = GraphicsLayer::create(graphicsLayerFactory(), *this);
 #ifndef NDEBUG
             m_overflowControlsHostLayer->setName("overflow controls host");
 #endif
 
             // Create a clipping layer if this is an iframe
-            m_clipLayer = GraphicsLayer::create(graphicsLayerFactory(), this);
+            m_clipLayer = GraphicsLayer::create(graphicsLayerFactory(), *this);
 #ifndef NDEBUG
             m_clipLayer->setName("frame clipping");
 #endif
             m_clipLayer->setMasksToBounds(true);
             
-            m_scrollLayer = GraphicsLayer::create(graphicsLayerFactory(), this);
+            m_scrollLayer = GraphicsLayer::create(graphicsLayerFactory(), *this);
 #ifndef NDEBUG
             m_scrollLayer->setName("frame scrolling");
 #endif

@@ -179,7 +179,7 @@ FileList* DataTransfer::files() const
 
     if (newlyCreatedFileList) {
         for (const String& filename : m_pasteboard->readFilenames())
-            m_fileList->append(File::create(filename, File::AllContentTypes));
+            m_fileList->append(File::create(filename));
     }
     return m_fileList.get();
 }
@@ -188,8 +188,8 @@ bool DataTransfer::hasFileOfType(const String& type)
 {
     ASSERT_WITH_SECURITY_IMPLICATION(canReadTypes());
 
-    for (const String& filename : m_pasteboard->readFilenames()) {
-        if (equalIgnoringCase(File::contentTypeFromFilePathOrName(filename, File::AllContentTypes), type))
+    for (const String& path : m_pasteboard->readFilenames()) {
+        if (equalIgnoringCase(File::contentTypeForFile(path), type))
             return true;
     }
 

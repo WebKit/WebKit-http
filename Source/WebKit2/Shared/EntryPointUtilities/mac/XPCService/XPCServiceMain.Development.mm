@@ -29,7 +29,7 @@
 #import <spawn.h> 
 #import <stdio.h>
 #import <stdlib.h>
-#import <xpc/xpc.h>
+#import "XPCPtr.h"
 
 namespace WebKit {
 
@@ -122,24 +122,23 @@ static void XPCServiceEventHandler(xpc_connection_t peer)
             if (!strcmp(xpc_dictionary_get_string(event, "message-name"), "bootstrap")) {
                 static void* frameworkLibrary = dlopen(xpc_dictionary_get_string(event, "framework-executable-path"), RTLD_NOW);
                 if (!frameworkLibrary) {
-                    NSLog(@"Unable to load WebKit2.framework at path: %s (Error: %s)", xpc_dictionary_get_string(event, "framework-executable-path"), dlerror());
+                    NSLog(@"Unable to load WebKit.framework at path: %s (Error: %s)", xpc_dictionary_get_string(event, "framework-executable-path"), dlerror());
                     exit(EXIT_FAILURE);
                 }
 
-                CFBundleRef webKit2Bundle = CFBundleGetBundleWithIdentifier(CFSTR("com.apple.WebKit2"));
+                CFBundleRef webKitBundle = CFBundleGetBundleWithIdentifier(CFSTR("com.apple.WebKit"));
                 CFStringRef entryPointFunctionName = (CFStringRef)CFBundleGetValueForInfoDictionaryKey(CFBundleGetMainBundle(), CFSTR("WebKitEntryPoint"));
 
                 typedef void (*InitializerFunction)(xpc_connection_t, xpc_object_t);
-                InitializerFunction initializerFunctionPtr = reinterpret_cast<InitializerFunction>(CFBundleGetFunctionPointerForName(webKit2Bundle, entryPointFunctionName));
+                InitializerFunction initializerFunctionPtr = reinterpret_cast<InitializerFunction>(CFBundleGetFunctionPointerForName(webKitBundle, entryPointFunctionName));
                 if (!initializerFunctionPtr) {
-                    NSLog(@"Unable to find entry point in WebKit2.framework with name: %@", (NSString *)entryPointFunctionName);
+                    NSLog(@"Unable to find entry point in WebKit.framework with name: %@", (NSString *)entryPointFunctionName);
                     exit(EXIT_FAILURE);
                 }
 
-                xpc_object_t reply = xpc_dictionary_create_reply(event);
-                xpc_dictionary_set_string(reply, "message-name", "process-finished-launching");
-                xpc_connection_send_message(xpc_dictionary_get_remote_connection(event), reply);
-                xpc_release(reply);
+                auto reply = IPC::adoptXPC(xpc_dictionary_create_reply(event));
+                xpc_dictionary_set_string(reply.get(), "message-name", "process-finished-launching");
+                xpc_connection_send_message(xpc_dictionary_get_remote_connection(event), reply.get());
 
                 dup2(xpc_dictionary_dup_fd(event, "stdout"), STDOUT_FILENO);
                 dup2(xpc_dictionary_dup_fd(event, "stderr"), STDERR_FILENO);

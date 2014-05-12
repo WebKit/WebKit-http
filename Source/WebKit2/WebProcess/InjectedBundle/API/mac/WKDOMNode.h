@@ -23,7 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#import <WebKit2/WKFoundation.h>
+#import <WebKit/WKFoundation.h>
 
 #if WK_API_ENABLED
 
@@ -31,7 +31,7 @@
 
 @class WKDOMDocument;
 
-WK_API_CLASS
+WK_CLASS_AVAILABLE(10_10, 8_0)
 @interface WKDOMNode : NSObject
 
 - (void)insertNode:(WKDOMNode *)node before:(WKDOMNode *)refNode;

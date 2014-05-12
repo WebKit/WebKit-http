@@ -186,9 +186,9 @@ RenderLayer::RenderLayer(RenderLayerModelObject& rendererLayerModelObject)
 #endif
 #if ENABLE(CSS_COMPOSITING)
     , m_blendMode(BlendModeNormal)
-    , m_hasUnisolatedCompositedBlendingDescendants(false)
-    , m_hasUnisolatedBlendingDescendants(false)
-    , m_hasUnisolatedBlendingDescendantsStatusDirty(false)
+    , m_hasNotIsolatedCompositedBlendingDescendants(false)
+    , m_hasNotIsolatedBlendingDescendants(false)
+    , m_hasNotIsolatedBlendingDescendantsStatusDirty(false)
 #endif
     , m_renderer(rendererLayerModelObject)
     , m_parent(0)
@@ -826,10 +826,12 @@ void RenderLayer::updateBlendMode()
 void RenderLayer::updateAncestorChainHasBlendingDescendants()
 {
     for (auto layer = this; layer; layer = layer->parent()) {
-        if (!layer->hasUnisolatedBlendingDescendantsStatusDirty() && layer->hasUnisolatedBlendingDescendants())
+        if (!layer->hasNotIsolatedBlendingDescendantsStatusDirty() && layer->hasNotIsolatedBlendingDescendants())
             break;
-        layer->m_hasUnisolatedBlendingDescendants = true;
-        layer->m_hasUnisolatedBlendingDescendantsStatusDirty = false;
+        layer->m_hasNotIsolatedBlendingDescendants = true;
+        layer->m_hasNotIsolatedBlendingDescendantsStatusDirty = false;
+
+        layer->updateSelfPaintingLayer();
 
         if (layer->isStackingContext())
             break;
@@ -839,10 +841,10 @@ void RenderLayer::updateAncestorChainHasBlendingDescendants()
 void RenderLayer::dirtyAncestorChainHasBlendingDescendants()
 {
     for (auto layer = this; layer; layer = layer->parent()) {
-        if (layer->hasUnisolatedBlendingDescendantsStatusDirty())
+        if (layer->hasNotIsolatedBlendingDescendantsStatusDirty())
             break;
         
-        layer->m_hasUnisolatedBlendingDescendantsStatusDirty = true;
+        layer->m_hasNotIsolatedBlendingDescendantsStatusDirty = true;
 
         if (layer->isStackingContext())
             break;
@@ -1040,12 +1042,12 @@ void RenderLayer::setAncestorChainHasVisibleDescendant()
 
 void RenderLayer::updateDescendantDependentFlags(HashSet<const RenderObject*>* outOfFlowDescendantContainingBlocks)
 {
-    if (m_visibleDescendantStatusDirty || m_hasSelfPaintingLayerDescendantDirty || m_hasOutOfFlowPositionedDescendantDirty || hasUnisolatedBlendingDescendantsStatusDirty()) {
-        m_hasVisibleDescendant = false;
-        m_hasSelfPaintingLayerDescendant = false;
-        m_hasOutOfFlowPositionedDescendant = false;
+    if (m_visibleDescendantStatusDirty || m_hasSelfPaintingLayerDescendantDirty || m_hasOutOfFlowPositionedDescendantDirty || hasNotIsolatedBlendingDescendantsStatusDirty()) {
+        bool hasVisibleDescendant = false;
+        bool hasSelfPaintingLayerDescendant = false;
+        bool hasOutOfFlowPositionedDescendant = false;
 #if ENABLE(CSS_COMPOSITING)
-        m_hasUnisolatedBlendingDescendants = false;
+        bool hasNotIsolatedBlendingDescendants = false;
 #endif
 
         HashSet<const RenderObject*> childOutOfFlowDescendantContainingBlocks;
@@ -1063,21 +1065,16 @@ void RenderLayer::updateDescendantDependentFlags(HashSet<const RenderObject*>* o
                     outOfFlowDescendantContainingBlocks->add(*it);
             }
 
-            bool hasVisibleDescendant = child->m_hasVisibleContent || child->m_hasVisibleDescendant;
-            bool hasSelfPaintingLayerDescendant = child->isSelfPaintingLayer() || child->hasSelfPaintingLayerDescendant();
-            bool hasOutOfFlowPositionedDescendant = !childOutOfFlowDescendantContainingBlocks.isEmpty();
+            hasVisibleDescendant |= child->m_hasVisibleContent || child->m_hasVisibleDescendant;
+            hasSelfPaintingLayerDescendant |= child->isSelfPaintingLayer() || child->hasSelfPaintingLayerDescendant();
+            hasOutOfFlowPositionedDescendant |= !childOutOfFlowDescendantContainingBlocks.isEmpty();
 #if ENABLE(CSS_COMPOSITING)
-            bool hasUnisolatedBlendingDescendants = child->hasBlendMode() || (child->hasUnisolatedBlendingDescendants() && !child->isolatesBlending());
-
-            m_hasUnisolatedBlendingDescendants |= hasUnisolatedBlendingDescendants;
+            hasNotIsolatedBlendingDescendants |= child->hasBlendMode() || (child->hasNotIsolatedBlendingDescendants() && !child->isolatesBlending());
 #endif
-            m_hasVisibleDescendant |= hasVisibleDescendant;
-            m_hasSelfPaintingLayerDescendant |= hasSelfPaintingLayerDescendant;
-            m_hasOutOfFlowPositionedDescendant |= hasOutOfFlowPositionedDescendant;
 
-            bool allFlagsSet = m_hasVisibleDescendant && m_hasSelfPaintingLayerDescendant && m_hasOutOfFlowPositionedDescendant;
+            bool allFlagsSet = hasVisibleDescendant && hasSelfPaintingLayerDescendant && hasOutOfFlowPositionedDescendant;
 #if ENABLE(CSS_COMPOSITING)
-            allFlagsSet &= m_hasUnisolatedBlendingDescendants;
+            allFlagsSet &= hasNotIsolatedBlendingDescendants;
 #endif
             if (allFlagsSet)
                 break;
@@ -1086,15 +1083,22 @@ void RenderLayer::updateDescendantDependentFlags(HashSet<const RenderObject*>* o
         if (outOfFlowDescendantContainingBlocks)
             outOfFlowDescendantContainingBlocks->remove(&renderer());
 
+        m_hasVisibleDescendant = hasVisibleDescendant;
         m_visibleDescendantStatusDirty = false;
+        m_hasSelfPaintingLayerDescendant = hasSelfPaintingLayerDescendant;
         m_hasSelfPaintingLayerDescendantDirty = false;
 
+        m_hasOutOfFlowPositionedDescendant = hasOutOfFlowPositionedDescendant;
         if (m_hasOutOfFlowPositionedDescendantDirty)
             updateNeedsCompositedScrolling();
 
         m_hasOutOfFlowPositionedDescendantDirty = false;
 #if ENABLE(CSS_COMPOSITING)
-        m_hasUnisolatedBlendingDescendantsStatusDirty = false;
+        m_hasNotIsolatedBlendingDescendants = hasNotIsolatedBlendingDescendants;
+        if (m_hasNotIsolatedBlendingDescendantsStatusDirty) {
+            m_hasNotIsolatedBlendingDescendantsStatusDirty = false;
+            updateSelfPaintingLayer();
+        }
 #endif
     }
 
@@ -1752,7 +1756,7 @@ void RenderLayer::addChild(RenderLayer* child, RenderLayer* beforeChild)
         setAncestorChainHasOutOfFlowPositionedDescendant(child->renderer().containingBlock());
 
 #if ENABLE(CSS_COMPOSITING)
-    if (child->hasBlendMode() || (child->hasUnisolatedBlendingDescendants() && !child->isolatesBlending()))
+    if (child->hasBlendMode() || (child->hasNotIsolatedBlendingDescendants() && !child->isolatesBlending()))
         updateAncestorChainHasBlendingDescendants();
 #endif
 
@@ -1799,7 +1803,7 @@ RenderLayer* RenderLayer::removeChild(RenderLayer* oldChild)
         dirtyAncestorChainHasSelfPaintingLayerDescendantStatus();
 
 #if ENABLE(CSS_COMPOSITING)
-    if (oldChild->hasBlendMode() || (oldChild->hasUnisolatedBlendingDescendants() && !oldChild->isolatesBlending()))
+    if (oldChild->hasBlendMode() || (oldChild->hasNotIsolatedBlendingDescendants() && !oldChild->isolatesBlending()))
         dirtyAncestorChainHasBlendingDescendants();
 #endif
 
@@ -2321,6 +2325,8 @@ void RenderLayer::scrollTo(int x, int y)
     InspectorInstrumentation::didScrollLayer(&frame);
     if (scrollsOverflow())
         frame.loader().client().didChangeScrollOffset();
+
+    renderer().view().resumePausedImageAnimationsIfNeeded();
 }
 
 static inline bool frameElementAndViewPermitScroll(HTMLFrameElementBase* frameElementBase, FrameView* frameView) 
@@ -3836,7 +3842,7 @@ bool RenderLayer::setupClipPath(GraphicsContext* context, const LayerPaintingInf
 
         LayoutRect referenceBox = computeReferenceBox(renderer(), clippingPath, offsetFromRoot, rootRelativeBounds);
         context->save();
-        context->clipPath(clippingPath.pathForReferenceRect(referenceBox), clippingPath.windRule());
+        context->clipPath(clippingPath.pathForReferenceRect(referenceBox, &m_renderer.view()), clippingPath.windRule());
         return true;
     }
 
@@ -3847,7 +3853,7 @@ bool RenderLayer::setupClipPath(GraphicsContext* context, const LayerPaintingInf
         shapeRect.moveBy(offsetFromRoot);
 
         context->save();
-        context->clipPath(clippingPath.pathForReferenceRect(shapeRect), RULE_NONZERO);
+        context->clipPath(clippingPath.pathForReferenceRect(shapeRect, &m_renderer.view()), RULE_NONZERO);
         return true;
     }
 
@@ -6176,6 +6182,7 @@ bool RenderLayer::shouldBeSelfPaintingLayer() const
     return !isNormalFlowOnly()
         || hasOverlayScrollbars()
         || needsCompositedScrolling()
+        || isolatesBlending()
         || renderer().hasReflection()
         || renderer().hasMask()
         || renderer().isTableRow()
@@ -6271,12 +6278,12 @@ void RenderLayer::updateStackingContextsAfterStyleChange(const RenderStyle* oldS
 #if ENABLE(CSS_COMPOSITING)
         if (parent()) {
             if (isStackingContext) {
-                if (!hasUnisolatedBlendingDescendantsStatusDirty() && hasUnisolatedBlendingDescendants())
+                if (!hasNotIsolatedBlendingDescendantsStatusDirty() && hasNotIsolatedBlendingDescendants())
                     parent()->dirtyAncestorChainHasBlendingDescendants();
             } else {
-                if (hasUnisolatedBlendingDescendantsStatusDirty())
+                if (hasNotIsolatedBlendingDescendantsStatusDirty())
                     parent()->dirtyAncestorChainHasBlendingDescendants();
-                else if (hasUnisolatedBlendingDescendants())
+                else if (hasNotIsolatedBlendingDescendants())
                     parent()->updateAncestorChainHasBlendingDescendants();
             }
         }
@@ -6640,12 +6647,16 @@ void RenderLayer::updateOrRemoveFilterEffectRenderer()
     FilterInfo& filterInfo = FilterInfo::get(*this);
     if (!filterInfo.renderer()) {
         RefPtr<FilterEffectRenderer> filterRenderer = FilterEffectRenderer::create();
+        filterRenderer->setFilterScale(renderer().frame().page()->deviceScaleFactor());
         RenderingMode renderingMode = renderer().frame().settings().acceleratedFiltersEnabled() ? Accelerated : Unaccelerated;
         filterRenderer->setRenderingMode(renderingMode);
         filterInfo.setRenderer(filterRenderer.release());
         
         // We can optimize away code paths in other places if we know that there are no software filters.
         renderer().view().setHasSoftwareFilters(true);
+    } else if (filterInfo.renderer()->filterScale() != renderer().frame().page()->deviceScaleFactor()) {
+        filterInfo.renderer()->setFilterScale(renderer().frame().page()->deviceScaleFactor());
+        filterInfo.renderer()->clearIntermediateResults();
     }
 
     // If the filter fails to build, remove it from the layer. It will still attempt to

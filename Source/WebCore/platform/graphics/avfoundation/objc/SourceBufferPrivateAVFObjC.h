@@ -45,6 +45,7 @@ OBJC_CLASS AVSampleBufferDisplayLayer;
 OBJC_CLASS NSData;
 OBJC_CLASS NSError;
 OBJC_CLASS NSObject;
+OBJC_CLASS WebAVStreamDataParserListener;
 typedef struct opaqueCMSampleBuffer *CMSampleBufferRef;
 typedef const struct opaqueCMFormatDescription *CMFormatDescriptionRef;
 
@@ -91,7 +92,7 @@ private:
 
     // SourceBufferPrivate overrides
     virtual void setClient(SourceBufferPrivateClient*) override;
-    virtual AppendResult append(const unsigned char* data, unsigned length) override;
+    virtual void append(const unsigned char* data, unsigned length) override;
     virtual void abort() override;
     virtual void removedFromMediaSource() override;
     virtual MediaPlayer::ReadyState readyState() const override;
@@ -108,6 +109,8 @@ private:
     void flushAndEnqueueNonDisplayingSamples(Vector<RefPtr<MediaSample>>, AVSampleBufferDisplayLayer*);
 
     void didBecomeReadyForMoreSamples(int trackID);
+    void appendCompleted();
+    void destroyParser();
     void destroyRenderers();
 
     Vector<RefPtr<VideoTrackPrivateMediaSourceAVFObjC>> m_videoTracks;
@@ -117,7 +120,7 @@ private:
     RetainPtr<AVAsset> m_asset;
     RetainPtr<AVSampleBufferDisplayLayer> m_displayLayer;
     std::map<int, RetainPtr<AVSampleBufferAudioRenderer>> m_audioRenderers;
-    RetainPtr<NSObject> m_delegate;
+    RetainPtr<WebAVStreamDataParserListener> m_delegate;
 
     MediaSourcePrivateAVFObjC* m_mediaSource;
     SourceBufferPrivateClient* m_client;

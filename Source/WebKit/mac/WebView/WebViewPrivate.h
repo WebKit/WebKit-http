@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2005-2014 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -326,27 +326,7 @@ typedef enum {
 - (void)setShowingInspectorIndication:(BOOL)enabled;
 
 #if TARGET_OS_IPHONE
-/*!
-    @method setHostApplicationBundleId:name
-    @param bundleId The application that this WebView was created for.
-    @param name That application's localized display name.
-    @abstract When a WebView is created out of process for an application,
-    you can clarify to a Remote Debugger which application this WebView
-    is intended to belong to; the application which hosts the WebView.
-*/
-- (void)setHostApplicationBundleId:(NSString *)bundleId name:(NSString *)name;
-
-/*!
-    @method hostApplicationBundleId
-    @result Returns the host application bundle id.
-*/
-- (NSString *)hostApplicationBundleId;
-
-/*!
-    @method hostApplicationName
-    @result Returns the host application name.
-*/
-- (NSString *)hostApplicationName;
+- (void)_setHostApplicationProcessIdentifier:(pid_t)pid auditToken:(audit_token_t)auditToken;
 #endif
 
 #endif // ENABLE_REMOTE_INSPECTOR
@@ -465,7 +445,6 @@ Could be worth adding to the API.
 + (void)_setTileCacheLayerPoolCapacity:(unsigned)capacity;
 
 + (void)_setAcceleratedImageDecoding:(BOOL)enabled;
-+ (BOOL)_acceleratedImageDecoding;
 + (void)_setAllowCookies:(BOOL)allow;
 + (BOOL)_allowCookies;
 + (BOOL)_isUnderMemoryPressure;
@@ -771,7 +750,6 @@ Could be worth adding to the API.
 - (BOOL)_postsAcceleratedCompositingNotifications;
 - (void)_setPostsAcceleratedCompositingNotifications:(BOOL)flag;
 - (BOOL)_isUsingAcceleratedCompositing;
-- (BOOL)_flushCompositingChanges;
 - (void)_setBaseCTM:(CGAffineTransform)transform forContext:(CGContextRef)context;
 
 // For DumpRenderTree
@@ -996,8 +974,8 @@ Could be worth adding to the API.
 @protocol WebGeolocationProvider;
 
 @protocol WebGeolocationProviderInitializationListener <NSObject>
-- (void)initializationAllowedWebView:(WebView *)webView provider:(id<WebGeolocationProvider>)provider;
-- (void)initializationDeniedWebView:(WebView *)webView provider:(id<WebGeolocationProvider>)provider;
+- (void)initializationAllowedWebView:(WebView *)webView;
+- (void)initializationDeniedWebView:(WebView *)webView;
 @end
 #endif
 
@@ -1013,7 +991,6 @@ Could be worth adding to the API.
 #if TARGET_OS_IPHONE
 - (void)setEnableHighAccuracy:(BOOL)enableHighAccuracy;
 - (void)initializeGeolocationForWebView:(WebView *)webView listener:(id<WebGeolocationProviderInitializationListener>)listener;
-- (void)cancelWarmUpForWebView:(WebView *)webView;
 - (void)stopTrackingWebView:(WebView *)webView;
 #endif
 @end

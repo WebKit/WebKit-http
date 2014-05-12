@@ -23,12 +23,12 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#import <WebKit2/WKFoundation.h>
+#import <WebKit/WKFoundation.h>
 
 #if WK_API_ENABLED
 
 #import <Foundation/Foundation.h>
-#import <WebKit2/WKConnection.h>
+#import <WebKit/WKConnection.h>
 
 @class WKProcessGroup;
 
@@ -43,7 +43,7 @@
 
 @end
 
-WK_API_CLASS
+WK_CLASS_AVAILABLE(10_10, 8_0)
 @interface WKProcessGroup : NSObject
 
 - (id)initWithInjectedBundleURL:(NSURL *)bundleURL;

@@ -57,14 +57,14 @@ public:
 private:
     void appendStorageItems(BlobData*, const BlobDataItemList&, long long offset, long long length);
 
-    virtual void registerFileBlobURL(const WebCore::URL&, const String& path, const String& contentType) override;
-    virtual unsigned long long registerBlobURL(const URL&, Vector<BlobPart>, const String& contentType) override;
+    virtual void registerFileBlobURL(const WebCore::URL&, PassRefPtr<BlobDataFileReference>, const String& contentType) override;
+    virtual void registerBlobURL(const URL&, Vector<BlobPart>, const String& contentType) override;
     virtual void registerBlobURL(const URL&, const URL& srcURL) override;
-    virtual unsigned long long registerBlobURLForSlice(const URL&, const URL& srcURL, long long start, long long end) override;
+    virtual void registerBlobURLForSlice(const URL&, const URL& srcURL, long long start, long long end) override;
     virtual void unregisterBlobURL(const URL&) override;
     virtual bool isBlobRegistryImpl() const override { return true; }
 
-    unsigned long long blobSize(const URL&);
+    virtual unsigned long long blobSize(const URL&) override;
 
     HashMap<String, RefPtr<BlobData>> m_blobs;
 };

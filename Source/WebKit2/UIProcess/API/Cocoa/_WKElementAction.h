@@ -23,13 +23,13 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#import <WebKit2/WKFoundation.h>
+#import <WebKit/WKFoundation.h>
 
 #if WK_API_ENABLED
 
 #if TARGET_OS_IPHONE
 
-#import <WebKit2/_WKActivatedElementInfo.h>
+#import <WebKit/_WKActivatedElementInfo.h>
 
 typedef void (^WKElementActionHandler)(_WKActivatedElementInfo *);
 
@@ -39,9 +39,9 @@ typedef NS_ENUM(NSInteger, _WKElementActionType) {
     _WKElementActionTypeCopy,
     _WKElementActionTypeSaveImage,
     _WKElementActionTypeAddToReadingList,
-};
+} WK_ENUM_AVAILABLE(10_10, 8_0);
 
-WK_API_CLASS
+WK_CLASS_AVAILABLE(10_10, 8_0)
 @interface _WKElementAction : NSObject
 
 + (instancetype)elementActionWithType:(_WKElementActionType)type;

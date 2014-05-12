@@ -132,7 +132,8 @@ bool JSDOMWindow::getOwnPropertySlot(JSObject* object, ExecState* exec, Property
         // not allowed. 
         slot.setUndefined();
         return true;
-    }
+    } else
+        slot.setWatchpointSet(thisObject->m_windowCloseWatchpoints);
 
     // We need to check for cross-domain access here without printing the generic warning message
     // because we always allow access to some function, just different ones depending whether access
@@ -194,6 +195,12 @@ bool JSDOMWindow::getOwnPropertySlot(JSObject* object, ExecState* exec, Property
         slot.setCustom(thisObject, allowsAccess ? entry->attributes() : ReadOnly | DontDelete | DontEnum, entry->propertyGetter());
         return true;
     }
+
+    // After this point it is no longer valid to cache any results because of
+    // the impure nature of the property accesses which follow. We can move this 
+    // statement further down when we add ways to mitigate these impurities with, 
+    // for example, watchpoints.
+    slot.disableCaching();
 
     // Check for child frames by name before built-in properties to
     // match Mozilla. This does not match IE, but some sites end up
@@ -587,7 +594,7 @@ JSValue JSDOMWindow::postMessage(ExecState* exec)
 JSValue JSDOMWindow::setTimeout(ExecState* exec)
 {
     ContentSecurityPolicy* contentSecurityPolicy = impl().document() ? impl().document()->contentSecurityPolicy() : 0;
-    OwnPtr<ScheduledAction> action = ScheduledAction::create(exec, globalObject()->world(), contentSecurityPolicy);
+    std::unique_ptr<ScheduledAction> action = ScheduledAction::create(exec, globalObject()->world(), contentSecurityPolicy);
     if (exec->hadException())
         return jsUndefined();
 
@@ -597,7 +604,7 @@ JSValue JSDOMWindow::setTimeout(ExecState* exec)
     int delay = exec->argument(1).toInt32(exec);
 
     ExceptionCode ec = 0;
-    int result = impl().setTimeout(action.release(), delay, ec);
+    int result = impl().setTimeout(std::move(action), delay, ec);
     setDOMException(exec, ec);
 
     return jsNumber(result);
@@ -606,7 +613,7 @@ JSValue JSDOMWindow::setTimeout(ExecState* exec)
 JSValue JSDOMWindow::setInterval(ExecState* exec)
 {
     ContentSecurityPolicy* contentSecurityPolicy = impl().document() ? impl().document()->contentSecurityPolicy() : 0;
-    OwnPtr<ScheduledAction> action = ScheduledAction::create(exec, globalObject()->world(), contentSecurityPolicy);
+    std::unique_ptr<ScheduledAction> action = ScheduledAction::create(exec, globalObject()->world(), contentSecurityPolicy);
     if (exec->hadException())
         return jsUndefined();
     int delay = exec->argument(1).toInt32(exec);
@@ -615,7 +622,7 @@ JSValue JSDOMWindow::setInterval(ExecState* exec)
         return jsNumber(0);
 
     ExceptionCode ec = 0;
-    int result = impl().setInterval(action.release(), delay, ec);
+    int result = impl().setInterval(std::move(action), delay, ec);
     setDOMException(exec, ec);
 
     return jsNumber(result);

@@ -36,6 +36,7 @@
 
 namespace WebCore {
 
+class BlobDataFileReference;
 class BlobPart;
 class BlobRegistry;
 class URL;
@@ -47,18 +48,20 @@ class BlobRegistry {
 public:
 
     // Registers a blob URL referring to the specified file.
-    virtual void registerFileBlobURL(const URL&, const String& path, const String& contentType) = 0;
+    virtual void registerFileBlobURL(const URL&, PassRefPtr<BlobDataFileReference>, const String& contentType) = 0;
 
     // Registers a blob URL referring to the specified blob data.
-    virtual unsigned long long registerBlobURL(const URL&, Vector<BlobPart>, const String& contentType) = 0;
+    virtual void registerBlobURL(const URL&, Vector<BlobPart>, const String& contentType) = 0;
     
     // Registers a new blob URL referring to the blob data identified by the specified srcURL.
     virtual void registerBlobURL(const URL&, const URL& srcURL) = 0;
 
     // Negative start and end values select from the end.
-    virtual unsigned long long registerBlobURLForSlice(const URL&, const URL& srcURL, long long start, long long end) = 0;
+    virtual void registerBlobURLForSlice(const URL&, const URL& srcURL, long long start, long long end) = 0;
 
     virtual void unregisterBlobURL(const URL&) = 0;
+
+    virtual unsigned long long blobSize(const URL&) = 0;
 
     virtual bool isBlobRegistryImpl() const { return false; }
 

@@ -1,3 +1,396 @@
+2014-05-09  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Allow Remote Inspector to entitlement check UIProcess through WebProcess
+        https://bugs.webkit.org/show_bug.cgi?id=132409
+
+        Reviewed by Timothy Hatcher.
+
+        Proxy applications are applications which hold WebViews for other
+        applications. The WebProcess (Web Content Service) is a proxy application.
+        For legacy reasons we were supporting a scenario where proxy applications
+        could potentially host WebViews for more then one other application. That
+        was never the case for WebProcess and it is now a scenario we don't need
+        to worry about supporting.
+
+        With this change, a proxy application more naturally only holds WebViews
+        for a single parent / host application. The proxy process can set the
+        parent pid / audit_token data on the RemoteInspector singleton, and
+        that data will be sent on to webinspectord later on to be validated.
+        In the WebProcess<->UIProcess relationship that information is known
+        and set immediately. In the Legacy iOS case that information is set
+        soon after, but not immediately known at the point the WebView is created.
+
+        This allows us to simplify the RemoteInspectorDebuggable interface.
+        We no longer need a pid per-Debuggable.
+
+        * inspector/remote/RemoteInspector.h:
+        * inspector/remote/RemoteInspector.mm:
+        (Inspector::RemoteInspector::RemoteInspector):
+        (Inspector::RemoteInspector::setParentProcessInformation):
+        (Inspector::RemoteInspector::xpcConnectionReceivedMessage):
+        (Inspector::RemoteInspector::listingForDebuggable):
+        (Inspector::RemoteInspector::receivedProxyApplicationSetupMessage):
+        Handle new proxy application setup message, and provide an API
+        for a proxy application to set the parent process information.
+
+        * inspector/remote/RemoteInspectorConstants.h:
+        New setup and response message for proxy applications to pass
+        their parent / host application information to webinspectord.
+
+        * inspector/remote/RemoteInspectorDebuggable.cpp:
+        (Inspector::RemoteInspectorDebuggable::info):
+        * inspector/remote/RemoteInspectorDebuggable.h:
+        (Inspector::RemoteInspectorDebuggableInfo::RemoteInspectorDebuggableInfo):
+        (Inspector::RemoteInspectorDebuggableInfo::hasParentProcess): Deleted.
+        pid per debuggable is no longer needed.
+
+2014-05-09  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        JSDOMWindow should disable property caching after a certain point
+        https://bugs.webkit.org/show_bug.cgi?id=132751
+
+        Reviewed by Filip Pizlo.
+
+        This is part of removing HasImpureGetOwnPropertySlot from JSDOMWindow. After the lookup in the static 
+        hash table for JSDOMWindow fails we want to disable property caching even if the code that follows thinks 
+        that it has provided a cacheable value.
+
+        * runtime/PropertySlot.h:
+        (JSC::PropertySlot::PropertySlot):
+        (JSC::PropertySlot::isCacheable):
+        (JSC::PropertySlot::disableCaching):
+
+2014-05-09  Andreas Kling  <akling@apple.com>
+
+        8.8% spent in Object.prototype.hasOwnProperty() on sbperftest.
+        <https://webkit.org/b/132749>
+
+        Leverage the fast-resolve-to-AtomicString optimization for JSRopeString
+        in Object.prototype.* by using JSString::toIdentifier() in the cases where
+        we are converting JSString -> String -> Identifier.
+
+        This brings time spent in hasOwnProperty() from 8.8% to 1.3% on
+        "The Great HTML5 Gaming Performance Test: 2014 edition"
+        <http://www.scirra.com/demos/c2/sbperftest/>
+
+        Reviewed by Oliver Hunt.
+
+        * runtime/ObjectPrototype.cpp:
+        (JSC::objectProtoFuncHasOwnProperty):
+        (JSC::objectProtoFuncDefineGetter):
+        (JSC::objectProtoFuncDefineSetter):
+        (JSC::objectProtoFuncLookupGetter):
+        (JSC::objectProtoFuncLookupSetter):
+
+2014-05-08  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        JSDOMWindow should have a WatchpointSet to fire on window close
+        https://bugs.webkit.org/show_bug.cgi?id=132721
+
+        Reviewed by Filip Pizlo.
+
+        This patch allows us to reset the inline caches that assumed they could skip 
+        the first part of JSDOMWindow::getOwnPropertySlot that checks if the window has 
+        been closed. This is part of getting rid of HasImpureGetOwnPropertySlot on JSDOMWindow.
+
+        PropertySlot now accepts a WatchpointSet which the inline cache code can look for
+        to see if it should create a new Watchpoint for that particular inline cache site.
+
+        * bytecode/Watchpoint.h:
+        * jit/Repatch.cpp:
+        (JSC::generateByIdStub):
+        (JSC::tryBuildGetByIDList):
+        (JSC::tryCachePutByID):
+        (JSC::tryBuildPutByIdList):
+        * runtime/PropertySlot.h:
+        (JSC::PropertySlot::PropertySlot):
+        (JSC::PropertySlot::watchpointSet):
+        (JSC::PropertySlot::setWatchpointSet):
+
+2014-05-09  Tanay C  <tanay.c@samsung.com>
+
+        Fix build warning (uninitialized variable) in DFGFixupPhase.cpp 
+        https://bugs.webkit.org/show_bug.cgi?id=132331
+
+        Reviewed by Darin Adler.
+
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::injectTypeConversionsForEdge):
+
+2014-05-09  peavo@outlook.com  <peavo@outlook.com>
+
+        [Win] Crash when enabling DFG JIT.
+        https://bugs.webkit.org/show_bug.cgi?id=132683
+
+        Reviewed by Geoffrey Garen.
+
+        On windows, using register GPRInfo::regT0 as parameter to e.g. JIT::storeDouble(..., GPRInfo::regT0)),
+        results in a call to JIT::storeDouble(FPRegisterID src, const void* address),
+        where the address parameter gets the value of GPRInfo::regT0, which is 0 (eax on Windows).
+        This causes the register to be written to address 0, hence the crash.
+
+        * dfg/DFGOSRExitCompiler32_64.cpp:
+        (JSC::DFG::OSRExitCompiler::compileExit): Use address in regT0 as parameter.
+        * dfg/DFGOSRExitCompiler64.cpp:
+        (JSC::DFG::OSRExitCompiler::compileExit): Ditto.
+
+2014-05-09  Martin Hodovan <mhodovan.u-szeged@partner.samsung.com>
+
+        REGRESSION(r167094): JSC crashes on ARM Traditional
+        https://bugs.webkit.org/show_bug.cgi?id=132738
+
+        Reviewed by Zoltan Herczeg.
+
+        PC is two instructions ahead of the current instruction
+        on ARM Traditional, so the distance is 8 bytes not 2.
+
+        * llint/LowLevelInterpreter.asm:
+
+2014-05-09  Alberto Garcia  <berto@igalia.com>
+
+        jsmin.py license header confusing, mentions non-free license
+        https://bugs.webkit.org/show_bug.cgi?id=123665
+
+        Reviewed by Darin Adler.
+
+        Pull the most recent version from upstream, which has a clear
+        license.
+
+        * inspector/scripts/jsmin.py:
+
+2014-05-08  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        Base case for get-by-id inline cache doesn't check for HasImpureGetOwnPropertySlot
+        https://bugs.webkit.org/show_bug.cgi?id=132695
+
+        Reviewed by Filip Pizlo.
+
+        We check in the case where we're accessing something other than the base object (e.g. the prototype), 
+        but we fail to do so for the base object.
+
+        * jit/Repatch.cpp:
+        (JSC::tryCacheGetByID):
+        (JSC::tryBuildGetByIDList):
+        * jsc.cpp: Added some infrastructure to support this test. We don't currently trigger this bug anywhere in WebKit
+        because all of the values that are returned that could be impure are set to uncacheable anyways.
+        (WTF::ImpureGetter::ImpureGetter):
+        (WTF::ImpureGetter::createStructure):
+        (WTF::ImpureGetter::create):
+        (WTF::ImpureGetter::finishCreation):
+        (WTF::ImpureGetter::getOwnPropertySlot):
+        (WTF::ImpureGetter::visitChildren):
+        (WTF::ImpureGetter::setDelegate):
+        (GlobalObject::finishCreation):
+        (functionCreateImpureGetter):
+        (functionSetImpureGetterDelegate):
+        * tests/stress/impure-get-own-property-slot-inline-cache.js: Added.
+        (foo):
+
+2014-05-08  Filip Pizlo  <fpizlo@apple.com>
+
+        deleteAllCompiledCode() shouldn't use the suspension worklist
+        https://bugs.webkit.org/show_bug.cgi?id=132708
+
+        Reviewed by Mark Hahnenberg.
+
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::setOptimizationThresholdBasedOnCompilationResult):
+        * dfg/DFGPlan.cpp:
+        (JSC::DFG::Plan::isStillValid):
+        * heap/Heap.cpp:
+        (JSC::Heap::deleteAllCompiledCode):
+
+2014-05-08  Filip Pizlo  <fpizlo@apple.com>
+
+        SSA conversion should delete PhantomLocals for captured variables
+        https://bugs.webkit.org/show_bug.cgi?id=132693
+
+        Reviewed by Mark Hahnenberg.
+
+        * dfg/DFGCommon.cpp:
+        (JSC::DFG::startCrashing): Parallel JIT and a JIT bug means that we man dump IR in parallel. This is the workaround. This patch uses it in all of the places where we dump IR and crash.
+        * dfg/DFGCommon.h:
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::injectTypeConversionsForEdge): Use the workaround.
+        * dfg/DFGLivenessAnalysisPhase.cpp:
+        (JSC::DFG::LivenessAnalysisPhase::run): Use the workaround.
+        * dfg/DFGSSAConversionPhase.cpp:
+        (JSC::DFG::SSAConversionPhase::run): Fix the bug - it's true that PhantomLocal for captured variables doesn't need anything done to it, but it's wrong that we didn't delete it outright.
+        * dfg/DFGValidate.cpp: Use the workaround.
+        * tests/stress/phantom-local-captured-but-not-flushed-to-ssa.js: Added.
+        (foo):
+        (bar):
+
+2014-05-07  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r168451.
+        https://bugs.webkit.org/show_bug.cgi?id=132670
+
+        Not a speed-up, just do what other compilers do. (Requested by
+        kling on #webkit).
+
+        Reverted changeset:
+
+        "[X86] Emit BT instruction for single-bit tests."
+        https://bugs.webkit.org/show_bug.cgi?id=132650
+        http://trac.webkit.org/changeset/168451
+
+2014-05-07  Filip Pizlo  <fpizlo@apple.com>
+
+        Make Executable::clearCode() actually clear all of the entrypoints, and
+        clean up some other FTL-related calling convention stuff.
+        <rdar://problem/16720172>
+
+        Rubber stamped by Mark Hahnenberg.
+
+        * dfg/DFGOperations.cpp:
+        * dfg/DFGOperations.h:
+        * dfg/DFGWorklist.cpp:
+        (JSC::DFG::Worklist::Worklist):
+        (JSC::DFG::Worklist::finishCreation):
+        (JSC::DFG::Worklist::create):
+        (JSC::DFG::ensureGlobalDFGWorklist):
+        (JSC::DFG::ensureGlobalFTLWorklist):
+        * dfg/DFGWorklist.h:
+        * heap/CodeBlockSet.cpp:
+        (JSC::CodeBlockSet::dump):
+        * heap/CodeBlockSet.h:
+        * runtime/Executable.cpp:
+        (JSC::ExecutableBase::clearCode):
+
+2014-05-07  Andreas Kling  <akling@apple.com>
+
+        [X86] Emit BT instruction for single-bit tests.
+        <https://webkit.org/b/132650>
+
+        Implement test-bit-and-branch slightly more efficiently by using
+        BT + JC/JNC instead of TEST + JZ/JNZ when we're only testing for
+        a single bit.
+
+        Reviewed by Michael Saboff.
+
+        * assembler/MacroAssemblerX86Common.h:
+        (JSC::MacroAssemblerX86Common::singleBitIndex):
+        (JSC::MacroAssemblerX86Common::branchTest32):
+        * assembler/X86Assembler.h:
+        (JSC::X86Assembler::bt_i8r):
+        (JSC::X86Assembler::bt_i8m):
+
+2014-05-07  Mark Lam  <mark.lam@apple.com>
+
+        REGRESSION(r166678): Dromaeo/cssquery-dojo.html crashes regularly.
+        <https://webkit.org/b/131356>
+
+        Reviewed by Geoffrey Garen.
+
+        The issue is that GC needs to be made aware of writes to m_inferredValue
+        in the VariableWatchpointSet, but was not.  As a result, if a JSCell*
+        is written to a VariableWatchpointSet m_inferredValue, and that JSCell
+        does not survive an eden GC shortly after, we will end up with a stale
+        JSCell pointer left in the m_inferredValue.
+
+        This issue can be detected more easily by running Dromaeo/cssquery-dojo.html
+        using DumpRenderTree with the VM heap in zombie mode.
+
+        The fix is to change VariableWatchpointSet m_inferredValue to type
+        WriteBarrier<Unknown> and ensure that VariableWatchpointSet::notifyWrite()
+        is executed by all the execution engines so that the WriteBarrier semantics
+        are honored.
+
+        We still check if the value to be written is the same as the one in the
+        inferredValue.  We'll by-pass calling the slow path notifyWrite() if the
+        values are the same.        
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::CodeBlock):
+        - need to pass the symbolTable to prepareToWatch() because it will be needed
+          for instantiating the VariableWatchpointSet in prepareToWatch().
+
+        * bytecode/VariableWatchpointSet.h:
+        (JSC::VariableWatchpointSet::VariableWatchpointSet):
+        - VariableWatchpointSet now tracks its owner symbol table for its m_inferredValue
+          write barrier, and yes, m_inferredValue is now of type WriteBarrier<Unknown>.
+        (JSC::VariableWatchpointSet::inferredValue):
+        (JSC::VariableWatchpointSet::invalidate):
+        (JSC::VariableWatchpointSet::finalizeUnconditionally):
+        (JSC::VariableWatchpointSet::addressOfInferredValue):
+        (JSC::VariableWatchpointSet::notifyWrite): Deleted.
+        * bytecode/VariableWatchpointSetInlines.h: Added.
+        (JSC::VariableWatchpointSet::notifyWrite):
+
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::cellConstant):
+        - Added an assert in case we try to make constants of zombified JSCells again.
+
+        * dfg/DFGOperations.cpp:
+        * dfg/DFGOperations.h:
+        * dfg/DFGSpeculativeJIT.h:
+        (JSC::DFG::SpeculativeJIT::callOperation):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        - We now let the slow path handle the cases when the VariableWatchpointSet is
+          in state ClearWatchpoint and IsWatched, and the slow path will ensure that
+          we handle the needed write barrier semantics correctly.
+          We will by-pass the slow path if the value being written is the same as the
+          inferred value.
+
+        * ftl/FTLIntrinsicRepository.h:
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::LowerDFGToLLVM::compileNotifyWrite):
+        - Let the slow path handle the cases when the VariableWatchpointSet is
+          in state ClearWatchpoint and IsWatched.
+          We will by-pass the slow path if the value being written is the same as the
+          inferred value.
+
+        * heap/Heap.cpp:
+        (JSC::Zombify::operator()):
+        - Use a different value for the zombified bits (to distinguish it from 0xbbadbeef
+          which is used everywhere else).
+        * heap/Heap.h:
+        (JSC::Heap::isZombified):
+        - Provide a convenience test function to check if JSCells are zombified.  This is
+          currently only used in an assertion in the DFG bytecode parser, but the intent
+          it that we'll apply this test in other strategic places later to help with early
+          detection of usage of GC'ed objects when we run in zombie mode.
+
+        * jit/JITOpcodes.cpp:
+        (JSC::JIT::emitSlow_op_captured_mov):
+        * jit/JITOperations.h:
+        * jit/JITPropertyAccess.cpp:
+        (JSC::JIT::emitNotifyWrite):
+        * jit/JITPropertyAccess32_64.cpp:
+        (JSC::JIT::emitNotifyWrite):
+        (JSC::JIT::emitSlow_op_put_to_scope):
+        - Let the slow path for notifyWrite handle the cases when the VariableWatchpointSet
+          is in state ClearWatchpoint and IsWatched.
+          We will by-pass the slow path if the value being written is the same as the
+          inferred value.
+        
+        * llint/LowLevelInterpreter32_64.asm:
+        * llint/LowLevelInterpreter64.asm:
+        - Let the slow path for notifyWrite handle the cases when the VariableWatchpointSet
+          is in state ClearWatchpoint and IsWatched.
+          We will by-pass the slow path if the value being written is the same as the
+          inferred value.
+        
+        * runtime/CommonSlowPaths.cpp:
+
+        * runtime/JSCJSValue.h: Fixed some typos in the comments.
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::addGlobalVar):
+        (JSC::JSGlobalObject::addFunction):
+        * runtime/JSSymbolTableObject.h:
+        (JSC::symbolTablePut):
+        (JSC::symbolTablePutWithAttributes):
+        * runtime/SymbolTable.cpp:
+        (JSC::SymbolTableEntry::prepareToWatch):
+        (JSC::SymbolTableEntry::notifyWriteSlow):
+        * runtime/SymbolTable.h:
+        (JSC::SymbolTableEntry::notifyWrite):
+
 2014-05-06  Michael Saboff  <msaboff@apple.com>
 
         Unreviewd build fix for C-LOOP after r168396.

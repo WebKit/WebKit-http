@@ -26,9 +26,9 @@
 #ifndef WKPageLoaderClient_h
 #define WKPageLoaderClient_h
 
-#include <WebKit2/WKBase.h>
-#include <WebKit2/WKError.h>
-#include <WebKit2/WKPageLoadTypes.h>
+#include <WebKit/WKBase.h>
+#include <WebKit/WKError.h>
+#include <WebKit/WKPageLoadTypes.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -69,7 +69,7 @@ typedef bool (*WKPageCanAuthenticateAgainstProtectionSpaceInFrameCallback)(WKPag
 typedef void (*WKPageDidReceiveAuthenticationChallengeInFrameCallback)(WKPageRef page, WKFrameRef frame, WKAuthenticationChallengeRef authenticationChallenge, const void *clientInfo);
 typedef void (*WKPageDidChangeBackForwardListCallback)(WKPageRef page, WKBackForwardListItemRef addedItem, WKArrayRef removedItems, const void *clientInfo);
 typedef bool (*WKPageShouldGoToBackForwardListItemCallback)(WKPageRef page, WKBackForwardListItemRef item, const void *clientInfo);
-typedef bool (*WKPageShouldKeepCurrentBackForwardListItemInListCallback)(WKPageRef page, WKBackForwardListItemRef item);
+typedef bool (*WKPageShouldKeepCurrentBackForwardListItemInListCallback)(WKPageRef page, WKBackForwardListItemRef item, const void *clientInfo);
 typedef void (*WKPageWillGoToBackForwardListItemCallback)(WKPageRef page, WKBackForwardListItemRef item, WKTypeRef userData, const void *clientInfo);
 typedef void (*WKPageDidLayoutCallback)(WKPageRef page, WKLayoutMilestones milestones, WKTypeRef userData, const void *clientInfo);
 typedef WKPluginLoadPolicy (*WKPagePluginLoadPolicyCallback)(WKPageRef page, WKPluginLoadPolicy currentPluginLoadPolicy, WKDictionaryRef pluginInfoDictionary, WKStringRef* unavailabilityDescription, const void* clientInfo);

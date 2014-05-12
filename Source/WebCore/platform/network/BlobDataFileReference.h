@@ -39,27 +39,32 @@ public:
         return adoptRef(new BlobDataFileReference(path));
     }
 
-    const String& path() const { return m_path; }
-    unsigned long long size() const;
-    double expectedModificationTime() const;
+    virtual ~BlobDataFileReference();
+
+    void startTrackingModifications();
+
+    const String& path();
+    unsigned long long size();
+    double expectedModificationTime();
+
+    virtual void prepareForFileAccess();
+    virtual void revokeFileAccess();
+
+protected:
+    BlobDataFileReference(const String& path);
 
 private:
-    BlobDataFileReference(const String& path)
-        : m_path(path)
-        , m_fileSystemDataComputed(false)
-        , m_size(0)
-        , m_expectedModificationTime(invalidFileTime())
-    {
-        // FIXME: Per the spec, a File object should start watching for changes as soon as it's created, so we should record m_expectedModificationTime right away.
-        // FIXME: Some platforms provide better ways to listen for file system object changes, consider using these.
-    }
-
-    void computeFileSystemData() const;
+#if ENABLE(FILE_REPLACEMENT)
+    void generateReplacementFile();
+#endif
 
     String m_path;
-    mutable bool m_fileSystemDataComputed;
-    mutable unsigned long long m_size;
-    mutable double m_expectedModificationTime;
+#if ENABLE(FILE_REPLACEMENT)
+    String m_replacementPath;
+    bool m_replacementShouldBeGenerated;
+#endif
+    unsigned long long m_size;
+    double m_expectedModificationTime;
 };
 
 }

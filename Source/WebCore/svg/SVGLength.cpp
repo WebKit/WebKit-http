@@ -30,6 +30,7 @@
 #include "SVGNames.h"
 #include "SVGParserUtilities.h"
 #include <wtf/MathExtras.h>
+#include <wtf/NeverDestroyed.h>
 #include <wtf/text/StringView.h>
 
 namespace WebCore {
@@ -53,7 +54,7 @@ static inline SVGLengthType extractType(unsigned int unit)
     return static_cast<SVGLengthType>(type);
 }
 
-static inline String lengthTypeToString(SVGLengthType type)
+static inline const char* lengthTypeToString(SVGLengthType type)
 {
     switch (type) {
     case LengthTypeUnknown:
@@ -80,7 +81,7 @@ static inline String lengthTypeToString(SVGLengthType type)
     }
 
     ASSERT_NOT_REACHED();
-    return String();
+    return "";
 }
 
 inline SVGLengthType stringToLengthType(const UChar*& ptr, const UChar* end)
@@ -378,34 +379,34 @@ PassRefPtr<CSSPrimitiveValue> SVGLength::toCSSPrimitiveValue(const SVGLength& le
 SVGLengthMode SVGLength::lengthModeForAnimatedLengthAttribute(const QualifiedName& attrName)
 {
     typedef HashMap<QualifiedName, SVGLengthMode> LengthModeForLengthAttributeMap;
-    DEPRECATED_DEFINE_STATIC_LOCAL(LengthModeForLengthAttributeMap, s_lengthModeMap, ());
+    static NeverDestroyed<LengthModeForLengthAttributeMap> s_lengthModeMap;
     
-    if (s_lengthModeMap.isEmpty()) {
-        s_lengthModeMap.set(SVGNames::xAttr, LengthModeWidth);
-        s_lengthModeMap.set(SVGNames::yAttr, LengthModeHeight);
-        s_lengthModeMap.set(SVGNames::cxAttr, LengthModeWidth);
-        s_lengthModeMap.set(SVGNames::cyAttr, LengthModeHeight);
-        s_lengthModeMap.set(SVGNames::dxAttr, LengthModeWidth);
-        s_lengthModeMap.set(SVGNames::dyAttr, LengthModeHeight);
-        s_lengthModeMap.set(SVGNames::fxAttr, LengthModeWidth);
-        s_lengthModeMap.set(SVGNames::fyAttr, LengthModeHeight);
-        s_lengthModeMap.set(SVGNames::rAttr, LengthModeOther);
-        s_lengthModeMap.set(SVGNames::widthAttr, LengthModeWidth);
-        s_lengthModeMap.set(SVGNames::heightAttr, LengthModeHeight);
-        s_lengthModeMap.set(SVGNames::x1Attr, LengthModeWidth);
-        s_lengthModeMap.set(SVGNames::x2Attr, LengthModeWidth);
-        s_lengthModeMap.set(SVGNames::y1Attr, LengthModeHeight);
-        s_lengthModeMap.set(SVGNames::y2Attr, LengthModeHeight);
-        s_lengthModeMap.set(SVGNames::refXAttr, LengthModeWidth);
-        s_lengthModeMap.set(SVGNames::refYAttr, LengthModeHeight);
-        s_lengthModeMap.set(SVGNames::markerWidthAttr, LengthModeWidth);
-        s_lengthModeMap.set(SVGNames::markerHeightAttr, LengthModeHeight);        
-        s_lengthModeMap.set(SVGNames::textLengthAttr, LengthModeWidth);
-        s_lengthModeMap.set(SVGNames::startOffsetAttr, LengthModeWidth);
+    if (s_lengthModeMap.get().isEmpty()) {
+        s_lengthModeMap.get().set(SVGNames::xAttr, LengthModeWidth);
+        s_lengthModeMap.get().set(SVGNames::yAttr, LengthModeHeight);
+        s_lengthModeMap.get().set(SVGNames::cxAttr, LengthModeWidth);
+        s_lengthModeMap.get().set(SVGNames::cyAttr, LengthModeHeight);
+        s_lengthModeMap.get().set(SVGNames::dxAttr, LengthModeWidth);
+        s_lengthModeMap.get().set(SVGNames::dyAttr, LengthModeHeight);
+        s_lengthModeMap.get().set(SVGNames::fxAttr, LengthModeWidth);
+        s_lengthModeMap.get().set(SVGNames::fyAttr, LengthModeHeight);
+        s_lengthModeMap.get().set(SVGNames::rAttr, LengthModeOther);
+        s_lengthModeMap.get().set(SVGNames::widthAttr, LengthModeWidth);
+        s_lengthModeMap.get().set(SVGNames::heightAttr, LengthModeHeight);
+        s_lengthModeMap.get().set(SVGNames::x1Attr, LengthModeWidth);
+        s_lengthModeMap.get().set(SVGNames::x2Attr, LengthModeWidth);
+        s_lengthModeMap.get().set(SVGNames::y1Attr, LengthModeHeight);
+        s_lengthModeMap.get().set(SVGNames::y2Attr, LengthModeHeight);
+        s_lengthModeMap.get().set(SVGNames::refXAttr, LengthModeWidth);
+        s_lengthModeMap.get().set(SVGNames::refYAttr, LengthModeHeight);
+        s_lengthModeMap.get().set(SVGNames::markerWidthAttr, LengthModeWidth);
+        s_lengthModeMap.get().set(SVGNames::markerHeightAttr, LengthModeHeight);        
+        s_lengthModeMap.get().set(SVGNames::textLengthAttr, LengthModeWidth);
+        s_lengthModeMap.get().set(SVGNames::startOffsetAttr, LengthModeWidth);
     }
     
-    if (s_lengthModeMap.contains(attrName))
-        return s_lengthModeMap.get(attrName);
+    if (s_lengthModeMap.get().contains(attrName))
+        return s_lengthModeMap.get().get(attrName);
     
     return LengthModeOther;
 }

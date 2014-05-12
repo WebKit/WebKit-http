@@ -23,17 +23,17 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <WebKit2/WKNavigationDataRef.h>
+#include <WebKit/WKNavigationDataRef.h>
 
 #ifdef __OBJC__
 
-#import <WebKit2/WKFoundation.h>
+#import <WebKit/WKFoundation.h>
 
 #if WK_API_ENABLED
 
 #import <Foundation/Foundation.h>
 
-WK_API_CLASS
+WK_CLASS_AVAILABLE(10_10, 8_0)
 @interface WKNavigationData : NSObject
 
 @property (readonly) NSString *title;

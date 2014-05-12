@@ -1,3 +1,339 @@
+2014-05-11  Anders Carlsson  <andersca@apple.com>
+
+        Add a WKContextConfigurationRef object and make the injected bundle path part of the configuration
+        https://bugs.webkit.org/show_bug.cgi?id=132806
+
+        Reviewed by Beth Dakin.
+
+        Migrate to WKContextConfiguration.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::initialize):
+
+2014-05-10  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        REGRESSION(CMAKE): [GTK] WebKit2 C API tests are not longer built in the same binary
+        https://bugs.webkit.org/show_bug.cgi?id=132685
+
+        Reviewed by Martin Robinson.
+
+        Use a single TestWebKit2 binary for all WebKit2 C API tests.
+
+        * TestWebKitAPI/PlatformGTK.cmake:
+
+2014-05-09  Benjamin Poulain  <benjamin@webkit.org>
+
+        [iOS] Switch geolocation to an explicit authorization query model
+        https://bugs.webkit.org/show_bug.cgi?id=132717
+
+        Reviewed by Sam Weinig.
+
+        * DumpRenderTree/mac/MockGeolocationProvider.mm:
+        (-[MockGeolocationProvider initializeGeolocationForWebView:listener:]):
+        (-[MockGeolocationProvider cancelWarmUpForWebView:]): Deleted.
+
+2014-05-09  David Farler  <dfarler@apple.com>
+
+        com.apple.iphonesimulator.startSession needs to pass "RuntimeIdentifier"
+        https://bugs.webkit.org/show_bug.cgi?id=132718
+
+        Reviewed by David Kilzer.
+
+        The simulator may not be able to look up runtimes by SDK paths
+        and instead will map SDK versions to runtimes instead. In
+        com.apple.iphonesimulator.startSession notifications,
+        'runtimeIdentifier' (SDK version string) is preferred over
+        'sdkRoot' (SDK path) anyway. Include the 'runtimeIdentifier' key
+        when creating a new DRT or WKTR simulator session.
+
+        IPhoneSimulatorNotification.pm filters out keys for this
+        notification's userInfo with a hard-coded list. There's no harm
+        in including extra key-value pairs in an NSNotification userInfo
+        dictionary anyway and the simulator may again change its
+        userInfo schema for this notification.
+
+        * DumpRenderTree/ios/PerlSupport/IPhoneSimulatorNotification/lib/IPhoneSimulatorNotification.pm:
+        (postStartSessionNotification):
+        * Scripts/old-run-webkit-tests:
+        (installAndLaunchDumpToolAppUsingNotification):
+
+2014-05-09  Anders Carlsson  <andersca@apple.com>
+
+        Another build fix.
+
+        * Scripts/build-webkit:
+        WebKit2 should always be built for OS X and iOS.
+
+2014-05-09  Anders Carlsson  <andersca@apple.com>
+
+        Follow-up build fix.
+
+        * Scripts/build-webkit:
+        WebKit2 should no longer be built before WebKit.
+
+2014-05-09  Anders Carlsson  <andersca@apple.com>
+
+        Rename WebKit2.framework to WebKit.framework
+        https://bugs.webkit.org/show_bug.cgi?id=132743
+        <rdar://problem/15920046>
+
+        Reviewed by Dan Bernstein.
+
+        * Scripts/check-for-inappropriate-files-in-framework:
+        Use PRODUCT_NAME instead of PROJECT_NAME when matching frameworks.
+        Change WebKit2 to WebKit.
+
+        * Scripts/check-for-webkit-framework-include-consistency:
+        Change WebKit to WebKitLegacy.
+
+2014-05-09  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        Remove GTK+ WK1 EWS from build.webkit.org/dashboard
+        https://bugs.webkit.org/show_bug.cgi?id=132732
+
+        Reviewed by Alexey Proskuryakov.
+
+        GTK+ WK1 EWS was removed in r166427, so it shouldn't appear in the dashboard.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/EWS.js:
+        (EWS): Remove GTK+ WK1 EWS.
+
+2014-05-09  Eva Balazsfalvi  <evab.u-szeged@partner.samsung.com>
+
+        Add new u-szeged contributors.
+
+        Reviewed by Csaba Osztrogonác.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2014-05-09  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        REGRESSION(CMAKE): [GTK] run-gtk-tests doesn't set the right injected bundle path
+        https://bugs.webkit.org/show_bug.cgi?id=132736
+
+        Reviewed by Philippe Normand.
+
+        There are two problems, the path returned by common.library_build_path() is wrong when
+        common.binary_build_path() has previously been called, and the test is still looking for
+        the .la instead of .so
+
+        * TestWebKitAPI/gtk/PlatformUtilitiesGtk.cpp:
+        (TestWebKitAPI::Util::createInjectedBundlePath): Use .so instead
+        of .la as extension of the injected bundle library.
+        * gtk/common.py:
+        (binary_build_path): Remove unused global variable and add a new
+        one for binary_build_dir instead of sharing the same global
+        variable for library_build_path and binary_build_path.
+
+2014-05-08  Praveen R Jadhav  <praveen.j@samsung.com>
+
+        [EFL] Enable MEDIA_STREAM for EFL port
+        https://bugs.webkit.org/show_bug.cgi?id=132648
+
+        Reviewed by Gyuyoung Kim.
+
+        Script modified to enable MEDIA_STREAM for EFL build.
+
+        * Scripts/webkitperl/FeatureList.pm: 
+
+2014-05-08  David Farler  <dfarler@apple.com>
+
+        old-run-webkit-tests: update strings for simulator devices and app name
+        https://bugs.webkit.org/show_bug.cgi?id=132687
+
+        Reviewed by Darin Adler.
+
+        iPhone Retina (4-inch) -> iPhone 5
+        iPhone Retina (4-inch 64-bit) -> iPhone 5s
+
+        * Scripts/old-run-webkit-tests:
+        (installAndLaunchDumpToolAppUsingNotification):
+        (openIPhoneSimulator):
+        (quitIPhoneSimulator):
+        quit iOS Simulator, not iPhone Simulator.
+
+2014-05-08  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        REGRESSION(r168471): Update the builder names on the scheduler list.
+        https://bugs.webkit.org/show_bug.cgi?id=132699
+
+        Reviewed by Martin Robinson.
+
+        On r168471 I missed to update the builder names for the GTK build
+        bots on the AnyBranchScheduler type scheduler list of bots.
+
+        * BuildSlaveSupport/build.webkit.org-config/config.json:
+
+2014-05-08  Brady Eidson  <beidson@apple.com>
+
+        "shouldKeepCurrentBackForwardListItemInList" API should pass clientInfo to the callback
+        <rdar://problem/16855357> and https://bugs.webkit.org/show_bug.cgi?id=132692
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/Tests/WebKit2/ShouldKeepCurrentBackForwardListItemInList.cpp:
+        (TestWebKitAPI::shouldKeepCurrentBackForwardListItemInList):
+
+2014-05-08  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        REGRESSION(r168471): Duplicate builddirs broke the build master.
+        https://bugs.webkit.org/show_bug.cgi?id=132688
+
+        Reviewed by Carlos Garcia Campos.
+
+        Rename the builddirs of the new GTK bots introduced on r168471 to
+        be unique. Otherwise the master will break.
+
+        * BuildSlaveSupport/build.webkit.org-config/config.json:
+
+2014-05-08  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] webkitdom script assumes mkdir only fails because the directory already exists
+        https://bugs.webkit.org/show_bug.cgi?id=132674
+
+        Reviewed by Philippe Normand.
+
+        Only ignore mkdir failure when exception is raised because the
+        file already exists and it's a directory.
+
+        * gtk/webkitdom.py:
+        (write_doc_files):
+
+2014-05-08  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [WK2][GTK] Split the 64-bit GTK buildbots in Build and Test.
+        https://bugs.webkit.org/show_bug.cgi?id=131358
+
+        Reviewed by Carlos Garcia Campos.
+
+        Current 64-bit GTK build bots (Release and Debug) not only test
+        the build, but run all tests. Split each one of the bots in
+        BuildOnly and TestWebKit2.
+
+        This will allow us to have a better overview of the status of
+        the GTK port.
+
+        Original patch from Sergio Villar Senin <svillar@igalia.com>
+
+        * BuildSlaveSupport/build.webkit.org-config/config.json:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/TestFailures/scripts/config.js:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/WebKitBuildbot.js:
+        (WebKitBuildbot):
+        * Scripts/webkitpy/port/builders.py:
+        * Scripts/webkitpy/tool/commands/rebaseline_unittest.py:
+        (TestRebaselineTest.test_baseline_directory):
+        * TestResultServer/static-dashboards/builders.jsonp:
+        * TestResultServer/static-dashboards/flakiness_dashboard_unittests.js:
+        (resetGlobals):
+        * TestResultServer/static-dashboards/loader_unittests.js:
+
+2014-05-07  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        [CoordinatedGraphics][WK2] Scale factor and scroll position is not being restored properly in a back/forward load
+        https://bugs.webkit.org/show_bug.cgi?id=126022
+
+        Reviewed by Benjamin Poulain.
+
+        Original author : Thiago de Barros Lacerda, and finished by Gyuyoung Kim.
+
+        Added an unit test case to check if scroll position and scale are restored properly.
+
+        * TestWebKitAPI/PlatformEfl.cmake:
+        * TestWebKitAPI/Tests/WebKit2/CoordinatedGraphics/WKViewRestoreZoomAndScrollBackForward.cpp: Added.
+        (TestWebKitAPI::didFinishLoadForFrame):
+        (TestWebKitAPI::didChangeContentsPosition):
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WebKit2/CoordinatedGraphics/backforward1.html: Added.
+        * TestWebKitAPI/Tests/WebKit2/CoordinatedGraphics/backforward2.html: Added.
+
+2014-05-07  Simon Fraser  <simon.fraser@apple.com>
+
+        WebKit1 is flashy when compositing layers come and go
+        https://bugs.webkit.org/show_bug.cgi?id=132655
+        <rdar://problem/16830981&16788846>
+
+        Reviewed by Sam Weinig.
+        
+        Revert the change from r166117.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (updateDisplay):
+
+2014-05-07  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: AXSelectTextWithCriteria should support capitalize/lowercase/uppercase
+        https://bugs.webkit.org/show_bug.cgi?id=132622
+
+        Reviewed by Mario Sanchez Prada.
+
+        * DumpRenderTree/AccessibilityUIElement.cpp:
+        (selectTextWithCriteriaCallback):
+        (isEqualCallback):
+        * DumpRenderTree/AccessibilityUIElement.h:
+        * DumpRenderTree/atk/AccessibilityUIElementAtk.cpp:
+        (AccessibilityUIElement::selectTextWithCriteria):
+        * DumpRenderTree/ios/AccessibilityUIElementIOS.mm:
+        (AccessibilityUIElement::selectTextWithCriteria):
+        * DumpRenderTree/mac/AccessibilityUIElementMac.mm:
+        (selectTextParameterizedAttributeForCriteria):
+        (AccessibilityUIElement::selectTextWithCriteria):
+        * DumpRenderTree/win/AccessibilityUIElementWin.cpp:
+        (AccessibilityUIElement::selectTextWithCriteria):
+        * WebKitTestRunner/InjectedBundle/AccessibilityUIElement.cpp:
+        (WTR::AccessibilityUIElement::selectTextWithCriteria):
+        * WebKitTestRunner/InjectedBundle/AccessibilityUIElement.h:
+        * WebKitTestRunner/InjectedBundle/Bindings/AccessibilityUIElement.idl:
+        * WebKitTestRunner/InjectedBundle/atk/AccessibilityUIElementAtk.cpp:
+        (WTR::AccessibilityUIElement::selectTextWithCriteria):
+        * WebKitTestRunner/InjectedBundle/ios/AccessibilityUIElementIOS.mm:
+        (WTR::AccessibilityUIElement::selectTextWithCriteria):
+        * WebKitTestRunner/InjectedBundle/mac/AccessibilityUIElementMac.mm:
+        (WTR::selectTextParameterizedAttributeForCriteria):
+        (WTR::AccessibilityUIElement::selectTextWithCriteria):
+
+2014-05-07  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [SOUP] TLSErrors do not cause page load to fail when not ignored
+        https://bugs.webkit.org/show_bug.cgi?id=121548
+
+        Reviewed by Sergio Villar Senin.
+
+        Add unit tests to check that the load fails with TLS errors in
+        case of a redirection.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestSSL.cpp:
+        (testTLSErrorsRedirect):
+        (httpsServerCallback):
+        (beforeAll):
+
+2014-05-07  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [CSS Grid Layout] Remove runtime feature
+        https://bugs.webkit.org/show_bug.cgi?id=132382
+
+        Reviewed by Benjamin Poulain.
+
+        Remove cssGridLayoutEnabled setting usage.
+
+        * DumpRenderTree/efl/DumpRenderTreeChrome.cpp:
+        (DumpRenderTreeChrome::resetDefaultsToConsistentValues):
+        * DumpRenderTree/efl/TestRunnerEfl.cpp:
+        (TestRunner::overridePreference):
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (resetWebPreferencesToConsistentValues):
+
+2014-05-06  David Kilzer  <ddkilzer@apple.com>
+
+        Add Makefile targets for copying static libraries (LLVM and WKSI)
+        <http://webkit.org/b/132619>
+
+        Reviewed by Mark Rowe.
+
+        * Scripts/copy-webkitlibraries-to-product-directory: Set a
+        sensible default for product directory if not specified on
+        either the command-line or in the environment (by Xcode) by
+        calling productDir() in webkitdirs.pm.
+
 2014-05-06  Brady Eidson  <beidson@apple.com>
 
         Add WK2 SPI to prevent the previous back/forward item from remaining in the list

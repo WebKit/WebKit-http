@@ -1865,6 +1865,7 @@ private:
     void injectTypeConversionsForEdge(Node* node, Edge& edge)
     {
         ASSERT(node == m_currentNode);
+        Node* result = nullptr;
         
         switch (edge.useKind()) {
         case DoubleRepUse:
@@ -1874,7 +1875,6 @@ private:
             
             addRequiredPhantom(edge.node());
 
-            Node* result;
             if (edge->hasInt52Result()) {
                 result = m_insertionSet.insertNode(
                     m_indexInBlock, SpecInt52AsDouble, DoubleRep, node->origin,
@@ -1895,9 +1895,9 @@ private:
             
             addRequiredPhantom(edge.node());
 
-            Node* result;
             if (edge->hasDoubleResult()) {
                 // This will never happen.
+                startCrashing();
                 dataLog("Found an Int52RepUse to a double result: ", node, " -> ", edge, "\n");
                 m_graph.dump();
                 RELEASE_ASSERT_NOT_REACHED();
@@ -1908,6 +1908,7 @@ private:
             } else {
                 // This is only here for dealing with constants.
                 if (edge->op() != JSConstant) {
+                    startCrashing();
                     dataLog("Found an Int52RepUse on something that is neither Int32 nor a constant: ", node, " -> ", edge, "\n");
                     m_graph.dump();
                     RELEASE_ASSERT_NOT_REACHED();
@@ -1927,7 +1928,6 @@ private:
             
             addRequiredPhantom(edge.node());
             
-            Node* result;
             if (edge->hasDoubleResult()) {
                 result = m_insertionSet.insertNode(
                     m_indexInBlock, SpecBytecodeDouble, ValueRep, node->origin,

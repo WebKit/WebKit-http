@@ -69,7 +69,8 @@ void BlobData::setContentType(const String& contentType)
 
 void BlobData::appendData(PassRefPtr<RawData> data)
 {
-    appendData(data, 0, data->length());
+    size_t dataSize = data->length();
+    appendData(data, 0, dataSize);
 }
 
 void BlobData::appendData(PassRefPtr<RawData> data, long long offset, long long length)
@@ -77,9 +78,10 @@ void BlobData::appendData(PassRefPtr<RawData> data, long long offset, long long 
     m_items.append(BlobDataItem(data, offset, length));
 }
 
-void BlobData::appendFile(const String& path)
+void BlobData::appendFile(PassRefPtr<BlobDataFileReference> file)
 {
-    m_items.append(BlobDataItem(path));
+    file->startTrackingModifications();
+    m_items.append(BlobDataItem(file));
 }
 
 void BlobData::appendFile(BlobDataFileReference* file, long long offset, long long length)

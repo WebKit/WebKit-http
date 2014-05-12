@@ -114,6 +114,7 @@
     UIView *_extendedBackgroundLayerTopInset;
     UIView *_extendedBackgroundLayerBottomInset;
 
+    BOOL _needsResetViewStateAfterCommitLoadForMainFrame;
     BOOL _isAnimatingResize;
     CATransform3D _resizeAnimationTransformAdjustments;
     RetainPtr<UIView> _resizeAnimationView;
@@ -124,6 +125,8 @@
     BOOL _allowsBackForwardNavigationGestures;
 
     RetainPtr<UIView <WKWebViewContentProvider>> _customContentView;
+
+    WebCore::Color _scrollViewBackgroundColor;
 #endif
 #if PLATFORM(MAC)
     RetainPtr<WKView> _wkView;
@@ -441,19 +444,28 @@ static CGFloat contentZoomScale(WKWebView* webView)
 - (void)_updateScrollViewBackground
 {
     WebCore::Color color = _page->pageExtendedBackgroundColor();
-    RetainPtr<CGColorRef> cgColor = cachedCGColor(color, WebCore::ColorSpaceDeviceRGB);
-
     CGFloat zoomScale = contentZoomScale(self);
     CGFloat minimumZoomScale = [_scrollView minimumZoomScale];
     if (zoomScale < minimumZoomScale) {
         CGFloat slope = 12;
-        CGFloat opacity = std::max(1 - slope * (minimumZoomScale - zoomScale), static_cast<CGFloat>(0));
-        cgColor = adoptCF(CGColorCreateCopyWithAlpha(cgColor.get(), opacity));
+        CGFloat opacity = std::max<CGFloat>(1 - slope * (minimumZoomScale - zoomScale), 0);
+        color = WebCore::colorWithOverrideAlpha(color.rgb(), opacity);
     }
-    RetainPtr<UIColor*> uiBackgroundColor = adoptNS([[UIColor alloc] initWithCGColor:cgColor.get()]);
+
+    if (_scrollViewBackgroundColor == color)
+        return;
+
+    _scrollViewBackgroundColor = color;
+
+    RetainPtr<UIColor*> uiBackgroundColor = adoptNS([[UIColor alloc] initWithCGColor:cachedCGColor(color, WebCore::ColorSpaceDeviceRGB)]);
     _mainExtendedBackgroundView.backgroundColor = uiBackgroundColor.get();
     _extendedBackgroundLayerTopInset.backgroundColor = uiBackgroundColor.get();
     _extendedBackgroundLayerBottomInset.backgroundColor = uiBackgroundColor.get();
+}
+
+- (void)_didCommitLoadForMainFrame
+{
+    _needsResetViewStateAfterCommitLoadForMainFrame = YES;
 }
 
 - (void)_didCommitLayerTree:(const WebKit::RemoteLayerTreeTransaction&)layerTreeTransaction
@@ -477,6 +489,11 @@ static CGFloat contentZoomScale(WKWebView* webView)
 
     if (_gestureController)
         _gestureController->setRenderTreeSize(layerTreeTransaction.renderTreeSize());
+
+    if (_needsResetViewStateAfterCommitLoadForMainFrame) {
+        _needsResetViewStateAfterCommitLoadForMainFrame = NO;
+        [_scrollView setContentOffset:CGPointMake(-_obscuredInsets.left, -_obscuredInsets.top)];
+    }
 }
 
 - (void)_dynamicViewportUpdateChangedTargetToScale:(double)newScale position:(CGPoint)newScrollPosition
@@ -560,6 +577,8 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
 {
     if (_isAnimatingResize)
         return;
+
+    [_scrollView _stopScrollingAndZoomingAnimations];
 
     WebCore::FloatPoint scaledOffset = contentOffset;
     CGFloat zoomScale = contentZoomScale(self);
@@ -777,7 +796,11 @@ static inline void setViewportConfigurationMinimumLayoutSize(WebKit::WebPageProx
     CGFloat scaleFactor = contentZoomScale(self);
 
     BOOL isStableState = !(_isChangingObscuredInsetsInteractively || [_scrollView isDragging] || [_scrollView isDecelerating] || [_scrollView isZooming] || [_scrollView isZoomBouncing] || [_scrollView _isAnimatingZoom]);
-    [_contentView didUpdateVisibleRect:visibleRectInContentCoordinates unobscuredRect:unobscuredRectInContentCoordinates scale:scaleFactor inStableState:isStableState];
+    [_contentView didUpdateVisibleRect:visibleRectInContentCoordinates
+        unobscuredRect:unobscuredRectInContentCoordinates
+        unobscuredRectInScrollViewCoordinates:unobscuredRect
+        scale:scaleFactor minimumScale:[_scrollView minimumZoomScale]
+        inStableState:isStableState isChangingObscuredInsetsInteractively:_isChangingObscuredInsetsInteractively];
 }
 
 - (void)_keyboardChangedWithInfo:(NSDictionary *)keyboardInfo adjustScrollView:(BOOL)adjustScrollView
@@ -1485,7 +1508,7 @@ static void updateTopAndBottomExtendedBackgroundExclusionIfNecessary(WKWebView* 
     CGRect visibleRectInContentCoordinates = [self convertRect:newBounds toView:_contentView.get()];
     CGRect unobscuredRectInContentCoordinates = [self convertRect:futureUnobscuredRectInSelfCoordinates toView:_contentView.get()];
 
-    _page->dynamicViewportSizeUpdate(WebCore::FloatSize(newMinimumLayoutSize.width, newMinimumLayoutSize.height), visibleRectInContentCoordinates, unobscuredRectInContentCoordinates, targetScale);
+    _page->dynamicViewportSizeUpdate(WebCore::FloatSize(newMinimumLayoutSize.width, newMinimumLayoutSize.height), visibleRectInContentCoordinates, unobscuredRectInContentCoordinates, futureUnobscuredRectInSelfCoordinates, targetScale);
 }
 
 - (void)_endAnimatedResize

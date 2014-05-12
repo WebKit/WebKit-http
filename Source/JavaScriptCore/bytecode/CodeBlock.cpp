@@ -1793,7 +1793,7 @@ CodeBlock::CodeBlock(ScriptExecutable* ownerExecutable, UnlinkedCodeBlock* unlin
             ConcurrentJITLocker locker(m_symbolTable->m_lock);
             SymbolTable::Map::iterator iter = m_symbolTable->find(locker, uid);
             ASSERT(iter != m_symbolTable->end(locker));
-            iter->value.prepareToWatch();
+            iter->value.prepareToWatch(symbolTable());
             instructions[i + 3].u.watchpointSet = iter->value.watchpointSet();
             break;
         }
@@ -3112,8 +3112,22 @@ void CodeBlock::forceOptimizationSlowPathConcurrently()
 #if ENABLE(DFG_JIT)
 void CodeBlock::setOptimizationThresholdBasedOnCompilationResult(CompilationResult result)
 {
-    RELEASE_ASSERT(jitType() == JITCode::BaselineJIT);
-    RELEASE_ASSERT((result == CompilationSuccessful) == (replacement() != this));
+    JITCode::JITType type = jitType();
+    if (type != JITCode::BaselineJIT) {
+        dataLog(*this, ": expected to have baseline code but have ", type, "\n");
+        RELEASE_ASSERT_NOT_REACHED();
+    }
+    
+    CodeBlock* theReplacement = replacement();
+    if ((result == CompilationSuccessful) != (theReplacement != this)) {
+        dataLog(*this, ": we have result = ", result, " but ");
+        if (theReplacement == this)
+            dataLog("we are our own replacement.\n");
+        else
+            dataLog("our replacement is ", pointerDump(theReplacement), "\n");
+        RELEASE_ASSERT_NOT_REACHED();
+    }
+    
     switch (result) {
     case CompilationSuccessful:
         RELEASE_ASSERT(JITCode::isOptimizingJIT(replacement()->jitType()));
@@ -3136,6 +3150,8 @@ void CodeBlock::setOptimizationThresholdBasedOnCompilationResult(CompilationResu
         optimizeAfterWarmUp();
         return;
     }
+    
+    dataLog("Unrecognized result: ", static_cast<int>(result), "\n");
     RELEASE_ASSERT_NOT_REACHED();
 }
 

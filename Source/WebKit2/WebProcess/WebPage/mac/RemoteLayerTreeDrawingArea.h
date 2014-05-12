@@ -28,18 +28,25 @@
 
 #include "DrawingArea.h"
 #include "GraphicsLayerCARemote.h"
+#include <WebCore/GraphicsLayerClient.h>
 #include <WebCore/Timer.h>
+#include <atomic>
+#include <dispatch/dispatch.h>
 #include <wtf/HashMap.h>
 
 namespace WebCore {
 class PlatformCALayer;
 }
 
+namespace IPC {
+class MessageEncoder;
+}
+
 namespace WebKit {
 
 class RemoteLayerTreeContext;
 
-class RemoteLayerTreeDrawingArea : public DrawingArea {
+class RemoteLayerTreeDrawingArea : public DrawingArea, public WebCore::GraphicsLayerClient {
 public:
     RemoteLayerTreeDrawingArea(WebPage*, const WebPageCreationParameters&);
     virtual ~RemoteLayerTreeDrawingArea();
@@ -83,12 +90,34 @@ private:
 
     virtual void mainFrameContentSizeChanged(const WebCore::IntSize&) override;
 
+    // GraphicsLayerClient
+    virtual void notifyAnimationStarted(const WebCore::GraphicsLayer*, double time) override { }
+    virtual void notifyFlushRequired(const WebCore::GraphicsLayer*) override { }
+    virtual void paintContents(const WebCore::GraphicsLayer*, WebCore::GraphicsContext&, WebCore::GraphicsLayerPaintingPhase, const WebCore::FloatRect& inClip) override { }
+
     void updateScrolledExposedRect();
 
     void layerFlushTimerFired(WebCore::Timer<RemoteLayerTreeDrawingArea>*);
     void flushLayers();
 
     WebCore::TiledBacking* mainFrameTiledBacking() const;
+
+    class BackingStoreFlusher : public ThreadSafeRefCounted<BackingStoreFlusher> {
+    public:
+        static PassRefPtr<BackingStoreFlusher> create(IPC::Connection*, std::unique_ptr<IPC::MessageEncoder>, Vector<RetainPtr<CGContextRef>>);
+
+        void flush();
+        bool hasFlushed() const { return m_hasFlushed; }
+
+    private:
+        BackingStoreFlusher(IPC::Connection*, std::unique_ptr<IPC::MessageEncoder>, Vector<RetainPtr<CGContextRef>>);
+
+        RefPtr<IPC::Connection> m_connection;
+        std::unique_ptr<IPC::MessageEncoder> m_commitEncoder;
+        Vector<RetainPtr<CGContextRef>> m_contextsToFlush;
+
+        std::atomic<bool> m_hasFlushed;
+    };
 
     std::unique_ptr<RemoteLayerTreeContext> m_remoteLayerTreeContext;
     std::unique_ptr<WebCore::GraphicsLayer> m_rootLayer;
@@ -104,6 +133,9 @@ private:
 
     bool m_waitingForBackingStoreSwap;
     bool m_hadFlushDeferredWhileWaitingForBackingStoreSwap;
+
+    dispatch_queue_t m_commitQueue;
+    RefPtr<BackingStoreFlusher> m_pendingBackingStoreFlusher;
 };
 
 DRAWING_AREA_TYPE_CASTS(RemoteLayerTreeDrawingArea, type() == DrawingAreaTypeRemoteLayerTree);

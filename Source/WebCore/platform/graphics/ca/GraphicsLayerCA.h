@@ -55,7 +55,7 @@ public:
     // to keep the overall tile cost low.
     static const int kTiledLayerTileSize = 512;
 
-    GraphicsLayerCA(GraphicsLayerClient*);
+    explicit GraphicsLayerCA(GraphicsLayerClient&);
     virtual ~GraphicsLayerCA();
 
     virtual void initialize() override;
@@ -276,7 +276,7 @@ private:
     virtual void getDebugBorderInfo(Color&, float& width) const override;
     virtual void dumpAdditionalProperties(TextStream&, int indent, LayerTreeAsTextBehavior) const override;
 
-    void computePixelAlignment(float pixelAlignmentScale, const FloatPoint& positionRelativeToBase,
+    void computePixelAlignment(float contentsScale, const FloatPoint& positionRelativeToBase,
         FloatPoint& position, FloatSize&, FloatPoint3D& anchorPoint, FloatSize& alignmentOffset) const;
 
     TransformationMatrix layerTransform(const FloatPoint& position, const TransformationMatrix* customTransform = 0) const;

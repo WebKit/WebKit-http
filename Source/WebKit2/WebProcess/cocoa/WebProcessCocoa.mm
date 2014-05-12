@@ -161,7 +161,6 @@ void WebProcess::platformInitializeWebProcess(const WebProcessCreationParameters
 {
 #if ENABLE(WEB_PROCESS_SANDBOX)
     SandboxExtension::consumePermanently(parameters.uiProcessBundleResourcePathExtensionHandle);
-    SandboxExtension::consumePermanently(parameters.localStorageDirectoryExtensionHandle);
     SandboxExtension::consumePermanently(parameters.databaseDirectoryExtensionHandle);
     SandboxExtension::consumePermanently(parameters.applicationCacheDirectoryExtensionHandle);
     SandboxExtension::consumePermanently(parameters.diskCacheDirectoryExtensionHandle);
@@ -191,13 +190,6 @@ void WebProcess::platformInitializeWebProcess(const WebProcessCreationParameters
     m_presenterApplicationPid = parameters.presenterApplicationPid;
     m_shouldForceScreenFontSubstitution = parameters.shouldForceScreenFontSubstitution;
     Font::setDefaultTypesettingFeatures(parameters.shouldEnableKerningAndLigaturesByDefault ? Kerning | Ligatures : 0);
-
-    if (!JSC::Options::useJITWasOverridden())
-        JSC::Options::useJIT() = parameters.shouldEnableJIT;
-#if ENABLE(FTL_JIT)
-    if (!JSC::Options::useFTLJITWasOverridden())
-        JSC::Options::useFTLJIT() = parameters.shouldEnableFTLJIT;
-#endif
 
     setEnhancedAccessibility(parameters.accessibilityEnhancedUserInterfaceEnabled);
 

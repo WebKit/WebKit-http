@@ -56,11 +56,18 @@ class PropertySlot {
         TypeCustomIndex
     };
 
+    enum CacheabilityType {
+        CachingDisallowed,
+        CachingAllowed
+    };
+
 public:
     explicit PropertySlot(const JSValue thisValue)
         : m_propertyType(TypeUnset)
         , m_offset(invalidOffset)
         , m_thisValue(thisValue)
+        , m_watchpointSet(nullptr)
+        , m_cacheability(CachingAllowed)
     {
     }
 
@@ -70,13 +77,18 @@ public:
     JSValue getValue(ExecState*, PropertyName) const;
     JSValue getValue(ExecState*, unsigned propertyName) const;
 
-    bool isCacheable() const { return m_offset != invalidOffset; }
+    bool isCacheable() const { return m_cacheability == CachingAllowed && m_offset != invalidOffset; }
     bool isValue() const { return m_propertyType == TypeValue; }
     bool isAccessor() const { return m_propertyType == TypeGetter; }
     bool isCustom() const { return m_propertyType == TypeCustom; }
     bool isCacheableValue() const { return isCacheable() && isValue(); }
     bool isCacheableGetter() const { return isCacheable() && isAccessor(); }
     bool isCacheableCustom() const { return isCacheable() && isCustom(); }
+
+    void disableCaching()
+    {
+        m_cacheability = CachingDisallowed;
+    }
 
     unsigned attributes() const { return m_attributes; }
 
@@ -102,6 +114,11 @@ public:
     {
         ASSERT(m_propertyType != TypeUnset);
         return m_slotBase;
+    }
+
+    WatchpointSet* watchpointSet() const
+    {
+        return m_watchpointSet;
     }
 
     void setValue(JSObject* slotBase, unsigned attributes, JSValue value)
@@ -210,6 +227,11 @@ public:
         m_offset = invalidOffset;
     }
 
+    void setWatchpointSet(WatchpointSet& set)
+    {
+        m_watchpointSet = &set;
+    }
+
 private:
     JS_EXPORT_PRIVATE JSValue functionGetter(ExecState*) const;
 
@@ -232,6 +254,8 @@ private:
     PropertyOffset m_offset;
     const JSValue m_thisValue;
     JSObject* m_slotBase;
+    WatchpointSet* m_watchpointSet;
+    CacheabilityType m_cacheability;
 };
 
 } // namespace JSC

@@ -497,16 +497,9 @@ void ScrollView::setScrollPosition(const IntPoint& scrollPoint)
         return;
     }
 
-#if USE(TILED_BACKING_STORE)
-    if (delegatesScrolling()) {
-        hostWindow()->delegatedScrollRequested(scrollPoint);
-        return;
-    }
-#endif
-
     IntPoint newScrollPosition = adjustScrollPositionWithinRange(scrollPoint);
 
-    if (newScrollPosition == scrollPosition())
+    if ((!delegatesScrolling() || !inProgrammaticScroll()) && newScrollPosition == scrollPosition())
         return;
 
     if (requestScrollPositionUpdate(newScrollPosition))

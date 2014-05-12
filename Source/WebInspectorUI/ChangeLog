@@ -1,3 +1,48 @@
+2014-05-09  Alberto Garcia  <berto@igalia.com>
+
+        jsmin.py license header confusing, mentions non-free license
+        https://bugs.webkit.org/show_bug.cgi?id=123665
+
+        Reviewed by Darin Adler.
+
+        Pull the most recent version from upstream, which has a clear
+        license.
+
+        * Scripts/jsmin.py:
+
+2014-05-08  Jono Wells  <jonowells@apple.com>
+
+        Web Inspector: Console error when launching Web Inspector "Mode htmlmixed failed to advance stream"
+        https://bugs.webkit.org/show_bug.cgi?id=132703
+
+        Reviewed by Timothy Hatcher.
+
+        The CodeMirror 4 update brought with it a change in the XML mode that 
+        causes our XML mode extension to fail to consume empty paired quotes
+        correctly.
+
+        * UserInterface/Views/CodeMirrorAdditions.js:
+        Updated extendedXMLToken() to properly handle empty paired quotes.
+
+2014-05-08  Jono Wells  <jonowells@apple.com>
+
+        Web Inspector: Selecting frame in debugger sidebar doesn't reveal code
+        https://bugs.webkit.org/show_bug.cgi?id=132112
+
+        Reviewed by Joseph Pecoraro.
+
+        WebInspector._revealAndSelectRepresentedObjectInNavigationSidebar was checking
+        only one of the two content trees in the DebuggerSidebarPanel instance. Added
+        base getter elementIsSelected to NavigationSidebarPanel and extended it in 
+        DebuggerSidebarPanel.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector._revealAndSelectRepresentedObjectInNavigationSidebar): modified logic to check `selectedSidebarPanel.elementIsSelected`.
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WebInspector.DebuggerSidebarPanel.prototype.get elementIsSelected): Checks breakpoint and call stack trees.
+        * UserInterface/Views/NavigationSidebarPanel.js:
+        (WebInspector.NavigationSidebarPanel.prototype.get elementIsSelected): Base implementation.
+
 2014-05-06  Radu Stavila  <stavila@adobe.com>
 
         Web Inspector: [CSS Regions] Add the regionOversetChange event to the iOS 7.0 WebInspector UI

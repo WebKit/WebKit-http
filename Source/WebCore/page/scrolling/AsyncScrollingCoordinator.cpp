@@ -119,7 +119,12 @@ void AsyncScrollingCoordinator::frameViewRootLayerDidChange(FrameView* frameView
 
     if (!coordinatesScrollingForFrameView(frameView))
         return;
-
+    
+    // FIXME: In some navigation scenarios, the FrameView has no RenderView or that RenderView has not been composited.
+    // This needs cleaning up: https://bugs.webkit.org/show_bug.cgi?id=132724
+    if (!frameView->scrollLayerID())
+        return;
+    
     // If the root layer does not have a ScrollingStateNode, then we should create one.
     ensureRootStateNodeForFrameView(frameView);
     ASSERT(m_scrollingStateTree->rootStateNode());
@@ -218,7 +223,10 @@ void AsyncScrollingCoordinator::updateScrollPositionAfterAsyncScroll(ScrollingNo
             float topContentInset = frameView->topContentInset();
             FloatPoint positionForInsetClipLayer = FloatPoint(0, FrameView::yPositionForInsetClipLayer(scrollPosition, topContentInset));
             FloatPoint positionForContentsLayer = FloatPoint(scrolledContentsLayer->position().x(),
-                FrameView::yPositionForRootContentLayer(scrollPosition, topContentInset));
+                FrameView::yPositionForRootContentLayer(scrollPosition, topContentInset, frameView->headerHeight()));
+            FloatPoint positionForHeaderLayer = FloatPoint(scrollOffsetForFixed.width(), FrameView::yPositionForHeaderLayer(scrollPosition, topContentInset));
+            FloatPoint positionForFooterLayer = FloatPoint(scrollOffsetForFixed.width(),
+                FrameView::yPositionForFooterLayer(scrollPosition, topContentInset, frameView->totalContentsSize().height(), frameView->footerHeight()));
 
             if (programmaticScroll || scrollingLayerPositionAction == SetScrollingLayerPosition) {
                 scrollLayer->setPosition(-frameView->scrollPosition());
@@ -229,9 +237,9 @@ void AsyncScrollingCoordinator::updateScrollPositionAfterAsyncScroll(ScrollingNo
                 if (scrolledContentsLayer)
                     scrolledContentsLayer->setPosition(positionForContentsLayer);
                 if (headerLayer)
-                    headerLayer->setPosition(FloatPoint(scrollOffsetForFixed.width(), 0));
+                    headerLayer->setPosition(positionForHeaderLayer);
                 if (footerLayer)
-                    footerLayer->setPosition(FloatPoint(scrollOffsetForFixed.width(), frameView->totalContentsSize().height() - frameView->footerHeight()));
+                    footerLayer->setPosition(positionForFooterLayer);
             } else {
                 scrollLayer->syncPosition(-frameView->scrollPosition());
                 if (counterScrollingLayer)
@@ -241,9 +249,9 @@ void AsyncScrollingCoordinator::updateScrollPositionAfterAsyncScroll(ScrollingNo
                 if (scrolledContentsLayer)
                     scrolledContentsLayer->syncPosition(positionForContentsLayer);
                 if (headerLayer)
-                    headerLayer->syncPosition(FloatPoint(scrollOffsetForFixed.width(), 0));
+                    headerLayer->syncPosition(positionForHeaderLayer);
                 if (footerLayer)
-                    footerLayer->syncPosition(FloatPoint(scrollOffsetForFixed.width(), frameView->totalContentsSize().height() - frameView->footerHeight()));
+                    footerLayer->syncPosition(positionForFooterLayer);
 
                 LayoutRect viewportRect = frameView->viewportConstrainedVisibleContentRect();
                 syncChildPositions(viewportRect);

@@ -159,8 +159,8 @@
 		073AB4B317F8BACA006E0D6F /* AllVideoCapabilities.h in Headers */ = {isa = PBXBuildFile; fileRef = 073AB4B017F8BACA006E0D6F /* AllVideoCapabilities.h */; };
 		073AB4B717F92ECF006E0D6F /* JSCapabilityRange.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 073AB4B517F92ECF006E0D6F /* JSCapabilityRange.cpp */; };
 		073AB4B817F92ECF006E0D6F /* JSCapabilityRange.h in Headers */ = {isa = PBXBuildFile; fileRef = 073AB4B617F92ECF006E0D6F /* JSCapabilityRange.h */; };
-		073BE34017D17E01002BD431 /* JSNavigatorMediaStream.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 073BE33E17D17E01002BD431 /* JSNavigatorMediaStream.cpp */; };
-		073BE34117D17E01002BD431 /* JSNavigatorMediaStream.h in Headers */ = {isa = PBXBuildFile; fileRef = 073BE33F17D17E01002BD431 /* JSNavigatorMediaStream.h */; settings = {ATTRIBUTES = (Private, ); }; };
+		073BE34017D17E01002BD431 /* JSNavigatorUserMedia.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 073BE33E17D17E01002BD431 /* JSNavigatorUserMedia.cpp */; };
+		073BE34117D17E01002BD431 /* JSNavigatorUserMedia.h in Headers */ = {isa = PBXBuildFile; fileRef = 073BE33F17D17E01002BD431 /* JSNavigatorUserMedia.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		073BE34817D17E7A002BD431 /* JSNavigatorUserMediaError.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 073BE34217D17E7A002BD431 /* JSNavigatorUserMediaError.cpp */; };
 		073BE34917D17E7A002BD431 /* JSNavigatorUserMediaError.h in Headers */ = {isa = PBXBuildFile; fileRef = 073BE34317D17E7A002BD431 /* JSNavigatorUserMediaError.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		073BE34A17D17E7A002BD431 /* JSNavigatorUserMediaErrorCallback.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 073BE34417D17E7A002BD431 /* JSNavigatorUserMediaErrorCallback.cpp */; };
@@ -207,7 +207,7 @@
 		078E090117D14CEE00420AA1 /* MediaStreamRegistry.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 07221B5217CEC32700848E51 /* MediaStreamRegistry.cpp */; };
 		078E090217D14CEE00420AA1 /* MediaStreamTrack.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 07221B5417CEC32700848E51 /* MediaStreamTrack.cpp */; };
 		078E090317D14CEE00420AA1 /* MediaStreamTrackEvent.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 07221B5717CEC32700848E51 /* MediaStreamTrackEvent.cpp */; };
-		078E090417D14CEE00420AA1 /* NavigatorMediaStream.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 07221B5A17CEC32700848E51 /* NavigatorMediaStream.cpp */; };
+		078E090417D14CEE00420AA1 /* NavigatorUserMedia.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 07221B5A17CEC32700848E51 /* NavigatorUserMedia.cpp */; };
 		078E090517D14CEE00420AA1 /* RTCDataChannel.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 07221B6317CEC32700848E51 /* RTCDataChannel.cpp */; };
 		078E090617D14CEE00420AA1 /* RTCDataChannelEvent.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 07221B6617CEC32700848E51 /* RTCDataChannelEvent.cpp */; };
 		078E090717D14CEE00420AA1 /* RTCDTMFSender.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 07221B6917CEC32700848E51 /* RTCDTMFSender.cpp */; };
@@ -229,7 +229,7 @@
 		078E091717D14D1C00420AA1 /* MediaStreamRegistry.h in Headers */ = {isa = PBXBuildFile; fileRef = 07221B5317CEC32700848E51 /* MediaStreamRegistry.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		078E091817D14D1C00420AA1 /* MediaStreamTrack.h in Headers */ = {isa = PBXBuildFile; fileRef = 07221B5517CEC32700848E51 /* MediaStreamTrack.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		078E091917D14D1C00420AA1 /* MediaStreamTrackEvent.h in Headers */ = {isa = PBXBuildFile; fileRef = 07221B5817CEC32700848E51 /* MediaStreamTrackEvent.h */; settings = {ATTRIBUTES = (Private, ); }; };
-		078E091A17D14D1C00420AA1 /* NavigatorMediaStream.h in Headers */ = {isa = PBXBuildFile; fileRef = 07221B5B17CEC32700848E51 /* NavigatorMediaStream.h */; settings = {ATTRIBUTES = (Private, ); }; };
+		078E091A17D14D1C00420AA1 /* NavigatorUserMedia.h in Headers */ = {isa = PBXBuildFile; fileRef = 07221B5B17CEC32700848E51 /* NavigatorUserMedia.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		078E091B17D14D1C00420AA1 /* NavigatorUserMediaError.h in Headers */ = {isa = PBXBuildFile; fileRef = 07221B5D17CEC32700848E51 /* NavigatorUserMediaError.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		078E091C17D14D1C00420AA1 /* NavigatorUserMediaErrorCallback.h in Headers */ = {isa = PBXBuildFile; fileRef = 07221B5F17CEC32700848E51 /* NavigatorUserMediaErrorCallback.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		078E091D17D14D1C00420AA1 /* NavigatorUserMediaSuccessCallback.h in Headers */ = {isa = PBXBuildFile; fileRef = 07221B6117CEC32700848E51 /* NavigatorUserMediaSuccessCallback.h */; settings = {ATTRIBUTES = (Private, ); }; };
@@ -2306,6 +2306,8 @@
 		7A54858014E02D51006AE05A /* InspectorHistory.h in Headers */ = {isa = PBXBuildFile; fileRef = 7A54857E14E02D51006AE05A /* InspectorHistory.h */; };
 		7A54881714E432A1006AE05A /* DOMPatchSupport.h in Headers */ = {isa = PBXBuildFile; fileRef = 7A54881514E432A1006AE05A /* DOMPatchSupport.h */; };
 		7A54881814E432A1006AE05A /* DOMPatchSupport.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7A54881614E432A1006AE05A /* DOMPatchSupport.cpp */; };
+		7A5515F5191830A3009687D2 /* YouTubePluginReplacement.h in Headers */ = {isa = PBXBuildFile; fileRef = 7A5515F3191830A3009687D2 /* YouTubePluginReplacement.h */; };
+		7A5515F6191830A3009687D2 /* YouTubePluginReplacement.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7A5515F4191830A3009687D2 /* YouTubePluginReplacement.cpp */; };
 		7A674BDB0F9EBF4E006CF099 /* PageGroupLoadDeferrer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7A674BD90F9EBF4E006CF099 /* PageGroupLoadDeferrer.cpp */; };
 		7A674BDC0F9EBF4E006CF099 /* PageGroupLoadDeferrer.h in Headers */ = {isa = PBXBuildFile; fileRef = 7A674BDA0F9EBF4E006CF099 /* PageGroupLoadDeferrer.h */; };
 		7A74ECBA101839A600BF939E /* InspectorDOMStorageAgent.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7A74ECB8101839A500BF939E /* InspectorDOMStorageAgent.cpp */; };
@@ -5860,6 +5862,8 @@
 		E15A36D71104572000B7B639 /* XMLNSNames.h in Headers */ = {isa = PBXBuildFile; fileRef = E15A36D61104572000B7B639 /* XMLNSNames.h */; };
 		E15A36D91104572700B7B639 /* XMLNSNames.cpp in Sources */ = {isa = PBXBuildFile; fileRef = E15A36D81104572700B7B639 /* XMLNSNames.cpp */; };
 		E15FF7D518C9553800FE4C87 /* KeypressCommand.h in Headers */ = {isa = PBXBuildFile; fileRef = E15FF7D418C9553800FE4C87 /* KeypressCommand.h */; settings = {ATTRIBUTES = (Private, ); }; };
+		E164A2E9191AC5BB0010737D /* FileMac.mm in Sources */ = {isa = PBXBuildFile; fileRef = E164A2E7191AC5BB0010737D /* FileMac.mm */; };
+		E164A2ED191AE6350010737D /* BlobDataFileReferenceMac.mm in Sources */ = {isa = PBXBuildFile; fileRef = E164A2EB191AE6350010737D /* BlobDataFileReferenceMac.mm */; };
 		E164FAA318315BF400DB4E61 /* CryptoKeyRSA.h in Headers */ = {isa = PBXBuildFile; fileRef = E164FAA218315BF400DB4E61 /* CryptoKeyRSA.h */; };
 		E164FAA518315E1A00DB4E61 /* CryptoKeyRSAMac.cpp in Sources */ = {isa = PBXBuildFile; fileRef = E164FAA418315E1A00DB4E61 /* CryptoKeyRSAMac.cpp */; };
 		E169803D1133542D00894115 /* CRuntimeObject.h in Headers */ = {isa = PBXBuildFile; fileRef = E169803C1133542D00894115 /* CRuntimeObject.h */; };
@@ -6949,9 +6953,9 @@
 		07221B5717CEC32700848E51 /* MediaStreamTrackEvent.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MediaStreamTrackEvent.cpp; sourceTree = "<group>"; };
 		07221B5817CEC32700848E51 /* MediaStreamTrackEvent.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MediaStreamTrackEvent.h; sourceTree = "<group>"; };
 		07221B5917CEC32700848E51 /* MediaStreamTrackEvent.idl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = MediaStreamTrackEvent.idl; sourceTree = "<group>"; };
-		07221B5A17CEC32700848E51 /* NavigatorMediaStream.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = NavigatorMediaStream.cpp; sourceTree = "<group>"; };
-		07221B5B17CEC32700848E51 /* NavigatorMediaStream.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = NavigatorMediaStream.h; sourceTree = "<group>"; };
-		07221B5C17CEC32700848E51 /* NavigatorMediaStream.idl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = NavigatorMediaStream.idl; sourceTree = "<group>"; };
+		07221B5A17CEC32700848E51 /* NavigatorUserMedia.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = NavigatorUserMedia.cpp; sourceTree = "<group>"; };
+		07221B5B17CEC32700848E51 /* NavigatorUserMedia.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = NavigatorUserMedia.h; sourceTree = "<group>"; };
+		07221B5C17CEC32700848E51 /* NavigatorUserMedia.idl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = NavigatorUserMedia.idl; sourceTree = "<group>"; };
 		07221B5D17CEC32700848E51 /* NavigatorUserMediaError.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = NavigatorUserMediaError.h; sourceTree = "<group>"; };
 		07221B5E17CEC32700848E51 /* NavigatorUserMediaError.idl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = NavigatorUserMediaError.idl; sourceTree = "<group>"; };
 		07221B5F17CEC32700848E51 /* NavigatorUserMediaErrorCallback.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = NavigatorUserMediaErrorCallback.h; sourceTree = "<group>"; };
@@ -7054,8 +7058,8 @@
 		073AB4B017F8BACA006E0D6F /* AllVideoCapabilities.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AllVideoCapabilities.h; sourceTree = "<group>"; };
 		073AB4B517F92ECF006E0D6F /* JSCapabilityRange.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = JSCapabilityRange.cpp; sourceTree = "<group>"; };
 		073AB4B617F92ECF006E0D6F /* JSCapabilityRange.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = JSCapabilityRange.h; sourceTree = "<group>"; };
-		073BE33E17D17E01002BD431 /* JSNavigatorMediaStream.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = JSNavigatorMediaStream.cpp; sourceTree = "<group>"; };
-		073BE33F17D17E01002BD431 /* JSNavigatorMediaStream.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = JSNavigatorMediaStream.h; sourceTree = "<group>"; };
+		073BE33E17D17E01002BD431 /* JSNavigatorUserMedia.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = JSNavigatorUserMedia.cpp; sourceTree = "<group>"; };
+		073BE33F17D17E01002BD431 /* JSNavigatorUserMedia.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = JSNavigatorUserMedia.h; sourceTree = "<group>"; };
 		073BE34217D17E7A002BD431 /* JSNavigatorUserMediaError.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = JSNavigatorUserMediaError.cpp; sourceTree = "<group>"; };
 		073BE34317D17E7A002BD431 /* JSNavigatorUserMediaError.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = JSNavigatorUserMediaError.h; sourceTree = "<group>"; };
 		073BE34417D17E7A002BD431 /* JSNavigatorUserMediaErrorCallback.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = JSNavigatorUserMediaErrorCallback.cpp; sourceTree = "<group>"; };
@@ -9355,6 +9359,8 @@
 		7A54857E14E02D51006AE05A /* InspectorHistory.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = InspectorHistory.h; sourceTree = "<group>"; };
 		7A54881514E432A1006AE05A /* DOMPatchSupport.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DOMPatchSupport.h; sourceTree = "<group>"; };
 		7A54881614E432A1006AE05A /* DOMPatchSupport.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = DOMPatchSupport.cpp; sourceTree = "<group>"; };
+		7A5515F3191830A3009687D2 /* YouTubePluginReplacement.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = YouTubePluginReplacement.h; path = plugins/YouTubePluginReplacement.h; sourceTree = "<group>"; };
+		7A5515F4191830A3009687D2 /* YouTubePluginReplacement.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = YouTubePluginReplacement.cpp; path = plugins/YouTubePluginReplacement.cpp; sourceTree = "<group>"; };
 		7A674BD90F9EBF4E006CF099 /* PageGroupLoadDeferrer.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = PageGroupLoadDeferrer.cpp; sourceTree = "<group>"; };
 		7A674BDA0F9EBF4E006CF099 /* PageGroupLoadDeferrer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PageGroupLoadDeferrer.h; sourceTree = "<group>"; };
 		7A7256B915EB9F5B007323A7 /* InspectorOverlayPage.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; path = InspectorOverlayPage.html; sourceTree = "<group>"; };
@@ -13254,6 +13260,8 @@
 		E15A36D61104572000B7B639 /* XMLNSNames.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = XMLNSNames.h; sourceTree = "<group>"; };
 		E15A36D81104572700B7B639 /* XMLNSNames.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = XMLNSNames.cpp; sourceTree = "<group>"; };
 		E15FF7D418C9553800FE4C87 /* KeypressCommand.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = KeypressCommand.h; sourceTree = "<group>"; };
+		E164A2E7191AC5BB0010737D /* FileMac.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = FileMac.mm; path = fileapi/FileMac.mm; sourceTree = "<group>"; };
+		E164A2EB191AE6350010737D /* BlobDataFileReferenceMac.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = BlobDataFileReferenceMac.mm; sourceTree = "<group>"; };
 		E164FAA218315BF400DB4E61 /* CryptoKeyRSA.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = CryptoKeyRSA.h; path = keys/CryptoKeyRSA.h; sourceTree = "<group>"; };
 		E164FAA418315E1A00DB4E61 /* CryptoKeyRSAMac.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = CryptoKeyRSAMac.cpp; path = mac/CryptoKeyRSAMac.cpp; sourceTree = "<group>"; };
 		E169803C1133542D00894115 /* CRuntimeObject.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CRuntimeObject.h; sourceTree = "<group>"; };
@@ -14186,9 +14194,9 @@
 				0705853717FE044F005F2BCB /* MediaTrackConstraintSet.cpp */,
 				0705852617FDE02B005F2BCB /* MediaTrackConstraintSet.h */,
 				0705852717FDE02B005F2BCB /* MediaTrackConstraintSet.idl */,
-				07221B5A17CEC32700848E51 /* NavigatorMediaStream.cpp */,
-				07221B5B17CEC32700848E51 /* NavigatorMediaStream.h */,
-				07221B5C17CEC32700848E51 /* NavigatorMediaStream.idl */,
+				07221B5A17CEC32700848E51 /* NavigatorUserMedia.cpp */,
+				07221B5B17CEC32700848E51 /* NavigatorUserMedia.h */,
+				07221B5C17CEC32700848E51 /* NavigatorUserMedia.idl */,
 				070327F717EA4AAF00CE1318 /* NavigatorUserMediaError.cpp */,
 				07221B5D17CEC32700848E51 /* NavigatorUserMediaError.h */,
 				07221B5E17CEC32700848E51 /* NavigatorUserMediaError.idl */,
@@ -14317,6 +14325,8 @@
 		072AE1DE183C0513000A5988 /* plugins */ = {
 			isa = PBXGroup;
 			children = (
+				7A5515F3191830A3009687D2 /* YouTubePluginReplacement.h */,
+				7A5515F4191830A3009687D2 /* YouTubePluginReplacement.cpp */,
 				072AE1DF183C0741000A5988 /* PluginReplacement.h */,
 				072AE1E0183C0741000A5988 /* QuickTimePluginReplacement.mm */,
 				072AE1E1183C0741000A5988 /* QuickTimePluginReplacement.css */,
@@ -14370,8 +14380,8 @@
 				0705852E17FDE6D9005F2BCB /* JSMediaTrackConstraints.h */,
 				0705852F17FDE6D9005F2BCB /* JSMediaTrackConstraintSet.cpp */,
 				0705853017FDE6D9005F2BCB /* JSMediaTrackConstraintSet.h */,
-				073BE33E17D17E01002BD431 /* JSNavigatorMediaStream.cpp */,
-				073BE33F17D17E01002BD431 /* JSNavigatorMediaStream.h */,
+				073BE33E17D17E01002BD431 /* JSNavigatorUserMedia.cpp */,
+				073BE33F17D17E01002BD431 /* JSNavigatorUserMedia.h */,
 				073BE34217D17E7A002BD431 /* JSNavigatorUserMediaError.cpp */,
 				073BE34317D17E7A002BD431 /* JSNavigatorUserMediaError.h */,
 				073BE34417D17E7A002BD431 /* JSNavigatorUserMediaErrorCallback.cpp */,
@@ -16124,6 +16134,7 @@
 			children = (
 				514C76420CE9234E007EF3CD /* AuthenticationMac.h */,
 				514C76430CE9234E007EF3CD /* AuthenticationMac.mm */,
+				E164A2EB191AE6350010737D /* BlobDataFileReferenceMac.mm */,
 				5F2DBBE8178E336900141486 /* CertificateInfo.h */,
 				5F2DBBE7178E332D00141486 /* CertificateInfoMac.mm */,
 				E1424C8F164B460B00F32D40 /* CookieJarMac.mm */,
@@ -17862,6 +17873,7 @@
 				976D6C5F122B8A3D001FD1F7 /* BlobURL.cpp */,
 				976D6C60122B8A3D001FD1F7 /* BlobURL.h */,
 				976D6C61122B8A3D001FD1F7 /* File.cpp */,
+				E164A2E7191AC5BB0010737D /* FileMac.mm */,
 				976D6C62122B8A3D001FD1F7 /* File.h */,
 				E1AB1EB714E9E35800449E13 /* File.idl */,
 				976D6C64122B8A3D001FD1F7 /* FileError.h */,
@@ -23157,6 +23169,7 @@
 				079D0868162F20E800DB8658 /* CaptionUserPreferences.h in Headers */,
 				079D086B162F21F900DB8658 /* CaptionUserPreferencesMediaAF.h in Headers */,
 				99CC0B4F18BE9849006CEBCC /* CapturingInputCursor.h in Headers */,
+				7A5515F5191830A3009687D2 /* YouTubePluginReplacement.h in Headers */,
 				6550B69E099DF0270090D781 /* CDATASection.h in Headers */,
 				CDDD571518B57A8200A94FCB /* CDMSession.h in Headers */,
 				5FA904CA178E61F5004C8A2D /* CertificateInfo.h in Headers */,
@@ -24561,7 +24574,7 @@
 				C6F08FCA1431000D00685849 /* JSMutationRecord.h in Headers */,
 				BCD9C2C10C17B69E005C90A2 /* JSNamedNodeMap.h in Headers */,
 				A9D247F80D757E3400FDF959 /* JSNavigator.h in Headers */,
-				073BE34117D17E01002BD431 /* JSNavigatorMediaStream.h in Headers */,
+				073BE34117D17E01002BD431 /* JSNavigatorUserMedia.h in Headers */,
 				073BE34917D17E7A002BD431 /* JSNavigatorUserMediaError.h in Headers */,
 				073BE34B17D17E7A002BD431 /* JSNavigatorUserMediaErrorCallback.h in Headers */,
 				073BE34D17D17E7A002BD431 /* JSNavigatorUserMediaSuccessCallback.h in Headers */,
@@ -26694,6 +26707,7 @@
 				49E912AA0EFAC906009D0CAF /* Animation.cpp in Sources */,
 				316FE1110E6E1DA700BF6088 /* AnimationBase.cpp in Sources */,
 				316FE1130E6E1DA700BF6088 /* AnimationController.cpp in Sources */,
+				E164A2ED191AE6350010737D /* BlobDataFileReferenceMac.mm in Sources */,
 				49E912AC0EFAC906009D0CAF /* AnimationList.cpp in Sources */,
 				93309DD6099E64920056E581 /* AppendNodeCommand.cpp in Sources */,
 				1A8F6BBC0DB55CDC001DB794 /* ApplicationCache.cpp in Sources */,
@@ -26858,6 +26872,7 @@
 				B27535660B053814002CE64F /* Color.cpp in Sources */,
 				0FCF33240F2B9715004B6795 /* ColorCG.cpp in Sources */,
 				1ABA76C911D20E47004C201C /* ColorData.cpp in Sources */,
+				7A5515F6191830A3009687D2 /* YouTubePluginReplacement.cpp in Sources */,
 				B22279620D00BF220071B782 /* ColorDistance.cpp in Sources */,
 				BC29935D17A1DD5800BCE880 /* ColorInputType.cpp in Sources */,
 				B27535770B053814002CE64F /* ColorMac.mm in Sources */,
@@ -27989,6 +28004,7 @@
 				CDCFABBE18C0AF84006F8450 /* SelectionSubtreeRoot.cpp in Sources */,
 				CD27F6E51457685A0078207D /* JSMediaController.cpp in Sources */,
 				CDAB6D2D17C814EE00C60B34 /* JSMediaControlsHost.cpp in Sources */,
+				E164A2E9191AC5BB0010737D /* FileMac.mm in Sources */,
 				FD23A12513F5FA5900F67001 /* JSMediaElementAudioSourceNode.cpp in Sources */,
 				E44614180CD6826900FADA75 /* JSMediaError.cpp in Sources */,
 				CDA98DA31601464100FEA3B1 /* JSMediaKeyError.cpp in Sources */,
@@ -28031,7 +28047,7 @@
 				BCD9C2C00C17B69E005C90A2 /* JSNamedNodeMap.cpp in Sources */,
 				BCD9C2630C17AA67005C90A2 /* JSNamedNodeMapCustom.cpp in Sources */,
 				A9D247F70D757E3400FDF959 /* JSNavigator.cpp in Sources */,
-				073BE34017D17E01002BD431 /* JSNavigatorMediaStream.cpp in Sources */,
+				073BE34017D17E01002BD431 /* JSNavigatorUserMedia.cpp in Sources */,
 				073BE34817D17E7A002BD431 /* JSNavigatorUserMediaError.cpp in Sources */,
 				073BE34A17D17E7A002BD431 /* JSNavigatorUserMediaErrorCallback.cpp in Sources */,
 				073BE34C17D17E7A002BD431 /* JSNavigatorUserMediaSuccessCallback.cpp in Sources */,
@@ -28539,7 +28555,7 @@
 				A9C6E5A50D746458006442E9 /* Navigator.cpp in Sources */,
 				E12719CA0EEEC21300F61213 /* NavigatorBase.cpp in Sources */,
 				9711460314EF009A00674FD9 /* NavigatorGeolocation.cpp in Sources */,
-				078E090417D14CEE00420AA1 /* NavigatorMediaStream.cpp in Sources */,
+				078E090417D14CEE00420AA1 /* NavigatorUserMedia.cpp in Sources */,
 				070327F817EA4AAF00CE1318 /* NavigatorUserMediaError.cpp in Sources */,
 				5D874F130D161D3200796C3B /* NetscapePlugInStreamLoader.cpp in Sources */,
 				59C27F05138D28C10079B7E2 /* NetworkResourcesData.cpp in Sources */,

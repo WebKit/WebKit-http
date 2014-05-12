@@ -26,11 +26,11 @@
 #ifndef WKContext_h
 #define WKContext_h
 
-#include <WebKit2/WKBase.h>
-#include <WebKit2/WKContextConnectionClient.h>
-#include <WebKit2/WKContextDownloadClient.h>
-#include <WebKit2/WKContextHistoryClient.h>
-#include <WebKit2/WKContextInjectedBundleClient.h>
+#include <WebKit/WKBase.h>
+#include <WebKit/WKContextConnectionClient.h>
+#include <WebKit/WKContextDownloadClient.h>
+#include <WebKit/WKContextHistoryClient.h>
+#include <WebKit/WKContextInjectedBundleClient.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -102,6 +102,7 @@ WK_EXPORT WKTypeID WKContextGetTypeID();
 
 WK_EXPORT WKContextRef WKContextCreate();
 WK_EXPORT WKContextRef WKContextCreateWithInjectedBundlePath(WKStringRef path);
+WK_EXPORT WKContextRef WKContextCreateWithConfiguration(WKContextConfigurationRef configuration);
 
 WK_EXPORT void WKContextSetClient(WKContextRef context, const WKContextClientBase* client);
 WK_EXPORT void WKContextSetInjectedBundleClient(WKContextRef context, const WKContextInjectedBundleClientBase* client);

@@ -702,7 +702,7 @@ void WKPageSetPageFindClient(WKPageRef pageRef, const WKPageFindClientBase* wkCl
         }
 
     private:
-        virtual void didFindString(WebPageProxy* page, const String& string, uint32_t matchCount, int32_t matchIndex) override
+        virtual void didFindString(WebPageProxy* page, const String& string, uint32_t matchCount, int32_t) override
         {
             if (!m_client.didFindString)
                 return;
@@ -971,9 +971,9 @@ void WKPageSetPageLoaderClient(WKPageRef pageRef, const WKPageLoaderClientBase* 
         virtual bool shouldKeepCurrentBackForwardListItemInList(WebKit::WebPageProxy* page, WebKit::WebBackForwardListItem* item) override
         {
             if (!m_client.shouldKeepCurrentBackForwardListItemInList)
-                return false;
+                return true;
 
-            return m_client.shouldKeepCurrentBackForwardListItemInList(toAPI(page), toAPI(item));
+            return m_client.shouldKeepCurrentBackForwardListItemInList(toAPI(page), toAPI(item), m_client.base.clientInfo);
         }
 
         virtual void willGoToBackForwardListItem(WebPageProxy* page, WebBackForwardListItem* item, API::Object* userData) override

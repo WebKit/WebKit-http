@@ -26,7 +26,7 @@
 #if PLATFORM(IOS)
 
 #import <Foundation/NSObject.h>
-#import <WebKit2/WKBase.h>
+#import <WebKit/WKBase.h>
 
 namespace WebKit {
 class WebContext;

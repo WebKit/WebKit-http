@@ -1,3 +1,831 @@
+2014-05-09  Myles C. Maxfield  <litherum@gmail.com>
+
+        [Mac] [iOS] Underlines are too low
+        https://bugs.webkit.org/show_bug.cgi?id=132770
+
+        Reviewed by Darin Adler.
+
+        See per-file descriptions.
+
+        * fast/css3-text/css3-text-decoration/text-decoration-style-double-space-scales.html: Made
+        test more robust so it does not barely clip underlines, but rather gives them a couple
+        pixels of wiggle room.
+        * fast/css3-text/css3-text-decoration/text-decoration-thickness.html: Not only does this test
+        underline thickness, but it also tests underline position. Updated this test to not expect
+        incorrect results.
+
+2014-05-11  Antti Koivisto  <antti@apple.com>
+
+        Text with simple line layout not getting pushed below float when there is not enough space for it
+        https://bugs.webkit.org/show_bug.cgi?id=126991
+
+        Reviewed by Andreas Kling.
+
+        * fast/text/simple-lines-intruding-wide-float-dynamic-expected.html: Added.
+        * fast/text/simple-lines-intruding-wide-float-dynamic.html: Added.
+        * fast/text/simple-lines-intruding-wide-float-expected.html: Added.
+        * fast/text/simple-lines-intruding-wide-float.html: Added.
+
+2014-05-10  Alexey Proskuryakov  <ap@apple.com>
+
+        Multiple svg-in-object-placeholder-height tests fail
+        https://bugs.webkit.org/show_bug.cgi?id=132791
+
+        * TestExpectations: Skipped them, the tests take a long time before they fail.
+
+2014-05-10  Darin Adler  <darin@apple.com>
+
+        REGRESSION (r166853): fast/preloader/document-write.html is very flaky
+        https://bugs.webkit.org/show_bug.cgi?id=130942
+
+        Reviewed by Anders Carlsson.
+
+        * platform/mac/TestExpectations: Turned the test back on.
+
+2014-05-09  Dean Jackson  <dino@apple.com>
+
+        -webkit-filter prevents rendering at retina scale
+        https://bugs.webkit.org/show_bug.cgi?id=93471
+
+        Reviewed by Dirk Schulze.
+
+        New tests for filters at high resolutions. The image used
+        has a crosshatch at the pixel level, so any scale changes
+        are visible (such as going from 2x to 1x). All the actual
+        filters are no-ops so they can be compared to an element
+        without a filter in the -expected version.
+
+        * fast/hidpi/filters-blur-expected.html: Added.
+        * fast/hidpi/filters-blur.html: Added.
+        * fast/hidpi/filters-hue-rotate-expected.html: Added.
+        * fast/hidpi/filters-hue-rotate.html: Added.
+        * fast/hidpi/filters-invert-expected.html: Added.
+        * fast/hidpi/filters-invert.html: Added.
+        * fast/hidpi/filters-multiple-expected.html: Added.
+        * fast/hidpi/filters-multiple.html: Added.
+        * fast/hidpi/filters-reference-expected.html: Added.
+        * fast/hidpi/filters-reference.html: Added.
+        * fast/hidpi/filters-shadow-expected.html: Added.
+        * fast/hidpi/filters-shadow.html: Added.
+        * fast/hidpi/resources/color-grid.png: Added.
+        * fast/hidpi/resources/ensure-hidpi.js: Added.
+        (runTest):
+        (scaleFactorIsSet):
+        * platform/mac-wk2/TestExpectations: Skip some of these on WK2 Mac.
+        See webkit.org/b/132766.
+
+2014-05-10  Zalan Bujtas  <zalan@apple.com>
+
+        Subpixel rendering: Empty rects should remain empty after integrally enclosing them.
+        https://bugs.webkit.org/show_bug.cgi?id=132753
+        <rdar://problem/16846801>
+
+        Reviewed by Simon Fraser.
+
+        This patch ensures that empty LayoutRects remain empty after converting to integral enclosing rect.
+        LayoutRects with fractional position get expanded even if they are empty. This makes rectangle
+        operations unreliable and can result in undesired side effects.
+
+        1px -> 0px progressions.
+
+        * platform/mac-mountainlion/fast/forms/fieldset-align-expected.txt:
+        * platform/mac-mountainlion/fast/forms/textAreaLineHeight-expected.txt:
+        * platform/mac/editing/selection/vertical-rl-rtl-extend-line-backward-br-expected.txt:
+        * platform/mac/editing/selection/vertical-rl-rtl-extend-line-backward-p-expected.txt:
+        * platform/mac/editing/selection/vertical-rl-rtl-extend-line-forward-br-expected.txt:
+        * platform/mac/editing/selection/vertical-rl-rtl-extend-line-forward-p-expected.txt:
+        * platform/mac/fast/css/css1_forward_compatible_parsing-expected.txt:
+        * platform/mac/fast/css/first-line-text-decoration-expected.txt:
+        * platform/mac/fast/css/h1-in-section-elements-expected.txt:
+        * platform/mac/fast/css/word-space-extra-expected.txt:
+        * platform/mac/fast/encoding/utf-16-big-endian-expected.txt:
+        * platform/mac/fast/encoding/utf-16-little-endian-expected.txt:
+        * platform/mac/fast/forms/fieldset-align-expected.txt:
+        * platform/mac/fast/forms/textAreaLineHeight-expected.txt:
+        * platform/mac/fast/inline/continuation-outlines-expected.txt:
+        * platform/mac/fast/inline/continuation-outlines-with-layers-expected.txt:
+        * platform/mac/fast/inline/outline-continuations-expected.txt:
+        * platform/mac/fast/invalid/nestedh3s-expected.txt:
+        * platform/mac/fast/multicol/client-rects-expected.txt:
+        * platform/mac/fast/multicol/client-rects-spanners-complex-expected.txt:
+        * platform/mac/fast/multicol/client-rects-spanners-expected.txt:
+        * platform/mac/fast/multicol/newmulticol/client-rects-expected.txt:
+        * platform/mac/fast/multicol/span/span-as-immediate-columns-child-dynamic-expected.txt:
+        * platform/mac/fast/multicol/span/span-as-immediate-columns-child-expected.txt:
+        * platform/mac/fast/multicol/span/span-margin-collapsing-expected.txt:
+        * platform/mac/fast/overflow/clip-rects-fixed-ancestor-expected.txt:
+        * platform/mac/fast/table/014-expected.txt:
+        * platform/mac/fast/text/international/bidi-LDB-2-HTML-expected.txt:
+        * platform/mac/mathml/presentation/mo-stretch-expected.txt:
+        * platform/mac/svg/custom/use-font-face-crash-expected.txt:
+        * platform/mac/svg/wicd/rightsizing-grid-expected.txt:
+        * platform/mac/tables/mozilla/bugs/bug113235-1-expected.txt:
+        * platform/mac/tables/mozilla/bugs/bug113235-2-expected.txt:
+        * platform/mac/tables/mozilla/other/wa_table_thtd_rowspan-expected.txt:
+        * platform/mac/tables/mozilla/other/wa_table_tr_align-expected.txt:
+
+2014-05-09  Alexey Proskuryakov  <ap@apple.com>
+
+        REGRESSION (r168518): Multiple tests for workers in blobs assert
+        https://bugs.webkit.org/show_bug.cgi?id=132728
+
+        Reviewed by Geoffrey Garen.
+
+        * platform/mac/TestExpectations: Unskip the tests.
+
+2014-05-09  Zsolt Borbely  <zsborbely.u-szeged@partner.samsung.com>
+
+        ASSERTION FAILED: object->style()->overflowX() == object->style()->overflowY()
+        https://bugs.webkit.org/show_bug.cgi?id=121682
+
+        Reviewed by Dirk Schulze.
+
+        Merge Blink r172126 by Erik Dahlström.
+
+        * platform/efl/svg/overflow/overflow-on-outermost-svg-element-in-xhtml-visible-expected.txt:
+        * platform/mac/svg/overflow/overflow-on-outermost-svg-element-in-xhtml-visible-expected.png:
+        * platform/mac/svg/overflow/overflow-on-outermost-svg-element-in-xhtml-visible-expected.txt:
+        * platform/mac/svg/text/non-bmp-positioning-lists-expected.txt: Added.
+        * svg/W3C-SVG-1.1-SE/painting-marker-05-f-expected.png: Added.
+        * svg/W3C-SVG-1.1-SE/painting-marker-05-f-expected.txt: Added.
+        * svg/W3C-SVG-1.1-SE/painting-marker-05-f.svg: Added.
+        * svg/W3C-SVG-1.1-SE/painting-marker-06-f-expected.png: Added.
+        * svg/W3C-SVG-1.1-SE/painting-marker-06-f-expected.txt: Added.
+        * svg/W3C-SVG-1.1-SE/painting-marker-06-f.svg: Added.
+        * svg/animations/animate-viewport-overflow-2-expected.txt: Added.
+        * svg/animations/animate-viewport-overflow-2.html: Added.
+        * svg/animations/animate-viewport-overflow-expected.txt: Added.
+        * svg/animations/animate-viewport-overflow.html: Added.
+        * svg/in-html/overflow-repaint-expected.txt: Added.
+        * svg/in-html/overflow-repaint.html: Added.
+        * svg/in-html/overflow-svg-root-attr-expected.html: Added.
+        * svg/in-html/overflow-svg-root-attr.html: Added.
+        * svg/in-html/overflow-svg-root-expected.html: Added.
+        * svg/in-html/overflow-svg-root-style-expected.html: Added.
+        * svg/in-html/overflow-svg-root-style.html: Added.
+        * svg/in-html/overflow-svg-root.html: Added.
+        * svg/overflow/overflow-on-outermost-svg-element-horizontal-auto-expected.html: Added.
+        * svg/overflow/overflow-on-outermost-svg-element-horizontal-auto.svg: Added.
+        * svg/overflow/overflow-on-outermost-svg-element-ignore-attribute-1-expected.txt:
+        * svg/overflow/overflow-on-outermost-svg-element-in-xhtml-visible-expected.png:
+        * svg/overflow/overflow-on-outermost-svg-element-in-xhtml-visible-expected.txt: Copied from LayoutTests/platform/mac/svg/overflow/overflow-on-outermost-svg-element-in-xhtml-visible-expected.txt.
+        * svg/overflow/overflow-on-outermost-svg-element-in-xhtml-visible.xhtml:
+        * svg/overflow/overflow-on-outermost-svg-element-vertical-auto-expected.html: Added.
+        * svg/overflow/overflow-on-outermost-svg-element-vertical-auto.svg: Added.
+        * svg/overflow/overflow-scroll-on-outermost-svg-element-expected.txt: Added.
+        * svg/overflow/overflow-scroll-on-outermost-svg-element.svg: Added.
+        * svg/overflow/overflow-x-hidden-on-outermost-svg-element-expected.svg: Added.
+        * svg/overflow/overflow-x-hidden-on-outermost-svg-element.svg: Added.
+        * svg/overflow/overflow-y-hidden-on-outermost-svg-element-expected.svg: Added.
+        * svg/overflow/overflow-y-hidden-on-outermost-svg-element.svg: Added.
+
+2014-05-09  Alexey Proskuryakov  <ap@apple.com>
+
+        REGRESSION (r168448): fast/multicol/newmulticol/first-letter-create.html is very flaky
+        https://bugs.webkit.org/show_bug.cgi?id=132744
+
+        * TestExpectations: Marked as such.
+
+2014-05-09  Ion Rosca  <rosca@adobe.com>
+
+        [CSS Blending] Move background-blend-mode tests from fast/repaint to css3/blending and remove the -webkit- prefix
+        https://bugs.webkit.org/show_bug.cgi?id=132741
+
+        Reviewed by Mihnea Ovidenie.
+
+        Remove the -webkit prefix from comments:
+        * css3/blending/background-blend-mode-property-expected.txt:
+        * css3/blending/script-tests/background-blend-mode-property.js:
+
+        Move the background-blend-mode test from fast/repaint to css3/blending.
+        This is not required to be a repaint test. It works well as a regular reftest too.
+        * css3/blending/background-blend-mode-image-color-dynamic-expected.html: Added.
+        * css3/blending/background-blend-mode-image-color-dynamic.html: Added.
+        * fast/repaint/background-blend-mode-image-color-dynamic-expected.html: Removed.
+        * fast/repaint/background-blend-mode-image-color-dynamic.html: Removed.
+        * fast/repaint/resources/ducky.png: Removed.
+
+2014-05-09  Zalan Bujtas  <zalan@apple.com>
+
+        REGRESSION (r168095): 1-pixel gap between adjacent selection inlines
+        https://bugs.webkit.org/show_bug.cgi?id=132474
+        <rdar://problem/16797394>
+
+        Reviewed by David Hyatt.
+
+        This patch changes text selection rectangle calculation from integral to device
+        pixel snapping. It ensures that selection rect painting matches box boundaries for inline elements.
+        Directional rounding (horizontal only atm) is moved out from Font class and now accessible
+        to all the painting code. RTL snapping strategy is changed from floor to round to match ltr behavior.
+        However this patch does not address all the integral snapping across inline elements. There are
+        a few places where we still calculate enclosing rects where snapping is sufficient.
+
+        * fast/inline/hidpi-pixel-gap-between-adjacent-selection-inlines-expected.html: Added.
+        * fast/inline/hidpi-pixel-gap-between-adjacent-selection-inlines.html: Added.
+        * platform/mac/editing/selection/mixed-editability-10-expected.txt: progression.
+        * platform/mac/fast/forms/cursor-at-editable-content-boundary-expected.txt: progression.
+        * platform/mac/platform/mac/editing/input/caret-primary-bidi-expected.txt: Added. change in rounding strategy.
+        * platform/mac/svg/text/caret-in-svg-text-expected.txt: Added. progression + change in rounding strategy.
+
+2014-05-09  Martin Hodovan  <mhodovan@inf.u-szeged.hu>
+
+        ASSERTION FAILED: !m_code || m_code == defaultExceptionCode
+        in WebCore::constructQualifiedName
+        https://bugs.webkit.org/show_bug.cgi?id=132343
+
+        'Remove bad assertion in SVGSMILElement's constructQualifiedName() by passing
+        IGNORE_EXCEPTION instead ASSERT_NO_EXCEPTION to Document::parseQualifiedName().
+        The constructQualifiedName() function handles parseQualifiedName() failures
+        propertly by returning early so there is no reason to assert on parsing
+        failures.'
+
+        Blink merge: http://src.chromium.org/viewvc/blink?view=revision&revision=173564
+        Based on the patch made by Christophe Dumez <ch.dumez@samsung.com>.
+
+        Reviewed by Dirk Schulze.
+
+        * svg/custom/bad-attributeName-crash-expected.txt: Added.
+        * svg/custom/bad-attributeName-crash.html: Added.
+
+2014-05-08  Alexey Proskuryakov  <ap@apple.com>
+
+        REGRESSION (r168518): Multiple tests for workers in blobs assert
+        https://bugs.webkit.org/show_bug.cgi?id=132728
+
+        * platform/mac/TestExpectations: Skipped for now.
+
+2014-05-08  Praveen R Jadhav  <praveen.j@samsung.com>
+
+        [EFL] Enable MEDIA_STREAM for EFL port
+        https://bugs.webkit.org/show_bug.cgi?id=132648
+
+        Reviewed by Gyuyoung Kim.
+
+        Updated webaudio test case expectation after enabling MEDIA_STREAM
+
+        * platform/efl/TestExpectations:
+
+2014-05-08  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r168498.
+        https://bugs.webkit.org/show_bug.cgi?id=132714
+
+        broke Mavericks WK2 (Requested by litherum on #webkit).
+
+        Reverted changeset:
+
+        "http/tests/security/xss-DENIED-xsl-document-redirect.xml
+        fails with NetworkProcess"
+        https://bugs.webkit.org/show_bug.cgi?id=132523
+        http://trac.webkit.org/changeset/168498
+
+2014-05-08  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        http/tests/security/xss-DENIED-xsl-document-redirect.xml fails with NetworkProcess
+        https://bugs.webkit.org/show_bug.cgi?id=132523
+
+        Reviewed by Alexey Proskuryakov.
+
+        Two tests have been rebaselined, and re-enable test that now passes
+
+        * fast/xmlhttprequest/xmlhttprequest-nonexistent-file-expected.txt: The test describes
+        that success causes an ErrorHandler to run, but there was no ErrorHandler line in the
+        expected output. This now gets printed.
+        * http/tests/security/xss-DENIED-xsl-document-redirect-expected.txt: Expecting logging
+        output on failed redirection
+        * platform/mac-wk2/TestExpectations: Re-enable test that now passes.
+
+2014-05-08  Bem Jones-Bey  <bjonesbe@adobe.com>
+
+        [CSS Shapes] Shapes do not resolve dimensions specified in viewport units
+        https://bugs.webkit.org/show_bug.cgi?id=124052
+
+        Reviewed by Dirk Schulze.
+
+        * css3/masking/clip-path-polygon-viewport-units-expected.html: Added.
+        * css3/masking/clip-path-polygon-viewport-units.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-viewport-units-expected.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-viewport-units.html: Added.
+
+2014-05-08  Rik Cabanier  <cabanier@adobe.com>
+
+        Add support for drawFocusIfNeeded
+        https://bugs.webkit.org/show_bug.cgi?id=132584
+
+        Reviewed by Dirk Schulze.
+
+        * fast/canvas/draw-focus-if-needed-expected.txt: Added.
+        * fast/canvas/draw-focus-if-needed.html: Added.
+
+2014-05-08  Ion Rosca  <rosca@adobe.com>
+
+        [CSS Blending] Removing -webkit- prefixes for mix-blend-mode and isolation from layout tests.
+        https://bugs.webkit.org/show_bug.cgi?id=132680
+
+        Reviewed by Mihnea Ovidenie.
+
+        * css3/blending/blend-mode-accelerated-parent-overflow-hidden.html:
+        * css3/blending/blend-mode-isolation-accelerated-overflow-hidden.html:
+        * css3/blending/blend-mode-isolation-flags-append-non-stacking-context-blending.html:
+        * css3/blending/blend-mode-isolation-flags-append-stacking-context-blending.html:
+        * css3/blending/blend-mode-isolation-flags-remove-non-stacking-context-blending.html:
+        * css3/blending/blend-mode-isolation-flags-remove-stacking-context-blending.html:
+        * css3/blending/blend-mode-isolation-flags-turn-off-blending-no-isolation.html:
+        * css3/blending/blend-mode-isolation-flags-turn-off-blending.html:
+        * css3/blending/blend-mode-isolation-flags-turn-off-stacking-context.html:
+        * css3/blending/blend-mode-isolation-flags-turn-on-blending.html:
+        * css3/blending/blend-mode-isolation-flags-turn-on-stacking-context.html:
+        * css3/blending/blend-mode-isolation-overflow-hidden.html:
+        * css3/blending/blend-mode-isolation-turn-off-self-painting-layer.html:
+        * css3/blending/blend-mode-isolation-turn-off-self-painting-layer1.html:
+        * css3/blending/blend-mode-isolation-turn-off-self-painting-layer2.html:
+        * css3/blending/blend-mode-isolation-turn-on-self-painting-layer.html:
+        * css3/blending/blend-mode-overflow.html:
+        * css3/blending/repaint/blend-mode-turn-off-isolation-no-effect.html:
+        * css3/blending/repaint/blend-mode-turn-off-isolation.html:
+        * css3/blending/svg-blend-color-burn.html:
+        * css3/blending/svg-blend-darken.html:
+        * css3/blending/svg-blend-difference.html:
+        * css3/blending/svg-blend-exclusion.html:
+        * css3/blending/svg-blend-layer-mask.html:
+        * css3/blending/svg-blend-lighten.html:
+        * css3/blending/svg-blend-normal.html:
+        * css3/blending/svg-blend-overlay.html:
+        * css3/blending/svg-isolation-default.html:
+        * css3/blending/svg-isolation-simple.html:
+
+2014-05-08  Krzysztof Wolanski  <k.wolanski@samsung.com>
+
+        [EFL] Rebaseline after enabling new multi-column mode (r168046)
+        https://bugs.webkit.org/show_bug.cgi?id=132679
+
+        Unreviewed gardening.
+
+        * platform/efl/css3/unicode-bidi-isolate-basic-expected.png:
+        * platform/efl/css3/unicode-bidi-isolate-basic-expected.txt:
+        * platform/efl/fast/block/float/float-not-removed-from-next-sibling4-expected.png:
+        * platform/efl/fast/block/float/float-not-removed-from-next-sibling4-expected.txt:
+        * platform/efl/fast/line-grid/line-grid-inside-columns-expected.png:
+        * platform/efl/fast/line-grid/line-grid-inside-columns-expected.txt:
+        * platform/efl/fast/line-grid/line-grid-into-columns-expected.txt:
+        * platform/efl/fast/multicol/block-axis-horizontal-bt-expected.png:
+        * platform/efl/fast/multicol/block-axis-horizontal-bt-expected.txt:
+        * platform/efl/fast/multicol/block-axis-horizontal-tb-expected.png:
+        * platform/efl/fast/multicol/block-axis-horizontal-tb-expected.txt:
+        * platform/efl/fast/multicol/block-axis-vertical-lr-expected.png:
+        * platform/efl/fast/multicol/block-axis-vertical-lr-expected.txt:
+        * platform/efl/fast/multicol/block-axis-vertical-rl-expected.txt:
+        * platform/efl/fast/multicol/border-padding-pagination-expected.png:
+        * platform/efl/fast/multicol/border-padding-pagination-expected.txt:
+        * platform/efl/fast/multicol/client-rects-expected.png:
+        * platform/efl/fast/multicol/client-rects-expected.txt:
+        * platform/efl/fast/multicol/client-rects-spanners-complex-expected.txt: Added.
+        * platform/efl/fast/multicol/client-rects-spanners-expected.txt: Added.
+        * platform/efl/fast/multicol/column-break-with-balancing-expected.txt:
+        * platform/efl/fast/multicol/column-count-with-rules-expected.txt:
+        * platform/efl/fast/multicol/column-rules-expected.png:
+        * platform/efl/fast/multicol/column-rules-expected.txt:
+        * platform/efl/fast/multicol/column-rules-stacking-expected.txt:
+        * platform/efl/fast/multicol/columns-shorthand-parsing-expected.txt:
+        * platform/efl/fast/multicol/float-avoidance-expected.txt:
+        * platform/efl/fast/multicol/float-multicol-expected.txt:
+        * platform/efl/fast/multicol/float-paginate-complex-expected.txt:
+        * platform/efl/fast/multicol/float-paginate-empty-lines-expected.txt:
+        * platform/efl/fast/multicol/float-paginate-expected.txt:
+        * platform/efl/fast/multicol/layers-in-multicol-expected.txt:
+        * platform/efl/fast/multicol/layers-split-across-columns-expected.txt:
+        * platform/efl/fast/multicol/margin-collapse-expected.txt:
+        * platform/efl/fast/multicol/max-height-columns-block-expected.png:
+        * platform/efl/fast/multicol/max-height-columns-block-expected.txt:
+        * platform/efl/fast/multicol/nested-columns-expected.png:
+        * platform/efl/fast/multicol/nested-columns-expected.txt:
+        * platform/efl/fast/multicol/newmulticol/client-rects-expected.txt: Added.
+        * platform/efl/fast/multicol/overflow-across-columns-expected.png:
+        * platform/efl/fast/multicol/overflow-across-columns-expected.txt:
+        * platform/efl/fast/multicol/overflow-across-columns-percent-height-expected.png:
+        * platform/efl/fast/multicol/overflow-across-columns-percent-height-expected.txt:
+        * platform/efl/fast/multicol/overflow-unsplittable-expected.png:
+        * platform/efl/fast/multicol/overflow-unsplittable-expected.txt:
+        * platform/efl/fast/multicol/paginate-block-replaced-expected.txt:
+        * platform/efl/fast/multicol/pagination/BottomToTop-bt-expected.txt:
+        * platform/efl/fast/multicol/pagination/BottomToTop-lr-expected.txt:
+        * platform/efl/fast/multicol/pagination/BottomToTop-rl-expected.txt:
+        * platform/efl/fast/multicol/pagination/BottomToTop-tb-expected.txt:
+        * platform/efl/fast/multicol/pagination/LeftToRight-bt-expected.txt:
+        * platform/efl/fast/multicol/pagination/LeftToRight-lr-expected.txt:
+        * platform/efl/fast/multicol/pagination/LeftToRight-rl-expected.txt:
+        * platform/efl/fast/multicol/pagination/LeftToRight-tb-expected.txt:
+        * platform/efl/fast/multicol/pagination/RightToLeft-bt-expected.txt:
+        * platform/efl/fast/multicol/pagination/RightToLeft-lr-expected.txt:
+        * platform/efl/fast/multicol/pagination/RightToLeft-rl-expected.txt:
+        * platform/efl/fast/multicol/pagination/RightToLeft-tb-expected.txt:
+        * platform/efl/fast/multicol/pagination/TopToBottom-bt-expected.txt:
+        * platform/efl/fast/multicol/pagination/TopToBottom-lr-expected.txt:
+        * platform/efl/fast/multicol/pagination/TopToBottom-rl-expected.txt:
+        * platform/efl/fast/multicol/pagination/TopToBottom-tb-expected.txt:
+        * platform/efl/fast/multicol/positioned-split-expected.txt:
+        * platform/efl/fast/multicol/positive-leading-expected.png:
+        * platform/efl/fast/multicol/positive-leading-expected.txt:
+        * platform/efl/fast/multicol/scrolling-column-rules-expected.txt: Added.
+        * platform/efl/fast/multicol/scrolling-overflow-expected.png:
+        * platform/efl/fast/multicol/scrolling-overflow-expected.txt:
+        * platform/efl/fast/multicol/shrink-to-column-height-for-pagination-expected.txt:
+        * platform/efl/fast/multicol/single-line-expected.txt:
+        * platform/efl/fast/multicol/span/anonymous-before-child-parent-crash-expected.png:
+        * platform/efl/fast/multicol/span/anonymous-before-child-parent-crash-expected.txt:
+        * platform/efl/fast/multicol/span/anonymous-split-block-crash-expected.png:
+        * platform/efl/fast/multicol/span/anonymous-split-block-crash-expected.txt:
+        * platform/efl/fast/multicol/span/clone-anonymous-block-non-inline-child-crash-expected.png:
+        * platform/efl/fast/multicol/span/clone-anonymous-block-non-inline-child-crash-expected.txt:
+        * platform/efl/fast/multicol/span/clone-flexbox-expected.txt:
+        * platform/efl/fast/multicol/span/clone-summary-expected.txt:
+        * platform/efl/fast/multicol/span/span-as-immediate-child-complex-splitting-expected.txt:
+        * platform/efl/fast/multicol/span/span-as-immediate-child-generated-content-expected.txt:
+        * platform/efl/fast/multicol/span/span-as-immediate-columns-child-expected.txt:
+        * platform/efl/fast/multicol/span/span-as-nested-columns-child-dynamic-expected.txt:
+        * platform/efl/fast/multicol/span/span-as-nested-columns-child-expected.txt:
+        * platform/efl/fast/multicol/span/span-as-nested-inline-block-child-expected.txt:
+        * platform/efl/fast/multicol/span/span-margin-collapsing-expected.txt:
+        * platform/efl/fast/multicol/table-margin-collapse-expected.txt:
+        * platform/efl/fast/multicol/table-vertical-align-expected.txt:
+        * platform/efl/fast/multicol/unsplittable-inline-block-expected.txt:
+        * platform/efl/fast/multicol/vertical-lr/border-padding-pagination-expected.png:
+        * platform/efl/fast/multicol/vertical-lr/border-padding-pagination-expected.txt:
+        * platform/efl/fast/multicol/vertical-lr/column-break-with-balancing-expected.txt:
+        * platform/efl/fast/multicol/vertical-lr/column-count-with-rules-expected.txt:
+        * platform/efl/fast/multicol/vertical-lr/column-rules-expected.png:
+        * platform/efl/fast/multicol/vertical-lr/column-rules-expected.txt:
+        * platform/efl/fast/multicol/vertical-lr/float-avoidance-expected.txt:
+        * platform/efl/fast/multicol/vertical-lr/float-multicol-expected.txt:
+        * platform/efl/fast/multicol/vertical-lr/float-paginate-complex-expected.txt:
+        * platform/efl/fast/multicol/vertical-lr/float-paginate-expected.txt:
+        * platform/efl/fast/multicol/vertical-lr/nested-columns-expected.png:
+        * platform/efl/fast/multicol/vertical-lr/nested-columns-expected.txt:
+        * platform/efl/fast/multicol/vertical-lr/unsplittable-inline-block-expected.txt:
+        * platform/efl/fast/multicol/vertical-rl/border-padding-pagination-expected.png:
+        * platform/efl/fast/multicol/vertical-rl/border-padding-pagination-expected.txt:
+        * platform/efl/fast/multicol/vertical-rl/column-break-with-balancing-expected.txt:
+        * platform/efl/fast/multicol/vertical-rl/column-count-with-rules-expected.txt:
+        * platform/efl/fast/multicol/vertical-rl/column-rules-expected.png:
+        * platform/efl/fast/multicol/vertical-rl/column-rules-expected.txt:
+        * platform/efl/fast/multicol/vertical-rl/float-avoidance-expected.txt:
+        * platform/efl/fast/multicol/vertical-rl/float-multicol-expected.txt:
+        * platform/efl/fast/multicol/vertical-rl/float-paginate-complex-expected.txt:
+        * platform/efl/fast/multicol/vertical-rl/float-paginate-expected.txt:
+        * platform/efl/fast/multicol/vertical-rl/nested-columns-expected.txt:
+        * platform/efl/fast/multicol/vertical-rl/rule-style-expected.txt:
+        * platform/efl/fast/multicol/vertical-rl/unsplittable-inline-block-expected.txt:
+        * platform/efl/fast/overflow/paged-x-div-expected.txt:
+        * platform/efl/fast/overflow/paged-x-div-with-column-gap-expected.txt:
+        * platform/efl/fast/overflow/paged-x-on-root-expected.png:
+        * platform/efl/fast/overflow/paged-x-on-root-expected.txt:
+        * platform/efl/fast/overflow/paged-x-with-column-gap-expected.png:
+        * platform/efl/fast/overflow/paged-x-with-column-gap-expected.txt:
+        * platform/efl/fast/overflow/paged-y-div-expected.txt:
+        * platform/efl/fast/overflow/paged-y-on-root-expected.png:
+        * platform/efl/fast/overflow/paged-y-on-root-expected.txt:
+        * platform/efl/fast/repaint/multicol-repaint-expected.png:
+        * platform/efl/fast/repaint/multicol-repaint-expected.txt:
+
+2014-05-08  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        [GTK] Enable skipped http/tests/media/hls/video-controls-live-stream.html
+        https://bugs.webkit.org/show_bug.cgi?id=132329
+
+        Reviewed by Eric Carlson.
+
+        Tweaked test, created GTK results, unskipped in GTK and moved the
+        current general expectations to be mac only.
+
+        * http/tests/media/hls/video-controls-live-stream-expected.txt:
+        Moved.
+        * http/tests/media/hls/video-controls-live-stream.html: Dump tree
+        and check status of the timelime.
+        * media/media-controls.js:
+        (dumpMediaControlsTree): Added to dump the shadow dom tree.
+        * platform/gtk/TestExpectations: Unskipped video-controls-live-stream.
+        * platform/gtk/http/tests/media/hls/video-controls-live-stream-expected.txt: Added.
+        * platform/mac/http/tests/media/hls/video-controls-live-stream-expected.txt:
+        Moved from
+        LayoutTests/http/tests/media/hls/video-controls-live-stream-expected.txt
+        and rebaselined.
+
+2014-05-08  Mihnea Ovidenie  <mihnea@adobe.com>
+
+        [CSS Regions] Content overflowing a fixed positioned region is clipped
+        https://bugs.webkit.org/show_bug.cgi?id=118607
+
+        Reviewed by Andrei Bucur.
+
+        Fixed by the overflow in regions work, add test to prevent future regressions.
+
+        * fast/regions/fixed-pos-region-overflow-content-expected.html: Added.
+        * fast/regions/fixed-pos-region-overflow-content.html: Added.
+
+2014-05-08  Ion Rosca  <rosca@adobe.com>
+
+        [CSS Blending] Changing isolation CSS property should not trigger repaint in RenderStyle::changeRequiresLayerRepaint
+        https://bugs.webkit.org/show_bug.cgi?id=131436
+
+        Reviewed by Dirk Schulze.
+
+        * css3/blending/repaint/blend-mode-turn-off-isolation-expected.txt: Added.
+        * css3/blending/repaint/blend-mode-turn-off-isolation-no-effect-expected.txt: Added.
+        * css3/blending/repaint/blend-mode-turn-off-isolation-no-effect.html: Added.
+        * css3/blending/repaint/blend-mode-turn-off-isolation.html: Added.
+
+2014-05-08  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        REGRESSION (r167652): SelectionState is not set properly for non leaf objects in pages with regions
+        https://bugs.webkit.org/show_bug.cgi?id=132493
+
+        Reviewed by David Hyatt.
+
+        * TestExpectations: Marked
+        fast/regions/cssom/region-range-for-box-crash.html as crashing on
+        debug due to regression detected in bug #131982.
+        * fast/regions/selection/crash-select-all-expected.txt: Added.
+        * fast/regions/selection/crash-select-all.html: Added.
+
+2014-05-08  Zoltan Horvath  <zoltan@webkit.org>
+
+        [CSS Shapes] Can't select content within the area of the floating box when clip-path is applied
+        https://bugs.webkit.org/show_bug.cgi?id=131375
+
+        Reviewed by Dirk Schulze.
+
+        * fast/masking/clip-path-selection-expected.txt: Added.
+        * fast/masking/clip-path-selection.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-clip-path-selection-expected.txt: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-clip-path-selection.html: Added.
+
+2014-05-07  Ion Rosca  <rosca@adobe.com>
+
+        [CSS Blending] Blending doesn't work if the parent stacking context is not a self painting layer
+        https://bugs.webkit.org/show_bug.cgi?id=130891
+
+        Reviewed by Dean Jackson.
+
+        Removed position:relative which forced tests to avoid this bug. 
+        * css3/blending/blend-mode-accelerated-parent-overflow-hidden.html:
+        * css3/blending/blend-mode-clip-accelerated-blending-canvas.html:
+        * css3/blending/blend-mode-clip-accelerated-blending-child.html:
+        * css3/blending/blend-mode-clip-accelerated-blending-with-siblings.html:
+        * css3/blending/blend-mode-clip-accelerated-transformed-blending.html:
+
+        New tests:
+        * css3/blending/blend-mode-isolation-accelerated-overflow-hidden-expected.txt: Added.
+        * css3/blending/blend-mode-isolation-accelerated-overflow-hidden.html: Added.
+        * css3/blending/blend-mode-isolation-overflow-hidden-expected.html: Added.
+        * css3/blending/blend-mode-isolation-overflow-hidden.html: Added.
+        * css3/blending/blend-mode-isolation-turn-off-self-painting-layer-expected.txt: Added.
+        * css3/blending/blend-mode-isolation-turn-off-self-painting-layer.html: Added.
+        * css3/blending/blend-mode-isolation-turn-off-self-painting-layer1-expected.txt: Added.
+        * css3/blending/blend-mode-isolation-turn-off-self-painting-layer1.html: Added.
+        * css3/blending/blend-mode-isolation-turn-off-self-painting-layer2-expected.txt: Added.
+        * css3/blending/blend-mode-isolation-turn-off-self-painting-layer2.html: Added.
+        * css3/blending/blend-mode-isolation-turn-on-self-painting-layer-expected.txt: Added.
+        * css3/blending/blend-mode-isolation-turn-on-self-painting-layer.html: Added.
+
+2014-05-06  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Dragging text from one paragraph to another does not render as expected
+        https://bugs.webkit.org/show_bug.cgi?id=132633
+
+        Reviewed by Darin Adler and Ryosuke Niwa.
+
+        The problem occurs when dragging text that includes a <p> into an editable
+        area that has a <p> as a parent.
+
+        * editing/pasteboard/drag-drop-paragraph-crasher-expected.txt: Added.
+        * editing/pasteboard/drag-drop-paragraph-crasher.html: Added.
+
+2014-05-07  Dean Jackson  <dino@apple.com>
+
+        Using a fill pattern much larger than actual canvas reliably segfaults browser
+        https://bugs.webkit.org/show_bug.cgi?id=132635
+
+        Reviewed by Simon Fraser.
+
+        Test case that makes a huge canvas and tries to create a pattern out of it.
+
+        * fast/canvas/pattern-too-large-to-create-expected.html: Added.
+        * fast/canvas/pattern-too-large-to-create.html: Added.
+
+2014-05-07  Geoffrey Garen  <ggaren@apple.com>
+
+        REGRESSION (r161429?): Frequent crashes on media/track/media-element-enqueue-event-crash.html
+        https://bugs.webkit.org/show_bug.cgi?id=117756
+
+        Reviewed by Mark Hahnenberg.
+
+        Re-enabled this test because it doesn't seem to crash anymore.
+
+        * media/track/media-element-enqueue-event-crash.html: Reduced the number
+        of test runs because otherwise this test often times out.
+
+        * platform/mac/TestExpectations: Re-enable this test because I ran it
+        for about a minute on my Mac Pro without crashing.
+
+2014-05-07  Radu Stavila  <stavila@adobe.com>
+
+        Use after free in WebCore::RenderObject::nextSibling / WebCore::RenderBoxModelObject::moveChildrenTo
+        https://bugs.webkit.org/show_bug.cgi?id=132625
+
+        Reviewed by David Hyatt.
+
+        Added test for special case which might cause use after free.
+
+        * fast/multicol/newmulticol/first-letter-create-expected.html: Added.
+        * fast/multicol/newmulticol/first-letter-create.html: Added.
+
+2014-05-07  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: aria-expanded changes are not communicated to clients
+        https://bugs.webkit.org/show_bug.cgi?id=132642
+
+        Reviewed by Mario Sanchez Prada.
+
+        * platform/mac/accessibility/expanded-notification-expected.txt: Added.
+        * platform/mac/accessibility/expanded-notification.html: Added.
+
+2014-05-07  Christophe Dumez  <ch.dumez@samsung.com>
+
+        [HTML] Default argument to HTMLTableElement.insertRow() should be -1
+        https://bugs.webkit.org/show_bug.cgi?id=132651
+
+        Reviewed by Alexey Proskuryakov.
+
+        Add layout test to test that the default argument to HTMLTableElement.insertRow()
+        is -1.
+
+        * fast/dom/HTMLTableElement/insertRow-default-argument-expected.txt: Added.
+        * fast/dom/HTMLTableElement/insertRow-default-argument.html: Added.
+
+2014-05-07  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: AXSelectTextWithCriteria should support capitalize/lowercase/uppercase
+        https://bugs.webkit.org/show_bug.cgi?id=132622
+
+        Reviewed by Mario Sanchez Prada.
+
+        * platform/mac/accessibility/select-text-expected.txt:
+        * platform/mac/accessibility/select-text.html:
+
+2014-05-07  Grzegorz Czajkowski  <g.czajkowski@samsung.com>
+
+        Share mac/editing/spelling/editing-multiple-words-with-markers.html with other platforms
+        https://bugs.webkit.org/show_bug.cgi?id=132649
+
+        Reviewed by Ryosuke Niwa.
+
+        This test does not verify autocorrection feature which is only implemented
+        by Mac. Other WebKit ports might be interested in running it due to
+        verification of spelling markers after merging two misspelled words.
+
+        Additionally, add the test case confirming spelling markers
+        before any selection change.
+
+        Due to bug 125689, this test starts using asynchronous spellchecking.
+
+        * editing/spelling/editing-multiple-words-with-markers-expected.txt:
+        Renamed from platform/mac/editing/spelling/editing-multiple-words-with-markers-expected.txt
+        * editing/spelling/editing-multiple-words-with-markers.html:
+        Renamed from platform/mac/editing/spelling/editing-multiple-words-with-markers.html
+
+        * platform/gtk/TestExpectations:
+        * platform/mac-wk2/TestExpectations:
+        * platform/win/TestExpectations:
+        Mark editing-multiple-words-with-markers.html as failing since those
+        platforms didn't turn on asynchronous spellchecking.
+
+2014-05-06  Antti Koivisto  <antti@apple.com>
+
+        REGRESSION: Animated GIF inside compositing layer never resumes animation when scrolled back into view
+        https://bugs.webkit.org/show_bug.cgi?id=132608
+
+        Reviewed by Simon Fraser.
+
+        * fast/repaint/animation-after-layer-scroll-expected.txt: Added.
+        * fast/repaint/animation-after-layer-scroll.html: Added.
+
+2014-05-07  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [CSS Grid Layout] Remove runtime feature
+        https://bugs.webkit.org/show_bug.cgi?id=132382
+
+        Reviewed by Benjamin Poulain.
+
+        Remove set of WebKitCSSGridLayoutEnabled preference.
+        Remove fast/css-grid-layout/grid-disabled.html patch as the setting is not available anymore.
+
+        * fast/css-grid-layout/anonymous-grid-items-expected.html:
+        * fast/css-grid-layout/anonymous-grid-items.html:
+        * fast/css-grid-layout/auto-content-resolution-columns.html:
+        * fast/css-grid-layout/auto-content-resolution-rows.html:
+        * fast/css-grid-layout/breadth-size-resolution-grid.html:
+        * fast/css-grid-layout/calc-resolution-grid-item.html:
+        * fast/css-grid-layout/containing-block-grids.html:
+        * fast/css-grid-layout/display-grid-set-get.html:
+        * fast/css-grid-layout/flex-and-minmax-content-resolution-columns.html:
+        * fast/css-grid-layout/flex-and-minmax-content-resolution-rows.html:
+        * fast/css-grid-layout/flex-content-resolution-columns.html:
+        * fast/css-grid-layout/flex-content-resolution-rows.html:
+        * fast/css-grid-layout/flex-content-sized-column-use-available-width.html:
+        * fast/css-grid-layout/flex-content-sized-columns-resize.html:
+        * fast/css-grid-layout/floating-empty-grids.html:
+        * fast/css-grid-layout/grid-auto-columns-rows-auto-flow-resolution.html:
+        * fast/css-grid-layout/grid-auto-columns-rows-get-set.html:
+        * fast/css-grid-layout/grid-auto-columns-rows-resolution.html:
+        * fast/css-grid-layout/grid-auto-columns-rows-update.html:
+        * fast/css-grid-layout/grid-auto-flow-get-set.html:
+        * fast/css-grid-layout/grid-auto-flow-resolution.html:
+        * fast/css-grid-layout/grid-auto-flow-update.html:
+        * fast/css-grid-layout/grid-columns-rows-get-set-multiple.html:
+        * fast/css-grid-layout/grid-columns-rows-get-set.html:
+        * fast/css-grid-layout/grid-container-change-named-grid-lines-recompute-child.html:
+        * fast/css-grid-layout/grid-disabled-expected.txt: Removed.
+        * fast/css-grid-layout/grid-disabled.html: Removed.
+        * fast/css-grid-layout/grid-dynamic-updates-relayout.html:
+        * fast/css-grid-layout/grid-element-border-grid-item.html:
+        * fast/css-grid-layout/grid-element-border-padding-grid-item.html:
+        * fast/css-grid-layout/grid-element-change-columns-repaint.html:
+        * fast/css-grid-layout/grid-element-change-rows-repaint.html:
+        * fast/css-grid-layout/grid-element-empty-row-column.html:
+        * fast/css-grid-layout/grid-element-min-max-height.html:
+        * fast/css-grid-layout/grid-element-min-max-width.html:
+        * fast/css-grid-layout/grid-element-padding-grid-item.html:
+        * fast/css-grid-layout/grid-element-padding-margin.html:
+        * fast/css-grid-layout/grid-element-repeat-get-set.html:
+        * fast/css-grid-layout/grid-element-shrink-to-fit.html:
+        * fast/css-grid-layout/grid-item-addition-auto-placement-update.html:
+        * fast/css-grid-layout/grid-item-addition-track-breadth-update.html:
+        * fast/css-grid-layout/grid-item-area-get-set.html:
+        * fast/css-grid-layout/grid-item-bad-named-area-auto-placement.html:
+        * fast/css-grid-layout/grid-item-bad-resolution-double-span.html:
+        * fast/css-grid-layout/grid-item-change-column-repaint.html:
+        * fast/css-grid-layout/grid-item-change-row-repaint.html:
+        * fast/css-grid-layout/grid-item-column-row-get-set.html:
+        * fast/css-grid-layout/grid-item-end-after-get-set.html:
+        * fast/css-grid-layout/grid-item-margin-auto-columns-rows.html:
+        * fast/css-grid-layout/grid-item-margin-resolution.html:
+        * fast/css-grid-layout/grid-item-multiple-minmax-content-resolution.html:
+        * fast/css-grid-layout/grid-item-named-grid-area-resolution.html:
+        * fast/css-grid-layout/grid-item-named-grid-line-resolution.html:
+        * fast/css-grid-layout/grid-item-negative-indexes.html:
+        * fast/css-grid-layout/grid-item-negative-integer-explicit-grid-resolution.html:
+        * fast/css-grid-layout/grid-item-negative-position-resolution.html:
+        * fast/css-grid-layout/grid-item-order-auto-flow-resolution.html:
+        * fast/css-grid-layout/grid-item-order-paint-order.html:
+        * fast/css-grid-layout/grid-item-position-changed-dynamic.html:
+        * fast/css-grid-layout/grid-item-removal-auto-placement-update.html:
+        * fast/css-grid-layout/grid-item-removal-track-breadth-update.html:
+        * fast/css-grid-layout/grid-item-spanning-resolution.html:
+        * fast/css-grid-layout/grid-item-start-before-get-set.html:
+        * fast/css-grid-layout/grid-item-with-percent-height-in-auto-height-grid-resolution.html:
+        * fast/css-grid-layout/grid-item-with-percent-min-max-height-dynamic.html:
+        * fast/css-grid-layout/grid-preferred-logical-widths.html:
+        * fast/css-grid-layout/grid-strict-ordering-crash.html:
+        * fast/css-grid-layout/grid-template-areas-get-set.html:
+        * fast/css-grid-layout/grid-template-shorthand-get-set.html:
+        * fast/css-grid-layout/implicit-columns-auto-resolution.html:
+        * fast/css-grid-layout/implicit-position-dynamic-change.html:
+        * fast/css-grid-layout/implicit-rows-auto-resolution.html:
+        * fast/css-grid-layout/minmax-fixed-logical-height-only.html:
+        * fast/css-grid-layout/minmax-fixed-logical-width-only.html:
+        * fast/css-grid-layout/minmax-max-content-resolution-columns.html:
+        * fast/css-grid-layout/minmax-max-content-resolution-rows.html:
+        * fast/css-grid-layout/minmax-min-content-column-resolution-columns.html:
+        * fast/css-grid-layout/minmax-min-content-column-resolution-rows.html:
+        * fast/css-grid-layout/minmax-spanning-resolution-columns.html:
+        * fast/css-grid-layout/minmax-spanning-resolution-rows.html:
+        * fast/css-grid-layout/named-grid-line-get-set.html:
+        * fast/css-grid-layout/named-grid-lines-with-named-grid-areas-get-set.html:
+        * fast/css-grid-layout/named-grid-lines-with-named-grid-areas-resolution.html:
+        * fast/css-grid-layout/non-grid-columns-rows-get-set-multiple.html:
+        * fast/css-grid-layout/non-grid-columns-rows-get-set.html:
+        * fast/css-grid-layout/non-grid-element-repeat-get-set.html:
+        * fast/css-grid-layout/non-named-grid-line-get-set.html:
+        * fast/css-grid-layout/percent-grid-item-in-percent-grid-track-in-percent-grid.html:
+        * fast/css-grid-layout/percent-grid-item-in-percent-grid-track-update.html:
+        * fast/css-grid-layout/percent-grid-item-in-percent-grid-track.html:
+        * fast/css-grid-layout/percent-padding-margin-resolution-grid-item-update.html:
+        * fast/css-grid-layout/percent-padding-margin-resolution-grid-item.html:
+        * fast/css-grid-layout/percent-resolution-grid-item.html:
+        * fast/css-grid-layout/place-cell-by-index.html:
+        * fast/css-grid-layout/should-not-collapse-anonymous-blocks.html:
+        * ietestcenter/css3/grid/grid-column-002.htm:
+        * ietestcenter/css3/grid/testRunnerEnableGrid.js: Removed.
+
+2014-05-07  Lorenzo Tilve  <ltilve@igalia.com>
+
+        [GTK] Unreviewed GTK gardening
+
+        Avoid duplicated expectations and remove failure flag for fixed
+        js/dom/basic-weakmap.html test.
+
+        * platform/gtk/TestExpectations:
+
 2014-05-06  Rik Cabanier  <cabanier@adobe.com>
 
         Calling createPattern with a broken image must throw an invalidstate error

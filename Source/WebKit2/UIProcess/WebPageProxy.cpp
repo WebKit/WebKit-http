@@ -1089,13 +1089,18 @@ void WebPageProxy::viewStateDidChange(ViewState::Flags mayHaveChanged, WantsRepl
         }
     }
 
-#if ENABLE(INPUT_TYPE_COLOR_POPOVER)
     if ((mayHaveChanged & ViewState::IsInWindow) && !(m_viewState & ViewState::IsInWindow)) {
+#if ENABLE(INPUT_TYPE_COLOR_POPOVER)
         // When leaving the current page, close the popover color well.
         if (m_colorPicker)
             endColorPicker();
-    }
 #endif
+#if PLATFORM(IOS)
+        // When leaving the current page, close the video fullscreen.
+        if (m_videoFullscreenManager)
+            m_videoFullscreenManager->requestExitFullscreen();
+#endif
+    }
 
     updateBackingStoreDiscardableState();
 }
@@ -1546,8 +1551,6 @@ void WebPageProxy::handleTouchEventAsynchronously(const NativeWebTouchEvent& eve
 {
     if (!isValid())
         return;
-
-    ASSERT(event.type() != WebEvent::TouchStart);
 
     if (!m_isTrackingTouchEvents)
         return;

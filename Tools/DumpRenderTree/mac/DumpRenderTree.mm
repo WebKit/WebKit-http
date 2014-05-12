@@ -878,7 +878,6 @@ static void resetWebPreferencesToConsistentValues()
 #endif
     [preferences setWebGLEnabled:NO];
     [preferences setCSSRegionsEnabled:YES];
-    [preferences setCSSGridLayoutEnabled:NO];
     [preferences setUsePreHTML5ParserQuirks:NO];
     [preferences setAsynchronousSpellCheckingEnabled:NO];
 #if !PLATFORM(IOS)
@@ -1522,8 +1521,6 @@ static void updateDisplay()
         [webView display];
     else
         [webView displayIfNeeded];
-
-    [webView _flushCompositingChanges];
 }
 
 void dump()

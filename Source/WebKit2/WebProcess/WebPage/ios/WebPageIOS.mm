@@ -325,11 +325,47 @@ void WebPage::handleSyntheticClick(Node* nodeRespondingToClick, const WebCore::F
     Frame& mainframe = m_page->mainFrame();
 
     WKBeginObservingContentChanges(true);
+
     mainframe.eventHandler().mouseMoved(PlatformMouseEvent(roundedAdjustedPoint, roundedAdjustedPoint, NoButton, PlatformEvent::MouseMoved, 0, false, false, false, false, 0));
     mainframe.document()->updateStyleIfNeeded();
+
     WKStopObservingContentChanges();
-    if (WKObservedContentChange() != WKContentNoChange)
+
+    m_pendingSyntheticClickNode = nullptr;
+    m_pendingSyntheticClickLocation = FloatPoint();
+
+    switch (WKObservedContentChange()) {
+    case WKContentVisibilityChange:
+        // The move event caused new contents to appear. Don't send the click event.
         return;
+    case WKContentIndeterminateChange:
+        // Wait for callback to completePendingSyntheticClickForContentChangeObserver() to decide whether to send the click event.
+        m_pendingSyntheticClickNode = nodeRespondingToClick;
+        m_pendingSyntheticClickLocation = location;
+        return;
+    case WKContentNoChange:
+        completeSyntheticClick(nodeRespondingToClick, location);
+        return;
+    }
+    ASSERT_NOT_REACHED();
+}
+
+void WebPage::completePendingSyntheticClickForContentChangeObserver()
+{
+    if (!m_pendingSyntheticClickNode)
+        return;
+    // Only dispatch the click if the document didn't get changed by any timers started by the move event.
+    if (WKObservedContentChange() == WKContentNoChange)
+        completeSyntheticClick(m_pendingSyntheticClickNode.get(), m_pendingSyntheticClickLocation);
+
+    m_pendingSyntheticClickNode = nullptr;
+    m_pendingSyntheticClickLocation = FloatPoint();
+}
+
+void WebPage::completeSyntheticClick(Node* nodeRespondingToClick, const WebCore::FloatPoint& location)
+{
+    IntPoint roundedAdjustedPoint = roundedIntPoint(location);
+    Frame& mainframe = m_page->mainFrame();
 
     RefPtr<Frame> oldFocusedFrame = m_page->focusController().focusedFrame();
     RefPtr<Element> oldFocusedElement = oldFocusedFrame ? oldFocusedFrame->document()->focusedElement() : nullptr;
@@ -1738,6 +1774,8 @@ void WebPage::focusNextAssistedNode(bool isForward)
 
 void WebPage::getAssistedNodeInformation(AssistedNodeInformation& information)
 {
+    layoutIfNeeded();
+
     if (RenderObject* renderer = m_assistedNode->renderer())
         information.elementRect = m_page->focusController().focusedOrMainFrame().view()->contentsToRootView(renderer->absoluteBoundingBoxRect());
     else
@@ -1853,7 +1891,12 @@ void WebPage::setMinimumLayoutSizeForMinimalUI(const FloatSize& size)
     viewportConfigurationChanged();
 }
 
-void WebPage::dynamicViewportSizeUpdate(const FloatSize& minimumLayoutSize, const FloatRect& targetExposedContentRect, const FloatRect& targetUnobscuredRect, double targetScale)
+static inline bool withinEpsilon(float a, float b)
+{
+    return fabs(a - b) < std::numeric_limits<float>::epsilon();
+}
+
+void WebPage::dynamicViewportSizeUpdate(const FloatSize& minimumLayoutSize, const FloatRect& targetExposedContentRect, const FloatRect& targetUnobscuredRect, const WebCore::FloatRect& targetUnobscuredRectInScrollViewCoordinates, double targetScale)
 {
     TemporaryChange<bool> dynamicSizeUpdateGuard(m_inDynamicSizeUpdate, true);
     // FIXME: this does not handle the cases where the content would change the content size or scroll position from JavaScript.
@@ -1990,15 +2033,18 @@ void WebPage::dynamicViewportSizeUpdate(const FloatSize& minimumLayoutSize, cons
     frameView.setScrollVelocity(0, 0, 0, monotonicallyIncreasingTime());
 
     IntRect roundedUnobscuredContentRect = roundedIntRect(newUnobscuredContentRect);
-    frameView.setScrollOffset(roundedUnobscuredContentRect.location());
     frameView.setUnobscuredContentRect(roundedUnobscuredContentRect);
     m_drawingArea->setExposedContentRect(newExposedContentRect);
 
-    if (scale == targetScale)
-        scalePage(scale, roundedUnobscuredContentRect.location());
+    scalePage(scale, roundedUnobscuredContentRect.location());
 
-    if (scale != targetScale || roundedIntPoint(targetUnobscuredRect.location()) != roundedUnobscuredContentRect.location())
-        send(Messages::WebPageProxy::DynamicViewportUpdateChangedTarget(scale, roundedUnobscuredContentRect.location()));
+    FloatSize unobscuredContentRectSizeInContentCoordinates = newUnobscuredContentRect.size();
+    unobscuredContentRectSizeInContentCoordinates.scale(scale);
+    frameView.setCustomSizeForResizeEvent(expandedIntSize(unobscuredContentRectSizeInContentCoordinates));
+    frameView.setScrollOffset(roundedUnobscuredContentRect.location());
+
+    if (!withinEpsilon(pageScaleFactor(), targetScale) || roundedIntPoint(targetUnobscuredRect.location()) != frameView.scrollPosition())
+        send(Messages::WebPageProxy::DynamicViewportUpdateChangedTarget(pageScaleFactor(), frameView.scrollPosition()));
 }
 
 void WebPage::resetViewportDefaultConfiguration(WebFrame* frame)
@@ -2049,6 +2095,13 @@ void WebPage::viewportConfigurationChanged()
         m_drawingArea->setExposedContentRect(unobscuredContentRect);
     }
     scalePage(scale, scrollPosition);
+    
+    if (!m_hasReceivedVisibleContentRectsAfterDidCommitLoad) {
+        // This takes scale into account, so do after the scale change.
+        frameView.setCustomFixedPositionLayoutRect(enclosingIntRect(frameView.viewportConstrainedObjectsRect()));
+
+        frameView.setCustomSizeForResizeEvent(expandedIntSize(m_viewportConfiguration.minimumLayoutSize()));
+    }
 }
 
 void WebPage::applicationWillResignActive()
@@ -2121,7 +2174,6 @@ void WebPage::updateVisibleContentRects(const VisibleContentRectUpdateInfo& visi
     if (scrollPosition != IntPoint(frameView.scrollOffset()))
         m_dynamicSizeUpdateHistory.clear();
 
-    frameView.setScrollOffset(scrollPosition);
     frameView.setUnobscuredContentRect(roundedUnobscuredRect);
 
     double horizontalVelocity = visibleContentRectUpdateInfo.horizontalVelocity();
@@ -2133,6 +2185,11 @@ void WebPage::updateVisibleContentRects(const VisibleContentRectUpdateInfo& visi
 
     if (visibleContentRectUpdateInfo.inStableState())
         m_page->mainFrame().view()->setCustomFixedPositionLayoutRect(enclosingIntRect(visibleContentRectUpdateInfo.customFixedPositionRect()));
+
+    if (!visibleContentRectUpdateInfo.isChangingObscuredInsetsInteractively())
+        frameView.setCustomSizeForResizeEvent(expandedIntSize(visibleContentRectUpdateInfo.unobscuredRectInScrollViewCoordinates().size()));
+
+    frameView.setScrollOffset(scrollPosition);
 }
 
 void WebPage::willStartUserTriggeredZooming()
