@@ -63,7 +63,6 @@ list(APPEND WebCore_SOURCES
   platform/graphics/haiku/GlyphPageTreeNodeHaiku.cpp
   platform/graphics/haiku/GradientHaiku.cpp
   platform/graphics/haiku/GraphicsContextHaiku.cpp
-  platform/graphics/haiku/GraphicsLayerHaiku.cpp
   platform/graphics/haiku/IconHaiku.cpp
   platform/graphics/haiku/ImageBufferHaiku.cpp
   platform/graphics/haiku/ImageHaiku.cpp
@@ -74,17 +73,10 @@ list(APPEND WebCore_SOURCES
   platform/graphics/haiku/PathHaiku.cpp
   platform/graphics/haiku/SimpleFontDataHaiku.cpp
   platform/graphics/haiku/StillImageHaiku.cpp
+  platform/graphics/haiku/TileHaiku.cpp
+  platform/graphics/haiku/TiledBackingStoreHaiku.cpp
   
   platform/image-decoders/haiku/ImageDecoderHaiku.cpp
-
-  platform/image-decoders/bmp/BMPImageDecoder.cpp
-  platform/image-decoders/bmp/BMPImageReader.cpp
-  platform/image-decoders/gif/GIFImageDecoder.cpp
-  platform/image-decoders/gif/GIFImageReader.cpp
-  platform/image-decoders/ico/ICOImageDecoder.cpp
-  platform/image-decoders/jpeg/JPEGImageDecoder.cpp
-  platform/image-decoders/png/PNGImageDecoder.cpp
-  platform/image-decoders/webp/WEBPImageDecoder.cpp
 
   platform/network/haiku/BUrlProtocolHandler.cpp
   platform/network/haiku/DNSHaiku.cpp
@@ -102,15 +94,19 @@ list(APPEND WebCore_SOURCES
   platform/text/LocaleICU.cpp
 )
 
+list(APPEND WebCore_USER_AGENT_STYLE_SHEETS
+    ${WEBCORE_DIR}/Modules/mediacontrols/mediaControlsApple.css
+)
+
 if (WTF_USE_TEXTURE_MAPPER)
     list(APPEND WebCore_SOURCES
         platform/graphics/texmap/GraphicsLayerTextureMapper.cpp
     )
+else()
+    list(APPEND WebCore_SOURCES
+        platform/graphics/haiku/GraphicsLayerHaiku.cpp
+    )
 endif ()
-
-list(APPEND WebCore_USER_AGENT_STYLE_SHEETS
-    ${WEBCORE_DIR}/Modules/mediacontrols/mediaControlsApple.css
-)
 
 set(WebCore_USER_AGENT_SCRIPTS 
     ${WEBCORE_DIR}/English.lproj/mediaControlsLocalizedStrings.js
@@ -190,9 +186,6 @@ if (WTF_USE_3D_GRAPHICS)
         platform/graphics/surfaces/efl/GraphicsSurfaceCommon.cpp
 
         platform/graphics/surfaces/glx/X11Helper.cpp
-
-        platform/graphics/texmap/TextureMapperGL.cpp
-        platform/graphics/texmap/TextureMapperShaderProgram.cpp
     )
 
     if (WTF_USE_EGL)

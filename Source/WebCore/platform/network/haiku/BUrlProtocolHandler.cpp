@@ -21,6 +21,7 @@
 #include "config.h"
 #include "BUrlProtocolHandler.h"
 
+#include "FormData.h"
 #include "HTTPParsers.h"
 #include "MIMETypeRegistry.h"
 #include "ProtectionSpace.h"
@@ -64,10 +65,10 @@ ssize_t BFormDataIO::Size()
         FormDataElement& element = m_formElements[i];
         switch(element.m_type)
         {
-            case FormDataElement::data:
+            case FormDataElement::Type::Data:
                 size += element.m_data.size();
                 break;
-            case FormDataElement::encodedFile:
+            case FormDataElement::Type::EncodedFile:
             {
                 BNode node(BString(element.m_filename).String());
                 off_t filesize = 0;
@@ -76,7 +77,7 @@ ssize_t BFormDataIO::Size()
                 break;
             }
 #if ENABLE(BLOB)
-            case FormDataElement::encodedBlob:
+            case FormDataElement::Type::EncodedBlob:
                 size += element.m_fileLength;
                 break;
         }
@@ -99,10 +100,10 @@ BFormDataIO::Read(void* buffer, size_t size)
         const ssize_t remaining = size - read;
         
 		switch (element.m_type) {
-			case FormDataElement::encodedFile:
 #if ENABLE(BLOB)
-            case FormDataElement::encodedBlob:
+            case FormDataElement::Type::EncodedBlob:
 #endif
+            case FormDataElement::Type::EncodedFile:
 				{
 					read += m_currentFile->Read(reinterpret_cast<char*>(buffer) + read, remaining);
 
@@ -112,7 +113,7 @@ BFormDataIO::Read(void* buffer, size_t size)
 				}
 				break;
 				
-			case FormDataElement::data:
+            case FormDataElement::Type::Data:
 				{
 					size_t toCopy = 0;
 					
@@ -162,7 +163,7 @@ BFormDataIO::_ParseCurrentElement()
     if (m_currentFile == NULL)
         m_currentFile = new BFile();
 
-    if (m_formElements[0].m_type == FormDataElement::encodedFile)
+    if (m_formElements[0].m_type == FormDataElement::Type::EncodedFile)
     {
         // If the next element is an encodedFile, prepare the BFile for reading it.
         m_currentFile->SetTo(BString(m_formElements[0].m_filename).String(), B_READ_ONLY);
@@ -171,7 +172,7 @@ BFormDataIO::_ParseCurrentElement()
     }
 
 #if ENABLE(BLOB)
-    if (m_formElements[0].m_type == FormDataElement::encodedBlob)
+    if (m_formElements[0].m_type == FormDataElement::Type::EncodedBlob)
     {
         m_currentFileSize = m_formElements[0].m_fileLength;
         m_currentFile->SetTo(m_formElements[0].m_url.path().utf8().data(),

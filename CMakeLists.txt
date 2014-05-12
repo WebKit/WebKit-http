@@ -169,8 +169,3 @@ add_subdirectory(Source)
 if (ENABLE_TOOLS)
     add_subdirectory(Tools)
 endif ()
-
-# -----------------------------------------------------------------------------
-# Define packaging
-# -----------------------------------------------------------------------------
-INCLUDE(WebKitPackaging)

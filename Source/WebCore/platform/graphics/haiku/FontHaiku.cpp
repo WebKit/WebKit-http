@@ -123,16 +123,16 @@ float Font::floatWidthForComplexText(const TextRun& run, HashSet<const SimpleFon
     return width;
 }
 
-FloatRect Font::selectionRectForComplexText(const TextRun& run, const FloatPoint&, int, int, int) const
+int Font::offsetForPositionForComplexText(const TextRun& run, float position,
+    bool includePartialGlyphs) const
 {
-    notImplemented();
-    return FloatRect();
+    return offsetForPositionForSimpleText(run, position, includePartialGlyphs);
 }
 
-int Font::offsetForPositionForComplexText(const TextRun& run, float, bool) const
+void Font::adjustSelectionRectForComplexText(const TextRun& run,
+    LayoutRect& rect, int from, int to) const
 {
-    notImplemented();
-    return 0;
+    adjustSelectionRectForSimpleText(run, rect, from, to);
 }
 
 } // namespace WebCore
