@@ -142,6 +142,7 @@ private:
         const BPoint& screenWhere);
 	void keyEvent(const BMessage* message);
 	void standardShortcut(const BMessage* message);
+    void flushCompositingChanges();
 
 private:
 	// The following methods are only supposed to be called by the

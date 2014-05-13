@@ -492,6 +492,12 @@ void BWebPage::standardShortcut(const BMessage* message)
     Looper()->PostMessage(&keyDownMessage, this);
 }
 
+
+void BWebPage::flushCompositingChanges()
+{
+    MainFrame()->Frame()->view()->flushCompositingStateIncludingSubframes();
+}
+
 // #pragma mark - WebCoreSupport methods
 
 WebCore::Page* BWebPage::page() const
@@ -686,17 +692,17 @@ void BWebPage::paint(BRect rect, bool immediate)
     }
     fWebView->UnlockLooper();
 
-    if (!rect.IsValid())
-        rect = offscreenView->Bounds();
     BRegion region(rect);
     internalPaint(offscreenView, view, &region);
+    flushCompositingChanges();
 
+    offscreenView->Sync();
     offscreenView->UnlockLooper();
-
-    fPageDirty = false;
 
     // Notify the window that it can now pull the bitmap in its own thread
     fWebView->SetOffscreenViewClean(rect, immediate);
+
+    fPageDirty = false;
 }
 
 void BWebPage::scroll(int xOffset, int yOffset, const BRect& rectToScroll,
@@ -720,20 +726,26 @@ void BWebPage::scroll(int xOffset, int yOffset, const BRect& rectToScroll,
 	BRect clip = offscreenView->Bounds();
 	if (clipRect.IsValid())
 		clip = clip & clipRect;
+
 	BRect rectAtSrc = rectToScroll;
 	BRect rectAtDst = rectAtSrc.OffsetByCopy(xOffset, yOffset);
+
+	// remember the part that will be clean
 	BRegion repaintRegion(rectAtSrc);
+	repaintRegion.Exclude(rectAtDst);
+    BRegion clipRegion(clip);
+    repaintRegion.IntersectWith(&clipRegion);
+
 	if (clip.Intersects(rectAtSrc) && clip.Intersects(rectAtDst)) {
 		// clip source rect
 		rectAtSrc = rectAtSrc & clip;
 		// clip dest rect
 		rectAtDst = rectAtDst & clip;
+
 		// move dest back over source and clip source to dest
 		rectAtDst.OffsetBy(-xOffset, -yOffset);
 		rectAtSrc = rectAtSrc & rectAtDst;
-		// remember the part that will be clean
 		rectAtDst.OffsetBy(xOffset, yOffset);
-		repaintRegion.Exclude(rectAtDst);
 
 		offscreenView->CopyBits(rectAtSrc, rectAtDst);
 	}
@@ -750,20 +762,21 @@ void BWebPage::scroll(int xOffset, int yOffset, const BRect& rectToScroll,
 		internalPaint(offscreenView, view, &repaintRegion);
 	}
 
+    offscreenView->Sync();
     bitmap->Unlock();
-
-    // Notify the view that it can now pull the bitmap in its own thread
-    fWebView->SetOffscreenViewClean(rectToScroll, false);
 }
 
 void BWebPage::internalPaint(BView* offscreenView,
                              WebCore::FrameView* frameView, BRegion* dirty)
 {
     ASSERT(!frameView->needsLayout());
+
     offscreenView->PushState();
     offscreenView->ConstrainClippingRegion(dirty);
+
     WebCore::GraphicsContext context(offscreenView);
     frameView->paint(&context, IntRect(dirty->Frame()));
+
     offscreenView->PopState();
 }
 

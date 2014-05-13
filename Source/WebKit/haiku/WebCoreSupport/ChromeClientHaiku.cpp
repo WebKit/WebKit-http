@@ -303,10 +303,12 @@ IntRect ChromeClientHaiku::windowResizerRect() const
     return IntRect();
 }
 
-void ChromeClientHaiku::invalidateRootView(const IntRect&)
+void ChromeClientHaiku::invalidateRootView(const IntRect& rect)
 {
-	// FIXME: This can be used to blit the BWebView bitmap contents
-	// to the screen. If rect is invalid, blit everything.
+	// FIXME: If rect is invalid, blit everything.
+    m_webView->LockLooper();
+    m_webView->Invalidate(rect);
+    m_webView->UnlockLooper();
 }
 
 void ChromeClientHaiku::invalidateContentsAndRootView(const IntRect& rect)
@@ -316,9 +318,7 @@ void ChromeClientHaiku::invalidateContentsAndRootView(const IntRect& rect)
 
 void ChromeClientHaiku::invalidateContentsForSlowScroll(const IntRect& rect)
 {
-	// FIXME: We should be able to ignore this,
-	// since we implement fast scrolling.
-    invalidateContentsAndRootView(rect);
+	// We can ignore this, since we implement fast scrolling.
 }
 
 void ChromeClientHaiku::scroll(const IntSize& scrollDelta,
