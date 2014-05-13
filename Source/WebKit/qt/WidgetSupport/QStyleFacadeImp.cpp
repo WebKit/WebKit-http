@@ -248,6 +248,9 @@ void QStyleFacadeImp::paintButton(QPainter* painter, QStyleFacade::ButtonType ty
     QWidget* widget = qobject_cast<QWidget*>(widgetForPainter(painter));
     MappedStyleOption<QStyleOptionButton> option(widget, proxyOption);
 
+    if (m_style->inherits("QWindowsVistaStyle"))
+        option.styleObject = 0;
+
     if (type == PushButton)
         style()->drawControl(QStyle::CE_PushButton, &option, painter, widget);
     else if (type == RadioButton)
