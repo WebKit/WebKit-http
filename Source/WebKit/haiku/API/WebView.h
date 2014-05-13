@@ -128,7 +128,6 @@ private:
 									{ return fOffscreenView; }
 			void				SetOffscreenViewClean(BRect cleanRect,
 									bool immediate);
-			void				InvalidateOffscreenView();
 
 private:
 			void				_ResizeOffscreenView(int width, int height);
@@ -145,7 +144,6 @@ private:
 
 			BBitmap*			fOffscreenBitmap;
 			BView*				fOffscreenView;
-			bool				fOffscreenViewClean;
 
             BUrlContext*        fContext;
 			BWebPage*			fWebPage;

@@ -34,6 +34,7 @@
 #include "Page.h"
 #include "WebPage.h"
 #include "WebViewConstants.h"
+
 #include <Alert.h>
 #include <AppDefs.h>
 #include <Application.h>
@@ -57,7 +58,6 @@ BWebView::BWebView(const char* name)
     , fLastMousePos(0, 0)
     , fAutoHidePointer(false)
     , fOffscreenBitmap(0)
-    , fOffscreenViewClean(false)
     , fContext(NULL)
     , fWebPage(new BWebPage(this))
     , fUserData(0)
@@ -118,26 +118,12 @@ void BWebView::Hide()
 
 void BWebView::Draw(BRect rect)
 {
-#if 0
-    if (!fOffscreenViewClean) {
-        fWebPage->draw(rect);
-        return;
-    }
-
     if (!fOffscreenBitmap->Lock()) {
-        SetHighColor(255, 0, 0);
-        FillRect(rect);
-        return;
-    }
-#else
-    if (!fOffscreenViewClean || !fOffscreenBitmap->Lock()) {
         SetHighColor(255, 255, 255);
         FillRect(rect);
         return;
     }
-#endif
 
-    fOffscreenView->Sync();
     DrawBitmap(fOffscreenBitmap, rect, rect);
 
 #if ENABLE(INSPECTOR)
@@ -390,20 +376,10 @@ BWebView* BWebView::GetInspectorView()
 void BWebView::SetOffscreenViewClean(BRect cleanRect, bool immediate)
 {
     if (LockLooper()) {
-        fOffscreenViewClean = true;
         if (immediate)
             Draw(cleanRect);
         else
             Invalidate(cleanRect);
-        UnlockLooper();
-    }
-}
-
-void BWebView::InvalidateOffscreenView()
-{
-    if (LockLooper()) {
-        fOffscreenViewClean = false;
-        Invalidate();
         UnlockLooper();
     }
 }
