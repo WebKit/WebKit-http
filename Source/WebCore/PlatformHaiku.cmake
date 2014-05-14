@@ -1,7 +1,9 @@
 list(APPEND WebCore_INCLUDE_DIRECTORIES
+  "${WEBCORE_DIR}/page/scrolling/coordinatedgraphics"
   "${WEBCORE_DIR}/platform/haiku"
   "${WEBCORE_DIR}/platform/graphics/haiku"
   "${WEBCORE_DIR}/platform/graphics/opentype"
+  "${WEBCORE_DIR}/platform/graphics/texmap/coordinated"
   "${WEBCORE_DIR}/platform/network/haiku"
 )
 
@@ -20,6 +22,8 @@ list(APPEND WebCore_SOURCES
 
   page/haiku/DragControllerHaiku.cpp
   page/haiku/EventHandlerHaiku.cpp
+
+  page/scrolling/coordinatedgraphics/ScrollingCoordinatorCoordinatedGraphics.cpp
 
   platform/haiku/ContextMenuHaiku.cpp
   platform/haiku/ContextMenuItemHaiku.cpp
@@ -76,6 +80,11 @@ list(APPEND WebCore_SOURCES
   platform/graphics/haiku/TileHaiku.cpp
   platform/graphics/haiku/TiledBackingStoreHaiku.cpp
   
+  platform/graphics/texmap/coordinated/CoordinatedGraphicsLayer.cpp
+  platform/graphics/texmap/coordinated/CoordinatedImageBacking.cpp
+  platform/graphics/texmap/coordinated/CoordinatedSurface.cpp
+  platform/graphics/texmap/coordinated/CoordinatedTile.cpp
+
   platform/image-decoders/haiku/ImageDecoderHaiku.cpp
 
   platform/network/haiku/BUrlProtocolHandler.cpp
