@@ -45,6 +45,7 @@
 #include <QCoreApplication>
 #include <QImage>
 #include <QImageReader>
+#include <QPaintEngine>
 #include <QPainter>
 #include <QPixmap>
 #include <QPixmapCache>
@@ -183,6 +184,9 @@ QPixmap* prescaleImageIfRequired(QPainter* painter, QPixmap* image, QPixmap* buf
     ASSERT(image);
     ASSERT(painter);
     if (!(painter->renderHints() & QPainter::SmoothPixmapTransform))
+        return image;
+
+    if (painter->paintEngine()->type() != QPaintEngine::Raster)
         return image;
 
     QTransform transform = painter->combinedTransform();
