@@ -50,22 +50,9 @@ namespace WebCore {
 
 const double EventHandler::TextDragDelay = 0.0;
 
-#if 0
-static bool isKeyboardOptionTab(KeyboardEvent* event)
-{
-    return event
-        && (event->type() == eventNames().keydownEvent
-            || event->type() == eventNames().keypressEvent)
-        && event->altKey()
-        && event->keyIdentifier() == "U+0009";
-}
-#endif
-
 bool EventHandler::tabsToAllFormControls(KeyboardEvent* event) const
 {
-    bool handlingOptionTab = isKeyboardOptionTab(event);
-
-    return handlingOptionTab;
+    return true;
 }
 
 void EventHandler::focusDocumentView()

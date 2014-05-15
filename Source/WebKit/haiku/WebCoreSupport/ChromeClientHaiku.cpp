@@ -295,7 +295,7 @@ bool ChromeClientHaiku::shouldInterruptJavaScript()
 
 KeyboardUIMode ChromeClientHaiku::keyboardUIMode()
 {
-    return KeyboardAccessDefault;
+    return KeyboardAccessFull;
 }
 
 IntRect ChromeClientHaiku::windowResizerRect() const
