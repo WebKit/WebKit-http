@@ -23,6 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#import <Availability.h>
 #import <TargetConditionals.h>
 
 #if !defined(WK_API_ENABLED)
@@ -43,6 +44,16 @@
 #define WK_AVAILABLE(_mac, _ios)
 #define WK_CLASS_AVAILABLE(_mac, _ios) __attribute__((visibility ("default")))
 #define WK_ENUM_AVAILABLE(_mac, _ios)
+
+#if defined(__MAC_OS_X_VERSION_MIN_REQUIRED) && __MAC_OS_X_VERSION_MIN_REQUIRED <= 1090
+
+#ifdef __OBJC__
+#import <Foundation/Foundation.h>
+typedef NSUInteger NSEventModifierFlags;
+#endif
+
+#endif
+
 #endif
 
 #define WK_DESIGNATED_INITIALIZER

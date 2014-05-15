@@ -1776,12 +1776,17 @@ void WebPage::getAssistedNodeInformation(AssistedNodeInformation& information)
 {
     layoutIfNeeded();
 
-    if (RenderObject* renderer = m_assistedNode->renderer())
+    if (RenderObject* renderer = m_assistedNode->renderer()) {
         information.elementRect = m_page->focusController().focusedOrMainFrame().view()->contentsToRootView(renderer->absoluteBoundingBoxRect());
-    else
+        information.nodeFontSize = renderer->style().fontDescription().computedSize();
+    } else
         information.elementRect = IntRect();
+    // FIXME: This should return the selection rect, but when this is called at focus time
+    // we don't have a selection yet. Using the last interaction location is a reasonable approximation for now.
+    information.selectionRect = IntRect(m_lastInteractionLocation, IntSize(1, 1));
     information.minimumScaleFactor = m_viewportConfiguration.minimumScale();
     information.maximumScaleFactor = m_viewportConfiguration.maximumScale();
+    information.allowsUserScaling = m_viewportConfiguration.allowsUserScaling();
     information.hasNextNode = hasFocusableElement(m_assistedNode.get(), m_page.get(), true);
     information.hasPreviousNode = hasFocusableElement(m_assistedNode.get(), m_page.get(), false);
 
@@ -2159,15 +2164,23 @@ void WebPage::updateVisibleContentRects(const VisibleContentRectUpdateInfo& visi
     IntPoint scrollPosition = roundedUnobscuredRect.location();
 
     float floatBoundedScale = boundedScale;
+    bool hasSetPageScale = false;
     if (floatBoundedScale != m_page->pageScaleFactor()) {
         m_scaleWasSetByUIProcess = true;
 
         m_dynamicSizeUpdateHistory.clear();
 
-        m_page->setPageScaleFactor(floatBoundedScale, scrollPosition);
+        m_page->setPageScaleFactor(floatBoundedScale, scrollPosition, visibleContentRectUpdateInfo.inStableState());
+        hasSetPageScale = true;
+
         if (LayerTreeHost* layerTreeHost = m_drawingArea->layerTreeHost())
             layerTreeHost->deviceOrPageScaleFactorChanged();
         send(Messages::WebPageProxy::PageScaleFactorDidChange(floatBoundedScale));
+    }
+
+    if (!hasSetPageScale && visibleContentRectUpdateInfo.inStableState()) {
+        m_page->setPageScaleFactor(floatBoundedScale, scrollPosition, true);
+        hasSetPageScale = true;
     }
 
     FrameView& frameView = *m_page->mainFrame().view();

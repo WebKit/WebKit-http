@@ -288,17 +288,16 @@ TEST_F(EWK2ViewTest, ewk_view_html_string_load)
 
 TEST_F(EWK2ViewTest, ewk_view_navigation)
 {
-    std::unique_ptr<EWK2UnitTestServer> httpServer = std::make_unique<EWK2UnitTestServer>();
-    httpServer->run(serverCallbackNavigation);
-
     // Visit Page1
-    ASSERT_TRUE(loadUrlSync(httpServer->getURLForPath("/Page1").data()));
+    ewk_view_url_set(webView(), environment->urlForResource("/Page1.html").data());
+    ASSERT_TRUE(waitUntilTitleChangedTo("Page1"));
     ASSERT_STREQ("Page1", ewk_view_title_get(webView()));
     ASSERT_FALSE(ewk_view_back_possible(webView()));
     ASSERT_FALSE(ewk_view_forward_possible(webView()));
 
     // Visit Page2
-    ASSERT_TRUE(loadUrlSync(httpServer->getURLForPath("/Page2").data()));
+    ewk_view_url_set(webView(), environment->urlForResource("/Page2.html").data());
+    ASSERT_TRUE(waitUntilTitleChangedTo("Page2"));
     ASSERT_STREQ("Page2", ewk_view_title_get(webView()));
     ASSERT_TRUE(ewk_view_back_possible(webView()));
     ASSERT_FALSE(ewk_view_forward_possible(webView()));
@@ -318,7 +317,7 @@ TEST_F(EWK2ViewTest, ewk_view_navigation)
     ASSERT_FALSE(ewk_view_forward_possible(webView()));
 
     // Visit Page3
-    ewk_view_url_set(webView(), httpServer->getURLForPath("/Page3").data());
+    ewk_view_url_set(webView(), environment->urlForResource("/Page3.html").data());
     ASSERT_TRUE(waitUntilTitleChangedTo("Page3"));
     ASSERT_STREQ("Page3", ewk_view_title_get(webView()));
     ASSERT_TRUE(ewk_view_back_possible(webView()));
@@ -1082,6 +1081,26 @@ TEST_F(EWK2ViewTest, ewk_view_layout_fixed)
 
     EXPECT_TRUE(ewk_view_layout_fixed_set(webView(), true));
     EXPECT_TRUE(ewk_view_layout_fixed_get(webView()));
+}
+
+TEST_F(EWK2ViewTest, ewk_view_layout_fixed_size)
+{    
+    // Fixed layout is not enabled in webview as default.
+    EXPECT_FALSE(ewk_view_layout_fixed_get(webView()));
+    EXPECT_TRUE(ewk_view_layout_fixed_set(webView(), true));
+
+    Evas_Coord width = 0;
+    Evas_Coord height = 0;
+
+    ewk_view_layout_fixed_size_set(webView(), 480, 800);
+    ewk_view_layout_fixed_size_get(webView(), &width, &height);
+    EXPECT_EQ(480, width);
+    EXPECT_EQ(800, height);
+
+    ewk_view_layout_fixed_size_set(webView(), 980, 1020);
+    ewk_view_layout_fixed_size_get(webView(), &width, &height);
+    EXPECT_EQ(980, width);
+    EXPECT_EQ(1020, height);
 }
 
 TEST_F(EWK2ViewTest, ewk_view_bg_color)

@@ -71,6 +71,8 @@ public:
 #if !ASSERT_WITH_SECURITY_IMPLICATION_DISABLED
     bool checkLinesConsistency(const RenderBlockFlow*) const;
 #endif
+    
+    virtual void deleteLines() override;
 
     virtual void addRegionToThread(RenderRegion*) = 0;
     virtual void removeRegionFromThread(RenderRegion*);
@@ -141,6 +143,7 @@ public:
 
     virtual void setRegionRangeForBox(const RenderBox*, RenderRegion*, RenderRegion*);
     bool getRegionRangeForBox(const RenderBox*, RenderRegion*& startRegion, RenderRegion*& endRegion) const;
+    bool computedRegionRangeForBox(const RenderBox*, RenderRegion*& startRegion, RenderRegion*& endRegion) const;
     bool hasCachedRegionRangeForBox(const RenderBox*) const;
 
     // Check if the object is in region and the region is part of this flow thread.

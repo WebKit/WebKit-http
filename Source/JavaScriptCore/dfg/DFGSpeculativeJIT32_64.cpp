@@ -836,7 +836,7 @@ FPRReg SpeculativeJIT::fillSpeculateDouble(Edge edge)
         if (edge->hasConstant()) {
             RELEASE_ASSERT(isNumberConstant(edge.node()));
             FPRReg fpr = fprAllocate();
-            m_jit.loadDouble(addressOfDoubleConstant(edge.node()), fpr);
+            m_jit.loadDouble(TrustedImmPtr(addressOfDoubleConstant(edge.node())), fpr);
             m_fprs.retain(fpr, virtualRegister, SpillOrderConstant);
             info.fillDouble(*m_stream, fpr);
             return fpr;
@@ -3126,7 +3126,7 @@ void SpeculativeJIT::compile(Node* node)
                     JSValueRegs(), use, SpecFullRealNumber,
                     m_jit.branchDouble(MacroAssembler::DoubleNotEqualOrUnordered, opFPR, opFPR));
                 
-                m_jit.storeDouble(opFPR, reinterpret_cast<char*>(buffer + operandIdx));
+                m_jit.storeDouble(opFPR, TrustedImmPtr(reinterpret_cast<char*>(buffer + operandIdx)));
                 break;
             }
             case ALL_INT32_INDEXING_TYPES: {
@@ -3709,7 +3709,7 @@ void SpeculativeJIT::compile(Node* node)
 #if !ASSERT_DISABLED
         SpeculateCellOperand op1(this, node->child1());
         JITCompiler::Jump isOK = m_jit.branchPtr(JITCompiler::Equal, JITCompiler::Address(op1.gpr(), JSCell::structureIDOffset()), TrustedImmPtr(node->structure()));
-        m_jit.breakpoint();
+        m_jit.abortWithReason(DFGIneffectiveWatchpoint);
         isOK.link(&m_jit);
 #else
         speculateCell(node->child1());

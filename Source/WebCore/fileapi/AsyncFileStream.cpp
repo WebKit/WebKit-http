@@ -39,7 +39,6 @@
 #include "FileStream.h"
 #include "FileStreamClient.h"
 #include "FileThread.h"
-#include "FileThreadTask.h"
 #include "MainThreadTask.h"
 #include <wtf/MainThread.h>
 #include <wtf/text/WTFString.h>
@@ -80,7 +79,7 @@ PassRefPtr<AsyncFileStream> AsyncFileStream::create(FileStreamClient* client)
     // This is balanced by the deref in derefProxyOnContext below.
     proxy->ref();
 
-    fileThread()->postTask(createFileThreadTask(proxy.get(), &AsyncFileStream::startOnFileThread));
+    fileThread()->postTask(std::make_unique<FileThread::Task>(proxy.get(), &AsyncFileStream::startOnFileThread));
 
     return proxy.release();
 }
@@ -101,7 +100,7 @@ void AsyncFileStream::startOnFileThread()
     if (!m_client)
         return;
     m_stream->start();
-    callOnMainThread(didStart, AllowCrossThreadAccess(this));
+    callOnMainThread(MainThreadTask(didStart, AllowCrossThreadAccess(this)));
 }
 
 void AsyncFileStream::stop()
@@ -110,7 +109,7 @@ void AsyncFileStream::stop()
     setClient(0);
 
     fileThread()->unscheduleTasks(m_stream.get());
-    fileThread()->postTask(createFileThreadTask(this, &AsyncFileStream::stopOnFileThread));
+    fileThread()->postTask(std::make_unique<FileThread::Task>(this, &AsyncFileStream::stopOnFileThread));
 }
 
 static void derefProxyOnMainThread(AsyncFileStream* proxy)
@@ -122,7 +121,7 @@ static void derefProxyOnMainThread(AsyncFileStream* proxy)
 void AsyncFileStream::stopOnFileThread()
 {
     m_stream->stop();
-    callOnMainThread(derefProxyOnMainThread, AllowCrossThreadAccess(this));
+    callOnMainThread(MainThreadTask(derefProxyOnMainThread, AllowCrossThreadAccess(this)));
 }
 
 static void didGetSize(AsyncFileStream* proxy, long long size)
@@ -133,13 +132,13 @@ static void didGetSize(AsyncFileStream* proxy, long long size)
 
 void AsyncFileStream::getSize(const String& path, double expectedModificationTime)
 {
-    fileThread()->postTask(createFileThreadTask(this, &AsyncFileStream::getSizeOnFileThread, path, expectedModificationTime));
+    fileThread()->postTask(std::make_unique<FileThread::Task>(this, &AsyncFileStream::getSizeOnFileThread, path, expectedModificationTime));
 }
 
 void AsyncFileStream::getSizeOnFileThread(const String& path, double expectedModificationTime)
 {
     long long size = m_stream->getSize(path, expectedModificationTime);
-    callOnMainThread(didGetSize, AllowCrossThreadAccess(this), size);
+    callOnMainThread(MainThreadTask(didGetSize, AllowCrossThreadAccess(this), size));
 }
 
 static void didOpen(AsyncFileStream* proxy, bool success)
@@ -150,31 +149,29 @@ static void didOpen(AsyncFileStream* proxy, bool success)
 
 void AsyncFileStream::openForRead(const String& path, long long offset, long long length)
 {
-    fileThread()->postTask(createFileThreadTask(this, &AsyncFileStream::openForReadOnFileThread, path, offset, length));
+    fileThread()->postTask(std::make_unique<FileThread::Task>(this, &AsyncFileStream::openForReadOnFileThread, path, offset, length));
 }
 
 void AsyncFileStream::openForReadOnFileThread(const String& path, long long offset, long long length)
 {
     bool success = m_stream->openForRead(path, offset, length);
-    callOnMainThread(didOpen, AllowCrossThreadAccess(this), success);
+    callOnMainThread(MainThreadTask(didOpen, AllowCrossThreadAccess(this), success));
 }
 
 void AsyncFileStream::openForWrite(const String& path)
 {
-    fileThread()->postTask(
-        createFileThreadTask(this,
-                             &AsyncFileStream::openForWriteOnFileThread, path));
+    fileThread()->postTask(std::make_unique<FileThread::Task>(this, &AsyncFileStream::openForWriteOnFileThread, path));
 }
 
 void AsyncFileStream::openForWriteOnFileThread(const String& path)
 {
     bool success = m_stream->openForWrite(path);
-    callOnMainThread(didOpen, AllowCrossThreadAccess(this), success);
+    callOnMainThread(MainThreadTask(didOpen, AllowCrossThreadAccess(this), success));
 }
 
 void AsyncFileStream::close()
 {
-    fileThread()->postTask(createFileThreadTask(this, &AsyncFileStream::closeOnFileThread));
+    fileThread()->postTask(std::make_unique<FileThread::Task>(this, &AsyncFileStream::closeOnFileThread));
 }
 
 void AsyncFileStream::closeOnFileThread()
@@ -190,15 +187,13 @@ static void didRead(AsyncFileStream* proxy, int bytesRead)
 
 void AsyncFileStream::read(char* buffer, int length)
 {
-    fileThread()->postTask(
-        createFileThreadTask(this, &AsyncFileStream::readOnFileThread,
-                             AllowCrossThreadAccess(buffer), length));
+    fileThread()->postTask(std::make_unique<FileThread::Task>(this, &AsyncFileStream::readOnFileThread, AllowCrossThreadAccess(buffer), length));
 }
 
 void AsyncFileStream::readOnFileThread(char* buffer, int length)
 {
     int bytesRead = m_stream->read(buffer, length);
-    callOnMainThread(didRead, AllowCrossThreadAccess(this), bytesRead);
+    callOnMainThread(MainThreadTask(didRead, AllowCrossThreadAccess(this), bytesRead));
 }
 
 static void didWrite(AsyncFileStream* proxy, int bytesWritten)
@@ -209,13 +204,13 @@ static void didWrite(AsyncFileStream* proxy, int bytesWritten)
 
 void AsyncFileStream::write(const URL& blobURL, long long position, int length)
 {
-    fileThread()->postTask(createFileThreadTask(this, &AsyncFileStream::writeOnFileThread, blobURL, position, length));
+    fileThread()->postTask(std::make_unique<FileThread::Task>(this, &AsyncFileStream::writeOnFileThread, blobURL, position, length));
 }
 
 void AsyncFileStream::writeOnFileThread(const URL& blobURL, long long position, int length)
 {
     int bytesWritten = m_stream->write(blobURL, position, length);
-    callOnMainThread(didWrite, AllowCrossThreadAccess(this), bytesWritten);
+    callOnMainThread(MainThreadTask(didWrite, AllowCrossThreadAccess(this), bytesWritten));
 }
 
 static void didTruncate(AsyncFileStream* proxy, bool success)
@@ -226,13 +221,13 @@ static void didTruncate(AsyncFileStream* proxy, bool success)
 
 void AsyncFileStream::truncate(long long position)
 {
-    fileThread()->postTask(createFileThreadTask(this, &AsyncFileStream::truncateOnFileThread, position));
+    fileThread()->postTask(std::make_unique<FileThread::Task>(this, &AsyncFileStream::truncateOnFileThread, position));
 }
 
 void AsyncFileStream::truncateOnFileThread(long long position)
 {
     bool success = m_stream->truncate(position);
-    callOnMainThread(didTruncate, AllowCrossThreadAccess(this), success);
+    callOnMainThread(MainThreadTask(didTruncate, AllowCrossThreadAccess(this), success));
 }
 
 } // namespace WebCore

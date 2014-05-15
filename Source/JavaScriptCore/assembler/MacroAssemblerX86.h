@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008 Apple Inc. All rights reserved.
+ * Copyright (C) 2008, 2014 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -111,6 +111,12 @@ public:
         m_assembler.movzbl_mr(address, dest);
     }
 
+    void abortWithReason(AbortReason reason)
+    {
+        move(TrustedImm32(reason), X86Registers::eax);
+        breakpoint();
+    }
+
     ConvertibleLoadLabel convertibleLoadPtr(Address address, RegisterID dest)
     {
         ConvertibleLoadLabel result = ConvertibleLoadLabel(this);
@@ -123,11 +129,11 @@ public:
         m_assembler.addsd_mr(address.m_ptr, dest);
     }
 
-    void storeDouble(FPRegisterID src, const void* address)
+    void storeDouble(FPRegisterID src, TrustedImmPtr address)
     {
         ASSERT(isSSE2Present());
-        ASSERT(address);
-        m_assembler.movsd_rm(src, address);
+        ASSERT(address.m_value);
+        m_assembler.movsd_rm(src, address.m_value);
     }
 
     void convertInt32ToDouble(AbsoluteAddress src, FPRegisterID dest)

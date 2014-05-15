@@ -1,3 +1,675 @@
+2014-05-13  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        [EFL][WK2] Add ewk_view_fixed_layout_size_set|get()
+        https://bugs.webkit.org/show_bug.cgi?id=132811
+
+        Reviewed by Christophe Dumez.
+
+        Some EFL applications need to set size of fixed layout when enabling fixed layout.
+        This APIs can pass ownership regarding the size of fixed layout to application side.
+
+        * UIProcess/API/efl/ewk_view.cpp:
+        (ewk_view_layout_fixed_size_set):
+        (ewk_view_layout_fixed_size_get):
+        * UIProcess/API/efl/ewk_view.h:
+        * UIProcess/API/efl/tests/test_ewk2_view.cpp:
+        (TEST_F):
+
+2014-05-13  Simon Fraser  <simon.fraser@apple.com>
+
+        Fix "ASSERTION FAILED: m_representation == PlatformLayerRepresentation" with UI-side compositing
+        https://bugs.webkit.org/show_bug.cgi?id=132899
+
+        Reviewed by Beth Dakin.
+        
+        The new InsetClipLayer and ContentShadowLayer members on scrolling nodes
+        need to be correctly encoded/decoded for UI-side compositing, and dumped
+        correctly.
+
+        * Shared/Scrolling/RemoteScrollingCoordinatorTransaction.cpp:
+        (ArgumentCoder<ScrollingStateScrollingNode>::encode):
+        (ArgumentCoder<ScrollingStateScrollingNode>::decode):
+        (WebKit::RemoteScrollingTreeTextStream::dump):
+        * UIProcess/Scrolling/RemoteScrollingCoordinatorProxy.cpp:
+        (WebKit::RemoteScrollingCoordinatorProxy::connectStateNodeLayers):
+
+2014-05-13  Anders Carlsson  <andersca@apple.com>
+
+        Another build fix.
+
+        Reviewed by Dan Bernstein.
+
+        * Shared/API/Cocoa/WKFoundation.h:
+        Make sure to include Availability.h
+
+2014-05-13  Beth Dakin  <bdakin@apple.com>
+
+        REGRESSION (topContentInset): Searching through Facebook Messenger's chat causes 
+        scrolling in News Feed
+        https://bugs.webkit.org/show_bug.cgi?id=132889
+        -and corresponding-
+        <rdar://problem/16715716>
+
+        Reviewed by Simon Fraser.
+
+        Re-name scrollOffsetRelativeToDocument() to 
+        documentScrollPositionRelativeToViewOrigin().
+        * WebProcess/WebPage/FindController.cpp:
+        (WebKit::FindController::rectsForTextMatches):
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::determinePrimarySnapshottedPlugIn):
+
+2014-05-13  Dean Jackson  <dino@apple.com>
+
+        [iOS] Page scale update messages for media controls should only fire at the end of zooming
+        https://bugs.webkit.org/show_bug.cgi?id=132857
+        <rdar://problem/16631009>
+
+        Reviewed by Simon Fraser.
+
+        As the user was zooming, the media controls that responded
+        to the page scale (and resized themselves) would do so
+        slightly out of sync with the screen refreshes, and it looked
+        terrible.
+
+        We already know if a pageScale change is happening inside
+        a gesture using the inStableState property of the visibleContentRectUpdateInfo.
+        Simply pass this along to WebCore::Page.
+
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::updateVisibleContentRects): Pass inStableState onto the
+        WebCore::Page. Note that we have to send this message even if the
+        scale has not changed, since the last changing update might not have
+        been stable.
+
+2014-05-13  Benjamin Poulain  <bpoulain@apple.com>
+
+        [iOS][WK2] When the secondary UIScrollView delegates respond to callbacks, delay the state change until both delegates have finished
+        https://bugs.webkit.org/show_bug.cgi?id=132849
+        <rdar://problem/16863716>
+
+        Reviewed by Anders Carlsson.
+
+        When there are two delegates responding to UIScrollView changes, there was often an intermediate invalid
+        state forwarded to the UIProcess.
+
+        For example, on scroll, WKWebView would update the state based on the current obscured insets in response to
+        delegate callbacks.
+        After that update, Safari would modify the insets, thus updating the state again.
+        The first state changed by WKWebView is incomplete, and should never have been set.
+
+        This patch works around the issue by delaying visible update rect in those cases.
+
+        When the two delegates of WKScrollView respond to the same selector, WKScrollView invokes 
+        [UIWebView _willInvokeUIScrollViewDelegateCallback] on entry, and
+        [UIWebView _didInvokeUIScrollViewDelegateCallback] on exit.
+
+        Between those two calls, WKWebView does not forward the new UI state to the WebProcess.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _willInvokeUIScrollViewDelegateCallback]):
+        (-[WKWebView _didInvokeUIScrollViewDelegateCallback]):
+        (-[WKWebView _updateVisibleContentRects]):
+        * UIProcess/API/Cocoa/WKWebViewInternal.h:
+        * UIProcess/API/ios/WKViewIOS.mm:
+        (-[WKView _commonInitializationWithContextRef:pageGroupRef:relatedToPage:]):
+        * UIProcess/ios/WKScrollView.h:
+        * UIProcess/ios/WKScrollView.mm:
+        (-[WKScrollViewDelegateForwarder initWithInternalDelegate:externalDelegate:]):
+        (-[WKScrollViewDelegateForwarder forwardInvocation:]):
+        (-[WKScrollView setInternalDelegate:]):
+
+2014-05-13  Benjamin Poulain  <bpoulain@apple.com>
+
+        [iOS][WK2] Remove the _extendedBackgroundExclusionInsets SPI
+        https://bugs.webkit.org/show_bug.cgi?id=132848
+        <rdar://problem/16875093>
+
+        Reviewed by Darin Adler.
+
+        The SPI is no longer needed by Safari.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView initWithFrame:configuration:]):
+        (-[WKWebView _updateScrollViewBackground]):
+        (-[WKWebView _frameOrBoundsChanged]):
+        (-[WKWebView _setObscuredInsets:]):
+        (-[WKWebView _endAnimatedResize]):
+        (updateTopAndBottomExtendedBackgroundExclusionIfNecessary): Deleted.
+        (-[WKWebView _setExtendedBackgroundExclusionInsets:]): Deleted.
+        (-[WKWebView _extendedBackgroundExclusionInsets]): Deleted.
+        * UIProcess/API/Cocoa/WKWebViewPrivate.h:
+
+2014-05-13  Samuel White  <samuel_white@apple.com>
+
+        AX: Hit testing not accounting for top content inset.
+        https://bugs.webkit.org/show_bug.cgi?id=132876
+
+        Reviewed by Chris Fleizach.
+
+        Updated accessibilityHitTest: to account for top content inset when converting from screen coords to WebKit coords.
+
+        * WebProcess/WebPage/mac/WKAccessibilityWebPageObjectMac.mm:
+        (-[WKAccessibilityWebPageObject accessibilityHitTest:]):
+
+2014-05-13  Enrica Casucci  <enrica@apple.com>
+
+        REGRESSION (WebKit2): Zooming to text field leaves it partially hidden by the form assistant.
+        https://bugs.webkit.org/show_bug.cgi?id=132879
+        <rdar://problem/16318049>
+
+        Reviewed by Benjamin Poulain.
+
+        Adds the heuristics to zoom and scroll to ensure the element being focused
+        is fully visible and its text readable.
+
+        * Shared/AssistedNodeInformation.cpp:
+        (WebKit::AssistedNodeInformation::encode):
+        (WebKit::AssistedNodeInformation::decode):
+        * Shared/AssistedNodeInformation.h:
+        (WebKit::AssistedNodeInformation::AssistedNodeInformation):
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _zoomToFocusRect:WebCore::selectionRect:WebCore::fontSize:minimumScale:maximumScale:allowUserScaling:forceScroll:]):
+        (-[WKWebView _keyboardChangedWithInfo:adjustScrollView:]):
+        * UIProcess/API/Cocoa/WKWebViewInternal.h:
+        * UIProcess/ios/WKContentView.h:
+        * UIProcess/ios/WKContentView.mm:
+        (-[WKContentView _zoomToFocusRect:selectionRect:fontSize:minimumScale:maximumScale:allowUserScaling:forceScroll:]):
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView _displayFormNodeInputView]):
+        (-[WKContentView _startAssistingNode:userIsInteracting:userObject:]):
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::getAssistedNodeInformation):
+
+2014-05-13  Simon Fraser  <simon.fraser@apple.com>
+
+        Fix the iOS Simulator build.
+
+        * UIProcess/mac/ViewSnapshotStore.h:
+
+2014-05-13  Tim Horton  <timothy_horton@apple.com>
+
+        Speculative build fix for iOS.
+
+        * UIProcess/ios/WebMemoryPressureHandlerIOS.cpp: Removed.
+        * UIProcess/ios/WebMemoryPressureHandlerIOS.mm: Added.
+        (WebKit::WebMemoryPressureHandler::shared):
+        (WebKit::WebMemoryPressureHandler::WebMemoryPressureHandler):
+        * WebKit2.xcodeproj/project.pbxproj:
+        Make WebMemoryPressureHandlerIOS Obj-C.
+
+2014-05-13  Anders Carlsson  <andersca@apple.com>
+
+        Another follow-up build fix.
+
+        * Shared/API/Cocoa/WKFoundation.h:
+
+2014-05-13  Anders Carlsson  <andersca@apple.com>
+
+        Another follow-up build fix.
+
+        * Shared/API/Cocoa/WKFoundation.h:
+
+2014-05-13  Anders Carlsson  <andersca@apple.com>
+
+        Follow-up fix.
+
+        * UIProcess/API/Cocoa/WKNavigationAction.mm:
+        (-[WKNavigationAction _initWithNavigationActionData:WebKit::]):
+        (-[WKNavigationAction _isUserInitiated]):
+
+2014-05-13  Anders Carlsson  <andersca@apple.com>
+
+        Add -[WKNavigationAction modifierFlags] and -[WKNavigationAction buttonNumber]
+        https://bugs.webkit.org/show_bug.cgi?id=132880
+        <rdar://problem/16901354>
+
+        Reviewed by Dan Bernstein.
+
+        * Shared/API/Cocoa/WKFoundation.h:
+        Add typedef for older systems.
+
+        * UIProcess/API/Cocoa/WKNavigationAction.h:
+        Add -[WKNavigationAction modifierFlags] and -[WKNavigationAction buttonNumber]
+
+        * UIProcess/API/Cocoa/WKNavigationAction.mm:
+        (toWKNavigationType):
+        This can be static now.
+
+        (toNSEventModifierFlags):
+        Helper to convert WebEvent::Modifiers to NSEventModifierFlags.
+
+        (toNSButtonNumber):
+        Helper to convert WebMouseEvent::Button to an AppKit button number.
+
+        (-[WKNavigationAction initWithNavigationActionData:WebKit::]):
+        New initializer that takes a NavigationActionData and fills in the relevant ivars from it.
+
+        (-[WKNavigationAction _isUserInitiated]):
+        Return the new ivar.
+
+        * UIProcess/API/Cocoa/WKNavigationActionInternal.h:
+        Remove readwrite overrides.
+
+        * UIProcess/Cocoa/NavigationState.mm:
+        (WebKit::NavigationState::PolicyClient::decidePolicyForNavigationAction):
+        Use initWithNavigationActionData:
+
+        * UIProcess/Cocoa/UIDelegate.mm:
+        (WebKit::UIDelegate::UIClient::createNewPage):
+        Use initWithNavigationActionData:
+
+2014-05-13  Tim Horton  <timothy_horton@apple.com>
+
+        WebKit2 View Gestures (Swipe): Encode snapshots as JPEG on some platforms
+        https://bugs.webkit.org/show_bug.cgi?id=127788
+        <rdar://problem/15928241>
+
+        Reviewed by Anders Carlsson.
+
+        Allow JPEG snapshots. Compression is done asynchronously.
+        Enable JPEG snapshots (for now) on all PLATFORM(MAC).
+        We'll switch back to IOSurface snapshots on 10.9+ after <rdar://problem/16734031> is resolved.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        * UIProcess/API/mac/WKView.mm:
+        (-[WKView _takeViewSnapshot]):
+        Store the image size on the ViewSnapshot.
+        Move IOSurface-related code to ViewSnapshotStore.
+
+        * UIProcess/ios/ViewGestureControllerIOS.mm:
+        (WebKit::ViewGestureController::beginSwipeGesture):
+        Adopt asLayerContents().
+
+        * UIProcess/mac/ViewGestureController.h:
+        * UIProcess/mac/ViewGestureControllerMac.mm:
+        (WebKit::ViewGestureController::retrieveSnapshotForItem):
+        (WebKit::ViewGestureController::beginSwipeGesture):
+        (WebKit::ViewGestureController::removeSwipeSnapshot):
+        Adopt asLayerContents().
+        Put the snapshot on the right layer (the parent of the snapshot image layer);
+        if it's on the snapshot image layer itself, if there is no image, the shadow
+        is displayed on top of the white placeholder.
+        Only reset snapshot purgeability if we're using IOSurface snapshots.
+
+        * UIProcess/mac/ViewSnapshotStore.h:
+        Add a bunch of macros to allow us to switch the snapshot backing store implementation.
+
+        * UIProcess/mac/ViewSnapshotStore.mm:
+        (WebKit::ViewSnapshotStore::ViewSnapshotStore):
+        (WebKit::ViewSnapshotStore::~ViewSnapshotStore):
+        (WebKit::ViewSnapshotStore::recordSnapshot):
+        If takeViewSnapshot() fails, don't remove the existing snapshot.
+
+        (WebKit::createIOSurfaceFromImage):
+        (WebKit::compressImageAsJPEG):
+        (WebKit::ViewSnapshotStore::reduceSnapshotMemoryCost):
+        (WebKit::ViewSnapshotStore::didCompressSnapshot):
+        (WebKit::ViewSnapshot::clearImage):
+        (WebKit::ViewSnapshot::asLayerContents):
+        Asynchronously compress snapshots - if we're using JPEG snapshots - for a
+        very large memory win (~20-30x).
+
+2014-05-12  Darin Adler  <darin@apple.com>
+
+        Make a few icon database improvements
+        https://bugs.webkit.org/show_bug.cgi?id=132812
+
+        Reviewed by Brady Eidson.
+
+        * UIProcess/API/C/WKIconDatabase.cpp:
+        (WKIconDatabaseCopyIconDataForPageURL): Moved the actual implementation of this
+        out of the bindings into the WebIconDatabase class.
+
+        * UIProcess/API/C/WKIconDatabase.h: Fixed argument names that were inconsistent.
+
+        * UIProcess/WebIconDatabase.cpp: Removed unneeded includes.
+        (WebKit::WebIconDatabase::create): Pass a reference instead of a pointer.
+        (WebKit::WebIconDatabase::WebIconDatabase): Take a reference instead of a pointer.
+        (WebKit::WebIconDatabase::invalidate): Use nullptr.
+        (WebKit::WebIconDatabase::setDatabasePath): Use make_unique.
+        (WebKit::WebIconDatabase::setIconDataForIconURL): Removed unneeded local variable.
+        (WebKit::WebIconDatabase::imageForPageURL): Use nullptr.
+        (WebKit::WebIconDatabase::nativeImageForPageURL): Ditto.
+        (WebKit::WebIconDatabase::didFinishURLImport): Use a modern for loop.
+        (WebKit::WebIconDatabase::iconDataForPageURL): Added. Moved this here from
+        WKIconDatabase.cpp, but also changed to use createWithoutCopying to avoid making
+        another copy of the data for each icon.
+
+        * UIProcess/WebIconDatabase.h: Removed unneeded includes. Derive from
+        IconDatabaseClient privately. Use nullptr. Added iconDataForPageURL member
+        function. Use a reference for the constructor argument. Use override for
+        virtual functions. Use unique_ptr instead of OwnPtr.
+
+2014-05-12  Mark Lam  <mark.lam@apple.com>
+
+        WebKit2 on iOS needs to capture the main thread's floating point environment.
+        <https://webkit.org/b/132755>
+
+        Reviewed by Geoffrey Garen.
+
+        * Shared/mac/ChildProcessMac.mm:
+        (WebKit::ChildProcess::platformInitialize):
+        - Call FloatingPointEnv::enableNeededFloatingPointModes() to initialize
+          the ARMv7 FP env to support denormalized numbers.
+        - Call FloatingPointEnv::saveMainThreadEnvironment() to capture the main thread
+          fp env.
+
+2014-05-12  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        [EFL][WK2] Fix ewk_view_navigation test in EWK2ViewTest 
+        https://bugs.webkit.org/show_bug.cgi?id=132817
+
+        Reviewed by Dirk Schulze.
+
+        To load test html pages, call ewk_view_uri_set() instead of EWK2UnitTestServer.
+        Besides this patch adds test html page for ewk_view_navigation unit test.
+
+        * UIProcess/API/efl/tests/resources/Page1.html: Added.
+        * UIProcess/API/efl/tests/resources/Page2.html: Added.
+        * UIProcess/API/efl/tests/resources/Page3.html: Added.
+        * UIProcess/API/efl/tests/test_ewk2_view.cpp:
+        (TEST_F):
+
+2014-05-12  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Unreviewed, EFL build fix since r168625.
+
+        * UIProcess/efl/WebContextEfl.cpp:
+        (WebKit::WebContext::platformDefaultLocalStorageDirectory): Remove const keyword.
+
+2014-05-12  Simon Fraser  <simon.fraser@apple.com>
+
+        [iOS WK2] Fuzzy tiles on some sites on loading
+        https://bugs.webkit.org/show_bug.cgi?id=132847
+        <rdar://problem/16816178>
+
+        Reviewed by Benjamin Poulain.
+        
+        PlatformCALayerRemoteTiledBacking overrode setContentsScale() but not contentsScale(),
+        causing us to early-return from GraphicsLayerCA::updateContentsScale() and leave the
+        scale wrong. Fix by overriding contentsScale() also.
+
+        * WebProcess/WebPage/mac/PlatformCALayerRemoteTiledBacking.cpp:
+        (WebKit::PlatformCALayerRemoteTiledBacking::contentsScale):
+        * WebProcess/WebPage/mac/PlatformCALayerRemoteTiledBacking.h:
+
+2014-05-12  Tim Horton  <timothy_horton@apple.com>
+
+        Triple-buffer RemoteLayerBackingStore
+        https://bugs.webkit.org/show_bug.cgi?id=132786
+        <rdar://problem/16877498>
+
+        Reviewed by Simon Fraser.
+
+        We need three buffers because we're currently unable to synchronize
+        with the render server to swap when they're not in use, so we were
+        throwing surfaces away far too frequently.
+
+        This hugely reduces time spent in IOSurface::create on various repaint benchmarks.
+
+        * Shared/mac/RemoteLayerBackingStore.h:
+        (WebKit::RemoteLayerBackingStore::hasFrontBuffer):
+        (WebKit::RemoteLayerBackingStore::volatility): Deleted.
+        * Shared/mac/RemoteLayerBackingStore.mm:
+        (WebKit::RemoteLayerBackingStore::RemoteLayerBackingStore):
+        (WebKit::RemoteLayerBackingStore::clearBackingStore):
+        (WebKit::RemoteLayerBackingStore::encode):
+        (WebKit::RemoteLayerBackingStore::decode):
+        (WebKit::RemoteLayerBackingStore::swapToValidFrontBuffer):
+        (WebKit::RemoteLayerBackingStore::display):
+        (WebKit::RemoteLayerBackingStore::applyBackingStoreToLayer):
+        (WebKit::RemoteLayerBackingStore::setBufferVolatility):
+        (WebKit::RemoteLayerBackingStore::Buffer::discard):
+        (WebKit::RemoteLayerBackingStore::setVolatility): Deleted.
+        * Shared/mac/RemoteLayerBackingStoreCollection.mm:
+        (WebKit::RemoteLayerBackingStoreCollection::purgeabilityTimerFired):
+        Put the ShareableBitmap/IOSurface and a volatility bit in a Buffer struct.
+        Also factor out "throw away this buffer and put it in the pool" into Buffer::discard().
+        We keep a volatility bit because querying IOSurface purgeability is expensive,
+        and we have a guarantee that any changes will happen in the Web process
+        and go through this class (the lack of this guarantee in most cases is why I'm not
+        putting this bit in WebCore::IOSurface itself).
+
+        Make it so that each buffer's volatility can be adjusted individually
+        by setBufferVolatility(), and adopt in RemoteLayerBackingStoreCollection.
+
+        Add a third buffer, m_secondaryBackBuffer, which will swap with the back buffer
+        before swapping front and back if the back buffer (soon to be the front buffer)
+        is still in use by the render server. This means that we will almost never
+        have to throw away a surface because it's in use (and conversely never need
+        to make a new surface).
+
+        Adjust RemoteLayerBackingStoreCollection to make secondary back surfaces purgeable
+        more aggressively than others.
+
+2014-05-12  Alexey Proskuryakov  <ap@apple.com>
+
+        REGRESSION (r165972): Can't type into text fields in Flash
+        https://bugs.webkit.org/show_bug.cgi?id=132840
+        <rdar://problem/16671969>
+
+        Reviewed by Anders Carlsson.
+
+        * UIProcess/API/mac/WKView.mm: (-[WKView inputContext]): Restore a function that
+        got accidentally lost when adding async text input code.
+
+2014-05-12  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: .js dialogs shown in unload while AX is running crash WebKit.
+        https://bugs.webkit.org/show_bug.cgi?id=123828
+
+        Reviewed by Anders Carlsson.
+
+        Utilize platform API to inform AX clients when the WebProcess will suspend and resume.
+        This allows us to avoid having special behavior for accessibility when the WebProcess needs
+        to wait on a reply.
+
+        * Platform/IPC/Connection.cpp:
+        (IPC::Connection::waitForSyncReply):
+        * Platform/IPC/Connection.h:
+        * Platform/IPC/mac/ConnectionMac.cpp:
+        (IPC::Connection::willSendSyncMessage):
+        (IPC::Connection::didReceiveSyncReply):
+        * WebProcess/WebCoreSupport/WebChromeClient.cpp:
+        (WebKit::WebChromeClient::runBeforeUnloadConfirmPanel):
+        (WebKit::WebChromeClient::runJavaScriptAlert):
+        (WebKit::WebChromeClient::runJavaScriptConfirm):
+        (WebKit::WebChromeClient::runJavaScriptPrompt):
+        (WebKit::WebChromeClient::print):
+        (WebKit::WebChromeClient::exceededDatabaseQuota):
+        * WebProcess/WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebKit::WebFrameLoaderClient::dispatchDecidePolicyForResponse):
+
+2014-05-12  Alex Christensen  <achristensen@webkit.org>
+
+        Progress on web timing.
+        https://bugs.webkit.org/show_bug.cgi?id=132574
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Shared/WebCoreArgumentCoders.cpp:
+        (IPC::ArgumentCoder<ResourceResponse>::encode):
+        (IPC::ArgumentCoder<ResourceResponse>::decode):
+        Transfer ResourceLoadTiming values if they exist.
+
+2014-05-12  Dan Bernstein  <mitz@apple.com>
+
+        [Cocoa] Expose WebPage::usesEphemeralSession to the bundle
+        https://bugs.webkit.org/show_bug.cgi?id=132836
+
+        Reviewed by Anders Carlsson.
+
+        * WebProcess/InjectedBundle/API/mac/WKWebProcessPlugInBrowserContextController.mm:
+        (-[WKWebProcessPlugInBrowserContextController _usesNonPersistentWebsiteDataStore]):
+        * WebProcess/InjectedBundle/API/mac/WKWebProcessPlugInBrowserContextControllerPrivate.h:
+
+2014-05-12  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        REGRESSION(168625): [GTK] build broken due to WKContextSetLocalStorageDirectory
+        https://bugs.webkit.org/show_bug.cgi?id=132831
+
+        Unreviewed GTK build fix.
+
+        * UIProcess/gtk/WebContextGtk.cpp:
+        (WebKit::WebContext::platformDefaultLocalStorageDirectory):
+        This is now a static member function.
+
+2014-05-12  Anders Carlsson  <andersca@apple.com>
+
+        WKWebViewConfiguration should fill in the blanks
+        https://bugs.webkit.org/show_bug.cgi?id=132832
+        <rdar://problem/16886408>
+
+        Reviewed by Dan Bernstein.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView initWithFrame:configuration:]):
+        * UIProcess/API/Cocoa/WKWebViewConfiguration.mm:
+        (-[WKWebViewConfiguration init]):
+        (-[WKWebViewConfiguration _validate]):
+        * UIProcess/API/Cocoa/WKWebViewConfigurationInternal.h:
+
+2014-05-12  Anders Carlsson  <andersca@apple.com>
+
+        WKWebView should default to _backgroundExtendsBeyondPage = YES
+        https://bugs.webkit.org/show_bug.cgi?id=132829
+        <rdar://problem/16886364>
+
+        Reviewed by Beth Dakin.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView initWithFrame:configuration:]):
+
+2014-05-12  Anders Carlsson  <andersca@apple.com>
+
+        Pass local storage directory to StorageManager::create
+        https://bugs.webkit.org/show_bug.cgi?id=132827
+
+        Reviewed by Tim Horton.
+
+        Since we know the local storage directory at creation time and we know it never changes,
+        we can get rid of setLocalStorageDirectory and just pass the local storage directory at creation time.
+
+        * UIProcess/Storage/LocalStorageDatabaseTracker.cpp:
+        (WebKit::LocalStorageDatabaseTracker::create):
+        (WebKit::LocalStorageDatabaseTracker::LocalStorageDatabaseTracker):
+        (WebKit::LocalStorageDatabaseTracker::~LocalStorageDatabaseTracker):
+        (WebKit::LocalStorageDatabaseTracker::setLocalStorageDirectory): Deleted.
+        (WebKit::LocalStorageDatabaseTracker::setLocalStorageDirectoryInternal): Deleted.
+        * UIProcess/Storage/LocalStorageDatabaseTracker.h:
+        * UIProcess/Storage/StorageManager.cpp:
+        (WebKit::StorageManager::create):
+        (WebKit::StorageManager::StorageManager):
+        (WebKit::StorageManager::setLocalStorageDirectory): Deleted.
+        * UIProcess/Storage/StorageManager.h:
+        * UIProcess/WebContext.cpp:
+        (WebKit::WebContext::WebContext):
+
+2014-05-11  Anders Carlsson  <andersca@apple.com>
+
+        Replace WKContextSetLocalStorageDirectory with a context configuration getter/setter
+        https://bugs.webkit.org/show_bug.cgi?id=132809
+
+        Reviewed by Dan Bernstein.
+
+        * UIProcess/API/C/WKContext.cpp:
+        (WKContextSetLocalStorageDirectory): Deleted.
+
+        * UIProcess/API/C/WKContextConfigurationRef.cpp:
+        (WKContextConfigurationCopyLocalStorageDirectory):
+        (WKContextConfigurationSetLocalStorageDirectory):
+        * UIProcess/API/C/WKContextConfigurationRef.h:
+        Add getters and setters for the local storage directory.
+
+        * UIProcess/API/C/WKContextPrivate.h:
+        Remove WKContextSetLocalStorageDirectory.
+
+        * UIProcess/API/Cocoa/WKProcessGroup.mm:
+        (-[WKProcessGroup initWithInjectedBundleURL:]):
+        Call WebContext::applyPlatformSpecificConfigurationDefaults.
+
+        * UIProcess/API/Cocoa/WKProcessPool.mm:
+        (-[WKProcessPool _initWithConfiguration:]):
+        Call WebContext::applyPlatformSpecificConfigurationDefaults (for now).
+
+        * UIProcess/APIContextConfiguration.cpp:
+        (API::ContextConfiguration::webContextConfiguration):
+        Set the local storage. Also, call WebContext::applyPlatformSpecificConfigurationDefaults.
+
+        * UIProcess/APIContextConfiguration.h:
+        (API::ContextConfiguration::injectedBundlePath):
+        This should be const.
+
+        (API::ContextConfiguration::localStorageDirectory):
+        (API::ContextConfiguration::setLocalStorageDirectory):
+        Add getter and setter.
+
+        * UIProcess/Storage/StorageManager.cpp:
+        (WebKit::StorageManager::setLocalStorageDirectory):
+        ASSERT that the path isn't null.
+
+        * UIProcess/WebContext.cpp:
+        (WebKit::WebContext::applyPlatformSpecificConfigurationDefaults):
+        New helper function that will fill in platform specific defaults for empty parameters.
+
+        (WebKit::WebContext::WebContext):
+        Get the local storage directory from the configuration.
+
+        (WebKit::WebContext::setLocalStorageDirectory): Deleted.
+        (WebKit::WebContext::localStorageDirectory): Deleted.
+        These are no longer needed.
+
+        * UIProcess/mac/WebContextMac.mm:
+        (WebKit::WebContext::platformDefaultLocalStorageDirectory):
+        This should be a static member function.
+
+2014-05-12  Martin Hodovan  <mhodovan.u-szeged@partner.samsung.com>
+
+        Typo fix in generate-forwarding-headers
+        https://bugs.webkit.org/show_bug.cgi?id=132820
+
+        Reviewed by Anders Carlsson.
+
+        * Scripts/generate-forwarding-headers.pl:
+        (collectFrameworkHeaderPaths):
+        
+2014-05-12  Peter Molnar  <pmolnar.u-szeged@partner.samsung.com>
+
+        [EFL] TLSErrors do not cause page load to fail when not ignored
+        https://bugs.webkit.org/show_bug.cgi?id=131104
+
+        Reviewed by Gyuyoung Kim.
+
+        Added EFL unit test for the bug https://bugs.webkit.org/show_bug.cgi?id=121548
+
+        * UIProcess/API/efl/tests/test_ewk2_ssl.cpp: Added new test: ewk_ssl_bad_cert_redirect_https_to_http
+
+2014-05-11  Gordon Sheridan  <gordon_sheridan@apple.com>
+
+        Expose a function to copy favicon data without image conversion.
+        https://bugs.webkit.org/show_bug.cgi?id=132805
+
+        Reviewed by Darin Adler.
+
+        * UIProcess/API/C/WKIconDatabase.cpp:
+        (WKIconDatabaseCopyIconDataForPageURL):
+        Add a function to copy the data from the image of a favicon for an associated page url.
+
+        * UIProcess/API/C/WKIconDatabase.h:
+        Declare WKIconDatabaseCopyIconDataForPageURL.
+
+2014-05-11  Seongjun Kim  <isAir@company100.com>
+
+        REGRESSION(r168603): [GTK] Build broken.
+        https://bugs.webkit.org/show_bug.cgi?id=132810
+
+        Reviewed by Carlos Garcia Campos.
+
+        * UIProcess/API/gtk/WebKitWebContext.cpp:
+        (createDefaultWebContext):
+        Construct a WebContextConfiguration object and pass it to WebContext::create.
+
 2014-05-11  Anders Carlsson  <andersca@apple.com>
 
         Remove local storage directory and sandbox extension from WebProcessCreationParameters

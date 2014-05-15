@@ -1,3 +1,507 @@
+2014-05-13  Andrei Bucur  <abucur@adobe.com>
+
+        [CSS Regions] Assertion failure in some cases with inline blocks
+        https://bugs.webkit.org/show_bug.cgi?id=132859
+
+        Reviewed by Mihnea Ovidenie.
+
+        Test that moving lines with inline blocks doesn't cause an assertion.
+
+        * fast/regions/inline-block-shifted-region-expected.txt: Added.
+        * fast/regions/inline-block-shifted-region.html: Added.
+
+2014-05-13  Hans Muller  <hmuller@adobe.com>
+
+        [CSS Shapes] line height grows around polygon and incorrectly causes text to wrap to next line
+        https://bugs.webkit.org/show_bug.cgi?id=131622
+
+        Reviewed by Bem Jones-Bey.
+
+        * fast/shapes/shape-outside-floats/shape-outside-edge-case-expected.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-edge-case.html: Added.
+
+2014-05-13  Myles C. Maxfield  <litherum@gmail.com>
+
+        Text decorations do not contribute to visual overflow
+        https://bugs.webkit.org/show_bug.cgi?id=132773
+
+        Reviewed by Darin Adler.
+
+        This test makes sure that repaint rects are extended to include text decorations that may
+        lie outside of the text layout rects. It compares text with an underline to text that has
+        had underline applied to it in a timer.
+
+        * fast/css3-text/css3-text-decoration/repaint/resources/Litherum.svg: Added. This font has a
+        descent of 0 (so it will not intersect underlines)
+        * fast/css3-text/css3-text-decoration/repaint/underline-outside-of-layout-rect-expected.html: Added.
+        Apply the underline without any timeout
+        * fast/css3-text/css3-text-decoration/repaint/underline-outside-of-layout-rect.html: Added.
+        Apply the underline with a timeout.
+
+2014-05-13  Jon Honeycutt  <jhoneycutt@apple.com>
+
+        platform/mac/plugins/testplugin-onnew-onpaint.html failing after r168668
+        <https://bugs.webkit.org/show_bug.cgi?id=132877>
+
+        Reviewed by Brent Fulgham.
+
+        * platform/mac/plugins/testplugin-onnew-onpaint.html:
+        Make the test wait until plug-ins have loaded before finishing.
+
+2014-05-13  Lorenzo Tilve  <ltilve@igalia.com>
+
+        [GTK] Unreviewed GTK gardening
+
+        Rebaseline affected tests after svg root element background repaint changes
+        introduced in r168674.
+
+        * platform/gtk/http/tests/misc/slow-loading-image-in-pattern-expected.txt:
+        * platform/gtk/svg/custom/circle-move-invalidation-expected.txt:
+        * platform/gtk/svg/custom/mouse-move-on-svg-container-expected.txt:
+        * platform/gtk/svg/custom/mouse-move-on-svg-container-standalone-expected.txt:
+        * platform/gtk/svg/custom/mouse-move-on-svg-root-expected.txt:
+        * platform/gtk/svg/custom/mouse-move-on-svg-root-standalone-expected.txt:
+        * platform/gtk/svg/custom/pattern-userSpaceOnUse-userToBaseTransform-expected.txt:
+        * platform/gtk/svg/custom/svg-float-border-padding-expected.txt:
+        * platform/gtk/svg/text/small-fonts-in-html5-expected.txt:
+
+2014-05-13  Zalan Bujtas  <zalan@apple.com>
+
+        REGRESSSION(r168528) Subpixel rendering: Selection rect is not positioned properly when SVG text is selected.
+        https://bugs.webkit.org/show_bug.cgi?id=132868
+
+        Reviewed by Dirk Schulze.
+
+        Scale the selection rect. r168528 missed applying this final transform on the selection/painting rect.
+
+        * svg/text/hidpi-text-selection-rect-position-expected.html: Added.
+        * svg/text/hidpi-text-selection-rect-position.html: Added.
+
+2014-05-13  Zoltan Horvath  <zoltan@webkit.org>
+
+        [CSS Regions] Add basic tests for inset flows into regions
+        https://bugs.webkit.org/show_bug.cgi?id=132871
+
+        Reviewed by Mihnea Ovidenie.
+
+        * fast/regions/shape-outside-floats/regions-shape-outside-floats-inset-expected.html: Added.
+        * fast/regions/shape-outside-floats/regions-shape-outside-floats-inset.html: Added.
+
+2014-05-13  Martin Hodovan  <mhodovan.u-szeged@partner.samsung.com>
+
+        ASSERTION FAILED: leftCategory != CalcOther && rightCategory != CalcOther
+        in WebCore::CSSCalcBinaryOperation::createSimplified
+        https://bugs.webkit.org/show_bug.cgi?id=132870
+
+        Added test contains calc() expressions with angle, time and frequency values,
+        covering all the newly introduced unit types, each of which used to fail. 
+
+        Reviewed by Darin Adler.
+
+        * fast/css/calc-with-angle-time-frequency-expected.txt: Added.
+        * fast/css/calc-with-angle-time-frequency.html: Added.
+
+2014-05-13  Krzysztof Wolanski  <k.wolanski@samsung.com>
+
+        [EFL] Rebaseline after r168575
+        https://bugs.webkit.org/show_bug.cgi?id=132867
+
+        Unreviewed gardening.
+
+        * platform/efl-wk2/fast/css/input-search-padding-expected.png:
+        * platform/efl/fast/css/css1_forward_compatible_parsing-expected.txt:
+        * platform/efl/fast/css/first-line-text-decoration-expected.txt:
+        * platform/efl/fast/css/h1-in-section-elements-expected.png:
+        * platform/efl/fast/css/h1-in-section-elements-expected.txt:
+        * platform/efl/fast/css/input-search-padding-expected.txt:
+        * platform/efl/fast/css/word-space-extra-expected.txt:
+        * platform/efl/fast/encoding/utf-16-big-endian-expected.txt:
+        * platform/efl/fast/encoding/utf-16-little-endian-expected.txt:
+        * platform/efl/fast/forms/searchfield-heights-expected.txt:
+        * platform/efl/fast/forms/textAreaLineHeight-expected.txt:
+        * platform/efl/fast/inline/continuation-outlines-expected.txt:
+        * platform/efl/fast/inline/outline-continuations-expected.txt:
+        * platform/efl/fast/invalid/nestedh3s-expected.txt:
+        * platform/efl/fast/overflow/clip-rects-fixed-ancestor-expected.txt:
+        * platform/efl/fast/table/014-expected.txt:
+        * platform/efl/fast/table/dynamic-caption-add-remove-before-child-expected.txt:
+        * platform/efl/fast/text/international/bidi-LDB-2-HTML-expected.txt:
+        * platform/efl/mathml/presentation/mo-stretch-expected.png:
+        * platform/efl/mathml/presentation/mo-stretch-expected.txt:
+        * platform/efl/scrollbars/custom-scrollbar-with-incomplete-style-expected.txt:
+        * platform/efl/svg/hixie/error/012-expected.png:
+        * platform/efl/svg/hixie/error/012-expected.txt:
+        * platform/efl/svg/hixie/mixed/010-expected.txt:
+        * platform/efl/svg/in-html/circle-expected.txt:
+        * platform/efl/svg/wicd/rightsizing-grid-expected.txt:
+        * platform/efl/svg/wicd/test-rightsizing-b-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug113235-1-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug113235-2-expected.txt:
+        * platform/efl/tables/mozilla/other/wa_table_thtd_rowspan-expected.txt:
+        * platform/efl/tables/mozilla/other/wa_table_tr_align-expected.txt:
+
+2014-05-13  Kiran  <kiran.guduru@samsung.com>
+
+        [MediaStream] MediaStream.addTrack Should not check for active state.
+        Nhttps://bugs.webkit.org/show_bug.cgi?id=132558.
+
+        Reviewed by Eric Carlson.
+
+        MediaStream.addTrack method is checking for active state of a
+        MediaStream, but it should not check for active state while adding a Track
+
+        Removed check not to add tracks to ended stream:relative which forced tests to avoid this bug. 
+        * fast/mediastream/MediaStream-add-remove-tracks-expected.txt:
+        * fast/mediastream/MediaStream-add-remove-tracks.html:
+
+        New tests:
+        * fast/mediastream/MediaStream-add-tracks-to-inactive-stream-expected.txt: Added.
+        * fast/mediastream/MediaStream-add-tracks-to-inactive-stream.html: Added.
+
+2014-05-13  Lorenzo Tilve  <ltilve@igalia.com>
+
+        [GTK] Unreviewed GTK gardening
+
+        Rebaseline affected tests by changes to avoid increasing empty
+        LayoutRects introduced at r168575.
+
+        * platform/gtk/fast/css/css1_forward_compatible_parsing-expected.txt:
+        * platform/gtk/fast/css/first-line-text-decoration-expected.txt:
+        * platform/gtk/fast/css/h1-in-section-elements-expected.txt:
+        * platform/gtk/fast/css/text-input-with-webkit-border-radius-expected.txt:
+        * platform/gtk/fast/css/text-overflow-input-expected.txt:
+        * platform/gtk/fast/css/word-space-extra-expected.txt:
+        * platform/gtk/fast/encoding/utf-16-big-endian-expected.txt:
+        * platform/gtk/fast/encoding/utf-16-little-endian-expected.txt:
+        * platform/gtk/fast/forms/box-shadow-override-expected.txt:
+        * platform/gtk/fast/forms/control-restrict-line-height-expected.txt:
+        * platform/gtk/fast/forms/fieldset-align-expected.txt:
+        * platform/gtk/fast/forms/input-appearance-height-expected.txt:
+        * platform/gtk/fast/forms/placeholder-position-expected.txt:
+        * platform/gtk/fast/forms/placeholder-pseudo-style-expected.txt:
+        * platform/gtk/fast/forms/search-cancel-button-style-sharing-expected.txt:
+        * platform/gtk/fast/forms/search-display-none-cancel-button-expected.txt:
+        * platform/gtk/fast/forms/search/search-size-with-decorations-expected.txt:
+        * platform/gtk/fast/forms/textAreaLineHeight-expected.txt:
+        * platform/gtk/fast/inline/continuation-outlines-expected.txt:
+        * platform/gtk/fast/inline/continuation-outlines-with-layers-expected.txt:
+        * platform/gtk/fast/inline/outline-continuations-expected.txt:
+        * platform/gtk/fast/invalid/nestedh3s-expected.txt:
+        * platform/gtk/fast/multicol/client-rects-expected.txt:
+        * platform/gtk/fast/multicol/client-rects-spanners-complex-expected.txt:
+        * platform/gtk/fast/multicol/client-rects-spanners-expected.txt:
+        * platform/gtk/fast/multicol/newmulticol/client-rects-expected.txt:
+        * platform/gtk/fast/multicol/span/span-as-immediate-columns-child-expected.txt:
+        * platform/gtk/fast/multicol/span/span-margin-collapsing-expected.txt:
+        * platform/gtk/fast/overflow/clip-rects-fixed-ancestor-expected.txt:
+        * platform/gtk/fast/regions/repaint/repaint-regions-overflow-expected.txt:
+        * platform/gtk/fast/repaint/search-field-cancel-expected.txt:
+        * platform/gtk/fast/replaced/width100percent-searchfield-expected.txt:
+        * platform/gtk/fast/table/014-expected.txt:
+        * platform/gtk/fast/text/international/bidi-LDB-2-HTML-expected.txt:
+        * platform/gtk/mathml/presentation/mo-stretch-expected.txt:
+        * platform/gtk/scrollbars/custom-scrollbar-with-incomplete-style-expected.txt:
+        * platform/gtk/svg/custom/use-font-face-crash-expected.txt:
+        * platform/gtk/svg/overflow/overflow-on-outermost-svg-element-in-xhtml-visible-expected.txt:
+        * platform/gtk/svg/wicd/rightsizing-grid-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug113235-1-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug113235-2-expected.txt:
+        * platform/gtk/tables/mozilla/other/wa_table_thtd_rowspan-expected.txt:
+        * platform/gtk/tables/mozilla/other/wa_table_tr_align-expected.txt:
+
+2014-05-12  Mark Lam  <mark.lam@apple.com>
+
+        WebKit2 on iOS needs to capture the main thread's floating point environment.
+        <https://webkit.org/b/132755>
+
+        Reviewed by Geoffrey Garen.
+
+        * fast/workers/resources/worker-floating-point.js: Added.
+        (runTest1):
+        (doDiv):
+        (runTest2):
+        * fast/workers/worker-floating-point-expected.txt: Added.
+        * fast/workers/worker-floating-point.html: Added.
+        * js/floating-point-denormalized-expected.txt: Added.
+        * js/floating-point-denormalized.html: Added.
+        * js/script-tests/floating-point-denormalized.js: Added.
+
+2014-05-12  Dirk Schulze  <krit@webkit.org>
+
+        SVG root element accepts background color but fails to repaint it
+        https://bugs.webkit.org/show_bug.cgi?id=63153
+
+        Reviewed by Dean Jackson.
+
+        Check that background color updates if the size of an outermost
+        root SVG element changes.
+
+        * svg/custom/svg-root-background-expected.png: Added.
+        * svg/custom/svg-root-background-expected.txt: Added.
+        * svg/custom/svg-root-background.html: Added.
+
+2014-05-12  Jeffrey Pfau  <jpfau@apple.com>
+
+        Unreviewed, fix mismatched test expectation.
+
+        * webgl/many-contexts-expected.txt:
+
+2014-05-06  Jon Honeycutt  <jhoneycutt@apple.com>
+
+        Don't dispatch 'beforeload' event inside FrameView::layout()
+
+        https://bugs.webkit.org/show_bug.cgi?id=132621
+        <rdar://problem/15661470>
+
+        This merges Blink revision 162073 with minor renaming and style
+        changes. From that commit:
+
+        Executing JavaScript code inside FrameView::layout() is problematic.
+        e.g. an assertion failure tested in fast/events/beforeload-assertion.html.
+        We should avoid it.
+
+        This CL makes 'beforeload' event dispatching for plugins and iframes asynchronous,
+        except plugin access from JavaScript code (HTMLPlugInElement::
+        renderWidgetForJSBindings).
+
+        Reviewed by Brent Fulgham.
+
+        * compositing/plugins/composited-plugin.html:
+        * compositing/plugins/no-backing-store.html:
+        * fast/dom/beforeload/flash-before-load.html:
+        * fast/events/beforeload-assertion-expected.txt: Added.
+        * fast/events/beforeload-assertion.html: Added.
+        * fast/events/beforeload-iframe-crash-expected.txt: Added.
+        * fast/events/beforeload-iframe-crash.html: Added.
+        * fast/events/beforeload-input-time-crash-expected.txt: Added.
+        * fast/events/beforeload-input-time-crash.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/plugintypes-notype-data.html:
+        * http/tests/security/contentSecurityPolicy/1.1/plugintypes-nourl-blocked.html:
+        * http/tests/security/contentSecurityPolicy/object-src-no-url-allowed.html:
+        * http/tests/security/contentSecurityPolicy/object-src-no-url-blocked.html:
+        * http/tests/security/contentSecurityPolicy/object-src-none-allowed.html:
+        * http/tests/security/contentSecurityPolicy/object-src-none-blocked.html:
+        * http/tests/security/contentSecurityPolicy/resources/multiple-iframe-plugin-test.js:
+        (testImpl.iframe.onload):
+        (testImpl):
+        * http/tests/security/mixedContent/insecure-plugin-in-iframe.html:
+        * platform/mac/plugins/supports-carbon-event-model.html:
+        * plugins/get-user-agent-with-null-npp-from-npp-new.html:
+        * plugins/mouse-click-plugin-clears-selection.html:
+        * plugins/netscape-plugin-map-data-to-src.html:
+        * plugins/no-mime-with-valid-extension.html:
+        * plugins/plugin-initiate-popup-window.html:
+        * plugins/windowless_plugin_paint_test.html:
+        * resources/plugin.js: Added.
+        (runAfterPluginLoad):
+
+2014-05-12  Roger Fong  <roger_fong@apple.com>
+
+        Unreviewed. Adjust expected result for test added in r168666.
+
+        * webgl/many-contexts-expected.txt:
+
+2014-05-12  Roger Fong  <roger_fong@apple.com>
+
+        Limit number of active graphics contexts per web process.
+        https://bugs.webkit.org/show_bug.cgi?id=132833.
+        <rdar://problem/16888459>
+
+        Reviewed by Dean Jackson.
+
+        * webgl/many-contexts-expected.txt: Added.
+        * webgl/many-contexts.html: Added.
+
+2014-05-12  Dirk Schulze  <krit@webkit.org>
+
+        <svg> with opacity and compositing double-applies its opacity
+        https://bugs.webkit.org/show_bug.cgi?id=116856
+
+        Reviewed by Simon Fraser.
+
+        Test that opacity is not applied twice for composited inline SVG.
+
+        * svg/custom/composited-svg-with-opacity-expected.html: Added.
+        * svg/custom/composited-svg-with-opacity.html: Added.
+
+2014-05-12  Dirk Schulze  <krit@webkit.org>
+
+        SVG outline property is broken and inefficient
+        https://bugs.webkit.org/show_bug.cgi?id=113666
+
+        Reviewed by Dean Jackson.
+
+        Patch by Erik Dahlström backported from Blink.
+
+        Test stacking for outline properties. 'outline' should
+        not draw above overlapping content anymore.
+        Test outline drawing for text elements.
+
+        * svg/custom/outline-stacking-expected.svg: Added.
+        * svg/custom/outline-stacking.svg: Added.
+        * svg/custom/rgba-color-outline-expected.html: Added.
+        * svg/custom/rgba-color-outline.svg: Added.
+        * svg/text/text-outline-expected.svg: Added.
+        * svg/text/text-outline-rgba-expected.html: Added.
+        * svg/text/text-outline-rgba.html: Added.
+        * svg/text/text-outline.html: Added.
+        * svg/text/textpath-outline-expected.svg: Added.
+        * svg/text/textpath-outline.svg: Added.
+        * svg/text/tspan-multiple-outline-expected.html: Added.
+        * svg/text/tspan-multiple-outline.svg: Added.
+        * svg/text/tspan-outline-2-expected.svg: Added.
+        * svg/text/tspan-outline-2.svg: Added.
+        * svg/text/tspan-outline-expected.svg: Added.
+        * svg/text/tspan-outline.html: Added.
+
+2014-05-09  Jon Honeycutt  <jhoneycutt@apple.com>
+
+        REGRESSION (r167818): editing/inserting/typing-space-to-trigger-smart-link.html fails on WebKit1 bots
+
+        <https://bugs.webkit.org/show_bug.cgi?id=132207>
+        <rdar://problem/16730393>
+
+        Reviewed by Darin Adler.
+
+        * editing/apply-style-iframe-crash-expected.txt:
+        Rebased test result has one fewer new line.
+        * platform/mac-wk1/TestExpectations:
+        Remove test from list of expected failures.
+
+2014-05-12  Alex Christensen  <achristensen@webkit.org>
+
+        Implement EXT_shader_texture_lod in WebGL.
+        https://bugs.webkit.org/show_bug.cgi?id=128985
+        <rdar://problem/16111396>
+
+        Based on Firefox patch by Vladimir Vukicevic.
+        https://bug965848.bugzilla.mozilla.org/attachment.cgi?id=8367994
+
+        Reviewed by Dean Jackson.
+
+        * webgl/conformance/extensions/ext-shader-texture-lod-expected.txt: Added.
+        * webgl/conformance/extensions/ext-shader-texture-lod.html: Added.
+        * webgl/resources/webgl_test_files/conformance/extensions/ext-shader-texture-lod.html: Added.
+
+2014-05-12  Martin Hock  <mhock@apple.com>
+
+        Disallow drag and drop of non-displayable resources.
+        https://bugs.webkit.org/show_bug.cgi?id=132745
+        <rdar://problem/10562662>
+
+        Reviewed by Alexey Proskuryakov.
+
+        * http/tests/security/drag-drop-local-file-expected.txt: Added.
+        * http/tests/security/drag-drop-local-file.html: Added.
+
+2014-05-12  Radu Stavila  <stavila@adobe.com>
+
+        fast/multicol/newmulticol/first-letter-create.html is very flaky
+        https://bugs.webkit.org/show_bug.cgi?id=132744
+
+        Reviewed by Antti Koivisto.
+
+        Modified test to not display anything as its only purpose is to ensure it doesn't crash.
+
+        * TestExpectations:
+        * fast/multicol/newmulticol/first-letter-create-expected.html:
+        * fast/multicol/newmulticol/first-letter-create.html:
+
+2014-05-12  Antti Koivisto  <antti@apple.com>
+
+        REGRESSION (r159560): Text clips on tile border if line-height < font-size
+        https://bugs.webkit.org/show_bug.cgi?id=132822
+
+        Reviewed by Andreas Kling.
+
+        * fast/text/simple-lines-range-low-line-height-expected.html: Added.
+        * fast/text/simple-lines-range-low-line-height.html: Added.
+
+2014-05-12  Krzysztof Wolanski  <k.wolanski@samsung.com>
+
+        [EFL] Rebaseline after adding tests in r168350
+        https://bugs.webkit.org/show_bug.cgi?id=132824
+
+        Unreviewed gardening.
+
+        * platform/efl/TestExpectations:
+        * platform/efl/fast/multicol/client-rects-expected.txt:
+        * platform/efl/fast/multicol/client-rects-spanners-complex-expected.txt:
+        * platform/efl/fast/multicol/client-rects-spanners-expected.txt:
+        * platform/efl/fast/multicol/span/span-as-immediate-columns-child-expected.txt:
+        * platform/efl/fast/multicol/span/span-margin-collapsing-expected.txt:
+        * platform/efl/svg/zoom/page/zoom-foreignObject-expected.txt:
+        * platform/efl/svg/zoom/page/zoom-svg-as-relative-image-expected.png:
+        * platform/efl/svg/zoom/page/zoom-svg-through-object-with-absolute-size-2-expected.png:
+        * platform/efl/svg/zoom/page/zoom-svg-through-object-with-absolute-size-2-expected.txt:
+        * platform/efl/svg/zoom/page/zoom-svg-through-object-with-absolute-size-expected.png:
+        * platform/efl/svg/zoom/page/zoom-svg-through-object-with-absolute-size-expected.txt:
+        * platform/efl/svg/zoom/page/zoom-svg-through-object-with-override-size-expected.png:
+        * platform/efl/svg/zoom/page/zoom-svg-through-object-with-override-size-expected.txt:
+        * platform/efl/svg/zoom/page/zoom-svg-through-object-with-percentage-size-expected.png:
+        * platform/efl/svg/zoom/page/zoom-svg-through-object-with-percentage-size-expected.txt:
+        * platform/efl/svg/zoom/text/zoom-foreignObject-expected.txt:
+
+2014-05-12  Radu Stavila  <stavila@adobe.com>
+
+        Invalid information remaining in lineToRegion map of RenderFlowThread.
+        https://bugs.webkit.org/show_bug.cgi?id=132690
+
+        Reviewed by Antti Koivisto.
+
+        Added test for crash caused by invalid information in the lineToRegion map.
+
+        * fast/multicol/newmulticol/lines-region-map-crash-expected.html: Added.
+        * fast/multicol/newmulticol/lines-region-map-crash.html: Added.
+
+2014-05-12  Ion Rosca  <rosca@adobe.com>
+
+        [CSS Blending] Adjust blending pixel test expectations
+        https://bugs.webkit.org/show_bug.cgi?id=132737
+
+        Reviewed by Mihnea Ovidenie.
+
+        Changing failing gif file with with one pixel base64 data and make them different for the two tests,
+        otherwise they might get cached and the gif animation is shared among multiple tests.
+        Changing the incorrect expectations for *gif-color-2* and adjusting test expectation for *gif-color-1*
+        * css3/blending/background-blend-mode-gif-color-2.html:
+        * css3/blending/background-blend-mode-gif-color.html:
+        * css3/blending/resources/squares.gif: Removed.
+        * platform/mac/css3/blending/background-blend-mode-gif-color-2-expected.png:
+        * platform/mac/css3/blending/background-blend-mode-gif-color-expected.png:
+ 
+        * platform/mac-wk1/TestExpectations:
+        The background-blend-mode-gif-color-2 does not pass on WK1: the git animation doesn't get started.
+
+        * platform/mac/TestExpectations: Adding bugs to the excepted blending tests.
+
+        Adjusting this test to avoid scrollbars. Adjusting test expectations.
+        * css3/blending/blend-mode-overflow-expected.txt: Removed.
+        * css3/blending/blend-mode-overflow.html:
+        * platform/mac/css3/blending/blend-mode-overflow-expected.png:
+        * platform/mac/css3/blending/blend-mode-overflow-expected.txt:
+        
+        Adding pixel expectations for newly added tests:
+        * platform/mac/css3/blending/blend-mode-isolation-flags-append-non-stacking-context-blending-expected.png: Added.
+        * platform/mac/css3/blending/blend-mode-isolation-flags-append-stacking-context-blending-expected.png: Added.
+        * platform/mac/css3/blending/blend-mode-isolation-flags-remove-non-stacking-context-blending-expected.png: Added.
+        * platform/mac/css3/blending/blend-mode-isolation-flags-remove-stacking-context-blending-expected.png: Added.
+        * platform/mac/css3/blending/blend-mode-isolation-flags-turn-off-blending-expected.png: Added.
+        * platform/mac/css3/blending/blend-mode-isolation-flags-turn-off-blending-no-isolation-expected.png: Added.
+        * platform/mac/css3/blending/blend-mode-isolation-flags-turn-off-stacking-context-expected.png: Added.
+        * platform/mac/css3/blending/blend-mode-isolation-flags-turn-on-blending-expected.png: Added.
+        * platform/mac/css3/blending/blend-mode-isolation-flags-turn-on-stacking-context-expected.png: Added.
+        * platform/mac/css3/blending/blend-mode-isolation-turn-off-self-painting-layer-expected.png: Added.
+        * platform/mac/css3/blending/blend-mode-isolation-turn-off-self-painting-layer1-expected.png: Added.
+        * platform/mac/css3/blending/blend-mode-isolation-turn-off-self-painting-layer2-expected.png: Added.
+        * platform/mac/css3/blending/blend-mode-isolation-turn-on-self-painting-layer-expected.png: Added.
+
+        Adjusting pixel tests after removing non separable blend modes.
+        * platform/mac/css3/blending/blend-mode-simple-composited-expected.png:
+        * platform/mac/css3/blending/blend-mode-simple-expected.png:
+        * platform/mac/css3/blending/effect-background-blend-mode-expected.png:
+        * platform/mac/css3/blending/effect-background-blend-mode-tiled-expected.png:
+
 2014-05-09  Myles C. Maxfield  <litherum@gmail.com>
 
         [Mac] [iOS] Underlines are too low

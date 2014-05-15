@@ -45,17 +45,14 @@ namespace JSC {
 
 inline void emitPointerValidation(CCallHelpers& jit, GPRReg pointerGPR)
 {
-#if !ASSERT_DISABLED
+    if (ASSERT_DISABLED)
+        return;
     CCallHelpers::Jump isNonZero = jit.branchTestPtr(CCallHelpers::NonZero, pointerGPR);
-    jit.breakpoint();
+    jit.abortWithReason(TGInvalidPointer);
     isNonZero.link(&jit);
     jit.pushToSave(pointerGPR);
     jit.load8(pointerGPR, pointerGPR);
     jit.popToRestore(pointerGPR);
-#else
-    UNUSED_PARAM(jit);
-    UNUSED_PARAM(pointerGPR);
-#endif
 }
 
 // We will jump here if the JIT code tries to make a call, but the
@@ -373,7 +370,7 @@ static MacroAssemblerCodeRef nativeForGenerator(VM* vm, CodeSpecializationKind k
 #else
 #error "JIT not supported on this platform."
     UNUSED_PARAM(executableOffsetToFunction);
-    breakpoint();
+    abortWithReason(TGNotSupported);
 #endif
 
     // Check for an exception
@@ -740,7 +737,7 @@ MacroAssemblerCodeRef floorThunkGenerator(VM* vm)
     SpecializedThunkJIT::Jump intResult;
     SpecializedThunkJIT::JumpList doubleResult;
     if (jit.supportsFloatingPointTruncate()) {
-        jit.loadDouble(&zeroConstant, SpecializedThunkJIT::fpRegT1);
+        jit.loadDouble(MacroAssembler::TrustedImmPtr(&zeroConstant), SpecializedThunkJIT::fpRegT1);
         doubleResult.append(jit.branchDouble(MacroAssembler::DoubleEqual, SpecializedThunkJIT::fpRegT0, SpecializedThunkJIT::fpRegT1));
         SpecializedThunkJIT::JumpList slowPath;
         // Handle the negative doubles in the slow path for now.
@@ -796,12 +793,12 @@ MacroAssemblerCodeRef roundThunkGenerator(VM* vm)
     SpecializedThunkJIT::Jump intResult;
     SpecializedThunkJIT::JumpList doubleResult;
     if (jit.supportsFloatingPointTruncate()) {
-        jit.loadDouble(&zeroConstant, SpecializedThunkJIT::fpRegT1);
+        jit.loadDouble(MacroAssembler::TrustedImmPtr(&zeroConstant), SpecializedThunkJIT::fpRegT1);
         doubleResult.append(jit.branchDouble(MacroAssembler::DoubleEqual, SpecializedThunkJIT::fpRegT0, SpecializedThunkJIT::fpRegT1));
         SpecializedThunkJIT::JumpList slowPath;
         // Handle the negative doubles in the slow path for now.
         slowPath.append(jit.branchDouble(MacroAssembler::DoubleLessThanOrUnordered, SpecializedThunkJIT::fpRegT0, SpecializedThunkJIT::fpRegT1));
-        jit.loadDouble(&halfConstant, SpecializedThunkJIT::fpRegT1);
+        jit.loadDouble(MacroAssembler::TrustedImmPtr(&halfConstant), SpecializedThunkJIT::fpRegT1);
         jit.addDouble(SpecializedThunkJIT::fpRegT0, SpecializedThunkJIT::fpRegT1);
         slowPath.append(jit.branchTruncateDoubleToInt32(SpecializedThunkJIT::fpRegT1, SpecializedThunkJIT::regT0));
         intResult = jit.jump();
@@ -869,7 +866,7 @@ MacroAssemblerCodeRef powThunkGenerator(VM* vm)
     if (!jit.supportsFloatingPoint())
         return MacroAssemblerCodeRef::createSelfManagedCodeRef(vm->jitStubs->ctiNativeCall(vm));
 
-    jit.loadDouble(&oneConstant, SpecializedThunkJIT::fpRegT1);
+    jit.loadDouble(MacroAssembler::TrustedImmPtr(&oneConstant), SpecializedThunkJIT::fpRegT1);
     jit.loadDoubleArgument(0, SpecializedThunkJIT::fpRegT0, SpecializedThunkJIT::regT0);
     MacroAssembler::Jump nonIntExponent;
     jit.loadInt32Argument(1, SpecializedThunkJIT::regT0, nonIntExponent);
@@ -897,7 +894,7 @@ MacroAssemblerCodeRef powThunkGenerator(VM* vm)
 
     if (jit.supportsFloatingPointSqrt()) {
         nonIntExponent.link(&jit);
-        jit.loadDouble(&negativeHalfConstant, SpecializedThunkJIT::fpRegT3);
+        jit.loadDouble(MacroAssembler::TrustedImmPtr(&negativeHalfConstant), SpecializedThunkJIT::fpRegT3);
         jit.loadDoubleArgument(1, SpecializedThunkJIT::fpRegT2, SpecializedThunkJIT::regT0);
         jit.appendFailure(jit.branchDouble(MacroAssembler::DoubleLessThanOrEqual, SpecializedThunkJIT::fpRegT0, SpecializedThunkJIT::fpRegT1));
         jit.appendFailure(jit.branchDouble(MacroAssembler::DoubleNotEqualOrUnordered, SpecializedThunkJIT::fpRegT2, SpecializedThunkJIT::fpRegT3));

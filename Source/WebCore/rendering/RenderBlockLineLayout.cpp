@@ -524,7 +524,17 @@ static inline void setLogicalWidthForTextRun(RootInlineBox* lineBox, BidiRun* ru
         copyToVector(fallbackFonts, it->value.first);
         run->box()->parent()->clearDescendantsHaveSameLineHeightAndBaseline();
     }
-    if ((glyphOverflow.top || glyphOverflow.bottom || glyphOverflow.left || glyphOverflow.right)) {
+
+    // Include text decoration visual overflow as part of the glyph overflow.
+    if (renderer->style().textDecorationsInEffect() != TextDecorationNone) {
+        float top = glyphOverflow.top;
+        float bottom = glyphOverflow.bottom;
+        toInlineTextBox(run->box())->extendVerticalVisualOverflowForDecorations(top, bottom);
+        glyphOverflow.top = static_cast<int>(ceilf(top));
+        glyphOverflow.bottom = static_cast<int>(ceilf(bottom));
+    }
+
+    if (glyphOverflow.top || glyphOverflow.bottom || glyphOverflow.left || glyphOverflow.right) {
         ASSERT(run->box()->behavesLikeText());
         GlyphOverflowAndFallbackFontsMap::iterator it = textBoxDataMap.add(toInlineTextBox(run->box()), std::make_pair(Vector<const SimpleFontData*>(), GlyphOverflow())).iterator;
         it->value.second = glyphOverflow;
@@ -1918,10 +1928,14 @@ void RenderBlockFlow::updateRegionForLine(RootInlineBox* lineBox) const
 {
     ASSERT(lineBox);
 
-    if (auto containingRegion = regionAtBlockOffset(lineBox->lineTopWithLeading()))
-        lineBox->setContainingRegion(*containingRegion);
-    else
+    if (!hasRegionRangeInFlowThread())
         lineBox->clearContainingRegion();
+    else {
+        if (auto containingRegion = regionAtBlockOffset(lineBox->lineTopWithLeading()))
+            lineBox->setContainingRegion(*containingRegion);
+        else
+            lineBox->clearContainingRegion();
+    }
 
     RootInlineBox* prevLineBox = lineBox->prevRootBox();
     if (!prevLineBox)

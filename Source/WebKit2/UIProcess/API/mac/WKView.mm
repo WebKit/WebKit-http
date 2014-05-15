@@ -1898,6 +1898,20 @@ static void extractUnderlines(NSAttributedString *string, Vector<CompositionUnde
         parameters->eventInterpretationHadSideEffects |= eventHandled;
 }
 
+- (NSTextInputContext *)inputContext
+{
+    WKViewInterpretKeyEventsParameters* parameters = _data->_interpretKeyEventsParameters;
+
+    if (_data->_pluginComplexTextInputIdentifier && !parameters)
+        return [[WKTextInputWindowController sharedTextInputWindowController] inputContext];
+
+    // Disable text input machinery when in non-editable content. An invisible inline input area affects performance, and can prevent Expose from working.
+    if (!_data->_page->editorState().isContentEditable)
+        return nil;
+
+    return [super inputContext];
+}
+
 - (NSRange)selectedRange
 {
     [self _executeSavedKeypressCommands];
@@ -3026,19 +3040,6 @@ static void createSandboxExtensionsForFileUpload(NSPasteboard *pasteboard, Sandb
     return _data->_rootLayer.get();
 }
 
-static RefPtr<IOSurface> createIOSurfaceFromImage(CGImageRef image)
-{
-    size_t width = CGImageGetWidth(image);
-    size_t height = CGImageGetHeight(image);
-
-    RefPtr<IOSurface> surface = IOSurface::create(IntSize(width, height), ColorSpaceDeviceRGB);
-    RetainPtr<CGContextRef> surfaceContext = surface->ensurePlatformContext();
-    CGContextDrawImage(surfaceContext.get(), CGRectMake(0, 0, width, height), image);
-    CGContextFlush(surfaceContext.get());
-
-    return surface;
-}
-
 - (ViewSnapshot)_takeViewSnapshot
 {
     NSWindow *window = self.window;
@@ -3077,8 +3078,12 @@ static RefPtr<IOSurface> createIOSurfaceFromImage(CGImageRef image)
 
     auto croppedSnapshotImage = adoptCF(CGImageCreateWithImageInRect(windowSnapshotImage.get(), NSRectToCGRect([window convertRectToBacking:croppedImageRect])));
 
-    snapshot.surface = createIOSurfaceFromImage(croppedSnapshotImage.get());
-    snapshot.imageSizeInBytes = snapshot.surface->totalBytes();
+    snapshot.image = croppedSnapshotImage.get();
+
+    IntSize imageSize(CGImageGetWidth(croppedSnapshotImage.get()), CGImageGetHeight(croppedSnapshotImage.get()));
+    snapshot.size = imageSize;
+    snapshot.imageSizeInBytes = imageSize.width() * imageSize.height() * 4;
+
     return snapshot;
 }
 

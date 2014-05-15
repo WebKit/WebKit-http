@@ -4395,7 +4395,7 @@ void WebPage::determinePrimarySnapshottedPlugIn()
             IntRect plugInRectRelativeToView = plugInImageElement.clientRect();
             if (plugInRectRelativeToView.isEmpty())
                 continue;
-            IntSize scrollOffset = mainFrame.view()->scrollOffsetRelativeToDocument();
+            IntSize scrollOffset = mainFrame.view()->documentScrollOffsetRelativeToViewOrigin();
             IntRect plugInRectRelativeToTopDocument(plugInRectRelativeToView.location() + scrollOffset, plugInRectRelativeToView.size());
             if (!plugInRectRelativeToTopDocument.intersects(searchRect))
                 continue;
@@ -4594,7 +4594,7 @@ PassRefPtr<WebCore::Range> WebPage::rangeFromEditingRange(WebCore::Frame& frame,
     
 bool WebPage::synchronousMessagesShouldSpinRunLoop()
 {
-#if PLATFORM(MAC)
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED < 101000
     return WebCore::AXObjectCache::accessibilityEnabled();
 #endif
     return false;

@@ -1,3 +1,218 @@
+2014-05-13  Filip Pizlo  <fpizlo@apple.com>
+
+        JIT breakpoints should be more informative
+        https://bugs.webkit.org/show_bug.cgi?id=132882
+
+        Reviewed by Oliver Hunt.
+        
+        Introduce the notion of an AbortReason, which is a nice enumeration of coded assertion
+        failure names. This means that all you need to figure out why the JIT SIGTRAP'd is to look
+        at that platform's abort reason register (r11 on X86-64 for example).
+
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * assembler/AbortReason.h: Added.
+        * assembler/AbstractMacroAssembler.h:
+        * assembler/MacroAssemblerARM64.h:
+        (JSC::MacroAssemblerARM64::abortWithReason):
+        * assembler/MacroAssemblerARMv7.h:
+        (JSC::MacroAssemblerARMv7::abortWithReason):
+        * assembler/MacroAssemblerX86.h:
+        (JSC::MacroAssemblerX86::abortWithReason):
+        * assembler/MacroAssemblerX86_64.h:
+        (JSC::MacroAssemblerX86_64::abortWithReason):
+        * dfg/DFGSlowPathGenerator.h:
+        (JSC::DFG::SlowPathGenerator::generate):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::bail):
+        (JSC::DFG::SpeculativeJIT::compileCurrentBlock):
+        (JSC::DFG::SpeculativeJIT::compileMakeRope):
+        * dfg/DFGSpeculativeJIT.h:
+        (JSC::DFG::SpeculativeJIT::emitAllocateBasicStorage):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::fillSpeculateCell):
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGThunks.cpp:
+        (JSC::DFG::osrEntryThunkGenerator):
+        * jit/AssemblyHelpers.cpp:
+        (JSC::AssemblyHelpers::jitAssertIsInt32):
+        (JSC::AssemblyHelpers::jitAssertIsJSInt32):
+        (JSC::AssemblyHelpers::jitAssertIsJSNumber):
+        (JSC::AssemblyHelpers::jitAssertIsJSDouble):
+        (JSC::AssemblyHelpers::jitAssertIsCell):
+        (JSC::AssemblyHelpers::jitAssertTagsInPlace):
+        (JSC::AssemblyHelpers::jitAssertHasValidCallFrame):
+        (JSC::AssemblyHelpers::jitAssertIsNull):
+        (JSC::AssemblyHelpers::jitAssertArgumentCountSane):
+        (JSC::AssemblyHelpers::emitStoreStructureWithTypeInfo):
+        * jit/AssemblyHelpers.h:
+        (JSC::AssemblyHelpers::checkStackPointerAlignment):
+        (JSC::AssemblyHelpers::emitStoreStructureWithTypeInfo): Deleted.
+        * jit/JIT.h:
+        * jit/JITArithmetic.cpp:
+        (JSC::JIT::emitSlow_op_div):
+        * jit/JITOpcodes.cpp:
+        (JSC::JIT::emitSlow_op_loop_hint):
+        * jit/JITOpcodes32_64.cpp:
+        (JSC::JIT::privateCompileCTINativeCall):
+        * jit/JITPropertyAccess.cpp:
+        (JSC::JIT::emit_op_get_by_val):
+        (JSC::JIT::compileGetDirectOffset):
+        (JSC::JIT::addStructureTransitionCheck): Deleted.
+        (JSC::JIT::testPrototype): Deleted.
+        * jit/JITPropertyAccess32_64.cpp:
+        (JSC::JIT::emit_op_get_by_val):
+        (JSC::JIT::compileGetDirectOffset):
+        * jit/RegisterPreservationWrapperGenerator.cpp:
+        (JSC::generateRegisterRestoration):
+        * jit/Repatch.cpp:
+        (JSC::addStructureTransitionCheck):
+        (JSC::linkClosureCall):
+        * jit/ThunkGenerators.cpp:
+        (JSC::emitPointerValidation):
+        (JSC::nativeForGenerator):
+        * yarr/YarrJIT.cpp:
+        (JSC::Yarr::YarrGenerator::generate):
+
+2014-05-13  peavo@outlook.com  <peavo@outlook.com>
+
+        [Win] Enum type with value zero is compatible with void*, potential cause of crashes.
+        https://bugs.webkit.org/show_bug.cgi?id=132772
+
+        Reviewed by Geoffrey Garen.
+
+        Using the MSVC compiler, an instance of an enum type with value zero, is compatible with void* (see bug 132683 for a code example).
+        This has caused crashes on Windows on two occasions (bug 132683, and bug 121001).
+        This patch tries to prevent these type of crashes by using a type with explicit constructors instead of void*.
+        The void* parameter in the loadDouble and storeDouble methods are replaced with TrustedImmPtr.
+
+        * assembler/MacroAssemblerARM.h:
+        (JSC::MacroAssemblerARM::loadDouble):
+        (JSC::MacroAssemblerARM::storeDouble):
+        * assembler/MacroAssemblerARM64.h:
+        (JSC::MacroAssemblerARM64::loadDouble):
+        (JSC::MacroAssemblerARM64::storeDouble):
+        * assembler/MacroAssemblerARMv7.h:
+        (JSC::MacroAssemblerARMv7::loadDouble):
+        (JSC::MacroAssemblerARMv7::storeDouble):
+        * assembler/MacroAssemblerMIPS.h:
+        (JSC::MacroAssemblerMIPS::loadDouble):
+        (JSC::MacroAssemblerMIPS::storeDouble):
+        * assembler/MacroAssemblerSH4.h:
+        (JSC::MacroAssemblerSH4::loadDouble):
+        (JSC::MacroAssemblerSH4::storeDouble):
+        * assembler/MacroAssemblerX86.h:
+        (JSC::MacroAssemblerX86::storeDouble):
+        * assembler/MacroAssemblerX86Common.h:
+        (JSC::MacroAssemblerX86Common::absDouble):
+        (JSC::MacroAssemblerX86Common::negateDouble):
+        (JSC::MacroAssemblerX86Common::loadDouble):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::silentFill):
+        (JSC::DFG::compileClampDoubleToByte):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::fillSpeculateDouble):
+        (JSC::DFG::SpeculativeJIT::compile):
+        * jit/AssemblyHelpers.cpp:
+        (JSC::AssemblyHelpers::purifyNaN):
+        * jit/JITInlines.h:
+        (JSC::JIT::emitLoadDouble):
+        * jit/JITPropertyAccess.cpp:
+        (JSC::JIT::emitFloatTypedArrayGetByVal):
+        * jit/ThunkGenerators.cpp:
+        (JSC::floorThunkGenerator):
+        (JSC::roundThunkGenerator):
+        (JSC::powThunkGenerator):
+
+2014-05-12  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r168642.
+        https://bugs.webkit.org/show_bug.cgi?id=132839
+
+        Broke ARM build (Requested by jpfau on #webkit).
+
+        Reverted changeset:
+
+        "[Win] Enum type with value zero is compatible with void*,
+        potential cause of crashes."
+        https://bugs.webkit.org/show_bug.cgi?id=132772
+        http://trac.webkit.org/changeset/168642
+
+2014-05-12  peavo@outlook.com  <peavo@outlook.com>
+
+        [Win] Enum type with value zero is compatible with void*, potential cause of crashes.
+        https://bugs.webkit.org/show_bug.cgi?id=132772
+
+        Reviewed by Geoffrey Garen.
+
+        Using the MSVC compiler, an instance of an enum type with value zero, is compatible with void* (see bug 132683 for a code example).
+        This has caused crashes on Windows on two occasions (bug 132683, and bug 121001).
+        This patch tries to prevent these type of crashes by using a type with explicit constructors instead of void*.
+        The void* parameter in the loadDouble and storeDouble methods are replaced with TrustedImmPtr.
+
+        * assembler/MacroAssemblerARM.h:
+        (JSC::MacroAssemblerARM::loadDouble):
+        (JSC::MacroAssemblerARM::storeDouble):
+        * assembler/MacroAssemblerARM64.h:
+        (JSC::MacroAssemblerARM64::loadDouble):
+        (JSC::MacroAssemblerARM64::storeDouble):
+        * assembler/MacroAssemblerARMv7.h:
+        (JSC::MacroAssemblerARMv7::loadDouble):
+        (JSC::MacroAssemblerARMv7::storeDouble):
+        * assembler/MacroAssemblerMIPS.h:
+        (JSC::MacroAssemblerMIPS::loadDouble):
+        (JSC::MacroAssemblerMIPS::storeDouble):
+        * assembler/MacroAssemblerSH4.h:
+        (JSC::MacroAssemblerSH4::loadDouble):
+        (JSC::MacroAssemblerSH4::storeDouble):
+        * assembler/MacroAssemblerX86.h:
+        (JSC::MacroAssemblerX86::storeDouble):
+        * assembler/MacroAssemblerX86Common.h:
+        (JSC::MacroAssemblerX86Common::absDouble):
+        (JSC::MacroAssemblerX86Common::negateDouble):
+        (JSC::MacroAssemblerX86Common::loadDouble):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::silentFill):
+        (JSC::DFG::compileClampDoubleToByte):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::fillSpeculateDouble):
+        (JSC::DFG::SpeculativeJIT::compile):
+        * jit/AssemblyHelpers.cpp:
+        (JSC::AssemblyHelpers::purifyNaN):
+        * jit/JITInlines.h:
+        (JSC::JIT::emitLoadDouble):
+        * jit/JITPropertyAccess.cpp:
+        (JSC::JIT::emitFloatTypedArrayGetByVal):
+        * jit/ThunkGenerators.cpp:
+        (JSC::floorThunkGenerator):
+        (JSC::roundThunkGenerator):
+        (JSC::powThunkGenerator):
+
+2014-05-12  Andreas Kling  <akling@apple.com>
+
+        0.4% of PLT3 in JSCell::structure() below JSObject::visitChildren().
+        <https://webkit.org/b/132828>
+        <rdar://problem/16886285>
+
+        Reviewed by Michael Saboff.
+
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::visitButterfly):
+        (JSC::JSObject::visitChildren):
+
+            Use JSCell::structure(VM&) to reduce the number of hoops we jump
+            through to find Structures during marking.
+
+2014-05-12  László Langó  <llango.u-szeged@partner.samsung.com>
+
+        [cmake] Add missing FTL source files to the build system.
+
+        Reviewed by Csaba Osztrogonác.
+
+        * CMakeLists.txt:
+
 2014-05-09  Joseph Pecoraro  <pecoraro@apple.com>
 
         Web Inspector: Allow Remote Inspector to entitlement check UIProcess through WebProcess

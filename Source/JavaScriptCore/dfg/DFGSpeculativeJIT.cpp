@@ -553,7 +553,7 @@ void SpeculativeJIT::silentFill(const SilentRegisterSavePlan& plan, GPRReg canTr
         m_jit.move(TrustedImm32(JSValue::BooleanTag), plan.gpr());
         break;
     case SetDoubleConstant:
-        m_jit.loadDouble(addressOfDoubleConstant(plan.node()), plan.fpr());
+        m_jit.loadDouble(TrustedImmPtr(addressOfDoubleConstant(plan.node())), plan.fpr());
         break;
 #endif
     case Load32Tag:
@@ -1341,7 +1341,7 @@ void SpeculativeJIT::compileMovHint(Node* node)
 void SpeculativeJIT::bail()
 {
     m_compileOkay = true;
-    m_jit.breakpoint();
+    m_jit.abortWithReason(DFGBailed);
     clearGenerationInfo();
 }
 
@@ -1360,7 +1360,7 @@ void SpeculativeJIT::compileCurrentBlock()
         // Don't generate code for basic blocks that are unreachable according to CFA.
         // But to be sure that nobody has generated a jump to this block, drop in a
         // breakpoint here.
-        m_jit.breakpoint();
+        m_jit.abortWithReason(DFGUnreachableBasicBlock);
         return;
     }
 
@@ -2254,12 +2254,12 @@ static void compileClampDoubleToByte(JITCompiler& jit, GPRReg result, FPRReg sou
     static const double zero = 0;
     static const double byteMax = 255;
     static const double half = 0.5;
-    jit.loadDouble(&zero, scratch);
+    jit.loadDouble(MacroAssembler::TrustedImmPtr(&zero), scratch);
     MacroAssembler::Jump tooSmall = jit.branchDouble(MacroAssembler::DoubleLessThanOrEqualOrUnordered, source, scratch);
-    jit.loadDouble(&byteMax, scratch);
+    jit.loadDouble(MacroAssembler::TrustedImmPtr(&byteMax), scratch);
     MacroAssembler::Jump tooBig = jit.branchDouble(MacroAssembler::DoubleGreaterThan, source, scratch);
     
-    jit.loadDouble(&half, scratch);
+    jit.loadDouble(MacroAssembler::TrustedImmPtr(&half), scratch);
     // FIXME: This should probably just use a floating point round!
     // https://bugs.webkit.org/show_bug.cgi?id=72054
     jit.addDouble(source, scratch);
@@ -2821,7 +2821,7 @@ void SpeculativeJIT::compileMakeRope(Node* node)
     if (!ASSERT_DISABLED) {
         JITCompiler::Jump ok = m_jit.branch32(
             JITCompiler::GreaterThanOrEqual, allocatorGPR, TrustedImm32(0));
-        m_jit.breakpoint();
+        m_jit.abortWithReason(DFGNegativeStringLength);
         ok.link(&m_jit);
     }
     for (unsigned i = 1; i < numOpGPRs; ++i) {
@@ -2837,7 +2837,7 @@ void SpeculativeJIT::compileMakeRope(Node* node)
     if (!ASSERT_DISABLED) {
         JITCompiler::Jump ok = m_jit.branch32(
             JITCompiler::GreaterThanOrEqual, allocatorGPR, TrustedImm32(0));
-        m_jit.breakpoint();
+        m_jit.abortWithReason(DFGNegativeStringLength);
         ok.link(&m_jit);
     }
     m_jit.store32(allocatorGPR, JITCompiler::Address(resultGPR, JSString::offsetOfLength()));

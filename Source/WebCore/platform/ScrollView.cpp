@@ -412,16 +412,20 @@ IntPoint ScrollView::adjustScrollPositionWithinRange(const IntPoint& scrollPoint
     return newScrollPosition;
 }
 
-IntSize ScrollView::scrollOffsetRelativeToDocument() const
+IntSize ScrollView::documentScrollOffsetRelativeToViewOrigin() const
 {
-    IntSize scrollOffset = this->scrollOffset();
-    return IntSize(scrollOffset.width(), scrollOffset.height() - headerHeight() - topContentInset());
+    return scrollOffset() - IntSize(0, headerHeight() + topContentInset());
 }
 
-IntPoint ScrollView::scrollPositionRelativeToDocument() const
+IntPoint ScrollView::documentScrollPositionRelativeToViewOrigin() const
 {
     IntPoint scrollPosition = this->scrollPosition();
     return IntPoint(scrollPosition.x(), scrollPosition.y() - headerHeight() - topContentInset());
+}
+
+IntSize ScrollView::documentScrollOffsetRelativeToScrollableAreaOrigin() const
+{
+    return scrollOffset() - IntSize(0, headerHeight());
 }
 
 int ScrollView::scrollSize(ScrollbarOrientation orientation) const
@@ -497,7 +501,7 @@ void ScrollView::setScrollPosition(const IntPoint& scrollPoint)
         return;
     }
 
-    IntPoint newScrollPosition = adjustScrollPositionWithinRange(scrollPoint);
+    IntPoint newScrollPosition = !delegatesScrolling() ? adjustScrollPositionWithinRange(scrollPoint) : scrollPoint;
 
     if ((!delegatesScrolling() || !inProgrammaticScroll()) && newScrollPosition == scrollPosition())
         return;
@@ -822,7 +826,7 @@ IntPoint ScrollView::rootViewToContents(const IntPoint& rootViewPoint) const
         return convertFromRootView(rootViewPoint);
 
     IntPoint viewPoint = convertFromRootView(rootViewPoint);
-    return viewPoint + scrollOffsetRelativeToDocument();
+    return viewPoint + documentScrollOffsetRelativeToViewOrigin();
 }
 
 IntPoint ScrollView::contentsToRootView(const IntPoint& contentsPoint) const
@@ -840,7 +844,7 @@ IntRect ScrollView::rootViewToContents(const IntRect& rootViewRect) const
         return convertFromRootView(rootViewRect);
 
     IntRect viewRect = convertFromRootView(rootViewRect);
-    viewRect.move(scrollOffsetRelativeToDocument());
+    viewRect.move(documentScrollOffsetRelativeToViewOrigin());
     return viewRect;
 }
 
@@ -869,7 +873,7 @@ IntPoint ScrollView::windowToContents(const IntPoint& windowPoint) const
         return convertFromContainingWindow(windowPoint);
 
     IntPoint viewPoint = convertFromContainingWindow(windowPoint);
-    return viewPoint + scrollOffsetRelativeToDocument();
+    return viewPoint + documentScrollOffsetRelativeToViewOrigin();
 }
 
 IntPoint ScrollView::contentsToWindow(const IntPoint& contentsPoint) const
@@ -887,7 +891,7 @@ IntRect ScrollView::windowToContents(const IntRect& windowRect) const
         return convertFromContainingWindow(windowRect);
 
     IntRect viewRect = convertFromContainingWindow(windowRect);
-    viewRect.move(scrollOffsetRelativeToDocument());
+    viewRect.move(documentScrollOffsetRelativeToViewOrigin());
     return viewRect;
 }
 

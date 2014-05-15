@@ -69,6 +69,11 @@ WKURLRef WKIconDatabaseCopyIconURLForPageURL(WKIconDatabaseRef iconDatabaseRef, 
     return toCopiedURLAPI(iconURLString);
 }
 
+WKDataRef WKIconDatabaseCopyIconDataForPageURL(WKIconDatabaseRef iconDatabaseRef, WKURLRef pageURL)
+{
+    return toAPI(toImpl(iconDatabaseRef)->iconDataForPageURL(toWTFString(pageURL)).leakRef());
+}
+
 void WKIconDatabaseEnableDatabaseCleanup(WKIconDatabaseRef iconDatabaseRef)
 {
     toImpl(iconDatabaseRef)->enableDatabaseCleanup();

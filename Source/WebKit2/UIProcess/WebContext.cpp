@@ -117,6 +117,15 @@ static const double sharedSecondaryProcessShutdownTimeout = 60;
 
 DEFINE_DEBUG_ONLY_GLOBAL(WTF::RefCountedLeakCounter, webContextCounter, ("WebContext"));
 
+void WebContext::applyPlatformSpecificConfigurationDefaults(WebContextConfiguration& configuration)
+{
+    // FIXME: This function should not be needed; all ports should make sure that the configuration has the right
+    // values, and then we should get rid of the platform specific defaults inside WebContext.
+
+    if (!configuration.localStorageDirectory)
+        configuration.localStorageDirectory = platformDefaultLocalStorageDirectory();
+}
+
 PassRefPtr<WebContext> WebContext::create(WebContextConfiguration configuration)
 {
     InitializeWebKit2();
@@ -151,7 +160,7 @@ WebContext::WebContext(WebContextConfiguration configuration)
     , m_cacheModel(CacheModelDocumentViewer)
     , m_memorySamplerEnabled(false)
     , m_memorySamplerInterval(1400.0)
-    , m_storageManager(StorageManager::create())
+    , m_storageManager(StorageManager::create(configuration.localStorageDirectory))
 #if USE(SOUP)
     , m_initialHTTPCookieAcceptPolicy(HTTPCookieAcceptPolicyOnlyFromMainDocumentDomain)
 #endif
@@ -213,8 +222,6 @@ WebContext::WebContext(WebContextConfiguration configuration)
 #ifndef NDEBUG
     webContextCounter.increment();
 #endif
-
-    m_storageManager->setLocalStorageDirectory(localStorageDirectory());
 }
 
 #if !PLATFORM(COCOA)
@@ -1137,20 +1144,6 @@ String WebContext::iconDatabasePath() const
         return m_overrideIconDatabasePath;
 
     return platformDefaultIconDatabasePath();
-}
-
-void WebContext::setLocalStorageDirectory(const String& directory)
-{
-    m_overrideLocalStorageDirectory = directory;
-    m_storageManager->setLocalStorageDirectory(localStorageDirectory());
-}
-
-String WebContext::localStorageDirectory() const
-{
-    if (!m_overrideLocalStorageDirectory.isEmpty())
-        return m_overrideLocalStorageDirectory;
-
-    return platformDefaultLocalStorageDirectory();
 }
 
 String WebContext::diskCacheDirectory() const

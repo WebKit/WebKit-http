@@ -1821,9 +1821,6 @@
     <ClCompile Include="..\platform\network\ResourceHandleClient.cpp">
       <Filter>platform\network</Filter>
     </ClCompile>
-    <ClCompile Include="..\platform\network\ResourceLoadTiming.cpp">
-      <Filter>platform\network</Filter>
-    </ClCompile>
     <ClCompile Include="..\platform\network\ResourceRequestBase.cpp">
       <Filter>platform\network</Filter>
     </ClCompile>
@@ -6511,6 +6508,9 @@
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\WebCore\DerivedSources\JSANGLEInstancedArrays.cpp">
       <Filter>DerivedSources</Filter>
     </ClCompile>
+    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\WebCore\DerivedSources\JSEXTShaderTextureLOD.cpp">
+      <Filter>DerivedSources</Filter>
+    </ClCompile>
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\WebCore\DerivedSources\JSEXTTextureFilterAnisotropic.cpp">
       <Filter>DerivedSources</Filter>
     </ClCompile>
@@ -6635,6 +6635,9 @@
       <Filter>html\canvas</Filter>
     </ClCompile>
     <ClCompile Include="..\html\canvas\OESVertexArrayObject.cpp">
+      <Filter>html\canvas</Filter>
+    </ClCompile>
+    <ClCompile Include="..\html\canvas\EXTShaderTextureLOD.cpp">
       <Filter>html\canvas</Filter>
     </ClCompile>
     <ClCompile Include="..\html\canvas\EXTTextureFilterAnisotropic.cpp">
@@ -10765,9 +10768,6 @@
     <ClInclude Include="..\fileapi\FileThread.h">
       <Filter>html</Filter>
     </ClInclude>
-    <ClInclude Include="..\fileapi\FileThreadTask.h">
-      <Filter>html</Filter>
-    </ClInclude>
     <ClInclude Include="..\html\FormAssociatedElement.h">
       <Filter>html</Filter>
     </ClInclude>
@@ -14337,6 +14337,9 @@
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\WebCore\DerivedSources\JSWebGLVertexArrayObjectOES.h">
       <Filter>DerivedSources</Filter>
     </ClInclude>
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\WebCore\DerivedSources\JSEXTShaderTextureLOD.h">
+      <Filter>DerivedSources</Filter>
+    </ClInclude>
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\WebCore\DerivedSources\JSEXTTextureFilterAnisotropic.h">
       <Filter>DerivedSources</Filter>
     </ClInclude>
@@ -14467,6 +14470,9 @@
       <Filter>html\canvas</Filter>
     </ClInclude>
     <ClInclude Include="..\html\canvas\OESVertexArrayObject.h">
+      <Filter>html\canvas</Filter>
+    </ClInclude>
+    <ClInclude Include="..\html\canvas\EXTShaderTextureLOD.h">
       <Filter>html\canvas</Filter>
     </ClInclude>
     <ClInclude Include="..\html\canvas\EXTTextureFilterAnisotropic.h">

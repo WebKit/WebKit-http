@@ -190,6 +190,11 @@ void RenderBoxModelObject::willBeDestroyed()
     RenderLayerModelObject::willBeDestroyed();
 }
 
+bool RenderBoxModelObject::hasBoxDecorationStyle() const
+{
+    return hasBackground() || style().hasBorder() || style().hasAppearance() || style().boxShadow();
+}
+
 void RenderBoxModelObject::updateFromStyle()
 {
     RenderLayerModelObject::updateFromStyle();
@@ -197,7 +202,7 @@ void RenderBoxModelObject::updateFromStyle()
     // Set the appropriate bits for a box model object.  Since all bits are cleared in styleWillChange,
     // we only check for bits that could possibly be set to true.
     const RenderStyle& styleToUse = style();
-    setHasBoxDecorations(hasBackground() || styleToUse.hasBorder() || styleToUse.hasAppearance() || styleToUse.boxShadow());
+    setHasBoxDecorations(hasBoxDecorationStyle());
     setInline(styleToUse.isDisplayInlineType());
     setPositionState(styleToUse.position());
     setHorizontalWritingMode(styleToUse.isHorizontalWritingMode());
@@ -1077,17 +1082,6 @@ void RenderBoxModelObject::calculateBackgroundImageGeometry(const RenderLayerMod
     // destRect will be adjusted later if the background is non-repeating.
     // FIXME: transforms spec says that fixed backgrounds behave like scroll inside transforms. https://bugs.webkit.org/show_bug.cgi?id=15679
     bool fixedAttachment = fillLayer->attachment() == FixedBackgroundAttachment;
-    
-#if ENABLE(FAST_MOBILE_SCROLLING)
-    if (view().frameView().canBlitOnScroll()) {
-        // As a side effect of an optimization to blit on scroll, we do not honor the CSS
-        // property "background-attachment: fixed" because it may result in rendering
-        // artifacts. Note, these artifacts only appear if we are blitting on scroll of
-        // a page that has fixed background images.
-        fixedAttachment = false;
-    }
-#endif
-
     if (!fixedAttachment) {
         geometry.setDestRect(paintRect);
 
@@ -1122,12 +1116,17 @@ void RenderBoxModelObject::calculateBackgroundImageGeometry(const RenderLayerMod
     } else {
         geometry.setHasNonLocalGeometry();
 
-        LayoutRect viewportRect = view().viewRect();
-        if (fixedBackgroundPaintsInLocalCoordinates())
-            viewportRect.setLocation(LayoutPoint());
-        else
-            viewportRect.setLocation(toLayoutPoint(view().frameView().scrollOffsetForFixedPosition()));
-
+        LayoutRect viewportRect;
+        if (frame().settings().fixedBackgroundsPaintRelativeToDocument())
+            viewportRect = view().unscaledDocumentRect();
+        else {
+            viewportRect = view().viewRect();
+            if (fixedBackgroundPaintsInLocalCoordinates())
+                viewportRect.setLocation(LayoutPoint());
+            else
+                viewportRect.setLocation(toLayoutPoint(view().frameView().scrollOffsetForFixedPosition()));
+        }
+        
         if (paintContainer)
             viewportRect.moveBy(LayoutPoint(-paintContainer->localToAbsolute(FloatPoint())));
 

@@ -1,3 +1,32 @@
+2014-05-13  Dean Jackson  <dino@apple.com>
+
+        Step 2 (of 2) fixing the Windows build. Add new setPageScaleFactor.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+
+2014-05-13  Dean Jackson  <dino@apple.com>
+
+        Step 1 of fixing the windows build. Remove setPageScaleFactor.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+
+2014-05-12  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed build fix after r168668.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in: Add
+        missing export symbols.
+
+2014-05-12  Anders Carlsson  <andersca@apple.com>
+
+        Don't make a Frameworks symlink inside WebKitLegacy.framework
+        https://bugs.webkit.org/show_bug.cgi?id=132842
+        <rdar://problem/16886939>
+
+        Reviewed by Dan Bernstein.
+
+        * WebKit.xcodeproj/project.pbxproj:
+
 2014-05-09  Anders Carlsson  <andersca@apple.com>
 
         Rename WebKit2.framework to WebKit.framework

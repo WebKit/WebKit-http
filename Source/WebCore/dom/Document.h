@@ -587,7 +587,11 @@ public:
     void updateStyleIfNeeded();
     bool updateStyleIfNeededForNode(const Node&);
     void updateLayout();
-    void updateLayoutIgnorePendingStylesheets();
+    enum RunPostLayoutTasks {
+        RunPostLayoutTasksAsyhnchronously,
+        RunPostLayoutTasksSynchronously,
+    };
+    void updateLayoutIgnorePendingStylesheets(RunPostLayoutTasks = RunPostLayoutTasksAsyhnchronously);
     PassRef<RenderStyle> styleForElementIgnoringPendingStylesheets(Element*);
 
     // Returns true if page box (margin boxes and page borders) is visible.
@@ -1042,7 +1046,7 @@ public:
 #if ENABLE(MEDIA_CONTROLS_SCRIPT)
     void registerForPageScaleFactorChangedCallbacks(HTMLMediaElement*);
     void unregisterForPageScaleFactorChangedCallbacks(HTMLMediaElement*);
-    void pageScaleFactorChanged();
+    void pageScaleFactorChangedAndStable();
 #endif
 
 #if ENABLE(PAGE_VISIBILITY_API)
