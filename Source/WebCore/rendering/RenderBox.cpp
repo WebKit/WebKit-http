@@ -67,6 +67,16 @@
 
 namespace WebCore {
 
+struct SameSizeAsRenderBox : public RenderBoxModelObject {
+    virtual ~SameSizeAsRenderBox() { }
+    LayoutRect frameRect;
+    LayoutBoxExtent marginBox;
+    LayoutUnit preferredLogicalWidths[2];
+    void* pointers[2];
+};
+
+COMPILE_ASSERT(sizeof(RenderBox) == sizeof(SameSizeAsRenderBox), RenderBox_should_stay_small);
+
 using namespace HTMLNames;
 
 // Used by flexible boxes when flexing this element and by table cells.
@@ -103,7 +113,6 @@ RenderBox::RenderBox(Element& element, PassRef<RenderStyle> style, unsigned base
     , m_minPreferredLogicalWidth(-1)
     , m_maxPreferredLogicalWidth(-1)
     , m_inlineBoxWrapper(0)
-    , m_repaintTimer(this, &RenderBox::repaintTimerFired)
 {
     setIsBox();
 }
@@ -113,14 +122,13 @@ RenderBox::RenderBox(Document& document, PassRef<RenderStyle> style, unsigned ba
     , m_minPreferredLogicalWidth(-1)
     , m_maxPreferredLogicalWidth(-1)
     , m_inlineBoxWrapper(0)
-    , m_repaintTimer(this, &RenderBox::repaintTimerFired)
 {
     setIsBox();
 }
 
 RenderBox::~RenderBox()
 {
-    m_repaintTimer.stop();
+    view().unscheduleLazyRepaint(*this);
     if (hasControlStatesForRenderer(this))
         removeControlStatesForRenderer(this);
 }
@@ -1136,14 +1144,12 @@ bool RenderBox::nodeAtPoint(const HitTestRequest& request, HitTestResult& result
         }
     }
 
-    RenderRegion* regionToUse = locationInContainer.region();
-    if (regionToUse) {
-        RenderFlowThread* flowThread = regionToUse->flowThread();
+    RenderFlowThread* flowThread = flowThreadContainingBlock();
+    RenderRegion* regionToUse = flowThread ? toRenderNamedFlowFragment(flowThread->currentRegion()) : nullptr;
 
-        // If the box is not contained by this region there's no point in going further.
-        if (!flowThread->objectShouldFragmentInFlowRegion(this, regionToUse))
-            return false;
-    }
+    // If the box is not contained by this region there's no point in going further.
+    if (regionToUse && !flowThread->objectShouldFragmentInFlowRegion(this, regionToUse))
+        return false;
 
     // Check our bounds next. For this purpose always assume that we can only be hit in the
     // foreground phase (which is true for replaced elements like images).
@@ -1213,7 +1219,7 @@ void RenderBox::paintBoxDecorations(PaintInfo& paintInfo, const LayoutPoint& pai
     if (!paintInfo.shouldPaintWithinRoot(*this))
         return;
 
-    LayoutRect paintRect = borderBoxRectInRegion(paintInfo.renderNamedFlowFragment);
+    LayoutRect paintRect = borderBoxRectInRegion(currentRenderNamedFlowFragment());
     paintRect.moveBy(paintOffset);
 
 #if PLATFORM(IOS)
@@ -1257,7 +1263,7 @@ void RenderBox::paintBoxDecorations(PaintInfo& paintInfo, const LayoutPoint& pai
     bool themePainted = style().hasAppearance() && !theme().paint(*this, controlStates, paintInfo, paintRect);
 
     if (controlStates && controlStates->needsRepaint())
-        m_repaintTimer.startOneShot(0);
+        view().scheduleLazyRepaint(*this);
 
     if (!themePainted) {
         if (bleedAvoidance == BackgroundBleedBackgroundOverBorder)
@@ -1685,7 +1691,7 @@ bool RenderBox::pushContentsClip(PaintInfo& paintInfo, const LayoutPoint& accumu
         paintObject(paintInfo, accumulatedOffset);
         paintInfo.phase = PaintPhaseChildBlockBackgrounds;
     }
-    IntRect clipRect = pixelSnappedIntRect(isControlClip ? controlClipRect(accumulatedOffset) : overflowClipRect(accumulatedOffset, paintInfo.renderNamedFlowFragment, IgnoreOverlayScrollbarSize, paintInfo.phase));
+    IntRect clipRect = pixelSnappedIntRect(isControlClip ? controlClipRect(accumulatedOffset) : overflowClipRect(accumulatedOffset, currentRenderNamedFlowFragment(), IgnoreOverlayScrollbarSize, paintInfo.phase));
     paintInfo.context->save();
     if (style().hasBorderRadius())
         paintInfo.context->clipRoundedRect(FloatRoundedRect(style().getRoundedInnerBorderFor(LayoutRect(accumulatedOffset, size()))));
@@ -2134,7 +2140,9 @@ void RenderBox::computeRectForRepaint(const RenderLayerModelObject* repaintConta
     // elements because their absolute position already pushes them down through
     // the regions so adding this here and then adding the topLeft again would cause
     // us to add the height twice.
-    if (o->isOutOfFlowRenderFlowThread() && position != AbsolutePosition) {
+    // The same logic applies for elements flowed directly into the flow thread. Their topLeft member
+    // will already contain the portion rect of the region.
+    if (o->isOutOfFlowRenderFlowThread() && position != AbsolutePosition && containingBlock() != flowThreadContainingBlock()) {
         RenderRegion* firstRegion = nullptr;
         RenderRegion* lastRegion = nullptr;
         if (toRenderFlowThread(o)->getRegionRangeForBox(this, firstRegion, lastRegion))
@@ -4781,12 +4789,6 @@ LayoutUnit RenderBox::offsetFromLogicalTopOfFirstPage() const
 
     RenderBlock* containerBlock = containingBlock();
     return containerBlock->offsetFromLogicalTopOfFirstPage() + logicalTop();
-}
-
-void RenderBox::repaintTimerFired(Timer<RenderBox>&)
-{
-    if (!document().inPageCache())
-        this->repaint();
 }
 
 } // namespace WebCore

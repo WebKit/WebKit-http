@@ -218,6 +218,8 @@ public:
         return locateFlowThreadContainingBlock();
     }
 
+    RenderNamedFlowFragment* currentRenderNamedFlowFragment() const;
+
     // FIXME: The meaning of this function is unclear.
     virtual bool isEmpty() const { return !firstChildSlow(); }
 
@@ -889,10 +891,13 @@ protected:
 
 private:
     RenderFlowThread* locateFlowThreadContainingBlock() const;
+    RenderFlowThread* locateFlowThreadContainingBlockNoCache() const;
+    
     void removeFromRenderFlowThread();
     void removeFromRenderFlowThreadRecursive(RenderFlowThread*);
 
     Color selectionColor(int colorProperty) const;
+    PassRefPtr<RenderStyle> selectionPseudoStyle() const;
 
     Node* generatingPseudoHostElement() const;
 

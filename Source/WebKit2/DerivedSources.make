@@ -49,6 +49,7 @@ VPATH = \
     $(WebKit2)/WebProcess/ResourceCache \
     $(WebKit2)/WebProcess/Scrolling \
     $(WebKit2)/WebProcess/Storage \
+    $(WebKit2)/WebProcess/UserContent \
     $(WebKit2)/WebProcess/WebCoreSupport \
     $(WebKit2)/WebProcess/WebPage \
     $(WebKit2)/WebProcess/ios \
@@ -61,6 +62,7 @@ VPATH = \
     $(WebKit2)/UIProcess/Notifications \
     $(WebKit2)/UIProcess/Plugins \
     $(WebKit2)/UIProcess/Storage \
+    $(WebKit2)/UIProcess/UserContent \
     $(WebKit2)/UIProcess/mac \
     $(WebKit2)/UIProcess/ios \
 #
@@ -133,6 +135,8 @@ MESSAGE_RECEIVERS = \
     WebResourceCacheManager \
     WebResourceCacheManagerProxy \
     WebResourceLoader \
+    WebUserContentController \
+    WebUserContentControllerProxy \
     WebVideoFullscreenManager \
     WebVideoFullscreenManagerProxy \
 #

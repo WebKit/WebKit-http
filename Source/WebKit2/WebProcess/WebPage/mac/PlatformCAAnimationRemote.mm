@@ -46,7 +46,7 @@ static double mediaTimeToCurrentTime(CFTimeInterval t)
     return monotonicallyIncreasingTime() + t - CACurrentMediaTime();
 }
 
-static NSString * const WKNonZeroBeginTimeFlag = @"WKPlatformCAAnimationNonZeroBeginTimeFlag";
+static NSString * const WKExplicitBeginTimeFlag = @"WKPlatformCAAnimationExplicitBeginTimeFlag";
 
 @interface WKAnimationDelegate : NSObject {
     GraphicsLayer::PlatformLayerID _layerID;
@@ -69,17 +69,17 @@ static NSString * const WKNonZeroBeginTimeFlag = @"WKPlatformCAAnimationNonZeroB
 
 - (void)animationDidStart:(CAAnimation *)animation
 {
-    bool hasNonZeroBeginTime = [[animation valueForKey:WKNonZeroBeginTimeFlag] boolValue];
+    bool hasExplicitBeginTime = [[animation valueForKey:WKExplicitBeginTimeFlag] boolValue];
     CFTimeInterval startTime;
 
-    if (hasNonZeroBeginTime) {
+    if (hasExplicitBeginTime) {
         // We don't know what time CA used to commit the animation, so just use the current time
         // (even though this will be slightly off).
         startTime = mediaTimeToCurrentTime(CACurrentMediaTime());
     } else
         startTime = mediaTimeToCurrentTime([animation beginTime]);
 
-    _layerTreeHost->animationDidStart(_layerID, startTime);
+    _layerTreeHost->animationDidStart(_layerID, animation, startTime);
 }
 @end
 
@@ -157,7 +157,7 @@ void PlatformCAAnimationRemote::Properties::encode(IPC::ArgumentEncoder& encoder
     encoder << removedOnCompletion;
     encoder << additive;
     encoder << reverseTimingFunctions;
-    encoder << hasNonZeroBeginTime;
+    encoder << hasExplicitBeginTime;
     
     encoder << keyValues;
     encoder << keyTimes;
@@ -221,7 +221,7 @@ bool PlatformCAAnimationRemote::Properties::decode(IPC::ArgumentDecoder& decoder
     if (!decoder.decode(properties.reverseTimingFunctions))
         return false;
 
-    if (!decoder.decode(properties.hasNonZeroBeginTime))
+    if (!decoder.decode(properties.hasExplicitBeginTime))
         return false;
 
     if (!decoder.decode(properties.keyValues))
@@ -278,8 +278,33 @@ PassRefPtr<PlatformCAAnimation> PlatformCAAnimationRemote::create(PlatformCAAnim
 
 PassRefPtr<PlatformCAAnimation> PlatformCAAnimationRemote::copy() const
 {
-    ASSERT_NOT_REACHED();
-    return nullptr;
+    RefPtr<PlatformCAAnimation> animation = create(animationType(), keyPath());
+    
+    animation->setBeginTime(beginTime());
+    animation->setDuration(duration());
+    animation->setSpeed(speed());
+    animation->setTimeOffset(timeOffset());
+    animation->setRepeatCount(repeatCount());
+    animation->setAutoreverses(autoreverses());
+    animation->setFillMode(fillMode());
+    animation->setRemovedOnCompletion(isRemovedOnCompletion());
+    animation->setAdditive(isAdditive());
+    animation->copyTimingFunctionFrom(this);
+    animation->setValueFunction(valueFunction());
+
+    toPlatformCAAnimationRemote(animation.get())->setHasExplicitBeginTime(hasExplicitBeginTime());
+    
+    // Copy the specific Basic or Keyframe values.
+    if (animationType() == Keyframe) {
+        animation->copyValuesFrom(this);
+        animation->copyKeyTimesFrom(this);
+        animation->copyTimingFunctionsFrom(this);
+    } else {
+        animation->copyFromValueFrom(this);
+        animation->copyToValueFrom(this);
+    }
+    
+    return animation;
 }
 
 PlatformCAAnimationRemote::PlatformCAAnimationRemote(AnimationType type, const String& keyPath)
@@ -308,7 +333,7 @@ void PlatformCAAnimationRemote::setBeginTime(CFTimeInterval value)
     // to the time at which it fired and we need to know whether
     // or not it was 0 to begin with.
     if (value)
-        m_properties.hasNonZeroBeginTime = value;
+        m_properties.hasExplicitBeginTime = value;
 }
 
 CFTimeInterval PlatformCAAnimationRemote::duration() const
@@ -382,7 +407,7 @@ void PlatformCAAnimationRemote::setTimingFunction(const TimingFunction* value, b
 
 void PlatformCAAnimationRemote::copyTimingFunctionFrom(const PlatformCAAnimation* value)
 {
-    ASSERT_NOT_REACHED();
+    copyTimingFunctionsFrom(value);
 }
 
 bool PlatformCAAnimationRemote::isRemovedOnCompletion() const
@@ -464,7 +489,13 @@ void PlatformCAAnimationRemote::setFromValue(const FilterOperation* operation, i
 
 void PlatformCAAnimationRemote::copyFromValueFrom(const PlatformCAAnimation* value)
 {
-    ASSERT_NOT_REACHED();
+    const PlatformCAAnimationRemote* other = toPlatformCAAnimationRemote(value);
+
+    if (other->m_properties.keyValues.isEmpty())
+        return;
+    
+    m_properties.keyValues.resize(2);
+    m_properties.keyValues[0] = other->m_properties.keyValues[0];
 }
 
 void PlatformCAAnimationRemote::setToValue(float value)
@@ -518,7 +549,12 @@ void PlatformCAAnimationRemote::setToValue(const FilterOperation* operation, int
 
 void PlatformCAAnimationRemote::copyToValueFrom(const PlatformCAAnimation* value)
 {
-    ASSERT_NOT_REACHED();
+    const PlatformCAAnimationRemote* other = toPlatformCAAnimationRemote(value);
+
+    if (other->m_properties.keyValues.size() < 2)
+        return;
+    m_properties.keyValues.resize(2);
+    m_properties.keyValues[1] = other->m_properties.keyValues[1];
 }
 
 // Keyframe-animation properties.
@@ -598,7 +634,8 @@ void PlatformCAAnimationRemote::setValues(const Vector<RefPtr<FilterOperation>>&
 
 void PlatformCAAnimationRemote::copyValuesFrom(const PlatformCAAnimation* value)
 {
-    ASSERT_NOT_REACHED();
+    const PlatformCAAnimationRemote* other = toPlatformCAAnimationRemote(value);
+    m_properties.keyValues = other->m_properties.keyValues;
 }
 
 void PlatformCAAnimationRemote::setKeyTimes(const Vector<float>& keyTimes)
@@ -608,7 +645,8 @@ void PlatformCAAnimationRemote::setKeyTimes(const Vector<float>& keyTimes)
 
 void PlatformCAAnimationRemote::copyKeyTimesFrom(const PlatformCAAnimation* value)
 {
-    ASSERT_NOT_REACHED();
+    const PlatformCAAnimationRemote* other = toPlatformCAAnimationRemote(value);
+    m_properties.keyTimes = other->m_properties.keyTimes;
 }
 
 void PlatformCAAnimationRemote::setTimingFunctions(const Vector<const TimingFunction*>& values, bool reverse)
@@ -625,7 +663,10 @@ void PlatformCAAnimationRemote::setTimingFunctions(const Vector<const TimingFunc
 
 void PlatformCAAnimationRemote::copyTimingFunctionsFrom(const PlatformCAAnimation* value)
 {
-    ASSERT_NOT_REACHED();
+    const PlatformCAAnimationRemote* other = toPlatformCAAnimationRemote(value);
+
+    m_properties.timingFunctions = other->m_properties.timingFunctions;
+    m_properties.reverseTimingFunctions = other->m_properties.reverseTimingFunctions;
 }
 
 static NSObject* animationValueFromKeyframeValue(const PlatformCAAnimationRemote::KeyframeValue& keyframeValue)
@@ -718,8 +759,8 @@ static void addAnimationToLayer(CALayer *layer, RemoteLayerTreeHost* layerTreeHo
     if (properties.valueFunction != PlatformCAAnimation::NoValueFunction)
         [caAnimation setValueFunction:[CAValueFunction functionWithName:toCAValueFunctionType(properties.valueFunction)]];
     
-    if (properties.hasNonZeroBeginTime)
-        [caAnimation.get()  setValue:@YES forKey:WKNonZeroBeginTimeFlag];
+    if (properties.hasExplicitBeginTime)
+        [caAnimation setValue:@YES forKey:WKExplicitBeginTimeFlag];
     
     if (layerTreeHost) {
         GraphicsLayer::PlatformLayerID layerID = RemoteLayerTreeHost::layerID(layer);

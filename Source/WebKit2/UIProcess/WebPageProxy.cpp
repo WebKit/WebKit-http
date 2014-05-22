@@ -88,6 +88,7 @@
 #include "WebProcessProxy.h"
 #include "WebProtectionSpace.h"
 #include "WebSecurityOrigin.h"
+#include "WebUserContentControllerProxy.h"
 #include <WebCore/DragController.h>
 #include <WebCore/DragData.h>
 #include <WebCore/FloatRect.h>
@@ -263,6 +264,7 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
     , m_process(process)
     , m_pageGroup(*configuration.pageGroup)
     , m_preferences(*configuration.preferences)
+    , m_userContentController(configuration.userContentController)
     , m_visitedLinkProvider(*configuration.visitedLinkProvider)
     , m_mainFrame(nullptr)
     , m_userAgent(standardUserAgent())
@@ -358,8 +360,11 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
     , m_scrollPinningBehavior(DoNotPin)
     , m_navigationID(0)
 {
-    if (m_process->state() == WebProcessProxy::State::Running)
+    if (m_process->state() == WebProcessProxy::State::Running) {
+        if (m_userContentController)
+            m_userContentController->addProcess(m_process.get());
         m_visitedLinkProvider->addProcess(m_process.get());
+    }
 
     updateViewState();
     updateActivityToken();
@@ -548,7 +553,7 @@ void WebPageProxy::reattachToWebProcess()
     m_drawingArea->waitForBackingStoreUpdateOnNextPaint();
 }
 
-void WebPageProxy::reattachToWebProcessWithItem(WebBackForwardListItem* item)
+uint64_t WebPageProxy::reattachToWebProcessWithItem(WebBackForwardListItem* item)
 {
     if (item && item != m_backForwardList->currentItem())
         m_backForwardList->goToItem(item);
@@ -556,10 +561,14 @@ void WebPageProxy::reattachToWebProcessWithItem(WebBackForwardListItem* item)
     reattachToWebProcess();
 
     if (!item)
-        return;
+        return 0;
 
-    m_process->send(Messages::WebPage::GoToBackForwardItem(item->itemID()), m_pageID);
+    uint64_t navigationID = generateNavigationID();
+
+    m_process->send(Messages::WebPage::GoToBackForwardItem(navigationID, item->itemID()), m_pageID);
     m_process->responsivenessTimer()->start();
+
+    return navigationID;
 }
 
 void WebPageProxy::setSession(API::Session& session)
@@ -618,8 +627,11 @@ void WebPageProxy::close()
 
     m_isClosed = true;
 
-    if (m_process->state() == WebProcessProxy::State::Running)
+    if (m_process->state() == WebProcessProxy::State::Running) {
+        if (m_userContentController)
+            m_userContentController->removeProcess(m_process.get());
         m_visitedLinkProvider->removeProcess(m_process.get());
+    }
 
     m_backForwardList->pageClosed();
     m_pageClient.pageClosed();
@@ -787,7 +799,7 @@ void WebPageProxy::stopLoading()
     m_process->responsivenessTimer()->start();
 }
 
-void WebPageProxy::reload(bool reloadFromOrigin)
+uint64_t WebPageProxy::reload(bool reloadFromOrigin)
 {
     SandboxExtension::Handle sandboxExtensionHandle;
 
@@ -802,13 +814,15 @@ void WebPageProxy::reload(bool reloadFromOrigin)
             m_process->willAcquireUniversalFileReadSandboxExtension();
     }
 
-    if (!isValid()) {
-        reattachToWebProcessWithItem(m_backForwardList->currentItem());
-        return;
-    }
+    if (!isValid())
+        return reattachToWebProcessWithItem(m_backForwardList->currentItem());
 
-    m_process->send(Messages::WebPage::Reload(generateNavigationID(), reloadFromOrigin, sandboxExtensionHandle), m_pageID);
+    uint64_t navigationID = generateNavigationID();
+
+    m_process->send(Messages::WebPage::Reload(navigationID, reloadFromOrigin, sandboxExtensionHandle), m_pageID);
     m_process->responsivenessTimer()->start();
+
+    return navigationID;
 }
 
 void WebPageProxy::recordNavigationSnapshot()
@@ -821,11 +835,11 @@ void WebPageProxy::recordNavigationSnapshot()
 #endif
 }
 
-void WebPageProxy::goForward()
+uint64_t WebPageProxy::goForward()
 {
     WebBackForwardListItem* forwardItem = m_backForwardList->forwardItem();
     if (!forwardItem)
-        return;
+        return 0;
 
     recordNavigationSnapshot();
 
@@ -833,20 +847,22 @@ void WebPageProxy::goForward()
 
     m_pageLoadState.setPendingAPIRequestURL(transaction, forwardItem->url());
 
-    if (!isValid()) {
-        reattachToWebProcessWithItem(forwardItem);
-        return;
-    }
+    if (!isValid())
+        return reattachToWebProcessWithItem(forwardItem);
 
-    m_process->send(Messages::WebPage::GoForward(forwardItem->itemID()), m_pageID);
+    uint64_t navigationID = generateNavigationID();
+
+    m_process->send(Messages::WebPage::GoForward(navigationID, forwardItem->itemID()), m_pageID);
     m_process->responsivenessTimer()->start();
+
+    return navigationID;
 }
 
-void WebPageProxy::goBack()
+uint64_t WebPageProxy::goBack()
 {
     WebBackForwardListItem* backItem = m_backForwardList->backItem();
     if (!backItem)
-        return;
+        return 0;
 
     recordNavigationSnapshot();
 
@@ -854,21 +870,21 @@ void WebPageProxy::goBack()
 
     m_pageLoadState.setPendingAPIRequestURL(transaction, backItem->url());
 
-    if (!isValid()) {
-        reattachToWebProcessWithItem(backItem);
-        return;
-    }
+    if (!isValid())
+        return reattachToWebProcessWithItem(backItem);
 
-    m_process->send(Messages::WebPage::GoBack(backItem->itemID()), m_pageID);
+    uint64_t navigationID = generateNavigationID();
+
+    m_process->send(Messages::WebPage::GoBack(navigationID, backItem->itemID()), m_pageID);
     m_process->responsivenessTimer()->start();
+
+    return navigationID;
 }
 
-void WebPageProxy::goToBackForwardItem(WebBackForwardListItem* item)
+uint64_t WebPageProxy::goToBackForwardItem(WebBackForwardListItem* item)
 {
-    if (!isValid()) {
-        reattachToWebProcessWithItem(item);
-        return;
-    }
+    if (!isValid())
+        return reattachToWebProcessWithItem(item);
 
     recordNavigationSnapshot();
     
@@ -876,8 +892,12 @@ void WebPageProxy::goToBackForwardItem(WebBackForwardListItem* item)
 
     m_pageLoadState.setPendingAPIRequestURL(transaction, item->url());
 
-    m_process->send(Messages::WebPage::GoToBackForwardItem(item->itemID()), m_pageID);
+    uint64_t navigationID = generateNavigationID();
+
+    m_process->send(Messages::WebPage::GoToBackForwardItem(navigationID, item->itemID()), m_pageID);
     m_process->responsivenessTimer()->start();
+
+    return navigationID;
 }
 
 void WebPageProxy::tryRestoreScrollPosition()
@@ -2898,6 +2918,8 @@ void WebPageProxy::connectionWillOpen(IPC::Connection* connection)
 {
     ASSERT(connection == m_process->connection());
 
+    if (m_userContentController)
+        m_userContentController->addProcess(m_process.get());
     m_visitedLinkProvider->addProcess(m_process.get());
 
     m_process->context().storageManager().setAllowedSessionStorageNamespaceConnection(m_pageID, connection);
@@ -3601,7 +3623,7 @@ void WebPageProxy::didChooseFilesForOpenPanel(const Vector<String>& fileURLs)
     if (!isValid())
         return;
 
-#if ENABLE(WEB_PROCESS_SANDBOX)
+#if ENABLE(SANDBOX_EXTENSIONS)
     // FIXME: The sandbox extensions should be sent with the DidChooseFilesForOpenPanel message. This
     // is gated on a way of passing SandboxExtension::Handles in a Vector.
     for (size_t i = 0; i < fileURLs.size(); ++i) {
@@ -4116,13 +4138,6 @@ void WebPageProxy::resetState()
     }
 #endif
 
-#if PLATFORM(IOS)
-    if (m_videoFullscreenManager) {
-        m_videoFullscreenManager->invalidate();
-        m_videoFullscreenManager = nullptr;
-    }
-#endif
-
 #if ENABLE(VIBRATION)
     m_vibration->invalidate();
 #endif
@@ -4131,6 +4146,10 @@ void WebPageProxy::resetState()
         m_openPanelResultListener->invalidate();
         m_openPanelResultListener = nullptr;
     }
+
+#if ENABLE(TOUCH_EVENTS)
+    m_isTrackingTouchEvents = false;
+#endif
 
 #if ENABLE(INPUT_TYPE_COLOR)
     if (m_colorPicker) {
@@ -4157,6 +4176,15 @@ void WebPageProxy::resetState()
 
     m_visibleScrollerThumbRect = IntRect();
 
+#if PLATFORM(IOS)
+    if (m_videoFullscreenManager) {
+        m_videoFullscreenManager->invalidate();
+        m_videoFullscreenManager = nullptr;
+    }
+
+    m_lastVisibleContentRectUpdate = VisibleContentRectUpdateInfo();
+#endif
+
     invalidateCallbackMap(m_voidCallbacks);
     invalidateCallbackMap(m_dataCallbacks);
     invalidateCallbackMap(m_imageCallbacks);
@@ -4176,6 +4204,7 @@ void WebPageProxy::resetState()
     invalidateCallbackMap(m_touchesCallbacks);
     invalidateCallbackMap(m_autocorrectionCallbacks);
     invalidateCallbackMap(m_autocorrectionContextCallbacks);
+    invalidateCallbackMap(m_dictationContextCallbacks);
 #endif
 #if PLATFORM(GTK)
     invalidateCallbackMap(m_printFinishedCallbacks);
@@ -4198,8 +4227,11 @@ void WebPageProxy::resetStateAfterProcessExited()
     // FIXME: It's weird that resetStateAfterProcessExited() is called even though the process is launching.
     ASSERT(m_process->state() == WebProcessProxy::State::Launching || m_process->state() == WebProcessProxy::State::Terminated);
 
-    if (m_process->state() == WebProcessProxy::State::Terminated)
+    if (m_process->state() == WebProcessProxy::State::Terminated) {
+        if (m_userContentController)
+            m_userContentController->removeProcess(m_process.get());
         m_visitedLinkProvider->removeProcess(m_process.get());
+    }
 
     m_process->removeMessageReceiver(Messages::WebPageProxy::messageReceiverName(), m_pageID);
 
@@ -4268,6 +4300,7 @@ WebPageCreationParameters WebPageProxy::creationParameters()
     parameters.sessionState = SessionState(m_backForwardList->entries(), m_backForwardList->currentIndex());
     parameters.sessionID = m_session->getID();
     parameters.highestUsedBackForwardItemID = WebBackForwardListItem::highedUsedItemID();
+    parameters.userContentControllerID = m_userContentController ? m_userContentController->identifier() : 0;
     parameters.visitedLinkTableID = m_visitedLinkProvider->identifier();
     parameters.canRunBeforeUnloadConfirmPanel = m_uiClient->canRunBeforeUnloadConfirmPanel();
     parameters.canRunModal = m_canRunModal;
@@ -4820,8 +4853,8 @@ void WebPageProxy::wrapCryptoKey(const Vector<uint8_t>& key, bool& succeeded, Ve
 void WebPageProxy::unwrapCryptoKey(const Vector<uint8_t>& wrappedKey, bool& succeeded, Vector<uint8_t>& key)
 {
     Vector<uint8_t> masterKey;
-    RefPtr<API::Data> keyData = m_process->context().client().copyWebCryptoMasterKey(&m_process->context());
-    if (keyData)
+
+    if (RefPtr<API::Data> keyData = m_loaderClient->webCryptoMasterKey(*this))
         masterKey = keyData->dataReference().vector();
     else if (!getDefaultWebCryptoMasterKey(masterKey)) {
         succeeded = false;

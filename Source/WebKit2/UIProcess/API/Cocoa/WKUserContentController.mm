@@ -24,36 +24,112 @@
  */
 
 #import "config.h"
-#import "WKUserContentControllerPrivate.h"
+#import "WKUserContentControllerInternal.h"
 
 #if WK_API_ENABLED
 
-#import "_WKScriptWorld.h"
+#import "WKScriptMessageHandler.h"
+#import "WKScriptMessageInternal.h"
+#import "WKUserScriptInternal.h"
+#import "WKWebViewInternal.h"
+#import "WebScriptMessageHandler.h"
+#import "WebUserContentControllerProxy.h"
+#import <JavaScriptCore/JSContext.h>
+#import <JavaScriptCore/JSValue.h>
+#import <WebCore/SerializedScriptValue.h>
+#import <WebCore/UserScript.h>
+#import <wtf/text/StringBuilder.h>
 
-@implementation WKUserContentController
+@implementation WKUserContentController {
+    RetainPtr<NSMutableArray> _userScripts;
+}
+
+- (instancetype)init
+{
+    if (!(self = [super init]))
+        return nil;
+
+    _userContentControllerProxy = WebKit::WebUserContentControllerProxy::create();
+    _userScripts = adoptNS([[NSMutableArray alloc] init]);
+
+    return self;
+}
+
+- (NSArray *)userScripts
+{
+    return _userScripts.get();
+}
+
+static WebCore::UserScriptInjectionTime toWebCoreUserScriptInjectionTime(WKUserScriptInjectionTime injectionTime)
+{
+    switch (injectionTime) {
+    case WKUserScriptInjectionTimeAtDocumentStart:
+        return WebCore::InjectAtDocumentStart;
+
+    case WKUserScriptInjectionTimeAtDocumentEnd:
+        return WebCore::InjectAtDocumentEnd;
+    }
+
+    ASSERT_NOT_REACHED();
+    return WebCore::InjectAtDocumentEnd;
+}
+
+- (void)addUserScript:(WKUserScript *)userScript
+{
+    [_userScripts addObject:userScript];
+
+    StringBuilder urlStringBuilder;
+    urlStringBuilder.append("user-script:");
+    urlStringBuilder.appendNumber([_userScripts count]);
+
+    WebCore::URL url { WebCore::URL { }, urlStringBuilder.toString() };
+    _userContentControllerProxy->addUserScript(WebCore::UserScript { userScript->_source.get(), url, { }, { }, toWebCoreUserScriptInjectionTime(userScript->_injectionTime), userScript->_forMainFrameOnly ? WebCore::InjectInTopFrameOnly : WebCore::InjectInAllFrames });
+}
+
+- (void)removeAllUserScripts
+{
+    [_userScripts removeAllObjects];
+
+    _userContentControllerProxy->removeAllUserScripts();
+}
+
+class ScriptMessageHandlerDelegate final : public WebKit::WebScriptMessageHandler::Client {
+public:
+    ScriptMessageHandlerDelegate(WKUserContentController *controller, id <WKScriptMessageHandler> handler, NSString *name)
+        : m_controller(controller)
+        , m_handler(handler)
+        , m_name(adoptNS([name copy]))
+    {
+    }
+    
+    virtual void didPostMessage(WebKit::WebPageProxy& page, WebKit::WebFrameProxy&, WebCore::SerializedScriptValue& serializedScriptValue)
+    {
+        RetainPtr<JSContext> context = adoptNS([[JSContext alloc] init]);
+        JSValueRef valueRef = serializedScriptValue.deserialize([context JSGlobalContextRef], 0);
+        JSValue *value = [JSValue valueWithJSValueRef:valueRef inContext:context.get()];
+        id body = [value toObject];
+
+        RetainPtr<WKScriptMessage> message = adoptNS([[WKScriptMessage alloc] _initWithBody:body webView:fromWebPageProxy(page) name:m_name.get()]);
+    
+        [m_handler userContentController:m_controller.get() didReceiveScriptMessage:message.get()];
+    }
+
+private:
+    RetainPtr<WKUserContentController> m_controller;
+    RetainPtr<id <WKScriptMessageHandler>> m_handler;
+    RetainPtr<NSString> m_name;
+};
 
 - (void)addScriptMessageHandler:(id <WKScriptMessageHandler>)scriptMessageHandler name:(NSString *)name
 {
-    [self _addScriptMessageHandler:scriptMessageHandler name:name world:[_WKScriptWorld defaultWorld]];
+    RefPtr<WebKit::WebScriptMessageHandler> handler = WebKit::WebScriptMessageHandler::create(std::make_unique<ScriptMessageHandlerDelegate>(self, scriptMessageHandler, name), name);
+    if (!_userContentControllerProxy->addUserScriptMessageHandler(handler.get()))
+        [NSException raise:NSInvalidArgumentException format:@"Attempt to add script message handler with name '%@' when one already exists.", name];
 }
 
 - (void)removeScriptMessageHandlerForName:(NSString *)name
 {
-    [self _removeScriptMessageHandlerForName:name world:[_WKScriptWorld defaultWorld]];
-}
-
-@end
-
-@implementation WKUserContentController (WKPrivate)
-
-- (void)_addScriptMessageHandler:(id <WKScriptMessageHandler>)scriptMessageHandler name:(NSString *)name world:(_WKScriptWorld *)world
-{
-    // FIXME: Implement.
-}
-
-- (void)_removeScriptMessageHandlerForName:(NSString *)name world:(_WKScriptWorld *)world
-{
-    // FIXME: Implement.
+    _userContentControllerProxy->removeUserMessageHandlerForName(name);
 }
 
 @end

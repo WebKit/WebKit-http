@@ -33,6 +33,9 @@ class SVGTRefElement final : public SVGTextPositioningElement,
 public:
     static PassRefPtr<SVGTRefElement> create(const QualifiedName&, Document&);
 
+protected:
+    virtual void didNotifySubtreeInsertions(ContainerNode*) override;
+
 private:
     friend class SVGTRefTargetEventListener;
 
@@ -49,6 +52,8 @@ private:
 
     virtual InsertionNotificationRequest insertedInto(ContainerNode&) override;
     virtual void removedFrom(ContainerNode&) override;
+
+    virtual void clearTarget() override;
 
     void updateReferencedText(Element*);
 

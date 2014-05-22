@@ -73,10 +73,13 @@ struct ViewSnapshot;
 
 - (void)_setHasCustomContentView:(BOOL)hasCustomContentView loadedMIMEType:(const WTF::String&)mimeType;
 - (void)_didFinishLoadingDataForCustomContentProviderWithSuggestedFilename:(const WTF::String&)suggestedFilename data:(NSData *)data;
+- (void)_setViewportMetaTagWidth:(float)newWidth;
 
 - (void)_willInvokeUIScrollViewDelegateCallback;
 - (void)_didInvokeUIScrollViewDelegateCallback;
 #endif
 @end
+
+WKWebView* fromWebPageProxy(WebKit::WebPageProxy&);
 
 #endif

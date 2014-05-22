@@ -48,7 +48,7 @@
 #import "WKPreferencesInternal.h"
 #import "WKProcessPoolInternal.h"
 #import "WKUIDelegate.h"
-#import "WKUserContentController.h"
+#import "WKUserContentControllerInternal.h"
 #import "WKWebViewConfigurationInternal.h"
 #import "WKWebViewContentProvider.h"
 #import "WebBackForwardList.h"
@@ -64,6 +64,8 @@
 #import "_WKRemoteObjectRegistryInternal.h"
 #import "_WKVisitedLinkProviderInternal.h"
 #import "_WKWebsiteDataStoreInternal.h"
+#import <wtf/HashMap.h>
+#import <wtf/NeverDestroyed.h>
 #import <wtf/RetainPtr.h>
 
 #if PLATFORM(IOS)
@@ -78,6 +80,7 @@
 
 @interface UIScrollView (UIScrollViewInternal)
 - (void)_adjustForAutomaticKeyboardInfo:(NSDictionary*)info animated:(BOOL)animated lastAdjustment:(CGFloat*)lastAdjustment;
+- (BOOL)_isScrollingToTop;
 @end
 
 @interface UIPeripheralHost(UIKitInternal)
@@ -103,6 +106,18 @@
 #import <WebCore/ColorMac.h>
 #endif
 
+
+static HashMap<WebKit::WebPageProxy*, WKWebView *>& pageToViewMap()
+{
+    static NeverDestroyed<HashMap<WebKit::WebPageProxy*, WKWebView *>> map;
+    return map;
+}
+
+WKWebView* fromWebPageProxy(WebKit::WebPageProxy& page)
+{
+    return pageToViewMap().get(&page);
+}
+
 @implementation WKWebView {
     std::unique_ptr<WebKit::NavigationState> _navigationState;
     std::unique_ptr<WebKit::UIDelegate> _uiDelegate;
@@ -119,6 +134,7 @@
     CGSize _minimumLayoutSizeOverride;
     CGSize _minimumLayoutSizeOverrideForMinimalUI;
     CGRect _inputViewBounds;
+    CGFloat _viewportMetaTagWidth;
 
     UIEdgeInsets _obscuredInsets;
     bool _isChangingObscuredInsetsInteractively;
@@ -176,6 +192,7 @@
     if (WKWebView *relatedWebView = [_configuration _relatedWebView])
         webPageConfiguration.relatedPage = relatedWebView->_page.get();
 
+    webPageConfiguration.userContentController = [_configuration userContentController]->_userContentControllerProxy.get();
     webPageConfiguration.visitedLinkProvider = [_configuration _visitedLinkProvider]->_visitedLinkProvider.get();
     webPageConfiguration.session = [_configuration _websiteDataStore]->_session.get();
     
@@ -199,6 +216,7 @@
     [_contentView layer].anchorPoint = CGPointZero;
     [_contentView setFrame:bounds];
     [_scrollView addSubview:_contentView.get()];
+    _viewportMetaTagWidth = -1;
 
     [self _frameOrBoundsChanged];
 
@@ -228,16 +246,22 @@
 
     _page->setFindClient(std::make_unique<WebKit::FindClient>(self));
 
+    pageToViewMap().add(_page.get(), self);
+
     return self;
 }
 
 - (void)dealloc
 {
+    _page->close();
+
     [_remoteObjectRegistry _invalidate];
 #if PLATFORM(IOS)
     [[_configuration _contentProviderRegistry] removePage:*_page];
     [[NSNotificationCenter defaultCenter] removeObserver:self];
 #endif
+
+    pageToViewMap().remove(_page.get());
 
     [super dealloc];
 }
@@ -282,10 +306,11 @@
 
 - (WKNavigation *)goToBackForwardListItem:(WKBackForwardListItem *)item
 {
-    _page->goToBackForwardItem(&item._item);
+    uint64_t navigationID = _page->goToBackForwardItem(&item._item);
 
-    // FIXME: return a WKNavigation object.
-    return nil;
+    auto navigation = _navigationState->createBackForwardNavigation(navigationID, item._item);
+
+    return [navigation.leakRef() autorelease];
 }
 
 - (NSString *)title
@@ -327,34 +352,44 @@
 
 - (WKNavigation *)goBack
 {
-    _page->goBack();
+    uint64_t navigationID = _page->goBack();
+    if (!navigationID)
+        return nil;
 
-    // FIXME: Return a navigation object.
-    return nil;
+    ASSERT(_page->backForwardList().currentItem());
+    auto navigation = _navigationState->createBackForwardNavigation(navigationID, *_page->backForwardList().currentItem());
+
+    return [navigation.leakRef() autorelease];
 }
 
 - (WKNavigation *)goForward
 {
-    _page->goForward();
+    uint64_t navigationID = _page->goForward();
+    if (!navigationID)
+        return nil;
 
-    // FIXME: Return a navigation object.
-    return nil;
+    ASSERT(_page->backForwardList().currentItem());
+    auto navigation = _navigationState->createBackForwardNavigation(navigationID, *_page->backForwardList().currentItem());
+
+    return [navigation.leakRef() autorelease];
 }
 
 - (WKNavigation *)reload
 {
-    _page->reload(false);
+    uint64_t navigationID = _page->reload(false);
+    ASSERT(navigationID);
 
-    // FIXME: Return a navigation object.
-    return nil;
+    auto navigation = _navigationState->createReloadNavigation(navigationID);
+    return [navigation.leakRef() autorelease];
 }
 
 - (WKNavigation *)reloadFromOrigin
 {
-    _page->reload(true);
+    uint64_t navigationID = _page->reload(true);
+    ASSERT(navigationID);
 
-    // FIXME: Return a navigation object.
-    return nil;
+    auto navigation = _navigationState->createReloadNavigation(navigationID);
+    return [navigation.leakRef() autorelease];
 }
 
 - (void)stopLoading
@@ -420,6 +455,11 @@
 {
     ASSERT(_customContentView);
     [_customContentView web_setContentProviderData:data suggestedFilename:suggestedFilename];
+}
+
+- (void)_setViewportMetaTagWidth:(float)newWidth
+{
+    _viewportMetaTagWidth = newWidth;
 }
 
 - (void)_willInvokeUIScrollViewDelegateCallback
@@ -556,20 +596,31 @@ static CGFloat contentZoomScale(WKWebView* webView)
 
 - (void)_zoomToRect:(WebCore::FloatRect)targetRect atScale:(double)scale origin:(WebCore::FloatPoint)origin
 {
-    WebCore::FloatSize unobscuredContentSize([self _contentRectForUserInteraction].size);
-    WebCore::FloatSize targetRectSizeAfterZoom = targetRect.size();
-    targetRectSizeAfterZoom.scale(scale);
+    // FIMXE: Some of this could be shared with _scrollToRect.
+    const double visibleRectScaleChange = contentZoomScale(self) / scale;
+    const WebCore::FloatRect visibleRect([self convertRect:self.bounds toView:_contentView.get()]);
+    const WebCore::FloatRect unobscuredRect([self _contentRectForUserInteraction]);
 
-    // Center the target rect in the scroll view.
-    // If the target doesn't fit in the scroll view, center on the gesture location instead.
-    WebCore::FloatPoint zoomCenter = targetRect.center();
+    const WebCore::FloatSize topLeftObscuredInsetAfterZoom((unobscuredRect.minXMinYCorner() - visibleRect.minXMinYCorner()) * visibleRectScaleChange);
+    const WebCore::FloatSize bottomRightObscuredInsetAfterZoom((visibleRect.maxXMaxYCorner() - unobscuredRect.maxXMaxYCorner()) * visibleRectScaleChange);
 
-    if (targetRectSizeAfterZoom.width() > unobscuredContentSize.width())
-        zoomCenter.setX(origin.x());
-    if (targetRectSizeAfterZoom.height() > unobscuredContentSize.height())
-        zoomCenter.setY(origin.y());
+    const WebCore::FloatSize unobscuredRectSizeAfterZoom(unobscuredRect.size() * visibleRectScaleChange);
 
-    [self _zoomToPoint:zoomCenter atScale:scale];
+    // Center to the target rect.
+    WebCore::FloatPoint unobscuredRectLocationAfterZoom = targetRect.location() - (unobscuredRectSizeAfterZoom - targetRect.size()) * 0.5;
+
+    // Center to the tap point instead in case the target rect won't fit in a direction.
+    if (targetRect.width() > unobscuredRectSizeAfterZoom.width())
+        unobscuredRectLocationAfterZoom.setX(origin.x() - unobscuredRectSizeAfterZoom.width() / 2);
+    if (targetRect.height() > unobscuredRectSizeAfterZoom.height())
+        unobscuredRectLocationAfterZoom.setY(origin.y() - unobscuredRectSizeAfterZoom.height() / 2);
+
+    // We have computed where we want the unobscured rect to be. Now adjust for the obscuring insets.
+    WebCore::FloatRect visibleRectAfterZoom(unobscuredRectLocationAfterZoom, unobscuredRectSizeAfterZoom);
+    visibleRectAfterZoom.move(-topLeftObscuredInsetAfterZoom);
+    visibleRectAfterZoom.expand(topLeftObscuredInsetAfterZoom + bottomRightObscuredInsetAfterZoom);
+
+    [self _zoomToPoint:visibleRectAfterZoom.center() atScale:scale];
 }
 
 static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOffset, WebCore::FloatSize contentSize, WebCore::FloatSize unobscuredContentSize)
@@ -916,7 +967,7 @@ static inline void setViewportConfigurationMinimumLayoutSize(WebKit::WebPageProx
 
     CGFloat scaleFactor = contentZoomScale(self);
 
-    BOOL isStableState = !(_isChangingObscuredInsetsInteractively || [_scrollView isDragging] || [_scrollView isDecelerating] || [_scrollView isZooming] || [_scrollView isZoomBouncing] || [_scrollView _isAnimatingZoom]);
+    BOOL isStableState = !(_isChangingObscuredInsetsInteractively || [_scrollView isDragging] || [_scrollView isDecelerating] || [_scrollView isZooming] || [_scrollView isZoomBouncing] || [_scrollView _isAnimatingZoom] || [_scrollView _isScrollingToTop]);
     [_contentView didUpdateVisibleRect:visibleRectInContentCoordinates
         unobscuredRect:unobscuredRectInContentCoordinates
         unobscuredRectInScrollViewCoordinates:unobscuredRect
@@ -1089,10 +1140,7 @@ static inline void setViewportConfigurationMinimumLayoutSize(WebKit::WebPageProx
 
 - (WKNavigation *)_reload
 {
-    _page->reload(false);
-
-    // FIXME: return a WKNavigation object.
-    return nil;
+    return [self reload];
 }
 
 - (NSArray *)_certificateChain
@@ -1577,6 +1625,7 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
         contentOffset.y = -_obscuredInsets.top;
 
     // FIXME: if we have content centered after double tap to zoom, we should also try to keep that rect in view.
+    [_scrollView setContentSize:futureContentSizeInSelfCoordinates];
     [_scrollView setContentOffset:contentOffset];
 
     CGRect visibleRectInContentCoordinates = [self convertRect:newBounds toView:_contentView.get()];
@@ -1597,13 +1646,24 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
         contentViewLayer.sublayerTransform = CATransform3DIdentity;
 
         CGFloat animatingScaleTarget = [[_resizeAnimationView layer] transform].m11;
-        CGFloat currentScale = [[_resizeAnimationView layer] transform].m11 * [[_contentView layer] transform].m11;
-        CGPoint currentScrollOffset = [_scrollView contentOffset];
-        [_scrollView setZoomScale:adjustmentScale * currentScale];
+        CALayer *contentLayer = [_contentView layer];
+        CATransform3D contentLayerTransform = contentLayer.transform;
+        CGFloat currentScale = [[_resizeAnimationView layer] transform].m11 * contentLayerTransform.m11;
 
+        // We cannot use [UIScrollView setZoomScale:] directly because the UIScrollView delegate would get a callback with
+        // an invalid contentOffset. The real content offset is only set below.
+        // Since there is no public API for setting both the zoomScale and the contentOffset, we set the zoomScale manually
+        // on the zoom layer and then only change the contentOffset.
+        CGFloat adjustedScale = adjustmentScale * currentScale;
+        contentLayerTransform.m11 = adjustedScale;
+        contentLayerTransform.m22 = adjustedScale;
+        contentLayer.transform = contentLayerTransform;
+
+        CGPoint currentScrollOffset = [_scrollView contentOffset];
         double horizontalScrollAdjustement = _resizeAnimationTransformAdjustments.m41 * animatingScaleTarget;
         double verticalScrollAdjustment = _resizeAnimationTransformAdjustments.m42 * animatingScaleTarget;
 
+        [_scrollView setContentSize:[_contentView frame].size];
         [_scrollView setContentOffset:CGPointMake(currentScrollOffset.x - horizontalScrollAdjustement, currentScrollOffset.y - verticalScrollAdjustment)];
 
         [_resizeAnimationView removeFromSuperview];
@@ -1686,6 +1746,11 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
     if (![self _isDisplayingPDF])
         return nil;
     return [(WKPDFView *)_customContentView.get() suggestedFilename];
+}
+
+- (CGFloat)_viewportMetaTagWidth
+{
+    return _viewportMetaTagWidth;
 }
 
 // FIXME: Remove this once nobody uses it.

@@ -31,35 +31,34 @@
 #include "PlatformWebView.h"
 #include "StringFunctions.h"
 #include "TestInvocation.h"
-#include <WebKit2/WKAuthenticationChallenge.h>
-#include <WebKit2/WKAuthenticationDecisionListener.h>
-#include <WebKit2/WKContextConfigurationRef.h>
-#include <WebKit2/WKContextPrivate.h>
-#include <WebKit2/WKCredential.h>
-#include <WebKit2/WKIconDatabase.h>
-#include <WebKit2/WKNotification.h>
-#include <WebKit2/WKNotificationManager.h>
-#include <WebKit2/WKNotificationPermissionRequest.h>
-#include <WebKit2/WKNumber.h>
-#include <WebKit2/WKPageGroup.h>
-#include <WebKit2/WKPagePrivate.h>
-#include <WebKit2/WKPreferencesRefPrivate.h>
-#include <WebKit2/WKProtectionSpace.h>
-#include <WebKit2/WKRetainPtr.h>
+#include <WebKit/WKAuthenticationChallenge.h>
+#include <WebKit/WKAuthenticationDecisionListener.h>
+#include <WebKit/WKContextConfigurationRef.h>
+#include <WebKit/WKContextPrivate.h>
+#include <WebKit/WKCredential.h>
+#include <WebKit/WKIconDatabase.h>
+#include <WebKit/WKNotification.h>
+#include <WebKit/WKNotificationManager.h>
+#include <WebKit/WKNotificationPermissionRequest.h>
+#include <WebKit/WKNumber.h>
+#include <WebKit/WKPageGroup.h>
+#include <WebKit/WKPagePrivate.h>
+#include <WebKit/WKPreferencesRefPrivate.h>
+#include <WebKit/WKProtectionSpace.h>
+#include <WebKit/WKRetainPtr.h>
 #include <algorithm>
 #include <cstdio>
 #include <ctype.h>
 #include <stdlib.h>
 #include <string>
-#include <wtf/PassOwnPtr.h>
 #include <wtf/text/CString.h>
 
 #if PLATFORM(COCOA)
-#include <WebKit2/WKPagePrivateMac.h>
+#include <WebKit/WKPagePrivateMac.h>
 #endif
 
 #if !PLATFORM(COCOA)
-#include <WebKit2/WKTextChecker.h>
+#include <WebKit/WKTextChecker.h>
 #endif
 
 namespace WTR {
@@ -335,11 +334,13 @@ void TestController::initialize(int argc, const char* argv[])
 
         const char separator = '/';
 
+        WKContextConfigurationSetIndexedDBDatabaseDirectory(configuration.get(), toWK(temporaryFolder + separator + "Databases" + separator + "IndexedDB").get());
         WKContextConfigurationSetLocalStorageDirectory(configuration.get(), toWK(temporaryFolder + separator + "LocalStorage").get());
+        WKContextConfigurationSetWebSQLDatabaseDirectory(configuration.get(), toWK(temporaryFolder + separator + "Databases" + separator + "WebSQL").get());
     }
 
     m_context = adoptWK(WKContextCreateWithConfiguration(configuration.get()));
-    m_geolocationProvider = adoptPtr(new GeolocationProviderMock(m_context.get()));
+    m_geolocationProvider = std::make_unique<GeolocationProviderMock>(m_context.get());
 
 #if PLATFORM(IOS) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED > 1080)
     WKContextSetUsesNetworkProcess(m_context.get(), true);
@@ -353,7 +354,6 @@ void TestController::initialize(int argc, const char* argv[])
 
         // FIXME: These should be migrated to WKContextConfigurationRef.
         WKContextSetApplicationCacheDirectory(m_context.get(), toWK(temporaryFolder + separator + "ApplicationCache").get());
-        WKContextSetDatabaseDirectory(m_context.get(), toWK(temporaryFolder + separator + "Databases").get());
         WKContextSetDiskCacheDirectory(m_context.get(), toWK(temporaryFolder + separator + "Cache").get());
         WKContextSetCookieStorageDirectory(m_context.get(), toWK(temporaryFolder + separator + "Cookies").get());
         WKContextSetIconDatabasePath(m_context.get(), toWK(temporaryFolder + separator + "IconDatabase" + separator + "WebpageIcons.db").get());
@@ -417,7 +417,7 @@ void TestController::initialize(int argc, const char* argv[])
 
 void TestController::createWebViewWithOptions(WKDictionaryRef options)
 {
-    m_mainWebView = adoptPtr(new PlatformWebView(m_context.get(), m_pageGroup.get(), 0, options));
+    m_mainWebView = std::make_unique<PlatformWebView>(m_context.get(), m_pageGroup.get(), nullptr, options);
     WKPageUIClientV2 pageUIClient = {
         { 2, m_mainWebView.get() },
         0, // createNewPage_deprecatedForUseWithV0
@@ -615,7 +615,7 @@ bool TestController::resetStateToConsistentValues()
     // FIXME: This function should also ensure that there is only one page open.
 
     // Reset the EventSender for each test.
-    m_eventSenderProxy = adoptPtr(new EventSenderProxy(this));
+    m_eventSenderProxy = std::make_unique<EventSenderProxy>(this);
 
     // FIXME: Is this needed? Nothing in TestController changes preferences during tests, and if there is
     // some other code doing this, it should probably be responsible for cleanup too.
@@ -759,7 +759,7 @@ bool TestController::runTest(const char* inputLine)
 
     m_state = RunningTest;
 
-    m_currentInvocation = adoptPtr(new TestInvocation(command.pathOrURL));
+    m_currentInvocation = std::make_unique<TestInvocation>(command.pathOrURL);
     if (command.shouldDumpPixels || m_shouldDumpPixelsForAllTests)
         m_currentInvocation->setIsPixelTest(command.expectedPixelHash);
     if (command.timeout > 0)
@@ -768,7 +768,7 @@ bool TestController::runTest(const char* inputLine)
     platformWillRunTest(*m_currentInvocation);
 
     m_currentInvocation->invoke();
-    m_currentInvocation.clear();
+    m_currentInvocation = nullptr;
 
     return true;
 }

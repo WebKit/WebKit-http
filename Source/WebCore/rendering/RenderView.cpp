@@ -102,6 +102,7 @@ RenderView::RenderView(Document& document, PassRef<RenderStyle> style)
     , m_selectionEndPos(-1)
     , m_rendererCount(0)
     , m_maximalOutlineSize(0)
+    , m_lazyRepaintTimer(this, &RenderView::lazyRepaintTimerFired)
     , m_pageLogicalHeight(0)
     , m_pageLogicalHeightChanged(false)
     , m_layoutState(nullptr)
@@ -134,6 +135,38 @@ RenderView::RenderView(Document& document, PassRef<RenderStyle> style)
 
 RenderView::~RenderView()
 {
+}
+
+void RenderView::scheduleLazyRepaint(RenderBox& renderer)
+{
+    if (renderer.renderBoxNeedsLazyRepaint())
+        return;
+    renderer.setRenderBoxNeedsLazyRepaint(true);
+    m_renderersNeedingLazyRepaint.add(&renderer);
+    if (!m_lazyRepaintTimer.isActive())
+        m_lazyRepaintTimer.startOneShot(0);
+}
+
+void RenderView::unscheduleLazyRepaint(RenderBox& renderer)
+{
+    if (!renderer.renderBoxNeedsLazyRepaint())
+        return;
+    renderer.setRenderBoxNeedsLazyRepaint(false);
+    m_renderersNeedingLazyRepaint.remove(&renderer);
+    if (m_renderersNeedingLazyRepaint.isEmpty())
+        m_lazyRepaintTimer.stop();
+}
+
+void RenderView::lazyRepaintTimerFired(Timer<RenderView>&)
+{
+    bool shouldRepaint = !document().inPageCache();
+
+    for (auto& renderer : m_renderersNeedingLazyRepaint) {
+        if (shouldRepaint)
+            renderer->repaint();
+        renderer->setRenderBoxNeedsLazyRepaint(false);
+    }
+    m_renderersNeedingLazyRepaint.clear();
 }
 
 bool RenderView::hitTest(const HitTestRequest& request, HitTestResult& result)
@@ -834,21 +867,19 @@ void RenderView::setSelection(RenderObject* start, int startPos, RenderObject* e
 
 void RenderView::splitSelectionBetweenSubtrees(RenderObject* start, int startPos, RenderObject* end, int endPos, SelectionRepaintMode blockRepaintMode)
 {
-    // Get ranges.
-    typedef HashMap<SelectionSubtreeRoot*, RefPtr<Range> > RenderSubtreesMap;
+    // Compute the visible selection end points for each of the subtrees.
+    typedef HashMap<SelectionSubtreeRoot*, SelectionSubtreeRoot> RenderSubtreesMap;
     RenderSubtreesMap renderSubtreesMap;
 
-    // Initialize map for RenderView and all RenderNamedFlowThreads.
-    renderSubtreesMap.set(this, nullptr);
+    SelectionSubtreeRoot initialSelection;
+    renderSubtreesMap.set(this, initialSelection);
     for (auto* namedFlowThread : *flowThreadController().renderNamedFlowThreadList())
-        renderSubtreesMap.set(namedFlowThread, nullptr);
+        renderSubtreesMap.set(namedFlowThread, initialSelection);
 
     if (start && end) {
-        RefPtr<Range> initialRange = Range::create(document(), start->node(), startPos, end->node(), endPos);
-
-        Node* startNode = initialRange->startContainer();
-        Node* endNode = initialRange->endContainer();
-        Node* stopNode = initialRange->pastLastNode();
+        Node* startNode = start->node();
+        Node* endNode = end->node();
+        Node* stopNode = NodeTraversal::nextSkippingChildren(endNode);
 
         for (Node* node = startNode; node != stopNode; node = NodeTraversal::next(node)) {
             RenderObject* renderer = node->renderer();
@@ -856,46 +887,27 @@ void RenderView::splitSelectionBetweenSubtrees(RenderObject* start, int startPos
                 continue;
 
             SelectionSubtreeRoot& root = renderer->selectionRoot();
-            RefPtr<Range> range = renderSubtreesMap.get(&root);
-            if (!range) {
-                range = Range::create(document());
-
-                if (node == startNode)
-                    range->setStart(node, startPos);
-                else
-                    range->setStart(node, 0);
-
-                renderSubtreesMap.set(&root, range);
+            SelectionSubtreeRoot selectionData = renderSubtreesMap.get(&root);
+            if (selectionData.selectionClear()) {
+                selectionData.setSelectionStart(node->renderer());
+                selectionData.setSelectionStartPos(node == startNode ? startPos : 0);
             }
 
+            selectionData.setSelectionEnd(node->renderer());
             if (node == endNode)
-                range->setEnd(node, endPos);
+                selectionData.setSelectionEndPos(endPos);
             else
-                range->setEnd(node, node->offsetInCharacters() ? node->maxCharacterOffset() : node->childNodeCount());
+                selectionData.setSelectionEndPos(node->offsetInCharacters() ? node->maxCharacterOffset() : node->childNodeCount());
+
+            renderSubtreesMap.set(&root, selectionData);
         }
     }
 
     for (RenderSubtreesMap::iterator i = renderSubtreesMap.begin(); i != renderSubtreesMap.end(); ++i) {
-        RefPtr<Range> range = i->value;
-
-        RenderObject* newStart;
-        int newStartPos;
-        RenderObject* newEnd;
-        int newEndPos;
-
-        if (range) {
-            newStart = range->startContainer()->renderer();
-            newStartPos = range->startOffset();
-            newEnd = range->endContainer()->renderer();
-            newEndPos = range->endOffset();
-        } else {
-            newStart = 0;
-            newStartPos = -1;
-            newEnd = 0;
-            newEndPos = -1;
-        }
-
-        setSubtreeSelection(*i->key, newStart, newStartPos, newEnd, newEndPos, blockRepaintMode);
+        SelectionSubtreeRoot subtreeSelectionData = i->value;
+        subtreeSelectionData.adjustForVisibleSelection(document());
+        setSubtreeSelection(*i->key, subtreeSelectionData.selectionStart(), subtreeSelectionData.selectionStartPos(),
+            subtreeSelectionData.selectionEnd(), subtreeSelectionData.selectionEndPos(), blockRepaintMode);
     }
 }
 

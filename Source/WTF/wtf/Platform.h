@@ -474,6 +474,7 @@
 
 #define WTF_USE_CF 1
 #define WTF_USE_FOUNDATION 1
+#define ENABLE_USER_MESSAGE_HANDLERS 1
 
 #endif
 

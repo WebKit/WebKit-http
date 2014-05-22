@@ -126,8 +126,13 @@ FloatSize WebPage::availableScreenSize() const
 
 void WebPage::viewportPropertiesDidChange(const ViewportArguments& viewportArguments)
 {
+    float oldWidth = m_viewportConfiguration.viewportArguments().width;
+
     m_viewportConfiguration.setViewportArguments(viewportArguments);
     viewportConfigurationChanged();
+
+    if (oldWidth != viewportArguments.width)
+        send(Messages::WebPageProxy::ViewportMetaTagWidthDidChange(viewportArguments.width));
 }
 
 void WebPage::didReceiveMobileDocType(bool isMobileDoctype)
@@ -1768,8 +1773,10 @@ static inline bool hasFocusableElement(Node* startNode, Page* page, bool isForwa
 void WebPage::focusNextAssistedNode(bool isForward)
 {
     Element* nextElement = nextFocusableElement(m_assistedNode.get(), m_page.get(), isForward);
+    m_userIsInteracting = true;
     if (nextElement)
         nextElement->focus();
+    m_userIsInteracting = false;
 }
 
 void WebPage::getAssistedNodeInformation(AssistedNodeInformation& information)
@@ -1871,7 +1878,14 @@ void WebPage::elementDidFocus(WebCore::Node* node)
         AssistedNodeInformation information;
         getAssistedNodeInformation(information);
         RefPtr<API::Object> userData;
-        m_formClient->willBeginInputSession(this, toElement(node), WebFrame::fromCoreFrame(*node->document().frame()), userData);
+
+        // FIXME: We check m_userIsInteracting so that we don't begin an input session for a
+        // programmatic focus that doesn't cause the keyboard to appear. But this misses the case of
+        // a programmatic focus happening while the keyboard is already shown. Once we have a way to
+        // know the keyboard state in the Web Process, we should refine the condition.
+        if (m_userIsInteracting)
+            m_formClient->willBeginInputSession(this, toElement(node), WebFrame::fromCoreFrame(*node->document().frame()), userData);
+
         send(Messages::WebPageProxy::StartAssistingNode(information, m_userIsInteracting, InjectedBundleUserMessageEncoder(userData.get())));
     }
 }
@@ -1886,12 +1900,14 @@ void WebPage::elementDidBlur(WebCore::Node* node)
 
 void WebPage::setViewportConfigurationMinimumLayoutSize(const FloatSize& size)
 {
+    resetTextAutosizingBeforeLayoutIfNeeded(m_viewportConfiguration.minimumLayoutSize(), size);
     m_viewportConfiguration.setMinimumLayoutSize(size);
     viewportConfigurationChanged();
 }
 
 void WebPage::setMinimumLayoutSizeForMinimalUI(const FloatSize& size)
 {
+    resetTextAutosizingBeforeLayoutIfNeeded(m_minimumLayoutSizeForMinimalUI, size);
     m_minimumLayoutSizeForMinimalUI = size;
     viewportConfigurationChanged();
 }
@@ -1899,6 +1915,19 @@ void WebPage::setMinimumLayoutSizeForMinimalUI(const FloatSize& size)
 static inline bool withinEpsilon(float a, float b)
 {
     return fabs(a - b) < std::numeric_limits<float>::epsilon();
+}
+
+void WebPage::resetTextAutosizingBeforeLayoutIfNeeded(const FloatSize& oldSize, const FloatSize& newSize)
+{
+    if (oldSize.width() == newSize.width())
+        return;
+
+    for (Frame* frame = &m_page->mainFrame(); frame; frame = frame->tree().traverseNext()) {
+        Document* document = frame->document();
+        if (!document || !document->renderView())
+            continue;
+        document->renderView()->resetTextAutosizing();
+    }
 }
 
 void WebPage::dynamicViewportSizeUpdate(const FloatSize& minimumLayoutSize, const FloatRect& targetExposedContentRect, const FloatRect& targetUnobscuredRect, const WebCore::FloatRect& targetUnobscuredRectInScrollViewCoordinates, double targetScale)
@@ -1914,10 +1943,12 @@ void WebPage::dynamicViewportSizeUpdate(const FloatSize& minimumLayoutSize, cons
     m_dynamicSizeUpdateHistory.add(std::make_pair(oldContentSize, oldPageScaleFactor), IntPoint(frameView.scrollOffset()));
 
     RefPtr<Node> oldNodeAtCenter;
+    double visibleHorizontalFraction = 1;
     float relativeHorizontalPositionInNodeAtCenter = 0;
     float relativeVerticalPositionInNodeAtCenter = 0;
     {
         IntRect unobscuredContentRect = frameView.unobscuredContentRect();
+        visibleHorizontalFraction = static_cast<float>(unobscuredContentRect.width()) / oldContentSize.width();
         IntPoint unobscuredContentRectCenter = unobscuredContentRect.center();
 
         HitTestRequest request(HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::DisallowShadowContent);
@@ -1937,6 +1968,7 @@ void WebPage::dynamicViewportSizeUpdate(const FloatSize& minimumLayoutSize, cons
         }
     }
 
+    resetTextAutosizingBeforeLayoutIfNeeded(m_viewportConfiguration.minimumLayoutSize(), minimumLayoutSize);
     m_viewportConfiguration.setMinimumLayoutSize(minimumLayoutSize);
     IntSize newLayoutSize = m_viewportConfiguration.layoutSize();
     setFixedLayoutSize(newLayoutSize);
@@ -1949,6 +1981,14 @@ void WebPage::dynamicViewportSizeUpdate(const FloatSize& minimumLayoutSize, cons
         scale = m_viewportConfiguration.initialScale();
     else
         scale = std::max(std::min(targetScale, m_viewportConfiguration.maximumScale()), m_viewportConfiguration.minimumScale());
+
+    if (m_userHasChangedPageScaleFactor && newContentSize.width() != oldContentSize.width()) {
+        // When the content size change, we keep the same relative horizontal content width in view, otherwise we would
+        // end up zoom to far in landscape->portrait, and too close in portrait->landscape.
+        float widthToKeepInView = visibleHorizontalFraction * newContentSize.width();
+        double newScale = targetUnobscuredRectInScrollViewCoordinates.width() / widthToKeepInView;
+        scale = std::max(std::min(newScale, m_viewportConfiguration.maximumScale()), m_viewportConfiguration.minimumScale());
+    }
 
     FloatRect newUnobscuredContentRect = targetUnobscuredRect;
     FloatRect newExposedContentRect = targetExposedContentRect;
@@ -1981,12 +2021,14 @@ void WebPage::dynamicViewportSizeUpdate(const FloatSize& minimumLayoutSize, cons
         newUnobscuredContentRect.setWidth(std::min(static_cast<float>(newContentSize.width()), newUnobscuredContentRect.width()));
         newUnobscuredContentRect.setHeight(std::min(static_cast<float>(newContentSize.height()), newUnobscuredContentRect.height()));
 
+        bool positionWasRestoredFromSizeUpdateHistory = false;
         const auto& previousPosition = m_dynamicSizeUpdateHistory.find(std::pair<IntSize, float>(newContentSize, scale));
         if (previousPosition != m_dynamicSizeUpdateHistory.end()) {
             IntPoint restoredPosition = previousPosition->value;
             FloatPoint deltaPosition(restoredPosition.x() - newUnobscuredContentRect.x(), restoredPosition.y() - newUnobscuredContentRect.y());
             newUnobscuredContentRect.moveBy(deltaPosition);
             newExposedContentRect.moveBy(deltaPosition);
+            positionWasRestoredFromSizeUpdateHistory = true;
         } else if (oldContentSize != newContentSize) {
             FloatPoint newRelativeContentCenter;
 
@@ -2009,14 +2051,29 @@ void WebPage::dynamicViewportSizeUpdate(const FloatSize& minimumLayoutSize, cons
         }
 
         // Make the top/bottom edges "sticky" within 1 pixel.
-        if (targetUnobscuredRect.maxY() > oldContentSize.height() - 1) {
-            float bottomVerticalPosition = newContentSize.height() - newUnobscuredContentRect.height();
-            newUnobscuredContentRect.setY(bottomVerticalPosition);
-            newExposedContentRect.setY(bottomVerticalPosition);
-        }
-        if (targetUnobscuredRect.y() < 1) {
-            newUnobscuredContentRect.setY(0);
-            newExposedContentRect.setY(0);
+        if (!positionWasRestoredFromSizeUpdateHistory) {
+            if (targetUnobscuredRect.maxY() > oldContentSize.height() - 1) {
+                float bottomVerticalPosition = newContentSize.height() - newUnobscuredContentRect.height();
+                newUnobscuredContentRect.setY(bottomVerticalPosition);
+                newExposedContentRect.setY(bottomVerticalPosition);
+            }
+            if (targetUnobscuredRect.y() < 1) {
+                newUnobscuredContentRect.setY(0);
+                newExposedContentRect.setY(0);
+            }
+
+            bool likelyResponsiveDesignViewport = newLayoutSize.width() == minimumLayoutSize.width() && withinEpsilon(scale, 1);
+            bool contentBleedsOutsideLayoutWidth = newContentSize.width() > newLayoutSize.width();
+            bool originalScrollPositionWasOnTheLeftEdge = targetUnobscuredRect.x() <= 0;
+            if (likelyResponsiveDesignViewport && contentBleedsOutsideLayoutWidth && originalScrollPositionWasOnTheLeftEdge) {
+                // This is a special heuristics for "responsive" design with odd layout. It is quite common for responsive design
+                // to have content "bleeding" outside of the minimal layout width, usually from an image or table larger than expected.
+                // In those cases, the design usually does not adapt to the new width and remain at the newLayoutSize except for the
+                // large boxes.
+                // It is worth revisiting this special case as web developers get better with responsive design.
+                newExposedContentRect.setX(0);
+                newUnobscuredContentRect.setX(0);
+            }
         }
 
         float horizontalAdjustment = 0;
@@ -2042,6 +2099,10 @@ void WebPage::dynamicViewportSizeUpdate(const FloatSize& minimumLayoutSize, cons
     m_drawingArea->setExposedContentRect(newExposedContentRect);
 
     scalePage(scale, roundedUnobscuredContentRect.location());
+
+    frameView.updateLayoutAndStyleIfNeededRecursive();
+    IntRect fixedPositionLayoutRect = enclosingIntRect(frameView.viewportConstrainedObjectsRect());
+    frameView.setCustomFixedPositionLayoutRect(fixedPositionLayoutRect);
 
     FloatSize unobscuredContentRectSizeInContentCoordinates = newUnobscuredContentRect.size();
     unobscuredContentRectSizeInContentCoordinates.scale(scale);
@@ -2154,7 +2215,16 @@ void WebPage::updateVisibleContentRects(const VisibleContentRectUpdateInfo& visi
     m_hasReceivedVisibleContentRectsAfterDidCommitLoad = true;
     m_lastVisibleContentRectUpdateID = visibleContentRectUpdateInfo.updateID();
 
-    double boundedScale = std::min(m_viewportConfiguration.maximumScale(), std::max(m_viewportConfiguration.minimumScale(), visibleContentRectUpdateInfo.scale()));
+    double scaleNoiseThreshold = 0.005;
+    double filteredScale = visibleContentRectUpdateInfo.scale();
+    double currentScale = m_page->pageScaleFactor();
+    if (!visibleContentRectUpdateInfo.inStableState() && fabs(filteredScale - m_page->pageScaleFactor()) < scaleNoiseThreshold) {
+        // Tiny changes of scale during interactive zoom cause content to jump by one pixel, creating
+        // visual noise. We filter those useless updates.
+        filteredScale = currentScale;
+    }
+
+    double boundedScale = std::min(m_viewportConfiguration.maximumScale(), std::max(m_viewportConfiguration.minimumScale(), filteredScale));
 
     FloatRect exposedRect = visibleContentRectUpdateInfo.exposedRect();
     FloatRect adjustedExposedRect = adjustExposedRectForBoundedScale(exposedRect, visibleContentRectUpdateInfo.scale(), boundedScale);
@@ -2165,7 +2235,7 @@ void WebPage::updateVisibleContentRects(const VisibleContentRectUpdateInfo& visi
 
     float floatBoundedScale = boundedScale;
     bool hasSetPageScale = false;
-    if (floatBoundedScale != m_page->pageScaleFactor()) {
+    if (floatBoundedScale != currentScale) {
         m_scaleWasSetByUIProcess = true;
 
         m_dynamicSizeUpdateHistory.clear();

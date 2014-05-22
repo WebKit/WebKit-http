@@ -74,9 +74,14 @@ public:
     void updateAfterLayout(UpdateAfterLayoutFlags);
     
     // Returns true if layer configuration changed.
-    bool updateGraphicsLayerConfiguration();
+    bool updateConfiguration();
+
     // Update graphics layer position and bounds.
-    void updateGraphicsLayerGeometry(); // make private
+    void updateGeometry();
+
+    // Update state the requires that descendant layers have been updated.
+    void updateAfterDescendents();
+
     // Update contents and clipping structure.
     void updateDrawsContent();
     
@@ -251,13 +256,13 @@ private:
     // Result is transform origin in device pixels.
     FloatPoint3D computeTransformOriginForPainting(const LayoutRect& borderBox) const;
 
-    void updateOpacity(const RenderStyle*);
-    void updateTransform(const RenderStyle*);
+    void updateOpacity(const RenderStyle&);
+    void updateTransform(const RenderStyle&);
 #if ENABLE(CSS_FILTERS)
-    void updateFilters(const RenderStyle*);
+    void updateFilters(const RenderStyle&);
 #endif
 #if ENABLE(CSS_COMPOSITING)
-    void updateBlendMode(const RenderStyle*);
+    void updateBlendMode(const RenderStyle&);
 #endif
     // Return the opacity value that this layer should use for compositing.
     float compositingOpacity(float rendererOpacity) const;
@@ -282,7 +287,7 @@ private:
 
     void resetContentsRect();
 
-    bool hasVisibleNonCompositingDescendantLayers() const;
+    bool isPaintDestinationForDescendentLayers() const;
 
     bool shouldClipCompositedBounds() const;
 
@@ -291,7 +296,7 @@ private:
 
     void paintIntoLayer(const GraphicsLayer*, GraphicsContext*, const IntRect& paintDirtyRect, PaintBehavior, GraphicsLayerPaintingPhase);
 
-    // Helper function for updateGraphicsLayerGeometry.
+    // Helper function for updateGeometry.
     void adjustAncestorCompositingBoundsForFlowThread(LayoutRect& ancestorCompositingBounds, const RenderLayer* compositingAncestor) const;
 
     static CSSPropertyID graphicsLayerToCSSProperty(AnimatedPropertyID);

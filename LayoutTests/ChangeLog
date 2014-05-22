@@ -1,3 +1,1114 @@
+2014-05-20  Daniel Bates  <dabates@apple.com>
+
+        Element within flattened frame may update its scroll state during the layout phase of the wrong RenderView
+        https://bugs.webkit.org/show_bug.cgi?id=133013
+        <rdar://problem/16760154>
+
+        Reviewed by David Hyatt.
+
+        Added tests to ensure that that we update the scroll state of an element during the layout phase of its
+        associated RenderView.
+
+        * fast/frames/flattening/scrollable-flexbox-inside-iframe-with-zero-height-and-needs-full-repaint-crash-expected.txt: Added.
+        * fast/frames/flattening/scrollable-flexbox-inside-iframe-with-zero-height-and-needs-full-repaint-crash.html: Added.
+        * fast/frames/flattening/scrollable-flexbox-inside-iframe-with-zero-height-assertion-failure-expected.txt: Added.
+        * fast/frames/flattening/scrollable-flexbox-inside-iframe-with-zero-height-assertion-failure.html: Added.
+
+2014-05-19  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        JSArray::shiftCountWith* could be more efficient
+        https://bugs.webkit.org/show_bug.cgi?id=133011
+
+        Reviewed by Geoffrey Garen.
+
+        Added a performance regression test which tests the contiguous shift case. We're ~85% faster 
+        on this microbenchmark with this patch.
+
+        Also added a bunch of tests for each permutation of contiguous/array storage with no holes, holes,
+        and holes that require special behavior (e.g. indexed properties in the prototype chain).
+
+        * js/array-storage-splice-holes-expected.txt: Added.
+        * js/array-storage-splice-holes-require-special-behavior-expected.txt: Added.
+        * js/array-storage-splice-holes-require-special-behavior.html: Added.
+        * js/array-storage-splice-holes.html: Added.
+        * js/array-storage-splice-no-holes-expected.txt: Added.
+        * js/array-storage-splice-no-holes.html: Added.
+        * js/contiguous-splice-holes-expected.txt: Added.
+        * js/contiguous-splice-holes-require-special-behavior-expected.txt: Added.
+        * js/contiguous-splice-holes-require-special-behavior.html: Added.
+        * js/contiguous-splice-holes.html: Added.
+        * js/contiguous-splice-no-holes-expected.txt: Added.
+        * js/contiguous-splice-no-holes.html: Added.
+        * js/regress/array-splice-contiguous-expected.txt: Added.
+        * js/regress/array-splice-contiguous.html: Added.
+        * js/regress/script-tests/array-splice-contiguous.js: Added.
+        (foo):
+        * js/script-tests/array-storage-splice-holes-require-special-behavior.js: Added.
+        * js/script-tests/array-storage-splice-holes.js: Added.
+        * js/script-tests/array-storage-splice-no-holes.js: Added.
+        * js/script-tests/contiguous-splice-holes-require-special-behavior.js: Added.
+        * js/script-tests/contiguous-splice-holes.js: Added.
+        * js/script-tests/contiguous-splice-no-holes.js: Added.
+
+2014-05-20  Radu Stavila  <stavila@adobe.com>
+
+        REGRESSION: [CSS Regions] Content flowed directly into the flow thread that ends up in the second region is not properly repainted
+        https://bugs.webkit.org/show_bug.cgi?id=133111
+
+        Reviewed by David Hyatt.
+
+        Added test for the correct repaint of an element flowed directly into the second region of a flow thread.
+
+        * fast/regions/hover-element-flowed-second-region-expected.html: Added.
+        * fast/regions/hover-element-flowed-second-region.html: Added.
+
+2014-05-20  Prashant Hiremath  <hiremathprashants@gmail.com>
+
+        Only set title on SVG documents
+        https://bugs.webkit.org/show_bug.cgi?id=133068
+
+        Reviewed by Dirk Schulze.
+
+        * svg/custom/html_document_set_title-expected.txt: Added.
+        * svg/custom/html_document_set_title.html: Added.
+
+2014-05-20  Alexey Proskuryakov  <ap@apple.com>
+
+        REGRESSION(r169105): fast/regions/cssom/region-range-for-box-crash.html is more crashy than before
+        https://bugs.webkit.org/show_bug.cgi?id=133124
+
+        * TestExpectations: Skip it.
+
+2014-05-20  Anders Carlsson  <andersca@apple.com>
+
+        Skip http/tests/inspector/replay/document-last-modified-fallback-value.html since it asserts.
+
+        * TestExpectations:
+
+2014-05-20  David Kilzer  <ddkilzer@apple.com>
+
+        Make fast/dom/remove-element-with-{id|name}-that-was-inserted-on-DOMNodeRemoved.html reliable
+        <http://webkit.org/b/133088>
+
+        Reviewed by Alexey Proskuryakov.
+
+        * fast/dom/remove-element-with-id-that-was-inserted-on-DOMNodeRemoved.html:
+        * fast/dom/remove-element-with-name-that-was-inserted-on-DOMNodeRemoved.html:
+        - Use waitUntilDone()/notifyDone() to make the tests reliable
+          since they use setTimeout().
+
+2014-05-20  Radu Stavila  <stavila@adobe.com>
+
+        [CSS Regions] Block incorrectly sized when containing an unsplittable box
+        https://bugs.webkit.org/show_bug.cgi?id=132601
+
+        Reviewed by Antti Koivisto.
+
+        Added tests for the layout of elements following inline-block elements 
+        that overflow their region, with and without anonymous blocks.
+
+        * fast/regions/inline-block-inside-anonymous-overflow-expected.html: Added.
+        * fast/regions/inline-block-inside-anonymous-overflow.html: Added.
+        * fast/regions/inline-block-overflow-expected.html: Added.
+        * fast/regions/inline-block-overflow.html: Added.
+
+2014-05-20  Zoltan Horvath  <zoltan@webkit.org>
+
+        [CSS Regions] Add polygon tests for shapes on regions and shapes on the content flow
+        https://bugs.webkit.org/show_bug.cgi?id=133107
+
+        Reviewed by Mihnea Ovidenie.
+
+        * fast/regions/shape-outside-floats/regions-shape-outside-region-polygon-floats-expected.html: Added.
+        * fast/regions/shape-outside-floats/regions-shape-outside-region-polygon-floats.html: Added.
+
+2014-05-20  Mihnea Ovidenie  <mihnea@adobe.com>
+
+        [CSS Regions] Crash while painting block selection gaps in regions
+        https://bugs.webkit.org/show_bug.cgi?id=132720
+
+        Reviewed by David Hyatt.
+
+        * TestExpectations: Unskip a test that was crashing
+        * fast/regions/selection-gaps-paint-crash-expected.txt: Added.
+        * fast/regions/selection-gaps-paint-crash.html: Added.
+
+2014-05-20  Lorenzo Tilve  <ltilve@igalia.com>
+
+        [GTK] Unreviewed GTK gardening
+
+        Rebaseline affected tests by changes on integral snapping of inlines
+        introduced at r169048.
+
+        * platform/gtk/css1/box_properties/float_on_text_elements-expected.txt:
+        * platform/gtk/css1/text_properties/text_indent-expected.txt:
+        * platform/gtk/css2.1/t0905-c414-flt-wrap-00-e-expected.txt:
+        * platform/gtk/css2.1/t0905-c5525-fltwidth-00-c-g-expected.txt:
+        * platform/gtk/css2.1/t100801-c544-valgn-00-a-ag-expected.txt:
+        * platform/gtk/css2.1/t100801-c544-valgn-02-d-agi-expected.txt:
+        * platform/gtk/css2.1/t100801-c544-valgn-03-d-agi-expected.txt:
+        * platform/gtk/css2.1/t100801-c544-valgn-04-d-agi-expected.txt:
+        * platform/gtk/css2.1/t1601-c547-indent-00-b-a-expected.txt:
+        * platform/gtk/fast/block/float/026-expected.txt:
+        * platform/gtk/fast/block/float/028-expected.txt:
+        * platform/gtk/fast/css/empty-pseudo-class-expected.txt:
+        * platform/gtk/fast/css/first-child-pseudo-class-expected.txt:
+        * platform/gtk/fast/css/first-of-type-pseudo-class-expected.txt:
+        * platform/gtk/fast/css/last-child-pseudo-class-expected.txt:
+        * platform/gtk/fast/css/last-of-type-pseudo-class-expected.txt:
+        * platform/gtk/fast/css/only-child-pseudo-class-expected.txt:
+        * platform/gtk/fast/css/only-of-type-pseudo-class-expected.txt:
+        * platform/gtk/fast/dom/navigator-detached-no-crash-expected.txt:
+        * platform/gtk/fast/line-grid/line-align-left-edges-expected.txt:
+        * platform/gtk/fast/multicol/column-count-with-rules-expected.txt:
+        * platform/gtk/fast/multicol/float-multicol-expected.txt:
+        * platform/gtk/fast/multicol/layers-in-multicol-expected.txt:
+        * platform/gtk/fast/multicol/vertical-lr/float-multicol-expected.txt:
+        * platform/gtk/fast/multicol/vertical-rl/float-multicol-expected.txt:
+        * platform/gtk/fast/regions/multiple-directionality-changes-in-variable-width-regions-expected.txt:
+        * platform/gtk/fast/regions/repaint/line-flow-with-floats-in-regions-expected.txt:
+        * platform/gtk/fast/repaint/line-flow-with-floats-1-expected.txt:
+        * platform/gtk/fast/repaint/line-flow-with-floats-10-expected.txt:
+        * platform/gtk/fast/repaint/line-flow-with-floats-2-expected.txt:
+        * platform/gtk/fast/repaint/line-flow-with-floats-3-expected.txt:
+        * platform/gtk/fast/repaint/line-flow-with-floats-4-expected.txt:
+        * platform/gtk/fast/repaint/line-flow-with-floats-5-expected.txt:
+        * platform/gtk/fast/repaint/line-flow-with-floats-6-expected.txt:
+        * platform/gtk/fast/repaint/line-flow-with-floats-7-expected.txt:
+        * platform/gtk/fast/repaint/line-flow-with-floats-8-expected.txt:
+        * platform/gtk/fast/repaint/line-flow-with-floats-9-expected.txt:
+        * platform/gtk/fast/text/whitespace/024-expected.txt:
+        * platform/gtk/svg/wicd/rightsizing-grid-expected.txt:
+        * platform/gtk/svg/zoom/page/zoom-replaced-intrinsic-ratio-001-expected.txt:
+
+2014-05-19  Filip Pizlo  <fpizlo@apple.com>
+
+        Test gardening: skip some failing tests on not-X86.
+
+        * js/script-tests/function-apply-many-args.js:
+
+2014-05-19  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: VoiceOver sees the WebArea out of order when topContentInset is used
+        https://bugs.webkit.org/show_bug.cgi?id=133091
+
+        Unreviewed. 
+        Make the layout test more resilient to platform differences in frame positions.
+
+        * platform/mac-wk2/accessibility/content-inset-scrollview-frame-expected.txt:
+        * platform/mac-wk2/accessibility/content-inset-scrollview-frame.html:
+
+2014-05-19  Myles C. Maxfield  <litherum@gmail.com>
+
+        Text decorations do not contribute to visual overflow
+        https://bugs.webkit.org/show_bug.cgi?id=132773
+
+        Reviewed by Antti Koivisto.
+
+        This first test makes sure that repaint rects are extended to include text decorations that may
+        lie outside of the text layout rects. It compares text with an underline to text that has
+        had underline applied to it in a timer.
+
+        The second test triggers an off-by-one error in collapsed table borders where a border was not
+        being drawn if it lay right on top of a repaint rect.
+
+        * fast/css3-text/css3-text-decoration/repaint/resources/Litherum.svg: Added. This font has a
+        descent of 0 (so it will not intersect underlines).
+        * fast/css3-text/css3-text-decoration/repaint/underline-outside-of-layout-rect-expected.html: Added.
+        Apply the underline without any timeout.
+        * fast/css3-text/css3-text-decoration/repaint/underline-outside-of-layout-rect.html: Added.
+        Apply the underline with a timeout.
+        * fast/css3-text/css3-text-decoration/repaint/underline-outside-of-layout-rect-removed-expected.html: Added.
+        Draw text without decorations.
+        * fast/css3-text/css3-text-decoration/repaint/underline-outside-of-layout-rect-removed.html: Added.
+        Draw text with decorations which contribute to overflow, then remove those decorations on a timer.
+        * fast/css3-text/css3-text-decoration/repaint/underline-outside-of-layout-rect-altered-expected.html: Added.
+        Draw text as if the final state of the decorations had always existed.
+        * fast/css3-text/css3-text-decoration/repaint/underline-outside-of-layout-rect-altered.html: Added.
+        Make sure that modifying decorations that contribute to overflow redraw properly.
+        * fast/repaint/border-collapse-table-off-by-one-expected.html: Added.
+        * fast/repaint/border-collapse-table-off-by-one.html: Added. Trigger the off-by-one error in
+        RenderTableSection.cpp
+
+2014-05-19  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: VoiceOver sees the WebArea out of order when topContentInset is used
+        https://bugs.webkit.org/show_bug.cgi?id=133091
+
+        Reviewed by Simon Fraser.
+
+        * platform/mac-wk2/accessibility/content-inset-scrollview-frame-expected.txt: Added.
+        * platform/mac-wk2/accessibility/content-inset-scrollview-frame.html: Added.
+
+2014-05-19  Simon Fraser  <simon.fraser@apple.com>
+
+        Split scrolling tree ScrollingNodes into FrameScrollingNodes and OverflowScrollingNodes
+        https://bugs.webkit.org/show_bug.cgi?id=133022
+
+        Reviewed by Sam Weinig.
+        
+        Updated for new node name. No geometry changes.
+
+        * platform/mac-wk2/tiled-drawing/clamp-out-of-bounds-scrolls-expected.txt:
+        * platform/mac-wk2/tiled-drawing/fixed/absolute-inside-fixed-expected.txt:
+        * platform/mac-wk2/tiled-drawing/fixed/absolute-inside-out-of-view-fixed-expected.txt:
+        * platform/mac-wk2/tiled-drawing/fixed/fixed-in-overflow-expected.txt:
+        * platform/mac-wk2/tiled-drawing/fixed/fixed-position-out-of-view-expected.txt:
+        * platform/mac-wk2/tiled-drawing/fixed/fixed-position-out-of-view-negative-zindex-expected.txt:
+        * platform/mac-wk2/tiled-drawing/fixed/four-bars-expected.txt:
+        * platform/mac-wk2/tiled-drawing/fixed/four-bars-with-header-and-footer-expected.txt:
+        * platform/mac-wk2/tiled-drawing/fixed/negative-scroll-offset-expected.txt:
+        * platform/mac-wk2/tiled-drawing/fixed/negative-scroll-offset-in-view-expected.txt:
+        * platform/mac-wk2/tiled-drawing/fixed/nested-fixed-expected.txt:
+        * platform/mac-wk2/tiled-drawing/fixed/percentage-inside-fixed-expected.txt:
+        * platform/mac-wk2/tiled-drawing/scrolling-tree-after-scroll-expected.txt:
+        * platform/mac-wk2/tiled-drawing/scrolling-tree-slow-scrolling-expected.txt:
+        * platform/mac-wk2/tiled-drawing/sticky/negative-scroll-offset-expected.txt:
+        * platform/mac-wk2/tiled-drawing/sticky/sticky-horizontal-expected.txt:
+
+2014-05-19  Zalan Bujtas  <zalan@apple.com>
+
+        Fix Element.offset* and .client* rounding mismatches after r168868.
+        https://bugs.webkit.org/show_bug.cgi?id=133076
+        
+        Unreviewed gardening.
+
+        * platform/mac-wk2/tiled-drawing/fast-scroll-div-latched-div-with-handler.html:
+        * platform/mac-wk2/tiled-drawing/fast-scroll-div-latched-div.html:
+        * platform/mac-wk2/tiled-drawing/fast-scroll-div-latched-mainframe-with-handler.html:
+        * platform/mac-wk2/tiled-drawing/fast-scroll-div-latched-mainframe.html:
+        * platform/mac-wk2/tiled-drawing/fast-scroll-select-latched-mainframe-with-handler.html:
+        * platform/mac-wk2/tiled-drawing/fast-scroll-select-latched-mainframe.html:
+        * platform/mac-wk2/tiled-drawing/fast-scroll-select-latched-select-with-handler.html:
+        * platform/mac-wk2/tiled-drawing/fast-scroll-select-latched-select.html:
+
+2014-05-19  Simon Fraser  <simon.fraser@apple.com>
+
+        Images missing sometimes with composited clipping layers
+        https://bugs.webkit.org/show_bug.cgi?id=133065
+        <rdar://problem/15224559>
+
+        Reviewed by Beth Dakin.
+
+        * compositing/backing/solid-color-with-paints-into-ancestor-expected.html: Added.
+        * compositing/backing/solid-color-with-paints-into-ancestor.html: Added.
+
+2014-05-19  Jono Wells  <jonowells@apple.com>
+
+        Script include paths for js-test-pre.js and js-test-post.js were incorrect.
+        https://bugs.webkit.org/show_bug.cgi?id=133072
+
+        Reviewed by Andy Estes.
+
+        * http/tests/navigation/forward-to-fragment-fires-onload.html: Fixed script includes.
+
+2014-05-19  Zalan Bujtas  <zalan@apple.com>
+
+        REGRESSION (r133351, sub-pixel layout): Right-to-left block with text-overflow: ellipsis truncates prematurely (breaks facebook.com Hebrew UI)
+        https://bugs.webkit.org/show_bug.cgi?id=112227
+
+        Reviewed by Maciej Stachowiak.
+
+        This patch removes unnecessary integral snapping of inlines at layout time.
+
+        1px off differences and rounding expected results to match new behavior. -rebaselining.
+
+        * fast/frames/hidpi-position-iframe-on-device-pixel-expected.html: Added.
+        * fast/frames/hidpi-position-iframe-on-device-pixel.html: Added.
+        * fast/inline/hidpi-rtl-text-does-not-fit-line-and-gets-cut-off-expected.html: Added.
+        * fast/inline/hidpi-rtl-text-does-not-fit-line-and-gets-cut-off.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-ellipse-margin-left.html:
+        * fast/shapes/shape-outside-floats/shape-outside-floats-ellipse-margin-right.html:
+        * fast/shapes/shape-outside-floats/shape-outside-floats-inset-rounded-different-writing-modes-left.html:
+        * fast/shapes/shape-outside-floats/shape-outside-floats-inset-rounded-different-writing-modes-right.html:
+        * fast/shapes/shape-outside-floats/shape-outside-rounded-boxes-001.html:
+        * fast/shapes/shape-outside-floats/shape-outside-rounded-boxes-002.html:
+        * fast/shapes/shape-outside-floats/shape-outside-rounded-inset-expected.html:
+        * platform/mac/TestExpectations:
+        * platform/mac/css1/box_properties/float_on_text_elements-expected.txt:
+        * platform/mac/css1/text_properties/text_indent-expected.txt:
+        * platform/mac/css2.1/t0905-c414-flt-wrap-00-e-expected.txt:
+        * platform/mac/css2.1/t0905-c5525-fltwidth-00-c-g-expected.txt:
+        * platform/mac/css2.1/t100801-c544-valgn-00-a-ag-expected.txt:
+        * platform/mac/css2.1/t100801-c544-valgn-02-d-agi-expected.txt:
+        * platform/mac/css2.1/t100801-c544-valgn-03-d-agi-expected.txt:
+        * platform/mac/css2.1/t100801-c544-valgn-04-d-agi-expected.txt:
+        * platform/mac/css3/unicode-bidi-isolate-basic-expected.txt:
+        * platform/mac/editing/selection/caret-ltr-2-expected.txt:
+        * platform/mac/editing/selection/caret-ltr-2-left-expected.txt:
+        * platform/mac/editing/selection/caret-rtl-expected.txt:
+        * platform/mac/editing/selection/caret-rtl-right-expected.txt:
+        * platform/mac/editing/selection/vertical-rl-rtl-extend-line-backward-br-expected.txt:
+        * platform/mac/editing/selection/vertical-rl-rtl-extend-line-backward-p-expected.txt:
+        * platform/mac/editing/selection/vertical-rl-rtl-extend-line-forward-br-expected.txt:
+        * platform/mac/editing/selection/vertical-rl-rtl-extend-line-forward-p-expected.txt:
+        * platform/mac/fast/block/float/026-expected.txt:
+        * platform/mac/fast/block/float/028-expected.txt:
+        * platform/mac/fast/css/absolute-child-with-percent-height-inside-relative-parent-expected.txt: Added.
+        * platform/mac/fast/css/empty-pseudo-class-expected.txt:
+        * platform/mac/fast/css/first-child-pseudo-class-expected.txt:
+        * platform/mac/fast/css/first-of-type-pseudo-class-expected.txt:
+        * platform/mac/fast/css/last-child-pseudo-class-expected.txt:
+        * platform/mac/fast/css/last-of-type-pseudo-class-expected.txt:
+        * platform/mac/fast/css/only-child-pseudo-class-expected.txt:
+        * platform/mac/fast/css/only-of-type-pseudo-class-expected.txt:
+        * platform/mac/fast/css/text-overflow-input-expected.txt:
+        * platform/mac/fast/forms/file/file-input-direction-expected.txt:
+        * platform/mac/fast/forms/input-text-scroll-left-on-blur-expected.txt:
+        * platform/mac/fast/forms/number/number-appearance-rtl-expected.txt:
+        * platform/mac/fast/forms/placeholder-position-expected.txt:
+        * platform/mac/fast/forms/search-rtl-expected.txt:
+        * platform/mac/fast/line-grid/line-align-left-edges-expected.txt:
+        * platform/mac/fast/lists/008-expected.txt:
+        * platform/mac/fast/lists/008-vertical-expected.txt:
+        * platform/mac/fast/multicol/column-count-with-rules-expected.txt:
+        * platform/mac/fast/multicol/float-multicol-expected.txt:
+        * platform/mac/fast/multicol/layers-in-multicol-expected.txt:
+        * platform/mac/fast/multicol/vertical-lr/float-multicol-expected.txt:
+        * platform/mac/fast/multicol/vertical-rl/float-multicol-expected.txt:
+        * platform/mac/fast/regions/multiple-directionality-changes-in-variable-width-regions-expected.txt:
+        * platform/mac/fast/regions/repaint/line-flow-with-floats-in-regions-expected.txt:
+        * platform/mac/fast/repaint/line-flow-with-floats-1-expected.txt:
+        * platform/mac/fast/repaint/line-flow-with-floats-10-expected.txt:
+        * platform/mac/fast/repaint/line-flow-with-floats-2-expected.txt:
+        * platform/mac/fast/repaint/line-flow-with-floats-3-expected.txt:
+        * platform/mac/fast/repaint/line-flow-with-floats-4-expected.txt:
+        * platform/mac/fast/repaint/line-flow-with-floats-5-expected.txt:
+        * platform/mac/fast/repaint/line-flow-with-floats-6-expected.txt:
+        * platform/mac/fast/repaint/line-flow-with-floats-7-expected.txt:
+        * platform/mac/fast/repaint/line-flow-with-floats-8-expected.txt:
+        * platform/mac/fast/repaint/line-flow-with-floats-9-expected.txt:
+        * platform/mac/fast/text/script-tests/ligature-subdivision.js:
+        * platform/mac/fast/text/vertical-rl-rtl-linebreak-expected.txt:
+        * platform/mac/fast/text/whitespace/024-expected.txt:
+        * platform/mac/fast/text/whitespace/pre-wrap-spaces-after-newline-expected.txt:
+        * platform/mac/fast/text/word-break-run-rounding-expected.txt:
+        * platform/mac/svg/wicd/rightsizing-grid-expected.txt:
+
+2014-05-19  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Unreviewed gardening, try to unbreak Mac buildbots and EWS bots after r169023.
+
+        * platform/mac-mountainlion/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac/js/dom/global-constructors-attributes-expected.txt:
+
+2014-05-18  Svetlana Redchenko  <redchenko@yandex-team.ru>
+
+        Input ::selection pseudo class does not work leading to hidden selection
+        https://bugs.webkit.org/show_bug.cgi?id=38943
+        
+        Reviewed by Darin Adler.
+
+        * fast/selectors/input-with-selection-pseudo-element-expected.html: Added.
+        * fast/selectors/input-with-selection-pseudo-element.html: Added.
+
+2014-05-18  Maciej Stachowiak  <mjs@apple.com>
+
+        REGRESSION (r156546): Default media controls are laid out incorrectly when media element is styled with direction:rtl
+        https://bugs.webkit.org/show_bug.cgi?id=132531
+        <rdar://problem/16806267>
+
+        Reviewed by Mark Rowe.
+
+        * platform/mac/TestExpectations: Unskip media/video-rtl.html
+
+2014-05-18  Rik Cabanier  <cabanier@adobe.com>
+
+        support for navigator.hardwareConcurrency
+        https://bugs.webkit.org/show_bug.cgi?id=132588
+
+        Reviewed by Filip Pizlo.
+
+        * fast/dom/navigator-detached-no-crash-expected.txt:
+        * fast/dom/navigator-hardwareConcurrency-expected.txt: Added.
+        * fast/dom/navigator-hardwareConcurrency.html: Added.
+
+2014-05-18  Antti Koivisto  <antti@apple.com>
+
+        REGRESSION (r160259): text-combine glyphs are not rendered
+        https://bugs.webkit.org/show_bug.cgi?id=127324
+
+        Reviewed by Andreas Kling.
+
+        * fast/text/text-combine-rendering-expected.html: Added.
+        * fast/text/text-combine-rendering.html: Added.
+
+2014-05-17  Maciej Stachowiak  <mjs@apple.com>
+
+        Don't attempt to update id or name for nodes that are already removed
+        https://bugs.webkit.org/show_bug.cgi?id=133041
+
+        Reviewed by Sam Weinig.
+        
+        Test originally by Dan Bates.
+
+        * fast/dom/remove-element-with-id-that-was-inserted-on-DOMNodeRemoved-expected.txt: Added.
+        * fast/dom/remove-element-with-id-that-was-inserted-on-DOMNodeRemoved.html: Added.
+        * fast/dom/remove-element-with-name-that-was-inserted-on-DOMNodeRemoved-expected.txt: Added.
+        * fast/dom/remove-element-with-name-that-was-inserted-on-DOMNodeRemoved.html: Added.
+
+2014-05-17  Alexey Proskuryakov  <ap@apple.com>
+
+        REGRESSION (NetworkProcess): Trying to use appcache fallback crashes in ApplicationCacheHost::scheduleLoadFallbackResourceFromApplicationCache
+        https://bugs.webkit.org/show_bug.cgi?id=133007
+        <rdar://problem/13702706>
+
+        appcache tests often fail on the Mac WebKit2 bot
+        https://bugs.webkit.org/show_bug.cgi?id=82061
+
+        Reviewed by Maciej Stachowiak.
+
+        * platform/mac-wk2/TestExpectations: Let's enable all the appcache tests (except
+        for a couple that fail), and see what happens on bots. I don't see any reason
+        why WebKit2 would be any more flaky than WebKit1 here.
+
+2014-05-17  Piotr Grad  <p.grad@samsung.com>
+
+        Setting playback rate on video with media controller is not ignored.
+        https://bugs.webkit.org/show_bug.cgi?id=129048
+
+        Reviewed by Jer Noble.
+
+        * media/video-controller-child-rate-expected.txt: Added.
+        * media/video-controller-child-rate.html: Added.
+
+2014-05-16  Simon Fraser  <simon.fraser@apple.com>
+
+        Fix a straggler.
+
+        Remove call to internals.settings.setRegionBasedColumnsEnabled(true).
+
+        * fast/repaint/spanner-with-margin.html:
+
+2014-05-16  Simon Fraser  <simon.fraser@apple.com>
+
+        Remove calls to internals.settings.setRegionBasedColumnsEnabled(true);
+        in tests.
+        
+        Some of these tests may now be no-ops, but I haven't found a convenient
+        way to know which ones.
+
+        * fast/multicol/break-in-columns-before-spanner-expected.html:
+        * fast/multicol/break-in-columns-before-spanner.html:
+        * fast/multicol/break-in-scrollable-expected.html:
+        * fast/multicol/break-in-scrollable.html:
+        * fast/multicol/client-rects-spanners-complex.html:
+        * fast/multicol/client-rects-spanners.html:
+        * fast/multicol/inline-children-crash.html:
+        * fast/multicol/mixed-opacity-fixed-test.html:
+        * fast/multicol/mixed-opacity-test.html:
+        * fast/multicol/mixed-positioning-stacking-order.html:
+        * fast/multicol/multicol-li-crash.html:
+        * fast/multicol/newmulticol/adjacent-spanners.html:
+        * fast/multicol/newmulticol/avoid-column-break-inside.html:
+        * fast/multicol/newmulticol/balance-images.html:
+        * fast/multicol/newmulticol/balance-maxheight1.html:
+        * fast/multicol/newmulticol/balance-maxheight2.html:
+        * fast/multicol/newmulticol/balance1.html:
+        * fast/multicol/newmulticol/balance10.html:
+        * fast/multicol/newmulticol/balance2.html:
+        * fast/multicol/newmulticol/balance3.html:
+        * fast/multicol/newmulticol/balance4.html:
+        * fast/multicol/newmulticol/balance5.html:
+        * fast/multicol/newmulticol/balance6.html:
+        * fast/multicol/newmulticol/balance7.html:
+        * fast/multicol/newmulticol/balance8.html:
+        * fast/multicol/newmulticol/balance9.html:
+        * fast/multicol/newmulticol/block-becomes-spanner-expected.html:
+        * fast/multicol/newmulticol/block-becomes-spanner.html:
+        * fast/multicol/newmulticol/break-after-expected.html:
+        * fast/multicol/newmulticol/break-after.html:
+        * fast/multicol/newmulticol/break-before.html:
+        * fast/multicol/newmulticol/breaks-2-columns-3-no-balancing.html:
+        * fast/multicol/newmulticol/breaks-2-columns-3.html:
+        * fast/multicol/newmulticol/breaks-3-columns-3.html:
+        * fast/multicol/newmulticol/cell-shrinkback.html:
+        * fast/multicol/newmulticol/change-spanner-display-expected.html:
+        * fast/multicol/newmulticol/change-spanner-display.html:
+        * fast/multicol/newmulticol/change-spanner-parent-display-expected.html:
+        * fast/multicol/newmulticol/change-spanner-parent-display.html:
+        * fast/multicol/newmulticol/client-rects.html:
+        * fast/multicol/newmulticol/clipping-expected.html:
+        * fast/multicol/newmulticol/clipping-overflow-hidden-expected.html:
+        * fast/multicol/newmulticol/clipping-overflow-hidden.html:
+        * fast/multicol/newmulticol/clipping-top-overflow-expected.html:
+        * fast/multicol/newmulticol/clipping-top-overflow.html:
+        * fast/multicol/newmulticol/clipping.html:
+        * fast/multicol/newmulticol/column-rules-fixed-height.html:
+        * fast/multicol/newmulticol/columns-shorthand-parsing.html:
+        * fast/multicol/newmulticol/compare-with-old-impl/BottomToTop-tb.html:
+        * fast/multicol/newmulticol/compare-with-old-impl/LeftToRight-tb.html:
+        * fast/multicol/newmulticol/compare-with-old-impl/anonymous-block-split-crash.html:
+        * fast/multicol/newmulticol/compare-with-old-impl/before-child-anonymous-column-block.html:
+        * fast/multicol/newmulticol/compare-with-old-impl/clone-before-after-content-crash.html:
+        * fast/multicol/newmulticol/compare-with-old-impl/clone-block-children-inline-mismatch-crash.html:
+        * fast/multicol/newmulticol/compare-with-old-impl/clone-flexbox.html:
+        * fast/multicol/newmulticol/compare-with-old-impl/clone-summary.html:
+        * fast/multicol/newmulticol/compare-with-old-impl/column-rules-stacking.html:
+        * fast/multicol/newmulticol/compare-with-old-impl/column-span-inside-multicol-webkit-box.html:
+        * fast/multicol/newmulticol/compare-with-old-impl/continuation-crash.html:
+        * fast/multicol/newmulticol/compare-with-old-impl/double-merge-anonymous-block-crash.html:
+        * fast/multicol/newmulticol/compare-with-old-impl/empty-anonymous-block-split-crash.html:
+        * fast/multicol/newmulticol/compare-with-old-impl/float-not-removed-crash.html:
+        * fast/multicol/newmulticol/compare-with-old-impl/hit-test-above-or-below.html:
+        * fast/multicol/newmulticol/compare-with-old-impl/hit-test-block-axis-flipped.html:
+        * fast/multicol/newmulticol/compare-with-old-impl/hit-test-end-of-column-with-line-height.html:
+        * fast/multicol/newmulticol/compare-with-old-impl/hit-test-end-of-column.html:
+        * fast/multicol/newmulticol/compare-with-old-impl/hit-test-float.html:
+        * fast/multicol/newmulticol/compare-with-old-impl/hit-test-gap-between-pages-flipped.html:
+        * fast/multicol/newmulticol/compare-with-old-impl/hit-test-gap-between-pages.html:
+        * fast/multicol/newmulticol/compare-with-old-impl/hit-test-gap-block-axis.html:
+        * fast/multicol/newmulticol/compare-with-old-impl/list-multi-column-crash.html:
+        * fast/multicol/newmulticol/compare-with-old-impl/multicol-with-child-renderLayer-for-input-expected.html:
+        * fast/multicol/newmulticol/compare-with-old-impl/multicol-with-child-renderLayer-for-input.html:
+        * fast/multicol/newmulticol/compare-with-old-impl/overflow-content.html:
+        * fast/multicol/newmulticol/compare-with-old-impl/positioned-child-not-removed-crash.html:
+        * fast/multicol/newmulticol/compare-with-old-impl/positioned-objects-not-removed-crash.html:
+        * fast/multicol/newmulticol/compare-with-old-impl/recursive-split-flow-crash.html:
+        * fast/multicol/newmulticol/compare-with-old-impl/removal-of-multicol-span-crash.html:
+        * fast/multicol/newmulticol/compare-with-old-impl/remove-child-split-flow-crash.html:
+        * fast/multicol/newmulticol/compare-with-old-impl/runin-continuation-crash.html:
+        * fast/multicol/newmulticol/compare-with-old-impl/shrink-to-column-height-for-pagination.html:
+        * fast/multicol/newmulticol/compare-with-old-impl/span-as-nested-inline-block-child.html:
+        * fast/multicol/newmulticol/compare-with-old-impl/split-flow-anonymous-wrapper-crash.html:
+        * fast/multicol/newmulticol/compare-with-old-impl/split-inline-wrong-post-block-crash.html:
+        * fast/multicol/newmulticol/compare-with-old-impl/table-multi-column-crash.html:
+        * fast/multicol/newmulticol/compare-with-old-impl/textbox-not-removed-crash.html:
+        * fast/multicol/newmulticol/compare-with-old-impl/update-after-content-before-child-crash.html:
+        * fast/multicol/newmulticol/direct-child-column-span-all.html:
+        * fast/multicol/newmulticol/fixed-height-fill-auto-expected.html:
+        * fast/multicol/newmulticol/fixed-height-fill-auto.html:
+        * fast/multicol/newmulticol/fixed-height-fill-balance-2.html:
+        * fast/multicol/newmulticol/fixed-height-fill-balance-expected.html:
+        * fast/multicol/newmulticol/fixed-height-fill-balance.html:
+        * fast/multicol/newmulticol/float-avoidance.html:
+        * fast/multicol/newmulticol/float-multicol.html:
+        * fast/multicol/newmulticol/float-paginate-complex.html:
+        * fast/multicol/newmulticol/float-paginate-empty-lines.html:
+        * fast/multicol/newmulticol/float-paginate.html:
+        * fast/multicol/newmulticol/hide-box-horizontal-bt-expected.html:
+        * fast/multicol/newmulticol/hide-box-horizontal-bt.html:
+        * fast/multicol/newmulticol/hide-box-vertical-lr-expected.html:
+        * fast/multicol/newmulticol/hide-box-vertical-lr.html:
+        * fast/multicol/newmulticol/hide-box-vertical-rl-expected.html:
+        * fast/multicol/newmulticol/hide-box-vertical-rl.html:
+        * fast/multicol/newmulticol/insert-row-content1-expected.html:
+        * fast/multicol/newmulticol/insert-row-content1.html:
+        * fast/multicol/newmulticol/insert-row-content2-expected.html:
+        * fast/multicol/newmulticol/insert-row-content2.html:
+        * fast/multicol/newmulticol/insert-row-content3-expected.html:
+        * fast/multicol/newmulticol/insert-row-content3.html:
+        * fast/multicol/newmulticol/insert-row-content4-expected.html:
+        * fast/multicol/newmulticol/insert-row-content4.html:
+        * fast/multicol/newmulticol/insert-row-content5-expected.html:
+        * fast/multicol/newmulticol/insert-row-content5.html:
+        * fast/multicol/newmulticol/insert-row-content6-expected.html:
+        * fast/multicol/newmulticol/insert-row-content6.html:
+        * fast/multicol/newmulticol/insert-row-content7-expected.html:
+        * fast/multicol/newmulticol/insert-row-content7.html:
+        * fast/multicol/newmulticol/insert-row-content8-expected.html:
+        * fast/multicol/newmulticol/insert-row-content8.html:
+        * fast/multicol/newmulticol/insert-row-content9-expected.html:
+        * fast/multicol/newmulticol/insert-row-content9.html:
+        * fast/multicol/newmulticol/insert-spanner-child1-expected.html:
+        * fast/multicol/newmulticol/insert-spanner-child1.html:
+        * fast/multicol/newmulticol/insert-spanner-child2-expected.html:
+        * fast/multicol/newmulticol/insert-spanner-child2.html:
+        * fast/multicol/newmulticol/insert-spanner-child3-expected.html:
+        * fast/multicol/newmulticol/insert-spanner-child3.html:
+        * fast/multicol/newmulticol/insert-spanner1-expected.html:
+        * fast/multicol/newmulticol/insert-spanner1.html:
+        * fast/multicol/newmulticol/insert-spanner2-expected.html:
+        * fast/multicol/newmulticol/insert-spanner2.html:
+        * fast/multicol/newmulticol/insert-spanner3-expected.html:
+        * fast/multicol/newmulticol/insert-spanner3.html:
+        * fast/multicol/newmulticol/insert-spanner4-expected.html:
+        * fast/multicol/newmulticol/insert-spanner4.html:
+        * fast/multicol/newmulticol/insert-spanner5-expected.html:
+        * fast/multicol/newmulticol/insert-spanner5.html:
+        * fast/multicol/newmulticol/insert-spanner6-expected.html:
+        * fast/multicol/newmulticol/insert-spanner6.html:
+        * fast/multicol/newmulticol/insert-spanner7-expected.html:
+        * fast/multicol/newmulticol/insert-spanner7.html:
+        * fast/multicol/newmulticol/insert-spanner8-expected.html:
+        * fast/multicol/newmulticol/insert-spanner8.html:
+        * fast/multicol/newmulticol/layers-in-multicol.html:
+        * fast/multicol/newmulticol/layers-split-across-columns.html:
+        * fast/multicol/newmulticol/leading-and-trailing-margin-expected.html:
+        * fast/multicol/newmulticol/leading-and-trailing-margin.html:
+        * fast/multicol/newmulticol/leading-margin.html:
+        * fast/multicol/newmulticol/line-grid-inside-columns.html:
+        * fast/multicol/newmulticol/line-grid-into-columns.html:
+        * fast/multicol/newmulticol/multicol-with-spanner-becomes-regular-block.html:
+        * fast/multicol/newmulticol/orphans-and-widows-balance.html:
+        * fast/multicol/newmulticol/positioned-split.html:
+        * fast/multicol/newmulticol/positioned-with-constrained-height.html:
+        * fast/multicol/newmulticol/progression-reverse-overflow.html:
+        * fast/multicol/newmulticol/progression-reverse.html:
+        * fast/multicol/newmulticol/remove-row-content1-expected.html:
+        * fast/multicol/newmulticol/remove-row-content1.html:
+        * fast/multicol/newmulticol/remove-row-content2-expected.html:
+        * fast/multicol/newmulticol/remove-row-content2.html:
+        * fast/multicol/newmulticol/remove-row-content3-expected.html:
+        * fast/multicol/newmulticol/remove-row-content3.html:
+        * fast/multicol/newmulticol/remove-row-content4-expected.html:
+        * fast/multicol/newmulticol/remove-row-content4.html:
+        * fast/multicol/newmulticol/remove-row-content5-expected.html:
+        * fast/multicol/newmulticol/remove-row-content5.html:
+        * fast/multicol/newmulticol/remove-row-content6-expected.html:
+        * fast/multicol/newmulticol/remove-row-content6.html:
+        * fast/multicol/newmulticol/remove-row-content7-expected.html:
+        * fast/multicol/newmulticol/remove-row-content7.html:
+        * fast/multicol/newmulticol/remove-row-content8-expected.html:
+        * fast/multicol/newmulticol/remove-row-content8.html:
+        * fast/multicol/newmulticol/remove-row-content9-expected.html:
+        * fast/multicol/newmulticol/remove-row-content9.html:
+        * fast/multicol/newmulticol/remove-spanner1-expected.html:
+        * fast/multicol/newmulticol/remove-spanner1.html:
+        * fast/multicol/newmulticol/remove-spanner2-expected.html:
+        * fast/multicol/newmulticol/remove-spanner2.html:
+        * fast/multicol/newmulticol/remove-spanner3-expected.html:
+        * fast/multicol/newmulticol/remove-spanner3.html:
+        * fast/multicol/newmulticol/remove-spanner4-expected.html:
+        * fast/multicol/newmulticol/remove-spanner4.html:
+        * fast/multicol/newmulticol/remove-spanner5-expected.html:
+        * fast/multicol/newmulticol/remove-spanner5.html:
+        * fast/multicol/newmulticol/remove-spanner6-expected.html:
+        * fast/multicol/newmulticol/remove-spanner6.html:
+        * fast/multicol/newmulticol/single-line.html:
+        * fast/multicol/newmulticol/sole-spanner.html:
+        * fast/multicol/newmulticol/span-between-text-expected.html:
+        * fast/multicol/newmulticol/span-between-text.html:
+        * fast/multicol/newmulticol/spanner-becomes-regular-block-expected.html:
+        * fast/multicol/newmulticol/spanner-becomes-regular-block.html:
+        * fast/multicol/newmulticol/spanner-first-expected.html:
+        * fast/multicol/newmulticol/spanner-first.html:
+        * fast/multicol/newmulticol/spanner-img-expected.html:
+        * fast/multicol/newmulticol/spanner-img.html:
+        * fast/multicol/newmulticol/spanner-inline-block-expected.html:
+        * fast/multicol/newmulticol/spanner-inline-block.html:
+        * fast/multicol/newmulticol/spanner-last-expected.html:
+        * fast/multicol/newmulticol/spanner-last.html:
+        * fast/multicol/newmulticol/spanner-nested-dynamic-expected.html:
+        * fast/multicol/newmulticol/spanner-nested-dynamic.html:
+        * fast/multicol/newmulticol/spanner-nested-expected.html:
+        * fast/multicol/newmulticol/spanner-nested.html:
+        * fast/multicol/newmulticol/spanner-pseudo-after1-expected.html:
+        * fast/multicol/newmulticol/spanner-pseudo-after1.html:
+        * fast/multicol/newmulticol/spanner-pseudo-after2-expected.html:
+        * fast/multicol/newmulticol/spanner-pseudo-after2.html:
+        * fast/multicol/newmulticol/spanner-pseudo-after3-expected.html:
+        * fast/multicol/newmulticol/spanner-pseudo-after3.html:
+        * fast/multicol/newmulticol/spanner-pseudo-after4-expected.html:
+        * fast/multicol/newmulticol/spanner-pseudo-after4.html:
+        * fast/multicol/newmulticol/spanner-pseudo-before-after1-expected.html:
+        * fast/multicol/newmulticol/spanner-pseudo-before-after1.html:
+        * fast/multicol/newmulticol/spanner-pseudo-before-after2-expected.html:
+        * fast/multicol/newmulticol/spanner-pseudo-before-after2.html:
+        * fast/multicol/newmulticol/spanner-pseudo-before-after3-expected.html:
+        * fast/multicol/newmulticol/spanner-pseudo-before-after3.html:
+        * fast/multicol/newmulticol/spanner-pseudo-before-after4-expected.html:
+        * fast/multicol/newmulticol/spanner-pseudo-before-after4.html:
+        * fast/multicol/newmulticol/spanner-pseudo-before1-expected.html:
+        * fast/multicol/newmulticol/spanner-pseudo-before1.html:
+        * fast/multicol/newmulticol/spanner-pseudo-before2-expected.html:
+        * fast/multicol/newmulticol/spanner-pseudo-before2.html:
+        * fast/multicol/newmulticol/spanner-pseudo-before3-expected.html:
+        * fast/multicol/newmulticol/spanner-pseudo-before3.html:
+        * fast/multicol/newmulticol/spanner-pseudo-before4-expected.html:
+        * fast/multicol/newmulticol/spanner-pseudo-before4.html:
+        * fast/multicol/newmulticol/spanner-table-expected.html:
+        * fast/multicol/newmulticol/spanner-table.html:
+        * fast/multicol/newmulticol/spanner-with-margin-expected.html:
+        * fast/multicol/newmulticol/spanner-with-margin.html:
+        * fast/multicol/newmulticol/spanner1-expected.html:
+        * fast/multicol/newmulticol/spanner1.html:
+        * fast/multicol/newmulticol/spanner2-expected.html:
+        * fast/multicol/newmulticol/spanner2.html:
+        * fast/multicol/newmulticol/spanner3-expected.html:
+        * fast/multicol/newmulticol/spanner3.html:
+        * fast/multicol/newmulticol/spanner4-expected.html:
+        * fast/multicol/newmulticol/spanner4.html:
+        * fast/multicol/newmulticol/spanner5-expected.html:
+        * fast/multicol/newmulticol/spanner5.html:
+        * fast/multicol/newmulticol/spanner6-expected.html:
+        * fast/multicol/newmulticol/spanner6.html:
+        * fast/multicol/newmulticol/spanner7-expected.html:
+        * fast/multicol/newmulticol/spanner7.html:
+        * fast/multicol/newmulticol/spanner8-expected.html:
+        * fast/multicol/newmulticol/spanner8.html:
+        * fast/multicol/newmulticol/spanner9-expected.html:
+        * fast/multicol/newmulticol/spanner9.html:
+        * fast/multicol/newmulticol/trailing-margin-with-spanner-expected.html:
+        * fast/multicol/newmulticol/trailing-margin-with-spanner.html:
+        * fast/multicol/newmulticol/trailing-margin-with-spanner2-expected.html:
+        * fast/multicol/newmulticol/trailing-margin-with-spanner2.html:
+        * fast/multicol/newmulticol/unresolvable-percent-height-2.html:
+        * fast/multicol/newmulticol/unresolvable-percent-height.html:
+        * fast/multicol/newmulticol/unresolvable-percent-max-height-2.html:
+        * fast/multicol/newmulticol/unresolvable-percent-max-height.html:
+        * fast/multicol/offset-top-left.html:
+        * fast/multicol/percent-height.html:
+        * fast/multicol/positioned-outside-of-columns.html:
+        * fast/multicol/scrolling-column-rules.html:
+        * fast/multicol/tall-float-expected.html:
+        * fast/multicol/tall-float.html:
+        * fast/multicol/transform-inside-opacity.html:
+        * fast/multicol/zoom-test-expected.html:
+        * fast/multicol/zoom-test.html:
+
+2014-05-16  Jer Noble  <jer.noble@apple.com>
+
+        [Mac] naturalSize not updated when preload=metadata
+        https://bugs.webkit.org/show_bug.cgi?id=132994
+
+        Reviewed by Eric Carlson.
+
+        * media/video-load-preload-metadata-naturalsize-expected.txt: Added.
+        * media/video-load-preload-metadata-naturalsize.html: Added.
+
+2014-05-16  Enrique Ocaña González  <eocanha@igalia.com>
+
+        Unreviewed GTK gardening.
+
+        Added some flaky tests to TestExpectations.
+
+        * platform/gtk/TestExpectations:
+
+2014-05-16  Piotr Grad  <p.grad@samsung.com>
+
+        [Gtk] media/media-blocked-by-beforeload.html is flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=89811
+
+        Reviewed by Eric Carlson.
+
+        Problem is that we cannot predict when 'error' event would be called,
+        because is called async on 'source' element. Solution is to not log
+        'loadedmetadata' and 'loadstart' events.
+
+        * media/media-blocked-by-beforeload-expected.txt:
+        * media/media-blocked-by-beforeload.html:
+
+2014-05-16  Zalan Bujtas  <zalan@apple.com>
+
+        Subpixel rendering: Push named flows in region to device pixel when painting.
+        https://bugs.webkit.org/show_bug.cgi?id=132986
+
+        Reviewed by Simon Fraser.
+
+        Remove integral rounding when named flow sets the painting offset on the graphics context.
+        Use device pixel snapping instead to ensure that we can paint on odd device pixel positions on retina displays. 
+
+        * fast/regions/hidpi-region-with-auto-margin-on-subpixel-position-expected.html: Added.
+        * fast/regions/hidpi-region-with-auto-margin-on-subpixel-position.html: Added.
+
+2014-05-16  Kiran  <kiran.guduru@samsung.com>
+
+        RTCDtmfSender default values need to be updated.
+        https://bugs.webkit.org/show_bug.cgi?id=132952
+
+        Reviewed by Eric Carlson.
+
+        Added checks to test default, min value interToneGap
+        and duration and max value for duration.
+        (Spec does not specify any max value for inTertoneGap)
+
+        * fast/mediastream/RTCPeerConnection-dtmf.html:
+
+2014-05-15  Daniel Bates  <dabates@apple.com>
+
+        ASSERT_NOT_REACHED() in DocumentOrderedMap::get() when removing SVG subtree
+        https://bugs.webkit.org/show_bug.cgi?id=132669
+        <rdar://problem/14931432>
+
+        Reviewed by Brent Fulgham and Ryosuke Niwa.
+
+        Add tests to ensure that we don't cause an assertion failure when removing an SVG element with a duplicate id.
+
+        * svg/custom/change-id-of-use-during-removal-expected.txt: Added.
+        * svg/custom/change-id-of-use-during-removal.html: Added.
+        * svg/custom/remove-subtree-including-path-with-duplicate-id-referenced-by-later-textpath-expected.txt: Added.
+        * svg/custom/remove-subtree-including-path-with-duplicate-id-referenced-by-later-textpath.html: Added.
+        * svg/custom/remove-subtree-including-text-with-duplicate-id-referenced-by-later-tref-expected.txt: Added.
+        * svg/custom/remove-subtree-including-text-with-duplicate-id-referenced-by-later-tref.html: Added.
+        * svg/custom/remove-subtree-including-use-with-duplicate-id-referenced-by-earlier-use-expected.txt: Added.
+        * svg/custom/remove-subtree-including-use-with-duplicate-id-referenced-by-earlier-use.html: Added.
+        * svg/custom/remove-subtree-including-use-with-duplicate-id-referenced-by-later-animate-expected.txt: Added.
+        * svg/custom/remove-subtree-including-use-with-duplicate-id-referenced-by-later-animate.html: Added.
+        * svg/custom/remove-subtree-including-use-with-duplicate-id-referenced-by-later-feimage-expected.txt: Added.
+        * svg/custom/remove-subtree-including-use-with-duplicate-id-referenced-by-later-feimage.html: Added.
+        * svg/custom/remove-subtree-including-use-with-duplicate-id-referenced-by-later-mpath-expected.txt: Added.
+        * svg/custom/remove-subtree-including-use-with-duplicate-id-referenced-by-later-mpath.html: Added.
+        * svg/custom/remove-subtree-including-use-with-duplicate-id-referenced-by-later-use-expected.txt: Added.
+        * svg/custom/remove-subtree-including-use-with-duplicate-id-referenced-by-later-use.html: Added.
+        * svg/custom/remove-subtree-including-use-with-duplicate-id-referenced-by-later-use2-expected.txt: Added.
+        * svg/custom/remove-subtree-including-use-with-duplicate-id-referenced-by-later-use2.html: Added.
+        * svg/custom/remove-subtree-including-use-with-duplicate-id-referenced-by-use-in-different-subtree-expected.txt: Added.
+        * svg/custom/remove-subtree-including-use-with-duplicate-id-referenced-by-use-in-different-subtree.html: Added.
+        * svg/custom/remove-subtree-including-use-with-duplicate-id-referenced-by-use-with-duplicate-id-in-different-subtree-expected.html: Added.
+        * svg/custom/remove-subtree-including-use-with-duplicate-id-referenced-by-use-with-duplicate-id-in-different-subtree.html: Added.
+        * svg/custom/remove-use-with-duplicate-id-referenced-by-later-use-expected.html: Added.
+        * svg/custom/remove-use-with-duplicate-id-referenced-by-later-use.html: Added.
+
+2014-05-15  Daniel Bates  <dabates@apple.com>
+
+        SVG element may reference arbitrary DOM element before running its insertion logic
+        https://bugs.webkit.org/show_bug.cgi?id=132757
+        <rdar://problem/15703817>
+
+        Reviewed by Ryosuke Niwa.
+
+        Add tests to ensure that we don't cause an assertion failure when re-parenting an SVG subtree that
+        contains an element with a duplicate id.
+
+        * svg/custom/reparent-animate-element-expected.txt: Added.
+        * svg/custom/reparent-animate-element.html: Added.
+        * svg/custom/reparent-feimage-element-expected.txt: Added.
+        * svg/custom/reparent-feimage-element.html: Added.
+        * svg/custom/reparent-mpath-element-expected.txt: Added.
+        * svg/custom/reparent-mpath-element.html: Added.
+        * svg/custom/reparent-textpath-element-expected.txt: Added.
+        * svg/custom/reparent-textpath-element.html: Added.
+        * svg/custom/reparent-tref-element-expected.txt: Added.
+        * svg/custom/reparent-tref-element.html: Added.
+        * svg/custom/reparent-use-element-expected.txt: Added.
+        * svg/custom/reparent-use-element.html: Added.
+
+2014-05-15  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        JSDOMWindow should not claim HasImpureGetOwnPropertySlot
+        https://bugs.webkit.org/show_bug.cgi?id=132918
+
+        Reviewed by Geoffrey Garen.
+
+        We now correctly handle the impurity of JSDOMWindow's custom getOwnPropertySlot without needing the 
+        blanket HasImpureGetOwnPropertySlot. We do this through the use of watchpoints and by explicitly forbidding
+        any caching beyond a certain point using PropertySlot::disableCaching. Getting rid of this flag will allow 
+        us to cache many properties/methods on both the JSDOMWindow and its prototype, which are very commonly used 
+        across the web.
+
+        These tests trigger inline caching of window and window prototype properties.
+
+        * js/cached-window-properties-expected.txt: Added.
+        * js/cached-window-properties.html: Added.
+        * js/cached-window-prototype-properties-expected.txt: Added.
+        * js/cached-window-prototype-properties.html: Added.
+
+2014-05-15  Alexey Proskuryakov  <ap@apple.com>
+
+        Automatically zip document bundles used via File API
+        https://bugs.webkit.org/show_bug.cgi?id=132713
+        <rdar://problem/13397892>
+
+        Actually land the tests.
+
+        * fast/files/filereader-zip-bundle-expected.txt: Added.
+        * fast/files/filereader-zip-bundle.html: Added.
+        * fast/files/resources/document.rtfd: Added.
+        * fast/files/resources/document.rtfd/TXT.rtf: Added.
+        * http/tests/local/fileapi/resources/document.rtfd: Added.
+        * http/tests/local/fileapi/resources/document.rtfd/TXT.rtf: Added.
+        * http/tests/local/fileapi/upload-zip-bundle-as-blob-expected.txt: Added.
+        * http/tests/local/fileapi/upload-zip-bundle-as-blob.html: Added.
+        * platform/wk2/TestExpectations:
+
+2014-05-15  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        Move subframe name getter lookup later in JSDOMWindow::getOwnPropertySlot
+        https://bugs.webkit.org/show_bug.cgi?id=132922
+
+        Reviewed by Geoffrey Garen.
+
+        In JSDOMWindow::getOwnPropertySlot, we currently look for the property on the JSDOMWindow, 
+        then we search the window's subframes for name getters, then we look in the window's prototype 
+        chain. Apparently we were doing the lookup in this order to be compatible with Mozilla, but 
+        Mozilla no longer implements this behavior. Instead, they do the lookup on the prototype before 
+        looking for subframe name getters. We should change this to match Mozilla. This has the convenient 
+        side effect of allowing us to cache lookups in the window's prototype chain.
+
+        * fast/dom/Window/window-function-frame-getter-precedence-expected.txt: Rebaseline to account
+        for change in behavior.
+        * fast/dom/Window/window-function-frame-getter-precedence.html:
+        * http/tests/security/document-all-expected.txt: Rebaseline due to the presenece of a security check
+        that was previously not done with the old behavior.
+        * http/tests/security/window-named-proto-expected.txt: Ditto.
+        * http/tests/security/window-named-valueOf-expected.txt: Ditto.
+        * http/tests/security/xss-DENIED-window-name-alert.html: Changed test so it actually tests named getters.
+
+2014-05-15  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r168893.
+        https://bugs.webkit.org/show_bug.cgi?id=132957
+
+        Lots of media tests still come to crash on EFL layout test
+        (Requested by gyuyoung on #webkit).
+
+        Reverted changeset:
+
+        "LayoutTests: Unreviewed EFL gardening. Unskip media test both
+        EFL WK1 and WK2."
+        http://trac.webkit.org/changeset/168893
+
+2014-05-15  Krzysztof Wolanski  <k.wolanski@samsung.com>
+
+        [EFL] Add new test expectations after r168544
+        https://bugs.webkit.org/show_bug.cgi?id=132908
+
+        Unreviewed gardening
+
+        * platform/efl/TestExpectations:
+        * platform/efl/svg/foreignObject/svg-document-in-html-document-expected.txt:
+        * platform/efl/svg/text/small-fonts-in-html5-expected.txt:
+        * platform/efl/svg/zoom/page/zoom-svg-as-relative-image-expected.txt: Added.
+        * platform/efl/svg/zoom/text/zoom-svg-float-border-padding-expected.txt: Added.
+
+2014-05-14  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        LayoutTests: Unreviewed EFL gardening. Unskip media test both EFL WK1 and WK2.
+        Crash doesn't happen anymore.
+
+        * platform/efl/TestExpectations:
+
+2014-05-14  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r168750.
+        https://bugs.webkit.org/show_bug.cgi?id=132935
+
+        Caused repaint bugs (Requested by weinig on #webkit).
+
+        Reverted changeset:
+
+        "Text decorations do not contribute to visual overflow"
+        https://bugs.webkit.org/show_bug.cgi?id=132773
+        http://trac.webkit.org/changeset/168750
+
+2014-05-14  Zalan Bujtas  <zalan@apple.com>
+
+        Subpixel layout: Change Element.offset* client* scroll* return type to double.
+        https://bugs.webkit.org/show_bug.cgi?id=132895
+
+        Reviewed by Simon Fraser.
+
+        Some test cases expect integral values, so the test content is updated accordingly.
+        It mostly means adding Math.round() before comparing values in order to match pixelSnappedIntRect()
+        functionality.
+
+        * css3/calc/simple-calcs-prefixed.html: changed file format from Windows to Unix.
+        * css3/calc/simple-calcs.html: changed file format from Windows to Unix.
+        * cssom/subpixel-offsetleft-top-width-height-values-expected.txt: Added.
+        * cssom/subpixel-offsetleft-top-width-height-values.html: Added.
+        * editing/selection/drag-start-event-client-x-y.html: use floor as we compare the return value to a truncated integer.
+        * editing/selection/mixed-editability-10.html:
+        * fast/css/zoom-in-length-round-trip.html:
+        * fast/dom/non-numeric-values-numeric-parameters-expected.txt:
+        * fast/dom/script-tests/non-numeric-values-numeric-parameters.js:
+        * fast/forms/basic-buttons.html:
+        * js/dom/dom-static-property-for-in-iteration-expected.txt:
+        * platform/mac/fast/scrolling/scroll-div-latched-div.html:
+        * platform/mac/fast/scrolling/scroll-div-latched-mainframe.html:
+        * platform/mac/fast/scrolling/scroll-select-bottom-test.html:
+        * platform/mac/fast/scrolling/scroll-select-latched-mainframe.html:
+        * platform/mac/fast/scrolling/scroll-select-latched-select.html:
+        * resources/check-layout.js:
+
+2014-05-14  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] Unreviewed GTK gardening.
+
+        * platform/gtk/TestExpectations: Report and mark new tests failing.
+        * platform/gtk/editing/apply-style-iframe-crash-expected.txt: Added.
+        Rebaseline after r168641.
+        * platform/gtk/svg/W3C-SVG-1.1-SE/painting-marker-05-f-expected.txt: Added.
+        Rebaseline after r168543.
+        * platform/gtk/svg/W3C-SVG-1.1-SE/painting-marker-06-f-expected.txt: Added.
+        Rebaseline after r168543.
+        * platform/gtk/svg/hixie/mixed/010-expected.txt: Rebaseline after r168674.
+        * platform/gtk/svg/zoom/page/zoom-svg-as-relative-image-expected.txt: Added.
+        Rebaseline after r168350.
+        * platform/gtk/svg/zoom/text/zoom-svg-float-border-padding-expected.txt: Added.
+        Rebaseline after r168674.
+
+2014-05-14  Zalan Bujtas  <zalan@apple.com>
+
+        Fix line ending style for the test.
+
+        * editing/selection/drag-start-event-client-x-y.html:
+
+2014-05-13  Jon Honeycutt  <jhoneycutt@apple.com>
+
+        Revert "Don't dispatch 'beforeload' event inside FrameView::layout()",
+        commit 84fe8cf6fbe8b5de9a06300ca3ef6d0ffc96948c, and associated
+        follow-up fixes:
+
+            "platform/mac/plugins/testplugin-onnew-onpaint.html failing after
+                r168668", commit c17be3bf5127baf94310af4b4b9bf5a57d29aaf4
+            "[Win] Unreviewed build fix after r168668.", commit
+                4fa470ad12c38ee7d4c114541b6dd321181a8bc9
+
+        The original merged patch appears to have caused a regression in
+        fast/dom/HTMLObjectElement/object-as-frame.html.
+
+        <https://bugs.webkit.org/show_bug.cgi?id=132886>
+
+        Reviewed by Alexey Proskuryakov.
+
+        * compositing/plugins/composited-plugin.html:
+        * compositing/plugins/no-backing-store.html:
+        * fast/dom/beforeload/flash-before-load.html:
+        * fast/events/beforeload-assertion-expected.txt: Removed.
+        * fast/events/beforeload-assertion.html: Removed.
+        * fast/events/beforeload-iframe-crash-expected.txt: Removed.
+        * fast/events/beforeload-iframe-crash.html: Removed.
+        * fast/events/beforeload-input-time-crash-expected.txt: Removed.
+        * fast/events/beforeload-input-time-crash.html: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/plugintypes-notype-data.html:
+        * http/tests/security/contentSecurityPolicy/1.1/plugintypes-nourl-blocked.html:
+        * http/tests/security/contentSecurityPolicy/object-src-no-url-allowed.html:
+        * http/tests/security/contentSecurityPolicy/object-src-no-url-blocked.html:
+        * http/tests/security/contentSecurityPolicy/object-src-none-allowed.html:
+        * http/tests/security/contentSecurityPolicy/object-src-none-blocked.html:
+        * http/tests/security/contentSecurityPolicy/resources/multiple-iframe-plugin-test.js:
+        (testImpl.iframe.onload):
+        (testImpl):
+        * http/tests/security/mixedContent/insecure-plugin-in-iframe.html:
+        * platform/mac/plugins/supports-carbon-event-model.html:
+        * platform/mac/plugins/testplugin-onnew-onpaint.html:
+        * plugins/get-user-agent-with-null-npp-from-npp-new.html:
+        * plugins/mouse-click-plugin-clears-selection.html:
+        * plugins/netscape-plugin-map-data-to-src.html:
+        * plugins/no-mime-with-valid-extension.html:
+        * plugins/plugin-initiate-popup-window.html:
+        * plugins/windowless_plugin_paint_test.html:
+        * resources/plugin.js: Removed.
+
+2014-05-14  Kiran  <kiran.guduru@samsung.com>
+
+        alidation for getUserMedia() errorCallback is missing.
+        https://bugs.webkit.org/show_bug.cgi?id=132901
+
+        Reviewed by Darin Adler.
+
+        This test checks for null values in getUserMedia errorCallback.
+
+        * fast/mediastream/getusermedia.html:
+
+2014-05-14  Alexey Proskuryakov  <ap@apple.com>
+
+        Change line endings of some test files to LF to make it easier to commit and test changes.
+
+        * css3/calc/simple-calcs.html:
+        * css3/calc/simple-minmax.html:
+        * css3/calc/transforms-scale-expected.html:
+        * css3/calc/transforms-scale.html:
+        * css3/calc/transforms-translate-expected.html:
+        * css3/calc/transforms-translate.html:
+
+2014-05-14  Alexey Proskuryakov  <ap@apple.com>
+
+        Fix line ending style for the test (as an experiment).
+
+        * css3/calc/simple-calcs-prefixed.html:
+
 2014-05-13  Andrei Bucur  <abucur@adobe.com>
 
         [CSS Regions] Assertion failure in some cases with inline blocks

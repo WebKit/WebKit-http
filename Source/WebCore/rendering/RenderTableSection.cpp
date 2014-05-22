@@ -29,6 +29,7 @@
 #include "HitTestResult.h"
 #include "HTMLNames.h"
 #include "PaintInfo.h"
+#include "RenderNamedFlowFragment.h"
 #include "RenderTableCell.h"
 #include "RenderTableCol.h"
 #include "RenderTableRow.h"
@@ -1034,7 +1035,7 @@ CellSpan RenderTableSection::dirtiedRows(const LayoutRect& damageRect) const
     if (m_forceSlowPaintPathWithOverflowingCell) 
         return fullTableRowSpan();
 
-    CellSpan coveredRows = spannedRows(damageRect);
+    CellSpan coveredRows = spannedRows(damageRect, IncludeAllIntersectingCells);
 
     // To repaint the border we might need to repaint first or last row even if they are not spanned themselves.
     if (coveredRows.start() >= m_rowPos.size() - 1 && m_rowPos[m_rowPos.size() - 1] + table()->outerBorderAfter() >= damageRect.y())
@@ -1051,7 +1052,7 @@ CellSpan RenderTableSection::dirtiedColumns(const LayoutRect& damageRect) const
     if (m_forceSlowPaintPathWithOverflowingCell) 
         return fullTableColumnSpan();
 
-    CellSpan coveredColumns = spannedColumns(damageRect);
+    CellSpan coveredColumns = spannedColumns(damageRect, IncludeAllIntersectingCells);
 
     const Vector<int>& columnPos = table()->columnPositions();
     // To repaint the border we might need to repaint first or last column even if they are not spanned themselves.
@@ -1064,10 +1065,12 @@ CellSpan RenderTableSection::dirtiedColumns(const LayoutRect& damageRect) const
     return coveredColumns;
 }
 
-CellSpan RenderTableSection::spannedRows(const LayoutRect& flippedRect) const
+CellSpan RenderTableSection::spannedRows(const LayoutRect& flippedRect, ShouldIncludeAllIntersectingCells shouldIncludeAllIntersectionCells) const
 {
     // Find the first row that starts after rect top.
     unsigned nextRow = std::upper_bound(m_rowPos.begin(), m_rowPos.end(), flippedRect.y()) - m_rowPos.begin();
+    if (shouldIncludeAllIntersectionCells == IncludeAllIntersectingCells && nextRow && m_rowPos[nextRow - 1] == flippedRect.y())
+        --nextRow;
 
     if (nextRow == m_rowPos.size())
         return CellSpan(m_rowPos.size() - 1, m_rowPos.size() - 1); // After all rows.
@@ -1087,7 +1090,7 @@ CellSpan RenderTableSection::spannedRows(const LayoutRect& flippedRect) const
     return CellSpan(startRow, endRow);
 }
 
-CellSpan RenderTableSection::spannedColumns(const LayoutRect& flippedRect) const
+CellSpan RenderTableSection::spannedColumns(const LayoutRect& flippedRect, ShouldIncludeAllIntersectingCells shouldIncludeAllIntersectionCells) const
 {
     const Vector<int>& columnPos = table()->columnPositions();
 
@@ -1097,6 +1100,8 @@ CellSpan RenderTableSection::spannedColumns(const LayoutRect& flippedRect) const
     // upper_bound on the other hand properly returns the cell on the logical bottom/right, which also
     // matches the behavior of other browsers.
     unsigned nextColumn = std::upper_bound(columnPos.begin(), columnPos.end(), flippedRect.x()) - columnPos.begin();
+    if (shouldIncludeAllIntersectionCells == IncludeAllIntersectingCells && nextColumn && columnPos[nextColumn - 1] == flippedRect.x())
+        --nextColumn;
 
     if (nextColumn == columnPos.size())
         return CellSpan(columnPos.size() - 1, columnPos.size() - 1); // After all columns.
@@ -1494,7 +1499,7 @@ bool RenderTableSection::nodeAtPoint(const HitTestRequest& request, HitTestResul
     // Just forward to our children always.
     LayoutPoint adjustedLocation = accumulatedOffset + location();
 
-    if (hasOverflowClip() && !locationInContainer.intersects(overflowClipRect(adjustedLocation, locationInContainer.region())))
+    if (hasOverflowClip() && !locationInContainer.intersects(overflowClipRect(adjustedLocation, currentRenderNamedFlowFragment())))
         return false;
 
     if (hasOverflowingCell()) {
@@ -1520,8 +1525,8 @@ bool RenderTableSection::nodeAtPoint(const HitTestRequest& request, HitTestResul
     hitTestRect.moveBy(-adjustedLocation);
 
     LayoutRect tableAlignedRect = logicalRectForWritingModeAndDirection(hitTestRect);
-    CellSpan rowSpan = spannedRows(tableAlignedRect);
-    CellSpan columnSpan = spannedColumns(tableAlignedRect);
+    CellSpan rowSpan = spannedRows(tableAlignedRect, DoNotIncludeAllIntersectingCells);
+    CellSpan columnSpan = spannedColumns(tableAlignedRect, DoNotIncludeAllIntersectingCells);
 
     // Now iterate over the spanned rows and columns.
     for (unsigned hitRow = rowSpan.start(); hitRow < rowSpan.end(); ++hitRow) {

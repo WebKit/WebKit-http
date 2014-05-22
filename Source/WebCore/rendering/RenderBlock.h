@@ -157,16 +157,6 @@ public:
     {
         return logicalLeftOffsetForLine(position, logicalLeftOffsetForContent(position), shouldIndentText, logicalHeight);
     }
-    LayoutUnit pixelSnappedLogicalLeftOffsetForLine(LayoutUnit position, bool shouldIndentText, LayoutUnit logicalHeight = 0) const 
-    {
-        return roundToInt(logicalLeftOffsetForLine(position, shouldIndentText, logicalHeight));
-    }
-    LayoutUnit pixelSnappedLogicalRightOffsetForLine(LayoutUnit position, bool shouldIndentText, LayoutUnit logicalHeight = 0) const 
-    {
-        // FIXME: Now that we have a new multicolumn implementation, can this be fixed?
-        // https://bugs.webkit.org/show_bug.cgi?id=105461
-        return floorToInt(logicalRightOffsetForLine(position, shouldIndentText, logicalHeight));
-    }
     LayoutUnit startOffsetForLine(LayoutUnit position, bool shouldIndentText, LayoutUnit logicalHeight = 0) const
     {
         return style().isLeftToRightDirection() ? logicalLeftOffsetForLine(position, shouldIndentText, logicalHeight)
@@ -355,16 +345,15 @@ protected:
     virtual int firstLineBaseline() const override;
     virtual int inlineBlockBaseline(LineDirectionMode) const override;
 
-    // Delay update scrollbar until finishDelayRepaint() will be
-    // called. This function is used when a flexbox is laying out its
-    // descendant. If multiple calls are made to startDelayRepaint(),
-    // finishDelayRepaint() will do nothing until finishDelayRepaint()
-    // is called the same number of times.
-    static void startDelayUpdateScrollInfo();
-    static void finishDelayUpdateScrollInfo();
+    // Delay updating scrollbars until endAndCommitUpdateScrollInfoAfterLayoutTransaction() is called. These functions are used
+    // when a flexbox is laying out its descendants. If multiple calls are made to beginUpdateScrollInfoAfterLayoutTransaction()
+    // then endAndCommitUpdateScrollInfoAfterLayoutTransaction() will do nothing until it is called the same number of times.
+    void beginUpdateScrollInfoAfterLayoutTransaction();
+    void endAndCommitUpdateScrollInfoAfterLayoutTransaction();
+
+    void removeFromUpdateScrollInfoAfterLayoutTransaction();
 
     void updateScrollInfoAfterLayout();
-    void removeFromDelayedUpdateScrollInfoSet();
 
     virtual void styleWillChange(StyleDifference, const RenderStyle& newStyle) override;
     virtual void styleDidChange(StyleDifference, const RenderStyle* oldStyle) override;

@@ -208,10 +208,9 @@ private:
 
     self.layer.hitTestsAsOpaque = YES;
 
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_applicationDidEnterBackground:) name:UIApplicationDidEnterBackgroundNotification object:[UIApplication sharedApplication]];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_applicationWillEnterForeground:) name:UIApplicationWillEnterForegroundNotification object:[UIApplication sharedApplication]];
-
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_applicationWillResignActive:) name:UIApplicationWillResignActiveNotification object:[UIApplication sharedApplication]];
-
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_applicationDidBecomeActive:) name:UIApplicationDidBecomeActiveNotification object:[UIApplication sharedApplication]];
 
     return self;
@@ -292,40 +291,6 @@ private:
     }
 }
 
-static inline float adjustedUnexposedEdge(float documentEdge, float exposedRectEdge, float factor)
-{
-    if (exposedRectEdge < documentEdge)
-        return documentEdge - factor * (documentEdge - exposedRectEdge);
-    
-    return exposedRectEdge;
-}
-
-static inline float adjustedUnexposedMaxEdge(float documentEdge, float exposedRectEdge, float factor)
-{
-    if (exposedRectEdge > documentEdge)
-        return documentEdge + factor * (exposedRectEdge - documentEdge);
-    
-    return exposedRectEdge;
-}
-
-static inline FloatRect fixedPositionRectFromExposedRect(CGRect unobscuredRect, CGSize documentSize, CGFloat scale, CGFloat minimumScale)
-{
-    FloatRect constrainedUnobscuredRect = unobscuredRect;
-    FloatRect documentRect = FloatRect(FloatPoint(), FloatSize(documentSize));
-    
-    if (scale < minimumScale) {
-        const CGFloat slope = 12;
-        CGFloat factor = std::max<CGFloat>(1 - slope * (minimumScale - scale), 0);
-            
-        constrainedUnobscuredRect.setX(adjustedUnexposedEdge(documentRect.x(), constrainedUnobscuredRect.x(), factor));
-        constrainedUnobscuredRect.setY(adjustedUnexposedEdge(documentRect.y(), constrainedUnobscuredRect.y(), factor));
-        constrainedUnobscuredRect.setWidth(adjustedUnexposedMaxEdge(documentRect.maxX(), constrainedUnobscuredRect.maxX(), factor) - constrainedUnobscuredRect.x());
-        constrainedUnobscuredRect.setHeight(adjustedUnexposedMaxEdge(documentRect.maxY(), constrainedUnobscuredRect.maxY(), factor) - constrainedUnobscuredRect.y());
-    }
-    
-    return FrameView::rectForViewportConstrainedObjects(enclosingLayoutRect(constrainedUnobscuredRect), roundedLayoutSize(FloatSize(documentSize)), scale, false, StickToViewportBounds);
-}
-
 - (void)didUpdateVisibleRect:(CGRect)visibleRect unobscuredRect:(CGRect)unobscuredRect unobscuredRectInScrollViewCoordinates:(CGRect)unobscuredRectInScrollViewCoordinates
     scale:(CGFloat)zoomScale minimumScale:(CGFloat)minimumScale inStableState:(BOOL)isStableState isChangingObscuredInsetsInteractively:(BOOL)isChangingObscuredInsetsInteractively
 {
@@ -336,19 +301,12 @@ static inline FloatRect fixedPositionRectFromExposedRect(CGRect unobscuredRect, 
     else
         _historicalKinematicData.clear();
 
-    double scaleNoiseThreshold = 0.0005;
-    CGFloat filteredScale = zoomScale;
-    if (!isStableState && fabs(filteredScale - _page->displayedContentScale()) < scaleNoiseThreshold) {
-        // Tiny changes of scale during interactive zoom cause content to jump by one pixel, creating
-        // visual noise. We filter those useless updates.
-        filteredScale = _page->displayedContentScale();
-    }
+    FloatRect fixedPositionRectForLayout = _page->computeCustomFixedPositionRect(unobscuredRect, zoomScale, WebPageProxy::UnobscuredRectConstraint::ConstrainedToDocumentRect);
+    _page->updateVisibleContentRects(VisibleContentRectUpdateInfo(_page->nextVisibleContentRectUpdateID(), visibleRect, unobscuredRect, unobscuredRectInScrollViewCoordinates, fixedPositionRectForLayout,
+        zoomScale, isStableState, isChangingObscuredInsetsInteractively, timestamp, velocityData.horizontalVelocity, velocityData.verticalVelocity, velocityData.scaleChangeRate));
 
-    FloatRect customFixedPositionRect = fixedPositionRectFromExposedRect(unobscuredRect, [self bounds].size, zoomScale, minimumScale);
-    _page->updateVisibleContentRects(VisibleContentRectUpdateInfo(_page->nextVisibleContentRectUpdateID(), visibleRect, unobscuredRect, unobscuredRectInScrollViewCoordinates, customFixedPositionRect, filteredScale, isStableState, isChangingObscuredInsetsInteractively, timestamp, velocityData.horizontalVelocity, velocityData.verticalVelocity, velocityData.scaleChangeRate));
-    
     RemoteScrollingCoordinatorProxy* scrollingCoordinator = _page->scrollingCoordinatorProxy();
-    scrollingCoordinator->viewportChangedViaDelegatedScrolling(scrollingCoordinator->rootScrollingNodeID(), customFixedPositionRect, zoomScale);
+    scrollingCoordinator->viewportChangedViaDelegatedScrolling(scrollingCoordinator->rootScrollingNodeID(), _page->computeCustomFixedPositionRect(_page->unobscuredContentRect(), zoomScale), zoomScale);
 
     if (auto drawingArea = _page->drawingArea())
         drawingArea->updateDebugIndicator();
@@ -502,9 +460,15 @@ static inline FloatRect fixedPositionRectFromExposedRect(CGRect unobscuredRect, 
     _page->applicationWillResignActive();
 }
 
+- (void)_applicationDidEnterBackground:(NSNotification*)notification
+{
+    _page->viewStateDidChange(ViewState::AllFlags & ~ViewState::IsInWindow);
+}
+
 - (void)_applicationWillEnterForeground:(NSNotification*)notification
 {
     _page->applicationWillEnterForeground();
+    _page->viewStateDidChange(ViewState::AllFlags & ~ViewState::IsInWindow);
 }
 
 - (void)_applicationDidBecomeActive:(NSNotification*)notification

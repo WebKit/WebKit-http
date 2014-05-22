@@ -214,6 +214,9 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 - (BOOL)webAudioEnabled;
 - (void)setWebAudioEnabled:(BOOL)enabled;
 
+- (BOOL)subpixelCSSOMElementMetricsEnabled;
+- (void)setSubpixelCSSOMElementMetricsEnabled:(BOOL)enabled;
+
 - (BOOL)webGLEnabled;
 - (void)setWebGLEnabled:(BOOL)enabled;
 
@@ -367,9 +370,6 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 // WebSocket support depends on ENABLE(WEB_SOCKETS).
 - (void)setHixie76WebSocketProtocolEnabled:(BOOL)flag;
 - (BOOL)isHixie76WebSocketProtocolEnabled;
-
-- (void)setRegionBasedColumnsEnabled:(BOOL)flag;
-- (BOOL)regionBasedColumnsEnabled;
 
 #if TARGET_OS_IPHONE
 - (void)_invalidateCachedPreferences;

@@ -159,6 +159,7 @@ class WebOpenPanelResultListener;
 class WebPageGroupProxy;
 class WebPopupMenu;
 class WebUndoStep;
+class WebUserContentController;
 class WebVideoFullscreenManager;
 class WebWheelEvent;
 struct AssistedNodeInformation;
@@ -827,6 +828,7 @@ private:
     void handleSyntheticClick(WebCore::Node* nodeRespondingToClick, const WebCore::FloatPoint& location);
     void completeSyntheticClick(WebCore::Node* nodeRespondingToClick, const WebCore::FloatPoint& location);
     void sendTapHighlightForNodeIfNecessary(uint64_t requestID, WebCore::Node*);
+    void resetTextAutosizingBeforeLayoutIfNeeded(const WebCore::FloatSize& oldSize, const WebCore::FloatSize& newSize);
 #endif
 #if !PLATFORM(COCOA)
     static const char* interpretKeyEvent(const WebCore::KeyboardEvent*);
@@ -853,9 +855,9 @@ private:
     void loadPlainTextString(const String&, IPC::MessageDecoder&);
     void loadWebArchiveData(const IPC::DataReference&, IPC::MessageDecoder&);
     void reload(uint64_t navigationID, bool reloadFromOrigin, const SandboxExtension::Handle&);
-    void goForward(uint64_t);
-    void goBack(uint64_t);
-    void goToBackForwardItem(uint64_t);
+    void goForward(uint64_t navigationID, uint64_t);
+    void goBack(uint64_t navigationID, uint64_t);
+    void goToBackForwardItem(uint64_t navigationID, uint64_t);
     void tryRestoreScrollPosition();
     void setActive(bool);
     void setFocused(bool);
@@ -888,7 +890,7 @@ private:
     void loadURLInFrame(const String&, uint64_t frameID);
 
     uint64_t restoreSession(const SessionState&);
-    void restoreSessionAndNavigateToCurrentItem(const SessionState&);
+    void restoreSessionAndNavigateToCurrentItem(uint64_t navigationID, const SessionState&);
 
     void didRemoveBackForwardItem(uint64_t);
 
@@ -970,7 +972,7 @@ private:
 #endif
     void didChooseFilesForOpenPanel(const Vector<String>&);
     void didCancelForOpenPanel();
-#if ENABLE(WEB_PROCESS_SANDBOX)
+#if ENABLE(SANDBOX_EXTENSIONS)
     void extendSandboxForFileFromOpenPanel(const SandboxExtension::Handle&);
 #endif
 
@@ -1137,6 +1139,8 @@ private:
 #endif
     RefPtr<WebOpenPanelResultListener> m_activeOpenPanelResultListener;
     RefPtr<NotificationPermissionRequestManager> m_notificationPermissionRequestManager;
+
+    RefPtr<WebUserContentController> m_userContentController;
 
 #if ENABLE(GEOLOCATION)
     GeolocationPermissionRequestManager m_geolocationPermissionRequestManager;

@@ -26,10 +26,9 @@
 #ifndef TestInvocation_h
 #define TestInvocation_h
 
+#include <WebKit/WKRetainPtr.h>
 #include <string>
-#include <WebKit2/WKRetainPtr.h>
 #include <wtf/Noncopyable.h>
-#include <wtf/OwnPtr.h>
 #include <wtf/text/StringBuilder.h>
 
 namespace WTR {

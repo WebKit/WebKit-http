@@ -110,17 +110,19 @@ IntSize PageClientImpl::viewSize()
 
 bool PageClientImpl::isViewWindowActive()
 {
-    return [m_webView window];
+    // FIXME: https://bugs.webkit.org/show_bug.cgi?id=133098
+    return isViewVisible();
 }
 
 bool PageClientImpl::isViewFocused()
 {
-    return [m_webView window];
+    // FIXME: https://bugs.webkit.org/show_bug.cgi?id=133098
+    return isViewWindowActive();
 }
 
 bool PageClientImpl::isViewVisible()
 {
-    return [m_webView window];
+    return [m_webView window] && [UIApplication sharedApplication].applicationState != UIApplicationStateBackground;
 }
 
 bool PageClientImpl::isViewInWindow()
@@ -130,12 +132,12 @@ bool PageClientImpl::isViewInWindow()
 
 bool PageClientImpl::isViewVisibleOrOccluded()
 {
-    return [m_webView window];
+    return isViewVisible();
 }
 
 bool PageClientImpl::isVisuallyIdle()
 {
-    return ![m_webView window];
+    return !isViewVisible();
 }
 
 void PageClientImpl::processDidExit()
@@ -180,6 +182,24 @@ void PageClientImpl::handleDownloadRequest(DownloadProxy* download)
     ASSERT_ARG(download, download);
     ASSERT([download->wrapper() isKindOfClass:[_WKDownload class]]);
     [static_cast<_WKDownload *>(download->wrapper()) setOriginatingWebView:m_webView];
+}
+
+void PageClientImpl::didChangeViewportMetaTagWidth(float newWidth)
+{
+    [m_webView _setViewportMetaTagWidth:newWidth];
+}
+
+double PageClientImpl::minimumZoomScale() const
+{
+    if (UIScrollView *scroller = [m_webView scrollView])
+        return scroller.minimumZoomScale;
+
+    return 1;
+}
+
+WebCore::FloatSize PageClientImpl::contentsSize() const
+{
+    return FloatSize([m_contentView bounds].size);
 }
 
 void PageClientImpl::setCursor(const Cursor&)

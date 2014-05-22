@@ -21,7 +21,7 @@ The SVG font has a descent of 0, which means that underlines will
 lie outside of the glyph boundaries. The test makes sure that
 drawing underlined text ends up the same as drawing text that has
 had the underline retroactively applied to it with javascript.
-<div style="position: relative">
+<div style="position: relative; height: 45px;">
 <div id="underline" style="position: absolute; left: 0px; top: 0px;">|</div>
 <div id="underlineunder" style="position: absolute; left: 20px; top: 0px; -webkit-text-underline-position: under;">|</div>
 <div id="linethrough" style="position: absolute; left: 40px; top: 0px;">|</div>
@@ -48,7 +48,7 @@ function applyUnderline() {
 
 if (window.testRunner)
     testRunner.waitUntilDone();
-window.addEventListener('load', applyUnderline, false);
+window.setTimeout(applyUnderline, 17);
 </script>
 </body>
 </html>

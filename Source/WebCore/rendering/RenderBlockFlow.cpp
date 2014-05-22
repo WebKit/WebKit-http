@@ -182,7 +182,7 @@ void RenderBlockFlow::willBeDestroyed()
 
     m_lineBoxes.deleteLineBoxes();
 
-    removeFromDelayedUpdateScrollInfoSet();
+    removeFromUpdateScrollInfoAfterLayoutTransaction();
 
     // NOTE: This jumps down to RenderBox, bypassing RenderBlock since it would do duplicate work.
     RenderBox::willBeDestroyed();
@@ -746,15 +746,13 @@ void RenderBlockFlow::layoutBlockChild(RenderBox& child, MarginInfo& marginInfo,
             if (!child.needsLayout())
                 child.markForPaginationRelayoutIfNeeded();
         }
-
-        // Our guess was wrong. Make the child lay itself out again.
-        child.layoutIfNeeded();
     }
 
-    if (updateRegionRangeForBoxChild(child)) {
+    if (updateRegionRangeForBoxChild(child))
         child.setNeedsLayout(MarkOnlyThis);
-        child.layoutIfNeeded();
-    }
+
+    // In case our guess was wrong, relayout the child.
+    child.layoutIfNeeded();
 
     // We are no longer at the top of the block if we encounter a non-empty child.  
     // This has to be done after checking for clear, so that margins can be reset if a clear occurred.
@@ -1622,7 +1620,7 @@ static inline LayoutUnit calculateMinimumPageHeight(RenderStyle* renderStyle, Ro
     return lineBottom - lineTop;
 }
 
-void RenderBlockFlow::adjustLinePositionForPagination(RootInlineBox* lineBox, LayoutUnit& delta, RenderFlowThread* flowThread)
+void RenderBlockFlow::adjustLinePositionForPagination(RootInlineBox* lineBox, LayoutUnit& delta, bool& overflowsRegion, RenderFlowThread* flowThread)
 {
     // FIXME: For now we paginate using line overflow. This ensures that lines don't overlap at all when we
     // put a strut between them for pagination purposes. However, this really isn't the desired rendering, since
@@ -1643,6 +1641,7 @@ void RenderBlockFlow::adjustLinePositionForPagination(RootInlineBox* lineBox, La
     // FIXME: Another problem with simply moving lines is that the available line width may change (because of floats).
     // Technically if the location we move the line to has a different line width than our old position, then we need to dirty the
     // line and all following lines.
+    overflowsRegion = false;
     LayoutRect logicalVisualOverflow = lineBox->logicalVisualOverflowRect(lineBox->lineTop(), lineBox->lineBottom());
     LayoutUnit logicalOffset = std::min(lineBox->lineTopWithLeading(), logicalVisualOverflow.y());
     LayoutUnit logicalBottom = std::max(lineBox->lineBottomWithLeading(), logicalVisualOverflow.maxY());
@@ -1661,6 +1660,7 @@ void RenderBlockFlow::adjustLinePositionForPagination(RootInlineBox* lineBox, La
         // From here, the fix is not straightforward because it's not easy to always determine when the current line is the first in the page.
         return;
     LayoutUnit remainingLogicalHeight = pageRemainingLogicalHeightForOffset(logicalOffset, ExcludePageBoundary);
+    overflowsRegion = (lineHeight > remainingLogicalHeight);
 
     int lineIndex = lineCount(lineBox);
     if (remainingLogicalHeight < lineHeight || (shouldBreakAtLineToAvoidWidow() && lineBreakToAvoidWidow() == lineIndex)) {
@@ -1675,6 +1675,8 @@ void RenderBlockFlow::adjustLinePositionForPagination(RootInlineBox* lineBox, La
             // Split the top margin in order to avoid splitting the visible part of the line.
             remainingLogicalHeight -= std::min(lineHeight - pageLogicalHeight, std::max<LayoutUnit>(0, logicalVisualOverflow.y() - lineBox->lineTopWithLeading()));
         }
+        LayoutUnit remainingLogicalHeightAtNewOffset = pageRemainingLogicalHeightForOffset(logicalOffset + remainingLogicalHeight, ExcludePageBoundary);
+        overflowsRegion = (lineHeight > remainingLogicalHeightAtNewOffset);
         LayoutUnit totalLogicalHeight = lineHeight + std::max<LayoutUnit>(0, logicalOffset);
         LayoutUnit pageLogicalHeightAtNewOffset = hasUniformPageLogicalHeight ? pageLogicalHeight : pageLogicalHeightForOffset(logicalOffset + remainingLogicalHeight);
         setPageBreak(logicalOffset, lineHeight - remainingLogicalHeight);
@@ -1760,7 +1762,7 @@ bool RenderBlockFlow::hasNextPage(LayoutUnit logicalOffset, PageBoundaryRule pag
     RenderRegion* startRegion = nullptr;
     RenderRegion* endRegion = nullptr;
     flowThread->getRegionRangeForBox(this, startRegion, endRegion);
-    return region != endRegion;
+    return (endRegion && region != endRegion);
 }
 
 LayoutUnit RenderBlockFlow::adjustForUnsplittableChild(RenderBox& child, LayoutUnit logicalOffset, bool includeMargins)
@@ -3001,6 +3003,17 @@ void RenderBlockFlow::createRenderNamedFlowFragmentIfNeeded()
         setRenderNamedFlowFragment(flowFragment);
         addChild(renderNamedFlowFragment());
     }
+}
+
+bool RenderBlockFlow::needsLayoutAfterRegionRangeChange() const
+{
+    // A block without floats or that expands to enclose them won't need a relayout
+    // after a region range change. There is no overflow content needing relayout
+    // in the region chain because the region range can only shrink after the estimation.
+    if (!containsFloats() || expandsToEncloseOverhangingFloats())
+        return false;
+
+    return true;
 }
 
 bool RenderBlockFlow::canHaveChildren() const

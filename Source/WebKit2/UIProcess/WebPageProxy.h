@@ -163,6 +163,7 @@ class WebMouseEvent;
 class WebOpenPanelResultListenerProxy;
 class WebPageGroup;
 class WebProcessProxy;
+class WebUserContentControllerProxy;
 class WebWheelEvent;
 struct AttributedString;
 struct ColorSpaceData;
@@ -427,7 +428,9 @@ private:
 struct WebPageConfiguration {
     WebPageGroup* pageGroup = nullptr;
     WebPreferences* preferences = nullptr;
+    WebUserContentControllerProxy* userContentController = nullptr;
     VisitedLinkProvider* visitedLinkProvider = nullptr;
+
     API::Session* session = nullptr;
     WebPageProxy* relatedPage = nullptr;
 };
@@ -514,12 +517,12 @@ public:
     void loadWebArchiveData(API::Data*, API::Object* userData = nullptr);
 
     void stopLoading();
-    void reload(bool reloadFromOrigin);
+    uint64_t reload(bool reloadFromOrigin);
 
-    void goForward();
-    void goBack();
+    uint64_t goForward();
+    uint64_t goBack();
 
-    void goToBackForwardItem(WebBackForwardListItem*);
+    uint64_t goToBackForwardItem(WebBackForwardListItem*);
     void tryRestoreScrollPosition();
     void didChangeBackForwardList(WebBackForwardListItem* addedItem, Vector<RefPtr<WebBackForwardListItem>> removed);
     void willGoToBackForwardListItem(uint64_t itemID, IPC::MessageDecoder&);
@@ -589,6 +592,9 @@ public:
     uint64_t nextVisibleContentRectUpdateID() const { return m_lastVisibleContentRectUpdate.updateID() + 1; }
     uint64_t lastVisibleContentRectUpdateID() const { return m_lastVisibleContentRectUpdate.updateID(); }
 
+    enum class UnobscuredRectConstraint { ConstrainedToDocumentRect, Unconstrained };
+    WebCore::FloatRect computeCustomFixedPositionRect(const WebCore::FloatRect& unobscuredContentRect, double displayedContentScale, UnobscuredRectConstraint = UnobscuredRectConstraint::Unconstrained) const;
+
     void dynamicViewportSizeUpdate(const WebCore::FloatSize& minimumLayoutSize, const WebCore::FloatRect& targetExposedContentRect, const WebCore::FloatRect& targetUnobscuredRect, const WebCore::FloatRect& targetUnobscuredRectInScrollViewCoordinates, double targetScale);
     
     void setViewportConfigurationMinimumLayoutSize(const WebCore::FloatSize&);
@@ -626,6 +632,7 @@ public:
     void zoomToRect(WebCore::FloatRect, double minimumScale, double maximumScale);
     void commitPotentialTapFailed();
     void didNotHandleTapAsClick(const WebCore::IntPoint&);
+    void viewportMetaTagWidthDidChange(float width);
 #endif
 
     const EditorState& editorState() const { return m_editorState; }
@@ -1199,7 +1206,7 @@ private:
     void setCanShortCircuitHorizontalWheelEvents(bool canShortCircuitHorizontalWheelEvents) { m_canShortCircuitHorizontalWheelEvents = canShortCircuitHorizontalWheelEvents; }
 
     void reattachToWebProcess();
-    void reattachToWebProcessWithItem(WebBackForwardListItem*);
+    uint64_t reattachToWebProcessWithItem(WebBackForwardListItem*);
 
     void requestNotificationPermission(uint64_t notificationID, const String& originString);
     void showNotification(const String& title, const String& body, const String& iconURL, const String& tag, const String& lang, const String& dir, const String& originString, uint64_t notificationID);
@@ -1450,6 +1457,7 @@ private:
     Ref<WebProcessProxy> m_process;
     Ref<WebPageGroup> m_pageGroup;
     Ref<WebPreferences> m_preferences;
+    const RefPtr<WebUserContentControllerProxy> m_userContentController;
     Ref<VisitedLinkProvider> m_visitedLinkProvider;
 
     RefPtr<WebFrameProxy> m_mainFrame;

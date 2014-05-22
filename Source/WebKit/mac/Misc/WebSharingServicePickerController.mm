@@ -92,6 +92,9 @@ using namespace WebCore;
 
 - (void)clear
 {
+    // Protect self from being dealloc'ed partway through this method.
+    RetainPtr<WebSharingServicePickerController> protector(self);
+
     if (_menuClient)
         _menuClient->clearSharingServicePickerController();
 
@@ -207,9 +210,17 @@ using namespace WebCore;
 - (NSRect)sharingService:(NSSharingService *)sharingService sourceFrameOnScreenForShareItem:(id <NSPasteboardWriting>)item
 {
     if (!_menuClient)
-        return NSRect();
+        return NSZeroRect;
 
-    return (NSRect)_menuClient->screenRectForHitTestNode();
+    return _menuClient->screenRectForHitTestNode();
+}
+
+- (NSImage *)sharingService:(NSSharingService *)sharingService transitionImageForShareItem:(id <NSPasteboardWriting>)item contentRect:(NSRect *)contentRect
+{
+    if (!_menuClient)
+        return nil;
+
+    return _menuClient->renderedImageForControlledImage();
 }
 
 - (NSWindow *)sharingService:(NSSharingService *)sharingService sourceWindowForShareItems:(NSArray *)items sharingContentScope:(NSSharingContentScope *)sharingContentScope

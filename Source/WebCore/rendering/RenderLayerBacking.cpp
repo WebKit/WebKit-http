@@ -73,9 +73,6 @@ namespace WebCore {
 
 using namespace HTMLNames;
 
-static bool hasBoxDecorationsOrBackgroundImage(const RenderStyle*);
-static LayoutRect clipBox(RenderBox& renderer);
-
 CanvasCompositingStrategy canvasCompositingStrategy(const RenderObject& renderer)
 {
     ASSERT(renderer.isCanvas());
@@ -316,13 +313,13 @@ void RenderLayerBacking::createPrimaryGraphicsLayer()
     }
 #endif    
     
-    updateOpacity(&renderer().style());
-    updateTransform(&renderer().style());
+    updateOpacity(renderer().style());
+    updateTransform(renderer().style());
 #if ENABLE(CSS_FILTERS)
-    updateFilters(&renderer().style());
+    updateFilters(renderer().style());
 #endif
 #if ENABLE(CSS_COMPOSITING)
-    updateBlendMode(&renderer().style());
+    updateBlendMode(renderer().style());
 #endif
 }
 
@@ -357,19 +354,19 @@ void RenderLayerBacking::destroyGraphicsLayers()
     m_scrollingContentsLayer = nullptr;
 }
 
-void RenderLayerBacking::updateOpacity(const RenderStyle* style)
+void RenderLayerBacking::updateOpacity(const RenderStyle& style)
 {
-    m_graphicsLayer->setOpacity(compositingOpacity(style->opacity()));
+    m_graphicsLayer->setOpacity(compositingOpacity(style.opacity()));
 }
 
-void RenderLayerBacking::updateTransform(const RenderStyle* style)
+void RenderLayerBacking::updateTransform(const RenderStyle& style)
 {
     // FIXME: This could use m_owningLayer.transform(), but that currently has transform-origin
     // baked into it, and we don't want that.
     TransformationMatrix t;
     if (m_owningLayer.hasTransform()) {
         RenderBox& renderBox = toRenderBox(renderer());
-        style->applyTransform(t, pixelSnappedForPainting(renderBox.borderBoxRect(), renderBox.document().deviceScaleFactor()), RenderStyle::ExcludeTransformOrigin);
+        style.applyTransform(t, pixelSnappedForPainting(renderBox.borderBoxRect(), renderBox.document().deviceScaleFactor()), RenderStyle::ExcludeTransformOrigin);
         makeMatrixRenderable(t, compositor().canRender3DTransforms());
     }
     
@@ -381,20 +378,21 @@ void RenderLayerBacking::updateTransform(const RenderStyle* style)
 }
 
 #if ENABLE(CSS_FILTERS)
-void RenderLayerBacking::updateFilters(const RenderStyle* style)
+void RenderLayerBacking::updateFilters(const RenderStyle& style)
 {
-    m_canCompositeFilters = m_graphicsLayer->setFilters(style->filter());
+    m_canCompositeFilters = m_graphicsLayer->setFilters(style.filter());
 }
 #endif
 
 #if ENABLE(CSS_COMPOSITING)
-void RenderLayerBacking::updateBlendMode(const RenderStyle* style)
+void RenderLayerBacking::updateBlendMode(const RenderStyle& style)
 {
+    // FIXME: where is the blend mode updated when m_ancestorClippingLayers come and go?
     if (m_ancestorClippingLayer) {
-        m_ancestorClippingLayer->setBlendMode(style->blendMode());
+        m_ancestorClippingLayer->setBlendMode(style.blendMode());
         m_graphicsLayer->setBlendMode(BlendModeNormal);
     } else
-        m_graphicsLayer->setBlendMode(style->blendMode());
+        m_graphicsLayer->setBlendMode(style.blendMode());
 }
 #endif
 
@@ -460,7 +458,7 @@ void RenderLayerBacking::updateCompositedBounds()
             clippingBounds = view.unscaledDocumentRect();
 
         if (&m_owningLayer != rootLayer)
-            clippingBounds.intersect(m_owningLayer.backgroundClipRect(RenderLayer::ClipRectsContext(rootLayer, 0, AbsoluteClipRects)).rect()); // FIXME: Incorrect for CSS regions.
+            clippingBounds.intersect(m_owningLayer.backgroundClipRect(RenderLayer::ClipRectsContext(rootLayer, AbsoluteClipRects)).rect()); // FIXME: Incorrect for CSS regions.
 
         LayoutPoint delta;
         m_owningLayer.convertToLayerCoords(rootLayer, delta, RenderLayer::AdjustForColumns);
@@ -495,7 +493,7 @@ void RenderLayerBacking::updateAfterWidgetResize()
 void RenderLayerBacking::updateAfterLayout(UpdateAfterLayoutFlags flags)
 {
     if (!compositor().compositingLayersNeedRebuild()) {
-        // Calling updateGraphicsLayerGeometry() here gives incorrect results, because the
+        // Calling updateGeometry() here gives incorrect results, because the
         // position of this layer's GraphicsLayer depends on the position of our compositing
         // ancestor's GraphicsLayer. That cannot be determined until all the descendant 
         // RenderLayers of that ancestor have been processed via updateLayerPositions().
@@ -506,7 +504,7 @@ void RenderLayerBacking::updateAfterLayout(UpdateAfterLayoutFlags flags)
         compositor().updateCompositingDescendantGeometry(m_owningLayer, m_owningLayer, flags & CompositingChildrenOnly);
         
         if (flags & IsUpdateRoot) {
-            updateGraphicsLayerGeometry();
+            updateGeometry();
             compositor().updateRootLayerPosition();
             RenderLayer* stackingContainer = m_owningLayer.enclosingStackingContainer();
             if (!compositor().compositingLayersNeedRebuild() && stackingContainer && (stackingContainer != &m_owningLayer))
@@ -518,7 +516,7 @@ void RenderLayerBacking::updateAfterLayout(UpdateAfterLayoutFlags flags)
         setContentsNeedDisplay();
 }
 
-bool RenderLayerBacking::updateGraphicsLayerConfiguration()
+bool RenderLayerBacking::updateConfiguration()
 {
     m_owningLayer.updateDescendantDependentFlags();
     m_owningLayer.updateZOrderLists();
@@ -647,39 +645,33 @@ static void calculateDevicePixelOffsetFromRenderer(const LayoutSize& rendererOff
     devicePixelOffsetFromRenderer = rendererOffsetFromGraphicsLayer - devicePixelFractionFromRenderer;
 }
 
-void RenderLayerBacking::updateGraphicsLayerGeometry()
+void RenderLayerBacking::updateGeometry()
 {
     // If we haven't built z-order lists yet, wait until later.
     if (m_owningLayer.isStackingContainer() && m_owningLayer.m_zOrderListsDirty)
         return;
 
+    const RenderStyle& style = renderer().style();
+
     // Set transform property, if it is not animating. We have to do this here because the transform
     // is affected by the layer dimensions.
     if (!renderer().animation().isRunningAcceleratedAnimationOnRenderer(&renderer(), CSSPropertyWebkitTransform, AnimationBase::Running | AnimationBase::Paused | AnimationBase::FillingFowards))
-        updateTransform(&renderer().style());
+        updateTransform(style);
 
     // Set opacity, if it is not animating.
     if (!renderer().animation().isRunningAcceleratedAnimationOnRenderer(&renderer(), CSSPropertyOpacity, AnimationBase::Running | AnimationBase::Paused | AnimationBase::FillingFowards))
-        updateOpacity(&renderer().style());
+        updateOpacity(style);
         
 #if ENABLE(CSS_FILTERS)
-    updateFilters(&renderer().style());
+    updateFilters(style);
 #endif
 
 #if ENABLE(CSS_COMPOSITING)
-    updateBlendMode(&renderer().style());
+    updateBlendMode(style);
 #endif
 
-    bool isSimpleContainer = isSimpleContainerCompositingLayer();
-    
     m_owningLayer.updateDescendantDependentFlags();
 
-    // m_graphicsLayer is the corresponding GraphicsLayer for this RenderLayer and its non-compositing
-    // descendants. So, the visibility flag for m_graphicsLayer should be true if there are any
-    // non-compositing visible layers.
-    m_graphicsLayer->setContentsVisible(m_owningLayer.hasVisibleContent() || hasVisibleNonCompositingDescendantLayers());
-
-    const RenderStyle& style = renderer().style();
     // FIXME: reflections should force transform-style to be flat in the style: https://bugs.webkit.org/show_bug.cgi?id=106959
     bool preserves3D = style.transformStyle3D() == TransformStyle3DPreserve3D && !renderer().hasReflection();
     m_graphicsLayer->setPreserves3D(preserves3D);
@@ -776,7 +768,7 @@ void RenderLayerBacking::updateGraphicsLayerGeometry()
         // layer. Note that we call it with temporaryClipRects = true because normally when computing clip rects
         // for a compositing layer, rootLayer is the layer itself.
         ShouldRespectOverflowClip shouldRespectOverflowClip = compAncestor->isolatesCompositedBlending() ? RespectOverflowClip : IgnoreOverflowClip;
-        RenderLayer::ClipRectsContext clipRectsContext(compAncestor, 0, TemporaryClipRects, IgnoreOverlayScrollbarSize, shouldRespectOverflowClip);
+        RenderLayer::ClipRectsContext clipRectsContext(compAncestor, TemporaryClipRects, IgnoreOverlayScrollbarSize, shouldRespectOverflowClip);
         LayoutRect parentClipRect = m_owningLayer.backgroundClipRect(clipRectsContext).rect(); // FIXME: Incorrect for CSS regions.
         ASSERT(parentClipRect != LayoutRect::infiniteRect());
         m_ancestorClippingLayer->setPosition(FloatPoint(parentClipRect.location() - graphicsLayerParentLocation));
@@ -844,7 +836,6 @@ void RenderLayerBacking::updateGraphicsLayerGeometry()
         else
             m_graphicsLayer->setAnchorPoint(anchor);
 
-        const RenderStyle& style = renderer().style();
         GraphicsLayer* clipLayer = clippingLayer();
         if (style.hasPerspective()) {
             TransformationMatrix t = owningLayer().perspectiveTransform();
@@ -898,7 +889,7 @@ void RenderLayerBacking::updateGraphicsLayerGeometry()
 
     if (m_owningLayer.reflectionLayer() && m_owningLayer.reflectionLayer()->isComposited()) {
         RenderLayerBacking* reflectionBacking = m_owningLayer.reflectionLayer()->backing();
-        reflectionBacking->updateGraphicsLayerGeometry();
+        reflectionBacking->updateGeometry();
         
         // The reflection layer has the bounds of m_owningLayer.reflectionLayer(),
         // but the reflected layer is the bounds of this layer, so we need to position it appropriately.
@@ -974,15 +965,22 @@ void RenderLayerBacking::updateGraphicsLayerGeometry()
     // If this layer was created just for clipping or to apply perspective, it doesn't need its own backing store.
     setRequiresOwnBackingStore(compositor().requiresOwnBackingStore(m_owningLayer, compAncestor, enclosingRelativeCompositingBounds, ancestorCompositingBounds));
 
+    updateAfterWidgetResize();
+
+    compositor().updateScrollCoordinatedStatus(m_owningLayer);
+}
+
+void RenderLayerBacking::updateAfterDescendents()
+{
     bool didUpdateContentsRect = false;
+    bool isSimpleContainer = isSimpleContainerCompositingLayer();
     updateDirectlyCompositedContents(isSimpleContainer, didUpdateContentsRect);
     if (!didUpdateContentsRect && m_graphicsLayer->usesContentsLayer())
         resetContentsRect();
 
     updateDrawsContent(isSimpleContainer);
-    updateAfterWidgetResize();
 
-    compositor().updateScrollCoordinatedStatus(m_owningLayer);
+    m_graphicsLayer->setContentsVisible(m_owningLayer.hasVisibleContent() || isPaintDestinationForDescendentLayers());
 }
 
 void RenderLayerBacking::adjustAncestorCompositingBoundsForFlowThread(LayoutRect& ancestorCompositingBounds, const RenderLayer* compositingAncestor) const
@@ -1511,27 +1509,57 @@ float RenderLayerBacking::compositingOpacity(float rendererOpacity) const
     return finalOpacity;
 }
 
-static bool hasBoxDecorations(const RenderStyle* style)
+static inline bool hasBoxDecorations(const RenderStyle& style)
 {
-    return style->hasBorder() || style->hasBorderRadius() || style->hasOutline() || style->hasAppearance() || style->boxShadow() || style->hasFilter();
+    return style.hasBorder() || style.hasBorderRadius() || style.hasOutline() || style.hasAppearance() || style.boxShadow() || style.hasFilter();
 }
 
-static bool canCreateTiledImage(const RenderStyle*);
+static bool canCreateTiledImage(const RenderStyle& style)
+{
+    const FillLayer* fillLayer = style.backgroundLayers();
+    if (fillLayer->next())
+        return false;
 
-static bool hasBoxDecorationsOrBackgroundImage(const RenderStyle* style)
+    if (!fillLayer->imagesAreLoaded())
+        return false;
+
+    if (fillLayer->attachment() != ScrollBackgroundAttachment)
+        return false;
+
+    Color color = style.visitedDependentColor(CSSPropertyBackgroundColor);
+
+    // FIXME: Allow color+image compositing when it makes sense.
+    // For now bailing out.
+    if (color.isValid() && color.alpha())
+        return false;
+
+    StyleImage* styleImage = fillLayer->image();
+
+    // FIXME: support gradients with isGeneratedImage.
+    if (!styleImage->isCachedImage())
+        return false;
+
+    Image* image = styleImage->cachedImage()->image();
+    if (!image->isBitmapImage())
+        return false;
+
+    return true;
+}
+
+static bool hasBoxDecorationsOrBackgroundImage(const RenderStyle& style)
 {
     if (hasBoxDecorations(style))
         return true;
 
-    if (!style->hasBackgroundImage())
+    if (!style.hasBackgroundImage())
         return false;
 
     return !GraphicsLayer::supportsContentsTiling() || !canCreateTiledImage(style);
 }
 
-static bool hasPerspectiveOrPreserves3D(const RenderStyle* style)
+static inline bool hasPerspectiveOrPreserves3D(const RenderStyle& style)
 {
-    return style->hasPerspective() || style->preserves3D();
+    return style.hasPerspective() || style.preserves3D();
 }
 
 Color RenderLayerBacking::rendererBackgroundColor() const
@@ -1555,38 +1583,6 @@ void RenderLayerBacking::updateDirectlyCompositedBackgroundColor(bool isSimpleCo
     m_graphicsLayer->setContentsRect(contentsRect);
     m_graphicsLayer->setContentsClippingRect(contentsRect);
     didUpdateContentsRect = true;
-}
-
-bool canCreateTiledImage(const RenderStyle* style)
-{
-    const FillLayer* fillLayer = style->backgroundLayers();
-    if (fillLayer->next())
-        return false;
-
-    if (!fillLayer->imagesAreLoaded())
-        return false;
-
-    if (fillLayer->attachment() != ScrollBackgroundAttachment)
-        return false;
-
-    Color color = style->visitedDependentColor(CSSPropertyBackgroundColor);
-
-    // FIXME: Allow color+image compositing when it makes sense.
-    // For now bailing out.
-    if (color.isValid() && color.alpha())
-        return false;
-
-    StyleImage* styleImage = fillLayer->image();
-
-    // FIXME: support gradients with isGeneratedImage.
-    if (!styleImage->isCachedImage())
-        return false;
-
-    Image* image = styleImage->cachedImage()->image();
-    if (!image->isBitmapImage())
-        return false;
-
-    return true;
 }
 
 void RenderLayerBacking::updateDirectlyCompositedBackgroundImage(bool isSimpleContainer, bool& didUpdateContentsRect)
@@ -1643,10 +1639,11 @@ static bool supportsDirectBoxDecorationsComposition(const RenderLayerModelObject
     if (!GraphicsLayer::supportsBackgroundColorContent())
         return false;
 
+    const RenderStyle& style = renderer.style();
     if (renderer.hasClip())
         return false;
 
-    if (hasBoxDecorationsOrBackgroundImage(&renderer.style()))
+    if (hasBoxDecorationsOrBackgroundImage(style))
         return false;
 
     // FIXME: We can't create a directly composited background if this
@@ -1654,14 +1651,14 @@ static bool supportsDirectBoxDecorationsComposition(const RenderLayerModelObject
     // A better solution might be to introduce a flattening layer if
     // we do direct box decoration composition.
     // https://bugs.webkit.org/show_bug.cgi?id=119461
-    if (hasPerspectiveOrPreserves3D(&renderer.style()))
+    if (hasPerspectiveOrPreserves3D(style))
         return false;
 
     // FIXME: we should be able to allow backgroundComposite; However since this is not a common use case it has been deferred for now.
-    if (renderer.style().backgroundComposite() != CompositeSourceOver)
+    if (style.backgroundComposite() != CompositeSourceOver)
         return false;
 
-    if (renderer.style().backgroundClip() == TextFillBox)
+    if (style.backgroundClip() == TextFillBox)
         return false;
 
     return true;
@@ -1683,7 +1680,7 @@ bool RenderLayerBacking::paintsChildren() const
     if (m_owningLayer.hasVisibleContent() && m_owningLayer.hasNonEmptyChildRenderers())
         return true;
 
-    if (hasVisibleNonCompositingDescendantLayers())
+    if (isPaintDestinationForDescendentLayers())
         return true;
 
     return false;
@@ -1729,11 +1726,9 @@ bool RenderLayerBacking::isSimpleContainerCompositingLayer() const
         if (!rootObject)
             return false;
         
-        RenderStyle* style = &rootObject->style();
-        
         // Reject anything that has a border, a border-radius or outline,
         // or is not a simple background (no background, or solid color).
-        if (hasBoxDecorationsOrBackgroundImage(style))
+        if (hasBoxDecorationsOrBackgroundImage(rootObject->style()))
             return false;
         
         // Now look at the body's renderer.
@@ -1742,16 +1737,19 @@ bool RenderLayerBacking::isSimpleContainerCompositingLayer() const
         if (!bodyObject)
             return false;
         
-        style = &bodyObject->style();
-        
-        if (hasBoxDecorationsOrBackgroundImage(style))
+        if (hasBoxDecorationsOrBackgroundImage(bodyObject->style()))
             return false;
     }
 
     return true;
 }
 
-static bool hasVisibleNonCompositingDescendant(RenderLayer& parent)
+static bool compositedWithOwnBackingStore(const RenderLayer* layer)
+{
+    return layer->isComposited() && !layer->backing()->paintsIntoCompositedAncestor();
+}
+
+static bool descendentLayerPaintsIntoAncestor(RenderLayer& parent)
 {
     // FIXME: We shouldn't be called with a stale z-order lists. See bug 85512.
     parent.updateLayerListsIfNeeded();
@@ -1764,8 +1762,8 @@ static bool hasVisibleNonCompositingDescendant(RenderLayer& parent)
         size_t listSize = normalFlowList->size();
         for (size_t i = 0; i < listSize; ++i) {
             RenderLayer* curLayer = normalFlowList->at(i);
-            if (!curLayer->isComposited()
-                && (curLayer->hasVisibleContent() || hasVisibleNonCompositingDescendant(*curLayer)))
+            if (!compositedWithOwnBackingStore(curLayer)
+                && (curLayer->hasVisibleContent() || descendentLayerPaintsIntoAncestor(*curLayer)))
                 return true;
         }
     }
@@ -1779,8 +1777,8 @@ static bool hasVisibleNonCompositingDescendant(RenderLayer& parent)
             size_t listSize = negZOrderList->size();
             for (size_t i = 0; i < listSize; ++i) {
                 RenderLayer* curLayer = negZOrderList->at(i);
-                if (!curLayer->isComposited()
-                    && (curLayer->hasVisibleContent() || hasVisibleNonCompositingDescendant(*curLayer)))
+                if (!compositedWithOwnBackingStore(curLayer)
+                    && (curLayer->hasVisibleContent() || descendentLayerPaintsIntoAncestor(*curLayer)))
                     return true;
             }
         }
@@ -1789,8 +1787,8 @@ static bool hasVisibleNonCompositingDescendant(RenderLayer& parent)
             size_t listSize = posZOrderList->size();
             for (size_t i = 0; i < listSize; ++i) {
                 RenderLayer* curLayer = posZOrderList->at(i);
-                if (!curLayer->isComposited()
-                    && (curLayer->hasVisibleContent() || hasVisibleNonCompositingDescendant(*curLayer)))
+                if (!compositedWithOwnBackingStore(curLayer)
+                    && (curLayer->hasVisibleContent() || descendentLayerPaintsIntoAncestor(*curLayer)))
                     return true;
             }
         }
@@ -1800,9 +1798,9 @@ static bool hasVisibleNonCompositingDescendant(RenderLayer& parent)
 }
 
 // Conservative test for having no rendered children.
-bool RenderLayerBacking::hasVisibleNonCompositingDescendantLayers() const
+bool RenderLayerBacking::isPaintDestinationForDescendentLayers() const
 {
-    return hasVisibleNonCompositingDescendant(m_owningLayer);
+    return descendentLayerPaintsIntoAncestor(m_owningLayer);
 }
 
 bool RenderLayerBacking::containsPaintedContent(bool isSimpleContainer) const
@@ -1860,8 +1858,8 @@ void RenderLayerBacking::contentChanged(ContentChangeType changeType)
         return;
     }
 
-    if ((changeType == BackgroundImageChanged) && canCreateTiledImage(&renderer().style()))
-        updateGraphicsLayerGeometry();
+    if ((changeType == BackgroundImageChanged) && canCreateTiledImage(renderer().style()))
+        updateGeometry();
 
     if ((changeType == MaskImageChanged) && m_maskLayer) {
         // The composited layer bounds relies on box->maskClipRect(), which changes
@@ -2106,7 +2104,7 @@ void RenderLayerBacking::setContentsNeedDisplayInRect(const LayoutRect& r, Graph
         FloatRect layerDirtyRect = pixelSnappedRectForPainting;
         layerDirtyRect.move(-m_scrollingContentsLayer->offsetFromRenderer() + m_devicePixelFractionFromRenderer);
 #if PLATFORM(IOS)
-        // Account for the fact that RenderLayerBacking::updateGraphicsLayerGeometry() bakes scrollOffset into offsetFromRenderer on iOS.
+        // Account for the fact that RenderLayerBacking::updateGeometry() bakes scrollOffset into offsetFromRenderer on iOS.
         layerDirtyRect.move(-m_owningLayer.scrollOffset() + m_devicePixelFractionFromRenderer);
 #endif
         m_scrollingContentsLayer->setNeedsDisplayInRect(layerDirtyRect, shouldClip);
@@ -2416,7 +2414,7 @@ bool RenderLayerBacking::startTransition(double timeOffset, CSSPropertyID proper
             // The boxSize param is only used for transform animations (which can only run on RenderBoxes), so we pass an empty size here.
             if (m_graphicsLayer->addAnimation(opacityVector, FloatSize(), opacityAnim, GraphicsLayer::animationNameForTransition(AnimatedPropertyOpacity), timeOffset)) {
                 // To ensure that the correct opacity is visible when the animation ends, also set the final opacity.
-                updateOpacity(toStyle);
+                updateOpacity(*toStyle);
                 didAnimate = true;
             }
         }
@@ -2430,7 +2428,7 @@ bool RenderLayerBacking::startTransition(double timeOffset, CSSPropertyID proper
             transformVector.insert(TransformAnimationValue::create(1, toStyle->transform()));
             if (m_graphicsLayer->addAnimation(transformVector, toRenderBox(renderer()).pixelSnappedBorderBoxRect().size(), transformAnim, GraphicsLayer::animationNameForTransition(AnimatedPropertyWebkitTransform), timeOffset)) {
                 // To ensure that the correct transform is visible when the animation ends, also set the final transform.
-                updateTransform(toStyle);
+                updateTransform(*toStyle);
                 didAnimate = true;
             }
         }
@@ -2445,7 +2443,7 @@ bool RenderLayerBacking::startTransition(double timeOffset, CSSPropertyID proper
             filterVector.insert(FilterAnimationValue::create(1, toStyle->filter()));
             if (m_graphicsLayer->addAnimation(filterVector, FloatSize(), filterAnim, GraphicsLayer::animationNameForTransition(AnimatedPropertyWebkitFilter), timeOffset)) {
                 // To ensure that the correct filter is visible when the animation ends, also set the final filter.
-                updateFilters(toStyle);
+                updateFilters(*toStyle);
                 didAnimate = true;
             }
         }

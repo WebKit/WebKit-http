@@ -47,6 +47,9 @@
 #include "RenderWidget.h"
 #include "ResourceLoadScheduler.h"
 #include "RootInlineBox.h"
+#include "SVGDocumentExtensions.h"
+#include "SVGElement.h"
+#include "SVGNames.h"
 #include "SelectorQuery.h"
 #include "TemplateContentDocumentFragment.h"
 #include <wtf/CurrentTime.h>
@@ -565,6 +568,14 @@ bool ContainerNode::removeChild(Node* oldChild, ExceptionCode& ec)
 
         ChildNodeRemovalNotifier(*this).notify(child.get());
     }
+
+
+    if (document().svgExtensions()) {
+        Element* shadowHost = this->shadowHost();
+        if (!shadowHost || !shadowHost->hasTagName(SVGNames::useTag))
+            document().accessSVGExtensions()->rebuildElements();
+    }
+
     dispatchSubtreeModifiedEvent();
 
     return true;
@@ -654,6 +665,12 @@ void ContainerNode::removeChildren()
         
         for (size_t i = 0; i < removedChildren.size(); ++i)
             ChildNodeRemovalNotifier(*this).notify(removedChildren[i].get());
+    }
+
+    if (document().svgExtensions()) {
+        Element* shadowHost = this->shadowHost();
+        if (!shadowHost || !shadowHost->hasTagName(SVGNames::useTag))
+            document().accessSVGExtensions()->rebuildElements();
     }
 
     dispatchSubtreeModifiedEvent();

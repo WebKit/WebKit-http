@@ -122,6 +122,9 @@ private:
     virtual void showPlaybackTargetPicker(bool hasVideo, const WebCore::IntRect& elementRect) override;
 
     virtual bool handleRunOpenPanel(WebPageProxy*, WebFrameProxy*, WebOpenPanelParameters*, WebOpenPanelResultListenerProxy*) override;
+    virtual void didChangeViewportMetaTagWidth(float) override;
+    virtual double minimumZoomScale() const override;
+    virtual WebCore::FloatSize contentsSize() const override;
 
 #if ENABLE(INSPECTOR)
     virtual void showInspectorIndication() override;

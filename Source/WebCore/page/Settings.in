@@ -84,7 +84,6 @@ allowScriptsToCloseWindows initial=false
 canvasUsesAcceleratedDrawing initial=false
 acceleratedDrawingEnabled initial=false
 acceleratedFiltersEnabled initial=false
-regionBasedColumnsEnabled initial=true
 useLegacyTextAlignPositionedElementBehavior initial=false
 
 # FIXME: This should really be disabled by default as it makes platforms that don't support the feature download files
@@ -193,6 +192,8 @@ minimumZoomFontSize type=float, initial=15, conditional=IOS_TEXT_AUTOSIZING
 
 simpleLineLayoutEnabled initial=true, setNeedsStyleRecalcInAllFrames=1
 simpleLineLayoutDebugBordersEnabled initial=false, setNeedsStyleRecalcInAllFrames=1
+
+subpixelCSSOMElementMetricsEnabled initial=true
 
 mediaSourceEnabled initial=true, conditional=MEDIA_SOURCE
 

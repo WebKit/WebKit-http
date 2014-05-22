@@ -64,6 +64,7 @@
 #include "Settings.h"
 #include "ShadowRoot.h"
 #include "TransformState.h"
+#include <wtf/NeverDestroyed.h>
 #include <wtf/StackStats.h>
 #include <wtf/TemporaryChange.h>
 
@@ -90,11 +91,26 @@ static TrackedDescendantsMap* gPercentHeightDescendantsMap = 0;
 static TrackedContainerMap* gPositionedContainerMap = 0;
 static TrackedContainerMap* gPercentHeightContainerMap = 0;
     
-typedef WTF::HashMap<RenderBlock*, std::unique_ptr<ListHashSet<RenderInline*>>> ContinuationOutlineTableMap;
+typedef HashMap<RenderBlock*, std::unique_ptr<ListHashSet<RenderInline*>>> ContinuationOutlineTableMap;
 
-typedef WTF::HashSet<RenderBlock*> DelayedUpdateScrollInfoSet;
-static int gDelayUpdateScrollInfo = 0;
-static DelayedUpdateScrollInfoSet* gDelayedUpdateScrollInfoSet = 0;
+struct UpdateScrollInfoAfterLayoutTransaction {
+    UpdateScrollInfoAfterLayoutTransaction(const RenderView& view)
+        : nestedCount(0)
+        , view(&view)
+    {
+    }
+
+    int nestedCount;
+    const RenderView* view;
+    HashSet<RenderBlock*> blocks;
+};
+
+typedef Vector<UpdateScrollInfoAfterLayoutTransaction> DelayedUpdateScrollInfoStack;
+static std::unique_ptr<DelayedUpdateScrollInfoStack>& updateScrollInfoAfterLayoutTransactionStack()
+{
+    static NeverDestroyed<std::unique_ptr<DelayedUpdateScrollInfoStack>> delayedUpdatedScrollInfoStack;
+    return delayedUpdatedScrollInfoStack;
+}
 
 // Allocated only when some of these fields have non-default values
 
@@ -236,7 +252,7 @@ void RenderBlock::willBeDestroyed()
             parent()->dirtyLinesFromChangedChild(this);
     }
 
-    removeFromDelayedUpdateScrollInfoSet();
+    removeFromUpdateScrollInfoAfterLayoutTransaction();
 
     RenderBox::willBeDestroyed();
 }
@@ -919,40 +935,56 @@ bool RenderBlock::isSelfCollapsingBlock() const
     return false;
 }
 
-void RenderBlock::startDelayUpdateScrollInfo()
+static inline UpdateScrollInfoAfterLayoutTransaction* currentUpdateScrollInfoAfterLayoutTransaction()
 {
-    if (gDelayUpdateScrollInfo == 0) {
-        ASSERT(!gDelayedUpdateScrollInfoSet);
-        gDelayedUpdateScrollInfoSet = new DelayedUpdateScrollInfoSet;
-    }
-    ASSERT(gDelayedUpdateScrollInfoSet);
-    ++gDelayUpdateScrollInfo;
+    if (!updateScrollInfoAfterLayoutTransactionStack())
+        return nullptr;
+    return &updateScrollInfoAfterLayoutTransactionStack()->last();
 }
 
-void RenderBlock::finishDelayUpdateScrollInfo()
+void RenderBlock::beginUpdateScrollInfoAfterLayoutTransaction()
 {
-    --gDelayUpdateScrollInfo;
-    ASSERT(gDelayUpdateScrollInfo >= 0);
-    if (gDelayUpdateScrollInfo == 0) {
-        ASSERT(gDelayedUpdateScrollInfoSet);
+    if (!updateScrollInfoAfterLayoutTransactionStack())
+        updateScrollInfoAfterLayoutTransactionStack() = std::make_unique<DelayedUpdateScrollInfoStack>();
+    if (updateScrollInfoAfterLayoutTransactionStack()->isEmpty() || currentUpdateScrollInfoAfterLayoutTransaction()->view != &view())
+        updateScrollInfoAfterLayoutTransactionStack()->append(UpdateScrollInfoAfterLayoutTransaction(view()));
+    ++currentUpdateScrollInfoAfterLayoutTransaction()->nestedCount;
+}
 
-        std::unique_ptr<DelayedUpdateScrollInfoSet> infoSet(gDelayedUpdateScrollInfoSet);
-        gDelayedUpdateScrollInfoSet = 0;
+void RenderBlock::endAndCommitUpdateScrollInfoAfterLayoutTransaction()
+{
+    UpdateScrollInfoAfterLayoutTransaction* transaction = currentUpdateScrollInfoAfterLayoutTransaction();
+    ASSERT(transaction);
+    ASSERT(transaction->view == &view());
+    if (--transaction->nestedCount)
+        return;
 
-        for (DelayedUpdateScrollInfoSet::iterator it = infoSet->begin(); it != infoSet->end(); ++it) {
-            RenderBlock* block = *it;
-            if (block->hasOverflowClip()) {
-                block->layer()->updateScrollInfoAfterLayout();
-                block->clearLayoutOverflow();
-            }
-        }
+    // Calling RenderLayer::updateScrollInfoAfterLayout() may cause its associated block to layout again and
+    // updates its scroll info (i.e. call RenderBlock::updateScrollInfoAfterLayout()). We remove |transaction|
+    // from the transaction stack to ensure that all subsequent calls to RenderBlock::updateScrollInfoAfterLayout()
+    // are dispatched immediately. That is, to ensure that such subsequent calls aren't added to |transaction|
+    // while we are processing it.
+    Vector<RenderBlock*> blocksToUpdate;
+    copyToVector(transaction->blocks, blocksToUpdate);
+    updateScrollInfoAfterLayoutTransactionStack()->removeLast();
+    if (updateScrollInfoAfterLayoutTransactionStack()->isEmpty())
+        updateScrollInfoAfterLayoutTransactionStack() = nullptr;
+
+    for (auto* block : blocksToUpdate) {
+        ASSERT(block->hasOverflowClip());
+        block->layer()->updateScrollInfoAfterLayout();
+        block->clearLayoutOverflow();
     }
 }
 
-void RenderBlock::removeFromDelayedUpdateScrollInfoSet()
+void RenderBlock::removeFromUpdateScrollInfoAfterLayoutTransaction()
 {
-    if (UNLIKELY(gDelayedUpdateScrollInfoSet != 0))
-        gDelayedUpdateScrollInfoSet->remove(this);
+    if (UNLIKELY(updateScrollInfoAfterLayoutTransactionStack().get() != 0)) {
+        UpdateScrollInfoAfterLayoutTransaction* transaction = currentUpdateScrollInfoAfterLayoutTransaction();
+        ASSERT(transaction);
+        ASSERT(transaction->view == &view());
+        transaction->blocks.remove(this);
+    }
 }
 
 void RenderBlock::updateScrollInfoAfterLayout()
@@ -967,10 +999,12 @@ void RenderBlock::updateScrollInfoAfterLayout()
             return;
         }
 
-        if (gDelayUpdateScrollInfo)
-            gDelayedUpdateScrollInfoSet->add(this);
-        else
-            layer()->updateScrollInfoAfterLayout();
+        UpdateScrollInfoAfterLayoutTransaction* transaction = currentUpdateScrollInfoAfterLayoutTransaction();
+        if (transaction && transaction->view == &view()) {
+            transaction->blocks.add(this);
+            return;
+        }
+        layer()->updateScrollInfoAfterLayout();
     }
 }
 
@@ -988,7 +1022,9 @@ void RenderBlock::layout()
     
     // It's safe to check for control clip here, since controls can never be table cells.
     // If we have a lightweight clip, there can never be any overflow from children.
-    if (hasControlClip() && m_overflow && !gDelayUpdateScrollInfo)
+    UpdateScrollInfoAfterLayoutTransaction* transaction = currentUpdateScrollInfoAfterLayoutTransaction();
+    bool isDelayingUpdateScrollInfoAfterLayoutInView = transaction && transaction->view == &view();
+    if (hasControlClip() && m_overflow && !isDelayingUpdateScrollInfoAfterLayoutInView)
         clearLayoutOverflow();
 
     invalidateBackgroundObscurationStatus();
@@ -1462,15 +1498,16 @@ void RenderBlock::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffset)
     
     PaintPhase phase = paintInfo.phase;
 
+    RenderNamedFlowFragment* namedFlowFragment = currentRenderNamedFlowFragment();
     // Check our region range to make sure we need to be painting in this region.
-    if (paintInfo.renderNamedFlowFragment && !paintInfo.renderNamedFlowFragment->flowThread()->objectShouldFragmentInFlowRegion(this, paintInfo.renderNamedFlowFragment))
+    if (namedFlowFragment && !namedFlowFragment->flowThread()->objectShouldFragmentInFlowRegion(this, namedFlowFragment))
         return;
 
     // Check if we need to do anything at all.
     // FIXME: Could eliminate the isRoot() check if we fix background painting so that the RenderView
     // paints the root's background.
     if (!isRoot()) {
-        LayoutRect overflowBox = overflowRectForPaintRejection(paintInfo.renderNamedFlowFragment);
+        LayoutRect overflowBox = overflowRectForPaintRejection(namedFlowFragment);
         flipForWritingMode(overflowBox);
         overflowBox.inflate(maximalOutlineSize(paintInfo.phase));
         overflowBox.moveBy(adjustedPaintOffset);
@@ -1600,7 +1637,8 @@ void RenderBlock::paintObject(PaintInfo& paintInfo, const LayoutPoint& paintOffs
         if (hasBoxDecorations()) {
             bool didClipToRegion = false;
             
-            if (paintInfo.paintContainer && paintInfo.renderNamedFlowFragment && paintInfo.paintContainer->isRenderNamedFlowThread()) {
+            RenderNamedFlowFragment* namedFlowFragment = currentRenderNamedFlowFragment();
+            if (paintInfo.paintContainer && namedFlowFragment && paintInfo.paintContainer->isRenderNamedFlowThread()) {
                 // If this box goes beyond the current region, then make sure not to overflow the region.
                 // This (overflowing region X altough also fragmented to region X+1) could happen when one of this box's children
                 // overflows region X and is an unsplittable element (like an image).
@@ -1609,7 +1647,7 @@ void RenderBlock::paintObject(PaintInfo& paintInfo, const LayoutPoint& paintOffs
                 paintInfo.context->save();
                 didClipToRegion = true;
 
-                paintInfo.context->clip(toRenderNamedFlowThread(paintInfo.paintContainer)->decorationsClipRectForBoxInNamedFlowFragment(*this, *paintInfo.renderNamedFlowFragment));
+                paintInfo.context->clip(toRenderNamedFlowThread(paintInfo.paintContainer)->decorationsClipRectForBoxInNamedFlowFragment(*this, *namedFlowFragment));
             }
 
             paintBoxDecorations(paintInfo, paintOffset);
@@ -1917,9 +1955,10 @@ GapRects RenderBlock::selectionGaps(RenderBlock& rootBlock, const LayoutPoint& r
         return result;
     }
     
-    if (paintInfo && paintInfo->renderNamedFlowFragment && paintInfo->paintContainer->isRenderFlowThread()) {
+    RenderNamedFlowFragment* namedFlowFragment = currentRenderNamedFlowFragment();
+    if (paintInfo && namedFlowFragment && paintInfo->paintContainer->isRenderFlowThread()) {
         // Make sure the current object is actually flowed into the region being painted.
-        if (!toRenderFlowThread(paintInfo->paintContainer)->objectShouldFragmentInFlowRegion(this, paintInfo->renderNamedFlowFragment))
+        if (!toRenderFlowThread(paintInfo->paintContainer)->objectShouldFragmentInFlowRegion(this, namedFlowFragment))
             return result;
     }
 
@@ -2457,14 +2496,12 @@ bool RenderBlock::nodeAtPoint(const HitTestRequest& request, HitTestResult& resu
     LayoutPoint adjustedLocation(accumulatedOffset + location());
     LayoutSize localOffset = toLayoutSize(adjustedLocation);
 
+    RenderFlowThread* flowThread = flowThreadContainingBlock();
+    RenderNamedFlowFragment* namedFlowFragment = flowThread ? toRenderNamedFlowFragment(flowThread->currentRegion()) : nullptr;
     // If we are now searching inside a region, make sure this element
     // is being fragmented into this region.
-    if (locationInContainer.region()) {
-        RenderFlowThread* flowThread = flowThreadContainingBlock();
-        ASSERT(flowThread);
-        if (!flowThread->objectShouldFragmentInFlowRegion(this, locationInContainer.region()))
-            return false;
-    }
+    if (namedFlowFragment && !flowThread->objectShouldFragmentInFlowRegion(this, namedFlowFragment))
+        return false;
 
     if (!isRenderView()) {
         // Check if we need to do anything at all.
@@ -2521,7 +2558,7 @@ bool RenderBlock::nodeAtPoint(const HitTestRequest& request, HitTestResult& resu
     // If we have clipping, then we can't have any spillout.
     bool useOverflowClip = hasOverflowClip() && !hasSelfPaintingLayer();
     bool useClip = (hasControlClip() || useOverflowClip);
-    bool checkChildren = !useClip || (hasControlClip() ? locationInContainer.intersects(controlClipRect(adjustedLocation)) : locationInContainer.intersects(overflowClipRect(adjustedLocation, locationInContainer.region(), IncludeOverlayScrollbarSize)));
+    bool checkChildren = !useClip || (hasControlClip() ? locationInContainer.intersects(controlClipRect(adjustedLocation)) : locationInContainer.intersects(overflowClipRect(adjustedLocation, namedFlowFragment, IncludeOverlayScrollbarSize)));
     if (checkChildren) {
         // Hit test descendants first.
         LayoutSize scrolledOffset(localOffset - scrolledContentOffset());
@@ -3966,10 +4003,14 @@ bool RenderBlock::updateRegionRangeForBoxChild(const RenderBox& box) const
     RenderRegion* newEndRegion = nullptr;
     flowThread->getRegionRangeForBox(&box, newStartRegion, newEndRegion);
 
+
+    // Changing the start region means we shift everything and a relayout is needed.
+    if (newStartRegion != startRegion)
+        return true;
+
     // The region range of the box has changed. Some boxes (e.g floats) may have been positioned assuming
     // a different range.
-    // FIXME: Be smarter about this. We don't need to relayout all the time.
-    if (newStartRegion != startRegion || newEndRegion != endRegion)
+    if (box.needsLayoutAfterRegionRangeChange() && newEndRegion != endRegion)
         return true;
 
     return false;

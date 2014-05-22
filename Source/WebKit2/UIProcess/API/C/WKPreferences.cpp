@@ -509,16 +509,6 @@ bool WKPreferencesGetCSSRegionsEnabled(WKPreferencesRef preferencesRef)
     return toImpl(preferencesRef)->cssRegionsEnabled();
 }
 
-void WKPreferencesSetRegionBasedColumnsEnabled(WKPreferencesRef preferencesRef, bool flag)
-{
-    toImpl(preferencesRef)->setRegionBasedColumnsEnabled(flag);
-}
-
-bool WKPreferencesGetRegionBasedColumnsEnabled(WKPreferencesRef preferencesRef)
-{
-    return toImpl(preferencesRef)->regionBasedColumnsEnabled();
-}
-
 void WKPreferencesSetNeedsSiteSpecificQuirks(WKPreferencesRef preferencesRef, bool flag)
 {
     toImpl(preferencesRef)->setNeedsSiteSpecificQuirks(flag);
@@ -1184,6 +1174,16 @@ void WKPreferencesSetSimpleLineLayoutDebugBordersEnabled(WKPreferencesRef prefer
 bool WKPreferencesGetSimpleLineLayoutDebugBordersEnabled(WKPreferencesRef preferencesRef)
 {
     return toImpl(preferencesRef)->simpleLineLayoutDebugBordersEnabled();
+}
+
+void WKPreferencesSetSubpixelCSSOMElementMetricsEnabled(WKPreferencesRef preferencesRef, bool flag)
+{
+    toImpl(preferencesRef)->setSubpixelCSSOMElementMetricsEnabled(flag);
+}
+
+bool WKPreferencesGetSubpixelCSSOMElementMetricsEnabled(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->subpixelCSSOMElementMetricsEnabled();
 }
 
 void WKPreferencesSetMediaStreamEnabled(WKPreferencesRef preferencesRef, bool enabled)

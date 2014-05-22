@@ -495,6 +495,7 @@ public:
         [NSNumber numberWithBool:NO],   WebKitMultithreadedWebGLEnabledPreferenceKey,
         [NSNumber numberWithBool:NO],  WebKitForceSoftwareWebGLRenderingPreferenceKey,
         [NSNumber numberWithBool:NO],   WebKitAccelerated2dCanvasEnabledPreferenceKey,
+        [NSNumber numberWithBool:YES],  WebKitSubpixelCSSOMElementMetricsEnabledPreferenceKey,
 #if PLATFORM(IOS)
         [NSNumber numberWithBool:YES],  WebKitFrameFlatteningEnabledPreferenceKey,
 #else
@@ -507,12 +508,11 @@ public:
         [NSNumber numberWithBool:YES],  WebKitHyperlinkAuditingEnabledPreferenceKey,
         [NSNumber numberWithBool:NO],   WebKitUsePreHTML5ParserQuirksKey,
         [NSNumber numberWithBool:YES],  WebKitAVFoundationEnabledKey,
+        [NSNumber numberWithBool:NO],   WebKitSuppressesIncrementalRenderingKey,
 #if !PLATFORM(IOS)
         [NSNumber numberWithBool:NO],   WebKitMediaPlaybackRequiresUserGesturePreferenceKey,
         [NSNumber numberWithBool:YES],  WebKitMediaPlaybackAllowsInlinePreferenceKey,
         [NSNumber numberWithBool:NO],   WebKitWebAudioEnabledPreferenceKey,
-        [NSNumber numberWithBool:NO],   WebKitSuppressesIncrementalRenderingKey,
-        [NSNumber numberWithBool:YES],  WebKitRegionBasedColumnsEnabledKey,
         [NSNumber numberWithBool:YES],  WebKitBackspaceKeyNavigationEnabledKey,
         [NSNumber numberWithBool:NO],   WebKitShouldDisplaySubtitlesPreferenceKey,
         [NSNumber numberWithBool:NO],   WebKitShouldDisplayCaptionsPreferenceKey,
@@ -1910,6 +1910,16 @@ static NSString *classIBCreatorID = nil;
     [self _setBoolValue:enabled forKey:WebKitWebAudioEnabledPreferenceKey];
 }
 
+- (BOOL)subpixelCSSOMElementMetricsEnabled
+{
+    return [self _boolValueForKey:WebKitSubpixelCSSOMElementMetricsEnabledPreferenceKey];
+}
+
+- (void) setSubpixelCSSOMElementMetricsEnabled:(BOOL)enabled
+{
+    [self _setBoolValue:enabled forKey:WebKitSubpixelCSSOMElementMetricsEnabledPreferenceKey];
+}
+
 - (BOOL)webGLEnabled
 {
     return [self _boolValueForKey:WebKitWebGLEnabledPreferenceKey];
@@ -2376,16 +2386,6 @@ static NSString *classIBCreatorID = nil;
 - (BOOL)notificationsEnabled
 {
     return [self _boolValueForKey:WebKitNotificationsEnabledKey];
-}
-
-- (void)setRegionBasedColumnsEnabled:(BOOL)flag
-{
-    [self _setBoolValue:flag forKey:WebKitRegionBasedColumnsEnabledKey];
-}
-
-- (BOOL)regionBasedColumnsEnabled
-{
-    return [self _boolValueForKey:WebKitRegionBasedColumnsEnabledKey];
 }
 
 - (void)setShouldRespectImageOrientation:(BOOL)flag

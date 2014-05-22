@@ -64,7 +64,6 @@ my (
     $cssRegionsSupport,
     $cssShadersSupport,
     $cssShapesSupport,
-    $cssStickyPositionSupport,
     $cssCompositingSupport,
     $cssAnimationsTransformsUnprefixedSupport,
     $customSchemeHandlerSupport,
@@ -217,9 +216,6 @@ my @features = (
     { option => "css-shaders", desc => "Toggle CSS Shaders support",
       define => "ENABLE_CSS_SHADERS", default => isAppleMacWebKit(), value => \$cssShadersSupport },
 
-    { option => "css-sticky-position", desc => "Toggle CSS sticky position support",
-      define => "ENABLE_CSS_STICKY_POSITION", default => (isGtk() || isEfl() || isHaiku()), value => \$cssStickyPositionSupport },
-
     { option => "css-compositing", desc => "Toggle CSS Compositing support",
       define => "ENABLE_CSS_COMPOSITING", default => isAppleWebKit(), value => \$cssCompositingSupport },
 
@@ -339,6 +335,9 @@ my @features = (
 
     { option => "navigator-content-utils", desc => "Toggle Navigator Content Utils support",
       define => "ENABLE_NAVIGATOR_CONTENT_UTILS", default => isEfl(), value => \$registerProtocolHandlerSupport },
+
+    { option => "navigator-hardware-concurrency", desc => "Toggle Navigator hardware concurrenct support",
+      define => "ENABLE_NAVIGATOR_HWCONCURRENCY", default => 1, value => \$registerProtocolHandlerSupport },
 
     { option => "netscape-plugin-api", desc => "Toggle Netscape Plugin API support",
       define => "ENABLE_NETSCAPE_PLUGIN_API", default => !(isIOSWebKit() || isHaiku()), value => \$netscapePluginAPISupport },

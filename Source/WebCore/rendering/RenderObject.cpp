@@ -54,13 +54,15 @@
 #include "RenderIterator.h"
 #include "RenderLayer.h"
 #include "RenderLayerBacking.h"
-#include "RenderNamedFlowThread.h"
+#include "RenderNamedFlowFragment.h"
+#include "RenderNamedFlowThread.h" 
 #include "RenderSVGResourceContainer.h"
 #include "RenderScrollbarPart.h"
 #include "RenderTheme.h"
 #include "RenderView.h"
 #include "SVGRenderSupport.h"
 #include "Settings.h"
+#include "ShadowRoot.h"
 #include "StyleResolver.h"
 #include "TransformState.h"
 #include "htmlediting.h"
@@ -522,16 +524,10 @@ static bool hasFixedPosInNamedFlowContainingBlock(const RenderObject* renderer)
     return false;
 }
 
-RenderFlowThread* RenderObject::locateFlowThreadContainingBlock() const
+RenderFlowThread* RenderObject::locateFlowThreadContainingBlockNoCache() const
 {
     ASSERT(flowThreadState() != NotInsideFlowThread);
 
-    // See if we have the thread cached because we're in the middle of layout.
-    RenderFlowThread* flowThread = view().flowThreadController().currentRenderFlowThread();
-    if (flowThread && (flowThreadState() == flowThread->flowThreadState()))
-        return flowThread;
-    
-    // Not in the middle of layout so have to find the thread the slow way.
     RenderObject* curr = const_cast<RenderObject*>(this);
     while (curr) {
         if (curr->isRenderFlowThread())
@@ -539,6 +535,25 @@ RenderFlowThread* RenderObject::locateFlowThreadContainingBlock() const
         curr = curr->containingBlock();
     }
     return 0;
+}
+
+RenderFlowThread* RenderObject::locateFlowThreadContainingBlock() const
+{
+    ASSERT(flowThreadState() != NotInsideFlowThread);
+
+    // See if we have the thread cached because we're in the middle of layout.
+    RenderFlowThread* flowThread = view().flowThreadController().currentRenderFlowThread();
+    if (flowThread && (flowThreadState() == flowThread->flowThreadState())) {
+        // Make sure the slow path would return the same result as our cache.
+        // FIXME: For the moment, only apply this assertion to regions, as multicol
+        // still has some issues and triggers this assert.
+        // Created https://bugs.webkit.org/show_bug.cgi?id=132946 for this issue.
+        ASSERT(!flowThread->isRenderNamedFlowThread() || flowThread == locateFlowThreadContainingBlockNoCache());
+        return flowThread;
+    }
+    
+    // Not in the middle of layout so have to find the thread the slow way.
+    return locateFlowThreadContainingBlockNoCache();
 }
 
 RenderBlock* RenderObject::firstLineBlock() const
@@ -1485,7 +1500,7 @@ Color RenderObject::selectionBackgroundColor() const
         if (frame().selection().shouldShowBlockCursor() && frame().selection().isCaret())
             color = style().visitedDependentColor(CSSPropertyColor).blendWithWhite();
         else {
-            RefPtr<RenderStyle> pseudoStyle = getUncachedPseudoStyle(PseudoStyleRequest(SELECTION));
+            RefPtr<RenderStyle> pseudoStyle = selectionPseudoStyle();
             if (pseudoStyle && pseudoStyle->visitedDependentColor(CSSPropertyBackgroundColor).isValid())
                 color = pseudoStyle->visitedDependentColor(CSSPropertyBackgroundColor).blendWithWhite();
             else
@@ -1505,7 +1520,7 @@ Color RenderObject::selectionColor(int colorProperty) const
         || (view().frameView().paintBehavior() & PaintBehaviorSelectionOnly))
         return color;
 
-    if (RefPtr<RenderStyle> pseudoStyle = getUncachedPseudoStyle(PseudoStyleRequest(SELECTION))) {
+    if (RefPtr<RenderStyle> pseudoStyle = selectionPseudoStyle()) {
         color = pseudoStyle->visitedDependentColor(colorProperty);
         if (!color.isValid())
             color = pseudoStyle->visitedDependentColor(CSSPropertyColor);
@@ -1513,6 +1528,21 @@ Color RenderObject::selectionColor(int colorProperty) const
         color = frame().selection().isFocusedAndActive() ? theme().activeSelectionForegroundColor() : theme().inactiveSelectionForegroundColor();
 
     return color;
+}
+
+PassRefPtr<RenderStyle> RenderObject::selectionPseudoStyle() const
+{
+    if (isAnonymous())
+        return nullptr;
+
+    if (ShadowRoot* root = m_node.containingShadowRoot()) {
+        if (root->type() == ShadowRoot::UserAgentShadowRoot) {
+            if (Element* shadowHost = m_node.shadowHost())
+                return shadowHost->renderer()->getUncachedPseudoStyle(PseudoStyleRequest(SELECTION));
+        }
+    }
+
+    return getUncachedPseudoStyle(PseudoStyleRequest(SELECTION));
 }
 
 Color RenderObject::selectionForegroundColor() const
@@ -2471,6 +2501,26 @@ bool RenderObject::nodeAtFloatPoint(const HitTestRequest&, HitTestResult&, const
 {
     ASSERT_NOT_REACHED();
     return false;
+}
+
+RenderNamedFlowFragment* RenderObject::currentRenderNamedFlowFragment() const
+{
+    if (flowThreadState() == NotInsideFlowThread)
+        return nullptr;
+
+    RenderFlowThread* flowThread = view().flowThreadController().currentRenderFlowThread();
+    if (!flowThread)
+        return nullptr;
+
+    ASSERT(flowThread == flowThreadContainingBlock());
+
+    // FIXME: Once regions are fully integrated with the compositing system we should uncomment this assert.
+    // This assert needs to be disabled because it's possible to ask for the ancestor clipping rectangle of
+    // a layer without knowing the containing region in advance.
+    // ASSERT(flowThread->currentRegion() && flowThread->currentRegion()->isRenderNamedFlowFragment());
+
+    RenderNamedFlowFragment* namedFlowFragment = toRenderNamedFlowFragment(flowThread->currentRegion());
+    return namedFlowFragment;
 }
 
 } // namespace WebCore

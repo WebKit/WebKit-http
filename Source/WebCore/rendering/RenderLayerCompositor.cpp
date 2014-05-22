@@ -584,11 +584,14 @@ void RenderLayerCompositor::flushLayersSoon(GraphicsLayerUpdater*)
     scheduleLayerFlush(true);
 }
 
-void RenderLayerCompositor::layerTiledBackingUsageChanged(const GraphicsLayer*, bool usingTiledBacking)
+void RenderLayerCompositor::layerTiledBackingUsageChanged(const GraphicsLayer* graphicsLayer, bool usingTiledBacking)
 {
-    if (usingTiledBacking)
+    if (usingTiledBacking) {
         ++m_layersWithTiledBackingCount;
-    else {
+
+        if (Page* page = this->page())
+            graphicsLayer->tiledBacking()->setIsInWindow(page->isInWindow());
+    } else {
         ASSERT(m_layersWithTiledBackingCount > 0);
         --m_layersWithTiledBackingCount;
     }
@@ -838,6 +841,9 @@ bool RenderLayerCompositor::updateBacking(RenderLayer& layer, CompositingChangeR
 #endif
                 if (m_renderView.frameView().frame().settings().backgroundShouldExtendBeyondPage())
                     m_rootContentLayer->setMasksToBounds(false);
+
+                if (TiledBacking* tiledBacking = layer.backing()->tiledBacking())
+                    tiledBacking->setTopContentInset(m_renderView.frameView().topContentInset());
             }
 
             // This layer and all of its descendants have cached repaints rects that are relative to
@@ -917,7 +923,7 @@ bool RenderLayerCompositor::updateLayerCompositingState(RenderLayer& layer, Comp
 
     // See if we need content or clipping layers. Methods called here should assume
     // that the compositing state of descendant layers has not been updated yet.
-    if (layer.backing() && layer.backing()->updateGraphicsLayerConfiguration())
+    if (layer.backing() && layer.backing()->updateConfiguration())
         layerChanged = true;
 
     return layerChanged;
@@ -1016,7 +1022,7 @@ void RenderLayerCompositor::addToOverlapMap(OverlapMap& overlapMap, RenderLayer&
         boundsComputed = true;
     }
 
-    IntRect clipRect = pixelSnappedIntRect(layer.backgroundClipRect(RenderLayer::ClipRectsContext(&rootRenderLayer(), 0, AbsoluteClipRects)).rect()); // FIXME: Incorrect for CSS regions.
+    IntRect clipRect = pixelSnappedIntRect(layer.backgroundClipRect(RenderLayer::ClipRectsContext(&rootRenderLayer(), AbsoluteClipRects)).rect()); // FIXME: Incorrect for CSS regions.
 
     // On iOS, pageScaleFactor() is not applied by RenderView, so we should not scale here.
     // FIXME: Set Settings::delegatesPageScaling to true for iOS.
@@ -1430,10 +1436,10 @@ void RenderLayerCompositor::rebuildCompositingLayerTree(RenderLayer& layer, Vect
                 reflection->backing()->updateCompositedBounds();
         }
 
-        if (layerBacking->updateGraphicsLayerConfiguration())
+        if (layerBacking->updateConfiguration())
             layerBacking->updateDebugIndicators(m_showDebugBorders, m_showRepaintCounter);
         
-        layerBacking->updateGraphicsLayerGeometry();
+        layerBacking->updateGeometry();
 
         if (!layer.parent())
             updateRootLayerPosition();
@@ -1514,6 +1520,9 @@ void RenderLayerCompositor::rebuildCompositingLayerTree(RenderLayer& layer, Vect
 
         childLayersOfEnclosingLayer.append(layerBacking->childForSuperlayers());
     }
+    
+    if (RenderLayerBacking* layerBacking = layer.backing())
+        layerBacking->updateAfterDescendents();
 }
 
 void RenderLayerCompositor::rebuildRegionCompositingLayerTree(RenderNamedFlowFragment* region, Vector<GraphicsLayer*>& childList, int depth)
@@ -1713,8 +1722,8 @@ void RenderLayerCompositor::updateLayerTreeGeometry(RenderLayer& layer, int dept
                 reflection->backing()->updateCompositedBounds();
         }
 
-        layerBacking->updateGraphicsLayerConfiguration();
-        layerBacking->updateGraphicsLayerGeometry();
+        layerBacking->updateConfiguration();
+        layerBacking->updateGeometry();
 
         if (!layer.parent())
             updateRootLayerPosition();
@@ -1748,6 +1757,9 @@ void RenderLayerCompositor::updateLayerTreeGeometry(RenderLayer& layer, int dept
                 updateLayerTreeGeometry(*posZOrderList->at(i), depth + 1);
         }
     }
+
+    if (RenderLayerBacking* layerBacking = layer.backing())
+        layerBacking->updateAfterDescendents();
 }
 
 // Recurs down the RenderLayer tree until its finds the compositing descendants of compositingAncestor and updates their geometry.
@@ -1762,9 +1774,11 @@ void RenderLayerCompositor::updateCompositingDescendantGeometry(RenderLayer& com
                     reflection->backing()->updateCompositedBounds();
             }
 
-            layerBacking->updateGraphicsLayerGeometry();
-            if (compositedChildrenOnly)
+            layerBacking->updateGeometry();
+            if (compositedChildrenOnly) {
+                layerBacking->updateAfterDescendents();
                 return;
+            }
         }
     }
 
@@ -1799,8 +1813,12 @@ void RenderLayerCompositor::updateCompositingDescendantGeometry(RenderLayer& com
                 updateCompositingDescendantGeometry(compositingAncestor, *posZOrderList->at(i), compositedChildrenOnly);
         }
     }
+    
+    if (&layer != &compositingAncestor) {
+        if (RenderLayerBacking* layerBacking = layer.backing())
+            layerBacking->updateAfterDescendents();
+    }
 }
-
 
 void RenderLayerCompositor::repaintCompositedLayers(const IntRect* absRect)
 {
@@ -1898,17 +1916,23 @@ GraphicsLayer* RenderLayerCompositor::footerLayer() const
 }
 #endif
 
-TiledBacking* RenderLayerCompositor::pageTiledBacking() const
+void RenderLayerCompositor::setIsInWindowForLayerIncludingDescendants(RenderLayer& layer, bool isInWindow)
 {
-    RenderLayerBacking* renderViewBacking = m_renderView.layer()->backing();
-    return renderViewBacking ? renderViewBacking->tiledBacking() : nullptr;
+    if (layer.isComposited() && layer.backing()->usingTiledBacking())
+        layer.backing()->tiledBacking()->setIsInWindow(isInWindow);
+
+    // No need to recurse if we don't have any other tiled layers.
+    if (hasNonMainLayersWithTiledBacking())
+        return;
+
+    for (RenderLayer* childLayer = layer.firstChild(); childLayer; childLayer = childLayer->nextSibling())
+        setIsInWindowForLayerIncludingDescendants(*childLayer, isInWindow);
 }
 
 void RenderLayerCompositor::setIsInWindow(bool isInWindow)
 {
-    if (TiledBacking* tiledBacking = pageTiledBacking())
-        tiledBacking->setIsInWindow(isInWindow);
-
+    setIsInWindowForLayerIncludingDescendants(*m_renderView.layer(), isInWindow);
+    
     if (!inCompositingMode())
         return;
 
@@ -2333,7 +2357,7 @@ bool RenderLayerCompositor::clippedByAncestor(RenderLayer& layer) const
             return false;
     }
 
-    return layer.backgroundClipRect(RenderLayer::ClipRectsContext(computeClipRoot, 0, TemporaryClipRects)).rect() != LayoutRect::infiniteRect(); // FIXME: Incorrect for CSS regions.
+    return layer.backgroundClipRect(RenderLayer::ClipRectsContext(computeClipRoot, TemporaryClipRects)).rect() != LayoutRect::infiniteRect(); // FIXME: Incorrect for CSS regions.
 }
 
 // Return true if the given layer is a stacking context and has compositing child
@@ -2801,7 +2825,7 @@ float RenderLayerCompositor::contentsScaleMultiplierForNewTiles(const GraphicsLa
     if (!tileCache)
         return 1;
 
-    return tileCache->tilingMode() == LegacyTileCache::Zooming ? 0.125 : 1;
+    return tileCache->tileControllerShouldUseLowScaleTiles() ? 0.125 : 1;
 #else
     return 1;
 #endif
@@ -3332,7 +3356,7 @@ void RenderLayerCompositor::attachRootLayer(RootLayerAttachment attachment)
             break;
         }
         case RootLayerAttachedViaEnclosingFrame: {
-            // The layer will get hooked up via RenderLayerBacking::updateGraphicsLayerConfiguration()
+            // The layer will get hooked up via RenderLayerBacking::updateConfiguration()
             // for the frame's renderer in the parent document.
             m_renderView.document().ownerElement()->scheduleSetNeedsStyleRecalc(SyntheticStyleChange);
             break;
@@ -3649,13 +3673,14 @@ void RenderLayerCompositor::updateScrollCoordinatedLayer(RenderLayer& layer, Scr
             scrolledContentsLayer = m_rootContentLayer.get();
             counterScrollingLayer = fixedRootBackgroundLayer();
             insetClipLayer = clipLayer();
-            scrollingCoordinator->updateScrollingNode(nodeID, scrollingLayer, scrolledContentsLayer, counterScrollingLayer, insetClipLayer);
+            scrollingCoordinator->updateFrameScrollingNode(nodeID, scrollingLayer, scrolledContentsLayer, counterScrollingLayer, insetClipLayer);
         } else {
             ScrollingCoordinator::ScrollingGeometry scrollingGeometry;
             scrollingGeometry.scrollOrigin = layer.scrollOrigin();
             scrollingGeometry.scrollPosition = layer.scrollPosition();
+            scrollingGeometry.scrollableAreaSize = layer.visibleSize();
             scrollingGeometry.contentSize = layer.contentsSize();
-            scrollingCoordinator->updateScrollingNode(nodeID, scrollingLayer, scrolledContentsLayer, counterScrollingLayer, insetClipLayer, &scrollingGeometry);
+            scrollingCoordinator->updateOverflowScrollingNode(nodeID, scrollingLayer, scrolledContentsLayer, &scrollingGeometry);
         }
     }
 }

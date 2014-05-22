@@ -1,3 +1,273 @@
+2014-05-20  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG prediction propagation should agree with fixup phase over the return type of GetByVal
+        https://bugs.webkit.org/show_bug.cgi?id=133134
+
+        Reviewed by Mark Hahnenberg.
+        
+        Make prediction propagator use ArrayMode refinement to decide the return type.
+        
+        Also introduce a heap prediction intrinsic that allows us to test weird corner cases
+        like this. The only way we'll see a mismatch like this in the real world is probably
+        through a gnarly race condition.
+
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::handleIntrinsic):
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::setHeapPrediction):
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        (JSC::DFG::PredictionPropagationPhase::propagate):
+        * jsc.cpp:
+        (GlobalObject::finishCreation):
+        (functionFalse1):
+        (functionFalse2):
+        (functionUndefined1):
+        (functionUndefined2):
+        (functionFalse): Deleted.
+        (functionOtherFalse): Deleted.
+        (functionUndefined): Deleted.
+        * runtime/Intrinsic.h:
+        * tests/stress/get-by-val-double-predicted-int.js: Added.
+        (foo):
+
+2014-05-20  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        Watchdog timer should be lazily allocated
+        https://bugs.webkit.org/show_bug.cgi?id=133135
+
+        Reviewed by Geoffrey Garen.
+
+        We incur a noticeable amount of overhead on some benchmarks due to checking if the Watchdog ever fired. 
+        There is no reason to do this checking if we never activated the Watchdog, which can only be done through 
+        JSContextGroupSetExecutionTimeLimit or JSContextGroupClearExecutionTimeLimit. 
+
+        By allocating the Watchdog lazily on the VM we can avoid all of the associated overhead when we don't use 
+        these two API functions (which is true of most clients).
+
+        * API/JSContextRef.cpp:
+        (JSContextGroupSetExecutionTimeLimit):
+        (JSContextGroupClearExecutionTimeLimit):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::parseBlock):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * interpreter/Interpreter.cpp:
+        (JSC::Interpreter::execute):
+        (JSC::Interpreter::executeCall):
+        (JSC::Interpreter::executeConstruct):
+        * jit/JITOpcodes.cpp:
+        (JSC::JIT::emit_op_loop_hint):
+        (JSC::JIT::emitSlow_op_loop_hint):
+        * jit/JITOperations.cpp:
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::LLINT_SLOW_PATH_DECL):
+        * runtime/VM.h:
+        * runtime/Watchdog.cpp:
+        (JSC::Watchdog::Scope::Scope): Deleted.
+        (JSC::Watchdog::Scope::~Scope): Deleted.
+        * runtime/Watchdog.h:
+        (JSC::Watchdog::Scope::Scope):
+        (JSC::Watchdog::Scope::~Scope):
+
+2014-05-19  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        JSArray::shiftCountWith* could be more efficient
+        https://bugs.webkit.org/show_bug.cgi?id=133011
+
+        Reviewed by Geoffrey Garen.
+
+        Our current implementations of shiftCountWithAnyIndexingType and shiftCountWithArrayStorage 
+        are scared of the presence of any holes in the array. We can mitigate this somewhat by enabling 
+        them to correctly handle holes, thus avoiding the slowest of slow paths in most cases.
+
+        * runtime/ArrayStorage.h:
+        (JSC::ArrayStorage::indexingHeader):
+        (JSC::ArrayStorage::length):
+        (JSC::ArrayStorage::hasHoles):
+        * runtime/IndexingHeader.h:
+        (JSC::IndexingHeader::publicLength):
+        (JSC::IndexingHeader::from):
+        * runtime/JSArray.cpp:
+        (JSC::JSArray::shiftCountWithArrayStorage):
+        (JSC::JSArray::shiftCountWithAnyIndexingType):
+        (JSC::JSArray::unshiftCountWithArrayStorage):
+        * runtime/JSArray.h:
+        (JSC::JSArray::shiftCountForShift):
+        (JSC::JSArray::shiftCountForSplice):
+        (JSC::JSArray::shiftCount):
+        * runtime/Structure.cpp:
+        (JSC::Structure::holesRequireSpecialBehavior):
+        * runtime/Structure.h:
+
+2014-05-19  Filip Pizlo  <fpizlo@apple.com>
+
+        Test gardening: skip some failing tests on not-X86.
+
+        * tests/mozilla/mozilla-tests.yaml:
+
+2014-05-19  Mark Lam  <mark.lam@apple.com>
+
+        operationOptimize() should defer the GC for a while.
+        <https://webkit.org/b/133103>
+
+        Reviewed by Filip Pizlo.
+
+        Currently, operationOptimize() only defers the GC until its end.  As a result,
+        a GC may be triggered just before we return from operationOptimize(), and it may
+        jettison the optimize codeBlock that we're planning to OSR enter into when we
+        return from this function.  This is because the OSR entry on-ramp code hasn't
+        been executed yet, and hence, there is not yet a reference to this new codeBlock
+        from the stack, and there won't be until we've had a chance to return out of
+        operationOptimize() to run the OSR entry on-ramp code.
+
+        This issue is now fixed by using DeferGCForAWhile instead of DeferGC.  This
+        ensures that the GC will be deferred until after the OSR entry on-ramp can be
+        executed.
+
+        * jit/JITOperations.cpp:
+
+2014-05-19  Filip Pizlo  <fpizlo@apple.com>
+
+        Take care of some ARM64 test failures
+        https://bugs.webkit.org/show_bug.cgi?id=133090
+
+        Reviewed by Geoffrey Garen.
+        
+        Constant blinding on ARM64 cannot use the scratch register.
+
+        * assembler/MacroAssembler.h:
+        (JSC::MacroAssembler::convertInt32ToDouble):
+        (JSC::MacroAssembler::branchPtr):
+        (JSC::MacroAssembler::storePtr):
+        (JSC::MacroAssembler::store64):
+        * assembler/MacroAssemblerARM64.h:
+        (JSC::MacroAssemblerARM64::scratchRegisterForBlinding):
+
+2014-05-19  Tanay C  <tanay.c@samsung.com>
+
+        Removing some check-webkit-style warnings from ./dfg
+        https://bugs.webkit.org/show_bug.cgi?id=132854
+
+        Reviewed by Darin Adler.
+
+        * dfg/DFGAbstractInterpreter.h:
+        * dfg/DFGAbstractValue.h:
+        * dfg/DFGBlockInsertionSet.h:
+        * dfg/DFGCommonData.h:
+        * dfg/DFGDominators.h:
+        * dfg/DFGGraph.h:
+        * dfg/DFGInPlaceAbstractState.h:
+        * dfg/DFGPredictionPropagationPhase.h:
+
+2014-05-18  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, remove bogus comment. We already made the FTL use our calling convention.
+        That was a long time ago.
+
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::LowerDFGToLLVM::compileReturn):
+
+2014-05-18  Rik Cabanier  <cabanier@adobe.com>
+
+        support for navigator.hardwareConcurrency
+        https://bugs.webkit.org/show_bug.cgi?id=132588
+
+        Reviewed by Filip Pizlo.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2014-05-16  Michael Saboff  <msaboff@apple.com>
+
+        Crash in JSC::Yarr::YarrGenerator<(JSC::Yarr::YarrJITCompileMode)0>::generatePatternCharacterFixed() due to WTF::CrashOnOverflow::overflowed + 9
+        https://bugs.webkit.org/show_bug.cgi?id=133009
+
+        Reviewed by Oliver Hunt.
+
+        If we determine that any alternative requires a minumum match size greater than
+        INT_MAX, we handle the match in the interpreter.
+
+        Check to see if the pattern has unsigned lengths before invoking YARR JIT.
+        * runtime/RegExp.cpp:
+        (JSC::RegExp::compile):
+        (JSC::RegExp::compileMatchOnly):
+
+        * tests/stress/large-regexp.js: New test added.
+
+        Set m_containsUnsignedLengthPattern flag if any alternative's minimum length
+        doesn't fit in an int.
+        * yarr/YarrPattern.cpp:
+        (JSC::Yarr::YarrPatternConstructor::setupDisjunctionOffsets):
+
+        Clear new m_containsUnsignedLengthPattern flag.
+        * yarr/YarrPattern.cpp:
+        (JSC::Yarr::YarrPattern::YarrPattern):
+        * yarr/YarrPattern.h:
+        (JSC::Yarr::YarrPattern::reset):
+        (JSC::Yarr::YarrPattern::containsUnsignedLengthPattern):
+
+2014-05-15  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        JSDOMWindow should not claim HasImpureGetOwnPropertySlot
+        https://bugs.webkit.org/show_bug.cgi?id=132918
+
+        Reviewed by Geoffrey Garen.
+
+        * jit/Repatch.cpp:
+        (JSC::tryRepatchIn): We forgot to check for watchpoints when repatching "in".
+
+2014-05-15  Alex Christensen  <achristensen@webkit.org>
+
+        Add pointer lock to features without enabling it.
+        https://bugs.webkit.org/show_bug.cgi?id=132961
+
+        Reviewed by Sam Weinig.
+
+        * Configurations/FeatureDefines.xcconfig:
+        Added ENABLE_POINTER_LOCK to list of features.
+
+2014-05-14  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        Inline caching for proxies clobbers baseGPR too early
+        https://bugs.webkit.org/show_bug.cgi?id=132916
+
+        Reviewed by Filip Pizlo.
+
+        We clobber baseGPR prior to the Structure checks, so if any of the checks fail then the slow path 
+        gets the target of the proxy rather than the proxy itself. We need to delay the clobbering of baseGPR 
+        until we know the inline cache is going to succeed.
+
+        * jit/Repatch.cpp:
+        (JSC::generateByIdStub):
+
+2014-05-14  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed build fix.
+
+        * JavaScriptCore.vcxproj/JavaScriptCore.submit.sln: This solution
+        was missing commands to build LLInt portions of JSC.
+        * llint/LLIntData.cpp: 64-bit build fix.
+
+2014-05-14  Martin Hodovan <mhodovan.u-szeged@partner.samsung.com>
+
+        ARM Traditional buildfix after r168776.
+        https://bugs.webkit.org/show_bug.cgi?id=132903
+
+        Reviewed by Darin Adler.
+
+        * assembler/MacroAssemblerARM.h:
+        (JSC::MacroAssemblerARM::abortWithReason): Added.
+
+2014-05-14  Tibor Meszaros  <tmeszaros.u-szeged@partner.samsung.com>
+
+        Remove CSS_STICKY_POSITION guards
+        https://bugs.webkit.org/show_bug.cgi?id=132676
+
+        Reviewed by Simon Fraser.
+
+        * Configurations/FeatureDefines.xcconfig:
+
 2014-05-13  Filip Pizlo  <fpizlo@apple.com>
 
         JIT breakpoints should be more informative

@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2010, 2011, 2012, 2013 Apple Inc. All rights reserved.
+# Copyright (C) 2005-2007, 2010-2014 Apple Inc. All rights reserved.
 # Copyright (C) 2009 Google Inc. All rights reserved.
 # Copyright (C) 2011 Research In Motion Limited. All rights reserved.
 # Copyright (C) 2013 Nokia Corporation and/or its subsidiary(-ies).
@@ -39,6 +39,7 @@ use File::Basename;
 use File::Path qw(mkpath rmtree);
 use File::Spec;
 use File::stat;
+use List::Util;
 use POSIX;
 use VCSUtils;
 
@@ -65,6 +66,9 @@ BEGIN {
        &runMacWebKitApp
        &safariPath
        &setConfiguration
+       &setupMacWebKitEnvironment
+       &sharedCommandLineOptions
+       &sharedCommandLineOptionsUsage
        USE_OPEN_COMMAND
    );
    %EXPORT_TAGS = ( );
@@ -375,10 +379,13 @@ sub argumentsForConfiguration()
 {
     determineConfiguration();
     determineArchitecture();
+    determineXcodeSDK();
 
     my @args = ();
     push(@args, '--debug') if ($configuration =~ "^Debug");
     push(@args, '--release') if ($configuration =~ "^Release");
+    push(@args, '--device') if ($xcodeSDK =~ /^iphoneos/);
+    push(@args, '--sim') if ($xcodeSDK =~ /^iphonesimulator/);
     push(@args, '--32-bit') if ($architecture ne "x86_64" and !isWin64());
     push(@args, '--64-bit') if (isWin64());
     push(@args, '--gtk') if isGtk();
@@ -396,11 +403,13 @@ sub determineXcodeSDK
     my $sdk;
     if (checkForArgumentAndRemoveFromARGVGettingValue("--sdk", \$sdk)) {
         $xcodeSDK = $sdk;
-    } elsif (checkForArgumentAndRemoveFromARGV("--device")) {
-        $xcodeSDK = 'iphoneos.internal';
-    } elsif (checkForArgumentAndRemoveFromARGV("--sim") ||
+    }
+    if (checkForArgumentAndRemoveFromARGV("--device")) {
+        $xcodeSDK ||= 'iphoneos.internal';
+    }
+    if (checkForArgumentAndRemoveFromARGV("--sim") ||
         checkForArgumentAndRemoveFromARGV("--simulator")) {
-        $xcodeSDK = 'iphonesimulator';
+        $xcodeSDK ||= 'iphonesimulator';
     }
 }
 
@@ -1301,6 +1310,34 @@ sub appendToEnvironmentVariableList
     }
 }
 
+sub sharedCommandLineOptions()
+{
+    return (
+        "g|guard-malloc" => \$shouldUseGuardMalloc,
+    );
+}
+
+sub sharedCommandLineOptionsUsage
+{
+    my %opts = @_;
+
+    my %switches = (
+        '-g|--guard-malloc' => 'Use guardmalloc when running executable',
+    );
+
+    my $indent = " " x ($opts{indent} || 2);
+    my $switchWidth = List::Util::max(int($opts{switchWidth}), List::Util::max(map { length($_) } keys %switches) + ($opts{brackets} ? 2 : 0));
+
+    my $result = "Common switches:\n";
+
+    for my $switch (keys %switches) {
+        my $switchName = $opts{brackets} ? "[" . $switch . "]" : $switch;
+        $result .= sprintf("%s%-" . $switchWidth . "s %s\n", $indent, $switchName, $switches{$switch});
+    }
+
+    return $result;
+}
+
 sub setUpGuardMallocIfNeeded
 {
     if (!isDarwin()) {
@@ -1308,7 +1345,7 @@ sub setUpGuardMallocIfNeeded
     }
 
     if (!defined($shouldUseGuardMalloc)) {
-        $shouldUseGuardMalloc = checkForArgumentAndRemoveFromARGV("--guard-malloc");
+        $shouldUseGuardMalloc = checkForArgumentAndRemoveFromARGV("-g") || checkForArgumentAndRemoveFromARGV("--guard-malloc");
     }
 
     if ($shouldUseGuardMalloc) {
@@ -2009,7 +2046,7 @@ sub printHelpAndExitForRunAndDebugWebKitAppIfNeeded
 Usage: @{[basename($0)]} [options] [args ...]
   --help                            Show this help message
   --no-saved-state                  Launch the application without state restoration (OS X 10.7 and later)
-  --guard-malloc                    Enable Guard Malloc (OS X only)
+  -g|--guard-malloc                 Enable Guard Malloc (OS X only)
   --use-web-process-xpc-service     Launch the Web Process as an XPC Service (OS X only)
 EOF
 
@@ -2038,16 +2075,27 @@ sub argumentsForRunAndDebugMacWebKitApp()
     return @args;
 }
 
+sub setupMacWebKitEnvironment($)
+{
+    my ($dyldFrameworkPath) = @_;
+
+    $dyldFrameworkPath = File::Spec->rel2abs($dyldFrameworkPath);
+
+    $ENV{DYLD_FRAMEWORK_PATH} = $ENV{DYLD_FRAMEWORK_PATH} ? join(":", $dyldFrameworkPath, $ENV{DYLD_FRAMEWORK_PATH}) : $dyldFrameworkPath;
+    $ENV{__XPC_DYLD_FRAMEWORK_PATH} = $dyldFrameworkPath;
+    $ENV{WEBKIT_UNSET_DYLD_FRAMEWORK_PATH} = "YES";
+
+    setUpGuardMallocIfNeeded();
+}
+
 sub runMacWebKitApp($;$)
 {
     my ($appPath, $useOpenCommand) = @_;
     my $productDir = productDir();
     print "Starting @{[basename($appPath)]} with DYLD_FRAMEWORK_PATH set to point to built WebKit in $productDir.\n";
-    $ENV{DYLD_FRAMEWORK_PATH} = $productDir;
-    $ENV{__XPC_DYLD_FRAMEWORK_PATH} = File::Spec->rel2abs($productDir);
-    $ENV{WEBKIT_UNSET_DYLD_FRAMEWORK_PATH} = "YES";
 
-    setUpGuardMallocIfNeeded();
+    local %ENV = %ENV;
+    setupMacWebKitEnvironment($productDir);
 
     if (defined($useOpenCommand) && $useOpenCommand == USE_OPEN_COMMAND) {
         return system("open", "-W", "-a", $appPath, "--args", argumentsForRunAndDebugMacWebKitApp());
@@ -2079,11 +2127,7 @@ sub execMacWebKitAppForDebugging($)
     die "Can't find the $debugger executable.\n" unless -x $debuggerPath;
 
     my $productDir = productDir();
-    $ENV{DYLD_FRAMEWORK_PATH} = $productDir;
-    $ENV{__XPC_DYLD_FRAMEWORK_PATH} = File::Spec->rel2abs($productDir);
-    $ENV{WEBKIT_UNSET_DYLD_FRAMEWORK_PATH} = "YES";
-
-    setUpGuardMallocIfNeeded();
+    setupMacWebKitEnvironment($productDir);
 
     my @architectureFlags = ($architectureSwitch, architecture());
     if (!shouldTargetWebProcess()) {

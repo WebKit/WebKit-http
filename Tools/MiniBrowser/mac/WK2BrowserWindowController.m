@@ -28,14 +28,15 @@
 #if WK_API_ENABLED
 
 #import "AppDelegate.h"
-#import <WebKit2/WKFrameInfo.h>
-#import <WebKit2/WKNavigationDelegate.h>
-#import <WebKit2/WKUIDelegate.h>
-#import <WebKit2/WKWebView.h>
-#import <WebKit2/WKWebViewPrivate.h>
+#import <WebKit/WKFrameInfo.h>
+#import <WebKit/WKNavigationDelegate.h>
+#import <WebKit/WKUIDelegate.h>
+#import <WebKit/WKWebView.h>
+#import <WebKit/WKWebViewPrivate.h>
 
 static void* keyValueObservingContext = &keyValueObservingContext;
 static NSString * const WebKit2UseRemoteLayerTreeDrawingAreaKey = @"WebKit2UseRemoteLayerTreeDrawingArea";
+static NSString * const WebKit2SubpixelCSSOMElementMetricsEnabledKey = @"WebKitSubpixelCSSOMElementMetricsEnabled";
 
 @interface WK2BrowserWindowController () <WKNavigationDelegate, WKUIDelegate>
 @end
@@ -133,6 +134,8 @@ static NSString * const WebKit2UseRemoteLayerTreeDrawingAreaKey = @"WebKit2UseRe
         [menuItem setState:[[self window] isOpaque] ? NSOffState : NSOnState];
     else if ([menuItem action] == @selector(toggleUISideCompositing:))
         [menuItem setState:[self isUISideCompositingEnabled] ? NSOnState : NSOffState];
+    else if ([menuItem action] == @selector(toggleSubpixelCSSOMElementMetricsEnabled:))
+        [menuItem setState:[self isSubpixelCSSOMElementMetricsEnabled] ? NSOnState : NSOffState];
 
     return YES;
 }
@@ -294,6 +297,16 @@ static NSString * const WebKit2UseRemoteLayerTreeDrawingAreaKey = @"WebKit2UseRe
     [[self window] display];    
 }
 
+- (BOOL)isSubpixelCSSOMElementMetricsEnabled
+{
+    return [[NSUserDefaults standardUserDefaults] boolForKey:WebKit2SubpixelCSSOMElementMetricsEnabledKey];
+}
+
+- (IBAction)toggleSubpixelCSSOMElementMetricsEnabled:(id)sender
+{
+    [[NSUserDefaults standardUserDefaults] setBool:![self isSubpixelCSSOMElementMetricsEnabled] forKey:WebKit2SubpixelCSSOMElementMetricsEnabledKey];
+}
+
 - (BOOL)isUISideCompositingEnabled
 {
     return [[NSUserDefaults standardUserDefaults] boolForKey:WebKit2UseRemoteLayerTreeDrawingAreaKey];
@@ -411,32 +424,32 @@ static NSString * const WebKit2UseRemoteLayerTreeDrawingAreaKey = @"WebKit2UseRe
 
 - (void)webView:(WKWebView *)webView didStartProvisionalNavigation:(WKNavigation *)navigation
 {
-    LOG(@"didStartProvisionalNavigation");
+    LOG(@"didStartProvisionalNavigation: %@", navigation);
 }
 
 - (void)webView:(WKWebView *)webView didReceiveServerRedirectForProvisionalNavigation:(WKNavigation *)navigation
 {
-    LOG(@"didReceiveServerRedirectForProvisionalNavigation");
+    LOG(@"didReceiveServerRedirectForProvisionalNavigation: %@", navigation);
 }
 
 - (void)webView:(WKWebView *)webView didFailProvisionalNavigation:(WKNavigation *)navigation withError:(NSError *)error
 {
-    LOG(@"didFailProvisionalNavigation: %@", error);
+    LOG(@"didFailProvisionalNavigation: %@navigation, error: %@", navigation, error);
 }
 
 - (void)webView:(WKWebView *)webView didCommitNavigation:(WKNavigation *)navigation
 {
-    LOG(@"didCommitNavigation: %@", error);
+    LOG(@"didCommitNavigation: %@", navigation);
 }
 
 - (void)webView:(WKWebView *)webView didFinishLoadingNavigation:(WKNavigation *)navigation
 {
-    LOG(@"didFinishLoadingNavigation");
+    LOG(@"didFinishLoadingNavigation: %@", navigation);
 }
 
 - (void)webView:(WKWebView *)webView didFailNavigation:(WKNavigation *)navigation withError:(NSError *)error
 {
-    LOG(@"didFailNavigation: %@", error);
+    LOG(@"didFailNavigation: %@, error %@", navigation, error);
 }
 
 @end

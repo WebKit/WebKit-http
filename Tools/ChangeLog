@@ -1,3 +1,537 @@
+2014-05-20  Alexey Proskuryakov  <ap@apple.com>
+
+        [Mac] WebProcess doesn't follow localization of UI process when run as a service
+        https://bugs.webkit.org/show_bug.cgi?id=133126
+        <rdar://problem/13396515>
+        <rdar://problem/16561084>
+
+        Reviewed by Sam Weinig and Tim Horton.
+
+        * WebKitTestRunner/InjectedBundle/mac/InjectedBundleMac.mm:
+        (WTR::InjectedBundle::platformInitialize): It was too late to override language
+        here, and it's not necessary any more. Keeping the code for older OS versions in
+        case it did have effect in some code paths.
+
+2014-05-19  David Farler  <dfarler@apple.com>
+
+        Move WebKitTestRunner to std::unique_ptr
+        https://bugs.webkit.org/show_bug.cgi?id=133081
+
+        Reviewed by Daniel Bates.
+
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp:
+        (WTR::InjectedBundle::didCreatePage):
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.h:
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::initialize):
+        (WTR::TestController::createWebViewWithOptions):
+        (WTR::TestController::resetStateToConsistentValues):
+        (WTR::TestController::runTest):
+        * WebKitTestRunner/TestController.h:
+        * WebKitTestRunner/TestInvocation.cpp:
+        * WebKitTestRunner/TestInvocation.h:
+        * WebKitTestRunner/WorkQueueManager.cpp:
+        (WTR::WorkQueueManager::processWorkQueue):
+        (WTR::WorkQueueManager::enqueue):
+        * WebKitTestRunner/WorkQueueManager.h:
+
+2014-05-20  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] WebKitWebPage::send-request always pass a valid pointer for redirected response
+        https://bugs.webkit.org/show_bug.cgi?id=133119
+
+        Reviewed by Sergio Villar Senin.
+
+        Check that redirect response parameter of
+        WebKitWebPage::send-request signal is NULL when not redirecting
+        and a valid WebKitURIResponse object when redirecting.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestResources.cpp:
+        (testWebResourceSendRequest):
+        (serverCallback):
+        * TestWebKitAPI/Tests/WebKit2Gtk/WebExtensionTest.cpp:
+        (sendRequestCallback):
+
+2014-05-20  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        REGRESSION(CMAKE): [GTK] Several WebKit2GTK+ unit tests are no longer built
+        https://bugs.webkit.org/show_bug.cgi?id=133117
+
+        Reviewed by Philippe Normand.
+
+        Bring back missing tests to the build.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/CMakeLists.txt:
+
+2014-05-19  Filip Pizlo  <fpizlo@apple.com>
+
+        Take care of some ARM64 test failures
+        https://bugs.webkit.org/show_bug.cgi?id=133090
+
+        Reviewed by Geoffrey Garen.
+
+        * Scripts/run-jsc-stress-tests: Make it easier to conditionally skip things.
+
+2014-05-19  David Kilzer  <ddkilzer@apple.com>
+
+        [iOS] REGRESSION (r168910): webkitdirs.pm: Be more forgiving when parsing --sdk, --device and --sim
+        <http://webkit.org/b/133089>
+
+        Reviewed by Darin Adler.
+
+        * Scripts/webkitdirs.pm:
+        (determineXcodeSDK): If both '--sdk SDKROOT' and '--sim' are
+        specified on the command line, we would remove the '--sdk'
+        arguments, but leave '--sim', potentially passing it along to
+        xcodebuild causing a build failure.  This happens when
+        'old-run-webkit-tests --release --sim' invokes
+        build-dumprendertree when DumpRenderTree hasn't been built yet.
+
+2014-05-19  David Farler  <dfarler@apple.com>
+
+        Dashboard: OpenSource revision key changed from WebKitOpenSource to WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=133086
+
+        Reviewed by Daniel Bates.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotIteration.js:
+
+2014-05-19  David Kilzer  <ddkilzer@apple.com>
+
+        REGRESSION (r169042): Fix run-api-tests on Mountain Lion
+        <http://webkit.org/b/132954>
+
+        * Scripts/webkitdirs.pm:
+        (sharedCommandLineOptionsUsage): Remove the prototype for the
+        subroutine.  Older perls don't like the "+@" syntax.
+
+2014-05-19  Eva Balazsfalvi  <evab.u-szeged@partner.samsung.com>
+
+        run-javascriptcore-tests should sort the list of failing stress tests
+        https://bugs.webkit.org/show_bug.cgi?id=132989
+
+        Reviewed by Csaba Osztrogonác.
+
+        * Scripts/run-javascriptcore-tests:
+
+2014-05-19  David Kilzer  <ddkilzer@apple.com>
+
+        webkitdirs.pm: Add setupMacWebKitEnvironment() to set __XPC_DYLD_FRAMEWORK_PATH consistently
+        <http://webkit.org/b/132954>
+
+        Reviewed by Darin Adler.
+
+        Extract code into setupMacWebKitEnvironment() for setting up
+        common environment variables so it may be shared.  Sets
+        __XPC_DYLD_FRAMEWORK_PATH consistently and adds support for
+        using guardmalloc to some scripts.
+
+        Also adds support for parsing shared (common) command-line
+        switches, initially just -g|--guard-malloc.
+
+        * Scripts/bisect-builds: Add -g|--guard-malloc support by using
+        sharedCommandLineOptions() and sharedCommandLineOptionsUsage().
+        (mountAndRunNightly): Call setupMacWebKitEnvironment().  Use a
+        local copy of %ENV when launching Safari so we don't have to
+        restore variables.
+
+        * Scripts/run-api-tests: Add -g|--guard-malloc support by using
+        sharedCommandLineOptions() and sharedCommandLineOptionsUsage().
+        Check result of GetOptions() to catch invalid command-line
+        switches.
+        (runTest): Use a local copy of %ENV when running tests so we
+        don't have to restore variables.
+        (prepareEnvironmentForRunningTestTool): Call
+        setupMacWebKitEnvironment().
+
+        * Scripts/run-pageloadtest: Add -g|--guard-malloc support by
+        using sharedCommandLineOptions() and
+        sharedCommandLineOptionsUsage().  Call
+        setupMacWebKitEnvironment().
+
+        * Scripts/webkitdirs.pm:
+        (sharedCommandLineOptions): Return array of common switches to
+        pass to Getopt::Long::GetOptions().
+        (sharedCommandLineOptionsUsage): Return formatted string of
+        common switches for printing usage help text.
+        (setUpGuardMallocIfNeeded): Support using '-g' for enabling
+        guardmalloc.
+        (printHelpAndExitForRunAndDebugWebKitAppIfNeeded): Ditto.
+        (setupMacWebKitEnvironment): Extracted from runMacWebKitApp()
+        and changed not to clobber DYLD_FRAMEWORK_PATH if already set.
+        (runMacWebKitApp): Call setupMacWebKitEnvironment().  Use a
+        local copy of %ENV when launching Safari so we don't have to
+        restore variables.
+        (execMacWebKitAppForDebugging): Call
+        setupMacWebKitEnvironment().
+
+2014-05-18  Rik Cabanier  <cabanier@adobe.com>
+
+        support for navigator.hardwareConcurrency
+        https://bugs.webkit.org/show_bug.cgi?id=132588
+
+        Reviewed by Filip Pizlo.
+
+        * Scripts/webkitperl/FeatureList.pm:
+
+2014-05-18  Anders Carlsson  <andersca@apple.com>
+
+        Implement Navigations for all methods declared returning one
+        https://bugs.webkit.org/show_bug.cgi?id=133048
+        <rdar://problem/16830064>
+
+        Reviewed by Sam Weinig.
+
+        * MiniBrowser/mac/MiniBrowser_Prefix.pch:
+        Import WebKit.h.
+        
+        * MiniBrowser/mac/WK2BrowserWindowController.m:
+        (-[WK2BrowserWindowController webView:didStartProvisionalNavigation:]):
+        (-[WK2BrowserWindowController webView:didReceiveServerRedirectForProvisionalNavigation:]):
+        (-[WK2BrowserWindowController webView:didFailProvisionalNavigation:withError:]):
+        (-[WK2BrowserWindowController webView:didCommitNavigation:]):
+        (-[WK2BrowserWindowController webView:didFinishLoadingNavigation:]):
+        (-[WK2BrowserWindowController webView:didFailNavigation:withError:]):
+        Print out the navigations.
+
+2014-05-17  Zalan Bujtas  <zalan@apple.com>
+
+        Subpixel rendering: Add subpixelCSSOMElementMetricsEnabled to WK1 WebPreferences.
+        https://bugs.webkit.org/show_bug.cgi?id=133029
+
+        Reviewed by Simon Fraser.
+
+        Added a menu item to toggle subpixelCSSOMElementMetricsEnabled's value. However
+        toggling it on a WK2 window needs restart.
+        Adding dynamic toggle to WK2 requires a WebPreferences SPI. It's not worth cluttering
+        the WebPreferences just to support this temporary toggle.
+
+        * MiniBrowser/mac/BrowserWindowController.h:
+        * MiniBrowser/mac/MainMenu.xib:
+        * MiniBrowser/mac/WK1BrowserWindowController.m:
+        (-[WK1BrowserWindowController validateMenuItem:]):
+        (-[WK1BrowserWindowController isSubpixelCSSOMElementMetricsEnabled]):
+        (-[WK1BrowserWindowController toggleSubpixelCSSOMElementMetricsEnabled:]):
+        * MiniBrowser/mac/WK2BrowserWindowController.m:
+        (-[WK2BrowserWindowController validateMenuItem:]):
+        (-[WK2BrowserWindowController isSubpixelCSSOMElementMetricsEnabled]):
+        (-[WK2BrowserWindowController toggleSubpixelCSSOMElementMetricsEnabled:]):
+
+2014-05-17  Anders Carlsson  <andersca@apple.com>
+
+        Replace WKContextSetDatabaseDirectory with two WKContextConfiguration parameters
+        https://bugs.webkit.org/show_bug.cgi?id=133033
+        <rdar://problem/16830143>
+
+        Reviewed by Sam Weinig.
+
+        Set up the WebSQL and IndexedDB directories.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::initialize):
+
+2014-05-16  Martin Hock  <mhock@apple.com>
+
+        MemoryCache::addImageToCache should return the result of add().
+        https://bugs.webkit.org/show_bug.cgi?id=132928
+        <rdar://problem/16651547>
+
+        Reviewed by Alexey Proskuryakov.
+
+        * TestWebKitAPI/Configurations/TestWebKitAPI.xcconfig:
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/ios/MemoryCacheAddImageToCacheIOS.mm: Added.
+        (TestWebKitAPI::TEST):
+
+2014-05-15  David Farler  <dfarler@apple.com>
+
+        old-run-webkit-tests: allow specifying a simulator app path
+        https://bugs.webkit.org/show_bug.cgi?id=132975
+
+        Reviewed by Anders Carlsson.
+
+        * Scripts/old-run-webkit-tests:
+        (openIPhoneSimulator):
+        Add new --simulator-app command line parameter for specifying the
+        absolute path to the simulator app to launch before starting a
+        session.
+
+2014-05-16  Eva Balazsfalvi  <evab.u-szeged@partner.samsung.com>
+
+        [webkitpy] In case of multiple bug rollout, all bugs should be reopened, not only the oldest one
+        https://bugs.webkit.org/show_bug.cgi?id=131363
+
+        Reviewed by Csaba Osztrogonác.
+
+        * Scripts/webkitpy/common/checkout/checkout_mock.py:
+        * Scripts/webkitpy/common/net/bugzilla/bugzilla_mock.py:
+        (MockBugzilla):
+        * Scripts/webkitpy/tool/commands/download_unittest.py:
+        (test_create_rollout_multiple_revision_with_one_resolved):
+        (test_create_rollout_multiple_resolved):
+        (test_rollout_two_revisions):
+        (test_rollout_multiple_revisions):
+        (test_rollout_multiple_revisions_with_a_missing_bug_id):
+        * Scripts/webkitpy/tool/steps/createbug.py:
+        (CreateBug.run):
+        * Scripts/webkitpy/tool/steps/reopenbugafterrollout.py:
+        (ReopenBugAfterRollout.run):
+
+2014-05-16  Martin Hodovan  <mhodovan.u-szeged@partner.samsung.com>
+
+        [WK2] Change the remaining framework includes from WebKit2 to WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=132956
+
+        Reviewed by Sam Weinig.
+
+        * MiniBrowser/MiniBrowserWebProcessPlugIn.h:
+        * MiniBrowser/mac/AppDelegate.m:
+        * MiniBrowser/mac/WK2BrowserWindowController.m:
+        * TestWebKitAPI/InjectedBundleController.h:
+        * TestWebKitAPI/InjectedBundleMain.cpp:
+        * TestWebKitAPI/JavaScriptTest.cpp:
+        * TestWebKitAPI/PlatformUtilities.h:
+        * TestWebKitAPI/Tests/CustomProtocolsSyncXHRTest.mm:
+        * TestWebKitAPI/Tests/WebKit2/CanHandleRequest.cpp:
+        * TestWebKitAPI/Tests/WebKit2/CanHandleRequest_Bundle.cpp:
+        * TestWebKitAPI/Tests/WebKit2/CookieManager.cpp:
+        * TestWebKitAPI/Tests/WebKit2/CoordinatedGraphics/WKViewIsActiveSetIsActive.cpp:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WebKit2/CoordinatedGraphics/WKViewIsActiveSetIsActive_Bundle.cpp:
+        * TestWebKitAPI/Tests/WebKit2/CoordinatedGraphics/WKViewRestoreZoomAndScrollBackForward.cpp:
+        * TestWebKitAPI/Tests/WebKit2/CoordinatedGraphics/WKViewUserViewportToContents.cpp:
+        * TestWebKitAPI/Tests/WebKit2/DOMWindowExtensionBasic.cpp:
+        * TestWebKitAPI/Tests/WebKit2/DOMWindowExtensionBasic_Bundle.cpp:
+        * TestWebKitAPI/Tests/WebKit2/DOMWindowExtensionNoCache_Bundle.cpp:
+        * TestWebKitAPI/Tests/WebKit2/DidAssociateFormControls_Bundle.cpp:
+        * TestWebKitAPI/Tests/WebKit2/DidNotHandleKeyDown.cpp:
+        * TestWebKitAPI/Tests/WebKit2/DocumentStartUserScriptAlertCrash.cpp:
+        * TestWebKitAPI/Tests/WebKit2/DocumentStartUserScriptAlertCrash_Bundle.cpp:
+        * TestWebKitAPI/Tests/WebKit2/DownloadDecideDestinationCrash.cpp:
+        * TestWebKitAPI/Tests/WebKit2/EphemeralSessionPushStateNoHistoryCallback.cpp:
+        * TestWebKitAPI/Tests/WebKit2/EvaluateJavaScript.cpp:
+        * TestWebKitAPI/Tests/WebKit2/FailedLoad.cpp:
+        * TestWebKitAPI/Tests/WebKit2/Find.cpp:
+        * TestWebKitAPI/Tests/WebKit2/FindMatches.mm:
+        * TestWebKitAPI/Tests/WebKit2/ForceRepaint.cpp:
+        * TestWebKitAPI/Tests/WebKit2/FrameMIMETypeHTML.cpp:
+        * TestWebKitAPI/Tests/WebKit2/FrameMIMETypePNG.cpp:
+        * TestWebKitAPI/Tests/WebKit2/Geolocation.cpp:
+        * TestWebKitAPI/Tests/WebKit2/GetInjectedBundleInitializationUserDataCallback.cpp:
+        * TestWebKitAPI/Tests/WebKit2/GetInjectedBundleInitializationUserDataCallback_Bundle.cpp:
+        * TestWebKitAPI/Tests/WebKit2/HitTestResultNodeHandle.cpp:
+        * TestWebKitAPI/Tests/WebKit2/HitTestResultNodeHandle_Bundle.cpp:
+        * TestWebKitAPI/Tests/WebKit2/InjectedBundleBasic.cpp:
+        * TestWebKitAPI/Tests/WebKit2/InjectedBundleBasic_Bundle.cpp:
+        * TestWebKitAPI/Tests/WebKit2/InjectedBundleFrameHitTest.cpp:
+        * TestWebKitAPI/Tests/WebKit2/InjectedBundleFrameHitTest_Bundle.cpp:
+        * TestWebKitAPI/Tests/WebKit2/InjectedBundleInitializationUserDataCallbackWins.cpp:
+        * TestWebKitAPI/Tests/WebKit2/InjectedBundleInitializationUserDataCallbackWins_Bundle.cpp:
+        * TestWebKitAPI/Tests/WebKit2/LayoutMilestonesWithAllContentInFrame.cpp:
+        * TestWebKitAPI/Tests/WebKit2/LoadAlternateHTMLStringWithNonDirectoryURL.cpp:
+        * TestWebKitAPI/Tests/WebKit2/LoadCanceledNoServerRedirectCallback.cpp:
+        * TestWebKitAPI/Tests/WebKit2/LoadCanceledNoServerRedirectCallback_Bundle.cpp:
+        * TestWebKitAPI/Tests/WebKit2/LoadPageOnCrash.cpp:
+        * TestWebKitAPI/Tests/WebKit2/NewFirstVisuallyNonEmptyLayout.cpp:
+        * TestWebKitAPI/Tests/WebKit2/NewFirstVisuallyNonEmptyLayoutFails.cpp:
+        * TestWebKitAPI/Tests/WebKit2/NewFirstVisuallyNonEmptyLayoutFails_Bundle.cpp:
+        * TestWebKitAPI/Tests/WebKit2/NewFirstVisuallyNonEmptyLayoutForImages.cpp:
+        * TestWebKitAPI/Tests/WebKit2/NewFirstVisuallyNonEmptyLayoutForImages_Bundle.cpp:
+        * TestWebKitAPI/Tests/WebKit2/NewFirstVisuallyNonEmptyLayoutFrames.cpp:
+        * TestWebKitAPI/Tests/WebKit2/NewFirstVisuallyNonEmptyLayoutFrames_Bundle.cpp:
+        * TestWebKitAPI/Tests/WebKit2/NewFirstVisuallyNonEmptyLayout_Bundle.cpp:
+        * TestWebKitAPI/Tests/WebKit2/PageLoadBasic.cpp:
+        * TestWebKitAPI/Tests/WebKit2/PageLoadDidChangeLocationWithinPageForFrame.cpp:
+        * TestWebKitAPI/Tests/WebKit2/ParentFrame.cpp:
+        * TestWebKitAPI/Tests/WebKit2/ParentFrame_Bundle.cpp:
+        * TestWebKitAPI/Tests/WebKit2/PasteboardNotifications.mm:
+        * TestWebKitAPI/Tests/WebKit2/PasteboardNotifications_Bundle.cpp:
+        * TestWebKitAPI/Tests/WebKit2/PreventEmptyUserAgent.cpp:
+        * TestWebKitAPI/Tests/WebKit2/PrivateBrowsingPushStateNoHistoryCallback.cpp:
+        * TestWebKitAPI/Tests/WebKit2/ReloadPageAfterCrash.cpp:
+        * TestWebKitAPI/Tests/WebKit2/ResizeReversePaginatedWebView.cpp:
+        * TestWebKitAPI/Tests/WebKit2/ResizeWindowAfterCrash.cpp:
+        * TestWebKitAPI/Tests/WebKit2/ScrollPinningBehaviors.cpp:
+        * TestWebKitAPI/Tests/WebKit2/SeccompFilters.cpp:
+        * TestWebKitAPI/Tests/WebKit2/ShouldGoToBackForwardListItem.cpp:
+        * TestWebKitAPI/Tests/WebKit2/ShouldGoToBackForwardListItem_Bundle.cpp:
+        * TestWebKitAPI/Tests/WebKit2/SpacebarScrolling.cpp:
+        * TestWebKitAPI/Tests/WebKit2/WKPreferences.cpp:
+        * TestWebKitAPI/Tests/WebKit2/WKStringJSString.cpp:
+        * TestWebKitAPI/Tests/WebKit2/WebArchive.cpp:
+        * TestWebKitAPI/Tests/WebKit2/WebArchive_Bundle.cpp:
+        * TestWebKitAPI/Tests/WebKit2/WillLoad_Bundle.cpp:
+        * TestWebKitAPI/Tests/WebKit2/WillSendSubmitEvent_Bundle.cpp:
+        * TestWebKitAPI/Tests/WebKit2/efl/WKViewClientWebProcessCallbacks.cpp:
+        * TestWebKitAPI/Tests/WebKit2/efl/WKViewClientWebProcessCallbacks_Bundle.cpp:
+        * TestWebKitAPI/Tests/WebKit2/mac/EditorCommands.mm:
+        * TestWebKitAPI/Tests/WebKit2/mac/GetBackingScaleFactor.mm:
+        * TestWebKitAPI/Tests/WebKit2/mac/GetBackingScaleFactor_Bundle.mm:
+        * TestWebKitAPI/Tests/WebKit2/mac/GetPIDAfterAbortedProcessLaunch.cpp:
+        * TestWebKitAPI/Tests/WebKit2/mac/WeakObjCPtr.mm:
+        * TestWebKitAPI/Tests/WebKit2/win/AltKeyGeneratesWMSysCommand.cpp:
+        * TestWebKitAPI/Tests/WebKit2/win/DoNotCopyANullCFURLResponse.cpp:
+        * TestWebKitAPI/Tests/WebKit2/win/ResizeViewWhileHidden.cpp:
+        * TestWebKitAPI/Tests/WebKit2/win/TranslateMessageGeneratesWMChar.cpp:
+        * TestWebKitAPI/Tests/WebKit2/win/WMCloseCallsUIClientClose.cpp:
+        * TestWebKitAPI/Tests/WebKit2/win/WMPrint.cpp:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/Download.mm:
+        * TestWebKitAPI/Tests/WebKit2ObjC/CustomProtocolsInvalidScheme.mm:
+        * TestWebKitAPI/Tests/WebKit2ObjC/CustomProtocolsInvalidScheme_Bundle.cpp:
+        * TestWebKitAPI/Tests/WebKit2ObjC/CustomProtocolsTest.mm:
+        * TestWebKitAPI/Tests/WebKit2ObjC/PreventImageLoadWithAutoResizing.mm:
+        * TestWebKitAPI/Tests/WebKit2ObjC/PreventImageLoadWithAutoResizing_Bundle.cpp:
+        * TestWebKitAPI/Tests/WebKit2ObjC/UserContentTest.mm:
+        * TestWebKitAPI/Tests/WebKit2ObjC/WKBrowsingContextGroupTest.mm:
+        * TestWebKitAPI/Tests/WebKit2ObjC/WKBrowsingContextLoadDelegateTest.mm:
+        * TestWebKitAPI/Tests/mac/DeviceScaleFactorOnBack.mm:
+        * TestWebKitAPI/Tests/mac/PageVisibilityStateWithWindowChanges.mm:
+        * TestWebKitAPI/config.h:
+        * TestWebKitAPI/efl/PlatformWebView.cpp:
+        * TestWebKitAPI/mac/JavaScriptTestMac.mm:
+        * TestWebKitAPI/mac/PlatformUtilitiesMac.mm:
+        * TestWebKitAPI/mac/PlatformWebViewMac.mm:
+        * TestWebKitAPI/mac/TestBrowsingContextLoadDelegate.h:
+        * TestWebKitAPI/mac/WebKitAgnosticTest.mm:
+        * WebKitTestRunner/EventSenderProxy.h:
+        * WebKitTestRunner/GeolocationProviderMock.cpp:
+        * WebKitTestRunner/GeolocationProviderMock.h:
+        * WebKitTestRunner/InjectedBundle/AccessibilityController.cpp:
+        * WebKitTestRunner/InjectedBundle/EventSendingController.cpp:
+        * WebKitTestRunner/InjectedBundle/EventSendingController.h:
+        * WebKitTestRunner/InjectedBundle/GCController.cpp:
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp:
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.h:
+        * WebKitTestRunner/InjectedBundle/InjectedBundleMain.cpp:
+        * WebKitTestRunner/InjectedBundle/InjectedBundlePage.cpp:
+        * WebKitTestRunner/InjectedBundle/InjectedBundlePage.h:
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+        * WebKitTestRunner/InjectedBundle/TextInputController.cpp:
+        * WebKitTestRunner/InjectedBundle/atk/AccessibilityControllerAtk.cpp:
+        * WebKitTestRunner/InjectedBundle/atk/AccessibilityNotificationHandlerAtk.cpp:
+        * WebKitTestRunner/InjectedBundle/atk/AccessibilityUIElementAtk.cpp:
+        * WebKitTestRunner/InjectedBundle/cocoa/InjectedBundlePageCocoa.mm:
+        * WebKitTestRunner/InjectedBundle/ios/AccessibilityControllerIOS.mm:
+        * WebKitTestRunner/InjectedBundle/ios/EventSenderProxyIOS.mm:
+        * WebKitTestRunner/InjectedBundle/mac/AccessibilityControllerMac.mm:
+        * WebKitTestRunner/InjectedBundle/mac/AccessibilityNotificationHandler.mm:
+        * WebKitTestRunner/InjectedBundle/mac/AccessibilityUIElementMac.mm:
+        * WebKitTestRunner/PlatformWebView.h:
+        * WebKitTestRunner/StringFunctions.h:
+        * WebKitTestRunner/TestController.cpp:
+        * WebKitTestRunner/TestController.h:
+        * WebKitTestRunner/TestInvocation.cpp:
+        * WebKitTestRunner/TestInvocation.h:
+        * WebKitTestRunner/WebKitTestRunnerPrefix.h:
+        * WebKitTestRunner/WebNotificationProvider.cpp:
+        * WebKitTestRunner/WebNotificationProvider.h:
+        * WebKitTestRunner/WorkQueueManager.cpp:
+        * WebKitTestRunner/cairo/TestInvocationCairo.cpp:
+        * WebKitTestRunner/cg/TestInvocationCG.cpp:
+        * WebKitTestRunner/cocoa/CrashReporterInfo.mm:
+        * WebKitTestRunner/config.h:
+        * WebKitTestRunner/efl/PlatformWebViewEfl.cpp:
+        * WebKitTestRunner/gtk/PlatformWebViewGtk.cpp:
+        * WebKitTestRunner/ios/PlatformWebViewIOS.mm:
+        * WebKitTestRunner/ios/TestControllerIOS.mm:
+        * WebKitTestRunner/mac/EventSenderProxy.mm:
+        * WebKitTestRunner/mac/PlatformWebViewMac.mm:
+        * WebKitTestRunner/mac/TestControllerMac.mm:
+
+2014-05-15  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        [EFL][WK2] Skip failing unit tests
+        https://bugs.webkit.org/show_bug.cgi?id=132979
+
+        Reviewed by Daniel Bates.
+
+        * TestWebKitAPI/PlatformEfl.cmake: Skip failing unit tests for now.
+
+2014-05-15  David Kilzer  <ddkilzer@apple.com>
+
+        [iOS] Support TestWebKitAPI in the iOS Simulator
+        <http://webkit.org/b/129535>
+        <rdar://problem/16203529>
+
+        Reviewed by Daniel Bates.
+
+        * Scripts/run-api-tests:
+        (runTest):
+        (listAllTests):
+        - Extract common arguments into local variable.
+        - Use xcrun to find the sim tool in order to invoke
+        TestWebKitAPI properly in the iOS Simulator. 
+
+        * Scripts/webkitdirs.pm:
+        (argumentsForConfiguration): Set --device or --sim as
+        appropriate to fix buildTestTool() in run-api-tests.
+
+2014-05-15  Tim Horton  <timothy_horton@apple.com>
+
+        Fix a logging typo in copy-webkitlibraries-to-product-directory
+
+        Reviewed by Dean Jackson.
+
+        * Scripts/copy-webkitlibraries-to-product-directory:
+
+2014-05-15  David Kilzer  <ddkilzer@apple.com>
+
+        TestWebKitAPI: URLExtras.mm should be a shared test for iOS and Mac
+        <http://webkit.org/b/132959>
+
+        Reviewed by Dan Bernstein.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj: Add
+        Cocoa directory to project and move URLExtras.mm into it.
+        * TestWebKitAPI/Tests/Cocoa/URLExtras.mm: Renamed from Tools/TestWebKitAPI/Tests/mac/URLExtras.mm.
+
+2014-05-15  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Compile all installed resources as GResources
+        https://bugs.webkit.org/show_bug.cgi?id=131099
+
+        Reviewed by Philippe Normand.
+
+        * Scripts/webkitpy/port/gtk.py:
+        (GtkPort.setup_environ_for_server): Removed now unneeded
+        AUDIO_RESOURCES_PATH env var.
+
+2014-05-14  Tibor Meszaros  <tmeszaros.u-szeged@partner.samsung.com>
+
+        Remove CSS_STICKY_POSITION guards
+        https://bugs.webkit.org/show_bug.cgi?id=132676
+
+        Reviewed by Simon Fraser.
+
+        * Scripts/webkitperl/FeatureList.pm:
+
+2014-05-14  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        REGRESSION(CMAKE): [GTK] InputMethodFilter unit test is not built
+        https://bugs.webkit.org/show_bug.cgi?id=132686
+
+        Reviewed by Philippe Normand.
+
+        Bring back InputMethodFilter test to the build and compile it into
+        a single binary TestWebCore with the other WebCore tests. Also
+        move it from TestWebKitAPI/gtk/ to TestWebKitAPI/Tests/WebCore/gtk/.
+
+        * Scripts/run-gtk-tests:
+        (TestRunner): Remove WebCoreGtk from the list of test directories.
+        * TestWebKitAPI/PlatformGTK.cmake:
+        * TestWebKitAPI/Tests/WebCore/gtk/InputMethodFilter.cpp: Renamed from Tools/TestWebKitAPI/Tests/gtk/InputMethodFilter.cpp.
+
+2014-05-14  Zsolt Borbely  <zsborbely.u-szeged@partner.samsung.com>
+
+        [EFL] Make XVFBDriver optional
+        https://bugs.webkit.org/show_bug.cgi?id=131036
+
+        Reviewed by Gyuyoung Kim.
+
+        * Scripts/webkitpy/port/efl.py:
+        (EflPort._driver_class):
+
 2014-05-13  Carlos Alberto Lopez Perez  <clopez@igalia.com>
 
         Flakiness dashboard contains outdated list of bots on builders.jsonp

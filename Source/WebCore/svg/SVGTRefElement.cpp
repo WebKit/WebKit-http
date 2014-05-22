@@ -243,6 +243,11 @@ bool SVGTRefElement::rendererIsNeeded(const RenderStyle& style)
     return false;
 }
 
+void SVGTRefElement::clearTarget()
+{
+    m_targetListener->detach();
+}
+
 void SVGTRefElement::buildPendingResource()
 {
     // Remove any existing event listener.
@@ -277,8 +282,13 @@ Node::InsertionNotificationRequest SVGTRefElement::insertedInto(ContainerNode& r
 {
     SVGElement::insertedInto(rootParent);
     if (rootParent.inDocument())
-        buildPendingResource();
+        return InsertionShouldCallDidNotifySubtreeInsertions;
     return InsertionDone;
+}
+
+void SVGTRefElement::didNotifySubtreeInsertions(ContainerNode*)
+{
+    buildPendingResource();
 }
 
 void SVGTRefElement::removedFrom(ContainerNode& rootParent)

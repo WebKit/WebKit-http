@@ -246,9 +246,6 @@ public:
     // offsets from rubber-banding, and it takes zooming into account. 
     LayoutRect viewportConstrainedVisibleContentRect() const;
 
-    // A rectangle in content coordinates that is used to clip layers for fixed-position objects.
-    LayoutRect viewportConstrainedExtentRect() const;
-
     String mediaType() const;
     void setMediaType(const String&);
     void adjustMediaTypeForPrinting(bool printing);
@@ -591,7 +588,6 @@ private:
     void enableSpeculativeTilingIfNeeded();
     void speculativeTilingEnableTimerFired(Timer<FrameView>&);
 
-    void updateEmbeddedObjectsTimerFired(Timer<FrameView>*);
     bool updateEmbeddedObjects();
     void updateEmbeddedObject(RenderEmbeddedObject&);
     void scrollToAnchor();
@@ -646,7 +642,6 @@ private:
     int m_layoutCount;
     unsigned m_nestedLayoutCount;
     Timer<FrameView> m_postLayoutTasksTimer;
-    Timer<FrameView> m_updateEmbeddedObjectsTimer;
     bool m_firstLayoutCallbackPending;
 
     bool m_firstLayout;

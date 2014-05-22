@@ -69,6 +69,7 @@ TileController::TileController(PlatformCALayer* rootPlatformLayer)
     , m_hasTilesWithTemporaryScaleFactor(false)
     , m_tileDebugBorderWidth(0)
     , m_indicatorMode(AsyncScrollingIndication)
+    , m_topContentInset(0)
 {
 }
 
@@ -188,6 +189,12 @@ bool TileController::tilesWouldChangeForVisibleRect(const FloatRect& newVisibleR
     if (bounds().isEmpty())
         return false;
     return tileGrid().tilesWouldChangeForVisibleRect(newVisibleRect, m_visibleRect);
+}
+
+void TileController::setTopContentInset(float topContentInset)
+{
+    m_topContentInset = topContentInset;
+    setTiledScrollingIndicatorPosition(FloatPoint(0, m_topContentInset));
 }
 
 void TileController::setTiledScrollingIndicatorPosition(const FloatPoint& position)
@@ -463,22 +470,22 @@ bool TileController::hasVerticalMargins() const
 
 int TileController::topMarginHeight() const
 {
-    return m_marginTop;
+    return m_marginTop / tileGrid().scale();
 }
 
 int TileController::bottomMarginHeight() const
 {
-    return m_marginBottom;
+    return m_marginBottom / tileGrid().scale();
 }
 
 int TileController::leftMarginWidth() const
 {
-    return m_marginLeft;
+    return m_marginLeft / tileGrid().scale();
 }
 
 int TileController::rightMarginWidth() const
 {
-    return m_marginRight;
+    return m_marginRight / tileGrid().scale();
 }
 
 RefPtr<PlatformCALayer> TileController::createTileLayer(const IntRect& tileRect, TileGrid& grid)

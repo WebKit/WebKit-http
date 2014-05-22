@@ -1,3 +1,212 @@
+2014-05-20  Dean Jackson  <dino@apple.com>
+
+        [Mac] Allow popup menus to override default appearance
+        https://bugs.webkit.org/show_bug.cgi?id=133129
+
+        Reviewed by Tim Horton.
+
+        Replace the call to wkPopupMenuWithSize with wkPopupMenu, now
+        with extra parameters to indicate the control size and whether
+        or not to draw the arrows at the end.
+
+        * WebCoreSupport/PopupMenuMac.mm:
+        (PopupMenuMac::show):
+
+2014-05-20  Eric Carlson  <eric.carlson@apple.com>
+
+        [Mac] do not deactivate an audio session that has running I/O
+        https://bugs.webkit.org/show_bug.cgi?id=133127
+
+        Reviewed by Jer Noble.
+
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]): Settings::setShouldManageAudioSession
+            renamed to setShouldManageAudioSessionCategory, deal with it.
+
+2014-05-19  Brady Eidson  <beidson@apple.com>
+
+        Use different AppKit API for image control menus.
+        <rdar://problem/16807828> and https://bugs.webkit.org/show_bug.cgi?id=133087
+
+        Reviewed by Tim Horton.
+
+        For image control menus, use popUpMenuPositioningItem: instead of popUpContextMenu:
+        
+        * WebCoreSupport/WebContextMenuClient.h:
+        * WebCoreSupport/WebContextMenuClient.mm:
+        (WebContextMenuClient::contextMenuForEvent):
+        (WebContextMenuClient::showContextMenu):
+
+2014-05-19  Andy Estes  <aestes@apple.com>
+
+        Set WebKitSuppressesIncrementalRenderingKey to NO by default on both Mac and iOS
+        https://bugs.webkit.org/show_bug.cgi?id=133073
+
+        Reviewed by Simon Fraser.
+
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+
+2014-05-18  Anders Carlsson  <andersca@apple.com>
+
+        Bring back two NSString category methods on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=133055
+        <rdar://problem/16951983>
+
+        Reviewed by Adele Peterson.
+
+        * Misc/WebNSURLExtras.h:
+        * Misc/WebNSURLExtras.mm:
+        (-[NSString _webkit_unescapedQueryValue]):
+        (-[NSString _webkit_queryKeysAndValues]):
+
+2014-05-18  Rik Cabanier  <cabanier@adobe.com>
+
+        support for navigator.hardwareConcurrency
+        https://bugs.webkit.org/show_bug.cgi?id=132588
+
+        Reviewed by Filip Pizlo.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2014-05-17  Zalan Bujtas  <zalan@apple.com>
+
+        Subpixel rendering: Add subpixelCSSOMElementMetricsEnabled to WK1 WebPreferences.
+        https://bugs.webkit.org/show_bug.cgi?id=133029
+
+        Reviewed by Simon Fraser.
+
+        To match the WK2 preferences API.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences subpixelCSSOMElementMetricsEnabled]):
+        (-[WebPreferences setSubpixelCSSOMElementMetricsEnabled:]):
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2014-05-16  Simon Fraser  <simon.fraser@apple.com>
+
+        Remove "region-based columns" prefs
+        https://bugs.webkit.org/show_bug.cgi?id=133006
+        <rdar://problem/16945824>
+
+        Reviewed by Dave Hyatt.
+
+        Remove "region-based columns" prefs and related code, since this is only
+        way to render columns now.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences setRegionBasedColumnsEnabled:]): Deleted.
+        (-[WebPreferences regionBasedColumnsEnabled]): Deleted.
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2014-05-15  Brady Eidson  <beidson@apple.com>
+
+        Crash in [WebSharingServicePickerController clear]
+        <rdar://problem/16879073> and https://bugs.webkit.org/show_bug.cgi?id=132968
+
+        Reviewed by Tim Horton.
+
+        * Misc/WebSharingServicePickerController.mm:
+        (-[WebSharingServicePickerController clear]): Add a RetainPtr protector so this object
+          isn’t dealloc’ed partway through.
+
+2014-05-15  Simon Fraser  <simon.fraser@apple.com>
+
+        Initialize the WebKitRegionBasedColumnsEnabled pref on iOS WK1
+        https://bugs.webkit.org/show_bug.cgi?id=132969
+
+        Reviewed by Dan Bernstein.
+        
+        Move this outside the #if !PLATFORM(IOS) block.
+
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+
+2014-05-15  Simon Fraser  <simon.fraser@apple.com>
+
+        Clean up -[WebView _preferencesChanged]
+        https://bugs.webkit.org/show_bug.cgi?id=132967
+
+        Reviewed by Sam Weinig.
+        
+        -[WebView _preferencesChanged] was a horrible mess of #ifdefs. Clean this up by
+        moving all the #if PLATFORM() code together, and moving all the feature-define related
+        settings to the end.
+        
+        No behavior changes, checked by diffing the resulting Settings with and without
+        the patch, on OS X and iOS.
+
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2014-05-15  Alex Christensen  <achristensen@webkit.org>
+
+        Add pointer lock to features without enabling it.
+        https://bugs.webkit.org/show_bug.cgi?id=132961
+
+        Reviewed by Sam Weinig.
+
+        * Configurations/FeatureDefines.xcconfig:
+        Added ENABLE_POINTER_LOCK to list of features.
+        * WebView/WebPDFView.mm:
+        (-[WebPDFView PDFViewWillClickOnLink:withURL:]):
+        Added extra parameters needed when pointer lock is enabled.
+
+2014-05-14  Brady Eidson  <beidson@apple.com>
+
+        Implement NSSharingServiceDelegate method "transitionImageForShareItem"
+        <rdar://problem/16878020> and https://bugs.webkit.org/show_bug.cgi?id=132911
+
+        Reviewed by Tim Horton.
+
+        * Misc/WebSharingServicePickerController.mm:
+        (-[WebSharingServicePickerController sharingService:transitionImageForShareItem:contentRect:]):
+
+        * WebCoreSupport/WebContextMenuClient.h:
+        * WebCoreSupport/WebContextMenuClient.mm:
+        (WebContextMenuClient::renderedImageForControlledImage): Paint the entire content rect for the controlled image
+          into an ImageBuffer, then return the resulting NSImage. This only paints the image itself and not any
+          overlapping content by setting the selection and appropriate painting mode.
+
+2014-05-14  Brady Eidson  <beidson@apple.com>
+
+        sourceFrameOnScreenForShareItem: can be off by a pixel
+        <rdar://problem/16878020> and https://bugs.webkit.org/show_bug.cgi?id=132911
+
+        Reviewed by Simon Fraser.
+
+        In a land of LayoutUnits and sub-pixel rendering, converting between IntRects and
+        FloatRects can be error prone. So we now try to minimize such conversions.
+
+        * Misc/WebSharingServicePickerController.mm:
+        (-[WebSharingServicePickerController sharingService:sourceFrameOnScreenForShareItem:]):
+
+        * WebCoreSupport/WebContextMenuClient.h:
+        * WebCoreSupport/WebContextMenuClient.mm:
+        (WebContextMenuClient::clientFloatRectForNode): Split this into a separate utility method
+          as it will be shared with other code very soon. Instead of using absoluteBoundingBoxRect()
+          which does lossy float->int conversions, try to keep things in terms of FloatRects as
+          much as possible.
+        (WebContextMenuClient::screenRectForHitTestNode): Call clientFloatRectForNode to get the
+          FloatRect, then perform the lossy rounding conversion to an IntRect only once.
+
+2014-05-14  Tibor Meszaros  <tmeszaros.u-szeged@partner.samsung.com>
+
+        Remove CSS_STICKY_POSITION guards
+        https://bugs.webkit.org/show_bug.cgi?id=132676
+
+        Reviewed by Simon Fraser.
+
+        * Configurations/FeatureDefines.xcconfig:
+
 2014-05-14  Antti Koivisto  <antti@apple.com>
 
         GIF animations don't restart after scrolling with iOS WebKit1

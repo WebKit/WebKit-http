@@ -153,8 +153,8 @@ void makeCapitalized(String* string, UChar previous)
     *string = result.toString();
 }
 
-RenderText::RenderText(Text& textNode, const String& text)
-    : RenderObject(textNode)
+inline RenderText::RenderText(Node& node, const String& text)
+    : RenderObject(node)
     , m_hasTab(false)
     , m_linesDirty(false)
     , m_containsReversedText(false)
@@ -177,28 +177,14 @@ RenderText::RenderText(Text& textNode, const String& text)
     view().frameView().incrementVisuallyNonEmptyCharacterCount(textLength());
 }
 
-RenderText::RenderText(Document& document, const String& text)
-    : RenderObject(document)
-    , m_hasTab(false)
-    , m_linesDirty(false)
-    , m_containsReversedText(false)
-    , m_isAllASCII(text.containsOnlyASCII())
-    , m_knownToHaveNoOverflowAndNoFallbackFonts(false)
-    , m_useBackslashAsYenSymbol(false)
-    , m_originalTextDiffersFromRendered(false)
-#if ENABLE(IOS_TEXT_AUTOSIZING)
-    , m_candidateComputedTextSize(0)
-#endif
-    , m_minWidth(-1)
-    , m_maxWidth(-1)
-    , m_beginMinWidth(0)
-    , m_endMinWidth(0)
-    , m_text(text)
+RenderText::RenderText(Text& textNode, const String& text)
+    : RenderText(static_cast<Node&>(textNode), text)
 {
-    ASSERT(!m_text.isNull());
-    setIsText();
-    m_canUseSimpleFontCodePath = computeCanUseSimpleFontCodePath();
-    view().frameView().incrementVisuallyNonEmptyCharacterCount(textLength());
+}
+
+RenderText::RenderText(Document& document, const String& text)
+    : RenderText(static_cast<Node&>(document), text)
+{
 }
 
 RenderText::~RenderText()
@@ -1017,15 +1003,11 @@ void applyTextTransform(const RenderStyle& style, String& text, UChar previousCh
     }
 }
 
-void RenderText::setTextInternal(const String& text)
+void RenderText::setRenderedText(const String& text)
 {
     ASSERT(!text.isNull());
 
-    if (m_originalTextDiffersFromRendered) {
-        originalTextMap().remove(this);
-        m_originalTextDiffersFromRendered = false;
-    }
-    String originalText = text;
+    String originalText = this->originalText();
 
     m_text = text;
 
@@ -1069,8 +1051,11 @@ void RenderText::setTextInternal(const String& text)
     m_canUseSimpleFontCodePath = computeCanUseSimpleFontCodePath();
 
     if (m_text != originalText) {
-        originalTextMap().add(this, originalText);
+        originalTextMap().set(this, originalText);
         m_originalTextDiffersFromRendered = true;
+    } else if (m_originalTextDiffersFromRendered) {
+        originalTextMap().remove(this);
+        m_originalTextDiffersFromRendered = false;
     }
 }
 
@@ -1103,7 +1088,14 @@ void RenderText::setText(const String& text, bool force)
     if (!force && text == originalText())
         return;
 
-    setTextInternal(text);
+    m_text = text;
+    if (m_originalTextDiffersFromRendered) {
+        originalTextMap().remove(this);
+        m_originalTextDiffersFromRendered = false;
+    }
+
+    setRenderedText(text);
+
     setNeedsLayoutAndPrefWidthsRecalc();
     m_knownToHaveNoOverflowAndNoFallbackFonts = false;
 

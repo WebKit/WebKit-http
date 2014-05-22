@@ -146,6 +146,11 @@ void SVGSMILElement::clearResourceReferences()
     document().accessSVGExtensions()->removeAllTargetReferencesForElement(this);
 }
 
+void SVGSMILElement::clearTarget()
+{
+    setTargetElement(nullptr);
+}
+
 void SVGSMILElement::buildPendingResource()
 {
     clearResourceReferences();
@@ -258,9 +263,12 @@ Node::InsertionNotificationRequest SVGSMILElement::insertedInto(ContainerNode& r
     if (m_timeContainer)
         m_timeContainer->notifyIntervalsChanged();
 
-    buildPendingResource();
+    return InsertionShouldCallDidNotifySubtreeInsertions;
+}
 
-    return InsertionDone;
+void SVGSMILElement::didNotifySubtreeInsertions(ContainerNode*)
+{
+    buildPendingResource();
 }
 
 void SVGSMILElement::removedFrom(ContainerNode& rootParent)

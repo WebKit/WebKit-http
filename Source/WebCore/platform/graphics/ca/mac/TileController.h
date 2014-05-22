@@ -96,6 +96,7 @@ public:
 
     virtual IntSize tileSize() const override { return m_tileSize; }
     virtual IntRect bounds() const override;
+    virtual IntRect boundsWithoutMargin() const override;
     virtual bool hasMargins() const override;
     virtual bool hasHorizontalMargins() const override;
     virtual bool hasVerticalMargins() const override;
@@ -106,8 +107,6 @@ public:
     virtual TileCoverage tileCoverage() const override { return m_tileCoverage; }
     virtual bool unparentsOffscreenTiles() const override { return m_unparentsOffscreenTiles; }
     virtual bool scrollingPerformanceLoggingEnabled() const override { return m_scrollingPerformanceLoggingEnabled; }
-
-    IntRect boundsWithoutMargin() const;
 
     FloatRect computeTileCoverageRect(const FloatRect& previousVisibleRect, const FloatRect& currentVisibleRect) const;
 
@@ -127,6 +126,8 @@ public:
 
     Vector<RefPtr<PlatformCALayer>> containerLayers();
 
+    float topContentInset() const { return m_topContentInset; }
+
 private:
     TileController(PlatformCALayer*);
 
@@ -136,6 +137,7 @@ private:
     virtual void setVisibleRect(const FloatRect&) override;
     virtual bool tilesWouldChangeForVisibleRect(const FloatRect&) const override;
     virtual void setTiledScrollingIndicatorPosition(const FloatPoint&) override;
+    virtual void setTopContentInset(float) override;
     virtual void prepopulateRect(const FloatRect&) override;
     virtual void setIsInWindow(bool) override;
     virtual void setTileCoverage(TileCoverage) override;
@@ -197,6 +199,7 @@ private:
     Color m_tileDebugBorderColor;
     float m_tileDebugBorderWidth;
     ScrollingModeIndication m_indicatorMode;
+    float m_topContentInset;
 };
 
 } // namespace WebCore

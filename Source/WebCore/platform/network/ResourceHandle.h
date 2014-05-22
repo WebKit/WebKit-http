@@ -61,6 +61,7 @@ typedef LPVOID HINTERNET;
 #if PLATFORM(COCOA)
 OBJC_CLASS NSCachedURLResponse;
 OBJC_CLASS NSData;
+OBJC_CLASS NSDictionary;
 OBJC_CLASS NSError;
 OBJC_CLASS NSURLConnection;
 #ifndef __OBJC__
@@ -94,6 +95,7 @@ class ProtectionSpace;
 class ResourceError;
 class ResourceHandleClient;
 class ResourceHandleInternal;
+class ResourceLoadTiming;
 class ResourceRequest;
 class ResourceResponse;
 class SharedBuffer;
@@ -134,7 +136,16 @@ public:
     id delegate();
     void releaseDelegate();
 #endif
-
+        
+#if PLATFORM(COCOA) && ENABLE(WEB_TIMING)
+#if USE(CFNETWORK)
+    void setCollectsTimingData();
+    static void getConnectionTimingData(CFURLConnectionRef, ResourceLoadTiming&);
+#else
+    static void getConnectionTimingData(NSURLConnection *, ResourceLoadTiming&);
+#endif
+#endif
+        
 #if PLATFORM(COCOA)
     void schedule(WTF::SchedulePair&);
     void unschedule(WTF::SchedulePair&);
@@ -208,7 +219,7 @@ public:
     void continueWillSendRequest(const ResourceRequest&);
 
     // Called in response to ResourceHandleClient::didReceiveResponseAsync().
-    void continueDidReceiveResponse();
+    virtual void continueDidReceiveResponse();
 
 #if USE(PROTECTION_SPACE_AUTH_CALLBACK)
     // Called in response to ResourceHandleClient::canAuthenticateAgainstProtectionSpaceAsync().
@@ -285,6 +296,10 @@ private:
 
 #if PLATFORM(COCOA) && !USE(CFNETWORK)
     void createNSURLConnection(id delegate, bool shouldUseCredentialStorage, bool shouldContentSniff, SchedulingBehavior);
+#endif
+
+#if PLATFORM(COCOA) && ENABLE(WEB_TIMING)
+static void getConnectionTimingData(NSDictionary *timingData, ResourceLoadTiming&);
 #endif
 
     friend class ResourceHandleInternal;

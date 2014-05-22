@@ -92,6 +92,7 @@
 #include "WebProcessProxyMessages.h"
 #include "WebProgressTrackerClient.h"
 #include "WebUndoStep.h"
+#include "WebUserContentController.h"
 #include <JavaScriptCore/APICast.h>
 #include <WebCore/ArchiveResource.h>
 #include <WebCore/Chrome.h>
@@ -270,6 +271,7 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
 #if ENABLE(INPUT_TYPE_COLOR)
     , m_activeColorChooser(0)
 #endif
+    , m_userContentController(parameters.userContentControllerID ? WebUserContentController::getOrCreate(parameters.userContentControllerID) : nullptr)
 #if ENABLE(GEOLOCATION)
     , m_geolocationPermissionRequestManager(this)
 #endif
@@ -318,7 +320,7 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
     Settings::setDefaultMinDOMTimerInterval(0.004);
 
 #if PLATFORM(IOS)
-    Settings::setShouldManageAudioSession(true);
+    Settings::setShouldManageAudioSessionCategory(true);
 #endif
 
     Page::PageClients pageClients;
@@ -342,6 +344,7 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
     pageClients.loaderClientForMainFrame = new WebFrameLoaderClient;
     pageClients.progressTrackerClient = new WebProgressTrackerClient(*this);
 
+    pageClients.userContentController = m_userContentController ? &m_userContentController->userContentController() : nullptr;
     pageClients.visitedLinkStore = VisitedLinkTableController::getOrCreate(parameters.visitedLinkTableID);
 
     m_page = std::make_unique<Page>(pageClients);
@@ -1075,7 +1078,7 @@ void WebPage::reload(uint64_t navigationID, bool reloadFromOrigin, const Sandbox
     corePage()->userInputBridge().reloadFrame(m_mainFrame->coreFrame(), reloadFromOrigin);
 }
 
-void WebPage::goForward(uint64_t backForwardItemID)
+void WebPage::goForward(uint64_t navigationID, uint64_t backForwardItemID)
 {
     SendStopResponsivenessTimer stopper(this);
 
@@ -1083,11 +1086,15 @@ void WebPage::goForward(uint64_t backForwardItemID)
     ASSERT(item);
     if (!item)
         return;
+
+    ASSERT(!m_pendingNavigationID);
+    if (!item->isInPageCache())
+        m_pendingNavigationID = navigationID;
 
     m_page->goToItem(item, FrameLoadTypeForward);
 }
 
-void WebPage::goBack(uint64_t backForwardItemID)
+void WebPage::goBack(uint64_t navigationID, uint64_t backForwardItemID)
 {
     SendStopResponsivenessTimer stopper(this);
 
@@ -1095,11 +1102,15 @@ void WebPage::goBack(uint64_t backForwardItemID)
     ASSERT(item);
     if (!item)
         return;
+
+    ASSERT(!m_pendingNavigationID);
+    if (!item->isInPageCache())
+        m_pendingNavigationID = navigationID;
 
     m_page->goToItem(item, FrameLoadTypeBack);
 }
 
-void WebPage::goToBackForwardItem(uint64_t backForwardItemID)
+void WebPage::goToBackForwardItem(uint64_t navigationID, uint64_t backForwardItemID)
 {
     SendStopResponsivenessTimer stopper(this);
 
@@ -1107,6 +1118,10 @@ void WebPage::goToBackForwardItem(uint64_t backForwardItemID)
     ASSERT(item);
     if (!item)
         return;
+
+    ASSERT(!m_pendingNavigationID);
+    if (!item->isInPageCache())
+        m_pendingNavigationID = navigationID;
 
     m_page->goToItem(item, FrameLoadTypeIndexedBackForward);
 }
@@ -1951,10 +1966,10 @@ uint64_t WebPage::restoreSession(const SessionState& sessionState)
     return currentItemID;
 }
 
-void WebPage::restoreSessionAndNavigateToCurrentItem(const SessionState& sessionState)
+void WebPage::restoreSessionAndNavigateToCurrentItem(uint64_t navigationID, const SessionState& sessionState)
 {
     if (uint64_t currentItemID = restoreSession(sessionState))
-        goToBackForwardItem(currentItemID);
+        goToBackForwardItem(navigationID, currentItemID);
 }
 
 #if ENABLE(TOUCH_EVENTS)
@@ -2579,7 +2594,6 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
     settings.setTemporaryTileCohortRetentionEnabled(store.getBoolValueForKey(WebPreferencesKey::temporaryTileCohortRetentionEnabledKey()));
     RuntimeEnabledFeatures::sharedFeatures().setCSSRegionsEnabled(store.getBoolValueForKey(WebPreferencesKey::cssRegionsEnabledKey()));
     RuntimeEnabledFeatures::sharedFeatures().setCSSCompositingEnabled(store.getBoolValueForKey(WebPreferencesKey::cssCompositingEnabledKey()));
-    settings.setRegionBasedColumnsEnabled(store.getBoolValueForKey(WebPreferencesKey::regionBasedColumnsEnabledKey()));
     settings.setWebGLEnabled(store.getBoolValueForKey(WebPreferencesKey::webGLEnabledKey()));
     settings.setMultithreadedWebGLEnabled(store.getBoolValueForKey(WebPreferencesKey::multithreadedWebGLEnabledKey()));
     settings.setForceSoftwareWebGLRendering(store.getBoolValueForKey(WebPreferencesKey::forceSoftwareWebGLRenderingKey()));
@@ -2687,6 +2701,8 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
     settings.setLowPowerVideoAudioBufferSizeEnabled(store.getBoolValueForKey(WebPreferencesKey::lowPowerVideoAudioBufferSizeEnabledKey()));
     settings.setSimpleLineLayoutEnabled(store.getBoolValueForKey(WebPreferencesKey::simpleLineLayoutEnabledKey()));
     settings.setSimpleLineLayoutDebugBordersEnabled(store.getBoolValueForKey(WebPreferencesKey::simpleLineLayoutDebugBordersEnabledKey()));
+
+    settings.setSubpixelCSSOMElementMetricsEnabled(store.getBoolValueForKey(WebPreferencesKey::subpixelCSSOMElementMetricsEnabledKey()));
 
     settings.setUseLegacyTextAlignPositionedElementBehavior(store.getBoolValueForKey(WebPreferencesKey::useLegacyTextAlignPositionedElementBehaviorKey()));
 
@@ -3082,7 +3098,7 @@ void WebPage::didCancelForOpenPanel()
     m_activeOpenPanelResultListener = 0;
 }
 
-#if ENABLE(WEB_PROCESS_SANDBOX)
+#if ENABLE(SANDBOX_EXTENSIONS)
 void WebPage::extendSandboxForFileFromOpenPanel(const SandboxExtension::Handle& handle)
 {
     SandboxExtension::create(handle)->consumePermanently();
@@ -4516,9 +4532,7 @@ PassRefPtr<DocumentLoader> WebPage::createDocumentLoader(Frame& frame, const Res
 {
     RefPtr<WebDocumentLoader> documentLoader = WebDocumentLoader::create(request, substituteData);
 
-    if (m_pendingNavigationID) {
-        ASSERT_UNUSED(frame, frame.isMainFrame());
-
+    if (m_pendingNavigationID && frame.isMainFrame()) {
         documentLoader->setNavigationID(m_pendingNavigationID);
         m_pendingNavigationID = 0;
     }

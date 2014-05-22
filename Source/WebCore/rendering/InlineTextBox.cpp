@@ -35,6 +35,7 @@
 #include "GraphicsContext.h"
 #include "HitTestResult.h"
 #include "ImageBuffer.h"
+#include "InlineTextBoxStyle.h"
 #include "Page.h"
 #include "PaintInfo.h"
 #include "RenderedDocumentMarker.h"
@@ -821,29 +822,6 @@ static StrokeStyle textDecorationStyleToStrokeStyle(TextDecorationStyle decorati
     return strokeStyle;
 }
 
-static int computeUnderlineOffset(const TextUnderlinePosition underlinePosition, const FontMetrics& fontMetrics, const InlineTextBox* inlineTextBox, const int textDecorationThickness)
-{
-    // Compute the gap between the font and the underline. Use at least one
-    // pixel gap, if underline is thick then use a bigger gap.
-    const int gap = std::max<int>(1, ceilf(textDecorationThickness / 2.0));
-
-    // According to the specification TextUnderlinePositionAuto should default to 'alphabetic' for horizontal text
-    // and to 'under Left' for vertical text (e.g. japanese). We support only horizontal text for now.
-    switch (underlinePosition) {
-    case TextUnderlinePositionAlphabetic:
-    case TextUnderlinePositionAuto:
-        return fontMetrics.ascent() + gap; // Position underline near the alphabetic baseline.
-    case TextUnderlinePositionUnder: {
-        // Position underline relative to the under edge of the lowest element's content box.
-        const float offset = inlineTextBox->root().maxLogicalTop() - inlineTextBox->logicalTop();
-        return inlineTextBox->logicalHeight() + gap + std::max<float>(offset, 0);
-    }
-    }
-
-    ASSERT_NOT_REACHED();
-    return fontMetrics.ascent() + gap;
-}
-
 static void adjustStepToDecorationLength(float& step, float& controlPointDistance, float length)
 {
     ASSERT(step > 0);
@@ -860,21 +838,6 @@ static void adjustStepToDecorationLength(float& step, float& controlPointDistanc
     float adjustment = uncoveredLength / stepCount;
     step += adjustment;
     controlPointDistance += adjustment;
-}
-
-static void getWavyStrokeParameters(float strokeThickness, float& controlPointDistance, float& step)
-{
-    // Distance between decoration's axis and Bezier curve's control points.
-    // The height of the curve is based on this distance. Use a minimum of 6 pixels distance since
-    // the actual curve passes approximately at half of that distance, that is 3 pixels.
-    // The minimum height of the curve is also approximately 3 pixels. Increases the curve's height
-    // as strockThickness increases to make the curve looks better.
-    controlPointDistance = 3 * std::max<float>(2, strokeThickness);
-
-    // Increment used to form the diamond shape between start point (p1), control
-    // points and end point (p2) along the axis of the decoration. Makes the
-    // curve wider as strockThickness increases to make the curve looks better.
-    step = 2 * std::max<float>(2, strokeThickness);
 }
 
 /*
@@ -973,71 +936,6 @@ static void strokeWavyTextDecoration(GraphicsContext& context, FloatPoint& p1, F
     context.strokePath(path);
 }
 
-static inline float textDecorationStrokeThickness(float fontSize)
-{
-    const float textDecorationBaseFontSize = 16;
-    return fontSize / textDecorationBaseFontSize;
-}
-
-static inline float wavyOffsetFromDecoration()
-{
-    return 2;
-}
-
-void InlineTextBox::extendVerticalVisualOverflowForDecorations(float& top, float& bottom) const
-{
-    const RenderStyle& lineStyle = this->lineStyle();
-    TextDecoration decoration = lineStyle.textDecorationsInEffect();
-    
-    if (decoration == TextDecorationNone)
-        return;
-    
-    TextDecorationStyle decorationStyle = lineStyle.textDecorationStyle();
-    float strokeThickness = textDecorationStrokeThickness(renderer().style().fontSize());
-    
-    float controlPointDistance;
-    float step;
-    float wavyOffset;
-    
-    if (decorationStyle == TextDecorationStyleWavy) {
-        getWavyStrokeParameters(strokeThickness, controlPointDistance, step);
-        wavyOffset = wavyOffsetFromDecoration();
-    }
-    
-    float height = logicalHeight();
-
-    // These metrics must match where underlines get drawn.
-    if (decoration & TextDecorationUnderline) {
-        float underlineOffset = computeUnderlineOffset(lineStyle.textUnderlinePosition(), lineStyle.fontMetrics(), this, strokeThickness);
-        if (decorationStyle == TextDecorationStyleWavy) {
-            bottom = std::max(bottom, underlineOffset + wavyOffset + controlPointDistance + strokeThickness - height);
-            top = std::max(top, -(underlineOffset + wavyOffset - controlPointDistance - strokeThickness));
-        } else {
-            bottom = std::max(bottom, underlineOffset + strokeThickness - height);
-            top = std::max(top, -underlineOffset);
-        }
-    }
-    if (decoration & TextDecorationOverline) {
-        if (decorationStyle == TextDecorationStyleWavy) {
-            bottom = std::max(bottom, -wavyOffset + controlPointDistance + strokeThickness - height);
-            top = std::max(top, wavyOffset + controlPointDistance + strokeThickness);
-        } else {
-            bottom = std::max(bottom, strokeThickness - height);
-            // top is untouched
-        }
-    }
-    if (decoration & TextDecorationLineThrough) {
-        float baseline = lineStyle.fontMetrics().floatAscent();
-        if (decorationStyle == TextDecorationStyleWavy) {
-            bottom = std::max(bottom, 2 * baseline / 3 + controlPointDistance + strokeThickness - height);
-            top = std::max(top, -(2 * baseline / 3 - controlPointDistance - strokeThickness));
-        } else {
-            bottom = std::max(bottom, 2 * baseline / 3 + strokeThickness - height);
-            top = std::max(top, -(2 * baseline / 3));
-        }
-    }
-}
-
 void InlineTextBox::paintDecoration(GraphicsContext& context, const FloatPoint& boxOrigin, TextDecoration decoration, TextDecorationStyle decorationStyle, const ShadowData* shadow, TextPainter& textPainter)
 {
 #if !ENABLE(CSS3_TEXT_DECORATION_SKIP_INK)
@@ -1114,7 +1012,7 @@ void InlineTextBox::paintDecoration(GraphicsContext& context, const FloatPoint& 
         float wavyOffset = wavyOffsetFromDecoration();
 
         context.setStrokeStyle(textDecorationStyleToStrokeStyle(decorationStyle));
-        // These decorations should match the visual overflows computed in extendVerticalVisualOverflowForDecorations()
+        // These decorations should match the visual overflows computed in visualOverflowForDecorations()
         if (decoration & TextDecorationUnderline) {
             context.setStrokeColor(underline, colorSpace);
             const int underlineOffset = computeUnderlineOffset(lineStyle.textUnderlinePosition(), lineStyle.fontMetrics(), this, textDecorationThickness);

@@ -76,13 +76,14 @@ static HashMap<const RenderObject*, ControlStates*>& controlStatesRendererMap()
     static NeverDestroyed<HashMap<const RenderObject*, ControlStates*>> map;
     return map;
 }
-    
-RenderElement::RenderElement(Element& element, PassRef<RenderStyle> style, unsigned baseTypeFlags)
-    : RenderObject(element)
+
+inline RenderElement::RenderElement(ContainerNode& elementOrDocument, PassRef<RenderStyle> style, unsigned baseTypeFlags)
+    : RenderObject(elementOrDocument)
     , m_baseTypeFlags(baseTypeFlags)
     , m_ancestorLineBoxDirty(false)
     , m_hasInitializedStyle(false)
     , m_renderInlineAlwaysCreatesLineBoxes(false)
+    , m_renderBoxNeedsLazyRepaint(false)
     , m_hasPausedImageAnimations(false)
     , m_firstChild(nullptr)
     , m_lastChild(nullptr)
@@ -90,16 +91,13 @@ RenderElement::RenderElement(Element& element, PassRef<RenderStyle> style, unsig
 {
 }
 
+RenderElement::RenderElement(Element& element, PassRef<RenderStyle> style, unsigned baseTypeFlags)
+    : RenderElement(static_cast<ContainerNode&>(element), std::move(style), baseTypeFlags)
+{
+}
+
 RenderElement::RenderElement(Document& document, PassRef<RenderStyle> style, unsigned baseTypeFlags)
-    : RenderObject(document)
-    , m_baseTypeFlags(baseTypeFlags)
-    , m_ancestorLineBoxDirty(false)
-    , m_hasInitializedStyle(false)
-    , m_renderInlineAlwaysCreatesLineBoxes(false)
-    , m_hasPausedImageAnimations(false)
-    , m_firstChild(nullptr)
-    , m_lastChild(nullptr)
-    , m_style(std::move(style))
+    : RenderElement(static_cast<ContainerNode&>(document), std::move(style), baseTypeFlags)
 {
 }
 

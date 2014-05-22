@@ -29,6 +29,7 @@
 #include "FloatRoundedRect.h"
 #include "Font.h"
 #include "FontSelector.h"
+#include "InlineTextBoxStyle.h"
 #include "Pagination.h"
 #include "QuotesData.h"
 #include "RenderObject.h"
@@ -390,10 +391,14 @@ inline bool RenderStyle::changeAffectsVisualOverflow(const RenderStyle& other) c
 
     if (inherited_flags._text_decorations != other.inherited_flags._text_decorations
         || visual->textDecoration != other.visual->textDecoration
-        || rareNonInheritedData->m_textDecorationStyle != other.rareNonInheritedData->m_textDecorationStyle
-        || rareNonInheritedData->m_textDecorationColor != other.rareNonInheritedData->m_textDecorationColor
-        || rareInheritedData->m_textDecorationSkip != other.rareInheritedData->m_textDecorationSkip)
-        return true;
+        || rareNonInheritedData->m_textDecorationStyle != other.rareNonInheritedData->m_textDecorationStyle) {
+        // Underlines are always drawn outside of their textbox bounds when text-underline-position: under;
+        // is specified. We can take an early out here.
+        if (textUnderlinePosition() == TextUnderlinePositionUnder
+            || other.textUnderlinePosition() == TextUnderlinePositionUnder)
+            return true;
+        return visualOverflowForDecorations(*this, nullptr) != visualOverflowForDecorations(other, nullptr);
+    }
 
     return false;
 }
@@ -730,6 +735,11 @@ bool RenderStyle::changeRequiresRepaint(const RenderStyle* other, unsigned&) con
 bool RenderStyle::changeRequiresRepaintIfTextOrBorderOrOutline(const RenderStyle* other, unsigned&) const
 {
     if (inherited->color != other->inherited->color
+        || inherited_flags._text_decorations != other->inherited_flags._text_decorations
+        || visual->textDecoration != other->visual->textDecoration
+        || rareNonInheritedData->m_textDecorationStyle != other->rareNonInheritedData->m_textDecorationStyle
+        || rareNonInheritedData->m_textDecorationColor != other->rareNonInheritedData->m_textDecorationColor
+        || rareInheritedData->m_textDecorationSkip != other->rareInheritedData->m_textDecorationSkip
         || rareInheritedData->textFillColor != other->rareInheritedData->textFillColor
         || rareInheritedData->textStrokeColor != other->rareInheritedData->textStrokeColor
         || rareInheritedData->textEmphasisColor != other->rareInheritedData->textEmphasisColor
