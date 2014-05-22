@@ -50,13 +50,15 @@ ImageBufferData::ImageBufferData(const FloatSize& size)
     : m_bitmap(BRect(0, 0, size.width() - 1., size.height() - 1.), B_RGBA32, true)
     , m_view(NULL)
 {
+    // Always keep the bitmap locked, we are the only client.
+    m_bitmap.Lock();
+    ASSERT(m_bitmap.IsLocked());
+
     if(size.isEmpty())
         return;
 
     ASSERT(m_bitmap.IsValid());
-    // Always keep the bitmap locked, we are the only client.
-    m_bitmap.Lock();
-    ASSERT(m_bitmap.IsLocked());
+
     m_view = new BView(m_bitmap.Bounds(), "WebKit ImageBufferData", 0, 0);
     m_bitmap.AddChild(m_view);
 
@@ -75,9 +77,11 @@ ImageBufferData::ImageBufferData(const FloatSize& size)
 
 ImageBufferData::~ImageBufferData()
 {
-    m_view = NULL;
-    m_bitmap.Unlock();
+    m_view = nullptr;
         // m_bitmap owns m_view and deletes it when going out of this destructor.
+    m_image = nullptr;
+
+    m_bitmap.Unlock();
 }
 
 ImageBuffer::ImageBuffer(const FloatSize& size, float /* resolutionScale */, ColorSpace, RenderingMode, bool& success)
@@ -85,6 +89,11 @@ ImageBuffer::ImageBuffer(const FloatSize& size, float /* resolutionScale */, Col
     , m_size(size)
     , m_logicalSize(size)
 {
+    if (size.isEmpty()) {
+        success = false;
+        return;
+    }
+
     m_context = adoptPtr(new GraphicsContext(m_data.m_view));
     success = true;
 }
