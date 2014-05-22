@@ -37,19 +37,19 @@ public:
     ScrollbarThemeHaiku(bool drawOuterFrame);
     virtual ~ScrollbarThemeHaiku();
 
-    virtual int scrollbarThickness(ScrollbarControlSize = RegularScrollbar);
+    int scrollbarThickness(ScrollbarControlSize = RegularScrollbar) override;
 
-    virtual bool hasButtons(ScrollbarThemeClient*);
-    virtual bool hasThumb(ScrollbarThemeClient*);
+    bool hasButtons(ScrollbarThemeClient*) override;
+    bool hasThumb(ScrollbarThemeClient*) override;
 
-    virtual IntRect backButtonRect(ScrollbarThemeClient*, ScrollbarPart, bool painting);
-    virtual IntRect forwardButtonRect(ScrollbarThemeClient*, ScrollbarPart, bool painting);
-    virtual IntRect trackRect(ScrollbarThemeClient*, bool painting);
+    IntRect backButtonRect(ScrollbarThemeClient*, ScrollbarPart, bool painting) override;
+    IntRect forwardButtonRect(ScrollbarThemeClient*, ScrollbarPart, bool painting) override;
+    IntRect trackRect(ScrollbarThemeClient*, bool painting) override;
 
-    virtual void paintScrollbarBackground(GraphicsContext*, ScrollbarThemeClient*);
-    virtual void paintButton(GraphicsContext*, ScrollbarThemeClient*, const IntRect&, ScrollbarPart);
-    virtual void paintThumb(GraphicsContext*, ScrollbarThemeClient*, const IntRect&);
-    virtual void paintScrollCorner(ScrollView*, GraphicsContext*, const IntRect&t);
+    void paintScrollbarBackground(GraphicsContext*, ScrollbarThemeClient*) override;
+    void paintButton(GraphicsContext*, ScrollbarThemeClient*, const IntRect&, ScrollbarPart) override;
+    void paintThumb(GraphicsContext*, ScrollbarThemeClient*, const IntRect&) override;
+    void paintScrollCorner(ScrollView*, GraphicsContext*, const IntRect&t) override;
 
 private:
     bool m_drawOuterFrame;
