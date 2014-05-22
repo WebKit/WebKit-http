@@ -36,6 +36,8 @@
 #include "NotImplemented.h"
 #include "Path.h"
 #include "ShadowBlur.h"
+#include "TransformationMatrix.h"
+
 #include <wtf/text/CString.h>
 #include <Bitmap.h>
 #include <GraphicsDefs.h>
@@ -45,7 +47,6 @@
 #include <View.h>
 #include <Window.h>
 #include <stdio.h>
-
 
 namespace WebCore {
 
@@ -84,21 +85,29 @@ public:
             BRect frameInParent = parentClipping.Frame();
             if (!frameInParent.IsValid())
                 frameInParent = previous->view->Bounds();
-            BRect bounds = frameInParent.OffsetToCopy(B_ORIGIN);
-            locationInParent += frameInParent.LeftTop();
-            view = new BView(bounds, "WebCore transparency layer", 0, 0);
-            bitmap = new BBitmap(bounds, B_RGBA32, true);
-            bitmap->Lock();
-            bitmap->AddChild(view);
-            view->SetHighColor(0, 0, 0, 0);
-            view->FillRect(view->Bounds());
-            view->SetHighColor(previous->view->HighColor());
-            view->SetDrawingMode(previous->view->DrawingMode());
-            view->SetBlendingMode(B_PIXEL_ALPHA, B_ALPHA_COMPOSITE);
+
             // TODO: locationInParent and accumulatedOrigin can
             // probably somehow be merged. But for now it works.
             accumulatedOrigin.x = -frameInParent.left;
             accumulatedOrigin.y = -frameInParent.top;
+            locationInParent += frameInParent.LeftTop();
+
+            frameInParent.OffsetTo(B_ORIGIN);
+            view = new BView(frameInParent, "WebCore transparency layer", 0, 0);
+            bitmap = new BBitmap(frameInParent, B_RGBA32, true);
+            bitmap->Lock();
+            bitmap->AddChild(view);
+
+            rgb_color color = previous->view->HighColor();
+            color.alpha = 0;
+            view->SetHighColor(color);
+            view->FillRect(view->Bounds());
+
+            view->SetHighColor(previous->view->HighColor());
+            view->SetLowColor(previous->view->LowColor());
+            view->SetViewColor(previous->view->ViewColor());
+            view->SetDrawingMode(previous->view->DrawingMode());
+            view->SetBlendingMode(B_PIXEL_ALPHA, B_ALPHA_COMPOSITE);
             view->SetOrigin(previous->accumulatedOrigin + accumulatedOrigin);
             view->SetPenSize(previous->view->PenSize());
         }
@@ -280,7 +289,7 @@ public:
                 for (uint32 y = 0; y < height; y++) {
                     uint8* p = bits + 3;
                     for (uint32 x = 0; x < width; x++) {
-                        *p = (uint8)((uint16)*p * alpha / 255);
+                        *p = (uint8)((int)*p * alpha / 255);
                         p += 4;
                     }
                     bits += bpr;
@@ -485,13 +494,12 @@ void GraphicsContext::clipConvexPolygon(size_t numPoints, const FloatPoint* poin
 }
 
 void GraphicsContext::fillRect(const FloatRect& rect, const Color& color, ColorSpace /*colorSpace*/)
-
 {
     if (paintingDisabled())
         return;
 
-    rgb_color previousColor = m_data->view()->HighColor();
-    drawing_mode previousMode = m_data->view()->DrawingMode();
+    BView* view = m_data->view();
+    rgb_color previousColor = view->HighColor();
 
 #if 0
     // FIXME needs support for Composite SourceIn.
@@ -500,13 +508,10 @@ void GraphicsContext::fillRect(const FloatRect& rect, const Color& color, ColorS
     }
 #endif
 
-    m_data->view()->SetHighColor(color);
-    if (color.hasAlpha())
-        m_data->view()->SetDrawingMode(B_OP_ALPHA);
-    fillRect(rect);
+    view->SetHighColor(color);
+    view->FillRect(rect);
 
-    m_data->view()->SetHighColor(previousColor);
-    m_data->view()->SetDrawingMode(previousMode);
+    view->SetHighColor(previousColor);
 }
 
 void GraphicsContext::fillRect(const FloatRect& rect)
@@ -634,6 +639,7 @@ IntRect GraphicsContext::clipBounds() const
         // No clipping, return an infinite rect
         return IntRect::infiniteRect();
     }
+
     return IntRect(r);
 }
 
@@ -930,7 +936,7 @@ void GraphicsContext::concatCTM(const AffineTransform& transform)
 
     BAffineTransform current = m_data->view()->Transform();
     current.Multiply(transform);
-        // Should we use PreMultiply? MultiplyInverse?
+        // Should we use PreMultiply?
     m_data->view()->SetTransform(current);
 }
 
@@ -1052,6 +1058,24 @@ void GraphicsContext::setPlatformShadow(FloatSize const& size, float /*blur*/,
                                                     m_state.shadowColorSpace,
                                                     m_state.shadowsIgnoreTransforms);
 }
+
+#if ENABLE(3D_RENDERING) && USE(TEXTURE_MAPPER)
+TransformationMatrix GraphicsContext::get3DTransform() const
+{
+    // FIXME: Can we approximate the transformation better than this?
+    return getCTM().toTransformationMatrix();
+}
+
+void GraphicsContext::concat3DTransform(const TransformationMatrix& transform)
+{
+    concatCTM(transform.toAffineTransform());
+}
+
+void GraphicsContext::set3DTransform(const TransformationMatrix& transform)
+{
+    setCTM(transform.toAffineTransform());
+}
+#endif
 
 } // namespace WebCore
 
