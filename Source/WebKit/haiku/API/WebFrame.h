@@ -38,6 +38,7 @@ class BMessenger;
 class BWebPage;
 
 namespace WebCore {
+class AcceleratedCompositingContext;
 class ChromeClientHaiku;
 class DumpRenderTreeClient;
 class Frame;
@@ -113,6 +114,7 @@ private:
 	friend class WebCore::ChromeClientHaiku;
 	friend class WebCore::DumpRenderTreeClient;
 	friend class WebCore::FrameLoaderClientHaiku;
+	friend class WebCore::AcceleratedCompositingContext;
 
 								BWebFrame(BWebPage* webPage,
 									BWebFrame* parentFrame,

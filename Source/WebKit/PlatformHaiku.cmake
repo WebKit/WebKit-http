@@ -6,6 +6,7 @@ LIST(APPEND WebKit_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/haiku"
     "${WEBCORE_DIR}/platform/graphics/haiku"
     "${WEBCORE_DIR}/platform/graphics/opentype"
+    "${WEBCORE_DIR}/platform/graphics/texmap"
     "${WEBCORE_DIR}/platform/network/haiku"
     "${WEBCORE_DIR}/rendering/svg"
     "${WEBCORE_DIR}/svg"
@@ -28,6 +29,7 @@ IF (ENABLE_NOTIFICATIONS)
 ENDIF ()
 
 LIST(APPEND WebKit_SOURCES
+    haiku/WebCoreSupport/AcceleratedCompositingContext.cpp
     haiku/WebCoreSupport/ChromeClientHaiku.cpp
     haiku/WebCoreSupport/ContextMenuClientHaiku.cpp
     haiku/WebCoreSupport/DragClientHaiku.cpp

@@ -32,11 +32,16 @@
 #include <String.h>
 #include <View.h>
 
+#include <memory>
+
 class BUrlContext;
 class BWebPage;
 
 namespace WebCore {
+    class ChromeClientHaiku;
     class DumpRenderTreeClient;
+    class GraphicsLayer;
+    class AcceleratedCompositingContext;
 }
 
 
@@ -107,8 +112,6 @@ public:
 									bool startInSelection = false);
 
 	// BWebview API
-			void				SendFakeMouseMovedEvent();
-
 			void				SetAutoHidePointer(bool doIt);
 
 			void				SetUserData(UserData* cookie);
@@ -117,24 +120,25 @@ public:
             void                SetInspectorView(BWebView* inspector);
             BWebView*           GetInspectorView();
 
+            void                SetRootLayer(WebCore::GraphicsLayer* layer);
 private:
 	friend class BWebPage;
     friend class WebCore::DumpRenderTreeClient;
+    friend class WebCore::ChromeClientHaiku;
+    friend class WebCore::AcceleratedCompositingContext;
 	virtual						~BWebView();
 
-	inline	BBitmap*			OffscreenBitmap() const
-									{ return fOffscreenBitmap; }
-	inline	BView*				OffscreenView() const
-									{ return fOffscreenView; }
+            inline BBitmap*     OffscreenBitmap() const
+                                    { return fOffscreenBitmap; }
+            inline  BView*      OffscreenView() const
+                                    { return fOffscreenView; }
 			void				SetOffscreenViewClean(BRect cleanRect,
 									bool immediate);
 
 private:
-			void				_ResizeOffscreenView(int width, int height);
+            void                _ResizeOffscreenView(int width, int height);
 			void				_DispatchMouseEvent(const BPoint& where,
 									uint32 sanityWhat);
-			void				_DispatchFakeMouseMovedEvent(const BPoint& where,
-									const BPoint& screenWhere, uint32 buttons);
 			void				_DispatchKeyEvent(uint32 sanityWhat);
 private:
 			uint32				fLastMouseButtons;
@@ -142,14 +146,17 @@ private:
 			BPoint				fLastMousePos;
 			bool				fAutoHidePointer;
 
-			BBitmap*			fOffscreenBitmap;
-			BView*				fOffscreenView;
+            BBitmap*            fOffscreenBitmap;
+            BView*              fOffscreenView;
 
             BUrlContext*        fContext;
 			BWebPage*			fWebPage;
 
 			UserData*			fUserData;
             BWebView*           fInspectorView;
+
+            std::unique_ptr<WebCore::AcceleratedCompositingContext>
+                                fCompositor;
 };
 
 #endif // _WEB_VIEW_H_

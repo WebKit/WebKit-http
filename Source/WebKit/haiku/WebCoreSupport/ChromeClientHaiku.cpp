@@ -305,9 +305,9 @@ IntRect ChromeClientHaiku::windowResizerRect() const
 
 void ChromeClientHaiku::invalidateRootView(const IntRect& rect)
 {
-	// FIXME: If rect is invalid, blit everything.
+    // This only invalidates the view, not the backing store.
     m_webView->LockLooper();
-    m_webView->Invalidate(rect);
+    m_webView->Invalidate(BRect(rect));
     m_webView->UnlockLooper();
 }
 
@@ -321,18 +321,18 @@ void ChromeClientHaiku::invalidateContentsForSlowScroll(const IntRect& rect)
 	// We can ignore this, since we implement fast scrolling.
 }
 
-void ChromeClientHaiku::scroll(const IntSize& scrollDelta,
-                               const IntRect& rectToScroll,
-                               const IntRect& clipRect)
+void ChromeClientHaiku::scroll(const IntSize& /*scrollDelta*/,
+                               const IntRect& /*rectToScroll*/,
+                               const IntRect& /*clipRect*/)
 {
-//printf("ChromeClientHaiku::scroll(%d x %d, rectToScroll(%d, %d, %d, %d), "
-//"clipRect(%d, %d, %d, %d))\n", scrollDelta.width(), scrollDelta.height(),
-//rectToScroll.x(), rectToScroll.y(), rectToScroll.right(), rectToScroll.bottom(),
-//clipRect.x(), clipRect.y(), clipRect.right(), clipRect.bottom());
-    m_webPage->scroll(scrollDelta.width(), scrollDelta.height(), rectToScroll,
-                      clipRect);
-    m_webView->SendFakeMouseMovedEvent();
 }
+
+void ChromeClientHaiku::delegatedScrollRequested(const IntPoint& /*scrollPos*/)
+{
+    // Unused - we let WebKit handle the scrolling.
+    ASSERT(false);
+}
+
 
 IntPoint ChromeClientHaiku::screenToRootView(const IntPoint& point) const
 {
@@ -359,7 +359,7 @@ PlatformPageClient ChromeClientHaiku::platformPageClient() const
     return m_webView;
 }
 
-void ChromeClientHaiku::contentsSizeChanged(Frame*, const IntSize&) const
+void ChromeClientHaiku::contentsSizeChanged(Frame*, const IntSize& size) const
 {
 }
 
@@ -447,6 +447,7 @@ void ChromeClientHaiku::setCursor(const Cursor& cursor)
 #if ENABLE(REQUEST_ANIMATION_FRAME) && !USE(REQUEST_ANIMATION_FRAME_TIMER)
 void ChromeClientHaiku::scheduleAnimation()
 {
+    ASSERT(false);
     notImplemented();
 }
 #endif
@@ -477,9 +478,9 @@ PassRefPtr<SearchPopupMenu> ChromeClientHaiku::createSearchPopupMenu(PopupMenuCl
     return adoptRef(new SearchPopupMenuHaiku(client));
 }
 
-void ChromeClientHaiku::attachRootGraphicsLayer(Frame*, GraphicsLayer* /*rootLayer*/)
+void ChromeClientHaiku::attachRootGraphicsLayer(Frame*, GraphicsLayer* layer)
 {
-    notImplemented();
+    m_webView->SetRootLayer(layer);
 }
 
 void ChromeClientHaiku::setNeedsOneShotDrawingSynchronization()
@@ -489,7 +490,12 @@ void ChromeClientHaiku::setNeedsOneShotDrawingSynchronization()
 
 void ChromeClientHaiku::scheduleCompositingLayerFlush()
 {
-    notImplemented();
+    // Don't do anything if the view isn't ready yet.
+    if (!m_webView->LockLooper())
+        return;
+    BRect r = m_webView->Bounds();
+    m_webView->UnlockLooper();
+    m_webPage->draw(r);
 }
 
 } // namespace WebCore

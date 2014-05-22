@@ -142,7 +142,6 @@ private:
         const BPoint& screenWhere);
 	void keyEvent(const BMessage* message);
 	void standardShortcut(const BMessage* message);
-    void flushCompositingChanges();
 
 private:
 	// The following methods are only supposed to be called by the
@@ -190,12 +189,8 @@ private:
 	static void downloadCreated(BWebDownload* download,
 		bool isAsynchronousRequest);
 
-	void paint(BRect rect, bool immediate);
-	void scroll(int scrollDeltaX, int scrollDeltaY, const BRect& rectToScroll,
-		const BRect& clipRect);
-	void internalPaint(BView* view, WebCore::FrameView* frameView,
-		BRegion* dirty);
-
+    void paint(BRect rect, bool immediate);
+    
 	void setLoadingProgress(float progress);
 	void setStatusMessage(const BString& message);
 	void setDisplayedStatusMessage(const BString& message, bool force = false);

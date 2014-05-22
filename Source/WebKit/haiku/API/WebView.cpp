@@ -29,6 +29,8 @@
 #include "config.h"
 #include "WebView.h"
 
+#include "AcceleratedCompositingContext.h"
+#include "GraphicsContext.h"
 #include "InspectorController.h"
 #include "NotImplemented.h"
 #include "Page.h"
@@ -57,12 +59,15 @@ BWebView::BWebView(const char* name)
     , fLastMouseMovedTime(-2000000)
     , fLastMousePos(0, 0)
     , fAutoHidePointer(false)
-    , fOffscreenBitmap(0)
-    , fContext(NULL)
+    , fOffscreenBitmap(nullptr)
+    , fContext(nullptr)
     , fWebPage(new BWebPage(this))
-    , fUserData(0)
+    , fUserData(nullptr)
 {
+    fCompositor = std::make_unique<WebCore::AcceleratedCompositingContext>(this);
+
     fWebPage->Init();
+
     // TODO: Should add this to the "current" looper, but that looper needs to
     // stay around regardless of windows opening/closing. Adding it to the
     // app looper is the safest bet for now.
@@ -78,10 +83,13 @@ BWebView::BWebView(const char* name)
 
 BWebView::~BWebView()
 {
-	if (fOffscreenBitmap) {
-		fOffscreenBitmap->Lock();
-		delete fOffscreenBitmap;
-	}
+    fCompositor = nullptr;
+
+    if (fOffscreenBitmap) {
+        fOffscreenBitmap->Lock();
+        delete fOffscreenBitmap;
+    }
+
 	SetUserData(0);
 }
 
@@ -126,20 +134,17 @@ void BWebView::Draw(BRect rect)
 
     DrawBitmap(fOffscreenBitmap, rect, rect);
 
+    fOffscreenBitmap->Unlock();
+
 #if ENABLE(INSPECTOR)
     if (fWebPage) {
         WebCore::InspectorController& controller = fWebPage->page()->inspectorController();
         if (controller.highlightedNode()) {
-#if 0
-            controller.drawHighlight(this);
-                // TODO How can we get a handle to the WebCore graphics context
-                // here?
-#endif
+            GraphicsContext g(this);
+            controller.drawHighlight(g);
         }
     }
 #endif
-
-    fOffscreenBitmap->Unlock();
 }
 
 void BWebView::FrameResized(float width, float height)
@@ -154,9 +159,9 @@ void BWebView::GetPreferredSize(float* width, float* height)
 	// is to return the current width/height of the view. The default
 	// implementations for Min/Max/PreferredSize() will then work for us.
 	if (width)
-		*width = 800;
+		*width = 100;
 	if (height)
-		*height = 600;
+		*height = 100;
 }
 
 void BWebView::MessageReceived(BMessage* message)
@@ -326,19 +331,6 @@ void BWebView::FindString(const char* string, bool forward ,
 	    wrapSelection, startInSelection);
 }
 
-void BWebView::SendFakeMouseMovedEvent()
-{
-	if (!LockLooper())
-	    return;
-
-    BPoint where;
-    uint32 buttons;
-    GetMouse(&where, &buttons);
-    BPoint screenWhere = ConvertToScreen(where);
-    _DispatchFakeMouseMovedEvent(where, screenWhere, buttons);
-    UnlockLooper();
-}
-
 void BWebView::SetAutoHidePointer(bool doIt)
 {
 	fAutoHidePointer = doIt;
@@ -371,15 +363,20 @@ BWebView* BWebView::GetInspectorView()
 }
 
 
+void BWebView::SetRootLayer(WebCore::GraphicsLayer* layer)
+{
+    fCompositor->setRootGraphicsLayer(layer);
+}
+
+
 // #pragma mark - API for WebPage only
 
 void BWebView::SetOffscreenViewClean(BRect cleanRect, bool immediate)
 {
+    fCompositor->flushAndRenderLayers();
     if (LockLooper()) {
         if (immediate)
             Draw(cleanRect);
-        else
-            Invalidate(cleanRect);
         UnlockLooper();
     }
 }
@@ -432,6 +429,7 @@ void BWebView::_ResizeOffscreenView(int width, int height)
     fOffscreenBitmap->Unlock();
 }
 
+
 void BWebView::_DispatchMouseEvent(const BPoint& where, uint32 sanityWhat)
 {
     BMessage* message = Looper()->CurrentMessage();
@@ -448,20 +446,6 @@ void BWebView::_DispatchMouseEvent(const BPoint& where, uint32 sanityWhat)
 		message->FindInt32("buttons", (int32*)&fLastMouseButtons);
 
     fWebPage->mouseEvent(message, where, ConvertToScreen(where));
-}
-
-void BWebView::_DispatchFakeMouseMovedEvent(const BPoint& where,
-	const BPoint& screenWhere, uint32 buttons)
-{
-    // NOTE: This solves a bug in WebKit itself, it should issue a mouse
-    // event when scrolling by wheel event. The effects of the this bug
-    // can be witnessed in Safari as well.
-    BMessage mouseMessage(B_MOUSE_MOVED);
-    mouseMessage.AddPoint("be:view_where", where);
-    mouseMessage.AddPoint("screen_where", screenWhere);
-    mouseMessage.AddInt32("buttons", buttons);
-    mouseMessage.AddInt32("modifiers", modifiers());
-    fWebPage->mouseEvent(&mouseMessage, where, screenWhere);
 }
 
 void BWebView::_DispatchKeyEvent(uint32 sanityWhat)
