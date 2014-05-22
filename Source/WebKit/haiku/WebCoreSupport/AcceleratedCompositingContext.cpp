@@ -80,15 +80,16 @@ void AcceleratedCompositingContext::paintToGraphicsContext()
 
     m_textureMapper->setGraphicsContext(&context);
 
-    target->LockLooper();
+    if(target->LockLooper()) {
+        compositeLayers(target->Bounds());
+        target->Sync();
+        target->UnlockLooper();
+    }
 
-    compositeLayers(target->Bounds());
-    target->Sync();
-    target->UnlockLooper();
-
-    m_view->LockLooper();
-    m_view->Invalidate();
-    m_view->UnlockLooper();
+    if(m_view->LockLooper()) {
+        m_view->Invalidate();
+        m_view->UnlockLooper();
+    }
 }
 
 void AcceleratedCompositingContext::compositeLayers(BRect updateRect)
