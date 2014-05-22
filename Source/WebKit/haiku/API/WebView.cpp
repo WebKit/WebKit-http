@@ -30,10 +30,15 @@
 #include "WebView.h"
 
 #include "AcceleratedCompositingContext.h"
+#include "Frame.h"
+#include "FrameView.h"
 #include "GraphicsContext.h"
 #include "InspectorController.h"
 #include "NotImplemented.h"
 #include "Page.h"
+#include "ScrollableArea.h"
+#include "Scrollbar.h"
+#include "WebFrame.h"
 #include "WebPage.h"
 #include "WebViewConstants.h"
 
@@ -126,6 +131,7 @@ void BWebView::Hide()
 
 void BWebView::Draw(BRect rect)
 {
+    // Draw the page that was already rendered as an offscreen bitmap
     if (!fOffscreenBitmap->Lock()) {
         SetHighColor(255, 255, 255);
         FillRect(rect);
@@ -136,11 +142,24 @@ void BWebView::Draw(BRect rect)
 
     fOffscreenBitmap->Unlock();
 
+    GraphicsContext g(this);
+
+    // Draw the scrollbars for the main frame (they are not part of the back
+    // buffer)
+    ScrollableArea* area = fWebPage->MainFrame()->Frame()->view();
+    Scrollbar* bar = area->verticalScrollbar();
+    if(bar)
+        bar->paint(&g, IntRect(rect));
+
+    bar = area->horizontalScrollbar();
+    if(bar)
+        bar->paint(&g, IntRect(rect));
+
+    // Draw some stuff for the web inspector
 #if ENABLE(INSPECTOR)
     if (fWebPage) {
         WebCore::InspectorController& controller = fWebPage->page()->inspectorController();
         if (controller.highlightedNode()) {
-            GraphicsContext g(this);
             controller.drawHighlight(g);
         }
     }

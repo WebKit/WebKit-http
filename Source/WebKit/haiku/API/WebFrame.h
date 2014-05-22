@@ -109,6 +109,7 @@ public:
 
             const char*         Name() const;
 private:
+	friend class BWebView;
 	friend class BWebPage;
 
 	friend class WebCore::ChromeClientHaiku;
