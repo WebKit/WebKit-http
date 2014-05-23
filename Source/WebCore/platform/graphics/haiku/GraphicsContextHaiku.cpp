@@ -424,7 +424,7 @@ void GraphicsContext::drawEllipse(const IntRect& rect)
 
 void GraphicsContext::strokeRect(const FloatRect& rect, float width)
 {
-    if (paintingDisabled() || strokeStyle() == NoStroke || strokeThickness() <= 0.0f || !strokeColor().alpha())
+    if (paintingDisabled() || strokeStyle() == NoStroke || width <= 0.0f || !strokeColor().alpha())
         return;
 
     float oldSize = m_data->view()->PenSize();
