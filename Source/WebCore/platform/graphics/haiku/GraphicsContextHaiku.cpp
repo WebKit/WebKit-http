@@ -896,17 +896,9 @@ void GraphicsContext::translate(float x, float y)
     if (paintingDisabled())
         return;
 
-    // FIXME this will translate the existing clipping region, but this isn't
-    // what WebKit expects. Find a way to cancel that. See GradientImage.cpp
-    // (GradientImage::draw) for a place where this problem is visible.
-
-    // TODO the translation would better be handled directly in the matrix?
-    m_data->m_currentLayer->accumulatedOrigin.x += x;
-    m_data->m_currentLayer->accumulatedOrigin.y += y;
-    BPoint origin(m_data->view()->Origin());
-    m_data->view()->SetOrigin(origin.x + x, origin.y + y);
-
-    // TODO: currentPath needs to be translated along, according to Qt implementation
+    BAffineTransform current = m_data->view()->Transform();
+    current.TranslateBy(x, y);
+    m_data->view()->SetTransform(current);
 }
 
 void GraphicsContext::rotate(float radians)
