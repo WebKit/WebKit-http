@@ -51,6 +51,8 @@
       href="http://gstreamer.freedesktop.org/src/"/>
   <repository type="tarball" name="downloads.sourceforge.net"
       href="http://downloads.sourceforge.net/project/"/>
+  <repository type="svn" name="llvm.org"
+      href="http://llvm.org/svn/llvm-project/llvm/"/> 
 
   <autotools id="cairo" autogen-sh="configure"
              makeargs="CFLAGS='-fno-lto' CXXFLAGS='-fno-lto' LDFLAGS='-fno-lto'">
@@ -91,8 +93,10 @@
              md5sum="f69b9693227d976835b4857b1ba7d0e3"/>
   </autotools>
 
+  <!-- FIXME: Original download url doesn't work in Korea. So, Bug 133303 changes the url for now.
+             Original download url: http://download.savannah.gnu.org/releases/freetype/freetype-2.4.11.tar.bz2 -->
   <tarball id="freetype6">
-    <source href="download.savannah.gnu.org/releases/freetype/freetype-2.4.11.tar.bz2" version="2.4.11"
+    <source href="github.com/shivamidow/freetype/raw/master/freetype-2.4.11.tar.bz2" version="2.4.11"
             hash="sha256:ef9d0bcb64647d9e5125dc7534d7ca371c98310fec87677c410f397f71ffbe3f"
             md5sum="b93435488942486c8d0ca22e8f768034" />
   </tarball>
@@ -127,6 +131,12 @@
             repo="ftp.gnome.org"
             hash="sha256:9e0e7eb5d3f7401ccf521fbc289fc1fa0923b7c7833729e2ed7696f7b848893e">
     </branch>
+  </autotools>
+
+  <autotools id="llvm"
+             autogen-sh="configure"
+             autogenargs="--enable-optimized=yes --enable-backtraces=no --enable-targets=x86_64 --enable-zlib=no --enable-terminfo=no --enable-crash-overrides=no --disable-expensive-checks --disable-debug-runtime --disable-assertions">
+    <branch repo="llvm.org" module="trunk" checkoutdir="llvm" version="r206311" revision="206311"/>
   </autotools>
 
   <autotools id="fontconfig" autogen-sh="configure">

@@ -66,7 +66,7 @@ public:
     virtual bool isChildAllowed(const RenderObject&, const RenderStyle&) const { return true; }
     virtual void addChild(RenderObject* newChild, RenderObject* beforeChild = 0);
     virtual void addChildIgnoringContinuation(RenderObject* newChild, RenderObject* beforeChild = 0) { return addChild(newChild, beforeChild); }
-    virtual void removeChild(RenderObject&);
+    virtual RenderObject* removeChild(RenderObject&);
 
     // The following functions are used when the render tree hierarchy changes to make sure layers get
     // properly added and removed. Since containership can be implemented by any subclass, and since a hierarchy
@@ -78,7 +78,7 @@ public:
 
     enum NotifyChildrenType { NotifyChildren, DontNotifyChildren };
     void insertChildInternal(RenderObject*, RenderObject* beforeChild, NotifyChildrenType);
-    void removeChildInternal(RenderObject&, NotifyChildrenType);
+    RenderObject* removeChildInternal(RenderObject&, NotifyChildrenType);
 
     virtual RenderElement* hoverAncestor() const;
 
@@ -176,7 +176,7 @@ protected:
     enum StylePropagationType { PropagateToAllChildren, PropagateToBlockChildrenOnly };
     void propagateStyleToAnonymousChildren(StylePropagationType);
 
-    LayoutUnit valueForLength(const Length&, LayoutUnit maximumValue, bool roundPercentages = false) const;
+    LayoutUnit valueForLength(const Length&, LayoutUnit maximumValue) const;
     LayoutUnit minimumValueForLength(const Length&, LayoutUnit maximumValue, bool roundPercentages = false) const;
 
     void setFirstChild(RenderObject* child) { m_firstChild = child; }
@@ -266,14 +266,14 @@ inline void RenderElement::setChildNeedsLayout(MarkingBehavior markParents)
         markContainingBlocksForLayout();
 }
 
-inline LayoutUnit RenderElement::valueForLength(const Length& length, LayoutUnit maximumValue, bool roundPercentages) const
+inline LayoutUnit RenderElement::valueForLength(const Length& length, LayoutUnit maximumValue) const
 {
-    return WebCore::valueForLength(length, maximumValue, &view(), roundPercentages);
+    return WebCore::valueForLength(length, maximumValue);
 }
 
 inline LayoutUnit RenderElement::minimumValueForLength(const Length& length, LayoutUnit maximumValue, bool roundPercentages) const
 {
-    return WebCore::minimumValueForLength(length, maximumValue, &view(), roundPercentages);
+    return WebCore::minimumValueForLength(length, maximumValue, roundPercentages);
 }
 
 inline bool RenderElement::isRenderLayerModelObject() const

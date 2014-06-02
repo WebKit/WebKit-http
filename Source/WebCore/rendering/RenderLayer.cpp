@@ -957,7 +957,7 @@ void RenderLayer::updatePagination()
         // paint the transform multiple times in each column, so we don't have to use
         // fragments for the transformed content.
         m_enclosingPaginationLayer = parent()->enclosingPaginationLayer();
-        if (m_enclosingPaginationLayer && m_enclosingPaginationLayer->hasTransform())
+        if (parent()->hasTransform())
             m_enclosingPaginationLayer = 0;
         return;
     }
@@ -972,7 +972,7 @@ void RenderLayer::updatePagination()
             // paint the transform multiple times in each column, so we don't have to use
             // fragments for the transformed content.
             m_enclosingPaginationLayer = containingBlock->layer()->enclosingPaginationLayer();
-            if (m_enclosingPaginationLayer && m_enclosingPaginationLayer->hasTransform())
+            if (containingBlock->layer()->hasTransform())
                 m_enclosingPaginationLayer = 0;
             return;
         }
@@ -1532,13 +1532,6 @@ bool RenderLayer::cannotBlitToWindow() const
     if (!parent())
         return false;
     return parent()->cannotBlitToWindow();
-}
-
-bool RenderLayer::isTransparent() const
-{
-    if (renderer().element() && renderer().element()->isSVGElement())
-        return false;
-    return renderer().isTransparent() || renderer().hasMask();
 }
 
 RenderLayer* RenderLayer::transparentPaintingAncestor()
@@ -3836,7 +3829,7 @@ bool RenderLayer::setupClipPath(GraphicsContext* context, const LayerPaintingInf
 
         LayoutRect referenceBox = computeReferenceBox(renderer(), clippingPath, offsetFromRoot, rootRelativeBounds);
         context->save();
-        context->clipPath(clippingPath.pathForReferenceRect(referenceBox, &m_renderer.view()), clippingPath.windRule());
+        context->clipPath(clippingPath.pathForReferenceRect(referenceBox), clippingPath.windRule());
         return true;
     }
 
@@ -3847,7 +3840,7 @@ bool RenderLayer::setupClipPath(GraphicsContext* context, const LayerPaintingInf
         shapeRect.moveBy(offsetFromRoot);
 
         context->save();
-        context->clipPath(clippingPath.pathForReferenceRect(shapeRect, &m_renderer.view()), RULE_NONZERO);
+        context->clipPath(clippingPath.pathForReferenceRect(shapeRect), RULE_NONZERO);
         return true;
     }
 
@@ -4135,13 +4128,13 @@ void RenderLayer::paintLayerByApplyingTransform(GraphicsContext* context, const 
     convertToLayerCoords(paintingInfo.rootLayer, offsetFromParent);
     offsetFromParent.moveBy(translationOffset);
     TransformationMatrix transform(renderableTransform(paintingInfo.paintBehavior));
-    FloatPoint devicePixelFlooredOffsetFromParent = flooredForPainting(offsetFromParent, deviceScaleFactor);
+    FloatPoint devicePixelSnappedOffsetFromParent = roundedForPainting(offsetFromParent, deviceScaleFactor);
     // Translate the graphics context to the snapping position to avoid off-device-pixel positing.
-    transform.translateRight(devicePixelFlooredOffsetFromParent.x(), devicePixelFlooredOffsetFromParent.y());
+    transform.translateRight(devicePixelSnappedOffsetFromParent.x(), devicePixelSnappedOffsetFromParent.y());
     // We handle accumulated subpixels through nested layers here. Since the context gets translated to device pixels,
     // all we need to do is add the delta to the accumulated pixels coming from ancestor layers. With deep nesting of subpixel positioned
     // boxes, this could grow to a relatively large number, but the translateRight() balances it.
-    FloatSize delta = offsetFromParent - devicePixelFlooredOffsetFromParent;
+    FloatSize delta = offsetFromParent - devicePixelSnappedOffsetFromParent;
     LayoutSize adjustedSubPixelAccumulation = paintingInfo.subPixelAccumulation + LayoutSize(delta);
     // Apply the transform.
     GraphicsContextStateSaver stateSaver(*context);

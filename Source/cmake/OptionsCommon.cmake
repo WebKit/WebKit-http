@@ -31,7 +31,18 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 if (CMAKE_COMPILER_IS_GNUCXX OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
     set(CMAKE_C_FLAGS "${CMAKE_CXX_FLAGS} -fno-exceptions -fno-strict-aliasing")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -fno-exceptions -fno-strict-aliasing -fno-rtti")
+endif ()
 
+option(DEBUG_FISSION "Use Debug Fission support")
+if (DEBUG_FISSION)
+    execute_process(COMMAND ${CMAKE_C_COMPILER} -fuse-ld=gold -Wl,--version ERROR_QUIET OUTPUT_VARIABLE LD_VERSION)
+    if (NOT "${LD_VERSION}" MATCHES "GNU gold")
+        message(FATAL_ERROR "Need GNU gold linker for Debug Fission support")
+    endif ()
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -gsplit-dwarf -fuse-ld=gold")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -gsplit-dwarf -fuse-ld=gold")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--gdb-index")
+    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--gdb-index")
 endif ()
 
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
@@ -50,7 +61,7 @@ if (UNIX AND NOT APPLE)
     set(CMAKE_SHARED_LINKER_FLAGS "-Wl,--no-undefined ${CMAKE_SHARED_LINKER_FLAGS}")
 endif ()
 
-# GTK uses the GNU installation directories.
+# GTK uses the GNU installation directories as defaults.
 if (NOT PORT STREQUAL "GTK")
     IF(HAIKU)
         set(LIB_SUFFIX "/${CMAKE_HAIKU_SECONDARY_ARCH}" CACHE STRING
@@ -58,9 +69,9 @@ if (NOT PORT STREQUAL "GTK")
     ELSE()
         set(LIB_SUFFIX "" CACHE STRING "Define suffix of directory name (32/64)")
     ENDIF()
-    set(LIB_INSTALL_DIR "lib${LIB_SUFFIX}" CACHE PATH "Where to install libraries (lib${LIB_SUFFIX})")
-    set(EXEC_INSTALL_DIR "bin" CACHE PATH "Where to install executables")
-    set(LIBEXEC_INSTALL_DIR "bin" CACHE PATH "Where to install executables executed by the library")
+    set(LIB_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/lib${LIB_SUFFIX}" CACHE PATH "Absolute path to library installation directory")
+    set(EXEC_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/bin" CACHE PATH "Absolute path to executable installation directory")
+    set(LIBEXEC_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/bin" CACHE PATH "Absolute path to install executables executed by the library")
 endif ()
 
 # The Ninja generator does not yet know how to build archives in pieces, and so response

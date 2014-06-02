@@ -1,3 +1,93 @@
+2014-05-28  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Make it possible to build with FTL enabled
+        https://bugs.webkit.org/show_bug.cgi?id=133219
+
+        Reviewed by Philippe Normand.
+
+        Add LLVM and LIBCXXABI as dependencies when building with FTL enabled.
+
+        * Source/cmake/OptionsGTK.cmake:
+
+2014-05-28  Jaehun Lim  <ljaehun.lim@samsung.com>
+
+        [CMake] Clean up FAST_MOBILE_SCROLLING
+        https://bugs.webkit.org/show_bug.cgi?id=133342
+
+        Reviewed by Gyuyoung Kim.
+
+        FAST_MOBILE_SCROLLING was removed in r168726.
+
+        * Source/cmake/OptionsEfl.cmake:
+        * Source/cmake/OptionsGTK.cmake:
+        * Source/cmake/WebKitFeatures.cmake:
+        * Source/cmakeconfig.h.cmake:
+
+2014-05-27  Tibor Meszaros  <tmeszaros.u-szeged@partner.samsung.com>
+
+        Remove BLOB guards
+        https://bugs.webkit.org/show_bug.cgi?id=132863
+
+        Reviewed by Csaba Osztrogonác.
+
+        * Source/cmake/OptionsEfl.cmake:
+        * Source/cmake/OptionsGTK.cmake:
+        * Source/cmake/WebKitFeatures.cmake:
+        * Source/cmakeconfig.h.cmake:
+
+2014-05-27  Zsolt Borbely  <zsborbely.u-szeged@partner.samsung.com>
+
+        Allow building CMake based ports with WEB_REPLAY
+        https://bugs.webkit.org/show_bug.cgi?id=133154
+
+        Reviewed by Csaba Osztrogonác.
+
+        * Source/cmake/WebKitFeatures.cmake:
+        * Source/cmakeconfig.h.cmake:
+
+2014-05-21  Zsolt Borbely  <zsborbely.u-szeged@partner.samsung.com>
+
+        [EFL] Add include path of compact_unwind_encoding.h if FTL JIT is enabled
+        https://bugs.webkit.org/show_bug.cgi?id=132907
+
+        Reviewed by Gyuyoung Kim.
+
+        * Source/cmake/FindLIBCXXABI.cmake: Added.
+        * Source/cmake/OptionsEfl.cmake:
+
+2014-05-21  Michał Pakuła vel Rutka  <m.pakula@samsung.com>
+
+        [EFL] Turn on ENABLE_CSS_FILTERS
+        https://bugs.webkit.org/show_bug.cgi?id=133153
+
+        Reviewed by Gyuyoung Kim.
+
+        * Source/cmake/OptionsEfl.cmake: Enable CSS_FILTERS as default option value.
+
+2014-05-16  Martin Robinson  <mrobinson@igalia.com>
+
+        [CMake] Improve handling of LIB_INSTALL_DIR, EXEC_INSTALL_DIR, and LIBEXEC_INSTALL_DIR
+        https://bugs.webkit.org/show_bug.cgi?id=132819
+
+        Reviewed by Carlos Garcia Campos.
+
+        * CMakeLists.txt: Hard-code CMAKE_ARCHIVE_OUTPUT_DIRECTORY etc, so that we can accept absolute paths for LIB_INSTALL_DIR
+        and friends.
+        * Source/cmake/OptionsCommon.cmake: Get rid of LIB_SUFFIX and try to make all path variables absolute. Also set
+        CMAKE_ARCHIVE_OUTPUT_DIRECTORY, etc using the last path component of LIB_INSTALL_DIR, etc, so that absolute paths
+        are supported.
+        * Source/cmake/OptionsGTK.cmake: Ditto. Also get rid of all pkg-config specific variables.
+
+2014-05-20  Gustavo Noronha Silva  <gns@gnome.org>
+
+        [CMake] Support building with Debug Fission
+        https://bugs.webkit.org/show_bug.cgi?id=131177
+
+        Reviewed by Philippe Normand.
+
+        * Source/cmake/OptionsCommon.cmake: add a DEBUG_FISSION option to enable usage
+        of http://gcc.gnu.org/wiki/DebugFission.
+
 2014-05-20  Carlos Garcia Campos  <cgarcia@igalia.com>
 
         [GTK] Rename translation domain as WebKit2GTK-3.0

@@ -32,6 +32,7 @@
 #include "WebPopupMenuProxy.h"
 #include <WebCore/AlternativeTextClient.h>
 #include <WebCore/EditorClient.h>
+#include <WebCore/ViewState.h>
 #include <wtf/Forward.h>
 
 #if PLATFORM(COCOA)
@@ -100,23 +101,12 @@ public:
     // Return the size of the view the page is associated with.
     virtual WebCore::IntSize viewSize() = 0;
 
-    // Return whether the view's containing window is active.
-    virtual bool isViewWindowActive() = 0;
-
-    // Return whether the view is focused.
-    virtual bool isViewFocused() = 0;
-
-    // Return whether the view is visible.
-    virtual bool isViewVisible() = 0;
-
-    // Return whether the view is visible, or occluded by another window.
-    virtual bool isViewVisibleOrOccluded() { return isViewVisible(); }
-
+#if PLATFORM(MAC)
     // Return whether the view is in a window.
     virtual bool isViewInWindow() = 0;
+#endif
 
-    // Return whether the view is visually idle.
-    virtual bool isVisuallyIdle() { return !isViewVisible(); }
+    virtual WebCore::ViewState::Flags viewState() = 0;
 
     // Return the layer hosting mode for the view.
     virtual LayerHostingMode viewLayerHostingMode() { return LayerHostingMode::InProcess; }
@@ -196,6 +186,10 @@ public:
     virtual WebCore::FloatRect convertToUserSpace(const WebCore::FloatRect&) = 0;
     virtual WebCore::IntPoint screenToRootView(const WebCore::IntPoint&) = 0;
     virtual WebCore::IntRect rootViewToScreen(const WebCore::IntRect&) = 0;
+#if PLATFORM(IOS)
+    virtual WebCore::IntPoint accessibilityScreenToRootView(const WebCore::IntPoint&) = 0;
+    virtual WebCore::IntRect rootViewToAccessibilityScreen(const WebCore::IntRect&) = 0;
+#endif
     
     virtual void doneWithKeyEvent(const NativeWebKeyboardEvent&, bool wasEventHandled) = 0;
 #if ENABLE(TOUCH_EVENTS)
@@ -247,7 +241,7 @@ public:
     virtual void didCommitLayerTree(const RemoteLayerTreeTransaction&) = 0;
     virtual void dynamicViewportUpdateChangedTarget(double newScale, const WebCore::FloatPoint& newScrollPosition) = 0;
 
-    virtual void startAssistingNode(const AssistedNodeInformation&, bool userIsInteracting, API::Object* userData) = 0;
+    virtual void startAssistingNode(const AssistedNodeInformation&, bool userIsInteracting, bool blurPreviousNode, API::Object* userData) = 0;
     virtual void stopAssistingNode() = 0;
     virtual void selectionDidChange() = 0;
     virtual bool interpretKeyEvent(const NativeWebKeyboardEvent&, bool isCharEvent) = 0;
@@ -257,8 +251,10 @@ public:
     virtual void showPlaybackTargetPicker(bool hasVideo, const WebCore::IntRect& elementRect) = 0;
     virtual void zoomToRect(WebCore::FloatRect, double minimumScale, double maximumScale) = 0;
     virtual void didChangeViewportMetaTagWidth(float) = 0;
+    virtual void setUsesMinimalUI(bool) = 0;
     virtual double minimumZoomScale() const = 0;
     virtual WebCore::FloatSize contentsSize() const = 0;
+    virtual void didFinishDrawingPagesToPDF(const IPC::DataReference&) = 0;
 
 #if ENABLE(INSPECTOR)
     virtual void showInspectorIndication() = 0;

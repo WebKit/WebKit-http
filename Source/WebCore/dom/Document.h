@@ -993,8 +993,6 @@ public:
     void updateFocusAppearanceSoon(bool restorePreviousSelection);
     void cancelFocusAppearanceUpdate();
 
-    void resetHiddenFocusElementSoon();
-
     // Extension for manipulating canvas drawing contexts for use in CSS
     CanvasRenderingContext* getCSSCanvasContext(const String& type, const String& name, int width, int height);
     HTMLCanvasElement* getCSSCanvasElement(const String& name);
@@ -1275,6 +1273,10 @@ public:
     virtual bool unwrapCryptoKey(const Vector<uint8_t>& wrappedKey, Vector<uint8_t>& key) override;
 #endif
 
+    void setHasStyleWithViewportUnits() { m_hasStyleWithViewportUnits = true; }
+    bool hasStyleWithViewportUnits() const { return m_hasStyleWithViewportUnits; }
+    void updateViewportUnitsOnResize();
+
 protected:
     enum ConstructionFlags { Synthesized = 1, NonRenderedPlaceholder = 1 << 1 };
     Document(Frame*, const URL&, unsigned = DefaultDocumentClass, unsigned constructionFlags = 0);
@@ -1320,8 +1322,6 @@ private:
     void updateTitle(const StringWithDirection&);
     void updateFocusAppearanceTimerFired(Timer<Document>&);
     void updateBaseURL();
-
-    void resetHiddenFocusElementTimer(Timer<Document>&);
 
     void buildAccessKeyMap(TreeScope* root);
 
@@ -1468,7 +1468,6 @@ private:
     const std::unique_ptr<DocumentMarkerController> m_markers;
     
     Timer<Document> m_updateFocusAppearanceTimer;
-    Timer<Document> m_resetHiddenFocusElementTimer;
 
     Element* m_cssTarget;
 
@@ -1696,6 +1695,8 @@ private:
 
     bool m_hasInjectedPlugInsScript;
     bool m_renderTreeBeingDestroyed;
+
+    bool m_hasStyleWithViewportUnits;
 };
 
 inline void Document::notifyRemovePendingSheetIfNeeded()

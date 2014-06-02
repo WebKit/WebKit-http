@@ -2936,7 +2936,7 @@ bool HTMLMediaElement::controls() const
         return true;
 
     // always show controls for video when fullscreen playback is required.
-    if (isVideo() && document().page() && document().page()->chrome().requiresFullscreenForVideoPlayback())
+    if (isVideo() && m_mediaSession->requiresFullscreenForVideoPlayback(*this))
         return true;
 
     // Always show controls when in full screen mode.
@@ -4236,6 +4236,8 @@ void HTMLMediaElement::mediaPlayerEngineUpdated(MediaPlayer*)
 #if ENABLE(MEDIA_SOURCE)
     m_droppedVideoFrames = 0;
 #endif
+
+    m_havePreparedToPlay = false;
 
 #if PLATFORM(IOS)
     if (!m_player)

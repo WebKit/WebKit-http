@@ -87,6 +87,8 @@
 #include "WebPageProxyMessages.h"
 #include "WebPlugInClient.h"
 #include "WebPopupMenu.h"
+#include "WebPreferencesDefinitions.h"
+#include "WebPreferencesKeys.h"
 #include "WebPreferencesStore.h"
 #include "WebProcess.h"
 #include "WebProcessProxyMessages.h"
@@ -295,6 +297,7 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
     , m_scaleWasSetByUIProcess(false)
     , m_userHasChangedPageScaleFactor(false)
     , m_userIsInteracting(false)
+    , m_hasPendingBlurNotification(false)
     , m_screenSize(parameters.screenSize)
     , m_availableScreenSize(parameters.availableScreenSize)
     , m_inDynamicSizeUpdate(false)
@@ -964,7 +967,6 @@ void WebPage::loadRequest(uint64_t navigationID, const ResourceRequest& request,
     if (!decoder.decode(userMessageDecoder))
         return;
 
-    ASSERT(!m_pendingNavigationID);
     m_pendingNavigationID = navigationID;
 
     m_sandboxExtensionTracker.beginLoad(m_mainFrame.get(), sandboxExtensionHandle);
@@ -1436,9 +1438,6 @@ void WebPage::setFixedLayoutSize(const IntSize& size)
         return;
 
     view->setFixedLayoutSize(size);
-    // Do not force it until the first layout, this would then become our first layout prematurely.
-    if (view->didFirstLayout())
-        view->forceLayout();
 }
 
 void WebPage::listenForLayoutMilestones(uint32_t milestones)
@@ -2294,6 +2293,22 @@ IntRect WebPage::rootViewToScreen(const IntRect& rect)
     sendSync(Messages::WebPageProxy::RootViewToScreen(rect), Messages::WebPageProxy::RootViewToScreen::Reply(screenRect));
     return screenRect;
 }
+    
+#if PLATFORM(IOS)
+IntPoint WebPage::accessibilityScreenToRootView(const IntPoint& point)
+{
+    IntPoint windowPoint;
+    sendSync(Messages::WebPageProxy::AccessibilityScreenToRootView(point), Messages::WebPageProxy::AccessibilityScreenToRootView::Reply(windowPoint));
+    return windowPoint;
+}
+
+IntRect WebPage::rootViewToAccessibilityScreen(const IntRect& rect)
+{
+    IntRect screenRect;
+    sendSync(Messages::WebPageProxy::RootViewToAccessibilityScreen(rect), Messages::WebPageProxy::RootViewToAccessibilityScreen::Reply(screenRect));
+    return screenRect;
+}
+#endif
 
 IntRect WebPage::windowResizerRect() const
 {
@@ -2725,6 +2740,8 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
     settings.setMaxParseDuration(store.getDoubleValueForKey(WebPreferencesKey::maxParseDurationKey()));
 
     settings.setEnableInheritURIQueryComponent(store.getBoolValueForKey(WebPreferencesKey::enableInheritURIQueryComponentKey()));
+
+    settings.setShouldDispatchJavaScriptWindowOnErrorEvents(true);
 
     if (store.getBoolValueForKey(WebPreferencesKey::pageVisibilityBasedProcessSuppressionEnabledKey()))
         m_processSuppressionDisabledByWebPreference.stop();
@@ -3269,8 +3286,11 @@ void WebPage::mainFrameDidLayout()
 #endif
 #if PLATFORM(IOS)
     if (FrameView* frameView = mainFrameView()) {
-        m_viewportConfiguration.setContentsSize(frameView->contentsSize());
-        viewportConfigurationChanged();
+        IntSize newContentSize = frameView->contentsSize();
+        if (m_viewportConfiguration.contentsSize() != newContentSize) {
+            m_viewportConfiguration.setContentsSize(newContentSize);
+            viewportConfigurationChanged();
+        }
     }
 #endif
 }
@@ -3608,6 +3628,13 @@ void WebPage::computePagesForPrinting(uint64_t frameID, const PrintInfo& printIn
 {
     Vector<IntRect> resultPageRects;
     double resultTotalScaleFactorForPrinting = 1;
+    computePagesForPrintingImpl(frameID, printInfo, resultPageRects, resultTotalScaleFactorForPrinting);
+    send(Messages::WebPageProxy::ComputedPagesCallback(resultPageRects, resultTotalScaleFactorForPrinting, callbackID));
+}
+
+void WebPage::computePagesForPrintingImpl(uint64_t frameID, const PrintInfo& printInfo, Vector<WebCore::IntRect>& resultPageRects, double& resultTotalScaleFactorForPrinting)
+{
+    ASSERT(resultPageRects.isEmpty());
 
     beginPrinting(frameID, printInfo);
 
@@ -3623,8 +3650,6 @@ void WebPage::computePagesForPrinting(uint64_t frameID, const PrintInfo& printIn
     // If we're asked to print, we should actually print at least a blank page.
     if (resultPageRects.isEmpty())
         resultPageRects.append(IntRect(0, 0, 1, 1));
-
-    send(Messages::WebPageProxy::ComputedPagesCallback(resultPageRects, resultTotalScaleFactorForPrinting, callbackID));
 }
 
 #if PLATFORM(COCOA)
@@ -3675,10 +3700,17 @@ void WebPage::drawRectToImage(uint64_t frameID, const PrintInfo& printInfo, cons
 
 void WebPage::drawPagesToPDF(uint64_t frameID, const PrintInfo& printInfo, uint32_t first, uint32_t count, uint64_t callbackID)
 {
+    RetainPtr<CFMutableDataRef> pdfPageData;
+    drawPagesToPDFImpl(frameID, printInfo, first, count, pdfPageData);
+    send(Messages::WebPageProxy::DataCallback(IPC::DataReference(CFDataGetBytePtr(pdfPageData.get()), CFDataGetLength(pdfPageData.get())), callbackID));
+}
+
+void WebPage::drawPagesToPDFImpl(uint64_t frameID, const PrintInfo& printInfo, uint32_t first, uint32_t count, RetainPtr<CFMutableDataRef>& pdfPageData)
+{
     WebFrame* frame = WebProcess::shared().webFrame(frameID);
     Frame* coreFrame = frame ? frame->coreFrame() : 0;
 
-    RetainPtr<CFMutableDataRef> pdfPageData = adoptCF(CFDataCreateMutable(0, 0));
+    pdfPageData = adoptCF(CFDataCreateMutable(0, 0));
 
 #if USE(CG)
     if (coreFrame) {
@@ -3721,8 +3753,6 @@ void WebPage::drawPagesToPDF(uint64_t frameID, const PrintInfo& printInfo, uint3
         CGPDFContextClose(context.get());
     }
 #endif
-
-    send(Messages::WebPageProxy::DataCallback(IPC::DataReference(CFDataGetBytePtr(pdfPageData.get()), CFDataGetLength(pdfPageData.get())), callbackID));
 }
 
 #elif PLATFORM(GTK)
@@ -3792,10 +3822,8 @@ bool WebPage::canHandleRequest(const WebCore::ResourceRequest& request)
     if (SchemeRegistry::shouldLoadURLSchemeAsEmptyDocument(request.url().protocol()))
         return true;
 
-#if ENABLE(BLOB)
     if (request.url().protocolIs("blob"))
         return true;
-#endif
 
     return platformCanHandleRequest(request);
 }
@@ -4130,7 +4158,7 @@ void WebPage::confirmComposition(const String& compositionString, int64_t select
     send(Messages::WebPageProxy::EditorStateChanged(editorState()));
 }
 
-void WebPage::setComposition(const String& text, Vector<CompositionUnderline> underlines, uint64_t selectionStart, uint64_t selectionLength, uint64_t replacementStart, uint64_t replacementLength)
+void WebPage::setComposition(const String& text, const Vector<CompositionUnderline>& underlines, uint64_t selectionStart, uint64_t selectionLength, uint64_t replacementStart, uint64_t replacementLength)
 {
     Frame* targetFrame = targetFrameForEditing(this);
     if (!targetFrame || !targetFrame->selection().selection().isContentEditable()) {
@@ -4306,6 +4334,7 @@ void WebPage::didCommitLoad(WebFrame* frame)
     WebProcess::shared().eventDispatcher().clearQueuedTouchEventsForPage(*this);
 
     resetViewportDefaultConfiguration(frame);
+    m_viewportConfiguration.resetMinimalUI();
     m_viewportConfiguration.setViewportArguments(ViewportArguments());
     m_viewportConfiguration.setContentsSize(IntSize());
     viewportConfigurationChanged();
@@ -4318,6 +4347,18 @@ void WebPage::didCommitLoad(WebFrame* frame)
     WebProcess::shared().updateActivePages();
 
     updateMainFrameScrollOffsetPinning();
+}
+
+void WebPage::didFinishDocumentLoad(WebFrame* frame)
+{
+#if PLATFORM(IOS)
+    if (!frame->isMainFrame())
+        return;
+
+    m_viewportConfiguration.didFinishDocumentLoad();
+#else
+    UNUSED_PARAM(frame);
+#endif // PLATFORM(IOS)
 }
 
 void WebPage::didFinishLoad(WebFrame* frame)

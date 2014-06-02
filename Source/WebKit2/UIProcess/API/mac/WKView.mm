@@ -353,7 +353,7 @@ struct WKViewInterpretKeyEventsParameters {
     _data->_inBecomeFirstResponder = true;
     
     [self _updateSecureInputState];
-    _data->_page->viewStateDidChange(ViewState::IsFocused);
+    _data->_page->viewStateDidChange();
 
     _data->_inBecomeFirstResponder = false;
     
@@ -385,7 +385,7 @@ struct WKViewInterpretKeyEventsParameters {
     if (!_data->_page->maintainsInactiveSelection())
         _data->_page->clearSelection();
     
-    _data->_page->viewStateDidChange(ViewState::IsFocused);
+    _data->_page->viewStateDidChange();
 
     _data->_inResignFirstResponder = false;
 
@@ -1343,6 +1343,13 @@ static void extractUnderlines(NSAttributedString *string, Vector<CompositionUnde
 
 - (void)_interpretKeyEvent:(NSEvent *)event completionHandler:(void(^)(BOOL handled, const Vector<KeypressCommand>& commands))completionHandler
 {
+    // For regular Web content, input methods run before passing a keydown to DOM, but plug-ins get an opportunity to handle the event first.
+    // There is no need to collect commands, as the plug-in cannot execute them.
+    if (_data->_pluginComplexTextInputIdentifier) {
+        completionHandler(NO, Vector<KeypressCommand>());
+        return;
+    }
+
     if (![self inputContext]) {
         Vector<KeypressCommand> commands;
         [self _collectKeyboardLayoutCommandsForEvent:event to:commands];
@@ -1578,10 +1585,10 @@ static void extractUnderlines(NSAttributedString *string, Vector<CompositionUnde
 
 - (NSTextInputContext *)inputContext
 {
-    bool collectingKeypressCommands = _data->_collectedKeypressCommands;
-
-    if (_data->_pluginComplexTextInputIdentifier && !collectingKeypressCommands)
+    if (_data->_pluginComplexTextInputIdentifier) {
+        ASSERT(!_data->_collectedKeypressCommands); // Should not get here from -_interpretKeyEvent:completionHandler:, we only use WKTextInputWindowController after giving the plug-in a chance to handle keydown natively.
         return [[WKTextInputWindowController sharedTextInputWindowController] inputContext];
+    }
 
     // Disable text input machinery when in non-editable content. An invisible inline input area affects performance, and can prevent Expose from working.
     if (!_data->_page->editorState().isContentEditable)
@@ -1693,7 +1700,7 @@ static void extractUnderlines(NSAttributedString *string, Vector<CompositionUnde
     [self _disableComplexTextInputIfNecessary];
 
     // Pass key combos through WebCore if there is a key binding available for
-    // this event. This lets web pages have a crack at intercepting key-modified keypresses.
+    // this event. This lets webpages have a crack at intercepting key-modified keypresses.
     // FIXME: Why is the firstResponder check needed?
     if (self == [[self window] firstResponder]) {
         [self _interpretKeyEvent:event completionHandler:^(BOOL handledByInputMethod, const Vector<KeypressCommand>& commands) {
@@ -2124,7 +2131,7 @@ static void extractUnderlines(NSAttributedString *string, Vector<CompositionUnde
     [self _disableComplexTextInputIfNecessary];
 
     // Pass key combos through WebCore if there is a key binding available for
-    // this event. This lets web pages have a crack at intercepting key-modified keypresses.
+    // this event. This lets webpages have a crack at intercepting key-modified keypresses.
     // FIXME: Why is the firstResponder check needed?
     if (self == [[self window] firstResponder]) {
         Vector<KeypressCommand> commands;
@@ -2441,12 +2448,9 @@ static void createSandboxExtensionsForFileUpload(NSPasteboard *pasteboard, Sandb
     if ([self window]) {
         [self doWindowDidChangeScreen];
 
-        ViewState::Flags viewStateChanges = ViewState::WindowIsActive | ViewState::IsVisible;
         if ([self isDeferringViewInWindowChanges])
             _data->_viewInWindowChangeWasDeferred = YES;
-        else
-            viewStateChanges |= ViewState::IsInWindow;
-        _data->_page->viewStateDidChange(viewStateChanges);
+        _data->_page->viewStateDidChange();
 
         [self _updateWindowAndViewFrames];
 
@@ -2459,12 +2463,9 @@ static void createSandboxExtensionsForFileUpload(NSPasteboard *pasteboard, Sandb
 
         [self _accessibilityRegisterUIProcessTokens];
     } else {
-        ViewState::Flags viewStateChanges = ViewState::WindowIsActive | ViewState::IsVisible;
         if ([self isDeferringViewInWindowChanges])
             _data->_viewInWindowChangeWasDeferred = YES;
-        else
-            viewStateChanges |= ViewState::IsInWindow;
-        _data->_page->viewStateDidChange(viewStateChanges);
+        _data->_page->viewStateDidChange();
 
         [NSEvent removeMonitor:_data->_flagsChangedEventMonitor];
         _data->_flagsChangedEventMonitor = nil;
@@ -2485,7 +2486,7 @@ static void createSandboxExtensionsForFileUpload(NSPasteboard *pasteboard, Sandb
     NSWindow *keyWindow = [notification object];
     if (keyWindow == [self window] || keyWindow == [[self window] attachedSheet]) {
         [self _updateSecureInputState];
-        _data->_page->viewStateDidChange(ViewState::WindowIsActive);
+        _data->_page->viewStateDidChange();
     }
 }
 
@@ -2504,18 +2505,18 @@ static void createSandboxExtensionsForFileUpload(NSPasteboard *pasteboard, Sandb
     NSWindow *formerKeyWindow = [notification object];
     if (formerKeyWindow == [self window] || formerKeyWindow == [[self window] attachedSheet]) {
         [self _updateSecureInputState];
-        _data->_page->viewStateDidChange(ViewState::WindowIsActive);
+        _data->_page->viewStateDidChange();
     }
 }
 
 - (void)_windowDidMiniaturize:(NSNotification *)notification
 {
-    _data->_page->viewStateDidChange(ViewState::IsVisible);
+    _data->_page->viewStateDidChange();
 }
 
 - (void)_windowDidDeminiaturize:(NSNotification *)notification
 {
-    _data->_page->viewStateDidChange(ViewState::IsVisible);
+    _data->_page->viewStateDidChange();
 }
 
 - (void)_windowDidMove:(NSNotification *)notification
@@ -2530,12 +2531,12 @@ static void createSandboxExtensionsForFileUpload(NSPasteboard *pasteboard, Sandb
 
 - (void)_windowDidOrderOffScreen:(NSNotification *)notification
 {
-    _data->_page->viewStateDidChange(ViewState::IsVisible | ViewState::WindowIsActive);
+    _data->_page->viewStateDidChange();
 }
 
 - (void)_windowDidOrderOnScreen:(NSNotification *)notification
 {
-    _data->_page->viewStateDidChange(ViewState::IsVisible | ViewState::WindowIsActive);
+    _data->_page->viewStateDidChange();
 }
 
 - (void)_windowDidChangeBackingProperties:(NSNotification *)notification
@@ -2551,7 +2552,7 @@ static void createSandboxExtensionsForFileUpload(NSPasteboard *pasteboard, Sandb
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
 - (void)_windowDidChangeOcclusionState:(NSNotification *)notification
 {
-    _data->_page->viewStateDidChange(ViewState::IsVisible);
+    _data->_page->viewStateDidChange();
 }
 #endif
 
@@ -2575,12 +2576,12 @@ static void createSandboxExtensionsForFileUpload(NSPasteboard *pasteboard, Sandb
 
 - (void)viewDidHide
 {
-    _data->_page->viewStateDidChange(ViewState::IsVisible);
+    _data->_page->viewStateDidChange();
 }
 
 - (void)viewDidUnhide
 {
-    _data->_page->viewStateDidChange(ViewState::IsVisible);
+    _data->_page->viewStateDidChange();
 }
 
 - (void)viewDidChangeBackingProperties
@@ -2596,7 +2597,7 @@ static void createSandboxExtensionsForFileUpload(NSPasteboard *pasteboard, Sandb
 
 - (void)_activeSpaceDidChange:(NSNotification *)notification
 {
-    _data->_page->viewStateDidChange(ViewState::IsVisible);
+    _data->_page->viewStateDidChange();
 }
 
 - (void)_accessibilityRegisterUIProcessTokens
@@ -3483,7 +3484,7 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     else
         [self _setAcceleratedCompositingModeRootLayer:_data->_rootLayer.get()];
 
-    _data->_page->viewStateDidChange(ViewState::WindowIsActive | ViewState::IsInWindow | ViewState::IsVisible);
+    _data->_page->viewStateDidChange();
 }
 
 - (_WKThumbnailView *)_thumbnailView
@@ -3741,7 +3742,7 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     _data->_shouldDeferViewInWindowChanges = NO;
 
     if (_data->_viewInWindowChangeWasDeferred) {
-        _data->_page->viewStateDidChange(ViewState::IsInWindow);
+        _data->_page->viewStateDidChange();
         _data->_viewInWindowChangeWasDeferred = NO;
     }
 }
@@ -3759,7 +3760,7 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     _data->_shouldDeferViewInWindowChanges = NO;
 
     if (_data->_viewInWindowChangeWasDeferred) {
-        _data->_page->viewStateDidChange(ViewState::IsInWindow, hasPendingViewInWindowChange ? WebPageProxy::WantsReplyOrNot::DoesWantReply : WebPageProxy::WantsReplyOrNot::DoesNotWantReply);
+        _data->_page->viewStateDidChange(hasPendingViewInWindowChange ? WebPageProxy::WantsReplyOrNot::DoesWantReply : WebPageProxy::WantsReplyOrNot::DoesNotWantReply);
         _data->_viewInWindowChangeWasDeferred = NO;
     }
 

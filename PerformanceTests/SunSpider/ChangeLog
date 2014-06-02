@@ -1,3 +1,11 @@
+2014-05-21  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, roll out http://trac.webkit.org/changeset/169159.
+        
+        This was a unilateral change and wasn't properly reviewed.
+
+        * profiler-test.yaml:
+
 2014-05-19  Filip Pizlo  <fpizlo@apple.com>
 
         Take care of some ARM64 test failures

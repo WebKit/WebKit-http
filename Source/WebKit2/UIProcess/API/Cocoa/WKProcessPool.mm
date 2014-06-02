@@ -104,6 +104,34 @@ enum : NSUInteger {
 
 @implementation WKProcessPool (WKPrivate)
 
+static NSURL *websiteDataDirectoryURL(NSString *directoryName)
+{
+    static dispatch_once_t onceToken;
+    static NSURL *websiteDataURL;
+
+    dispatch_once(&onceToken, ^{
+        NSURL *url = [[NSFileManager defaultManager] URLForDirectory:NSLibraryDirectory inDomain:NSUserDomainMask appropriateForURL:nullptr create:NO error:nullptr];
+        if (!url)
+            RELEASE_ASSERT_NOT_REACHED();
+
+        url = [url URLByAppendingPathComponent:@"WebKit" isDirectory:YES];
+
+        NSString *bundleIdentifier = [NSBundle mainBundle].bundleIdentifier;
+        if (!bundleIdentifier)
+            bundleIdentifier = [NSProcessInfo processInfo].processName;
+
+        url = [url URLByAppendingPathComponent:bundleIdentifier isDirectory:YES];
+
+        websiteDataURL = [[url URLByAppendingPathComponent:@"WebsiteData" isDirectory:YES] retain];
+    });
+
+    NSURL *url = [websiteDataURL URLByAppendingPathComponent:directoryName isDirectory:YES];
+    if (![[NSFileManager defaultManager] createDirectoryAtURL:url withIntermediateDirectories:YES attributes:nil error:nullptr])
+        LOG_ERROR("Failed to create directory %@", url);
+
+    return url;
+}
+
 - (instancetype)_initWithConfiguration:(_WKProcessPoolConfiguration *)configuration
 {
     if (!(self = [super init]))
@@ -125,13 +153,19 @@ enum : NSUInteger {
         webContextConfiguration.injectedBundlePath = bundleURL.path;
     }
 
-    // FIXME: These are legacy configuration defaults and should not be applied when creating a WKProcessPool.
-    WebKit::WebContext::applyPlatformSpecificConfigurationDefaults(webContextConfiguration);
+    webContextConfiguration.localStorageDirectory = websiteDataDirectoryURL(@"LocalStorage").absoluteURL.path.fileSystemRepresentation;
+    webContextConfiguration.webSQLDatabaseDirectory = websiteDataDirectoryURL(@"WebSQL").absoluteURL.path.fileSystemRepresentation;
+    webContextConfiguration.indexedDBDatabaseDirectory = websiteDataDirectoryURL(@"IndexedDB").absoluteURL.path.fileSystemRepresentation;
 
     API::Object::constructInWrapper<WebKit::WebContext>(self, std::move(webContextConfiguration));
     _context->setHistoryClient(std::make_unique<WebKit::HistoryClient>());
     _context->setUsesNetworkProcess(true);
     _context->setProcessModel(WebKit::ProcessModelMultipleSecondaryProcesses);
+
+#if ENABLE(CACHE_PARTITIONING)
+    for (NSString *urlScheme in [_configuration cachePartitionedURLSchemes])
+        _context->registerURLSchemeAsCachePartitioned(urlScheme);
+#endif
 
     // FIXME: Add a way to configure the cache model, see <rdar://problem/16206857>.
     _context->setCacheModel(WebKit::CacheModelPrimaryWebBrowser);

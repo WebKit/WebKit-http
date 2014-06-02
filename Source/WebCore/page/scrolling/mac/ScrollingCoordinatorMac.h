@@ -26,7 +26,7 @@
 #ifndef ScrollingCoordinatorMac_h
 #define ScrollingCoordinatorMac_h
 
-#if ENABLE(ASYNC_SCROLLING)
+#if ENABLE(ASYNC_SCROLLING) && PLATFORM(MAC)
 
 #include "AsyncScrollingCoordinator.h"
 
@@ -64,6 +64,6 @@ private:
 
 } // namespace WebCore
 
-#endif // ENABLE(ASYNC_SCROLLING)
+#endif // ENABLE(ASYNC_SCROLLING) && PLATFORM(MAC)
 
 #endif // ScrollingCoordinatorMac_h

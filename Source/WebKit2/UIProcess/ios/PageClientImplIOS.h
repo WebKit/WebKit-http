@@ -55,12 +55,8 @@ private:
     virtual void scrollView(const WebCore::IntRect& scrollRect, const WebCore::IntSize& scrollOffset) override;
     virtual void requestScroll(const WebCore::FloatPoint& scrollPosition, bool isProgrammaticScroll) override;
     virtual WebCore::IntSize viewSize() override;
-    virtual bool isViewWindowActive() override;
-    virtual bool isViewFocused() override;
-    virtual bool isViewVisible() override;
-    virtual bool isViewInWindow() override;
-    virtual bool isViewVisibleOrOccluded() override;
-    virtual bool isVisuallyIdle() override;
+    virtual WebCore::ViewState::Flags viewState() override;
+        
     virtual void processDidExit() override;
     virtual void didRelaunchProcess() override;
     virtual void pageClosed() override;
@@ -87,6 +83,8 @@ private:
     virtual WebCore::FloatRect convertToUserSpace(const WebCore::FloatRect&) override;
     virtual WebCore::IntPoint screenToRootView(const WebCore::IntPoint&) override;
     virtual WebCore::IntRect rootViewToScreen(const WebCore::IntRect&) override;
+    virtual WebCore::IntPoint accessibilityScreenToRootView(const WebCore::IntPoint&) override;
+    virtual WebCore::IntRect rootViewToAccessibilityScreen(const WebCore::IntRect&) override;
     virtual void doneWithKeyEvent(const NativeWebKeyboardEvent&, bool wasEventHandled) override;
 #if ENABLE(TOUCH_EVENTS)
     virtual void doneWithTouchEvent(const NativeWebTouchEvent&, bool wasEventHandled) override;
@@ -112,7 +110,7 @@ private:
     virtual void didCommitLayerTree(const RemoteLayerTreeTransaction&) override;
     virtual void dynamicViewportUpdateChangedTarget(double newScale, const WebCore::FloatPoint& newScrollPosition) override;
 
-    virtual void startAssistingNode(const AssistedNodeInformation&, bool userIsInteracting, API::Object* userData) override;
+    virtual void startAssistingNode(const AssistedNodeInformation&, bool userIsInteracting, bool blurPreviousNode, API::Object* userData) override;
     virtual void stopAssistingNode() override;
     virtual void selectionDidChange() override;
     virtual bool interpretKeyEvent(const NativeWebKeyboardEvent&, bool isCharEvent) override;
@@ -123,6 +121,7 @@ private:
 
     virtual bool handleRunOpenPanel(WebPageProxy*, WebFrameProxy*, WebOpenPanelParameters*, WebOpenPanelResultListenerProxy*) override;
     virtual void didChangeViewportMetaTagWidth(float) override;
+    virtual void setUsesMinimalUI(bool) override;
     virtual double minimumZoomScale() const override;
     virtual WebCore::FloatSize contentsSize() const override;
 
@@ -132,6 +131,7 @@ private:
 #endif
 
     virtual void zoomToRect(WebCore::FloatRect, double minimumScale, double maximumScale) override;
+    virtual void didFinishDrawingPagesToPDF(const IPC::DataReference&) override;
 
     // Auxiliary Client Creation
 #if ENABLE(FULLSCREEN_API)

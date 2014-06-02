@@ -602,6 +602,19 @@ sub HasComplexGetOwnProperty
     return 0;
 }
 
+
+sub InterfaceRequiresAttributesOnInstanceForCompatibility
+{
+    my $interface = shift;
+    my $interfaceName = $interface->name;
+
+    # Needed for compatibility with existing content
+    return 1 if $interfaceName =~ "Touch";
+    return 1 if $interfaceName =~ "Navigator";
+
+    return 0;
+}
+
 sub InterfaceRequiresAttributesOnInstance
 {
     my $interface = shift;
@@ -626,8 +639,7 @@ sub InterfaceRequiresAttributesOnInstance
 
     return 1 if IsDOMGlobalObject($interface);
 
-    # Needed for compatibility with existing content
-    return 1 if $interfaceName =~ "Touch";
+    return 1 if InterfaceRequiresAttributesOnInstanceForCompatibility($interface);
 
     #FIXME: We currently clobber performance for a number of the list types
     return 1 if $interfaceName =~ "List";
@@ -1696,6 +1708,19 @@ sub GetCastingHelperForThisObject
     return "jsDynamicCast<JS" . $interface->name . "*>";
 }
 
+sub GetCastingHelperForBaseObject
+{
+    my $interface = shift;
+
+    if ($interface->name eq "Node") {
+        return "jsNodeCast";
+    }
+    if ($interface->name eq "Element") {
+        return "jsElementCast";
+    }
+    return "jsCast<JS" . $interface->name . "*>";
+}
+
 sub GenerateImplementation
 {
     my ($object, $interface) = @_;
@@ -2125,21 +2150,28 @@ sub GenerateImplementation
             push(@implContent, "EncodedJSValue ${getFunctionName}(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)\n");
             push(@implContent, "{\n");
 
+            push(@implContent, "    UNUSED_PARAM(exec);\n");
+            push(@implContent, "    UNUSED_PARAM(slotBase);\n");
+            push(@implContent, "    UNUSED_PARAM(thisValue);\n");
             if (!$attribute->isStatic || $attribute->signature->type =~ /Constructor$/) {
                 if ($interface->extendedAttributes->{"CustomProxyToJSObject"}) {
                     push(@implContent, "    ${className}* castedThis = to${className}(JSValue::decode(thisValue));\n");
+                } elsif (AttributeShouldBeOnInstance($interface, $attribute)) {
+                    push(@implContent, "    ${className}* castedThis = " . GetCastingHelperForBaseObject($interface) . "(slotBase);\n");
+                    if (InterfaceRequiresAttributesOnInstanceForCompatibility($interface)) {
+                        push(@implContent, "    ${className}* castedThisObject = " . GetCastingHelperForThisObject($interface) . "(JSValue::decode(thisValue));\n");
+                        push(@implContent, "    if (UNLIKELY(!castedThisObject))\n");
+                        push(@implContent, "        reportDeprecatedGetterError(*exec, \"$interfaceName\", \"$name\");\n");
+                    }
                 } else {
                     push(@implContent, "    ${className}* castedThis = " . GetCastingHelperForThisObject($interface) . "(JSValue::decode(thisValue));\n");
+                    push(@implContent, "    if (UNLIKELY(!castedThis)) {\n");
+                    push(@implContent, "        if (jsDynamicCast<${className}Prototype*>(slotBase))\n");
+                    push(@implContent, "            return reportDeprecatedGetterError(*exec, \"$interfaceName\", \"$name\");\n");
+                    push(@implContent, "        return throwGetterTypeError(*exec, \"$interfaceName\", \"$name\");\n");
+                    push(@implContent, "    }\n");
                 }
                 $implIncludes{"ScriptExecutionContext.h"} = 1;
-                push(@implContent, "    if (UNLIKELY(!castedThis)) {\n");
-                push(@implContent, "        if (jsDynamicCast<${className}Prototype*>(slotBase))\n");
-                push(@implContent, "            return reportDeprecatedGetterError(*exec, \"$interfaceName\", \"$name\");\n");
-                push(@implContent, "        return throwGetterTypeError(*exec, \"$interfaceName\", \"$name\");\n");
-                push(@implContent, "    }\n");
-            } else {
-                push(@implContent, "    UNUSED_PARAM(thisValue);\n");
-                push(@implContent, "    UNUSED_PARAM(slotBase);\n");
             }
 
             my @arguments = ();
@@ -2470,24 +2502,36 @@ sub GenerateImplementation
                 my $attributeConditionalString = $codeGenerator->GenerateConditionalString($attribute->signature);
                 push(@implContent, "#if ${attributeConditionalString}\n") if $attributeConditionalString;
 
-                push(@implContent, "void ${putFunctionName}(ExecState* exec, JSObject* /* baseObject */, EncodedJSValue");
+                push(@implContent, "void ${putFunctionName}(ExecState* exec, JSObject* baseObject, EncodedJSValue");
                 push(@implContent, " thisValue") if !$attribute->isStatic;
                 push(@implContent, ", EncodedJSValue encodedValue)\n");
                 push(@implContent, "{\n");
                 push(@implContent, "    JSValue value = JSValue::decode(encodedValue);\n");
+                push(@implContent, "    UNUSED_PARAM(baseObject);\n");
                 if (!$attribute->isStatic) {
                     if ($interface->extendedAttributes->{"CustomProxyToJSObject"}) {
                         push(@implContent, "    ${className}* castedThis = to${className}(JSValue::decode(thisValue));\n");
+                    } elsif (AttributeShouldBeOnInstance($interface, $attribute)) {
+                        push(@implContent, "    UNUSED_PARAM(thisValue);\n");
+                        push(@implContent, "    ${className}* castedThis = " . GetCastingHelperForBaseObject($interface) . "(baseObject);\n");
+                        if (InterfaceRequiresAttributesOnInstanceForCompatibility($interface)) {
+                            push(@implContent, "    ${className}* castedThisObject = " . GetCastingHelperForThisObject($interface) . "(JSValue::decode(thisValue));\n");
+                            push(@implContent, "    if (UNLIKELY(!castedThisObject))\n");
+                            push(@implContent, "        reportDeprecatedSetterError(*exec, \"$interfaceName\", \"$name\");\n");
+                        } else {
+                            push(@implContent, "    UNUSED_PARAM(thisValue);\n");
+                            push(@implContent, "    UNUSED_PARAM(exec);\n");
+                        }
                     } else {
                         push(@implContent, "    ${className}* castedThis = " . GetCastingHelperForThisObject($interface) . "(JSValue::decode(thisValue));\n");
+                        push(@implContent, "    if (UNLIKELY(!castedThis)) {\n");
+                        push(@implContent, "        if (jsDynamicCast<${className}Prototype*>(JSValue::decode(thisValue)))\n");
+                        push(@implContent, "            reportDeprecatedSetterError(*exec, \"$interfaceName\", \"$name\");\n");
+                        push(@implContent, "        else\n");
+                        push(@implContent, "            throwSetterTypeError(*exec, \"$interfaceName\", \"$name\");\n");
+                        push(@implContent, "        return;\n");
+                        push(@implContent, "    }\n");
                     }
-                    push(@implContent, "    if (UNLIKELY(!castedThis)) {\n");
-                    push(@implContent, "        if (jsDynamicCast<${className}Prototype*>(JSValue::decode(thisValue)))\n");
-                    push(@implContent, "            reportDeprecatedSetterError(*exec, \"$interfaceName\", \"$name\");\n");
-                    push(@implContent, "        else\n");
-                    push(@implContent, "            throwSetterTypeError(*exec, \"$interfaceName\", \"$name\");\n");
-                    push(@implContent, "        return;\n");
-                    push(@implContent, "    }\n");
                 }
                 if ($interface->extendedAttributes->{"CheckSecurity"} && !$attribute->signature->extendedAttributes->{"DoNotCheckSecurity"}) {
                     if ($interfaceName eq "DOMWindow") {

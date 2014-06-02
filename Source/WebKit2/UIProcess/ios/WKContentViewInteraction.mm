@@ -240,6 +240,9 @@ static const float tapAndHoldDelay  = 0.75;
     [_highlightRootView removeFromSuperview];
     [_touchEventGestureRecognizer setDelegate:nil];
     [_singleTapGestureRecognizer setDelegate:nil];
+    [_singleTapGestureRecognizer setGestureRecognizedTarget:nil action:nil];
+    [_singleTapGestureRecognizer setResetTarget:nil action:nil];
+
     [_doubleTapGestureRecognizer setDelegate:nil];
     [_highlightLongPressGestureRecognizer setDelegate:nil];
     [_longPressGestureRecognizer setDelegate:nil];
@@ -876,7 +879,7 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
     [_textSelectionAssistant willStartScrollingOverflow];
 }
 
-- (void)_willStartUserTriggeredScrollingOrZooming
+- (void)willStartPanOrPinchGesture
 {
     _canSendTouchEventsAsynchronously = YES;
 }
@@ -1594,6 +1597,16 @@ static void selectionChangedWithTouch(bool error, WKContentView *view, const Web
 // Keyboard interaction
 // UITextInput protocol implementation
 
+- (void)beginSelectionChange
+{
+    [self.inputDelegate selectionWillChange:self];
+}
+
+- (void)endSelectionChange
+{
+    [self.inputDelegate selectionDidChange:self];
+}
+
 - (NSString *)textInRange:(UITextRange *)range
 {
     return nil;
@@ -2119,10 +2132,13 @@ static UITextAutocapitalizationType toUITextAutocapitalize(WebAutocapitalizeType
     return _formAccessoryView.get();
 }
 
-- (void)_startAssistingNode:(const AssistedNodeInformation&)information userIsInteracting:(BOOL)userIsInteracting userObject:(NSObject <NSSecureCoding> *)userObject
+- (void)_startAssistingNode:(const AssistedNodeInformation&)information userIsInteracting:(BOOL)userIsInteracting blurPreviousNode:(BOOL)blurPreviousNode userObject:(NSObject <NSSecureCoding> *)userObject
 {
     if (!userIsInteracting && !_textSelectionAssistant)
         return;
+
+    if (blurPreviousNode)
+        [self _stopAssistingNode];
 
     // FIXME: We should remove this check when we manage to send StartAssistingNode from the WebProcess
     // only when it is truly time to show the keyboard.

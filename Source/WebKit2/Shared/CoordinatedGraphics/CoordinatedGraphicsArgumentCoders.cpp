@@ -76,25 +76,28 @@ void ArgumentCoder<WebCore::FilterOperations>::encode(ArgumentEncoder& encoder, 
         case FilterOperation::SEPIA:
         case FilterOperation::SATURATE:
         case FilterOperation::HUE_ROTATE:
-            encoder << static_cast<double>(static_cast<const BasicColorMatrixFilterOperation*>(filter)->amount());
+            encoder << static_cast<double>(toBasicColorMatrixFilterOperation(filter)->amount());
             break;
         case FilterOperation::INVERT:
         case FilterOperation::BRIGHTNESS:
         case FilterOperation::CONTRAST:
         case FilterOperation::OPACITY:
-            encoder << static_cast<double>(static_cast<const BasicComponentTransferFilterOperation*>(filter)->amount());
+            encoder << static_cast<double>(toBasicComponentTransferFilterOperation(filter)->amount());
             break;
         case FilterOperation::BLUR:
-            ArgumentCoder<Length>::encode(encoder, static_cast<const BlurFilterOperation*>(filter)->stdDeviation());
+            ArgumentCoder<Length>::encode(encoder, toBlurFilterOperation(filter)->stdDeviation());
             break;
         case FilterOperation::DROP_SHADOW: {
-            const DropShadowFilterOperation* shadow = static_cast<const DropShadowFilterOperation*>(filter);
+            const DropShadowFilterOperation* shadow = toDropShadowFilterOperation(filter);
             ArgumentCoder<IntPoint>::encode(encoder, shadow->location());
             encoder << static_cast<int32_t>(shadow->stdDeviation());
             ArgumentCoder<Color>::encode(encoder, shadow->color());
             break;
         }
-        default:
+        case FilterOperation::REFERENCE:
+        case FilterOperation::PASSTHROUGH:
+        case FilterOperation::DEFAULT:
+        case FilterOperation::NONE:
             break;
         }
     }
@@ -139,7 +142,7 @@ bool ArgumentCoder<WebCore::FilterOperations>::decode(ArgumentDecoder& decoder, 
             Length length;
             if (!ArgumentCoder<Length>::decode(decoder, length))
                 return false;
-            filter = BlurFilterOperation::create(length, type);
+            filter = BlurFilterOperation::create(length);
             break;
         }
         case FilterOperation::DROP_SHADOW: {
@@ -152,10 +155,13 @@ bool ArgumentCoder<WebCore::FilterOperations>::decode(ArgumentDecoder& decoder, 
                 return false;
             if (!ArgumentCoder<Color>::decode(decoder, color))
                 return false;
-            filter = DropShadowFilterOperation::create(location, stdDeviation, color, type);
+            filter = DropShadowFilterOperation::create(location, stdDeviation, color);
             break;
         }
-        default:
+        case FilterOperation::REFERENCE:
+        case FilterOperation::PASSTHROUGH:
+        case FilterOperation::DEFAULT:
+        case FilterOperation::NONE:
             break;
         }
 
@@ -180,42 +186,42 @@ void ArgumentCoder<TransformOperations>::encode(ArgumentEncoder& encoder, const 
         case TransformOperation::SCALE:
         case TransformOperation::SCALE_Z:
         case TransformOperation::SCALE_3D:
-            encoder << static_cast<const ScaleTransformOperation*>(operation)->x();
-            encoder << static_cast<const ScaleTransformOperation*>(operation)->y();
-            encoder << static_cast<const ScaleTransformOperation*>(operation)->z();
+            encoder << toScaleTransformOperation(operation)->x();
+            encoder << toScaleTransformOperation(operation)->y();
+            encoder << toScaleTransformOperation(operation)->z();
             break;
         case TransformOperation::TRANSLATE_X:
         case TransformOperation::TRANSLATE_Y:
         case TransformOperation::TRANSLATE:
         case TransformOperation::TRANSLATE_Z:
         case TransformOperation::TRANSLATE_3D:
-            ArgumentCoder<Length>::encode(encoder, static_cast<const TranslateTransformOperation*>(operation)->x());
-            ArgumentCoder<Length>::encode(encoder, static_cast<const TranslateTransformOperation*>(operation)->y());
-            ArgumentCoder<Length>::encode(encoder, static_cast<const TranslateTransformOperation*>(operation)->z());
+            ArgumentCoder<Length>::encode(encoder, toTranslateTransformOperation(operation)->x());
+            ArgumentCoder<Length>::encode(encoder, toTranslateTransformOperation(operation)->y());
+            ArgumentCoder<Length>::encode(encoder, toTranslateTransformOperation(operation)->z());
             break;
         case TransformOperation::ROTATE:
         case TransformOperation::ROTATE_X:
         case TransformOperation::ROTATE_Y:
         case TransformOperation::ROTATE_3D:
-            encoder << static_cast<const RotateTransformOperation*>(operation)->x();
-            encoder << static_cast<const RotateTransformOperation*>(operation)->y();
-            encoder << static_cast<const RotateTransformOperation*>(operation)->z();
-            encoder << static_cast<const RotateTransformOperation*>(operation)->angle();
+            encoder << toRotateTransformOperation(operation)->x();
+            encoder << toRotateTransformOperation(operation)->y();
+            encoder << toRotateTransformOperation(operation)->z();
+            encoder << toRotateTransformOperation(operation)->angle();
             break;
         case TransformOperation::SKEW_X:
         case TransformOperation::SKEW_Y:
         case TransformOperation::SKEW:
-            encoder << static_cast<const SkewTransformOperation*>(operation)->angleX();
-            encoder << static_cast<const SkewTransformOperation*>(operation)->angleY();
+            encoder << toSkewTransformOperation(operation)->angleX();
+            encoder << toSkewTransformOperation(operation)->angleY();
             break;
         case TransformOperation::MATRIX:
-            ArgumentCoder<TransformationMatrix>::encode(encoder, static_cast<const MatrixTransformOperation*>(operation)->matrix());
+            ArgumentCoder<TransformationMatrix>::encode(encoder, toMatrixTransformOperation(operation)->matrix());
             break;
         case TransformOperation::MATRIX_3D:
-            ArgumentCoder<TransformationMatrix>::encode(encoder, static_cast<const Matrix3DTransformOperation*>(operation)->matrix());
+            ArgumentCoder<TransformationMatrix>::encode(encoder, toMatrix3DTransformOperation(operation)->matrix());
             break;
         case TransformOperation::PERSPECTIVE:
-            ArgumentCoder<Length>::encode(encoder, static_cast<const PerspectiveTransformOperation*>(operation)->perspective());
+            ArgumentCoder<Length>::encode(encoder, toPerspectiveTransformOperation(operation)->perspective());
             break;
         case TransformOperation::IDENTITY:
             break;

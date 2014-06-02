@@ -106,15 +106,6 @@ FloatPoint ScrollingTreeFrameScrollingNodeIOS::scrollPosition() const
     return IntPoint(-scrollLayerPosition.x + scrollOrigin().x(), -scrollLayerPosition.y + scrollOrigin().y());
 }
 
-void ScrollingTreeFrameScrollingNodeIOS::setScrollPosition(const FloatPoint& scrollPosition)
-{
-    FloatPoint newScrollPosition = scrollPosition;
-    newScrollPosition = newScrollPosition.shrunkTo(maximumScrollPosition());
-    newScrollPosition = newScrollPosition.expandedTo(minimumScrollPosition());
-
-    setScrollPositionWithoutContentEdgeConstraints(newScrollPosition);
-}
-
 void ScrollingTreeFrameScrollingNodeIOS::setScrollPositionWithoutContentEdgeConstraints(const FloatPoint& scrollPosition)
 {
     if (shouldUpdateScrollLayerPositionSynchronously()) {
@@ -135,16 +126,16 @@ void ScrollingTreeFrameScrollingNodeIOS::setScrollLayerPosition(const FloatPoint
     updateChildNodesAfterScroll(scrollPosition);
 }
 
-void ScrollingTreeFrameScrollingNodeIOS::updateLayersAfterViewportChange(const FloatRect& viewportRect, double /*scale*/)
+void ScrollingTreeFrameScrollingNodeIOS::updateLayersAfterViewportChange(const FloatRect& fixedPositionRect, double /*scale*/)
 {
-    [m_counterScrollingLayer setPosition:viewportRect.location()];
+    // Note: we never currently have a m_counterScrollingLayer (which is used for background-attachment:fixed) on iOS.
+    [m_counterScrollingLayer setPosition:fixedPositionRect.location()];
 
     if (!m_children)
         return;
 
-    size_t size = m_children->size();
-    for (size_t i = 0; i < size; ++i)
-        m_children->at(i)->parentScrollPositionDidChange(viewportRect, FloatSize());
+    for (auto& child : *m_children)
+        child->updateLayersAfterAncestorChange(*this, fixedPositionRect, FloatSize());
 }
 
 void ScrollingTreeFrameScrollingNodeIOS::updateLayersAfterDelegatedScroll(const FloatPoint& scrollPosition)
@@ -178,14 +169,11 @@ void ScrollingTreeFrameScrollingNodeIOS::updateChildNodesAfterScroll(const Float
     
     if (!m_children)
         return;
+
+    FloatRect fixedPositionRect = scrollingTree().fixedPositionRect();
     
-    viewportRect.setLocation(scrollOffset);
-    
-    FloatRect viewportConstrainedObjectsRect = FrameView::rectForViewportConstrainedObjects(enclosingLayoutRect(viewportRect), roundedLayoutSize(totalContentsSize()), frameScaleFactor(), false, behaviorForFixed);
-    
-    size_t size = m_children->size();
-    for (size_t i = 0; i < size; ++i)
-        m_children->at(i)->parentScrollPositionDidChange(viewportConstrainedObjectsRect, FloatSize());
+    for (auto& child : *m_children)
+        child->updateLayersAfterAncestorChange(*this, fixedPositionRect, FloatSize());
 }
 
 FloatPoint ScrollingTreeFrameScrollingNodeIOS::minimumScrollPosition() const
@@ -209,16 +197,6 @@ FloatPoint ScrollingTreeFrameScrollingNodeIOS::maximumScrollPosition() const
         position.setY(minimumScrollPosition().y());
 
     return position;
-}
-
-void ScrollingTreeFrameScrollingNodeIOS::scrollBy(const IntSize& offset)
-{
-    setScrollPosition(scrollPosition() + offset);
-}
-
-void ScrollingTreeFrameScrollingNodeIOS::scrollByWithoutContentEdgeConstraints(const IntSize& offset)
-{
-    setScrollPositionWithoutContentEdgeConstraints(scrollPosition() + offset);
 }
 
 } // namespace WebCore

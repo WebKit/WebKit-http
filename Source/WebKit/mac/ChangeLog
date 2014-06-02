@@ -1,3 +1,48 @@
+2014-05-27  Jon Lee  <jonlee@apple.com>
+
+        Update ENABLE(MEDIA_SOURCE) on Mac
+        https://bugs.webkit.org/show_bug.cgi?id=133141
+
+        Reviewed by Darin Adler.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2014-05-27  Tibor Meszaros  <tmeszaros.u-szeged@partner.samsung.com>
+
+        Remove BLOB guards
+        https://bugs.webkit.org/show_bug.cgi?id=132863
+
+        Reviewed by Csaba Osztrogonác.
+
+        * Configurations/FeatureDefines.xcconfig:
+        * WebView/WebView.mm:
+        (+[WebView _canHandleRequest:forMainFrame:]):
+
+2014-05-24  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: fix coordinate mapping for iOS accessibility
+        https://bugs.webkit.org/show_bug.cgi?id=133188
+
+        Reviewed by Sam Weinig.
+
+        * WebCoreSupport/WebChromeClient.h:
+        * WebCoreSupport/WebChromeClient.mm:
+        (WebChromeClient::accessibilityScreenToRootView):
+        (WebChromeClient::rootViewToAccessibilityScreen):
+
+2014-05-23  Jeremy Jones  <jeremyj@apple.com>
+
+        Hide fullscreen immediately when switching tabs.
+        https://bugs.webkit.org/show_bug.cgi?id=133239
+
+        Reviewed by Eric Carlson.
+
+        Renamed a function to better describe it's new functionality.
+
+        * WebView/WebView.mm:
+        (-[WebView viewDidMoveToWindow]):
+        now calls: requestHideAndExitFullscreen
+
 2014-05-20  Dean Jackson  <dino@apple.com>
 
         [Mac] Allow popup menus to override default appearance

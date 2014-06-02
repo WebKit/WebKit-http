@@ -47,14 +47,16 @@ public:
     virtual void updateAfterChildren(const ScrollingStateNode&) override;
 
     // FIXME: We should implement this when we support ScrollingTreeScrollingNodes as children.
-    virtual void parentScrollPositionDidChange(const FloatRect& /*viewportRect*/, const FloatSize& /*cumulativeDelta*/) override { }
+    virtual void updateLayersAfterAncestorChange(const ScrollingTreeNode& /*changedNode*/, const FloatRect& /*fixedPositionRect*/, const FloatSize& /*cumulativeDelta*/) override { }
 
     virtual void handleWheelEvent(const PlatformWheelEvent&) = 0;
     virtual void setScrollPosition(const FloatPoint&);
     virtual void setScrollPositionWithoutContentEdgeConstraints(const FloatPoint&);
 
-    virtual void updateLayersAfterViewportChange(const FloatRect& viewportRect, double scale) = 0;
+    virtual void updateLayersAfterViewportChange(const FloatRect& fixedPositionRect, double scale) = 0;
     virtual void updateLayersAfterDelegatedScroll(const FloatPoint&) { }
+
+    virtual FloatPoint scrollPosition() const = 0;
 
 protected:
     ScrollingTreeScrollingNode(ScrollingTree&, ScrollingNodeType, ScrollingNodeID);
@@ -64,7 +66,7 @@ protected:
 
     virtual void setScrollLayerPosition(const FloatPoint&) = 0;
 
-    const FloatPoint& scrollPosition() const { return m_scrollPosition; }
+    FloatPoint lastCommittedScrollPosition() const { return m_lastCommittedScrollPosition; }
     const FloatSize& scrollableAreaSize() const { return m_scrollableAreaSize; }
     const FloatSize& totalContentsSize() const { return m_totalContentsSize; }
     const IntPoint& scrollOrigin() const { return m_scrollOrigin; }
@@ -87,7 +89,7 @@ private:
     FloatSize m_scrollableAreaSize;
     FloatSize m_totalContentsSize;
     FloatSize m_totalContentsSizeForRubberBand;
-    FloatPoint m_scrollPosition;
+    FloatPoint m_lastCommittedScrollPosition;
     IntPoint m_scrollOrigin;
     
     ScrollableAreaParameters m_scrollableAreaParameters;

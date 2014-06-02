@@ -44,8 +44,9 @@ messages -> WebPage LegacyReceiver {
     WheelEventSyncForTesting(WebKit::WebWheelEvent event) -> (bool handled)
 #if PLATFORM(IOS)
     SetViewportConfigurationMinimumLayoutSize(WebCore::FloatSize size)
-    SetMinimumLayoutSizeForMinimalUI(WebCore::FloatSize size)
-    DynamicViewportSizeUpdate(WebCore::FloatSize minimumLayoutSize, WebCore::FloatRect targetExposedContentRect, WebCore::FloatRect targetUnobscuredRect, WebCore::FloatRect targetUnobscuredRectInScrollViewCoordinates, double scale)
+    SetViewportConfigurationMinimumLayoutSizeForMinimalUI(WebCore::FloatSize size)
+    SetMaximumUnobscuredSize(WebCore::FloatSize size)
+    DynamicViewportSizeUpdate(WebCore::FloatSize minimumLayoutSize, WebCore::FloatSize minimumLayoutSizeForMinimalUI,  WebCore::FloatSize maximumUnobscuredSize, WebCore::FloatRect targetExposedContentRect, WebCore::FloatRect targetUnobscuredRect, WebCore::FloatRect targetUnobscuredRectInScrollViewCoordinates, double scale)
 
     HandleTap(WebCore::IntPoint point)
     PotentialTapAtPosition(uint64_t requestID, WebCore::FloatPoint point)
@@ -78,6 +79,7 @@ messages -> WebPage LegacyReceiver {
     ApplicationWillResignActive()
     ApplicationWillEnterForeground()
     ApplicationDidBecomeActive()
+    ContentSizeCategoryDidChange(String contentSizeCategory)
 #endif
 
 #if ENABLE(REMOTE_INSPECTOR)
@@ -268,6 +270,9 @@ messages -> WebPage LegacyReceiver {
 #if PLATFORM(COCOA)
     DrawRectToImage(uint64_t frameID, WebKit::PrintInfo printInfo, WebCore::IntRect rect, WebCore::IntSize imageSize, uint64_t callbackID)
     DrawPagesToPDF(uint64_t frameID, WebKit::PrintInfo printInfo, uint32_t first, uint32_t count, uint64_t callbackID)
+#if PLATFORM(IOS)
+    ComputePagesForPrintingAndStartDrawingToPDF(uint64_t frameID, WebKit::PrintInfo printInfo, uint32_t firstPage) -> (Vector<WebCore::IntRect> pageRects, double totalScaleFactor) Delayed
+#endif
 #endif
 #if PLATFORM(GTK)
     DrawPagesForPrinting(uint64_t frameID, WebKit::PrintInfo printInfo, uint64_t callbackID)

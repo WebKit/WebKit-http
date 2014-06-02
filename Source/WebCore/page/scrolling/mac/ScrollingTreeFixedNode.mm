@@ -64,24 +64,24 @@ static inline CGPoint operator*(CGPoint& a, const CGSize& b)
     return CGPointMake(a.x * b.width, a.y * b.height);
 }
 
-void ScrollingTreeFixedNode::parentScrollPositionDidChange(const FloatRect& viewportRect, const FloatSize& cumulativeDelta)
+void ScrollingTreeFixedNode::updateLayersAfterAncestorChange(const ScrollingTreeNode& changedNode, const FloatRect& fixedPositionRect, const FloatSize& cumulativeDelta)
 {
-    FloatPoint layerPosition = m_constraints.layerPositionForViewportRect(viewportRect);
+    FloatPoint layerPosition = m_constraints.layerPositionForViewportRect(fixedPositionRect);
     layerPosition -= cumulativeDelta;
 
-    CGRect layerBounds = [m_layer.get() bounds];
-    CGPoint anchorPoint = [m_layer.get() anchorPoint];
+    CGRect layerBounds = [m_layer bounds];
+    CGPoint anchorPoint = [m_layer anchorPoint];
     CGPoint newPosition = layerPosition - m_constraints.alignmentOffset() + anchorPoint * layerBounds.size;
-    [m_layer.get() setPosition:newPosition];
+    
+    [m_layer setPosition:newPosition];
 
     if (!m_children)
         return;
 
     FloatSize newDelta = layerPosition - m_constraints.layerPositionAtLastLayout() + cumulativeDelta;
 
-    size_t size = m_children->size();
-    for (size_t i = 0; i < size; ++i)
-        m_children->at(i)->parentScrollPositionDidChange(viewportRect, newDelta);
+    for (auto& child : *m_children)
+        child->updateLayersAfterAncestorChange(changedNode, fixedPositionRect, newDelta);
 }
 
 } // namespace WebCore

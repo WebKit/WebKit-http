@@ -65,12 +65,10 @@ private:
     virtual void requestScroll(const WebCore::FloatPoint& scrollPosition, bool isProgrammaticScroll);
 
     virtual WebCore::IntSize viewSize();
-    virtual bool isViewWindowActive();
-    virtual bool isViewFocused();
-    virtual bool isViewVisible();
-    virtual bool isViewVisibleOrOccluded();
+    bool isViewVisible();
     virtual bool isViewInWindow();
-    virtual bool isVisuallyIdle();
+    virtual WebCore::ViewState::Flags viewState() override;
+        
     virtual LayerHostingMode viewLayerHostingMode() override;
     virtual ColorSpaceData colorSpace() override;
     virtual void setAcceleratedCompositingRootLayer(LayerOrView *) override;
@@ -104,7 +102,11 @@ private:
     virtual WebCore::FloatRect convertToUserSpace(const WebCore::FloatRect&);
     virtual WebCore::IntPoint screenToRootView(const WebCore::IntPoint&);
     virtual WebCore::IntRect rootViewToScreen(const WebCore::IntRect&);
-
+#if PLATFORM(IOS)
+    virtual WebCore::IntPoint accessibilityScreenToRootView(const WebCore::IntPoint&) = 0;
+    virtual WebCore::IntRect rootViewToAccessibilityScreen(const WebCore::IntRect&) = 0;
+#endif
+        
     virtual void doneWithKeyEvent(const NativeWebKeyboardEvent&, bool wasEventHandled);
 
     virtual PassRefPtr<WebPopupMenuProxy> createPopupMenuProxy(WebPageProxy*);

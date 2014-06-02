@@ -250,7 +250,7 @@ private:
 {
     if (self.window)
         [self _updateForScreen:self.window.screen];
-    _page->viewStateDidChange(ViewState::AllFlags);
+    _page->viewStateDidChange();
 }
 
 - (WKBrowsingContextController *)browsingContextController
@@ -325,17 +325,6 @@ private:
 - (void)willStartZoomOrScroll
 {
     [self _willStartScrollingOrZooming];
-}
-
-- (void)willStartUserTriggeredScroll
-{
-    [self _willStartUserTriggeredScrollingOrZooming];
-}
-
-- (void)willStartUserTriggeredZoom
-{
-    [self _willStartUserTriggeredScrollingOrZooming];
-    _page->willStartUserTriggeredZooming();
 }
 
 - (void)didZoomToScale:(CGFloat)scale
@@ -462,13 +451,13 @@ private:
 
 - (void)_applicationDidEnterBackground:(NSNotification*)notification
 {
-    _page->viewStateDidChange(ViewState::AllFlags & ~ViewState::IsInWindow);
+    _page->viewStateDidChange();
 }
 
 - (void)_applicationWillEnterForeground:(NSNotification*)notification
 {
     _page->applicationWillEnterForeground();
-    _page->viewStateDidChange(ViewState::AllFlags & ~ViewState::IsInWindow);
+    _page->viewStateDidChange();
 }
 
 - (void)_applicationDidBecomeActive:(NSNotification*)notification

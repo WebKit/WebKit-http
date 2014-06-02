@@ -139,6 +139,10 @@
 #include "WebVideoFullscreenManagerProxyMessages.h"
 #endif
 
+#if USE(CAIRO)
+#include <WebCore/CairoUtilities.h>
+#endif
+
 // This controls what strategy we use for mouse wheel coalescing.
 #define MERGE_WHEEL_EVENTS 1
 
@@ -270,10 +274,7 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
     , m_userAgent(standardUserAgent())
     , m_geolocationPermissionRequestManager(*this)
     , m_notificationPermissionRequestManager(*this)
-    , m_viewState(ViewState::NoFlags)
-#if PLATFORM(IOS)
-    , m_activityToken(nullptr)
-#endif
+    , m_viewState(m_pageClient.viewState())
     , m_backForwardList(WebBackForwardList::create(*this))
     , m_loadStateAtProcessExit(FrameLoadState::State::Finished)
 #if PLATFORM(MAC) && !USE(ASYNC_NSTEXTINPUTCLIENT)
@@ -365,8 +366,7 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
             m_userContentController->addProcess(m_process.get());
         m_visitedLinkProvider->addProcess(m_process.get());
     }
-
-    updateViewState();
+    
     updateActivityToken();
     
 #if HAVE(OUT_OF_PROCESS_LAYER_HOSTING)
@@ -524,10 +524,6 @@ void WebPageProxy::reattachToWebProcess()
 {
     ASSERT(!isValid());
     ASSERT(m_process->state() == WebProcessProxy::State::Terminated);
-
-    updateViewState();
-    updateActivityToken();
-    
     m_isValid = true;
 
     if (m_process->context().processModel() == ProcessModelSharedSecondaryProcess)
@@ -536,6 +532,9 @@ void WebPageProxy::reattachToWebProcess()
         m_process = m_process->context().createNewWebProcessRespectingProcessCountLimit();
     m_process->addExistingWebPage(this, m_pageID);
     m_process->addMessageReceiver(Messages::WebPageProxy::messageReceiverName(), m_pageID, *this);
+
+    m_viewState = m_pageClient.viewState();
+    updateActivityToken();
 
 #if ENABLE(INSPECTOR)
     m_inspector = WebInspectorProxy::create(this);
@@ -1054,36 +1053,15 @@ void WebPageProxy::requestScroll(const FloatPoint& scrollPosition, bool isProgra
     m_pageClient.requestScroll(scrollPosition, isProgrammaticScroll);
 }
 
-void WebPageProxy::updateViewState(ViewState::Flags flagsToUpdate)
-{
-    m_viewState &= ~flagsToUpdate;
-    if (flagsToUpdate & ViewState::IsFocused && m_pageClient.isViewFocused())
-        m_viewState |= ViewState::IsFocused;
-    if (flagsToUpdate & ViewState::WindowIsActive && m_pageClient.isViewWindowActive())
-        m_viewState |= ViewState::WindowIsActive;
-    if (flagsToUpdate & ViewState::IsVisible && m_pageClient.isViewVisible())
-        m_viewState |= ViewState::IsVisible;
-    if (flagsToUpdate & ViewState::IsVisibleOrOccluded && m_pageClient.isViewVisibleOrOccluded())
-        m_viewState |= ViewState::IsVisibleOrOccluded;
-    if (flagsToUpdate & ViewState::IsInWindow && m_pageClient.isViewInWindow())
-        m_viewState |= ViewState::IsInWindow;
-    if (flagsToUpdate & ViewState::IsVisuallyIdle && m_pageClient.isVisuallyIdle())
-        m_viewState |= ViewState::IsVisuallyIdle;
-}
-
-void WebPageProxy::viewStateDidChange(ViewState::Flags mayHaveChanged, WantsReplyOrNot wantsReply)
+void WebPageProxy::viewStateDidChange(WantsReplyOrNot wantsReply)
 {
     if (!isValid())
         return;
 
-    // If the visibility state may have changed, then so may the visually idle & occluded agnostic state.
-    if (mayHaveChanged & ViewState::IsVisible)
-        mayHaveChanged |= ViewState::IsVisibleOrOccluded | ViewState::IsVisuallyIdle;
-
     // Record the prior view state, update the flags that may have changed,
     // and check which flags have actually changed.
     ViewState::Flags previousViewState = m_viewState;
-    updateViewState(mayHaveChanged);
+    m_viewState = m_pageClient.viewState();
     ViewState::Flags changed = m_viewState ^ previousViewState;
 
     if (changed)
@@ -1101,7 +1079,7 @@ void WebPageProxy::viewStateDidChange(ViewState::Flags mayHaveChanged, WantsRepl
     if ((changed & ViewState::IsVisible) && !isViewVisible())
         m_process->responsivenessTimer()->stop();
 
-    if ((mayHaveChanged & ViewState::IsInWindow) && (m_viewState & ViewState::IsInWindow)) {
+    if ((changed & ViewState::IsInWindow) && (m_viewState & ViewState::IsInWindow)) {
         LayerHostingMode layerHostingMode = m_pageClient.viewLayerHostingMode();
         if (m_layerHostingMode != layerHostingMode) {
             m_layerHostingMode = layerHostingMode;
@@ -1109,7 +1087,7 @@ void WebPageProxy::viewStateDidChange(ViewState::Flags mayHaveChanged, WantsRepl
         }
     }
 
-    if ((mayHaveChanged & ViewState::IsInWindow) && !(m_viewState & ViewState::IsInWindow)) {
+    if ((changed & ViewState::IsInWindow) && !(m_viewState & ViewState::IsInWindow)) {
 #if ENABLE(INPUT_TYPE_COLOR_POPOVER)
         // When leaving the current page, close the popover color well.
         if (m_colorPicker)
@@ -1118,7 +1096,7 @@ void WebPageProxy::viewStateDidChange(ViewState::Flags mayHaveChanged, WantsRepl
 #if PLATFORM(IOS)
         // When leaving the current page, close the video fullscreen.
         if (m_videoFullscreenManager)
-            m_videoFullscreenManager->requestExitFullscreen();
+            m_videoFullscreenManager->requestHideAndExitFullscreen();
 #endif
     }
 
@@ -1870,6 +1848,12 @@ void WebPageProxy::setCustomDeviceScaleFactor(float customScaleFactor)
 {
     if (!isValid())
         return;
+
+    // FIXME: Remove this once we bump cairo requirements to support HiDPI.
+    // https://bugs.webkit.org/show_bug.cgi?id=133378
+#if USE(CAIRO) && !HAVE(CAIRO_SURFACE_SET_DEVICE_SCALE)
+    return;
+#endif
 
     if (m_customDeviceScaleFactor == customScaleFactor)
         return;
@@ -2918,10 +2902,6 @@ void WebPageProxy::connectionWillOpen(IPC::Connection* connection)
 {
     ASSERT(connection == m_process->connection());
 
-    if (m_userContentController)
-        m_userContentController->addProcess(m_process.get());
-    m_visitedLinkProvider->addProcess(m_process.get());
-
     m_process->context().storageManager().setAllowedSessionStorageNamespaceConnection(m_pageID, connection);
 }
 
@@ -2930,6 +2910,13 @@ void WebPageProxy::connectionWillClose(IPC::Connection* connection)
     ASSERT_UNUSED(connection, connection == m_process->connection());
 
     m_process->context().storageManager().setAllowedSessionStorageNamespaceConnection(m_pageID, 0);
+}
+
+void WebPageProxy::processDidFinishLaunching()
+{
+    if (m_userContentController)
+        m_userContentController->addProcess(m_process.get());
+    m_visitedLinkProvider->addProcess(m_process.get());
 }
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
@@ -3035,6 +3022,18 @@ void WebPageProxy::rootViewToScreen(const IntRect& viewRect, IntRect& result)
 {
     result = m_pageClient.rootViewToScreen(viewRect);
 }
+    
+#if PLATFORM(IOS)
+void WebPageProxy::accessibilityScreenToRootView(const IntPoint& screenPoint, IntPoint& windowPoint)
+{
+    windowPoint = m_pageClient.accessibilityScreenToRootView(screenPoint);
+}
+
+void WebPageProxy::rootViewToAccessibilityScreen(const IntRect& viewRect, IntRect& result)
+{
+    result = m_pageClient.rootViewToAccessibilityScreen(viewRect);
+}
+#endif
     
 void WebPageProxy::runBeforeUnloadConfirmPanel(const String& message, uint64_t frameID, bool& shouldClose)
 {
@@ -3364,7 +3363,7 @@ void WebPageProxy::didFindString(const String& string, uint32_t matchCount, int3
     m_findClient->didFindString(this, string, matchCount, matchIndex);
 }
 
-void WebPageProxy::didFindStringMatches(const String& string, Vector<Vector<WebCore::IntRect>> matchRects, int32_t firstIndexAfterSelection)
+void WebPageProxy::didFindStringMatches(const String& string, const Vector<Vector<WebCore::IntRect>>& matchRects, int32_t firstIndexAfterSelection)
 {
     Vector<RefPtr<API::Object>> matches;
     matches.reserveInitialCapacity(matchRects.size());
@@ -3790,7 +3789,7 @@ void WebPageProxy::setCursor(const WebCore::Cursor& cursor)
 {
     // The Web process may have asked to change the cursor when the view was in an active window, but
     // if it is no longer in a window or the window is not active, then the cursor should not change.
-    if (m_pageClient.isViewWindowActive())
+    if (isViewWindowActive())
         m_pageClient.setCursor(cursor);
 }
 
@@ -4235,6 +4234,10 @@ void WebPageProxy::resetStateAfterProcessExited()
 
     m_process->removeMessageReceiver(Messages::WebPageProxy::messageReceiverName(), m_pageID);
 
+#if PLATFORM(IOS)
+    m_activityToken = nullptr;
+#endif
+
     m_isValid = false;
     m_isPageSuspended = false;
     m_waitingForDidUpdateViewState = false;
@@ -4674,7 +4677,7 @@ void WebPageProxy::updateBackingStoreDiscardableState()
     if (!m_process->responsivenessTimer()->isResponsive())
         isDiscardable = false;
     else
-        isDiscardable = !m_pageClient.isViewWindowActive() || !isViewVisible();
+        isDiscardable = !isViewWindowActive() || !isViewVisible();
 
     m_drawingArea->setBackingStoreIsDiscardable(isDiscardable);
 }

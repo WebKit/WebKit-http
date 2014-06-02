@@ -1008,6 +1008,9 @@ bool JSTestObj::getOwnPropertySlot(JSObject* object, ExecState* exec, PropertyNa
 
 EncodedJSValue jsTestObjReadOnlyLongAttr(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
 {
+    UNUSED_PARAM(exec);
+    UNUSED_PARAM(slotBase);
+    UNUSED_PARAM(thisValue);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(slotBase))
@@ -1022,6 +1025,9 @@ EncodedJSValue jsTestObjReadOnlyLongAttr(ExecState* exec, JSObject* slotBase, En
 
 EncodedJSValue jsTestObjReadOnlyStringAttr(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
 {
+    UNUSED_PARAM(exec);
+    UNUSED_PARAM(slotBase);
+    UNUSED_PARAM(thisValue);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(slotBase))
@@ -1036,6 +1042,9 @@ EncodedJSValue jsTestObjReadOnlyStringAttr(ExecState* exec, JSObject* slotBase, 
 
 EncodedJSValue jsTestObjReadOnlyTestObjAttr(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
 {
+    UNUSED_PARAM(exec);
+    UNUSED_PARAM(slotBase);
+    UNUSED_PARAM(thisValue);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(slotBase))
@@ -1050,8 +1059,9 @@ EncodedJSValue jsTestObjReadOnlyTestObjAttr(ExecState* exec, JSObject* slotBase,
 
 EncodedJSValue jsTestObjConstructorStaticReadOnlyLongAttr(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
 {
-    UNUSED_PARAM(thisValue);
+    UNUSED_PARAM(exec);
     UNUSED_PARAM(slotBase);
+    UNUSED_PARAM(thisValue);
     JSValue result = jsNumber(TestObj::staticReadOnlyLongAttr());
     return JSValue::encode(result);
 }
@@ -1059,8 +1069,9 @@ EncodedJSValue jsTestObjConstructorStaticReadOnlyLongAttr(ExecState* exec, JSObj
 
 EncodedJSValue jsTestObjConstructorStaticStringAttr(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
 {
-    UNUSED_PARAM(thisValue);
+    UNUSED_PARAM(exec);
     UNUSED_PARAM(slotBase);
+    UNUSED_PARAM(thisValue);
     JSValue result = jsStringWithCache(exec, TestObj::staticStringAttr());
     return JSValue::encode(result);
 }
@@ -1068,24 +1079,20 @@ EncodedJSValue jsTestObjConstructorStaticStringAttr(ExecState* exec, JSObject* s
 
 EncodedJSValue jsTestObjConstructorTestSubObj(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
 {
-    JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis)) {
-        if (jsDynamicCast<JSTestObjPrototype*>(slotBase))
-            return reportDeprecatedGetterError(*exec, "TestObj", "TestSubObj");
-        return throwGetterTypeError(*exec, "TestObj", "TestSubObj");
-    }
+    UNUSED_PARAM(exec);
+    UNUSED_PARAM(slotBase);
+    UNUSED_PARAM(thisValue);
+    JSTestObj* castedThis = jsCast<JSTestObj*>(slotBase);
     return JSValue::encode(JSTestSubObj::getConstructor(exec->vm(), castedThis->globalObject()));
 }
 
 
 EncodedJSValue jsTestObjTestSubObjEnabledBySettingConstructor(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
 {
-    JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis)) {
-        if (jsDynamicCast<JSTestObjPrototype*>(slotBase))
-            return reportDeprecatedGetterError(*exec, "TestObj", "TestSubObjEnabledBySetting");
-        return throwGetterTypeError(*exec, "TestObj", "TestSubObjEnabledBySetting");
-    }
+    UNUSED_PARAM(exec);
+    UNUSED_PARAM(slotBase);
+    UNUSED_PARAM(thisValue);
+    JSTestObj* castedThis = jsCast<JSTestObj*>(slotBase);
     if (!castedThis->impl().frame())
         return JSValue::encode(jsUndefined());
     Settings& settings = castedThis->impl().frame()->settings();
@@ -1097,6 +1104,9 @@ EncodedJSValue jsTestObjTestSubObjEnabledBySettingConstructor(ExecState* exec, J
 
 EncodedJSValue jsTestObjEnumAttr(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
 {
+    UNUSED_PARAM(exec);
+    UNUSED_PARAM(slotBase);
+    UNUSED_PARAM(thisValue);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(slotBase))
@@ -1111,6 +1121,9 @@ EncodedJSValue jsTestObjEnumAttr(ExecState* exec, JSObject* slotBase, EncodedJSV
 
 EncodedJSValue jsTestObjByteAttr(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
 {
+    UNUSED_PARAM(exec);
+    UNUSED_PARAM(slotBase);
+    UNUSED_PARAM(thisValue);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(slotBase))
@@ -1125,6 +1138,9 @@ EncodedJSValue jsTestObjByteAttr(ExecState* exec, JSObject* slotBase, EncodedJSV
 
 EncodedJSValue jsTestObjOctetAttr(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
 {
+    UNUSED_PARAM(exec);
+    UNUSED_PARAM(slotBase);
+    UNUSED_PARAM(thisValue);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(slotBase))
@@ -1139,6 +1155,9 @@ EncodedJSValue jsTestObjOctetAttr(ExecState* exec, JSObject* slotBase, EncodedJS
 
 EncodedJSValue jsTestObjShortAttr(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
 {
+    UNUSED_PARAM(exec);
+    UNUSED_PARAM(slotBase);
+    UNUSED_PARAM(thisValue);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(slotBase))
@@ -1153,6 +1172,9 @@ EncodedJSValue jsTestObjShortAttr(ExecState* exec, JSObject* slotBase, EncodedJS
 
 EncodedJSValue jsTestObjUnsignedShortAttr(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
 {
+    UNUSED_PARAM(exec);
+    UNUSED_PARAM(slotBase);
+    UNUSED_PARAM(thisValue);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(slotBase))
@@ -1167,6 +1189,9 @@ EncodedJSValue jsTestObjUnsignedShortAttr(ExecState* exec, JSObject* slotBase, E
 
 EncodedJSValue jsTestObjLongAttr(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
 {
+    UNUSED_PARAM(exec);
+    UNUSED_PARAM(slotBase);
+    UNUSED_PARAM(thisValue);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(slotBase))
@@ -1181,6 +1206,9 @@ EncodedJSValue jsTestObjLongAttr(ExecState* exec, JSObject* slotBase, EncodedJSV
 
 EncodedJSValue jsTestObjLongLongAttr(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
 {
+    UNUSED_PARAM(exec);
+    UNUSED_PARAM(slotBase);
+    UNUSED_PARAM(thisValue);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(slotBase))
@@ -1195,6 +1223,9 @@ EncodedJSValue jsTestObjLongLongAttr(ExecState* exec, JSObject* slotBase, Encode
 
 EncodedJSValue jsTestObjUnsignedLongLongAttr(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
 {
+    UNUSED_PARAM(exec);
+    UNUSED_PARAM(slotBase);
+    UNUSED_PARAM(thisValue);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(slotBase))
@@ -1209,6 +1240,9 @@ EncodedJSValue jsTestObjUnsignedLongLongAttr(ExecState* exec, JSObject* slotBase
 
 EncodedJSValue jsTestObjStringAttr(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
 {
+    UNUSED_PARAM(exec);
+    UNUSED_PARAM(slotBase);
+    UNUSED_PARAM(thisValue);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(slotBase))
@@ -1223,6 +1257,9 @@ EncodedJSValue jsTestObjStringAttr(ExecState* exec, JSObject* slotBase, EncodedJ
 
 EncodedJSValue jsTestObjTestObjAttr(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
 {
+    UNUSED_PARAM(exec);
+    UNUSED_PARAM(slotBase);
+    UNUSED_PARAM(thisValue);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(slotBase))
@@ -1237,6 +1274,9 @@ EncodedJSValue jsTestObjTestObjAttr(ExecState* exec, JSObject* slotBase, Encoded
 
 EncodedJSValue jsTestObjXMLObjAttr(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
 {
+    UNUSED_PARAM(exec);
+    UNUSED_PARAM(slotBase);
+    UNUSED_PARAM(thisValue);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(slotBase))
@@ -1251,6 +1291,9 @@ EncodedJSValue jsTestObjXMLObjAttr(ExecState* exec, JSObject* slotBase, EncodedJ
 
 EncodedJSValue jsTestObjCreate(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
 {
+    UNUSED_PARAM(exec);
+    UNUSED_PARAM(slotBase);
+    UNUSED_PARAM(thisValue);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(slotBase))
@@ -1265,6 +1308,9 @@ EncodedJSValue jsTestObjCreate(ExecState* exec, JSObject* slotBase, EncodedJSVal
 
 EncodedJSValue jsTestObjReflectedStringAttr(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
 {
+    UNUSED_PARAM(exec);
+    UNUSED_PARAM(slotBase);
+    UNUSED_PARAM(thisValue);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(slotBase))
@@ -1279,6 +1325,9 @@ EncodedJSValue jsTestObjReflectedStringAttr(ExecState* exec, JSObject* slotBase,
 
 EncodedJSValue jsTestObjReflectedIntegralAttr(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
 {
+    UNUSED_PARAM(exec);
+    UNUSED_PARAM(slotBase);
+    UNUSED_PARAM(thisValue);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(slotBase))
@@ -1293,6 +1342,9 @@ EncodedJSValue jsTestObjReflectedIntegralAttr(ExecState* exec, JSObject* slotBas
 
 EncodedJSValue jsTestObjReflectedUnsignedIntegralAttr(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
 {
+    UNUSED_PARAM(exec);
+    UNUSED_PARAM(slotBase);
+    UNUSED_PARAM(thisValue);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(slotBase))
@@ -1307,6 +1359,9 @@ EncodedJSValue jsTestObjReflectedUnsignedIntegralAttr(ExecState* exec, JSObject*
 
 EncodedJSValue jsTestObjReflectedBooleanAttr(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
 {
+    UNUSED_PARAM(exec);
+    UNUSED_PARAM(slotBase);
+    UNUSED_PARAM(thisValue);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(slotBase))
@@ -1321,6 +1376,9 @@ EncodedJSValue jsTestObjReflectedBooleanAttr(ExecState* exec, JSObject* slotBase
 
 EncodedJSValue jsTestObjReflectedURLAttr(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
 {
+    UNUSED_PARAM(exec);
+    UNUSED_PARAM(slotBase);
+    UNUSED_PARAM(thisValue);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(slotBase))
@@ -1335,6 +1393,9 @@ EncodedJSValue jsTestObjReflectedURLAttr(ExecState* exec, JSObject* slotBase, En
 
 EncodedJSValue jsTestObjReflectedStringAttr(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
 {
+    UNUSED_PARAM(exec);
+    UNUSED_PARAM(slotBase);
+    UNUSED_PARAM(thisValue);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(slotBase))
@@ -1349,6 +1410,9 @@ EncodedJSValue jsTestObjReflectedStringAttr(ExecState* exec, JSObject* slotBase,
 
 EncodedJSValue jsTestObjReflectedCustomIntegralAttr(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
 {
+    UNUSED_PARAM(exec);
+    UNUSED_PARAM(slotBase);
+    UNUSED_PARAM(thisValue);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(slotBase))
@@ -1363,6 +1427,9 @@ EncodedJSValue jsTestObjReflectedCustomIntegralAttr(ExecState* exec, JSObject* s
 
 EncodedJSValue jsTestObjReflectedCustomBooleanAttr(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
 {
+    UNUSED_PARAM(exec);
+    UNUSED_PARAM(slotBase);
+    UNUSED_PARAM(thisValue);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(slotBase))
@@ -1377,6 +1444,9 @@ EncodedJSValue jsTestObjReflectedCustomBooleanAttr(ExecState* exec, JSObject* sl
 
 EncodedJSValue jsTestObjReflectedCustomURLAttr(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
 {
+    UNUSED_PARAM(exec);
+    UNUSED_PARAM(slotBase);
+    UNUSED_PARAM(thisValue);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(slotBase))
@@ -1391,6 +1461,9 @@ EncodedJSValue jsTestObjReflectedCustomURLAttr(ExecState* exec, JSObject* slotBa
 
 EncodedJSValue jsTestObjTypedArrayAttr(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
 {
+    UNUSED_PARAM(exec);
+    UNUSED_PARAM(slotBase);
+    UNUSED_PARAM(thisValue);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(slotBase))
@@ -1405,6 +1478,9 @@ EncodedJSValue jsTestObjTypedArrayAttr(ExecState* exec, JSObject* slotBase, Enco
 
 EncodedJSValue jsTestObjAttrWithGetterException(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
 {
+    UNUSED_PARAM(exec);
+    UNUSED_PARAM(slotBase);
+    UNUSED_PARAM(thisValue);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(slotBase))
@@ -1421,6 +1497,9 @@ EncodedJSValue jsTestObjAttrWithGetterException(ExecState* exec, JSObject* slotB
 
 EncodedJSValue jsTestObjAttrWithSetterException(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
 {
+    UNUSED_PARAM(exec);
+    UNUSED_PARAM(slotBase);
+    UNUSED_PARAM(thisValue);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(slotBase))
@@ -1435,6 +1514,9 @@ EncodedJSValue jsTestObjAttrWithSetterException(ExecState* exec, JSObject* slotB
 
 EncodedJSValue jsTestObjStringAttrWithGetterException(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
 {
+    UNUSED_PARAM(exec);
+    UNUSED_PARAM(slotBase);
+    UNUSED_PARAM(thisValue);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(slotBase))
@@ -1451,6 +1533,9 @@ EncodedJSValue jsTestObjStringAttrWithGetterException(ExecState* exec, JSObject*
 
 EncodedJSValue jsTestObjStringAttrWithSetterException(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
 {
+    UNUSED_PARAM(exec);
+    UNUSED_PARAM(slotBase);
+    UNUSED_PARAM(thisValue);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(slotBase))
@@ -1465,18 +1550,19 @@ EncodedJSValue jsTestObjStringAttrWithSetterException(ExecState* exec, JSObject*
 
 EncodedJSValue jsTestObjCustomAttr(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
 {
-    JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis)) {
-        if (jsDynamicCast<JSTestObjPrototype*>(slotBase))
-            return reportDeprecatedGetterError(*exec, "TestObj", "customAttr");
-        return throwGetterTypeError(*exec, "TestObj", "customAttr");
-    }
+    UNUSED_PARAM(exec);
+    UNUSED_PARAM(slotBase);
+    UNUSED_PARAM(thisValue);
+    JSTestObj* castedThis = jsCast<JSTestObj*>(slotBase);
     return JSValue::encode(castedThis->customAttr(exec));
 }
 
 
 EncodedJSValue jsTestObjWithScriptStateAttribute(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
 {
+    UNUSED_PARAM(exec);
+    UNUSED_PARAM(slotBase);
+    UNUSED_PARAM(thisValue);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(slotBase))
@@ -1491,6 +1577,9 @@ EncodedJSValue jsTestObjWithScriptStateAttribute(ExecState* exec, JSObject* slot
 
 EncodedJSValue jsTestObjWithScriptExecutionContextAttribute(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
 {
+    UNUSED_PARAM(exec);
+    UNUSED_PARAM(slotBase);
+    UNUSED_PARAM(thisValue);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(slotBase))
@@ -1508,6 +1597,9 @@ EncodedJSValue jsTestObjWithScriptExecutionContextAttribute(ExecState* exec, JSO
 
 EncodedJSValue jsTestObjWithScriptStateAttributeRaises(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
 {
+    UNUSED_PARAM(exec);
+    UNUSED_PARAM(slotBase);
+    UNUSED_PARAM(thisValue);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(slotBase))
@@ -1524,6 +1616,9 @@ EncodedJSValue jsTestObjWithScriptStateAttributeRaises(ExecState* exec, JSObject
 
 EncodedJSValue jsTestObjWithScriptExecutionContextAttributeRaises(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
 {
+    UNUSED_PARAM(exec);
+    UNUSED_PARAM(slotBase);
+    UNUSED_PARAM(thisValue);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(slotBase))
@@ -1543,6 +1638,9 @@ EncodedJSValue jsTestObjWithScriptExecutionContextAttributeRaises(ExecState* exe
 
 EncodedJSValue jsTestObjWithScriptExecutionContextAndScriptStateAttribute(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
 {
+    UNUSED_PARAM(exec);
+    UNUSED_PARAM(slotBase);
+    UNUSED_PARAM(thisValue);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(slotBase))
@@ -1560,6 +1658,9 @@ EncodedJSValue jsTestObjWithScriptExecutionContextAndScriptStateAttribute(ExecSt
 
 EncodedJSValue jsTestObjWithScriptExecutionContextAndScriptStateAttributeRaises(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
 {
+    UNUSED_PARAM(exec);
+    UNUSED_PARAM(slotBase);
+    UNUSED_PARAM(thisValue);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(slotBase))
@@ -1579,6 +1680,9 @@ EncodedJSValue jsTestObjWithScriptExecutionContextAndScriptStateAttributeRaises(
 
 EncodedJSValue jsTestObjWithScriptExecutionContextAndScriptStateWithSpacesAttribute(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
 {
+    UNUSED_PARAM(exec);
+    UNUSED_PARAM(slotBase);
+    UNUSED_PARAM(thisValue);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(slotBase))
@@ -1596,6 +1700,9 @@ EncodedJSValue jsTestObjWithScriptExecutionContextAndScriptStateWithSpacesAttrib
 
 EncodedJSValue jsTestObjWithScriptArgumentsAndCallStackAttribute(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
 {
+    UNUSED_PARAM(exec);
+    UNUSED_PARAM(slotBase);
+    UNUSED_PARAM(thisValue);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(slotBase))
@@ -1611,6 +1718,9 @@ EncodedJSValue jsTestObjWithScriptArgumentsAndCallStackAttribute(ExecState* exec
 #if ENABLE(Condition1)
 EncodedJSValue jsTestObjConditionalAttr1(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
 {
+    UNUSED_PARAM(exec);
+    UNUSED_PARAM(slotBase);
+    UNUSED_PARAM(thisValue);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(slotBase))
@@ -1627,6 +1737,9 @@ EncodedJSValue jsTestObjConditionalAttr1(ExecState* exec, JSObject* slotBase, En
 #if ENABLE(Condition1) && ENABLE(Condition2)
 EncodedJSValue jsTestObjConditionalAttr2(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
 {
+    UNUSED_PARAM(exec);
+    UNUSED_PARAM(slotBase);
+    UNUSED_PARAM(thisValue);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(slotBase))
@@ -1643,6 +1756,9 @@ EncodedJSValue jsTestObjConditionalAttr2(ExecState* exec, JSObject* slotBase, En
 #if ENABLE(Condition1) || ENABLE(Condition2)
 EncodedJSValue jsTestObjConditionalAttr3(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
 {
+    UNUSED_PARAM(exec);
+    UNUSED_PARAM(slotBase);
+    UNUSED_PARAM(thisValue);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(slotBase))
@@ -1659,12 +1775,10 @@ EncodedJSValue jsTestObjConditionalAttr3(ExecState* exec, JSObject* slotBase, En
 #if ENABLE(Condition1)
 EncodedJSValue jsTestObjConditionalAttr4Constructor(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
 {
-    JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis)) {
-        if (jsDynamicCast<JSTestObjPrototype*>(slotBase))
-            return reportDeprecatedGetterError(*exec, "TestObj", "conditionalAttr4");
-        return throwGetterTypeError(*exec, "TestObj", "conditionalAttr4");
-    }
+    UNUSED_PARAM(exec);
+    UNUSED_PARAM(slotBase);
+    UNUSED_PARAM(thisValue);
+    JSTestObj* castedThis = jsCast<JSTestObj*>(slotBase);
     return JSValue::encode(JSTestObjectA::getConstructor(exec->vm(), castedThis->globalObject()));
 }
 
@@ -1673,12 +1787,10 @@ EncodedJSValue jsTestObjConditionalAttr4Constructor(ExecState* exec, JSObject* s
 #if ENABLE(Condition1) && ENABLE(Condition2)
 EncodedJSValue jsTestObjConditionalAttr5Constructor(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
 {
-    JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis)) {
-        if (jsDynamicCast<JSTestObjPrototype*>(slotBase))
-            return reportDeprecatedGetterError(*exec, "TestObj", "conditionalAttr5");
-        return throwGetterTypeError(*exec, "TestObj", "conditionalAttr5");
-    }
+    UNUSED_PARAM(exec);
+    UNUSED_PARAM(slotBase);
+    UNUSED_PARAM(thisValue);
+    JSTestObj* castedThis = jsCast<JSTestObj*>(slotBase);
     return JSValue::encode(JSTestObjectB::getConstructor(exec->vm(), castedThis->globalObject()));
 }
 
@@ -1687,12 +1799,10 @@ EncodedJSValue jsTestObjConditionalAttr5Constructor(ExecState* exec, JSObject* s
 #if ENABLE(Condition1) || ENABLE(Condition2)
 EncodedJSValue jsTestObjConditionalAttr6Constructor(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
 {
-    JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis)) {
-        if (jsDynamicCast<JSTestObjPrototype*>(slotBase))
-            return reportDeprecatedGetterError(*exec, "TestObj", "conditionalAttr6");
-        return throwGetterTypeError(*exec, "TestObj", "conditionalAttr6");
-    }
+    UNUSED_PARAM(exec);
+    UNUSED_PARAM(slotBase);
+    UNUSED_PARAM(thisValue);
+    JSTestObj* castedThis = jsCast<JSTestObj*>(slotBase);
     return JSValue::encode(JSTestObjectC::getConstructor(exec->vm(), castedThis->globalObject()));
 }
 
@@ -1700,6 +1810,9 @@ EncodedJSValue jsTestObjConditionalAttr6Constructor(ExecState* exec, JSObject* s
 
 EncodedJSValue jsTestObjCachedAttribute1(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
 {
+    UNUSED_PARAM(exec);
+    UNUSED_PARAM(slotBase);
+    UNUSED_PARAM(thisValue);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(slotBase))
@@ -1717,6 +1830,9 @@ EncodedJSValue jsTestObjCachedAttribute1(ExecState* exec, JSObject* slotBase, En
 
 EncodedJSValue jsTestObjCachedAttribute2(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
 {
+    UNUSED_PARAM(exec);
+    UNUSED_PARAM(slotBase);
+    UNUSED_PARAM(thisValue);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(slotBase))
@@ -1734,6 +1850,9 @@ EncodedJSValue jsTestObjCachedAttribute2(ExecState* exec, JSObject* slotBase, En
 
 EncodedJSValue jsTestObjAnyAttribute(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
 {
+    UNUSED_PARAM(exec);
+    UNUSED_PARAM(slotBase);
+    UNUSED_PARAM(thisValue);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(slotBase))
@@ -1748,12 +1867,10 @@ EncodedJSValue jsTestObjAnyAttribute(ExecState* exec, JSObject* slotBase, Encode
 
 EncodedJSValue jsTestObjContentDocument(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
 {
-    JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis)) {
-        if (jsDynamicCast<JSTestObjPrototype*>(slotBase))
-            return reportDeprecatedGetterError(*exec, "TestObj", "contentDocument");
-        return throwGetterTypeError(*exec, "TestObj", "contentDocument");
-    }
+    UNUSED_PARAM(exec);
+    UNUSED_PARAM(slotBase);
+    UNUSED_PARAM(thisValue);
+    JSTestObj* castedThis = jsCast<JSTestObj*>(slotBase);
     TestObj& impl = castedThis->impl();
     return JSValue::encode(shouldAllowAccessToNode(exec, impl.contentDocument()) ? toJS(exec, castedThis->globalObject(), WTF::getPtr(impl.contentDocument())) : jsNull());
 }
@@ -1761,6 +1878,9 @@ EncodedJSValue jsTestObjContentDocument(ExecState* exec, JSObject* slotBase, Enc
 
 EncodedJSValue jsTestObjMutablePoint(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
 {
+    UNUSED_PARAM(exec);
+    UNUSED_PARAM(slotBase);
+    UNUSED_PARAM(thisValue);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(slotBase))
@@ -1775,6 +1895,9 @@ EncodedJSValue jsTestObjMutablePoint(ExecState* exec, JSObject* slotBase, Encode
 
 EncodedJSValue jsTestObjImmutablePoint(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
 {
+    UNUSED_PARAM(exec);
+    UNUSED_PARAM(slotBase);
+    UNUSED_PARAM(thisValue);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(slotBase))
@@ -1789,6 +1912,9 @@ EncodedJSValue jsTestObjImmutablePoint(ExecState* exec, JSObject* slotBase, Enco
 
 EncodedJSValue jsTestObjStrawberry(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
 {
+    UNUSED_PARAM(exec);
+    UNUSED_PARAM(slotBase);
+    UNUSED_PARAM(thisValue);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(slotBase))
@@ -1803,6 +1929,9 @@ EncodedJSValue jsTestObjStrawberry(ExecState* exec, JSObject* slotBase, EncodedJ
 
 EncodedJSValue jsTestObjStrictFloat(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
 {
+    UNUSED_PARAM(exec);
+    UNUSED_PARAM(slotBase);
+    UNUSED_PARAM(thisValue);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(slotBase))
@@ -1817,6 +1946,9 @@ EncodedJSValue jsTestObjStrictFloat(ExecState* exec, JSObject* slotBase, Encoded
 
 EncodedJSValue jsTestObjDescription(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
 {
+    UNUSED_PARAM(exec);
+    UNUSED_PARAM(slotBase);
+    UNUSED_PARAM(thisValue);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(slotBase))
@@ -1831,6 +1963,9 @@ EncodedJSValue jsTestObjDescription(ExecState* exec, JSObject* slotBase, Encoded
 
 EncodedJSValue jsTestObjId(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
 {
+    UNUSED_PARAM(exec);
+    UNUSED_PARAM(slotBase);
+    UNUSED_PARAM(thisValue);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(slotBase))
@@ -1845,6 +1980,9 @@ EncodedJSValue jsTestObjId(ExecState* exec, JSObject* slotBase, EncodedJSValue t
 
 EncodedJSValue jsTestObjHash(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
 {
+    UNUSED_PARAM(exec);
+    UNUSED_PARAM(slotBase);
+    UNUSED_PARAM(thisValue);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(slotBase))
@@ -1859,6 +1997,9 @@ EncodedJSValue jsTestObjHash(ExecState* exec, JSObject* slotBase, EncodedJSValue
 
 EncodedJSValue jsTestObjReplaceableAttribute(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
 {
+    UNUSED_PARAM(exec);
+    UNUSED_PARAM(slotBase);
+    UNUSED_PARAM(thisValue);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(slotBase))
@@ -1873,6 +2014,9 @@ EncodedJSValue jsTestObjReplaceableAttribute(ExecState* exec, JSObject* slotBase
 
 EncodedJSValue jsTestObjNullableDoubleAttribute(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
 {
+    UNUSED_PARAM(exec);
+    UNUSED_PARAM(slotBase);
+    UNUSED_PARAM(thisValue);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(slotBase))
@@ -1890,6 +2034,9 @@ EncodedJSValue jsTestObjNullableDoubleAttribute(ExecState* exec, JSObject* slotB
 
 EncodedJSValue jsTestObjNullableLongAttribute(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
 {
+    UNUSED_PARAM(exec);
+    UNUSED_PARAM(slotBase);
+    UNUSED_PARAM(thisValue);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(slotBase))
@@ -1907,6 +2054,9 @@ EncodedJSValue jsTestObjNullableLongAttribute(ExecState* exec, JSObject* slotBas
 
 EncodedJSValue jsTestObjNullableBooleanAttribute(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
 {
+    UNUSED_PARAM(exec);
+    UNUSED_PARAM(slotBase);
+    UNUSED_PARAM(thisValue);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(slotBase))
@@ -1924,6 +2074,9 @@ EncodedJSValue jsTestObjNullableBooleanAttribute(ExecState* exec, JSObject* slot
 
 EncodedJSValue jsTestObjNullableStringAttribute(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
 {
+    UNUSED_PARAM(exec);
+    UNUSED_PARAM(slotBase);
+    UNUSED_PARAM(thisValue);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(slotBase))
@@ -1941,6 +2094,9 @@ EncodedJSValue jsTestObjNullableStringAttribute(ExecState* exec, JSObject* slotB
 
 EncodedJSValue jsTestObjNullableLongSettableAttribute(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
 {
+    UNUSED_PARAM(exec);
+    UNUSED_PARAM(slotBase);
+    UNUSED_PARAM(thisValue);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(slotBase))
@@ -1958,6 +2114,9 @@ EncodedJSValue jsTestObjNullableLongSettableAttribute(ExecState* exec, JSObject*
 
 EncodedJSValue jsTestObjNullableStringValue(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
 {
+    UNUSED_PARAM(exec);
+    UNUSED_PARAM(slotBase);
+    UNUSED_PARAM(thisValue);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(slotBase))
@@ -1977,6 +2136,9 @@ EncodedJSValue jsTestObjNullableStringValue(ExecState* exec, JSObject* slotBase,
 
 EncodedJSValue jsTestObjAttribute(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
 {
+    UNUSED_PARAM(exec);
+    UNUSED_PARAM(slotBase);
+    UNUSED_PARAM(thisValue);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(slotBase))
@@ -1991,6 +2153,9 @@ EncodedJSValue jsTestObjAttribute(ExecState* exec, JSObject* slotBase, EncodedJS
 
 EncodedJSValue jsTestObjAttributeWithReservedEnumType(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
 {
+    UNUSED_PARAM(exec);
+    UNUSED_PARAM(slotBase);
+    UNUSED_PARAM(thisValue);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(slotBase))
@@ -2011,9 +2176,10 @@ EncodedJSValue jsTestObjConstructor(ExecState* exec, JSObject* baseValue, Encode
     return JSValue::encode(JSTestObj::getConstructor(exec->vm(), domObject->globalObject()));
 }
 
-void setJSTestObjConstructorStaticStringAttr(ExecState* exec, JSObject* /* baseObject */, EncodedJSValue, EncodedJSValue encodedValue)
+void setJSTestObjConstructorStaticStringAttr(ExecState* exec, JSObject* baseObject, EncodedJSValue, EncodedJSValue encodedValue)
 {
     JSValue value = JSValue::decode(encodedValue);
+    UNUSED_PARAM(baseObject);
     const String& nativeValue(value.isEmpty() ? String() : value.toString(exec)->value(exec));
     if (UNLIKELY(exec->hadException()))
         return;
@@ -2021,25 +2187,23 @@ void setJSTestObjConstructorStaticStringAttr(ExecState* exec, JSObject* /* baseO
 }
 
 
-void setJSTestObjTestSubObjEnabledBySettingConstructor(ExecState* exec, JSObject* /* baseObject */, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+void setJSTestObjTestSubObjEnabledBySettingConstructor(ExecState* exec, JSObject* baseObject, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
     JSValue value = JSValue::decode(encodedValue);
-    JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis)) {
-        if (jsDynamicCast<JSTestObjPrototype*>(JSValue::decode(thisValue)))
-            reportDeprecatedSetterError(*exec, "TestObj", "TestSubObjEnabledBySetting");
-        else
-            throwSetterTypeError(*exec, "TestObj", "TestSubObjEnabledBySetting");
-        return;
-    }
+    UNUSED_PARAM(baseObject);
+    UNUSED_PARAM(thisValue);
+    JSTestObj* castedThis = jsCast<JSTestObj*>(baseObject);
+    UNUSED_PARAM(thisValue);
+    UNUSED_PARAM(exec);
     // Shadowing a built-in constructor
     castedThis->putDirect(exec->vm(), Identifier(exec, "TestSubObjEnabledBySetting"), value);
 }
 
 
-void setJSTestObjEnumAttr(ExecState* exec, JSObject* /* baseObject */, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+void setJSTestObjEnumAttr(ExecState* exec, JSObject* baseObject, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
     JSValue value = JSValue::decode(encodedValue);
+    UNUSED_PARAM(baseObject);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(JSValue::decode(thisValue)))
@@ -2058,9 +2222,10 @@ void setJSTestObjEnumAttr(ExecState* exec, JSObject* /* baseObject */, EncodedJS
 }
 
 
-void setJSTestObjByteAttr(ExecState* exec, JSObject* /* baseObject */, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+void setJSTestObjByteAttr(ExecState* exec, JSObject* baseObject, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
     JSValue value = JSValue::decode(encodedValue);
+    UNUSED_PARAM(baseObject);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(JSValue::decode(thisValue)))
@@ -2077,9 +2242,10 @@ void setJSTestObjByteAttr(ExecState* exec, JSObject* /* baseObject */, EncodedJS
 }
 
 
-void setJSTestObjOctetAttr(ExecState* exec, JSObject* /* baseObject */, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+void setJSTestObjOctetAttr(ExecState* exec, JSObject* baseObject, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
     JSValue value = JSValue::decode(encodedValue);
+    UNUSED_PARAM(baseObject);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(JSValue::decode(thisValue)))
@@ -2096,9 +2262,10 @@ void setJSTestObjOctetAttr(ExecState* exec, JSObject* /* baseObject */, EncodedJ
 }
 
 
-void setJSTestObjShortAttr(ExecState* exec, JSObject* /* baseObject */, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+void setJSTestObjShortAttr(ExecState* exec, JSObject* baseObject, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
     JSValue value = JSValue::decode(encodedValue);
+    UNUSED_PARAM(baseObject);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(JSValue::decode(thisValue)))
@@ -2115,9 +2282,10 @@ void setJSTestObjShortAttr(ExecState* exec, JSObject* /* baseObject */, EncodedJ
 }
 
 
-void setJSTestObjUnsignedShortAttr(ExecState* exec, JSObject* /* baseObject */, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+void setJSTestObjUnsignedShortAttr(ExecState* exec, JSObject* baseObject, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
     JSValue value = JSValue::decode(encodedValue);
+    UNUSED_PARAM(baseObject);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(JSValue::decode(thisValue)))
@@ -2134,9 +2302,10 @@ void setJSTestObjUnsignedShortAttr(ExecState* exec, JSObject* /* baseObject */, 
 }
 
 
-void setJSTestObjLongAttr(ExecState* exec, JSObject* /* baseObject */, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+void setJSTestObjLongAttr(ExecState* exec, JSObject* baseObject, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
     JSValue value = JSValue::decode(encodedValue);
+    UNUSED_PARAM(baseObject);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(JSValue::decode(thisValue)))
@@ -2153,9 +2322,10 @@ void setJSTestObjLongAttr(ExecState* exec, JSObject* /* baseObject */, EncodedJS
 }
 
 
-void setJSTestObjLongLongAttr(ExecState* exec, JSObject* /* baseObject */, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+void setJSTestObjLongLongAttr(ExecState* exec, JSObject* baseObject, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
     JSValue value = JSValue::decode(encodedValue);
+    UNUSED_PARAM(baseObject);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(JSValue::decode(thisValue)))
@@ -2172,9 +2342,10 @@ void setJSTestObjLongLongAttr(ExecState* exec, JSObject* /* baseObject */, Encod
 }
 
 
-void setJSTestObjUnsignedLongLongAttr(ExecState* exec, JSObject* /* baseObject */, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+void setJSTestObjUnsignedLongLongAttr(ExecState* exec, JSObject* baseObject, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
     JSValue value = JSValue::decode(encodedValue);
+    UNUSED_PARAM(baseObject);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(JSValue::decode(thisValue)))
@@ -2191,9 +2362,10 @@ void setJSTestObjUnsignedLongLongAttr(ExecState* exec, JSObject* /* baseObject *
 }
 
 
-void setJSTestObjStringAttr(ExecState* exec, JSObject* /* baseObject */, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+void setJSTestObjStringAttr(ExecState* exec, JSObject* baseObject, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
     JSValue value = JSValue::decode(encodedValue);
+    UNUSED_PARAM(baseObject);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(JSValue::decode(thisValue)))
@@ -2210,9 +2382,10 @@ void setJSTestObjStringAttr(ExecState* exec, JSObject* /* baseObject */, Encoded
 }
 
 
-void setJSTestObjTestObjAttr(ExecState* exec, JSObject* /* baseObject */, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+void setJSTestObjTestObjAttr(ExecState* exec, JSObject* baseObject, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
     JSValue value = JSValue::decode(encodedValue);
+    UNUSED_PARAM(baseObject);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(JSValue::decode(thisValue)))
@@ -2229,9 +2402,10 @@ void setJSTestObjTestObjAttr(ExecState* exec, JSObject* /* baseObject */, Encode
 }
 
 
-void setJSTestObjXMLObjAttr(ExecState* exec, JSObject* /* baseObject */, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+void setJSTestObjXMLObjAttr(ExecState* exec, JSObject* baseObject, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
     JSValue value = JSValue::decode(encodedValue);
+    UNUSED_PARAM(baseObject);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(JSValue::decode(thisValue)))
@@ -2248,9 +2422,10 @@ void setJSTestObjXMLObjAttr(ExecState* exec, JSObject* /* baseObject */, Encoded
 }
 
 
-void setJSTestObjCreate(ExecState* exec, JSObject* /* baseObject */, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+void setJSTestObjCreate(ExecState* exec, JSObject* baseObject, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
     JSValue value = JSValue::decode(encodedValue);
+    UNUSED_PARAM(baseObject);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(JSValue::decode(thisValue)))
@@ -2267,9 +2442,10 @@ void setJSTestObjCreate(ExecState* exec, JSObject* /* baseObject */, EncodedJSVa
 }
 
 
-void setJSTestObjReflectedStringAttr(ExecState* exec, JSObject* /* baseObject */, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+void setJSTestObjReflectedStringAttr(ExecState* exec, JSObject* baseObject, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
     JSValue value = JSValue::decode(encodedValue);
+    UNUSED_PARAM(baseObject);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(JSValue::decode(thisValue)))
@@ -2286,9 +2462,10 @@ void setJSTestObjReflectedStringAttr(ExecState* exec, JSObject* /* baseObject */
 }
 
 
-void setJSTestObjReflectedIntegralAttr(ExecState* exec, JSObject* /* baseObject */, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+void setJSTestObjReflectedIntegralAttr(ExecState* exec, JSObject* baseObject, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
     JSValue value = JSValue::decode(encodedValue);
+    UNUSED_PARAM(baseObject);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(JSValue::decode(thisValue)))
@@ -2305,9 +2482,10 @@ void setJSTestObjReflectedIntegralAttr(ExecState* exec, JSObject* /* baseObject 
 }
 
 
-void setJSTestObjReflectedUnsignedIntegralAttr(ExecState* exec, JSObject* /* baseObject */, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+void setJSTestObjReflectedUnsignedIntegralAttr(ExecState* exec, JSObject* baseObject, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
     JSValue value = JSValue::decode(encodedValue);
+    UNUSED_PARAM(baseObject);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(JSValue::decode(thisValue)))
@@ -2324,9 +2502,10 @@ void setJSTestObjReflectedUnsignedIntegralAttr(ExecState* exec, JSObject* /* bas
 }
 
 
-void setJSTestObjReflectedBooleanAttr(ExecState* exec, JSObject* /* baseObject */, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+void setJSTestObjReflectedBooleanAttr(ExecState* exec, JSObject* baseObject, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
     JSValue value = JSValue::decode(encodedValue);
+    UNUSED_PARAM(baseObject);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(JSValue::decode(thisValue)))
@@ -2343,9 +2522,10 @@ void setJSTestObjReflectedBooleanAttr(ExecState* exec, JSObject* /* baseObject *
 }
 
 
-void setJSTestObjReflectedURLAttr(ExecState* exec, JSObject* /* baseObject */, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+void setJSTestObjReflectedURLAttr(ExecState* exec, JSObject* baseObject, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
     JSValue value = JSValue::decode(encodedValue);
+    UNUSED_PARAM(baseObject);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(JSValue::decode(thisValue)))
@@ -2362,9 +2542,10 @@ void setJSTestObjReflectedURLAttr(ExecState* exec, JSObject* /* baseObject */, E
 }
 
 
-void setJSTestObjReflectedStringAttr(ExecState* exec, JSObject* /* baseObject */, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+void setJSTestObjReflectedStringAttr(ExecState* exec, JSObject* baseObject, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
     JSValue value = JSValue::decode(encodedValue);
+    UNUSED_PARAM(baseObject);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(JSValue::decode(thisValue)))
@@ -2381,9 +2562,10 @@ void setJSTestObjReflectedStringAttr(ExecState* exec, JSObject* /* baseObject */
 }
 
 
-void setJSTestObjReflectedCustomIntegralAttr(ExecState* exec, JSObject* /* baseObject */, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+void setJSTestObjReflectedCustomIntegralAttr(ExecState* exec, JSObject* baseObject, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
     JSValue value = JSValue::decode(encodedValue);
+    UNUSED_PARAM(baseObject);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(JSValue::decode(thisValue)))
@@ -2400,9 +2582,10 @@ void setJSTestObjReflectedCustomIntegralAttr(ExecState* exec, JSObject* /* baseO
 }
 
 
-void setJSTestObjReflectedCustomBooleanAttr(ExecState* exec, JSObject* /* baseObject */, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+void setJSTestObjReflectedCustomBooleanAttr(ExecState* exec, JSObject* baseObject, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
     JSValue value = JSValue::decode(encodedValue);
+    UNUSED_PARAM(baseObject);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(JSValue::decode(thisValue)))
@@ -2419,9 +2602,10 @@ void setJSTestObjReflectedCustomBooleanAttr(ExecState* exec, JSObject* /* baseOb
 }
 
 
-void setJSTestObjReflectedCustomURLAttr(ExecState* exec, JSObject* /* baseObject */, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+void setJSTestObjReflectedCustomURLAttr(ExecState* exec, JSObject* baseObject, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
     JSValue value = JSValue::decode(encodedValue);
+    UNUSED_PARAM(baseObject);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(JSValue::decode(thisValue)))
@@ -2438,9 +2622,10 @@ void setJSTestObjReflectedCustomURLAttr(ExecState* exec, JSObject* /* baseObject
 }
 
 
-void setJSTestObjTypedArrayAttr(ExecState* exec, JSObject* /* baseObject */, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+void setJSTestObjTypedArrayAttr(ExecState* exec, JSObject* baseObject, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
     JSValue value = JSValue::decode(encodedValue);
+    UNUSED_PARAM(baseObject);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(JSValue::decode(thisValue)))
@@ -2457,9 +2642,10 @@ void setJSTestObjTypedArrayAttr(ExecState* exec, JSObject* /* baseObject */, Enc
 }
 
 
-void setJSTestObjAttrWithGetterException(ExecState* exec, JSObject* /* baseObject */, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+void setJSTestObjAttrWithGetterException(ExecState* exec, JSObject* baseObject, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
     JSValue value = JSValue::decode(encodedValue);
+    UNUSED_PARAM(baseObject);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(JSValue::decode(thisValue)))
@@ -2476,9 +2662,10 @@ void setJSTestObjAttrWithGetterException(ExecState* exec, JSObject* /* baseObjec
 }
 
 
-void setJSTestObjAttrWithSetterException(ExecState* exec, JSObject* /* baseObject */, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+void setJSTestObjAttrWithSetterException(ExecState* exec, JSObject* baseObject, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
     JSValue value = JSValue::decode(encodedValue);
+    UNUSED_PARAM(baseObject);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(JSValue::decode(thisValue)))
@@ -2497,9 +2684,10 @@ void setJSTestObjAttrWithSetterException(ExecState* exec, JSObject* /* baseObjec
 }
 
 
-void setJSTestObjStringAttrWithGetterException(ExecState* exec, JSObject* /* baseObject */, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+void setJSTestObjStringAttrWithGetterException(ExecState* exec, JSObject* baseObject, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
     JSValue value = JSValue::decode(encodedValue);
+    UNUSED_PARAM(baseObject);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(JSValue::decode(thisValue)))
@@ -2516,9 +2704,10 @@ void setJSTestObjStringAttrWithGetterException(ExecState* exec, JSObject* /* bas
 }
 
 
-void setJSTestObjStringAttrWithSetterException(ExecState* exec, JSObject* /* baseObject */, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+void setJSTestObjStringAttrWithSetterException(ExecState* exec, JSObject* baseObject, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
     JSValue value = JSValue::decode(encodedValue);
+    UNUSED_PARAM(baseObject);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(JSValue::decode(thisValue)))
@@ -2537,24 +2726,22 @@ void setJSTestObjStringAttrWithSetterException(ExecState* exec, JSObject* /* bas
 }
 
 
-void setJSTestObjCustomAttr(ExecState* exec, JSObject* /* baseObject */, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+void setJSTestObjCustomAttr(ExecState* exec, JSObject* baseObject, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
     JSValue value = JSValue::decode(encodedValue);
-    JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis)) {
-        if (jsDynamicCast<JSTestObjPrototype*>(JSValue::decode(thisValue)))
-            reportDeprecatedSetterError(*exec, "TestObj", "customAttr");
-        else
-            throwSetterTypeError(*exec, "TestObj", "customAttr");
-        return;
-    }
+    UNUSED_PARAM(baseObject);
+    UNUSED_PARAM(thisValue);
+    JSTestObj* castedThis = jsCast<JSTestObj*>(baseObject);
+    UNUSED_PARAM(thisValue);
+    UNUSED_PARAM(exec);
     castedThis->setCustomAttr(exec, value);
 }
 
 
-void setJSTestObjWithScriptStateAttribute(ExecState* exec, JSObject* /* baseObject */, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+void setJSTestObjWithScriptStateAttribute(ExecState* exec, JSObject* baseObject, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
     JSValue value = JSValue::decode(encodedValue);
+    UNUSED_PARAM(baseObject);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(JSValue::decode(thisValue)))
@@ -2571,9 +2758,10 @@ void setJSTestObjWithScriptStateAttribute(ExecState* exec, JSObject* /* baseObje
 }
 
 
-void setJSTestObjWithScriptExecutionContextAttribute(ExecState* exec, JSObject* /* baseObject */, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+void setJSTestObjWithScriptExecutionContextAttribute(ExecState* exec, JSObject* baseObject, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
     JSValue value = JSValue::decode(encodedValue);
+    UNUSED_PARAM(baseObject);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(JSValue::decode(thisValue)))
@@ -2593,9 +2781,10 @@ void setJSTestObjWithScriptExecutionContextAttribute(ExecState* exec, JSObject* 
 }
 
 
-void setJSTestObjWithScriptStateAttributeRaises(ExecState* exec, JSObject* /* baseObject */, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+void setJSTestObjWithScriptStateAttributeRaises(ExecState* exec, JSObject* baseObject, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
     JSValue value = JSValue::decode(encodedValue);
+    UNUSED_PARAM(baseObject);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(JSValue::decode(thisValue)))
@@ -2612,9 +2801,10 @@ void setJSTestObjWithScriptStateAttributeRaises(ExecState* exec, JSObject* /* ba
 }
 
 
-void setJSTestObjWithScriptExecutionContextAttributeRaises(ExecState* exec, JSObject* /* baseObject */, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+void setJSTestObjWithScriptExecutionContextAttributeRaises(ExecState* exec, JSObject* baseObject, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
     JSValue value = JSValue::decode(encodedValue);
+    UNUSED_PARAM(baseObject);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(JSValue::decode(thisValue)))
@@ -2634,9 +2824,10 @@ void setJSTestObjWithScriptExecutionContextAttributeRaises(ExecState* exec, JSOb
 }
 
 
-void setJSTestObjWithScriptExecutionContextAndScriptStateAttribute(ExecState* exec, JSObject* /* baseObject */, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+void setJSTestObjWithScriptExecutionContextAndScriptStateAttribute(ExecState* exec, JSObject* baseObject, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
     JSValue value = JSValue::decode(encodedValue);
+    UNUSED_PARAM(baseObject);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(JSValue::decode(thisValue)))
@@ -2656,9 +2847,10 @@ void setJSTestObjWithScriptExecutionContextAndScriptStateAttribute(ExecState* ex
 }
 
 
-void setJSTestObjWithScriptExecutionContextAndScriptStateAttributeRaises(ExecState* exec, JSObject* /* baseObject */, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+void setJSTestObjWithScriptExecutionContextAndScriptStateAttributeRaises(ExecState* exec, JSObject* baseObject, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
     JSValue value = JSValue::decode(encodedValue);
+    UNUSED_PARAM(baseObject);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(JSValue::decode(thisValue)))
@@ -2678,9 +2870,10 @@ void setJSTestObjWithScriptExecutionContextAndScriptStateAttributeRaises(ExecSta
 }
 
 
-void setJSTestObjWithScriptExecutionContextAndScriptStateWithSpacesAttribute(ExecState* exec, JSObject* /* baseObject */, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+void setJSTestObjWithScriptExecutionContextAndScriptStateWithSpacesAttribute(ExecState* exec, JSObject* baseObject, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
     JSValue value = JSValue::decode(encodedValue);
+    UNUSED_PARAM(baseObject);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(JSValue::decode(thisValue)))
@@ -2700,9 +2893,10 @@ void setJSTestObjWithScriptExecutionContextAndScriptStateWithSpacesAttribute(Exe
 }
 
 
-void setJSTestObjWithScriptArgumentsAndCallStackAttribute(ExecState* exec, JSObject* /* baseObject */, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+void setJSTestObjWithScriptArgumentsAndCallStackAttribute(ExecState* exec, JSObject* baseObject, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
     JSValue value = JSValue::decode(encodedValue);
+    UNUSED_PARAM(baseObject);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(JSValue::decode(thisValue)))
@@ -2720,9 +2914,10 @@ void setJSTestObjWithScriptArgumentsAndCallStackAttribute(ExecState* exec, JSObj
 
 
 #if ENABLE(Condition1)
-void setJSTestObjConditionalAttr1(ExecState* exec, JSObject* /* baseObject */, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+void setJSTestObjConditionalAttr1(ExecState* exec, JSObject* baseObject, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
     JSValue value = JSValue::decode(encodedValue);
+    UNUSED_PARAM(baseObject);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(JSValue::decode(thisValue)))
@@ -2741,9 +2936,10 @@ void setJSTestObjConditionalAttr1(ExecState* exec, JSObject* /* baseObject */, E
 #endif
 
 #if ENABLE(Condition1) && ENABLE(Condition2)
-void setJSTestObjConditionalAttr2(ExecState* exec, JSObject* /* baseObject */, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+void setJSTestObjConditionalAttr2(ExecState* exec, JSObject* baseObject, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
     JSValue value = JSValue::decode(encodedValue);
+    UNUSED_PARAM(baseObject);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(JSValue::decode(thisValue)))
@@ -2762,9 +2958,10 @@ void setJSTestObjConditionalAttr2(ExecState* exec, JSObject* /* baseObject */, E
 #endif
 
 #if ENABLE(Condition1) || ENABLE(Condition2)
-void setJSTestObjConditionalAttr3(ExecState* exec, JSObject* /* baseObject */, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+void setJSTestObjConditionalAttr3(ExecState* exec, JSObject* baseObject, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
     JSValue value = JSValue::decode(encodedValue);
+    UNUSED_PARAM(baseObject);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(JSValue::decode(thisValue)))
@@ -2783,17 +2980,14 @@ void setJSTestObjConditionalAttr3(ExecState* exec, JSObject* /* baseObject */, E
 #endif
 
 #if ENABLE(Condition1)
-void setJSTestObjConditionalAttr4Constructor(ExecState* exec, JSObject* /* baseObject */, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+void setJSTestObjConditionalAttr4Constructor(ExecState* exec, JSObject* baseObject, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
     JSValue value = JSValue::decode(encodedValue);
-    JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis)) {
-        if (jsDynamicCast<JSTestObjPrototype*>(JSValue::decode(thisValue)))
-            reportDeprecatedSetterError(*exec, "TestObj", "conditionalAttr4");
-        else
-            throwSetterTypeError(*exec, "TestObj", "conditionalAttr4");
-        return;
-    }
+    UNUSED_PARAM(baseObject);
+    UNUSED_PARAM(thisValue);
+    JSTestObj* castedThis = jsCast<JSTestObj*>(baseObject);
+    UNUSED_PARAM(thisValue);
+    UNUSED_PARAM(exec);
     // Shadowing a built-in constructor
     castedThis->putDirect(exec->vm(), Identifier(exec, "conditionalAttr4"), value);
 }
@@ -2801,17 +2995,14 @@ void setJSTestObjConditionalAttr4Constructor(ExecState* exec, JSObject* /* baseO
 #endif
 
 #if ENABLE(Condition1) && ENABLE(Condition2)
-void setJSTestObjConditionalAttr5Constructor(ExecState* exec, JSObject* /* baseObject */, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+void setJSTestObjConditionalAttr5Constructor(ExecState* exec, JSObject* baseObject, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
     JSValue value = JSValue::decode(encodedValue);
-    JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis)) {
-        if (jsDynamicCast<JSTestObjPrototype*>(JSValue::decode(thisValue)))
-            reportDeprecatedSetterError(*exec, "TestObj", "conditionalAttr5");
-        else
-            throwSetterTypeError(*exec, "TestObj", "conditionalAttr5");
-        return;
-    }
+    UNUSED_PARAM(baseObject);
+    UNUSED_PARAM(thisValue);
+    JSTestObj* castedThis = jsCast<JSTestObj*>(baseObject);
+    UNUSED_PARAM(thisValue);
+    UNUSED_PARAM(exec);
     // Shadowing a built-in constructor
     castedThis->putDirect(exec->vm(), Identifier(exec, "conditionalAttr5"), value);
 }
@@ -2819,26 +3010,24 @@ void setJSTestObjConditionalAttr5Constructor(ExecState* exec, JSObject* /* baseO
 #endif
 
 #if ENABLE(Condition1) || ENABLE(Condition2)
-void setJSTestObjConditionalAttr6Constructor(ExecState* exec, JSObject* /* baseObject */, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+void setJSTestObjConditionalAttr6Constructor(ExecState* exec, JSObject* baseObject, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
     JSValue value = JSValue::decode(encodedValue);
-    JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis)) {
-        if (jsDynamicCast<JSTestObjPrototype*>(JSValue::decode(thisValue)))
-            reportDeprecatedSetterError(*exec, "TestObj", "conditionalAttr6");
-        else
-            throwSetterTypeError(*exec, "TestObj", "conditionalAttr6");
-        return;
-    }
+    UNUSED_PARAM(baseObject);
+    UNUSED_PARAM(thisValue);
+    JSTestObj* castedThis = jsCast<JSTestObj*>(baseObject);
+    UNUSED_PARAM(thisValue);
+    UNUSED_PARAM(exec);
     // Shadowing a built-in constructor
     castedThis->putDirect(exec->vm(), Identifier(exec, "conditionalAttr6"), value);
 }
 
 #endif
 
-void setJSTestObjAnyAttribute(ExecState* exec, JSObject* /* baseObject */, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+void setJSTestObjAnyAttribute(ExecState* exec, JSObject* baseObject, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
     JSValue value = JSValue::decode(encodedValue);
+    UNUSED_PARAM(baseObject);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(JSValue::decode(thisValue)))
@@ -2855,9 +3044,10 @@ void setJSTestObjAnyAttribute(ExecState* exec, JSObject* /* baseObject */, Encod
 }
 
 
-void setJSTestObjMutablePoint(ExecState* exec, JSObject* /* baseObject */, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+void setJSTestObjMutablePoint(ExecState* exec, JSObject* baseObject, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
     JSValue value = JSValue::decode(encodedValue);
+    UNUSED_PARAM(baseObject);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(JSValue::decode(thisValue)))
@@ -2874,9 +3064,10 @@ void setJSTestObjMutablePoint(ExecState* exec, JSObject* /* baseObject */, Encod
 }
 
 
-void setJSTestObjImmutablePoint(ExecState* exec, JSObject* /* baseObject */, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+void setJSTestObjImmutablePoint(ExecState* exec, JSObject* baseObject, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
     JSValue value = JSValue::decode(encodedValue);
+    UNUSED_PARAM(baseObject);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(JSValue::decode(thisValue)))
@@ -2893,9 +3084,10 @@ void setJSTestObjImmutablePoint(ExecState* exec, JSObject* /* baseObject */, Enc
 }
 
 
-void setJSTestObjStrawberry(ExecState* exec, JSObject* /* baseObject */, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+void setJSTestObjStrawberry(ExecState* exec, JSObject* baseObject, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
     JSValue value = JSValue::decode(encodedValue);
+    UNUSED_PARAM(baseObject);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(JSValue::decode(thisValue)))
@@ -2912,9 +3104,10 @@ void setJSTestObjStrawberry(ExecState* exec, JSObject* /* baseObject */, Encoded
 }
 
 
-void setJSTestObjStrictFloat(ExecState* exec, JSObject* /* baseObject */, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+void setJSTestObjStrictFloat(ExecState* exec, JSObject* baseObject, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
     JSValue value = JSValue::decode(encodedValue);
+    UNUSED_PARAM(baseObject);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(JSValue::decode(thisValue)))
@@ -2931,9 +3124,10 @@ void setJSTestObjStrictFloat(ExecState* exec, JSObject* /* baseObject */, Encode
 }
 
 
-void setJSTestObjId(ExecState* exec, JSObject* /* baseObject */, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+void setJSTestObjId(ExecState* exec, JSObject* baseObject, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
     JSValue value = JSValue::decode(encodedValue);
+    UNUSED_PARAM(baseObject);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(JSValue::decode(thisValue)))
@@ -2950,9 +3144,10 @@ void setJSTestObjId(ExecState* exec, JSObject* /* baseObject */, EncodedJSValue 
 }
 
 
-void setJSTestObjReplaceableAttribute(ExecState* exec, JSObject* /* baseObject */, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+void setJSTestObjReplaceableAttribute(ExecState* exec, JSObject* baseObject, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
     JSValue value = JSValue::decode(encodedValue);
+    UNUSED_PARAM(baseObject);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(JSValue::decode(thisValue)))
@@ -2966,9 +3161,10 @@ void setJSTestObjReplaceableAttribute(ExecState* exec, JSObject* /* baseObject *
 }
 
 
-void setJSTestObjNullableLongSettableAttribute(ExecState* exec, JSObject* /* baseObject */, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+void setJSTestObjNullableLongSettableAttribute(ExecState* exec, JSObject* baseObject, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
     JSValue value = JSValue::decode(encodedValue);
+    UNUSED_PARAM(baseObject);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(JSValue::decode(thisValue)))
@@ -2985,9 +3181,10 @@ void setJSTestObjNullableLongSettableAttribute(ExecState* exec, JSObject* /* bas
 }
 
 
-void setJSTestObjNullableStringValue(ExecState* exec, JSObject* /* baseObject */, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+void setJSTestObjNullableStringValue(ExecState* exec, JSObject* baseObject, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
     JSValue value = JSValue::decode(encodedValue);
+    UNUSED_PARAM(baseObject);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(JSValue::decode(thisValue)))
@@ -3004,9 +3201,10 @@ void setJSTestObjNullableStringValue(ExecState* exec, JSObject* /* baseObject */
 }
 
 
-void setJSTestObjAttributeWithReservedEnumType(ExecState* exec, JSObject* /* baseObject */, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+void setJSTestObjAttributeWithReservedEnumType(ExecState* exec, JSObject* baseObject, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
     JSValue value = JSValue::decode(encodedValue);
+    UNUSED_PARAM(baseObject);
     JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
     if (UNLIKELY(!castedThis)) {
         if (jsDynamicCast<JSTestObjPrototype*>(JSValue::decode(thisValue)))

@@ -52,6 +52,8 @@
 
 @interface UIView (IPI)
 - (UIScrollView *)_scroller;
+- (CGPoint)accessibilityConvertPointFromSceneReferenceCoordinates:(CGPoint)point;
+- (CGRect)accessibilityConvertRectToSceneReferenceCoordinates:(CGRect)rect;
 @end
 
 using namespace WebCore;
@@ -108,41 +110,29 @@ IntSize PageClientImpl::viewSize()
     return IntSize(m_contentView.bounds.size);
 }
 
-bool PageClientImpl::isViewWindowActive()
+// FIXME: https://bugs.webkit.org/show_bug.cgi?id=133098
+ViewState::Flags PageClientImpl::viewState()
 {
-    // FIXME: https://bugs.webkit.org/show_bug.cgi?id=133098
-    return isViewVisible();
+    ViewState::Flags viewState = ViewState::NoFlags;
+    
+    bool isInWindow = [m_webView window];
+    bool isVisible = isInWindow && [UIApplication sharedApplication].applicationState != UIApplicationStateBackground;
+    
+    if (isInWindow)
+        viewState |= ViewState::IsInWindow;
+    
+    if (isVisible)
+        viewState |= ViewState::WindowIsActive | ViewState::IsFocused | ViewState::IsVisible | ViewState::IsVisibleOrOccluded;
+    else
+        viewState |= ViewState::IsVisuallyIdle;
+    
+    return viewState;
 }
-
-bool PageClientImpl::isViewFocused()
-{
-    // FIXME: https://bugs.webkit.org/show_bug.cgi?id=133098
-    return isViewWindowActive();
-}
-
-bool PageClientImpl::isViewVisible()
-{
-    return [m_webView window] && [UIApplication sharedApplication].applicationState != UIApplicationStateBackground;
-}
-
-bool PageClientImpl::isViewInWindow()
-{
-    return [m_webView window];
-}
-
-bool PageClientImpl::isViewVisibleOrOccluded()
-{
-    return isViewVisible();
-}
-
-bool PageClientImpl::isVisuallyIdle()
-{
-    return !isViewVisible();
-}
-
+    
 void PageClientImpl::processDidExit()
 {
     [m_contentView _processDidExit];
+    [m_webView _processDidExit];
 }
 
 void PageClientImpl::didRelaunchProcess()
@@ -187,6 +177,11 @@ void PageClientImpl::handleDownloadRequest(DownloadProxy* download)
 void PageClientImpl::didChangeViewportMetaTagWidth(float newWidth)
 {
     [m_webView _setViewportMetaTagWidth:newWidth];
+}
+
+void PageClientImpl::setUsesMinimalUI(bool usesMinimalUI)
+{
+    [m_webView _setUsesMinimalUI:usesMinimalUI];
 }
 
 double PageClientImpl::minimumZoomScale() const
@@ -304,8 +299,7 @@ FloatRect PageClientImpl::convertToDeviceSpace(const FloatRect& rect)
 
 FloatRect PageClientImpl::convertToUserSpace(const FloatRect& rect)
 {
-    notImplemented();
-    return FloatRect();
+    return rect;
 }
 
 IntPoint PageClientImpl::screenToRootView(const IntPoint& point)
@@ -317,7 +311,23 @@ IntRect PageClientImpl::rootViewToScreen(const IntRect& rect)
 {
     return enclosingIntRect([m_contentView convertRect:rect toView:nil]);
 }
-
+    
+IntPoint PageClientImpl::accessibilityScreenToRootView(const IntPoint& point)
+{
+    CGPoint rootViewPoint = point;
+    if ([m_contentView respondsToSelector:@selector(accessibilityConvertPointFromSceneReferenceCoordinates:)])
+        rootViewPoint = [m_contentView accessibilityConvertPointFromSceneReferenceCoordinates:rootViewPoint];
+    return IntPoint(rootViewPoint);
+}
+    
+IntRect PageClientImpl::rootViewToAccessibilityScreen(const IntRect& rect)
+{
+    CGRect rootViewRect = rect;
+    if ([m_contentView respondsToSelector:@selector(accessibilityConvertRectToSceneReferenceCoordinates:)])
+        rootViewRect = [m_contentView accessibilityConvertRectToSceneReferenceCoordinates:rootViewRect];
+    return enclosingIntRect(rootViewRect);
+}
+    
 void PageClientImpl::doneWithKeyEvent(const NativeWebKeyboardEvent&, bool)
 {
     notImplemented();
@@ -406,7 +416,7 @@ void PageClientImpl::dynamicViewportUpdateChangedTarget(double newScale, const W
     [m_webView _dynamicViewportUpdateChangedTargetToScale:newScale position:newScrollPosition];
 }
 
-void PageClientImpl::startAssistingNode(const AssistedNodeInformation& nodeInformation, bool userIsInteracting, API::Object* userData)
+void PageClientImpl::startAssistingNode(const AssistedNodeInformation& nodeInformation, bool userIsInteracting, bool blurPreviousNode, API::Object* userData)
 {
     MESSAGE_CHECK(!userData || userData->type() == API::Object::Type::Data);
 
@@ -422,7 +432,7 @@ void PageClientImpl::startAssistingNode(const AssistedNodeInformation& nodeInfor
         }
     }
 
-    [m_contentView _startAssistingNode:nodeInformation userIsInteracting:userIsInteracting userObject:userObject];
+    [m_contentView _startAssistingNode:nodeInformation userIsInteracting:userIsInteracting blurPreviousNode:blurPreviousNode userObject:userObject];
 }
 
 void PageClientImpl::stopAssistingNode()
@@ -503,6 +513,13 @@ void PageClientImpl::didFinishLoadingDataForCustomContentProvider(const String& 
 void PageClientImpl::zoomToRect(FloatRect rect, double minimumScale, double maximumScale)
 {
     [m_contentView _zoomToRect:rect withOrigin:rect.center() fitEntireRect:YES minimumScale:minimumScale maximumScale:maximumScale minimumScrollDistance:0];
+}
+
+void PageClientImpl::didFinishDrawingPagesToPDF(const IPC::DataReference& pdfData)
+{
+    RetainPtr<CFDataRef> data = adoptCF(CFDataCreate(kCFAllocatorDefault, pdfData.data(), pdfData.size()));
+    RetainPtr<CGDataProviderRef> dataProvider = adoptCF(CGDataProviderCreateWithCFData(data.get()));
+    m_webView._printedDocument = adoptCF(CGPDFDocumentCreateWithProvider(dataProvider.get())).get();
 }
 
 } // namespace WebKit

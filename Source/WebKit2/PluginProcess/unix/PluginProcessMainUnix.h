@@ -31,12 +31,10 @@
 
 namespace WebKit {
 
-#ifdef __cplusplus
 extern "C" {
-WK_EXPORT int PluginProcessMainUnix(int argc, char* argv[]);
-} // extern "C"
-#endif // __cplusplus
+WK_EXPORT int PluginProcessMainUnix(int argc, char** argv);
+}
 
 } // namespace WebKit
 
-#endif // PluginProcessMain_h
+#endif // PluginProcessMainUnix_h

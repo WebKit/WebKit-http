@@ -45,7 +45,6 @@
 #include "WebPageCreationParameters.h"
 #include "WebPageProxyMessages.h"
 #include "WebPopupMenu.h"
-#include "WebPreferencesStore.h"
 #include "WebProcess.h"
 #include "WebProcessProxyMessages.h"
 #include "WebSearchPopupMenu.h"
@@ -486,6 +485,18 @@ IntRect WebChromeClient::rootViewToScreen(const IntRect& rect) const
 {
     return m_page->rootViewToScreen(rect);
 }
+    
+#if PLATFORM(IOS)
+IntPoint WebChromeClient::accessibilityScreenToRootView(const IntPoint& point) const
+{
+    return m_page->accessibilityScreenToRootView(point);
+}
+
+IntRect WebChromeClient::rootViewToAccessibilityScreen(const IntRect& rect) const
+{
+    return m_page->rootViewToAccessibilityScreen(rect);
+}
+#endif
 
 PlatformPageClient WebChromeClient::platformPageClient() const
 {
@@ -779,6 +790,13 @@ GraphicsLayerFactory* WebChromeClient::graphicsLayerFactory() const
 {
     return m_page->drawingArea()->graphicsLayerFactory();
 }
+
+#if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
+PassRefPtr<WebCore::DisplayRefreshMonitor> WebChromeClient::createDisplayRefreshMonitor(PlatformDisplayID displayID) const
+{
+    return m_page->drawingArea()->createDisplayRefreshMonitor(displayID);
+}
+#endif
 
 void WebChromeClient::attachRootGraphicsLayer(Frame*, GraphicsLayer* layer)
 {

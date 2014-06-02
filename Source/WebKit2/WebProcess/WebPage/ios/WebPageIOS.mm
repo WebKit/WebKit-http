@@ -76,6 +76,7 @@
 #import <WebCore/PlatformMouseEvent.h>
 #import <WebCore/RenderBlock.h>
 #import <WebCore/RenderImage.h>
+#import <WebCore/RenderThemeIOS.h>
 #import <WebCore/RenderView.h>
 #import <WebCore/ResourceBuffer.h>
 #import <WebCore/SharedBuffer.h>
@@ -126,10 +127,17 @@ FloatSize WebPage::availableScreenSize() const
 
 void WebPage::viewportPropertiesDidChange(const ViewportArguments& viewportArguments)
 {
+    if (m_viewportConfiguration.viewportArguments() == viewportArguments)
+        return;
+
     float oldWidth = m_viewportConfiguration.viewportArguments().width;
+    bool wasUsingMinimalUI = m_viewportConfiguration.usesMinimalUI();
 
     m_viewportConfiguration.setViewportArguments(viewportArguments);
     viewportConfigurationChanged();
+
+    if (wasUsingMinimalUI != m_viewportConfiguration.usesMinimalUI())
+        send(Messages::WebPageProxy::SetUsesMinimalUI(m_viewportConfiguration.usesMinimalUI()));
 
     if (oldWidth != viewportArguments.width)
         send(Messages::WebPageProxy::ViewportMetaTagWidthDidChange(viewportArguments.width));
@@ -445,8 +453,10 @@ void WebPage::potentialTapAtPosition(uint64_t requestID, const WebCore::FloatPoi
 
 void WebPage::commitPotentialTap()
 {
-    if (!m_potentialTapNode || !m_potentialTapNode->renderer())
+    if (!m_potentialTapNode || !m_potentialTapNode->renderer()) {
+        commitPotentialTapFailed();
         return;
+    }
 
     FloatPoint adjustedPoint;
     Node* nodeRespondingToClick = m_page->mainFrame().nodeRespondingToClickEvents(m_potentialTapLocation, adjustedPoint);
@@ -454,10 +464,16 @@ void WebPage::commitPotentialTap()
     if (m_potentialTapNode == nodeRespondingToClick)
         handleSyntheticClick(nodeRespondingToClick, adjustedPoint);
     else
-        send(Messages::WebPageProxy::CommitPotentialTapFailed());
+        commitPotentialTapFailed();
 
     m_potentialTapNode = nullptr;
     m_potentialTapLocation = FloatPoint();
+}
+
+void WebPage::commitPotentialTapFailed()
+{
+    send(Messages::WebPageProxy::CommitPotentialTapFailed());
+    send(Messages::WebPageProxy::DidNotHandleTapAsClick(roundedIntPoint(m_potentialTapLocation)));
 }
 
 void WebPage::cancelPotentialTap()
@@ -1856,8 +1872,17 @@ void WebPage::getAssistedNodeInformation(AssistedNodeInformation& information)
             information.elementType = WKTypeMonth;
         else if (element->isURLField())
             information.elementType = WKTypeURL;
-        else if (element->isText())
-            information.elementType = element->getAttribute("pattern") == "\\d*" || element->getAttribute("pattern") == "[0-9]*" ? WKTypeNumberPad : WKTypeText;
+        else if (element->isText()) {
+            const AtomicString& pattern = element->fastGetAttribute(HTMLNames::patternAttr);
+            if (pattern == "\\d*" || pattern == "[0-9]*")
+                information.elementType = WKTypeNumberPad;
+            else {
+                information.elementType = WKTypeText;
+                if (!information.formAction.isEmpty()
+                    && (element->getNameAttribute().contains("search") || element->getIdAttribute().contains("search") || element->fastGetAttribute(HTMLNames::titleAttr).contains("search")))
+                    information.elementType = WKTypeSearch;
+            }
+        }
 
         information.isReadOnly = element->isReadOnly();
         information.value = element->value();
@@ -1886,14 +1911,20 @@ void WebPage::elementDidFocus(WebCore::Node* node)
         if (m_userIsInteracting)
             m_formClient->willBeginInputSession(this, toElement(node), WebFrame::fromCoreFrame(*node->document().frame()), userData);
 
-        send(Messages::WebPageProxy::StartAssistingNode(information, m_userIsInteracting, InjectedBundleUserMessageEncoder(userData.get())));
+        send(Messages::WebPageProxy::StartAssistingNode(information, m_userIsInteracting, m_hasPendingBlurNotification, InjectedBundleUserMessageEncoder(userData.get())));
+        m_hasPendingBlurNotification = false;
     }
 }
 
 void WebPage::elementDidBlur(WebCore::Node* node)
 {
     if (m_assistedNode == node) {
-        send(Messages::WebPageProxy::StopAssistingNode());
+        m_hasPendingBlurNotification = true;
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (m_hasPendingBlurNotification)
+                send(Messages::WebPageProxy::StopAssistingNode());
+            m_hasPendingBlurNotification = false;
+        });
         m_assistedNode = 0;
     }
 }
@@ -1905,11 +1936,17 @@ void WebPage::setViewportConfigurationMinimumLayoutSize(const FloatSize& size)
     viewportConfigurationChanged();
 }
 
-void WebPage::setMinimumLayoutSizeForMinimalUI(const FloatSize& size)
+void WebPage::setViewportConfigurationMinimumLayoutSizeForMinimalUI(const FloatSize& size)
 {
-    resetTextAutosizingBeforeLayoutIfNeeded(m_minimumLayoutSizeForMinimalUI, size);
-    m_minimumLayoutSizeForMinimalUI = size;
+    resetTextAutosizingBeforeLayoutIfNeeded(m_viewportConfiguration.minimumLayoutSizeForMinimalUI(), size);
+    m_viewportConfiguration.setMinimumLayoutSizeForMinimalUI(size);
     viewportConfigurationChanged();
+}
+
+void WebPage::setMaximumUnobscuredSize(const FloatSize& maximumUnobscuredSize)
+{
+    m_maximumUnobscuredSize = maximumUnobscuredSize;
+    updateViewportSizeForCSSViewportUnits();
 }
 
 static inline bool withinEpsilon(float a, float b)
@@ -1930,7 +1967,7 @@ void WebPage::resetTextAutosizingBeforeLayoutIfNeeded(const FloatSize& oldSize, 
     }
 }
 
-void WebPage::dynamicViewportSizeUpdate(const FloatSize& minimumLayoutSize, const FloatRect& targetExposedContentRect, const FloatRect& targetUnobscuredRect, const WebCore::FloatRect& targetUnobscuredRectInScrollViewCoordinates, double targetScale)
+void WebPage::dynamicViewportSizeUpdate(const FloatSize& minimumLayoutSize, const FloatSize& minimumLayoutSizeForMinimalUI, const WebCore::FloatSize& maximumUnobscuredSize, const FloatRect& targetExposedContentRect, const FloatRect& targetUnobscuredRect, const WebCore::FloatRect& targetUnobscuredRectInScrollViewCoordinates, double targetScale)
 {
     TemporaryChange<bool> dynamicSizeUpdateGuard(m_inDynamicSizeUpdate, true);
     // FIXME: this does not handle the cases where the content would change the content size or scroll position from JavaScript.
@@ -1969,9 +2006,14 @@ void WebPage::dynamicViewportSizeUpdate(const FloatSize& minimumLayoutSize, cons
     }
 
     resetTextAutosizingBeforeLayoutIfNeeded(m_viewportConfiguration.minimumLayoutSize(), minimumLayoutSize);
+    resetTextAutosizingBeforeLayoutIfNeeded(m_viewportConfiguration.minimumLayoutSizeForMinimalUI(), minimumLayoutSizeForMinimalUI);
     m_viewportConfiguration.setMinimumLayoutSize(minimumLayoutSize);
+    m_viewportConfiguration.setMinimumLayoutSizeForMinimalUI(minimumLayoutSizeForMinimalUI);
     IntSize newLayoutSize = m_viewportConfiguration.layoutSize();
+
     setFixedLayoutSize(newLayoutSize);
+    setMaximumUnobscuredSize(maximumUnobscuredSize);
+
     frameView.updateLayoutAndStyleIfNeededRecursive();
 
     IntSize newContentSize = frameView.contentsSize();
@@ -2095,7 +2137,7 @@ void WebPage::dynamicViewportSizeUpdate(const FloatSize& minimumLayoutSize, cons
     frameView.setScrollVelocity(0, 0, 0, monotonicallyIncreasingTime());
 
     IntRect roundedUnobscuredContentRect = roundedIntRect(newUnobscuredContentRect);
-    frameView.setUnobscuredContentRect(roundedUnobscuredContentRect);
+    frameView.setUnobscuredContentSize(roundedUnobscuredContentRect.size());
     m_drawingArea->setExposedContentRect(newExposedContentRect);
 
     scalePage(scale, roundedUnobscuredContentRect.location());
@@ -2142,23 +2184,20 @@ void WebPage::viewportConfigurationChanged()
 
     m_page->setZoomedOutPageScaleFactor(m_viewportConfiguration.minimumScale());
 
+    updateViewportSizeForCSSViewportUnits();
+
     FrameView& frameView = *mainFrameView();
-    FloatSize viewportSize = !m_minimumLayoutSizeForMinimalUI.isEmpty() ? m_minimumLayoutSizeForMinimalUI : m_viewportConfiguration.minimumLayoutSize();
-    viewportSize.scale(1 / initialScale);
-    frameView.setViewportSize(roundedIntSize(viewportSize));
-    
     IntPoint scrollPosition = frameView.scrollPosition();
     if (!m_hasReceivedVisibleContentRectsAfterDidCommitLoad) {
-        FloatSize minimumLayoutSizeInScrollViewCoordinates = m_viewportConfiguration.minimumLayoutSize();
+        FloatSize minimumLayoutSizeInScrollViewCoordinates = m_viewportConfiguration.activeMinimumLayoutSizeInScrollViewCoordinates();
         minimumLayoutSizeInScrollViewCoordinates.scale(1 / scale);
         IntSize minimumLayoutSizeInDocumentCoordinates = roundedIntSize(minimumLayoutSizeInScrollViewCoordinates);
-        IntRect unobscuredContentRect(scrollPosition, minimumLayoutSizeInDocumentCoordinates);
-        frameView.setUnobscuredContentRect(unobscuredContentRect);
+        frameView.setUnobscuredContentSize(minimumLayoutSizeInDocumentCoordinates);
         frameView.setScrollVelocity(0, 0, 0, monotonicallyIncreasingTime());
 
         // FIXME: We could send down the obscured margins to find a better exposed rect and unobscured rect.
         // It is not a big deal at the moment because the tile coverage will always extend past the obscured bottom inset.
-        m_drawingArea->setExposedContentRect(unobscuredContentRect);
+        m_drawingArea->setExposedContentRect(IntRect(scrollPosition, minimumLayoutSizeInDocumentCoordinates));
     }
     scalePage(scale, scrollPosition);
     
@@ -2166,8 +2205,19 @@ void WebPage::viewportConfigurationChanged()
         // This takes scale into account, so do after the scale change.
         frameView.setCustomFixedPositionLayoutRect(enclosingIntRect(frameView.viewportConstrainedObjectsRect()));
 
-        frameView.setCustomSizeForResizeEvent(expandedIntSize(m_viewportConfiguration.minimumLayoutSize()));
+        frameView.setCustomSizeForResizeEvent(expandedIntSize(m_viewportConfiguration.activeMinimumLayoutSizeInScrollViewCoordinates()));
     }
+}
+
+void WebPage::updateViewportSizeForCSSViewportUnits()
+{
+    FloatSize largestUnobscuredRect = m_maximumUnobscuredSize;
+    if (largestUnobscuredRect.isEmpty())
+        largestUnobscuredRect = m_viewportConfiguration.minimumLayoutSizeForMinimalUI();
+
+    FrameView& frameView = *mainFrameView();
+    largestUnobscuredRect.scale(1 / m_viewportConfiguration.initialScale());
+    frameView.setViewportSizeForCSSViewportUnits(roundedIntSize(largestUnobscuredRect));
 }
 
 void WebPage::applicationWillResignActive()
@@ -2254,10 +2304,10 @@ void WebPage::updateVisibleContentRects(const VisibleContentRectUpdateInfo& visi
     }
 
     FrameView& frameView = *m_page->mainFrame().view();
-    if (scrollPosition != IntPoint(frameView.scrollOffset()))
+    if (scrollPosition != frameView.scrollPosition())
         m_dynamicSizeUpdateHistory.clear();
 
-    frameView.setUnobscuredContentRect(roundedUnobscuredRect);
+    frameView.setUnobscuredContentSize(roundedUnobscuredRect.size());
 
     double horizontalVelocity = visibleContentRectUpdateInfo.horizontalVelocity();
     double verticalVelocity = visibleContentRectUpdateInfo.verticalVelocity();
@@ -2302,6 +2352,25 @@ void WebPage::dispatchAsynchronousTouchEvents(const Vector<WebTouchEvent, 1>& qu
     bool ignored;
     for (const WebTouchEvent& event : queue)
         dispatchTouchEvent(event, ignored);
+}
+
+void WebPage::computePagesForPrintingAndStartDrawingToPDF(uint64_t frameID, const PrintInfo& printInfo, uint32_t firstPage, PassRefPtr<Messages::WebPage::ComputePagesForPrintingAndStartDrawingToPDF::DelayedReply> reply)
+{
+    Vector<WebCore::IntRect> pageRects;
+    double totalScaleFactor = 1;
+    computePagesForPrintingImpl(frameID, printInfo, pageRects, totalScaleFactor);
+    std::size_t pageCount = pageRects.size();
+    reply->send(std::move(pageRects), totalScaleFactor);
+
+    RetainPtr<CFMutableDataRef> pdfPageData;
+    drawPagesToPDFImpl(frameID, printInfo, firstPage, pageCount - firstPage, pdfPageData);
+    send(Messages::WebPageProxy::DidFinishDrawingPagesToPDF(IPC::DataReference(CFDataGetBytePtr(pdfPageData.get()), CFDataGetLength(pdfPageData.get()))));
+}
+
+void WebPage::contentSizeCategoryDidChange(const String& contentSizeCategory)
+{
+    RenderThemeIOS::setContentSizeCategory(contentSizeCategory);
+    Page::updateStyleForAllPagesAfterGlobalChangeInEnvironment();
 }
 
 } // namespace WebKit

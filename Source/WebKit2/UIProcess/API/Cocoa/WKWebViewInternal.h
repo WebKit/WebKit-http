@@ -32,6 +32,7 @@
 
 #if PLATFORM(IOS)
 #import "WKContentView.h"
+#import "WKContentViewInteraction.h"
 #import <WebCore/FloatRect.h>
 #import <UIKit/UIScrollView_Private.h>
 #endif
@@ -46,8 +47,11 @@
 
 namespace WebKit {
 class WebPageProxy;
+struct PrintInfo;
 struct ViewSnapshot;
 }
+
+@class WKWebViewPrintFormatter;
 
 @interface WKWebView () WK_WEB_VIEW_PROTOCOLS {
 
@@ -58,6 +62,11 @@ struct ViewSnapshot;
 }
 
 #if PLATFORM(IOS)
+
+@property (nonatomic, setter=_setUsesMinimalUI:) BOOL _usesMinimalUI;
+
+- (void)_processDidExit;
+
 - (void)_didCommitLoadForMainFrame;
 - (void)_didCommitLayerTree:(const WebKit::RemoteLayerTreeTransaction&)layerTreeTransaction;
 
@@ -81,5 +90,13 @@ struct ViewSnapshot;
 @end
 
 WKWebView* fromWebPageProxy(WebKit::WebPageProxy&);
+
+#if PLATFORM(IOS)
+@interface WKWebView (WKWebViewPrintFormatter)
+- (NSInteger)_computePageCountAndStartDrawingToPDFWithPrintInfo:(const WebKit::PrintInfo&)printInfo firstPage:(uint32_t)firstPage computedTotalScaleFactor:(double&)totalScaleFactor;
+- (void)_endPrinting;
+@property (nonatomic, setter=_setPrintedDocument:) CGPDFDocumentRef _printedDocument;
+@end
+#endif
 
 #endif

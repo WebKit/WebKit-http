@@ -43,6 +43,7 @@
 #include "WebFrame.h"
 #include "WebFrameNetworkingContext.h"
 #include "WebPage.h"
+#include "WebPreferencesKeys.h"
 #include "WebPreferencesStore.h"
 #include "WebProcess.h"
 #include "WebProcessCreationParameters.h"
@@ -84,11 +85,21 @@ using namespace JSC;
 
 namespace WebKit {
 
+PassRefPtr<InjectedBundle> InjectedBundle::create(const WebProcessCreationParameters& parameters, API::Object* initializationUserData)
+{
+    RefPtr<InjectedBundle> bundle = adoptRef(new InjectedBundle(parameters));
+
+    bundle->m_sandboxExtension = SandboxExtension::create(parameters.injectedBundlePathExtensionHandle);
+    if (!bundle->initialize(parameters, initializationUserData))
+        return nullptr;
+
+    return bundle.release();
+}
+
 InjectedBundle::InjectedBundle(const WebProcessCreationParameters& parameters)
     : m_path(parameters.injectedBundlePath)
     , m_platformBundle(0)
 {
-    platformInitialize(parameters);
 }
 
 InjectedBundle::~InjectedBundle()

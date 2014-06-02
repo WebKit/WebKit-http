@@ -8,9 +8,9 @@ configure_file(webkit2gtk.pc.in ${WebKit2_PKGCONFIG_FILE} @ONLY)
 configure_file(webkit2gtk-web-extension.pc.in ${WebKit2WebExtension_PKGCONFIG_FILE} @ONLY)
 
 add_definitions(-DWEBKIT2_COMPILATION)
-add_definitions(-DLIBEXECDIR="${CMAKE_INSTALL_FULL_LIBEXECDIR}")
+add_definitions(-DLIBEXECDIR="${LIBEXEC_INSTALL_DIR}")
 add_definitions(-DPACKAGE_LOCALE_DIR="${CMAKE_INSTALL_FULL_LOCALEDIR}")
-add_definitions(-DLIBDIR="${CMAKE_INSTALL_FULL_LIBDIR}")
+add_definitions(-DLIBDIR="${LIB_INSTALL_DIR}")
 
 set(WebKit2_USE_PREFIX_HEADER ON)
 
@@ -22,11 +22,11 @@ list(APPEND WebKit2_SOURCES
     ${DERIVED_SOURCES_WEBKIT2GTK_API_DIR}/WebKitEnumTypes.cpp
     ${DERIVED_SOURCES_WEBKIT2GTK_API_DIR}/WebKitMarshal.cpp
 
+    NetworkProcess/gtk/NetworkProcessMainGtk.cpp
+
     NetworkProcess/soup/NetworkProcessSoup.cpp
     NetworkProcess/soup/NetworkResourceLoadSchedulerSoup.cpp
     NetworkProcess/soup/RemoteNetworkingContextSoup.cpp
-
-    NetworkProcess/unix/NetworkProcessMainUnix.cpp
 
     Platform/IPC/unix/AttachmentUnix.cpp
     Platform/IPC/unix/ConnectionUnix.cpp
@@ -74,6 +74,8 @@ list(APPEND WebKit2_SOURCES
     Shared/linux/SeccompFilters/SyscallPolicy.cpp
 
     Shared/soup/WebCoreArgumentCodersSoup.cpp
+
+    Shared/unix/ChildProcessMain.cpp
 
     UIProcess/DefaultUndoController.cpp
     UIProcess/DrawingAreaProxyImpl.cpp
@@ -397,12 +399,14 @@ list(APPEND WebKit2_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/graphics/opentype"
     "${WEBCORE_DIR}/platform/network/soup"
     "${WEBCORE_DIR}/platform/text/enchant"
+    "${WEBKIT2_DIR}/NetworkProcess/gtk"
+    "${WEBKIT2_DIR}/NetworkProcess/unix"
     "${WEBKIT2_DIR}/Shared/API/c/gtk"
     "${WEBKIT2_DIR}/Shared/Network/CustomProtocols/soup"
     "${WEBKIT2_DIR}/Shared/Downloads/soup"
     "${WEBKIT2_DIR}/Shared/gtk"
     "${WEBKIT2_DIR}/Shared/soup"
-    "${WEBKIT2_DIR}/NetworkProcess/unix"
+    "${WEBKIT2_DIR}/Shared/unix"
     "${WEBKIT2_DIR}/UIProcess/API/C/cairo"
     "${WEBKIT2_DIR}/UIProcess/API/C/gtk"
     "${WEBKIT2_DIR}/UIProcess/API/C/soup"
@@ -415,6 +419,7 @@ list(APPEND WebKit2_INCLUDE_DIRECTORIES
     "${WEBKIT2_DIR}/WebProcess/InjectedBundle/API/gtk"
     "${WEBKIT2_DIR}/WebProcess/gtk"
     "${WEBKIT2_DIR}/WebProcess/soup"
+    "${WEBKIT2_DIR}/WebProcess/unix"
     "${WEBKIT2_DIR}/WebProcess/WebCoreSupport/gtk"
     "${WEBKIT2_DIR}/WebProcess/WebCoreSupport/soup"
     "${WEBKIT2_DIR}/WebProcess/WebPage/atk"
@@ -438,11 +443,11 @@ list(APPEND WebKit2_INCLUDE_DIRECTORIES
 )
 
 list(APPEND WebProcess_SOURCES
-    gtk/MainGtk.cpp
+    WebProcess/EntryPoint/unix/WebProcessMain.cpp
 )
 
 list(APPEND NetworkProcess_SOURCES
-    unix/NetworkMainUnix.cpp
+    NetworkProcess/EntryPoint/unix/NetworkProcessMain.cpp
 )
 
 set(SharedWebKit2Libraries
@@ -507,9 +512,12 @@ add_custom_command(
 
 set(WebKit2Resources
     "        <file alias=\"images/deleteButton\">deleteButton.png</file>\n"
+    "        <file alias=\"images/deleteButton@2x\">deleteButton@2x.png</file>\n"
     "        <file alias=\"images/missingImage\">missingImage.png</file>\n"
+    "        <file alias=\"images/missingImage@2x\">missingImage@2x.png</file>\n"
     "        <file alias=\"images/panIcon\">panIcon.png</file>\n"
     "        <file alias=\"images/textAreaResizeCorner\">textAreaResizeCorner.png</file>\n"
+    "        <file alias=\"images/textAreaResizeCorner@2x\">textAreaResizeCorner@2x.png</file>\n"
 )
 
 if (ENABLE_ICONDATABASE)
@@ -595,6 +603,8 @@ if (ENABLE_PLUGIN_PROCESS)
 
         Platform/unix/SharedMemoryUnix.cpp
 
+        PluginProcess/EntryPoint/unix/PluginProcessMain.cpp
+
         PluginProcess/PluginControllerProxy.cpp
         PluginProcess/PluginCreationParameters.cpp
         PluginProcess/PluginProcess.cpp
@@ -642,6 +652,8 @@ if (ENABLE_PLUGIN_PROCESS)
 
         Shared/soup/WebCoreArgumentCodersSoup.cpp
 
+        Shared/unix/ChildProcessMain.cpp
+
         UIProcess/Launcher/ProcessLauncher.cpp
 
         UIProcess/Launcher/gtk/ProcessLauncherGtk.cpp
@@ -657,8 +669,6 @@ if (ENABLE_PLUGIN_PROCESS)
         WebProcess/Plugins/Netscape/NetscapePluginStream.cpp
 
         WebProcess/Plugins/Netscape/x11/NetscapePluginX11.cpp
-
-        unix/PluginMainUnix.cpp
 
         ${DERIVED_SOURCES_WEBKIT2_DIR}/PluginControllerProxyMessageReceiver.cpp
         ${DERIVED_SOURCES_WEBKIT2_DIR}/PluginProcessMessageReceiver.cpp
@@ -699,7 +709,7 @@ if (ENABLE_PLUGIN_PROCESS)
 
     # GTK3 PluginProcess
     list(APPEND PluginProcess_SOURCES
-        unix/PluginMainUnix.cpp
+        PluginProcess/EntryPoint/unix/PluginProcessMain.cpp
     )
 
 endif () # ENABLE_PLUGIN_PROCESS

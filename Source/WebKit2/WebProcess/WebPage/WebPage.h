@@ -77,6 +77,7 @@
 
 #if PLATFORM(IOS)
 #include "GestureTypes.h"
+#import "WebPageMessages.h"
 #endif
 
 #if ENABLE(TOUCH_EVENTS)
@@ -248,6 +249,7 @@ public:
     void didStartPageTransition();
     void didCompletePageTransition();
     void didCommitLoad(WebFrame*);
+    void didFinishDocumentLoad(WebFrame*);
     void didFinishLoad(WebFrame*);
     void show();
     String userAgent() const { return m_userAgent; }
@@ -424,11 +426,17 @@ public:
 
     void hidePageBanners();
     void showPageBanners();
+    
 #endif // !PLATFORM(IOS)
 
     WebCore::IntPoint screenToRootView(const WebCore::IntPoint&);
     WebCore::IntRect rootViewToScreen(const WebCore::IntRect&);
-
+    
+#if PLATFORM(IOS)
+    WebCore::IntPoint accessibilityScreenToRootView(const WebCore::IntPoint&);
+    WebCore::IntRect rootViewToAccessibilityScreen(const WebCore::IntRect&);
+#endif
+    
     PassRefPtr<WebImage> scaledSnapshotWithOptions(const WebCore::IntRect&, double additionalScaleFactor, SnapshotOptions);
     PassRefPtr<WebImage> snapshotAtSize(const WebCore::IntRect&, const WebCore::IntSize& bitmapSize, SnapshotOptions);
 
@@ -454,6 +462,7 @@ public:
     void handleTap(const WebCore::IntPoint&);
     void potentialTapAtPosition(uint64_t requestID, const WebCore::FloatPoint&);
     void commitPotentialTap();
+    void commitPotentialTapFailed();
     void cancelPotentialTap();
     void tapHighlightAtPosition(uint64_t requestID, const WebCore::FloatPoint&);
 
@@ -486,6 +495,7 @@ public:
     void updateSelectionAppearance();
 
     void dispatchAsynchronousTouchEvents(const Vector<WebTouchEvent, 1>& queue);
+    void contentSizeCategoryDidChange(const String&);
 #if ENABLE(INSPECTOR)
     void showInspectorIndication();
     void hideInspectorIndication();
@@ -544,7 +554,7 @@ public:
 #endif
 
 #if PLATFORM(GTK)
-    void setComposition(const String& text, Vector<WebCore::CompositionUnderline> underlines, uint64_t selectionStart, uint64_t selectionEnd, uint64_t replacementRangeStart, uint64_t replacementRangeLength);
+    void setComposition(const String& text, const Vector<WebCore::CompositionUnderline>& underlines, uint64_t selectionStart, uint64_t selectionEnd, uint64_t replacementRangeStart, uint64_t replacementRangeLength);
     void confirmComposition(const String& text, int64_t selectionStart, int64_t selectionLength);
     void cancelComposition();
 #endif
@@ -651,9 +661,14 @@ public:
     void beginPrinting(uint64_t frameID, const PrintInfo&);
     void endPrinting();
     void computePagesForPrinting(uint64_t frameID, const PrintInfo&, uint64_t callbackID);
+    void computePagesForPrintingImpl(uint64_t frameID, const PrintInfo&, Vector<WebCore::IntRect>& pageRects, double& totalScaleFactor);
 #if PLATFORM(COCOA)
     void drawRectToImage(uint64_t frameID, const PrintInfo&, const WebCore::IntRect&, const WebCore::IntSize&, uint64_t callbackID);
     void drawPagesToPDF(uint64_t frameID, const PrintInfo&, uint32_t first, uint32_t count, uint64_t callbackID);
+    void drawPagesToPDFImpl(uint64_t frameID, const PrintInfo&, uint32_t first, uint32_t count, RetainPtr<CFMutableDataRef>& pdfPageData);
+#if PLATFORM(IOS)
+    void computePagesForPrintingAndStartDrawingToPDF(uint64_t frameID, const PrintInfo&, uint32_t firstPage, PassRefPtr<Messages::WebPage::ComputePagesForPrintingAndStartDrawingToPDF::DelayedReply>);
+#endif
 #elif PLATFORM(GTK)
     void drawPagesForPrinting(uint64_t frameID, const PrintInfo&, uint64_t callbackID);
     void didFinishPrintOperation(const WebCore::ResourceError&, uint64_t callbackID);
@@ -706,8 +721,9 @@ public:
 
 #if PLATFORM(IOS)
     void setViewportConfigurationMinimumLayoutSize(const WebCore::FloatSize&);
-    void setMinimumLayoutSizeForMinimalUI(const WebCore::FloatSize&);
-    void dynamicViewportSizeUpdate(const WebCore::FloatSize& minimumLayoutSize, const WebCore::FloatRect& targetExposedContentRect, const WebCore::FloatRect& targetUnobscuredRect, const WebCore::FloatRect& targetUnobscuredRectInScrollViewCoordinates, double scale);
+    void setViewportConfigurationMinimumLayoutSizeForMinimalUI(const WebCore::FloatSize&);
+    void setMaximumUnobscuredSize(const WebCore::FloatSize&);
+    void dynamicViewportSizeUpdate(const WebCore::FloatSize& minimumLayoutSize, const WebCore::FloatSize& minimumLayoutSizeForMinimalUI, const WebCore::FloatSize& maximumUnobscuredSize, const WebCore::FloatRect& targetExposedContentRect, const WebCore::FloatRect& targetUnobscuredRect, const WebCore::FloatRect& targetUnobscuredRectInScrollViewCoordinates, double scale);
     void updateVisibleContentRects(const VisibleContentRectUpdateInfo&);
     bool scaleWasSetByUIProcess() const { return m_scaleWasSetByUIProcess; }
     void willStartUserTriggeredZooming();
@@ -815,6 +831,7 @@ private:
 #if PLATFORM(IOS)
     void resetViewportDefaultConfiguration(WebFrame* mainFrame);
     void viewportConfigurationChanged();
+    void updateViewportSizeForCSSViewportUnits();
 
     static void convertSelectionRectsToRootView(WebCore::FrameView*, Vector<WebCore::SelectionRect>&);
     PassRefPtr<WebCore::Range> rangeForWebSelectionAtPosition(const WebCore::IntPoint&, const WebCore::VisiblePosition&, SelectionFlags&);
@@ -1192,11 +1209,12 @@ private:
     bool m_scaleWasSetByUIProcess;
     bool m_userHasChangedPageScaleFactor;
     bool m_userIsInteracting;
+    bool m_hasPendingBlurNotification;
     WebCore::FloatSize m_screenSize;
     WebCore::FloatSize m_availableScreenSize;
     RefPtr<WebCore::Range> m_currentBlockSelection;
     WebCore::IntSize m_blockSelectionDesiredSize;
-    WebCore::FloatSize m_minimumLayoutSizeForMinimalUI;
+    WebCore::FloatSize m_maximumUnobscuredSize;
     bool m_inDynamicSizeUpdate;
     HashMap<std::pair<WebCore::IntSize, double>, WebCore::IntPoint> m_dynamicSizeUpdateHistory;
     RefPtr<WebCore::Node> m_pendingSyntheticClickNode;

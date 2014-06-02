@@ -45,7 +45,6 @@ my (
     $threeDRenderingSupport,
     $accelerated2DCanvasSupport,
     $batteryStatusSupport,
-    $blobSupport,
     $canvasPathSupport,
     $canvasProxySupport,
     $channelMessagingSupport,
@@ -62,7 +61,6 @@ my (
     $cssImageResolutionSupport,
     $cssImageSetSupport,
     $cssRegionsSupport,
-    $cssShadersSupport,
     $cssShapesSupport,
     $cssCompositingSupport,
     $cssAnimationsTransformsUnprefixedSupport,
@@ -162,9 +160,6 @@ my @features = (
     { option => "battery-status", desc => "Toggle Battery Status support",
       define => "ENABLE_BATTERY_STATUS", default => isEfl(), value => \$batteryStatusSupport },
 
-    { option => "blob", desc => "Toggle Blob support",
-      define => "ENABLE_BLOB", default => ((isAppleMacWebKit() && !isIOSWebKit()) || isGtk() || isEfl() || isHaiku()), value => \$blobSupport },
-
     { option => "canvas-path", desc => "Toggle Canvas Path support",
       define => "ENABLE_CANVAS_PATH", default => 1, value => \$canvasPathSupport },
 
@@ -184,7 +179,7 @@ my @features = (
       define => "ENABLE_CSS_SHAPES", default => 1, value => \$cssShapesSupport },
 
     { option => "css-filters", desc => "Toggle CSS Filters support",
-      define => "ENABLE_CSS_FILTERS", default => (isAppleMacWebKit() || isIOSWebKit()), value => \$cssFiltersSupport },
+      define => "ENABLE_CSS_FILTERS", default => (isAppleMacWebKit() || isIOSWebKit() || isEfl()), value => \$cssFiltersSupport },
 
     { option => "css-grid-layout", desc => "Toggle CSS Grid Layout support",
       define => "ENABLE_CSS_GRID_LAYOUT", default => 1, value => \$cssGridLayoutSupport },
@@ -212,9 +207,6 @@ my @features = (
 
     { option => "css-regions", desc => "Toggle CSS Regions support",
       define => "ENABLE_CSS_REGIONS", default => 1, value => \$cssRegionsSupport },
-
-    { option => "css-shaders", desc => "Toggle CSS Shaders support",
-      define => "ENABLE_CSS_SHADERS", default => isAppleMacWebKit(), value => \$cssShadersSupport },
 
     { option => "css-compositing", desc => "Toggle CSS Compositing support",
       define => "ENABLE_CSS_COMPOSITING", default => isAppleWebKit(), value => \$cssCompositingSupport },

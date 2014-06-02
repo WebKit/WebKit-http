@@ -626,13 +626,6 @@ void RenderBlock::deleteLines()
         cache->recomputeIsIgnored(this);
 }
 
-void RenderBlock::invalidateLineLayoutPath()
-{
-    if (m_lineLayoutPath == ForceLineBoxesPath)
-        return;
-    m_lineLayoutPath = UndeterminedPath;
-}
-
 void RenderBlock::makeChildrenNonInline(RenderObject* insertionPoint)
 {    
     // makeChildrenNonInline takes a block whose children are *all* inline and it
@@ -777,14 +770,12 @@ void RenderBlock::collapseAnonymousBoxChild(RenderBlock* parent, RenderBlock* ch
     child->destroy();
 }
 
-void RenderBlock::removeChild(RenderObject& oldChild)
+RenderObject* RenderBlock::removeChild(RenderObject& oldChild)
 {
     // No need to waste time in merging or removing empty anonymous blocks.
     // We can just bail out if our document is getting destroyed.
-    if (documentBeingDestroyed()) {
-        RenderBox::removeChild(oldChild);
-        return;
-    }
+    if (documentBeingDestroyed())
+        return RenderBox::removeChild(oldChild);
 
     // If this child is a block, and if our previous and next siblings are
     // both anonymous blocks with inline content, then we can go ahead and
@@ -837,7 +828,7 @@ void RenderBlock::removeChild(RenderObject& oldChild)
 
     invalidateLineLayoutPath();
 
-    RenderBox::removeChild(oldChild);
+    RenderObject* nextSibling = RenderBox::removeChild(oldChild);
 
     RenderObject* child = prev ? prev : next;
     if (canMergeAnonymousBlocks && child && !child->previousSibling() && !child->nextSibling() && canCollapseAnonymousBlockChild()) {
@@ -845,6 +836,7 @@ void RenderBlock::removeChild(RenderObject& oldChild)
         // box.  We can go ahead and pull the content right back up into our
         // box.
         collapseAnonymousBoxChild(this, toRenderBlock(child));
+        nextSibling = nullptr;
     } else if (((prev && prev->isAnonymousBlock()) || (next && next->isAnonymousBlock())) && canCollapseAnonymousBlockChild()) {
         // It's possible that the removal has knocked us down to a single anonymous
         // block with pseudo-style element siblings (e.g. first-letter). If these
@@ -854,10 +846,13 @@ void RenderBlock::removeChild(RenderObject& oldChild)
             && (!anonBlock->previousSibling() || (anonBlock->previousSibling()->style().styleType() != NOPSEUDO && anonBlock->previousSibling()->isFloating() && !anonBlock->previousSibling()->previousSibling()))
             && (!anonBlock->nextSibling() || (anonBlock->nextSibling()->style().styleType() != NOPSEUDO && anonBlock->nextSibling()->isFloating() && !anonBlock->nextSibling()->nextSibling()))) {
             collapseAnonymousBoxChild(this, anonBlock);
+            nextSibling = nullptr;
         }
     }
 
     if (!firstChild()) {
+        nextSibling = nullptr;
+
         // If this was our last child be sure to clear out our line boxes.
         if (childrenInline())
             deleteLines();
@@ -888,6 +883,8 @@ void RenderBlock::removeChild(RenderObject& oldChild)
             destroy();
         }
     }
+    
+    return nextSibling;
 }
 
 bool RenderBlock::isSelfCollapsingBlock() const
@@ -1242,7 +1239,7 @@ void RenderBlock::updateBlockChildDirtyBitsBeforeLayout(bool relayoutChildren, R
 {
     // FIXME: Technically percentage height objects only need a relayout if their percentage isn't going to be turned into
     // an auto value. Add a method to determine this, so that we can avoid the relayout.
-    if (relayoutChildren || (child.hasRelativeLogicalHeight() && !isRenderView()) || child.hasViewportPercentageLogicalHeight())
+    if (relayoutChildren || (child.hasRelativeLogicalHeight() && !isRenderView()))
         child.setChildNeedsLayout(MarkOnlyThis);
 
     // If relayoutChildren is set and the child has percentage padding or an embedded content box, we also need to invalidate the childs pref widths.
@@ -2544,7 +2541,7 @@ bool RenderBlock::nodeAtPoint(const HitTestRequest& request, HitTestResult& resu
             case CSSBoxType::ViewBox:
                 referenceBoxRect = borderBoxRect();
             }
-            if (!clipPath->pathForReferenceRect(referenceBoxRect, &view()).contains(locationInContainer.point() - localOffset, clipPath->windRule()))
+            if (!clipPath->pathForReferenceRect(referenceBoxRect).contains(locationInContainer.point() - localOffset, clipPath->windRule()))
                 return false;
             break;
         }
@@ -2575,7 +2572,7 @@ bool RenderBlock::nodeAtPoint(const HitTestRequest& request, HitTestResult& resu
     if (!isRenderView() && style().hasBorderRadius()) {
         LayoutRect borderRect = borderBoxRect();
         borderRect.moveBy(adjustedLocation);
-        RoundedRect border = style().getRoundedBorderFor(borderRect, &view());
+        RoundedRect border = style().getRoundedBorderFor(borderRect);
         if (!locationInContainer.intersects(border))
             return false;
     }
@@ -3343,11 +3340,11 @@ LayoutUnit RenderBlock::lineHeight(bool firstLine, LineDirectionMode direction, 
     if (firstLine && document().styleSheetCollection().usesFirstLineRules()) {
         RenderStyle& s = firstLine ? firstLineStyle() : style();
         if (&s != &style())
-            return s.computedLineHeight(&view());
+            return s.computedLineHeight();
     }
     
     if (m_lineHeight == -1)
-        m_lineHeight = style().computedLineHeight(&view());
+        m_lineHeight = style().computedLineHeight();
 
     return m_lineHeight;
 }

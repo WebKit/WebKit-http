@@ -46,6 +46,7 @@
 #include "WebPageProxy.h"
 #include "WebPreferences.h"
 #include "WebViewBaseInputMethodFilter.h"
+#include <WebCore/CairoUtilities.h>
 #include <WebCore/ClipboardUtilitiesGtk.h>
 #include <WebCore/DataObjectGtk.h>
 #include <WebCore/DragData.h>
@@ -77,6 +78,10 @@
 #if USE(TEXTURE_MAPPER_GL) && defined(GDK_WINDOWING_X11)
 #include <WebCore/RedirectedXCompositeWindow.h>
 #endif
+
+// gtk_widget_get_scale_factor() appeared in GTK 3.10, but we also need
+// to make sure we have cairo new enough to support cairo_surface_set_device_scale
+#define HAVE_GTK_SCALE_FACTOR HAVE_CAIRO_SURFACE_SET_DEVICE_SCALE && GTK_CHECK_VERSION(3, 10, 0)
 
 using namespace WebKit;
 using namespace WebCore;
@@ -170,7 +175,7 @@ static gboolean toplevelWindowFocusInEvent(GtkWidget*, GdkEventFocus*, WebKitWeb
     WebKitWebViewBasePrivate* priv = webViewBase->priv;
     if (!priv->isInWindowActive) {
         priv->isInWindowActive = true;
-        priv->pageProxy->viewStateDidChange(ViewState::WindowIsActive);
+        priv->pageProxy->viewStateDidChange();
     }
 
     return FALSE;
@@ -181,7 +186,7 @@ static gboolean toplevelWindowFocusOutEvent(GtkWidget*, GdkEventFocus*, WebKitWe
     WebKitWebViewBasePrivate* priv = webViewBase->priv;
     if (priv->isInWindowActive) {
         priv->isInWindowActive = false;
-        priv->pageProxy->viewStateDidChange(ViewState::WindowIsActive);
+        priv->pageProxy->viewStateDidChange();
     }
 
     return FALSE;
@@ -193,7 +198,7 @@ static gboolean toplevelWindowVisibilityEvent(GtkWidget*, GdkEventVisibility* vi
     bool isWindowVisible = visibilityEvent->state != GDK_VISIBILITY_FULLY_OBSCURED;
     if (priv->isWindowVisible != isWindowVisible) {
         priv->isWindowVisible = isWindowVisible;
-        priv->pageProxy->viewStateDidChange(ViewState::IsVisible);
+        priv->pageProxy->viewStateDidChange();
     }
 
     return FALSE;
@@ -223,7 +228,7 @@ static void webkitWebViewBaseSetToplevelOnScreenWindow(WebKitWebViewBase* webVie
     }
 
     priv->toplevelOnScreenWindow = window;
-    priv->pageProxy->viewStateDidChange(ViewState::IsInWindow);
+    priv->pageProxy->viewStateDidChange();
     if (!priv->toplevelOnScreenWindow)
         return;
 
@@ -564,7 +569,7 @@ static void webkitWebViewBaseMap(GtkWidget* widget)
     WebKitWebViewBasePrivate* priv = webViewBase->priv;
     if (!priv->isVisible) {
         priv->isVisible = true;
-        priv->pageProxy->viewStateDidChange(ViewState::IsVisible);
+        priv->pageProxy->viewStateDidChange();
     }
 
     if (!priv->needsResizeOnMap)
@@ -583,7 +588,7 @@ static void webkitWebViewBaseUnmap(GtkWidget* widget)
     WebKitWebViewBasePrivate* priv = WEBKIT_WEB_VIEW_BASE(widget)->priv;
     if (priv->isVisible) {
         priv->isVisible = false;
-        priv->pageProxy->viewStateDidChange(ViewState::IsVisible);
+        priv->pageProxy->viewStateDidChange();
     }
 }
 
@@ -965,6 +970,13 @@ void webkitWebViewBaseUpdatePreferences(WebKitWebViewBase* webkitWebViewBase)
     priv->pageProxy->pageGroup().preferences().setAcceleratedCompositingEnabled(false);
 }
 
+#if HAVE(GTK_SCALE_FACTOR)
+static void deviceScaleFactorChanged(WebKitWebViewBase* webkitWebViewBase)
+{
+    webkitWebViewBase->priv->pageProxy->setIntrinsicDeviceScaleFactor(gtk_widget_get_scale_factor(GTK_WIDGET(webkitWebViewBase)));
+}
+#endif // HAVE(GTK_SCALE_FACTOR)
+
 void webkitWebViewBaseCreateWebPage(WebKitWebViewBase* webkitWebViewBase, WebContext* context, WebPageGroup* pageGroup, WebPageProxy* relatedPage)
 {
     WebKitWebViewBasePrivate* priv = webkitWebViewBase->priv;
@@ -978,6 +990,12 @@ void webkitWebViewBaseCreateWebPage(WebKitWebViewBase* webkitWebViewBase, WebCon
 #if USE(TEXTURE_MAPPER_GL)
     if (priv->redirectedWindow)
         priv->pageProxy->setAcceleratedCompositingWindowId(priv->redirectedWindow->windowId());
+#endif
+
+#if HAVE(GTK_SCALE_FACTOR)
+    // We attach this here, because changes in scale factor are passed directly to the page proxy.
+    priv->pageProxy->setIntrinsicDeviceScaleFactor(gtk_widget_get_scale_factor(GTK_WIDGET(webkitWebViewBase)));
+    g_signal_connect(webkitWebViewBase, "notify::scale-factor", G_CALLBACK(deviceScaleFactorChanged), nullptr);
 #endif
 
     webkitWebViewBaseUpdatePreferences(webkitWebViewBase);
@@ -1124,7 +1142,6 @@ void webkitWebViewBaseSetFocus(WebKitWebViewBase* webViewBase, bool focused)
     if (priv->isFocused == focused)
         return;
 
-    unsigned viewStateFlags = ViewState::IsFocused;
     priv->isFocused = focused;
 
     // If the view has received the focus and the window is not active
@@ -1132,11 +1149,9 @@ void webkitWebViewBaseSetFocus(WebKitWebViewBase* webViewBase, bool focused)
     // toplevel window is a GTK_WINDOW_POPUP and the focus has been
     // set programatically like WebKitTestRunner does, because POPUP
     // can't be focused.
-    if (priv->isFocused && !priv->isInWindowActive) {
+    if (priv->isFocused && !priv->isInWindowActive)
         priv->isInWindowActive = true;
-        viewStateFlags |= ViewState::WindowIsActive;
-    }
-    priv->pageProxy->viewStateDidChange(viewStateFlags);
+    priv->pageProxy->viewStateDidChange();
 }
 
 bool webkitWebViewBaseIsInWindowActive(WebKitWebViewBase* webViewBase)

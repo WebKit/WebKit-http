@@ -1,3 +1,400 @@
+2014-05-28  Gwang Yoon Hwang  <yoon@igalia.com>
+
+        Unreviewed. Update my email addresses in contributors.json.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2014-05-27  Jon Honeycutt  <jhoneycutt@apple.com>
+
+        Need an API test for bug #133193 (r169315)
+        <https://bugs.webkit.org/show_bug.cgi?id=133324>
+
+        This adds an API test that ensures that calling "stop loading" during a
+        "did fail provisional load" callback doesn't crash.
+
+        Reviewed by Andy Estes.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        Add new files to project.
+
+        * TestWebKitAPI/Tests/WebKit2/StopLoadingDuringDidFailProvisionalLoad.cpp: Added.
+        (TestWebKitAPI::didReceiveMessageFromInjectedBundle):
+        If the message is the "test done" message, record that.
+        (TestWebKitAPI::setInjectedBundleClient):
+        Register a function for the "did receive message from injected bundle"
+        callback.
+        (TestWebKitAPI::didFailProvisionalLoadWithErrorForFrame):
+        Assert that we received the message from the injected bundle, and set
+        'done' to finish the test.
+        (TestWebKitAPI::TEST):
+        Create a WebView, register a page loader client for the "did fail
+        provisional load" callback, and load a non-existent resource.
+
+        * TestWebKitAPI/Tests/WebKit2/StopLoadingDuringDidFailProvisionalLoad_bundle.cpp: Added.
+        (TestWebKitAPI::StopLoadingDuringDidFailProvisionalLoadTest::StopLoadingDuringDidFailProvisionalLoadTest):
+        (TestWebKitAPI::didFailProvisionalLoadWithErrorForFrameCallback):
+        Tell the StopLoadingDuringDidFailProvisionalLoadTest object that the
+        provisional load failed.
+        (TestWebKitAPI::StopLoadingDuringDidFailProvisionalLoadTest::didCreatePage):
+        Register a page loader client for the "did fail provisional load"
+        callback.
+        (TestWebKitAPI::StopLoadingDuringDidFailProvisionalLoadTest::didFailProvisionalLoad):
+        Call WKBundlePageStopLoading() during the callback. This not crashing
+        is what we're ensuring with this test.
+
+2014-05-28  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Make it possible to build with FTL enabled
+        https://bugs.webkit.org/show_bug.cgi?id=133219
+
+        Reviewed by Philippe Normand.
+
+        * gtk/jhbuild-optional.modules: Add llvm from svn and build the
+        same revision than mac.
+
+2014-05-27  Michael Saboff  <msaboff@apple.com>
+
+        REGRESSION(r169265): sh: line 0: cd: ../.vm
+        https://bugs.webkit.org/show_bug.cgi?id=133242
+
+        Rubber stamped by Oliver Hunt.
+
+        Changed runAndMonitorTestRunnerCommand() to pass mysys as a string instead of an
+        array since the command may contain character escapes that don't work with the
+        array form of system().
+
+        * Scripts/run-jsc-stress-tests:
+
+2014-05-27  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        [EFL] Change download url of freetype6
+        https://bugs.webkit.org/show_bug.cgi?id=133303
+
+        Reviewed by Csaba Osztrogonác.
+
+        freetype6 tarball isn't downloaded in Korea. So, we need to
+        change the url for now.
+
+        * efl/jhbuild.modules:
+
+2014-05-27  Tibor Meszaros  <tmeszaros.u-szeged@partner.samsung.com>
+
+        Remove BLOB guards
+        https://bugs.webkit.org/show_bug.cgi?id=132863
+
+        Reviewed by Csaba Osztrogonác.
+
+        * Scripts/webkitperl/FeatureList.pm:
+
+2014-05-27  Alberto Garcia  <berto@igalia.com>
+
+        Remove leftover comment from r165182.
+
+        Rubber stamped by Carlos Garcia Campos.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestMultiprocess.cpp:
+
+2014-05-26  Tibor Meszaros  <tmeszaros.u-szeged@partner.samsung.com>
+
+        [EFL] Add LLVM as optional jhbuild module for FTL developers
+        https://bugs.webkit.org/show_bug.cgi?id=133216
+
+        Reviewed by Gyuyoung Kim.
+
+        * efl/jhbuild.modules:
+
+2014-05-26  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Fix test failures on python test
+        https://bugs.webkit.org/show_bug.cgi?id=133297
+
+        Reviewed by Dirk Schulze.
+
+        2 tests are failing because of unbounded local variable reference in test_importer.py.
+
+        * Scripts/webkitpy/w3c/test_importer.py: Move local variable declaration to top.
+        (TestImporter.import_tests):
+
+2014-05-26  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] GObject DOM bindings API break test fails in the tests bots
+        https://bugs.webkit.org/show_bug.cgi?id=133211
+
+        Reviewed by Martin Robinson.
+
+        When generating the built product archive on platform GTK, we need
+        to copy also the file gtkdoc-webkitdom.cfg and the directory
+        DerivedSources/webkitdom.
+
+        * BuildSlaveSupport/built-product-archive:
+        (archiveBuiltProduct):
+
+2014-05-26  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r169122.
+        https://bugs.webkit.org/show_bug.cgi?id=133288
+
+        Broke CJK font fallback (Requested by ap on #webkit).
+
+        Reverted changeset:
+
+        "[Mac] WebProcess doesn't follow localization of UI process
+        when run as a service"
+        https://bugs.webkit.org/show_bug.cgi?id=133126
+        http://trac.webkit.org/changeset/169122
+
+2014-05-26  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] WebProcess leaked when closing pages with network process enabled
+        https://bugs.webkit.org/show_bug.cgi?id=129684
+
+        Reviewed by Anders Carlsson.
+
+        Enable the test to check that web processes finish when the web
+        view is destroyed.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestMultiprocess.cpp:
+
+2014-05-26  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        REGRESSION(r164632): [GTK] Crash in generate-gtkdoc when rebasing docs
+        https://bugs.webkit.org/show_bug.cgi?id=133279
+
+        Reviewed by Philippe Normand.
+
+        generator.saw_warnings is only set by GTKDoc::generate(), so it
+        should only be used after generate.
+
+        * gtk/generate-gtkdoc:
+        (generate_documentation_for_config): Do not check
+        generator.saw_warnings again, simply return the value returned by
+        generate_doc() which is generator.saw_warnings. When rebasing,
+        returns always False since there aren't warnings.
+
+2014-05-26  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        W3C test importer should catch exceptions coming from HTML/CSS conversion
+        https://bugs.webkit.org/show_bug.cgi?id=133176
+
+        Reviewed by Darin Adler.
+
+        Exceptions raised when converting HTML/CSS are caught.
+        Files for which conversion failed are still copied to the target directory.
+        Each individual conversion failure is logged.
+        Total conversion failure number is logged at the end of the import process.
+
+        * Scripts/webkitpy/w3c/test_importer.py:
+        (TestImporter.import_tests):
+
+2014-05-26  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] Allow to run the tests on the native X display.
+        https://bugs.webkit.org/show_bug.cgi?id=133157
+
+        Reviewed by Benjamin Poulain.
+
+        This adds a new driver (xorgdriver) that runs the tests on the
+        X display referenced by the environment variable DISPLAY.
+
+        This new driver will be activated only if the environment variable
+        USE_NATIVE_XDISPLAY is defined. This can be used both for layout
+        tests and performance tests.
+
+        This patch also makes the script run-perf-tests to check the
+        system dependencies before starting the tests. Previously this
+        was not checked, and if the system dependencies were not met,
+        the script tried to execute the tests anyway, causing massive
+        failures. For example, if you had Xvfb not installed and you
+        wanted to use the Xvfb driver (the default on GTK and EFL),
+        run-perf-tests would not abort.
+
+        * Scripts/webkitpy/performance_tests/perftestsrunner.py:
+        (PerfTestsRunner._parse_args): Check the system dependencies of
+        the driver before starting the tests.
+        * Scripts/webkitpy/port/driver.py:
+        (Driver): Implement generic check_driver method.
+        (Driver.check_driver):
+        (Driver.check_driver.implementation):
+        * Scripts/webkitpy/port/gtk.py:
+        (GtkPort._driver_class): Check for environment variable
+        USE_NATIVE_XDISPLAY to decide if the Xorg driver should be used.
+        * Scripts/webkitpy/port/xorgdriver.py: Added.
+        (XorgDriver): Implement Xorg driver.
+        (XorgDriver.check_driver):
+        (XorgDriver._start):
+
+2014-05-26  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        REGRESSION(r166798): [GTK] [EFL] kill-old-processes should not kill dbus-daemon
+        https://bugs.webkit.org/show_bug.cgi?id=133215
+
+        Reviewed by Csaba Osztrogonác.
+
+        This reverts r166798.
+
+        * BuildSlaveSupport/kill-old-processes:
+        (main):
+
+2014-05-26  Michał Pakuła vel Rutka  <m.pakula@samsung.com>
+
+        [EFL] Turn on ENABLE_CSS_FILTERS in build script
+        https://bugs.webkit.org/show_bug.cgi?id=133278
+
+        Reviewed by Gyuyoung Kim.
+
+        * Scripts/webkitperl/FeatureList.pm: Add a build script condition missing in r169172.
+
+2014-05-26  Eva Balazsfalvi  <evab.u-szeged@partner.samsung.com>
+
+        run-javascriptcore-tests warning fix on non Mac platforms
+        https://bugs.webkit.org/show_bug.cgi?id=133260
+
+        Reviewed by Darin Adler.
+
+        * Scripts/webkitdirs.pm:
+        (argumentsForConfiguration):
+
+2014-05-23  Michael Saboff  <msaboff@apple.com>
+
+        REGRESSION(r169265): sh: line 0: cd: ../.vm
+        https://bugs.webkit.org/show_bug.cgi?id=133242
+
+        Rubber stamped by Geoffrey Garen.
+
+        Added missing shell escapes '\' required as part of previous fix.
+
+        * Scripts/run-jsc-stress-tests:
+
+2014-05-23  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Revert the erroneous change committed in r169286.
+
+        * Scripts/webkitpy/performance_tests/perftest.py:
+        (PerfTest._run_with_driver):
+
+2014-05-23  Geoffrey Garen  <ggaren@apple.com>
+
+        run-perf-tests should ignore whitespace lines when snarfing test output
+        https://bugs.webkit.org/show_bug.cgi?id=133238
+
+        Reviewed by Ryosuke Niwa.
+
+        Required for PerformanceTests/Canvas/terrain.html.
+
+        * Scripts/webkitpy/performance_tests/perftest.py:
+        (PerfTest._run_with_driver):
+        (PerfTest):
+
+2014-05-23  Michael Saboff  <msaboff@apple.com>
+
+        REGRESSION (r169241) Crash running run-jsc-stress-tests on EFL ARM
+        https://bugs.webkit.org/show_bug.cgi?id=133223
+
+        Reviewed by Geoffrey Garen.
+
+        Change runAndMonitorTestRunnerCommand() to convert the *cmd argument to a
+        string before calling IO.popen() to work with older versions of ruby.
+        Changed the remote path in runShellTestRunner to quote the command
+        string we want to run via ssh so that it will work correctly with array
+        to string conversion needed for popen.
+
+        * Scripts/run-jsc-stress-tests:
+
+2014-05-23  Zsolt Borbely  <zsborbely.u-szeged@partner.samsung.com>
+
+        Remove 'css-shaders' option from the build-webkit
+        https://bugs.webkit.org/show_bug.cgi?id=133212
+
+        Reviewed by Daniel Bates.
+
+        Original CSS shaders removed in r162644.
+
+        * Scripts/webkitperl/FeatureList.pm:
+
+2014-05-23  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] GObject DOM bindings API break test should fail in the bots when the command fails to run
+        https://bugs.webkit.org/show_bug.cgi?id=133209
+
+        Reviewed by Sergio Villar Senin.
+
+        Return FAILURE when the command failed to run.
+
+        * BuildSlaveSupport/build.webkit.org-config/master.cfg:
+        (RunGtkWebKitGObjectDOMBindingsAPIBreakTests.evaluateCommand):
+
+2014-05-23  Alberto Garcia  <berto@igalia.com>
+
+        [GTK] Install libharfbuzz-dev in Tools/gtk/install-dependencies
+        https://bugs.webkit.org/show_bug.cgi?id=133210
+
+        Reviewed by Carlos Garcia Campos.
+
+        * gtk/install-dependencies:
+
+2014-05-22  Benjamin Poulain  <bpoulain@apple.com>
+
+        Add Yusuke Suzuki to the list of contributors (for real)
+
+        Wrong section...
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2014-05-22  Benjamin Poulain  <bpoulain@apple.com>
+
+        Add Yusuke Suzuki to the list of contributors
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2014-05-22  Michael Saboff  <msaboff@apple.com>
+
+        Eliminate n/total progress update from run-jsc-stress-tests output to file
+        https://bugs.webkit.org/show_bug.cgi?id=133191
+
+        Reviewed by Geoffrey Garen.
+
+        Changed progressMeter setting to be based on stdout being a tty instead of
+        stdin.  Unified the processing of output from the shell runner to match the
+        same processing as is used by the makefile runner.  As part of this, the 
+        shell runner script was simplified.  It now forwards the output of each
+        test_script just like the Makefile and doesn't provide its own progress.
+
+        * Scripts/jsc-stress-test-helpers/shell-runner.sh:
+        * Scripts/run-jsc-stress-tests:
+
+2014-05-22  Michael Saboff  <msaboff@apple.com>
+
+        Add option to run-jsc-stress-tests to use installed jsc
+        https://bugs.webkit.org/show_bug.cgi?id=133102
+
+        Reviewed by Geoffrey Garen.
+
+        Added --no-copy option to not copy a JavaScriptCore framework, but use the one
+        provied with the --jsc option.
+
+        * Scripts/run-jsc-stress-tests:
+
+2014-05-21  Zsolt Borbely  <zsborbely.u-szeged@partner.samsung.com>
+
+        [EFL] Add include path of compact_unwind_encoding.h if FTL JIT is enabled
+        https://bugs.webkit.org/show_bug.cgi?id=132907
+
+        Reviewed by Gyuyoung Kim.
+
+        We need the mach-o/compact_unwind_encoding.h header from libc++abi-dev package
+        in JavaScriptCore/ftl/FTLUnwindInfo.cpp when FTL JIT is enabled.
+
+        * efl/install-dependencies:
+
+2014-05-21  Eva Balazsfalvi  <evab.u-szeged@partner.samsung.com>
+
+        REGRESSION(r169092): It broke run-jsc-stress tests on non Mac platforms
+        https://bugs.webkit.org/show_bug.cgi?id=133145
+
+        Reviewed by Csaba Osztrogonác.
+
+        * Scripts/run-jsc-stress-tests:
+
 2014-05-20  Alexey Proskuryakov  <ap@apple.com>
 
         [Mac] WebProcess doesn't follow localization of UI process when run as a service

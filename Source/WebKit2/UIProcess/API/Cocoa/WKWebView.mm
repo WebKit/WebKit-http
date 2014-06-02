@@ -48,6 +48,7 @@
 #import "WKPreferencesInternal.h"
 #import "WKProcessPoolInternal.h"
 #import "WKUIDelegate.h"
+#import "WKUIDelegatePrivate.h"
 #import "WKUserContentControllerInternal.h"
 #import "WKWebViewConfigurationInternal.h"
 #import "WKWebViewContentProvider.h"
@@ -69,11 +70,16 @@
 #import <wtf/RetainPtr.h>
 
 #if PLATFORM(IOS)
+#import "PrintInfo.h"
 #import "ProcessThrottler.h"
 #import "WKPDFView.h"
 #import "WKScrollView.h"
 #import "WKWebViewContentProviderRegistry.h"
+#import "WKWebViewPrintFormatter.h"
+#import "WebPageMessages.h"
 #import <CoreGraphics/CGFloat.h>
+#import <CoreGraphics/CGPDFDocumentPrivate.h>
+#import <UIKit/UIApplication.h>
 #import <UIKit/UIPeripheralHost_Private.h>
 #import <QuartzCore/CARenderServer.h>
 #import <QuartzCore/QuartzCorePrivate.h>
@@ -130,9 +136,14 @@ WKWebView* fromWebPageProxy(WebKit::WebPageProxy& page)
     RetainPtr<WKScrollView> _scrollView;
     RetainPtr<WKContentView> _contentView;
 
-    BOOL _hasStaticMinimumLayoutSize;
+    BOOL _overridesMinimumLayoutSize;
     CGSize _minimumLayoutSizeOverride;
+    BOOL _overridesMinimumLayoutSizeForMinimalUI;
     CGSize _minimumLayoutSizeOverrideForMinimalUI;
+    BOOL _overridesMaximumUnobscuredSize;
+    CGSize _maximumUnobscuredSizeOverride;
+    BOOL _usesMinimalUI;
+    BOOL _needsToNotifyDelegateAboutMinimalUI;
     CGRect _inputViewBounds;
     CGFloat _viewportMetaTagWidth;
 
@@ -149,11 +160,15 @@ WKWebView* fromWebPageProxy(WebKit::WebPageProxy& page)
     BOOL _allowsBackForwardNavigationGestures;
 
     RetainPtr<UIView <WKWebViewContentProvider>> _customContentView;
+    RetainPtr<UIView> _customContentFixedOverlayView;
 
     WebCore::Color _scrollViewBackgroundColor;
 
     BOOL _delayUpdateVisibleContentRects;
     BOOL _hadDelayedUpdateVisibleContentRects;
+
+    BOOL _pageIsPrintingToPDF;
+    RetainPtr<CGPDFDocumentRef> _printedDocument;
 #endif
 #if PLATFORM(MAC)
     RetainPtr<WKView> _wkView;
@@ -225,6 +240,8 @@ WKWebView* fromWebPageProxy(WebKit::WebPageProxy& page)
     [center addObserver:self selector:@selector(_keyboardDidChangeFrame:) name:UIKeyboardDidChangeFrameNotification object:nil];
     [center addObserver:self selector:@selector(_keyboardWillShow:) name:UIKeyboardWillShowNotification object:nil];
     [center addObserver:self selector:@selector(_keyboardWillHide:) name:UIKeyboardWillHideNotification object:nil];
+    [center addObserver:self selector:@selector(_contentSizeCategoryDidChange:) name:UIContentSizeCategoryDidChangeNotification object:nil];
+    _page->contentSizeCategoryDidChange([self _contentSizeCategory]);
 
     [[_configuration _contentProviderRegistry] addPage:*_page];
 #endif
@@ -249,6 +266,12 @@ WKWebView* fromWebPageProxy(WebKit::WebPageProxy& page)
     pageToViewMap().add(_page.get(), self);
 
     return self;
+}
+
+- (instancetype)initWithCoder:(NSCoder *)coder
+{
+    [self release];
+    return nil;
 }
 
 - (void)dealloc
@@ -413,6 +436,7 @@ WKWebView* fromWebPageProxy(WebKit::WebPageProxy& page)
 {
     CGRect oldBounds = self.bounds;
     [super setBounds:bounds];
+    [_customContentFixedOverlayView setFrame:self.bounds];
 
     if (!CGSizeEqualToSize(oldBounds.size, bounds.size))
         [self _frameOrBoundsChanged];
@@ -432,22 +456,34 @@ WKWebView* fromWebPageProxy(WebKit::WebPageProxy& page)
 {
     if (pageHasCustomContentView) {
         [_customContentView removeFromSuperview];
+        [_customContentFixedOverlayView removeFromSuperview];
 
         Class representationClass = [[_configuration _contentProviderRegistry] providerForMIMEType:mimeType];
         ASSERT(representationClass);
         _customContentView = adoptNS([[representationClass alloc] init]);
+        _customContentFixedOverlayView = adoptNS([[UIView alloc] initWithFrame:self.bounds]);
+        [_customContentFixedOverlayView setUserInteractionEnabled:NO];
 
         [_contentView removeFromSuperview];
         [_scrollView addSubview:_customContentView.get()];
+        [self addSubview:_customContentFixedOverlayView.get()];
 
         [_customContentView web_setMinimumSize:self.bounds.size];
         [_customContentView web_setScrollView:_scrollView.get()];
+        [_customContentView web_setObscuredInsets:_obscuredInsets];
+        [_customContentView web_setFixedOverlayView:_customContentFixedOverlayView.get()];
     } else if (_customContentView) {
         [_customContentView removeFromSuperview];
         _customContentView = nullptr;
 
+        [_customContentFixedOverlayView removeFromSuperview];
+        _customContentFixedOverlayView = nullptr;
+
         [_scrollView addSubview:_contentView.get()];
         [_scrollView setContentSize:[_contentView frame].size];
+
+        [_customContentFixedOverlayView setFrame:self.bounds];
+        [self addSubview:_customContentFixedOverlayView.get()];
     }
 }
 
@@ -491,7 +527,11 @@ static CGFloat contentZoomScale(WKWebView* webView)
 
 - (void)_updateScrollViewBackground
 {
-    WebCore::Color color = _page->pageExtendedBackgroundColor();
+    WebCore::Color color;
+    if (_customContentView)
+        color = [_customContentView backgroundColor].CGColor;
+    else
+        color = _page->pageExtendedBackgroundColor();
     CGFloat zoomScale = contentZoomScale(self);
     CGFloat minimumZoomScale = [_scrollView minimumZoomScale];
     if (zoomScale < minimumZoomScale) {
@@ -509,9 +549,44 @@ static CGFloat contentZoomScale(WKWebView* webView)
     [_scrollView setBackgroundColor:uiBackgroundColor.get()];
 }
 
+- (void)_setUsesMinimalUI:(BOOL)usesMinimalUI
+{
+    _usesMinimalUI = usesMinimalUI;
+    _needsToNotifyDelegateAboutMinimalUI = YES;
+}
+
+- (BOOL)_usesMinimalUI
+{
+    return _usesMinimalUI;
+}
+
+- (void)_processDidExit
+{
+    if (!_customContentView && _isAnimatingResize) {
+        NSUInteger indexOfResizeAnimationView = [[_scrollView subviews] indexOfObject:_resizeAnimationView.get()];
+        [_scrollView insertSubview:_contentView.get() atIndex:indexOfResizeAnimationView];
+        [_resizeAnimationView removeFromSuperview];
+        _resizeAnimationView = nil;
+
+        _isAnimatingResize = NO;
+        _resizeAnimationTransformAdjustments = CATransform3DIdentity;
+    }
+    [_contentView setFrame:self.bounds];
+    [_scrollView setBackgroundColor:[UIColor whiteColor]];
+    [_scrollView setContentOffset:CGPointMake(-_obscuredInsets.left, -_obscuredInsets.top)];
+    [_scrollView setZoomScale:1];
+
+    _viewportMetaTagWidth = -1;
+    _needsResetViewStateAfterCommitLoadForMainFrame = NO;
+    _scrollViewBackgroundColor = WebCore::Color();
+    _delayUpdateVisibleContentRects = NO;
+    _hadDelayedUpdateVisibleContentRects = NO;
+}
+
 - (void)_didCommitLoadForMainFrame
 {
     _needsResetViewStateAfterCommitLoadForMainFrame = YES;
+    _usesMinimalUI = NO;
 }
 
 - (void)_didCommitLayerTree:(const WebKit::RemoteLayerTreeTransaction&)layerTreeTransaction
@@ -535,6 +610,14 @@ static CGFloat contentZoomScale(WKWebView* webView)
 
     if (_gestureController)
         _gestureController->setRenderTreeSize(layerTreeTransaction.renderTreeSize());
+
+    if (_needsToNotifyDelegateAboutMinimalUI || _needsResetViewStateAfterCommitLoadForMainFrame) {
+        _needsToNotifyDelegateAboutMinimalUI = NO;
+
+        auto delegate = _uiDelegate->delegate();
+        if ([delegate respondsToSelector:@selector(_webView:usesMinimalUI:)])
+            [static_cast<id <WKUIDelegatePrivate>>(delegate.get()) _webView:self usesMinimalUI:_usesMinimalUI];
+    }
 
     if (_needsResetViewStateAfterCommitLoadForMainFrame) {
         _needsResetViewStateAfterCommitLoadForMainFrame = NO;
@@ -589,7 +672,7 @@ static CGFloat contentZoomScale(WKWebView* webView)
     CFTimeInterval duration = std::min(fabs(log(zoomScale) - log(scale)) * zoomDurationFactor + minimumZoomDuration, maximumZoomDuration);
 
     if (scale != zoomScale)
-        [_contentView willStartUserTriggeredZoom];
+        _page->willStartUserTriggeredZooming();
 
     [_scrollView _zoomToCenter:point scale:scale duration:duration];
 }
@@ -797,6 +880,9 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
 
     WebCore::FloatPoint newCenter = CGPointMake(topLeft.x + unobscuredScrollViewRectInWebViewCoordinates.size.width / 2.0, topLeft.y + unobscuredScrollViewRectInWebViewCoordinates.size.height / 2.0);
 
+    if (scale != contentZoomScale(self))
+        _page->willStartUserTriggeredZooming();
+
     // The newCenter has been computed in the new scale, but _zoomToCenter expected the center to be in the original scale.
     newCenter.scale(1 / scale, 1 / scale);
     [_scrollView _zoomToCenter:newCenter
@@ -832,7 +918,7 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
 
 - (void)didMoveToWindow
 {
-    _page->viewStateDidChange(WebCore::ViewState::IsInWindow);
+    _page->viewStateDidChange();
 }
 
 #pragma mark - UIScrollViewDelegate
@@ -857,8 +943,10 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
     if (![self usesStandardContentView])
         return;
 
-    if (scrollView.pinchGestureRecognizer.state == UIGestureRecognizerStateBegan)
-        [_contentView willStartUserTriggeredZoom];
+    if (scrollView.pinchGestureRecognizer.state == UIGestureRecognizerStateBegan) {
+        _page->willStartUserTriggeredZooming();
+        [_contentView willStartPanOrPinchGesture];
+    }
     [_contentView willStartZoomOrScroll];
 }
 
@@ -868,7 +956,7 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
         return;
 
     if (scrollView.panGestureRecognizer.state == UIGestureRecognizerStateBegan)
-        [_contentView willStartUserTriggeredScroll];
+        [_contentView willStartPanOrPinchGesture];
     [_contentView willStartZoomOrScroll];
 }
 
@@ -879,6 +967,14 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
 
     [self _updateVisibleContentRects];
     [_contentView didFinishScrolling];
+}
+
+- (void)scrollViewWillEndDragging:(UIScrollView *)scrollView withVelocity:(CGPoint)velocity targetContentOffset:(inout CGPoint *)targetContentOffset
+{
+    // Work around <rdar://problem/16374753> by avoiding deceleration while
+    // zooming. We'll animate to the right place once the zoom finishes.
+    if ([scrollView isZooming])
+        *targetContentOffset = [scrollView contentOffset];
 }
 
 - (void)scrollViewDidEndDragging:(UIScrollView *)scrollView willDecelerate:(BOOL)decelerate
@@ -919,17 +1015,18 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
     [_contentView didZoomToScale:scale];
 }
 
-static inline void setViewportConfigurationMinimumLayoutSize(WebKit::WebPageProxy& page, const CGSize& size)
-{
-    page.setViewportConfigurationMinimumLayoutSize(WebCore::FloatSize(size));
-}
-
 - (void)_frameOrBoundsChanged
 {
     CGRect bounds = self.bounds;
+    if (!_isAnimatingResize) {
+        if (!_overridesMinimumLayoutSize)
+            _page->setViewportConfigurationMinimumLayoutSize(WebCore::FloatSize(bounds.size));
+        if (!_overridesMinimumLayoutSizeForMinimalUI)
+            _page->setViewportConfigurationMinimumLayoutSizeForMinimalUI(WebCore::FloatSize(bounds.size));
+        if (!_overridesMaximumUnobscuredSize)
+            _page->setMaximumUnobscuredSize(WebCore::FloatSize(bounds.size));
+    }
 
-    if (!_hasStaticMinimumLayoutSize && !_isAnimatingResize)
-        setViewportConfigurationMinimumLayoutSize(*_page, bounds.size);
     [_scrollView setFrame:bounds];
     [_contentView setMinimumSize:bounds.size];
     [_customContentView web_setMinimumSize:bounds.size];
@@ -1021,6 +1118,16 @@ static inline void setViewportConfigurationMinimumLayoutSize(WebKit::WebPageProx
         return;
 
     [self _keyboardChangedWithInfo:notification.userInfo adjustScrollView:YES];
+}
+
+- (void)_contentSizeCategoryDidChange:(NSNotification *)notification
+{
+    _page->contentSizeCategoryDidChange([self _contentSizeCategory]);
+}
+
+- (NSString *)_contentSizeCategory
+{
+    return [[UIApplication sharedApplication] preferredContentSizeCategory];
 }
 
 - (void)setAllowsBackForwardNavigationGestures:(BOOL)allowsBackForwardNavigationGestures
@@ -1179,6 +1286,14 @@ static inline void setViewportConfigurationMinimumLayoutSize(WebKit::WebPageProx
 - (pid_t)_webProcessIdentifier
 {
     return _page->isValid() ? _page->processIdentifier() : 0;
+}
+
+- (void)_killWebContentProcess
+{
+    if (!_page->isValid())
+        return;
+
+    _page->process().terminate();
 }
 
 - (NSData *)_sessionState
@@ -1487,28 +1602,36 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
 
 - (CGSize)_minimumLayoutSizeOverride
 {
-    ASSERT(_hasStaticMinimumLayoutSize);
+    ASSERT(_overridesMinimumLayoutSize);
     return _minimumLayoutSizeOverride;
 }
 
 - (void)_setMinimumLayoutSizeOverride:(CGSize)minimumLayoutSizeOverride
 {
-    _hasStaticMinimumLayoutSize = YES;
+    _overridesMinimumLayoutSize = YES;
+    if (CGSizeEqualToSize(_minimumLayoutSizeOverride, minimumLayoutSizeOverride))
+        return;
+
     _minimumLayoutSizeOverride = minimumLayoutSizeOverride;
     if (!_isAnimatingResize)
-        setViewportConfigurationMinimumLayoutSize(*_page, minimumLayoutSizeOverride);
+        _page->setViewportConfigurationMinimumLayoutSize(WebCore::FloatSize(minimumLayoutSizeOverride));
 }
 
 - (CGSize)_minimumLayoutSizeOverrideForMinimalUI
 {
+    ASSERT(_overridesMinimumLayoutSizeForMinimalUI);
     return _minimumLayoutSizeOverrideForMinimalUI;
 }
 
 - (void)_setMinimumLayoutSizeOverrideForMinimalUI:(CGSize)size
 {
+    _overridesMinimumLayoutSizeForMinimalUI = YES;
+    if (CGSizeEqualToSize(_minimumLayoutSizeOverrideForMinimalUI, size))
+        return;
+
     _minimumLayoutSizeOverrideForMinimalUI = size;
     if (!_isAnimatingResize)
-        _page->setMinimumLayoutSizeForMinimalUI(WebCore::FloatSize(size));
+        _page->setViewportConfigurationMinimumLayoutSizeForMinimalUI(WebCore::FloatSize(size));
 }
 
 - (UIEdgeInsets)_obscuredInsets
@@ -1529,6 +1652,25 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
     _obscuredInsets = obscuredInsets;
 
     [self _updateVisibleContentRects];
+    [_customContentView web_setObscuredInsets:obscuredInsets];
+}
+
+- (CGSize)_maximumUnobscuredSizeOverride
+{
+    ASSERT(_overridesMaximumUnobscuredSize);
+    return _maximumUnobscuredSizeOverride;
+}
+
+- (void)_setMaximumUnobscuredSizeOverride:(CGSize)size
+{
+    ASSERT(size.width <= self.bounds.size.width && size.height <= self.bounds.size.height);
+    _overridesMaximumUnobscuredSize = YES;
+    if (CGSizeEqualToSize(_maximumUnobscuredSizeOverride, size))
+        return;
+
+    _maximumUnobscuredSizeOverride = size;
+    if (!_isAnimatingResize)
+        _page->setMaximumUnobscuredSize(WebCore::FloatSize(size));
 }
 
 - (void)_setBackgroundExtendsBeyondPage:(BOOL)backgroundExtends
@@ -1557,34 +1699,24 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
 - (void)_beginAnimatedResizeWithUpdates:(void (^)(void))updateBlock
 {
     _isAnimatingResize = YES;
+
+    if (_customContentView) {
+        updateBlock();
+        return;
+    }
+
     _resizeAnimationTransformAdjustments = CATransform3DIdentity;
 
     NSUInteger indexOfContentView = [[_scrollView subviews] indexOfObject:_contentView.get()];
     _resizeAnimationView = adoptNS([[UIView alloc] init]);
     [_scrollView insertSubview:_resizeAnimationView.get() atIndex:indexOfContentView];
     [_resizeAnimationView addSubview:_contentView.get()];
-
-    CGRect oldBounds = self.bounds;
-    CGSize oldMinimumLayoutSize = oldBounds.size;
-    if (_hasStaticMinimumLayoutSize)
-        oldMinimumLayoutSize = _minimumLayoutSizeOverride;
     WebCore::FloatRect oldUnobscuredContentRect = _page->unobscuredContentRect();
-    UIEdgeInsets oldInsets = _obscuredInsets;
 
     updateBlock();
 
-    if (_customContentView)
-        return;
-
     CGRect newBounds = self.bounds;
     CGSize newMinimumLayoutSize = newBounds.size;
-    if (_hasStaticMinimumLayoutSize)
-        newMinimumLayoutSize = _minimumLayoutSizeOverride;
-
-    if (CGSizeEqualToSize(newMinimumLayoutSize, oldMinimumLayoutSize)
-        && CGRectEqualToRect(newBounds, oldBounds)
-        && UIEdgeInsetsEqualToEdgeInsets(oldInsets, _obscuredInsets))
-        return;
 
     CGSize contentSizeInContentViewCoordinates = [_contentView bounds].size;
     [_scrollView setMinimumZoomScale:std::min(newMinimumLayoutSize.width / contentSizeInContentViewCoordinates.width, [_scrollView minimumZoomScale])];
@@ -1631,12 +1763,24 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
     CGRect visibleRectInContentCoordinates = [self convertRect:newBounds toView:_contentView.get()];
     CGRect unobscuredRectInContentCoordinates = [self convertRect:futureUnobscuredRectInSelfCoordinates toView:_contentView.get()];
 
-    _page->dynamicViewportSizeUpdate(WebCore::FloatSize(newMinimumLayoutSize.width, newMinimumLayoutSize.height), visibleRectInContentCoordinates, unobscuredRectInContentCoordinates, futureUnobscuredRectInSelfCoordinates, targetScale);
+    CGSize minimumLayoutSize = newBounds.size;
+    if (_overridesMinimumLayoutSize)
+        minimumLayoutSize = _minimumLayoutSizeOverride;
+
+    CGSize minimumLayoutSizeForMinimalUI = minimumLayoutSize;
+    if (_overridesMinimumLayoutSizeForMinimalUI)
+        minimumLayoutSizeForMinimalUI = _minimumLayoutSizeOverrideForMinimalUI;
+
+    CGSize maximumUnobscuredSize = newBounds.size;
+    if (_overridesMaximumUnobscuredSize)
+        maximumUnobscuredSize = _maximumUnobscuredSizeOverride;
+
+    _page->dynamicViewportSizeUpdate(WebCore::FloatSize(minimumLayoutSize), WebCore::FloatSize(minimumLayoutSizeForMinimalUI), WebCore::FloatSize(maximumUnobscuredSize), visibleRectInContentCoordinates, unobscuredRectInContentCoordinates, futureUnobscuredRectInSelfCoordinates, targetScale);
 }
 
 - (void)_endAnimatedResize
 {
-    if (!_customContentView) {
+    if (!_customContentView && _isAnimatingResize) {
         NSUInteger indexOfResizeAnimationView = [[_scrollView subviews] indexOfObject:_resizeAnimationView.get()];
         [_scrollView insertSubview:_contentView.get() atIndex:indexOfResizeAnimationView];
 
@@ -1686,6 +1830,11 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
     [_contentView setShowingInspectorIndication:NO];
 }
 
+- (void)_setOverlaidAccessoryViewsInset:(CGSize)inset
+{
+    [_customContentView web_setOverlaidAccessoryViewsInset:inset];
+}
+
 - (void)_snapshotRect:(CGRect)rectInViewCoordinates intoImageOfWidth:(CGFloat)imageWidth completionHandler:(void(^)(CGImageRef))completionHandler
 {
     CGRect snapshotRectInContentCoordinates = [self convertRect:rectInViewCoordinates toView:_contentView.get()];
@@ -1724,6 +1873,15 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
     });
 }
 
+- (void)_overrideLayoutParametersWithMinimumLayoutSize:(CGSize)minimumLayoutSize minimumLayoutSizeForMinimalUI:(CGSize)minimumLayoutSizeForMinimalUI maximumUnobscuredSizeOverride:(CGSize)maximumUnobscuredSizeOverride
+{
+    // FIXME: After Safari is updated to use this function instead of setting the parameters separately, we should remove
+    // the individual setters and send a single message to send everything at once to the WebProcess.
+    self._minimumLayoutSizeOverride = minimumLayoutSize;
+    self._minimumLayoutSizeOverrideForMinimalUI = minimumLayoutSizeForMinimalUI;
+    self._maximumUnobscuredSizeOverride = maximumUnobscuredSizeOverride;
+}
+
 - (UIView *)_viewForFindUI
 {
     return [self viewForZoomingInScrollView:[self scrollView]];
@@ -1738,7 +1896,8 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
 {
     if (![self _isDisplayingPDF])
         return nil;
-    return [(WKPDFView *)_customContentView.get() documentData];
+    CGPDFDocumentRef pdfDocument = [(WKPDFView *)_customContentView pdfDocument];
+    return [(NSData *)CGDataProviderCopyData(CGPDFDocumentGetDataProvider(pdfDocument)) autorelease];
 }
 
 - (NSString *)_suggestedFilenameForDisplayedPDF
@@ -1850,6 +2009,67 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
 
 @end
 
+#endif
+
+#if PLATFORM(IOS)
+@implementation WKWebView (WKWebViewPrintFormatter)
+
+- (Class)_printFormatterClass
+{
+    return [WKWebViewPrintFormatter class];
+}
+
+- (NSInteger)_computePageCountAndStartDrawingToPDFWithPrintInfo:(const WebKit::PrintInfo&)printInfo firstPage:(uint32_t)firstPage computedTotalScaleFactor:(double&)totalScaleFactor
+{
+    if ([self _isDisplayingPDF])
+        return CGPDFDocumentGetNumberOfPages([(WKPDFView *)_customContentView pdfDocument]);
+
+    _pageIsPrintingToPDF = YES;
+    Vector<WebCore::IntRect> pageRects;
+    if (!_page->sendSync(Messages::WebPage::ComputePagesForPrintingAndStartDrawingToPDF(_page->mainFrame()->frameID(), printInfo, firstPage), Messages::WebPage::ComputePagesForPrintingAndStartDrawingToPDF::Reply(pageRects, totalScaleFactor)))
+        return 0;
+    return pageRects.size();
+}
+
+- (void)_endPrinting
+{
+    _pageIsPrintingToPDF = NO;
+    _printedDocument = nullptr;
+    _page->send(Messages::WebPage::EndPrinting());
+}
+
+// FIXME: milliseconds::max() overflows when converted to nanoseconds, causing condition_variable::wait_for() to believe
+// a timeout occurred on any spurious wakeup. Use nanoseconds::max() (converted to ms) to avoid this. We should perhaps
+// change waitForAndDispatchImmediately() to take nanoseconds to avoid this issue.
+static constexpr std::chrono::milliseconds didFinishLoadingTimeout = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::nanoseconds::max());
+
+- (CGPDFDocumentRef)_printedDocument
+{
+    if ([self _isDisplayingPDF]) {
+        ASSERT(!_pageIsPrintingToPDF);
+        return [(WKPDFView *)_customContentView pdfDocument];
+    }
+
+    if (_pageIsPrintingToPDF) {
+        if (!_page->process().connection()->waitForAndDispatchImmediately<Messages::WebPageProxy::DidFinishDrawingPagesToPDF>(_page->pageID(), didFinishLoadingTimeout)) {
+            ASSERT_NOT_REACHED();
+            return nullptr;
+        }
+        ASSERT(!_pageIsPrintingToPDF);
+    }
+    return _printedDocument.get();
+}
+
+- (void)_setPrintedDocument:(CGPDFDocumentRef)printedDocument
+{
+    if (!_pageIsPrintingToPDF)
+        return;
+    ASSERT(![self _isDisplayingPDF]);
+    _printedDocument = printedDocument;
+    _pageIsPrintingToPDF = NO;
+}
+
+@end
 #endif
 
 #endif // WK_API_ENABLED

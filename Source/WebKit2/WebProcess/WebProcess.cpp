@@ -51,7 +51,6 @@
 #include "WebPageCreationParameters.h"
 #include "WebPageGroupProxyMessages.h"
 #include "WebPlatformStrategies.h"
-#include "WebPreferencesStore.h"
 #include "WebProcessCreationParameters.h"
 #include "WebProcessMessages.h"
 #include "WebProcessProxyMessages.h"
@@ -278,15 +277,8 @@ void WebProcess::initializeWebProcess(const WebProcessCreationParameters& parame
     if (!decoder.decode(messageDecoder))
         return;
 
-    if (!parameters.injectedBundlePath.isEmpty()) {
-        m_injectedBundle = InjectedBundle::create(parameters);
-        m_injectedBundle->setSandboxExtension(SandboxExtension::create(parameters.injectedBundlePathExtensionHandle));
-
-        if (!m_injectedBundle->load(injectedBundleInitializationUserData.get())) {
-            // Don't keep around the InjectedBundle reference if the load fails.
-            m_injectedBundle.clear();
-        }
-    }
+    if (!parameters.injectedBundlePath.isEmpty())
+        m_injectedBundle = InjectedBundle::create(parameters, injectedBundleInitializationUserData.get());
 
     WebProcessSupplementMap::const_iterator it = m_supplements.begin();
     WebProcessSupplementMap::const_iterator end = m_supplements.end();
@@ -1168,6 +1160,7 @@ void WebProcess::resetAllGeolocationPermissions()
     
 void WebProcess::processWillSuspend()
 {
+    memoryPressureHandler().releaseMemory(true);
     parentProcessConnection()->send(Messages::WebProcessProxy::ProcessReadyToSuspend(), 0);
 }
     

@@ -515,9 +515,9 @@ void RenderElement::addChild(RenderObject* newChild, RenderObject* beforeChild)
     SVGRenderSupport::childAdded(*this, *newChild);
 }
 
-void RenderElement::removeChild(RenderObject& oldChild)
+RenderObject* RenderElement::removeChild(RenderObject& oldChild)
 {
-    removeChildInternal(oldChild, NotifyChildren);
+    return removeChildInternal(oldChild, NotifyChildren);
 }
 
 void RenderElement::destroyLeftoverChildren()
@@ -585,7 +585,7 @@ void RenderElement::insertChildInternal(RenderObject* newChild, RenderObject* be
         cache->childrenChanged(this, newChild);
 }
 
-void RenderElement::removeChildInternal(RenderObject& oldChild, NotifyChildrenType notifyChildren)
+RenderObject* RenderElement::removeChildInternal(RenderObject& oldChild, NotifyChildrenType notifyChildren)
 {
     ASSERT(canHaveChildren() || canHaveGeneratedChildren());
     ASSERT(oldChild.parent() == this);
@@ -624,14 +624,16 @@ void RenderElement::removeChildInternal(RenderObject& oldChild, NotifyChildrenTy
     // WARNING: There should be no code running between willBeRemovedFromTree and the actual removal below.
     // This is needed to avoid race conditions where willBeRemovedFromTree would dirty the tree's structure
     // and the code running here would force an untimely rebuilding, leaving |oldChild| dangling.
+    
+    RenderObject* nextSibling = oldChild.nextSibling();
 
     if (oldChild.previousSibling())
-        oldChild.previousSibling()->setNextSibling(oldChild.nextSibling());
-    if (oldChild.nextSibling())
-        oldChild.nextSibling()->setPreviousSibling(oldChild.previousSibling());
+        oldChild.previousSibling()->setNextSibling(nextSibling);
+    if (nextSibling)
+        nextSibling->setPreviousSibling(oldChild.previousSibling());
 
     if (m_firstChild == &oldChild)
-        m_firstChild = oldChild.nextSibling();
+        m_firstChild = nextSibling;
     if (m_lastChild == &oldChild)
         m_lastChild = oldChild.previousSibling();
 
@@ -646,6 +648,8 @@ void RenderElement::removeChildInternal(RenderObject& oldChild, NotifyChildrenTy
 
     if (AXObjectCache* cache = document().existingAXObjectCache())
         cache->childrenChanged(this);
+    
+    return nextSibling;
 }
 
 static void addLayers(RenderElement& renderer, RenderLayer* parentLayer, RenderElement*& newObject, RenderLayer*& beforeChild)
@@ -1240,7 +1244,7 @@ bool RenderElement::repaintAfterLayoutIfNeeded(const RenderLayerModelObject* rep
         LayoutUnit borderRight = isBox() ? toRenderBox(this)->borderRight() : LayoutUnit::fromPixel(0);
         LayoutUnit boxWidth = isBox() ? toRenderBox(this)->width() : LayoutUnit();
         LayoutUnit minInsetRightShadowExtent = std::min<LayoutUnit>(-insetShadowExtent.right(), std::min<LayoutUnit>(newBounds.width(), oldBounds.width()));
-        LayoutUnit borderWidth = std::max<LayoutUnit>(borderRight, std::max<LayoutUnit>(valueForLength(style().borderTopRightRadius().width(), boxWidth, &view()), valueForLength(style().borderBottomRightRadius().width(), boxWidth)));
+        LayoutUnit borderWidth = std::max<LayoutUnit>(borderRight, std::max<LayoutUnit>(valueForLength(style().borderTopRightRadius().width(), boxWidth), valueForLength(style().borderBottomRightRadius().width(), boxWidth)));
         LayoutUnit decorationsWidth = std::max<LayoutUnit>(-outlineStyle.outlineOffset(), borderWidth + minInsetRightShadowExtent) + std::max<LayoutUnit>(outlineWidth, shadowRight);
         LayoutRect rightRect(newOutlineBox.x() + std::min(newOutlineBox.width(), oldOutlineBox.width()) - decorationsWidth,
             newOutlineBox.y(),

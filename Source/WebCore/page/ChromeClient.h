@@ -24,6 +24,7 @@
 
 #include "AXObjectCache.h"
 #include "Cursor.h"
+#include "DisplayRefreshMonitor.h"
 #include "FocusDirection.h"
 #include "FrameLoader.h"
 #include "GraphicsContext.h"
@@ -165,6 +166,10 @@ public:
 #endif
     virtual IntPoint screenToRootView(const IntPoint&) const = 0;
     virtual IntRect rootViewToScreen(const IntRect&) const = 0;
+#if PLATFORM(IOS)
+    virtual IntPoint accessibilityScreenToRootView(const IntPoint&) const = 0;
+    virtual IntRect rootViewToAccessibilityScreen(const IntRect&) const = 0;
+#endif    
     virtual PlatformPageClient platformPageClient() const = 0;
     virtual void scrollbarsModeDidChange() const = 0;
 #if ENABLE(CURSOR_SUPPORT)
@@ -279,7 +284,11 @@ public:
     virtual bool shouldPaintEntireContents() const { return false; }
 
     // Allows ports to customize the type of graphics layers created by this page.
-    virtual GraphicsLayerFactory* graphicsLayerFactory() const { return 0; }
+    virtual GraphicsLayerFactory* graphicsLayerFactory() const { return nullptr; }
+
+#if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
+    virtual PassRefPtr<DisplayRefreshMonitor> createDisplayRefreshMonitor(PlatformDisplayID) const { return nullptr; }
+#endif
 
     // Pass 0 as the GraphicsLayer to detatch the root layer.
     virtual void attachRootGraphicsLayer(Frame*, GraphicsLayer*) = 0;

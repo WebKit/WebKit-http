@@ -45,6 +45,7 @@
 #include "SelectorCheckerTestFunctions.h"
 #include "StackAllocator.h"
 #include "StyledElement.h"
+#include <JavaScriptCore/GPRInfo.h>
 #include <JavaScriptCore/LinkBuffer.h>
 #include <JavaScriptCore/MacroAssembler.h>
 #include <JavaScriptCore/VM.h>
@@ -64,6 +65,7 @@ enum class BacktrackingAction {
     JumpToDescendantEntryPoint,
     JumpToIndirectAdjacentEntryPoint,
     JumpToDescendantTreeWalkerEntryPoint,
+    JumpToIndirectAdjacentTreeWalkerEntryPoint,
     JumpToDescendantTail,
     JumpToDirectAdjacentTail
 };
@@ -112,6 +114,7 @@ private:
 };
 
 static const unsigned invalidHeight = std::numeric_limits<unsigned>::max();
+static const unsigned invalidWidth = std::numeric_limits<unsigned>::max();
 
 struct SelectorFragment {
     SelectorFragment()
@@ -122,6 +125,9 @@ struct SelectorFragment {
         , tagNameMatchedBacktrackingStartHeightFromDescendant(invalidHeight)
         , tagNameNotMatchedBacktrackingStartHeightFromDescendant(invalidHeight)
         , heightFromDescendant(0)
+        , tagNameMatchedBacktrackingStartWidthFromIndirectAdjacent(invalidWidth)
+        , tagNameNotMatchedBacktrackingStartWidthFromIndirectAdjacent(invalidWidth)
+        , widthFromIndirectAdjacent(0)
         , tagName(nullptr)
         , id(nullptr)
     {
@@ -136,6 +142,9 @@ struct SelectorFragment {
     unsigned tagNameMatchedBacktrackingStartHeightFromDescendant;
     unsigned tagNameNotMatchedBacktrackingStartHeightFromDescendant;
     unsigned heightFromDescendant;
+    unsigned tagNameMatchedBacktrackingStartWidthFromIndirectAdjacent;
+    unsigned tagNameNotMatchedBacktrackingStartWidthFromIndirectAdjacent;
+    unsigned widthFromIndirectAdjacent;
 
     const QualifiedName* tagName;
     const AtomicString* id;
@@ -166,9 +175,10 @@ public:
     SelectorCompilationStatus compile(JSC::VM*, JSC::MacroAssemblerCodeRef&);
 
 private:
-    static const Assembler::RegisterID returnRegister = JSC::GPRInfo::returnValueGPR;
-    static const Assembler::RegisterID elementAddressRegister = JSC::GPRInfo::argumentGPR0;
-    static const Assembler::RegisterID checkingContextRegister = JSC::GPRInfo::argumentGPR1;
+    static const Assembler::RegisterID returnRegister;
+    static const Assembler::RegisterID elementAddressRegister;
+    static const Assembler::RegisterID checkingContextRegister;
+    static const Assembler::RegisterID callFrameRegister;
 
     void computeBacktrackingInformation();
     void generateSelectorChecker();
@@ -221,6 +231,10 @@ private:
     Assembler::Jump modulo(JSC::MacroAssembler::ResultCondition, Assembler::RegisterID inputDividend, int divisor);
     void moduloIsZero(Assembler::JumpList& failureCases, Assembler::RegisterID inputDividend, int divisor);
 
+    bool generatePrologue();
+    void generateEpilogue();
+    Vector<StackAllocator::StackReference> m_prologueStackReferences;
+    
     Assembler m_assembler;
     RegisterAllocator m_registerAllocator;
     StackAllocator m_stackAllocator;
@@ -236,6 +250,7 @@ private:
     Assembler::Label m_descendantEntryPoint;
     Assembler::Label m_indirectAdjacentEntryPoint;
     Assembler::Label m_descendantTreeWalkerBacktrackingPoint;
+    Assembler::Label m_indirectAdjacentTreeWalkerBacktrackingPoint;
     Assembler::RegisterID m_descendantBacktrackingStart;
     Assembler::JumpList m_descendantBacktrackingFailureCases;
     StackAllocator::StackReference m_adjacentBacktrackingStart;
@@ -245,6 +260,11 @@ private:
     const CSSSelector* m_originalSelector;
 #endif
 };
+
+const Assembler::RegisterID SelectorCodeGenerator::returnRegister = JSC::GPRInfo::returnValueGPR;
+const Assembler::RegisterID SelectorCodeGenerator::elementAddressRegister = JSC::GPRInfo::argumentGPR0;
+const Assembler::RegisterID SelectorCodeGenerator::checkingContextRegister = JSC::GPRInfo::argumentGPR1;
+const Assembler::RegisterID SelectorCodeGenerator::callFrameRegister = JSC::GPRInfo::callFrameRegister;
 
 SelectorCompilationStatus compileSelector(const CSSSelector* lastSelector, JSC::VM* vm, SelectorContext selectorContext, JSC::MacroAssemblerCodeRef& codeRef)
 {
@@ -542,7 +562,7 @@ inline SelectorCompilationStatus SelectorCodeGenerator::compile(JSC::VM* vm, JSC
     for (unsigned i = 0; i < m_functionCalls.size(); i++)
         linkBuffer.link(m_functionCalls[i].first, m_functionCalls[i].second);
 
-#if CSS_SELECTOR_JIT_DEBUGGING && ASSERT_DISABLED
+#if CSS_SELECTOR_JIT_DEBUGGING
     codeRef = linkBuffer.finalizeCodeWithDisassembly("CSS Selector JIT for \"%s\"", m_originalSelector->selectorText().utf8().data());
 #else
     codeRef = FINALIZE_CODE(linkBuffer, ("CSS Selector JIT"));
@@ -607,6 +627,23 @@ static inline BacktrackingAction solveDescendantBacktrackingActionForChild(const
     return BacktrackingAction::JumpToDescendantTail;
 }
 
+static inline BacktrackingAction solveAdjacentBacktrackingActionForDirectAdjacent(const SelectorFragment& fragment, unsigned backtrackingStartWidthFromIndirectAdjacent)
+{
+    // If width is invalid (e.g. There's no tag name).
+    if (backtrackingStartWidthFromIndirectAdjacent == invalidWidth)
+        return BacktrackingAction::NoBacktracking;
+
+    // Start backtracking from the current element.
+    if (backtrackingStartWidthFromIndirectAdjacent == fragment.widthFromIndirectAdjacent)
+        return BacktrackingAction::JumpToIndirectAdjacentEntryPoint;
+
+    // Start backtracking from the previous adjacent of current element.
+    if (backtrackingStartWidthFromIndirectAdjacent == (fragment.widthFromIndirectAdjacent + 1))
+        return BacktrackingAction::JumpToIndirectAdjacentTreeWalkerEntryPoint;
+
+    return BacktrackingAction::JumpToDirectAdjacentTail;
+}
+
 static inline BacktrackingAction solveAdjacentTraversalBacktrackingAction(const SelectorFragment& fragment, bool hasDescendantRelationOnTheRight)
 {
     if (!hasDescendantRelationOnTheRight)
@@ -618,7 +655,7 @@ static inline BacktrackingAction solveAdjacentTraversalBacktrackingAction(const 
     return BacktrackingAction::JumpToDescendantTail;
 }
 
-static inline void solveBacktrackingAction(SelectorFragment& fragment, bool hasDescendantRelationOnTheRight, bool hasIndirectAdjacentRelationOnTheRightOfDirectAdjacentChain, unsigned adjacentPositionSinceIndirectAdjacentTreeWalk)
+static inline void solveBacktrackingAction(SelectorFragment& fragment, bool hasDescendantRelationOnTheRight, bool hasIndirectAdjacentRelationOnTheRightOfDirectAdjacentChain)
 {
     switch (fragment.relationToRightFragment) {
     case FragmentRelation::Rightmost:
@@ -639,13 +676,8 @@ static inline void solveBacktrackingAction(SelectorFragment& fragment, bool hasD
         // If the rightmost relation is a indirect adjacent, matching sould resume from there.
         // Otherwise, we resume from the latest ancestor/descendant if any.
         if (hasIndirectAdjacentRelationOnTheRightOfDirectAdjacentChain) {
-            if (isFirstAdjacent(adjacentPositionSinceIndirectAdjacentTreeWalk)) {
-                fragment.matchingTagNameBacktrackingAction = BacktrackingAction::JumpToIndirectAdjacentEntryPoint;
-                fragment.matchingPostTagNameBacktrackingAction = BacktrackingAction::JumpToIndirectAdjacentEntryPoint;
-            } else {
-                fragment.matchingTagNameBacktrackingAction = BacktrackingAction::JumpToDirectAdjacentTail;
-                fragment.matchingPostTagNameBacktrackingAction = BacktrackingAction::JumpToDirectAdjacentTail;
-            }
+            fragment.matchingTagNameBacktrackingAction = solveAdjacentBacktrackingActionForDirectAdjacent(fragment, fragment.tagNameNotMatchedBacktrackingStartWidthFromIndirectAdjacent);
+            fragment.matchingPostTagNameBacktrackingAction = solveAdjacentBacktrackingActionForDirectAdjacent(fragment, fragment.tagNameMatchedBacktrackingStartWidthFromIndirectAdjacent);
         } else if (hasDescendantRelationOnTheRight) {
             // Since we resume from the latest ancestor/descendant, the action is the same as the traversal action.
             fragment.matchingTagNameBacktrackingAction = fragment.traversalBacktrackingAction;
@@ -710,8 +742,8 @@ static inline bool equalTagNamePatterns(const TagNamePattern& lhs, const Qualifi
 }
 
 // Find the largest matching prefix from already known tagNames.
-// And by using this, compute an appropriate height of backtracking start element from the closest descendant.
-static inline unsigned computeBacktrackingStartHeightFromDescendant(const TagNameList& tagNames, unsigned maxPrefixSize)
+// And by using this, compute an appropriate height of backtracking start element from the closest base element in the chain.
+static inline unsigned computeBacktrackingStartOffsetInChain(const TagNameList& tagNames, unsigned maxPrefixSize)
 {
     RELEASE_ASSERT(!tagNames.isEmpty());
     RELEASE_ASSERT(maxPrefixSize < tagNames.size());
@@ -734,51 +766,89 @@ static inline unsigned computeBacktrackingStartHeightFromDescendant(const TagNam
     return tagNames.size();
 }
 
-static inline void computeBacktrackingHeightFromDescendant(SelectorFragment& fragment, TagNameList& tagNames, bool hasDescendantRelationOnTheRight, const SelectorFragment*& previousChildFragmentInDescendantBacktrackingChain)
+static inline void computeBacktrackingHeightFromDescendant(SelectorFragment& fragment, TagNameList& tagNamesForChildChain, bool hasDescendantRelationOnTheRight, const SelectorFragment*& previousChildFragmentInChildChain)
 {
     if (!hasDescendantRelationOnTheRight)
         return;
 
     if (fragment.relationToRightFragment == FragmentRelation::Descendant) {
-        tagNames.clear();
+        tagNamesForChildChain.clear();
 
         TagNamePattern pattern;
         pattern.tagName = fragment.tagName;
-        tagNames.append(pattern);
+        tagNamesForChildChain.append(pattern);
         fragment.heightFromDescendant = 0;
-        previousChildFragmentInDescendantBacktrackingChain = nullptr;
+        previousChildFragmentInChildChain = nullptr;
     } else if (fragment.relationToRightFragment == FragmentRelation::Child) {
         TagNamePattern pattern;
         pattern.tagName = fragment.tagName;
-        tagNames.append(pattern);
+        tagNamesForChildChain.append(pattern);
 
-        unsigned maxPrefixSize = tagNames.size() - 1;
-        if (previousChildFragmentInDescendantBacktrackingChain) {
-            RELEASE_ASSERT(tagNames.size() >= previousChildFragmentInDescendantBacktrackingChain->tagNameMatchedBacktrackingStartHeightFromDescendant);
-            maxPrefixSize = tagNames.size() - previousChildFragmentInDescendantBacktrackingChain->tagNameMatchedBacktrackingStartHeightFromDescendant;
+        unsigned maxPrefixSize = tagNamesForChildChain.size() - 1;
+        if (previousChildFragmentInChildChain) {
+            RELEASE_ASSERT(tagNamesForChildChain.size() >= previousChildFragmentInChildChain->tagNameMatchedBacktrackingStartHeightFromDescendant);
+            maxPrefixSize = tagNamesForChildChain.size() - previousChildFragmentInChildChain->tagNameMatchedBacktrackingStartHeightFromDescendant;
         }
 
         if (pattern.tagName) {
             // Compute height from descendant in the case that tagName is not matched.
-            tagNames.last().inverted = true;
-            fragment.tagNameNotMatchedBacktrackingStartHeightFromDescendant = computeBacktrackingStartHeightFromDescendant(tagNames, maxPrefixSize);
+            tagNamesForChildChain.last().inverted = true;
+            fragment.tagNameNotMatchedBacktrackingStartHeightFromDescendant = computeBacktrackingStartOffsetInChain(tagNamesForChildChain, maxPrefixSize);
         }
 
         // Compute height from descendant in the case that tagName is matched.
-        tagNames.last().inverted = false;
-        fragment.tagNameMatchedBacktrackingStartHeightFromDescendant = computeBacktrackingStartHeightFromDescendant(tagNames, maxPrefixSize);
-        fragment.heightFromDescendant = tagNames.size() - 1;
-        previousChildFragmentInDescendantBacktrackingChain = &fragment;
+        tagNamesForChildChain.last().inverted = false;
+        fragment.tagNameMatchedBacktrackingStartHeightFromDescendant = computeBacktrackingStartOffsetInChain(tagNamesForChildChain, maxPrefixSize);
+        fragment.heightFromDescendant = tagNamesForChildChain.size() - 1;
+        previousChildFragmentInChildChain = &fragment;
     } else {
-        if (previousChildFragmentInDescendantBacktrackingChain) {
-            fragment.tagNameNotMatchedBacktrackingStartHeightFromDescendant = previousChildFragmentInDescendantBacktrackingChain->tagNameNotMatchedBacktrackingStartHeightFromDescendant;
-            fragment.tagNameMatchedBacktrackingStartHeightFromDescendant = previousChildFragmentInDescendantBacktrackingChain->tagNameMatchedBacktrackingStartHeightFromDescendant;
-            fragment.heightFromDescendant = previousChildFragmentInDescendantBacktrackingChain->heightFromDescendant;
+        if (previousChildFragmentInChildChain) {
+            fragment.tagNameNotMatchedBacktrackingStartHeightFromDescendant = previousChildFragmentInChildChain->tagNameNotMatchedBacktrackingStartHeightFromDescendant;
+            fragment.tagNameMatchedBacktrackingStartHeightFromDescendant = previousChildFragmentInChildChain->tagNameMatchedBacktrackingStartHeightFromDescendant;
+            fragment.heightFromDescendant = previousChildFragmentInChildChain->heightFromDescendant;
         } else {
-            fragment.tagNameNotMatchedBacktrackingStartHeightFromDescendant = tagNames.size();
-            fragment.tagNameMatchedBacktrackingStartHeightFromDescendant = tagNames.size();
+            fragment.tagNameNotMatchedBacktrackingStartHeightFromDescendant = tagNamesForChildChain.size();
+            fragment.tagNameMatchedBacktrackingStartHeightFromDescendant = tagNamesForChildChain.size();
             fragment.heightFromDescendant = 0;
         }
+    }
+}
+
+static inline void computeBacktrackingWidthFromIndirectAdjacent(SelectorFragment& fragment, TagNameList& tagNamesForDirectAdjacentChain, bool hasIndirectAdjacentRelationOnTheRightOfDirectAdjacentChain, const SelectorFragment*& previousDirectAdjacentFragmentInDirectAdjacentChain)
+{
+    if (!hasIndirectAdjacentRelationOnTheRightOfDirectAdjacentChain)
+        return;
+
+    if (fragment.relationToRightFragment == FragmentRelation::IndirectAdjacent) {
+        tagNamesForDirectAdjacentChain.clear();
+
+        TagNamePattern pattern;
+        pattern.tagName = fragment.tagName;
+        tagNamesForDirectAdjacentChain.append(pattern);
+        fragment.widthFromIndirectAdjacent = 0;
+        previousDirectAdjacentFragmentInDirectAdjacentChain = nullptr;
+    } else if (fragment.relationToRightFragment == FragmentRelation::DirectAdjacent) {
+        TagNamePattern pattern;
+        pattern.tagName = fragment.tagName;
+        tagNamesForDirectAdjacentChain.append(pattern);
+
+        unsigned maxPrefixSize = tagNamesForDirectAdjacentChain.size() - 1;
+        if (previousDirectAdjacentFragmentInDirectAdjacentChain) {
+            RELEASE_ASSERT(tagNamesForDirectAdjacentChain.size() >= previousDirectAdjacentFragmentInDirectAdjacentChain->tagNameMatchedBacktrackingStartWidthFromIndirectAdjacent);
+            maxPrefixSize = tagNamesForDirectAdjacentChain.size() - previousDirectAdjacentFragmentInDirectAdjacentChain->tagNameMatchedBacktrackingStartWidthFromIndirectAdjacent;
+        }
+
+        if (pattern.tagName) {
+            // Compute height from descendant in the case that tagName is not matched.
+            tagNamesForDirectAdjacentChain.last().inverted = true;
+            fragment.tagNameNotMatchedBacktrackingStartWidthFromIndirectAdjacent = computeBacktrackingStartOffsetInChain(tagNamesForDirectAdjacentChain, maxPrefixSize);
+        }
+
+        // Compute height from descendant in the case that tagName is matched.
+        tagNamesForDirectAdjacentChain.last().inverted = false;
+        fragment.tagNameMatchedBacktrackingStartWidthFromIndirectAdjacent = computeBacktrackingStartOffsetInChain(tagNamesForDirectAdjacentChain, maxPrefixSize);
+        fragment.widthFromIndirectAdjacent = tagNamesForDirectAdjacentChain.size() - 1;
+        previousDirectAdjacentFragmentInDirectAdjacentChain = &fragment;
     }
 }
 
@@ -803,28 +873,30 @@ void SelectorCodeGenerator::computeBacktrackingInformation()
     bool needsAdjacentTail = false;
     bool needsDescendantTail = false;
     unsigned saveDescendantBacktrackingStartFragmentIndex = std::numeric_limits<unsigned>::max();
+    unsigned saveIndirectAdjacentBacktrackingStartFragmentIndex = std::numeric_limits<unsigned>::max();
 
-    TagNameList tagNames;
-    const SelectorFragment* previousChildFragmentInDescendantBacktrackingChain = nullptr;
+    TagNameList tagNamesForChildChain;
+    TagNameList tagNamesForDirectAdjacentChain;
+    const SelectorFragment* previousChildFragmentInChildChain = nullptr;
+    const SelectorFragment* previousDirectAdjacentFragmentInDirectAdjacentChain = nullptr;
 
     for (unsigned i = 0; i < m_selectorFragments.size(); ++i) {
         SelectorFragment& fragment = m_selectorFragments[i];
 
         updateChainStates(fragment, hasDescendantRelationOnTheRight, ancestorPositionSinceDescendantRelation, hasIndirectAdjacentRelationOnTheRightOfDirectAdjacentChain, adjacentPositionSinceIndirectAdjacentTreeWalk);
 
-        computeBacktrackingHeightFromDescendant(fragment, tagNames, hasDescendantRelationOnTheRight, previousChildFragmentInDescendantBacktrackingChain);
+        computeBacktrackingHeightFromDescendant(fragment, tagNamesForChildChain, hasDescendantRelationOnTheRight, previousChildFragmentInChildChain);
+
+        computeBacktrackingWidthFromIndirectAdjacent(fragment, tagNamesForDirectAdjacentChain, hasIndirectAdjacentRelationOnTheRightOfDirectAdjacentChain, previousDirectAdjacentFragmentInDirectAdjacentChain);
 
 #if CSS_SELECTOR_JIT_DEBUGGING
-        dataLogF("Computing fragment[%d] backtracking height %u. NotMatched %u / Matched %u\n", i, fragment.heightFromDescendant, fragment.tagNameNotMatchedBacktrackingStartHeightFromDescendant, fragment.tagNameMatchedBacktrackingStartHeightFromDescendant);
+        dataLogF("Computing fragment[%d] backtracking height %u. NotMatched %u / Matched %u | width %u. NotMatched %u / Matched %u\n", i, fragment.heightFromDescendant, fragment.tagNameNotMatchedBacktrackingStartHeightFromDescendant, fragment.tagNameMatchedBacktrackingStartHeightFromDescendant, fragment.widthFromIndirectAdjacent, fragment.tagNameNotMatchedBacktrackingStartWidthFromIndirectAdjacent, fragment.tagNameMatchedBacktrackingStartWidthFromIndirectAdjacent);
 #endif
 
-        solveBacktrackingAction(fragment, hasDescendantRelationOnTheRight, hasIndirectAdjacentRelationOnTheRightOfDirectAdjacentChain, adjacentPositionSinceIndirectAdjacentTreeWalk);
+        solveBacktrackingAction(fragment, hasDescendantRelationOnTheRight, hasIndirectAdjacentRelationOnTheRightOfDirectAdjacentChain);
 
         needsAdjacentTail |= requiresAdjacentTail(fragment);
         needsDescendantTail |= requiresDescendantTail(fragment);
-
-        if (needsDescendantTail)
-            fragment.backtrackingFlags |= BacktrackingFlag::InChainWithDescendantTail;
 
         // Add code generation flags.
         if (fragment.relationToLeftFragment != FragmentRelation::Descendant && fragment.relationToRightFragment == FragmentRelation::Descendant)
@@ -836,13 +908,19 @@ void SelectorCodeGenerator::computeBacktrackingInformation()
             saveDescendantBacktrackingStartFragmentIndex = i;
         }
         if (fragment.relationToLeftFragment == FragmentRelation::DirectAdjacent && fragment.relationToRightFragment == FragmentRelation::DirectAdjacent && isFirstAdjacent(adjacentPositionSinceIndirectAdjacentTreeWalk)) {
-            fragment.backtrackingFlags |= BacktrackingFlag::SaveAdjacentBacktrackingStart;
-            m_needsAdjacentBacktrackingStart = true;
+            ASSERT(saveIndirectAdjacentBacktrackingStartFragmentIndex == std::numeric_limits<unsigned>::max());
+            saveIndirectAdjacentBacktrackingStartFragmentIndex = i;
         }
-        if (fragment.relationToLeftFragment != FragmentRelation::DirectAdjacent && needsAdjacentTail) {
-            ASSERT(fragment.relationToRightFragment == FragmentRelation::DirectAdjacent);
-            fragment.backtrackingFlags |= BacktrackingFlag::DirectAdjacentTail;
-            needsAdjacentTail = false;
+        if (fragment.relationToLeftFragment != FragmentRelation::DirectAdjacent) {
+            if (needsAdjacentTail) {
+                ASSERT(fragment.relationToRightFragment == FragmentRelation::DirectAdjacent);
+                ASSERT(saveIndirectAdjacentBacktrackingStartFragmentIndex != std::numeric_limits<unsigned>::max());
+                fragment.backtrackingFlags |= BacktrackingFlag::DirectAdjacentTail;
+                m_selectorFragments[saveIndirectAdjacentBacktrackingStartFragmentIndex].backtrackingFlags |= BacktrackingFlag::SaveAdjacentBacktrackingStart;
+                m_needsAdjacentBacktrackingStart = true;
+                needsAdjacentTail = false;
+            }
+            saveIndirectAdjacentBacktrackingStartFragmentIndex = std::numeric_limits<unsigned>::max();
         }
         if (fragment.relationToLeftFragment == FragmentRelation::Descendant) {
             if (needsDescendantTail) {
@@ -858,14 +936,48 @@ void SelectorCodeGenerator::computeBacktrackingInformation()
     }
 }
 
+inline bool SelectorCodeGenerator::generatePrologue()
+{
+#if CPU(ARM64)
+    Vector<JSC::MacroAssembler::RegisterID, 2> prologueRegisters;
+    prologueRegisters.append(JSC::ARM64Registers::lr);
+    prologueRegisters.append(JSC::ARM64Registers::fp);
+    m_prologueStackReferences = m_stackAllocator.push(prologueRegisters);
+    return true;
+#elif CPU(X86_64) && CSS_SELECTOR_JIT_DEBUGGING
+    Vector<JSC::MacroAssembler::RegisterID, 1> prologueRegister;
+    prologueRegister.append(callFrameRegister);
+    m_prologueStackReferences = m_stackAllocator.push(prologueRegister);
+    return true;
+#endif
+    return false;
+}
+    
+inline void SelectorCodeGenerator::generateEpilogue()
+{
+#if CPU(ARM64)
+    Vector<JSC::MacroAssembler::RegisterID, 2> prologueRegisters;
+    prologueRegisters.append(JSC::ARM64Registers::lr);
+    prologueRegisters.append(JSC::ARM64Registers::fp);
+    m_stackAllocator.pop(m_prologueStackReferences, prologueRegisters);
+#elif CPU(X86_64) && CSS_SELECTOR_JIT_DEBUGGING
+    Vector<JSC::MacroAssembler::RegisterID, 1> prologueRegister;
+    prologueRegister.append(callFrameRegister);
+    m_stackAllocator.pop(m_prologueStackReferences, prologueRegister);
+#endif
+}
+    
 void SelectorCodeGenerator::generateSelectorChecker()
 {
+    bool needsEpilogue = generatePrologue();
+    
+    Vector<StackAllocator::StackReference> calleeSavedRegisterStackReferences;
     bool reservedCalleeSavedRegisters = false;
     unsigned availableRegisterCount = m_registerAllocator.availableRegisterCount();
     unsigned minimumRegisterCountForAttributes = minimumRegisterRequirements(m_selectorFragments);
     if (availableRegisterCount < minimumRegisterCountForAttributes) {
         reservedCalleeSavedRegisters = true;
-        m_registerAllocator.reserveCalleeSavedRegisters(m_stackAllocator, minimumRegisterCountForAttributes - availableRegisterCount);
+        calleeSavedRegisterStackReferences = m_stackAllocator.push(m_registerAllocator.reserveCalleeSavedRegisters(minimumRegisterCountForAttributes - availableRegisterCount));
     }
 
     m_registerAllocator.allocateRegister(elementAddressRegister);
@@ -903,7 +1015,7 @@ void SelectorCodeGenerator::generateSelectorChecker()
     m_registerAllocator.deallocateRegister(elementAddressRegister);
 
     if (m_functionType == FunctionType::SimpleSelectorChecker) {
-        if (!m_needsAdjacentBacktrackingStart && !reservedCalleeSavedRegisters) {
+        if (!m_needsAdjacentBacktrackingStart && !reservedCalleeSavedRegisters && !needsEpilogue) {
             // Success.
             m_assembler.move(Assembler::TrustedImm32(1), returnRegister);
             m_assembler.ret();
@@ -928,7 +1040,10 @@ void SelectorCodeGenerator::generateSelectorChecker()
 
             if (m_needsAdjacentBacktrackingStart)
                 m_stackAllocator.popAndDiscardUpTo(m_adjacentBacktrackingStart);
-            m_registerAllocator.restoreCalleeSavedRegisters(m_stackAllocator);
+            if (reservedCalleeSavedRegisters)
+                m_stackAllocator.pop(calleeSavedRegisterStackReferences, m_registerAllocator.restoreCalleeSavedRegisters());
+            if (needsEpilogue)
+                generateEpilogue();
             m_assembler.ret();
         }
     } else {
@@ -946,7 +1061,10 @@ void SelectorCodeGenerator::generateSelectorChecker()
         }
 
         m_stackAllocator.popAndDiscardUpTo(m_checkingContextStackReference);
-        m_registerAllocator.restoreCalleeSavedRegisters(m_stackAllocator);
+        if (reservedCalleeSavedRegisters)
+            m_stackAllocator.pop(calleeSavedRegisterStackReferences, m_registerAllocator.restoreCalleeSavedRegisters());
+        if (needsEpilogue)
+            generateEpilogue();
         m_assembler.ret();
     }
 }
@@ -1076,6 +1194,9 @@ void SelectorCodeGenerator::generateIndirectAdjacentTreeWalker(Assembler::JumpLi
     markParentElementIfResolvingStyle(Element::setChildrenAffectedByForwardPositionalRules);
 
     Assembler::Label loopStart(m_assembler.label());
+
+    if (fragment.backtrackingFlags & BacktrackingFlag::IndirectAdjacentEntryPoint)
+        m_indirectAdjacentTreeWalkerBacktrackingPoint = m_assembler.label();
 
     generateWalkToPreviousAdjacent(failureCases, fragment);
 
@@ -1287,6 +1408,9 @@ void SelectorCodeGenerator::linkFailures(Assembler::JumpList& globalFailureCases
         break;
     case BacktrackingAction::JumpToIndirectAdjacentEntryPoint:
         localFailureCases.linkTo(m_indirectAdjacentEntryPoint, &m_assembler);
+        break;
+    case BacktrackingAction::JumpToIndirectAdjacentTreeWalkerEntryPoint:
+        localFailureCases.linkTo(m_indirectAdjacentTreeWalkerBacktrackingPoint, &m_assembler);
         break;
     case BacktrackingAction::JumpToDirectAdjacentTail:
         m_adjacentBacktrackingFailureCases.append(localFailureCases);

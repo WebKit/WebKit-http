@@ -158,6 +158,15 @@ void ScrollingTreeOverflowScrollingNodeIOS::updateAfterChildren(const ScrollingS
     }
 }
 
+FloatPoint ScrollingTreeOverflowScrollingNodeIOS::scrollPosition() const
+{
+    BEGIN_BLOCK_OBJC_EXCEPTIONS
+    UIScrollView *scrollView = (UIScrollView *)[scrollLayer() delegate];
+    ASSERT([scrollView isKindOfClass:[UIScrollView self]]);
+    return [scrollView contentOffset];
+    END_BLOCK_OBJC_EXCEPTIONS
+}
+
 void ScrollingTreeOverflowScrollingNodeIOS::setScrollLayerPosition(const FloatPoint& scrollPosition)
 {
     [m_scrollLayer setPosition:CGPointMake(-scrollPosition.x() + scrollOrigin().x(), -scrollPosition.y() + scrollOrigin().y())];
@@ -165,12 +174,21 @@ void ScrollingTreeOverflowScrollingNodeIOS::setScrollLayerPosition(const FloatPo
     updateChildNodesAfterScroll(scrollPosition);
 }
 
-void ScrollingTreeOverflowScrollingNodeIOS::updateChildNodesAfterScroll(const FloatPoint&)
+void ScrollingTreeOverflowScrollingNodeIOS::updateLayersAfterDelegatedScroll(const FloatPoint& scrollPosition)
+{
+    updateChildNodesAfterScroll(scrollPosition);
+}
+
+void ScrollingTreeOverflowScrollingNodeIOS::updateChildNodesAfterScroll(const FloatPoint& scrollPosition)
 {
     if (!m_children)
         return;
 
-    // FIXME: this needs to adjust child fixed/sticky nodes.
+    FloatRect fixedPositionRect = scrollingTree().fixedPositionRect();
+    FloatSize scrollDelta = lastCommittedScrollPosition() - scrollPosition;
+
+    for (auto& child : *m_children)
+        child->updateLayersAfterAncestorChange(*this, fixedPositionRect, scrollDelta);
 }
 
 void ScrollingTreeOverflowScrollingNodeIOS::scrollViewDidScroll(const FloatPoint& scrollPosition, bool inUserInteration)

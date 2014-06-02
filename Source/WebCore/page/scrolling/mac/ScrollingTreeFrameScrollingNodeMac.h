@@ -65,19 +65,16 @@ private:
     virtual void stopSnapRubberbandTimer() override;
     virtual void adjustScrollPositionToBoundsIfNecessary() override;
 
-    FloatPoint scrollPosition() const;
+    virtual FloatPoint scrollPosition() const override;
     virtual void setScrollPosition(const FloatPoint&) override;
     virtual void setScrollPositionWithoutContentEdgeConstraints(const FloatPoint&) override;
 
-    virtual void updateLayersAfterViewportChange(const FloatRect& viewportRect, double scale) override;
+    virtual void updateLayersAfterViewportChange(const FloatRect& fixedPositionRect, double scale) override;
 
     virtual void setScrollLayerPosition(const FloatPoint&) override;
 
     virtual FloatPoint minimumScrollPosition() const override;
     virtual FloatPoint maximumScrollPosition() const override;
-
-    void scrollBy(const IntSize&);
-    void scrollByWithoutContentEdgeConstraints(const IntSize&);
 
     void updateMainFramePinState(const FloatPoint& scrollPosition);
 

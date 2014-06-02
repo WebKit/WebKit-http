@@ -568,15 +568,15 @@ public:
     bool delegatesScrolling() const { return m_delegatesScrolling; }
 
     enum class WantsReplyOrNot { DoesNotWantReply, DoesWantReply };
-    void viewStateDidChange(WebCore::ViewState::Flags mayHaveChanged, WantsReplyOrNot = WantsReplyOrNot::DoesNotWantReply);
+    void viewStateDidChange(WantsReplyOrNot = WantsReplyOrNot::DoesNotWantReply);
     bool isInWindow() const { return m_viewState & WebCore::ViewState::IsInWindow; }
     void waitForDidUpdateViewState();
 
     void layerHostingModeDidChange();
 
     WebCore::IntSize viewSize() const;
+    bool isViewWindowActive() const { return m_viewState & WebCore::ViewState::WindowIsActive; }
     bool isViewVisible() const { return m_viewState & WebCore::ViewState::IsVisible; }
-    bool isViewWindowActive() const;
     bool isProcessSuppressible() const;
 
     void addMIMETypeWithCustomContentProvider(const String& mimeType);
@@ -595,10 +595,11 @@ public:
     enum class UnobscuredRectConstraint { ConstrainedToDocumentRect, Unconstrained };
     WebCore::FloatRect computeCustomFixedPositionRect(const WebCore::FloatRect& unobscuredContentRect, double displayedContentScale, UnobscuredRectConstraint = UnobscuredRectConstraint::Unconstrained) const;
 
-    void dynamicViewportSizeUpdate(const WebCore::FloatSize& minimumLayoutSize, const WebCore::FloatRect& targetExposedContentRect, const WebCore::FloatRect& targetUnobscuredRect, const WebCore::FloatRect& targetUnobscuredRectInScrollViewCoordinates, double targetScale);
+    void dynamicViewportSizeUpdate(const WebCore::FloatSize& minimumLayoutSize, const WebCore::FloatSize& minimumLayoutSizeForMinimalUI, const WebCore::FloatSize& maximumUnobscuredSize, const WebCore::FloatRect& targetExposedContentRect, const WebCore::FloatRect& targetUnobscuredRect, const WebCore::FloatRect& targetUnobscuredRectInScrollViewCoordinates, double targetScale);
     
     void setViewportConfigurationMinimumLayoutSize(const WebCore::FloatSize&);
-    void setMinimumLayoutSizeForMinimalUI(const WebCore::FloatSize&);
+    void setViewportConfigurationMinimumLayoutSizeForMinimalUI(const WebCore::FloatSize&);
+    void setMaximumUnobscuredSize(const WebCore::FloatSize&);
     void didCommitLayerTree(const WebKit::RemoteLayerTreeTransaction&);
 
     void selectWithGesture(const WebCore::IntPoint, WebCore::TextGranularity, uint32_t gestureType, uint32_t gestureState, PassRefPtr<GestureCallback>);
@@ -633,6 +634,9 @@ public:
     void commitPotentialTapFailed();
     void didNotHandleTapAsClick(const WebCore::IntPoint&);
     void viewportMetaTagWidthDidChange(float width);
+    void setUsesMinimalUI(bool);
+    void didFinishDrawingPagesToPDF(const IPC::DataReference&);
+    void contentSizeCategoryDidChange(const String& contentSizeCategory);
 #endif
 
     const EditorState& editorState() const { return m_editorState; }
@@ -849,7 +853,7 @@ public:
     void setFindIndicator(const WebCore::FloatRect& selectionRectInWindowCoordinates, const Vector<WebCore::FloatRect>& textRectsInSelectionRectCoordinates, float contentImageScaleFactor, const ShareableBitmap::Handle& contentImageHandle, bool fadeOut, bool animate);
     void didFindString(const String&, uint32_t matchCount, int32_t matchIndex);
     void didFailToFindString(const String&);
-    void didFindStringMatches(const String&, Vector<Vector<WebCore::IntRect>> matchRects, int32_t firstIndexAfterSelection);
+    void didFindStringMatches(const String&, const Vector<Vector<WebCore::IntRect>>& matchRects, int32_t firstIndexAfterSelection);
 
     void getContentsAsString(PassRefPtr<StringCallback>);
     void getBytecodeProfile(PassRefPtr<StringCallback>);
@@ -1070,6 +1074,8 @@ public:
     void connectionWillOpen(IPC::Connection*);
     void connectionWillClose(IPC::Connection*);
 
+    void processDidFinishLaunching();
+
     void didSaveToPageCache();
         
     void setScrollPinningBehavior(WebCore::ScrollPinningBehavior);
@@ -1096,7 +1102,6 @@ private:
     WebPageProxy(PageClient&, WebProcessProxy&, uint64_t pageID, const WebPageConfiguration&);
     void platformInitialize();
 
-    void updateViewState(WebCore::ViewState::Flags flagsToUpdate = WebCore::ViewState::AllFlags);
     void updateActivityToken();
         
     void resetState();
@@ -1185,6 +1190,10 @@ private:
     void getWindowFrame(WebCore::FloatRect&);
     void screenToRootView(const WebCore::IntPoint& screenPoint, WebCore::IntPoint& windowPoint);
     void rootViewToScreen(const WebCore::IntRect& viewRect, WebCore::IntRect& result);
+#if PLATFORM(IOS)
+    void accessibilityScreenToRootView(const WebCore::IntPoint& screenPoint, WebCore::IntPoint& windowPoint);
+    void rootViewToAccessibilityScreen(const WebCore::IntRect& viewRect, WebCore::IntRect& result);
+#endif
     void runBeforeUnloadConfirmPanel(const String& message, uint64_t frameID, bool& shouldClose);
     void didChangeViewportProperties(const WebCore::ViewportAttributes&);
     void pageDidScroll();
@@ -1389,7 +1398,7 @@ private:
     void dynamicViewportUpdateChangedTarget(double newTargetScale, const WebCore::FloatPoint& newScrollPosition);
     void didGetTapHighlightGeometries(uint64_t requestID, const WebCore::Color& color, const Vector<WebCore::FloatQuad>& geometries, const WebCore::IntSize& topLeftRadius, const WebCore::IntSize& topRightRadius, const WebCore::IntSize& bottomLeftRadius, const WebCore::IntSize& bottomRightRadius);
 
-    void startAssistingNode(const AssistedNodeInformation&, bool userIsInteracting, IPC::MessageDecoder&);
+    void startAssistingNode(const AssistedNodeInformation&, bool userIsInteracting, bool blurPreviousNode, IPC::MessageDecoder&);
     void stopAssistingNode();
 
 #if ENABLE(INSPECTOR)

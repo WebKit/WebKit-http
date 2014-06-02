@@ -306,9 +306,22 @@ PassRefPtr<RenderTheme> RenderThemeIOS::create()
     return adoptRef(new RenderThemeIOS);
 }
 
+static String& _contentSizeCategory()
+{
+    static NeverDestroyed<String> _contentSizeCategory;
+    return _contentSizeCategory.get();
+}
+
 CFStringRef RenderThemeIOS::contentSizeCategory()
 {
+    if (!_contentSizeCategory().isNull())
+        return (__bridge CFStringRef)static_cast<NSString*>(_contentSizeCategory());
     return (CFStringRef)[[getUIApplicationClass() sharedApplication] preferredContentSizeCategory];
+}
+
+void RenderThemeIOS::setContentSizeCategory(const String& contentSizeCategory)
+{
+    _contentSizeCategory() = contentSizeCategory;
 }
 
 const Color& RenderThemeIOS::shadowColor() const
@@ -527,7 +540,7 @@ static void applyCommonButtonPaddingToStyle(RenderStyle* style, Element* element
 {
     Document& document = element->document();
     RefPtr<CSSPrimitiveValue> emSize = CSSPrimitiveValue::create(0.5, CSSPrimitiveValue::CSS_EMS);
-    int pixels = emSize->computeLength<int>(CSSToLengthConversionData(style, document.renderStyle(), document.frame()->pageZoomFactor()));
+    int pixels = emSize->computeLength<int>(CSSToLengthConversionData(style, document.renderStyle(), document.renderView(), document.frame()->pageZoomFactor()));
     style->setPaddingBox(LengthBox(0, pixels, 0, pixels));
 }
 
@@ -933,9 +946,10 @@ void RenderThemeIOS::adjustButtonStyle(StyleResolver* selector, RenderStyle* sty
 
     // Set padding: 0 1.0em; on buttons.
     // CSSPrimitiveValue::computeLengthInt only needs the element's style to calculate em lengths.
-    // Since the element might not be in a document, just pass nullptr for the root element style.
+    // Since the element might not be in a document, just pass nullptr for the root element style
+    // and the render view.
     RefPtr<CSSPrimitiveValue> emSize = CSSPrimitiveValue::create(1.0, CSSPrimitiveValue::CSS_EMS);
-    int pixels = emSize->computeLength<int>(CSSToLengthConversionData(style, nullptr, 1.0, false));
+    int pixels = emSize->computeLength<int>(CSSToLengthConversionData(style, nullptr, nullptr, 1.0, false));
     style->setPaddingBox(LengthBox(0, pixels, 0, pixels));
 
     if (!element)

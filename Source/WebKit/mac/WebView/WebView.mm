@@ -2721,10 +2721,8 @@ static inline IMP getMethod(id o, SEL s)
     if ([scheme _webkit_isCaseInsensitiveEqualToString:@"applewebdata"])
         return YES;
 
-#if ENABLE(BLOB)
     if ([scheme _webkit_isCaseInsensitiveEqualToString:@"blob"])
         return YES;
-#endif
 
     return NO;
 }
@@ -5280,7 +5278,7 @@ static NSString * const backingPropertyOldScaleFactorKey = @"NSBackingPropertyOl
     }
 #if PLATFORM(IOS)
     else
-        [_private->fullscreenController requestExitFullscreen];
+        [_private->fullscreenController requestHideAndExitFullscreen];
 #endif
 
 #if !PLATFORM(IOS)

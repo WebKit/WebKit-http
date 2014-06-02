@@ -210,6 +210,11 @@ void WebProcessProxy::removeWebPage(uint64_t pageID)
     // We only allow this when using a network process, as otherwise the WebProcess needs to preserve its session state.
     if (m_context->usesNetworkProcess() && canTerminateChildProcess()) {
         abortProcessLaunchIfNeeded();
+#if PLATFORM(IOS)
+        // On iOS deploy a watchdog in the UI process, since the content may be suspended.
+        // 30s should be sufficient for any outstanding activity to complete cleanly.
+        connection()->terminateSoon(30);
+#endif
         disconnect();
     }
 }
@@ -454,6 +459,9 @@ void WebProcessProxy::didFinishLaunching(ProcessLauncher* launcher, IPC::Connect
 {
     ChildProcessProxy::didFinishLaunching(launcher, connectionIdentifier);
 
+    for (auto& page : m_pageMap.values())
+        page->processDidFinishLaunching();
+
     m_webConnection = WebConnectionToWebProcess::create(this);
 
     m_context->processDidFinishLaunching(this);
@@ -661,7 +669,7 @@ void WebProcessProxy::releasePageCache()
 void WebProcessProxy::windowServerConnectionStateChanged()
 {
     for (const auto& page : m_pageMap.values())
-        page->viewStateDidChange(ViewState::IsVisuallyIdle);
+        page->viewStateDidChange();
 }
 
 void WebProcessProxy::requestTermination()

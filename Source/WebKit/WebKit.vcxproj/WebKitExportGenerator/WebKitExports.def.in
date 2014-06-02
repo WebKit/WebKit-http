@@ -170,7 +170,7 @@ EXPORTS
         symbolWithPointer(?absoluteBoundingBoxRect@RenderObject@WebCore@@QBE?AVIntRect@2@_N@Z, ?absoluteBoundingBoxRect@RenderObject@WebCore@@QEBA?AVIntRect@2@_N@Z)
         symbolWithPointer(?absoluteBoundingBoxRectIgnoringTransforms@RenderObject@WebCore@@QBE?AVIntRect@2@XZ, ?absoluteBoundingBoxRectIgnoringTransforms@RenderObject@WebCore@@QEBA?AVIntRect@2@XZ)
         symbolWithPointer(?description@DocumentMarker@WebCore@@QBEABVString@WTF@@XZ, ?description@DocumentMarker@WebCore@@QEBAAEBVString@WTF@@XZ)
-        symbolWithPointer(?addSlowCase@AtomicString@WTF@@CA?AV?$PassRefPtr@VStringImpl@WTF@@@2@PAVStringImpl@2@@Z, ?addSlowCase@AtomicString@WTF@@CA?AV?$PassRefPtr@VStringImpl@WTF@@@2@PEAVStringImpl@2@@Z)
+        ?addSlowCase@AtomicString@WTF@@CA?AV?$PassRefPtr@VStringImpl@WTF@@@2@AAVStringImpl@2@@Z
         symbolWithPointer(?cacheDOMStructure@WebCore@@YAPAVStructure@JSC@@PAVJSDOMGlobalObject@1@PAV23@PBUClassInfo@3@@Z, ?cacheDOMStructure@WebCore@@YAPEAVStructure@JSC@@PEAVJSDOMGlobalObject@1@PEAV23@PEBUClassInfo@3@@Z)
         symbolWithPointer(?childItemWithTarget@HistoryItem@WebCore@@QBEPAV12@ABVString@WTF@@@Z, ?childItemWithTarget@HistoryItem@WebCore@@QEBAPEAV12@AEBVString@WTF@@@Z)
         symbolWithPointer(?create@Range@WebCore@@SA?AV?$PassRefPtr@VRange@WebCore@@@WTF@@AAVDocument@2@V?$PassRefPtr@VNode@WebCore@@@4@H1H@Z, ?create@Range@WebCore@@SA?AV?$PassRefPtr@VRange@WebCore@@@WTF@@AEAVDocument@2@V?$PassRefPtr@VNode@WebCore@@@4@H1H@Z)
@@ -288,7 +288,7 @@ EXPORTS
         ?setMockScrollbarsEnabled@Settings@WebCore@@SAX_N@Z
         ?mockScrollbarsEnabled@Settings@WebCore@@SA_NXZ
         ?setUsesOverlayScrollbars@Settings@WebCore@@SAX_N@Z
-        symbolWithPointer(?setPageScaleFactor@Page@WebCore@@QAEXMABVIntPoint@2@_N@Z, ?setPageScaleFactor@Page@WebCore@@QAEXMABVIntPoint@2@_N@Z)
+        symbolWithPointer(?setPageScaleFactor@Page@WebCore@@QAEXMABVIntPoint@2@_N@Z, ?setPageScaleFactor@Page@WebCore@@QEAAXMAEBVIntPoint@2@_N@Z)
         symbolWithPointer(?setPagination@Page@WebCore@@QAEXABUPagination@2@@Z, ?setPagination@Page@WebCore@@QEAAXAEBUPagination@2@@Z)
         symbolWithPointer(?setPictographFontFamily@Settings@WebCore@@QAEXABVAtomicString@WTF@@W4UScriptCode@@@Z, ?setPictographFontFamily@Settings@WebCore@@QEAAXAEBVAtomicString@WTF@@W4UScriptCode@@@Z)
         symbolWithPointer(?setSansSerifFontFamily@Settings@WebCore@@QAEXABVAtomicString@WTF@@W4UScriptCode@@@Z, ?setSansSerifFontFamily@Settings@WebCore@@QEAAXAEBVAtomicString@WTF@@W4UScriptCode@@@Z)
@@ -334,6 +334,7 @@ EXPORTS
         symbolWithPointer(?toggleContinuousSpellChecking@Editor@WebCore@@QAEXXZ, ?toggleContinuousSpellChecking@Editor@WebCore@@QEAAXXZ)
         symbolWithPointer(?toggleOverwriteModeEnabled@Editor@WebCore@@QAEXXZ, ?toggleOverwriteModeEnabled@Editor@WebCore@@QEAAXXZ)
         symbolWithPointer(?countMatchesForText@Editor@WebCore@@QAEIABVString@WTF@@PAVRange@2@EI_NPAV?$Vector@V?$RefPtr@VRange@WebCore@@@WTF@@$0A@VCrashOnOverflow@2@@4@@Z, ?countMatchesForText@Editor@WebCore@@QEAAIAEBVString@WTF@@PEAVRange@2@EI_NPEAV?$Vector@V?$RefPtr@VRange@WebCore@@@WTF@@$0A@VCrashOnOverflow@2@@4@@Z)
+        symbolWithPointer(?setMarkedTextMatchesAreHighlighted@Editor@WebCore@@QAEX_N@Z, ?setMarkedTextMatchesAreHighlighted@Editor@WebCore@@QEAAX_N@Z)
 #if ENABLE(FULLSCREEN_API)
         symbolWithPointer(?webkitWillEnterFullScreenForElement@Document@WebCore@@QAEXPAVElement@2@@Z, ?webkitWillEnterFullScreenForElement@Document@WebCore@@QEAAXPEAVElement@2@@Z)
         symbolWithPointer(?webkitDidEnterFullScreenForElement@Document@WebCore@@QAEXPAVElement@2@@Z, ?webkitDidEnterFullScreenForElement@Document@WebCore@@QEAAXPEAVElement@2@@Z)

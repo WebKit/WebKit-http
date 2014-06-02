@@ -3558,11 +3558,10 @@ StickyPositionViewportConstraints RenderLayerCompositor::computeStickyViewportCo
     ASSERT(!layer.enclosingOverflowClipLayer(ExcludeSelf));
 #endif
 
-    LayoutRect viewportRect = m_renderView.frameView().viewportConstrainedVisibleContentRect();
     RenderBoxModelObject& renderer = toRenderBoxModelObject(layer.renderer());
 
     StickyPositionViewportConstraints constraints;
-    renderer.computeStickyPositionConstraints(constraints, viewportRect);
+    renderer.computeStickyPositionConstraints(constraints, renderer.constrainingRectForStickyPosition());
 
     GraphicsLayer* graphicsLayer = layer.backing()->graphicsLayer();
 
@@ -3924,5 +3923,17 @@ void RenderLayerCompositor::paintRelatedMilestonesTimerFired(Timer<RenderLayerCo
 
     m_renderView.frameView().firePaintRelatedMilestonesIfNeeded();
 }
+
+#if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
+PassRefPtr<DisplayRefreshMonitor> RenderLayerCompositor::createDisplayRefreshMonitor(PlatformDisplayID displayID) const
+{
+    Frame& frame = m_renderView.frameView().frame();
+    Page* page = frame.page();
+    if (!page)
+        return nullptr;
+
+    return page->chrome().client().createDisplayRefreshMonitor(displayID);
+}
+#endif
 
 } // namespace WebCore

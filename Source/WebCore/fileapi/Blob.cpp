@@ -103,7 +103,6 @@ Blob::Blob(DeserializationContructor, const URL& srcURL, const String& type, lon
     ThreadableBlobRegistry::registerBlobURL(0, m_internalURL, srcURL);
 }
 
-#if ENABLE(BLOB)
 Blob::Blob(const URL& srcURL, long long start, long long end, const String& type)
     : m_type(Blob::normalizedContentType(type))
     , m_size(-1) // size is not necessarily equal to end - start.
@@ -111,7 +110,6 @@ Blob::Blob(const URL& srcURL, long long start, long long end, const String& type
     m_internalURL = BlobURL::createInternalURL();
     ThreadableBlobRegistry::registerBlobURLForSlice(m_internalURL, srcURL, start, end);
 }
-#endif
 
 Blob::~Blob()
 {
@@ -124,7 +122,7 @@ unsigned long long Blob::size() const
         // FIXME: JavaScript cannot represent sizes as large as unsigned long long, we need to
         // come up with an exception to throw if file size is not representable.
         unsigned long long actualSize = ThreadableBlobRegistry::blobSize(m_internalURL);
-        m_size = (actualSize <= std::numeric_limits<long long>::max()) ? static_cast<long long>(actualSize) : 0;
+        m_size = (WTF::isInBounds<long long>(actualSize)) ? static_cast<long long>(actualSize) : 0;
     }
 
     return static_cast<unsigned long long>(m_size);

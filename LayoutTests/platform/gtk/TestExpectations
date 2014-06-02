@@ -482,8 +482,6 @@ webkit.org/b/131216 [ Debug ] http/tests/multipart/stop-crash.html [ Crash Pass 
 
 webkit.org/b/131219 [ Debug ] http/tests/xmlhttprequest/access-control-repeated-failed-preflight-crash.html [ Crash ]
 
-webkit.org/b/131220 [ Debug ] inspector-protocol/dom/remove-multiple-nodes.html [ Crash ]
-
 webkit.org/b/116977 [ Debug ] media/event-attributes.html [ Crash Pass ]
 
 webkit.org/b/131222 [ Debug ] media/video-currentsrc-cleared.html [ Crash Pass ]
@@ -1526,9 +1524,6 @@ webkit.org/b/74282 editing/pasteboard/emacs-ctrl-k-with-move.html [ Failure ]
 
 webkit.org/b/81320 editing/pasteboard/copy-two-pasteboard-types-both-work.html [ Failure ]
 
-webkit.org/b/83912 ietestcenter/css3/grid/grid-items-002.htm [ ImageOnlyFailure ]
-webkit.org/b/83913 ietestcenter/css3/grid/grid-items-003.htm [ ImageOnlyFailure ]
-
 webkit.org/b/86971 svg/custom/non-scaling-stroke.svg [ Failure ]
 
 webkit.org/b/84679 css3/zoom-coords.xhtml [ Failure ]
@@ -1984,6 +1979,20 @@ webkit.org/b/132919 platform/gtk/plugins/invalidate-rect-with-null-npp-argument.
 webkit.org/b/132921 plugins/evaluate-js-after-removing-plugin-element.html [ Failure ]
 
 webkit.org/b/132923 http/tests/security/cross-origin-plugin-private-browsing-toggled.html [ Failure ]
+
+webkit.org/b/133146 css3/flexbox/flex-rounding.html [ Failure ]
+webkit.org/b/133146 fast/css/image-resolution/image-resolution.html [ Failure ]
+webkit.org/b/133146 fast/sub-pixel/client-width-height-snapping.html [ Failure ]
+webkit.org/b/133146 fast/sub-pixel/inline-block-with-padding.html [ Failure ]
+webkit.org/b/133146 fast/sub-pixel/client-rect-has-subpixel-precision.html  [ ImageOnlyFailure ]
+
+webkit.org/b/133147 fast/shapes/shape-outside-floats/shape-outside-floats-inset-rounded-large-radius.html [ ImageOnlyFailure ]
+webkit.org/b/133147 fast/shapes/shape-outside-floats/shape-outside-rounded-inset.html [ ImageOnlyFailure ]
+
+webkit.org/b/133148 accessibility/content-editable-as-textarea.html [ Timeout ]
+webkit.org/b/133148 accessibility/content-editable-set-inner-text-generates-axvalue-notification.html [ Timeout ]
+
+webkit.org/b/133151 js/cached-window-properties.html [ Timeout Pass ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Tests failing

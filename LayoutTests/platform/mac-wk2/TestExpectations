@@ -407,9 +407,6 @@ webkit.org/b/123431 [ Mavericks ] http/tests/css/link-css-disabled-value-with-sl
 webkit.org/b/123431 [ Mavericks ] http/tests/local/link-stylesheet-load-order-preload.html [ Failure ]
 webkit.org/b/123431 [ Mavericks ] http/tests/local/link-stylesheet-load-order.html [ Failure ]
 
-# passes but has different logging
-[ Mavericks ] http/tests/security/xss-DENIED-xsl-document-redirect.xml [ Failure ]
-
 # test results in DRT don't match in browser behavior, test seems broken
 fast/dom/Window/mozilla-focus-blur.html [ Failure ]
 
@@ -661,6 +658,11 @@ http/tests/security/cross-origin-worker-indexeddb.html [ Skip ]
 # <rdar://problem/13751647> PPT: Status text not passed over IPC
 [ Mavericks ] http/tests/xmlhttprequest/web-apps/012.html [ Failure ]
 [ Mavericks ] http/tests/xmlhttprequest/web-apps/013.html [ Failure ]
+
+# https://bugs.webkit.org/show_bug.cgi?id=133227
+plugins/snapshotting/set-plugin-size-to-tiny.html
+plugins/snapshotting/simple.html
+plugins/snapshotting/snapshot-plugin-not-quite-blocked-by-image.html
 
 ### END OF (6) Features that are not supported in WebKit2, on Mavericks
 ########################################

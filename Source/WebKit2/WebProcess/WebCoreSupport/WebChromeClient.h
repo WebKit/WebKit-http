@@ -117,6 +117,10 @@ private:
 #endif
     virtual WebCore::IntPoint screenToRootView(const WebCore::IntPoint&) const override;
     virtual WebCore::IntRect rootViewToScreen(const WebCore::IntRect&) const override;
+#if PLATFORM(IOS)
+    virtual WebCore::IntPoint accessibilityScreenToRootView(const WebCore::IntPoint&) const override;
+    virtual WebCore::IntRect rootViewToAccessibilityScreen(const WebCore::IntRect&) const override;
+#endif
     virtual PlatformPageClient platformPageClient() const override;
     virtual void contentsSizeChanged(WebCore::Frame*, const WebCore::IntSize&) const override;
     virtual void scrollRectIntoView(const WebCore::IntRect&) const override; // Currently only Mac has a non empty implementation.
@@ -203,6 +207,10 @@ private:
     virtual void setNeedsOneShotDrawingSynchronization() override;
     virtual void scheduleCompositingLayerFlush() override;
     virtual WebCore::GraphicsLayer* documentOverlayLayerForFrame(WebCore::Frame&) override;
+
+#if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
+    virtual PassRefPtr<WebCore::DisplayRefreshMonitor> createDisplayRefreshMonitor(PlatformDisplayID) const override;
+#endif
 
     virtual CompositingTriggerFlags allowedCompositingTriggers() const
     {

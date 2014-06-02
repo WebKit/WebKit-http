@@ -30,8 +30,8 @@
 
 @interface WKPDFView : UIView <WKWebViewContentProvider>
 
-@property (nonatomic, readonly) NSData *documentData;
 @property (nonatomic, readonly) NSString *suggestedFilename;
+@property (nonatomic, readonly) CGPDFDocumentRef pdfDocument;
 
 @end
 

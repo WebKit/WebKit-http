@@ -101,7 +101,8 @@ void SVGRenderingContext::prepareToRenderSVGContent(RenderElement& renderer, Pai
 
     // Setup transparency layers before setting up SVG resources!
     bool isRenderingMask = isRenderingMaskImage(*m_renderer);
-    float opacity = isRenderingMask || (renderer.hasLayer() && toRenderLayerModelObject(renderer).layer()->isComposited()) ? 1 : style.opacity();
+    // RenderLayer takes care of root opacity.
+    float opacity = (renderer.isSVGRoot() || isRenderingMask) ? 1 : style.opacity();
     const ShadowData* shadow = svgStyle.shadow();
     bool hasBlendMode = style.hasBlendMode();
     bool hasIsolation = style.hasIsolation();
@@ -152,7 +153,7 @@ void SVGRenderingContext::prepareToRenderSVGContent(RenderElement& renderer, Pai
             referenceBox.setHeight(viewportSize.height());
         } else
             referenceBox = renderer.objectBoundingBox();
-        m_paintInfo->context->clipPath(clipPath.pathForReferenceRect(referenceBox, &renderer.view()), clipPath.windRule());
+        m_paintInfo->context->clipPath(clipPath.pathForReferenceRect(referenceBox), clipPath.windRule());
     }
 
     SVGResources* resources = SVGResourcesCache::cachedResourcesForRenderObject(*m_renderer);
