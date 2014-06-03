@@ -20,6 +20,7 @@
 /*!
     \qmlmodule QtWebKit 3.0
     \title Qt WebKit QML Types
+    \ingroup qmlmodules
     \brief Provides QML types for rendering web content within a QML application
 
     The QML types can be imported into your applciation using the following
