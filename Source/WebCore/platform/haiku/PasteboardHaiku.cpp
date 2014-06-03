@@ -96,11 +96,10 @@ private:
     bool m_isLocked;
 };
 
-bool Pasteboard::writeString(const String& type, const String& data)
+void Pasteboard::writeString(const String& type, const String& data)
 {
-    bool result = false;
-
     if (be_clipboard->Lock()) {
+        bool result = false;
         BMessage* bdata = be_clipboard->Data();
 
         if (bdata) {
@@ -117,8 +116,6 @@ bool Pasteboard::writeString(const String& type, const String& data)
             be_clipboard->Revert();
         be_clipboard->Unlock();
     }
-
-    return result;
 }
 
 void Pasteboard::writeSelection(Range& selectedRange, bool canSmartCopyOrDelete, Frame& frame, ShouldSerializeSelectedTextForDataTransfer)

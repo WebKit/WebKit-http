@@ -76,12 +76,10 @@ ssize_t BFormDataIO::Size()
                 size += filesize;
                 break;
             }
-#if ENABLE(BLOB)
             case FormDataElement::Type::EncodedBlob:
                 size += element.m_fileLength;
                 break;
         }
-#endif
     }
 
     return size;
@@ -100,9 +98,7 @@ BFormDataIO::Read(void* buffer, size_t size)
         const ssize_t remaining = size - read;
         
 		switch (element.m_type) {
-#if ENABLE(BLOB)
             case FormDataElement::Type::EncodedBlob:
-#endif
             case FormDataElement::Type::EncodedFile:
 				{
 					read += m_currentFile->Read(reinterpret_cast<char*>(buffer) + read, remaining);
