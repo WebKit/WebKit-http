@@ -114,6 +114,9 @@ void TileController::setContentsScale(float scale)
     m_hasTilesWithTemporaryScaleFactor = false;
     m_deviceScaleFactor = deviceScaleFactor;
 
+    if (m_coverageMap)
+        m_coverageMap->setDeviceScaleFactor(deviceScaleFactor);
+
     if (m_zoomedOutTileGrid && m_zoomedOutTileGrid->scale() == scale) {
         m_tileGrid = std::move(m_zoomedOutTileGrid);
         m_tileGrid->revalidateTiles(0);
@@ -160,7 +163,7 @@ void TileController::setAcceleratesDrawing(bool acceleratesDrawing)
         return;
     m_acceleratesDrawing = acceleratesDrawing;
 
-    tileGrid().updateTilerLayerProperties();
+    tileGrid().updateTileLayerProperties();
 }
 
 void TileController::setTilesOpaque(bool opaque)
@@ -169,7 +172,7 @@ void TileController::setTilesOpaque(bool opaque)
         return;
     m_tilesAreOpaque = opaque;
 
-    tileGrid().updateTilerLayerProperties();
+    tileGrid().updateTileLayerProperties();
 }
 
 void TileController::setVisibleRect(const FloatRect& visibleRect)
@@ -251,7 +254,7 @@ void TileController::setTileDebugBorderWidth(float borderWidth)
         return;
     m_tileDebugBorderWidth = borderWidth;
 
-    tileGrid().updateTilerLayerProperties();
+    tileGrid().updateTileLayerProperties();
 }
 
 void TileController::setTileDebugBorderColor(Color borderColor)
@@ -260,7 +263,7 @@ void TileController::setTileDebugBorderColor(Color borderColor)
         return;
     m_tileDebugBorderColor = borderColor;
 
-    tileGrid().updateTilerLayerProperties();
+    tileGrid().updateTileLayerProperties();
 }
 
 IntRect TileController::bounds() const

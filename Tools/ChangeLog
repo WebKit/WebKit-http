@@ -1,3 +1,201 @@
+2014-06-04  David Farler  <dfarler@apple.com>
+
+        Build ASan WebKit for iOS Simulator
+        https://bugs.webkit.org/show_bug.cgi?id=133489
+
+        Reviewed by Darin Adler.
+
+        * DumpRenderTree/mac/Configurations/DumpRenderTree.xcconfig:
+        * DumpRenderTree/mac/Configurations/DumpRenderTreeApp.xcconfig:
+        - Add missing ASan LDFLAGS.
+        * asan/asan.xcconfig:
+        - Split compiler-rt linker flags for OS X and iOS Simulator
+
+2014-06-03  Yoav Weiss  <yoav@yoav.ws>
+
+        Add myself (yoav@yoav.ws) to contributors.json
+        https://bugs.webkit.org/show_bug.cgi?id=133492
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2014-06-03  Eva Balazsfalvi  <evab.u-szeged@partner.samsung.com>
+
+        REGRESSION(r169092 and r169102): Skip failing JSC tests poperly on non-x86 Darwin platforms
+        https://bugs.webkit.org/show_bug.cgi?id=133149
+
+        Reviewed by Csaba Osztrogonác.
+
+        * Scripts/run-jsc-stress-tests: Added determineOS to determine the host operating system the script run on.
+
+2014-06-02  Tibor Meszaros  <tmeszaros.u-szeged@partner.samsung.com>
+
+        Add a verbose flag to binding tests
+        https://bugs.webkit.org/show_bug.cgi?id=122303
+
+        Reviewed by Csaba Osztrogonác.
+
+        This patch will:
+        - Add a verbose keyword argument to the BindingsTests constructor,
+        - Add --no-verbose option to the run-bindigs-test.
+        Verbose mode, which is on by default, prints positive results to stdout as before.
+        When the --no-verbose option added to run-bindings-tests, positive results are not printed at all.
+
+        Original patch from Matthew Hanson <matthew_hanson@apple.com>
+
+        * Scripts/run-bindings-tests:
+        (main):
+        * Scripts/webkitpy/bindings/main.py:
+        (BindingsTests.__init__):
+        (BindingsTests.detect_changes):
+
+2014-06-01  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Rename DoYouEvenBench 0.17 to Speedometer 1.0 and add a new look.
+        https://bugs.webkit.org/show_bug.cgi?id=133455
+
+        Reviewed by Timothy Hatcher.
+
+        Since the perf. dashboard doesn't support following renamed benchmarks,
+        keep reporting Speedometer results as DoYouEvenBench results.
+
+        * Scripts/webkitpy/performance_tests/perftestsrunner.py:
+        (_generate_results_dict):
+
+2014-05-31  Darin Adler  <darin@apple.com>
+
+        Viewport percentage tests that resize the viewport are flaky
+        https://bugs.webkit.org/show_bug.cgi?id=133351
+
+        Reviewed by Anders Carlsson.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (sizeWebViewForCurrentTest): Added a call to reset the window origin, which
+        happens to be stored in the UI delegate object. This is part of resetting the
+        window position.
+
+        * DumpRenderTree/mac/UIDelegate.h: Store the window origin rather than storing
+        a frame rectangle. The size is stored in the size of the web view itself.
+        * DumpRenderTree/mac/UIDelegate.mm:
+        (-[UIDelegate resetWindowOrigin]): Added.
+        (-[UIDelegate webView:setFrame:]): Changed to set the size of the web view. The
+        old version would store the frame, but not resize the web view!
+        (-[UIDelegate webViewFrame:]): Get the size from the web view.
+
+        * WebKitTestRunner/efl/PlatformWebViewEfl.cpp:
+        (WTR::PlatformWebView::setWindowFrame): Added code to resize the web view.
+
+        * WebKitTestRunner/gtk/PlatformWebViewGtk.cpp:
+        (WTR::PlatformWebView::resizeTo): Added a comment about missing code to resize
+        the window.
+
+        * WebKitTestRunner/ios/PlatformWebViewIOS.mm:
+        (WTR::PlatformWebView::resizeTo): Changed this to call setWindowFrame so the
+        window gets resized too, not just the web view.
+        (WTR::PlatformWebView::setWindowFrame): Added code to set the size of the web view.
+
+        * WebKitTestRunner/mac/PlatformWebViewMac.mm:
+        (WTR::PlatformWebView::resizeTo): Changed this to call setWindowFrame so the
+        window gets resized too, not just the web view.
+        (WTR::PlatformWebView::setWindowFrame): Added code to set the size of the web view.
+
+2014-05-30  Michael Saboff  <msaboff@apple.com>
+
+        Change run-jsc-stress-tests to not resolve jsc path locally when creating a bundle
+        https://bugs.webkit.org/show_bug.cgi?id=133409
+
+        Reviewed by Filip Pizlo.
+
+        Handle creating a tarball the same way as running remote when processing
+        paths in prepareBundle.
+
+        * Scripts/run-jsc-stress-tests:
+
+2014-05-30  Mario Sanchez Prada  <mario.prada@samsung.com>
+
+        [ATK] Deprecate usage of logAccessibilityEvents() in layout tests
+        https://bugs.webkit.org/show_bug.cgi?id=132280
+
+        Reviewed by Chris Fleizach.
+
+        Remove implementation of logAccessibilityEvents() for ATK based
+        ports, as this has proved to be a flaky method of checking that
+        ATK events are being properly emitted. Instead, it's better to use
+        the addNotificationListener() functions and provide a JS callback
+        to check that the right events are being emmitted from the tests.
+
+        * WebKitTestRunner/InjectedBundle/atk/AccessibilityControllerAtk.cpp:
+        (WTR::AccessibilityController::logAccessibilityEvents): Replaced
+        with dummy implementation.
+        * WebKitTestRunner/InjectedBundle/atk/AccessibilityNotificationHandlerAtk.cpp:
+        (WTR::AccessibilityNotificationHandler::logAccessibilityEvents): Removed
+
+2014-05-30  Mario Sanchez Prada  <mario.prada@samsung.com>
+
+        [ATK] Deprecate usage of logAccessibilityEvents() in layout tests
+        https://bugs.webkit.org/show_bug.cgi?id=132280
+
+        Rubber stamped by Carlos Garcia Campos.
+
+        Fix two small issues with previous patch (r169483), that caused some tests to break.
+
+        * WebKitTestRunner/InjectedBundle/atk/AccessibilityNotificationHandlerAtk.cpp:
+        (WTR::AccessibilityNotificationHandler::connectAccessibilityCallbacks): Removed
+        duplicated entry.
+        * WebKitTestRunner/InjectedBundle/atk/AccessibilityUIElementAtk.cpp:
+        (WTR::AccessibilityUIElement::setSelectedTextRange): Fix boolean condition.
+
+2014-05-30  Jarek Czekalski  <jarekczek@poczta.onet.pl>
+
+        [ATK] Added new accessibility signal: text-caret-moved.
+        Make AccessibilityUIElement.setSelectedTextRange work
+        as atk_text_set_caret_offset when given offset == 0.
+        https://bugs.webkit.org/show_bug.cgi?id=132527
+
+        Reviewed by Mario Sanchez Prada.
+
+        text-caret-moved signal in accessibilityController is needed to
+        implement tests from Tools/TestWebKitAPI/Tests/WebKitGtk/testatk.c
+        as LayoutTests. Add the signal to the controller.
+
+        * WebKitTestRunner/InjectedBundle/Bindings/AccessibilityUIElement.idl:
+        * WebKitTestRunner/InjectedBundle/AccessibilityUIElement.cpp:
+        * WebKitTestRunner/InjectedBundle/AccessibilityUIElement.h:
+        * WebKitTestRunner/InjectedBundle/ios/AccessibilityUIElementIOS.mm:
+        * WebKitTestRunner/InjectedBundle/mac/AccessibilityUIElementMac.mm:
+        (setSelectedTextRange): Change return type to bool.
+        * WebKitTestRunner/InjectedBundle/atk/AccessibilityUIElementAtk.cpp:
+        (setSelectedTextRange): Call atk_text_set_caret_offset and return bool.
+        * WebKitTestRunner/InjectedBundle/atk/AccessibilityNotificationHandlerAtk.cpp:
+        (axObjectEventListener): Add notification name AXTextCaretMoved, allow
+        for extra arguments passed to handler and use it for text-caret-moved offset.
+        (WTR::AccessibilityNotificationHandler::connectAccessibilityCallbacks):
+        Connect callback to new listener for ATK:AtkText:text-caret-moved.
+        Refactor so that failures be reported.
+        Initialize atk interfaces before trying to connect to them, see
+        https://bugzilla.gnome.org/show_bug.cgi?id=729922
+        (WTR::AccessibilityNotificationHandler::disconnectAccessibilityCallbacks):
+        Simplify code by using a vector in place of dozen variables.
+        * DumpRenderTree/atk/AccessibilityCallbacksAtk.cpp:
+        Comment about not synchronizing with accessibilityController.
+
+2014-05-29  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] Add a WebKit2 Performance bot.
+        https://bugs.webkit.org/show_bug.cgi?id=132862
+
+        Reviewed by Csaba Osztrogonác.
+
+        This adds a GTK WebKit2 perf bot.
+
+        * BuildSlaveSupport/build.webkit.org-config/config.json:
+
+2014-05-29  Dan Bernstein  <mitz@apple.com>
+
+        Fixed the WebKitTestRunner build after r169452.
+
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp:
+        (WTR::InjectedBundle::initialize):
+
 2014-05-28  Gwang Yoon Hwang  <yoon@igalia.com>
 
         Unreviewed. Update my email addresses in contributors.json.

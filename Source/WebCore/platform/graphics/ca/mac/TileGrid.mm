@@ -163,7 +163,7 @@ void TileGrid::setTileNeedsDisplayInRect(const TileIndex& tileIndex, TileInfo& t
         tileInfo.hasStaleContent = true;
 }
 
-void TileGrid::updateTilerLayerProperties()
+void TileGrid::updateTileLayerProperties()
 {
     bool acceleratesDrawing = m_controller.acceleratesDrawing();
     bool opaque = m_controller.tilesAreOpaque();
@@ -202,14 +202,11 @@ bool TileGrid::tilesWouldChangeForVisibleRect(const FloatRect& newVisibleRect, c
 
 bool TileGrid::prepopulateRect(const FloatRect& rect)
 {
-    FloatRect scaledRect(rect);
-    scaledRect.scale(m_scale);
-    IntRect rectInTileCoords(enclosingIntRect(scaledRect));
-
-    if (m_primaryTileCoverageRect.contains(rectInTileCoords))
+    IntRect enclosingCoverageRect = enclosingIntRect(rect);
+    if (m_primaryTileCoverageRect.contains(enclosingCoverageRect))
         return false;
-    
-    m_secondaryTileCoverageRects.append(rect);
+
+    m_secondaryTileCoverageRects.append(enclosingCoverageRect);
     return true;
 }
 
@@ -317,6 +314,9 @@ void TileGrid::revalidateTiles(unsigned validationPolicy)
     TileCohort currCohort = nextTileCohort();
     unsigned tilesInCohort = 0;
 
+    double minimumRevalidationTimerDuration = std::numeric_limits<double>::max();
+    bool needsTileRevalidation = false;
+
     // Move tiles newly outside the coverage rect into the cohort map.
     for (TileMap::iterator it = m_tiles.begin(), end = m_tiles.end(); it != end; ++it) {
         TileInfo& tileInfo = it->value;
@@ -339,9 +339,27 @@ void TileGrid::revalidateTiles(unsigned validationPolicy)
 
                 if (m_controller.unparentsOffscreenTiles())
                     tileLayer->removeFromSuperlayer();
+            } else if (m_controller.unparentsOffscreenTiles() && m_controller.shouldAggressivelyRetainTiles() && tileLayer->superlayer()) {
+                // Aggressive tile retention means we'll never remove cohorts, but we need to make sure they're unparented.
+                // We can't immediately unparent cohorts comprised of secondary tiles that never touch the primary coverage rect,
+                // because that would defeat the usefulness of prepopulateRect(); instead, age prepopulated tiles out as if they were being removed.
+                for (auto& cohort : m_cohortList) {
+                    if (cohort.cohort != tileInfo.cohort)
+                        continue;
+                    double timeUntilCohortExpires = cohort.timeUntilExpiration();
+                    if (timeUntilCohortExpires > 0) {
+                        minimumRevalidationTimerDuration = std::min(minimumRevalidationTimerDuration, timeUntilCohortExpires);
+                        needsTileRevalidation = true;
+                    } else
+                        tileLayer->removeFromSuperlayer();
+                    break;
+                }
             }
         }
     }
+
+    if (needsTileRevalidation)
+        m_controller.scheduleTileRevalidation(minimumRevalidationTimerDuration);
 
     if (tilesInCohort)
         startedNewCohort(currCohort);
@@ -360,8 +378,11 @@ void TileGrid::revalidateTiles(unsigned validationPolicy)
         removeAllSecondaryTiles();
         m_cohortList.clear();
     } else {
-        for (size_t i = 0; i < m_secondaryTileCoverageRects.size(); ++i)
-            ensureTilesForRect(m_secondaryTileCoverageRects[i], CoverageType::SecondaryTiles);
+        for (auto& secondaryCoverageRect : m_secondaryTileCoverageRects) {
+            FloatRect secondaryRectInLayerCoordinates(secondaryCoverageRect);
+            secondaryRectInLayerCoordinates.scale(1 / m_scale);
+            ensureTilesForRect(secondaryRectInLayerCoordinates, CoverageType::SecondaryTiles);
+        }
         m_secondaryTileCoverageRects.clear();
     }
 
@@ -448,6 +469,13 @@ void TileGrid::scheduleCohortRemoval()
         m_cohortRemovalTimer.startRepeating(cohortRemovalTimerSeconds);
 }
 
+double TileGrid::TileCohortInfo::timeUntilExpiration()
+{
+    double cohortLifeTimeSeconds = 2;
+    double timeThreshold = monotonicallyIncreasingTime() - cohortLifeTimeSeconds;
+    return creationTime - timeThreshold;
+}
+
 void TileGrid::cohortRemovalTimerFired(Timer<TileGrid>*)
 {
     if (m_cohortList.isEmpty()) {
@@ -455,10 +483,7 @@ void TileGrid::cohortRemovalTimerFired(Timer<TileGrid>*)
         return;
     }
 
-    double cohortLifeTimeSeconds = 2;
-    double timeThreshold = monotonicallyIncreasingTime() - cohortLifeTimeSeconds;
-
-    while (!m_cohortList.isEmpty() && m_cohortList.first().creationTime < timeThreshold) {
+    while (!m_cohortList.isEmpty() && m_cohortList.first().timeUntilExpiration() < 0) {
         TileCohortInfo firstCohort = m_cohortList.takeFirst();
         removeTilesInCohort(firstCohort.cohort);
     }
@@ -579,20 +604,24 @@ void TileGrid::drawTileMapContents(CGContextRef context, CGRect layerBounds) con
         CGFloat red = 1;
         CGFloat green = 1;
         CGFloat blue = 1;
+        CGFloat alpha = 1;
         if (tileInfo.hasStaleContent) {
             red = 0.25;
             green = 0.125;
             blue = 0;
+        } else if (m_controller.shouldAggressivelyRetainTiles() && tileInfo.cohort != VisibleTileCohort) {
+            red = 0.8;
+            green = 0.8;
+            blue = 0.8;
         }
 
         TileCohort newestCohort = newestTileCohort();
         TileCohort oldestCohort = oldestTileCohort();
 
-        if (!m_controller.shouldAggressivelyRetainTiles() && tileInfo.cohort != VisibleTileCohort && newestCohort > oldestCohort) {
-            float cohortProportion = static_cast<float>((newestCohort - tileInfo.cohort)) / (newestCohort - oldestCohort);
-            CGContextSetRGBFillColor(context, red, green, blue, 1 - cohortProportion);
-        } else
-            CGContextSetRGBFillColor(context, red, green, blue, 1);
+        if (!m_controller.shouldAggressivelyRetainTiles() && tileInfo.cohort != VisibleTileCohort && newestCohort > oldestCohort)
+            alpha = 1 - (static_cast<float>((newestCohort - tileInfo.cohort)) / (newestCohort - oldestCohort));
+
+        CGContextSetRGBFillColor(context, red, green, blue, alpha);
 
         if (tileLayer->superlayer()) {
             CGContextSetLineWidth(context, 0.5 / contextScale);

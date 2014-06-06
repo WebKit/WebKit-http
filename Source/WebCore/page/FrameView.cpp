@@ -160,6 +160,7 @@ FrameView::FrameView(Frame& frame)
     , m_layoutPhase(OutsideLayout)
     , m_inSynchronousPostLayout(false)
     , m_postLayoutTasksTimer(this, &FrameView::postLayoutTimerFired)
+    , m_updateEmbeddedObjectsTimer(this, &FrameView::updateEmbeddedObjectsTimerFired)
     , m_isTransparent(false)
     , m_baseBackgroundColor(Color::white)
     , m_mediaType("screen")
@@ -250,6 +251,7 @@ void FrameView::reset()
     m_layoutCount = 0;
     m_nestedLayoutCount = 0;
     m_postLayoutTasksTimer.stop();
+    m_updateEmbeddedObjectsTimer.stop();
     m_firstLayout = true;
     m_firstLayoutCallbackPending = false;
     m_wasScrolledByUser = false;
@@ -431,9 +433,6 @@ void FrameView::setFrameRect(const IntRect& newRect)
         if (renderView->usesCompositing())
             renderView->compositor().frameViewDidChangeSize();
     }
-
-    if (!frameFlatteningEnabled())
-        sendResizeEventIfNeeded();
 }
 
 #if ENABLE(REQUEST_ANIMATION_FRAME)
@@ -2130,11 +2129,8 @@ bool FrameView::isRubberBandInProgress() const
 bool FrameView::requestScrollPositionUpdate(const IntPoint& position)
 {
 #if ENABLE(ASYNC_SCROLLING)
-    if (TiledBacking* tiledBacking = this->tiledBacking()) {
-        IntRect visibleRect = visibleContentRect();
-        visibleRect.setLocation(position);
-        tiledBacking->prepopulateRect(visibleRect);
-    }
+    if (TiledBacking* tiledBacking = this->tiledBacking())
+        tiledBacking->prepopulateRect(FloatRect(position, visibleContentRect().size()));
 
     if (Page* page = frame().page()) {
         if (ScrollingCoordinator* scrollingCoordinator = page->scrollingCoordinator())
@@ -2735,16 +2731,28 @@ bool FrameView::updateEmbeddedObjects()
     return m_embeddedObjectsToUpdate->isEmpty();
 }
 
+void FrameView::updateEmbeddedObjectsTimerFired(Timer<FrameView>*)
+{
+    RefPtr<FrameView> protect(this);
+    m_updateEmbeddedObjectsTimer.stop();
+    for (unsigned i = 0; i < maxUpdateEmbeddedObjectsIterations; i++) {
+        if (updateEmbeddedObjects())
+            break;
+    }
+}
+
 void FrameView::flushAnyPendingPostLayoutTasks()
 {
-    if (!m_postLayoutTasksTimer.isActive())
-        return;
-
-    performPostLayoutTasks();
+    if (m_postLayoutTasksTimer.isActive())
+        performPostLayoutTasks();
+    if (m_updateEmbeddedObjectsTimer.isActive())
+        updateEmbeddedObjectsTimerFired(nullptr);
 }
 
 void FrameView::performPostLayoutTasks()
 {
+    // FIXME: We should not run any JavaScript code in this function.
+
     m_postLayoutTasksTimer.stop();
 
     frame().selection().layoutDidChange();
@@ -2775,10 +2783,7 @@ void FrameView::performPostLayoutTasks()
     // is called through the post layout timer.
     Ref<FrameView> protect(*this);
 
-    for (unsigned i = 0; i < maxUpdateEmbeddedObjectsIterations; i++) {
-        if (updateEmbeddedObjects())
-            break;
-    }
+    m_updateEmbeddedObjectsTimer.startOneShot(0);
 
     if (auto* page = frame().page()) {
         if (auto* scrollingCoordinator = page->scrollingCoordinator())
@@ -2808,20 +2813,26 @@ IntSize FrameView::sizeForResizeEvent() const
 
 void FrameView::sendResizeEventIfNeeded()
 {
+    if (isInLayout() || needsLayout())
+        return;
+
     RenderView* renderView = this->renderView();
     if (!renderView || renderView->printing())
         return;
+
     if (frame().page() && frame().page()->chrome().client().isSVGImageChromeClient())
         return;
 
     IntSize currentSize = sizeForResizeEvent();
     float currentZoomFactor = renderView->style().zoom();
-    bool shouldSendResizeEvent = !m_firstLayout && (currentSize != m_lastViewportSize || currentZoomFactor != m_lastZoomFactor);
+
+    if (currentSize == m_lastViewportSize && currentZoomFactor == m_lastZoomFactor)
+        return;
 
     m_lastViewportSize = currentSize;
     m_lastZoomFactor = currentZoomFactor;
 
-    if (!shouldSendResizeEvent)
+    if (m_firstLayout)
         return;
 
 #if PLATFORM(IOS)
@@ -2835,20 +2846,24 @@ void FrameView::sendResizeEventIfNeeded()
 #endif
 
     bool isMainFrame = frame().isMainFrame();
-    bool canSendResizeEventSynchronously = !m_shouldAutoSize && isMainFrame && !isInLayout();
+    bool canSendResizeEventSynchronously = isMainFrame && !m_shouldAutoSize;
 
-    // If we resized during layout, queue up a resize event for later, otherwise fire it right away.
     RefPtr<Event> resizeEvent = Event::create(eventNames().resizeEvent, false, false);
     if (canSendResizeEventSynchronously)
-        frame().document()->dispatchWindowEvent(resizeEvent.release(), frame().document()->domWindow());
-    else
+        frame().document()->dispatchWindowEvent(resizeEvent.release());
+    else {
+        // FIXME: Queueing this event for an unpredictable time in the future seems
+        // intrinsically racy. By the time this resize event fires, the frame might
+        // be resized again, so we could end up with two resize events for the same size.
         frame().document()->enqueueWindowEvent(resizeEvent.release());
+    }
 
 #if ENABLE(INSPECTOR)
-    Page* page = frame().page();
     if (InspectorInstrumentation::hasFrontends() && isMainFrame) {
-        if (InspectorClient* inspectorClient = page ? page->inspectorController().inspectorClient() : nullptr)
-            inspectorClient->didResizeMainFrame(&frame());
+        if (Page* page = frame().page()) {
+            if (InspectorClient* inspectorClient = page->inspectorController().inspectorClient())
+                inspectorClient->didResizeMainFrame(&frame());
+        }
     }
 #endif
 }

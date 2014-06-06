@@ -47,7 +47,6 @@ void MediaSourceGStreamer::open(MediaSourcePrivateClient* mediaSource, WebKitMed
 
 MediaSourceGStreamer::MediaSourceGStreamer(WebKitMediaSrc* src)
     : m_client(adoptRef(new MediaSourceClientGstreamer(src)))
-    , m_duration(0.0)
     , m_readyState(MediaPlayer::HaveNothing)
 {
 }
@@ -62,11 +61,11 @@ MediaSourceGStreamer::AddStatus MediaSourceGStreamer::addSourceBuffer(const Cont
     return MediaSourceGStreamer::Ok;
 }
 
-void MediaSourceGStreamer::setDuration(double duration)
+void MediaSourceGStreamer::setDuration(const MediaTime& duration)
 {
     ASSERT(m_client);
     m_duration = duration;
-    m_client->didReceiveDuration(duration);
+    m_client->didReceiveDuration(duration.toDouble());
 }
 
 void MediaSourceGStreamer::markEndOfStream(EndOfStreamStatus)

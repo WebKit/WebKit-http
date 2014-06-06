@@ -419,7 +419,7 @@ Document::Document(Frame* frame, const URL& url, unsigned documentClasses, unsig
     , m_printing(false)
     , m_paginatedForScreen(false)
     , m_ignoreAutofocus(false)
-    , m_compatibilityMode(NoQuirksMode)
+    , m_compatibilityMode(DocumentCompatibilityMode::NoQuirksMode)
     , m_compatibilityModeLocked(false)
     , m_textColor(Color::black)
     , m_domTreeVersion(++s_globalTreeVersion)
@@ -766,7 +766,7 @@ MediaQueryMatcher& Document::mediaQueryMatcher()
     return *m_mediaQueryMatcher;
 }
 
-void Document::setCompatibilityMode(CompatibilityMode mode)
+void Document::setCompatibilityMode(DocumentCompatibilityMode mode)
 {
     if (m_compatibilityModeLocked || mode == m_compatibilityMode)
         return;
@@ -1826,10 +1826,10 @@ void Document::updateLayout()
 // stylesheets are loaded. Doing a layout ignoring the pending stylesheets
 // lets us get reasonable answers. The long term solution to this problem is
 // to instead suspend JavaScript execution.
-void Document::updateLayoutIgnorePendingStylesheets()
+void Document::updateLayoutIgnorePendingStylesheets(Document::RunPostLayoutTasks runPostLayoutTasks)
 {
     bool oldIgnore = m_ignorePendingStylesheets;
-    
+
     if (!haveStylesheetsLoaded()) {
         m_ignorePendingStylesheets = true;
         // FIXME: We are willing to attempt to suppress painting with outdated style info only once.  Our assumption is that it would be
@@ -1850,6 +1850,9 @@ void Document::updateLayoutIgnorePendingStylesheets()
     }
 
     updateLayout();
+
+    if (runPostLayoutTasks == RunPostLayoutTasksSynchronously && view())
+        view()->flushAnyPendingPostLayoutTasks();
 
     m_ignorePendingStylesheets = oldIgnore;
 }
@@ -2258,7 +2261,7 @@ void Document::implicitOpen()
 
     removeChildren();
 
-    setCompatibilityMode(NoQuirksMode);
+    setCompatibilityMode(DocumentCompatibilityMode::NoQuirksMode);
 
     m_parser = createParser();
     setParsing(true);
@@ -3126,7 +3129,7 @@ void Document::cloneDataFromDocument(const Document& other)
     m_baseURLOverride = other.baseURLOverride();
     m_documentURI = other.documentURI();
 
-    setCompatibilityMode(other.compatibilityMode());
+    setCompatibilityMode(other.m_compatibilityMode);
     setSecurityOrigin(other.securityOrigin());
     setDecoder(other.decoder());
 }

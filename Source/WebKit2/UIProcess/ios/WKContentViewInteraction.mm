@@ -130,6 +130,10 @@ static const float tapAndHoldDelay  = 0.75;
 - (void)scheduleChineseTransliterationForText:(NSString *)text;
 @end
 
+@interface UIKeyboardImpl (StagingToRemove)
+- (void)didHandleWebKeyEvent;
+@end
+
 @interface WKFormInputSession : NSObject <_WKFormInputSession>
 
 - (instancetype)initWithContentView:(WKContentView *)view userObject:(NSObject <NSSecureCoding> *)userObject;
@@ -397,6 +401,7 @@ static inline bool highlightedQuadsAreSmallerThanRect(const Vector<FloatQuad>& q
     }
 
     bool allHighlightRectsAreRectilinear = true;
+    float deviceScaleFactor = _page->deviceScaleFactor();
     const size_t quadCount = highlightedQuads.size();
     RetainPtr<NSMutableArray> rects = adoptNS([[NSMutableArray alloc] initWithCapacity:static_cast<const NSUInteger>(quadCount)]);
     for (size_t i = 0; i < quadCount; ++i) {
@@ -404,8 +409,9 @@ static inline bool highlightedQuadsAreSmallerThanRect(const Vector<FloatQuad>& q
         if (quad.isRectilinear()) {
             FloatRect boundingBox = quad.boundingBox();
             boundingBox.scale(selfScale);
-            CGRect rect = CGRectInset(boundingBox, -UIWebViewMinimumHighlightRadius, -UIWebViewMinimumHighlightRadius);
-            [rects addObject:[NSValue valueWithCGRect:rect]];
+            boundingBox.inflate(UIWebViewMinimumHighlightRadius);
+            CGRect pixelAlignedRect = static_cast<CGRect>(enclosingRectExtendedToDevicePixels(boundingBox, deviceScaleFactor));
+            [rects addObject:[NSValue valueWithCGRect:pixelAlignedRect]];
         } else {
             allHighlightRectsAreRectilinear = false;
             rects.clear();
@@ -786,6 +792,9 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
 {
     ASSERT(gestureRecognizer == _singleTapGestureRecognizer);
 
+    if (![self isFirstResponder])
+        [self becomeFirstResponder];
+
     if (_webSelectionAssistant && ![_webSelectionAssistant shouldHandleSingleTapAtPoint:gestureRecognizer.location]) {
         [self _singleTapDidReset:gestureRecognizer];
         return;
@@ -793,7 +802,11 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
 
     ASSERT(_potentialTapInProgress);
 
-    [_webSelectionAssistant clearSelection];
+    // We don't want to clear the selection if it is in editable content.
+    // The selection could have been set by autofocusing on page load and not
+    // reflected in the UI process since the user was not interacting with the page.
+    if (!_page->editorState().isContentEditable)
+        [_webSelectionAssistant clearSelection];
 
     _lastInteractionLocation = gestureRecognizer.location;
 
@@ -1482,6 +1495,20 @@ static void selectionChangedWithTouch(bool error, WKContentView *view, const Web
     return _page->editorState().characterBeforeSelection;
 }
 
+- (UTF32Char)_characterInRelationToCaretSelection:(int)amount
+{
+    switch (amount) {
+    case 0:
+        return _page->editorState().characterAfterSelection;
+    case -1:
+        return _page->editorState().characterBeforeSelection;
+    case -2:
+        return _page->editorState().twoCharacterBeforeSelection;
+    default:
+        return 0;
+    }
+}
+
 - (CGRect)textFirstRect
 {
     return (_page->editorState().hasComposition) ? _page->editorState().firstMarkedRect : _autocorrectionData.textFirstRect;
@@ -1896,6 +1923,15 @@ static UITextAutocapitalizationType toUITextAutocapitalize(WebAutocapitalizeType
 - (void)handleKeyWebEvent:(WebIOSEvent *)theEvent
 {
     _page->handleKeyboardEvent(NativeWebKeyboardEvent(theEvent));
+}
+
+- (void)_didHandleKeyEvent:(WebIOSEvent *)event
+{
+    if (event.type == WebEventKeyDown) {
+        // FIXME: This is only for staging purposes.
+        if ([[UIKeyboardImpl sharedInstance] respondsToSelector:@selector(didHandleWebKeyEvent)])
+            [[UIKeyboardImpl sharedInstance] didHandleWebKeyEvent];
+    }
 }
 
 - (BOOL)_interpretKeyEvent:(WebIOSEvent *)event isCharEvent:(BOOL)isCharEvent

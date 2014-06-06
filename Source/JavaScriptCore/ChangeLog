@@ -1,3 +1,67 @@
+2014-06-04  Timothy Horton  <timothy_horton@apple.com>
+
+        iOS Debug build fix
+
+        Rubber-stamped by Filip Pizlo.
+
+        * Configurations/LLVMForJSC.xcconfig:
+        Dead-code strip the llvmForJSC library unconditionally, to work around <rdar://problem/16920916>.
+
+2014-06-04  Oliver Hunt  <oliver@apple.com>
+
+        ArrayIterator should not be exposed in Safari 8
+        https://bugs.webkit.org/show_bug.cgi?id=133494
+
+        Reviewed by Michael Saboff.
+
+        Separate out types that require constructor objects, and don't
+        include the iterator types in that list.
+
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::reset):
+        * runtime/JSGlobalObject.h:
+
+2014-06-04  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG::Safepoint::begin() should set m_didCallBegin before releasing the rightToRun lock, because otherwise, Safepoint::checkLivenessAndVisitChildren() may assert due to a race
+        https://bugs.webkit.org/show_bug.cgi?id=133525
+        <rdar://problem/16790296>
+
+        Reviewed by Oliver Hunt.
+
+        * dfg/DFGSafepoint.cpp:
+        (JSC::DFG::Safepoint::begin):
+
+2014-06-03  Filip Pizlo  <fpizlo@apple.com>
+
+        LLVM soft-linking should be truly fail-silent
+        https://bugs.webkit.org/show_bug.cgi?id=133482
+
+        Reviewed by Mark Lam.
+
+        * llvm/InitializeLLVMPOSIX.cpp:
+        (JSC::initializeLLVMPOSIX): Missing return statement in the dlsym() returning null case.
+
+2014-06-03  Eva Balazsfalvi  <evab.u-szeged@partner.samsung.com>
+
+        REGRESSION(r169092 and r169102): Skip failing JSC tests poperly on non-x86 Darwin platforms
+        https://bugs.webkit.org/show_bug.cgi?id=133149
+
+        Reviewed by Csaba Osztrogonác.
+
+        * tests/mozilla/mozilla-tests.yaml: Skip js1_5/Regress/regress-159334.js only if the architecture isn't x86 and the host is Darwin.
+
+2014-05-31  Anders Carlsson  <andersca@apple.com>
+
+        Add a LazyNeverDestroyed class template and use it
+        https://bugs.webkit.org/show_bug.cgi?id=133425
+
+        Reviewed by Darin Adler.
+
+        * dfg/DFGFunctionWhitelist.cpp:
+        (JSC::DFG::FunctionWhitelist::ensureGlobalWhitelist):
+        * dfg/DFGFunctionWhitelist.h:
+
 2014-05-28  Filip Pizlo  <fpizlo@apple.com>
 
         DFG::DCEPhase inserts into an insertion set in reverse, causing hilarious basic block corruption if you kill a lot of NewArrays

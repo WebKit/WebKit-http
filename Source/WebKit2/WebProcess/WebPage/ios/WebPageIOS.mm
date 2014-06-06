@@ -151,13 +151,17 @@ void WebPage::didReceiveMobileDocType(bool isMobileDoctype)
         resetViewportDefaultConfiguration(m_mainFrame.get());
 }
 
-void WebPage::restorePageState(double scale, const IntPoint& scrollPosition)
+void WebPage::restorePageState(double scale, bool userHasChangedPageScaleFactor, const IntPoint& exposedOrigin)
 {
-    scalePage(scale, scrollPosition);
-    m_page->mainFrame().view()->setScrollPosition(scrollPosition);
+    // FIXME: ideally, we should sync this with the UIProcess. We should not try to change the position if the user is interacting
+    // with the page, and we should send the new scroll position as soon as possible to the UIProcess.
 
-    // FIXME: we should get the value of userHasChangedPageScaleFactor from the history.
-    m_userHasChangedPageScaleFactor = true;
+    float boundedScale = std::min<float>(m_viewportConfiguration.maximumScale(), std::max<float>(m_viewportConfiguration.minimumScale(), scale));
+    float topInsetInPageCoordinates = m_obscuredTopInset / boundedScale;
+    IntPoint scrollPosition(exposedOrigin.x(), exposedOrigin.y() + topInsetInPageCoordinates);
+    scalePage(boundedScale, scrollPosition);
+    m_page->mainFrame().view()->setScrollPosition(scrollPosition);
+    m_userHasChangedPageScaleFactor = userHasChangedPageScaleFactor;
 }
 
 double WebPage::minimumPageScaleFactor() const
@@ -1377,7 +1381,7 @@ void WebPage::requestDictationContext(uint64_t callbackID)
 
     String selectedText;
     if (frame.selection().isRange())
-        selectedText = plainText(frame.selection().selection().toNormalizedRange().get());
+        selectedText = plainTextReplacingNoBreakSpace(frame.selection().selection().toNormalizedRange().get());
 
     String contextBefore;
     if (startPosition != startOfEditableContent(startPosition)) {
@@ -1390,7 +1394,7 @@ void WebPage::requestDictationContext(uint64_t callbackID)
             lastPosition = currentPosition;
         }
         if (lastPosition.isNotNull() && lastPosition != startPosition)
-            contextBefore = plainText(Range::create(*frame.document(), lastPosition, startPosition).get());
+            contextBefore = plainTextReplacingNoBreakSpace(Range::create(*frame.document(), lastPosition, startPosition).get());
     }
 
     String contextAfter;
@@ -1404,7 +1408,7 @@ void WebPage::requestDictationContext(uint64_t callbackID)
             lastPosition = currentPosition;
         }
         if (lastPosition.isNotNull() && lastPosition != endPosition)
-            contextAfter = plainText(Range::create(*frame.document(), endPosition, lastPosition).get());
+            contextAfter = plainTextReplacingNoBreakSpace(Range::create(*frame.document(), endPosition, lastPosition).get());
     }
 
     send(Messages::WebPageProxy::DictationContextCallback(selectedText, contextBefore, contextAfter, callbackID));
@@ -1414,7 +1418,7 @@ void WebPage::replaceSelectedText(const String& oldText, const String& newText)
 {
     Frame& frame = m_page->focusController().focusedOrMainFrame();
     RefPtr<Range> wordRange = frame.selection().isCaret() ? wordRangeFromPosition(frame.selection().selection().start()) : frame.selection().toNormalizedRange();
-    if (plainText(wordRange.get()) != oldText)
+    if (plainTextReplacingNoBreakSpace(wordRange.get()) != oldText)
         return;
     
     frame.editor().setIgnoreCompositionSelectionChange(true);
@@ -1440,7 +1444,7 @@ void WebPage::replaceDictatedText(const String& oldText, const String& newText)
         position = startOfDocument(static_cast<Node*>(frame.document()->documentElement()));
     RefPtr<Range> range = Range::create(*frame.document(), position, frame.selection().selection().start());
 
-    if (plainText(range.get()) != oldText)
+    if (plainTextReplacingNoBreakSpace(range.get()) != oldText)
         return;
 
     // We don't want to notify the client that the selection has changed until we are done inserting the new text.
@@ -1454,12 +1458,16 @@ void WebPage::requestAutocorrectionData(const String& textForAutocorrection, uin
 {
     RefPtr<Range> range;
     Frame& frame = m_page->focusController().focusedOrMainFrame();
-    ASSERT(frame.selection().isCaret());
+    if (!frame.selection().isCaret()) {
+        send(Messages::WebPageProxy::AutocorrectionDataCallback(Vector<FloatRect>(), String(), 0, 0, callbackID));
+        return;
+    }
+
     VisiblePosition position = frame.selection().selection().start();
     Vector<SelectionRect> selectionRects;
 
     range = wordRangeFromPosition(position);
-    String textForRange = plainText(range.get());
+    String textForRange = plainTextReplacingNoBreakSpace(range.get());
     const unsigned maxSearchAttempts = 5;
     for (size_t i = 0;  i < maxSearchAttempts && textForRange != textForAutocorrection; ++i)
     {
@@ -1467,7 +1475,7 @@ void WebPage::requestAutocorrectionData(const String& textForAutocorrection, uin
         if (position.isNull() || position == range->startPosition())
             break;
         range = Range::create(*frame.document(), wordRangeFromPosition(position)->startPosition(), range->endPosition());
-        textForRange = plainText(range.get());
+        textForRange = plainTextReplacingNoBreakSpace(range.get());
     }
     if (textForRange == textForAutocorrection)
         range->collectSelectionRects(selectionRects);
@@ -1507,7 +1515,7 @@ void WebPage::syncApplyAutocorrection(const String& correction, const String& or
     VisiblePosition position = frame.selection().selection().start();
     
     range = wordRangeFromPosition(position);
-    String textForRange = plainText(range.get());
+    String textForRange = plainTextReplacingNoBreakSpace(range.get());
     if (textForRange != originalText) {
         for (size_t i = 0; i < originalText.length(); ++i)
             position = position.previous();
@@ -1515,7 +1523,7 @@ void WebPage::syncApplyAutocorrection(const String& correction, const String& or
             position = startOfDocument(static_cast<Node*>(frame.document()->documentElement()));
         range = Range::create(*frame.document(), position, frame.selection().selection().start());
         if (range)
-            textForRange = (range) ? plainText(range.get()) : emptyString();
+            textForRange = (range) ? plainTextReplacingNoBreakSpace(range.get()) : emptyString();
         unsigned loopCount = 0;
         const unsigned maxPositionsAttempts = 10;
         while (textForRange.length() && textForRange.length() > originalText.length() && loopCount < maxPositionsAttempts) {
@@ -1524,7 +1532,7 @@ void WebPage::syncApplyAutocorrection(const String& correction, const String& or
                 range = NULL;
             else
                 range = Range::create(*frame.document(), position, frame.selection().selection().start());
-            textForRange = (range) ? plainText(range.get()) : emptyString();
+            textForRange = (range) ? plainTextReplacingNoBreakSpace(range.get()) : emptyString();
             loopCount++;
         }
     }
@@ -1553,17 +1561,17 @@ static void computeAutocorrectionContext(Frame& frame, String& contextBefore, St
     const unsigned maxContextLength = 30;
 
     if (frame.selection().isRange())
-        selectedText = plainText(frame.selection().selection().toNormalizedRange().get());
+        selectedText = plainTextReplacingNoBreakSpace(frame.selection().selection().toNormalizedRange().get());
 
     if (frame.editor().hasComposition()) {
         range = Range::create(*frame.document(), frame.editor().compositionRange()->startPosition(), startPosition);
         String markedTextBefore;
         if (range)
-            markedTextBefore = plainText(range.get());
+            markedTextBefore = plainTextReplacingNoBreakSpace(range.get());
         range = Range::create(*frame.document(), endPosition, frame.editor().compositionRange()->endPosition());
         String markedTextAfter;
         if (range)
-            markedTextAfter = plainText(range.get());
+            markedTextAfter = plainTextReplacingNoBreakSpace(range.get());
         markedText = markedTextBefore + selectedText + markedTextAfter;
         if (!markedText.isEmpty()) {
             location = markedTextBefore.length();
@@ -1580,14 +1588,14 @@ static void computeAutocorrectionContext(Frame& frame, String& contextBefore, St
                 previousPosition = startOfWord(positionOfNextBoundaryOfGranularity(currentPosition, WordGranularity, DirectionBackward));
                 if (previousPosition.isNull())
                     break;
-                String currentWord = plainText(Range::create(*frame.document(), previousPosition, currentPosition).get());
+                String currentWord = plainTextReplacingNoBreakSpace(Range::create(*frame.document(), previousPosition, currentPosition).get());
                 totalContextLength += currentWord.length();
                 if (totalContextLength >= maxContextLength)
                     break;
                 currentPosition = previousPosition;
             }
             if (currentPosition.isNotNull() && currentPosition != startPosition) {
-                contextBefore = plainText(Range::create(*frame.document(), currentPosition, startPosition).get());
+                contextBefore = plainTextReplacingNoBreakSpace(Range::create(*frame.document(), currentPosition, startPosition).get());
                 if (atBoundaryOfGranularity(currentPosition, ParagraphGranularity, DirectionBackward))
                     contextBefore = ASCIILiteral("\n ") + contextBefore;
             }
@@ -1598,7 +1606,7 @@ static void computeAutocorrectionContext(Frame& frame, String& contextBefore, St
             if (!atBoundaryOfGranularity(endPosition, WordGranularity, DirectionForward) && withinTextUnitOfGranularity(endPosition, WordGranularity, DirectionForward))
                 nextPosition = positionOfNextBoundaryOfGranularity(endPosition, WordGranularity, DirectionForward);
             if (nextPosition.isNotNull())
-                contextAfter = plainText(Range::create(*frame.document(), endPosition, nextPosition).get());
+                contextAfter = plainTextReplacingNoBreakSpace(Range::create(*frame.document(), endPosition, nextPosition).get());
         }
     }
 }
@@ -2151,8 +2159,13 @@ void WebPage::dynamicViewportSizeUpdate(const FloatSize& minimumLayoutSize, cons
     frameView.setCustomSizeForResizeEvent(expandedIntSize(unobscuredContentRectSizeInContentCoordinates));
     frameView.setScrollOffset(roundedUnobscuredContentRect.location());
 
-    if (!withinEpsilon(pageScaleFactor(), targetScale) || roundedIntPoint(targetUnobscuredRect.location()) != frameView.scrollPosition())
-        send(Messages::WebPageProxy::DynamicViewportUpdateChangedTarget(pageScaleFactor(), frameView.scrollPosition()));
+    send(Messages::WebPageProxy::DynamicViewportUpdateChangedTarget(pageScaleFactor(), frameView.scrollPosition()));
+}
+
+void WebPage::synchronizeDynamicViewportUpdate(double& newTargetScale, FloatPoint& newScrollPosition)
+{
+    newTargetScale = pageScaleFactor();
+    newScrollPosition = m_page->mainFrame().view()->scrollPosition();
 }
 
 void WebPage::resetViewportDefaultConfiguration(WebFrame* frame)
@@ -2264,6 +2277,7 @@ void WebPage::updateVisibleContentRects(const VisibleContentRectUpdateInfo& visi
 {
     m_hasReceivedVisibleContentRectsAfterDidCommitLoad = true;
     m_lastVisibleContentRectUpdateID = visibleContentRectUpdateInfo.updateID();
+    m_obscuredTopInset = (visibleContentRectUpdateInfo.unobscuredRect().y() - visibleContentRectUpdateInfo.exposedRect().y()) * visibleContentRectUpdateInfo.scale();
 
     double scaleNoiseThreshold = 0.005;
     double filteredScale = visibleContentRectUpdateInfo.scale();

@@ -1710,6 +1710,7 @@ set(WebCore_SOURCES
     html/parser/HTMLResourcePreloader.cpp
     html/parser/HTMLScriptRunner.cpp
     html/parser/HTMLSourceTracker.cpp
+    html/parser/HTMLSrcsetParser.cpp
     html/parser/HTMLTokenizer.cpp
     html/parser/HTMLTreeBuilder.cpp
     html/parser/TextDocumentParser.cpp
@@ -2174,6 +2175,7 @@ set(WebCore_SOURCES
     platform/mock/MediaConstraintsMock.cpp
     platform/mock/MockMediaStreamCenter.cpp
     platform/mock/RTCDataChannelHandlerMock.cpp
+    platform/mock/RTCDTMFSenderHandlerMock.cpp
     platform/mock/RTCNotifiersMock.cpp
     platform/mock/RTCPeerConnectionHandlerMock.cpp
     platform/mock/ScrollbarThemeMock.cpp

@@ -1,3 +1,583 @@
+2014-06-05  Frédéric Wang  <fred.wang@free.fr>
+
+        MathML operators not stretched horizontally
+        https://bugs.webkit.org/show_bug.cgi?id=72828
+
+        Reviewed by Chris Fleizach.
+
+        Add some tests to verify horizontal stretching with the MATH data.
+
+        * mathml/opentype/horizontal-LatinModern-munderover.html: Added.
+        * mathml/opentype/horizontal-LatinModern.html: Added.
+        * mathml/opentype/opentype-stretchy-horizontal.html: Added.
+        * platform/efl/TestExpectations: mark tests as failing.
+        * platform/gtk/mathml/opentype/horizontal-LatinModern-expected.png: Added.
+        * platform/gtk/mathml/opentype/horizontal-LatinModern-expected.txt: Added.
+        * platform/gtk/mathml/opentype/horizontal-LatinModern-munderover-expected.png: Added.
+        * platform/gtk/mathml/opentype/horizontal-LatinModern-munderover-expected.txt: Added.
+        * platform/gtk/mathml/opentype/opentype-stretchy-horizontal-expected.png: Added.
+        * platform/gtk/mathml/opentype/opentype-stretchy-horizontal-expected.txt: Added.
+        * platform/mac/TestExpectations: mark tests as failing.
+        * platform/win/TestExpectations: ditto.
+
+2014-06-04  Bem Jones-Bey  <bjonesbe@adobe.com>
+
+        [CSS Shapes] Image lifetime is not properly handled for gradient shapes
+        https://bugs.webkit.org/show_bug.cgi?id=133414
+
+        Reviewed by Simon Fraser.
+
+        * fast/shapes/shape-outside-floats/shape-outside-uncached-gradient-expected.txt: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-uncached-gradient.html: Added.
+
+2014-06-04  Bem Jones-Bey  <bjonesbe@adobe.com>
+
+        [CSS Shapes] Fix off by one in creating a RasterShape
+        https://bugs.webkit.org/show_bug.cgi?id=133499
+
+        Reviewed by Darin Adler.
+
+        * fast/shapes/shape-outside-floats/shape-outside-floats-shape-margin-crash-expected.txt: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-shape-margin-crash.html: Added.
+
+2014-06-04  Benjamin Poulain  <benjamin@webkit.org>
+
+        Regression(r169547): Crash in WebCore::styleForFirstLetter() while loading http://thenextweb.com/apple/2014/02/21/apple-confirms-acquired-testflight-creator-burstly/
+        https://bugs.webkit.org/show_bug.cgi?id=133500
+
+        Reviewed by Antti Koivisto.
+
+        * fast/css/first-letter-on-non-matching-selectors-expected.txt: Added.
+        * fast/css/first-letter-on-non-matching-selectors.html: Added.
+
+2014-06-04  Oliver Hunt  <oliver@apple.com>
+
+        ArrayIterator should not be exposed in Safari 8
+        https://bugs.webkit.org/show_bug.cgi?id=133494
+
+        Reviewed by Michael Saboff.
+
+        Add tests.
+
+        * js/no-iterator-constructors.html: Added.
+        * js/script-tests/no-iterator-constructors.js: Added.
+
+2014-05-27  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Lists styled with SVG fonts are not rendered as expected
+        https://bugs.webkit.org/show_bug.cgi?id=133198
+
+        Reviewed by Simon Fraser.
+
+        See per-file comments.
+
+        * platform/ios-sim/fonts/input-style-with-svg-font-crash.html: Added. Make sure
+        that iOS input elements don't crash when styled with SVG fonts.
+        * platform/ios-sim/fonts/resources/graffiti.svg: Added. SVG font for above test.
+        * svg/custom/list-items-with-svg-font-family-expected.txt: Added.
+        * svg/custom/list-items-with-svg-font-family.html: Added. Make sure there is
+        no crash when styling list elements with SVG fonts.
+
+2014-06-04  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] Unreviewed GTK gardening.
+
+        Add the new HiDPI tests to the bug that tracks support for this
+        feature on GTK.
+        Mark and report the new tests introduced on r169407 that timeout.
+        Mark and report the new accesibility test introduced on r169427
+        that fails.
+        Move the reported timeout tests to the timeout section of the
+        TestExpectations file.
+
+        * platform/gtk/TestExpectations:
+
+2014-06-04  Radu Stavila  <stavila@adobe.com>
+
+        REGRESSION: [CSS Regions] Regions with overflow:auto generate scrollbars even if the content flows into the following regions and as such, should not be scrolled
+        https://bugs.webkit.org/show_bug.cgi?id=133481
+
+        Reviewed by Antti Koivisto.
+
+        Added test for a large item flowed through two regions with the first region having overflow:auto.
+        The region must NOT scroll.
+
+        * fast/regions/scrollable-first-region-expected.html: Added.
+        * fast/regions/scrollable-first-region.html: Added.
+
+2014-06-03  Benjamin Poulain  <benjamin@webkit.org>
+
+        Fix some corner cases of :hover and :active in quirks mode
+        https://bugs.webkit.org/show_bug.cgi?id=133493
+
+        Reviewed by Andreas Kling.
+
+        Add test case for the corner cases.
+
+        * fast/selectors/active-hover-quirks-expected.txt:
+        * fast/selectors/active-quirks-expected.txt:
+        * fast/selectors/hover-quirks-expected.txt:
+        * fast/selectors/resources/hover-active-quirks-utility.js:
+
+2014-06-03  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Need to check invalid scheme in navigator content utils 
+        https://bugs.webkit.org/show_bug.cgi?id=133296
+
+        Reviewed by Darin Adler.
+
+        Add tests that check that schemes with colons in their names are rejected.
+        Spec: http://www.whatwg.org/specs/web-apps/current-work/#custom-handlers
+
+        * fast/dom/NavigatorContentUtils/is-protocol-handler-registered-expected.txt:
+        * fast/dom/NavigatorContentUtils/is-protocol-handler-registered.html:
+        * fast/dom/NavigatorContentUtils/register-protocol-handler-expected.txt:
+        * fast/dom/NavigatorContentUtils/register-protocol-handler.html:
+        * fast/dom/NavigatorContentUtils/unregister-protocol-handler-expected.txt:
+        * fast/dom/NavigatorContentUtils/unregister-protocol-handler.html:
+        * platform/efl/fast/dom/NavigatorContentUtils/register-protocol-handler-expected.txt:
+        * platform/efl/fast/dom/NavigatorContentUtils/unregister-protocol-handler-expected.txt:
+
+2014-06-03  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        CSS JIT: add support for the "any" pseudo class
+        https://bugs.webkit.org/show_bug.cgi?id=133473
+
+        Reviewed by Benjamin Poulain.
+
+        Add support for the :any pseudo class.
+
+        * fast/selectors/pseudo-class-any-expected.txt: Added.
+        * fast/selectors/pseudo-class-any.html: Added.
+
+2014-06-02  Jer Noble  <jer.noble@apple.com>
+
+        Update PlatformTimeRanges to use MediaTime rather than doubles for time values.
+        https://bugs.webkit.org/show_bug.cgi?id=133454
+
+        Reviewed by Eric Carlson.
+
+        Update the video-pause-immediately to allow for small floating point differences.
+
+        * media/video-pause-immediately-expected.txt:
+        * media/video-pause-immediately.html:
+
+2014-06-03  Eva Balazsfalvi  <evab.u-szeged@partner.samsung.com>
+
+        REGRESSION(r169092 and r169102): Skip failing JSC tests poperly on non-x86 Darwin platforms
+        https://bugs.webkit.org/show_bug.cgi?id=133149
+
+        Reviewed by Csaba Osztrogonác.
+
+        * js/script-tests/function-apply-many-args.js: Skip it only if the architecture isn't x86 and the host is Darwin.
+
+2014-06-02  Jinwoo Song  <jinwoo7.song@samsung.com>
+
+        Unreviewed EFL gardening. Rebaseline after r169522.
+
+        * platform/efl/svg/W3C-SVG-1.1/animate-elem-32-t-expected.png:
+        * platform/efl/svg/W3C-SVG-1.1/shapes-circle-02-t-expected.png:
+        * platform/efl/svg/W3C-SVG-1.1/shapes-ellipse-02-t-expected.png:
+        * platform/efl/svg/W3C-SVG-1.1/shapes-intro-01-t-expected.png:
+        * platform/efl/svg/W3C-SVG-1.1/shapes-rect-02-t-expected.png:
+        * svg/W3C-SVG-1.1/animate-elem-32-t-expected.txt:
+        * svg/W3C-SVG-1.1/shapes-circle-02-t-expected.txt:
+        * svg/W3C-SVG-1.1/shapes-ellipse-02-t-expected.txt:
+        * svg/W3C-SVG-1.1/shapes-intro-01-t-expected.txt:
+        * svg/W3C-SVG-1.1/shapes-rect-02-t-expected.txt:
+
+2014-06-02  Jinwoo Song  <jinwoo7.song@samsung.com>
+
+        Unreviewed EFL gardening. Rebaseline.
+
+        * platform/efl/mathml/opentype/large-operators-LatinModern-expected.txt:
+        * platform/efl/mathml/opentype/opentype-stretchy-expected.txt:
+        * platform/efl/mathml/opentype/vertical-LatinModern-expected.txt:
+        * platform/efl/mathml/presentation/mo-stretch-expected.txt:
+
+2014-06-02  Jinwoo Song  <jinwoo7.song@samsung.com>
+
+        Unreviewed EFL gardening.
+
+        Move the EFL specific test result to platform directory.
+
+        * platform/efl/fast/events/ghostly-mousemoves-in-subframe-expected.txt: Renamed from LayoutTests/fast/events/ghostly-mousemoves-in-subframe-expected.txt.
+
+2014-06-02  Jinwoo Song  <jinwoo7.song@samsung.com>
+
+        Unreviewed EFL gardening.
+
+        Added expectation result after r167684, r169257, and r169390.
+
+        * fast/events/ghostly-mousemoves-in-subframe-expected.txt: Added.
+        * platform/efl/fast/box-shadow/hidpi-webkit-box-shadow-subpixel-position-expected.txt: Added.
+        * platform/efl/fast/multicol/pagination/nested-transforms-expected.txt: Added.
+
+2014-06-02  Benjamin Poulain  <benjamin@webkit.org>
+
+        Make pseudo element matching for style resolution more JIT friendly
+        https://bugs.webkit.org/show_bug.cgi?id=133441
+
+        Reviewed by Antti Koivisto.
+
+        Add more coverage for style sharing with empty rules, just in case.
+
+        * fast/css/style-sharing-empty-rule-modification-expected.txt: Added.
+        * fast/css/style-sharing-empty-rule-modification.html: Added.
+
+2014-06-02  Martin Hock  <mhock@apple.com>
+
+        Unreviewed TestExpectations gardening after r169532.
+
+        * TestExpectations:
+        Update fast/table/border-collapsing/collapsed-borders-adjoining-sections.html
+        from [ Failure ] to [ ImageOnlyFailure ].
+
+2014-05-31  Brent Fulgham  <bfulgham@apple.com>
+
+        REGRESSION (r154622): Borders disappear when hovering over cells in table
+        https://bugs.webkit.org/show_bug.cgi?id=133057
+        <rdar://problem/15922359>
+
+        Reviewed by Tim Horton.
+
+        * TestExpectations: Mark the test we added in r154622 as failing
+        until we provide a permanent fix.
+
+2014-06-02  Kiran  <kiran.guduru@samsung.com>
+
+        Add mock DTMFSender support.
+        https://bugs.webkit.org/show_bug.cgi?id=133298
+
+        Reviewed by Eric Carlson.
+
+        * fast/mediastream/RTCPeerConnection-dtmf-expected.txt:
+        * fast/mediastream/RTCPeerConnection-dtmf.html:
+
+2014-06-02  Jinwoo Song  <jinwoo7.song@samsung.com>
+
+        Unreviewed EFL gardening.
+
+        Below test cases are passing after r169403.
+          - fast/dom/webtiming-document-open.html
+          - fast/dom/webtiming-navigate-within-document.html
+
+        * platform/efl/TestExpectations:
+
+2014-06-02  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        CSS JIT: add support for the "not" pseudo class
+        https://bugs.webkit.org/show_bug.cgi?id=133314
+
+        Add :not pseudo class support to CSS JIT. Current implementation
+        doesn't support visitedMatchType. So when link pseudo class appears in
+        :not sub fragment, fallback to the non-JIT implementation.
+
+        Reviewed by Benjamin Poulain.
+
+        * fast/selectors/not-active-hover-quirks-expected.txt: Added.
+        * fast/selectors/not-active-hover-quirks.html: Added.
+        * fast/selectors/not-active-hover-strict-expected.txt: Added.
+        * fast/selectors/not-active-hover-strict.html: Added.
+        * fast/selectors/pseudo-class-not-expected.txt: Added.
+        * fast/selectors/pseudo-class-not.html: Added.
+        * fast/selectors/resources/not-hover-active-quirks-utility.js: Added.
+        (testQuerySelector):
+        (test):
+        * fast/selectors/resources/not-hover-active-strict-utility.js: Added.
+        (testQuerySelector):
+        (test):
+
+2014-06-01  Jinwoo Song  <jinwoo7.song@samsung.com>
+
+        Unreviewed EFL gardening.
+
+        gradient-background-leakage-hidpi.html and canvas-as-image-hidpi.html pass after r169445.
+
+        * platform/efl-wk2/TestExpectations:
+
+2014-06-01  Jer Noble  <jer.noble@apple.com>
+
+        [MSE] Appends of overlapping sample data do not clear existing samples properly.
+        https://bugs.webkit.org/show_bug.cgi?id=133435
+
+        Reviewed by Darin Adler.
+
+        * media/media-source/media-source-overlapping-append-expected.txt: Added.
+        * media/media-source/media-source-overlapping-append.html: Added.
+        * media/media-source/mock-media-source.js:
+
+2014-06-01  Nikos Andronikos  <nikos.andronikos-webkit@cisra.canon.com.au>
+
+        getBBox() returns (0,0) when width or height is zero.
+        https://bugs.webkit.org/show_bug.cgi?id=93290
+
+        Reviewed by Philip Rogers.
+ 
+        * platform/mac/svg/W3C-SVG-1.1/shapes-circle-02-t-expected.txt:
+        * platform/mac/svg/W3C-SVG-1.1/shapes-ellipse-02-t-expected.txt:
+        * platform/mac/svg/W3C-SVG-1.1/shapes-intro-01-t-expected.txt:
+        * platform/mac/svg/W3C-SVG-1.1/shapes-rect-02-t-expected.txt:
+        * svg/W3C-SVG-1.1/animate-elem-32-t-expected.txt:
+        * svg/W3C-SVG-1.1/shapes-circle-02-t-expected.txt:
+        * svg/W3C-SVG-1.1/shapes-ellipse-02-t-expected.txt:
+        * svg/W3C-SVG-1.1/shapes-intro-01-t-expected.txt:
+        * svg/W3C-SVG-1.1/shapes-rect-02-t-expected.txt:
+        * svg/custom/getBBox-js-circle-zerodimension-expected.txt: Added.
+        * svg/custom/getBBox-js-circle-zerodimension.html: Added.
+        * svg/custom/getBBox-js-ellipse-zerodimension-expected.txt: Added.
+        * svg/custom/getBBox-js-ellipse-zerodimension.html: Added.
+        * svg/custom/getBBox-js-rect-zerodimension-expected.txt: Added.
+        * svg/custom/getBBox-js-rect-zerodimension.html: Added.
+
+2014-06-01  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        EFL gardening. Unskip some iframe tests which have passed since buildbot OS bump up.
+
+        * platform/efl-wk1/TestExpectations:
+
+2014-06-01  Zalan Bujtas  <zalan@apple.com>
+
+        Subpixel rendering: Selection gap produces a pixel line overlap on inline boxes.
+        https://bugs.webkit.org/show_bug.cgi?id=133429
+
+        Reviewed by Simon Fraser.
+
+        Do not floor logical right/left values when selection gap is calculated for RenderBlocks.
+        It produces overlapping line/gap because the floored value is intersecting/too far from the
+        non-floored content selection rect.
+
+        * platform/mac/TestExpectations: add ML failure due to font sizing. (Ahem can't be used here)
+        * fast/inline/hidpi-selection-gap-and-inline-selection-have-gap-rtl-expected.html: Added.
+        * fast/inline/hidpi-selection-gap-and-inline-selection-have-gap-rtl.html: Added.
+        * fast/inline/hidpi-selection-gap-overlaps-inline-selection-expected.html: Added.
+        * fast/inline/hidpi-selection-gap-overlaps-inline-selection.html: Added.
+
+2014-05-31  Darin Adler  <darin@apple.com>
+
+        One more missed piece of that last check-in.
+
+        * TestExpectations: Removed the flakiness expectation from the
+        css3/viewport-percentage-lengths/viewport-percentage-lengths-relative-font-size.html
+        test since that now works reliably.
+
+2014-05-31  Darin Adler  <darin@apple.com>
+
+        Try to fix another failure from the previous check-in seen on some bots.
+
+        * platform/mac-wk2/TestExpectations: Removed a couple obsolete lines.
+        * platform/wk2/TestExpectations: Added expectation for filter-hidden-content.svg, which
+        seems to be affected by the resizing for tests before it.
+
+2014-05-31  Darin Adler  <darin@apple.com>
+
+        Fix test failure from the previous check-in.
+
+        * fast/dynamic/window-resize-scrollbars-test.html: Add resize handler so this test works
+        with asynchronous resizing.
+
+        * platform/wk2/TestExpectations: Expect failure for the test above; it's showing scrollbars,
+        and it should not. Before, the test was not running correctly so it seemed to pass.
+
+2014-05-31  Darin Adler  <darin@apple.com>
+
+        Viewport percentage tests that resize the viewport are flaky
+        https://bugs.webkit.org/show_bug.cgi?id=133351
+
+        Reviewed by Anders Carlsson.
+
+        * css3/viewport-percentage-lengths/resources/resize-test.js:
+        Added code to compensate for the difference between innerWidth/Height and outerWidth/Height
+        so this works well in a browser window. Added code to "warm up" so the first resize triggers
+        a resize event. Tweaked style of the code a bit. Use resize events to avoid flakiness due
+        to race conditions. One thing I did not fix is the "out of order" problem where all the
+        test results get written out after the words TEST COMPLETE.
+
+        * css3/viewport-percentage-lengths/viewport-percentage-lengths-anonymous-block-expected.txt:
+        Updated due to changes to the underlying test machinery, and also to show actual expected success.
+        The old results said PASS with various obviously wrong results.
+
+        * css3/viewport-percentage-lengths/viewport-percentage-lengths-anonymous-block.html:
+        Changed this test to use the shared resize-test.js.
+
+        * css3/viewport-percentage-lengths/viewport-percentage-lengths-percent-size-child-expected.txt:
+        Updated due to changes to the underlying test machinery, and also to show actual expected success.
+        The old results said PASS with various obviously wrong results.
+
+        * css3/viewport-percentage-lengths/viewport-percentage-lengths-percent-size-child.html:
+        Streamlined this test a little.
+
+        * css3/viewport-percentage-lengths/viewport-percentage-lengths-relative-font-size-expected.txt:
+        Updated due to changes to the underlying test machinery, and also to show actual expected success.
+        The old results said PASS with various obviously wrong results.
+
+        * css3/viewport-percentage-lengths/viewport-percentage-lengths-relative-font-size.html:
+        Streamlined this test a little.
+
+        * css3/viewport-percentage-lengths/viewport-percentage-lengths-resize-expected.txt:
+        Updated due to changes to the underlying test machinery, and also to show both expected success,
+        and some expected failures. These failures were going unnoticed before since the test didn't
+        successfully do any resizing of the web view.
+
+        * css3/viewport-percentage-lengths/viewport-percentage-lengths-resize.html:
+        Streamlined this test a little.
+
+        * fast/dom/Window/window-resize-contents-expected.txt: Updated to reflect the test actually
+        resizing. The old test results expected no resizing to occur.
+        * fast/dom/Window/window-resize-contents.html: Updated to use a resize event handler so the
+        test can successfully test asynchronous resizes like the ones done by WebKit2.
+
+        * fast/dom/rtl-scroll-to-leftmost-and-resize.html: Updated to use a resize event handler so
+        this can test asynchronous resizes. Also fixed code that was treating the arguments to resizeTo
+        as if they were inner coordinates rather than outer. However, the bug this tests for has not
+        been fixed, so need to expect failures.
+
+        * platform/mac/TestExpectations: Added a failure expection for the test above.
+
+        * platform/mac/fast/dynamic/window-resize-scrollbars-test-expected.png: Updated to expect a result
+        that successfully resized.
+        * platform/mac/fast/dynamic/window-resize-scrollbars-test-expected.txt: Ditto.
+
+2014-05-30  Mario Sanchez Prada  <mario.prada@samsung.com>
+
+        [GTK] Don't use logAccessibilityEvents() in aria-slider-required-attributes.html
+        https://bugs.webkit.org/show_bug.cgi?id=133405
+
+        Reviewed by Chris Fleizach.
+
+        Change the test to use addNotificationListener() instead.
+
+        * platform/gtk/TestExpectations: Removed failure expectation
+        * platform/gtk/accessibility/aria-slider-required-attributes-expected.txt: Updated
+        * platform/gtk/accessibility/aria-slider-required-attributes.html: Updated
+
+2014-05-30  Mario Sanchez Prada  <mario.prada@samsung.com>
+
+        [ATK] Deprecate usage of logAccessibilityEvents() in layout tests
+        https://bugs.webkit.org/show_bug.cgi?id=132280
+
+        Reviewed by Chris Fleizach.
+
+        Removed 36 flaky expectations from TestExpectations for tests that
+        were ocassionally showing the output of logAccessibilityEvents()
+        even if they did not make use of that feature (thus the flakiness).
+
+        * platform/gtk/TestExpectations: Updated.
+
+2014-05-30  Jarek Czekalski  <jarekczek@poczta.onet.pl>
+
+        [ATK] Convert caret offset tests from testatk.c.
+        https://bugs.webkit.org/show_bug.cgi?id=132527
+
+        Reviewed by Mario Sanchez Prada.
+
+        The tests are replicated from testatk.c file, functions
+            testWebkitAtkCaretOffsets()
+            testWebkitAtkCaretOffsetsAndExtranousWhiteSpaces()
+        The file was present in webkit1. Removed from trunk in r166977, so
+        the last version was
+        https://trac.webkit.org/browser/trunk/Tools/TestWebKitAPI/Tests/WebKitGtk/testatk.c?rev=166976
+        What could not be verified in the same way:
+
+        1. Whether element implements ATK_TEXT. If setCaretOffset
+        succeeds, it confirms that element is text as well. But in cases
+        when setCaretOffset must fail I see no way to confirm it is text
+        element.
+
+        2. Whether position is correct through a call to
+        atk_text_get_caret_offset.  text-caret-moved signal value is
+        tested instead.
+
+        Anyway these cases don't look crucial, so they are skipped.
+
+        * platform/gtk/resources/atk-helpers.js: Added.
+        (setCaretOffset): Added.
+        * platform/gtk/accessibility/caret-offsets-and-extraneous-white-spaces-expected.txt: Added.
+        * platform/gtk/accessibility/caret-offsets-and-extraneous-white-spaces.html: Added.
+        * platform/gtk/accessibility/caret-offsets-expected.txt: Added.
+        * platform/gtk/accessibility/caret-offsets.html: Added.
+
+2014-05-28  Jon Honeycutt  <jhoneycutt@apple.com>
+
+        Roll r168668 back in.
+
+        <https://bugs.webkit.org/show_bug.cgi?id=132621>
+
+        Reviewed by Brent Fulgham.
+
+        * compositing/plugins/composited-plugin.html:
+        * compositing/plugins/no-backing-store.html:
+        * fast/dom/beforeload/flash-before-load.html:
+        * fast/events/beforeload-assertion-expected.txt: Added.
+        * fast/events/beforeload-assertion.html: Added.
+        * fast/events/beforeload-iframe-crash-expected.txt: Added.
+        * fast/events/beforeload-iframe-crash.html: Added.
+        * fast/events/beforeload-input-time-crash-expected.txt: Added.
+        * fast/events/beforeload-input-time-crash.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/plugintypes-notype-data.html:
+        * http/tests/security/contentSecurityPolicy/1.1/plugintypes-nourl-blocked.html:
+        * http/tests/security/contentSecurityPolicy/object-src-no-url-allowed.html:
+        * http/tests/security/contentSecurityPolicy/object-src-no-url-blocked.html:
+        * http/tests/security/contentSecurityPolicy/object-src-none-allowed.html:
+        * http/tests/security/contentSecurityPolicy/object-src-none-blocked.html:
+        * http/tests/security/contentSecurityPolicy/resources/multiple-iframe-plugin-test.js:
+        (testImpl.iframe.onload):
+        (testImpl):
+        * http/tests/security/mixedContent/insecure-plugin-in-iframe.html:
+        * platform/mac/plugins/supports-carbon-event-model.html:
+        * platform/mac/plugins/testplugin-onnew-onpaint.html:
+        * plugins/get-user-agent-with-null-npp-from-npp-new.html:
+        * plugins/mouse-click-plugin-clears-selection.html:
+        * plugins/netscape-plugin-map-data-to-src.html:
+        * plugins/no-mime-with-valid-extension.html:
+        * plugins/plugin-initiate-popup-window.html:
+        * plugins/windowless_plugin_paint_test.html:
+        * resources/plugin.js: Added.
+        (runAfterPluginLoad):
+
+2014-05-29  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Support -apple-system-font on OS X
+        https://bugs.webkit.org/show_bug.cgi?id=133382
+
+        This test makes sure that -apple-system-font is rendered the same way as -webkit-system-font.
+
+        Reviewed by Simon Fraser.
+
+        * platform/mac-mountainlion/platform/mac/fast/text/systemFont-expected.txt: Updated.
+        * platform/mac/fast/text/systemFont.html: Tests -apple-system-font in addition to -webkit-system-font.
+        * platform/mac/platform/mac/fast/text/systemFont-expected.txt: Updated.
+
+2014-05-29  Alexey Proskuryakov  <ap@apple.com>
+
+        Loading <object> from WebArchive crashes
+        https://bugs.webkit.org/show_bug.cgi?id=133386
+        <rdar://problem/13345509>
+
+        Reviewed by Brady Eidson.
+
+        * webarchive/loading/object-expected.txt: Added.
+        * webarchive/loading/object.html: Added.
+        * webarchive/loading/resources/object.webarchive: Added.
+
+2014-05-29  Mark Lam  <mark.lam@apple.com>
+
+        Gardening: marking js/primitive-property-access-edge-cases.html as crashy.
+        <https://webkit.org/b/133356>
+
+        Not reviewed.
+
+        * TestExpectations:
+
+2014-05-29  Mark Lam  <mark.lam@apple.com>
+
+        Gardening: marking js/primitive-property-access-edge-cases.html as flaky.
+        <https://webkit.org/b/133356>
+
+        Not reviewed.
+
+        * TestExpectations:
+
 2014-05-29  Jeremy Jones  <jeremyj@apple.com>
 
         Use correct version of requiresFullscreenForVideoPlayback().

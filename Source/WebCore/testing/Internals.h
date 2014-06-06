@@ -58,6 +58,7 @@ class Page;
 class Range;
 class ScriptExecutionContext;
 class SerializedScriptValue;
+class SourceBuffer;
 class TimeRanges;
 class TypeConversions;
 
@@ -271,6 +272,8 @@ public:
 
     void startTrackingRepaints(ExceptionCode&);
     void stopTrackingRepaints(ExceptionCode&);
+    void updateLayoutIgnorePendingStylesheetsAndRunPostLayoutTasks(ExceptionCode&);
+    void updateLayoutIgnorePendingStylesheetsAndRunPostLayoutTasks(Node*, ExceptionCode&);
 
     PassRefPtr<ArrayBuffer> serializeObject(PassRefPtr<SerializedScriptValue>) const;
     PassRefPtr<SerializedScriptValue> deserializeBuffer(PassRefPtr<ArrayBuffer>) const;
@@ -324,6 +327,7 @@ public:
 
 #if ENABLE(MEDIA_SOURCE)
     void initializeMockMediaSource();
+    Vector<String> bufferedSamplesForTrackID(SourceBuffer*, const AtomicString&);
 #endif
 
 #if ENABLE(VIDEO)

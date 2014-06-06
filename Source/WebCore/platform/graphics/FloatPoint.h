@@ -229,9 +229,19 @@ inline IntPoint flooredIntPoint(const FloatPoint& p)
     return IntPoint(clampToInteger(floorf(p.x())), clampToInteger(floorf(p.y())));
 }
 
+inline FloatPoint flooredToDevicePixels(const FloatPoint& p, float deviceScaleFactor)
+{
+    return FloatPoint(floorf(p.x() * deviceScaleFactor)  / deviceScaleFactor, floorf(p.y() * deviceScaleFactor)  / deviceScaleFactor);
+}
+
 inline IntPoint ceiledIntPoint(const FloatPoint& p)
 {
     return IntPoint(clampToInteger(ceilf(p.x())), clampToInteger(ceilf(p.y())));
+}
+
+inline FloatPoint ceiledToDevicePixels(const FloatPoint& p, float deviceScaleFactor)
+{
+    return FloatPoint(ceilf(p.x() * deviceScaleFactor)  / deviceScaleFactor, ceilf(p.y() * deviceScaleFactor)  / deviceScaleFactor);
 }
 
 inline IntSize flooredIntSize(const FloatPoint& p)
@@ -242,6 +252,11 @@ inline IntSize flooredIntSize(const FloatPoint& p)
 inline FloatSize toFloatSize(const FloatPoint& a)
 {
     return FloatSize(a.x(), a.y());
+}
+
+inline FloatPoint toFloatPoint(const FloatSize& a)
+{
+    return FloatPoint(a.width(), a.height());
 }
 
 }

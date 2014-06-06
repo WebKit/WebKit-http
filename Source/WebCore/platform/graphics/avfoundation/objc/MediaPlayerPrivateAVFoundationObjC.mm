@@ -45,6 +45,7 @@
 #import "OutOfBandTextTrackPrivateAVF.h"
 #import "URL.h"
 #import "Logging.h"
+#import "MediaTimeMac.h"
 #import "PlatformTimeRanges.h"
 #import "SecurityOrigin.h"
 #import "SerializedPlatformRepresentationMac.h"
@@ -241,6 +242,12 @@ SOFT_LINK_POINTER(AVFoundation, AVMetadataKeySpaceID3, NSString*)
 #define AVMetadataKeySpaceQuickTimeMetadata getAVMetadataKeySpaceQuickTimeMetadata()
 #define AVMetadataKeySpaceiTunes getAVMetadataKeySpaceiTunes()
 #define AVMetadataKeySpaceID3 getAVMetadataKeySpaceID3()
+#endif
+
+#if PLATFORM(IOS)
+SOFT_LINK_POINTER(AVFoundation, AVURLAssetBoundNetworkInterfaceName, NSString *)
+
+#define AVURLAssetBoundNetworkInterfaceName getAVURLAssetBoundNetworkInterfaceName()
 #endif
 
 #define kCMTimeZero getkCMTimeZero()
@@ -698,7 +705,13 @@ void MediaPlayerPrivateAVFoundationObjC::createAVAssetForURL(const String& url)
         [options.get() setObject: outOfBandTracks forKey: AVURLAssetOutOfBandAlternateTracksKey];
     }
 #endif
-    
+
+#if PLATFORM(IOS)
+    String networkInterfaceName = player()->mediaPlayerNetworkInterfaceName();
+    if (!networkInterfaceName.isEmpty())
+        [options setObject:networkInterfaceName forKey:AVURLAssetBoundNetworkInterfaceName];
+#endif
+
     NSURL *cocoaURL = URL(ParsedURLString, url);
     m_avAsset = adoptNS([[AVURLAsset alloc] initWithURL:cocoaURL options:options.get()]);
 
@@ -1090,11 +1103,8 @@ std::unique_ptr<PlatformTimeRanges> MediaPlayerPrivateAVFoundationObjC::platform
 
     for (NSValue *thisRangeValue in m_cachedLoadedRanges.get()) {
         CMTimeRange timeRange = [thisRangeValue CMTimeRangeValue];
-        if (CMTIMERANGE_IS_VALID(timeRange) && !CMTIMERANGE_IS_EMPTY(timeRange)) {
-            float rangeStart = narrowPrecisionToFloat(CMTimeGetSeconds(timeRange.start));
-            float rangeEnd = narrowPrecisionToFloat(CMTimeGetSeconds(CMTimeRangeGetEnd(timeRange)));
-            timeRanges->add(rangeStart, rangeEnd);
-        }
+        if (CMTIMERANGE_IS_VALID(timeRange) && !CMTIMERANGE_IS_EMPTY(timeRange))
+            timeRanges->add(toMediaTime(timeRange.start), toMediaTime(CMTimeRangeGetEnd(timeRange)));
     }
     return timeRanges;
 }

@@ -30,12 +30,14 @@
 #if ENABLE(CSS_SELECTOR_JIT)
 
 #include "CSSSelector.h"
+#include "CSSSelectorList.h"
 #include "Element.h"
 #include "ElementData.h"
 #include "ElementRareData.h"
 #include "FunctionCall.h"
 #include "HTMLDocument.h"
 #include "HTMLNames.h"
+#include "InspectorInstrumentation.h"
 #include "NodeRenderStyle.h"
 #include "QualifiedName.h"
 #include "RegisterAllocator.h"
@@ -130,6 +132,7 @@ struct SelectorFragment {
         , widthFromIndirectAdjacent(0)
         , tagName(nullptr)
         , id(nullptr)
+        , onlyMatchesLinksInQuirksMode(true)
     {
     }
     FragmentRelation relationToLeftFragment;
@@ -152,7 +155,22 @@ struct SelectorFragment {
     HashSet<unsigned> pseudoClasses;
     Vector<JSC::FunctionPtr> unoptimizedPseudoClasses;
     Vector<AttributeMatchingInfo> attributes;
-    Vector<std::pair<int, int>> nthChildfilters;
+    Vector<std::pair<int, int>> nthChildFilters;
+    Vector<SelectorFragment> notFilters;
+    Vector<Vector<SelectorFragment>> anyFilters;
+
+    // For quirks mode, follow this: http://quirks.spec.whatwg.org/#the-:active-and-:hover-quirk
+    // In quirks mode, a compound selector 'selector' that matches the following conditions must not match elements that would not also match the ':any-link' selector.
+    //
+    //    selector uses the ':active' or ':hover' pseudo-classes.
+    //    selector does not use a type selector.
+    //    selector does not use an attribute selector.
+    //    selector does not use an ID selector.
+    //    selector does not use a class selector.
+    //    selector does not use a pseudo-class selector other than ':active' and ':hover'.
+    //    selector does not use a pseudo-element selector.
+    //    selector is not part of an argument to a functional pseudo-class or pseudo-element.
+    bool onlyMatchesLinksInQuirksMode;
 };
 
 struct TagNamePattern {
@@ -180,7 +198,6 @@ private:
     static const Assembler::RegisterID checkingContextRegister;
     static const Assembler::RegisterID callFrameRegister;
 
-    void computeBacktrackingInformation();
     void generateSelectorChecker();
 
     // Element relations tree walker.
@@ -206,9 +223,9 @@ private:
     void generateElementMatching(Assembler::JumpList& matchingTagNameFailureCases, Assembler::JumpList& matchingPostTagNameFailureCases, const SelectorFragment&);
     void generateElementDataMatching(Assembler::JumpList& failureCases, const SelectorFragment&);
     void generateElementFunctionCallTest(Assembler::JumpList& failureCases, JSC::FunctionPtr);
-    Assembler::JumpList jumpIfNoPreviousAdjacentElement();
+    void generateElementIsActive(Assembler::JumpList& failureCases, const SelectorFragment&);
     void generateElementIsFirstChild(Assembler::JumpList& failureCases, const SelectorFragment&);
-    Assembler::JumpList jumpIfNoNextAdjacentElement();
+    void generateElementIsHovered(Assembler::JumpList& failureCases, const SelectorFragment&);
     void generateElementIsLastChild(Assembler::JumpList& failureCases, const SelectorFragment&);
     void generateElementIsOnlyChild(Assembler::JumpList& failureCases, const SelectorFragment&);
     void generateSynchronizeStyleAttribute(Assembler::RegisterID elementDataArraySizeAndFlags);
@@ -223,18 +240,24 @@ private:
     void generateElementHasClasses(Assembler::JumpList& failureCases, const LocalRegister& elementDataAddress, const Vector<const AtomicStringImpl*>& classNames);
     void generateElementIsLink(Assembler::JumpList& failureCases);
     void generateElementIsNthChild(Assembler::JumpList& failureCases, const SelectorFragment&);
+    void generateElementMatchesNotPseudoClass(Assembler::JumpList& failureCases, const SelectorFragment&);
+    void generateElementMatchesAnyPseudoClass(Assembler::JumpList& failureCases, const SelectorFragment&);
     void generateElementIsRoot(Assembler::JumpList& failureCases);
     void generateElementIsTarget(Assembler::JumpList& failureCases);
 
     // Helpers.
+    void addFlagsToElementStyleFromContext(Assembler::RegisterID checkingContext, int64_t);
+    Assembler::JumpList jumpIfNoPreviousAdjacentElement();
+    Assembler::JumpList jumpIfNoNextAdjacentElement();
     Assembler::Jump jumpIfNotResolvingStyle(Assembler::RegisterID checkingContextRegister);
+    void generateSpecialFailureInQuirksModeForActiveAndHoverIfNeeded(Assembler::JumpList& failureCases, const SelectorFragment&);
     Assembler::Jump modulo(JSC::MacroAssembler::ResultCondition, Assembler::RegisterID inputDividend, int divisor);
     void moduloIsZero(Assembler::JumpList& failureCases, Assembler::RegisterID inputDividend, int divisor);
 
     bool generatePrologue();
     void generateEpilogue();
     Vector<StackAllocator::StackReference> m_prologueStackReferences;
-    
+
     Assembler m_assembler;
     RegisterAllocator m_registerAllocator;
     StackAllocator m_stackAllocator;
@@ -265,6 +288,15 @@ const Assembler::RegisterID SelectorCodeGenerator::returnRegister = JSC::GPRInfo
 const Assembler::RegisterID SelectorCodeGenerator::elementAddressRegister = JSC::GPRInfo::argumentGPR0;
 const Assembler::RegisterID SelectorCodeGenerator::checkingContextRegister = JSC::GPRInfo::argumentGPR1;
 const Assembler::RegisterID SelectorCodeGenerator::callFrameRegister = JSC::GPRInfo::callFrameRegister;
+
+enum class FragmentsLevel {
+    Root = 0,
+    InFunctionalPseudoType = 1
+};
+
+static FunctionType constructFragments(const CSSSelector* rootSelector, SelectorContext, SelectorFragmentList& selectorFragments, FragmentsLevel);
+
+static void computeBacktrackingInformation(SelectorFragmentList& selectorFragments, bool& needsAdjacentBacktrackingStart);
 
 SelectorCompilationStatus compileSelector(const CSSSelector* lastSelector, JSC::VM* vm, SelectorContext selectorContext, JSC::MacroAssemblerCodeRef& codeRef)
 {
@@ -367,7 +399,9 @@ static inline FunctionType addPseudoClassType(const CSSSelector& selector, Selec
         fragment.pseudoClasses.add(type);
         return FunctionType::SimpleSelectorChecker;
 
+    case CSSSelector::PseudoClassActive:
     case CSSSelector::PseudoClassFirstChild:
+    case CSSSelector::PseudoClassHover:
     case CSSSelector::PseudoClassLastChild:
     case CSSSelector::PseudoClassOnlyChild:
         fragment.pseudoClasses.add(type);
@@ -387,11 +421,78 @@ static inline FunctionType addPseudoClassType(const CSSSelector& selector, Selec
             if (a <= 0 && b < 1)
                 return FunctionType::CannotMatchAnything;
 
-            fragment.nthChildfilters.append(std::pair<int, int>(a, b));
+            fragment.nthChildFilters.append(std::pair<int, int>(a, b));
             if (selectorContext == SelectorContext::QuerySelector)
                 return FunctionType::SimpleSelectorChecker;
             return FunctionType::SelectorCheckerWithCheckingContext;
         }
+
+    case CSSSelector::PseudoClassNot:
+        {
+            const CSSSelectorList* selectorList = selector.selectorList();
+
+            if (!selectorList)
+                return FunctionType::CannotMatchAnything;
+
+            SelectorFragmentList notFragments;
+            FunctionType functionType = constructFragments(selectorList->first(), selectorContext, notFragments, FragmentsLevel::InFunctionalPseudoType);
+
+            // Since this is not pseudo class filter, CannotMatchAnything implies this filter always passes.
+            if (functionType == FunctionType::CannotMatchAnything)
+                return FunctionType::SimpleSelectorChecker;
+
+            if (functionType == FunctionType::CannotCompile)
+                return functionType;
+
+            ASSERT(notFragments.size() == 1);
+            if (notFragments.size() != 1)
+                return FunctionType::CannotCompile;
+
+            const SelectorFragment& subFragment = notFragments.first();
+
+            // FIXME: Currently we don't support visitedMatchType.
+            if (subFragment.pseudoClasses.contains(CSSSelector::PseudoClassLink))
+                return FunctionType::CannotCompile;
+
+            fragment.notFilters.append(subFragment);
+            return functionType;
+        }
+
+    case CSSSelector::PseudoClassAny:
+        {
+            Vector<SelectorFragment> anyFragments;
+            FunctionType functionType = FunctionType::SimpleSelectorChecker;
+            for (const CSSSelector* rootSelector = selector.selectorList()->first(); rootSelector; rootSelector = CSSSelectorList::next(rootSelector)) {
+                SelectorFragmentList fragmentList;
+                FunctionType subFunctionType = constructFragments(rootSelector, selectorContext, fragmentList, FragmentsLevel::InFunctionalPseudoType);
+
+                // Since this fragment always unmatch against the element, don't insert it to anyFragments.
+                if (subFunctionType == FunctionType::CannotMatchAnything)
+                    continue;
+
+                if (subFunctionType == FunctionType::CannotCompile)
+                    return FunctionType::CannotCompile;
+
+                // :any() may not contain complex selectors which have combinators.
+                ASSERT(fragmentList.size() == 1);
+                if (fragmentList.size() != 1)
+                    return FunctionType::CannotCompile;
+
+                const SelectorFragment& subFragment = fragmentList.first();
+                anyFragments.append(subFragment);
+                functionType = mostRestrictiveFunctionType(functionType, subFunctionType);
+            }
+
+            // Since all fragments in :any() cannot match anything, this :any() filter cannot match anything.
+            if (anyFragments.isEmpty())
+                return FunctionType::CannotMatchAnything;
+
+            ASSERT(!anyFragments.isEmpty());
+            fragment.anyFilters.append(anyFragments);
+
+            return functionType;
+        }
+
     default:
         break;
     }
@@ -411,63 +512,82 @@ inline SelectorCodeGenerator::SelectorCodeGenerator(const CSSSelector* rootSelec
     dataLogF("Compiling \"%s\"\n", m_originalSelector->selectorText().utf8().data());
 #endif
 
+    m_functionType = constructFragments(rootSelector, m_selectorContext, m_selectorFragments, FragmentsLevel::Root);
+    if (m_functionType != FunctionType::CannotCompile && m_functionType != FunctionType::CannotMatchAnything)
+        computeBacktrackingInformation(m_selectorFragments, m_needsAdjacentBacktrackingStart);
+}
+
+static bool pseudoClassOnlyMatchesLinksInQuirksMode(const CSSSelector& selector)
+{
+    CSSSelector::PseudoClassType pseudoClassType = selector.pseudoClassType();
+    return pseudoClassType == CSSSelector::PseudoClassHover || pseudoClassType == CSSSelector::PseudoClassActive;
+}
+
+static FunctionType constructFragments(const CSSSelector* rootSelector, SelectorContext selectorContext, SelectorFragmentList& selectorFragments, FragmentsLevel fragmentLevel)
+{
     SelectorFragment fragment;
     FragmentRelation relationToPreviousFragment = FragmentRelation::Rightmost;
+    FunctionType functionType = FunctionType::SimpleSelectorChecker;
     for (const CSSSelector* selector = rootSelector; selector; selector = selector->tagHistory()) {
         switch (selector->m_match) {
         case CSSSelector::Tag:
             ASSERT(!fragment.tagName);
             fragment.tagName = &(selector->tagQName());
+            if (*fragment.tagName != anyQName())
+                fragment.onlyMatchesLinksInQuirksMode = false;
             break;
         case CSSSelector::Id: {
             const AtomicString& id = selector->value();
             if (fragment.id) {
-                if (id != *fragment.id) {
-                    m_functionType = FunctionType::CannotMatchAnything;
-                    return;
-                }
+                if (id != *fragment.id)
+                    return FunctionType::CannotMatchAnything;
             } else
                 fragment.id = &(selector->value());
+            fragment.onlyMatchesLinksInQuirksMode = false;
             break;
         }
         case CSSSelector::Class:
             fragment.classNames.append(selector->value().impl());
+            fragment.onlyMatchesLinksInQuirksMode = false;
             break;
         case CSSSelector::PseudoClass:
-            m_functionType = mostRestrictiveFunctionType(m_functionType, addPseudoClassType(*selector, fragment, m_selectorContext));
-            if (m_functionType == FunctionType::CannotCompile || m_functionType == FunctionType::CannotMatchAnything)
-                return;
+            functionType = mostRestrictiveFunctionType(functionType, addPseudoClassType(*selector, fragment, selectorContext));
+            if (!pseudoClassOnlyMatchesLinksInQuirksMode(*selector))
+                fragment.onlyMatchesLinksInQuirksMode = false;
+            if (functionType == FunctionType::CannotCompile || functionType == FunctionType::CannotMatchAnything)
+                return functionType;
             break;
+
         case CSSSelector::List:
-            if (selector->value().contains(' ')) {
-                m_functionType = FunctionType::CannotMatchAnything;
-                return;
-            }
+            if (selector->value().contains(' '))
+                return FunctionType::CannotMatchAnything;
             FALLTHROUGH;
         case CSSSelector::Begin:
         case CSSSelector::End:
         case CSSSelector::Contain:
-            if (selector->value().isEmpty()) {
-                m_functionType = FunctionType::CannotMatchAnything;
-                return;
-            }
+            if (selector->value().isEmpty())
+                return FunctionType::CannotMatchAnything;
             FALLTHROUGH;
         case CSSSelector::Exact:
         case CSSSelector::Hyphen:
+            fragment.onlyMatchesLinksInQuirksMode = false;
             fragment.attributes.append(AttributeMatchingInfo(selector, HTMLDocument::isCaseSensitiveAttribute(selector->attribute())));
             break;
+
         case CSSSelector::Set:
+            fragment.onlyMatchesLinksInQuirksMode = false;
             fragment.attributes.append(AttributeMatchingInfo(selector, true));
             break;
         case CSSSelector::PagePseudoClass:
+            fragment.onlyMatchesLinksInQuirksMode = false;
             // Pseudo page class are only relevant for style resolution, they are ignored for matching.
             break;
         case CSSSelector::Unknown:
             ASSERT_NOT_REACHED();
-            m_functionType = FunctionType::CannotMatchAnything;
-            return;
+            return FunctionType::CannotMatchAnything;
         case CSSSelector::PseudoElement:
-            goto CannotHandleSelector;
+            fragment.onlyMatchesLinksInQuirksMode = false;
+            return FunctionType::CannotCompile;
         }
 
         CSSSelector::Relation relation = selector->relation();
@@ -475,28 +595,25 @@ inline SelectorCodeGenerator::SelectorCodeGenerator(const CSSSelector* rootSelec
             continue;
 
         if (relation == CSSSelector::ShadowDescendant && !selector->isLastInTagHistory())
-            goto CannotHandleSelector;
+            return FunctionType::CannotCompile;
 
         if (relation == CSSSelector::DirectAdjacent || relation == CSSSelector::IndirectAdjacent) {
             FunctionType relationFunctionType = FunctionType::SelectorCheckerWithCheckingContext;
-            if (m_selectorContext == SelectorContext::QuerySelector)
+            if (selectorContext == SelectorContext::QuerySelector)
                 relationFunctionType = FunctionType::SimpleSelectorChecker;
-            m_functionType = std::max(m_functionType, relationFunctionType);
+            functionType = mostRestrictiveFunctionType(functionType, relationFunctionType);
         }
 
         fragment.relationToLeftFragment = fragmentRelationForSelectorRelation(relation);
         fragment.relationToRightFragment = relationToPreviousFragment;
         relationToPreviousFragment = fragment.relationToLeftFragment;
 
-        m_selectorFragments.append(fragment);
+        if (fragmentLevel == FragmentsLevel::InFunctionalPseudoType)
+            fragment.onlyMatchesLinksInQuirksMode = false;
+        selectorFragments.append(fragment);
         fragment = SelectorFragment();
     }
-
-    computeBacktrackingInformation();
-
-    return;
-CannotHandleSelector:
-    m_functionType = FunctionType::CannotCompile;
+    return functionType;
 }
 
 static inline bool attributeNameTestingRequiresNamespaceRegister(const CSSSelector& attributeSelector)
@@ -509,35 +626,62 @@ static inline bool attributeValueTestingRequiresCaseFoldingRegister(const Attrib
     return !attributeInfo.canDefaultToCaseSensitiveValueMatch();
 }
 
-static inline unsigned minimumRegisterRequirements(const SelectorFragmentList& selectorFragments)
+// Strict minimum to match anything interesting:
+// Element + BacktrackingRegister + ElementData + a pointer to values + an index on that pointer + the value we expect;
+static const unsigned minimumRequiredRegisterCount = 6;
+// Element + ElementData + scratchRegister + attributeArrayPointer + expectedLocalName + (qualifiedNameImpl && expectedValue).
+static const unsigned minimumRequiredRegisterCountForAttributeFilter = 6;
+
+static inline unsigned minimumRegisterRequirements(const SelectorFragment& selectorFragment)
 {
-    // Strict minimum to match anything interesting:
-    // Element + BacktrackingRegister + ElementData + a pointer to values + an index on that pointer + the value we expect;
-    unsigned minimum = 6;
+    unsigned minimum = minimumRequiredRegisterCount;
+    const Vector<AttributeMatchingInfo>& attributes = selectorFragment.attributes;
+
+    unsigned backtrackingRegisterRequirements = 0;
+    if (selectorFragment.backtrackingFlags & BacktrackingFlag::InChainWithDescendantTail)
+        backtrackingRegisterRequirements = 1; // If there is a DescendantTail, there is a backtracking register.
 
     // Attributes cause some register pressure.
+    unsigned attributeCount = attributes.size();
+    for (unsigned attributeIndex = 0; attributeIndex < attributeCount; ++attributeIndex) {
+        unsigned attributeMinimum = minimumRequiredRegisterCountForAttributeFilter + backtrackingRegisterRequirements;
+
+        if (attributeIndex + 1 < attributeCount)
+            attributeMinimum += 2; // For the local copy of the counter and attributeArrayPointer.
+
+        const AttributeMatchingInfo& attributeInfo = attributes[attributeIndex];
+        const CSSSelector& attributeSelector = attributeInfo.selector();
+        if (attributeNameTestingRequiresNamespaceRegister(attributeSelector)
+            || attributeValueTestingRequiresCaseFoldingRegister(attributeInfo))
+            attributeMinimum += 1;
+
+        minimum = std::max(minimum, attributeMinimum);
+    }
+
+    // :not pseudo class filters cause some register pressure.
+    for (const SelectorFragment& subFragment : selectorFragment.notFilters) {
+        unsigned notFilterMinimum = minimumRegisterRequirements(subFragment) + backtrackingRegisterRequirements;
+        minimum = std::max(minimum, notFilterMinimum);
+    }
+
+    // :any pseudo class filters cause some register pressure.
+    for (const auto& subFragments : selectorFragment.anyFilters) {
+        for (const SelectorFragment& subFragment : subFragments) {
+            unsigned anyFilterMinimum = minimumRegisterRequirements(subFragment) + backtrackingRegisterRequirements;
+            minimum = std::max(minimum, anyFilterMinimum);
+        }
+    }
+
+    return minimum;
+}
+
+static inline unsigned minimumRegisterRequirements(const SelectorFragmentList& selectorFragments)
+{
+    unsigned minimum = minimumRequiredRegisterCount;
+
     for (unsigned selectorFragmentIndex = 0; selectorFragmentIndex < selectorFragments.size(); ++selectorFragmentIndex) {
         const SelectorFragment& selectorFragment = selectorFragments[selectorFragmentIndex];
-        const Vector<AttributeMatchingInfo>& attributes = selectorFragment.attributes;
-
-        unsigned attributeCount = attributes.size();
-        for (unsigned attributeIndex = 0; attributeIndex < attributeCount; ++attributeIndex) {
-            // Element + ElementData + scratchRegister + attributeArrayPointer + expectedLocalName + (qualifiedNameImpl && expectedValue).
-            unsigned attributeMinimum = 6;
-            if (selectorFragment.backtrackingFlags & BacktrackingFlag::InChainWithDescendantTail)
-                attributeMinimum += 1; // If there is a DescendantTail, there is a backtracking register.
-
-            if (attributeIndex + 1 < attributeCount)
-                attributeMinimum += 2; // For the local copy of the counter and attributeArrayPointer.
-
-            const AttributeMatchingInfo& attributeInfo = attributes[attributeIndex];
-            const CSSSelector& attributeSelector = attributeInfo.selector();
-            if (attributeNameTestingRequiresNamespaceRegister(attributeSelector)
-                || attributeValueTestingRequiresCaseFoldingRegister(attributeInfo))
-                attributeMinimum += 1;
-
-            minimum = std::max(minimum, attributeMinimum);
-        }
+        minimum = std::max(minimum, minimumRegisterRequirements(selectorFragment));
     }
 
     return minimum;
@@ -863,7 +1007,7 @@ static bool requiresDescendantTail(const SelectorFragment& fragment)
     return fragment.matchingTagNameBacktrackingAction == BacktrackingAction::JumpToDescendantTail || fragment.matchingPostTagNameBacktrackingAction == BacktrackingAction::JumpToDescendantTail || fragment.traversalBacktrackingAction == BacktrackingAction::JumpToDescendantTail;
 }
 
-void SelectorCodeGenerator::computeBacktrackingInformation()
+void computeBacktrackingInformation(SelectorFragmentList& selectorFragments, bool& needsAdjacentBacktrackingStart)
 {
     bool hasDescendantRelationOnTheRight = false;
     unsigned ancestorPositionSinceDescendantRelation = 0;
@@ -880,8 +1024,8 @@ void SelectorCodeGenerator::computeBacktrackingInformation()
     const SelectorFragment* previousChildFragmentInChildChain = nullptr;
     const SelectorFragment* previousDirectAdjacentFragmentInDirectAdjacentChain = nullptr;
 
-    for (unsigned i = 0; i < m_selectorFragments.size(); ++i) {
-        SelectorFragment& fragment = m_selectorFragments[i];
+    for (unsigned i = 0; i < selectorFragments.size(); ++i) {
+        SelectorFragment& fragment = selectorFragments[i];
 
         updateChainStates(fragment, hasDescendantRelationOnTheRight, ancestorPositionSinceDescendantRelation, hasIndirectAdjacentRelationOnTheRightOfDirectAdjacentChain, adjacentPositionSinceIndirectAdjacentTreeWalk);
 
@@ -916,8 +1060,8 @@ void SelectorCodeGenerator::computeBacktrackingInformation()
                 ASSERT(fragment.relationToRightFragment == FragmentRelation::DirectAdjacent);
                 ASSERT(saveIndirectAdjacentBacktrackingStartFragmentIndex != std::numeric_limits<unsigned>::max());
                 fragment.backtrackingFlags |= BacktrackingFlag::DirectAdjacentTail;
-                m_selectorFragments[saveIndirectAdjacentBacktrackingStartFragmentIndex].backtrackingFlags |= BacktrackingFlag::SaveAdjacentBacktrackingStart;
-                m_needsAdjacentBacktrackingStart = true;
+                selectorFragments[saveIndirectAdjacentBacktrackingStartFragmentIndex].backtrackingFlags |= BacktrackingFlag::SaveAdjacentBacktrackingStart;
+                needsAdjacentBacktrackingStart = true;
                 needsAdjacentTail = false;
             }
             saveIndirectAdjacentBacktrackingStartFragmentIndex = std::numeric_limits<unsigned>::max();
@@ -926,10 +1070,10 @@ void SelectorCodeGenerator::computeBacktrackingInformation()
             if (needsDescendantTail) {
                 ASSERT(saveDescendantBacktrackingStartFragmentIndex != std::numeric_limits<unsigned>::max());
                 fragment.backtrackingFlags |= BacktrackingFlag::DescendantTail;
-                m_selectorFragments[saveDescendantBacktrackingStartFragmentIndex].backtrackingFlags |= BacktrackingFlag::SaveDescendantBacktrackingStart;
+                selectorFragments[saveDescendantBacktrackingStartFragmentIndex].backtrackingFlags |= BacktrackingFlag::SaveDescendantBacktrackingStart;
                 needsDescendantTail = false;
                 for (unsigned j = saveDescendantBacktrackingStartFragmentIndex; j <= i; ++j)
-                    m_selectorFragments[j].backtrackingFlags |= BacktrackingFlag::InChainWithDescendantTail;
+                    selectorFragments[j].backtrackingFlags |= BacktrackingFlag::InChainWithDescendantTail;
             }
             saveDescendantBacktrackingStartFragmentIndex = std::numeric_limits<unsigned>::max();
         }
@@ -952,7 +1096,7 @@ inline bool SelectorCodeGenerator::generatePrologue()
 #endif
     return false;
 }
-    
+
 inline void SelectorCodeGenerator::generateEpilogue()
 {
 #if CPU(ARM64)
@@ -966,15 +1110,19 @@ inline void SelectorCodeGenerator::generateEpilogue()
     m_stackAllocator.pop(m_prologueStackReferences, prologueRegister);
 #endif
 }
-    
+
 void SelectorCodeGenerator::generateSelectorChecker()
 {
     bool needsEpilogue = generatePrologue();
-    
+
     Vector<StackAllocator::StackReference> calleeSavedRegisterStackReferences;
     bool reservedCalleeSavedRegisters = false;
     unsigned availableRegisterCount = m_registerAllocator.availableRegisterCount();
     unsigned minimumRegisterCountForAttributes = minimumRegisterRequirements(m_selectorFragments);
+#if CSS_SELECTOR_JIT_DEBUGGING
+    dataLogF("Compiling with minimum required register count %u\n", minimumRegisterCountForAttributes);
+#endif
+    ASSERT(minimumRegisterCountForAttributes <= registerCount);
     if (availableRegisterCount < minimumRegisterCountForAttributes) {
         reservedCalleeSavedRegisters = true;
         calleeSavedRegisterStackReferences = m_stackAllocator.push(m_registerAllocator.reserveCalleeSavedRegisters(minimumRegisterCountForAttributes - availableRegisterCount));
@@ -1208,6 +1356,40 @@ void SelectorCodeGenerator::generateIndirectAdjacentTreeWalker(Assembler::JumpLi
     localFailureCases.linkTo(loopStart, &m_assembler);
 }
 
+
+void SelectorCodeGenerator::addFlagsToElementStyleFromContext(Assembler::RegisterID checkingContext, int64_t newFlag)
+{
+    LocalRegister childStyle(m_registerAllocator);
+    m_assembler.loadPtr(Assembler::Address(checkingContext, OBJECT_OFFSETOF(CheckingContext, elementStyle)), childStyle);
+
+    // FIXME: We should look into doing something smart in MacroAssembler instead.
+    LocalRegister flags(m_registerAllocator);
+    Assembler::Address flagAddress(childStyle, RenderStyle::noninheritedFlagsMemoryOffset() + RenderStyle::NonInheritedFlags::flagsMemoryOffset());
+    m_assembler.load64(flagAddress, flags);
+    LocalRegister isFirstChildStateFlagImmediate(m_registerAllocator);
+    m_assembler.move(Assembler::TrustedImm64(newFlag), isFirstChildStateFlagImmediate);
+    m_assembler.or64(isFirstChildStateFlagImmediate, flags);
+    m_assembler.store64(flags, flagAddress);
+}
+
+Assembler::JumpList SelectorCodeGenerator::jumpIfNoPreviousAdjacentElement()
+{
+    Assembler::JumpList successCase;
+    LocalRegister previousSibling(m_registerAllocator);
+    m_assembler.move(elementAddressRegister, previousSibling);
+    generateWalkToPreviousAdjacentElement(successCase, previousSibling);
+    return successCase;
+}
+
+Assembler::JumpList SelectorCodeGenerator::jumpIfNoNextAdjacentElement()
+{
+    Assembler::JumpList successCase;
+    LocalRegister nextSibling(m_registerAllocator);
+    m_assembler.move(elementAddressRegister, nextSibling);
+    generateWalkToNextAdjacentElement(successCase, nextSibling);
+    return successCase;
+}
+
 Assembler::Jump SelectorCodeGenerator::jumpIfNotResolvingStyle(Assembler::RegisterID checkingContext)
 {
     RELEASE_ASSERT(m_selectorContext == SelectorContext::RuleCollector);
@@ -1218,6 +1400,28 @@ Assembler::Jump SelectorCodeGenerator::jumpIfNotResolvingStyle(Assembler::Regist
 
     // If we not resolving style, skip the whole marking.
     return m_assembler.branch8(Assembler::NotEqual, Assembler::Address(checkingContext, OBJECT_OFFSETOF(CheckingContext, resolvingMode)), Assembler::TrustedImm32(SelectorChecker::ResolvingStyle));
+}
+
+static void getDocument(Assembler& assembler, Assembler::RegisterID element, Assembler::RegisterID output)
+{
+    assembler.loadPtr(Assembler::Address(element, Node::treeScopeMemoryOffset()), output);
+    assembler.loadPtr(Assembler::Address(output, TreeScope::documentScopeMemoryOffset()), output);
+}
+
+void SelectorCodeGenerator::generateSpecialFailureInQuirksModeForActiveAndHoverIfNeeded(Assembler::JumpList& failureCases, const SelectorFragment& fragment)
+{
+    if (fragment.onlyMatchesLinksInQuirksMode) {
+        // If the element is a link, it can always match :hover or :active.
+        Assembler::Jump isLink = m_assembler.branchTest32(Assembler::NonZero, Assembler::Address(elementAddressRegister, Node::nodeFlagsMemoryOffset()), Assembler::TrustedImm32(Node::flagIsLink()));
+
+        // Only quirks mode restrict :hover and :active.
+        static_assert(sizeof(DocumentCompatibilityMode) == 1, "We generate a byte load/test for the compatibility mode.");
+        LocalRegister documentAddress(m_registerAllocator);
+        getDocument(m_assembler, elementAddressRegister, documentAddress);
+        failureCases.append(m_assembler.branchTest8(Assembler::NonZero, Assembler::Address(documentAddress, Document::compatibilityModeMemoryOffset()), Assembler::TrustedImm32(static_cast<std::underlying_type<DocumentCompatibilityMode>::type>(DocumentCompatibilityMode::QuirksMode))));
+
+        isLink.link(&m_assembler);
+    }
 }
 
 // The value in inputDividend is destroyed by the modulo operation.
@@ -1475,14 +1679,22 @@ void SelectorCodeGenerator::generateElementMatching(Assembler::JumpList& matchin
 
     generateElementDataMatching(matchingPostTagNameFailureCases, fragment);
 
+    if (fragment.pseudoClasses.contains(CSSSelector::PseudoClassActive))
+        generateElementIsActive(matchingPostTagNameFailureCases, fragment);
+    if (fragment.pseudoClasses.contains(CSSSelector::PseudoClassHover))
+        generateElementIsHovered(matchingPostTagNameFailureCases, fragment);
     if (fragment.pseudoClasses.contains(CSSSelector::PseudoClassOnlyChild))
         generateElementIsOnlyChild(matchingPostTagNameFailureCases, fragment);
     if (fragment.pseudoClasses.contains(CSSSelector::PseudoClassFirstChild))
         generateElementIsFirstChild(matchingPostTagNameFailureCases, fragment);
     if (fragment.pseudoClasses.contains(CSSSelector::PseudoClassLastChild))
         generateElementIsLastChild(matchingPostTagNameFailureCases, fragment);
-    if (!fragment.nthChildfilters.isEmpty())
+    if (!fragment.nthChildFilters.isEmpty())
         generateElementIsNthChild(matchingPostTagNameFailureCases, fragment);
+    if (!fragment.notFilters.isEmpty())
+        generateElementMatchesNotPseudoClass(matchingPostTagNameFailureCases, fragment);
+    if (!fragment.anyFilters.isEmpty())
+        generateElementMatchesAnyPseudoClass(matchingPostTagNameFailureCases, fragment);
 }
 
 void SelectorCodeGenerator::generateElementDataMatching(Assembler::JumpList& failureCases, const SelectorFragment& fragment)
@@ -1503,7 +1715,7 @@ void SelectorCodeGenerator::generateElementDataMatching(Assembler::JumpList& fai
     if (!fragment.classNames.isEmpty())
         generateElementHasClasses(failureCases, elementDataAddress, fragment.classNames);
     if (!fragment.attributes.isEmpty())
-    generateElementAttributesMatching(failureCases, elementDataAddress, fragment);
+        generateElementAttributesMatching(failureCases, elementDataAddress, fragment);
 }
 
 static inline Assembler::Jump testIsHTMLFlagOnNode(Assembler::ResultCondition condition, Assembler& assembler, Assembler::RegisterID nodeAddress)
@@ -1813,12 +2025,6 @@ static inline Assembler::Jump testIsHTMLClassOnDocument(Assembler::ResultConditi
     return assembler.branchTest32(condition, Assembler::Address(documentAddress, Document::documentClassesMemoryOffset()), Assembler::TrustedImm32(Document::isHTMLDocumentClassFlag()));
 }
 
-static void getDocument(Assembler& assembler, Assembler::RegisterID element, Assembler::RegisterID output)
-{
-    assembler.loadPtr(Assembler::Address(element, Node::treeScopeMemoryOffset()), output);
-    assembler.loadPtr(Assembler::Address(output, TreeScope::documentScopeMemoryOffset()), output);
-}
-
 void SelectorCodeGenerator::generateElementAttributeValueExactMatching(Assembler::JumpList& failureCases, Assembler::RegisterID currentAttributeAddress, const AtomicString& expectedValue, bool canDefaultToCaseSensitiveValueMatch)
 {
     LocalRegister expectedValueRegister(m_registerAllocator);
@@ -1910,13 +2116,49 @@ static void setFirstChildState(Element* element)
         style->setFirstChildState();
 }
 
-inline Assembler::JumpList SelectorCodeGenerator::jumpIfNoPreviousAdjacentElement()
+static bool elementIsActive(Element* element)
 {
-    Assembler::JumpList successCase;
-    LocalRegister previousSibling(m_registerAllocator);
-    m_assembler.move(elementAddressRegister, previousSibling);
-    generateWalkToPreviousAdjacentElement(successCase, previousSibling);
-    return successCase;
+    return element->active() || InspectorInstrumentation::forcePseudoState(element, CSSSelector::PseudoClassActive);
+}
+
+static bool elementIsActiveForStyleResolution(Element* element, const CheckingContext* checkingContext)
+{
+    if (checkingContext->resolvingMode == SelectorChecker::ResolvingStyle)
+        element->setChildrenAffectedByActive();
+    return element->active() || InspectorInstrumentation::forcePseudoState(element, CSSSelector::PseudoClassActive);
+}
+
+void SelectorCodeGenerator::generateElementIsActive(Assembler::JumpList& failureCases, const SelectorFragment& fragment)
+{
+    generateSpecialFailureInQuirksModeForActiveAndHoverIfNeeded(failureCases, fragment);
+    if (m_selectorContext == SelectorContext::QuerySelector) {
+        FunctionCall functionCall(m_assembler, m_registerAllocator, m_stackAllocator, m_functionCalls);
+        functionCall.setFunctionAddress(elementIsActive);
+        functionCall.setOneArgument(elementAddressRegister);
+        failureCases.append(functionCall.callAndBranchOnCondition(Assembler::Zero));
+    } else {
+        if (fragment.relationToRightFragment == FragmentRelation::Rightmost) {
+            LocalRegister checkingContext(m_registerAllocator);
+            Assembler::Jump notResolvingStyle = jumpIfNotResolvingStyle(checkingContext);
+            addFlagsToElementStyleFromContext(checkingContext, RenderStyle::NonInheritedFlags::flagIsaffectedByActive());
+            notResolvingStyle.link(&m_assembler);
+
+            FunctionCall functionCall(m_assembler, m_registerAllocator, m_stackAllocator, m_functionCalls);
+            functionCall.setFunctionAddress(elementIsActive);
+            functionCall.setOneArgument(elementAddressRegister);
+            failureCases.append(functionCall.callAndBranchOnCondition(Assembler::Zero));
+        } else {
+            unsigned offsetToCheckingContext = m_stackAllocator.offsetToStackReference(m_checkingContextStackReference);
+            Assembler::RegisterID checkingContext = m_registerAllocator.allocateRegister();
+            m_assembler.loadPtr(Assembler::Address(Assembler::stackPointerRegister, offsetToCheckingContext), checkingContext);
+            m_registerAllocator.deallocateRegister(checkingContext);
+
+            FunctionCall functionCall(m_assembler, m_registerAllocator, m_stackAllocator, m_functionCalls);
+            functionCall.setFunctionAddress(elementIsActiveForStyleResolution);
+            functionCall.setTwoArguments(elementAddressRegister, checkingContext);
+            failureCases.append(functionCall.callAndBranchOnCondition(Assembler::Zero));
+        }
+    }
 }
 
 void SelectorCodeGenerator::generateElementIsFirstChild(Assembler::JumpList& failureCases, const SelectorFragment& fragment)
@@ -1956,19 +2198,9 @@ void SelectorCodeGenerator::generateElementIsFirstChild(Assembler::JumpList& fai
     // Otherwise we need to apply setFirstChildState() on the RenderStyle.
     failureCases.append(m_assembler.branchTest32(Assembler::NonZero, isFirstChildRegister));
 
-    if (fragment.relationToRightFragment == FragmentRelation::Rightmost) {
-        LocalRegister childStyle(m_registerAllocator);
-        m_assembler.loadPtr(Assembler::Address(checkingContext, OBJECT_OFFSETOF(CheckingContext, elementStyle)), childStyle);
-
-        // FIXME: We should look into doing something smart in MacroAssembler instead.
-        LocalRegister flags(m_registerAllocator);
-        Assembler::Address flagAddress(childStyle, RenderStyle::noninheritedFlagsMemoryOffset() + RenderStyle::NonInheritedFlags::flagsMemoryOffset());
-        m_assembler.load64(flagAddress, flags);
-        LocalRegister isFirstChildStateFlagImmediate(m_registerAllocator);
-        m_assembler.move(Assembler::TrustedImm64(RenderStyle::NonInheritedFlags::setFirstChildStateFlags()), isFirstChildStateFlagImmediate);
-        m_assembler.or64(isFirstChildStateFlagImmediate, flags);
-        m_assembler.store64(flags, flagAddress);
-    } else {
+    if (fragment.relationToRightFragment == FragmentRelation::Rightmost)
+        addFlagsToElementStyleFromContext(checkingContext, RenderStyle::NonInheritedFlags::setFirstChildStateFlags());
+    else {
         FunctionCall functionCall(m_assembler, m_registerAllocator, m_stackAllocator, m_functionCalls);
         functionCall.setFunctionAddress(setFirstChildState);
         Assembler::RegisterID elementAddress = elementAddressRegister;
@@ -1980,13 +2212,49 @@ void SelectorCodeGenerator::generateElementIsFirstChild(Assembler::JumpList& fai
     failureCases.append(m_assembler.branchTest32(Assembler::NonZero, isFirstChildRegister));
 }
 
-Assembler::JumpList SelectorCodeGenerator::jumpIfNoNextAdjacentElement()
+static bool elementIsHovered(Element* element)
 {
-    Assembler::JumpList successCase;
-    LocalRegister nextSibling(m_registerAllocator);
-    m_assembler.move(elementAddressRegister, nextSibling);
-    generateWalkToNextAdjacentElement(successCase, nextSibling);
-    return successCase;
+    return element->hovered() || InspectorInstrumentation::forcePseudoState(element, CSSSelector::PseudoClassHover);
+}
+
+static bool elementIsHoveredForStyleResolution(Element* element, const CheckingContext* checkingContext)
+{
+    if (checkingContext->resolvingMode == SelectorChecker::ResolvingStyle)
+        element->setChildrenAffectedByHover();
+    return element->hovered() || InspectorInstrumentation::forcePseudoState(element, CSSSelector::PseudoClassHover);
+}
+
+void SelectorCodeGenerator::generateElementIsHovered(Assembler::JumpList& failureCases, const SelectorFragment& fragment)
+{
+    generateSpecialFailureInQuirksModeForActiveAndHoverIfNeeded(failureCases, fragment);
+    if (m_selectorContext == SelectorContext::QuerySelector) {
+        FunctionCall functionCall(m_assembler, m_registerAllocator, m_stackAllocator, m_functionCalls);
+        functionCall.setFunctionAddress(elementIsHovered);
+        functionCall.setOneArgument(elementAddressRegister);
+        failureCases.append(functionCall.callAndBranchOnCondition(Assembler::Zero));
+    } else {
+        if (fragment.relationToRightFragment == FragmentRelation::Rightmost) {
+            LocalRegister checkingContext(m_registerAllocator);
+            Assembler::Jump notResolvingStyle = jumpIfNotResolvingStyle(checkingContext);
+            addFlagsToElementStyleFromContext(checkingContext, RenderStyle::NonInheritedFlags::flagIsaffectedByHover());
+            notResolvingStyle.link(&m_assembler);
+
+            FunctionCall functionCall(m_assembler, m_registerAllocator, m_stackAllocator, m_functionCalls);
+            functionCall.setFunctionAddress(elementIsHovered);
+            functionCall.setOneArgument(elementAddressRegister);
+            failureCases.append(functionCall.callAndBranchOnCondition(Assembler::Zero));
+        } else {
+            unsigned offsetToCheckingContext = m_stackAllocator.offsetToStackReference(m_checkingContextStackReference);
+            Assembler::RegisterID checkingContext = m_registerAllocator.allocateRegister();
+            m_assembler.loadPtr(Assembler::Address(Assembler::stackPointerRegister, offsetToCheckingContext), checkingContext);
+            m_registerAllocator.deallocateRegister(checkingContext);
+
+            FunctionCall functionCall(m_assembler, m_registerAllocator, m_stackAllocator, m_functionCalls);
+            functionCall.setFunctionAddress(elementIsHoveredForStyleResolution);
+            functionCall.setTwoArguments(elementAddressRegister, checkingContext);
+            failureCases.append(functionCall.callAndBranchOnCondition(Assembler::Zero));
+        }
+    }
 }
 
 static void setLastChildState(Element* element)
@@ -2038,19 +2306,9 @@ void SelectorCodeGenerator::generateElementIsLastChild(Assembler::JumpList& fail
     // Otherwise we need to apply setLastChildState() on the RenderStyle.
     failureCases.append(m_assembler.branchTest32(Assembler::NonZero, isLastChildRegister));
 
-    if (fragment.relationToRightFragment == FragmentRelation::Rightmost) {
-        LocalRegister childStyle(m_registerAllocator);
-        m_assembler.loadPtr(Assembler::Address(checkingContext, OBJECT_OFFSETOF(CheckingContext, elementStyle)), childStyle);
-
-        // FIXME: We should look into doing something smart in MacroAssembler instead.
-        LocalRegister flags(m_registerAllocator);
-        Assembler::Address flagAddress(childStyle, RenderStyle::noninheritedFlagsMemoryOffset() + RenderStyle::NonInheritedFlags::flagsMemoryOffset());
-        m_assembler.load64(flagAddress, flags);
-        LocalRegister isLastChildStateFlagImmediate(m_registerAllocator);
-        m_assembler.move(Assembler::TrustedImm64(RenderStyle::NonInheritedFlags::setLastChildStateFlags()), isLastChildStateFlagImmediate);
-        m_assembler.or64(isLastChildStateFlagImmediate, flags);
-        m_assembler.store64(flags, flagAddress);
-    } else {
+    if (fragment.relationToRightFragment == FragmentRelation::Rightmost)
+        addFlagsToElementStyleFromContext(checkingContext, RenderStyle::NonInheritedFlags::setLastChildStateFlags());
+    else {
         FunctionCall functionCall(m_assembler, m_registerAllocator, m_stackAllocator, m_functionCalls);
         functionCall.setFunctionAddress(setLastChildState);
         Assembler::RegisterID elementAddress = elementAddressRegister;
@@ -2123,19 +2381,9 @@ void SelectorCodeGenerator::generateElementIsOnlyChild(Assembler::JumpList& fail
     // Otherwise we need to apply setLastChildState() on the RenderStyle.
     failureCases.append(m_assembler.branchTest32(Assembler::NonZero, isOnlyChildRegister));
 
-    if (fragment.relationToRightFragment == FragmentRelation::Rightmost) {
-        LocalRegister childStyle(m_registerAllocator);
-        m_assembler.loadPtr(Assembler::Address(checkingContext, OBJECT_OFFSETOF(CheckingContext, elementStyle)), childStyle);
-
-        // FIXME: We should look into doing something smart in MacroAssembler instead.
-        LocalRegister flags(m_registerAllocator);
-        Assembler::Address flagAddress(childStyle, RenderStyle::noninheritedFlagsMemoryOffset() + RenderStyle::NonInheritedFlags::flagsMemoryOffset());
-        m_assembler.load64(flagAddress, flags);
-        LocalRegister isLastChildStateFlagImmediate(m_registerAllocator);
-        m_assembler.move(Assembler::TrustedImm64(RenderStyle::NonInheritedFlags::setFirstChildStateFlags() | RenderStyle::NonInheritedFlags::setLastChildStateFlags()), isLastChildStateFlagImmediate);
-        m_assembler.or64(isLastChildStateFlagImmediate, flags);
-        m_assembler.store64(flags, flagAddress);
-    } else {
+    if (fragment.relationToRightFragment == FragmentRelation::Rightmost)
+        addFlagsToElementStyleFromContext(checkingContext, RenderStyle::NonInheritedFlags::setFirstChildStateFlags() | RenderStyle::NonInheritedFlags::setLastChildStateFlags());
+    else {
         FunctionCall functionCall(m_assembler, m_registerAllocator, m_stackAllocator, m_functionCalls);
         functionCall.setFunctionAddress(setOnlyChildState);
         Assembler::RegisterID elementAddress = elementAddressRegister;
@@ -2239,8 +2487,8 @@ void SelectorCodeGenerator::generateElementIsNthChild(Assembler::JumpList& failu
     generateWalkToParentElement(failureCases, parentElement);
 
     Vector<std::pair<int, int>> validSubsetFilters;
-    validSubsetFilters.reserveInitialCapacity(fragment.nthChildfilters.size());
-    for (const auto& slot : fragment.nthChildfilters) {
+    validSubsetFilters.reserveInitialCapacity(fragment.nthChildFilters.size());
+    for (const auto& slot : fragment.nthChildFilters) {
         int a = slot.first;
         int b = slot.second;
 
@@ -2304,16 +2552,7 @@ void SelectorCodeGenerator::generateElementIsNthChild(Assembler::JumpList& failu
         functionCall.call();
 
         if (fragment.relationToRightFragment == FragmentRelation::Rightmost) {
-            LocalRegister childStyle(m_registerAllocator);
-            m_assembler.loadPtr(Assembler::Address(checkingContext, OBJECT_OFFSETOF(CheckingContext, elementStyle)), childStyle);
-
-            LocalRegister flags(m_registerAllocator);
-            Assembler::Address flagAddress(childStyle, RenderStyle::noninheritedFlagsMemoryOffset() + RenderStyle::NonInheritedFlags::flagsMemoryOffset());
-            m_assembler.load64(flagAddress, flags);
-            LocalRegister isUniqueFlagImmediate(m_registerAllocator);
-            m_assembler.move(Assembler::TrustedImm64(RenderStyle::NonInheritedFlags::flagIsUnique()), isUniqueFlagImmediate);
-            m_assembler.or64(isUniqueFlagImmediate, flags);
-            m_assembler.store64(flags, flagAddress);
+            addFlagsToElementStyleFromContext(checkingContext, RenderStyle::NonInheritedFlags::flagIsUnique());
 
             Assembler::RegisterID elementAddress = elementAddressRegister;
             FunctionCall functionCall(m_assembler, m_registerAllocator, m_stackAllocator, m_functionCalls);
@@ -2354,6 +2593,37 @@ void SelectorCodeGenerator::generateElementIsNthChild(Assembler::JumpList& failu
             failureCases.append(m_assembler.branchSub32(Assembler::Signed, elementCounter, bRegister));
             moduloIsZero(failureCases, bRegister, a);
         }
+    }
+}
+
+void SelectorCodeGenerator::generateElementMatchesNotPseudoClass(Assembler::JumpList& failureCases, const SelectorFragment& fragment)
+{
+    for (const auto& subFragment : fragment.notFilters) {
+        Assembler::JumpList localFailureCases;
+        generateElementMatching(localFailureCases, localFailureCases, subFragment);
+        // Since this is a not pseudo class filter, reaching here is a failure.
+        failureCases.append(m_assembler.jump());
+        localFailureCases.link(&m_assembler);
+    }
+}
+
+void SelectorCodeGenerator::generateElementMatchesAnyPseudoClass(Assembler::JumpList& failureCases, const SelectorFragment& fragment)
+{
+    for (const auto& subFragments : fragment.anyFilters) {
+        RELEASE_ASSERT(!subFragments.isEmpty());
+
+        // Don't handle the last fragment in this loop.
+        Assembler::JumpList successCases;
+        for (unsigned i = 0; i < subFragments.size() - 1; ++i) {
+            Assembler::JumpList localFailureCases;
+            generateElementMatching(localFailureCases, localFailureCases, subFragments[i]);
+            successCases.append(m_assembler.jump());
+            localFailureCases.link(&m_assembler);
+        }
+
+        // At the last fragment, optimize the failure jump to jump to the non-local failure directly.
+        generateElementMatching(failureCases, failureCases, subFragments.last());
+        successCases.link(&m_assembler);
     }
 }
 

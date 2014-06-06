@@ -50,6 +50,7 @@
 #include "FormController.h"
 #include "FrameLoader.h"
 #include "FrameView.h"
+#include "HTMLIFrameElement.h"
 #include "HTMLInputElement.h"
 #include "HTMLNames.h"
 #include "HTMLPlugInElement.h"
@@ -87,6 +88,7 @@
 #include "SerializedScriptValue.h"
 #include "Settings.h"
 #include "ShadowRoot.h"
+#include "SourceBuffer.h"
 #include "SpellChecker.h"
 #include "StaticNodeList.h"
 #include "StyleSheetContents.h"
@@ -1905,6 +1907,28 @@ void Internals::stopTrackingRepaints(ExceptionCode& ec)
     frameView->setTracksRepaints(false);
 }
 
+void Internals::updateLayoutIgnorePendingStylesheetsAndRunPostLayoutTasks(ExceptionCode& ec)
+{
+    updateLayoutIgnorePendingStylesheetsAndRunPostLayoutTasks(nullptr, ec);
+}
+
+void Internals::updateLayoutIgnorePendingStylesheetsAndRunPostLayoutTasks(Node* node, ExceptionCode& ec)
+{
+    Document* document;
+    if (!node)
+        document = contextDocument();
+    else if (node->isDocumentNode())
+        document = toDocument(node);
+    else if (node->hasTagName(HTMLNames::iframeTag))
+        document = toHTMLIFrameElement(node)->contentDocument();
+    else {
+        ec = TypeError;
+        return;
+    }
+
+    document->updateLayoutIgnorePendingStylesheets(Document::RunPostLayoutTasksSynchronously);
+}
+
 #if !PLATFORM(IOS)
 static const char* cursorTypeToString(Cursor::Type cursorType)
 {
@@ -2220,6 +2244,14 @@ void Internals::initializeMockMediaSource()
     WebCore::Settings::setAVFoundationEnabled(false);
 #endif
     MediaPlayerFactorySupport::callRegisterMediaEngine(MockMediaPlayerMediaSource::registerMediaEngine);
+}
+
+Vector<String> Internals::bufferedSamplesForTrackID(SourceBuffer* buffer, const AtomicString& trackID)
+{
+    if (!buffer)
+        return Vector<String>();
+
+    return buffer->bufferedSamplesForTrackID(trackID);
 }
 #endif
 

@@ -3171,15 +3171,15 @@ double HTMLMediaElement::percentLoaded() const
     if (!duration || std::isinf(duration))
         return 0;
 
-    double buffered = 0;
+    MediaTime buffered = MediaTime::zeroTime();
     bool ignored;
     std::unique_ptr<PlatformTimeRanges> timeRanges = m_player->buffered();
     for (unsigned i = 0; i < timeRanges->length(); ++i) {
-        double start = timeRanges->start(i, ignored);
-        double end = timeRanges->end(i, ignored);
+        MediaTime start = timeRanges->start(i, ignored);
+        MediaTime end = timeRanges->end(i, ignored);
         buffered += end - start;
     }
-    return buffered / duration;
+    return buffered.toDouble() / duration;
 }
 
 #if ENABLE(VIDEO_TRACK)
@@ -5658,6 +5658,17 @@ String HTMLMediaElement::mediaPlayerSourceApplicationIdentifier() const
     return emptyString();
 }
 
+#if PLATFORM(IOS)
+String HTMLMediaElement::mediaPlayerNetworkInterfaceName() const
+{
+    Settings* settings = document().settings();
+    if (!settings)
+        return emptyString();
+
+    return settings->networkInterfaceName();
+}
+#endif
+    
 void HTMLMediaElement::removeBehaviorsRestrictionsAfterFirstUserGesture()
 {
     m_mediaSession->removeBehaviorRestriction(HTMLMediaSession::RequireUserGestureForLoad);

@@ -1,3 +1,176 @@
+2014-06-02  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Rename DoYouEvenBench 0.17 to Speedometer 1.0 and add a new look.
+        https://bugs.webkit.org/show_bug.cgi?id=133455
+
+        Reviewed by Timothy Hatcher.
+
+        * Speedometer/: Renamed from DoYouEvenBench.
+        * Skipped: Updated the path for InteractiveRunner.html
+
+2014-06-02  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Rename DoYouEvenBench 0.17 to Speedometer 1.0 and add a new look.
+        https://bugs.webkit.org/show_bug.cgi?id=133455
+
+        Reviewed by Timothy Hatcher.
+
+        Renamed the benchmark to Speedometer and added the new look designed by Timothy Hatcher.
+
+        Also changed the unit of measurements from milliseconds to runs-per-minute averaged over the number
+        of the benchmark suites (7 for 1.0). You can divide 420000 by the old benchmark score (in milliseconds)
+        to get the new value for the set of tests that are enabled by default in 1.0. You can continue to see
+        results in milliseconds on Full.html#ms.
+
+        * DoYouEvenBench/Full.html: Added a bunch of sections and the description of the benchmark.
+
+        * DoYouEvenBench/resources/benchmark-report.js: Remove the newly added content when ran inside a DRT or
+        WTR so that run-perf-tests wouldn't error.
+        * DoYouEvenBench/resources/benchmark-runner.js:
+        (BenchmarkRunner.prototype._appendFrame): Call a newly added willAddTestFrame callback when it exists.
+
+        * DoYouEvenBench/resources/gauge.png: Added.
+        * DoYouEvenBench/resources/gauge@2x.png: Added.
+        * DoYouEvenBench/resources/logo.png: Added.
+        * DoYouEvenBench/resources/logo@2x.png: Added.
+        * DoYouEvenBench/resources/main.css: Replaced the style.
+
+        * DoYouEvenBench/resources/main.js:
+        (window.benchmarkClient.willAddTestFrame): Place the iframe right where #testContainer is shown.
+        (window.benchmarkClient.willRunTest): Show the name of the suite (e.g. EmberJS-TodoMVC) to run next.
+        (window.benchmarkClient.didRunSuites):
+        (window.benchmarkClient.willStartFirstIteration): Initialize _timeValues and _finishedTestCount now that
+        we have an UI to run the benchmark multiple times without reloading the page.
+        (window.benchmarkClient.didFinishLastIteration): Split into smaller pieces.
+        (window.benchmarkClient._computeResults): Computes the mean and the statistics for the given time values,
+        and also format them in a human readable form.
+        (window.benchmarkClient._computeResults.totalTimeInDisplayUnit): Converts ms to runs/min.
+        (window.benchmarkClient._computeResults.sigFigFromPercentDelta): Given a percentage error (e.g. 1%),
+        returns the number of significant digits required for the mean.
+        (window.benchmarkClient._computeResults.toSigFigPrecision): Calls toPrecision with the specified precision
+        constrained to be at least the number of non-decimal digits and at most 6.
+        (window.benchmarkClient._addDetailedResultsRow): Renamed from _addResult. It now takes the table to which
+        to add a row and the iteration number.
+        (window.benchmarkClient._updateGaugeNeedle): Added. Controls the angle of the speed indicator.
+        (window.benchmarkClient._populateDetailedResults): Added.
+        (window.benchmarkClient.prepareUI): Added. It adds an event listener to show a specified section when
+        the push state of the document changes, and shows a warning sign when the view port size is too small.
+        We do this inside a callback to avoid running it inside DRT / WTR.
+        (startBenchmark):
+        (showSection): Added.
+        (startTest): Added.
+        (showResultsSummary): Added.
+        (showResultDetails): Added.
+        (showAbout): Added.
+
+2014-06-01  Ryosuke Niwa  <rniwa@webkit.org>
+
+        DYEBench: Move test states into benchmarkClient and remove the closure
+        https://bugs.webkit.org/show_bug.cgi?id=133438
+
+        Reviewed by Benjamin Poulain.
+
+        Moved all local variables in the closure wrapping benchmarkClient onto the object itself
+        and removed the closure to improve the readability of the code.
+
+        * DoYouEvenBench/Full.html:
+        * DoYouEvenBench/resources/main.js:
+        (window.benchmarkClient.willRunTest):
+        (window.benchmarkClient.didRunTest):
+        (window.benchmarkClient.didRunSuites):
+        (window.benchmarkClient.willStartFirstIteration):
+        (window.benchmarkClient.didFinishLastIteration):
+        (window.benchmarkClient._addResult): Moved.
+        (.): Deleted.
+
+2014-06-01  Ryosuke Niwa  <rniwa@webkit.org>
+
+        DYEBench: Split stylesheets and scripts in Full.html into separate files
+        https://bugs.webkit.org/show_bug.cgi?id=133437
+
+        Reviewed by Benjamin Poulain.
+
+        Extracted main.js and main.css.
+
+        Also fixed a bug in startBenchmark that disabled suites were counted towards the total number of tests.
+
+        * DoYouEvenBench/Full.html:
+        * DoYouEvenBench/resources/main.css: Added.
+        * DoYouEvenBench/resources/main.js: Added.
+        (.addResult):
+        (window.benchmarkClient):
+        (startBenchmark): Renamed from startTest.
+
+2014-06-01  Ryosuke Niwa  <rniwa@webkit.org>
+
+        DYEBench: CSS parser warning at line 106 of base.css
+        https://bugs.webkit.org/show_bug.cgi?id=133433
+
+        Reviewed by Maciej Stachowiak.
+
+        Removed the old filter CSS property for Internet Explorer. The latest Internet Explorer supports -ms-linear-gradient
+        on background CSS property anyways.
+
+        It's interesting that some of the tests only have -webkit- prefixes. Perhaps we should update those subtests.
+
+        * DoYouEvenBench/Full.html:
+        * DoYouEvenBench/resources/todomvc/architecture-examples/angularjs/bower_components/todomvc-common/base.css:
+        (#header:before):
+        * DoYouEvenBench/resources/todomvc/architecture-examples/backbone/bower_components/todomvc-common/base.css:
+        (#header:before):
+        * DoYouEvenBench/resources/todomvc/architecture-examples/emberjs/bower_components/todomvc-common/base.css:
+        (#header:before):
+        * DoYouEvenBench/resources/todomvc/architecture-examples/jquery/bower_components/todomvc-common/base.css:
+        (#header:before):
+        * DoYouEvenBench/resources/todomvc/dependency-examples/flight/bower_components/todomvc-common/base.css:
+        (#header:before):
+        * DoYouEvenBench/resources/todomvc/labs/architecture-examples/react/bower_components/todomvc-common/base.css:
+        (#header:before):
+        * DoYouEvenBench/resources/todomvc/vanilla-examples/vanillajs/bower_components/todomvc-common/base.css:
+        (#header:before):
+
+2014-05-31  Ryosuke Niwa  <rniwa@webkit.org>
+
+        DYEBench: Ember.js assertion hit at line 20593
+        https://bugs.webkit.org/show_bug.cgi?id=133431
+
+        Reviewed by Darin Adler.
+
+        The assertion was hit because ToDoMVC includes jQuery 2.1 and Ember.js 1.3.1 only recognizes jQuery 2.0.
+        Port the assertion from Ember.js 1.5.1 to suppress the assertion.
+
+        We should update the entire Ember.js at some point but this would do the job for now.
+
+        * DoYouEvenBench/Full.html:
+        * DoYouEvenBench/resources/todomvc/architecture-examples/emberjs/bower_components/ember/ember.js:
+
+2014-05-31  Ryosuke Niwa  <rniwa@webkit.org>
+
+        DYEBench: Prevent frame flattening on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=133428
+
+        Reviewed by Andreas Kling.
+
+        Prevent frame flattening on iOS by setting scrolling=no.
+
+        * DoYouEvenBench/Full.html:
+        * DoYouEvenBench/resources/benchmark-runner.js:
+        (BenchmarkRunner.prototype._appendFrame):
+
+2014-05-30  Ryosuke Niwa  <rniwa@webkit.org>
+
+        DYEBench spits out 404 errors for learn.json
+        https://bugs.webkit.org/show_bug.cgi?id=133416
+
+        Reviewed by Oliver Hunt.
+
+        Add an empty learn.json file so that it won't cause a 404 error when hosted on a http server.
+
+        Bumped the version number to 0.12.
+
+        * DoYouEvenBench/Full.html:
+        * DoYouEvenBench/resources/todomvc/learn.json:
+
 2014-05-23  Geoffrey Garen  <ggaren@apple.com>
 
         Performance testing, diamond-square terrain generation + canvas

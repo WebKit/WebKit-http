@@ -139,6 +139,23 @@ SelectorChecker::SelectorChecker(Document& document, Mode mode)
 {
 }
 
+bool SelectorChecker::match(const SelectorCheckingContext& context) const
+{
+    PseudoId pseudoId = NOPSEUDO;
+    if (matchRecursively(context, pseudoId) != SelectorMatches)
+        return false;
+    if (context.pseudoId != NOPSEUDO && context.pseudoId != pseudoId)
+        return false;
+    if (context.pseudoId == NOPSEUDO && pseudoId != NOPSEUDO) {
+        if (m_mode == ResolvingStyle && pseudoId < FIRST_INTERNAL_PSEUDOID)
+            context.elementStyle->setHasPseudoStyle(pseudoId);
+
+        // For SharingRules testing, any match is good enough, we don't care what is matched.
+        return m_mode == SharingRules || m_mode == StyleInvalidation;
+    }
+    return true;
+}
+
 // Recursive check of selectors and combinators
 // It can return 4 different values:
 // * SelectorMatches          - the selector matches the element e
@@ -167,10 +184,12 @@ SelectorChecker::Match SelectorChecker::matchRecursively(const SelectorCheckingC
 
             // When invalidating style all pseudo elements need to match.
             PseudoId pseudoId = m_mode == StyleInvalidation ? NOPSEUDO : CSSSelector::pseudoId(context.selector->pseudoElementType());
-            if (pseudoId == FIRST_LETTER)
-                context.element->document().styleSheetCollection().setUsesFirstLetterRules(true);
-            if (pseudoId != NOPSEUDO)
+            if (pseudoId != NOPSEUDO) {
                 dynamicPseudo = pseudoId;
+
+                if (pseudoId == FIRST_LETTER)
+                    context.element->document().styleSheetCollection().setUsesFirstLetterRules(true);
+            }
         }
     }
 

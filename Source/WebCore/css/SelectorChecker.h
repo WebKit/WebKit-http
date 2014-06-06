@@ -82,10 +82,7 @@ public:
         bool hasSelectionPseudo;
     };
 
-    bool match(const SelectorCheckingContext& context, PseudoId& pseudoId) const
-    {
-        return matchRecursively(context, pseudoId) == SelectorMatches;
-    }
+    bool match(const SelectorCheckingContext&) const;
 
     static bool tagMatches(const Element*, const QualifiedName&);
     static bool isCommonPseudoClassSelector(const CSSSelector*);

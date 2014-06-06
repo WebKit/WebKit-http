@@ -138,9 +138,6 @@ typedef NS_OPTIONS(NSUInteger, _WKFindOptions) {
 
 - (void)_killWebContentProcess;
 
-// FIXME: Remove this once nobody uses it.
-@property (nonatomic, readonly) NSURL *activeURL;
-
 #else
 @property (readonly) NSColor *_pageExtendedBackgroundColor;
 @property (nonatomic, setter=_setDrawsTransparentBackground:) BOOL _drawsTransparentBackground;
@@ -148,6 +145,8 @@ typedef NS_OPTIONS(NSUInteger, _WKFindOptions) {
 #endif
 
 - (void)_runJavaScriptInMainFrame:(NSString *)scriptString;
+
+- (void)_getWebArchiveDataWithCompletionHandler:(void (^)(NSData *, NSError *))completionHandler;
 
 @property (nonatomic, setter=_setPaginationMode:) _WKPaginationMode _paginationMode;
 // Whether the column-break-{before,after} properties are respected instead of the
