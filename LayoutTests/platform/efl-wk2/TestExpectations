@@ -562,3 +562,13 @@ webkit.org/b/133302 fast/shapes/shape-outside-floats/shape-outside-floats-inset-
 webkit.org/b/133302 fast/shapes/shape-outside-floats/shape-outside-rounded-inset.html [ ImageOnlyFailure ]
 
 webkit.org/b/133306 fast/canvas/webgl/css-webkit-canvas-repaint.html [ ImageOnlyFailure ]
+
+
+# Failures EFL WK2 since the inception
+webkit.org/b/133484 accessibility/content-editable-set-inner-text-generates-axvalue-notification.html [ Failure ]
+webkit.org/b/133508 accessibility/table-fallback-roles-expose-element-attributes.html [ Failure ]
+
+# Failing at least from 2014-05-01, but cause unknown
+webkit.org/b/133507 accessibility/media-element.html [ Failure ]
+webkit.org/b/133509 accessibility/table-with-footer-section-above-body.html [ Failure ]
+

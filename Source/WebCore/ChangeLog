@@ -1,3 +1,471 @@
+2014-06-05  David Hyatt  <hyatt@apple.com>
+
+        REGRESSION: Hit testing of composited elements is broken in new multicolumn layout.
+        https://bugs.webkit.org/show_bug.cgi?id=133522 (<rdar://problem/17060556>)
+        
+        Reviewed by Simon Fraser.
+
+        Hit testing for the new columns doesn't care about compositing but does still
+        need a pagination layer set to work. The old column code didn't care about this
+        because it was top down (and wrong). The new code lets each layer paint and hit
+        test its own fragments, so having a pagination layer set suddenly becomes relevant
+        for composited layers.
+    
+        The solution is to cache whether or not the pagination layer crosses a compositing
+        boundary, and then to force call sites of enclosingPaginationLayer to pass an argument
+        indicating whether compositing layers should be included. Typically painting wants to
+        exclude them but hit testing wants to include them.
+
+        * page/FrameView.cpp:
+        (WebCore::updateLayerPositionFlags):
+        * rendering/RenderLayer.cpp:
+        (WebCore::RenderLayer::RenderLayer):
+        (WebCore::RenderLayer::updateLayerPositions):
+        (WebCore::RenderLayer::updatePagination):
+        (WebCore::transparencyClipBox):
+        (WebCore::RenderLayer::paintLayer):
+        (WebCore::RenderLayer::paintLayerContents):
+        (WebCore::RenderLayer::enclosingPaginationLayerInSubtree):
+        (WebCore::RenderLayer::collectFragments):
+        (WebCore::RenderLayer::paintTransformedLayerIntoFragments):
+        (WebCore::RenderLayer::hitTestLayer):
+        (WebCore::RenderLayer::hitTestTransformedLayerInFragments):
+        (WebCore::RenderLayer::calculateClipRects):
+        * rendering/RenderLayer.h:
+        * rendering/RenderLayerCompositor.cpp:
+        (WebCore::RenderLayerCompositor::requiresCompositingForPosition):
+
+2014-06-06  Kiran  <kiran.guduru@samsung.com>
+
+        [MediaStream] 'get' prefix is missing for capabilities and constraints.
+        https://bugs.webkit.org/show_bug.cgi?id=133573
+
+        Reviewed by Eric Carlson.
+
+        Modified the existing MediaStreamTrack.html to test the changes.
+
+        As per the Media Capture and Streams spec method names constreaints and
+        capabilities should be prefixed by 'get'. So updated the method names.
+
+        * Modules/mediastream/MediaStreamTrack.cpp:
+        (WebCore::MediaStreamTrack::getConstraints):
+        (WebCore::MediaStreamTrack::getCapabilities):
+        (WebCore::MediaStreamTrack::constraints): Deleted.
+        (WebCore::MediaStreamTrack::capabilities): Deleted.
+        * Modules/mediastream/MediaStreamTrack.h:
+        * Modules/mediastream/MediaStreamTrack.idl:
+
+2014-06-05  Brent Fulgham  <bfulgham@apple.com>
+
+        REGRESSION(169440): Repro crash when playing a video with captions
+        https://bugs.webkit.org/show_bug.cgi?id=133459
+        <rdar://problem/17079081>
+
+        Reviewed by Eric Carlson.
+
+        The change I made in r169440 introduced a crash for paint-on captions. This
+        resolves the problem as follows:
+        1. No longer attempt to modify the start/endTime in the TextTrack implementation.
+        2. Check for extensions to existing cues when we are about to add new arriving
+           cues. If they extend a current pending cue, don't set an end-time for the
+           pending cue, and throw away the new duplicate. Otherwise set the end time
+           as previously and continue.
+
+        * html/track/TextTrack.cpp:
+        (WebCore::TextTrack::hasCue): Remove 'doesExtendCue' case since this is
+        no longer possible.
+        * platform/graphics/InbandTextTrackPrivateClient.h:
+        (WebCore::GenericCueData::doesExtendCueData): Added.
+        * platform/graphics/avfoundation/InbandTextTrackPrivateAVF.cpp:
+        (WebCore::InbandTextTrackPrivateAVF::processCue): Check for cues extending
+        other cues and handle appropriately.
+
+2014-06-06  Brent Fulgham  <bfulgham@apple.com>
+
+        ROLLOUT: r169630: Caused a retain cycle.
+        https://bugs.webkit.org/show_bug.cgi?id=133463
+        <rdar://problem/17098100>
+
+        Rolling out this change as it introduced a retain cycle.
+
+        * Modules/mediacontrols/MediaControlsHost.cpp:
+        (WebCore::MediaControlsHost::setControllerJSObject): Deleted.
+        * Modules/mediacontrols/MediaControlsHost.h:
+        (WebCore::MediaControlsHost::controllerJSValue):
+        (WebCore::MediaControlsHost::setControllerJSValue):
+        (WebCore::MediaControlsHost::controllerJSObject): Deleted.
+        * html/HTMLMediaElement.cpp:
+        (WebCore::HTMLMediaElement::parseAttribute):
+
+2014-06-05  Dean Jackson  <dino@apple.com>
+
+        StyleResolver doesn't compile without CSS_GRID_LAYOUT enabled
+        https://bugs.webkit.org/show_bug.cgi?id=133568
+
+        Reviewed by Tim Horton.
+
+        * css/StyleResolver.cpp:
+        (WebCore::isDisplayGridBox): Add UNUSED_PARAM.
+
+2014-06-05  Mihnea Ovidenie  <mihnea@adobe.com>
+
+        [CSSRegions] Region box incorrectly overlaps floating box
+        https://bugs.webkit.org/show_bug.cgi?id=133545
+
+        Reviewed by David Hyatt.
+
+        A region box creates a BFC and it should not overlap a floating box in the same formatting context: http://www.w3.org/TR/CSS21/visuren.html#bfc-next-to-float
+
+        Test: fast/regions/region-as-bfc-avoids-float.html
+
+        * rendering/RenderBlock.cpp:
+        (WebCore::RenderBlock::avoidsFloats):
+
+2014-06-05  Yoav Weiss  <yoav@yoav.ws>
+
+        Align srcset parser with recent spec changes
+        https://bugs.webkit.org/show_bug.cgi?id=133504
+
+        Reviewed by Darin Adler.
+
+        New tests were added to fast/hidpi/image-srcset-invalid-descriptor.html
+
+        The srcset parser changes align it with the spec:
+        http://picture.responsiveimages.org/#parse-srcset-attr.
+        The spec changes are meant to give the parser better future
+        compatibility, and enable it to work well with the 'w' descriptor, the
+        soon to be added 'h' descriptor and function descriptors (e.g.
+        future-descriptor(a, b, c) ).
+
+        * CMakeLists.txt:
+        * WebCore.vcxproj/WebCore.vcxproj:
+        * WebCore.vcxproj/WebCore.vcxproj.filters:
+        * WebCore.xcodeproj/project.pbxproj:
+        * html/HTMLImageElement.cpp:
+        (WebCore::HTMLImageElement::setBestFitURLAndDPRFromImageCandidate):
+        (WebCore::HTMLImageElement::parseAttribute):
+        * html/HTMLImageElement.h:
+        * html/parser/HTMLParserIdioms.h:
+        (WebCore::isHTMLSpace):
+        (WebCore::isComma):
+        (WebCore::isHTMLSpaceOrComma):
+        * html/parser/HTMLPreloadScanner.cpp:
+        (WebCore::TokenPreloadScanner::StartTagScanner::processAttributes):
+        * html/parser/HTMLSrcsetParser.cpp:
+        (WebCore::compareByDensity):
+        (WebCore::appendDescriptorAndReset):
+        (WebCore::appendCharacter):
+        (WebCore::isEOF):
+        (WebCore::tokenizeDescriptors):
+        (WebCore::stringViewToFloat):
+        (WebCore::stringViewToInt):
+        (WebCore::parseDescriptors):
+        (WebCore::parseImageCandidatesFromSrcsetAttribute):
+        (WebCore::pickBestImageCandidate):
+        (WebCore::bestFitSourceForImageAttributes):
+        (WebCore::compareByScaleFactor): Deleted.
+        (WebCore::parseImagesWithScaleFromSrcsetAttribute): Deleted.
+        * html/parser/HTMLSrcsetParser.h:
+        (WebCore::DescriptorParsingResult::DescriptorParsingResult):
+        (WebCore::DescriptorParsingResult::hasDensity):
+        (WebCore::DescriptorParsingResult::hasWidth):
+        (WebCore::DescriptorParsingResult::hasHeight):
+        (WebCore::DescriptorParsingResult::density):
+        (WebCore::DescriptorParsingResult::resourceWidth):
+        (WebCore::DescriptorParsingResult::resourceHeight):
+        (WebCore::DescriptorParsingResult::setResourceWidth):
+        (WebCore::DescriptorParsingResult::setResourceHeight):
+        (WebCore::DescriptorParsingResult::setDensity):
+        (WebCore::ImageCandidate::ImageCandidate):
+        (WebCore::ImageCandidate::toString):
+        (WebCore::ImageCandidate::url):
+        (WebCore::ImageCandidate::setDensity):
+        (WebCore::ImageCandidate::density):
+        (WebCore::ImageCandidate::resourceWidth):
+        (WebCore::ImageCandidate::srcOrigin):
+        (WebCore::ImageCandidate::isEmpty):
+        (WebCore::ImageWithScale::ImageWithScale): Deleted.
+        (WebCore::ImageWithScale::imageURL): Deleted.
+        (WebCore::ImageWithScale::scaleFactor): Deleted.
+        * html/parser/ParsingUtilities.h: Renamed from Source/WebCore/html/track/ParsingUtilities.h.
+        (skipExactly):
+        (skipUntil):
+        (skipWhile):
+        (reverseSkipWhile):
+
+2014-06-05 Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Current media controls look different from previous media controls. Adjusted CSS to make media elements more similar by adding padding, adjusting hues/svg, resizing elements, etc.
+
+        https://bugs.webkit.org/show_bug.cgi?id=133521
+
+        Reviewed by Eric Carlson.
+
+        The main issues:
+        - The widths between elements of both audio and video players are incorrect.
+        - The hues of audio player elements are incorrect.
+        - The hues of video player elements are content dependent (refer to full-screen mode), and this cannot be exactly replicated using just css. This patch only attempts to make them more similar.
+        - The height of the audio player is incorrect.
+
+        Test: platform/ios-sim/media/audio-width.html
+
+        * Modules/mediacontrols/mediaControlsiOS.css: Updated style elements for audio/video elements.
+        (::-webkit-media-controls): Enforce a minimum width on audio/video controls.
+        (audio): Enforce a minimum width on audio elements.
+        (audio::-webkit-media-controls): see below
+        (audio::-webkit-media-controls-wireless-playback-picker-button): modified SVG, hue and width/height.
+        (audio::-webkit-media-controls-panel): adjusted hue, added left/right padding.
+        (audio::-webkit-media-controls-fullscreen-button): removed. There's no fullscreen for audio anyways.
+        (audio::-webkit-media-controls-current-time-display): adjusted font size, added left padding.
+        (audio::-webkit-media-controls-time-remaining-display): adjusted font size, added right padding.
+
+        (video::-webkit-media-controls-panel): adjusted hue, added left/right padding.
+        (video::-webkit-media-controls-current-time-display): added left padding.
+        (video::-webkit-media-controls-time-remaining-display): added right padding.
+        (video::-webkit-media-controls-wireless-playback-picker-button): modified SVG, hue, opacity and width/height.
+        (video::-webkit-media-controls-fullscreen-button): modified SVG, hue, opacity, and width/height. In particular, made the svg seem sharper.
+        (video::-webkit-media-controls-play-button): modified SVG, hue, opacity, and width/height.
+
+2014-06-05  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r169570.
+        https://bugs.webkit.org/show_bug.cgi?id=133565
+
+        It breaks Baidu (Requested by benjaminp on #webkit).
+
+        Reverted changeset:
+
+        "[iOS] Start ignoring common bogus viewport parameters"
+        https://bugs.webkit.org/show_bug.cgi?id=133466
+        http://trac.webkit.org/changeset/169570
+
+2014-06-05  Michael Timbrook  <timbrook@apple.com>
+
+        AX: Add support for ARIA 1.1 'none' role
+        https://bugs.webkit.org/show_bug.cgi?id=133367
+
+        Reviewed by Chris Fleizach.
+
+        Added support for the 'none' role by added a lookup for it to go to PresentationalRole
+        Test: accessibility/aria-none-role.html
+
+        * accessibility/AccessibilityObject.cpp:
+        (WebCore::initializeRoleMap):
+
+2014-06-05  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: [ATK] Children of tables and lists with role='presentation' should each be exposed as if they were div elements
+        https://bugs.webkit.org/show_bug.cgi?id=133133
+
+        Reviewed by Chris Fleizach.
+
+        When a table or list has role='presentation', accessibility is "ignored"
+        for that element, but not for the required children. The default roles
+        for the children (CellRole and ListItemRole) do not make sense without
+        the parent, therefore map them to DivRole in ATK if they inherit the
+        presentational role.
+
+        Test: accessibility/aria-inherits-presentational.html
+
+        * accessibility/AccessibilityObject.h:
+        (WebCore::AccessibilityObject::inheritsPresentationalRole):
+        * accessibility/AccessibilityRenderObject.cpp:
+        (WebCore::AccessibilityRenderObject::inheritsPresentationalRole):
+        * accessibility/AccessibilityRenderObject.h:
+        * accessibility/atk/WebKitAccessibleWrapperAtk.cpp:
+        (atkRole):
+
+2014-06-05  Brent Fulgham  <bfulgham@apple.com>
+
+        REGRESSION (r167962): Out of bounds read in JSC::StructureIDTable::get() 
+        https://bugs.webkit.org/show_bug.cgi?id=133463
+        <rdar://problem/17098100>
+
+        Reviewed by Dean Jackson.
+
+        Revise MediaControllerHost implementation so that it holds a Strong
+        reference to the JavaScript 'Controller' object it mirrors. The
+        MediaControllerHost is constructed when we create an HTMLMediaElement,
+        and is the logical place to retain ownership of the JS object so that
+        it does not get garbage collected as long as HTMLMediaElement exists.
+
+        * Modules/mediacontrols/MediaControlsHost.cpp:
+        (WebCore::MediaControlsHost::setControllerJSObject): Create a strong
+        reference to the JavaScript Controller object.
+        * Modules/mediacontrols/MediaControlsHost.h: Use JSC::Strong to hold a
+        JSObject, rather than a bare JSValue.
+        (WebCore::MediaControlsHost::controllerJSObject): Change name to reflect
+        that we are working with JSObjects, not JSValues.
+        (WebCore::MediaControlsHost::controllerJSValue): Deleted.
+        (WebCore::MediaControlsHost::setControllerJSValue): Deleted.
+        * html/HTMLMediaElement.cpp:
+        (WebCore::HTMLMediaElement::parseAttribute): Revise for changed method
+        signature.
+
+2014-06-05  Benjamin Poulain  <bpoulain@apple.com>
+
+        [iOS][WK2] Add device orientation
+        https://bugs.webkit.org/show_bug.cgi?id=133530
+
+        Reviewed by Tim Horton.
+
+        Previously, WebCore was getting the orientation directly from the WebKit layer.
+        This had to be done during the frame creation and was very fragile.
+
+        Frame is changed to pull the value from the chrome client. That way we avoid races
+        and we can maintain a single value for all frames.
+
+        Sending the values to all the subframes is aslo done here so that we do not have to repeat
+        it in both WebKit layers.
+
+        * WebCore.exp.in:
+        * loader/EmptyClients.h:
+        * page/ChromeClient.h:
+        * page/Frame.cpp:
+        (WebCore::Frame::Frame):
+        (WebCore::Frame::orientationChanged):
+        (WebCore::Frame::orientation):
+        (WebCore::Frame::sendOrientationChangeEvent): Deleted.
+        * page/Frame.h:
+        (WebCore::Frame::orientation): Deleted.
+
+2014-06-05  Timothy Horton  <timothy_horton@apple.com>
+
+        Fix the !CACHE_SUBIMAGES build
+
+        * platform/graphics/cg/GraphicsContextCG.cpp:
+        (WebCore::GraphicsContext::drawNativeImage):
+
+2014-06-05  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        CSS JIT: Clean up StackAllocator
+        https://bugs.webkit.org/show_bug.cgi?id=133506
+
+        Reviewed by Benjamin Poulain.
+
+        Cleaning up CSS JIt StackAllocator code. Sharing push / pop code and
+        using information provided by MacroAssembler more aggressively
+        to drop ifdefs.
+
+        * cssjit/StackAllocator.h:
+        (WebCore::StackAllocator::allocateUninitialized):
+        (WebCore::StackAllocator::push):
+        (WebCore::StackAllocator::pop):
+        (WebCore::StackAllocator::popAndDiscard):
+        (WebCore::StackAllocator::popAndDiscardUpTo):
+        (WebCore::StackAllocator::alignStackPreFunctionCall):
+        (WebCore::StackAllocator::unalignStackPostFunctionCall):
+        (WebCore::StackAllocator::stackUnitInBytes):
+
+2014-06-05  Zalan Bujtas  <zalan@apple.com>
+
+        Subpixel rendering: border-radius painting falls back to rectangle when the snapped rounded rect becomes non-renderable.
+        https://bugs.webkit.org/show_bug.cgi?id=133491
+
+        Reviewed by Simon Fraser.
+
+        Pixel snapping can change the rectangle's size when it is on a certain subpixel position. (usually it does not)
+        This patch ensures that the snapped rect is still renderable by adjusting the radii as well.
+
+        Test: fast/borders/hidpi-border-radius-with-subpixel-margin-not-renderable.html
+
+        * platform/graphics/RoundedRect.cpp:
+        (WebCore::RoundedRect::Radii::scale):
+        (WebCore::RoundedRect::pixelSnappedRoundedRectForPainting):
+        * platform/graphics/RoundedRect.h:
+
+2014-06-05  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r169587.
+        https://bugs.webkit.org/show_bug.cgi?id=133552
+
+        Calls a pure virtual method, crashes (Requested by ap on
+        #webkit).
+
+        Reverted changeset:
+
+        "WebKit should adopt journal_mode=wal for all SQLite
+        databases."
+        https://bugs.webkit.org/show_bug.cgi?id=133496
+        http://trac.webkit.org/changeset/169587
+
+2014-06-05  Frédéric Wang  <fred.wang@free.fr>
+
+        Apply Character-level mirroring to stretchy operators in RTL mode.
+        https://bugs.webkit.org/show_bug.cgi?id=130839
+
+        Reviewed by Chris Fleizach.
+
+        We add support for character-level mirroring for stretchy MathML operators in RTL mode.
+        Glyph-level mirroring (via the rtlm OpenType feature) will be handled in bug 130840.
+
+        Test: mathml/presentation/stretchy-rtl.html
+
+        * rendering/mathml/RenderMathMLOperator.cpp: reorganize the Unicode stretchyCharacters table to make mirroring easy.
+        (WebCore::RenderMathMLOperator::computePreferredLogicalWidths): pass the right boolean to glyphDataForCharacter.
+        (WebCore::RenderMathMLOperator::getDisplayStyleLargeOperator): ditto
+        (WebCore::RenderMathMLOperator::findStretchyData): ditto and change the index for the stretchyCharacters fallback.
+        (WebCore::RenderMathMLOperator::updateStyle): pass the right boolean to glyphDataForCharacter.
+        (WebCore::RenderMathMLOperator::paint): remove the FIXME comment.
+        (WebCore::RenderMathMLOperator::paintVerticalGlyphAssembly): switch the leading/trailing space in RTL mode.
+
+2014-06-05  Zalan Bujtas  <zalan@apple.com>
+
+        Subpixel rendering: Buttons in default media controls shift vertically when controls fade in or out.
+        https://bugs.webkit.org/show_bug.cgi?id=133488
+
+        Reviewed by Simon Fraser.
+
+        Filter effects are not subpixel aware yet. They paint to integrally sized image buffers.
+        In order to ensure that the content is rendered to the the same position on the filter 
+        source context as if there was no filter, the repaint rects need to be adjusted to match with
+        the internal filter snapping (enclosingIntRect).
+        This is a temporary change until after filter effects get subpixelized.
+
+        However, this changeset regresses RenderNameFlow clipping when the content is on subpixel position
+        and filter effect is present. Instead of adding the failing test cases to TestExpectations, I removed
+        the video controls from the <video> to make the tests pass, when possible (they just happen to have <video>)
+        and filed webkit.org/b/133523 to track the regression.
+
+        Test: css3/filters/filter-is-on-subpixel-position.html
+
+        * rendering/RenderLayer.cpp:
+        (WebCore::RenderLayer::setupFilters):
+
+2014-06-05  Kiran  <kiran.guduru@samsung.com>
+
+        [MediaStream] MediaStream.addTrack should not check for tracks ended state.
+        https://bugs.webkit.org/show_bug.cgi?id=133510
+
+        Reviewed by Eric Carlson.
+
+        Adding and removing of tracks to a MediaStream should not have dependency
+        on tracks state. So the check for MediaStreamTrack's ended state has been
+        removed while adding a track in MediaStreamPrivate.cpp.
+
+        Test: fast/mediastream/MediaStream-add-ended-tracks.html
+
+        * platform/mediastream/MediaStreamPrivate.cpp:
+        (WebCore::MediaStreamPrivate::addTrack):
+
+2014-06-05  Gwang Yoon Hwang  <yoon@igalia.com>
+
+        [GTK] Remove ScrollViewGtk.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=133535
+
+        Reviewed by Carlos Garcia Campos.
+
+        Because GTK+ WK1 was removed, we don't have to consider special cases
+        handled in ScrollViewGtk.cpp.
+
+        No new tests are necessary because there is no behavior change.
+
+        * PlatformGTK.cmake:
+        * platform/ScrollView.cpp:
+        (WebCore::ScrollView::setScrollbarModes):
+        (WebCore::ScrollView::visibleContentRectInternal):
+        * platform/gtk/ScrollViewGtk.cpp: Removed.
+
 2014-06-05  Frédéric Wang  <fred.wang@free.fr>
 
         MathML operators not stretched horizontally

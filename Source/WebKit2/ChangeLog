@@ -1,3 +1,99 @@
+2014-06-05  Benjamin Poulain  <bpoulain@apple.com>
+
+        [iOS][WK2] WebPage sometimes forces two resize events on animated resize
+        https://bugs.webkit.org/show_bug.cgi?id=133534
+
+        Reviewed by Enrica Casucci.
+
+        When I updated the patch for resize events (r168556) to use the unobscured rect in scrollview coordinates,
+        I forgot to update a snippet of code in dynamicViewportSizeUpdate(). Since that code was still using
+        the scaled unobscured rect, there was sometimes a difference of 1 pixel between the size set by that
+        call site and the others.
+
+        This path nukes the bad code and use the unobscured rect in scrollview coordinates given by the UIProcess.
+
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::dynamicViewportSizeUpdate):
+
+2014-06-05  Benjamin Poulain  <bpoulain@apple.com>
+
+        [iOS][WK2] Add device orientation
+        https://bugs.webkit.org/show_bug.cgi?id=133530
+        <rdar://problem/16680041>
+
+        Reviewed by Tim Horton.
+
+        Add device orientation for WebKit2.
+
+        For the public API, WKWebView get the updates through the notification UIWindowDidRotateNotification.
+        We do not have any control over how the API is used, but we can expect the size will be updated before
+        the end of rotation in most cases and the events should be sent in the right order.
+
+        For Safari, we use an override to support animated resize (and some tabs corner cases).
+
+        On the WebProcess side, we just get the new orientation directly or on DynamicViewportSizeUpdate.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (deviceOrientationForUIInterfaceOrientation):
+        (deviceOrientation):
+        (-[WKWebView initWithFrame:configuration:]):
+        (-[WKWebView _windowDidRotate:]):
+        (-[WKWebView _setInterfaceOrientationOverride:]):
+        (-[WKWebView _interfaceOrientationOverride]):
+        (-[WKWebView _beginAnimatedResizeWithUpdates:]):
+        * UIProcess/API/Cocoa/WKWebViewPrivate.h:
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::WebPageProxy):
+        * UIProcess/WebPageProxy.h:
+        (WebKit::WebPageProxy::deviceOrientation):
+        * UIProcess/ios/WebPageProxyIOS.mm:
+        (WebKit::WebPageProxy::dynamicViewportSizeUpdate):
+        (WebKit::WebPageProxy::setDeviceOrientation):
+        * WebProcess/WebCoreSupport/WebChromeClient.h:
+        * WebProcess/WebCoreSupport/ios/WebChromeClientIOS.mm:
+        (WebKit::WebChromeClient::deviceOrientation):
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::WebPage):
+        * WebProcess/WebPage/WebPage.h:
+        (WebKit::WebPage::deviceOrientation):
+        * WebProcess/WebPage/WebPage.messages.in:
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::setDeviceOrientation):
+        (WebKit::WebPage::dynamicViewportSizeUpdate):
+
+2014-06-05  Oliver Hunt  <oliver@apple.com>
+
+        Enable SANDBOX_EXTENSIONS build flag universally on cocoa
+        https://bugs.webkit.org/show_bug.cgi?id=133556
+
+        Reviewed by Alexey Proskuryakov.
+
+        Remove unnecessary iOS exception.
+
+        * WebKit2Prefix.h:
+
+2014-06-05  Alexey Proskuryakov  <ap@apple.com>
+
+        [Mac] Tweak plug-in sandbox profiles
+        https://bugs.webkit.org/show_bug.cgi?id=133549
+
+        Fix <rdar://problem/17068055> and <rdar://problem/17148837>.
+
+        Reviewed by Sam Weinig and Simon Cooper.
+
+        * Resources/PlugInSandboxProfiles/com.apple.ist.ds.appleconnect.webplugin.sb:
+        * Resources/PlugInSandboxProfiles/com.microsoft.SilverlightPlugin.sb:
+
+2014-06-05  Tanay C  <tanay.c@samsung.com>
+
+        Resolve compiler error (call of overloaded 'schedule' function is ambiguous) 
+        https://bugs.webkit.org/show_bug.cgi?id=133467
+
+        Reviewed by Carlos Garcia Campos.
+
+        * Shared/Downloads/soup/DownloadSoup.cpp:
+        (WebKit::DownloadClient::handleResponseLater): Explicitly casting second parameter to std::function<void()>
+
 2014-06-04  Benjamin Poulain  <bpoulain@apple.com>
 
         [iOS][WK2] Restore the visual scroll position instead of the dom scroll position when restoring states from the history

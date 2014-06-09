@@ -1,3 +1,293 @@
+2014-06-06  David Hyatt  <hyatt@apple.com>
+
+        REGRESSION: Hit testing of composited elements is broken in new multicolumn layout.
+        https://bugs.webkit.org/show_bug.cgi?id=133522 (<rdar://problem/17060556>)
+        
+        Reviewed by Simon Fraser.
+
+        * compositing/columns/hittest-composited-in-paginated-expected.txt:
+
+2014-06-06  Simon Fraser  <simon.fraser@apple.com>
+
+        Latched scrolling tests are flakey on Mavericks
+        https://bugs.webkit.org/show_bug.cgi?id=133578
+        <rdar://problem/17180591>
+
+        Reviewed by Brent Fulgham.
+        
+        Fix these tests to not dispatch events outside the window, and correct some of the wording
+        in the tests.
+
+        * platform/mac-wk2/tiled-drawing/fast-scroll-div-latched-div-expected.txt:
+        * platform/mac-wk2/tiled-drawing/fast-scroll-div-latched-div-with-handler-expected.txt:
+        * platform/mac-wk2/tiled-drawing/fast-scroll-div-latched-div-with-handler.html:
+        * platform/mac-wk2/tiled-drawing/fast-scroll-div-latched-div.html:
+        * platform/mac-wk2/tiled-drawing/fast-scroll-div-latched-mainframe-with-handler.html:
+        * platform/mac-wk2/tiled-drawing/fast-scroll-div-latched-mainframe.html:
+        * platform/mac-wk2/tiled-drawing/fast-scroll-iframe-latched-mainframe.html:
+        * platform/mac-wk2/tiled-drawing/fast-scroll-select-latched-mainframe-with-handler.html:
+        * platform/mac-wk2/tiled-drawing/fast-scroll-select-latched-mainframe.html:
+        * platform/mac-wk2/tiled-drawing/fast-scroll-select-latched-select-expected.txt:
+        * platform/mac-wk2/tiled-drawing/fast-scroll-select-latched-select-with-handler-expected.txt:
+        * platform/mac-wk2/tiled-drawing/fast-scroll-select-latched-select-with-handler.html:
+        * platform/mac-wk2/tiled-drawing/fast-scroll-select-latched-select.html:
+
+2014-06-06  Alex Christensen  <achristensen@webkit.org>
+
+        Run passing WebGL tests on Windows.
+        https://bugs.webkit.org/show_bug.cgi?id=133563
+
+        Reviewed by Brent Fulgham.
+
+        * platform/win/TestExpectations:
+        Replaced all WebGL tests with lists of failing and crashing tests to fix.
+
+2014-06-06  Kiran  <kiran.guduru@samsung.com>
+
+        [MediaStream] 'get' prefix is missing for capabilities and constraints.
+        https://bugs.webkit.org/show_bug.cgi?id=133573
+
+        Reviewed by Eric Carlson.
+
+        * fast/mediastream/MediaStreamTrack-expected.txt:
+        * fast/mediastream/MediaStreamTrack.html:
+
+2014-06-06  Mario Sanchez Prada  <mario.prada@samsung.com>
+
+        [GTK] Layout Test accessibility/table-fallback-roles-expose-element-attributes.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=133519
+
+        Reviewed by Chris Fleizach.
+
+        Adapted test to play nicely with the different types of
+        accessibility hierarchies exposed for Mac and ATK.
+
+        * accessibility/table-fallback-roles-expose-element-attributes.html:
+        Updated text to print information of cells from every platform but
+        only print information of their children in the Mac.
+
+        * accessibility/table-fallback-roles-expose-element-attributes-expected.txt:
+        Updated expectation to match ATK platforms (GTK & EFL).
+        * platform/mac/accessibility/table-fallback-roles-expose-element-attributes-expected.txt:
+        Copied from LayoutTests/accessibility/table-fallback-roles-expose-element-attributes-expected.txt.
+
+        * platform/gtk/TestExpectations: Removed expected failure.
+
+2014-06-06  Frédéric Wang  <fred.wang@free.fr>
+
+        Add test references for horizontal stretchy operators.
+        https://bugs.webkit.org/show_bug.cgi?id=72828
+
+        Unreviewed Win and EFL gardening.
+
+        * platform/efl/mathml/opentype/horizontal-LatinModern-expected.txt: Added.
+        * platform/efl/mathml/opentype/horizontal-LatinModern-munderover-expected.txt: Added.
+        * platform/efl/mathml/opentype/opentype-stretchy-horizontal-expected.txt: Added.
+        * platform/win/mathml/opentype/horizontal-LatinModern-expected.txt: Added.
+        * platform/win/mathml/opentype/horizontal-LatinModern-munderover-expected.txt: Added.
+        * platform/win/mathml/opentype/opentype-stretchy-horizontal-expected.txt: Added.
+
+2014-06-06  Frédéric Wang  <fred.wang@free.fr>
+
+        Add test references for horizontal stretchy operators.
+        https://bugs.webkit.org/show_bug.cgi?id=72828
+
+        Unreviewed Mac gardening.
+
+        * platform/mac/mathml/horizontal-LatinModern-expected.txt: Added.
+        * platform/mac/mathml/horizontal-LatinModern-munderover-expected.txt: Added.
+        * platform/mac/mathml/opentype-stretchy-horizontal-expected.txt: Added.
+
+2014-06-05  Mihnea Ovidenie  <mihnea@adobe.com>
+
+        [CSSRegions] Region box incorrectly overlaps floating box
+        https://bugs.webkit.org/show_bug.cgi?id=133545
+
+        Reviewed by David Hyatt.
+
+        Add test to check that a region does not incorrectly overlap a floating
+        element in the same formatting context.
+
+        * fast/regions/region-as-bfc-avoids-float-expected.html: Added.
+        * fast/regions/region-as-bfc-avoids-float.html: Added.
+
+2014-06-05  Yoav Weiss  <yoav@yoav.ws>
+
+        Align srcset parser with recent spec changes
+        https://bugs.webkit.org/show_bug.cgi?id=133504
+
+        Reviewed by Darin Adler.
+
+        I have changed the "invalid-descriptor" test and removed the "invalid
+        inputs correct src" test to reflect the fact that invalid descriptors
+        are now treated identically to null descriptors. That is according to
+        the spec.
+        I've also added new tests that make sure that the spec's future
+        compatible changes are working.
+
+        * fast/hidpi/image-srcset-invalid-descriptor-expected.txt:
+        * fast/hidpi/image-srcset-invalid-descriptor.html:
+        * fast/hidpi/image-srcset-invalid-inputs-correct-src-expected.txt: Removed.
+        * fast/hidpi/image-srcset-invalid-inputs-correct-src.html: Removed.
+
+2014-06-05  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        REGRESSION (Pluginless): Media controls look different from iOS7 media controls. 
+        https://bugs.webkit.org/show_bug.cgi?id=133521
+
+        Reviewed by Eric Carlson.
+
+        Tests that audio elements are properly sized. Will add tests for video players in the (near) future.
+
+        * platform/ios-sim/media/audio-width-expected.txt: Checks that audio width tests were OK'd
+        * platform/ios-sim/media/audio-width.html: Checks that minimum audio width is properly enforced
+
+2014-06-05  Michael Timbrook  <timbrook@apple.com>
+
+        AX: Add support for ARIA 1.1 'none' role
+        https://bugs.webkit.org/show_bug.cgi?id=133367
+
+        Reviewed by Chris Fleizach.
+
+        Added the tests to cover the behavior of the 'none' role
+        * accessibility/aria-none-role-expected.txt: Added.
+        * accessibility/aria-none-role.html: Added.
+
+2014-06-05  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: [ATK] Children of tables and lists with role='presentation' should each be exposed as if they were div elements
+        https://bugs.webkit.org/show_bug.cgi?id=133133
+
+        Reviewed by Chris Fleizach.
+
+        Added a new test with platform-specific expectations due to differences
+        in accessible hierarchies.
+
+        * accessibility/aria-inherits-presentational.html: Added.
+        * platform/gtk/accessibility/aria-inherits-presentational-expected.txt: Added.
+        * platform/mac/accessibility/aria-inherits-presentational-expected.txt: Added.
+
+2014-06-05  Grzegorz Czajkowski  <g.czajkowski@samsung.com>
+
+        Share platform/mac/editing/spelling/move-cursor-around-misspelled-word.html with other platforms
+        https://bugs.webkit.org/show_bug.cgi?id=133208
+
+        Reviewed by Darin Adler.
+
+        Move the test to common editing/spelling since it just verifies spelling
+        markers and other platforms might be interested in running it as well.
+
+        Due to bug 125688, the test starts using asynchronous spellchecking.
+        Add additional test case which checks spelling marker after typing
+        the text, before any caret change.
+
+        * editing/spelling/move-cursor-around-misspelled-word-expected.txt:
+        Renamed from platform/mac/editing/spelling/move-cursor-around-misspelled-word-expected.txt
+        * editing/spelling/move-cursor-around-misspelled-word.html:
+        Renamed from platform/mac/editing/spelling/move-cursor-around-misspelled-word.html
+
+        * platform/gtk/TestExpectations:
+        * platform/mac-wk2/TestExpectations:
+        * platform/win/TestExpectations:
+        Add failing expectation for platforms which didn't switch to
+        asynchronous spellchecking.
+
+2014-06-05  Alexey Proskuryakov  <ap@apple.com>
+
+        media/video-rtl.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=133363
+
+        * platform/mac/TestExpectations: Marked as such.
+
+2014-06-05  Zalan Bujtas  <zalan@apple.com>
+
+        Subpixel rendering: border-radius painting falls back to rectangle when the snapped rounded rect becomes non-renderable.
+        https://bugs.webkit.org/show_bug.cgi?id=133491
+
+        Reviewed by Simon Fraser.
+
+        Pixel snapping can change the rectangle's size when it is on a certain subpixel position. (usually it does not)
+        This patch ensures that the snapped rect is still renderable by adjusting the radii as well.
+
+        * fast/borders/hidpi-border-radius-with-subpixel-margin-not-renderable-expected.html: Added.
+        * fast/borders/hidpi-border-radius-with-subpixel-margin-not-renderable.html: Added.
+
+2014-06-05  Frédéric Wang  <fred.wang@free.fr>
+
+        Apply Character-level mirroring to stretchy operators in RTL mode.
+        https://bugs.webkit.org/show_bug.cgi?id=130839
+
+        Reviewed by Chris Fleizach.
+
+        Add some tests to verify that stretchy operators are correctly mirrored in RTL mode.
+
+        * mathml/presentation/stretchy-rtl-expected.html: Added.
+        * mathml/presentation/stretchy-rtl.html: Added.
+
+2014-06-05  Zoltan Horvath  <zoltan@webkit.org>
+
+        [CSS Regions][CSS Shapes] Add Shapes tests which flow through multiple regions
+        https://bugs.webkit.org/show_bug.cgi?id=133487
+
+        Reviewed by Mihnea Ovidenie.
+
+        The test verifies if the content with the shape wraps correctly through a region chain.
+
+        * fast/regions/shape-outside-floats/regions-shape-outside-content-flows-multiple-regions-expected.html: Added.
+        * fast/regions/shape-outside-floats/regions-shape-outside-content-flows-multiple-regions.html: Added.
+
+2014-06-05  Zalan Bujtas  <zalan@apple.com>
+
+        Subpixel rendering: Buttons in default media controls shift vertically when controls fade in or out.
+        https://bugs.webkit.org/show_bug.cgi?id=133488
+
+        Reviewed by Simon Fraser.
+
+        Filter effects are not subpixel aware yet. They paint to integrally sized image buffers.
+        In order to ensure that the content is rendered to the the same position on the filter 
+        source context as if there was no filter, the repaint rects need to be adjusted to match with
+        the internal filter snapping (enclosingIntRect).
+        This is a temporary change until after filter effects get subpixelized.
+
+        However, this changeset regresses RenderNameFlow clipping when the content is on subpixel position
+        and filter effect is present. Instead of adding the failing test cases to TestExpectations, I removed
+        the video controls from the <video> to make the tests pass, when possible (they just happen to have <video>)
+        and filed webkit.org/b/133523 to track the regression.
+                
+        * css3/filters/filter-is-on-subpixel-position-expected.html: Added.
+        * css3/filters/filter-is-on-subpixel-position.html: Added.
+        * fast/regions/inline-block-inside-anonymous-overflow.html:
+        * fast/regions/inline-block-overflow.html:
+
+2014-06-05  Andrzej Badowski  <a.badowski@samsung.com>
+
+        [EFL] Change expectations for three layout tests.
+        https://bugs.webkit.org/show_bug.cgi?id=133538
+
+        Unreviewed EFL gardening.
+
+        * platform/efl-wk2/TestExpectations:
+
+2014-06-05  Kiran  <kiran.guduru@samsung.com>
+
+        [MediaStream] MediaStream.addTrack should not check for tracks ended state.
+        https://bugs.webkit.org/show_bug.cgi?id=133510
+
+        Reviewed by Eric Carlson.
+
+        * fast/mediastream/MediaStream-add-ended-tracks-expected.txt: Added.
+        * fast/mediastream/MediaStream-add-ended-tracks.html: Added.
+
+2014-06-05  Andrzej Badowski  <a.badowski@samsung.com>
+
+        [EFL] Add expectations for two accessibility layout tests.
+        https://bugs.webkit.org/show_bug.cgi?id=133485
+
+        Unreviewed EFL gardening.
+
+        * platform/efl-wk2/TestExpectations:
+        * platform/efl-wk2/accessibility/lists-expected.txt:
+
 2014-06-05  Frédéric Wang  <fred.wang@free.fr>
 
         MathML operators not stretched horizontally
@@ -9337,8 +9627,8 @@
         * media/track/w3c/track/webvtt/support/align_end_long.vtt: Copied from media/track/opera/track/webvtt/rendering/reftest/support/align_end_long.vtt.
         * media/track/w3c/track/webvtt/support/foo.vtt: Copied from media/track/opera/track/webvtt/rendering/reftest/support/foo.vtt.
         * media/track/w3c/track/webvtt/support/refTestWait.js: Copied from media/track/opera/track/webvtt/rendering/reftest/support/refTestWait.js.
-		* platform/eft/TestExpectations: Skip w3c tests.
-		* platform/gtk/TestExpectations: Skip w3c tests.
+        * platform/eft/TestExpectations: Skip w3c tests.
+        * platform/gtk/TestExpectations: Skip w3c tests.
 
 2014-04-08  Zalan Bujtas  <zalan@apple.com>
 

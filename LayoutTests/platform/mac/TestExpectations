@@ -1288,6 +1288,8 @@ webkit.org/b/132990 fast/regions/overflow-not-moving-below-floats-in-variable-wi
 # These tests require fractional text widths. Ahem can't provide it -> using LucidaGrandeUI -> fails on ML due to different font size.  
 [ MountainLion ] fast/inline/hidpi-selection-gap-overlaps-inline-selection.html [ ImageOnlyFailure ]
 [ MountainLion ] fast/inline/hidpi-selection-gap-and-inline-selection-have-gap-rtl.html [ ImageOnlyFailure ]
+# clipping filter effects when region is present. 
+webkit.org/b/133523 fast/regions/inline-block-inside-anonymous-overflow.html [ ImageOnlyFailure ]
 # End of subpixel failures.
 
 webkit.org/b/35297 media/video-display-aspect-ratio.html [ Pass Failure ]
@@ -1382,3 +1384,5 @@ webkit.org/b/132491 [ MountainLion ] http/tests/media/hls/video-controls-live-st
 # This test, originally written for Chromium, historically was not testing anything on Mac because
 # resizing didn't work. Now the test fails. I believe this bug was never fixed for the Mac port.
 fast/dom/rtl-scroll-to-leftmost-and-resize.html [ Failure ]
+
+webkit.org/b/133363 media/video-rtl.html [ Pass ImageOnlyFailure ]
