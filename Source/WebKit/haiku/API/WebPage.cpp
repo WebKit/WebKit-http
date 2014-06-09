@@ -161,7 +161,7 @@ BMessenger BWebPage::sDownloadListener;
     uint32 cacheTotalCapacity;
     uint32 cacheMinDeadCapacity;
     uint32 cacheMaxDeadCapacity;
-    double deadDecodedDataDeletionInterval;
+    std::chrono::seconds deadDecodedDataDeletionInterval;
     uint32 pageCacheCapacity;
 
     switch (model) {
@@ -170,14 +170,14 @@ BMessenger BWebPage::sDownloadListener;
         cacheTotalCapacity = 0;
         cacheMinDeadCapacity = 0;
         cacheMaxDeadCapacity = 0;
-        deadDecodedDataDeletionInterval = 0;
+        deadDecodedDataDeletionInterval = std::chrono::seconds { 0 };
         break;
     case B_WEBKIT_CACHE_MODEL_WEB_BROWSER:
         pageCacheCapacity = 3;
         cacheTotalCapacity = 32 * 1024 * 1024;
         cacheMinDeadCapacity = cacheTotalCapacity / 4;
         cacheMaxDeadCapacity = cacheTotalCapacity / 2;
-        deadDecodedDataDeletionInterval = 60;
+        deadDecodedDataDeletionInterval = std::chrono::seconds { 60 };
         break;
     default:
         return;
