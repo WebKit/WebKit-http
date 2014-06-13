@@ -255,9 +255,9 @@ void FontCascade::initFormatForTextLayout(QTextLayout* layout, const TextRun& ru
     for (range.start = 0; range.start < length && treatAsSpace(run[range.start]); ++range.start) { }
     range.length = length - range.start;
 
-    if (m_wordSpacing)
+    if (m_wordSpacing && !run.spacingDisabled())
         range.format.setFontWordSpacing(m_wordSpacing);
-    if (m_letterSpacing)
+    if (m_letterSpacing && !run.spacingDisabled())
         range.format.setFontLetterSpacing(m_letterSpacing);
     if (enableKerning())
         range.format.setFontKerning(true);
