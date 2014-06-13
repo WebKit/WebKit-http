@@ -49,7 +49,7 @@ inline Structure* Structure::createStructure(VM& vm)
     return structure;
 }
 
-inline Structure* Structure::create(VM& vm, const Structure* structure)
+inline Structure* Structure::create(VM& vm, Structure* structure)
 {
     ASSERT(vm.structureStructure);
     Structure* newStructure = new (NotNull, allocateCell<Structure>(vm.heap)) Structure(vm, structure);
@@ -73,32 +73,51 @@ inline Structure* Structure::storedPrototypeStructure() const
     return object->structure();
 }
 
-inline PropertyOffset Structure::get(VM& vm, PropertyName propertyName)
+ALWAYS_INLINE PropertyOffset Structure::get(VM& vm, PropertyName propertyName)
 {
     ASSERT(!isCompilationThread());
     ASSERT(structure()->classInfo() == info());
-    DeferGC deferGC(vm.heap);
-    materializePropertyMapIfNecessary(vm, deferGC);
-    if (!propertyTable())
+    PropertyTable* propertyTable;
+    materializePropertyMapIfNecessary(vm, propertyTable);
+    if (!propertyTable)
         return invalidOffset;
 
-    PropertyMapEntry* entry = propertyTable()->get(propertyName.uid());
+    PropertyMapEntry* entry = propertyTable->get(propertyName.uid());
     return entry ? entry->offset : invalidOffset;
 }
 
-inline PropertyOffset Structure::get(VM& vm, const WTF::String& name)
+ALWAYS_INLINE PropertyOffset Structure::get(VM& vm, const WTF::String& name)
 {
     ASSERT(!isCompilationThread());
     ASSERT(structure()->classInfo() == info());
-    DeferGC deferGC(vm.heap);
-    materializePropertyMapIfNecessary(vm, deferGC);
-    if (!propertyTable())
+    PropertyTable* propertyTable;
+    materializePropertyMapIfNecessary(vm, propertyTable);
+    if (!propertyTable)
         return invalidOffset;
 
-    PropertyMapEntry* entry = propertyTable()->findWithString(name.impl()).first;
+    PropertyMapEntry* entry = propertyTable->findWithString(name.impl()).first;
     return entry ? entry->offset : invalidOffset;
 }
     
+ALWAYS_INLINE PropertyOffset Structure::get(VM& vm, PropertyName propertyName, unsigned& attributes, JSCell*& specificValue)
+{
+    ASSERT(!isCompilationThread());
+    ASSERT(structure()->classInfo() == info());
+
+    PropertyTable* propertyTable;
+    materializePropertyMapIfNecessary(vm, propertyTable);
+    if (!propertyTable)
+        return invalidOffset;
+
+    PropertyMapEntry* entry = propertyTable->get(propertyName.uid());
+    if (!entry)
+        return invalidOffset;
+
+    attributes = entry->attributes;
+    specificValue = entry->specificValue.get();
+    return entry->offset;
+}
+
 inline PropertyOffset Structure::getConcurrently(VM& vm, StringImpl* uid)
 {
     unsigned attributesIgnored;
@@ -244,6 +263,18 @@ ALWAYS_INLINE bool Structure::checkOffsetConsistency() const
     RELEASE_ASSERT((totalSize < inlineCapacity() ? 0 : totalSize - inlineCapacity()) == numberOfOutOfLineSlotsForLastOffset(m_offset));
 
     return true;
+}
+
+inline size_t nextOutOfLineStorageCapacity(size_t currentCapacity)
+{
+    if (!currentCapacity)
+        return initialOutOfLineCapacity;
+    return currentCapacity * outOfLineGrowthFactor;
+}
+
+inline size_t Structure::suggestedNewOutOfLineStorageCapacity()
+{
+    return nextOutOfLineStorageCapacity(outOfLineCapacity());
 }
 
 } // namespace JSC

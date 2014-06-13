@@ -118,6 +118,7 @@ class GraphicsContext;
 class Frame;
 class FrameView;
 class HTMLPlugInElement;
+class HTMLPlugInImageElement;
 class IntPoint;
 class KeyboardEvent;
 class Page;
@@ -128,6 +129,7 @@ class ResourceRequest;
 class SharedBuffer;
 class SubstituteData;
 class TextCheckingRequest;
+class URL;
 class VisibleSelection;
 struct KeypressCommand;
 struct TextCheckingResult;
@@ -252,7 +254,8 @@ public:
     void didFinishDocumentLoad(WebFrame*);
     void didFinishLoad(WebFrame*);
     void show();
-    String userAgent() const { return m_userAgent; }
+    String userAgent(const WebCore::URL&) const;
+    String platformUserAgent(const WebCore::URL&) const;
     WebCore::IntRect windowResizerRect() const;
     WebCore::KeyboardUIMode keyboardUIMode();
 
@@ -456,6 +459,9 @@ public:
     void didReceiveMobileDocType(bool);
     void restorePageState(double scale, bool userHasChangedPageScaleFactor, const WebCore::IntPoint& exposedOrigin);
 
+    void setUseTestingViewportConfiguration(bool useTestingViewport) { m_useTestingViewportConfiguration = useTestingViewport; }
+    bool isUsingTestingViewportConfiguration() const { return m_useTestingViewportConfiguration; }
+
     double minimumPageScaleFactor() const;
     double maximumPageScaleFactor() const;
     bool allowsUserScaling() const;
@@ -474,6 +480,7 @@ public:
     void updateBlockSelectionWithTouch(const WebCore::IntPoint&, uint32_t touch, uint32_t handlePosition);
     void selectWithTwoTouches(const WebCore::IntPoint& from, const WebCore::IntPoint& to, uint32_t gestureType, uint32_t gestureState, uint64_t callbackID);
     void extendSelection(uint32_t granularity);
+    void selectWordBackward();
     void elementDidFocus(WebCore::Node*);
     void elementDidBlur(WebCore::Node*);
     void requestDictationContext(uint64_t callbackID);
@@ -788,6 +795,8 @@ public:
     void determinePrimarySnapshottedPlugInTimerFired();
     void resetPrimarySnapshottedPlugIn();
     bool matchesPrimaryPlugIn(const String& pageOrigin, const String& pluginOrigin, const String& mimeType) const;
+    bool plugInIntersectsSearchRect(WebCore::HTMLPlugInImageElement& pluginImageElement);
+    bool plugInIsPrimarySize(WebCore::HTMLPlugInImageElement& pluginImageElement, unsigned &pluginArea);
 #endif
 
     unsigned extendIncrementalRenderingSuppression();
@@ -862,8 +871,8 @@ private:
 
     String sourceForFrame(WebFrame*);
 
-    void loadDataImpl(PassRefPtr<WebCore::SharedBuffer>, const String& MIMEType, const String& encodingName, const WebCore::URL& baseURL, const WebCore::URL& failingURL, IPC::MessageDecoder&);
-    void loadString(const String&, const String& MIMEType, const WebCore::URL& baseURL, const WebCore::URL& failingURL, IPC::MessageDecoder&);
+    void loadDataImpl(uint64_t navigationID, PassRefPtr<WebCore::SharedBuffer>, const String& MIMEType, const String& encodingName, const WebCore::URL& baseURL, const WebCore::URL& failingURL, IPC::MessageDecoder&);
+    void loadString(uint64_t navigationID, const String&, const String& MIMEType, const WebCore::URL& baseURL, const WebCore::URL& failingURL, IPC::MessageDecoder&);
 
     bool platformHasLocalDataForURL(const WebCore::URL&);
 
@@ -871,7 +880,7 @@ private:
     void tryClose();
     void loadRequest(uint64_t navigationID, const WebCore::ResourceRequest&, const SandboxExtension::Handle&, IPC::MessageDecoder&);
     void loadData(const IPC::DataReference&, const String& MIMEType, const String& encodingName, const String& baseURL, IPC::MessageDecoder&);
-    void loadHTMLString(const String& htmlString, const String& baseURL, IPC::MessageDecoder&);
+    void loadHTMLString(uint64_t navigationID, const String& htmlString, const String& baseURL, IPC::MessageDecoder&);
     void loadAlternateHTMLString(const String& htmlString, const String& baseURL, const String& unreachableURL, IPC::MessageDecoder&);
     void loadPlainTextString(const String&, IPC::MessageDecoder&);
     void loadWebArchiveData(const IPC::DataReference&, IPC::MessageDecoder&);
@@ -1208,13 +1217,13 @@ private:
     WebCore::FloatPoint m_potentialTapLocation;
 
     WebCore::ViewportConfiguration m_viewportConfiguration;
-    uint64_t m_lastVisibleContentRectUpdateID;
     float m_obscuredTopInset;
     bool m_hasReceivedVisibleContentRectsAfterDidCommitLoad;
     bool m_scaleWasSetByUIProcess;
     bool m_userHasChangedPageScaleFactor;
     bool m_userIsInteracting;
     bool m_hasPendingBlurNotification;
+    bool m_useTestingViewportConfiguration;
     WebCore::FloatSize m_screenSize;
     WebCore::FloatSize m_availableScreenSize;
     RefPtr<WebCore::Range> m_currentBlockSelection;

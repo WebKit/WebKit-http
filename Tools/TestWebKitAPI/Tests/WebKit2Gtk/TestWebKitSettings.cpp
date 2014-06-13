@@ -233,10 +233,10 @@ static void testWebKitSettings(Test*, gconstpointer)
     webkit_settings_set_draw_compositing_indicators(settings, TRUE);
     g_assert(webkit_settings_get_draw_compositing_indicators(settings));
 
-    // By default, site specific quirks are disabled.
-    g_assert(!webkit_settings_get_enable_site_specific_quirks(settings));
-    webkit_settings_set_enable_site_specific_quirks(settings, TRUE);
+    // By default, site specific quirks are enabled.
     g_assert(webkit_settings_get_enable_site_specific_quirks(settings));
+    webkit_settings_set_enable_site_specific_quirks(settings, FALSE);
+    g_assert(!webkit_settings_get_enable_site_specific_quirks(settings));
 
     // By default, page cache is enabled.
     g_assert(webkit_settings_get_enable_page_cache(settings));
@@ -336,6 +336,9 @@ static void testWebKitSettingsUserAgent(WebViewTest* test, gconstpointer)
     const char* newUserAgent = webkit_settings_get_user_agent(settings.get());
     g_assert(g_strstr_len(newUserAgent, -1, "3.4.5"));
     g_assert(g_strstr_len(newUserAgent, -1, "WebCatGTK+"));
+
+    GUniquePtr<char> applicationUserAgent(g_strdup_printf("%s %s", defaultUserAgent.data(), "WebCatGTK+/3.4.5"));
+    g_assert_cmpstr(applicationUserAgent.get(), ==, webkit_settings_get_user_agent(settings.get()));
 }
 
 static void serverCallback(SoupServer* server, SoupMessage* message, const char* path, GHashTable*, SoupClientContext*, gpointer)

@@ -282,15 +282,10 @@ static const int* checkboxMargins(NSControlSize controlSize)
 {
     static const int margins[3][4] =
     {
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 10100
-        { 7, 8, 8, 6 },
-        { 8, 7, 7, 7 },
-        { 8, 7, 7, 7 },
-#else
+        // top left right bottom
         { 3, 4, 4, 2 },
         { 4, 3, 3, 3 },
         { 4, 3, 3, 3 },
-#endif
     };
     return margins[controlSize];
 }
@@ -304,7 +299,17 @@ static LengthSize checkboxSize(const Font& font, const LengthSize& zoomedSize, f
     // Use the font size to determine the intrinsic width of the control.
     return sizeFromFont(font, zoomedSize, zoomFactor, checkboxSizes());
 }
-    
+
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 10100
+static const std::array<FloatSize, 3>& checkboxOffsets()
+{
+    // This provides the positioning tweak we need to place controls
+    // at the right location during animation.
+    static const std::array<FloatSize, 3> sizes = { { FloatSize(0, 2), FloatSize(2, 1.5), FloatSize(3, 3) } };
+    return sizes;
+}
+#endif
+
 // Radio Buttons
 
 static const std::array<IntSize, 3>& radioSizes()
@@ -317,18 +322,23 @@ static const int* radioMargins(NSControlSize controlSize)
 {
     static const int margins[3][4] =
     {
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 10100
-        { 6, 6, 8, 6 },
-        { 7, 6, 7, 6 },
-        { 5, 4, 6, 4 },
-#else
+        // top left right bottom
         { 2, 2, 4, 2 },
         { 3, 2, 3, 2 },
         { 1, 0, 2, 0 },
-#endif
     };
     return margins[controlSize];
 }
+
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 10100
+static const std::array<FloatSize, 3>& radioOffsets()
+{
+    // This provides the positioning tweak we need to place controls
+    // at the right location during animation.
+    static const std::array<FloatSize, 3> sizes = { { FloatSize(0, 2), FloatSize(1, 2), FloatSize(0, 1) } };
+    return sizes;
+}
+#endif
 
 static LengthSize radioSize(const Font& font, const LengthSize& zoomedSize, float zoomFactor)
 {
@@ -385,7 +395,13 @@ static NSButtonCell *sharedCheckboxCell(const ControlStates* states, const IntRe
     configureToggleButton(checkboxCell, CheckboxPart, states, zoomedRect, zoomFactor, false);
     return checkboxCell;
 }
-    
+
+static bool drawCellFocusRing(NSCell *cell, NSRect cellFrame, NSView *controlView)
+{
+    wkDrawCellFocusRingWithFrameAtTime(cell, cellFrame, controlView, std::numeric_limits<double>::max());
+    return false;
+}
+
 static void paintToggleButton(ControlPart buttonType, ControlStates* controlStates, GraphicsContext* context, const IntRect& zoomedRect, float zoomFactor, ScrollView* scrollView)
 {
     BEGIN_BLOCK_OBJC_EXCEPTIONS
@@ -417,7 +433,7 @@ static void paintToggleButton(ControlPart buttonType, ControlStates* controlStat
     zoomedSize.setHeight(zoomedSize.height() * zoomFactor);
     const int* controlMargins = buttonType == CheckboxPart ? checkboxMargins(controlSize) : radioMargins(controlSize);
     IntRect inflatedRect = inflateRect(zoomedRect, zoomedSize, controlMargins, zoomFactor);
-    
+
     if (zoomFactor != 1.0f) {
         inflatedRect.setWidth(inflatedRect.width() / zoomFactor);
         inflatedRect.setHeight(inflatedRect.height() / zoomFactor);
@@ -428,26 +444,29 @@ static void paintToggleButton(ControlPart buttonType, ControlStates* controlStat
 
     LocalCurrentGraphicsContext localContext(context);
     NSView *view = ThemeMac::ensuredView(scrollView, controlStates);
-    bool drawStatically = true;
+
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 10100
-    drawStatically = ![toggleButtonCell _stateAnimationRunning];
-#endif
-    if (drawStatically)
-        [toggleButtonCell drawWithFrame:NSRect(inflatedRect) inView:view];
-    else {
-        // FIXME: This isn't quite correct at the moment due to the way the tick mark extends out of the control.
+    if ([toggleButtonCell _stateAnimationRunning]) {
+        // AppKit's drawWithFrame appears to render the cell centered in the
+        // provided rectangle/frame, so we need to manually position the
+        // animated cell at the correct location.
         context->translate(inflatedRect.x(), inflatedRect.y());
         context->scale(FloatSize(1, -1));
         context->translate(0, -inflatedRect.height());
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 10100
+        FloatSize controlOffsets = buttonType == CheckboxPart ? checkboxOffsets()[controlSize] : radioOffsets()[controlSize];
+        context->translate(controlOffsets);
         [toggleButtonCell _renderCurrentAnimationFrameInContext:context->platformContext() atLocation:NSMakePoint(0, 0)];
+    } else
+        [toggleButtonCell drawWithFrame:NSRect(inflatedRect) inView:view];
+#else
+    [toggleButtonCell drawWithFrame:NSRect(inflatedRect) inView:view];
 #endif
-    }
+
     bool needsRepaint = false;
     if (controlStates->states() & ControlStates::FocusState)
-        needsRepaint = wkDrawCellFocusRingWithFrameAtTime(toggleButtonCell, inflatedRect, view, controlStates->timeSinceControlWasFocused());
+        needsRepaint = drawCellFocusRing(toggleButtonCell, inflatedRect, view);
     [toggleButtonCell setControlView:nil];
-    
+
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 10100
     needsRepaint |= [toggleButtonCell _stateAnimationRunning];
 #endif
@@ -457,7 +476,7 @@ static void paintToggleButton(ControlPart buttonType, ControlStates* controlStat
 
     END_BLOCK_OBJC_EXCEPTIONS
 }
-    
+
 // Buttons
 
 // Buttons really only constrain height. They respect width.
@@ -471,15 +490,9 @@ static const int* buttonMargins(NSControlSize controlSize)
 {
     static const int margins[3][4] =
     {
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 10100
-        { 8, 10, 11, 10 },
-        { 8, 9, 10, 9 },
-        { 4, 5, 5, 5 },
-#else
         { 4, 6, 7, 6 },
         { 4, 5, 6, 5 },
         { 0, 1, 1, 1 },
-#endif
     };
     return margins[controlSize];
 }
@@ -575,7 +588,7 @@ static void paintButton(ControlPart part, ControlStates* controlStates, Graphics
     [buttonCell drawWithFrame:NSRect(inflatedRect) inView:view];
     bool needsRepaint = false;
     if (states & ControlStates::FocusState)
-        needsRepaint = wkDrawCellFocusRingWithFrameAtTime(buttonCell, inflatedRect, view, controlStates->timeSinceControlWasFocused());
+        needsRepaint = drawCellFocusRing(buttonCell, inflatedRect, view);
 
     controlStates->setNeedsRepaint(needsRepaint);
 

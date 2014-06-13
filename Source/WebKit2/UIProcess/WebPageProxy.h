@@ -125,6 +125,7 @@ class FloatRect;
 class GraphicsLayer;
 class IntSize;
 class ProtectionSpace;
+class RunLoopObserver;
 class SharedBuffer;
 struct FileChooserSettings;
 struct TextAlternativeWithRange;
@@ -433,6 +434,8 @@ struct WebPageConfiguration {
 
     API::Session* session = nullptr;
     WebPageProxy* relatedPage = nullptr;
+
+    WebPreferencesStore::ValueMap preferenceValues;
 };
 
 class WebPageProxy : public API::ObjectImpl<API::Object::Type::Page>
@@ -511,7 +514,7 @@ public:
     uint64_t loadRequest(const WebCore::ResourceRequest&, API::Object* userData = nullptr);
     void loadFile(const String& fileURL, const String& resourceDirectoryURL, API::Object* userData = nullptr);
     void loadData(API::Data*, const String& MIMEType, const String& encoding, const String& baseURL, API::Object* userData = nullptr);
-    void loadHTMLString(const String& htmlString, const String& baseURL, API::Object* userData = nullptr);
+    uint64_t loadHTMLString(const String& htmlString, const String& baseURL, API::Object* userData = nullptr);
     void loadAlternateHTMLString(const String& htmlString, const String& baseURL, const String& unreachableURL, API::Object* userData = nullptr);
     void loadPlainTextString(const String&, API::Object* userData = nullptr);
     void loadWebArchiveData(API::Data*, API::Object* userData = nullptr);
@@ -589,11 +592,10 @@ public:
     const WebCore::FloatRect& unobscuredContentRect() const { return m_lastVisibleContentRectUpdate.unobscuredRect(); }
 
     bool updateVisibleContentRects(const VisibleContentRectUpdateInfo&);
-    uint64_t nextVisibleContentRectUpdateID() const { return m_lastVisibleContentRectUpdate.updateID() + 1; }
-    uint64_t lastVisibleContentRectUpdateID() const { return m_lastVisibleContentRectUpdate.updateID(); }
 
     enum class UnobscuredRectConstraint { ConstrainedToDocumentRect, Unconstrained };
     WebCore::FloatRect computeCustomFixedPositionRect(const WebCore::FloatRect& unobscuredContentRect, double displayedContentScale, UnobscuredRectConstraint = UnobscuredRectConstraint::Unconstrained) const;
+    void scrollViewWillStartPanGesture();
 
     void dynamicViewportSizeUpdate(const WebCore::FloatSize& minimumLayoutSize, const WebCore::FloatSize& minimumLayoutSizeForMinimalUI, const WebCore::FloatSize& maximumUnobscuredSize, const WebCore::FloatRect& targetExposedContentRect, const WebCore::FloatRect& targetUnobscuredRect, const WebCore::FloatRect& targetUnobscuredRectInScrollViewCoordinates, double targetScale, int32_t deviceOrientation);
     void synchronizeDynamicViewportUpdate();
@@ -610,6 +612,7 @@ public:
     void selectWithTwoTouches(const WebCore::IntPoint from, const WebCore::IntPoint to, uint32_t gestureType, uint32_t gestureState, PassRefPtr<GestureCallback>);
     void updateBlockSelectionWithTouch(const WebCore::IntPoint, uint32_t touch, uint32_t handlePosition);
     void extendSelection(WebCore::TextGranularity);
+    void selectWordBackward();
     void requestAutocorrectionData(const String& textForAutocorrection, PassRefPtr<AutocorrectionDataCallback>);
     void applyAutocorrection(const String& correction, const String& originalText, PassRefPtr<StringCallback>);
     bool applyAutocorrection(const String& correction, const String& originalText);
@@ -1107,8 +1110,12 @@ private:
 
     void updateViewState(WebCore::ViewState::Flags flagsToUpdate = WebCore::ViewState::AllFlags);
     void updateActivityToken();
-        
-    void resetState();
+
+    enum class ResetStateReason {
+        PageInvalidated,
+        WebProcessExited,
+    };
+    void resetState(ResetStateReason);
     void resetStateAfterProcessExited();
 
     void setUserAgent(const String&);
@@ -1448,6 +1455,10 @@ private:
 
     uint64_t generateNavigationID();
 
+    WebPreferencesStore preferencesStore() const;
+
+    void dispatchViewStateChange();
+
     PageClient& m_pageClient;
     std::unique_ptr<API::LoaderClient> m_loaderClient;
     std::unique_ptr<API::PolicyClient> m_policyClient;
@@ -1546,8 +1557,6 @@ private:
     std::unique_ptr<ProcessThrottler::ForegroundActivityToken> m_activityToken;
 #endif
         
-    bool m_canGoBack;
-    bool m_canGoForward;
     Ref<WebBackForwardList> m_backForwardList;
         
     bool m_maintainsInactiveSelection;
@@ -1708,11 +1717,16 @@ private:
         
 #if PLATFORM(COCOA)
     HashMap<String, String> m_temporaryPDFFiles;
+    std::unique_ptr<WebCore::RunLoopObserver> m_viewStateChangeDispatcher;
 #endif
         
     WebCore::ScrollPinningBehavior m_scrollPinningBehavior;
 
     uint64_t m_navigationID;
+
+    WebPreferencesStore::ValueMap m_configurationPreferenceValues;
+    WebCore::ViewState::Flags m_potentiallyChangedViewStateFlags;
+    WantsReplyOrNot m_viewStateChangeWantsReply;
 };
 
 } // namespace WebKit

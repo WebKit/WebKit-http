@@ -1178,6 +1178,7 @@ webkit.org/b/101670 media/video-controls-captions-trackmenu-hide-on-click-outsid
 webkit.org/b/101670 media/track/track-user-preferences.html [ Skip ]
 webkit.org/b/101670 media/video-controls-captions-trackmenu-includes-enabled-track.html [ Skip ]
 webkit.org/b/101670 media/video-controls-captions-trackmenu-only-captions-descriptions-and-subtitles.html [ Skip ]
+webkit.org/b/101670 media/video-trackmenu-selection.html [ Skip ]
 
 # Fails until we enable the Resource Timing API.
 webkit.org/b/61138 http/tests/w3c/webperf/submission/Google/resource-timing [ Skip ]
@@ -1634,3 +1635,9 @@ webkit.org/b/130322 mathml/opentype/vertical-LatinModern.html [ Failure ]
 webkit.org/b/72828 mathml/opentype/horizontal-LatinModern.html [ Failure ]
 webkit.org/b/72828 mathml/opentype/opentype-stretchy-horizontal.html [ Failure ]
 webkit.org/b/72828 mathml/opentype/horizontal-LatinModern-munderover.html [ Failure ]
+
+# Failures EFL since the inception
+webkit.org/b/133734 css3/viewport-percentage-lengths/viewport-percentage-lengths-anonymous-block.html [ Failure ]
+webkit.org/b/133735 css3/viewport-percentage-lengths/viewport-percentage-lengths-percent-size-child.html [ Failure ]
+webkit.org/b/133737 css3/viewport-percentage-lengths/viewport-percentage-lengths-relative-font-size.html [ Failure ]
+

@@ -454,6 +454,32 @@ void ResourceHandle::receivedCancellation(const AuthenticationChallenge& challen
         client()->receivedCancellation(this, challenge);
 }
 
+void ResourceHandle::receivedRequestToPerformDefaultHandling(const AuthenticationChallenge& challenge)
+{
+    LOG(Network, "CFNet - receivedRequestToPerformDefaultHandling()");
+    ASSERT(!challenge.isNull());
+    ASSERT(challenge.cfURLAuthChallengeRef());
+    if (challenge != d->m_currentWebChallenge)
+        return;
+
+    CFURLConnectionPerformDefaultHandlingForChallenge(d->m_connection.get(), challenge.cfURLAuthChallengeRef());
+
+    clearAuthentication();
+}
+
+void ResourceHandle::receivedChallengeRejection(const AuthenticationChallenge& challenge)
+{
+    LOG(Network, "CFNet - receivedChallengeRejection()");
+    ASSERT(!challenge.isNull());
+    ASSERT(challenge.cfURLAuthChallengeRef());
+    if (challenge != d->m_currentWebChallenge)
+        return;
+
+    CFURLConnectionRejectChallenge(d->m_connection.get(), challenge.cfURLAuthChallengeRef());
+
+    clearAuthentication();
+}
+
 CFURLStorageSessionRef ResourceHandle::storageSession() const
 {
     return d->m_storageSession.get();
@@ -614,18 +640,11 @@ void ResourceHandle::handleDataArray(CFArrayRef dataArray)
         return;
     }
 
-    CFIndex totalSize = 0;
-    CFIndex index;
-    for (index = 0; index < count; index++)
-        totalSize += CFDataGetLength(static_cast<CFDataRef>(CFArrayGetValueAtIndex(dataArray, index)));
+    RefPtr<SharedBuffer> sharedBuffer = SharedBuffer::create();
+    for (CFIndex index = 0; index < count; index++)
+        sharedBuffer->append(static_cast<CFDataRef>(CFArrayGetValueAtIndex(dataArray, index)));
 
-    RetainPtr<CFMutableDataRef> mergedData = adoptCF(CFDataCreateMutable(kCFAllocatorDefault, totalSize));
-    for (index = 0; index < count; index++) {
-        CFDataRef data = static_cast<CFDataRef>(CFArrayGetValueAtIndex(dataArray, index));
-        CFDataAppendBytes(mergedData.get(), CFDataGetBytePtr(data), CFDataGetLength(data));
-    }
-
-    client()->didReceiveBuffer(this, SharedBuffer::wrapCFData(mergedData.get()), -1);
+    client()->didReceiveBuffer(this, sharedBuffer, -1);
 }
 #endif
 

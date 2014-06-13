@@ -31,6 +31,7 @@
 #include "ClassInfo.h"
 #include "CommonIdentifiers.h"
 #include "CopyWriteBarrier.h"
+#include "CustomGetterSetter.h"
 #include "DeferGC.h"
 #include "Heap.h"
 #include "HeapInlines.h"
@@ -467,6 +468,7 @@ public:
     void putDirectWithoutTransition(VM&, PropertyName, JSValue, unsigned attributes = 0);
     void putDirectNonIndexAccessor(VM&, PropertyName, JSValue, unsigned attributes);
     void putDirectAccessor(ExecState*, PropertyName, JSValue, unsigned attributes);
+    JS_EXPORT_PRIVATE void putDirectCustomAccessor(VM&, PropertyName, JSValue, unsigned attributes);
 
     JS_EXPORT_PRIVATE bool hasProperty(ExecState*, PropertyName) const;
     JS_EXPORT_PRIVATE bool hasProperty(ExecState*, unsigned propertyName) const;
@@ -573,6 +575,7 @@ public:
     bool removeDirect(VM&, PropertyName); // Return true if anything is removed.
     bool hasCustomProperties() { return structure()->didTransition(); }
     bool hasGetterSetterProperties() { return structure()->hasGetterSetterProperties(); }
+    bool hasCustomGetterSetterProperties() { return structure()->hasCustomGetterSetterProperties(); }
 
     // putOwnDataProperty has 'put' like semantics, however this method:
     //  - assumes the object contains no own getter/setter properties.
@@ -587,7 +590,7 @@ public:
     void putDirectUndefined(PropertyOffset offset) { locationForOffset(offset)->setUndefined(); }
 
     JS_EXPORT_PRIVATE void putDirectNativeFunction(VM&, JSGlobalObject*, const PropertyName&, unsigned functionLength, NativeFunction, Intrinsic, unsigned attributes);
-    JSFunction* putDirectBuiltinFunction(VM&, JSGlobalObject*, const PropertyName&, FunctionExecutable*, unsigned attributes);
+    JS_EXPORT_PRIVATE JSFunction* putDirectBuiltinFunction(VM&, JSGlobalObject*, const PropertyName&, FunctionExecutable*, unsigned attributes);
     JSFunction* putDirectBuiltinFunctionWithoutTransition(VM&, JSGlobalObject*, const PropertyName&, FunctionExecutable*, unsigned attributes);
     void putDirectNativeFunctionWithoutTransition(VM&, JSGlobalObject*, const PropertyName&, unsigned functionLength, NativeFunction, Intrinsic, unsigned attributes);
 
@@ -622,6 +625,11 @@ public:
     void setStructureAndButterfly(VM&, Structure*, Butterfly*);
     void setStructureAndReallocateStorageIfNecessary(VM&, unsigned oldCapacity, Structure*);
     void setStructureAndReallocateStorageIfNecessary(VM&, Structure*);
+
+    void convertToDictionary(VM& vm)
+    {
+        setStructure(vm, Structure::toCacheableDictionaryTransition(vm, structure(vm)));
+    }
 
     void flattenDictionaryObject(VM& vm)
     {
@@ -950,8 +958,9 @@ private:
     template<PutMode>
     bool putDirectInternal(VM&, PropertyName, JSValue, unsigned attr, PutPropertySlot&, JSCell*);
 
-    bool inlineGetOwnPropertySlot(ExecState*, VM&, Structure&, PropertyName, PropertySlot&);
+    bool inlineGetOwnPropertySlot(VM&, Structure&, PropertyName, PropertySlot&);
     JS_EXPORT_PRIVATE void fillGetterPropertySlot(PropertySlot&, JSValue, unsigned, PropertyOffset);
+    void fillCustomGetterPropertySlot(PropertySlot&, JSValue, unsigned, Structure&);
 
     const HashTableValue* findPropertyHashEntry(VM&, PropertyName) const;
         
@@ -964,8 +973,6 @@ private:
     unsigned getNewVectorLength(unsigned currentVectorLength, unsigned currentLength, unsigned desiredLength);
     unsigned getNewVectorLength(unsigned desiredLength);
 
-    JS_EXPORT_PRIVATE bool getOwnPropertySlotSlow(ExecState*, PropertyName, PropertySlot&);
-        
     ArrayStorage* constructConvertedArrayStorageWithoutCopyingElements(VM&, unsigned neededLength);
         
     JS_EXPORT_PRIVATE void setIndexQuicklyToUndecided(VM&, unsigned index, JSValue);
@@ -1204,21 +1211,32 @@ inline JSValue JSObject::prototype() const
     return structure()->storedPrototype();
 }
 
-ALWAYS_INLINE bool JSObject::inlineGetOwnPropertySlot(ExecState* exec, VM& vm, Structure& structure, PropertyName propertyName, PropertySlot& slot)
+ALWAYS_INLINE bool JSObject::inlineGetOwnPropertySlot(VM& vm, Structure& structure, PropertyName propertyName, PropertySlot& slot)
 {
     unsigned attributes;
     JSCell* specific;
     PropertyOffset offset = structure.get(vm, propertyName, attributes, specific);
-    if (LIKELY(isValidOffset(offset))) {
-        JSValue value = getDirect(offset);
-        if (structure.hasGetterSetterProperties() && value.isGetterSetter())
-            fillGetterPropertySlot(slot, value, attributes, offset);
-        else
-            slot.setValue(this, attributes, value, offset);
-        return true;
-    }
+    if (!isValidOffset(offset))
+        return false;
 
-    return getOwnPropertySlotSlow(exec, propertyName, slot);
+    JSValue value = getDirect(offset);
+    if (structure.hasGetterSetterProperties() && value.isGetterSetter())
+        fillGetterPropertySlot(slot, value, attributes, offset);
+    else if (structure.hasCustomGetterSetterProperties() && value.isCustomGetterSetter())
+        fillCustomGetterPropertySlot(slot, value, attributes, structure);
+    else
+        slot.setValue(this, attributes, value, offset);
+
+    return true;
+}
+
+ALWAYS_INLINE void JSObject::fillCustomGetterPropertySlot(PropertySlot& slot, JSValue customGetterSetter, unsigned attributes, Structure& structure)
+{
+    if (structure.isDictionary()) {
+        slot.setCustom(this, attributes, jsCast<CustomGetterSetter*>(customGetterSetter)->getter());
+        return;
+    }
+    slot.setCacheableCustom(this, attributes, jsCast<CustomGetterSetter*>(customGetterSetter)->getter());
 }
 
 // It may seem crazy to inline a function this large, especially a virtual function,
@@ -1228,13 +1246,18 @@ ALWAYS_INLINE bool JSObject::getOwnPropertySlot(JSObject* object, ExecState* exe
 {
     VM& vm = exec->vm();
     Structure& structure = *object->structure(vm);
-    return object->inlineGetOwnPropertySlot(exec, vm, structure, propertyName, slot);
+    if (object->inlineGetOwnPropertySlot(vm, structure, propertyName, slot))
+        return true;
+    unsigned index = propertyName.asIndex();
+    if (index != PropertyName::NotAnIndex)
+        return getOwnPropertySlotByIndex(object, exec, index, slot);
+    return false;
 }
 
 ALWAYS_INLINE bool JSObject::fastGetOwnPropertySlot(ExecState* exec, VM& vm, Structure& structure, PropertyName propertyName, PropertySlot& slot)
 {
-    if (!TypeInfo::overridesGetOwnPropertySlot(inlineTypeFlags()))
-        return asObject(this)->inlineGetOwnPropertySlot(exec, vm, structure, propertyName, slot);
+    if (LIKELY(!TypeInfo::overridesGetOwnPropertySlot(inlineTypeFlags())))
+        return inlineGetOwnPropertySlot(vm, structure, propertyName, slot);
     return structure.classInfo()->methodTable.getOwnPropertySlot(this, exec, propertyName, slot);
 }
 
@@ -1243,24 +1266,31 @@ ALWAYS_INLINE bool JSObject::fastGetOwnPropertySlot(ExecState* exec, VM& vm, Str
 ALWAYS_INLINE bool JSObject::getPropertySlot(ExecState* exec, PropertyName propertyName, PropertySlot& slot)
 {
     VM& vm = exec->vm();
+    auto& structureIDTable = vm.heap.structureIDTable();
     JSObject* object = this;
     while (true) {
-        Structure& structure = *object->structure(vm);
+        Structure& structure = *structureIDTable.get(object->structureID());
         if (object->fastGetOwnPropertySlot(exec, vm, structure, propertyName, slot))
             return true;
         JSValue prototype = structure.storedPrototype();
         if (!prototype.isObject())
-            return false;
+            break;
         object = asObject(prototype);
     }
+
+    unsigned index = propertyName.asIndex();
+    if (index != PropertyName::NotAnIndex)
+        return getPropertySlot(exec, index, slot);
+    return false;
 }
 
 ALWAYS_INLINE bool JSObject::getPropertySlot(ExecState* exec, unsigned propertyName, PropertySlot& slot)
 {
     VM& vm = exec->vm();
+    auto& structureIDTable = vm.heap.structureIDTable();
     JSObject* object = this;
     while (true) {
-        Structure& structure = *object->structure(vm);
+        Structure& structure = *structureIDTable.get(object->structureID());
         if (structure.classInfo()->methodTable.getOwnPropertySlotByIndex(object, exec, propertyName, slot))
             return true;
         JSValue prototype = structure.storedPrototype();
@@ -1440,6 +1470,7 @@ inline bool JSObject::putOwnDataProperty(VM& vm, PropertyName propertyName, JSVa
     ASSERT(value);
     ASSERT(!Heap::heap(value) || Heap::heap(value) == Heap::heap(this));
     ASSERT(!structure()->hasGetterSetterProperties());
+    ASSERT(!structure()->hasCustomGetterSetterProperties());
 
     return putDirectInternal<PutModePut>(vm, propertyName, value, 0, slot, getCallableObject(value));
 }
@@ -1447,6 +1478,7 @@ inline bool JSObject::putOwnDataProperty(VM& vm, PropertyName propertyName, JSVa
 inline void JSObject::putDirect(VM& vm, PropertyName propertyName, JSValue value, unsigned attributes)
 {
     ASSERT(!value.isGetterSetter() && !(attributes & Accessor));
+    ASSERT(!value.isCustomGetterSetter());
     PutPropertySlot slot(this);
     putDirectInternal<PutModeDefineOwnProperty>(vm, propertyName, value, attributes, slot, getCallableObject(value));
 }
@@ -1454,6 +1486,7 @@ inline void JSObject::putDirect(VM& vm, PropertyName propertyName, JSValue value
 inline void JSObject::putDirect(VM& vm, PropertyName propertyName, JSValue value, PutPropertySlot& slot)
 {
     ASSERT(!value.isGetterSetter());
+    ASSERT(!value.isCustomGetterSetter());
     putDirectInternal<PutModeDefineOwnProperty>(vm, propertyName, value, 0, slot, getCallableObject(value));
 }
 
@@ -1461,6 +1494,7 @@ inline void JSObject::putDirectWithoutTransition(VM& vm, PropertyName propertyNa
 {
     DeferGC deferGC(vm.heap);
     ASSERT(!value.isGetterSetter() && !(attributes & Accessor));
+    ASSERT(!value.isCustomGetterSetter());
     Butterfly* newButterfly = m_butterfly.get();
     if (structure()->putWillGrowOutOfLineStorage())
         newButterfly = growOutOfLineStorage(vm, structure()->outOfLineCapacity(), structure()->suggestedNewOutOfLineStorageCapacity());
@@ -1560,8 +1594,6 @@ ALWAYS_INLINE JSValue PropertySlot::getValue(ExecState* exec, PropertyName prope
 {
     if (m_propertyType == TypeValue)
         return JSValue::decode(m_data.value);
-    if (m_propertyType == TypeCustomIndex)
-        return JSValue::decode(m_data.customIndex.getIndexValue(exec, slotBase(), JSValue::encode(m_thisValue), m_data.customIndex.index));
     if (m_propertyType == TypeGetter)
         return functionGetter(exec);
     return JSValue::decode(m_data.custom.getValue(exec, slotBase(), JSValue::encode(m_thisValue), propertyName));
@@ -1571,8 +1603,6 @@ ALWAYS_INLINE JSValue PropertySlot::getValue(ExecState* exec, unsigned propertyN
 {
     if (m_propertyType == TypeValue)
         return JSValue::decode(m_data.value);
-    if (m_propertyType == TypeCustomIndex)
-        return JSValue::decode(m_data.customIndex.getIndexValue(exec, slotBase(), JSValue::encode(m_thisValue), m_data.customIndex.index));
     if (m_propertyType == TypeGetter)
         return functionGetter(exec);
     return JSValue::decode(m_data.custom.getValue(exec, slotBase(), JSValue::encode(m_thisValue), Identifier::from(exec, propertyName)));

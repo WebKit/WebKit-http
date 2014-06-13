@@ -27,6 +27,7 @@
 #include "ResourceRequestBase.h"
 
 #include "ResourceRequest.h"
+#include <wtf/PassOwnPtr.h>
 
 namespace WebCore {
 
@@ -58,7 +59,7 @@ PassOwnPtr<ResourceRequest> ResourceRequestBase::adopt(PassOwnPtr<CrossThreadRes
     request->setPriority(data->m_priority);
 
     request->updateResourceRequest();
-    request->m_httpHeaderFields.adopt(data->m_httpHeaders.release());
+    request->m_httpHeaderFields.adopt(std::move(data->m_httpHeaders));
 
     size_t encodingCount = data->m_responseContentDispositionEncodingFallbackArray.size();
     if (encodingCount > 0) {
@@ -263,14 +264,21 @@ void ResourceRequestBase::clearHTTPAuthorization()
 {
     updateResourceRequest(); 
 
-    HTTPHeaderMap::iterator iter = m_httpHeaderFields.find("Authorization");
-    if (iter == m_httpHeaderFields.end())
+    if (!m_httpHeaderFields.remove("Authorization"))
         return;
-
-    m_httpHeaderFields.remove(iter);
 
     if (url().protocolIsInHTTPFamily())
         m_platformRequestUpdated = false;
+}
+
+String ResourceRequestBase::httpContentType() const
+{
+    return httpHeaderField("Content-Type");
+}
+
+void ResourceRequestBase::setHTTPContentType(const String& httpContentType)
+{
+    setHTTPHeaderField("Content-Type", httpContentType);
 }
 
 void ResourceRequestBase::clearHTTPContentType()
@@ -283,6 +291,16 @@ void ResourceRequestBase::clearHTTPContentType()
         m_platformRequestUpdated = false;
 }
 
+String ResourceRequestBase::httpReferrer() const
+{
+    return httpHeaderField("Referer");
+}
+
+void ResourceRequestBase::setHTTPReferrer(const String& httpReferrer)
+{
+    setHTTPHeaderField("Referer", httpReferrer);
+}
+
 void ResourceRequestBase::clearHTTPReferrer()
 {
     updateResourceRequest(); 
@@ -291,6 +309,16 @@ void ResourceRequestBase::clearHTTPReferrer()
 
     if (url().protocolIsInHTTPFamily())
         m_platformRequestUpdated = false;
+}
+
+String ResourceRequestBase::httpOrigin() const
+{
+    return httpHeaderField("Origin");
+}
+
+void ResourceRequestBase::setHTTPOrigin(const String& httpOrigin)
+{
+    setHTTPHeaderField("Origin", httpOrigin);
 }
 
 void ResourceRequestBase::clearHTTPOrigin()
@@ -303,6 +331,16 @@ void ResourceRequestBase::clearHTTPOrigin()
         m_platformRequestUpdated = false;
 }
 
+String ResourceRequestBase::httpUserAgent() const
+{
+    return httpHeaderField("User-Agent");
+}
+
+void ResourceRequestBase::setHTTPUserAgent(const String& httpUserAgent)
+{
+    setHTTPHeaderField("User-Agent", httpUserAgent);
+}
+
 void ResourceRequestBase::clearHTTPUserAgent()
 {
     updateResourceRequest(); 
@@ -311,6 +349,16 @@ void ResourceRequestBase::clearHTTPUserAgent()
 
     if (url().protocolIsInHTTPFamily())
         m_platformRequestUpdated = false;
+}
+
+String ResourceRequestBase::httpAccept() const
+{
+    return httpHeaderField("Accept");
+}
+
+void ResourceRequestBase::setHTTPAccept(const String& httpAccept)
+{
+    setHTTPHeaderField("Accept", httpAccept);
 }
 
 void ResourceRequestBase::clearHTTPAccept()

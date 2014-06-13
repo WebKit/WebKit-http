@@ -604,9 +604,7 @@ void DocumentLoader::responseReceived(CachedResource* resource, const ResourceRe
     if (willLoadFallback)
         return;
 
-    DEPRECATED_DEFINE_STATIC_LOCAL(AtomicString, xFrameOptionHeader, ("x-frame-options", AtomicString::ConstructFromLiteral));
-
-    auto it = response.httpHeaderFields().find(xFrameOptionHeader);
+    auto it = response.httpHeaderFields().find("x-frame-options");
     if (it != response.httpHeaderFields().end()) {
         String content = it->value;
         ASSERT(m_mainResource);
@@ -813,6 +811,10 @@ void DocumentLoader::commitData(const char* bytes, size_t length)
         // for multipart loads, and FrameLoader::isReplacing() will be true after the first time.
         if (!isMultipartReplacingLoad())
             frameLoader()->receivedFirstData();
+
+        // The load could be canceled under receivedFirstData(), which makes delegate calls and even sometimes dispatches DOM events.
+        if (!isLoading())
+            return;
 
         bool userChosen;
         String encoding;

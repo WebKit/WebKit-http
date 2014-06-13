@@ -98,6 +98,13 @@ private:
     configuration._contentProviderRegistry = self._contentProviderRegistry;
 #endif
 
+    configuration->_suppressesIncrementalRendering = self->_suppressesIncrementalRendering;
+#if PLATFORM(IOS)
+    configuration->_allowsInlineMediaPlayback = self->_allowsInlineMediaPlayback;
+    configuration->_mediaPlaybackRequiresUserAction = self->_mediaPlaybackRequiresUserAction;
+    configuration->_mediaPlaybackAllowsAirPlay = self->_mediaPlaybackAllowsAirPlay;
+#endif
+
     return configuration;
 }
 

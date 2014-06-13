@@ -33,8 +33,6 @@
 #include "URL.h"
 #include "ResourceLoadPriority.h"
 
-#include <wtf/OwnPtr.h>
-
 namespace WebCore {
 
     enum ResourceRequestCachePolicy {
@@ -91,24 +89,24 @@ namespace WebCore {
         
         void clearHTTPAuthorization();
 
-        String httpContentType() const { return httpHeaderField("Content-Type");  }
-        void setHTTPContentType(const String& httpContentType) { setHTTPHeaderField("Content-Type", httpContentType); }
+        String httpContentType() const;
+        void setHTTPContentType(const String&);
         void clearHTTPContentType();
 
-        String httpReferrer() const { return httpHeaderField("Referer"); }
-        void setHTTPReferrer(const String& httpReferrer) { setHTTPHeaderField("Referer", httpReferrer); }
+        String httpReferrer() const;
+        void setHTTPReferrer(const String&);
         void clearHTTPReferrer();
         
-        String httpOrigin() const { return httpHeaderField("Origin"); }
-        void setHTTPOrigin(const String& httpOrigin) { setHTTPHeaderField("Origin", httpOrigin); }
+        String httpOrigin() const;
+        void setHTTPOrigin(const String&);
         void clearHTTPOrigin();
 
-        String httpUserAgent() const { return httpHeaderField("User-Agent"); }
-        void setHTTPUserAgent(const String& httpUserAgent) { setHTTPHeaderField("User-Agent", httpUserAgent); }
+        String httpUserAgent() const;
+        void setHTTPUserAgent(const String&);
         void clearHTTPUserAgent();
 
-        String httpAccept() const { return httpHeaderField("Accept"); }
-        void setHTTPAccept(const String& httpAccept) { setHTTPHeaderField("Accept", httpAccept); }
+        String httpAccept() const;
+        void setHTTPAccept(const String&);
         void clearHTTPAccept();
 
         const Vector<String>& responseContentDispositionEncodingFallbackArray() const { return m_responseContentDispositionEncodingFallbackArray; }
@@ -144,6 +142,12 @@ namespace WebCore {
         bool hiddenFromInspector() const { return m_hiddenFromInspector; }
         void setHiddenFromInspector(bool hiddenFromInspector) { m_hiddenFromInspector = hiddenFromInspector; }
 #endif
+
+#if !PLATFORM(COCOA)
+        bool encodingRequiresPlatformData() const { return true; }
+#endif
+        template<class Encoder> void encodeWithoutPlatformData(Encoder&) const;
+        template<class Decoder> bool decodeWithoutPlatformData(Decoder&);
 
         static double defaultTimeoutInterval(); // May return 0 when using platform default.
         static void setDefaultTimeoutInterval(double);
@@ -248,7 +252,7 @@ namespace WebCore {
         URL m_firstPartyForCookies;
 
         String m_httpMethod;
-        OwnPtr<CrossThreadHTTPHeaderMapData> m_httpHeaders;
+        std::unique_ptr<CrossThreadHTTPHeaderMapData> m_httpHeaders;
         Vector<String> m_responseContentDispositionEncodingFallbackArray;
         RefPtr<FormData> m_httpBody;
         bool m_allowCookies;
@@ -259,6 +263,66 @@ namespace WebCore {
 #if PLATFORM(IOS)
     void initializeHTTPConnectionSettingsOnStartup();
 #endif
+
+template<class Encoder>
+void ResourceRequestBase::encodeWithoutPlatformData(Encoder& encoder) const
+{
+    ASSERT(!m_httpBody);
+    ASSERT(!m_platformRequestUpdated);
+    encoder << m_url.string();
+    encoder << m_timeoutInterval;
+    encoder << m_firstPartyForCookies.string();
+    encoder << m_httpMethod;
+    encoder << m_httpHeaderFields;
+    encoder << m_responseContentDispositionEncodingFallbackArray;
+    encoder.encodeEnum(m_cachePolicy);
+    encoder << m_allowCookies;
+    encoder.encodeEnum(m_priority);
+}
+
+template<class Decoder>
+bool ResourceRequestBase::decodeWithoutPlatformData(Decoder& decoder)
+{
+    String url;
+    if (!decoder.decode(url))
+        return false;
+    m_url = URL(ParsedURLString, url);
+
+    if (!decoder.decode(m_timeoutInterval))
+        return false;
+
+    String firstPartyForCookies;
+    if (!decoder.decode(firstPartyForCookies))
+        return false;
+    m_firstPartyForCookies = URL(ParsedURLString, firstPartyForCookies);
+
+    if (!decoder.decode(m_httpMethod))
+        return false;
+
+    if (!decoder.decode(m_httpHeaderFields))
+        return false;
+
+    if (!decoder.decode(m_responseContentDispositionEncodingFallbackArray))
+        return false;
+
+    ResourceRequestCachePolicy cachePolicy;
+    if (!decoder.decodeEnum(cachePolicy))
+        return false;
+    m_cachePolicy = cachePolicy;
+
+    bool allowCookies;
+    if (!decoder.decode(allowCookies))
+        return false;
+    m_allowCookies = allowCookies;
+
+    ResourceLoadPriority priority;
+    if (!decoder.decodeEnum(priority))
+        return false;
+    m_priority = priority;
+
+    return true;
+}
+
 } // namespace WebCore
 
 #endif // ResourceRequestBase_h

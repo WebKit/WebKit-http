@@ -292,13 +292,13 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
     , m_isShowingContextMenu(false)
 #endif
 #if PLATFORM(IOS)
-    , m_lastVisibleContentRectUpdateID(0)
     , m_obscuredTopInset(0)
     , m_hasReceivedVisibleContentRectsAfterDidCommitLoad(false)
     , m_scaleWasSetByUIProcess(false)
     , m_userHasChangedPageScaleFactor(false)
     , m_userIsInteracting(false)
     , m_hasPendingBlurNotification(false)
+    , m_useTestingViewportConfiguration(false)
     , m_screenSize(parameters.screenSize)
     , m_availableScreenSize(parameters.availableScreenSize)
     , m_deviceOrientation(0)
@@ -715,7 +715,8 @@ EditorState WebPage::editorState() const
         // FIXME: The following check should take into account writing direction.
         result.isReplaceAllowed = result.isContentEditable && atBoundaryOfGranularity(selection.start(), WordGranularity, DirectionForward);
         result.wordAtSelection = plainTextReplacingNoBreakSpace(wordRangeFromPosition(selection.start()).get());
-        charactersAroundPosition(selection.start(), result.characterAfterSelection, result.characterBeforeSelection, result.twoCharacterBeforeSelection);
+        if (selection.isContentEditable())
+            charactersAroundPosition(selection.start(), result.characterAfterSelection, result.characterBeforeSelection, result.twoCharacterBeforeSelection);
     } else if (selection.isRange()) {
         result.caretRectAtStart = view->contentsToRootView(VisiblePosition(selection.start()).absoluteCaretBounds());
         result.caretRectAtEnd = view->contentsToRootView(VisiblePosition(selection.end()).absoluteCaretBounds());
@@ -983,7 +984,7 @@ void WebPage::loadRequest(uint64_t navigationID, const ResourceRequest& request,
     ASSERT(!m_pendingNavigationID);
 }
 
-void WebPage::loadDataImpl(PassRefPtr<SharedBuffer> sharedBuffer, const String& MIMEType, const String& encodingName, const URL& baseURL, const URL& unreachableURL, IPC::MessageDecoder& decoder)
+void WebPage::loadDataImpl(uint64_t navigationID, PassRefPtr<SharedBuffer> sharedBuffer, const String& MIMEType, const String& encodingName, const URL& baseURL, const URL& unreachableURL, IPC::MessageDecoder& decoder)
 {
     SendStopResponsivenessTimer stopper(this);
 
@@ -991,6 +992,8 @@ void WebPage::loadDataImpl(PassRefPtr<SharedBuffer> sharedBuffer, const String& 
     InjectedBundleUserMessageDecoder userMessageDecoder(userData);
     if (!decoder.decode(userMessageDecoder))
         return;
+
+    m_pendingNavigationID = navigationID;
 
     ResourceRequest request(baseURL);
     SubstituteData substituteData(sharedBuffer, MIMEType, encodingName, unreachableURL);
@@ -1003,14 +1006,14 @@ void WebPage::loadDataImpl(PassRefPtr<SharedBuffer> sharedBuffer, const String& 
     m_mainFrame->coreFrame()->loader().load(FrameLoadRequest(m_mainFrame->coreFrame(), request, substituteData));
 }
 
-void WebPage::loadString(const String& htmlString, const String& MIMEType, const URL& baseURL, const URL& unreachableURL, IPC::MessageDecoder& decoder)
+void WebPage::loadString(uint64_t navigationID, const String& htmlString, const String& MIMEType, const URL& baseURL, const URL& unreachableURL, IPC::MessageDecoder& decoder)
 {
     if (!htmlString.isNull() && htmlString.is8Bit()) {
         RefPtr<SharedBuffer> sharedBuffer = SharedBuffer::create(reinterpret_cast<const char*>(htmlString.characters8()), htmlString.length() * sizeof(LChar));
-        loadDataImpl(sharedBuffer, MIMEType, ASCIILiteral("latin1"), baseURL, unreachableURL, decoder);
+        loadDataImpl(navigationID, sharedBuffer, MIMEType, ASCIILiteral("latin1"), baseURL, unreachableURL, decoder);
     } else {
         RefPtr<SharedBuffer> sharedBuffer = SharedBuffer::create(reinterpret_cast<const char*>(htmlString.characters16()), htmlString.length() * sizeof(UChar));
-        loadDataImpl(sharedBuffer, MIMEType, ASCIILiteral("utf-16"), baseURL, unreachableURL, decoder);
+        loadDataImpl(navigationID, sharedBuffer, MIMEType, ASCIILiteral("utf-16"), baseURL, unreachableURL, decoder);
     }
 }
 
@@ -1018,31 +1021,31 @@ void WebPage::loadData(const IPC::DataReference& data, const String& MIMEType, c
 {
     RefPtr<SharedBuffer> sharedBuffer = SharedBuffer::create(reinterpret_cast<const char*>(data.data()), data.size());
     URL baseURL = baseURLString.isEmpty() ? blankURL() : URL(URL(), baseURLString);
-    loadDataImpl(sharedBuffer, MIMEType, encodingName, baseURL, URL(), decoder);
+    loadDataImpl(0, sharedBuffer, MIMEType, encodingName, baseURL, URL(), decoder);
 }
 
-void WebPage::loadHTMLString(const String& htmlString, const String& baseURLString, IPC::MessageDecoder& decoder)
+void WebPage::loadHTMLString(uint64_t navigationID, const String& htmlString, const String& baseURLString, IPC::MessageDecoder& decoder)
 {
     URL baseURL = baseURLString.isEmpty() ? blankURL() : URL(URL(), baseURLString);
-    loadString(htmlString, ASCIILiteral("text/html"), baseURL, URL(), decoder);
+    loadString(navigationID, htmlString, ASCIILiteral("text/html"), baseURL, URL(), decoder);
 }
 
 void WebPage::loadAlternateHTMLString(const String& htmlString, const String& baseURLString, const String& unreachableURLString, IPC::MessageDecoder& decoder)
 {
     URL baseURL = baseURLString.isEmpty() ? blankURL() : URL(URL(), baseURLString);
     URL unreachableURL = unreachableURLString.isEmpty() ? URL() : URL(URL(), unreachableURLString);
-    loadString(htmlString, ASCIILiteral("text/html"), baseURL, unreachableURL, decoder);
+    loadString(0, htmlString, ASCIILiteral("text/html"), baseURL, unreachableURL, decoder);
 }
 
 void WebPage::loadPlainTextString(const String& string, IPC::MessageDecoder& decoder)
 {
-    loadString(string, ASCIILiteral("text/plain"), blankURL(), URL(), decoder);
+    loadString(0, string, ASCIILiteral("text/plain"), blankURL(), URL(), decoder);
 }
 
 void WebPage::loadWebArchiveData(const IPC::DataReference& webArchiveData, IPC::MessageDecoder& decoder)
 {
     RefPtr<SharedBuffer> sharedBuffer = SharedBuffer::create(reinterpret_cast<const char*>(webArchiveData.data()), webArchiveData.size() * sizeof(uint8_t));
-    loadDataImpl(sharedBuffer, ASCIILiteral("application/x-webarchive"), ASCIILiteral("utf-16"), blankURL(), URL(), decoder);
+    loadDataImpl(0, sharedBuffer, ASCIILiteral("application/x-webarchive"), ASCIILiteral("utf-16"), blankURL(), URL(), decoder);
 }
 
 void WebPage::stopLoadingFrame(uint64_t frameID)
@@ -1879,6 +1882,9 @@ void WebPage::wheelEventSyncForTesting(const WebWheelEvent& wheelEvent, bool& ha
 {
     CurrentEvent currentEvent(wheelEvent);
 
+    if (ScrollingCoordinator* scrollingCoordinator = m_page->scrollingCoordinator())
+        scrollingCoordinator->commitTreeStateIfNeeded();
+
     handled = handleWheelEvent(wheelEvent, m_page.get());
 }
 
@@ -2099,7 +2105,13 @@ void WebPage::setDrawsTransparentBackground(bool drawsTransparentBackground)
 
 void WebPage::setTopContentInset(float contentInset)
 {
+    if (contentInset == m_page->topContentInset())
+        return;
+
     m_page->setTopContentInset(contentInset);
+
+    for (auto* pluginView : m_pluginViews)
+        pluginView->topContentInsetDidChange();
 }
 
 void WebPage::viewWillStartLiveResize()
@@ -2270,6 +2282,15 @@ void WebPage::show()
 void WebPage::setUserAgent(const String& userAgent)
 {
     m_userAgent = userAgent;
+}
+
+String WebPage::userAgent(const URL& url) const
+{
+    String userAgent = platformUserAgent(url);
+    if (!userAgent.isEmpty())
+        return userAgent;
+
+    return m_userAgent;
 }
 
 void WebPage::suspendActiveDOMObjectsAndAnimations()
@@ -2766,7 +2787,6 @@ void WebPage::willCommitLayerTree(RemoteLayerTreeTransaction& layerTransaction)
     layerTransaction.setRenderTreeSize(corePage()->renderTreeSize());
     layerTransaction.setPageExtendedBackgroundColor(corePage()->pageExtendedBackgroundColor());
 #if PLATFORM(IOS)
-    layerTransaction.setLastVisibleContentRectUpdateID(m_lastVisibleContentRectUpdateID);
     layerTransaction.setScaleWasSetByUIProcess(scaleWasSetByUIProcess());
     layerTransaction.setMinimumScaleFactor(minimumPageScaleFactor());
     layerTransaction.setMaximumScaleFactor(maximumPageScaleFactor());
@@ -4451,14 +4471,12 @@ void WebPage::determinePrimarySnapshottedPlugIn()
             if (!pluginRenderer || !pluginRenderer->isBox())
                 continue;
             auto& pluginRenderBox = toRenderBox(*pluginRenderer);
-            IntRect plugInRectRelativeToView = plugInImageElement.clientRect();
-            if (plugInRectRelativeToView.isEmpty())
-                continue;
-            IntSize scrollOffset = mainFrame.view()->documentScrollOffsetRelativeToViewOrigin();
-            IntRect plugInRectRelativeToTopDocument(plugInRectRelativeToView.location() + scrollOffset, plugInRectRelativeToView.size());
-            if (!plugInRectRelativeToTopDocument.intersects(searchRect))
+            if (!plugInIntersectsSearchRect(plugInImageElement))
                 continue;
 
+            IntRect plugInRectRelativeToView = plugInImageElement.clientRect();
+            IntSize scrollOffset = mainFrame.view()->documentScrollOffsetRelativeToViewOrigin();
+            IntRect plugInRectRelativeToTopDocument(plugInRectRelativeToView.location() + scrollOffset, plugInRectRelativeToView.size());
             HitTestResult hitTestResult(plugInRectRelativeToTopDocument.center());
             mainRenderView.hitTest(request, hitTestResult);
 
@@ -4483,14 +4501,9 @@ void WebPage::determinePrimarySnapshottedPlugIn()
                 LOG(Plugins, "Primary Plug-In Detection: Plug-in is hidden by an image that is roughly aligned with it, autoplaying regardless of whether or not it's actually the primary plug-in.");
                 plugInImageElement.restartSnapshottedPlugIn();
             }
-            if (pluginRenderBox.contentWidth() < primarySnapshottedPlugInMinimumWidth || pluginRenderBox.contentHeight() < primarySnapshottedPlugInMinimumHeight)
-                continue;
 
-            LayoutUnit contentArea = pluginRenderBox.contentWidth() * pluginRenderBox.contentHeight();
-            if (contentArea > candidatePlugInArea * primarySnapshottedPlugInSearchBucketSize) {
+            if (plugInIsPrimarySize(plugInImageElement, candidatePlugInArea))
                 candidatePlugIn = &plugInImageElement;
-                candidatePlugInArea = contentArea;
-            }
         }
     }
     if (!candidatePlugIn) {
@@ -4525,6 +4538,40 @@ bool WebPage::matchesPrimaryPlugIn(const String& pageOrigin, const String& plugi
         return false;
 
     return (pageOrigin == m_primaryPlugInPageOrigin && pluginOrigin == m_primaryPlugInOrigin && mimeType == m_primaryPlugInMimeType);
+}
+
+bool WebPage::plugInIntersectsSearchRect(HTMLPlugInImageElement& plugInImageElement)
+{
+    MainFrame& mainFrame = corePage()->mainFrame();
+    if (!mainFrame.view())
+        return false;
+    if (!mainFrame.view()->renderView())
+        return false;
+
+    IntRect searchRect = IntRect(IntPoint(), corePage()->mainFrame().view()->contentsSize());
+    searchRect.intersect(IntRect(IntPoint(), IntSize(primarySnapshottedPlugInSearchLimit, primarySnapshottedPlugInSearchLimit)));
+
+    IntRect plugInRectRelativeToView = plugInImageElement.clientRect();
+    if (plugInRectRelativeToView.isEmpty())
+        return false;
+    IntSize scrollOffset = mainFrame.view()->documentScrollOffsetRelativeToViewOrigin();
+    IntRect plugInRectRelativeToTopDocument(plugInRectRelativeToView.location() + scrollOffset, plugInRectRelativeToView.size());
+
+    return plugInRectRelativeToTopDocument.intersects(searchRect);
+}
+
+bool WebPage::plugInIsPrimarySize(WebCore::HTMLPlugInImageElement& plugInImageElement, unsigned& candidatePlugInArea)
+{
+    auto& pluginRenderBox = toRenderBox(*(plugInImageElement.renderer()));
+    if (pluginRenderBox.contentWidth() < primarySnapshottedPlugInMinimumWidth || pluginRenderBox.contentHeight() < primarySnapshottedPlugInMinimumHeight)
+        return false;
+
+    LayoutUnit contentArea = pluginRenderBox.contentWidth() * pluginRenderBox.contentHeight();
+    if (contentArea > candidatePlugInArea * primarySnapshottedPlugInSearchBucketSize) {
+        candidatePlugInArea = contentArea;
+        return true;
+    }
+    return false;
 }
 #endif // ENABLE(PRIMARY_SNAPSHOTTED_PLUGIN_HEURISTIC)
 

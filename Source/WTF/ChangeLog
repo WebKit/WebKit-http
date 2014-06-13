@@ -1,3 +1,36 @@
+2014-06-11  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [EFL][GTK] Ultimate fix not to have build failures
+        in the future because of "#if TARGET_OS_IPHONE" guards.
+
+        Unreviewed buildfix.
+
+        * wtf/Platform.h: Define TARGET_OS_IPHONE to 0 on EFL and GTK.
+
+2014-06-11  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Turning on DUMP_PROPERTYMAP_STATS causes a build failure
+        https://bugs.webkit.org/show_bug.cgi?id=133673
+
+        Reviewed by Andreas Kling.
+
+        Added DEFINE_GLOBAL_FOR_LOGGING to allow running a destructor in logging code
+        that needs to be enabled in release builds (e.g. for JavaScriptCore).
+
+        * wtf/StdLibExtras.h:
+
+2014-06-09  Benjamin Poulain  <bpoulain@apple.com>
+
+        Improve CSSPrimitiveValue::customCSSText for ARMv7
+        https://bugs.webkit.org/show_bug.cgi?id=133597
+
+        Reviewed by Andreas Kling.
+
+        * wtf/RefPtr.h:
+        (WTF::RefPtr<T>::RefPtr):
+        * wtf/text/WTFString.h:
+        (WTF::String::String):
+
 2014-06-05  Yoav Weiss  <yoav@yoav.ws>
 
         Align srcset parser with recent spec changes

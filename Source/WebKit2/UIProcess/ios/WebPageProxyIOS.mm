@@ -236,6 +236,11 @@ WebCore::FloatRect WebPageProxy::computeCustomFixedPositionRect(const FloatRect&
     return FrameView::rectForViewportConstrainedObjects(enclosingLayoutRect(constrainedUnobscuredRect), roundedLayoutSize(contentsSize), displayedContentScale, false, StickToViewportBounds);
 }
 
+void WebPageProxy::scrollViewWillStartPanGesture()
+{
+    m_pageClient.scrollViewWillStartPanGesture();
+}
+
 void WebPageProxy::dynamicViewportSizeUpdate(const FloatSize& minimumLayoutSize, const WebCore::FloatSize& minimumLayoutSizeForMinimalUI, const WebCore::FloatSize& maximumUnobscuredSize, const FloatRect& targetExposedContentRect, const FloatRect& targetUnobscuredRect, const FloatRect& targetUnobscuredRectInScrollViewCoordinates,  double targetScale, int32_t deviceOrientation)
 {
     m_dynamicViewportSizeUpdateInProgress = true;
@@ -474,6 +479,11 @@ void WebPageProxy::notifyRevealedSelection()
 void WebPageProxy::extendSelection(WebCore::TextGranularity granularity)
 {
     m_process->send(Messages::WebPage::ExtendSelection(static_cast<uint32_t>(granularity)), m_pageID);
+}
+
+void WebPageProxy::selectWordBackward()
+{
+    m_process->send(Messages::WebPage::SelectWordBackward(), m_pageID);
 }
 
 void WebPageProxy::interpretKeyEvent(const EditorState& state, bool isCharEvent, bool& handled)

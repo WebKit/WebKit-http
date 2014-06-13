@@ -1364,6 +1364,18 @@ void WebPage::extendSelection(uint32_t granularity)
     frame.selection().setSelectedRange(wordRangeFromPosition(position).get(), position.affinity(), true);
 }
 
+void WebPage::selectWordBackward()
+{
+    Frame& frame = m_page->focusController().focusedOrMainFrame();
+    if (!frame.selection().isCaret())
+        return;
+
+    VisiblePosition position = frame.selection().selection().start();
+    VisiblePosition startPosition = positionOfNextBoundaryOfGranularity(position, WordGranularity, DirectionBackward);
+    if (startPosition.isNotNull() && startPosition != position)
+        frame.selection().setSelectedRange(Range::create(*frame.document(), startPosition, position).get(), position.affinity(), true);
+}
+
 void WebPage::convertSelectionRectsToRootView(FrameView* view, Vector<SelectionRect>& selectionRects)
 {
     for (size_t i = 0; i < selectionRects.size(); ++i) {
@@ -1683,7 +1695,7 @@ void WebPage::getPositionInformation(const IntPoint& point, InteractionInformati
                 elementIsLinkOrImage = true;
             }
             if (linkElement)
-                info.url = linkElement->document().completeURL(stripLeadingAndTrailingHTMLSpaces(linkElement->getAttribute(HTMLNames::hrefAttr)));
+                info.url = [(NSURL *)linkElement->document().completeURL(stripLeadingAndTrailingHTMLSpaces(linkElement->getAttribute(HTMLNames::hrefAttr))) absoluteString];
             info.title = element->fastGetAttribute(HTMLNames::titleAttr).string();
             if (element->renderer())
                 info.bounds = element->renderer()->absoluteBoundingBoxRect(true);
@@ -2177,6 +2189,11 @@ void WebPage::synchronizeDynamicViewportUpdate(double& newTargetScale, FloatPoin
 
 void WebPage::resetViewportDefaultConfiguration(WebFrame* frame)
 {
+    if (m_useTestingViewportConfiguration) {
+        m_viewportConfiguration.setDefaultConfiguration(ViewportConfiguration::testingParameters());
+        return;
+    }
+
     if (!frame) {
         m_viewportConfiguration.setDefaultConfiguration(ViewportConfiguration::webpageParameters());
         return;
@@ -2283,7 +2300,6 @@ static inline void adjustVelocityDataForBoundedScale(double& horizontalVelocity,
 void WebPage::updateVisibleContentRects(const VisibleContentRectUpdateInfo& visibleContentRectUpdateInfo)
 {
     m_hasReceivedVisibleContentRectsAfterDidCommitLoad = true;
-    m_lastVisibleContentRectUpdateID = visibleContentRectUpdateInfo.updateID();
     m_obscuredTopInset = (visibleContentRectUpdateInfo.unobscuredRect().y() - visibleContentRectUpdateInfo.exposedRect().y()) * visibleContentRectUpdateInfo.scale();
 
     double scaleNoiseThreshold = 0.005;
@@ -2392,6 +2408,11 @@ void WebPage::contentSizeCategoryDidChange(const String& contentSizeCategory)
 {
     RenderThemeIOS::setContentSizeCategory(contentSizeCategory);
     Page::updateStyleForAllPagesAfterGlobalChangeInEnvironment();
+}
+
+String WebPage::platformUserAgent(const URL&) const
+{
+    return String();
 }
 
 } // namespace WebKit

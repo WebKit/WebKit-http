@@ -36,6 +36,21 @@
 #import <Foundation/Foundation.h>
 #endif
 
+#if defined(__has_include) && __has_include(<Security/SecIdentityPriv.h>)
+#include <Security/SecIdentityPriv.h>
+#endif
+
+extern "C" SecIdentityRef SecIdentityCreate(CFAllocatorRef allocator, SecCertificateRef certificate, SecKeyRef privateKey);
+
+#if PLATFORM(IOS)
+#if defined(__has_include) && __has_include(<Security/SecKeyPriv.h>)
+#include <Security/SecKeyPriv.h>
+#endif
+
+extern "C" OSStatus SecKeyCopyPersistentRef(SecKeyRef key, CFDataRef* persistentRef);
+extern "C" OSStatus SecKeyFindWithPersistentRef(CFDataRef persistentRef, SecKeyRef* lookedUpData);
+#endif
+
 using namespace WebCore;
 
 namespace IPC {
@@ -57,6 +72,9 @@ enum CFType {
     CFString,
     CFURL,
     SecCertificate,
+#if PLATFORM(IOS)
+    SecIdentity,
+#endif
 #if HAVE(SEC_KEYCHAIN)
     SecKeychainItem,
 #endif
@@ -92,6 +110,10 @@ static CFType typeFromCFTypeRef(CFTypeRef type)
         return CFURL;
     if (typeID == SecCertificateGetTypeID())
         return SecCertificate;
+#if PLATFORM(IOS)
+    if (typeID == SecIdentityGetTypeID())
+        return SecIdentity;
+#endif
 #if HAVE(SEC_KEYCHAIN)
     if (typeID == SecKeychainItemGetTypeID())
         return SecKeychainItem;
@@ -136,6 +158,11 @@ void encode(ArgumentEncoder& encoder, CFTypeRef typeRef)
     case SecCertificate:
         encode(encoder, (SecCertificateRef)typeRef);
         return;
+#if PLATFORM(IOS)
+    case SecIdentity:
+        encode(encoder, (SecIdentityRef)(typeRef));
+        return;
+#endif
 #if HAVE(SEC_KEYCHAIN)
     case SecKeychainItem:
         encode(encoder, (SecKeychainItemRef)typeRef);
@@ -223,6 +250,15 @@ bool decode(ArgumentDecoder& decoder, RetainPtr<CFTypeRef>& result)
         result = adoptCF(certificate.leakRef());
         return true;
     }
+#if PLATFORM(IOS)
+    case SecIdentity: {
+        RetainPtr<SecIdentityRef> identity;
+        if (!decode(decoder, identity))
+            return false;
+        result = adoptCF(identity.leakRef());
+        return true;
+    }
+#endif
 #if HAVE(SEC_KEYCHAIN)
     case SecKeychainItem: {
         RetainPtr<SecKeychainItemRef> keychainItem;
@@ -552,6 +588,64 @@ bool decode(ArgumentDecoder& decoder, RetainPtr<SecCertificateRef>& result)
         return false;
 
     result = adoptCF(SecCertificateCreateWithData(0, data.get()));
+    return true;
+}
+
+void encode(ArgumentEncoder& encoder, SecIdentityRef identity)
+{
+    SecCertificateRef certificate = nullptr;
+    SecIdentityCopyCertificate(identity, &certificate);
+    encode(encoder, certificate);
+    CFRelease(certificate);
+
+    SecKeyRef key = nullptr;
+    SecIdentityCopyPrivateKey(identity, &key);
+
+    CFDataRef keyData = nullptr;
+#if PLATFORM(IOS)
+    SecKeyCopyPersistentRef(key, &keyData);
+#endif
+#if PLATFORM(MAC)
+    SecKeychainItemCreatePersistentReference((SecKeychainItemRef)key, &keyData);
+#endif
+    CFRelease(key);
+
+    encoder << !!keyData;
+    if (keyData) {
+        encode(encoder, keyData);
+        CFRelease(keyData);
+    }
+}
+
+bool decode(ArgumentDecoder& decoder, RetainPtr<SecIdentityRef>& result)
+{
+    RetainPtr<SecCertificateRef> certificate;
+    if (!decode(decoder, certificate))
+        return false;
+
+    bool hasKey;
+    if (!decoder.decode(hasKey))
+        return false;
+
+    if (!hasKey)
+        return true;
+
+    RetainPtr<CFDataRef> keyData;
+    if (!decode(decoder, keyData))
+        return false;
+
+    SecKeyRef key = nullptr;
+#if PLATFORM(IOS)
+    SecKeyFindWithPersistentRef(keyData.get(), &key);
+#endif
+#if PLATFORM(MAC)
+    SecKeychainItemCopyFromPersistentReference(keyData.get(), (SecKeychainItemRef*)&key);
+#endif
+    if (key) {
+        result = adoptCF(SecIdentityCreate(kCFAllocatorDefault, certificate.get(), key));
+        CFRelease(key);
+    }
+
     return true;
 }
 

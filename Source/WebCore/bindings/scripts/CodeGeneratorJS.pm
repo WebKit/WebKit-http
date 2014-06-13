@@ -350,7 +350,7 @@ sub prototypeHashTableAccessor
     my $noStaticTables = shift;
     my $className = shift;
     if ($noStaticTables) {
-        return "get${className}PrototypeTable(exec->vm())";
+        return "get${className}PrototypeTable(vm)";
     } else {
         return "${className}PrototypeTable";
     }
@@ -432,7 +432,7 @@ sub GenerateGetOwnPropertySlotBody
         } else {
             push(@getOwnPropertySlotImpl, "        unsigned attributes = ${namespaceMaybe}DontDelete | ${namespaceMaybe}ReadOnly;\n");
         }
-        push(@getOwnPropertySlotImpl, "        slot.setCustomIndex(thisObject, attributes, index, indexGetter);\n");
+        push(@getOwnPropertySlotImpl, "        slot.setValue(thisObject, attributes, " . GetIndexedGetterExpression($indexedGetterFunction) . ");\n");
         push(@getOwnPropertySlotImpl, "        return true;\n");
         push(@getOwnPropertySlotImpl, "    }\n");
     }
@@ -642,7 +642,7 @@ sub InterfaceRequiresAttributesOnInstance
     return 1 if InterfaceRequiresAttributesOnInstanceForCompatibility($interface);
 
     #FIXME: We currently clobber performance for a number of the list types
-    return 1 if $interfaceName =~ "List";
+    return 1 if $interfaceName =~ "List" && !($interfaceName =~ "Element");
 
     return 0;
 }
@@ -659,7 +659,6 @@ sub AttributeShouldBeOnInstanceForCompatibility
     my $interface = shift;
     my $attribute = shift;
     my $interfaceName = $interface->name;
-    return 1 if ($attribute->signature->name =~ "touch");
     return 0;
 }
 
@@ -677,7 +676,7 @@ sub AttributeShouldBeOnInstance
     # objects which also have magic named attributes that can end up being named "length"
     # and so interfere with lookup ordering.  I'm not sure what the correct solution is
     # here.
-    return 1 if ($attribute->signature->name eq "length");
+    return 1 if ($attribute->signature->name eq "length") && $interface->name ne "CharacterData";
     
     # It becomes hard to reason about attributes that require security checks if we push
     # them down the prototype chain, so before we do these we'll need to carefully consider
@@ -746,7 +745,7 @@ sub InstanceOverridesGetOwnPropertySlot
         || $interface->extendedAttributes->{"CustomGetOwnPropertySlot"}
         || $hasImpureNamedGetter;
 
-    return $numInstanceAttributes > 0 || !$interface->extendedAttributes->{"NoInterfaceObject"} || $hasComplexGetter;
+    return $numInstanceAttributes > 0 || $hasComplexGetter;
 
 }
 
@@ -1126,11 +1125,6 @@ sub GenerateHeader
     }
     push(@headerContent, "Base::StructureFlags;\n");
 
-    # Index getter
-    if ($indexedGetterFunction) {
-        push(@headerContent, "    static JSC::EncodedJSValue indexGetter(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, unsigned);\n");
-    }
-
     # Index setter
     if ($interface->extendedAttributes->{"CustomIndexedSetter"}) {
         push(@headerContent, "    void indexSetter(JSC::ExecState*, unsigned index, JSC::JSValue);\n");
@@ -1208,8 +1202,12 @@ sub GenerateHeader
 
     push(@headerContent, "    DECLARE_INFO;\n");
     if (PrototypeOverridesGetOwnPropertySlot($interface)) {
-        push(@headerContent, "    static bool getOwnPropertySlot(JSC::JSObject*, JSC::ExecState*, JSC::PropertyName, JSC::PropertySlot&);\n");
-        $structureFlags{"JSC::OverridesGetOwnPropertySlot"} = 1;
+        if (IsDOMGlobalObject($interface)) {
+            push(@headerContent, "    static bool getOwnPropertySlot(JSC::JSObject*, JSC::ExecState*, JSC::PropertyName, JSC::PropertySlot&);\n");
+            $structureFlags{"JSC::OverridesGetOwnPropertySlot"} = 1;
+        } else {
+            push(@headerContent, "    void finishCreation(JSC::VM&);\n");
+        }
     }
     if ($interface->extendedAttributes->{"JSCustomMarkFunction"} or $needsVisitChildren) {
         $structureFlags{"JSC::OverridesVisitChildren"} = 1;
@@ -1721,6 +1719,15 @@ sub GetCastingHelperForBaseObject
     return "jsCast<JS" . $interface->name . "*>";
 }
 
+sub GetIndexedGetterExpression
+{
+    my $indexedGetterFunction = shift;
+    if ($indexedGetterFunction->signature->type eq "DOMString") {
+        return "jsStringOrUndefined(exec, thisObject->impl().item(index))";
+    }
+    return "toJS(exec, thisObject->globalObject(), thisObject->impl().item(index))";
+}
+
 sub GenerateImplementation
 {
     my ($object, $interface) = @_;
@@ -1769,7 +1776,7 @@ sub GenerateImplementation
     $object->GenerateHashTable($hashName, $numInstanceAttributes,
         \@hashKeys, \@hashSpecials,
         \@hashValue1, \@hashValue2,
-        \%conditionals) if $numInstanceAttributes > 0;
+        \%conditionals, 0) if $numInstanceAttributes > 0;
 
     # - Add all constants
     if (!$interface->extendedAttributes->{"NoInterfaceObject"}) {
@@ -1857,7 +1864,7 @@ sub GenerateImplementation
         $object->GenerateHashTable($hashName, $hashSize,
                                    \@hashKeys, \@hashSpecials,
                                    \@hashValue1, \@hashValue2,
-                                   \%conditionals);
+                                   \%conditionals, 0);
 
         push(@implContent, $codeGenerator->GenerateCompileTimeCheckForEnumsIfNeeded($interface));
 
@@ -1929,7 +1936,7 @@ sub GenerateImplementation
     $object->GenerateHashTable($hashName, $hashSize,
                                \@hashKeys, \@hashSpecials,
                                \@hashValue1, \@hashValue2,
-                               \%conditionals);
+                               \%conditionals, 0);
 
     if ($interface->extendedAttributes->{"JSNoStaticTables"}) {
         push(@implContent, "static const HashTable& get${className}PrototypeTable(VM& vm)\n");
@@ -1948,21 +1955,36 @@ sub GenerateImplementation
     }
 
     if (PrototypeOverridesGetOwnPropertySlot($interface)) {
-        push(@implContent, "bool ${className}Prototype::getOwnPropertySlot(JSObject* object, ExecState* exec, PropertyName propertyName, PropertySlot& slot)\n");
-        push(@implContent, "{\n");
-        push(@implContent, "    ${className}Prototype* thisObject = jsCast<${className}Prototype*>(object);\n");
-
         my $numPrototypeAttributes = PrototypeAttributeCount($interface);
-        if ($numConstants eq 0 && $numFunctions eq 0 && $numPrototypeAttributes eq 0) {
-            push(@implContent, "    return Base::getOwnPropertySlot(thisObject, exec, propertyName, slot);\n");        
-        } elsif ($numConstants eq 0 && $numPrototypeAttributes eq 0) {
-            push(@implContent, "    return getStaticFunctionSlot<JSObject>(exec, " . prototypeHashTableAccessor($interface->extendedAttributes->{"JSNoStaticTables"}, $className) . ", thisObject, propertyName, slot);\n");
-        } elsif ($numFunctions eq 0 && $numPrototypeAttributes eq 0) {
-            push(@implContent, "    return getStaticValueSlot<${className}Prototype, JSObject>(exec, " . prototypeHashTableAccessor($interface->extendedAttributes->{"JSNoStaticTables"}, $className) . ", thisObject, propertyName, slot);\n");
+        if (IsDOMGlobalObject($interface)) {
+            push(@implContent, "bool ${className}Prototype::getOwnPropertySlot(JSObject* object, ExecState* exec, PropertyName propertyName, PropertySlot& slot)\n");
+            push(@implContent, "{\n");
+            push(@implContent, "    VM& vm = exec->vm();\n");
+            push(@implContent, "    UNUSED_PARAM(vm);\n");
+            push(@implContent, "    ${className}Prototype* thisObject = jsCast<${className}Prototype*>(object);\n");
+
+            if ($numConstants eq 0 && $numFunctions eq 0 && $numPrototypeAttributes eq 0) {
+                push(@implContent, "    return Base::getOwnPropertySlot(thisObject, exec, propertyName, slot);\n");        
+            } elsif ($numConstants eq 0 && $numPrototypeAttributes eq 0) {
+                push(@implContent, "    return getStaticFunctionSlot<JSObject>(exec, " . prototypeHashTableAccessor($interface->extendedAttributes->{"JSNoStaticTables"}, $className) . ", thisObject, propertyName, slot);\n");
+            } elsif ($numFunctions eq 0 && $numPrototypeAttributes eq 0) {
+                push(@implContent, "    return getStaticValueSlot<${className}Prototype, JSObject>(exec, " . prototypeHashTableAccessor($interface->extendedAttributes->{"JSNoStaticTables"}, $className) . ", thisObject, propertyName, slot);\n");
+            } else {
+                push(@implContent, "    return getStaticPropertySlot<${className}Prototype, JSObject>(exec, " . prototypeHashTableAccessor($interface->extendedAttributes->{"JSNoStaticTables"}, $className) . ", thisObject, propertyName, slot);\n");
+            }
+            push(@implContent, "}\n\n");
+        } elsif ($numConstants > 0 || $numFunctions > 0 || $numPrototypeAttributes > 0) {
+            push(@implContent, "void ${className}Prototype::finishCreation(VM& vm)\n");
+            push(@implContent, "{\n");
+            push(@implContent, "    Base::finishCreation(vm);\n");
+            push(@implContent, "    reifyStaticProperties(vm, ${className}PrototypeTableValues, *this);\n");
+            push(@implContent, "}\n\n");
         } else {
-            push(@implContent, "    return getStaticPropertySlot<${className}Prototype, JSObject>(exec, " . prototypeHashTableAccessor($interface->extendedAttributes->{"JSNoStaticTables"}, $className) . ", thisObject, propertyName, slot);\n");
+            push(@implContent, "void ${className}Prototype::finishCreation(VM& vm)\n");
+            push(@implContent, "{\n");
+            push(@implContent, "    Base::finishCreation(vm);\n");
+            push(@implContent, "}\n\n");
         }
-        push(@implContent, "}\n\n");
     }
 
     if ($interface->extendedAttributes->{"JSCustomNamedGetterOnPrototype"}) {
@@ -2107,7 +2129,7 @@ sub GenerateImplementation
                 } else {
                     push(@implContent, "        unsigned attributes = DontDelete | ReadOnly;\n");
                 }
-                push(@implContent, "        slot.setCustomIndex(thisObject, attributes, index, thisObject->indexGetter);\n");
+                push(@implContent, "        slot.setValue(thisObject, attributes, " . GetIndexedGetterExpression($indexedGetterFunction) . ");\n");
                 push(@implContent, "        return true;\n");
                 push(@implContent, "    }\n");
             }
@@ -2889,17 +2911,9 @@ sub GenerateImplementation
     }
 
     if ($indexedGetterFunction) {
-        push(@implContent, "\nEncodedJSValue ${className}::indexGetter(ExecState* exec, JSObject* slotBase, EncodedJSValue, unsigned index)\n");
-        push(@implContent, "{\n");
-        push(@implContent, "    ${className}* thisObj = jsCast<$className*>(slotBase);\n");
-        push(@implContent, "    ASSERT_GC_OBJECT_INHERITS(thisObj, info());\n");
         if ($indexedGetterFunction->signature->type eq "DOMString") {
             $implIncludes{"URL.h"} = 1;
-            push(@implContent, "    return JSValue::encode(jsStringOrUndefined(exec, thisObj->impl().item(index)));\n");
-        } else {
-            push(@implContent, "    return JSValue::encode(toJS(exec, thisObj->globalObject(), thisObj->impl().item(index)));\n");
         }
-        push(@implContent, "}\n\n");
         if ($interfaceName =~ /^HTML\w*Collection$/ or $interfaceName eq "RadioNodeList") {
             $implIncludes{"JSNode.h"} = 1;
             $implIncludes{"Node.h"} = 1;
@@ -4036,6 +4050,56 @@ sub ceilingToPowerOf2
 }
 
 # Internal Helper
+sub GenerateHashTableValueArray
+{
+    my $keys = shift;
+    my $specials = shift;
+    my $value1 = shift;
+    my $value2 = shift;
+    my $conditionals = shift;
+    my $nameEntries = shift;
+
+    my $packedSize = scalar @{$keys};
+    push(@implContent, "\nstatic const HashTableValue $nameEntries\[\] =\n\{\n");
+
+    my $hasSetter = "false";
+
+    my $i = 0;
+    foreach my $key (@{$keys}) {
+        my $conditional;
+        my $firstTargetType;
+        my $secondTargetType = "";
+
+        if ($conditionals) {
+            $conditional = $conditionals->{$key};
+        }
+        if ($conditional) {
+            my $conditionalString = $codeGenerator->GenerateConditionalStringFromAttributeValue($conditional);
+            push(@implContent, "#if ${conditionalString}\n");
+        }
+        
+        if ("@$specials[$i]" =~ m/Function/) {
+            $firstTargetType = "static_cast<NativeFunction>";
+        } else {
+            $firstTargetType = "static_cast<PropertySlot::GetValueFunc>";
+            $secondTargetType = "static_cast<PutPropertySlot::PutValueFunc>";
+            $hasSetter = "true";
+        }
+        push(@implContent, "    { \"$key\", @$specials[$i], NoIntrinsic, (intptr_t)" . $firstTargetType . "(@$value1[$i]), (intptr_t) " . $secondTargetType . "(@$value2[$i]) },\n");
+        if ($conditional) {
+            push(@implContent, "#else\n") ;
+            push(@implContent, "    { 0, 0, NoIntrinsic, 0, 0 },\n");
+            push(@implContent, "#endif\n") ;
+        }
+        ++$i;
+    }
+
+    push(@implContent, "    { 0, 0, NoIntrinsic, 0, 0 }\n") if (!$packedSize);
+    push(@implContent, "};\n\n");
+
+    return $hasSetter;
+}
+
 sub GenerateHashTable
 {
     my $object = shift;
@@ -4047,6 +4111,34 @@ sub GenerateHashTable
     my $value1 = shift;
     my $value2 = shift;
     my $conditionals = shift;
+    my $justGenerateValueArray = shift;
+
+    my $nameEntries = "${name}Values";
+    $nameEntries =~ s/:/_/g;
+    my $nameIndex = "${name}Index";
+    $nameIndex =~ s/:/_/g;
+
+    if (($name =~ /Prototype/) or ($name =~ /Constructor/)) {
+        my $type = $name;
+        my $implClass;
+
+        if ($name =~ /Prototype/) {
+            $type =~ s/Prototype.*//;
+            $implClass = $type; $implClass =~ s/Wrapper$//;
+            push(@implContent, "/* Hash table for prototype */\n");
+        } else {
+            $type =~ s/Constructor.*//;
+            $implClass = $type; $implClass =~ s/Constructor$//;
+            push(@implContent, "/* Hash table for constructor */\n");
+        }
+    } else {
+        push(@implContent, "/* Hash table */\n");
+    }
+
+    if ($justGenerateValueArray) {
+        GenerateHashTableValueArray($keys, $specials, $value1, $value2, $conditionals, $nameEntries) if $size;
+        return;
+    }
 
     # Generate size data for compact' size hash table
 
@@ -4082,30 +4174,6 @@ sub GenerateHashTable
         $maxDepth = $depth if ($depth > $maxDepth);
     }
 
-    # Start outputing the hashtables
-    my $nameEntries = "${name}Values";
-    $nameEntries =~ s/:/_/g;
-    my $nameIndex = "${name}Index";
-    $nameIndex =~ s/:/_/g;
-    my $hasSetter = "false";
-
-    if (($name =~ /Prototype/) or ($name =~ /Constructor/)) {
-        my $type = $name;
-        my $implClass;
-
-        if ($name =~ /Prototype/) {
-            $type =~ s/Prototype.*//;
-            $implClass = $type; $implClass =~ s/Wrapper$//;
-            push(@implContent, "/* Hash table for prototype */\n");
-        } else {
-            $type =~ s/Constructor.*//;
-            $implClass = $type; $implClass =~ s/Constructor$//;
-            push(@implContent, "/* Hash table for constructor */\n");
-        }
-    } else {
-        push(@implContent, "/* Hash table */\n");
-    }
-
     push(@implContent, "\nstatic const struct CompactHashIndex ${nameIndex}\[$compactSize\] = {\n");
     for (my $i = 0; $i < $compactSize; $i++) {
         my $T = -1;
@@ -4117,40 +4185,9 @@ sub GenerateHashTable
     push(@implContent, "};\n\n");
 
     # Dump the hash table
+    my $hasSetter = GenerateHashTableValueArray($keys, $specials, $value1, $value2, $conditionals, $nameEntries);
     my $packedSize = scalar @{$keys};
-    push(@implContent, "\nstatic const HashTableValue $nameEntries\[\] =\n\{\n");
-    $i = 0;
-    foreach my $key (@{$keys}) {
-        my $conditional;
-        my $firstTargetType;
-        my $secondTargetType = "";
 
-        if ($conditionals) {
-            $conditional = $conditionals->{$key};
-        }
-        if ($conditional) {
-            my $conditionalString = $codeGenerator->GenerateConditionalStringFromAttributeValue($conditional);
-            push(@implContent, "#if ${conditionalString}\n");
-        }
-        
-        if ("@$specials[$i]" =~ m/Function/) {
-            $firstTargetType = "static_cast<NativeFunction>";
-        } else {
-            $firstTargetType = "static_cast<PropertySlot::GetValueFunc>";
-            $secondTargetType = "static_cast<PutPropertySlot::PutValueFunc>";
-            $hasSetter = "true";
-        }
-        push(@implContent, "    { \"$key\", @$specials[$i], NoIntrinsic, (intptr_t)" . $firstTargetType . "(@$value1[$i]), (intptr_t) " . $secondTargetType . "(@$value2[$i]) },\n");
-        if ($conditional) {
-            push(@implContent, "#else\n") ;
-            push(@implContent, "    { 0, 0, NoIntrinsic, 0, 0 },\n");
-            push(@implContent, "#endif\n") ;
-        }
-        ++$i;
-    }
-
-    push(@implContent, "    { 0, 0, NoIntrinsic, 0, 0 }\n") if (!$packedSize);
-    push(@implContent, "};\n\n");
     my $compactSizeMask = $numEntries - 1;
     push(@implContent, "static const HashTable $name = { $packedSize, $compactSizeMask, $hasSetter, $nameEntries, 0, $nameIndex };\n");
 }

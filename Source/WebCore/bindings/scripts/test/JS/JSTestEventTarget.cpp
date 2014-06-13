@@ -115,10 +115,10 @@ JSObject* JSTestEventTargetPrototype::self(VM& vm, JSGlobalObject* globalObject)
     return getDOMPrototype<JSTestEventTarget>(vm, globalObject);
 }
 
-bool JSTestEventTargetPrototype::getOwnPropertySlot(JSObject* object, ExecState* exec, PropertyName propertyName, PropertySlot& slot)
+void JSTestEventTargetPrototype::finishCreation(VM& vm)
 {
-    JSTestEventTargetPrototype* thisObject = jsCast<JSTestEventTargetPrototype*>(object);
-    return getStaticFunctionSlot<JSObject>(exec, JSTestEventTargetPrototypeTable, thisObject, propertyName, slot);
+    Base::finishCreation(vm);
+    reifyStaticProperties(vm, JSTestEventTargetPrototypeTableValues, *this);
 }
 
 const ClassInfo JSTestEventTarget::s_info = { "TestEventTarget", &Base::s_info, &JSTestEventTargetTable, 0 , CREATE_METHOD_TABLE(JSTestEventTarget) };
@@ -157,7 +157,7 @@ bool JSTestEventTarget::getOwnPropertySlot(JSObject* object, ExecState* exec, Pr
     unsigned index = propertyName.asIndex();
     if (index != PropertyName::NotAnIndex && index < thisObject->impl().length()) {
         unsigned attributes = DontDelete | ReadOnly;
-        slot.setCustomIndex(thisObject, attributes, index, indexGetter);
+        slot.setValue(thisObject, attributes, toJS(exec, thisObject->globalObject(), thisObject->impl().item(index)));
         return true;
     }
     if (canGetItemsForName(exec, &thisObject->impl(), propertyName)) {
@@ -173,7 +173,7 @@ bool JSTestEventTarget::getOwnPropertySlotByIndex(JSObject* object, ExecState* e
     ASSERT_GC_OBJECT_INHERITS(thisObject, info());
     if (index < thisObject->impl().length()) {
         unsigned attributes = DontDelete | ReadOnly;
-        slot.setCustomIndex(thisObject, attributes, index, thisObject->indexGetter);
+        slot.setValue(thisObject, attributes, toJS(exec, thisObject->globalObject(), thisObject->impl().item(index)));
         return true;
     }
     PropertyName propertyName = Identifier::from(exec, index);
@@ -285,14 +285,6 @@ void JSTestEventTarget::visitChildren(JSCell* cell, SlotVisitor& visitor)
     ASSERT(thisObject->structure()->typeInfo().overridesVisitChildren());
     Base::visitChildren(thisObject, visitor);
     thisObject->impl().visitJSEventListeners(visitor);
-}
-
-
-EncodedJSValue JSTestEventTarget::indexGetter(ExecState* exec, JSObject* slotBase, EncodedJSValue, unsigned index)
-{
-    JSTestEventTarget* thisObj = jsCast<JSTestEventTarget*>(slotBase);
-    ASSERT_GC_OBJECT_INHERITS(thisObj, info());
-    return JSValue::encode(toJS(exec, thisObj->globalObject(), thisObj->impl().item(index)));
 }
 
 bool JSTestEventTargetOwner::isReachableFromOpaqueRoots(JSC::Handle<JSC::Unknown> handle, void*, SlotVisitor& visitor)

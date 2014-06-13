@@ -66,6 +66,7 @@ public:
     RetainPtr<WKNavigation> createBackForwardNavigation(uint64_t navigationID, const WebBackForwardListItem&);
     RetainPtr<WKNavigation> createLoadRequestNavigation(uint64_t navigationID, NSURLRequest *);
     RetainPtr<WKNavigation> createReloadNavigation(uint64_t navigationID);
+    RetainPtr<WKNavigation> createLoadDataNavigation(uint64_t navigationID);
 
     // Called by the history client.
     void didNavigateWithNavigationData(const WebKit::WebNavigationDataStore&);
@@ -126,6 +127,10 @@ private:
     virtual void didChangeHasOnlySecureContent() override;
     virtual void willChangeEstimatedProgress() override;
     virtual void didChangeEstimatedProgress() override;
+    virtual void willChangeCanGoBack() override;
+    virtual void didChangeCanGoBack() override;
+    virtual void willChangeCanGoForward() override;
+    virtual void didChangeCanGoForward() override;
 
     WKWebView *m_webView;
     WeakObjCPtr<id <WKNavigationDelegate> > m_navigationDelegate;
@@ -144,6 +149,7 @@ private:
         bool webViewDidFailNavigationWithError : 1;
 
         bool webViewRenderingProgressDidChange : 1;
+        bool webViewWillSendRequestForAuthenticationChallenge : 1;
         bool webViewCanAuthenticateAgainstProtectionSpace : 1;
         bool webViewDidReceiveAuthenticationChallenge : 1;
         bool webViewWebProcessDidCrash : 1;

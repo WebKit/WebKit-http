@@ -132,6 +132,7 @@
 
 #if PLATFORM(COCOA)
 #include "ViewSnapshotStore.h"
+#include <WebCore/RunLoopObserver.h>
 #endif
 
 #if PLATFORM(IOS)
@@ -364,6 +365,9 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
     , m_waitingForDidUpdateViewState(false)
     , m_scrollPinningBehavior(DoNotPin)
     , m_navigationID(0)
+    , m_configurationPreferenceValues(configuration.preferenceValues)
+    , m_potentiallyChangedViewStateFlags(ViewState::NoFlags)
+    , m_viewStateChangeWantsReply(WantsReplyOrNot::DoesNotWantReply)
 {
     if (m_process->state() == WebProcessProxy::State::Running) {
         if (m_userContentController)
@@ -408,6 +412,13 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
     IPC::Connection* connection = m_process->state() == WebProcessProxy::State::Running ? m_process->connection() : nullptr;
     m_process->context().storageManager().createSessionStorageNamespace(m_pageID, connection, std::numeric_limits<unsigned>::max());
     setSession(*configuration.session);
+
+#if PLATFORM(COCOA)
+    const CFIndex viewStateChangeRunLoopOrder = (CFIndex)RunLoopObserver::WellKnownRunLoopOrders::CoreAnimationCommit - 1;
+    m_viewStateChangeDispatcher = RunLoopObserver::create(viewStateChangeRunLoopOrder, [this]() {
+        this->dispatchViewStateChange();
+    });
+#endif
 }
 
 WebPageProxy::~WebPageProxy()
@@ -642,7 +653,7 @@ void WebPageProxy::close()
 
     m_process->disconnectFramesFromPage(this);
 
-    resetState();
+    resetState(ResetStateReason::PageInvalidated);
 
     m_loaderClient = std::make_unique<API::LoaderClient>();
     m_policyClient = std::make_unique<API::PolicyClient>();
@@ -749,14 +760,23 @@ void WebPageProxy::loadData(API::Data* data, const String& MIMEType, const Strin
     m_process->responsivenessTimer()->start();
 }
 
-void WebPageProxy::loadHTMLString(const String& htmlString, const String& baseURL, API::Object* userData)
+uint64_t WebPageProxy::loadHTMLString(const String& htmlString, const String& baseURL, API::Object* userData)
 {
+    uint64_t navigationID = generateNavigationID();
+
+    auto transaction = m_pageLoadState.transaction();
+
+    String pendingAPIRequestURL = baseURL.isEmpty() ? baseURL : ASCIILiteral("about:blank");
+    m_pageLoadState.setPendingAPIRequestURL(transaction, pendingAPIRequestURL);
+
     if (!isValid())
         reattachToWebProcess();
 
     m_process->assumeReadAccessToBaseURL(baseURL);
-    m_process->send(Messages::WebPage::LoadHTMLString(htmlString, baseURL, WebContextUserMessageEncoder(userData, process())), m_pageID);
+    m_process->send(Messages::WebPage::LoadHTMLString(navigationID, htmlString, baseURL, WebContextUserMessageEncoder(userData, process())), m_pageID);
     m_process->responsivenessTimer()->start();
+
+    return navigationID;
 }
 
 void WebPageProxy::loadAlternateHTMLString(const String& htmlString, const String& baseURL, const String& unreachableURL, API::Object* userData)
@@ -915,6 +935,11 @@ void WebPageProxy::tryRestoreScrollPosition()
 void WebPageProxy::didChangeBackForwardList(WebBackForwardListItem* added, Vector<RefPtr<WebBackForwardListItem>> removed)
 {
     m_loaderClient->didChangeBackForwardList(this, added, std::move(removed));
+
+    auto transaction = m_pageLoadState.transaction();
+
+    m_pageLoadState.setCanGoBack(transaction, m_backForwardList->backItem());
+    m_pageLoadState.setCanGoForward(transaction, m_backForwardList->forwardItem());
 
 #if PLATFORM(MAC)
     m_pageClient.clearCustomSwipeViews();
@@ -1077,25 +1102,41 @@ void WebPageProxy::updateViewState(ViewState::Flags flagsToUpdate)
 
 void WebPageProxy::viewStateDidChange(ViewState::Flags mayHaveChanged, WantsReplyOrNot wantsReply)
 {
+    m_potentiallyChangedViewStateFlags |= mayHaveChanged;
+    m_viewStateChangeWantsReply = (wantsReply == WantsReplyOrNot::DoesWantReply || m_viewStateChangeWantsReply == WantsReplyOrNot::DoesWantReply) ? WantsReplyOrNot::DoesWantReply : WantsReplyOrNot::DoesNotWantReply;
+
+#if PLATFORM(COCOA)
+    m_viewStateChangeDispatcher->schedule();
+#else
+    dispatchViewStateChange();
+#endif
+}
+
+void WebPageProxy::dispatchViewStateChange()
+{
+#if PLATFORM(COCOA)
+    m_viewStateChangeDispatcher->invalidate();
+#endif
+
     if (!isValid())
         return;
 
     // If the visibility state may have changed, then so may the visually idle & occluded agnostic state.
-    if (mayHaveChanged & ViewState::IsVisible)
-        mayHaveChanged |= ViewState::IsVisibleOrOccluded | ViewState::IsVisuallyIdle;
+    if (m_potentiallyChangedViewStateFlags & ViewState::IsVisible)
+        m_potentiallyChangedViewStateFlags |= ViewState::IsVisibleOrOccluded | ViewState::IsVisuallyIdle;
 
     // Record the prior view state, update the flags that may have changed,
     // and check which flags have actually changed.
     ViewState::Flags previousViewState = m_viewState;
-    updateViewState(mayHaveChanged);
+    updateViewState(m_potentiallyChangedViewStateFlags);
     ViewState::Flags changed = m_viewState ^ previousViewState;
 
     if (changed)
-        m_process->send(Messages::WebPage::SetViewState(m_viewState, wantsReply == WantsReplyOrNot::DoesWantReply), m_pageID);
-    
+        m_process->send(Messages::WebPage::SetViewState(m_viewState, m_viewStateChangeWantsReply == WantsReplyOrNot::DoesWantReply), m_pageID);
+
     // This must happen after the SetViewState message is sent, to ensure the page visibility event can fire.
     updateActivityToken();
-    
+
     if (changed & ViewState::IsVisuallyIdle)
         m_process->pageSuppressibilityChanged(this);
 
@@ -1105,7 +1146,7 @@ void WebPageProxy::viewStateDidChange(ViewState::Flags mayHaveChanged, WantsRepl
     if ((changed & ViewState::IsVisible) && !isViewVisible())
         m_process->responsivenessTimer()->stop();
 
-    if ((mayHaveChanged & ViewState::IsInWindow) && (m_viewState & ViewState::IsInWindow)) {
+    if ((m_potentiallyChangedViewStateFlags & ViewState::IsInWindow) && (m_viewState & ViewState::IsInWindow)) {
         LayerHostingMode layerHostingMode = m_pageClient.viewLayerHostingMode();
         if (m_layerHostingMode != layerHostingMode) {
             m_layerHostingMode = layerHostingMode;
@@ -1113,7 +1154,7 @@ void WebPageProxy::viewStateDidChange(ViewState::Flags mayHaveChanged, WantsRepl
         }
     }
 
-    if ((mayHaveChanged & ViewState::IsInWindow) && !(m_viewState & ViewState::IsInWindow)) {
+    if ((m_potentiallyChangedViewStateFlags & ViewState::IsInWindow) && !(m_viewState & ViewState::IsInWindow)) {
 #if ENABLE(INPUT_TYPE_COLOR_POPOVER)
         // When leaving the current page, close the popover color well.
         if (m_colorPicker)
@@ -1127,8 +1168,11 @@ void WebPageProxy::viewStateDidChange(ViewState::Flags mayHaveChanged, WantsRepl
     }
 
     updateBackingStoreDiscardableState();
+
+    m_potentiallyChangedViewStateFlags = ViewState::NoFlags;
+    m_viewStateChangeWantsReply = WantsReplyOrNot::DoesNotWantReply;
 }
-    
+
 void WebPageProxy::updateActivityToken()
 {
 #if PLATFORM(IOS)
@@ -1482,6 +1526,18 @@ void WebPageProxy::handleKeyboardEvent(const NativeWebKeyboardEvent& event)
 uint64_t WebPageProxy::generateNavigationID()
 {
     return ++m_navigationID;
+}
+
+WebPreferencesStore WebPageProxy::preferencesStore() const
+{
+    if (m_configurationPreferenceValues.isEmpty())
+        return m_preferences->store();
+
+    WebPreferencesStore store = m_preferences->store();
+    for (const auto& preference : m_configurationPreferenceValues)
+        store.m_values.set(preference.key, preference.value);
+
+    return store;
 }
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
@@ -2308,7 +2364,7 @@ void WebPageProxy::preferencesDidChange()
     // even if nothing changed in UI process, so that overrides get removed.
 
     // Preferences need to be updated during synchronous printing to make "print backgrounds" preference work when toggled from a print dialog checkbox.
-    m_process->send(Messages::WebPage::PreferencesDidChange(m_preferences->store()), m_pageID, m_isPerformingDOMPrintOperation ? IPC::DispatchMessageEvenWhenWaitingForSyncReply : 0);
+    m_process->send(Messages::WebPage::PreferencesDidChange(preferencesStore()), m_pageID, m_isPerformingDOMPrintOperation ? IPC::DispatchMessageEvenWhenWaitingForSyncReply : 0);
 }
 
 void WebPageProxy::didCreateMainFrame(uint64_t frameID)
@@ -4144,7 +4200,7 @@ void WebPageProxy::processDidCrash()
     m_loaderClient->processDidCrash(this);
 }
 
-void WebPageProxy::resetState()
+void WebPageProxy::resetState(ResetStateReason resetStateReason)
 {
     m_mainFrame = nullptr;
     m_drawingArea = nullptr;
@@ -4211,12 +4267,23 @@ void WebPageProxy::resetState()
     m_dynamicViewportSizeUpdateInProgress = false;
 #endif
 
+    CallbackBase::Error error;
+    switch (resetStateReason) {
+    case ResetStateReason::PageInvalidated:
+        error = CallbackBase::Error::OwnerWasInvalidated;
+        break;
+
+    case ResetStateReason::WebProcessExited:
+        error = CallbackBase::Error::ProcessExited;
+        break;
+    }
+
     invalidateCallbackMap(m_voidCallbacks);
     invalidateCallbackMap(m_dataCallbacks);
     invalidateCallbackMap(m_imageCallbacks);
     invalidateCallbackMap(m_stringCallbacks);
     m_loadDependentStringCallbackIDs.clear();
-    invalidateCallbackMap(m_scriptValueCallbacks);
+    invalidateCallbackMap(m_scriptValueCallbacks, error);
     invalidateCallbackMap(m_computedPagesCallbacks);
     invalidateCallbackMap(m_validateCommandCallbacks);
     invalidateCallbackMap(m_unsignedCallbacks);
@@ -4274,7 +4341,7 @@ void WebPageProxy::resetStateAfterProcessExited()
         m_loadStateAtProcessExit = m_mainFrame->frameLoadState().m_state;
     }
 
-    resetState();
+    resetState(ResetStateReason::WebProcessExited);
 
     m_pageClient.processDidExit();
 
@@ -4314,7 +4381,7 @@ WebPageCreationParameters WebPageProxy::creationParameters()
     parameters.viewSize = m_pageClient.viewSize();
     parameters.viewState = m_viewState;
     parameters.drawingAreaType = m_drawingArea->type();
-    parameters.store = m_preferences->store();
+    parameters.store = preferencesStore();
     parameters.pageGroupData = m_pageGroup->data();
     parameters.drawsBackground = m_drawsBackground;
     parameters.drawsTransparentBackground = m_drawsTransparentBackground;

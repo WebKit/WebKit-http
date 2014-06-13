@@ -94,6 +94,8 @@ public:
     bool handlesPageScaleFactor() const;
 
     void pageScaleFactorDidChange();
+    void topContentInsetDidChange();
+
     void webPageDestroyed();
 
     bool handleEditingCommand(const String& commandName, const String& argument);
@@ -236,6 +238,7 @@ private:
     bool m_isWaitingUntilMediaCanStart;
     bool m_isBeingDestroyed;
     bool m_pluginProcessHasCrashed;
+    bool m_didPlugInStartOffScreen;
 
     // Pending URLRequests that the plug-in has made.
     Deque<RefPtr<URLRequest>> m_pendingURLRequests;

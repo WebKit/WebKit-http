@@ -89,6 +89,13 @@ WK_CLASS_AVAILABLE(10_10, 8_0)
  */
 - (WKNavigation *)loadRequest:(NSURLRequest *)request;
 
+/*! @abstract Sets the webpage contents and base URL.
+ @param string The string to use as the contents of the webpage.
+ @param baseURL A URL that is used to resolve relative URLs within the document.
+ @result A new navigation.
+ */
+- (WKNavigation *)loadHTMLString:(NSString *)string baseURL:(NSURL *)baseURL;
+
 /*! @abstract Navigates to an item from the back-forward list and sets it
  as the current item.
  @param item The item to which to navigate. Must be one of the items in the
@@ -139,12 +146,16 @@ WK_CLASS_AVAILABLE(10_10, 8_0)
 
 /*! @abstract A Boolean value indicating whether there is a back item in
  the back-forward list that can be navigated to.
+ @discussion @link WKWebView @/link is key-value observing (KVO) compliant
+ for this property.
  @seealso backForwardList.
  */
 @property (nonatomic, readonly) BOOL canGoBack;
 
 /*! @abstract A Boolean value indicating whether there is a forward item in
  the back-forward list that can be navigated to.
+ @discussion @link WKWebView @/link is key-value observing (KVO) compliant
+ for this property.
  @seealso backForwardList.
  */
 @property (nonatomic, readonly) BOOL canGoForward;
@@ -175,6 +186,13 @@ WK_CLASS_AVAILABLE(10_10, 8_0)
 /*! @abstract Stops loading all resources on the current page.
  */
 - (void)stopLoading;
+
+/* @abstract Evaluates the given JavaScript string.
+ @param javaScriptString The JavaScript string to evaluate.
+ @param completionHandler A block to invoke when script evaluation completes or fails.
+ @discussion The completionHandler is passed the result of the script evaluation or an error.
+*/
+- (void)evaluateJavaScript:(NSString *)javaScriptString completionHandler:(void (^)(id, NSError *))completionHandler;
 
 /*! @abstract A Boolean value indicating whether horizontal swipe gestures
  will trigger back-forward list navigations.

@@ -40,6 +40,7 @@
 #import "WKBackForwardListInternal.h"
 #import "WKBackForwardListItemInternal.h"
 #import "WKBrowsingContextHandleInternal.h"
+#import "WKErrorInternal.h"
 #import "WKHistoryDelegatePrivate.h"
 #import "WKNSData.h"
 #import "WKNSURLExtras.h"
@@ -59,23 +60,28 @@
 #import "WebKitSystemInterface.h"
 #import "WebPageGroup.h"
 #import "WebPageProxy.h"
+#import "WebPreferencesKeys.h"
 #import "WebProcessProxy.h"
+#import "WebSerializedScriptValue.h"
 #import "_WKFindDelegate.h"
 #import "_WKFormDelegate.h"
 #import "_WKRemoteObjectRegistryInternal.h"
 #import "_WKVisitedLinkProviderInternal.h"
 #import "_WKWebsiteDataStoreInternal.h"
+#import <JavaScriptCore/JSContext.h>
+#import <JavaScriptCore/JSValue.h>
 #import <wtf/HashMap.h>
 #import <wtf/NeverDestroyed.h>
 #import <wtf/RetainPtr.h>
 
 #if PLATFORM(IOS)
+#import "_WKFrameHandleInternal.h"
+#import "_WKWebViewPrintFormatter.h"
 #import "PrintInfo.h"
 #import "ProcessThrottler.h"
 #import "WKPDFView.h"
 #import "WKScrollView.h"
 #import "WKWebViewContentProviderRegistry.h"
-#import "WKWebViewPrintFormatter.h"
 #import "WebPageMessages.h"
 #import <CoreGraphics/CGFloat.h>
 #import <CoreGraphics/CGPDFDocumentPrivate.h>
@@ -244,6 +250,14 @@ static int32_t deviceOrientation()
         webPageConfiguration.pageGroup = pageGroup.get();
     }
 
+    webPageConfiguration.preferenceValues.set(WebKit::WebPreferencesKey::suppressesIncrementalRenderingKey(), WebKit::WebPreferencesStore::Value(!![_configuration suppressesIncrementalRendering]));
+
+#if PLATFORM(IOS)
+    webPageConfiguration.preferenceValues.set(WebKit::WebPreferencesKey::mediaPlaybackAllowsAirPlayKey(), WebKit::WebPreferencesStore::Value(!![_configuration allowsInlineMediaPlayback]));
+    webPageConfiguration.preferenceValues.set(WebKit::WebPreferencesKey::mediaPlaybackRequiresUserGestureKey(), WebKit::WebPreferencesStore::Value(!![_configuration mediaPlaybackRequiresUserAction]));
+    webPageConfiguration.preferenceValues.set(WebKit::WebPreferencesKey::mediaPlaybackAllowsAirPlayKey(), WebKit::WebPreferencesStore::Value(!![_configuration mediaPlaybackAllowsAirPlay]));
+#endif
+
 #if PLATFORM(IOS)
     _scrollView = adoptNS([[WKScrollView alloc] initWithFrame:bounds]);
     [_scrollView setInternalDelegate:self];
@@ -357,6 +371,14 @@ static int32_t deviceOrientation()
     return [navigation.leakRef() autorelease];
 }
 
+- (WKNavigation *)loadHTMLString:(NSString *)string baseURL:(NSURL *)baseURL
+{
+    uint64_t navigationID = _page->loadHTMLString(string, baseURL.absoluteString);
+    auto navigation = _navigationState->createLoadDataNavigation(navigationID);
+
+    return [navigation.leakRef() autorelease];
+}
+
 - (WKNavigation *)goToBackForwardListItem:(WKBackForwardListItem *)item
 {
     uint64_t navigationID = _page->goToBackForwardItem(&item._item);
@@ -391,16 +413,14 @@ static int32_t deviceOrientation()
     return _page->pageLoadState().hasOnlySecureContent();
 }
 
-// FIXME: This should be KVO compliant.
 - (BOOL)canGoBack
 {
-    return !!_page->backForwardList().backItem();
+    return _page->pageLoadState().canGoBack();
 }
 
-// FIXME: This should be KVO compliant.
 - (BOOL)canGoForward
 {
-    return !!_page->backForwardList().forwardItem();
+    return _page->pageLoadState().canGoForward();
 }
 
 - (WKNavigation *)goBack
@@ -448,6 +468,63 @@ static int32_t deviceOrientation()
 - (void)stopLoading
 {
     _page->stopLoading();
+}
+
+static WKErrorCode callbackErrorCode(WebKit::CallbackBase::Error error)
+{
+    switch (error) {
+    case WebKit::CallbackBase::Error::None:
+        ASSERT_NOT_REACHED();
+        return WKErrorUnknown;
+
+    case WebKit::CallbackBase::Error::Unknown:
+        return WKErrorUnknown;
+
+    case WebKit::CallbackBase::Error::ProcessExited:
+        return WKErrorWebContentProcessTerminated;
+
+    case WebKit::CallbackBase::Error::OwnerWasInvalidated:
+        return WKErrorWebViewInvalidated;
+    }
+}
+
+- (void)evaluateJavaScript:(NSString *)javaScriptString completionHandler:(void (^)(id, NSError *))completionHandler
+{
+    auto handler = adoptNS([completionHandler copy]);
+
+    _page->runJavaScriptInMainFrame(javaScriptString, WebKit::ScriptValueCallback::create([handler](WebKit::WebSerializedScriptValue* serializedScriptValue, WebKit::ScriptValueCallback::Error errorCode) {
+        if (!handler)
+            return;
+
+        auto completionHandler = (void (^)(id, NSError *))handler.get();
+
+        if (errorCode != WebKit::ScriptValueCallback::Error::None) {
+            auto error = createNSError(callbackErrorCode(errorCode));
+            if (errorCode == WebKit::ScriptValueCallback::Error::OwnerWasInvalidated) {
+                // The OwnerWasInvalidated callback is synchronous. We don't want to call the block from within it
+                // because that can trigger re-entrancy bugs in WebKit.
+                // FIXME: It would be even better if GenericCallback did this for us.
+                dispatch_async(dispatch_get_main_queue(), [completionHandler, error] {
+                    completionHandler(nil, error.get());
+                });
+                return;
+            }
+
+            completionHandler(nil, error.get());
+            return;
+        }
+
+        if (!serializedScriptValue) {
+            completionHandler(nil, createNSError(WKErrorJavaScriptExceptionOccurred).get());
+            return;
+        }
+
+        auto context = adoptNS([[JSContext alloc] init]);
+        JSValueRef valueRef = serializedScriptValue->deserialize([context JSGlobalContextRef], 0);
+        JSValue *value = [JSValue valueWithJSValueRef:valueRef inContext:context.get()];
+
+        completionHandler([value toObject], nil);
+    }));
 }
 
 #pragma mark iOS-specific methods
@@ -991,7 +1068,7 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
 
     if (scrollView.pinchGestureRecognizer.state == UIGestureRecognizerStateBegan) {
         _page->willStartUserTriggeredZooming();
-        [_contentView willStartPanOrPinchGesture];
+        [_contentView scrollViewWillStartPanOrPinchGesture];
     }
     [_contentView willStartZoomOrScroll];
 }
@@ -1002,7 +1079,7 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
         return;
 
     if (scrollView.panGestureRecognizer.state == UIGestureRecognizerStateBegan)
-        [_contentView willStartPanOrPinchGesture];
+        [_contentView scrollViewWillStartPanOrPinchGesture];
     [_contentView willStartZoomOrScroll];
 }
 
@@ -1348,6 +1425,16 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
     _page->process().terminate();
 }
 
+- (void)_didRelaunchProcess
+{
+#if PLATFORM(IOS)
+    WebCore::FloatSize boundsSize(self.bounds.size);
+    _page->setViewportConfigurationMinimumLayoutSize(_overridesMinimumLayoutSize ? WebCore::FloatSize(_minimumLayoutSizeOverride) : boundsSize);
+    _page->setViewportConfigurationMinimumLayoutSizeForMinimalUI(_overridesMinimumLayoutSizeForMinimalUI ? WebCore::FloatSize(_minimumLayoutSizeOverrideForMinimalUI) : boundsSize);
+    _page->setMaximumUnobscuredSize(_overridesMaximumUnobscuredSize ? WebCore::FloatSize(_maximumUnobscuredSizeOverride) : boundsSize);
+#endif
+}
+
 - (NSData *)_sessionState
 {
     return [wrapper(*_page->sessionStateData(nullptr, nullptr).leakRef()) autorelease];
@@ -1426,7 +1513,7 @@ static inline WebCore::LayoutMilestones layoutMilestones(_WKRenderingProgressEve
 
 - (void)_runJavaScriptInMainFrame:(NSString *)scriptString
 {
-    _page->runJavaScriptInMainFrame(scriptString, WebKit::ScriptValueCallback::create([](bool, WebKit::WebSerializedScriptValue*){}));
+    [self evaluateJavaScript:scriptString completionHandler:^(id, NSError *) { }];
 }
 
 - (void)_getWebArchiveDataWithCompletionHandler:(void (^)(NSData *, NSError *))completionHandler
@@ -2009,6 +2096,13 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
     return _viewportMetaTagWidth;
 }
 
+- (_WKWebViewPrintFormatter *)_webViewPrintFormatter
+{
+    UIViewPrintFormatter *viewPrintFormatter = self.viewPrintFormatter;
+    ASSERT([viewPrintFormatter isKindOfClass:[_WKWebViewPrintFormatter class]]);
+    return (_WKWebViewPrintFormatter *)viewPrintFormatter;
+}
+
 #else
 
 #pragma mark - OS X-specific methods
@@ -2103,21 +2197,22 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
 #endif
 
 #if PLATFORM(IOS)
-@implementation WKWebView (WKWebViewPrintFormatter)
+@implementation WKWebView (_WKWebViewPrintFormatter)
 
 - (Class)_printFormatterClass
 {
-    return [WKWebViewPrintFormatter class];
+    return [_WKWebViewPrintFormatter class];
 }
 
-- (NSInteger)_computePageCountAndStartDrawingToPDFWithPrintInfo:(const WebKit::PrintInfo&)printInfo firstPage:(uint32_t)firstPage computedTotalScaleFactor:(double&)totalScaleFactor
+- (NSInteger)_computePageCountAndStartDrawingToPDFForFrame:(_WKFrameHandle *)frame printInfo:(const WebKit::PrintInfo&)printInfo firstPage:(uint32_t)firstPage computedTotalScaleFactor:(double&)totalScaleFactor
 {
     if ([self _isDisplayingPDF])
         return CGPDFDocumentGetNumberOfPages([(WKPDFView *)_customContentView pdfDocument]);
 
     _pageIsPrintingToPDF = YES;
     Vector<WebCore::IntRect> pageRects;
-    if (!_page->sendSync(Messages::WebPage::ComputePagesForPrintingAndStartDrawingToPDF(_page->mainFrame()->frameID(), printInfo, firstPage), Messages::WebPage::ComputePagesForPrintingAndStartDrawingToPDF::Reply(pageRects, totalScaleFactor)))
+    uint64_t frameID = frame ? frame._frameID : _page->mainFrame()->frameID();
+    if (!_page->sendSync(Messages::WebPage::ComputePagesForPrintingAndStartDrawingToPDF(frameID, printInfo, firstPage), Messages::WebPage::ComputePagesForPrintingAndStartDrawingToPDF::Reply(pageRects, totalScaleFactor)))
         return 0;
     return pageRects.size();
 }

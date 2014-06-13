@@ -27,8 +27,8 @@
 #define LayerFlushScheduler_h
 
 #include "LayerFlushSchedulerClient.h"
+#include "RunLoopObserver.h"
 #include <wtf/Noncopyable.h>
-#include <wtf/RetainPtr.h>
 
 namespace WebCore {
     
@@ -46,16 +46,16 @@ public:
 
     bool isSuspended() const { return m_isSuspended; }
 
+#if PLATFORM(COCOA)
+    virtual void layerFlushCallback();
+#endif
+
 private:
     bool m_isSuspended;
     LayerFlushSchedulerClient* m_client;
     
 #if PLATFORM(COCOA)
-    RetainPtr<CFRunLoopObserverRef> m_runLoopObserver;
-    static void runLoopObserverCallback(CFRunLoopObserverRef, CFRunLoopActivity, void* context);
-
-protected:
-    virtual void runLoopObserverCallback();
+    std::unique_ptr<RunLoopObserver> m_runLoopObserver;
 #endif
 };
 

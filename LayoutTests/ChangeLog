@@ -1,3 +1,660 @@
+2014-06-12  Andrzej Badowski  <a.badowski@samsung.com>
+
+        [EFL] Change expectations for three failing js/dom layout tests.
+        https://bugs.webkit.org/show_bug.cgi?id=133743
+
+        Unreviewed EFL gardening.
+
+        * platform/efl/js/dom/global-constructors-attributes-dedicated-worker-expected.txt:
+        * platform/efl/js/dom/global-constructors-attributes-expected.txt:
+        * platform/efl/js/dom/global-constructors-attributes-shared-worker-expected.txt:
+
+2014-06-12  Andrzej Badowski  <a.badowski@samsung.com>
+
+        [EFL] Change expectations for three failing layout tests.
+        https://bugs.webkit.org/show_bug.cgi?id=133738
+
+        Unreviewed EFL layout tests gardening.
+
+        * platform/efl/TestExpectations:
+
+2014-06-11  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        SVGGlyphToPathTranslator ASSERTs when encountering a missing glyph in an SVG font
+        https://bugs.webkit.org/show_bug.cgi?id=133528
+
+        Reviewed by Simon Fraser.
+
+        Make sure that no ASSERT occurs in this situation. In addition, make sure that the
+        whole element doesn't get skip:ink gaps. This will need to be updated when we
+        support SVG + non-SVG mixed runs.
+
+        * svg/custom/skip-underline-missing-glyph-expected.html: Added
+        * svg/custom/skip-underline-missing-glyph.html: Added
+
+2014-06-11  Alexey Proskuryakov  <ap@apple.com>
+
+        editing/selection/selection-in-iframe-removed-crash.html or selection-invalid-offset.html crashes intermittently
+        https://bugs.webkit.org/show_bug.cgi?id=111521
+        <rdar://problem/15159351>
+
+        Reviewed by Brady Eidson.
+
+        * platform/mac/TestExpectations: Removed expectations for the tests.
+
+2014-06-11  Zalan Bujtas  <zalan@apple.com>
+
+        Subpixel rendering: RenderBox's content clipping should clip on device pixel boundary.
+        https://bugs.webkit.org/show_bug.cgi?id=133767
+        <rdar://problem/17272365>
+
+        Reviewed by Simon Fraser.
+
+        Push RenderBox's content clipping to device pixel boundaries. Integral snapping makes
+        content cut off prematurely.
+
+        * fast/inline-block/hidpi-margin-top-with-subpixel-value-and-overflow-hidden-expected.html: Added.
+        * fast/inline-block/hidpi-margin-top-with-subpixel-value-and-overflow-hidden.html: Added.
+
+2014-06-11  David Kilzer  <ddkilzer@apple.com>
+
+        WindowFeatures arguments shoud ignore invalid characters in values
+        <http://webkit.org/b/133703>
+        <rdar://problem/17254118>
+
+        Reviewed by Andy Estes.
+
+        * fast/dom/Window/resources/window-property-invalid-characters-ignored.html: Added.
+        * fast/dom/Window/window-property-invalid-characters-ignored-expected.txt: Added.
+        * fast/dom/Window/window-property-invalid-characters-ignored.html: Added.
+
+2014-06-11  David Kilzer  <ddkilzer@apple.com>
+
+        Viewport arguments should ignore invalid characters in values
+        <http://webkit.org/b/133555>
+        <rdar://problem/17179650>
+
+        Reviewed by Daniel Bates.
+
+        * fast/viewport/viewport-warnings-7-expected.txt: Added.
+        * fast/viewport/viewport-warnings-7.html: Added.
+
+2014-06-11  David Kilzer  <ddkilzer@apple.com>
+
+        [iOS] Enable fast/viewport tests
+        <http://webkit.org/b/133754>
+
+        Reviewed by Andy Estes.
+
+        * platform/ios-sim/Skipped:
+        - Stop skipping fast/viewport tests.
+
+        * platform/ios-sim/fast/viewport/viewport-legacy-handheldfriendly-expected.txt: Added.
+        * platform/ios-sim/fast/viewport/viewport-legacy-mobileoptimized-2-expected.txt: Added.
+        * platform/ios-sim/fast/viewport/viewport-legacy-mobileoptimized-3-expected.txt: Added.
+        * platform/ios-sim/fast/viewport/viewport-legacy-mobileoptimized-expected.txt: Added.
+        * platform/ios-sim/fast/viewport/viewport-legacy-ordering-5-expected.txt: Added.
+        * platform/ios-sim/fast/viewport/viewport-legacy-ordering-6-expected.txt: Added.
+        * platform/ios-sim/fast/viewport/viewport-legacy-xhtmlmp-expected.txt: Added.
+        * platform/ios-sim/fast/viewport/viewport-legacy-xhtmlmp-remove-and-add-expected.txt: Added.
+        - iOS never supported these "legacy" viewport modes, so add
+          platform-specific results with current behavior.
+
+2014-06-11  Alexey Proskuryakov  <ap@apple.com>
+
+        inspector-protocol/debugger/breakpoint-action-detach.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=133761
+
+        * TestExpectations: Skipped it. Updated bug number for another inspector-protocol
+        test while at it.
+
+2014-06-11  Lorenzo Tilve  <ltilve@igalia.com>
+
+        [GTK] Unreviewed GTK gardening
+
+        Add missing GTK expectations file after test added at r169390, and removed specific
+        ones for tests now passing with default ones after r169403.
+
+        * platform/gtk/fast/dom/webtiming-document-open-expected.txt: Removed.
+        * platform/gtk/fast/dom/webtiming-navigate-within-document-expected.txt: Removed.
+        * platform/gtk/fast/multicol/pagination/nested-transforms-expected.txt: Added.
+
+2014-06-11  Rohit Kumar  <kumar.rohit@samsung.com>
+
+        [EFL] Updated expectations for accessibility/lists.html test
+        https://bugs.webkit.org/show_bug.cgi?id=132818
+
+        Reviewed by Mario Sanchez Prada.
+
+        * platform/efl-wk1/accessibility/lists-expected.txt:
+
+2014-06-10  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Japanese text in Google search is rendered too low and clipped
+        https://bugs.webkit.org/show_bug.cgi?id=133595
+
+        Reviewed by Simon Fraser.
+
+        This is a revert of r155324.
+
+        * fast/dom/HTMLInputElement/input-line-height-expected.txt: Removed.
+        * fast/dom/HTMLInputElement/input-line-height.html: Removed.
+        * fast/forms/placeholder-position-expected.txt:
+        * platform/mac/fast/forms/placeholder-position-expected.png:
+        * platform/mac/fast/forms/placeholder-position-expected.txt:
+        * platform/mac-mountainlion/fast/forms/placeholder-position-expected.txt:
+
+2014-06-10  Zalan Bujtas  <zalan@apple.com>
+
+        REGRESSION (r167937): Do not use effective zoom factor while resolving media query's min-, max-(device)width/height values.
+        https://bugs.webkit.org/show_bug.cgi?id=133681
+
+        Reviewed by Simon Fraser.
+
+        We lost the default multiplier(zoom) value of 1 with r167937 at template<typename T> T computeLength().
+        Now MediaQueryEvaluator takes the current page zoom factor into account while resolving min-, max- width values.
+
+        This patch explicitly sets the multiplier value to 1 to ensure zoom independent media query value resolving.
+
+        * fast/media/media-query-with-scaled-content-expected.html: Added.
+        * fast/media/media-query-with-scaled-content.html: Added.
+
+2014-06-10  Simon Fraser  <simon.fraser@apple.com>
+
+        https://bugs.webkit.org/show_bug.cgi?id=133694
+
+        Revert the part of r169733 that caused this test to start failing.
+
+        * platform/mac/TestExpectations:
+
+2014-06-10  Andy Estes  <aestes@apple.com>
+
+        Use [ Pass Failure ] instead of [ Skip ] for the tests skipped in r169767.
+
+        * platform/mac/TestExpectations:
+
+2014-06-10  Andy Estes  <aestes@apple.com>
+
+        REGRESSION (6/9/2014): Several TextTrackCue tests became very flaky
+        https://bugs.webkit.org/show_bug.cgi?id=133686
+
+        * platform/mac/TestExpectations: Skipped the flaky tests
+
+2014-06-10  Alexey Proskuryakov  <ap@apple.com>
+
+        [WK2] http/tests/navigation/new-window-redirect-history.html crashes
+        https://bugs.webkit.org/show_bug.cgi?id=127683
+
+        * platform/wk2/TestExpectations: Changed expectation from Crash to Skip, because
+        it crashes every time, and generating more crash logs only makes other tests more
+        flaky without providing useful information.
+
+2014-06-10  Alexey Proskuryakov  <ap@apple.com>
+
+        Skip some more flaky tests.
+        https://bugs.webkit.org/show_bug.cgi?id=133696
+        <rdar://problem/17257097>
+
+        * platform/wk2/TestExpectations:
+
+2014-06-10  Andy Estes  <aestes@apple.com>
+
+        REGRESSION (r169733): compositing/iframes/become-composited-nested-iframes.html fails on WebKit1 bots
+        https://bugs.webkit.org/show_bug.cgi?id=133694
+
+        * platform/mac/TestExpectations: Marked the test as failing
+
+2014-06-10  Alexey Proskuryakov  <ap@apple.com>
+
+        fast/dom/beforeload/remove-frame-in-beforeload-listener.html and related tests are flaky
+        https://bugs.webkit.org/show_bug.cgi?id=133685
+
+        * platform/wk2/TestExpectations: Skipped more affected tests.
+
+2014-06-10  Mark Lam  <mark.lam@apple.com>
+
+        Assertion failure at JSC::Structure::checkOffsetConsistency() const + 234.
+        <https://webkit.org/b/133356>
+
+        Reviewed by Mark Hahnenberg.
+
+        * TestExpectations:
+        - Undoing expectation for js/primitive-property-access-edge-cases.html now
+          that the bug is fixed.
+
+2014-06-10  Alexey Proskuryakov  <ap@apple.com>
+
+        platform/mac-wk2/plugins/destroy-during-async-npp-new.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=133692
+
+        * platform/mac-wk2/TestExpectations: Skipped the test.
+
+2014-06-10  Alexey Proskuryakov  <ap@apple.com>
+
+        fast/dom/beforeload/remove-frame-in-beforeload-listener.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=133685
+
+        * platform/wk2/TestExpectations: Skipped the test.
+
+2014-06-10  Michael Saboff  <msaboff@apple.com>
+
+        In a certain app state, Array.prototype.filter() returns incorrect results
+        https://bugs.webkit.org/show_bug.cgi?id=133577
+
+        Reviewed by Oliver Hunt.
+
+        New test to check that the llint handles writing to an array hole from a built-in
+        function.
+
+        * js/regress/put-by-val-direct-expected.txt: Added.
+        * js/regress/put-by-val-direct.html: Added.
+        * js/regress/script-tests/put-by-val-direct.js: Added.
+        (test):
+
+2014-06-10  Simon Fraser  <simon.fraser@apple.com>
+
+        Fix logging of sticky scrolling tree nodes
+        https://bugs.webkit.org/show_bug.cgi?id=133670
+
+        Reviewed by Sam Weinig.
+        
+        Rebaselined.
+
+        * platform/mac-wk2/tiled-drawing/scrolling/frames/coordinated-frame-expected.txt:
+        * platform/mac-wk2/tiled-drawing/scrolling/frames/coordinated-frame-in-fixed-expected.txt:
+        * platform/mac-wk2/tiled-drawing/scrolling/sticky/negative-scroll-offset-expected.txt:
+        * platform/mac-wk2/tiled-drawing/scrolling/sticky/sticky-horizontal-expected.txt:
+        * platform/mac-wk2/tiled-drawing/scrolling/sticky/sticky-vertical-expected.txt:
+
+2014-06-05  Sergio Villar Senin  <svillar@igalia.com>
+
+        [CSS Grid Layout] Simplify the named grid lines resolution algorithm
+        https://bugs.webkit.org/show_bug.cgi?id=133543
+
+        Reviewed by Darin Adler.
+
+        Added a new test that checks that named grid lines and areas are
+        correctly set after dynamically changing them with JS. It also
+        verifies that we properly recompute the resolution of named grid
+        lines/areas when the positioning properties change.
+
+        Also appended a new test case to verify that explicitly adding
+        named lines of the form <foo-start>/<foo-end> effectively creates
+        implicit named grid areas so that we could use them in grid
+        placement properties (for example -webkit-grid-column: foo).
+
+        No need to add more tests for named grid lines/areas resolution as
+        we already have a quite good coverage (the feature was already
+        there, we're simplifying/improving the implementation).
+
+        * fast/css-grid-layout/named-grid-lines-with-named-grid-areas-dynamic-get-set-expected.txt: Added.
+        * fast/css-grid-layout/named-grid-lines-with-named-grid-areas-dynamic-get-set.html: Added.
+        * fast/css-grid-layout/named-grid-lines-with-named-grid-areas-resolution-expected.txt:
+        * fast/css-grid-layout/named-grid-lines-with-named-grid-areas-resolution.html:
+
+2014-06-10  Kiran  <kiran.guduru@samsung.com>
+
+        [MediaStream] Add getTracks() support to MediaStream.
+        https://bugs.webkit.org/show_bug.cgi?id=133641
+
+        Reviewed by Eric Carlson.
+
+        * fast/mediastream/MediaStream-getTracks-expected.txt: Added.
+        * fast/mediastream/MediaStream-getTracks.html: Added.
+
+2014-06-09  Simon Fraser  <simon.fraser@apple.com>
+
+        Work towards having frames in the scrolling tree
+        https://bugs.webkit.org/show_bug.cgi?id=133665
+
+        Reviewed by Tim Horton.
+        
+        Tests that dump the scrolling tree with subframes.
+
+        * platform/mac-wk2/tiled-drawing/scrolling/frames/coordinated-frame-expected.txt: Added.
+        * platform/mac-wk2/tiled-drawing/scrolling/frames/coordinated-frame-in-fixed-expected.txt: Added.
+        * platform/mac-wk2/tiled-drawing/scrolling/frames/coordinated-frame-in-fixed.html: Added.
+        * platform/mac-wk2/tiled-drawing/scrolling/frames/coordinated-frame.html: Added.
+        * platform/mac-wk2/tiled-drawing/scrolling/frames/resources/doc-with-sticky.html: Added.
+
+2014-06-09  Eric Carlson  <eric.carlson@apple.com>
+
+        Automatic text track selection can select more than one track
+        https://bugs.webkit.org/show_bug.cgi?id=133590
+
+        Reviewed by Brent Fulgham.
+
+        * media/video-trackmenu-selection-expected.txt: Added.
+        * media/video-trackmenu-selection.html: Added.
+
+        * platform/efl/TestExpectations: New test skipped.
+
+2014-05-21  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        REGRESSION: missing underline under CJK text
+        https://bugs.webkit.org/show_bug.cgi?id=128145
+
+        Reviewed by Darin Adler.
+
+        This test makes sure that underlines under CJK text don't skip over descenders.
+
+        * fast/css3-text/css3-text-decoration/text-decoration-skip/text-decoration-skip-ink-cjk-expected.html: Added.
+        * fast/css3-text/css3-text-decoration/text-decoration-skip/text-decoration-skip-ink-cjk.html: Added.
+
+2014-06-09  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Amazon app: Cannot interact with product page after tapping on product image
+        https://bugs.webkit.org/show_bug.cgi?id=133559
+        <rdar://problem/16332749>
+
+        Reviewed by Oliver Hunt.
+
+        Add a test to ensure that assigning to an instance attribute in strict mode that shadows
+        navigator.geolocation doesn't cause a JavaScript type error.
+
+        * js/dom/script-tests/shadow-navigator-geolocation-in-strict-mode-does-not-throw.js: Added.
+        (createObjectWithPrototype.F):
+        (createObjectWithPrototype):
+        * js/dom/shadow-navigator-geolocation-in-strict-mode-does-not-throw-expected.txt: Added.
+        * js/dom/shadow-navigator-geolocation-in-strict-mode-does-not-throw.html: Added.
+
+2014-06-05  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        Eagerly reify DOM prototype attributes
+        https://bugs.webkit.org/show_bug.cgi?id=133558
+
+        Reviewed by Oliver Hunt.
+
+        Updating a test expectation after this fix.
+
+        * js/dom/constructor-attributes-expected.txt:
+
+2014-06-09  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r169693.
+        https://bugs.webkit.org/show_bug.cgi?id=133651
+
+        This was wrong, just wrong (Requested by ap on #webkit).
+
+        Reverted changeset:
+
+        "Rebaseline some tests after r169681."
+        http://trac.webkit.org/changeset/169693
+
+2014-06-09  Simon Fraser  <simon.fraser@apple.com>
+
+        Move scrolling-related tests to tiled-drawing/scrolling subdirectory, and minor cleanup
+        https://bugs.webkit.org/show_bug.cgi?id=133650
+
+        Reviewed by Tim Horton.
+        
+        Moved files, fixed up relative paths to js-test-pre.js/js-test-post.js and unskipped a couple of fixed/sticky tests.
+
+        * platform/mac-wk2/tiled-drawing/scrolling/clamp-out-of-bounds-scrolls-expected.txt: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/clamp-out-of-bounds-scrolls-expected.txt.
+        * platform/mac-wk2/tiled-drawing/scrolling/clamp-out-of-bounds-scrolls.html: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/clamp-out-of-bounds-scrolls.html.
+        * platform/mac-wk2/tiled-drawing/scrolling/fast-scroll-div-latched-div-expected.txt: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fast-scroll-div-latched-div-expected.txt.
+        * platform/mac-wk2/tiled-drawing/scrolling/fast-scroll-div-latched-div-with-handler-expected.txt: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fast-scroll-div-latched-div-with-handler-expected.txt.
+        * platform/mac-wk2/tiled-drawing/scrolling/fast-scroll-div-latched-div-with-handler.html: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fast-scroll-div-latched-div-with-handler.html.
+        * platform/mac-wk2/tiled-drawing/scrolling/fast-scroll-div-latched-div.html: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fast-scroll-div-latched-div.html.
+        * platform/mac-wk2/tiled-drawing/scrolling/fast-scroll-div-latched-mainframe-expected.txt: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fast-scroll-div-latched-mainframe-expected.txt.
+        * platform/mac-wk2/tiled-drawing/scrolling/fast-scroll-div-latched-mainframe-with-handler-expected.txt: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fast-scroll-div-latched-mainframe-with-handler-expected.txt.
+        * platform/mac-wk2/tiled-drawing/scrolling/fast-scroll-div-latched-mainframe-with-handler.html: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fast-scroll-div-latched-mainframe-with-handler.html.
+        * platform/mac-wk2/tiled-drawing/scrolling/fast-scroll-div-latched-mainframe.html: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fast-scroll-div-latched-mainframe.html.
+        * platform/mac-wk2/tiled-drawing/scrolling/fast-scroll-iframe-latched-iframe-expected.txt: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fast-scroll-iframe-latched-iframe-expected.txt.
+        * platform/mac-wk2/tiled-drawing/scrolling/fast-scroll-iframe-latched-iframe-with-handler-expected.txt: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fast-scroll-iframe-latched-iframe-with-handler-expected.txt.
+        * platform/mac-wk2/tiled-drawing/scrolling/fast-scroll-iframe-latched-iframe-with-handler.html: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fast-scroll-iframe-latched-iframe-with-handler.html.
+        * platform/mac-wk2/tiled-drawing/scrolling/fast-scroll-iframe-latched-iframe.html: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fast-scroll-iframe-latched-iframe.html.
+        * platform/mac-wk2/tiled-drawing/scrolling/fast-scroll-iframe-latched-mainframe-expected.txt: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fast-scroll-iframe-latched-mainframe-expected.txt.
+        * platform/mac-wk2/tiled-drawing/scrolling/fast-scroll-iframe-latched-mainframe-with-handler-expected.txt: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fast-scroll-iframe-latched-mainframe-with-handler-expected.txt.
+        * platform/mac-wk2/tiled-drawing/scrolling/fast-scroll-iframe-latched-mainframe-with-handler.html: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fast-scroll-iframe-latched-mainframe-with-handler.html.
+        * platform/mac-wk2/tiled-drawing/scrolling/fast-scroll-iframe-latched-mainframe.html: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fast-scroll-iframe-latched-mainframe.html.
+        * platform/mac-wk2/tiled-drawing/scrolling/fast-scroll-select-latched-mainframe-expected.txt: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fast-scroll-select-latched-mainframe-expected.txt.
+        * platform/mac-wk2/tiled-drawing/scrolling/fast-scroll-select-latched-mainframe-with-handler-expected.txt: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fast-scroll-select-latched-mainframe-with-handler-expected.txt.
+        * platform/mac-wk2/tiled-drawing/scrolling/fast-scroll-select-latched-mainframe-with-handler.html: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fast-scroll-select-latched-mainframe-with-handler.html.
+        * platform/mac-wk2/tiled-drawing/scrolling/fast-scroll-select-latched-mainframe.html: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fast-scroll-select-latched-mainframe.html.
+        * platform/mac-wk2/tiled-drawing/scrolling/fast-scroll-select-latched-select-expected.txt: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fast-scroll-select-latched-select-expected.txt.
+        * platform/mac-wk2/tiled-drawing/scrolling/fast-scroll-select-latched-select-with-handler-expected.txt: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fast-scroll-select-latched-select-with-handler-expected.txt.
+        * platform/mac-wk2/tiled-drawing/scrolling/fast-scroll-select-latched-select-with-handler.html: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fast-scroll-select-latched-select-with-handler.html.
+        * platform/mac-wk2/tiled-drawing/scrolling/fast-scroll-select-latched-select.html: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fast-scroll-select-latched-select.html.
+        * platform/mac-wk2/tiled-drawing/scrolling/fixed-background/fixed-background-composited-html-expected.html: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fixed-background/fixed-background-composited-html-expected.html.
+        * platform/mac-wk2/tiled-drawing/scrolling/fixed-background/fixed-background-composited-html.html: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fixed-background/fixed-background-composited-html.html.
+        * platform/mac-wk2/tiled-drawing/scrolling/fixed-background/fixed-background-negative-z-index-fixed-expected.html: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fixed-background/fixed-background-negative-z-index-fixed-expected.html.
+        * platform/mac-wk2/tiled-drawing/scrolling/fixed-background/fixed-background-negative-z-index-fixed.html: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fixed-background/fixed-background-negative-z-index-fixed.html.
+        * platform/mac-wk2/tiled-drawing/scrolling/fixed-background/fixed-background-no-image-expected.txt: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fixed-background/fixed-background-no-image-expected.txt.
+        * platform/mac-wk2/tiled-drawing/scrolling/fixed-background/fixed-background-no-image.html: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fixed-background/fixed-background-no-image.html.
+        * platform/mac-wk2/tiled-drawing/scrolling/fixed-background/fixed-background-removal-expected.txt: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fixed-background/fixed-background-removal-expected.txt.
+        * platform/mac-wk2/tiled-drawing/scrolling/fixed-background/fixed-background-removal.html: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fixed-background/fixed-background-removal.html.
+        * platform/mac-wk2/tiled-drawing/scrolling/fixed-background/fixed-body-background-body-layer-expected.png: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fixed-background/fixed-body-background-body-layer-expected.png.
+        * platform/mac-wk2/tiled-drawing/scrolling/fixed-background/fixed-body-background-body-layer-expected.txt: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fixed-background/fixed-body-background-body-layer-expected.txt.
+        * platform/mac-wk2/tiled-drawing/scrolling/fixed-background/fixed-body-background-body-layer.html: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fixed-background/fixed-body-background-body-layer.html.
+        * platform/mac-wk2/tiled-drawing/scrolling/fixed-background/fixed-body-background-expected.png: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fixed-background/fixed-body-background-expected.png.
+        * platform/mac-wk2/tiled-drawing/scrolling/fixed-background/fixed-body-background-expected.txt: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fixed-background/fixed-body-background-expected.txt.
+        * platform/mac-wk2/tiled-drawing/scrolling/fixed-background/fixed-body-background-opacity-html-expected.png: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fixed-background/fixed-body-background-opacity-html-expected.png.
+        * platform/mac-wk2/tiled-drawing/scrolling/fixed-background/fixed-body-background-opacity-html-expected.txt: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fixed-background/fixed-body-background-opacity-html-expected.txt.
+        * platform/mac-wk2/tiled-drawing/scrolling/fixed-background/fixed-body-background-opacity-html.html: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fixed-background/fixed-body-background-opacity-html.html.
+        * platform/mac-wk2/tiled-drawing/scrolling/fixed-background/fixed-body-background-positioned-expected.png: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fixed-background/fixed-body-background-positioned-expected.png.
+        * platform/mac-wk2/tiled-drawing/scrolling/fixed-background/fixed-body-background-positioned-expected.txt: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fixed-background/fixed-body-background-positioned-expected.txt.
+        * platform/mac-wk2/tiled-drawing/scrolling/fixed-background/fixed-body-background-positioned.html: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fixed-background/fixed-body-background-positioned.html.
+        * platform/mac-wk2/tiled-drawing/scrolling/fixed-background/fixed-body-background-transformed-html-expected.png: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fixed-background/fixed-body-background-transformed-html-expected.png.
+        * platform/mac-wk2/tiled-drawing/scrolling/fixed-background/fixed-body-background-transformed-html-expected.txt: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fixed-background/fixed-body-background-transformed-html-expected.txt.
+        * platform/mac-wk2/tiled-drawing/scrolling/fixed-background/fixed-body-background-transformed-html.html: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fixed-background/fixed-body-background-transformed-html.html.
+        * platform/mac-wk2/tiled-drawing/scrolling/fixed-background/fixed-body-background-zoomed-expected.png: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fixed-background/fixed-body-background-zoomed-expected.png.
+        * platform/mac-wk2/tiled-drawing/scrolling/fixed-background/fixed-body-background-zoomed-expected.txt: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fixed-background/fixed-body-background-zoomed-expected.txt.
+        * platform/mac-wk2/tiled-drawing/scrolling/fixed-background/fixed-body-background-zoomed.html: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fixed-background/fixed-body-background-zoomed.html.
+        * platform/mac-wk2/tiled-drawing/scrolling/fixed-background/fixed-body-background.html: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fixed-background/fixed-body-background.html.
+        * platform/mac-wk2/tiled-drawing/scrolling/fixed-background/fixed-html-background-expected.png: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fixed-background/fixed-html-background-expected.png.
+        * platform/mac-wk2/tiled-drawing/scrolling/fixed-background/fixed-html-background-expected.txt: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fixed-background/fixed-html-background-expected.txt.
+        * platform/mac-wk2/tiled-drawing/scrolling/fixed-background/fixed-html-background.html: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fixed-background/fixed-html-background.html.
+        * platform/mac-wk2/tiled-drawing/scrolling/fixed-background/fixed-non-propagated-body-background-expected.png: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fixed-background/fixed-non-propagated-body-background-expected.png.
+        * platform/mac-wk2/tiled-drawing/scrolling/fixed-background/fixed-non-propagated-body-background-expected.txt: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fixed-background/fixed-non-propagated-body-background-expected.txt.
+        * platform/mac-wk2/tiled-drawing/scrolling/fixed-background/fixed-non-propagated-body-background.html: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fixed-background/fixed-non-propagated-body-background.html.
+        * platform/mac-wk2/tiled-drawing/scrolling/fixed/absolute-inside-fixed-expected.txt: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fixed/absolute-inside-fixed-expected.txt.
+        * platform/mac-wk2/tiled-drawing/scrolling/fixed/absolute-inside-fixed.html: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fixed/absolute-inside-fixed.html.
+        * platform/mac-wk2/tiled-drawing/scrolling/fixed/absolute-inside-out-of-view-fixed-expected.txt: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fixed/absolute-inside-out-of-view-fixed-expected.txt.
+        * platform/mac-wk2/tiled-drawing/scrolling/fixed/absolute-inside-out-of-view-fixed.html: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fixed/absolute-inside-out-of-view-fixed.html.
+        * platform/mac-wk2/tiled-drawing/scrolling/fixed/fixed-in-overflow-expected.txt: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fixed/fixed-in-overflow-expected.txt.
+        * platform/mac-wk2/tiled-drawing/scrolling/fixed/fixed-in-overflow.html: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fixed/fixed-in-overflow.html.
+        * platform/mac-wk2/tiled-drawing/scrolling/fixed/fixed-position-out-of-view-expected.txt: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fixed/fixed-position-out-of-view-expected.txt.
+        * platform/mac-wk2/tiled-drawing/scrolling/fixed/fixed-position-out-of-view-negative-zindex-expected.txt: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fixed/fixed-position-out-of-view-negative-zindex-expected.txt.
+        * platform/mac-wk2/tiled-drawing/scrolling/fixed/fixed-position-out-of-view-negative-zindex.html: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fixed/fixed-position-out-of-view-negative-zindex.html.
+        * platform/mac-wk2/tiled-drawing/scrolling/fixed/fixed-position-out-of-view.html: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fixed/fixed-position-out-of-view.html.
+        * platform/mac-wk2/tiled-drawing/scrolling/fixed/four-bars-expected.txt: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fixed/four-bars-expected.txt.
+        * platform/mac-wk2/tiled-drawing/scrolling/fixed/four-bars-with-header-and-footer-expected.txt: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fixed/four-bars-with-header-and-footer-expected.txt.
+        * platform/mac-wk2/tiled-drawing/scrolling/fixed/four-bars-with-header-and-footer.html: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fixed/four-bars-with-header-and-footer.html.
+        * platform/mac-wk2/tiled-drawing/scrolling/fixed/four-bars-zoomed-expected.txt: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fixed/four-bars-zoomed-expected.txt.
+        * platform/mac-wk2/tiled-drawing/scrolling/fixed/four-bars-zoomed.html: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fixed/four-bars-zoomed.html.
+        * platform/mac-wk2/tiled-drawing/scrolling/fixed/four-bars.html: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fixed/four-bars.html.
+        * platform/mac-wk2/tiled-drawing/scrolling/fixed/negative-scroll-offset-expected.txt: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fixed/negative-scroll-offset-expected.txt.
+        * platform/mac-wk2/tiled-drawing/scrolling/fixed/negative-scroll-offset-in-view-expected.txt: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fixed/negative-scroll-offset-in-view-expected.txt.
+        * platform/mac-wk2/tiled-drawing/scrolling/fixed/negative-scroll-offset-in-view.html: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fixed/negative-scroll-offset-in-view.html.
+        * platform/mac-wk2/tiled-drawing/scrolling/fixed/negative-scroll-offset.html: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fixed/negative-scroll-offset.html.
+        * platform/mac-wk2/tiled-drawing/scrolling/fixed/nested-fixed-expected.txt: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fixed/nested-fixed-expected.txt.
+        * platform/mac-wk2/tiled-drawing/scrolling/fixed/nested-fixed.html: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fixed/nested-fixed.html.
+        * platform/mac-wk2/tiled-drawing/scrolling/fixed/percentage-inside-fixed-expected.txt: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fixed/percentage-inside-fixed-expected.txt.
+        * platform/mac-wk2/tiled-drawing/scrolling/fixed/percentage-inside-fixed.html: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/fixed/percentage-inside-fixed.html.
+        * platform/mac-wk2/tiled-drawing/scrolling/null-parent-back-crash-expected.txt: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/null-parent-back-crash-expected.txt.
+        * platform/mac-wk2/tiled-drawing/scrolling/null-parent-back-crash.html: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/null-parent-back-crash.html.
+        * platform/mac-wk2/tiled-drawing/scrolling/scrolling-tree-after-scroll-expected.txt: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/scrolling-tree-after-scroll-expected.txt.
+        * platform/mac-wk2/tiled-drawing/scrolling/scrolling-tree-after-scroll.html: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/scrolling-tree-after-scroll.html.
+        * platform/mac-wk2/tiled-drawing/scrolling/scrolling-tree-slow-scrolling-expected.txt: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/scrolling-tree-slow-scrolling-expected.txt.
+        * platform/mac-wk2/tiled-drawing/scrolling/scrolling-tree-slow-scrolling.html: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/scrolling-tree-slow-scrolling.html.
+        * platform/mac-wk2/tiled-drawing/scrolling/slow-scrolling-background-toggle-expected.txt: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/slow-scrolling-background-toggle-expected.txt.
+        * platform/mac-wk2/tiled-drawing/scrolling/slow-scrolling-background-toggle.html: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/slow-scrolling-background-toggle.html.
+        * platform/mac-wk2/tiled-drawing/scrolling/slow-scrolling-expected.txt: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/slow-scrolling-expected.txt.
+        * platform/mac-wk2/tiled-drawing/scrolling/slow-scrolling-hidden-background-toggle-expected.txt: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/slow-scrolling-hidden-background-toggle-expected.txt.
+        * platform/mac-wk2/tiled-drawing/scrolling/slow-scrolling-hidden-background-toggle.html: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/slow-scrolling-hidden-background-toggle.html.
+        * platform/mac-wk2/tiled-drawing/scrolling/slow-scrolling.html: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/slow-scrolling.html.
+        * platform/mac-wk2/tiled-drawing/scrolling/sticky/negative-scroll-offset-expected.txt: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/sticky/negative-scroll-offset-expected.txt.
+        * platform/mac-wk2/tiled-drawing/scrolling/sticky/negative-scroll-offset.html: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/sticky/negative-scroll-offset.html.
+        * platform/mac-wk2/tiled-drawing/scrolling/sticky/sticky-horizontal-expected.txt: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/sticky/sticky-horizontal-expected.txt.
+        * platform/mac-wk2/tiled-drawing/scrolling/sticky/sticky-horizontal.html: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/sticky/sticky-horizontal.html.
+        * platform/mac-wk2/tiled-drawing/scrolling/sticky/sticky-layers-expected.txt: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/sticky/sticky-layers-expected.txt.
+        * platform/mac-wk2/tiled-drawing/scrolling/sticky/sticky-layers.html: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/sticky/sticky-layers.html.
+        * platform/mac-wk2/tiled-drawing/scrolling/sticky/sticky-vertical-expected.txt: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/sticky/sticky-vertical-expected.txt.
+        * platform/mac-wk2/tiled-drawing/scrolling/sticky/sticky-vertical.html: Renamed from LayoutTests/platform/mac-wk2/tiled-drawing/sticky/sticky-vertical.html.
+        * platform/mac/TestExpectations:
+
+2014-06-09  Simon Fraser  <simon.fraser@apple.com>
+
+        Add results for MathML tests added by https://bugs.webkit.org/show_bug.cgi?id=72828.
+
+        * platform/mac/mathml/opentype/horizontal-LatinModern-expected.txt: Added.
+        * platform/mac/mathml/opentype/horizontal-LatinModern-munderover-expected.txt: Added.
+        * platform/mac/mathml/opentype/opentype-stretchy-horizontal-expected.txt: Added.
+
+2014-06-09  Simon Fraser  <simon.fraser@apple.com>
+
+        Rebaseline some tests after r169681.
+
+        * compositing/geometry/ancestor-overflow-change-expected.txt:
+        * platform/mac-wk2/tiled-drawing/fixed/absolute-inside-fixed-expected.txt:
+        * platform/mac/compositing/layer-creation/overlap-animation-container-expected.txt:
+
+2014-06-09  Simon Fraser  <simon.fraser@apple.com>
+
+        Fix more latched scrolling test flakiness and slowness
+        https://bugs.webkit.org/show_bug.cgi?id=133601
+
+        Reviewed by Brent Fulgham.
+
+        Latched scrolling tests were flakey for two reasons. First, the EventSender
+        wheel events were async from the web to the UI process, and the resulting
+        synthetic events also async from the UI to the web process. Make them sync
+        for testing.
+        
+        Secondly, the timer-based scrolling tree commit could result in the scrolling
+        tree (specifically the frame node's notion of the scrollable area and content
+        size) not being updated before the scrolling thread starts getting wheel events.
+        Fix by having WebPage::wheelEventSyncForTesting() commit if necessary.
+        
+        Finally remove all the now-unnecessary timeouts from the tests.
+
+        * platform/mac-wk2/tiled-drawing/fast-scroll-div-latched-div-with-handler-expected.txt:
+        * platform/mac-wk2/tiled-drawing/fast-scroll-div-latched-div-with-handler.html:
+        * platform/mac-wk2/tiled-drawing/fast-scroll-div-latched-div.html:
+        * platform/mac-wk2/tiled-drawing/fast-scroll-div-latched-mainframe-with-handler-expected.txt:
+        * platform/mac-wk2/tiled-drawing/fast-scroll-div-latched-mainframe-with-handler.html:
+        * platform/mac-wk2/tiled-drawing/fast-scroll-div-latched-mainframe.html:
+        * platform/mac-wk2/tiled-drawing/fast-scroll-iframe-latched-iframe-with-handler.html:
+        * platform/mac-wk2/tiled-drawing/fast-scroll-iframe-latched-iframe.html:
+        * platform/mac-wk2/tiled-drawing/fast-scroll-iframe-latched-mainframe-with-handler-expected.txt:
+        * platform/mac-wk2/tiled-drawing/fast-scroll-iframe-latched-mainframe-with-handler.html:
+        * platform/mac-wk2/tiled-drawing/fast-scroll-iframe-latched-mainframe.html:
+        * platform/mac-wk2/tiled-drawing/fast-scroll-select-latched-mainframe-with-handler-expected.txt:
+        * platform/mac-wk2/tiled-drawing/fast-scroll-select-latched-mainframe-with-handler.html:
+        * platform/mac-wk2/tiled-drawing/fast-scroll-select-latched-mainframe.html:
+        * platform/mac-wk2/tiled-drawing/fast-scroll-select-latched-select-with-handler-expected.txt:
+        * platform/mac-wk2/tiled-drawing/fast-scroll-select-latched-select-with-handler.html:
+        * platform/mac-wk2/tiled-drawing/fast-scroll-select-latched-select.html:
+
+2014-06-09  Andrzej Badowski  <a.badowski@samsung.com>
+
+        [EFL] Change expectations for four layout tests.
+        https://bugs.webkit.org/show_bug.cgi?id=133643
+
+        Unreviewed EFL gardening.
+
+        * platform/efl-wk2/TestExpectations:
+        * platform/efl/fullscreen/video-controls-override-expected.txt: Added.
+        * platform/efl/inspector-protocol/dom/getAccessibilityPropertiesForNode-expected.txt: Added.
+
+2014-06-09  Zalan Bujtas  <zalan@apple.com>
+
+        [iOS] Gaps below and to the right of the video controls on devour.com
+        https://bugs.webkit.org/show_bug.cgi?id=133607
+
+        Reviewed by Simon Fraser.
+
+        Non-toplevel compositing layers are device pixel aligned. In order to render the content
+        to the same position as if the layer was not aligned, the graphics layer needs to be translated.
+        CALayer::bounds is set to compensate for the shifted layer. However, we should not change the layer's
+        size as that stretches the content and results in overlaps/gaps/extra fuzziness.
+
+        * compositing/contents-scale/hidpi-compositing-layer-positioned-on-scaled-context-expected.html: Added.
+        * compositing/contents-scale/hidpi-compositing-layer-positioned-on-scaled-context.html: Added.
+
+2014-06-09  Zalan Bujtas  <zalan@apple.com>
+
+        [SVG] Subpixel rendering: Mask with transformed text does not render.
+        https://bugs.webkit.org/show_bug.cgi?id=133626
+        <rdar://problem/17123070>
+
+        Reviewed by Simon Fraser.
+
+        Replace IntRect::infiniteRect() with Layout::infiniteRect(). A transformed IntRect::infiniteRect()
+        overflows and produces invalid repaint rect. -also remove IntRect::infiniteRect() as no one calls
+        it anymore.
+
+        * svg/masking/mask-transformed-text-missing-expected.svg: Added.
+        * svg/masking/mask-transformed-text-missing.svg: Added.
+
+2014-06-05  Grzegorz Czajkowski  <g.czajkowski@samsung.com>
+
+        Share mac/editing/spelling/editing-word-with-marker-2.html with other platforms
+        https://bugs.webkit.org/show_bug.cgi?id=133544
+
+        Reviewed by Darin Adler.
+
+        Move mac/editing/spelling/editing-word-with-marker-2.html into
+        common editing/spelling to be available for other platforms.
+
+        Additionally, verify spelling markers asynchronously as the sync
+        path it's likely to be removed.
+
+        Add test case which tests spelling markers without any
+        selection change.
+
+        * editing/spelling/editing-word-with-marker-2-expected.txt:
+        Renamed from platform/mac/editing/spelling/editing-word-with-marker-2-expected.txt.
+
+        * editing/spelling/editing-word-with-marker-2.html:
+        Renamed from platform/mac/editing/spelling/editing-word-with-marker-2.html.
+
+        * platform/gtk/TestExpectations:
+        * platform/mac-wk2/TestExpectations:
+        * platform/win/TestExpectations:
+        Mark editing/spelling/editing-word-with-marker-2.html as failing since those
+        platforms didn't turn on asynchronous spellchecking.
+
+2014-06-08  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Unreviewed EFL gardening. Skip a test which generates "No bad fd found." error.
+
+        * platform/efl-wk1/TestExpectations:
+        * platform/efl/http/tests/misc/slow-loading-mask-expected.txt:
+
+2014-06-07  Frédéric Wang  <fred.wang@free.fr>
+
+        Add tests for dynamic changes in msqrt/mroot
+        https://bugs.webkit.org/show_bug.cgi?id=133557
+
+        Reviewed by Chris Fleizach.
+
+        This patch adds some tests to verify that a MathML msqrt/mroot element to which we applied dynamic additions and removals of children renders the same as its static equivalent and that no crashes happen.
+        Unfortunately, the existing code does not handle them very well so they are skipped until we do the refactoring of bug 119038.
+
+        * TestExpectations: skip the tests.
+        * mathml/roots-addChild-expected.html: Added.
+        * mathml/roots-addChild.html: Added.
+        * mathml/roots-removeChild-expected.html: Added.
+        * mathml/roots-removeChild.html: Added.
+
+2014-06-06  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Scheme of content utils should be compared in an ASCII case-insensitive manner
+        https://bugs.webkit.org/show_bug.cgi?id=133502
+
+        Reviewed by Darin Adler.
+
+        Tests are updated to compare protocol in ASCII case-insensitive manner.
+
+        * fast/dom/NavigatorContentUtils/register-protocol-handler-expected.txt:
+        * fast/dom/NavigatorContentUtils/register-protocol-handler.html:
+        * fast/dom/NavigatorContentUtils/unregister-protocol-handler-expected.txt:
+        * fast/dom/NavigatorContentUtils/unregister-protocol-handler.html:
+        * platform/efl/fast/dom/NavigatorContentUtils/register-protocol-handler-expected.txt:
+        * platform/efl/fast/dom/NavigatorContentUtils/unregister-protocol-handler-expected.txt:
+
 2014-06-06  David Hyatt  <hyatt@apple.com>
 
         REGRESSION: Hit testing of composited elements is broken in new multicolumn layout.

@@ -1,3 +1,290 @@
+2014-06-12  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] Performance tests should be always ran with WKTR.
+        https://bugs.webkit.org/show_bug.cgi?id=133780
+
+        Reviewed by Ryosuke Niwa.
+
+        * Scripts/webkitpy/performance_tests/perftestsrunner.py:
+        (PerfTestsRunner.__init__): Enable webkit_test_runner when port
+        is GTK.
+
+2014-06-12  Sergio Villar Senin  <svillar@igalia.com>
+
+        [GTK] REGRESSION: application name is not correctly appended to the UA
+        https://bugs.webkit.org/show_bug.cgi?id=133793
+
+        Reviewed by Carlos Garcia Campos.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestWebKitSettings.cpp:
+        (testWebKitSettingsUserAgent):
+
+2014-06-12  Sergio Villar Senin  <svillar@igalia.com>
+
+        [GTK] Unsupported browser in www.icloud.com
+        https://bugs.webkit.org/show_bug.cgi?id=133403
+
+        Reviewed by Martin Robinson.
+
+        * TestWebKitAPI/Tests/WebCore/gtk/UserAgentQuirks.cpp:
+        (TestWebKitAPI::TEST): removed a test for the NeedsSafariVersion6
+        quirk that was removed.
+
+2014-06-11  Simon Fraser  <simon.fraser@apple.com>
+
+        [iOS WK2] Give WebKitTestRunner a viewport configuration with initial scale=1 for testing
+        https://bugs.webkit.org/show_bug.cgi?id=133779
+
+        Reviewed by Benjamin Poulain.
+        
+        Tell the WebPage to use the testing viewport configuration from the injected bundle.
+
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp:
+        (WTR::InjectedBundle::didReceiveMessage): Code cleanup.
+        * WebKitTestRunner/InjectedBundle/cocoa/InjectedBundlePageCocoa.mm:
+        (WTR::InjectedBundlePage::platformDidStartProvisionalLoadForFrame): Call WKBundlePageSetUseTestingViewportConfiguration()
+        on iOS.
+
+2014-06-11  Simon Fraser  <simon.fraser@apple.com>
+
+        WTR cleanup: push per-test viewport configuration into TestController, where platforms can customize it
+        https://bugs.webkit.org/show_bug.cgi?id=133770
+
+        Reviewed by Anders Carlsson.
+        
+        Push the per-test view configuration up to TestController, so that platforms
+        can modify the behavior. This also allows platform-specific changes (e.g.
+        for threaded scrolling) to made without #ifefs.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::updateWebViewSizeForTest):
+        (WTR::TestController::updateWindowScaleForTest):
+        (WTR::shouldUseFixedLayout):
+        (WTR::TestController::updateLayoutTypeForTest):
+        (WTR::TestController::platformConfigureViewForTest):
+        (WTR::TestController::configureViewForTest):
+        * WebKitTestRunner/TestController.h:
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::invoke):
+        (WTR::sizeWebViewForCurrentTest): Deleted.
+        (WTR::changeWindowScaleIfNeeded): Deleted.
+        (WTR::shouldUseThreadedScrolling): Deleted.
+        (WTR::updateThreadedScrollingForCurrentTest): Deleted.
+        (WTR::shouldUseFixedLayout): Deleted.
+        (WTR::updateLayoutType): Deleted.
+        * WebKitTestRunner/TestInvocation.h:
+        (WTR::TestInvocation::pathOrURL):
+        * WebKitTestRunner/ios/TestControllerIOS.mm:
+        (WTR::shouldMakeViewportFlexible):
+        (WTR::TestController::platformConfigureViewForTest):
+        * WebKitTestRunner/mac/TestControllerMac.mm:
+        (WTR::shouldUseThreadedScrolling):
+        (WTR::TestController::platformConfigureViewForTest):
+
+2014-06-11  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        [EFL] Add dependencies packages to efl install-dependencies file
+        https://bugs.webkit.org/show_bug.cgi?id=133720
+
+        Reviewed by Csaba Osztrogonác.
+
+        After r169785, EFL port starts to use efl 1.9 ver. EFL port needs to
+        install doxygen and libssl-dev because efl 1.9 depends on those libraries.
+
+        * efl/install-dependencies:
+
+2014-06-11  Zoltan Horvath  <zoltan@webkit.org>
+
+        Unreviewed. Moving myself to the list of reviewers.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2014-06-11  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        [EFL] Drop to maintain EFL 32bit release bot
+        https://bugs.webkit.org/show_bug.cgi?id=133710
+
+        Reviewed by Csaba Osztrogonác.
+
+        * BuildSlaveSupport/build.webkit.org-config/config.json: Removed EFL 32bit bot.
+
+2014-06-11  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Use a different user agent string depending on the site
+        https://bugs.webkit.org/show_bug.cgi?id=132681
+
+        Reviewed by Anders Carlsson.
+
+        Add a unit test to check user agent quirks.
+
+        * TestWebKitAPI/PlatformGTK.cmake:
+        * TestWebKitAPI/Tests/WebCore/gtk/UserAgentQuirks.cpp: Added.
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestWebKitSettings.cpp:
+        (testWebKitSettings): Site specific quirks setting is now enabled
+        by default.
+
+2014-06-10  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Unreviewed, update my list of email addresses in contributors.json.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2014-06-10  Simon Fraser  <simon.fraser@apple.com>
+
+        Always switch to an sRGB screen color profile when running tests
+        https://bugs.webkit.org/show_bug.cgi?id=133712
+
+        Reviewed by Tim Horton.
+        
+        Switch the screen color profile to sRGB when running tests, because even ref
+        tests need the screen to use the correct color profile.
+
+        * DumpRenderTree/mac/LayoutTestHelper.m:
+        (installLayoutTestColorProfile):
+        * Scripts/webkitpy/port/mac.py:
+        (MacPort.start_helper):
+
+2014-06-10  Martin Hodovan  <mhodovan@partner.samsung.com>
+
+        [EFL] Bump EFL libraries to 1.9
+        https://bugs.webkit.org/show_bug.cgi?id=125479
+
+        Reviewed by Gyuyoung Kim.
+
+        Based on the work of Ryuan Choi <ryuan.choi@samsung.com>
+        and László Langó <llango.u-szeged@partner.samsung.com>.
+
+        * ImageDiff/CMakeLists.txt:
+        * MiniBrowser/efl/CMakeLists.txt:
+        * efl/install-dependencies:
+        * efl/jhbuild.modules:
+        * efl/jhbuildrc:
+
+2014-06-10  David Farler  <dfarler@apple.com>
+
+        old-run-webkit-tests: Create CoreSimulator device on demand and find it by name
+        https://bugs.webkit.org/show_bug.cgi?id=133663
+
+        Reviewed by David Kilzer.
+
+        * Scripts/old-run-webkit-tests:
+        (installAndLaunchDumpToolAppUsingNotification):
+        - Remove obsolete notification keys
+        - Key off of mandatory device UDID (a UUID)
+        - Create a device on demand via CoreSimulator if necessary
+        -- Grab the UDID from the created device plist.
+        * Scripts/webkitdirs.pm:
+        (iOSSimulatorDevicesPath): Added
+        (iOSSimulatorDevices): Added
+        (createiOSSimulatorDevice): Added
+        (deleteiOSSimulatorDevice): Added
+
+2014-06-10  Víctor Manuel Jáquez Leal  <vjaquez@igalia.com>
+
+        [GTK][gtkdoc] remove -Wcast-align
+        https://bugs.webkit.org/show_bug.cgi?id=133640
+
+        Apparently gcc warns that GParamSpec is not castable to
+        GParamSpecInt64/GParamSpecUInt64/GParamSpecDouble due they are 64bit, even
+        though ARM hackers claim that those only need 4byte alignment. As long as gcc
+        behaves that way, this warning is not very useful, also they break the Debian
+        packaging.
+
+        This patch appends the compiler flag -Wno-align-cast for the gtkdoc
+        scanner compilation, thus the compiler ignores the previous
+        -Waling-cast flag.
+
+        Reviewed by Martin Robinson.
+
+        * gtk/generate-gtkdoc:
+        (get_generator_for_config):
+
+2014-06-09  Alexey Proskuryakov  <ap@apple.com>
+
+        Disable button animations in regression tests
+        https://bugs.webkit.org/show_bug.cgi?id=133647
+        <rdar://problem/16677530>
+
+        Reviewed by Tim Horton.
+
+        * WebKitTestRunner/InjectedBundle/mac/InjectedBundleMac.mm:
+        (WTR::InjectedBundle::platformInitialize):
+
+2014-06-09  Simon Fraser  <simon.fraser@apple.com>
+
+        Move scrolling-related tests to tiled-drawing/scrolling subdirectory, and minor cleanup
+        https://bugs.webkit.org/show_bug.cgi?id=133650
+
+        Reviewed by Tim Horton.
+        
+        No point checking for a Windows-style path in Cocoa code.
+
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::shouldUseThreadedScrolling):
+
+2014-06-09  Simon Fraser  <simon.fraser@apple.com>
+
+        Fix more latched scrolling test flakiness and slowness
+        https://bugs.webkit.org/show_bug.cgi?id=133601
+
+        Reviewed by Brent Fulgham.
+        
+        Latched scrolling tests were flakey for two reasons. First, the EventSender
+        wheel events were async from the web to the UI process, and the resulting
+        synthetic events also async from the UI to the web process. Make them sync
+        for testing.
+        
+        Secondly, the timer-based scrolling tree commit could result in the scrolling
+        tree (specifically the frame node's notion of the scrollable area and content
+        size) not being updated before the scrolling thread starts getting wheel events.
+        Fix by having WebPage::wheelEventSyncForTesting() commit if necessary.
+        
+        Finally remove all the now-unnecessary timeouts from the tests.
+
+        * WebKitTestRunner/mac/EventSenderProxy.mm:
+        (WTR::EventSenderProxy::mouseMoveTo):
+        (WTR::EventSenderProxy::mouseScrollBy):
+        (WTR::EventSenderProxy::mouseScrollByWithWheelAndMomentumPhases):
+
+2014-06-09  Andrzej Badowski  <a.badowski@samsung.com>
+
+        [EFL] Add parameter to MiniBrowser to disable web security
+        https://bugs.webkit.org/show_bug.cgi?id=121095
+
+        Reviewed by Gyuyoung Kim.
+
+        -w (--web-security) commandline allows to disable/enable web security (enabled by default).
+        The reason for this is to test and debug (using, for example, MiniBrowser) scripts accessing
+        resources from other domains (cross-domain requests) such as access map location on another server.
+        Another possibility is to launch in a webkit browser local file tests that will refer to the links
+        in the http website loaded in an iframe. It will not be possible without deactivation of web security.
+
+        * MiniBrowser/efl/main.c:
+        (window_create):
+        (elm_main):
+
+2014-06-06  Simon Fraser  <simon.fraser@apple.com>
+
+        32-bit build fix.
+
+        * WebKitTestRunner/mac/EventSenderProxy.mm:
+        (WTR::EventSenderProxy::mouseMoveTo):
+        (WTR::EventSenderProxy::mouseScrollByWithWheelAndMomentumPhases):
+
+2014-06-06  Simon Fraser  <simon.fraser@apple.com>
+
+        Fix builds on 10.8; -firstObject isn't declared on NSArray there.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (createWebViewAndOffscreenWindow):
+        * DumpRenderTree/mac/EventSendingController.mm:
+        (-[EventSendingController mouseScrollByX:andY:continuously:]):
+        (-[EventSendingController mouseScrollByX:andY:withWheel:andMomentumPhases:]):
+        * WebKitTestRunner/mac/EventSenderProxy.mm:
+        (WTR::EventSenderProxy::mouseScrollBy):
+        (WTR::EventSenderProxy::mouseScrollByWithWheelAndMomentumPhases):
+
 2014-06-06  Simon Fraser  <simon.fraser@apple.com>
 
         Latched scrolling tests are flakey on Mavericks

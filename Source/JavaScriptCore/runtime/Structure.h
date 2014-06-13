@@ -118,7 +118,7 @@ public:
     JS_EXPORT_PRIVATE static Structure* changePrototypeTransition(VM&, Structure*, JSValue prototype);
     JS_EXPORT_PRIVATE static Structure* despecifyFunctionTransition(VM&, Structure*, PropertyName);
     static Structure* attributeChangeTransition(VM&, Structure*, PropertyName, unsigned attributes);
-    static Structure* toCacheableDictionaryTransition(VM&, Structure*);
+    JS_EXPORT_PRIVATE static Structure* toCacheableDictionaryTransition(VM&, Structure*);
     static Structure* toUncacheableDictionaryTransition(VM&, Structure*);
     static Structure* sealTransition(VM&, Structure*);
     static Structure* freezeTransition(VM&, Structure*);
@@ -130,9 +130,9 @@ public:
     bool isExtensible() const { return !m_preventExtensions; }
     bool didTransition() const { return m_didTransition; }
     bool putWillGrowOutOfLineStorage();
-    JS_EXPORT_PRIVATE size_t suggestedNewOutOfLineStorageCapacity(); 
+    size_t suggestedNewOutOfLineStorageCapacity(); 
 
-    Structure* flattenDictionaryStructure(VM&, JSObject*);
+    JS_EXPORT_PRIVATE Structure* flattenDictionaryStructure(VM&, JSObject*);
 
     static const bool needsDestruction = true;
     static const bool hasImmortalStructure = true;
@@ -145,6 +145,8 @@ public:
         
     bool isDictionary() const { return m_dictionaryKind != NoneDictionaryKind; }
     bool isUncacheableDictionary() const { return m_dictionaryKind == UncachedDictionaryKind; }
+
+    bool hasBeenFlattenedBefore() const { return m_hasBeenFlattenedBefore; }
 
     bool propertyAccessesAreCacheable() { return m_dictionaryKind != UncachedDictionaryKind && !typeInfo().prohibitsPropertyCaching(); }
 
@@ -264,7 +266,7 @@ public:
 
     PropertyOffset get(VM&, PropertyName);
     PropertyOffset get(VM&, const WTF::String& name);
-    JS_EXPORT_PRIVATE PropertyOffset get(VM&, PropertyName, unsigned& attributes, JSCell*& specificValue);
+    PropertyOffset get(VM&, PropertyName, unsigned& attributes, JSCell*& specificValue);
 
     PropertyOffset getConcurrently(VM&, StringImpl* uid);
     PropertyOffset getConcurrently(VM&, StringImpl* uid, unsigned& attributes, JSCell*& specificValue);
@@ -277,6 +279,10 @@ public:
         if (!is__proto__)
             m_hasReadOnlyOrGetterSetterPropertiesExcludingProto = true;
     }
+
+    bool hasCustomGetterSetterProperties() const { return m_hasCustomGetterSetterProperties; }
+    void setHasCustomGetterSetterProperties() { m_hasCustomGetterSetterProperties = true; }
+
     void setContainsReadOnlyProperties()
     {
         m_hasReadOnlyOrGetterSetterPropertiesExcludingProto = true;
@@ -389,9 +395,9 @@ private:
 
     JS_EXPORT_PRIVATE Structure(VM&, JSGlobalObject*, JSValue prototype, const TypeInfo&, const ClassInfo*, IndexingType, unsigned inlineCapacity);
     Structure(VM&);
-    Structure(VM&, const Structure*);
+    Structure(VM&, Structure*);
 
-    static Structure* create(VM&, const Structure*);
+    static Structure* create(VM&, Structure*);
     
     static Structure* addPropertyTransitionToExistingStructureImpl(Structure*, StringImpl* uid, unsigned attributes, JSCell* specificValue, PropertyOffset&);
 
@@ -422,13 +428,25 @@ private:
     PropertyTable* copyPropertyTable(VM&, Structure* owner);
     PropertyTable* copyPropertyTableForPinning(VM&, Structure* owner);
     JS_EXPORT_PRIVATE void materializePropertyMap(VM&);
-    void materializePropertyMapIfNecessary(VM& vm, DeferGC&)
+    ALWAYS_INLINE void materializePropertyMapIfNecessary(VM& vm, DeferGC&)
     {
         ASSERT(!isCompilationThread());
         ASSERT(structure()->classInfo() == info());
         ASSERT(checkOffsetConsistency());
         if (!propertyTable() && previousID())
             materializePropertyMap(vm);
+    }
+    ALWAYS_INLINE void materializePropertyMapIfNecessary(VM& vm, PropertyTable*& table)
+    {
+        ASSERT(!isCompilationThread());
+        ASSERT(structure()->classInfo() == info());
+        ASSERT(checkOffsetConsistency());
+        table = propertyTable().get();
+        if (!table && previousID()) {
+            DeferGC deferGC(vm.heap);
+            materializePropertyMap(vm);
+            table = propertyTable().get();
+        }
     }
     void materializePropertyMapIfNecessaryForPinning(VM& vm, DeferGC&)
     {
@@ -520,8 +538,10 @@ private:
     ConcurrentJITLock m_lock;
     
     unsigned m_dictionaryKind : 2;
+    bool m_hasBeenFlattenedBefore : 1;
     bool m_isPinnedPropertyTable : 1;
     bool m_hasGetterSetterProperties : 1;
+    bool m_hasCustomGetterSetterProperties : 1;
     bool m_hasReadOnlyOrGetterSetterPropertiesExcludingProto : 1;
     bool m_hasNonEnumerableProperties : 1;
     unsigned m_attributesInPrevious : 14;

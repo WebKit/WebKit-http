@@ -69,6 +69,10 @@
 #include <wtf/text/CString.h>
 #include <wtf/text/StringHash.h>
 
+#if PLATFORM(COCOA)
+#include "ArgumentCodersCF.h"
+#endif
+
 #if PLATFORM(IOS)
 #include <WebCore/FloatQuad.h>
 #include <WebCore/Pasteboard.h>
@@ -391,12 +395,35 @@ bool ArgumentCoder<PluginInfo>::decode(ArgumentDecoder& decoder, PluginInfo& plu
 
 void ArgumentCoder<HTTPHeaderMap>::encode(ArgumentEncoder& encoder, const HTTPHeaderMap& headerMap)
 {
-    encoder << static_cast<const HashMap<AtomicString, String, CaseFoldingHash>&>(headerMap);
+    encoder << static_cast<uint64_t>(headerMap.size());
+    for (auto& keyValuePair : headerMap) {
+        encoder << keyValuePair.key;
+        encoder << keyValuePair.value;
+    }
 }
 
 bool ArgumentCoder<HTTPHeaderMap>::decode(ArgumentDecoder& decoder, HTTPHeaderMap& headerMap)
 {
-    return decoder.decode(static_cast<HashMap<AtomicString, String, CaseFoldingHash>&>(headerMap));
+    uint64_t size;
+    if (!decoder.decode(size))
+        return false;
+
+    for (size_t i = 0; i < size; ++i) {
+        AtomicString name;
+        if (!decoder.decode(name))
+            return false;
+
+        String value;
+        if (!decoder.decode(value))
+            return false;
+
+        if (!headerMap.add(name, value).isNewEntry) {
+            decoder.markInvalid();
+            return false;
+        }
+    }
+
+    return true;
 }
 
 
@@ -467,12 +494,57 @@ bool ArgumentCoder<ProtectionSpace>::decode(ArgumentDecoder& decoder, Protection
 
 void ArgumentCoder<Credential>::encode(ArgumentEncoder& encoder, const Credential& credential)
 {
+#if CERTIFICATE_CREDENTIALS_SUPPORTED
+    encoder.encodeEnum(credential.type());
+
+    if (credential.type() == CredentialTypeClientCertificate) {
+        IPC::encode(encoder, credential.identity());
+
+        encoder << !!credential.certificates();
+        if (credential.certificates())
+            IPC::encode(encoder, credential.certificates());
+
+        encoder.encodeEnum(credential.persistence());
+        return;
+    }
+#endif
     encoder << credential.user() << credential.password();
+
     encoder.encodeEnum(credential.persistence());
 }
 
 bool ArgumentCoder<Credential>::decode(ArgumentDecoder& decoder, Credential& credential)
 {
+#if CERTIFICATE_CREDENTIALS_SUPPORTED
+    CredentialType type;
+
+    if (!decoder.decodeEnum(type))
+        return false;
+
+    if (type == CredentialTypeClientCertificate) {
+        RetainPtr<SecIdentityRef> identity;
+        if (!IPC::decode(decoder, identity))
+            return false;
+
+        bool hasCertificates;
+        if (!decoder.decode(hasCertificates))
+            return false;
+
+        RetainPtr<CFArrayRef> certificates;
+        if (hasCertificates) {
+            if (!IPC::decode(decoder, certificates))
+                return false;
+        }
+
+        CredentialPersistence persistence;
+        if (!decoder.decodeEnum(persistence))
+            return false;
+
+        credential = Credential(identity.get(), certificates.get(), persistence);
+        return true;
+    }
+#endif
+
     String user;
     if (!decoder.decode(user))
         return false;
@@ -603,7 +675,13 @@ void ArgumentCoder<ResourceRequest>::encode(ArgumentEncoder& encoder, const Reso
     encoder << resourceRequest.hiddenFromInspector();
 #endif
 
-    encodePlatformData(encoder, resourceRequest);
+    if (resourceRequest.encodingRequiresPlatformData()) {
+        encoder << true;
+        encodePlatformData(encoder, resourceRequest);
+        return;
+    }
+    encoder << false;
+    resourceRequest.encodeWithoutPlatformData(encoder);
 }
 
 bool ArgumentCoder<ResourceRequest>::decode(ArgumentDecoder& decoder, ResourceRequest& resourceRequest)
@@ -658,7 +736,13 @@ bool ArgumentCoder<ResourceRequest>::decode(ArgumentDecoder& decoder, ResourceRe
     resourceRequest.setHiddenFromInspector(isHiddenFromInspector);
 #endif
 
-    return decodePlatformData(decoder, resourceRequest);
+    bool hasPlatformData;
+    if (!decoder.decode(hasPlatformData))
+        return false;
+    if (hasPlatformData)
+        return decodePlatformData(decoder, resourceRequest);
+
+    return resourceRequest.decodeWithoutPlatformData(decoder);
 }
 
 void ArgumentCoder<ResourceResponse>::encode(ArgumentEncoder& encoder, const ResourceResponse& resourceResponse)

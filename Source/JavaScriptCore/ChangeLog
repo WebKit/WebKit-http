@@ -1,3 +1,445 @@
+2014-06-12  Zsolt Borbely  <zsborbely.u-szeged@partner.samsung.com>
+
+        Allow enum guards to be generated from the replay json files
+        https://bugs.webkit.org/show_bug.cgi?id=133399
+
+        Reviewed by Csaba Osztrogonác.
+
+        * replay/scripts/CodeGeneratorReplayInputs.py:
+        (Type.__init__):
+        (InputsModel.parse_type_with_framework_name):
+        (Generator.generate_header):
+        (Generator.generate_implementation):
+        * replay/scripts/tests/expected/generate-enum-with-guard.json-TestReplayInputs.cpp: Added.
+        (Test::HandleWheelEvent::HandleWheelEvent):
+        (Test::HandleWheelEvent::~HandleWheelEvent):
+        (JSC::InputTraits<Test::HandleWheelEvent>::type):
+        (JSC::InputTraits<Test::HandleWheelEvent>::encode):
+        (JSC::InputTraits<Test::HandleWheelEvent>::decode):
+        (JSC::EncodingTraits<WebCore::PlatformWheelEventPhase>::encodeValue):
+        (JSC::EncodingTraits<WebCore::PlatformWheelEventPhase>::decodeValue):
+        * replay/scripts/tests/expected/generate-enum-with-guard.json-TestReplayInputs.h: Added.
+        (JSC::InputTraits<Test::HandleWheelEvent>::queue):
+        (Test::HandleWheelEvent::platformEvent):
+        * replay/scripts/tests/generate-enum-with-guard.json: Added.
+
+2014-06-12  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Fix GTK+ build after r169823.
+
+        Include StructureInlines.h in a few more files to fix linking
+        issues due to JSC::Structure::get undefined symbol.
+
+        * runtime/ArrayIteratorConstructor.cpp:
+        * runtime/ArrayIteratorPrototype.cpp:
+        * runtime/JSConsole.cpp:
+        * runtime/JSMapIterator.cpp:
+        * runtime/JSSet.cpp:
+        * runtime/JSSetIterator.cpp:
+        * runtime/JSWeakMap.cpp:
+        * runtime/MapIteratorPrototype.cpp:
+        * runtime/MapPrototype.cpp:
+        * runtime/SetIteratorPrototype.cpp:
+        * runtime/SetPrototype.cpp:
+        * runtime/WeakMapPrototype.cpp:
+
+2014-06-12  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [EFL] One more URTBF after r169823 to make ARM64 build happy too.
+
+        * runtime/JSMap.cpp:
+
+2014-06-11  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        Inline caching should try to flatten uncacheable dictionaries
+        https://bugs.webkit.org/show_bug.cgi?id=133683
+
+        Reviewed by Geoffrey Garen.
+
+        There exists a body of JS code that deletes properties off of objects (especially function/constructor objects), 
+        which puts them into an uncacheable dictionary state. This prevents all future inline caching for these objects. 
+        If properties are deleted out of the object during its initialization, we can enable caching for that object by 
+        attempting to flatten it when we see we're trying to do inline caching with that object. We then record that we 
+        performed this flattening optimization in the object's Structure. If it ever re-enters the uncacheable dictionary 
+        state then we can just give up on caching that object.
+
+        In refactoring some of the code in tryCacheGetById and tryBuildGetByIdList to reduce some duplication, I added
+        the InlineCacheAction enum, a new way to indicate the success or failure of an inline caching attempt. I changed
+        the other inline caching functions to return this enum rather than the opaque booleans that we were previously 
+        returning.
+
+        * jit/Repatch.cpp:
+        (JSC::actionForCell):
+        (JSC::tryCacheGetByID):
+        (JSC::repatchGetByID):
+        (JSC::tryBuildGetByIDList):
+        (JSC::buildGetByIDList):
+        (JSC::tryCachePutByID):
+        (JSC::repatchPutByID):
+        (JSC::tryBuildPutByIdList):
+        (JSC::buildPutByIdList):
+        (JSC::tryRepatchIn):
+        (JSC::repatchIn):
+        * runtime/Structure.cpp:
+        (JSC::Structure::Structure):
+        (JSC::Structure::flattenDictionaryStructure):
+        * runtime/Structure.h:
+        (JSC::Structure::hasBeenFlattenedBefore):
+
+2014-06-11  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [EFL] URTBF after r169823.
+
+        * bindings/ScriptValue.cpp: Missing include added.
+
+2014-06-11  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Remove an unnecessary asObject(this) call inside JSObject::fastGetOwnPropertySlot.
+
+        Rubber-stamped by Andreas Kling.
+
+        * runtime/JSObject.h:
+        (JSC::JSObject::fastGetOwnPropertySlot):
+
+2014-06-11  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Turning on DUMP_PROPERTYMAP_STATS causes a build failure
+        https://bugs.webkit.org/show_bug.cgi?id=133673
+
+        Reviewed by Andreas Kling.
+
+        Rewrote the property map statistics code because the old code wasn't building,
+        and it was also mixing numbers for lookups and insertions/removals.
+
+        New logging code records the number of calls to PropertyTable::find (finds) and
+        PropertyTable::get/PropertyTable::findWithString separately so that we can quantify
+        the number of probing during updates and lookups.
+
+        * jsc.cpp:
+        * runtime/PropertyMapHashTable.h:
+        (JSC::PropertyTable::find):
+        (JSC::PropertyTable::get):
+        (JSC::PropertyTable::findWithString):
+        (JSC::PropertyTable::add):
+        (JSC::PropertyTable::remove):
+        (JSC::PropertyTable::reinsert):
+        (JSC::PropertyTable::rehash):
+        * runtime/Structure.cpp:
+        (JSC::PropertyMapStatisticsExitLogger::PropertyMapStatisticsExitLogger):
+        (JSC::PropertyMapStatisticsExitLogger::~PropertyMapStatisticsExitLogger):
+
+2014-06-11  Andreas Kling  <akling@apple.com>
+
+        Always inline JSValue::get() and Structure::get().
+        <https://webkit.org/b/133755>
+
+        Reviewed by Ryosuke Niwa.
+
+        These functions get really hot, so ask the compiler to be more
+        aggressive about inlining them.
+
+        ~28% speed-up on Ryosuke's microbenchmark for accessing nextSibling
+        through GetByVal.
+
+        * runtime/JSArrayIterator.cpp:
+        * runtime/JSCJSValue.cpp:
+        * runtime/JSCJSValueInlines.h:
+        (JSC::JSValue::get):
+        * runtime/JSPromiseDeferred.cpp:
+        * runtime/StructureInlines.h:
+        (JSC::Structure::get):
+
+2014-06-11  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Structure::get should instantiate DeferGC only when materializing property map
+        https://bugs.webkit.org/show_bug.cgi?id=133727
+
+        Rubber-stamped by Andreas Kling.
+
+        Make materializePropertyMapIfNecessary always inline.
+
+        This is ~12% improvement on the microbenchmark attached in the bug.
+
+        * runtime/Structure.h:
+        (JSC::Structure::materializePropertyMapIfNecessary):
+        (JSC::Structure::materializePropertyMapIfNecessaryForPinning):
+
+2014-06-11  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Structure::get should instantiate DeferGC only when materializing property map
+        https://bugs.webkit.org/show_bug.cgi?id=133727
+
+        Reviewed by Geoffrey Garen.
+
+        DeferGC instances in Structure::get was added in http://trac.webkit.org/r157539 in order to avoid
+        collecting the property table newly created by materializePropertyMapIfNecessary since GC can happen
+        when GCSafeConcurrentJITLocker goes out of scope.
+
+        However, always instantiating DeferGC inside Structure::get introduced a new performance bottleneck
+        in JSObject::getPropertySlot because frequently incrementing and decrementing a counter in vm.m_heap
+        and running a release assertion inside Heap::incrementDeferralDepth() is expensive.
+
+        Work around this by instantiating DeferGC only when we're actually calling materializePropertyMap,
+        and immediately storing a pointer to the newly created property table in the stack before DeferGC
+        goes out of scope so that the property table will be marked.
+
+        This shows 13-16% improvement on the microbenchmark attached in the bug.
+
+        * runtime/JSCJSValue.cpp:
+        * runtime/JSObject.h:
+        (JSC::JSObject::fastGetOwnPropertySlot):
+        * runtime/Structure.h:
+        (JSC::Structure::materializePropertyMapIfNecessary):
+        * runtime/StructureInlines.h:
+        (JSC::Structure::get):
+
+2014-06-11  Andreas Kling  <akling@apple.com>
+
+        Some JSValue::get() micro-optimzations.
+        <https://webkit.org/b/133739>
+
+        Tighten some of the property lookup code to improve performance of the
+        eagerly reified prototype attributes:
+
+        - Instead of converting the property name to an integer at every step
+          in the prototype chain, move that to a separate pass at the end
+          since it should be a rare case.
+
+        - Cache the StructureIDTable in a local instead of fetching it from
+          the Heap on every step.
+
+        - Make fillCustomGetterPropertySlot inline. It was out-of-lined based
+          on the assumption that clients would mostly be cacheable GetByIds,
+          and it gets pretty hot (~1%) in GetByVal.
+
+        - Pass the Structure directly to fillCustomGetterPropertySlot instead
+          of refetching it from the StructureIDTable.
+
+        Reviewed by Geoff Garen.
+
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::fillCustomGetterPropertySlot): Deleted.
+        * runtime/JSObject.h:
+        (JSC::JSObject::inlineGetOwnPropertySlot):
+        (JSC::JSObject::fillCustomGetterPropertySlot):
+        (JSC::JSObject::getOwnPropertySlot):
+        (JSC::JSObject::fastGetOwnPropertySlot):
+        (JSC::JSObject::getPropertySlot):
+        (JSC::JSObject::getOwnPropertySlotSlow): Deleted.
+
+2014-06-10  Sam Weinig  <sam@webkit.org>
+
+        Don't create a HashTable for JSObjects that use eager reification
+        https://bugs.webkit.org/show_bug.cgi?id=133705
+
+        Reviewed by Geoffrey Garen.
+
+        * runtime/Lookup.h:
+        (JSC::reifyStaticProperties):
+        Add a version of reifyStaticProperties that takes an array of HashTableValues
+        rather than a HashTable.
+
+2014-06-10  Filip Pizlo  <fpizlo@apple.com>
+
+        Prediction propagator should make sure everyone knows that a variable that is in an argument position where other versions of that variable are not MachineInts cannot possibly be flushed as Int52
+        https://bugs.webkit.org/show_bug.cgi?id=133698
+
+        Reviewed by Geoffrey Garen and Mark Hahnenberg.
+
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        (JSC::DFG::PredictionPropagationPhase::propagate): Use the new utility to figure out if a variable could ever represent an Int52.
+        * dfg/DFGVariableAccessData.cpp:
+        (JSC::DFG::VariableAccessData::couldRepresentInt52): Add a new utility to detect early on if a variable could possibly be Int52.
+        (JSC::DFG::VariableAccessData::couldRepresentInt52Impl):
+        (JSC::DFG::VariableAccessData::flushFormat):
+        * dfg/DFGVariableAccessData.h:
+        * tests/stress/int52-inlined-call-argument.js: Added.
+        (foo):
+        (bar):
+
+2014-06-10  Mark Lam  <mark.lam@apple.com>
+
+        Assertion failure at JSC::Structure::checkOffsetConsistency() const + 234.
+        <https://webkit.org/b/133356>
+
+        Reviewed by Mark Hahnenberg.
+
+        The root cause of this issue is that a nonPropertyTransition can transition
+        a pinned dictionary structure to an unpinned dictionary structure.  The new
+        structure will get a copy of the property table from the original structure.
+        However, when a GC occurs, the property table in the new structure will be
+        cleared because it is unpinned.  This leads to complications in subsequent
+        derivative structures when flattening occurs, which eventually leads to the
+        assertion failure in this bug.
+
+        The fix is to ensure that the new dictionary structure generated by the
+        nonPropertyTransition will have a copy of its predecessor's property table
+        and is pinned.
+
+        * runtime/Structure.cpp:
+        (JSC::Structure::nonPropertyTransition):
+
+2014-06-10  Michael Saboff  <msaboff@apple.com>
+
+        In a certain app state, Array.prototype.filter() returns incorrect results
+        https://bugs.webkit.org/show_bug.cgi?id=133577
+
+        Reviewed by Oliver Hunt.
+
+        Fixed the LLInt processing of op_put_by_val_direct to have the same hole check as op_put_by_val.
+
+        * llint/LowLevelInterpreter32_64.asm:
+        * llint/LowLevelInterpreter64.asm:
+
+2014-06-09  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        Global HashTables contain references to atomic StringImpls
+        https://bugs.webkit.org/show_bug.cgi?id=133661
+
+        Reviewed by Geoffrey Garen.
+
+        This was a long-standing bug revealed by bug 133558. The issue is that the global static HashTables 
+        cache their set of keys as StringImpls that are associated with a particular VM.  This is obviously 
+        incompatible with using multiple VMs on multiple threads (e.g. when using workers). The fix is to 
+        change the "keys" field of the static HashTables to be char** instead of StringImpl**.
+
+        * runtime/JSObject.cpp:
+        (JSC::getClassPropertyNames):
+        * runtime/Lookup.cpp:
+        (JSC::HashTable::createTable):
+        (JSC::HashTable::deleteTable):
+        * runtime/Lookup.h:
+        (JSC::HashTable::ConstIterator::key):
+        (JSC::HashTable::entry):
+
+2014-06-09  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        Build fix after r169703
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+
+2014-06-05  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        Eagerly reify DOM prototype attributes
+        https://bugs.webkit.org/show_bug.cgi?id=133558
+
+        Reviewed by Oliver Hunt.
+
+        This allows us to get rid of a lot of the additional overhead of pushing DOM attributes up into the prototype. 
+        By eagerly reifying the custom getters and setters into the actual JSObject we avoid having to override 
+        getOwnPropertySlot for all of the DOM prototypes, which is a lot of the overhead of doing property lookups on 
+        DOM wrappers.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj.filters:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * llint/LLIntData.cpp:
+        (JSC::LLInt::Data::performAssertions):
+        * llint/LowLevelInterpreter.asm:
+        * runtime/BatchedTransitionOptimizer.h:
+        (JSC::BatchedTransitionOptimizer::BatchedTransitionOptimizer):
+        * runtime/CustomGetterSetter.cpp: Added.
+        (JSC::callCustomSetter):
+        * runtime/CustomGetterSetter.h: Added.
+        (JSC::CustomGetterSetter::create):
+        (JSC::CustomGetterSetter::getter):
+        (JSC::CustomGetterSetter::setter):
+        (JSC::CustomGetterSetter::createStructure):
+        (JSC::CustomGetterSetter::CustomGetterSetter):
+        * runtime/JSCJSValue.cpp:
+        (JSC::JSValue::putToPrimitive):
+        * runtime/JSCJSValue.h:
+        * runtime/JSCJSValueInlines.h:
+        (JSC::JSValue::isCustomGetterSetter):
+        * runtime/JSCell.h:
+        * runtime/JSCellInlines.h:
+        (JSC::JSCell::isCustomGetterSetter):
+        (JSC::JSCell::canUseFastGetOwnProperty):
+        * runtime/JSFunction.cpp:
+        (JSC::JSFunction::isHostOrBuiltinFunction): Deleted.
+        (JSC::JSFunction::isBuiltinFunction): Deleted.
+        * runtime/JSFunction.h:
+        * runtime/JSFunctionInlines.h: Inlined some random functions that appeared hot during profiling.
+        (JSC::JSFunction::isBuiltinFunction):
+        (JSC::JSFunction::isHostOrBuiltinFunction):
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::put):
+        (JSC::JSObject::putDirectCustomAccessor):
+        (JSC::JSObject::fillGetterPropertySlot):
+        (JSC::JSObject::fillCustomGetterPropertySlot):
+        (JSC::JSObject::getOwnPropertySlotSlow): Deleted.
+        * runtime/JSObject.h:
+        (JSC::JSObject::hasCustomGetterSetterProperties):
+        (JSC::JSObject::convertToDictionary):
+        (JSC::JSObject::inlineGetOwnPropertySlot):
+        (JSC::JSObject::getOwnPropertySlotSlow): Inlined because it looked hot during profiling.
+        (JSC::JSObject::putOwnDataProperty):
+        (JSC::JSObject::putDirect):
+        (JSC::JSObject::putDirectWithoutTransition):
+        * runtime/JSType.h:
+        * runtime/Lookup.h:
+        (JSC::reifyStaticProperties):
+        * runtime/PropertyDescriptor.h:
+        (JSC::PropertyDescriptor::PropertyDescriptor):
+        * runtime/Structure.cpp:
+        (JSC::Structure::Structure):
+        (JSC::nextOutOfLineStorageCapacity): Deleted.
+        (JSC::Structure::suggestedNewOutOfLineStorageCapacity): Deleted.
+        (JSC::Structure::get): Deleted.
+        * runtime/Structure.h:
+        (JSC::Structure::hasCustomGetterSetterProperties):
+        (JSC::Structure::setHasCustomGetterSetterProperties):
+        * runtime/StructureInlines.h:
+        (JSC::Structure::get): Inlined due to hotness.
+        (JSC::nextOutOfLineStorageCapacity): Inlined due to hotness.
+        (JSC::Structure::suggestedNewOutOfLineStorageCapacity): Inlined due to hotness.
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        * runtime/VM.h:
+        * runtime/WriteBarrier.h:
+        (JSC::WriteBarrierBase<Unknown>::isCustomGetterSetter):
+
+2014-06-07  Mark Lam  <mark.lam@apple.com>
+
+        Structure should initialize its previousID in its constructor.
+        <https://webkit.org/b/133606>
+
+        Reviewed by Mark Hahnenberg.
+
+        Currently, the Structure constructor that takes a previous structure will
+        initialize its previousID to point to the previous structure's previousID.
+        This is incorrect.  However, the caller of the Structure::create() factory
+        method (which instantiated the Structure) will later call setPreviousID()
+        to set the previousID to the correct previous structure.  This makes the
+        code confusing to read and more error prone in that the structure relies
+        on client code to fix its invalid previousID.
+
+        This patch fixes this by making the Structure constructor initialize
+        previousID correctly.
+
+        * runtime/Structure.cpp:
+        (JSC::Structure::Structure):
+        (JSC::Structure::addPropertyTransition):
+        (JSC::Structure::nonPropertyTransition):
+        * runtime/Structure.h:
+        * runtime/StructureInlines.h:
+        (JSC::Structure::create):
+
+2014-06-06  Andreas Kling  <akling@apple.com>
+
+        Indexed getters should return values directly on the PropertySlot.
+        <https://webkit.org/b/133586>
+
+        Remove PropertySlot's custom index mode.
+
+        Reviewed by Darin Adler.
+
+        * runtime/JSObject.h:
+        (JSC::PropertySlot::getValue):
+        * runtime/PropertySlot.h:
+        (JSC::PropertySlot::setCustomIndex): Deleted.
+
 2014-06-04  Timothy Horton  <timothy_horton@apple.com>
 
         iOS Debug build fix

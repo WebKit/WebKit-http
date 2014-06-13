@@ -757,8 +757,10 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
 
     if ([gestureRecognizer state] == UIGestureRecognizerStateBegan) {
         SEL action = [self _actionForLongPress];
-        if (action)
+        if (action) {
             [self performSelector:action];
+            [self _cancelLongPressGestureRecognizer];
+        }
     }
 }
 
@@ -892,7 +894,7 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
     [_textSelectionAssistant willStartScrollingOverflow];
 }
 
-- (void)willStartPanOrPinchGesture
+- (void)scrollViewWillStartPanOrPinchGesture
 {
     _canSendTouchEventsAsynchronously = YES;
 }
@@ -986,6 +988,11 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
 - (void)replaceText:(NSString *)text withText:(NSString *)word
 {
     _page->replaceSelectedText(text, word);
+}
+
+- (void)selectWordBackward
+{
+    _page->selectWordBackward();
 }
 
 - (void)_promptForReplace:(id)sender
@@ -1507,6 +1514,11 @@ static void selectionChangedWithTouch(bool error, WKContentView *view, const Web
     default:
         return 0;
     }
+}
+
+- (BOOL)_selectionAtDocumentStart
+{
+    return !_page->editorState().characterBeforeSelection;
 }
 
 - (CGRect)textFirstRect

@@ -286,6 +286,7 @@ PluginView::PluginView(PassRefPtr<HTMLPlugInElement> pluginElement, PassRefPtr<P
     , m_isWaitingUntilMediaCanStart(false)
     , m_isBeingDestroyed(false)
     , m_pluginProcessHasCrashed(false)
+    , m_didPlugInStartOffScreen(false)
     , m_pendingURLRequestsTimer(RunLoop::main(), this, &PluginView::pendingURLRequestsTimerFired)
 #if ENABLE(NETSCAPE_PLUGIN_API)
     , m_npRuntimeObjectMap(this)
@@ -466,6 +467,11 @@ RenderBoxModelObject* PluginView::renderer() const
 }
 
 void PluginView::pageScaleFactorDidChange()
+{
+    viewGeometryDidChange();
+}
+
+void PluginView::topContentInsetDidChange()
 {
     viewGeometryDidChange();
 }
@@ -1683,6 +1689,16 @@ void PluginView::pluginSnapshotTimerFired()
 {
     ASSERT(m_plugin);
 
+#if ENABLE(PRIMARY_SNAPSHOTTED_PLUGIN_HEURISTIC)
+    HTMLPlugInImageElement* plugInImageElement = toHTMLPlugInImageElement(m_pluginElement.get());
+    bool isPlugInOnScreen = m_webPage->plugInIntersectsSearchRect(*plugInImageElement);
+    if (!m_countSnapshotRetries)
+        m_didPlugInStartOffScreen = !isPlugInOnScreen;
+
+    bool plugInCameOnScreen = isPlugInOnScreen && m_didPlugInStartOffScreen;
+    bool snapshotFound = false;
+#endif
+
     if (m_plugin->supportsSnapshotting()) {
         // Snapshot might be 0 if plugin size is 0x0.
         RefPtr<ShareableBitmap> snapshot = m_plugin->snapshot();
@@ -1690,19 +1706,30 @@ void PluginView::pluginSnapshotTimerFired()
         if (snapshot)
             snapshotImage = snapshot->createImage();
         m_pluginElement->updateSnapshot(snapshotImage.get());
+#if ENABLE(PRIMARY_SNAPSHOTTED_PLUGIN_HEURISTIC)
+        bool snapshotIsAlmostSolidColor = isAlmostSolidColor(toBitmapImage(snapshotImage.get()));
+        snapshotFound = snapshotImage && !snapshotIsAlmostSolidColor;
+#endif
 
 #if PLATFORM(COCOA)
         unsigned maximumSnapshotRetries = frame() ? frame()->settings().maximumPlugInSnapshotAttempts() : 0;
-        if (snapshotImage && isAlmostSolidColor(toBitmapImage(snapshotImage.get())) && m_countSnapshotRetries < maximumSnapshotRetries) {
+        if (snapshotImage && snapshotIsAlmostSolidColor && m_countSnapshotRetries < maximumSnapshotRetries && !plugInCameOnScreen) {
             ++m_countSnapshotRetries;
             m_pluginSnapshotTimer.restart();
             return;
         }
 #endif
     }
-    // Even if there is no snapshot we still set the state to DisplayingSnapshot
-    // since we just want to display the default empty box.
-    m_pluginElement->setDisplayState(HTMLPlugInElement::DisplayingSnapshot);
+
+#if ENABLE(PRIMARY_SNAPSHOTTED_PLUGIN_HEURISTIC)
+    unsigned candidateArea = 0;
+    bool noSnapshotFoundAfterMaxRetries = m_countSnapshotRetries == frame()->settings().maximumPlugInSnapshotAttempts() && !isPlugInOnScreen && !snapshotFound;
+    if (m_webPage->plugInIsPrimarySize(*plugInImageElement, candidateArea)
+        && (noSnapshotFoundAfterMaxRetries || plugInCameOnScreen))
+        m_pluginElement->setDisplayState(HTMLPlugInElement::Playing);
+    else
+#endif
+        m_pluginElement->setDisplayState(HTMLPlugInElement::DisplayingSnapshot);
 }
 
 void PluginView::beginSnapshottingRunningPlugin()

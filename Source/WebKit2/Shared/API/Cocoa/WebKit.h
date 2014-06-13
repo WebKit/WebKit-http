@@ -25,6 +25,7 @@
 
 #import <WebKit/WKBackForwardList.h>
 #import <WebKit/WKBackForwardListItem.h>
+#import <WebKit/WKError.h>
 #import <WebKit/WKFoundation.h>
 #import <WebKit/WKFrameInfo.h>
 #import <WebKit/WKNavigation.h>
@@ -40,4 +41,5 @@
 #import <WebKit/WKUserScript.h>
 #import <WebKit/WKWebView.h>
 #import <WebKit/WKWebViewConfiguration.h>
+#import <WebKit/WKWindowFeatures.h>
 #import <WebKit/WebKitLegacy.h>

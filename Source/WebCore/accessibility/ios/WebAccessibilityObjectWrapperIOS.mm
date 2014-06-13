@@ -104,6 +104,7 @@ static NSString * const UIAccessibilityTokenFontSize = @"UIAccessibilityTokenFon
 static NSString * const UIAccessibilityTokenBold = @"UIAccessibilityTokenBold";
 static NSString * const UIAccessibilityTokenItalic = @"UIAccessibilityTokenItalic";
 static NSString * const UIAccessibilityTokenUnderline = @"UIAccessibilityTokenUnderline";
+static NSString * const UIAccessibilityTokenLanguage = @"UIAccessibilityTokenLanguage";
 
 static AccessibilityObjectWrapper* AccessibilityUnignoredAncestor(AccessibilityObjectWrapper *wrapper)
 {
@@ -1479,6 +1480,11 @@ static RenderObject* rendererForView(WAKView* view)
     // The UIKit accessibility wrapper will override and post appropriate notification.        
 }
 
+- (void)postValueChangedNotification
+{
+    // The UIKit accessibility wrapper will override and post appropriate notification.
+}
+
 - (void)postScrollStatusChangeNotification
 {
     // The UIKit accessibility wrapper will override and post appropriate notification.
@@ -1655,6 +1661,19 @@ static int blockquoteLevel(RenderObject* renderer)
     return result;
 }
 
+static void AXAttributeStringSetLanguage(NSMutableAttributedString* attrString, RenderObject* renderer, NSRange range)
+{
+    if (!renderer)
+        return;
+    
+    AccessibilityObject* axObject = renderer->document().axObjectCache()->getOrCreate(renderer);
+    NSString *language = axObject->language();
+    if ([language length])
+        [attrString addAttribute:UIAccessibilityTokenLanguage value:language range:range];
+    else
+        [attrString removeAttribute:UIAccessibilityTokenLanguage range:range];
+}
+
 static void AXAttributeStringSetBlockquoteLevel(NSMutableAttributedString* attrString, RenderObject* renderer, NSRange range)
 {
     int quoteLevel = blockquoteLevel(renderer);
@@ -1746,6 +1765,7 @@ static void AXAttributedStringAppendText(NSMutableAttributedString* attrString, 
     AXAttributeStringSetStyle(attrString, node->renderer(), attrStringRange);
     AXAttributeStringSetHeadingLevel(attrString, node->renderer(), attrStringRange);
     AXAttributeStringSetBlockquoteLevel(attrString, node->renderer(), attrStringRange);    
+    AXAttributeStringSetLanguage(attrString, node->renderer(), attrStringRange);
 }
 
 
@@ -2028,6 +2048,25 @@ static void AXAttributedStringAppendText(NSMutableAttributedString* attrString, 
 - (NSAttributedString *)attributedStringForRange:(NSRange)range
 {
     return [self _stringForRange:range attributed:YES];
+}
+
+- (NSRange)_accessibilitySelectedTextRange
+{
+    if (![self _prepareAccessibilityCall] || !m_object->isTextControl())
+        return NSMakeRange(NSNotFound, 0);
+    
+    PlainTextRange textRange = m_object->selectedTextRange();
+    if (textRange.isNull())
+        return NSMakeRange(NSNotFound, 0);
+    return NSMakeRange(textRange.start, textRange.length);    
+}
+
+- (void)_accessibilitySetSelectedTextRange:(NSRange)range
+{
+    if (![self _prepareAccessibilityCall] || !m_object->isTextControl())
+        return;
+    
+    m_object->setSelectedTextRange(PlainTextRange(range.location, range.length));
 }
 
 // A convenience method for getting the accessibility objects of a NSRange. Currently used only by DRT.

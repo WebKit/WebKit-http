@@ -126,6 +126,7 @@ void NavigationState::setNavigationDelegate(id <WKNavigationDelegate> delegate)
     m_navigationDelegateMethods.webViewNavigationDidFailProvisionalLoadInSubframeWithError = [delegate respondsToSelector:@selector(_webView:navigation:didFailProvisionalLoadInSubframe:withError:)];
     m_navigationDelegateMethods.webViewNavigationDidFinishDocumentLoad = [delegate respondsToSelector:@selector(_webView:navigationDidFinishDocumentLoad:)];
     m_navigationDelegateMethods.webViewRenderingProgressDidChange = [delegate respondsToSelector:@selector(_webView:renderingProgressDidChange:)];
+    m_navigationDelegateMethods.webViewWillSendRequestForAuthenticationChallenge = [delegate respondsToSelector:@selector(_webView:willSendRequestForAuthenticationChallenge:)];
     m_navigationDelegateMethods.webViewCanAuthenticateAgainstProtectionSpace = [delegate respondsToSelector:@selector(_webView:canAuthenticateAgainstProtectionSpace:)];
     m_navigationDelegateMethods.webViewDidReceiveAuthenticationChallenge = [delegate respondsToSelector:@selector(_webView:didReceiveAuthenticationChallenge:)];
     m_navigationDelegateMethods.webViewWebProcessDidCrash = [delegate respondsToSelector:@selector(_webViewWebProcessDidCrash:)];
@@ -177,6 +178,18 @@ RetainPtr<WKNavigation> NavigationState::createBackForwardNavigation(uint64_t na
 }
 
 RetainPtr<WKNavigation> NavigationState::createReloadNavigation(uint64_t navigationID)
+{
+    ASSERT(!m_navigations.contains(navigationID));
+
+    auto navigation = adoptNS([[WKNavigation alloc] init]);
+
+    // FIXME: We need to remove the navigation when we're done with it!
+    m_navigations.set(navigationID, navigation);
+
+    return navigation;
+}
+
+RetainPtr<WKNavigation> NavigationState::createLoadDataNavigation(uint64_t navigationID)
 {
     ASSERT(!m_navigations.contains(navigationID));
 
@@ -569,6 +582,9 @@ void NavigationState::LoaderClient::didLayout(WebKit::WebPageProxy*, WebCore::La
 
 bool NavigationState::LoaderClient::canAuthenticateAgainstProtectionSpaceInFrame(WebKit::WebPageProxy*, WebKit::WebFrameProxy*, WebKit::WebProtectionSpace* protectionSpace)
 {
+    if (m_navigationState.m_navigationDelegateMethods.webViewWillSendRequestForAuthenticationChallenge)
+        return true;
+
     if (!m_navigationState.m_navigationDelegateMethods.webViewCanAuthenticateAgainstProtectionSpace)
         return false;
 
@@ -581,6 +597,15 @@ bool NavigationState::LoaderClient::canAuthenticateAgainstProtectionSpaceInFrame
 
 void NavigationState::LoaderClient::didReceiveAuthenticationChallengeInFrame(WebKit::WebPageProxy*, WebKit::WebFrameProxy*, WebKit::AuthenticationChallengeProxy* authenticationChallenge)
 {
+    if (m_navigationState.m_navigationDelegateMethods.webViewWillSendRequestForAuthenticationChallenge) {
+        auto navigationDelegate = m_navigationState.m_navigationDelegate.get();
+        if (!navigationDelegate)
+            return;
+
+        [static_cast<id <WKNavigationDelegatePrivate>>(navigationDelegate.get()) _webView:m_navigationState.m_webView willSendRequestForAuthenticationChallenge:wrapper(*authenticationChallenge)];
+        return;
+    }
+
     if (!m_navigationState.m_navigationDelegateMethods.webViewDidReceiveAuthenticationChallenge)
         return;
 
@@ -705,6 +730,26 @@ void NavigationState::willChangeEstimatedProgress()
 void NavigationState::didChangeEstimatedProgress()
 {
     [m_webView didChangeValueForKey:@"estimatedProgress"];
+}
+
+void NavigationState::willChangeCanGoBack()
+{
+    [m_webView willChangeValueForKey:@"canGoBack"];
+}
+
+void NavigationState::didChangeCanGoBack()
+{
+    [m_webView didChangeValueForKey:@"canGoBack"];
+}
+
+void NavigationState::willChangeCanGoForward()
+{
+    [m_webView willChangeValueForKey:@"canGoForward"];
+}
+
+void NavigationState::didChangeCanGoForward()
+{
+    [m_webView didChangeValueForKey:@"canGoForward"];
 }
 
 } // namespace WebKit

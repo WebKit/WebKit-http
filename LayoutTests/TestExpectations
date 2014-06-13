@@ -67,6 +67,11 @@ webkit.org/b/126166 [ Debug ] js/dfg-uint32array-overflow-values.html [ Skip ]
 
 webkit.org/b/127860 [ Debug ] js/function-apply-aliased.html [ Skip ]
 
+# These tests verify dynamic manipulation of the mroot and msqrt elements.
+# Unfortunately, the current MathML code does not handle them well.
+webkit.org/b/119038 mathml/roots-addChild.html [ Skip ]
+webkit.org/b/119038 mathml/roots-removeChild.html [ Skip ]
+
 # This test verifies that a mismatch reftest will fail as intended if both results are same. (introduced in r93187)
 fast/harness/sample-fail-mismatch-reftest.html [ WontFix ImageOnlyFailure ]
 
@@ -82,11 +87,11 @@ webkit.org/b/129113 fast/multicol/newmulticol/clipping.html [ ImageOnlyFailure ]
 #subpixel rotation
 webkit.org/b/130556 compositing/hidpi-absolute-subpixel-positioned-transformed-elements.html [ ImageOnlyFailure ]
 
-webkit.org/b/129327 inspector-protocol/indexeddb/basics.html [ Pass Failure ]
-
-webkit.org/b/129331 inspector-protocol/page/deny-X-FrameOption.html [ Pass Failure ]
-
+webkit.org/b/133761 inspector-protocol/debugger/breakpoint-action-detach.html [ Skip ]
 webkit.org/b/129639 inspector-protocol/dom/dom-search-crash.html [ Skip ]
+webkit.org/b/129327 inspector-protocol/indexeddb/basics.html [ Pass Failure ]
+webkit.org/b/127414 inspector-protocol/page/deny-X-FrameOption.html [ Pass Failure ]
+
 webkit.org/b/129642 inspector [ Skip ]
 
 # These tests cause assertion failures in subsequent tests
@@ -121,7 +126,5 @@ css2.1/20110323/replaced-intrinsic-002.htm [ Failure ]
 webkit.org/b/132791 svg/as-object/sizing/svg-in-object-placeholder-height-fixed.html [ Skip ]
 webkit.org/b/132791 svg/as-object/sizing/svg-in-object-placeholder-height-percentage.html [ Skip ]
 webkit.org/b/132791 svg/as-object/sizing/svg-in-object-placeholder-height-auto.html [ Skip ]
-
-webkit.org/b/133356 js/primitive-property-access-edge-cases.html [ Pass Crash ]
 
 webkit.org/b/133057 fast/table/border-collapsing/collapsed-borders-adjoining-sections.html [ ImageOnlyFailure ]

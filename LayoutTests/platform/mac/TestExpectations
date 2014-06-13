@@ -989,9 +989,6 @@ webkit.org/b/110186 inspector-protocol/page/javascriptDialogEvents.html [ Skip ]
 # Need support for ResourceHandle::didChangePriority and DRT support
 webkit.org/b/111016 http/tests/loading/promote-img-preload-priority.html [ Failure ]
 
-webkit.org/b/111521 editing/selection/selection-invalid-offset.html [ Crash Pass ]
-webkit.org/b/111521 editing/selection/selection-in-iframe-removed-crash.html [ Crash Pass ]
-
 webkit.org/b/110546 [ Debug ] fast/parser/document-write-fighting-eof.html [ Skip ]
 webkit.org/b/110546 [ Debug ] fast/parser/document-write-partial-entity-before-load.html [ Skip ]
 
@@ -1068,8 +1065,6 @@ webkit.org/b/115292 fast/events/constructors/mouse-event-constructor.html
 webkit.org/b/115292 fast/events/constructors/wheel-event-constructor.html
 webkit.org/b/115292 fast/forms/range/slider-mouse-events.html
 webkit.org/b/115292 fast/overflow/infiniteRecursionGuard.html
-webkit.org/b/115292 platform/mac-wk2/tiled-drawing/fixed/four-bars-zoomed.html
-webkit.org/b/115292 platform/mac-wk2/tiled-drawing/sticky/sticky-vertical.html
 webkit.org/b/115292 svg/zoom/page/zoom-replaced-intrinsic-ratio-001.htm
 webkit.org/b/115292 editing/selection/vertical-lr-ltr-extend-line-backward-br.html
 webkit.org/b/115292 editing/selection/vertical-lr-ltr-extend-line-forward-br.html
@@ -1386,3 +1381,11 @@ webkit.org/b/132491 [ MountainLion ] http/tests/media/hls/video-controls-live-st
 fast/dom/rtl-scroll-to-leftmost-and-resize.html [ Failure ]
 
 webkit.org/b/133363 media/video-rtl.html [ Pass ImageOnlyFailure ]
+
+# REGRESSION (6/9/2014): Several TextTrackCue tests became very flaky
+webkit.org/b/133686 media/track/w3c/interfaces/TextTrackCue/align.html [ Pass Failure ]
+webkit.org/b/133686 media/track/w3c/interfaces/TextTrackCue/endTime.html [ Pass Failure ]
+webkit.org/b/133686 media/track/w3c/interfaces/TextTrackCue/id.html [ Pass Failure ]
+webkit.org/b/133686 media/track/w3c/interfaces/TextTrackCue/pauseOnExit.html [ Pass Failure ]
+webkit.org/b/133686 media/track/w3c/interfaces/TextTrackCue/startTime.html [ Pass Failure ]
+webkit.org/b/133686 media/track/w3c/interfaces/TextTrackCue/track.html [ Pass Failure ]

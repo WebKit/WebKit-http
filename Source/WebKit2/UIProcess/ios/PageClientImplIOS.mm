@@ -151,6 +151,7 @@ void PageClientImpl::processDidExit()
 void PageClientImpl::didRelaunchProcess()
 {
     [m_contentView _didRelaunchProcess];
+    [m_webView _didRelaunchProcess];
 }
 
 void PageClientImpl::pageClosed()
@@ -526,6 +527,11 @@ void PageClientImpl::didFinishLoadingDataForCustomContentProvider(const String& 
 void PageClientImpl::zoomToRect(FloatRect rect, double minimumScale, double maximumScale)
 {
     [m_contentView _zoomToRect:rect withOrigin:rect.center() fitEntireRect:YES minimumScale:minimumScale maximumScale:maximumScale minimumScrollDistance:0];
+}
+
+void PageClientImpl::scrollViewWillStartPanGesture()
+{
+    [m_contentView scrollViewWillStartPanOrPinchGesture];
 }
 
 void PageClientImpl::didFinishDrawingPagesToPDF(const IPC::DataReference& pdfData)

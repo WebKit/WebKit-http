@@ -63,21 +63,19 @@ public:
     bool supportsFullscreen();
     bool userGestureRequired() const;
 
+    void updateCaptionDisplaySizes();
+
     String externalDeviceDisplayName() const;
     String externalDeviceType() const;
 
     bool controlsDependOnPageScaleFactor() const;
     void setControlsDependOnPageScaleFactor(bool v);
 
-    JSC::JSValue controllerJSValue() const { return m_controller; }
-    void setControllerJSValue(JSC::JSValue controller) { m_controller = controller; }
-
 private:
     MediaControlsHost(HTMLMediaElement*);
 
     HTMLMediaElement* m_mediaElement;
     RefPtr<MediaControlTextTrackContainerElement> m_textTrackContainer;
-    JSC::JSValue m_controller;
 };
 
 }

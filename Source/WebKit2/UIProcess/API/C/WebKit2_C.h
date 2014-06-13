@@ -36,7 +36,7 @@
 #include <WebKit/WKContext.h>
 #include <WebKit/WKData.h>
 #include <WebKit/WKDictionary.h>
-#include <WebKit/WKError.h>
+#include <WebKit/WKErrorRef.h>
 #include <WebKit/WKFormSubmissionListener.h>
 #include <WebKit/WKFrame.h>
 #include <WebKit/WKFramePolicyListener.h>
