@@ -37,12 +37,32 @@ namespace WebCore {
 
 URL::URL(const BUrl& url)
 {
-    parse(url.UrlString().String());
+    setProtocol(url.Protocol());
+    setHost(url.Host());
+    if (url.Port() != 0)
+        setPort(url.Port());
+    setUser(url.UserName());
+    setPass(url.Password());
+    setPath(url.Path());
+    setQuery(url.Request());
+    if (url.Fragment().Length() != 0)
+        setFragmentIdentifier(url.Fragment());
 }
 
 URL::operator BUrl() const
 {
-    return BUrl(string().utf8().data());
+    BUrl converted;
+    converted.SetProtocol(protocol());
+    converted.SetUserName(user());
+    converted.SetPassword(pass());
+    converted.SetHost(host());
+    if (hasPort())
+        converted.SetPort(port());
+    converted.SetPath(path());
+    converted.SetRequest(query());
+    if (hasFragmentIdentifier())
+        converted.SetFragment(fragmentIdentifier());
+    return converted;
 }
 
 } // namespace WebCore
