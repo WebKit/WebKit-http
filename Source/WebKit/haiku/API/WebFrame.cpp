@@ -122,10 +122,10 @@ void BWebFrame::LoadURL(BString urlString)
     } else
 		url = WebCore::URL(WebCore::URL(), urlString.Trim());
 
-	if (!url.protocolIsInHTTPFamily() && !url.isLocalFile()) {
-		url = WebCore::URL();
-		url.setProtocol("http");
-		url.setHostAndPort(urlString);
+	if (!url.isValid()) {
+        BString fixedUrl("http://");
+        fixedUrl << urlString.Trim();
+		url = WebCore::URL(WebCore::URL(), fixedUrl);
 	}
     LoadURL(url);
 }
