@@ -1004,28 +1004,24 @@ void BWebPage::handleMouseEvent(const BMessage* message)
             fPage->contextMenuController().clearContextMenu();
 
             WebCore::Frame& focusedFrame = fPage->focusController().focusedOrMainFrame();
-            focusedFrame.eventHandler().sendContextMenuEvent(event);
+            if (!focusedFrame.eventHandler().sendContextMenuEvent(event)) {
+                // event is swallowed.
+                return;
+            }
             // If the web page implements it's own context menu handling, then
             // the contextMenu() pointer will be zero. In this case, we should
             // also swallow the event.
             ContextMenu* contextMenu = fPage->contextMenuController().contextMenu();
             if (contextMenu) {
-            	BMenu* platformMenu = contextMenu->releasePlatformDescription();
-            	if (platformMenu) {
-            		// Need to convert the BMenu into BPopUpMenu.
-	            	BPopUpMenu* popupMenu = new BPopUpMenu("context menu");
-					for (int32 i = platformMenu->CountItems() - 1; i >= 0; i--) {
-					    BMenuItem* item = platformMenu->RemoveItem(i);
-					    popupMenu->AddItem(item, 0);
-					}
-					BPoint screenLocation(event.globalPosition().x() + 2,
-					    event.globalPosition().y() + 2);
-            	    popupMenu->Go(screenLocation, true, true, true);
-            	    delete platformMenu;
-            	}
+                BPopUpMenu* platformMenu = dynamic_cast<BPopUpMenu*>(contextMenu->releasePlatformDescription());
+                if (platformMenu) {
+                    BPoint screenLocation(event.globalPosition().x() + 2,
+                        event.globalPosition().y() + 2);
+                    platformMenu->Go(screenLocation, true, true, true);
+                }
             }
-    	}
-    	// Handle regular mouse events.
+        }
+        // Handle regular mouse events.
         frame->eventHandler().handleMousePressEvent(event);
         break;
     case B_MOUSE_UP:

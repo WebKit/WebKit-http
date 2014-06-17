@@ -35,10 +35,10 @@
 #include "NotImplemented.h"
 #include <Application.h>
 #include <Handler.h>
-#include <Menu.h>
 #include <MenuItem.h>
 #include <Message.h>
 #include <Messenger.h>
+#include <PopUpMenu.h>
 #include <wtf/Assertions.h>
 
 namespace WebCore {
@@ -75,7 +75,7 @@ private:
 };
 
 ContextMenu::ContextMenu()
-    : m_platformDescription(new BMenu("context_menu"))
+    : m_platformDescription(new BPopUpMenu("context_menu"))
     , m_menuHandler(new ContextMenuHandler())
 {
     if (be_app->Lock()) {
