@@ -521,14 +521,6 @@ void FrameLoaderClientHaiku::dispatchDecidePolicyForNewWindowAction(const Naviga
         return;
     }
 
-    // NOTE: This is what the Qt port does in QWebPage::acceptNavigationRequest() if the
-    // current delegation policy is "DelegateExternalLinks". Must be good for something.
-    if (WebCore::SchemeRegistry::shouldTreatURLSchemeAsLocal(request.url().protocol())) {
-        dispatchNavigationRequested(request);
-        function(PolicyUse);
-        return;
-    }
-
     // Clicks with the tertiary mouse button shall open a new window,
     // (or tab respectively depending on browser) - *ignore* the request for this page
     // then, since we create it ourself.
@@ -705,8 +697,6 @@ void FrameLoaderClientHaiku::convertMainResourceLoadToDownload(DocumentLoader*, 
 
 WebCore::ResourceError FrameLoaderClientHaiku::cancelledError(const WebCore::ResourceRequest& request)
 {
-    CALLED();
-    notImplemented();
     ResourceError error = ResourceError(String(), WebKitErrorCannotShowURL,
                                         request.url().string(), "Load request cancelled");
     error.setIsCancellation(true);
@@ -715,24 +705,18 @@ WebCore::ResourceError FrameLoaderClientHaiku::cancelledError(const WebCore::Res
 
 WebCore::ResourceError FrameLoaderClientHaiku::blockedError(const ResourceRequest& request)
 {
-    CALLED();
-    notImplemented();
     return ResourceError(String(), WebKitErrorCannotUseRestrictedPort,
                          request.url().string(), "Not allowed to use restricted network port");
 }
 
 WebCore::ResourceError FrameLoaderClientHaiku::cannotShowURLError(const WebCore::ResourceRequest& request)
 {
-    CALLED();
-    notImplemented();
     return ResourceError(String(), WebKitErrorCannotShowURL,
                          request.url().string(), "URL cannot be shown");
 }
 
 WebCore::ResourceError FrameLoaderClientHaiku::interruptedForPolicyChangeError(const WebCore::ResourceRequest& request)
 {
-    CALLED();
-    notImplemented();
     ResourceError error = ResourceError(String(), WebKitErrorFrameLoadInterruptedByPolicyChange,
                                         request.url().string(), "Frame load was interrupted");
     error.setIsCancellation(true);
@@ -741,8 +725,6 @@ WebCore::ResourceError FrameLoaderClientHaiku::interruptedForPolicyChangeError(c
 
 WebCore::ResourceError FrameLoaderClientHaiku::cannotShowMIMETypeError(const WebCore::ResourceResponse& response)
 {
-    CALLED();
-    notImplemented();
     // FIXME: This can probably be used to automatically close pages that have no content,
     // but only triggered a download. Since BWebPage is used for initiating a BWebDownload,
     // it could remember doing so and then we could ask here if we are the main frame,
@@ -753,16 +735,12 @@ WebCore::ResourceError FrameLoaderClientHaiku::cannotShowMIMETypeError(const Web
 
 WebCore::ResourceError FrameLoaderClientHaiku::fileDoesNotExistError(const WebCore::ResourceResponse& response)
 {
-    CALLED();
-    notImplemented();
     return ResourceError(String(), WebKitErrorCannotShowURL,
                          response.url().string(), "File does not exist");
 }
 
 ResourceError FrameLoaderClientHaiku::pluginWillHandleLoadError(const ResourceResponse& response)
 {
-    CALLED();
-    notImplemented();
     return ResourceError(String(), WebKitErrorPlugInWillHandleLoad,
                          response.url().string(), "Plugin will handle load");
 }
