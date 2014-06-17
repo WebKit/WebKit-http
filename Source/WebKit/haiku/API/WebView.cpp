@@ -53,9 +53,14 @@
 
 using namespace WebCore;
 
+
+static const int32 kMsgNavigateArrow = '_NvA';
+
+
 BWebView::UserData::~UserData()
 {
 }
+
 
 BWebView::BWebView(const char* name)
     : BView(name, B_WILL_DRAW | B_FRAME_EVENTS | B_FULL_UPDATE_ON_RESIZE
@@ -111,6 +116,108 @@ void BWebView::AttachedToWindow()
 {
     fWebPage->SetListener(BMessenger(Window()));
     fWebPage->activated(Window()->IsActive());
+
+    // Setup some shortcuts. WebKit would handle those fine if we passed the
+    // KeyDown events even when B_COMMAND_KEY is pressed, but we don't.
+	BMessage* message;
+    char string[2];
+    string[1] = 0;
+
+    // Word-wise navigation shortcuts
+	if (!Window()->HasShortcut(B_LEFT_ARROW, B_COMMAND_KEY)
+		&& !Window()->HasShortcut(B_RIGHT_ARROW, B_COMMAND_KEY)) {
+		message = new BMessage(kMsgNavigateArrow);
+		message->AddInt32("key", B_LEFT_ARROW);
+        string[0] = B_LEFT_ARROW;
+		message->AddString("bytes", string);
+		message->AddInt32("modifiers", B_COMMAND_KEY);
+		Window()->AddShortcut(B_LEFT_ARROW, B_COMMAND_KEY, message, this);
+
+		message = new BMessage(kMsgNavigateArrow);
+		message->AddInt32("key", B_RIGHT_ARROW);
+        string[0] = B_RIGHT_ARROW;
+		message->AddString("bytes", string);
+		message->AddInt32("modifiers", B_COMMAND_KEY);
+		Window()->AddShortcut(B_RIGHT_ARROW, B_COMMAND_KEY, message, this);
+	}
+
+    // Word-wise selection shortcuts
+	if (!Window()->HasShortcut(B_LEFT_ARROW, B_COMMAND_KEY | B_SHIFT_KEY)
+		&& !Window()->HasShortcut(B_RIGHT_ARROW,
+			B_COMMAND_KEY | B_SHIFT_KEY)) {
+		message = new BMessage(kMsgNavigateArrow);
+		message->AddInt32("key", B_LEFT_ARROW);
+        string[0] = B_LEFT_ARROW;
+		message->AddString("bytes", string);
+		message->AddInt32("modifiers", B_COMMAND_KEY | B_SHIFT_KEY);
+		Window()->AddShortcut(B_LEFT_ARROW, B_COMMAND_KEY | B_SHIFT_KEY,
+			message, this);
+
+		message = new BMessage(kMsgNavigateArrow);
+		message->AddInt32("key", B_RIGHT_ARROW);
+        string[0] = B_RIGHT_ARROW;
+		message->AddString("bytes", string);
+		message->AddInt32("modifiers", B_COMMAND_KEY | B_SHIFT_KEY);
+		Window()->AddShortcut(B_RIGHT_ARROW, B_COMMAND_KEY | B_SHIFT_KEY,
+			message, this);
+	}
+
+#if 0
+	if (!Window()->HasShortcut(B_UP_ARROW, B_OPTION_KEY)
+		&& !Window()->HasShortcut(B_DOWN_ARROW, B_OPTION_KEY)) {
+		message = new BMessage(kMsgNavigateArrow);
+		message->AddInt32("key", B_UP_ARROW);
+		message->AddInt32("modifiers", B_OPTION_KEY);
+		Window()->AddShortcut(B_UP_ARROW, B_OPTION_KEY, message, this);
+
+		message = new BMessage(kMsgNavigateArrow);
+		message->AddInt32("key", B_DOWN_ARROW);
+		message->AddInt32("modifiers", B_OPTION_KEY);
+		Window()->AddShortcut(B_DOWN_ARROW, B_OPTION_KEY, message, this);
+	}
+	if (!Window()->HasShortcut(B_UP_ARROW, B_OPTION_KEY | B_SHIFT_KEY)
+		&& !Window()->HasShortcut(B_DOWN_ARROW,
+			B_OPTION_KEY | B_SHIFT_KEY)) {
+		message = new BMessage(kMsgNavigateArrow);
+		message->AddInt32("key", B_UP_ARROW);
+		message->AddInt32("modifiers", B_OPTION_KEY | B_SHIFT_KEY);
+		Window()->AddShortcut(B_UP_ARROW, B_OPTION_KEY | B_SHIFT_KEY,
+			message, this);
+
+		message = new BMessage(kMsgNavigateArrow);
+		message->AddInt32("key", B_DOWN_ARROW);
+		message->AddInt32("modifiers", B_OPTION_KEY | B_SHIFT_KEY);
+		Window()->AddShortcut(B_DOWN_ARROW, B_OPTION_KEY | B_SHIFT_KEY,
+			message, this);
+	}
+
+	if (!Window()->HasShortcut(B_HOME, B_COMMAND_KEY)
+		&& !Window()->HasShortcut(B_END, B_COMMAND_KEY)) {
+		message = new BMessage(kMsgNavigatePage);
+		message->AddInt32("key", B_HOME);
+		message->AddInt32("modifiers", B_COMMAND_KEY);
+		Window()->AddShortcut(B_HOME, B_COMMAND_KEY, message, this);
+
+		message = new BMessage(kMsgNavigatePage);
+		message->AddInt32("key", B_END);
+		message->AddInt32("modifiers", B_COMMAND_KEY);
+		Window()->AddShortcut(B_END, B_COMMAND_KEY, message, this);
+	}
+	if (!Window()->HasShortcut(B_HOME, B_COMMAND_KEY | B_SHIFT_KEY)
+		&& !Window()->HasShortcut(B_END, B_COMMAND_KEY | B_SHIFT_KEY)) {
+		message = new BMessage(kMsgNavigatePage);
+    	message->AddInt32("key", B_HOME);
+		message->AddInt32("modifiers", B_COMMAND_KEY | B_SHIFT_KEY);
+		Window()->AddShortcut(B_HOME, B_COMMAND_KEY | B_SHIFT_KEY,
+			message, this);
+
+		message = new BMessage(kMsgNavigatePage);
+		message->AddInt32("key", B_END);
+		message->AddInt32("modifiers", B_COMMAND_KEY | B_SHIFT_KEY);
+		Window()->AddShortcut(B_END, B_COMMAND_KEY | B_SHIFT_KEY,
+			message, this);
+	}
+#endif
 }
 
 void BWebView::DetachedFromWindow()
@@ -206,6 +313,11 @@ void BWebView::MessageReceived(BMessage* message)
 
     case B_FIND_STRING_RESULT:
         Window()->PostMessage(message);
+        break;
+
+    case kMsgNavigateArrow:
+        message->what = B_KEY_DOWN;
+        _DispatchKeyEvent(B_KEY_DOWN);
         break;
 
     default:
