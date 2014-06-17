@@ -110,8 +110,6 @@ ResourceHandle::~ResourceHandle()
         cancel();
 }
 
-#include <stdio.h>
-
 bool ResourceHandle::start()
 {
     // If NetworkingContext is invalid then we are no longer attached to a Page,
@@ -223,6 +221,18 @@ void ResourceHandle::receivedRequestToContinueWithoutCredential(const Authentica
 void ResourceHandle::receivedCancellation(const AuthenticationChallenge&)
 {
     // TODO
+}
+
+
+void ResourceHandle::receivedRequestToPerformDefaultHandling(const AuthenticationChallenge&)
+{
+    ASSERT_NOT_REACHED();
+}
+
+
+void ResourceHandle::receivedChallengeRejection(const AuthenticationChallenge&)
+{
+    ASSERT_NOT_REACHED();
 }
 
 

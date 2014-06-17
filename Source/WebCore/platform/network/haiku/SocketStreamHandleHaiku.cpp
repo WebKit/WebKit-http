@@ -135,6 +135,18 @@ void SocketStreamHandle::receivedCancellation(const AuthenticationChallenge&)
 }
 
 
+void SocketStreamHandle::receivedRequestToPerformDefaultHandling(const AuthenticationChallenge&)
+{
+    notImplemented();
+}
+
+
+void SocketStreamHandle::receivedChallengeRejection(const AuthenticationChallenge&)
+{
+    notImplemented();
+}
+
+
 // #pragma mark - Private static methods
 
 

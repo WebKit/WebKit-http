@@ -31,6 +31,8 @@
 
 #include <String.h>
 
+#include "wtf/PassOwnPtr.h"
+
 class BUrlContext;
 class BUrlRequest;
 

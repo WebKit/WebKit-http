@@ -60,6 +60,8 @@ namespace WebCore {
         void receivedCredential(const AuthenticationChallenge&, const Credential&);
         void receivedRequestToContinueWithoutCredential(const AuthenticationChallenge&);
         void receivedCancellation(const AuthenticationChallenge&);
+        void receivedRequestToPerformDefaultHandling(const AuthenticationChallenge&);
+        void receivedChallengeRejection(const AuthenticationChallenge&);
 
         static void 		AsyncHandleRead(void* object);
 
