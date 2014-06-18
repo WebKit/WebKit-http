@@ -168,8 +168,8 @@ endif()
 SET(CPACK_SOURCE_GENERATOR TBZ2)
 set(CPACK_GENERATOR HPKG)
 
-# Optimize binary size for release builds by removing dead sections on unix/gcc
-if (CMAKE_BUILD_TYPE STREQUAL release AND CMAKE_COMPILER_IS_GNUCC AND UNIX AND NOT APPLE)
+# Optimize binary size for release builds by removing dead sections
+if (CMAKE_BUILD_TYPE STREQUAL release AND CMAKE_COMPILER_IS_GNUCC)
     set(CMAKE_C_FLAGS "-ffunction-sections -fdata-sections ${CMAKE_C_FLAGS}")
     set(CMAKE_CXX_FLAGS "-ffunction-sections -fdata-sections ${CMAKE_CXX_FLAGS}")
     set(CMAKE_SHARED_LINKER_FLAGS "-Wl,--gc-sections ${CMAKE_SHARED_LINKER_FLAGS}")
@@ -180,7 +180,7 @@ endif ()
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -frtti")
 
 string(TOLOWER ${CMAKE_HOST_SYSTEM_PROCESSOR} LOWERCASE_CMAKE_HOST_SYSTEM_PROCESSOR)
-if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" AND "${LOWERCASE_CMAKE_HOST_SYSTEM_PROCESSOR}" STREQUAL "x86")
+if (CMAKE_COMPILER_IS_GNUCC AND "${LOWERCASE_CMAKE_HOST_SYSTEM_PROCESSOR}" STREQUAL "x86")
     # i686 is the official requirement for Haiku, let's try to keep this working
     # for everyone. Moreover, our stack isn't 16-byte aligned so this avoid
     # crashes where gcc would otherwise use SSE2 instructions.
