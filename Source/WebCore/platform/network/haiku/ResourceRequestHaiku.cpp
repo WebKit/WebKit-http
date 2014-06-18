@@ -51,7 +51,7 @@ BUrlRequest* ResourceRequest::toNetworkRequest(BUrlContext* context)
         for (HTTPHeaderMap::const_iterator it = headers.begin(),
                 end = headers.end(); it != end; ++it)
         {
-            requestHeaders->AddHeader(it->key.string().utf8().data(),
+            requestHeaders->AddHeader(it->key.utf8().data(),
                 it->value.utf8().data());
         }
 

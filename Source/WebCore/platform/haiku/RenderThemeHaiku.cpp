@@ -96,9 +96,14 @@ Color RenderThemeHaiku::platformInactiveSelectionForegroundColor() const
     return Color(0, 0, 0, 255);
 }
 
-void RenderThemeHaiku::systemFont(CSSValueID propId, FontDescription&) const
+void RenderThemeHaiku::systemFont(CSSValueID, FontDescription& fontDescription) const
 {
-    notImplemented();
+    fontDescription.setOneFamily("Sans");
+    fontDescription.setSpecifiedSize(14);
+    fontDescription.setIsAbsoluteSize(true);
+    fontDescription.setGenericFamily(FontDescription::NoFamily);
+    fontDescription.setWeight(FontWeightNormal);
+    fontDescription.setItalic(false);
 }
 
 String RenderThemeHaiku::mediaControlsStyleSheet()
@@ -240,33 +245,33 @@ bool RenderThemeHaiku::paintTextArea(const RenderObject& object, const PaintInfo
 
 void RenderThemeHaiku::adjustMenuListStyle(StyleResolver* selector, RenderStyle* style, Element* element) const
 {
-    adjustMenuListButtonStyle(selector, style, element);
+    adjustMenuListButtonStyle(*selector, *style, *element);
 }
 
-void RenderThemeHaiku::adjustMenuListButtonStyle(StyleResolver* selector, RenderStyle* style, Element* element) const
+void RenderThemeHaiku::adjustMenuListButtonStyle(StyleResolver& selector, RenderStyle& style, Element& element) const
 {
-    style->resetBorder();
-    style->resetBorderRadius();
+    style.resetBorder();
+    style.resetBorderRadius();
 
 	int labelSpacing = be_control_look ? static_cast<int>(be_control_look->DefaultLabelSpacing()) : 3;
     // Position the text correctly within the select box and make the box wide enough to fit the dropdown button
-    style->setPaddingTop(Length(3, Fixed));
-    style->setPaddingLeft(Length(3 + labelSpacing, Fixed));
-    style->setPaddingRight(Length(22, Fixed));
-    style->setPaddingBottom(Length(3, Fixed));
+    style.setPaddingTop(Length(3, Fixed));
+    style.setPaddingLeft(Length(3 + labelSpacing, Fixed));
+    style.setPaddingRight(Length(22, Fixed));
+    style.setPaddingBottom(Length(3, Fixed));
 
     // Height is locked to auto
-    style->setHeight(Length(Auto));
+    style.setHeight(Length(Auto));
 
     // Calculate our min-height
     const int menuListButtonMinHeight = 20;
-    int minHeight = style->fontSize();
+    int minHeight = style.fontSize();
     minHeight = std::max(minHeight, menuListButtonMinHeight);
 
-    style->setMinHeight(Length(minHeight, Fixed));
+    style.setMinHeight(Length(minHeight, Fixed));
 }
 
-bool RenderThemeHaiku::paintMenuList(const RenderObject& object, const PaintInfo& info, const IntRect& intRect)
+bool RenderThemeHaiku::paintMenuList(const RenderObject& object, const PaintInfo& info, const FloatRect& intRect)
 {
     if (info.context->paintingDisabled())
         return true;

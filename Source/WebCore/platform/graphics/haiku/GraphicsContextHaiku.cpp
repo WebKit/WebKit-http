@@ -280,27 +280,24 @@ public:
         if (layer->globalAlpha > 0) {
             // Post process the bitmap in order to apply global alpha...
             layer->view->Sync();
-            if (layer->globalAlpha < 255) {
-                uint8* bits = reinterpret_cast<uint8*>(layer->bitmap->Bits());
-                uint32 width = layer->bitmap->Bounds().IntegerWidth() + 1;
-                uint32 height = layer->bitmap->Bounds().IntegerHeight() + 1;
-                uint32 bpr = layer->bitmap->BytesPerRow();
-                uint8 alpha = layer->globalAlpha;
-                for (uint32 y = 0; y < height; y++) {
-                    uint8* p = bits + 3;
-                    for (uint32 x = 0; x < width; x++) {
-                        *p = (uint8)((int)*p * alpha / 255);
-                        p += 4;
-                    }
-                    bits += bpr;
-                }
-            }
+
+            BView* target = m_currentLayer->view;
+            target->PushState();
+            target->SetDrawingMode(B_OP_ALPHA);
+
+            BPicture picture;
+            target->BeginPicture(&picture);
+            target->SetHighColor(make_color(0, 0, 0, layer->globalAlpha));
+            target->FillRect(target->Bounds());
+            target->EndPicture();
+            target->ClipToPicture(&picture);
+
             BPoint bitmapLocation(layer->locationInParent);
             bitmapLocation -= m_currentLayer->accumulatedOrigin;
-            drawing_mode drawingMode = m_currentLayer->view->DrawingMode();
-            m_currentLayer->view->SetDrawingMode(B_OP_ALPHA);
-            m_currentLayer->view->DrawBitmap(layer->bitmap, bitmapLocation);
-            m_currentLayer->view->SetDrawingMode(drawingMode);
+
+            target->DrawBitmap(layer->bitmap, bitmapLocation);
+
+            target->PopState();
         }
         delete layer;
     }
@@ -636,8 +633,8 @@ IntRect GraphicsContext::clipBounds() const
 {
     BRect r(m_data->clipping().Frame());
     if(!r.IsValid()) {
-        // No clipping, return an infinite rect
-        return IntRect::infiniteRect();
+        // No clipping, return view bounds
+        return IntRect(m_data->view()->Bounds());
     }
 
     return IntRect(r);

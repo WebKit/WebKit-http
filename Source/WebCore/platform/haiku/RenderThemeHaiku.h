@@ -71,9 +71,9 @@ protected:
     bool paintTextArea(const RenderObject&, const PaintInfo&, const FloatRect&) override;
 
     void adjustMenuListStyle(StyleResolver*, RenderStyle*, Element*) const override;
-    bool paintMenuList(const RenderObject&, const PaintInfo&, const IntRect&) override;
+    bool paintMenuList(const RenderObject&, const PaintInfo&, const FloatRect&) override;
 
-    void adjustMenuListButtonStyle(StyleResolver*, RenderStyle*, Element*) const override;
+    void adjustMenuListButtonStyle(StyleResolver&, RenderStyle&, Element&) const override;
 
 private:
 	unsigned flagsForObject(const RenderObject&) const;
