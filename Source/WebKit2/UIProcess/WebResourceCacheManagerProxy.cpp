@@ -65,12 +65,12 @@ WebResourceCacheManagerProxy::~WebResourceCacheManagerProxy()
 
 void WebResourceCacheManagerProxy::contextDestroyed()
 {
-    invalidateCallbackMap(m_arrayCallbacks);
+    invalidateCallbackMap(m_arrayCallbacks, CallbackBase::Error::OwnerWasInvalidated);
 }
 
 void WebResourceCacheManagerProxy::processDidClose(WebProcessProxy*)
 {
-    invalidateCallbackMap(m_arrayCallbacks);
+    invalidateCallbackMap(m_arrayCallbacks, CallbackBase::Error::ProcessExited);
 }
 
 bool WebResourceCacheManagerProxy::shouldTerminate(WebProcessProxy*) const
@@ -88,9 +88,9 @@ void WebResourceCacheManagerProxy::derefWebContextSupplement()
     API::Object::deref();
 }
 
-void WebResourceCacheManagerProxy::getCacheOrigins(PassRefPtr<ArrayCallback> prpCallback)
+void WebResourceCacheManagerProxy::getCacheOrigins(std::function<void (API::Array*, CallbackBase::Error)> callbackFunction)
 {
-    RefPtr<ArrayCallback> callback = prpCallback;
+    RefPtr<ArrayCallback> callback = ArrayCallback::create(std::move(callbackFunction));
     uint64_t callbackID = callback->callbackID();
     m_arrayCallbacks.set(callbackID, callback.release());
 

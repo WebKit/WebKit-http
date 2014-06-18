@@ -49,7 +49,7 @@ public:
     // A general method asking if any control tinting is supported at all.
     virtual bool supportsControlTints() const override { return true; }
 
-    virtual void adjustRepaintRect(const RenderObject&, IntRect&) override;
+    virtual void adjustRepaintRect(const RenderObject&, FloatRect&) override;
 
     virtual bool isControlStyled(const RenderStyle*, const BorderData&, const FillLayer&, const Color& backgroundColor) const override;
 
@@ -130,11 +130,11 @@ protected:
     virtual bool paintTextArea(const RenderObject&, const PaintInfo&, const FloatRect&) override;
     virtual void adjustTextAreaStyle(StyleResolver*, RenderStyle*, Element*) const override;
 
-    virtual bool paintMenuList(const RenderObject&, const PaintInfo&, const IntRect&) override;
+    virtual bool paintMenuList(const RenderObject&, const PaintInfo&, const FloatRect&) override;
     virtual void adjustMenuListStyle(StyleResolver*, RenderStyle*, Element*) const override;
 
     virtual bool paintMenuListButtonDecorations(const RenderObject&, const PaintInfo&, const FloatRect&) override;
-    virtual void adjustMenuListButtonStyle(StyleResolver*, RenderStyle*, Element*) const override;
+    virtual void adjustMenuListButtonStyle(StyleResolver&, RenderStyle&, Element&) const override;
 
 #if ENABLE(PROGRESS_ELEMENT)
     virtual void adjustProgressBarStyle(StyleResolver*, RenderStyle*, Element*) const override;
@@ -173,8 +173,6 @@ protected:
 private:
     virtual String fileListNameForWidth(const FileList*, const Font&, int width, bool multipleFilesAllowed) const override;
 
-    IntRect inflateRect(const IntRect&, const IntSize&, const int* margins, float zoomLevel = 1.0f) const;
-
     FloatRect convertToPaintingRect(const RenderObject& inputRenderer, const RenderObject& partRenderer, const FloatRect& inputRect, const IntRect&) const;
 
     // Get the control size based off the font. Used by some of the controls (like buttons).
@@ -194,7 +192,7 @@ private:
 
     // Helpers for adjusting appearance and for painting
 
-    void setPopupButtonCellState(const RenderObject&, const IntRect&);
+    void setPopupButtonCellState(const RenderObject&, const IntSize&);
     const IntSize* popupButtonSizes() const;
     const int* popupButtonMargins() const;
     const int* popupButtonPadding(NSControlSize) const;

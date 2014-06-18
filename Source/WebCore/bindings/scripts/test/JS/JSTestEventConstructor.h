@@ -117,8 +117,6 @@ public:
 
 private:
     JSTestEventConstructorPrototype(JSC::VM& vm, JSC::JSGlobalObject*, JSC::Structure* structure) : JSC::JSNonFinalObject(vm, structure) { }
-protected:
-    static const unsigned StructureFlags = Base::StructureFlags;
 };
 
 class JSTestEventConstructorConstructor : public DOMConstructorObject {
@@ -135,25 +133,18 @@ public:
         return ptr;
     }
 
-    static bool getOwnPropertySlot(JSC::JSObject*, JSC::ExecState*, JSC::PropertyName, JSC::PropertySlot&);
     DECLARE_INFO;
     static JSC::Structure* createStructure(JSC::VM& vm, JSC::JSGlobalObject* globalObject, JSC::JSValue prototype)
     {
         return JSC::Structure::create(vm, globalObject, prototype, JSC::TypeInfo(JSC::ObjectType, StructureFlags), info());
     }
 protected:
-    static const unsigned StructureFlags = JSC::OverridesGetOwnPropertySlot | JSC::ImplementsHasInstance | DOMConstructorObject::StructureFlags;
     static JSC::EncodedJSValue JSC_HOST_CALL constructJSTestEventConstructor(JSC::ExecState*);
     static JSC::ConstructType getConstructData(JSC::JSCell*, JSC::ConstructData&);
 };
 
 bool fillTestEventConstructorInit(TestEventConstructorInit&, JSDictionary&);
 
-// Attributes
-
-JSC::EncodedJSValue jsTestEventConstructorAttr1(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
-JSC::EncodedJSValue jsTestEventConstructorAttr2(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
-JSC::EncodedJSValue jsTestEventConstructorConstructor(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
 
 } // namespace WebCore
 

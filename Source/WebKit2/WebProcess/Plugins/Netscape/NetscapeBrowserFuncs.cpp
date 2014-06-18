@@ -32,6 +32,7 @@
 #include "NetscapePlugin.h"
 #include "PluginController.h"
 #include <WebCore/HTTPHeaderMap.h>
+#include <WebCore/HTTPHeaderNames.h>
 #include <WebCore/IdentifierRep.h>
 #include <WebCore/NotImplemented.h>
 #include <WebCore/ProtectionSpace.h>
@@ -245,15 +246,14 @@ static NPError parsePostBuffer(bool isFile, const char *buffer, uint32_t length,
                 // Sometimes plugins like to set Content-Length themselves when they post,
                 // but WebFoundation does not like that. So we will remove the header
                 // and instead truncate the data to the requested length.
-                String contentLength = headerFields.get("Content-Length");
+                String contentLength = headerFields.get(HTTPHeaderName::ContentLength);
                 
                 if (!contentLength.isNull())
                     dataLength = std::min(contentLength.toInt(), (int)dataLength);
-                headerFields.remove("Content-Length");
+                headerFields.remove(HTTPHeaderName::ContentLength);
                 
                 postBuffer += location;
                 postBufferSize = dataLength;
-                
             }
         }
     }
@@ -299,7 +299,7 @@ static NPError NPN_PostURL(NPP npp, const char* url, const char* target, uint32_
         return error;
 
     RefPtr<NetscapePlugin> plugin = NetscapePlugin::fromNPP(npp);
-    plugin->loadURL("POST", makeURLString(url), target, headerFields, postData, false, 0);
+    plugin->loadURL("POST", makeURLString(url), target, std::move(headerFields), postData, false, 0);
     return NPERR_NO_ERROR;
 }
 

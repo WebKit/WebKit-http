@@ -31,7 +31,9 @@
 #include "config.h"
 #include "HTTPHeaderMap.h"
 
+#include "HTTPHeaderNames.h"
 #include <utility>
+#include <wtf/text/StringView.h>
 
 namespace WebCore {
 
@@ -49,7 +51,7 @@ std::unique_ptr<CrossThreadHTTPHeaderMapData> HTTPHeaderMap::copyData() const
     data->reserveInitialCapacity(m_headers.size());
 
     for (const auto& header : *this)
-        data->uncheckedAppend(std::make_pair(header.key.string().isolatedCopy(), header.value.isolatedCopy()));
+        data->uncheckedAppend(std::make_pair(header.key.isolatedCopy(), header.value.isolatedCopy()));
 
     return data;
 }
@@ -62,65 +64,59 @@ void HTTPHeaderMap::adopt(std::unique_ptr<CrossThreadHTTPHeaderMapData> data)
         m_headers.add(std::move(header.first), std::move(header.second));
 }
 
-String HTTPHeaderMap::get(const AtomicString& name) const
+static String internHTTPHeaderNameString(const String& nameString)
 {
-    return m_headers.get(name);
+    HTTPHeaderName headerName;
+    if (!findHTTPHeaderName(nameString, headerName))
+        return nameString;
+
+    return httpHeaderNameString(headerName).toStringWithoutCopying();
 }
 
-HTTPHeaderMap::AddResult HTTPHeaderMap::set(const AtomicString& name, const String& value)
+String HTTPHeaderMap::get(const String& name) const
 {
-    return m_headers.set(name, value);
+    return m_headers.get(internHTTPHeaderNameString(name));
 }
 
-HTTPHeaderMap::AddResult HTTPHeaderMap::add(const AtomicString& name, const String& value)
+void HTTPHeaderMap::set(const String& name, const String& value)
 {
-    return m_headers.add(name, value);
+    m_headers.set(internHTTPHeaderNameString(name), value);
 }
 
-// Adapter that allows the HashMap to take C strings as keys.
-struct CaseFoldingCStringTranslator {
-    static unsigned hash(const char* cString)
-    {
-        return CaseFoldingHash::hash(cString, strlen(cString));
-    }
-    
-    static bool equal(const AtomicString& key, const char* cString)
-    {
-        return equalIgnoringCase(key, cString);
-    }
-    
-    static void translate(AtomicString& location, const char* cString, unsigned /*hash*/)
-    {
-        location = AtomicString(cString);
-    }
-};
+void HTTPHeaderMap::add(const String& name, const String& value)
+{
+    auto result = m_headers.add(internHTTPHeaderNameString(name), value);
+    if (!result.isNewEntry)
+        result.iterator->value = result.iterator->value + ", " + value;
+}
 
-String HTTPHeaderMap::get(const char* name) const
+String HTTPHeaderMap::get(HTTPHeaderName name) const
 {
     auto it = find(name);
     if (it == end())
         return String();
+
     return it->value;
 }
-    
-bool HTTPHeaderMap::contains(const char* name) const
+
+void HTTPHeaderMap::set(HTTPHeaderName name, const String& value)
 {
-    return find(name) != end();
+    m_headers.set(httpHeaderNameString(name).toStringWithoutCopying(), value);
 }
 
-HTTPHeaderMap::const_iterator HTTPHeaderMap::find(const char* name) const
+bool HTTPHeaderMap::contains(HTTPHeaderName name) const
 {
-    return m_headers.find<CaseFoldingCStringTranslator>(name);
+    return m_headers.contains(httpHeaderNameString(name).toStringWithoutCopying());
 }
 
-HTTPHeaderMap::AddResult HTTPHeaderMap::add(const char* name, const String& value)
+HTTPHeaderMap::const_iterator HTTPHeaderMap::find(HTTPHeaderName name) const
 {
-    return m_headers.add<CaseFoldingCStringTranslator>(name, value);
+    return m_headers.find(httpHeaderNameString(name).toStringWithoutCopying());
 }
 
-bool HTTPHeaderMap::remove(const char* name)
+bool HTTPHeaderMap::remove(HTTPHeaderName name)
 {
-    return m_headers.remove(m_headers.find<CaseFoldingCStringTranslator>(name));
+    return m_headers.remove(httpHeaderNameString(name).toStringWithoutCopying());
 }
 
 } // namespace WebCore

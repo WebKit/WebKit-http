@@ -842,30 +842,30 @@ void RenderThemeEfl::adjustMenuListStyle(StyleResolver* styleResolver, RenderSty
     style->setLineHeight(RenderStyle::initialLineHeight());
 }
 
-bool RenderThemeEfl::paintMenuList(const RenderObject& object, const PaintInfo& info, const IntRect& rect)
+bool RenderThemeEfl::paintMenuList(const RenderObject& object, const PaintInfo& info, const FloatRect& rect)
 {
-    return paintThemePart(object, ComboBox, info, rect);
+    return paintThemePart(object, ComboBox, info, IntRect(rect));
 }
 
-void RenderThemeEfl::adjustMenuListButtonStyle(StyleResolver* styleResolver, RenderStyle* style, Element* element) const
+void RenderThemeEfl::adjustMenuListButtonStyle(StyleResolver& styleResolver, RenderStyle& style, Element& element) const
 {
     // Height is locked to auto if height is not specified.
-    style->setHeight(Length(Auto));
+    style.setHeight(Length(Auto));
 
     // The <select> box must be at least 12px high for the button to render the text inside the box without clipping.
     const int dropDownBoxMinHeight = 12;
 
     // Calculate min-height of the <select> element.
-    int minHeight = style->fontMetrics().height();
+    int minHeight = style.fontMetrics().height();
     minHeight = std::max(minHeight, dropDownBoxMinHeight);
-    style->setMinHeight(Length(minHeight, Fixed));
+    style.setMinHeight(Length(minHeight, Fixed));
 
-    adjustMenuListStyle(styleResolver, style, element);
+    adjustMenuListStyle(&styleResolver, &style, &element);
 }
 
 bool RenderThemeEfl::paintMenuListButtonDecorations(const RenderObject& object, const PaintInfo& info, const FloatRect& rect)
 {
-    return paintMenuList(object, info, IntRect(rect));
+    return paintMenuList(object, info, rect);
 }
 
 void RenderThemeEfl::adjustTextFieldStyle(StyleResolver* styleResolver, RenderStyle* style, Element* element) const

@@ -402,6 +402,7 @@ webkit.org/b/128172 fast/events/touch/send-oncancel-event.html [ Timeout ]
 webkit.org/b/131347 fast/backgrounds/hidpi-background-image-contain-cover-scale-needs-more-precision.html [ ImageOnlyFailure ]
 webkit.org/b/131347 fast/backgrounds/hidpi-bitmap-background-repeat-on-subpixel-position.html [ ImageOnlyFailure ]
 webkit.org/b/131347 fast/borders/hidpi-border-image-gradient-on-subpixels.html [ ImageOnlyFailure ]
+webkit.org/b/131347 fast/borders/hidpi-border-radius-with-subpixel-margin-not-renderable.html [ ImageOnlyFailure ]
 webkit.org/b/131347 fast/borders/hidpi-double-border-with-border-radius-always-produce-solid-line.html [ ImageOnlyFailure ]
 webkit.org/b/131347 fast/borders/hidpi-rounded-border-on-subpixel-position.html [ ImageOnlyFailure ]
 webkit.org/b/131347 fast/borders/hidpi-simple-hairline-border-painting.html [ ImageOnlyFailure ]
@@ -416,6 +417,7 @@ webkit.org/b/131347 fast/hidpi/image-srcset-fraction.html [ Failure ]
 webkit.org/b/131347 fast/hidpi/image-srcset-invalid-inputs-except-one.html [ Failure ]
 webkit.org/b/131347 fast/hidpi/image-srcset-simple-2x.html [ Failure ]
 webkit.org/b/131347 fast/hidpi/image-srcset-src-selection-2x.html [ Failure ]
+webkit.org/b/131347 fast/inline-block/hidpi-margin-top-with-subpixel-value-and-overflow-hidden.html [ ImageOnlyFailure ]
 webkit.org/b/131347 fast/inline/hidpi-pixel-gap-between-adjacent-selection-inlines.html [ ImageOnlyFailure ]
 webkit.org/b/131347 fast/inline/hidpi-select-inline-on-subpixel-position.html [ ImageOnlyFailure ]
 webkit.org/b/131347 fast/inline/hidpi-selection-gap-and-inline-selection-have-gap-rtl.html [ ImageOnlyFailure ]
@@ -427,6 +429,8 @@ webkit.org/b/131347 fast/repaint/hidpi-device-pixel-based-repaint-rect-tracking.
 webkit.org/b/131347 fast/repaint/hidpi-wrong-repaint-rect-when-parent-has-noncompositing-transform.html [ Failure ]
 webkit.org/b/131347 svg/custom/hidpi-masking-clipping.svg [ Failure ImageOnlyFailure Timeout ]
 webkit.org/b/131347 svg/text/hidpi-text-selection-rect-position.html [ ImageOnlyFailure ]
+
+webkit.org/b/133806 svg/masking/mask-transformed-text-missing.svg [ ImageOnlyFailure ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Expected failures
@@ -509,6 +513,7 @@ webkit.org/b/105870 [ Debug ] webaudio/audiobuffersource-loop-points.html [ Cras
 webkit.org/b/105870 [ Debug ] webaudio/audionode-channel-rules.html [ Crash Pass ]
 webkit.org/b/105870 [ Debug ] webaudio/audionode-connect-order.html [ Crash ]
 
+webkit.org/b/133797 fast/dom/NavigatorContentUtils/register-protocol-handler.html [ Crash ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Crashing tests
@@ -775,6 +780,7 @@ webkit.org/b/132184 fast/multicol/span/span-as-immediate-columns-child-dynamic.h
 webkit.org/b/132185 platform/gtk/editing/pasteboard/middle-button-paste.html [ Failure Pass ]
 
 #Some media fragment tests are flaky
+webkit.org/b/132864 media/media-fragments/TC0005.html [ Failure Pass ]
 webkit.org/b/132248 media/media-fragments/TC0037.html [ Failure Pass ]
 webkit.org/b/132248 media/media-fragments/TC0078.html [ Failure Pass ]
 webkit.org/b/132248 media/media-fragments/TC0079.html [ Failure Pass ]
@@ -801,10 +807,6 @@ webkit.org/b/132272 fast/dom/gc-10.html [ Failure Pass ]
 webkit.org/b/132279 perf/mouse-event.html [ Failure Pass ]
 webkit.org/b/132281 fast/workers/worker-constructor.html [ Timeout Pass ]
 webkit.org/b/132282 fast/inline-block/14498-positionForCoordinates.html [ Failure Pass ]
-
-#fast/dom/Window
-webkit.org/b/132255 fast/dom/Window/window-resize-and-move-sub-frame.html [ Timeout Pass ]
-webkit.org/b/132255 fast/dom/Window/window-resize-contents.html [ Timeout Pass ]
 
 #Fast overflow
 webkit.org/b/132258 fast/overflow/hit-test-overflow-controls.html [ Failure ImageOnlyFailure Pass ]
@@ -846,6 +848,11 @@ webkit.org/b/132999 html5lib/generated/run-tests16-write.html [ Pass Timeout ]
 webkit.org/b/133000 js/slow-stress/call-spread.html [ Pass Timeout ]
 webkit.org/b/133001 fast/workers/worker-context-gc.html [ Pass Timeout ]
 
+webkit.org/b/133865 media/W3C/video/networkState/networkState_during_progress.html [ Failure Pass ]
+webkit.org/b/133866 media/media-controls-cancel-events.html [ Failure Pass ]
+webkit.org/b/133867 webaudio/audioprocessingevent.html [ Failure Pass ]
+webkit.org/b/133868 js/dom/dom-static-property-for-in-iteration.html [ Failure Pass ]
+webkit.org/b/133869 media/video-seek-after-end.html [ Failure Pass ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Flaky tests
@@ -873,7 +880,7 @@ Bug(GTK) css3/flexbox/position-absolute-child.html [ Pass Slow ]
 Bug(GTK) css3/flexbox/multiline-justify-content.html [ Pass Slow ]
 Bug(GTK) [ Debug ] editing/selection/move-by-word-visually-crash-test-5.html [ Pass Slow ]
 Bug(GTK) [ Debug ] fast/css/visited-link-hang.html [ Pass Slow ]
-Bug(GTK) js/dom/create-lots-of-workers.html [ Pass Slow ]
+Bug(GTK) js/dom/create-lots-of-workers.html [ Pass Timeout ]
 Bug(GTK) [ Debug ] js/dfg-double-vote-fuzz.html [ Pass Slow ]
 Bug(GTK) js/dfg-float32array.html [ Pass Slow ]
 Bug(GTK) js/dfg-float64array.html [ Pass Slow ]
@@ -1005,10 +1012,7 @@ webkit.org/b/133148 accessibility/content-editable-set-inner-text-generates-axva
 
 webkit.org/b/133151 js/cached-window-properties.html [ Timeout Pass ]
 
-webkit.org/b/133517 css3/viewport-percentage-lengths/viewport-percentage-lengths-anonymous-block.html [ Timeout ]
-webkit.org/b/133517 css3/viewport-percentage-lengths/viewport-percentage-lengths-percent-size-child.html [ Timeout ]
-webkit.org/b/133517 css3/viewport-percentage-lengths/viewport-percentage-lengths-relative-font-size.html [ Timeout ]
-webkit.org/b/133517 css3/viewport-percentage-lengths/viewport-percentage-lengths-resize.html [ Timeout ]
+webkit.org/b/133808 media/video-trackmenu-selection.html [ Timeout ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Tests timing out
@@ -1189,9 +1193,7 @@ webkit.org/b/122535 fast/dom/Window/open-window-min-size.html [ Failure ]
 Bug(GTK) editing/selection/5136696.html [ Failure ]
 Bug(GTK) editing/selection/inactive-selection.html [ Failure ]
 Bug(GTK) fast/css/disabled-author-styles.html [ Failure ]
-Bug(GTK) fast/dom/rtl-scroll-to-leftmost-and-resize.html [ Failure ]
 Bug(GTK) fast/dom/Window/window-postmessage-clone.html [ Failure Timeout ]
-Bug(GTK) fast/dynamic/window-resize-scrollbars-test.html [ Failure ]
 Bug(GTK) fast/events/backspace-navigates-back.html [ Failure ]
 Bug(GTK) fast/events/keydown-leftright-keys.html [ Failure ]
 Bug(GTK) fast/events/keydown-numpad-keys.html [ Failure ]
@@ -1315,7 +1317,6 @@ webkit.org/b/53964 fast/forms/listbox-onchange.html [ Failure ]
 webkit.org/b/53964 fast/forms/option-mouseevents.html [ Failure ]
 
 # Probably failing because resizing is asynchronous.
-webkit.org/b/53959 fast/dom/Window/window-resize-and-move-arguments.html [ Failure Timeout ]
 webkit.org/b/53959 fast/dom/Window/window-resize.html [ Failure Timeout ]
 
 # keygen element rendering is broken
@@ -1572,9 +1573,6 @@ webkit.org/b/93976 fast/css-generated-content/quotes-lang.html [ ImageOnlyFailur
 webkit.org/b/94009 css2.1/20110323/c541-word-sp-000.htm [ ImageOnlyFailure ]
 
 webkit.org/b/80129 fast/frames/flattening/frameset-flattening-advanced.html [ Failure ]
-webkit.org/b/131793 fast/frames/frame-programmatic-noresize.html [ Failure Pass ]
-webkit.org/b/131794 fast/frames/frame-with-noresize-can-be-resized-after-removal-of-noresize.html [ Failure Pass ]
-webkit.org/b/131794 fast/frames/frame-with-noresize-can-be-resized-after-setting-noResize-to-false.html [ Failure Pass ]
 
 webkit.org/b/89663 editing/deleting/delete-3800834-fix.html [ Failure ]
 
@@ -1667,8 +1665,6 @@ webkit.org/b/113127 media/track/track-prefer-captions.html [ Timeout ]
 webkit.org/b/113772 http/tests/w3c/webperf/submission/Google/resource-timing/html/test_resource_iframe_self_navigation.html [ Failure ]
 webkit.org/b/113772 http/tests/w3c/webperf/submission/Google/resource-timing/html/test_resource_cached.html [ Failure ]
 
-webkit.org/b/114259 platform/gtk/accessibility/combo-box-collapsed-selection-changed.html [ Failure ]
-
 webkit.org/b/115025 fast/events/constructors/mouse-event-constructor.html [ Failure ]
 webkit.org/b/115025 fast/events/constructors/wheel-event-constructor.html [ Failure ]
 
@@ -1729,8 +1725,8 @@ webkit.org/b/120836 fast/regions/text-region-split-vertical-rl.html [ Failure ]
 
 webkit.org/b/120839 animations/cross-fade-background-image.html [ ImageOnlyFailure ]
 
-webkit.org/b/120842 fast/regions/overflow-in-uniform-regions-dynamic.html [ ImageOnlyFailure ]
-webkit.org/b/120842 fast/regions/overflow-moving-below-floats-in-variable-width-regions.html [ ImageOnlyFailure ]
+webkit.org/b/120842 fast/regions/overflow/overflow-in-uniform-regions-dynamic.html [ ImageOnlyFailure ]
+webkit.org/b/120842 fast/regions/overflow/overflow-moving-below-floats-in-variable-width-regions.html [ ImageOnlyFailure ]
 
 webkit.org/b/121593 accessibility/radio-button-title-label.html  [ Failure ]
 
@@ -1762,17 +1758,15 @@ webkit.org/b/124770 fast/forms/legend-access-key.html [ Failure ]
 webkit.org/b/124770 fast/forms/select-accesskey.html [ Failure ]
 
 webkit.org/b/124834 fast/block/float/clear-negative-margin-top.html [ ImageOnlyFailure ]
-webkit.org/b/124834 fast/regions/overflow-in-variable-width-regions-inline-bt.html [ ImageOnlyFailure ]
-webkit.org/b/124834 fast/regions/overflow-in-variable-width-regions-inline-continuation.html [ ImageOnlyFailure ]
-webkit.org/b/124834 fast/regions/overflow-in-variable-width-regions-inline-lr.html [ ImageOnlyFailure ]
-webkit.org/b/124834 fast/regions/overflow-in-variable-width-regions-inline-rl.html [ ImageOnlyFailure ]
-webkit.org/b/124834 fast/regions/overflow-in-variable-width-regions-inline.html [ ImageOnlyFailure ]
+webkit.org/b/124834 fast/regions/overflow/overflow-in-variable-width-regions-inline-bt.html [ ImageOnlyFailure ]
+webkit.org/b/124834 fast/regions/overflow/overflow-in-variable-width-regions-inline-continuation.html [ ImageOnlyFailure ]
+webkit.org/b/124834 fast/regions/overflow/overflow-in-variable-width-regions-inline-lr.html [ ImageOnlyFailure ]
+webkit.org/b/124834 fast/regions/overflow/overflow-in-variable-width-regions-inline-rl.html [ ImageOnlyFailure ]
+webkit.org/b/124834 fast/regions/overflow/overflow-in-variable-width-regions-inline.html [ ImageOnlyFailure ]
 
 webkit.org/b/125348 accessibility/document-attributes.html [ Failure ]
 
 webkit.org/b/125406 fast/regions/relative-in-absolute-borders-overflow.html [ ImageOnlyFailure ]
-
-webkit.org/b/126521 accessibility/menu-list-sends-change-notification.html [ Failure ]
 
 webkit.org/b/126619 http/tests/media/video-auth.html [ Failure ]
 
@@ -1827,9 +1821,9 @@ webkit.org/b/118459 media/track/track-legacyapi-with-automatic-mode.html [ Skip 
 # Some tests will fail after the visual overflow patch, they will be fixed shortly.
 webkit.org/b/118665 fast/regions/counters/extract-ordered-lists-in-regions-explicit-counters-005.html [ ImageOnlyFailure Pass ]
 webkit.org/b/118665 fast/regions/floats-basic-in-variable-width-regions.html [ ImageOnlyFailure Pass ]
-webkit.org/b/118665 fast/regions/overflow-nested-regions.html [ ImageOnlyFailure Pass ]
-webkit.org/b/118665 fast/regions/overflow-not-moving-below-floats-in-variable-width-regions.html [ ImageOnlyFailure Pass ]
-webkit.org/b/118665 fast/regions/overflow-region-transform.html [ ImageOnlyFailure Pass ]
+webkit.org/b/118665 fast/regions/overflow/overflow-nested-regions.html [ ImageOnlyFailure Pass ]
+webkit.org/b/118665 fast/regions/overflow/overflow-not-moving-below-floats-in-variable-width-regions.html [ ImageOnlyFailure Pass ]
+webkit.org/b/118665 fast/regions/overflow/overflow-region-transform.html [ ImageOnlyFailure Pass ]
 webkit.org/b/118665 fast/regions/top-overflow-out-of-second-region.html [ ImageOnlyFailure Pass Missing ]
 webkit.org/b/118665 fast/regions/webkit-flow-float-unable-to-push.html [ ImageOnlyFailure Pass ]
 
@@ -1972,6 +1966,12 @@ webkit.org/b/133146 fast/sub-pixel/client-rect-has-subpixel-precision.html  [ Im
 
 webkit.org/b/133147 fast/shapes/shape-outside-floats/shape-outside-floats-inset-rounded-large-radius.html [ ImageOnlyFailure ]
 webkit.org/b/133147 fast/shapes/shape-outside-floats/shape-outside-rounded-inset.html [ ImageOnlyFailure ]
+
+webkit.org/b/133803 editing/deleting/delete-by-word-001.html [ Failure ]
+webkit.org/b/133803 editing/deleting/delete-by-word-002.html [ Failure ]
+webkit.org/b/133803 editing/input/option-page-up-down.html [ Failure ]
+webkit.org/b/133803 editing/input/scroll-viewport-page-up-down.html [ Failure ]
+webkit.org/b/133803 editing/undo/undo-deleteWord.html [ Failure ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Tests failing

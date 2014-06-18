@@ -409,7 +409,7 @@ bool ArgumentCoder<HTTPHeaderMap>::decode(ArgumentDecoder& decoder, HTTPHeaderMa
         return false;
 
     for (size_t i = 0; i < size; ++i) {
-        AtomicString name;
+        String name;
         if (!decoder.decode(name))
             return false;
 
@@ -417,10 +417,7 @@ bool ArgumentCoder<HTTPHeaderMap>::decode(ArgumentDecoder& decoder, HTTPHeaderMa
         if (!decoder.decode(value))
             return false;
 
-        if (!headerMap.add(name, value).isNewEntry) {
-            decoder.markInvalid();
-            return false;
-        }
+        headerMap.set(name, value);
     }
 
     return true;
@@ -702,7 +699,7 @@ bool ArgumentCoder<ResourceRequest>::decode(ArgumentDecoder& decoder, ResourceRe
         HTTPHeaderMap headers;
         if (!decoder.decode(headers))
             return false;
-        request.addHTTPHeaderFields(headers);
+        request.setHTTPHeaderFields(std::move(headers));
 
         bool hasHTTPBody;
         if (!decoder.decode(hasHTTPBody))

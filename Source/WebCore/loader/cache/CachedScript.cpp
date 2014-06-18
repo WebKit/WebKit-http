@@ -29,6 +29,7 @@
 
 #include "CachedResourceClient.h"
 #include "CachedResourceClientWalker.h"
+#include "HTTPHeaderNames.h"
 #include "HTTPParsers.h"
 #include "MIMETypeRegistry.h"
 #include "MemoryCache.h"
@@ -65,7 +66,7 @@ String CachedScript::encoding() const
 
 String CachedScript::mimeType() const
 {
-    return extractMIMETypeFromMediaType(m_response.httpHeaderField("Content-Type")).lower();
+    return extractMIMETypeFromMediaType(m_response.httpHeaderField(HTTPHeaderName::ContentType)).lower();
 }
 
 const String& CachedScript::script()
@@ -99,7 +100,7 @@ void CachedScript::destroyDecodedData()
 #if ENABLE(NOSNIFF)
 bool CachedScript::mimeTypeAllowedByNosniff() const
 {
-    return !parseContentTypeOptionsHeader(m_response.httpHeaderField("X-Content-Type-Options")) == ContentTypeOptionsNosniff || MIMETypeRegistry::isSupportedJavaScriptMIMEType(mimeType());
+    return !parseContentTypeOptionsHeader(m_response.httpHeaderField(HTTPHeaderName::XContentTypeOptions)) == ContentTypeOptionsNosniff || MIMETypeRegistry::isSupportedJavaScriptMIMEType(mimeType());
 }
 #endif
 

@@ -36,6 +36,7 @@
 #include "BlobData.h"
 #include "FileStream.h"
 #include "FileSystem.h"
+#include "HTTPHeaderNames.h"
 #include "HTTPParsers.h"
 #include "URL.h"
 #include "ResourceError.h"
@@ -205,24 +206,19 @@ void BlobResourceHandle::continueDidReceiveResponse()
     // BlobResourceHandle doesn't wait for didReceiveResponse, and it currently cannot be used for downloading.
 }
 
-void delayedStartBlobResourceHandle(void* context)
-{
-    RefPtr<BlobResourceHandle> handle = adoptRef(static_cast<BlobResourceHandle*>(context));
-    handle->doStart();
-}
-
 void BlobResourceHandle::start()
 {
-    if (m_async) {
-        // Keep BlobResourceHandle alive until delayedStartBlobResourceHandle runs.
-        ref();
-
-        // Finish this async call quickly and return.
-        callOnMainThread(delayedStartBlobResourceHandle, this);
+    if (!m_async) {
+        doStart();
         return;
     }
 
-    doStart();
+    RefPtr<BlobResourceHandle> handle(this);
+
+    // Finish this async call quickly and return.
+    callOnMainThread([handle] {
+        handle->doStart();
+    });
 }
 
 void BlobResourceHandle::doStart()
@@ -241,7 +237,7 @@ void BlobResourceHandle::doStart()
     }
 
     // Parse the "Range" header we care about.
-    String range = firstRequest().httpHeaderField("Range");
+    String range = firstRequest().httpHeaderField(HTTPHeaderName::Range);
     if (!range.isEmpty() && !parseRange(range, m_rangeOffset, m_rangeEnd, m_rangeSuffixLength)) {
         m_errorCode = rangeError;
         notifyResponse();

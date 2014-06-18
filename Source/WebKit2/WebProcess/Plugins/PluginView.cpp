@@ -49,6 +49,7 @@
 #include <WebCore/GraphicsContext.h>
 #include <WebCore/HTMLPlugInElement.h>
 #include <WebCore/HTMLPlugInImageElement.h>
+#include <WebCore/HTTPHeaderNames.h>
 #include <WebCore/HostWindow.h>
 #include <WebCore/MIMETypeRegistry.h>
 #include <WebCore/MainFrame.h>
@@ -193,7 +194,7 @@ static String buildHTTPHeaders(const ResourceResponse& response, long long& expe
     // If the content is encoded (most likely compressed), then don't send its length to the plugin,
     // which is only interested in the decoded length, not yet known at the moment.
     // <rdar://problem/4470599> tracks a request for -[NSURLResponse expectedContentLength] to incorporate this logic.
-    String contentEncoding = response.httpHeaderField("Content-Encoding");
+    String contentEncoding = response.httpHeaderField(HTTPHeaderName::ContentEncoding);
     if (!contentEncoding.isNull() && contentEncoding != "identity")
         expectedContentLength = -1;
 
@@ -1329,13 +1330,12 @@ String PluginView::userAgent()
     return frame->loader().client().userAgent(URL());
 }
 
-void PluginView::loadURL(uint64_t requestID, const String& method, const String& urlString, const String& target, 
-                         const HTTPHeaderMap& headerFields, const Vector<uint8_t>& httpBody, bool allowPopups)
+void PluginView::loadURL(uint64_t requestID, const String& method, const String& urlString, const String& target, const HTTPHeaderMap& headerFields, const Vector<uint8_t>& httpBody, bool allowPopups)
 {
     FrameLoadRequest frameLoadRequest(m_pluginElement->document().securityOrigin());
     frameLoadRequest.resourceRequest().setHTTPMethod(method);
     frameLoadRequest.resourceRequest().setURL(m_pluginElement->document().completeURL(urlString));
-    frameLoadRequest.resourceRequest().addHTTPHeaderFields(headerFields);
+    frameLoadRequest.resourceRequest().setHTTPHeaderFields(headerFields);
     frameLoadRequest.resourceRequest().setHTTPBody(FormData::create(httpBody.data(), httpBody.size()));
     frameLoadRequest.setFrameName(target);
 

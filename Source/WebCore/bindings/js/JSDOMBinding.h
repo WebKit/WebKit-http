@@ -513,6 +513,10 @@ template<typename T, typename JST> Vector<RefPtr<T>> toRefPtrNativeArray(JSC::Ex
 
 template<typename T> Vector<T> toNativeArray(JSC::ExecState* exec, JSC::JSValue value)
 {
+    JSC::JSObject* object = value.getObject();
+    if (!object)
+        return Vector<T>();
+
     unsigned length = 0;
     if (isJSArray(value)) {
         JSC::JSArray* array = asArray(value);
@@ -520,7 +524,6 @@ template<typename T> Vector<T> toNativeArray(JSC::ExecState* exec, JSC::JSValue 
     } else
         toJSSequence(exec, value, length);
 
-    JSC::JSObject* object = value.getObject();
     Vector<T> result;
     result.reserveInitialCapacity(length);
     typedef NativeValueTraits<T> TraitsType;
@@ -584,6 +587,12 @@ template<typename DOMClass> inline const JSC::HashTableValue* getStaticValueSlot
 template<> inline const JSC::HashTableValue* getStaticValueSlotEntryWithoutCaching<JSDOMWrapper>(JSC::ExecState*, JSC::PropertyName)
 {
     return nullptr;
+}
+
+template<JSC::NativeFunction nativeFunction, int length>
+JSC::EncodedJSValue nonCachingStaticFunctionGetter(JSC::ExecState* exec, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName propertyName)
+{
+    return JSC::JSValue::encode(JSC::JSFunction::create(exec->vm(), exec->lexicalGlobalObject(), length, propertyName.publicName(), nativeFunction));
 }
 
 enum SecurityReportingOption {

@@ -33,6 +33,7 @@
 #include "DocumentLoader.h"
 #include "FrameLoader.h"
 #include "FrameLoaderClient.h"
+#include "HTTPHeaderNames.h"
 #include "InspectorInstrumentation.h"
 #include "URL.h"
 #include "LoaderStrategy.h"
@@ -91,7 +92,7 @@ const char* const headerPrefixesToIgnoreAfterRevalidation[] = {
     "x-webkit-"
 };
 
-static inline bool shouldUpdateHeaderAfterRevalidation(const AtomicString& header)
+static inline bool shouldUpdateHeaderAfterRevalidation(const String& header)
 {
     for (size_t i = 0; i < WTF_ARRAY_LENGTH(headersToIgnoreAfterRevalidation); i++) {
         if (equalIgnoringCase(header, headersToIgnoreAfterRevalidation[i]))
@@ -282,22 +283,22 @@ void CachedResource::load(CachedResourceLoader* cachedResourceLoader, const Reso
         CachedResource* resourceToRevalidate = m_resourceToRevalidate;
         ASSERT(resourceToRevalidate->canUseCacheValidator());
         ASSERT(resourceToRevalidate->isLoaded());
-        const String& lastModified = resourceToRevalidate->response().httpHeaderField("Last-Modified");
-        const String& eTag = resourceToRevalidate->response().httpHeaderField("ETag");
+        const String& lastModified = resourceToRevalidate->response().httpHeaderField(HTTPHeaderName::LastModified);
+        const String& eTag = resourceToRevalidate->response().httpHeaderField(HTTPHeaderName::ETag);
         if (!lastModified.isEmpty() || !eTag.isEmpty()) {
             ASSERT(cachedResourceLoader->cachePolicy(type()) != CachePolicyReload);
             if (cachedResourceLoader->cachePolicy(type()) == CachePolicyRevalidate)
-                m_resourceRequest.setHTTPHeaderField("Cache-Control", "max-age=0");
+                m_resourceRequest.setHTTPHeaderField(HTTPHeaderName::CacheControl, "max-age=0");
             if (!lastModified.isEmpty())
-                m_resourceRequest.setHTTPHeaderField("If-Modified-Since", lastModified);
+                m_resourceRequest.setHTTPHeaderField(HTTPHeaderName::IfModifiedSince, lastModified);
             if (!eTag.isEmpty())
-                m_resourceRequest.setHTTPHeaderField("If-None-Match", eTag);
+                m_resourceRequest.setHTTPHeaderField(HTTPHeaderName::IfNoneMatch, eTag);
         }
     }
 
 #if ENABLE(LINK_PREFETCH)
     if (type() == CachedResource::LinkPrefetch || type() == CachedResource::LinkSubresource)
-        m_resourceRequest.setHTTPHeaderField("Purpose", "prefetch");
+        m_resourceRequest.setHTTPHeaderField(HTTPHeaderName::Purpose, "prefetch");
 #endif
     m_resourceRequest.setPriority(loadPriority());
 

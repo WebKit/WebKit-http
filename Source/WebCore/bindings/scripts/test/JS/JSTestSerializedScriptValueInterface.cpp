@@ -36,6 +36,16 @@ using namespace JSC;
 
 namespace WebCore {
 
+// Attributes
+
+JSC::EncodedJSValue jsTestSerializedScriptValueInterfaceValue(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+void setJSTestSerializedScriptValueInterfaceValue(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestSerializedScriptValueInterfaceReadonlyValue(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+JSC::EncodedJSValue jsTestSerializedScriptValueInterfaceCachedValue(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+void setJSTestSerializedScriptValueInterfaceCachedValue(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestSerializedScriptValueInterfacePorts(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+JSC::EncodedJSValue jsTestSerializedScriptValueInterfaceCachedReadonlyValue(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+JSC::EncodedJSValue jsTestSerializedScriptValueInterfaceConstructor(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
 /* Hash table for constructor */
 
 static const struct CompactHashIndex JSTestSerializedScriptValueInterfaceConstructorTableIndex[1] = {
@@ -62,11 +72,6 @@ void JSTestSerializedScriptValueInterfaceConstructor::finishCreation(VM& vm, JSD
     ASSERT(inherits(info()));
     putDirect(vm, vm.propertyNames->prototype, JSTestSerializedScriptValueInterfacePrototype::self(vm, globalObject), DontDelete | ReadOnly);
     putDirect(vm, vm.propertyNames->length, jsNumber(0), ReadOnly | DontDelete | DontEnum);
-}
-
-bool JSTestSerializedScriptValueInterfaceConstructor::getOwnPropertySlot(JSObject* object, ExecState* exec, PropertyName propertyName, PropertySlot& slot)
-{
-    return getStaticValueSlot<JSTestSerializedScriptValueInterfaceConstructor, JSDOMWrapper>(exec, JSTestSerializedScriptValueInterfaceConstructorTable, jsCast<JSTestSerializedScriptValueInterfaceConstructor*>(object), propertyName, slot);
 }
 
 /* Hash table for prototype */

@@ -70,6 +70,7 @@
 #include "HTMLNames.h"
 #include "HTMLObjectElement.h"
 #include "HTMLParserIdioms.h"
+#include "HTTPHeaderNames.h"
 #include "HTTPParsers.h"
 #include "HistoryController.h"
 #include "HistoryItem.h"
@@ -667,7 +668,7 @@ void FrameLoader::receivedFirstData()
 
     double delay;
     String urlString;
-    if (!parseHTTPRefresh(m_documentLoader->response().httpHeaderField("Refresh"), false, delay, urlString))
+    if (!parseHTTPRefresh(m_documentLoader->response().httpHeaderField(HTTPHeaderName::Refresh), false, delay, urlString))
         return;
     URL completedURL;
     if (urlString.isEmpty())
@@ -711,27 +712,27 @@ void FrameLoader::didBeginDocument(bool dispatch)
     m_frame.document()->cachedResourceLoader()->setAutoLoadImages(settings.loadsImagesAutomatically());
 
     if (m_documentLoader) {
-        String dnsPrefetchControl = m_documentLoader->response().httpHeaderField("X-DNS-Prefetch-Control");
+        String dnsPrefetchControl = m_documentLoader->response().httpHeaderField(HTTPHeaderName::XDNSPrefetchControl);
         if (!dnsPrefetchControl.isEmpty())
             m_frame.document()->parseDNSPrefetchControlHeader(dnsPrefetchControl);
 
-        String policyValue = m_documentLoader->response().httpHeaderField("Content-Security-Policy");
+        String policyValue = m_documentLoader->response().httpHeaderField(HTTPHeaderName::ContentSecurityPolicy);
         if (!policyValue.isEmpty())
             m_frame.document()->contentSecurityPolicy()->didReceiveHeader(policyValue, ContentSecurityPolicy::Enforce);
 
-        policyValue = m_documentLoader->response().httpHeaderField("Content-Security-Policy-Report-Only");
+        policyValue = m_documentLoader->response().httpHeaderField(HTTPHeaderName::ContentSecurityPolicyReportOnly);
         if (!policyValue.isEmpty())
             m_frame.document()->contentSecurityPolicy()->didReceiveHeader(policyValue, ContentSecurityPolicy::Report);
 
-        policyValue = m_documentLoader->response().httpHeaderField("X-WebKit-CSP");
+        policyValue = m_documentLoader->response().httpHeaderField(HTTPHeaderName::XWebKitCSP);
         if (!policyValue.isEmpty())
             m_frame.document()->contentSecurityPolicy()->didReceiveHeader(policyValue, ContentSecurityPolicy::PrefixedEnforce);
 
-        policyValue = m_documentLoader->response().httpHeaderField("X-WebKit-CSP-Report-Only");
+        policyValue = m_documentLoader->response().httpHeaderField(HTTPHeaderName::XWebKitCSPReportOnly);
         if (!policyValue.isEmpty())
             m_frame.document()->contentSecurityPolicy()->didReceiveHeader(policyValue, ContentSecurityPolicy::PrefixedReport);
 
-        String headerContentLanguage = m_documentLoader->response().httpHeaderField("Content-Language");
+        String headerContentLanguage = m_documentLoader->response().httpHeaderField(HTTPHeaderName::ContentLanguage);
         if (!headerContentLanguage.isEmpty()) {
             size_t commaIndex = headerContentLanguage.find(',');
             headerContentLanguage.truncate(commaIndex); // notFound == -1 == don't truncate
@@ -2564,10 +2565,10 @@ void FrameLoader::addExtraFieldsToRequest(ResourceRequest& request, FrameLoadTyp
 
     if (request.cachePolicy() == ReloadIgnoringCacheData) {
         if (loadType == FrameLoadTypeReload)
-            request.setHTTPHeaderField("Cache-Control", "max-age=0");
+            request.setHTTPHeaderField(HTTPHeaderName::CacheControl, "max-age=0");
         else if (loadType == FrameLoadTypeReloadFromOrigin) {
-            request.setHTTPHeaderField("Cache-Control", "no-cache");
-            request.setHTTPHeaderField("Pragma", "no-cache");
+            request.setHTTPHeaderField(HTTPHeaderName::CacheControl, "no-cache");
+            request.setHTTPHeaderField(HTTPHeaderName::Pragma, "no-cache");
         }
     }
     

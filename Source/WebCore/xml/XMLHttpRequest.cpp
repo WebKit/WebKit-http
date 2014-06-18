@@ -33,6 +33,7 @@
 #include "ExceptionCode.h"
 #include "File.h"
 #include "HTMLDocument.h"
+#include "HTTPHeaderNames.h"
 #include "HTTPParsers.h"
 #include "InspectorInstrumentation.h"
 #include "JSDOMBinding.h"
@@ -77,58 +78,7 @@ enum XMLHttpRequestSendArrayBufferOrView {
     XMLHttpRequestSendArrayBufferOrViewMax,
 };
 
-struct XMLHttpRequestStaticData {
-    WTF_MAKE_NONCOPYABLE(XMLHttpRequestStaticData); WTF_MAKE_FAST_ALLOCATED;
-public:
-    XMLHttpRequestStaticData();
-    const String m_proxyHeaderPrefix;
-    const String m_secHeaderPrefix;
-    const HashSet<String, CaseFoldingHash> m_forbiddenRequestHeaders;
-};
-
-XMLHttpRequestStaticData::XMLHttpRequestStaticData()
-    : m_proxyHeaderPrefix("proxy-")
-    , m_secHeaderPrefix("sec-")
-    , m_forbiddenRequestHeaders({
-        "accept-charset",
-        "accept-encoding",
-        "access-control-request-headers",
-        "access-control-request-method",
-        "connection",
-        "content-length",
-        "content-transfer-encoding",
-        "cookie",
-        "cookie2",
-        "date",
-        "dnt",
-        "expect",
-        "host",
-        "keep-alive",
-        "origin",
-        "referer",
-        "te",
-        "trailer",
-        "transfer-encoding",
-        "upgrade",
-        "user-agent",
-        "via",
-    })
-{
-}
-
-static const XMLHttpRequestStaticData& staticData()
-{
-    static std::once_flag onceFlag;
-    static LazyNeverDestroyed<XMLHttpRequestStaticData> staticData;
-
-    std::call_once(onceFlag, [] {
-        staticData.construct();
-    });
-
-    return staticData;
-}
-
-static bool isSetCookieHeader(const AtomicString& name)
+static bool isSetCookieHeader(const String& name)
 {
     return equalIgnoringCase(name, "set-cookie") || equalIgnoringCase(name, "set-cookie2");
 }
@@ -456,10 +406,54 @@ String XMLHttpRequest::uppercaseKnownHTTPMethod(const String& method)
     return method;
 }
 
+static bool isForbiddenRequestHeader(const String& name)
+{
+    HTTPHeaderName headerName;
+    if (!findHTTPHeaderName(name, headerName))
+        return false;
+
+    switch (headerName) {
+    case HTTPHeaderName::AcceptCharset:
+    case HTTPHeaderName::AcceptEncoding:
+    case HTTPHeaderName::AccessControlRequestHeaders:
+    case HTTPHeaderName::AccessControlRequestMethod:
+    case HTTPHeaderName::Connection:
+    case HTTPHeaderName::ContentLength:
+    case HTTPHeaderName::ContentTransferEncoding:
+    case HTTPHeaderName::Cookie:
+    case HTTPHeaderName::Cookie2:
+    case HTTPHeaderName::Date:
+    case HTTPHeaderName::DNT:
+    case HTTPHeaderName::Expect:
+    case HTTPHeaderName::Host:
+    case HTTPHeaderName::KeepAlive:
+    case HTTPHeaderName::Origin:
+    case HTTPHeaderName::Referer:
+    case HTTPHeaderName::TE:
+    case HTTPHeaderName::Trailer:
+    case HTTPHeaderName::TransferEncoding:
+    case HTTPHeaderName::Upgrade:
+    case HTTPHeaderName::UserAgent:
+    case HTTPHeaderName::Via:
+        return true;
+
+    default:
+        return false;
+    }
+}
+
 bool XMLHttpRequest::isAllowedHTTPHeader(const String& name)
 {
-    return !staticData().m_forbiddenRequestHeaders.contains(name) && !name.startsWith(staticData().m_proxyHeaderPrefix, false)
-        && !name.startsWith(staticData().m_secHeaderPrefix, false);
+    if (isForbiddenRequestHeader(name))
+        return false;
+
+    if (name.startsWith("proxy-", false))
+        return false;
+
+    if (name.startsWith("sec-", false))
+        return false;
+
+    return true;
 }
 
 void XMLHttpRequest::open(const String& method, const URL& url, ExceptionCode& ec)
@@ -632,7 +626,7 @@ void XMLHttpRequest::send(const String& body, ExceptionCode& ec)
                 setRequestHeaderInternal("Content-Type", "application/xml");
         } else {
             replaceCharsetInMediaType(contentType, "UTF-8");
-            m_requestHeaders.set("Content-Type", contentType);
+            m_requestHeaders.set(HTTPHeaderName::ContentType, contentType);
         }
 
         m_requestEntityBody = FormData::create(UTF8Encoding().encode(body, EntitiesForUnencodables));
@@ -759,7 +753,7 @@ void XMLHttpRequest::createRequest(ExceptionCode& ec)
     }
 
     if (!m_requestHeaders.isEmpty())
-        request.addHTTPHeaderFields(m_requestHeaders);
+        request.setHTTPHeaderFields(m_requestHeaders);
 
     ThreadableLoaderOptions options;
     options.sendLoadCallbacks = SendCallbacks;
@@ -919,7 +913,7 @@ void XMLHttpRequest::overrideMimeType(const String& override)
     m_mimeTypeOverride = override;
 }
 
-void XMLHttpRequest::setRequestHeader(const AtomicString& name, const String& value, ExceptionCode& ec)
+void XMLHttpRequest::setRequestHeader(const String& name, const String& value, ExceptionCode& ec)
 {
     if (m_state != OPENED || m_loader) {
 #if ENABLE(DASHBOARD_SUPPORT)
@@ -945,14 +939,12 @@ void XMLHttpRequest::setRequestHeader(const AtomicString& name, const String& va
     setRequestHeaderInternal(name, value);
 }
 
-void XMLHttpRequest::setRequestHeaderInternal(const AtomicString& name, const String& value)
+void XMLHttpRequest::setRequestHeaderInternal(const String& name, const String& value)
 {
-    HTTPHeaderMap::AddResult result = m_requestHeaders.add(name, value);
-    if (!result.isNewEntry)
-        result.iterator->value = result.iterator->value + ", " + value;
+    m_requestHeaders.add(name, value);
 }
 
-String XMLHttpRequest::getRequestHeader(const AtomicString& name) const
+String XMLHttpRequest::getRequestHeader(const String& name) const
 {
     return m_requestHeaders.get(name);
 }
@@ -965,7 +957,7 @@ String XMLHttpRequest::getAllResponseHeaders() const
     StringBuilder stringBuilder;
 
     HTTPHeaderSet accessControlExposeHeaderSet;
-    parseAccessControlExposeHeadersAllowList(m_response.httpHeaderField("Access-Control-Expose-Headers"), accessControlExposeHeaderSet);
+    parseAccessControlExposeHeadersAllowList(m_response.httpHeaderField(HTTPHeaderName::AccessControlExposeHeaders), accessControlExposeHeaderSet);
     
     for (const auto& header : m_response.httpHeaderFields()) {
         // Hide Set-Cookie header fields from the XMLHttpRequest client for these reasons:
@@ -991,7 +983,7 @@ String XMLHttpRequest::getAllResponseHeaders() const
     return stringBuilder.toString();
 }
 
-String XMLHttpRequest::getResponseHeader(const AtomicString& name) const
+String XMLHttpRequest::getResponseHeader(const String& name) const
 {
     if (m_state < HEADERS_RECEIVED || m_error)
         return String();
@@ -1003,7 +995,7 @@ String XMLHttpRequest::getResponseHeader(const AtomicString& name) const
     }
 
     HTTPHeaderSet accessControlExposeHeaderSet;
-    parseAccessControlExposeHeadersAllowList(m_response.httpHeaderField("Access-Control-Expose-Headers"), accessControlExposeHeaderSet);
+    parseAccessControlExposeHeadersAllowList(m_response.httpHeaderField(HTTPHeaderName::AccessControlExposeHeaders), accessControlExposeHeaderSet);
 
     if (!m_sameOriginRequest && !isOnAccessControlResponseHeaderWhitelist(name) && !accessControlExposeHeaderSet.contains(name)) {
         logConsoleError(scriptExecutionContext(), "Refused to get unsafe header \"" + name + "\"");
@@ -1017,7 +1009,7 @@ String XMLHttpRequest::responseMIMEType() const
     String mimeType = extractMIMETypeFromMediaType(m_mimeTypeOverride);
     if (mimeType.isEmpty()) {
         if (m_response.isHTTP())
-            mimeType = extractMIMETypeFromMediaType(m_response.httpHeaderField("Content-Type"));
+            mimeType = extractMIMETypeFromMediaType(m_response.httpHeaderField(HTTPHeaderName::ContentType));
         else
             mimeType = m_response.mimeType();
     }
@@ -1137,7 +1129,7 @@ void XMLHttpRequest::didReceiveResponse(unsigned long identifier, const Resource
 
     m_response = response;
     if (!m_mimeTypeOverride.isEmpty()) {
-        m_response.setHTTPHeaderField("Content-Type", m_mimeTypeOverride);
+        m_response.setHTTPHeaderField(HTTPHeaderName::ContentType, m_mimeTypeOverride);
         m_responseEncoding = extractCharsetFromMediaType(m_mimeTypeOverride);
     }
 

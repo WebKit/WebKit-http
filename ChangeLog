@@ -1,3 +1,51 @@
+2014-06-17  Zan Dobersek  <zdobersek@igalia.com>
+
+        Remove the USE_GTK2=1 branch in OptionsGTK.cmake. This used to determine
+        GTK+ and GDK libraries and include directories for the GTK+ 2 dependency,
+        but we now only support GTK+ 3. The GTK+ 2 dependency is still required
+        by the plugin process, but it is searched and utilized separately.
+
+        Rubber-stamped by Carlos Garcia Campos.
+
+        * Source/cmake/OptionsGTK.cmake:
+
+2014-06-16  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r170003.
+        https://bugs.webkit.org/show_bug.cgi?id=133938
+
+        This patch broke GTK build (Requested by kczech on #webkit).
+
+        Reverted changeset:
+
+        "[EFL] Platform support for WebSpeech feature."
+        https://bugs.webkit.org/show_bug.cgi?id=116438
+        http://trac.webkit.org/changeset/170003
+
+2014-06-16  Krzysztof Czech  <k.czech@samsung.com>
+
+        [EFL] Platform support for WebSpeech feature.
+        https://bugs.webkit.org/show_bug.cgi?id=116438
+
+        Reviewed by Gyuyoung Kim.
+
+        Add ENABLE_SPEECH_SYNTHESIS flag to have Speech Synthesis in EFL.
+
+        * Source/cmake/OptionsEfl.cmake:
+        * Source/cmake/WebKitFeatures.cmake:
+
+2014-06-14  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        [EFL] Remove duplicated compiler flag
+        https://bugs.webkit.org/show_bug.cgi?id=133838
+
+        Reviewed by Anders Carlsson.
+
+        In r169798, literal-suffix was added for EFL port in order to fix build break. However,
+        it added to common compiler options. So, it is duplicated.
+
+        * Source/cmake/WebKitHelpers.cmake:
+
 2014-06-11  Commit Queue  <commit-queue@webkit.org>
 
         Unreviewed, rolling out r169877.

@@ -345,7 +345,7 @@ static int32_t deviceOrientation()
 
 - (id <WKNavigationDelegate>)navigationDelegate
 {
-    return [_navigationState->navigationDelegate().leakRef() autorelease];
+    return _navigationState->navigationDelegate().autorelease();
 }
 
 - (void)setNavigationDelegate:(id <WKNavigationDelegate>)navigationDelegate
@@ -355,7 +355,7 @@ static int32_t deviceOrientation()
 
 - (id <WKUIDelegate>)UIDelegate
 {
-    return [_uiDelegate->delegate().leakRef() autorelease];
+    return _uiDelegate->delegate().autorelease();
 }
 
 - (void)setUIDelegate:(id<WKUIDelegate>)UIDelegate
@@ -368,7 +368,7 @@ static int32_t deviceOrientation()
     uint64_t navigationID = _page->loadRequest(request);
     auto navigation = _navigationState->createLoadRequestNavigation(navigationID, request);
 
-    return [navigation.leakRef() autorelease];
+    return navigation.autorelease();
 }
 
 - (WKNavigation *)loadHTMLString:(NSString *)string baseURL:(NSURL *)baseURL
@@ -376,7 +376,7 @@ static int32_t deviceOrientation()
     uint64_t navigationID = _page->loadHTMLString(string, baseURL.absoluteString);
     auto navigation = _navigationState->createLoadDataNavigation(navigationID);
 
-    return [navigation.leakRef() autorelease];
+    return navigation.autorelease();
 }
 
 - (WKNavigation *)goToBackForwardListItem:(WKBackForwardListItem *)item
@@ -385,7 +385,7 @@ static int32_t deviceOrientation()
 
     auto navigation = _navigationState->createBackForwardNavigation(navigationID, item._item);
 
-    return [navigation.leakRef() autorelease];
+    return navigation.autorelease();
 }
 
 - (NSString *)title
@@ -432,7 +432,7 @@ static int32_t deviceOrientation()
     ASSERT(_page->backForwardList().currentItem());
     auto navigation = _navigationState->createBackForwardNavigation(navigationID, *_page->backForwardList().currentItem());
 
-    return [navigation.leakRef() autorelease];
+    return navigation.autorelease();
 }
 
 - (WKNavigation *)goForward
@@ -444,7 +444,7 @@ static int32_t deviceOrientation()
     ASSERT(_page->backForwardList().currentItem());
     auto navigation = _navigationState->createBackForwardNavigation(navigationID, *_page->backForwardList().currentItem());
 
-    return [navigation.leakRef() autorelease];
+    return navigation.autorelease();
 }
 
 - (WKNavigation *)reload
@@ -453,7 +453,7 @@ static int32_t deviceOrientation()
     ASSERT(navigationID);
 
     auto navigation = _navigationState->createReloadNavigation(navigationID);
-    return [navigation.leakRef() autorelease];
+    return navigation.autorelease();
 }
 
 - (WKNavigation *)reloadFromOrigin
@@ -462,7 +462,7 @@ static int32_t deviceOrientation()
     ASSERT(navigationID);
 
     auto navigation = _navigationState->createReloadNavigation(navigationID);
-    return [navigation.leakRef() autorelease];
+    return navigation.autorelease();
 }
 
 - (void)stopLoading
@@ -492,7 +492,7 @@ static WKErrorCode callbackErrorCode(WebKit::CallbackBase::Error error)
 {
     auto handler = adoptNS([completionHandler copy]);
 
-    _page->runJavaScriptInMainFrame(javaScriptString, WebKit::ScriptValueCallback::create([handler](WebKit::WebSerializedScriptValue* serializedScriptValue, WebKit::ScriptValueCallback::Error errorCode) {
+    _page->runJavaScriptInMainFrame(javaScriptString, [handler](WebKit::WebSerializedScriptValue* serializedScriptValue, WebKit::ScriptValueCallback::Error errorCode) {
         if (!handler)
             return;
 
@@ -524,7 +524,7 @@ static WKErrorCode callbackErrorCode(WebKit::CallbackBase::Error error)
         JSValue *value = [JSValue valueWithJSValueRef:valueRef inContext:context.get()];
 
         completionHandler([value toObject], nil);
-    }));
+    });
 }
 
 #pragma mark iOS-specific methods
@@ -1356,7 +1356,7 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
 
 - (id <WKHistoryDelegatePrivate>)_historyDelegate
 {
-    return [_navigationState->historyDelegate().leakRef() autorelease];
+    return _navigationState->historyDelegate().autorelease();
 }
 
 - (void)_setHistoryDelegate:(id <WKHistoryDelegatePrivate>)historyDelegate
@@ -1456,16 +1456,6 @@ static void releaseNSData(unsigned char*, const void* data)
     _page->close();
 }
 
-- (BOOL)_privateBrowsingEnabled
-{
-    return [_configuration preferences]->_preferences->privateBrowsingEnabled();
-}
-
-- (void)_setPrivateBrowsingEnabled:(BOOL)privateBrowsingEnabled
-{
-    [_configuration preferences]->_preferences->setPrivateBrowsingEnabled(privateBrowsingEnabled);
-}
-
 - (BOOL)_allowsRemoteInspection
 {
 #if ENABLE(REMOTE_INSPECTOR)
@@ -1520,15 +1510,15 @@ static inline WebCore::LayoutMilestones layoutMilestones(_WKRenderingProgressEve
 {
     auto handler = adoptNS([completionHandler copy]);
 
-    _page->getWebArchiveOfFrame(_page->mainFrame(), WebKit::DataCallback::create([handler](bool isError, API::Data* data) {
+    _page->getWebArchiveOfFrame(_page->mainFrame(), [handler](API::Data* data, WebKit::CallbackBase::Error error) {
         void (^completionHandlerBlock)(NSData *, NSError *) = (void (^)(NSData *, NSError *))handler.get();
-        if (isError) {
+        if (error != WebKit::CallbackBase::Error::None) {
             // FIXME: Pipe a proper error in from the WebPageProxy.
             RetainPtr<NSError> error = adoptNS([[NSError alloc] init]);
             completionHandlerBlock(nil, error.get());
         } else
             completionHandlerBlock(wrapper(*data), nil);
-    }));
+    });
 }
 
 - (_WKPaginationMode)_paginationMode
@@ -2030,7 +2020,7 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
 #endif
     
     void(^copiedCompletionHandler)(CGImageRef) = [completionHandler copy];
-    _page->takeSnapshot(WebCore::enclosingIntRect(snapshotRectInContentCoordinates), WebCore::expandedIntSize(WebCore::FloatSize(imageSize)), WebKit::SnapshotOptionsExcludeDeviceScaleFactor, [=](bool, const WebKit::ShareableBitmap::Handle& imageHandle) {
+    _page->takeSnapshot(WebCore::enclosingIntRect(snapshotRectInContentCoordinates), WebCore::expandedIntSize(WebCore::FloatSize(imageSize)), WebKit::SnapshotOptionsExcludeDeviceScaleFactor, [=](const WebKit::ShareableBitmap::Handle& imageHandle, WebKit::CallbackBase::Error) {
 #if PLATFORM(IOS)
         // Automatically delete when this goes out of scope.
         auto uniqueActivityToken = std::unique_ptr<WebKit::ProcessThrottler::BackgroundActivityToken>(activityToken);

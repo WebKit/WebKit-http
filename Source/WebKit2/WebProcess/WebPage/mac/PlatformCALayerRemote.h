@@ -43,15 +43,13 @@ public:
 
     virtual ~PlatformCALayerRemote();
 
-    virtual bool usesTiledBackingLayer() const override { return layerType() == LayerTypePageTiledBackingLayer || layerType() == LayerTypeTiledBackingLayer; }
-
     virtual PlatformLayer* platformLayer() const override { return nullptr; }
 
     void recursiveBuildTransaction(RemoteLayerTreeTransaction&);
 
     virtual void setNeedsDisplay(const WebCore::FloatRect* dirtyRect = 0) override;
 
-    virtual void setContentsChanged() override;
+    virtual void copyContentsFromLayer(PlatformCALayer*) override;
 
     virtual WebCore::PlatformCALayer* superlayer() const override;
     virtual void removeFromSuperlayer() override;
@@ -155,7 +153,10 @@ public:
 
     virtual uint32_t hostingContextID();
 
+    void setClonedLayer(const PlatformCALayer*);
+
     RemoteLayerTreeTransaction::LayerProperties& properties() { return m_properties; }
+    const RemoteLayerTreeTransaction::LayerProperties& properties() const { return m_properties; }
 
     void didCommit();
 
@@ -164,6 +165,8 @@ public:
 protected:
     PlatformCALayerRemote(WebCore::PlatformCALayer::LayerType, WebCore::PlatformCALayerClient* owner, RemoteLayerTreeContext* context);
     PlatformCALayerRemote(const PlatformCALayerRemote&, WebCore::PlatformCALayerClient*, RemoteLayerTreeContext*);
+
+    RemoteLayerTreeContext* context() const { return m_context; }
 
 private:
     virtual bool isPlatformCALayerRemote() const override { return true; }

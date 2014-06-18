@@ -40,6 +40,21 @@ using namespace JSC;
 
 namespace WebCore {
 
+// Functions
+
+JSC::EncodedJSValue JSC_HOST_CALL jsTestNondeterministicPrototypeFunctionNondeterministicZeroArgFunction(JSC::ExecState*);
+// Attributes
+
+JSC::EncodedJSValue jsTestNondeterministicNondeterministicReadonlyAttr(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+JSC::EncodedJSValue jsTestNondeterministicNondeterministicWriteableAttr(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+void setJSTestNondeterministicNondeterministicWriteableAttr(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestNondeterministicNondeterministicExceptionAttr(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+void setJSTestNondeterministicNondeterministicExceptionAttr(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestNondeterministicNondeterministicGetterExceptionAttr(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+void setJSTestNondeterministicNondeterministicGetterExceptionAttr(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestNondeterministicNondeterministicSetterExceptionAttr(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+void setJSTestNondeterministicNondeterministicSetterExceptionAttr(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestNondeterministicConstructor(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
 /* Hash table for constructor */
 
 static const struct CompactHashIndex JSTestNondeterministicConstructorTableIndex[1] = {
@@ -66,11 +81,6 @@ void JSTestNondeterministicConstructor::finishCreation(VM& vm, JSDOMGlobalObject
     ASSERT(inherits(info()));
     putDirect(vm, vm.propertyNames->prototype, JSTestNondeterministicPrototype::self(vm, globalObject), DontDelete | ReadOnly);
     putDirect(vm, vm.propertyNames->length, jsNumber(0), ReadOnly | DontDelete | DontEnum);
-}
-
-bool JSTestNondeterministicConstructor::getOwnPropertySlot(JSObject* object, ExecState* exec, PropertyName propertyName, PropertySlot& slot)
-{
-    return getStaticValueSlot<JSTestNondeterministicConstructor, JSDOMWrapper>(exec, JSTestNondeterministicConstructorTable, jsCast<JSTestNondeterministicConstructor*>(object), propertyName, slot);
 }
 
 /* Hash table for prototype */

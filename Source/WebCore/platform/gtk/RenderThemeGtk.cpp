@@ -236,14 +236,14 @@ void RenderThemeGtk::adjustMenuListStyle(StyleResolver*, RenderStyle* style, Ele
     style->resetBorderRadius();
 }
 
-void RenderThemeGtk::adjustMenuListButtonStyle(StyleResolver* styleResolver, RenderStyle* style, Element* e) const
+void RenderThemeGtk::adjustMenuListButtonStyle(StyleResolver& styleResolver, RenderStyle& style, Element& e) const
 {
-    adjustMenuListStyle(styleResolver, style, e);
+    adjustMenuListStyle(&styleResolver, &style, &e);
 }
 
 bool RenderThemeGtk::paintMenuListButtonDecorations(const RenderObject& object, const PaintInfo& info, const FloatRect& rect)
 {
-    return paintMenuList(object, info, IntRect(rect));
+    return paintMenuList(object, info, rect);
 }
 
 bool RenderThemeGtk::paintTextArea(const RenderObject& o, const PaintInfo& i, const FloatRect& r)

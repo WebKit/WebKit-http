@@ -31,6 +31,10 @@ using namespace JSC;
 
 namespace WebCore {
 
+// Attributes
+
+JSC::EncodedJSValue jsTestExceptionName(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+JSC::EncodedJSValue jsTestExceptionConstructor(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
 /* Hash table */
 
 static const struct CompactHashIndex JSTestExceptionTableIndex[2] = {
@@ -71,11 +75,6 @@ void JSTestExceptionConstructor::finishCreation(VM& vm, JSDOMGlobalObject* globa
     ASSERT(inherits(info()));
     putDirect(vm, vm.propertyNames->prototype, JSTestExceptionPrototype::self(vm, globalObject), DontDelete | ReadOnly);
     putDirect(vm, vm.propertyNames->length, jsNumber(0), ReadOnly | DontDelete | DontEnum);
-}
-
-bool JSTestExceptionConstructor::getOwnPropertySlot(JSObject* object, ExecState* exec, PropertyName propertyName, PropertySlot& slot)
-{
-    return getStaticValueSlot<JSTestExceptionConstructor, JSDOMWrapper>(exec, JSTestExceptionConstructorTable, jsCast<JSTestExceptionConstructor*>(object), propertyName, slot);
 }
 
 /* Hash table for prototype */

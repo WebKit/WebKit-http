@@ -32,6 +32,9 @@ using namespace JSC;
 
 namespace WebCore {
 
+// Attributes
+
+JSC::EncodedJSValue jsTestOverloadedConstructorsConstructor(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
 /* Hash table for constructor */
 
 static const struct CompactHashIndex JSTestOverloadedConstructorsConstructorTableIndex[1] = {
@@ -123,11 +126,6 @@ void JSTestOverloadedConstructorsConstructor::finishCreation(VM& vm, JSDOMGlobal
     ASSERT(inherits(info()));
     putDirect(vm, vm.propertyNames->prototype, JSTestOverloadedConstructorsPrototype::self(vm, globalObject), DontDelete | ReadOnly);
     putDirect(vm, vm.propertyNames->length, jsNumber(1), ReadOnly | DontDelete | DontEnum);
-}
-
-bool JSTestOverloadedConstructorsConstructor::getOwnPropertySlot(JSObject* object, ExecState* exec, PropertyName propertyName, PropertySlot& slot)
-{
-    return getStaticValueSlot<JSTestOverloadedConstructorsConstructor, JSDOMWrapper>(exec, JSTestOverloadedConstructorsConstructorTable, jsCast<JSTestOverloadedConstructorsConstructor*>(object), propertyName, slot);
 }
 
 ConstructType JSTestOverloadedConstructorsConstructor::getConstructData(JSCell*, ConstructData& constructData)

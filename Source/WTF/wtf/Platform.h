@@ -887,7 +887,7 @@
 
 /* CSS Selector JIT Compiler */
 #if !defined(ENABLE_CSS_SELECTOR_JIT)
-#if (CPU(X86_64) || CPU(ARM64)) && ENABLE(JIT) && (OS(DARWIN) || PLATFORM(GTK) || PLATFORM(EFL))
+#if (CPU(X86_64) || CPU(ARM64) || (CPU(ARM_THUMB2) && PLATFORM(IOS))) && ENABLE(JIT) && (OS(DARWIN) || PLATFORM(GTK) || PLATFORM(EFL))
 #define ENABLE_CSS_SELECTOR_JIT 1
 #else
 #define ENABLE_CSS_SELECTOR_JIT 0
@@ -1034,6 +1034,11 @@
 #define WTF_USE_CONTENT_FILTERING 1
 #endif
 
+#ifndef HAVE_QOS_CLASSES
+#if PLATFORM(IOS) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000)
+#define HAVE_QOS_CLASSES 1
+#endif
+#endif
 
 #define WTF_USE_GRAMMAR_CHECKING 1
 
@@ -1095,8 +1100,6 @@
 #define ENABLE_OPENTYPE_MATH 1
 #endif
 
-// There are many occurences of "#if TARGET_OS_IPHONE" guard which cause build failures if TARGET_OS_IPHONE isn't defined.
-// #if defined(TARGET_OS_IPHONE) && TARGET_OS_IPHONE won't help, because GCC's preprocessor doesn't do short circuit macro evaluation.
 #if PLATFORM(EFL) || PLATFORM(GTK)
 #define TARGET_OS_IPHONE 0
 #endif

@@ -2372,6 +2372,7 @@ set(WebCore_SOURCES
     rendering/mathml/RenderMathMLMath.cpp
     rendering/mathml/RenderMathMLMenclose.cpp
     rendering/mathml/RenderMathMLOperator.cpp
+    rendering/mathml/RenderMathMLRadicalOperator.cpp
     rendering/mathml/RenderMathMLRoot.cpp
     rendering/mathml/RenderMathMLRow.cpp
     rendering/mathml/RenderMathMLScripts.cpp
@@ -2391,6 +2392,7 @@ set(WebCore_SOURCES
     rendering/style/ContentData.cpp
     rendering/style/CounterDirectives.cpp
     rendering/style/FillLayer.cpp
+    rendering/style/GridResolvedPosition.cpp
     rendering/style/KeyframeList.cpp
     rendering/style/NinePieceImage.cpp
     rendering/style/QuotesData.cpp
@@ -2398,6 +2400,7 @@ set(WebCore_SOURCES
     rendering/style/SVGRenderStyle.cpp
     rendering/style/SVGRenderStyleDefs.cpp
     rendering/style/ShadowData.cpp
+    rendering/style/ShapeValue.cpp
     rendering/style/StyleBackgroundData.cpp
     rendering/style/StyleBoxData.cpp
     rendering/style/StyleCachedImage.cpp

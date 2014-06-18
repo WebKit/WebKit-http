@@ -41,6 +41,7 @@ webkit.org/b/116637 accessibility/selection-states.html [ Failure ]
 
 # Accessibility tests for notifications that don't exist or aren't needed on Mac OS X.
 accessibility/aria-checkbox-sends-notification.html
+accessibility/combo-box-collapsed-selection-changed.html
 accessibility/children-changed-sends-notification.html
 accessibility/menu-list-sends-change-notification.html
 accessibility/multiselect-list-reports-active-option.html
@@ -1277,9 +1278,9 @@ webkit.org/b/131887 fast/repaint/hidpi-wrong-repaint-rect-when-parent-has-noncom
 # cliprect fails to cover textarea.
 webkit.org/b/132515 fast/forms/hidpi-textarea-on-subpixel-position.html [ ImageOnlyFailure ]
 # Some CSS region expected tests do not properly match CSS region's behavior.
-webkit.org/b/132990 fast/regions/overflow-size-change-with-stacking-context.html [ ImageOnlyFailure ]
-webkit.org/b/132990 fast/regions/overflow-size-change-in-variable-width-regions.html [ ImageOnlyFailure ]
-webkit.org/b/132990 fast/regions/overflow-not-moving-below-floats-in-variable-width-regions.html [ ImageOnlyFailure ]
+webkit.org/b/132990 fast/regions/overflow/overflow-size-change-with-stacking-context.html [ ImageOnlyFailure ]
+webkit.org/b/132990 fast/regions/overflow/overflow-size-change-in-variable-width-regions.html [ ImageOnlyFailure ]
+webkit.org/b/132990 fast/regions/overflow/overflow-not-moving-below-floats-in-variable-width-regions.html [ ImageOnlyFailure ]
 # These tests require fractional text widths. Ahem can't provide it -> using LucidaGrandeUI -> fails on ML due to different font size.  
 [ MountainLion ] fast/inline/hidpi-selection-gap-overlaps-inline-selection.html [ ImageOnlyFailure ]
 [ MountainLion ] fast/inline/hidpi-selection-gap-and-inline-selection-have-gap-rtl.html [ ImageOnlyFailure ]
@@ -1325,6 +1326,11 @@ webkit.org/b/130322 [ MountainLion Mavericks ] mathml/opentype/vertical-LatinMod
 webkit.org/b/72828 mathml/opentype/horizontal-LatinModern.html [ Failure ]
 webkit.org/b/72828 mathml/opentype/opentype-stretchy-horizontal.html [ Failure ]
 webkit.org/b/72828 mathml/opentype/horizontal-LatinModern-munderover.html [ Failure ]
+webkit.org/b/119038 mathml/opentype/roots-LatinModern.html [ Failure ]
+
+# Missing references
+webkit.org/b/119038 mathml/presentation/mo-stretch.html [ Failure ]
+webkit.org/b/119038 mathml/presentation/roots.xhtml [ Failure ]
 
 # WebKitDataCue is supported, not DataCue
 media/track/track-datacue.html [ Skip ]

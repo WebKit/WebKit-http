@@ -42,13 +42,11 @@ public:
 
     ~PlatformCALayerMac();
 
-    virtual bool usesTiledBackingLayer() const override { return layerType() == LayerTypePageTiledBackingLayer || layerType() == LayerTypeTiledBackingLayer; }
-
     virtual void setOwner(PlatformCALayerClient*) override;
 
     virtual void setNeedsDisplay(const FloatRect* dirtyRect = 0) override;
 
-    virtual void setContentsChanged() override;
+    virtual void copyContentsFromLayer(PlatformCALayer*) override;
 
     virtual PlatformCALayer* superlayer() const override;
     virtual void removeFromSuperlayer() override;

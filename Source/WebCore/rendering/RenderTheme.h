@@ -124,7 +124,7 @@ public:
 
     // Some controls may spill out of their containers (e.g., the check on an OS X checkbox).  When these controls repaint,
     // the theme needs to communicate this inflated rect to the engine so that it can invalidate the whole control.
-    virtual void adjustRepaintRect(const RenderObject&, IntRect&);
+    virtual void adjustRepaintRect(const RenderObject&, FloatRect&);
 
     // This method is called whenever a relevant state changes on a particular themed object, e.g., the mouse becomes pressed
     // or a control becomes disabled.
@@ -299,10 +299,10 @@ protected:
     virtual bool paintTextAreaDecorations(const RenderObject&, const PaintInfo&, const FloatRect&) { return true; }
 
     virtual void adjustMenuListStyle(StyleResolver*, RenderStyle*, Element*) const;
-    virtual bool paintMenuList(const RenderObject&, const PaintInfo&, const IntRect&) { return true; }
+    virtual bool paintMenuList(const RenderObject&, const PaintInfo&, const FloatRect&) { return true; }
     virtual bool paintMenuListDecorations(const RenderObject&, const PaintInfo&, const IntRect&) { return true; }
 
-    virtual void adjustMenuListButtonStyle(StyleResolver*, RenderStyle*, Element*) const;
+    virtual void adjustMenuListButtonStyle(StyleResolver&, RenderStyle&, Element&) const;
     virtual bool paintMenuListButtonDecorations(const RenderObject&, const PaintInfo&, const FloatRect&) { return true; }
 
     virtual bool paintPushButtonDecorations(const RenderObject&, const PaintInfo&, const IntRect&) { return true; }

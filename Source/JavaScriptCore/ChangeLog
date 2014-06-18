@@ -1,3 +1,326 @@
+2014-06-17  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r170082.
+        https://bugs.webkit.org/show_bug.cgi?id=134006
+
+        Breaks build. (Requested by mlam on #webkit).
+
+        Reverted changeset:
+
+        "DFGGraph::m_doubleConstantMap will not map 0 values
+        correctly."
+        https://bugs.webkit.org/show_bug.cgi?id=133994
+        http://trac.webkit.org/changeset/170082
+
+2014-06-17  Mark Lam  <mark.lam@apple.com>
+
+        DFGGraph::m_doubleConstantMap will not map 0 values correctly.
+        <https://webkit.org/b/133994>
+
+        Reviewed by Geoffrey Garen.
+
+        DFGGraph::m_doubleConstantsMap should not use a double as a key to its HashMap,
+        because it means two unfortunate things:
+        - It will probably break for zero.
+        - It will think that -0 is the same as +0 under some circumstances, size
+          -0==+0 even though they are distinct values (for example 1/-0 != 1/+0).
+
+        The fix is to use std::unordered_map which does not require special empty
+        and deleted values, and to use the raw bits instead of the double value as
+        the key.
+
+        * dfg/DFGGraph.h:
+        * dfg/DFGJITCompiler.cpp:
+        (JSC::DFG::JITCompiler::addressOfDoubleConstant):
+
+2014-06-17  Oliver Hunt  <oliver@apple.com>
+
+        Fix error messages for incorrect hex literals
+        https://bugs.webkit.org/show_bug.cgi?id=133998
+
+        Reviewed by Mark Lam.
+
+        Ensure that the error messages for bogus hex literals actually
+        make sense.
+
+        * parser/Lexer.cpp:
+        (JSC::Lexer<T>::lex):
+        * parser/ParserTokens.h:
+
+2014-06-17  Matthew Mirman  <mmirman@apple.com>
+
+        Fixes bug where building JSC sometimes crashes at build-symbol-table-index.py. Also adds licenses. 
+        https://bugs.webkit.org/show_bug.cgi?id=133814
+
+        Reviewed by Filip Pizlo.
+        
+        Adds the "shopt -s nullglob" line necessary to prevent the loop in the shell 
+        script from using "*.o" as a file when no other files in the directory exist. 
+        
+        * build-symbol-table-index.sh: Added license.
+        * copy-llvm-ir-to-derived-sources.sh: Added license and "shopt -s nullglob" line.
+
+2014-06-16  Sam Weinig  <sam@webkit.org>
+
+        Move forward declaration of bindings static functions into their implementation files
+        https://bugs.webkit.org/show_bug.cgi?id=133943
+
+        Reviewed by Geoffrey Garen.
+
+        * runtime/CommonIdentifiers.h:
+        Add a few identifiers that are needed by the DOM.
+
+2014-06-16  Mark Lam  <mark.lam@apple.com>
+
+        Parser statementDepth accounting needs to account for when a function body excludes its braces.
+        <https://webkit.org/b/133832>
+
+        Reviewed by Oliver Hunt.
+
+        In some cases (e.g. when a Function object is instantiated from a string), the
+        function body source may not include its braces.  The parser needs to account
+        for this when calculating its statementDepth.
+
+        * bytecode/UnlinkedCodeBlock.cpp:
+        (JSC::generateFunctionCodeBlock):
+        (JSC::UnlinkedFunctionExecutable::codeBlockFor):
+        * bytecode/UnlinkedCodeBlock.h:
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseStatement):
+        - Also fixed the error message for declaring nested functions in strict mode
+          to be more accurate.
+        * parser/Parser.h:
+        (JSC::Parser<LexerType>::parse):
+        (JSC::parse):
+        * runtime/Executable.cpp:
+        (JSC::ScriptExecutable::newCodeBlockFor):
+
+2014-06-16  Juergen Ributzka  <juergen@apple.com>
+
+        Change the order of the alias analysis passes to align with the opt pipeline of LLVM
+        https://bugs.webkit.org/show_bug.cgi?id=133753
+
+        Reviewed by Geoffrey Garen.
+
+        The order in which the alias analysis passes are added affects also the
+        order in which they are utilized. Change the order to align with the
+        one use by LLVM itself. The last alias analysis pass added will be
+        evaluated first. With this change we first perform a basic alias
+        analysis and then use the type-based alias analysis (if required).
+
+        * ftl/FTLCompile.cpp:
+        (JSC::FTL::compile):
+
+2014-06-16  Juergen Ributzka  <juergen@apple.com>
+
+        Fix the arguments passed to the LLVM dylib
+        https://bugs.webkit.org/show_bug.cgi?id=133757
+
+        Reviewed by Geoffrey Garen.
+
+        The LLVM command line argument parser assumes that the first argument
+        is the program name. We need to add a fake program name, otherwise the
+        first argument will be parsed as program name and ignored.
+
+        * llvm/library/LLVMExports.cpp:
+        (initializeAndGetJSCLLVMAPI):
+
+2014-06-16  Michael Saboff  <msaboff@apple.com>
+
+        Convert ASSERT in inlineFunctionForCapabilityLevel to early return
+        https://bugs.webkit.org/show_bug.cgi?id=133903
+
+        Reviewed by Mark Hahnenberg.
+
+        Hardened code by Converting ASSERT to return CannotCompile.
+
+        * dfg/DFGCapabilities.h:
+        (JSC::DFG::inlineFunctionForCapabilityLevel):
+
+2014-06-13  Sam Weinig  <sam@webkit.org>
+
+        Store DOM constants directly in the JS object rather than jumping through a custom accessor
+        https://bugs.webkit.org/show_bug.cgi?id=133898
+
+        Reviewed by Oliver Hunt.
+
+        * runtime/Lookup.h:
+        (JSC::HashTableValue::attributes):
+        Switch attributes to be stored as an unsigned rather than an unsigned char, since there is no difference in memory use
+        and will make adding more flags possibles.
+
+        (JSC::HashTableValue::propertyGetter):
+        (JSC::HashTableValue::propertyPutter):
+        Change assertion to use BuiltinOrFunctionOrConstant.
+
+        (JSC::HashTableValue::constantInteger):
+        Added.
+
+        (JSC::getStaticPropertySlot):
+        (JSC::getStaticValueSlot):
+        Use PropertySlot::setValue() for constants during static lookup.
+
+        (JSC::reifyStaticProperties):
+        Put the constant directly on the object when eagerly reifying.
+
+        * runtime/PropertySlot.h:
+        Add ConstantInteger flag and BuiltinOrFunctionOrConstant helper.
+
+2014-06-14  Michael Saboff  <msaboff@apple.com>
+
+        operationCreateArguments could cause a GC during OSR exit
+        https://bugs.webkit.org/show_bug.cgi?id=133905
+
+        Reviewed by Filip Pizlo.
+
+        Defer GC via new wrapper functions for operationCreateArguments and operationCreateInlinedArguments
+        for use by OSR exit stubs.
+
+        * dfg/DFGOSRExitCompilerCommon.cpp:
+        (JSC::DFG::ArgumentsRecoveryGenerator::generateFor):
+        * dfg/DFGOperations.cpp:
+        * dfg/DFGOperations.h:
+        * jit/JITOperations.cpp:
+        * jit/JITOperations.h:
+
+2014-06-13  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        OSR exit should barrier the Executables for all InlineCallFrames, not just those on the stack at the time of exit
+        https://bugs.webkit.org/show_bug.cgi?id=133880
+
+        Reviewed by Filip Pizlo.
+
+        We could have exited due to a value received from an inlined block that's no longer on 
+        the stack, so we should just barrier all InlineCallFrames.
+
+        * dfg/DFGOSRExitCompilerCommon.cpp:
+        (JSC::DFG::adjustAndJumpToTarget):
+
+2014-06-13  Alex Christensen  <achristensen@webkit.org>
+
+        Make css jit compile for armv7.
+        https://bugs.webkit.org/show_bug.cgi?id=133596
+
+        Reviewed by Benjamin Poulain.
+
+        * assembler/MacroAssembler.h:
+        Use branchPtr on ARM_THUMB2.
+        * assembler/MacroAssemblerARMv7.h:
+        (JSC::MacroAssemblerARMv7::addPtrNoFlags):
+        (JSC::MacroAssemblerARMv7::or32):
+        (JSC::MacroAssemblerARMv7::test32):
+        (JSC::MacroAssemblerARMv7::branch):
+        (JSC::MacroAssemblerARMv7::branchPtr):
+        Added macros necessary for css jit.
+
+2014-06-13  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, fix ARMv7.
+
+        * assembler/MacroAssemblerARMv7.h:
+        (JSC::MacroAssemblerARMv7::abortWithReason):
+
+2014-06-12  Filip Pizlo  <fpizlo@apple.com>
+
+        Even better diagnostics from DFG traps
+        https://bugs.webkit.org/show_bug.cgi?id=133836
+
+        Reviewed by Oliver Hunt.
+        
+        We now stuff the DFG::NodeType into a register before bailing. Also made the
+        DFGBailed abort reason a bit more specific. As planned, the new abort reasons use
+        different numbers than any previous abort reasons.
+
+        * assembler/AbortReason.h:
+        * assembler/MacroAssemblerARM64.h:
+        (JSC::MacroAssemblerARM64::abortWithReason):
+        * assembler/MacroAssemblerARMv7.h:
+        (JSC::MacroAssemblerARMv7::abortWithReason):
+        * assembler/MacroAssemblerX86.h:
+        (JSC::MacroAssemblerX86::abortWithReason):
+        * assembler/MacroAssemblerX86_64.h:
+        (JSC::MacroAssemblerX86_64::abortWithReason):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::SpeculativeJIT):
+        (JSC::DFG::SpeculativeJIT::bail):
+        (JSC::DFG::SpeculativeJIT::compileCurrentBlock):
+        * dfg/DFGSpeculativeJIT.h:
+
+2014-06-12  Simon Fraser  <simon.fraser@apple.com>
+
+        Fix assertions under JSC::setNeverInline() when running js tests in WebKitTestRunner
+        https://bugs.webkit.org/show_bug.cgi?id=133840
+
+        Reviewed by Filip Pizlo.
+        
+        Fix ASSERT(exec->vm().currentThreadIsHoldingAPILock()); under JSC::setNeverInline()
+        when running DFG tests.
+
+        * API/JSCTestRunnerUtils.cpp:
+        (JSC::numberOfDFGCompiles):
+        (JSC::setNeverInline):
+
+2014-06-12  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Avoid fork bomb during build
+        https://bugs.webkit.org/show_bug.cgi?id=133837
+        <rdar://problem/17296034>
+
+        Reviewed by Tim Horton.
+
+        * JavaScriptCore.vcxproj/build-generated-files.sh: Use a
+        reasonable default value when the 'num-cpus' script is not available.
+
+2014-06-12  Mark Lam  <mark.lam@apple.com>
+
+        Remove some dead / unused code.
+        <https://webkit.org/b/133828>
+
+        Reviewed by Filip Pizlo.
+
+        * builtins/BuiltinExecutables.cpp:
+        (JSC::BuiltinExecutables::createBuiltinExecutable):
+        * bytecode/UnlinkedCodeBlock.cpp:
+        (JSC::UnlinkedFunctionExecutable::UnlinkedFunctionExecutable):
+        * bytecode/UnlinkedCodeBlock.h:
+        (JSC::UnlinkedFunctionExecutable::create):
+        * bytecompiler/BytecodeGenerator.h:
+        (JSC::BytecodeGenerator::makeFunction):
+        * parser/Parser.h:
+        (JSC::DepthManager::DepthManager): Deleted.
+        (JSC::DepthManager::~DepthManager): Deleted.
+        * runtime/CodeCache.cpp:
+        (JSC::CodeCache::getFunctionExecutableFromGlobalCode):
+
+2014-06-12  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        Move structureHasRareData out of TypeInfo
+        https://bugs.webkit.org/show_bug.cgi?id=133800
+
+        Reviewed by Andreas Kling.
+
+        StructureHasRareData was originally put in TypeInfo to avoid making Structure bigger, 
+        but we have a few spare bits in Structure so it would be nice to remove this hack.
+
+        * runtime/JSTypeInfo.h:
+        (JSC::TypeInfo::newImpurePropertyFiresWatchpoints):
+        (JSC::TypeInfo::structureHasRareData): Deleted.
+        * runtime/Structure.cpp:
+        (JSC::Structure::Structure):
+        (JSC::Structure::allocateRareData):
+        (JSC::Structure::cloneRareDataFrom):
+        * runtime/Structure.h:
+        (JSC::Structure::previousID):
+        (JSC::Structure::objectToStringValue):
+        (JSC::Structure::setObjectToStringValue):
+        (JSC::Structure::setPreviousID):
+        (JSC::Structure::clearPreviousID):
+        (JSC::Structure::previous):
+        (JSC::Structure::rareData):
+        * runtime/StructureInlines.h:
+        (JSC::Structure::setEnumerationCache):
+        (JSC::Structure::enumerationCache):
+
 2014-06-12  Zsolt Borbely  <zsborbely.u-szeged@partner.samsung.com>
 
         Allow enum guards to be generated from the replay json files

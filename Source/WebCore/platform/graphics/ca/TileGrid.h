@@ -35,6 +35,10 @@
 #include <wtf/Noncopyable.h>
 #include <wtf/Ref.h>
 
+#if USE(CG)
+typedef struct CGContext *CGContextRef;
+#endif
+
 namespace WebCore {
 
 class GraphicsContext;

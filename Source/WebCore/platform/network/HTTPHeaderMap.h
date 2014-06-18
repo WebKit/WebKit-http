@@ -36,15 +36,16 @@
 
 namespace WebCore {
 
+enum class HTTPHeaderName;
+
 typedef Vector<std::pair<String, String>> CrossThreadHTTPHeaderMapData;
 
 // FIXME: Not every header fits into a map. Notably, multiple Set-Cookie header fields are needed to set multiple cookies.
 
 class HTTPHeaderMap {
-    typedef HashMap<AtomicString, String, CaseFoldingHash> HashMapType;
+    typedef HashMap<String, String, CaseFoldingHash> HashMapType;
 public:
     typedef HashMapType::const_iterator const_iterator;
-    typedef HashMapType::AddResult AddResult;
 
     HTTPHeaderMap();
     ~HTTPHeaderMap();
@@ -58,17 +59,22 @@ public:
 
     void clear() { m_headers.clear(); }
 
-    String get(const AtomicString& name) const;
+    String get(const String& name) const;
+    void set(const String& name, const String& value);
+    void add(const String& name, const String& value);
 
-    AddResult set(const AtomicString& name, const String& value);
-    AddResult add(const AtomicString& name, const String& value);
+    String get(HTTPHeaderName) const;
+    void set(HTTPHeaderName, const String& value);
+    bool contains(HTTPHeaderName) const;
+    const_iterator find(HTTPHeaderName) const;
+    bool remove(HTTPHeaderName);
 
-    // Alternate accessors that are faster than converting the char* to AtomicString first.
-    bool contains(const char*) const;
-    String get(const char*) const;
-    const_iterator find(const char*) const;
-    AddResult add(const char* name, const String& value);
-    bool remove(const char*);
+    // Instead of passing a string literal to any of these functions, just use a HTTPHeaderName instead.
+    template<size_t length> String get(const char (&)[length]) const = delete;
+    template<size_t length> void set(const char (&)[length], const String&) = delete;
+    template<size_t length> bool contains(const char (&)[length]) = delete;
+    template<size_t length> const_iterator find(const char(&)[length]) = delete;
+    template<size_t length> bool remove(const char (&)[length]) = delete;
 
     const_iterator begin() const { return m_headers.begin(); }
     const_iterator end() const { return m_headers.end(); }
@@ -84,7 +90,10 @@ public:
     }
 
 private:
-    HashMap<AtomicString, String, CaseFoldingHash> m_headers;
+    // FIXME: Instead of having a HashMap<String, String>, we could have two hash maps,
+    // one HashMap<HTTPHeaderName, String> for common headers and another HashMap<String, String> for
+    // less common headers.
+    HashMapType m_headers;
 };
 
 } // namespace WebCore

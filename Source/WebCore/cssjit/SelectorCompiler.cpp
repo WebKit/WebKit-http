@@ -132,6 +132,7 @@ struct SelectorFragment {
         , widthFromIndirectAdjacent(0)
         , tagName(nullptr)
         , id(nullptr)
+        , langFilter(nullptr)
         , onlyMatchesLinksInQuirksMode(true)
     {
     }
@@ -151,6 +152,7 @@ struct SelectorFragment {
 
     const QualifiedName* tagName;
     const AtomicString* id;
+    const AtomicString* langFilter;
     Vector<const AtomicStringImpl*, 1> classNames;
     HashSet<unsigned> pseudoClasses;
     Vector<JSC::FunctionPtr> unoptimizedPseudoClasses;
@@ -198,7 +200,7 @@ private:
     static const Assembler::RegisterID checkingContextRegister;
     static const Assembler::RegisterID callFrameRegister;
 
-    void generateSelectorChecker();
+    bool generateSelectorChecker();
 
     // Element relations tree walker.
     void generateWalkToParentNode(Assembler::RegisterID targetRegister);
@@ -226,6 +228,7 @@ private:
     void generateElementIsActive(Assembler::JumpList& failureCases, const SelectorFragment&);
     void generateElementIsFirstChild(Assembler::JumpList& failureCases, const SelectorFragment&);
     void generateElementIsHovered(Assembler::JumpList& failureCases, const SelectorFragment&);
+    void generateElementIsInLanguage(Assembler::JumpList& failureCases, const AtomicString&);
     void generateElementIsLastChild(Assembler::JumpList& failureCases, const SelectorFragment&);
     void generateElementIsOnlyChild(Assembler::JumpList& failureCases, const SelectorFragment&);
     void generateSynchronizeStyleAttribute(Assembler::RegisterID elementDataArraySizeAndFlags);
@@ -492,6 +495,25 @@ static inline FunctionType addPseudoClassType(const CSSSelector& selector, Selec
 
             return functionType;
         }
+    case CSSSelector::PseudoClassLang:
+        {
+            const AtomicString& argument = selector.argument();
+            if (argument.isEmpty())
+                return FunctionType::CannotMatchAnything;
+
+            if (!fragment.langFilter)
+                fragment.langFilter = &argument;
+            else if (*fragment.langFilter != argument) {
+                // If there are multiple definition, we only care about the most restrictive one.
+                if (argument.startsWith(*fragment.langFilter, false))
+                    fragment.langFilter = &argument;
+                else if (fragment.langFilter->startsWith(argument, false))
+                    { } // The existing filter is more restrictive.
+                else
+                    return FunctionType::CannotMatchAnything;
+            }
+            return FunctionType::SimpleSelectorChecker;
+        }
 
     default:
         break;
@@ -692,7 +714,8 @@ inline SelectorCompilationStatus SelectorCodeGenerator::compile(JSC::VM* vm, JSC
     switch (m_functionType) {
     case FunctionType::SimpleSelectorChecker:
     case FunctionType::SelectorCheckerWithCheckingContext:
-        generateSelectorChecker();
+        if (!generateSelectorChecker())
+            return SelectorCompilationStatus::CannotCompile;
         break;
     case FunctionType::CannotMatchAnything:
         m_assembler.move(Assembler::TrustedImm32(0), returnRegister);
@@ -1088,6 +1111,13 @@ inline bool SelectorCodeGenerator::generatePrologue()
     prologueRegisters.append(JSC::ARM64Registers::fp);
     m_prologueStackReferences = m_stackAllocator.push(prologueRegisters);
     return true;
+#elif CPU(ARM_THUMB2)
+    Vector<JSC::MacroAssembler::RegisterID, 2> prologueRegisters;
+    prologueRegisters.append(JSC::ARMRegisters::lr);
+    // r6 is tempRegister in RegisterAllocator.h and addressTempRegister in MacroAssemblerARMv7.h and must be preserved by the callee.
+    prologueRegisters.append(JSC::ARMRegisters::r6);
+    m_prologueStackReferences = m_stackAllocator.push(prologueRegisters);
+    return true;
 #elif CPU(X86_64) && CSS_SELECTOR_JIT_DEBUGGING
     Vector<JSC::MacroAssembler::RegisterID, 1> prologueRegister;
     prologueRegister.append(callFrameRegister);
@@ -1104,6 +1134,11 @@ inline void SelectorCodeGenerator::generateEpilogue()
     prologueRegisters.append(JSC::ARM64Registers::lr);
     prologueRegisters.append(JSC::ARM64Registers::fp);
     m_stackAllocator.pop(m_prologueStackReferences, prologueRegisters);
+#elif CPU(ARM_THUMB2)
+    Vector<JSC::MacroAssembler::RegisterID, 2> prologueRegisters;
+    prologueRegisters.append(JSC::ARMRegisters::lr);
+    prologueRegisters.append(JSC::ARMRegisters::r6);
+    m_stackAllocator.pop(m_prologueStackReferences, prologueRegisters);
 #elif CPU(X86_64) && CSS_SELECTOR_JIT_DEBUGGING
     Vector<JSC::MacroAssembler::RegisterID, 1> prologueRegister;
     prologueRegister.append(callFrameRegister);
@@ -1111,17 +1146,29 @@ inline void SelectorCodeGenerator::generateEpilogue()
 #endif
 }
 
-void SelectorCodeGenerator::generateSelectorChecker()
+bool SelectorCodeGenerator::generateSelectorChecker()
 {
-    bool needsEpilogue = generatePrologue();
-
     Vector<StackAllocator::StackReference> calleeSavedRegisterStackReferences;
     bool reservedCalleeSavedRegisters = false;
     unsigned availableRegisterCount = m_registerAllocator.availableRegisterCount();
     unsigned minimumRegisterCountForAttributes = minimumRegisterRequirements(m_selectorFragments);
+    if (minimumRegisterCountForAttributes > registerCount) {
+#if !CPU(ARM_THUMB2)
+        // ARM_THUMB2 does not have enough registers to compile complicated selectors.
+        // Compiling should always succeed on non-ARM_THUMB2 CPUs.
+        ASSERT_NOT_REACHED();
+#endif
+#if CSS_SELECTOR_JIT_DEBUGGING
+        dataLogF("Failed to compile because it would have required %u registers\n", minimumRegisterCountForAttributes);
+#endif
+        return false;
+    }
 #if CSS_SELECTOR_JIT_DEBUGGING
     dataLogF("Compiling with minimum required register count %u\n", minimumRegisterCountForAttributes);
 #endif
+    
+    bool needsEpilogue = generatePrologue();
+    
     ASSERT(minimumRegisterCountForAttributes <= registerCount);
     if (availableRegisterCount < minimumRegisterCountForAttributes) {
         reservedCalleeSavedRegisters = true;
@@ -1215,6 +1262,7 @@ void SelectorCodeGenerator::generateSelectorChecker()
             generateEpilogue();
         m_assembler.ret();
     }
+    return true;
 }
 
 static inline Assembler::Jump testIsElementFlagOnNode(Assembler::ResultCondition condition, Assembler& assembler, Assembler::RegisterID nodeAddress)
@@ -1363,13 +1411,21 @@ void SelectorCodeGenerator::addFlagsToElementStyleFromContext(Assembler::Registe
     m_assembler.loadPtr(Assembler::Address(checkingContext, OBJECT_OFFSETOF(CheckingContext, elementStyle)), childStyle);
 
     // FIXME: We should look into doing something smart in MacroAssembler instead.
-    LocalRegister flags(m_registerAllocator);
     Assembler::Address flagAddress(childStyle, RenderStyle::noninheritedFlagsMemoryOffset() + RenderStyle::NonInheritedFlags::flagsMemoryOffset());
+#if CPU(ARM_THUMB2)
+    Assembler::Address flagLowAddress(childStyle, RenderStyle::noninheritedFlagsMemoryOffset() + RenderStyle::NonInheritedFlags::flagsMemoryOffset() + 4);
+    m_assembler.or32(Assembler::TrustedImm32(newFlag >> 32), flagAddress);
+    m_assembler.or32(Assembler::TrustedImm32(newFlag & 0xFFFFFFFF), flagLowAddress);
+#elif CPU(X86_64) || CPU(ARM64)
+    LocalRegister flags(m_registerAllocator);
     m_assembler.load64(flagAddress, flags);
     LocalRegister isFirstChildStateFlagImmediate(m_registerAllocator);
     m_assembler.move(Assembler::TrustedImm64(newFlag), isFirstChildStateFlagImmediate);
     m_assembler.or64(isFirstChildStateFlagImmediate, flags);
     m_assembler.store64(flags, flagAddress);
+#else
+#error SelectorCodeGenerator::addFlagsToElementStyleFromContext not implemented for this architecture.
+#endif
 }
 
 Assembler::JumpList SelectorCodeGenerator::jumpIfNoPreviousAdjacentElement()
@@ -1424,18 +1480,37 @@ void SelectorCodeGenerator::generateSpecialFailureInQuirksModeForActiveAndHoverI
     }
 }
 
+#if CPU(ARM_THUMB2) && !CPU(APPLE_ARMV7S)
+// FIXME: This could be implemented in assembly to avoid a function call, and we know the divisor at jit-compile time.
+static int moduloHelper(int dividend, int divisor)
+{
+    return dividend % divisor;
+}
+#endif
+
 // The value in inputDividend is destroyed by the modulo operation.
 Assembler::Jump SelectorCodeGenerator::modulo(Assembler::ResultCondition condition, Assembler::RegisterID inputDividend, int divisor)
 {
     RELEASE_ASSERT(divisor);
-#if CPU(ARM64)
+#if CPU(ARM64) || CPU(APPLE_ARMV7S)
     LocalRegister divisorRegister(m_registerAllocator);
     m_assembler.move(Assembler::TrustedImm32(divisor), divisorRegister);
 
     LocalRegister resultRegister(m_registerAllocator);
+#if CPU(APPLE_ARMV7S)
+    m_assembler.m_assembler.sdiv(resultRegister, inputDividend, divisorRegister);
+#elif CPU(ARM64)
     m_assembler.m_assembler.sdiv<32>(resultRegister, inputDividend, divisorRegister);
+#endif
     m_assembler.mul32(divisorRegister, resultRegister);
     return m_assembler.branchSub32(condition, inputDividend, resultRegister, resultRegister);
+#elif CPU(ARM_THUMB2) && !CPU(APPLE_ARMV7S)
+    LocalRegisterWithPreference divisorRegister(m_registerAllocator, JSC::GPRInfo::argumentGPR1);
+    m_assembler.move(Assembler::TrustedImm32(divisor), divisorRegister);
+    FunctionCall functionCall(m_assembler, m_registerAllocator, m_stackAllocator, m_functionCalls);
+    functionCall.setFunctionAddress(moduloHelper);
+    functionCall.setTwoArguments(inputDividend, divisorRegister);
+    return functionCall.callAndBranchOnBooleanReturnValue(condition);
 #elif CPU(X86_64)
     // idiv takes RAX + an arbitrary register, and return RAX + RDX. Most of this code is about doing
     // an efficient allocation of those registers. If a register is already in use and is not the inputDividend,
@@ -1695,6 +1770,8 @@ void SelectorCodeGenerator::generateElementMatching(Assembler::JumpList& matchin
         generateElementMatchesNotPseudoClass(matchingPostTagNameFailureCases, fragment);
     if (!fragment.anyFilters.isEmpty())
         generateElementMatchesAnyPseudoClass(matchingPostTagNameFailureCases, fragment);
+    if (fragment.langFilter)
+        generateElementIsInLanguage(matchingPostTagNameFailureCases, *fragment.langFilter);
 }
 
 void SelectorCodeGenerator::generateElementDataMatching(Assembler::JumpList& failureCases, const SelectorFragment& fragment)
@@ -1817,7 +1894,7 @@ void SelectorCodeGenerator::generateElementAttributesMatching(Assembler::JumpLis
     {
         isShareableElementData.link(&m_assembler);
         m_assembler.urshift32(elementDataArraySizeAndFlags, Assembler::TrustedImm32(ElementData::arraySizeOffset()), attributeArrayLength);
-        m_assembler.add64(Assembler::TrustedImm32(ShareableElementData::attributeArrayMemoryOffset()), elementDataAddress, attributeArrayPointer);
+        m_assembler.addPtr(Assembler::TrustedImm32(ShareableElementData::attributeArrayMemoryOffset()), elementDataAddress, attributeArrayPointer);
     }
 
     skipShareable.link(&m_assembler);
@@ -2027,7 +2104,7 @@ static inline Assembler::Jump testIsHTMLClassOnDocument(Assembler::ResultConditi
 
 void SelectorCodeGenerator::generateElementAttributeValueExactMatching(Assembler::JumpList& failureCases, Assembler::RegisterID currentAttributeAddress, const AtomicString& expectedValue, bool canDefaultToCaseSensitiveValueMatch)
 {
-    LocalRegister expectedValueRegister(m_registerAllocator);
+    LocalRegisterWithPreference expectedValueRegister(m_registerAllocator, JSC::GPRInfo::argumentGPR1);
     m_assembler.move(Assembler::TrustedImmPtr(expectedValue.impl()), expectedValueRegister);
 
     if (canDefaultToCaseSensitiveValueMatch)
@@ -2051,7 +2128,7 @@ void SelectorCodeGenerator::generateElementAttributeValueExactMatching(Assembler
 
         FunctionCall functionCall(m_assembler, m_registerAllocator, m_stackAllocator, m_functionCalls);
         functionCall.setFunctionAddress(WTF::equalIgnoringCaseNonNull);
-        functionCall.setTwoArguments(expectedValueRegister, valueStringImpl);
+        functionCall.setTwoArguments(valueStringImpl, expectedValueRegister);
         failureCases.append(functionCall.callAndBranchOnBooleanReturnValue(Assembler::Zero));
 
         skipCaseInsensitiveComparison.link(&m_assembler);
@@ -2060,7 +2137,7 @@ void SelectorCodeGenerator::generateElementAttributeValueExactMatching(Assembler
 
 void SelectorCodeGenerator::generateElementAttributeFunctionCallValueMatching(Assembler::JumpList& failureCases, Assembler::RegisterID currentAttributeAddress, const AtomicString& expectedValue, bool canDefaultToCaseSensitiveValueMatch, JSC::FunctionPtr caseSensitiveTest, JSC::FunctionPtr caseInsensitiveTest)
 {
-    LocalRegister expectedValueRegister(m_registerAllocator);
+    LocalRegisterWithPreference expectedValueRegister(m_registerAllocator, JSC::GPRInfo::argumentGPR1);
     m_assembler.move(Assembler::TrustedImmPtr(expectedValue.impl()), expectedValueRegister);
 
     if (canDefaultToCaseSensitiveValueMatch) {
@@ -2149,7 +2226,7 @@ void SelectorCodeGenerator::generateElementIsActive(Assembler::JumpList& failure
             failureCases.append(functionCall.callAndBranchOnBooleanReturnValue(Assembler::Zero));
         } else {
             unsigned offsetToCheckingContext = m_stackAllocator.offsetToStackReference(m_checkingContextStackReference);
-            Assembler::RegisterID checkingContext = m_registerAllocator.allocateRegister();
+            Assembler::RegisterID checkingContext = m_registerAllocator.allocateRegisterWithPreference(JSC::GPRInfo::argumentGPR1);
             m_assembler.loadPtr(Assembler::Address(Assembler::stackPointerRegister, offsetToCheckingContext), checkingContext);
             m_registerAllocator.deallocateRegister(checkingContext);
 
@@ -2234,7 +2311,7 @@ void SelectorCodeGenerator::generateElementIsHovered(Assembler::JumpList& failur
         failureCases.append(functionCall.callAndBranchOnBooleanReturnValue(Assembler::Zero));
     } else {
         if (fragment.relationToRightFragment == FragmentRelation::Rightmost) {
-            LocalRegister checkingContext(m_registerAllocator);
+            LocalRegisterWithPreference checkingContext(m_registerAllocator, JSC::GPRInfo::argumentGPR1);
             Assembler::Jump notResolvingStyle = jumpIfNotResolvingStyle(checkingContext);
             addFlagsToElementStyleFromContext(checkingContext, RenderStyle::NonInheritedFlags::flagIsaffectedByHover());
             notResolvingStyle.link(&m_assembler);
@@ -2245,7 +2322,7 @@ void SelectorCodeGenerator::generateElementIsHovered(Assembler::JumpList& failur
             failureCases.append(functionCall.callAndBranchOnBooleanReturnValue(Assembler::Zero));
         } else {
             unsigned offsetToCheckingContext = m_stackAllocator.offsetToStackReference(m_checkingContextStackReference);
-            Assembler::RegisterID checkingContext = m_registerAllocator.allocateRegister();
+            Assembler::RegisterID checkingContext = m_registerAllocator.allocateRegisterWithPreference(JSC::GPRInfo::argumentGPR1);
             m_assembler.loadPtr(Assembler::Address(Assembler::stackPointerRegister, offsetToCheckingContext), checkingContext);
             m_registerAllocator.deallocateRegister(checkingContext);
 
@@ -2255,6 +2332,18 @@ void SelectorCodeGenerator::generateElementIsHovered(Assembler::JumpList& failur
             failureCases.append(functionCall.callAndBranchOnBooleanReturnValue(Assembler::Zero));
         }
     }
+}
+
+void SelectorCodeGenerator::generateElementIsInLanguage(Assembler::JumpList& failureCases, const AtomicString& langFilter)
+{
+    LocalRegisterWithPreference langFilterRegister(m_registerAllocator, JSC::GPRInfo::argumentGPR1);
+    m_assembler.move(Assembler::TrustedImmPtr(langFilter.impl()), langFilterRegister);
+
+    Assembler::RegisterID elementAddress = elementAddressRegister;
+    FunctionCall functionCall(m_assembler, m_registerAllocator, m_stackAllocator, m_functionCalls);
+    functionCall.setFunctionAddress(matchesLangPseudoClass);
+    functionCall.setTwoArguments(elementAddress, langFilterRegister);
+    failureCases.append(functionCall.callAndBranchOnBooleanReturnValue(Assembler::Zero));
 }
 
 static void setLastChildState(Element* element)
@@ -2505,7 +2594,7 @@ void SelectorCodeGenerator::generateElementIsNthChild(Assembler::JumpList& failu
         m_registerAllocator.deallocateRegister(parentElement);
 
     // Setup the counter at 1.
-    LocalRegister elementCounter(m_registerAllocator);
+    LocalRegisterWithPreference elementCounter(m_registerAllocator, JSC::GPRInfo::argumentGPR1);
     m_assembler.move(Assembler::TrustedImm32(1), elementCounter);
 
     // Loop over the previous adjacent elements and increment the counter.

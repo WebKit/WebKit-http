@@ -83,6 +83,7 @@
 #include "HTMLScriptElement.h"
 #include "HTMLStyleElement.h"
 #include "HTMLTitleElement.h"
+#include "HTTPHeaderNames.h"
 #include "HTTPParsers.h"
 #include "HashChangeEvent.h"
 #include "History.h"
@@ -2787,17 +2788,24 @@ void Document::processHttpEquiv(const String& equiv, const String& content)
 
     Frame* frame = this->frame();
 
-    if (equalIgnoringCase(equiv, "default-style")) {
-        // The preferred style set has been overridden as per section 
+    HTTPHeaderName headerName;
+    if (!findHTTPHeaderName(equiv, headerName))
+        return;
+
+    switch (headerName) {
+    case HTTPHeaderName::DefaultStyle:
+        // The preferred style set has been overridden as per section
         // 14.3.2 of the HTML4.0 specification.  We need to update the
-        // sheet used variable and then update our style selector. 
+        // sheet used variable and then update our style selector.
         // For more info, see the test at:
         // http://www.hixie.ch/tests/evil/css/import/main/preferred.html
         // -dwh
         m_styleSheetCollection.setSelectedStylesheetSetName(content);
         m_styleSheetCollection.setPreferredStylesheetSetName(content);
         styleResolverChanged(DeferRecalcStyle);
-    } else if (equalIgnoringCase(equiv, "refresh")) {
+        break;
+
+    case HTTPHeaderName::Refresh: {
         double delay;
         String urlString;
         if (frame && parseHTTPRefresh(content, true, delay, urlString)) {
@@ -2813,17 +2821,27 @@ void Document::processHttpEquiv(const String& equiv, const String& content)
                 addConsoleMessage(MessageSource::Security, MessageLevel::Error, message);
             }
         }
-    } else if (equalIgnoringCase(equiv, "set-cookie")) {
+
+        break;
+    }
+
+    case HTTPHeaderName::SetCookie:
         // FIXME: make setCookie work on XML documents too; e.g. in case of <html:meta .....>
         if (isHTMLDocument()) {
             // Exception (for sandboxed documents) ignored.
             toHTMLDocument(this)->setCookie(content, IGNORE_EXCEPTION);
         }
-    } else if (equalIgnoringCase(equiv, "content-language"))
+        break;
+
+    case HTTPHeaderName::ContentLanguage:
         setContentLanguage(content);
-    else if (equalIgnoringCase(equiv, "x-dns-prefetch-control"))
+        break;
+
+    case HTTPHeaderName::XDNSPrefetchControl:
         parseDNSPrefetchControlHeader(content);
-    else if (equalIgnoringCase(equiv, "x-frame-options")) {
+        break;
+
+    case HTTPHeaderName::XFrameOptions:
         if (frame) {
             FrameLoader& frameLoader = frame->loader();
             unsigned long requestIdentifier = 0;
@@ -2839,14 +2857,27 @@ void Document::processHttpEquiv(const String& equiv, const String& content)
                 addConsoleMessage(MessageSource::Security, MessageLevel::Error, message, requestIdentifier);
             }
         }
-    } else if (equalIgnoringCase(equiv, "content-security-policy"))
+        break;
+
+    case HTTPHeaderName::ContentSecurityPolicy:
         contentSecurityPolicy()->didReceiveHeader(content, ContentSecurityPolicy::Enforce);
-    else if (equalIgnoringCase(equiv, "content-security-policy-report-only"))
+        break;
+
+    case HTTPHeaderName::ContentSecurityPolicyReportOnly:
         contentSecurityPolicy()->didReceiveHeader(content, ContentSecurityPolicy::Report);
-    else if (equalIgnoringCase(equiv, "x-webkit-csp"))
+        break;
+
+    case HTTPHeaderName::XWebKitCSP:
         contentSecurityPolicy()->didReceiveHeader(content, ContentSecurityPolicy::PrefixedEnforce);
-    else if (equalIgnoringCase(equiv, "x-webkit-csp-report-only"))
+        break;
+
+    case HTTPHeaderName::XWebKitCSPReportOnly:
         contentSecurityPolicy()->didReceiveHeader(content, ContentSecurityPolicy::PrefixedReport);
+        break;
+
+    default:
+        break;
+    }
 }
 
 // Though isspace() considers \t and \v to be whitespace, Win IE doesn't.
@@ -3876,7 +3907,7 @@ String Document::lastModified() const
     if (m_frame) {
         String httpLastModified;
         if (DocumentLoader* documentLoader = loader()) 
-            httpLastModified = documentLoader->response().httpHeaderField("Last-Modified");
+            httpLastModified = documentLoader->response().httpHeaderField(HTTPHeaderName::LastModified);
         if (!httpLastModified.isEmpty()) {
             date.setMillisecondsSinceEpochForDateTime(parseDate(httpLastModified));
             foundDate = true;
@@ -4891,7 +4922,7 @@ void Document::postTask(Task task)
         if ((page && page->defersLoading()) || !document->m_pendingTasks.isEmpty())
             document->m_pendingTasks.append(std::move(*task.release()));
         else
-            task->performTask(document);
+            task->performTask(*document);
     });
 }
 
@@ -4899,7 +4930,7 @@ void Document::pendingTasksTimerFired(Timer<Document>&)
 {
     Vector<Task> pendingTasks = std::move(m_pendingTasks);
     for (auto& task : pendingTasks)
-        task.performTask(this);
+        task.performTask(*this);
 }
 
 void Document::suspendScheduledTasks(ActiveDOMObject::ReasonForSuspension reason)

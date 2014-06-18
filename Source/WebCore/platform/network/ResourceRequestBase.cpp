@@ -26,6 +26,7 @@
 #include "config.h"
 #include "ResourceRequestBase.h"
 
+#include "HTTPHeaderNames.h"
 #include "ResourceRequest.h"
 #include <wtf/PassOwnPtr.h>
 
@@ -231,40 +232,45 @@ const HTTPHeaderMap& ResourceRequestBase::httpHeaderFields() const
     return m_httpHeaderFields; 
 }
 
-String ResourceRequestBase::httpHeaderField(const AtomicString& name) const
+String ResourceRequestBase::httpHeaderField(const String& name) const
 {
     updateResourceRequest(); 
     
     return m_httpHeaderFields.get(name);
 }
 
-String ResourceRequestBase::httpHeaderField(const char* name) const
+String ResourceRequestBase::httpHeaderField(HTTPHeaderName name) const
 {
     updateResourceRequest(); 
     
     return m_httpHeaderFields.get(name);
 }
 
-void ResourceRequestBase::setHTTPHeaderField(const AtomicString& name, const String& value)
+void ResourceRequestBase::setHTTPHeaderField(const String& name, const String& value)
 {
-    updateResourceRequest(); 
-    
-    m_httpHeaderFields.set(name, value); 
+    updateResourceRequest();
+
+    m_httpHeaderFields.set(name, value);
     
     if (url().protocolIsInHTTPFamily())
         m_platformRequestUpdated = false;
 }
 
-void ResourceRequestBase::setHTTPHeaderField(const char* name, const String& value)
+void ResourceRequestBase::setHTTPHeaderField(HTTPHeaderName name, const String& value)
 {
-    setHTTPHeaderField(AtomicString(name), value);
+    updateResourceRequest();
+
+    m_httpHeaderFields.set(name, value);
+
+    if (url().protocolIsInHTTPFamily())
+        m_platformRequestUpdated = false;
 }
 
 void ResourceRequestBase::clearHTTPAuthorization()
 {
     updateResourceRequest(); 
 
-    if (!m_httpHeaderFields.remove("Authorization"))
+    if (!m_httpHeaderFields.remove(HTTPHeaderName::Authorization))
         return;
 
     if (url().protocolIsInHTTPFamily())
@@ -273,19 +279,19 @@ void ResourceRequestBase::clearHTTPAuthorization()
 
 String ResourceRequestBase::httpContentType() const
 {
-    return httpHeaderField("Content-Type");
+    return httpHeaderField(HTTPHeaderName::ContentType);
 }
 
 void ResourceRequestBase::setHTTPContentType(const String& httpContentType)
 {
-    setHTTPHeaderField("Content-Type", httpContentType);
+    setHTTPHeaderField(HTTPHeaderName::ContentType, httpContentType);
 }
 
 void ResourceRequestBase::clearHTTPContentType()
 {
     updateResourceRequest(); 
 
-    m_httpHeaderFields.remove("Content-Type");
+    m_httpHeaderFields.remove(HTTPHeaderName::ContentType);
 
     if (url().protocolIsInHTTPFamily())
         m_platformRequestUpdated = false;
@@ -293,19 +299,19 @@ void ResourceRequestBase::clearHTTPContentType()
 
 String ResourceRequestBase::httpReferrer() const
 {
-    return httpHeaderField("Referer");
+    return httpHeaderField(HTTPHeaderName::Referer);
 }
 
 void ResourceRequestBase::setHTTPReferrer(const String& httpReferrer)
 {
-    setHTTPHeaderField("Referer", httpReferrer);
+    setHTTPHeaderField(HTTPHeaderName::Referer, httpReferrer);
 }
 
 void ResourceRequestBase::clearHTTPReferrer()
 {
     updateResourceRequest(); 
 
-    m_httpHeaderFields.remove("Referer");
+    m_httpHeaderFields.remove(HTTPHeaderName::Referer);
 
     if (url().protocolIsInHTTPFamily())
         m_platformRequestUpdated = false;
@@ -313,19 +319,19 @@ void ResourceRequestBase::clearHTTPReferrer()
 
 String ResourceRequestBase::httpOrigin() const
 {
-    return httpHeaderField("Origin");
+    return httpHeaderField(HTTPHeaderName::Origin);
 }
 
 void ResourceRequestBase::setHTTPOrigin(const String& httpOrigin)
 {
-    setHTTPHeaderField("Origin", httpOrigin);
+    setHTTPHeaderField(HTTPHeaderName::Origin, httpOrigin);
 }
 
 void ResourceRequestBase::clearHTTPOrigin()
 {
     updateResourceRequest(); 
 
-    m_httpHeaderFields.remove("Origin");
+    m_httpHeaderFields.remove(HTTPHeaderName::Origin);
 
     if (url().protocolIsInHTTPFamily())
         m_platformRequestUpdated = false;
@@ -333,19 +339,19 @@ void ResourceRequestBase::clearHTTPOrigin()
 
 String ResourceRequestBase::httpUserAgent() const
 {
-    return httpHeaderField("User-Agent");
+    return httpHeaderField(HTTPHeaderName::UserAgent);
 }
 
 void ResourceRequestBase::setHTTPUserAgent(const String& httpUserAgent)
 {
-    setHTTPHeaderField("User-Agent", httpUserAgent);
+    setHTTPHeaderField(HTTPHeaderName::UserAgent, httpUserAgent);
 }
 
 void ResourceRequestBase::clearHTTPUserAgent()
 {
     updateResourceRequest(); 
 
-    m_httpHeaderFields.remove("User-Agent");
+    m_httpHeaderFields.remove(HTTPHeaderName::UserAgent);
 
     if (url().protocolIsInHTTPFamily())
         m_platformRequestUpdated = false;
@@ -353,19 +359,19 @@ void ResourceRequestBase::clearHTTPUserAgent()
 
 String ResourceRequestBase::httpAccept() const
 {
-    return httpHeaderField("Accept");
+    return httpHeaderField(HTTPHeaderName::Accept);
 }
 
 void ResourceRequestBase::setHTTPAccept(const String& httpAccept)
 {
-    setHTTPHeaderField("Accept", httpAccept);
+    setHTTPHeaderField(HTTPHeaderName::Accept, httpAccept);
 }
 
 void ResourceRequestBase::clearHTTPAccept()
 {
     updateResourceRequest(); 
 
-    m_httpHeaderFields.remove("Accept");
+    m_httpHeaderFields.remove(HTTPHeaderName::Accept);
 
     if (url().protocolIsInHTTPFamily())
         m_platformRequestUpdated = false;
@@ -447,21 +453,24 @@ void ResourceRequestBase::setPriority(ResourceLoadPriority priority)
         m_platformRequestUpdated = false;
 }
 
-void ResourceRequestBase::addHTTPHeaderField(const AtomicString& name, const String& value) 
+void ResourceRequestBase::addHTTPHeaderField(const String& name, const String& value) 
 {
     updateResourceRequest();
-    HTTPHeaderMap::AddResult result = m_httpHeaderFields.add(name, value);
-    if (!result.isNewEntry)
-        result.iterator->value = result.iterator->value + ',' + value;
+
+    m_httpHeaderFields.add(name, value);
 
     if (url().protocolIsInHTTPFamily())
         m_platformRequestUpdated = false;
 }
 
-void ResourceRequestBase::addHTTPHeaderFields(const HTTPHeaderMap& headerFields)
+void ResourceRequestBase::setHTTPHeaderFields(HTTPHeaderMap headerFields)
 {
-    for (const auto& header : headerFields)
-        addHTTPHeaderField(header.key, header.value);
+    updateResourceRequest();
+
+    m_httpHeaderFields = std::move(headerFields);
+
+    if (url().protocolIsInHTTPFamily())
+        m_platformRequestUpdated = false;
 }
 
 bool equalIgnoringHeaderFields(const ResourceRequestBase& a, const ResourceRequestBase& b)
@@ -512,22 +521,28 @@ bool ResourceRequestBase::compare(const ResourceRequest& a, const ResourceReques
     return ResourceRequest::platformCompare(a, b);
 }
 
+static const HTTPHeaderName conditionalHeaderNames[] = {
+    HTTPHeaderName::IfMatch,
+    HTTPHeaderName::IfModifiedSince,
+    HTTPHeaderName::IfNoneMatch,
+    HTTPHeaderName::IfRange,
+    HTTPHeaderName::IfUnmodifiedSince
+};
+
 bool ResourceRequestBase::isConditional() const
 {
-    return (m_httpHeaderFields.contains("If-Match") ||
-            m_httpHeaderFields.contains("If-Modified-Since") ||
-            m_httpHeaderFields.contains("If-None-Match") ||
-            m_httpHeaderFields.contains("If-Range") ||
-            m_httpHeaderFields.contains("If-Unmodified-Since"));
+    for (auto headerName : conditionalHeaderNames) {
+        if (m_httpHeaderFields.contains(headerName))
+            return true;
+    }
+
+    return false;
 }
 
 void ResourceRequestBase::makeUnconditional()
 {
-    m_httpHeaderFields.remove("If-Match");
-    m_httpHeaderFields.remove("If-Modified-Since");
-    m_httpHeaderFields.remove("If-None-Match");
-    m_httpHeaderFields.remove("If-Range");
-    m_httpHeaderFields.remove("If-Unmodified-Since");
+    for (auto headerName : conditionalHeaderNames)
+        m_httpHeaderFields.remove(headerName);
 }
 
 double ResourceRequestBase::defaultTimeoutInterval()

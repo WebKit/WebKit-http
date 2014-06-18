@@ -38,6 +38,15 @@ using namespace JSC;
 
 namespace WebCore {
 
+// Functions
+
+JSC::EncodedJSValue JSC_HOST_CALL jsTestEventTargetPrototypeFunctionItem(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestEventTargetPrototypeFunctionAddEventListener(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestEventTargetPrototypeFunctionRemoveEventListener(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestEventTargetPrototypeFunctionDispatchEvent(JSC::ExecState*);
+// Attributes
+
+JSC::EncodedJSValue jsTestEventTargetConstructor(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
 /* Hash table */
 
 static const struct CompactHashIndex JSTestEventTargetTableIndex[2] = {
@@ -78,11 +87,6 @@ void JSTestEventTargetConstructor::finishCreation(VM& vm, JSDOMGlobalObject* glo
     ASSERT(inherits(info()));
     putDirect(vm, vm.propertyNames->prototype, JSTestEventTargetPrototype::self(vm, globalObject), DontDelete | ReadOnly);
     putDirect(vm, vm.propertyNames->length, jsNumber(0), ReadOnly | DontDelete | DontEnum);
-}
-
-bool JSTestEventTargetConstructor::getOwnPropertySlot(JSObject* object, ExecState* exec, PropertyName propertyName, PropertySlot& slot)
-{
-    return getStaticValueSlot<JSTestEventTargetConstructor, JSDOMWrapper>(exec, JSTestEventTargetConstructorTable, jsCast<JSTestEventTargetConstructor*>(object), propertyName, slot);
 }
 
 /* Hash table for prototype */

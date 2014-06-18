@@ -57,12 +57,12 @@ WebOriginDataManagerProxy::~WebOriginDataManagerProxy()
 
 void WebOriginDataManagerProxy::contextDestroyed()
 {
-    invalidateCallbackMap(m_arrayCallbacks);
+    invalidateCallbackMap(m_arrayCallbacks, CallbackBase::Error::OwnerWasInvalidated);
 }
 
 void WebOriginDataManagerProxy::processDidClose(WebProcessProxy*)
 {
-    invalidateCallbackMap(m_arrayCallbacks);
+    invalidateCallbackMap(m_arrayCallbacks, CallbackBase::Error::ProcessExited);
 }
 
 bool WebOriginDataManagerProxy::shouldTerminate(WebProcessProxy*) const
@@ -80,12 +80,14 @@ void WebOriginDataManagerProxy::derefWebContextSupplement()
     API::Object::deref();
 }
 
-void WebOriginDataManagerProxy::getOrigins(WKOriginDataTypes types, PassRefPtr<ArrayCallback> prpCallback)
+void WebOriginDataManagerProxy::getOrigins(WKOriginDataTypes types, std::function<void (API::Array*, CallbackBase::Error)> callbackFunction)
 {
-    if (!context())
-        return;
+    RefPtr<ArrayCallback> callback = ArrayCallback::create(std::move(callbackFunction));
 
-    RefPtr<ArrayCallback> callback = prpCallback;
+    if (!context()) {
+        callback->invalidate();
+        return;
+    }
 
     uint64_t callbackID = callback->callbackID();
     m_arrayCallbacks.set(callbackID, callback.release());

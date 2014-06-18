@@ -80,13 +80,19 @@ namespace WebCore {
         void setHTTPMethod(const String& httpMethod);
         
         const HTTPHeaderMap& httpHeaderFields() const;
-        String httpHeaderField(const AtomicString& name) const;
-        String httpHeaderField(const char* name) const;
-        void setHTTPHeaderField(const AtomicString& name, const String& value);
-        void setHTTPHeaderField(const char* name, const String& value);
-        void addHTTPHeaderField(const AtomicString& name, const String& value);
-        void addHTTPHeaderFields(const HTTPHeaderMap& headerFields);
-        
+        void setHTTPHeaderFields(HTTPHeaderMap);
+
+        String httpHeaderField(const String& name) const;
+        String httpHeaderField(HTTPHeaderName) const;
+        void setHTTPHeaderField(const String& name, const String& value);
+        void setHTTPHeaderField(HTTPHeaderName, const String& value);
+        void addHTTPHeaderField(const String& name, const String& value);
+
+        // Instead of passing a string literal to any of these functions, just use a HTTPHeaderName instead.
+        template<size_t length> String httpHeaderField(const char (&)[length]) const = delete;
+        template<size_t length> void setHTTPHeaderField(const char (&)[length], const String&) = delete;
+        template<size_t length> void addHTTPHeaderField(const char (&)[length], const String&) = delete;
+
         void clearHTTPAuthorization();
 
         String httpContentType() const;

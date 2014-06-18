@@ -37,6 +37,7 @@
 #include "Frame.h"
 #include "FrameLoader.h"
 #include "FrameLoaderClient.h"
+#include "HTTPHeaderNames.h"
 #include "InspectorInstrumentation.h"
 #include "ManifestParser.h"
 #include "Page.h"
@@ -480,16 +481,16 @@ PassRefPtr<ResourceHandle> ApplicationCacheGroup::createResourceHandle(const URL
 {
     ResourceRequest request(url);
     m_frame->loader().applyUserAgent(request);
-    request.setHTTPHeaderField("Cache-Control", "max-age=0");
+    request.setHTTPHeaderField(HTTPHeaderName::CacheControl, "max-age=0");
 
     if (newestCachedResource) {
-        const String& lastModified = newestCachedResource->response().httpHeaderField("Last-Modified");
-        const String& eTag = newestCachedResource->response().httpHeaderField("ETag");
+        const String& lastModified = newestCachedResource->response().httpHeaderField(HTTPHeaderName::LastModified);
+        const String& eTag = newestCachedResource->response().httpHeaderField(HTTPHeaderName::ETag);
         if (!lastModified.isEmpty() || !eTag.isEmpty()) {
             if (!lastModified.isEmpty())
-                request.setHTTPHeaderField("If-Modified-Since", lastModified);
+                request.setHTTPHeaderField(HTTPHeaderName::IfModifiedSince, lastModified);
             if (!eTag.isEmpty())
-                request.setHTTPHeaderField("If-None-Match", eTag);
+                request.setHTTPHeaderField(HTTPHeaderName::IfNoneMatch, eTag);
         }
     }
 
@@ -1116,8 +1117,8 @@ void ApplicationCacheGroup::postListenerTask(ApplicationCacheHost::EventID event
     ASSERT(frame->loader().documentLoader() == loader);
 
     RefPtr<DocumentLoader> loaderProtector(loader);
-    frame->document()->postTask([=] (ScriptExecutionContext* context) {
-        ASSERT_UNUSED(context, context->isDocument());
+    frame->document()->postTask([=] (ScriptExecutionContext& context) {
+        ASSERT_UNUSED(context, context.isDocument());
         Frame* frame = loaderProtector->frame();
         if (!frame)
             return;

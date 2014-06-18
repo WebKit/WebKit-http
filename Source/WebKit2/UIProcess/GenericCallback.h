@@ -69,78 +69,14 @@ private:
     uint64_t m_callbackID;
 };
 
-class VoidCallback : public CallbackBase {
-public:
-    typedef std::function<void (bool)> CallbackFunction;
-
-    static PassRefPtr<VoidCallback> create(CallbackFunction callback)
-    {
-        return adoptRef(new VoidCallback(callback));
-    }
-
-    virtual ~VoidCallback()
-    {
-        ASSERT(!m_callback);
-    }
-
-    void performCallback()
-    {
-        if (!m_callback)
-            return;
-
-        m_callback(false);
-
-        m_callback = nullptr;
-    }
-    
-    void invalidate()
-    {
-        if (!m_callback)
-            return;
-
-        m_callback(true);
-
-        m_callback = nullptr;
-    }
-
-private:
-    VoidCallback(CallbackFunction callback)
-        : m_callback(callback)
-    {
-    }
-
-    CallbackFunction m_callback;
-};
-
-class VoidAPICallback : public CallbackBase {
-public:
-    typedef void (*CallbackFunction)(WKErrorRef, void*);
-
-    static PassRefPtr<VoidCallback> create(void* context, CallbackFunction callback)
-    {
-        return VoidCallback::create([context, callback](bool error) {
-            callback(error ? toAPI(API::Error::create().get()) : 0, context);
-        });
-    }
-};
-
-template<typename T>
+template<typename... T>
 class GenericCallback : public CallbackBase {
 public:
-    typedef std::function<void (T, Error)> CallbackFunction;
+    typedef std::function<void (T..., Error)> CallbackFunction;
 
     static PassRefPtr<GenericCallback> create(CallbackFunction callback)
     {
         return adoptRef(new GenericCallback(callback));
-    }
-
-    // FIXME: Get rid of this legacy version.
-    typedef std::function<void (bool, T)> LegacyCallbackFunction;
-    static PassRefPtr<GenericCallback> create(LegacyCallbackFunction callback)
-    {
-        return adoptRef(new GenericCallback([callback](T t, Error error) {
-            callback(error != Error::None, std::move(t));
-        }));
     }
 
     virtual ~GenericCallback()
@@ -148,22 +84,27 @@ public:
         ASSERT(!m_callback);
     }
 
-    void performCallbackWithReturnValue(T returnValue)
+    void performCallbackWithReturnValue(T... returnValue)
     {
         if (!m_callback)
             return;
 
-        m_callback(returnValue, Error::None);
+        m_callback(returnValue..., Error::None);
 
         m_callback = nullptr;
     }
-    
+
+    void performCallback()
+    {
+        performCallbackWithReturnValue();
+    }
+
     void invalidate(Error error = Error::Unknown)
     {
         if (!m_callback)
             return;
 
-        m_callback(T(), error);
+        m_callback(typename std::remove_reference<T>::type()..., error);
 
         m_callback = nullptr;
     }
@@ -178,113 +119,26 @@ private:
 };
 
 template<typename APIReturnValueType, typename InternalReturnValueType = typename APITypeInfo<APIReturnValueType>::ImplType>
-class GenericAPICallback : public CallbackBase {
-public:
-    typedef void (*CallbackFunction)(APIReturnValueType, WKErrorRef, void*);
+static typename GenericCallback<InternalReturnValueType>::CallbackFunction toGenericCallbackFunction(void* context, void (*callback)(APIReturnValueType, WKErrorRef, void*))
+{
+    return [context, callback](InternalReturnValueType returnValue, CallbackBase::Error error) {
+        callback(toAPI(returnValue), error != CallbackBase::Error::None ? toAPI(API::Error::create().get()) : 0, context);
+    };
+}
 
-    static PassRefPtr<GenericCallback<InternalReturnValueType>> create(void* context, CallbackFunction callback)
-    {
-        return GenericCallback<InternalReturnValueType>::create([context, callback](bool error, InternalReturnValueType returnValue) {
-            callback(toAPI(returnValue), error ? toAPI(API::Error::create().get()) : 0, context);
-        });
-    }
-};
-
-// FIXME: Make a version of GenericCallback with two arguments, and define ComputedPagesCallback as a specialization.
-class ComputedPagesCallback : public CallbackBase {
-public:
-    typedef std::function<void (bool, const Vector<WebCore::IntRect>&, double)> CallbackFunction;
-
-    static PassRefPtr<ComputedPagesCallback> create(CallbackFunction callback)
-    {
-        return adoptRef(new ComputedPagesCallback(callback));
-    }
-
-    virtual ~ComputedPagesCallback()
-    {
-        ASSERT(!m_callback);
-    }
-
-    void performCallbackWithReturnValue(const Vector<WebCore::IntRect>& returnValue1, double returnValue2)
-    {
-        ASSERT(m_callback);
-
-        m_callback(false, returnValue1, returnValue2);
-
-        m_callback = 0;
-    }
-    
-    void invalidate()
-    {
-        ASSERT(m_callback);
-
-        m_callback(true, Vector<WebCore::IntRect>(), 0);
-        
-        m_callback = 0;
-    }
-
-private:
-
-    ComputedPagesCallback(CallbackFunction callback)
-        : m_callback(callback)
-    {
-    }
-
-    CallbackFunction m_callback;
-};
-
-class ImageCallback : public CallbackBase {
-public:
-    typedef std::function<void (bool, const ShareableBitmap::Handle&)> CallbackFunction;
-
-    static PassRefPtr<ImageCallback> create(CallbackFunction callback)
-    {
-        return adoptRef(new ImageCallback(callback));
-    }
-
-    virtual ~ImageCallback()
-    {
-        ASSERT(!m_callback);
-    }
-
-    void performCallbackWithReturnValue(const ShareableBitmap::Handle& returnValue1)
-    {
-        ASSERT(m_callback);
-
-        m_callback(false, returnValue1);
-
-        m_callback = 0;
-    }
-
-    void invalidate()
-    {
-        ASSERT(m_callback);
-
-        RefPtr<API::Error> error = API::Error::create();
-        ShareableBitmap::Handle handle;
-        m_callback(true, handle);
-
-        m_callback = 0;
-    }
-
-private:
-
-    ImageCallback(CallbackFunction callback)
-        : m_callback(callback)
-    {
-    }
-    
-    CallbackFunction m_callback;
-};
+typedef GenericCallback<> VoidCallback;
+typedef GenericCallback<const Vector<WebCore::IntRect>&, double> ComputedPagesCallback;
+typedef GenericCallback<const ShareableBitmap::Handle&> ImageCallback;
 
 template<typename T>
-void invalidateCallbackMap(HashMap<uint64_t, T>& map, CallbackBase::Error error = CallbackBase::Error::Unknown)
+void invalidateCallbackMap(HashMap<uint64_t, T>& callbackMap, CallbackBase::Error error)
 {
-    Vector<T> callbacksVector;
-    copyValuesToVector(map, callbacksVector);
-    for (size_t i = 0, size = callbacksVector.size(); i < size; ++i)
-        callbacksVector[i]->invalidate();
-    map.clear();
+    Vector<T> callbacks;
+    copyValuesToVector(callbackMap, callbacks);
+    for (auto& callback : callbacks)
+        callback->invalidate(error);
+
+    callbackMap.clear();
 }
 
 } // namespace WebKit

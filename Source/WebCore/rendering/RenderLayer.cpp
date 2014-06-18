@@ -5334,7 +5334,7 @@ void RenderLayer::calculateRects(const ClipRectsContext& clipRectsContext, const
             else
                 layerBoundsWithVisualOverflow.moveBy(LayoutPoint(flowThread->width(), 0));
         } else {
-            RenderBlock* rendererContainingBlock = boxModelObject.enclosingBox()->isRenderBlock() ? toRenderBlock(boxModelObject.enclosingBox()) : 0;
+            RenderBlock* rendererContainingBlock = boxModelObject.enclosingBox().isRenderBlock() ? toRenderBlock(&boxModelObject.enclosingBox()) : 0;
             if (rendererContainingBlock)
                 rendererContainingBlock->flipForWritingMode(layerBoundsWithVisualOverflow);
         }
@@ -6744,7 +6744,7 @@ void RenderLayer::paintFlowThreadIfRegionForFragments(const LayerFragments& frag
     for (size_t i = 0; i < fragments.size(); ++i) {
         const LayerFragment& fragment = fragments.at(i);
 
-        ClipRect clipRect = fragment.backgroundRect;
+        ClipRect clipRect = fragment.foregroundRect;
         if (flowFragment->shouldClipFlowThreadContent())
             clipRect.intersect(regionClipRect);
 

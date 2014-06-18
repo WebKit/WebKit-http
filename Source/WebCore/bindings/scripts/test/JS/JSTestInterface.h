@@ -143,8 +143,6 @@ public:
 
 private:
     JSTestInterfacePrototype(JSC::VM& vm, JSC::JSGlobalObject*, JSC::Structure* structure) : JSC::JSNonFinalObject(vm, structure) { }
-protected:
-    static const unsigned StructureFlags = Base::StructureFlags;
 };
 
 class JSTestInterfaceConstructor : public DOMConstructorObject {
@@ -161,107 +159,18 @@ public:
         return ptr;
     }
 
-    static bool getOwnPropertySlot(JSC::JSObject*, JSC::ExecState*, JSC::PropertyName, JSC::PropertySlot&);
     DECLARE_INFO;
     static JSC::Structure* createStructure(JSC::VM& vm, JSC::JSGlobalObject* globalObject, JSC::JSValue prototype)
     {
         return JSC::Structure::create(vm, globalObject, prototype, JSC::TypeInfo(JSC::ObjectType, StructureFlags), info());
     }
 protected:
-    static const unsigned StructureFlags = JSC::OverridesGetOwnPropertySlot | JSC::ImplementsHasInstance | DOMConstructorObject::StructureFlags;
     static JSC::EncodedJSValue JSC_HOST_CALL constructJSTestInterface(JSC::ExecState*);
 #if ENABLE(TEST_INTERFACE)
     static JSC::ConstructType getConstructData(JSC::JSCell*, JSC::ConstructData&);
 #endif // ENABLE(TEST_INTERFACE)
 };
 
-// Functions
-
-#if ENABLE(Condition22) || ENABLE(Condition23)
-JSC::EncodedJSValue JSC_HOST_CALL jsTestInterfacePrototypeFunctionImplementsMethod1(JSC::ExecState*);
-#endif
-#if ENABLE(Condition22) || ENABLE(Condition23)
-JSC::EncodedJSValue JSC_HOST_CALL jsTestInterfacePrototypeFunctionImplementsMethod2(JSC::ExecState*);
-#endif
-#if ENABLE(Condition22) || ENABLE(Condition23)
-JSC::EncodedJSValue JSC_HOST_CALL jsTestInterfacePrototypeFunctionImplementsMethod3(JSC::ExecState*);
-#endif
-#if ENABLE(Condition22) || ENABLE(Condition23)
-JSC::EncodedJSValue JSC_HOST_CALL jsTestInterfaceConstructorFunctionImplementsMethod4(JSC::ExecState*);
-#endif
-#if ENABLE(Condition11) || ENABLE(Condition12)
-JSC::EncodedJSValue JSC_HOST_CALL jsTestInterfacePrototypeFunctionSupplementalMethod1(JSC::ExecState*);
-#endif
-#if ENABLE(Condition11) || ENABLE(Condition12)
-JSC::EncodedJSValue JSC_HOST_CALL jsTestInterfacePrototypeFunctionSupplementalMethod2(JSC::ExecState*);
-#endif
-#if ENABLE(Condition11) || ENABLE(Condition12)
-JSC::EncodedJSValue JSC_HOST_CALL jsTestInterfacePrototypeFunctionSupplementalMethod3(JSC::ExecState*);
-#endif
-#if ENABLE(Condition11) || ENABLE(Condition12)
-JSC::EncodedJSValue JSC_HOST_CALL jsTestInterfaceConstructorFunctionSupplementalMethod4(JSC::ExecState*);
-#endif
-// Attributes
-
-#if ENABLE(Condition22) || ENABLE(Condition23)
-JSC::EncodedJSValue jsTestInterfaceConstructorImplementsStaticReadOnlyAttr(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
-#endif
-#if ENABLE(Condition22) || ENABLE(Condition23)
-JSC::EncodedJSValue jsTestInterfaceConstructorImplementsStaticAttr(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
-void setJSTestInterfaceConstructorImplementsStaticAttr(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
-#endif
-#if ENABLE(Condition22) || ENABLE(Condition23)
-JSC::EncodedJSValue jsTestInterfaceImplementsStr1(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
-#endif
-#if ENABLE(Condition22) || ENABLE(Condition23)
-JSC::EncodedJSValue jsTestInterfaceImplementsStr2(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
-void setJSTestInterfaceImplementsStr2(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
-#endif
-#if ENABLE(Condition22) || ENABLE(Condition23)
-JSC::EncodedJSValue jsTestInterfaceImplementsStr3(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
-void setJSTestInterfaceImplementsStr3(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
-#endif
-#if ENABLE(Condition22) || ENABLE(Condition23)
-JSC::EncodedJSValue jsTestInterfaceImplementsNode(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
-void setJSTestInterfaceImplementsNode(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
-#endif
-#if ENABLE(Condition11) || ENABLE(Condition12)
-JSC::EncodedJSValue jsTestInterfaceConstructorSupplementalStaticReadOnlyAttr(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
-#endif
-#if ENABLE(Condition11) || ENABLE(Condition12)
-JSC::EncodedJSValue jsTestInterfaceConstructorSupplementalStaticAttr(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
-void setJSTestInterfaceConstructorSupplementalStaticAttr(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
-#endif
-#if ENABLE(Condition11) || ENABLE(Condition12)
-JSC::EncodedJSValue jsTestInterfaceSupplementalStr1(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
-#endif
-#if ENABLE(Condition11) || ENABLE(Condition12)
-JSC::EncodedJSValue jsTestInterfaceSupplementalStr2(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
-void setJSTestInterfaceSupplementalStr2(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
-#endif
-#if ENABLE(Condition11) || ENABLE(Condition12)
-JSC::EncodedJSValue jsTestInterfaceSupplementalStr3(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
-void setJSTestInterfaceSupplementalStr3(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
-#endif
-#if ENABLE(Condition11) || ENABLE(Condition12)
-JSC::EncodedJSValue jsTestInterfaceSupplementalNode(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
-void setJSTestInterfaceSupplementalNode(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
-#endif
-JSC::EncodedJSValue jsTestInterfaceConstructor(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
-// Constants
-
-#if ENABLE(Condition22) || ENABLE(Condition23)
-JSC::EncodedJSValue jsTestInterfaceIMPLEMENTSCONSTANT1(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
-#endif
-#if ENABLE(Condition22) || ENABLE(Condition23)
-JSC::EncodedJSValue jsTestInterfaceIMPLEMENTSCONSTANT2(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
-#endif
-#if ENABLE(Condition11) || ENABLE(Condition12)
-JSC::EncodedJSValue jsTestInterfaceSUPPLEMENTALCONSTANT1(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
-#endif
-#if ENABLE(Condition11) || ENABLE(Condition12)
-JSC::EncodedJSValue jsTestInterfaceSUPPLEMENTALCONSTANT2(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
-#endif
 
 } // namespace WebCore
 

@@ -1,3 +1,247 @@
+2014-06-17  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [EFL] Turn on NOSNIFF in FeatureList.pm
+        https://bugs.webkit.org/show_bug.cgi?id=134010
+
+        Reviewed by Csaba Osztrogonác.
+
+        r164848 enabled NOSNIFF feature for EFL port but missed to change FeatureList.pm.
+
+        * Scripts/webkitperl/FeatureList.pm: Turn on NOSNIFF for the EFL port.
+
+2014-06-17  Tim Horton  <timothy_horton@apple.com>
+
+        MiniBrowser should show Web Content process pids in the window title
+        https://bugs.webkit.org/show_bug.cgi?id=134016
+
+        Reviewed by Sam Weinig.
+
+        * MiniBrowser/mac/WK2BrowserWindowController.m:
+        (-[WK2BrowserWindowController observeValueForKeyPath:ofObject:change:context:]):
+
+2014-06-17  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] Fix the handling of resize events after r169505.
+        https://bugs.webkit.org/show_bug.cgi?id=133517
+
+        Reviewed by Martin Robinson.
+
+        * Scripts/webkitpy/port/xvfbdriver.py:
+        (XvfbDriver._start): Set the resolution of Xvfb to XGA (1024x768).
+        The tests css3/viewport-percentage-lengths/viewport-percentage-lengths-*.html
+        need at least 900x640 pixels to pass.
+        * Scripts/webkitpy/port/xvfbdriver_unittest.py:
+        (XvfbDriverTest.test_start_no_pixel_tests): Update resolution.
+        (XvfbDriverTest.test_start_pixel_tests): Update resolution.
+        (XvfbDriverTest.test_start_arbitrary_worker_number): Update resolution.
+        (XvfbDriverTest.test_start_next_worker): Update resolution.
+        * WebKitTestRunner/gtk/PlatformWebViewGtk.cpp:
+        (WTR::PlatformWebView::PlatformWebView): gtk_widget_size_allocate should
+        be requested over the main widget instead of the window.
+        (WTR::PlatformWebView::resizeTo): Changed this to call setWindowFrame like
+        the Mac port.
+        (WTR::PlatformWebView::windowFrame): Remove legacy ifdef for GTK2.
+        (WTR::PlatformWebView::setWindowFrame): Set the size and position
+        of the Window and the web view.
+
+2014-06-17  Matthew Mirman <mmirman@apple.com>
+
+        Unreviewed. Added myself to list of contributors.
+
+        * Scripts/webkitpy/common/config/contributors.json: Added myself.
+
+2014-06-17  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r170058.
+        https://bugs.webkit.org/show_bug.cgi?id=133993
+
+        Caused 4 webkitpy failures on the bots (Requested by bradee-oh
+        on #webkit).
+
+        Reverted changeset:
+
+        "[GTK] Fix the handling of resize events after r169505."
+        https://bugs.webkit.org/show_bug.cgi?id=133517
+        http://trac.webkit.org/changeset/170058
+
+2014-06-17  Rebecca Hauck  <rhauck@adobe.com>
+
+        Update import-w3c-tests to reflect current W3C test repo directory structure
+        https://bugs.webkit.org/show_bug.cgi?id=133460
+
+        Reviewed by Bem Jones-Bey.
+
+        Removed all references to test status, which are no longer reflected in the
+        directory names in the W3C CSS test repo.  No tests are required for this 
+        change, the existing tests pass.
+
+        * Scripts/webkitpy/w3c/test_importer.py:
+        (main):
+        (TestImporter.__init__):
+        (TestImporter.find_importable_tests):
+        (TestImporter.setup_destination_directory):
+        (TestImporter.write_import_log):
+        (TestImporter.update_test_status): Deleted.
+
+2014-06-17  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] Fix the handling of resize events after r169505.
+        https://bugs.webkit.org/show_bug.cgi?id=133517
+
+        Reviewed by Martin Robinson.
+
+        * Scripts/webkitpy/port/xvfbdriver.py:
+        (XvfbDriver._start): Set the resolution of Xvfb to XGA (1024x768).
+        The tests css3/viewport-percentage-lengths/viewport-percentage-lengths-*.html
+        need at least 900x640 pixels to pass.
+        * WebKitTestRunner/gtk/PlatformWebViewGtk.cpp:
+        (WTR::PlatformWebView::PlatformWebView): gtk_widget_size_allocate should
+        be requested over the main widget instead of the window.
+        (WTR::PlatformWebView::resizeTo): Changed this to call setWindowFrame like
+        the Mac port.
+        (WTR::PlatformWebView::windowFrame): Remove legacy ifdef for GTK2.
+        (WTR::PlatformWebView::setWindowFrame): Set the size and position
+        of the Window and the web view.
+
+2014-06-17  Dan Bernstein  <mitz@apple.com>
+
+        String::isolatedCopy doesn’t return an isolated copy when used on an rvalue reference
+        https://bugs.webkit.org/show_bug.cgi?id=133968
+
+        Reviewed by Anders Carlsson.
+
+        * TestWebKitAPI/Tests/WTF/WTFString.cpp:
+        (TestWebKitAPI::TEST): Added a test that an isolated copy of an rvalue reference doesn’t
+        share an impl() with the original.
+
+2014-06-17  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        [EFL][WK2] Skip failing EFL API tests
+        https://bugs.webkit.org/show_bug.cgi?id=133981
+
+        Reviewed by Csaba Osztrogonác.
+
+        UserMessage, WillLoad and test_ewk2_view have been failed since r169784.
+
+        * TestWebKitAPI/PlatformEfl.cmake:
+
+2014-06-16  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [EFL][WK2] Remove workaround for icon display bug in MiniBrowser
+        https://bugs.webkit.org/show_bug.cgi?id=133962
+
+        Reviewed by Gyuyoung Kim.
+
+        Since we bumped EFL to 1.9, this workaround is unnecessary.
+
+        * MiniBrowser/efl/main.c:
+        (update_view_favicon):
+
+2014-06-16  Gwang Yoon Hwang  <yoon@igalia.com>
+
+        [GTK] Add llvmpipe (Mesa) to the JHBuild moduleset and force it when running layout tests
+        https://bugs.webkit.org/show_bug.cgi?id=131472
+
+        Reviewed by Martin Robinson.
+
+        This patch reapplies r167510 with fixes to add llvm as a dependency for llvmpipe.
+
+        * Scripts/webkitpy/port/xvfbdriver.py:
+        (XvfbDriver._start): Use the LLVMPIPE_LIBGL_PATH to set the LD_LIBRARY_PATH
+        when running WebKitTestRunner with the Xvfb driver.
+        * gtk/install-dependencies: Add LLVM as a dependency to build llvmpipe.
+        * gtk/jhbuild.modules: Add Mesa to the modulelist so that the llvmpipe libGL is build, but not
+        installed.
+        * gtk/jhbuildrc: Set the LLVMPIPE_LIBGL_PATH environment variable so that the test driver knows
+        how to properly set the LD_LIBRARY_PATH variable. We do this because it is much easier to
+        calculate the path in the jhbuildrc than in the test driver code. This simplifies things a great
+        deal.
+
+2014-06-16  Tanay C  <tanay.c@samsung.com>
+
+        Remove deprecated API warnings in WebKit/Tools/MiniBrowser/efl/main.c
+        https://bugs.webkit.org/show_bug.cgi?id=133792
+
+        Reviewed by Gyuyoung Kim.
+
+        * MiniBrowser/efl/main.c: replaced the deprecated API's with the latest ones
+        (show_file_entry_dialog):
+        (window_create):
+
+2014-06-16  Mario Sanchez Prada  <mario.prada@samsung.com>
+
+        [ATK] Missing 'selection-changed' signal when navigating a combo box with keyboard
+        https://bugs.webkit.org/show_bug.cgi?id=133512
+
+        Reviewed by Chris Fleizach.
+
+        Added support for connecting to AtkSelection's 'selection-changed'
+        signal, and print it out as AXSelectedChildrenChanged in the tests.
+
+        Also removed some dead code, that became useless after r169487.
+
+        * WebKitTestRunner/InjectedBundle/atk/AccessibilityNotificationHandlerAtk.cpp:
+        (WTR::AccessibilityNotificationHandler::connectAccessibilityCallbacks): Updated.
+
+2014-06-15  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [EFL][WK2] Change ewk_view_settings_get to ewk_page_group_settings_get
+        https://bugs.webkit.org/show_bug.cgi?id=133841
+
+        Reviewed by Gyuyoung Kim.
+
+        * MiniBrowser/efl/main.c:
+        (window_create):
+
+2014-06-15  Dan Bernstein  <mitz@apple.com>
+
+        Set the svn:ignore property on an Xcode project to ignore user and workspace data.
+
+        * jsc-cli/jsc-cli.xcodeproj: Added property svn:ignore.
+
+2014-06-15  Anders Carlsson  <andersca@apple.com>
+
+        Fix build.
+
+        * TestWebKitAPI/Tests/WebKit2ObjC/UserContentTest.mm:
+        (callRunJavaScriptBlockAndRelease):
+        (runJavaScriptInMainFrame):
+        (TEST_F):
+
+2014-06-13  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        Create MSE and EME watchlist
+        https://bugs.webkit.org/show_bug.cgi?id=133810
+
+        Reviewed by Eric Carlson.
+
+        * Scripts/webkitpy/common/config/watchlist: Create MSEEME
+        definition and add Eric Carlson and myself to it.
+
+2014-06-12  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Remove all deprecated API from GObject DOM bindings
+        https://bugs.webkit.org/show_bug.cgi?id=133728
+
+        Reviewed by Martin Robinson.
+
+        * gtk/webkitdom.py:
+        (WebKitDOMDocGenerator): Remove all deleted classes from the list.
+        (WebKitDOMDocGeneratorSections.__init__): Fix a typo in member initialization.
+
+2014-06-12  Simon Fraser  <simon.fraser@apple.com>
+
+        [iOS] Fix the view being half offscreen in WebKitTestRunner on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=133835
+
+        Reviewed by Tim Horton.
+        
+        Don't do the _fakeOrigin stuff when -initWithFrame: is calling -setFrame:
+
+        * WebKitTestRunner/ios/PlatformWebViewIOS.mm:
+        (-[WebKitTestRunnerWindow initWithFrame:]):
+        (-[WebKitTestRunnerWindow setFrame:]):
+
 2014-06-12  Carlos Alberto Lopez Perez  <clopez@igalia.com>
 
         [GTK] Performance tests should be always ran with WKTR.

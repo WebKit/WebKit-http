@@ -33,6 +33,14 @@ using namespace JSC;
 
 namespace WebCore {
 
+// Functions
+
+JSC::EncodedJSValue JSC_HOST_CALL jsTestActiveDOMObjectPrototypeFunctionExcitingFunction(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestActiveDOMObjectPrototypeFunctionPostMessage(JSC::ExecState*);
+// Attributes
+
+JSC::EncodedJSValue jsTestActiveDOMObjectExcitingAttr(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+JSC::EncodedJSValue jsTestActiveDOMObjectConstructor(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
 /* Hash table */
 
 static const struct CompactHashIndex JSTestActiveDOMObjectTableIndex[4] = {
@@ -76,11 +84,6 @@ void JSTestActiveDOMObjectConstructor::finishCreation(VM& vm, JSDOMGlobalObject*
     ASSERT(inherits(info()));
     putDirect(vm, vm.propertyNames->prototype, JSTestActiveDOMObjectPrototype::self(vm, globalObject), DontDelete | ReadOnly);
     putDirect(vm, vm.propertyNames->length, jsNumber(0), ReadOnly | DontDelete | DontEnum);
-}
-
-bool JSTestActiveDOMObjectConstructor::getOwnPropertySlot(JSObject* object, ExecState* exec, PropertyName propertyName, PropertySlot& slot)
-{
-    return getStaticValueSlot<JSTestActiveDOMObjectConstructor, JSDOMWrapper>(exec, JSTestActiveDOMObjectConstructorTable, jsCast<JSTestActiveDOMObjectConstructor*>(object), propertyName, slot);
 }
 
 /* Hash table for prototype */

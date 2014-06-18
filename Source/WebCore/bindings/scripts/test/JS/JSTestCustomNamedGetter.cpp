@@ -32,6 +32,12 @@ using namespace JSC;
 
 namespace WebCore {
 
+// Functions
+
+JSC::EncodedJSValue JSC_HOST_CALL jsTestCustomNamedGetterPrototypeFunctionAnotherFunction(JSC::ExecState*);
+// Attributes
+
+JSC::EncodedJSValue jsTestCustomNamedGetterConstructor(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
 /* Hash table */
 
 static const struct CompactHashIndex JSTestCustomNamedGetterTableIndex[2] = {
@@ -72,11 +78,6 @@ void JSTestCustomNamedGetterConstructor::finishCreation(VM& vm, JSDOMGlobalObjec
     ASSERT(inherits(info()));
     putDirect(vm, vm.propertyNames->prototype, JSTestCustomNamedGetterPrototype::self(vm, globalObject), DontDelete | ReadOnly);
     putDirect(vm, vm.propertyNames->length, jsNumber(0), ReadOnly | DontDelete | DontEnum);
-}
-
-bool JSTestCustomNamedGetterConstructor::getOwnPropertySlot(JSObject* object, ExecState* exec, PropertyName propertyName, PropertySlot& slot)
-{
-    return getStaticValueSlot<JSTestCustomNamedGetterConstructor, JSDOMWrapper>(exec, JSTestCustomNamedGetterConstructorTable, jsCast<JSTestCustomNamedGetterConstructor*>(object), propertyName, slot);
 }
 
 /* Hash table for prototype */

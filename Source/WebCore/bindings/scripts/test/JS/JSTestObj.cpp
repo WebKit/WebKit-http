@@ -74,6 +74,222 @@ using namespace JSC;
 
 namespace WebCore {
 
+// Functions
+
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionVoidMethod(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionVoidMethodWithArgs(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionByteMethod(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionByteMethodWithArgs(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionOctetMethod(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionOctetMethodWithArgs(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionLongMethod(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionLongMethodWithArgs(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionObjMethod(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionObjMethodWithArgs(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithSequenceArg(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodReturningSequence(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithEnumArg(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodThatRequiresAllArgsAndThrows(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionSerializedValue(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionOptionsObject(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithException(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionCustomMethod(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionCustomMethodWithArgs(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionAddEventListener(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionRemoveEventListener(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionWithScriptStateVoid(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionWithScriptStateObj(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionWithScriptStateVoidException(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionWithScriptStateObjException(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionWithScriptExecutionContext(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionWithScriptExecutionContextAndScriptState(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionWithScriptExecutionContextAndScriptStateObjException(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionWithScriptExecutionContextAndScriptStateWithSpaces(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionWithScriptArgumentsAndCallStack(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithOptionalArg(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithNonOptionalArgAndOptionalArg(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithNonOptionalArgAndTwoOptionalArgs(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithOptionalString(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithOptionalStringIsUndefined(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithOptionalStringIsNullString(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithCallbackArg(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithNonCallbackArgAndCallbackArg(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithCallbackAndOptionalArg(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjConstructorFunctionStaticMethodWithCallbackAndOptionalArg(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjConstructorFunctionStaticMethodWithCallbackArg(JSC::ExecState*);
+#if ENABLE(Condition1)
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionConditionalMethod1(JSC::ExecState*);
+#endif
+#if ENABLE(Condition1) && ENABLE(Condition2)
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionConditionalMethod2(JSC::ExecState*);
+#endif
+#if ENABLE(Condition1) || ENABLE(Condition2)
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionConditionalMethod3(JSC::ExecState*);
+#endif
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionOverloadedMethod(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjConstructorFunctionClassMethod(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjConstructorFunctionClassMethodWithOptional(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjConstructorFunctionClassMethod2(JSC::ExecState*);
+#if ENABLE(Condition1)
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjConstructorFunctionOverloadedMethod1(JSC::ExecState*);
+#endif
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionClassMethodWithClamp(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithUnsignedLongSequence(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionStringArrayFunction(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionDomStringListFunction(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithAndWithoutNullableSequence(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithAndWithoutNullableSequence2(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionGetSVGDocument(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionConvert1(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionConvert2(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionConvert4(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionConvert5(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMutablePointFunction(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionImmutablePointFunction(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionOrange(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionStrictFunction(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionStrictFunctionWithSequence(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionStrictFunctionWithArray(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionVariadicStringMethod(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionVariadicDoubleMethod(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionVariadicNodeMethod(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionAny(JSC::ExecState*);
+// Attributes
+
+JSC::EncodedJSValue jsTestObjReadOnlyLongAttr(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+JSC::EncodedJSValue jsTestObjReadOnlyStringAttr(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+JSC::EncodedJSValue jsTestObjReadOnlyTestObjAttr(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+JSC::EncodedJSValue jsTestObjConstructorStaticReadOnlyLongAttr(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+JSC::EncodedJSValue jsTestObjConstructorStaticStringAttr(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+void setJSTestObjConstructorStaticStringAttr(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestObjConstructorTestSubObj(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+JSC::EncodedJSValue jsTestObjTestSubObjEnabledBySettingConstructor(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+void setJSTestObjTestSubObjEnabledBySettingConstructor(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestObjEnumAttr(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+void setJSTestObjEnumAttr(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestObjByteAttr(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+void setJSTestObjByteAttr(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestObjOctetAttr(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+void setJSTestObjOctetAttr(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestObjShortAttr(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+void setJSTestObjShortAttr(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestObjUnsignedShortAttr(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+void setJSTestObjUnsignedShortAttr(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestObjLongAttr(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+void setJSTestObjLongAttr(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestObjLongLongAttr(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+void setJSTestObjLongLongAttr(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestObjUnsignedLongLongAttr(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+void setJSTestObjUnsignedLongLongAttr(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestObjStringAttr(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+void setJSTestObjStringAttr(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestObjTestObjAttr(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+void setJSTestObjTestObjAttr(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestObjXMLObjAttr(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+void setJSTestObjXMLObjAttr(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestObjCreate(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+void setJSTestObjCreate(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestObjReflectedStringAttr(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+void setJSTestObjReflectedStringAttr(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestObjReflectedIntegralAttr(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+void setJSTestObjReflectedIntegralAttr(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestObjReflectedUnsignedIntegralAttr(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+void setJSTestObjReflectedUnsignedIntegralAttr(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestObjReflectedBooleanAttr(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+void setJSTestObjReflectedBooleanAttr(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestObjReflectedURLAttr(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+void setJSTestObjReflectedURLAttr(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestObjReflectedStringAttr(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+void setJSTestObjReflectedStringAttr(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestObjReflectedCustomIntegralAttr(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+void setJSTestObjReflectedCustomIntegralAttr(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestObjReflectedCustomBooleanAttr(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+void setJSTestObjReflectedCustomBooleanAttr(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestObjReflectedCustomURLAttr(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+void setJSTestObjReflectedCustomURLAttr(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestObjTypedArrayAttr(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+void setJSTestObjTypedArrayAttr(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestObjAttrWithGetterException(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+void setJSTestObjAttrWithGetterException(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestObjAttrWithSetterException(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+void setJSTestObjAttrWithSetterException(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestObjStringAttrWithGetterException(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+void setJSTestObjStringAttrWithGetterException(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestObjStringAttrWithSetterException(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+void setJSTestObjStringAttrWithSetterException(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestObjCustomAttr(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+void setJSTestObjCustomAttr(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestObjWithScriptStateAttribute(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+void setJSTestObjWithScriptStateAttribute(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestObjWithScriptExecutionContextAttribute(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+void setJSTestObjWithScriptExecutionContextAttribute(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestObjWithScriptStateAttributeRaises(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+void setJSTestObjWithScriptStateAttributeRaises(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestObjWithScriptExecutionContextAttributeRaises(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+void setJSTestObjWithScriptExecutionContextAttributeRaises(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestObjWithScriptExecutionContextAndScriptStateAttribute(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+void setJSTestObjWithScriptExecutionContextAndScriptStateAttribute(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestObjWithScriptExecutionContextAndScriptStateAttributeRaises(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+void setJSTestObjWithScriptExecutionContextAndScriptStateAttributeRaises(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestObjWithScriptExecutionContextAndScriptStateWithSpacesAttribute(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+void setJSTestObjWithScriptExecutionContextAndScriptStateWithSpacesAttribute(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestObjWithScriptArgumentsAndCallStackAttribute(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+void setJSTestObjWithScriptArgumentsAndCallStackAttribute(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+#if ENABLE(Condition1)
+JSC::EncodedJSValue jsTestObjConditionalAttr1(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+void setJSTestObjConditionalAttr1(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+#endif
+#if ENABLE(Condition1) && ENABLE(Condition2)
+JSC::EncodedJSValue jsTestObjConditionalAttr2(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+void setJSTestObjConditionalAttr2(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+#endif
+#if ENABLE(Condition1) || ENABLE(Condition2)
+JSC::EncodedJSValue jsTestObjConditionalAttr3(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+void setJSTestObjConditionalAttr3(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+#endif
+#if ENABLE(Condition1)
+JSC::EncodedJSValue jsTestObjConditionalAttr4Constructor(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+void setJSTestObjConditionalAttr4Constructor(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+#endif
+#if ENABLE(Condition1) && ENABLE(Condition2)
+JSC::EncodedJSValue jsTestObjConditionalAttr5Constructor(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+void setJSTestObjConditionalAttr5Constructor(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+#endif
+#if ENABLE(Condition1) || ENABLE(Condition2)
+JSC::EncodedJSValue jsTestObjConditionalAttr6Constructor(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+void setJSTestObjConditionalAttr6Constructor(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+#endif
+JSC::EncodedJSValue jsTestObjCachedAttribute1(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+JSC::EncodedJSValue jsTestObjCachedAttribute2(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+JSC::EncodedJSValue jsTestObjAnyAttribute(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+void setJSTestObjAnyAttribute(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestObjContentDocument(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+JSC::EncodedJSValue jsTestObjMutablePoint(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+void setJSTestObjMutablePoint(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestObjImmutablePoint(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+void setJSTestObjImmutablePoint(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestObjStrawberry(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+void setJSTestObjStrawberry(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestObjStrictFloat(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+void setJSTestObjStrictFloat(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestObjDescription(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+JSC::EncodedJSValue jsTestObjId(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+void setJSTestObjId(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestObjHash(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+JSC::EncodedJSValue jsTestObjReplaceableAttribute(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+void setJSTestObjReplaceableAttribute(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestObjNullableDoubleAttribute(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+JSC::EncodedJSValue jsTestObjNullableLongAttribute(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+JSC::EncodedJSValue jsTestObjNullableBooleanAttribute(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+JSC::EncodedJSValue jsTestObjNullableStringAttribute(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+JSC::EncodedJSValue jsTestObjNullableLongSettableAttribute(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+void setJSTestObjNullableLongSettableAttribute(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestObjNullableStringValue(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+void setJSTestObjNullableStringValue(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestObjAttribute(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+JSC::EncodedJSValue jsTestObjAttributeWithReservedEnumType(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+void setJSTestObjAttributeWithReservedEnumType(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestObjConstructor(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
 /* Hash table */
 
 static const struct CompactHashIndex JSTestObjTableIndex[17] = {
@@ -122,10 +338,10 @@ static const HashTableValue JSTestObjTableValues[] =
 static const HashTable JSTestObjTable = { 6, 15, true, JSTestObjTableValues, 0, JSTestObjTableIndex };
 /* Hash table for constructor */
 
-static const struct CompactHashIndex JSTestObjConstructorTableIndex[39] = {
+static const struct CompactHashIndex JSTestObjConstructorTableIndex[38] = {
     { -1, -1 },
-    { 9, 34 },
-    { 21, -1 },
+    { 8, 34 },
+    { 20, -1 },
     { 2, -1 },
     { 1, -1 },
     { -1, -1 },
@@ -133,8 +349,8 @@ static const struct CompactHashIndex JSTestObjConstructorTableIndex[39] = {
     { -1, -1 },
     { -1, -1 },
     { 0, -1 },
-    { 12, -1 },
-    { 16, -1 },
+    { 11, -1 },
+    { 15, -1 },
     { 5, 32 },
     { -1, -1 },
     { -1, -1 },
@@ -142,49 +358,47 @@ static const struct CompactHashIndex JSTestObjConstructorTableIndex[39] = {
     { -1, -1 },
     { -1, -1 },
     { -1, -1 },
-    { 10, -1 },
-    { 7, 36 },
-    { 15, -1 },
+    { 9, -1 },
+    { 18, 37 },
+    { 14, -1 },
     { 3, -1 },
     { -1, -1 },
-    { 11, 33 },
+    { 10, 33 },
     { -1, -1 },
     { -1, -1 },
-    { 8, 37 },
-    { 18, -1 },
+    { 7, 36 },
+    { 17, -1 },
     { -1, -1 },
     { -1, -1 },
     { 4, -1 },
     { 6, -1 },
-    { 13, -1 },
-    { 14, 35 },
-    { 17, -1 },
-    { 19, 38 },
-    { 20, -1 },
-    { 22, -1 },
+    { 12, -1 },
+    { 13, 35 },
+    { 16, -1 },
+    { 19, -1 },
+    { 21, -1 },
 };
 
 
 static const HashTableValue JSTestObjConstructorTableValues[] =
 {
 #if ENABLE(Condition1)
-    { "CONDITIONAL_CONST", DontDelete | ReadOnly, NoIntrinsic, (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjCONDITIONAL_CONST), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) },
+    { "CONDITIONAL_CONST", DontDelete | ReadOnly | ConstantInteger, NoIntrinsic, (intptr_t)(0), (intptr_t) (0) },
 #else
     { 0, 0, NoIntrinsic, 0, 0 },
 #endif
-    { "CONST_VALUE_0", DontDelete | ReadOnly, NoIntrinsic, (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjCONST_VALUE_0), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) },
-    { "CONST_VALUE_1", DontDelete | ReadOnly, NoIntrinsic, (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjCONST_VALUE_1), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) },
-    { "CONST_VALUE_2", DontDelete | ReadOnly, NoIntrinsic, (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjCONST_VALUE_2), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) },
-    { "CONST_VALUE_4", DontDelete | ReadOnly, NoIntrinsic, (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjCONST_VALUE_4), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) },
-    { "CONST_VALUE_8", DontDelete | ReadOnly, NoIntrinsic, (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjCONST_VALUE_8), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) },
-    { "CONST_VALUE_9", DontDelete | ReadOnly, NoIntrinsic, (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjCONST_VALUE_9), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) },
-    { "CONST_VALUE_10", DontDelete | ReadOnly, NoIntrinsic, (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjCONST_VALUE_10), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) },
-    { "CONST_VALUE_11", DontDelete | ReadOnly, NoIntrinsic, (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjCONST_VALUE_11), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) },
-    { "CONST_VALUE_12", DontDelete | ReadOnly, NoIntrinsic, (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjCONST_VALUE_12), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) },
-    { "CONST_VALUE_13", DontDelete | ReadOnly, NoIntrinsic, (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjCONST_VALUE_13), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) },
-    { "CONST_VALUE_14", DontDelete | ReadOnly, NoIntrinsic, (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjCONST_VALUE_14), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) },
-    { "CONST_JAVASCRIPT", DontDelete | ReadOnly, NoIntrinsic, (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjCONST_JAVASCRIPT), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) },
-    { "readonly", DontDelete | ReadOnly, NoIntrinsic, (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjReadonly), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) },
+    { "CONST_VALUE_0", DontDelete | ReadOnly | ConstantInteger, NoIntrinsic, (intptr_t)(0), (intptr_t) (0) },
+    { "CONST_VALUE_1", DontDelete | ReadOnly | ConstantInteger, NoIntrinsic, (intptr_t)(1), (intptr_t) (0) },
+    { "CONST_VALUE_2", DontDelete | ReadOnly | ConstantInteger, NoIntrinsic, (intptr_t)(2), (intptr_t) (0) },
+    { "CONST_VALUE_4", DontDelete | ReadOnly | ConstantInteger, NoIntrinsic, (intptr_t)(4), (intptr_t) (0) },
+    { "CONST_VALUE_8", DontDelete | ReadOnly | ConstantInteger, NoIntrinsic, (intptr_t)(8), (intptr_t) (0) },
+    { "CONST_VALUE_9", DontDelete | ReadOnly | ConstantInteger, NoIntrinsic, (intptr_t)(-1), (intptr_t) (0) },
+    { "CONST_VALUE_11", DontDelete | ReadOnly | ConstantInteger, NoIntrinsic, (intptr_t)(0xffffffff), (intptr_t) (0) },
+    { "CONST_VALUE_12", DontDelete | ReadOnly | ConstantInteger, NoIntrinsic, (intptr_t)(0x01), (intptr_t) (0) },
+    { "CONST_VALUE_13", DontDelete | ReadOnly | ConstantInteger, NoIntrinsic, (intptr_t)(0X20), (intptr_t) (0) },
+    { "CONST_VALUE_14", DontDelete | ReadOnly | ConstantInteger, NoIntrinsic, (intptr_t)(0x1abc), (intptr_t) (0) },
+    { "CONST_JAVASCRIPT", DontDelete | ReadOnly | ConstantInteger, NoIntrinsic, (intptr_t)(15), (intptr_t) (0) },
+    { "readonly", DontDelete | ReadOnly | ConstantInteger, NoIntrinsic, (intptr_t)(0), (intptr_t) (0) },
     { "staticReadOnlyLongAttr", DontDelete | ReadOnly, NoIntrinsic, (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjConstructorStaticReadOnlyLongAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) },
     { "staticStringAttr", DontDelete, NoIntrinsic, (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjConstructorStaticStringAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjConstructorStaticStringAttr) },
     { "TestSubObj", DontDelete | ReadOnly, NoIntrinsic, (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjConstructorTestSubObj), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) },
@@ -200,7 +414,7 @@ static const HashTableValue JSTestObjConstructorTableValues[] =
 #endif
 };
 
-static const HashTable JSTestObjConstructorTable = { 23, 31, true, JSTestObjConstructorTableValues, 0, JSTestObjConstructorTableIndex };
+static const HashTable JSTestObjConstructorTable = { 22, 31, true, JSTestObjConstructorTableValues, 0, JSTestObjConstructorTableIndex };
 
 #if ENABLE(Condition1)
 COMPILE_ASSERT(0 == TestObj::CONDITIONAL_CONST, TestObjEnumCONDITIONAL_CONSTIsWrongUseDoNotCheckConstants);
@@ -211,7 +425,6 @@ COMPILE_ASSERT(2 == TestObj::CONST_VALUE_2, TestObjEnumCONST_VALUE_2IsWrongUseDo
 COMPILE_ASSERT(4 == TestObj::CONST_VALUE_4, TestObjEnumCONST_VALUE_4IsWrongUseDoNotCheckConstants);
 COMPILE_ASSERT(8 == TestObj::CONST_VALUE_8, TestObjEnumCONST_VALUE_8IsWrongUseDoNotCheckConstants);
 COMPILE_ASSERT(-1 == TestObj::CONST_VALUE_9, TestObjEnumCONST_VALUE_9IsWrongUseDoNotCheckConstants);
-COMPILE_ASSERT("my constant string" == TestObj::CONST_VALUE_10, TestObjEnumCONST_VALUE_10IsWrongUseDoNotCheckConstants);
 COMPILE_ASSERT(0xffffffff == TestObj::CONST_VALUE_11, TestObjEnumCONST_VALUE_11IsWrongUseDoNotCheckConstants);
 COMPILE_ASSERT(0x01 == TestObj::CONST_VALUE_12, TestObjEnumCONST_VALUE_12IsWrongUseDoNotCheckConstants);
 COMPILE_ASSERT(0X20 == TestObj::CONST_VALUE_13, TestObjEnumCONST_VALUE_13IsWrongUseDoNotCheckConstants);
@@ -244,11 +457,7 @@ void JSTestObjConstructor::finishCreation(VM& vm, JSDOMGlobalObject* globalObjec
     ASSERT(inherits(info()));
     putDirect(vm, vm.propertyNames->prototype, JSTestObjPrototype::self(vm, globalObject), DontDelete | ReadOnly);
     putDirect(vm, vm.propertyNames->length, jsNumber(1), ReadOnly | DontDelete | DontEnum);
-}
-
-bool JSTestObjConstructor::getOwnPropertySlot(JSObject* object, ExecState* exec, PropertyName propertyName, PropertySlot& slot)
-{
-    return getStaticPropertySlot<JSTestObjConstructor, JSDOMWrapper>(exec, JSTestObjConstructorTable, jsCast<JSTestObjConstructor*>(object), propertyName, slot);
+    reifyStaticProperties(vm, JSTestObjConstructorTableValues, *this);
 }
 
 ConstructType JSTestObjConstructor::getConstructData(JSCell*, ConstructData& constructData)
@@ -284,7 +493,7 @@ static const struct CompactHashIndex JSTestObjPrototypeTableIndex[530] = {
     { -1, -1 },
     { -1, -1 },
     { 47, -1 },
-    { 73, -1 },
+    { 72, -1 },
     { -1, -1 },
     { 41, -1 },
     { -1, -1 },
@@ -296,7 +505,7 @@ static const struct CompactHashIndex JSTestObjPrototypeTableIndex[530] = {
     { -1, -1 },
     { -1, -1 },
     { -1, -1 },
-    { 102, -1 },
+    { 101, -1 },
     { -1, -1 },
     { -1, -1 },
     { -1, -1 },
@@ -305,7 +514,7 @@ static const struct CompactHashIndex JSTestObjPrototypeTableIndex[530] = {
     { -1, -1 },
     { -1, -1 },
     { -1, -1 },
-    { 110, -1 },
+    { 109, -1 },
     { -1, -1 },
     { -1, -1 },
     { -1, -1 },
@@ -322,12 +531,12 @@ static const struct CompactHashIndex JSTestObjPrototypeTableIndex[530] = {
     { -1, -1 },
     { -1, -1 },
     { -1, -1 },
-    { 126, -1 },
+    { 127, -1 },
     { -1, -1 },
     { -1, -1 },
     { -1, -1 },
-    { 101, -1 },
     { 100, -1 },
+    { 99, -1 },
     { -1, -1 },
     { -1, -1 },
     { -1, -1 },
@@ -340,7 +549,7 @@ static const struct CompactHashIndex JSTestObjPrototypeTableIndex[530] = {
     { -1, -1 },
     { -1, -1 },
     { 5, -1 },
-    { 134, -1 },
+    { 135, -1 },
     { -1, -1 },
     { -1, -1 },
     { -1, -1 },
@@ -354,8 +563,8 @@ static const struct CompactHashIndex JSTestObjPrototypeTableIndex[530] = {
     { -1, -1 },
     { -1, -1 },
     { -1, -1 },
-    { 93, -1 },
-    { 87, -1 },
+    { 92, -1 },
+    { 86, -1 },
     { -1, -1 },
     { -1, -1 },
     { -1, -1 },
@@ -371,11 +580,11 @@ static const struct CompactHashIndex JSTestObjPrototypeTableIndex[530] = {
     { -1, -1 },
     { -1, -1 },
     { -1, -1 },
-    { 117, -1 },
+    { 116, -1 },
     { -1, -1 },
     { -1, -1 },
-    { 78, -1 },
-    { 70, -1 },
+    { 77, -1 },
+    { 69, -1 },
     { -1, -1 },
     { 25, -1 },
     { -1, -1 },
@@ -389,11 +598,11 @@ static const struct CompactHashIndex JSTestObjPrototypeTableIndex[530] = {
     { -1, -1 },
     { -1, -1 },
     { -1, -1 },
-    { 96, -1 },
+    { 95, -1 },
     { -1, -1 },
     { -1, -1 },
     { -1, -1 },
-    { 114, -1 },
+    { 113, -1 },
     { -1, -1 },
     { 6, -1 },
     { -1, -1 },
@@ -403,7 +612,7 @@ static const struct CompactHashIndex JSTestObjPrototypeTableIndex[530] = {
     { -1, -1 },
     { -1, -1 },
     { -1, -1 },
-    { 86, -1 },
+    { 85, -1 },
     { -1, -1 },
     { -1, -1 },
     { 1, -1 },
@@ -412,6 +621,24 @@ static const struct CompactHashIndex JSTestObjPrototypeTableIndex[530] = {
     { 33, -1 },
     { 51, -1 },
     { -1, -1 },
+    { 70, -1 },
+    { -1, -1 },
+    { -1, -1 },
+    { -1, -1 },
+    { -1, -1 },
+    { -1, -1 },
+    { -1, -1 },
+    { 91, -1 },
+    { -1, -1 },
+    { -1, -1 },
+    { -1, -1 },
+    { -1, -1 },
+    { -1, -1 },
+    { 128, -1 },
+    { 121, -1 },
+    { -1, -1 },
+    { -1, -1 },
+    { -1, -1 },
     { 71, -1 },
     { -1, -1 },
     { -1, -1 },
@@ -419,28 +646,10 @@ static const struct CompactHashIndex JSTestObjPrototypeTableIndex[530] = {
     { -1, -1 },
     { -1, -1 },
     { -1, -1 },
-    { 92, -1 },
     { -1, -1 },
     { -1, -1 },
     { -1, -1 },
     { -1, -1 },
-    { -1, -1 },
-    { 127, -1 },
-    { -1, -1 },
-    { -1, -1 },
-    { -1, -1 },
-    { -1, -1 },
-    { 72, -1 },
-    { -1, -1 },
-    { -1, -1 },
-    { -1, -1 },
-    { -1, -1 },
-    { -1, -1 },
-    { -1, -1 },
-    { -1, -1 },
-    { -1, -1 },
-    { -1, -1 },
-    { 67, -1 },
     { -1, -1 },
     { -1, -1 },
     { -1, -1 },
@@ -464,7 +673,7 @@ static const struct CompactHashIndex JSTestObjPrototypeTableIndex[530] = {
     { -1, -1 },
     { -1, -1 },
     { -1, -1 },
-    { 89, -1 },
+    { 88, -1 },
     { -1, -1 },
     { -1, -1 },
     { -1, -1 },
@@ -485,7 +694,7 @@ static const struct CompactHashIndex JSTestObjPrototypeTableIndex[530] = {
     { -1, -1 },
     { -1, -1 },
     { -1, -1 },
-    { 82, -1 },
+    { 81, -1 },
     { -1, -1 },
     { -1, -1 },
     { -1, -1 },
@@ -495,7 +704,7 @@ static const struct CompactHashIndex JSTestObjPrototypeTableIndex[530] = {
     { -1, -1 },
     { 45, -1 },
     { -1, -1 },
-    { 77, -1 },
+    { 76, -1 },
     { -1, -1 },
     { -1, -1 },
     { -1, -1 },
@@ -507,10 +716,10 @@ static const struct CompactHashIndex JSTestObjPrototypeTableIndex[530] = {
     { -1, -1 },
     { 8, 512 },
     { -1, -1 },
-    { 130, -1 },
+    { 131, -1 },
     { -1, -1 },
     { 58, 528 },
-    { 135, -1 },
+    { 136, -1 },
     { -1, -1 },
     { -1, -1 },
     { -1, -1 },
@@ -519,9 +728,9 @@ static const struct CompactHashIndex JSTestObjPrototypeTableIndex[530] = {
     { -1, -1 },
     { -1, -1 },
     { -1, -1 },
-    { 131, -1 },
+    { 132, -1 },
     { -1, -1 },
-    { 103, -1 },
+    { 102, -1 },
     { -1, -1 },
     { -1, -1 },
     { -1, -1 },
@@ -534,9 +743,9 @@ static const struct CompactHashIndex JSTestObjPrototypeTableIndex[530] = {
     { 39, 515 },
     { -1, -1 },
     { -1, -1 },
-    { 113, -1 },
-    { 90, -1 },
-    { 120, -1 },
+    { 112, -1 },
+    { 89, -1 },
+    { 119, -1 },
     { -1, -1 },
     { -1, -1 },
     { -1, -1 },
@@ -565,8 +774,8 @@ static const struct CompactHashIndex JSTestObjPrototypeTableIndex[530] = {
     { -1, -1 },
     { -1, -1 },
     { -1, -1 },
-    { 128, -1 },
-    { 123, -1 },
+    { 129, -1 },
+    { 124, -1 },
     { -1, -1 },
     { -1, -1 },
     { -1, -1 },
@@ -575,7 +784,7 @@ static const struct CompactHashIndex JSTestObjPrototypeTableIndex[530] = {
     { -1, -1 },
     { -1, -1 },
     { -1, -1 },
-    { 76, -1 },
+    { 75, -1 },
     { -1, -1 },
     { -1, -1 },
     { -1, -1 },
@@ -584,7 +793,7 @@ static const struct CompactHashIndex JSTestObjPrototypeTableIndex[530] = {
     { -1, -1 },
     { -1, -1 },
     { -1, -1 },
-    { 84, -1 },
+    { 83, -1 },
     { -1, -1 },
     { -1, -1 },
     { -1, -1 },
@@ -593,7 +802,7 @@ static const struct CompactHashIndex JSTestObjPrototypeTableIndex[530] = {
     { 43, -1 },
     { -1, -1 },
     { -1, -1 },
-    { -1, -1 },
+    { 120, -1 },
     { -1, -1 },
     { -1, -1 },
     { -1, -1 },
@@ -607,7 +816,7 @@ static const struct CompactHashIndex JSTestObjPrototypeTableIndex[530] = {
     { -1, -1 },
     { 0, -1 },
     { -1, -1 },
-    { 99, -1 },
+    { 98, -1 },
     { -1, -1 },
     { -1, -1 },
     { -1, -1 },
@@ -616,7 +825,7 @@ static const struct CompactHashIndex JSTestObjPrototypeTableIndex[530] = {
     { 28, -1 },
     { -1, -1 },
     { -1, -1 },
-    { 124, -1 },
+    { 125, -1 },
     { -1, -1 },
     { 35, -1 },
     { -1, -1 },
@@ -630,14 +839,14 @@ static const struct CompactHashIndex JSTestObjPrototypeTableIndex[530] = {
     { -1, -1 },
     { -1, -1 },
     { -1, -1 },
-    { 88, -1 },
+    { 87, -1 },
     { -1, -1 },
     { -1, -1 },
     { -1, -1 },
     { -1, -1 },
     { -1, -1 },
     { 46, 521 },
-    { 80, -1 },
+    { 79, -1 },
     { -1, -1 },
     { -1, -1 },
     { -1, -1 },
@@ -645,7 +854,7 @@ static const struct CompactHashIndex JSTestObjPrototypeTableIndex[530] = {
     { -1, -1 },
     { -1, -1 },
     { -1, -1 },
-    { 69, -1 },
+    { 68, -1 },
     { -1, -1 },
     { 62, -1 },
     { -1, -1 },
@@ -655,7 +864,7 @@ static const struct CompactHashIndex JSTestObjPrototypeTableIndex[530] = {
     { -1, -1 },
     { -1, -1 },
     { -1, -1 },
-    { 95, -1 },
+    { 94, -1 },
     { -1, -1 },
     { -1, -1 },
     { -1, -1 },
@@ -671,12 +880,12 @@ static const struct CompactHashIndex JSTestObjPrototypeTableIndex[530] = {
     { -1, -1 },
     { -1, -1 },
     { 57, -1 },
-    { 68, -1 },
+    { 67, -1 },
     { -1, -1 },
     { -1, -1 },
-    { 107, 527 },
+    { 106, 527 },
     { -1, -1 },
-    { 108, -1 },
+    { 107, -1 },
     { -1, -1 },
     { -1, -1 },
     { -1, -1 },
@@ -696,7 +905,7 @@ static const struct CompactHashIndex JSTestObjPrototypeTableIndex[530] = {
     { -1, -1 },
     { -1, -1 },
     { -1, -1 },
-    { 112, -1 },
+    { 111, -1 },
     { -1, -1 },
     { -1, -1 },
     { -1, -1 },
@@ -705,7 +914,7 @@ static const struct CompactHashIndex JSTestObjPrototypeTableIndex[530] = {
     { -1, -1 },
     { -1, -1 },
     { -1, -1 },
-    { 118, -1 },
+    { 117, -1 },
     { -1, -1 },
     { -1, -1 },
     { -1, -1 },
@@ -713,26 +922,26 @@ static const struct CompactHashIndex JSTestObjPrototypeTableIndex[530] = {
     { -1, -1 },
     { -1, -1 },
     { -1, -1 },
-    { 79, -1 },
+    { 78, -1 },
     { -1, -1 },
     { -1, -1 },
     { -1, -1 },
     { 60, -1 },
     { 52, -1 },
     { -1, -1 },
-    { 74, -1 },
-    { 132, -1 },
+    { 73, -1 },
+    { 133, -1 },
     { -1, -1 },
     { -1, -1 },
     { -1, -1 },
     { 54, 516 },
     { -1, -1 },
-    { 85, -1 },
+    { 84, -1 },
     { 9, -1 },
     { -1, -1 },
     { -1, -1 },
     { -1, -1 },
-    { 105, -1 },
+    { 104, -1 },
     { 29, -1 },
     { -1, -1 },
     { -1, -1 },
@@ -753,23 +962,23 @@ static const struct CompactHashIndex JSTestObjPrototypeTableIndex[530] = {
     { -1, -1 },
     { -1, -1 },
     { -1, -1 },
-    { 109, -1 },
+    { 108, -1 },
     { 13, 514 },
     { 40, -1 },
-    { 111, -1 },
+    { 110, -1 },
     { -1, -1 },
     { 7, 525 },
     { -1, -1 },
-    { 125, -1 },
-    { 106, -1 },
-    { 75, 520 },
+    { 126, -1 },
+    { 105, -1 },
+    { 74, 520 },
     { -1, -1 },
-    { 122, -1 },
-    { 83, -1 },
+    { 123, -1 },
+    { 82, -1 },
     { -1, -1 },
     { -1, -1 },
     { -1, -1 },
-    { 119, -1 },
+    { 118, -1 },
     { -1, -1 },
     { 10, 519 },
     { 11, -1 },
@@ -779,17 +988,17 @@ static const struct CompactHashIndex JSTestObjPrototypeTableIndex[530] = {
     { 56, -1 },
     { 63, -1 },
     { 66, -1 },
-    { 81, -1 },
-    { 91, -1 },
-    { 94, -1 },
+    { 80, -1 },
+    { 90, -1 },
+    { 93, -1 },
+    { 96, -1 },
     { 97, -1 },
-    { 98, -1 },
-    { 104, -1 },
+    { 103, -1 },
+    { 114, -1 },
     { 115, -1 },
-    { 116, -1 },
-    { 121, -1 },
-    { 129, -1 },
-    { 133, -1 },
+    { 122, -1 },
+    { 130, -1 },
+    { 134, -1 },
 };
 
 
@@ -868,23 +1077,22 @@ static const HashTableValue JSTestObjPrototypeTableValues[] =
     { "attribute", DontDelete | ReadOnly | CustomAccessor, NoIntrinsic, (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) },
     { "attributeWithReservedEnumType", DontDelete | CustomAccessor, NoIntrinsic, (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjAttributeWithReservedEnumType), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjAttributeWithReservedEnumType) },
 #if ENABLE(Condition1)
-    { "CONDITIONAL_CONST", DontDelete | ReadOnly, NoIntrinsic, (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjCONDITIONAL_CONST), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) },
+    { "CONDITIONAL_CONST", DontDelete | ReadOnly | ConstantInteger, NoIntrinsic, (intptr_t)(0), (intptr_t) (0) },
 #else
     { 0, 0, NoIntrinsic, 0, 0 },
 #endif
-    { "CONST_VALUE_0", DontDelete | ReadOnly, NoIntrinsic, (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjCONST_VALUE_0), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) },
-    { "CONST_VALUE_1", DontDelete | ReadOnly, NoIntrinsic, (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjCONST_VALUE_1), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) },
-    { "CONST_VALUE_2", DontDelete | ReadOnly, NoIntrinsic, (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjCONST_VALUE_2), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) },
-    { "CONST_VALUE_4", DontDelete | ReadOnly, NoIntrinsic, (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjCONST_VALUE_4), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) },
-    { "CONST_VALUE_8", DontDelete | ReadOnly, NoIntrinsic, (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjCONST_VALUE_8), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) },
-    { "CONST_VALUE_9", DontDelete | ReadOnly, NoIntrinsic, (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjCONST_VALUE_9), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) },
-    { "CONST_VALUE_10", DontDelete | ReadOnly, NoIntrinsic, (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjCONST_VALUE_10), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) },
-    { "CONST_VALUE_11", DontDelete | ReadOnly, NoIntrinsic, (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjCONST_VALUE_11), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) },
-    { "CONST_VALUE_12", DontDelete | ReadOnly, NoIntrinsic, (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjCONST_VALUE_12), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) },
-    { "CONST_VALUE_13", DontDelete | ReadOnly, NoIntrinsic, (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjCONST_VALUE_13), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) },
-    { "CONST_VALUE_14", DontDelete | ReadOnly, NoIntrinsic, (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjCONST_VALUE_14), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) },
-    { "CONST_JAVASCRIPT", DontDelete | ReadOnly, NoIntrinsic, (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjCONST_JAVASCRIPT), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) },
-    { "readonly", DontDelete | ReadOnly, NoIntrinsic, (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjReadonly), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) },
+    { "CONST_VALUE_0", DontDelete | ReadOnly | ConstantInteger, NoIntrinsic, (intptr_t)(0), (intptr_t) (0) },
+    { "CONST_VALUE_1", DontDelete | ReadOnly | ConstantInteger, NoIntrinsic, (intptr_t)(1), (intptr_t) (0) },
+    { "CONST_VALUE_2", DontDelete | ReadOnly | ConstantInteger, NoIntrinsic, (intptr_t)(2), (intptr_t) (0) },
+    { "CONST_VALUE_4", DontDelete | ReadOnly | ConstantInteger, NoIntrinsic, (intptr_t)(4), (intptr_t) (0) },
+    { "CONST_VALUE_8", DontDelete | ReadOnly | ConstantInteger, NoIntrinsic, (intptr_t)(8), (intptr_t) (0) },
+    { "CONST_VALUE_9", DontDelete | ReadOnly | ConstantInteger, NoIntrinsic, (intptr_t)(-1), (intptr_t) (0) },
+    { "CONST_VALUE_11", DontDelete | ReadOnly | ConstantInteger, NoIntrinsic, (intptr_t)(0xffffffff), (intptr_t) (0) },
+    { "CONST_VALUE_12", DontDelete | ReadOnly | ConstantInteger, NoIntrinsic, (intptr_t)(0x01), (intptr_t) (0) },
+    { "CONST_VALUE_13", DontDelete | ReadOnly | ConstantInteger, NoIntrinsic, (intptr_t)(0X20), (intptr_t) (0) },
+    { "CONST_VALUE_14", DontDelete | ReadOnly | ConstantInteger, NoIntrinsic, (intptr_t)(0x1abc), (intptr_t) (0) },
+    { "CONST_JAVASCRIPT", DontDelete | ReadOnly | ConstantInteger, NoIntrinsic, (intptr_t)(15), (intptr_t) (0) },
+    { "readonly", DontDelete | ReadOnly | ConstantInteger, NoIntrinsic, (intptr_t)(0), (intptr_t) (0) },
     { "voidMethod", JSC::Function, NoIntrinsic, (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionVoidMethod), (intptr_t) (0) },
     { "voidMethodWithArgs", JSC::Function, NoIntrinsic, (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionVoidMethodWithArgs), (intptr_t) (3) },
     { "byteMethod", JSC::Function, NoIntrinsic, (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionByteMethod), (intptr_t) (0) },
@@ -944,6 +1152,8 @@ static const HashTableValue JSTestObjPrototypeTableValues[] =
     { "methodWithUnsignedLongSequence", JSC::Function, NoIntrinsic, (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionMethodWithUnsignedLongSequence), (intptr_t) (1) },
     { "stringArrayFunction", JSC::Function, NoIntrinsic, (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionStringArrayFunction), (intptr_t) (1) },
     { "domStringListFunction", JSC::Function, NoIntrinsic, (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionDomStringListFunction), (intptr_t) (1) },
+    { "methodWithAndWithoutNullableSequence", JSC::Function, NoIntrinsic, (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionMethodWithAndWithoutNullableSequence), (intptr_t) (2) },
+    { "methodWithAndWithoutNullableSequence2", JSC::Function, NoIntrinsic, (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionMethodWithAndWithoutNullableSequence2), (intptr_t) (2) },
     { "getSVGDocument", JSC::Function, NoIntrinsic, (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionGetSVGDocument), (intptr_t) (0) },
     { "convert1", JSC::Function, NoIntrinsic, (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionConvert1), (intptr_t) (1) },
     { "convert2", JSC::Function, NoIntrinsic, (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionConvert2), (intptr_t) (1) },
@@ -961,7 +1171,7 @@ static const HashTableValue JSTestObjPrototypeTableValues[] =
     { "any", JSC::Function, NoIntrinsic, (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionAny), (intptr_t) (2) },
 };
 
-static const HashTable JSTestObjPrototypeTable = { 136, 511, true, JSTestObjPrototypeTableValues, 0, JSTestObjPrototypeTableIndex };
+static const HashTable JSTestObjPrototypeTable = { 137, 511, true, JSTestObjPrototypeTableValues, 0, JSTestObjPrototypeTableIndex };
 const ClassInfo JSTestObjPrototype::s_info = { "TestObjectPrototype", &Base::s_info, &JSTestObjPrototypeTable, 0, CREATE_METHOD_TABLE(JSTestObjPrototype) };
 
 JSObject* JSTestObjPrototype::self(VM& vm, JSGlobalObject* globalObject)
@@ -4371,6 +4581,46 @@ EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionDomStringListFunction(Exe
     return JSValue::encode(result);
 }
 
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithAndWithoutNullableSequence(ExecState* exec)
+{
+    JSValue thisValue = exec->thisValue();
+    JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(thisValue);
+    if (UNLIKELY(!castedThis))
+        return throwThisTypeError(*exec, "TestObj", "methodWithAndWithoutNullableSequence");
+    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
+    TestObj& impl = castedThis->impl();
+    if (exec->argumentCount() < 2)
+        return throwVMError(exec, createNotEnoughArgumentsError(exec));
+    Vector<unsigned> arrayArg(toNativeArray<unsigned>(exec, exec->argument(0)));
+    if (UNLIKELY(exec->hadException()))
+        return JSValue::encode(jsUndefined());
+    Vector<unsigned> nullableArrayArg(toNativeArray<unsigned>(exec, exec->argument(1)));
+    if (UNLIKELY(exec->hadException()))
+        return JSValue::encode(jsUndefined());
+    impl.methodWithAndWithoutNullableSequence(arrayArg, nullableArrayArg);
+    return JSValue::encode(jsUndefined());
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithAndWithoutNullableSequence2(ExecState* exec)
+{
+    JSValue thisValue = exec->thisValue();
+    JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(thisValue);
+    if (UNLIKELY(!castedThis))
+        return throwThisTypeError(*exec, "TestObj", "methodWithAndWithoutNullableSequence2");
+    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
+    TestObj& impl = castedThis->impl();
+    if (exec->argumentCount() < 2)
+        return throwVMError(exec, createNotEnoughArgumentsError(exec));
+    Vector<unsigned> arrayArg(toNativeArray<unsigned>(exec, exec->argument(0)));
+    if (UNLIKELY(exec->hadException()))
+        return JSValue::encode(jsUndefined());
+    Vector<unsigned> nullableArrayArg(toNativeArray<unsigned>(exec, exec->argument(1)));
+    if (UNLIKELY(exec->hadException()))
+        return JSValue::encode(jsUndefined());
+    impl.methodWithAndWithoutNullableSequence2(arrayArg, nullableArrayArg);
+    return JSValue::encode(jsUndefined());
+}
+
 EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionGetSVGDocument(ExecState* exec)
 {
     JSValue thisValue = exec->thisValue();
@@ -4660,80 +4910,6 @@ void JSTestObj::visitChildren(JSCell* cell, SlotVisitor& visitor)
     Base::visitChildren(thisObject, visitor);
     visitor.append(&thisObject->m_cachedAttribute1);
     visitor.append(&thisObject->m_cachedAttribute2);
-}
-
-// Constant getters
-
-#if ENABLE(Condition1)
-EncodedJSValue jsTestObjCONDITIONAL_CONST(ExecState*, JSObject*, EncodedJSValue, PropertyName)
-{
-    return JSValue::encode(jsNumber(0));
-}
-
-#endif
-EncodedJSValue jsTestObjCONST_VALUE_0(ExecState*, JSObject*, EncodedJSValue, PropertyName)
-{
-    return JSValue::encode(jsNumber(0));
-}
-
-EncodedJSValue jsTestObjCONST_VALUE_1(ExecState*, JSObject*, EncodedJSValue, PropertyName)
-{
-    return JSValue::encode(jsNumber(1));
-}
-
-EncodedJSValue jsTestObjCONST_VALUE_2(ExecState*, JSObject*, EncodedJSValue, PropertyName)
-{
-    return JSValue::encode(jsNumber(2));
-}
-
-EncodedJSValue jsTestObjCONST_VALUE_4(ExecState*, JSObject*, EncodedJSValue, PropertyName)
-{
-    return JSValue::encode(jsNumber(4));
-}
-
-EncodedJSValue jsTestObjCONST_VALUE_8(ExecState*, JSObject*, EncodedJSValue, PropertyName)
-{
-    return JSValue::encode(jsNumber(8));
-}
-
-EncodedJSValue jsTestObjCONST_VALUE_9(ExecState*, JSObject*, EncodedJSValue, PropertyName)
-{
-    return JSValue::encode(jsNumber(-1));
-}
-
-EncodedJSValue jsTestObjCONST_VALUE_10(ExecState* exec, JSObject*, EncodedJSValue, PropertyName)
-{
-    return JSValue::encode(jsStringOrNull(exec, String("my constant string")));
-}
-
-EncodedJSValue jsTestObjCONST_VALUE_11(ExecState*, JSObject*, EncodedJSValue, PropertyName)
-{
-    return JSValue::encode(jsNumber(0xffffffff));
-}
-
-EncodedJSValue jsTestObjCONST_VALUE_12(ExecState*, JSObject*, EncodedJSValue, PropertyName)
-{
-    return JSValue::encode(jsNumber(0x01));
-}
-
-EncodedJSValue jsTestObjCONST_VALUE_13(ExecState*, JSObject*, EncodedJSValue, PropertyName)
-{
-    return JSValue::encode(jsNumber(0X20));
-}
-
-EncodedJSValue jsTestObjCONST_VALUE_14(ExecState*, JSObject*, EncodedJSValue, PropertyName)
-{
-    return JSValue::encode(jsNumber(0x1abc));
-}
-
-EncodedJSValue jsTestObjCONST_JAVASCRIPT(ExecState*, JSObject*, EncodedJSValue, PropertyName)
-{
-    return JSValue::encode(jsNumber(15));
-}
-
-EncodedJSValue jsTestObjReadonly(ExecState*, JSObject*, EncodedJSValue, PropertyName)
-{
-    return JSValue::encode(jsNumber(0));
 }
 
 bool JSTestObjOwner::isReachableFromOpaqueRoots(JSC::Handle<JSC::Unknown> handle, void*, SlotVisitor& visitor)

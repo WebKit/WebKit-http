@@ -44,6 +44,7 @@
 #include "GraphicsContext.h"
 #include "HTMLNames.h"
 #include "HTMLPlugInElement.h"
+#include "HTTPHeaderNames.h"
 #include "Image.h"
 #include "JSDOMBinding.h"
 #include "JSDOMWindow.h"
@@ -1161,11 +1162,11 @@ NPError PluginView::handlePost(const char* url, const char* target, uint32_t len
                 // Sometimes plugins like to set Content-Length themselves when they post,
                 // but WebFoundation does not like that. So we will remove the header
                 // and instead truncate the data to the requested length.
-                String contentLength = headerFields.get("Content-Length");
+                String contentLength = headerFields.get(HTTPHeaderName::ContentLength);
 
                 if (!contentLength.isNull())
                     dataLength = min(contentLength.toInt(), (int)dataLength);
-                headerFields.remove("Content-Length");
+                headerFields.remove(HTTPHeaderName::ContentLength);
 
                 postData += location;
                 postDataLength = dataLength;
@@ -1175,7 +1176,7 @@ NPError PluginView::handlePost(const char* url, const char* target, uint32_t len
 
     frameLoadRequest.resourceRequest().setHTTPMethod("POST");
     frameLoadRequest.resourceRequest().setURL(makeURL(m_parentFrame->document()->baseURL(), url));
-    frameLoadRequest.resourceRequest().addHTTPHeaderFields(headerFields);
+    frameLoadRequest.resourceRequest().setHTTPHeaderFields(std::move(headerFields));
     frameLoadRequest.resourceRequest().setHTTPBody(FormData::create(postData, postDataLength));
     frameLoadRequest.setFrameName(target);
 

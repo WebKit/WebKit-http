@@ -32,6 +32,12 @@ using namespace JSC;
 
 namespace WebCore {
 
+// Functions
+
+JSC::EncodedJSValue JSC_HOST_CALL jsTestMediaQueryListListenerPrototypeFunctionMethod(JSC::ExecState*);
+// Attributes
+
+JSC::EncodedJSValue jsTestMediaQueryListListenerConstructor(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
 /* Hash table for constructor */
 
 static const struct CompactHashIndex JSTestMediaQueryListListenerConstructorTableIndex[1] = {
@@ -58,11 +64,6 @@ void JSTestMediaQueryListListenerConstructor::finishCreation(VM& vm, JSDOMGlobal
     ASSERT(inherits(info()));
     putDirect(vm, vm.propertyNames->prototype, JSTestMediaQueryListListenerPrototype::self(vm, globalObject), DontDelete | ReadOnly);
     putDirect(vm, vm.propertyNames->length, jsNumber(0), ReadOnly | DontDelete | DontEnum);
-}
-
-bool JSTestMediaQueryListListenerConstructor::getOwnPropertySlot(JSObject* object, ExecState* exec, PropertyName propertyName, PropertySlot& slot)
-{
-    return getStaticValueSlot<JSTestMediaQueryListListenerConstructor, JSDOMWrapper>(exec, JSTestMediaQueryListListenerConstructorTable, jsCast<JSTestMediaQueryListListenerConstructor*>(object), propertyName, slot);
 }
 
 /* Hash table for prototype */

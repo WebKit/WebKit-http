@@ -210,7 +210,7 @@ void RenderTheme::adjustStyle(StyleResolver& styleResolver, RenderStyle& style, 
     case MenulistPart:
         return adjustMenuListStyle(&styleResolver, &style, e);
     case MenulistButtonPart:
-        return adjustMenuListButtonStyle(&styleResolver, &style, e);
+        return adjustMenuListButtonStyle(styleResolver, style, *e);
     case MediaPlayButtonPart:
     case MediaCurrentTimePart:
     case MediaTimeRemainingPart:
@@ -278,6 +278,7 @@ bool RenderTheme::paint(const RenderObject& o, ControlStates* controlStates, con
 
     ControlPart part = o.style().appearance();
     IntRect integralSnappedRect = pixelSnappedIntRect(r);
+    FloatRect devicePixelSnappedRect = pixelSnappedForPainting(r, o.document().deviceScaleFactor());
 
 #if USE(NEW_THEME)
     switch (part) {
@@ -289,7 +290,7 @@ bool RenderTheme::paint(const RenderObject& o, ControlStates* controlStates, con
     case ButtonPart:
     case InnerSpinButtonPart:
         updateControlStatesForRenderer(o, controlStates);
-        m_theme->paint(part, controlStates, const_cast<GraphicsContext*>(paintInfo.context), integralSnappedRect, o.style().effectiveZoom(), &o.view().frameView());
+        m_theme->paint(part, controlStates, const_cast<GraphicsContext*>(paintInfo.context), devicePixelSnappedRect, o.style().effectiveZoom(), &o.view().frameView());
         return false;
     default:
         break;
@@ -314,7 +315,7 @@ bool RenderTheme::paint(const RenderObject& o, ControlStates* controlStates, con
         return paintInnerSpinButton(o, paintInfo, integralSnappedRect);
 #endif
     case MenulistPart:
-        return paintMenuList(o, paintInfo, integralSnappedRect);
+        return paintMenuList(o, paintInfo, devicePixelSnappedRect);
 #if ENABLE(METER_ELEMENT)
     case MeterPart:
     case RelevancyLevelIndicatorPart:
@@ -719,14 +720,14 @@ bool RenderTheme::isControlStyled(const RenderStyle* style, const BorderData& bo
     }
 }
 
-void RenderTheme::adjustRepaintRect(const RenderObject& o, IntRect& r)
+void RenderTheme::adjustRepaintRect(const RenderObject& renderer, FloatRect& rect)
 {
 #if USE(NEW_THEME)
-    ControlStates states(extractControlStatesForRenderer(o));
-    m_theme->inflateControlPaintRect(o.style().appearance(), &states, r, o.style().effectiveZoom());
+    ControlStates states(extractControlStatesForRenderer(renderer));
+    m_theme->inflateControlPaintRect(renderer.style().appearance(), &states, rect, renderer.style().effectiveZoom());
 #else
-    UNUSED_PARAM(o);
-    UNUSED_PARAM(r);
+    UNUSED_PARAM(renderer);
+    UNUSED_PARAM(rect);
 #endif
 }
 
@@ -1118,7 +1119,7 @@ bool RenderTheme::shouldHaveSpinButton(HTMLInputElement* inputElement) const
     return inputElement->isSteppable() && !inputElement->isRangeControl();
 }
 
-void RenderTheme::adjustMenuListButtonStyle(StyleResolver*, RenderStyle*, Element*) const
+void RenderTheme::adjustMenuListButtonStyle(StyleResolver&, RenderStyle&, Element&) const
 {
 }
 

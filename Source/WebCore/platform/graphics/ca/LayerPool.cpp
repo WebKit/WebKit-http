@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2012, 2014 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -81,10 +81,10 @@ void LayerPool::addLayer(const RefPtr<PlatformCALayer>& layer)
 RefPtr<PlatformCALayer> LayerPool::takeLayerWithSize(const IntSize& size)
 {
     if (!canReuseLayerWithSize(size))
-        return nil;
+        return nullptr;
     LayerList& reuseList = listOfLayersWithSize(size, MarkAsUsed);
     if (reuseList.isEmpty())
-        return nil;
+        return nullptr;
     m_totalBytes -= backingStoreBytesForSize(size);
     return reuseList.takeFirst();
 }

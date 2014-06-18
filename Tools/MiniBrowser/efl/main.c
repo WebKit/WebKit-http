@@ -308,11 +308,7 @@ update_view_favicon(Browser_Window *window, Evas_Object *icon)
 
     /* Show new icon in URL bar */
     if (icon) {
-        /* Workaround for icon display bug:
-         * http://trac.enlightenment.org/e/ticket/1616 */
-        evas_object_size_hint_min_set(icon, 48, 24);
-        evas_object_image_filled_set(icon, EINA_FALSE);
-        evas_object_image_fill_set(icon, 24, 0, 24, 24);
+        evas_object_size_hint_min_set(icon, 32, 32);
         elm_object_part_content_set(window->url_bar, "icon", icon);
         evas_object_ref(icon);
     }
@@ -1041,9 +1037,9 @@ show_file_entry_dialog(Browser_Window *window, const char *label_tag, const char
     evas_object_show(label);
 
     Evas_Object *fs_entry = elm_fileselector_entry_add(file_popup);
-    elm_fileselector_entry_is_save_set(fs_entry, EINA_TRUE);
+    elm_fileselector_is_save_set(fs_entry, EINA_TRUE);
     evas_object_size_hint_align_set(fs_entry, EVAS_HINT_FILL, 0);
-    elm_fileselector_entry_path_set(fs_entry, default_text);
+    elm_fileselector_path_set(fs_entry, default_text);
     elm_object_text_set(fs_entry, "FileChooser");
     elm_box_pack_end(vbox, fs_entry);
     evas_object_show(fs_entry);
@@ -1070,7 +1066,7 @@ show_file_entry_dialog(Browser_Window *window, const char *label_tag, const char
 
     ecore_main_loop_begin();
 
-    Eina_Stringshare *file_path = ok ? eina_stringshare_add(elm_fileselector_entry_path_get(fs_entry)) : NULL;
+    Eina_Stringshare *file_path = ok ? eina_stringshare_add(elm_fileselector_path_get(fs_entry)) : NULL;
     evas_object_del(file_popup);
     return file_path;
 }
@@ -1743,7 +1739,7 @@ static Browser_Window *window_create(Evas_Object *opener, int width, int height)
     /* Create URL bar */
     window->url_bar = elm_entry_add(window->elm_window);
     elm_entry_scrollable_set(window->url_bar, EINA_TRUE);
-    elm_entry_scrollbar_policy_set(window->url_bar, ELM_SCROLLER_POLICY_OFF, ELM_SCROLLER_POLICY_OFF);
+    elm_scroller_policy_set(window->url_bar, ELM_SCROLLER_POLICY_OFF, ELM_SCROLLER_POLICY_OFF);
     elm_entry_single_line_set(window->url_bar, EINA_TRUE);
     elm_entry_cnp_mode_set(window->url_bar, ELM_CNP_MODE_PLAINTEXT);
     elm_entry_text_style_user_push(window->url_bar, "DEFAULT='font_size=18'");
@@ -1780,7 +1776,7 @@ static Browser_Window *window_create(Evas_Object *opener, int width, int height)
     /* Create Search field */
     window->search.search_field = elm_entry_add(window->elm_window);
     elm_entry_scrollable_set(window->search.search_field, EINA_TRUE);
-    elm_entry_scrollbar_policy_set(window->search.search_field, ELM_SCROLLER_POLICY_OFF, ELM_SCROLLER_POLICY_OFF);
+    elm_scroller_policy_set(window->search.search_field, ELM_SCROLLER_POLICY_OFF, ELM_SCROLLER_POLICY_OFF);
     elm_entry_single_line_set(window->search.search_field, EINA_TRUE);
     elm_entry_cnp_mode_set(window->search.search_field, ELM_CNP_MODE_PLAINTEXT);
     elm_entry_text_style_user_push(window->search.search_field, "DEFAULT='font_size=14'");
@@ -1857,7 +1853,7 @@ static Browser_Window *window_create(Evas_Object *opener, int width, int height)
     /* Set the zoom level to default */
     window->current_zoom_level = DEFAULT_ZOOM_LEVEL;
 
-    Ewk_Settings *settings = ewk_view_settings_get(window->ewk_view);
+    Ewk_Settings *settings = ewk_page_group_settings_get(pageGroup);
     ewk_settings_file_access_from_file_urls_allowed_set(settings, EINA_TRUE);
     ewk_settings_encoding_detector_enabled_set(settings, encoding_detector_enabled);
     ewk_settings_frame_flattening_enabled_set(settings, frame_flattening_enabled);

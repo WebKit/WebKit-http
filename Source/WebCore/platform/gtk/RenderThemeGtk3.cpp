@@ -148,7 +148,7 @@ void RenderThemeGtk::initMediaColors()
 }
 #endif
 
-static void adjustRectForFocus(GtkStyleContext* context, IntRect& rect)
+static void adjustRectForFocus(GtkStyleContext* context, FloatRect& rect)
 {
     gint focusWidth, focusPad;
     gtk_style_context_get_style(context,
@@ -157,7 +157,7 @@ static void adjustRectForFocus(GtkStyleContext* context, IntRect& rect)
     rect.inflate(focusWidth + focusPad);
 }
 
-void RenderThemeGtk::adjustRepaintRect(const RenderObject& renderObject, IntRect& rect)
+void RenderThemeGtk::adjustRepaintRect(const RenderObject& renderObject, FloatRect& rect)
 {
     GtkStyleContext* context = 0;
     bool checkInteriorFocus = false;
@@ -464,8 +464,11 @@ int RenderThemeGtk::popupInternalPaddingBottom(RenderStyle* style) const
     return borderWidth.bottom + focusWidth;
 }
 
-bool RenderThemeGtk::paintMenuList(const RenderObject& renderObject, const PaintInfo& paintInfo, const IntRect& rect)
+bool RenderThemeGtk::paintMenuList(const RenderObject& renderObject, const PaintInfo& paintInfo, const FloatRect& r)
 {
+    // FIXME: adopt subpixel themes.
+    IntRect rect = IntRect(r);   
+
     cairo_t* cairoContext = paintInfo.context->platformContext()->cr();
     GtkTextDirection direction = static_cast<GtkTextDirection>(gtkTextDirection(renderObject.style().direction()));
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2010, 2014 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -93,7 +93,7 @@ public:
 
     virtual PlatformLayer* platformLayer() const { return m_layer.get(); }
 
-    virtual bool usesTiledBackingLayer() const = 0;
+    bool usesTiledBackingLayer() const { return layerType() == LayerTypePageTiledBackingLayer || layerType() == LayerTypeTiledBackingLayer; }
 
     PlatformCALayerClient* owner() const { return m_owner; }
     virtual void setOwner(PlatformCALayerClient* owner) { m_owner = owner; }
@@ -102,7 +102,7 @@ public:
 
     virtual void setNeedsDisplay(const FloatRect* dirtyRect = 0) = 0;
 
-    virtual void setContentsChanged() = 0;
+    virtual void copyContentsFromLayer(PlatformCALayer*) = 0;
 
     LayerType layerType() const { return m_layerType; }
 
@@ -227,6 +227,21 @@ public:
 #if PLATFORM(COCOA)
     virtual void enumerateRectsBeingDrawn(CGContextRef, void (^block)(CGRect)) = 0;
 #endif
+
+    static const unsigned webLayerMaxRectsToPaint = 5;
+#if COMPILER(MSVC)
+    static const float webLayerWastedSpaceThreshold;
+#else
+    constexpr static const float webLayerWastedSpaceThreshold = 0.75f;
+#endif
+
+    typedef Vector<FloatRect, webLayerMaxRectsToPaint> RepaintRectList;
+        
+    // Functions allows us to share implementation across WebTiledLayer and WebLayer
+    static RepaintRectList collectRectsToPaint(CGContextRef, PlatformCALayer*);
+    static void drawLayerContents(CGContextRef, PlatformCALayer*, RepaintRectList& dirtyRects);
+    static void drawRepaintIndicator(CGContextRef, PlatformCALayer*, int repaintCount, CGColorRef customBackgroundColor);
+    static CGRect frameForLayer(const PlatformLayer*);
 
 protected:
     PlatformCALayer(LayerType, PlatformCALayerClient* owner);

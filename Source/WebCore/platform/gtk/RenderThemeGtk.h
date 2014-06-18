@@ -55,7 +55,7 @@ public:
     // A general method asking if any control tinting is supported at all.
     virtual bool supportsControlTints() const override { return true; }
 
-    virtual void adjustRepaintRect(const RenderObject&, IntRect&) override;
+    virtual void adjustRepaintRect(const RenderObject&, FloatRect&) override;
 
     // A method to obtain the baseline position for a "leaf" control.  This will only be used if a baseline
     // position cannot be determined by examining child content. Checkboxes and radio buttons are examples of
@@ -136,8 +136,8 @@ private:
     // Aqua themed controls whenever possible. We always want to use GTK+ theming, so
     // we don't maintain this differentiation.
     virtual void adjustMenuListStyle(StyleResolver*, RenderStyle*, Element*) const override;
-    virtual void adjustMenuListButtonStyle(StyleResolver*, RenderStyle*, Element*) const override;
-    virtual bool paintMenuList(const RenderObject&, const PaintInfo&, const IntRect&) override;
+    virtual void adjustMenuListButtonStyle(StyleResolver&, RenderStyle&, Element&) const override;
+    virtual bool paintMenuList(const RenderObject&, const PaintInfo&, const FloatRect&) override;
     virtual bool paintMenuListButtonDecorations(const RenderObject&, const PaintInfo&, const FloatRect&) override;
 
     virtual void adjustSearchFieldResultsDecorationPartStyle(StyleResolver*, RenderStyle*, Element*) const override;

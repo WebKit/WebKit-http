@@ -58,12 +58,12 @@ WebMediaCacheManagerProxy::~WebMediaCacheManagerProxy()
 
 void WebMediaCacheManagerProxy::contextDestroyed()
 {
-    invalidateCallbackMap(m_arrayCallbacks);
+    invalidateCallbackMap(m_arrayCallbacks, CallbackBase::Error::OwnerWasInvalidated);
 }
 
 void WebMediaCacheManagerProxy::processDidClose(WebProcessProxy*)
 {
-    invalidateCallbackMap(m_arrayCallbacks);
+    invalidateCallbackMap(m_arrayCallbacks, CallbackBase::Error::ProcessExited);
 }
 
 bool WebMediaCacheManagerProxy::shouldTerminate(WebProcessProxy*) const
@@ -81,9 +81,9 @@ void WebMediaCacheManagerProxy::derefWebContextSupplement()
     API::Object::deref();
 }
 
-void WebMediaCacheManagerProxy::getHostnamesWithMediaCache(PassRefPtr<ArrayCallback> prpCallback)
+void WebMediaCacheManagerProxy::getHostnamesWithMediaCache(std::function<void (API::Array*, CallbackBase::Error)> callbackFunction)
 {
-    RefPtr<ArrayCallback> callback = prpCallback;
+    RefPtr<ArrayCallback> callback = ArrayCallback::create(std::move(callbackFunction));
     uint64_t callbackID = callback->callbackID();
     m_arrayCallbacks.set(callbackID, callback.release());
 

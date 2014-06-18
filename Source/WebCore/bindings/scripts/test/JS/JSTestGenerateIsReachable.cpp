@@ -28,6 +28,9 @@ using namespace JSC;
 
 namespace WebCore {
 
+// Attributes
+
+JSC::EncodedJSValue jsTestGenerateIsReachableConstructor(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
 /* Hash table for constructor */
 
 static const struct CompactHashIndex JSTestGenerateIsReachableConstructorTableIndex[1] = {
@@ -54,11 +57,6 @@ void JSTestGenerateIsReachableConstructor::finishCreation(VM& vm, JSDOMGlobalObj
     ASSERT(inherits(info()));
     putDirect(vm, vm.propertyNames->prototype, JSTestGenerateIsReachablePrototype::self(vm, globalObject), DontDelete | ReadOnly);
     putDirect(vm, vm.propertyNames->length, jsNumber(0), ReadOnly | DontDelete | DontEnum);
-}
-
-bool JSTestGenerateIsReachableConstructor::getOwnPropertySlot(JSObject* object, ExecState* exec, PropertyName propertyName, PropertySlot& slot)
-{
-    return getStaticValueSlot<JSTestGenerateIsReachableConstructor, JSDOMWrapper>(exec, JSTestGenerateIsReachableConstructorTable, jsCast<JSTestGenerateIsReachableConstructor*>(object), propertyName, slot);
 }
 
 /* Hash table for prototype */

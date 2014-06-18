@@ -207,6 +207,9 @@ enum _optional { "", "OptionalValue1", "OptionalValue2", "OptionalValue3" };
     void methodWithUnsignedLongSequence(sequence<unsigned long> unsignedLongSequence);
     [RaisesException] DOMString[] stringArrayFunction(DOMString[] values);
     [RaisesException] DOMStringList domStringListFunction(DOMStringList values);
+
+    void methodWithAndWithoutNullableSequence(sequence<unsigned long> arrayArg, sequence<unsigned long>? nullableArrayArg);
+    void methodWithAndWithoutNullableSequence2(unsigned long[] arrayArg, unsigned long[]? nullableArrayArg);
 #endif
 
     [CheckSecurityForNode] readonly attribute Document contentDocument;
@@ -245,7 +248,6 @@ enum _optional { "", "OptionalValue1", "OptionalValue2", "OptionalValue3" };
     const unsigned short CONST_VALUE_4 = 4;
     const unsigned short CONST_VALUE_8 = 8;
     const short CONST_VALUE_9 = -1;
-    const DOMString CONST_VALUE_10 = "my constant string";
     const unsigned short CONST_VALUE_11 = 0xffffffff;
     const unsigned short CONST_VALUE_12 = 0x01;
     const unsigned short CONST_VALUE_13 = 0X20;

@@ -2766,6 +2766,10 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
 
     settings.setShouldDispatchJavaScriptWindowOnErrorEvents(true);
 
+#if PLATFORM(IOS)
+    settings.setUseImageDocumentForSubframePDF(true);
+#endif
+
     if (store.getBoolValueForKey(WebPreferencesKey::pageVisibilityBasedProcessSuppressionEnabledKey()))
         m_processSuppressionDisabledByWebPreference.stop();
     else
@@ -4357,8 +4361,9 @@ void WebPage::didCommitLoad(WebFrame* frame)
 
     resetViewportDefaultConfiguration(frame);
     m_viewportConfiguration.resetMinimalUI();
-    m_viewportConfiguration.setViewportArguments(ViewportArguments());
-    m_viewportConfiguration.setContentsSize(IntSize());
+    const Frame* coreFrame = frame->coreFrame();
+    m_viewportConfiguration.setContentsSize(coreFrame->view()->contentsSize());
+    m_viewportConfiguration.setViewportArguments(coreFrame->document()->viewportArguments());
     viewportConfigurationChanged();
 #endif
 

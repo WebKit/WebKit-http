@@ -7217,11 +7217,21 @@
     <ClCompile Include="..\platform\graphics\avfoundation\cf\InbandTextTrackPrivateAVCF.cpp" />
     <ClCompile Include="..\platform\graphics\avfoundation\cf\InbandTextTrackPrivateLegacyAVCF.cpp" />
     <ClCompile Include="..\platform\graphics\avfoundation\InbandTextTrackPrivateAVF.cpp" />
+    <ClCompile Include="..\platform\graphics\ca\LayerPool.cpp" />
     <ClCompile Include="..\platform\graphics\ca\PlatformCALayer.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_WinCairo|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_WinCairo|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\platform\graphics\ca\TileController.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_WinCairo|Win32'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\platform\graphics\ca\TileCoverageMap.cpp" />
+    <ClCompile Include="..\platform\graphics\ca\TileGrid.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_WinCairo|Win32'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="..\platform\graphics\GLContext.cpp" />
     <ClCompile Include="..\platform\graphics\cairo\GraphicsContext3DCairo.cpp">
@@ -11422,6 +11432,7 @@
     <ClCompile Include="..\rendering\mathml\RenderMathMLMath.cpp" />
     <ClCompile Include="..\rendering\mathml\RenderMathMLMenclose.cpp" />
     <ClCompile Include="..\rendering\mathml\RenderMathMLOperator.cpp" />
+    <ClCompile Include="..\rendering\mathml\RenderMathMLRadicalOperator.cpp" />
     <ClCompile Include="..\rendering\mathml\RenderMathMLRoot.cpp" />
     <ClCompile Include="..\rendering\mathml\RenderMathMLRow.cpp" />
     <ClCompile Include="..\rendering\mathml\RenderMathMLSpace.cpp" />
@@ -11472,6 +11483,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|x64'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="..\rendering\style\GridResolvedPosition.cpp" />
     <ClCompile Include="..\rendering\style\KeyframeList.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
@@ -11542,6 +11554,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|x64'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="..\rendering\style\ShapeValue.cpp" />
     <ClCompile Include="..\rendering\style\StyleAllInOne.cpp" />
     <ClCompile Include="..\rendering\style\StyleBackgroundData.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
@@ -19141,7 +19154,17 @@
     <ClInclude Include="..\platform\graphics\avfoundation\cf\InbandTextTrackPrivateLegacyAVCF.h" />
     <ClInclude Include="..\platform\graphics\avfoundation\InbandTextTrackPrivateAVF.h" />
     <ClInclude Include="..\platform\graphics\cairo\TileCairo.h" />
+    <ClInclude Include="..\platform\graphics\ca\LayerPool.h" />
     <ClInclude Include="..\platform\graphics\ca\PlatformCAFilters.h" />
+    <ClInclude Include="..\platform\graphics\ca\TileController.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_WinCairo|Win32'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="..\platform\graphics\ca\TileCoverageMap.h" />
+    <ClInclude Include="..\platform\graphics\ca\TileGrid.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_WinCairo|Win32'">true</ExcludedFromBuild>
+    </ClInclude>
     <ClInclude Include="..\platform\graphics\ca\win\PlatformCAAnimationWin.h" />
     <ClInclude Include="..\platform\graphics\ca\win\PlatformCALayerWin.h" />
     <ClInclude Include="..\platform\graphics\GLContext.h" />
@@ -20131,6 +20154,7 @@
     <ClInclude Include="..\rendering\mathml\RenderMathMLMath.h" />
     <ClInclude Include="..\rendering\mathml\RenderMathMLMenclose.h" />
     <ClInclude Include="..\rendering\mathml\RenderMathMLOperator.h" />
+    <ClInclude Include="..\rendering\mathml\RenderMathMLRadicalOperator.h" />
     <ClInclude Include="..\rendering\mathml\RenderMathMLRoot.h" />
     <ClInclude Include="..\rendering\mathml\RenderMathMLRow.h" />
     <ClInclude Include="..\rendering\mathml\RenderMathMLSpace.h" />
@@ -20152,6 +20176,7 @@
     <ClInclude Include="..\rendering\style\GridCoordinate.h" />
     <ClInclude Include="..\rendering\style\GridLength.h" />
     <ClInclude Include="..\rendering\style\GridPosition.h" />
+    <ClInclude Include="..\rendering\style\GridResolvedPosition.h" />
     <ClInclude Include="..\rendering\style\GridTrackSize.h" />
     <ClInclude Include="..\rendering\style\KeyframeList.h" />
     <ClInclude Include="..\rendering\style\NinePieceImage.h" />

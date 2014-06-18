@@ -117,8 +117,6 @@ public:
 
 private:
     JSTestNamedConstructorPrototype(JSC::VM& vm, JSC::JSGlobalObject*, JSC::Structure* structure) : JSC::JSNonFinalObject(vm, structure) { }
-protected:
-    static const unsigned StructureFlags = Base::StructureFlags;
 };
 
 class JSTestNamedConstructorConstructor : public DOMConstructorObject {
@@ -135,14 +133,11 @@ public:
         return ptr;
     }
 
-    static bool getOwnPropertySlot(JSC::JSObject*, JSC::ExecState*, JSC::PropertyName, JSC::PropertySlot&);
     DECLARE_INFO;
     static JSC::Structure* createStructure(JSC::VM& vm, JSC::JSGlobalObject* globalObject, JSC::JSValue prototype)
     {
         return JSC::Structure::create(vm, globalObject, prototype, JSC::TypeInfo(JSC::ObjectType, StructureFlags), info());
     }
-protected:
-    static const unsigned StructureFlags = JSC::OverridesGetOwnPropertySlot | JSC::ImplementsHasInstance | DOMConstructorObject::StructureFlags;
 };
 
 class JSTestNamedConstructorNamedConstructor : public DOMConstructorWithDocument {
@@ -170,9 +165,6 @@ private:
     void finishCreation(JSC::VM&, JSDOMGlobalObject*);
 };
 
-// Attributes
-
-JSC::EncodedJSValue jsTestNamedConstructorConstructor(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
 
 } // namespace WebCore
 

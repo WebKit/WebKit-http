@@ -31,6 +31,10 @@ using namespace JSC;
 
 namespace WebCore {
 
+// Attributes
+
+JSC::EncodedJSValue jsattributeReadonly(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+JSC::EncodedJSValue jsattributeConstructor(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
 /* Hash table for constructor */
 
 static const struct CompactHashIndex JSattributeConstructorTableIndex[1] = {
@@ -57,11 +61,6 @@ void JSattributeConstructor::finishCreation(VM& vm, JSDOMGlobalObject* globalObj
     ASSERT(inherits(info()));
     putDirect(vm, vm.propertyNames->prototype, JSattributePrototype::self(vm, globalObject), DontDelete | ReadOnly);
     putDirect(vm, vm.propertyNames->length, jsNumber(0), ReadOnly | DontDelete | DontEnum);
-}
-
-bool JSattributeConstructor::getOwnPropertySlot(JSObject* object, ExecState* exec, PropertyName propertyName, PropertySlot& slot)
-{
-    return getStaticValueSlot<JSattributeConstructor, JSDOMWrapper>(exec, JSattributeConstructorTable, jsCast<JSattributeConstructor*>(object), propertyName, slot);
 }
 
 /* Hash table for prototype */

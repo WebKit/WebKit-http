@@ -28,6 +28,9 @@ using namespace JSC;
 
 namespace WebCore {
 
+// Attributes
+
+JSC::EncodedJSValue jsreadonlyConstructor(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
 /* Hash table for constructor */
 
 static const struct CompactHashIndex JSreadonlyConstructorTableIndex[1] = {
@@ -54,11 +57,6 @@ void JSreadonlyConstructor::finishCreation(VM& vm, JSDOMGlobalObject* globalObje
     ASSERT(inherits(info()));
     putDirect(vm, vm.propertyNames->prototype, JSreadonlyPrototype::self(vm, globalObject), DontDelete | ReadOnly);
     putDirect(vm, vm.propertyNames->length, jsNumber(0), ReadOnly | DontDelete | DontEnum);
-}
-
-bool JSreadonlyConstructor::getOwnPropertySlot(JSObject* object, ExecState* exec, PropertyName propertyName, PropertySlot& slot)
-{
-    return getStaticValueSlot<JSreadonlyConstructor, JSDOMWrapper>(exec, JSreadonlyConstructorTable, jsCast<JSreadonlyConstructor*>(object), propertyName, slot);
 }
 
 /* Hash table for prototype */

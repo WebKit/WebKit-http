@@ -615,9 +615,27 @@ bool RenderThemeMac::isControlStyled(const RenderStyle* style, const BorderData&
     return RenderTheme::isControlStyled(style, border, background, backgroundColor);
 }
 
-void RenderThemeMac::adjustRepaintRect(const RenderObject& o, IntRect& r)
+static FloatRect inflateRect(const FloatRect& rect, const IntSize& size, const int* margins, float zoomLevel)
 {
-    ControlPart part = o.style().appearance();
+    // Only do the inflation if the available width/height are too small. Otherwise try to
+    // fit the glow/check space into the available box's width/height.
+    int widthDelta = rect.width() - (size.width() + margins[leftMargin] * zoomLevel + margins[rightMargin] * zoomLevel);
+    int heightDelta = rect.height() - (size.height() + margins[topMargin] * zoomLevel + margins[bottomMargin] * zoomLevel);
+    FloatRect result(rect);
+    if (widthDelta < 0) {
+        result.setX(result.x() - margins[leftMargin] * zoomLevel);
+        result.setWidth(result.width() - widthDelta);
+    }
+    if (heightDelta < 0) {
+        result.setY(result.y() - margins[topMargin] * zoomLevel);
+        result.setHeight(result.height() - heightDelta);
+    }
+    return result;
+}
+
+void RenderThemeMac::adjustRepaintRect(const RenderObject& renderer, FloatRect& rect)
+{
+    ControlPart part = renderer.style().appearance();
 
 #if USE(NEW_THEME)
     switch (part) {
@@ -628,39 +646,21 @@ void RenderThemeMac::adjustRepaintRect(const RenderObject& o, IntRect& r)
         case DefaultButtonPart:
         case ButtonPart:
         case InnerSpinButtonPart:
-            return RenderTheme::adjustRepaintRect(o, r);
+            return RenderTheme::adjustRepaintRect(renderer, rect);
         default:
             break;
     }
 #endif
 
-    float zoomLevel = o.style().effectiveZoom();
+    float zoomLevel = renderer.style().effectiveZoom();
 
     if (part == MenulistPart) {
-        setPopupButtonCellState(o, r);
+        setPopupButtonCellState(renderer, IntSize(rect.size()));
         IntSize size = popupButtonSizes()[[popupButton() controlSize]];
         size.setHeight(size.height() * zoomLevel);
-        size.setWidth(r.width());
-        r = inflateRect(r, size, popupButtonMargins(), zoomLevel);
+        size.setWidth(rect.width());
+        rect = inflateRect(rect, size, popupButtonMargins(), zoomLevel);
     }
-}
-
-IntRect RenderThemeMac::inflateRect(const IntRect& r, const IntSize& size, const int* margins, float zoomLevel) const
-{
-    // Only do the inflation if the available width/height are too small.  Otherwise try to
-    // fit the glow/check space into the available box's width/height.
-    int widthDelta = r.width() - (size.width() + margins[leftMargin] * zoomLevel + margins[rightMargin] * zoomLevel);
-    int heightDelta = r.height() - (size.height() + margins[topMargin] * zoomLevel + margins[bottomMargin] * zoomLevel);
-    IntRect result(r);
-    if (widthDelta < 0) {
-        result.setX(result.x() - margins[leftMargin] * zoomLevel);
-        result.setWidth(result.width() - widthDelta);
-    }
-    if (heightDelta < 0) {
-        result.setY(result.y() - margins[topMargin] * zoomLevel);
-        result.setHeight(result.height() - heightDelta);
-    }
-    return result;
 }
 
 FloatRect RenderThemeMac::convertToPaintingRect(const RenderObject& inputRenderer, const RenderObject& partRenderer, const FloatRect& inputRect, const IntRect& r) const
@@ -899,22 +899,22 @@ const int* RenderThemeMac::popupButtonPadding(NSControlSize size) const
     return padding[size];
 }
 
-bool RenderThemeMac::paintMenuList(const RenderObject& o, const PaintInfo& paintInfo, const IntRect& r)
+bool RenderThemeMac::paintMenuList(const RenderObject& renderer, const PaintInfo& paintInfo, const FloatRect& rect)
 {
     LocalCurrentGraphicsContext localContext(paintInfo.context);
-    setPopupButtonCellState(o, r);
+    setPopupButtonCellState(renderer, IntSize(rect.size()));
 
     NSPopUpButtonCell* popupButton = this->popupButton();
 
-    float zoomLevel = o.style().effectiveZoom();
+    float zoomLevel = renderer.style().effectiveZoom();
     IntSize size = popupButtonSizes()[[popupButton controlSize]];
     size.setHeight(size.height() * zoomLevel);
-    size.setWidth(r.width());
+    size.setWidth(rect.width());
 
     // Now inflate it to account for the shadow.
-    IntRect inflatedRect = r;
-    if (r.width() >= minimumMenuListSize(&o.style()))
-        inflatedRect = inflateRect(inflatedRect, size, popupButtonMargins(), zoomLevel);
+    FloatRect inflatedRect = rect;
+    if (rect.width() >= minimumMenuListSize(&renderer.style()))
+        inflatedRect = inflateRect(rect, size, popupButtonMargins(), zoomLevel);
 
     GraphicsContextStateSaver stateSaver(*paintInfo.context);
 
@@ -929,11 +929,11 @@ bool RenderThemeMac::paintMenuList(const RenderObject& o, const PaintInfo& paint
         paintInfo.context->translate(-inflatedRect.x(), -inflatedRect.y());
     }
 
-    NSView *view = documentViewFor(o);
+    NSView *view = documentViewFor(renderer);
     [popupButton drawWithFrame:inflatedRect inView:view];
-    if (isFocused(o) && o.style().outlineStyleIsAuto()) {
+    if (isFocused(renderer) && renderer.style().outlineStyleIsAuto()) {
         if (wkDrawCellFocusRingWithFrameAtTime(popupButton, inflatedRect, view, std::numeric_limits<double>::max()))
-            o.document().page()->focusController().setFocusedElementNeedsRepaint();
+            renderer.document().page()->focusController().setFocusedElementNeedsRepaint();
     }
 
     [popupButton setControlView:nil];
@@ -1080,7 +1080,7 @@ IntRect RenderThemeMac::progressBarRectForBounds(const RenderObject& renderObjec
     // Now inflate it to account for the shadow.
     IntRect inflatedRect = progressBarBounds;
     if (progressBarBounds.height() <= minimumProgressBarHeight(&renderObject.style()))
-        inflatedRect = inflateRect(inflatedRect, size, progressBarMargins(controlSize), zoomLevel);
+        inflatedRect = IntRect(inflateRect(inflatedRect, size, progressBarMargins(controlSize), zoomLevel));
 
     return inflatedRect;
 }
@@ -1420,25 +1420,25 @@ PopupMenuStyle::PopupMenuSize RenderThemeMac::popupMenuSize(const RenderStyle* s
     }
 }
 
-void RenderThemeMac::adjustMenuListButtonStyle(StyleResolver*, RenderStyle* style, Element*) const
+void RenderThemeMac::adjustMenuListButtonStyle(StyleResolver&, RenderStyle& style, Element&) const
 {
-    float fontScale = style->fontSize() / baseFontSize;
+    float fontScale = style.fontSize() / baseFontSize;
 
-    style->resetPadding();
-    style->setBorderRadius(IntSize(int(baseBorderRadius + fontScale - 1), int(baseBorderRadius + fontScale - 1))); // FIXME: Round up?
+    style.resetPadding();
+    style.setBorderRadius(IntSize(int(baseBorderRadius + fontScale - 1), int(baseBorderRadius + fontScale - 1))); // FIXME: Round up?
 
     const int minHeight = 15;
-    style->setMinHeight(Length(minHeight, Fixed));
+    style.setMinHeight(Length(minHeight, Fixed));
 
-    style->setLineHeight(RenderStyle::initialLineHeight());
+    style.setLineHeight(RenderStyle::initialLineHeight());
 }
 
-void RenderThemeMac::setPopupButtonCellState(const RenderObject& o, const IntRect& r)
+void RenderThemeMac::setPopupButtonCellState(const RenderObject& o, const IntSize& buttonSize)
 {
     NSPopUpButtonCell* popupButton = this->popupButton();
 
     // Set the control size based off the rectangle we're painting into.
-    setControlSize(popupButton, popupButtonSizes(), r.size(), o.style().effectiveZoom());
+    setControlSize(popupButton, popupButtonSizes(), buttonSize, o.style().effectiveZoom());
 
     // Update the various states we respond to.
     updateCheckedState(popupButton, o);

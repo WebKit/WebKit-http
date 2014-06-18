@@ -23,18 +23,17 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#import "config.h"
-#import "TileGrid.h"
+#include "config.h"
+#include "TileGrid.h"
 
-#import "GraphicsContext.h"
-#import "LayerPool.h"
-#import "PlatformCALayer.h"
-#import "TileController.h"
-#import "WebLayer.h"
-#import <wtf/MainThread.h>
+#include "GraphicsContext.h"
+#include "LayerPool.h"
+#include "PlatformCALayer.h"
+#include "TileController.h"
+#include <wtf/MainThread.h>
 
 #if PLATFORM(IOS)
-#import "TileControllerMemoryHandlerIOS.h"
+#include "TileControllerMemoryHandlerIOS.h"
 #endif
 
 namespace WebCore {
@@ -256,7 +255,7 @@ unsigned TileGrid::blankPixelCount() const
             tiles.append(layer);
     }
 
-    return TileController::blankPixelCountForTiles(tiles, m_controller.visibleRect(), IntPoint(0,0));
+    return TileController::blankPixelCountForTiles(tiles, m_controller.visibleRect(), IntPoint(0, 0));
 }
 
 void TileGrid::removeTiles(Vector<TileGrid::TileIndex>& toRemove)
@@ -651,13 +650,13 @@ void TileGrid::platformCALayerPaintContents(PlatformCALayer* platformCALayer, Gr
         context.translate(-layerOrigin.x(), -layerOrigin.y());
         context.scale(FloatSize(m_scale, m_scale));
 
-        RepaintRectList dirtyRects = collectRectsToPaint(context.platformContext(), platformCALayer);
-        drawLayerContents(context.platformContext(), &m_controller.rootLayer(), dirtyRects);
+        PlatformCALayer::RepaintRectList dirtyRects = PlatformCALayer::collectRectsToPaint(context.platformContext(), platformCALayer);
+        PlatformCALayer::drawLayerContents(context.platformContext(), &m_controller.rootLayer(), dirtyRects);
     }
 
     int repaintCount = platformCALayerIncrementRepaintCount(platformCALayer);
     if (m_controller.rootLayer().owner()->platformCALayerShowRepaintCounter(0))
-        drawRepaintIndicator(context.platformContext(), platformCALayer, repaintCount, cachedCGColor(m_controller.tileDebugBorderColor(), ColorSpaceDeviceRGB));
+        PlatformCALayer::drawRepaintIndicator(context.platformContext(), platformCALayer, repaintCount, cachedCGColor(m_controller.tileDebugBorderColor(), ColorSpaceDeviceRGB));
 
     if (m_controller.scrollingPerformanceLoggingEnabled()) {
         FloatRect visiblePart(platformCALayer->position().x(), platformCALayer->position().y(), platformCALayer->bounds().size().width(), platformCALayer->bounds().size().height());

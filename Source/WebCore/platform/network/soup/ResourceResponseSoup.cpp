@@ -24,6 +24,7 @@
 
 #include "ResourceResponse.h"
 
+#include "HTTPHeaderNames.h"
 #include "HTTPParsers.h"
 #include "MIMETypeRegistry.h"
 #include <wtf/text/CString.h>
@@ -46,7 +47,7 @@ SoupMessage* ResourceResponse::toSoupMessage() const
     if (!headers.isEmpty()) {
         HTTPHeaderMap::const_iterator end = headers.end();
         for (HTTPHeaderMap::const_iterator it = headers.begin(); it != end; ++it)
-            soup_message_headers_append(soupHeaders, it->key.string().utf8().data(), it->value.utf8().data());
+            soup_message_headers_append(soupHeaders, it->key.utf8().data(), it->value.utf8().data());
     }
 
     soup_message_set_flags(soupMessage, m_soupFlags);
@@ -98,7 +99,7 @@ void ResourceResponse::updateFromSoupMessageHeaders(const SoupMessageHeaders* me
     setTextEncodingName(extractCharsetFromMediaType(contentType));
 
     setExpectedContentLength(soup_message_headers_get_content_length(headers));
-    setSuggestedFilename(filenameFromHTTPContentDisposition(httpHeaderField("Content-Disposition")));}
+    setSuggestedFilename(filenameFromHTTPContentDisposition(httpHeaderField(HTTPHeaderName::ContentDisposition)));}
 
 }
 

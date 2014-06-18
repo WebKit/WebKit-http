@@ -1,3 +1,473 @@
+2014-06-17  Zalan Bujtas  <zalan@apple.com>
+
+        Fix 'lint-test-files' warnings on run-webkit-test -2
+        https://bugs.webkit.org/show_bug.cgi?id=134011
+
+        Unreviewed.
+
+        Remove entries referring to non-existing files from TestExpectations.
+
+        * platform/mac-wk2/TestExpectations:
+
+2014-06-17  Oliver Hunt  <oliver@apple.com>
+
+        Fix error messages for incorrect hex literals
+        https://bugs.webkit.org/show_bug.cgi?id=133998
+
+        Reviewed by Mark Lam.
+
+        Update tests for sane error messages.
+
+        * sputnik/Conformance/07_Lexical_Conventions/7.8_Literals/7.8.3_Numeric_Literals/S7.8.3_A6.1_T1-expected.txt:
+        * sputnik/Conformance/07_Lexical_Conventions/7.8_Literals/7.8.3_Numeric_Literals/S7.8.3_A6.1_T2-expected.txt:
+        * sputnik/Conformance/07_Lexical_Conventions/7.8_Literals/7.8.3_Numeric_Literals/S7.8.3_A6.2_T1-expected.txt:
+        * sputnik/Conformance/07_Lexical_Conventions/7.8_Literals/7.8.3_Numeric_Literals/S7.8.3_A6.2_T2-expected.txt:
+
+2014-06-17  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] Fix the handling of resize events after r169505.
+        https://bugs.webkit.org/show_bug.cgi?id=133517
+
+        Reviewed by Martin Robinson.
+
+        * platform/gtk/TestExpectations: Remove the expectations for the
+        tests that now pass.
+        * platform/gtk/fast/dom/rtl-scroll-to-leftmost-and-resize-expected.txt:
+        Rebaseline results.
+
+2014-06-17  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [iOS] Input type=time elements styled with SVG fonts have 0 width
+        https://bugs.webkit.org/show_bug.cgi?id=133524
+
+        Reviewed by Simon Fraser.
+
+        Simply render a variety of input elements with SVG fonts, and make sure they have sane widths. Note that this
+        test is not platform-specific, even though the bug is.
+
+        * fast/forms/time-input-svg-font-expected.txt: Added.
+        * fast/forms/time-input-svg-font.html: Added.
+
+2014-06-17  Simon Fraser  <simon.fraser@apple.com>
+
+        [UI-side compositing] fix reflections on composited layers
+        https://bugs.webkit.org/show_bug.cgi?id=133942
+
+        Reviewed by Tim Horton.
+        
+        Test with a reflected div, that repaints on a timer to test backing
+        store updating on the clone.
+
+        * compositing/reflections/repaint-with-reflection-expected.html: Added.
+        * compositing/reflections/repaint-with-reflection.html: Added.
+
+2014-06-17  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r170058.
+        https://bugs.webkit.org/show_bug.cgi?id=133993
+
+        Caused 4 webkitpy failures on the bots (Requested by bradee-oh
+        on #webkit).
+
+        Reverted changeset:
+
+        "[GTK] Fix the handling of resize events after r169505."
+        https://bugs.webkit.org/show_bug.cgi?id=133517
+        http://trac.webkit.org/changeset/170058
+
+2014-06-17  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] Fix the handling of resize events after r169505.
+        https://bugs.webkit.org/show_bug.cgi?id=133517
+
+        Reviewed by Martin Robinson.
+
+        * platform/gtk/TestExpectations: Remove the expectations for the tests
+        that now pass.
+        * platform/gtk/fast/dom/rtl-scroll-to-leftmost-and-resize-expected.txt:
+        Rebaseline results.
+
+2014-06-17  Andrzej Badowski  <a.badowski@samsung.com>
+
+        [EFL] Add expectations for three failing/flaky layout tests.
+        https://bugs.webkit.org/show_bug.cgi?id=133977
+
+        Unreviewed EFL gardening.
+
+        * platform/efl/TestExpectations:
+
+2014-06-17  Jer Noble  <jer.noble@apple.com>
+
+        [MSE] Overwritten samples are removed from buffered ranges using decode times; added samples using presentation times
+        https://bugs.webkit.org/show_bug.cgi?id=133959
+
+        Reviewed by Eric Carlson.
+
+        * media/media-source/media-source-overlapping-append-buffered-expected.txt: Added.
+        * media/media-source/media-source-overlapping-append-buffered.html: Added.
+
+2014-06-16  Mihnea Ovidenie  <mihnea@adobe.com>
+
+        [CSS Regions] Move the overflow tests to a separate folder
+        https://bugs.webkit.org/show_bug.cgi?id=130089
+
+        Reviewed by Andrei Bucur.
+
+        Move the overflow tests inside fast/regions/overflow folder.
+        Adjust tests paths and TestExpectations files accordingly.
+
+        * fast/regions/overflow/overflow-3dtransformed-region-expected.txt: Renamed from LayoutTests/fast/regions/overflow-3dtransformed-region-expected.txt.
+        * fast/regions/overflow/overflow-3dtransformed-region.html: Renamed from LayoutTests/fast/regions/overflow-3dtransformed-region.html.
+        * fast/regions/overflow/overflow-auto-after-float-expected.html: Renamed from LayoutTests/fast/regions/overflow-auto-after-float-expected.html.
+        * fast/regions/overflow/overflow-auto-after-float.html: Renamed from LayoutTests/fast/regions/overflow-auto-after-float.html.
+        * fast/regions/overflow/overflow-content-transform-rotate-expected.html: Renamed from LayoutTests/fast/regions/overflow-content-transform-rotate-expected.html.
+        * fast/regions/overflow/overflow-content-transform-rotate.html: Renamed from LayoutTests/fast/regions/overflow-content-transform-rotate.html.
+        * fast/regions/overflow/overflow-content-zero-height-region-expected.html: Renamed from LayoutTests/fast/regions/overflow-content-zero-height-region-expected.html.
+        * fast/regions/overflow/overflow-content-zero-height-region.html: Renamed from LayoutTests/fast/regions/overflow-content-zero-height-region.html.
+        * fast/regions/overflow/overflow-first-and-last-regions-expected.html: Renamed from LayoutTests/fast/regions/overflow-first-and-last-regions-expected.html.
+        * fast/regions/overflow/overflow-first-and-last-regions-in-container-hidden-expected.html: Renamed from LayoutTests/fast/regions/overflow-first-and-last-regions-in-container-hidden-expected.html.
+        * fast/regions/overflow/overflow-first-and-last-regions-in-container-hidden.html: Renamed from LayoutTests/fast/regions/overflow-first-and-last-regions-in-container-hidden.html.
+        * fast/regions/overflow/overflow-first-and-last-regions.html: Renamed from LayoutTests/fast/regions/overflow-first-and-last-regions.html.
+        * fast/regions/overflow/overflow-in-uniform-regions-dynamic-expected.html: Renamed from LayoutTests/fast/regions/overflow-in-uniform-regions-dynamic-expected.html.
+        * fast/regions/overflow/overflow-in-uniform-regions-dynamic.html: Renamed from LayoutTests/fast/regions/overflow-in-uniform-regions-dynamic.html.
+        * fast/regions/overflow/overflow-in-uniform-regions-expected.html: Renamed from LayoutTests/fast/regions/overflow-in-uniform-regions-expected.html.
+        * fast/regions/overflow/overflow-in-uniform-regions.html: Renamed from LayoutTests/fast/regions/overflow-in-uniform-regions.html.
+        * fast/regions/overflow/overflow-in-variable-width-regions-expected.html: Renamed from LayoutTests/fast/regions/overflow-in-variable-width-regions-expected.html.
+        * fast/regions/overflow/overflow-in-variable-width-regions-inline-bt-expected.html: Renamed from LayoutTests/fast/regions/overflow-in-variable-width-regions-inline-bt-expected.html.
+        * fast/regions/overflow/overflow-in-variable-width-regions-inline-bt.html: Renamed from LayoutTests/fast/regions/overflow-in-variable-width-regions-inline-bt.html.
+        * fast/regions/overflow/overflow-in-variable-width-regions-inline-continuation-expected.html: Renamed from LayoutTests/fast/regions/overflow-in-variable-width-regions-inline-continuation-expected.html.
+        * fast/regions/overflow/overflow-in-variable-width-regions-inline-continuation.html: Renamed from LayoutTests/fast/regions/overflow-in-variable-width-regions-inline-continuation.html.
+        * fast/regions/overflow/overflow-in-variable-width-regions-inline-expected.html: Renamed from LayoutTests/fast/regions/overflow-in-variable-width-regions-inline-expected.html.
+        * fast/regions/overflow/overflow-in-variable-width-regions-inline-lr-expected.html: Renamed from LayoutTests/fast/regions/overflow-in-variable-width-regions-inline-lr-expected.html.
+        * fast/regions/overflow/overflow-in-variable-width-regions-inline-lr.html: Renamed from LayoutTests/fast/regions/overflow-in-variable-width-regions-inline-lr.html.
+        * fast/regions/overflow/overflow-in-variable-width-regions-inline-rl-expected.html: Renamed from LayoutTests/fast/regions/overflow-in-variable-width-regions-inline-rl-expected.html.
+        * fast/regions/overflow/overflow-in-variable-width-regions-inline-rl.html: Renamed from LayoutTests/fast/regions/overflow-in-variable-width-regions-inline-rl.html.
+        * fast/regions/overflow/overflow-in-variable-width-regions-inline.html: Renamed from LayoutTests/fast/regions/overflow-in-variable-width-regions-inline.html.
+        * fast/regions/overflow/overflow-in-variable-width-regions.html: Renamed from LayoutTests/fast/regions/overflow-in-variable-width-regions.html.
+        * fast/regions/overflow/overflow-last-region-horiz-bt-expected.html: Renamed from LayoutTests/fast/regions/overflow-last-region-horiz-bt-expected.html.
+        * fast/regions/overflow/overflow-last-region-horiz-bt.html: Renamed from LayoutTests/fast/regions/overflow-last-region-horiz-bt.html.
+        * fast/regions/overflow/overflow-last-region-vert-lr-expected.html: Renamed from LayoutTests/fast/regions/overflow-last-region-vert-lr-expected.html.
+        * fast/regions/overflow/overflow-last-region-vert-lr.html: Renamed from LayoutTests/fast/regions/overflow-last-region-vert-lr.html.
+        * fast/regions/overflow/overflow-last-region-vert-rl-expected.html: Renamed from LayoutTests/fast/regions/overflow-last-region-vert-rl-expected.html.
+        * fast/regions/overflow/overflow-last-region-vert-rl.html: Renamed from LayoutTests/fast/regions/overflow-last-region-vert-rl.html.
+        * fast/regions/overflow/overflow-moving-below-floats-in-variable-width-regions-expected.html: Renamed from LayoutTests/fast/regions/overflow-moving-below-floats-in-variable-width-regions-expected.html.
+        * fast/regions/overflow/overflow-moving-below-floats-in-variable-width-regions.html: Renamed from LayoutTests/fast/regions/overflow-moving-below-floats-in-variable-width-regions.html.
+        * fast/regions/overflow/overflow-nested-regions-expected.html: Renamed from LayoutTests/fast/regions/overflow-nested-regions-expected.html.
+        * fast/regions/overflow/overflow-nested-regions.html: Renamed from LayoutTests/fast/regions/overflow-nested-regions.html.
+        * fast/regions/overflow/overflow-not-moving-below-floats-in-variable-width-regions-expected.html: Renamed from LayoutTests/fast/regions/overflow-not-moving-below-floats-in-variable-width-regions-expected.html.
+        * fast/regions/overflow/overflow-not-moving-below-floats-in-variable-width-regions.html: Renamed from LayoutTests/fast/regions/overflow-not-moving-below-floats-in-variable-width-regions.html.
+        * fast/regions/overflow/overflow-region-float-expected.html: Renamed from LayoutTests/fast/regions/overflow-region-float-expected.html.
+        * fast/regions/overflow/overflow-region-float.html: Renamed from LayoutTests/fast/regions/overflow-region-float.html.
+        * fast/regions/overflow/overflow-region-inline-expected.html: Renamed from LayoutTests/fast/regions/overflow-region-inline-expected.html.
+        * fast/regions/overflow/overflow-region-inline.html: Renamed from LayoutTests/fast/regions/overflow-region-inline.html.
+        * fast/regions/overflow/overflow-region-transform-expected.html: Renamed from LayoutTests/fast/regions/overflow-region-transform-expected.html.
+        * fast/regions/overflow/overflow-region-transform.html: Renamed from LayoutTests/fast/regions/overflow-region-transform.html.
+        * fast/regions/overflow/overflow-rtl-in-variable-width-regions-expected.html: Renamed from LayoutTests/fast/regions/overflow-rtl-in-variable-width-regions-expected.html.
+        * fast/regions/overflow/overflow-rtl-in-variable-width-regions.html: Renamed from LayoutTests/fast/regions/overflow-rtl-in-variable-width-regions.html.
+        * fast/regions/overflow/overflow-scrollable-1-expected.html: Renamed from LayoutTests/fast/regions/overflow-scrollable-1-expected.html.
+        * fast/regions/overflow/overflow-scrollable-1.html: Renamed from LayoutTests/fast/regions/overflow-scrollable-1.html.
+        * fast/regions/overflow/overflow-scrollable-2-expected.html: Renamed from LayoutTests/fast/regions/overflow-scrollable-2-expected.html.
+        * fast/regions/overflow/overflow-scrollable-2.html: Renamed from LayoutTests/fast/regions/overflow-scrollable-2.html.
+        * fast/regions/overflow/overflow-scrollable-3-expected.html: Renamed from LayoutTests/fast/regions/overflow-scrollable-3-expected.html.
+        * fast/regions/overflow/overflow-scrollable-3.html: Renamed from LayoutTests/fast/regions/overflow-scrollable-3.html.
+        * fast/regions/overflow/overflow-scrollable-fit-complex-expected.html: Renamed from LayoutTests/fast/regions/overflow-scrollable-fit-complex-expected.html.
+        * fast/regions/overflow/overflow-scrollable-fit-complex.html: Renamed from LayoutTests/fast/regions/overflow-scrollable-fit-complex.html.
+        * fast/regions/overflow/overflow-scrollable-fit-expected.html: Renamed from LayoutTests/fast/regions/overflow-scrollable-fit-expected.html.
+        * fast/regions/overflow/overflow-scrollable-fit.html: Renamed from LayoutTests/fast/regions/overflow-scrollable-fit.html.
+        * fast/regions/overflow/overflow-scrollable-nested-expected.txt: Renamed from LayoutTests/fast/regions/overflow-scrollable-nested-expected.txt.
+        * fast/regions/overflow/overflow-scrollable-nested.html: Renamed from LayoutTests/fast/regions/overflow-scrollable-nested.html.
+        * fast/regions/overflow/overflow-scrollable-rel-pos-fragment-expected.html: Renamed from LayoutTests/fast/regions/overflow-scrollable-rel-pos-fragment-expected.html.
+        * fast/regions/overflow/overflow-scrollable-rel-pos-fragment.html: Renamed from LayoutTests/fast/regions/overflow-scrollable-rel-pos-fragment.html.
+        * fast/regions/overflow/overflow-scrollable-rotated-fragment-expected.html: Renamed from LayoutTests/fast/regions/overflow-scrollable-rotated-fragment-expected.html.
+        * fast/regions/overflow/overflow-scrollable-rotated-fragment.html: Renamed from LayoutTests/fast/regions/overflow-scrollable-rotated-fragment.html.
+        * fast/regions/overflow/overflow-scrollable-unsplittable-fragment-expected.html: Renamed from LayoutTests/fast/regions/overflow-scrollable-unsplittable-fragment-expected.html.
+        * fast/regions/overflow/overflow-scrollable-unsplittable-fragment.html: Renamed from LayoutTests/fast/regions/overflow-scrollable-unsplittable-fragment.html.
+        * fast/regions/overflow/overflow-scrollable-varying-width-1-expected.html: Renamed from LayoutTests/fast/regions/overflow-scrollable-varying-width-1-expected.html.
+        * fast/regions/overflow/overflow-scrollable-varying-width-1.html: Renamed from LayoutTests/fast/regions/overflow-scrollable-varying-width-1.html.
+        * fast/regions/overflow/overflow-scrollable-varying-width-2-expected.html: Renamed from LayoutTests/fast/regions/overflow-scrollable-varying-width-2-expected.html.
+        * fast/regions/overflow/overflow-scrollable-varying-width-2.html: Renamed from LayoutTests/fast/regions/overflow-scrollable-varying-width-2.html.
+        * fast/regions/overflow/overflow-size-change-in-variable-width-regions-expected.html: Renamed from LayoutTests/fast/regions/overflow-size-change-in-variable-width-regions-expected.html.
+        * fast/regions/overflow/overflow-size-change-in-variable-width-regions.html: Renamed from LayoutTests/fast/regions/overflow-size-change-in-variable-width-regions.html.
+        * fast/regions/overflow/overflow-size-change-with-stacking-context-expected.html: Renamed from LayoutTests/fast/regions/overflow-size-change-with-stacking-context-expected.html.
+        * fast/regions/overflow/overflow-size-change-with-stacking-context-rtl-expected.html: Renamed from LayoutTests/fast/regions/overflow-size-change-with-stacking-context-rtl-expected.html.
+        * fast/regions/overflow/overflow-size-change-with-stacking-context-rtl.html: Renamed from LayoutTests/fast/regions/overflow-size-change-with-stacking-context-rtl.html.
+        * fast/regions/overflow/overflow-size-change-with-stacking-context.html: Renamed from LayoutTests/fast/regions/overflow-size-change-with-stacking-context.html.
+        * platform/efl/TestExpectations:
+        * platform/gtk/TestExpectations:
+        * platform/mac/TestExpectations:
+        * platform/win/TestExpectations:
+
+2014-06-16  Mihnea Ovidenie  <mihnea@adobe.com>
+
+        [CSSRegions] Region with border radius and overflow:hidden does not clip content
+        https://bugs.webkit.org/show_bug.cgi?id=133476
+
+        Reviewed by Andrei Bucur.
+
+        * fast/regions/region-border-radius-overflow-clip-expected.html: Added.
+        * fast/regions/region-border-radius-overflow-clip.html: Added.
+
+2014-06-12  Mark Lam  <mark.lam@apple.com>
+
+        Parser statementDepth accounting needs to account for when a function body excludes its braces.
+        <https://webkit.org/b/133832>
+
+        Reviewed by Oliver Hunt.
+
+        * js/parser-syntax-check-expected.txt:
+        * js/script-tests/parser-syntax-check.js:
+          - Added cases for declaring functions in strict mode.
+          - Added caught error to the test result logging if it's not a SyntaxError.
+            This helps catch the issue in this bug which was erroneously throwing
+            RangeErrors.
+
+2014-06-16  Radu Stavila  <stavila@adobe.com>
+
+        REGRESSION (r168046): Incorrect layout for multicol spanners when moving from one thread to another
+        https://bugs.webkit.org/show_bug.cgi?id=133589
+
+        Reviewed by Antti Koivisto.
+
+        * fast/multicol/newmulticol/spanner-crash-expected.txt: Added.
+        * fast/multicol/newmulticol/spanner-crash.html: Added.
+
+2014-06-16  Mario Sanchez Prada  <mario.prada@samsung.com>
+
+        [ATK] Missing 'selection-changed' signal when navigating a combo box with keyboard
+        https://bugs.webkit.org/show_bug.cgi?id=133512
+
+        Reviewed by Chris Fleizach.
+
+        Re-implemented test for combo boxes in terms of addNotificationListener()
+        instead of using the (already deprecated) logAccessibilityEvents method,
+        and made the test cross platform (as the fix is not platform specific).
+
+        * accessibility/combo-box-collapsed-selection-changed.html:
+        Implemented based on the former gtk-only test, and made it cross-platform.
+        * accessibility/combo-box-collapsed-selection-changed-expected.txt: New.
+        * platform/gtk/accessibility/combo-box-collapsed-selection-changed.html: Removed.
+        * platform/gtk/accessibility/combo-box-collapsed-selection-changed-expected.txt: Removed.
+
+        Updated expectation for test that checks that a notification is
+        sent when navigating through a multiselection list box, now that
+        we are actually printing such a notification.
+
+        * accessibility/multiselect-list-reports-active-option-expected.txt: Updated.
+
+        Removed two expected failures from TestExpectations for tests that
+        are now passing, one for the combo box test mentioned above and
+        another one for a test that is passing as well now, after applying
+        this fix: accessibility/menu-list-sends-change-notification.html
+
+        * platform/gtk/TestExpectations: Removed two 'failure' expectations.
+
+        * platform/mac/TestExpectations: Skip accessiblity test timing out, probably because
+        those kind of notifications while navigating a combo box are not needed in the Mac.
+
+2014-06-16  Frédéric Wang  <fred.wang@free.fr>
+
+        Draw radicals with glyphs for better rendering
+        https://bugs.webkit.org/show_bug.cgi?id=119038
+
+        Reviewed by Chris Fleizach.
+
+        We update the reference for some tests with radicals and update the expectation of tests for addition/removal of children in an msqrt/mroot element.
+        We also add a test for bug 126516 (SVG transforms not applied to mroot) and a new test for radical drawing using an OpenType MATH table.
+
+        * TestExpectations: enable the tests for addition/removal of children.
+        * mathml/opentype/roots-LatinModern.html: Added.
+        * mathml/presentation/mroot-transform-expected.html: Added.
+        * mathml/presentation/mroot-transform.html: Added.
+        * platform/efl/TestExpectations: mark failures for bad references.
+        * platform/efl/mathml/opentype/roots-LatinModern-expected.txt: Added.
+        * platform/gtk/mathml/opentype/roots-LatinModern-expected.png: Added.
+        * platform/gtk/mathml/opentype/roots-LatinModern-expected.txt: Added.
+        * platform/gtk/mathml/presentation/mo-stretch-expected.png: update reference.
+        * platform/gtk/mathml/presentation/mo-stretch-expected.txt: update reference.
+        * platform/gtk/mathml/presentation/roots-expected.png: update reference.
+        * platform/gtk/mathml/presentation/roots-expected.txt: update reference.
+        * platform/mac/TestExpectations: mark failures for bad references.
+        * platform/mac/mathml/opentype/roots-LatinModern-expected.txt: Added.
+        * platform/win/TestExpectations: mark failures for bad references.
+        * platform/win/mathml/opentype/roots-LatinModern-expected.txt: Added.
+
+2014-06-16  Andrzej Badowski  <a.badowski@samsung.com>
+
+        [EFL] Change expectations for three failing or flaky layout tests.
+        https://bugs.webkit.org/show_bug.cgi?id=133861
+
+        Unreviewed EFL gardening.
+
+        * platform/efl/TestExpectations:
+
+2014-06-15  Benjamin Poulain  <benjamin@webkit.org>
+
+        CSS JIT: add support for the :lang() pseudo class
+        https://bugs.webkit.org/show_bug.cgi?id=133913
+
+        Reviewed by Andreas Kling.
+
+        * fast/selectors/lang-conflict-expected.txt: Added.
+        * fast/selectors/lang-conflict.html: Added.
+        * fast/selectors/lang-empty-expected.txt: Added.
+        * fast/selectors/lang-empty.html: Added.
+        * fast/selectors/lang-specificity-expected.txt: Added.
+        * fast/selectors/lang-specificity-xml-expected.txt: Added.
+        * fast/selectors/lang-specificity-xml.xhtml: Added.
+        * fast/selectors/lang-specificity.html: Added.
+
+2014-06-14  Simon Fraser  <simon.fraser@apple.com>
+
+        Masks disappear when layers become tiled
+        https://bugs.webkit.org/show_bug.cgi?id=133892
+        <rdar://problem/17309793>
+
+        Reviewed by Tim Horton.
+        
+        Tests for masking as they go into and out of tiled mode.
+
+        * compositing/masks/become-tiled-mask-expected.html: Added.
+        * compositing/masks/become-tiled-mask.html: Added.
+        * compositing/masks/cease-tiled-mask-expected.html: Added.
+        * compositing/masks/cease-tiled-mask.html: Added.
+        * compositing/masks/tiled-mask-expected.html: Added.
+        * compositing/masks/tiled-mask.html: Added.
+
+2014-06-14  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r169963.
+        https://bugs.webkit.org/show_bug.cgi?id=133899
+
+        Assertion in mathml/roots-removeChild.html (Requested by fredw
+        on #webkit).
+
+        Reverted changeset:
+
+        "Draw radicals with glyphs for better rendering"
+        https://bugs.webkit.org/show_bug.cgi?id=119038
+        http://trac.webkit.org/changeset/169963
+
+2014-06-14  Frédéric Wang  <fred.wang@free.fr>
+
+        Draw radicals with glyphs for better rendering
+        https://bugs.webkit.org/show_bug.cgi?id=119038
+
+        Reviewed by Chris Fleizach.
+
+        We update the reference for some tests with radicals and enable the tests for addition/removal of children in an msqrt/mroot element.
+        We also add a test for bug 126516 (SVG transforms not applied to mroot) and a new test for radical drawing using an OpenType MATH table.
+
+        * TestExpectations: enable the tests for addition/removal of children.
+        * mathml/opentype/roots-LatinModern.html: Added.
+        * mathml/presentation/mroot-transform-expected.html: Added.
+        * mathml/presentation/mroot-transform.html: Added.
+        * platform/efl/TestExpectations: mark failures for bad references.
+        * platform/efl/mathml/opentype/roots-LatinModern-expected.txt: Added.
+        * platform/gtk/mathml/opentype/roots-LatinModern-expected.png: Added.
+        * platform/gtk/mathml/opentype/roots-LatinModern-expected.txt: Added.
+        * platform/gtk/mathml/presentation/mo-stretch-expected.png: update reference.
+        * platform/gtk/mathml/presentation/mo-stretch-expected.txt: update reference.
+        * platform/gtk/mathml/presentation/roots-expected.png: update reference.
+        * platform/gtk/mathml/presentation/roots-expected.txt: update reference.
+        * platform/mac/TestExpectations: mark failures for bad references.
+        * platform/mac/mathml/opentype/roots-LatinModern-expected.txt: Added.
+        * platform/win/TestExpectations: mark failures for bad references.
+        * platform/win/mathml/opentype/roots-LatinModern-expected.txt: Added.
+
+2014-06-13  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r169939.
+        https://bugs.webkit.org/show_bug.cgi?id=133878
+
+        This patch raises assertions on mac (Requested by fredw on
+        #webkit).
+
+        Reverted changeset:
+
+        "Draw radicals with glyphs for better rendering"
+        https://bugs.webkit.org/show_bug.cgi?id=119038
+        http://trac.webkit.org/changeset/169939
+
+2014-06-13  Enrique Ocaña González  <eocanha@igalia.com>
+
+        Unreviewed GTK gardening.
+
+        Added some flaky and failing tests to TestExpectations.
+
+        * platform/gtk/TestExpectations:
+
+2014-06-13  Frédéric Wang  <fred.wang@free.fr>
+
+        Draw radicals with glyphs for better rendering
+        https://bugs.webkit.org/show_bug.cgi?id=119038
+
+        Reviewed by Chris Fleizach.
+
+        We update the reference for some tests with radicals and enable the tests for addition/removal of children in an msqrt/mroot element.
+        We also add a test for bug 126516 (SVG transforms not applied to mroot) and a new test for radical drawing using an OpenType MATH table.
+
+        * TestExpectations: enable the tests for addition/removal of children.
+        * mathml/opentype/roots-LatinModern.html: Added.
+        * mathml/presentation/mroot-transform-expected.html: Added.
+        * mathml/presentation/mroot-transform.html: Added.
+        * platform/efl/TestExpectations: mark failures for bad references.
+        * platform/efl/mathml/opentype/roots-LatinModern-expected.txt: Added.
+        * platform/gtk/mathml/opentype/roots-LatinModern-expected.png: Added.
+        * platform/gtk/mathml/opentype/roots-LatinModern-expected.txt: Added.
+        * platform/gtk/mathml/presentation/mo-stretch-expected.png: update reference.
+        * platform/gtk/mathml/presentation/mo-stretch-expected.txt: update reference.
+        * platform/gtk/mathml/presentation/roots-expected.png: update reference.
+        * platform/gtk/mathml/presentation/roots-expected.txt: update reference.
+        * platform/mac/TestExpectations: mark failures for bad references.
+        * platform/mac/mathml/opentype/roots-LatinModern-expected.txt: Added.
+        * platform/win/TestExpectations: mark failures for bad references.
+        * platform/win/mathml/opentype/roots-LatinModern-expected.txt: Added.
+
+2014-06-13  Jarek Czekalski  <jarekczek@poczta.onet.pl>
+
+        [ATK] Add test for accessibility of text inside "span" block in "a" block.
+        https://bugs.webkit.org/show_bug.cgi?id=132349
+
+        Reviewed by Mario Sanchez Prada.
+
+        * platform/gtk/accessibility/text-in-span-block-in-a-block-expected.txt: Added.
+        * platform/gtk/accessibility/text-in-span-block-in-a-block.html: Added.
+
+2014-06-13  Andrzej Badowski  <a.badowski@samsung.com>
+
+        [EFL] Change expectations for two failing layout tests.
+        https://bugs.webkit.org/show_bug.cgi?id=133805
+
+        Unreviewed EFL gradening.
+
+        * platform/efl/TestExpectations:
+        * platform/efl/fast/multicol/newmulticol/client-rects-expected.txt:
+
+2014-06-12  Zalan Bujtas  <zalan@apple.com>
+
+        Subpixel rendering: Make <input type=> and <button> elements' decoration subpixel aware.
+        https://bugs.webkit.org/show_bug.cgi?id=133812
+        <rdar://problem/17286309>
+
+        Reviewed by Simon Fraser.
+
+        Enable <input type=> and <button> decoration painting on subpixel positions.
+        The theme size is still integral, but its position is snapped to device pixels.
+        Theme's label, the InlineTextBox is already subpixel position aware.
+        webkit.org/b/132005 tracks the rest of the themes.
+
+        * platform/mac-mountainlion/compositing/contents-opaque/control-layer-expected.txt:
+        * platform/mac/compositing/contents-opaque/control-layer-expected.txt:
+
+2014-06-12  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] Unreviewed GTK gardening.
+
+        * platform/gtk/TestExpectations: Report and mark new failures and
+        timeouts.
+        * platform/gtk/fast/forms/placeholder-position-expected.txt:
+        Rebaseline test after r169780.
+
 2014-06-12  Andrzej Badowski  <a.badowski@samsung.com>
 
         [EFL] Change expectations for three failing js/dom layout tests.
