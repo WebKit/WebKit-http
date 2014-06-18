@@ -68,7 +68,7 @@ String cookiesForDOM(const NetworkStorageSession& session, const URL& firstParty
 	BString result;
 	BUrl hUrl(url);
 
-	BNetworkCookie* c;
+	const BNetworkCookie* c;
 	for (BNetworkCookieJar::UrlIterator it(
             session.context()->context()->GetCookieJar().GetUrlIterator(hUrl));
 		    (c = it.Next()); ) {
@@ -91,7 +91,7 @@ String cookieRequestHeaderFieldValue(const NetworkStorageSession& session, const
 	BString result;
 	BUrl hUrl(url);
 
-	BNetworkCookie* c;
+	const BNetworkCookie* c;
 	for (BNetworkCookieJar::UrlIterator it(
             session.context()->context()->GetCookieJar().GetUrlIterator(hUrl));
 		    (c = it.Next()); ) {
