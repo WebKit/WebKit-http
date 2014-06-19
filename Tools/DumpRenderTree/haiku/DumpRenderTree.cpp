@@ -420,14 +420,13 @@ public:
     ~DumpRenderTreeApp() { }
 
     // BApplication
-    void ArgvReceived(int32 argc, char** argv);
-    void ReadyToRun();
-    void MessageReceived(BMessage*);
-    bool QuitRequested() { return true; }
+    void ArgvReceived(int32 argc, char** argv) override;
+    void ReadyToRun() override;
+    void MessageReceived(BMessage*) override;
 
     // DumpRenderTreeClient
     void didClearWindowObjectInWorld(WebCore::DOMWrapperWorld&,
-        JSGlobalContextRef context, JSObjectRef windowObject);
+        JSGlobalContextRef context, JSObjectRef windowObject) override;
 
     static status_t runTestFromStdin();
 
