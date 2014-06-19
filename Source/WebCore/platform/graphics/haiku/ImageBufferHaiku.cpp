@@ -52,12 +52,11 @@ ImageBufferData::ImageBufferData(const FloatSize& size)
 {
     // Always keep the bitmap locked, we are the only client.
     m_bitmap.Lock();
-    ASSERT(m_bitmap.IsLocked());
-
     if(size.isEmpty())
         return;
 
-    ASSERT(m_bitmap.IsValid());
+    if (!m_bitmap.IsLocked() || !m_bitmap.IsValid())
+        return;
 
     m_view = new BView(m_bitmap.Bounds(), "WebKit ImageBufferData", 0, 0);
     m_bitmap.AddChild(m_view);
@@ -95,7 +94,7 @@ ImageBuffer::ImageBuffer(const FloatSize& size, float /* resolutionScale */, Col
     }
 
     m_context = adoptPtr(new GraphicsContext(m_data.m_view));
-    success = true;
+    success = m_data.m_view != nullptr;
 }
 
 ImageBuffer::~ImageBuffer()
