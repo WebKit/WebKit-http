@@ -1694,6 +1694,10 @@ void GraphicsContext::takeOwnershipOfPlatformContext()
     m_data->takeOwnershipOfPlatformContext();
 }
 
+bool GraphicsContext::isAcceleratedContext() const
+{
+    return (platformContext()->paintEngine()->type() == QPaintEngine::OpenGL2);
 }
 
+}
 // vim: ts=4 sw=4 et

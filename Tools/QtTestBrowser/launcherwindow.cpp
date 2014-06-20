@@ -379,8 +379,12 @@ void LauncherWindow::createChrome()
     QAction* toggleAcceleratedCompositing = graphicsViewMenu->addAction("Toggle Accelerated Compositing", this, SLOT(toggleAcceleratedCompositing(bool)));
     toggleAcceleratedCompositing->setCheckable(true);
     toggleAcceleratedCompositing->setChecked(settings->testAttribute(QWebSettings::AcceleratedCompositingEnabled));
-    toggleAcceleratedCompositing->setEnabled(isGraphicsBased());
-    toggleAcceleratedCompositing->connect(toggleGraphicsView, SIGNAL(toggled(bool)), SLOT(setEnabled(bool)));
+
+    QAction* toggleAccelerated2dCanvas = graphicsViewMenu->addAction("Toggle Accelerated 2D canvas", this, SLOT(toggleAccelerated2dCanvas(bool)));
+    toggleAccelerated2dCanvas->setCheckable(true);
+    toggleAccelerated2dCanvas->setEnabled(settings->testAttribute(QWebSettings::AcceleratedCompositingEnabled));
+    toggleAccelerated2dCanvas->setChecked(settings->testAttribute(QWebSettings::Accelerated2dCanvasEnabled));
+    toggleAccelerated2dCanvas->connect(toggleAcceleratedCompositing, SIGNAL(toggled(bool)), SLOT(setEnabled(bool)));
 
     QAction* toggleResizesToContents = graphicsViewMenu->addAction("Toggle Resizes To Contents Mode", this, SLOT(toggleResizesToContents(bool)));
     toggleResizesToContents->setCheckable(true);
@@ -875,6 +879,11 @@ void LauncherWindow::toggleAcceleratedCompositing(bool toggle)
 {
     m_windowOptions.useCompositing = toggle;
     page()->settings()->setAttribute(QWebSettings::AcceleratedCompositingEnabled, toggle);
+}
+
+void LauncherWindow::toggleAccelerated2dCanvas(bool toggle)
+{
+    page()->settings()->setAttribute(QWebSettings::Accelerated2dCanvasEnabled, toggle);
 }
 
 void LauncherWindow::toggleTiledBackingStore(bool toggle)

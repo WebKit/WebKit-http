@@ -40,6 +40,7 @@
 
 #include <QPalette>
 #include <QRect>
+#include <QOpenGLContext>
 
 QT_BEGIN_NAMESPACE
 class QStyle;
@@ -62,6 +63,7 @@ public:
     virtual void setInputMethodEnabled(bool enable) = 0;
     virtual bool inputMethodEnabled() const = 0;
     virtual bool makeOpenGLContextCurrentIfAvailable() { return false; }
+    virtual QOpenGLContext* openGLContextIfAvailable() { return 0; }
 
     virtual void setInputMethodHints(Qt::InputMethodHints hint) = 0;
 

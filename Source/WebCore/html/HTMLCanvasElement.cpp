@@ -51,6 +51,10 @@
 #include <runtime/JSLock.h>
 #include <runtime/Operations.h>
 
+#if PLATFORM(QT)
+#include "QWebPageClient.h"
+#endif
+
 #if ENABLE(WEBGL)    
 #include "WebGLContextAttributes.h"
 #include "WebGLRenderingContext.h"
@@ -582,7 +586,15 @@ void HTMLCanvasElement::createImageBuffer() const
         return;
 
     RenderingMode renderingMode = shouldAccelerate(bufferSize) ? Accelerated : Unaccelerated;
-    m_imageBuffer = ImageBuffer::create(size(), m_deviceScaleFactor, ColorSpaceDeviceRGB, renderingMode);
+#if PLATFORM(QT)
+    if (renderingMode == Accelerated) {
+        QWebPageClient* client = document()->page()->chrome().platformPageClient();
+        // The WebKit2 Chrome does not have a pageclient.
+        QOpenGLContext* context = client ? client->openGLContextIfAvailable() : 0;
+        m_imageBuffer = ImageBuffer::createCompatibleBuffer(size(), m_deviceScaleFactor, ColorSpaceDeviceRGB, context);
+    } else
+#endif
+        m_imageBuffer = ImageBuffer::create(size(), m_deviceScaleFactor, ColorSpaceDeviceRGB, renderingMode);
     if (!m_imageBuffer)
         return;
     m_imageBuffer->context()->setShadowsIgnoreTransforms(true);

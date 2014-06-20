@@ -174,6 +174,7 @@ public:
 #endif
 
     virtual bool makeOpenGLContextCurrentIfAvailable();
+    virtual QOpenGLContext* openGLContextIfAvailable();
 
     virtual QRectF windowRect() const;
 

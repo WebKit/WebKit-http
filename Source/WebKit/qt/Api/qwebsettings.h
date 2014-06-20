@@ -86,7 +86,8 @@ public:
         ScrollAnimatorEnabled,
         CaretBrowsingEnabled,
         NotificationsEnabled,
-        WebAudioEnabled
+        WebAudioEnabled,
+        Accelerated2dCanvasEnabled
     };
     enum WebGraphic {
         MissingImageGraphic,
