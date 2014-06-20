@@ -417,7 +417,9 @@ static void runTest(const string& inputLine)
 class DumpRenderTreeApp : public BApplication, WebCore::DumpRenderTreeClient {
 public:
     DumpRenderTreeApp();
-    ~DumpRenderTreeApp() { }
+    ~DumpRenderTreeApp() {
+        delete m_webWindow->CurrentWebView();
+    }
 
     // BApplication
     void ArgvReceived(int32 argc, char** argv) override;

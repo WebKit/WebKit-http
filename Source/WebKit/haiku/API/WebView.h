@@ -54,6 +54,7 @@ public:
 
 public:
 								BWebView(const char* name);
+	virtual						~BWebView();
 
 	// The BWebView needs to be deleted by the BWebPage instance running
 	// on the application thread in order to prevent possible race conditions.
@@ -126,7 +127,6 @@ private:
     friend class WebCore::DumpRenderTreeClient;
     friend class WebCore::ChromeClientHaiku;
     friend class WebCore::AcceleratedCompositingContext;
-	virtual						~BWebView();
 
             inline BBitmap*     OffscreenBitmap() const
                                     { return fOffscreenBitmap; }

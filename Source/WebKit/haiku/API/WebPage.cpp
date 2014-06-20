@@ -235,12 +235,6 @@ BWebPage::~BWebPage()
     // main frame, the same mechanism is used.
     delete fSettings;
     delete fPage;
-    // Deleting the BWebView is deferred here to keep it alive in
-    // case some timers still fired after the view calling Shutdown() but
-    // before we processed the shutdown message. If the BWebView had already
-    // deleted itself before we reach the shutdown message, there would be
-    // a race condition and chance to operate on a stale BWebView pointer.
-    delete fWebView;
 }
 
 // #pragma mark - public

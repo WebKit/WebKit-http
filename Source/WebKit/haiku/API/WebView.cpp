@@ -93,6 +93,7 @@ BWebView::BWebView(const char* name)
 
 BWebView::~BWebView()
 {
+    delete fWebPage;
     fCompositor = nullptr;
 
     if (fOffscreenBitmap) {
