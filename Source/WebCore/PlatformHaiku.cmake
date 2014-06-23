@@ -24,6 +24,8 @@ list(APPEND WebCore_SOURCES
   page/haiku/EventHandlerHaiku.cpp
 
   page/scrolling/coordinatedgraphics/ScrollingCoordinatorCoordinatedGraphics.cpp
+  page/scrolling/coordinatedgraphics/ScrollingStateNodeCoordinatedGraphics.cpp
+  page/scrolling/coordinatedgraphics/ScrollingStateScrollingNodeCoordinatedGraphics.cpp
 
   platform/haiku/ContextMenuHaiku.cpp
   platform/haiku/ContextMenuItemHaiku.cpp
